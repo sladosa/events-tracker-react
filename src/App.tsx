@@ -1,49 +1,53 @@
-import { useState } from "react";
-import { Toaster, toast } from "react-hot-toast";
+import React, { useEffect, useState } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
-import "./App.css";
+import { supabase } from "./lib/supabaseClient";
+import LoginPage from "./pages/LoginPage";
+import AppHome from "./pages/AppHome";
 
-function App() {
-  const [count, setCount] = useState(0);
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const [ready, setReady] = useState(false);
+  const [authed, setAuthed] = useState(false);
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setAuthed(!!data.session);
+      setReady(true);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthed(!!session);
+      setReady(true);
+    }); // [web:536]
+
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  if (!ready) return <div style={{ padding: 24 }}>Loading…</div>;
+
+  if (!authed) return <Navigate to="/login" replace state={{ from: location }} />;
+
+  return <>{children}</>;
+}
+
+export default function App() {
   return (
     <>
-      {/* Toast container (renderira sve toastove) */}
       <Toaster position="top-right" />
-
-      <div>
-        <a href="https://vite.dev" target="_blank" rel="noreferrer">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-
-      <h1>Vite + React</h1>
-
-      <div className="card">
-        <button onClick={() => setCount((c) => c + 1)}>count is {count}</button>
-
-        <button
-          style={{ marginLeft: 12 }}
-          onClick={() => toast.success("Radi react-hot-toast!")}
-        >
-          Show toast
-        </button>
-
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <Routes>
+        <Route path="/" element={<Navigate to="/app" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/app"
+          element={
+            <RequireAuth>
+              <AppHome />
+            </RequireAuth>
+          }
+        />
+      </Routes>
     </>
   );
 }
-
-export default App;
