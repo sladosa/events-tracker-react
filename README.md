@@ -1,73 +1,138 @@
-# React + TypeScript + Vite
+# Events Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> Flexible event tracking system with hierarchical categories and customizable attributes.
 
-Currently, two official plugins are available:
+⚠️ **STATUS: IN DEVELOPMENT** - This is a complete project rebuild. The previous Streamlit version works but is being migrated to a modern stack.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 🎯 What is this?
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Activity tracking system with flexible structure:
+- **Hierarchy:** Areas → Categories (up to 10 levels) → Attributes
+- **EAV pattern:** Dynamic attributes (number, text, datetime, boolean...)
+- **Multi-session:** Multiple activities per day with timestamps
 
-## Expanding the ESLint configuration
+**Use cases:** Fitness tracking, health diary, project tracking, personal diary.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🛠️ Tech Stack
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+| Component | Technology |
+|-----------|------------|
+| Frontend | React 18 + TypeScript + Tailwind CSS |
+| Backend | Supabase (PostgreSQL + Auth + RLS) |
+| Hosting | Netlify |
+| Legacy version | Streamlit (Python) - separate repo |
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+---
+
+## 📋 Development Status
+
+### Phase 1: Foundations
+- [ ] Project setup (Vite + React + TS)
+- [ ] GitHub repo + Netlify deployment
+- [ ] Supabase configuration
+
+### Phase 2: Auth (W1)
+- [ ] Sign In form
+- [ ] Sign Up form  
+- [ ] Forgot Password
+- [ ] Auth Context + protected routes
+
+### Phase 3: Core UI (W2-W3)
+- [ ] Universal Filter component
+- [ ] Add Activity wizard
+- [ ] Mobile-responsive layout
+
+### Phase 4: Events Management
+- [ ] Events list with filters
+- [ ] Event editing
+- [ ] Excel export/import integration
+
+### Phase 5: Advanced
+- [ ] Shortcuts system
+- [ ] Dynamic dropdowns (lookup_values)
+- [ ] Data sharing between users
+
+---
+
+## 🗄️ Database
+
+Uses existing Supabase database (migrated from Streamlit version).
+
+**Main tables:**
+```
+areas                  - Top-level organization
+categories             - Hierarchical structure  
+attribute_definitions  - Attribute definitions per category
+events                 - Main activity records
+event_attributes       - EAV attribute values
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Detailed schema: `docs/SQL_schema_V2.sql`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 🚀 Quick Start
+
+```bash
+# Clone
+git clone https://github.com/USERNAME/events-tracker-react.git
+cd events-tracker-react
+
+# Install
+npm install
+
+# Environment
+cp .env.example .env.local
+# Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+
+# Run
+npm run dev
 ```
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── components/     # UI components
+│   ├── ui/         # Base components (Button, Input...)
+│   └── features/   # Feature-specific
+├── hooks/          # Custom React hooks
+├── lib/            # Utilities + Supabase client
+├── pages/          # Route components
+├── context/        # React Context providers
+└── types/          # TypeScript types
+```
+
+---
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| `docs/Code_Guidelines_React.md` | Coding standards for the project |
+| `docs/SQL_schema_V2.sql` | Database schema |
+| `docs/Migration_Plan.md` | Migration plan from Streamlit |
+
+---
+
+## 🔗 Links
+
+- **Production:** *TBD*
+- **Supabase:** [Dashboard](https://supabase.com/dashboard/project/zdojdazosfoajwnuafgx)
+- **Legacy version (Streamlit):** [events-tracker](https://github.com/USERNAME/events-tracker)
+
+---
+
+## 📄 License
+
+MIT
+
+---
+
+*Last updated: 2026-01-25*
