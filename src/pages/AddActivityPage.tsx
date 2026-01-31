@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
@@ -13,21 +13,104 @@ import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
 import { PhotoUpload } from '@/components/activity/PhotoUpload';
 import type { UUID } from '@/types';
 
-// Debug logger - writes to state for on-screen display
-const useDebugLog = () => {
-  const [logs, setLogs] = useState<string[]>([]);
-  
-  const log = useCallback((message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
+// Debug logger - uses localStorage to survive crashes!
+const DEBUG_KEY = 'events_tracker_debug_log';
+
+const persistLog = (message: string) => {
+  try {
+    const timestamp = new Date().toISOString();
     const entry = `[${timestamp}] ${message}`;
     console.log(entry);
-    setLogs(prev => [...prev.slice(-20), entry]); // Keep last 20
-  }, []);
-  
-  const clear = useCallback(() => setLogs([]), []);
-  
-  return { logs, log, clear };
+    
+    // Get existing logs
+    const existing = localStorage.getItem(DEBUG_KEY) || '';
+    const lines = existing.split('\n').filter(Boolean);
+    
+    // Keep last 100 lines
+    lines.push(entry);
+    while (lines.length > 100) lines.shift();
+    
+    localStorage.setItem(DEBUG_KEY, lines.join('\n'));
+  } catch (e) {
+    console.error('Failed to persist log:', e);
+  }
 };
+
+const getPersistedLogs = (): string[] => {
+  try {
+    const logs = localStorage.getItem(DEBUG_KEY) || '';
+    return logs.split('\n').filter(Boolean);
+  } catch {
+    return [];
+  }
+};
+
+const clearPersistedLogs = () => {
+  try {
+    localStorage.removeItem(DEBUG_KEY);
+  } catch {
+    // ignore
+  }
+};
+
+// Log immediately on module load
+persistLog('=== MODULE LOADED ===');
+
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  onError?: (error: Error, info: ErrorInfo) => void;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    persistLog(`ERROR BOUNDARY CAUGHT: ${error.message}`);
+    persistLog(`Stack: ${error.stack?.slice(0, 500)}`);
+    persistLog(`Component Stack: ${errorInfo.componentStack?.slice(0, 300)}`);
+    this.setState({ errorInfo });
+    this.props.onError?.(error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-100 border-2 border-red-500 rounded-lg m-4">
+          <h2 className="text-red-700 font-bold text-lg mb-2">⚠️ Component Crashed!</h2>
+          <p className="text-red-600 mb-2">{this.state.error?.message}</p>
+          <details className="text-xs">
+            <summary className="cursor-pointer text-red-500">Stack trace</summary>
+            <pre className="mt-2 p-2 bg-red-50 overflow-auto max-h-40 text-red-800">
+              {this.state.error?.stack}
+            </pre>
+          </details>
+          <button 
+            onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
+            className="mt-3 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 interface AttributeValue {
   definitionId: string;
@@ -38,9 +121,15 @@ interface AttributeValue {
 export function AddActivityPage() {
   const navigate = useNavigate();
   
-  // Debug logging
-  const { logs, log } = useDebugLog();
-  const [showDebug, setShowDebug] = useState(true); // Show debug panel
+  // Get persisted logs on mount
+  const [logs, setLogs] = useState<string[]>(() => getPersistedLogs());
+  const [showDebug, setShowDebug] = useState(true);
+  
+  // Wrapper for logging
+  const log = useCallback((message: string) => {
+    persistLog(message);
+    setLogs(getPersistedLogs());
+  }, []);
   
   // Session timer
   const {
@@ -68,7 +157,10 @@ export function AddActivityPage() {
 
   // Log on mount
   useEffect(() => {
-    log('AddActivityPage mounted');
+    log('AddActivityPage MOUNTED');
+    return () => {
+      persistLog('AddActivityPage UNMOUNTED');
+    };
   }, [log]);
 
   // Fetch category chain (from leaf to root)
@@ -76,18 +168,20 @@ export function AddActivityPage() {
 
   // Log chain changes
   useEffect(() => {
-    log(`Chain loading: ${chainLoading}, error: ${chainError?.message || 'none'}, length: ${categoryChain.length}`);
+    log(`Chain state: loading=${chainLoading}, error=${chainError?.message || 'none'}, length=${categoryChain.length}`);
     if (categoryChain.length > 0) {
-      log(`Chain: ${categoryChain.map(c => c.name).join(' → ')}`);
+      log(`Chain names: ${categoryChain.map(c => c.name).join(' → ')}`);
     }
   }, [categoryChain, chainLoading, chainError, log]);
 
   // Get all category IDs in chain
   const chainCategoryIds = useMemo(() => {
     const ids = categoryChain.map(c => c.id);
-    log(`Chain IDs computed: ${ids.length} categories`);
+    if (ids.length > 0) {
+      persistLog(`Chain IDs computed: ${ids.length} categories`);
+    }
     return ids;
-  }, [categoryChain, log]);
+  }, [categoryChain]);
 
   // Fetch attribute definitions for all categories in chain
   const { 
@@ -98,14 +192,8 @@ export function AddActivityPage() {
 
   // Log attributes changes
   useEffect(() => {
-    log(`Attrs loading: ${attributesLoading}, error: ${attributesError?.message || 'none'}, categories: ${attributesByCategory.size}`);
-    if (attributesByCategory.size > 0) {
-      for (const [catId, attrs] of attributesByCategory) {
-        const catName = categoryChain.find(c => c.id === catId)?.name || catId;
-        log(`  ${catName}: ${attrs.length} attributes`);
-      }
-    }
-  }, [attributesByCategory, attributesLoading, attributesError, categoryChain, log]);
+    log(`Attrs state: loading=${attributesLoading}, error=${attributesError?.message || 'none'}, size=${attributesByCategory.size}`);
+  }, [attributesByCategory, attributesLoading, attributesError, log]);
 
   // Reset attribute values when category changes
   useEffect(() => {
@@ -343,18 +431,33 @@ export function AddActivityPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Debug Panel - Toggle with button */}
+      {/* Debug Panel - uses localStorage, survives crashes */}
       {showDebug && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black text-green-400 text-xs font-mono p-2 max-h-48 overflow-auto z-50">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-yellow-400">DEBUG LOG</span>
-            <button 
-              onClick={() => setShowDebug(false)}
-              className="text-red-400 hover:text-red-300"
-            >
-              [X] Close
-            </button>
+        <div className="fixed bottom-0 left-0 right-0 bg-black text-green-400 text-xs font-mono p-2 max-h-64 overflow-auto z-50 border-t-2 border-yellow-500">
+          <div className="flex justify-between items-center mb-1 sticky top-0 bg-black pb-1">
+            <span className="text-yellow-400 font-bold">DEBUG LOG (localStorage - survives crash)</span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setLogs(getPersistedLogs())}
+                className="text-blue-400 hover:text-blue-300 px-2"
+              >
+                [↻ Refresh]
+              </button>
+              <button 
+                onClick={() => { clearPersistedLogs(); setLogs([]); }}
+                className="text-orange-400 hover:text-orange-300 px-2"
+              >
+                [Clear]
+              </button>
+              <button 
+                onClick={() => setShowDebug(false)}
+                className="text-red-400 hover:text-red-300 px-2"
+              >
+                [X Close]
+              </button>
+            </div>
           </div>
+          <div className="text-gray-500 mb-1">Last {logs.length} entries:</div>
           {logs.map((entry, i) => (
             <div key={i}>{entry}</div>
           ))}
@@ -436,15 +539,17 @@ export function AddActivityPage() {
               </div>
             ) : categoryId ? (
               categoryChain.length > 0 ? (
-                <AttributeChainForm
-                  categoryChain={categoryChain}
-                  attributesByCategory={attributesByCategory}
-                  values={attributeValues}
-                  onChange={handleAttributeChange}
-                  onTouch={handleAttributeTouch}
-                  disabled={saving}
-                  expandedByDefault={false}
-                />
+                <ErrorBoundary onError={(err) => log(`RENDER ERROR: ${err.message}`)}>
+                  <AttributeChainForm
+                    categoryChain={categoryChain}
+                    attributesByCategory={attributesByCategory}
+                    values={attributeValues}
+                    onChange={handleAttributeChange}
+                    onTouch={handleAttributeTouch}
+                    disabled={saving}
+                    expandedByDefault={false}
+                  />
+                </ErrorBoundary>
               ) : (
                 <div className="text-center py-8 text-amber-600">
                   ⚠️ Category chain is empty. Check RLS policies.

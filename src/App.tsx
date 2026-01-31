@@ -7,6 +7,7 @@ import AuthPage from '@/pages/AuthPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import AppHome from '@/pages/AppHome'
 import { AddActivityPage } from '@/pages/AddActivityPage'
+import { DebugPage } from '@/pages/DebugPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const location = useLocation()
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/app" replace />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/debug" element={<DebugPage />} />
         
         {/* Protected routes */}
         <Route
