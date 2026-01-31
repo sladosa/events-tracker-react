@@ -11,7 +11,23 @@ import { AreaDropdown } from '@/components/activity/AreaDropdown';
 import { CategoryDropdown } from '@/components/activity/CategoryDropdown';
 import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
 import { PhotoUpload } from '@/components/activity/PhotoUpload';
-import type { UUID, Category } from '@/types';
+import type { UUID } from '@/types';
+
+// Debug logger - writes to state for on-screen display
+const useDebugLog = () => {
+  const [logs, setLogs] = useState<string[]>([]);
+  
+  const log = useCallback((message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const entry = `[${timestamp}] ${message}`;
+    console.log(entry);
+    setLogs(prev => [...prev.slice(-20), entry]); // Keep last 20
+  }, []);
+  
+  const clear = useCallback(() => setLogs([]), []);
+  
+  return { logs, log, clear };
+};
 
 interface AttributeValue {
   definitionId: string;
@@ -21,6 +37,10 @@ interface AttributeValue {
 
 export function AddActivityPage() {
   const navigate = useNavigate();
+  
+  // Debug logging
+  const { logs, log } = useDebugLog();
+  const [showDebug, setShowDebug] = useState(true); // Show debug panel
   
   // Session timer
   const {
@@ -44,15 +64,30 @@ export function AddActivityPage() {
   // UI state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+
+  // Log on mount
+  useEffect(() => {
+    log('AddActivityPage mounted');
+  }, [log]);
 
   // Fetch category chain (from leaf to root)
   const { chain: categoryChain, loading: chainLoading, error: chainError } = useCategoryChain(categoryId);
 
+  // Log chain changes
+  useEffect(() => {
+    log(`Chain loading: ${chainLoading}, error: ${chainError?.message || 'none'}, length: ${categoryChain.length}`);
+    if (categoryChain.length > 0) {
+      log(`Chain: ${categoryChain.map(c => c.name).join(' → ')}`);
+    }
+  }, [categoryChain, chainLoading, chainError, log]);
+
   // Get all category IDs in chain
-  const chainCategoryIds = useMemo(() => 
-    categoryChain.map(c => c.id), 
-    [categoryChain]
-  );
+  const chainCategoryIds = useMemo(() => {
+    const ids = categoryChain.map(c => c.id);
+    log(`Chain IDs computed: ${ids.length} categories`);
+    return ids;
+  }, [categoryChain, log]);
 
   // Fetch attribute definitions for all categories in chain
   const { 
@@ -61,21 +96,24 @@ export function AddActivityPage() {
     error: attributesError
   } = useAttributeDefinitions(chainCategoryIds);
 
-  // Debug logging
+  // Log attributes changes
   useEffect(() => {
-    if (categoryId) {
-      console.log('Selected categoryId:', categoryId);
-      console.log('Category chain:', categoryChain.map(c => ({ id: c.id, name: c.name, level: c.level })));
-      console.log('Chain category IDs:', chainCategoryIds);
-      console.log('Attributes by category:', Object.fromEntries(attributesByCategory));
+    log(`Attrs loading: ${attributesLoading}, error: ${attributesError?.message || 'none'}, categories: ${attributesByCategory.size}`);
+    if (attributesByCategory.size > 0) {
+      for (const [catId, attrs] of attributesByCategory) {
+        const catName = categoryChain.find(c => c.id === catId)?.name || catId;
+        log(`  ${catName}: ${attrs.length} attributes`);
+      }
     }
-  }, [categoryId, categoryChain, chainCategoryIds, attributesByCategory]);
+  }, [attributesByCategory, attributesLoading, attributesError, categoryChain, log]);
 
   // Reset attribute values when category changes
   useEffect(() => {
+    log(`Category changed to: ${categoryId || 'null'}`);
     setAttributeValues(new Map());
     setPhoto(null);
-  }, [categoryId]);
+    setRenderError(null);
+  }, [categoryId, log]);
 
   // Handle attribute value change
   const handleAttributeChange = useCallback((definitionId: string, value: string | number | boolean | null) => {
@@ -305,6 +343,36 @@ export function AddActivityPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Debug Panel - Toggle with button */}
+      {showDebug && (
+        <div className="fixed bottom-0 left-0 right-0 bg-black text-green-400 text-xs font-mono p-2 max-h-48 overflow-auto z-50">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-yellow-400">DEBUG LOG</span>
+            <button 
+              onClick={() => setShowDebug(false)}
+              className="text-red-400 hover:text-red-300"
+            >
+              [X] Close
+            </button>
+          </div>
+          {logs.map((entry, i) => (
+            <div key={i}>{entry}</div>
+          ))}
+          {renderError && (
+            <div className="text-red-400 mt-2">RENDER ERROR: {renderError}</div>
+          )}
+        </div>
+      )}
+      
+      {!showDebug && (
+        <button
+          onClick={() => setShowDebug(true)}
+          className="fixed bottom-2 left-2 bg-black text-green-400 text-xs px-2 py-1 rounded z-50"
+        >
+          Show Debug
+        </button>
+      )}
+
       {/* Header with timers */}
       <SessionHeader
         elapsed={elapsed}
@@ -318,7 +386,7 @@ export function AddActivityPage() {
       <SessionLog savedEvents={savedEvents} />
 
       {/* Main form */}
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-56">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {/* Filter section */}
           <div className="p-4 border-b border-gray-100 bg-gray-50">
@@ -326,14 +394,18 @@ export function AddActivityPage() {
               <AreaDropdown
                 value={areaId}
                 onChange={(id) => {
+                  log(`Area selected: ${id}`);
                   setAreaId(id);
-                  setCategoryId(null); // Reset category when area changes
+                  setCategoryId(null);
                 }}
               />
               <CategoryDropdown
                 areaId={areaId}
                 value={categoryId}
-                onChange={setCategoryId}
+                onChange={(id) => {
+                  log(`Category selected: ${id}`);
+                  setCategoryId(id);
+                }}
                 leafOnly={true}
               />
             </div>
@@ -342,27 +414,42 @@ export function AddActivityPage() {
           {/* Attributes section */}
           <div className="p-4">
             {/* Error display */}
-            {(chainError || attributesError) && (
+            {(chainError || attributesError || renderError) && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {chainError && <p>Chain error: {chainError.message}</p>}
                 {attributesError && <p>Attributes error: {attributesError.message}</p>}
+                {renderError && <p>Render error: {renderError}</p>}
               </div>
             )}
+            
+            {/* Debug state */}
+            <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
+              <p>categoryId: {categoryId || 'null'}</p>
+              <p>chainLoading: {String(chainLoading)} | attrsLoading: {String(attributesLoading)}</p>
+              <p>chainLength: {categoryChain.length} | attrsCategories: {attributesByCategory.size}</p>
+            </div>
             
             {(chainLoading || attributesLoading) ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                <span className="ml-2 text-gray-500">Loading...</span>
               </div>
             ) : categoryId ? (
-              <AttributeChainForm
-                categoryChain={categoryChain}
-                attributesByCategory={attributesByCategory}
-                values={attributeValues}
-                onChange={handleAttributeChange}
-                onTouch={handleAttributeTouch}
-                disabled={saving}
-                expandedByDefault={false}
-              />
+              categoryChain.length > 0 ? (
+                <AttributeChainForm
+                  categoryChain={categoryChain}
+                  attributesByCategory={attributesByCategory}
+                  values={attributeValues}
+                  onChange={handleAttributeChange}
+                  onTouch={handleAttributeTouch}
+                  disabled={saving}
+                  expandedByDefault={false}
+                />
+              ) : (
+                <div className="text-center py-8 text-amber-600">
+                  ⚠️ Category chain is empty. Check RLS policies.
+                </div>
+              )
             ) : (
               <div className="text-center py-8 text-gray-500">
                 Select Area and Category to start
