@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import AuthPage from '@/pages/AuthPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import AppHome from '@/pages/AppHome'
+import { AddActivityPage } from '@/pages/AddActivityPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const location = useLocation()
@@ -82,6 +83,14 @@ export default function App() {
           element={
             <RequireAuth>
               <AppHome />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/app/add"
+          element={
+            <RequireAuth>
+              <AddActivityPage />
             </RequireAuth>
           }
         />
