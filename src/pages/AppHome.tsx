@@ -137,7 +137,7 @@ function AppContent() {
           {/* Add Activity Button */}
           <Button
             leftIcon={<AddIcon />}
-            onClick={() => nav('/app/add')}
+            onClick={() => toast('Add Activity coming soon!')}
           >
             {!isMobile && 'Add Activity'}
           </Button>

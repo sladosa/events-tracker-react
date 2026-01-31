@@ -28,24 +28,14 @@ export function useAreas(options: UseAreasOptions = {}): UseAreasReturn {
       setLoading(true);
       setError(null);
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setAreas([]);
-        return;
-      }
-
       let query = supabase
         .from('areas')
         .select('*')
         .order('sort_order', { ascending: true });
 
-      // Filter: only current user's areas (exclude template user)
+      // Filter out template user unless explicitly requested
       if (!includeTemplates) {
-        query = query.eq('user_id', user.id);
-      } else {
-        // Include both user's and template's
-        query = query.or(`user_id.eq.${user.id},user_id.eq.${TEMPLATE_USER_ID}`);
+        query = query.neq('user_id', TEMPLATE_USER_ID);
       }
 
       const { data, error: fetchError } = await query;

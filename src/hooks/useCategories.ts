@@ -31,13 +31,6 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
       setLoading(true);
       setError(null);
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setCategories([]);
-        return;
-      }
-
       // Build select query - single line for nested relations (Supabase gotcha!)
       const selectQuery = includeArea 
         ? 'id, user_id, area_id, parent_category_id, name, description, slug, level, sort_order, path, created_at, updated_at, area:areas(id, name, icon, color, slug)'
@@ -49,11 +42,9 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
         .order('level', { ascending: true })
         .order('sort_order', { ascending: true });
 
-      // Filter: only current user's categories (exclude template user by default)
+      // Filter out template user unless explicitly requested
       if (!includeTemplates) {
-        query = query.eq('user_id', user.id);
-      } else {
-        query = query.or(`user_id.eq.${user.id},user_id.eq.${TEMPLATE_USER_ID}`);
+        query = query.neq('user_id', TEMPLATE_USER_ID);
       }
 
       // Filter by area if provided
