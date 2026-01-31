@@ -148,9 +148,24 @@ export function parseValidationRules(
 
   if (!validationRules) return result;
 
+  // Handle string JSON (Supabase may return jsonb as string)
+  let rules: Record<string, unknown>;
+  if (typeof validationRules === 'string') {
+    try {
+      rules = JSON.parse(validationRules);
+    } catch {
+      console.warn('Failed to parse validation_rules:', validationRules);
+      return result;
+    }
+  } else if (typeof validationRules === 'object' && validationRules !== null) {
+    rules = validationRules as Record<string, unknown>;
+  } else {
+    return result;
+  }
+
   // Check for type field (from V3 export)
-  if ('type' in validationRules) {
-    const vr = validationRules as {
+  if ('type' in rules) {
+    const vr = rules as {
       type?: string;
       suggest?: string[];
       enum?: string[];
@@ -183,8 +198,8 @@ export function parseValidationRules(
   }
 
   // Check for dropdown field (from original format)
-  if ('dropdown' in validationRules) {
-    const dropdown = validationRules.dropdown;
+  if ('dropdown' in rules) {
+    const dropdown = (rules as { dropdown?: { type?: string; options?: string[]; allow_custom?: boolean } }).dropdown;
     if (dropdown?.type === 'static' && dropdown.options) {
       result.type = 'suggest';
       result.options = dropdown.options;
