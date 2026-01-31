@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { AttributeDefinition, Category } from '@/types';
 import { AttributeInput } from './AttributeInput';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
@@ -29,16 +29,23 @@ export function AttributeChainForm({
   expandedByDefault = false,
 }: AttributeChainFormProps) {
   // Track which categories are expanded (leaf is always expanded)
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => {
-    const initial = new Set<string>();
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  // Update expanded categories when chain changes
+  useEffect(() => {
     if (categoryChain.length > 0) {
-      initial.add(categoryChain[0].id); // Leaf always expanded
+      setExpandedCategories(prev => {
+        const next = new Set(prev);
+        // Leaf always expanded
+        next.add(categoryChain[0].id);
+        // Optionally expand all
+        if (expandedByDefault) {
+          categoryChain.forEach(c => next.add(c.id));
+        }
+        return next;
+      });
     }
-    if (expandedByDefault) {
-      categoryChain.forEach(c => initial.add(c.id));
-    }
-    return initial;
-  });
+  }, [categoryChain, expandedByDefault]);
 
   const toggleCategory = useCallback((categoryId: string) => {
     setExpandedCategories(prev => {

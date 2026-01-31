@@ -28,13 +28,16 @@ export function useCategoryChain(leafCategoryId: UUID | null): UseCategoryChainR
       setLoading(true);
       setError(null);
 
-      // Dohvati sve kategorije jednim upitom (efikasnije od rekurzivnog)
+      // Dohvati sve kategorije - RLS će filtrirati
+      // Ne filtriramo po user_id jer kategorija može biti shared ili importana
       const { data: allCategories, error: fetchError } = await supabase
         .from('categories')
         .select('id, user_id, area_id, parent_category_id, name, description, slug, level, sort_order, path, created_at, updated_at')
         .order('level', { ascending: false });
 
       if (fetchError) throw fetchError;
+
+      console.log('Fetched categories for chain:', allCategories?.length);
 
       // Build chain od leaf do root
       const categoryMap = new Map<string, Category>();
@@ -44,14 +47,22 @@ export function useCategoryChain(leafCategoryId: UUID | null): UseCategoryChainR
       let currentId: string | null = leafCategoryId;
 
       // Traverse up the tree
-      while (currentId) {
+      let iterations = 0;
+      const maxIterations = 20; // Prevent infinite loop
+      
+      while (currentId && iterations < maxIterations) {
         const category = categoryMap.get(currentId);
-        if (!category) break;
+        if (!category) {
+          console.warn('Category not found in chain:', currentId);
+          break;
+        }
         
         result.push(category);
         currentId = category.parent_category_id;
+        iterations++;
       }
 
+      console.log('Category chain loaded:', result.map(c => c.name));
       setChain(result);
     } catch (err) {
       console.error('Error fetching category chain:', err);

@@ -46,7 +46,7 @@ export function AddActivityPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch category chain (from leaf to root)
-  const { chain: categoryChain, loading: chainLoading } = useCategoryChain(categoryId);
+  const { chain: categoryChain, loading: chainLoading, error: chainError } = useCategoryChain(categoryId);
 
   // Get all category IDs in chain
   const chainCategoryIds = useMemo(() => 
@@ -57,8 +57,19 @@ export function AddActivityPage() {
   // Fetch attribute definitions for all categories in chain
   const { 
     attributesByCategory, 
-    loading: attributesLoading 
+    loading: attributesLoading,
+    error: attributesError
   } = useAttributeDefinitions(chainCategoryIds);
+
+  // Debug logging
+  useEffect(() => {
+    if (categoryId) {
+      console.log('Selected categoryId:', categoryId);
+      console.log('Category chain:', categoryChain.map(c => ({ id: c.id, name: c.name, level: c.level })));
+      console.log('Chain category IDs:', chainCategoryIds);
+      console.log('Attributes by category:', Object.fromEntries(attributesByCategory));
+    }
+  }, [categoryId, categoryChain, chainCategoryIds, attributesByCategory]);
 
   // Reset attribute values when category changes
   useEffect(() => {
@@ -330,6 +341,14 @@ export function AddActivityPage() {
 
           {/* Attributes section */}
           <div className="p-4">
+            {/* Error display */}
+            {(chainError || attributesError) && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {chainError && <p>Chain error: {chainError.message}</p>}
+                {attributesError && <p>Attributes error: {attributesError.message}</p>}
+              </div>
+            )}
+            
             {(chainLoading || attributesLoading) ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
