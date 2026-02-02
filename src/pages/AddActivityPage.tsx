@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, Component, ErrorInfo, ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, Component, type ErrorInfo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';

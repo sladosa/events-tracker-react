@@ -56,7 +56,7 @@ const ViewIcons: Record<ViewType, React.ReactNode> = {
 // --------------------------------------------
 
 export function UniversalFilter({
-  mode = 'browse',
+  mode: _mode = 'browse',
   showSearch = true,
   showViewToggle = true,
   showBreadcrumb = true,

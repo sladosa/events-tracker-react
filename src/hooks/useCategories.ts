@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { Category, CategoryWithArea, UUID } from '@/types';
+import type { CategoryWithArea, UUID } from '@/types';
 
 // Template user ID - koristi se za "starter" podatke za nove korisnike
 const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000000';
@@ -71,7 +71,7 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
       const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
-      setCategories(data || []);
+      setCategories((data as unknown as CategoryWithArea[]) || []);
     } catch (err) {
       console.error('Error fetching categories:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch categories'));
@@ -131,7 +131,7 @@ export function useTemplateCategories(): UseCategoriesReturn {
         .order('sort_order', { ascending: true });
 
       if (fetchError) throw fetchError;
-      setCategories(data || []);
+      setCategories((data as unknown as CategoryWithArea[]) || []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch template categories'));
     } finally {

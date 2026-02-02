@@ -92,7 +92,7 @@ export function AttributeInput({
         <div className="flex items-center gap-2">
           <input
             type="number"
-            value={value ?? ''}
+            value={typeof value === 'boolean' ? '' : (value ?? '')}
             onChange={(e) => {
               const num = e.target.value === '' ? null : parseFloat(e.target.value);
               handleChange(num);
@@ -164,7 +164,7 @@ export function AttributeInput({
       return (
         <div className="space-y-1">
           <select
-            value={isCustomValue ? '__other__' : (value ?? '')}
+            value={isCustomValue ? '__other__' : (typeof value === 'boolean' ? '' : (value ?? ''))}
             onChange={(e) => {
               if (e.target.value === '__other__') {
                 handleOtherSelect();
@@ -203,7 +203,7 @@ export function AttributeInput({
     return (
       <input
         type={dataType === 'link' ? 'url' : 'text'}
-        value={value ?? ''}
+        value={typeof value === 'boolean' ? String(value) : (value ?? '')}
         onChange={(e) => handleChange(e.target.value || null)}
         disabled={disabled}
         placeholder={definition.default_value || ''}

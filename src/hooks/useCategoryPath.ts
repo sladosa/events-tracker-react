@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { BreadcrumbItem, UUID, Category, Area } from '@/types';
+import type { BreadcrumbItem, UUID } from '@/types';
 
 interface UseCategoryPathReturn {
   path: BreadcrumbItem[];
@@ -42,19 +42,26 @@ export function useCategoryPath(categoryId: UUID | null): UseCategoryPathReturn 
       if (catError) throw catError;
       if (!category) throw new Error('Category not found');
 
+      // Supabase join returns area as array or object depending on relation
+      const areaData = Array.isArray(category.area) ? category.area[0] : category.area;
+
       // Add area to breadcrumb
-      if (category.area) {
-        const area = category.area as Area;
+      if (areaData) {
         breadcrumb.push({
-          id: area.id,
-          name: area.name,
+          id: areaData.id,
+          name: areaData.name,
           type: 'area'
         });
       }
 
       // Build parent chain by traversing up
-      const categoryChain: Category[] = [];
-      let currentCat: Category | null = category as Category;
+      const categoryChain: Array<{ id: string; name: string; level: number; parent_category_id: string | null }> = [];
+      let currentCat: { id: string; name: string; level: number; parent_category_id: string | null } | null = {
+        id: category.id,
+        name: category.name,
+        level: category.level,
+        parent_category_id: category.parent_category_id,
+      };
 
       // Collect all ancestors
       while (currentCat) {
@@ -71,7 +78,7 @@ export function useCategoryPath(categoryId: UUID | null): UseCategoryPathReturn 
             console.warn('Error fetching parent:', parentError);
             break;
           }
-          currentCat = parent;
+          currentCat = parent as typeof currentCat;
         } else {
           currentCat = null;
         }

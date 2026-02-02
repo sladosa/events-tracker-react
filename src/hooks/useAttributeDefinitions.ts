@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { TEMPLATE_USER_ID } from '@/lib/constants';
 import type { AttributeDefinition, UUID } from '@/types';
 
 interface UseAttributeDefinitionsReturn {
