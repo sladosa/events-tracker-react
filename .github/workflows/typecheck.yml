@@ -1,0 +1,30 @@
+# TypeScript Build Check
+# Pokreće tsc na svakom pushu da uhvati greške PRIJE Netlify deploya.
+# Ako ovo prođe ✅, Netlify build će sigurno proći.
+
+name: TypeScript Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: TypeScript check
+        run: npm run typecheck
+
+      - name: Full build (same as Netlify)
+        run: npm run build

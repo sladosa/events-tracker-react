@@ -101,6 +101,9 @@ export function AttributeChainForm({
           
           if (parsed.dependsOn) {
             dependencyValue = attributeValuesBySlug.get(parsed.dependsOn.attributeSlug) || null;
+            // DEBUG: Log dependency resolution
+            console.log(`[AttrChainForm] "${attr.slug}" depends on "${parsed.dependsOn.attributeSlug}" → value: "${dependencyValue}"`);
+            console.log(`[AttrChainForm] attributeValuesBySlug keys:`, [...attributeValuesBySlug.keys()]);
           }
           
           return (

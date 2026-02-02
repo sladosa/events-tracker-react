@@ -38,7 +38,11 @@ export function AttributeInput({
   );
 
   const hasOptions = options.length > 0;
-  const showDropdown = hasOptions && (parsedOptions.type === 'suggest' || parsedOptions.type === 'enum');
+  const hasDependency = !!parsedOptions.dependsOn;
+  // FIX: Show dropdown for suggest/enum types, OR when there's a dependency
+  // (dependency dropdowns may have 0 options until the parent is selected)
+  const showDropdown = (hasOptions || hasDependency) && 
+    (parsedOptions.type === 'suggest' || parsedOptions.type === 'enum');
 
   // Handle change
   const handleChange = (newValue: string | number | boolean | null) => {
@@ -125,6 +129,23 @@ export function AttributeInput({
 
     // Text with dropdown (suggest/enum)
     if (dataType === 'text' && showDropdown) {
+      // Dependency not yet selected - show disabled dropdown with hint
+      if (hasDependency && !dependencyValue) {
+        return (
+          <div className="space-y-1">
+            <select
+              disabled
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-500"
+            >
+              <option>Select {parsedOptions.dependsOn?.attributeSlug?.replace(/_/g, ' ')} first...</option>
+            </select>
+            <p className="text-xs text-amber-600">
+              ⚠️ Depends on: {parsedOptions.dependsOn?.attributeSlug}
+            </p>
+          </div>
+        );
+      }
+
       // "Other" input modal
       if (showOtherInput && parsedOptions.allowOther) {
         return (
