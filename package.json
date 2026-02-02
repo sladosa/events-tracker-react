@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "check": "npm run typecheck && npm run lint",
     "preview": "vite preview"
   },
   "dependencies": {

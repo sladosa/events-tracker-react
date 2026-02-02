@@ -59,6 +59,12 @@ export function AttributeChainForm({
     });
   }, []);
 
+  // Normalize slug for consistent lookup
+  // Handles: "Strength_type" vs "strength-type" vs "strength_type"
+  const normalizeSlug = useCallback((slug: string): string => {
+    return slug.toLowerCase().replace(/[-_]/g, '_');
+  }, []);
+
   // Build a map of attribute slugs to their current values
   // Used for dependency resolution
   const attributeValuesBySlug = useMemo(() => {
@@ -71,14 +77,16 @@ export function AttributeChainForm({
       allAttributes.push(...attrs);
     }
     
-    // Map slug to current value
+    // Map BOTH original and normalized slug to current value
     for (const attr of allAttributes) {
       const val = values.get(attr.id);
-      map.set(attr.slug, val?.value != null ? String(val.value) : null);
+      const stringVal = val?.value != null ? String(val.value) : null;
+      map.set(attr.slug, stringVal);                    // original: "Strength_type"
+      map.set(normalizeSlug(attr.slug), stringVal);     // normalized: "strength_type"
     }
     
     return map;
-  }, [categoryChain, attributesByCategory, values]);
+  }, [categoryChain, attributesByCategory, values, normalizeSlug]);
 
   // Render attributes for a single category
   const renderCategoryAttributes = (category: Category) => {
@@ -100,9 +108,13 @@ export function AttributeChainForm({
           let dependencyValue: string | null = null;
           
           if (parsed.dependsOn) {
-            dependencyValue = attributeValuesBySlug.get(parsed.dependsOn.attributeSlug) || null;
+            // Try exact match first, then normalized
+            const depSlug = parsed.dependsOn.attributeSlug;
+            dependencyValue = attributeValuesBySlug.get(depSlug) 
+              ?? attributeValuesBySlug.get(normalizeSlug(depSlug)) 
+              ?? null;
             // DEBUG: Log dependency resolution
-            console.log(`[AttrChainForm] "${attr.slug}" depends on "${parsed.dependsOn.attributeSlug}" → value: "${dependencyValue}"`);
+            console.log(`[AttrChainForm] "${attr.slug}" depends on "${depSlug}" (normalized: "${normalizeSlug(depSlug)}") → value: "${dependencyValue}"`);
             console.log(`[AttrChainForm] attributeValuesBySlug keys:`, [...attributeValuesBySlug.keys()]);
           }
           
