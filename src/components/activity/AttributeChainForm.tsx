@@ -163,14 +163,15 @@ export function AttributeChainForm({
     );
   }
 
-  // Render leaf category FIRST, then parents (reversed from chain order for display)
-  // Chain is already: [leaf, parent1, parent2, ..., root]
-  // We want to show: Leaf (expanded) → parent1 (collapsed) → parent2 (collapsed) → root
+  // Render in hierarchy order: root/parents first (collapsed), leaf last (expanded)
+  // Chain comes as: [leaf, parent1, parent2, ..., root]
+  // We want to show: root → ... → parent1 → leaf
+  const displayOrder = [...categoryChain].reverse();
   
   return (
     <div className="space-y-3">
-      {categoryChain.map((category, index) => {
-        const isLeaf = index === 0;
+      {displayOrder.map((category) => {
+        const isLeaf = category.id === categoryChain[0].id; // First in original chain is leaf
         const isExpanded = expandedCategories.has(category.id);
         const attributes = attributesByCategory.get(category.id) || [];
         const touchedCount = attributes.filter(a => values.get(a.id)?.touched).length;

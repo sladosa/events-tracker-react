@@ -151,8 +151,7 @@ export function AddActivityPage() {
   // Form state
   const [areaId, setAreaId] = useState<UUID | null>(null);
   const [categoryId, setCategoryId] = useState<UUID | null>(null);
-  const [sessionComment, setSessionComment] = useState('');  // Shared across session
-  const [eventNote, setEventNote] = useState('');            // Per-event, resets after save
+  const [eventNote, setEventNote] = useState('');  // Per-event note, resets after save
   const [photo, setPhoto] = useState<File | null>(null);
   const [attributeValues, setAttributeValues] = useState<Map<string, AttributeValue>>(new Map());
   
@@ -246,9 +245,9 @@ export function AddActivityPage() {
   // Check if form is valid for save
   const canSave = useMemo(() => {
     if (!categoryId) return false;
-    // Potrebno: touched atribut ILI komentar ILI photo ILI event note
-    return hasTouchedAttributes || sessionComment.trim() !== '' || eventNote.trim() !== '' || photo !== null;
-  }, [categoryId, hasTouchedAttributes, sessionComment, eventNote, photo]);
+    // Potrebno: touched atribut ILI event note ILI photo
+    return hasTouchedAttributes || eventNote.trim() !== '' || photo !== null;
+  }, [categoryId, hasTouchedAttributes, eventNote, photo]);
 
   // Get leaf category name for display
   const leafCategoryName = useMemo(() => {
@@ -309,10 +308,8 @@ export function AddActivityPage() {
         if (!isLeaf && touchedAttrs.length === 0) continue;
 
         // Insert event
-        // Combine session comment and event note for the leaf event
-        const fullComment = isLeaf 
-          ? [sessionComment, eventNote].filter(Boolean).join(' | ') || null
-          : sessionComment || null;  // Parents get session comment only
+        // Event note only goes to leaf event
+        const eventComment = isLeaf ? (eventNote.trim() || null) : null;
         
         const { data: event, error: eventError } = await supabase
           .from('events')
@@ -321,7 +318,7 @@ export function AddActivityPage() {
             category_id: category.id,
             event_date: eventDate,
             session_start: sessionStartIso,
-            comment: fullComment,
+            comment: eventComment,
             created_at: createdAt,
           })
           .select('id, category_id')
@@ -394,8 +391,33 @@ export function AddActivityPage() {
         hasPhoto: photo !== null,
       });
 
-      // Reset form (keep Area/Category/SessionComment, clear eventNote)
-      setAttributeValues(new Map());
+      // Smart reset: keep dropdown values, reset text inputs only
+      // This allows quickly entering same exercise with different sets/weights
+      setAttributeValues(prev => {
+        const next = new Map<string, AttributeValue>();
+        
+        // Find which attributes are dropdowns (should be kept)
+        for (const [categoryId, attrs] of attributesByCategory) {
+          for (const attr of attrs) {
+            const currentVal = prev.get(attr.id);
+            if (!currentVal) continue;
+            
+            // Check if this is a dropdown attribute (suggest/enum type)
+            const rules = attr.validation_rules as Record<string, unknown> | null;
+            const ruleType = rules?.type as string | undefined;
+            const hasDependency = !!rules?.depends_on;
+            const isDropdown = ruleType === 'suggest' || ruleType === 'enum' || hasDependency;
+            
+            if (isDropdown && currentVal.value != null) {
+              // Keep dropdown values
+              next.set(attr.id, { ...currentVal, touched: false });
+            }
+            // Text inputs are not copied - they reset to empty
+          }
+        }
+        
+        return next;
+      });
       setPhoto(null);
       setEventNote('');  // Reset per-event note
 
@@ -573,24 +595,6 @@ export function AddActivityPage() {
                 value={photo}
                 onChange={setPhoto}
                 disabled={saving}
-              />
-            </div>
-          )}
-
-          {/* Session Comment - shared across all events in session */}
-          {categoryId && (
-            <div className="px-3 pb-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                💬 Session Comment
-                <span className="font-normal text-gray-400 ml-2 text-xs">shared across all saves</span>
-              </label>
-              <input
-                type="text"
-                value={sessionComment}
-                onChange={(e) => setSessionComment(e.target.value)}
-                disabled={saving}
-                placeholder="e.g., Morning workout"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
               />
             </div>
           )}
