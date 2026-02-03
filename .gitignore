@@ -1,7 +1,7 @@
 
 # Temporary directories
-Claude-temp/
-Perplexity-temp/
+Claude-temp_R/
+Perplexity-temp_R/
 
 # Obsidian notes (if using for documentation)
 .obsidian/
