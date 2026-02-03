@@ -121,15 +121,20 @@ interface AttributeValue {
 export function AddActivityPage() {
   const navigate = useNavigate();
   
-  // Get persisted logs on mount
-  const [logs, setLogs] = useState<string[]>(() => getPersistedLogs());
-  const [showDebug, setShowDebug] = useState(true);
+  // Debug mode: only show with ?debug=true URL param
+  const [showDebug, setShowDebug] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('debug') || localStorage.getItem('et_debug') === 'true';
+  });
+  const [logs, setLogs] = useState<string[]>(() => showDebug ? getPersistedLogs() : []);
   
-  // Wrapper for logging
+  // Wrapper for logging (only logs when debug enabled)
   const log = useCallback((message: string) => {
     persistLog(message);
-    setLogs(getPersistedLogs());
-  }, []);
+    if (showDebug) {
+      setLogs(getPersistedLogs());
+    }
+  }, [showDebug]);
   
   // Session timer
   const {
@@ -146,7 +151,8 @@ export function AddActivityPage() {
   // Form state
   const [areaId, setAreaId] = useState<UUID | null>(null);
   const [categoryId, setCategoryId] = useState<UUID | null>(null);
-  const [comment, setComment] = useState('');
+  const [sessionComment, setSessionComment] = useState('');  // Shared across session
+  const [eventNote, setEventNote] = useState('');            // Per-event, resets after save
   const [photo, setPhoto] = useState<File | null>(null);
   const [attributeValues, setAttributeValues] = useState<Map<string, AttributeValue>>(new Map());
   
@@ -240,9 +246,9 @@ export function AddActivityPage() {
   // Check if form is valid for save
   const canSave = useMemo(() => {
     if (!categoryId) return false;
-    // Potrebno: touched atribut ILI komentar ILI photo
-    return hasTouchedAttributes || comment.trim() !== '' || photo !== null;
-  }, [categoryId, hasTouchedAttributes, comment, photo]);
+    // Potrebno: touched atribut ILI komentar ILI photo ILI event note
+    return hasTouchedAttributes || sessionComment.trim() !== '' || eventNote.trim() !== '' || photo !== null;
+  }, [categoryId, hasTouchedAttributes, sessionComment, eventNote, photo]);
 
   // Get leaf category name for display
   const leafCategoryName = useMemo(() => {
@@ -303,6 +309,11 @@ export function AddActivityPage() {
         if (!isLeaf && touchedAttrs.length === 0) continue;
 
         // Insert event
+        // Combine session comment and event note for the leaf event
+        const fullComment = isLeaf 
+          ? [sessionComment, eventNote].filter(Boolean).join(' | ') || null
+          : sessionComment || null;  // Parents get session comment only
+        
         const { data: event, error: eventError } = await supabase
           .from('events')
           .insert({
@@ -310,7 +321,7 @@ export function AddActivityPage() {
             category_id: category.id,
             event_date: eventDate,
             session_start: sessionStartIso,
-            comment: isLeaf ? comment || null : null, // Comment only on leaf
+            comment: fullComment,
             created_at: createdAt,
           })
           .select('id, category_id')
@@ -383,9 +394,10 @@ export function AddActivityPage() {
         hasPhoto: photo !== null,
       });
 
-      // Reset form (keep Area/Category/Comment)
+      // Reset form (keep Area/Category/SessionComment, clear eventNote)
       setAttributeValues(new Map());
       setPhoto(null);
+      setEventNote('');  // Reset per-event note
 
       if (andFinish) {
         endSession();
@@ -430,18 +442,18 @@ export function AddActivityPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Debug Panel - uses localStorage, survives crashes */}
+    <div className="min-h-screen bg-gray-50 pb-4">
+      {/* Debug Panel - only visible with ?debug=true URL param */}
       {showDebug && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black text-green-400 text-xs font-mono p-2 max-h-64 overflow-auto z-50 border-t-2 border-yellow-500">
+        <div className="fixed bottom-0 left-0 right-0 bg-black text-green-400 text-xs font-mono p-2 max-h-48 overflow-auto z-50 border-t-2 border-yellow-500">
           <div className="flex justify-between items-center mb-1 sticky top-0 bg-black pb-1">
-            <span className="text-yellow-400 font-bold">DEBUG LOG (localStorage - survives crash)</span>
+            <span className="text-yellow-400 font-bold">DEBUG (?debug=true)</span>
             <div className="flex gap-2">
               <button 
                 onClick={() => setLogs(getPersistedLogs())}
                 className="text-blue-400 hover:text-blue-300 px-2"
               >
-                [↻ Refresh]
+                [↻]
               </button>
               <button 
                 onClick={() => { clearPersistedLogs(); setLogs([]); }}
@@ -450,10 +462,13 @@ export function AddActivityPage() {
                 [Clear]
               </button>
               <button 
-                onClick={() => setShowDebug(false)}
+                onClick={() => {
+                  setShowDebug(false);
+                  localStorage.removeItem('et_debug');
+                }}
                 className="text-red-400 hover:text-red-300 px-2"
               >
-                [X Close]
+                [X]
               </button>
             </div>
           </div>
@@ -466,34 +481,30 @@ export function AddActivityPage() {
           )}
         </div>
       )}
-      
-      {!showDebug && (
-        <button
-          onClick={() => setShowDebug(true)}
-          className="fixed bottom-2 left-2 bg-black text-green-400 text-xs px-2 py-1 rounded z-50"
-        >
-          Show Debug
-        </button>
-      )}
 
-      {/* Header with timers */}
+      {/* Header with timers AND action buttons */}
       <SessionHeader
         elapsed={elapsed}
         lapElapsed={lapElapsed}
         formatTime={formatTime}
         onFinish={handleFinishSession}
+        onCancel={handleCancel}
+        onSaveContinue={() => handleSave(false)}
+        onSaveFinish={() => handleSave(true)}
         isActive={isActive}
+        canSave={canSave}
+        saving={saving}
       />
 
       {/* Session log */}
       <SessionLog savedEvents={savedEvents} />
 
       {/* Main form */}
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-56">
+      <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {/* Filter section */}
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-3 border-b border-gray-100 bg-gray-50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <AreaDropdown
                 value={areaId}
                 onChange={(id) => {
@@ -515,27 +526,20 @@ export function AddActivityPage() {
           </div>
 
           {/* Attributes section */}
-          <div className="p-4">
+          <div className="p-3">
             {/* Error display */}
             {(chainError || attributesError || renderError) && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {chainError && <p>Chain error: {chainError.message}</p>}
                 {attributesError && <p>Attributes error: {attributesError.message}</p>}
                 {renderError && <p>Render error: {renderError}</p>}
               </div>
             )}
             
-            {/* Debug state */}
-            <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
-              <p>categoryId: {categoryId || 'null'}</p>
-              <p>chainLoading: {String(chainLoading)} | attrsLoading: {String(attributesLoading)}</p>
-              <p>chainLength: {categoryChain.length} | attrsCategories: {attributesByCategory.size}</p>
-            </div>
-            
             {(chainLoading || attributesLoading) ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                <span className="ml-2 text-gray-500">Loading...</span>
+              <div className="flex items-center justify-center py-6">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                <span className="ml-2 text-gray-500 text-sm">Loading...</span>
               </div>
             ) : categoryId ? (
               categoryChain.length > 0 ? (
@@ -551,12 +555,12 @@ export function AddActivityPage() {
                   />
                 </ErrorBoundary>
               ) : (
-                <div className="text-center py-8 text-amber-600">
+                <div className="text-center py-6 text-amber-600 text-sm">
                   ⚠️ Category chain is empty. Check RLS policies.
                 </div>
               )
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-6 text-gray-500 text-sm">
                 Select Area and Category to start
               </div>
             )}
@@ -564,7 +568,7 @@ export function AddActivityPage() {
 
           {/* Photo upload */}
           {categoryId && (
-            <div className="px-4 pb-4">
+            <div className="px-3 pb-3">
               <PhotoUpload
                 value={photo}
                 onChange={setPhoto}
@@ -573,58 +577,48 @@ export function AddActivityPage() {
             </div>
           )}
 
-          {/* Comment */}
+          {/* Session Comment - shared across all events in session */}
           {categoryId && (
-            <div className="px-4 pb-4">
+            <div className="px-3 pb-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                💬 Comment
-                <span className="font-normal text-gray-400 ml-1">(shared across session)</span>
+                💬 Session Comment
+                <span className="font-normal text-gray-400 ml-2 text-xs">shared across all saves</span>
               </label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
+              <input
+                type="text"
+                value={sessionComment}
+                onChange={(e) => setSessionComment(e.target.value)}
                 disabled={saving}
-                rows={2}
-                placeholder="Optional notes for this session..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 resize-none"
+                placeholder="e.g., Morning workout"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+              />
+            </div>
+          )}
+
+          {/* Event Note - per-event, resets after save */}
+          {categoryId && (
+            <div className="px-3 pb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                📝 Event Note
+                <span className="font-normal text-gray-400 ml-2 text-xs">optional, resets after save</span>
+              </label>
+              <input
+                type="text"
+                value={eventNote}
+                onChange={(e) => setEventNote(e.target.value)}
+                disabled={saving}
+                placeholder="e.g., Felt strong today"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
               />
             </div>
           )}
 
           {/* Error message */}
           {error && (
-            <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="mx-3 mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
               {error}
             </div>
           )}
-
-          {/* Action buttons */}
-          <div className="p-4 border-t border-gray-100 bg-gray-50 flex flex-wrap gap-3 justify-end">
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSave(false)}
-              disabled={!canSave || saving}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? 'Saving...' : 'Save & Continue'}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSave(true)}
-              disabled={!canSave || saving}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Save & Finish
-            </button>
-          </div>
         </div>
       </div>
     </div>
