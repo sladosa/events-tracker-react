@@ -11,6 +11,7 @@ import { AreaDropdown } from '@/components/activity/AreaDropdown';
 import { CategoryDropdown } from '@/components/activity/CategoryDropdown';
 import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
 import { PhotoUpload } from '@/components/activity/PhotoUpload';
+import { ShortcutsBar } from '@/components/activity/ShortcutsBar';
 import type { UUID } from '@/types';
 
 // Debug logger - uses localStorage to survive crashes!
@@ -285,6 +286,38 @@ export function AddActivityPage() {
     setError(null);
 
     try {
+      // Auto-fill duration if not touched
+      const leafAttrs = attributesByCategory.get(categoryId) || [];
+      const durationAttr = leafAttrs.find(a => 
+        a.slug === 'duration' || a.slug.toLowerCase().includes('duration')
+      );
+      
+      if (durationAttr) {
+        const durationVal = attributeValues.get(durationAttr.id);
+        if (!durationVal?.touched || durationVal.value == null) {
+          // Auto-fill with lap time in minutes
+          const durationMinutes = Math.round(lapElapsed / 60);
+          if (durationMinutes > 0) {
+            log(`Auto-filling duration: ${durationMinutes} min`);
+            setAttributeValues(prev => {
+              const next = new Map(prev);
+              next.set(durationAttr.id, {
+                definitionId: durationAttr.id,
+                value: durationMinutes,
+                touched: true,
+              });
+              return next;
+            });
+            // Update local reference for this save
+            attributeValues.set(durationAttr.id, {
+              definitionId: durationAttr.id,
+              value: durationMinutes,
+              touched: true,
+            });
+          }
+        }
+      }
+
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -434,25 +467,21 @@ export function AddActivityPage() {
   };
 
   // Handle finish session (without saving current form)
-  // NOTE: Currently unused - may add "Finish without saving" button later
-  const _handleFinishSession = () => {
-    if (savedEvents.length === 0) {
-      // No events saved, just go back
-      navigate('/');
-      return;
-    }
-    
-    if (canSave) {
-      // Has unsaved changes, ask to save
-      if (window.confirm('You have unsaved changes. Save before finishing?')) {
-        handleSave(true);
-        return;
-      }
-    }
-    
-    endSession();
-    navigate('/events');
-  };
+  // NOTE: Commented out - may add "Finish without saving" button later
+  // const handleFinishSession = () => {
+  //   if (savedEvents.length === 0) {
+  //     navigate('/');
+  //     return;
+  //   }
+  //   if (canSave) {
+  //     if (window.confirm('You have unsaved changes. Save before finishing?')) {
+  //       handleSave(true);
+  //       return;
+  //     }
+  //   }
+  //   endSession();
+  //   navigate('/events');
+  // };
 
   // Handle cancel
   const handleCancel = () => {
@@ -523,6 +552,23 @@ export function AddActivityPage() {
       {/* Main form */}
       <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* Shortcuts - hidden during active session */}
+          {savedEvents.length === 0 && (
+            <div className="p-3 border-b border-gray-100 bg-indigo-50/50">
+              <ShortcutsBar
+                currentAreaId={areaId}
+                currentCategoryId={categoryId}
+                currentCategoryName={leafCategoryName}
+                onSelect={(newAreaId, newCategoryId) => {
+                  log(`Shortcut selected: area=${newAreaId}, cat=${newCategoryId}`);
+                  setAreaId(newAreaId);
+                  setCategoryId(newCategoryId);
+                }}
+                disabled={saving}
+              />
+            </div>
+          )}
+
           {/* Filter section */}
           <div className="p-3 border-b border-gray-100 bg-gray-50">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

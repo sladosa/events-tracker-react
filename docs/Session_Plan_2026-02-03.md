@@ -100,6 +100,36 @@
 - [x] Strength (leaf) - NA DNU, expanded
 - [x] Photo i Event Note ispod svega
 
+## 🔧 Fix 2 (TypeScript greške)
+
+### TS6133: Declared but never read
+- [x] `SessionHeader.tsx`: Uklonjeni nekorišteni props `onFinish`, `isActive`
+- [x] `AddActivityPage.tsx`: `_categoryId` prefix za nekorištenu varijablu u for petlji
+- [x] `AddActivityPage.tsx`: `isActive: _isActive` - označeno kao namjerno nekorišteno
+- [x] `AddActivityPage.tsx`: `_handleFinishSession` - označeno za buduću upotrebu
+
+**Pravilo:** Uvijek pokrenuti `npm run typecheck` prije pusha! 📋
+
+---
+
+## 🚀 Faza 2: Shortcuts + Duration (IN PROGRESS)
+
+### 2.1 Shortcuts System ✅
+- [x] `useActivityPresets.ts` hook - CRUD za activity_presets tablicu
+- [x] `ShortcutsBar.tsx` komponenta - dropdown + save/delete
+- [x] Integracija u AddActivityPage (vidljivo samo prije prve aktivnosti)
+- [x] Shortcut se automatski primijeni kad se odabere
+
+### 2.2 Duration Auto-fill ✅
+- [x] Automatski popuni `duration` atribut s lap timer vrijednosti
+- [x] Samo ako duration nije ručno popunjen
+- [x] Vrijednost u minutama (zaokruženo)
+
+### 2.3 Edit Activity 🔜
+- [ ] EditActivityPage.tsx
+- [ ] Prepopulate forme iz postojećeg eventa
+- [ ] UPDATE umjesto INSERT logike
+
 ---
 
 *Kreirano: 2026-02-03*
