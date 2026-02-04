@@ -19,6 +19,12 @@ interface AttributeChainFormProps {
   expandedByDefault?: boolean;
 }
 
+// Check if attribute is a dropdown type (should be sticky in leaf)
+function isDropdownAttribute(attr: AttributeDefinition): boolean {
+  const parsed = parseValidationRules(attr.validation_rules);
+  return parsed.type === 'suggest' || parsed.type === 'enum' || !!parsed.dependsOn;
+}
+
 export function AttributeChainForm({
   categoryChain,
   attributesByCategory,
@@ -60,36 +66,32 @@ export function AttributeChainForm({
   }, []);
 
   // Normalize slug for consistent lookup
-  // Handles: "Strength_type" vs "strength-type" vs "strength_type"
   const normalizeSlug = useCallback((slug: string): string => {
     return slug.toLowerCase().replace(/[-_]/g, '_');
   }, []);
 
   // Build a map of attribute slugs to their current values
-  // Used for dependency resolution
   const attributeValuesBySlug = useMemo(() => {
     const map = new Map<string, string | null>();
     
-    // Flatten all attributes
     const allAttributes: AttributeDefinition[] = [];
     for (const category of categoryChain) {
       const attrs = attributesByCategory.get(category.id) || [];
       allAttributes.push(...attrs);
     }
     
-    // Map BOTH original and normalized slug to current value
     for (const attr of allAttributes) {
       const val = values.get(attr.id);
       const stringVal = val?.value != null ? String(val.value) : null;
-      map.set(attr.slug, stringVal);                    // original: "Strength_type"
-      map.set(normalizeSlug(attr.slug), stringVal);     // normalized: "strength_type"
+      map.set(attr.slug, stringVal);
+      map.set(normalizeSlug(attr.slug), stringVal);
     }
     
     return map;
   }, [categoryChain, attributesByCategory, values, normalizeSlug]);
 
   // Render attributes for a single category
-  const renderCategoryAttributes = (category: Category) => {
+  const renderCategoryAttributes = (category: Category, isLeaf: boolean) => {
     const attributes = attributesByCategory.get(category.id) || [];
     
     if (attributes.length === 0) {
@@ -98,39 +100,58 @@ export function AttributeChainForm({
       );
     }
 
+    // For leaf category, separate dropdown and non-dropdown attributes
+    if (isLeaf) {
+      const dropdownAttrs = attributes.filter(isDropdownAttribute);
+      const otherAttrs = attributes.filter(a => !isDropdownAttribute(a));
+
+      return (
+        <div className="space-y-3">
+          {/* Dropdown attributes - sticky */}
+          {dropdownAttrs.length > 0 && (
+            <div className="sticky top-[72px] z-[5] bg-blue-50/95 backdrop-blur-sm -mx-4 px-4 py-2 border-b border-blue-100 space-y-3">
+              {dropdownAttrs.map(attr => renderAttribute(attr))}
+            </div>
+          )}
+          
+          {/* Other attributes - normal scroll */}
+          {otherAttrs.map(attr => renderAttribute(attr))}
+        </div>
+      );
+    }
+
+    // Non-leaf categories - render normally
     return (
       <div className="space-y-4">
-        {attributes.map(attr => {
-          const currentValue = values.get(attr.id);
-          
-          // Check for dependency
-          const parsed = parseValidationRules(attr.validation_rules);
-          let dependencyValue: string | null = null;
-          
-          if (parsed.dependsOn) {
-            // Try exact match first, then normalized
-            const depSlug = parsed.dependsOn.attributeSlug;
-            dependencyValue = attributeValuesBySlug.get(depSlug) 
-              ?? attributeValuesBySlug.get(normalizeSlug(depSlug)) 
-              ?? null;
-            // DEBUG: Log dependency resolution
-            console.log(`[AttrChainForm] "${attr.slug}" depends on "${depSlug}" (normalized: "${normalizeSlug(depSlug)}") → value: "${dependencyValue}"`);
-            console.log(`[AttrChainForm] attributeValuesBySlug keys:`, [...attributeValuesBySlug.keys()]);
-          }
-          
-          return (
-            <AttributeInput
-              key={attr.id}
-              definition={attr}
-              value={currentValue?.value ?? null}
-              onChange={(val) => onChange(attr.id, val)}
-              onTouched={() => onTouch(attr.id)}
-              dependencyValue={dependencyValue}
-              disabled={disabled}
-            />
-          );
-        })}
+        {attributes.map(attr => renderAttribute(attr))}
       </div>
+    );
+  };
+
+  // Render single attribute
+  const renderAttribute = (attr: AttributeDefinition) => {
+    const currentValue = values.get(attr.id);
+    
+    const parsed = parseValidationRules(attr.validation_rules);
+    let dependencyValue: string | null = null;
+    
+    if (parsed.dependsOn) {
+      const depSlug = parsed.dependsOn.attributeSlug;
+      dependencyValue = attributeValuesBySlug.get(depSlug) 
+        ?? attributeValuesBySlug.get(normalizeSlug(depSlug)) 
+        ?? null;
+    }
+    
+    return (
+      <AttributeInput
+        key={attr.id}
+        definition={attr}
+        value={currentValue?.value ?? null}
+        onChange={(val) => onChange(attr.id, val)}
+        onTouched={() => onTouch(attr.id)}
+        dependencyValue={dependencyValue}
+        disabled={disabled}
+      />
     );
   };
 
@@ -142,10 +163,15 @@ export function AttributeChainForm({
     );
   }
 
+  // Render in hierarchy order: root/parents first (collapsed), leaf last (expanded)
+  // Chain comes as: [leaf, parent1, parent2, ..., root]
+  // We want to show: root → ... → parent1 → leaf
+  const displayOrder = [...categoryChain].reverse();
+  
   return (
-    <div className="space-y-4">
-      {categoryChain.map((category, index) => {
-        const isLeaf = index === 0;
+    <div className="space-y-3">
+      {displayOrder.map((category) => {
+        const isLeaf = category.id === categoryChain[0].id; // First in original chain is leaf
         const isExpanded = expandedCategories.has(category.id);
         const attributes = attributesByCategory.get(category.id) || [];
         const touchedCount = attributes.filter(a => values.get(a.id)?.touched).length;
@@ -161,27 +187,29 @@ export function AttributeChainForm({
             <button
               type="button"
               onClick={() => toggleCategory(category.id)}
-              className={`w-full px-4 py-3 flex items-center justify-between text-left ${
-                isLeaf ? 'bg-blue-50 hover:bg-blue-100' : 'bg-gray-50 hover:bg-gray-100'
+              className={`w-full px-4 py-2.5 flex items-center justify-between text-left ${
+                isLeaf 
+                  ? 'bg-blue-50 hover:bg-blue-100 sticky top-[56px] z-[6]' 
+                  : 'bg-gray-50 hover:bg-gray-100'
               } transition-colors`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-gray-500">
+                <span className="text-gray-400 text-sm">
                   {isExpanded ? '▼' : '▶'}
                 </span>
                 <span className={`font-medium ${isLeaf ? 'text-blue-800' : 'text-gray-700'}`}>
                   {category.name}
                 </span>
                 {isLeaf && (
-                  <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] bg-blue-200 text-blue-700 px-1.5 py-0.5 rounded">
                     leaf
                   </span>
                 )}
               </div>
               
-              <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
                 {touchedCount > 0 && (
-                  <span className="text-green-600">{touchedCount} filled</span>
+                  <span className="text-green-600 font-medium">{touchedCount} filled</span>
                 )}
                 <span>({attributes.length} attrs)</span>
               </div>
@@ -189,8 +217,8 @@ export function AttributeChainForm({
 
             {/* Category Attributes */}
             {isExpanded && (
-              <div className="px-4 py-4 border-t border-gray-100">
-                {renderCategoryAttributes(category)}
+              <div className={`px-4 py-3 border-t ${isLeaf ? 'border-blue-100' : 'border-gray-100'}`}>
+                {renderCategoryAttributes(category, isLeaf)}
               </div>
             )}
           </div>

@@ -5,3 +5,4 @@ export { AttributeChainForm } from './AttributeChainForm';
 export { PhotoUpload } from './PhotoUpload';
 export { SessionHeader } from './SessionHeader';
 export { SessionLog } from './SessionLog';
+export { ShortcutsBar } from './ShortcutsBar';

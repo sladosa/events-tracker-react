@@ -241,19 +241,20 @@ export function AttributeInput({
         {definition.unit && (
           <span className="font-normal text-gray-400 ml-1">({definition.unit})</span>
         )}
+        {/* Hint inline for compact view */}
+        {definition.description && (
+          <span className="font-normal text-gray-400 ml-2 text-xs">
+            {definition.description}
+          </span>
+        )}
       </label>
       
       {renderInput()}
-      
-      {definition.description && (
-        <p className="text-xs text-gray-500">{definition.description}</p>
-      )}
 
-      {/* Dependency info za debug */}
-      {parsedOptions.dependsOn && (
+      {/* Dependency info - minimal */}
+      {parsedOptions.dependsOn && dependencyValue && (
         <p className="text-xs text-gray-400">
-          Depends on: {parsedOptions.dependsOn.attributeSlug}
-          {dependencyValue && ` (${dependencyValue})`}
+          → {dependencyValue}
         </p>
       )}
     </div>

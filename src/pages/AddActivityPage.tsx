@@ -11,6 +11,7 @@ import { AreaDropdown } from '@/components/activity/AreaDropdown';
 import { CategoryDropdown } from '@/components/activity/CategoryDropdown';
 import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
 import { PhotoUpload } from '@/components/activity/PhotoUpload';
+import { ShortcutsBar } from '@/components/activity/ShortcutsBar';
 import type { UUID } from '@/types';
 
 // Debug logger - uses localStorage to survive crashes!
@@ -121,15 +122,20 @@ interface AttributeValue {
 export function AddActivityPage() {
   const navigate = useNavigate();
   
-  // Get persisted logs on mount
-  const [logs, setLogs] = useState<string[]>(() => getPersistedLogs());
-  const [showDebug, setShowDebug] = useState(true);
+  // Debug mode: only show with ?debug=true URL param
+  const [showDebug, setShowDebug] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('debug') || localStorage.getItem('et_debug') === 'true';
+  });
+  const [logs, setLogs] = useState<string[]>(() => showDebug ? getPersistedLogs() : []);
   
-  // Wrapper for logging
+  // Wrapper for logging (only logs when debug enabled)
   const log = useCallback((message: string) => {
     persistLog(message);
-    setLogs(getPersistedLogs());
-  }, []);
+    if (showDebug) {
+      setLogs(getPersistedLogs());
+    }
+  }, [showDebug]);
   
   // Session timer
   const {
@@ -137,7 +143,7 @@ export function AddActivityPage() {
     elapsed,
     lapElapsed,
     savedEvents,
-    isActive,
+    isActive: _isActive, // Currently unused but may be needed later
     addSavedEvent,
     formatTime,
     endSession,
@@ -146,7 +152,7 @@ export function AddActivityPage() {
   // Form state
   const [areaId, setAreaId] = useState<UUID | null>(null);
   const [categoryId, setCategoryId] = useState<UUID | null>(null);
-  const [comment, setComment] = useState('');
+  const [eventNote, setEventNote] = useState('');  // Per-event note, resets after save
   const [photo, setPhoto] = useState<File | null>(null);
   const [attributeValues, setAttributeValues] = useState<Map<string, AttributeValue>>(new Map());
   
@@ -240,9 +246,9 @@ export function AddActivityPage() {
   // Check if form is valid for save
   const canSave = useMemo(() => {
     if (!categoryId) return false;
-    // Potrebno: touched atribut ILI komentar ILI photo
-    return hasTouchedAttributes || comment.trim() !== '' || photo !== null;
-  }, [categoryId, hasTouchedAttributes, comment, photo]);
+    // Potrebno: touched atribut ILI event note ILI photo
+    return hasTouchedAttributes || eventNote.trim() !== '' || photo !== null;
+  }, [categoryId, hasTouchedAttributes, eventNote, photo]);
 
   // Get leaf category name for display
   const leafCategoryName = useMemo(() => {
@@ -280,6 +286,38 @@ export function AddActivityPage() {
     setError(null);
 
     try {
+      // Auto-fill duration if not touched
+      const leafAttrs = attributesByCategory.get(categoryId) || [];
+      const durationAttr = leafAttrs.find(a => 
+        a.slug === 'duration' || a.slug.toLowerCase().includes('duration')
+      );
+      
+      if (durationAttr) {
+        const durationVal = attributeValues.get(durationAttr.id);
+        if (!durationVal?.touched || durationVal.value == null) {
+          // Auto-fill with lap time in minutes
+          const durationMinutes = Math.round(lapElapsed / 60);
+          if (durationMinutes > 0) {
+            log(`Auto-filling duration: ${durationMinutes} min`);
+            setAttributeValues(prev => {
+              const next = new Map(prev);
+              next.set(durationAttr.id, {
+                definitionId: durationAttr.id,
+                value: durationMinutes,
+                touched: true,
+              });
+              return next;
+            });
+            // Update local reference for this save
+            attributeValues.set(durationAttr.id, {
+              definitionId: durationAttr.id,
+              value: durationMinutes,
+              touched: true,
+            });
+          }
+        }
+      }
+
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -303,6 +341,9 @@ export function AddActivityPage() {
         if (!isLeaf && touchedAttrs.length === 0) continue;
 
         // Insert event
+        // Event note only goes to leaf event
+        const eventComment = isLeaf ? (eventNote.trim() || null) : null;
+        
         const { data: event, error: eventError } = await supabase
           .from('events')
           .insert({
@@ -310,7 +351,7 @@ export function AddActivityPage() {
             category_id: category.id,
             event_date: eventDate,
             session_start: sessionStartIso,
-            comment: isLeaf ? comment || null : null, // Comment only on leaf
+            comment: eventComment,
             created_at: createdAt,
           })
           .select('id, category_id')
@@ -383,9 +424,35 @@ export function AddActivityPage() {
         hasPhoto: photo !== null,
       });
 
-      // Reset form (keep Area/Category/Comment)
-      setAttributeValues(new Map());
+      // Smart reset: keep dropdown values, reset text inputs only
+      // This allows quickly entering same exercise with different sets/weights
+      setAttributeValues(prev => {
+        const next = new Map<string, AttributeValue>();
+        
+        // Find which attributes are dropdowns (should be kept)
+        for (const [_categoryId, attrs] of attributesByCategory) {
+          for (const attr of attrs) {
+            const currentVal = prev.get(attr.id);
+            if (!currentVal) continue;
+            
+            // Check if this is a dropdown attribute (suggest/enum type)
+            const rules = attr.validation_rules as Record<string, unknown> | null;
+            const ruleType = rules?.type as string | undefined;
+            const hasDependency = !!rules?.depends_on;
+            const isDropdown = ruleType === 'suggest' || ruleType === 'enum' || hasDependency;
+            
+            if (isDropdown && currentVal.value != null) {
+              // Keep dropdown values
+              next.set(attr.id, { ...currentVal, touched: false });
+            }
+            // Text inputs are not copied - they reset to empty
+          }
+        }
+        
+        return next;
+      });
       setPhoto(null);
+      setEventNote('');  // Reset per-event note
 
       if (andFinish) {
         endSession();
@@ -400,24 +467,21 @@ export function AddActivityPage() {
   };
 
   // Handle finish session (without saving current form)
-  const handleFinishSession = () => {
-    if (savedEvents.length === 0) {
-      // No events saved, just go back
-      navigate('/');
-      return;
-    }
-    
-    if (canSave) {
-      // Has unsaved changes, ask to save
-      if (window.confirm('You have unsaved changes. Save before finishing?')) {
-        handleSave(true);
-        return;
-      }
-    }
-    
-    endSession();
-    navigate('/events');
-  };
+  // NOTE: Commented out - may add "Finish without saving" button later
+  // const handleFinishSession = () => {
+  //   if (savedEvents.length === 0) {
+  //     navigate('/');
+  //     return;
+  //   }
+  //   if (canSave) {
+  //     if (window.confirm('You have unsaved changes. Save before finishing?')) {
+  //       handleSave(true);
+  //       return;
+  //     }
+  //   }
+  //   endSession();
+  //   navigate('/events');
+  // };
 
   // Handle cancel
   const handleCancel = () => {
@@ -430,18 +494,18 @@ export function AddActivityPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Debug Panel - uses localStorage, survives crashes */}
+    <div className="min-h-screen bg-gray-50 pb-4">
+      {/* Debug Panel - only visible with ?debug=true URL param */}
       {showDebug && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black text-green-400 text-xs font-mono p-2 max-h-64 overflow-auto z-50 border-t-2 border-yellow-500">
+        <div className="fixed bottom-0 left-0 right-0 bg-black text-green-400 text-xs font-mono p-2 max-h-48 overflow-auto z-50 border-t-2 border-yellow-500">
           <div className="flex justify-between items-center mb-1 sticky top-0 bg-black pb-1">
-            <span className="text-yellow-400 font-bold">DEBUG LOG (localStorage - survives crash)</span>
+            <span className="text-yellow-400 font-bold">DEBUG (?debug=true)</span>
             <div className="flex gap-2">
               <button 
                 onClick={() => setLogs(getPersistedLogs())}
                 className="text-blue-400 hover:text-blue-300 px-2"
               >
-                [↻ Refresh]
+                [↻]
               </button>
               <button 
                 onClick={() => { clearPersistedLogs(); setLogs([]); }}
@@ -450,10 +514,13 @@ export function AddActivityPage() {
                 [Clear]
               </button>
               <button 
-                onClick={() => setShowDebug(false)}
+                onClick={() => {
+                  setShowDebug(false);
+                  localStorage.removeItem('et_debug');
+                }}
                 className="text-red-400 hover:text-red-300 px-2"
               >
-                [X Close]
+                [X]
               </button>
             </div>
           </div>
@@ -466,34 +533,45 @@ export function AddActivityPage() {
           )}
         </div>
       )}
-      
-      {!showDebug && (
-        <button
-          onClick={() => setShowDebug(true)}
-          className="fixed bottom-2 left-2 bg-black text-green-400 text-xs px-2 py-1 rounded z-50"
-        >
-          Show Debug
-        </button>
-      )}
 
-      {/* Header with timers */}
+      {/* Header with timers AND action buttons */}
       <SessionHeader
         elapsed={elapsed}
         lapElapsed={lapElapsed}
         formatTime={formatTime}
-        onFinish={handleFinishSession}
-        isActive={isActive}
+        onCancel={handleCancel}
+        onSaveContinue={() => handleSave(false)}
+        onSaveFinish={() => handleSave(true)}
+        canSave={canSave}
+        saving={saving}
       />
 
       {/* Session log */}
       <SessionLog savedEvents={savedEvents} />
 
       {/* Main form */}
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-56">
+      <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* Shortcuts - hidden during active session */}
+          {savedEvents.length === 0 && (
+            <div className="p-3 border-b border-gray-100 bg-indigo-50/50">
+              <ShortcutsBar
+                currentAreaId={areaId}
+                currentCategoryId={categoryId}
+                currentCategoryName={leafCategoryName}
+                onSelect={(newAreaId, newCategoryId) => {
+                  log(`Shortcut selected: area=${newAreaId}, cat=${newCategoryId}`);
+                  setAreaId(newAreaId);
+                  setCategoryId(newCategoryId);
+                }}
+                disabled={saving}
+              />
+            </div>
+          )}
+
           {/* Filter section */}
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-3 border-b border-gray-100 bg-gray-50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <AreaDropdown
                 value={areaId}
                 onChange={(id) => {
@@ -515,27 +593,20 @@ export function AddActivityPage() {
           </div>
 
           {/* Attributes section */}
-          <div className="p-4">
+          <div className="p-3">
             {/* Error display */}
             {(chainError || attributesError || renderError) && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {chainError && <p>Chain error: {chainError.message}</p>}
                 {attributesError && <p>Attributes error: {attributesError.message}</p>}
                 {renderError && <p>Render error: {renderError}</p>}
               </div>
             )}
             
-            {/* Debug state */}
-            <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
-              <p>categoryId: {categoryId || 'null'}</p>
-              <p>chainLoading: {String(chainLoading)} | attrsLoading: {String(attributesLoading)}</p>
-              <p>chainLength: {categoryChain.length} | attrsCategories: {attributesByCategory.size}</p>
-            </div>
-            
             {(chainLoading || attributesLoading) ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                <span className="ml-2 text-gray-500">Loading...</span>
+              <div className="flex items-center justify-center py-6">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                <span className="ml-2 text-gray-500 text-sm">Loading...</span>
               </div>
             ) : categoryId ? (
               categoryChain.length > 0 ? (
@@ -551,12 +622,12 @@ export function AddActivityPage() {
                   />
                 </ErrorBoundary>
               ) : (
-                <div className="text-center py-8 text-amber-600">
+                <div className="text-center py-6 text-amber-600 text-sm">
                   ⚠️ Category chain is empty. Check RLS policies.
                 </div>
               )
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-6 text-gray-500 text-sm">
                 Select Area and Category to start
               </div>
             )}
@@ -564,7 +635,7 @@ export function AddActivityPage() {
 
           {/* Photo upload */}
           {categoryId && (
-            <div className="px-4 pb-4">
+            <div className="px-3 pb-3">
               <PhotoUpload
                 value={photo}
                 onChange={setPhoto}
@@ -573,58 +644,30 @@ export function AddActivityPage() {
             </div>
           )}
 
-          {/* Comment */}
+          {/* Event Note - per-event, resets after save */}
           {categoryId && (
-            <div className="px-4 pb-4">
+            <div className="px-3 pb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                💬 Comment
-                <span className="font-normal text-gray-400 ml-1">(shared across session)</span>
+                📝 Event Note
+                <span className="font-normal text-gray-400 ml-2 text-xs">optional, resets after save</span>
               </label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
+              <input
+                type="text"
+                value={eventNote}
+                onChange={(e) => setEventNote(e.target.value)}
                 disabled={saving}
-                rows={2}
-                placeholder="Optional notes for this session..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 resize-none"
+                placeholder="e.g., Felt strong today"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
               />
             </div>
           )}
 
           {/* Error message */}
           {error && (
-            <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="mx-3 mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
               {error}
             </div>
           )}
-
-          {/* Action buttons */}
-          <div className="p-4 border-t border-gray-100 bg-gray-50 flex flex-wrap gap-3 justify-end">
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSave(false)}
-              disabled={!canSave || saving}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? 'Saving...' : 'Save & Continue'}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSave(true)}
-              disabled={!canSave || saving}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Save & Finish
-            </button>
-          </div>
         </div>
       </div>
     </div>
