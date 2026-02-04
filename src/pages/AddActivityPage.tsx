@@ -142,7 +142,7 @@ export function AddActivityPage() {
     elapsed,
     lapElapsed,
     savedEvents,
-    isActive,
+    isActive: _isActive, // Currently unused but may be needed later
     addSavedEvent,
     formatTime,
     endSession,
@@ -397,7 +397,7 @@ export function AddActivityPage() {
         const next = new Map<string, AttributeValue>();
         
         // Find which attributes are dropdowns (should be kept)
-        for (const [categoryId, attrs] of attributesByCategory) {
+        for (const [_categoryId, attrs] of attributesByCategory) {
           for (const attr of attrs) {
             const currentVal = prev.get(attr.id);
             if (!currentVal) continue;
@@ -434,7 +434,8 @@ export function AddActivityPage() {
   };
 
   // Handle finish session (without saving current form)
-  const handleFinishSession = () => {
+  // NOTE: Currently unused - may add "Finish without saving" button later
+  const _handleFinishSession = () => {
     if (savedEvents.length === 0) {
       // No events saved, just go back
       navigate('/');
@@ -509,11 +510,9 @@ export function AddActivityPage() {
         elapsed={elapsed}
         lapElapsed={lapElapsed}
         formatTime={formatTime}
-        onFinish={handleFinishSession}
         onCancel={handleCancel}
         onSaveContinue={() => handleSave(false)}
         onSaveFinish={() => handleSave(true)}
-        isActive={isActive}
         canSave={canSave}
         saving={saving}
       />

@@ -2,11 +2,9 @@ interface SessionHeaderProps {
   elapsed: number;
   lapElapsed: number;
   formatTime: (seconds: number) => string;
-  onFinish: () => void;
   onCancel: () => void;
   onSaveContinue: () => void;
   onSaveFinish: () => void;
-  isActive: boolean;
   canSave: boolean;
   saving?: boolean;
 }
@@ -15,11 +13,9 @@ export function SessionHeader({
   elapsed,
   lapElapsed,
   formatTime,
-  onFinish,
   onCancel,
   onSaveContinue,
   onSaveFinish,
-  isActive,
   canSave,
   saving = false,
 }: SessionHeaderProps) {

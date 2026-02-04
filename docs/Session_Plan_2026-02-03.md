@@ -63,8 +63,10 @@
 | Shortcuts UI | Dropdown (ne horizontalni gumbi) |
 | Duration auto-fill | Automatski iz lap timer-a |
 | Timer visibility | Uvijek vidljiv (za sad) |
-| Comment scope | Activity=shared, Leaf=per-event |
-| Category order | Leaf first (sticky), parents collapsed below |
+| Comment scope | ~~Activity=shared~~, Leaf=per-event (Event Note) |
+| Session Comment | **MAKNUTO** - koristi Activity atribute umjesto toga |
+| Category order | **Parents first** (collapsed), Leaf last (expanded) |
+| Dropdown reset | **Zadržati** dropdown vrijednosti nakon Save+ |
 | Debug mode | Hidden by default, `?debug=true` to show |
 
 ---
@@ -77,6 +79,26 @@
 | `src/components/activity/AttributeChainForm.tsx` | Reorder (leaf first), sticky dropdowns |
 | `src/components/activity/AttributeInput.tsx` | Compact layout (hint inline) |
 | `src/components/activity/SessionHeader.tsx` | Dodati action buttons |
+
+---
+
+## 🔧 Fix 1 (nakon testiranja)
+
+### Fix 1.1: Zadržavanje dropdown vrijednosti nakon Save+ ✅
+- [x] Dropdown vrijednosti (Strength_type, exercise_name) se zadržavaju
+- [x] Samo text inputi (sets_reps, weight_info) se resetiraju
+- [x] Omogućuje brzo unošenje iste vježbe s drugačijim setovima/težinom
+
+### Fix 1.2: Maknuti Session Comment ✅
+- [x] Uklonjeno Session Comment polje
+- [x] Session info ide u Activity kategoriju (parent) kao atribut
+- [x] Zadržan Event Note za per-event bilješke
+
+### Fix 1.3: Ispravljen redoslijed kategorija ✅
+- [x] Activity (root) - NA VRHU, collapsed
+- [x] Gym (parent) - collapsed  
+- [x] Strength (leaf) - NA DNU, expanded
+- [x] Photo i Event Note ispod svega
 
 ---
 
