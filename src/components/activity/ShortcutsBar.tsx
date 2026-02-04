@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useActivityPresets } from '@/hooks/useActivityPresets';
-import type { UUID, ActivityPreset } from '@/types';
+import type { UUID } from '@/types';
 
 interface ShortcutsBarProps {
   currentAreaId: UUID | null;
