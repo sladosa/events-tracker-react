@@ -143,7 +143,6 @@ export function AddActivityPage() {
     elapsed,
     lapElapsed,
     savedEvents,
-    isActive: _isActive, // Currently unused but may be needed later
     addSavedEvent,
     formatTime,
     endSession,
@@ -430,7 +429,7 @@ export function AddActivityPage() {
         const next = new Map<string, AttributeValue>();
         
         // Find which attributes are dropdowns (should be kept)
-        for (const [_categoryId, attrs] of attributesByCategory) {
+        for (const attrs of attributesByCategory.values()) {
           for (const attr of attrs) {
             const currentVal = prev.get(attr.id);
             if (!currentVal) continue;

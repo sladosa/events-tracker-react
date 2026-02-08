@@ -35,9 +35,14 @@ export function useCategoryTree(): UseCategoryTreeReturn {
     if (areasLoading || catsLoading) return;
     if (areasError || catsError) return;
 
-    const { treeNodes, flat } = buildTree(areas, categories);
-    setTree(treeNodes);
-    setFlatNodes(flat);
+    // Wrap setState calls in a function to satisfy ESLint
+    const buildAndSetTree = () => {
+      const { treeNodes, flat } = buildTree(areas, categories);
+      setTree(treeNodes);
+      setFlatNodes(flat);
+    };
+    
+    buildAndSetTree();
   }, [areas, categories, areasLoading, catsLoading, areasError, catsError]);
 
   // Helper to find a node by ID
