@@ -1,6 +1,0 @@
-Hi, imas projekt opisan u PowerPoint-u na osnovu kojeg je napravljen Code_Framework_V2.md, dosadasnji rad je u React platformi vezanoj za Github (sadasnje stanje u zip-u), imali smo i Code_Guidelines di smo napisali neke lekcije, vezani smo za Supabase sa shemom (Sql shema u uploadu). Mozes li mi promijeniti Home page sa opisanim Univerzal filterom i prilagoditi Add Activity page kako je opisano u ppt i Code_Frameworku. Ako ti se cini da dolazis u situaciju da se blizi kraj danasnjim resursima, stani s kodiranjem na nekom logicnom mjestu i isporuci mi zip koji mogu testirati te napravi mi handover dokument da mozemo kasnije nastaviti razvoj. Javi ako ti nesto nedostaje.
-
-
-
-
-

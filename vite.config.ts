@@ -10,4 +10,19 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    // Increase chunk size warning limit (default is 500kB)
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        // Manual chunk splitting for better caching
+        manualChunks: {
+          // Vendor chunks - split large dependencies
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-ui': ['react-hot-toast', 'clsx', 'tailwind-merge'],
+        },
+      },
+    },
+  },
 })

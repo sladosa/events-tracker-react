@@ -1,18 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import type { UUID, BreadcrumbItem } from '@/types';
-
-// --------------------------------------------
-// Filter State Type
-// --------------------------------------------
-
-export interface FilterState {
-  areaId: UUID | null;
-  categoryId: UUID | null;
-  categoryPath: UUID[];
-  dateFrom: string | null;
-  dateTo: string | null;
-  searchQuery: string;
-}
+import type { FilterState, UUID, BreadcrumbItem } from '@/types';
 
 // --------------------------------------------
 // Default State
@@ -28,10 +15,10 @@ const defaultFilterState: FilterState = {
 };
 
 // --------------------------------------------
-// Context Type - ALL properties defined here
+// Context Type
 // --------------------------------------------
 
-export interface FilterContextType {
+interface FilterContextType {
   // Current state
   filter: FilterState;
   
@@ -86,7 +73,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   const [isLeafCategory, setIsLeafCategory] = useState(false);
   
   // Track full path display string (e.g., "Fitness > Gym > Strength")
-  const [fullPathDisplay, setFullPathDisplay] = useState('');
+  const [fullPathDisplay, setFullPathDisplay] = useState('All Areas > All Categories');
 
   // Select an area (resets category selection)
   const selectArea = useCallback((areaId: UUID | null) => {
@@ -119,7 +106,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
         categoryPath: []
       }));
       setIsLeafCategory(false);
-      setFullPathDisplay('');
+      setFullPathDisplay('All Areas > All Categories');
       return;
     }
 
@@ -133,7 +120,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
         categoryPath: []
       }));
       setIsLeafCategory(false);
-      setFullPathDisplay('');
+      setFullPathDisplay('All Areas > All Categories');
     } else if (lastItem.type === 'area') {
       setFilter(prev => ({
         ...prev,
@@ -190,7 +177,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   const reset = useCallback(() => {
     setFilter(defaultFilterState);
     setIsLeafCategory(false);
-    setFullPathDisplay('');
+    setFullPathDisplay('All Areas > All Categories');
   }, []);
 
   // Set date range
