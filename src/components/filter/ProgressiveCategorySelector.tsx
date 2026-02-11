@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Category, UUID } from '@/types/database';
 import { useFilter } from '@/context/FilterContext';
 import { useAreas } from '@/hooks/useAreas';
+import { useActivityPresets } from '@/hooks/useActivityPresets';
 
 // --------------------------------------------
 // Types
@@ -13,14 +14,6 @@ interface ProgressiveCategorySelectorProps {
   className?: string;
 }
 
-// Storage key for filter persistence
-const FILTER_STORAGE_KEY = 'events-tracker-filter-state';
-
-interface StoredState {
-  areaId: string | null;
-  selectionChain: Category[];
-}
-
 // --------------------------------------------
 // Component
 // --------------------------------------------
@@ -29,6 +22,7 @@ export function ProgressiveCategorySelector({
   onLeafSelected,
   className = '',
 }: ProgressiveCategorySelectorProps) {
+  // Get ALL state from context (Single Source of Truth)
   const { 
     filter, 
     selectArea, 
@@ -36,28 +30,32 @@ export function ProgressiveCategorySelector({
     reset,
     isLeafCategory,
     setIsLeafCategory,
-    setFullPathDisplay 
+    setFullPathDisplay,
+    // Category selection state
+    selectionChain,
+    setSelectionChain,
+    dropdownOptions,
+    setDropdownOptions,
+    isRestored,
+    isRestoring,
+    // Shortcuts
+    selectedShortcutId,
+    setSelectedShortcutId
   } = useFilter();
   
   const { areas, loading: areasLoading } = useAreas();
   
-  // Selection chain - the complete path of selected categories
-  const [selectionChain, setSelectionChain] = useState<Category[]>([]);
+  // Shortcuts
+  const { presets, loading: presetsLoading, createPreset, deletePreset, incrementUsage } = useActivityPresets();
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [newPresetName, setNewPresetName] = useState('');
+  const [savingPreset, setSavingPreset] = useState(false);
   
-  // Current dropdown options
-  const [dropdownOptions, setDropdownOptions] = useState<Category[]>([]);
-  
-  // Loading state
+  // Local loading state for DB operations
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Track if we've restored from storage
-  const restoredFromStorage = useRef(false);
-  
-  // Skip next area load (after restore)
-  const skipNextAreaLoad = useRef(false);
 
   // --------------------------------------------
-  // Load L1 + L2 categories (first step)
+  // Database helpers
   // --------------------------------------------
   
   const loadL1AndL2Categories = useCallback(async (areaId: string): Promise<Category[]> => {
@@ -78,10 +76,6 @@ export function ProgressiveCategorySelector({
     }
   }, []);
 
-  // --------------------------------------------
-  // Load children of a specific category
-  // --------------------------------------------
-  
   const loadChildCategories = useCallback(async (parentId: string): Promise<Category[]> => {
     try {
       const { data, error } = await supabase
@@ -98,10 +92,6 @@ export function ProgressiveCategorySelector({
     }
   }, []);
 
-  // --------------------------------------------
-  // Build full path from root to a category
-  // --------------------------------------------
-  
   const buildFullPath = useCallback(async (category: Category): Promise<Category[]> => {
     const path: Category[] = [category];
     let currentParentId = category.parent_category_id;
@@ -148,86 +138,120 @@ export function ProgressiveCategorySelector({
   }, [setFullPathDisplay]);
 
   // --------------------------------------------
-  // Save state to sessionStorage
+  // Shortcut handlers
   // --------------------------------------------
   
-  const saveToStorage = useCallback((areaId: string | null, chain: Category[]) => {
-    const state: StoredState = {
-      areaId,
-      selectionChain: chain
-    };
-    sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(state));
-  }, []);
+  const handleShortcutSelect = useCallback(async (presetId: string) => {
+    if (!presetId) {
+      setSelectedShortcutId(null);
+      return;
+    }
 
-  // --------------------------------------------
-  // Restore from storage on mount (when areas are available)
-  // --------------------------------------------
-  
-  useEffect(() => {
-    const doRestore = async () => {
-      if (areas.length === 0) return;
-      if (restoredFromStorage.current) return;
-      restoredFromStorage.current = true;
-      
-      const stored = sessionStorage.getItem(FILTER_STORAGE_KEY);
-      if (!stored) return;
-      
-      try {
-        const state: StoredState = JSON.parse(stored);
-        
-        if (state.areaId && state.selectionChain.length > 0) {
-          // Set flag to skip next area load
-          skipNextAreaLoad.current = true;
-          
-          // Restore selection chain first (before triggering area change)
-          setSelectionChain(state.selectionChain);
-          
-          // Load appropriate dropdown options
-          const lastSelected = state.selectionChain[state.selectionChain.length - 1];
-          const children = await loadChildCategories(lastSelected.id);
-          
-          if (children.length > 0) {
-            setDropdownOptions(children);
-          } else {
-            // It's a leaf - show parent's siblings
-            if (lastSelected.parent_category_id) {
-              const siblings = await loadChildCategories(lastSelected.parent_category_id);
-              setDropdownOptions(siblings);
-            } else {
-              const l1l2 = await loadL1AndL2Categories(state.areaId);
-              setDropdownOptions(l1l2);
-            }
-          }
-          
-          // Restore area (this will trigger useEffect but skipNextAreaLoad will prevent reload)
-          selectArea(state.areaId);
-          
-          // Build full path
-          const fullPath = await buildFullPath(lastSelected);
-          
-          // Update context
-          const pathIds: UUID[] = fullPath.map(c => c.id);
-          selectCategory(lastSelected.id, pathIds);
-          setIsLeafCategory(children.length === 0);
-          
-          const area = areas.find(a => a.id === state.areaId);
-          updatePathDisplay(area?.name || null, fullPath);
-        } else if (state.areaId) {
-          selectArea(state.areaId);
-        }
-      } catch (e) {
-        console.error('Error restoring filter state:', e);
+    const preset = presets.find(p => p.id === presetId);
+    if (!preset || !preset.category_id) return;
+
+    setIsLoading(true);
+    setSelectedShortcutId(preset.id);
+
+    try {
+      // Fetch the category to build full path
+      const { data: category, error } = await supabase
+        .from('categories')
+        .select('id, name, level, parent_category_id, area_id, sort_order')
+        .eq('id', preset.category_id)
+        .single();
+
+      if (error || !category) throw error;
+
+      // Build full path
+      const fullPath = await buildFullPath(category as Category);
+      setSelectionChain(fullPath);
+
+      // Set area
+      if (preset.area_id) {
+        selectArea(preset.area_id);
       }
-    };
-    
-    doRestore();
-  }, [areas, selectArea, selectCategory, setIsLeafCategory, loadChildCategories, loadL1AndL2Categories, buildFullPath, updatePathDisplay]);
+
+      // Check if leaf
+      const children = await loadChildCategories(preset.category_id);
+      const isLeaf = children.length === 0;
+
+      if (!isLeaf) {
+        setDropdownOptions(children);
+      } else {
+        // Show siblings for leaf
+        if (category.parent_category_id) {
+          const siblings = await loadChildCategories(category.parent_category_id);
+          setDropdownOptions(siblings);
+        } else if (preset.area_id) {
+          const l1l2 = await loadL1AndL2Categories(preset.area_id);
+          setDropdownOptions(l1l2);
+        }
+      }
+
+      // Update context
+      const pathIds: UUID[] = fullPath.map(c => c.id);
+      selectCategory(preset.category_id, pathIds);
+      setIsLeafCategory(isLeaf);
+
+      // Update display
+      const area = areas.find(a => a.id === preset.area_id);
+      updatePathDisplay(area?.name || null, fullPath);
+
+      // Increment usage
+      incrementUsage(preset.id);
+
+      // Notify if leaf
+      if (isLeaf) {
+        onLeafSelected?.(category as Category, fullPath);
+      }
+    } catch (error) {
+      console.error('Error selecting shortcut:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectArea, selectCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected]);
+
+  const handleSavePreset = useCallback(async () => {
+    if (!newPresetName.trim() || !filter.categoryId) return;
+
+    setSavingPreset(true);
+    const result = await createPreset(newPresetName, filter.areaId, filter.categoryId);
+    setSavingPreset(false);
+
+    if (result) {
+      setShowSaveModal(false);
+      setNewPresetName('');
+      setSelectedShortcutId(result.id);
+    }
+  }, [newPresetName, filter.areaId, filter.categoryId, createPreset, setSelectedShortcutId]);
+
+  const handleDeletePreset = useCallback(async () => {
+    if (!selectedShortcutId) return;
+
+    const preset = presets.find(p => p.id === selectedShortcutId);
+    if (!preset) return;
+
+    if (!window.confirm(`Delete shortcut "${preset.name}"?`)) return;
+
+    const success = await deletePreset(selectedShortcutId);
+    if (success) {
+      setSelectedShortcutId(null);
+    }
+  }, [selectedShortcutId, presets, deletePreset, setSelectedShortcutId]);
+
+  // Can save: has leaf category selected
+  const canSaveShortcut = isLeafCategory && filter.categoryId;
 
   // --------------------------------------------
-  // Load L1+L2 when area changes (and not restoring)
+  // Load L1+L2 when area changes (ONLY if not restoring)
   // --------------------------------------------
   
   useEffect(() => {
+    // Don't run until restore is complete
+    if (!isRestored || isRestoring) return;
+    
+    // If no area selected, clear everything
     if (!filter.areaId) {
       setDropdownOptions([]);
       setSelectionChain([]);
@@ -236,29 +260,13 @@ export function ProgressiveCategorySelector({
       return;
     }
     
-    // Check if we should restore from storage instead of loading fresh
-    const stored = sessionStorage.getItem(FILTER_STORAGE_KEY);
-    if (stored && !restoredFromStorage.current) {
-      try {
-        const state: StoredState = JSON.parse(stored);
-        if (state.areaId === filter.areaId && state.selectionChain.length > 0) {
-          // Will be handled by restoreFromStorage
-          return;
-        }
-      } catch (e) {
-        // Ignore parsing errors
-      }
-    }
-    
-    // Skip if we just restored
-    if (skipNextAreaLoad.current) {
-      skipNextAreaLoad.current = false;
+    // If we already have a selection chain for this area, don't reload
+    // This prevents overwriting restored state
+    if (selectionChain.length > 0 && selectionChain[0]?.area_id === filter.areaId) {
       return;
     }
     
-    // Don't reload if we already have selection chain
-    if (selectionChain.length > 0) return;
-    
+    // Fresh area selection - load L1+L2
     setIsLoading(true);
     loadL1AndL2Categories(filter.areaId)
       .then(categories => {
@@ -267,7 +275,8 @@ export function ProgressiveCategorySelector({
         updatePathDisplay(area?.name || null, []);
       })
       .finally(() => setIsLoading(false));
-  }, [filter.areaId, areas, selectionChain.length, loadL1AndL2Categories, setIsLeafCategory, updatePathDisplay]);
+      
+  }, [filter.areaId, isRestored, isRestoring, selectionChain, areas, loadL1AndL2Categories, setDropdownOptions, setSelectionChain, setIsLeafCategory, updatePathDisplay]);
 
   // --------------------------------------------
   // Handlers
@@ -275,15 +284,16 @@ export function ProgressiveCategorySelector({
 
   const handleAreaChange = async (areaId: string) => {
     if (!areaId) {
+      // Clear all
       selectArea(null);
       setDropdownOptions([]);
       setSelectionChain([]);
       setIsLeafCategory(false);
       updatePathDisplay(null, []);
-      saveToStorage(null, []);
       return;
     }
     
+    // Set area and clear category selection
     selectArea(areaId);
     setSelectionChain([]);
     
@@ -297,14 +307,13 @@ export function ProgressiveCategorySelector({
     setIsLeafCategory(false);
     const area = areas.find(a => a.id === areaId);
     updatePathDisplay(area?.name || null, []);
-    saveToStorage(areaId, []);
   };
 
   const handleCategorySelect = async (categoryId: string) => {
     if (!categoryId) {
-      // "All Categories" selected - clear selection but stay at current level
+      // "All Categories" or "Select..." selected
       if (selectionChain.length > 0) {
-        // Go back to showing children of parent
+        // Go back to parent level
         const newChain = selectionChain.slice(0, -1);
         setSelectionChain(newChain);
         
@@ -317,12 +326,10 @@ export function ProgressiveCategorySelector({
           const pathIds: UUID[] = fullPath.map(c => c.id);
           selectCategory(lastSelected.id, pathIds);
           
-          // Check if parent is leaf
           setIsLeafCategory(children.length === 0);
           
           const area = areas.find(a => a.id === filter.areaId);
           updatePathDisplay(area?.name || null, fullPath);
-          saveToStorage(filter.areaId, newChain);
         } else {
           // Back to L1/L2
           const categories = await loadL1AndL2Categories(filter.areaId!);
@@ -331,7 +338,6 @@ export function ProgressiveCategorySelector({
           setIsLeafCategory(false);
           const area = areas.find(a => a.id === filter.areaId);
           updatePathDisplay(area?.name || null, []);
-          saveToStorage(filter.areaId, []);
         }
       }
       return;
@@ -343,21 +349,18 @@ export function ProgressiveCategorySelector({
       const category = dropdownOptions.find(c => c.id === categoryId);
       if (!category) return;
 
-      // Build full path from root to this category
+      // Build full path
       const fullPath = await buildFullPath(category);
-      
-      // Add to selection chain (use full path as chain)
       setSelectionChain(fullPath);
 
-      // Check if this category has children
+      // Check if leaf
       const children = await loadChildCategories(categoryId);
       const isLeaf = children.length === 0;
 
       if (!isLeaf) {
-        // Show children in dropdown
         setDropdownOptions(children);
       }
-      // If leaf, keep current dropdown (user might want to select sibling)
+      // If leaf, keep current dropdown for sibling selection
 
       // Update filter context
       const pathIds: UUID[] = fullPath.map(c => c.id);
@@ -367,9 +370,6 @@ export function ProgressiveCategorySelector({
       // Update path display
       const area = areas.find(a => a.id === filter.areaId);
       updatePathDisplay(area?.name || null, fullPath);
-
-      // Save to storage
-      saveToStorage(filter.areaId, fullPath);
 
       // Notify if leaf
       if (isLeaf) {
@@ -390,7 +390,6 @@ export function ProgressiveCategorySelector({
       setDropdownOptions([]);
       setIsLeafCategory(false);
       updatePathDisplay(null, []);
-      saveToStorage(null, []);
       return;
     }
 
@@ -431,7 +430,6 @@ export function ProgressiveCategorySelector({
 
         const area = areas.find(a => a.id === filter.areaId);
         updatePathDisplay(area?.name || null, fullPath);
-        saveToStorage(filter.areaId, newChain);
       } else {
         // Back to L1/L2 level
         const categories = await loadL1AndL2Categories(filter.areaId!);
@@ -440,7 +438,6 @@ export function ProgressiveCategorySelector({
         setIsLeafCategory(false);
         const area = areas.find(a => a.id === filter.areaId);
         updatePathDisplay(area?.name || null, []);
-        saveToStorage(filter.areaId, []);
       }
     } catch (error) {
       console.error('Error going back:', error);
@@ -451,9 +448,6 @@ export function ProgressiveCategorySelector({
 
   const handleReset = () => {
     reset();
-    setDropdownOptions([]);
-    setSelectionChain([]);
-    sessionStorage.removeItem(FILTER_STORAGE_KEY);
   };
 
   // --------------------------------------------
@@ -463,7 +457,6 @@ export function ProgressiveCategorySelector({
   const canReset = filter.areaId !== null;
   const canGoBack = filter.areaId !== null;
   
-  // Determine dropdown label based on selection
   const getCategoryLabel = (): string => {
     if (selectionChain.length === 0) {
       return 'Category (L1/L2)';
@@ -471,25 +464,83 @@ export function ProgressiveCategorySelector({
     return `Subcategory (Step ${selectionChain.length + 1})`;
   };
 
-  // Get currently selected value for dropdown
   const getSelectedValue = (): string => {
     if (selectionChain.length === 0) return '';
     const lastSelected = selectionChain[selectionChain.length - 1];
-    // Check if last selected is in current dropdown options
     const inOptions = dropdownOptions.find(o => o.id === lastSelected.id);
     return inOptions ? lastSelected.id : '';
   };
 
-  // Full path for display
   const displayPath = selectionChain;
 
   // --------------------------------------------
   // Render
   // --------------------------------------------
 
+  // Show loading while restoring
+  if (isRestoring) {
+    return (
+      <div className={className}>
+        <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
+          <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <span>Restoring filter...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
-      {/* Dropdowns Row - ONLY 2 dropdowns + buttons */}
+      {/* Shortcuts Row */}
+      <div className="flex items-end gap-2 mb-3">
+        {/* Shortcuts Dropdown */}
+        <div className="flex-1 min-w-0 max-w-xs">
+          <label className="block text-xs font-medium text-gray-500 mb-1">
+            ⚡ Shortcuts
+          </label>
+          <select
+            value={selectedShortcutId || ''}
+            onChange={(e) => handleShortcutSelect(e.target.value)}
+            disabled={presetsLoading || isLoading}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100"
+          >
+            <option value="">Select shortcut...</option>
+            {presets.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.name} {preset.usage_count > 0 && `(${preset.usage_count}×)`}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Save Button */}
+        <button
+          type="button"
+          onClick={() => {
+            const lastCat = selectionChain[selectionChain.length - 1];
+            setNewPresetName(lastCat?.name || '');
+            setShowSaveModal(true);
+          }}
+          disabled={!canSaveShortcut || isLoading}
+          className="p-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          title="Save current selection as shortcut"
+        >
+          💾
+        </button>
+
+        {/* Delete Button */}
+        <button
+          type="button"
+          onClick={handleDeletePreset}
+          disabled={!selectedShortcutId || isLoading}
+          className="p-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          title="Delete selected shortcut"
+        >
+          🗑️
+        </button>
+      </div>
+
+      {/* Area/Category Dropdowns Row */}
       <div className="flex flex-wrap items-end gap-3">
         
         {/* Area Dropdown */}
@@ -512,7 +563,7 @@ export function ProgressiveCategorySelector({
           </select>
         </div>
 
-        {/* Category Dropdown - Dynamic based on selection */}
+        {/* Category Dropdown */}
         <div className="flex-1 min-w-[160px] max-w-xs">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {getCategoryLabel()}
@@ -594,6 +645,57 @@ export function ProgressiveCategorySelector({
               ⚠ Select a subcategory to reach a leaf
             </p>
           )}
+        </div>
+      )}
+
+      {/* Save Shortcut Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Save Shortcut
+            </h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Shortcut Name
+              </label>
+              <input
+                type="text"
+                value={newPresetName}
+                onChange={(e) => setNewPresetName(e.target.value)}
+                placeholder="e.g., Gym - Strength"
+                autoFocus
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newPresetName.trim()) {
+                    handleSavePreset();
+                  }
+                  if (e.key === 'Escape') {
+                    setShowSaveModal(false);
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSaveModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePreset}
+                disabled={savingPreset || !newPresetName.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {savingPreset ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

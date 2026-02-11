@@ -6,3 +6,4 @@ export { PhotoUpload } from './PhotoUpload';
 export { SessionHeader } from './SessionHeader';
 export { SessionLog } from './SessionLog';
 export { ShortcutsBar } from './ShortcutsBar';
+export { ActivitiesTable } from './ActivitiesTable';

@@ -4,6 +4,8 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { FilterProvider, useFilter } from '@/context/FilterContext';
 import { ProgressiveCategorySelector } from '@/components/filter/ProgressiveCategorySelector';
+import { DateRangeFilter } from '@/components/filter/DateRangeFilter';
+import { ActivitiesTable } from '@/components/activity/ActivitiesTable';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 import type { Category } from '@/types/database';
@@ -234,6 +236,13 @@ function AppContent() {
               <ProgressiveCategorySelector
                 onLeafSelected={handleLeafSelected}
               />
+              
+              {/* Date Range Filter - only for Activities tab */}
+              {activeTab === 'activities' && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <DateRangeFilter />
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -360,32 +369,24 @@ function StructureView() {
 }
 
 // --------------------------------------------
-// Activities View (placeholder)
+// Activities View
 // --------------------------------------------
 
 function ActivitiesView() {
-  const { filter, isLeafCategory, fullPathDisplay } = useFilter();
+  const { fullPathDisplay, isLeafCategory } = useFilter();
+  const nav = useNavigate();
+
+  const handleEditActivity = (activityId: string) => {
+    // TODO: Navigate to edit page
+    console.log('Edit activity:', activityId);
+    // nav(`/app/edit/${activityId}`);
+  };
 
   return (
-    <div className="p-4 sm:p-6">
-      {/* Controls Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h3 className="font-semibold text-gray-900">Activities</h3>
-
-        {/* Date Range + Sort (coming soon) */}
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <button className="px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-            Date: All
-          </button>
-          <button className="px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-            Sort: Newest
-          </button>
-        </div>
-      </div>
-
+    <div>
       {/* Current Path Info */}
       {fullPathDisplay && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mx-4 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center gap-2 text-sm">
             <FolderIcon />
             <span className="text-blue-900 font-medium">{fullPathDisplay}</span>
@@ -398,47 +399,10 @@ function ActivitiesView() {
         </div>
       )}
 
-      {/* Placeholder Table */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium text-gray-700">Date</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-700">Time</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-700 hidden sm:table-cell">Category Path</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-700">Comment</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            <tr className="text-gray-500">
-              <td colSpan={4} className="px-3 py-8 text-center">
-                {filter.categoryId ? (
-                  <div>
-                    <p className="mb-2">Activities table coming in Phase 2...</p>
-                    <p className="text-xs text-gray-400">
-                      Will show: Date, Time, Category Path, Comment, Actions
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="mb-2">Select a category to view activities</p>
-                    <p className="text-xs text-gray-400">
-                      Use the filter above to narrow down
-                    </p>
-                  </div>
-                )}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Load More (placeholder) */}
-      <div className="mt-4 text-center">
-        <button className="text-sm text-indigo-600 hover:text-indigo-800">
-          Load more...
-        </button>
-      </div>
+      {/* Activities Table */}
+      <ActivitiesTable 
+        onEditActivity={handleEditActivity}
+      />
     </div>
   );
 }

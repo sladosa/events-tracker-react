@@ -19,6 +19,14 @@ export {
   getOptionsForDependency
 } from './useAttributeDefinitions';
 export { useSessionTimer } from './useSessionTimer';
+export { useActivityPresets } from './useActivityPresets';
+
+// Filter hooks
+export { useDateBounds, getDatePresets, formatDateDisplay } from './useDateBounds';
+
+// Activities hooks
+export { useActivities, formatTime, formatDate, formatDateFull } from './useActivities';
+export type { ActivityEvent, ActivityGroup } from './useActivities';
 
 // Constants - moved to lib/constants.ts, re-export for backwards compatibility
 export { TEMPLATE_USER_ID } from '@/lib/constants';
