@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Category, UUID } from '@/types/database';
 import { useFilter } from '@/context/FilterContext';
@@ -13,10 +13,12 @@ interface ProgressiveCategorySelectorProps {
   className?: string;
 }
 
-interface StepState {
-  categories: Category[];      // Categories available at this step
-  selectedId: string | null;   // Selected category ID
-  selectedCategory: Category | null;
+// Storage key for filter persistence
+const FILTER_STORAGE_KEY = 'events-tracker-filter-state';
+
+interface StoredState {
+  areaId: string | null;
+  selectionChain: Category[];
 }
 
 // --------------------------------------------
@@ -39,13 +41,20 @@ export function ProgressiveCategorySelector({
   
   const { areas, loading: areasLoading } = useAreas();
   
-  // Navigation history - each entry is a step
-  const [stepHistory, setStepHistory] = useState<StepState[]>([]);
-  const [currentStep, setCurrentStep] = useState<StepState | null>(null);
+  // Selection chain - the complete path of selected categories
+  const [selectionChain, setSelectionChain] = useState<Category[]>([]);
+  
+  // Current dropdown options
+  const [dropdownOptions, setDropdownOptions] = useState<Category[]>([]);
+  
+  // Loading state
   const [isLoading, setIsLoading] = useState(false);
   
-  // Full path from root to current selection
-  const [fullPath, setFullPath] = useState<Category[]>([]);
+  // Track if we've restored from storage
+  const restoredFromStorage = useRef(false);
+  
+  // Skip next area load (after restore)
+  const skipNextAreaLoad = useRef(false);
 
   // --------------------------------------------
   // Load L1 + L2 categories (first step)
@@ -139,120 +148,232 @@ export function ProgressiveCategorySelector({
   }, [setFullPathDisplay]);
 
   // --------------------------------------------
-  // Initialize when area changes
+  // Save state to sessionStorage
+  // --------------------------------------------
+  
+  const saveToStorage = useCallback((areaId: string | null, chain: Category[]) => {
+    const state: StoredState = {
+      areaId,
+      selectionChain: chain
+    };
+    sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(state));
+  }, []);
+
+  // --------------------------------------------
+  // Restore from storage on mount (when areas are available)
   // --------------------------------------------
   
   useEffect(() => {
-    if (filter.areaId) {
-      setIsLoading(true);
-      loadL1AndL2Categories(filter.areaId)
-        .then(categories => {
-          const initialStep: StepState = {
-            categories,
-            selectedId: null,
-            selectedCategory: null
-          };
-          setCurrentStep(initialStep);
-          setStepHistory([]);
-          setFullPath([]);
-          setIsLeafCategory(false);
-          const area = areas.find(a => a.id === filter.areaId);
-          updatePathDisplay(area?.name || null, []);
-        })
-        .finally(() => setIsLoading(false));
-    } else {
-      setCurrentStep(null);
-      setStepHistory([]);
-      setFullPath([]);
+    const doRestore = async () => {
+      if (areas.length === 0) return;
+      if (restoredFromStorage.current) return;
+      restoredFromStorage.current = true;
+      
+      const stored = sessionStorage.getItem(FILTER_STORAGE_KEY);
+      if (!stored) return;
+      
+      try {
+        const state: StoredState = JSON.parse(stored);
+        
+        if (state.areaId && state.selectionChain.length > 0) {
+          // Set flag to skip next area load
+          skipNextAreaLoad.current = true;
+          
+          // Restore selection chain first (before triggering area change)
+          setSelectionChain(state.selectionChain);
+          
+          // Load appropriate dropdown options
+          const lastSelected = state.selectionChain[state.selectionChain.length - 1];
+          const children = await loadChildCategories(lastSelected.id);
+          
+          if (children.length > 0) {
+            setDropdownOptions(children);
+          } else {
+            // It's a leaf - show parent's siblings
+            if (lastSelected.parent_category_id) {
+              const siblings = await loadChildCategories(lastSelected.parent_category_id);
+              setDropdownOptions(siblings);
+            } else {
+              const l1l2 = await loadL1AndL2Categories(state.areaId);
+              setDropdownOptions(l1l2);
+            }
+          }
+          
+          // Restore area (this will trigger useEffect but skipNextAreaLoad will prevent reload)
+          selectArea(state.areaId);
+          
+          // Build full path
+          const fullPath = await buildFullPath(lastSelected);
+          
+          // Update context
+          const pathIds: UUID[] = fullPath.map(c => c.id);
+          selectCategory(lastSelected.id, pathIds);
+          setIsLeafCategory(children.length === 0);
+          
+          const area = areas.find(a => a.id === state.areaId);
+          updatePathDisplay(area?.name || null, fullPath);
+        } else if (state.areaId) {
+          selectArea(state.areaId);
+        }
+      } catch (e) {
+        console.error('Error restoring filter state:', e);
+      }
+    };
+    
+    doRestore();
+  }, [areas, selectArea, selectCategory, setIsLeafCategory, loadChildCategories, loadL1AndL2Categories, buildFullPath, updatePathDisplay]);
+
+  // --------------------------------------------
+  // Load L1+L2 when area changes (and not restoring)
+  // --------------------------------------------
+  
+  useEffect(() => {
+    if (!filter.areaId) {
+      setDropdownOptions([]);
+      setSelectionChain([]);
       setIsLeafCategory(false);
       updatePathDisplay(null, []);
+      return;
     }
-  }, [filter.areaId, areas, loadL1AndL2Categories, setIsLeafCategory, updatePathDisplay]);
+    
+    // Check if we should restore from storage instead of loading fresh
+    const stored = sessionStorage.getItem(FILTER_STORAGE_KEY);
+    if (stored && !restoredFromStorage.current) {
+      try {
+        const state: StoredState = JSON.parse(stored);
+        if (state.areaId === filter.areaId && state.selectionChain.length > 0) {
+          // Will be handled by restoreFromStorage
+          return;
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    }
+    
+    // Skip if we just restored
+    if (skipNextAreaLoad.current) {
+      skipNextAreaLoad.current = false;
+      return;
+    }
+    
+    // Don't reload if we already have selection chain
+    if (selectionChain.length > 0) return;
+    
+    setIsLoading(true);
+    loadL1AndL2Categories(filter.areaId)
+      .then(categories => {
+        setDropdownOptions(categories);
+        const area = areas.find(a => a.id === filter.areaId);
+        updatePathDisplay(area?.name || null, []);
+      })
+      .finally(() => setIsLoading(false));
+  }, [filter.areaId, areas, selectionChain.length, loadL1AndL2Categories, setIsLeafCategory, updatePathDisplay]);
 
   // --------------------------------------------
   // Handlers
   // --------------------------------------------
 
-  const handleAreaChange = (areaId: string) => {
+  const handleAreaChange = async (areaId: string) => {
     if (!areaId) {
       selectArea(null);
-      setCurrentStep(null);
-      setStepHistory([]);
-      setFullPath([]);
+      setDropdownOptions([]);
+      setSelectionChain([]);
       setIsLeafCategory(false);
       updatePathDisplay(null, []);
+      saveToStorage(null, []);
       return;
     }
+    
     selectArea(areaId);
-    // Will trigger useEffect to load L1+L2
+    setSelectionChain([]);
+    
+    // Load L1+L2 for this area
+    setIsLoading(true);
+    const categories = await loadL1AndL2Categories(areaId);
+    setDropdownOptions(categories);
+    setIsLoading(false);
+    
+    selectCategory(null, []);
+    setIsLeafCategory(false);
+    const area = areas.find(a => a.id === areaId);
+    updatePathDisplay(area?.name || null, []);
+    saveToStorage(areaId, []);
   };
 
   const handleCategorySelect = async (categoryId: string) => {
-    if (!currentStep) return;
-
-    // "All Categories" selected
     if (!categoryId) {
-      // If we have history, this shouldn't happen (dropdown should show "Select...")
-      // But if at first step, clear selection
-      setCurrentStep({
-        ...currentStep,
-        selectedId: null,
-        selectedCategory: null
-      });
-      selectCategory(null, []);
-      setIsLeafCategory(false);
-      setFullPath([]);
-      const area = areas.find(a => a.id === filter.areaId);
-      updatePathDisplay(area?.name || null, []);
+      // "All Categories" selected - clear selection but stay at current level
+      if (selectionChain.length > 0) {
+        // Go back to showing children of parent
+        const newChain = selectionChain.slice(0, -1);
+        setSelectionChain(newChain);
+        
+        if (newChain.length > 0) {
+          const lastSelected = newChain[newChain.length - 1];
+          const children = await loadChildCategories(lastSelected.id);
+          setDropdownOptions(children);
+          
+          const fullPath = await buildFullPath(lastSelected);
+          const pathIds: UUID[] = fullPath.map(c => c.id);
+          selectCategory(lastSelected.id, pathIds);
+          
+          // Check if parent is leaf
+          setIsLeafCategory(children.length === 0);
+          
+          const area = areas.find(a => a.id === filter.areaId);
+          updatePathDisplay(area?.name || null, fullPath);
+          saveToStorage(filter.areaId, newChain);
+        } else {
+          // Back to L1/L2
+          const categories = await loadL1AndL2Categories(filter.areaId!);
+          setDropdownOptions(categories);
+          selectCategory(null, []);
+          setIsLeafCategory(false);
+          const area = areas.find(a => a.id === filter.areaId);
+          updatePathDisplay(area?.name || null, []);
+          saveToStorage(filter.areaId, []);
+        }
+      }
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const category = currentStep.categories.find(c => c.id === categoryId);
+      const category = dropdownOptions.find(c => c.id === categoryId);
       if (!category) return;
 
       // Build full path from root to this category
-      const newFullPath = await buildFullPath(category);
-      setFullPath(newFullPath);
+      const fullPath = await buildFullPath(category);
+      
+      // Add to selection chain (use full path as chain)
+      setSelectionChain(fullPath);
 
       // Check if this category has children
       const children = await loadChildCategories(categoryId);
       const isLeaf = children.length === 0;
 
-      // Update current step with selection
-      const updatedCurrentStep: StepState = {
-        ...currentStep,
-        selectedId: categoryId,
-        selectedCategory: category
-      };
-
       if (!isLeaf) {
-        // Save current step to history and create new step with children
-        setStepHistory([...stepHistory, updatedCurrentStep]);
-        setCurrentStep({
-          categories: children,
-          selectedId: null,
-          selectedCategory: null
-        });
-      } else {
-        // It's a leaf - keep current step updated
-        setCurrentStep(updatedCurrentStep);
+        // Show children in dropdown
+        setDropdownOptions(children);
       }
+      // If leaf, keep current dropdown (user might want to select sibling)
 
       // Update filter context
-      const pathIds: UUID[] = newFullPath.map(c => c.id);
+      const pathIds: UUID[] = fullPath.map(c => c.id);
       selectCategory(categoryId, pathIds);
       setIsLeafCategory(isLeaf);
 
       // Update path display
       const area = areas.find(a => a.id === filter.areaId);
-      updatePathDisplay(area?.name || null, newFullPath);
+      updatePathDisplay(area?.name || null, fullPath);
+
+      // Save to storage
+      saveToStorage(filter.areaId, fullPath);
 
       // Notify if leaf
       if (isLeaf) {
-        onLeafSelected?.(category, newFullPath);
+        onLeafSelected?.(category, fullPath);
       }
 
     } catch (error) {
@@ -262,66 +383,77 @@ export function ProgressiveCategorySelector({
     }
   };
 
-  const handleBack = () => {
-    if (stepHistory.length > 0) {
-      // Go back to previous step
-      const newHistory = [...stepHistory];
-      const previousStep = newHistory.pop()!;
-      
-      setStepHistory(newHistory);
-      setCurrentStep(previousStep);
-      
-      // Update path and context
-      if (previousStep.selectedCategory) {
-        buildFullPath(previousStep.selectedCategory).then(path => {
-          setFullPath(path);
-          const pathIds: UUID[] = path.map(c => c.id);
-          selectCategory(previousStep.selectedId, pathIds);
-          
-          // Check if the previous selection is a leaf
-          loadChildCategories(previousStep.selectedId!).then(children => {
-            setIsLeafCategory(children.length === 0);
-          });
-          
-          const area = areas.find(a => a.id === filter.areaId);
-          updatePathDisplay(area?.name || null, path);
-        });
+  const handleBack = async () => {
+    if (selectionChain.length === 0) {
+      // At L1/L2 with no selection - go back to All Areas
+      selectArea(null);
+      setDropdownOptions([]);
+      setIsLeafCategory(false);
+      updatePathDisplay(null, []);
+      saveToStorage(null, []);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Remove last category from chain
+      const newChain = selectionChain.slice(0, -1);
+      setSelectionChain(newChain);
+
+      if (newChain.length > 0) {
+        // Show children of the new last item
+        const lastSelected = newChain[newChain.length - 1];
+        const children = await loadChildCategories(lastSelected.id);
+        
+        if (children.length > 0) {
+          setDropdownOptions(children);
+        } else {
+          // Last item is a leaf now, show its siblings
+          if (lastSelected.parent_category_id) {
+            const siblings = await loadChildCategories(lastSelected.parent_category_id);
+            setDropdownOptions(siblings);
+          } else {
+            // It's L1, show L1+L2
+            const categories = await loadL1AndL2Categories(filter.areaId!);
+            setDropdownOptions(categories);
+          }
+        }
+
+        // Update context
+        const fullPath = await buildFullPath(lastSelected);
+        const pathIds: UUID[] = fullPath.map(c => c.id);
+        selectCategory(lastSelected.id, pathIds);
+        
+        // Check if it's a leaf
+        const childrenCheck = await loadChildCategories(lastSelected.id);
+        setIsLeafCategory(childrenCheck.length === 0);
+
+        const area = areas.find(a => a.id === filter.areaId);
+        updatePathDisplay(area?.name || null, fullPath);
+        saveToStorage(filter.areaId, newChain);
       } else {
-        // Previous step had no selection
-        setFullPath([]);
+        // Back to L1/L2 level
+        const categories = await loadL1AndL2Categories(filter.areaId!);
+        setDropdownOptions(categories);
         selectCategory(null, []);
         setIsLeafCategory(false);
         const area = areas.find(a => a.id === filter.areaId);
         updatePathDisplay(area?.name || null, []);
+        saveToStorage(filter.areaId, []);
       }
-    } else if (currentStep?.selectedId) {
-      // At first step with selection - clear the selection
-      setCurrentStep({
-        ...currentStep,
-        selectedId: null,
-        selectedCategory: null
-      });
-      setFullPath([]);
-      selectCategory(null, []);
-      setIsLeafCategory(false);
-      const area = areas.find(a => a.id === filter.areaId);
-      updatePathDisplay(area?.name || null, []);
-    } else {
-      // At first step with no selection - go back to All Areas
-      selectArea(null);
-      setCurrentStep(null);
-      setStepHistory([]);
-      setFullPath([]);
-      setIsLeafCategory(false);
-      updatePathDisplay(null, []);
+    } catch (error) {
+      console.error('Error going back:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleReset = () => {
     reset();
-    setCurrentStep(null);
-    setStepHistory([]);
-    setFullPath([]);
+    setDropdownOptions([]);
+    setSelectionChain([]);
+    sessionStorage.removeItem(FILTER_STORAGE_KEY);
   };
 
   // --------------------------------------------
@@ -331,21 +463,25 @@ export function ProgressiveCategorySelector({
   const canReset = filter.areaId !== null;
   const canGoBack = filter.areaId !== null;
   
-  // Determine dropdown label based on current state
+  // Determine dropdown label based on selection
   const getCategoryLabel = (): string => {
-    if (stepHistory.length === 0) {
+    if (selectionChain.length === 0) {
       return 'Category (L1/L2)';
     }
-    return `Subcategory (Step ${stepHistory.length + 1})`;
+    return `Subcategory (Step ${selectionChain.length + 1})`;
   };
 
-  // Get the display value for category dropdown
-  const getCategoryValue = (): string => {
-    if (currentStep?.selectedId) {
-      return currentStep.selectedId;
-    }
-    return '';
+  // Get currently selected value for dropdown
+  const getSelectedValue = (): string => {
+    if (selectionChain.length === 0) return '';
+    const lastSelected = selectionChain[selectionChain.length - 1];
+    // Check if last selected is in current dropdown options
+    const inOptions = dropdownOptions.find(o => o.id === lastSelected.id);
+    return inOptions ? lastSelected.id : '';
   };
+
+  // Full path for display
+  const displayPath = selectionChain;
 
   // --------------------------------------------
   // Render
@@ -376,22 +512,22 @@ export function ProgressiveCategorySelector({
           </select>
         </div>
 
-        {/* Category Dropdown - Dynamic based on step */}
+        {/* Category Dropdown - Dynamic based on selection */}
         <div className="flex-1 min-w-[160px] max-w-xs">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {getCategoryLabel()}
           </label>
-          {filter.areaId && currentStep ? (
+          {filter.areaId ? (
             <select
-              value={getCategoryValue()}
+              value={getSelectedValue()}
               onChange={(e) => handleCategorySelect(e.target.value)}
               disabled={isLoading}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 text-sm"
             >
               <option value="">
-                {stepHistory.length === 0 ? 'All Categories' : 'Select...'}
+                {selectionChain.length === 0 ? 'All Categories' : 'Select...'}
               </option>
-              {currentStep.categories.map((cat) => (
+              {dropdownOptions.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   L{cat.level}: {cat.name}
                 </option>
@@ -412,7 +548,7 @@ export function ProgressiveCategorySelector({
           <div className="flex gap-2">
             <button
               onClick={handleBack}
-              disabled={!canGoBack}
+              disabled={!canGoBack || isLoading}
               className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Go back one level"
             >
@@ -438,26 +574,26 @@ export function ProgressiveCategorySelector({
       )}
 
       {/* Full Path Display */}
-      {fullPath.length > 0 && (
+      {displayPath.length > 0 && (
         <div className="mt-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
           <div className="flex items-center gap-2 text-sm">
             <svg className="w-4 h-4 text-indigo-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
             </svg>
             <span className="text-indigo-900 font-medium truncate">
-              {areas.find(a => a.id === filter.areaId)?.name} &gt; {fullPath.map(c => c.name).join(' > ')}
+              {areas.find(a => a.id === filter.areaId)?.name} &gt; {displayPath.map(c => c.name).join(' > ')}
             </span>
           </div>
-          {/* Leaf indicator - use isLeafCategory from context */}
+          {/* Leaf indicator */}
           {isLeafCategory ? (
             <p className="mt-1 text-xs text-green-700">
               ✓ Leaf category selected - ready to add activity
             </p>
-          ) : currentStep?.selectedId ? (
+          ) : (
             <p className="mt-1 text-xs text-amber-700">
               ⚠ Select a subcategory to reach a leaf
             </p>
-          ) : null}
+          )}
         </div>
       )}
     </div>
