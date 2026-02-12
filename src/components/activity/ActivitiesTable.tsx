@@ -34,6 +34,9 @@ export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTa
 
   // Track which rows have expanded details
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  
+  // P4: Debug panel toggle - MUST be before any conditional returns!
+  const [showDebug, setShowDebug] = useState(false);
 
   const toggleExpand = (sessionKey: string) => {
     setExpandedRows(prev => {
@@ -93,9 +96,6 @@ export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTa
       </div>
     );
   }
-
-  // P4: Debug panel toggle
-  const [showDebug, setShowDebug] = useState(false);
 
   return (
     <div className={className}>
