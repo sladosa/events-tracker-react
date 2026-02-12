@@ -6,7 +6,8 @@ import type { UUID } from '@/types';
 // Debug Configuration
 // --------------------------------------------
 
-const DEBUG_ENABLED = true; // Set to false to disable debug logging
+// Debug Configuration - set to true to enable console logging
+const DEBUG_ENABLED = false;
 
 interface DebugLogEntry {
   timestamp: string;
@@ -158,12 +159,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   const debugInfoRef = useRef<UseActivitiesResult['debugInfo']>({
     lastQuery: null
   });
-
-  // Track if component is mounted to prevent state updates after unmount
-  const isMounted = useRef(true);
-  useEffect(() => {
-    return () => { isMounted.current = false; };
-  }, []);
 
   // P4: Log when options change
   useEffect(() => {
@@ -378,11 +373,9 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
       if (fetchError) throw fetchError;
 
-      // Check if component is still mounted
-      if (!isMounted.current) {
-        logDebug('FETCH_ABORTED_UNMOUNTED', { fetchId });
-        return;
-      }
+      // Note: Removed isMounted check - it was causing issues with React StrictMode
+      // React handles state updates on unmounted components gracefully now
+      logDebug('QUERY_COMPLETED', { fetchId, eventCount: events?.length || 0, totalCount: count });
 
       if (count !== null) {
         setTotalCount(count);
