@@ -1,6 +1,50 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID } from '@/types';
+
+// --------------------------------------------
+// Debug Configuration
+// --------------------------------------------
+
+const DEBUG_ENABLED = true; // Set to false to disable debug logging
+
+interface DebugLogEntry {
+  timestamp: string;
+  action: string;
+  details: Record<string, unknown>;
+}
+
+// Global debug log (accessible via window for debugging)
+const debugLog: DebugLogEntry[] = [];
+
+function logDebug(action: string, details: Record<string, unknown>) {
+  if (!DEBUG_ENABLED) return;
+  
+  const entry: DebugLogEntry = {
+    timestamp: new Date().toISOString(),
+    action,
+    details
+  };
+  
+  debugLog.push(entry);
+  
+  // Keep only last 100 entries
+  if (debugLog.length > 100) {
+    debugLog.shift();
+  }
+  
+  // Log to console with formatting
+  console.log(
+    `%c[useActivities] ${action}`,
+    'color: #6366f1; font-weight: bold;',
+    details
+  );
+}
+
+// Expose debug log to window for inspection
+if (typeof window !== 'undefined') {
+  (window as unknown as { __activitiesDebugLog: DebugLogEntry[] }).__activitiesDebugLog = debugLog;
+}
 
 // --------------------------------------------
 // Types
@@ -41,8 +85,17 @@ interface UseActivitiesResult {
   error: Error | null;
   hasMore: boolean;
   totalCount: number;        // Number of raw events (from DB count)
+  activityCount: number;     // P3: Number of activity groups (for display)
   loadMore: () => Promise<void>;
   refresh: () => Promise<void>;
+  // P4: Debug info
+  debugInfo: {
+    lastQuery: {
+      categoryIds: UUID[];
+      filters: { areaId: UUID | null; categoryId: UUID | null; dateFrom: string | null; dateTo: string | null };
+      isLeaf: boolean;
+    } | null;
+  };
 }
 
 interface UseActivitiesOptions {
@@ -98,22 +151,45 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [activityCount, setActivityCount] = useState(0); // P3: Total activity groups
   const [offset, setOffset] = useState(0);
+  
+  // P4: Debug info ref
+  const debugInfoRef = useRef<UseActivitiesResult['debugInfo']>({
+    lastQuery: null
+  });
+
+  // Track if component is mounted to prevent state updates after unmount
+  const isMounted = useRef(true);
+  useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
+
+  // P4: Log when options change
+  useEffect(() => {
+    logDebug('OPTIONS_CHANGED', { areaId, categoryId, dateFrom, dateTo, pageSize });
+  }, [areaId, categoryId, dateFrom, dateTo, pageSize]);
 
   // Check if category has children (not a leaf)
   const checkHasChildren = useCallback(async (catId: UUID): Promise<boolean> => {
+    logDebug('CHECK_HAS_CHILDREN', { categoryId: catId });
+    
     const { data, error: checkError } = await supabase
       .from('categories')
       .select('id')
       .eq('parent_category_id', catId)
       .limit(1);
     
-    if (checkError) return false;
-    return (data?.length || 0) > 0;
+    const hasChildren = !checkError && (data?.length || 0) > 0;
+    logDebug('CHECK_HAS_CHILDREN_RESULT', { categoryId: catId, hasChildren, childCount: data?.length || 0 });
+    
+    return hasChildren;
   }, []);
 
   // Get descendant category IDs for hierarchical filtering
   const getDescendantCategoryIds = useCallback(async (catId: UUID): Promise<UUID[]> => {
+    logDebug('GET_DESCENDANTS_START', { parentId: catId });
+    
     const ids: UUID[] = [catId];
     
     const getChildren = async (parentId: UUID): Promise<void> => {
@@ -131,6 +207,9 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     };
 
     await getChildren(catId);
+    
+    logDebug('GET_DESCENDANTS_RESULT', { parentId: catId, descendantIds: ids, count: ids.length });
+    
     return ids;
   }, []);
 
@@ -185,6 +264,14 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
   // Fetch activities
   const fetchActivities = useCallback(async (isLoadMore = false) => {
+    const fetchId = Date.now(); // Unique ID for this fetch
+    logDebug('FETCH_START', { 
+      fetchId,
+      isLoadMore, 
+      currentFilters: { areaId, categoryId, dateFrom, dateTo },
+      currentOffset: offset 
+    });
+
     try {
       if (isLoadMore) {
         setLoadingMore(true);
@@ -197,10 +284,19 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
       // Determine category filter
       let categoryIds: UUID[] = [];
+      let isLeafCategory = false;
       
       if (categoryId) {
         // Check if this category has children (is it a leaf?)
         const hasChildren = await checkHasChildren(categoryId);
+        isLeafCategory = !hasChildren;
+        
+        logDebug('CATEGORY_TYPE_DETERMINED', { 
+          fetchId,
+          categoryId, 
+          hasChildren, 
+          isLeaf: isLeafCategory 
+        });
         
         if (hasChildren) {
           // Non-leaf: get all descendants including self
@@ -211,12 +307,36 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         }
       } else if (areaId) {
         // Get all category IDs for this area
+        logDebug('FETCHING_AREA_CATEGORIES', { fetchId, areaId });
+        
         const { data: areaCats } = await supabase
           .from('categories')
           .select('id')
           .eq('area_id', areaId);
         categoryIds = (areaCats || []).map(c => c.id);
+        
+        logDebug('AREA_CATEGORIES_LOADED', { 
+          fetchId, 
+          areaId, 
+          categoryCount: categoryIds.length 
+        });
       }
+
+      // P4: Store debug info
+      debugInfoRef.current.lastQuery = {
+        categoryIds,
+        filters: { areaId, categoryId, dateFrom, dateTo },
+        isLeaf: isLeafCategory
+      };
+
+      logDebug('BUILDING_QUERY', { 
+        fetchId,
+        categoryIds, 
+        categoryIdCount: categoryIds.length,
+        dateFrom, 
+        dateTo,
+        expectedFilter: categoryIds.length > 0 ? 'BY_CATEGORY_IDS' : 'ALL_EVENTS'
+      });
 
       // Build query
       let query = supabase
@@ -245,7 +365,24 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
       const { data: events, error: fetchError, count } = await query;
 
+      logDebug('QUERY_EXECUTED', { 
+        fetchId,
+        eventCount: events?.length || 0, 
+        totalCount: count,
+        error: fetchError?.message || null,
+        firstEvent: events?.[0] ? { 
+          id: events[0].id, 
+          category_id: events[0].category_id 
+        } : null
+      });
+
       if (fetchError) throw fetchError;
+
+      // Check if component is still mounted
+      if (!isMounted.current) {
+        logDebug('FETCH_ABORTED_UNMOUNTED', { fetchId });
+        return;
+      }
 
       if (count !== null) {
         setTotalCount(count);
@@ -255,13 +392,30 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       setHasMore((events?.length || 0) === pageSize);
 
       if (!events || events.length === 0) {
+        logDebug('NO_EVENTS_FOUND', { fetchId, isLoadMore });
         if (!isLoadMore) {
           setActivities([]);
+          setActivityCount(0);
         }
         return;
       }
 
       const eventRows = events as EventRow[];
+
+      // P4: Verify all events match our filter
+      if (categoryIds.length > 0) {
+        const mismatchedEvents = eventRows.filter(e => !categoryIds.includes(e.category_id));
+        if (mismatchedEvents.length > 0) {
+          logDebug('⚠️ FILTER_MISMATCH_DETECTED', {
+            fetchId,
+            expectedCategoryIds: categoryIds,
+            mismatchedEvents: mismatchedEvents.map(e => ({
+              id: e.id,
+              category_id: e.category_id
+            }))
+          });
+        }
+      }
 
       // Build category paths (cache to avoid duplicate queries)
       const pathCache = new Map<UUID, Awaited<ReturnType<typeof buildCategoryPath>>>();
@@ -316,16 +470,41 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
       const newGroups = Array.from(groupMap.values());
       
+      logDebug('GROUPING_COMPLETE', { 
+        fetchId,
+        eventCount: enrichedEvents.length,
+        groupCount: newGroups.length,
+        groups: newGroups.map(g => ({
+          sessionKey: g.sessionKey,
+          category: g.category_name,
+          path: g.category_path.join(' > '),
+          eventCount: g.eventCount
+        }))
+      });
+      
       if (isLoadMore) {
         setActivities(prev => [...prev, ...newGroups]);
+        setActivityCount(prev => prev + newGroups.length);
         setOffset(prev => prev + pageSize);
       } else {
         setActivities(newGroups);
+        setActivityCount(newGroups.length);
         setOffset(pageSize);
       }
 
+      logDebug('FETCH_COMPLETE', { 
+        fetchId,
+        totalEvents: count,
+        loadedEvents: enrichedEvents.length,
+        activityGroups: newGroups.length
+      });
+
     } catch (err) {
       console.error('Failed to fetch activities:', err);
+      logDebug('FETCH_ERROR', { 
+        error: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
       setError(err instanceof Error ? err : new Error('Failed to fetch activities'));
     } finally {
       setLoading(false);
@@ -335,6 +514,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
+    logDebug('FILTER_EFFECT_TRIGGERED', { areaId, categoryId, dateFrom, dateTo });
     fetchActivities(false);
   }, [areaId, categoryId, dateFrom, dateTo]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -355,8 +535,11 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     error,
     hasMore,
     totalCount,
+    activityCount, // P3: Number of activity groups
     loadMore,
-    refresh
+    refresh,
+    // P4: Debug info
+    debugInfo: debugInfoRef.current
   };
 }
 
@@ -389,4 +572,18 @@ export function formatDate(dateStr: string): string {
   });
   const weekday = date.toLocaleDateString('hr-HR', { weekday: 'short' });
   return `${formatted} ${weekday}`;
+}
+
+/**
+ * Get debug log (for testing/debugging)
+ */
+export function getActivitiesDebugLog(): DebugLogEntry[] {
+  return [...debugLog];
+}
+
+/**
+ * Clear debug log
+ */
+export function clearActivitiesDebugLog(): void {
+  debugLog.length = 0;
 }

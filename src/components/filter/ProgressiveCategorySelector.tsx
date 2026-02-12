@@ -40,7 +40,9 @@ export function ProgressiveCategorySelector({
     isRestoring,
     // Shortcuts
     selectedShortcutId,
-    setSelectedShortcutId
+    setSelectedShortcutId,
+    // Date range (for resetting when shortcut changes)
+    setDateRange
   } = useFilter();
   
   const { areas, loading: areasLoading } = useAreas();
@@ -152,6 +154,9 @@ export function ProgressiveCategorySelector({
 
     setIsLoading(true);
     setSelectedShortcutId(preset.id);
+    
+    // P2: Reset date range to "All Time" when shortcut changes
+    setDateRange(null, null);
 
     try {
       // Fetch the category to build full path
@@ -210,7 +215,7 @@ export function ProgressiveCategorySelector({
     } finally {
       setIsLoading(false);
     }
-  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectArea, selectCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected]);
+  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectArea, selectCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange]);
 
   const handleSavePreset = useCallback(async () => {
     if (!newPresetName.trim() || !filter.categoryId) return;
@@ -283,6 +288,9 @@ export function ProgressiveCategorySelector({
   // --------------------------------------------
 
   const handleAreaChange = async (areaId: string) => {
+    // P2: Reset shortcut when user manually changes area
+    setSelectedShortcutId(null);
+    
     if (!areaId) {
       // Clear all
       selectArea(null);
@@ -310,6 +318,9 @@ export function ProgressiveCategorySelector({
   };
 
   const handleCategorySelect = async (categoryId: string) => {
+    // P2: Reset shortcut when user manually changes category
+    setSelectedShortcutId(null);
+    
     if (!categoryId) {
       // "All Categories" or "Select..." selected
       if (selectionChain.length > 0) {
@@ -384,6 +395,9 @@ export function ProgressiveCategorySelector({
   };
 
   const handleBack = async () => {
+    // P2: Reset shortcut when user uses Back button
+    setSelectedShortcutId(null);
+    
     if (selectionChain.length === 0) {
       // At L1/L2 with no selection - go back to All Areas
       selectArea(null);

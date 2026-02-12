@@ -17,7 +17,9 @@ export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTa
     error, 
     hasMore, 
     totalCount,
-    loadMore 
+    activityCount, // P3: Number of activity groups
+    loadMore,
+    debugInfo // P4: Debug info
   } = useActivities({
     areaId: filter.areaId,
     categoryId: filter.categoryId,
@@ -25,6 +27,10 @@ export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTa
     dateTo: filter.dateTo,
     pageSize: 20
   });
+
+  // P4: Log debug info to console for debugging
+  console.log('[ActivitiesTable] Current filter:', filter);
+  console.log('[ActivitiesTable] Debug info:', debugInfo);
 
   // Track which rows have expanded details
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -88,6 +94,9 @@ export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTa
     );
   }
 
+  // P4: Debug panel toggle
+  const [showDebug, setShowDebug] = useState(false);
+
   return (
     <div className={className}>
       {/* Header with count */}
@@ -95,10 +104,39 @@ export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTa
         <h3 className="font-medium text-gray-900">
           Activities
           <span className="ml-2 text-sm font-normal text-gray-500">
-            ({totalCount} total)
+            ({totalCount} events in {activityCount} activities)
           </span>
         </h3>
+        {/* P4: Debug toggle button */}
+        <button
+          onClick={() => setShowDebug(!showDebug)}
+          className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
+          title="Toggle debug panel"
+        >
+          🔧 Debug
+        </button>
       </div>
+
+      {/* P4: Debug Panel */}
+      {showDebug && debugInfo.lastQuery && (
+        <div className="px-4 py-3 bg-gray-900 text-green-400 text-xs font-mono border-b border-gray-700 overflow-x-auto">
+          <div className="mb-2 text-yellow-400 font-bold">🔍 Debug Info (check console for full log)</div>
+          <div className="space-y-1">
+            <div><span className="text-gray-500">Filter areaId:</span> {debugInfo.lastQuery.filters.areaId || 'null'}</div>
+            <div><span className="text-gray-500">Filter categoryId:</span> {debugInfo.lastQuery.filters.categoryId || 'null'}</div>
+            <div><span className="text-gray-500">Filter dateFrom:</span> {debugInfo.lastQuery.filters.dateFrom || 'null'}</div>
+            <div><span className="text-gray-500">Filter dateTo:</span> {debugInfo.lastQuery.filters.dateTo || 'null'}</div>
+            <div><span className="text-gray-500">Is Leaf:</span> {debugInfo.lastQuery.isLeaf ? 'YES' : 'NO'}</div>
+            <div><span className="text-gray-500">Category IDs used in query:</span> {debugInfo.lastQuery.categoryIds.length} IDs</div>
+            {debugInfo.lastQuery.categoryIds.length > 0 && debugInfo.lastQuery.categoryIds.length <= 10 && (
+              <div className="text-gray-500 ml-4">{debugInfo.lastQuery.categoryIds.join(', ')}</div>
+            )}
+            <div className="mt-2 text-blue-400">
+              💡 Open browser console (F12) and type: <code className="bg-gray-800 px-1">window.__activitiesDebugLog</code>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -149,7 +187,7 @@ export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTa
       {/* End of list */}
       {!hasMore && activities.length > 0 && (
         <div className="px-4 py-3 border-t border-gray-100 text-center text-xs text-gray-400">
-          End of list • {totalCount} activities
+          End of list • {totalCount} events in {activityCount} activities
         </div>
       )}
     </div>
