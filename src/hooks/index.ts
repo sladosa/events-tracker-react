@@ -21,6 +21,18 @@ export {
 export { useSessionTimer } from './useSessionTimer';
 export { useActivityPresets } from './useActivityPresets';
 
+// Activity Editor hooks
+export { 
+  useLocalStorageSync,
+  serializeEvent,
+  deserializeEvent,
+  serializeFormState,
+  deserializeFormState,
+  calculateAge,
+  createEmptyDraft,
+  createDraftFromState,
+} from './useLocalStorageSync';
+
 // Filter hooks
 export { useDateBounds, getDatePresets, formatDateDisplay } from './useDateBounds';
 
