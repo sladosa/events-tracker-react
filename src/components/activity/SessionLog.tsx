@@ -3,8 +3,8 @@ import { useState } from 'react';
 interface SavedEventInfo {
   eventId: string;
   categoryName: string;
-  timestamp: Date;
-  lapTime: string;
+  timestamp?: Date;
+  lapTime?: string;
   summary: string;
   hasPhoto: boolean;
 }
@@ -55,9 +55,11 @@ export function SessionLog({ savedEvents, maxVisible = 3 }: SessionLogProps) {
               </div>
               
               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                <span className="text-xs text-gray-400 font-mono">
-                  @ {event.lapTime}
-                </span>
+                {event.lapTime && (
+                  <span className="text-xs text-gray-400 font-mono">
+                    @ {event.lapTime}
+                  </span>
+                )}
                 {event.hasPhoto && (
                   <span className="text-blue-500" title="Has photo">📷</span>
                 )}

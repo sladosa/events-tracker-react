@@ -1,20 +1,53 @@
+/**
+ * AddActivityPage - Refactored
+ * 
+ * Key changes from previous version:
+ * - Category is locked (received from navigation state)
+ * - No Area/Category dropdowns
+ * - Uses ActivityHeader instead of SessionHeader
+ * - LocalStorage auto-save for crash protection
+ * - Pending events array (batch write on Finish)
+ * - PhotoGallery for multiple photos
+ * - Resume dialog on mount
+ */
+
 import { useState, useEffect, useMemo, useCallback, Component, type ErrorInfo, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
-import { SessionHeader } from '@/components/activity/SessionHeader';
-import { SessionLog } from '@/components/activity/SessionLog';
-import { AreaDropdown } from '@/components/activity/AreaDropdown';
-import { CategoryDropdown } from '@/components/activity/CategoryDropdown';
-import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
-import { PhotoUpload } from '@/components/activity/PhotoUpload';
-import { ShortcutsBar } from '@/components/activity/ShortcutsBar';
-import type { UUID } from '@/types';
+import {
+  useLocalStorageSync,
+  createDraftFromState,
+  deserializeEvent,
+} from '@/hooks/useLocalStorageSync';
 
-// Debug logger - uses localStorage to survive crashes!
+import { ActivityHeader } from '@/components/activity/ActivityHeader';
+import { SessionLog } from '@/components/activity/SessionLog';
+import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
+import { PhotoGallery } from '@/components/activity/PhotoGallery';
+import { ShortcutsBar } from '@/components/activity/ShortcutsBar';
+import {
+  ResumeDialog,
+  DiscardDraftDialog,
+  CancelDialog,
+} from '@/components/activity/ConfirmDialog';
+
+import type { UUID } from '@/types';
+import type {
+  PendingEvent,
+  PendingPhoto,
+  AttributeValue,
+  DraftSummary,
+  ActivityDraft,
+} from '@/types/activity';
+
+// ============================================
+// Debug Logger
+// ============================================
+
 const DEBUG_KEY = 'events_tracker_debug_log';
 
 const persistLog = (message: string) => {
@@ -23,14 +56,10 @@ const persistLog = (message: string) => {
     const entry = `[${timestamp}] ${message}`;
     console.log(entry);
     
-    // Get existing logs
     const existing = localStorage.getItem(DEBUG_KEY) || '';
     const lines = existing.split('\n').filter(Boolean);
-    
-    // Keep last 100 lines
     lines.push(entry);
     while (lines.length > 100) lines.shift();
-    
     localStorage.setItem(DEBUG_KEY, lines.join('\n'));
   } catch (e) {
     console.error('Failed to persist log:', e);
@@ -54,10 +83,12 @@ const clearPersistedLogs = () => {
   }
 };
 
-// Log immediately on module load
 persistLog('=== MODULE LOADED ===');
 
-// Error Boundary Component
+// ============================================
+// Error Boundary
+// ============================================
+
 interface ErrorBoundaryProps {
   children: ReactNode;
   onError?: (error: Error, info: ErrorInfo) => void;
@@ -82,7 +113,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     persistLog(`ERROR BOUNDARY CAUGHT: ${error.message}`);
     persistLog(`Stack: ${error.stack?.slice(0, 500)}`);
-    persistLog(`Component Stack: ${errorInfo.componentStack?.slice(0, 300)}`);
     this.setState({ errorInfo });
     this.props.onError?.(error, errorInfo);
   }
@@ -108,28 +138,47 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         </div>
       );
     }
-
     return this.props.children;
   }
 }
 
-interface AttributeValue {
+// ============================================
+// Types
+// ============================================
+
+interface LocationState {
+  areaId?: string;
+  categoryId?: string;
+  categoryPath?: string[];
+}
+
+interface LocalAttributeValue {
   definitionId: string;
   value: string | number | boolean | null;
   touched: boolean;
 }
 
+// ============================================
+// Main Component
+// ============================================
+
 export function AddActivityPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   
-  // Debug mode: only show with ?debug=true URL param
+  // Get navigation state
+  const locationState = location.state as LocationState | null;
+  const navAreaId = locationState?.areaId ?? null;
+  const navCategoryId = locationState?.categoryId ?? null;
+  const navCategoryPath = locationState?.categoryPath ?? [];
+  
+  // Debug mode
   const [showDebug, setShowDebug] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.has('debug') || localStorage.getItem('et_debug') === 'true';
   });
   const [logs, setLogs] = useState<string[]>(() => showDebug ? getPersistedLogs() : []);
   
-  // Wrapper for logging (only logs when debug enabled)
   const log = useCallback((message: string) => {
     persistLog(message);
     if (showDebug) {
@@ -137,78 +186,227 @@ export function AddActivityPage() {
     }
   }, [showDebug]);
   
-  // Session timer
+  // ============================================
+  // LocalStorage Sync
+  // ============================================
+  
   const {
-    sessionStart,
-    elapsed,
-    lapElapsed,
-    savedEvents,
-    addSavedEvent,
-    formatTime,
-    endSession,
-  } = useSessionTimer();
-
-  // Form state
-  const [areaId, setAreaId] = useState<UUID | null>(null);
-  const [categoryId, setCategoryId] = useState<UUID | null>(null);
-  const [eventNote, setEventNote] = useState('');  // Per-event note, resets after save
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [attributeValues, setAttributeValues] = useState<Map<string, AttributeValue>>(new Map());
+    getDraftSummary,
+    loadDraft,
+    saveDraft,
+    clearDraft,
+    setupAutoSave,
+    stopAutoSave,
+  } = useLocalStorageSync({
+    onError: (err) => setError(err.message),
+  });
+  
+  // ============================================
+  // Dialog States
+  // ============================================
+  
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [draftSummary, setDraftSummary] = useState<DraftSummary | null>(null);
+  
+  // ============================================
+  // Session State
+  // ============================================
+  
+  const [areaId, setAreaId] = useState<UUID | null>(navAreaId);
+  const [categoryId, setCategoryId] = useState<UUID | null>(navCategoryId);
+  const [categoryPath, setCategoryPath] = useState<string[]>(navCategoryPath);
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Pending events (saved in this session, not yet written to DB)
+  const [pendingEvents, setPendingEvents] = useState<PendingEvent[]>([]);
+  
+  // Current form state
+  const [attributeValues, setAttributeValues] = useState<Map<string, LocalAttributeValue>>(new Map());
+  const [eventNote, setEventNote] = useState('');
+  const [currentPhotos, setCurrentPhotos] = useState<PendingPhoto[]>([]);
   
   // UI state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
-
-  // Log on mount
+  
+  // Session timer
+  const {
+    sessionStart,
+    elapsed,
+    lapElapsed,
+    resetLap,
+    endSession,
+  } = useSessionTimer();
+  
+  // ============================================
+  // Check for Draft on Mount
+  // ============================================
+  
   useEffect(() => {
-    log('AddActivityPage MOUNTED');
-    return () => {
-      persistLog('AddActivityPage UNMOUNTED');
-    };
-  }, [log]);
-
-  // Fetch category chain (from leaf to root)
+    const summary = getDraftSummary();
+    if (summary && summary.mode === 'add') {
+      log('Found existing draft');
+      setDraftSummary(summary);
+      setShowResumeDialog(true);
+    } else if (!navCategoryId) {
+      // No category from navigation and no draft - redirect to home
+      log('No category provided and no draft, redirecting');
+      navigate('/app', { replace: true });
+    } else {
+      // Fresh start with navigation state
+      setIsInitialized(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
+  
+  // ============================================
+  // Resume Draft Handler
+  // ============================================
+  
+  const handleResumeDraft = useCallback(() => {
+    log('Resuming draft...');
+    
+    const draft = loadDraft();
+    if (!draft || draft.mode !== 'add') {
+      log('Failed to load draft');
+      clearDraft();
+      setShowResumeDialog(false);
+      
+      if (!navCategoryId) {
+        navigate('/app', { replace: true });
+      } else {
+        setIsInitialized(true);
+      }
+      return;
+    }
+    
+    // Restore state from draft
+    setAreaId(draft.areaId);
+    setCategoryId(draft.categoryId);
+    setCategoryPath(draft.categoryPath);
+    
+    // Restore pending events
+    const restoredEvents = draft.pendingEvents.map(deserializeEvent);
+    setPendingEvents(restoredEvents);
+    
+    // Restore current form
+    const attrMap = new Map<string, LocalAttributeValue>();
+    Object.entries(draft.currentForm.attributes).forEach(([key, attr]) => {
+      attrMap.set(key, {
+        definitionId: attr.definitionId,
+        value: attr.value,
+        touched: attr.touched,
+      });
+    });
+    setAttributeValues(attrMap);
+    setEventNote(draft.currentForm.note);
+    setCurrentPhotos(draft.currentForm.photos);
+    
+    log(`Draft restored: ${restoredEvents.length} events`);
+    setShowResumeDialog(false);
+    setIsInitialized(true);
+  }, [loadDraft, clearDraft, navCategoryId, navigate, log]);
+  
+  // ============================================
+  // Discard Draft Handler
+  // ============================================
+  
+  const handleDiscardDraft = useCallback(() => {
+    setShowResumeDialog(false);
+    setShowDiscardDialog(true);
+  }, []);
+  
+  const handleConfirmDiscard = useCallback(() => {
+    log('Discarding draft...');
+    clearDraft();
+    setShowDiscardDialog(false);
+    
+    if (!navCategoryId) {
+      navigate('/app', { replace: true });
+    } else {
+      setAreaId(navAreaId);
+      setCategoryId(navCategoryId);
+      setCategoryPath(navCategoryPath);
+      setIsInitialized(true);
+    }
+  }, [clearDraft, navAreaId, navCategoryId, navCategoryPath, navigate, log]);
+  
+  // ============================================
+  // Auto-save Setup
+  // ============================================
+  
+  const getDraftData = useCallback((): ActivityDraft | null => {
+    if (!areaId || !categoryId || !isInitialized) return null;
+    
+    // Convert attributeValues Map to proper format
+    const attrs = new Map<string, AttributeValue>();
+    attributeValues.forEach((val, key) => {
+      attrs.set(key, {
+        ...val,
+        dataType: 'text', // Will be updated when we have attr definitions
+      });
+    });
+    
+    return createDraftFromState(
+      'add',
+      areaId,
+      categoryId,
+      categoryPath,
+      sessionStart,
+      pendingEvents,
+      attrs,
+      eventNote,
+      currentPhotos
+    );
+  }, [areaId, categoryId, categoryPath, sessionStart, pendingEvents, attributeValues, eventNote, currentPhotos, isInitialized]);
+  
+  // Setup auto-save when initialized
+  useEffect(() => {
+    if (isInitialized && areaId && categoryId) {
+      log('Setting up auto-save');
+      setupAutoSave(getDraftData);
+      
+      return () => {
+        log('Stopping auto-save');
+        stopAutoSave();
+      };
+    }
+  }, [isInitialized, areaId, categoryId, setupAutoSave, stopAutoSave, getDraftData, log]);
+  
+  // ============================================
+  // Category Chain & Attributes
+  // ============================================
+  
   const { chain: categoryChain, loading: chainLoading, error: chainError } = useCategoryChain(categoryId);
-
-  // Log chain changes
+  
   useEffect(() => {
     log(`Chain state: loading=${chainLoading}, error=${chainError?.message || 'none'}, length=${categoryChain.length}`);
     if (categoryChain.length > 0) {
       log(`Chain names: ${categoryChain.map(c => c.name).join(' → ')}`);
     }
   }, [categoryChain, chainLoading, chainError, log]);
-
-  // Get all category IDs in chain
+  
   const chainCategoryIds = useMemo(() => {
-    const ids = categoryChain.map(c => c.id);
-    if (ids.length > 0) {
-      persistLog(`Chain IDs computed: ${ids.length} categories`);
-    }
-    return ids;
+    return categoryChain.map(c => c.id);
   }, [categoryChain]);
-
-  // Fetch attribute definitions for all categories in chain
+  
   const { 
     attributesByCategory, 
     loading: attributesLoading,
     error: attributesError
   } = useAttributeDefinitions(chainCategoryIds);
-
-  // Log attributes changes
+  
   useEffect(() => {
     log(`Attrs state: loading=${attributesLoading}, error=${attributesError?.message || 'none'}, size=${attributesByCategory.size}`);
   }, [attributesByCategory, attributesLoading, attributesError, log]);
-
-  // Reset attribute values when category changes
-  useEffect(() => {
-    log(`Category changed to: ${categoryId || 'null'}`);
-    setAttributeValues(new Map());
-    setPhoto(null);
-    setRenderError(null);
-  }, [categoryId, log]);
-
-  // Handle attribute value change
+  
+  // ============================================
+  // Form Handlers
+  // ============================================
+  
   const handleAttributeChange = useCallback((definitionId: string, value: string | number | boolean | null) => {
     setAttributeValues(prev => {
       const next = new Map(prev);
@@ -221,7 +419,6 @@ export function AddActivityPage() {
     });
   }, []);
 
-  // Handle attribute touched
   const handleAttributeTouch = useCallback((definitionId: string) => {
     setAttributeValues(prev => {
       const existing = prev.get(definitionId);
@@ -236,265 +433,413 @@ export function AddActivityPage() {
       return next;
     });
   }, []);
-
-  // Check if form has any touched attributes
+  
+  // ============================================
+  // Photo Handlers
+  // ============================================
+  
+  const handlePhotosChange = useCallback((photos: PendingPhoto[]) => {
+    setCurrentPhotos(photos);
+  }, []);
+  
+  // ============================================
+  // Computed Values
+  // ============================================
+  
   const hasTouchedAttributes = useMemo(() => {
     return Array.from(attributeValues.values()).some(v => v.touched && v.value != null);
   }, [attributeValues]);
 
-  // Check if form is valid for save
   const canSave = useMemo(() => {
     if (!categoryId) return false;
-    // Potrebno: touched atribut ILI event note ILI photo
-    return hasTouchedAttributes || eventNote.trim() !== '' || photo !== null;
-  }, [categoryId, hasTouchedAttributes, eventNote, photo]);
+    return hasTouchedAttributes || eventNote.trim() !== '' || currentPhotos.length > 0;
+  }, [categoryId, hasTouchedAttributes, eventNote, currentPhotos]);
 
-  // Get leaf category name for display
   const leafCategoryName = useMemo(() => {
-    return categoryChain[0]?.name || 'Unknown';
-  }, [categoryChain]);
+    return categoryChain[0]?.name || categoryPath[categoryPath.length - 1] || 'Unknown';
+  }, [categoryChain, categoryPath]);
+  
+  const canFinish = useMemo(() => {
+    return pendingEvents.length > 0 || canSave;
+  }, [pendingEvents.length, canSave]);
 
-  // Build summary from attribute values (for session log)
-  const buildSummary = useCallback(() => {
-    const parts: string[] = [];
+  // Count total photos across pending events + current form
+  const totalPhotoCount = useMemo(() => {
+    const pendingPhotos = pendingEvents.reduce((count, event) => count + event.photos.length, 0);
+    return pendingPhotos + currentPhotos.length;
+  }, [pendingEvents, currentPhotos]);
+
+  // ============================================
+  // Save + Continue (Add to pending)
+  // ============================================
+
+  const handleSaveContinue = useCallback(() => {
+    if (!canSave || !categoryId) return;
     
-    // Get touched attributes with values
-    for (const [defId, attrVal] of attributeValues) {
-      if (attrVal.touched && attrVal.value != null) {
-        // Find attribute definition
-        for (const [, attrs] of attributesByCategory) {
-          const def = attrs.find(a => a.id === defId);
-          if (def) {
-            const displayValue = String(attrVal.value);
-            const unit = def.unit ? ` ${def.unit}` : '';
-            parts.push(`${displayValue}${unit}`);
-            break;
-          }
+    log('Save + Continue clicked');
+    
+    // Auto-fill duration if available
+    const leafAttrs = attributesByCategory.get(categoryId) || [];
+    const durationAttr = leafAttrs.find(a => 
+      a.slug === 'duration' || a.slug.toLowerCase().includes('duration')
+    );
+    
+    // Create a working copy of attribute values
+    const workingAttrs = new Map(attributeValues);
+    
+    if (durationAttr) {
+      const durationVal = workingAttrs.get(durationAttr.id);
+      if (!durationVal?.touched || durationVal.value == null) {
+        const durationMinutes = Math.round(lapElapsed / 60);
+        if (durationMinutes > 0) {
+          log(`Auto-filling duration: ${durationMinutes} min`);
+          workingAttrs.set(durationAttr.id, {
+            definitionId: durationAttr.id,
+            value: durationMinutes,
+            touched: true,
+          });
         }
       }
     }
     
-    return parts.slice(0, 3).join(', '); // Max 3 values
-  }, [attributeValues, attributesByCategory]);
+    // Create pending event
+    const newEvent: PendingEvent = {
+      tempId: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      categoryId,
+      createdAt: new Date(),
+      attributes: Array.from(workingAttrs.values())
+        .filter(v => v.touched && v.value != null)
+        .map(v => ({
+          definitionId: v.definitionId,
+          value: v.value,
+          dataType: 'text' as const,
+          touched: v.touched,
+        })),
+      note: eventNote.trim() || null,
+      photos: [...currentPhotos],
+      existingPhotos: [],
+      photosToDelete: [],
+      isModified: false,
+      isNew: true,
+      isDeleted: false,
+    };
+    
+    setPendingEvents(prev => [...prev, newEvent]);
+    log(`Added pending event: ${newEvent.tempId}`);
+    
+    // Smart reset: keep dropdown values, reset text inputs
+    setAttributeValues(prev => {
+      const next = new Map<string, LocalAttributeValue>();
+      
+      for (const attrs of attributesByCategory.values()) {
+        for (const attr of attrs) {
+          const currentVal = prev.get(attr.id);
+          if (!currentVal) continue;
+          
+          const rules = attr.validation_rules as Record<string, unknown> | null;
+          const ruleType = rules?.type as string | undefined;
+          const hasDependency = !!rules?.depends_on;
+          const isDropdown = ruleType === 'suggest' || ruleType === 'enum' || hasDependency;
+          
+          if (isDropdown && currentVal.value != null) {
+            next.set(attr.id, { ...currentVal, touched: false });
+          }
+        }
+      }
+      
+      return next;
+    });
+    
+    setEventNote('');
+    setCurrentPhotos([]);
+    resetLap();
+    
+    // Immediate save to localStorage
+    const draft = getDraftData();
+    if (draft) {
+      draft.pendingEvents.push({
+        tempId: newEvent.tempId,
+        categoryId: newEvent.categoryId,
+        createdAt: newEvent.createdAt.toISOString(),
+        attributes: newEvent.attributes.map(a => ({
+          definitionId: a.definitionId,
+          value: a.value,
+          dataType: a.dataType,
+          touched: a.touched,
+        })),
+        note: newEvent.note,
+        photos: newEvent.photos,
+        existingPhotos: [],
+        photosToDelete: [],
+        isModified: false,
+        isNew: true,
+        isDeleted: false,
+      });
+      saveDraft(draft);
+    }
+  }, [canSave, categoryId, attributeValues, attributesByCategory, eventNote, currentPhotos, lapElapsed, resetLap, getDraftData, saveDraft, log]);
 
-  // Save event(s)
-  const handleSave = async (andFinish: boolean = false) => {
-    if (!canSave || !categoryId) return;
+  // ============================================
+  // Finish (Batch Write to DB)
+  // ============================================
 
+  const handleFinish = async () => {
+    if (!canFinish || !categoryId) return;
+    
+    log('Finish clicked');
     setSaving(true);
     setError(null);
-
+    
     try {
-      // Auto-fill duration if not touched
-      const leafAttrs = attributesByCategory.get(categoryId) || [];
-      const durationAttr = leafAttrs.find(a => 
-        a.slug === 'duration' || a.slug.toLowerCase().includes('duration')
-      );
+      // Collect all events to save
+      let eventsToSave = [...pendingEvents];
       
-      if (durationAttr) {
-        const durationVal = attributeValues.get(durationAttr.id);
-        if (!durationVal?.touched || durationVal.value == null) {
-          // Auto-fill with lap time in minutes
-          const durationMinutes = Math.round(lapElapsed / 60);
-          if (durationMinutes > 0) {
-            log(`Auto-filling duration: ${durationMinutes} min`);
-            setAttributeValues(prev => {
-              const next = new Map(prev);
-              next.set(durationAttr.id, {
+      // If current form has data, add it as a pending event
+      if (canSave) {
+        log('Adding current form to events to save');
+        
+        // Auto-fill duration
+        const leafAttrs = attributesByCategory.get(categoryId) || [];
+        const durationAttr = leafAttrs.find(a => 
+          a.slug === 'duration' || a.slug.toLowerCase().includes('duration')
+        );
+        
+        const workingAttrs = new Map(attributeValues);
+        
+        if (durationAttr) {
+          const durationVal = workingAttrs.get(durationAttr.id);
+          if (!durationVal?.touched || durationVal.value == null) {
+            const durationMinutes = Math.round(lapElapsed / 60);
+            if (durationMinutes > 0) {
+              workingAttrs.set(durationAttr.id, {
                 definitionId: durationAttr.id,
                 value: durationMinutes,
                 touched: true,
               });
-              return next;
-            });
-            // Update local reference for this save
-            attributeValues.set(durationAttr.id, {
-              definitionId: durationAttr.id,
-              value: durationMinutes,
-              touched: true,
-            });
+            }
           }
         }
+        
+        const currentEvent: PendingEvent = {
+          tempId: `temp_${Date.now()}`,
+          categoryId,
+          createdAt: new Date(),
+          attributes: Array.from(workingAttrs.values())
+            .filter(v => v.touched && v.value != null)
+            .map(v => ({
+              definitionId: v.definitionId,
+              value: v.value,
+              dataType: 'text' as const,
+              touched: v.touched,
+            })),
+          note: eventNote.trim() || null,
+          photos: [...currentPhotos],
+          existingPhotos: [],
+          photosToDelete: [],
+          isModified: false,
+          isNew: true,
+          isDeleted: false,
+        };
+        
+        eventsToSave = [...eventsToSave, currentEvent];
       }
-
+      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-
+      
       const eventDate = sessionStart.toISOString().split('T')[0];
       const sessionStartIso = sessionStart.toISOString();
-      const createdAt = new Date().toISOString();
-
-      // Create events for entire category chain
-      const createdEvents: { id: string; category_id: string }[] = [];
-
-      for (const category of categoryChain) {
-        const categoryAttrs = attributesByCategory.get(category.id) || [];
-        const touchedAttrs = categoryAttrs.filter(attr => {
-          const val = attributeValues.get(attr.id);
-          return val?.touched && val.value != null;
-        });
-
-        // Skip categories without touched attributes (unless it's the leaf)
-        const isLeaf = category.id === categoryId;
-        if (!isLeaf && touchedAttrs.length === 0) continue;
-
-        // Insert event
-        // Event note only goes to leaf event
-        const eventComment = isLeaf ? (eventNote.trim() || null) : null;
+      
+      log(`Writing ${eventsToSave.length} events to database`);
+      
+      // Write each pending event to database
+      for (const pendingEvent of eventsToSave) {
+        // For each pending event, create events for the whole chain
+        const eventsForChain: { id: string; category_id: string }[] = [];
         
-        const { data: event, error: eventError } = await supabase
-          .from('events')
-          .insert({
-            user_id: user.id,
-            category_id: category.id,
-            event_date: eventDate,
-            session_start: sessionStartIso,
-            comment: eventComment,
-            created_at: createdAt,
-          })
-          .select('id, category_id')
-          .single();
-
-        if (eventError) throw eventError;
-        createdEvents.push(event);
-
-        // Insert attribute values
-        if (touchedAttrs.length > 0) {
-          const attributeRecords = touchedAttrs.map(attr => {
-            const val = attributeValues.get(attr.id)!;
-            const valueColumn = VALUE_COLUMNS[attr.data_type] || 'value_text';
-            
-            return {
-              event_id: event.id,
-              user_id: user.id,
-              attribute_definition_id: attr.id,
-              [valueColumn]: val.value,
-            };
-          });
-
-          const { error: attrError } = await supabase
-            .from('event_attributes')
-            .insert(attributeRecords);
-
-          if (attrError) throw attrError;
-        }
-      }
-
-      // Upload photo if present (attach to leaf event)
-      if (photo && createdEvents.length > 0) {
-        const leafEvent = createdEvents.find(e => e.category_id === categoryId);
-        if (leafEvent) {
-          // Upload to Supabase Storage
-          const fileExt = photo.name.split('.').pop();
-          const fileName = `${user.id}/${leafEvent.id}.${fileExt}`;
+        for (const category of categoryChain) {
+          const categoryAttrs = attributesByCategory.get(category.id) || [];
+          const eventAttrs = pendingEvent.attributes.filter(attr =>
+            categoryAttrs.some(def => def.id === attr.definitionId)
+          );
           
-          const { error: uploadError } = await supabase.storage
-            .from('event-attachments')
-            .upload(fileName, photo);
-
-          if (uploadError) {
-            console.error('Photo upload failed:', uploadError);
-            // Don't fail the whole save for photo upload
-          } else {
-            // Get public URL
-            const { data: urlData } = supabase.storage
-              .from('event-attachments')
-              .getPublicUrl(fileName);
-
-            // Insert attachment record
-            await supabase.from('event_attachments').insert({
-              event_id: leafEvent.id,
+          const isLeaf = category.id === pendingEvent.categoryId;
+          
+          // Skip categories without attributes (unless leaf)
+          if (!isLeaf && eventAttrs.length === 0) continue;
+          
+          // Insert event
+          const { data: event, error: eventError } = await supabase
+            .from('events')
+            .insert({
               user_id: user.id,
-              type: 'image',
-              url: urlData.publicUrl,
-              filename: photo.name,
-              size_bytes: photo.size,
+              category_id: category.id,
+              event_date: eventDate,
+              session_start: sessionStartIso,
+              comment: isLeaf ? pendingEvent.note : null,
+              created_at: pendingEvent.createdAt.toISOString(),
+            })
+            .select('id, category_id')
+            .single();
+          
+          if (eventError) throw eventError;
+          eventsForChain.push(event);
+          
+          // Insert attribute values
+          if (eventAttrs.length > 0) {
+            const attrDefs = attributesByCategory.get(category.id) || [];
+            const attributeRecords = eventAttrs.map(attr => {
+              const def = attrDefs.find(d => d.id === attr.definitionId);
+              const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
+              
+              return {
+                event_id: event.id,
+                user_id: user.id,
+                attribute_definition_id: attr.definitionId,
+                [valueColumn]: attr.value,
+              };
             });
+            
+            const { error: attrError } = await supabase
+              .from('event_attributes')
+              .insert(attributeRecords);
+            
+            if (attrError) throw attrError;
           }
         }
-      }
-
-      // Add to session log
-      addSavedEvent({
-        eventId: createdEvents[0]?.id || '',
-        categoryName: leafCategoryName,
-        summary: buildSummary(),
-        hasPhoto: photo !== null,
-      });
-
-      // Smart reset: keep dropdown values, reset text inputs only
-      // This allows quickly entering same exercise with different sets/weights
-      setAttributeValues(prev => {
-        const next = new Map<string, AttributeValue>();
         
-        // Find which attributes are dropdowns (should be kept)
-        for (const attrs of attributesByCategory.values()) {
-          for (const attr of attrs) {
-            const currentVal = prev.get(attr.id);
-            if (!currentVal) continue;
-            
-            // Check if this is a dropdown attribute (suggest/enum type)
-            const rules = attr.validation_rules as Record<string, unknown> | null;
-            const ruleType = rules?.type as string | undefined;
-            const hasDependency = !!rules?.depends_on;
-            const isDropdown = ruleType === 'suggest' || ruleType === 'enum' || hasDependency;
-            
-            if (isDropdown && currentVal.value != null) {
-              // Keep dropdown values
-              next.set(attr.id, { ...currentVal, touched: false });
+        // Upload photos for leaf event
+        if (pendingEvent.photos.length > 0 && eventsForChain.length > 0) {
+          const leafEvent = eventsForChain.find(e => e.category_id === pendingEvent.categoryId);
+          if (leafEvent) {
+            for (const photo of pendingEvent.photos) {
+              try {
+                // Convert base64 to blob
+                const base64Data = photo.base64.split(',')[1];
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'image/jpeg' });
+                
+                // Upload to storage
+                const fileName = `${user.id}/${leafEvent.id}_${photo.id}.jpg`;
+                const { error: uploadError } = await supabase.storage
+                  .from('event-attachments')
+                  .upload(fileName, blob);
+                
+                if (uploadError) {
+                  console.error('Photo upload failed:', uploadError);
+                  continue;
+                }
+                
+                // Get public URL
+                const { data: urlData } = supabase.storage
+                  .from('event-attachments')
+                  .getPublicUrl(fileName);
+                
+                // Insert attachment record
+                await supabase.from('event_attachments').insert({
+                  event_id: leafEvent.id,
+                  user_id: user.id,
+                  type: 'image',
+                  url: urlData.publicUrl,
+                  filename: photo.filename,
+                  size_bytes: photo.sizeBytes,
+                });
+              } catch (photoErr) {
+                console.error('Failed to upload photo:', photoErr);
+              }
             }
-            // Text inputs are not copied - they reset to empty
           }
         }
-        
-        return next;
-      });
-      setPhoto(null);
-      setEventNote('');  // Reset per-event note
-
-      if (andFinish) {
-        endSession();
-        navigate('/events');
       }
+      
+      // Success! Clear draft and navigate
+      log('All events saved successfully');
+      clearDraft();
+      endSession();
+      navigate('/app');
+      
     } catch (err) {
       console.error('Failed to save:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save event');
+      setError(err instanceof Error ? err.message : 'Failed to save events');
     } finally {
       setSaving(false);
     }
   };
 
-  // Handle finish session (without saving current form)
-  // NOTE: Commented out - may add "Finish without saving" button later
-  // const handleFinishSession = () => {
-  //   if (savedEvents.length === 0) {
-  //     navigate('/');
-  //     return;
-  //   }
-  //   if (canSave) {
-  //     if (window.confirm('You have unsaved changes. Save before finishing?')) {
-  //       handleSave(true);
-  //       return;
-  //     }
-  //   }
-  //   endSession();
-  //   navigate('/events');
-  // };
+  // ============================================
+  // Cancel Handler
+  // ============================================
 
-  // Handle cancel
-  const handleCancel = () => {
-    if (savedEvents.length > 0 || canSave) {
-      if (!window.confirm('Discard this session?')) {
-        return;
-      }
+  const handleCancel = useCallback(() => {
+    if (pendingEvents.length > 0 || canSave) {
+      setShowCancelDialog(true);
+    } else {
+      clearDraft();
+      navigate('/app');
     }
-    navigate('/');
-  };
+  }, [pendingEvents.length, canSave, clearDraft, navigate]);
+
+  const handleConfirmCancel = useCallback(() => {
+    log('Cancelling session');
+    clearDraft();
+    setShowCancelDialog(false);
+    navigate('/app');
+  }, [clearDraft, navigate, log]);
+
+  // ============================================
+  // Render
+  // ============================================
+
+  // Show nothing while checking for draft
+  if (!isInitialized && !showResumeDialog && !showDiscardDialog) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-4">
-      {/* Debug Panel - only visible with ?debug=true URL param */}
+      {/* Resume Dialog */}
+      <ResumeDialog
+        open={showResumeDialog}
+        age={draftSummary?.age || ''}
+        categoryPath={draftSummary?.categoryPath || ''}
+        eventCount={draftSummary?.eventCount || 0}
+        photoCount={draftSummary?.photoCount || 0}
+        onResume={handleResumeDraft}
+        onDiscard={handleDiscardDraft}
+      />
+      
+      {/* Discard Draft Confirmation */}
+      <DiscardDraftDialog
+        open={showDiscardDialog}
+        eventCount={draftSummary?.eventCount || 0}
+        photoCount={draftSummary?.photoCount || 0}
+        onConfirm={handleConfirmDiscard}
+        onCancel={() => {
+          setShowDiscardDialog(false);
+          setShowResumeDialog(true);
+        }}
+      />
+      
+      {/* Cancel Confirmation */}
+      <CancelDialog
+        open={showCancelDialog}
+        eventCount={pendingEvents.length}
+        photoCount={totalPhotoCount}
+        onConfirm={handleConfirmCancel}
+        onCancel={() => setShowCancelDialog(false)}
+      />
+      
+      {/* Debug Panel */}
       {showDebug && (
         <div className="fixed bottom-0 left-0 right-0 bg-black text-green-400 text-xs font-mono p-2 max-h-48 overflow-auto z-50 border-t-2 border-yellow-500">
           <div className="flex justify-between items-center mb-1 sticky top-0 bg-black pb-1">
@@ -532,27 +877,39 @@ export function AddActivityPage() {
           )}
         </div>
       )}
-
-      {/* Header with timers AND action buttons */}
-      <SessionHeader
-        elapsed={elapsed}
+      
+      {/* Header */}
+      <ActivityHeader
+        mode="add"
+        categoryPath={categoryPath.length > 0 ? categoryPath : categoryChain.map(c => c.name).reverse()}
+        sessionElapsed={elapsed}
         lapElapsed={lapElapsed}
-        formatTime={formatTime}
         onCancel={handleCancel}
-        onSaveContinue={() => handleSave(false)}
-        onSaveFinish={() => handleSave(true)}
-        canSave={canSave}
+        onSave={handleFinish}
+        onSaveContinue={handleSaveContinue}
+        canSave={canFinish}
         saving={saving}
+        pendingEventCount={pendingEvents.length}
       />
-
-      {/* Session log */}
-      <SessionLog savedEvents={savedEvents} />
-
+      
+      {/* Session Log */}
+      <SessionLog 
+        savedEvents={pendingEvents.map(e => ({
+          eventId: e.tempId,
+          categoryName: leafCategoryName,
+          summary: e.attributes
+            .slice(0, 3)
+            .map(a => String(a.value))
+            .join(', '),
+          hasPhoto: e.photos.length > 0,
+        }))} 
+      />
+      
       {/* Main form */}
       <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {/* Shortcuts - hidden during active session */}
-          {savedEvents.length === 0 && (
+          {pendingEvents.length === 0 && (
             <div className="p-3 border-b border-gray-100 bg-indigo-50/50">
               <ShortcutsBar
                 currentAreaId={areaId}
@@ -567,33 +924,23 @@ export function AddActivityPage() {
               />
             </div>
           )}
-
-          {/* Filter section */}
-          <div className="p-3 border-b border-gray-100 bg-gray-50">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <AreaDropdown
-                value={areaId}
-                onChange={(id) => {
-                  log(`Area selected: ${id}`);
-                  setAreaId(id);
-                  setCategoryId(null);
-                }}
-              />
-              <CategoryDropdown
-                areaId={areaId}
-                value={categoryId}
-                onChange={(id) => {
-                  log(`Category selected: ${id}`);
-                  setCategoryId(id);
-                }}
-                leafOnly={true}
-              />
+          
+          {/* Category display (locked) */}
+          <div className="p-3 border-b border-gray-100 bg-sky-50">
+            <div className="flex items-center gap-2">
+              <span className="text-sky-600">📍</span>
+              <span className="text-sm font-medium text-sky-700">
+                {categoryPath.length > 0 
+                  ? categoryPath.join(' > ') 
+                  : categoryChain.map(c => c.name).reverse().join(' > ')
+                }
+              </span>
+              <span className="text-xs text-sky-500 ml-auto">locked</span>
             </div>
           </div>
-
+          
           {/* Attributes section */}
           <div className="p-3">
-            {/* Error display */}
             {(chainError || attributesError || renderError) && (
               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {chainError && <p>Chain error: {chainError.message}</p>}
@@ -627,23 +974,23 @@ export function AddActivityPage() {
               )
             ) : (
               <div className="text-center py-6 text-gray-500 text-sm">
-                Select Area and Category to start
+                No category selected
               </div>
             )}
           </div>
-
-          {/* Photo upload */}
+          
+          {/* Photo Gallery */}
           {categoryId && (
             <div className="px-3 pb-3">
-              <PhotoUpload
-                value={photo}
-                onChange={setPhoto}
+              <PhotoGallery
+                photos={currentPhotos}
+                onPhotosChange={handlePhotosChange}
                 disabled={saving}
               />
             </div>
           )}
-
-          {/* Event Note - per-event, resets after save */}
+          
+          {/* Event Note */}
           {categoryId && (
             <div className="px-3 pb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -660,7 +1007,7 @@ export function AddActivityPage() {
               />
             </div>
           )}
-
+          
           {/* Error message */}
           {error && (
             <div className="mx-3 mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">

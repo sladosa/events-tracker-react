@@ -77,7 +77,8 @@ function AppContent() {
     isLeafCategory, 
     fullPathDisplay, 
     hasActiveFilter, 
-    reset
+    reset,
+    selectionChain
   } = useFilter();
   
   // Responsive state
@@ -136,7 +137,7 @@ function AppContent() {
       state: {
         areaId: filter.areaId,
         categoryId: filter.categoryId,
-        categoryPath: filter.categoryPath
+        categoryPath: selectionChain.map(c => c.name)  // Send names, not UUIDs
       }
     });
   };
