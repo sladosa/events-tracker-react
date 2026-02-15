@@ -7,6 +7,7 @@ import AuthPage from '@/pages/AuthPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import AppHome from '@/pages/AppHome'
 import { AddActivityPage } from '@/pages/AddActivityPage'
+import { EditActivityPage } from '@/pages/EditActivityPage'
 import { DebugPage } from '@/pages/DebugPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -93,6 +94,14 @@ export default function App() {
           element={
             <RequireAuth>
               <AddActivityPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/app/edit/:sessionStart"
+          element={
+            <RequireAuth>
+              <EditActivityPage />
             </RequireAuth>
           }
         />

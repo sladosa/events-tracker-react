@@ -230,7 +230,7 @@ export function AddActivityPage() {
   // UI state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [renderError, setRenderError] = useState<string | null>(null);
+  const [renderError, _setRenderError] = useState<string | null>(null);
   
   // Session timer
   const {

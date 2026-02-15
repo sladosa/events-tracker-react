@@ -4,7 +4,7 @@ import { useActivities, formatTime, formatDate, type ActivityGroup } from '@/hoo
 
 interface ActivitiesTableProps {
   className?: string;
-  onEditActivity?: (activityId: string) => void;
+  onEditActivity?: (sessionStart: string) => void;
 }
 
 export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTableProps) {
@@ -165,7 +165,7 @@ interface ActivityRowProps {
   group: ActivityGroup;
   isExpanded: boolean;
   onToggleExpand: () => void;
-  onEdit?: (activityId: string) => void;
+  onEdit?: (sessionStart: string) => void;
 }
 
 function ActivityRow({ group, isExpanded, onToggleExpand, onEdit }: ActivityRowProps) {
@@ -248,10 +248,13 @@ function ActivityRow({ group, isExpanded, onToggleExpand, onEdit }: ActivityRowP
                 <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
                   <button
                     onClick={() => {
-                      onEdit?.(firstEvent.id);
+                      if (group.session_start) {
+                        onEdit?.(group.session_start);
+                      }
                       setShowMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    disabled={!group.session_start}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     ✏️ Edit
                   </button>
@@ -296,12 +299,14 @@ function ActivityRow({ group, isExpanded, onToggleExpand, onEdit }: ActivityRowP
                   <span className="text-gray-600 flex-1 truncate">
                     {event.comment || <span className="text-gray-400 italic">No comment</span>}
                   </span>
-                  <button
-                    onClick={() => onEdit?.(event.id)}
-                    className="text-xs text-indigo-600 hover:text-indigo-800"
-                  >
-                    Edit
-                  </button>
+                  {group.session_start && (
+                    <button
+                      onClick={() => onEdit?.(group.session_start!)}
+                      className="text-xs text-indigo-600 hover:text-indigo-800"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

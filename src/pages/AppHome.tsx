@@ -374,11 +374,13 @@ function StructureView() {
 // --------------------------------------------
 
 function ActivitiesView() {
+  const nav = useNavigate();
   const { fullPathDisplay, isLeafCategory } = useFilter();
 
-  const handleEditActivity = (activityId: string) => {
-    // TODO: Navigate to edit page
-    console.log('Edit activity:', activityId);
+  const handleEditActivity = (sessionStart: string) => {
+    // Navigate to edit page with encoded session_start
+    const encodedSessionStart = encodeURIComponent(sessionStart);
+    nav(`/app/edit/${encodedSessionStart}`);
   };
 
   return (
