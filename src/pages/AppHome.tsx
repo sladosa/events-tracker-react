@@ -77,8 +77,7 @@ function AppContent() {
     isLeafCategory, 
     fullPathDisplay, 
     hasActiveFilter, 
-    reset,
-    selectionChain
+    reset
   } = useFilter();
   
   // Responsive state

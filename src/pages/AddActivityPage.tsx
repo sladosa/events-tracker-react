@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
-import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
+import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
 import {
   useLocalStorageSync,
   createDraftFromState,
@@ -529,37 +529,28 @@ export function AddActivityPage() {
     setPendingEvents(prev => [...prev, newEvent]);
     log(`Added pending event: ${newEvent.tempId}`);
     
-    // A8: Smart reset - keep dropdown values, reset text inputs and non-dropdown fields
-    // Use parseValidationRules for proper detection of dropdown attributes
+    // A8 CORRECTED: Keep ALL attribute values on Save+
+    // Only Event Note and Photos are reset
+    // This allows quick entry of similar events (e.g., multiple exercises with same weight)
     setAttributeValues(prev => {
       const next = new Map<string, LocalAttributeValue>();
       
-      for (const attrs of attributesByCategory.values()) {
-        for (const attr of attrs) {
-          const currentVal = prev.get(attr.id);
-          if (!currentVal) continue;
-          
-          // Use parseValidationRules for consistent dropdown detection
-          const parsed = parseValidationRules(attr.validation_rules);
-          const isDropdown = parsed.type === 'suggest' || parsed.type === 'enum' || !!parsed.dependsOn;
-          
-          if (isDropdown && currentVal.value != null) {
-            // Keep dropdown values but mark as untouched for next event
-            // This preserves the value in the UI
-            next.set(attr.id, { 
-              definitionId: currentVal.definitionId,
-              value: currentVal.value, 
-              touched: true  // Keep touched=true so value shows in UI
-            });
-            log(`Preserving dropdown value for ${attr.name}: ${currentVal.value}`);
-          }
-          // Non-dropdown fields are not added to next, effectively resetting them
+      for (const [attrId, currentVal] of prev) {
+        if (currentVal && currentVal.value != null) {
+          // Keep ALL attribute values with touched=true so they show in UI
+          next.set(attrId, { 
+            definitionId: currentVal.definitionId,
+            value: currentVal.value, 
+            touched: true
+          });
         }
       }
       
+      log(`Preserved ${next.size} attribute values for next event`);
       return next;
     });
     
+    // Only reset Event Note and Photos
     setEventNote('');
     setCurrentPhotos([]);
     resetLap();
@@ -931,19 +922,6 @@ export function AddActivityPage() {
         pendingEventCount={pendingEvents.length}
       />
       
-      {/* Session Log */}
-      <SessionLog 
-        savedEvents={pendingEvents.map(e => ({
-          eventId: e.tempId,
-          categoryName: leafCategoryName,
-          summary: e.attributes
-            .slice(0, 3)
-            .map(a => String(a.value))
-            .join(', '),
-          hasPhoto: e.photos.length > 0,
-        }))} 
-      />
-      
       {/* Main form */}
       <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -1015,6 +993,23 @@ export function AddActivityPage() {
                 photos={currentPhotos}
                 onPhotosChange={handlePhotosChange}
                 disabled={saving}
+              />
+            </div>
+          )}
+          
+          {/* Session Log - moved below Photos, newest event on top */}
+          {pendingEvents.length > 0 && (
+            <div className="px-3 pb-3">
+              <SessionLog 
+                savedEvents={[...pendingEvents].reverse().map(e => ({
+                  eventId: e.tempId,
+                  categoryName: leafCategoryName,
+                  summary: e.attributes
+                    .slice(0, 3)
+                    .map(a => String(a.value))
+                    .join(', '),
+                  hasPhoto: e.photos.length > 0,
+                }))} 
               />
             </div>
           )}

@@ -911,7 +911,7 @@ export function EditActivityPage() {
           
           {/* Event Actions */}
           {currentEvent && !currentEvent.isDeleted && (
-            <div className="flex items-center justify-end gap-2 px-3 py-2 bg-gray-50 border-b">
+            <div className="flex items-center justify-end gap-2 px-3 py-2 bg-gray-50">
               <button
                 onClick={() => handleCopyEvent(selectedEventIndex)}
                 disabled={saving}
@@ -947,8 +947,8 @@ export function EditActivityPage() {
           
           {/* Category display REMOVED - already shown in header */}
           
-          {/* Attributes section - removed top padding to save space */}
-          <div className="px-3 pb-3">
+          {/* Attributes section */}
+          <div className="px-3 pb-3 pt-0">
             {(chainError || attributesError) && (
               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {chainError && <p>Chain error: {chainError.message}</p>}
