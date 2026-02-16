@@ -54,12 +54,12 @@ interface LoadedAttribute {
   value_number: number | null;
   value_datetime: string | null;
   value_boolean: boolean | null;
-  attribute_definition: {
+  attribute_definitions: {
     id: UUID;
     name: string;
     data_type: string;
     category_id: UUID;
-  };
+  } | null;
 }
 
 interface LoadedAttachment {
@@ -197,9 +197,11 @@ export function EditActivityPage() {
         const loadedAttachments = (attachments || []) as LoadedAttachment[];
         
         // Convert to PendingEvent format
-        const attributes: AttributeValue[] = loadedAttrs.map(attr => {
+        const attributes: AttributeValue[] = loadedAttrs
+          .filter(attr => attr.attribute_definitions !== null)
+          .map(attr => {
           let value: string | number | boolean | null = null;
-          const dataType = attr.attribute_definition.data_type;
+          const dataType = attr.attribute_definitions!.data_type;
           
           if (dataType === 'number' && attr.value_number !== null) {
             value = attr.value_number;
@@ -943,19 +945,10 @@ export function EditActivityPage() {
             </div>
           )}
           
-          {/* Category display (locked) */}
-          <div className="p-3 border-b border-gray-100 bg-amber-50">
-            <div className="flex items-center gap-2">
-              <span className="text-amber-600">📍</span>
-              <span className="text-sm font-medium text-amber-700">
-                {categoryPath.join(' > ')}
-              </span>
-              <span className="text-xs text-amber-500 ml-auto">locked</span>
-            </div>
-          </div>
+          {/* Category display REMOVED - already shown in header */}
           
-          {/* Attributes section */}
-          <div className="p-3">
+          {/* Attributes section - removed top padding to save space */}
+          <div className="px-3 pb-3">
             {(chainError || attributesError) && (
               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {chainError && <p>Chain error: {chainError.message}</p>}
@@ -994,6 +987,24 @@ export function EditActivityPage() {
             )}
           </div>
           
+          {/* Event Note - MOVED ABOVE Photos */}
+          {currentEvent && !currentEvent.isDeleted && categoryId && (
+            <div className="px-3 pb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                📝 Event Note
+                <span className="font-normal text-gray-400 ml-2 text-xs">optional</span>
+              </label>
+              <input
+                type="text"
+                value={eventNote}
+                onChange={(e) => handleNoteChange(e.target.value)}
+                disabled={saving}
+                placeholder="e.g., Felt strong today"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 disabled:bg-gray-100"
+              />
+            </div>
+          )}
+          
           {/* Photo Gallery */}
           {currentEvent && !currentEvent.isDeleted && categoryId && (
             <div className="px-3 pb-3">
@@ -1029,24 +1040,6 @@ export function EditActivityPage() {
                 photos={currentPhotos}
                 onPhotosChange={handlePhotosChange}
                 disabled={saving}
-              />
-            </div>
-          )}
-          
-          {/* Event Note */}
-          {currentEvent && !currentEvent.isDeleted && categoryId && (
-            <div className="px-3 pb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                📝 Event Note
-                <span className="font-normal text-gray-400 ml-2 text-xs">optional</span>
-              </label>
-              <input
-                type="text"
-                value={eventNote}
-                onChange={(e) => handleNoteChange(e.target.value)}
-                disabled={saving}
-                placeholder="e.g., Felt strong today"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 disabled:bg-gray-100"
               />
             </div>
           )}

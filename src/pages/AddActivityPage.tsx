@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
-import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
+import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import {
   useLocalStorageSync,
   createDraftFromState,
@@ -28,11 +28,11 @@ import { ActivityHeader } from '@/components/activity/ActivityHeader';
 import { SessionLog } from '@/components/activity/SessionLog';
 import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
 import { PhotoGallery } from '@/components/activity/PhotoGallery';
-import { ShortcutsBar } from '@/components/activity/ShortcutsBar';
 import {
   ResumeDialog,
   DiscardDraftDialog,
   CancelDialog,
+  FinishSuccessDialog,
 } from '@/components/activity/ConfirmDialog';
 
 import type { UUID } from '@/types';
@@ -208,6 +208,8 @@ export function AddActivityPage() {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [savedSessionStart, setSavedSessionStart] = useState<string | null>(null);
   const [draftSummary, setDraftSummary] = useState<DraftSummary | null>(null);
   
   // ============================================
@@ -527,7 +529,8 @@ export function AddActivityPage() {
     setPendingEvents(prev => [...prev, newEvent]);
     log(`Added pending event: ${newEvent.tempId}`);
     
-    // Smart reset: keep dropdown values, reset text inputs
+    // A8: Smart reset - keep dropdown values, reset text inputs and non-dropdown fields
+    // Use parseValidationRules for proper detection of dropdown attributes
     setAttributeValues(prev => {
       const next = new Map<string, LocalAttributeValue>();
       
@@ -536,14 +539,21 @@ export function AddActivityPage() {
           const currentVal = prev.get(attr.id);
           if (!currentVal) continue;
           
-          const rules = attr.validation_rules as Record<string, unknown> | null;
-          const ruleType = rules?.type as string | undefined;
-          const hasDependency = !!rules?.depends_on;
-          const isDropdown = ruleType === 'suggest' || ruleType === 'enum' || hasDependency;
+          // Use parseValidationRules for consistent dropdown detection
+          const parsed = parseValidationRules(attr.validation_rules);
+          const isDropdown = parsed.type === 'suggest' || parsed.type === 'enum' || !!parsed.dependsOn;
           
           if (isDropdown && currentVal.value != null) {
-            next.set(attr.id, { ...currentVal, touched: false });
+            // Keep dropdown values but mark as untouched for next event
+            // This preserves the value in the UI
+            next.set(attr.id, { 
+              definitionId: currentVal.definitionId,
+              value: currentVal.value, 
+              touched: true  // Keep touched=true so value shows in UI
+            });
+            log(`Preserving dropdown value for ${attr.name}: ${currentVal.value}`);
           }
+          // Non-dropdown fields are not added to next, effectively resetting them
         }
       }
       
@@ -758,11 +768,14 @@ export function AddActivityPage() {
         }
       }
       
-      // Success! Clear draft and navigate
+      // Success! Clear draft and show success dialog
       log('All events saved successfully');
       clearDraft();
       endSession();
-      navigate('/app');
+      
+      // Store sessionStart for potential edit navigation
+      setSavedSessionStart(sessionStartIso);
+      setShowSuccessDialog(true);
       
     } catch (err) {
       console.error('Failed to save:', err);
@@ -771,6 +784,24 @@ export function AddActivityPage() {
       setSaving(false);
     }
   };
+
+  // ============================================
+  // Success Dialog Handlers
+  // ============================================
+
+  const handleGoHome = useCallback(() => {
+    setShowSuccessDialog(false);
+    navigate('/app');
+  }, [navigate]);
+
+  const handleEditAfterFinish = useCallback(() => {
+    setShowSuccessDialog(false);
+    if (savedSessionStart) {
+      navigate(`/app/edit/${encodeURIComponent(savedSessionStart)}`);
+    } else {
+      navigate('/app');
+    }
+  }, [navigate, savedSessionStart]);
 
   // ============================================
   // Cancel Handler
@@ -837,6 +868,14 @@ export function AddActivityPage() {
         photoCount={totalPhotoCount}
         onConfirm={handleConfirmCancel}
         onCancel={() => setShowCancelDialog(false)}
+      />
+      
+      {/* Finish Success Dialog */}
+      <FinishSuccessDialog
+        open={showSuccessDialog}
+        eventCount={pendingEvents.length + (canSave ? 1 : 0)}
+        onEdit={handleEditAfterFinish}
+        onGoHome={handleGoHome}
       />
       
       {/* Debug Panel */}
@@ -908,39 +947,11 @@ export function AddActivityPage() {
       {/* Main form */}
       <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* Shortcuts - hidden during active session */}
-          {pendingEvents.length === 0 && (
-            <div className="p-3 border-b border-gray-100 bg-indigo-50/50">
-              <ShortcutsBar
-                currentAreaId={areaId}
-                currentCategoryId={categoryId}
-                currentCategoryName={leafCategoryName}
-                onSelect={(newAreaId, newCategoryId) => {
-                  log(`Shortcut selected: area=${newAreaId}, cat=${newCategoryId}`);
-                  setAreaId(newAreaId);
-                  setCategoryId(newCategoryId);
-                }}
-                disabled={saving}
-              />
-            </div>
-          )}
+          {/* A2: ShortcutsBar REMOVED - category is locked from navigation */}
+          {/* A3: Redundant locked category display REMOVED - already shown in header */}
           
-          {/* Category display (locked) */}
-          <div className="p-3 border-b border-gray-100 bg-sky-50">
-            <div className="flex items-center gap-2">
-              <span className="text-sky-600">📍</span>
-              <span className="text-sm font-medium text-sky-700">
-                {categoryPath.length > 0 
-                  ? categoryPath.join(' > ') 
-                  : categoryChain.map(c => c.name).reverse().join(' > ')
-                }
-              </span>
-              <span className="text-xs text-sky-500 ml-auto">locked</span>
-            </div>
-          </div>
-          
-          {/* Attributes section */}
-          <div className="p-3">
+          {/* Attributes section - removed top padding to save space */}
+          <div className="px-3 pb-3">
             {(chainError || attributesError || renderError) && (
               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {chainError && <p>Chain error: {chainError.message}</p>}
@@ -979,18 +990,7 @@ export function AddActivityPage() {
             )}
           </div>
           
-          {/* Photo Gallery */}
-          {categoryId && (
-            <div className="px-3 pb-3">
-              <PhotoGallery
-                photos={currentPhotos}
-                onPhotosChange={handlePhotosChange}
-                disabled={saving}
-              />
-            </div>
-          )}
-          
-          {/* Event Note */}
+          {/* A6: Event Note - MOVED ABOVE Photos */}
           {categoryId && (
             <div className="px-3 pb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1004,6 +1004,17 @@ export function AddActivityPage() {
                 disabled={saving}
                 placeholder="e.g., Felt strong today"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+              />
+            </div>
+          )}
+          
+          {/* Photo Gallery */}
+          {categoryId && (
+            <div className="px-3 pb-3">
+              <PhotoGallery
+                photos={currentPhotos}
+                onPhotosChange={handlePhotosChange}
+                disabled={saving}
               />
             </div>
           )}

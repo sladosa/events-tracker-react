@@ -137,7 +137,7 @@ function AppContent() {
       state: {
         areaId: filter.areaId,
         categoryId: filter.categoryId,
-        categoryPath: selectionChain.map(c => c.name)  // Send names, not UUIDs
+        categoryPath: fullPathDisplay.split(' > ')  // Includes Area name
       }
     });
   };

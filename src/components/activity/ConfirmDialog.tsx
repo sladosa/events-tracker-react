@@ -377,3 +377,82 @@ export function SuccessDialog({
     />
   );
 }
+
+// ============================================
+// Finish Success Dialog (for Add Activity)
+// ============================================
+
+interface FinishSuccessDialogProps {
+  open: boolean;
+  eventCount: number;
+  onEdit: () => void;
+  onGoHome: () => void;
+}
+
+export function FinishSuccessDialog({
+  open,
+  eventCount,
+  onEdit,
+  onGoHome,
+}: FinishSuccessDialogProps) {
+  if (!open) return null;
+  
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      
+      {/* Dialog */}
+      <div className="relative bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95">
+        {/* Icon */}
+        <div className="mx-auto flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+          <span className="text-4xl" role="img" aria-label="Success">✅</span>
+        </div>
+        
+        {/* Title */}
+        <h2 className="text-xl font-semibold text-gray-900 text-center mb-2">
+          Activity Saved!
+        </h2>
+        
+        {/* Message */}
+        <p className="text-gray-600 text-center mb-6">
+          Successfully saved {eventCount} event{eventCount !== 1 ? 's' : ''}.
+        </p>
+        
+        {/* Actions - two equal buttons */}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onGoHome}
+            className={cn(
+              "flex-1 px-4 py-2.5 rounded-lg font-medium",
+              "bg-gray-100 text-gray-700",
+              "hover:bg-gray-200",
+              "focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2",
+              "transition-colors"
+            )}
+          >
+            Go to Home
+          </button>
+          
+          <button
+            type="button"
+            onClick={onEdit}
+            className={cn(
+              "flex-1 px-4 py-2.5 rounded-lg font-medium text-white",
+              "bg-amber-500 hover:bg-amber-600",
+              "focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2",
+              "transition-colors"
+            )}
+          >
+            ✏️ Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

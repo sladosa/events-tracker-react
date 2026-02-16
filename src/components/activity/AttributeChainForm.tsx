@@ -166,10 +166,18 @@ export function AttributeChainForm({
   // Render in hierarchy order: root/parents first (collapsed), leaf last (expanded)
   // Chain comes as: [leaf, parent1, parent2, ..., root]
   // We want to show: root → ... → parent1 → leaf
-  const displayOrder = [...categoryChain].reverse();
+  // A4: Filter out categories with 0 attributes (except leaf) to save screen space
+  const displayOrder = [...categoryChain]
+    .reverse()
+    .filter((category) => {
+      const isLeaf = category.id === categoryChain[0].id;
+      const attributes = attributesByCategory.get(category.id) || [];
+      // Keep leaf always, keep others only if they have attributes
+      return isLeaf || attributes.length > 0;
+    });
   
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {displayOrder.map((category) => {
         const isLeaf = category.id === categoryChain[0].id; // First in original chain is leaf
         const isExpanded = expandedCategories.has(category.id);
