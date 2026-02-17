@@ -711,11 +711,15 @@ export function AddActivityPage() {
         }
         
         // Upload photos for leaf event
+        log(`Checking photos for event: ${pendingEvent.photos.length} photos, ${eventsForChain.length} events in chain`);
         if (pendingEvent.photos.length > 0 && eventsForChain.length > 0) {
           const leafEvent = eventsForChain.find(e => e.category_id === pendingEvent.categoryId);
+          log(`Leaf event found: ${leafEvent ? leafEvent.id : 'NOT FOUND'}, looking for category: ${pendingEvent.categoryId}`);
+          log(`Events in chain: ${eventsForChain.map(e => `${e.id}:${e.category_id}`).join(', ')}`);
           if (leafEvent) {
             for (const photo of pendingEvent.photos) {
               try {
+                log(`Uploading photo: ${photo.id}, filename: ${photo.filename}, size: ${photo.sizeBytes}`);
                 // Convert base64 to blob
                 const base64Data = photo.base64.split(',')[1];
                 const byteCharacters = atob(base64Data);
@@ -728,22 +732,26 @@ export function AddActivityPage() {
                 
                 // Upload to storage
                 const fileName = `${user.id}/${leafEvent.id}_${photo.id}.jpg`;
+                log(`Uploading to: activity-attachments/${fileName}`);
                 const { error: uploadError } = await supabase.storage
                   .from('activity-attachments')
                   .upload(fileName, blob);
                 
                 if (uploadError) {
+                  log(`Photo upload FAILED: ${uploadError.message}`);
                   console.error('Photo upload failed:', uploadError);
                   continue;
                 }
                 
+                log(`Photo uploaded successfully, getting public URL`);
                 // Get public URL
                 const { data: urlData } = supabase.storage
                   .from('activity-attachments')
                   .getPublicUrl(fileName);
                 
+                log(`Public URL: ${urlData.publicUrl}`);
                 // Insert attachment record
-                await supabase.from('event_attachments').insert({
+                const { error: attachError } = await supabase.from('event_attachments').insert({
                   event_id: leafEvent.id,
                   user_id: user.id,
                   type: 'image',
@@ -751,10 +759,19 @@ export function AddActivityPage() {
                   filename: photo.filename,
                   size_bytes: photo.sizeBytes,
                 });
+                
+                if (attachError) {
+                  log(`Attachment record insert FAILED: ${attachError.message}`);
+                } else {
+                  log(`Attachment record inserted successfully`);
+                }
               } catch (photoErr) {
+                log(`Photo upload exception: ${photoErr instanceof Error ? photoErr.message : 'unknown'}`);
                 console.error('Failed to upload photo:', photoErr);
               }
             }
+          } else {
+            log(`WARNING: Could not find leaf event for category ${pendingEvent.categoryId}`);
           }
         }
       }

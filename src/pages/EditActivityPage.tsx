@@ -654,12 +654,37 @@ export function EditActivityPage() {
           await supabase.from('event_attributes').insert(attributeRecords);
         }
         
-        // Handle photos to delete
+        // Handle photos to delete (from both database and storage)
         for (const photoId of event.photosToDelete) {
-          await supabase
-            .from('event_attachments')
-            .delete()
-            .eq('id', photoId);
+          try {
+            // First get the attachment to find the storage path
+            const { data: attachment } = await supabase
+              .from('event_attachments')
+              .select('url')
+              .eq('id', photoId)
+              .single();
+            
+            if (attachment?.url) {
+              // Extract file path from URL
+              // URL format: https://xxx.supabase.co/storage/v1/object/public/activity-attachments/user_id/event_id_photo_id.jpg
+              const urlParts = attachment.url.split('/activity-attachments/');
+              if (urlParts.length > 1) {
+                const filePath = urlParts[1];
+                // Delete from storage
+                await supabase.storage
+                  .from('activity-attachments')
+                  .remove([filePath]);
+              }
+            }
+            
+            // Delete the database record
+            await supabase
+              .from('event_attachments')
+              .delete()
+              .eq('id', photoId);
+          } catch (deleteErr) {
+            console.error('Failed to delete photo:', deleteErr);
+          }
         }
         
         // Handle new photos
