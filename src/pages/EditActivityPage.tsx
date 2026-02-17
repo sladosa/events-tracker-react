@@ -676,11 +676,11 @@ export function EditActivityPage() {
             
             const fileName = `${user.id}/${event.dbId}_${photo.id}.jpg`;
             await supabase.storage
-              .from('event-attachments')
+              .from('activity-attachments')
               .upload(fileName, blob);
             
             const { data: urlData } = supabase.storage
-              .from('event-attachments')
+              .from('activity-attachments')
               .getPublicUrl(fileName);
             
             await supabase.from('event_attachments').insert({
@@ -747,11 +747,11 @@ export function EditActivityPage() {
             
             const fileName = `${user.id}/${newEvent.id}_${photo.id}.jpg`;
             await supabase.storage
-              .from('event-attachments')
+              .from('activity-attachments')
               .upload(fileName, blob);
             
             const { data: urlData } = supabase.storage
-              .from('event-attachments')
+              .from('activity-attachments')
               .getPublicUrl(fileName);
             
             await supabase.from('event_attachments').insert({
@@ -947,8 +947,17 @@ export function EditActivityPage() {
           
           {/* Category display REMOVED - already shown in header */}
           
-          {/* Attributes section */}
-          <div className="px-3 pb-3 pt-0">
+          {/* Event info banner - shows event number and creation time */}
+          {currentEvent && !currentEvent.isDeleted && (
+            <div className="px-3 pt-3 pb-1">
+              <div className="text-sm text-gray-500">
+                Event #{selectedEventIndex + 1} · created {currentEvent.createdAt.toLocaleDateString('sv-SE')} {currentEvent.createdAt.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          )}
+          
+          {/* Attributes section - pt-3 needed to prevent leaf header from covering first attribute */}
+          <div className="px-3 pb-3 pt-2">
             {(chainError || attributesError) && (
               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {chainError && <p>Chain error: {chainError.message}</p>}
@@ -1005,40 +1014,14 @@ export function EditActivityPage() {
             </div>
           )}
           
-          {/* Photo Gallery */}
+          {/* Photo Gallery - combined existing and new photos */}
           {currentEvent && !currentEvent.isDeleted && categoryId && (
             <div className="px-3 pb-3">
-              {/* Existing Photos */}
-              {existingPhotos.length > 0 && (
-                <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    📷 Existing Photos
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {existingPhotos.map(photo => (
-                      <div key={photo.id} className="relative">
-                        <img
-                          src={photo.url}
-                          alt={photo.filename || 'Photo'}
-                          className="w-20 h-20 object-cover rounded-lg border border-gray-200"
-                        />
-                        <button
-                          onClick={() => handleDeleteExistingPhoto(photo.id)}
-                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
-                          title="Remove photo"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* New Photos */}
               <PhotoGallery
                 photos={currentPhotos}
+                existingPhotos={existingPhotos}
                 onPhotosChange={handlePhotosChange}
+                onExistingPhotoRemove={handleDeleteExistingPhoto}
                 disabled={saving}
               />
             </div>

@@ -111,6 +111,7 @@ export function PhotoGallery({
 }: PhotoGalleryProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Calculate current usage
@@ -124,6 +125,12 @@ export function PhotoGallery({
   );
   
   const totalPhotoCount = photos.length + visibleExistingPhotos.length;
+  
+  // Build combined photo list for lightbox
+  const allPhotos: LightboxPhoto[] = [
+    ...visibleExistingPhotos.map(p => ({ src: p.url, filename: p.filename, isNew: false })),
+    ...photos.map(p => ({ src: p.base64, filename: p.filename, isNew: true })),
+  ];
   
   // Handle file selection
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,8 +199,32 @@ export function PhotoGallery({
     fileInputRef.current?.click();
   }, []);
   
+  // Lightbox navigation
+  const handleLightboxPrev = useCallback(() => {
+    if (lightboxIndex !== null) {
+      setLightboxIndex(lightboxIndex === 0 ? allPhotos.length - 1 : lightboxIndex - 1);
+    }
+  }, [lightboxIndex, allPhotos.length]);
+  
+  const handleLightboxNext = useCallback(() => {
+    if (lightboxIndex !== null) {
+      setLightboxIndex(lightboxIndex === allPhotos.length - 1 ? 0 : lightboxIndex + 1);
+    }
+  }, [lightboxIndex, allPhotos.length]);
+  
   return (
     <div className="space-y-2">
+      {/* Lightbox */}
+      {lightboxIndex !== null && (
+        <PhotoLightbox
+          photos={allPhotos}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onPrev={handleLightboxPrev}
+          onNext={handleLightboxNext}
+        />
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <label className="block text-sm font-medium text-gray-700">
@@ -222,7 +253,7 @@ export function PhotoGallery({
         compact ? "gap-1" : "gap-2"
       )}>
         {/* Existing photos (Edit mode) */}
-        {visibleExistingPhotos.map(photo => (
+        {visibleExistingPhotos.map((photo, index) => (
           <PhotoThumbnail
             key={`existing-${photo.id}`}
             src={photo.url}
@@ -232,18 +263,20 @@ export function PhotoGallery({
                 ? () => handleRemoveExistingPhoto(photo.id) 
                 : undefined
             }
+            onView={() => setLightboxIndex(index)}
             disabled={disabled}
             compact={compact}
           />
         ))}
         
         {/* New photos */}
-        {photos.map(photo => (
+        {photos.map((photo, index) => (
           <PhotoThumbnail
             key={photo.id}
             src={photo.base64}
             filename={photo.filename}
             onRemove={() => handleRemovePhoto(photo.id)}
+            onView={() => setLightboxIndex(visibleExistingPhotos.length + index)}
             disabled={disabled}
             compact={compact}
             isNew
@@ -316,6 +349,7 @@ interface PhotoThumbnailProps {
   src: string;
   filename?: string;
   onRemove?: () => void;
+  onView?: () => void;
   disabled?: boolean;
   compact?: boolean;
   isNew?: boolean;
@@ -325,13 +359,15 @@ function PhotoThumbnail({
   src,
   filename,
   onRemove,
+  onView,
   disabled = false,
   compact = false,
   isNew = false,
 }: PhotoThumbnailProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   
-  const handleRemoveClick = () => {
+  const handleRemoveClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (showConfirm) {
       onRemove?.();
       setShowConfirm(false);
@@ -340,16 +376,24 @@ function PhotoThumbnail({
     }
   };
   
-  const handleCancelRemove = () => {
+  const handleCancelRemove = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setShowConfirm(false);
+  };
+  
+  const handleClick = () => {
+    if (!showConfirm && onView) {
+      onView();
+    }
   };
   
   return (
     <div 
       className={cn(
-        "relative rounded-lg overflow-hidden bg-gray-100 group",
+        "relative rounded-lg overflow-hidden bg-gray-100 group cursor-pointer",
         compact ? "w-16 h-16" : "w-20 h-20"
       )}
+      onClick={handleClick}
     >
       {/* Image */}
       <img
@@ -365,11 +409,19 @@ function PhotoThumbnail({
         </div>
       )}
       
+      {/* View hint on hover (when not in delete mode) */}
+      {onView && !showConfirm && !disabled && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors pointer-events-none">
+          <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+            👁 View
+          </span>
+        </div>
+      )}
+      
       {/* Remove button */}
       {onRemove && !disabled && (
         <div className={cn(
           "absolute inset-0 flex items-center justify-center",
-          "bg-black/0 group-hover:bg-black/40 transition-colors",
           showConfirm && "bg-black/50"
         )}>
           {showConfirm ? (
@@ -394,14 +446,14 @@ function PhotoThumbnail({
               type="button"
               onClick={handleRemoveClick}
               className={cn(
-                "p-1.5 bg-black/60 text-white rounded-full",
+                "absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full",
                 "opacity-0 group-hover:opacity-100 transition-opacity",
-                "hover:bg-rose-500"
+                "hover:bg-rose-500 z-10"
               )}
               title="Remove photo"
             >
               <svg 
-                className={cn(compact ? "w-3 h-3" : "w-4 h-4")} 
+                className={cn(compact ? "w-3 h-3" : "w-3 h-3")} 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -417,6 +469,139 @@ function PhotoThumbnail({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================
+// Photo Lightbox Component
+// ============================================
+
+interface LightboxPhoto {
+  src: string;
+  filename?: string;
+  isNew?: boolean;
+}
+
+interface PhotoLightboxProps {
+  photos: LightboxPhoto[];
+  currentIndex: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}
+
+function PhotoLightbox({
+  photos,
+  currentIndex,
+  onClose,
+  onPrev,
+  onNext,
+}: PhotoLightboxProps) {
+  const currentPhoto = photos[currentIndex];
+  
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') onPrev();
+      if (e.key === 'ArrowRight') onNext();
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, onPrev, onNext]);
+  
+  // Handle touch swipe
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.touches[0].clientX);
+  };
+  
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    
+    const touchEnd = e.changedTouches[0].clientX;
+    const diff = touchStart - touchEnd;
+    
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        onNext();
+      } else {
+        onPrev();
+      }
+    }
+    
+    setTouchStart(null);
+  };
+  
+  if (!currentPhoto) return null;
+  
+  return (
+    <div 
+      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+      onClick={onClose}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Close button */}
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors z-10"
+      >
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      
+      {/* Counter */}
+      <div className="absolute top-4 left-4 text-white/70 text-sm">
+        {currentIndex + 1} / {photos.length}
+        {currentPhoto.isNew && <span className="ml-2 text-green-400">NEW</span>}
+      </div>
+      
+      {/* Filename */}
+      {currentPhoto.filename && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm truncate max-w-[80%]">
+          {currentPhoto.filename}
+        </div>
+      )}
+      
+      {/* Prev button */}
+      {photos.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          className="absolute left-2 top-1/2 -translate-y-1/2 p-2 text-white/50 hover:text-white transition-colors"
+        >
+          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
+      
+      {/* Next button */}
+      {photos.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/50 hover:text-white transition-colors"
+        >
+          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+      
+      {/* Image */}
+      <img
+        src={currentPhoto.src}
+        alt={currentPhoto.filename || 'Photo'}
+        className="max-w-[90vw] max-h-[85vh] object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
     </div>
   );
 }

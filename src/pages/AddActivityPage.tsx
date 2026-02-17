@@ -729,7 +729,7 @@ export function AddActivityPage() {
                 // Upload to storage
                 const fileName = `${user.id}/${leafEvent.id}_${photo.id}.jpg`;
                 const { error: uploadError } = await supabase.storage
-                  .from('event-attachments')
+                  .from('activity-attachments')
                   .upload(fileName, blob);
                 
                 if (uploadError) {
@@ -739,7 +739,7 @@ export function AddActivityPage() {
                 
                 // Get public URL
                 const { data: urlData } = supabase.storage
-                  .from('event-attachments')
+                  .from('activity-attachments')
                   .getPublicUrl(fileName);
                 
                 // Insert attachment record
@@ -928,8 +928,17 @@ export function AddActivityPage() {
           {/* A2: ShortcutsBar REMOVED - category is locked from navigation */}
           {/* A3: Redundant locked category display REMOVED - already shown in header */}
           
-          {/* Attributes section - removed top padding to save space */}
-          <div className="px-3 pb-3">
+          {/* Event info banner - shows current event number being created */}
+          {categoryId && (
+            <div className="px-3 pt-3 pb-1">
+              <div className="text-sm text-gray-500">
+                Event #{pendingEvents.length + 1} · in progress
+              </div>
+            </div>
+          )}
+          
+          {/* Attributes section - pt-2 since we have event info banner above */}
+          <div className="px-3 pt-2 pb-3">
             {(chainError || attributesError || renderError) && (
               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {chainError && <p>Chain error: {chainError.message}</p>}
@@ -1004,6 +1013,7 @@ export function AddActivityPage() {
                 savedEvents={[...pendingEvents].reverse().map(e => ({
                   eventId: e.tempId,
                   categoryName: leafCategoryName,
+                  createdAt: e.createdAt,
                   summary: e.attributes
                     .slice(0, 3)
                     .map(a => String(a.value))

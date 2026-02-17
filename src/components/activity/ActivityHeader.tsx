@@ -115,8 +115,8 @@ export function ActivityHeader({
           )}
         </div>
         
-        {/* Category chain */}
-        <p className={cn('text-sm mt-1 opacity-90', headerText)}>
+        {/* Category chain - larger font for mobile readability */}
+        <p className={cn('text-base font-medium mt-1 opacity-90', headerText)}>
           {categoryPath.join(' > ')}
         </p>
       </div>
