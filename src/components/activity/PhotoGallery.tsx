@@ -146,7 +146,19 @@ export function PhotoGallery({
       
       for (const file of Array.from(files)) {
         // Check if it's an image
-        if (!file.type.startsWith('image/')) {
+        // Note: Some Android browsers return empty file.type for camera photos
+        // file.type can also be 'image/heic' on iOS which canvas cannot decode
+        const isImageByType = file.type.startsWith('image/');
+        const isImageByName = /\.(jpg|jpeg|png|gif|webp|bmp|heic|heif)$/i.test(file.name);
+        
+        if (!isImageByType && !isImageByName) {
+          continue;
+        }
+        
+        // HEIC/HEIF not supported by canvas - show helpful error
+        if (file.type === 'image/heic' || file.type === 'image/heif' || 
+            /\.(heic|heif)$/i.test(file.name)) {
+          setError('HEIC format nije podržan. Promijeni postavke kamere na JPEG/Najkompatibilnije.');
           continue;
         }
         
@@ -310,12 +322,12 @@ export function PhotoGallery({
         </button>
         
         {/* Hidden file input */}
+        {/* NOTE: capture="environment" intentionally removed - it bypasses gallery on Android */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           multiple
-          capture="environment"
           onChange={handleFileSelect}
           className="hidden"
           disabled={disabled || isAtLimit}
@@ -696,7 +708,6 @@ export function SimplePhotoUpload({
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={handleFileChange}
         className="hidden"
         disabled={disabled}
