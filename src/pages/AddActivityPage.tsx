@@ -11,7 +11,7 @@
  * - Resume dialog on mount
  */
 
-import { useState, useEffect, useMemo, useCallback, Component, type ErrorInfo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Component, type ErrorInfo, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
@@ -233,6 +233,27 @@ export function AddActivityPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renderError, _setRenderError] = useState<string | null>(null);
+  
+  // Mobile detection - na mobitelu AddActivity otvara prednju kameru direktno
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // DA1: Dinamički mjerimo visinu headera da izbjegnemo preklapanje
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(176);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setHeaderHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   
   // Session timer
   const {
@@ -927,6 +948,7 @@ export function AddActivityPage() {
       
       {/* Header */}
       <ActivityHeader
+        ref={headerRef}
         mode="add"
         categoryPath={categoryPath.length > 0 ? categoryPath : categoryChain.map(c => c.name).reverse()}
         sessionElapsed={elapsed}
@@ -939,8 +961,11 @@ export function AddActivityPage() {
         pendingEventCount={pendingEvents.length}
       />
       
-      {/* Main form */}
-      <div className="max-w-2xl mx-auto px-4 py-4">
+      {/* Main form - DA1: dinamički padding prema izmjerenoj visini headera */}
+      <div
+        className="max-w-2xl mx-auto px-4 pb-4"
+        style={{ paddingTop: `${headerHeight + 12}px` }}
+      >
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {/* A2: ShortcutsBar REMOVED - category is locked from navigation */}
           {/* A3: Redundant locked category display REMOVED - already shown in header */}
@@ -1012,13 +1037,14 @@ export function AddActivityPage() {
             </div>
           )}
           
-          {/* Photo Gallery */}
+          {/* Photo Gallery - mobitel: prednja kamera, desktop: galerija */}
           {categoryId && (
             <div className="px-3 pb-3">
               <PhotoGallery
                 photos={currentPhotos}
                 onPhotosChange={handlePhotosChange}
                 disabled={saving}
+                captureMode={isMobile ? 'user' : undefined}
               />
             </div>
           )}

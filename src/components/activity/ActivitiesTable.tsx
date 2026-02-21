@@ -5,9 +5,10 @@ import { useActivities, formatTime, formatDate, type ActivityGroup } from '@/hoo
 interface ActivitiesTableProps {
   className?: string;
   onEditActivity?: (sessionStart: string) => void;
+  onDeleteActivity?: (sessionStart: string) => Promise<void>;
 }
 
-export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTableProps) {
+export function ActivitiesTable({ className = '', onEditActivity, onDeleteActivity }: ActivitiesTableProps) {
   const { filter } = useFilter();
   
   const { 
@@ -106,11 +107,11 @@ export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTa
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-3 py-3 text-left font-medium text-gray-700 w-32 whitespace-nowrap">Date</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-700 w-16">Time</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-700">Category</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-700 hidden md:table-cell">Comment</th>
-              <th className="px-3 py-3 text-right font-medium text-gray-700 w-14">Actions</th>
+              <th className="px-3 py-3 text-left font-medium text-gray-700 w-28 whitespace-nowrap">Date</th>
+              <th className="px-3 py-3 text-left font-medium text-gray-700 w-14 whitespace-nowrap">Time</th>
+              <th className="px-3 py-3 text-left font-medium text-gray-700 max-w-[180px]">Category</th>
+              <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell max-w-[140px]">Comment</th>
+              <th className="px-3 py-3 text-right font-medium text-gray-700 w-12 sticky right-0 bg-gray-50">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -121,6 +122,7 @@ export function ActivitiesTable({ className = '', onEditActivity }: ActivitiesTa
                 isExpanded={expandedRows.has(group.sessionKey)}
                 onToggleExpand={() => toggleExpand(group.sessionKey)}
                 onEdit={onEditActivity}
+                onDelete={onDeleteActivity}
               />
             ))}
           </tbody>
@@ -166,16 +168,31 @@ interface ActivityRowProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onEdit?: (sessionStart: string) => void;
+  onDelete?: (sessionStart: string) => Promise<void>;
 }
 
-function ActivityRow({ group, isExpanded, onToggleExpand, onEdit }: ActivityRowProps) {
+function ActivityRow({ group, isExpanded, onToggleExpand, onEdit, onDelete }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const hasMultipleEvents = group.eventCount > 1;
   const firstEvent = group.events[0];
   
   // Build path display (without area for brevity)
   const pathDisplay = group.category_path.slice(1).join(' > '); // Skip area name
+
+  const handleDeleteConfirm = async () => {
+    if (!group.session_start || !onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(group.session_start);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      setShowMenu(false);
+    }
+  };
 
   return (
     <>
@@ -191,16 +208,16 @@ function ActivityRow({ group, isExpanded, onToggleExpand, onEdit }: ActivityRowP
         </td>
         
         {/* Category Path */}
-        <td className="px-3 py-2.5">
-          <div className="flex items-center gap-2">
+        <td className="px-3 py-2.5 max-w-[180px]">
+          <div className="flex items-center gap-1.5">
             {/* Area icon */}
             {group.area_icon && (
               <span className="text-base flex-shrink-0">{group.area_icon}</span>
             )}
             
             <div className="min-w-0">
-              {/* Path */}
-              <div className="text-gray-900 truncate" title={group.category_path.join(' > ')}>
+              {/* Path - truncated with full path on hover */}
+              <div className="text-gray-900 truncate text-sm" title={group.category_path.join(' > ')}>
                 {pathDisplay}
               </div>
               
@@ -217,17 +234,17 @@ function ActivityRow({ group, isExpanded, onToggleExpand, onEdit }: ActivityRowP
           </div>
         </td>
         
-        {/* Comment */}
-        <td className="px-3 py-2.5 hidden md:table-cell">
-          <span className="text-gray-600 truncate block max-w-xs" title={firstEvent.comment || undefined}>
+        {/* Comment - hidden on small/medium screens */}
+        <td className="px-3 py-2.5 hidden lg:table-cell max-w-[140px]">
+          <span className="text-gray-600 truncate block" title={firstEvent.comment || undefined}>
             {firstEvent.comment || (
               <span className="text-gray-400 italic">No comment</span>
             )}
           </span>
         </td>
         
-        {/* Actions */}
-        <td className="px-3 py-2.5 text-right">
+        {/* Actions - sticky right so always visible */}
+        <td className="px-2 py-2.5 text-right sticky right-0 bg-white">
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
@@ -242,10 +259,10 @@ function ActivityRow({ group, isExpanded, onToggleExpand, onEdit }: ActivityRowP
             {showMenu && (
               <>
                 <div 
-                  className="fixed inset-0 z-10" 
-                  onClick={() => setShowMenu(false)}
+                  className="fixed inset-0 z-40" 
+                  onClick={() => { setShowMenu(false); setShowDeleteConfirm(false); }}
                 />
-                <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
                   <button
                     onClick={() => {
                       if (group.session_start) {
@@ -268,15 +285,42 @@ function ActivityRow({ group, isExpanded, onToggleExpand, onEdit }: ActivityRowP
                     👁️ View Details
                   </button>
                   <hr className="my-1 border-gray-100" />
-                  <button
-                    onClick={() => {
-                      // TODO: Implement delete
-                      setShowMenu(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                  >
-                    🗑️ Delete
-                  </button>
+                  {/* Delete - s inline confirmation */}
+                  {!showDeleteConfirm ? (
+                    <button
+                      onClick={() => {
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    >
+                      🗑️ Delete
+                    </button>
+                  ) : (
+                    <div className="px-3 py-2 bg-red-50">
+                      <p className="text-xs text-red-700 font-medium mb-2">
+                        Obriši {group.eventCount} event{group.eventCount !== 1 ? 's' : ''} + sve fotografije?
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleDeleteConfirm}
+                          disabled={isDeleting}
+                          className="flex-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {isDeleting ? '...' : 'Da, obriši'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowDeleteConfirm(false);
+                            setShowMenu(false);
+                          }}
+                          disabled={isDeleting}
+                          className="flex-1 px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                        >
+                          Odustani
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

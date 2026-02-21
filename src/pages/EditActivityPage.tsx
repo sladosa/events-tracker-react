@@ -13,8 +13,9 @@
  * Entry: Activities table → ⋮ menu → Edit
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
@@ -115,6 +116,19 @@ export function EditActivityPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  
+  // DA1: Dynamički mjerimo visinu headera da izbjegnemo preklapanje
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(176);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setHeaderHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   
   // ============================================
   // Load Activity Data
@@ -478,7 +492,8 @@ export function EditActivityPage() {
       const newEvent: PendingEvent = {
         tempId: `copy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         categoryId: eventToCopy.categoryId,
-        createdAt: new Date(),
+        // P2.1: +1 sekunda za ispravnu sekvencu u sessiji
+        createdAt: new Date(eventToCopy.createdAt.getTime() + 1000),
         attributes: eventToCopy.attributes.map(a => ({ ...a, touched: true })),
         note: eventToCopy.note ? `${eventToCopy.note} (copy)` : 'Copied',
         photos: [], // Don't copy photos
@@ -625,6 +640,8 @@ export function EditActivityPage() {
             session_start: newSessionStart,
             comment: event.note,
             edited_at: new Date().toISOString(),
+            // P2: created_at se ažurira zajedno s pomakom datuma/vremena
+            created_at: event.createdAt.toISOString(),
           })
           .eq('id', event.dbId);
         
@@ -820,6 +837,54 @@ export function EditActivityPage() {
     setShowCancelDialog(false);
     navigate('/app');
   }, [navigate]);
+
+  // ============================================
+  // Delete Session Handler (Delete button u headeru)
+  // ============================================
+
+  const handleDeleteSession = useCallback(async () => {
+    if (!sessionStart) return;
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const decodedSessionStart = decodeURIComponent(sessionStart);
+      const { data: events } = await supabase
+        .from('events')
+        .select('id')
+        .eq('session_start', decodedSessionStart)
+        .eq('user_id', user.id);
+
+      if (events && events.length > 0) {
+        const eventIds = (events as { id: string }[]).map(e => e.id);
+
+        const { data: attachments } = await supabase
+          .from('event_attachments')
+          .select('url')
+          .in('event_id', eventIds);
+
+        if (attachments && attachments.length > 0) {
+          const paths = (attachments as { url: string }[])
+            .map(a => { const p = a.url.split('/activity-attachments/'); return p.length > 1 ? p[1] : null; })
+            .filter((p): p is string => p !== null);
+          if (paths.length > 0) {
+            await supabase.storage.from('activity-attachments').remove(paths);
+          }
+        }
+
+        await supabase.from('event_attachments').delete().in('event_id', eventIds);
+        await supabase.from('event_attributes').delete().in('event_id', eventIds);
+        await supabase.from('events').delete().in('id', eventIds);
+        toast.success('Aktivnost obrisana');
+      }
+      navigate('/app');
+    } catch (err) {
+      console.error('Delete session failed:', err);
+      toast.error('Brisanje nije uspjelo');
+      setSaving(false);
+    }
+  }, [sessionStart, navigate]);
   
   // ============================================
   // Render - Loading State
@@ -877,6 +942,7 @@ export function EditActivityPage() {
       
       {/* Header */}
       <ActivityHeader
+        ref={headerRef}
         mode="edit"
         categoryPath={categoryPath}
         dateTime={sessionDateTime}
@@ -884,12 +950,16 @@ export function EditActivityPage() {
         totalDuration={totalDuration}
         onCancel={handleCancel}
         onSave={handleSave}
+        onDeleteSession={handleDeleteSession}
         canSave={canSave}
         saving={saving}
       />
       
-      {/* Events List */}
-      <div className="max-w-2xl mx-auto px-4 py-4">
+      {/* Events List - DA1: dinamički padding prema izmjerenoj visini headera */}
+      <div
+        className="max-w-2xl mx-auto px-4 pb-4"
+        style={{ paddingTop: `${headerHeight + 12}px` }}
+      >
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
           <div className="px-3 py-2 bg-amber-50 border-b border-amber-100">
             <div className="flex items-center justify-between">
@@ -910,15 +980,20 @@ export function EditActivityPage() {
               <button
                 key={event.tempId}
                 onClick={() => {
-                  if (!event.isDeleted) {
+                  if (event.isDeleted) {
+                    // P1.2: Klik na deleted tab → automatski Restore (cool approach)
+                    handleRestoreEvent(index);
+                    selectEvent(index);
+                  } else {
                     selectEvent(index);
                   }
                 }}
+                title={event.isDeleted ? '↩️ Klikni za Restore' : undefined}
                 className={`
                   px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                   flex items-center gap-1.5
                   ${event.isDeleted
-                    ? 'bg-red-100 text-red-400 line-through cursor-not-allowed'
+                    ? 'bg-red-100 text-red-500 line-through cursor-pointer hover:bg-red-200 hover:line-through ring-1 ring-red-300'
                     : index === selectedEventIndex
                       ? 'bg-amber-500 text-white'
                       : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -929,7 +1004,7 @@ export function EditActivityPage() {
               >
                 <span>#{index + 1}</span>
                 {event.isNew && <span className="text-xs">✨</span>}
-                {event.isDeleted && <span className="text-xs">🗑️</span>}
+                {event.isDeleted && <span className="text-xs" title="Klikni za Restore">↩️</span>}
               </button>
             ))}
           </div>
@@ -976,7 +1051,15 @@ export function EditActivityPage() {
           {currentEvent && !currentEvent.isDeleted && (
             <div className="px-3 pt-3 pb-1">
               <div className="text-sm text-gray-500">
-                Event #{selectedEventIndex + 1} · created {currentEvent.createdAt.toLocaleDateString('sv-SE')} {currentEvent.createdAt.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
+                Event #{selectedEventIndex + 1} · {(() => {
+                  const d = currentEvent.createdAt;
+                  const y = d.getFullYear();
+                  const mo = String(d.getMonth() + 1).padStart(2, '0');
+                  const dy = String(d.getDate()).padStart(2, '0');
+                  const h = String(d.getHours()).padStart(2, '0');
+                  const mi = String(d.getMinutes()).padStart(2, '0');
+                  return `${y}/${mo}/${dy} ${h}:${mi}`;
+                })()}
               </div>
             </div>
           )}

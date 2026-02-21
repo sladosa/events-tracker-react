@@ -98,6 +98,13 @@ interface PhotoGalleryProps {
   disabled?: boolean;
   /** Show compact version */
   compact?: boolean;
+  /**
+   * Camera capture mode:
+   * - 'user'        → otvori prednju kameru direktno (Add Activity na mobitelu)
+   * - 'environment' → otvori stražnju kameru direktno
+   * - undefined     → standardni file picker / galerija (Edit Activity, desktop)
+   */
+  captureMode?: 'user' | 'environment';
 }
 
 export function PhotoGallery({
@@ -108,6 +115,7 @@ export function PhotoGallery({
   photosToDelete = [],
   disabled = false,
   compact = false,
+  captureMode,
 }: PhotoGalleryProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -321,13 +329,16 @@ export function PhotoGallery({
           )}
         </button>
         
-        {/* Hidden file input */}
-        {/* NOTE: capture="environment" intentionally removed - it bypasses gallery on Android */}
+        {/* Hidden file input
+             captureMode='user'        → prednja kamera (Add na mobitelu)
+             captureMode='environment' → stražnja kamera
+             captureMode=undefined     → standardni picker/galerija (Edit, desktop) */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           multiple
+          capture={captureMode}
           onChange={handleFileSelect}
           className="hidden"
           disabled={disabled || isAtLimit}

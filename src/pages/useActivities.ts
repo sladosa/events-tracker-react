@@ -160,9 +160,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     lastQuery: null
   });
 
-  // Race condition fix: track the latest fetch so older async results don't overwrite newer ones
-  const latestFetchIdRef = useRef<number>(0);
-
   // P4: Log when options change
   useEffect(() => {
     logDebug('OPTIONS_CHANGED', { areaId, categoryId, dateFrom, dateTo, pageSize });
@@ -263,8 +260,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   // Fetch activities
   const fetchActivities = useCallback(async (isLoadMore = false) => {
     const fetchId = Date.now(); // Unique ID for this fetch
-    // Register as latest fetch - any older fetch that resolves later will be ignored
-    latestFetchIdRef.current = fetchId;
     logDebug('FETCH_START', { 
       fetchId,
       isLoadMore, 
@@ -382,12 +377,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       // React handles state updates on unmounted components gracefully now
       logDebug('QUERY_COMPLETED', { fetchId, eventCount: events?.length || 0, totalCount: count });
 
-      // Stale fetch guard: if a newer fetch has started, discard these results
-      if (fetchId !== latestFetchIdRef.current) {
-        logDebug('STALE_FETCH_DISCARDED', { fetchId, latestFetchId: latestFetchIdRef.current });
-        return;
-      }
-
       if (count !== null) {
         setTotalCount(count);
       }
@@ -485,12 +474,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
           eventCount: g.eventCount
         }))
       });
-
-      // Second stale check after async path-building (most likely place for race condition)
-      if (fetchId !== latestFetchIdRef.current) {
-        logDebug('STALE_FETCH_DISCARDED_POST_GROUPING', { fetchId, latestFetchId: latestFetchIdRef.current });
-        return;
-      }
       
       if (isLoadMore) {
         setActivities(prev => [...prev, ...newGroups]);

@@ -294,8 +294,9 @@ function AppContent() {
 
         {/* ========================================
             TAB CONTENT
+            overflow-hidden NAMJERNO UKLONJEN - klipao bi dropdown menije u ActivitiesTable
             ======================================== */}
-        <section className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <section className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
           {activeTab === 'structure' ? (
             <StructureView />
           ) : (
@@ -375,11 +376,80 @@ function StructureView() {
 function ActivitiesView() {
   const nav = useNavigate();
   const { fullPathDisplay, isLeafCategory } = useFilter();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handleEditActivity = (sessionStart: string) => {
     // Navigate to edit page with encoded session_start
     const encodedSessionStart = encodeURIComponent(sessionStart);
     nav(`/app/edit/${encodedSessionStart}`);
+  };
+
+  // P1: Delete activity - briše events, attributes, storage fajlove
+  const handleDeleteActivity = async (sessionStart: string): Promise<void> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Dohvati sve events za ovaj sessionStart
+      const { data: events, error: eventsError } = await supabase
+        .from('events')
+        .select('id')
+        .eq('session_start', sessionStart)
+        .eq('user_id', user.id);
+
+      if (eventsError) throw eventsError;
+      if (!events || events.length === 0) return;
+
+      const eventIds = (events as { id: string }[]).map(e => e.id);
+
+      // Dohvati attachment URL-ove za brisanje iz storagea
+      const { data: attachments } = await supabase
+        .from('event_attachments')
+        .select('url')
+        .in('event_id', eventIds);
+
+      // Briši fajlove iz Supabase storagea
+      if (attachments && attachments.length > 0) {
+        const paths = (attachments as { url: string }[])
+          .map(a => {
+            const parts = a.url.split('/activity-attachments/');
+            return parts.length > 1 ? parts[1] : null;
+          })
+          .filter((p): p is string => p !== null);
+
+        if (paths.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from('activity-attachments')
+            .remove(paths);
+          if (storageError) {
+            console.error('Storage delete error (non-fatal):', storageError);
+          }
+        }
+      }
+
+      // Briši event_attachments iz DB
+      await supabase.from('event_attachments').delete().in('event_id', eventIds);
+
+      // Briši event_attributes iz DB
+      await supabase.from('event_attributes').delete().in('event_id', eventIds);
+
+      // Briši events iz DB
+      const { error: deleteError } = await supabase
+        .from('events')
+        .delete()
+        .in('id', eventIds);
+
+      if (deleteError) throw deleteError;
+
+      // Osvježi tablicu
+      setRefreshKey(prev => prev + 1);
+      toast.success(`Aktivnost obrisana (${events.length} event${events.length !== 1 ? 's' : ''})`);
+
+    } catch (err) {
+      console.error('Delete activity failed:', err);
+      toast.error('Brisanje nije uspjelo');
+      throw err; // Propagate so ActivityRow može resetirati UI
+    }
   };
 
   return (
@@ -401,7 +471,9 @@ function ActivitiesView() {
 
       {/* Activities Table */}
       <ActivitiesTable 
+        key={refreshKey}
         onEditActivity={handleEditActivity}
+        onDeleteActivity={handleDeleteActivity}
       />
     </div>
   );
