@@ -109,7 +109,7 @@ export function AttributeChainForm({
         <div className="space-y-3">
           {/* Dropdown attributes - sticky */}
           {dropdownAttrs.length > 0 && (
-            <div className="sticky top-[72px] z-[5] bg-blue-50/95 backdrop-blur-sm -mx-4 px-4 py-2 border-b border-blue-100 space-y-3">
+            <div className="bg-blue-50/95 -mx-4 px-4 py-2 border-b border-blue-100 space-y-3">
               {dropdownAttrs.map(attr => renderAttribute(attr))}
             </div>
           )}
@@ -197,7 +197,7 @@ export function AttributeChainForm({
               onClick={() => toggleCategory(category.id)}
               className={`w-full px-4 py-2.5 flex items-center justify-between text-left ${
                 isLeaf 
-                  ? 'bg-blue-50 hover:bg-blue-100 sticky top-[56px] z-[6]' 
+                  ? 'bg-blue-50 hover:bg-blue-100' 
                   : 'bg-gray-50 hover:bg-gray-100'
               } transition-colors`}
             >

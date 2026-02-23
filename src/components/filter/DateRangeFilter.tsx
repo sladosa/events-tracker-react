@@ -86,6 +86,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
           </label>
           <input
             type="date"
+            lang="sv"
             value={localFrom}
             onChange={(e) => handleFromChange(e.target.value)}
             min={bounds.minDate || undefined}
@@ -102,6 +103,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
           </label>
           <input
             type="date"
+            lang="sv"
             value={localTo}
             onChange={(e) => handleToChange(e.target.value)}
             min={localFrom || bounds.minDate || undefined}

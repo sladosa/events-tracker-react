@@ -90,7 +90,7 @@ export function ShortcutsBar({
           <option value="">Select shortcut...</option>
           {presets.map((preset) => (
             <option key={preset.id} value={preset.id}>
-              {preset.name} {preset.usage_count > 0 && `(${preset.usage_count}×)`}
+              {preset.name}
             </option>
           ))}
         </select>

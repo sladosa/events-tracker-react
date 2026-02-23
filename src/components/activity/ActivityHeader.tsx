@@ -157,7 +157,11 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
               <div className="flex items-center gap-3">
                 <span className="text-white/70 text-xs">📅</span>
                 {dateTime && onDateTimeChange ? (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
+                    {/* B4: Show YYYY-MM-DD text always (browser may render date input differently) */}
+                    <span className="text-white font-medium text-sm tabular-nums">
+                      {dateTime.toISOString().split('T')[0]}
+                    </span>
                     <input
                       type="date"
                       lang="sv"
@@ -168,7 +172,8 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
                         newDate.setFullYear(year, month - 1, day);
                         onDateTimeChange(newDate);
                       }}
-                      className="bg-white/20 text-white border-0 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-white/50"
+                      className="bg-white/20 text-white border-0 rounded px-1 py-1 text-sm focus:ring-2 focus:ring-white/50 opacity-60 hover:opacity-100 focus:opacity-100 cursor-pointer"
+                      title="Click to change date"
                     />
                     <input
                       type="time"

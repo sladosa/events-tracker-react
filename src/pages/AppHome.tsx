@@ -195,11 +195,8 @@ function AppContent() {
         <section className="bg-white rounded-xl shadow-sm border border-gray-100 mb-3 sm:mb-4">
           {/* Filter Header */}
           <div 
-            className={cn(
-              "flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3",
-              isMobile && "cursor-pointer"
-            )}
-            onClick={() => isMobile && setIsFilterExpanded(!isFilterExpanded)}
+            className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 cursor-pointer"
+            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
           >
             <div className="flex items-center gap-2">
               <h2 className="font-medium text-gray-900 text-sm sm:text-base">Filter</h2>
@@ -222,16 +219,14 @@ function AppContent() {
                   Clear all
                 </button>
               )}
-              {isMobile && (
-                <span className="text-gray-400">
-                  {isFilterExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                </span>
-              )}
+              <span className="text-gray-400">
+                {isFilterExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+              </span>
             </div>
           </div>
 
           {/* Filter Content */}
-          {(isFilterExpanded || !isMobile) && (
+          {isFilterExpanded && (
             <div className="px-3 pb-3 sm:px-4 sm:pb-4 border-t border-gray-100 pt-3">
               <ProgressiveCategorySelector
                 onLeafSelected={handleLeafSelected}

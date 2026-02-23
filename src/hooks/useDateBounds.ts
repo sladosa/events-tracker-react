@@ -208,15 +208,10 @@ export function getDatePresets(): { label: string; getRange: () => { from: strin
 }
 
 /**
- * Format date for display
+ * Format date for display - YYYY-MM-DD format
  */
 export function formatDateDisplay(dateStr: string | null): string {
   if (!dateStr) return '-';
-  
-  const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('hr-HR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+  // dateStr is already in YYYY-MM-DD format from Supabase
+  return dateStr;
 }
