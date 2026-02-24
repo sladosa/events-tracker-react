@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
@@ -83,6 +83,9 @@ interface LocalAttributeValue {
 export function EditActivityPage() {
   const navigate = useNavigate();
   const { sessionStart } = useParams<{ sessionStart: string }>();
+  const [searchParams] = useSearchParams();
+  const categoryIdParam = searchParams.get('categoryId') as UUID | null;
+  const noSession = searchParams.get('noSession') === '1';
   
   // ============================================
   // Loading State
@@ -151,30 +154,49 @@ export function EditActivityPage() {
     setLoadError(null);
     
     try {
-      // Decode session_start from URL
-      const decodedSessionStart = decodeURIComponent(sessionStart);
-      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       
-      // Fetch all events with this session_start
-      const { data: events, error: eventsError } = await supabase
-        .from('events')
-        .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
-        .eq('session_start', decodedSessionStart)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
+      let events: LoadedEvent[];
       
-      if (eventsError) throw eventsError;
-      if (!events || events.length === 0) {
-        throw new Error('Activity not found');
+      if (noSession) {
+        // No session_start: sessionStart param is actually an event ID
+        const { data: eventsData, error: eventsError } = await supabase
+          .from('events')
+          .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
+          .eq('id', sessionStart)
+          .eq('user_id', user.id);
+        
+        if (eventsError) throw eventsError;
+        if (!eventsData || eventsData.length === 0) throw new Error('Activity not found');
+        events = eventsData as LoadedEvent[];
+      } else {
+        // Normal case: fetch by session_start + categoryId (to avoid wrong-activity bug)
+        const decodedSessionStart = decodeURIComponent(sessionStart);
+        
+        let query = supabase
+          .from('events')
+          .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
+          .eq('session_start', decodedSessionStart)
+          .eq('user_id', user.id);
+        
+        // KRITIČNO: filter by category_id to avoid returning wrong activity
+        // when two different categories share the same session_start timestamp
+        if (categoryIdParam) {
+          query = query.eq('category_id', categoryIdParam);
+        }
+        
+        const { data: eventsData, error: eventsError } = await query
+          .order('created_at', { ascending: true });
+        
+        if (eventsError) throw eventsError;
+        if (!eventsData || eventsData.length === 0) throw new Error('Activity not found');
+        events = eventsData as LoadedEvent[];
       }
       
-      const loadedEvents = events as LoadedEvent[];
-      
       // Get the leaf category (last event's category)
-      const leafCategoryId = loadedEvents[loadedEvents.length - 1].category_id;
+      const leafCategoryId = events[events.length - 1].category_id;
       setCategoryId(leafCategoryId);
       
       // Build category path
@@ -182,17 +204,19 @@ export function EditActivityPage() {
       setCategoryPath(path);
       
       // Set session datetime
-      const sessionDate = new Date(decodedSessionStart);
+      const sessionDate = noSession 
+        ? new Date(events[0].created_at)
+        : new Date(decodeURIComponent(sessionStart));
       setSessionDateTime(sessionDate);
       setOriginalDateTime(sessionDate);
       
       // Store original event IDs
-      setOriginalEventIds(loadedEvents.map(e => e.id));
+      setOriginalEventIds(events.map(e => e.id));
       
       // Fetch attributes and attachments for each event
       const pendingEventsData: PendingEvent[] = [];
       
-      for (const event of loadedEvents) {
+      for (const event of events) {
         // Fetch attributes
         const { data: attrs } = await supabase
           .from('event_attributes')
@@ -849,16 +873,29 @@ export function EditActivityPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const decodedSessionStart = decodeURIComponent(sessionStart);
-      const { data: events } = await supabase
-        .from('events')
-        .select('id')
-        .eq('session_start', decodedSessionStart)
-        .eq('user_id', user.id);
+      let eventIds: string[];
 
-      if (events && events.length > 0) {
-        const eventIds = (events as { id: string }[]).map(e => e.id);
+      if (noSession) {
+        // No session_start: delete single event by ID (sessionStart param = eventId)
+        eventIds = [sessionStart];
+      } else {
+        const decodedSessionStart = decodeURIComponent(sessionStart);
+        let query = supabase
+          .from('events')
+          .select('id')
+          .eq('session_start', decodedSessionStart)
+          .eq('user_id', user.id);
 
+        // KRITIČNO: filter by category_id to avoid deleting wrong activity
+        if (categoryIdParam) {
+          query = query.eq('category_id', categoryIdParam);
+        }
+
+        const { data: events } = await query;
+        eventIds = events ? (events as { id: string }[]).map(e => e.id) : [];
+      }
+
+      if (eventIds.length > 0) {
         const { data: attachments } = await supabase
           .from('event_attachments')
           .select('url')
@@ -884,7 +921,7 @@ export function EditActivityPage() {
       toast.error('Brisanje nije uspjelo');
       setSaving(false);
     }
-  }, [sessionStart, navigate]);
+  }, [sessionStart, noSession, categoryIdParam, navigate]);
   
   // ============================================
   // Render - Loading State

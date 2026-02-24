@@ -251,22 +251,22 @@ export function ProgressiveCategorySelector({
   // --------------------------------------------
   // Load L1+L2 when area changes (ONLY if not restoring)
   // --------------------------------------------
-  
+
   useEffect(() => {
     // Don't run until restore is complete
     if (!isRestored || isRestoring) return;
     
     // If no area selected, clear everything
+    // Guard checks: only call setState if value actually changes
     if (!filter.areaId) {
-      setDropdownOptions([]);
-      setSelectionChain([]);
+      if (dropdownOptions.length > 0) setDropdownOptions([]);
+      if (selectionChain.length > 0) setSelectionChain([]);
       setIsLeafCategory(false);
       updatePathDisplay(null, []);
       return;
     }
     
     // If we already have a selection chain for this area, don't reload
-    // This prevents overwriting restored state
     if (selectionChain.length > 0 && selectionChain[0]?.area_id === filter.areaId) {
       return;
     }
@@ -281,8 +281,9 @@ export function ProgressiveCategorySelector({
       })
       .finally(() => setIsLoading(false));
       
-  }, [filter.areaId, isRestored, isRestoring, selectionChain, areas, loadL1AndL2Categories, setDropdownOptions, setSelectionChain, setIsLeafCategory, updatePathDisplay]);
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter.areaId, isRestored, isRestoring, areas, loadL1AndL2Categories, setDropdownOptions, setSelectionChain, setIsLeafCategory, updatePathDisplay]);
+  
   // --------------------------------------------
   // Handlers
   // --------------------------------------------
@@ -521,7 +522,7 @@ export function ProgressiveCategorySelector({
             <option value="">Select shortcut...</option>
             {presets.map((preset) => (
               <option key={preset.id} value={preset.id}>
-                {preset.name} {preset.usage_count > 0 && `(${preset.usage_count}×)`}
+                {preset.name}
               </option>
             ))}
           </select>

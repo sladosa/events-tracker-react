@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFilter } from '@/context/FilterContext';
 import { useActivities, formatTime, formatDate, type ActivityGroup } from '@/hooks/useActivities';
+import type { UUID } from '@/types';
 
 interface ActivitiesTableProps {
   className?: string;
-  onEditActivity?: (sessionStart: string) => void;
+  onEditActivity?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
   onDeleteActivity?: (sessionStart: string) => Promise<void>;
 }
 
@@ -237,7 +238,7 @@ interface ActivityRowProps {
   group: ActivityGroup;
   isSelected: boolean;
   onToggleSelect: () => void;
-  onEdit?: (sessionStart: string) => void;
+  onEdit?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
   onDelete?: (sessionStart: string) => Promise<void>;
 }
 
@@ -245,7 +246,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onDelete }: Ac
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
   
   const firstEvent = group.events[0];
@@ -256,10 +257,23 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onDelete }: Ac
   const handleMenuOpen = useCallback(() => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPos({
-        top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-      });
+      const MENU_HEIGHT = 160; // approximate menu height
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const right = window.innerWidth - rect.right;
+
+      if (spaceBelow < MENU_HEIGHT + 8) {
+        // Not enough space below – show above the button
+        setMenuPos({
+          bottom: window.innerHeight - rect.top + 4,
+          right,
+        });
+      } else {
+        // Default: show below
+        setMenuPos({
+          top: rect.bottom + 4,
+          right,
+        });
+      }
     }
     setShowMenu(true);
   }, []);
@@ -354,17 +368,18 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onDelete }: Ac
               />
               <div 
                 className="fixed w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1"
-                style={{ top: menuPos.top, right: menuPos.right }}
+                style={{ 
+                  top: menuPos.top, 
+                  bottom: menuPos.bottom, 
+                  right: menuPos.right 
+                }}
               >
                 <button
                   onClick={() => {
-                    if (group.session_start) {
-                      onEdit?.(group.session_start);
-                    }
+                    onEdit?.(group.session_start, group.category_id, firstEvent.id);
                     setShowMenu(false);
                   }}
-                  disabled={!group.session_start}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                 >
                   ✏️ Edit
                 </button>

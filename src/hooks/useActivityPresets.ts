@@ -53,8 +53,8 @@ export function useActivityPresets(): UseActivityPresetsResult {
 
   // Create new preset
   const createPreset = useCallback(async (
-    name: string, 
-    areaId: UUID | null, 
+    name: string,
+    areaId: UUID | null,
     categoryId: UUID | null
   ): Promise<ActivityPreset | null> => {
     try {
@@ -107,32 +107,40 @@ export function useActivityPresets(): UseActivityPresetsResult {
   }, []);
 
   // Increment usage count when preset is used
+  // FIX: čita usage_count iz DB umjesto iz presets state-a
+  // da izbjegne [presets] dependency koji uzrokuje infinite loop
   const incrementUsage = useCallback(async (presetId: UUID): Promise<void> => {
     try {
-      const preset = presets.find(p => p.id === presetId);
-      if (!preset) return;
+      // Dohvati trenutni usage_count iz DB
+      const { data: current } = await supabase
+        .from('activity_presets')
+        .select('usage_count')
+        .eq('id', presetId)
+        .single();
+
+      if (!current) return;
 
       const { error: updateError } = await supabase
         .from('activity_presets')
         .update({
-          usage_count: preset.usage_count + 1,
+          usage_count: current.usage_count + 1,
           last_used: new Date().toISOString(),
         })
         .eq('id', presetId);
 
       if (updateError) throw updateError;
 
-      // Update local state
-      setPresets(prev => prev.map(p => 
-        p.id === presetId 
+      // Update local state funkcionalno (bez čitanja presets iz closurea)
+      setPresets(prev => prev.map(p =>
+        p.id === presetId
           ? { ...p, usage_count: p.usage_count + 1, last_used: new Date().toISOString() }
           : p
       ));
     } catch (err) {
       console.error('Failed to increment usage:', err);
-      // Don't set error - this is non-critical
+      // Non-critical - ne setamo error state
     }
-  }, [presets]);
+  }, []); // Prazni dependency array - ne ovisi o presets state-u
 
   return {
     presets,

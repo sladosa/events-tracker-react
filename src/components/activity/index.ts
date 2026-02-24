@@ -7,7 +7,6 @@ export { PhotoGallery, SimplePhotoUpload } from './PhotoGallery';
 export { SessionHeader } from './SessionHeader';
 export { ActivityHeader, formatTimer, formatDuration } from './ActivityHeader';
 export { SessionLog } from './SessionLog';
-export { ShortcutsBar } from './ShortcutsBar';
 export { ActivitiesTable } from './ActivitiesTable';
 export { 
   ConfirmDialog, 

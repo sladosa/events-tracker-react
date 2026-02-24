@@ -9,6 +9,7 @@ import { ActivitiesTable } from '@/components/activity/ActivitiesTable';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 import type { Category } from '@/types/database';
+import type { UUID } from '@/types';
 
 // --------------------------------------------
 // Icons
@@ -200,11 +201,6 @@ function AppContent() {
           >
             <div className="flex items-center gap-2">
               <h2 className="font-medium text-gray-900 text-sm sm:text-base">Filter</h2>
-              {hasActiveFilter && (
-                <span className="px-1.5 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded">
-                  Active
-                </span>
-              )}
             </div>
             
             <div className="flex items-center gap-2">
@@ -373,10 +369,15 @@ function ActivitiesView() {
   const { fullPathDisplay, isLeafCategory } = useFilter();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleEditActivity = (sessionStart: string) => {
-    // Navigate to edit page with encoded session_start
-    const encodedSessionStart = encodeURIComponent(sessionStart);
-    nav(`/app/edit/${encodedSessionStart}`);
+  const handleEditActivity = (sessionStart: string | null, categoryId: UUID, eventId: UUID) => {
+    if (sessionStart) {
+      // Normal case: navigate by session_start + categoryId
+      const encodedSessionStart = encodeURIComponent(sessionStart);
+      nav(`/app/edit/${encodedSessionStart}?categoryId=${categoryId}`);
+    } else {
+      // Fallback: activity has no session_start, navigate by single eventId
+      nav(`/app/edit/${eventId}?noSession=1&categoryId=${categoryId}`);
+    }
   };
 
   // P1: Delete activity - briše events, attributes, storage fajlove
