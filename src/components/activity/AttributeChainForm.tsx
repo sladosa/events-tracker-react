@@ -182,7 +182,11 @@ export function AttributeChainForm({
         const isLeaf = category.id === categoryChain[0].id; // First in original chain is leaf
         const isExpanded = expandedCategories.has(category.id);
         const attributes = attributesByCategory.get(category.id) || [];
-        const touchedCount = attributes.filter(a => values.get(a.id)?.touched).length;
+        // P1: count attrs with no meaningful value (null, undefined, empty string)
+        const emptyCount = attributes.filter(a => {
+          const v = values.get(a.id)?.value;
+          return v === null || v === undefined || v === '';
+        }).length;
         
         return (
           <div
@@ -216,10 +220,12 @@ export function AttributeChainForm({
               </div>
               
               <div className="flex items-center gap-2 text-xs text-gray-500">
-                {touchedCount > 0 && (
-                  <span className="text-green-600 font-medium">{touchedCount} filled</span>
-                )}
-                <span>({attributes.length} attrs)</span>
+                <span>
+                  ({attributes.length} attrs
+                  {emptyCount > 0 && (
+                    <span className="text-amber-600"> / {emptyCount} empty</span>
+                  )})
+                </span>
               </div>
             </button>
 

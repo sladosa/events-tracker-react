@@ -834,8 +834,16 @@ export function EditActivityPage() {
         }
       }
       
-      // Success!
-      navigate('/app');
+      // Success! Navigate to View Details
+      if (sessionStart) {
+        if (noSession) {
+          navigate(`/app/view/${sessionStart}?noSession=1${categoryIdParam ? `&categoryId=${categoryIdParam}` : ''}`);
+        } else {
+          navigate(`/app/view/${sessionStart}${categoryIdParam ? `?categoryId=${categoryIdParam}` : ''}`);
+        }
+      } else {
+        navigate('/app');
+      }
       
     } catch (err) {
       console.error('Failed to save:', err);
@@ -853,14 +861,32 @@ export function EditActivityPage() {
     if (isDirty) {
       setShowCancelDialog(true);
     } else {
-      navigate('/app');
+      // Build sessionKey for highlight: same format as useActivities groupMap
+      const decodedStart = sessionStart ? decodeURIComponent(sessionStart) : null;
+      const key = (decodedStart && categoryIdParam && !noSession)
+        ? `${categoryIdParam}_${decodedStart}`
+        : sessionStart ?? null;
+      navigate('/app', { state: { highlightKey: key } });
     }
-  }, [isDirty, navigate]);
-  
+  }, [isDirty, navigate, sessionStart, categoryIdParam, noSession]);
+
+  const handleViewMode = useCallback(() => {
+    if (!sessionStart) return;
+    if (noSession) {
+      navigate(`/app/view/${sessionStart}?noSession=1${categoryIdParam ? `&categoryId=${categoryIdParam}` : ''}`);
+    } else {
+      navigate(`/app/view/${sessionStart}${categoryIdParam ? `?categoryId=${categoryIdParam}` : ''}`);
+    }
+  }, [sessionStart, noSession, categoryIdParam, navigate]);
+
   const handleConfirmCancel = useCallback(() => {
     setShowCancelDialog(false);
-    navigate('/app');
-  }, [navigate]);
+    const decodedStart = sessionStart ? decodeURIComponent(sessionStart) : null;
+    const key = (decodedStart && categoryIdParam && !noSession)
+      ? `${categoryIdParam}_${decodedStart}`
+      : sessionStart ?? null;
+    navigate('/app', { state: { highlightKey: key } });
+  }, [navigate, sessionStart, categoryIdParam, noSession]);
 
   // ============================================
   // Delete Session Handler (Delete button u headeru)
@@ -988,6 +1014,7 @@ export function EditActivityPage() {
         onCancel={handleCancel}
         onSave={handleSave}
         onDeleteSession={handleDeleteSession}
+        onViewMode={handleViewMode}
         canSave={canSave}
         saving={saving}
       />
@@ -1124,7 +1151,6 @@ export function EditActivityPage() {
                   onChange={handleAttributeChange}
                   onTouch={handleAttributeTouch}
                   disabled={saving}
-                  expandedByDefault={true}
                 />
               ) : (
                 <div className="text-center py-6 text-amber-600 text-sm">

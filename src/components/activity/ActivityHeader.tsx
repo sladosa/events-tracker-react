@@ -73,6 +73,9 @@ interface ActivityHeaderProps {
   onDateTimeChange?: (date: Date) => void;
   totalDuration?: number;
 
+  /** Navigate to View Details mode (Edit mode only) */
+  onViewMode?: () => void;
+
   // Actions
   onCancel: () => void;
   onSave: () => void;
@@ -105,6 +108,7 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
       onSave,
       onSaveContinue,
       onDeleteSession,
+      onViewMode,
       canSave,
       saving,
       pendingEventCount = 0,
@@ -208,7 +212,7 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
         {/* Row 3: Action buttons */}
         <div className="px-4 py-2 flex items-center justify-between gap-2">
 
-          {/* Left: Cancel + Delete Session (Edit mode only) */}
+          {/* Left: Cancel + View (Edit mode) + Delete Session (Edit mode only) */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -221,6 +225,22 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+
+            {!isAddMode && onViewMode && (
+              <button
+                type="button"
+                onClick={onViewMode}
+                disabled={saving}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-white/20 hover:bg-white/30 text-white transition-colors disabled:opacity-50"
+                title="Switch to View mode"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span className="hidden sm:inline">View</span>
+              </button>
+            )}
 
             {!isAddMode && onDeleteSession && (
               !showDeleteConfirm ? (

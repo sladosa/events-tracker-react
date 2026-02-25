@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
-import { FilterProvider, useFilter } from '@/context/FilterContext';
+import { useFilter } from '@/context/FilterContext';
 import { ProgressiveCategorySelector } from '@/components/filter/ProgressiveCategorySelector';
 import { DateRangeFilter } from '@/components/filter/DateRangeFilter';
 import { ActivitiesTable } from '@/components/activity/ActivitiesTable';
@@ -380,6 +380,15 @@ function ActivitiesView() {
     }
   };
 
+  const handleViewDetails = (sessionStart: string | null, categoryId: UUID, eventId: UUID) => {
+    if (sessionStart) {
+      const encodedSessionStart = encodeURIComponent(sessionStart);
+      nav(`/app/view/${encodedSessionStart}?categoryId=${categoryId}`);
+    } else {
+      nav(`/app/view/${eventId}?noSession=1&categoryId=${categoryId}`);
+    }
+  };
+
   // P1: Delete activity - briše events, attributes, storage fajlove
   const handleDeleteActivity = async (sessionStart: string): Promise<void> => {
     try {
@@ -469,6 +478,7 @@ function ActivitiesView() {
       <ActivitiesTable 
         key={refreshKey}
         onEditActivity={handleEditActivity}
+        onViewDetails={handleViewDetails}
         onDeleteActivity={handleDeleteActivity}
       />
     </div>
@@ -476,13 +486,9 @@ function ActivitiesView() {
 }
 
 // --------------------------------------------
-// Main Export (wrapped in FilterProvider)
+// Main Export
 // --------------------------------------------
 
 export default function AppHome() {
-  return (
-    <FilterProvider>
-      <AppContent />
-    </FilterProvider>
-  );
+  return <AppContent />;
 }

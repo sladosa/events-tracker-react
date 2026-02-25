@@ -26,7 +26,8 @@ export function ProgressiveCategorySelector({
   const { 
     filter, 
     selectArea, 
-    selectCategory, 
+    selectCategory,
+    selectAreaAndCategory,
     reset,
     isLeafCategory,
     setIsLeafCategory,
@@ -172,11 +173,6 @@ export function ProgressiveCategorySelector({
       const fullPath = await buildFullPath(category as Category);
       setSelectionChain(fullPath);
 
-      // Set area
-      if (preset.area_id) {
-        selectArea(preset.area_id);
-      }
-
       // Check if leaf
       const children = await loadChildCategories(preset.category_id);
       const isLeaf = children.length === 0;
@@ -194,9 +190,11 @@ export function ProgressiveCategorySelector({
         }
       }
 
-      // Update context
+      // Update context – ATOMSKI: area i category u jednom setState pozivu
+      // Sprječava race condition gdje selectArea() resetira categoryId na null
+      // prije nego selectCategory() stigne postaviti ispravnu vrijednost (2.1)
       const pathIds: UUID[] = fullPath.map(c => c.id);
-      selectCategory(preset.category_id, pathIds);
+      selectAreaAndCategory(preset.area_id ?? null, preset.category_id, pathIds);
       setIsLeafCategory(isLeaf);
 
       // Update display
@@ -215,7 +213,7 @@ export function ProgressiveCategorySelector({
     } finally {
       setIsLoading(false);
     }
-  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectArea, selectCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange]);
+  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectAreaAndCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange]);
 
   const handleSavePreset = useCallback(async () => {
     if (!newPresetName.trim() || !filter.categoryId) return;

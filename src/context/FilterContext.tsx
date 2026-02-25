@@ -75,6 +75,8 @@ export interface FilterContextType {
   // Navigation actions
   selectArea: (areaId: UUID | null) => void;
   selectCategory: (categoryId: UUID | null, path?: UUID[]) => void;
+  // 2.1: Atomic area+category selection to prevent race condition
+  selectAreaAndCategory: (areaId: UUID | null, categoryId: UUID | null, path?: UUID[]) => void;
   navigateToPath: (path: BreadcrumbItem[]) => void;
   navigateUp: () => void;
   reset: () => void;
@@ -325,6 +327,17 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     }));
   }, []);
 
+  // 2.1: Atomic – sets area AND category in one setState call
+  // Prevents the race where selectArea() resets categoryId to null before selectCategory() fires
+  const selectAreaAndCategory = useCallback((areaId: UUID | null, categoryId: UUID | null, path: UUID[] = []) => {
+    setFilter(prev => ({
+      ...prev,
+      areaId,
+      categoryId,
+      categoryPath: path,
+    }));
+  }, []);
+
   const navigateToPath = useCallback((path: BreadcrumbItem[]) => {
     if (path.length === 0) {
       setFilter(prev => ({
@@ -467,6 +480,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     // Actions
     selectArea,
     selectCategory,
+    selectAreaAndCategory,
     navigateToPath,
     navigateUp,
     reset,

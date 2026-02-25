@@ -77,6 +77,7 @@ export interface ActivityGroup {
   session_start: string | null;
   events: ActivityEvent[];
   eventCount: number;
+  has_photos: boolean;       // 1.4.3: true if any event in this group has attachments
 }
 
 interface UseActivitiesResult {
@@ -463,13 +464,35 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
             event_date: event.event_date,
             session_start: event.session_start,
             events: [],
-            eventCount: 0
+            eventCount: 0,
+            has_photos: false,
           };
           groupMap.set(sessionKey, group);
         }
         
         group.events.push(event);
         group.eventCount++;
+      }
+
+      // 1.4.3: Batch query for photo indicators – single query for all events on this page
+      const allEventIds = enrichedEvents.map(e => e.id);
+      if (allEventIds.length > 0) {
+        const { data: attachments } = await supabase
+          .from('event_attachments')
+          .select('event_id')
+          .in('event_id', allEventIds)
+          .eq('type', 'image');
+
+        if (attachments && attachments.length > 0) {
+          const eventIdsWithPhotos = new Set(
+            (attachments as { event_id: string }[]).map(a => a.event_id)
+          );
+          for (const group of groupMap.values()) {
+            if (group.events.some(e => eventIdsWithPhotos.has(e.id))) {
+              group.has_photos = true;
+            }
+          }
+        }
       }
 
       const newGroups = Array.from(groupMap.values());

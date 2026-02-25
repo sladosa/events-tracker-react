@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useFilter } from '@/context/FilterContext';
 import { useActivities, formatTime, formatDate, type ActivityGroup } from '@/hooks/useActivities';
 import type { UUID } from '@/types';
@@ -6,12 +7,33 @@ import type { UUID } from '@/types';
 interface ActivitiesTableProps {
   className?: string;
   onEditActivity?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
+  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
   onDeleteActivity?: (sessionStart: string) => Promise<void>;
 }
 
-export function ActivitiesTable({ className = '', onEditActivity, onDeleteActivity }: ActivitiesTableProps) {
+export function ActivitiesTable({ className = '', onEditActivity, onViewDetails, onDeleteActivity }: ActivitiesTableProps) {
   const { filter } = useFilter();
   const PAGE_SIZE = 20;
+  const location = useLocation();
+
+  // Highlight key from navigation state (after returning from Edit/View)
+  const [highlightKey, setHighlightKey] = useState<string | null>(
+    (location.state as { highlightKey?: string } | null)?.highlightKey ?? null
+  );
+  const highlightRowRef = useRef<HTMLTableRowElement>(null);
+
+  // Auto-clear highlight after 3s, scroll to row when activities load
+  useEffect(() => {
+    if (!highlightKey) return;
+    const timer = setTimeout(() => setHighlightKey(null), 3000);
+    return () => clearTimeout(timer);
+  }, [highlightKey]);
+
+  // Scroll to highlighted row once it renders
+  useEffect(() => {
+    if (!highlightKey || !highlightRowRef.current) return;
+    highlightRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightKey, highlightRowRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const { 
     activities, 
@@ -213,7 +235,10 @@ export function ActivitiesTable({ className = '', onEditActivity, onDeleteActivi
                 isSelected={selectedKeys.has(group.sessionKey)}
                 onToggleSelect={() => toggleSelect(group.sessionKey)}
                 onEdit={onEditActivity}
+                onViewDetails={onViewDetails}
                 onDelete={onDeleteActivity}
+                isHighlighted={group.sessionKey === highlightKey}
+                highlightRef={group.sessionKey === highlightKey ? highlightRowRef : undefined}
               />
             ))}
           </tbody>
@@ -239,10 +264,13 @@ interface ActivityRowProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onEdit?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
+  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
   onDelete?: (sessionStart: string) => Promise<void>;
+  isHighlighted?: boolean;
+  highlightRef?: React.RefObject<HTMLTableRowElement | null>;
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onDelete }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -300,7 +328,16 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onDelete }: Ac
 
   return (
     <>
-      <tr className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-indigo-50' : ''}`}>
+      <tr
+        ref={highlightRef}
+        className={`transition-colors ${
+          isHighlighted
+            ? 'bg-indigo-100 ring-2 ring-inset ring-indigo-400'
+            : isSelected
+              ? 'bg-indigo-50 hover:bg-indigo-50'
+              : 'hover:bg-gray-50'
+        }`}
+      >
         {/* Checkbox */}
         <td className="px-3 py-2.5">
           <input
@@ -335,7 +372,12 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onDelete }: Ac
 
         {/* Events count + photo indicator */}
         <td className="px-3 py-2.5 text-center">
-          <span className="text-sm text-gray-700">{group.eventCount}</span>
+          <div className="flex items-center justify-center gap-1">
+            <span className="text-sm text-gray-700">{group.eventCount}</span>
+            {group.has_photos && (
+              <span title="Has photos" className="text-xs">📷</span>
+            )}
+          </div>
         </td>
         
         {/* Comment - hidden on small/medium screens */}
@@ -385,6 +427,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onDelete }: Ac
                 </button>
                 <button
                   onClick={() => {
+                    onViewDetails?.(group.session_start, group.category_id, firstEvent.id);
                     setShowMenu(false);
                   }}
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"

@@ -3,11 +3,13 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 
 import { supabase } from '@/lib/supabaseClient'
+import { FilterProvider } from '@/context/FilterContext'
 import AuthPage from '@/pages/AuthPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import AppHome from '@/pages/AppHome'
 import { AddActivityPage } from '@/pages/AddActivityPage'
 import { EditActivityPage } from '@/pages/EditActivityPage'
+import { ViewDetailsPage } from '@/pages/ViewDetailsPage'
 import { DebugPage } from '@/pages/DebugPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -80,12 +82,14 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/debug" element={<DebugPage />} />
         
-        {/* Protected routes */}
+        {/* Protected routes - sve unutar FilterProvider da dijele isti filter state */}
         <Route
           path="/app"
           element={
             <RequireAuth>
-              <AppHome />
+              <FilterProvider>
+                <AppHome />
+              </FilterProvider>
             </RequireAuth>
           }
         />
@@ -93,7 +97,9 @@ export default function App() {
           path="/app/add"
           element={
             <RequireAuth>
-              <AddActivityPage />
+              <FilterProvider>
+                <AddActivityPage />
+              </FilterProvider>
             </RequireAuth>
           }
         />
@@ -101,7 +107,19 @@ export default function App() {
           path="/app/edit/:sessionStart"
           element={
             <RequireAuth>
-              <EditActivityPage />
+              <FilterProvider>
+                <EditActivityPage />
+              </FilterProvider>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/app/view/:sessionStart"
+          element={
+            <RequireAuth>
+              <FilterProvider>
+                <ViewDetailsPage />
+              </FilterProvider>
             </RequireAuth>
           }
         />
@@ -109,7 +127,9 @@ export default function App() {
           path="/app/*"
           element={
             <RequireAuth>
-              <AppHome />
+              <FilterProvider>
+                <AppHome />
+              </FilterProvider>
             </RequireAuth>
           }
         />
