@@ -105,6 +105,7 @@ interface UseActivitiesOptions {
   categoryId?: UUID | null;
   dateFrom?: string | null;
   dateTo?: string | null;
+  sortOrder?: 'desc' | 'asc';   // D3: newest first (default) or oldest first
   pageSize?: number;
 }
 
@@ -144,6 +145,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     categoryId = null,
     dateFrom = null,
     dateTo = null,
+    sortOrder = 'desc',
     pageSize = 20
   } = options;
 
@@ -167,7 +169,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   // P4: Log when options change
   useEffect(() => {
     logDebug('OPTIONS_CHANGED', { areaId, categoryId, dateFrom, dateTo, pageSize });
-  }, [areaId, categoryId, dateFrom, dateTo, pageSize]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, pageSize]);
 
   // Check if category has children (not a leaf)
   const checkHasChildren = useCallback(async (catId: UUID): Promise<boolean> => {
@@ -360,8 +362,8 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       // Order and paginate
       const currentOffset = isLoadMore ? offset : 0;
       query = query
-        .order('event_date', { ascending: false })
-        .order('session_start', { ascending: false, nullsFirst: false })
+        .order('event_date', { ascending: sortOrder === 'asc' })
+        .order('session_start', { ascending: sortOrder === 'asc', nullsFirst: false })
         .range(currentOffset, currentOffset + pageSize - 1);
 
       const { data: events, error: fetchError, count } = await query;
@@ -543,13 +545,13 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [areaId, categoryId, dateFrom, dateTo, pageSize, offset, checkHasChildren, getDescendantCategoryIds, buildCategoryPath]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, pageSize, offset, checkHasChildren, getDescendantCategoryIds, buildCategoryPath]);
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
     logDebug('FILTER_EFFECT_TRIGGERED', { areaId, categoryId, dateFrom, dateTo });
     fetchActivities(false);
-  }, [areaId, categoryId, dateFrom, dateTo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async () => {
     if (!loadingMore && hasMore) {

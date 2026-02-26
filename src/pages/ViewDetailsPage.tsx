@@ -471,7 +471,8 @@ export function ViewDetailsPage() {
     categoryId: filter.categoryId,
     dateFrom: filter.dateFrom,
     dateTo: filter.dateTo,
-    pageSize: 500, // large enough for nav; TODO: could use cursor
+    sortOrder: filter.sortOrder,  // Prev/Next fix: mora koristiti isti sort kao tablica
+    pageSize: 500,
   });
 
   const currentIndex = useMemo(() => {
@@ -496,7 +497,7 @@ export function ViewDetailsPage() {
   }, [sessionStart, noSession, categoryIdParam]);
 
   const navigateBack = useCallback(() => {
-    navigate('/app', { state: { highlightKey: currentSessionKey } });
+    navigate('/app', { state: { highlightKey: currentSessionKey, collapseFilter: true } });
   }, [navigate, currentSessionKey]);
 
   const navigateToGroup = useCallback((group: typeof activities[0]) => {

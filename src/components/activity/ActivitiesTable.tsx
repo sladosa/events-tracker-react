@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useFilter } from '@/context/FilterContext';
 import { useActivities, formatTime, formatDate, type ActivityGroup } from '@/hooks/useActivities';
@@ -21,20 +22,15 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     (location.state as { highlightKey?: string } | null)?.highlightKey ?? null
   );
   const highlightRowRef = useRef<HTMLTableRowElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-clear highlight after 3s, scroll to row when activities load
   useEffect(() => {
     if (!highlightKey) return;
-    const timer = setTimeout(() => setHighlightKey(null), 3000);
+    const timer = setTimeout(() => setHighlightKey(null), 5000);
     return () => clearTimeout(timer);
   }, [highlightKey]);
 
-  // Scroll to highlighted row once it renders
-  useEffect(() => {
-    if (!highlightKey || !highlightRowRef.current) return;
-    highlightRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [highlightKey, highlightRowRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
-  
   const { 
     activities, 
     loading, 
@@ -49,8 +45,30 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     categoryId: filter.categoryId,
     dateFrom: filter.dateFrom,
     dateTo: filter.dateTo,
+    sortOrder: filter.sortOrder,
     pageSize: PAGE_SIZE
   });
+
+  // HLT fix: react to loading→false + activities present (ref.current is not reactive)
+  const hasHighlightRow = highlightKey
+    ? activities.some(g => g.sessionKey === highlightKey)
+    : false;
+
+  useEffect(() => {
+    if (!highlightKey || loading || !hasHighlightRow) return;
+    const timer = setTimeout(() => {
+      const row = highlightRowRef.current;
+      const container = scrollContainerRef.current;
+      if (!row || !container) return;
+      // Scroll inner overflow-y container da red dođe na sredinu vidljivog dijela
+      const rowTop = row.offsetTop;
+      const rowHeight = row.offsetHeight;
+      const containerHeight = container.clientHeight;
+      const scrollTo = rowTop - (containerHeight / 2) + (rowHeight / 2);
+      container.scrollTo({ top: scrollTo, behavior: 'smooth' });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [highlightKey, loading, hasHighlightRow]);
 
   // Multi-select state
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -206,10 +224,11 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
         )}
       </div>
 
-      {/* Table */}
+      {/* Table – outer div: horizontal scroll; inner div: vertical scroll with sticky header */}
       <div className="overflow-x-auto">
+        <div ref={scrollContainerRef} className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
               <th className="px-3 py-3 text-left w-8">
                 <input
@@ -224,7 +243,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
               <th className="px-3 py-3 text-left font-medium text-gray-700 max-w-[180px]">Category</th>
               <th className="px-3 py-3 text-center font-medium text-gray-700 w-16">Events</th>
               <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell max-w-[140px]">Comment</th>
-              <th className="px-3 py-3 text-right font-medium text-gray-700 w-12 sticky right-0 bg-gray-50">Actions</th>
+              <th className="px-3 py-3 text-right font-medium text-gray-700 w-12 sticky right-0 bg-gray-50 z-[2]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -243,6 +262,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* End of list footer */}
@@ -287,7 +307,8 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
       const rect = buttonRef.current.getBoundingClientRect();
       const MENU_HEIGHT = 160; // approximate menu height
       const spaceBelow = window.innerHeight - rect.bottom;
-      const right = window.innerWidth - rect.right;
+      // D2: ensure min 4px from right edge so menu stays on screen
+      const right = Math.max(window.innerWidth - rect.right, 4);
 
       if (spaceBelow < MENU_HEIGHT + 8) {
         // Not enough space below – show above the button
@@ -390,7 +411,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
         </td>
         
         {/* Actions - sticky right so always visible */}
-        <td className="px-2 py-2.5 text-right sticky right-0 bg-white">
+        <td className="px-2 py-2.5 text-right sticky right-0 bg-white z-[1]">
           <button
             ref={buttonRef}
             onClick={handleMenuOpen}
@@ -402,29 +423,21 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
           </button>
           
           {/* Dropdown Menu - fixed positioning to escape overflow:hidden parents */}
-          {showMenu && (
+          {showMenu && createPortal(
             <>
               <div 
                 className="fixed inset-0 z-40" 
                 onClick={() => { setShowMenu(false); setShowDeleteConfirm(false); }}
               />
               <div 
-                className="fixed w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1"
+                className="fixed w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] py-1"
                 style={{ 
                   top: menuPos.top, 
                   bottom: menuPos.bottom, 
                   right: menuPos.right 
                 }}
               >
-                <button
-                  onClick={() => {
-                    onEdit?.(group.session_start, group.category_id, firstEvent.id);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  ✏️ Edit
-                </button>
+                {/* D1: View Details first, then Edit, then Delete */}
                 <button
                   onClick={() => {
                     onViewDetails?.(group.session_start, group.category_id, firstEvent.id);
@@ -433,6 +446,15 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                 >
                   👁️ View Details
+                </button>
+                <button
+                  onClick={() => {
+                    onEdit?.(group.session_start, group.category_id, firstEvent.id);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  ✏️ Edit
                 </button>
                 <hr className="my-1 border-gray-100" />
                 {/* Delete with inline confirmation */}
@@ -470,7 +492,8 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
                   </div>
                 )}
               </div>
-            </>
+            </>,
+            document.body
           )}
         </td>
       </tr>

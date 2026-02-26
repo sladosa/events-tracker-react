@@ -12,6 +12,8 @@ const FILTER_STORAGE_KEY = 'events-tracker-filter-state';
 // Filter State Type
 // --------------------------------------------
 
+export type SortOrder = 'desc' | 'asc';
+
 export interface FilterState {
   areaId: UUID | null;
   categoryId: UUID | null;
@@ -19,6 +21,7 @@ export interface FilterState {
   dateFrom: string | null;
   dateTo: string | null;
   searchQuery: string;
+  sortOrder: SortOrder;   // D3: 'desc' = newest first (default), 'asc' = oldest first
 }
 
 // --------------------------------------------
@@ -41,7 +44,8 @@ const defaultFilterState: FilterState = {
   categoryPath: [],
   dateFrom: null,
   dateTo: null,
-  searchQuery: ''
+  searchQuery: '',
+  sortOrder: 'desc'  // D3: default newest first
 };
 
 // --------------------------------------------
@@ -83,6 +87,7 @@ export interface FilterContextType {
   
   // Date filter actions
   setDateRange: (from: string | null, to: string | null) => void;
+  setSortOrder: (order: SortOrder) => void;  // D3
   
   // Search
   setSearchQuery: (query: string) => void;
@@ -443,6 +448,11 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     }));
   }, []);
 
+  // D3: Sort order
+  const setSortOrder = useCallback((order: SortOrder) => {
+    setFilter(prev => ({ ...prev, sortOrder: order }));
+  }, []);
+
   // --------------------------------------------
   // Computed values
   // --------------------------------------------
@@ -486,6 +496,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     reset,
     setDateRange,
     setSearchQuery,
+    setSortOrder,
     saveToStorage,
     clearStorage,
     // Computed

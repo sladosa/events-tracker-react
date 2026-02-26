@@ -7,7 +7,7 @@ interface DateRangeFilterProps {
 }
 
 export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
-  const { filter, setDateRange } = useFilter();
+  const { filter, setDateRange, setSortOrder } = useFilter();
   const { bounds, loading } = useDateBounds(filter.areaId, filter.categoryId);
   
   // Local state for inputs (to allow editing before applying)
@@ -138,6 +138,33 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
           >
             All Time
           </button>
+
+          {/* D3: Sort order toggle */}
+          <div className="flex items-center gap-1 ml-1 pl-2 border-l border-gray-200">
+            <span className="text-xs text-gray-400">Sort:</span>
+            <button
+              onClick={() => setSortOrder('desc')}
+              title="Newest first"
+              className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                filter.sortOrder !== 'asc'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-500 bg-gray-100 hover:bg-gray-200'
+              }`}
+            >
+              ↓ Newest
+            </button>
+            <button
+              onClick={() => setSortOrder('asc')}
+              title="Oldest first"
+              className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                filter.sortOrder === 'asc'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-500 bg-gray-100 hover:bg-gray-200'
+              }`}
+            >
+              ↑ Oldest
+            </button>
+          </div>
         </div>
       </div>
 

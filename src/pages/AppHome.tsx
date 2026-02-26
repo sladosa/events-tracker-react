@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
@@ -69,6 +69,7 @@ type TabType = 'activities' | 'structure';
 
 function AppContent() {
   const nav = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState<string>('');
   const [activeTab, setActiveTab] = useState<TabType>('activities');
   
@@ -83,7 +84,11 @@ function AppContent() {
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [isFilterExpanded, setIsFilterExpanded] = useState(true);
+  // Collapse filter when returning from View/Edit (collapseFilter flag in location.state)
+  const [isFilterExpanded, setIsFilterExpanded] = useState(() => {
+    const state = location.state as { collapseFilter?: boolean } | null;
+    return !state?.collapseFilter;
+  });
 
   // Get user email
   useEffect(() => {
