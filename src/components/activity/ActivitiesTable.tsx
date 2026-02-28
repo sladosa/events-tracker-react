@@ -10,9 +10,11 @@ interface ActivitiesTableProps {
   onEditActivity?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
   onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
   onDeleteActivity?: (sessionStart: string) => Promise<void>;
+  onExport?: () => void;
+  onImport?: () => void;
 }
 
-export function ActivitiesTable({ className = '', onEditActivity, onViewDetails, onDeleteActivity }: ActivitiesTableProps) {
+export function ActivitiesTable({ className = '', onEditActivity, onViewDetails, onDeleteActivity, onExport, onImport }: ActivitiesTableProps) {
   const { filter } = useFilter();
   const PAGE_SIZE = 20;
   const location = useLocation();
@@ -265,12 +267,30 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
         </div>
       </div>
 
-      {/* End of list footer */}
-      {!hasMore && activities.length > 0 && (
-        <div className="px-4 py-3 border-t border-gray-100 text-center text-xs text-gray-400">
-          All {totalCount} events in {activityCount} activities loaded
+      {/* End of list footer with Export/Import */}
+      <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
+        {!hasMore && activities.length > 0 ? (
+          <span className="text-xs text-gray-400">
+            All {totalCount} events in {activityCount} activities loaded
+          </span>
+        ) : (
+          <span />
+        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onImport}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+          >
+            📤 Import
+          </button>
+          <button
+            onClick={onExport}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+          >
+            📥 Export
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

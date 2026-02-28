@@ -6,6 +6,8 @@ import { useFilter } from '@/context/FilterContext';
 import { ProgressiveCategorySelector } from '@/components/filter/ProgressiveCategorySelector';
 import { DateRangeFilter } from '@/components/filter/DateRangeFilter';
 import { ActivitiesTable } from '@/components/activity/ActivitiesTable';
+import { ExcelExportModal } from '@/components/activity/ExcelExportModal';
+import { ExcelImportModal } from '@/components/activity/ExcelImportModal';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 import type { Category } from '@/types/database';
@@ -373,6 +375,8 @@ function ActivitiesView() {
   const nav = useNavigate();
   const { fullPathDisplay, isLeafCategory } = useFilter();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showExport, setShowExport] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const handleEditActivity = (sessionStart: string | null, categoryId: UUID, eventId: UUID) => {
     if (sessionStart) {
@@ -485,7 +489,26 @@ function ActivitiesView() {
         onEditActivity={handleEditActivity}
         onViewDetails={handleViewDetails}
         onDeleteActivity={handleDeleteActivity}
+        onExport={() => setShowExport(true)}
+        onImport={() => setShowImport(true)}
       />
+
+      {/* Export Modal */}
+      {showExport && (
+        <ExcelExportModal onClose={() => setShowExport(false)} />
+      )}
+
+      {/* Import Modal */}
+      {showImport && (
+        <ExcelImportModal
+          onClose={() => setShowImport(false)}
+          onSuccess={() => {
+            setRefreshKey(prev => prev + 1);
+            setShowImport(false);
+            toast.success('Import completed – activities refreshed');
+          }}
+        />
+      )}
     </div>
   );
 }
