@@ -221,7 +221,7 @@ export async function loadEventsForExport(
 // ─────────────────────────────────────────────
 
 export async function resolveExportCategoryIds(
-  userId:         string,
+  _userId:        string,
   filters:        ExportFilters,
   categoriesDict: ExportCategoriesDict,
 ): Promise<string[]> {

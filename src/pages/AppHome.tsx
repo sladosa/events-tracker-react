@@ -99,15 +99,29 @@ function AppContent() {
     });
   }, []);
 
-  // Handle resize
+  // Handle resize – only react to WIDTH changes (orientation change).
+  // On Android, opening the virtual keyboard fires a resize event but only
+  // changes window.innerHeight (viewport shrinks). We must NOT collapse the
+  // filter in that case, otherwise opening the Save Shortcut modal (which
+  // has autoFocus → triggers keyboard) closes the filter behind the modal.
   useEffect(() => {
+    let lastWidth = window.innerWidth;
+
     const handleResize = () => {
-      const mobile = window.innerWidth < 768;
+      const newWidth = window.innerWidth;
+      const widthChanged = newWidth !== lastWidth;
+      lastWidth = newWidth;
+
+      const mobile = newWidth < 768;
       setIsMobile(mobile);
-      if (mobile && hasActiveFilter) {
+
+      // Collapse filter only on actual orientation/layout change (width changed),
+      // NOT on keyboard popup (height-only change).
+      if (widthChanged && mobile && hasActiveFilter) {
         setIsFilterExpanded(false);
       }
     };
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [hasActiveFilter]);

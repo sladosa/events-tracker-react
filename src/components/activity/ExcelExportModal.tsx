@@ -20,7 +20,7 @@ interface ExcelExportModalProps {
 }
 
 const DEFAULT_BATCH_SIZE = 10000;
-const MIN_BATCH = 1000;
+const MIN_BATCH = 2;
 const MAX_BATCH = 50000;
 
 export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
@@ -173,7 +173,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                   type="number"
                   min={MIN_BATCH}
                   max={MAX_BATCH}
-                  step={1000}
+                  step={batchSize < 1000 ? 1 : 1000}
                   value={batchSize}
                   onChange={e => setBatchSize(Math.max(MIN_BATCH, Math.min(MAX_BATCH, Number(e.target.value))))}
                   disabled={isGenerating}

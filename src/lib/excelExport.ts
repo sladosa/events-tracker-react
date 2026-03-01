@@ -197,6 +197,15 @@ export function buildAttrMeta(
     attrByCat.get(def.category_id)!.add(def.id);
   }
 
+  // Sort columns by Area → CategoryPath → attrName for consistent legend + EVENT DATA column order
+  attrColumns.sort((a, b) => {
+    const ma = attrMeta.get(a.attrDefId)!;
+    const mb = attrMeta.get(b.attrDefId)!;
+    if (ma.areaName     !== mb.areaName)     return ma.areaName.localeCompare(mb.areaName);
+    if (ma.categoryPath !== mb.categoryPath) return ma.categoryPath.localeCompare(mb.categoryPath);
+    return ma.name.localeCompare(mb.name);
+  });
+
   return { attrMeta, attrColumns, attrByCat };
 }
 
@@ -243,11 +252,11 @@ export async function createEventsExcel(
   }
   row++;
 
-  const legendDataStart = row;
+  // const legendDataStart = row;  // reserved for future grouping
   const legendRows: number[] = [];
 
   for (let idx = 0; idx < attrColumns.length; idx++) {
-    const { categoryPath, attrName, attrDefId } = attrColumns[idx];
+    const { attrName, attrDefId } = attrColumns[idx];
     const meta    = attrMeta.get(attrDefId)!;
     const colIdx  = ATTR_COL_START + idx;
     const letter  = colLetter(colIdx);
@@ -276,7 +285,7 @@ export async function createEventsExcel(
     row++;
   }
 
-  const legendDataEnd = row - 1;
+  // const legendDataEnd = row - 1;  // reserved for future grouping
 
   // Row grouping (smart chunks of ~10)
   if (legendRows.length > 0) {

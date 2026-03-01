@@ -104,10 +104,14 @@ function parseLegend(ws: ExcelJS.Worksheet): { mapping: LegendMapping; legendEnd
     if (rowNumber <= legendHeaderRow) return;
 
     const colCell = cellStr(row.getCell(1).value);
-    if (!colCell) return;   // blank col → stop
+    if (!colCell) return;   // blank col → skip this row
 
     let letter = colCell.toUpperCase().replace(/^COL\s*/, '').trim();
     if (!letter) return;
+
+    // Stop if col A is not a valid Excel column letter (1-3 capital letters A-Z).
+    // This prevents reading EVENT DATA rows (which have event_id, UUIDs etc.) as legend rows.
+    if (!/^[A-Z]{1,3}$/.test(letter)) return;
 
     const area         = cellStr(row.getCell(2).value);
     const categoryPath = cellStr(row.getCell(3).value);
