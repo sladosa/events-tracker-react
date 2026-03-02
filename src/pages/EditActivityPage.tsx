@@ -374,7 +374,8 @@ export function EditActivityPage() {
   const { 
     attributesByCategory, 
     loading: attributesLoading,
-    error: attributesError
+    error: attributesError,
+    refetch: refetchAttributes,
   } = useAttributeDefinitions(chainCategoryIds);
   
   // ============================================
@@ -1151,6 +1152,7 @@ export function EditActivityPage() {
                   onChange={handleAttributeChange}
                   onTouch={handleAttributeTouch}
                   disabled={saving}
+                  onDefinitionUpdated={refetchAttributes}
                 />
               ) : (
                 <div className="text-center py-6 text-amber-600 text-sm">

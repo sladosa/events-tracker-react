@@ -419,7 +419,8 @@ export function AddActivityPage() {
   const { 
     attributesByCategory, 
     loading: attributesLoading,
-    error: attributesError
+    error: attributesError,
+    refetch: refetchAttributes,
   } = useAttributeDefinitions(chainCategoryIds);
   
   useEffect(() => {
@@ -1005,6 +1006,7 @@ export function AddActivityPage() {
                     onTouch={handleAttributeTouch}
                     disabled={saving}
                     expandedByDefault={false}
+                    onDefinitionUpdated={refetchAttributes}
                   />
                 </ErrorBoundary>
               ) : (

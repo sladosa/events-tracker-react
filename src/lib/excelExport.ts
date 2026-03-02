@@ -373,7 +373,16 @@ export async function createEventsExcel(
   // ──────────────────────────────────────────
   // EVENT DATA ROWS
   // ──────────────────────────────────────────
-  for (const event of events) {
+  // B.1.1: Sort events by created_at ASC so rows appear in chronological order.
+  // Nulls go last (events without created_at sort after timed events).
+  const sortedEvents = [...events].sort((a, b) => {
+    if (!a.created_at && !b.created_at) return 0;
+    if (!a.created_at) return 1;
+    if (!b.created_at) return -1;
+    return a.created_at.localeCompare(b.created_at);
+  });
+
+  for (const event of sortedEvents) {
     const catInfo = categoriesDict[event.category_id] ?? {};
 
     // Build relevant attr ids for this event (walk up hierarchy)

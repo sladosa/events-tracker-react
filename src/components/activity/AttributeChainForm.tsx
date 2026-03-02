@@ -17,6 +17,8 @@ interface AttributeChainFormProps {
   onTouch: (definitionId: string) => void;
   disabled?: boolean;
   expandedByDefault?: boolean;
+  // Callback za refetch nakon što korisnik doda Other vrijednost
+  onDefinitionUpdated?: () => void;
 }
 
 // Check if attribute is a dropdown type (should be sticky in leaf)
@@ -33,6 +35,7 @@ export function AttributeChainForm({
   onTouch,
   disabled,
   expandedByDefault = false,
+  onDefinitionUpdated,
 }: AttributeChainFormProps) {
   // Track which categories are expanded (leaf is always expanded)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -151,6 +154,7 @@ export function AttributeChainForm({
         onTouched={() => onTouch(attr.id)}
         dependencyValue={dependencyValue}
         disabled={disabled}
+        onDefinitionUpdated={onDefinitionUpdated}
       />
     );
   };

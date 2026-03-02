@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { AttributeDefinition, DataType } from '@/types';
 import { parseValidationRules, getOptionsForDependency } from '@/hooks/useAttributeDefinitions';
+import { supabase } from '@/lib/supabaseClient';
 
 interface AttributeInputProps {
   definition: AttributeDefinition;
@@ -11,6 +12,8 @@ interface AttributeInputProps {
   // Za dependency
   dependencyValue?: string | null;
   className?: string;
+  // Callback nakon što se validation_rules ažurira u bazi (refetch)
+  onDefinitionUpdated?: () => void;
 }
 
 export function AttributeInput({
@@ -21,6 +24,7 @@ export function AttributeInput({
   disabled,
   dependencyValue,
   className = '',
+  onDefinitionUpdated,
 }: AttributeInputProps) {
   const [showOtherInput, setShowOtherInput] = useState(false);
   const [otherValue, setOtherValue] = useState('');
@@ -56,10 +60,52 @@ export function AttributeInput({
     setOtherValue('');
   };
 
-  const handleOtherConfirm = () => {
-    if (otherValue.trim()) {
-      handleChange(otherValue.trim());
-      setShowOtherInput(false);
+  const handleOtherConfirm = async () => {
+    const trimmed = otherValue.trim();
+    if (!trimmed) return;
+
+    // 1. Spremi vrijednost u event_attributes (postojeće ponašanje)
+    handleChange(trimmed);
+    setShowOtherInput(false);
+
+    // 2. DROPDOWN-3: Persisti u attribute_definitions.validation_rules
+    try {
+      const rules = (definition.validation_rules ?? {}) as Record<string, unknown>;
+      let updatedRules: Record<string, unknown>;
+
+      if (parsedOptions.dependsOn && dependencyValue) {
+        // Dependency dropdown: dodaj trimmed u options_map[dependencyValue]
+        const dependsOnRaw = (rules.depends_on ?? {}) as Record<string, unknown>;
+        const existingMap = (dependsOnRaw.options_map ?? {}) as Record<string, string[]>;
+        const existingOptions = existingMap[dependencyValue] ?? [];
+        if (existingOptions.includes(trimmed)) return; // već postoji
+        updatedRules = {
+          ...rules,
+          depends_on: {
+            ...dependsOnRaw,
+            options_map: { ...existingMap, [dependencyValue]: [...existingOptions, trimmed] },
+          },
+        };
+      } else {
+        // Plain suggest dropdown: dodaj trimmed u suggest[]
+        const existingOptions = (rules.suggest as string[] | undefined) ?? parsedOptions.options;
+        if (existingOptions.includes(trimmed)) return; // već postoji
+        updatedRules = { ...rules, suggest: [...existingOptions, trimmed] };
+      }
+
+      const { error } = await supabase
+        .from('attribute_definitions')
+        .update({ validation_rules: updatedRules })
+        .eq('id', definition.id);
+
+      if (error) {
+        console.error('[AttributeInput] Failed to update validation_rules:', error);
+      } else {
+        // Refetch attribute definitions da se dropdown odmah osvježi
+        onDefinitionUpdated?.();
+      }
+    } catch (err) {
+      console.error('[AttributeInput] Unexpected error updating validation_rules:', err);
     }
   };
 
@@ -179,13 +225,14 @@ export function AttributeInput({
       }
 
       // Dropdown
-      const currentValueInOptions = options.includes(String(value));
-      const isCustomValue = value && !currentValueInOptions;
+      const currentValueStr = value != null ? String(value) : '';
+      const currentValueInOptions = !!currentValueStr && options.includes(currentValueStr);
+      const isCustomValue = !!currentValueStr && !currentValueInOptions;
 
       return (
         <div className="space-y-1">
           <select
-            value={isCustomValue ? '__other__' : (typeof value === 'boolean' ? '' : (value ?? ''))}
+            value={currentValueStr}
             onChange={(e) => {
               if (e.target.value === '__other__') {
                 handleOtherSelect();
@@ -202,20 +249,16 @@ export function AttributeInput({
                 {opt}
               </option>
             ))}
+            {/* DROPDOWN-1: custom vrijednost prikazana kao normalna opcija */}
+            {isCustomValue && (
+              <option key="__custom__" value={currentValueStr}>
+                {currentValueStr}
+              </option>
+            )}
             {parsedOptions.allowOther && (
               <option value="__other__">Other...</option>
             )}
-            {isCustomValue && (
-              <option value="__other__" disabled>
-                Custom: {String(value)}
-              </option>
-            )}
           </select>
-          {isCustomValue && (
-            <p className="text-xs text-blue-600">
-              Custom value: {String(value)}
-            </p>
-          )}
         </div>
       );
     }
