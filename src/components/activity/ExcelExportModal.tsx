@@ -89,7 +89,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       const bundle = await loadExportData(user.id, filters, offset, batchSize);
       const merged = mergeSessionEvents(bundle.events, bundle.categoriesDict);
 
-      const buffer = await createEventsExcel(merged, bundle.attrDefs, bundle.categoriesDict);
+      const buffer = await createEventsExcel(merged, bundle.attrDefs, bundle.categoriesDict, filters.sortOrder ?? 'desc');
 
       const dateStr   = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const suffix    = fileCount > 1 ? `_part${fileIndex}of${fileCount}` : '';

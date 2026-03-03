@@ -73,6 +73,41 @@ export function AttributeChainForm({
     return slug.toLowerCase().replace(/[-_]/g, '_');
   }, []);
 
+  // Svi atributi u chainu (za dependency clear)
+  const allAttributes = useMemo(() => {
+    const all: AttributeDefinition[] = [];
+    for (const category of categoryChain) {
+      const attrs = attributesByCategory.get(category.id) || [];
+      all.push(...attrs);
+    }
+    return all;
+  }, [categoryChain, attributesByCategory]);
+
+  // onChange koji automatski cleara dependent atribute kad se parent promijeni.
+  // Primjer: kad Strength_type promijeni vrijednost, exercise_name se resetira na null.
+  const handleChangeWithClearDependents = useCallback((attrId: string, value: string | number | boolean | null) => {
+    // 1. Promijeni vrijednost samog atributa
+    onChange(attrId, value);
+
+    // 2. Nadji slug atributa koji se promijenio
+    const changedAttr = allAttributes.find(a => a.id === attrId);
+    if (!changedAttr) return;
+    const changedSlug = changedAttr.slug;
+
+    // 3. Pronadji sve atribute koji ovise o ovom slug-u i cleari ih
+    for (const attr of allAttributes) {
+      const parsed = parseValidationRules(attr.validation_rules);
+      if (!parsed.dependsOn) continue;
+      const depSlug = parsed.dependsOn.attributeSlug;
+      if (
+        depSlug === changedSlug ||
+        normalizeSlug(depSlug) === normalizeSlug(changedSlug)
+      ) {
+        onChange(attr.id, null); // reset dependent na null
+      }
+    }
+  }, [onChange, allAttributes, normalizeSlug]);
+
   // Build a map of attribute slugs to their current values
   const attributeValuesBySlug = useMemo(() => {
     const map = new Map<string, string | null>();
@@ -150,7 +185,7 @@ export function AttributeChainForm({
         key={attr.id}
         definition={attr}
         value={currentValue?.value ?? null}
-        onChange={(val) => onChange(attr.id, val)}
+        onChange={(val) => handleChangeWithClearDependents(attr.id, val)}
         onTouched={() => onTouch(attr.id)}
         dependencyValue={dependencyValue}
         disabled={disabled}

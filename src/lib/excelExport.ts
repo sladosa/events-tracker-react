@@ -111,10 +111,14 @@ function isoToHHMMSS(iso: string | null): string {
   }
 }
 
-/** Parse YYYY-MM-DD string → Excel-compatible Date object (local midnight) */
+/** Parse YYYY-MM-DD string → Excel-compatible Date object (UTC midnight)
+ *  IMPORTANT: Must use UTC midnight, not local midnight.
+ *  ExcelJS serialises Date via Math.floor((ts - epoch) / 86400000) using UTC.
+ *  In CET (UTC+1), local midnight = previous day 23:00 UTC → Math.floor shifts
+ *  the date one day back.  UTC midnight always produces an exact integer day. */
 function parseEventDate(dateStr: string): Date {
   const [y, mo, d] = dateStr.split('-').map(Number);
-  return new Date(y, mo - 1, d);
+  return new Date(Date.UTC(y, mo - 1, d));
 }
 
 /** Parse validation_rules JSON safely */
@@ -217,6 +221,7 @@ export async function createEventsExcel(
   events:          ExportEvent[],
   attrDefs:        ExportAttrDef[],
   categoriesDict:  ExportCategoriesDict,
+  sortOrder:       'asc' | 'desc' = 'desc',
 ): Promise<ArrayBuffer> {
 
   const { attrMeta, attrColumns, attrByCat } = buildAttrMeta(attrDefs, categoriesDict);
@@ -373,9 +378,22 @@ export async function createEventsExcel(
   // ──────────────────────────────────────────
   // EVENT DATA ROWS
   // ──────────────────────────────────────────
-  // B.1.1: Sort events by created_at ASC so rows appear in chronological order.
-  // Nulls go last (events without created_at sort after timed events).
+  // Sort events:
+  //   1. event_date  – direction controlled by sortOrder (newest ↓ default)
+  //   2. session_start – same direction
+  //   3. created_at – always ASC (leaf events within a session in chronological order)
   const sortedEvents = [...events].sort((a, b) => {
+    // Primary: event_date
+    const dateCmp = a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0;
+    if (dateCmp !== 0) return sortOrder === 'asc' ? dateCmp : -dateCmp;
+
+    // Secondary: session_start (same direction as event_date)
+    const ssA = a.session_start ?? '';
+    const ssB = b.session_start ?? '';
+    const ssCmp = ssA < ssB ? -1 : ssA > ssB ? 1 : 0;
+    if (ssCmp !== 0) return sortOrder === 'asc' ? ssCmp : -ssCmp;
+
+    // Tertiary: created_at ASC – leaf events in chronological order
     if (!a.created_at && !b.created_at) return 0;
     if (!a.created_at) return 1;
     if (!b.created_at) return -1;

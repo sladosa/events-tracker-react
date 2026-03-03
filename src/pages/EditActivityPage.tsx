@@ -1123,7 +1123,8 @@ export function EditActivityPage() {
                   const dy = String(d.getDate()).padStart(2, '0');
                   const h = String(d.getHours()).padStart(2, '0');
                   const mi = String(d.getMinutes()).padStart(2, '0');
-                  return `${y}/${mo}/${dy} ${h}:${mi}`;
+                  const sc = String(d.getSeconds()).padStart(2, '0');
+                  return `${y}/${mo}/${dy} ${h}:${mi}:${sc}`;
                 })()}
               </div>
             </div>

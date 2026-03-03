@@ -64,33 +64,50 @@ export function AttributeInput({
     const trimmed = otherValue.trim();
     if (!trimmed) return;
 
-    // 1. Spremi vrijednost u event_attributes (postojeće ponašanje)
+    // 1. Spremi vrijednost u event_attributes
     handleChange(trimmed);
     setShowOtherInput(false);
 
     // 2. DROPDOWN-3: Persisti u attribute_definitions.validation_rules
+    //
+    // STRATEGIJA: Koristimo `parsedOptions` kao jedini izvor istine.
+    // parsedOptions je vec ispravno parsiran od strane parseValidationRules()
+    // bez obzira na format u bazi (V3, legacy, ili ostalo).
+    // Uvijek pisemo u V3 format – React ga cita ispravno, a Streamlit
+    // ce ga takodjer citati ako koristi isti parser.
     try {
-      const rules = (definition.validation_rules ?? {}) as Record<string, unknown>;
       let updatedRules: Record<string, unknown>;
 
       if (parsedOptions.dependsOn && dependencyValue) {
-        // Dependency dropdown: dodaj trimmed u options_map[dependencyValue]
-        const dependsOnRaw = (rules.depends_on ?? {}) as Record<string, unknown>;
-        const existingMap = (dependsOnRaw.options_map ?? {}) as Record<string, string[]>;
-        const existingOptions = existingMap[dependencyValue] ?? [];
-        if (existingOptions.includes(trimmed)) return; // već postoji
+        // ─── Dependency dropdown ───────────────────────────────────────────
+        // Kopiraj CIJELU options_map (sa svim kljucevima Upp/Low/Core/*)
+        // i dodaj novu vrijednost samo za trenutni dependencyValue kljuc.
+        const fullMap = { ...(parsedOptions.dependsOn.optionsMap ?? {}) };
+        const opts    = fullMap[dependencyValue] ?? [];
+        if (opts.includes(trimmed)) return; // vec postoji
+        fullMap[dependencyValue] = [...opts, trimmed];
+
         updatedRules = {
-          ...rules,
+          type: 'suggest',
+          suggest: parsedOptions.options,           // opcije bez dependency
+          allow_other: true,
           depends_on: {
-            ...dependsOnRaw,
-            options_map: { ...existingMap, [dependencyValue]: [...existingOptions, trimmed] },
+            attribute_slug: parsedOptions.dependsOn.attributeSlug,
+            options_map: fullMap,                   // CIJELA mapa sacuvana
           },
         };
+
       } else {
-        // Plain suggest dropdown: dodaj trimmed u suggest[]
-        const existingOptions = (rules.suggest as string[] | undefined) ?? parsedOptions.options;
-        if (existingOptions.includes(trimmed)) return; // već postoji
-        updatedRules = { ...rules, suggest: [...existingOptions, trimmed] };
+        // ─── Plain suggest dropdown ────────────────────────────────────────
+        const existing = [...parsedOptions.options]; // kopiraj postojece
+        if (existing.includes(trimmed)) return;      // vec postoji
+        existing.push(trimmed);
+
+        updatedRules = {
+          type: 'suggest',
+          suggest: existing,
+          allow_other: true,
+        };
       }
 
       const { error } = await supabase

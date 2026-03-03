@@ -19,14 +19,14 @@ export function useAttributeDefinitions(categoryIds: UUID[]): UseAttributeDefini
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchAttributes = useCallback(async () => {
+  const fetchAttributes = useCallback(async (showLoadingSpinner = true) => {
     if (categoryIds.length === 0) {
       setAttributes([]);
       return;
     }
 
     try {
-      setLoading(true);
+      if (showLoadingSpinner) setLoading(true);
       setError(null);
 
       const { data, error: fetchError } = await supabase
@@ -50,12 +50,12 @@ export function useAttributeDefinitions(categoryIds: UUID[]): UseAttributeDefini
       console.error('Error fetching attribute definitions:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch attributes'));
     } finally {
-      setLoading(false);
+      if (showLoadingSpinner) setLoading(false);
     }
   }, [categoryIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    fetchAttributes();
+    fetchAttributes(); // initial load – show spinner
   }, [fetchAttributes]);
 
   // Grupiraj atribute po kategoriji
@@ -69,7 +69,11 @@ export function useAttributeDefinitions(categoryIds: UUID[]): UseAttributeDefini
     return map;
   }, [attributes]);
 
-  return { attributes, attributesByCategory, loading, error, refetch: fetchAttributes };
+  // Silent refetch: ažurira definicije u pozadini BEZ loading spinnera.
+  // Koristi se nakon što korisnik doda "Other" vrijednost – ne smije unmountirati formu.
+  const silentRefetch = useCallback(() => fetchAttributes(false), [fetchAttributes]);
+
+  return { attributes, attributesByCategory, loading, error, refetch: silentRefetch };
 }
 
 /**
