@@ -479,82 +479,365 @@ export async function applyImportChanges(
   const catByPath: Record<string, string> = {};
   for (const [id, info] of Object.entries(categoriesDict)) catByPath[info.full_path] = id;
 
-  // ────── CREATE ──────
-  for (const row of toCreate) {
-    try {
-      const hierarchyLevels = getHierarchyLevels(row.category_path, categoriesDict);
-      if (hierarchyLevels.length === 0) {
-        errors.push(`Row ${row._source_row}: Invalid category path '${row.category_path}'`);
-        continue;
-      }
+  // ────────────────────────────────────────────────────────
+  // Helper: pronađi parent event koristeći chain disambiguation
+  // Traži event s (category_id + session_start) čiji immediate
+  // child u lancu (childCategoryId) TAKOĐER postoji za istu sesiju.
+  // Ovo razlikuje Activity→Gym→Strength od Activity→Running→Cardio.
+  // ────────────────────────────────────────────────────────
+  const findParentEventByChain = async (
+    categoryId:      string,
+    sessionISO:      string,
+    childCategoryId: string, // immediate child u lancu = disambiguator
+  ): Promise<string | null> => {
+    // Fetch svi eventi za ovu kategoriju + sesiju
+    const { data: candidates } = await supabase
+      .from('events')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('category_id', categoryId)
+      .eq('session_start', sessionISO);
 
-      // Parse session_start time
-      const ssParsed  = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
-      const sessionISO = toISO(row.event_date, ssParsed);
+    if (!candidates || candidates.length === 0) return null;
+    if (candidates.length === 1) return (candidates[0] as { id: string }).id;
 
-      // Parse created_at time (default: session_start + 1 second)
-      let createdISO: string;
-      if (row.created_at) {
-        const caParsed = parseTimeStr(row.created_at);
-        createdISO = caParsed ? toISO(row.event_date, caParsed) : sessionISO;
-      } else {
-        const caTime = { h: ssParsed.h, m: ssParsed.m, s: ssParsed.s + 1 };
-        createdISO = toISO(row.event_date, caTime);
-      }
+    // Više kandidata → disambiguiraj: koji ima sibling child u lancu?
+    const { data: childEvents } = await supabase
+      .from('events')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('category_id', childCategoryId)
+      .eq('session_start', sessionISO)
+      .limit(1);
 
-      // Create event for each hierarchy level that has populated attributes
-      for (const { categoryId } of hierarchyLevels) {
-        const levelAttrs: Record<string, ExportAttrDef> = {};
+    // Ako child postoji, sigurno je isti session → prvi kandidat je ispravan
+    // (child je unique po category_id + session_start za isti lanac)
+    if (childEvents && childEvents.length > 0) {
+      return (candidates[0] as { id: string }).id;
+    }
+    return null;
+  };
 
-        for (const [attrName, value] of Object.entries(row.attributes)) {
-          if (value == null || value === '') continue;
-          const def = attrByCatName.get(`${categoryId}||${attrName}`);
-          if (def) levelAttrs[attrName] = def;
+  // ────────────────────────────────────────────────────────
+  // Helper: upsert parent event za UPDATE tok
+  // Za CREATE tok koristimo direktni INSERT bez SELECT (vidi prolaz 2)
+  // ────────────────────────────────────────────────────────
+  const upsertParentEventForUpdate = async (
+    categoryId:      string,
+    childCategoryId: string, // immediate child u lancu za disambiguation
+    sessionISO:      string,
+    eventDate:       string,
+    mergedAttrs:     Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>,
+  ): Promise<void> => {
+    if (mergedAttrs.size === 0) return;
+
+    const existingId = await findParentEventByChain(categoryId, sessionISO, childCategoryId);
+
+    if (existingId) {
+      // UPDATE: dohvati postojeće atribute
+      const { data: existingAttrRows } = await supabase
+        .from('event_attributes')
+        .select('id, attribute_definition_id')
+        .eq('event_id', existingId);
+
+      const existingAttrs = new Map<string, string>(
+        ((existingAttrRows ?? []) as { id: string; attribute_definition_id: string }[])
+          .map(ea => [ea.attribute_definition_id, ea.id])
+      );
+
+      for (const { def, value } of mergedAttrs.values()) {
+        if (value == null || value === '') continue; // P3: prazna ne prepisuje
+        const attrData = buildAttrData(existingId, userId, def, value);
+        if (existingAttrs.has(def.id)) {
+          await supabase
+            .from('event_attributes')
+            .update(attrData)
+            .eq('id', existingAttrs.get(def.id)!)
+            .eq('user_id', userId);
+        } else {
+          await supabase.from('event_attributes').insert(attrData);
         }
+      }
+    } else {
+      // INSERT: parent event ne postoji za ovaj lanac
+      const { data: newParent, error: parentErr } = await supabase
+        .from('events')
+        .insert({
+          user_id:       userId,
+          category_id:   categoryId,
+          event_date:    eventDate,
+          session_start: sessionISO,
+          comment:       null,
+          created_at:    sessionISO,
+        })
+        .select('id')
+        .single();
 
-        if (Object.keys(levelAttrs).length === 0) continue;
+      if (parentErr || !newParent) return;
 
-        // Insert event
-        const { data: newEvent, error: insertErr } = await supabase
+      const parentId = (newParent as { id: string }).id;
+      for (const { def, value } of mergedAttrs.values()) {
+        if (value == null || value === '') continue;
+        const attrData = buildAttrData(parentId, userId, def, value);
+        await supabase.from('event_attributes').insert(attrData);
+      }
+    }
+  };
+
+  // ────── CREATE ──────
+  // IMPORT-P2 fix: grupiraj po sessionISO → 1 parent event po sesiji
+  //
+  // Struktura session grupe:
+  //   sessionKey = `${event_date}__${sessionISO}`
+  //   → parentMerged: Map<categoryId, Map<defId, {def, value}>>  (P3 merge)
+  //   → leafRows: ParsedImportRow[]                              (N leaf evenata)
+
+  interface SessionGroup {
+    eventDate:    string;
+    sessionISO:   string;
+    // categoryId → (defId → {def, value}) — P3 merge parent atributa
+    parentMerged: Map<string, Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>>;
+    leafRows:     ParsedImportRow[];
+    leafCategoryId: string;
+  }
+
+  const sessionGroups = new Map<string, SessionGroup>();
+
+  // Prolaz 1: grupiraj redove po sessionISO, P3-merge parent atribute
+  for (const row of toCreate) {
+    const hierarchyLevels = getHierarchyLevels(row.category_path, categoriesDict);
+    if (hierarchyLevels.length === 0) {
+      errors.push(`Row ${row._source_row}: Invalid category path '${row.category_path}'`);
+      continue;
+    }
+
+    const ssParsed       = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
+    const sessionISO     = toISO(row.event_date, ssParsed);
+    const leafCategoryId = hierarchyLevels[hierarchyLevels.length - 1].categoryId;
+    // Session key = event_date + sessionISO + leafCategoryId
+    // Različit leaf = različit lanac = različita aktivnost, čak i uz isti session_start
+    const sessionKey = `${row.event_date}__${sessionISO}__${leafCategoryId}`;
+
+    if (!sessionGroups.has(sessionKey)) {
+      sessionGroups.set(sessionKey, {
+        eventDate:      row.event_date,
+        sessionISO,
+        parentMerged:   new Map(),
+        leafRows:       [],
+        leafCategoryId,
+      });
+    }
+
+    const group = sessionGroups.get(sessionKey)!;
+    group.leafRows.push(row);
+
+    // P3 merge parent atributa (sve razine osim leaf)
+    for (const { categoryId } of hierarchyLevels.slice(0, -1)) {
+      if (!group.parentMerged.has(categoryId)) {
+        group.parentMerged.set(categoryId, new Map());
+      }
+      const catMerge = group.parentMerged.get(categoryId)!;
+
+      for (const [attrName, value] of Object.entries(row.attributes)) {
+        if (value == null || value === '') continue; // P3: prazna se ignorira
+        const def = attrByCatName.get(`${categoryId}||${attrName}`);
+        if (!def) continue;
+        // P3: zadnja ne-null vrijednost pobjeđuje
+        catMerge.set(def.id, { def, value });
+      }
+    }
+  }
+
+  // Prolaz 2: za svaku sesiju INSERT parent eventi (1 po cat), pa leaf eventi (N)
+  for (const group of sessionGroups.values()) {
+    // Parent eventi — direktni INSERT per grupa, bez SELECT
+    // Grupa je već izolirana po leafCategoryId → nema duplikata između lanca
+    // Koristimo hierarchyLevels iz prvog leaf reda za redosljed parent kategorija
+    const firstRowLevels = getHierarchyLevels(group.leafRows[0].category_path, categoriesDict);
+    // parentLevels = sve razine osim leaf (slice 0 do -1), od root prema leaf
+    const parentLevels = firstRowLevels.slice(0, -1);
+
+    // Spremi parent event IDs u memoriju (za eventualne buduće asocijacije)
+    const insertedParentIds = new Map<string, string>(); // categoryId → eventId
+
+    for (const { categoryId } of parentLevels) {
+      const mergedAttrs = group.parentMerged.get(categoryId);
+      if (!mergedAttrs || mergedAttrs.size === 0) continue;
+
+      try {
+        const { data: newParent, error: parentErr } = await supabase
           .from('events')
           .insert({
             user_id:       userId,
             category_id:   categoryId,
+            event_date:    group.eventDate,
+            session_start: group.sessionISO,
+            comment:       null,
+            created_at:    group.sessionISO,
+          })
+          .select('id')
+          .single();
+
+        if (parentErr || !newParent) {
+          errors.push(`Session ${group.sessionISO} parent insert error – ${parentErr?.message ?? 'unknown'}`);
+          continue;
+        }
+
+        const parentId = (newParent as { id: string }).id;
+        insertedParentIds.set(categoryId, parentId);
+
+        for (const { def, value } of mergedAttrs.values()) {
+          if (value == null || value === '') continue;
+          const attrData = buildAttrData(parentId, userId, def, value);
+          await supabase.from('event_attributes').insert(attrData);
+        }
+      } catch (err) {
+        errors.push(`Session ${group.sessionISO} parent event error – ${String(err)}`);
+      }
+    }
+
+    // Leaf eventi (1 per row)
+    for (const row of group.leafRows) {
+      try {
+        const ssParsed = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
+
+        let createdISO: string;
+        if (row.created_at) {
+          const caParsed = parseTimeStr(row.created_at);
+          createdISO = caParsed ? toISO(row.event_date, caParsed) : group.sessionISO;
+        } else {
+          const caTime = { h: ssParsed.h, m: ssParsed.m, s: ssParsed.s + 1 };
+          createdISO = toISO(row.event_date, caTime);
+        }
+
+        // Skupi leaf atribute (samo atributi leaf kategorije)
+        const leafAttrs: Record<string, ExportAttrDef> = {};
+        for (const [attrName, value] of Object.entries(row.attributes)) {
+          if (value == null || value === '') continue;
+          const def = attrByCatName.get(`${group.leafCategoryId}||${attrName}`);
+          if (def) leafAttrs[attrName] = def;
+        }
+
+        // INSERT leaf event (uvijek, čak i bez atributa — leaf je entitet sesije)
+        const { data: newLeaf, error: leafErr } = await supabase
+          .from('events')
+          .insert({
+            user_id:       userId,
+            category_id:   group.leafCategoryId,
             event_date:    row.event_date,
-            session_start: sessionISO,
+            session_start: group.sessionISO,
             comment:       row.comment || null,
             created_at:    createdISO,
           })
           .select('id')
           .single();
 
-        if (insertErr || !newEvent) {
-          errors.push(`Row ${row._source_row}: Failed to create event – ${insertErr?.message ?? 'unknown error'}`);
+        if (leafErr || !newLeaf) {
+          errors.push(`Row ${row._source_row}: Failed to create leaf event – ${leafErr?.message ?? 'unknown'}`);
           continue;
         }
 
-        const eventId = (newEvent as { id: string }).id;
+        const leafId = (newLeaf as { id: string }).id;
 
-        // Insert attributes
-        for (const [attrName, def] of Object.entries(levelAttrs)) {
-          const value     = row.attributes[attrName];
-          const attrData  = buildAttrData(eventId, userId, def, value);
+        for (const [attrName, def] of Object.entries(leafAttrs)) {
+          const attrData = buildAttrData(leafId, userId, def, row.attributes[attrName]);
           await supabase.from('event_attributes').insert(attrData);
         }
 
         created++;
+      } catch (err) {
+        errors.push(`Row ${row._source_row}: Unexpected error – ${String(err)}`);
       }
-    } catch (err) {
-      errors.push(`Row ${row._source_row}: Unexpected error – ${String(err)}`);
     }
   }
 
   // ────── UPDATE ──────
+  // Grupiraj UPDATE redove po sessionISO za parent upsert
+  // Leaf event se updatea per row (ima event_id), parent se upserta per sesija
+
+  interface UpdateSessionGroup {
+    eventDate:    string;
+    sessionISO:   string;
+    parentMerged: Map<string, Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>>;
+    rows:         ParsedImportRow[];
+  }
+
+  const updateGroups = new Map<string, UpdateSessionGroup>();
+
+  for (const row of toUpdate) {
+    const ssParsed        = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
+    const sessionISO      = toISO(row.event_date, ssParsed);
+    const hierarchyLevels = getHierarchyLevels(row.category_path, categoriesDict);
+    const leafCategoryId  = hierarchyLevels[hierarchyLevels.length - 1]?.categoryId;
+    // Isti session key kao u CREATE — leaf određuje lanac
+    const sessionKey = `${row.event_date}__${sessionISO}__${leafCategoryId ?? ''}`;
+
+    if (!updateGroups.has(sessionKey)) {
+      updateGroups.set(sessionKey, {
+        eventDate:    row.event_date,
+        sessionISO,
+        parentMerged: new Map(),
+        rows:         [],
+      });
+    }
+
+    const group = updateGroups.get(sessionKey)!;
+    group.rows.push(row);
+
+    for (const { categoryId } of hierarchyLevels) {
+      if (categoryId === leafCategoryId) continue; // leaf se updatea per row, ne ovdje
+
+      if (!group.parentMerged.has(categoryId)) {
+        group.parentMerged.set(categoryId, new Map());
+      }
+      const catMerge = group.parentMerged.get(categoryId)!;
+
+      for (const [attrName, value] of Object.entries(row.attributes)) {
+        if (value == null || value === '') continue;
+        const def = attrByCatName.get(`${categoryId}||${attrName}`);
+        if (!def) continue;
+        catMerge.set(def.id, { def, value });
+      }
+    }
+  }
+
+  // Upsert parent eventi po sesiji (UPDATE tok — koristi chain disambiguation)
+  for (const group of updateGroups.values()) {
+    // Rekonstruiraj redosljed parent razina iz prvog reda grupe
+    const firstRowLevels = getHierarchyLevels(group.rows[0].category_path, categoriesDict);
+    // parentLevels = sve osim leaf
+    const parentLevels = firstRowLevels.slice(0, -1);
+
+    for (let i = 0; i < parentLevels.length; i++) {
+      const { categoryId } = parentLevels[i];
+      const mergedAttrs = group.parentMerged.get(categoryId);
+      if (!mergedAttrs || mergedAttrs.size === 0) continue;
+
+      // Immediate child u lancu = sljedeća razina (ili leaf ako je zadnja parent razina)
+      const childCategoryId = i + 1 < parentLevels.length
+        ? parentLevels[i + 1].categoryId
+        : firstRowLevels[firstRowLevels.length - 1].categoryId; // leaf
+
+      try {
+        await upsertParentEventForUpdate(
+          categoryId,
+          childCategoryId,
+          group.sessionISO,
+          group.eventDate,
+          mergedAttrs,
+        );
+      } catch (err) {
+        errors.push(`Session ${group.sessionISO} parent update error – ${String(err)}`);
+      }
+    }
+  }
+
+  // Update leaf eventi per row (ima event_id)
   for (const row of toUpdate) {
     try {
       const eventId = row.event_id!;
 
-      // Fetch existing event
+      // Fetch existing leaf event
       const { data: existing } = await supabase
         .from('events')
         .select('id, category_id, event_attributes(id, attribute_definition_id)')
@@ -567,7 +850,6 @@ export async function applyImportChanges(
         continue;
       }
 
-      // Parse times
       const ssParsed   = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
       const sessionISO = toISO(row.event_date, ssParsed);
 
@@ -579,7 +861,7 @@ export async function applyImportChanges(
         createdISO = sessionISO;
       }
 
-      // Update event core fields
+      // Update leaf event core fields
       await supabase
         .from('events')
         .update({
@@ -592,15 +874,15 @@ export async function applyImportChanges(
         .eq('id', eventId)
         .eq('user_id', userId);
 
-      // Build existing attrs map
+      // Update leaf atribute (samo atributi leaf kategorije)
       const existingAttrs = new Map<string, string>(
-        ((existing as { event_attributes: { id: string; attribute_definition_id: string }[] }).event_attributes ?? [])
-          .map(ea => [ea.attribute_definition_id, ea.id])
+        ((existing as { event_attributes: { id: string; attribute_definition_id: string }[] })
+          .event_attributes ?? [])
+          .map((ea: { id: string; attribute_definition_id: string }) => [ea.attribute_definition_id, ea.id])
       );
 
       const existingCatId = (existing as { category_id: string }).category_id;
 
-      // Update/insert attributes for the event's own category
       for (const [attrName, value] of Object.entries(row.attributes)) {
         const def = attrByCatName.get(`${existingCatId}||${attrName}`);
         if (!def) continue;
@@ -615,40 +897,6 @@ export async function applyImportChanges(
             .eq('user_id', userId);
         } else if (value != null && value !== '') {
           await supabase.from('event_attributes').insert(attrData);
-        }
-      }
-
-      // Also create parent-level events if parent attributes populated (V2.5.4 logic)
-      const hierarchyLevels = getHierarchyLevels(row.category_path, categoriesDict);
-      for (const { categoryId } of hierarchyLevels) {
-        if (categoryId === existingCatId) continue;
-
-        const levelAttrs: Record<string, ExportAttrDef> = {};
-        for (const [attrName, value] of Object.entries(row.attributes)) {
-          if (value == null || value === '') continue;
-          const def = attrByCatName.get(`${categoryId}||${attrName}`);
-          if (def) levelAttrs[attrName] = def;
-        }
-        if (Object.keys(levelAttrs).length === 0) continue;
-
-        const { data: parentEvent } = await supabase
-          .from('events')
-          .insert({
-            user_id:       userId,
-            category_id:   categoryId,
-            event_date:    row.event_date,
-            session_start: sessionISO,
-            comment:       row.comment || null,
-          })
-          .select('id')
-          .single();
-
-        if (parentEvent) {
-          const parentId = (parentEvent as { id: string }).id;
-          for (const [attrName, def] of Object.entries(levelAttrs)) {
-            const attrData = buildAttrData(parentId, userId, def, row.attributes[attrName]);
-            await supabase.from('event_attributes').insert(attrData);
-          }
         }
       }
 

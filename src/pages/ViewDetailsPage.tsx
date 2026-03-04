@@ -411,11 +411,11 @@ export function ViewDetailsPage() {
       setViewEvents(loadedEvents);
 
       // ============================================================
-      // VIEW-P2: Load parent events (Activity, Gym itd.)
-      // Isti pattern kao EDIT-P2 u EditActivityPage.
+      // VIEW-P2: Load parent events — chain disambiguation
+      // Isti pattern kao EDIT-P2 u EditActivityPage (s fixom).
       // ============================================================
       const decodedSS = noSession
-        ? loadedEvents[0]?.id  // fallback - neće se koristiti za parent query
+        ? loadedEvents[0]?.id
         : decodeURIComponent(sessionStart);
 
       const parentChainIds: UUID[] = [];
@@ -442,18 +442,46 @@ export function ViewDetailsPage() {
       const newParentAttrValues = new Map<string, { value: string | number | boolean | null; dataType: string }>();
 
       if (parentChainIds.length > 0 && !noSession) {
-        const { data: parentEventsData } = await supabase
-          .from('events')
-          .select('id, category_id')
-          .eq('session_start', decodedSS)
-          .in('category_id', parentChainIds)
-          .eq('user_id', user.id);
+        // parentChainIds je [Gym, Activity, ...] (leaf→root)
+        // Child disambiguator: parentChainIds[0] → leafCategoryId, parentChainIds[i] → parentChainIds[i-1]
+        for (let i = 0; i < parentChainIds.length; i++) {
+          const catId = parentChainIds[i];
+          const childCatId = i === 0 ? leafCategoryId : parentChainIds[i - 1];
 
-        for (const pe of (parentEventsData || []) as { id: UUID; category_id: UUID }[]) {
+          const { data: candidates } = await supabase
+            .from('events')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('category_id', catId)
+            .eq('session_start', decodedSS);
+
+          if (!candidates || candidates.length === 0) continue;
+
+          let parentEventId: UUID | null = null;
+
+          if (candidates.length === 1) {
+            parentEventId = (candidates[0] as { id: UUID }).id;
+          } else {
+            // Disambiguiraj: pravi parent ima child u našem lancu
+            const { data: childCheck } = await supabase
+              .from('events')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('category_id', childCatId)
+              .eq('session_start', decodedSS)
+              .limit(1);
+
+            if (childCheck && childCheck.length > 0) {
+              parentEventId = (candidates[0] as { id: UUID }).id;
+            }
+          }
+
+          if (!parentEventId) continue;
+
           const { data: parentAttrs } = await supabase
             .from('event_attributes')
             .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-            .eq('event_id', pe.id);
+            .eq('event_id', parentEventId);
 
           for (const attr of (parentAttrs || []) as unknown as LoadedAttribute[]) {
             if (!attr.attribute_definitions) continue;

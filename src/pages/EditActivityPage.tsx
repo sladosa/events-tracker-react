@@ -275,20 +275,22 @@ export function EditActivityPage() {
       
       // ============================================================
       // EDIT-P2: Load parent events (Activity, Gym itd.)
-      // Traversiramo parent_category_id da dobijemo chain IDs,
-      // zatim učitavamo parent evente za isti session_start.
+      // Chain disambiguation: za svaki parent, tražimo event koji ima
+      // sibling child u NAŠEM lancu (ne u nekom drugom lancu koji
+      // dijeli isti session_start). Ovo sprječava mješanje Activity
+      // evenata koji dijele session_start ali imaju različite lance.
       // ============================================================
       const parentChainIds: UUID[] = [];
       let currentParentId: UUID | null = null;
-      
+
       const { data: leafCatData } = await supabase
         .from('categories')
         .select('parent_category_id')
         .eq('id', leafCategoryId)
         .single() as { data: { parent_category_id: string | null } | null };
-      
+
       currentParentId = (leafCatData?.parent_category_id as UUID | null) ?? null;
-      
+
       while (currentParentId) {
         parentChainIds.push(currentParentId);
         const { data: parentCatRow } = await supabase
@@ -298,30 +300,65 @@ export function EditActivityPage() {
           .single() as { data: { parent_category_id: string | null } | null };
         currentParentId = (parentCatRow?.parent_category_id as UUID | null) ?? null;
       }
-      
+
       const newParentDbIds = new Map<string, UUID | null>();
       const newParentAttrValues = new Map<string, LocalAttributeValue>();
-      
+
       for (const catId of parentChainIds) {
         newParentDbIds.set(catId, null);
       }
-      
+
       if (parentChainIds.length > 0) {
-        const { data: parentEventsData } = await supabase
-          .from('events')
-          .select('id, category_id')
-          .eq('session_start', decodedSessionStart)
-          .in('category_id', parentChainIds)
-          .eq('user_id', user.id);
-        
-        for (const parentEvent of (parentEventsData || []) as { id: UUID; category_id: UUID }[]) {
-          newParentDbIds.set(parentEvent.category_id, parentEvent.id);
-          
+        // parentChainIds je [Gym, Activity, ...] (leaf→root redosljed)
+        // Za svaki parent, immediate child u lancu je:
+        //   parentChainIds[0] → child = leafCategoryId
+        //   parentChainIds[i] → child = parentChainIds[i-1]
+        for (let i = 0; i < parentChainIds.length; i++) {
+          const catId = parentChainIds[i];
+          const childCatId = i === 0 ? leafCategoryId : parentChainIds[i - 1];
+
+          // Fetch svi kandidati za ovaj parent category + session_start
+          const { data: candidates } = await supabase
+            .from('events')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('category_id', catId)
+            .eq('session_start', decodedSessionStart);
+
+          if (!candidates || candidates.length === 0) continue;
+
+          let parentEventId: UUID | null = null;
+
+          if (candidates.length === 1) {
+            // Samo jedan kandidat — nema ambigviteta
+            parentEventId = (candidates[0] as { id: UUID }).id;
+          } else {
+            // Više kandidata → disambiguiraj po child kategoriji
+            // Pravi parent event ima sibling child event za isti session_start
+            const { data: childCheck } = await supabase
+              .from('events')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('category_id', childCatId)
+              .eq('session_start', decodedSessionStart)
+              .limit(1);
+
+            if (childCheck && childCheck.length > 0) {
+              // Child postoji za ovaj session → prvi kandidat pripada našem lancu
+              parentEventId = (candidates[0] as { id: UUID }).id;
+            }
+            // Ako child ne postoji, parentEventId ostaje null (edge case)
+          }
+
+          if (!parentEventId) continue;
+
+          newParentDbIds.set(catId, parentEventId);
+
           const { data: parentAttrs } = await supabase
             .from('event_attributes')
             .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-            .eq('event_id', parentEvent.id);
-          
+            .eq('event_id', parentEventId);
+
           for (const attr of (parentAttrs || []) as unknown as LoadedAttribute[]) {
             if (!attr.attribute_definitions) continue;
             const dataType = attr.attribute_definitions.data_type;
