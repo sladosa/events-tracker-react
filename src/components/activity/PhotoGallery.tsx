@@ -187,6 +187,25 @@ export function PhotoGallery({
         });
         
         currentTotal += sizeBytes;
+
+        // Auto-save to Android Downloads when using front camera (mobile)
+        // Uses <a download> trick — Chrome on Android saves to Downloads folder
+        // which is visible in File Manager and usually indexed by Gallery app.
+        if (captureMode === 'user') {
+          try {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const filename = `activity_${timestamp}.jpg`;
+            const a = document.createElement('a');
+            a.href = base64;
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } catch {
+            // Silent fail - download not critical
+          }
+        }
       }
       
       onPhotosChange(newPhotos);

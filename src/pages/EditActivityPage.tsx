@@ -88,6 +88,18 @@ export function EditActivityPage() {
   const noSession = searchParams.get('noSession') === '1';
   
   // ============================================
+  // EDIT-P2: Parent Events State
+  // Parent eventi (Activity, Gym) su dijeljeni po sesiji.
+  // parentDbIds: categoryId → dbId | null (null = ne postoji u bazi, treba INSERT)
+  // parentAttrValues: definitionId → LocalAttributeValue (dijeljeni za sve tab)
+  // ============================================
+  
+  const [parentDbIds, setParentDbIds] = useState<Map<string, UUID | null>>(new Map());
+  const [parentAttrValues, setParentAttrValues] = useState<Map<string, LocalAttributeValue>>(new Map());
+  // Ref za sync pristup bez dependency hell u useCallback
+  const parentAttrValuesRef = useRef<Map<string, LocalAttributeValue>>(new Map());
+  
+  // ============================================
   // Loading State
   // ============================================
   
@@ -154,70 +166,57 @@ export function EditActivityPage() {
     setLoadError(null);
     
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       
-      let events: LoadedEvent[];
+      let leafEvents: LoadedEvent[];
+      let decodedSessionStart: string;
       
       if (noSession) {
-        // No session_start: sessionStart param is actually an event ID
         const { data: eventsData, error: eventsError } = await supabase
           .from('events')
           .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
           .eq('id', sessionStart)
           .eq('user_id', user.id);
-        
         if (eventsError) throw eventsError;
         if (!eventsData || eventsData.length === 0) throw new Error('Activity not found');
-        events = eventsData as LoadedEvent[];
+        leafEvents = eventsData as LoadedEvent[];
+        decodedSessionStart = leafEvents[0].session_start;
       } else {
-        // Normal case: fetch by session_start + categoryId (to avoid wrong-activity bug)
-        const decodedSessionStart = decodeURIComponent(sessionStart);
-        
+        decodedSessionStart = decodeURIComponent(sessionStart);
         let query = supabase
           .from('events')
           .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
           .eq('session_start', decodedSessionStart)
           .eq('user_id', user.id);
-        
         // KRITIČNO: filter by category_id to avoid returning wrong activity
-        // when two different categories share the same session_start timestamp
         if (categoryIdParam) {
           query = query.eq('category_id', categoryIdParam);
         }
-        
         const { data: eventsData, error: eventsError } = await query
           .order('created_at', { ascending: true });
-        
         if (eventsError) throw eventsError;
         if (!eventsData || eventsData.length === 0) throw new Error('Activity not found');
-        events = eventsData as LoadedEvent[];
+        leafEvents = eventsData as LoadedEvent[];
       }
       
-      // Get the leaf category (last event's category)
-      const leafCategoryId = events[events.length - 1].category_id;
+      const leafCategoryId = leafEvents[leafEvents.length - 1].category_id;
       setCategoryId(leafCategoryId);
       
-      // Build category path
       const path = await buildCategoryPath(leafCategoryId);
       setCategoryPath(path);
       
-      // Set session datetime
-      const sessionDate = noSession 
-        ? new Date(events[0].created_at)
-        : new Date(decodeURIComponent(sessionStart));
+      const sessionDate = noSession
+        ? new Date(leafEvents[0].created_at)
+        : new Date(decodedSessionStart);
       setSessionDateTime(sessionDate);
       setOriginalDateTime(sessionDate);
+      setOriginalEventIds(leafEvents.map(e => e.id));
       
-      // Store original event IDs
-      setOriginalEventIds(events.map(e => e.id));
-      
-      // Fetch attributes and attachments for each event
+      // --- Load leaf events → pendingEvents ---
       const pendingEventsData: PendingEvent[] = [];
       
-      for (const event of events) {
-        // Fetch attributes
+      for (const event of leafEvents) {
         const { data: attrs } = await supabase
           .from('event_attributes')
           .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
@@ -225,7 +224,6 @@ export function EditActivityPage() {
         
         const loadedAttrs = (attrs || []) as unknown as LoadedAttribute[];
         
-        // Fetch attachments
         const { data: attachments } = await supabase
           .from('event_attachments')
           .select('id, event_id, url, filename')
@@ -234,30 +232,22 @@ export function EditActivityPage() {
         
         const loadedAttachments = (attachments || []) as LoadedAttachment[];
         
-        // Convert to PendingEvent format
         const attributes: AttributeValue[] = loadedAttrs
           .filter(attr => attr.attribute_definitions !== null)
           .map(attr => {
-          let value: string | number | boolean | null = null;
-          const dataType = attr.attribute_definitions!.data_type;
-          
-          if (dataType === 'number' && attr.value_number !== null) {
-            value = attr.value_number;
-          } else if (dataType === 'boolean' && attr.value_boolean !== null) {
-            value = attr.value_boolean;
-          } else if (dataType === 'datetime' && attr.value_datetime !== null) {
-            value = attr.value_datetime;
-          } else if (attr.value_text !== null) {
-            value = attr.value_text;
-          }
-          
-          return {
-            definitionId: attr.attribute_definition_id,
-            value,
-            dataType: dataType as 'text' | 'number' | 'boolean' | 'datetime',
-            touched: false,
-          };
-        });
+            let value: string | number | boolean | null = null;
+            const dataType = attr.attribute_definitions!.data_type;
+            if (dataType === 'number' && attr.value_number !== null) value = attr.value_number;
+            else if (dataType === 'boolean' && attr.value_boolean !== null) value = attr.value_boolean;
+            else if (dataType === 'datetime' && attr.value_datetime !== null) value = attr.value_datetime;
+            else if (attr.value_text !== null) value = attr.value_text;
+            return {
+              definitionId: attr.attribute_definition_id,
+              value,
+              dataType: dataType as 'text' | 'number' | 'boolean' | 'datetime',
+              touched: true,
+            };
+          });
         
         const existingPhotosList: ExistingPhoto[] = loadedAttachments.map(att => ({
           id: att.id,
@@ -283,9 +273,81 @@ export function EditActivityPage() {
       
       setPendingEvents(pendingEventsData);
       
-      // Initialize form with first event
+      // ============================================================
+      // EDIT-P2: Load parent events (Activity, Gym itd.)
+      // Traversiramo parent_category_id da dobijemo chain IDs,
+      // zatim učitavamo parent evente za isti session_start.
+      // ============================================================
+      const parentChainIds: UUID[] = [];
+      let currentParentId: UUID | null = null;
+      
+      const { data: leafCatData } = await supabase
+        .from('categories')
+        .select('parent_category_id')
+        .eq('id', leafCategoryId)
+        .single() as { data: { parent_category_id: string | null } | null };
+      
+      currentParentId = (leafCatData?.parent_category_id as UUID | null) ?? null;
+      
+      while (currentParentId) {
+        parentChainIds.push(currentParentId);
+        const { data: parentCatRow } = await supabase
+          .from('categories')
+          .select('parent_category_id')
+          .eq('id', currentParentId)
+          .single() as { data: { parent_category_id: string | null } | null };
+        currentParentId = (parentCatRow?.parent_category_id as UUID | null) ?? null;
+      }
+      
+      const newParentDbIds = new Map<string, UUID | null>();
+      const newParentAttrValues = new Map<string, LocalAttributeValue>();
+      
+      for (const catId of parentChainIds) {
+        newParentDbIds.set(catId, null);
+      }
+      
+      if (parentChainIds.length > 0) {
+        const { data: parentEventsData } = await supabase
+          .from('events')
+          .select('id, category_id')
+          .eq('session_start', decodedSessionStart)
+          .in('category_id', parentChainIds)
+          .eq('user_id', user.id);
+        
+        for (const parentEvent of (parentEventsData || []) as { id: UUID; category_id: UUID }[]) {
+          newParentDbIds.set(parentEvent.category_id, parentEvent.id);
+          
+          const { data: parentAttrs } = await supabase
+            .from('event_attributes')
+            .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
+            .eq('event_id', parentEvent.id);
+          
+          for (const attr of (parentAttrs || []) as unknown as LoadedAttribute[]) {
+            if (!attr.attribute_definitions) continue;
+            const dataType = attr.attribute_definitions.data_type;
+            let value: string | number | boolean | null = null;
+            if (dataType === 'number' && attr.value_number !== null) value = attr.value_number;
+            else if (dataType === 'boolean' && attr.value_boolean !== null) value = attr.value_boolean;
+            else if (dataType === 'datetime' && attr.value_datetime !== null) value = attr.value_datetime;
+            else if (attr.value_text !== null) value = attr.value_text;
+            if (value !== null) {
+              newParentAttrValues.set(attr.attribute_definition_id, {
+                definitionId: attr.attribute_definition_id,
+                value,
+                touched: true,
+              });
+            }
+          }
+        }
+      }
+      
+      setParentDbIds(newParentDbIds);
+      setParentAttrValues(newParentAttrValues);
+      parentAttrValuesRef.current = newParentAttrValues;
+      
+      // Initialize form: merge parent + leaf attrs for first event
       if (pendingEventsData.length > 0) {
-        selectEvent(0, pendingEventsData);
+        selectEventWithParent(0, pendingEventsData, newParentAttrValues);
       }
       
     } catch (err) {
@@ -295,7 +357,7 @@ export function EditActivityPage() {
       setIsLoading(false);
     }
   };
-  
+
   // ============================================
   // Build Category Path
   // ============================================
@@ -339,15 +401,40 @@ export function EditActivityPage() {
   // Select Event (Switch between events in session)
   // ============================================
   
+  // selectEventWithParent: koristi se pri loadu (parent attrs dostupni kao parametar)
+  const selectEventWithParent = useCallback((
+    index: number,
+    events: PendingEvent[],
+    parentAttrs: Map<string, LocalAttributeValue>
+  ) => {
+    if (index < 0 || index >= events.length) return;
+    const event = events[index];
+    setSelectedEventIndex(index);
+    
+    // Merge: parent attrs (dijeljeni) + leaf attrs (per event)
+    const attrMap = new Map<string, LocalAttributeValue>(parentAttrs);
+    event.attributes.forEach(attr => {
+      attrMap.set(attr.definitionId, {
+        definitionId: attr.definitionId,
+        value: attr.value,
+        touched: attr.touched,
+      });
+    });
+    setAttributeValues(attrMap);
+    setEventNote(event.note || '');
+    setCurrentPhotos(event.photos);
+    setExistingPhotos(event.existingPhotos);
+  }, []);
+
+  // selectEvent: koristi se pri tab switch (parent attrs iz ref-a)
   const selectEvent = useCallback((index: number, events?: PendingEvent[]) => {
     const eventsList = events || pendingEvents;
     if (index < 0 || index >= eventsList.length) return;
-    
     const event = eventsList[index];
     setSelectedEventIndex(index);
     
-    // Load event attributes into form
-    const attrMap = new Map<string, LocalAttributeValue>();
+    // Merge: parent attrs iz ref (sync, bez dep) + leaf attrs
+    const attrMap = new Map<string, LocalAttributeValue>(parentAttrValuesRef.current);
     event.attributes.forEach(attr => {
       attrMap.set(attr.definitionId, {
         definitionId: attr.definitionId,
@@ -360,6 +447,7 @@ export function EditActivityPage() {
     setCurrentPhotos(event.photos);
     setExistingPhotos(event.existingPhotos);
   }, [pendingEvents]);
+  
   
   // ============================================
   // Category Chain & Attributes
@@ -383,42 +471,55 @@ export function EditActivityPage() {
   // ============================================
   
   const handleAttributeChange = useCallback((definitionId: string, value: string | number | boolean | null) => {
+    // Uvijek update flat attributeValues map (UI prikaz)
     setAttributeValues(prev => {
       const next = new Map(prev);
-      next.set(definitionId, {
-        definitionId,
-        value,
-        touched: true,
-      });
+      next.set(definitionId, { definitionId, value, touched: true });
       return next;
     });
     setIsDirty(true);
     
-    // Update the pending event
-    setPendingEvents(prev => {
-      const next = [...prev];
-      const event = next[selectedEventIndex];
-      if (event) {
-        const attrIndex = event.attributes.findIndex(a => a.definitionId === definitionId);
-        if (attrIndex >= 0) {
-          event.attributes[attrIndex] = {
-            ...event.attributes[attrIndex],
-            value,
-            touched: true,
-          };
-        } else {
-          event.attributes.push({
-            definitionId,
-            value,
-            dataType: 'text',
-            touched: true,
-          });
+    // EDIT-P2: Determiniraj pripada li attr leaf ili parent kategoriji
+    // Leaf attr → update pendingEvent[selectedEventIndex]
+    // Parent attr → update parentAttrValues (dijeljeni za sve tabove)
+    const leafAttrDefs = categoryId ? (attributesByCategory.get(categoryId) || []) : [];
+    const isLeafAttr = leafAttrDefs.some(d => d.id === definitionId);
+    
+    if (isLeafAttr) {
+      // Update leaf pending event (kao prije)
+      setPendingEvents(prev => {
+        const next = [...prev];
+        const event = next[selectedEventIndex];
+        if (event) {
+          const attrIndex = event.attributes.findIndex(a => a.definitionId === definitionId);
+          if (attrIndex >= 0) {
+            event.attributes[attrIndex] = {
+              ...event.attributes[attrIndex],
+              value,
+              touched: true,
+            };
+          } else {
+            event.attributes.push({
+              definitionId,
+              value,
+              dataType: 'text',
+              touched: true,
+            });
+          }
+          event.isModified = true;
         }
-        event.isModified = true;
-      }
-      return next;
-    });
-  }, [selectedEventIndex]);
+        return next;
+      });
+    } else {
+      // Update parent attrs (dijeljeni za cijelu sesiju)
+      setParentAttrValues(prev => {
+        const next = new Map(prev);
+        next.set(definitionId, { definitionId, value, touched: true });
+        parentAttrValuesRef.current = next;
+        return next;
+      });
+    }
+  }, [selectedEventIndex, categoryId, attributesByCategory]);
   
   const handleAttributeTouch = useCallback((definitionId: string) => {
     setAttributeValues(prev => {
@@ -678,12 +779,18 @@ export function EditActivityPage() {
           .delete()
           .eq('event_id', event.dbId);
         
-        const touchedAttrs = event.attributes.filter(a => a.touched && a.value != null);
-        if (touchedAttrs.length > 0) {
+        // FIX: Save ALL non-null attributes, not just touched ones.
+        // Previously, only touched=true attrs were saved → delete+reinsert loop
+        // destroyed DB-loaded attributes (touched=false) that user never modified.
+        const attrsToSave = event.attributes.filter(a => a.value != null);
+        if (attrsToSave.length > 0) {
           const attrDefs = attributesByCategory.get(event.categoryId) || [];
-          const attributeRecords = touchedAttrs.map(attr => {
+          const attributeRecords = attrsToSave.map(attr => {
             const def = attrDefs.find(d => d.id === attr.definitionId);
-            const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
+            // Fallback to attr.dataType (loaded from DB) if def not in chain yet
+            const valueColumn = def
+              ? VALUE_COLUMNS[def.data_type] || 'value_text'
+              : VALUE_COLUMNS[attr.dataType] || 'value_text';
             
             return {
               event_id: event.dbId,
@@ -781,13 +888,15 @@ export function EditActivityPage() {
         
         if (insertError) throw insertError;
         
-        // Insert attributes
-        const touchedAttrs = event.attributes.filter(a => a.touched && a.value != null);
-        if (touchedAttrs.length > 0) {
+        // Insert attributes (all non-null - copied events have touched:true already)
+        const attrsToSave = event.attributes.filter(a => a.value != null);
+        if (attrsToSave.length > 0) {
           const attrDefs = attributesByCategory.get(event.categoryId) || [];
-          const attributeRecords = touchedAttrs.map(attr => {
+          const attributeRecords = attrsToSave.map(attr => {
             const def = attrDefs.find(d => d.id === attr.definitionId);
-            const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
+            const valueColumn = def
+              ? VALUE_COLUMNS[def.data_type] || 'value_text'
+              : VALUE_COLUMNS[attr.dataType] || 'value_text';
             
             return {
               event_id: newEvent.id,
@@ -832,6 +941,91 @@ export function EditActivityPage() {
           } catch (photoErr) {
             console.error('Failed to upload photo:', photoErr);
           }
+        }
+      }
+      
+      // ============================================================
+      // EDIT-P2: Upsert parent eventi (Activity, Gym itd.)
+      // Za svaku parent kategoriju: UPDATE ako postoji, INSERT ako ne.
+      // Koristimo parentAttrValues (dijeljeni za cijelu sesiju).
+      // ============================================================
+      for (const [catId, dbId] of parentDbIds) {
+        const catAttrDefs = attributesByCategory.get(catId) || [];
+        // Filtriraj atribute koji pripadaju ovoj kategoriji i imaju vrijednost
+        const attrsForCat = catAttrDefs
+          .map(def => parentAttrValues.get(def.id))
+          .filter((v): v is LocalAttributeValue => v != null && v.value != null);
+        
+        if (dbId) {
+          // UPDATE postojećeg parent eventa
+          const { error: parentUpdateError } = await supabase
+            .from('events')
+            .update({
+              event_date: eventDate,
+              session_start: newSessionStart,
+              edited_at: new Date().toISOString(),
+            })
+            .eq('id', dbId);
+          
+          if (parentUpdateError) throw parentUpdateError;
+          
+          // Delete + reinsert parent attrs
+          await supabase.from('event_attributes').delete().eq('event_id', dbId);
+          
+          if (attrsForCat.length > 0) {
+            const parentAttrRecords = attrsForCat.map(attr => {
+              const def = catAttrDefs.find(d => d.id === attr.definitionId);
+              const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
+              return {
+                event_id: dbId,
+                user_id: user.id,
+                attribute_definition_id: attr.definitionId,
+                [valueColumn]: attr.value,
+              };
+            });
+            const { error: parentAttrErr } = await supabase
+              .from('event_attributes')
+              .insert(parentAttrRecords);
+            if (parentAttrErr) throw parentAttrErr;
+          }
+        } else if (attrsForCat.length > 0) {
+          // INSERT novi parent event (nije postojao)
+          const { data: newParentEvent, error: newParentError } = await supabase
+            .from('events')
+            .insert({
+              user_id: user.id,
+              category_id: catId,
+              event_date: eventDate,
+              session_start: newSessionStart,
+              comment: null,
+              created_at: sessionDateTime.toISOString(),
+            })
+            .select('id')
+            .single();
+          
+          if (newParentError) throw newParentError;
+          
+          const parentAttrRecords = attrsForCat.map(attr => {
+            const def = catAttrDefs.find(d => d.id === attr.definitionId);
+            const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
+            return {
+              event_id: newParentEvent.id,
+              user_id: user.id,
+              attribute_definition_id: attr.definitionId,
+              [valueColumn]: attr.value,
+            };
+          });
+          const { error: newParentAttrErr } = await supabase
+            .from('event_attributes')
+            .insert(parentAttrRecords);
+          if (newParentAttrErr) throw newParentAttrErr;
+          
+          // Ažuriraj parentDbIds s novim ID-em
+          setParentDbIds(prev => {
+            const next = new Map(prev);
+            next.set(catId, newParentEvent.id as UUID);
+            return next;
+          });
         }
       }
       

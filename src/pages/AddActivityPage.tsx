@@ -674,126 +674,163 @@ export function AddActivityPage() {
       const eventDate = sessionStart.toISOString().split('T')[0];
       const sessionStartIso = sessionStart.toISOString();
       
-      log(`Writing ${eventsToSave.length} events to database`);
-      
-      // Write each pending event to database
-      for (const pendingEvent of eventsToSave) {
-        // For each pending event, create events for the whole chain
-        const eventsForChain: { id: string; category_id: string }[] = [];
-        
-        for (const category of categoryChain) {
-          const categoryAttrs = attributesByCategory.get(category.id) || [];
-          const eventAttrs = pendingEvent.attributes.filter(attr =>
-            categoryAttrs.some(def => def.id === attr.definitionId)
-          );
-          
-          const isLeaf = category.id === pendingEvent.categoryId;
-          
-          // Skip categories without attributes (unless leaf)
-          if (!isLeaf && eventAttrs.length === 0) continue;
-          
-          // Insert event
-          const { data: event, error: eventError } = await supabase
-            .from('events')
-            .insert({
-              user_id: user.id,
-              category_id: category.id,
-              event_date: eventDate,
-              session_start: sessionStartIso,
-              comment: isLeaf ? pendingEvent.note : null,
-              created_at: pendingEvent.createdAt.toISOString(),
-            })
-            .select('id, category_id')
-            .single();
-          
-          if (eventError) throw eventError;
-          eventsForChain.push(event);
-          
-          // Insert attribute values
-          if (eventAttrs.length > 0) {
-            const attrDefs = attributesByCategory.get(category.id) || [];
-            const attributeRecords = eventAttrs.map(attr => {
-              const def = attrDefs.find(d => d.id === attr.definitionId);
-              const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
-              
-              return {
-                event_id: event.id,
-                user_id: user.id,
-                attribute_definition_id: attr.definitionId,
-                [valueColumn]: attr.value,
-              };
-            });
-            
-            const { error: attrError } = await supabase
-              .from('event_attributes')
-              .insert(attributeRecords);
-            
-            if (attrError) throw attrError;
+      log(`Writing ${eventsToSave.length} leaf events to database`);
+
+      // ============================================================
+      // ADD-P2: P2 arhitektura - 1 parent event po sesiji, N leaf
+      // ============================================================
+
+      const leafCategoryId = categoryId;
+      // chain[0] = leaf, chain[last] = root
+      const nonLeafCategories = categoryChain.filter(c => c.id !== leafCategoryId);
+
+      // --- FAZA 1: Parent eventi (1 po kategoriji) ---
+      // P3: skupi atribute iz SVIH leaf evenata, "zadnja ne-prazna vrijednost pobjeđuje"
+      for (const parentCat of nonLeafCategories) {
+        const parentAttrDefs = attributesByCategory.get(parentCat.id) || [];
+        if (parentAttrDefs.length === 0) {
+          log(`Parent category ${parentCat.name} has no attr defs, skipping`);
+          continue;
+        }
+        const parentAttrDefIds = new Set(parentAttrDefs.map(d => d.id));
+
+        // P3 merge: iterate svi eventsToSave, zadnja ne-null vrijednost pobjeđuje
+        const mergedParentAttrs = new Map<string, AttributeValue>();
+        for (const ev of eventsToSave) {
+          for (const attr of ev.attributes) {
+            if (parentAttrDefIds.has(attr.definitionId) && attr.value != null) {
+              mergedParentAttrs.set(attr.definitionId, attr);
+            }
           }
         }
-        
-        // Upload photos for leaf event
-        log(`Checking photos for event: ${pendingEvent.photos.length} photos, ${eventsForChain.length} events in chain`);
-        if (pendingEvent.photos.length > 0 && eventsForChain.length > 0) {
-          const leafEvent = eventsForChain.find(e => e.category_id === pendingEvent.categoryId);
-          log(`Leaf event found: ${leafEvent ? leafEvent.id : 'NOT FOUND'}, looking for category: ${pendingEvent.categoryId}`);
-          log(`Events in chain: ${eventsForChain.map(e => `${e.id}:${e.category_id}`).join(', ')}`);
-          if (leafEvent) {
-            for (const photo of pendingEvent.photos) {
-              try {
-                log(`Uploading photo: ${photo.id}, filename: ${photo.filename}, size: ${photo.sizeBytes}`);
-                // Convert base64 to blob
-                const base64Data = photo.base64.split(',')[1];
-                const byteCharacters = atob(base64Data);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                  byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'image/jpeg' });
-                
-                // Upload to storage
-                const fileName = `${user.id}/${leafEvent.id}_${photo.id}.jpg`;
-                log(`Uploading to: activity-attachments/${fileName}`);
-                const { error: uploadError } = await supabase.storage
-                  .from('activity-attachments')
-                  .upload(fileName, blob);
-                
-                if (uploadError) {
-                  log(`Photo upload FAILED: ${uploadError.message}`);
-                  console.error('Photo upload failed:', uploadError);
-                  continue;
-                }
-                
-                log(`Photo uploaded successfully, getting public URL`);
-                // Get public URL
-                const { data: urlData } = supabase.storage
-                  .from('activity-attachments')
-                  .getPublicUrl(fileName);
-                
-                log(`Public URL: ${urlData.publicUrl}`);
-                // Insert attachment record
-                const { error: attachError } = await supabase.from('event_attachments').insert({
-                  event_id: leafEvent.id,
-                  user_id: user.id,
-                  type: 'image',
-                  url: urlData.publicUrl,
-                  filename: photo.filename,
-                  size_bytes: photo.sizeBytes,
-                });
-                
-                if (attachError) {
-                  log(`Attachment record insert FAILED: ${attachError.message}`);
-                } else {
-                  log(`Attachment record inserted successfully`);
-                }
-              } catch (photoErr) {
-                log(`Photo upload exception: ${photoErr instanceof Error ? photoErr.message : 'unknown'}`);
-                console.error('Failed to upload photo:', photoErr);
+
+        // INSERT 1 parent event
+        const { data: parentEvent, error: parentEventError } = await supabase
+          .from('events')
+          .insert({
+            user_id: user.id,
+            category_id: parentCat.id,
+            event_date: eventDate,
+            session_start: sessionStartIso,
+            comment: null,
+            created_at: sessionStart.toISOString(),
+          })
+          .select('id')
+          .single();
+
+        if (parentEventError) throw parentEventError;
+        log(`Inserted parent event for ${parentCat.name}: ${parentEvent.id}`);
+
+        // INSERT parent atributi
+        if (mergedParentAttrs.size > 0) {
+          const parentAttrRecords = Array.from(mergedParentAttrs.values()).map(attr => {
+            const def = parentAttrDefs.find(d => d.id === attr.definitionId);
+            const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
+            return {
+              event_id: parentEvent.id,
+              user_id: user.id,
+              attribute_definition_id: attr.definitionId,
+              [valueColumn]: attr.value,
+            };
+          });
+          const { error: parentAttrError } = await supabase
+            .from('event_attributes')
+            .insert(parentAttrRecords);
+          if (parentAttrError) throw parentAttrError;
+        }
+      }
+
+      // --- FAZA 2: Leaf eventi (1 po pendingEvent) ---
+      const leafAttrDefs = attributesByCategory.get(leafCategoryId) || [];
+      const leafAttrDefIds = new Set(leafAttrDefs.map(d => d.id));
+
+      for (const pendingEvent of eventsToSave) {
+        // Samo leaf atributi za leaf event
+        const leafEventAttrs = pendingEvent.attributes.filter(a => leafAttrDefIds.has(a.definitionId));
+
+        const { data: leafEvent, error: leafEventError } = await supabase
+          .from('events')
+          .insert({
+            user_id: user.id,
+            category_id: leafCategoryId,
+            event_date: eventDate,
+            session_start: sessionStartIso,
+            comment: pendingEvent.note,
+            created_at: pendingEvent.createdAt.toISOString(),
+          })
+          .select('id, category_id')
+          .single();
+
+        if (leafEventError) throw leafEventError;
+        log(`Inserted leaf event: ${leafEvent.id}`);
+
+        if (leafEventAttrs.length > 0) {
+          const leafAttrRecords = leafEventAttrs.map(attr => {
+            const def = leafAttrDefs.find(d => d.id === attr.definitionId);
+            const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
+            return {
+              event_id: leafEvent.id,
+              user_id: user.id,
+              attribute_definition_id: attr.definitionId,
+              [valueColumn]: attr.value,
+            };
+          });
+          const { error: attrError } = await supabase
+            .from('event_attributes')
+            .insert(leafAttrRecords);
+          if (attrError) throw attrError;
+        }
+
+        // Upload photos za leaf event
+        log(`Checking photos: ${pendingEvent.photos.length} photos`);
+        if (pendingEvent.photos.length > 0) {
+          for (const photo of pendingEvent.photos) {
+            try {
+              log(`Uploading photo: ${photo.id}, filename: ${photo.filename}, size: ${photo.sizeBytes}`);
+              const base64Data = photo.base64.split(',')[1];
+              const byteCharacters = atob(base64Data);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
               }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: 'image/jpeg' });
+              
+              const fileName = `${user.id}/${leafEvent.id}_${photo.id}.jpg`;
+              log(`Uploading to: activity-attachments/${fileName}`);
+              const { error: uploadError } = await supabase.storage
+                .from('activity-attachments')
+                .upload(fileName, blob);
+              
+              if (uploadError) {
+                log(`Photo upload FAILED: ${uploadError.message}`);
+                console.error('Photo upload failed:', uploadError);
+                continue;
+              }
+              
+              const { data: urlData } = supabase.storage
+                .from('activity-attachments')
+                .getPublicUrl(fileName);
+              
+              log(`Public URL: ${urlData.publicUrl}`);
+              const { error: attachError } = await supabase.from('event_attachments').insert({
+                event_id: leafEvent.id,
+                user_id: user.id,
+                type: 'image',
+                url: urlData.publicUrl,
+                filename: photo.filename,
+                size_bytes: photo.sizeBytes,
+              });
+              
+              if (attachError) {
+                log(`Attachment record insert FAILED: ${attachError.message}`);
+              } else {
+                log(`Attachment record inserted successfully`);
+              }
+            } catch (photoErr) {
+              log(`Photo upload exception: ${photoErr instanceof Error ? photoErr.message : 'unknown'}`);
+              console.error('Failed to upload photo:', photoErr);
             }
-          } else {
-            log(`WARNING: Could not find leaf event for category ${pendingEvent.categoryId}`);
           }
         }
       }

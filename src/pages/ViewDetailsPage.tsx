@@ -306,6 +306,8 @@ export function ViewDetailsPage() {
   const [sessionDateTime, setSessionDateTime] = useState<Date>(new Date());
   const [viewEvents, setViewEvents] = useState<ViewEvent[]>([]);
   const [selectedEventIndex, setSelectedEventIndex] = useState(0);
+  // VIEW-P2: parent atributi dijeljeni za sve tabove (Activity, Gym itd.)
+  const [parentAttrValues, setParentAttrValues] = useState<Map<string, { value: string | number | boolean | null; dataType: string }>>(new Map());
 
   useEffect(() => {
     if (!sessionStart) {
@@ -408,6 +410,68 @@ export function ViewDetailsPage() {
 
       setViewEvents(loadedEvents);
 
+      // ============================================================
+      // VIEW-P2: Load parent events (Activity, Gym itd.)
+      // Isti pattern kao EDIT-P2 u EditActivityPage.
+      // ============================================================
+      const decodedSS = noSession
+        ? loadedEvents[0]?.id  // fallback - neće se koristiti za parent query
+        : decodeURIComponent(sessionStart);
+
+      const parentChainIds: UUID[] = [];
+      let currentParentId: UUID | null = null;
+
+      const { data: leafCatRow } = await supabase
+        .from('categories')
+        .select('parent_category_id')
+        .eq('id', leafCategoryId)
+        .single() as { data: { parent_category_id: string | null } | null };
+
+      currentParentId = (leafCatRow?.parent_category_id as UUID | null) ?? null;
+
+      while (currentParentId) {
+        parentChainIds.push(currentParentId);
+        const { data: parentCatRow } = await supabase
+          .from('categories')
+          .select('parent_category_id')
+          .eq('id', currentParentId)
+          .single() as { data: { parent_category_id: string | null } | null };
+        currentParentId = (parentCatRow?.parent_category_id as UUID | null) ?? null;
+      }
+
+      const newParentAttrValues = new Map<string, { value: string | number | boolean | null; dataType: string }>();
+
+      if (parentChainIds.length > 0 && !noSession) {
+        const { data: parentEventsData } = await supabase
+          .from('events')
+          .select('id, category_id')
+          .eq('session_start', decodedSS)
+          .in('category_id', parentChainIds)
+          .eq('user_id', user.id);
+
+        for (const pe of (parentEventsData || []) as { id: UUID; category_id: UUID }[]) {
+          const { data: parentAttrs } = await supabase
+            .from('event_attributes')
+            .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
+            .eq('event_id', pe.id);
+
+          for (const attr of (parentAttrs || []) as unknown as LoadedAttribute[]) {
+            if (!attr.attribute_definitions) continue;
+            const dataType = attr.attribute_definitions.data_type;
+            let value: string | number | boolean | null = null;
+            if (dataType === 'number' && attr.value_number !== null) value = attr.value_number;
+            else if (dataType === 'boolean' && attr.value_boolean !== null) value = attr.value_boolean;
+            else if (dataType === 'datetime' && attr.value_datetime !== null) value = attr.value_datetime;
+            else if (attr.value_text !== null) value = attr.value_text;
+            if (value !== null) {
+              newParentAttrValues.set(attr.attribute_definition_id, { value, dataType });
+            }
+          }
+        }
+      }
+
+      setParentAttrValues(newParentAttrValues);
+
     } catch (err) {
       console.error('Failed to load activity:', err);
       setLoadError(err instanceof Error ? err.message : 'Failed to load activity');
@@ -456,10 +520,15 @@ export function ViewDetailsPage() {
   const currentEvent = viewEvents[selectedEventIndex];
 
   const attributeValues = useMemo(() => {
-    if (!currentEvent) return new Map<string, { value: string | number | boolean | null; dataType: string }>();
-    // Re-key by attribute_definition_id (already the key in currentEvent.attributes)
-    return currentEvent.attributes;
-  }, [currentEvent]);
+    // VIEW-P2: Merge parent attrs + leaf attrs za trenutni event
+    // Parent (Activity, Gym): dijeljeni, isti za sve tabove
+    // Leaf (Strength): specifični za svaki tab
+    const merged = new Map<string, { value: string | number | boolean | null; dataType: string }>(parentAttrValues);
+    if (currentEvent) {
+      currentEvent.attributes.forEach((v, k) => merged.set(k, v));
+    }
+    return merged;
+  }, [currentEvent, parentAttrValues]);
 
   // ============================================
   // Prev / Next Navigation
