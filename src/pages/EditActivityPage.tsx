@@ -762,6 +762,30 @@ export function EditActivityPage() {
       
       const newSessionStart = sessionDateTime.toISOString();
       const eventDate = sessionDateTime.toISOString().split('T')[0];
+
+      // ── Collision check ──────────────────────────────────────────
+      // Provjeri postoji li već druga aktivnost s istim lancem i
+      // istim session_start (može se desiti promjenom date/time pickera).
+      // Isključujemo vlastite leaf evente (isti dbId).
+      const ownLeafIds = pendingEvents
+        .filter(e => e.dbId && !e.isNew)
+        .map(e => e.dbId!);
+
+      const { data: collision } = await supabase
+        .from('events')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('category_id', categoryId)
+        .eq('session_start', newSessionStart)
+        .not('id', 'in', `(${ownLeafIds.join(',')})`)
+        .limit(1);
+
+      if (collision && collision.length > 0) {
+        setError('Same area-category chain and session start are not allowed. Please change the date or time.');
+        setSaving(false);
+        return;
+      }
+      // ────────────────────────────────────────────────────────────
       
       // Separate events by status
       const toUpdate = pendingEvents.filter(e => e.isModified && !e.isNew && !e.isDeleted && e.dbId);

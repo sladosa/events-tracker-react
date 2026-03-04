@@ -1,23 +1,29 @@
 /**
  * Events Tracker – Excel Import Modal
  * =====================================
- * Import events from Excel file:
- * - File picker (click or drag & drop)
- * - Parse preview (CREATE count, UPDATE count, warnings)
- * - Apply button
- * - Result display
+ * Import flow:
+ *   idle → parsing → checking (collision detect) → ready → applying → done
+ *
+ * Collision resolution: ako CREATE sesija već postoji u bazi,
+ * korisnik bira Overwrite / Skip per sesija.
  */
 
 import { useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { importEventsFromExcel } from '@/lib/excelImport';
+import {
+  importEventsFromExcel,
+  checkImportCollisions,
+  parseExcelFile,
+} from '@/lib/excelImport';
+import { loadCategoriesForExport } from '@/lib/excelDataLoader';
+import type { CollisionInfo } from '@/lib/excelImport';
 
 interface ExcelImportModalProps {
-  onClose:    () => void;
-  onSuccess:  () => void;   // trigger Activities table refresh
+  onClose:   () => void;
+  onSuccess: () => void;
 }
 
-type ImportState = 'idle' | 'parsing' | 'ready' | 'applying' | 'done' | 'error';
+type ImportState = 'idle' | 'parsing' | 'checking' | 'ready' | 'applying' | 'done' | 'error';
 
 interface ParsePreview {
   toCreateCount: number;
@@ -26,12 +32,14 @@ interface ParsePreview {
 }
 
 export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) {
-  const [importState, setImportState] = useState<ImportState>('idle');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [preview,      setPreview]      = useState<ParsePreview | null>(null);
-  const [result,       setResult]       = useState<{ created: number; updated: number; warnings: string[] } | null>(null);
-  const [errors,       setErrors]       = useState<string[]>([]);
-  const [isDragOver,   setIsDragOver]   = useState(false);
+  const [importState,   setImportState]   = useState<ImportState>('idle');
+  const [selectedFile,  setSelectedFile]  = useState<File | null>(null);
+  const [preview,       setPreview]       = useState<ParsePreview | null>(null);
+  const [collisions,    setCollisions]    = useState<CollisionInfo[]>([]);
+  const [overwriteMap,  setOverwriteMap]  = useState<Map<string, boolean>>(new Map());
+  const [result,        setResult]        = useState<{ created: number; updated: number; warnings: string[] } | null>(null);
+  const [errors,        setErrors]        = useState<string[]>([]);
+  const [isDragOver,    setIsDragOver]    = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -45,11 +53,11 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
     setSelectedFile(file);
     setErrors([]);
     setPreview(null);
+    setCollisions([]);
+    setOverwriteMap(new Map());
     setImportState('parsing');
 
     try {
-      // Quick parse to get preview counts (without applying)
-      const { parseExcelFile } = await import('@/lib/excelImport');
       const parsed = await parseExcelFile(file);
 
       if (parsed.errors.length > 0) {
@@ -58,11 +66,32 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
         return;
       }
 
-      setPreview({
+      const previewData: ParsePreview = {
         toCreateCount: parsed.toCreate.length,
         toUpdateCount: parsed.toUpdate.length,
         warnings:      parsed.warnings,
-      });
+      };
+      setPreview(previewData);
+
+      // Collision detection za CREATE redove
+      if (parsed.toCreate.length > 0) {
+        setImportState('checking');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const categoriesDict = await loadCategoriesForExport(user.id);
+        const foundCollisions = await checkImportCollisions(user.id, parsed.toCreate, categoriesDict);
+
+        setCollisions(foundCollisions);
+
+        // Inicijalna odluka: sve na false (skip)
+        if (foundCollisions.length > 0) {
+          const initialMap = new Map<string, boolean>();
+          for (const c of foundCollisions) initialMap.set(c.sessionKey, false);
+          setOverwriteMap(initialMap);
+        }
+      }
+
       setImportState('ready');
     } catch (err) {
       setErrors([`Parse error: ${String(err)}`]);
@@ -82,6 +111,15 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
     if (file) handleFile(file);
   };
 
+  // ── Toggle overwrite odluke ──
+  const toggleOverwrite = (sessionKey: string, value: boolean) => {
+    setOverwriteMap(prev => {
+      const next = new Map(prev);
+      next.set(sessionKey, value);
+      return next;
+    });
+  };
+
   // ── Apply import ──
   const handleApply = async () => {
     if (!selectedFile) return;
@@ -93,7 +131,7 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const importResult = await importEventsFromExcel(user.id, selectedFile);
+      const importResult = await importEventsFromExcel(user.id, selectedFile, overwriteMap);
 
       if (importResult.errors.length > 0) {
         setErrors(importResult.errors);
@@ -107,7 +145,7 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
         warnings: importResult.warnings,
       });
       setImportState('done');
-      onSuccess();  // refresh Activities table
+      onSuccess();
     } catch (err) {
       setErrors([`Import failed: ${String(err)}`]);
       setImportState('error');
@@ -120,10 +158,20 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
     setPreview(null);
     setResult(null);
     setErrors([]);
+    setCollisions([]);
+    setOverwriteMap(new Map());
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const isWorking = importState === 'parsing' || importState === 'applying';
+  const isWorking = importState === 'parsing' || importState === 'checking' || importState === 'applying';
+
+  const formatTime = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleTimeString('hr', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return iso;
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -190,16 +238,18 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
             </>
           )}
 
-          {/* ── PARSING ── */}
-          {importState === 'parsing' && (
+          {/* ── PARSING / CHECKING ── */}
+          {(importState === 'parsing' || importState === 'checking') && (
             <div className="flex flex-col items-center gap-3 py-6">
               <span className="text-4xl animate-spin">⏳</span>
-              <p className="text-gray-600">Parsing Excel file…</p>
+              <p className="text-gray-600">
+                {importState === 'parsing' ? 'Parsing Excel file…' : 'Checking for conflicts…'}
+              </p>
               <p className="text-sm text-gray-400">{selectedFile?.name}</p>
             </div>
           )}
 
-          {/* ── READY: Preview ── */}
+          {/* ── READY: Preview + collision resolution ── */}
           {importState === 'ready' && preview && (
             <>
               <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -217,6 +267,58 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
                   <p className="text-xs text-blue-600 mt-0.5">Events to update</p>
                 </div>
               </div>
+
+              {/* Collision resolution */}
+              {collisions.length > 0 && (
+                <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-3">
+                  <p className="text-sm font-semibold text-amber-800">
+                    ⚠️ {collisions.length} session conflict{collisions.length > 1 ? 's' : ''} detected
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    These sessions already exist in the database. Choose what to do for each:
+                  </p>
+
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {collisions.map(c => (
+                      <div key={c.sessionKey} className="bg-white border border-amber-200 rounded-lg p-2.5">
+                        <div className="text-xs text-gray-700 mb-1">
+                          <span className="font-medium">{c.eventDate}</span>
+                          <span className="text-gray-400"> @ </span>
+                          <span className="font-medium">{formatTime(c.sessionISO)}</span>
+                          <span className="text-gray-400 mx-1">·</span>
+                          <span className="text-gray-600">{c.categoryPath}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mb-2">Rows: {c.rowNumbers.join(', ')}</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => toggleOverwrite(c.sessionKey, true)}
+                            className={`flex-1 py-1 px-2 text-xs rounded font-medium border transition-colors ${
+                              overwriteMap.get(c.sessionKey) === true
+                                ? 'bg-orange-500 border-orange-500 text-white'
+                                : 'bg-white border-gray-300 text-gray-600 hover:border-orange-400 hover:text-orange-600'
+                            }`}
+                          >
+                            ✏️ Overwrite
+                          </button>
+                          <button
+                            onClick={() => toggleOverwrite(c.sessionKey, false)}
+                            className={`flex-1 py-1 px-2 text-xs rounded font-medium border transition-colors ${
+                              overwriteMap.get(c.sessionKey) === false
+                                ? 'bg-gray-500 border-gray-500 text-white'
+                                : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                            }`}
+                          >
+                            ⏭ Skip
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-amber-600">
+                    Skipped sessions will appear as warnings in the result.
+                  </p>
+                </div>
+              )}
 
               {preview.warnings.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 space-y-1">

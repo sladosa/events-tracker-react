@@ -460,15 +460,18 @@ function getHierarchyLevels(
 // ─────────────────────────────────────────────
 
 export async function applyImportChanges(
-  userId:         string,
-  toCreate:       ParsedImportRow[],
-  toUpdate:       ParsedImportRow[],
-  categoriesDict: ExportCategoriesDict,
-  attrDefs:       ExportAttrDef[],
+  userId:              string,
+  toCreate:            ParsedImportRow[],
+  toUpdate:            ParsedImportRow[],
+  categoriesDict:      ExportCategoriesDict,
+  attrDefs:            ExportAttrDef[],
+  /** Map<sessionKey, overwrite>: true = overwrite existing, false = skip */
+  overwriteDecisions:  Map<string, boolean> = new Map(),
 ): Promise<ApplyResult> {
   let created  = 0;
   let updated  = 0;
-  const errors: string[] = [];
+  const errors:   string[] = [];
+  const warnings: string[] = [];
 
   // Build (category_id, attr_name) → attr_def lookup
   const attrByCatName = new Map<string, ExportAttrDef>();
@@ -593,11 +596,11 @@ export async function applyImportChanges(
   //   → leafRows: ParsedImportRow[]                              (N leaf evenata)
 
   interface SessionGroup {
-    eventDate:    string;
-    sessionISO:   string;
-    // categoryId → (defId → {def, value}) — P3 merge parent atributa
-    parentMerged: Map<string, Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>>;
-    leafRows:     ParsedImportRow[];
+    sessionKey:     string;
+    eventDate:      string;
+    sessionISO:     string;
+    parentMerged:   Map<string, Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>>;
+    leafRows:       ParsedImportRow[];
     leafCategoryId: string;
   }
 
@@ -620,6 +623,7 @@ export async function applyImportChanges(
 
     if (!sessionGroups.has(sessionKey)) {
       sessionGroups.set(sessionKey, {
+        sessionKey,
         eventDate:      row.event_date,
         sessionISO,
         parentMerged:   new Map(),
@@ -650,6 +654,18 @@ export async function applyImportChanges(
 
   // Prolaz 2: za svaku sesiju INSERT parent eventi (1 po cat), pa leaf eventi (N)
   for (const group of sessionGroups.values()) {
+    // ── Collision resolution ────────────────────────────────
+    // Ako overwriteDecisions ima odluku za ovu sesiju:
+    //   false → skip cijelu sesiju, dodaj warning
+    //   true  → nastavi normalno (INSERT parent + leaf)
+    // Ako nema odluke → normalan INSERT (nije bilo kolizije)
+    const overwriteDecision = overwriteDecisions.get(group.sessionKey);
+    if (overwriteDecision === false) {
+      const rowNums = group.leafRows.map(r => r._source_row).join(', ');
+      warnings.push(`Skipped rows ${rowNums}: session already exists (${group.leafRows[0].category_path} @ ${group.sessionISO}). Check: area-category chain + session start.`);
+      continue;
+    }
+    // ────────────────────────────────────────────────────────
     // Parent eventi — direktni INSERT per grupa, bez SELECT
     // Grupa je već izolirana po leafCategoryId → nema duplikata između lanca
     // Koristimo hierarchyLevels iz prvog leaf reda za redosljed parent kategorija
@@ -906,7 +922,7 @@ export async function applyImportChanges(
     }
   }
 
-  return { created, updated, errors, warnings: [] };
+  return { created, updated, errors, warnings };
 }
 
 /** Build event_attributes insert/update payload */
@@ -946,8 +962,87 @@ function buildAttrData(
 }
 
 // ─────────────────────────────────────────────
-// High-level import function
+// Collision detection (CREATE rows vs existing DB)
 // ─────────────────────────────────────────────
+
+export interface CollisionInfo {
+  /** Isti key koji se koristi u sessionGroups */
+  sessionKey:   string;
+  sessionISO:   string;
+  eventDate:    string;
+  /** Human-readable path za prikaz u UI */
+  categoryPath: string;
+  /** Redni brojevi Excel redova koji su u koliziji */
+  rowNumbers:   number[];
+}
+
+/**
+ * Provjeri postoje li u bazi eventi koji se podudaraju s CREATE redovima
+ * (isti user + leafCategoryId + session_start).
+ * Vraća popis kolizija za prikaz u UI prije primjene importa.
+ */
+export async function checkImportCollisions(
+  userId:         string,
+  toCreate:       ParsedImportRow[],
+  categoriesDict: ExportCategoriesDict,
+): Promise<CollisionInfo[]> {
+  if (toCreate.length === 0) return [];
+
+  const catByPath: Record<string, string> = {};
+  for (const [id, info] of Object.entries(categoriesDict)) catByPath[info.full_path] = id;
+
+  // Grupiraj CREATE redove po sessionKey (isti kao u applyImportChanges)
+  const sessionMap = new Map<string, {
+    sessionISO: string; eventDate: string;
+    categoryPath: string; leafCategoryId: string; rowNumbers: number[];
+  }>();
+
+  for (const row of toCreate) {
+    const leafCategoryId = catByPath[row.category_path];
+    if (!leafCategoryId) continue;
+    const ssParsed   = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
+    const sessionISO = toISO(row.event_date, ssParsed);
+    const sessionKey = `${row.event_date}__${sessionISO}__${leafCategoryId}`;
+
+    if (!sessionMap.has(sessionKey)) {
+      sessionMap.set(sessionKey, {
+        sessionISO,
+        eventDate:    row.event_date,
+        categoryPath: row.category_path,
+        leafCategoryId,
+        rowNumbers:   [],
+      });
+    }
+    sessionMap.get(sessionKey)!.rowNumbers.push(row._source_row);
+  }
+
+  // Za svaku sesiju provjeri postoji li već u bazi
+  const collisions: CollisionInfo[] = [];
+
+  for (const [sessionKey, info] of sessionMap) {
+    const { data: existing } = await supabase
+      .from('events')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('category_id', info.leafCategoryId)
+      .eq('session_start', info.sessionISO)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      collisions.push({
+        sessionKey,
+        sessionISO:   info.sessionISO,
+        eventDate:    info.eventDate,
+        categoryPath: info.categoryPath,
+        rowNumbers:   info.rowNumbers,
+      });
+    }
+  }
+
+  return collisions;
+}
+
+
 
 export interface ImportResult {
   created:  number;
@@ -957,8 +1052,9 @@ export interface ImportResult {
 }
 
 export async function importEventsFromExcel(
-  userId: string,
-  file:   File,
+  userId:             string,
+  file:               File,
+  overwriteDecisions: Map<string, boolean> = new Map(),
 ): Promise<ImportResult> {
   // Step 1: Parse file
   const parsed = await parseExcelFile(file);
@@ -993,8 +1089,8 @@ export async function importEventsFromExcel(
     };
   }
 
-  // Step 5: Apply
-  const result = await applyImportChanges(userId, validCreates, validUpdates, categoriesDict, attrDefs);
+  // Step 5: Apply (s overwrite odlukama za kolizije)
+  const result = await applyImportChanges(userId, validCreates, validUpdates, categoriesDict, attrDefs, overwriteDecisions);
 
   return {
     created:  result.created,
