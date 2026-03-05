@@ -185,7 +185,7 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
                       onChange={(e) => {
                         const newDate = new Date(dateTime);
                         const [hours, minutes] = e.target.value.split(':').map(Number);
-                        newDate.setHours(hours, minutes);
+                        newDate.setHours(hours, minutes, 0, 0); // reset sekundi i ms → kolizija na razini minute
                         onDateTimeChange(newDate);
                       }}
                       className="bg-white/20 text-white border-0 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-white/50"

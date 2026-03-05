@@ -22,7 +22,11 @@ interface UseSessionTimerReturn {
 }
 
 export function useSessionTimer(): UseSessionTimerReturn {
-  const [sessionStart] = useState(() => new Date());
+  const [sessionStart] = useState(() => {
+    const d = new Date();
+    d.setSeconds(0, 0); // session_start uvijek na minutu (bez sekundi/ms)
+    return d;
+  });
   const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [lapElapsed, setLapElapsed] = useState(0);

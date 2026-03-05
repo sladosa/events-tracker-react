@@ -1092,10 +1092,11 @@ export function EditActivityPage() {
       
       // Success! Navigate to View Details
       if (sessionStart) {
+        const encodedNew = encodeURIComponent(newSessionStart);
         if (noSession) {
-          navigate(`/app/view/${sessionStart}?noSession=1${categoryIdParam ? `&categoryId=${categoryIdParam}` : ''}`);
+          navigate(`/app/view/${encodedNew}?noSession=1${categoryIdParam ? `&categoryId=${categoryIdParam}` : ''}`);
         } else {
-          navigate(`/app/view/${sessionStart}${categoryIdParam ? `?categoryId=${categoryIdParam}` : ''}`);
+          navigate(`/app/view/${encodedNew}${categoryIdParam ? `?categoryId=${categoryIdParam}` : ''}`);
         }
       } else {
         navigate('/app');
