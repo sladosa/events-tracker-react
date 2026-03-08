@@ -781,7 +781,9 @@ export function EditActivityPage() {
         .limit(1);
 
       if (collision && collision.length > 0) {
-        setError('Same area-category chain and session start are not allowed. Please change the date or time.');
+        const collisionMsg = 'Same area-category chain and session start are not allowed. Please change the date or time.';
+        setError(collisionMsg);
+        toast.error(collisionMsg, { duration: 6000 });
         setSaving(false);
         return;
       }
@@ -1281,6 +1283,14 @@ export function EditActivityPage() {
         className="max-w-2xl mx-auto px-4 pb-4"
         style={{ paddingTop: `${headerHeight + 12}px` }}
       >
+        {/* Error banner — shown at top so always visible without scrolling */}
+        {error && (
+          <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+            <span className="text-red-500 mt-0.5">⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
           <div className="px-3 py-2 bg-amber-50 border-b border-amber-100">
             <div className="flex items-center justify-between">
@@ -1457,12 +1467,6 @@ export function EditActivityPage() {
             </div>
           )}
           
-          {/* Error message */}
-          {error && (
-            <div className="mx-3 mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
-            </div>
-          )}
         </div>
       </div>
     </div>

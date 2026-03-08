@@ -465,8 +465,13 @@ export async function applyImportChanges(
   toUpdate:            ParsedImportRow[],
   categoriesDict:      ExportCategoriesDict,
   attrDefs:            ExportAttrDef[],
-  /** Map<sessionKey, overwrite>: true = overwrite existing, false = skip */
-  overwriteDecisions:  Map<string, boolean> = new Map(),
+  /** Map<sessionKey, decision>:
+   *   'replace' = obriši stare leaf evente + INSERT nove (pravi overwrite)
+   *   'add'     = zadrži stare + dodaj nove (dodaj u sesiju)
+   *   'skip'    = preskoči cijelu sesiju
+   *   undefined = nema kolizije, normalan INSERT
+   */
+  overwriteDecisions:  Map<string, 'replace' | 'add' | 'skip'> = new Map(),
 ): Promise<ApplyResult> {
   let created  = 0;
   let updated  = 0;
@@ -655,57 +660,97 @@ export async function applyImportChanges(
   // Prolaz 2: za svaku sesiju INSERT parent eventi (1 po cat), pa leaf eventi (N)
   for (const group of sessionGroups.values()) {
     // ── Collision resolution ────────────────────────────────
-    // Ako overwriteDecisions ima odluku za ovu sesiju:
-    //   false → skip cijelu sesiju, dodaj warning
-    //   true  → nastavi normalno (INSERT parent + leaf)
-    // Ako nema odluke → normalan INSERT (nije bilo kolizije)
-    const overwriteDecision = overwriteDecisions.get(group.sessionKey);
-    if (overwriteDecision === false) {
+    const decision = overwriteDecisions.get(group.sessionKey);
+    if (decision === 'skip') {
       const rowNums = group.leafRows.map(r => r._source_row).join(', ');
-      warnings.push(`Skipped rows ${rowNums}: session already exists (${group.leafRows[0].category_path} @ ${group.sessionISO}). Check: area-category chain + session start.`);
+      warnings.push(`Skipped rows ${rowNums}: session already exists (${group.leafRows[0].category_path} @ ${group.sessionISO}).`);
       continue;
     }
+    if (decision === 'replace') {
+      // Replace: obriši sve postojeće leaf evente (+ atribute + attachments) za ovu sesiju
+      const { data: oldLeafs } = await supabase
+        .from('events')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('category_id', group.leafCategoryId)
+        .eq('session_start', group.sessionISO);
+
+      if (oldLeafs && oldLeafs.length > 0) {
+        const oldIds = (oldLeafs as { id: string }[]).map(e => e.id);
+        await supabase.from('event_attributes').delete().in('event_id', oldIds).eq('user_id', userId);
+        await supabase.from('event_attachments').delete().in('event_id', oldIds).eq('user_id', userId);
+        await supabase.from('events').delete().in('id', oldIds).eq('user_id', userId);
+      }
+    }
+    // 'add' i undefined (nema kolizije) → normalan INSERT leaf evenata
     // ────────────────────────────────────────────────────────
-    // Parent eventi — direktni INSERT per grupa, bez SELECT
-    // Grupa je već izolirana po leafCategoryId → nema duplikata između lanca
-    // Koristimo hierarchyLevels iz prvog leaf reda za redosljed parent kategorija
+    // Parent eventi — UPSERT: provjeri postoji li parent za ovaj lanac,
+    // ako postoji UPDATE atribute, ako ne postoji INSERT.
+    // Ovo sprečava kreiranje duplikata Activity evenata (npr. kod Overwrite).
     const firstRowLevels = getHierarchyLevels(group.leafRows[0].category_path, categoriesDict);
-    // parentLevels = sve razine osim leaf (slice 0 do -1), od root prema leaf
     const parentLevels = firstRowLevels.slice(0, -1);
 
-    // Spremi parent event IDs u memoriju (za eventualne buduće asocijacije)
-    const insertedParentIds = new Map<string, string>(); // categoryId → eventId
-
-    for (const { categoryId } of parentLevels) {
+    for (let i = 0; i < parentLevels.length; i++) {
+      const { categoryId } = parentLevels[i];
       const mergedAttrs = group.parentMerged.get(categoryId);
       if (!mergedAttrs || mergedAttrs.size === 0) continue;
 
+      // Immediate child u lancu za chain disambiguation
+      const childCategoryId = i + 1 < parentLevels.length
+        ? parentLevels[i + 1].categoryId
+        : firstRowLevels[firstRowLevels.length - 1].categoryId; // leaf
+
       try {
-        const { data: newParent, error: parentErr } = await supabase
-          .from('events')
-          .insert({
-            user_id:       userId,
-            category_id:   categoryId,
-            event_date:    group.eventDate,
-            session_start: group.sessionISO,
-            comment:       null,
-            created_at:    group.sessionISO,
-          })
-          .select('id')
-          .single();
+        // UPSERT: check if parent already exists for this chain+session
+        const existingId = await findParentEventByChain(categoryId, group.sessionISO, childCategoryId);
 
-        if (parentErr || !newParent) {
-          errors.push(`Session ${group.sessionISO} parent insert error – ${parentErr?.message ?? 'unknown'}`);
-          continue;
-        }
+        if (existingId) {
+          // UPDATE existing parent attrs (P3: prazna ne prepisuje)
+          const { data: existingAttrRows } = await supabase
+            .from('event_attributes')
+            .select('id, attribute_definition_id')
+            .eq('event_id', existingId);
 
-        const parentId = (newParent as { id: string }).id;
-        insertedParentIds.set(categoryId, parentId);
+          const existingAttrs = new Map<string, string>(
+            ((existingAttrRows ?? []) as { id: string; attribute_definition_id: string }[])
+              .map(ea => [ea.attribute_definition_id, ea.id])
+          );
 
-        for (const { def, value } of mergedAttrs.values()) {
-          if (value == null || value === '') continue;
-          const attrData = buildAttrData(parentId, userId, def, value);
-          await supabase.from('event_attributes').insert(attrData);
+          for (const { def, value } of mergedAttrs.values()) {
+            if (value == null || value === '') continue;
+            const attrData = buildAttrData(existingId, userId, def, value);
+            if (existingAttrs.has(def.id)) {
+              await supabase.from('event_attributes').update(attrData).eq('id', existingAttrs.get(def.id)!).eq('user_id', userId);
+            } else {
+              await supabase.from('event_attributes').insert(attrData);
+            }
+          }
+        } else {
+          // INSERT new parent event
+          const { data: newParent, error: parentErr } = await supabase
+            .from('events')
+            .insert({
+              user_id:       userId,
+              category_id:   categoryId,
+              event_date:    group.eventDate,
+              session_start: group.sessionISO,
+              comment:       null,
+              created_at:    group.sessionISO,
+            })
+            .select('id')
+            .single();
+
+          if (parentErr || !newParent) {
+            errors.push(`Session ${group.sessionISO} parent insert error – ${parentErr?.message ?? 'unknown'}`);
+            continue;
+          }
+
+          const parentId = (newParent as { id: string }).id;
+          for (const { def, value } of mergedAttrs.values()) {
+            if (value == null || value === '') continue;
+            const attrData = buildAttrData(parentId, userId, def, value);
+            await supabase.from('event_attributes').insert(attrData);
+          }
         }
       } catch (err) {
         errors.push(`Session ${group.sessionISO} parent event error – ${String(err)}`);
@@ -967,13 +1012,17 @@ function buildAttrData(
 
 export interface CollisionInfo {
   /** Isti key koji se koristi u sessionGroups */
-  sessionKey:   string;
-  sessionISO:   string;
-  eventDate:    string;
+  sessionKey:        string;
+  sessionISO:        string;
+  eventDate:         string;
   /** Human-readable path za prikaz u UI */
-  categoryPath: string;
+  categoryPath:      string;
   /** Redni brojevi Excel redova koji su u koliziji */
-  rowNumbers:   number[];
+  rowNumbers:        number[];
+  /** Broj postojećih leaf evenata u bazi za ovu sesiju */
+  existingLeafCount: number;
+  /** true ako bilo koji od postojećih leaf evenata ima fotografije — Replace će ih obrisati */
+  hasPhotos:         boolean;
 }
 
 /**
@@ -1016,7 +1065,7 @@ export async function checkImportCollisions(
     sessionMap.get(sessionKey)!.rowNumbers.push(row._source_row);
   }
 
-  // Za svaku sesiju provjeri postoji li već u bazi
+  // Za svaku sesiju provjeri postoji li već u bazi + ima li fotografije
   const collisions: CollisionInfo[] = [];
 
   for (const [sessionKey, info] of sessionMap) {
@@ -1025,16 +1074,27 @@ export async function checkImportCollisions(
       .select('id')
       .eq('user_id', userId)
       .eq('category_id', info.leafCategoryId)
-      .eq('session_start', info.sessionISO)
-      .limit(1);
+      .eq('session_start', info.sessionISO);
 
     if (existing && existing.length > 0) {
+      const existingIds = (existing as { id: string }[]).map(e => e.id);
+
+      // Provjeri ima li fotografija na ovim eventima (batch query)
+      const { data: photos } = await supabase
+        .from('event_attachments')
+        .select('id')
+        .in('event_id', existingIds)
+        .eq('type', 'image')
+        .limit(1);
+
       collisions.push({
         sessionKey,
-        sessionISO:   info.sessionISO,
-        eventDate:    info.eventDate,
-        categoryPath: info.categoryPath,
-        rowNumbers:   info.rowNumbers,
+        sessionISO:        info.sessionISO,
+        eventDate:         info.eventDate,
+        categoryPath:      info.categoryPath,
+        rowNumbers:        info.rowNumbers,
+        existingLeafCount: existing.length,
+        hasPhotos:         (photos?.length ?? 0) > 0,
       });
     }
   }
@@ -1054,7 +1114,7 @@ export interface ImportResult {
 export async function importEventsFromExcel(
   userId:             string,
   file:               File,
-  overwriteDecisions: Map<string, boolean> = new Map(),
+  overwriteDecisions: Map<string, 'replace' | 'add' | 'skip'> = new Map(),
 ): Promise<ImportResult> {
   // Step 1: Parse file
   const parsed = await parseExcelFile(file);

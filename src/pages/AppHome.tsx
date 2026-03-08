@@ -516,10 +516,9 @@ function ActivitiesView() {
       {showImport && (
         <ExcelImportModal
           onClose={() => setShowImport(false)}
+          onRefresh={() => setRefreshKey(prev => prev + 1)}
           onSuccess={() => {
-            setRefreshKey(prev => prev + 1);
             setShowImport(false);
-            toast.success('Import completed – activities refreshed');
           }}
         />
       )}

@@ -20,7 +20,8 @@ import type { CollisionInfo } from '@/lib/excelImport';
 
 interface ExcelImportModalProps {
   onClose:   () => void;
-  onSuccess: () => void;
+  onSuccess: () => void;  // called when modal is closed after a successful import
+  onRefresh: () => void;  // called immediately when import completes (refreshes table)
 }
 
 type ImportState = 'idle' | 'parsing' | 'checking' | 'ready' | 'applying' | 'done' | 'error';
@@ -31,12 +32,12 @@ interface ParsePreview {
   warnings:      string[];
 }
 
-export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) {
+export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportModalProps) {
   const [importState,   setImportState]   = useState<ImportState>('idle');
   const [selectedFile,  setSelectedFile]  = useState<File | null>(null);
   const [preview,       setPreview]       = useState<ParsePreview | null>(null);
   const [collisions,    setCollisions]    = useState<CollisionInfo[]>([]);
-  const [overwriteMap,  setOverwriteMap]  = useState<Map<string, boolean>>(new Map());
+  const [overwriteMap,  setOverwriteMap]  = useState<Map<string, 'replace' | 'add' | 'skip'>>(new Map());
   const [result,        setResult]        = useState<{ created: number; updated: number; warnings: string[] } | null>(null);
   const [errors,        setErrors]        = useState<string[]>([]);
   const [isDragOver,    setIsDragOver]    = useState(false);
@@ -84,10 +85,10 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
 
         setCollisions(foundCollisions);
 
-        // Inicijalna odluka: sve na false (skip)
+        // Inicijalna odluka: sve na 'skip'
         if (foundCollisions.length > 0) {
-          const initialMap = new Map<string, boolean>();
-          for (const c of foundCollisions) initialMap.set(c.sessionKey, false);
+          const initialMap = new Map<string, 'replace' | 'add' | 'skip'>();
+          for (const c of foundCollisions) initialMap.set(c.sessionKey, 'skip');
           setOverwriteMap(initialMap);
         }
       }
@@ -111,8 +112,8 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
     if (file) handleFile(file);
   };
 
-  // ── Toggle overwrite odluke ──
-  const toggleOverwrite = (sessionKey: string, value: boolean) => {
+  // ── Toggle collision odluke ──
+  const setDecision = (sessionKey: string, value: 'replace' | 'add' | 'skip') => {
     setOverwriteMap(prev => {
       const next = new Map(prev);
       next.set(sessionKey, value);
@@ -145,7 +146,10 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
         warnings: importResult.warnings,
       });
       setImportState('done');
-      onSuccess();
+      // Refresh the activities table immediately if anything was actually imported
+      if (importResult.created > 0 || importResult.updated > 0) {
+        onRefresh();
+      }
     } catch (err) {
       setErrors([`Import failed: ${String(err)}`]);
       setImportState('error');
@@ -278,45 +282,85 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
                     These sessions already exist in the database. Choose what to do for each:
                   </p>
 
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {collisions.map(c => (
-                      <div key={c.sessionKey} className="bg-white border border-amber-200 rounded-lg p-2.5">
-                        <div className="text-xs text-gray-700 mb-1">
-                          <span className="font-medium">{c.eventDate}</span>
-                          <span className="text-gray-400"> @ </span>
-                          <span className="font-medium">{formatTime(c.sessionISO)}</span>
-                          <span className="text-gray-400 mx-1">·</span>
-                          <span className="text-gray-600">{c.categoryPath}</span>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {collisions.map(c => {
+                      const dec = overwriteMap.get(c.sessionKey) ?? 'skip';
+                      return (
+                        <div key={c.sessionKey} className="bg-white border border-amber-200 rounded-lg p-3">
+                          <div className="text-xs text-gray-700 mb-0.5">
+                            <span className="font-semibold">{c.eventDate}</span>
+                            <span className="text-gray-400"> @ </span>
+                            <span className="font-semibold">{formatTime(c.sessionISO)}</span>
+                            <span className="text-gray-400 mx-1">·</span>
+                            <span className="text-gray-600">{c.categoryPath}</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 mb-2.5">
+                            Excel rows: {c.rowNumbers.join(', ')}
+                            <span className="mx-1.5">·</span>
+                            <span className="text-indigo-500 font-medium">{c.existingLeafCount} existing event{c.existingLeafCount !== 1 ? 's' : ''} in DB</span>
+                            {c.hasPhotos && (
+                              <span className="ml-1.5 text-amber-600 font-medium">· 📷 has photos</span>
+                            )}
+                          </div>
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => setDecision(c.sessionKey, 'replace')}
+                              className={`flex-1 py-1.5 px-2 text-xs rounded font-medium border transition-colors ${
+                                dec === 'replace'
+                                  ? 'bg-red-500 border-red-500 text-white'
+                                  : 'bg-white border-gray-300 text-gray-600 hover:border-red-400 hover:text-red-600'
+                              }`}
+                              title="Delete existing events for this session and insert from Excel"
+                            >
+                              🔄 Replace
+                            </button>
+                            <button
+                              onClick={() => setDecision(c.sessionKey, 'add')}
+                              className={`flex-1 py-1.5 px-2 text-xs rounded font-medium border transition-colors ${
+                                dec === 'add'
+                                  ? 'bg-green-600 border-green-600 text-white'
+                                  : 'bg-white border-gray-300 text-gray-600 hover:border-green-500 hover:text-green-600'
+                              }`}
+                              title="Keep existing events and add Excel rows on top"
+                            >
+                              ➕ Add to session
+                            </button>
+                            <button
+                              onClick={() => setDecision(c.sessionKey, 'skip')}
+                              className={`flex-1 py-1.5 px-2 text-xs rounded font-medium border transition-colors ${
+                                dec === 'skip'
+                                  ? 'bg-gray-500 border-gray-500 text-white'
+                                  : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                              }`}
+                              title="Leave this session untouched"
+                            >
+                              ⏭ Skip
+                            </button>
+                          </div>
+                          {dec === 'replace' && (
+                            <p className="text-[10px] text-red-500 mt-1.5">
+                              ⚠️ {c.existingLeafCount} existing event{c.existingLeafCount !== 1 ? 's' : ''} will be deleted and replaced with {c.rowNumbers.length} from Excel.
+                              {c.hasPhotos && (
+                                <span className="block mt-0.5 font-semibold text-red-600">
+                                  📷 This session has photos — they will also be permanently deleted!
+                                </span>
+                              )}
+                            </p>
+                          )}
+                          {dec === 'add' && (
+                            <p className="text-[10px] text-green-600 mt-1.5">
+                              {c.rowNumbers.length} Excel event{c.rowNumbers.length !== 1 ? 's' : ''} will be added → session will have {c.existingLeafCount + c.rowNumbers.length} events total.
+                            </p>
+                          )}
+                          {dec === 'skip' && (
+                            <p className="text-[10px] text-gray-400 mt-1.5">
+                              This session will not be changed.
+                            </p>
+                          )}
                         </div>
-                        <p className="text-[10px] text-gray-400 mb-2">Rows: {c.rowNumbers.join(', ')}</p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => toggleOverwrite(c.sessionKey, true)}
-                            className={`flex-1 py-1 px-2 text-xs rounded font-medium border transition-colors ${
-                              overwriteMap.get(c.sessionKey) === true
-                                ? 'bg-orange-500 border-orange-500 text-white'
-                                : 'bg-white border-gray-300 text-gray-600 hover:border-orange-400 hover:text-orange-600'
-                            }`}
-                          >
-                            ✏️ Overwrite
-                          </button>
-                          <button
-                            onClick={() => toggleOverwrite(c.sessionKey, false)}
-                            className={`flex-1 py-1 px-2 text-xs rounded font-medium border transition-colors ${
-                              overwriteMap.get(c.sessionKey) === false
-                                ? 'bg-gray-500 border-gray-500 text-white'
-                                : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                            }`}
-                          >
-                            ⏭ Skip
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
-                  <p className="text-[10px] text-amber-600">
-                    Skipped sessions will appear as warnings in the result.
-                  </p>
                 </div>
               )}
 
@@ -337,12 +381,28 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
                   Choose different file
                 </button>
                 <button
-                  onClick={handleApply}
-                  disabled={preview.toCreateCount + preview.toUpdateCount === 0}
-                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  onClick={onClose}
+                  className="py-2.5 px-3 border border-gray-300 rounded-lg text-sm text-gray-500 hover:bg-gray-50"
+                  title="Close without importing"
                 >
-                  ✅ Apply Import
+                  Abort
                 </button>
+                {(() => {
+                  const allSkipped = collisions.length > 0
+                    && Array.from(overwriteMap.values()).every(v => v === 'skip')
+                    && preview.toUpdateCount === 0
+                    && preview.toCreateCount === collisions.reduce((s, c) => s + c.rowNumbers.length, 0);
+                  return (
+                    <button
+                      onClick={handleApply}
+                      disabled={preview.toCreateCount + preview.toUpdateCount === 0 || allSkipped}
+                      title={allSkipped ? 'All sessions are set to Skip – nothing will be imported' : undefined}
+                      className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {allSkipped ? '⏭ All skipped – Apply' : '✅ Apply Import'}
+                    </button>
+                  );
+                })()}
               </div>
             </>
           )}
@@ -392,7 +452,7 @@ export function ExcelImportModal({ onClose, onSuccess }: ExcelImportModalProps) 
                   Import another file
                 </button>
                 <button
-                  onClick={onClose}
+                  onClick={onSuccess}
                   className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   Close

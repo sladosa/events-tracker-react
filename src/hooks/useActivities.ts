@@ -171,6 +171,22 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     logDebug('OPTIONS_CHANGED', { areaId, categoryId, dateFrom, dateTo, pageSize });
   }, [areaId, categoryId, dateFrom, dateTo, sortOrder, pageSize]);
 
+  // ── Filter a list of category IDs to only those that are leaf categories ──
+  // A category is a leaf if no other category has it as parent_category_id.
+  // This prevents parent events (Activity, Gym) from appearing as separate rows
+  // in the Activities table — only leaf events (Strength, Cardio, Outdoor…) are shown.
+  const filterToLeafCategories = useCallback(async (ids: UUID[]): Promise<UUID[]> => {
+    if (ids.length === 0) return ids;
+    const { data } = await supabase
+      .from('categories')
+      .select('parent_category_id')
+      .in('parent_category_id', ids);
+    const parentSet = new Set(
+      (data ?? []).map(r => (r as { parent_category_id: string }).parent_category_id)
+    );
+    return ids.filter(id => !parentSet.has(id));
+  }, []);
+
   // Check if category has children (not a leaf)
   const checkHasChildren = useCallback(async (catId: UUID): Promise<boolean> => {
     logDebug('CHECK_HAS_CHILDREN', { categoryId: catId });
@@ -302,27 +318,37 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         });
         
         if (hasChildren) {
-          // Non-leaf: get all descendants including self
-          categoryIds = await getDescendantCategoryIds(categoryId);
+          // Non-leaf: get all descendants, then filter to leaf categories only
+          // This prevents parent events (Activity, Gym) from appearing as separate rows
+          const allDesc = await getDescendantCategoryIds(categoryId);
+          categoryIds = await filterToLeafCategories(allDesc);
         } else {
           // LEAF: filter ONLY by this exact category - no descendants!
           categoryIds = [categoryId];
         }
       } else if (areaId) {
-        // Get all category IDs for this area
+        // Get all category IDs for this area, filter to leaves only
         logDebug('FETCHING_AREA_CATEGORIES', { fetchId, areaId });
         
         const { data: areaCats } = await supabase
           .from('categories')
           .select('id')
           .eq('area_id', areaId);
-        categoryIds = (areaCats || []).map(c => c.id);
+        const allAreaIds = (areaCats || []).map(c => c.id);
+        categoryIds = await filterToLeafCategories(allAreaIds);
         
         logDebug('AREA_CATEGORIES_LOADED', { 
           fetchId, 
           areaId, 
           categoryCount: categoryIds.length 
         });
+      } else {
+        // No area or category filter → get all leaf categories (for the user via RLS)
+        const { data: allCats } = await supabase
+          .from('categories')
+          .select('id');
+        const allCatIds = (allCats || []).map(c => c.id);
+        categoryIds = await filterToLeafCategories(allCatIds);
       }
 
       // P4: Store debug info
