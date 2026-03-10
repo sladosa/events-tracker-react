@@ -8,7 +8,7 @@
  * korisnik bira Overwrite / Skip per sesija.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import {
   importEventsFromExcel,
@@ -120,6 +120,46 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       return next;
     });
   };
+
+  // ── OP2: Skip all sessions with photos ──
+  const handleSkipAllWithPhotos = () => {
+    setOverwriteMap(prev => {
+      const next = new Map(prev);
+      for (const c of collisions) {
+        if (c.hasPhotos) next.set(c.sessionKey, 'skip');
+      }
+      return next;
+    });
+  };
+  const hasAnyPhotoCollisions = collisions.some(c => c.hasPhotos);
+
+  // ── UX-1: Reaktivni counteri ──
+  // Koliko CREATE redova je efektivno (ne-skip) + koliko UPDATE redova
+  const { effectiveCreateCount, effectiveUpdateCount, allSkipped } = useMemo(() => {
+    if (!preview) return { effectiveCreateCount: 0, effectiveUpdateCount: 0, allSkipped: false };
+
+    // Izračunaj CREATE redove koji NEĆE biti preskočeni
+    let collisionRows = 0;
+    let skippedRows   = 0;
+    for (const c of collisions) {
+      const dec = overwriteMap.get(c.sessionKey) ?? 'skip';
+      collisionRows += c.rowNumbers.length;
+      if (dec === 'skip') skippedRows += c.rowNumbers.length;
+    }
+    const nonCollisionCreates = preview.toCreateCount - collisionRows;
+    const effectiveCreates    = nonCollisionCreates + (collisionRows - skippedRows);
+
+    const allS = collisions.length > 0
+      && skippedRows === collisionRows
+      && preview.toUpdateCount === 0
+      && nonCollisionCreates === 0;
+
+    return {
+      effectiveCreateCount: effectiveCreates,
+      effectiveUpdateCount: preview.toUpdateCount,
+      allSkipped: allS,
+    };
+  }, [preview, collisions, overwriteMap]);
 
   // ── Apply import ──
   const handleApply = async () => {
@@ -263,11 +303,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-green-700">{preview.toCreateCount}</p>
+                  <p className="text-2xl font-bold text-green-700">{effectiveCreateCount}</p>
                   <p className="text-xs text-green-600 mt-0.5">New events to create</p>
                 </div>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-blue-700">{preview.toUpdateCount}</p>
+                  <p className="text-2xl font-bold text-blue-700">{effectiveUpdateCount}</p>
                   <p className="text-xs text-blue-600 mt-0.5">Events to update</p>
                 </div>
               </div>
@@ -275,18 +315,42 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
               {/* Collision resolution */}
               {collisions.length > 0 && (
                 <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-3">
-                  <p className="text-sm font-semibold text-amber-800">
-                    ⚠️ {collisions.length} session conflict{collisions.length > 1 ? 's' : ''} detected
-                  </p>
-                  <p className="text-xs text-amber-700">
-                    These sessions already exist in the database. Choose what to do for each:
-                  </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800">
+                        ⚠️ {collisions.length} session conflict{collisions.length > 1 ? 's' : ''} detected
+                      </p>
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        These sessions already exist in the database. Choose what to do for each:
+                      </p>
+                    </div>
+                    {/* OP2: Skip all with photos button */}
+                    {hasAnyPhotoCollisions && (
+                      <button
+                        onClick={handleSkipAllWithPhotos}
+                        className="shrink-0 text-[10px] font-medium px-2 py-1 rounded border border-amber-400 bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors"
+                        title="Set all sessions with photos to Skip"
+                      >
+                        📷 Skip all with photos
+                      </button>
+                    )}
+                  </div>
+                  {/* OP2: global photo warning banner */}
+                  {hasAnyPhotoCollisions && (
+                    <div className="bg-yellow-100 border border-yellow-400 rounded p-2 text-[11px] text-yellow-900 font-medium">
+                      ⚠️ Some sessions below contain photos. Replacing them will <strong>permanently delete</strong> those photos from storage. Use <em>Skip</em> or <em>Add</em> to preserve them.
+                    </div>
+                  )}
 
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {collisions.map(c => {
                       const dec = overwriteMap.get(c.sessionKey) ?? 'skip';
+                      // OP2: photo sessions get a more prominent border
+                      const cardBorder = c.hasPhotos
+                        ? 'border-yellow-400 bg-yellow-50'
+                        : 'border-amber-200 bg-white';
                       return (
-                        <div key={c.sessionKey} className="bg-white border border-amber-200 rounded-lg p-3">
+                        <div key={c.sessionKey} className={`border rounded-lg p-3 ${cardBorder}`}>
                           <div className="text-xs text-gray-700 mb-0.5">
                             <span className="font-semibold">{c.eventDate}</span>
                             <span className="text-gray-400"> @ </span>
@@ -299,7 +363,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                             <span className="mx-1.5">·</span>
                             <span className="text-indigo-500 font-medium">{c.existingLeafCount} existing event{c.existingLeafCount !== 1 ? 's' : ''} in DB</span>
                             {c.hasPhotos && (
-                              <span className="ml-1.5 text-amber-600 font-medium">· 📷 has photos</span>
+                              <span className="ml-1.5 font-bold text-yellow-700">📷 HAS PHOTOS</span>
                             )}
                           </div>
                           <div className="flex gap-1.5">
@@ -387,22 +451,14 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                 >
                   Abort
                 </button>
-                {(() => {
-                  const allSkipped = collisions.length > 0
-                    && Array.from(overwriteMap.values()).every(v => v === 'skip')
-                    && preview.toUpdateCount === 0
-                    && preview.toCreateCount === collisions.reduce((s, c) => s + c.rowNumbers.length, 0);
-                  return (
-                    <button
-                      onClick={handleApply}
-                      disabled={preview.toCreateCount + preview.toUpdateCount === 0 || allSkipped}
-                      title={allSkipped ? 'All sessions are set to Skip – nothing will be imported' : undefined}
-                      className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {allSkipped ? '⏭ All skipped – Apply' : '✅ Apply Import'}
-                    </button>
-                  );
-                })()}
+                {/* UX-2: Apply is always enabled unless currently applying */}
+                <button
+                  onClick={handleApply}
+                  disabled={false}
+                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {allSkipped ? '⏭ All skipped – Apply' : '✅ Apply Import'}
+                </button>
               </div>
             </>
           )}

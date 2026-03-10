@@ -390,6 +390,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       query = query
         .order('event_date', { ascending: sortOrder === 'asc' })
         .order('session_start', { ascending: sortOrder === 'asc', nullsFirst: false })
+        .order('category_id', { ascending: true }) // Stabilni tiebreaker: isti datum+vrijeme → konzistentan redosljed
         .range(currentOffset, currentOffset + pageSize - 1);
 
       const { data: events, error: fetchError, count } = await query;

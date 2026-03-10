@@ -670,6 +670,24 @@ export function ViewDetailsPage() {
     );
   }
 
+  // BUG-D guard: loading done, no error, but no data (e.g. stale navigation after collision bypass)
+  if (!isLoading && viewEvents.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-6">
+          <div className="text-4xl mb-4">🔍</div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Activity not found</h2>
+          <p className="text-gray-500 mb-4 text-sm">
+            This activity may have been deleted or the session timestamp no longer matches.
+          </p>
+          <button onClick={navigateBack} className={cn('px-4 py-2 rounded-lg text-white', t.accent)}>
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ============================================
   // Render - Main
   // ============================================

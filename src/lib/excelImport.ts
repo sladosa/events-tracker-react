@@ -461,8 +461,8 @@ function getHierarchyLevels(
 
 export async function applyImportChanges(
   userId:              string,
-  toCreate:            ParsedImportRow[],
-  toUpdate:            ParsedImportRow[],
+  _toCreate:           ParsedImportRow[],
+  _toUpdate:           ParsedImportRow[],
   categoriesDict:      ExportCategoriesDict,
   attrDefs:            ExportAttrDef[],
   /** Map<sessionKey, decision>:
@@ -473,6 +473,10 @@ export async function applyImportChanges(
    */
   overwriteDecisions:  Map<string, 'replace' | 'add' | 'skip'> = new Map(),
 ): Promise<ApplyResult> {
+  // Local mutable copies so BUG-F fix can reclassify rows
+  let toCreate = _toCreate; // eslint-disable-line prefer-const
+  let toUpdate = _toUpdate; // eslint-disable-line prefer-const
+
   let created  = 0;
   let updated  = 0;
   const errors:   string[] = [];
@@ -487,16 +491,52 @@ export async function applyImportChanges(
   const catByPath: Record<string, string> = {};
   for (const [id, info] of Object.entries(categoriesDict)) catByPath[info.full_path] = id;
 
+  // ── BUG-F fix: reclassify toUpdate rows za 'replace' sesije ──────────────
+  // Ako je sesija odlučena kao 'replace', stari leaf eventi su već obrisani
+  // (DELETE će se pokrenuti niže). UPDATE na obrisani event_id bi pao s
+  // "Event not found" i ostavio bazu u parcijalnom stanju. Rješenje: tretiraj
+  // sve takve redove kao CREATE (postavi event_id = null).
+  {
+    const reclassifiedCreates: ParsedImportRow[] = [];
+    const remainingUpdates:    ParsedImportRow[] = [];
+    for (const row of toUpdate) {
+      const ssParsed       = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
+      const sessionISO     = toISO(row.event_date, ssParsed);
+      const levels         = getHierarchyLevels(row.category_path, categoriesDict);
+      const leafCatId      = levels[levels.length - 1]?.categoryId ?? '';
+      const sessionKey     = `${row.event_date}__${sessionISO}__${leafCatId}`;
+      if (overwriteDecisions.get(sessionKey) === 'replace') {
+        reclassifiedCreates.push({ ...row, event_id: null });
+        warnings.push(`Row ${row._source_row}: reclassified as CREATE (session is being replaced).`);
+      } else {
+        remainingUpdates.push(row);
+      }
+    }
+    if (reclassifiedCreates.length > 0) {
+      toCreate = [...toCreate, ...reclassifiedCreates];
+      toUpdate = remainingUpdates;
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   // ────────────────────────────────────────────────────────
   // Helper: pronađi parent event koristeći chain disambiguation
-  // Traži event s (category_id + session_start) čiji immediate
-  // child u lancu (childCategoryId) TAKOĐER postoji za istu sesiju.
-  // Ovo razlikuje Activity→Gym→Strength od Activity→Running→Cardio.
+  // Traži event s (category_id + session_start) koji pripada
+  // lancu čiji LEAF (leafCategoryId) postoji za istu sesiju.
+  //
+  // BUG-G fix: koristimo LEAF kao disambiguator, ne immediate child.
+  // Razlog: dva lanca mogu dijeliti isti intermediate parent (npr.
+  // Activity→Gym→Cardio i Activity→Gym→Strength dijele Gym).
+  // Immediate child (Gym) nije unique — leaf (Cardio vs Strength) jest.
+  //
+  // VAŽNO: ne smijemo raditi early return za candidates.length === 1
+  // jer prvi lanac koji se procesira kreira Activity event i on postaje
+  // jedini kandidat — ali možda ne pripada ovom lancu.
   // ────────────────────────────────────────────────────────
   const findParentEventByChain = async (
-    categoryId:      string,
-    sessionISO:      string,
-    childCategoryId: string, // immediate child u lancu = disambiguator
+    categoryId:     string,
+    sessionISO:     string,
+    leafCategoryId: string, // leaf u lancu = jedini sigurni disambiguator
   ): Promise<string | null> => {
     // Fetch svi eventi za ovu kategoriju + sesiju
     const { data: candidates } = await supabase
@@ -507,22 +547,27 @@ export async function applyImportChanges(
       .eq('session_start', sessionISO);
 
     if (!candidates || candidates.length === 0) return null;
-    if (candidates.length === 1) return (candidates[0] as { id: string }).id;
 
-    // Više kandidata → disambiguiraj: koji ima sibling child u lancu?
-    const { data: childEvents } = await supabase
+    // Uvijek disambiguiraj putem leafa — čak i kad je samo 1 kandidat.
+    // Primjer: Cardio kreira Activity event X. Strength onda vidi 1 kandidata
+    // (X) i bez leaf-provjere bi ga pogrešno referencirao (BUG-G).
+    const { data: leafEvents } = await supabase
       .from('events')
       .select('id')
       .eq('user_id', userId)
-      .eq('category_id', childCategoryId)
+      .eq('category_id', leafCategoryId)
       .eq('session_start', sessionISO)
       .limit(1);
 
-    // Ako child postoji, sigurno je isti session → prvi kandidat je ispravan
-    // (child je unique po category_id + session_start za isti lanac)
-    if (childEvents && childEvents.length > 0) {
+    // Leaf postoji za ovu sesiju → ovaj parent event pripada ovom lancu
+    if (leafEvents && leafEvents.length > 0) {
+      // Više kandidata istog parent-a za istu sesiju ne bi smjelo biti,
+      // ali ako jest — svi su ekvivalentni, vraćamo prvog.
       return (candidates[0] as { id: string }).id;
     }
+
+    // Leaf još ne postoji → ovaj parent event NE pripada ovom lancu
+    // (ili parent još nije kreiran) → caller treba kreirati novi
     return null;
   };
 
@@ -531,15 +576,15 @@ export async function applyImportChanges(
   // Za CREATE tok koristimo direktni INSERT bez SELECT (vidi prolaz 2)
   // ────────────────────────────────────────────────────────
   const upsertParentEventForUpdate = async (
-    categoryId:      string,
-    childCategoryId: string, // immediate child u lancu za disambiguation
-    sessionISO:      string,
-    eventDate:       string,
-    mergedAttrs:     Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>,
+    categoryId:     string,
+    leafCategoryId: string, // leaf u lancu za chain disambiguation (BUG-G fix)
+    sessionISO:     string,
+    eventDate:      string,
+    mergedAttrs:    Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>,
   ): Promise<void> => {
     if (mergedAttrs.size === 0) return;
 
-    const existingId = await findParentEventByChain(categoryId, sessionISO, childCategoryId);
+    const existingId = await findParentEventByChain(categoryId, sessionISO, leafCategoryId);
 
     if (existingId) {
       // UPDATE: dohvati postojeće atribute
@@ -667,7 +712,14 @@ export async function applyImportChanges(
       continue;
     }
     if (decision === 'replace') {
-      // Replace: obriši sve postojeće leaf evente (+ atribute + attachments) za ovu sesiju
+      // Replace: obriši leaf evente + parent evente koji su exkluzivni za ovaj lanac.
+      // BUG-G fix: parent evente (Activity, Gym) treba brisati jer Replace ranije
+      // ostavljao stare parent evente → ViewDetailsPage bi pronašao stare (krive) umjesto novih.
+      // Brišemo parent evente koji NE SLUŽE drugom leaf lancu na istom session_start.
+      const firstRowLevelsForDelete = getHierarchyLevels(group.leafRows[0].category_path, categoriesDict);
+      const parentLevelsForDelete   = firstRowLevelsForDelete.slice(0, -1);
+
+      // Obriši leaf evente
       const { data: oldLeafs } = await supabase
         .from('events')
         .select('id')
@@ -680,6 +732,26 @@ export async function applyImportChanges(
         await supabase.from('event_attributes').delete().in('event_id', oldIds).eq('user_id', userId);
         await supabase.from('event_attachments').delete().in('event_id', oldIds).eq('user_id', userId);
         await supabase.from('events').delete().in('id', oldIds).eq('user_id', userId);
+      }
+
+      // Obriši parent evente za ovaj lanac (od leaf prema korijenu)
+      // Svaki parent: obriši sve evente (category_id + session_start) koji
+      // su ostali od prethodnih importa. Novi će se kreirati u sljedećem koraku.
+      // Sigurno je brisati sve jer:
+      //   - ako drugi lanac dijeli isti parent, on će ga re-kreirati u svom grupi
+      //   - redosljed procesiranja je sekvencijalan (Map iteracija = insertion order)
+      for (const { categoryId } of [...parentLevelsForDelete].reverse()) {
+        const { data: oldParents } = await supabase
+          .from('events')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('category_id', categoryId)
+          .eq('session_start', group.sessionISO);
+        if (oldParents && oldParents.length > 0) {
+          const oldParentIds = (oldParents as { id: string }[]).map(e => e.id);
+          await supabase.from('event_attributes').delete().in('event_id', oldParentIds).eq('user_id', userId);
+          await supabase.from('events').delete().in('id', oldParentIds).eq('user_id', userId);
+        }
       }
     }
     // 'add' i undefined (nema kolizije) → normalan INSERT leaf evenata
@@ -695,14 +767,12 @@ export async function applyImportChanges(
       const mergedAttrs = group.parentMerged.get(categoryId);
       if (!mergedAttrs || mergedAttrs.size === 0) continue;
 
-      // Immediate child u lancu za chain disambiguation
-      const childCategoryId = i + 1 < parentLevels.length
-        ? parentLevels[i + 1].categoryId
-        : firstRowLevels[firstRowLevels.length - 1].categoryId; // leaf
-
       try {
         // UPSERT: check if parent already exists for this chain+session
-        const existingId = await findParentEventByChain(categoryId, group.sessionISO, childCategoryId);
+        // BUG-G fix: koristimo LEAF (group.leafCategoryId) kao disambiguator,
+        // ne immediate child. Leaf je jedini ID koji je garantirano unique
+        // po sesiji — intermediate čvorovi (npr. Gym) mogu biti dijeljeni.
+        const existingId = await findParentEventByChain(categoryId, group.sessionISO, group.leafCategoryId);
 
         if (existingId) {
           // UPDATE existing parent attrs (P3: prazna ne prepisuje)
@@ -874,15 +944,12 @@ export async function applyImportChanges(
       const mergedAttrs = group.parentMerged.get(categoryId);
       if (!mergedAttrs || mergedAttrs.size === 0) continue;
 
-      // Immediate child u lancu = sljedeća razina (ili leaf ako je zadnja parent razina)
-      const childCategoryId = i + 1 < parentLevels.length
-        ? parentLevels[i + 1].categoryId
-        : firstRowLevels[firstRowLevels.length - 1].categoryId; // leaf
-
       try {
+        // BUG-G fix: koristimo LEAF kao disambiguator (vidi findParentEventByChain)
+        const leafCategoryId = firstRowLevels[firstRowLevels.length - 1].categoryId;
         await upsertParentEventForUpdate(
           categoryId,
-          childCategoryId,
+          leafCategoryId,
           group.sessionISO,
           group.eventDate,
           mergedAttrs,

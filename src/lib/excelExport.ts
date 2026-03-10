@@ -706,49 +706,89 @@ function _createHelpSheet(wb: ExcelJS.Workbook): void {
 }
 
 // ─────────────────────────────────────────────
-// Session merging (port of Python merge_session_events)
+// Session merging (Option A: parent attrs merged into first leaf row)
 // ─────────────────────────────────────────────
+//
+// Strategija (Opcija A):
+//   1. Odvoji leaf evente od parent evenata
+//   2. Grupiraj leaf evente po (session_start + leafCategoryId) → jedan lanac
+//   3. Za svaki lanac: merge parent atribute u PRVI leaf red
+//   4. Ostali leaf redovi lanca ostaju bez parent atributa
+//   5. Parent eventi se NE exportaju kao zasebni redovi
+//
+// Rezultat: roundtrip Excel → Import čita parent atribute iz prvog leaf reda (P3 merge).
 
 export function mergeSessionEvents(
   events:         ExportEvent[],
   categoriesDict: ExportCategoriesDict,
 ): ExportEvent[] {
-  // Group by (session_start, comment) – same as Python V2.5.6
-  const sessions = new Map<string, ExportEvent[]>();
 
-  for (const event of events) {
-    const key = `${event.session_start ?? ''}||${event.comment ?? ''}`;
-    if (!sessions.has(key)) sessions.set(key, []);
-    sessions.get(key)!.push(event);
+  // Step 1: Identify leaf categories (not a parent of anyone)
+  const parentCatIds = new Set(
+    Object.values(categoriesDict)
+      .map(c => (c as { parent_category_id?: string | null }).parent_category_id)
+      .filter((id): id is string => !!id)
+  );
+  const isLeaf = (catId: string) => !parentCatIds.has(catId);
+
+  // Step 2: Separate leaf vs parent events
+  const leafEvents   = events.filter(e => isLeaf(e.category_id));
+  const parentEvents = events.filter(e => !isLeaf(e.category_id));
+
+  // Step 3: Build parent attrs lookup: "session_start__catId" → event_attributes[]
+  const parentAttrsByKey = new Map<string, NonNullable<ExportEvent['event_attributes']>>();
+  for (const pe of parentEvents) {
+    const key = `${pe.session_start ?? ''}__${pe.category_id}`;
+    parentAttrsByKey.set(key, pe.event_attributes ?? []);
   }
 
-  const merged: ExportEvent[] = [];
+  // Step 4: Group leaf events by (session_start + leafCategoryId) = jedan lanac
+  const leafGroups = new Map<string, ExportEvent[]>();
+  for (const le of leafEvents) {
+    const key = `${le.session_start ?? ''}__${le.category_id}`;
+    if (!leafGroups.has(key)) leafGroups.set(key, []);
+    leafGroups.get(key)!.push(le);
+  }
 
-  for (const sessionEvents of sessions.values()) {
-    if (sessionEvents.length === 1) {
-      merged.push(sessionEvents[0]);
-      continue;
+  const result: ExportEvent[] = [];
+
+  for (const groupLeafEvents of leafGroups.values()) {
+    // Sort by created_at ASC within group (chronological leaf order)
+    groupLeafEvents.sort((a, b) => {
+      if (!a.created_at && !b.created_at) return 0;
+      if (!a.created_at) return 1;
+      if (!b.created_at) return -1;
+      return a.created_at.localeCompare(b.created_at);
+    });
+
+    const firstLeaf = groupLeafEvents[0];
+
+    // Collect all parent attrs for this chain by walking up the hierarchy
+    const allParentAttrs: NonNullable<ExportEvent['event_attributes']> = [];
+    let walkCatId: string | null =
+      (categoriesDict[firstLeaf.category_id] as { parent_category_id?: string | null })
+        ?.parent_category_id ?? null;
+
+    while (walkCatId) {
+      const key         = `${firstLeaf.session_start ?? ''}__${walkCatId}`;
+      const parentAttrs = parentAttrsByKey.get(key);
+      if (parentAttrs) allParentAttrs.push(...parentAttrs);
+      walkCatId =
+        (categoriesDict[walkCatId] as { parent_category_id?: string | null })
+          ?.parent_category_id ?? null;
     }
 
-    // Get levels for each event
-    const withLevels = sessionEvents.map(e => ({
-      event: e,
-      level: (categoriesDict[e.category_id] as { level?: number })?.level ?? 0,
-    })).sort((a, b) => a.level - b.level);
+    // First leaf row: merge parent attrs (P3 — parent attrs visible in first set row)
+    result.push({
+      ...firstLeaf,
+      event_attributes: [...(firstLeaf.event_attributes ?? []), ...allParentAttrs],
+    });
 
-    const levels       = withLevels.map(x => x.level);
-    const uniqueLevels = new Set(levels);
-
-    if (uniqueLevels.size === levels.length && uniqueLevels.size > 1) {
-      // Hierarchical chain → merge all attrs into leaf event
-      const leaf: ExportEvent = { ...withLevels[withLevels.length - 1].event };
-      leaf.event_attributes   = withLevels.flatMap(x => x.event.event_attributes ?? []);
-      merged.push(leaf);
-    } else {
-      // Independent events at same level → export separately
-      merged.push(...sessionEvents);
+    // Remaining leaf rows: samo leaf atributi
+    for (let i = 1; i < groupLeafEvents.length; i++) {
+      result.push(groupLeafEvents[i]);
     }
   }
 
-  return merged;
+  return result;
 }

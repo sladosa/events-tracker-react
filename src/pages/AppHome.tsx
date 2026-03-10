@@ -81,7 +81,7 @@ function AppContent() {
     isLeafCategory, 
     fullPathDisplay, 
     hasActiveFilter, 
-    reset
+    reset,
   } = useFilter();
   
   // Responsive state
@@ -387,7 +387,7 @@ function StructureView() {
 
 function ActivitiesView() {
   const nav = useNavigate();
-  const { fullPathDisplay, isLeafCategory } = useFilter();
+  const { fullPathDisplay, isLeafCategory, setDateRange } = useFilter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -519,6 +519,8 @@ function ActivitiesView() {
           onRefresh={() => setRefreshKey(prev => prev + 1)}
           onSuccess={() => {
             setShowImport(false);
+            // UX-3: reset date filter to All Time so newly imported events are visible
+            setDateRange(null, null);
           }}
         />
       )}
