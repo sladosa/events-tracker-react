@@ -316,7 +316,7 @@ export function ViewDetailsPage() {
     }
     loadActivityData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionStart]);
+  }, [sessionStart, categoryIdParam, noSession]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadActivityData = async () => {
     if (!sessionStart) return;
@@ -443,10 +443,12 @@ export function ViewDetailsPage() {
 
       if (parentChainIds.length > 0 && !noSession) {
         // parentChainIds je [Gym, Activity, ...] (leaf→root)
-        // Child disambiguator: parentChainIds[0] → leafCategoryId, parentChainIds[i] → parentChainIds[i-1]
+        // BUG-G fix: koristimo LEAF kao disambiguator, ne immediate child.
+        // Dva lanca mogu dijeliti isti intermediate parent (npr. Activity→Gym→Cardio
+        // i Activity→Gym→Strength dijele Gym). Leaf (Cardio vs Strength) je jedini
+        // ID koji je unique po sesiji — isti princip kao u excelImport.ts.
         for (let i = 0; i < parentChainIds.length; i++) {
           const catId = parentChainIds[i];
-          const childCatId = i === 0 ? leafCategoryId : parentChainIds[i - 1];
 
           const { data: candidates } = await supabase
             .from('events')
@@ -459,21 +461,19 @@ export function ViewDetailsPage() {
 
           let parentEventId: UUID | null = null;
 
-          if (candidates.length === 1) {
-            parentEventId = (candidates[0] as { id: UUID }).id;
-          } else {
-            // Disambiguiraj: pravi parent ima child u našem lancu
-            const { data: childCheck } = await supabase
-              .from('events')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('category_id', childCatId)
-              .eq('session_start', decodedSS)
-              .limit(1);
+          // Uvijek disambiguiraj putem leafa — čak i kad je samo 1 kandidat.
+          // Razlog: prvi lanac kreira parent event, drugi lanac vidi 1 kandidata
+          // i bez provjere bi ga pogrešno preuzeo (BUG-G).
+          const { data: leafCheck } = await supabase
+            .from('events')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('category_id', leafCategoryId)
+            .eq('session_start', decodedSS)
+            .limit(1);
 
-            if (childCheck && childCheck.length > 0) {
-              parentEventId = (candidates[0] as { id: UUID }).id;
-            }
+          if (leafCheck && leafCheck.length > 0) {
+            parentEventId = (candidates[0] as { id: UUID }).id;
           }
 
           if (!parentEventId) continue;

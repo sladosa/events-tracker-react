@@ -310,12 +310,11 @@ export function EditActivityPage() {
 
       if (parentChainIds.length > 0) {
         // parentChainIds je [Gym, Activity, ...] (leaf→root redosljed)
-        // Za svaki parent, immediate child u lancu je:
-        //   parentChainIds[0] → child = leafCategoryId
-        //   parentChainIds[i] → child = parentChainIds[i-1]
+        // BUG-G fix: koristimo LEAF kao disambiguator, ne immediate child.
+        // Isti princip kao ViewDetailsPage i excelImport — leaf je jedini
+        // ID koji je unique po sesiji.
         for (let i = 0; i < parentChainIds.length; i++) {
           const catId = parentChainIds[i];
-          const childCatId = i === 0 ? leafCategoryId : parentChainIds[i - 1];
 
           // Fetch svi kandidati za ovaj parent category + session_start
           const { data: candidates } = await supabase
@@ -329,25 +328,17 @@ export function EditActivityPage() {
 
           let parentEventId: UUID | null = null;
 
-          if (candidates.length === 1) {
-            // Samo jedan kandidat — nema ambigviteta
-            parentEventId = (candidates[0] as { id: UUID }).id;
-          } else {
-            // Više kandidata → disambiguiraj po child kategoriji
-            // Pravi parent event ima sibling child event za isti session_start
-            const { data: childCheck } = await supabase
-              .from('events')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('category_id', childCatId)
-              .eq('session_start', decodedSessionStart)
-              .limit(1);
+          // Uvijek disambiguiraj putem leafa — čak i kad je samo 1 kandidat.
+          const { data: leafCheck } = await supabase
+            .from('events')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('category_id', leafCategoryId)
+            .eq('session_start', decodedSessionStart)
+            .limit(1);
 
-            if (childCheck && childCheck.length > 0) {
-              // Child postoji za ovaj session → prvi kandidat pripada našem lancu
-              parentEventId = (candidates[0] as { id: UUID }).id;
-            }
-            // Ako child ne postoji, parentEventId ostaje null (edge case)
+          if (leafCheck && leafCheck.length > 0) {
+            parentEventId = (candidates[0] as { id: UUID }).id;
           }
 
           if (!parentEventId) continue;
