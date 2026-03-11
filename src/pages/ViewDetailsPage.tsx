@@ -322,6 +322,8 @@ export function ViewDetailsPage() {
     if (!sessionStart) return;
     setIsLoading(true);
     setLoadError(null);
+    setSelectedEventIndex(0); // Reset: sprečava prikaz krivog eventa kad novi activity ima manje eventa
+    setParentAttrValues(new Map()); // Reset: sprečava stale parent atribute pri Prev/Next navigaciji
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -441,39 +443,40 @@ export function ViewDetailsPage() {
 
       const newParentAttrValues = new Map<string, { value: string | number | boolean | null; dataType: string }>();
 
+      console.log('[VIEW-DEBUG] parent load — leafCategoryId:', leafCategoryId, 'decodedSS:', decodedSS, 'parentChainIds:', parentChainIds);
       if (parentChainIds.length > 0 && !noSession) {
         // parentChainIds je [Gym, Activity, ...] (leaf→root)
-        // BUG-G fix: koristimo LEAF kao disambiguator, ne immediate child.
-        // Dva lanca mogu dijeliti isti intermediate parent (npr. Activity→Gym→Cardio
-        // i Activity→Gym→Strength dijele Gym). Leaf (Cardio vs Strength) je jedini
-        // ID koji je unique po sesiji — isti princip kao u excelImport.ts.
+        // BUG-G fix v2: comment = leafCategoryId kao chain discriminator.
+        // Svaki parent event kreiran importom nosi comment = leafCategoryId svog lanca.
+        // Fallback za legacy/manualno dodane evente (comment = null, samo 1 kandidat).
         for (let i = 0; i < parentChainIds.length; i++) {
           const catId = parentChainIds[i];
 
-          const { data: candidates } = await supabase
+          const { data: byChainKey } = await supabase
             .from('events')
             .select('id')
             .eq('user_id', user.id)
             .eq('category_id', catId)
-            .eq('session_start', decodedSS);
-
-          if (!candidates || candidates.length === 0) continue;
+            .eq('session_start', decodedSS)
+            .eq('comment', leafCategoryId)
+            .limit(1);
 
           let parentEventId: UUID | null = null;
 
-          // Uvijek disambiguiraj putem leafa — čak i kad je samo 1 kandidat.
-          // Razlog: prvi lanac kreira parent event, drugi lanac vidi 1 kandidata
-          // i bez provjere bi ga pogrešno preuzeo (BUG-G).
-          const { data: leafCheck } = await supabase
-            .from('events')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('category_id', leafCategoryId)
-            .eq('session_start', decodedSS)
-            .limit(1);
+          if (byChainKey && byChainKey.length > 0) {
+            parentEventId = (byChainKey[0] as { id: UUID }).id;
+          } else {
+            const { data: legacy } = await supabase
+              .from('events')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('category_id', catId)
+              .eq('session_start', decodedSS)
+              .is('comment', null);
 
-          if (leafCheck && leafCheck.length > 0) {
-            parentEventId = (candidates[0] as { id: UUID }).id;
+            if (legacy && legacy.length === 1) {
+              parentEventId = (legacy[0] as { id: UUID }).id;
+            }
           }
 
           if (!parentEventId) continue;

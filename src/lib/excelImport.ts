@@ -536,38 +536,41 @@ export async function applyImportChanges(
   const findParentEventByChain = async (
     categoryId:     string,
     sessionISO:     string,
-    leafCategoryId: string, // leaf u lancu = jedini sigurni disambiguator
+    leafCategoryId: string, // leaf u lancu = chain discriminator (BUG-G fix v2)
   ): Promise<string | null> => {
-    // Fetch svi eventi za ovu kategoriju + sesiju
-    const { data: candidates } = await supabase
+    // BUG-G fix v2: comment field kao chain discriminator.
+    // Parent eventi imaju comment = leafCategoryId od importa.
+    // Ovo eliminira nedeterminizam candidates[0] kad postoji više
+    // parent evenata za isti category_id + session_start (npr. Cardio i
+    // Strength imaju svaki svoju Activity sesiju s istim session_start).
+    const { data: byChainKey } = await supabase
       .from('events')
       .select('id')
       .eq('user_id', userId)
       .eq('category_id', categoryId)
-      .eq('session_start', sessionISO);
+      .eq('session_start', sessionISO)
+      .eq('comment', leafCategoryId)
+      .limit(1);
 
-    if (!candidates || candidates.length === 0) return null;
+    if (byChainKey && byChainKey.length > 0) {
+      return (byChainKey[0] as { id: string }).id;
+    }
 
-    // Uvijek disambiguiraj putem leafa — čak i kad je samo 1 kandidat.
-    // Primjer: Cardio kreira Activity event X. Strength onda vidi 1 kandidata
-    // (X) i bez leaf-provjere bi ga pogrešno referencirao (BUG-G).
-    const { data: leafEvents } = await supabase
+    // Fallback za staru data (comment = null, kreirana prije BUG-G fix v2).
+    // Stara data ima samo 1 parent event po kategoriji po sesiji → sigurno je
+    // uzeti jedini pronađeni event.
+    const { data: legacy } = await supabase
       .from('events')
       .select('id')
       .eq('user_id', userId)
-      .eq('category_id', leafCategoryId)
+      .eq('category_id', categoryId)
       .eq('session_start', sessionISO)
-      .limit(1);
+      .is('comment', null);
 
-    // Leaf postoji za ovu sesiju → ovaj parent event pripada ovom lancu
-    if (leafEvents && leafEvents.length > 0) {
-      // Više kandidata istog parent-a za istu sesiju ne bi smjelo biti,
-      // ali ako jest — svi su ekvivalentni, vraćamo prvog.
-      return (candidates[0] as { id: string }).id;
+    if (legacy && legacy.length === 1) {
+      return (legacy[0] as { id: string }).id;
     }
 
-    // Leaf još ne postoji → ovaj parent event NE pripada ovom lancu
-    // (ili parent još nije kreiran) → caller treba kreirati novi
     return null;
   };
 
@@ -620,7 +623,7 @@ export async function applyImportChanges(
           category_id:   categoryId,
           event_date:    eventDate,
           session_start: sessionISO,
-          comment:       null,
+          comment:       leafCategoryId, // BUG-G fix v2: chain discriminator
           created_at:    sessionISO,
         })
         .select('id')
@@ -804,7 +807,7 @@ export async function applyImportChanges(
               category_id:   categoryId,
               event_date:    group.eventDate,
               session_start: group.sessionISO,
-              comment:       null,
+              comment:       group.leafCategoryId, // BUG-G fix v2: chain discriminator
               created_at:    group.sessionISO,
             })
             .select('id')
