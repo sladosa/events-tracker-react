@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
+import { loadParentAttrs } from '@/lib/parentEventLoader';
 
 import { ActivityHeader } from '@/components/activity/ActivityHeader';
 import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
@@ -274,99 +275,66 @@ export function EditActivityPage() {
       setPendingEvents(pendingEventsData);
       
       // ============================================================
-      // EDIT-P2: Load parent events (Activity, Gym itd.)
-      // Chain disambiguation: za svaki parent, tražimo event koji ima
-      // sibling child u NAŠEM lancu (ne u nekom drugom lancu koji
-      // dijeli isti session_start). Ovo sprječava mješanje Activity
-      // evenata koji dijele session_start ali imaju različite lance.
+      // EDIT-P2: Load parent events — delegirano na shared service
+      // parentEventLoader.ts je single source of truth za ovu logiku.
+      // Isti kod koriste EditActivityPage i ViewDetailsPage.
+      //
+      // KRITIČNO: prosljeđujemo session_start DIREKTNO IZ BAZE
+      // (leafEvents[0].session_start), ne URL-decoded string.
+      // URL format (.000Z) i Supabase format (+00:00) su isti trenutak
+      // ali različit string — Supabase eq() ne matchira cross-format
+      // pouzdano uz dodatne filtere. DB format garantira match.
       // ============================================================
-      const parentChainIds: UUID[] = [];
-      let currentParentId: UUID | null = null;
 
-      const { data: leafCatData } = await supabase
-        .from('categories')
-        .select('parent_category_id')
-        .eq('id', leafCategoryId)
-        .single() as { data: { parent_category_id: string | null } | null };
-
-      currentParentId = (leafCatData?.parent_category_id as UUID | null) ?? null;
-
-      while (currentParentId) {
-        parentChainIds.push(currentParentId);
-        const { data: parentCatRow } = await supabase
-          .from('categories')
-          .select('parent_category_id')
-          .eq('id', currentParentId)
-          .single() as { data: { parent_category_id: string | null } | null };
-        currentParentId = (parentCatRow?.parent_category_id as UUID | null) ?? null;
-      }
-
+      // parentDbIds: za SAVE path trebamo znati koji DB id ima svaki parent.
+      // Gradimo ga odvojeno (buildParentChainIds) jer loadParentAttrs ne
+      // vraća event ID-ove — samo atribute.
+      const { buildParentChainIds } = await import('@/lib/parentEventLoader');
+      const parentChainIds = await buildParentChainIds(leafCategoryId);
       const newParentDbIds = new Map<string, UUID | null>();
-      const newParentAttrValues = new Map<string, LocalAttributeValue>();
-
       for (const catId of parentChainIds) {
         newParentDbIds.set(catId, null);
       }
 
-      if (parentChainIds.length > 0) {
-        // parentChainIds je [Gym, Activity, ...] (leaf→root redosljed)
-        // BUG-G fix: koristimo LEAF kao disambiguator, ne immediate child.
-        // Isti princip kao ViewDetailsPage i excelImport — leaf je jedini
-        // ID koji je unique po sesiji.
-        for (let i = 0; i < parentChainIds.length; i++) {
-          const catId = parentChainIds[i];
+      // Dohvati parent event DB id-ove za save path (BUG-G v2: comment marker)
+      for (const catId of parentChainIds) {
+        const { data: byComment } = await supabase
+          .from('events')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('category_id', catId)
+          .eq('session_start', leafEvents[0].session_start) // DB format!
+          .eq('chain_key', leafCategoryId)
+          .limit(1);
 
-          // Fetch svi kandidati za ovaj parent category + session_start
-          const { data: candidates } = await supabase
-            .from('events')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('category_id', catId)
-            .eq('session_start', decodedSessionStart);
-
-          if (!candidates || candidates.length === 0) continue;
-
-          let parentEventId: UUID | null = null;
-
-          // Uvijek disambiguiraj putem leafa — čak i kad je samo 1 kandidat.
-          const { data: leafCheck } = await supabase
-            .from('events')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('category_id', leafCategoryId)
-            .eq('session_start', decodedSessionStart)
-            .limit(1);
-
-          if (leafCheck && leafCheck.length > 0) {
-            parentEventId = (candidates[0] as { id: UUID }).id;
-          }
-
-          if (!parentEventId) continue;
-
-          newParentDbIds.set(catId, parentEventId);
-
-          const { data: parentAttrs } = await supabase
-            .from('event_attributes')
-            .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-            .eq('event_id', parentEventId);
-
-          for (const attr of (parentAttrs || []) as unknown as LoadedAttribute[]) {
-            if (!attr.attribute_definitions) continue;
-            const dataType = attr.attribute_definitions.data_type;
-            let value: string | number | boolean | null = null;
-            if (dataType === 'number' && attr.value_number !== null) value = attr.value_number;
-            else if (dataType === 'boolean' && attr.value_boolean !== null) value = attr.value_boolean;
-            else if (dataType === 'datetime' && attr.value_datetime !== null) value = attr.value_datetime;
-            else if (attr.value_text !== null) value = attr.value_text;
-            if (value !== null) {
-              newParentAttrValues.set(attr.attribute_definition_id, {
-                definitionId: attr.attribute_definition_id,
-                value,
-                touched: true,
-              });
-            }
-          }
+        if (byComment && byComment.length > 0) {
+          newParentDbIds.set(catId, (byComment[0] as { id: UUID }).id);
+          continue;
         }
+        // Fallback: legacy data (comment IS NULL, samo 1 kandidat)
+        const { data: legacy } = await supabase
+          .from('events')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('category_id', catId)
+          .eq('session_start', leafEvents[0].session_start)
+          .is('chain_key', null);
+        if (legacy && legacy.length === 1) {
+          newParentDbIds.set(catId, (legacy[0] as { id: UUID }).id);
+        }
+      }
+
+      // Učitaj parent atribute putem shared service-a
+      const rawParentMap = await loadParentAttrs(
+        leafCategoryId,
+        leafEvents[0].session_start, // DB format!
+        user.id
+      );
+
+      // Konvertiraj u LocalAttributeValue format koji Edit koristi interno
+      const newParentAttrValues = new Map<string, LocalAttributeValue>();
+      for (const [defId, { value }] of rawParentMap.entries()) {
+        newParentAttrValues.set(defId, { definitionId: defId, value, touched: true });
       }
       
       setParentDbIds(newParentDbIds);
@@ -1051,7 +1019,7 @@ export function EditActivityPage() {
               category_id: catId,
               event_date: eventDate,
               session_start: newSessionStart,
-              comment: null,
+              chain_key: categoryId, // BUG-G fix v2: chain discriminator = leaf category ID
               created_at: sessionDateTime.toISOString(),
             })
             .select('id')

@@ -712,7 +712,7 @@ export function AddActivityPage() {
             category_id: parentCat.id,
             event_date: eventDate,
             session_start: sessionStartIso,
-            comment: null,
+            chain_key: leafCategoryId, // BUG-G fix v2: chain discriminator
             created_at: sessionStart.toISOString(),
           })
           .select('id')

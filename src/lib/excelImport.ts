@@ -549,7 +549,7 @@ export async function applyImportChanges(
       .eq('user_id', userId)
       .eq('category_id', categoryId)
       .eq('session_start', sessionISO)
-      .eq('comment', leafCategoryId)
+      .eq('chain_key', leafCategoryId)
       .limit(1);
 
     if (byChainKey && byChainKey.length > 0) {
@@ -565,7 +565,7 @@ export async function applyImportChanges(
       .eq('user_id', userId)
       .eq('category_id', categoryId)
       .eq('session_start', sessionISO)
-      .is('comment', null);
+      .is('chain_key', null);
 
     if (legacy && legacy.length === 1) {
       return (legacy[0] as { id: string }).id;
@@ -623,7 +623,7 @@ export async function applyImportChanges(
           category_id:   categoryId,
           event_date:    eventDate,
           session_start: sessionISO,
-          comment:       leafCategoryId, // BUG-G fix v2: chain discriminator
+          chain_key:     leafCategoryId, // BUG-G fix v2: chain discriminator
           created_at:    sessionISO,
         })
         .select('id')
@@ -741,19 +741,25 @@ export async function applyImportChanges(
       // Svaki parent: obriši sve evente (category_id + session_start) koji
       // su ostali od prethodnih importa. Novi će se kreirati u sljedećem koraku.
       // Sigurno je brisati sve jer:
-      //   - ako drugi lanac dijeli isti parent, on će ga re-kreirati u svom grupi
-      //   - redosljed procesiranja je sekvencijalan (Map iteracija = insertion order)
+      // T-BUGG-5 fix: brisati SAMO parent evente koji PRIPADAJU OVOM LANCU.
+      // Stariji kod je brisao SVE parent evente za (categoryId + session_start),
+      // uključujući i tuđe lance — npr. Replace za Cardio je brisao
+      // Activity parent Strength lanca i obratno.
+      // Rješenje: filtrirati po comment = leafCategoryId (chain marker iz BUG-G fix v2).
       for (const { categoryId } of [...parentLevelsForDelete].reverse()) {
-        const { data: oldParents } = await supabase
+        // Brišemo samo parent evente označene za ovaj lanac (comment = leafCategoryId).
+        const { data: markedParents } = await supabase
           .from('events')
           .select('id')
           .eq('user_id', userId)
           .eq('category_id', categoryId)
-          .eq('session_start', group.sessionISO);
-        if (oldParents && oldParents.length > 0) {
-          const oldParentIds = (oldParents as { id: string }[]).map(e => e.id);
-          await supabase.from('event_attributes').delete().in('event_id', oldParentIds).eq('user_id', userId);
-          await supabase.from('events').delete().in('id', oldParentIds).eq('user_id', userId);
+          .eq('session_start', group.sessionISO)
+          .eq('chain_key', group.leafCategoryId); // ← T-BUGG-5 fix: chain-specific delete
+
+        if (markedParents && markedParents.length > 0) {
+          const ids = (markedParents as { id: string }[]).map(e => e.id);
+          await supabase.from('event_attributes').delete().in('event_id', ids).eq('user_id', userId);
+          await supabase.from('events').delete().in('id', ids).eq('user_id', userId);
         }
       }
     }
@@ -807,7 +813,7 @@ export async function applyImportChanges(
               category_id:   categoryId,
               event_date:    group.eventDate,
               session_start: group.sessionISO,
-              comment:       group.leafCategoryId, // BUG-G fix v2: chain discriminator
+              chain_key:     group.leafCategoryId, // BUG-G fix v2: chain discriminator
               created_at:    group.sessionISO,
             })
             .select('id')

@@ -1,10 +1,10 @@
 # Events Tracker React — ARCHITECTURE.md
 
-**Version:** 1.1 — 2026-03-10  
+**Version:** 1.2 — 2026-03-12  
 **Scope:** Single source of truth for core principles, data model, and critical patterns.  
 **Audience:** Claude (session continuity), Sasa (developer reference), future refactoring.
 
-> ⚠️ **Regression compass:** Any change touching `session_start`, `category_id`, `event_id`, the parent/leaf distinction, or the Excel roundtrip **must** be verified against this document.
+> ⚠️ **Regression compass:** Any change touching `session_start`, `category_id`, `event_id`, the parent/leaf distinction, `chain_key`, or the Excel roundtrip **must** be verified against this document.
 
 ---
 
@@ -31,6 +31,8 @@ areas              → top-level container (Fitness, Health, Work...)
 events             → one "activity record", linked to category_id + user_id
   ├── event_attributes   → values (value_text, value_number, value_datetime, value_boolean)
   └── event_attachments  → images and links
+
+lookup_values      → legacy table (see section 2.4), currently unused in React app
 ```
 
 ### 2.2 Critical fields in `events`
@@ -40,13 +42,25 @@ events             → one "activity record", linked to category_id + user_id
 | `category_id` | uuid | Which category — leaf OR parent |
 | `event_date` | date | Activity date (display and filter) |
 | `session_start` | timestamptz | ISO timestamp, **rounded to the minute** (seconds = 0, ms = 0) |
-| `comment` | text | Free text / note |
+| `comment` | text | **User-facing** free text / Event Note. Never used for system data. |
+| `chain_key` | uuid (FK → categories) | **[V4] System field.** Chain discriminator — UUID of the leaf category that owns this parent event. NULL on leaf events and legacy (pre-migration) data. |
+
+> ⚠️ `chain_key` and `comment` must never be swapped. Before migration 004, the chain discriminator was incorrectly stored in `comment`, causing UUIDs to appear as user-visible Event Notes. Migration 004 moved all UUID values into `chain_key` and cleaned `comment`.
+
+### 2.3 SQL Schema
+
+Current version: **V4** (`sql/SQL schema_V4.sql`)  
+Applied migrations: 001 (lookup_values), 002 (examples), 003 (RLS policies), 004 (chain_key).
+
+> Note: `auth.uid()` returns NULL when Role=postgres in Supabase SQL Editor. Use direct UUID for ad-hoc queries: `768a6056-91fd-42bb-98ae-ee83e6bd6c8d`
+
+### 2.4 lookup_values — legacy table
+
+`lookup_values` was created in an earlier migration but is **not used** by the React application. Dropdown options are stored in `attribute_definitions.validation_rules` (see section 6). The `useLookupValues()` hook exists but is never called. The table is kept as a non-breaking no-op until confirmed safe to drop.
 
 ---
 
 ## 3. Three core principles — P1 / P2 / P3
-
-These are the fundamental invariants that must never be violated anywhere in the code.
 
 ### P1 — All levels can have attributes
 
@@ -64,7 +78,7 @@ Activity  → attributes: duration, hr_avg
 User adds 3 Strength sets in one session → database gets:
   1 event (category=Activity, session_start=14:00)
   1 event (category=Gym,      session_start=14:00)
-  3 events (category=Strength, session_start=14:00)  ← NEW event for each set
+  3 events (category=Strength, session_start=14:00)
 
 TOTAL: 5 events in the database for one session.
 ```
@@ -89,7 +103,7 @@ User has hr_avg=130 in another row   → P3: hr_avg becomes 130.
 
 **Activity (session) = `session_start` (rounded to minute) + category chain (Area → ... → Leaf)**
 
-Two chains with the same `session_start` but **different category chains** are **two separate activities** with **two separate sets of parent events** — even if they share the same parent category in the tree.
+Two chains with the same `session_start` but **different category chains** are **two separate activities** with **two separate sets of parent events**.
 
 ```
 14:00 + Activity > Gym > Strength  →  Activity event A,  Gym event X,  3× Strength
@@ -97,262 +111,323 @@ Two chains with the same `session_start` but **different category chains** are *
                                        ↑ SEPARATE event!  ↑ SEPARATE event!
 ```
 
-> **Implementation note:** In the current model, `leafCategoryId` is used as a proxy for the chain because each leaf category uniquely determines the full path to the root. This assumption holds as long as category trees are not restructured. See section 13.1 for the "Add category between" risk.
-
 ### 4.1 Why `session_start` must be rounded to the minute
 
-- The UI never displays seconds anywhere (HH:MM everywhere)
-- Two activities of the same chain within the same minute is not a realistic scenario
-- Collision check uses exact match → only reliable without seconds
-- **Fix (BUG-B/C, Session 5):** `setHours(h, m, 0, 0)` in time picker + `d.setSeconds(0, 0)` in `useSessionTimer.ts`
+- The UI never displays seconds (HH:MM everywhere)
+- Collision check uses exact string match → only reliable without seconds
+- **Fix (BUG-B/C):** `setHours(h, m, 0, 0)` in time picker + `d.setSeconds(0, 0)` in `useSessionTimer.ts`
 
-### 4.2 Session key (Excel pipeline)
+### 4.2 ⚠️ session_start format — DB vs URL
+
+`session_start` appears in two different string formats for the same instant:
+
+| Source | Format | Example |
+|---|---|---|
+| Supabase DB response | `+00:00` offset | `2026-03-10 14:00:00+00:00` |
+| JS `.toISOString()` / URL encode | `.000Z` | `2026-03-10T14:00:00.000Z` |
+
+Supabase `eq()` filter **does not reliably match cross-format** when combined with additional filters (e.g. `chain_key`). **Always use the DB-format value** from `events[0].session_start` for Supabase queries. Never use `decodeURIComponent(urlParam)` as a filter when other filters are present.
+
+### 4.3 Session key (Excel pipeline)
 
 ```typescript
 const sessionKey = `${event_date}__${sessionISO}__${leafCategoryId}`;
 // Example: "2026-03-08__2026-03-08T14:00:00.000Z__<uuid>"
-// leafCategoryId used as chain proxy — see section 4 note above
 ```
 
-The same session key is used by: `excelImport.ts` (grouping), `checkImportCollisions()`, `ExcelImportModal` (overwriteMap).
+Used by: `excelImport.ts` (grouping), `checkImportCollisions()`, `ExcelImportModal`.
 
 ---
 
-## 5. Chain disambiguation
+## 5. Chain disambiguation — `chain_key`
 
-When multiple parent events of the same category exist for the same `session_start` (e.g. two Activity events because there is both Strength and Cardio at 14:00), the correct one is identified by the **immediate child** category in the chain:
+### 5.1 The `chain_key` field (V4, migration 004)
+
+Every parent event written by any code path (Add, Edit, Import) carries:
 
 ```
-For the Gym event belonging to the Strength chain:
-  childCategoryId = leafCategoryId (Strength)
-
-  candidates = SELECT FROM events WHERE category_id=Gym AND session_start=14:00
-  if candidates.length > 1:
-      for each candidate c:
-          childExists = SELECT FROM events
-                        WHERE category_id=Strength AND session_start=14:00
-                        AND (c is parent via attribute chain)
-          → c with the child is the correct Gym for the Strength chain
+events.chain_key = leafCategoryId   ← UUID of the leaf that owns this parent
 ```
 
-**Implementation:** `findParentEventByChain(categoryId, sessionISO, childCategoryId)` in `excelImport.ts` and `loadActivityData()` in `ViewDetailsPage.tsx` / `EditActivityPage.tsx`.
+`chain_key` is a **system field** — never display it to users. `comment` is exclusively for user text.
 
-### 5.1 Parent/leaf state pattern (Edit + View)
+```
+Activity event (chain_key = CardioUUID)     ← belongs to the Cardio chain
+Activity event (chain_key = StrengthUUID)   ← belongs to the Strength chain
+Cardio leaf event   (chain_key = NULL)      ← leaf events never have chain_key
+Strength leaf event (chain_key = NULL)
+```
+
+### 5.2 Disambiguation algorithm in `parentEventLoader.ts`
+
+```
+Step 1 (Primary):  find parent WHERE chain_key = leafCategoryId
+Step 2 (Fallback): find parent WHERE chain_key IS NULL
+                   → safe ONLY if exactly 1 candidate (truly legacy data)
+                   → if > 1 candidate: skip (better empty than wrong)
+```
+
+### 5.3 Shared service — `parentEventLoader.ts`
+
+Parent event loading lives in **one shared service** (`src/lib/parentEventLoader.ts`). Never duplicate this logic.
+
+```
+ViewDetailsPage  → loadParentAttrs()          (read parent attrs for display)
+EditActivityPage → buildParentChainIds()       (get parent category IDs for save path)
+              └→ loadParentAttrs()          (read parent attrs for form)
+AddActivityPage  → writes chain_key on INSERT  (no read needed)
+excelImport.ts   → writes chain_key on INSERT  (no read needed)
+```
+
+**`buildParentChainIds(leafCategoryId)`** — traverses `categories.parent_category_id` from leaf to root. Returns `[gymUUID, activityUUID, ...]`.
+
+**`loadParentAttrs(leafCategoryId, sessionStart, userId)`** — runs disambiguation per parent, returns `Map<attrDefinitionId, {value, dataType}>`.
+
+> ⚠️ Always pass `events[0].session_start` (DB format) to `loadParentAttrs()`. See section 4.2.
+
+### 5.4 Parent/leaf state pattern (Edit + View)
 
 ```typescript
-// 1. Fetch leaf events → selectedEventIndex
-// 2. Traverse parent chain → parentChainIds[] (leaf→root)
-// 3. For each parent: chain disambiguation → parentDbId
-// 4. Fetch attrs → parentAttrValues Map<defId, value>
+// LOAD:
+// 1. Fetch leaf events
+// 2. loadParentAttrs() → parentAttrValues
+// 3. buildParentChainIds() + per-parent chain_key query → parentDbIds (Edit only)
 
-// On event select:
-attrMap = new Map(parentAttrValues)     // parent first (shared across all tabs)
-leafEvent.attributes.forEach(...)       // leaf overrides
+// ON EVENT SELECT:
+attrMap = new Map(parentAttrValues)    // parent first (shared)
+leafEvent.attributes.forEach(...)      // leaf overrides (P3)
 
-// On attribute change:
+// ON ATTRIBUTE CHANGE (Edit):
 if (leafAttrDefs.has(defId)) → update pendingEvents[selectedIndex]
 else                          → update parentAttrValues + ref (shared)
 
-// On Save — parent upsert:
+// ON SAVE — parent upsert (Edit):
 for (catId, dbId) of parentDbIds:
-    dbId exists → UPDATE attrs (P3: empty does not overwrite)
-    dbId null   → INSERT new parent event
+    dbId exists → UPDATE attrs (P3)
+    dbId null   → INSERT new parent event with chain_key = leafCategoryId
 ```
 
 ---
 
-## 6. Collision detection
+## 6. Dropdown / validation_rules system
 
-**Collision = same `session_start` (rounded to minute) + same category chain + same `user_id`**
+Attribute dropdowns (Cardio_type, equipment, exercise_name...) are driven entirely by `attribute_definitions.validation_rules` (JSON). There is **no separate dropdown table** — `lookup_values` is legacy and empty.
 
-> *Implementation:* `leafCategoryId` is used as a proxy for the chain because in the current model the leaf category uniquely determines the full path to the root. If the model changes (e.g. category restructuring), this assumption must be revisited.
+### 6.1 validation_rules formats
 
-### 6.1 Where it is checked
+**Simple dropdown** (TextOptions column M in Excel structure file):
+```json
+{ "type": "suggest", "suggest": ["Z2", "tempo", "interval"] }
+```
+
+**Cascading dropdown** (DependsOn col P + WhenValue col Q in Excel structure file):
+```json
+{
+  "type": "suggest",
+  "depends_on": {
+    "attribute_slug": "Strength_type",
+    "options_map": {
+      "Upp":  ["pull.m", "biceps", "triceps", "rame"],
+      "Low":  ["squat-bw", "squat-bulg", "iskoraci"],
+      "Core": ["leg.raises", "plank", "side.pl"],
+      "*":    []
+    }
+  }
+}
+```
+
+**Fixed enum:**
+```json
+{ "type": "enum", "enum": ["option1", "option2"] }
+```
+
+### 6.2 How it flows
+
+```
+Excel structure file (TextOptions M, DependsOn P, WhenValue Q)
+         ↓  written to DB during structure import
+attribute_definitions.validation_rules  (JSON in Supabase)
+         ↓  read by useAttributeDefinitions.ts → parseValidationRules()
+AttributeInput.tsx  →  renders <select> or <datalist>
+```
+
+The dependent dropdown resolves the parent attribute value from current form state at render time and filters `options_map` accordingly. `parseValidationRules()` handles `suggest`, `enum`, `depends_on`, and a legacy `dropdown` format.
+
+---
+
+## 7. Prev/Next navigation — ViewDetailsPage
+
+Prev/Next navigates through the **full activity list**, ignoring the home-page date filter. This is intentional — after Edit→Save with a date change, the activity may be outside the filtered range but navigation must still work.
+
+```typescript
+// activities loaded with dateFrom=null, dateTo=null
+// currentIndex: format-agnostic via Date.getTime() — resolves +00:00 vs .000Z mismatch
+const sessionMatch = new Date(g.session_start).getTime() === new Date(decoded).getTime();
+```
+
+---
+
+## 8. Collision detection
+
+**Collision = same `session_start` (rounded to minute) + same `leafCategoryId` + same `user_id`**
+
+### 8.1 Where it is checked
 
 | Context | Location | Behaviour |
 |---|---|---|
 | **Edit Activity — Save** | `EditActivityPage.tsx` → `handleSave()` | Supabase query, toast error, blocks save |
-| **Excel Import — pre-apply** | `checkImportCollisions()` in `excelImport.ts` | Returns `CollisionInfo[]` for UI decisions |
+| **Excel Import — pre-apply** | `checkImportCollisions()` in `excelImport.ts` | Returns `CollisionInfo[]` for UI |
 
-### 6.2 Edit collision query
-
-```typescript
-const newSessionStart = sessionDateTime.toISOString(); // seconds = 0 (BUG-B/C fix)
-
-SELECT id FROM events
-WHERE user_id = $userId
-  AND category_id = $leafCategoryId   -- proxy for the chain
-  AND session_start = $newSessionStart
-  AND id NOT IN (own leaf event IDs)
-LIMIT 1
-```
-
-If result is not empty → toast error, `setSaving(false)`, return.
-
-### 6.3 Excel Import collision resolution
-
-The UI shows one collision card per session. The user chooses:
+### 8.2 Excel Import collision resolution
 
 | Decision | Behaviour |
 |---|---|
 | **Replace** | DELETE existing leaf events + attrs + attachments → INSERT new ones |
-| **Add** | Keep existing → INSERT new (session will have more events) |
-| **Skip** | Session is skipped, database untouched |
+| **Add** | Keep existing → INSERT new (session has more events) |
+| **Skip** | Session skipped, database untouched |
 
-**BUG-F fix (Session 8):** If the decision is `replace` and an Excel row has an `event_id` in column A, the `event_id` is set to `null` (reclassified as CREATE) because the old events were already deleted — an UPDATE on a deleted ID would fail without a rollback, leaving the database in a partial state.
+**BUG-F fix:** If decision is `replace` and an Excel row has an `event_id`, the `event_id` is set to `null` (reclassified as CREATE) because the old events were already deleted.
+
+**T-BUGG-5 fix:** Replace delete loop uses `.eq('chain_key', leafCategoryId)` — only deletes parents of the current chain, not sibling chains sharing the same `session_start`.
 
 ---
 
-## 7. Excel Export / Import roundtrip
+## 9. Excel Export / Import roundtrip
 
-### 7.1 Export — `excelExport.ts`
+### 9.1 Export — `excelExport.ts`
 
-**`mergeSessionEvents()` Option A (DESIGN-1, Session 7):**
+**`mergeSessionEvents()` (DESIGN-1):**
+1. Separate leaf from parent events
+2. Group leaf events by `session_start + leafCategoryId`
+3. Merge parent attributes into the first leaf row (P3)
+4. Remaining leaf rows: leaf attributes only
+5. Parent events are **not** exported as separate rows
 
-1. Separate leaf events from parent events (leaf = not the `parent_category_id` of any other event)
-2. Group leaf events by `session_start + leafCategoryId` (= chain proxy) → one chain group
-3. For each chain: walk up hierarchy, merge parent attributes into the **first leaf row** (P3)
-4. Remaining leaf rows of the chain: leaf attributes only
-5. **Parent events are NOT exported as separate rows**
+### 9.2 Import — `excelImport.ts`
 
-Result: the Excel file contains only leaf rows. Each chain has exactly as many rows as it has leaf events.
+**Pass 1** (parse + grouping): group by `sessionKey`, P3-merge parent attrs, distinguish CREATE vs UPDATE.
 
-### 7.2 Import — `excelImport.ts`
+**Pass 2** (apply): per-session decision → replace / add / skip → INSERT/UPDATE leaf events → INSERT parent events with `chain_key = leafCategoryId`.
 
-**Pass 1** (parse + grouping):
-- Read rows → group by `sessionKey`
-- P3-merge parent attributes (an attribute not in leaf attrDefs → goes into `parentMerged`)
-- Distinguish CREATE (no `event_id`) from UPDATE (has `event_id`)
+**Smart reclassify:** `event_id` from column A not found in DB → reclassified as CREATE.
 
-**Pass 2** (apply):
-- For each session: check `overwriteDecisions` (replace / add / skip / undefined)
-- `replace` → DELETE old leaf events → then INSERT (BUG-F fix: nullify `event_id` for those rows)
-- INSERT / UPDATE leaf events
-- Upsert parent events using chain disambiguation
+**`normalizeTimeCell()` (BUG-E):** ExcelJS reads `Time`-formatted cells as Date with epoch 1899-12-30. Fix: `val instanceof Date → getHours():getMinutes()`.
 
-**Smart reclassify:**  
-If an `event_id` from column A no longer exists in the database → reclassified as CREATE (not UPDATE).
-
-**`normalizeTimeCell()` (BUG-E, Session 7):**  
-ExcelJS reads `Time`-formatted cells as a `Date` with epoch 1899-12-30. Fix: `val instanceof Date → getHours():getMinutes()`.
-
-### 7.3 CollisionInfo structure
+### 9.3 CollisionInfo structure
 
 ```typescript
 interface CollisionInfo {
-  sessionKey:        string;   // event_date__sessionISO__leafCategoryId (chain proxy)
+  sessionKey:        string;
   eventDate:         string;
   sessionISO:        string;
-  categoryPath:      string;   // human-readable, e.g. "Fitness > Gym > Strength"
-  rowNumbers:        number[]; // Excel rows that make up this session
-  existingLeafCount: number;   // how many leaf events exist in the database
-  hasPhotos:         boolean;  // whether the session has photos attached
+  categoryPath:      string;
+  rowNumbers:        number[];
+  existingLeafCount: number;
+  hasPhotos:         boolean;
 }
 ```
 
 ---
 
-## 8. Key files
+## 10. Key files
 
 | File | Role |
 |---|---|
+| `src/lib/parentEventLoader.ts` | **[V4 NEW]** Shared service: `buildParentChainIds()`, `loadParentAttrs()` |
 | `src/lib/excelExport.ts` | Export → Excel, `mergeSessionEvents()` |
-| `src/lib/excelImport.ts` | Parse, smart reclassify, apply import, `findParentEventByChain()` |
-| `src/lib/excelDataLoader.ts` | Loads `ExportCategoriesDict` + `ExportAttrDef[]` for export/import |
+| `src/lib/excelImport.ts` | Parse, smart reclassify, apply import, chain_key writes |
+| `src/lib/excelDataLoader.ts` | Loads `ExportCategoriesDict` + `ExportAttrDef[]` |
 | `src/lib/excelTypes.ts` | Shared TypeScript types for the Excel pipeline |
-| `src/components/activity/ExcelImportModal.tsx` | Import UI: collision resolution, reactive counters, decisions |
+| `src/lib/theme.ts` | Theme colour tokens (view=indigo, edit=amber, add=blue) |
+| `src/components/activity/ExcelImportModal.tsx` | Import UI: collision resolution, reactive counters |
 | `src/pages/EditActivityPage.tsx` | Edit flow: delta-shift, collision check, parent upsert |
-| `src/pages/ViewDetailsPage.tsx` | Read-only view + chain disambiguation + empty-state guard |
+| `src/pages/ViewDetailsPage.tsx` | Read-only view, Prev/Next, delegates to parentEventLoader |
+| `src/pages/AddActivityPage.tsx` | Add flow: writes `chain_key` on parent INSERT |
 | `src/pages/AppHome.tsx` | Home: Activities tab, filter, Export/Import triggers |
+| `src/pages/DebugPage.tsx` | `/app/debug` — Theme Preview tab, debug tools |
 | `src/context/FilterContext.tsx` | Global filter state (area, category, date range, sort) |
+| `src/hooks/useAttributeDefinitions.ts` | Loads attr defs + `parseValidationRules()` for dropdowns |
 | `src/hooks/useSessionTimer.ts` | Holds `sessionDateTime` (seconds = 0 — BUG-C fix) |
 | `src/components/activity/ActivityHeader.tsx` | Time picker (seconds = 0 — BUG-B fix) |
+| `src/components/activity/AttributeInput.tsx` | Renders dropdown/input based on validation_rules |
+| `sql/SQL schema_V4.sql` | Reference schema (not for direct execution) |
 
 ---
 
-## 9. LocalStorage — draft system
-
-Edit and Add Activity auto-save a draft to `localStorage` every 15 seconds:
+## 11. LocalStorage — draft system
 
 ```typescript
 const STORAGE_KEY = 'et_activity_draft';
 // Stores: pendingEvents[], sessionDateTime, categoryId, isDirty flag
-// Maximum image size: 5 MB total, 1200 px max dimension (resized before storing)
+// Max image size: 5 MB total, 1200 px max dimension (resized before storing)
 ```
 
 When the user opens Add/Edit with an existing draft → "Resume / Discard" dialog.
 
 ---
 
-## 10. Theming
+## 12. Theming
 
-| Screen | Colour | Constant |
-|---|---|---|
-| View Activity | Indigo | `THEME['view']` |
-| Edit Activity | Amber | `THEME['edit']` |
-| Add Activity | Green | `THEME['add']` |
+| Screen | Colour | Constant | Note |
+|---|---|---|---|
+| View Activity | Indigo | `THEME['view']` | |
+| Edit Activity | Amber | `THEME['edit']` | |
+| Add Activity | Blue | `THEME['add']` | ⚠️ V1.1 said Green — actual `theme.ts` has `bg-blue-600` |
 
-Defined in `src/lib/theme.ts`.
+Preview all themes at `/app/debug` → Theme Preview tab (HMR, no restart needed).
 
 ---
 
-## 11. Collision criteria — complete matrix
+## 13. Collision criteria — complete matrix
 
 | Scenario | Collision? | Reason |
 |---|---|---|
-| Same `session_start` + same chain (same `leafCategoryId`) | ✅ YES | Duplicate session |
-| Same `session_start` + different chain (different `leafCategoryId`) | ❌ NO | Two separate chains |
+| Same `session_start` + same chain (`leafCategoryId`) | ✅ YES | Duplicate session |
+| Same `session_start` + different chain | ❌ NO | Two separate chains |
 | Different `session_start` + same chain | ❌ NO | Different sessions |
-| Import Replace → row has `event_id` in column A | ❌ NO (reclassified) | BUG-F fix: old events already deleted |
-| Edit → time changed to an already-occupied HH:MM | ✅ YES | BUG-B/C fix active |
+| Import Replace → row has `event_id` | ❌ NO (reclassified) | BUG-F fix |
+| Edit → time changed to occupied HH:MM | ✅ YES | BUG-B/C fix active |
 
 ---
 
-## 12. Known edge cases and fixes
+## 14. Known edge cases and fixes
 
 | ID | Description | Fix | File |
 |---|---|---|---|
-| BUG-A | After Edit Save, navigation used the old `sessionStart` | `navigate(encodeURIComponent(newSessionStart))` | `EditActivityPage.tsx` |
-| BUG-B | Time picker left seconds/ms in place → collision miss | `setHours(h, m, 0, 0)` | `ActivityHeader.tsx` |
-| BUG-C | Add Activity created `session_start` with full timestamp | `d.setSeconds(0, 0)` in `useSessionTimer.ts` | `useSessionTimer.ts` |
-| BUG-D | Blank screen after navigating to a non-existent session | `!isLoading && viewEvents.length === 0` → error UI | `ViewDetailsPage.tsx` |
+| BUG-A | After Edit Save, navigation used old `sessionStart` | `navigate(encodeURIComponent(newSessionStart))` | `EditActivityPage.tsx` |
+| BUG-B | Time picker left seconds/ms → collision miss | `setHours(h, m, 0, 0)` | `ActivityHeader.tsx` |
+| BUG-C | Add Activity created `session_start` with full timestamp | `d.setSeconds(0, 0)` | `useSessionTimer.ts` |
+| BUG-D | Blank screen after navigating to non-existent session | `!isLoading && viewEvents.length === 0` → error UI | `ViewDetailsPage.tsx` |
 | BUG-E | Excel Time cells read as Date with epoch 1899-12-30 | `normalizeTimeCell()` | `excelImport.ts` |
-| BUG-F | Replace + UPDATE path → partial database state | `event_id = null` for replace-session rows | `excelImport.ts` |
+| BUG-F | Replace + UPDATE path → partial DB state | `event_id = null` for replace-session rows | `excelImport.ts` |
+| BUG-G | Two chains sharing `session_start` shared parent event | `chain_key = leafCategoryId` on all parent INSERTs | all write paths |
+| T-BUGG-5 | Replace loop deleted sibling chain's parent | `.eq('chain_key', leafCategoryId)` on delete | `excelImport.ts` |
+| VIEW-Z1 | Prev/Next disabled after Edit→Save with date change | Date-filter-free list + `getTime()` comparison | `ViewDetailsPage.tsx` |
+| FORMAT-1 | Parent attrs empty in View (`+00:00` vs `.000Z`) | Pass `events[0].session_start` to `loadParentAttrs()` | `parentEventLoader.ts` |
+| CHAIN-KEY | `comment` field stored UUIDs → visible in Event Note UI | Migration 004: new `chain_key` column, `comment` cleaned | `004_add_chain_key.sql` |
 | DESIGN-1 | Parent events exported as separate rows | `mergeSessionEvents()` Option A | `excelExport.ts` |
 
 ---
 
-## 13. Not yet implemented
+## 15. Not yet implemented
 
-| Feature                                                           | Status                       | Note                                      |
-| ----------------------------------------------------------------- | ---------------------------- | ----------------------------------------- |
-| Structure View                                                    | Placeholder in `AppHome.tsx` | Session 9+                                |
-| BUG-F Step 2 (transaction)                                        | Deferred                     | Supabase RPC, waiting for stable pipeline |
-| BUG-G (two chains with same `session_start` share a parent event) | Documented                   | `excelImport.ts` CREATE path              |
-| `date_trunc('minute')` for collision check in SQL                 | Deferred                     | Long-term fix for legacy seconds in DB    |
+| Feature | Status | Note |
+|---|---|---|
+| Structure View | Placeholder in `AppHome.tsx` | Next major milestone |
+| BUG-F Step 2 (transaction / rollback) | Deferred | Supabase RPC |
+| `date_trunc('minute')` for collision check in SQL | Deferred | Long-term fix for legacy data |
 
-### 13.1 ⚠️ Structure View — "Add category between" risk
+### 15.1 ⚠️ Structure View — "Add category between" risk
 
-The Streamlit MVP supports inserting a new category level between two existing ones (e.g. `Gym > Strength` → `Gym > Upper Body > Strength`) without losing events.
+Inserting a new category level between two existing ones (e.g. `Gym > Strength` → `Gym > Upper Body > Strength`) is dangerous because:
 
-This is the **most dangerous operation** for data consistency because:
+- `leafCategoryId` stays the same → `chain_key` on existing events remains valid
+- But `buildParentChainIds()` traverses **current** `parent_category_id` — old events now get the wrong (longer) chain
+- Excel Export produces inconsistent `category_path` across old and new events
 
-- `leafCategoryId` remains **the same** (the Strength UUID does not change)
-- But `parent_category_id` in the `categories` table changes
-- All existing events remain linked to the same `category_id` values — but the path traversal changes
-
-**What breaks:**
-
-| Component | Problem |
-|---|---|
-| `findParentEventByChain()` | Traverses `parent_category_id` live from DB — old events have the "short" path, new events the "long" path |
-| Chain disambiguation | The `childCategoryId` that was a direct child now has a new intermediary |
-| `buildCategoryPath()` in ViewDetails | Displays the new (longer) path for old events — visually inconsistent |
-| Excel Export | Old events export with short `category_path`, new events with long — Import groups them separately |
-
-**Principle that must be satisfied during implementation:**  
-The "Add category between" operation must be a **migration** (UPDATE `category_id` on all existing events linked to that path), not just a structural change in the `categories` table.
+**Principle:** "Add category between" must be a **data migration** (UPDATE `category_id` on all affected events), not just a structural change in the `categories` table. `chain_key` values must also be verified/updated.
 
 ---
 
-*Document generated: 2026-03-10 | Based on Sessions 1–8 + all handover documents*
+*Document version 1.2 — 2026-03-12 | Sessions 1–12*  
+*Key changes in V1.2: chain_key field (migration 004), parentEventLoader.ts shared service, dropdown/validation_rules system (section 6), session_start format warning (4.2), Prev/Next fix (section 7), lookup_values legacy status, theme colour correction, complete fix history in section 14.*

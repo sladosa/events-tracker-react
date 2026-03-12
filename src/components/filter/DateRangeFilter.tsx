@@ -8,7 +8,7 @@ interface DateRangeFilterProps {
 
 export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   const { filter, setDateRange, setSortOrder } = useFilter();
-  const { bounds, loading } = useDateBounds(filter.areaId, filter.categoryId);
+  const { bounds, loading, refresh } = useDateBounds(filter.areaId, filter.categoryId);
   
   // Local state for inputs (to allow editing before applying)
   const [localFrom, setLocalFrom] = useState<string>('');
@@ -29,9 +29,19 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   // Sync from filter state when it changes externally
   useEffect(() => {
     if (filter.dateFrom && filter.dateTo) {
+      // External update (e.g. presets, manual input) — sync to local state
       setLocalFrom(filter.dateFrom);
       setLocalTo(filter.dateTo);
+    } else if (filter.dateFrom === null && filter.dateTo === null) {
+      // T-UX3 fix: External reset signal (e.g. after successful import).
+      // Clear local inputs, reset userModified flag so bounds init effect
+      // can re-populate after a fresh bounds fetch (which picks up new events).
+      setLocalFrom('');
+      setLocalTo('');
+      setUserModified(false);
+      refresh(); // Re-fetch bounds to include newly imported data (incl. future dates)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter.dateFrom, filter.dateTo]);
 
   // Handle date input changes
@@ -90,7 +100,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
             value={localFrom}
             onChange={(e) => handleFromChange(e.target.value)}
             min={bounds.minDate || undefined}
-            max={localTo || bounds.maxDate || undefined}
+            max={localTo || undefined}
             disabled={loading}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 text-sm"
           />
@@ -107,7 +117,6 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
             value={localTo}
             onChange={(e) => handleToChange(e.target.value)}
             min={localFrom || bounds.minDate || undefined}
-            max={bounds.maxDate || undefined}
             disabled={loading}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 text-sm"
           />

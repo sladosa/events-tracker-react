@@ -23,6 +23,7 @@ import { useActivities } from '@/hooks/useActivities';
 import { useFilter } from '@/context/FilterContext';
 import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
+import { loadParentAttrs } from '@/lib/parentEventLoader';
 
 import type { UUID } from '@/types';
 
@@ -413,92 +414,24 @@ export function ViewDetailsPage() {
       setViewEvents(loadedEvents);
 
       // ============================================================
-      // VIEW-P2: Load parent events — chain disambiguation
-      // Isti pattern kao EDIT-P2 u EditActivityPage (s fixom).
+      // VIEW-P2: Load parent events — delegirano na shared service
+      // parentEventLoader.ts je single source of truth za ovu logiku.
+      // Isti kod koriste ViewDetailsPage i EditActivityPage.
+      //
+      // KRITIČNO: prosljeđujemo session_start DIREKTNO IZ BAZE
+      // (events[0].session_start), ne iz URL-a. URL format (.000Z) i
+      // Supabase format (+00:00) su isti trenutak ali različit string —
+      // Supabase eq() filter ne matchira cross-format pouzdano kada su
+      // prisutni dodatni filteri. DB format garantira match.
       // ============================================================
-      const decodedSS = noSession
-        ? loadedEvents[0]?.id
-        : decodeURIComponent(sessionStart);
+      let newParentAttrValues = new Map<string, { value: string | number | boolean | null; dataType: string }>();
 
-      const parentChainIds: UUID[] = [];
-      let currentParentId: UUID | null = null;
-
-      const { data: leafCatRow } = await supabase
-        .from('categories')
-        .select('parent_category_id')
-        .eq('id', leafCategoryId)
-        .single() as { data: { parent_category_id: string | null } | null };
-
-      currentParentId = (leafCatRow?.parent_category_id as UUID | null) ?? null;
-
-      while (currentParentId) {
-        parentChainIds.push(currentParentId);
-        const { data: parentCatRow } = await supabase
-          .from('categories')
-          .select('parent_category_id')
-          .eq('id', currentParentId)
-          .single() as { data: { parent_category_id: string | null } | null };
-        currentParentId = (parentCatRow?.parent_category_id as UUID | null) ?? null;
-      }
-
-      const newParentAttrValues = new Map<string, { value: string | number | boolean | null; dataType: string }>();
-
-      console.log('[VIEW-DEBUG] parent load — leafCategoryId:', leafCategoryId, 'decodedSS:', decodedSS, 'parentChainIds:', parentChainIds);
-      if (parentChainIds.length > 0 && !noSession) {
-        // parentChainIds je [Gym, Activity, ...] (leaf→root)
-        // BUG-G fix v2: comment = leafCategoryId kao chain discriminator.
-        // Svaki parent event kreiran importom nosi comment = leafCategoryId svog lanca.
-        // Fallback za legacy/manualno dodane evente (comment = null, samo 1 kandidat).
-        for (let i = 0; i < parentChainIds.length; i++) {
-          const catId = parentChainIds[i];
-
-          const { data: byChainKey } = await supabase
-            .from('events')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('category_id', catId)
-            .eq('session_start', decodedSS)
-            .eq('comment', leafCategoryId)
-            .limit(1);
-
-          let parentEventId: UUID | null = null;
-
-          if (byChainKey && byChainKey.length > 0) {
-            parentEventId = (byChainKey[0] as { id: UUID }).id;
-          } else {
-            const { data: legacy } = await supabase
-              .from('events')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('category_id', catId)
-              .eq('session_start', decodedSS)
-              .is('comment', null);
-
-            if (legacy && legacy.length === 1) {
-              parentEventId = (legacy[0] as { id: UUID }).id;
-            }
-          }
-
-          if (!parentEventId) continue;
-
-          const { data: parentAttrs } = await supabase
-            .from('event_attributes')
-            .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-            .eq('event_id', parentEventId);
-
-          for (const attr of (parentAttrs || []) as unknown as LoadedAttribute[]) {
-            if (!attr.attribute_definitions) continue;
-            const dataType = attr.attribute_definitions.data_type;
-            let value: string | number | boolean | null = null;
-            if (dataType === 'number' && attr.value_number !== null) value = attr.value_number;
-            else if (dataType === 'boolean' && attr.value_boolean !== null) value = attr.value_boolean;
-            else if (dataType === 'datetime' && attr.value_datetime !== null) value = attr.value_datetime;
-            else if (attr.value_text !== null) value = attr.value_text;
-            if (value !== null) {
-              newParentAttrValues.set(attr.attribute_definition_id, { value, dataType });
-            }
-          }
-        }
+      if (!noSession && events[0]?.session_start) {
+        newParentAttrValues = await loadParentAttrs(
+          leafCategoryId,
+          events[0].session_start,   // DB format — ne URL decode!
+          user.id
+        );
       }
 
       setParentAttrValues(newParentAttrValues);
@@ -565,13 +498,16 @@ export function ViewDetailsPage() {
   // Prev / Next Navigation
   // ============================================
 
-  // Load all activities (same filter) to find neighbours
+  // Load all activities (same area/category filter, NO date filter) to find neighbours.
+  // Z1 fix: date filter je feature Home page tablice, ne navigacije. Ako bi Prev/Next
+  // koristio dateFrom/dateTo, Edit koji promijeni datum aktivnosti izvan filtera bi
+  // uzrokovao currentIndex === -1 → oba gumba disabled odmah nakon Save.
   const { activities } = useActivities({
     areaId: filter.areaId,
     categoryId: filter.categoryId,
-    dateFrom: filter.dateFrom,
-    dateTo: filter.dateTo,
-    sortOrder: filter.sortOrder,  // Prev/Next fix: mora koristiti isti sort kao tablica
+    dateFrom: null,   // Z1: ignoriraj date filter za Prev/Next
+    dateTo: null,     // Z1: ignoriraj date filter za Prev/Next
+    sortOrder: filter.sortOrder,
     pageSize: 500,
   });
 
@@ -580,7 +516,12 @@ export function ViewDetailsPage() {
     const decoded = noSession ? sessionStart : decodeURIComponent(sessionStart);
     return activities.findIndex(g => {
       if (noSession) return g.events[0]?.id === decoded;
-      return g.session_start === decoded && (!categoryIdParam || g.category_id === categoryIdParam);
+      // Format-agnostic comparison: Edit Save generira URL s toISOString() (.000Z),
+      // ali Supabase vraća +00:00 format — isti trenutak, različit string.
+      // Parsiranjem u ms izbjegavamo false mismatch nakon Edit→View navigacije.
+      if (!g.session_start) return false;
+      const sessionMatch = new Date(g.session_start).getTime() === new Date(decoded).getTime();
+      return sessionMatch && (!categoryIdParam || g.category_id === categoryIdParam);
     });
   }, [activities, sessionStart, noSession, categoryIdParam]);
 
