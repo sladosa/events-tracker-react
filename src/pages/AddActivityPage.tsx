@@ -685,13 +685,12 @@ export function AddActivityPage() {
       const nonLeafCategories = categoryChain.filter(c => c.id !== leafCategoryId);
 
       // --- FAZA 1: Parent eventi (1 po kategoriji) ---
+      // P2: SVAKA parent kategorija mora imati točno 1 event po sesiji (chain_key anchor).
+      // Čak i ako kategorija nema attr defs, INSERT mora nastati — bez toga chain_key
+      // veza ne postoji i EditActivityPage ne može locirati parent evente.
       // P3: skupi atribute iz SVIH leaf evenata, "zadnja ne-prazna vrijednost pobjeđuje"
       for (const parentCat of nonLeafCategories) {
         const parentAttrDefs = attributesByCategory.get(parentCat.id) || [];
-        if (parentAttrDefs.length === 0) {
-          log(`Parent category ${parentCat.name} has no attr defs, skipping`);
-          continue;
-        }
         const parentAttrDefIds = new Set(parentAttrDefs.map(d => d.id));
 
         // P3 merge: iterate svi eventsToSave, zadnja ne-null vrijednost pobjeđuje
@@ -863,12 +862,17 @@ export function AddActivityPage() {
 
   const handleEditAfterFinish = useCallback(() => {
     setShowSuccessDialog(false);
-    if (savedSessionStart) {
+    if (savedSessionStart && categoryId) {
+      // KRITIČNO: ?categoryId= mora biti u URL-u da EditActivityPage filtrira samo
+      // leaf evente. Bez toga vraćaju se i parent i leaf eventi (isti session_start)
+      // → Edit prikazuje 2 eventa umjesto 1 (ADD-ACTIVITY-BUG fix).
+      navigate(`/app/edit/${encodeURIComponent(savedSessionStart)}?categoryId=${categoryId}`);
+    } else if (savedSessionStart) {
       navigate(`/app/edit/${encodeURIComponent(savedSessionStart)}`);
     } else {
       navigate('/app');
     }
-  }, [navigate, savedSessionStart]);
+  }, [navigate, savedSessionStart, categoryId]);
 
   // ============================================
   // Cancel Handler

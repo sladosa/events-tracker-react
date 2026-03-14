@@ -9,7 +9,7 @@ interface ActivitiesTableProps {
   className?: string;
   onEditActivity?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
   onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
-  onDeleteActivity?: (sessionStart: string) => Promise<void>;
+  onDeleteActivity?: (sessionStart: string, categoryId: UUID) => Promise<void>;
   onExport?: () => void;
   onImport?: () => void;
 }
@@ -101,7 +101,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
       for (const key of selectedKeys) {
         const group = activities.find(g => g.sessionKey === key);
         if (group?.session_start) {
-          await onDeleteActivity(group.session_start);
+          await onDeleteActivity(group.session_start, group.category_id);
         }
       }
       setSelectedKeys(new Set());
@@ -305,7 +305,7 @@ interface ActivityRowProps {
   onToggleSelect: () => void;
   onEdit?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
   onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
-  onDelete?: (sessionStart: string) => Promise<void>;
+  onDelete?: (sessionStart: string, categoryId: UUID) => Promise<void>;
   isHighlighted?: boolean;
   highlightRef?: React.RefObject<HTMLTableRowElement | null>;
 }
@@ -359,7 +359,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
     if (!group.session_start || !onDelete) return;
     setIsDeleting(true);
     try {
-      await onDelete(group.session_start);
+      await onDelete(group.session_start, group.category_id);
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);

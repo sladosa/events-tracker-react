@@ -154,56 +154,66 @@ async function getDescendantCategoryIds(categoryId: UUID): Promise<UUID[]> {
  * Helper to get date presets
  */
 export function getDatePresets(): { label: string; getRange: () => { from: string; to: string } }[] {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  /** Helper: subtract N years from today, return YYYY-MM-DD */
+  const yearsAgo = (n: number): string => {
+    const d = new Date(today);
+    d.setFullYear(d.getFullYear() - n);
+    return d.toISOString().split('T')[0];
+  };
+
   return [
     {
       label: 'Today',
-      getRange: () => {
-        const today = new Date().toISOString().split('T')[0];
-        return { from: today, to: today };
-      }
+      getRange: () => ({ from: todayStr, to: todayStr }),
     },
     {
       label: 'This Week',
       getRange: () => {
-        const now = new Date();
-        const dayOfWeek = now.getDay();
-        const monday = new Date(now);
-        monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const dayOfWeek = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
         const sunday = new Date(monday);
         sunday.setDate(monday.getDate() + 6);
-        
         return {
           from: monday.toISOString().split('T')[0],
-          to: sunday.toISOString().split('T')[0]
+          to: sunday.toISOString().split('T')[0],
         };
-      }
+      },
     },
     {
       label: 'This Month',
       getRange: () => {
-        const now = new Date();
-        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         return {
           from: firstDay.toISOString().split('T')[0],
-          to: lastDay.toISOString().split('T')[0]
+          to: lastDay.toISOString().split('T')[0],
         };
-      }
+      },
     },
     {
       label: 'This Year',
-      getRange: () => {
-        const now = new Date();
-        const firstDay = new Date(now.getFullYear(), 0, 1);
-        const lastDay = new Date(now.getFullYear(), 11, 31);
-        
-        return {
-          from: firstDay.toISOString().split('T')[0],
-          to: lastDay.toISOString().split('T')[0]
-        };
-      }
-    }
+      getRange: () => ({
+        from: new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0],
+        to: new Date(today.getFullYear(), 11, 31).toISOString().split('T')[0],
+      }),
+    },
+    // Dynamic rolling windows — always relative to today
+    {
+      label: 'Last Year',
+      getRange: () => ({ from: yearsAgo(1), to: todayStr }),
+    },
+    {
+      label: 'Last 3 Years',
+      getRange: () => ({ from: yearsAgo(3), to: todayStr }),
+    },
+    {
+      label: 'Last 5 Years',
+      getRange: () => ({ from: yearsAgo(5), to: todayStr }),
+    },
   ];
 }
 

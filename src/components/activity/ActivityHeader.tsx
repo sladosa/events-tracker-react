@@ -212,36 +212,59 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
         {/* Row 3: Action buttons */}
         <div className="px-4 py-2 flex items-center justify-between gap-2">
 
-          {/* Left: Cancel + View (Edit mode) + Delete Session (Edit mode only) */}
+          {/* Left: Cancel + View/No-Save-View (Edit) + Delete Session (Edit only) */}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={saving}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors disabled:opacity-50"
-              title={messages.cancel}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
 
+            {/* Cancel / No Save – Home */}
+            {isAddMode ? (
+              // Add mode: compact X icon button
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={saving}
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors disabled:opacity-50"
+                title={messages.cancel}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            ) : (
+              // Edit mode: text button — makes "no save" consequence explicit
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={saving}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-white/20 hover:bg-white/30 text-white transition-colors disabled:opacity-50"
+                title="Discard changes and go to Home"
+              >
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="hidden xs:inline">No Save</span>
+                <span className="hidden sm:inline">&nbsp;– Home</span>
+              </button>
+            )}
+
+            {/* No Save – View (Edit mode only) */}
             {!isAddMode && onViewMode && (
               <button
                 type="button"
                 onClick={onViewMode}
                 disabled={saving}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-white/20 hover:bg-white/30 text-white transition-colors disabled:opacity-50"
-                title="Switch to View mode"
+                title="Discard changes and switch to View mode"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-                <span className="hidden sm:inline">View</span>
+                <span className="hidden xs:inline">No Save</span>
+                <span className="hidden sm:inline">&nbsp;– View</span>
               </button>
             )}
 
+            {/* Delete Session (Edit mode only) */}
             {!isAddMode && onDeleteSession && (
               !showDeleteConfirm ? (
                 <button
@@ -249,20 +272,23 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={saving}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-600/80 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
-                  title="Delete entire activity + all photos"
+                  title="Delete entire activity + all events + all photos"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   <span className="hidden sm:inline">Delete Activity</span>
                 </button>
               ) : (
-                <div className="flex items-center gap-1.5 bg-red-700 rounded-lg px-2 py-1">
-                  <span className="text-white text-xs font-medium">Are you sure?</span>
+                // Stronger confirm — makes irreversible consequence unmistakable
+                <div className="flex items-center gap-1.5 bg-red-800 border border-red-400 rounded-lg px-2 py-1">
+                  <span className="text-red-200 text-xs font-bold uppercase tracking-wide">
+                    ALL EVENTS + PHOTOS DELETED!
+                  </span>
                   <button
                     type="button"
                     onClick={() => { setShowDeleteConfirm(false); onDeleteSession(); }}
-                    className="px-2 py-0.5 bg-white text-red-700 text-xs font-bold rounded hover:bg-red-100"
+                    className="px-2 py-0.5 bg-white text-red-800 text-xs font-bold rounded hover:bg-red-100"
                   >
                     Yes
                   </button>
@@ -278,7 +304,7 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
             )}
           </div>
 
-          {/* Right: Save+Continue (Add) + Finish/Save */}
+          {/* Right: Save+Continue (Add) + Finish / Save→View (Edit) */}
           <div className="flex items-center gap-2">
             {isAddMode && onSaveContinue && (
               <button
@@ -316,7 +342,8 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>{isAddMode ? messages.finish : messages.save}</span>
+                  {/* Edit mode: explicit "Save → View" communicates where user lands after save */}
+                  <span>{isAddMode ? messages.finish : 'Save \u2192 View'}</span>
                 </>
               )}
             </button>

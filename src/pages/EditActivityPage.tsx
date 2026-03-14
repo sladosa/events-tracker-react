@@ -1124,19 +1124,38 @@ export function EditActivityPage() {
         eventIds = [sessionStart];
       } else {
         const decodedSessionStart = decodeURIComponent(sessionStart);
-        let query = supabase
-          .from('events')
-          .select('id')
-          .eq('session_start', decodedSessionStart)
-          .eq('user_id', user.id);
 
-        // KRITIČNO: filter by category_id to avoid deleting wrong activity
         if (categoryIdParam) {
-          query = query.eq('category_id', categoryIdParam);
+          // P2 arhitektura: brisanje sesije = leaf eventi + parent eventi te sesije.
+          // Leaf eventi:   category_id = leafCategoryId (categoryIdParam)
+          // Parent eventi: chain_key   = leafCategoryId (categoryIdParam)
+          // Dva odvojena upita jer Supabase JS ne podrzava OR filter direktno.
+          const [leafResult, parentResult] = await Promise.all([
+            supabase
+              .from('events')
+              .select('id')
+              .eq('session_start', decodedSessionStart)
+              .eq('user_id', user.id)
+              .eq('category_id', categoryIdParam),
+            supabase
+              .from('events')
+              .select('id')
+              .eq('session_start', decodedSessionStart)
+              .eq('user_id', user.id)
+              .eq('chain_key', categoryIdParam),
+          ]);
+          const leafIds = (leafResult.data as { id: string }[] | null)?.map(e => e.id) ?? [];
+          const parentIds = (parentResult.data as { id: string }[] | null)?.map(e => e.id) ?? [];
+          eventIds = [...new Set([...leafIds, ...parentIds])];
+        } else {
+          // Fallback (no categoryId in URL): delete all events for this session_start
+          const { data: events } = await supabase
+            .from('events')
+            .select('id')
+            .eq('session_start', decodedSessionStart)
+            .eq('user_id', user.id);
+          eventIds = events ? (events as { id: string }[]).map(e => e.id) : [];
         }
-
-        const { data: events } = await query;
-        eventIds = events ? (events as { id: string }[]).map(e => e.id) : [];
       }
 
       if (eventIds.length > 0) {
