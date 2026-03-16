@@ -49,14 +49,19 @@ lookup_values      → legacy table (see section 2.4), currently unused in React
 
 ### 2.3 SQL Schema
 
-Current version: **V4** (`sql/SQL schema_V4.sql`)  
-Applied migrations: 001 (lookup_values), 002 (examples), 003 (RLS policies), 004 (chain_key).
+Current version: **V5** (V4 + migration 005)  
+Applied migrations: 001 (lookup_values), 002 (examples), 003 (RLS policies), 004 (chain_key), 005 (drop lookup_values).
 
 > Note: `auth.uid()` returns NULL when Role=postgres in Supabase SQL Editor. Use direct UUID for ad-hoc queries: `768a6056-91fd-42bb-98ae-ee83e6bd6c8d`
 
-### 2.4 lookup_values — legacy table
+### 2.4 lookup_values — DROPPED (migration 005, 2026-03-16)
 
-`lookup_values` was created in an earlier migration but is **not used** by the React application. Dropdown options are stored in `attribute_definitions.validation_rules` (see section 6). The `useLookupValues()` hook exists but is never called. The table is kept as a non-breaking no-op until confirmed safe to drop.
+`lookup_values` table has been **dropped** via migration `005_drop_lookup_values.sql`.
+It was never used by the React application — dropdown options are stored in
+`attribute_definitions.validation_rules` (jsonb). The `useLookupValues()` hook
+in `useAttributeDefinitions.ts` and its export in `hooks/index.ts` are dead code
+and may be removed in a future cleanup. The `LookupValue` interface in `types/database.ts`
+is also dead code post-migration.
 
 ---
 
@@ -373,6 +378,7 @@ When the user opens Add/Edit with an existing draft → "Resume / Discard" dialo
 | View Activity | Indigo | `THEME['view']` | |
 | Edit Activity | Amber | `THEME['edit']` | |
 | Add Activity | Blue | `THEME['add']` | ⚠️ V1.1 said Green — actual `theme.ts` has `bg-blue-600` |
+| Structure Tab | Indigo/Purple | `THEME['structure']` | Independent entry — change separately from ViewDetailsPage |
 
 Preview all themes at `/app/debug` → Theme Preview tab (HMR, no restart needed).
 
@@ -409,11 +415,14 @@ Preview all themes at `/app/debug` → Theme Preview tab (HMR, no restart needed
 
 ---
 
-## 15. Not yet implemented
+## 15. Not yet implemented / In progress
 
 | Feature | Status | Note |
 |---|---|---|
-| Structure View | Placeholder in `AppHome.tsx` | Next major milestone |
+| Structure Tab — Read-Only | **In progress (S15)** | Table View + Sunburst — see STRUCTURE_TAB_SPEC_FOR_DEV.md |
+| Structure Tab — Edit Mode | Planned S18 | Rename/Add/Delete Area, Category, Attribute |
+| Structure Tab — Excel Export | Planned S17 | structureExcel.ts |
+| Structure Tab — Excel Import | Planned S20 | Non-destructive add-only |
 | BUG-F Step 2 (transaction / rollback) | Deferred | Supabase RPC |
 | `date_trunc('minute')` for collision check in SQL | Deferred | Long-term fix for legacy data |
 
@@ -429,5 +438,6 @@ Inserting a new category level between two existing ones (e.g. `Gym > Strength` 
 
 ---
 
-*Document version 1.2 — 2026-03-12 | Sessions 1–12*  
+*Document version 1.3 — 2026-03-16 | Sessions 1–15*  
+*Key changes in V1.3: migration 005 (DROP lookup_values), Structure Tab in-progress (S15), theme.ts structure entry added, section 15 updated.*  
 *Key changes in V1.2: chain_key field (migration 004), parentEventLoader.ts shared service, dropdown/validation_rules system (section 6), session_start format warning (4.2), Prev/Next fix (section 7), lookup_values legacy status, theme colour correction, complete fix history in section 14.*

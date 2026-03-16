@@ -65,7 +65,34 @@ export const THEME = {
     spinner:      'border-indigo-600',
     ring:         'focus:ring-indigo-500',
   },
+  // Structure tab theme — independent from 'view' so it can be changed separately.
+  // Colour: indigo/purple. Edit here only; never hardcode in structure components.
+  structure: {
+    headerBg:      'bg-indigo-600',
+    headerText:    'text-white',
+    headerBorder:  'border-indigo-700',
+    accent:        'bg-white text-indigo-600 hover:bg-indigo-50',
+    cancelBtn:     'bg-indigo-500 hover:bg-indigo-700 text-white',
+    deleteBtn:     'bg-red-500 hover:bg-red-600 text-white',
+    light:         'bg-indigo-50',
+    lightBorder:   'border-indigo-200',
+    lightText:     'text-indigo-800',
+    spinner:       'border-indigo-500',
+    ring:          'focus:ring-indigo-500',
+    // Structure-specific tokens
+    rowArea:       'bg-indigo-50 border-l-4 border-indigo-400',
+    rowL1:         'bg-white border-l-4 border-indigo-300',
+    rowL2:         'bg-white border-l-4 border-indigo-200',
+    rowDeep:       'bg-white border-l-4 border-indigo-100',
+    rowLeaf:       'bg-white border-l-4 border-emerald-300',
+    badgeAttrs:    'bg-indigo-100 text-indigo-700',
+    badgeLeaf:     'bg-emerald-100 text-emerald-700',
+    btnExport:     'bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-700',
+    btnEditMode:   'bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-300',
+    btnViewSwitch: 'bg-indigo-100 text-indigo-700',
+  },
 } as const;
 
 export type PageMode = keyof typeof THEME;
 export type PageTheme = typeof THEME[PageMode];
+export type StructureTheme = typeof THEME['structure'];
