@@ -8,7 +8,12 @@ import { DateRangeFilter } from '@/components/filter/DateRangeFilter';
 import { ActivitiesTable } from '@/components/activity/ActivitiesTable';
 import { ExcelExportModal } from '@/components/activity/ExcelExportModal';
 import { ExcelImportModal } from '@/components/activity/ExcelImportModal';
+import { StructureTableView } from '@/components/structure/StructureTableView';
+import { StructureSunburstView } from '@/components/structure/StructureSunburstView';
+import { StructureViewSwitcher } from '@/components/structure/StructureViewSwitcher';
+import type { StructureViewMode } from '@/components/structure/StructureViewSwitcher';
 import { Button } from '@/components/ui/Button';
+import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
@@ -74,6 +79,9 @@ function AppContent() {
   const location = useLocation();
   const [email, setEmail] = useState<string>('');
   const [activeTab, setActiveTab] = useState<TabType>('activities');
+  const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>('sunburst');
+  // isEditMode — stub for S18; always false for now
+  const isEditMode = false;
   
   // Get filter context
   const { 
@@ -260,7 +268,9 @@ function AppContent() {
         </section>
 
         {/* ========================================
-            TABS + ADD BUTTON
+            TABS + ACTION BUTTONS
+            Activities tab: Add Activity button
+            Structure tab:  View switcher + Export stub + Edit Mode stub
             ======================================== */}
         <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
           {/* Tabs */}
@@ -281,24 +291,69 @@ function AppContent() {
             />
           </div>
 
-          {/* Add Activity Button */}
-          <Button
-            leftIcon={<AddIcon />}
-            onClick={handleAddActivity}
-            disabled={!canAddActivity}
-            className={cn(
-              "transition-all",
-              canAddActivity 
-                ? "bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200" 
-                : ""
-            )}
-          >
-            {isMobile ? '' : 'Add Activity'}
-          </Button>
+          {/* Right-side action area — changes per tab */}
+          {activeTab === 'activities' ? (
+            /* ---- Activities: Add Activity button ---- */
+            <Button
+              leftIcon={<AddIcon />}
+              onClick={handleAddActivity}
+              disabled={!canAddActivity}
+              className={cn(
+                'transition-all',
+                canAddActivity
+                  ? 'bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200'
+                  : '',
+              )}
+            >
+              {isMobile ? '' : 'Add Activity'}
+            </Button>
+          ) : (
+            /* ---- Structure: View switcher + Export + Edit Mode ---- */
+            <div className="flex items-center gap-2">
+              {/* View switcher — desktop only, auto-hidden on mobile inside component */}
+              <StructureViewSwitcher
+                viewMode={isEditMode ? 'table' : structureViewMode}
+                onChange={setStructureViewMode}
+                disabled={isEditMode}
+              />
+
+              {/* Export stub (S17) */}
+              <button
+                disabled
+                title="Export structure to Excel — coming in S17"
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed',
+                  THEME.structure.btnExport,
+                )}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                {!isMobile && <span>Export</span>}
+              </button>
+
+              {/* Edit Mode stub (S18) */}
+              <button
+                disabled
+                title="Edit Mode — coming in S18"
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed',
+                  THEME.structure.btnEditMode,
+                )}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                {!isMobile && <span>Edit Mode</span>}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Leaf category hint */}
-        {!canAddActivity && filter.categoryId && (
+        {/* Leaf category hint — Activities tab only */}
+        {activeTab === 'activities' && !canAddActivity && filter.categoryId && (
           <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
             ⚠️ Select a leaf category (no subcategories) to add an activity
           </div>
@@ -310,7 +365,10 @@ function AppContent() {
             ======================================== */}
         <section className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
           {activeTab === 'structure' ? (
-            <StructureView />
+            <StructureTabContent
+              viewMode={isEditMode ? 'table' : structureViewMode}
+              isEditMode={isEditMode}
+            />
           ) : (
             <ActivitiesView />
           )}
@@ -350,33 +408,31 @@ function TabButton({ active, onClick, icon, label, isMobile }: TabButtonProps) {
 }
 
 // --------------------------------------------
-// Structure View (placeholder)
+// Structure Tab Content
+// Combines Table View + Sunburst based on viewMode.
+// Desktop: both views available (controlled by StructureViewSwitcher).
+// Mobile: always Table View (Sunburst hidden inside StructureSunburstView).
 // --------------------------------------------
 
-function StructureView() {
-  const { filter } = useFilter();
+interface StructureTabContentProps {
+  viewMode: StructureViewMode;
+  isEditMode: boolean;
+}
 
+function StructureTabContent({ viewMode, isEditMode }: StructureTabContentProps) {
   return (
-    <div className="p-4 sm:p-6">
-      <h3 className="font-semibold text-gray-900 mb-4">Structure View</h3>
-
-      {filter.areaId || filter.categoryId ? (
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            Selected: {filter.categoryId ? 'Category' : 'Area'}
-          </p>
-          <p className="text-sm text-gray-500">
-            Sunburst / Table view coming in Phase 3...
-          </p>
-        </div>
-      ) : (
-        <div className="text-center py-8 text-gray-500">
-          <div className="w-12 h-12 mx-auto mb-4 text-gray-300">
-            <StructureIcon />
-          </div>
-          <p>Select an area or category to view structure</p>
+    <div>
+      {/* Sunburst — hidden on mobile via internal class; hidden when table mode */}
+      {viewMode === 'sunburst' && !isEditMode && (
+        <div className="hidden md:block p-2">
+          <StructureSunburstView />
         </div>
       )}
+
+      {/* Table View — always visible on mobile; shown on desktop when mode=table */}
+      <div className={viewMode === 'sunburst' && !isEditMode ? 'md:hidden' : ''}>
+        <StructureTableView isEditMode={isEditMode} />
+      </div>
     </div>
   );
 }
