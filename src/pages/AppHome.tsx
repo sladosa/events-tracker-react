@@ -15,6 +15,9 @@ import type { StructureViewMode } from '@/components/structure/StructureViewSwit
 import { Button } from '@/components/ui/Button';
 import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
+import { exportStructureExcel, structureExportFilename } from '@/lib/structureExcel';
+import { saveAs } from 'file-saver';
+import { useStructureData } from '@/hooks/useStructureData';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
 
@@ -82,7 +85,11 @@ function AppContent() {
   const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>('sunburst');
   // isEditMode — stub for S18; always false for now
   const isEditMode = false;
+  const [isExportingStructure, setIsExportingStructure] = useState(false);
   
+  // Structure data (needed for Export button)
+  const { nodes: structureNodes } = useStructureData();
+
   // Get filter context
   const { 
     filter, 
@@ -317,20 +324,47 @@ function AppContent() {
                 disabled={isEditMode}
               />
 
-              {/* Export stub (S17) */}
+              {/* Export button (S17) */}
               <button
-                disabled
-                title="Export structure to Excel — coming in S17"
+                disabled={isExportingStructure}
+                title="Export structure to Excel"
+                onClick={async () => {
+                  setIsExportingStructure(true);
+                  try {
+                    const buffer = await exportStructureExcel(structureNodes, {
+                      filterAreaId: filter.areaId ?? null,
+                      filterCategoryId: filter.categoryId ?? null,
+                    });
+                    const blob = new Blob([buffer], {
+                      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    });
+                    saveAs(blob, structureExportFilename());
+                    toast.success('Structure exported');
+                  } catch (err) {
+                    console.error('Structure export failed:', err);
+                    toast.error('Export failed');
+                  } finally {
+                    setIsExportingStructure(false);
+                  }
+                }}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed',
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  isExportingStructure ? 'opacity-50 cursor-not-allowed' : '',
                   THEME.structure.btnExport,
                 )}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                {!isMobile && <span>Export</span>}
+                {isExportingStructure ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                )}
+                {!isMobile && <span>{isExportingStructure ? 'Exporting...' : 'Export'}</span>}
               </button>
 
               {/* Edit Mode stub (S18) */}

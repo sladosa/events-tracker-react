@@ -1,6 +1,6 @@
 # Events Tracker React — ARCHITECTURE.md
 
-**Version:** 1.2 — 2026-03-12  
+**Version:** 1.3 — 2026-03-16  
 **Scope:** Single source of truth for core principles, data model, and critical patterns.  
 **Audience:** Claude (session continuity), Sasa (developer reference), future refactoring.
 
@@ -438,6 +438,6 @@ Inserting a new category level between two existing ones (e.g. `Gym > Strength` 
 
 ---
 
-*Document version 1.3 — 2026-03-16 | Sessions 1–15*  
-*Key changes in V1.3: migration 005 (DROP lookup_values), Structure Tab in-progress (S15), theme.ts structure entry added, section 15 updated.*  
+*Document version 1.3 — 2026-03-16 | Sessions 1–16*  
+*Key changes in V1.3: migration 005 (DROP lookup_values), Structure Tab read-only fully implemented (S15–S16), theme.ts structure entry added, section 15 updated. New files: structure.ts, useStructureData.ts, CategoryChainRow.tsx, StructureViewSwitcher.tsx, CategoryDetailPanel.tsx, StructureTableView.tsx, StructureSunburstView.tsx. AppHome wired up.*  
 *Key changes in V1.2: chain_key field (migration 004), parentEventLoader.ts shared service, dropdown/validation_rules system (section 6), session_start format warning (4.2), Prev/Next fix (section 7), lookup_values legacy status, theme colour correction, complete fix history in section 14.*

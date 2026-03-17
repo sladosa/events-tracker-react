@@ -281,7 +281,81 @@ export function ProgressiveCategorySelector({
       
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter.areaId, isRestored, isRestoring, areas, loadL1AndL2Categories, setDropdownOptions, setSelectionChain, setIsLeafCategory, updatePathDisplay]);
-  
+
+  // --------------------------------------------
+  // External categoryId sync (Sunburst / Shortcuts)
+  // --------------------------------------------
+  // When filter.categoryId changes from OUTSIDE this component (e.g. Sunburst click,
+  // Up button), rebuild selectionChain + dropdownOptions from DB using buildFullPath.
+  // Guard: skip if already in sync (last item in chain matches filter.categoryId).
+  useEffect(() => {
+    if (!isRestored || isRestoring) return;
+
+    const lastInChain = selectionChain[selectionChain.length - 1];
+
+    // Already in sync — change came from inside this component
+    if (lastInChain?.id === filter.categoryId) return;
+
+    // category cleared externally — chain already cleared by areaId effect or caller
+    if (!filter.categoryId || !filter.areaId) return;
+
+    // Category changed externally — rebuild chain from DB
+    // Use async IIFE: Supabase returns PromiseLike which lacks .finally()
+    void (async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('id, name, level, parent_category_id, area_id, slug, sort_order, description, user_id, created_at, updated_at, path')
+          .eq('id', filter.categoryId!)
+          .single();
+
+        if (error || !data) return;
+        const category = data as Category;
+        const fullPath = await buildFullPath(category);
+        setSelectionChain(fullPath);
+
+        // dropdownOptions = siblings of the selected category at its level
+        const parentId = category.parent_category_id;
+        let siblingsData: Category[] = [];
+        if (parentId) {
+          const { data: siblings } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('area_id', filter.areaId!)
+            .eq('parent_category_id', parentId)
+            .order('sort_order');
+          siblingsData = (siblings ?? []) as Category[];
+        }
+        if (siblingsData.length > 0) {
+          setDropdownOptions(siblingsData);
+        } else {
+          // L1 category or no siblings — load all L1 for this area
+          const { data: l1 } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('area_id', filter.areaId!)
+            .is('parent_category_id', null)
+            .order('sort_order');
+          setDropdownOptions((l1 ?? []) as Category[]);
+        }
+
+        // Detect leaf: no children
+        const { count } = await supabase
+          .from('categories')
+          .select('id', { count: 'exact', head: true })
+          .eq('parent_category_id', category.id);
+        setIsLeafCategory((count ?? 0) === 0);
+
+        const area = areas.find(a => a.id === filter.areaId);
+        updatePathDisplay(area?.name ?? null, fullPath);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter.categoryId]);
+
   // --------------------------------------------
   // Handlers
   // --------------------------------------------

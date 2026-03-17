@@ -23,8 +23,46 @@ import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { useFilter } from '@/context/FilterContext';
 import { useStructureData } from '@/hooks/useStructureData';
-import type { PlotMouseEvent, SunburstTrace } from 'react-plotly.js';
+import type { PlotMouseEvent } from 'plotly.js';
 import type { StructureNode } from '@/types/structure';
+
+// --------------------------------------------------------
+// Local type: SunburstTrace
+// @types/react-plotly.js does not export SunburstTrace directly.
+// We define a minimal local version based on Plotly's runtime API.
+// --------------------------------------------------------
+type SunburstTrace = {
+  type: 'sunburst';
+  ids: string[];
+  labels: string[];
+  parents: string[];
+  values: number[];
+  customdata: string[];
+  hovertemplate: string;
+  branchvalues: 'remainder' | 'total';  // literal union, not string
+  level?: string;
+  marker?: { line?: { width: number } };
+  textfont?: { size: number };
+  insidetextfont?: { size: number };
+};
+
+
+// --------------------------------------------------------
+// Helper: build category ID path array from a StructureNode
+// Needed by selectAreaAndCategory for ProgressiveCategorySelector.
+// e.g. 'Fitness > Activity > Gym > Cardio' → [activityId, gymId, cardioId]
+// --------------------------------------------------------
+function buildCategoryIdPath(node: StructureNode, allNodes: StructureNode[]): string[] {
+  if (node.nodeType === 'area') return [];
+  const parts = node.fullPath.split(' > ');
+  const path: string[] = [];
+  for (let i = 1; i < parts.length; i++) {
+    const prefix = parts.slice(0, i + 1).join(' > ');
+    const found = allNodes.find(n => n.fullPath === prefix && n.nodeType === 'category');
+    if (found) path.push(found.id);
+  }
+  return path;
+}
 
 // --------------------------------------------------------
 // Constants
@@ -85,7 +123,7 @@ function buildSunburstTrace(nodes: StructureNode[]): SunburstTrace {
       parents.push(parentId);
       values.push(Math.max(node.eventCount, 1));
       customdata.push(
-        `${node.name} — ${node.eventCount} event${node.eventCount !== 1 ? 's' : ''}, ${node.attrCount} attr${node.attrCount !== 1 ? 's' : ''}`,
+        `${node.name} — ${node.attrCount} attr${node.attrCount !== 1 ? 's' : ''}, ${node.eventCount} event${node.eventCount !== 1 ? 's' : ''}`,
       );
     }
   }
@@ -133,7 +171,11 @@ function getFocusLevel(
 
 export function StructureSunburstView() {
   const t = THEME.structure;
-  const { filter, selectArea, selectCategory } = useFilter();
+  const {
+    filter,
+    selectAreaAndCategory,
+    setSelectedShortcutId,
+  } = useFilter();
   const { nodes, loading, error } = useStructureData();
 
   // Build Plotly trace — memoised, recomputes only when nodes change
@@ -155,23 +197,30 @@ export function StructureSunburstView() {
   // Sunburst → Dropdown sync: click handler
   // --------------------------------------------------------
   const handleClick = (event: PlotMouseEvent) => {
-    const point = event.points[0];
+    // PlotDatum type doesn't include `id` (sunburst-specific field) — cast to access it
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const point = event.points[0] as any;
     if (!point || !point.id || point.id === ROOT_ID) {
-      // Clicking root = clear filters
-      selectArea(null);
-      selectCategory(null);
+      // Clicking root = clear all filters; UX-7: reset shortcut
+      selectAreaAndCategory(null, null, []);
+      setSelectedShortcutId(null);
       return;
     }
 
     const clickedNode = nodes.find(n => n.id === point.id);
     if (!clickedNode) return;
 
+    // UX-7: reset shortcut on any Sunburst navigation
+    setSelectedShortcutId(null);
+
     if (clickedNode.nodeType === 'area') {
-      selectArea(clickedNode.id);
-      selectCategory(null);
+      // Area click — ProgressiveCategorySelector's areaId useEffect handles chain reset
+      selectAreaAndCategory(clickedNode.id, null, []);
     } else {
-      selectArea(clickedNode.areaId);
-      selectCategory(clickedNode.id);
+      // Category click — selectAreaAndCategory updates filter.categoryId,
+      // ProgressiveCategorySelector's categoryId useEffect rebuilds chain from DB
+      const path = buildCategoryIdPath(clickedNode, nodes);
+      selectAreaAndCategory(clickedNode.areaId, clickedNode.id, path);
     }
   };
 
@@ -223,18 +272,69 @@ export function StructureSunburstView() {
   // --------------------------------------------------------
   // Sunburst chart
   // --------------------------------------------------------
+  // Up button handler — sets filter one level up.
+  // ProgressiveCategorySelector's categoryId useEffect rebuilds chain from DB.
+  const handleUp = () => {
+    const currentNode = nodes.find(n => n.id === filter.categoryId);
+    setSelectedShortcutId(null);
+
+    if (!currentNode) {
+      selectAreaAndCategory(null, null, []);
+      return;
+    }
+    if (!currentNode.parentCategoryId) {
+      // L1 → go up to Area level; areaId useEffect in ProgressiveCategorySelector clears chain
+      selectAreaAndCategory(currentNode.areaId, null, []);
+    } else {
+      const parentNode = nodes.find(n => n.id === currentNode.parentCategoryId);
+      if (parentNode) {
+        const path = buildCategoryIdPath(parentNode, nodes);
+        selectAreaAndCategory(parentNode.areaId, parentNode.id, path);
+        // categoryId useEffect in ProgressiveCategorySelector will rebuild chain from DB
+      } else {
+        selectAreaAndCategory(currentNode.areaId, null, []);
+      }
+    }
+  };
+
   return (
     <div className="hidden md:block w-full">
+      {/* Top bar: Up button (top-right) + helper text */}
+      <div className="flex items-center justify-between px-1 pb-1">
+        <p className="text-xs text-gray-400">
+          Click a segment to filter · Double-click center to zoom out
+        </p>
+        {filter.categoryId && (
+          <button
+            onClick={handleUp}
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors"
+            title="Go up one level"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+            Up
+          </button>
+        )}
+      </div>
+
       <Plot
-        data={[traceWithLevel]}
-        layout={{
-          margin: { t: 16, b: 16, l: 16, r: 16 },
-          height: 520,
+        // SunburstTrace is a valid Plotly runtime type but @types/plotly.js
+        // doesn't include it in the PlotData union — cast to avoid TS2769
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data={[traceWithLevel] as any}
+        layout={({
+          margin: { t: 8, b: 8, l: 16, r: 16 },
+          height: 512,
           paper_bgcolor: 'rgba(0,0,0,0)',
           plot_bgcolor: 'rgba(0,0,0,0)',
-          sunburstcolorway: SUNBURST_COLORS,
+          // sunburstcolorway is valid Plotly runtime API but missing from
+          // @types/plotly.js — cast to avoid TS2769 until types catch up
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sunburstcolorway: SUNBURST_COLORS as any,
           showlegend: false,
-        }}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }) as any}
         config={{
           displayModeBar: false,
           responsive: true,
@@ -244,11 +344,6 @@ export function StructureSunburstView() {
         style={{ width: '100%' }}
         className="w-full"
       />
-
-      {/* Helper text */}
-      <p className="text-center text-xs text-gray-400 pb-2">
-        Click a segment to filter · Double-click center to zoom out
-      </p>
     </div>
   );
 }

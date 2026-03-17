@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
+import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 
 // --------------------------------------------------------
 // Types
@@ -31,16 +32,6 @@ interface CategoryDetailPanelProps {
   node: StructureNode;
   allNodes: StructureNode[];
   onClose: () => void;
-}
-
-// Actual DB jsonb shape (differs from the TS ValidationRules interface)
-interface SuggestRules {
-  type: 'suggest';
-  suggest?: string[];
-  depends_on?: {
-    attribute_slug: string;
-    options_map?: Record<string, string[]>;
-  };
 }
 
 // --------------------------------------------------------
@@ -63,36 +54,37 @@ function buildChain(node: StructureNode, allNodes: StructureNode[]): StructureNo
   return chain; // [AreaNode, L1Node, ..., selectedNode]
 }
 
-/** Convert the raw validation_rules jsonb to a display string. */
+/** Convert validation_rules to display object — delegates to shared parseValidationRules
+ * which handles both V3 format { type:'suggest', suggest:[...] }
+ * and legacy format { dropdown: { type:'static', options:[...] } }
+ */
 function describeValidation(attr: AttributeDefinition): {
   label: string;
   options: string[] | null;
-  dependsOn: string | null;
+  dependsOnSlug: string | null;
+  dependsOnMap: Record<string, string[]> | null;
 } {
-  // Cast to actual DB shape — the TS type diverges from real DB jsonb
-  const r = attr.validation_rules as unknown as Partial<SuggestRules>;
+  const parsed = parseValidationRules(attr.validation_rules);
 
-  if (r.type === 'suggest') {
-    if (r.depends_on) {
-      const optionsMap = r.depends_on.options_map ?? {};
-      const entries = Object.entries(optionsMap);
-      const preview = entries
-        .map(([k, vals]) => `${k}: ${(vals as string[]).join(', ')}`)
-        .join(' | ');
-      return {
-        label: `depends on "${r.depends_on.attribute_slug}"`,
-        options: null,
-        dependsOn: preview || null,
-      };
-    }
+  if (parsed.dependsOn) {
     return {
-      label: 'suggest',
-      options: r.suggest ?? null,
-      dependsOn: null,
+      label: 'depends_on',
+      options: null,
+      dependsOnSlug: parsed.dependsOn.attributeSlug,
+      dependsOnMap: parsed.dependsOn.optionsMap ?? null,
     };
   }
 
-  return { label: 'free text', options: null, dependsOn: null };
+  if (parsed.type === 'suggest' || parsed.type === 'enum') {
+    return {
+      label: 'suggest',
+      options: parsed.options.length > 0 ? parsed.options : null,
+      dependsOnSlug: null,
+      dependsOnMap: null,
+    };
+  }
+
+  return { label: 'free text', options: null, dependsOnSlug: null, dependsOnMap: null };
 }
 
 // Level label: Area → "Area", L1 → "L1", L2 → "L2", etc.
@@ -147,7 +139,7 @@ function AttrRow({ attr }: { attr: AttributeDefinition }) {
         </span>
       </div>
 
-      {/* Suggest options list */}
+      {/* Simple suggest options list */}
       {validation.options && validation.options.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1">
           {validation.options.map(opt => (
@@ -158,10 +150,26 @@ function AttrRow({ attr }: { attr: AttributeDefinition }) {
         </div>
       )}
 
-      {/* DependsOn summary */}
-      {validation.dependsOn && (
-        <div className="mt-1 text-xs text-gray-500 italic truncate">
-          {validation.dependsOn}
+      {/* DependsOn: parent attr slug + per-value option lists */}
+      {validation.dependsOnSlug && (
+        <div className="mt-1.5 space-y-1">
+          <p className="text-xs text-gray-500">
+            depends on: <span className="font-mono text-indigo-600">{validation.dependsOnSlug}</span>
+          </p>
+          {validation.dependsOnMap && Object.entries(validation.dependsOnMap).map(([key, opts]) => (
+            <div key={key} className="flex items-start gap-1.5 pl-2">
+              <span className="text-xs text-gray-500 font-mono shrink-0 pt-0.5">
+                {key} →
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {opts.map(opt => (
+                  <span key={opt} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                    {opt}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
