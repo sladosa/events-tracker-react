@@ -40,7 +40,6 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     error, 
     hasMore, 
     totalCount,
-    activityCount,
     loadMore
   } = useActivities({
     areaId: filter.areaId,
@@ -171,7 +170,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
           <span className="text-sm text-gray-500">
             {hasMore 
               ? `${loadedCount} loaded, more available`
-              : `All ${loadedCount} loaded`
+              : `All ${loadedCount} loaded · ${totalCount} events`
             }
           </span>
           {hasMore && (
@@ -283,14 +282,6 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
         </div>
       </div>
 
-      {/* End of list footer with record count */}
-      {!hasMore && activities.length > 0 && (
-        <div className="px-4 py-2 border-t border-gray-100">
-          <span className="text-xs text-gray-400">
-            All {totalCount} events in {activityCount} activities loaded
-          </span>
-        </div>
-      )}
     </div>
   );
 }

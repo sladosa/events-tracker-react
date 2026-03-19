@@ -1,6 +1,6 @@
 # Events Tracker React — ARCHITECTURE.md
 
-**Version:** 1.3 — 2026-03-16  
+**Version:** 1.4 — 2026-03-18  
 **Scope:** Single source of truth for core principles, data model, and critical patterns.  
 **Audience:** Claude (session continuity), Sasa (developer reference), future refactoring.
 
@@ -348,7 +348,8 @@ interface CollisionInfo {
 | `src/pages/EditActivityPage.tsx` | Edit flow: delta-shift, collision check, parent upsert |
 | `src/pages/ViewDetailsPage.tsx` | Read-only view, Prev/Next, delegates to parentEventLoader |
 | `src/pages/AddActivityPage.tsx` | Add flow: writes `chain_key` on parent INSERT |
-| `src/pages/AppHome.tsx` | Home: Activities tab, filter, Export/Import triggers |
+| `src/lib/structureExcel.ts` | Structure tab Excel export — one sheet per Area + Help sheet; handles simple + depends_on attrs |
+| `src/pages/AppHome.tsx` | Home: Activities tab, filter, Export/Import triggers, Structure tab integration |
 | `src/pages/DebugPage.tsx` | `/app/debug` — Theme Preview tab, debug tools |
 | `src/context/FilterContext.tsx` | Global filter state (area, category, date range, sort) |
 | `src/hooks/useAttributeDefinitions.ts` | Loads attr defs + `parseValidationRules()` for dropdowns |
@@ -411,7 +412,9 @@ Preview all themes at `/app/debug` → Theme Preview tab (HMR, no restart needed
 | VIEW-Z1 | Prev/Next disabled after Edit→Save with date change | Date-filter-free list + `getTime()` comparison | `ViewDetailsPage.tsx` |
 | FORMAT-1 | Parent attrs empty in View (`+00:00` vs `.000Z`) | Pass `events[0].session_start` to `loadParentAttrs()` | `parentEventLoader.ts` |
 | CHAIN-KEY | `comment` field stored UUIDs → visible in Event Note UI | Migration 004: new `chain_key` column, `comment` cleaned | `004_add_chain_key.sql` |
-| DESIGN-1 | Parent events exported as separate rows | `mergeSessionEvents()` Option A | `excelExport.ts` |
+| BUG-S1 | Sunburst: clicking zoomed-in Area centre didn't clear filter | Check `filter.areaId === clickedNode.id && !filter.categoryId` → `selectAreaAndCategory(null, null, [])` | `StructureSunburstView.tsx` |
+| BUG-S2 | Up button from L1 category: category dropdown stayed filled | External `categoryId` `useEffect` in `ProgressiveCategorySelector`: added explicit null-branch to clear `selectionChain` | `ProgressiveCategorySelector.tsx` |
+| BUG-S3 | Sunburst tooltip showed direct DB event count (parent rows), not session count | `useStructureData.ts` step 7: bottom-up DFS post-pass — each node's `eventCount` replaced with **subtree leaf event count** | `useStructureData.ts` |
 
 ---
 
@@ -419,10 +422,10 @@ Preview all themes at `/app/debug` → Theme Preview tab (HMR, no restart needed
 
 | Feature | Status | Note |
 |---|---|---|
-| Structure Tab — Read-Only | **In progress (S15)** | Table View + Sunburst — see STRUCTURE_TAB_SPEC_FOR_DEV.md |
-| Structure Tab — Edit Mode | Planned S18 | Rename/Add/Delete Area, Category, Attribute |
-| Structure Tab — Excel Export | Planned S17 | structureExcel.ts |
-| Structure Tab — Excel Import | Planned S20 | Non-destructive add-only |
+| Structure Tab — Read-Only + Export | ✅ **Complete (S15–S18)** | Table View + Sunburst + Export wired; filter sync bugfixes (S18) |
+| Structure Tab — Edit Mode | Planned S19 | Rename/Add/Delete Area, Category, Attribute |
+| Structure Tab — Excel Import | Planned S20 | Non-destructive add-only; React v2 format |
+| Structure Excel format v2 | Planned S20 | Migrate to Streamlit-compatible multi-row Depends_On; see EXCEL_FORMAT_ANALYSIS_v1.md |
 | BUG-F Step 2 (transaction / rollback) | Deferred | Supabase RPC |
 | `date_trunc('minute')` for collision check in SQL | Deferred | Long-term fix for legacy data |
 
@@ -438,6 +441,7 @@ Inserting a new category level between two existing ones (e.g. `Gym > Strength` 
 
 ---
 
-*Document version 1.3 — 2026-03-16 | Sessions 1–16*  
-*Key changes in V1.3: migration 005 (DROP lookup_values), Structure Tab read-only fully implemented (S15–S16), theme.ts structure entry added, section 15 updated. New files: structure.ts, useStructureData.ts, CategoryChainRow.tsx, StructureViewSwitcher.tsx, CategoryDetailPanel.tsx, StructureTableView.tsx, StructureSunburstView.tsx. AppHome wired up.*  
+*Document version 1.4 — 2026-03-18 | Sessions 1–18*  
+*Key changes in V1.4: S17–S18 bugfixes documented (BUG-S1/S2/S3), structureExcel.ts added to key files, Structure Tab read-only marked complete, Edit Mode + Excel Import + v2 format migration planned for S19–S20. Excel format analysis in EXCEL_FORMAT_ANALYSIS_v1.md.*  
+*Key changes in V1.3: migration 005 (DROP lookup_values), Structure Tab read-only fully implemented (S15–S16), theme.ts structure entry added, section 15 updated.*  
 *Key changes in V1.2: chain_key field (migration 004), parentEventLoader.ts shared service, dropdown/validation_rules system (section 6), session_start format warning (4.2), Prev/Next fix (section 7), lookup_values legacy status, theme colour correction, complete fix history in section 14.*

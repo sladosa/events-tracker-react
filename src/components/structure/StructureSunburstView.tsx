@@ -214,8 +214,15 @@ export function StructureSunburstView() {
     setSelectedShortcutId(null);
 
     if (clickedNode.nodeType === 'area') {
-      // Area click — ProgressiveCategorySelector's areaId useEffect handles chain reset
-      selectAreaAndCategory(clickedNode.id, null, []);
+      // If this area is already the active filter (user clicked zoomed-in center),
+      // treat it as "go up to root" — clear all filters.
+      // This handles the case where Plotly shows the Area as the sunburst centre.
+      if (filter.areaId === clickedNode.id && !filter.categoryId) {
+        selectAreaAndCategory(null, null, []);
+      } else {
+        // Area click — ProgressiveCategorySelector's areaId useEffect handles chain reset
+        selectAreaAndCategory(clickedNode.id, null, []);
+      }
     } else {
       // Category click — selectAreaAndCategory updates filter.categoryId,
       // ProgressiveCategorySelector's categoryId useEffect rebuilds chain from DB

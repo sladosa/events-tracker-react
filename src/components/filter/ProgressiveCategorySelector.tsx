@@ -296,8 +296,17 @@ export function ProgressiveCategorySelector({
     // Already in sync — change came from inside this component
     if (lastInChain?.id === filter.categoryId) return;
 
-    // category cleared externally — chain already cleared by areaId effect or caller
-    if (!filter.categoryId || !filter.areaId) return;
+    // Category cleared externally (e.g. Up button from L1, Sunburst root click).
+    // The areaId useEffect won't fire (area didn't change), so we must clear
+    // selectionChain here to reflect "All Categories" state.
+    if (!filter.categoryId) {
+      if (selectionChain.length > 0) setSelectionChain([]);
+      const area = areas.find(a => a.id === filter.areaId);
+      updatePathDisplay(area?.name ?? null, []);
+      return;
+    }
+
+    if (!filter.areaId) return;
 
     // Category changed externally — rebuild chain from DB
     // Use async IIFE: Supabase returns PromiseLike which lacks .finally()

@@ -180,7 +180,56 @@ export function useStructureData(): UseStructureDataReturn {
         }
       }
 
-      setNodes(result);
+      // --------------------------------------------------------
+      // 7. Post-process: replace each node's eventCount with
+      //    "subtree leaf event count" — the sum of leaf event
+      //    counts for all leaf descendants (or own count if leaf).
+      //
+      //    Why: a non-leaf category (Activity, Gym) stores parent
+      //    events in the DB, not leaf events. The raw eventCount
+      //    for "Gym" is 1 (one parent event row), not 8 (sessions).
+      //    Subtree leaf count = number of activity sessions under
+      //    that node, which is what the user expects to see in the
+      //    Sunburst tooltip and Table View.
+      // --------------------------------------------------------
+      const subtreeLeafCount = new Map<string, number>();
+
+      // Initialise: leaf nodes get their own direct event count;
+      // non-leaf nodes start at 0 (will accumulate from children).
+      for (const node of result) {
+        subtreeLeafCount.set(node.id, node.isLeaf ? node.eventCount : 0);
+      }
+
+      // Bottom-up pass: iterate in reverse DFS order (children before
+      // parents) and propagate each node's subtree count to its parent.
+      for (let i = result.length - 1; i >= 0; i--) {
+        const node = result[i];
+        const myCount = subtreeLeafCount.get(node.id) ?? 0;
+
+        if (node.parentCategoryId) {
+          // Non-root category → propagate to direct parent category
+          subtreeLeafCount.set(
+            node.parentCategoryId,
+            (subtreeLeafCount.get(node.parentCategoryId) ?? 0) + myCount,
+          );
+        } else if (node.nodeType === 'category') {
+          // L1 category (parentCategoryId = null) → propagate to Area node
+          subtreeLeafCount.set(
+            node.areaId,
+            (subtreeLeafCount.get(node.areaId) ?? 0) + myCount,
+          );
+        }
+        // Area nodes (nodeType === 'area') are accumulation targets only;
+        // they have no parent to propagate to.
+      }
+
+      // Apply the computed subtree counts back onto each node.
+      const finalResult = result.map(node => ({
+        ...node,
+        eventCount: subtreeLeafCount.get(node.id) ?? node.eventCount,
+      }));
+
+      setNodes(finalResult);
     } catch (err) {
       console.error('useStructureData: fetch failed', err);
       setError(err instanceof Error ? err : new Error('Failed to load structure data'));
