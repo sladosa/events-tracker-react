@@ -236,8 +236,8 @@ export function StructureTableView({ isEditMode }: StructureTableViewProps) {
     <div>
       <TableHeader />
 
-      {/* Node rows */}
-      <div>
+      {/* Node rows — internal scroll so filter + controls stay visible */}
+      <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
         {filtered.map((node) => {
           const isHighlighted = node.id === highlightedNodeId;
           return (
@@ -264,21 +264,6 @@ export function StructureTableView({ isEditMode }: StructureTableViewProps) {
             </div>
           );
         })}
-      </div>
-
-      {/* Row count footer */}
-      <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">
-        <span className="text-xs text-gray-400">
-          {filtered.length} node{filtered.length !== 1 ? 's' : ''}
-          {filtered.length !== nodes.length && (
-            <span className="ml-1">(filtered from {nodes.length})</span>
-          )}
-        </span>
-        {isEditMode && (
-          <span className={cn('text-xs px-2 py-0.5 rounded font-medium', t.badgeAttrs)}>
-            Edit Mode
-          </span>
-        )}
       </div>
 
       {/* ---- View Panel Modal ---- */}

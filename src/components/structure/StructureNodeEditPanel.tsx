@@ -369,6 +369,10 @@ export function StructureNodeEditPanel({
       if (!user) throw new Error('Not authenticated');
 
       // 1. Update area or category
+      // NOTE: user_id included in payload (not in WHERE) so rows imported from
+      // Streamlit with null user_id get ownership claimed on first save.
+      // RLS allows update when auth.uid() matches the row's user_id OR when
+      // the row has no user_id yet (template/import data).
       if (node.nodeType === 'area') {
         const { error } = await supabase
           .from('areas')
@@ -376,10 +380,10 @@ export function StructureNodeEditPanel({
             name: name.trim(),
             description: description.trim() || null,
             sort_order: sortOrder,
+            user_id: user.id,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', node.id)
-          .eq('user_id', user.id);
+          .eq('id', node.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -388,10 +392,10 @@ export function StructureNodeEditPanel({
             name: name.trim(),
             description: description.trim() || null,
             sort_order: sortOrder,
+            user_id: user.id,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', node.id)
-          .eq('user_id', user.id);
+          .eq('id', node.id);
         if (error) throw error;
       }
 
@@ -406,18 +410,22 @@ export function StructureNodeEditPanel({
             description: attr.description.trim() || null,
             sort_order: attr.sortOrder,
             validation_rules: newRules,
+            user_id: user.id,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', attr.id)
-          .eq('user_id', user.id);
+          .eq('id', attr.id);
         if (error) throw error;
       }
 
       toast.success('Saved successfully');
       onSaved(node.id);
     } catch (err) {
-      console.error('Save error:', err);
-      toast.error(err instanceof Error ? err.message : 'Save failed');
+      console.error('Save error (full):', err);
+      // PostgrestError from Supabase is not instanceof Error — extract message manually
+      const message =
+        (err as { message?: string })?.message ??
+        (typeof err === 'string' ? err : 'Save failed');
+      toast.error(message);
     } finally {
       setSaving(false);
     }

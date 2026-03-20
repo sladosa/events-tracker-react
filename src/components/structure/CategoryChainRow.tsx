@@ -4,19 +4,27 @@
 // One row in the Structure Table View.
 // Renders full path text with level-based color coding (Option B).
 // Actions menu varies by node type: area / non-leaf / leaf.
+//
+// Menu uses fixed positioning via createPortal (same as ActivitiesTable)
+// so it never clips inside scroll containers. Flip-up logic ensures
+// the menu stays on screen when opened near the bottom of the viewport.
 // ============================================================
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import type { StructureNode } from '@/types/structure';
+
+// Approximate pixel height of the largest possible menu
+// (Area in edit mode: View + Edit + Add Category + Delete = 4 items × ~40px)
+const MENU_HEIGHT = 200;
 
 interface CategoryChainRowProps {
   node: StructureNode;
   isEditMode: boolean;
   isHighlighted?: boolean;
   onView: (node: StructureNode) => void;
-  // Edit mode actions — stubs for S18/S19
   onEdit?: (node: StructureNode) => void;
   onDelete?: (node: StructureNode) => void;
   onAddCategory?: (node: StructureNode) => void;   // Area: "Add Category"
@@ -47,11 +55,12 @@ const DotsIcon = () => (
 );
 
 // --------------------------------------------------------
-// Actions dropdown menu
+// Actions dropdown menu (rendered via portal, fixed positioning)
 // --------------------------------------------------------
 interface ActionsMenuProps {
   node: StructureNode;
   isEditMode: boolean;
+  menuPos: { top?: number; bottom?: number; right: number };
   onClose: () => void;
   onView: (node: StructureNode) => void;
   onEdit?: (node: StructureNode) => void;
@@ -64,6 +73,7 @@ interface ActionsMenuProps {
 function ActionsMenu({
   node,
   isEditMode,
+  menuPos,
   onClose,
   onView,
   onEdit,
@@ -72,19 +82,6 @@ function ActionsMenu({
   onAddLeaf,
   onAddBetween,
 }: ActionsMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [onClose]);
-
   const item = (label: string, icon: string, onClick: () => void, danger = false) => (
     <button
       key={label}
@@ -101,45 +98,54 @@ function ActionsMenu({
     </button>
   );
 
-  return (
-    <div
-      ref={menuRef}
-      className="absolute right-0 top-8 z-30 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
-    >
-      {/* View — always available */}
-      {item('View', '👁', () => onView(node))}
+  return createPortal(
+    <>
+      {/* Backdrop — closes menu on outside click */}
+      <div
+        className="fixed inset-0 z-40"
+        onClick={onClose}
+      />
+      {/* Menu panel — fixed so it escapes any overflow:hidden ancestor */}
+      <div
+        className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]"
+        style={{ top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right }}
+      >
+        {/* View — always available */}
+        {item('View', '👁', () => onView(node))}
 
-      {isEditMode && (
-        <>
-          {/* Area-specific actions */}
-          {node.nodeType === 'area' && (
-            <>
-              {item('Edit', '✏️', () => onEdit?.(node))}
-              {item('Add Category', '➕', () => onAddCategory?.(node))}
-              {item('Delete', '🗑️', () => onDelete?.(node), true)}
-            </>
-          )}
+        {isEditMode && (
+          <>
+            {/* Area-specific actions */}
+            {node.nodeType === 'area' && (
+              <>
+                {item('Edit', '✏️', () => onEdit?.(node))}
+                {item('Add Category', '➕', () => onAddCategory?.(node))}
+                {item('Delete', '🗑️', () => onDelete?.(node), true)}
+              </>
+            )}
 
-          {/* Non-leaf category actions */}
-          {node.nodeType === 'category' && !node.isLeaf && (
-            <>
-              {item('Edit', '✏️', () => onEdit?.(node))}
-              {item('Add Leaf', '➕', () => onAddLeaf?.(node))}
-              {item('Add Between', '↕️', () => onAddBetween?.(node))}
-              {item('Delete', '🗑️', () => onDelete?.(node), true)}
-            </>
-          )}
+            {/* Non-leaf category actions */}
+            {node.nodeType === 'category' && !node.isLeaf && (
+              <>
+                {item('Edit', '✏️', () => onEdit?.(node))}
+                {item('Add Leaf', '➕', () => onAddLeaf?.(node))}
+                {item('Add Between', '↕️', () => onAddBetween?.(node))}
+                {item('Delete', '🗑️', () => onDelete?.(node), true)}
+              </>
+            )}
 
-          {/* Leaf category actions */}
-          {node.nodeType === 'category' && node.isLeaf && (
-            <>
-              {item('Edit', '✏️', () => onEdit?.(node))}
-              {item('Delete', '🗑️', () => onDelete?.(node), true)}
-            </>
-          )}
-        </>
-      )}
-    </div>
+            {/* Leaf category actions */}
+            {node.nodeType === 'category' && node.isLeaf && (
+              <>
+                {item('Edit', '✏️', () => onEdit?.(node))}
+                {item('Delete', '🗑️', () => onDelete?.(node), true)}
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </>,
+    document.body,
   );
 }
 
@@ -158,7 +164,36 @@ export function CategoryChainRow({
   onAddBetween,
 }: CategoryChainRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const t = THEME.structure;
+
+  // Calculate menu position with flip-up if near bottom of viewport
+  const handleMenuOpen = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const right = Math.max(window.innerWidth - rect.right, 4);
+
+      if (spaceBelow < MENU_HEIGHT + 8) {
+        // Not enough space below — open above the button
+        setMenuPos({ bottom: window.innerHeight - rect.top + 4, right });
+      } else {
+        // Default: open below the button
+        setMenuPos({ top: rect.bottom + 4, right });
+      }
+    }
+    setMenuOpen(v => !v);
+  }, []);
+
+  // Close menu on scroll (menu is fixed so it would drift otherwise)
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    window.addEventListener('scroll', close, true);
+    return () => window.removeEventListener('scroll', close, true);
+  }, [menuOpen]);
 
   return (
     <div
@@ -188,15 +223,15 @@ export function CategoryChainRow({
           )}
         </div>
 
-        {/* Description — desktop: same line via flex; mobile: below */}
+        {/* Description */}
         {node.description && (
-          <p className="mt-0.5 text-xs text-gray-500 truncate sm:truncate-none">
+          <p className="mt-0.5 text-xs text-gray-500">
             {node.description}
           </p>
         )}
       </div>
 
-      {/* ---- Attrs badge ---- */}
+      {/* ---- Attrs badge + Actions menu ---- */}
       <div className="flex-shrink-0 flex items-center gap-2 mt-0.5">
         {node.nodeType === 'category' && (
           <span className={cn(
@@ -212,10 +247,11 @@ export function CategoryChainRow({
           </span>
         )}
 
-        {/* ---- Actions menu ---- */}
-        <div className="relative flex-shrink-0">
+        {/* ---- Actions menu trigger ---- */}
+        <div className="flex-shrink-0">
           <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+            ref={buttonRef}
+            onClick={handleMenuOpen}
             className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             aria-label="Actions"
           >
@@ -226,6 +262,7 @@ export function CategoryChainRow({
             <ActionsMenu
               node={node}
               isEditMode={isEditMode}
+              menuPos={menuPos}
               onClose={() => setMenuOpen(false)}
               onView={onView}
               onEdit={onEdit}
