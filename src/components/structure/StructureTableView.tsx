@@ -5,20 +5,24 @@
 // Renders a hierarchical node list — one CategoryChainRow per
 // StructureNode (Area + every category level) in DFS order.
 //
-// Data: useStructureData() → filtered by FilterContext selection
-// States managed here:
-//   - detailNode: CategoryDetailPanel open/close
-//   - addBetweenNode: "Add Between" placeholder modal
-//   - S18/S19 edit stubs: passed through from props
+// S19 additions:
+//   - Index-based panel state (detailNodeIndex) instead of node ref
+//     → enables Prev/Next navigation within CategoryDetailPanel
+//   - highlightedNodeId: 3-second auto-clear, scroll-to-row
+//     (same pattern as ActivitiesTable) — triggered after panel close or edit save
+//   - StructureNodeEditPanel wired: onEdit opens it, onSaved triggers refetch + highlight
+//   - onDelete → placeholder modal until S20 Excel-backup flow
+//   - Edit Mode functional (isEditMode prop from AppHome)
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { useFilter } from '@/context/FilterContext';
 import { useStructureData, filterStructureNodes } from '@/hooks/useStructureData';
 import { CategoryChainRow } from './CategoryChainRow';
 import { CategoryDetailPanel } from './CategoryDetailPanel';
+import { StructureNodeEditPanel } from './StructureNodeEditPanel';
 import type { StructureNode } from '@/types/structure';
 
 // --------------------------------------------------------
@@ -26,9 +30,13 @@ import type { StructureNode } from '@/types/structure';
 // --------------------------------------------------------
 
 interface StructureTableViewProps {
-  /** True when Edit Mode is active (S18 stub — no edit ops implemented yet) */
   isEditMode: boolean;
 }
+
+// --------------------------------------------------------
+// Panel mode — which panel is open (if any)
+// --------------------------------------------------------
+type PanelMode = 'view' | 'edit' | null;
 
 // --------------------------------------------------------
 // "Add Between" placeholder modal
@@ -50,8 +58,7 @@ function AddBetweenModal({ node, onClose }: { node: StructureNode; onClose: () =
         </p>
         <p className="text-sm text-gray-500 mb-5">
           Inserting a category between existing levels is planned for a future version.
-          To restructure your hierarchy, please use the Export function to back up your
-          data first.
+          To restructure your hierarchy, please use the Export function to back up your data first.
         </p>
         <div className="flex justify-end">
           <button
@@ -75,7 +82,7 @@ function TableHeader() {
     <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
       <div className="flex-1">Category Path</div>
       <div className="w-20 text-right">Attrs</div>
-      <div className="flex-shrink-0 w-8" /> {/* Actions column spacer */}
+      <div className="flex-shrink-0 w-8" />
     </div>
   );
 }
@@ -105,38 +112,92 @@ function LoadingSkeleton() {
 export function StructureTableView({ isEditMode }: StructureTableViewProps) {
   const t = THEME.structure;
   const { filter } = useFilter();
-  const { nodes, loading, error } = useStructureData();
+  const { nodes, loading, error, refetch } = useStructureData();
 
-  // Detail panel state
-  const [detailNode, setDetailNode] = useState<StructureNode | null>(null);
+  // ---- Panel state ----
+  // Index into `filtered` array (not `nodes`) so Prev/Next stays within current filter
+  const [panelMode, setPanelMode] = useState<PanelMode>(null);
+  const [activePanelIndex, setActivePanelIndex] = useState<number | null>(null);
 
-  // "Add Between" placeholder modal state
+  // "Add Between" placeholder modal
   const [addBetweenNode, setAddBetweenNode] = useState<StructureNode | null>(null);
 
-  // --------------------------------------------------------
-  // Filter nodes based on FilterContext selection
-  // --------------------------------------------------------
+  // ---- Highlight state (same pattern as ActivitiesTable) ----
+  const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
+
+  // Auto-clear highlight after 3s
+  useEffect(() => {
+    if (!highlightedNodeId) return;
+    const timer = setTimeout(() => setHighlightedNodeId(null), 3000);
+    return () => clearTimeout(timer);
+  }, [highlightedNodeId]);
+
+  // Scroll to highlighted row when it appears
+  useEffect(() => {
+    if (!highlightedNodeId || loading) return;
+    const ref = highlightRef.current;
+    if (ref) {
+      ref.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [highlightedNodeId, loading]);
+
+  // ---- Filter nodes ----
   const filtered = filterStructureNodes(
     nodes,
     filter.areaId ?? null,
     filter.categoryId ?? null,
   );
 
-  // --------------------------------------------------------
-  // Loading state
-  // --------------------------------------------------------
-  if (loading) {
-    return (
-      <div>
-        <TableHeader />
-        <LoadingSkeleton />
-      </div>
-    );
-  }
+  // ---- Panel helpers ----
+  const activeNode = activePanelIndex !== null ? filtered[activePanelIndex] ?? null : null;
+
+  const openView = useCallback((node: StructureNode) => {
+    const idx = filtered.findIndex(n => n.id === node.id);
+    if (idx >= 0) {
+      setActivePanelIndex(idx);
+      setPanelMode('view');
+    }
+  }, [filtered]);
+
+  const openEdit = useCallback((node: StructureNode) => {
+    const idx = filtered.findIndex(n => n.id === node.id);
+    if (idx >= 0) {
+      setActivePanelIndex(idx);
+      setPanelMode('edit');
+    }
+  }, [filtered]);
+
+  const closePanel = useCallback((highlightId?: string) => {
+    setPanelMode(null);
+    // Highlight the row that was being viewed/edited
+    if (highlightId) {
+      setHighlightedNodeId(highlightId);
+    } else if (activeNode) {
+      setHighlightedNodeId(activeNode.id);
+    }
+    setActivePanelIndex(null);
+  }, [activeNode]);
+
+  const handleNavigate = useCallback((newIndex: number) => {
+    setActivePanelIndex(newIndex);
+    setPanelMode('view');
+  }, []);
+
+  // After edit save: refetch data, close panel, highlight row
+  const handleEditSaved = useCallback(async (nodeId: string) => {
+    await refetch();
+    closePanel(nodeId);
+  }, [refetch, closePanel]);
 
   // --------------------------------------------------------
-  // Error state
+  // Loading / error / empty states
   // --------------------------------------------------------
+
+  if (loading) {
+    return <div><TableHeader /><LoadingSkeleton /></div>;
+  }
+
   if (error) {
     return (
       <div className="p-6 text-center">
@@ -146,9 +207,6 @@ export function StructureTableView({ isEditMode }: StructureTableViewProps) {
     );
   }
 
-  // --------------------------------------------------------
-  // Empty state
-  // --------------------------------------------------------
   if (filtered.length === 0) {
     return (
       <div>
@@ -180,20 +238,32 @@ export function StructureTableView({ isEditMode }: StructureTableViewProps) {
 
       {/* Node rows */}
       <div>
-        {filtered.map(node => (
-          <CategoryChainRow
-            key={node.id}
-            node={node}
-            isEditMode={isEditMode}
-            onView={setDetailNode}
-            // S18 stubs — callbacks passed but no-op until S18
-            onEdit={(_n) => { /* S18 */ }}
-            onDelete={(_n) => { /* S19 */ }}
-            onAddCategory={(_n) => { /* S18 */ }}
-            onAddLeaf={(_n) => { /* S18 */ }}
-            onAddBetween={setAddBetweenNode}
-          />
-        ))}
+        {filtered.map((node) => {
+          const isHighlighted = node.id === highlightedNodeId;
+          return (
+            <div
+              key={node.id}
+              ref={isHighlighted ? highlightRef : undefined}
+            >
+              <CategoryChainRow
+                node={node}
+                isEditMode={isEditMode}
+                isHighlighted={isHighlighted}
+                onView={openView}
+                onEdit={openEdit}
+                onDelete={(_n) => {
+                  alert(
+                    'Delete functionality coming in a future version.\n' +
+                    'An Excel backup will be created automatically before any deletion.'
+                  );
+                }}
+                onAddCategory={(_n) => { /* S20 */ }}
+                onAddLeaf={(_n) => { /* S20 */ }}
+                onAddBetween={setAddBetweenNode}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {/* Row count footer */}
@@ -206,17 +276,31 @@ export function StructureTableView({ isEditMode }: StructureTableViewProps) {
         </span>
         {isEditMode && (
           <span className={cn('text-xs px-2 py-0.5 rounded font-medium', t.badgeAttrs)}>
-            Edit Mode — operations coming in S18
+            Edit Mode
           </span>
         )}
       </div>
 
-      {/* ---- Detail Panel Modal ---- */}
-      {detailNode && (
+      {/* ---- View Panel Modal ---- */}
+      {panelMode === 'view' && activeNode && (
         <CategoryDetailPanel
-          node={detailNode}
+          node={activeNode}
           allNodes={nodes}
-          onClose={() => setDetailNode(null)}
+          filteredNodes={filtered}
+          currentIndex={activePanelIndex!}
+          onClose={() => closePanel()}
+          onNavigate={handleNavigate}
+          onEdit={(n) => openEdit(n)}
+        />
+      )}
+
+      {/* ---- Edit Panel Modal ---- */}
+      {panelMode === 'edit' && activeNode && (
+        <StructureNodeEditPanel
+          node={activeNode}
+          onClose={() => closePanel()}
+          onSwitchToView={() => setPanelMode('view')}
+          onSaved={handleEditSaved}
         />
       )}
 

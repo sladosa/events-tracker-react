@@ -65,6 +65,21 @@ export const THEME = {
     spinner:      'border-indigo-600',
     ring:         'focus:ring-indigo-500',
   },
+  // Structure Edit panel theme — amber, independent from global 'edit' and from 'structure'.
+  // Used by StructureNodeEditPanel only. Change here to restyle without affecting other pages.
+  structureEdit: {
+    headerBg:     'bg-amber-500',
+    headerText:   'text-white',
+    headerBorder: 'border-amber-600',
+    accent:       'bg-white text-amber-700 hover:bg-amber-50',
+    cancelBtn:    'bg-amber-400 hover:bg-amber-600 text-white',
+    deleteBtn:    'bg-red-500 hover:bg-red-600 text-white',
+    light:        'bg-amber-50',
+    lightBorder:  'border-amber-200',
+    lightText:    'text-amber-800',
+    spinner:      'border-amber-500',
+    ring:         'focus:ring-amber-500',
+  },
   // Structure tab theme — independent from 'view' so it can be changed separately.
   // Colour: indigo/purple. Edit here only; never hardcode in structure components.
   structure: {
@@ -96,3 +111,4 @@ export const THEME = {
 export type PageMode = keyof typeof THEME;
 export type PageTheme = typeof THEME[PageMode];
 export type StructureTheme = typeof THEME['structure'];
+export type StructureEditTheme = typeof THEME['structureEdit'];

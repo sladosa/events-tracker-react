@@ -14,6 +14,7 @@ import type { StructureNode } from '@/types/structure';
 interface CategoryChainRowProps {
   node: StructureNode;
   isEditMode: boolean;
+  isHighlighted?: boolean;
   onView: (node: StructureNode) => void;
   // Edit mode actions — stubs for S18/S19
   onEdit?: (node: StructureNode) => void;
@@ -148,6 +149,7 @@ function ActionsMenu({
 export function CategoryChainRow({
   node,
   isEditMode,
+  isHighlighted = false,
   onView,
   onEdit,
   onDelete,
@@ -161,8 +163,10 @@ export function CategoryChainRow({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 px-4 py-3 border-b border-gray-100 hover:bg-gray-50/50 transition-colors relative',
-        rowStyle(node),
+        'flex items-start gap-3 px-4 py-3 border-b border-gray-100 transition-colors relative',
+        isHighlighted
+          ? 'bg-indigo-100 ring-2 ring-inset ring-indigo-400'
+          : cn('hover:bg-gray-50/50', rowStyle(node)),
       )}
     >
       {/* ---- Path + description ---- */}

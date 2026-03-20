@@ -83,8 +83,7 @@ function AppContent() {
   const [email, setEmail] = useState<string>('');
   const [activeTab, setActiveTab] = useState<TabType>('activities');
   const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>('sunburst');
-  // isEditMode — stub for S18; always false for now
-  const isEditMode = false;
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isExportingStructure, setIsExportingStructure] = useState(false);
   
   // Structure data (needed for Export button)
@@ -367,20 +366,22 @@ function AppContent() {
                 {!isMobile && <span>{isExportingStructure ? 'Exporting...' : 'Export'}</span>}
               </button>
 
-              {/* Edit Mode stub (S18) */}
+              {/* Edit Mode toggle */}
               <button
-                disabled
-                title="Edit Mode — coming in S18"
+                onClick={() => setIsEditMode(v => !v)}
+                title={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed',
-                  THEME.structure.btnEditMode,
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  isEditMode
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white border border-amber-600'
+                    : THEME.structure.btnEditMode,
                 )}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                {!isMobile && <span>Edit Mode</span>}
+                {!isMobile && <span>{isEditMode ? 'Exit Edit' : 'Edit Mode'}</span>}
               </button>
             </div>
           )}
