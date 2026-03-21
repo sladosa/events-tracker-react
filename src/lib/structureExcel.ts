@@ -172,6 +172,14 @@ function makeFill(argb: string): ExcelJS.Fill {
   return { type: 'pattern', pattern: 'solid', fgColor: { argb } };
 }
 
+// Thin light-gray border applied to all table cells (header + data)
+const THIN_BORDER: Partial<ExcelJS.Borders> = {
+  top:    { style: 'thin', color: { argb: 'FFCCCCCC' } },
+  left:   { style: 'thin', color: { argb: 'FFCCCCCC' } },
+  bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+  right:  { style: 'thin', color: { argb: 'FFCCCCCC' } },
+};
+
 function nowTimestamp(): string {
   const d = new Date();
   const p = (n: number) => n.toString().padStart(2, '0');
@@ -377,8 +385,6 @@ function writeHierarchicalSheet(
                   : infoRow.type === 'conflict' ? 'Import conflict:'
                   : 'Export';
 
-  const infoDesc = infoRow?.description ?? '';
-
   const setInfo = (colIdx: number, val: string, bold = false) => {
     const c = ws.getCell(6, colIdx);
     c.value = val;
@@ -387,11 +393,15 @@ function writeHierarchicalSheet(
     c.alignment = { vertical: 'middle', horizontal: 'left' };
   };
 
-  setInfo(1, fmtTimestamp(ts));
-  setInfo(2, infoLabel, true);
-  setInfo(3, infoDesc);
-  // Fill remaining cells with same background (cosmetic)
-  for (let ci = 4; ci <= N_COLS; ci++) {
+  // A6 = label (Export / Backup before: / Import conflict:)
+  setInfo(1, infoLabel, true);
+  // B6, C6 — empty, same background (columns are usually collapsed)
+  ws.getCell(6, 2).fill = makeFill(infoBg);
+  ws.getCell(6, 3).fill = makeFill(infoBg);
+  // D6 = timestamp
+  setInfo(4, fmtTimestamp(ts));
+  // E6..Q6 — fill remaining cells (cosmetic)
+  for (let ci = 5; ci <= N_COLS; ci++) {
     ws.getCell(6, ci).fill = makeFill(infoBg);
   }
 
@@ -403,7 +413,8 @@ function writeHierarchicalSheet(
     const cell = ws.getCell(7, ci + 1);
     cell.value = COLS[ci].header;
     cell.fill = makeFill(CLR.HEADER_BG);
-    cell.font = { bold: true, size: 10, color: { argb: CLR.HEADER_FG } };
+    cell.font = { name: 'Calibri', bold: true, size: 11, color: { argb: CLR.HEADER_FG } };
+    cell.border = THIN_BORDER;
     cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: false };
   }
 
@@ -423,12 +434,14 @@ function writeHierarchicalSheet(
     const xlRow = ws.getRow(rowNum);
     xlRow.height = 15;
 
-    // Row typography
+    // Row typography: Area = Calibri 12 Bold, Leaf = Calibri 11 Bold,
+    // Attribute = Calibri 11 Italic, Category = Calibri 11 normal
     const isArea = data._isAreaRow;
     const isLeaf = data._isLeafRow;
     const isAttr = data._isAttrRow;
     const fontBase: Partial<ExcelJS.Font> = {
-      size: 10,
+      name: 'Calibri',
+      size: isArea ? 12 : 11,
       bold: isArea || isLeaf,
       italic: isAttr,
     };
@@ -463,6 +476,7 @@ function writeHierarchicalSheet(
 
       cell.fill = makeFill(fillArgb);
       cell.font = { ...fontBase };
+      cell.border = THIN_BORDER;
       cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: false };
     }
   }
@@ -504,7 +518,7 @@ function writeHelpSheet(wb: ExcelJS.Workbook): void {
     views: [{ showGridLines: false }],
   });
 
-  ws.getColumn('A').width = 28;
+  ws.getColumn('A').width = 70;
   ws.getColumn('B').width = 72;
 
   const fillSection = makeFill('FFE3F2FD');
@@ -591,6 +605,7 @@ function writeHelpSheet(wb: ExcelJS.Workbook): void {
       c.fill = fillSection;
       c.font = { bold: true, size: 11, color: { argb: 'FF1565C0' } };
       c.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      c.border = THIN_BORDER;
       ws.getRow(rowIdx).height = 20;
     } else {
       const cA = ws.getCell(rowIdx, 1);
@@ -602,8 +617,22 @@ function writeHelpSheet(wb: ExcelJS.Workbook): void {
       cB.font = { size: 10 };
       cA.alignment = { vertical: 'top', wrapText: false };
       cB.alignment = { vertical: 'top', wrapText: true };
+      cA.border = THIN_BORDER;
+      cB.border = THIN_BORDER;
     }
     rowIdx++;
+  }
+
+  // Color PINK/YELLOW/BLUE/GREEN cells in column A for rows 11–14
+  // (These correspond to the Color Coding section entries)
+  const colorRows: Array<[number, string]> = [
+    [11, CLR.PINK],
+    [12, CLR.YELLOW],
+    [13, CLR.BLUE],
+    [14, CLR.GREEN],
+  ];
+  for (const [r, argb] of colorRows) {
+    ws.getCell(r, 1).fill = makeFill(argb);
   }
 }
 

@@ -19,7 +19,7 @@ interface UseStructureDataReturn {
   nodes: StructureNode[];
   loading: boolean;
   error: Error | null;
-  refetch: () => Promise<void>;
+  refetch: () => Promise<StructureNode[]>;
 }
 
 export function useStructureData(): UseStructureDataReturn {
@@ -35,7 +35,7 @@ export function useStructureData(): UseStructureDataReturn {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setNodes([]);
-        return;
+        return [];
       }
 
       // --------------------------------------------------------
@@ -230,9 +230,11 @@ export function useStructureData(): UseStructureDataReturn {
       }));
 
       setNodes(finalResult);
+      return finalResult;
     } catch (err) {
       console.error('useStructureData: fetch failed', err);
       setError(err instanceof Error ? err : new Error('Failed to load structure data'));
+      return [];
     } finally {
       setLoading(false);
     }

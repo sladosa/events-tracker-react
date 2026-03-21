@@ -422,15 +422,15 @@ Preview all themes at `/app/debug` → Theme Preview tab (HMR, no restart needed
 
 ## 15. Not yet implemented / In progress
 
-| Feature | Status | Note |
-|---|---|---|
-| Structure Tab — Read-Only + Export | ✅ **Complete (S15–S18)** | Table View + Sunburst + Export wired; filter sync bugfixes (S18) |
-| Structure Tab — Edit Mode (safe ops) | ✅ **Complete (S19)** | Rename Area/Category/Attributes, suggest options editor; Edit Mode toggle; row highlight; Prev/Next in View panel |
-| Structure Tab — Edit Mode (delete + add) | Planned S20 | Delete with Excel backup + cascade confirm; Add Area; Add Leaf Category |
-| Structure Tab — Excel Import | Planned S20 | Non-destructive add-only; React v2 format |
-| Structure Excel format v2 | Planned S20 | Migrate to Streamlit-compatible multi-row Depends_On; see EXCEL_FORMAT_ANALYSIS_v1.md |
-| BUG-F Step 2 (transaction / rollback) | Deferred | Supabase RPC |
-| `date_trunc('minute')` for collision check in SQL | Deferred | Long-term fix for legacy data |
+| Feature                                           | Status                   | Note                                                                                                              |
+| ------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Structure Tab — Read-Only + Export                | ✅ **Complete (S15–S18)** | Table View + Sunburst + Export wired; filter sync bugfixes (S18)                                                  |
+| Structure Tab — Edit Mode (safe ops)              | ✅ **Complete (S19)**     | Rename Area/Category/Attributes, suggest options editor; Edit Mode toggle; row highlight; Prev/Next in View panel |
+| Structure Tab — Edit Mode (delete + add)          | Planned S20              | Delete with Excel backup + cascade confirm; Add Area; Add Leaf Category                                           |
+| Structure Tab — Excel Import                      | Planned S20              | Non-destructive add-only; React v2 format                                                                         |
+| Structure Excel format v2                         | ✅ **Complete (S20)**     | Migrate to Streamlit-compatible multi-row Depends_On; see EXCEL_FORMAT_ANALYSIS_v2.md                             |
+| BUG-F Step 2 (transaction / rollback)             | Deferred                 | Supabase RPC                                                                                                      |
+| `date_trunc('minute')` for collision check in SQL | Deferred                 | Long-term fix for legacy data                                                                                     |
 
 ### 15.1 ⚠️ Structure View — "Add category between" risk
 
@@ -446,6 +446,6 @@ Inserting a new category level between two existing ones (e.g. `Gym > Strength` 
 
 *Document version 1.5 — 2026-03-19 | Sessions 1–19*  
 *Key changes in V1.5: S19 — StructureNodeEditPanel (amber edit panel) added to key files; structureEdit theme entry added; Structure Tab Edit Mode (safe ops) marked complete; planned S20 items updated (delete + add ops, Excel import, v2 format).*  
-*Key changes in V1.4: S17–S18 bugfixes documented (BUG-S1/S2/S3), structureExcel.ts added to key files, Structure Tab read-only marked complete, Edit Mode + Excel Import + v2 format migration planned for S19–S20. Excel format analysis in EXCEL_FORMAT_ANALYSIS_v1.md.*  
+*Key changes in V1.4: S17–S18 bugfixes documented (BUG-S1/S2/S3), structureExcel.ts added to key files, Structure Tab read-only marked complete, Edit Mode + Excel Import + v2 format migration planned for S19–S20. Excel format analysis in EXCEL_FORMAT_ANALYSIS_v2.md.*  
 *Key changes in V1.3: migration 005 (DROP lookup_values), Structure Tab read-only fully implemented (S15–S16), theme.ts structure entry added, section 15 updated.*  
 *Key changes in V1.2: chain_key field (migration 004), parentEventLoader.ts shared service, dropdown/validation_rules system (section 6), session_start format warning (4.2), Prev/Next fix (section 7), lookup_values legacy status, theme colour correction, complete fix history in section 14.*

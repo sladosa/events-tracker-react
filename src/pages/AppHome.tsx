@@ -87,7 +87,7 @@ function AppContent() {
   const [isExportingStructure, setIsExportingStructure] = useState(false);
   
   // Structure data (needed for Export button)
-  const { nodes: structureNodes } = useStructureData();
+  const { refetch: refetchStructure } = useStructureData();
 
   // Get filter context
   const { 
@@ -330,7 +330,8 @@ function AppContent() {
                 onClick={async () => {
                   setIsExportingStructure(true);
                   try {
-                    const buffer = await exportStructureExcel(structureNodes, {
+                    const freshNodes = await refetchStructure(); // Always export fresh data
+                    const buffer = await exportStructureExcel(freshNodes, {
                       filterAreaId: filter.areaId ?? null,
                       filterCategoryId: filter.categoryId ?? null,
                     });
