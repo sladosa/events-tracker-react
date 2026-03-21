@@ -1,141 +1,156 @@
 // ============================================================
-// structureExcel.ts — Structure Tab Excel Export
+// structureExcel.ts — Structure Tab Excel Export v2
 // ============================================================
-// Exports the category hierarchy (Areas → Categories →
-// Attribute Definitions) to an .xlsx file compatible with
-// the U8 Streamlit reference format.
 //
-// Output file: structure_export_YYYYMMDD_HHMMSS.xlsx
-// One data sheet per Area in the export scope.
-// One Help sheet describing the format.
+// v2 vs v1:
+//   • Single sheet "HierarchicalView" (was: one sheet per Area)
+//   • 17 fixed columns A–Q (no dynamic DependsOnWhen_* columns)
+//   • Multi-row DependsOn: one row per WhenValue (Streamlit style)
+//   • Rows 1–5: color legend (row-grouped, default collapsed)
+//   • Row 6: always-visible info/backup row
+//   • Row 7: header row
+//   • Row 8+: data rows
+//   • Freeze pane at G8 (cols A–F + rows 1–7 frozen)
+//   • Column-based editability coloring (Pink/Yellow/Blue/Green)
+//   • Column groups per spec (some collapsed, some open by default)
+//   • Excel data validations on Type, AttrType, IsRequired, Val.Type
+//   • Bold: Area rows + leaf Category rows. Italic: Attribute rows.
+//   • Area formula in col C: =IFERROR(LEFT(D8,FIND(" > ",D8)-1),D8)
 //
-// Called from AppHome "Export" button with:
-//   exportStructureExcel(nodes, filterAreaId)
+// Filenames:
+//   Normal:   structure_export_YYYYMMDD_HHmmss.xlsx
+//   Backup:   structure_export_YYYYMMDD_HHmmss_backup.xlsx
+//   Conflict: structure_export_YYYYMMDD_HHmmss_conflict.xlsx
 //
-// Columns (per data sheet, one row = one leaf-chain × attr):
-//   A: Type          — "Category" or "Attribute"
-//   B: Sort          — category sort_order or attr sort_order
-//   C: Area          — area name
-//   D: Chain         — full path e.g. "Fitness > Activity > Gym > Strength"
-//   E: Level         — numeric level (0=Area, 1=L1, etc.)
-//   F: IsLeaf        — "Yes" / "No"
-//   G: Description   — category or attr description
-//   H: AttrName      — attribute name (empty for Category rows)
-//   I: AttrSlug      — attribute slug (empty for Category rows)
-//   J: AttrType      — attribute data_type (empty for Category rows)
-//   K: Unit          — attribute unit (empty for Category rows)
-//   L: IsRequired    — "Yes" / "No" (empty for Category rows)
-//   M: ValidationType — "suggest" / "depends_on" / "none"
-//   N: TextOptions   — pipe-separated suggest values e.g. "pull.m|biceps|triceps"
-//   O: DependsOnAttr — slug of the parent attribute (depends_on only)
-//   P–Z+: DependsOnWhen_<value> — per-value option columns (depends_on only)
-//         e.g. "DependsOnWhen_Upp" → "pull.m|biceps|triceps"
-//
-// NOTE: DependsOn columns are dynamic — one per parent-attr value.
-//       They are padded to align across all rows in the sheet.
+// Public API:
+//   exportStructureExcel(nodes, options?)  → ArrayBuffer
+//   structureExportFilename()              → string
+//   structureBackupFilename()              → string
+//   structureConflictFilename()            → string
 // ============================================================
 
 import ExcelJS from 'exceljs';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
 
-// ────────────────────────────────────────────────────────────
-// Constants
-// ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// ARGB color constants
+// ─────────────────────────────────────────────────────────────
+const CLR = {
+  // Column editability fills (used on every data cell)
+  PINK:      'FFFCE4D6', // Pink  — read-only / auto-calculated
+  YELLOW:    'FFFFF2CC', // Yellow — key identifier (edit carefully)
+  BLUE:      'FFDAE3F3', // Blue  — freely editable
+  GREEN:     'FFE2EFDA', // Green — dependency columns
 
-// Fill colours (ARGB)
-const FILL_HEADER: ExcelJS.Fill = {
-  type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' },
-};
-const FILL_AREA: ExcelJS.Fill = {
-  type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EAF6' }, // indigo-50
-};
-const FILL_CATEGORY: ExcelJS.Fill = {
-  type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' }, // near-white
-};
-const FILL_LEAF: ExcelJS.Fill = {
-  type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' }, // emerald-50
-};
-const FILL_ATTR: ExcelJS.Fill = {
-  type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF8E1' }, // amber-50
-};
-const FILL_HELP_SECTION: ExcelJS.Fill = {
-  type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE3F2FD' }, // blue-50
-};
+  // Header row
+  HEADER_BG: 'FF4472C4', // indigo-600
+  HEADER_FG: 'FFFFFFFF',
 
-const FONT_HEADER: Partial<ExcelJS.Font> = {
-  color: { argb: 'FFFFFFFF' }, bold: true, size: 10,
-};
-const FONT_BOLD: Partial<ExcelJS.Font> = { bold: true };
+  // Row 6 info backgrounds
+  INFO_BG:     'FFF5F5F5', // light gray — normal export
+  BACKUP_BG:   'FFFCE4D6', // soft orange — backup
+  CONFLICT_BG: 'FFFFFF99', // soft yellow — conflict
 
-const BORDER_THIN: Partial<ExcelJS.Borders> = {
-  top:    { style: 'thin' },
-  bottom: { style: 'thin' },
-  left:   { style: 'thin' },
-  right:  { style: 'thin' },
-};
+  // Conflict: highlight slug cells
+  SLUG_CONFLICT: 'FFFFFF00', // bright yellow on conflicted slug cell
+} as const;
 
-// Fixed column definitions (A–P are fixed; depends_on columns appended after P)
-const FIXED_COLUMNS = [
-  { key: 'type',          header: 'Type',         width: 12 },
-  { key: 'sort',          header: 'Sort',         width: 6  },
-  { key: 'area',          header: 'Area',         width: 14 },
-  { key: 'chain',         header: 'Chain',        width: 40 },
-  { key: 'level',         header: 'Level',        width: 7  },
-  { key: 'isLeaf',        header: 'IsLeaf',       width: 7  },
-  { key: 'description',   header: 'Description',  width: 28 },
-  { key: 'attrName',      header: 'AttrName',     width: 20 },
-  { key: 'attrSlug',      header: 'AttrSlug',     width: 20 },
-  { key: 'attrType',      header: 'AttrType',     width: 12 },
-  { key: 'unit',          header: 'Unit',         width: 8  },
-  { key: 'isRequired',    header: 'IsRequired',   width: 10 },
-  { key: 'validationType',header: 'ValidationType',width: 14 },
-  { key: 'textOptions',   header: 'TextOptions',  width: 36 },
-  { key: 'dependsOnAttr', header: 'DependsOnAttr',width: 18 },
+// ─────────────────────────────────────────────────────────────
+// Column specification (A–Q, 17 columns)
+// ─────────────────────────────────────────────────────────────
+// colColor  : fill applied to every data cell in this column
+// grouped   : adds outlineLevel = 1
+// collapsed : hides column by default (only meaningful when grouped=true)
+// ─────────────────────────────────────────────────────────────
+const COLS = [
+  // idx 0 = col A
+  { key: 'type',        header: 'Type',              width: 9,  colColor: CLR.PINK,   grouped: false, collapsed: false },
+  { key: 'isLeaf',      header: 'IsLeaf',            width: 9,  colColor: CLR.PINK,   grouped: true,  collapsed: true  },
+  { key: 'area',        header: 'Area',              width: 9,  colColor: CLR.PINK,   grouped: true,  collapsed: true  },
+  { key: 'categoryPath',header: 'CategoryPath',      width: 40, colColor: CLR.YELLOW, grouped: false, collapsed: false },
+  { key: 'sort',        header: 'Sort',              width: 6,  colColor: CLR.YELLOW, grouped: true,  collapsed: true  },
+  { key: 'attrName',    header: 'AttrName',          width: 18, colColor: CLR.BLUE,   grouped: false, collapsed: false },
+  { key: 'slug',        header: 'Slug',              width: 18, colColor: CLR.PINK,   grouped: true,  collapsed: true  },
+  { key: 'attrType',    header: 'AttrType',          width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
+  { key: 'isRequired',  header: 'IsRequired',        width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
+  { key: 'valType',     header: 'Val.Type',          width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
+  { key: 'defaultVal',  header: 'Default',           width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
+  { key: 'valMax',      header: 'Val.Max (no)',       width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
+  { key: 'unit',        header: 'Unit',              width: 7,  colColor: CLR.BLUE,   grouped: false, collapsed: false },
+  { key: 'textOptions', header: 'TextOptions/Val.Min',width: 45, colColor: CLR.BLUE,   grouped: true,  collapsed: false },
+  { key: 'dependsOn',   header: 'DependsOn',         width: 18, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
+  { key: 'whenValue',   header: 'WhenValue',         width: 12, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
+  { key: 'description', header: 'Description',       width: 60, colColor: CLR.BLUE,   grouped: false, collapsed: false },
 ] as const;
 
-// ────────────────────────────────────────────────────────────
-// Types
-// ────────────────────────────────────────────────────────────
+const N_COLS = COLS.length; // 17
 
-// Actual shape of validation_rules jsonb in the DB.
-// (The TypeScript database.ts type is a legacy stub — we parse raw.)
+// Column letter helpers
+function colLetter(idx: number): string {
+  // idx is 0-based; A=0, B=1, ...
+  return String.fromCharCode(65 + idx);
+}
+
+// Excel column index (1-based) for a given key
+function colNum(key: string): number {
+  return COLS.findIndex(c => c.key === key) + 1;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
 interface SuggestRules {
   type: 'suggest';
   suggest?: string[];
+  max?: number | string;
+  min?: number | string;
   depends_on?: {
     attribute_slug: string;
     options_map: Record<string, string[]>;
   };
 }
 
-// A single row written to the Excel sheet
-interface SheetRow {
-  type: string;
-  sort: number;
-  area: string;
-  chain: string;
-  level: number;
-  isLeaf: string;
-  description: string;
-  attrName: string;
-  attrSlug: string;
-  attrType: string;
-  unit: string;
-  isRequired: string;
-  validationType: string;
-  textOptions: string;
-  dependsOnAttr: string;
-  // dynamic depends_on columns keyed "DependsOnWhen_<value>"
-  [key: string]: string | number;
+// One spreadsheet data row (all values as strings except sort)
+interface DataRow {
+  type:         string; // Area | Category | Attribute
+  isLeaf:       string; // TRUE | ''
+  area:         'FORMULA';      // always formula for data rows
+  categoryPath: string;
+  sort:         number;
+  attrName:     string;
+  slug:         string;
+  attrType:     string;
+  isRequired:   string; // TRUE | FALSE | ''
+  valType:      string; // suggest | none | ''
+  defaultVal:   string;
+  valMax:       string;
+  unit:         string;
+  textOptions:  string;
+  dependsOn:    string;
+  whenValue:    string;
+  description:  string;
+  // Row meta (not written to cells)
+  _isAreaRow:   boolean;
+  _isLeafRow:   boolean;
+  _isAttrRow:   boolean;
 }
 
-// ────────────────────────────────────────────────────────────
-// Helpers
-// ────────────────────────────────────────────────────────────
+export interface ExportStructureOptions {
+  filterAreaId?: string | null;
+  filterCategoryId?: string | null;
+}
 
-/** Parse validation_rules safely — handles object or JSON string */
-function parseValidationRules(raw: unknown): SuggestRules | null {
+export interface InfoRowOptions {
+  type: 'export' | 'backup' | 'conflict';
+  /** Human-readable description written to cell C6 */
+  description?: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
+function parseRules(raw: unknown): SuggestRules | null {
   let obj: unknown = raw;
   if (typeof raw === 'string') {
     try { obj = JSON.parse(raw); } catch { return null; }
@@ -146,398 +161,480 @@ function parseValidationRules(raw: unknown): SuggestRules | null {
   return null;
 }
 
-/** Determine validation type label for an attribute */
-function getValidationType(attrDef: AttributeDefinition): string {
-  const rules = parseValidationRules(attrDef.validation_rules);
-  if (!rules) return 'none';
-  if (rules.depends_on) return 'depends_on';
-  if (rules.suggest && rules.suggest.length > 0) return 'suggest';
+function getValType(attr: AttributeDefinition): string {
+  const r = parseRules(attr.validation_rules);
+  if (!r) return 'none';
+  if (r.depends_on || (r.suggest && r.suggest.length > 0)) return 'suggest';
   return 'none';
 }
 
-/** Get pipe-separated suggest options (simple suggest only) */
-function getTextOptions(attrDef: AttributeDefinition): string {
-  const rules = parseValidationRules(attrDef.validation_rules);
-  if (!rules || rules.depends_on) return '';
-  if (rules.suggest && rules.suggest.length > 0) {
-    return rules.suggest.join('|');
-  }
-  return '';
+function makeFill(argb: string): ExcelJS.Fill {
+  return { type: 'pattern', pattern: 'solid', fgColor: { argb } };
 }
 
-/** Get depends_on parent attribute slug */
-function getDependsOnAttr(attrDef: AttributeDefinition): string {
-  const rules = parseValidationRules(attrDef.validation_rules);
-  if (!rules?.depends_on) return '';
-  return rules.depends_on.attribute_slug;
-}
-
-/**
- * Get depends_on options map.
- * Returns Record<parentValue, pipe-separated options> or {}
- */
-function getDependsOnMap(attrDef: AttributeDefinition): Record<string, string> {
-  const rules = parseValidationRules(attrDef.validation_rules);
-  if (!rules?.depends_on?.options_map) return {};
-  const result: Record<string, string> = {};
-  for (const [key, vals] of Object.entries(rules.depends_on.options_map)) {
-    result[key] = Array.isArray(vals) ? vals.join('|') : String(vals);
-  }
-  return result;
-}
-
-/** Generate timestamp string for filename */
 function nowTimestamp(): string {
   const d = new Date();
-  const pad = (n: number) => n.toString().padStart(2, '0');
+  const p = (n: number) => n.toString().padStart(2, '0');
   return (
-    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}` +
-    `_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+    `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
+    `_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
   );
 }
 
-/** Group StructureNode[] by area, preserving DFS order within each area */
-function groupNodesByArea(
-  nodes: StructureNode[],
-): Map<string, StructureNode[]> {
-  const map = new Map<string, StructureNode[]>();
-  for (const node of nodes) {
-    const areaId = node.areaId;
-    const existing = map.get(areaId) ?? [];
-    existing.push(node);
-    map.set(areaId, existing);
-  }
-  return map;
+function fmtTimestamp(ts: string): string {
+  // "20260321_142307" → "2026-03-21 14:23:07"
+  return ts
+    .replace(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6');
 }
 
-// ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // Row builders
-// ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+function buildAreaRow(node: StructureNode): DataRow {
+  return {
+    type: 'Area',
+    isLeaf: '',
+    area: 'FORMULA',
+    categoryPath: node.name,
+    sort: node.sortOrder,
+    attrName: '', slug: '', attrType: '', isRequired: '',
+    valType: '', defaultVal: '', valMax: '', unit: '',
+    textOptions: '', dependsOn: '', whenValue: '',
+    description: node.description ?? '',
+    _isAreaRow: true, _isLeafRow: false, _isAttrRow: false,
+  };
+}
 
-/**
- * Build rows for one StructureNode.
- * Returns 1 "Category" row + N "Attribute" rows (one per attr def).
- */
-function buildRowsForNode(node: StructureNode): SheetRow[] {
-  const rows: SheetRow[] = [];
+function buildCategoryRow(node: StructureNode): DataRow {
+  return {
+    type: 'Category',
+    isLeaf: node.isLeaf ? 'TRUE' : '',
+    area: 'FORMULA',
+    categoryPath: node.fullPath,
+    sort: node.sortOrder,
+    attrName: '', slug: '', attrType: '', isRequired: '',
+    valType: '', defaultVal: '', valMax: '', unit: '',
+    textOptions: '', dependsOn: '', whenValue: '',
+    description: node.description ?? '',
+    _isAreaRow: false, _isLeafRow: node.isLeaf, _isAttrRow: false,
+  };
+}
 
-  // ---- Category row ----
-  rows.push({
-    type:           'Category',
-    sort:           node.sortOrder,
-    area:           node.area.name,
-    chain:          node.fullPath,
-    level:          node.level,
-    isLeaf:         node.isLeaf ? 'Yes' : 'No',
-    description:    node.description ?? '',
-    attrName:       '',
-    attrSlug:       '',
-    attrType:       '',
-    unit:           '',
-    isRequired:     '',
-    validationType: '',
-    textOptions:    '',
-    dependsOnAttr:  '',
-  });
+function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[] {
+  const rules = parseRules(attr.validation_rules);
 
-  // ---- Attribute rows (one per attr def at this level) ----
-  for (const attr of node.attributeDefinitions) {
-    const validationType = getValidationType(attr);
-    const dependsOnMap   = getDependsOnMap(attr);
+  const base = {
+    type: 'Attribute' as const,
+    isLeaf: '' as const,
+    area: 'FORMULA' as const,
+    categoryPath: node.fullPath,
+    sort: attr.sort_order,
+    attrName: attr.name,
+    slug: attr.slug,
+    attrType: attr.data_type,
+    isRequired: attr.is_required ? 'TRUE' : 'FALSE',
+    valType: getValType(attr),
+    defaultVal: attr.default_value ?? '',
+    valMax: rules?.max != null ? String(rules.max) : '',
+    unit: attr.unit ?? '',
+    description: attr.description ?? '',
+    _isAreaRow: false as const,
+    _isLeafRow: false as const,
+    _isAttrRow: true as const,
+  };
 
-    const attrRow: SheetRow = {
-      type:           'Attribute',
-      sort:           attr.sort_order,
-      area:           node.area.name,
-      chain:          node.fullPath,
-      level:          node.level,
-      isLeaf:         node.isLeaf ? 'Yes' : 'No',
-      description:    attr.description ?? '',
-      attrName:       attr.name,
-      attrSlug:       attr.slug,
-      attrType:       attr.data_type,
-      unit:           attr.unit ?? '',
-      isRequired:     attr.is_required ? 'Yes' : 'No',
-      validationType,
-      textOptions:    getTextOptions(attr),
-      dependsOnAttr:  getDependsOnAttr(attr),
-    };
+  // Simple attribute (no depends_on)
+  if (!rules?.depends_on) {
+    return [{
+      ...base,
+      textOptions: rules?.suggest?.join('|') ?? '',
+      dependsOn: '',
+      whenValue: '',
+    }];
+  }
 
-    // Add dynamic DependsOnWhen_<value> columns
-    for (const [value, options] of Object.entries(dependsOnMap)) {
-      attrRow[`DependsOnWhen_${value}`] = options;
-    }
+  // Dependent attribute: one row per WhenValue
+  const parentSlug = rules.depends_on.attribute_slug;
+  const optMap = rules.depends_on.options_map;
+  const rows: DataRow[] = [];
 
-    rows.push(attrRow);
+  for (const [whenVal, opts] of Object.entries(optMap)) {
+    rows.push({
+      ...base,
+      textOptions: Array.isArray(opts) ? opts.join('|') : '',
+      dependsOn: parentSlug,
+      whenValue: whenVal,
+    });
+  }
+
+  // Add fallback "*" row if not present
+  if (!('*' in optMap)) {
+    rows.push({
+      ...base,
+      textOptions: '',
+      dependsOn: parentSlug,
+      whenValue: '*',
+    });
   }
 
   return rows;
 }
 
-// ────────────────────────────────────────────────────────────
-// Sheet writer
-// ────────────────────────────────────────────────────────────
-
-/**
- * Write one data sheet (one Area) to the workbook.
- */
-function writeAreaSheet(
-  wb: ExcelJS.Workbook,
-  areaName: string,
-  nodes: StructureNode[],
-): void {
-  // ---- Build all rows first (we need to discover depends_on columns) ----
-  const allRows: SheetRow[] = [];
+function buildAllRows(nodes: StructureNode[]): DataRow[] {
+  const rows: DataRow[] = [];
   for (const node of nodes) {
-    if (node.nodeType === 'area') continue; // Area nodes → Category row only
-    allRows.push(...buildRowsForNode(node));
-  }
-
-  // If area has no category nodes at all, still write area-level info
-  if (nodes.every(n => n.nodeType === 'area')) {
-    const areaNode = nodes.find(n => n.nodeType === 'area');
-    if (areaNode) {
-      allRows.push({
-        type:           'Category',
-        sort:           areaNode.sortOrder,
-        area:           areaNode.area.name,
-        chain:          areaNode.fullPath,
-        level:          0,
-        isLeaf:         'No',
-        description:    areaNode.description ?? '',
-        attrName:       '',
-        attrSlug:       '',
-        attrType:       '',
-        unit:           '',
-        isRequired:     '',
-        validationType: '',
-        textOptions:    '',
-        dependsOnAttr:  '',
-      });
-    }
-  }
-
-  // ---- Discover all dynamic depends_on column keys in this sheet ----
-  const dynamicColKeys = new Set<string>();
-  for (const row of allRows) {
-    for (const key of Object.keys(row)) {
-      if (key.startsWith('DependsOnWhen_')) {
-        dynamicColKeys.add(key);
+    if (node.nodeType === 'area') {
+      rows.push(buildAreaRow(node));
+    } else {
+      rows.push(buildCategoryRow(node));
+      for (const attr of node.attributeDefinitions) {
+        rows.push(...buildAttrRows(node, attr));
       }
     }
   }
-  const dynamicCols = [...dynamicColKeys].sort();
-
-  // ---- Create sheet (truncate name to 31 chars — Excel limit) ----
-  const sheetName = areaName.slice(0, 31);
-  const ws = wb.addWorksheet(sheetName, {
-    views: [{ state: 'frozen', ySplit: 1 }],
-  });
-
-  // ---- Define columns ----
-  const colDefs: Partial<ExcelJS.Column>[] = FIXED_COLUMNS.map(c => ({
-    header: c.header,
-    key: c.key,
-    width: c.width,
-  }));
-  for (const dynKey of dynamicCols) {
-    colDefs.push({ header: dynKey, key: dynKey, width: 30 });
-  }
-  ws.columns = colDefs;
-
-  // ---- Style header row ----
-  const headerRow = ws.getRow(1);
-  headerRow.eachCell(cell => {
-    cell.fill   = FILL_HEADER;
-    cell.font   = FONT_HEADER;
-    cell.border = BORDER_THIN;
-    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
-  });
-  headerRow.height = 18;
-
-  // ---- Add data rows ----
-  for (const row of allRows) {
-    const excelRow = ws.addRow(row);
-    const isAttrRow = row.type === 'Attribute';
-    const isAreaRow = row.level === 0;
-    const isLeafRow = row.isLeaf === 'Yes';
-
-    // Choose fill based on row type
-    let fill: ExcelJS.Fill;
-    if (isAttrRow)      fill = FILL_ATTR;
-    else if (isAreaRow) fill = FILL_AREA;
-    else if (isLeafRow) fill = FILL_LEAF;
-    else                fill = FILL_CATEGORY;
-
-    excelRow.eachCell({ includeEmpty: true }, cell => {
-      cell.fill = fill;
-      cell.border = BORDER_THIN;
-      cell.alignment = { vertical: 'middle', wrapText: false };
-    });
-
-    // Bold the chain column for category rows
-    if (!isAttrRow) {
-      const chainCell = excelRow.getCell('chain');
-      chainCell.font = FONT_BOLD;
-    }
-
-    excelRow.height = 16;
-  }
-
-  // ---- Auto-filter on header ----
-  ws.autoFilter = {
-    from: { row: 1, column: 1 },
-    to:   { row: 1, column: colDefs.length },
-  };
+  return rows;
 }
 
-// ────────────────────────────────────────────────────────────
-// Help sheet
-// ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// HierarchicalView sheet writer
+// ─────────────────────────────────────────────────────────────
+function writeHierarchicalSheet(
+  wb: ExcelJS.Workbook,
+  rows: DataRow[],
+  infoRow?: InfoRowOptions,
+  conflictSlugs?: Set<string>,
+): void {
+  const ts = nowTimestamp();
 
+  const ws = wb.addWorksheet('HierarchicalView');
+
+  // Freeze at G8: first 6 cols + first 7 rows frozen
+  ws.views = [{ state: 'frozen', xSplit: 6, ySplit: 7 }];
+
+  // Outline properties (summary buttons on left/top, not right/bottom)
+  ws.properties.outlineLevelRow = 1;
+  ws.properties.outlineLevelCol = 1;
+
+  // ── Column widths and grouping ──────────────────────────────
+  ws.columns = COLS.map(c => ({ key: c.key, width: c.width }));
+
+  for (let ci = 0; ci < COLS.length; ci++) {
+    const spec = COLS[ci];
+    if (!spec.grouped) continue;
+    const col = ws.getColumn(ci + 1);
+    col.outlineLevel = 1;
+    if (spec.collapsed) col.hidden = true;
+  }
+
+  // Force slug column (G = index 6) visible when there are conflicts
+  const hasConflicts = conflictSlugs && conflictSlugs.size > 0;
+  if (hasConflicts) {
+    const slugCol = ws.getColumn(colNum('slug'));
+    slugCol.hidden = false;
+  }
+
+  // ── Rows 1–5: Legend (collapsed by default) ─────────────────
+  const legendItems: [string, string][] = [
+    [CLR.HEADER_BG, '🎨  COLOR CODING (4 Colors)'],
+    [CLR.PINK,      'PINK COLUMNS (Auto-calculated / Read-only):  Do not edit for existing rows.'],
+    [CLR.YELLOW,    'YELLOW COLUMNS (Key identifiers):  Edit ONLY for NEW rows.  For EXISTING rows DO NOT CHANGE — creates duplicates!'],
+    [CLR.BLUE,      'BLUE COLUMNS (Freely editable):'],
+    [CLR.GREEN,     'GREEN COLUMNS (Attribute dependency — DependsOn / WhenValue):'],
+  ];
+
+  for (let i = 0; i < legendItems.length; i++) {
+    const [bgArgb, text] = legendItems[i];
+    const rowNum = i + 1;
+    const xlRow = ws.getRow(rowNum);
+    xlRow.outlineLevel = 1;
+    xlRow.hidden = true;
+    xlRow.height = 16;
+
+    // Merge A:Q
+    ws.mergeCells(rowNum, 1, rowNum, N_COLS);
+    const cell = ws.getCell(rowNum, 1);
+    cell.value = text;
+    cell.fill = makeFill(bgArgb);
+    cell.font = {
+      bold: true,
+      size: 10,
+      color: { argb: rowNum === 1 ? CLR.HEADER_FG : 'FF222222' },
+    };
+    cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+  }
+
+  // ── Row 6: Info / backup / conflict row ─────────────────────
+  const row6 = ws.getRow(6);
+  row6.height = 15;
+
+  const infoBg  = !infoRow                      ? CLR.INFO_BG
+                : infoRow.type === 'backup'      ? CLR.BACKUP_BG
+                : infoRow.type === 'conflict'    ? CLR.CONFLICT_BG
+                : CLR.INFO_BG;
+
+  const infoLabel = !infoRow                    ? 'Export'
+                  : infoRow.type === 'backup'   ? 'Backup before:'
+                  : infoRow.type === 'conflict' ? 'Import conflict:'
+                  : 'Export';
+
+  const infoDesc = infoRow?.description ?? '';
+
+  const setInfo = (colIdx: number, val: string, bold = false) => {
+    const c = ws.getCell(6, colIdx);
+    c.value = val;
+    c.fill = makeFill(infoBg);
+    c.font = { size: 10, bold, color: { argb: 'FF444444' } };
+    c.alignment = { vertical: 'middle', horizontal: 'left' };
+  };
+
+  setInfo(1, fmtTimestamp(ts));
+  setInfo(2, infoLabel, true);
+  setInfo(3, infoDesc);
+  // Fill remaining cells with same background (cosmetic)
+  for (let ci = 4; ci <= N_COLS; ci++) {
+    ws.getCell(6, ci).fill = makeFill(infoBg);
+  }
+
+  // ── Row 7: Header ────────────────────────────────────────────
+  const headerRow = ws.getRow(7);
+  headerRow.height = 18;
+
+  for (let ci = 0; ci < COLS.length; ci++) {
+    const cell = ws.getCell(7, ci + 1);
+    cell.value = COLS[ci].header;
+    cell.fill = makeFill(CLR.HEADER_BG);
+    cell.font = { bold: true, size: 10, color: { argb: CLR.HEADER_FG } };
+    cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: false };
+  }
+
+  // Auto-filter covers header row, all columns
+  ws.autoFilter = {
+    from: { row: 7, column: 1 },
+    to:   { row: 7, column: N_COLS },
+  };
+
+  // ── Rows 8+: Data ────────────────────────────────────────────
+  const slugColNum = colNum('slug');
+  const pathColNum = colNum('categoryPath');
+
+  for (let ri = 0; ri < rows.length; ri++) {
+    const data = rows[ri];
+    const rowNum = ri + 8;
+    const xlRow = ws.getRow(rowNum);
+    xlRow.height = 15;
+
+    // Row typography
+    const isArea = data._isAreaRow;
+    const isLeaf = data._isLeafRow;
+    const isAttr = data._isAttrRow;
+    const fontBase: Partial<ExcelJS.Font> = {
+      size: 10,
+      bold: isArea || isLeaf,
+      italic: isAttr,
+    };
+
+    for (let ci = 0; ci < COLS.length; ci++) {
+      const spec = COLS[ci];
+      const cell = ws.getCell(rowNum, ci + 1);
+
+      // ── Cell value ──
+      if (spec.key === 'area') {
+        // Always formula: extract left part of CategoryPath before " > "
+        cell.value = {
+          formula: `IFERROR(LEFT(${colLetter(pathColNum - 1)}${rowNum},FIND(" > ",${colLetter(pathColNum - 1)}${rowNum})-1),${colLetter(pathColNum - 1)}${rowNum})`,
+        };
+      } else if (spec.key === 'sort') {
+        cell.value = data.sort;
+      } else {
+        const val = data[spec.key as keyof DataRow];
+        cell.value = typeof val === 'string' ? val : '';
+      }
+
+      // ── Cell fill: column-based editability color ──
+      let fillArgb = spec.colColor as string;
+
+      // Conflict highlight override for slug column
+      if (hasConflicts && ci === slugColNum - 1) {
+        const slugVal = data.slug;
+        if (slugVal && conflictSlugs!.has(slugVal)) {
+          fillArgb = CLR.SLUG_CONFLICT;
+        }
+      }
+
+      cell.fill = makeFill(fillArgb);
+      cell.font = { ...fontBase };
+      cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: false };
+    }
+  }
+
+  // ── Data validations ─────────────────────────────────────────
+  // ExcelJS TS types omit dataValidations on Worksheet — cast to any.
+  // The API exists at runtime: ws.dataValidations.add(range, rule).
+  const lastDataRow = Math.max(rows.length + 8, 100);
+  const dvRange = (col: string) => `${col}8:${col}${lastDataRow}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dv = (ws as any).dataValidations;
+
+  dv.add(dvRange('A'), {
+    type: 'list', allowBlank: true,
+    formulae: ['"Area,Category,Attribute"'],
+  });
+
+  dv.add(dvRange(colLetter(colNum('attrType') - 1)), {
+    type: 'list', allowBlank: true,
+    formulae: ['"number,text,datetime,boolean,link,image"'],
+  });
+
+  dv.add(dvRange(colLetter(colNum('isRequired') - 1)), {
+    type: 'list', allowBlank: true,
+    formulae: ['"TRUE,FALSE"'],
+  });
+
+  dv.add(dvRange(colLetter(colNum('valType') - 1)), {
+    type: 'list', allowBlank: true,
+    formulae: ['"suggest,none"'],
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Help sheet (last)
+// ─────────────────────────────────────────────────────────────
 function writeHelpSheet(wb: ExcelJS.Workbook): void {
   const ws = wb.addWorksheet('Help', {
     views: [{ showGridLines: false }],
   });
 
-  ws.getColumn('A').width = 22;
-  ws.getColumn('B').width = 70;
+  ws.getColumn('A').width = 28;
+  ws.getColumn('B').width = 72;
 
-  type HelpLine = [string, string] | ['---SECTION---', string];
+  const fillSection = makeFill('FFE3F2FD');
 
-  const content: HelpLine[] = [
-    ['---SECTION---', 'Events Tracker — Structure Export Format'],
-    ['Version', '1.0 — 2026'],
-    ['', ''],
-    ['---SECTION---', 'Purpose'],
-    ['', 'This file is a snapshot of your category hierarchy and attribute schema.'],
-    ['', 'It contains one sheet per Area, showing every category level and all'],
-    ['', 'attribute definitions at each level.'],
-    ['', ''],
-    ['', 'Use this file to:'],
-    ['', '  • Back up your structure before making edits'],
-    ['', '  • Review your schema at a glance'],
-    ['', '  • Import new areas/categories/attributes (add-only — see Import Rules)'],
-    ['', ''],
-    ['---SECTION---', 'How to Read the File'],
-    ['', 'Each sheet represents one Area (e.g. "Fitness").'],
-    ['', 'Rows alternate between Category rows and Attribute rows.'],
-    ['', '  • Category row (Type = "Category"): describes one level of the hierarchy.'],
-    ['', '    The Chain column shows the full path: "Fitness > Activity > Gym > Cardio"'],
-    ['', '  • Attribute row (Type = "Attribute"): describes one attribute definition'],
-    ['', '    attached to the category at the level shown in Chain.'],
-    ['', ''],
-    ['---SECTION---', 'Column Descriptions'],
-    ['Type',           '"Category" or "Attribute"'],
-    ['Sort',           'Display order of this node within its parent level'],
-    ['Area',           'Area name (e.g. "Fitness")'],
-    ['Chain',          'Full category path from Area to this level'],
-    ['Level',          'Hierarchy depth. 0 = Area, 1 = L1, 2 = L2, etc.'],
-    ['IsLeaf',         '"Yes" if this category has no children (data entry level)'],
-    ['Description',    'Optional description of the category or attribute'],
-    ['AttrName',       'Attribute display name (Attribute rows only)'],
-    ['AttrSlug',       'Internal identifier — never changes after creation'],
-    ['AttrType',       'Data type: number | text | datetime | boolean | link | image'],
-    ['Unit',           'Optional unit label shown in UI (e.g. "kg", "min")'],
-    ['IsRequired',     '"Yes" if attribute must be filled in when recording an activity'],
-    ['ValidationType', '"none" = free text. "suggest" = dropdown. "depends_on" = conditional dropdown.'],
-    ['TextOptions',    'For ValidationType="suggest": pipe-separated options. e.g. "Low|Medium|High"'],
-    ['DependsOnAttr',  'For ValidationType="depends_on": slug of the parent attribute'],
-    ['DependsOnWhen_*','For each value of the parent attribute, the available child options (pipe-separated).'],
-    ['', 'Example: DependsOnWhen_Upp = "pull.m|biceps|triceps"'],
-    ['', '         DependsOnWhen_Low = "squat-bw|squat-bulg|iskoraci"'],
-    ['', ''],
-    ['---SECTION---', 'Validation Rules — Format Reference'],
-    ['', 'Simple suggest list (stored in DB as JSON):'],
-    ['', '  { "type": "suggest", "suggest": ["Option A", "Option B", "Option C"] }'],
-    ['', ''],
-    ['', 'Dependent dropdown (stored in DB as JSON):'],
-    ['', '  { "type": "suggest", "depends_on": {'],
-    ['', '      "attribute_slug": "strength_type",'],
-    ['', '      "options_map": {'],
-    ['', '        "Upp": ["pull.m", "biceps", "triceps"],'],
-    ['', '        "Low": ["squat-bw", "squat-bulg"]'],
-    ['', '      }'],
-    ['', '  }}'],
-    ['', ''],
-    ['---SECTION---', 'Import Rules'],
-    ['', 'Importing this file is NON-DESTRUCTIVE — it only ADDS new structure.'],
-    ['', 'It will never modify or delete existing areas, categories, or attributes.'],
-    ['', ''],
-    ['', 'What import does:'],
-    ['', '  • Adds Areas that do not already exist (matched by name)'],
-    ['', '  • Adds Categories that do not already exist under their parent (matched by slug)'],
-    ['', '  • Adds Attribute Definitions that do not already exist (matched by slug)'],
-    ['', ''],
-    ['', 'What import does NOT do:'],
-    ['', '  • Rename or change existing categories or attributes'],
-    ['', '  • Delete anything'],
-    ['', '  • Move categories to different parents'],
-    ['', ''],
-    ['', 'To edit or delete existing structure, use the Edit Mode in the Structure tab.'],
+  type HelpLine =
+    | { kind: 'section'; text: string }
+    | { kind: 'row'; label: string; value: string };
+
+  const lines: HelpLine[] = [
+    { kind: 'section', text: 'Events Tracker — Structure Export Format v2' },
+    { kind: 'row', label: 'Version',  value: '2.0 — 2026' },
+    { kind: 'row', label: '', value: '' },
+
+    { kind: 'section', text: 'File Layout' },
+    { kind: 'row', label: 'Rows 1–5', value: 'Color coding legend.  Click [+] on the left to expand.' },
+    { kind: 'row', label: 'Row 6',    value: 'Export info, or backup / conflict description.' },
+    { kind: 'row', label: 'Row 7',    value: 'Column headers.' },
+    { kind: 'row', label: 'Row 8+',   value: 'Data: Area rows, Category rows, Attribute rows.' },
+    { kind: 'row', label: '', value: '' },
+
+    { kind: 'section', text: 'Color Coding' },
+    { kind: 'row', label: 'PINK',   value: 'Auto-calculated / Read-only.  Do not edit for existing rows.' },
+    { kind: 'row', label: 'YELLOW', value: 'Key identifiers.  Edit ONLY for NEW rows — changing existing rows creates duplicates.' },
+    { kind: 'row', label: 'BLUE',   value: 'Freely editable.' },
+    { kind: 'row', label: 'GREEN',  value: 'Dependency columns (DependsOn / WhenValue).' },
+    { kind: 'row', label: '', value: '' },
+
+    { kind: 'section', text: 'Grouped / Hidden Columns' },
+    { kind: 'row', label: '', value: 'Several columns are grouped and collapsed by default.  Click [+] in the column header area to expand.' },
+    { kind: 'row', label: 'Default collapsed', value: 'IsLeaf (B), Area (C), Sort (E), Slug (G), AttrType (H), IsRequired (I), Val.Type (J), Default (K), Val.Max (L)' },
+    { kind: 'row', label: 'Default open',      value: 'TextOptions/Val.Min (N), DependsOn (O), WhenValue (P)' },
+    { kind: 'row', label: '', value: '' },
+
+    { kind: 'section', text: 'Column Reference (A–Q)' },
+    { kind: 'row', label: 'A  Type',              value: 'Area / Category / Attribute' },
+    { kind: 'row', label: 'B  IsLeaf',            value: 'TRUE if leaf category (no children).  Informational — importer recalculates from DB.' },
+    { kind: 'row', label: 'C  Area',              value: 'Auto-formula: extracts area name from CategoryPath.  Read-only.' },
+    { kind: 'row', label: 'D  CategoryPath',      value: 'KEY column.  Full path e.g. "Fitness > Activity > Gym".  Do NOT change for existing rows.' },
+    { kind: 'row', label: 'E  Sort',              value: 'Display order within parent.' },
+    { kind: 'row', label: 'F  AttrName',          value: 'Attribute display name.' },
+    { kind: 'row', label: 'G  Slug',              value: 'Internal stable identifier.  Used for import matching and DependsOn references.  Never changes after creation.' },
+    { kind: 'row', label: 'H  AttrType',          value: 'Data type: number | text | datetime | boolean | link | image' },
+    { kind: 'row', label: 'I  IsRequired',        value: 'TRUE / FALSE' },
+    { kind: 'row', label: 'J  Val.Type',          value: 'suggest = dropdown with options.  none = free text.' },
+    { kind: 'row', label: 'K  Default',           value: 'Default value shown when creating a new event.' },
+    { kind: 'row', label: 'L  Val.Max (no)',      value: 'Maximum allowed value (number attributes only).' },
+    { kind: 'row', label: 'M  Unit',              value: 'Display unit e.g. kg, min, bpm.' },
+    { kind: 'row', label: 'N  TextOptions/Val.Min', value: 'For suggest: pipe-separated options e.g. "Low|Medium|High".  For number: minimum value.' },
+    { kind: 'row', label: 'O  DependsOn',         value: 'Slug of the parent attribute that controls this dropdown.  Must be in the same category.' },
+    { kind: 'row', label: 'P  WhenValue',         value: 'Value of parent attribute for this row\'s options.  Use "*" as fallback for unlisted parent values.' },
+    { kind: 'row', label: 'Q  Description',       value: 'Optional documentation notes.' },
+    { kind: 'row', label: '', value: '' },
+
+    { kind: 'section', text: 'Understanding DependsOn Rows' },
+    { kind: 'row', label: '', value: 'When an attribute has conditional options (depends on another attribute\'s value),' },
+    { kind: 'row', label: '', value: 'it appears as MULTIPLE rows — one per WhenValue.' },
+    { kind: 'row', label: '', value: '' },
+    { kind: 'row', label: 'Example:', value: '' },
+    { kind: 'row', label: 'AttrName      | DependsOn      | WhenValue | TextOptions', value: '' },
+    { kind: 'row', label: 'exercise_name | strength_type  | Upp       | pull.m|biceps|triceps', value: '' },
+    { kind: 'row', label: 'exercise_name | strength_type  | Low       | squat-bw|iskoraci', value: '' },
+    { kind: 'row', label: 'exercise_name | strength_type  | *         | (empty → free text for other parent values)', value: '' },
+    { kind: 'row', label: '', value: '' },
+    { kind: 'row', label: '', value: 'All rows for the same attribute share the same SortOrder, AttrType, Unit, IsRequired.' },
+    { kind: 'row', label: '', value: '' },
+
+    { kind: 'section', text: 'Import Rules (Non-Destructive)' },
+    { kind: 'row', label: '', value: 'Import ONLY ADDS new structure.  It never modifies or deletes existing rows.' },
+    { kind: 'row', label: '', value: '' },
+    { kind: 'row', label: 'Empty Slug (new row)',   value: '→ Creates new attribute.  DB assigns slug automatically from AttrName.' },
+    { kind: 'row', label: 'Slug found, same path',  value: '→ Updates name, unit, description, suggest options (safe operations).' },
+    { kind: 'row', label: 'Slug found, diff path',  value: '→ SKIPPED.  Cell highlighted yellow in conflict report (col G).' },
+    { kind: 'row', label: 'New CategoryPath',        value: '→ Creates Area and/or Category if they don\'t exist.' },
+    { kind: 'row', label: '', value: '' },
+    { kind: 'row', label: '', value: 'To edit or delete existing structure, use Edit Mode in the Structure tab UI.' },
   ];
 
-  let row = 1;
-  for (const [label, value] of content) {
-    if (label === '---SECTION---') {
-      ws.mergeCells(`A${row}:B${row}`);
-      const cell = ws.getCell(`A${row}`);
-      cell.value  = value;
-      cell.fill   = FILL_HELP_SECTION;
-      cell.font   = { bold: true, size: 11, color: { argb: 'FF1565C0' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-      ws.getRow(row).height = 20;
+  let rowIdx = 1;
+  for (const line of lines) {
+    if (line.kind === 'section') {
+      ws.mergeCells(rowIdx, 1, rowIdx, 2);
+      const c = ws.getCell(rowIdx, 1);
+      c.value = line.text;
+      c.fill = fillSection;
+      c.font = { bold: true, size: 11, color: { argb: 'FF1565C0' } };
+      c.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      ws.getRow(rowIdx).height = 20;
     } else {
-      const cellA = ws.getCell(`A${row}`);
-      const cellB = ws.getCell(`B${row}`);
-      cellA.value = label;
-      cellB.value = value;
-      if (label) {
-        cellA.font = { bold: true };
-      }
-      cellA.alignment = { vertical: 'top', wrapText: false };
-      cellB.alignment = { vertical: 'top', wrapText: true };
-      ws.getRow(row).height = label.startsWith('DependsOn') ? 14 : 14;
+      const cA = ws.getCell(rowIdx, 1);
+      const cB = ws.getCell(rowIdx, 2);
+      cA.value = line.label;
+      cB.value = line.value;
+      if (line.label) cA.font = { bold: true, size: 10 };
+      else            cA.font = { size: 10 };
+      cB.font = { size: 10 };
+      cA.alignment = { vertical: 'top', wrapText: false };
+      cB.alignment = { vertical: 'top', wrapText: true };
     }
-    row++;
+    rowIdx++;
   }
-
-  ws.getColumn('B').width = 70;
 }
 
-// ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // Public API
-// ────────────────────────────────────────────────────────────
-
-export interface ExportStructureOptions {
-  /** If set, export only this Area and its descendants. */
-  filterAreaId?: string | null;
-  /** If set, export only this Category subtree. */
-  filterCategoryId?: string | null;
-}
+// ─────────────────────────────────────────────────────────────
 
 /**
- * Build an Excel workbook from the given StructureNode list
- * and return it as an ArrayBuffer, ready for file-saver.
+ * Export structure to Excel v2 format.
  *
- * Usage:
- *   const buffer = await exportStructureExcel(nodes, { filterAreaId });
- *   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
- *   saveAs(blob, `structure_export_${nowTimestamp()}.xlsx`);
+ * @param nodes         All StructureNodes from useStructureData
+ * @param options       Optional filter scope
+ * @param infoRow       Info for row 6 (export/backup/conflict)
+ * @param conflictSlugs Set of attribute slugs that caused import conflicts.
+ *                      Forces Slug column visible and highlights those cells.
  */
 export async function exportStructureExcel(
   nodes: StructureNode[],
   options: ExportStructureOptions = {},
+  infoRow?: InfoRowOptions,
+  conflictSlugs?: Set<string>,
 ): Promise<ArrayBuffer> {
   const { filterAreaId, filterCategoryId } = options;
 
-  // ---- Filter nodes to export scope ----
-  let scopedNodes = nodes;
+  // ── Filter scope ──
+  let scoped = nodes;
   if (filterCategoryId) {
     const pivot = nodes.find(n => n.id === filterCategoryId);
     if (pivot) {
       const prefix = pivot.fullPath;
-      scopedNodes = nodes.filter(
+      scoped = nodes.filter(
         n => n.areaId === pivot.areaId &&
           (n.nodeType === 'area' ||
            n.fullPath === prefix ||
@@ -545,44 +642,33 @@ export async function exportStructureExcel(
       );
     }
   } else if (filterAreaId) {
-    scopedNodes = nodes.filter(n => n.areaId === filterAreaId);
+    scoped = nodes.filter(n => n.areaId === filterAreaId);
   }
 
-  // ---- Group by area ----
-  const byArea = groupNodesByArea(scopedNodes);
+  const rows = buildAllRows(scoped);
 
-  // ---- Build workbook ----
   const wb = new ExcelJS.Workbook();
   wb.creator  = 'Events Tracker';
   wb.created  = new Date();
   wb.modified = new Date();
 
-  // Write one sheet per area (preserve area order from DFS)
-  const areaOrder: string[] = [];
-  for (const node of scopedNodes) {
-    if (node.nodeType === 'area' && !areaOrder.includes(node.areaId)) {
-      areaOrder.push(node.areaId);
-    }
-  }
-
-  for (const areaId of areaOrder) {
-    const areaNodes = byArea.get(areaId) ?? [];
-    const areaName  = areaNodes.find(n => n.nodeType === 'area')?.name ?? areaId;
-    writeAreaSheet(wb, areaName, areaNodes);
-  }
-
-  // Write Help sheet last
+  writeHierarchicalSheet(wb, rows, infoRow, conflictSlugs);
   writeHelpSheet(wb);
 
-  // ---- Serialise to buffer ----
-  const buffer = await wb.xlsx.writeBuffer();
-  return buffer as ArrayBuffer;
+  return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
-/**
- * Generate the output filename for a structure export.
- * Always uses current local time.
- */
+/** Filename for a normal structure export. */
 export function structureExportFilename(): string {
   return `structure_export_${nowTimestamp()}.xlsx`;
+}
+
+/** Filename for a pre-operation backup export. */
+export function structureBackupFilename(): string {
+  return `structure_export_${nowTimestamp()}_backup.xlsx`;
+}
+
+/** Filename for an import conflict report. */
+export function structureConflictFilename(): string {
+  return `structure_export_${nowTimestamp()}_conflict.xlsx`;
 }
