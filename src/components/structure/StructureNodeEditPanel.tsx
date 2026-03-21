@@ -47,6 +47,7 @@ interface StructureNodeEditPanelProps {
 
 interface AttrEditState {
   id: string;
+  slug: string;        // Stable identifier — never changed on update
   name: string;
   unit: string;
   description: string;
@@ -105,6 +106,7 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
 
   return {
     id: attr.id,
+    slug: attr.slug,   // Preserved — never regenerated from name
     name: attr.name,
     unit: attr.unit ?? '',
     description: attr.description ?? '',

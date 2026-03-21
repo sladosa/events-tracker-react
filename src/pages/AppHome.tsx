@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
 import { exportStructureExcel, structureExportFilename } from '@/lib/structureExcel';
+import { StructureImportModal } from '@/components/structure/StructureImportModal';
 import { saveAs } from 'file-saver';
 import { useStructureData } from '@/hooks/useStructureData';
 import type { Category } from '@/types/database';
@@ -81,10 +82,12 @@ function AppContent() {
   const nav = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState<string>('');
+  const [userId, setUserId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<TabType>('activities');
   const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>('sunburst');
   const [isEditMode, setIsEditMode] = useState(false);
   const [isExportingStructure, setIsExportingStructure] = useState(false);
+  const [showStructureImport, setShowStructureImport] = useState(false);
   
   // Structure data (needed for Export button)
   const { refetch: refetchStructure } = useStructureData();
@@ -110,6 +113,7 @@ function AppContent() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setEmail(data.session?.user.email ?? '');
+      setUserId(data.session?.user.id ?? '');
     });
   }, []);
 
@@ -323,6 +327,22 @@ function AppContent() {
                 disabled={isEditMode}
               />
 
+              {/* Import button (S20C) */}
+              <button
+                title="Import structure from Excel"
+                onClick={() => setShowStructureImport(true)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  THEME.structure.btnEditMode,
+                )}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                {!isMobile && <span>Import</span>}
+              </button>
+
               {/* Export button (S17) */}
               <button
                 disabled={isExportingStructure}
@@ -410,6 +430,16 @@ function AppContent() {
           )}
         </section>
       </main>
+
+      {/* Structure Import Modal (S20C) */}
+      {showStructureImport && userId && (
+        <StructureImportModal
+          userId={userId}
+          onClose={() => setShowStructureImport(false)}
+          onImported={() => { refetchStructure(); }}
+          getNodes={refetchStructure}
+        />
+      )}
     </div>
   );
 }
@@ -616,6 +646,7 @@ function ActivitiesView() {
           }}
         />
       )}
+
     </div>
   );
 }
