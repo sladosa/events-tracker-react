@@ -45,6 +45,8 @@ interface CategoryDetailPanelProps {
   onNavigate: (index: number) => void;
   /** Open edit panel for this node */
   onEdit: (node: StructureNode) => void;
+  /** Trigger delete modal for this node (only shown in Edit Mode) */
+  onDelete?: (node: StructureNode) => void;
 }
 
 // --------------------------------------------------------
@@ -320,6 +322,7 @@ export function CategoryDetailPanel({
   onClose,
   onNavigate,
   onEdit,
+  onDelete,
 }: CategoryDetailPanelProps) {
   const t = THEME.structure;
 
@@ -421,16 +424,17 @@ export function CategoryDetailPanel({
               <span>Edit</span>
             </button>
 
-            {/* Delete — placeholder control only; real flow (Excel backup) planned S20 */}
+            {/* Delete — triggers StructureDeleteModal in StructureTableView */}
             <button
-              onClick={() => {
-                alert(
-                  'Delete functionality coming in a future version.\n' +
-                  'An Excel backup will be created automatically before any deletion.'
-                );
-              }}
-              title="Delete — coming soon"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+              onClick={() => onDelete?.(node)}
+              title={onDelete ? 'Delete this node' : 'Delete (enable Edit Mode)'}
+              disabled={!onDelete}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                onDelete
+                  ? 'text-red-500 hover:bg-red-50 hover:text-red-700'
+                  : 'text-gray-300 cursor-not-allowed',
+              )}
             >
               <TrashIcon />
               <span className="hidden sm:inline">Delete</span>

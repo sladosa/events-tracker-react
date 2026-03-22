@@ -8,6 +8,8 @@
 // Menu uses fixed positioning via createPortal (same as ActivitiesTable)
 // so it never clips inside scroll containers. Flip-up logic ensures
 // the menu stays on screen when opened near the bottom of the viewport.
+//
+// S22: onAddCategory + onAddLeaf unified → onAddChild (available on ALL node types)
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -17,8 +19,8 @@ import { THEME } from '@/lib/theme';
 import type { StructureNode } from '@/types/structure';
 
 // Approximate pixel height of the largest possible menu
-// (Area in edit mode: View + Edit + Add Category + Delete = 4 items × ~40px)
-const MENU_HEIGHT = 200;
+// (Non-leaf in edit mode: View + Edit + Add Child + Add Between + Delete = 5 items × ~40px)
+const MENU_HEIGHT = 220;
 
 interface CategoryChainRowProps {
   node: StructureNode;
@@ -27,8 +29,8 @@ interface CategoryChainRowProps {
   onView: (node: StructureNode) => void;
   onEdit?: (node: StructureNode) => void;
   onDelete?: (node: StructureNode) => void;
-  onAddCategory?: (node: StructureNode) => void;   // Area: "Add Category"
-  onAddLeaf?: (node: StructureNode) => void;        // Non-leaf: "Add Leaf"
+  /** Add a child category under this node — available on Area, non-leaf, AND leaf */
+  onAddChild?: (node: StructureNode) => void;
   onAddBetween?: (node: StructureNode) => void;     // Non-leaf: "Add Between" (placeholder)
 }
 
@@ -65,8 +67,7 @@ interface ActionsMenuProps {
   onView: (node: StructureNode) => void;
   onEdit?: (node: StructureNode) => void;
   onDelete?: (node: StructureNode) => void;
-  onAddCategory?: (node: StructureNode) => void;
-  onAddLeaf?: (node: StructureNode) => void;
+  onAddChild?: (node: StructureNode) => void;
   onAddBetween?: (node: StructureNode) => void;
 }
 
@@ -78,8 +79,7 @@ function ActionsMenu({
   onView,
   onEdit,
   onDelete,
-  onAddCategory,
-  onAddLeaf,
+  onAddChild,
   onAddBetween,
 }: ActionsMenuProps) {
   const item = (label: string, icon: string, onClick: () => void, danger = false) => (
@@ -119,7 +119,7 @@ function ActionsMenu({
             {node.nodeType === 'area' && (
               <>
                 {item('Edit', '✏️', () => onEdit?.(node))}
-                {item('Add Category', '➕', () => onAddCategory?.(node))}
+                {item('+ Add Child', '➕', () => onAddChild?.(node))}
                 {item('Delete', '🗑️', () => onDelete?.(node), true)}
               </>
             )}
@@ -128,7 +128,7 @@ function ActionsMenu({
             {node.nodeType === 'category' && !node.isLeaf && (
               <>
                 {item('Edit', '✏️', () => onEdit?.(node))}
-                {item('Add Leaf', '➕', () => onAddLeaf?.(node))}
+                {item('+ Add Child', '➕', () => onAddChild?.(node))}
                 {item('Add Between', '↕️', () => onAddBetween?.(node))}
                 {item('Delete', '🗑️', () => onDelete?.(node), true)}
               </>
@@ -138,6 +138,7 @@ function ActionsMenu({
             {node.nodeType === 'category' && node.isLeaf && (
               <>
                 {item('Edit', '✏️', () => onEdit?.(node))}
+                {item('+ Add Child', '➕', () => onAddChild?.(node))}
                 {item('Delete', '🗑️', () => onDelete?.(node), true)}
               </>
             )}
@@ -159,8 +160,7 @@ export function CategoryChainRow({
   onView,
   onEdit,
   onDelete,
-  onAddCategory,
-  onAddLeaf,
+  onAddChild,
   onAddBetween,
 }: CategoryChainRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -267,8 +267,7 @@ export function CategoryChainRow({
               onView={onView}
               onEdit={onEdit}
               onDelete={onDelete}
-              onAddCategory={onAddCategory}
-              onAddLeaf={onAddLeaf}
+              onAddChild={onAddChild}
               onAddBetween={onAddBetween}
             />
           )}

@@ -1,7 +1,7 @@
 # Events Tracker React — ARCHITECTURE.md
 
-**Version:** 1.5 — 2026-03-19  
-**Scope:** Single source of truth for core principles, data model, and critical patterns.  
+**Version:** 1.6 — 2026-03-22
+**Scope:** Single source of truth for core principles, data model, and critical patterns.
 **Audience:** Claude (session continuity), Sasa (developer reference), future refactoring.
 
 > ⚠️ **Regression compass:** Any change touching `session_start`, `category_id`, `event_id`, the parent/leaf distinction, `chain_key`, or the Excel roundtrip **must** be verified against this document.
@@ -12,8 +12,8 @@
 
 A personal activity tracking web app (fitness, habits, diary) built on an EAV data model with hierarchical categories up to 10 levels deep, Excel roundtrip as the primary bulk workflow, and Supabase as the backend.
 
-**Stack:** React 19 + TypeScript + Vite + Tailwind + Supabase + Netlify  
-**Database:** Supabase (PostgreSQL) with RLS policies per `user_id`  
+**Stack:** React 19 + TypeScript + Vite + Tailwind + Supabase + Netlify
+**Database:** Supabase (PostgreSQL) with RLS policies per `user_id`
 **Deploy:** Netlify (main branch only, no preview deploys)
 
 ---
@@ -49,7 +49,7 @@ lookup_values      → legacy table (see section 2.4), currently unused in React
 
 ### 2.3 SQL Schema
 
-Current version: **V5** (V4 + migration 005)  
+Current version: **V5** (V4 + migration 005)
 Applied migrations: 001 (lookup_values), 002 (examples), 003 (RLS policies), 004 (chain_key), 005 (drop lookup_values).
 
 > Note: `auth.uid()` returns NULL when Role=postgres in Supabase SQL Editor. Use direct UUID for ad-hoc queries: `768a6056-91fd-42bb-98ae-ee83e6bd6c8d`
@@ -88,12 +88,12 @@ User adds 3 Strength sets in one session → database gets:
 TOTAL: 5 events in the database for one session.
 ```
 
-**Leaf** = a category that is not the `parent_category_id` of any other event in the session.  
+**Leaf** = a category that is not the `parent_category_id` of any other event in the session.
 **Parent** = all levels above the leaf. Upsert (not insert) per session.
 
 ### P3 — Last non-empty value wins
 
-An empty value (`null`, `""`) **never** overwrites an existing non-empty value.  
+An empty value (`null`, `""`) **never** overwrites an existing non-empty value.
 Applies in: Add Activity, Edit Activity, Excel Import (all three paths).
 
 ```
@@ -348,8 +348,12 @@ interface CollisionInfo {
 | `src/pages/EditActivityPage.tsx` | Edit flow: delta-shift, collision check, parent upsert |
 | `src/pages/ViewDetailsPage.tsx` | Read-only view, Prev/Next, delegates to parentEventLoader |
 | `src/pages/AddActivityPage.tsx` | Add flow: writes `chain_key` on parent INSERT |
-| `src/lib/structureExcel.ts` | Structure tab Excel export — one sheet per Area + Help sheet; handles simple + depends_on attrs |
-| `src/components/structure/StructureNodeEditPanel.tsx` | **[V1.5 NEW]** Structure tab amber Edit panel — rename Area/Category, edit Attributes, suggest options editor; Supabase update on Save |
+| `src/lib/structureExcel.ts` | Structure Excel export v2 — single sheet HierarchicalView, 17 cols A–Q, multi-row DependsOn, legend rows, freeze G8 |
+| `src/lib/structureImport.ts` | **[S21 NEW]** Structure Import — non-destructive, slug lookup, conflict report |
+| `src/components/structure/StructureImportModal.tsx` | **[S21 NEW]** Import UI: progress, result summary, conflict download |
+| `src/components/structure/StructureNodeEditPanel.tsx` | **[S19 NEW]** Amber Edit panel — rename Area/Category, edit Attributes, suggest options; Supabase Save |
+| `src/components/structure/StructureDeleteModal.tsx` | **[S22 NEW]** Delete modal — blocked (has events) or confirm+cascade (no events) |
+| `src/components/structure/StructureAddChildPanel.tsx` | **[S22 NEW]** Add Child panel — amber modal, creates child category under any node type |
 | `src/pages/AppHome.tsx` | Home: Activities tab, filter, Export/Import triggers, Structure tab integration |
 | `src/pages/DebugPage.tsx` | `/app/debug` — Theme Preview tab, debug tools |
 | `src/context/FilterContext.tsx` | Global filter state (area, category, date range, sort) |
@@ -357,7 +361,7 @@ interface CollisionInfo {
 | `src/hooks/useSessionTimer.ts` | Holds `sessionDateTime` (seconds = 0 — BUG-C fix) |
 | `src/components/activity/ActivityHeader.tsx` | Time picker (seconds = 0 — BUG-B fix) |
 | `src/components/activity/AttributeInput.tsx` | Renders dropdown/input based on validation_rules |
-| `sql/SQL schema_V4.sql` | Reference schema (not for direct execution) |
+| `sql/SQL schema_V5_commented.sql` | Reference schema V5 (not for direct execution) |
 
 ---
 
@@ -381,7 +385,7 @@ When the user opens Add/Edit with an existing draft → "Resume / Discard" dialo
 | Edit Activity | Amber | `THEME['edit']` | |
 | Add Activity | Blue | `THEME['add']` | ⚠️ V1.1 said Green — actual `theme.ts` has `bg-blue-600` |
 | Structure Tab | Indigo/Purple | `THEME['structure']` | Independent entry — change separately from ViewDetailsPage |
-| Structure Edit Panel | Amber | `THEME['structureEdit']` | **[V1.5 NEW]** Independent from global `edit` — `StructureNodeEditPanel` only |
+| Structure Edit Panel | Amber | `THEME['structureEdit']` | **[V1.5]** Independent from global `edit` — `StructureNodeEditPanel` + `StructureAddChildPanel` |
 
 Preview all themes at `/app/debug` → Theme Preview tab (HMR, no restart needed).
 
@@ -422,15 +426,19 @@ Preview all themes at `/app/debug` → Theme Preview tab (HMR, no restart needed
 
 ## 15. Not yet implemented / In progress
 
-| Feature                                           | Status                   | Note                                                                                                              |
-| ------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| Structure Tab — Read-Only + Export                | ✅ **Complete (S15–S18)** | Table View + Sunburst + Export wired; filter sync bugfixes (S18)                                                  |
-| Structure Tab — Edit Mode (safe ops)              | ✅ **Complete (S19)**     | Rename Area/Category/Attributes, suggest options editor; Edit Mode toggle; row highlight; Prev/Next in View panel |
-| Structure Tab — Edit Mode (delete + add)          | Planned S20              | Delete with Excel backup + cascade confirm; Add Area; Add Leaf Category                                           |
-| Structure Tab — Excel Import                      | Planned S20              | Non-destructive add-only; React v2 format                                                                         |
-| Structure Excel format v2                         | ✅ **Complete (S20)**     | Migrate to Streamlit-compatible multi-row Depends_On; see EXCEL_FORMAT_ANALYSIS_v2.md                             |
-| BUG-F Step 2 (transaction / rollback)             | Deferred                 | Supabase RPC                                                                                                      |
-| `date_trunc('minute')` for collision check in SQL | Deferred                 | Long-term fix for legacy data                                                                                     |
+| Feature | Status | Note |
+|---|---|---|
+| Structure Tab — Read-Only + Export | ✅ **Complete (S15–S18)** | Table View + Sunburst + Export wired; filter sync bugfixes (S18) |
+| Structure Tab — Edit Mode (safe ops) | ✅ **Complete (S19)** | Rename Area/Category/Attributes, suggest options editor; Edit Mode toggle; row highlight; Prev/Next in View panel |
+| Structure Excel format v2 | ✅ **Complete (S20B)** | 17 cols A–Q, single sheet HierarchicalView, multi-row DependsOn; see EXCEL_FORMAT_ANALYSIS_v2.md |
+| Structure Excel Import | ✅ **Complete (S21)** | `structureImport.ts` + `StructureImportModal.tsx`; non-destructive; slug lookup; conflict report |
+| Structure Tab — Delete (no events) | ✅ **Complete (S22)** | `StructureDeleteModal`: cascade delete of empty subtrees; blocked with message if eventCount > 0 |
+| Structure Tab — Add Child Category | ✅ **Complete (S22)** | `StructureAddChildPanel`: "+ Add Child" on Area / non-leaf / leaf; amber panel; slug auto-generated |
+| Structure Tab — Delete with full backup | 🔜 **S23** | Requires combined Structure+Activities Excel backup before cascade delete of nodes with events |
+| Combined Excel backup (Structure + Activities) | 🔜 **S23** | Refactor `exportStructureExcel` + `exportActivitiesExcel` to accept optional `wb?: ExcelJS.Workbook` param; new `exportFullBackup()` function |
+| DependsOn attribute editing (full UI) | 🔜 **S23+** | Currently read-only notice in Edit panel |
+| BUG-F Step 2 (transaction / rollback) | Deferred | Supabase RPC |
+| `date_trunc('minute')` for collision check in SQL | Deferred | Long-term fix for legacy data |
 
 ### 15.1 ⚠️ Structure View — "Add category between" risk
 
@@ -442,10 +450,22 @@ Inserting a new category level between two existing ones (e.g. `Gym > Strength` 
 
 **Principle:** "Add category between" must be a **data migration** (UPDATE `category_id` on all affected events), not just a structural change in the `categories` table. `chain_key` values must also be verified/updated.
 
+### 15.2 ⚠️ Delete with events — S23 architecture plan
+
+Delete of a node with `eventCount > 0` requires a **combined backup** before cascade delete.
+Currently blocked in `StructureDeleteModal` with an explanatory message.
+
+**S23 implementation plan:**
+1. Refactor `exportStructureExcel(nodes, options, infoRow, conflictSlugs, wb?)` — new optional 5th param `wb?: ExcelJS.Workbook`. If provided, adds sheets to existing workbook and returns it; if not, creates new workbook (backward compatible, AppHome call unchanged).
+2. Same refactor for `exportActivitiesExcel(..., wb?)`.
+3. New `exportFullBackup(structureNodes, filterOptions, userId): Promise<ArrayBuffer>` — creates shared workbook, calls both exporters, returns buffer.
+4. `StructureDeleteModal` unlocked for `eventCount > 0`: triggers `exportFullBackup(filtered to subtree)` → download → enable Confirm button → cascade delete including events, event_attributes, event_attachments.
+
 ---
 
-*Document version 1.5 — 2026-03-19 | Sessions 1–19*  
-*Key changes in V1.5: S19 — StructureNodeEditPanel (amber edit panel) added to key files; structureEdit theme entry added; Structure Tab Edit Mode (safe ops) marked complete; planned S20 items updated (delete + add ops, Excel import, v2 format).*  
-*Key changes in V1.4: S17–S18 bugfixes documented (BUG-S1/S2/S3), structureExcel.ts added to key files, Structure Tab read-only marked complete, Edit Mode + Excel Import + v2 format migration planned for S19–S20. Excel format analysis in EXCEL_FORMAT_ANALYSIS_v2.md.*  
-*Key changes in V1.3: migration 005 (DROP lookup_values), Structure Tab read-only fully implemented (S15–S16), theme.ts structure entry added, section 15 updated.*  
+*Document version 1.6 — 2026-03-22 | Sessions 1–22*
+*Key changes in V1.6: S20B (Excel Export v2), S21 (Structure Import), S22 (Delete + Add Child) marked complete in section 15; new key files added (structureImport, StructureImportModal, StructureDeleteModal, StructureAddChildPanel); S23 architecture plan for combined backup (section 15.2); SQL schema reference updated to V5.*
+*Key changes in V1.5: S19 — StructureNodeEditPanel (amber edit panel) added to key files; structureEdit theme entry added; Structure Tab Edit Mode (safe ops) marked complete; planned S20 items updated (delete + add ops, Excel import, v2 format).*
+*Key changes in V1.4: S17–S18 bugfixes documented (BUG-S1/S2/S3), structureExcel.ts added to key files, Structure Tab read-only marked complete, Edit Mode + Excel Import + v2 format migration planned for S19–S20. Excel format analysis in EXCEL_FORMAT_ANALYSIS_v2.md.*
+*Key changes in V1.3: migration 005 (DROP lookup_values), Structure Tab read-only fully implemented (S15–S16), theme.ts structure entry added, section 15 updated.*
 *Key changes in V1.2: chain_key field (migration 004), parentEventLoader.ts shared service, dropdown/validation_rules system (section 6), session_start format warning (4.2), Prev/Next fix (section 7), lookup_values legacy status, theme colour correction, complete fix history in section 14.*

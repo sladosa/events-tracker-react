@@ -5,14 +5,9 @@
 // Renders a hierarchical node list — one CategoryChainRow per
 // StructureNode (Area + every category level) in DFS order.
 //
-// S19 additions:
-//   - Index-based panel state (detailNodeIndex) instead of node ref
-//     → enables Prev/Next navigation within CategoryDetailPanel
-//   - highlightedNodeId: 3-second auto-clear, scroll-to-row
-//     (same pattern as ActivitiesTable) — triggered after panel close or edit save
-//   - StructureNodeEditPanel wired: onEdit opens it, onSaved triggers refetch + highlight
-//   - onDelete → placeholder modal until S20 Excel-backup flow
-//   - Edit Mode functional (isEditMode prop from AppHome)
+// S19: Index-based panel state; highlight + scroll; Edit panel; Edit Mode toggle.
+// S22: Real Delete flow (StructureDeleteModal) + Add Child flow (StructureAddChildPanel).
+//      Delete blocked if node has events (eventCount > 0) — full backup flow S23.
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -23,6 +18,8 @@ import { useStructureData, filterStructureNodes } from '@/hooks/useStructureData
 import { CategoryChainRow } from './CategoryChainRow';
 import { CategoryDetailPanel } from './CategoryDetailPanel';
 import { StructureNodeEditPanel } from './StructureNodeEditPanel';
+import { StructureDeleteModal } from './StructureDeleteModal';
+import { StructureAddChildPanel } from './StructureAddChildPanel';
 import type { StructureNode } from '@/types/structure';
 
 // --------------------------------------------------------
@@ -134,6 +131,12 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
   // "Add Between" placeholder modal
   const [addBetweenNode, setAddBetweenNode] = useState<StructureNode | null>(null);
 
+  // Delete modal
+  const [deleteNode, setDeleteNode] = useState<StructureNode | null>(null);
+
+  // Add Child panel
+  const [addChildParent, setAddChildParent] = useState<StructureNode | null>(null);
+
   // ---- Highlight state (same pattern as ActivitiesTable) ----
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -202,6 +205,21 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
     closePanel(nodeId);
   }, [refetch, closePanel]);
 
+  // After delete: close modal, refetch, close any open panel
+  const handleDeleted = useCallback(async (_deletedId: string) => {
+    setDeleteNode(null);
+    setPanelMode(null);
+    setActivePanelIndex(null);
+    await refetch();
+  }, [refetch]);
+
+  // After add child: close panel, refetch, highlight new node
+  const handleChildCreated = useCallback(async (newNodeId: string) => {
+    setAddChildParent(null);
+    await refetch();
+    setHighlightedNodeId(newNodeId);
+  }, [refetch]);
+
   // --------------------------------------------------------
   // Loading / error / empty states
   // --------------------------------------------------------
@@ -263,14 +281,8 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
                 isHighlighted={isHighlighted}
                 onView={openView}
                 onEdit={openEdit}
-                onDelete={(_n) => {
-                  alert(
-                    'Delete functionality coming in a future version.\n' +
-                    'An Excel backup will be created automatically before any deletion.'
-                  );
-                }}
-                onAddCategory={(_n) => { /* S20 */ }}
-                onAddLeaf={(_n) => { /* S20 */ }}
+                onDelete={setDeleteNode}
+                onAddChild={setAddChildParent}
                 onAddBetween={setAddBetweenNode}
               />
             </div>
@@ -288,6 +300,7 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
           onClose={() => closePanel()}
           onNavigate={handleNavigate}
           onEdit={(n) => openEdit(n)}
+          onDelete={isEditMode ? setDeleteNode : undefined}
         />
       )}
 
@@ -306,6 +319,26 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
         <AddBetweenModal
           node={addBetweenNode}
           onClose={() => setAddBetweenNode(null)}
+        />
+      )}
+
+      {/* ---- Delete Modal ---- */}
+      {deleteNode && (
+        <StructureDeleteModal
+          node={deleteNode}
+          allNodes={nodes}
+          onClose={() => setDeleteNode(null)}
+          onDeleted={handleDeleted}
+        />
+      )}
+
+      {/* ---- Add Child Panel ---- */}
+      {addChildParent && (
+        <StructureAddChildPanel
+          parentNode={addChildParent}
+          allNodes={nodes}
+          onClose={() => setAddChildParent(null)}
+          onCreated={handleChildCreated}
         />
       )}
     </div>
