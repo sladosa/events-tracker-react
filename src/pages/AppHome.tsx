@@ -88,6 +88,7 @@ function AppContent() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isExportingStructure, setIsExportingStructure] = useState(false);
   const [showStructureImport, setShowStructureImport] = useState(false);
+  const [structureRefreshKey, setStructureRefreshKey] = useState(0);
   
   // Structure data (needed for Export button)
   const { refetch: refetchStructure } = useStructureData();
@@ -424,6 +425,7 @@ function AppContent() {
             <StructureTabContent
               viewMode={isEditMode ? 'table' : structureViewMode}
               isEditMode={isEditMode}
+              refreshKey={structureRefreshKey}
             />
           ) : (
             <ActivitiesView />
@@ -436,7 +438,11 @@ function AppContent() {
         <StructureImportModal
           userId={userId}
           onClose={() => setShowStructureImport(false)}
-          onImported={() => { refetchStructure(); }}
+          onImported={() => {
+            refetchStructure();
+            setStructureRefreshKey(k => k + 1);
+            setShowStructureImport(false);
+          }}
           getNodes={refetchStructure}
         />
       )}
@@ -483,9 +489,10 @@ function TabButton({ active, onClick, icon, label, isMobile }: TabButtonProps) {
 interface StructureTabContentProps {
   viewMode: StructureViewMode;
   isEditMode: boolean;
+  refreshKey: number;
 }
 
-function StructureTabContent({ viewMode, isEditMode }: StructureTabContentProps) {
+function StructureTabContent({ viewMode, isEditMode, refreshKey }: StructureTabContentProps) {
   return (
     <div>
       {/* Sunburst — hidden on mobile via internal class; hidden when table mode */}
@@ -497,7 +504,7 @@ function StructureTabContent({ viewMode, isEditMode }: StructureTabContentProps)
 
       {/* Table View — always visible on mobile; shown on desktop when mode=table */}
       <div className={viewMode === 'sunburst' && !isEditMode ? 'md:hidden' : ''}>
-        <StructureTableView isEditMode={isEditMode} />
+        <StructureTableView isEditMode={isEditMode} refreshKey={refreshKey} />
       </div>
     </div>
   );

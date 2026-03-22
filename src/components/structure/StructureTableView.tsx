@@ -31,6 +31,8 @@ import type { StructureNode } from '@/types/structure';
 
 interface StructureTableViewProps {
   isEditMode: boolean;
+  /** Increment to force a full data refetch and close any open panel */
+  refreshKey?: number;
 }
 
 // --------------------------------------------------------
@@ -109,7 +111,7 @@ function LoadingSkeleton() {
 // Main component
 // --------------------------------------------------------
 
-export function StructureTableView({ isEditMode }: StructureTableViewProps) {
+export function StructureTableView({ isEditMode, refreshKey }: StructureTableViewProps) {
   const t = THEME.structure;
   const { filter } = useFilter();
   const { nodes, loading, error, refetch } = useStructureData();
@@ -118,6 +120,16 @@ export function StructureTableView({ isEditMode }: StructureTableViewProps) {
   // Index into `filtered` array (not `nodes`) so Prev/Next stays within current filter
   const [panelMode, setPanelMode] = useState<PanelMode>(null);
   const [activePanelIndex, setActivePanelIndex] = useState<number | null>(null);
+
+  // When parent signals a data refresh (e.g. after import), refetch and close panel
+  // so the user sees fresh data without stale detail panel
+  useEffect(() => {
+    if (refreshKey === undefined || refreshKey === 0) return;
+    setActivePanelIndex(null);
+    setPanelMode(null);
+    refetch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   // "Add Between" placeholder modal
   const [addBetweenNode, setAddBetweenNode] = useState<StructureNode | null>(null);

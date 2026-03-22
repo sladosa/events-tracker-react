@@ -9,11 +9,14 @@
 //   React v2 (header at row 7, data from row 8, col D = CategoryPath)
 //   Streamlit v5 (header at row 1 or 2, col E = CategoryPath)
 //
-// Slug lookup decision tree (Opcija A — decided S20):
-//   Empty slug         → CREATE new attr (trigger generates slug from name)
-//   Slug present, new  → CREATE new attr with provided slug
-//   Slug present, same path → UPDATE safe ops (name, unit, desc, suggest)
-//   Slug present, diff path → SKIP + conflict
+// Slug lookup decision tree (S21 fix — per-category scope):
+//   Empty slug                      → CREATE (trigger generates slug from name)
+//   Slug present, not in this cat   → CREATE (slug scoped to category_id, not global)
+//   Slug present, in this cat, same values → SKIP (dirty check — no DB write)
+//   Slug present, in this cat, different   → UPDATE safe ops (name, unit, desc, validation_rules)
+//
+// NOTE: Slug uniqueness is per-category (category_id + slug), NOT global.
+// Same slug in different categories = two independent attribute_definitions — both valid.
 //
 // Public API:
 //   importStructureExcel(file, existingNodes, userId) → ImportResult
@@ -95,8 +98,28 @@ interface AttrGroup {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Slug generation (client-side for areas/categories)
+// Normalize JSON for comparison — sorts keys recursively.
+// PostgreSQL JSONB stores keys alphabetically; JS objects preserve
+// insertion order. Without normalization, key-order differences
+// cause false dirty-check positives on validation_rules.
 // ─────────────────────────────────────────────────────────────
+
+function normalizeJson(v: unknown): string {
+  if (v === null || v === undefined) return 'null';
+  if (typeof v !== 'object' || Array.isArray(v)) return JSON.stringify(v);
+  const sorted = Object.keys(v as Record<string, unknown>)
+    .sort()
+    .reduce<Record<string, unknown>>((acc, k) => {
+      acc[k] = (v as Record<string, unknown>)[k];
+      return acc;
+    }, {});
+  // Recurse into values
+  return '{' + Object.entries(sorted).map(([k, val]) =>
+    `${JSON.stringify(k)}:${normalizeJson(val)}`
+  ).join(',') + '}';
+}
+
+
 
 function generateSlug(name: string): string {
   return name
@@ -387,7 +410,7 @@ export async function importStructureExcel(
         .eq('user_id', userId),
       supabase
         .from('attribute_definitions')
-        .select('id, category_id, name, slug')
+        .select('id, category_id, name, slug, unit, description, sort_order, validation_rules')
         .eq('user_id', userId),
     ]);
 
@@ -441,13 +464,33 @@ export async function importStructureExcel(
     catByPath.set(fp, c.id);
   }
 
-  // attrSlug → { id, categoryId, name }
-  const attrBySlug = new Map<string, { id: string; categoryId: string | null; name: string }>();
-  // attrKey: `${categoryId}/${name.lower}` → id (for slug-less lookup)
-  const attrByKey  = new Map<string, string>();
+  // Bug fix S21: key = `${slug}||${categoryId}` — slug is NOT globally unique.
+  // Same slug in different categories = two independent attribute_definitions.
+  // Lookup must be scoped to category_id to avoid false-positive conflicts.
+  interface AttrRecord {
+    id: string;
+    categoryId: string | null;
+    name: string;
+    unit: string | null;
+    description: string | null;
+    sortOrder: number;
+    validationRules: Record<string, unknown>;
+  }
+  const attrBySlugCat = new Map<string, AttrRecord>(); // key: `${slug}||${categoryId}`
+  // attrKey: `${categoryId}/${name.lower}` → id (for slug-less lookup, unchanged)
+  const attrByKey = new Map<string, string>();
 
   for (const a of dbAttrs) {
-    attrBySlug.set(a.slug, { id: a.id, categoryId: a.category_id, name: a.name });
+    const key = `${a.slug}||${a.category_id ?? ''}`;
+    attrBySlugCat.set(key, {
+      id:              a.id,
+      categoryId:      a.category_id,
+      name:            a.name,
+      unit:            a.unit ?? null,
+      description:     a.description ?? null,
+      sortOrder:       a.sort_order,
+      validationRules: (a.validation_rules as Record<string, unknown>) ?? {},
+    });
     if (a.category_id) {
       attrByKey.set(`${a.category_id}/${a.name.toLowerCase()}`, a.id);
     }
@@ -584,11 +627,15 @@ export async function importStructureExcel(
 
     const validationRules = buildValidationRules(group);
 
-    const existing = group.slug ? attrBySlug.get(group.slug) : null;
+    // Per-category lookup: slug is unique within a category, NOT globally.
+    // Two categories can have an attribute with the same slug — that's valid.
+    const slugCatKey = group.slug ? `${group.slug}||${categoryId}` : null;
+    const existing   = slugCatKey ? attrBySlugCat.get(slugCatKey) : null;
 
     if (!existing) {
-      // CREATE — slug not found in DB (or empty slug → trigger generates)
+      // CREATE — slug not found in THIS category (or empty slug → trigger generates)
       const { error } = await supabase.from('attribute_definitions').insert({
+        id:               crypto.randomUUID(),
         user_id:          userId,
         category_id:      categoryId,
         name:             group.attrName,
@@ -606,36 +653,52 @@ export async function importStructureExcel(
         result.skipped++;
       } else {
         result.created.attributes++;
-        // Update lookup so future rows in same import see it
-        if (group.slug) {
-          attrBySlug.set(group.slug, { id: '', categoryId, name: group.attrName });
+        // Update in-memory cache so later rows in same import session see it
+        if (group.slug && slugCatKey) {
+          attrBySlugCat.set(slugCatKey, {
+            id:              '',
+            categoryId,
+            name:            group.attrName,
+            unit:            group.unit || null,
+            description:     group.description || null,
+            sortOrder:       group.sort,
+            validationRules: validationRules,
+          });
         }
       }
       continue;
     }
 
-    // Slug found — check CategoryPath match
-    const dbCategoryPath = existing.categoryId
-      ? buildFullPath(existing.categoryId)
-      : '';
-    const pathMatch =
-      existing.categoryId === categoryId ||
-      dbCategoryPath === group.categoryPath;
+    // Slug found in this category — dirty check before UPDATE.
+    // Compare all updatable fields; if nothing changed, skip entirely (no DB write).
+    const newRules = validationRules;
 
-    if (!pathMatch) {
-      // CONFLICT — slug belongs to different path
-      result.conflicts.push({
-        rowNum:       group.firstRowNum,
-        attrName:     group.attrName,
-        slug:         group.slug,
-        foundInPath:  dbCategoryPath,
-        importedPath: group.categoryPath,
+    const nameDiff   = existing.name        !== group.attrName;
+    const unitDiff   = (existing.unit        ?? '') !== (group.unit        || '');
+    const descDiff   = (existing.description ?? '') !== (group.description || '');
+    const sortDiff   = existing.sortOrder   !== group.sort;
+    const rulesDiff  = normalizeJson(existing.validationRules) !== normalizeJson(newRules);
+
+    const isDirty = nameDiff || unitDiff || descDiff || sortDiff || rulesDiff;
+
+    // DEBUG — remove after S21 testing
+    if (isDirty) {
+      console.log('[Import dirty]', group.slug, '|', group.categoryPath, {
+        nameDiff,
+        unitDiff,   dbUnit:  existing.unit,        xlUnit:  group.unit        || null,
+        descDiff,   dbDesc:  existing.description, xlDesc:  group.description || null,
+        sortDiff,   dbSort:  existing.sortOrder,   xlSort:  group.sort,
+        rulesDiff,  dbRules: normalizeJson(existing.validationRules),
+                    xlRules: normalizeJson(newRules),
       });
-      result.skipped++;
+    }
+
+    if (!isDirty) {
+      // Nothing changed — skip silently (not counted as error/skipped)
       continue;
     }
 
-    // SAFE UPDATE — same path, safe operations only
+    // SAFE UPDATE — values differ, update only safe ops (never data_type, never moves)
     const { error } = await supabase
       .from('attribute_definitions')
       .update({
@@ -644,7 +707,7 @@ export async function importStructureExcel(
         unit:             group.unit || null,
         description:      group.description || null,
         sort_order:       group.sort,
-        validation_rules: validationRules,
+        validation_rules: newRules,
         updated_at:       new Date().toISOString(),
       })
       .eq('id', existing.id);
