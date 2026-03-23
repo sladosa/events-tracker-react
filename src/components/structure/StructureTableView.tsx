@@ -5,9 +5,23 @@
 // Renders a hierarchical node list — one CategoryChainRow per
 // StructureNode (Area + every category level) in DFS order.
 //
-// S19: Index-based panel state; highlight + scroll; Edit panel; Edit Mode toggle.
-// S22: Real Delete flow (StructureDeleteModal) + Add Child flow (StructureAddChildPanel).
-//      Delete blocked if node has events (eventCount > 0) — full backup flow S23.
+// S19 additions:
+//   - Index-based panel state (activePanelIndex)
+//   - highlightedNodeId: 3-second auto-clear + scroll-to-row
+//   - StructureNodeEditPanel wired
+//   - Edit Mode functional (isEditMode prop from AppHome)
+//
+// S22 additions:
+//   - StructureDeleteModal: cascade delete with blocked/allowed states
+//   - StructureAddChildPanel: unified "+ Add Child" on all node types
+//   - CategoryChainRow uses unified onAddChild callback
+//   - CategoryDetailPanel receives onDelete + isEditMode
+//
+// S23 fixes:
+//   - After delete/add: dispatch 'areas-changed' CustomEvent so
+//     ProgressiveCategorySelector refetches the Area dropdown.
+//   - After area delete: if deleted area was selected in filter,
+//     call filter.reset() to avoid stale area in dropdown.
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -20,6 +34,7 @@ import { CategoryDetailPanel } from './CategoryDetailPanel';
 import { StructureNodeEditPanel } from './StructureNodeEditPanel';
 import { StructureDeleteModal } from './StructureDeleteModal';
 import { StructureAddChildPanel } from './StructureAddChildPanel';
+import { supabase } from '@/lib/supabaseClient';
 import type { StructureNode } from '@/types/structure';
 
 // --------------------------------------------------------
@@ -110,16 +125,31 @@ function LoadingSkeleton() {
 
 export function StructureTableView({ isEditMode, refreshKey }: StructureTableViewProps) {
   const t = THEME.structure;
-  const { filter } = useFilter();
+  const { filter, reset: resetFilter } = useFilter();
   const { nodes, loading, error, refetch } = useStructureData();
 
   // ---- Panel state ----
-  // Index into `filtered` array (not `nodes`) so Prev/Next stays within current filter
   const [panelMode, setPanelMode] = useState<PanelMode>(null);
   const [activePanelIndex, setActivePanelIndex] = useState<number | null>(null);
 
+  // ---- Delete modal state ----
+  const [deleteNode, setDeleteNode] = useState<StructureNode | null>(null);
+
+  // ---- Add Child panel state ----
+  const [addChildParent, setAddChildParent] = useState<StructureNode | null>(null);
+
+  // ---- Add Between placeholder ----
+  const [addBetweenNode, setAddBetweenNode] = useState<StructureNode | null>(null);
+
+  // ---- Current user ID (needed for Add Child insert) ----
+  const [userId, setUserId] = useState<string>('');
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id);
+    });
+  }, []);
+
   // When parent signals a data refresh (e.g. after import), refetch and close panel
-  // so the user sees fresh data without stale detail panel
   useEffect(() => {
     if (refreshKey === undefined || refreshKey === 0) return;
     setActivePanelIndex(null);
@@ -128,33 +158,19 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
-  // "Add Between" placeholder modal
-  const [addBetweenNode, setAddBetweenNode] = useState<StructureNode | null>(null);
-
-  // Delete modal
-  const [deleteNode, setDeleteNode] = useState<StructureNode | null>(null);
-
-  // Add Child panel
-  const [addChildParent, setAddChildParent] = useState<StructureNode | null>(null);
-
-  // ---- Highlight state (same pattern as ActivitiesTable) ----
+  // ---- Highlight state ----
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
 
-  // Auto-clear highlight after 3s
   useEffect(() => {
     if (!highlightedNodeId) return;
     const timer = setTimeout(() => setHighlightedNodeId(null), 3000);
     return () => clearTimeout(timer);
   }, [highlightedNodeId]);
 
-  // Scroll to highlighted row when it appears
   useEffect(() => {
     if (!highlightedNodeId || loading) return;
-    const ref = highlightRef.current;
-    if (ref) {
-      ref.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [highlightedNodeId, loading]);
 
   // ---- Filter nodes ----
@@ -169,23 +185,16 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
 
   const openView = useCallback((node: StructureNode) => {
     const idx = filtered.findIndex(n => n.id === node.id);
-    if (idx >= 0) {
-      setActivePanelIndex(idx);
-      setPanelMode('view');
-    }
+    if (idx >= 0) { setActivePanelIndex(idx); setPanelMode('view'); }
   }, [filtered]);
 
   const openEdit = useCallback((node: StructureNode) => {
     const idx = filtered.findIndex(n => n.id === node.id);
-    if (idx >= 0) {
-      setActivePanelIndex(idx);
-      setPanelMode('edit');
-    }
+    if (idx >= 0) { setActivePanelIndex(idx); setPanelMode('edit'); }
   }, [filtered]);
 
   const closePanel = useCallback((highlightId?: string) => {
     setPanelMode(null);
-    // Highlight the row that was being viewed/edited
     if (highlightId) {
       setHighlightedNodeId(highlightId);
     } else if (activeNode) {
@@ -199,23 +208,35 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
     setPanelMode('view');
   }, []);
 
-  // After edit save: refetch data, close panel, highlight row
   const handleEditSaved = useCallback(async (nodeId: string) => {
     await refetch();
     closePanel(nodeId);
   }, [refetch, closePanel]);
 
-  // After delete: close modal, refetch, close any open panel
-  const handleDeleted = useCallback(async (_deletedId: string) => {
+  // ---- Delete callbacks ----
+  const handleDeleted = useCallback(async (deletedId: string) => {
     setDeleteNode(null);
     setPanelMode(null);
     setActivePanelIndex(null);
-    await refetch();
-  }, [refetch]);
 
-  // After add child: close panel, refetch, highlight new node
+    // Notify Area dropdown to refresh
+    window.dispatchEvent(new CustomEvent('areas-changed'));
+
+    // If the deleted node was the currently filtered area, reset filter
+    if (filter.areaId === deletedId) {
+      resetFilter();
+    }
+
+    await refetch();
+  }, [refetch, filter.areaId, resetFilter]);
+
+  // ---- Add Child callbacks ----
   const handleChildCreated = useCallback(async (newNodeId: string) => {
     setAddChildParent(null);
+
+    // Notify Area dropdown to refresh (new area child or category under new area)
+    window.dispatchEvent(new CustomEvent('areas-changed'));
+
     await refetch();
     setHighlightedNodeId(newNodeId);
   }, [refetch]);
@@ -266,7 +287,6 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
     <div>
       <TableHeader />
 
-      {/* Node rows — internal scroll so filter + controls stay visible */}
       <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
         {filtered.map((node) => {
           const isHighlighted = node.id === highlightedNodeId;
@@ -281,8 +301,8 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
                 isHighlighted={isHighlighted}
                 onView={openView}
                 onEdit={openEdit}
-                onDelete={setDeleteNode}
-                onAddChild={setAddChildParent}
+                onDelete={isEditMode ? setDeleteNode : undefined}
+                onAddChild={isEditMode ? setAddChildParent : undefined}
                 onAddBetween={setAddBetweenNode}
               />
             </div>
@@ -301,6 +321,7 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
           onNavigate={handleNavigate}
           onEdit={(n) => openEdit(n)}
           onDelete={isEditMode ? setDeleteNode : undefined}
+          isEditMode={isEditMode}
         />
       )}
 
@@ -311,14 +332,6 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
           onClose={() => closePanel()}
           onSwitchToView={() => setPanelMode('view')}
           onSaved={handleEditSaved}
-        />
-      )}
-
-      {/* ---- Add Between Placeholder Modal ---- */}
-      {addBetweenNode && (
-        <AddBetweenModal
-          node={addBetweenNode}
-          onClose={() => setAddBetweenNode(null)}
         />
       )}
 
@@ -333,14 +346,24 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
       )}
 
       {/* ---- Add Child Panel ---- */}
-      {addChildParent && (
+      {addChildParent && userId && (
         <StructureAddChildPanel
           parentNode={addChildParent}
           allNodes={nodes}
+          userId={userId}
           onClose={() => setAddChildParent(null)}
           onCreated={handleChildCreated}
+        />
+      )}
+
+      {/* ---- Add Between Placeholder Modal ---- */}
+      {addBetweenNode && (
+        <AddBetweenModal
+          node={addBetweenNode}
+          onClose={() => setAddBetweenNode(null)}
         />
       )}
     </div>
   );
 }
+

@@ -45,8 +45,10 @@ interface CategoryDetailPanelProps {
   onNavigate: (index: number) => void;
   /** Open edit panel for this node */
   onEdit: (node: StructureNode) => void;
-  /** Trigger delete modal for this node (only shown in Edit Mode) */
+  /** Open delete modal — only wired when isEditMode is true */
   onDelete?: (node: StructureNode) => void;
+  /** Whether Edit Mode is active — controls Delete button state */
+  isEditMode?: boolean;
 }
 
 // --------------------------------------------------------
@@ -323,6 +325,7 @@ export function CategoryDetailPanel({
   onNavigate,
   onEdit,
   onDelete,
+  isEditMode = false,
 }: CategoryDetailPanelProps) {
   const t = THEME.structure;
 
@@ -424,16 +427,16 @@ export function CategoryDetailPanel({
               <span>Edit</span>
             </button>
 
-            {/* Delete — triggers StructureDeleteModal in StructureTableView */}
+            {/* Delete — active in Edit Mode, visually disabled outside */}
             <button
-              onClick={() => onDelete?.(node)}
-              title={onDelete ? 'Delete this node' : 'Delete (enable Edit Mode)'}
-              disabled={!onDelete}
+              onClick={() => { if (isEditMode && onDelete) onDelete(node); }}
+              disabled={!isEditMode}
+              title={isEditMode ? 'Delete this node' : 'Enable Edit Mode to delete'}
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                onDelete
-                  ? 'text-red-500 hover:bg-red-50 hover:text-red-700'
-                  : 'text-gray-300 cursor-not-allowed',
+                isEditMode
+                  ? 'text-red-600 hover:bg-red-50 cursor-pointer'
+                  : 'text-red-300 cursor-not-allowed',
               )}
             >
               <TrashIcon />

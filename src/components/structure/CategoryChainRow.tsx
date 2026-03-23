@@ -8,8 +8,6 @@
 // Menu uses fixed positioning via createPortal (same as ActivitiesTable)
 // so it never clips inside scroll containers. Flip-up logic ensures
 // the menu stays on screen when opened near the bottom of the viewport.
-//
-// S22: onAddCategory + onAddLeaf unified → onAddChild (available on ALL node types)
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -19,7 +17,7 @@ import { THEME } from '@/lib/theme';
 import type { StructureNode } from '@/types/structure';
 
 // Approximate pixel height of the largest possible menu
-// (Non-leaf in edit mode: View + Edit + Add Child + Add Between + Delete = 5 items × ~40px)
+// (non-leaf in edit mode: View + Edit + Add Child + Add Between + Delete = 5 items × ~40px)
 const MENU_HEIGHT = 220;
 
 interface CategoryChainRowProps {
@@ -29,7 +27,7 @@ interface CategoryChainRowProps {
   onView: (node: StructureNode) => void;
   onEdit?: (node: StructureNode) => void;
   onDelete?: (node: StructureNode) => void;
-  /** Add a child category under this node — available on Area, non-leaf, AND leaf */
+  /** Unified add-child callback for all node types (S22: replaces onAddCategory + onAddLeaf) */
   onAddChild?: (node: StructureNode) => void;
   onAddBetween?: (node: StructureNode) => void;     // Non-leaf: "Add Between" (placeholder)
 }

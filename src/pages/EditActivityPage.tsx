@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
-import { loadParentAttrs } from '@/lib/parentEventLoader';
+import { loadParentAttrs, buildParentChainIds } from '@/lib/parentEventLoader';
 
 import { ActivityHeader } from '@/components/activity/ActivityHeader';
 import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
@@ -289,7 +289,7 @@ export function EditActivityPage() {
       // parentDbIds: za SAVE path trebamo znati koji DB id ima svaki parent.
       // Gradimo ga odvojeno (buildParentChainIds) jer loadParentAttrs ne
       // vraća event ID-ove — samo atribute.
-      const { buildParentChainIds } = await import('@/lib/parentEventLoader');
+      // NOTE: buildParentChainIds je statički importiran na vrhu filea — ne koristiti dynamic import.
       const parentChainIds = await buildParentChainIds(leafCategoryId);
       const newParentDbIds = new Map<string, UUID | null>();
       for (const catId of parentChainIds) {

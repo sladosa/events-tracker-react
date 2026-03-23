@@ -46,7 +46,15 @@ export function ProgressiveCategorySelector({
     setDateRange
   } = useFilter();
   
-  const { areas, loading: areasLoading } = useAreas();
+  const { areas, loading: areasLoading, refetch: refetchAreas } = useAreas();
+
+  // Refetch the Area dropdown whenever structure operations (delete/add)
+  // dispatch the 'areas-changed' CustomEvent from StructureTableView.
+  useEffect(() => {
+    const handler = () => { refetchAreas(); };
+    window.addEventListener('areas-changed', handler);
+    return () => window.removeEventListener('areas-changed', handler);
+  }, [refetchAreas]);
   
   // Shortcuts
   const { presets, loading: presetsLoading, createPreset, deletePreset, incrementUsage } = useActivityPresets();

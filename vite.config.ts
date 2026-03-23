@@ -11,18 +11,25 @@ export default defineConfig({
     },
   },
   build: {
-    // Increase chunk size warning limit (default is 500kB)
-    chunkSizeWarningLimit: 600,
+    // Raise chunk size warning limit — ExcelJS + Plotly are large but
+    // unavoidable for this app's feature set.
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
-        // Manual chunk splitting for better caching
         manualChunks: {
-          // Vendor chunks - split large dependencies
+          // Core React runtime
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // Supabase client
           'vendor-supabase': ['@supabase/supabase-js'],
+          // Small UI utilities
           'vendor-ui': ['react-hot-toast', 'clsx', 'tailwind-merge'],
+          // ExcelJS — ~2.5MB minified, lazy-loaded only on import/export
+          'vendor-excel': ['exceljs'],
+          // Plotly — ~3MB minified, used only by StructureSunburstView
+          'vendor-plotly': ['plotly.js-dist-min'],
         },
       },
     },
   },
 })
+
