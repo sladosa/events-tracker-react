@@ -16,17 +16,34 @@ export default defineConfig({
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
-        manualChunks: {
+        manualChunks(id) {
+          // Plotly — ~3MB, matched by module path (react-plotly.js bundles it internally)
+          if (id.includes('node_modules/plotly.js') || id.includes('node_modules/react-plotly.js')) {
+            return 'vendor-plotly';
+          }
+          // ExcelJS — ~2.5MB, lazy-loaded only on import/export
+          if (id.includes('node_modules/exceljs')) {
+            return 'vendor-excel';
+          }
           // Core React runtime
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/react/')) {
+            return 'vendor-react';
+          }
           // Supabase client
-          'vendor-supabase': ['@supabase/supabase-js'],
+          if (id.includes('node_modules/@supabase')) {
+            return 'vendor-supabase';
+          }
           // Small UI utilities
-          'vendor-ui': ['react-hot-toast', 'clsx', 'tailwind-merge'],
-          // ExcelJS — ~2.5MB minified, lazy-loaded only on import/export
-          'vendor-excel': ['exceljs'],
-          // Plotly — ~3MB minified, used only by StructureSunburstView
-          'vendor-plotly': ['plotly.js-dist-min'],
+          if (
+            id.includes('node_modules/react-hot-toast') ||
+            id.includes('node_modules/clsx') ||
+            id.includes('node_modules/tailwind-merge')
+          ) {
+            return 'vendor-ui';
+          }
         },
       },
     },

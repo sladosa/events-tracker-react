@@ -588,8 +588,15 @@ export async function importStructureExcel(
   // ── 5. Group attribute rows ───────────────────────────────
   const attrGroups = groupAttributes(parsedRows);
 
-  // ── 6. Collect unique CategoryPaths from Category + Attribute rows ──
+  // ── 6. Collect unique CategoryPaths from Area + Category + Attribute rows ──
   // (Ensure all category chains exist before processing attributes)
+  // Area rows: create the area itself (no categories needed)
+  for (const row of parsedRows) {
+    if (row.type === 'Area') {
+      await findOrCreateArea(row.categoryPath.split('>')[0].trim());
+    }
+  }
+
   const pathsToResolve = new Map<string, number>(); // path → sort
   for (const row of parsedRows) {
     if (row.type === 'Category' || row.type === 'Attribute') {

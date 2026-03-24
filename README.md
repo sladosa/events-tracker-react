@@ -1,138 +1,148 @@
 # Events Tracker
 
-> Flexible event tracking system with hierarchical categories and customizable attributes.
-
-⚠️ **STATUS: IN DEVELOPMENT** - This is a complete project rebuild. The previous Streamlit version works but is being migrated to a modern stack.
+Personal activity tracking web app — fitness, habits, diary — built on a hierarchical EAV data model with Excel roundtrip as primary bulk workflow.
 
 ---
 
-## 🎯 What is this?
+## What is this?
 
-Activity tracking system with flexible structure:
-- **Hierarchy:** Areas → Categories (up to 10 levels) → Attributes
-- **EAV pattern:** Dynamic attributes (number, text, datetime, boolean...)
-- **Multi-session:** Multiple activities per day with timestamps
+A single-user activity tracker with flexible structure:
 
-**Use cases:** Fitness tracking, health diary, project tracking, personal diary.
+- **Hierarchy:** Areas → Categories (up to 10 levels) → Attribute Definitions
+- **EAV pattern:** Dynamic per-category attributes (number, text, datetime, boolean, dropdown)
+- **Multi-session:** Multiple activities per day identified by `session_start` + `chain_key`
+- **Excel roundtrip:** Export structure or activities → edit in Excel → import back
+
+**Use cases:** Fitness tracking, health diary, personal diary, habit tracking.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| Frontend | React 18 + TypeScript + Tailwind CSS |
+| Frontend | React 19 + TypeScript 5.9 + Tailwind CSS 3 |
+| Build | Vite 7 (chunked: react, supabase, excel, plotly, ui) |
 | Backend | Supabase (PostgreSQL + Auth + RLS) |
-| Hosting | Netlify |
-| Legacy version | Streamlit (Python) - separate repo |
+| Hosting | Netlify (CI: typecheck + build on every push) |
 
 ---
 
-## 📋 Development Status
+## What Works (through S24)
 
-### Phase 1: Foundations
-- [ ] Project setup (Vite + React + TS)
-- [ ] GitHub repo + Netlify deployment
-- [ ] Supabase configuration
+**Activities tab**
+- Add Activity — wizard with progressive category selector, EAV attribute inputs
+- Edit Activity — delta-shift, collision detection, parent event upsert
+- View Details — read-only, Prev/Next navigation
+- Excel Export/Import — with collision handling and conflict report
 
-### Phase 2: Auth (W1)
-- [ ] Sign In form
-- [ ] Sign Up form  
-- [ ] Forgot Password
-- [ ] Auth Context + protected routes
+**Structure tab**
+- Table view (DFS order) + Sunburst chart (Plotly)
+- Edit Mode — rename node, edit attribute definitions
+- Add Child — blocked if leaf has events (data integrity)
+- Add Area — creates new top-level area, refreshes Area dropdown
+- Delete — blocked if node has events; cascade delete for empty nodes
+- Excel Export v2 (17 cols, HierarchicalView sheet) + Import (non-destructive)
 
-### Phase 3: Core UI (W2-W3)
-- [ ] Universal Filter component
-- [ ] Add Activity wizard
-- [ ] Mobile-responsive layout
-
-### Phase 4: Events Management
-- [ ] Events list with filters
-- [ ] Event editing
-- [ ] Excel export/import integration
-
-### Phase 5: Advanced
-- [ ] Shortcuts system
-- [ ] Dynamic dropdowns (lookup_values)
-- [ ] Data sharing between users
+**Cross-cutting**
+- Area dropdown live refresh via `areas-changed` CustomEvent
+- Theme system with per-context colour tokens (`src/lib/theme.ts`)
+- P1/P2/P3 data model invariants enforced in all write paths
 
 ---
 
-## 🗄️ Database
-
-Uses existing Supabase database (migrated from Streamlit version).
-
-**Main tables:**
-```
-areas                  - Top-level organization
-categories             - Hierarchical structure  
-attribute_definitions  - Attribute definitions per category
-events                 - Main activity records
-event_attributes       - EAV attribute values
-```
-
-Detailed schema: `docs/SQL_schema_V2.sql`
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# Clone
 git clone https://github.com/USERNAME/events-tracker-react.git
 cd events-tracker-react
-
-# Install
 npm install
 
-# Environment
 cp .env.example .env.local
-# Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+# Fill in VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
 
-# Run
 npm run dev
 ```
 
+Pre-commit check:
+```bash
+npm run typecheck && npm run build
+```
+
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
-├── components/     # UI components
-│   ├── ui/         # Base components (Button, Input...)
-│   └── features/   # Feature-specific
-├── hooks/          # Custom React hooks
-├── lib/            # Utilities + Supabase client
-├── pages/          # Route components
-├── context/        # React Context providers
-└── types/          # TypeScript types
+├── components/
+│   ├── activity/           Activity form components, ExcelImportModal
+│   ├── structure/          Structure tab — table, panels, modals, sunburst
+│   └── ui/                 Base components
+├── context/
+│   └── FilterContext.tsx   Global filter state (area, category, date range)
+├── hooks/
+│   └── useAttributeDefinitions.ts
+├── lib/
+│   ├── parentEventLoader.ts    Shared: parent event upsert logic
+│   ├── excelExport.ts          Activities export
+│   ├── excelImport.ts          Activities import
+│   ├── structureExcel.ts       Structure export v2
+│   ├── structureImport.ts      Structure import (non-destructive)
+│   └── theme.ts                Colour tokens
+└── pages/
+    ├── AppHome.tsx             Tabs, filter, export/import triggers
+    ├── AddActivityPage.tsx
+    ├── EditActivityPage.tsx
+    └── ViewDetailsPage.tsx
 ```
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
-| `docs/Code_Guidelines_React.md` | Coding standards for the project |
-| `docs/SQL_schema_V2.sql` | Database schema |
-| `docs/Migration_Plan.md` | Migration plan from Streamlit |
+| `CLAUDE.md` | Session context, P1/P2/P3 rules, backlog — read by Claude Code automatically |
+| `docs/ARCHITECTURE_v1_6.md` | Data model, chain_key, session identity |
+| `docs/STRUCTURE_TAB_CONTEXT_FOR_CLAUDE_v1.5.md` | Structure tab design decisions |
+| `docs/EXCEL_FORMAT_ANALYSIS_v2.md` | Excel format spec (17 cols, v2) |
+| `docs/SQL_schema_V5_commented.sql` | Full DB schema with comments |
+| `docs/Code_Guidelines_React_v6.md` | Code conventions |
+| `docs/Playwright_Supabase_Setup_Guide.md` | E2E test setup guide (planned) |
+| `Claude-temp_R/PENDING_TESTS.md` | Active manual tests pending confirmation |
+| `Claude-temp_R/test-sessions/` | Full test history (S01–S24) |
 
 ---
 
-## 🔗 Links
+## Development Workflow
 
-- **Production:** *TBD*
-- **Supabase:** [Dashboard](https://supabase.com/dashboard/project/zdojdazosfoajwnuafgx)
-- **Legacy version (Streamlit):** [events-tracker](https://github.com/USERNAME/events-tracker)
+Branch: `test-branch` → merge to `main` when stable (Netlify deploys from `main`).
+
+Claude Code (VSCode extension) is used for development. `CLAUDE.md` is the session onboarding file — it loads automatically and contains the backlog, critical rules, and session procedure.
 
 ---
 
-## 📄 License
+## Database
+
+Main tables:
+```
+areas                  Top-level organization
+categories             Hierarchical (parent_category_id, level 1–10)
+attribute_definitions  Per-category attribute schema
+events                 Activity records (session_start rounded to minute)
+event_attributes       EAV values (text / number / datetime / boolean)
+event_attachments      Images and links
+```
+
+Full schema: `docs/SQL_schema_V5_commented.sql`
+
+---
+
+## License
 
 MIT
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: S24 — 2026-03-24*

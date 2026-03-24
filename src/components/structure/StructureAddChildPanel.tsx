@@ -13,8 +13,10 @@
 //   `categories`, so FK constraint (categories.parent_category_id →
 //   categories.id) would reject the insert.
 //
-// LEAF WARNING: If parent node is a leaf with events, shows a warning
-//   that existing events remain on the (now non-leaf) parent category.
+// LEAF BLOCKED (S24): If parent node is a leaf with events, the panel
+//   shows a blocked state — Add Child is not allowed. Adding a child
+//   to a leaf with events breaks the event chain (events remain on the
+//   now-non-leaf parent and disappear from the activity view).
 //
 // Slug: generated on frontend, preview shown live.
 // sort_order: max sibling sort_order + 10 (or 10 if no siblings).
@@ -62,10 +64,10 @@ const CloseIcon = () => (
   </svg>
 );
 
-const WarnIcon = () => (
-  <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+const LockIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
   </svg>
 );
 
@@ -215,88 +217,105 @@ export function StructureAddChildPanel({
         </div>
 
         {/* ── Body ── */}
-        <div className="px-5 py-4 space-y-4">
-
-          {/* Context line */}
-          <div className={cn('text-sm px-3 py-2 rounded-lg', t.light, t.lightText)}>
-            <span>Under: </span>
-            <span className="font-semibold">{contextPath}</span>
-            <span className="text-gray-500"> → Level {newLevel}</span>
+        {isLeafWithEvents ? (
+          /* Blocked state — leaf has events, Add Child not allowed */
+          <div className="px-5 py-5 space-y-3">
+            <div className="flex items-start gap-3 px-3 py-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <span className="text-orange-500 mt-0.5 flex-shrink-0"><LockIcon /></span>
+              <div>
+                <p className="text-sm font-semibold text-orange-800 mb-1">
+                  Cannot add child — leaf has events
+                </p>
+                <p className="text-xs text-orange-700 leading-snug">
+                  <span className="font-semibold">{contextPath}</span> has{' '}
+                  <span className="font-semibold">{parentNode.eventCount} {parentNode.eventCount === 1 ? 'event' : 'events'}</span>.
+                  Adding a child would make it a non-leaf, causing those events to
+                  disappear from the activity view.
+                </p>
+              </div>
+            </div>
           </div>
+        ) : (
+          <div className="px-5 py-4 space-y-4">
 
-          {/* Leaf-with-events warning */}
-          {isLeafWithEvents && (
-            <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-              <WarnIcon />
-              <p className="text-xs text-amber-700 leading-snug">
-                This leaf category has{' '}
-                <span className="font-semibold">{parentNode.eventCount} {parentNode.eventCount === 1 ? 'event' : 'events'}</span>.
-                Adding a child will convert it to a non-leaf. Existing events remain
-                linked to it, but it won't be available for new activities.
-                Use <em>Add Between</em> if you want a different structure.
+            {/* Context line */}
+            <div className={cn('text-sm px-3 py-2 rounded-lg', t.light, t.lightText)}>
+              <span>Under: </span>
+              <span className="font-semibold">{contextPath}</span>
+              <span className="text-gray-500"> → Level {newLevel}</span>
+            </div>
+
+            {/* Name input */}
+            <div>
+              <label className={cn('block text-sm font-medium mb-1', t.lightText)}>
+                Category Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                ref={inputRef}
+                type="text"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setError(null); }}
+                onKeyDown={handleKeyDown}
+                disabled={creating}
+                placeholder="e.g. Cardio"
+                className={cn(
+                  'w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors',
+                  t.ring,
+                  'border-amber-300 focus:border-amber-400',
+                  creating && 'opacity-50',
+                )}
+              />
+              {/* Slug preview */}
+              <p className="mt-1 text-xs text-gray-400">
+                Slug: <span className="font-mono text-gray-500">{slug || '—'}</span>
               </p>
             </div>
-          )}
 
-          {/* Name input */}
-          <div>
-            <label className={cn('block text-sm font-medium mb-1', t.lightText)}>
-              Category Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              ref={inputRef}
-              type="text"
-              value={name}
-              onChange={(e) => { setName(e.target.value); setError(null); }}
-              onKeyDown={handleKeyDown}
-              disabled={creating}
-              placeholder="e.g. Cardio"
-              className={cn(
-                'w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors',
-                t.ring,
-                'border-amber-300 focus:border-amber-400',
-                creating && 'opacity-50',
-              )}
-            />
-            {/* Slug preview */}
-            <p className="mt-1 text-xs text-gray-400">
-              Slug: <span className="font-mono text-gray-500">{slug || '—'}</span>
-            </p>
+            {/* Error */}
+            {error && (
+              <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                Error: {error}
+              </div>
+            )}
           </div>
-
-          {/* Error */}
-          {error && (
-            <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-              Error: {error}
-            </div>
-          )}
-        </div>
+        )}
 
         {/* ── Footer ── */}
         <div className="flex justify-end gap-2 px-5 pb-4">
-          <button
-            onClick={onClose}
-            disabled={creating}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              t.cancelBtn,
-              creating && 'opacity-50 cursor-not-allowed',
-            )}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={!name.trim() || creating}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              'bg-amber-700 hover:bg-amber-800 text-white',
-              (!name.trim() || creating) && 'opacity-50 cursor-not-allowed',
-            )}
-          >
-            {creating && <Spinner />}
-            {creating ? 'Creating…' : 'Create'}
-          </button>
+          {isLeafWithEvents ? (
+            <button
+              onClick={onClose}
+              className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-colors', t.cancelBtn)}
+            >
+              OK
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                disabled={creating}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                  t.cancelBtn,
+                  creating && 'opacity-50 cursor-not-allowed',
+                )}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={!name.trim() || creating}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                  'bg-amber-700 hover:bg-amber-800 text-white',
+                  (!name.trim() || creating) && 'opacity-50 cursor-not-allowed',
+                )}
+              >
+                {creating && <Spinner />}
+                {creating ? 'Creating…' : 'Create'}
+              </button>
+            </>
+          )}
         </div>
 
       </div>

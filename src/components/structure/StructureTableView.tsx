@@ -22,6 +22,9 @@
 //     ProgressiveCategorySelector refetches the Area dropdown.
 //   - After area delete: if deleted area was selected in filter,
 //     call filter.reset() to avoid stale area in dropdown.
+//
+// S24 additions:
+//   - StructureAddAreaPanel: "+ Add Area" button in Edit Mode toolbar.
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -34,6 +37,7 @@ import { CategoryDetailPanel } from './CategoryDetailPanel';
 import { StructureNodeEditPanel } from './StructureNodeEditPanel';
 import { StructureDeleteModal } from './StructureDeleteModal';
 import { StructureAddChildPanel } from './StructureAddChildPanel';
+import { StructureAddAreaPanel } from './StructureAddAreaPanel';
 import { supabase } from '@/lib/supabaseClient';
 import type { StructureNode } from '@/types/structure';
 
@@ -141,6 +145,9 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
   // ---- Add Between placeholder ----
   const [addBetweenNode, setAddBetweenNode] = useState<StructureNode | null>(null);
 
+  // ---- Add Area panel state ----
+  const [showAddArea, setShowAddArea] = useState(false);
+
   // ---- Current user ID (needed for Add Child insert) ----
   const [userId, setUserId] = useState<string>('');
   useEffect(() => {
@@ -241,6 +248,17 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
     setHighlightedNodeId(newNodeId);
   }, [refetch]);
 
+  // ---- Add Area callbacks ----
+  const handleAreaCreated = useCallback(async (newAreaId: string) => {
+    setShowAddArea(false);
+
+    // Notify Area dropdown to refresh
+    window.dispatchEvent(new CustomEvent('areas-changed'));
+
+    await refetch();
+    setHighlightedNodeId(newAreaId);
+  }, [refetch]);
+
   // --------------------------------------------------------
   // Loading / error / empty states
   // --------------------------------------------------------
@@ -285,6 +303,24 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
   // --------------------------------------------------------
   return (
     <div>
+      {/* ── Edit Mode toolbar ── */}
+      {isEditMode && (
+        <div className="flex items-center justify-end px-4 py-2 border-b border-amber-100 bg-amber-50/50">
+          <button
+            onClick={() => setShowAddArea(true)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              'bg-amber-700 hover:bg-amber-800 text-white',
+            )}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Area
+          </button>
+        </div>
+      )}
+
       <TableHeader />
 
       <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
@@ -361,6 +397,16 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
         <AddBetweenModal
           node={addBetweenNode}
           onClose={() => setAddBetweenNode(null)}
+        />
+      )}
+
+      {/* ---- Add Area Panel ---- */}
+      {showAddArea && userId && (
+        <StructureAddAreaPanel
+          allNodes={nodes}
+          userId={userId}
+          onClose={() => setShowAddArea(false)}
+          onCreated={handleAreaCreated}
         />
       )}
     </div>

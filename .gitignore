@@ -178,8 +178,7 @@ pnpm-debug.log*
 
 # Supabase
 supabase/.branches
-<<<<<<< HEAD
-supabase/.temp
-=======
 supabase/.temp*
->>>>>>> test-branch
+
+# Test environment (credentials — never commit)
+.env.testing
