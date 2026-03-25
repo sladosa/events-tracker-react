@@ -439,9 +439,11 @@ function AppContent() {
           userId={userId}
           onClose={() => setShowStructureImport(false)}
           onImported={() => {
+            window.dispatchEvent(new CustomEvent('areas-changed'));
             refetchStructure();
             setStructureRefreshKey(k => k + 1);
-            setShowStructureImport(false);
+            // Modal stays open so user can read the result summary;
+            // user closes it via the "Close" button.
           }}
           getNodes={refetchStructure}
         />

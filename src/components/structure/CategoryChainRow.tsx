@@ -219,6 +219,13 @@ export function CategoryChainRow({
               leaf
             </span>
           )}
+
+          {/* No events badge — shown only on leaf with 0 events */}
+          {node.isLeaf && node.nodeType === 'category' && node.eventCount === 0 && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-400 italic">
+              no events yet
+            </span>
+          )}
         </div>
 
         {/* Description */}
