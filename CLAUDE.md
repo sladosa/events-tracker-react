@@ -115,7 +115,7 @@ events (linked to category_id + user_id)
 
 ## What's done vs pending
 
-### Done (through S24)
+### Done (through S25)
 - Full Activities tab: Add, Edit, View, Excel Import/Export with collision handling
 - Structure tab: Read-only view (Table + Sunburst), Edit Mode (rename, attributes)
 - Structure Excel export v2 (17 cols) + Import (non-destructive, conflict report)
@@ -124,9 +124,11 @@ events (linked to category_id + user_id)
 - Structure Add Area UI (S24)
 - `areas-changed` CustomEvent for Area dropdown refresh
 - Vite chunk splitting: vendor-react, vendor-supabase, vendor-ui, vendor-excel, vendor-plotly
+- Structure Import fix: modal stays open after import (result summary visible); dispatches `areas-changed` (S25)
+- Structure table: leaf categories with 0 events show "no events yet" badge (S25)
 
-### S24+ backlog (priority order)
-1. **Combined backup architecture** — `exportStructureExcel(..., wb?)` + `exportActivitiesExcel(..., wb?)` + `exportFullBackup()`. Discussed, not yet implemented.
+### S25+ backlog (priority order)
+1. **Combined backup architecture** — see `docs/EXPORT_IMPORT_REFACTOR_PROPOSAL.md`. Agreed approach: Opcija B (interni sheet-builderi) + `excelUtils.ts`. Steps: excelUtils → structureExcel refactor → excelExport refactor → excelBackup.ts → UI gumb → Delete with Backup.
 2. **Delete with backup** — unlock `StructureDeleteModal` for nodes with events, trigger `exportFullBackup()` before cascade delete.
 3. **Delete Attribute** — warning about event_attribute data loss + confirm.
 4. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
