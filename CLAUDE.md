@@ -128,8 +128,8 @@ events (linked to category_id + user_id)
 - Structure table: leaf categories with 0 events show "no events yet" badge (S25)
 
 ### S25+ backlog (priority order)
-1. **Combined backup architecture** — see `docs/EXPORT_IMPORT_REFACTOR_PROPOSAL.md`. Agreed approach: Opcija B (interni sheet-builderi) + `excelUtils.ts`. Steps: excelUtils → structureExcel refactor → excelExport refactor → excelBackup.ts → UI gumb → Delete with Backup.
-2. **Delete with backup** — unlock `StructureDeleteModal` for nodes with events, trigger `exportFullBackup()` before cascade delete.
+1. **Unified Workbook Format** — see `docs/EXPORT_IMPORT_REFACTOR_PROPOSAL.md` (v2, S26). All exports (Activities, Structure, Backup) produce same 5-sheet workbook: Events, HelpEvents, Structure, HelpStructure, Filter. Steps: excelUtils.ts → excelExport.ts (LEGEND simplify + unmerge comment) → structureExcel.ts (extract builder) → excelBackup.ts → ExcelExportModal → StructureDeleteModal (unlock) → excelImport (structure validation, deferrable).
+2. **Delete with backup** — part of item 1 (Korak 6): unlock `StructureDeleteModal` for nodes with events, call `exportFullBackup()` before cascade delete.
 3. **Delete Attribute** — warning about event_attribute data loss + confirm.
 4. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
 5. **DependsOn attr editing UI** — currently read-only notice in Edit panel.
