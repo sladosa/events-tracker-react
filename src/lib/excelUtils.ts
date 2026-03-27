@@ -197,10 +197,10 @@ export function addFilterSheet(
 /** Format a date field for the Filter sheet. */
 function _fmtDate(
   date: string | null | undefined,
-  bound: 'first' | 'last',
+  _bound: 'first' | 'last',
   recordDate: string | undefined,
 ): string {
   if (date) return date;
-  if (recordDate) return `All time (${bound}: ${recordDate})`;
+  if (recordDate) return `All time (${recordDate.replace(/-/g, '/')})`;
   return 'All time';
 }

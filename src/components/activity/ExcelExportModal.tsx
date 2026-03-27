@@ -11,8 +11,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { saveAs } from 'file-saver';
 import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
-import { loadExportData } from '@/lib/excelDataLoader';
+import { loadExportData, loadStructureNodes } from '@/lib/excelDataLoader';
 import { createEventsExcel, mergeSessionEvents } from '@/lib/excelExport';
+import { timestampSuffix, type FilterSheetInfo } from '@/lib/excelUtils';
 import type { ExportFilters } from '@/lib/excelTypes';
 
 interface ExcelExportModalProps {
@@ -89,11 +90,45 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       const bundle = await loadExportData(user.id, filters, offset, batchSize);
       const merged = mergeSessionEvents(bundle.events, bundle.categoriesDict);
 
-      const buffer = await createEventsExcel(merged, bundle.attrDefs, bundle.categoriesDict, filters.sortOrder ?? 'desc');
+      // Fetch structure nodes for unified workbook (Structure + HelpStructure sheets)
+      const structureNodes = await loadStructureNodes(user.id);
 
-      const dateStr   = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const suffix    = fileCount > 1 ? `_part${fileIndex}of${fileCount}` : '';
-      const filename  = `events_export_${dateStr}${suffix}.xlsx`;
+      // Derive actual date range from exported events (for Filter sheet)
+      const eventDates = bundle.events.map(e => e.event_date).filter(Boolean).sort();
+      const firstRecord = eventDates.length > 0 ? eventDates[0] : undefined;
+      const lastRecord  = eventDates.length > 0 ? eventDates[eventDates.length - 1] : undefined;
+
+      // Area/category display names from categoriesDict
+      const catValues = Object.values(bundle.categoriesDict);
+      const areaName     = filters.areaId
+        ? catValues.find(c => c.area_id === filters.areaId)?.area_name ?? null
+        : null;
+      const categoryPath = filters.categoryId
+        ? bundle.categoriesDict[filters.categoryId]?.full_path ?? null
+        : null;
+
+      const ts = timestampSuffix();
+      const filterInfo: FilterSheetInfo = {
+        exportType: 'Activities',
+        exportedAt: ts,
+        area:       areaName,
+        category:   categoryPath,
+        dateFrom:   filters.dateFrom,
+        dateTo:     filters.dateTo,
+        sortOrder:  filters.sortOrder ?? 'desc',
+        firstRecord: filters.dateFrom ? undefined : firstRecord,
+        lastRecord:  filters.dateTo   ? undefined : lastRecord,
+      };
+
+      const buffer = await createEventsExcel(
+        merged, bundle.attrDefs, bundle.categoriesDict,
+        filters.sortOrder ?? 'desc',
+        structureNodes,
+        filterInfo,
+      );
+
+      const suffix   = fileCount > 1 ? `_part${fileIndex}of${fileCount}` : '';
+      const filename = `events_export_${ts}${suffix}.xlsx`;
 
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

@@ -6,6 +6,8 @@
  */
 
 import { supabase } from '@/lib/supabaseClient';
+import type { Area, Category, AttributeDefinition } from '@/types/database';
+import type { StructureNode } from '@/types/structure';
 import type {
   ExportCategoriesDict,
   ExportCategoryInfo,
@@ -240,6 +242,118 @@ export async function resolveExportCategoryIds(
 
   // No filter → all categories
   return Object.keys(categoriesDict);
+}
+
+// ─────────────────────────────────────────────
+// Structure nodes loader (for unified workbook)
+// ─────────────────────────────────────────────
+
+/**
+ * Load all StructureNode[] for a user — same data as useStructureData hook,
+ * but as a plain async function (no React, no event counts).
+ * Used by ExcelExportModal to include Structure + HelpStructure sheets.
+ */
+export async function loadStructureNodes(userId: string): Promise<StructureNode[]> {
+  const [{ data: areasRaw }, { data: catsRaw }, { data: attrsRaw }] = await Promise.all([
+    supabase.from('areas').select('*').eq('user_id', userId).order('sort_order'),
+    supabase.from('categories').select('*').eq('user_id', userId).order('sort_order'),
+    supabase.from('attribute_definitions').select('*').eq('user_id', userId).order('sort_order'),
+  ]);
+
+  const areas      = (areasRaw  ?? []) as Area[];
+  const categories = (catsRaw   ?? []) as Category[];
+  const attrDefs   = (attrsRaw  ?? []) as AttributeDefinition[];
+
+  // Build lookup maps
+  const attrsByCategory = new Map<string, AttributeDefinition[]>();
+  for (const def of attrDefs) {
+    if (!def.category_id) continue;
+    const list = attrsByCategory.get(def.category_id) ?? [];
+    list.push(def);
+    attrsByCategory.set(def.category_id, list);
+  }
+
+  const catsByParent = new Map<string | null, Category[]>();
+  for (const cat of categories) {
+    const key = cat.parent_category_id ?? null;
+    const list = catsByParent.get(key) ?? [];
+    list.push(cat);
+    catsByParent.set(key, list);
+  }
+
+  const parentCategoryIds = new Set<string>();
+  for (const cat of categories) {
+    if (cat.parent_category_id) parentCategoryIds.add(cat.parent_category_id);
+  }
+
+  const result: StructureNode[] = [];
+
+  for (const area of areas) {
+    result.push({
+      id: area.id,
+      nodeType: 'area',
+      name: area.name,
+      fullPath: area.name,
+      level: 0,
+      isLeaf: false,
+      description: area.description,
+      sortOrder: area.sort_order,
+      areaId: area.id,
+      parentCategoryId: null,
+      attributeDefinitions: [],
+      attrCount: 0,
+      eventCount: 0,
+      area,
+      category: null,
+    });
+
+    const l1Cats = (catsByParent.get(null) ?? [])
+      .filter(c => c.area_id === area.id)
+      .sort((a, b) => a.sort_order - b.sort_order);
+
+    for (const l1 of l1Cats) {
+      _addCategorySubtree(l1, area, [area.name], 1, result, catsByParent, parentCategoryIds, attrsByCategory);
+    }
+  }
+
+  return result;
+}
+
+function _addCategorySubtree(
+  cat: Category,
+  area: Area,
+  ancestorNames: string[],
+  level: number,
+  result: StructureNode[],
+  catsByParent: Map<string | null, Category[]>,
+  parentCategoryIds: Set<string>,
+  attrsByCategory: Map<string, AttributeDefinition[]>,
+): void {
+  const pathNames = [...ancestorNames, cat.name];
+  const attrs = attrsByCategory.get(cat.id) ?? [];
+
+  result.push({
+    id: cat.id,
+    nodeType: 'category',
+    name: cat.name,
+    fullPath: pathNames.join(' > '),
+    level,
+    isLeaf: !parentCategoryIds.has(cat.id),
+    description: cat.description,
+    sortOrder: cat.sort_order,
+    areaId: cat.area_id ?? area.id,
+    parentCategoryId: cat.parent_category_id,
+    attributeDefinitions: attrs,
+    attrCount: attrs.length,
+    eventCount: 0,
+    area,
+    category: cat,
+  });
+
+  const children = (catsByParent.get(cat.id) ?? []).sort((a, b) => a.sort_order - b.sort_order);
+  for (const child of children) {
+    _addCategorySubtree(child, area, pathNames, level + 1, result, catsByParent, parentCategoryIds, attrsByCategory);
+  }
 }
 
 // ─────────────────────────────────────────────

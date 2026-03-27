@@ -108,6 +108,73 @@
 
 ---
 
+## T-S26-6
+
+**Opis:** Activities Export → 5 sheetova u xlsx
+
+**Koraci:**
+1. Activities tab → Export → preuzmi xlsx
+2. Otvori u Excelu, provjeri sheet tabove:
+   - `Events` — postoji (pravi podaci)
+   - `HelpEvents` — postoji
+   - `Structure` — postoji (puna struktura, nefiltrirana)
+   - `HelpStructure` — postoji
+   - `Filter` — postoji
+3. Provjeri `Structure` sheet: sadrži normalne podatke (nije stub)
+
+**Očekivano:** Točno 5 sheetova s navedenim imenima
+
+---
+
+## T-S26-7
+
+**Opis:** Activities Export → Filter sheet s stvarnim datumima
+
+**Koraci:**
+1. Export bez datumskog filtera (All time)
+2. Otvori `Filter` sheet:
+   - `Export type` = `Activities`
+   - `Date From` = `All time (YYYY/MM/DD)` gdje je datum stvarnog prvog eventa u exportu
+   - `Date To` = `All time (YYYY/MM/DD)` gdje je datum stvarnog zadnjeg eventa
+   - `Sort order` = `Newest first` ili `Oldest first`
+3. Export s aktivnim datumskim filterom (npr. od 2026-01-01):
+   - `Date From` = `2026-01-01` (direktno, bez "All time")
+   - `Date To` = datum filtera ili `All time (YYYY/MM/DD)`
+
+**Očekivano:** Format `All time (2026/01/29)` za nepostavljene datume, direktni datum za postavljene
+
+---
+
+## T-S26-8
+
+**Opis:** Activities Export → filename s punim timestamp
+
+**Koraci:**
+1. Export → preuzmi datoteku
+2. Provjeri naziv: `events_export_YYYYMMDD_HHmmss.xlsx` (npr. `events_export_20260327_095937.xlsx`)
+
+**Očekivano:** Datum + sat:minuta:sekunda u imenu datoteke
+
+---
+
+## T-S25-1 (retest)
+
+**Opis:** Structure Import → Area-only red → result summary vidljiv, nova Area u filteru
+
+**Napomena:** Testirati s **novo exportanim** structure xlsx (S26 format, sheet = `Structure`).
+Stari xlsx (HierarchicalView sheet) više nije podržan.
+
+**Koraci:**
+1. Structure tab → Export → preuzmi xlsx
+2. U xlsx dodaj novi red: `Type=Area`, `CategoryPath=MojaTestArea`
+3. Structure tab → Import → uvezi modificirani xlsx
+4. Provjeri: modal ostaje otvoren i prikazuje result summary
+5. Zatvori modal → nova Area vidljiva u filteru (bez page refresha)
+
+**Očekivano:** Modal ne zatvara automatski, result summary prikazuje "Areas created: 1"
+
+---
+
 ## Napomene za testiranje
 
 - Stari xlsx fajlovi (pre-S26) nisu podržani — novi format je S26+. Streamlit sustav radi neovisno.
