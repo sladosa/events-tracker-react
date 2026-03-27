@@ -108,41 +108,7 @@
 
 ---
 
-## T-REG-1
-
-**Opis:** Regression — Activities Import sa starim xlsx fajlom (bez Structure/Filter sheeta)
-
-**Koraci:**
-1. Uzmi stari xlsx exportan prije S26 (ima samo `Events` i `Help` sheetove)
-2. Activities tab → Import → uvezi taj fajl
-3. Provjeri da import normalno parsira i prikazuje preview
-4. Provjeri da nema grešaka vezanih za strukturu fajla
-
-**Očekivano:**
-- Import radi normalno
-- Stari fajl se čita bez problema unatoč tome što nema `Structure`/`Filter` sheetove
-- Nema regresije u import logici
-
----
-
-## T-REG-2
-
-**Opis:** Regression — Structure Import sa starim xlsx fajlom (`HierarchicalView` sheet)
-
-**Koraci:**
-1. Uzmi stari xlsx exportan prije S26 (sheet se zove `HierarchicalView`, ne `Structure`)
-2. Structure tab → Import → uvezi taj fajl
-3. Provjeri da import normalno parsira i prikazuje result summary
-
-**Očekivano:**
-- Import pronalazi `HierarchicalView` sheet (backwards compat lookup)
-- Parsiranje i import rade normalno
-- Nema regresije
-
----
-
 ## Napomene za testiranje
 
-- Za T-REG-1 i T-REG-2: ako nemaš stare fajlove, exportaj SADA sa starim kodom (na main branchu) pa testiraj na test-branchu. Ili provjeri ima li xlsx fajlova iz prethodnih sesija.
+- Stari xlsx fajlovi (pre-S26) nisu podržani — novi format je S26+. Streamlit sustav radi neovisno.
 - Vizualni izgled (boje, širine stupaca) — prihvatljive manje razlike. Fokus je na ispravnosti strukturalnih promjena.
-- Ako T-S26-1 fail: najvjerojatnije ATTR_COL_START problem → provjeri excelImport.ts čita li ispravno kolonu H.

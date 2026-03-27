@@ -378,12 +378,8 @@ export async function importStructureExcel(
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
 
-  // Find structure sheet: new unified name → old v2 name → first non-help sheet (Streamlit/v1)
-  const ws =
-    wb.getWorksheet('Structure') ??
-    wb.getWorksheet('HierarchicalView') ??
-    wb.worksheets.find(s => !['HelpStructure', 'HelpEvents', 'Help', 'Filter', 'Events'].includes(s.name)) ??
-    wb.worksheets[0];
+  // Find the Structure sheet (unified format S26+)
+  const ws = wb.getWorksheet('Structure') ?? wb.worksheets[0];
 
   if (!ws) throw new Error('No data sheet found in Excel file.');
 

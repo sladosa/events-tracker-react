@@ -19,8 +19,6 @@
 | T-S26-3  | Activities Export → HelpEvents sheet postoji (ne "Help"), PINK/BLUE/ORANGE ćelije obojene | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-3) |
 | T-S26-4  | Structure Export → 4 sheeta: Events(stub), Structure, HelpStructure, Filter | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-4) |
 | T-S26-5  | Structure Export → Filter sheet: Export type = Structure, Area/Category ispravni | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-5) |
-| T-REG-1  | Regression: Activities Import sa starim xlsx (bez Structure/Filter) radi i dalje | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-reg-1) |
-| T-REG-2  | Regression: Structure Import sa starim xlsx (HierarchicalView sheet) radi i dalje | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-reg-2) |
 
 ## Zatvoreni (potvrđeni/riješeni) testovi iz ove sesije
 
