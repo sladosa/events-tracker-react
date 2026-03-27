@@ -2,7 +2,23 @@
 
 **Zadnja izmjena:** 2026-03-27 (S27)
 **Branch:** test-branch
-**Detalji testova:** `Claude-temp_R/test-sessions/S26_tests.md`
+**Detalji testova:** `Claude-temp_R/test-sessions/S27_tests.md`
+
+---
+
+## S28 plan (sljedeća sesija)
+
+**P1 — Import diff** — spec: `docs/IMPORT_DIFF_SPEC.md`
+- Proširiti fetch query: dodati `event_date, session_start, comment` + attr vrijednosti
+- Diff helper: identično → `skipped`, promjena → `updated`
+- UI: treći box "N Events unchanged" (siva boja)
+- P3 rubni slučaj: prazna xlsx vrijednost + DB ima vrijednost → skipped (ne diraj)
+
+**P2 — Add/Delete Attribute u Structure Edit** — spec: `docs/ADD_ATTRIBUTE_SPEC.md`
+- "Add Attribute" inline forma (name, type, unit, required) → INSERT `attribute_definitions`
+- Delete Attribute s warning ako ima `event_attributes`
+- Text → Suggest konverzija (gumb "→ Suggest" na text atributima)
+- DependsOn editing UI — složenije, možda odvojena sesija
 
 ---
 
@@ -10,7 +26,7 @@
 
 | ID       | Opis                                                                                      | Sesija | Detalji                                                           |
 | -------- | ----------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------- |
-| (nema)   |                                                                                           |        |                                                                   |
+| T-S27-1b | Delete node s eventima → naslov "Delete Category/Area" (ne "Cannot Delete")              | S27    | Fix S27 kraj sesije — retest |
 
 ## Zatvoreni (potvrđeni/riješeni) testovi iz ove sesije
 
@@ -30,6 +46,10 @@
 | T-S26-8  | Activities Export → filename s punim timestamp                    | S26     | ✅ |
 | T-S26-9  | Filter sheet: Period label = 'All time' / 'Custom'                | S27     | ✅ |
 | T-S26-10 | Activities Export: Structure sheet filtriran prema Area/Category  | S26     | ✅ |
+| T-S27-1  | Delete node s eventima → amber header, "Download Backup & Delete" | S27     | ✅ (naslov još nije bio OK, fixan kraj sesije) |
+| T-S27-2  | Delete s backupom → backup downloada, node nestaje                | S27     | ✅ |
+| T-S27-3  | Backup workbook → 5 sheetova, Filter sheet ispravno               | S27     | ✅ |
+| T-S27-4  | Delete bez evenata → red header, stari flow                       | S27     | ✅ |
 | T-S24-1  | Import Area-only Excel reda → kreira Area                         | S24     | ❌ → riješeno S25 |
 | T-S24-2  | Add Child na leaf s eventima → orange blocked state               | S24     | ✅ |
 | T-S24-3  | Add Area UI → gumb u Edit Mode, modal, kreira area, refresh dropdown | S24  | ✅ |
@@ -66,4 +86,5 @@ Claude će: ažurirati ovaj fajl, označiti ✅/❌ u test-sessions arhivi, istr
 | [S22_tests.md](test-sessions/S22_tests.md) | S22 | ✅ Sve verificirano |
 | [S23_tests.md](test-sessions/S23_tests.md) | S23 | ✅ Sve verificirano |
 | [S24_tests.md](test-sessions/S24_tests.md) | S24 | ✅ Sve verificirano |
-| [S26_tests.md](test-sessions/S26_tests.md) | S26 | ⏳ T-S26-9, T-S26-10 pending |
+| [S26_tests.md](test-sessions/S26_tests.md) | S26 | ✅ Sve verificirano |
+| [S27_tests.md](test-sessions/S27_tests.md) | S27 | ⏳ T-S27-1 do T-S27-4 pending |

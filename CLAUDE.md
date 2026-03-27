@@ -14,8 +14,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | Doc | When to read |
 |-----|-------------|
 | `docs/ARCHITECTURE_v1_6.md` | Always — data model, P1/P2/P3, chain_key, session identity |
-| `docs/STRUCTURE_TAB_CONTEXT_FOR_CLAUDE_v1.5.md` | Structure tab work |
+| `docs/STRUCTURE_TAB_SPEC_FOR_DEV_v1.1.md` | Structure tab work (zamjenjuje v1.5) |
 | `docs/EXCEL_FORMAT_ANALYSIS_v2.md` | Excel export/import work |
+| `docs/IMPORT_DIFF_SPEC.md` | Import "skipped" vs "updated" fix (S28 P1) |
+| `docs/ADD_ATTRIBUTE_SPEC.md` | Add/Delete Attribute u Structure Edit (S28 P2) |
 | `Claude-temp_R/SQL_schema_V5_commented.sql` | DB schema reference |
 | `Claude-temp_R/Code_Guidelines_React_v6.md` | Code conventions |
 
@@ -128,13 +130,15 @@ events (linked to category_id + user_id)
 - Structure table: leaf categories with 0 events show "no events yet" badge (S25)
 
 ### S25+ backlog (priority order)
-1. **Unified Workbook Format** — see `docs/EXPORT_IMPORT_REFACTOR_PROPOSAL.md` (v2, S26). All exports (Activities, Structure, Backup) produce same 5-sheet workbook: Events, HelpEvents, Structure, HelpStructure, Filter. Steps: excelUtils.ts → excelExport.ts (LEGEND simplify + unmerge comment) → structureExcel.ts (extract builder) → excelBackup.ts → ExcelExportModal → StructureDeleteModal (unlock) → excelImport (structure validation, deferrable).
-2. **Delete with backup** — part of item 1 (Korak 6): unlock `StructureDeleteModal` for nodes with events, call `exportFullBackup()` before cascade delete.
-3. **Delete Attribute** — warning about event_attribute data loss + confirm.
-4. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
-5. **DependsOn attr editing UI** — currently read-only notice in Edit panel.
-6. **AreaDropdown.tsx refresh** — Add Activity page Area dropdown doesn't listen to `areas-changed` yet.
-7. **Plotly bundle size** — vendor-plotly chunk is ~4.9MB (Plotly itself); acceptable unless performance becomes an issue.
+1. **Unified Workbook Format** — ✅ Koraci 1–6 gotovi (S26–S27). `excelUtils.ts`, `excelExport.ts`, `structureExcel.ts`, `excelBackup.ts` refaktorirani. `StructureDeleteModal` otključan. Korak 7 (excelImport structure validation) odgođen.
+2. **Delete with backup** — ✅ Gotovo S27: amber header, "Download Backup & Delete", full cascade + download.
+3. **Import "skipped" vs "updated"** — PRIORITET 1 (S28). Trenutno svaki event s ID-em u koloni A ide UPDATE path i broji se kao "updated" čak i kad se ništa nije promijenilo. Fix: diff provjera (event_date, session_start, comment + atributi) — ako identično → "skipped", ako promjena → "updated". Detalji: `docs/IMPORT_DIFF_SPEC.md`.
+4. **Add Attribute u Structure Edit mode** — PRIORITET 2 (S28). `StructureNodeEditPanel` edituje samo postojeće atribute — nema "Add Attribute" gumba. Uključuje i konverziju text → suggest/dropdown atributa. Detalji: `docs/ADD_ATTRIBUTE_SPEC.md`.
+5. **Delete Attribute** — warning about event_attribute data loss + confirm. Raditi zajedno s točkom 4.
+6. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
+7. **DependsOn attr editing UI** — currently read-only notice in Edit panel.
+8. **AreaDropdown.tsx refresh** — Add Activity page Area dropdown doesn't listen to `areas-changed` yet.
+9. **Plotly bundle size** — vendor-plotly chunk is ~4.9MB (Plotly itself); acceptable unless performance becomes an issue.
 
 ### Future: Playwright E2E testing
 Planned after Combined backup is complete (stable core, fewer structural changes).

@@ -27,9 +27,11 @@
 // ============================================================
 
 import { useState, useCallback } from 'react';
+import { saveAs } from 'file-saver';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { supabase } from '@/lib/supabaseClient';
+import { exportFullBackup, fullBackupFilename } from '@/lib/excelBackup';
 import type { StructureNode } from '@/types/structure';
 
 // --------------------------------------------------------
@@ -125,6 +127,10 @@ export function StructureDeleteModal({
 
   const isBlocked = node.eventCount > 0;
 
+  // ── Phase label for UX feedback ────────────────────────────────────────────
+  type Phase = 'idle' | 'backup' | 'deleting';
+  const [phase, setPhase] = useState<Phase>('idle');
+
   // Compute subtree info for display
   const subtreeIds = collectSubtreeIds(node, allNodes);
   // Exclude the root node itself from "sub-category" count
@@ -138,61 +144,116 @@ export function StructureDeleteModal({
     .filter(n => subtreeIds.includes(n.id))
     .reduce((sum, n) => sum + n.attrCount, 0);
 
+  /** Cascade delete structure + (optionally) events under the subtree. */
+  const cascadeDelete = useCallback(async (includeEvents: boolean) => {
+    const categoryIds = allNodes
+      .filter(n => subtreeIds.includes(n.id) && n.nodeType === 'category')
+      .map(n => n.id);
+
+    if (categoryIds.length > 0) {
+      if (includeEvents) {
+        // ── Delete events and their dependent rows ─────────────────────────
+        const { data: events } = await supabase
+          .from('events')
+          .select('id')
+          .in('category_id', categoryIds);
+
+        if (events && events.length > 0) {
+          const eventIds = (events as { id: string }[]).map(e => e.id);
+
+          // Delete storage attachments
+          const { data: attachments } = await supabase
+            .from('event_attachments')
+            .select('url')
+            .in('event_id', eventIds);
+
+          if (attachments && attachments.length > 0) {
+            const paths = (attachments as { url: string }[])
+              .map(a => { const p = a.url.split('/activity-attachments/'); return p.length > 1 ? p[1] : null; })
+              .filter((p): p is string => p !== null);
+            if (paths.length > 0) {
+              await supabase.storage.from('activity-attachments').remove(paths);
+            }
+          }
+
+          await supabase.from('event_attachments').delete().in('event_id', eventIds);
+          await supabase.from('event_attributes').delete().in('event_id', eventIds);
+
+          const { error: evErr } = await supabase.from('events').delete().in('id', eventIds);
+          if (evErr) throw evErr;
+        }
+      }
+
+      // ── Delete attribute_definitions ──────────────────────────────────────
+      const { error: attrErr } = await supabase
+        .from('attribute_definitions')
+        .delete()
+        .in('category_id', categoryIds);
+      if (attrErr) throw attrErr;
+
+      // ── Delete categories: deepest level first ────────────────────────────
+      const byLevel = new Map<number, string[]>();
+      for (const n of allNodes.filter(n => categoryIds.includes(n.id))) {
+        const existing = byLevel.get(n.level) ?? [];
+        existing.push(n.id);
+        byLevel.set(n.level, existing);
+      }
+      const levels = [...byLevel.keys()].sort((a, b) => b - a);
+      for (const level of levels) {
+        const ids = byLevel.get(level)!;
+        const { error: catErr } = await supabase.from('categories').delete().in('id', ids);
+        if (catErr) throw catErr;
+      }
+    }
+
+    // ── Delete area if root is an area ────────────────────────────────────────
+    if (node.nodeType === 'area') {
+      const { error: areaErr } = await supabase.from('areas').delete().eq('id', node.id);
+      if (areaErr) throw areaErr;
+    }
+  }, [node, allNodes, subtreeIds]);
+
+  /** ALLOWED path — no events, straight delete. */
   const handleDelete = useCallback(async () => {
     setDeleting(true);
     setError(null);
-
     try {
-      // ── 1. Category IDs only (exclude the area ID if present) ──────────────
-      const categoryIds = allNodes
-        .filter(n => subtreeIds.includes(n.id) && n.nodeType === 'category')
-        .map(n => n.id);
-
-      if (categoryIds.length > 0) {
-        // ── 2. Delete attribute_definitions ─────────────────────────────────
-        const { error: attrErr } = await supabase
-          .from('attribute_definitions')
-          .delete()
-          .in('category_id', categoryIds);
-        if (attrErr) throw attrErr;
-
-        // ── 3. Delete categories: deepest level first ────────────────────────
-        // Group by level DESC
-        const byLevel = new Map<number, string[]>();
-        for (const n of allNodes.filter(n => categoryIds.includes(n.id))) {
-          const existing = byLevel.get(n.level) ?? [];
-          existing.push(n.id);
-          byLevel.set(n.level, existing);
-        }
-        const levels = [...byLevel.keys()].sort((a, b) => b - a);
-        for (const level of levels) {
-          const ids = byLevel.get(level)!;
-          const { error: catErr } = await supabase
-            .from('categories')
-            .delete()
-            .in('id', ids);
-          if (catErr) throw catErr;
-        }
-      }
-
-      // ── 4. Delete area if root is an area ───────────────────────────────────
-      if (node.nodeType === 'area') {
-        const { error: areaErr } = await supabase
-          .from('areas')
-          .delete()
-          .eq('id', node.id);
-        if (areaErr) throw areaErr;
-      }
-
+      await cascadeDelete(false);
       onDeleted(node.id);
     } catch (err) {
       console.error('StructureDeleteModal: delete failed', err);
       setError(err instanceof Error ? err.message : 'Delete failed. Please try again.');
       setDeleting(false);
     }
-  }, [node, allNodes, subtreeIds, onDeleted]);
+  }, [cascadeDelete, node.id, onDeleted]);
 
-  const headerBg = isBlocked ? 'bg-orange-500' : 'bg-red-600';
+  /** BLOCKED path — backup first, then full cascade delete including events. */
+  const handleDeleteWithBackup = useCallback(async () => {
+    setDeleting(true);
+    setError(null);
+    try {
+      // 1. Full backup download
+      setPhase('backup');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const buffer = await exportFullBackup(user.id);
+      saveAs(new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }), fullBackupFilename());
+
+      // 2. Cascade delete (events + structure)
+      setPhase('deleting');
+      await cascadeDelete(true);
+      onDeleted(node.id);
+    } catch (err) {
+      console.error('StructureDeleteModal: delete-with-backup failed', err);
+      setError(err instanceof Error ? err.message : 'Operation failed. Please try again.');
+      setDeleting(false);
+      setPhase('idle');
+    }
+  }, [cascadeDelete, node.id, onDeleted]);
+
+  const headerBg = isBlocked ? 'bg-amber-600' : 'bg-red-600';
 
   return (
     <div
@@ -206,7 +267,7 @@ export function StructureDeleteModal({
           {isBlocked ? <LockIcon /> : <TrashIcon />}
           <div>
             <h3 className="text-base font-semibold">
-              {isBlocked ? 'Cannot Delete' : 'Delete ' + (node.nodeType === 'area' ? 'Area' : 'Category')}
+              {'Delete ' + (node.nodeType === 'area' ? 'Area' : 'Category')}
             </h3>
             <p className="text-sm opacity-90 truncate max-w-xs">{node.name}</p>
           </div>
@@ -216,18 +277,40 @@ export function StructureDeleteModal({
         <div className="px-5 py-4">
 
           {isBlocked ? (
-            /* ── BLOCKED state ── */
+            /* ── BLOCKED → backup-then-delete state ── */
             <div className="space-y-3">
               <p className="text-sm text-gray-700">
-                <span className="font-semibold text-orange-600">
+                <span className="font-semibold text-amber-700">
                   {node.eventCount} {node.eventCount === 1 ? 'event exists' : 'events exist'}
                 </span>{' '}
                 under this {node.nodeType === 'area' ? 'area' : 'category'}.
               </p>
               <p className="text-sm text-gray-600">
-                A full backup (structure + activities) is required before deletion.
-                This feature is coming in the next version.
+                A <span className="font-medium">full backup</span> (all events + structure) will be
+                downloaded automatically before everything is permanently deleted.
               </p>
+              <ul className="text-sm text-gray-600 space-y-1 pl-4">
+                <li>• All events under <span className="font-medium">{node.name}</span></li>
+                {subCategoryCount > 0 && (
+                  <li>• {subCategoryCount} sub-{subCategoryCount === 1 ? 'category' : 'categories'}</li>
+                )}
+                {attrCount > 0 && (
+                  <li>• {attrCount} attribute {attrCount === 1 ? 'definition' : 'definitions'}</li>
+                )}
+              </ul>
+              <p className="text-sm text-red-600 font-medium">
+                This action cannot be undone.
+              </p>
+              {deleting && (
+                <p className="text-sm text-amber-700 font-medium">
+                  {phase === 'backup' ? '⏳ Generating backup…' : '🗑 Deleting…'}
+                </p>
+              )}
+              {error && (
+                <div className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {error}
+                </div>
+              )}
             </div>
           ) : (
             /* ── ALLOWED state ── */
@@ -260,15 +343,33 @@ export function StructureDeleteModal({
         {/* ── Footer ── */}
         <div className="flex justify-end gap-2 px-5 pb-4">
           {isBlocked ? (
-            <button
-              onClick={onClose}
-              className={cn(
-                'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                t.cancelBtn,
-              )}
-            >
-              OK
-            </button>
+            <>
+              <button
+                onClick={onClose}
+                disabled={deleting}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                  t.cancelBtn,
+                  deleting && 'opacity-50 cursor-not-allowed',
+                )}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteWithBackup}
+                disabled={deleting}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                  'bg-amber-600 text-white hover:bg-amber-700',
+                  deleting && 'opacity-60 cursor-not-allowed',
+                )}
+              >
+                {deleting && <Spinner />}
+                {deleting
+                  ? (phase === 'backup' ? 'Backing up…' : 'Deleting…')
+                  : 'Download Backup & Delete'}
+              </button>
+            </>
           ) : (
             <>
               <button
