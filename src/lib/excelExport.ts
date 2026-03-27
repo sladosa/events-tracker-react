@@ -2,13 +2,16 @@
  * Events Tracker – Excel Export Engine
  * =====================================
  * Port of Streamlit excel_events_io.py V2.5.8 → TypeScript / ExcelJS
- * Version: 1.0.0
+ * Version: 1.1.0  (Unified Workbook Format — S26 Korak 2)
  *
- * Format:
- *   Sheet "Events":
- *     Section 1: ATTRIBUTE LEGEND  (row groups collapsed, col groups F-I)
- *     Section 2: EVENT DATA        (autofilter, freeze at col K, SUBTOTAL)
- *   Sheet "Help"
+ * Format (unified 5-sheet workbook):
+ *   Sheet 1 "Events":
+ *     Section 1: ATTRIBUTE LEGEND  (row groups collapsed, 6 cols)
+ *     Section 2: EVENT DATA        (autofilter, freeze at col H, SUBTOTAL)
+ *   Sheet 2 "HelpEvents"
+ *   Sheet 3 "Structure"       (optional, via addStructureSheetsTo)
+ *   Sheet 4 "HelpStructure"   (optional)
+ *   Sheet 5 "Filter"          (optional, via addFilterSheet)
  *
  * Fixed columns (EVENT DATA):
  *   A event_id        PINK  read-only
@@ -16,10 +19,9 @@
  *   C Category_Path   PINK  read-only
  *   D event_date      BLUE  Excel DATE format YYYY-MM-DD
  *   E session_start   BLUE  text HH:MM
- *   F created_at      BLUE  text HH:mm:ss  (editable; validates >= session_start on import)
- *   G comment         BLUE  merged G:J
- *   H..J              BLUE  padding (part of comment merge)
- *   K+                BLUE/ORANGE  attribute columns
+ *   F created_at      BLUE  text HH:mm:ss
+ *   G leaf comment    BLUE  single column (no merge)
+ *   H+                BLUE/ORANGE  attribute columns
  */
 
 import ExcelJS from 'exceljs';
@@ -28,20 +30,23 @@ import type {
   ExportAttrDef,
   ExportEvent,
 } from './excelTypes';
+import type { StructureNode } from '@/types/structure';
+import { addStructureSheetsTo } from './structureExcel';
+import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
 
 // ─────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────
 
-const PINK_FILL: ExcelJS.Fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE6F0' } };
-const BLUE_FILL: ExcelJS.Fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F2FF' } };
+const PINK_FILL: ExcelJS.Fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE6F0' } };
+const BLUE_FILL: ExcelJS.Fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F2FF' } };
 const ORANGE_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
 const HEADER_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
 const LEGEND_HEADER_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7030A0' } };
 const SEPARATOR_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFD0E0' } };
 
-const HEADER_FONT: Partial<ExcelJS.Font>  = { color: { argb: 'FFFFFFFF' }, bold: true };
-const TITLE_FONT: Partial<ExcelJS.Font>   = { bold: true, size: 12 };
+const HEADER_FONT: Partial<ExcelJS.Font> = { color: { argb: 'FFFFFFFF' }, bold: true };
+const TITLE_FONT: Partial<ExcelJS.Font>  = { bold: true, size: 12 };
 
 const THIN_BORDER = {
   top:    { style: 'thin' as const },
@@ -50,7 +55,7 @@ const THIN_BORDER = {
   right:  { style: 'thin' as const },
 };
 
-// Fixed columns – ORDER MATTERS (matches column indices A-G)
+// Fixed columns – ORDER MATTERS (matches column indices A-G, used by excelImport)
 export const FIXED_COLUMNS = [
   'event_id',
   'Area',
@@ -61,12 +66,23 @@ export const FIXED_COLUMNS = [
   'comment',
 ] as const;
 
-export const FIXED_COL_COUNT = FIXED_COLUMNS.length; // 7
-export const PADDING_COLS    = 3;                     // comment merged over G:J (3 padding cols)
-export const ATTR_COL_START  = FIXED_COL_COUNT + PADDING_COLS + 1; // 11 → K
+// Display headers for the header row (last entry renamed for clarity)
+const FIXED_DISPLAY_HEADERS = [
+  'event_id',
+  'Area',
+  'Category_Path',
+  'event_date',
+  'session_start',
+  'created_at',
+  'leaf comment',
+] as const;
 
-// LEGEND columns (rows, not event data)
-const LEGEND_COLS = ['Col', 'Area', 'Category_Path', 'Attribute', 'Type', 'Default', 'Min', 'Max', 'Unit'];
+export const FIXED_COL_COUNT = FIXED_COLUMNS.length; // 7  (A–G)
+export const PADDING_COLS    = 0;                     // no padding (comment is single col G)
+export const ATTR_COL_START  = FIXED_COL_COUNT + PADDING_COLS + 1; // 8 → H
+
+// LEGEND columns (6 cols: removed Default / Min / Max vs old 9-col version)
+const LEGEND_COLS = ['Col', 'Area', 'Category_Path', 'Attribute', 'Type', 'Unit'];
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -214,21 +230,23 @@ export function buildAttrMeta(
 }
 
 // ─────────────────────────────────────────────
-// Main export function
+// Internal sheet builder (Events + HelpEvents)
 // ─────────────────────────────────────────────
 
-export async function createEventsExcel(
-  events:          ExportEvent[],
-  attrDefs:        ExportAttrDef[],
-  categoriesDict:  ExportCategoriesDict,
-  sortOrder:       'asc' | 'desc' = 'desc',
-): Promise<ArrayBuffer> {
+/**
+ * Adds the "Events" and "HelpEvents" sheets to an existing workbook.
+ * Called by createEventsExcel; can also be called directly to compose
+ * a multi-sheet unified workbook.
+ */
+export async function addActivitiesSheetsTo(
+  wb: ExcelJS.Workbook,
+  events: ExportEvent[],
+  attrDefs: ExportAttrDef[],
+  categoriesDict: ExportCategoriesDict,
+  sortOrder: 'asc' | 'desc' = 'desc',
+): Promise<void> {
 
   const { attrMeta, attrColumns, attrByCat } = buildAttrMeta(attrDefs, categoriesDict);
-
-  const wb = new ExcelJS.Workbook();
-  wb.creator  = 'Events Tracker';
-  wb.created  = new Date();
 
   const ws = wb.addWorksheet('Events');
 
@@ -240,13 +258,19 @@ export async function createEventsExcel(
   // ──────────────────────────────────────────
   let row = 1;
 
-  // Title
+  // Title row
   const titleCell = ws.getCell(row, 1);
   titleCell.value = 'ATTRIBUTE LEGEND:';
   titleCell.font  = TITLE_FONT;
+
+  // C1: note pointing to Structure sheet
+  const noteCell = ws.getCell(row, 3);
+  noteCell.value = 'see Structure sheet for more details';
+  noteCell.font  = { italic: true, color: { argb: 'FF666666' } };
+
   row++;
 
-  // Header
+  // Legend header row (6 cols)
   for (let ci = 0; ci < LEGEND_COLS.length; ci++) {
     const cell = ws.getCell(row, ci + 1);
     cell.value     = LEGEND_COLS[ci];
@@ -257,7 +281,6 @@ export async function createEventsExcel(
   }
   row++;
 
-  // const legendDataStart = row;  // reserved for future grouping
   const legendRows: number[] = [];
 
   for (let idx = 0; idx < attrColumns.length; idx++) {
@@ -266,15 +289,13 @@ export async function createEventsExcel(
     const colIdx  = ATTR_COL_START + idx;
     const letter  = colLetter(colIdx);
 
+    // 6 cols: Col, Area, Category_Path, Attribute, Type, Unit
     const rowData = [
       letter,
       meta.areaName,
       meta.categoryPath,
       attrName,
       meta.dataType,
-      meta.defaultValue,
-      meta.min,
-      meta.max,
       meta.unit,
     ];
 
@@ -290,9 +311,7 @@ export async function createEventsExcel(
     row++;
   }
 
-  // const legendDataEnd = row - 1;  // reserved for future grouping
-
-  // Row grouping (smart chunks of ~10)
+  // Row grouping (smart chunks of ~10) — same logic as before
   if (legendRows.length > 0) {
     const total     = legendRows.length;
     const numGroups = total <= 5 ? 1 : Math.max(1, Math.ceil(total / 10));
@@ -305,13 +324,13 @@ export async function createEventsExcel(
 
       // First row of group = separator (bold + darker fill, NOT grouped)
       const separatorRowNum = legendRows[startIdx];
-      for (let ci = 1; ci <= 9; ci++) {
+      for (let ci = 1; ci <= LEGEND_COLS.length; ci++) {
         const cell = ws.getCell(separatorRowNum, ci);
         cell.font = { bold: true };
         cell.fill = SEPARATOR_FILL;
       }
 
-      // Group rows AFTER separator
+      // Group rows AFTER separator (hidden by default)
       if (endIdx > startIdx) {
         for (let i = startIdx + 1; i <= endIdx; i++) {
           const wsRow = ws.getRow(legendRows[i]);
@@ -322,11 +341,7 @@ export async function createEventsExcel(
     }
   }
 
-  // Column grouping for LEGEND cols F-I (Default / Min / Max / Unit)
-  // These are columns F, G, H, I of the LEGEND section (cols 6,7,8,9)
-  for (const letter of ['F', 'G', 'H', 'I']) {
-    ws.getColumn(letter).outlineLevel = 1;
-  }
+  // NOTE: No column grouping (old F-I grouping removed — Default/Min/Max no longer in legend)
 
   // ──────────────────────────────────────────
   // Empty row between sections
@@ -342,7 +357,6 @@ export async function createEventsExcel(
   ws.getCell(row, 1).font  = TITLE_FONT;
   ws.getCell(row, 3).value = 'Summ (if relevant) ->';
   ws.getCell(row, 3).alignment = { horizontal: 'right' };
-  // Subtotals filled in after data rows
   row++;
 
   // Header row
@@ -356,10 +370,9 @@ export async function createEventsExcel(
     return `${attrName} (${shortCat})`;
   });
 
-  // Fixed headers + padding + attr headers
+  // Fixed display headers + attr headers (no padding cols)
   const allHeaders = [
-    ...FIXED_COLUMNS,
-    ...Array(PADDING_COLS).fill(''),
+    ...FIXED_DISPLAY_HEADERS,
     ...attrHeaderStrings,
   ];
 
@@ -383,17 +396,14 @@ export async function createEventsExcel(
   //   2. session_start – same direction
   //   3. created_at – always ASC (leaf events within a session in chronological order)
   const sortedEvents = [...events].sort((a, b) => {
-    // Primary: event_date
     const dateCmp = a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0;
     if (dateCmp !== 0) return sortOrder === 'asc' ? dateCmp : -dateCmp;
 
-    // Secondary: session_start (same direction as event_date)
     const ssA = a.session_start ?? '';
     const ssB = b.session_start ?? '';
     const ssCmp = ssA < ssB ? -1 : ssA > ssB ? 1 : 0;
     if (ssCmp !== 0) return sortOrder === 'asc' ? ssCmp : -ssCmp;
 
-    // Tertiary: created_at ASC – leaf events in chronological order
     if (!a.created_at && !b.created_at) return 0;
     if (!a.created_at) return 1;
     if (!b.created_at) return -1;
@@ -437,9 +447,9 @@ export async function createEventsExcel(
       event.id,
       catInfo.area_name   ?? '',
       catInfo.full_path   ?? '',
-      eventDateObj,        // Excel DATE cell (col D)
-      sessionTime,         // text HH:MM (col E)
-      createdTime,         // text HH:mm:ss (col F)
+      eventDateObj,
+      sessionTime,
+      createdTime,
     ];
 
     for (let ci = 0; ci < fixedData.length; ci++) {
@@ -450,36 +460,23 @@ export async function createEventsExcel(
       cell.alignment = { horizontal: 'left', vertical: 'top' };
 
       if (colNum <= 3) {
-        // A, B, C: PINK read-only
         cell.fill = PINK_FILL;
       } else if (colNum === 4) {
-        // D: event_date – BLUE, Excel DATE format
-        cell.fill     = BLUE_FILL;
-        cell.numFmt   = 'YYYY-MM-DD';
+        cell.fill   = BLUE_FILL;
+        cell.numFmt = 'YYYY-MM-DD';
       } else {
-        // E, F: BLUE, text format
         cell.fill   = BLUE_FILL;
         cell.numFmt = '@';
       }
     }
 
-    // ---- Column G: comment (merged G:J) ----
-    const commentColStart = FIXED_COL_COUNT;                    // 7 → G
-    const commentColEnd   = FIXED_COL_COUNT + PADDING_COLS;     // 10 → J
-    const commentValue    = event.comment ?? '';
-
-    ws.mergeCells(row, commentColStart, row, commentColEnd);
-    const commentCell = ws.getCell(row, commentColStart);
+    // ---- Column G: leaf comment (single cell, no merge) ----
+    const commentValue = event.comment ?? '';
+    const commentCell  = ws.getCell(row, FIXED_COL_COUNT); // col 7 = G
     commentCell.value     = commentValue || null;
     commentCell.fill      = BLUE_FILL;
     commentCell.border    = THIN_BORDER;
     commentCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: false };
-
-    // Apply border to all merged cells
-    for (let ci = commentColStart; ci <= commentColEnd; ci++) {
-      ws.getCell(row, ci).fill   = BLUE_FILL;
-      ws.getCell(row, ci).border = THIN_BORDER;
-    }
 
     // Row height
     ws.getRow(row).height = 20;
@@ -488,7 +485,7 @@ export async function createEventsExcel(
       ws.getRow(row).height = 20 + Math.min(2, Math.floor(commentValue.length / 50)) * 15;
     }
 
-    // ---- Attribute columns K+ ----
+    // ---- Attribute columns H+ ----
     for (let aidx = 0; aidx < attrColumns.length; aidx++) {
       const { attrDefId } = attrColumns[aidx];
       const colNum        = ATTR_COL_START + aidx;
@@ -548,12 +545,12 @@ export async function createEventsExcel(
   };
 
   // ──────────────────────────────────────────
-  // FREEZE PANES  (below header, right of comment: col K = xSplit 10)
+  // FREEZE PANES  (below header, right of comment: col H = xSplit 7)
   // ──────────────────────────────────────────
   ws.views = [{
     state:  'frozen',
-    xSplit: ATTR_COL_START - 1,    // 10 → freeze cols A-J, first scrollable = K
-    ySplit: eventDataStart - 1,    // freeze rows above data
+    xSplit: ATTR_COL_START - 1,    // 7 → freeze cols A-G, first scrollable = H
+    ySplit: eventDataStart - 1,
   }];
 
   // ──────────────────────────────────────────
@@ -565,139 +562,175 @@ export async function createEventsExcel(
   ws.getColumn('D').width = 12;   // event_date
   ws.getColumn('E').width = 8;    // session_start
   ws.getColumn('F').width = 10;   // created_at
-  ws.getColumn('G').width = 30;   // comment (merged)
-  ws.getColumn('H').width = 3;
-  ws.getColumn('I').width = 3;
-  ws.getColumn('J').width = 3;
+  ws.getColumn('G').width = 30;   // leaf comment
 
   for (let aidx = 0; aidx < attrColumns.length; aidx++) {
     ws.getColumn(ATTR_COL_START + aidx).width = 13;
   }
 
-  // Legend column widths (override if wider than event data columns)
-  const legendWidths: Record<string, number> = { A: 6, B: 12, C: 32, D: 16, E: 10, F: 10, G: 8, H: 8, I: 10 };
+  // Legend column widths (6 cols: Col=A, Area=B, Category_Path=C, Attribute=D, Type=E, Unit=F)
+  const legendWidths: Record<string, number> = { A: 6, B: 12, C: 32, D: 16, E: 10, F: 10 };
   for (const [letter, width] of Object.entries(legendWidths)) {
     const col = ws.getColumn(letter);
     if (!col.width || col.width < width) col.width = width;
   }
 
   // ──────────────────────────────────────────
-  // HELP SHEET
+  // HELP EVENTS SHEET
   // ──────────────────────────────────────────
-  _createHelpSheet(wb);
-
-  // Protect nothing – file should open directly in edit mode
-  // (no workbook or worksheet protections)
-
-  // ──────────────────────────────────────────
-  // Write to buffer
-  // ──────────────────────────────────────────
-  const buffer = await wb.xlsx.writeBuffer();
-  return buffer;
+  _createHelpEventsSheet(wb);
 }
 
 // ─────────────────────────────────────────────
-// Help sheet
+// Public API — thin wrapper (unified workbook)
 // ─────────────────────────────────────────────
 
-function _createHelpSheet(wb: ExcelJS.Workbook): void {
-  const ws = wb.addWorksheet('Help');
+/**
+ * Create the full unified workbook and return as ArrayBuffer.
+ *
+ * @param events          Leaf events (already merged via mergeSessionEvents)
+ * @param attrDefs        Attribute definitions for all relevant categories
+ * @param categoriesDict  Category info keyed by category_id
+ * @param sortOrder       Sort direction for event rows (default: newest first)
+ * @param structureNodes  Optional: adds Structure + HelpStructure sheets (Korak 5)
+ * @param filterInfo      Optional: adds Filter sheet (Korak 5)
+ */
+export async function createEventsExcel(
+  events:          ExportEvent[],
+  attrDefs:        ExportAttrDef[],
+  categoriesDict:  ExportCategoriesDict,
+  sortOrder:       'asc' | 'desc' = 'desc',
+  structureNodes?: StructureNode[],
+  filterInfo?:     FilterSheetInfo,
+): Promise<ArrayBuffer> {
 
-  const lines = [
-    ['EVENTS TRACKER - Excel Export/Import Help V1.0'],
-    [''],
-    ['🎯 IMPORTANT: ATTRIBUTE LEGEND = SOURCE OF TRUTH'],
-    [''],
-    ['The ATTRIBUTE LEGEND tells import which Excel column contains which attribute.'],
-    ['You MUST keep Legend synchronized with your column structure!'],
-    [''],
-    ['═══════════════════════════════════════════════════════'],
-    [''],
-    ['📋 FILE STRUCTURE:'],
-    [''],
-    ['1. ATTRIBUTE LEGEND (top section)'],
-    ['   Col: Column letter (K, L, M...) for this attribute in EVENT DATA'],
-    ['   Area / Category_Path / Attribute: identify the attribute'],
-    ['   Type / Default / Min / Max / Unit: attribute properties (cols F-I grouped)'],
-    ['   Rows grouped (click +/- ABOVE group to expand/collapse)'],
-    [''],
-    ['2. EVENT DATA (bottom section)'],
-    ['   Fixed columns: event_id(A), Area(B), Category_Path(C),'],
-    ['     event_date(D), session_start(E), created_at(F), comment(G-J merged)'],
-    ['   Attribute columns start at K with "attr_name (Category)" headers'],
-    ['   AutoFilter enabled, title row shows SUMs (respects filters)'],
-    [''],
-    ['═══════════════════════════════════════════════════════'],
-    [''],
-    ['🎨 COLOR CODING:'],
-    [''],
-    ['🩷 PINK = READ-ONLY'],
-    ['   event_id, Area, Category_Path'],
-    [''],
-    ['🔵 BLUE = EDITABLE'],
-    ['   event_date  : date (YYYY-MM-DD)'],
-    ['   session_start: time (HH:MM, e.g. 14:30)'],
-    ['   created_at  : time with seconds (HH:mm:ss, e.g. 14:30:05)'],
-    ['   comment     : notes'],
-    ['   Relevant attributes for this category and parent categories'],
-    [''],
-    ['   ⚠️ Validation: created_at must be >= session_start.'],
-    ['   If not, import will report a validation error for that row.'],
-    [''],
-    ['🟠 ORANGE = NOT RELEVANT'],
-    ['   Attribute belongs to different category branch – leave empty.'],
-    [''],
-    ['═══════════════════════════════════════════════════════'],
-    [''],
-    ['✏️ HOW TO EDIT:'],
-    [''],
-    ['UPDATE EXISTING EVENTS:'],
-    ['  1. Find row with event_id filled (UUID in column A)'],
-    ['  2. Change BLUE columns only'],
-    ['  3. Save and import'],
-    [''],
-    ['CREATE NEW EVENTS:'],
-    ['  1. Add row at bottom, leave event_id EMPTY'],
-    ['  2. Fill Area, Category_Path (must exist in your structure)'],
-    ['  3. Fill event_date (required, YYYY-MM-DD)'],
-    ['  4. Fill session_start (optional, HH:MM, defaults to 09:00)'],
-    ['  5. Fill created_at (optional, HH:mm:ss, defaults to session_start + 1s)'],
-    ['  6. Fill relevant attribute values (blue cells)'],
-    ['  7. Save and import'],
-    [''],
-    ['═══════════════════════════════════════════════════════'],
-    [''],
-    ['✂️ HOW TO REMOVE ATTRIBUTES:'],
-    [''],
-    ['OPTION 1 (SIMPLEST): Delete Legend rows'],
-    ['  Delete unwanted rows from ATTRIBUTE LEGEND.'],
-    ['  Do NOT touch EVENT DATA columns.'],
-    ['  Save and import → attribute ignored ✅'],
-    [''],
-    ['OPTION 2: Delete columns + update Legend'],
-    ['  Delete unwanted columns from EVENT DATA.'],
-    ['  UPDATE "Col" letters in ATTRIBUTE LEGEND to match new positions.'],
-    ['  Save and import ✅'],
-    [''],
-    ['⚠️ If you delete columns without updating Legend, import will FAIL.'],
-    [''],
-    ['═══════════════════════════════════════════════════════'],
-    [''],
-    ['💡 TIPS:'],
-    ['  - Use AutoFilter to show only specific categories/dates'],
-    ['  - Collapse LEGEND groups to see more EVENT DATA'],
-    ['  - SUM row updates automatically when you filter'],
-    ['  - Orange cells can be left empty (not relevant)'],
-    ['  - Do NOT change event_id values'],
-    ['  - Empty cells = no value (not zero)'],
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Events Tracker';
+  wb.created = new Date();
+
+  // Sheet 1 + 2: Events + HelpEvents
+  await addActivitiesSheetsTo(wb, events, attrDefs, categoriesDict, sortOrder);
+
+  // Sheet 3 + 4: Structure + HelpStructure (optional — Korak 5)
+  if (structureNodes) {
+    await addStructureSheetsTo(wb, structureNodes);
+  }
+
+  // Sheet 5: Filter (optional — Korak 5)
+  if (filterInfo) {
+    addFilterSheet(wb, filterInfo);
+  }
+
+  return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
+}
+
+// ─────────────────────────────────────────────
+// HelpEvents sheet
+// ─────────────────────────────────────────────
+
+function _createHelpEventsSheet(wb: ExcelJS.Workbook): void {
+  const ws = wb.addWorksheet('HelpEvents');
+
+  type HelpLine = { text: string; fill?: ExcelJS.Fill };
+
+  const lines: HelpLine[] = [
+    { text: 'EVENTS TRACKER — Excel Export/Import Help V1.1' },
+    { text: '' },
+    { text: '🎯 IMPORTANT: ATTRIBUTE LEGEND = SOURCE OF TRUTH' },
+    { text: '' },
+    { text: 'The ATTRIBUTE LEGEND tells import which Excel column contains which attribute.' },
+    { text: 'You MUST keep Legend synchronized with your column structure!' },
+    { text: '' },
+    { text: '═══════════════════════════════════════════════════════' },
+    { text: '' },
+    { text: '📋 FILE STRUCTURE:' },
+    { text: '' },
+    { text: '1. ATTRIBUTE LEGEND (top section)' },
+    { text: '   Col: Column letter (H, I, J...) for this attribute in EVENT DATA' },
+    { text: '   Area / Category_Path / Attribute: identify the attribute' },
+    { text: '   Type / Unit: attribute properties' },
+    { text: '   → Full details (default, min, max) available in the Structure sheet' },
+    { text: '   Rows grouped (click +/- ABOVE group to expand/collapse)' },
+    { text: '' },
+    { text: '2. EVENT DATA (bottom section)' },
+    { text: '   Fixed columns: event_id(A), Area(B), Category_Path(C),' },
+    { text: '     event_date(D), session_start(E), created_at(F), leaf comment(G)' },
+    { text: '   Attribute columns start at H with "attr_name (Category)" headers' },
+    { text: '   AutoFilter enabled, title row shows SUMs (respects filters)' },
+    { text: '' },
+    { text: '═══════════════════════════════════════════════════════' },
+    { text: '' },
+    { text: '🎨 COLOR CODING:' },
+    { text: '' },
+    { text: 'PINK = READ-ONLY',         fill: PINK_FILL },
+    { text: '   event_id, Area, Category_Path' },
+    { text: '' },
+    { text: 'BLUE = EDITABLE',          fill: BLUE_FILL },
+    { text: '   event_date  : date (YYYY-MM-DD)' },
+    { text: '   session_start: time (HH:MM, e.g. 14:30)' },
+    { text: '   created_at  : time with seconds (HH:mm:ss, e.g. 14:30:05)' },
+    { text: '   leaf comment: notes for this activity' },
+    { text: '   Relevant attributes for this category and parent categories' },
+    { text: '' },
+    { text: '   ⚠️ Validation: created_at must be >= session_start.' },
+    { text: '   If not, import will report a validation error for that row.' },
+    { text: '' },
+    { text: 'ORANGE = NOT RELEVANT',    fill: ORANGE_FILL },
+    { text: '   Attribute belongs to different category branch – leave empty.' },
+    { text: '' },
+    { text: '═══════════════════════════════════════════════════════' },
+    { text: '' },
+    { text: '✏️ HOW TO EDIT:' },
+    { text: '' },
+    { text: 'UPDATE EXISTING EVENTS:' },
+    { text: '  1. Find row with event_id filled (UUID in column A)' },
+    { text: '  2. Change BLUE columns only' },
+    { text: '  3. Save and import' },
+    { text: '' },
+    { text: 'CREATE NEW EVENTS:' },
+    { text: '  1. Add row at bottom, leave event_id EMPTY' },
+    { text: '  2. Fill Area, Category_Path (must exist in your structure)' },
+    { text: '  3. Fill event_date (required, YYYY-MM-DD)' },
+    { text: '  4. Fill session_start (optional, HH:MM, defaults to 09:00)' },
+    { text: '  5. Fill created_at (optional, HH:mm:ss, defaults to session_start + 1s)' },
+    { text: '  6. Fill relevant attribute values (blue cells)' },
+    { text: '  7. Save and import' },
+    { text: '' },
+    { text: '═══════════════════════════════════════════════════════' },
+    { text: '' },
+    { text: '✂️ HOW TO REMOVE ATTRIBUTES:' },
+    { text: '' },
+    { text: 'OPTION 1 (SIMPLEST): Delete Legend rows' },
+    { text: '  Delete unwanted rows from ATTRIBUTE LEGEND.' },
+    { text: '  Do NOT touch EVENT DATA columns.' },
+    { text: '  Save and import → attribute ignored ✅' },
+    { text: '' },
+    { text: 'OPTION 2: Delete columns + update Legend' },
+    { text: '  Delete unwanted columns from EVENT DATA.' },
+    { text: '  UPDATE "Col" letters in ATTRIBUTE LEGEND to match new positions.' },
+    { text: '  Save and import ✅' },
+    { text: '' },
+    { text: '⚠️ If you delete columns without updating Legend, import will FAIL.' },
+    { text: '' },
+    { text: '═══════════════════════════════════════════════════════' },
+    { text: '' },
+    { text: '💡 TIPS:' },
+    { text: '  - Use AutoFilter to show only specific categories/dates' },
+    { text: '  - Collapse LEGEND groups to see more EVENT DATA' },
+    { text: '  - SUM row updates automatically when you filter' },
+    { text: '  - Orange cells can be left empty (not relevant)' },
+    { text: '  - Do NOT change event_id values' },
+    { text: '  - Empty cells = no value (not zero)' },
   ];
 
   for (let r = 0; r < lines.length; r++) {
+    const { text, fill } = lines[r];
     const cell = ws.getCell(r + 1, 1);
-    cell.value = lines[r][0] || null;
+    cell.value = text || null;
+    if (fill) cell.fill = fill;
     if (r === 0) {
       cell.font = { bold: true, size: 14 };
-    } else if (lines[r][0] && !lines[r][0].startsWith(' ') && !lines[r][0].startsWith('═') && lines[r][0].endsWith(':')) {
+    } else if (text && !text.startsWith(' ') && !text.startsWith('═') && text.endsWith(':')) {
       cell.font = { bold: true, size: 11 };
     }
   }
@@ -753,7 +786,6 @@ export function mergeSessionEvents(
   const result: ExportEvent[] = [];
 
   for (const groupLeafEvents of leafGroups.values()) {
-    // Sort by created_at ASC within group (chronological leaf order)
     groupLeafEvents.sort((a, b) => {
       if (!a.created_at && !b.created_at) return 0;
       if (!a.created_at) return 1;
@@ -763,7 +795,6 @@ export function mergeSessionEvents(
 
     const firstLeaf = groupLeafEvents[0];
 
-    // Collect all parent attrs for this chain by walking up the hierarchy
     const allParentAttrs: NonNullable<ExportEvent['event_attributes']> = [];
     let walkCatId: string | null =
       (categoriesDict[firstLeaf.category_id] as { parent_category_id?: string | null })
@@ -778,13 +809,11 @@ export function mergeSessionEvents(
           ?.parent_category_id ?? null;
     }
 
-    // First leaf row: merge parent attrs (P3 — parent attrs visible in first set row)
     result.push({
       ...firstLeaf,
       event_attributes: [...(firstLeaf.event_attributes ?? []), ...allParentAttrs],
     });
 
-    // Remaining leaf rows: samo leaf atributi
     for (let i = 1; i < groupLeafEvents.length; i++) {
       result.push(groupLeafEvents[i]);
     }

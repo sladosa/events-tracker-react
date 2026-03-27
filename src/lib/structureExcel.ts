@@ -3,7 +3,7 @@
 // ============================================================
 //
 // v2 vs v1:
-//   • Single sheet "HierarchicalView" (was: one sheet per Area)
+//   • Single sheet "Structure" (was: "HierarchicalView" pre-S26)
 //   • 17 fixed columns A–Q (no dynamic DependsOnWhen_* columns)
 //   • Multi-row DependsOn: one row per WhenValue (Streamlit style)
 //   • Rows 1–5: color legend (row-grouped, default collapsed)
@@ -17,6 +17,10 @@
 //   • Bold: Area rows + leaf Category rows. Italic: Attribute rows.
 //   • Area formula in col C: =IFERROR(LEFT(D8,FIND(" > ",D8)-1),D8)
 //
+// Unified workbook (S26 Korak 3):
+//   exportStructureExcel() → 4 sheets: Events(stub), Structure, HelpStructure, Filter
+//   addStructureSheetsTo() → internal builder used by excelBackup.ts too
+//
 // Filenames:
 //   Normal:   structure_export_YYYYMMDD_HHmmss.xlsx
 //   Backup:   structure_export_YYYYMMDD_HHmmss_backup.xlsx
@@ -24,6 +28,7 @@
 //
 // Public API:
 //   exportStructureExcel(nodes, options?)  → ArrayBuffer
+//   addStructureSheetsTo(wb, nodes, ...)   → void  (for composing multi-sheet workbooks)
 //   structureExportFilename()              → string
 //   structureBackupFilename()              → string
 //   structureConflictFilename()            → string
@@ -32,6 +37,12 @@
 import ExcelJS from 'exceljs';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
+import {
+  timestampSuffix,
+  formatTimestampSuffix,
+  addFilterSheet,
+  type FilterSheetInfo,
+} from './excelUtils';
 
 // ─────────────────────────────────────────────────────────────
 // ARGB color constants
@@ -86,9 +97,8 @@ const COLS = [
 
 const N_COLS = COLS.length; // 17
 
-// Column letter helpers
+// Column letter helpers (0-based index: A=0, B=1, ...)
 function colLetter(idx: number): string {
-  // idx is 0-based; A=0, B=1, ...
   return String.fromCharCode(65 + idx);
 }
 
@@ -179,21 +189,6 @@ const THIN_BORDER: Partial<ExcelJS.Borders> = {
   bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
   right:  { style: 'thin', color: { argb: 'FFCCCCCC' } },
 };
-
-function nowTimestamp(): string {
-  const d = new Date();
-  const p = (n: number) => n.toString().padStart(2, '0');
-  return (
-    `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
-    `_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
-  );
-}
-
-function fmtTimestamp(ts: string): string {
-  // "20260321_142307" → "2026-03-21 14:23:07"
-  return ts
-    .replace(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6');
-}
 
 // ─────────────────────────────────────────────────────────────
 // Row builders
@@ -304,17 +299,17 @@ function buildAllRows(nodes: StructureNode[]): DataRow[] {
 }
 
 // ─────────────────────────────────────────────────────────────
-// HierarchicalView sheet writer
+// Structure sheet writer
 // ─────────────────────────────────────────────────────────────
-function writeHierarchicalSheet(
+function writeStructureSheet(
   wb: ExcelJS.Workbook,
   rows: DataRow[],
   infoRow?: InfoRowOptions,
   conflictSlugs?: Set<string>,
 ): void {
-  const ts = nowTimestamp();
+  const ts = timestampSuffix();
 
-  const ws = wb.addWorksheet('HierarchicalView');
+  const ws = wb.addWorksheet('Structure');
 
   // Freeze at G8: first 6 cols + first 7 rows frozen
   ws.views = [{ state: 'frozen', xSplit: 6, ySplit: 7 }];
@@ -399,7 +394,7 @@ function writeHierarchicalSheet(
   ws.getCell(6, 2).fill = makeFill(infoBg);
   ws.getCell(6, 3).fill = makeFill(infoBg);
   // D6 = timestamp
-  setInfo(4, fmtTimestamp(ts));
+  setInfo(4, formatTimestampSuffix(ts));
   // E6..Q6 — fill remaining cells (cosmetic)
   for (let ci = 5; ci <= N_COLS; ci++) {
     ws.getCell(6, ci).fill = makeFill(infoBg);
@@ -434,8 +429,6 @@ function writeHierarchicalSheet(
     const xlRow = ws.getRow(rowNum);
     xlRow.height = 15;
 
-    // Row typography: Area = Calibri 12 Bold, Leaf = Calibri 11 Bold,
-    // Attribute = Calibri 11 Italic, Category = Calibri 11 normal
     const isArea = data._isAreaRow;
     const isLeaf = data._isLeafRow;
     const isAttr = data._isAttrRow;
@@ -482,8 +475,6 @@ function writeHierarchicalSheet(
   }
 
   // ── Data validations ─────────────────────────────────────────
-  // ExcelJS TS types omit dataValidations on Worksheet — cast to any.
-  // The API exists at runtime: ws.dataValidations.add(range, rule).
   const lastDataRow = Math.max(rows.length + 8, 100);
   const dvRange = (col: string) => `${col}8:${col}${lastDataRow}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -511,10 +502,10 @@ function writeHierarchicalSheet(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Help sheet (last)
+// HelpStructure sheet
 // ─────────────────────────────────────────────────────────────
-function writeHelpSheet(wb: ExcelJS.Workbook): void {
-  const ws = wb.addWorksheet('Help', {
+function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
+  const ws = wb.addWorksheet('HelpStructure', {
     views: [{ showGridLines: false }],
   });
 
@@ -623,8 +614,8 @@ function writeHelpSheet(wb: ExcelJS.Workbook): void {
     rowIdx++;
   }
 
-  // Color PINK/YELLOW/BLUE/GREEN cells in column A for rows 11–14
-  // (These correspond to the Color Coding section entries)
+  // Color PINK/YELLOW/BLUE/GREEN cells in column A for the Color Coding section rows
+  // Rows 11–14 correspond to the Color Coding entries (PINK, YELLOW, BLUE, GREEN)
   const colorRows: Array<[number, string]> = [
     [11, CLR.PINK],
     [12, CLR.YELLOW],
@@ -637,27 +628,67 @@ function writeHelpSheet(wb: ExcelJS.Workbook): void {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Public API
+// Events stub sheet (for Structure Export — no events included)
+// ─────────────────────────────────────────────────────────────
+function _addEventsStubSheet(wb: ExcelJS.Workbook): void {
+  const ws = wb.addWorksheet('Events');
+  ws.getColumn('A').width = 90;
+  const cell = ws.getCell(1, 1);
+  cell.value = 'Export initiated from Structure tab — no events included. To export events, use Activities tab.';
+  cell.font = { italic: true, color: { argb: 'FF888888' } };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Filter sheet info builder (for Structure Export)
+// ─────────────────────────────────────────────────────────────
+function _buildStructureFilterInfo(
+  nodes: StructureNode[],
+  options: ExportStructureOptions,
+  ts: string,
+): FilterSheetInfo {
+  const { filterAreaId, filterCategoryId } = options;
+
+  let area: string | null = null;
+  let category: string | null = null;
+
+  if (filterCategoryId) {
+    const pivot = nodes.find(n => n.id === filterCategoryId);
+    if (pivot) {
+      category = pivot.fullPath;
+      const areaNode = nodes.find(n => n.nodeType === 'area' && n.id === pivot.areaId);
+      area = areaNode?.name ?? null;
+    }
+  } else if (filterAreaId) {
+    const areaNode = nodes.find(n => n.id === filterAreaId);
+    area = areaNode?.name ?? null;
+  }
+
+  return {
+    exportType: 'Structure',
+    exportedAt: ts,
+    area,
+    category,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Public API — internal builder
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Export structure to Excel v2 format.
- *
- * @param nodes         All StructureNodes from useStructureData
- * @param options       Optional filter scope
- * @param infoRow       Info for row 6 (export/backup/conflict)
- * @param conflictSlugs Set of attribute slugs that caused import conflicts.
- *                      Forces Slug column visible and highlights those cells.
+ * Add "Structure" + "HelpStructure" sheets to an existing workbook.
+ * Used by exportStructureExcel() and by excelBackup.ts (Korak 4).
  */
-export async function exportStructureExcel(
+export async function addStructureSheetsTo(
+  wb: ExcelJS.Workbook,
   nodes: StructureNode[],
   options: ExportStructureOptions = {},
   infoRow?: InfoRowOptions,
   conflictSlugs?: Set<string>,
-): Promise<ArrayBuffer> {
+): Promise<void> {
   const { filterAreaId, filterCategoryId } = options;
 
-  // ── Filter scope ──
+  // Filter scope (same logic as old exportStructureExcel)
   let scoped = nodes;
   if (filterCategoryId) {
     const pivot = nodes.find(n => n.id === filterCategoryId);
@@ -675,29 +706,56 @@ export async function exportStructureExcel(
   }
 
   const rows = buildAllRows(scoped);
+  writeStructureSheet(wb, rows, infoRow, conflictSlugs);
+  writeHelpStructureSheet(wb);
+}
 
+// ─────────────────────────────────────────────────────────────
+// Public API — thin wrapper (produces unified workbook)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Export structure to Excel unified format.
+ * Produces 4 sheets: Events (stub), Structure, HelpStructure, Filter.
+ *
+ * @param nodes         All StructureNodes from useStructureData
+ * @param options       Optional filter scope
+ * @param infoRow       Info for row 6 (export/backup/conflict)
+ * @param conflictSlugs Set of attribute slugs that caused import conflicts.
+ *                      Forces Slug column visible and highlights those cells.
+ */
+export async function exportStructureExcel(
+  nodes: StructureNode[],
+  options: ExportStructureOptions = {},
+  infoRow?: InfoRowOptions,
+  conflictSlugs?: Set<string>,
+): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator  = 'Events Tracker';
   wb.created  = new Date();
   wb.modified = new Date();
 
-  writeHierarchicalSheet(wb, rows, infoRow, conflictSlugs);
-  writeHelpSheet(wb);
+  const ts = timestampSuffix();
+
+  // Sheet order: Events(stub) → Structure → HelpStructure → Filter
+  _addEventsStubSheet(wb);
+  await addStructureSheetsTo(wb, nodes, options, infoRow, conflictSlugs);
+  addFilterSheet(wb, _buildStructureFilterInfo(nodes, options, ts));
 
   return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
 /** Filename for a normal structure export. */
 export function structureExportFilename(): string {
-  return `structure_export_${nowTimestamp()}.xlsx`;
+  return `structure_export_${timestampSuffix()}.xlsx`;
 }
 
 /** Filename for a pre-operation backup export. */
 export function structureBackupFilename(): string {
-  return `structure_export_${nowTimestamp()}_backup.xlsx`;
+  return `structure_export_${timestampSuffix()}_backup.xlsx`;
 }
 
 /** Filename for an import conflict report. */
 export function structureConflictFilename(): string {
-  return `structure_export_${nowTimestamp()}_conflict.xlsx`;
+  return `structure_export_${timestampSuffix()}_conflict.xlsx`;
 }
