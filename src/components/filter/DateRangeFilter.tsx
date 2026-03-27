@@ -11,7 +11,7 @@ const ALL_TIME_VALUE = '__all_time__';
 const CUSTOM_VALUE   = '__custom__';
 
 export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
-  const { filter, setDateRange, setSortOrder } = useFilter();
+  const { filter, setDateRange, setSortOrder, setPeriodLabel } = useFilter();
   const { bounds, loading, refresh } = useDateBounds(filter.areaId, filter.categoryId);
 
   // Local state for From/To inputs
@@ -30,8 +30,9 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       setLocalFrom(bounds.minDate);
       setLocalTo(bounds.maxDate);
       setDateRange(bounds.minDate, bounds.maxDate);
+      setPeriodLabel('All time');
     }
-  }, [bounds.minDate, bounds.maxDate, loading, userModified, setDateRange]);
+  }, [bounds.minDate, bounds.maxDate, loading, userModified, setDateRange, setPeriodLabel]);
 
   // ── Sync when filter resets externally (e.g. after import) ─────────────────
   useEffect(() => {
@@ -51,13 +52,19 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   const handleFromChange = (value: string) => {
     setLocalFrom(value);
     setUserModified(true);
-    if (value && localTo) setDateRange(value, localTo);
+    if (value && localTo) {
+      setDateRange(value, localTo);
+      setPeriodLabel('Custom');
+    }
   };
 
   const handleToChange = (value: string) => {
     setLocalTo(value);
     setUserModified(true);
-    if (localFrom && value) setDateRange(localFrom, value);
+    if (localFrom && value) {
+      setDateRange(localFrom, value);
+      setPeriodLabel('Custom');
+    }
   };
 
   // ── Apply preset by label ──────────────────────────────────────────────────
@@ -73,6 +80,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     setLocalTo(to);
     setDateRange(from, to);
     setUserModified(true);
+    setPeriodLabel(label);
   };
 
   // ── Reset to full data range ───────────────────────────────────────────────
@@ -82,6 +90,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       setLocalTo(bounds.maxDate);
       setDateRange(bounds.minDate, bounds.maxDate);
       setUserModified(false);
+      setPeriodLabel('All time');
     }
   };
 

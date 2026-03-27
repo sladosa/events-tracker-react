@@ -85,6 +85,10 @@ export interface FilterContextType {
   navigateUp: () => void;
   reset: () => void;
   
+  // Period label ('All time', 'Custom', or preset name like 'Last 3 months')
+  periodLabel: string;
+  setPeriodLabel: (label: string) => void;
+
   // Date filter actions
   setDateRange: (from: string | null, to: string | null) => void;
   setSortOrder: (order: SortOrder) => void;  // D3
@@ -135,6 +139,9 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   
   // === Shortcuts ===
   const [selectedShortcutId, setSelectedShortcutId] = useState<UUID | null>(null);
+
+  // === Period label ===
+  const [periodLabel, setPeriodLabel] = useState<string>('All time');
   
   // === Restore tracking ===
   const [isRestored, setIsRestored] = useState(false);
@@ -494,6 +501,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     navigateToPath,
     navigateUp,
     reset,
+    periodLabel,
+    setPeriodLabel,
     setDateRange,
     setSearchQuery,
     setSortOrder,

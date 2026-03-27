@@ -177,17 +177,17 @@ Stari xlsx (HierarchicalView sheet) više nije podržan.
 
 ## T-S26-9
 
-**Opis:** Filter sheet — Period label = 'All time' kad nema datumskih filtera
+**Opis:** Filter sheet — Period label = 'All time' (bez datuma) / 'Custom' (s datumima)
 
 **Koraci:**
 1. Activities Export bez postavljenih datuma (All time) → otvori Filter sheet
    - `Period label` = `All time`
 2. Activities Export s postavljenim From datumom (npr. 2026-01-01) → Filter sheet
-   - `Period label` = prazno (nije "All time" jer su datumi eksplicitno odabrani)
+   - `Period label` = `Custom`
 3. Structure Export → Filter sheet
    - `Period label` = `All time`
 
-**Očekivano:** `All time` samo kad nema eksplicitnih datuma; inače prazno
+**Očekivano:** `All time` kad nema eksplicitnih datuma; `Custom` kad su datumi postavljeni
 
 ---
 

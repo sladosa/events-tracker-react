@@ -25,7 +25,7 @@ const MIN_BATCH = 2;
 const MAX_BATCH = 50000;
 
 export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
-  const { filter } = useFilter();
+  const { filter, periodLabel } = useFilter();
 
   const [totalCount,  setTotalCount]  = useState<number | null>(null);
   const [batchSize,   setBatchSize]   = useState(DEFAULT_BATCH_SIZE);
@@ -118,8 +118,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         sortOrder:   filters.sortOrder ?? 'desc',
         firstRecord: filters.dateFrom ? undefined : firstRecord,
         lastRecord:  filters.dateTo   ? undefined : lastRecord,
-        // Period label: 'All time' when no explicit dates; empty when dates are set
-        periodLabel: (!filters.dateFrom && !filters.dateTo) ? 'All time' : undefined,
+        periodLabel,
       };
 
       const buffer = await createEventsExcel(

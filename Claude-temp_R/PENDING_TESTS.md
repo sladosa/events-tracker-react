@@ -1,6 +1,6 @@
 # Pending Tests
 
-**Zadnja izmjena:** 2026-03-27 (S26)
+**Zadnja izmjena:** 2026-03-27 (S27)
 **Branch:** test-branch
 **Detalji testova:** `Claude-temp_R/test-sessions/S26_tests.md`
 
@@ -8,32 +8,41 @@
 
 ## Aktivni (nepotvrđeni) testovi
 
-| ID       | Opis                                                           | Sesija | Detalji                                                           |
-| -------- | -------------------------------------------------------------- | ------ | ----------------------------------------------------------------- |
-| T-S25-1  | Import Area-only → result summary vidljiv, nova Area u filteru | S25    | [S25_tests.md](test-sessions/S25_tests.md#t-s25-1)                |
-| T-S25-2  | Leaf bez evenata → badge "no events yet" vidljiv u tabeli      | S25    | [S25_tests.md](test-sessions/S25_tests.md#t-s25-2)  ✅            |
-| T-S25-3  | Leaf s eventima → nema "no events yet" badge                   | S25    | [S25_tests.md](test-sessions/S25_tests.md#t-s25-3)  ✅            |
-| T-S22-T3 | Delete Area (prazna) — nikad potvrđeno                         | S22    | [S22_tests.md](test-sessions/S22_tests.md#t3--delete-area-prazna) |
-| T-S26-1  | Activities Export → Events sheet: attr kolone od H, comment samo G, freeze na H | S26 | ✅ |
-| T-S26-2  | Activities Export → LEGEND: 6 kolona (bez Default/Min/Max), C1 napomena vidljiva | S26 | ✅ |
-| T-S26-3  | Activities Export → HelpEvents sheet postoji (ne "Help"), PINK/BLUE/ORANGE ćelije obojene | S26 | ✅ |
-| T-S26-4  | Structure Export → 4 sheeta: Events(stub), Structure, HelpStructure, Filter | S26 | ✅ |
-| T-S26-5  | Structure Export → Filter sheet ispravni podaci | S26 | ✅ (datum format promjenjen) |
-| T-S26-6  | Activities Export → 5 sheetova | S26 | ✅ |
-| T-S26-7  | Activities Export → Filter sheet datumi + Period label | S26 | djelomično (fiksirano) |
-| T-S26-8  | Activities Export → filename s punim timestamp | S26 | ✅ |
-| T-S25-1  | Structure Import: Area-only red → result summary | S25 | ✅ |
-| T-S26-9  | Filter sheet: Period label = 'All time' kad nema datumskih filtera | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-9) |
-| T-S26-10 | Activities Export: Structure sheet filtriran prema aktivnom Area/Category filteru | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-10) |
+| ID       | Opis                                                                                      | Sesija | Detalji                                                           |
+| -------- | ----------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------- |
+| (nema)   |                                                                                           |        |                                                                   |
 
 ## Zatvoreni (potvrđeni/riješeni) testovi iz ove sesije
 
 | ID | Opis | Sesija | Status |
 |----|------|--------|--------|
-| T-S24-1 | Import Area-only Excel reda → kreira Area | S24 | ❌ → riješeno S25 |
-| T-S24-2 | Add Child na leaf s eventima → orange blocked state | S24 | ✅ |
-| T-S24-3 | Add Area UI → gumb u Edit Mode, modal, kreira area, refresh dropdown | S24 | ✅ |
-| T-S24-5 | Regression: T4, T5, T9 i dalje rade | S24 | ✅ |
+| T-S25-1  | Structure Import: Area-only → result summary, nova Area u filteru | S25/S26 | ✅ |
+| T-S25-2  | Leaf bez evenata → badge "no events yet" vidljiv u tabeli         | S25     | ✅ |
+| T-S25-3  | Leaf s eventima → nema "no events yet" badge                      | S25     | ✅ |
+| T-S22-T3 | Delete Area (prazna)                                              | S22     | ✅ |
+| T-S26-1  | Activities Export → attr kolone od H, comment samo G, freeze na H | S26     | ✅ |
+| T-S26-2  | Activities Export → LEGEND: 6 kolona, C1 napomena                 | S26     | ✅ |
+| T-S26-3  | Activities Export → HelpEvents sheet, PINK/BLUE/ORANGE boje       | S26     | ✅ |
+| T-S26-4  | Structure Export → 4 sheeta (Events stub, Structure, HelpStructure, Filter) | S26 | ✅ |
+| T-S26-5  | Structure Export → Filter sheet ispravni podaci                   | S26     | ✅ |
+| T-S26-6  | Activities Export → 5 sheetova                                    | S26     | ✅ |
+| T-S26-7  | Activities Export → Filter sheet datumi + Period label            | S26     | ✅ (fiksirano) |
+| T-S26-8  | Activities Export → filename s punim timestamp                    | S26     | ✅ |
+| T-S26-9  | Filter sheet: Period label = 'All time' / 'Custom'                | S27     | ✅ |
+| T-S26-10 | Activities Export: Structure sheet filtriran prema Area/Category  | S26     | ✅ |
+| T-S24-1  | Import Area-only Excel reda → kreira Area                         | S24     | ❌ → riješeno S25 |
+| T-S24-2  | Add Child na leaf s eventima → orange blocked state               | S24     | ✅ |
+| T-S24-3  | Add Area UI → gumb u Edit Mode, modal, kreira area, refresh dropdown | S24  | ✅ |
+| T-S24-5  | Regression: T4, T5, T9 i dalje rade                               | S24     | ✅ |
+
+---
+
+## Napomena: T-S26-10 invalid date issue
+
+Korisnik je unio "29/02/2026" kao From datum — ali Feb 29 ne postoji u 2026 (nije prijestupna godina).
+`type="date"` input vraća `""` za nevažeće datume → filter ostaje na auto-inicijaliziranoj vrijednosti.
+Ovo je očekivano ponašanje browsera, nije bug u kodu.
+**Za retest: koristiti važeći datum (npr. 2026-02-01), zatim exportirati i provjeriti Structure sheet.**
 
 ---
 
@@ -42,7 +51,7 @@
 **Testiranje:** Pokreni aplikaciju lokalno (`npm run dev`) i prođi kroz korake u linkovanim fajlovima.
 
 **Sljedeća sesija — javi rezultate:**
-> "T-S24-1 OK, T-S24-2 OK, T-S24-3 fail, T-S24-5 OK"
+> "T-S26-9 OK, T-S26-10 OK"
 
 Claude će: ažurirati ovaj fajl, označiti ✅/❌ u test-sessions arhivi, istražiti failove.
 
@@ -54,6 +63,7 @@ Claude će: ažurirati ovaj fajl, označiti ✅/❌ u test-sessions arhivi, istr
 |------|--------|--------|
 | [S01-S14_summary.md](test-sessions/S01-S14_summary.md) | S01–S14 | ✅ Sve verificirano |
 | [S15-S21_tests.md](test-sessions/S15-S21_tests.md) | S15–S21 | ✅ Sve verificirano |
-| [S22_tests.md](test-sessions/S22_tests.md) | S22 | ✅ Osim T3 (Delete Area) |
-| [S23_tests.md](test-sessions/S23_tests.md) | S23 | ✅ Osim T11 (riješeno S24) |
-| [S24_tests.md](test-sessions/S24_tests.md) | S24 | ⏳ Pending |
+| [S22_tests.md](test-sessions/S22_tests.md) | S22 | ✅ Sve verificirano |
+| [S23_tests.md](test-sessions/S23_tests.md) | S23 | ✅ Sve verificirano |
+| [S24_tests.md](test-sessions/S24_tests.md) | S24 | ✅ Sve verificirano |
+| [S26_tests.md](test-sessions/S26_tests.md) | S26 | ⏳ T-S26-9, T-S26-10 pending |

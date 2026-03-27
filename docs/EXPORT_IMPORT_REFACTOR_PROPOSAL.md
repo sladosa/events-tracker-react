@@ -41,12 +41,13 @@ uključeno. Ovo omogućuje:
 
 ### ATTRIBUTE LEGEND
 
-| | Staro | Novo |
-|---|---|---|
-| Kolone | Col, Area, Category_Path, Attribute, Type, **Default, Min, Max**, Unit | Col, Area, Category_Path, Attribute, Type, Unit |
-| Column grouping | F–I grupirano i collapsano | uklonjeno (nema svrhe s 6 kolona) |
-| Row grouping | ❌ | ✓ svi LEGEND redovi su collapsable blok (default collapsed) |
-| Napomena | ❌ | C1: *"see Structure sheet for more details"* |
+|                               | Staro                                                                  | Novo                                                        |
+| ----------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Kolone                        | Col, Area, Category_Path, Attribute, Type, **Default, Min, Max**, Unit | Col, Area, Category_Path, Attribute, Type, Unit             |
+| Column grouping               | F–I grupirano i collapsano                                             | uklonjeno (nema svrhe s 6 kolona)                           |
+| Row grouping                  | ❌                                                                      | ✓ svi LEGEND redovi su collapsable blok (default collapsed) |
+| Napomena                      | ❌                                                                      | C1: *"see Structure sheet for more details"*                |
+| Sasa Napomena na Row grouping | Legend redovi su kolapsirani po grupama (vidi logiku)                  | zelimo istu logiku kolapsiranja redova                      |
 
 Obrazloženje: Default/Min/Max su redundantni — korisnik sve detalje ima u Structure sheetu.
 
@@ -64,16 +65,16 @@ Obrazloženje: Default/Min/Max su redundantni — korisnik sve detalje ima u Str
 
 Sadržaj (svaki export):
 
-| Polje | Primjer (Activities) | Primjer (Backup) |
-|-------|---------------------|-----------------|
-| Export type | Activities | Full Backup |
-| Exported at | 2026-03-26 14:23:07 | 2026-03-26 14:23:07 |
-| Area | Running | All |
-| Category | Running > Road | All |
-| Date From | 2026-01-01 | All time (first: 2024-11-03) |
-| Date To | 2026-03-26 | All time (last: 2026-03-25) |
-| Period label | Last 3 months *(can be outdated)* | — |
-| Sort order | Newest first | Newest first |
+| Polje        | Primjer (Activities)              | Primjer (Backup)             |
+| ------------ | --------------------------------- | ---------------------------- |
+| Export type  | Activities                        | Full Backup                  |
+| Exported at  | 2026-03-26 14:23:07               | 2026-03-26 14:23:07          |
+| Area         | Running                           | All                          |
+| Category     | Running > Road                    | All                          |
+| Date From    | 2026-01-01                        | All time (first: 2024-11-03) |
+| Date To      | 2026-03-26                        | All time (last: 2026-03-25)  |
+| Period label | Last 3 months *(can be outdated)* | All time at export           |
+| Sort order   | Newest first                      | Newest first                 |
 
 Backup: Area i Category = "All", datumi = datum prvog i zadnjeg zapisa u bazi.
 
