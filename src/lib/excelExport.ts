@@ -31,7 +31,7 @@ import type {
   ExportEvent,
 } from './excelTypes';
 import type { StructureNode } from '@/types/structure';
-import { addStructureSheetsTo } from './structureExcel';
+import { addStructureSheetsTo, type ExportStructureOptions } from './structureExcel';
 import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
 
 // ─────────────────────────────────────────────
@@ -592,16 +592,18 @@ export async function addActivitiesSheetsTo(
  * @param attrDefs        Attribute definitions for all relevant categories
  * @param categoriesDict  Category info keyed by category_id
  * @param sortOrder       Sort direction for event rows (default: newest first)
- * @param structureNodes  Optional: adds Structure + HelpStructure sheets (Korak 5)
- * @param filterInfo      Optional: adds Filter sheet (Korak 5)
+ * @param structureNodes    Optional: adds Structure + HelpStructure sheets
+ * @param filterInfo        Optional: adds Filter sheet
+ * @param structureOptions  Optional: filter scope for Structure sheet (same as event filter)
  */
 export async function createEventsExcel(
-  events:          ExportEvent[],
-  attrDefs:        ExportAttrDef[],
-  categoriesDict:  ExportCategoriesDict,
-  sortOrder:       'asc' | 'desc' = 'desc',
-  structureNodes?: StructureNode[],
-  filterInfo?:     FilterSheetInfo,
+  events:           ExportEvent[],
+  attrDefs:         ExportAttrDef[],
+  categoriesDict:   ExportCategoriesDict,
+  sortOrder:        'asc' | 'desc' = 'desc',
+  structureNodes?:  StructureNode[],
+  filterInfo?:      FilterSheetInfo,
+  structureOptions?: ExportStructureOptions,
 ): Promise<ArrayBuffer> {
 
   const wb = new ExcelJS.Workbook();
@@ -611,9 +613,9 @@ export async function createEventsExcel(
   // Sheet 1 + 2: Events + HelpEvents
   await addActivitiesSheetsTo(wb, events, attrDefs, categoriesDict, sortOrder);
 
-  // Sheet 3 + 4: Structure + HelpStructure (optional — Korak 5)
+  // Sheet 3 + 4: Structure + HelpStructure (filtered same as events)
   if (structureNodes) {
-    await addStructureSheetsTo(wb, structureNodes);
+    await addStructureSheetsTo(wb, structureNodes, structureOptions ?? {});
   }
 
   // Sheet 5: Filter (optional — Korak 5)

@@ -175,6 +175,41 @@ Stari xlsx (HierarchicalView sheet) više nije podržan.
 
 ---
 
+## T-S26-9
+
+**Opis:** Filter sheet — Period label = 'All time' kad nema datumskih filtera
+
+**Koraci:**
+1. Activities Export bez postavljenih datuma (All time) → otvori Filter sheet
+   - `Period label` = `All time`
+2. Activities Export s postavljenim From datumom (npr. 2026-01-01) → Filter sheet
+   - `Period label` = prazno (nije "All time" jer su datumi eksplicitno odabrani)
+3. Structure Export → Filter sheet
+   - `Period label` = `All time`
+
+**Očekivano:** `All time` samo kad nema eksplicitnih datuma; inače prazno
+
+---
+
+## T-S26-10
+
+**Opis:** Activities Export — Structure sheet filtriran prema aktivnom filteru
+
+**Koraci:**
+1. Postavi filter na specifičnu Area (npr. "Running")
+2. Export → otvori `Structure` sheet
+3. Provjeri: sadrži SAMO čvorove koji belong to "Running" arealu
+4. Provjeri: ostale area-e NISU vidljive
+
+**Koraci (full export):**
+1. Ukloni sve filtere
+2. Export → otvori `Structure` sheet
+3. Sadrži cijelu strukturu (sve area-e)
+
+**Očekivano:** Structure sheet prati isti filter kao Events sheet
+
+---
+
 ## Napomene za testiranje
 
 - Stari xlsx fajlovi (pre-S26) nisu podržani — novi format je S26+. Streamlit sustav radi neovisno.

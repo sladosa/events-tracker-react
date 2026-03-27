@@ -109,15 +109,17 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
 
       const ts = timestampSuffix();
       const filterInfo: FilterSheetInfo = {
-        exportType: 'Activities',
-        exportedAt: ts,
-        area:       areaName,
-        category:   categoryPath,
-        dateFrom:   filters.dateFrom,
-        dateTo:     filters.dateTo,
-        sortOrder:  filters.sortOrder ?? 'desc',
+        exportType:  'Activities',
+        exportedAt:  ts,
+        area:        areaName,
+        category:    categoryPath,
+        dateFrom:    filters.dateFrom,
+        dateTo:      filters.dateTo,
+        sortOrder:   filters.sortOrder ?? 'desc',
         firstRecord: filters.dateFrom ? undefined : firstRecord,
         lastRecord:  filters.dateTo   ? undefined : lastRecord,
+        // Period label: 'All time' when no explicit dates; empty when dates are set
+        periodLabel: (!filters.dateFrom && !filters.dateTo) ? 'All time' : undefined,
       };
 
       const buffer = await createEventsExcel(
@@ -125,6 +127,8 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         filters.sortOrder ?? 'desc',
         structureNodes,
         filterInfo,
+        // Structure sheet shows only the area/category matching the event filter
+        { filterAreaId: filters.areaId, filterCategoryId: filters.categoryId },
       );
 
       const suffix   = fileCount > 1 ? `_part${fileIndex}of${fileCount}` : '';

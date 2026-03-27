@@ -664,10 +664,11 @@ function _buildStructureFilterInfo(
   }
 
   return {
-    exportType: 'Structure',
-    exportedAt: ts,
+    exportType:  'Structure',
+    exportedAt:  ts,
     area,
     category,
+    periodLabel: 'All time', // structure has no date concept
   };
 }
 

@@ -19,10 +19,12 @@
 | T-S26-3  | Activities Export → HelpEvents sheet postoji (ne "Help"), PINK/BLUE/ORANGE ćelije obojene | S26 | ✅ |
 | T-S26-4  | Structure Export → 4 sheeta: Events(stub), Structure, HelpStructure, Filter | S26 | ✅ |
 | T-S26-5  | Structure Export → Filter sheet ispravni podaci | S26 | ✅ (datum format promjenjen) |
-| T-S26-6  | Activities Export → 5 sheetova: Events, HelpEvents, Structure, HelpStructure, Filter | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-6) |
-| T-S26-7  | Activities Export → Filter sheet: datumi iz stvarnih evenata (All time YYYY/MM/DD) | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-7) |
-| T-S26-8  | Activities Export → filename s punim timestamp: events_export_YYYYMMDD_HHmmss.xlsx | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-8) |
-| T-S25-1  | Structure Import: Area-only red → result summary vidljiv, nova Area u filteru | S25 | [S26_tests.md](test-sessions/S26_tests.md#t-s25-1-retest) |
+| T-S26-6  | Activities Export → 5 sheetova | S26 | ✅ |
+| T-S26-7  | Activities Export → Filter sheet datumi + Period label | S26 | djelomično (fiksirano) |
+| T-S26-8  | Activities Export → filename s punim timestamp | S26 | ✅ |
+| T-S25-1  | Structure Import: Area-only red → result summary | S25 | ✅ |
+| T-S26-9  | Filter sheet: Period label = 'All time' kad nema datumskih filtera | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-9) |
+| T-S26-10 | Activities Export: Structure sheet filtriran prema aktivnom Area/Category filteru | S26 | [S26_tests.md](test-sessions/S26_tests.md#t-s26-10) |
 
 ## Zatvoreni (potvrđeni/riješeni) testovi iz ove sesije
 
