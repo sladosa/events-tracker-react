@@ -16,8 +16,8 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | `docs/ARCHITECTURE_v1_6.md` | Always — data model, P1/P2/P3, chain_key, session identity |
 | `docs/STRUCTURE_TAB_SPEC_FOR_DEV_v1.1.md` | Structure tab work (zamjenjuje v1.5) |
 | `docs/EXCEL_FORMAT_ANALYSIS_v2.md` | Excel export/import work |
-| `docs/IMPORT_DIFF_SPEC.md` | Import "skipped" vs "updated" fix (S28 P1) |
-| `docs/ADD_ATTRIBUTE_SPEC.md` | Add/Delete Attribute u Structure Edit (S28 P2) |
+| `docs/IMPORT_DIFF_SPEC.md` | Import "skipped" vs "updated" — ✅ implemented S28 |
+| `docs/ADD_ATTRIBUTE_SPEC.md` | Add/Delete Attribute u Structure Edit — ✅ implemented S28 |
 | `Claude-temp_R/SQL_schema_V5_commented.sql` | DB schema reference |
 | `Claude-temp_R/Code_Guidelines_React_v6.md` | Code conventions |
 
@@ -117,7 +117,7 @@ events (linked to category_id + user_id)
 
 ## What's done vs pending
 
-### Done (through S25)
+### Done (through S28)
 - Full Activities tab: Add, Edit, View, Excel Import/Export with collision handling
 - Structure tab: Read-only view (Table + Sunburst), Edit Mode (rename, attributes)
 - Structure Excel export v2 (17 cols) + Import (non-destructive, conflict report)
@@ -128,17 +128,19 @@ events (linked to category_id + user_id)
 - Vite chunk splitting: vendor-react, vendor-supabase, vendor-ui, vendor-excel, vendor-plotly
 - Structure Import fix: modal stays open after import (result summary visible); dispatches `areas-changed` (S25)
 - Structure table: leaf categories with 0 events show "no events yet" badge (S25)
+- Unified Workbook Format (S26–S27): `excelUtils.ts`, `excelExport.ts`, `structureExcel.ts`, `excelBackup.ts` refaktorirani; Korak 7 (excelImport structure validation) odgođen
+- Delete with backup (S27): amber header, "Download Backup & Delete", full cascade + download
+- Import diff (S28): `hasChanges()` diff check — identični eventi = "skipped" (sivi box u UI); P3 prazna xlsx vrijednost ne diruje DB
+- Add Attribute u Structure Edit (S28): inline forma, INSERT na Save, slug generacija s collision handling
+- Delete Attribute (S28): immediate delete s confirm panelom, warning ako ima event_attributes data
+- Text → Suggest konverzija (S28): gumb "→ Suggest" na text atributima u Edit panelu
 
-### S25+ backlog (priority order)
-1. **Unified Workbook Format** — ✅ Koraci 1–6 gotovi (S26–S27). `excelUtils.ts`, `excelExport.ts`, `structureExcel.ts`, `excelBackup.ts` refaktorirani. `StructureDeleteModal` otključan. Korak 7 (excelImport structure validation) odgođen.
-2. **Delete with backup** — ✅ Gotovo S27: amber header, "Download Backup & Delete", full cascade + download.
-3. **Import "skipped" vs "updated"** — PRIORITET 1 (S28). Trenutno svaki event s ID-em u koloni A ide UPDATE path i broji se kao "updated" čak i kad se ništa nije promijenilo. Fix: diff provjera (event_date, session_start, comment + atributi) — ako identično → "skipped", ako promjena → "updated". Detalji: `docs/IMPORT_DIFF_SPEC.md`.
-4. **Add Attribute u Structure Edit mode** — PRIORITET 2 (S28). `StructureNodeEditPanel` edituje samo postojeće atribute — nema "Add Attribute" gumba. Uključuje i konverziju text → suggest/dropdown atributa. Detalji: `docs/ADD_ATTRIBUTE_SPEC.md`.
-5. **Delete Attribute** — warning about event_attribute data loss + confirm. Raditi zajedno s točkom 4.
-6. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
-7. **DependsOn attr editing UI** — currently read-only notice in Edit panel.
-8. **AreaDropdown.tsx refresh** — Add Activity page Area dropdown doesn't listen to `areas-changed` yet.
-9. **Plotly bundle size** — vendor-plotly chunk is ~4.9MB (Plotly itself); acceptable unless performance becomes an issue.
+### S28+ backlog (priority order)
+1. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
+2. **DependsOn attr editing UI** — currently read-only notice in Edit panel. Spec u `docs/ADD_ATTRIBUTE_SPEC.md` sekcija C.
+3. **AreaDropdown.tsx refresh** — Add Activity page Area dropdown doesn't listen to `areas-changed` yet.
+4. **Excelimport structure validation** — Korak 7 iz Unified Workbook Format; odgođeno.
+5. **Plotly bundle size** — vendor-plotly chunk is ~4.9MB (Plotly itself); acceptable unless performance becomes an issue.
 
 ### Future: Playwright E2E testing
 Planned after Combined backup is complete (stable core, fewer structural changes).
