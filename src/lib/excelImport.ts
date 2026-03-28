@@ -479,6 +479,7 @@ export async function applyImportChanges(
 
   let created  = 0;
   let updated  = 0;
+  let skipped  = 0;
   const errors:   string[] = [];
   const warnings: string[] = [];
 
@@ -974,16 +975,23 @@ export async function applyImportChanges(
     try {
       const eventId = row.event_id!;
 
-      // Fetch existing leaf event
+      // Fetch existing leaf event (with full fields for diff check)
       const { data: existing } = await supabase
         .from('events')
-        .select('id, category_id, event_attributes(id, attribute_definition_id)')
+        .select('id, category_id, event_date, session_start, comment, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
         .eq('id', eventId)
         .eq('user_id', userId)
         .single();
 
       if (!existing) {
         errors.push(`Row ${row._source_row}: Event ${eventId} not found`);
+        continue;
+      }
+
+      // Diff check: if nothing changed, skip (don't update, count as skipped)
+      const existingCatId = (existing as { category_id: string }).category_id;
+      if (!hasChanges(existing as ExistingLeafEvent, row, attrByCatName, existingCatId)) {
+        skipped++;
         continue;
       }
 
@@ -1018,8 +1026,6 @@ export async function applyImportChanges(
           .map((ea: { id: string; attribute_definition_id: string }) => [ea.attribute_definition_id, ea.id])
       );
 
-      const existingCatId = (existing as { category_id: string }).category_id;
-
       for (const [attrName, value] of Object.entries(row.attributes)) {
         const def = attrByCatName.get(`${existingCatId}||${attrName}`);
         if (!def) continue;
@@ -1043,7 +1049,7 @@ export async function applyImportChanges(
     }
   }
 
-  return { created, updated, errors, warnings };
+  return { created, updated, skipped, errors, warnings };
 }
 
 /** Build event_attributes insert/update payload */
@@ -1080,6 +1086,90 @@ function buildAttrData(
   }
 
   return base;
+}
+
+// ─────────────────────────────────────────────
+// Diff helper for UPDATE path (skipped vs updated)
+// ─────────────────────────────────────────────
+
+interface ExistingLeafEvent {
+  event_date:       string;
+  session_start:    string | null;
+  comment:          string | null;
+  event_attributes: Array<{
+    attribute_definition_id: string;
+    value_text:    string | null;
+    value_number:  number | null;
+    value_datetime: string | null;
+    value_boolean: boolean | null;
+  }>;
+}
+
+/**
+ * Returns true if the import row has at least one change compared to the existing DB event.
+ * P3: empty xlsx value → treat as "no change" (don't touch, don't count as updated).
+ */
+function hasChanges(
+  existing:      ExistingLeafEvent,
+  row:           ParsedImportRow,
+  attrByCatName: Map<string, ExportAttrDef>,
+  categoryId:    string,
+): boolean {
+  // event_date
+  if (existing.event_date !== row.event_date) return true;
+
+  // session_start: existing is full ISO, row.session_start is HH:MM or HH:MM:SS
+  if (existing.session_start) {
+    const d = new Date(existing.session_start);
+    const eH = d.getUTCHours();
+    const eM = d.getUTCMinutes();
+    const parsed = parseTimeStr(row.session_start);
+    if (parsed && (eH !== parsed.h || eM !== parsed.m)) return true;
+  }
+
+  // comment: null and '' are equivalent
+  const existingComment = existing.comment ?? '';
+  const rowComment      = row.comment ?? '';
+  if (existingComment !== rowComment) return true;
+
+  // attributes
+  const existingAttrMap = new Map(
+    existing.event_attributes.map(ea => [ea.attribute_definition_id, ea]),
+  );
+
+  for (const [attrName, importValue] of Object.entries(row.attributes)) {
+    const def = attrByCatName.get(`${categoryId}||${attrName}`);
+    if (!def) continue;
+
+    // P3: empty xlsx value → skip (don't change, don't count)
+    if (importValue == null || importValue === '') continue;
+
+    const existingAttr = existingAttrMap.get(def.id);
+    if (!existingAttr) return true; // new value being added
+
+    switch (def.data_type) {
+      case 'number': {
+        const n = typeof importValue === 'number' ? importValue : parseFloat(String(importValue));
+        if (existingAttr.value_number !== n) return true;
+        break;
+      }
+      case 'boolean': {
+        const b = typeof importValue === 'boolean' ? importValue : String(importValue).toLowerCase() === 'true';
+        if (existingAttr.value_boolean !== b) return true;
+        break;
+      }
+      case 'datetime': {
+        if (existingAttr.value_datetime !== String(importValue)) return true;
+        break;
+      }
+      default: {
+        if (existingAttr.value_text !== String(importValue)) return true;
+        break;
+      }
+    }
+  }
+
+  return false;
 }
 
 // ─────────────────────────────────────────────
@@ -1183,6 +1273,7 @@ export async function checkImportCollisions(
 export interface ImportResult {
   created:  number;
   updated:  number;
+  skipped:  number;
   errors:   string[];
   warnings: string[];
 }
@@ -1195,10 +1286,10 @@ export async function importEventsFromExcel(
   // Step 1: Parse file
   const parsed = await parseExcelFile(file);
   if (parsed.errors.length > 0) {
-    return { created: 0, updated: 0, errors: parsed.errors, warnings: parsed.warnings };
+    return { created: 0, updated: 0, skipped: 0, errors: parsed.errors, warnings: parsed.warnings };
   }
   if (parsed.toCreate.length === 0 && parsed.toUpdate.length === 0) {
-    return { created: 0, updated: 0, errors: ['No events found in file'], warnings: [] };
+    return { created: 0, updated: 0, skipped: 0, errors: ['No events found in file'], warnings: [] };
   }
 
   // Step 2: Load categories + attr defs
@@ -1220,6 +1311,7 @@ export async function importEventsFromExcel(
     return {
       created:  0,
       updated:  0,
+      skipped:  0,
       errors:   validationErrors,
       warnings: [...parsed.warnings, ...reclassified.warnings],
     };
@@ -1231,6 +1323,7 @@ export async function importEventsFromExcel(
   return {
     created:  result.created,
     updated:  result.updated,
+    skipped:  result.skipped,
     errors:   result.errors,
     warnings: [...parsed.warnings, ...reclassified.warnings, ...result.warnings],
   };

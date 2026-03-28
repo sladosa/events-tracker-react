@@ -86,6 +86,7 @@ export interface ValidationResult {
 export interface ApplyResult {
   created:  number;
   updated:  number;
+  skipped:  number;
   errors:   string[];
   warnings: string[];
 }

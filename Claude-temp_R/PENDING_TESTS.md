@@ -1,32 +1,27 @@
 # Pending Tests
 
-**Zadnja izmjena:** 2026-03-27 (S27)
+**Zadnja izmjena:** 2026-03-28 (S28)
 **Branch:** test-branch
-**Detalji testova:** `Claude-temp_R/test-sessions/S27_tests.md`
-
----
-
-## S28 plan (sljedeća sesija)
-
-**P1 — Import diff** — spec: `docs/IMPORT_DIFF_SPEC.md`
-- Proširiti fetch query: dodati `event_date, session_start, comment` + attr vrijednosti
-- Diff helper: identično → `skipped`, promjena → `updated`
-- UI: treći box "N Events unchanged" (siva boja)
-- P3 rubni slučaj: prazna xlsx vrijednost + DB ima vrijednost → skipped (ne diraj)
-
-**P2 — Add/Delete Attribute u Structure Edit** — spec: `docs/ADD_ATTRIBUTE_SPEC.md`
-- "Add Attribute" inline forma (name, type, unit, required) → INSERT `attribute_definitions`
-- Delete Attribute s warning ako ima `event_attributes`
-- Text → Suggest konverzija (gumb "→ Suggest" na text atributima)
-- DependsOn editing UI — složenije, možda odvojena sesija
+**Detalji testova:** `Claude-temp_R/test-sessions/S28_tests.md`
 
 ---
 
 ## Aktivni (nepotvrđeni) testovi
 
-| ID       | Opis                                                                                      | Sesija | Detalji                                                           |
-| -------- | ----------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------- |
-| T-S27-1b | Delete node s eventima → naslov "Delete Category/Area" (ne "Cannot Delete")              | S27    | Fix S27 kraj sesije — retest |
+| ID | Opis | Sesija | Detalji |
+|----|----|--------|---------|
+| T-IMP-1 | Import isti xlsx dvaput → 2. import: 0 created, 0 updated, N skipped | S28 | |
+| T-IMP-2 | Import xlsx s jednom promijenjenom vrijednošću → 1 updated, N-1 skipped | S28 | |
+| T-IMP-3 | Import xlsx s praznom vrijednošću gdje DB ima vrijednost → P3: 0 updated (skipped) | S28 | |
+| T-IMP-4 | Import backup fajla odmah nakon exporta → sve skipped, 0 updated | S28 | |
+| T-ATTR-1 | Add text atribut na leaf bez atributa → vidljiv u View panelu i Add Activity | S28 | |
+| T-ATTR-2 | Add number atribut s unit "km" → unit prikazan u Add Activity formi | S28 | |
+| T-ATTR-3 | Delete atribut bez evenata → direktno briše, bez warninga | S28 | |
+| T-ATTR-4 | Delete atribut s eventima → warning s brojem zapisa, confirm → briše | S28 | |
+| T-ATTR-5 | Konverzija text → suggest → dropdown opcije vidljive u Add Activity | S28 | |
+| T-ATTR-6 | Slug collision pri Add → suffix _2 automatski | S28 | |
+
+---
 
 ## Zatvoreni (potvrđeni/riješeni) testovi iz ove sesije
 
@@ -46,7 +41,8 @@
 | T-S26-8  | Activities Export → filename s punim timestamp                    | S26     | ✅ |
 | T-S26-9  | Filter sheet: Period label = 'All time' / 'Custom'                | S27     | ✅ |
 | T-S26-10 | Activities Export: Structure sheet filtriran prema Area/Category  | S26     | ✅ |
-| T-S27-1  | Delete node s eventima → amber header, "Download Backup & Delete" | S27     | ✅ (naslov još nije bio OK, fixan kraj sesije) |
+| T-S27-1  | Delete node s eventima → amber header, "Download Backup & Delete" | S27     | ✅ |
+| T-S27-1b | Delete node s eventima → naslov "Delete Category/Area" (ne "Cannot Delete") | S27 | ✅ |
 | T-S27-2  | Delete s backupom → backup downloada, node nestaje                | S27     | ✅ |
 | T-S27-3  | Backup workbook → 5 sheetova, Filter sheet ispravno               | S27     | ✅ |
 | T-S27-4  | Delete bez evenata → red header, stari flow                       | S27     | ✅ |
@@ -71,7 +67,7 @@ Ovo je očekivano ponašanje browsera, nije bug u kodu.
 **Testiranje:** Pokreni aplikaciju lokalno (`npm run dev`) i prođi kroz korake u linkovanim fajlovima.
 
 **Sljedeća sesija — javi rezultate:**
-> "T-S26-9 OK, T-S26-10 OK"
+> "T-IMP-1 OK, T-ATTR-1 OK" itd.
 
 Claude će: ažurirati ovaj fajl, označiti ✅/❌ u test-sessions arhivi, istražiti failove.
 
@@ -87,4 +83,5 @@ Claude će: ažurirati ovaj fajl, označiti ✅/❌ u test-sessions arhivi, istr
 | [S23_tests.md](test-sessions/S23_tests.md) | S23 | ✅ Sve verificirano |
 | [S24_tests.md](test-sessions/S24_tests.md) | S24 | ✅ Sve verificirano |
 | [S26_tests.md](test-sessions/S26_tests.md) | S26 | ✅ Sve verificirano |
-| [S27_tests.md](test-sessions/S27_tests.md) | S27 | ⏳ T-S27-1 do T-S27-4 pending |
+| [S27_tests.md](test-sessions/S27_tests.md) | S27 | ✅ Sve verificirano |
+| [S28_tests.md](test-sessions/S28_tests.md) | S28 | ⏳ pending |

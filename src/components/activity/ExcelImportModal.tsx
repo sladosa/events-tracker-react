@@ -38,7 +38,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const [preview,       setPreview]       = useState<ParsePreview | null>(null);
   const [collisions,    setCollisions]    = useState<CollisionInfo[]>([]);
   const [overwriteMap,  setOverwriteMap]  = useState<Map<string, 'replace' | 'add' | 'skip'>>(new Map());
-  const [result,        setResult]        = useState<{ created: number; updated: number; warnings: string[] } | null>(null);
+  const [result,        setResult]        = useState<{ created: number; updated: number; skipped: number; warnings: string[] } | null>(null);
   const [errors,        setErrors]        = useState<string[]>([]);
   const [isDragOver,    setIsDragOver]    = useState(false);
 
@@ -183,6 +183,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       setResult({
         created:  importResult.created,
         updated:  importResult.updated,
+        skipped:  importResult.skipped,
         warnings: importResult.warnings,
       });
       setImportState('done');
@@ -480,7 +481,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                 <p className="text-lg font-semibold text-gray-800">Import successful!</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${result.skipped > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-green-700">{result.created}</p>
                   <p className="text-xs text-green-600 mt-0.5">Events created</p>
@@ -489,6 +490,12 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   <p className="text-2xl font-bold text-blue-700">{result.updated}</p>
                   <p className="text-xs text-blue-600 mt-0.5">Events updated</p>
                 </div>
+                {result.skipped > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-gray-500">{result.skipped}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Unchanged</p>
+                  </div>
+                )}
               </div>
 
               {result.warnings.length > 0 && (

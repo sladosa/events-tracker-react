@@ -59,6 +59,24 @@ interface AttrEditState {
   suggestOptions: string; // one option per line
   // Original validation_rules stored so we can reconstruct on save
   originalRules: AttributeDefinition['validation_rules'];
+  // true for newly added attrs not yet persisted (INSERT on Save)
+  isNew?:     boolean;
+  isRequired?: boolean; // only used for new attrs; maps to is_required column
+}
+
+interface NewAttrFormState {
+  name: string;
+  dataType: 'text' | 'number' | 'boolean' | 'datetime';
+  unit: string;
+  required: boolean;
+}
+
+interface DeleteConfirmState {
+  attrId:    string;
+  attrName:  string;
+  checking:  boolean;
+  eventCount: number | null;
+  deleting:  boolean;
 }
 
 // --------------------------------------------------------
@@ -134,6 +152,15 @@ function buildValidationRules(
     return { type: 'suggest', suggest: options };
   }
   return {};
+}
+
+/** Generate slug from name; appends _2, _3 if collision with existing slugs */
+function generateSlug(name: string, existingSlugs: string[]): string {
+  const base = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  if (!existingSlugs.includes(base)) return base;
+  let i = 2;
+  while (existingSlugs.includes(`${base}_${i}`)) i++;
+  return `${base}_${i}`;
 }
 
 // --------------------------------------------------------
@@ -223,19 +250,18 @@ function TextArea({ value, onChange, placeholder, rows = 3 }: TextAreaProps) {
 // --------------------------------------------------------
 
 interface AttrEditSectionProps {
-  attrs: AttrEditState[];
-  onChange: (updated: AttrEditState[]) => void;
+  attrs:     AttrEditState[];
+  onChange:  (updated: AttrEditState[]) => void;
   hasEvents: boolean;
+  nodeId:    string;
 }
 
-function AttrEditSection({ attrs, onChange, hasEvents }: AttrEditSectionProps) {
+function AttrEditSection({ attrs, onChange, hasEvents, nodeId }: AttrEditSectionProps) {
   const t = THEME.structureEdit;
 
-  if (attrs.length === 0) {
-    return (
-      <p className="text-sm text-gray-400 italic py-2">(no attributes at this level)</p>
-    );
-  }
+  const [addOpen,      setAddOpen]      = useState(false);
+  const [newForm,      setNewForm]      = useState<NewAttrFormState>({ name: '', dataType: 'text', unit: '', required: false });
+  const [deleteState,  setDeleteState]  = useState<DeleteConfirmState | null>(null);
 
   const update = (index: number, partial: Partial<AttrEditState>) => {
     const next = [...attrs];
@@ -243,17 +269,194 @@ function AttrEditSection({ attrs, onChange, hasEvents }: AttrEditSectionProps) {
     onChange(next);
   };
 
+  // ── Delete flow ──────────────────────────────────────────
+  const handleClickDelete = async (attr: AttrEditState) => {
+    if (attr.isNew) {
+      // Not in DB yet — just remove from local list
+      onChange(attrs.filter(a => a.id !== attr.id));
+      return;
+    }
+    setDeleteState({ attrId: attr.id, attrName: attr.name, checking: true, eventCount: null, deleting: false });
+    const { count } = await supabase
+      .from('event_attributes')
+      .select('id', { count: 'exact', head: true })
+      .eq('attribute_definition_id', attr.id);
+    setDeleteState(prev => prev ? { ...prev, checking: false, eventCount: count ?? 0 } : null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteState) return;
+    setDeleteState(prev => prev ? { ...prev, deleting: true } : null);
+    try {
+      if ((deleteState.eventCount ?? 0) > 0) {
+        const { error: e1 } = await supabase
+          .from('event_attributes')
+          .delete()
+          .eq('attribute_definition_id', deleteState.attrId);
+        if (e1) throw e1;
+      }
+      const { error: e2 } = await supabase
+        .from('attribute_definitions')
+        .delete()
+        .eq('id', deleteState.attrId);
+      if (e2) throw e2;
+      onChange(attrs.filter(a => a.id !== deleteState.attrId));
+      toast.success(`Attribute "${deleteState.attrName}" deleted`);
+      setDeleteState(null);
+    } catch (err) {
+      const msg = (err as { message?: string })?.message ?? 'Delete failed';
+      toast.error(msg);
+      setDeleteState(prev => prev ? { ...prev, deleting: false } : null);
+    }
+  };
+
+  // ── Add Attribute ──────────────────────────────────────────
+  const handleAddAttr = () => {
+    if (!newForm.name.trim()) return;
+    const existingSlugs = attrs.map(a => a.slug);
+    const slug = generateSlug(newForm.name.trim(), existingSlugs);
+    const maxSort = attrs.length > 0 ? Math.max(...attrs.map(a => a.sortOrder)) + 1 : 0;
+    const newAttrState: AttrEditState = {
+      id:            `new_${Date.now()}`,
+      slug,
+      name:          newForm.name.trim(),
+      unit:          newForm.unit.trim(),
+      description:   '',
+      sortOrder:     maxSort,
+      dataType:      newForm.dataType,
+      validationType: 'none',
+      suggestOptions: '',
+      originalRules: {},
+      isNew:         true,
+      isRequired:    newForm.required,
+    };
+    onChange([...attrs, newAttrState]);
+    setNewForm({ name: '', dataType: 'text', unit: '', required: false });
+    setAddOpen(false);
+  };
+
+  // ── Delete confirm modal (inline) ──────────────────────────
+  const DeleteConfirmPanel = deleteState && (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-gray-800">
+          Delete attribute "{deleteState.attrName}"?
+        </h3>
+        {deleteState.checking ? (
+          <p className="text-xs text-gray-500">Checking for existing data…</p>
+        ) : (deleteState.eventCount ?? 0) > 0 ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p className="text-xs text-red-700 font-medium">
+              ⚠ This attribute has <strong>{deleteState.eventCount}</strong> recorded value{deleteState.eventCount !== 1 ? 's' : ''}.
+              Deleting will permanently remove all recorded data for this attribute.
+            </p>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">This attribute has no recorded values. It will be deleted immediately.</p>
+        )}
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={() => setDeleteState(null)}
+            disabled={deleteState.deleting}
+            className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirmDelete}
+            disabled={deleteState.checking || deleteState.deleting}
+            className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+          >
+            {deleteState.deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Add Attribute inline form ─────────────────────────────
+  const AddAttrForm = addOpen && (
+    <div className={cn('rounded-lg border p-3 mt-3', 'border-dashed border-amber-300 bg-amber-50')}>
+      <p className="text-xs font-semibold text-amber-700 mb-3">New attribute</p>
+      <div className="flex gap-2 mb-2">
+        <div className="flex-1">
+          <FieldLabel>Name *</FieldLabel>
+          <TextInput
+            value={newForm.name}
+            onChange={v => setNewForm(f => ({ ...f, name: v }))}
+            placeholder="Attribute name"
+          />
+        </div>
+        <div>
+          <FieldLabel>Type</FieldLabel>
+          <select
+            value={newForm.dataType}
+            onChange={e => setNewForm(f => ({ ...f, dataType: e.target.value as NewAttrFormState['dataType'] }))}
+            className={cn('px-2 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2', t.ring)}
+          >
+            <option value="text">text</option>
+            <option value="number">number</option>
+            <option value="boolean">boolean</option>
+            <option value="datetime">datetime</option>
+          </select>
+        </div>
+      </div>
+      <div className="flex gap-2 mb-2 items-end">
+        <div className="flex-1">
+          <FieldLabel>Unit</FieldLabel>
+          <TextInput
+            value={newForm.unit}
+            onChange={v => setNewForm(f => ({ ...f, unit: v }))}
+            placeholder="e.g. kg, km"
+          />
+        </div>
+        <label className="flex items-center gap-1.5 pb-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={newForm.required}
+            onChange={e => setNewForm(f => ({ ...f, required: e.target.checked }))}
+            className="accent-amber-600"
+          />
+          <span className="text-xs text-gray-600">Required</span>
+        </label>
+      </div>
+      <div className="flex gap-2 justify-end">
+        <button
+          onClick={() => { setAddOpen(false); setNewForm({ name: '', dataType: 'text', unit: '', required: false }); }}
+          className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleAddAttr}
+          disabled={!newForm.name.trim()}
+          className="px-3 py-1.5 text-xs bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-40"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+
+  void nodeId; // used for potential future attr-level operations
+
   return (
     <div className="space-y-4">
+      {DeleteConfirmPanel}
+
+      {attrs.length === 0 && !addOpen && (
+        <p className="text-sm text-gray-400 italic py-2">(no attributes at this level)</p>
+      )}
+
       {attrs.map((attr, i) => (
         <div
           key={attr.id}
-          className={cn('rounded-lg border p-3', t.lightBorder, t.light)}
+          className={cn('rounded-lg border p-3', attr.isNew ? 'border-amber-300 bg-amber-50' : cn(t.lightBorder, t.light))}
         >
-          {/* Name row */}
+          {/* Name row + Delete button */}
           <div className="flex gap-3 mb-3">
             <div className="flex-1">
-              <FieldLabel>Name</FieldLabel>
+              <FieldLabel>Name{attr.isNew && <span className="ml-1 text-amber-500">(new)</span>}</FieldLabel>
               <TextInput
                 value={attr.name}
                 onChange={v => update(i, { name: v })}
@@ -267,6 +470,17 @@ function AttrEditSection({ attrs, onChange, hasEvents }: AttrEditSectionProps) {
                 onChange={v => update(i, { sortOrder: v })}
                 min={0}
               />
+            </div>
+            <div className="flex items-end pb-0.5">
+              <button
+                onClick={() => handleClickDelete(attr)}
+                title="Delete attribute"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -287,7 +501,7 @@ function AttrEditSection({ attrs, onChange, hasEvents }: AttrEditSectionProps) {
                 'text-gray-500 flex items-center gap-1.5',
               )}>
                 <span className="font-mono">{attr.dataType}</span>
-                {hasEvents && (
+                {hasEvents && !attr.isNew && (
                   <span className="text-xs text-amber-600">(has events — locked)</span>
                 )}
               </div>
@@ -303,6 +517,19 @@ function AttrEditSection({ attrs, onChange, hasEvents }: AttrEditSectionProps) {
               placeholder="Optional description"
             />
           </div>
+
+          {/* Text → Suggest conversion button */}
+          {attr.dataType === 'text' && attr.validationType === 'none' && (
+            <div className="mb-3">
+              <button
+                onClick={() => update(i, { validationType: 'suggest' })}
+                className="text-xs px-2.5 py-1 rounded border border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors"
+                title="Convert to suggest type — adds dropdown with free text input"
+              >
+                → Suggest
+              </button>
+            </div>
+          )}
 
           {/* Suggest options */}
           {attr.validationType === 'suggest' && (
@@ -331,6 +558,20 @@ function AttrEditSection({ attrs, onChange, hasEvents }: AttrEditSectionProps) {
           )}
         </div>
       ))}
+
+      {/* Add Attribute form / button */}
+      {AddAttrForm}
+      {!addOpen && (
+        <button
+          onClick={() => setAddOpen(true)}
+          className={cn(
+            'w-full py-2 text-xs font-medium rounded-lg border border-dashed transition-colors',
+            'border-amber-300 text-amber-600 hover:bg-amber-50',
+          )}
+        >
+          + Add Attribute
+        </button>
+      )}
     </div>
   );
 }
@@ -401,22 +642,41 @@ export function StructureNodeEditPanel({
         if (error) throw error;
       }
 
-      // 2. Update each attribute definition
+      // 2. Update existing + INSERT new attribute definitions
       for (const attr of attrStates) {
         const newRules = buildValidationRules(attr);
-        const { error } = await supabase
-          .from('attribute_definitions')
-          .update({
-            name: attr.name.trim(),
-            unit: attr.unit.trim() || null,
-            description: attr.description.trim() || null,
-            sort_order: attr.sortOrder,
-            validation_rules: newRules,
-            user_id: user.id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', attr.id);
-        if (error) throw error;
+
+        if (attr.isNew) {
+          const { error } = await supabase
+            .from('attribute_definitions')
+            .insert({
+              category_id:      node.id,
+              name:             attr.name.trim(),
+              slug:             attr.slug,
+              data_type:        attr.dataType,
+              unit:             attr.unit.trim() || null,
+              description:      attr.description.trim() || null,
+              sort_order:       attr.sortOrder,
+              validation_rules: newRules,
+              is_required:      attr.isRequired ?? false,
+              user_id:          user.id,
+            });
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('attribute_definitions')
+            .update({
+              name:             attr.name.trim(),
+              unit:             attr.unit.trim() || null,
+              description:      attr.description.trim() || null,
+              sort_order:       attr.sortOrder,
+              validation_rules: newRules,
+              user_id:          user.id,
+              updated_at:       new Date().toISOString(),
+            })
+            .eq('id', attr.id);
+          if (error) throw error;
+        }
       }
 
       toast.success('Saved successfully');
@@ -554,6 +814,7 @@ export function StructureNodeEditPanel({
                 attrs={attrStates}
                 onChange={setAttrStates}
                 hasEvents={node.eventCount > 0}
+                nodeId={node.id}
               />
             </div>
           )}
