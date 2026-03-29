@@ -609,7 +609,13 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId }: AttrEditSection
                     'focus:outline-none focus:ring-2', t.ring,
                   )}
                 >
-                  <option value="">— select parent attribute —</option>
+                  <option value="">— (remove dependency) —</option>
+                  {/* Fallback: show current slug even if parent attr is at a different level */}
+                  {attr.dependsOnSlug && !attrs.some(
+                    a => a.slug === attr.dependsOnSlug && a.slug !== attr.slug
+                  ) && (
+                    <option value={attr.dependsOnSlug}>{attr.dependsOnSlug}</option>
+                  )}
                   {attrs
                     .filter(a => a.slug !== attr.slug && (a.dataType === 'text' || a.validationType === 'suggest'))
                     .map(a => (

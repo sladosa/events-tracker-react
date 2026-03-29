@@ -166,11 +166,17 @@ async function persistPendingOptions(
   options: Array<{ definitionId: string; newOption: string; dependencyValue?: string | null }>,
   attrDefs: AttributeDefinition[]
 ): Promise<void> {
+  // Track latest rules per definition — ensures multiple options for the same
+  // attr accumulate correctly (each iteration builds on the previous result,
+  // not on the stale initial snapshot).
+  const latestRules = new Map<string, AttributeDefinition['validation_rules']>();
+
   for (const pending of options) {
     const def = attrDefs.find(d => d.id === pending.definitionId);
     if (!def) continue;
 
-    const parsed = parseValidationRules(def.validation_rules);
+    const currentRules = latestRules.get(pending.definitionId) ?? def.validation_rules;
+    const parsed = parseValidationRules(currentRules);
 
     let updatedRules: Record<string, unknown>;
 
@@ -202,6 +208,8 @@ async function persistPendingOptions(
 
     if (error) {
       console.error('[persistPendingOptions] Failed:', error);
+    } else {
+      latestRules.set(pending.definitionId, updatedRules as AttributeDefinition['validation_rules']);
     }
   }
 }
