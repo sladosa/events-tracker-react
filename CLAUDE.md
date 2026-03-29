@@ -138,12 +138,16 @@ events (linked to category_id + user_id)
 - Add Attribute fix (S29): `crypto.randomUUID()` dodan u INSERT — `attribute_definitions.id` nema DB default
 - "Other" persist fix (S29): queue u `pendingOptionAdds`, persist na Finish; `AttributeInput` više ne piše direktno u DB
 - DependsOn editing (S29): `StructureNodeEditPanel` prikazuje WhenValue/Options tablica umjesto read-only notice; add/edit/delete rows; change parent slug; `+ Add Dependency` gumb na suggest atributima
+- Multi-option persist bugfix (S29b): `latestRules` Map u `persistPendingOptions` — višestruki Other u jednoj sesiji sada svi opstaju
+- DependsOn dropdown bugfix (S29b): fallback `<option>` za cross-level parent slug; label "— (remove dependency) —"
 
 ### S30 backlog (priority order)
-1. **AreaDropdown.tsx refresh** — Add Activity page Area dropdown doesn't listen to `areas-changed` yet.
-2. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
-3. **Excelimport structure validation** — Korak 7 iz Unified Workbook Format; odgođeno.
-4. **Plotly bundle size** — vendor-plotly chunk is ~4.9MB (Plotly itself); acceptable unless performance becomes an issue.
+1. **AreaDropdown.tsx refresh** — `AddActivityPage` Area dropdown ne sluša `areas-changed` event; treba `useEffect` koji refetcha areae kad se dogodi. Fajl: `src/pages/AddActivityPage.tsx` ili `src/components/activity/AreaDropdown.tsx` (ako postoji).
+2. **Edit Activity: "Other" persist** — `EditActivityPage` prosljeđuje `onNewOption={undefined}` → Other vrijednosti u Edit flowu se ne persistaju. Rješenje: isti queue mehanizam kao u Add, poziv na kraju `handleSave`.
+3. **DependsOn: validacija praznog parent slug-a** — ako korisnik odabere "— (remove dependency) —" i spremi, `attribute_slug: ""` se zapisuje u DB. Dodati toast warning u `handleSave` kad `depends_on` attr ima prazan slug.
+4. **Add Category Between** — zahtijeva data migraciju (UPDATE category_id + chain_key na eventima). Odgođeno.
+5. **Excelimport structure validation** — Korak 7 iz Unified Workbook Format; odgođeno.
+6. **Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
 
 ### Future: Playwright E2E testing
 Planned after Combined backup is complete (stable core, fewer structural changes).
