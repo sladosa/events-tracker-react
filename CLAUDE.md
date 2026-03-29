@@ -174,8 +174,11 @@ Requires: dedicated Supabase test project (not yet created) + `.env.testing` cre
 ### End of session (OBAVEZNO)
 1. **Update `Claude-temp_R/PENDING_TESTS.md`** — add new tests for everything coded this session;
    mark confirmed tests as ✅; remove tests older than 2 sessions
-2. **Update `CLAUDE.md` backlog** — move done items out, add new S24+ items if discovered
-3. **Commit** with descriptive message (e.g. `S24 structure add-area, import fix, blocked leaf`)
+2. **Write detailed test steps in `Claude-temp_R/test-sessions/SXX_tests.md`** — one file per session,
+   with numbered steps, preconditions, and expected vs fail behaviour for EVERY new test.
+   Update the `Detalji testova:` link in PENDING_TESTS.md to point to the new file.
+3. **Update `CLAUDE.md` backlog** — move done items out, add new S24+ items if discovered
+4. **Commit** with descriptive message (e.g. `S24 structure add-area, import fix, blocked leaf`)
 
 ### Test result reporting (next session)
 User says e.g. "T-S24-1 OK, T-S24-3 fail" → Claude updates PENDING_TESTS.md accordingly
