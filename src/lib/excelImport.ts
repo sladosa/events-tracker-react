@@ -1121,8 +1121,8 @@ function hasChanges(
   // session_start: existing is full ISO, row.session_start is HH:MM or HH:MM:SS
   if (existing.session_start) {
     const d = new Date(existing.session_start);
-    const eH = d.getUTCHours();
-    const eM = d.getUTCMinutes();
+    const eH = d.getHours();
+    const eM = d.getMinutes();
     const parsed = parseTimeStr(row.session_start);
     if (parsed && (eH !== parsed.h || eM !== parsed.m)) return true;
   }

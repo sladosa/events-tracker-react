@@ -1,6 +1,6 @@
 # Pending Tests
 
-**Zadnja izmjena:** 2026-03-28 (S28)
+**Zadnja izmjena:** 2026-03-29 (S29)
 **Branch:** test-branch
 **Detalji testova:** `Claude-temp_R/test-sessions/S28_tests.md`
 
@@ -10,16 +10,12 @@
 
 | ID | Opis | Sesija | Detalji |
 |----|----|--------|---------|
-| T-IMP-1 | Import isti xlsx dvaput → 2. import: 0 created, 0 updated, N skipped | S28 | |
-| T-IMP-2 | Import xlsx s jednom promijenjenom vrijednošću → 1 updated, N-1 skipped | S28 | |
-| T-IMP-3 | Import xlsx s praznom vrijednošću gdje DB ima vrijednost → P3: 0 updated (skipped) | S28 | |
-| T-IMP-4 | Import backup fajla odmah nakon exporta → sve skipped, 0 updated | S28 | |
-| T-ATTR-1 | Add text atribut na leaf bez atributa → vidljiv u View panelu i Add Activity | S28 | |
-| T-ATTR-2 | Add number atribut s unit "km" → unit prikazan u Add Activity formi | S28 | |
-| T-ATTR-3 | Delete atribut bez evenata → direktno briše, bez warninga | S28 | |
-| T-ATTR-4 | Delete atribut s eventima → warning s brojem zapisa, confirm → briše | S28 | |
-| T-ATTR-5 | Konverzija text → suggest → dropdown opcije vidljive u Add Activity | S28 | |
-| T-ATTR-6 | Slug collision pri Add → suffix _2 automatski | S28 | |
+| T-S29-1 | Add Activity: Other → "Nova vrijednost" → Save+ → Finish → vidi u Structure Edit suggest opcijama | S29 | |
+| T-S29-2 | Add Activity: Other u DependsOn atributu → Finish → opcija dodana u options_map[WhenValue] | S29 | |
+| T-S29-3 | Structure Edit: DependsOn atribut prikazuje tablicu mapiranja (ne "read-only notice") | S29 | |
+| T-S29-4 | Structure Edit: Editirati opcije za jedan WhenValue → Save → ispravno u Add Activity | S29 | |
+| T-S29-5 | Structure Edit: Dodati novi WhenValue red → Save → radi u Add Activity | S29 | |
+| T-S29-6 | Structure Edit: Obrisati WhenValue red → Save → više ne pojavljuje u Add Activity | S29 | |
 
 ---
 
@@ -27,7 +23,17 @@
 
 | ID | Opis | Sesija | Status |
 |----|------|--------|--------|
-| T-S25-1  | Structure Import: Area-only → result summary, nova Area u filteru | S25/S26 | ✅ |
+| T-IMP-1  | Import isti xlsx dvaput → 0 updated, N Unchanged                   | S28/S29 | ✅ (timezone fix S29) |
+| T-IMP-2  | Import xlsx s jednom promijenom → 1 updated, N-1 skipped           | S28/S29 | ✅ (timezone fix S29) |
+| T-IMP-3  | Import xlsx prazna vrijednost gdje DB ima → P3: skipped            | S28/S29 | ✅ |
+| T-IMP-4  | Import backup odmah nakon exporta → sve skipped, 0 updated         | S28/S29 | ✅ |
+| T-ATTR-1 | Add text atribut na leaf → vidljiv u View i Add Activity           | S28/S29 | ✅ (id fix S29) |
+| T-ATTR-2 | Add number atribut s unit "km" → unit prikazan u Add Activity      | S28     | ✅ |
+| T-ATTR-3 | Delete atribut bez evenata → direktno briše                        | S28     | ✅ |
+| T-ATTR-4 | Delete atribut s eventima → warning, confirm → briše               | S28     | ✅ |
+| T-ATTR-5 | Konverzija text → suggest → dropdown vidljiv u Add Activity        | S28     | ✅ |
+| T-ATTR-6 | Slug collision pri Add → suffix _2 automatski                      | S28     | ✅ |
+| T-S25-1  | Structure Import: Area-only → result summary, nova Area u filteru  | S25/S26 | ✅ |
 | T-S25-2  | Leaf bez evenata → badge "no events yet" vidljiv u tabeli         | S25     | ✅ |
 | T-S25-3  | Leaf s eventima → nema "no events yet" badge                      | S25     | ✅ |
 | T-S22-T3 | Delete Area (prazna)                                              | S22     | ✅ |

@@ -134,11 +134,15 @@ events (linked to category_id + user_id)
 - Add Attribute u Structure Edit (S28): inline forma, INSERT na Save, slug generacija s collision handling
 - Delete Attribute (S28): immediate delete s confirm panelom, warning ako ima event_attributes data
 - Text → Suggest konverzija (S28): gumb "→ Suggest" na text atributima u Edit panelu
+- Import diff fix (S29): `hasChanges()` koristio `getUTCHours` umjesto `getHours` → timezone bug, fiksano
+- Add Attribute fix (S29): `crypto.randomUUID()` dodan u INSERT — `attribute_definitions.id` nema DB default
 
-### S28+ backlog (priority order)
-1. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
-2. **DependsOn attr editing UI** — currently read-only notice in Edit panel. Spec u `docs/ADD_ATTRIBUTE_SPEC.md` sekcija C.
-3. **AreaDropdown.tsx refresh** — Add Activity page Area dropdown doesn't listen to `areas-changed` yet.
+### S29 backlog (priority order)
+1. **"Other" persist fix + DependsOn editing UI** — Spec u `docs/SUGGEST_DEPENDSON_SPEC_v1.md`. Dva dijela:
+   - A: "Other" u Add Activity queued, persist na Finish (race condition fix)
+   - B: DependsOn prikaz i edit u Structure Edit (umjesto read-only notice)
+2. **AreaDropdown.tsx refresh** — Add Activity page Area dropdown doesn't listen to `areas-changed` yet.
+3. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
 4. **Excelimport structure validation** — Korak 7 iz Unified Workbook Format; odgođeno.
 5. **Plotly bundle size** — vendor-plotly chunk is ~4.9MB (Plotly itself); acceptable unless performance becomes an issue.
 

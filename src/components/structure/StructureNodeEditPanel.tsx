@@ -650,6 +650,7 @@ export function StructureNodeEditPanel({
           const { error } = await supabase
             .from('attribute_definitions')
             .insert({
+              id:               crypto.randomUUID(),
               category_id:      node.id,
               name:             attr.name.trim(),
               slug:             attr.slug,
