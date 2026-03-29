@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
-import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
+import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import {
   useLocalStorageSync,
   createDraftFromState,
@@ -35,7 +35,7 @@ import {
   FinishSuccessDialog,
 } from '@/components/activity/ConfirmDialog';
 
-import type { UUID } from '@/types';
+import type { UUID, AttributeDefinition } from '@/types';
 import type {
   PendingEvent,
   PendingPhoto,
@@ -159,6 +159,54 @@ interface LocalAttributeValue {
 }
 
 // ============================================
+// Helper: Persist pending "Other" option adds
+// ============================================
+
+async function persistPendingOptions(
+  options: Array<{ definitionId: string; newOption: string; dependencyValue?: string | null }>,
+  attrDefs: AttributeDefinition[]
+): Promise<void> {
+  for (const pending of options) {
+    const def = attrDefs.find(d => d.id === pending.definitionId);
+    if (!def) continue;
+
+    const parsed = parseValidationRules(def.validation_rules);
+
+    let updatedRules: Record<string, unknown>;
+
+    if (pending.dependencyValue && parsed.dependsOn) {
+      const fullMap = { ...(parsed.dependsOn.optionsMap ?? {}) };
+      const opts = fullMap[pending.dependencyValue] ?? [];
+      if (opts.includes(pending.newOption)) continue;
+      fullMap[pending.dependencyValue] = [...opts, pending.newOption];
+      updatedRules = {
+        type: 'suggest',
+        suggest: parsed.options,
+        allow_other: true,
+        depends_on: {
+          attribute_slug: parsed.dependsOn.attributeSlug,
+          options_map: fullMap,
+        },
+      };
+    } else {
+      const existing = [...parsed.options];
+      if (existing.includes(pending.newOption)) continue;
+      existing.push(pending.newOption);
+      updatedRules = { type: 'suggest', suggest: existing, allow_other: true };
+    }
+
+    const { error } = await supabase
+      .from('attribute_definitions')
+      .update({ validation_rules: updatedRules })
+      .eq('id', pending.definitionId);
+
+    if (error) {
+      console.error('[persistPendingOptions] Failed:', error);
+    }
+  }
+}
+
+// ============================================
 // Main Component
 // ============================================
 
@@ -232,6 +280,11 @@ export function AddActivityPage() {
   // UI state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingOptionAdds, setPendingOptionAdds] = useState<Array<{
+    definitionId: string;
+    newOption: string;
+    dependencyValue?: string | null;
+  }>>([]);
   const [renderError, _setRenderError] = useState<string | null>(null);
   
   // Mobile detection - na mobitelu AddActivity otvara prednju kameru direktno
@@ -417,10 +470,9 @@ export function AddActivityPage() {
   }, [categoryChain]);
   
   const { 
-    attributesByCategory, 
+    attributesByCategory,
     loading: attributesLoading,
     error: attributesError,
-    refetch: refetchAttributes,
   } = useAttributeDefinitions(chainCategoryIds);
   
   useEffect(() => {
@@ -457,7 +509,15 @@ export function AddActivityPage() {
       return next;
     });
   }, []);
-  
+
+  const handleNewOption = useCallback((
+    definitionId: string,
+    newOption: string,
+    dependencyValue?: string | null
+  ) => {
+    setPendingOptionAdds(prev => [...prev, { definitionId, newOption, dependencyValue }]);
+  }, []);
+
   // ============================================
   // Photo Handlers
   // ============================================
@@ -836,6 +896,11 @@ export function AddActivityPage() {
       
       // Success! Clear draft and show success dialog
       log('All events saved successfully');
+      if (pendingOptionAdds.length > 0) {
+        const allDefs = Array.from(attributesByCategory.values()).flat();
+        await persistPendingOptions(pendingOptionAdds, allDefs);
+        setPendingOptionAdds([]);
+      }
       clearDraft();
       endSession();
       
@@ -1047,7 +1112,7 @@ export function AddActivityPage() {
                     onTouch={handleAttributeTouch}
                     disabled={saving}
                     expandedByDefault={false}
-                    onDefinitionUpdated={refetchAttributes}
+                    onNewOption={handleNewOption}
                   />
                 </ErrorBoundary>
               ) : (

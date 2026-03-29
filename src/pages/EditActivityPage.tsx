@@ -455,11 +455,10 @@ export function EditActivityPage() {
     return categoryChain.map(c => c.id);
   }, [categoryChain]);
   
-  const { 
-    attributesByCategory, 
+  const {
+    attributesByCategory,
     loading: attributesLoading,
     error: attributesError,
-    refetch: refetchAttributes,
   } = useAttributeDefinitions(chainCategoryIds);
   
   // ============================================
@@ -1397,7 +1396,7 @@ export function EditActivityPage() {
                   onChange={handleAttributeChange}
                   onTouch={handleAttributeTouch}
                   disabled={saving}
-                  onDefinitionUpdated={refetchAttributes}
+                  onNewOption={undefined}
                 />
               ) : (
                 <div className="text-center py-6 text-amber-600 text-sm">

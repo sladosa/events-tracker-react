@@ -45,6 +45,12 @@ interface StructureNodeEditPanelProps {
   onSaved: (nodeId: string) => void;
 }
 
+interface DependsOnRow {
+  whenValue: string;
+  options: string;   // newline-separated
+  isNew?: boolean;
+}
+
 interface AttrEditState {
   id: string;
   slug: string;        // Stable identifier — never changed on update
@@ -54,9 +60,11 @@ interface AttrEditState {
   sortOrder: number;
   dataType: string;
   // For simple suggest: pipe/comma-separated options edited as textarea
-  // For depends_on: read-only
+  // For depends_on: full editing via dependsOnSlug + dependsOnMap
   validationType: 'none' | 'suggest' | 'depends_on';
   suggestOptions: string; // one option per line
+  dependsOnSlug: string;
+  dependsOnMap: DependsOnRow[];
   // Original validation_rules stored so we can reconstruct on save
   originalRules: AttributeDefinition['validation_rules'];
   // true for newly added attrs not yet persisted (INSERT on Save)
@@ -114,9 +122,17 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
   const parsed = parseValidationRules(attr.validation_rules);
   let validationType: AttrEditState['validationType'] = 'none';
   let suggestOptions = '';
+  let dependsOnSlug = '';
+  let dependsOnMap: DependsOnRow[] = [];
 
   if (parsed.dependsOn) {
     validationType = 'depends_on';
+    dependsOnSlug = parsed.dependsOn.attributeSlug;
+    dependsOnMap = Object.entries(parsed.dependsOn.optionsMap).map(([when, opts]) => ({
+      whenValue: when,
+      options: opts.join('\n'),
+    }));
+    suggestOptions = parsed.options.join('\n');
   } else if (parsed.type === 'suggest' || parsed.type === 'enum') {
     validationType = 'suggest';
     suggestOptions = parsed.options.join('\n');
@@ -132,6 +148,8 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
     dataType: attr.data_type,
     validationType,
     suggestOptions,
+    dependsOnSlug,
+    dependsOnMap,
     originalRules: attr.validation_rules,
   };
 }
@@ -141,8 +159,23 @@ function buildValidationRules(
   state: AttrEditState,
 ): Record<string, unknown> {
   if (state.validationType === 'depends_on') {
-    // Keep original — we don't edit DependsOn rules in this panel
-    return (state.originalRules as Record<string, unknown>) ?? {};
+    const defaultOpts = state.suggestOptions
+      .split('\n').map(s => s.trim()).filter(Boolean);
+    const optionsMap: Record<string, string[]> = {};
+    for (const row of state.dependsOnMap) {
+      if (!row.whenValue.trim()) continue;
+      optionsMap[row.whenValue.trim()] = row.options
+        .split('\n').map(s => s.trim()).filter(Boolean);
+    }
+    return {
+      type: 'suggest',
+      suggest: defaultOpts,
+      allow_other: true,
+      depends_on: {
+        attribute_slug: state.dependsOnSlug,
+        options_map: optionsMap,
+      },
+    };
   }
   if (state.validationType === 'suggest') {
     const options = state.suggestOptions
@@ -326,6 +359,8 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId }: AttrEditSection
       dataType:      newForm.dataType,
       validationType: 'none',
       suggestOptions: '',
+      dependsOnSlug: '',
+      dependsOnMap:  [],
       originalRules: {},
       isNew:         true,
       isRequired:    newForm.required,
@@ -544,16 +579,108 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId }: AttrEditSection
               <p className="mt-1 text-xs text-gray-400">
                 One option per line. Empty lines are ignored.
               </p>
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => update(i, {
+                    validationType: 'depends_on',
+                    dependsOnSlug: '',
+                    dependsOnMap: [{ whenValue: '', options: '', isNew: true }],
+                  })}
+                  className="text-xs px-2.5 py-1 rounded border border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors"
+                  title="Convert to depends_on type — adds conditional options based on another attribute"
+                >
+                  + Add Dependency
+                </button>
+              </div>
             </div>
           )}
 
-          {/* DependsOn — read-only note */}
+          {/* DependsOn editing */}
           {attr.validationType === 'depends_on' && (
-            <div className="px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100">
-              <p className="text-xs text-indigo-600">
-                ⚠ This attribute has dependent dropdown configuration.
-                Full editing of dependent options is planned for a future version.
-              </p>
+            <div className="space-y-3">
+              <div>
+                <FieldLabel>Depends on (parent attribute)</FieldLabel>
+                <select
+                  value={attr.dependsOnSlug}
+                  onChange={e => update(i, { dependsOnSlug: e.target.value })}
+                  className={cn(
+                    'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white',
+                    'focus:outline-none focus:ring-2', t.ring,
+                  )}
+                >
+                  <option value="">— select parent attribute —</option>
+                  {attrs
+                    .filter(a => a.slug !== attr.slug && (a.dataType === 'text' || a.validationType === 'suggest'))
+                    .map(a => (
+                      <option key={a.slug} value={a.slug}>{a.name} ({a.slug})</option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <FieldLabel>WhenValue → Options</FieldLabel>
+                <div className="space-y-2">
+                  {attr.dependsOnMap.map((row, rowIdx) => (
+                    <div key={rowIdx} className="flex gap-2 items-start">
+                      <div className="w-28 shrink-0">
+                        <TextInput
+                          value={row.whenValue}
+                          onChange={v => {
+                            const newMap = [...attr.dependsOnMap];
+                            newMap[rowIdx] = { ...newMap[rowIdx], whenValue: v };
+                            update(i, { dependsOnMap: newMap });
+                          }}
+                          placeholder="e.g. Upp"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <TextArea
+                          value={row.options}
+                          onChange={v => {
+                            const newMap = [...attr.dependsOnMap];
+                            newMap[rowIdx] = { ...newMap[rowIdx], options: v };
+                            update(i, { dependsOnMap: newMap });
+                          }}
+                          placeholder="one option per line"
+                          rows={3}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => update(i, { dependsOnMap: attr.dependsOnMap.filter((_, idx) => idx !== rowIdx) })}
+                        className="p-1.5 mt-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Remove row"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => update(i, { dependsOnMap: [...attr.dependsOnMap, { whenValue: '', options: '', isNew: true }] })}
+                  className={cn(
+                    'mt-2 text-xs px-2.5 py-1 rounded border border-dashed transition-colors',
+                    'border-amber-300 text-amber-600 hover:bg-amber-50',
+                  )}
+                >
+                  + Add WhenValue row
+                </button>
+              </div>
+
+              <div>
+                <FieldLabel>Default options (when no WhenValue matches)</FieldLabel>
+                <TextArea
+                  value={attr.suggestOptions}
+                  onChange={v => update(i, { suggestOptions: v })}
+                  placeholder="one option per line (usually empty)"
+                  rows={2}
+                />
+                <p className="mt-1 text-xs text-gray-400">Used when parent value not found in map above.</p>
+              </div>
             </div>
           )}
         </div>

@@ -2,7 +2,7 @@
 
 **Zadnja izmjena:** 2026-03-29 (S29)
 **Branch:** test-branch
-**Detalji testova:** `Claude-temp_R/test-sessions/S28_tests.md`
+**Detalji testova:** `Claude-temp_R/test-sessions/S29_tests.md`
 
 ---
 
@@ -11,11 +11,14 @@
 | ID | Opis | Sesija | Detalji |
 |----|----|--------|---------|
 | T-S29-1 | Add Activity: Other → "Nova vrijednost" → Save+ → Finish → vidi u Structure Edit suggest opcijama | S29 | |
-| T-S29-2 | Add Activity: Other u DependsOn atributu → Finish → opcija dodana u options_map[WhenValue] | S29 | |
-| T-S29-3 | Structure Edit: DependsOn atribut prikazuje tablicu mapiranja (ne "read-only notice") | S29 | |
-| T-S29-4 | Structure Edit: Editirati opcije za jedan WhenValue → Save → ispravno u Add Activity | S29 | |
-| T-S29-5 | Structure Edit: Dodati novi WhenValue red → Save → radi u Add Activity | S29 | |
-| T-S29-6 | Structure Edit: Obrisati WhenValue red → Save → više ne pojavljuje u Add Activity | S29 | |
+| T-S29-2 | Add Activity: Other u DependsOn atributu (Strength_type=Upp) → Finish → opcija u options_map["Upp"] | S29 | |
+| T-S29-3 | Add Activity: Other → Finish odmah (bez Save+) → opcija persists | S29 | |
+| T-S29-4 | Structure Edit: DependsOn atribut prikazuje tablicu WhenValue/Options redova (ne "read-only notice") | S29 | |
+| T-S29-5 | Structure Edit: Editirati opcije za WhenValue "Upp" → Save → ispravno u Add Activity | S29 | |
+| T-S29-6 | Structure Edit: Dodati novi WhenValue red → Save → radi u Add Activity | S29 | |
+| T-S29-7 | Structure Edit: Obrisati WhenValue red → Save → više se ne pojavljuje u Add Activity | S29 | |
+| T-S29-8 | Structure Edit: Promijeniti parent atribut (depends_on slug) → Save → DB ažuriran | S29 | |
+| T-S29-9 | View panel (CategoryDetailPanel): DependsOn atribut prikazuje tablicu mapiranja | S29 | |
 
 ---
 

@@ -136,15 +136,14 @@ events (linked to category_id + user_id)
 - Text → Suggest konverzija (S28): gumb "→ Suggest" na text atributima u Edit panelu
 - Import diff fix (S29): `hasChanges()` koristio `getUTCHours` umjesto `getHours` → timezone bug, fiksano
 - Add Attribute fix (S29): `crypto.randomUUID()` dodan u INSERT — `attribute_definitions.id` nema DB default
+- "Other" persist fix (S29): queue u `pendingOptionAdds`, persist na Finish; `AttributeInput` više ne piše direktno u DB
+- DependsOn editing (S29): `StructureNodeEditPanel` prikazuje WhenValue/Options tablica umjesto read-only notice; add/edit/delete rows; change parent slug; `+ Add Dependency` gumb na suggest atributima
 
-### S29 backlog (priority order)
-1. **"Other" persist fix + DependsOn editing UI** — Spec u `docs/SUGGEST_DEPENDSON_SPEC_v1.md`. Dva dijela:
-   - A: "Other" u Add Activity queued, persist na Finish (race condition fix)
-   - B: DependsOn prikaz i edit u Structure Edit (umjesto read-only notice)
-2. **AreaDropdown.tsx refresh** — Add Activity page Area dropdown doesn't listen to `areas-changed` yet.
-3. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
-4. **Excelimport structure validation** — Korak 7 iz Unified Workbook Format; odgođeno.
-5. **Plotly bundle size** — vendor-plotly chunk is ~4.9MB (Plotly itself); acceptable unless performance becomes an issue.
+### S30 backlog (priority order)
+1. **AreaDropdown.tsx refresh** — Add Activity page Area dropdown doesn't listen to `areas-changed` yet.
+2. **Add Category Between** — requires data migration (UPDATE category_id + chain_key on events). Deferred.
+3. **Excelimport structure validation** — Korak 7 iz Unified Workbook Format; odgođeno.
+4. **Plotly bundle size** — vendor-plotly chunk is ~4.9MB (Plotly itself); acceptable unless performance becomes an issue.
 
 ### Future: Playwright E2E testing
 Planned after Combined backup is complete (stable core, fewer structural changes).

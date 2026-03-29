@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { AttributeDefinition, DataType } from '@/types';
 import { parseValidationRules, getOptionsForDependency } from '@/hooks/useAttributeDefinitions';
-import { supabase } from '@/lib/supabaseClient';
 
 interface AttributeInputProps {
   definition: AttributeDefinition;
@@ -12,8 +11,8 @@ interface AttributeInputProps {
   // Za dependency
   dependencyValue?: string | null;
   className?: string;
-  // Callback nakon što se validation_rules ažurira u bazi (refetch)
-  onDefinitionUpdated?: () => void;
+  // Callback kada korisnik unese novu "Other" vrijednost — parent je zadužen za persist
+  onNewOption?: (definitionId: string, newOption: string, dependencyValue?: string | null) => void;
 }
 
 export function AttributeInput({
@@ -24,7 +23,7 @@ export function AttributeInput({
   disabled,
   dependencyValue,
   className = '',
-  onDefinitionUpdated,
+  onNewOption,
 }: AttributeInputProps) {
   const [showOtherInput, setShowOtherInput] = useState(false);
   const [otherValue, setOtherValue] = useState('');
@@ -60,70 +59,13 @@ export function AttributeInput({
     setOtherValue('');
   };
 
-  const handleOtherConfirm = async () => {
+  const handleOtherConfirm = () => {
     const trimmed = otherValue.trim();
     if (!trimmed) return;
 
-    // 1. Spremi vrijednost u event_attributes
     handleChange(trimmed);
     setShowOtherInput(false);
-
-    // 2. DROPDOWN-3: Persisti u attribute_definitions.validation_rules
-    //
-    // STRATEGIJA: Koristimo `parsedOptions` kao jedini izvor istine.
-    // parsedOptions je vec ispravno parsiran od strane parseValidationRules()
-    // bez obzira na format u bazi (V3, legacy, ili ostalo).
-    // Uvijek pisemo u V3 format – React ga cita ispravno, a Streamlit
-    // ce ga takodjer citati ako koristi isti parser.
-    try {
-      let updatedRules: Record<string, unknown>;
-
-      if (parsedOptions.dependsOn && dependencyValue) {
-        // ─── Dependency dropdown ───────────────────────────────────────────
-        // Kopiraj CIJELU options_map (sa svim kljucevima Upp/Low/Core/*)
-        // i dodaj novu vrijednost samo za trenutni dependencyValue kljuc.
-        const fullMap = { ...(parsedOptions.dependsOn.optionsMap ?? {}) };
-        const opts    = fullMap[dependencyValue] ?? [];
-        if (opts.includes(trimmed)) return; // vec postoji
-        fullMap[dependencyValue] = [...opts, trimmed];
-
-        updatedRules = {
-          type: 'suggest',
-          suggest: parsedOptions.options,           // opcije bez dependency
-          allow_other: true,
-          depends_on: {
-            attribute_slug: parsedOptions.dependsOn.attributeSlug,
-            options_map: fullMap,                   // CIJELA mapa sacuvana
-          },
-        };
-
-      } else {
-        // ─── Plain suggest dropdown ────────────────────────────────────────
-        const existing = [...parsedOptions.options]; // kopiraj postojece
-        if (existing.includes(trimmed)) return;      // vec postoji
-        existing.push(trimmed);
-
-        updatedRules = {
-          type: 'suggest',
-          suggest: existing,
-          allow_other: true,
-        };
-      }
-
-      const { error } = await supabase
-        .from('attribute_definitions')
-        .update({ validation_rules: updatedRules })
-        .eq('id', definition.id);
-
-      if (error) {
-        console.error('[AttributeInput] Failed to update validation_rules:', error);
-      } else {
-        // Refetch attribute definitions da se dropdown odmah osvježi
-        onDefinitionUpdated?.();
-      }
-    } catch (err) {
-      console.error('[AttributeInput] Unexpected error updating validation_rules:', err);
-    }
+    onNewOption?.(definition.id, trimmed, dependencyValue);
   };
 
   const handleOtherCancel = () => {
