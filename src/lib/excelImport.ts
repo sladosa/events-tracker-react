@@ -1364,9 +1364,11 @@ export async function checkMissingCategories(
   const wb     = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
 
-  const hasStructureSheet = !!wb.getWorksheet('Structure');
+  // Case-insensitive sheet name lookup (robustness for manually created files)
+  const structureWs = wb.worksheets.find(ws => ws.name.toLowerCase() === 'structure');
+  const hasStructureSheet = !!structureWs;
 
-  const eventsWs = wb.getWorksheet('Events') ?? wb.worksheets[0];
+  const eventsWs = wb.worksheets.find(ws => ws.name.toLowerCase() === 'events') ?? wb.worksheets[0];
   if (!eventsWs) return { missingPaths: [], hasStructureSheet };
 
   // Skip stub sheet (no real events)

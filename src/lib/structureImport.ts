@@ -378,8 +378,8 @@ export async function importStructureExcel(
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
 
-  // Find the Structure sheet (unified format S26+)
-  const ws = wb.getWorksheet('Structure') ?? wb.worksheets[0];
+  // Find the Structure sheet (unified format S26+) — case-insensitive for robustness
+  const ws = wb.worksheets.find(s => s.name.toLowerCase() === 'structure') ?? wb.worksheets[0];
 
   if (!ws) throw new Error('No data sheet found in Excel file.');
 

@@ -101,6 +101,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
 
       // Korak 7: check for missing category paths in file
       const missingCheck = await checkMissingCategories(file, categoriesDict);
+      console.log('[K7] checkMissingCategories:', missingCheck);
       if (missingCheck.missingPaths.length > 0 && missingCheck.hasStructureSheet) {
         setMissingCatPaths(missingCheck.missingPaths);
         setImportState('confirm-structure');
