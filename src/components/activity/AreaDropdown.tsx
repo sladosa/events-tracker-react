@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useAreas } from '@/hooks/useAreas';
 import type { UUID } from '@/types';
 
@@ -9,7 +10,13 @@ interface AreaDropdownProps {
 }
 
 export function AreaDropdown({ value, onChange, disabled, className = '' }: AreaDropdownProps) {
-  const { areas, loading, error } = useAreas();
+  const { areas, loading, error, refetch } = useAreas();
+
+  useEffect(() => {
+    const handler = () => { refetch(); };
+    window.addEventListener('areas-changed', handler);
+    return () => window.removeEventListener('areas-changed', handler);
+  }, [refetch]);
 
   if (error) {
     return (

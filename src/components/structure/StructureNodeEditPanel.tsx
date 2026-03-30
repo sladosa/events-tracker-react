@@ -824,6 +824,17 @@ export function StructureNodeEditPanel({
       toast.error('Name cannot be empty');
       return;
     }
+
+    // Warn if any depends_on attr has empty parent slug
+    const emptySlugAttrs = attrStates.filter(
+      a => a.validationType === 'depends_on' && !a.dependsOnSlug.trim()
+    );
+    if (emptySlugAttrs.length > 0) {
+      const names = emptySlugAttrs.map(a => `"${a.name}"`).join(', ');
+      toast.error(`depends_on parent slug is empty for: ${names}. Select a parent attribute or remove the dependency.`, { duration: 6000 });
+      return;
+    }
+
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();

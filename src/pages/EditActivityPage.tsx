@@ -19,7 +19,7 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
-import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
+import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { loadParentAttrs, buildParentChainIds } from '@/lib/parentEventLoader';
 
 import { ActivityHeader } from '@/components/activity/ActivityHeader';
@@ -27,7 +27,7 @@ import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
 import { PhotoGallery } from '@/components/activity/PhotoGallery';
 import { CancelDialog } from '@/components/activity/ConfirmDialog';
 
-import type { UUID } from '@/types';
+import type { UUID, AttributeDefinition } from '@/types';
 import type {
   PendingEvent,
   PendingPhoto,
@@ -75,6 +75,59 @@ interface LocalAttributeValue {
   definitionId: string;
   value: string | number | boolean | null;
   touched: boolean;
+}
+
+// ============================================
+// Persist pending "Other" options to DB
+// ============================================
+
+async function persistPendingOptions(
+  options: Array<{ definitionId: string; newOption: string; dependencyValue?: string | null }>,
+  attrDefs: AttributeDefinition[]
+): Promise<void> {
+  const latestRules = new Map<string, AttributeDefinition['validation_rules']>();
+
+  for (const pending of options) {
+    const def = attrDefs.find(d => d.id === pending.definitionId);
+    if (!def) continue;
+
+    const currentRules = latestRules.get(pending.definitionId) ?? def.validation_rules;
+    const parsed = parseValidationRules(currentRules);
+
+    let updatedRules: Record<string, unknown>;
+
+    if (pending.dependencyValue && parsed.dependsOn) {
+      const fullMap = { ...(parsed.dependsOn.optionsMap ?? {}) };
+      const opts = fullMap[pending.dependencyValue] ?? [];
+      if (opts.includes(pending.newOption)) continue;
+      fullMap[pending.dependencyValue] = [...opts, pending.newOption];
+      updatedRules = {
+        type: 'suggest',
+        suggest: parsed.options,
+        allow_other: true,
+        depends_on: {
+          attribute_slug: parsed.dependsOn.attributeSlug,
+          options_map: fullMap,
+        },
+      };
+    } else {
+      const existing = [...parsed.options];
+      if (existing.includes(pending.newOption)) continue;
+      existing.push(pending.newOption);
+      updatedRules = { type: 'suggest', suggest: existing, allow_other: true };
+    }
+
+    const { error } = await supabase
+      .from('attribute_definitions')
+      .update({ validation_rules: updatedRules })
+      .eq('id', pending.definitionId);
+
+    if (error) {
+      console.error('[persistPendingOptions] Failed:', error);
+    } else {
+      latestRules.set(pending.definitionId, updatedRules as AttributeDefinition['validation_rules']);
+    }
+  }
 }
 
 // ============================================
@@ -127,6 +180,13 @@ export function EditActivityPage() {
   const [currentPhotos, setCurrentPhotos] = useState<PendingPhoto[]>([]);
   const [existingPhotos, setExistingPhotos] = useState<ExistingPhoto[]>([]);
   
+  // "Other" option queue — persisted to DB on save (same as AddActivityPage)
+  const [pendingOptionAdds, setPendingOptionAdds] = useState<Array<{
+    definitionId: string;
+    newOption: string;
+    dependencyValue?: string | null;
+  }>>([]);
+
   // UI state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -547,6 +607,14 @@ export function EditActivityPage() {
     });
   }, [selectedEventIndex]);
   
+  const handleNewOption = useCallback((
+    definitionId: string,
+    newOption: string,
+    dependencyValue?: string | null
+  ) => {
+    setPendingOptionAdds(prev => [...prev, { definitionId, newOption, dependencyValue }]);
+  }, []);
+
   const handlePhotosChange = useCallback((photos: PendingPhoto[]) => {
     setCurrentPhotos(photos);
     setIsDirty(true);
@@ -1050,6 +1118,12 @@ export function EditActivityPage() {
         }
       }
       
+      // Persist any "Other" options added during edit
+      if (pendingOptionAdds.length > 0) {
+        const allDefs = Array.from(attributesByCategory.values()).flat();
+        await persistPendingOptions(pendingOptionAdds, allDefs);
+      }
+
       // Success! Navigate to View Details
       if (sessionStart) {
         const encodedNew = encodeURIComponent(newSessionStart);
@@ -1396,7 +1470,7 @@ export function EditActivityPage() {
                   onChange={handleAttributeChange}
                   onTouch={handleAttributeTouch}
                   disabled={saving}
-                  onNewOption={undefined}
+                  onNewOption={handleNewOption}
                 />
               ) : (
                 <div className="text-center py-6 text-amber-600 text-sm">

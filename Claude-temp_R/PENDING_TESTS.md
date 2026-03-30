@@ -1,8 +1,8 @@
 # Pending Tests
 
-**Zadnja izmjena:** 2026-03-30 (S30)
+**Zadnja izmjena:** 2026-03-30 (S31)
 **Branch:** test-branch
-**Detalji testova:** `Claude-temp_R/test-sessions/S30_tests.md`
+**Detalji testova:** `Claude-temp_R/test-sessions/S31_tests.md`
 
 ---
 
@@ -10,13 +10,11 @@
 
 | ID | Opis | Sesija | Bilješka |
 |----|----|--------|---------|
-| T-S29b-1 | Add Activity: Other → 'A' + Other → 'B' za ISTI atribut → Finish → OBA vidljiva u Structure Edit | S29b | ✅ Potvrđeno od korisnika |
-| T-S29b-2 | Structure Edit: otvoriti depends_on atribut → "Depends on" dropdown odmah prikazuje ispravni parent | S29b | Zamijenjen s T-S30-1 (novi feature) |
-| T-S30-1 | Depends-on dropdown: ancestor atributi prikazani u optgroup "↑ LevelName" | S30 | ✅ |
-| T-S30-2 | Depends-on dropdown: odaberi ancestor atribut → Save → radi u Add Activity | S30 | ✅ |
-| T-S30-3 | Depends-on dropdown: orphan slug (attr obrisan) → prikazan "⚠ slug (not found)" | S30 | ✅ |
-| T-S30-4 | Delete attr koji je depends_on referenca → amber warning s listom referenci i slug info | S30 | ✅ |
-| T-S30-5 | Delete attr koji NIJE referenca → nema amber warning (samo postojeći red/no-data flow) | S30 | ✅ |
+| T-S31-1 | AreaDropdown: kod sadrži areas-changed event listener koji poziva refetch | S31 | |
+| T-S31-2 | Edit Activity: Other → nova vrijednost → Save → vidljiva u Structure Edit suggest opcijama | S31 | |
+| T-S31-3 | Edit Activity: Other s depends_on → Save → dodan u options_map | S31 | |
+| T-S31-4 | DependsOn empty slug → Save blokiran s toast porukom | S31 | |
+| T-S31-5 | DependsOn s ispravnim slugom → Save prolazi bez lažnog errora | S31 | |
 
 ---
 
@@ -24,6 +22,11 @@
 
 | ID | Opis | Sesija | Status |
 |----|------|--------|--------|
+| T-S30-1 | Depends-on dropdown: ancestor atributi prikazani u optgroup "↑ LevelName" | S30 | ✅ |
+| T-S30-2 | Depends-on dropdown: odaberi ancestor atribut → Save → radi u Add Activity | S30 | ✅ |
+| T-S30-3 | Depends-on dropdown: orphan slug (attr obrisan) → prikazan "⚠ slug (not found)" | S30 | ✅ |
+| T-S30-4 | Delete attr koji je depends_on referenca → amber warning s listom referenci i slug info | S30 | ✅ |
+| T-S30-5 | Delete attr koji NIJE referenca → nema amber warning (samo postojeći red/no-data flow) | S30 | ✅ |
 | T-S29b-1 | Add Activity: Other → 'A' + Other → 'B' za ISTI atribut → Finish → OBA vidljiva | S29b | ✅ |
 | T-S29-1  | Add Activity: Other → Save+ → Finish → vidi u Structure Edit suggest opcijama | S29 | ✅ |
 | T-S29-2  | Add Activity: Other u DependsOn (Strength_type=Upp) → Finish → opcija u options_map["Upp"] | S29 | ✅ |
@@ -93,3 +96,4 @@ Claude će: ažurirati ovaj fajl, označiti ✅/❌, istražiti failove.
 | [S27_tests.md](test-sessions/S27_tests.md) | S27 | ✅ Sve verificirano |
 | [S28_tests.md](test-sessions/S28_tests.md) | S28 | ✅ Sve verificirano (S29) |
 | [S29_tests.md](test-sessions/S29_tests.md) | S29 | ✅ Sve verificirano |
+| [S30_tests.md](test-sessions/S30_tests.md) | S30 | ✅ Sve verificirano |

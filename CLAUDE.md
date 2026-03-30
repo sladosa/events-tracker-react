@@ -142,14 +142,14 @@ events (linked to category_id + user_id)
 - DependsOn dropdown bugfix (S29b): fallback `<option>` za cross-level parent slug; label "— (remove dependency) —"
 - Ancestor attrs u depends_on dropdown (S30): `buildAncestorAttrs()` hoda `parentCategoryId` chain; optgroup po levelu + orphan `⚠` fallback; `allNodes` prop prosljeđen u `StructureNodeEditPanel`
 - Delete attr zaštita (S30): `findDependsOnReferences` client-side check; amber warning s listom referenci + slug info za obnovu
+- AreaDropdown refresh (S31): `useEffect` u `AreaDropdown.tsx` sluša `areas-changed` i poziva `refetch()`
+- Edit Activity Other persist (S31): `persistPendingOptions` + `handleNewOption` dodan u `EditActivityPage`; `onNewOption` više nije `undefined`
+- DependsOn empty slug blokira Save (S31): validacija u `StructureNodeEditPanel.handleSave` — toast error ako `dependsOnSlug` prazan, return bez DB write
 
-### S30 backlog (priority order)
-1. **AreaDropdown.tsx refresh** — `AddActivityPage` Area dropdown ne sluša `areas-changed` event; treba `useEffect` koji refetcha areae kad se dogodi. Fajl: `src/pages/AddActivityPage.tsx` ili `src/components/activity/AreaDropdown.tsx` (ako postoji).
-2. **Edit Activity: "Other" persist** — `EditActivityPage` prosljeđuje `onNewOption={undefined}` → Other vrijednosti u Edit flowu se ne persistaju. Rješenje: isti queue mehanizam kao u Add, poziv na kraju `handleSave`.
-3. **DependsOn: validacija praznog parent slug-a** — ako korisnik odabere "— (remove dependency) —" i spremi, `attribute_slug: ""` se zapisuje u DB. Dodati toast warning u `handleSave` kad `depends_on` attr ima prazan slug.
-4. **Add Category Between** — zahtijeva data migraciju (UPDATE category_id + chain_key na eventima). Odgođeno.
-5. **Excelimport structure validation** — Korak 7 iz Unified Workbook Format; odgođeno.
-6. **Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
+### S31 backlog (priority order)
+1. **Add Category Between** — zahtijeva data migraciju (UPDATE category_id + chain_key na eventima). Odgođeno.
+2. **Excelimport structure validation** — Korak 7 iz Unified Workbook Format; odgođeno.
+3. **Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
 
 ### Future: Playwright E2E testing
 Planned after Combined backup is complete (stable core, fewer structural changes).
