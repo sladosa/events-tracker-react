@@ -266,8 +266,23 @@ export async function parseExcelFile(file: File): Promise<ParseResult> {
   const wb          = new ExcelJS.Workbook();
   await wb.xlsx.load(arrayBuffer);
 
-  const ws = wb.worksheets[0];
+  // Try Events sheet by name (unified format), fall back to first worksheet
+  const ws = wb.getWorksheet('Events') ?? wb.worksheets[0];
   if (!ws) return { toCreate: [], toUpdate: [], warnings: [], errors: ['Excel file has no worksheets.'], legendMapping: {} };
+
+  // Detect structure-only stub (file exported from Structure tab, not Activities)
+  const stubText = cellStr(ws.getRow(1).getCell(1).value);
+  if (stubText.includes('Export initiated from Structure tab')) {
+    return {
+      toCreate: [], toUpdate: [], warnings: [],
+      errors: [
+        'This file was exported from the Structure tab — it contains no events.\n' +
+        'To import structure, use the Structure tab → Import button.\n' +
+        'To import activities, export from the Activities tab first.',
+      ],
+      legendMapping: {},
+    };
+  }
 
   // Parse legend
   const { mapping, legendEndRow, error: legendError } = parseLegend(ws);
@@ -1326,5 +1341,61 @@ export async function importEventsFromExcel(
     skipped:  result.skipped,
     errors:   result.errors,
     warnings: [...parsed.warnings, ...reclassified.warnings, ...result.warnings],
+  };
+}
+
+// ─────────────────────────────────────────────
+// Korak 7: Check for category paths in the Excel
+// file that don't exist in the current DB.
+// Returns missing paths + whether the file has
+// a Structure sheet (for auto-creation offer).
+// ─────────────────────────────────────────────
+
+export interface MissingCategoriesResult {
+  missingPaths:      string[];
+  hasStructureSheet: boolean;
+}
+
+export async function checkMissingCategories(
+  file:           File,
+  categoriesDict: ExportCategoriesDict,
+): Promise<MissingCategoriesResult> {
+  const buffer = await file.arrayBuffer();
+  const wb     = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer);
+
+  const hasStructureSheet = !!wb.getWorksheet('Structure');
+
+  const eventsWs = wb.getWorksheet('Events') ?? wb.worksheets[0];
+  if (!eventsWs) return { missingPaths: [], hasStructureSheet };
+
+  // Skip stub sheet (no real events)
+  const firstCell = cellStr(eventsWs.getRow(1).getCell(1).value);
+  if (firstCell.includes('Export initiated from Structure tab')) {
+    return { missingPaths: [], hasStructureSheet };
+  }
+
+  const { mapping, legendEndRow, error: legendError } = parseLegend(eventsWs);
+  if (legendError) return { missingPaths: [], hasStructureSheet };
+
+  const { headerRow, error: sectionError } = findEventDataSection(eventsWs, legendEndRow);
+  if (sectionError) return { missingPaths: [], hasStructureSheet };
+
+  const rows = parseDataRows(eventsWs, mapping, headerRow);
+
+  const knownPaths = new Set<string>(
+    Object.values(categoriesDict).map(info => info.full_path),
+  );
+
+  const missingSet = new Set<string>();
+  for (const row of rows) {
+    if (row.category_path && !knownPaths.has(row.category_path)) {
+      missingSet.add(row.category_path);
+    }
+  }
+
+  return {
+    missingPaths: Array.from(missingSet),
+    hasStructureSheet,
   };
 }

@@ -146,16 +146,13 @@ events (linked to category_id + user_id)
 - AreaDropdown refresh (S31): `useEffect` u `AreaDropdown.tsx` sluša `areas-changed` i poziva `refetch()`
 - Edit Activity Other persist (S31): `persistPendingOptions` + `handleNewOption` dodan u `EditActivityPage`; `onNewOption` više nije `undefined`
 - DependsOn empty slug blokira Save (S31): validacija u `StructureNodeEditPanel.handleSave` — toast error ako `dependsOnSlug` prazan, return bez DB write
+- Korak 7 — Excel Import s kreiranjem strukture (S32): `parseExcelFile` detektira structure-only stub i vraća helpful error; `checkMissingCategories()` u `excelImport.ts`; `confirm-structure` state u `ExcelImportModal` — lista missing kategorija + "Create categories & continue" → `importStructureExcel` → reload → proceed
 
 ### Backlog — priority order
 
 **Faza 1: single-user stabilizacija (test-branch → main, kao dosad)**
 
-1. **Korak 7 — Excel Import s kreiranjem strukture** — Import u Activities modu čita
-   Structure sheet, uspoređuje s DB, nudi kreiranje kategorija koje nedostaju prije
-   importa evenata. Spec u `docs/EXPORT_IMPORT_REFACTOR_PROPOSAL.md`.
-
-2. **Add Category Between** — umetanje razine unutar postojeće hijerarhije.
+1. **Add Category Between** — umetanje razine unutar postojeće hijerarhije.
    Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
 
 3. **Financije reorganizacija** — supruga kao single user; srediti strukturu

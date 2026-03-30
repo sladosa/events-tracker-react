@@ -13,8 +13,10 @@ import { supabase } from '@/lib/supabaseClient';
 import {
   importEventsFromExcel,
   checkImportCollisions,
+  checkMissingCategories,
   parseExcelFile,
 } from '@/lib/excelImport';
+import { importStructureExcel } from '@/lib/structureImport';
 import { loadCategoriesForExport } from '@/lib/excelDataLoader';
 import type { CollisionInfo } from '@/lib/excelImport';
 
@@ -24,7 +26,7 @@ interface ExcelImportModalProps {
   onRefresh: () => void;  // called immediately when import completes (refreshes table)
 }
 
-type ImportState = 'idle' | 'parsing' | 'checking' | 'ready' | 'applying' | 'done' | 'error';
+type ImportState = 'idle' | 'parsing' | 'checking' | 'confirm-structure' | 'ready' | 'applying' | 'done' | 'error';
 
 interface ParsePreview {
   toCreateCount: number;
@@ -40,7 +42,9 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const [overwriteMap,  setOverwriteMap]  = useState<Map<string, 'replace' | 'add' | 'skip'>>(new Map());
   const [result,        setResult]        = useState<{ created: number; updated: number; skipped: number; warnings: string[] } | null>(null);
   const [errors,        setErrors]        = useState<string[]>([]);
-  const [isDragOver,    setIsDragOver]    = useState(false);
+  const [isDragOver,       setIsDragOver]       = useState(false);
+  const [missingCatPaths,  setMissingCatPaths]  = useState<string[]>([]);
+  const [applyingMessage,  setApplyingMessage]  = useState('Importing events…');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +60,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setPreview(null);
     setCollisions([]);
     setOverwriteMap(new Map());
+    setMissingCatPaths([]);
     setImportState('parsing');
 
     try {
@@ -74,15 +79,16 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       };
       setPreview(previewData);
 
+      // Always load user + categories (needed for collision check and missing-category check)
+      setImportState('checking');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const categoriesDict = await loadCategoriesForExport(user.id);
+
       // Collision detection za CREATE redove
       if (parsed.toCreate.length > 0) {
-        setImportState('checking');
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-
-        const categoriesDict = await loadCategoriesForExport(user.id);
         const foundCollisions = await checkImportCollisions(user.id, parsed.toCreate, categoriesDict);
-
         setCollisions(foundCollisions);
 
         // Inicijalna odluka: sve na 'skip'
@@ -91,6 +97,14 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
           for (const c of foundCollisions) initialMap.set(c.sessionKey, 'skip');
           setOverwriteMap(initialMap);
         }
+      }
+
+      // Korak 7: check for missing category paths in file
+      const missingCheck = await checkMissingCategories(file, categoriesDict);
+      if (missingCheck.missingPaths.length > 0 && missingCheck.hasStructureSheet) {
+        setMissingCatPaths(missingCheck.missingPaths);
+        setImportState('confirm-structure');
+        return;
       }
 
       setImportState('ready');
@@ -161,10 +175,30 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     };
   }, [preview, collisions, overwriteMap]);
 
+  // ── Korak 7: Create missing categories from Structure sheet, then continue ──
+  const handleCreateStructure = async () => {
+    if (!selectedFile) return;
+    setApplyingMessage('Creating categories…');
+    setImportState('applying');
+    setErrors([]);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      await importStructureExcel(selectedFile, user.id);
+      // Notify AreaDropdown and other listeners that areas may have changed
+      window.dispatchEvent(new CustomEvent('areas-changed'));
+      setImportState('ready');
+    } catch (err) {
+      setErrors([`Failed to create categories: ${String(err)}`]);
+      setImportState('error');
+    }
+  };
+
   // ── Apply import ──
   const handleApply = async () => {
     if (!selectedFile) return;
 
+    setApplyingMessage('Importing events…');
     setImportState('applying');
     setErrors([]);
 
@@ -205,6 +239,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setErrors([]);
     setCollisions([]);
     setOverwriteMap(new Map());
+    setMissingCatPaths([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -292,6 +327,45 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
               </p>
               <p className="text-sm text-gray-400">{selectedFile?.name}</p>
             </div>
+          )}
+
+          {/* ── CONFIRM STRUCTURE: missing categories need to be created ── */}
+          {importState === 'confirm-structure' && (
+            <>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span>📄</span>
+                <span className="truncate font-medium">{selectedFile?.name}</span>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-semibold text-amber-800">
+                  ⚠️ {missingCatPaths.length} category path{missingCatPaths.length !== 1 ? 's' : ''} not found in database
+                </p>
+                <p className="text-xs text-amber-700">
+                  The file contains a Structure sheet. These categories will be created before importing events:
+                </p>
+                <ul className="text-xs text-amber-900 space-y-0.5 max-h-40 overflow-y-auto">
+                  {missingCatPaths.map(p => (
+                    <li key={p} className="font-mono bg-amber-100 rounded px-2 py-0.5">{p}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleReset}
+                  className="py-2.5 px-3 border border-gray-300 rounded-lg text-sm text-gray-500 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateStructure}
+                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Create categories &amp; continue
+                </button>
+              </div>
+            </>
           )}
 
           {/* ── READY: Preview + collision resolution ── */}
@@ -468,7 +542,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
           {importState === 'applying' && (
             <div className="flex flex-col items-center gap-3 py-6">
               <span className="text-4xl animate-spin">⏳</span>
-              <p className="text-gray-600">Importing events…</p>
+              <p className="text-gray-600">{applyingMessage}</p>
               <p className="text-xs text-gray-400">Please wait, do not close this window</p>
             </div>
           )}
