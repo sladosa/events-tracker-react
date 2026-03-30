@@ -44,6 +44,7 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **Supabase SELECT must be single-line** — nested multiline selects silently ignore relations
 - **`touched: true`** must be set when loading attributes from DB in Edit flow — otherwise handleSave() skips them
 - **`parentEventLoader.ts`** is the single shared service for parent event logic — never duplicate
+- **Excel Category_Path format:** Activities Events sheet col C = **bez area name** (`Domacinstvo > Automobili > Gorivo`); Structure sheet col D = **sa area name** (`TEST > Domacinstvo > Automobili > Gorivo`). `ExportCategoryInfo.full_path` nikad ne uključuje area name (hodanje po `parent_category_id` staje na L1). `StructureNode.fullPath` uključuje area name.
 - **Before every commit:** `npm run typecheck && npm run build`
 
 ---
