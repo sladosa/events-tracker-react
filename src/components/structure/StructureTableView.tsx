@@ -365,6 +365,7 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
       {panelMode === 'edit' && activeNode && (
         <StructureNodeEditPanel
           node={activeNode}
+          allNodes={nodes}
           onClose={() => closePanel()}
           onSwitchToView={() => setPanelMode('view')}
           onSaved={handleEditSaved}

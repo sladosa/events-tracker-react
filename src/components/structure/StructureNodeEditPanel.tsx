@@ -22,7 +22,7 @@
 //   - Calls onSaved(nodeId) → StructureTableView triggers highlight + refetch
 // ============================================================
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'react-hot-toast';
@@ -38,6 +38,8 @@ import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 
 interface StructureNodeEditPanelProps {
   node: StructureNode;
+  /** All structure nodes — used to resolve ancestor attributes */
+  allNodes?: StructureNode[];
   onClose: () => void;
   /** Switch back to View panel for same node */
   onSwitchToView: () => void;
@@ -80,11 +82,13 @@ interface NewAttrFormState {
 }
 
 interface DeleteConfirmState {
-  attrId:    string;
-  attrName:  string;
-  checking:  boolean;
-  eventCount: number | null;
-  deleting:  boolean;
+  attrId:        string;
+  attrName:      string;
+  attrSlug:      string;
+  checking:      boolean;
+  eventCount:    number | null;
+  dependsOnRefs: { nodePath: string; attrName: string }[];
+  deleting:      boolean;
 }
 
 // --------------------------------------------------------
@@ -116,6 +120,30 @@ const SaveIcon = () => (
 // --------------------------------------------------------
 // Helpers
 // --------------------------------------------------------
+
+/** Collect attribute definitions from all ancestor levels (parent → grandparent → area) */
+function buildAncestorAttrs(
+  node: StructureNode,
+  allNodes: StructureNode[],
+): { levelName: string; attrs: AttributeDefinition[] }[] {
+  const result: { levelName: string; attrs: AttributeDefinition[] }[] = [];
+  let parentId: string | null = node.parentCategoryId;
+  while (parentId) {
+    const parent = allNodes.find(n => n.id === parentId);
+    if (!parent) break;
+    if (parent.attributeDefinitions.length > 0) {
+      result.push({ levelName: parent.name, attrs: parent.attributeDefinitions });
+    }
+    parentId = parent.parentCategoryId;
+  }
+  if (node.nodeType !== 'area') {
+    const area = allNodes.find(n => n.nodeType === 'area' && n.id === node.areaId);
+    if (area && area.attributeDefinitions.length > 0) {
+      result.push({ levelName: `${area.name} (area)`, attrs: area.attributeDefinitions });
+    }
+  }
+  return result;
+}
 
 /** Parse attribute for edit state */
 function attrToEditState(attr: AttributeDefinition): AttrEditState {
@@ -283,13 +311,15 @@ function TextArea({ value, onChange, placeholder, rows = 3 }: TextAreaProps) {
 // --------------------------------------------------------
 
 interface AttrEditSectionProps {
-  attrs:     AttrEditState[];
-  onChange:  (updated: AttrEditState[]) => void;
-  hasEvents: boolean;
-  nodeId:    string;
+  attrs:         AttrEditState[];
+  onChange:      (updated: AttrEditState[]) => void;
+  hasEvents:     boolean;
+  nodeId:        string;
+  ancestorAttrs: { levelName: string; attrs: AttributeDefinition[] }[];
+  allNodes:      StructureNode[];
 }
 
-function AttrEditSection({ attrs, onChange, hasEvents, nodeId }: AttrEditSectionProps) {
+function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, allNodes }: AttrEditSectionProps) {
   const t = THEME.structureEdit;
 
   const [addOpen,      setAddOpen]      = useState(false);
@@ -309,7 +339,18 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId }: AttrEditSection
       onChange(attrs.filter(a => a.id !== attr.id));
       return;
     }
-    setDeleteState({ attrId: attr.id, attrName: attr.name, checking: true, eventCount: null, deleting: false });
+    // Check for depends_on references across all loaded nodes (client-side, no extra DB query)
+    const refs: { nodePath: string; attrName: string }[] = [];
+    for (const n of allNodes) {
+      for (const ad of n.attributeDefinitions) {
+        if (ad.id === attr.id) continue;
+        const parsed = parseValidationRules(ad.validation_rules);
+        if (parsed.dependsOn?.attributeSlug === attr.slug) {
+          refs.push({ nodePath: n.fullPath, attrName: ad.name });
+        }
+      }
+    }
+    setDeleteState({ attrId: attr.id, attrName: attr.name, attrSlug: attr.slug, checking: true, eventCount: null, dependsOnRefs: refs, deleting: false });
     const { count } = await supabase
       .from('event_attributes')
       .select('id', { count: 'exact', head: true })
@@ -379,15 +420,34 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId }: AttrEditSection
         </h3>
         {deleteState.checking ? (
           <p className="text-xs text-gray-500">Checking for existing data…</p>
-        ) : (deleteState.eventCount ?? 0) > 0 ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-xs text-red-700 font-medium">
-              ⚠ This attribute has <strong>{deleteState.eventCount}</strong> recorded value{deleteState.eventCount !== 1 ? 's' : ''}.
-              Deleting will permanently remove all recorded data for this attribute.
-            </p>
-          </div>
         ) : (
-          <p className="text-xs text-gray-500">This attribute has no recorded values. It will be deleted immediately.</p>
+          <div className="space-y-2">
+            {(deleteState.eventCount ?? 0) > 0 ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-xs text-red-700 font-medium">
+                  ⚠ This attribute has <strong>{deleteState.eventCount}</strong> recorded value{deleteState.eventCount !== 1 ? 's' : ''}.
+                  Deleting will permanently remove all recorded data for this attribute.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">This attribute has no recorded values. It will be deleted immediately.</p>
+            )}
+            {deleteState.dependsOnRefs.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-xs text-amber-700 font-medium mb-1">
+                  ⚠ {deleteState.dependsOnRefs.length} attribute{deleteState.dependsOnRefs.length !== 1 ? 's' : ''} use this as a depends-on source:
+                </p>
+                <ul className="text-xs text-amber-600 space-y-0.5 list-disc ml-4">
+                  {deleteState.dependsOnRefs.map((ref, i) => (
+                    <li key={i}>{ref.nodePath} → <strong>{ref.attrName}</strong></li>
+                  ))}
+                </ul>
+                <p className="text-xs text-amber-600 mt-1.5">
+                  Those attributes will fall back to default options. You can restore them by adding a new attribute with slug <strong>"{deleteState.attrSlug}"</strong> on any ancestor level.
+                </p>
+              </div>
+            )}
+          </div>
         )}
         <div className="flex gap-2 justify-end">
           <button
@@ -610,17 +670,38 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId }: AttrEditSection
                   )}
                 >
                   <option value="">— (remove dependency) —</option>
-                  {/* Fallback: show current slug even if parent attr is at a different level */}
-                  {attr.dependsOnSlug && !attrs.some(
-                    a => a.slug === attr.dependsOnSlug && a.slug !== attr.slug
-                  ) && (
-                    <option value={attr.dependsOnSlug}>{attr.dependsOnSlug}</option>
-                  )}
-                  {attrs
-                    .filter(a => a.slug !== attr.slug && (a.dataType === 'text' || a.validationType === 'suggest'))
-                    .map(a => (
-                      <option key={a.slug} value={a.slug}>{a.name} ({a.slug})</option>
-                    ))}
+                  {/* Orphan fallback: slug set but not found in any available attr */}
+                  {(() => {
+                    if (!attr.dependsOnSlug) return null;
+                    const sameLevelMatch = attrs.some(a => a.slug === attr.dependsOnSlug && a.slug !== attr.slug);
+                    const ancestorMatch = ancestorAttrs.some(g => g.attrs.some(a => a.slug === attr.dependsOnSlug));
+                    if (sameLevelMatch || ancestorMatch) return null;
+                    return <option key="__orphan__" value={attr.dependsOnSlug}>⚠ {attr.dependsOnSlug} (not found)</option>;
+                  })()}
+                  {/* Same-level text/suggest attributes */}
+                  {(() => {
+                    const sameLevelOpts = attrs.filter(a => a.slug !== attr.slug && (a.dataType === 'text' || a.validationType === 'suggest'));
+                    if (sameLevelOpts.length === 0) return null;
+                    return (
+                      <optgroup label="Same level">
+                        {sameLevelOpts.map(a => (
+                          <option key={a.slug} value={a.slug}>{a.name} ({a.slug})</option>
+                        ))}
+                      </optgroup>
+                    );
+                  })()}
+                  {/* Ancestor attributes grouped by level */}
+                  {ancestorAttrs.map(group => {
+                    const filtered = group.attrs.filter(a => a.data_type === 'text');
+                    if (filtered.length === 0) return null;
+                    return (
+                      <optgroup key={group.levelName} label={`↑ ${group.levelName}`}>
+                        {filtered.map(a => (
+                          <option key={a.slug} value={a.slug}>{a.name} ({a.slug})</option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -715,11 +796,15 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId }: AttrEditSection
 
 export function StructureNodeEditPanel({
   node,
+  allNodes = [],
   onClose,
   onSwitchToView,
   onSaved,
 }: StructureNodeEditPanelProps) {
   const t = THEME.structureEdit;
+
+  // ---- Ancestor attributes (for depends_on dropdown) ----
+  const ancestorAttrs = useMemo(() => buildAncestorAttrs(node, allNodes), [node, allNodes]);
 
   // ---- Node form state ----
   const [name, setName] = useState(node.name);
@@ -949,6 +1034,8 @@ export function StructureNodeEditPanel({
                 onChange={setAttrStates}
                 hasEvents={node.eventCount > 0}
                 nodeId={node.id}
+                ancestorAttrs={ancestorAttrs}
+                allNodes={allNodes}
               />
             </div>
           )}

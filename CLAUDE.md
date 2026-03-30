@@ -140,6 +140,8 @@ events (linked to category_id + user_id)
 - DependsOn editing (S29): `StructureNodeEditPanel` prikazuje WhenValue/Options tablica umjesto read-only notice; add/edit/delete rows; change parent slug; `+ Add Dependency` gumb na suggest atributima
 - Multi-option persist bugfix (S29b): `latestRules` Map u `persistPendingOptions` — višestruki Other u jednoj sesiji sada svi opstaju
 - DependsOn dropdown bugfix (S29b): fallback `<option>` za cross-level parent slug; label "— (remove dependency) —"
+- Ancestor attrs u depends_on dropdown (S30): `buildAncestorAttrs()` hoda `parentCategoryId` chain; optgroup po levelu + orphan `⚠` fallback; `allNodes` prop prosljeđen u `StructureNodeEditPanel`
+- Delete attr zaštita (S30): `findDependsOnReferences` client-side check; amber warning s listom referenci + slug info za obnovu
 
 ### S30 backlog (priority order)
 1. **AreaDropdown.tsx refresh** — `AddActivityPage` Area dropdown ne sluša `areas-changed` event; treba `useEffect` koji refetcha areae kad se dogodi. Fajl: `src/pages/AddActivityPage.tsx` ili `src/components/activity/AreaDropdown.tsx` (ako postoji).
