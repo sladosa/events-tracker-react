@@ -18,8 +18,9 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | `docs/EXCEL_FORMAT_ANALYSIS_v2.md` | Excel export/import work |
 | `docs/IMPORT_DIFF_SPEC.md` | Import "skipped" vs "updated" — ✅ implemented S28 |
 | `docs/ADD_ATTRIBUTE_SPEC.md` | Add/Delete Attribute u Structure Edit — ✅ implemented S28 |
-| `Claude-temp_R/SQL_schema_V5_commented.sql` | DB schema reference |
-| `Claude-temp_R/Code_Guidelines_React_v6.md` | Code conventions |
+| `docs/SUGGEST_DEPENDSON_SPEC_v2.md` | Suggest + DependsOn editing — ✅ implemented S29–S31 |
+| `sql/SQL_schema_V5_commented.sql` | DB schema reference |
+| `docs/Code_Guidelines_React_v6.md` | Code conventions |
 
 ---
 
@@ -146,15 +147,56 @@ events (linked to category_id + user_id)
 - Edit Activity Other persist (S31): `persistPendingOptions` + `handleNewOption` dodan u `EditActivityPage`; `onNewOption` više nije `undefined`
 - DependsOn empty slug blokira Save (S31): validacija u `StructureNodeEditPanel.handleSave` — toast error ako `dependsOnSlug` prazan, return bez DB write
 
-### S31 backlog (priority order)
-1. **Add Category Between** — zahtijeva data migraciju (UPDATE category_id + chain_key na eventima). Odgođeno.
-2. **Excelimport structure validation** — Korak 7 iz Unified Workbook Format; odgođeno.
-3. **Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
+### Backlog — priority order
 
-### Future: Playwright E2E testing
-Planned after Combined backup is complete (stable core, fewer structural changes).
-Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
-Requires: dedicated Supabase test project (not yet created) + `.env.testing` credentials filled in.
+**Faza 1: single-user stabilizacija (test-branch → main, kao dosad)**
+
+1. **Korak 7 — Excel Import s kreiranjem strukture** — Import u Activities modu čita
+   Structure sheet, uspoređuje s DB, nudi kreiranje kategorija koje nedostaju prije
+   importa evenata. Spec u `docs/EXPORT_IMPORT_REFACTOR_PROPOSAL.md`.
+
+2. **Add Category Between** — umetanje razine unutar postojeće hijerarhije.
+   Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
+
+3. **Financije reorganizacija** — supruga kao single user; srediti strukturu
+   kategorija i atributa u Area "Financije" prije uvođenja suradnje.
+
+4. **Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse
+   nisu problem.
+
+**Faza 2: infrastruktura za suradnju**
+
+5. **Playwright E2E setup** — prerequisit za collaboration development.
+   Novi dedicirani Supabase TEST projekt (služi i za Playwright i za collab dev).
+   Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
+   Requires: Supabase test project (nije kreiran) + `.env.testing` popunjen.
+
+**Faza 3: multi-user suradnja (nova `collab` grana)**
+
+6. **`collab` branch** — `git checkout -b collab` iz test-branch.
+   `.env.local` pokazuje na Supabase TEST projekt (izolacija od produkcije).
+   Netlify Preview Deploy opcionalno.
+
+7. **SQL migracije za suradnju** (na TEST Supabase):
+   - `008_profiles.sql` — `profiles` tablica (email↔UUID bridge) + trigger +
+     migracija postojećih korisnika
+   - `009_sharing.sql` — `data_shares` RLS, `share_invites` + trigger,
+     proširene SELECT/INSERT policies na areas/categories/attr_defs/events
+
+8. **Frontend collaboration** (~13 fajlova) — useDataShares hook, Share management
+   UI (invite po emailu, lista, revoke), useAreas/useCategories proširenje,
+   FilterContext sharedContext, StructureTableView guard, AddActivity/EditActivity
+   guard, Excel Export svih evenata dijeljene Area.
+   Spec: `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md`
+
+9. **Help panel** — pravila dijeljenja vidljiva u UI.
+
+10. **Merge collab → main** — SQL migracije ručno na PROD Supabase → merge.
+
+**Faza 4: historijska migracija (poseban projekt, bez vremenskog pritiska)**
+
+11. **trening.xlsm analiza** — mapiranje kolona i sheetova na trenutni data model.
+12. **Import historijskih podataka** u finalnu produkcijsku bazu.
 
 ---
 

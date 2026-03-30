@@ -10,11 +10,11 @@
 
 | ID | Opis | Sesija | Bilješka |
 |----|----|--------|---------|
-| T-S31-1 | AreaDropdown: kod sadrži areas-changed event listener koji poziva refetch | S31 | |
-| T-S31-2 | Edit Activity: Other → nova vrijednost → Save → vidljiva u Structure Edit suggest opcijama | S31 | |
-| T-S31-3 | Edit Activity: Other s depends_on → Save → dodan u options_map | S31 | |
-| T-S31-4 | DependsOn empty slug → Save blokiran s toast porukom | S31 | |
-| T-S31-5 | DependsOn s ispravnim slugom → Save prolazi bez lažnog errora | S31 | |
+| T-S31-1 | AreaDropdown: kod sadrži areas-changed event listener koji poziva refetch | S31 | ✅ |
+| T-S31-2 | Edit Activity: Other → nova vrijednost → Save → vidljiva u Structure Edit suggest opcijama | S31 | ✅ |
+| T-S31-3 | Edit Activity: Other s depends_on → Save → dodan u options_map | S31 | ✅ |
+| T-S31-4 | DependsOn empty slug → Save blokiran s toast porukom | S31 | ✅ |
+| T-S31-5 | DependsOn s ispravnim slugom → Save prolazi bez lažnog errora | S31 | ✅ |
 
 ---
 
