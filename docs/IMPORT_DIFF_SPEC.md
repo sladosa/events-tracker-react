@@ -2,7 +2,7 @@
 
 **Datum:** 2026-03-27
 **Prioritet:** 1 (S28)
-**Status:** Specifikacija — nije implementirano
+**Status:** ✅ Implementirano — S28 (diff check), S29 (timezone bugfix verificiran)
 
 ---
 

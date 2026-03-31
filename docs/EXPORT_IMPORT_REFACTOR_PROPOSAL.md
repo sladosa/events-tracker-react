@@ -1,7 +1,7 @@
 # Export/Import Refactor — Unified Workbook Format (v2)
 
 **Datum:** 2026-03-26
-**Status:** Dogovoreno — spremo za implementaciju (višesesijna)
+**Status:** ✅ Implementirano — S26–S27 (Unified Workbook), S32 (Korak 7 — structure import s kreiranjem kategorija)
 **Zamjenjuje:** v1 (S25) koji je opisivao samo Full Backup + Opcije A/B/C
 
 ---

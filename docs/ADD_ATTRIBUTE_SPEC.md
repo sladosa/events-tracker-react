@@ -2,7 +2,7 @@
 
 **Datum:** 2026-03-27
 **Prioritet:** 2 (S28)
-**Status:** Specifikacija — nije implementirano
+**Status:** ✅ Implementirano — S28 (Add/Delete Attribute, Text→Suggest konverzija), S29 (id fix, crypto.randomUUID)
 
 ---
 

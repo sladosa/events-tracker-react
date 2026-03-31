@@ -119,7 +119,7 @@ events (linked to category_id + user_id)
 
 ## What's done vs pending
 
-### Done (through S32)
+### Done (through S33)
 - Full Activities tab: Add, Edit, View, Excel Import/Export with collision handling
 - Structure tab: Read-only view (Table + Sunburst), Edit Mode (rename, attributes)
 - Structure Excel export v2 (17 cols) + Import (non-destructive, conflict report)
@@ -148,6 +148,8 @@ events (linked to category_id + user_id)
 - Edit Activity Other persist (S31): `persistPendingOptions` + `handleNewOption` dodan u `EditActivityPage`; `onNewOption` više nije `undefined`
 - DependsOn empty slug blokira Save (S31): validacija u `StructureNodeEditPanel.handleSave` — toast error ako `dependsOnSlug` prazan, return bez DB write
 - Korak 7 — Excel Import s kreiranjem strukture (S32): `parseExcelFile` detektira structure-only stub i vraća helpful error; `checkMissingCategories()` u `excelImport.ts`; `confirm-structure` state u `ExcelImportModal` — lista missing kategorija + "Create categories & continue" → `importStructureExcel` → reload → proceed
+- Filter reset after Structure delete (S33): `StructureDeleteModal` dispatcha `structure-deleted` CustomEvent s `deletedIds`; `FilterContext` resetira category (ili full reset za area) ako je obrisani node bio u aktivnom filteru
+- Category dropdown refresh after structure changes (S33): `FilterContext` sluša `areas-changed` i reloada `dropdownOptions` in-place — novo importane/dodane kategorije odmah vidljive bez navigate away
 
 ### Backlog — priority order
 
@@ -156,47 +158,45 @@ events (linked to category_id + user_id)
 1. **Add Category Between** — umetanje razine unutar postojeće hijerarhije.
    Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
 
-2. **Filter reset after Structure delete** — potencijalni edge case (nije pouzdano reproducibilan): kad se obriše node koji je aktivan u FilterContext `selectionChain` (u sessionStorage), Activities tab može pokazati stari category filter. `FilterContext` restore čita sessionStorage → `loadChildCategories` vraća prazno → chain ostaje "vidljivo" bez automatskog reset. Fix: `StructureDeleteModal` dispatchati `structure-changed` event; FilterContext slušati i provjeriti je li `categoryId` još validan.
-
-3. **Financije reorganizacija** — supruga kao single user; srediti strukturu
+2. **Financije reorganizacija** — supruga kao single user; srediti strukturu
    kategorija i atributa u Area "Financije" prije uvođenja suradnje.
 
-4. **Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse
+3. **Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse
    nisu problem.
 
 **Faza 2: infrastruktura za suradnju**
 
-5. **Playwright E2E setup** — prerequisit za collaboration development.
+4. **Playwright E2E setup** — prerequisit za collaboration development.
    Novi dedicirani Supabase TEST projekt (služi i za Playwright i za collab dev).
    Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
    Requires: Supabase test project (nije kreiran) + `.env.testing` popunjen.
 
 **Faza 3: multi-user suradnja (nova `collab` grana)**
 
-6. **`collab` branch** — `git checkout -b collab` iz test-branch.
+5. **`collab` branch** — `git checkout -b collab` iz test-branch.
    `.env.local` pokazuje na Supabase TEST projekt (izolacija od produkcije).
    Netlify Preview Deploy opcionalno.
 
-7. **SQL migracije za suradnju** (na TEST Supabase):
+6. **SQL migracije za suradnju** (na TEST Supabase):
    - `008_profiles.sql` — `profiles` tablica (email↔UUID bridge) + trigger +
      migracija postojećih korisnika
    - `009_sharing.sql` — `data_shares` RLS, `share_invites` + trigger,
      proširene SELECT/INSERT policies na areas/categories/attr_defs/events
 
-8. **Frontend collaboration** (~13 fajlova) — useDataShares hook, Share management
+7. **Frontend collaboration** (~13 fajlova) — useDataShares hook, Share management
    UI (invite po emailu, lista, revoke), useAreas/useCategories proširenje,
    FilterContext sharedContext, StructureTableView guard, AddActivity/EditActivity
    guard, Excel Export svih evenata dijeljene Area.
    Spec: `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md`
 
-9. **Help panel** — pravila dijeljenja vidljiva u UI.
+8. **Help panel** — pravila dijeljenja vidljiva u UI.
 
-10. **Merge collab → main** — SQL migracije ručno na PROD Supabase → merge.
+9. **Merge collab → main** — SQL migracije ručno na PROD Supabase → merge.
 
 **Faza 4: historijska migracija (poseban projekt, bez vremenskog pritiska)**
 
-11. **trening.xlsm analiza** — mapiranje kolona i sheetova na trenutni data model.
-12. **Import historijskih podataka** u finalnu produkcijsku bazu.
+10. **trening.xlsm analiza** — mapiranje kolona i sheetova na trenutni data model.
+11. **Import historijskih podataka** u finalnu produkcijsku bazu.
 
 ---
 
