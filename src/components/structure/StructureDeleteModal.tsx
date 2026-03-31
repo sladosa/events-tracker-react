@@ -219,6 +219,9 @@ export function StructureDeleteModal({
     setError(null);
     try {
       await cascadeDelete(false);
+      window.dispatchEvent(new CustomEvent('structure-deleted', {
+        detail: { deletedIds: subtreeIds, nodeType: node.nodeType },
+      }));
       onDeleted(node.id);
     } catch (err) {
       console.error('StructureDeleteModal: delete failed', err);
@@ -244,6 +247,9 @@ export function StructureDeleteModal({
       // 2. Cascade delete (events + structure)
       setPhase('deleting');
       await cascadeDelete(true);
+      window.dispatchEvent(new CustomEvent('structure-deleted', {
+        detail: { deletedIds: subtreeIds, nodeType: node.nodeType },
+      }));
       onDeleted(node.id);
     } catch (err) {
       console.error('StructureDeleteModal: delete-with-backup failed', err);

@@ -119,7 +119,7 @@ events (linked to category_id + user_id)
 
 ## What's done vs pending
 
-### Done (through S28)
+### Done (through S32)
 - Full Activities tab: Add, Edit, View, Excel Import/Export with collision handling
 - Structure tab: Read-only view (Table + Sunburst), Edit Mode (rename, attributes)
 - Structure Excel export v2 (17 cols) + Import (non-destructive, conflict report)
@@ -155,6 +155,8 @@ events (linked to category_id + user_id)
 
 1. **Add Category Between** — umetanje razine unutar postojeće hijerarhije.
    Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
+
+2. **Filter reset after Structure delete** — potencijalni edge case (nije pouzdano reproducibilan): kad se obriše node koji je aktivan u FilterContext `selectionChain` (u sessionStorage), Activities tab može pokazati stari category filter. `FilterContext` restore čita sessionStorage → `loadChildCategories` vraća prazno → chain ostaje "vidljivo" bez automatskog reset. Fix: `StructureDeleteModal` dispatchati `structure-changed` event; FilterContext slušati i provjeriti je li `categoryId` još validan.
 
 3. **Financije reorganizacija** — supruga kao single user; srediti strukturu
    kategorija i atributa u Area "Financije" prije uvođenja suradnje.

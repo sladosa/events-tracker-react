@@ -1,6 +1,6 @@
 # Pending Tests
 
-**Zadnja izmjena:** 2026-03-30 (S32)
+**Zadnja izmjena:** 2026-03-31 (S33 — dokumentacija S32 testova)
 **Branch:** test-branch
 **Detalji testova:** `Claude-temp_R/test-sessions/S32_tests.md`
 
@@ -8,14 +8,7 @@
 
 ## Aktivni (nepotvrđeni) testovi
 
-| ID | Opis | Sesija | Bilješka |
-|----|----|--------|---------|
-| T-S32-1 | Import Activities xlsx s postojećim kategorijama → nema confirm-structure stepa | S32 | |
-| T-S32-2 | Import unified xlsx s missing kategorijama → confirm-structure → Create → kategorija stvorena | S32 | |
-| T-S32-3 | Import Structure Export xlsx → helpful error poruka (ne opći LEGEND error) | S32 | |
-| T-S32-4 | Import stari Activities xlsx (bez Structure sheeta) → regression OK | S32 | |
-| T-S32-5 | Import xlsx s missing kategorijama ali bez Structure sheeta → nema confirm-structure | S32 | |
-| T-S32-6 | Cancel u confirm-structure → reset na idle | S32 | |
+_Nema aktivnih testova. Svi S32 testovi potvrđeni._
 
 ---
 
@@ -23,6 +16,12 @@
 
 | ID | Opis | Sesija | Status |
 |----|------|--------|--------|
+| T-S32-1 | Import Activities xlsx s postojećim kategorijama → nema confirm-structure stepa | S32 | ✅ |
+| T-S32-2 | Import unified xlsx s missing kategorijama → confirm-structure → Create → kategorija stvorena | S32 | ✅ |
+| T-S32-3 | Import Structure Export xlsx → helpful error poruka (ne opći LEGEND error) | S32 | ✅ |
+| T-S32-4 | Import stari Activities xlsx (bez Structure sheeta) → regression OK | S32 | ✅ |
+| T-S32-5 | Import xlsx s missing kategorijama ali bez Structure sheeta → nema confirm-structure | S32 | ✅ |
+| T-S32-6 | Cancel u confirm-structure → reset na idle | S32 | ✅ |
 | T-S30-1 | Depends-on dropdown: ancestor atributi prikazani u optgroup "↑ LevelName" | S30 | ✅ |
 | T-S30-2 | Depends-on dropdown: odaberi ancestor atribut → Save → radi u Add Activity | S30 | ✅ |
 | T-S30-3 | Depends-on dropdown: orphan slug (attr obrisan) → prikazan "⚠ slug (not found)" | S30 | ✅ |
@@ -98,4 +97,4 @@ Claude će: ažurirati ovaj fajl, označiti ✅/❌, istražiti failove.
 | [S28_tests.md](test-sessions/S28_tests.md) | S28 | ✅ Sve verificirano (S29) |
 | [S29_tests.md](test-sessions/S29_tests.md) | S29 | ✅ Sve verificirano |
 | [S30_tests.md](test-sessions/S30_tests.md) | S30 | ✅ Sve verificirano |
-| [S32_tests.md](test-sessions/S32_tests.md) | S32 | Aktualna sesija |
+| [S32_tests.md](test-sessions/S32_tests.md) | S32 | ✅ Sve verificirano (S33) |

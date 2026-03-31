@@ -310,7 +310,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   // --------------------------------------------
   // Auto-save when filter changes (after restore)
   // --------------------------------------------
-  
+
   useEffect(() => {
     if (!isRestored) return;
     saveToStorage();
@@ -435,6 +435,29 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     setSelectedShortcutId(null);
     clearStorage();
   }, [clearStorage]);
+
+  // --------------------------------------------
+  // Reset filter if a deleted node was selected
+  // --------------------------------------------
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { deletedIds, nodeType } = (e as CustomEvent<{ deletedIds: string[]; nodeType: string }>).detail;
+      if (nodeType === 'area' && filter.areaId && deletedIds.includes(filter.areaId)) {
+        reset();
+      } else if (
+        (filter.categoryId && deletedIds.includes(filter.categoryId)) ||
+        filter.categoryPath.some(id => deletedIds.includes(id))
+      ) {
+        setFilter(prev => ({ ...prev, categoryId: null, categoryPath: [] }));
+        setSelectionChain([]);
+        setDropdownOptions([]);
+        setIsLeafCategory(false);
+      }
+    };
+    window.addEventListener('structure-deleted', handler);
+    return () => window.removeEventListener('structure-deleted', handler);
+  }, [filter.areaId, filter.categoryId, filter.categoryPath, reset]);
 
   // --------------------------------------------
   // Date & Search
