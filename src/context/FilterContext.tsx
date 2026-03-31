@@ -460,6 +460,37 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   }, [filter.areaId, filter.categoryId, filter.categoryPath, reset]);
 
   // --------------------------------------------
+  // Reload category dropdown after structure changes
+  // --------------------------------------------
+
+  useEffect(() => {
+    const handler = async () => {
+      if (!filter.areaId) return;
+      // If a category is selected, reload its siblings/children; otherwise reload L1+L2
+      if (filter.categoryId) {
+        const children = await loadChildCategories(filter.categoryId);
+        if (children.length > 0) {
+          setDropdownOptions(children);
+        } else {
+          const chain = selectionChain;
+          const parentId = chain.length > 1
+            ? chain[chain.length - 2].id
+            : null;
+          const opts = parentId
+            ? await loadChildCategories(parentId)
+            : await loadL1AndL2Categories(filter.areaId);
+          setDropdownOptions(opts);
+        }
+      } else {
+        const opts = await loadL1AndL2Categories(filter.areaId);
+        setDropdownOptions(opts);
+      }
+    };
+    window.addEventListener('areas-changed', handler);
+    return () => window.removeEventListener('areas-changed', handler);
+  }, [filter.areaId, filter.categoryId, selectionChain]);
+
+  // --------------------------------------------
   // Date & Search
   // --------------------------------------------
 
