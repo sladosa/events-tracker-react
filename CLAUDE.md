@@ -21,6 +21,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | `docs/SUGGEST_DEPENDSON_SPEC_v2.md` | Suggest + DependsOn editing — ✅ implemented S29–S31 |
 | `sql/SQL_schema_V5_commented.sql` | DB schema reference |
 | `docs/Code_Guidelines_React_v6.md` | Code conventions |
+| `docs/COLLAB_PLAN_v1.md` | Collab implementation plan — faze 0–8, prerequisites, checklist |
+| `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md` | Collab spec detalji — SQL politike, frontend promjene |
+| `docs/RESTRUCTURE_ANALYSIS.md` | Scenariji reorganizacije A–F, opcije 1–4 |
+| `docs/RESTRUCTURE_DECISIONS_2026-04-01.md` | Odluke donijete o reorganizaciji i Financije data modelu |
 
 ---
 
@@ -150,6 +154,7 @@ events (linked to category_id + user_id)
 - Korak 7 — Excel Import s kreiranjem strukture (S32): `parseExcelFile` detektira structure-only stub i vraća helpful error; `checkMissingCategories()` u `excelImport.ts`; `confirm-structure` state u `ExcelImportModal` — lista missing kategorija + "Create categories & continue" → `importStructureExcel` → reload → proceed
 - Filter reset after Structure delete (S33): `StructureDeleteModal` dispatcha `structure-deleted` CustomEvent s `deletedIds`; `FilterContext` resetira category (ili full reset za area) ako je obrisani node bio u aktivnom filteru
 - Category dropdown refresh after structure changes (S33): `FilterContext` sluša `areas-changed` i reloada `dropdownOptions` in-place — novo importane/dodane kategorije odmah vidljive bez navigate away
+- Collab Faza 0+1 (S34): TEST Supabase projekt kreiran (`events-tracker-test`, eu-west-1); `sql/TEST_setup.sql`, `sql/008_profiles.sql`, `sql/009_sharing.sql` primijenjeni; `useAreas`, `useCategories`, `useStructureData` — uklonjen `.eq('user_id')` filter, RLS sad handle-a shared areas; `collab` grana kreirana; `.env.testing` popunjen
 
 ### Backlog — priority order
 
@@ -167,31 +172,25 @@ events (linked to category_id + user_id)
 **Faza 2: infrastruktura za suradnju**
 
 4. **Playwright E2E setup** — prerequisit za collaboration development.
-   Novi dedicirani Supabase TEST projekt (služi i za Playwright i za collab dev).
-   Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
-   Requires: Supabase test project (nije kreiran) + `.env.testing` popunjen.
+   TEST Supabase projekt kreiran (S34). Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
+   Requires: `.env.testing` ✅ popunjen; Storage bucket `event-photos` u TEST projektu nije kreiran.
 
-**Faza 3: multi-user suradnja (nova `collab` grana)**
+**Faza 3: multi-user suradnja (`collab` grana — u tijeku)**
 
-5. **`collab` branch** — `git checkout -b collab` iz test-branch.
-   `.env.local` pokazuje na Supabase TEST projekt (izolacija od produkcije).
-   Netlify Preview Deploy opcionalno.
+Detaljan plan: `docs/COLLAB_PLAN_v1.md`
+Spec detalji: `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md`
+Branch: `collab` (kreiran S34), `.env.local` → TEST Supabase
 
-6. **SQL migracije za suradnju** (na TEST Supabase):
-   - `008_profiles.sql` — `profiles` tablica (email↔UUID bridge) + trigger +
-     migracija postojećih korisnika
-   - `009_sharing.sql` — `data_shares` RLS, `share_invites` + trigger,
-     proširene SELECT/INSERT policies na areas/categories/attr_defs/events
-
-7. **Frontend collaboration** (~13 fajlova) — useDataShares hook, Share management
-   UI (invite po emailu, lista, revoke), useAreas/useCategories proširenje,
-   FilterContext sharedContext, StructureTableView guard, AddActivity/EditActivity
-   guard, Excel Export svih evenata dijeljene Area.
-   Spec: `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md`
-
-8. **Help panel** — pravila dijeljenja vidljiva u UI.
-
-9. **Merge collab → main** — SQL migracije ručno na PROD Supabase → merge.
+Faze i status:
+- ✅ Faza 0 — TEST Supabase setup (S34)
+- ✅ Faza 1 — SQL migracije 008+009 (S34); verifikacija prošla
+- ⬜ Faza 2 — Frontend hooks: `useDataShares` + `FilterContext.sharedContext`
+- ⬜ Faza 3 — Structure tab guard (sakrij Edit Mode za grantee)
+- ⬜ Faza 4 — Activity guards (AddActivity write-only, EditActivity own-only)
+- ⬜ Faza 5 — Excel Export/Import za shared Areas
+- ⬜ Faza 6 — Share Management UI (invite, lista, revoke)
+- ⬜ Faza 7 — Help panel
+- ⬜ Faza 8 — Merge na main
 
 **Faza 4: historijska migracija (poseban projekt, bez vremenskog pritiska)**
 

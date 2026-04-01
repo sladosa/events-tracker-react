@@ -13,7 +13,6 @@ import { supabase } from '@/lib/supabaseClient';
 import type { Area, Category, AttributeDefinition } from '@/types/database';
 import type { StructureNode, EventCountRow } from '@/types/structure';
 
-const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface UseStructureDataReturn {
   nodes: StructureNode[];
@@ -44,7 +43,6 @@ export function useStructureData(): UseStructureDataReturn {
       const { data: areasRaw, error: areasErr } = await supabase
         .from('areas')
         .select('*')
-        .eq('user_id', user.id)
         .order('sort_order', { ascending: true });
 
       if (areasErr) throw areasErr;
@@ -56,7 +54,6 @@ export function useStructureData(): UseStructureDataReturn {
       const { data: categoriesRaw, error: catsErr } = await supabase
         .from('categories')
         .select('*')
-        .eq('user_id', user.id)
         .order('sort_order', { ascending: true });
 
       if (catsErr) throw catsErr;
@@ -68,7 +65,6 @@ export function useStructureData(): UseStructureDataReturn {
       const { data: attrsRaw, error: attrsErr } = await supabase
         .from('attribute_definitions')
         .select('*')
-        .eq('user_id', user.id)
         .order('sort_order', { ascending: true });
 
       if (attrsErr) throw attrsErr;
@@ -83,9 +79,7 @@ export function useStructureData(): UseStructureDataReturn {
       // --------------------------------------------------------
       const { data: eventCountsRaw, error: countsErr } = await supabase
         .from('events')
-        .select('category_id')
-        .eq('user_id', user.id)
-        .neq('user_id', TEMPLATE_USER_ID);
+        .select('category_id');
 
       if (countsErr) throw countsErr;
 

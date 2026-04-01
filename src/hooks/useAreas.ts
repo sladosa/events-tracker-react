@@ -40,13 +40,13 @@ export function useAreas(options: UseAreasOptions = {}): UseAreasReturn {
         .select('*')
         .order('sort_order', { ascending: true });
 
-      // Filter: only current user's areas (exclude template user)
-      if (!includeTemplates) {
-        query = query.eq('user_id', user.id);
-      } else {
-        // Include both user's and template's
+      // Filter: RLS handles own + shared areas automatically.
+      // Only add explicit filter when templates are requested.
+      if (includeTemplates) {
+        // Include both user's and template's (RLS already covers own + shared)
         query = query.or(`user_id.eq.${user.id},user_id.eq.${TEMPLATE_USER_ID}`);
       }
+      // Default (no templates): rely on RLS — returns own areas + shared areas
 
       const { data, error: fetchError } = await query;
 
