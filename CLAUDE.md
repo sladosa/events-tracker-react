@@ -156,6 +156,9 @@ events (linked to category_id + user_id)
 - Category dropdown refresh after structure changes (S33): `FilterContext` sluša `areas-changed` i reloada `dropdownOptions` in-place — novo importane/dodane kategorije odmah vidljive bez navigate away
 - Collab Faza 0+1 (S34): TEST Supabase projekt kreiran (`events-tracker-test`, eu-west-1); `sql/TEST_setup.sql`, `sql/008_profiles.sql`, `sql/009_sharing.sql` primijenjeni; `useAreas`, `useCategories`, `useStructureData` — uklonjen `.eq('user_id')` filter, RLS sad handle-a shared areas; `collab` grana kreirana; `.env.testing` popunjen
 - Collab Faza 2 (S35): `Profile` + `ShareInvite` + `DataShareWithProfile` types dodani u `database.ts`; `src/hooks/useDataShares.ts` kreiran (listShares, createShare, revokeShare, cancelInvite, listInvites, fetchSharedContext); `FilterContext` dobio `sharedContext: SharedContext | null` — auto-detektira kad je aktivan filter na shared Area (grantee view)
+- Collab Faza 3 (S35): `AppHome.tsx` — Edit Mode gumb sakriven za grantee (`!sharedContext`); `useEffect` resetira `isEditMode` ako se shared Area odabere dok je Edit Mode aktivan
+- Collab Faza 4 (S35): `AddActivityPage` — read-only guard (lock ekran) za `permission !== 'write'`; `EditActivityPage` — uklonjen `user_id` filter iz leaf events SELECT, `isOwnEvent` detekcija, tuđi event prikazuje "Tuđi zapis" + link na ViewDetailsPage
+- Collab UX Design (S35): `docs/COLLAB_UX_DESIGN_v1.html` — wireframe dizajn za sve collab scenarije (Owner, Grantee write/read, Share Management, User indicator, Excel format, Request access flow); D1–D10 open decisions čekaju potvrdu
 
 ### Backlog — priority order
 
@@ -179,6 +182,7 @@ events (linked to category_id + user_id)
 **Faza 3: multi-user suradnja (`collab` grana — u tijeku)**
 
 Detaljan plan: `docs/COLLAB_PLAN_v1.md`
+UX design wireframes: `docs/COLLAB_UX_DESIGN_v1.html` — D1–D10 odluke čekaju potvrdu
 Spec detalji: `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md`
 Branch: `collab` (kreiran S34), `.env.local` → TEST Supabase
 
@@ -186,9 +190,9 @@ Faze i status:
 - ✅ Faza 0 — TEST Supabase setup (S34)
 - ✅ Faza 1 — SQL migracije 008+009 (S34); verifikacija prošla
 - ✅ Faza 2 — Frontend hooks: `useDataShares` + `FilterContext.sharedContext` (S35)
-- ⬜ Faza 3 — Structure tab guard (sakrij Edit Mode za grantee)
-- ⬜ Faza 4 — Activity guards (AddActivity write-only, EditActivity own-only)
-- ⬜ Faza 5 — Excel Export/Import za shared Areas
+- ✅ Faza 3 — Structure tab guard: Edit Mode sakriven za grantee (S35)
+- ✅ Faza 4 — Activity guards: AddActivity lock, EditActivity isOwnEvent (S35)
+- ⬜ Faza 5 — Excel Export/Import za shared Areas — čeka D7–D10 odluke
 - ⬜ Faza 6 — Share Management UI (invite, lista, revoke)
 - ⬜ Faza 7 — Help panel
 - ⬜ Faza 8 — Merge na main
