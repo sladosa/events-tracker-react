@@ -155,6 +155,7 @@ events (linked to category_id + user_id)
 - Filter reset after Structure delete (S33): `StructureDeleteModal` dispatcha `structure-deleted` CustomEvent s `deletedIds`; `FilterContext` resetira category (ili full reset za area) ako je obrisani node bio u aktivnom filteru
 - Category dropdown refresh after structure changes (S33): `FilterContext` sluša `areas-changed` i reloada `dropdownOptions` in-place — novo importane/dodane kategorije odmah vidljive bez navigate away
 - Collab Faza 0+1 (S34): TEST Supabase projekt kreiran (`events-tracker-test`, eu-west-1); `sql/TEST_setup.sql`, `sql/008_profiles.sql`, `sql/009_sharing.sql` primijenjeni; `useAreas`, `useCategories`, `useStructureData` — uklonjen `.eq('user_id')` filter, RLS sad handle-a shared areas; `collab` grana kreirana; `.env.testing` popunjen
+- Collab Faza 2 (S35): `Profile` + `ShareInvite` + `DataShareWithProfile` types dodani u `database.ts`; `src/hooks/useDataShares.ts` kreiran (listShares, createShare, revokeShare, cancelInvite, listInvites, fetchSharedContext); `FilterContext` dobio `sharedContext: SharedContext | null` — auto-detektira kad je aktivan filter na shared Area (grantee view)
 
 ### Backlog — priority order
 
@@ -184,7 +185,7 @@ Branch: `collab` (kreiran S34), `.env.local` → TEST Supabase
 Faze i status:
 - ✅ Faza 0 — TEST Supabase setup (S34)
 - ✅ Faza 1 — SQL migracije 008+009 (S34); verifikacija prošla
-- ⬜ Faza 2 — Frontend hooks: `useDataShares` + `FilterContext.sharedContext`
+- ✅ Faza 2 — Frontend hooks: `useDataShares` + `FilterContext.sharedContext` (S35)
 - ⬜ Faza 3 — Structure tab guard (sakrij Edit Mode za grantee)
 - ⬜ Faza 4 — Activity guards (AddActivity write-only, EditActivity own-only)
 - ⬜ Faza 5 — Excel Export/Import za shared Areas

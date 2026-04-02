@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID, BreadcrumbItem, Category } from '@/types';
+import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
 
 // --------------------------------------------
 // Constants
@@ -100,6 +101,9 @@ export interface FilterContextType {
   saveToStorage: () => void;
   clearStorage: () => void;
   
+  // Shared area context — populated when active area is owned by someone else
+  sharedContext: SharedContext | null;
+
   // Computed
   hasActiveFilter: boolean;
   isFiltered: boolean;
@@ -142,6 +146,9 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
 
   // === Period label ===
   const [periodLabel, setPeriodLabel] = useState<string>('All time');
+
+  // === Shared context — null = owner ili nema filtera ===
+  const [sharedContext, setSharedContext] = useState<SharedContext | null>(null);
   
   // === Restore tracking ===
   const [isRestored, setIsRestored] = useState(false);
@@ -251,6 +258,26 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     
     doRestore();
   }, []);
+
+  // --------------------------------------------
+  // Detect if active area is shared (grantee context)
+  // --------------------------------------------
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      if (!filter.areaId) {
+        setSharedContext(null);
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
+      const ctx = await fetchSharedContext(filter.areaId, user?.id ?? null);
+      if (!cancelled) setSharedContext(ctx);
+    };
+    resolve();
+    return () => { cancelled = true; };
+  }, [filter.areaId]);
 
   // --------------------------------------------
   // Database helpers (moved from component)
@@ -433,6 +460,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     setSelectionChain([]);
     setDropdownOptions([]);
     setSelectedShortcutId(null);
+    setSharedContext(null);
     clearStorage();
   }, [clearStorage]);
 
@@ -562,6 +590,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     setSortOrder,
     saveToStorage,
     clearStorage,
+    // Shared context
+    sharedContext,
     // Computed
     hasActiveFilter,
     isFiltered
