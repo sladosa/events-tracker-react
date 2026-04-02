@@ -41,6 +41,7 @@ import type {
 
 interface LoadedEvent {
   id: UUID;
+  user_id: UUID;
   category_id: UUID;
   event_date: string;
   session_start: string;
@@ -159,6 +160,7 @@ export function EditActivityPage() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isOwnEvent, setIsOwnEvent] = useState(true);
   
   // ============================================
   // Activity Data
@@ -236,9 +238,8 @@ export function EditActivityPage() {
       if (noSession) {
         const { data: eventsData, error: eventsError } = await supabase
           .from('events')
-          .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
-          .eq('id', sessionStart)
-          .eq('user_id', user.id);
+          .select('id, user_id, category_id, event_date, session_start, comment, created_at, edited_at')
+          .eq('id', sessionStart);
         if (eventsError) throw eventsError;
         if (!eventsData || eventsData.length === 0) throw new Error('Activity not found');
         leafEvents = eventsData as LoadedEvent[];
@@ -247,9 +248,8 @@ export function EditActivityPage() {
         decodedSessionStart = decodeURIComponent(sessionStart);
         let query = supabase
           .from('events')
-          .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
-          .eq('session_start', decodedSessionStart)
-          .eq('user_id', user.id);
+          .select('id, user_id, category_id, event_date, session_start, comment, created_at, edited_at')
+          .eq('session_start', decodedSessionStart);
         // KRITIČNO: filter by category_id to avoid returning wrong activity
         if (categoryIdParam) {
           query = query.eq('category_id', categoryIdParam);
@@ -263,6 +263,9 @@ export function EditActivityPage() {
       
       const leafCategoryId = leafEvents[leafEvents.length - 1].category_id;
       setCategoryId(leafCategoryId);
+
+      // Provjeri je li event korisnikov vlastiti
+      setIsOwnEvent(leafEvents[0].user_id === user.id);
       
       const path = await buildCategoryPath(leafCategoryId);
       setCategoryPath(path);
@@ -1297,9 +1300,49 @@ export function EditActivityPage() {
   }
   
   // ============================================
+  // Render - Non-own event (shared area, read-only)
+  // ============================================
+
+  if (!isOwnEvent) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-6 max-w-sm">
+          <div className="text-4xl mb-4">🔒</div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Tuđi zapis</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Ovaj zapis je kreirao drugi korisnik. Možeš ga samo pregledati.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => navigate('/app')}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium"
+            >
+              Natrag
+            </button>
+            {sessionStart && (
+              <button
+                onClick={() => {
+                  if (noSession) {
+                    navigate(`/app/view/${sessionStart}?noSession=1${categoryIdParam ? `&categoryId=${categoryIdParam}` : ''}`);
+                  } else {
+                    navigate(`/app/view/${sessionStart}${categoryIdParam ? `?categoryId=${categoryIdParam}` : ''}`);
+                  }
+                }}
+                className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm font-medium"
+              >
+                Pregledaj
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
   // Render - Main
   // ============================================
-  
+
   const currentEvent = pendingEvents[selectedEventIndex];
   
   return (

@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, Component, type ErrorInfo, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useFilter } from '@/context/FilterContext';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
@@ -257,10 +258,13 @@ export function AddActivityPage() {
     onError: (err) => setError(err.message),
   });
   
+  // Shared area context — guard za read-only pristup
+  const { sharedContext } = useFilter();
+
   // ============================================
   // Dialog States
   // ============================================
-  
+
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -970,6 +974,27 @@ export function AddActivityPage() {
   // ============================================
   // Render
   // ============================================
+
+  // Guard: shared area s read permisijom — ne dozvoli dodavanje
+  if (sharedContext && sharedContext.permission !== 'write') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-6 max-w-sm">
+          <div className="text-4xl mb-4">🔒</div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Read only pristup</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Imaš samo read pristup ovoj Area-i. Ne možeš dodavati aktivnosti.
+          </p>
+          <button
+            onClick={() => navigate('/app')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
+            Natrag
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Show nothing while checking for draft
   if (!isInitialized && !showResumeDialog && !showDiscardDialog) {
