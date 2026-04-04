@@ -12,9 +12,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import type { StructureNode } from '@/types/structure';
+import type { SharedContext } from '@/hooks/useDataShares';
 
 // Approximate pixel height of the largest possible menu
 // (non-leaf in edit mode: View + Edit + Add Child + Add Between + Delete = 5 items × ~40px)
@@ -30,6 +32,10 @@ interface CategoryChainRowProps {
   /** Unified add-child callback for all node types (S22: replaces onAddCategory + onAddLeaf) */
   onAddChild?: (node: StructureNode) => void;
   onAddBetween?: (node: StructureNode) => void;     // Non-leaf: "Add Between" (placeholder)
+  /** Collab: shared context for grantee-specific menu (null = current user is owner) */
+  sharedContext?: SharedContext | null;
+  /** Owner only: open Share Management modal for this area node (Faza 7) */
+  onManageAccess?: (node: StructureNode) => void;
 }
 
 // --------------------------------------------------------
@@ -67,6 +73,9 @@ interface ActionsMenuProps {
   onDelete?: (node: StructureNode) => void;
   onAddChild?: (node: StructureNode) => void;
   onAddBetween?: (node: StructureNode) => void;
+  sharedContext?: SharedContext | null;
+  onManageAccess?: (node: StructureNode) => void;
+  onRequestAccess?: () => void;
 }
 
 function ActionsMenu({
@@ -79,6 +88,9 @@ function ActionsMenu({
   onDelete,
   onAddChild,
   onAddBetween,
+  sharedContext,
+  onManageAccess,
+  onRequestAccess,
 }: ActionsMenuProps) {
   const item = (label: string, icon: string, onClick: () => void, danger = false) => (
     <button
@@ -96,51 +108,100 @@ function ActionsMenu({
     </button>
   );
 
+  // Non-interactive info row (owner info for grantee)
+  const infoRow = (icon: string, text: string) => (
+    <div
+      key={text}
+      className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500 cursor-default"
+    >
+      <span>{icon}</span>
+      <span className="truncate">{text}</span>
+    </div>
+  );
+
   return createPortal(
     <>
       {/* Backdrop — closes menu on outside click */}
-      <div
-        className="fixed inset-0 z-40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-40" onClick={onClose} />
       {/* Menu panel — fixed so it escapes any overflow:hidden ancestor */}
       <div
-        className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]"
+        className="fixed w-52 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]"
         style={{ top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right }}
       >
         {/* View — always available */}
-        {item('View', '👁', () => onView(node))}
+        {item('View details', '👁', () => onView(node))}
 
-        {isEditMode && (
-          <>
-            {/* Area-specific actions */}
-            {node.nodeType === 'area' && (
-              <>
-                {item('Edit', '✏️', () => onEdit?.(node))}
-                {item('+ Add Child', '➕', () => onAddChild?.(node))}
-                {item('Delete', '🗑️', () => onDelete?.(node), true)}
-              </>
+        {sharedContext ? (
+          // ── Grantee menu ──────────────────────────────
+          <div className="border-t border-gray-100 mt-1 pt-1">
+            {infoRow(
+              '👤',
+              `Owner: ${sharedContext.ownerDisplayName || sharedContext.ownerEmail || 'Unknown'}`,
             )}
+            {sharedContext.ownerEmail && (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(sharedContext.ownerEmail).then(
+                    () => toast.success('Email copied'),
+                    () => toast.error('Could not copy'),
+                  );
+                  onClose();
+                }}
+                className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                <span>📋</span>
+                <span>Copy owner email</span>
+              </button>
+            )}
+            {sharedContext.permission === 'read' && (
+              <button
+                onClick={() => { onRequestAccess?.(); onClose(); }}
+                className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                <span>✉</span>
+                <span>Request write access</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          // ── Owner menu ────────────────────────────────
+          isEditMode && (
+            <>
+              {/* Area-specific actions */}
+              {node.nodeType === 'area' && (
+                <>
+                  {item('Edit', '✏️', () => onEdit?.(node))}
+                  {item('+ Add Child', '➕', () => onAddChild?.(node))}
+                  {item('Delete', '🗑️', () => onDelete?.(node), true)}
+                  <div className="my-1 border-t border-gray-100" />
+                  {item(
+                    'Manage Access',
+                    '⚙️',
+                    () => onManageAccess ? onManageAccess(node) : toast('Share Management — coming soon'),
+                  )}
+                </>
+              )}
 
-            {/* Non-leaf category actions */}
-            {node.nodeType === 'category' && !node.isLeaf && (
-              <>
-                {item('Edit', '✏️', () => onEdit?.(node))}
-                {item('+ Add Child', '➕', () => onAddChild?.(node))}
-                {item('Add Between', '↕️', () => onAddBetween?.(node))}
-                {item('Delete', '🗑️', () => onDelete?.(node), true)}
-              </>
-            )}
+              {/* Non-leaf category actions */}
+              {node.nodeType === 'category' && !node.isLeaf && (
+                <>
+                  {item('Edit', '✏️', () => onEdit?.(node))}
+                  {item('+ Add Child', '➕', () => onAddChild?.(node))}
+                  {item('Add Between', '↕️', () => onAddBetween?.(node))}
+                  {item('Delete', '🗑️', () => onDelete?.(node), true)}
+                </>
+              )}
 
-            {/* Leaf category actions */}
-            {node.nodeType === 'category' && node.isLeaf && (
-              <>
-                {item('Edit', '✏️', () => onEdit?.(node))}
-                {item('+ Add Child', '➕', () => onAddChild?.(node))}
-                {item('Delete', '🗑️', () => onDelete?.(node), true)}
-              </>
-            )}
-          </>
+              {/* Leaf category actions */}
+              {node.nodeType === 'category' && node.isLeaf && (
+                <>
+                  {item('Edit', '✏️', () => onEdit?.(node))}
+                  {item('+ Add Child', '➕', () => onAddChild?.(node))}
+                  {item('Delete', '🗑️', () => onDelete?.(node), true)}
+                </>
+              )}
+            </>
+          )
         )}
       </div>
     </>,
@@ -160,9 +221,12 @@ export function CategoryChainRow({
   onDelete,
   onAddChild,
   onAddBetween,
+  sharedContext,
+  onManageAccess,
 }: CategoryChainRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 });
+  const [showRequestModal, setShowRequestModal] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const t = THEME.structure;
 
@@ -274,10 +338,61 @@ export function CategoryChainRow({
               onDelete={onDelete}
               onAddChild={onAddChild}
               onAddBetween={onAddBetween}
+              sharedContext={sharedContext}
+              onManageAccess={onManageAccess}
+              onRequestAccess={() => setShowRequestModal(true)}
             />
           )}
         </div>
       </div>
+
+      {/* Request write access modal (read grantee) */}
+      {showRequestModal && sharedContext && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) setShowRequestModal(false); }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Request write access</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              <span className="font-medium">{node.area.name}</span> is owned by{' '}
+              <span className="font-medium">
+                {sharedContext.ownerDisplayName || sharedContext.ownerEmail || 'Unknown'}
+              </span>.
+            </p>
+            <p className="text-sm text-gray-500 mb-4">
+              Sharing is managed at the Area level. To request write access, contact the owner:
+            </p>
+            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg mb-5">
+              <span className="text-sm font-medium text-gray-800 flex-1 truncate">
+                {sharedContext.ownerEmail || '(email not available)'}
+              </span>
+              {sharedContext.ownerEmail && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(sharedContext.ownerEmail).then(
+                      () => toast.success('Email copied'),
+                      () => toast.error('Could not copy'),
+                    );
+                    setShowRequestModal(false);
+                  }}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition-colors"
+                >
+                  Copy email
+                </button>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowRequestModal(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -129,7 +129,7 @@ function LoadingSkeleton() {
 
 export function StructureTableView({ isEditMode, refreshKey }: StructureTableViewProps) {
   const t = THEME.structure;
-  const { filter, reset: resetFilter } = useFilter();
+  const { filter, reset: resetFilter, sharedContext } = useFilter();
   const { nodes, loading, error, refetch } = useStructureData();
 
   // ---- Panel state ----
@@ -340,6 +340,7 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
                 onDelete={isEditMode ? setDeleteNode : undefined}
                 onAddChild={isEditMode ? setAddChildParent : undefined}
                 onAddBetween={setAddBetweenNode}
+                sharedContext={sharedContext}
               />
             </div>
           );

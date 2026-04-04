@@ -159,6 +159,7 @@ events (linked to category_id + user_id)
 - Collab Faza 3 (S35): `AppHome.tsx` — Edit Mode gumb sakriven za grantee (`!sharedContext`); `useEffect` resetira `isEditMode` ako se shared Area odabere dok je Edit Mode aktivan
 - Collab Faza 4 (S35): `AddActivityPage` — read-only guard (lock ekran) za `permission !== 'write'`; `EditActivityPage` — uklonjen `user_id` filter iz leaf events SELECT, `isOwnEvent` detekcija, tuđi event prikazuje "Tuđi zapis" + link na ViewDetailsPage
 - Collab UX Design (S35): `docs/COLLAB_UX_DESIGN_v1.html` — wireframe dizajn za sve collab scenarije (Owner, Grantee write/read, Share Management, User indicator, Excel format, Request access flow); D1–D10 open decisions čekaju potvrdu
+- Collab Faza 5 (S36): `SharedContext` proširen s `ownerEmail`+`ownerDisplayName`; `fetchAreaGrantees` helper; `src/components/sharing/SharedAreaBanner.tsx` — 3 varijante bannera (owner purple, write grantee green, read grantee amber); integrirano u `AppHome.tsx` (Activities + Structure); `CategoryChainRow` — role-aware ⋮ menu (grantee: owner info + copy email + request access; owner: + Manage Access placeholder)
 
 ### Backlog — priority order
 
@@ -181,8 +182,8 @@ events (linked to category_id + user_id)
 
 **Faza 3: multi-user suradnja (`collab` grana — u tijeku)**
 
-Detaljan plan: `docs/COLLAB_PLAN_v1.md`
-UX design wireframes: `docs/COLLAB_UX_DESIGN_v1.html` — D1–D10 odluke čekaju potvrdu
+Detaljan plan: `docs/COLLAB_PLAN_v2.md` ← **koristiti ovo** (UX odluke finalizirane 2026-04-03)
+UX design wireframes: `docs/COLLAB_UX_DESIGN_v1.html`
 Spec detalji: `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md`
 Branch: `collab` (kreiran S34), `.env.local` → TEST Supabase
 
@@ -192,10 +193,13 @@ Faze i status:
 - ✅ Faza 2 — Frontend hooks: `useDataShares` + `FilterContext.sharedContext` (S35)
 - ✅ Faza 3 — Structure tab guard: Edit Mode sakriven za grantee (S35)
 - ✅ Faza 4 — Activity guards: AddActivity lock, EditActivity isOwnEvent (S35)
-- ⬜ Faza 5 — Excel Export/Import za shared Areas — čeka D7–D10 odluke
-- ⬜ Faza 6 — Share Management UI (invite, lista, revoke)
-- ⬜ Faza 7 — Help panel
-- ⬜ Faza 8 — Merge na main
+- ✅ Faza 5 — Structure tab UX + Edit Mode fix (banners, ⋮ menu po roli) — S36
+- ⬜ Faza 6 — User indicator (Activities lista: User kolona, avatar+ime, D1, D4)
+- ⬜ Faza 7 — Share Management UI Modal (invite, lista, revoke)
+- ⬜ Faza 8 — Profile settings modal
+- ⬜ Faza 9 — Help panel (integriran u Share Management modal)
+- ⬜ Faza 10 — Excel Export/Import (novi format: User kolona uvijek, SharedWith u Structure, Smart import)
+- ⬜ Faza 11 — Merge na main
 
 **Faza 4: historijska migracija (poseban projekt, bez vremenskog pritiska)**
 

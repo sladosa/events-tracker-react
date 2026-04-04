@@ -19,6 +19,7 @@ import { exportStructureExcel, structureExportFilename } from '@/lib/structureEx
 import { StructureImportModal } from '@/components/structure/StructureImportModal';
 import { saveAs } from 'file-saver';
 import { useStructureData } from '@/hooks/useStructureData';
+import { SharedAreaBanner } from '@/components/sharing/SharedAreaBanner';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
 
@@ -505,6 +506,9 @@ interface StructureTabContentProps {
 function StructureTabContent({ viewMode, isEditMode, refreshKey }: StructureTabContentProps) {
   return (
     <div>
+      {/* Shared area banner */}
+      <SharedAreaBanner tab="structure" />
+
       {/* Sunburst — hidden on mobile via internal class; hidden when table mode */}
       {viewMode === 'sunburst' && !isEditMode && (
         <div className="hidden md:block p-2">
@@ -635,6 +639,9 @@ function ActivitiesView() {
           </div>
         </div>
       )}
+
+      {/* Shared area banner */}
+      <SharedAreaBanner tab="activities" />
 
       {/* Activities Table */}
       <ActivitiesTable 

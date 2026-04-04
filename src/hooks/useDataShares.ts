@@ -227,6 +227,8 @@ export function useDataShares(): UseDataSharesReturn {
 
 export interface SharedContext {
   ownerId: string;
+  ownerEmail: string;
+  ownerDisplayName: string;
   permission: SharePermission;
 }
 
@@ -246,11 +248,58 @@ export async function fetchSharedContext(
       .maybeSingle();
 
     if (error || !data) return null;
+
+    const { data: ownerProfile } = await supabase
+      .from('profiles')
+      .select('email, display_name')
+      .eq('id', data.owner_id)
+      .maybeSingle();
+
     return {
       ownerId: data.owner_id as string,
+      ownerEmail: (ownerProfile as { email?: string } | null)?.email ?? '',
+      ownerDisplayName:
+        (ownerProfile as { display_name?: string | null } | null)?.display_name
+        ?? (ownerProfile as { email?: string } | null)?.email
+        ?? '',
       permission: data.permission as SharePermission,
     };
   } catch {
     return null;
+  }
+}
+
+// --------------------------------------------
+// Standalone helper: dohvati listu grantee-a za
+// area kojom upravlja trenutni korisnik (owner view).
+// --------------------------------------------
+
+export interface GranteeSummary {
+  name: string;
+  email: string;
+  permission: SharePermission;
+}
+
+export async function fetchAreaGrantees(areaId: UUID): Promise<GranteeSummary[]> {
+  try {
+    const { data, error } = await supabase
+      .from('data_shares')
+      .select('permission, grantee:profiles!data_shares_grantee_id_fkey(display_name, email)')
+      .eq('target_id', areaId)
+      .eq('share_type', 'area')
+      .order('created_at', { ascending: true });
+
+    if (error || !data) return [];
+
+    return data.map(s => {
+      const g = s.grantee as { display_name?: string | null; email?: string | null } | null;
+      return {
+        name: g?.display_name ?? g?.email ?? 'Unknown',
+        email: g?.email ?? '',
+        permission: s.permission as SharePermission,
+      };
+    });
+  } catch {
+    return [];
   }
 }
