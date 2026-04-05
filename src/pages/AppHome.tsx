@@ -20,6 +20,7 @@ import { StructureImportModal } from '@/components/structure/StructureImportModa
 import { saveAs } from 'file-saver';
 import { useStructureData } from '@/hooks/useStructureData';
 import { SharedAreaBanner } from '@/components/sharing/SharedAreaBanner';
+import { ShareManagementModal } from '@/components/sharing/ShareManagementModal';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
 
@@ -102,7 +103,12 @@ function AppContent() {
     hasActiveFilter,
     reset,
     sharedContext,
+    areaHasActiveShares,
   } = useFilter();
+
+  // Share Management Modal state (Faza 7)
+  const [shareModalTarget, setShareModalTarget] = useState<{ areaId: UUID; areaName: string } | null>(null);
+  const openShareModal = (areaId: UUID, areaName: string) => setShareModalTarget({ areaId, areaName });
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -257,6 +263,18 @@ function AppContent() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Faza 7 — Entry point 1: Manage Access badge (owner, area has active shares) */}
+              {!sharedContext && areaHasActiveShares && filter.areaId && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openShareModal(filter.areaId!, fullPathDisplay.split(' > ')[0] || 'Area');
+                  }}
+                  className="flex items-center gap-1 text-xs text-purple-700 hover:text-purple-900 px-2 py-1 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors"
+                >
+                  🔗 Manage Access
+                </button>
+              )}
               {hasActiveFilter && (
                 <button
                   onClick={(e) => {
@@ -442,12 +460,22 @@ function AppContent() {
               viewMode={isEditMode ? 'table' : structureViewMode}
               isEditMode={isEditMode}
               refreshKey={structureRefreshKey}
+              onManageAccess={openShareModal}
             />
           ) : (
             <ActivitiesView />
           )}
         </section>
       </main>
+
+      {/* Share Management Modal (Faza 7) */}
+      {shareModalTarget && (
+        <ShareManagementModal
+          areaId={shareModalTarget.areaId}
+          areaName={shareModalTarget.areaName}
+          onClose={() => setShareModalTarget(null)}
+        />
+      )}
 
       {/* Structure Import Modal (S20C) */}
       {showStructureImport && userId && (
@@ -508,13 +536,24 @@ interface StructureTabContentProps {
   viewMode: StructureViewMode;
   isEditMode: boolean;
   refreshKey: number;
+  /** Faza 7 — open Share Management modal */
+  onManageAccess: (areaId: UUID, areaName: string) => void;
 }
 
-function StructureTabContent({ viewMode, isEditMode, refreshKey }: StructureTabContentProps) {
+function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess }: StructureTabContentProps) {
+  const { filter, fullPathDisplay } = useFilter();
+
   return (
     <div>
-      {/* Shared area banner */}
-      <SharedAreaBanner tab="structure" />
+      {/* Shared area banner — Entry point 2: ⚙ Manage Access button (owner) */}
+      <SharedAreaBanner
+        tab="structure"
+        onManageAccess={
+          filter.areaId
+            ? () => onManageAccess(filter.areaId!, fullPathDisplay.split(' > ')[0] || 'Area')
+            : undefined
+        }
+      />
 
       {/* Sunburst — hidden on mobile via internal class; hidden when table mode */}
       {viewMode === 'sunburst' && !isEditMode && (
@@ -524,8 +563,13 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey }: StructureTabC
       )}
 
       {/* Table View — always visible on mobile; shown on desktop when mode=table */}
+      {/* Entry point 3: ⚙ Manage Access in CategoryChainRow ⋮ menu */}
       <div className={viewMode === 'sunburst' && !isEditMode ? 'md:hidden' : ''}>
-        <StructureTableView isEditMode={isEditMode} refreshKey={refreshKey} />
+        <StructureTableView
+          isEditMode={isEditMode}
+          refreshKey={refreshKey}
+          onManageAccess={onManageAccess}
+        />
       </div>
     </div>
   );
