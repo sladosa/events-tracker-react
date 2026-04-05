@@ -284,18 +284,26 @@ export async function fetchAreaGrantees(areaId: UUID): Promise<GranteeSummary[]>
   try {
     const { data, error } = await supabase
       .from('data_shares')
-      .select('permission, grantee:profiles!data_shares_grantee_id_fkey(display_name, email)')
+      .select('permission, grantee_id')
       .eq('target_id', areaId)
       .eq('share_type', 'area')
       .order('created_at', { ascending: true });
 
-    if (error || !data) return [];
+    if (error || !data || data.length === 0) return [];
+
+    const granteeIds = data.map(s => s.grantee_id as string);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, email, display_name')
+      .in('id', granteeIds);
+
+    const profileMap = new Map((profiles ?? []).map(p => [p.id as string, p]));
 
     return data.map(s => {
-      const g = s.grantee as { display_name?: string | null; email?: string | null } | null;
+      const p = profileMap.get(s.grantee_id as string);
       return {
-        name: g?.display_name ?? g?.email ?? 'Unknown',
-        email: g?.email ?? '',
+        name: p?.display_name ?? p?.email ?? 'Unknown',
+        email: (p?.email as string | undefined) ?? '',
         permission: s.permission as SharePermission,
       };
     });

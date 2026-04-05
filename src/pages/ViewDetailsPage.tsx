@@ -336,8 +336,7 @@ export function ViewDetailsPage() {
         const { data, error } = await supabase
           .from('events')
           .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
-          .eq('id', sessionStart)
-          .eq('user_id', user.id);
+          .eq('id', sessionStart);
         if (error) throw error;
         if (!data || data.length === 0) throw new Error('Activity not found');
         events = data as LoadedEvent[];
@@ -346,8 +345,7 @@ export function ViewDetailsPage() {
         let query = supabase
           .from('events')
           .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
-          .eq('session_start', decoded)
-          .eq('user_id', user.id);
+          .eq('session_start', decoded);
         if (categoryIdParam) {
           query = query.eq('category_id', categoryIdParam);
         }
