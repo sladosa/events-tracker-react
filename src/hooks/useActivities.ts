@@ -59,6 +59,7 @@ export interface ActivityEvent {
   comment: string | null;
   created_at: string;
   edited_at: string;
+  user_id: string;
   // Joined data
   category_name: string;
   category_path: string[];   // ['Fitness', 'Activity', 'Gym', 'Strength']
@@ -78,6 +79,8 @@ export interface ActivityGroup {
   events: ActivityEvent[];
   eventCount: number;
   has_photos: boolean;       // 1.4.3: true if any event in this group has attachments
+  user_id: string;           // Owner of this session
+  user_display_name: string; // display_name ili email iz profiles
 }
 
 interface UseActivitiesResult {
@@ -133,6 +136,7 @@ interface EventRow {
   comment: string | null;
   created_at: string;
   edited_at: string;
+  user_id: string;
 }
 
 // --------------------------------------------
@@ -370,7 +374,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       // Build query
       let query = supabase
         .from('events')
-        .select('id, category_id, event_date, session_start, comment, created_at, edited_at', { count: 'exact' });
+        .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id', { count: 'exact' });
 
       // Apply filters
       if (categoryIds.length > 0) {
@@ -495,6 +499,8 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
             events: [],
             eventCount: 0,
             has_photos: false,
+            user_id: event.user_id,
+            user_display_name: '',
           };
           groupMap.set(sessionKey, group);
         }
@@ -521,6 +527,24 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
               group.has_photos = true;
             }
           }
+        }
+      }
+
+      // Batch fetch display names for unique user_ids
+      const uniqueUserIds = [...new Set(Array.from(groupMap.values()).map(g => g.user_id))];
+      if (uniqueUserIds.length > 0) {
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('id, email, display_name')
+          .in('id', uniqueUserIds);
+        const profileMap = new Map(
+          (profileRows ?? []).map(p => [
+            p.id as string,
+            ((p as { display_name?: string | null }).display_name || (p as { email?: string }).email || '') as string,
+          ])
+        );
+        for (const group of groupMap.values()) {
+          group.user_display_name = profileMap.get(group.user_id) ?? group.user_id;
         }
       }
 

@@ -161,6 +161,7 @@ events (linked to category_id + user_id)
 - Collab UX Design (S35): `docs/COLLAB_UX_DESIGN_v1.html` — wireframe dizajn za sve collab scenarije (Owner, Grantee write/read, Share Management, User indicator, Excel format, Request access flow); D1–D10 open decisions čekaju potvrdu
 - Collab Faza 5 (S36): `SharedContext` proširen s `ownerEmail`+`ownerDisplayName`; `fetchAreaGrantees` helper; `src/components/sharing/SharedAreaBanner.tsx` — 3 varijante bannera (owner purple, write grantee green, read grantee amber); integrirano u `AppHome.tsx` (Activities + Structure); `CategoryChainRow` — role-aware ⋮ menu (grantee: owner info + copy email + request access; owner: + Manage Access placeholder)
 - Collab bugfixes (S37): `fetchAreaGrantees` — FK join na `profiles` zamijenjen s dva odvojena querija (FK je bio na `auth.users`, ne `profiles`); `ViewDetailsPage` — uklonjen `user_id` filter koji je blokirao Prev/Next navigaciju na tuđim eventima
+- Collab Faza 6 (S38): User kolona u Activities listi — Avatar (inicijali + hash boja) + "You" badge za vlastite / ime za tuđe; `areaHasActiveShares` u `FilterContext` (owner view); `user_id`+`user_display_name` u `useActivities` (batch profile lookup); D1 — Add Activity disabled za read grantee (tooltip + toast); D4 — ⋮ menu samo View za tuđe evente
 
 ### Backlog — priority order
 
@@ -195,7 +196,7 @@ Faze i status:
 - ✅ Faza 3 — Structure tab guard: Edit Mode sakriven za grantee (S35)
 - ✅ Faza 4 — Activity guards: AddActivity lock, EditActivity isOwnEvent (S35)
 - ✅ Faza 5 — Structure tab UX + Edit Mode fix (banners, ⋮ menu po roli) — S36
-- ⬜ Faza 6 — User indicator (Activities lista: User kolona, avatar+ime, D1, D4)
+- ✅ Faza 6 — User indicator (Activities lista: User kolona, avatar+ime, D1, D4) — S38
 - ⬜ Faza 7 — Share Management UI Modal (invite, lista, revoke)
 - ⬜ Faza 8 — Profile settings modal
 - ⬜ Faza 9 — Help panel (integriran u Share Management modal)

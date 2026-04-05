@@ -171,11 +171,17 @@ function AppContent() {
     }
   };
 
-  // Can add activity only when leaf category is selected
-  const canAddActivity = isLeafCategory;
+  // D1: Read grantee cannot add activities
+  const isReadOnlyGrantee = sharedContext?.permission === 'read';
+  // Can add activity only when leaf category is selected AND not read-only
+  const canAddActivity = isLeafCategory && !isReadOnlyGrantee;
 
   // Navigate to Add Activity
   const handleAddActivity = () => {
+    if (isReadOnlyGrantee) {
+      toast.error('Read only access — cannot add activities');
+      return;
+    }
     if (!canAddActivity) {
       toast.error('Please select a leaf category first');
       return;
@@ -316,6 +322,7 @@ function AppContent() {
               leftIcon={<AddIcon />}
               onClick={handleAddActivity}
               disabled={!canAddActivity}
+              title={isReadOnlyGrantee ? 'Read only access' : undefined}
               className={cn(
                 'transition-all',
                 canAddActivity
@@ -418,8 +425,8 @@ function AppContent() {
           )}
         </div>
 
-        {/* Leaf category hint — Activities tab only */}
-        {activeTab === 'activities' && !canAddActivity && filter.categoryId && (
+        {/* Leaf category hint — Activities tab only, not shown for read grantee */}
+        {activeTab === 'activities' && !isLeafCategory && filter.categoryId && !isReadOnlyGrantee && (
           <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
             ⚠️ Select a leaf category (no subcategories) to add an activity
           </div>
