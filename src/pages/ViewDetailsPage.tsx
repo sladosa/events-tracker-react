@@ -63,6 +63,7 @@ interface LoadedEvent {
   comment: string | null;
   created_at: string;
   edited_at: string;
+  user_id: string;
 }
 
 interface LoadedAttribute {
@@ -307,6 +308,7 @@ export function ViewDetailsPage() {
   const [sessionDateTime, setSessionDateTime] = useState<Date>(new Date());
   const [viewEvents, setViewEvents] = useState<ViewEvent[]>([]);
   const [selectedEventIndex, setSelectedEventIndex] = useState(0);
+  const [isOwnEvent, setIsOwnEvent] = useState(true);
   // VIEW-P2: parent atributi dijeljeni za sve tabove (Activity, Gym itd.)
   const [parentAttrValues, setParentAttrValues] = useState<Map<string, { value: string | number | boolean | null; dataType: string }>>(new Map());
 
@@ -335,7 +337,7 @@ export function ViewDetailsPage() {
       if (noSession) {
         const { data, error } = await supabase
           .from('events')
-          .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
+          .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id')
           .eq('id', sessionStart);
         if (error) throw error;
         if (!data || data.length === 0) throw new Error('Activity not found');
@@ -344,7 +346,7 @@ export function ViewDetailsPage() {
         const decoded = decodeURIComponent(sessionStart);
         let query = supabase
           .from('events')
-          .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
+          .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id')
           .eq('session_start', decoded);
         if (categoryIdParam) {
           query = query.eq('category_id', categoryIdParam);
@@ -357,6 +359,7 @@ export function ViewDetailsPage() {
 
       const leafCategoryId = events[events.length - 1].category_id;
       setCategoryId(leafCategoryId);
+      setIsOwnEvent(events[0].user_id === user.id);
 
       // Build category path
       const path = await buildCategoryPath(leafCategoryId);
@@ -714,16 +717,18 @@ export function ViewDetailsPage() {
             </svg>
           </button>
 
-          <button
-            type="button"
-            onClick={handleEdit}
-            className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium transition-colors', t.accent)}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Edit Activity
-          </button>
+          {isOwnEvent && (
+            <button
+              type="button"
+              onClick={handleEdit}
+              className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium transition-colors', t.accent)}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit Activity
+            </button>
+          )}
         </div>
       </header>
 

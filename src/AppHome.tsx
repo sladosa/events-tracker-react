@@ -76,13 +76,16 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState<TabType>('activities');
   
   // Get filter context
-  const { 
-    filter, 
-    isLeafCategory, 
-    fullPathDisplay, 
-    hasActiveFilter, 
+  const {
+    filter,
+    isLeafCategory,
+    fullPathDisplay,
+    hasActiveFilter,
     reset,
+    sharedContext,
   } = useFilter();
+
+  const isReadOnly = sharedContext?.permission === 'read';
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -145,11 +148,15 @@ function AppContent() {
     }
   };
 
-  // Can add activity only when leaf category is selected
-  const canAddActivity = isLeafCategory;
+  // Can add activity only when leaf category is selected AND not read-only grantee
+  const canAddActivity = isLeafCategory && !isReadOnly;
 
   // Navigate to Add Activity
   const handleAddActivity = () => {
+    if (isReadOnly) {
+      toast.error('Read only access — cannot add activities');
+      return;
+    }
     if (!canAddActivity) {
       toast.error('Please select a leaf category first');
       return;
@@ -297,8 +304,8 @@ function AppContent() {
           </Button>
         </div>
 
-        {/* Leaf category hint */}
-        {!canAddActivity && filter.categoryId && (
+        {/* Leaf category hint — hidden for read-only grantee */}
+        {!canAddActivity && filter.categoryId && !isReadOnly && (
           <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
             ⚠️ Select a leaf category (no subcategories) to add an activity
           </div>

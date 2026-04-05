@@ -244,6 +244,7 @@ export async function fetchSharedContext(
       .select('owner_id, permission')
       .eq('target_id', areaId)
       .eq('grantee_id', userId)
+      .neq('owner_id', userId)
       .eq('share_type', 'area')
       .maybeSingle();
 

@@ -43,7 +43,8 @@ export function ProgressiveCategorySelector({
     selectedShortcutId,
     setSelectedShortcutId,
     // Date range (for resetting when shortcut changes)
-    setDateRange
+    setDateRange,
+    sharedContext
   } = useFilter();
   
   const { areas, loading: areasLoading, refetch: refetchAreas } = useAreas();
@@ -739,15 +740,17 @@ export function ProgressiveCategorySelector({
               {areas.find(a => a.id === filter.areaId)?.name} &gt; {displayPath.map(c => c.name).join(' > ')}
             </span>
           </div>
-          {/* Leaf indicator */}
-          {isLeafCategory ? (
-            <p className="mt-1 text-xs text-green-700">
-              ✓ Leaf category selected - ready to add activity
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-amber-700">
-              ⚠ Select a subcategory to reach a leaf
-            </p>
+          {/* Leaf indicator — hidden for read-only grantee */}
+          {sharedContext?.permission !== 'read' && (
+            isLeafCategory ? (
+              <p className="mt-1 text-xs text-green-700">
+                ✓ Leaf category selected - ready to add activity
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-amber-700">
+                ⚠ Select a subcategory to reach a leaf
+              </p>
+            )
           )}
         </div>
       )}

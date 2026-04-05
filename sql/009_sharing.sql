@@ -97,7 +97,7 @@ USING (
 DROP POLICY IF EXISTS "categories_select" ON public.categories;
 CREATE POLICY "categories_select" ON public.categories FOR SELECT
 USING (
-  auth.uid() = user_id
+  area_id IN (SELECT id FROM public.areas WHERE user_id = auth.uid())
   OR area_id IN (
     SELECT target_id FROM public.data_shares
     WHERE grantee_id = auth.uid() AND share_type = 'area'
