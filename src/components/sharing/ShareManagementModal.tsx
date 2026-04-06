@@ -45,6 +45,8 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
   const [revokingId, setRevokingId] = useState<UUID | null>(null);
   const [cancellingId, setCancellingId] = useState<UUID | null>(null);
   const [updatingPermId, setUpdatingPermId] = useState<UUID | null>(null);
+  // Help panel: collapsed on mobile by default (expanded via ❓ toggle); always visible on desktop via CSS
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // --------------------------------------------------
   // Refresh both shares + pending invites
@@ -271,21 +273,40 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
             </div>
           </div>
 
-          {/* ── Help text ── */}
-          <div className="text-xs text-gray-400 border-t border-gray-100 pt-3 space-y-1">
-            <p>
-              Sharing grants access to the entire{' '}
-              <strong className="text-gray-500">&ldquo;{areaName}&rdquo;</strong> Area.
-            </p>
-            <p>
-              <strong className="text-gray-500">write</strong> — can add and edit their own
-              activities &nbsp;·&nbsp;{' '}
-              <strong className="text-gray-500">read</strong> — view only
-            </p>
-            <p>
-              If the invitee doesn&apos;t have an account yet, they&apos;ll get access automatically
-              when they register.
-            </p>
+          {/* ── Help text — always visible on desktop, toggle on mobile ── */}
+          <div className="border-t border-gray-100 pt-3">
+            {/* Mobile: ❓ toggle button */}
+            <button
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors md:hidden mb-2"
+              onClick={() => setHelpOpen(v => !v)}
+            >
+              <span className="w-4 h-4 rounded-full border border-gray-300 flex items-center justify-center font-bold text-[10px] text-gray-400">?</span>
+              {helpOpen ? 'Hide help' : 'How does sharing work?'}
+            </button>
+
+            {/* Help content: always on desktop (md:block), togglable on mobile */}
+            <div className={cn('text-xs text-gray-400 space-y-1.5', helpOpen ? 'block' : 'hidden md:block')}>
+              <p>
+                Sharing grants access to the entire{' '}
+                <strong className="text-gray-500">&ldquo;{areaName}&rdquo;</strong> Area —
+                all categories and their activities.
+              </p>
+              <p>
+                <strong className="text-gray-500">write</strong> — grantee can add and edit
+                their own activities, export data. Cannot modify category structure.
+              </p>
+              <p>
+                <strong className="text-gray-500">read</strong> — grantee can only view and
+                export. Cannot add or edit any activities.
+              </p>
+              <p>
+                If the invitee doesn&apos;t have an account yet, access is granted automatically
+                when they register with that email.
+              </p>
+              <p>
+                You can change permissions or revoke access at any time from this panel.
+              </p>
+            </div>
           </div>
 
         </div>
