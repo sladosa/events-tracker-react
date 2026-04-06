@@ -21,18 +21,13 @@ import { saveAs } from 'file-saver';
 import { useStructureData } from '@/hooks/useStructureData';
 import { SharedAreaBanner } from '@/components/sharing/SharedAreaBanner';
 import { ShareManagementModal } from '@/components/sharing/ShareManagementModal';
+import { HeaderAvatar, ProfileSettingsModal } from '@/components/sharing/ProfileSettingsModal';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
 
 // --------------------------------------------
 // Icons
 // --------------------------------------------
-
-const LogoutIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-  </svg>
-);
 
 const StructureIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,6 +80,8 @@ function AppContent() {
   const location = useLocation();
   const [email, setEmail] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
+  const [displayName, setDisplayName] = useState<string>('');
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('activities');
   const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>('sunburst');
   const [isEditMode, setIsEditMode] = useState(false);
@@ -123,11 +120,21 @@ function AppContent() {
     if (sharedContext && isEditMode) setIsEditMode(false);
   }, [sharedContext, isEditMode]);
 
-  // Get user email
+  // Get user info (email + display_name from profiles)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setEmail(data.session?.user.email ?? '');
-      setUserId(data.session?.user.id ?? '');
+    supabase.auth.getSession().then(async ({ data }) => {
+      const id = data.session?.user.id ?? '';
+      const em = data.session?.user.email ?? '';
+      setUserId(id);
+      setEmail(em);
+      if (id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', id)
+          .single();
+        setDisplayName((profile as { display_name: string | null } | null)?.display_name ?? em);
+      }
     });
   }, []);
 
@@ -227,18 +234,15 @@ function AppContent() {
               </div>
             </div>
 
-            {/* User section */}
+            {/* User section — avatar opens Profile Settings modal */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 hidden md:block truncate max-w-[120px]">
-                {email}
-              </span>
-              <button
-                onClick={onSignOut}
-                className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Sign out"
-              >
-                <LogoutIcon />
-              </button>
+              {userId && (
+                <HeaderAvatar
+                  userId={userId}
+                  displayName={displayName || email}
+                  onClick={() => setShowProfileModal(true)}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -467,6 +471,27 @@ function AppContent() {
           )}
         </section>
       </main>
+
+      {/* Profile Settings Modal (Faza 8) */}
+      {showProfileModal && userId && (
+        <ProfileSettingsModal
+          userId={userId}
+          email={email}
+          onClose={() => {
+            setShowProfileModal(false);
+            // Reload display_name in case user changed it
+            supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('id', userId)
+              .single()
+              .then(({ data }) => {
+                setDisplayName((data as { display_name: string | null } | null)?.display_name ?? email);
+              });
+          }}
+          onSignOut={onSignOut}
+        />
+      )}
 
       {/* Share Management Modal (Faza 7) */}
       {shareModalTarget && (
