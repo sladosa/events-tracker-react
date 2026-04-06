@@ -36,7 +36,7 @@ interface ShareManagementModalProps {
 // --------------------------------------------------------
 
 export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagementModalProps) {
-  const { shares, loading, listShares, createShare, revokeShare, cancelInvite, listInvites } =
+  const { shares, loading, listShares, createShare, updateSharePermission, revokeShare, cancelInvite, listInvites } =
     useDataShares();
   const [invites, setInvites] = useState<ShareInvite[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -44,6 +44,7 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
   const [isInviting, setIsInviting] = useState(false);
   const [revokingId, setRevokingId] = useState<UUID | null>(null);
   const [cancellingId, setCancellingId] = useState<UUID | null>(null);
+  const [updatingPermId, setUpdatingPermId] = useState<UUID | null>(null);
 
   // --------------------------------------------------
   // Refresh both shares + pending invites
@@ -81,6 +82,17 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
       toast.success(`Invite sent to ${email} (pending registration)`);
       setInviteEmail('');
       await refresh();
+    }
+  };
+
+  const handlePermissionChange = async (share: DataShareWithProfile, permission: SharePermission) => {
+    setUpdatingPermId(share.id);
+    const result = await updateSharePermission(share.id, permission);
+    setUpdatingPermId(null);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success(`Permission updated to ${permission}`);
     }
   };
 
@@ -161,14 +173,21 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
                         <div className="text-sm font-medium text-gray-900 truncate">{name}</div>
                         {email && <div className="text-xs text-gray-500 truncate">{email}</div>}
                       </div>
-                      <span className={cn(
-                        'text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0',
-                        share.permission === 'write'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-amber-100 text-amber-700',
-                      )}>
-                        {share.permission}
-                      </span>
+                      <select
+                        value={share.permission}
+                        disabled={updatingPermId === share.id}
+                        onChange={e => handlePermissionChange(share, e.target.value as SharePermission)}
+                        className={cn(
+                          'text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400',
+                          share.permission === 'write'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-amber-100 text-amber-700',
+                          updatingPermId === share.id && 'opacity-50',
+                        )}
+                      >
+                        <option value="write">write</option>
+                        <option value="read">read</option>
+                      </select>
                       <button
                         disabled={revokingId === share.id}
                         onClick={() => handleRevoke(share)}

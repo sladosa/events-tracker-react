@@ -165,43 +165,52 @@ function ActionsMenu({
           </div>
         ) : (
           // ── Owner menu ────────────────────────────────
-          isEditMode && (
-            <>
-              {/* Area-specific actions */}
-              {node.nodeType === 'area' && (
-                <>
-                  {item('Edit', '✏️', () => onEdit?.(node))}
-                  {item('+ Add Child', '➕', () => onAddChild?.(node))}
-                  {item('Delete', '🗑️', () => onDelete?.(node), true)}
-                  <div className="my-1 border-t border-gray-100" />
-                  {item(
-                    'Manage Access',
-                    '⚙️',
-                    () => onManageAccess ? onManageAccess(node) : toast('Share Management — coming soon'),
-                  )}
-                </>
-              )}
+          <>
+            {/* Manage Access — always visible for owner on area rows, regardless of edit mode */}
+            {node.nodeType === 'area' && (
+              <>
+                {item(
+                  'Manage Access',
+                  '⚙️',
+                  () => onManageAccess ? onManageAccess(node) : toast('Share Management — coming soon'),
+                )}
+              </>
+            )}
 
-              {/* Non-leaf category actions */}
-              {node.nodeType === 'category' && !node.isLeaf && (
-                <>
-                  {item('Edit', '✏️', () => onEdit?.(node))}
-                  {item('+ Add Child', '➕', () => onAddChild?.(node))}
-                  {item('Add Between', '↕️', () => onAddBetween?.(node))}
-                  {item('Delete', '🗑️', () => onDelete?.(node), true)}
-                </>
-              )}
+            {/* Edit mode actions */}
+            {isEditMode && (
+              <>
+                {/* Area-specific actions */}
+                {node.nodeType === 'area' && (
+                  <>
+                    <div className="my-1 border-t border-gray-100" />
+                    {item('Edit', '✏️', () => onEdit?.(node))}
+                    {item('+ Add Child', '➕', () => onAddChild?.(node))}
+                    {item('Delete', '🗑️', () => onDelete?.(node), true)}
+                  </>
+                )}
 
-              {/* Leaf category actions */}
-              {node.nodeType === 'category' && node.isLeaf && (
-                <>
-                  {item('Edit', '✏️', () => onEdit?.(node))}
-                  {item('+ Add Child', '➕', () => onAddChild?.(node))}
-                  {item('Delete', '🗑️', () => onDelete?.(node), true)}
-                </>
-              )}
-            </>
-          )
+                {/* Non-leaf category actions */}
+                {node.nodeType === 'category' && !node.isLeaf && (
+                  <>
+                    {item('Edit', '✏️', () => onEdit?.(node))}
+                    {item('+ Add Child', '➕', () => onAddChild?.(node))}
+                    {item('Add Between', '↕️', () => onAddBetween?.(node))}
+                    {item('Delete', '🗑️', () => onDelete?.(node), true)}
+                  </>
+                )}
+
+                {/* Leaf category actions */}
+                {node.nodeType === 'category' && node.isLeaf && (
+                  <>
+                    {item('Edit', '✏️', () => onEdit?.(node))}
+                    {item('+ Add Child', '➕', () => onAddChild?.(node))}
+                    {item('Delete', '🗑️', () => onDelete?.(node), true)}
+                  </>
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
     </>,

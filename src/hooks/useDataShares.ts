@@ -32,6 +32,7 @@ export interface UseDataSharesReturn {
     granteeEmail: string,
     permission: SharePermission
   ) => Promise<{ share?: DataShare; invite?: ShareInvite; error?: string }>;
+  updateSharePermission: (shareId: UUID, permission: SharePermission) => Promise<{ error?: string }>;
   revokeShare: (shareId: UUID) => Promise<{ error?: string }>;
   cancelInvite: (inviteId: UUID) => Promise<{ error?: string }>;
   listInvites: (areaId: UUID) => Promise<ShareInvite[]>;
@@ -53,15 +54,34 @@ export function useDataShares(): UseDataSharesReturn {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await supabase
+      // Step 1: fetch data_shares (FK is on auth.users, not profiles — can't use join)
+      const { data: sharesData, error: err } = await supabase
         .from('data_shares')
-        .select('*, grantee:profiles!data_shares_grantee_id_fkey(id, email, display_name, created_at)')
+        .select('id, owner_id, grantee_id, share_type, target_id, permission, created_at')
         .eq('target_id', areaId)
         .eq('share_type', 'area')
         .order('created_at', { ascending: true });
 
       if (err) throw err;
-      const result = (data || []) as DataShareWithProfile[];
+      if (!sharesData || sharesData.length === 0) {
+        setShares([]);
+        return [];
+      }
+
+      // Step 2: fetch profiles separately
+      const granteeIds = sharesData.map(s => s.grantee_id as string);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, email, display_name, created_at')
+        .in('id', granteeIds);
+
+      const profileMap = new Map((profiles ?? []).map(p => [p.id as string, p]));
+
+      const result: DataShareWithProfile[] = sharesData.map(s => ({
+        ...(s as DataShare),
+        grantee: profileMap.get(s.grantee_id as string) ?? undefined,
+      }));
+
       setShares(result);
       return result;
     } catch (err) {
@@ -100,25 +120,23 @@ export function useDataShares(): UseDataSharesReturn {
       if (profileErr) throw profileErr;
 
       if (profileData) {
-        // Korisnik postoji — kreiraj data_share direktno
+        // Korisnik postoji — upsert data_share (update permission ako već postoji)
         const { data: shareData, error: shareErr } = await supabase
           .from('data_shares')
-          .insert({
-            owner_id: user.id,
-            grantee_id: profileData.id,
-            share_type: 'area',
-            target_id: areaId,
-            permission,
-          })
+          .upsert(
+            {
+              owner_id: user.id,
+              grantee_id: profileData.id,
+              share_type: 'area',
+              target_id: areaId,
+              permission,
+            },
+            { onConflict: 'owner_id,grantee_id,target_id,share_type' }
+          )
           .select()
           .single();
 
-        if (shareErr) {
-          if (shareErr.code === '23505') {
-            return { error: 'Ovaj korisnik već ima pristup ovoj Area-i' };
-          }
-          throw shareErr;
-        }
+        if (shareErr) throw shareErr;
         return { share: shareData as DataShare };
       } else {
         // Korisnik još nije registriran — kreiraj pending invite
@@ -145,6 +163,28 @@ export function useDataShares(): UseDataSharesReturn {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Greška pri kreiranju dijeljenja';
+      return { error: msg };
+    }
+  }, []);
+
+  // ------------------------------------------
+  // updateSharePermission — mijenja permission za aktivan share
+  // ------------------------------------------
+  const updateSharePermission = useCallback(async (
+    shareId: UUID,
+    permission: SharePermission
+  ): Promise<{ error?: string }> => {
+    try {
+      const { error: err } = await supabase
+        .from('data_shares')
+        .update({ permission })
+        .eq('id', shareId);
+
+      if (err) throw err;
+      setShares(prev => prev.map(s => s.id === shareId ? { ...s, permission } : s));
+      return {};
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Greška pri promjeni permissiona';
       return { error: msg };
     }
   }, []);
@@ -213,6 +253,7 @@ export function useDataShares(): UseDataSharesReturn {
     error,
     listShares,
     createShare,
+    updateSharePermission,
     revokeShare,
     cancelInvite,
     listInvites,
