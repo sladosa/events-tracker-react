@@ -48,6 +48,7 @@ export interface ExportEvent {
   comment: string | null;
   created_at: string | null;    // ISO timestamp
   event_attributes: ExportEventAttribute[];
+  user_email?: string;          // populated by excelDataLoader after profile lookup
 }
 
 // ─────────────────────────────────────────────

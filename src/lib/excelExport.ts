@@ -55,7 +55,7 @@ const THIN_BORDER = {
   right:  { style: 'thin' as const },
 };
 
-// Fixed columns – ORDER MATTERS (matches column indices A-G, used by excelImport)
+// Fixed columns – ORDER MATTERS (matches column indices A-H, used by excelImport)
 export const FIXED_COLUMNS = [
   'event_id',
   'Area',
@@ -63,10 +63,11 @@ export const FIXED_COLUMNS = [
   'event_date',
   'session_start',
   'created_at',
+  'user_email',  // G — User column (collab: D7)
   'comment',
 ] as const;
 
-// Display headers for the header row (last entry renamed for clarity)
+// Display headers for the header row
 const FIXED_DISPLAY_HEADERS = [
   'event_id',
   'Area',
@@ -74,12 +75,13 @@ const FIXED_DISPLAY_HEADERS = [
   'event_date',
   'session_start',
   'created_at',
+  'User',
   'leaf comment',
 ] as const;
 
-export const FIXED_COL_COUNT = FIXED_COLUMNS.length; // 7  (A–G)
-export const PADDING_COLS    = 0;                     // no padding (comment is single col G)
-export const ATTR_COL_START  = FIXED_COL_COUNT + PADDING_COLS + 1; // 8 → H
+export const FIXED_COL_COUNT = FIXED_COLUMNS.length; // 8  (A–H)
+export const PADDING_COLS    = 0;                     // no padding (comment is single col H)
+export const ATTR_COL_START  = FIXED_COL_COUNT + PADDING_COLS + 1; // 9 → I
 
 // LEGEND columns (6 cols: removed Default / Min / Max vs old 9-col version)
 const LEGEND_COLS = ['Col', 'Area', 'Category_Path', 'Attribute', 'Type', 'Unit'];
@@ -470,9 +472,16 @@ export async function addActivitiesSheetsTo(
       }
     }
 
-    // ---- Column G: leaf comment (single cell, no merge) ----
+    // ---- Column G: User (email, read-only, grouped) ----
+    const userCell = ws.getCell(row, 7); // col 7 = G
+    userCell.value     = event.user_email ?? '';
+    userCell.fill      = PINK_FILL;
+    userCell.border    = THIN_BORDER;
+    userCell.alignment = { horizontal: 'left', vertical: 'middle' };
+
+    // ---- Column H: leaf comment (single cell, no merge) ----
     const commentValue = event.comment ?? '';
-    const commentCell  = ws.getCell(row, FIXED_COL_COUNT); // col 7 = G
+    const commentCell  = ws.getCell(row, FIXED_COL_COUNT); // col 8 = H
     commentCell.value     = commentValue || null;
     commentCell.fill      = BLUE_FILL;
     commentCell.border    = THIN_BORDER;
@@ -562,7 +571,11 @@ export async function addActivitiesSheetsTo(
   ws.getColumn('D').width = 12;   // event_date
   ws.getColumn('E').width = 8;    // session_start
   ws.getColumn('F').width = 10;   // created_at
-  ws.getColumn('G').width = 30;   // leaf comment
+  ws.getColumn('G').width = 22;   // User (email)
+  ws.getColumn('H').width = 30;   // leaf comment
+
+  // Column G (User) is grouped so users can collapse it to save space
+  ws.getColumn(7).outlineLevel = 1;
 
   for (let aidx = 0; aidx < attrColumns.length; aidx++) {
     ws.getColumn(ATTR_COL_START + aidx).width = 13;
@@ -636,7 +649,7 @@ function _createHelpEventsSheet(wb: ExcelJS.Workbook): void {
   type HelpLine = { text: string; fill?: ExcelJS.Fill };
 
   const lines: HelpLine[] = [
-    { text: 'EVENTS TRACKER — Excel Export/Import Help V1.1' },
+    { text: 'EVENTS TRACKER — Excel Export/Import Help V1.2 (collab)' },
     { text: '' },
     { text: '🎯 IMPORTANT: ATTRIBUTE LEGEND = SOURCE OF TRUTH' },
     { text: '' },
@@ -656,8 +669,9 @@ function _createHelpEventsSheet(wb: ExcelJS.Workbook): void {
     { text: '' },
     { text: '2. EVENT DATA (bottom section)' },
     { text: '   Fixed columns: event_id(A), Area(B), Category_Path(C),' },
-    { text: '     event_date(D), session_start(E), created_at(F), leaf comment(G)' },
-    { text: '   Attribute columns start at H with "attr_name (Category)" headers' },
+    { text: '     event_date(D), session_start(E), created_at(F), User(G), leaf comment(H)' },
+    { text: '   User column (G) is grouped — click [-] above column G to collapse it' },
+    { text: '   Attribute columns start at I with "attr_name (Category)" headers' },
     { text: '   AutoFilter enabled, title row shows SUMs (respects filters)' },
     { text: '' },
     { text: '═══════════════════════════════════════════════════════' },
@@ -673,6 +687,10 @@ function _createHelpEventsSheet(wb: ExcelJS.Workbook): void {
     { text: '   created_at  : time with seconds (HH:mm:ss, e.g. 14:30:05)' },
     { text: '   leaf comment: notes for this activity' },
     { text: '   Relevant attributes for this category and parent categories' },
+    { text: '' },
+    { text: 'PINK (col G — User) = READ-ONLY', fill: PINK_FILL },
+    { text: '   Email of the user who recorded the event.' },
+    { text: '   Informational — not editable. On import: use Smart Import options.' },
     { text: '' },
     { text: '   ⚠️ Validation: created_at must be >= session_start.' },
     { text: '   If not, import will report a validation error for that row.' },
@@ -695,8 +713,9 @@ function _createHelpEventsSheet(wb: ExcelJS.Workbook): void {
     { text: '  3. Fill event_date (required, YYYY-MM-DD)' },
     { text: '  4. Fill session_start (optional, HH:MM, defaults to 09:00)' },
     { text: '  5. Fill created_at (optional, HH:mm:ss, defaults to session_start + 1s)' },
-    { text: '  6. Fill relevant attribute values (blue cells)' },
-    { text: '  7. Save and import' },
+    { text: '  6. User (col G): leave as-is or set email for Smart Import' },
+    { text: '  7. Fill relevant attribute values (blue cells)' },
+    { text: '  8. Save and import' },
     { text: '' },
     { text: '═══════════════════════════════════════════════════════' },
     { text: '' },

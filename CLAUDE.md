@@ -202,8 +202,11 @@ Faze i status:
 - ✅ Faza 6 — User indicator (Activities lista: User kolona, avatar+ime, D1, D4) — S38
 - ✅ Faza 7 — Share Management UI Modal (invite, lista, revoke) — S40
 - ✅ Faza 8 — Profile settings modal (header avatar → modal, display_name edit, sign out) — S42
-- ⬜ Faza 9 — Help panel (integriran u Share Management modal)
-- ⬜ Faza 10 — Excel Export/Import (novi format: User kolona uvijek, SharedWith u Structure, Smart import)
+- ✅ Faza 9 — Help panel (modal: poboljšan tekst + ❓ mobile toggle; grantee banneri: "What can I do?" collapsible) — S42
+- ✅ Faza 10a — Events sheet: User kolona G (email); attr kolone od I; uklonjen user_id filter (RLS); batch email lookup — S43
+- ✅ Faza 10b — Structure sheet: SharedWith kolona D (pipe-separated emails, Area-only); `loadSharedEmailsByArea` — S43
+- ✅ Faza 10c — HelpEvents + HelpStructure ažurirani za novi format — S43
+- ⬜ Faza 10e — Smart import (multi-user detekcija, 3 opcije u modalu, email→user_id lookup, summary preview)
 - ⬜ Faza 11 — Merge na main
 
 **Faza 4: historijska migracija (poseban projekt, bez vremenskog pritiska)**

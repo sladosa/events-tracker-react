@@ -79,6 +79,7 @@ const COLS = [
   { key: 'type',        header: 'Type',              width: 9,  colColor: CLR.PINK,   grouped: false, collapsed: false },
   { key: 'isLeaf',      header: 'IsLeaf',            width: 9,  colColor: CLR.PINK,   grouped: true,  collapsed: true  },
   { key: 'area',        header: 'Area',              width: 9,  colColor: CLR.PINK,   grouped: true,  collapsed: true  },
+  { key: 'sharedWith',  header: 'SharedWith',        width: 9,  colColor: CLR.PINK,   grouped: true,  collapsed: true  },
   { key: 'categoryPath',header: 'CategoryPath',      width: 40, colColor: CLR.YELLOW, grouped: false, collapsed: false },
   { key: 'sort',        header: 'Sort',              width: 6,  colColor: CLR.YELLOW, grouped: true,  collapsed: true  },
   { key: 'attrName',    header: 'AttrName',          width: 18, colColor: CLR.BLUE,   grouped: false, collapsed: false },
@@ -95,7 +96,7 @@ const COLS = [
   { key: 'description', header: 'Description',       width: 60, colColor: CLR.BLUE,   grouped: false, collapsed: false },
 ] as const;
 
-const N_COLS = COLS.length; // 17
+const N_COLS = COLS.length; // 18
 
 // Column letter helpers (0-based index: A=0, B=1, ...)
 function colLetter(idx: number): string {
@@ -126,6 +127,7 @@ interface DataRow {
   type:         string; // Area | Category | Attribute
   isLeaf:       string; // TRUE | ''
   area:         'FORMULA';      // always formula for data rows
+  sharedWith:   string; // pipe-separated grantee emails (Area rows only)
   categoryPath: string;
   sort:         number;
   attrName:     string;
@@ -149,6 +151,8 @@ interface DataRow {
 export interface ExportStructureOptions {
   filterAreaId?: string | null;
   filterCategoryId?: string | null;
+  /** Map of areaId → pipe-separated grantee emails, for SharedWith column */
+  sharedWithByArea?: Record<string, string>;
 }
 
 export interface InfoRowOptions {
@@ -193,11 +197,12 @@ const THIN_BORDER: Partial<ExcelJS.Borders> = {
 // ─────────────────────────────────────────────────────────────
 // Row builders
 // ─────────────────────────────────────────────────────────────
-function buildAreaRow(node: StructureNode): DataRow {
+function buildAreaRow(node: StructureNode, sharedWith: string): DataRow {
   return {
     type: 'Area',
     isLeaf: '',
     area: 'FORMULA',
+    sharedWith,
     categoryPath: node.name,
     sort: node.sortOrder,
     attrName: '', slug: '', attrType: '', isRequired: '',
@@ -213,6 +218,7 @@ function buildCategoryRow(node: StructureNode): DataRow {
     type: 'Category',
     isLeaf: node.isLeaf ? 'TRUE' : '',
     area: 'FORMULA',
+    sharedWith: '',
     categoryPath: node.fullPath,
     sort: node.sortOrder,
     attrName: '', slug: '', attrType: '', isRequired: '',
@@ -230,6 +236,7 @@ function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[
     type: 'Attribute' as const,
     isLeaf: '' as const,
     area: 'FORMULA' as const,
+    sharedWith: '' as const,
     categoryPath: node.fullPath,
     sort: attr.sort_order,
     attrName: attr.name,
@@ -283,11 +290,11 @@ function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[
   return rows;
 }
 
-function buildAllRows(nodes: StructureNode[]): DataRow[] {
+function buildAllRows(nodes: StructureNode[], sharedWithByArea: Record<string, string> = {}): DataRow[] {
   const rows: DataRow[] = [];
   for (const node of nodes) {
     if (node.nodeType === 'area') {
-      rows.push(buildAreaRow(node));
+      rows.push(buildAreaRow(node, sharedWithByArea[node.id] ?? ''));
     } else {
       rows.push(buildCategoryRow(node));
       for (const attr of node.attributeDefinitions) {
@@ -311,8 +318,8 @@ function writeStructureSheet(
 
   const ws = wb.addWorksheet('Structure');
 
-  // Freeze at G8: first 6 cols + first 7 rows frozen
-  ws.views = [{ state: 'frozen', xSplit: 6, ySplit: 7 }];
+  // Freeze at H8: first 7 cols (Type,IsLeaf,Area,SharedWith,CategoryPath,Sort,AttrName) + first 7 rows frozen
+  ws.views = [{ state: 'frozen', xSplit: 7, ySplit: 7 }];
 
   // Outline properties (summary buttons on left/top, not right/bottom)
   ws.properties.outlineLevelRow = 1;
@@ -390,13 +397,14 @@ function writeStructureSheet(
 
   // A6 = label (Export / Backup before: / Import conflict:)
   setInfo(1, infoLabel, true);
-  // B6, C6 — empty, same background (columns are usually collapsed)
+  // B6, C6, D6 — empty, same background (columns are usually collapsed)
   ws.getCell(6, 2).fill = makeFill(infoBg);
   ws.getCell(6, 3).fill = makeFill(infoBg);
-  // D6 = timestamp
-  setInfo(4, formatTimestampSuffix(ts));
-  // E6..Q6 — fill remaining cells (cosmetic)
-  for (let ci = 5; ci <= N_COLS; ci++) {
+  ws.getCell(6, 4).fill = makeFill(infoBg);
+  // E6 = timestamp (was D6 before SharedWith col was added at D)
+  setInfo(5, formatTimestampSuffix(ts));
+  // F6..R6 — fill remaining cells (cosmetic)
+  for (let ci = 6; ci <= N_COLS; ci++) {
     ws.getCell(6, ci).fill = makeFill(infoBg);
   }
 
@@ -539,28 +547,29 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
 
     { kind: 'section', text: 'Grouped / Hidden Columns' },
     { kind: 'row', label: '', value: 'Several columns are grouped and collapsed by default.  Click [+] in the column header area to expand.' },
-    { kind: 'row', label: 'Default collapsed', value: 'IsLeaf (B), Area (C), Sort (E), Slug (G), AttrType (H), IsRequired (I), Val.Type (J), Default (K), Val.Max (L)' },
-    { kind: 'row', label: 'Default open',      value: 'TextOptions/Val.Min (N), DependsOn (O), WhenValue (P)' },
+    { kind: 'row', label: 'Default collapsed', value: 'IsLeaf (B), Area (C), SharedWith (D), Sort (F), Slug (H), AttrType (I), IsRequired (J), Val.Type (K), Default (L), Val.Max (M)' },
+    { kind: 'row', label: 'Default open',      value: 'TextOptions/Val.Min (O), DependsOn (P), WhenValue (Q)' },
     { kind: 'row', label: '', value: '' },
 
-    { kind: 'section', text: 'Column Reference (A–Q)' },
+    { kind: 'section', text: 'Column Reference (A–R)' },
     { kind: 'row', label: 'A  Type',              value: 'Area / Category / Attribute' },
     { kind: 'row', label: 'B  IsLeaf',            value: 'TRUE if leaf category (no children).  Informational — importer recalculates from DB.' },
     { kind: 'row', label: 'C  Area',              value: 'Auto-formula: extracts area name from CategoryPath.  Read-only.' },
-    { kind: 'row', label: 'D  CategoryPath',      value: 'KEY column.  Full path e.g. "Fitness > Activity > Gym".  Do NOT change for existing rows.' },
-    { kind: 'row', label: 'E  Sort',              value: 'Display order within parent.' },
-    { kind: 'row', label: 'F  AttrName',          value: 'Attribute display name.' },
-    { kind: 'row', label: 'G  Slug',              value: 'Internal stable identifier.  Used for import matching and DependsOn references.  Never changes after creation.' },
-    { kind: 'row', label: 'H  AttrType',          value: 'Data type: number | text | datetime | boolean | link | image' },
-    { kind: 'row', label: 'I  IsRequired',        value: 'TRUE / FALSE' },
-    { kind: 'row', label: 'J  Val.Type',          value: 'suggest = dropdown with options.  none = free text.' },
-    { kind: 'row', label: 'K  Default',           value: 'Default value shown when creating a new event.' },
-    { kind: 'row', label: 'L  Val.Max (no)',      value: 'Maximum allowed value (number attributes only).' },
-    { kind: 'row', label: 'M  Unit',              value: 'Display unit e.g. kg, min, bpm.' },
-    { kind: 'row', label: 'N  TextOptions/Val.Min', value: 'For suggest: pipe-separated options e.g. "Low|Medium|High".  For number: minimum value.' },
-    { kind: 'row', label: 'O  DependsOn',         value: 'Slug of the parent attribute that controls this dropdown.  Must be in the same category.' },
-    { kind: 'row', label: 'P  WhenValue',         value: 'Value of parent attribute for this row\'s options.  Use "*" as fallback for unlisted parent values.' },
-    { kind: 'row', label: 'Q  Description',       value: 'Optional documentation notes.' },
+    { kind: 'row', label: 'D  SharedWith',        value: 'Emails with access to this Area at export time, separated by "|".  Informational only — ignored on import.  Manage sharing via app UI.' },
+    { kind: 'row', label: 'E  CategoryPath',      value: 'KEY column.  Full path e.g. "Fitness > Activity > Gym".  Do NOT change for existing rows.' },
+    { kind: 'row', label: 'F  Sort',              value: 'Display order within parent.' },
+    { kind: 'row', label: 'G  AttrName',          value: 'Attribute display name.' },
+    { kind: 'row', label: 'H  Slug',              value: 'Internal stable identifier.  Used for import matching and DependsOn references.  Never changes after creation.' },
+    { kind: 'row', label: 'I  AttrType',          value: 'Data type: number | text | datetime | boolean | link | image' },
+    { kind: 'row', label: 'J  IsRequired',        value: 'TRUE / FALSE' },
+    { kind: 'row', label: 'K  Val.Type',          value: 'suggest = dropdown with options.  none = free text.' },
+    { kind: 'row', label: 'L  Default',           value: 'Default value shown when creating a new event.' },
+    { kind: 'row', label: 'M  Val.Max (no)',      value: 'Maximum allowed value (number attributes only).' },
+    { kind: 'row', label: 'N  Unit',              value: 'Display unit e.g. kg, min, bpm.' },
+    { kind: 'row', label: 'O  TextOptions/Val.Min', value: 'For suggest: pipe-separated options e.g. "Low|Medium|High".  For number: minimum value.' },
+    { kind: 'row', label: 'P  DependsOn',         value: 'Slug of the parent attribute that controls this dropdown.  Must be in the same category.' },
+    { kind: 'row', label: 'Q  WhenValue',         value: 'Value of parent attribute for this row\'s options.  Use "*" as fallback for unlisted parent values.' },
+    { kind: 'row', label: 'R  Description',       value: 'Optional documentation notes.' },
     { kind: 'row', label: '', value: '' },
 
     { kind: 'section', text: 'Understanding DependsOn Rows' },
@@ -687,7 +696,7 @@ export async function addStructureSheetsTo(
   infoRow?: InfoRowOptions,
   conflictSlugs?: Set<string>,
 ): Promise<void> {
-  const { filterAreaId, filterCategoryId } = options;
+  const { filterAreaId, filterCategoryId, sharedWithByArea } = options;
 
   // Filter scope (same logic as old exportStructureExcel)
   let scoped = nodes;
@@ -706,7 +715,7 @@ export async function addStructureSheetsTo(
     scoped = nodes.filter(n => n.areaId === filterAreaId);
   }
 
-  const rows = buildAllRows(scoped);
+  const rows = buildAllRows(scoped, sharedWithByArea ?? {});
   writeStructureSheet(wb, rows, infoRow, conflictSlugs);
   writeHelpStructureSheet(wb);
 }
