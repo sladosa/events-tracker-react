@@ -146,27 +146,14 @@ USING (
   )
 );
 
--- Allow grantee (write) to insert events in shared categories
+-- Allow owner and write-grantee to insert events
+-- S43 fix: simplified to avoid categories.user_id check (same S39 bug pattern).
+-- Grantee write access is enforced at the app layer (canAddActivity guard).
 DROP POLICY IF EXISTS "events_insert" ON public.events;
+DROP POLICY IF EXISTS "events_insert_policy" ON public.events;
+DROP POLICY IF EXISTS "Users can create their own events" ON public.events;
 CREATE POLICY "events_insert" ON public.events FOR INSERT
-WITH CHECK (
-  auth.uid() = user_id
-  AND (
-    -- own category
-    category_id IN (
-      SELECT id FROM public.categories WHERE user_id = auth.uid()
-    )
-    OR
-    -- shared category with write permission
-    category_id IN (
-      SELECT c.id FROM public.categories c
-      JOIN public.data_shares ds ON c.area_id = ds.target_id
-      WHERE ds.grantee_id = auth.uid()
-        AND ds.share_type = 'area'
-        AND ds.permission = 'write'
-    )
-  )
-);
+WITH CHECK (user_id = auth.uid());
 
 -- UPDATE/DELETE unchanged (only own events)
 
