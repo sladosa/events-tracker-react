@@ -207,12 +207,11 @@ Faze i status:
 - ✅ Faza 10b — Structure sheet: SharedWith kolona D (pipe-separated emails, Area-only); `loadSharedEmailsByArea` — S43
 - ✅ Faza 10c — HelpEvents + HelpStructure ažurirani za novi format — S43
 - ✅ Bugfix (S43 session): `structureImport.ts` — uklonjen `.eq('user_id')` filter na categories + attr_defs; RLS handle-a access
-- ⬜ Faza 10e — Smart import (multi-user detekcija, skip/warn grantee redova, email→user_id lookup, summary preview)
+- ✅ Faza 10e — Smart import (S44): `parseExcelFile` čita col G (User email), klasificira own/foreign redove; `confirm-users` modal korak (Skip / Import as mine); BUG-2 fiksiran
 - ⬜ Faza 11 — Merge na main
 
 **Open bugs (collab grana):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — istražiti
-- **BUG-2:** Import grantee eventa duplicira ih pod owner user_id — fix u Faza 10e
 - **UX-1:** ViewDetailsPage/EditActivityPage ne pokazuje vlasnika tuđeg eventa — backlog Faza 6 dopune
 - **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog

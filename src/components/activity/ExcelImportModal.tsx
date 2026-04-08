@@ -26,7 +26,7 @@ interface ExcelImportModalProps {
   onRefresh: () => void;  // called immediately when import completes (refreshes table)
 }
 
-type ImportState = 'idle' | 'parsing' | 'checking' | 'confirm-structure' | 'ready' | 'applying' | 'done' | 'error';
+type ImportState = 'idle' | 'parsing' | 'checking' | 'confirm-structure' | 'confirm-users' | 'ready' | 'applying' | 'done' | 'error';
 
 interface ParsePreview {
   toCreateCount: number;
@@ -45,6 +45,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const [isDragOver,       setIsDragOver]       = useState(false);
   const [missingCatPaths,  setMissingCatPaths]  = useState<string[]>([]);
   const [applyingMessage,  setApplyingMessage]  = useState('Importing events…');
+  const [foreignRowCount,  setForeignRowCount]  = useState(0);
+  const [foreignEmailsSummary, setForeignEmailsSummary] = useState<Record<string, number>>({});
+  const [foreignMode,      setForeignMode]      = useState<'skip' | 'import_as_mine'>('skip');
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | undefined>(undefined);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,7 +68,13 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setImportState('parsing');
 
     try {
-      const parsed = await parseExcelFile(file);
+      // Fetch auth user first (needed for email-based foreign row detection)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const userEmail = user.email ?? undefined;
+      setCurrentUserEmail(userEmail);
+
+      const parsed = await parseExcelFile(file, userEmail);
 
       if (parsed.errors.length > 0) {
         setErrors(parsed.errors);
@@ -78,11 +88,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
         warnings:      parsed.warnings,
       };
       setPreview(previewData);
+      setForeignRowCount(parsed.foreignRowCount);
+      setForeignEmailsSummary(parsed.foreignEmailsSummary);
 
-      // Always load user + categories (needed for collision check and missing-category check)
+      // Always load categories (needed for collision check and missing-category check)
       setImportState('checking');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
 
       const categoriesDict = await loadCategoriesForExport(user.id);
 
@@ -105,6 +115,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       if (missingCheck.missingPaths.length > 0 && missingCheck.hasStructureSheet) {
         setMissingCatPaths(missingCheck.missingPaths);
         setImportState('confirm-structure');
+        return;
+      }
+
+      if (parsed.foreignRowCount > 0) {
+        setImportState('confirm-users');
         return;
       }
 
@@ -188,7 +203,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       await importStructureExcel(selectedFile, user.id);
       // Notify AreaDropdown and other listeners that areas may have changed
       window.dispatchEvent(new CustomEvent('areas-changed'));
-      setImportState('ready');
+      if (foreignRowCount > 0) {
+        setImportState('confirm-users');
+      } else {
+        setImportState('ready');
+      }
     } catch (err) {
       setErrors([`Failed to create categories: ${String(err)}`]);
       setImportState('error');
@@ -207,7 +226,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const importResult = await importEventsFromExcel(user.id, selectedFile, overwriteMap);
+      const importResult = await importEventsFromExcel(user.id, selectedFile, overwriteMap, currentUserEmail, foreignMode);
 
       if (importResult.errors.length > 0) {
         setErrors(importResult.errors);
@@ -241,6 +260,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setCollisions([]);
     setOverwriteMap(new Map());
     setMissingCatPaths([]);
+    setForeignRowCount(0);
+    setForeignEmailsSummary({});
+    setForeignMode('skip');
+    setCurrentUserEmail(undefined);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -364,6 +387,79 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   Create categories &amp; continue
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── CONFIRM USERS: foreign rows detected ── */}
+          {importState === 'confirm-users' && (
+            <>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span>📄</span>
+                <span className="truncate font-medium">{selectedFile?.name}</span>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <p className="text-sm font-semibold text-blue-800">Multi-user file detected</p>
+                <div className="text-xs text-blue-700 space-y-0.5">
+                  <p>✅ Your events: <span className="font-semibold">{(preview?.toCreateCount ?? 0) + (preview?.toUpdateCount ?? 0)}</span> (will be imported)</p>
+                  <p>⏭ Foreign events: <span className="font-semibold">{foreignRowCount}</span></p>
+                  {Object.entries(foreignEmailsSummary).map(([email, count]) => (
+                    <p key={email} className="ml-3 text-blue-600">└─ {email}: {count} row{count !== 1 ? 's' : ''}</p>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-600">What to do with foreign rows?</p>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="foreignMode"
+                    value="skip"
+                    checked={foreignMode === 'skip'}
+                    onChange={() => setForeignMode('skip')}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Skip</span>
+                    <p className="text-xs text-gray-400">Safe, default — foreign rows are ignored</p>
+                  </div>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="foreignMode"
+                    value="import_as_mine"
+                    checked={foreignMode === 'import_as_mine'}
+                    onChange={() => setForeignMode('import_as_mine')}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Import as mine</span>
+                    <p className="text-xs text-gray-400">New event_id, your user_id — creates copies under your account</p>
+                  </div>
+                </label>
+                {foreignMode === 'import_as_mine' && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                    ⚠ Originals remain in the database — delete them manually if needed.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleReset}
+                  className="py-2.5 px-3 border border-gray-300 rounded-lg text-sm text-gray-500 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setImportState('ready')}
+                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Continue
                 </button>
               </div>
             </>
