@@ -161,6 +161,7 @@ export function EditActivityPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isOwnEvent, setIsOwnEvent] = useState(true);
+  const [ownerDisplayName, setOwnerDisplayName] = useState<string | null>(null);
   
   // ============================================
   // Activity Data
@@ -265,7 +266,22 @@ export function EditActivityPage() {
       setCategoryId(leafCategoryId);
 
       // Provjeri je li event korisnikov vlastiti
-      setIsOwnEvent(leafEvents[0].user_id === user.id);
+      const ownEvent = leafEvents[0].user_id === user.id;
+      setIsOwnEvent(ownEvent);
+      if (!ownEvent) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email, display_name')
+          .eq('id', leafEvents[0].user_id)
+          .single();
+        setOwnerDisplayName(
+          (profile as { display_name?: string | null; email?: string } | null)?.display_name ||
+          (profile as { display_name?: string | null; email?: string } | null)?.email ||
+          leafEvents[0].user_id
+        );
+      } else {
+        setOwnerDisplayName(null);
+      }
       
       const path = await buildCategoryPath(leafCategoryId);
       setCategoryPath(path);
@@ -1309,6 +1325,9 @@ export function EditActivityPage() {
         <div className="text-center p-6 max-w-sm">
           <div className="text-4xl mb-4">🔒</div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Tuđi zapis</h2>
+          {ownerDisplayName && (
+            <p className="text-sm font-medium text-amber-700 mb-1">👤 {ownerDisplayName}</p>
+          )}
           <p className="text-sm text-gray-500 mb-6">
             Ovaj zapis je kreirao drugi korisnik. Možeš ga samo pregledati.
           </p>

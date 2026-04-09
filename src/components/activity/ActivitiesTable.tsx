@@ -55,7 +55,7 @@ function UserAvatar({ userId, displayName, isOwn }: UserAvatarProps) {
 interface ActivitiesTableProps {
   className?: string;
   onEditActivity?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
-  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
+  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID, userId: string) => void;
   onDeleteActivity?: (sessionStart: string, categoryId: UUID) => Promise<void>;
   onExport?: () => void;
   onImport?: () => void;
@@ -356,7 +356,7 @@ interface ActivityRowProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onEdit?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
-  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
+  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID, userId: string) => void;
   onDelete?: (sessionStart: string, categoryId: UUID) => Promise<void>;
   isHighlighted?: boolean;
   highlightRef?: React.RefObject<HTMLTableRowElement | null>;
@@ -526,7 +526,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
                 {/* View Details — uvijek dostupno */}
                 <button
                   onClick={() => {
-                    onViewDetails?.(group.session_start, group.category_id, firstEvent.id);
+                    onViewDetails?.(group.session_start, group.category_id, firstEvent.id, group.user_id);
                     setShowMenu(false);
                   }}
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"

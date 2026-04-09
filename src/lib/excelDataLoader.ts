@@ -377,6 +377,61 @@ export async function loadExportData(
   const rawEvents      = await loadEventsForExport(userId, filters, categoryIds, offset, limit);
   const attrDefs       = await loadAttrDefsForCategories(userId, categoryIds, categoriesDict);
 
+  // ── Merge parent event attributes into each leaf event ──────────────────
+  // Leaf events only have their own event_attributes. Parent category attributes
+  // (e.g. Sport.napomena) live on separate parent event rows in the DB.
+  // We batch-fetch all parent events for the same sessions and merge their attrs.
+  if (rawEvents.length > 0) {
+    // Collect all parent category IDs (non-leaf parents of our leaf categoryIds)
+    const parentCatIds = new Set<string>();
+    for (const leafCatId of categoryIds) {
+      let cur = categoriesDict[leafCatId]?.parent_category_id ?? null;
+      while (cur) {
+        parentCatIds.add(cur);
+        cur = categoriesDict[cur]?.parent_category_id ?? null;
+      }
+    }
+
+    if (parentCatIds.size > 0) {
+      // Collect unique session_starts across all leaf events
+      const sessionStarts = [...new Set(rawEvents.map(e => e.session_start).filter(Boolean))] as string[];
+
+      if (sessionStarts.length > 0) {
+        // Batch fetch all parent events for these sessions
+        const { data: parentEvents } = await supabase
+          .from('events')
+          .select('id, user_id, category_id, session_start, chain_key, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
+          .in('category_id', [...parentCatIds])
+          .in('session_start', sessionStarts);
+
+        if (parentEvents && parentEvents.length > 0) {
+          // Index parent events by (user_id + chain_key + session_start)
+          // chain_key = leaf category_id (set by Add/Edit/Import flows, BUG-G fix)
+          const parentMap = new Map<string, Array<{ attribute_definition_id: string; value_text: string | null; value_number: number | null; value_datetime: string | null; value_boolean: boolean | null }>>();
+          for (const pe of parentEvents as Array<Record<string, unknown>>) {
+            const key = `${pe.user_id}__${pe.chain_key}__${pe.session_start}`;
+            if (!parentMap.has(key)) parentMap.set(key, []);
+            const attrs = (pe.event_attributes as Array<Record<string, unknown>>) ?? [];
+            for (const a of attrs) {
+              parentMap.get(key)!.push(a as { attribute_definition_id: string; value_text: string | null; value_number: number | null; value_datetime: string | null; value_boolean: boolean | null });
+            }
+          }
+
+          // Merge parent attrs into each leaf event
+          for (const ev of rawEvents) {
+            const key = `${ev.user_email ? '' : ''}${(ev as unknown as Record<string, unknown>).user_id}__${ev.category_id}__${ev.session_start}`;
+            const parentAttrs = parentMap.get(key);
+            if (parentAttrs && parentAttrs.length > 0) {
+              // Append parent attrs — excelExport.ts reads event_attributes array
+              (ev.event_attributes as unknown[]).push(...parentAttrs);
+            }
+          }
+        }
+      }
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   return { events: rawEvents, attrDefs, categoriesDict, totalCount, categoryIds };
 }
 

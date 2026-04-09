@@ -622,12 +622,12 @@ function ActivitiesView() {
     }
   };
 
-  const handleViewDetails = (sessionStart: string | null, categoryId: UUID, eventId: UUID) => {
+  const handleViewDetails = (sessionStart: string | null, categoryId: UUID, eventId: UUID, userId: string) => {
     if (sessionStart) {
       const encodedSessionStart = encodeURIComponent(sessionStart);
-      nav(`/app/view/${encodedSessionStart}?categoryId=${categoryId}`);
+      nav(`/app/view/${encodedSessionStart}?categoryId=${categoryId}&userId=${userId}`);
     } else {
-      nav(`/app/view/${eventId}?noSession=1&categoryId=${categoryId}`);
+      nav(`/app/view/${eventId}?noSession=1&categoryId=${categoryId}&userId=${userId}`);
     }
   };
 

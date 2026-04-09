@@ -476,13 +476,15 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         })
       );
 
-      // Group by session (category_id + session_start)
+      // Group by session (user_id + category_id + session_start)
+      // user_id is included so that two users' events at the same session_start
+      // (e.g. after "Import as mine") appear as separate rows in shared view.
       const groupMap = new Map<string, ActivityGroup>();
-      
+
       for (const event of enrichedEvents) {
         // Create session key - if no session_start, use event id (each event is its own group)
-        const sessionKey = event.session_start 
-          ? `${event.category_id}_${event.session_start}`
+        const sessionKey = event.session_start
+          ? `${event.user_id}_${event.category_id}_${event.session_start}`
           : event.id;
 
         let group = groupMap.get(sessionKey);
@@ -548,7 +550,20 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         }
       }
 
-      const newGroups = Array.from(groupMap.values());
+      // Explicit sort for deterministic order — DB query has no stable tie-breaker
+      // for groups with same (event_date, session_start). Without this, AppHome and
+      // ViewDetailsPage (separate useActivities calls) may return different orderings,
+      // causing Prev/Next to skip or repeat groups.
+      const sortMult = sortOrder === 'asc' ? 1 : -1;
+      const newGroups = Array.from(groupMap.values()).sort((a, b) => {
+        const dateCmp = a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0;
+        if (dateCmp !== 0) return dateCmp * sortMult;
+        const ssCmp = (a.session_start ?? '') < (b.session_start ?? '') ? -1
+                    : (a.session_start ?? '') > (b.session_start ?? '') ? 1 : 0;
+        if (ssCmp !== 0) return ssCmp * sortMult;
+        // Tie-breaker: user_id alphabetically (deterministic, consistent across calls)
+        return a.user_id < b.user_id ? -1 : a.user_id > b.user_id ? 1 : 0;
+      });
       
       logDebug('GROUPING_COMPLETE', { 
         fetchId,

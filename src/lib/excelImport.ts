@@ -76,6 +76,10 @@ function cellStr(val: ExcelJS.CellValue): string {
   if (typeof val === 'object' && 'richText' in (val as object)) {
     return ((val as { richText: { text: string }[] }).richText ?? []).map(r => r.text).join('');
   }
+  // Hyperlink cell: { text: 'email@x.com', hyperlink: 'mailto:...' }
+  if (typeof val === 'object' && 'text' in (val as object)) {
+    return String((val as { text: unknown }).text).trim();
+  }
   return String(val).trim();
 }
 
@@ -123,10 +127,7 @@ function parseLegend(ws: ExcelJS.Worksheet): { mapping: LegendMapping; legendEnd
     legendEndRow = rowNumber;
   });
 
-  if (Object.keys(mapping).length === 0) {
-    return { mapping, legendEndRow, error: 'No valid attribute mappings found in ATTRIBUTE LEGEND.' };
-  }
-
+  // Empty legend is valid — category may have no attributes
   return { mapping, legendEndRow, error: '' };
 }
 

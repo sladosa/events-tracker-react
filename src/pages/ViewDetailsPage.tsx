@@ -280,6 +280,7 @@ export function ViewDetailsPage() {
   const [searchParams] = useSearchParams();
   const categoryIdParam = searchParams.get('categoryId') as UUID | null;
   const noSession = searchParams.get('noSession') === '1';
+  const ownerIdParam = searchParams.get('userId');
 
   const { filter } = useFilter();
   const t = THEME.view;
@@ -309,6 +310,7 @@ export function ViewDetailsPage() {
   const [viewEvents, setViewEvents] = useState<ViewEvent[]>([]);
   const [selectedEventIndex, setSelectedEventIndex] = useState(0);
   const [isOwnEvent, setIsOwnEvent] = useState(true);
+  const [ownerDisplayName, setOwnerDisplayName] = useState<string | null>(null);
   // VIEW-P2: parent atributi dijeljeni za sve tabove (Activity, Gym itd.)
   const [parentAttrValues, setParentAttrValues] = useState<Map<string, { value: string | number | boolean | null; dataType: string }>>(new Map());
 
@@ -325,8 +327,11 @@ export function ViewDetailsPage() {
     if (!sessionStart) return;
     setIsLoading(true);
     setLoadError(null);
-    setSelectedEventIndex(0); // Reset: sprečava prikaz krivog eventa kad novi activity ima manje eventa
+    setSelectedEventIndex(0);   // Reset: sprečava prikaz krivog eventa kad novi activity ima manje eventa
     setParentAttrValues(new Map()); // Reset: sprečava stale parent atribute pri Prev/Next navigaciji
+    setViewEvents([]);          // Reset: čisti stale evente dok se novi ne učitaju
+    setIsOwnEvent(true);        // Reset: neutral dok se ne odredi (sprečava stale "You")
+    setOwnerDisplayName(null);  // Reset: sprečava stale vlasnik dok se ne učita
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -351,6 +356,9 @@ export function ViewDetailsPage() {
         if (categoryIdParam) {
           query = query.eq('category_id', categoryIdParam);
         }
+        if (ownerIdParam) {
+          query = query.eq('user_id', ownerIdParam);
+        }
         const { data, error } = await query.order('created_at', { ascending: true });
         if (error) throw error;
         if (!data || data.length === 0) throw new Error('Activity not found');
@@ -359,7 +367,22 @@ export function ViewDetailsPage() {
 
       const leafCategoryId = events[events.length - 1].category_id;
       setCategoryId(leafCategoryId);
-      setIsOwnEvent(events[0].user_id === user.id);
+      const ownEvent = events[0].user_id === user.id;
+      setIsOwnEvent(ownEvent);
+      if (!ownEvent) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email, display_name')
+          .eq('id', events[0].user_id)
+          .single();
+        setOwnerDisplayName(
+          (profile as { display_name?: string | null; email?: string } | null)?.display_name ||
+          (profile as { display_name?: string | null; email?: string } | null)?.email ||
+          events[0].user_id
+        );
+      } else {
+        setOwnerDisplayName('You');
+      }
 
       // Build category path
       const path = await buildCategoryPath(leafCategoryId);
@@ -428,10 +451,14 @@ export function ViewDetailsPage() {
       let newParentAttrValues = new Map<string, { value: string | number | boolean | null; dataType: string }>();
 
       if (!noSession && events[0]?.session_start) {
+        // Koristimo user_id vlasnika eventa, ne nužno logged-in usera.
+        // Kad grantee pregledava tuđi event, parent Sport event pripada vlasniku (userb),
+        // ne logged-in korisniku (owner). Isti user_id koji je korišten u leaf query.
+        const eventOwnerId = events[0].user_id;
         newParentAttrValues = await loadParentAttrs(
           leafCategoryId,
           events[0].session_start,   // DB format — ne URL decode!
-          user.id
+          eventOwnerId
         );
       }
 
@@ -522,9 +549,13 @@ export function ViewDetailsPage() {
       // Parsiranjem u ms izbjegavamo false mismatch nakon Edit→View navigacije.
       if (!g.session_start) return false;
       const sessionMatch = new Date(g.session_start).getTime() === new Date(decoded).getTime();
-      return sessionMatch && (!categoryIdParam || g.category_id === categoryIdParam);
+      const categoryMatch = !categoryIdParam || g.category_id === categoryIdParam;
+      // ownerIdParam: u collab scenariju dva korisnika mogu imati isti session_start+category
+      // (npr. nakon "Import as mine") — user_id disambiguira koji je red aktivan.
+      const userMatch = !ownerIdParam || g.user_id === ownerIdParam;
+      return sessionMatch && categoryMatch && userMatch;
     });
-  }, [activities, sessionStart, noSession, categoryIdParam]);
+  }, [activities, sessionStart, noSession, categoryIdParam, ownerIdParam]);
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex >= 0 && currentIndex < activities.length - 1;
@@ -535,8 +566,11 @@ export function ViewDetailsPage() {
     if (!sessionStart) return null;
     if (noSession) return sessionStart; // event.id je sessionKey za no-session slučaj
     const decoded = decodeURIComponent(sessionStart);
-    return categoryIdParam ? `${categoryIdParam}_${decoded}` : decoded;
-  }, [sessionStart, noSession, categoryIdParam]);
+    // Mora matchati format useActivities groupMap: `${user_id}_${category_id}_${session_start}`
+    if (ownerIdParam && categoryIdParam) return `${ownerIdParam}_${categoryIdParam}_${decoded}`;
+    if (categoryIdParam) return `${categoryIdParam}_${decoded}`;
+    return decoded;
+  }, [sessionStart, noSession, categoryIdParam, ownerIdParam]);
 
   const navigateBack = useCallback(() => {
     navigate('/app', { state: { highlightKey: currentSessionKey, collapseFilter: true } });
@@ -546,10 +580,10 @@ export function ViewDetailsPage() {
     if (!group) return;
     if (group.session_start) {
       const enc = encodeURIComponent(group.session_start);
-      navigate(`/app/view/${enc}?categoryId=${group.category_id}`);
+      navigate(`/app/view/${enc}?categoryId=${group.category_id}&userId=${group.user_id}`);
     } else {
       const eventId = group.events[0]?.id;
-      if (eventId) navigate(`/app/view/${eventId}?noSession=1&categoryId=${group.category_id}`);
+      if (eventId) navigate(`/app/view/${eventId}?noSession=1&categoryId=${group.category_id}&userId=${group.user_id}`);
     }
   }, [navigate]);
 
@@ -679,9 +713,16 @@ export function ViewDetailsPage() {
               </button>
             </div>
           </div>
-          <p className={cn('text-base font-medium mt-1 opacity-90', t.headerText)}>
-            {categoryPath.join(' > ')}
-          </p>
+          <div className="flex items-baseline justify-between gap-2 mt-1">
+            <p className={cn('text-base font-medium opacity-90', t.headerText)}>
+              {categoryPath.join(' > ')}
+            </p>
+            {ownerDisplayName && (
+              <p className="text-xs text-white/75 shrink-0">
+                👤 {ownerDisplayName}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Row 2: Date / Duration (read-only) */}
