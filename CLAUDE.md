@@ -208,11 +208,12 @@ Faze i status:
 - ✅ Faza 10c — HelpEvents + HelpStructure ažurirani za novi format — S43
 - ✅ Bugfix (S43 session): `structureImport.ts` — uklonjen `.eq('user_id')` filter na categories + attr_defs; RLS handle-a access
 - ✅ Faza 10e — Smart import (S44): `parseExcelFile` čita col G (User email), klasificira own/foreign redove; `confirm-users` modal korak (Skip / Import as mine); BUG-2 fiksiran
+- ✅ S45 bugfixes: `cellStr` hyperlink fix; empty legend fix; `👤` owner u View/Edit headeru; `useActivities` groupKey uključuje `user_id`; Prev/Next nosi `userId` u URL + filtrira query; `loadParentAttrs` koristi event owner userId; export mergira parent event atribute u leaf
 - ⬜ Faza 11 — Merge na main
 
 **Open bugs (collab grana):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — istražiti
-- **UX-1:** ViewDetailsPage/EditActivityPage ne pokazuje vlasnika tuđeg eventa — backlog Faza 6 dopune
+- **BUG-S45-1:** Prev/Next preskače owner-kopije kad dva usera dijele isti `session_start` — ViewDetailsPage i AppHome imaju neovisne `useActivities` instance, mogu dobiti različit redoslijed. Fix: proslijediti listu kroz `location.state` iz AppHome (Opcija A)
 - **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 
