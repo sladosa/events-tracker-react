@@ -22,6 +22,7 @@ import { useStructureData } from '@/hooks/useStructureData';
 import { SharedAreaBanner } from '@/components/sharing/SharedAreaBanner';
 import { ShareManagementModal } from '@/components/sharing/ShareManagementModal';
 import { HeaderAvatar, ProfileSettingsModal } from '@/components/sharing/ProfileSettingsModal';
+import { useActivities } from '@/hooks/useActivities';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
 
@@ -606,10 +607,21 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess 
 
 function ActivitiesView() {
   const nav = useNavigate();
-  const { fullPathDisplay, isLeafCategory, setDateRange } = useFilter();
+  const { filter, fullPathDisplay, isLeafCategory, setDateRange } = useFilter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
+
+  // Nav activities — no date filter, 500 items — passed to ViewDetailsPage via location.state
+  // so Prev/Next uses a guaranteed-identical list (BUG-S45-1 fix, Opcija A).
+  const { activities: navActivities } = useActivities({
+    areaId: filter.areaId,
+    categoryId: filter.categoryId,
+    dateFrom: null,
+    dateTo: null,
+    sortOrder: filter.sortOrder,
+    pageSize: 500,
+  });
 
   const handleEditActivity = (sessionStart: string | null, categoryId: UUID, eventId: UUID) => {
     if (sessionStart) {
@@ -623,11 +635,12 @@ function ActivitiesView() {
   };
 
   const handleViewDetails = (sessionStart: string | null, categoryId: UUID, eventId: UUID, userId: string) => {
+    const state = { navActivities, collapseFilter: true };
     if (sessionStart) {
       const encodedSessionStart = encodeURIComponent(sessionStart);
-      nav(`/app/view/${encodedSessionStart}?categoryId=${categoryId}&userId=${userId}`);
+      nav(`/app/view/${encodedSessionStart}?categoryId=${categoryId}&userId=${userId}`, { state });
     } else {
-      nav(`/app/view/${eventId}?noSession=1&categoryId=${categoryId}&userId=${userId}`);
+      nav(`/app/view/${eventId}?noSession=1&categoryId=${categoryId}&userId=${userId}`, { state });
     }
   };
 

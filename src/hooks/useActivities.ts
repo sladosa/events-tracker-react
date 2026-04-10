@@ -110,6 +110,7 @@ interface UseActivitiesOptions {
   dateTo?: string | null;
   sortOrder?: 'desc' | 'asc';   // D3: newest first (default) or oldest first
   pageSize?: number;
+  skip?: boolean;               // When true, skip fetch (e.g. caller already has list from location.state)
 }
 
 // --------------------------------------------
@@ -150,11 +151,12 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     dateFrom = null,
     dateTo = null,
     sortOrder = 'desc',
-    pageSize = 20
+    pageSize = 20,
+    skip = false,
   } = options;
 
   const [activities, setActivities] = useState<ActivityGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!skip); // skip=true → no fetch → not loading
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -615,9 +617,10 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
+    if (skip) return; // BUG-S45-1: skip fetch when caller already has the list
     logDebug('FILTER_EFFECT_TRIGGERED', { areaId, categoryId, dateFrom, dateTo });
     fetchActivities(false);
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, skip]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async () => {
     if (!loadingMore && hasMore) {

@@ -15,11 +15,11 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
-import { useActivities } from '@/hooks/useActivities';
+import { useActivities, type ActivityGroup } from '@/hooks/useActivities';
 import { useFilter } from '@/context/FilterContext';
 import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
@@ -276,13 +276,20 @@ function ReadOnlyAttributeChain({
 
 export function ViewDetailsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { sessionStart } = useParams<{ sessionStart: string }>();
   const [searchParams] = useSearchParams();
   const categoryIdParam = searchParams.get('categoryId') as UUID | null;
   const noSession = searchParams.get('noSession') === '1';
   const ownerIdParam = searchParams.get('userId');
 
-  const { filter } = useFilter();
+  // BUG-S45-1 fix (Opcija A): use navActivities from location.state when available.
+  // AppHome pre-builds this list (no date filter, 500 items) and passes it here,
+  // ensuring Prev/Next uses the exact same ordered list as the table.
+  // Fall back to own useActivities only for direct URL access / page refresh.
+  const stateNavActivities = (location.state as { navActivities?: ActivityGroup[] } | null)?.navActivities ?? null;
+
+  const { filter, sharedContext } = useFilter();
   const t = THEME.view;
 
   // DA1: Dynamički mjerimo visinu headera
@@ -311,6 +318,8 @@ export function ViewDetailsPage() {
   const [selectedEventIndex, setSelectedEventIndex] = useState(0);
   const [isOwnEvent, setIsOwnEvent] = useState(true);
   const [ownerDisplayName, setOwnerDisplayName] = useState<string | null>(null);
+  // currentUserLabel: logged-in user's email — for "area owner" display (scenarios 1–3)
+  const [currentUserLabel, setCurrentUserLabel] = useState<string | null>(null);
   // VIEW-P2: parent atributi dijeljeni za sve tabove (Activity, Gym itd.)
   const [parentAttrValues, setParentAttrValues] = useState<Map<string, { value: string | number | boolean | null; dataType: string }>>(new Map());
 
@@ -332,6 +341,7 @@ export function ViewDetailsPage() {
     setViewEvents([]);          // Reset: čisti stale evente dok se novi ne učitaju
     setIsOwnEvent(true);        // Reset: neutral dok se ne odredi (sprečava stale "You")
     setOwnerDisplayName(null);  // Reset: sprečava stale vlasnik dok se ne učita
+    setCurrentUserLabel(null);  // Reset
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -369,7 +379,21 @@ export function ViewDetailsPage() {
       setCategoryId(leafCategoryId);
       const ownEvent = events[0].user_id === user.id;
       setIsOwnEvent(ownEvent);
+
+      // Fetch logged-in user's profile for label (scenarios 1 & 2: show own email)
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('email, display_name')
+        .eq('id', user.id)
+        .single();
+      const myLabel = (myProfile as { display_name?: string | null; email?: string } | null)?.display_name
+        || (myProfile as { display_name?: string | null; email?: string } | null)?.email
+        || user.email
+        || user.id;
+      setCurrentUserLabel(myLabel);
+
       if (!ownEvent) {
+        // Foreign event: fetch activity owner's label
         const { data: profile } = await supabase
           .from('profiles')
           .select('email, display_name')
@@ -381,7 +405,8 @@ export function ViewDetailsPage() {
           events[0].user_id
         );
       } else {
-        setOwnerDisplayName('You');
+        // Own event: ownerDisplayName = own email (scenarios 1 & 2)
+        setOwnerDisplayName(myLabel);
       }
 
       // Build category path
@@ -530,14 +555,20 @@ export function ViewDetailsPage() {
   // Z1 fix: date filter je feature Home page tablice, ne navigacije. Ako bi Prev/Next
   // koristio dateFrom/dateTo, Edit koji promijeni datum aktivnosti izvan filtera bi
   // uzrokovao currentIndex === -1 → oba gumba disabled odmah nakon Save.
-  const { activities } = useActivities({
+  //
+  // BUG-S45-1 fix: if AppHome passed navActivities via location.state, use that list
+  // directly (same instance, same order). Fall back to own fetch for direct URL access.
+  const { activities: ownActivities } = useActivities({
     areaId: filter.areaId,
     categoryId: filter.categoryId,
     dateFrom: null,   // Z1: ignoriraj date filter za Prev/Next
     dateTo: null,     // Z1: ignoriraj date filter za Prev/Next
     sortOrder: filter.sortOrder,
     pageSize: 500,
+    // Skip fetch when we already have the list from AppHome
+    skip: stateNavActivities !== null,
   });
+  const activities = stateNavActivities ?? ownActivities;
 
   const currentIndex = useMemo(() => {
     if (!sessionStart) return -1;
@@ -578,14 +609,16 @@ export function ViewDetailsPage() {
 
   const navigateToGroup = useCallback((group: typeof activities[0]) => {
     if (!group) return;
+    // Forward the same navActivities list so each step in Prev/Next keeps the same order
+    const navState = { navActivities: activities };
     if (group.session_start) {
       const enc = encodeURIComponent(group.session_start);
-      navigate(`/app/view/${enc}?categoryId=${group.category_id}&userId=${group.user_id}`);
+      navigate(`/app/view/${enc}?categoryId=${group.category_id}&userId=${group.user_id}`, { state: navState });
     } else {
       const eventId = group.events[0]?.id;
-      if (eventId) navigate(`/app/view/${eventId}?noSession=1&categoryId=${group.category_id}&userId=${group.user_id}`);
+      if (eventId) navigate(`/app/view/${eventId}?noSession=1&categoryId=${group.category_id}&userId=${group.user_id}`, { state: navState });
     }
-  }, [navigate]);
+  }, [navigate, activities]);
 
   const handlePrev = useCallback(() => {
     if (hasPrev) navigateToGroup(activities[currentIndex - 1]);
@@ -717,10 +750,22 @@ export function ViewDetailsPage() {
             <p className={cn('text-base font-medium opacity-90', t.headerText)}>
               {categoryPath.join(' > ')}
             </p>
+            {/* Ownership indicator — 3 scenarios:
+                1/2  own event  → email of logged-in user
+                3    foreign event (shared area, owner view) → Area: ownerEmail / Activity: foreignEmail
+                grantee foreign → Activity: foreignEmail  */}
             {ownerDisplayName && (
-              <p className="text-xs text-white/75 shrink-0">
-                👤 {ownerDisplayName}
-              </p>
+              isOwnEvent ? (
+                <p className="text-xs text-white/80 shrink-0">👤 {ownerDisplayName}</p>
+              ) : (
+                <div className="flex flex-col items-end gap-0.5 shrink-0">
+                  {/* Area owner line: logged-in user (owner view) or sharedContext owner (grantee view) */}
+                  <p className="text-xs text-white/70">
+                    🏠 {sharedContext ? (sharedContext.ownerDisplayName || sharedContext.ownerEmail || 'Owner') : (currentUserLabel || 'You')}
+                  </p>
+                  <p className="text-xs text-amber-200 font-medium">👤 {ownerDisplayName}</p>
+                </div>
+              )
             )}
           </div>
         </div>
