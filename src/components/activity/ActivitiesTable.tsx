@@ -196,6 +196,16 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   if (activities.length === 0) {
     return (
       <div className={`p-6 ${className}`}>
+        {onImport && (
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={onImport}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+            >
+              📤 Import
+            </button>
+          </div>
+        )}
         <div className="text-center py-12">
           <div className="w-16 h-16 mx-auto mb-4 text-gray-300">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +214,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
           </div>
           <p className="text-gray-500 mb-2">No activities found</p>
           <p className="text-sm text-gray-400">
-            {filter.areaId || filter.categoryId 
+            {filter.areaId || filter.categoryId
               ? 'Try adjusting your filters or date range'
               : 'Start by adding your first activity'}
           </p>

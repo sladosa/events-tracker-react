@@ -278,10 +278,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-full overflow-hidden">
         {/* Header */}
-        <div className="bg-blue-600 px-6 py-4 flex items-center justify-between">
+        <div className="bg-blue-600 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 text-white">
             <span className="text-xl">📤</span>
             <h2 className="text-lg font-semibold">Import from Excel</h2>
@@ -295,7 +295,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto">
 
           {/* ── IDLE / File picker ── */}
           {(importState === 'idle' || importState === 'error') && (

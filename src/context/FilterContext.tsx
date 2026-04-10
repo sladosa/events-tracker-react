@@ -520,6 +520,13 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   useEffect(() => {
     const handler = async () => {
       if (!filter.areaId) return;
+      // Validate: check if selected areaId still exists (e.g. after TRUNCATE + re-import)
+      const { data: freshAreas } = await supabase.from('areas').select('id');
+      const validAreaIds = new Set((freshAreas ?? []).map((a: { id: string }) => a.id));
+      if (!validAreaIds.has(filter.areaId)) {
+        reset();
+        return;
+      }
       // If a category is selected, reload its siblings/children; otherwise reload L1+L2
       if (filter.categoryId) {
         const children = await loadChildCategories(filter.categoryId);
@@ -542,7 +549,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     };
     window.addEventListener('areas-changed', handler);
     return () => window.removeEventListener('areas-changed', handler);
-  }, [filter.areaId, filter.categoryId, selectionChain]);
+  }, [filter.areaId, filter.categoryId, selectionChain, reset]);
 
   // --------------------------------------------
   // Date & Search
