@@ -406,6 +406,11 @@ export async function addActivitiesSheetsTo(
     const ssCmp = ssA < ssB ? -1 : ssA > ssB ? 1 : 0;
     if (ssCmp !== 0) return sortOrder === 'asc' ? ssCmp : -ssCmp;
 
+    // Tie-breaker: user_id ASC — isti redosljed kao useActivities (client-side sort)
+    const uA = a.user_id ?? '';
+    const uB = b.user_id ?? '';
+    if (uA !== uB) return uA < uB ? -1 : 1;
+
     if (!a.created_at && !b.created_at) return 0;
     if (!a.created_at) return 1;
     if (!b.created_at) return -1;

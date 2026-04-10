@@ -761,9 +761,9 @@ export function ViewDetailsPage() {
                 <div className="flex flex-col items-end gap-0.5 shrink-0">
                   {/* Area owner line: logged-in user (owner view) or sharedContext owner (grantee view) */}
                   <p className="text-xs text-white/70">
-                    🏠 {sharedContext ? (sharedContext.ownerDisplayName || sharedContext.ownerEmail || 'Owner') : (currentUserLabel || 'You')}
+                    Area: {sharedContext ? (sharedContext.ownerDisplayName || sharedContext.ownerEmail || 'Owner') : (currentUserLabel || 'You')}
                   </p>
-                  <p className="text-xs text-amber-200 font-medium">👤 {ownerDisplayName}</p>
+                  <p className="text-xs text-amber-200 font-medium">Activity: {ownerDisplayName}</p>
                 </div>
               )
             )}

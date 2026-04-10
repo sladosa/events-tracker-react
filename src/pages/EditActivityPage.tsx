@@ -1347,11 +1347,11 @@ export function EditActivityPage() {
           <div className="text-4xl mb-4">🔒</div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Tuđi zapis</h2>
           <div className="mb-3 text-left bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 space-y-1">
-            <p className="text-xs text-gray-500">Area owner</p>
-            <p className="text-sm font-medium text-gray-700">🏠 {areaOwnerLabel}</p>
-            <p className="text-xs text-gray-500 mt-1">Activity owner</p>
+            <p className="text-xs text-gray-500">Area:</p>
+            <p className="text-sm font-medium text-gray-700">{areaOwnerLabel}</p>
+            <p className="text-xs text-gray-500 mt-1">Activity:</p>
             {ownerDisplayName && (
-              <p className="text-sm font-medium text-amber-700">👤 {ownerDisplayName}</p>
+              <p className="text-sm font-medium text-amber-700">{ownerDisplayName}</p>
             )}
           </div>
           <p className="text-sm text-gray-500 mb-6">
