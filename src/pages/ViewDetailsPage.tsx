@@ -330,7 +330,7 @@ export function ViewDetailsPage() {
     }
     loadActivityData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionStart, categoryIdParam, noSession]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionStart, categoryIdParam, noSession, ownerIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadActivityData = async () => {
     if (!sessionStart) return;

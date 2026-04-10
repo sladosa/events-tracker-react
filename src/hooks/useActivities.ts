@@ -396,7 +396,8 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       query = query
         .order('event_date', { ascending: sortOrder === 'asc' })
         .order('session_start', { ascending: sortOrder === 'asc', nullsFirst: false })
-        .order('category_id', { ascending: true }) // Stabilni tiebreaker: isti datum+vrijeme → konzistentan redosljed
+        .order('user_id',      { ascending: true })   // tie-breaker: isti session_start + diff user → deterministički
+        .order('category_id', { ascending: true })    // tie-breaker za parent evente iste sesije
         .range(currentOffset, currentOffset + pageSize - 1);
 
       const { data: events, error: fetchError, count } = await query;

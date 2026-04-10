@@ -191,6 +191,7 @@ export async function loadEventsForExport(
   query = query
     .order('event_date',    { ascending: !desc })
     .order('session_start', { ascending: !desc, nullsFirst: false })
+    .order('user_id',       { ascending: true })   // tie-breaker: isti sort kao useActivities
     .range(offset, offset + limit - 1);
 
   const { data, error } = await query;
