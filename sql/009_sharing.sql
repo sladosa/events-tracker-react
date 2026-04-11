@@ -180,6 +180,7 @@ USING (
 -- event_attachments — replace basic SELECT with collab-aware SELECT
 -- ============================================================
 
+
 DROP POLICY IF EXISTS "event_attach_select" ON public.event_attachments;
 CREATE POLICY "event_attach_select" ON public.event_attachments FOR SELECT
 USING (
@@ -194,3 +195,15 @@ USING (
 );
 
 -- INSERT/UPDATE/DELETE unchanged (user_id = auth.uid())
+
+-- ============================================================
+-- data_shares — unique constraint for upsert (createShare / updatePermission)
+-- Added S41: upsert uses onConflict: 'owner_id,grantee_id,target_id,share_type'
+-- Idempotent: drops first if exists
+-- ============================================================
+
+ALTER TABLE public.data_shares
+  DROP CONSTRAINT IF EXISTS data_shares_unique_share;
+ALTER TABLE public.data_shares
+  ADD CONSTRAINT data_shares_unique_share
+  UNIQUE (owner_id, grantee_id, target_id, share_type);
