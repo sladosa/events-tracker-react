@@ -5,7 +5,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 
 **Stack:** React 19 + TypeScript 5.9 + Vite 7 + Tailwind CSS 3 + Supabase + Netlify
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
-**Current dev branch:** `test-branch` → merge to `main` when ready
+**Current dev branch:** `main` (collab merged S48) — nove features na feature branchevima
 
 ---
 
@@ -211,17 +211,36 @@ Faze i status:
 - ✅ S45 bugfixes: `cellStr` hyperlink fix; empty legend fix; `👤` owner u View/Edit headeru; `useActivities` groupKey uključuje `user_id`; Prev/Next nosi `userId` u URL + filtrira query; `loadParentAttrs` koristi event owner userId; export mergira parent event atribute u leaf
 - ✅ S46 bugfixes: BUG-S45-1 — Prev/Next fix (Opcija A): `ActivitiesView` pre-builduje navActivities + prosljeđuje via `location.state`; skip option u `useActivities`; ViewDetailsPage koristi state listu; owner display — vlastiti event prikazuje email (ne "You"); tuđi event → Area: ownerEmail + Activity: foreignEmail u header; EditActivityPage "Tuđi zapis" → amber box s Area owner + Activity owner
 - ✅ S47 UX fixes: Import gumb u empty state (`ActivitiesTable`); FilterContext stale areaId reset (`areas-changed` handler validira da UUID još postoji, inače `reset()`); `ExcelImportModal` scrollable (`max-h-full flex-col`) — gumbi dostupni i s dugim listama
-- ⬜ Faza 11 — Merge na main
+- ✅ Faza 11 — Merge na main (S48): `009_sharing.sql` dodan unique constraint `data_shares_unique_share`; 008+009 pokrenuti na PROD; `collab` → `main` merge; Netlify deploy OK; tag `v1.0-collab`
 
-**Open bugs (collab grana):**
+**Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
 - **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 
-**Faza 4: historijska migracija (poseban projekt, bez vremenskog pritiska)**
+---
 
-10. **trening.xlsm analiza** — mapiranje kolona i sheetova na trenutni data model.
-11. **Import historijskih podataka** u finalnu produkcijsku bazu.
+### Backlog — sljedeći koraci (prioritetni redoslijed)
+
+**1. PROD smoke test** — manualni (T-S48-1 do T-S48-5 u PENDING_TESTS.md)
+
+**2. Playwright E2E setup** — `main` privremeno na TEST Supabase
+- `npm install -D @playwright/test` + `playwright.config.ts`
+- E1-E6: single-user scenariji (login, CRUD, Excel roundtrip)
+- E7-E10: collab scenariji (share, grantee write/read, revoke)
+- Storage bucket `event-photos` u TEST projektu treba kreirati
+- Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
+
+**3. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
+   Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
+
+**4. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
+
+**5. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
+- `trening.xlsm` analiza — mapiranje kolona i sheetova na trenutni data model
+- Import historijskih podataka u finalnu produkcijsku bazu
+
+**6. Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
 
 ---
 
