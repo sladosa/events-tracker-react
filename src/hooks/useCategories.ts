@@ -49,12 +49,12 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
         .order('level', { ascending: true })
         .order('sort_order', { ascending: true });
 
-      // Filter: only current user's categories (exclude template user by default)
-      if (!includeTemplates) {
-        query = query.eq('user_id', user.id);
-      } else {
+      // Filter: RLS handles own + shared categories automatically.
+      // Only add explicit filter when templates are requested.
+      if (includeTemplates) {
         query = query.or(`user_id.eq.${user.id},user_id.eq.${TEMPLATE_USER_ID}`);
       }
+      // Default (no templates): rely on RLS — returns own categories + shared categories
 
       // Filter by area if provided
       if (areaId) {

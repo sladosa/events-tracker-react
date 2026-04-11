@@ -76,6 +76,10 @@ function cellStr(val: ExcelJS.CellValue): string {
   if (typeof val === 'object' && 'richText' in (val as object)) {
     return ((val as { richText: { text: string }[] }).richText ?? []).map(r => r.text).join('');
   }
+  // Hyperlink cell: { text: 'email@x.com', hyperlink: 'mailto:...' }
+  if (typeof val === 'object' && 'text' in (val as object)) {
+    return String((val as { text: unknown }).text).trim();
+  }
   return String(val).trim();
 }
 
@@ -123,10 +127,7 @@ function parseLegend(ws: ExcelJS.Worksheet): { mapping: LegendMapping; legendEnd
     legendEndRow = rowNumber;
   });
 
-  if (Object.keys(mapping).length === 0) {
-    return { mapping, legendEndRow, error: 'No valid attribute mappings found in ATTRIBUTE LEGEND.' };
-  }
-
+  // Empty legend is valid — category may have no attributes
   return { mapping, legendEndRow, error: '' };
 }
 
@@ -223,8 +224,8 @@ function parseDataRows(
     const eventDate    = normalizeDateCell(row.getCell(4).value);
     const sessionStart = cellStr(row.getCell(5).value) || '09:00';
     const createdAt    = cellStr(row.getCell(6).value) || '';
-    // Comment: merged G:J, read from col 7 (G)
-    const comment      = cellStr(row.getCell(FIXED_COL_COUNT).value);
+    const rowEmail     = cellStr(row.getCell(7).value) || undefined;  // col G = User/email
+    const comment      = cellStr(row.getCell(FIXED_COL_COUNT).value); // col H = leaf comment
 
     // Attributes via legend mapping
     const attributes: Record<string, string | number | boolean | null> = {};
@@ -251,6 +252,7 @@ function parseDataRows(
       comment,
       attributes,
       _source_row:   rowNumber,
+      _row_email:    rowEmail,
     });
   });
 
@@ -261,14 +263,20 @@ function parseDataRows(
 // Public: parse Excel file → ParseResult
 // ─────────────────────────────────────────────
 
-export async function parseExcelFile(file: File): Promise<ParseResult> {
+export async function parseExcelFile(
+  file: File,
+  currentUserEmail?: string,
+  foreignMode: 'skip' | 'import_as_mine' = 'skip',
+): Promise<ParseResult> {
   const arrayBuffer = await file.arrayBuffer();
   const wb          = new ExcelJS.Workbook();
   await wb.xlsx.load(arrayBuffer);
 
+  const emptyForeign = { foreignRowCount: 0, foreignEmailsSummary: {} as Record<string, number> };
+
   // Try Events sheet by name (unified format), fall back to first worksheet
   const ws = wb.getWorksheet('Events') ?? wb.worksheets[0];
-  if (!ws) return { toCreate: [], toUpdate: [], warnings: [], errors: ['Excel file has no worksheets.'], legendMapping: {} };
+  if (!ws) return { toCreate: [], toUpdate: [], warnings: [], errors: ['Excel file has no worksheets.'], legendMapping: {}, ...emptyForeign };
 
   // Detect structure-only stub (file exported from Structure tab, not Activities)
   const stubText = cellStr(ws.getRow(1).getCell(1).value);
@@ -281,16 +289,17 @@ export async function parseExcelFile(file: File): Promise<ParseResult> {
         'To import activities, export from the Activities tab first.',
       ],
       legendMapping: {},
+      ...emptyForeign,
     };
   }
 
   // Parse legend
   const { mapping, legendEndRow, error: legendError } = parseLegend(ws);
-  if (legendError) return { toCreate: [], toUpdate: [], warnings: [], errors: [legendError], legendMapping: {} };
+  if (legendError) return { toCreate: [], toUpdate: [], warnings: [], errors: [legendError], legendMapping: {}, ...emptyForeign };
 
   // Find EVENT DATA
   const { headerRow, error: sectionError } = findEventDataSection(ws, legendEndRow);
-  if (sectionError) return { toCreate: [], toUpdate: [], warnings: [], errors: [sectionError], legendMapping: mapping };
+  if (sectionError) return { toCreate: [], toUpdate: [], warnings: [], errors: [sectionError], legendMapping: mapping, ...emptyForeign };
 
   // Validate legend vs headers
   const mismatchErrors = validateLegendHeaders(ws, mapping, headerRow);
@@ -306,7 +315,7 @@ export async function parseExcelFile(file: File): Promise<ParseResult> {
       '  2. For each mismatch: UPDATE "Col" letter OR DELETE the legend row\n' +
       '  3. Save Excel and import again\n\n' +
       '✅ Remember: ATTRIBUTE LEGEND = source of truth!';
-    return { toCreate: [], toUpdate: [], warnings: [], errors: [msg], legendMapping: mapping };
+    return { toCreate: [], toUpdate: [], warnings: [], errors: [msg], legendMapping: mapping, ...emptyForeign };
   }
 
   // Parse data rows
@@ -314,7 +323,7 @@ export async function parseExcelFile(file: File): Promise<ParseResult> {
 
   // Validate time ordering per row: created_at >= session_start
   const warnings: string[] = [];
-  const validRows: ParsedImportRow[] = [];
+  let validRows: ParsedImportRow[] = [];
 
   for (const r of allRows) {
     if (r.created_at && r.session_start) {
@@ -334,10 +343,35 @@ export async function parseExcelFile(file: File): Promise<ParseResult> {
     validRows.push(r);
   }
 
+  // Classify rows by user email (multi-user support)
+  let foreignRowCount = 0;
+  const foreignEmailsSummary: Record<string, number> = {};
+
+  if (currentUserEmail) {
+    const ownRows: ParsedImportRow[] = [];
+    for (const r of validRows) {
+      const rowEmail = r._row_email;
+      if (rowEmail && rowEmail !== currentUserEmail) {
+        // Foreign row — belongs to a different user
+        foreignRowCount++;
+        foreignEmailsSummary[rowEmail] = (foreignEmailsSummary[rowEmail] ?? 0) + 1;
+        if (foreignMode === 'import_as_mine') {
+          // Force INSERT with new ID — user_id will be set to currentUserId in apply
+          ownRows.push({ ...r, event_id: null });
+        }
+        // else 'skip': exclude from processing
+      } else {
+        // Own row (empty col G = owner row per spec)
+        ownRows.push(r);
+      }
+    }
+    validRows = ownRows;
+  }
+
   const toCreate = validRows.filter(r => !r.event_id);
   const toUpdate = validRows.filter(r => !!r.event_id);
 
-  return { toCreate, toUpdate, warnings, errors: [], legendMapping: mapping };
+  return { toCreate, toUpdate, warnings, errors: [], legendMapping: mapping, foreignRowCount, foreignEmailsSummary };
 }
 
 // ─────────────────────────────────────────────
@@ -1297,9 +1331,11 @@ export async function importEventsFromExcel(
   userId:             string,
   file:               File,
   overwriteDecisions: Map<string, 'replace' | 'add' | 'skip'> = new Map(),
+  currentUserEmail?:  string,
+  foreignMode:        'skip' | 'import_as_mine' = 'skip',
 ): Promise<ImportResult> {
   // Step 1: Parse file
-  const parsed = await parseExcelFile(file);
+  const parsed = await parseExcelFile(file, currentUserEmail, foreignMode);
   if (parsed.errors.length > 0) {
     return { created: 0, updated: 0, skipped: 0, errors: parsed.errors, warnings: parsed.warnings };
   }

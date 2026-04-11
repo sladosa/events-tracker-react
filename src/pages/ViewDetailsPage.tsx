@@ -15,11 +15,11 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
-import { useActivities } from '@/hooks/useActivities';
+import { useActivities, type ActivityGroup } from '@/hooks/useActivities';
 import { useFilter } from '@/context/FilterContext';
 import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
@@ -63,6 +63,7 @@ interface LoadedEvent {
   comment: string | null;
   created_at: string;
   edited_at: string;
+  user_id: string;
 }
 
 interface LoadedAttribute {
@@ -275,12 +276,20 @@ function ReadOnlyAttributeChain({
 
 export function ViewDetailsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { sessionStart } = useParams<{ sessionStart: string }>();
   const [searchParams] = useSearchParams();
   const categoryIdParam = searchParams.get('categoryId') as UUID | null;
   const noSession = searchParams.get('noSession') === '1';
+  const ownerIdParam = searchParams.get('userId');
 
-  const { filter } = useFilter();
+  // BUG-S45-1 fix (Opcija A): use navActivities from location.state when available.
+  // AppHome pre-builds this list (no date filter, 500 items) and passes it here,
+  // ensuring Prev/Next uses the exact same ordered list as the table.
+  // Fall back to own useActivities only for direct URL access / page refresh.
+  const stateNavActivities = (location.state as { navActivities?: ActivityGroup[] } | null)?.navActivities ?? null;
+
+  const { filter, sharedContext } = useFilter();
   const t = THEME.view;
 
   // DA1: Dynamički mjerimo visinu headera
@@ -307,6 +316,10 @@ export function ViewDetailsPage() {
   const [sessionDateTime, setSessionDateTime] = useState<Date>(new Date());
   const [viewEvents, setViewEvents] = useState<ViewEvent[]>([]);
   const [selectedEventIndex, setSelectedEventIndex] = useState(0);
+  const [isOwnEvent, setIsOwnEvent] = useState(true);
+  const [ownerDisplayName, setOwnerDisplayName] = useState<string | null>(null);
+  // currentUserLabel: logged-in user's email — for "area owner" display (scenarios 1–3)
+  const [currentUserLabel, setCurrentUserLabel] = useState<string | null>(null);
   // VIEW-P2: parent atributi dijeljeni za sve tabove (Activity, Gym itd.)
   const [parentAttrValues, setParentAttrValues] = useState<Map<string, { value: string | number | boolean | null; dataType: string }>>(new Map());
 
@@ -317,14 +330,18 @@ export function ViewDetailsPage() {
     }
     loadActivityData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionStart, categoryIdParam, noSession]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionStart, categoryIdParam, noSession, ownerIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadActivityData = async () => {
     if (!sessionStart) return;
     setIsLoading(true);
     setLoadError(null);
-    setSelectedEventIndex(0); // Reset: sprečava prikaz krivog eventa kad novi activity ima manje eventa
+    setSelectedEventIndex(0);   // Reset: sprečava prikaz krivog eventa kad novi activity ima manje eventa
     setParentAttrValues(new Map()); // Reset: sprečava stale parent atribute pri Prev/Next navigaciji
+    setViewEvents([]);          // Reset: čisti stale evente dok se novi ne učitaju
+    setIsOwnEvent(true);        // Reset: neutral dok se ne odredi (sprečava stale "You")
+    setOwnerDisplayName(null);  // Reset: sprečava stale vlasnik dok se ne učita
+    setCurrentUserLabel(null);  // Reset
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -335,9 +352,8 @@ export function ViewDetailsPage() {
       if (noSession) {
         const { data, error } = await supabase
           .from('events')
-          .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
-          .eq('id', sessionStart)
-          .eq('user_id', user.id);
+          .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id')
+          .eq('id', sessionStart);
         if (error) throw error;
         if (!data || data.length === 0) throw new Error('Activity not found');
         events = data as LoadedEvent[];
@@ -345,11 +361,13 @@ export function ViewDetailsPage() {
         const decoded = decodeURIComponent(sessionStart);
         let query = supabase
           .from('events')
-          .select('id, category_id, event_date, session_start, comment, created_at, edited_at')
-          .eq('session_start', decoded)
-          .eq('user_id', user.id);
+          .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id')
+          .eq('session_start', decoded);
         if (categoryIdParam) {
           query = query.eq('category_id', categoryIdParam);
+        }
+        if (ownerIdParam) {
+          query = query.eq('user_id', ownerIdParam);
         }
         const { data, error } = await query.order('created_at', { ascending: true });
         if (error) throw error;
@@ -359,6 +377,37 @@ export function ViewDetailsPage() {
 
       const leafCategoryId = events[events.length - 1].category_id;
       setCategoryId(leafCategoryId);
+      const ownEvent = events[0].user_id === user.id;
+      setIsOwnEvent(ownEvent);
+
+      // Fetch logged-in user's profile for label (scenarios 1 & 2: show own email)
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('email, display_name')
+        .eq('id', user.id)
+        .single();
+      const myLabel = (myProfile as { display_name?: string | null; email?: string } | null)?.display_name
+        || (myProfile as { display_name?: string | null; email?: string } | null)?.email
+        || user.email
+        || user.id;
+      setCurrentUserLabel(myLabel);
+
+      if (!ownEvent) {
+        // Foreign event: fetch activity owner's label
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email, display_name')
+          .eq('id', events[0].user_id)
+          .single();
+        setOwnerDisplayName(
+          (profile as { display_name?: string | null; email?: string } | null)?.display_name ||
+          (profile as { display_name?: string | null; email?: string } | null)?.email ||
+          events[0].user_id
+        );
+      } else {
+        // Own event: ownerDisplayName = own email (scenarios 1 & 2)
+        setOwnerDisplayName(myLabel);
+      }
 
       // Build category path
       const path = await buildCategoryPath(leafCategoryId);
@@ -427,10 +476,14 @@ export function ViewDetailsPage() {
       let newParentAttrValues = new Map<string, { value: string | number | boolean | null; dataType: string }>();
 
       if (!noSession && events[0]?.session_start) {
+        // Koristimo user_id vlasnika eventa, ne nužno logged-in usera.
+        // Kad grantee pregledava tuđi event, parent Sport event pripada vlasniku (userb),
+        // ne logged-in korisniku (owner). Isti user_id koji je korišten u leaf query.
+        const eventOwnerId = events[0].user_id;
         newParentAttrValues = await loadParentAttrs(
           leafCategoryId,
           events[0].session_start,   // DB format — ne URL decode!
-          user.id
+          eventOwnerId
         );
       }
 
@@ -502,14 +555,20 @@ export function ViewDetailsPage() {
   // Z1 fix: date filter je feature Home page tablice, ne navigacije. Ako bi Prev/Next
   // koristio dateFrom/dateTo, Edit koji promijeni datum aktivnosti izvan filtera bi
   // uzrokovao currentIndex === -1 → oba gumba disabled odmah nakon Save.
-  const { activities } = useActivities({
+  //
+  // BUG-S45-1 fix: if AppHome passed navActivities via location.state, use that list
+  // directly (same instance, same order). Fall back to own fetch for direct URL access.
+  const { activities: ownActivities } = useActivities({
     areaId: filter.areaId,
     categoryId: filter.categoryId,
     dateFrom: null,   // Z1: ignoriraj date filter za Prev/Next
     dateTo: null,     // Z1: ignoriraj date filter za Prev/Next
     sortOrder: filter.sortOrder,
     pageSize: 500,
+    // Skip fetch when we already have the list from AppHome
+    skip: stateNavActivities !== null,
   });
+  const activities = stateNavActivities ?? ownActivities;
 
   const currentIndex = useMemo(() => {
     if (!sessionStart) return -1;
@@ -521,9 +580,13 @@ export function ViewDetailsPage() {
       // Parsiranjem u ms izbjegavamo false mismatch nakon Edit→View navigacije.
       if (!g.session_start) return false;
       const sessionMatch = new Date(g.session_start).getTime() === new Date(decoded).getTime();
-      return sessionMatch && (!categoryIdParam || g.category_id === categoryIdParam);
+      const categoryMatch = !categoryIdParam || g.category_id === categoryIdParam;
+      // ownerIdParam: u collab scenariju dva korisnika mogu imati isti session_start+category
+      // (npr. nakon "Import as mine") — user_id disambiguira koji je red aktivan.
+      const userMatch = !ownerIdParam || g.user_id === ownerIdParam;
+      return sessionMatch && categoryMatch && userMatch;
     });
-  }, [activities, sessionStart, noSession, categoryIdParam]);
+  }, [activities, sessionStart, noSession, categoryIdParam, ownerIdParam]);
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex >= 0 && currentIndex < activities.length - 1;
@@ -534,8 +597,11 @@ export function ViewDetailsPage() {
     if (!sessionStart) return null;
     if (noSession) return sessionStart; // event.id je sessionKey za no-session slučaj
     const decoded = decodeURIComponent(sessionStart);
-    return categoryIdParam ? `${categoryIdParam}_${decoded}` : decoded;
-  }, [sessionStart, noSession, categoryIdParam]);
+    // Mora matchati format useActivities groupMap: `${user_id}_${category_id}_${session_start}`
+    if (ownerIdParam && categoryIdParam) return `${ownerIdParam}_${categoryIdParam}_${decoded}`;
+    if (categoryIdParam) return `${categoryIdParam}_${decoded}`;
+    return decoded;
+  }, [sessionStart, noSession, categoryIdParam, ownerIdParam]);
 
   const navigateBack = useCallback(() => {
     navigate('/app', { state: { highlightKey: currentSessionKey, collapseFilter: true } });
@@ -543,14 +609,16 @@ export function ViewDetailsPage() {
 
   const navigateToGroup = useCallback((group: typeof activities[0]) => {
     if (!group) return;
+    // Forward the same navActivities list so each step in Prev/Next keeps the same order
+    const navState = { navActivities: activities };
     if (group.session_start) {
       const enc = encodeURIComponent(group.session_start);
-      navigate(`/app/view/${enc}?categoryId=${group.category_id}`);
+      navigate(`/app/view/${enc}?categoryId=${group.category_id}&userId=${group.user_id}`, { state: navState });
     } else {
       const eventId = group.events[0]?.id;
-      if (eventId) navigate(`/app/view/${eventId}?noSession=1&categoryId=${group.category_id}`);
+      if (eventId) navigate(`/app/view/${eventId}?noSession=1&categoryId=${group.category_id}&userId=${group.user_id}`, { state: navState });
     }
-  }, [navigate]);
+  }, [navigate, activities]);
 
   const handlePrev = useCallback(() => {
     if (hasPrev) navigateToGroup(activities[currentIndex - 1]);
@@ -678,9 +746,28 @@ export function ViewDetailsPage() {
               </button>
             </div>
           </div>
-          <p className={cn('text-base font-medium mt-1 opacity-90', t.headerText)}>
-            {categoryPath.join(' > ')}
-          </p>
+          <div className="flex items-baseline justify-between gap-2 mt-1">
+            <p className={cn('text-base font-medium opacity-90', t.headerText)}>
+              {categoryPath.join(' > ')}
+            </p>
+            {/* Ownership indicator — 3 scenarios:
+                1/2  own event  → email of logged-in user
+                3    foreign event (shared area, owner view) → Area: ownerEmail / Activity: foreignEmail
+                grantee foreign → Activity: foreignEmail  */}
+            {ownerDisplayName && (
+              isOwnEvent ? (
+                <p className="text-xs text-white/80 shrink-0">👤 {ownerDisplayName}</p>
+              ) : (
+                <div className="flex flex-col items-end gap-0.5 shrink-0">
+                  {/* Area owner line: logged-in user (owner view) or sharedContext owner (grantee view) */}
+                  <p className="text-xs text-white/70">
+                    Area: {sharedContext ? (sharedContext.ownerDisplayName || sharedContext.ownerEmail || 'Owner') : (currentUserLabel || 'You')}
+                  </p>
+                  <p className="text-xs text-amber-200 font-medium">Activity: {ownerDisplayName}</p>
+                </div>
+              )
+            )}
+          </div>
         </div>
 
         {/* Row 2: Date / Duration (read-only) */}
@@ -716,16 +803,18 @@ export function ViewDetailsPage() {
             </svg>
           </button>
 
-          <button
-            type="button"
-            onClick={handleEdit}
-            className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium transition-colors', t.accent)}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Edit Activity
-          </button>
+          {isOwnEvent && (
+            <button
+              type="button"
+              onClick={handleEdit}
+              className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium transition-colors', t.accent)}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit Activity
+            </button>
+          )}
         </div>
       </header>
 

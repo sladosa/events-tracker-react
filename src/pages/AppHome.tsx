@@ -19,18 +19,16 @@ import { exportStructureExcel, structureExportFilename } from '@/lib/structureEx
 import { StructureImportModal } from '@/components/structure/StructureImportModal';
 import { saveAs } from 'file-saver';
 import { useStructureData } from '@/hooks/useStructureData';
+import { SharedAreaBanner } from '@/components/sharing/SharedAreaBanner';
+import { ShareManagementModal } from '@/components/sharing/ShareManagementModal';
+import { HeaderAvatar, ProfileSettingsModal } from '@/components/sharing/ProfileSettingsModal';
+import { useActivities } from '@/hooks/useActivities';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
 
 // --------------------------------------------
 // Icons
 // --------------------------------------------
-
-const LogoutIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-  </svg>
-);
 
 const StructureIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,6 +81,8 @@ function AppContent() {
   const location = useLocation();
   const [email, setEmail] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
+  const [displayName, setDisplayName] = useState<string>('');
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('activities');
   const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>('sunburst');
   const [isEditMode, setIsEditMode] = useState(false);
@@ -94,13 +94,19 @@ function AppContent() {
   const { refetch: refetchStructure } = useStructureData();
 
   // Get filter context
-  const { 
-    filter, 
-    isLeafCategory, 
-    fullPathDisplay, 
-    hasActiveFilter, 
+  const {
+    filter,
+    isLeafCategory,
+    fullPathDisplay,
+    hasActiveFilter,
     reset,
+    sharedContext,
+    areaHasActiveShares,
   } = useFilter();
+
+  // Share Management Modal state (Faza 7)
+  const [shareModalTarget, setShareModalTarget] = useState<{ areaId: UUID; areaName: string } | null>(null);
+  const openShareModal = (areaId: UUID, areaName: string) => setShareModalTarget({ areaId, areaName });
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -110,11 +116,26 @@ function AppContent() {
     return !state?.collapseFilter;
   });
 
-  // Get user email
+  // Ako korisnik je grantee i ima Edit Mode aktivan, resetiraj ga
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setEmail(data.session?.user.email ?? '');
-      setUserId(data.session?.user.id ?? '');
+    if (sharedContext && isEditMode) setIsEditMode(false);
+  }, [sharedContext, isEditMode]);
+
+  // Get user info (email + display_name from profiles)
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      const id = data.session?.user.id ?? '';
+      const em = data.session?.user.email ?? '';
+      setUserId(id);
+      setEmail(em);
+      if (id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', id)
+          .single();
+        setDisplayName((profile as { display_name: string | null } | null)?.display_name ?? em);
+      }
     });
   }, []);
 
@@ -164,11 +185,17 @@ function AppContent() {
     }
   };
 
-  // Can add activity only when leaf category is selected
-  const canAddActivity = isLeafCategory;
+  // D1: Read grantee cannot add activities
+  const isReadOnlyGrantee = sharedContext?.permission === 'read';
+  // Can add activity only when leaf category is selected AND not read-only
+  const canAddActivity = isLeafCategory && !isReadOnlyGrantee;
 
   // Navigate to Add Activity
   const handleAddActivity = () => {
+    if (isReadOnlyGrantee) {
+      toast.error('Read only access — cannot add activities');
+      return;
+    }
     if (!canAddActivity) {
       toast.error('Please select a leaf category first');
       return;
@@ -208,18 +235,15 @@ function AppContent() {
               </div>
             </div>
 
-            {/* User section */}
+            {/* User section — avatar opens Profile Settings modal */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 hidden md:block truncate max-w-[120px]">
-                {email}
-              </span>
-              <button
-                onClick={onSignOut}
-                className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Sign out"
-              >
-                <LogoutIcon />
-              </button>
+              {userId && (
+                <HeaderAvatar
+                  userId={userId}
+                  displayName={displayName || email}
+                  onClick={() => setShowProfileModal(true)}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -244,6 +268,18 @@ function AppContent() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Faza 7 — Entry point 1: Manage Access badge (owner, area has active shares) */}
+              {!sharedContext && areaHasActiveShares && filter.areaId && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openShareModal(filter.areaId!, fullPathDisplay.split(' > ')[0] || 'Area');
+                  }}
+                  className="flex items-center gap-1 text-xs text-purple-700 hover:text-purple-900 px-2 py-1 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors"
+                >
+                  🔗 Manage Access
+                </button>
+              )}
               {hasActiveFilter && (
                 <button
                   onClick={(e) => {
@@ -309,6 +345,7 @@ function AppContent() {
               leftIcon={<AddIcon />}
               onClick={handleAddActivity}
               disabled={!canAddActivity}
+              title={isReadOnlyGrantee ? 'Read only access' : undefined}
               className={cn(
                 'transition-all',
                 canAddActivity
@@ -388,29 +425,31 @@ function AppContent() {
                 {!isMobile && <span>{isExportingStructure ? 'Exporting...' : 'Export'}</span>}
               </button>
 
-              {/* Edit Mode toggle */}
-              <button
-                onClick={() => setIsEditMode(v => !v)}
-                title={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                  isEditMode
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white border border-amber-600'
-                    : THEME.structure.btnEditMode,
-                )}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                {!isMobile && <span>{isEditMode ? 'Exit Edit' : 'Edit Mode'}</span>}
-              </button>
+              {/* Edit Mode toggle — skriveno za grantee (read-only shared area) */}
+              {!sharedContext && (
+                <button
+                  onClick={() => setIsEditMode(v => !v)}
+                  title={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                    isEditMode
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white border border-amber-600'
+                      : THEME.structure.btnEditMode,
+                  )}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  {!isMobile && <span>{isEditMode ? 'Exit Edit' : 'Edit Mode'}</span>}
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        {/* Leaf category hint — Activities tab only */}
-        {activeTab === 'activities' && !canAddActivity && filter.categoryId && (
+        {/* Leaf category hint — Activities tab only, not shown for read grantee */}
+        {activeTab === 'activities' && !isLeafCategory && filter.categoryId && !isReadOnlyGrantee && (
           <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
             ⚠️ Select a leaf category (no subcategories) to add an activity
           </div>
@@ -426,12 +465,43 @@ function AppContent() {
               viewMode={isEditMode ? 'table' : structureViewMode}
               isEditMode={isEditMode}
               refreshKey={structureRefreshKey}
+              onManageAccess={openShareModal}
             />
           ) : (
             <ActivitiesView />
           )}
         </section>
       </main>
+
+      {/* Profile Settings Modal (Faza 8) */}
+      {showProfileModal && userId && (
+        <ProfileSettingsModal
+          userId={userId}
+          email={email}
+          onClose={() => {
+            setShowProfileModal(false);
+            // Reload display_name in case user changed it
+            supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('id', userId)
+              .single()
+              .then(({ data }) => {
+                setDisplayName((data as { display_name: string | null } | null)?.display_name ?? email);
+              });
+          }}
+          onSignOut={onSignOut}
+        />
+      )}
+
+      {/* Share Management Modal (Faza 7) */}
+      {shareModalTarget && (
+        <ShareManagementModal
+          areaId={shareModalTarget.areaId}
+          areaName={shareModalTarget.areaName}
+          onClose={() => setShareModalTarget(null)}
+        />
+      )}
 
       {/* Structure Import Modal (S20C) */}
       {showStructureImport && userId && (
@@ -492,11 +562,25 @@ interface StructureTabContentProps {
   viewMode: StructureViewMode;
   isEditMode: boolean;
   refreshKey: number;
+  /** Faza 7 — open Share Management modal */
+  onManageAccess: (areaId: UUID, areaName: string) => void;
 }
 
-function StructureTabContent({ viewMode, isEditMode, refreshKey }: StructureTabContentProps) {
+function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess }: StructureTabContentProps) {
+  const { filter, fullPathDisplay } = useFilter();
+
   return (
     <div>
+      {/* Shared area banner — Entry point 2: ⚙ Manage Access button (owner) */}
+      <SharedAreaBanner
+        tab="structure"
+        onManageAccess={
+          filter.areaId
+            ? () => onManageAccess(filter.areaId!, fullPathDisplay.split(' > ')[0] || 'Area')
+            : undefined
+        }
+      />
+
       {/* Sunburst — hidden on mobile via internal class; hidden when table mode */}
       {viewMode === 'sunburst' && !isEditMode && (
         <div className="hidden md:block p-2">
@@ -505,8 +589,13 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey }: StructureTabC
       )}
 
       {/* Table View — always visible on mobile; shown on desktop when mode=table */}
+      {/* Entry point 3: ⚙ Manage Access in CategoryChainRow ⋮ menu */}
       <div className={viewMode === 'sunburst' && !isEditMode ? 'md:hidden' : ''}>
-        <StructureTableView isEditMode={isEditMode} refreshKey={refreshKey} />
+        <StructureTableView
+          isEditMode={isEditMode}
+          refreshKey={refreshKey}
+          onManageAccess={onManageAccess}
+        />
       </div>
     </div>
   );
@@ -518,10 +607,21 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey }: StructureTabC
 
 function ActivitiesView() {
   const nav = useNavigate();
-  const { fullPathDisplay, isLeafCategory, setDateRange } = useFilter();
+  const { filter, fullPathDisplay, isLeafCategory, setDateRange } = useFilter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
+
+  // Nav activities — no date filter, 500 items — passed to ViewDetailsPage via location.state
+  // so Prev/Next uses a guaranteed-identical list (BUG-S45-1 fix, Opcija A).
+  const { activities: navActivities } = useActivities({
+    areaId: filter.areaId,
+    categoryId: filter.categoryId,
+    dateFrom: null,
+    dateTo: null,
+    sortOrder: filter.sortOrder,
+    pageSize: 500,
+  });
 
   const handleEditActivity = (sessionStart: string | null, categoryId: UUID, eventId: UUID) => {
     if (sessionStart) {
@@ -534,12 +634,13 @@ function ActivitiesView() {
     }
   };
 
-  const handleViewDetails = (sessionStart: string | null, categoryId: UUID, eventId: UUID) => {
+  const handleViewDetails = (sessionStart: string | null, categoryId: UUID, eventId: UUID, userId: string) => {
+    const state = { navActivities, collapseFilter: true };
     if (sessionStart) {
       const encodedSessionStart = encodeURIComponent(sessionStart);
-      nav(`/app/view/${encodedSessionStart}?categoryId=${categoryId}`);
+      nav(`/app/view/${encodedSessionStart}?categoryId=${categoryId}&userId=${userId}`, { state });
     } else {
-      nav(`/app/view/${eventId}?noSession=1&categoryId=${categoryId}`);
+      nav(`/app/view/${eventId}?noSession=1&categoryId=${categoryId}&userId=${userId}`, { state });
     }
   };
 
@@ -627,6 +728,9 @@ function ActivitiesView() {
           </div>
         </div>
       )}
+
+      {/* Shared area banner */}
+      <SharedAreaBanner tab="activities" />
 
       {/* Activities Table */}
       <ActivitiesTable 

@@ -48,6 +48,8 @@ export interface ExportEvent {
   comment: string | null;
   created_at: string | null;    // ISO timestamp
   event_attributes: ExportEventAttribute[];
+  user_id?: string;             // populated by excelDataLoader (raw DB field)
+  user_email?: string;          // populated by excelDataLoader after profile lookup
 }
 
 // ─────────────────────────────────────────────
@@ -67,6 +69,7 @@ export interface ParsedImportRow {
   comment:        string;
   attributes:     Record<string, string | number | boolean | null>;
   _source_row:    number;          // Original row number for error reporting
+  _row_email?:    string;          // col G value (User/email), undefined if blank
 }
 
 export interface ParseResult {
@@ -75,6 +78,8 @@ export interface ParseResult {
   warnings:   string[];
   errors:     string[];
   legendMapping: LegendMapping;
+  foreignRowCount:      number;
+  foreignEmailsSummary: Record<string, number>;
 }
 
 export interface ValidationResult {

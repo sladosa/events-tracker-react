@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events Tracker — Collab UX Design v1</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
+
+  /* Nav */
+  .doc-nav { background: #1e293b; color: white; padding: 12px 24px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
+  .doc-nav h1 { font-size: 14px; font-weight: 600; color: #94a3b8; }
+  .doc-nav a { font-size: 13px; color: #cbd5e1; text-decoration: none; padding: 4px 10px; border-radius: 6px; transition: background 0.15s; }
+  .doc-nav a:hover { background: #334155; color: white; }
+
+  /* Sections */
+  .section { max-width: 960px; margin: 32px auto; padding: 0 20px; }
+  .section-title { font-size: 22px; font-weight: 700; color: #0f172a; border-bottom: 3px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+  .section-title .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 99px; }
+  .badge-owner { background: #dbeafe; color: #1d4ed8; }
+  .badge-write { background: #d1fae5; color: #065f46; }
+  .badge-read { background: #fef3c7; color: #92400e; }
+
+  /* Scenario header */
+  .scenario { background: white; border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 24px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .scenario-header { padding: 14px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f1f5f9; }
+  .scenario-header h3 { font-size: 15px; font-weight: 600; }
+  .scenario-header p { font-size: 13px; color: #64748b; margin-top: 2px; }
+  .scenario-body { padding: 20px; }
+
+  /* App mockup frame */
+  .app-frame { border: 1.5px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: white; margin: 12px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .app-topbar { background: white; border-bottom: 1px solid #e2e8f0; padding: 10px 16px; display: flex; align-items: center; justify-between; }
+  .app-topbar .logo { display: flex; align-items: center; gap: 8px; }
+  .app-topbar .logo-icon { width: 30px; height: 30px; background: #6366f1; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; }
+  .app-topbar .app-name { font-size: 14px; font-weight: 600; color: #1e293b; }
+  .app-topbar .breadcrumb { font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 4px; }
+  .app-topbar .user-chip { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; }
+  .app-topbar .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; }
+
+  /* Filter bar */
+  .filter-bar { background: white; border-bottom: 1px solid #f1f5f9; padding: 10px 16px; }
+  .filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .filter-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .filter-select { border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px 10px; font-size: 13px; color: #374151; background: #f9fafb; }
+
+  /* Tab bar */
+  .tab-bar { display: flex; align-items: center; gap: 4px; padding: 8px 16px; border-bottom: 1px solid #e2e8f0; background: white; }
+  .tab { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .tab.active { background: #f1f5f9; color: #1e293b; }
+  .tab.inactive { color: #94a3b8; }
+  .tab-actions { margin-left: auto; display: flex; gap: 6px; }
+
+  /* Buttons */
+  .btn { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 5px; }
+  .btn-primary { background: #6366f1; color: white; }
+  .btn-outline { background: white; color: #374151; border: 1px solid #d1d5db; }
+  .btn-amber { background: #f59e0b; color: white; }
+  .btn-green { background: #10b981; color: white; }
+  .btn-red { background: #ef4444; color: white; }
+  .btn-ghost { background: transparent; color: #6366f1; border: 1px dashed #a5b4fc; }
+
+  /* Table */
+  .mock-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .mock-table th { background: #f8fafc; color: #94a3b8; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+  .mock-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #374151; vertical-align: middle; }
+  .mock-table tr:last-child td { border-bottom: none; }
+  .mock-table tr:hover td { background: #fafafa; }
+
+  /* User badge */
+  .user-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .badge-sasa { background: #dbeafe; color: #1d4ed8; }
+  .badge-ana { background: #f3e8ff; color: #7c3aed; }
+  .badge-you { background: #d1fae5; color: #065f46; }
+
+  /* User avatar circle */
+  .avatar-sm { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: white; flex-shrink: 0; }
+
+  /* Banner */
+  .banner { padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .banner-blue { background: #eff6ff; border-bottom: 1px solid #bfdbfe; color: #1d4ed8; }
+  .banner-amber { background: #fffbeb; border-bottom: 1px solid #fde68a; color: #92400e; }
+  .banner-green { background: #f0fdf4; border-bottom: 1px solid #bbf7d0; color: #065f46; }
+  .banner-purple { background: #faf5ff; border-bottom: 1px solid #e9d5ff; color: #6b21a8; }
+
+  /* Share panel */
+  .share-panel { padding: 16px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+  .share-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: white; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
+
+  /* Annotations */
+  .annotation { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; padding: 12px 16px; border-radius: 10px; font-size: 13px; }
+  .annotation.note { background: #f0f9ff; border-left: 4px solid #38bdf8; color: #0369a1; }
+  .annotation.decision { background: #fefce8; border-left: 4px solid #facc15; color: #713f12; }
+  .annotation.question { background: #fdf4ff; border-left: 4px solid #d946ef; color: #7e22ce; }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* Section divider */
+  .divider { height: 1px; background: #e2e8f0; margin: 32px 0; }
+
+  /* Pill */
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .pill-blue { background: #dbeafe; color: #1d4ed8; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; }
+  .pill-green { background: #d1fae5; color: #065f46; }
+  .pill-amber { background: #fef3c7; color: #b45309; }
+  .pill-gray { background: #f1f5f9; color: #475569; }
+
+  /* Help modal */
+  .help-modal { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: white; font-size: 13px; }
+  .help-modal h4 { font-weight: 600; margin-bottom: 8px; color: #0f172a; }
+  .help-modal ul { padding-left: 18px; line-height: 2; color: #475569; }
+
+  /* Disabled state */
+  .disabled { opacity: 0.4; pointer-events: none; }
+
+  /* Separator text */
+  .sep-text { text-align: center; font-size: 12px; color: #94a3b8; margin: 8px 0; }
+
+  .tag-new { display: inline-block; padding: 1px 6px; background: #dcfce7; color: #15803d; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+  .tag-open { display: inline-block; padding: 1px 6px; background: #fef3c7; color: #b45309; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="doc-nav">
+  <h1>Events Tracker — Collab UX Design v1</h1>
+  <a href="#overview">Overview</a>
+  <a href="#owner">Owner</a>
+  <a href="#grantee-write">Grantee (write)</a>
+  <a href="#grantee-read">Grantee (read)</a>
+  <a href="#share-mgmt">Share Mgmt</a>
+  <a href="#user-indicator">User indicator</a>
+  <a href="#request-access">Request access</a>
+  <a href="#help">Help</a>
+  <a href="#excel">Excel</a>
+  <a href="#decisions">Decisions</a>
+</nav>
+
+<!-- ============================================================ -->
+<!-- OVERVIEW -->
+<!-- ============================================================ -->
+<div class="section" id="overview">
+  <div class="section-title">📋 Overview — Sharing model</div>
+
+  <div class="grid-2">
+    <div>
+      <table class="mock-table" style="border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+        <thead><tr><th>Role</th><th>Can do</th><th>Cannot do</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="pill pill-blue">Owner</span></td>
+            <td>Everything + Share + Manage access</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-green">Grantee write</span></td>
+            <td>Add, Edit own events, Export</td>
+            <td>Edit structure, Manage shares, Delete others' events</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-amber">Grantee read</span></td>
+            <td>View events, Export</td>
+            <td>Add, Edit, Structure changes</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="annotation note">
+        <div>💡</div>
+        <div><strong>Key principle:</strong> Sharing is per-Area. Owner keeps full control of structure. User indicators only appear when an Area is shared (hidden for single-user Areas).</div>
+      </div>
+      <div class="annotation decision">
+        <div>🔑</div>
+        <div><strong>Identity:</strong> Each event records who logged it. Display name comes from <code>profiles.display_name</code> (fallback: email). Users set their own display name in Profile settings.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCENARIO 1: OWNER -->
+<!-- ============================================================ -->
+<div class="section" id="owner">
+  <div class="section-title">👤 Owner view <span class="badge badge-owner">usera@test.com</span></div>
+
+  <!-- 1A: Activities list with shared area selected -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div>
+        <h3>1A — Activities list (shared Area selected)</h3>
+        <p>Owner selects "Fitness" — an Area shared with Ana (write). User column visible.</p>
+      </div>
+    </div>
+    <div class="app-frame">
+      <!-- Topbar -->
+      <div class="app-topbar">
+        <div class="logo">
+          <div class="logo-icon">ET</div>
+          <span class="app-name">Events Tracker</span>
+          <span class="breadcrumb">📁 Fitness &gt; All Categories</span>
+        </div>
+        <div class="user-chip">
+          <div class="avatar" style="background:#6366f1">SA</div>
+          usera@test.com
+        </div>
+      </div>
+      <!-- Filter -->
+      <div class="filter-bar">
+        <div class="filter-row">
+          <span class="filter-label">Area</span>
+          <span class="filter-select">Fitness 🔗</span>
+          <span class="filter-label" style="margin-left:8px">Category</span>
+          <span class="filter-select">All Categories</span>
+          <span style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+            <span style="font-size:11px; color:#6b21a8; background:#f3e8ff; padding:3px 8px; border-radius:6px;">🔗 Shared with 1 person</span>
+            <span class="btn btn-ghost" style="font-size:11px;">⚙ Manage</span>
+          </span>
+        </div>
+      </div>
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <div class="tab active">📋 Activities</div>
+        <div class="tab inactive">📁 Structure</div>
+        <div class="tab-actions">
+          <span class="btn btn-green">+ Add Activity</span>
+          <span class="btn btn-outline">⬆ Import</span>
+          <span class="btn btn-outline">⬇ Export</span>
+        </div>
+      </div>
+      <!-- Table -->
+      <div style="padding: 0 0 8px 0;">
+        <table class="mock-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Category</th>
+              <th>User <span class="tag-new">NEW</span></th>
+              <th>Events</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2026/04/02 sri</td>
+              <td>09:15</td>
+              <td>Activity</td>
+              <td><span class="user-badge badge-you"><div class="avatar-sm" style="background:#6366f1">SA</div> You</span></td>
+              <td>1</td>
+              <td>⋮</td>
+            </tr>
+            <tr>
+              <td>2026/04/01 uto</td>
+              <td>10:30</td>
+              <td>Activity</td>
+              <td><span class="user-badge badge-ana"><div class="avatar-sm" style="background:#7c3aed">AN</div> Ana</span></td>
+              <td>1</td>
+              <td>⋮</td>
+            </tr>
+            <tr>
+              <td>2026/03/31 pon</td>
+              <td>08:00</td>
+              <td>Activity</td>
+              <td><span class="user-badge badge-you"><div class="avatar-sm" style="background:#6366f1">SA</div> You</span></td>
+              <td>2</td>
+              <td>⋮</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="annotation note" style="margin: 12px 16px;">
+      💡 <strong>User column</strong> prikazuje se samo kad je Area shared (ima aktivnih data_shares). Za non-shared Areas — kolona skrivena. "🔗 Shared with 1 person" badge u filteru → brzi link na Manage.
+    </div>
+    <div class="annotation decision" style="margin: 0 16px 12px;">
+      🔑 <strong>Owner može editirati/brisati SAMO vlastite evente</strong> (⋮ menu za tuđe evente nudi samo "View"). "You" badge = vlastiti; "Ana" badge = tuđi.
+    </div>
+  </div>
+
+  <!-- 1B: Structure tab - owner -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div>
+        <h3>1B — Structure tab (owner)</h3>
+        <p>Owner vidi Edit Mode gumb i može mijenjati strukturu normalno.</p>
+      </div>
+    </div>
+    <div class="app-frame">
+      <div class="app-topbar">
+        <div class="logo"><div class="logo-icon">ET</div><span class="app-name">Events Tracker</span><span class="breadcrumb">📁 Fitness</span></div>
+        <div class="user-chip"><div class="avatar" style="background:#6366f1">SA</div> usera@test.com</div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab inactive">📋 Activities</div>
+        <div class="tab active">📁 Structure</div>
+        <div class="tab-actions">
+          <span class="btn btn-outline">Table</span>
+          <span class="btn btn-outline">⬆ Import</span>
+          <span class="btn btn-outline">⬇ Export</span>
+          <span class="btn btn-amber">✏ Edit Mode</span>
+        </div>
+      </div>
+      <div style="padding:12px 16px; font-size:13px; color:#6b21a8; background:#faf5ff; border-bottom:1px solid #e9d5ff; display:flex; align-items:center; gap:8px;">
+        🔗 <strong>This Area is shared</strong> — Ana (write). Structure changes affect all users.
+        <span class="btn btn-ghost" style="margin-left:auto; font-size:11px;">⚙ Manage Access</span>
+      </div>
+      <table class="mock-table">
+        <thead><tr><th>Category Path</th><th>Attrs</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><strong>Fitness</strong></td><td>—</td><td>⋮</td></tr>
+          <tr><td>Fitness &gt; Activity <span class="pill pill-green" style="font-size:10px">leaf</span></td><td>3</td><td>⋮</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="annotation note" style="margin: 12px 16px 16px;">
+      💡 <strong>Purple info banner</strong> podsjeća ownera da je Area shared i da structure promjene utječu na sve korisnike. "Manage Access" → Share Management panel.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCENARIO 2: GRANTEE WRITE -->
+<!-- ============================================================ -->
+<div class="section" id="grantee-write">
+  <div class="section-title">✏️ Grantee (write) view <span class="badge badge-write">userb@test.com</span></div>
+
+  <!-- 2A: Activities list -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div>
+        <h3>2A — Activities list (write grantee)</h3>
+        <p>Grantee vidi sve evente dijeljene Area-e. Može dodavati vlastite. Edit ⋮ samo za vlastite.</p>
+      </div>
+    </div>
+    <div class="app-frame">
+      <div class="app-topbar">
+        <div class="logo"><div class="logo-icon">ET</div><span class="app-name">Events Tracker</span><span class="breadcrumb">📁 Fitness &gt; All Categories</span></div>
+        <div class="user-chip"><div class="avatar" style="background:#7c3aed">AN</div> userb@test.com</div>
+      </div>
+      <div class="banner banner-green">
+        ✅ <strong>Fitness</strong> — shared Area (write access). Owned by <strong>Saša</strong>.
+        <span style="margin-left:auto; font-size:12px; color:#065f46;">You can add and edit your own activities.</span>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-row">
+          <span class="filter-label">Area</span>
+          <span class="filter-select">Fitness</span>
+          <span class="filter-label" style="margin-left:8px">Category</span>
+          <span class="filter-select">All Categories</span>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab active">📋 Activities</div>
+        <div class="tab inactive">📁 Structure</div>
+        <div class="tab-actions">
+          <span class="btn btn-green">+ Add Activity</span>
+          <span class="btn btn-outline">⬆ Import</span>
+          <span class="btn btn-outline">⬇ Export</span>
+        </div>
+      </div>
+      <table class="mock-table">
+        <thead><tr><th>Date</th><th>Time</th><th>Category</th><th>User</th><th>Events</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>2026/04/02 sri</td><td>09:15</td><td>Activity</td>
+            <td><span class="user-badge badge-sasa"><div class="avatar-sm" style="background:#6366f1">SA</div> Saša</span></td>
+            <td>1</td><td style="color:#94a3b8">👁 View</td>
+          </tr>
+          <tr style="background:#f0fdf4">
+            <td>2026/04/01 uto</td><td>10:30</td><td>Activity</td>
+            <td><span class="user-badge badge-you"><div class="avatar-sm" style="background:#7c3aed">AN</div> You</span></td>
+            <td>1</td><td>⋮</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="annotation note" style="margin:12px 16px 16px;">
+      💡 Green banner označava shared area s write pristupom. <strong>Saša-ov red</strong>: Actions = samo "View" (ne Edit/Delete). <strong>Tvoj red</strong> (zelena pozadina): puni ⋮ menu s Edit/Delete. User kolona uvijek vidljiva u shared Area.
+    </div>
+  </div>
+
+  <!-- 2B: Structure tab grantee write -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div>
+        <h3>2B — Structure tab (write grantee)</h3>
+        <p>Grantee vidi strukturu ali NE vidi Edit Mode gumb.</p>
+      </div>
+    </div>
+    <div class="app-frame">
+      <div class="app-topbar">
+        <div class="logo"><div class="logo-icon">ET</div><span class="app-name">Events Tracker</span></div>
+        <div class="user-chip"><div class="avatar" style="background:#7c3aed">AN</div> userb@test.com</div>
+      </div>
+      <div class="banner banner-green">
+        ✅ <strong>Fitness</strong> — shared Area. Owned by <strong>Saša</strong>. Structure is read-only for you.
+      </div>
+      <div class="tab-bar">
+        <div class="tab inactive">📋 Activities</div>
+        <div class="tab active">📁 Structure</div>
+        <div class="tab-actions">
+          <span class="btn btn-outline">Table</span>
+          <span class="btn btn-outline">⬆ Import</span>
+          <span class="btn btn-outline">⬇ Export</span>
+          <!-- Edit Mode button MISSING intentionally -->
+        </div>
+      </div>
+      <table class="mock-table">
+        <thead><tr><th>Category Path</th><th>Attrs</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><strong>Fitness</strong></td><td>—</td><td style="color:#94a3b8">👁</td></tr>
+          <tr><td>Fitness &gt; Activity <span class="pill pill-green" style="font-size:10px">leaf</span></td><td>3</td><td style="color:#94a3b8">👁</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCENARIO 3: GRANTEE READ -->
+<!-- ============================================================ -->
+<div class="section" id="grantee-read">
+  <div class="section-title">👁️ Grantee (read) view <span class="badge badge-read">userb@test.com</span></div>
+
+  <!-- 3A: Activities list - read only -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div>
+        <h3>3A — Activities list (read grantee)</h3>
+        <p>Grantee vidi evente ali ne može dodavati. "Add Activity" je sakriven.</p>
+      </div>
+    </div>
+    <div class="app-frame">
+      <div class="app-topbar">
+        <div class="logo"><div class="logo-icon">ET</div><span class="app-name">Events Tracker</span></div>
+        <div class="user-chip"><div class="avatar" style="background:#7c3aed">AN</div> userb@test.com</div>
+      </div>
+      <div class="banner banner-amber">
+        👁 <strong>Fitness</strong> — shared Area (<strong>read only</strong>). Owned by <strong>Saša</strong>.
+        <button class="btn btn-outline" style="margin-left:auto; font-size:11px; border-color:#fbbf24;">✉ Request write access</button>
+      </div>
+      <div class="tab-bar">
+        <div class="tab active">📋 Activities</div>
+        <div class="tab inactive">📁 Structure</div>
+        <div class="tab-actions">
+          <!-- Add Activity hidden for read grantee -->
+          <span class="btn btn-outline disabled">+ Add Activity</span>
+          <span class="btn btn-outline">⬇ Export</span>
+        </div>
+      </div>
+      <table class="mock-table">
+        <thead><tr><th>Date</th><th>Time</th><th>Category</th><th>User</th><th>Events</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>2026/04/02 sri</td><td>09:15</td><td>Activity</td>
+            <td><span class="user-badge badge-sasa"><div class="avatar-sm" style="background:#6366f1">SA</div> Saša</span></td>
+            <td>1</td><td style="color:#94a3b8">👁 View</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="annotation decision" style="margin:12px 16px;">
+      🔑 <strong>Opcija A:</strong> "Add Activity" je greyed out (disabled) s tooltipom "Read only access".<br>
+      🔑 <strong>Opcija B:</strong> "Add Activity" gumb je potpuno sakriven. Manje confusion ali manje transparentno.
+      <br><br>
+      💬 <strong>Preporuka:</strong> Opcija A — disabled s tooltipom, user odmah vidi zašto ne može.
+    </div>
+    <div class="annotation question" style="margin:0 16px 16px;">
+      ❓ <strong>Odluka potrebna:</strong> Treba li "Export" biti dostupan za read grantee? Prema spec — da. Prikazano gore.
+    </div>
+  </div>
+
+  <!-- 3B: Request write access flow -->
+  <div class="scenario" id="request-access">
+    <div class="scenario-header">
+      <div>
+        <h3>3B — "Request write access" flow</h3>
+        <p>Grantee klikne "✉ Request write access" — bez in-app notifikacija, prikazujemo owner kontakt.</p>
+      </div>
+    </div>
+    <div class="scenario-body">
+      <div class="grid-2">
+        <div>
+          <p style="font-size:13px; color:#64748b; margin-bottom:12px;">Modal koji se otvori:</p>
+          <div style="border:1.5px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+            <div style="padding:16px; border-bottom:1px solid #f1f5f9;">
+              <div style="font-size:15px; font-weight:600; margin-bottom:6px;">Request Write Access</div>
+              <div style="font-size:13px; color:#64748b;">Area: <strong>Fitness</strong> &nbsp;|&nbsp; Owner: <strong>Saša</strong></div>
+            </div>
+            <div style="padding:16px;">
+              <p style="font-size:13px; color:#475569; margin-bottom:12px;">
+                You currently have <span class="pill pill-amber">read only</span> access. To request write access, contact the owner:
+              </p>
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; font-size:13px; display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                <div class="avatar-sm" style="background:#6366f1; width:32px; height:32px; font-size:13px;">SA</div>
+                <div>
+                  <div style="font-weight:600;">Saša</div>
+                  <div style="color:#94a3b8; font-size:12px;">usera@test.com</div>
+                </div>
+                <button class="btn btn-outline" style="margin-left:auto; font-size:11px;">📋 Copy email</button>
+              </div>
+              <p style="font-size:12px; color:#94a3b8;">
+                There is no in-app messaging. Send an email or use any other contact method.
+              </p>
+            </div>
+            <div style="padding:12px 16px; background:#f8fafc; border-top:1px solid #f1f5f9; text-align:right;">
+              <button class="btn btn-outline" style="font-size:12px;">Close</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="annotation note">
+            💡 <strong>Zašto bez in-app messaging?</strong><br>
+            Kompleksnost nije opravdana za family/friends use-case. Email je dovoljan. Jedina stvar koja se prikazuje je owner-ov email.
+          </div>
+          <div class="annotation decision" style="margin-top:12px;">
+            🔑 <strong>Owner email vidljivost:</strong> Grantee vidljiv jer je owner svjesno podijelio pristup. <code>profiles.email</code> dostupan svim auth korisnicima (RLS: SELECT za sve).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SHARE MANAGEMENT UI -->
+<!-- ============================================================ -->
+<div class="section" id="share-mgmt">
+  <div class="section-title">⚙️ Share Management UI <span class="badge badge-owner">Owner only</span></div>
+
+  <div class="scenario">
+    <div class="scenario-header">
+      <div>
+        <h3>4A — Share Management panel (gdje se otvori?)</h3>
+        <p>Dvije opcije za smještaj — panel ispod filtera ili modal.</p>
+      </div>
+    </div>
+    <div class="scenario-body">
+      <div class="grid-2">
+        <div>
+          <p style="font-size:13px; font-weight:600; color:#374151; margin-bottom:8px;">Opcija A — Inline panel ispod filtera</p>
+          <div class="app-frame">
+            <div class="filter-bar">
+              <div class="filter-row">
+                <span class="filter-select">Fitness 🔗</span>
+                <span class="btn btn-ghost" style="margin-left:auto; font-size:11px;">⚙ Manage ▲</span>
+              </div>
+            </div>
+            <div class="share-panel">
+              <div style="font-size:13px; font-weight:600; margin-bottom:10px; color:#0f172a;">Sharing — Fitness</div>
+              <div class="share-row">
+                <div class="avatar-sm" style="background:#7c3aed; width:28px; height:28px; font-size:11px;">AN</div>
+                <div style="flex:1">
+                  <div style="font-size:13px; font-weight:500;">Ana</div>
+                  <div style="font-size:11px; color:#94a3b8;">userb@test.com</div>
+                </div>
+                <span class="pill pill-green">write</span>
+                <button class="btn btn-outline" style="font-size:11px; color:#ef4444; border-color:#fca5a5;">Revoke</button>
+              </div>
+              <div class="share-row" style="border-style:dashed; color:#94a3b8;">
+                <span style="font-size:13px;">+ Invite person...</span>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:12px; color:#64748b; margin-top:6px;">Otvara se ispod filter bar-a, ne blokira sadržaj.</div>
+        </div>
+        <div>
+          <p style="font-size:13px; font-weight:600; color:#374151; margin-bottom:8px;">Opcija B — Modal (preporučeno)</p>
+          <div style="border:1.5px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+            <div style="padding:14px 16px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between;">
+              <span style="font-size:15px; font-weight:600;">Share "Fitness"</span>
+              <span style="cursor:pointer; color:#94a3b8;">✕</span>
+            </div>
+            <div style="padding:14px 16px;">
+              <div style="font-size:12px; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:8px; letter-spacing:0.05em;">Active access</div>
+              <div class="share-row" style="margin-bottom:0">
+                <div class="avatar-sm" style="background:#7c3aed; width:28px; height:28px; font-size:11px;">AN</div>
+                <div style="flex:1"><div style="font-size:13px;">Ana</div><div style="font-size:11px; color:#94a3b8;">userb@test.com</div></div>
+                <span class="pill pill-green">write</span>
+                <button class="btn btn-outline" style="font-size:11px; color:#ef4444; border-color:#fca5a5;">Revoke</button>
+              </div>
+              <div class="sep-text">— Pending invites —</div>
+              <div class="share-row" style="background:#fffbeb; border-color:#fde68a;">
+                <div style="flex:1"><div style="font-size:13px;">marko@example.com</div><div style="font-size:11px; color:#94a3b8;">Waiting for registration</div></div>
+                <span class="pill pill-amber">write</span>
+                <button class="btn btn-outline" style="font-size:11px;">Cancel</button>
+              </div>
+              <div style="border-top:1px solid #f1f5f9; margin-top:12px; padding-top:12px;">
+                <div style="font-size:12px; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:8px; letter-spacing:0.05em;">Invite someone</div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <input type="text" placeholder="email@example.com" style="flex:1; border:1px solid #e2e8f0; border-radius:8px; padding:6px 10px; font-size:13px;">
+                  <select style="border:1px solid #e2e8f0; border-radius:8px; padding:6px; font-size:13px;">
+                    <option>write</option><option>read</option>
+                  </select>
+                  <button class="btn btn-primary" style="font-size:12px;">Invite</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:12px; color:#64748b; margin-top:6px;">Modal je čišći za kompleksniji sadržaj (pending invites).</div>
+        </div>
+      </div>
+      <div class="annotation decision" style="margin-top:16px;">
+        🔑 <strong>Preporuka: Modal (Opcija B)</strong> — inline panel bi bio zbunjujući zajedno s filter expander-om koji već postoji. Modal je standardni pattern za settings.
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry points for Share Management -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div><h3>4B — Entry points za Share Management</h3><p>Gdje owner može otvoriti Share modal?</p></div>
+    </div>
+    <div class="scenario-body">
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead><tr style="background:#f8fafc;"><th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Entry point</th><th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Gdje</th><th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Prikazuje se</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">🔗 "Shared with N" badge u filter baru</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Uz Area dropdown</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Samo kad area ima active shares</td></tr>
+          <tr><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">⚙ "Manage Access" u Structure tab info banneru</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Structure tab, owner s active shares</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Samo za owner kad je area shared</td></tr>
+          <tr><td style="padding:8px 12px;">⚙ Area dropdown menu item</td><td style="padding:8px 12px;">Desno-klik ili ⋮ na Area dropdown</td><td style="padding:8px 12px;">Uvijek za owner (može share i non-shared area)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- USER INDICATOR -->
+<!-- ============================================================ -->
+<div class="section" id="user-indicator">
+  <div class="section-title">🏷️ "User" indicator — dizajn opcije</div>
+
+  <div class="scenario">
+    <div class="scenario-header"><div><h3>5A — Varijante prikaza u Activities listi</h3></div></div>
+    <div class="scenario-body">
+      <div class="grid-2">
+        <div>
+          <p style="font-size:13px; font-weight:600; margin-bottom:10px;">Opcija 1 — Avatar + Ime (preporučeno)</p>
+          <table class="mock-table" style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+            <thead><tr><th>Date</th><th>User</th></tr></thead>
+            <tbody>
+              <tr><td>2026/04/02</td><td><span class="user-badge badge-you"><div class="avatar-sm" style="background:#6366f1">SA</div> You</span></td></tr>
+              <tr><td>2026/04/01</td><td><span class="user-badge badge-ana"><div class="avatar-sm" style="background:#7c3aed">AN</div> Ana</span></td></tr>
+            </tbody>
+          </table>
+          <div style="font-size:12px; color:#64748b; margin-top:6px;">Čitljivo, distinktivno po boji, radi na mobilnom.</div>
+        </div>
+        <div>
+          <p style="font-size:13px; font-weight:600; margin-bottom:10px;">Opcija 2 — Samo avatar (kompaktno)</p>
+          <table class="mock-table" style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+            <thead><tr><th>Date</th><th style="width:40px">By</th></tr></thead>
+            <tbody>
+              <tr><td>2026/04/02</td><td><div class="avatar-sm" style="background:#6366f1; width:26px; height:26px; font-size:10px;">SA</div></td></tr>
+              <tr><td>2026/04/01</td><td><div class="avatar-sm" style="background:#7c3aed; width:26px; height:26px; font-size:10px;">AN</div></td></tr>
+            </tbody>
+          </table>
+          <div style="font-size:12px; color:#64748b; margin-top:6px;">Manje prostora, ali nije odmah čitljivo bez tooltipa.</div>
+        </div>
+      </div>
+      <div class="annotation note" style="margin-top:12px;">
+        💡 <strong>Inicijali:</strong> uzimaju se iz <code>display_name</code> (prva slova svakog dijela imena), fallback na prva 2 slova emaila. Boja je konzistentna po korisniku (hash user_id → boja).
+      </div>
+      <div class="annotation decision">
+        🔑 <strong>Preporuka: Opcija 1</strong> (avatar + ime). Na mobilnom se "User" kolona može sakriti, initijali badge ostaje u Date/Time ćeliji.
+      </div>
+    </div>
+  </div>
+
+  <!-- When to show -->
+  <div class="scenario">
+    <div class="scenario-header"><div><h3>5B — Kada prikazati User kolonu</h3></div></div>
+    <div class="scenario-body">
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead><tr style="background:#f8fafc;"><th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Situacija</th><th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Prikaži User kolonu?</th><th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Razlog</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Owner, non-shared Area</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">❌ Sakrij</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Svi eventi su njegovi — noise</td></tr>
+          <tr><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Owner, shared Area (ima active shares)</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">✅ Prikaži</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Želi vidjeti tko je što upisao</td></tr>
+          <tr><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Grantee (write ili read), shared Area</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">✅ Prikaži</td><td style="padding:8px 12px; border-bottom:1px solid #f1f5f9;">Vidi owner-ove i vlastite evente</td></tr>
+          <tr><td style="padding:8px 12px;">All Areas filter (miješano)</td><td style="padding:8px 12px;">✅ Prikaži (samo za shared areas redovi)</td><td style="padding:8px 12px;">Samo relevantni redovi imaju badge</td></tr>
+        </tbody>
+      </table>
+      <div class="annotation decision" style="margin-top:12px;">
+        🔑 Signal za owner: <code>useDataShares</code> hook koji provjerava ima li aktivnih shares za trenutnu Area. Ako da → prikaži User kolonu. Ovo zahtijeva jedan extra query (mali, može se cachirati).
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- HELP -->
+<!-- ============================================================ -->
+<div class="section" id="help">
+  <div class="section-title">❓ Help panel</div>
+
+  <div class="scenario">
+    <div class="scenario-header"><div><h3>6A — Help sadržaj i smještaj</h3></div></div>
+    <div class="scenario-body grid-2">
+      <div class="help-modal">
+        <h4>Sharing Rules — Fitness</h4>
+        <br>
+        <h4 style="color:#1d4ed8">👤 As owner you can:</h4>
+        <ul>
+          <li>View all events (yours + shared users)</li>
+          <li>Add and edit your own events</li>
+          <li>Edit structure (categories, attributes)</li>
+          <li>Invite users (read or write)</li>
+          <li>Revoke access at any time</li>
+          <li>Export all events (full backup)</li>
+        </ul>
+        <br>
+        <h4 style="color:#065f46">✏️ As write user you can:</h4>
+        <ul>
+          <li>View all events in this Area</li>
+          <li>Add and edit your own events</li>
+          <li>Export all events</li>
+        </ul>
+        <br>
+        <h4 style="color:#92400e">👁 As read user you can:</h4>
+        <ul>
+          <li>View all events in this Area</li>
+          <li>Export all events</li>
+        </ul>
+        <br>
+        <div style="font-size:12px; color:#94a3b8; padding-top:8px; border-top:1px solid #f1f5f9;">
+          ⚠ Deleting an Area deletes everyone's events — export first!
+        </div>
+      </div>
+      <div>
+        <div class="annotation note">
+          💡 <strong>Smještaj Help-a:</strong>
+          <ul style="margin-top:6px; padding-left:16px; line-height:2; font-size:13px;">
+            <li>❓ ikona u Share Management modalu</li>
+            <li>❓ ikona uz "shared area" banner</li>
+            <li>Nije potreban zasebni tab</li>
+          </ul>
+        </div>
+        <div class="annotation decision" style="margin-top:12px;">
+          🔑 Help sadržaj prilagođen trenutnoj roli (owner vidi owner pravila, grantee vidi svoja pravila).
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- EXCEL EXPORT / IMPORT -->
+<!-- ============================================================ -->
+<div class="section" id="excel">
+  <div class="section-title">📊 Excel Export / Import — collab scenarios</div>
+
+  <!-- User column format -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div>
+        <h3>7A — "User" kolona u Excel formatu</h3>
+        <p>Svaki red u Activities sheetu = jedna sesija = uvijek jedan korisnik → jedna email kolona, ne lista.</p>
+      </div>
+    </div>
+    <div class="scenario-body">
+      <p style="font-size:13px; color:#374151; margin-bottom:12px;">Primjer Activities Events sheeta sa User kolonom <span class="tag-new">NEW col</span>:</p>
+      <div style="overflow-x:auto;">
+        <table class="mock-table" style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; min-width:700px;">
+          <thead>
+            <tr>
+              <th>A — Date</th>
+              <th>B — Time</th>
+              <th>C — Category_Path</th>
+              <th style="background:#fef9c3;">D — User <span class="tag-new">NEW</span></th>
+              <th>E — attr1</th>
+              <th>F — attr2</th>
+              <th>...</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2026-04-02</td><td>09:15</td><td>Fitness &gt; Activity</td>
+              <td style="background:#fefce8;"><code style="font-size:11px;">usera@test.com</code></td>
+              <td>Running</td><td>5.2</td><td>...</td>
+            </tr>
+            <tr>
+              <td>2026-04-01</td><td>10:30</td><td>Fitness &gt; Activity</td>
+              <td style="background:#fefce8;"><code style="font-size:11px;">userb@test.com</code></td>
+              <td>Gym</td><td>60</td><td>...</td>
+            </tr>
+            <tr>
+              <td>2026-03-31</td><td>08:00</td><td>Fitness &gt; Activity</td>
+              <td style="background:#fefce8;"><code style="font-size:11px;">usera@test.com</code></td>
+              <td>Yoga</td><td>45</td><td>...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="annotation note" style="margin-top:12px;">
+        💡 <strong>Format:</strong> email (ne display_name) — stabilan identifikator koji se ne mijenja. Kolona <strong>D</strong> se ubacuje iza Category_Path, ispred atributa. Za non-shared Areas kolona postoji ali je uvijek isti email — nema vizualne razlike za single-user.
+      </div>
+      <div class="annotation decision">
+        🔑 <strong>Pozicija kolone:</strong> D (iza Category_Path) je konzistentna s trenutnim formatom gdje A=Date, B=Time, C=Category_Path. Atributi se pomiču za jedan stupac desno — breaking change! Import mora ignorirati User kolonu ako ne zna za nju (stari Excel format).
+      </div>
+    </div>
+  </div>
+
+  <!-- Export scenarios -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div><h3>7B — Export scenariji</h3><p>Tko exportira, što vidi u Excelu.</p></div>
+    </div>
+    <div class="scenario-body">
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead><tr style="background:#f8fafc;">
+          <th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Tko exportira</th>
+          <th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Koji eventi u Excelu</th>
+          <th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">User kolona</th>
+          <th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Napomena</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;"><span class="pill pill-blue">Owner</span> — vlastita (non-shared) Area</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Samo vlastiti eventi</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Da (uvijek isti email) — ili sakrij?</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Nema promjene vs danas</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;"><span class="pill pill-blue">Owner</span> — shared Area</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;"><strong>Svi eventi</strong> (vlastiti + svih grantee-a)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Da — miješani emaili</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">RLS propušta sve; ovo je puni Backup</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;"><span class="pill pill-green">Grantee write</span></td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;"><strong>Svi eventi</strong> (vlastiti + owner-ovi)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Da — miješani emaili</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">RLS propušta sve; isto kao owner export</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px;"><span class="pill pill-amber">Grantee read</span></td>
+            <td style="padding:10px 12px;"><strong>Svi eventi</strong> (read-only pristup)</td>
+            <td style="padding:10px 12px;">Da — miješani emaili</td>
+            <td style="padding:10px 12px;">Export = Backup za read grantee (odluka D5)</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="annotation note" style="margin-top:12px;">
+        💡 <strong>Implementacija:</strong> za shared Area, ukloniti <code>.eq('user_id', userId)</code> filter u <code>excelDataLoader.ts</code> kada je <code>sharedContext !== null</code> ili Area ima aktivne shares. RLS automatski filtrira što korisnik smije vidjeti.
+      </div>
+    </div>
+  </div>
+
+  <!-- Import scenarios -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div><h3>7C — Import scenariji i "User" kolona na importu</h3><p>Ključna odluka: što se radi s User kolonom na importu?</p></div>
+    </div>
+    <div class="scenario-body">
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div>
+          <div style="font-size:13px; font-weight:600; color:#374151; margin-bottom:8px;">Opcija A — Ignoriraj User kolonu <span class="pill pill-green">Preporučeno</span></div>
+          <div style="border:1px solid #bbf7d0; border-radius:10px; padding:14px; background:#f0fdf4; font-size:13px;">
+            <div style="margin-bottom:8px;">Import uvijek piše <code>user_id = trenutni korisnik</code>.</div>
+            <ul style="padding-left:16px; line-height:1.9; color:#374151;">
+              <li>✅ Jednostavna implementacija</li>
+              <li>✅ Konzistentno s P3 (Last non-empty wins)</li>
+              <li>✅ Grantee može importirati u shared Area</li>
+              <li>⚠️ Backup/restore: Ana-ini eventi postaju Sašini ako owner reimportira</li>
+            </ul>
+            <div style="margin-top:10px; padding:8px; background:white; border-radius:6px; font-size:12px; color:#065f46; border:1px solid #86efac;">
+              Warning u ImportModal: <em>"All imported events will be assigned to your account."</em>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:13px; font-weight:600; color:#374151; margin-bottom:8px;">Opcija B — Matchaj User po emailu</div>
+          <div style="border:1px solid #fde68a; border-radius:10px; padding:14px; background:#fffbeb; font-size:13px;">
+            <div style="margin-bottom:8px;">Import lookup <code>profiles.email</code> → dodijeli event pravom korisniku.</div>
+            <ul style="padding-left:16px; line-height:1.9; color:#374151;">
+              <li>✅ Backup/restore čuva originalne autore</li>
+              <li>❌ Složena implementacija</li>
+              <li>❌ Email not found → fallback? Error? Skip?</li>
+              <li>❌ Owner može "upisivati" evente pod tuđim imenom</li>
+            </ul>
+            <div style="margin-top:10px; padding:8px; background:white; border-radius:6px; font-size:12px; color:#92400e; border:1px solid #fcd34d;">
+              Nije za sada — previše edge-caseova.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import use cases table -->
+      <p style="font-size:13px; font-weight:600; color:#374151; margin-bottom:10px;">Konkretni import scenariji:</p>
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead><tr style="background:#f8fafc;">
+          <th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Scenarij</th>
+          <th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Importira kamo</th>
+          <th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Rezultat (Opcija A)</th>
+          <th style="padding:8px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">OK?</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Owner importira vlastiti backup (vlastita Area)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Vlastita Area</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Svi eventi → owner. User kolona ignorirana.</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">✅ Idealno</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Owner importira full backup (shared, ima Ana-inih)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Ista shared Area</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Ana-ini eventi postaju Owner-ovi (P3: duplicati se skipaju ako identični)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">⚠️ Prihvatljivo uz warning</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Grantee (write) importira u shared Area</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Shared Area (owner-ove kategorije)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Svi eventi → grantee user_id. RLS dozvoljava.</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">✅ Korisno</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Ana exportira Sašin Area, importira u <strong>vlastiti</strong> Area</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Ana-in vlastiti Area (iste kategorije)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Svi eventi (i Sašini!) → Ana-in user_id. Vlastita kopija.</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">✅ Korisno — "uzmi svoju kopiju"</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px;">Grantee (read) pokušava importirati</td>
+            <td style="padding:10px 12px;">Shared Area</td>
+            <td style="padding:10px 12px;">Blokiran (read grantee ne može INSERT events)</td>
+            <td style="padding:10px 12px;">✅ RLS blokira</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Breaking change warning -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div><h3>7D — Breaking change: User kolona mijenja pozicije stupaca</h3><p>Trenutni format: A=Date, B=Time, C=Category_Path, D=attr1... Nova kolona D=User pomjera atribute.</p></div>
+    </div>
+    <div class="scenario-body">
+      <div class="grid-2">
+        <div>
+          <p style="font-size:13px; font-weight:600; margin-bottom:8px;">Stari format (danas)</p>
+          <table class="mock-table" style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+            <thead><tr><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr></thead>
+            <tbody><tr style="font-size:12px; color:#64748b;"><td>Date</td><td>Time</td><td>Cat_Path</td><td>attr1</td><td>attr2</td></tr></tbody>
+          </table>
+        </div>
+        <div>
+          <p style="font-size:13px; font-weight:600; margin-bottom:8px;">Novi format (s User kolonom)</p>
+          <table class="mock-table" style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+            <thead><tr><th>A</th><th>B</th><th>C</th><th style="background:#fef9c3">D</th><th>E</th><th>F</th></tr></thead>
+            <tbody><tr style="font-size:12px; color:#64748b;"><td>Date</td><td>Time</td><td>Cat_Path</td><td style="background:#fefce8; color:#b45309; font-weight:600">User</td><td>attr1</td><td>attr2</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="annotation decision" style="margin-top:12px;">
+        🔑 <strong>Opcija A — Uvijek dodaj User kolonu</strong> (i za non-shared Areas): breaking change ali konzistentan format. Import mora handlati oba formata (s i bez User kolone) — detekcija po header vrijednosti.
+        <br><br>
+        🔑 <strong>Opcija B — User kolona samo za shared Areas</strong>: format ostaje kompatibilan za single-user. Import je jednostavniji (ako nema User kolone, sve → current user).
+        <br><br>
+        💬 <strong>Preporuka: Opcija B</strong> — backward compatibility je važna, stari fajlovi moraju raditi.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- OPEN DECISIONS -->
+<!-- ============================================================ -->
+<div class="section" id="decisions">
+  <div class="section-title">🔓 Open decisions — treba potvrda</div>
+
+  <div class="scenario">
+    <div class="scenario-body">
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead><tr style="background:#f8fafc;"><th style="padding:10px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">#</th><th style="padding:10px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Pitanje</th><th style="padding:10px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Opcije</th><th style="padding:10px 12px; text-align:left; color:#64748b; font-size:11px; border-bottom:1px solid #e2e8f0;">Preporuka</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; font-weight:600;">D1</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Add Activity button za read grantee — sakriven ili disabled?</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">A: Greyed out + tooltip<br>B: Potpuno sakriven</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; color:#0369a1;">Opcija A — jasnija komunikacija</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; font-weight:600;">D2</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Share Management UI smještaj</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">A: Inline panel<br>B: Modal</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; color:#0369a1;">Opcija B — Modal</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; font-weight:600;">D3</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">User indicator stil</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">A: Avatar + ime<br>B: Samo avatar</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; color:#0369a1;">Opcija A — čitljivije</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; font-weight:600;">D4</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">⋮ menu na tuđim eventima — što prikazuje?</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">A: Samo "View" opcija<br>B: Sakrij ⋮ menu potpuno</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; color:#0369a1;">Opcija A — "View" je korisno</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; font-weight:600;">D5</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Export za read grantee — dostupno?</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">A: Da (spec kaže da)<br>B: Ne</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; color:#0369a1;">Opcija A — Export = Backup</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; font-weight:600;">D6</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Profile settings (display_name) — gdje?</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">A: Modal iz header avatara<br>B: Zasebna /app/profile stranica</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; color:#0369a1;">Opcija A — modal je dovoljno</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; font-weight:600;">D7</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">User kolona u Excelu — email ili display_name?</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">A: Email (stabilan)<br>B: Display_name (čitljiviji)<br>C: Oboje (2 kolone)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; color:#0369a1;">Opcija A — email, stabilan i nedvosmislen</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; font-weight:600;">D8</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Import — što s User kolonom u Excelu?</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">A: Ignoriraj — svi eventi → current user<br>B: Matchaj po emailu → dodijeli pravom korisniku</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; color:#0369a1;">Opcija A — jednostavno, uz warning u UI</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; font-weight:600;">D9</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">User kolona — uvijek ili samo za shared Areas?</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">A: Uvijek (konzistentan format, breaking change)<br>B: Samo za shared (backward compatible)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; color:#0369a1;">Opcija B — backward compatibility važna</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; font-weight:600;">D10</td>
+            <td style="padding:10px 12px;">Export za read grantee — dostupno?</td>
+            <td style="padding:10px 12px;">A: Da — vidi sve, može exportirati<br>B: Ne — export samo za write+owner</td>
+            <td style="padding:10px 12px; color:#0369a1;">Opcija A — Export = Backup, korisno i za read</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top: 24px; text-align: center; color: #94a3b8; font-size: 12px;">
+    Events Tracker — Collab UX Design v1 &nbsp;|&nbsp; 2026-04-02
+  </div>
+</div>
+
+</body>
+</html>

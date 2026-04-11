@@ -2,22 +2,78 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useFilter } from '@/context/FilterContext';
+import { supabase } from '@/lib/supabaseClient';
 import { useActivities, formatTime, formatDate, type ActivityGroup } from '@/hooks/useActivities';
 import type { UUID } from '@/types';
+
+// --------------------------------------------
+// Avatar helpers
+// --------------------------------------------
+
+function hashAvatarColor(userId: string): string {
+  const colors = [
+    'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500',
+    'bg-pink-500', 'bg-teal-500', 'bg-indigo-500', 'bg-rose-500',
+  ];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) % colors.length;
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function getInitials(displayName: string): string {
+  const parts = displayName.trim().split(/[\s@.]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return '?';
+}
+
+interface UserAvatarProps {
+  userId: string;
+  displayName: string;
+  isOwn: boolean;
+}
+
+function UserAvatar({ userId, displayName, isOwn }: UserAvatarProps) {
+  const color = hashAvatarColor(userId);
+  const initials = getInitials(displayName);
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <div className={`w-6 h-6 rounded-full ${color} flex items-center justify-center flex-shrink-0`}>
+        <span className="text-white text-[10px] font-bold">{initials}</span>
+      </div>
+      {isOwn ? (
+        <span className="text-xs text-indigo-600 font-medium bg-indigo-50 px-1.5 py-0.5 rounded">You</span>
+      ) : (
+        <span className="text-xs text-gray-600 truncate">{displayName}</span>
+      )}
+    </div>
+  );
+}
 
 interface ActivitiesTableProps {
   className?: string;
   onEditActivity?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
-  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
+  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID, userId: string) => void;
   onDeleteActivity?: (sessionStart: string, categoryId: UUID) => Promise<void>;
   onExport?: () => void;
   onImport?: () => void;
 }
 
 export function ActivitiesTable({ className = '', onEditActivity, onViewDetails, onDeleteActivity, onExport, onImport }: ActivitiesTableProps) {
-  const { filter } = useFilter();
+  const { filter, sharedContext, areaHasActiveShares } = useFilter();
   const PAGE_SIZE = 20;
   const location = useLocation();
+
+  // Current user id — needed for "You" badge and D4 own-event check
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? ''));
+  }, []);
+
+  // Show User column when: grantee (sharedContext != null) OR owner with active shares
+  const showUserColumn = sharedContext !== null || areaHasActiveShares;
 
   // Highlight key from navigation state (after returning from Edit/View)
   const [highlightKey, setHighlightKey] = useState<string | null>(
@@ -140,6 +196,16 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   if (activities.length === 0) {
     return (
       <div className={`p-6 ${className}`}>
+        {onImport && (
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={onImport}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+            >
+              📤 Import
+            </button>
+          </div>
+        )}
         <div className="text-center py-12">
           <div className="w-16 h-16 mx-auto mb-4 text-gray-300">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +214,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
           </div>
           <p className="text-gray-500 mb-2">No activities found</p>
           <p className="text-sm text-gray-400">
-            {filter.areaId || filter.categoryId 
+            {filter.areaId || filter.categoryId
               ? 'Try adjusting your filters or date range'
               : 'Start by adding your first activity'}
           </p>
@@ -259,13 +325,16 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
               <th className="px-3 py-3 text-left font-medium text-gray-700 w-14 whitespace-nowrap">Time</th>
               <th className="px-3 py-3 text-left font-medium text-gray-700 max-w-[180px]">Category</th>
               <th className="px-3 py-3 text-center font-medium text-gray-700 w-16">Events</th>
+              {showUserColumn && (
+                <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell w-32">User</th>
+              )}
               <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell max-w-[140px]">Comment</th>
               <th className="px-3 py-3 text-right font-medium text-gray-700 w-12 sticky right-0 bg-gray-50 z-[2]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {activities.map((group) => (
-              <ActivityRow 
+              <ActivityRow
                 key={group.sessionKey}
                 group={group}
                 isSelected={selectedKeys.has(group.sessionKey)}
@@ -275,6 +344,8 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 onDelete={onDeleteActivity}
                 isHighlighted={group.sessionKey === highlightKey}
                 highlightRef={group.sessionKey === highlightKey ? highlightRowRef : undefined}
+                showUserColumn={showUserColumn}
+                currentUserId={currentUserId}
               />
             ))}
           </tbody>
@@ -295,21 +366,24 @@ interface ActivityRowProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onEdit?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
-  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID) => void;
+  onViewDetails?: (sessionStart: string | null, categoryId: UUID, eventId: UUID, userId: string) => void;
   onDelete?: (sessionStart: string, categoryId: UUID) => Promise<void>;
   isHighlighted?: boolean;
   highlightRef?: React.RefObject<HTMLTableRowElement | null>;
+  showUserColumn?: boolean;
+  currentUserId?: string;
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
-  
+
   const firstEvent = group.events[0];
-  
+  const isOwnEvent = !currentUserId || group.user_id === currentUserId;
+
   // Build path display (without area for brevity)
   const pathDisplay = group.category_path.slice(1).join(' > '); // Skip area name
 
@@ -412,6 +486,17 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
           </div>
         </td>
         
+        {/* User - hidden on small/medium screens; only when showUserColumn */}
+        {showUserColumn && (
+          <td className="px-3 py-2.5 hidden lg:table-cell w-32">
+            <UserAvatar
+              userId={group.user_id}
+              displayName={group.user_display_name || group.user_id}
+              isOwn={isOwnEvent}
+            />
+          </td>
+        )}
+
         {/* Comment - hidden on small/medium screens */}
         <td className="px-3 py-2.5 hidden lg:table-cell max-w-[140px]">
           <span className="text-gray-600 truncate block" title={firstEvent.comment || undefined}>
@@ -448,59 +533,64 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
                   right: menuPos.right 
                 }}
               >
-                {/* D1: View Details first, then Edit, then Delete */}
+                {/* View Details — uvijek dostupno */}
                 <button
                   onClick={() => {
-                    onViewDetails?.(group.session_start, group.category_id, firstEvent.id);
+                    onViewDetails?.(group.session_start, group.category_id, firstEvent.id, group.user_id);
                     setShowMenu(false);
                   }}
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                 >
                   👁️ View Details
                 </button>
-                <button
-                  onClick={() => {
-                    onEdit?.(group.session_start, group.category_id, firstEvent.id);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  ✏️ Edit
-                </button>
-                <hr className="my-1 border-gray-100" />
-                {/* Delete with inline confirmation */}
-                {!showDeleteConfirm ? (
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                  >
-                    🗑️ Delete Activity
-                  </button>
-                ) : (
-                  <div className="px-3 py-2 bg-red-50">
-                    <p className="text-xs text-red-700 font-medium mb-2">
-                      Delete {group.eventCount} event{group.eventCount !== 1 ? 's' : ''} + all photos?
-                    </p>
-                    <div className="flex gap-2">
+                {/* D4: Edit + Delete samo za vlastite evente */}
+                {isOwnEvent && (
+                  <>
+                    <button
+                      onClick={() => {
+                        onEdit?.(group.session_start, group.category_id, firstEvent.id);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <hr className="my-1 border-gray-100" />
+                    {/* Delete with inline confirmation */}
+                    {!showDeleteConfirm ? (
                       <button
-                        onClick={handleDeleteConfirm}
-                        disabled={isDeleting}
-                        className="flex-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                       >
-                        {isDeleting ? '...' : 'Yes, delete'}
+                        🗑️ Delete Activity
                       </button>
-                      <button
-                        onClick={() => {
-                          setShowDeleteConfirm(false);
-                          setShowMenu(false);
-                        }}
-                        disabled={isDeleting}
-                        className="flex-1 px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
+                    ) : (
+                      <div className="px-3 py-2 bg-red-50">
+                        <p className="text-xs text-red-700 font-medium mb-2">
+                          Delete {group.eventCount} event{group.eventCount !== 1 ? 's' : ''} + all photos?
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleDeleteConfirm}
+                            disabled={isDeleting}
+                            className="flex-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {isDeleting ? '...' : 'Yes, delete'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowDeleteConfirm(false);
+                              setShowMenu(false);
+                            }}
+                            disabled={isDeleting}
+                            className="flex-1 px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </>,

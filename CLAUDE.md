@@ -21,6 +21,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | `docs/SUGGEST_DEPENDSON_SPEC_v2.md` | Suggest + DependsOn editing — ✅ implemented S29–S31 |
 | `sql/SQL_schema_V5_commented.sql` | DB schema reference |
 | `docs/Code_Guidelines_React_v6.md` | Code conventions |
+| `docs/COLLAB_PLAN_v1.md` | Collab implementation plan — faze 0–8, prerequisites, checklist |
+| `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md` | Collab spec detalji — SQL politike, frontend promjene |
+| `docs/RESTRUCTURE_ANALYSIS.md` | Scenariji reorganizacije A–F, opcije 1–4 |
+| `docs/RESTRUCTURE_DECISIONS_2026-04-01.md` | Odluke donijete o reorganizaciji i Financije data modelu |
 
 ---
 
@@ -150,6 +154,17 @@ events (linked to category_id + user_id)
 - Korak 7 — Excel Import s kreiranjem strukture (S32): `parseExcelFile` detektira structure-only stub i vraća helpful error; `checkMissingCategories()` u `excelImport.ts`; `confirm-structure` state u `ExcelImportModal` — lista missing kategorija + "Create categories & continue" → `importStructureExcel` → reload → proceed
 - Filter reset after Structure delete (S33): `StructureDeleteModal` dispatcha `structure-deleted` CustomEvent s `deletedIds`; `FilterContext` resetira category (ili full reset za area) ako je obrisani node bio u aktivnom filteru
 - Category dropdown refresh after structure changes (S33): `FilterContext` sluša `areas-changed` i reloada `dropdownOptions` in-place — novo importane/dodane kategorije odmah vidljive bez navigate away
+- Collab Faza 0+1 (S34): TEST Supabase projekt kreiran (`events-tracker-test`, eu-west-1); `sql/TEST_setup.sql`, `sql/008_profiles.sql`, `sql/009_sharing.sql` primijenjeni; `useAreas`, `useCategories`, `useStructureData` — uklonjen `.eq('user_id')` filter, RLS sad handle-a shared areas; `collab` grana kreirana; `.env.testing` popunjen
+- Collab Faza 2 (S35): `Profile` + `ShareInvite` + `DataShareWithProfile` types dodani u `database.ts`; `src/hooks/useDataShares.ts` kreiran (listShares, createShare, revokeShare, cancelInvite, listInvites, fetchSharedContext); `FilterContext` dobio `sharedContext: SharedContext | null` — auto-detektira kad je aktivan filter na shared Area (grantee view)
+- Collab Faza 3 (S35): `AppHome.tsx` — Edit Mode gumb sakriven za grantee (`!sharedContext`); `useEffect` resetira `isEditMode` ako se shared Area odabere dok je Edit Mode aktivan
+- Collab Faza 4 (S35): `AddActivityPage` — read-only guard (lock ekran) za `permission !== 'write'`; `EditActivityPage` — uklonjen `user_id` filter iz leaf events SELECT, `isOwnEvent` detekcija, tuđi event prikazuje "Tuđi zapis" + link na ViewDetailsPage
+- Collab UX Design (S35): `docs/COLLAB_UX_DESIGN_v1.html` — wireframe dizajn za sve collab scenarije (Owner, Grantee write/read, Share Management, User indicator, Excel format, Request access flow); D1–D10 open decisions čekaju potvrdu
+- Collab Faza 5 (S36): `SharedContext` proširen s `ownerEmail`+`ownerDisplayName`; `fetchAreaGrantees` helper; `src/components/sharing/SharedAreaBanner.tsx` — 3 varijante bannera (owner purple, write grantee green, read grantee amber); integrirano u `AppHome.tsx` (Activities + Structure); `CategoryChainRow` — role-aware ⋮ menu (grantee: owner info + copy email + request access; owner: + Manage Access placeholder)
+- Collab bugfixes (S37): `fetchAreaGrantees` — FK join na `profiles` zamijenjen s dva odvojena querija (FK je bio na `auth.users`, ne `profiles`); `ViewDetailsPage` — uklonjen `user_id` filter koji je blokirao Prev/Next navigaciju na tuđim eventima
+- Collab Faza 6 (S38): User kolona u Activities listi — Avatar (inicijali + hash boja) + "You" badge za vlastite / ime za tuđe; `areaHasActiveShares` u `FilterContext` (owner view); `user_id`+`user_display_name` u `useActivities` (batch profile lookup); D1 — Add Activity disabled za read grantee (tooltip + toast); D4 — ⋮ menu samo View za tuđe evente
+- Collab bugfixes + testiranje (S39): RLS `categories_select` bug — koristio `categories.user_id` umjesto area ownership → `009_sharing.sql` fixed; `canAddActivity` nije blokirao read grantee na leaf → `AppHome.tsx` fixed; leaf/non-leaf hint prikazivao se za read grantee → `ProgressiveCategorySelector.tsx` + `AppHome.tsx` fixed; ViewDetailsPage `isOwnEvent` — Edit Activity gumb sakriven za tuđe evente; `fetchSharedContext` guard `.neq('owner_id', userId)` dodan
+- Collab Faza 7 (S40): `src/components/sharing/ShareManagementModal.tsx` — 3 sekcije (active access + pending invites + invite form) + help text; 3 entry pointa: (1) `🔗 Manage Access` badge u filter baru (`areaHasActiveShares`), (2) `⚙ Manage Access` u Structure OwnerBanneru, (3) `Manage Access` u CategoryChainRow ⋮ meniju; `StructureTableView` dobio `onManageAccess` prop; `AppHome.tsx` drži `shareModalTarget` state
+- Collab bugfixes + inline permission dropdown (S41): `CategoryChainRow` — "Manage Access" izvučen iz `isEditMode` guarda (uvijek vidljiv za ownera); `useDataShares.listShares` — FK join zamijenjen s dva odvojena querija (isti pattern kao `fetchAreaGrantees`); `createShare` — upsert s `onConflict` umjesto INSERT (sprječava duplikate, update permission); nova fn `updateSharePermission`; `ShareManagementModal` — inline `<select>` dropdown za read↔write na aktivnim shareovima; DB: unique constraint `data_shares_unique_share`
 
 ### Backlog — priority order
 
@@ -167,31 +182,41 @@ events (linked to category_id + user_id)
 **Faza 2: infrastruktura za suradnju**
 
 4. **Playwright E2E setup** — prerequisit za collaboration development.
-   Novi dedicirani Supabase TEST projekt (služi i za Playwright i za collab dev).
-   Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
-   Requires: Supabase test project (nije kreiran) + `.env.testing` popunjen.
+   TEST Supabase projekt kreiran (S34). Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
+   Requires: `.env.testing` ✅ popunjen; Storage bucket `event-photos` u TEST projektu nije kreiran.
 
-**Faza 3: multi-user suradnja (nova `collab` grana)**
+**Faza 3: multi-user suradnja (`collab` grana — u tijeku)**
 
-5. **`collab` branch** — `git checkout -b collab` iz test-branch.
-   `.env.local` pokazuje na Supabase TEST projekt (izolacija od produkcije).
-   Netlify Preview Deploy opcionalno.
+Detaljan plan: `docs/COLLAB_PLAN_v2.md` ← **koristiti ovo** (UX odluke finalizirane 2026-04-03)
+UX design wireframes: `docs/COLLAB_UX_DESIGN_v1.html`
+Spec detalji: `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md`
+Branch: `collab` (kreiran S34), `.env.local` → TEST Supabase
 
-6. **SQL migracije za suradnju** (na TEST Supabase):
-   - `008_profiles.sql` — `profiles` tablica (email↔UUID bridge) + trigger +
-     migracija postojećih korisnika
-   - `009_sharing.sql` — `data_shares` RLS, `share_invites` + trigger,
-     proširene SELECT/INSERT policies na areas/categories/attr_defs/events
+Faze i status:
+- ✅ Faza 0 — TEST Supabase setup (S34)
+- ✅ Faza 1 — SQL migracije 008+009 (S34); verifikacija prošla
+- ✅ Faza 2 — Frontend hooks: `useDataShares` + `FilterContext.sharedContext` (S35)
+- ✅ Faza 3 — Structure tab guard: Edit Mode sakriven za grantee (S35)
+- ✅ Faza 4 — Activity guards: AddActivity lock, EditActivity isOwnEvent (S35)
+- ✅ Faza 5 — Structure tab UX + Edit Mode fix (banners, ⋮ menu po roli) — S36
+- ✅ Faza 6 — User indicator (Activities lista: User kolona, avatar+ime, D1, D4) — S38
+- ✅ Faza 7 — Share Management UI Modal (invite, lista, revoke) — S40
+- ✅ Faza 8 — Profile settings modal (header avatar → modal, display_name edit, sign out) — S42
+- ✅ Faza 9 — Help panel (modal: poboljšan tekst + ❓ mobile toggle; grantee banneri: "What can I do?" collapsible) — S42
+- ✅ Faza 10a — Events sheet: User kolona G (email); attr kolone od I; uklonjen user_id filter (RLS); batch email lookup — S43
+- ✅ Faza 10b — Structure sheet: SharedWith kolona D (pipe-separated emails, Area-only); `loadSharedEmailsByArea` — S43
+- ✅ Faza 10c — HelpEvents + HelpStructure ažurirani za novi format — S43
+- ✅ Bugfix (S43 session): `structureImport.ts` — uklonjen `.eq('user_id')` filter na categories + attr_defs; RLS handle-a access
+- ✅ Faza 10e — Smart import (S44): `parseExcelFile` čita col G (User email), klasificira own/foreign redove; `confirm-users` modal korak (Skip / Import as mine); BUG-2 fiksiran
+- ✅ S45 bugfixes: `cellStr` hyperlink fix; empty legend fix; `👤` owner u View/Edit headeru; `useActivities` groupKey uključuje `user_id`; Prev/Next nosi `userId` u URL + filtrira query; `loadParentAttrs` koristi event owner userId; export mergira parent event atribute u leaf
+- ✅ S46 bugfixes: BUG-S45-1 — Prev/Next fix (Opcija A): `ActivitiesView` pre-builduje navActivities + prosljeđuje via `location.state`; skip option u `useActivities`; ViewDetailsPage koristi state listu; owner display — vlastiti event prikazuje email (ne "You"); tuđi event → Area: ownerEmail + Activity: foreignEmail u header; EditActivityPage "Tuđi zapis" → amber box s Area owner + Activity owner
+- ✅ S47 UX fixes: Import gumb u empty state (`ActivitiesTable`); FilterContext stale areaId reset (`areas-changed` handler validira da UUID još postoji, inače `reset()`); `ExcelImportModal` scrollable (`max-h-full flex-col`) — gumbi dostupni i s dugim listama
+- ⬜ Faza 11 — Merge na main
 
-7. **Frontend collaboration** (~13 fajlova) — useDataShares hook, Share management
-   UI (invite po emailu, lista, revoke), useAreas/useCategories proširenje,
-   FilterContext sharedContext, StructureTableView guard, AddActivity/EditActivity
-   guard, Excel Export svih evenata dijeljene Area.
-   Spec: `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md`
-
-8. **Help panel** — pravila dijeljenja vidljiva u UI.
-
-9. **Merge collab → main** — SQL migracije ručno na PROD Supabase → merge.
+**Open bugs (collab grana):**
+- **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
+- **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
+- Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 
 **Faza 4: historijska migracija (poseban projekt, bez vremenskog pritiska)**
 

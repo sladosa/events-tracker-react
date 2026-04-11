@@ -49,6 +49,8 @@ interface StructureTableViewProps {
   isEditMode: boolean;
   /** Increment to force a full data refetch and close any open panel */
   refreshKey?: number;
+  /** Owner only: open Share Management modal for an area node (Faza 7) */
+  onManageAccess?: (areaId: string, areaName: string) => void;
 }
 
 // --------------------------------------------------------
@@ -127,9 +129,9 @@ function LoadingSkeleton() {
 // Main component
 // --------------------------------------------------------
 
-export function StructureTableView({ isEditMode, refreshKey }: StructureTableViewProps) {
+export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: StructureTableViewProps) {
   const t = THEME.structure;
-  const { filter, reset: resetFilter } = useFilter();
+  const { filter, reset: resetFilter, sharedContext } = useFilter();
   const { nodes, loading, error, refetch } = useStructureData();
 
   // ---- Panel state ----
@@ -340,6 +342,8 @@ export function StructureTableView({ isEditMode, refreshKey }: StructureTableVie
                 onDelete={isEditMode ? setDeleteNode : undefined}
                 onAddChild={isEditMode ? setAddChildParent : undefined}
                 onAddBetween={setAddBetweenNode}
+                sharedContext={sharedContext}
+                onManageAccess={onManageAccess ? (n) => onManageAccess(n.id, n.name) : undefined}
               />
             </div>
           );

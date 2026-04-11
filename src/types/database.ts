@@ -268,6 +268,45 @@ export interface DataShare {
 }
 
 // --------------------------------------------
+// Table: profiles
+// --------------------------------------------
+
+export interface Profile {
+  id: UUID;
+  email: string;
+  display_name: string | null;
+  created_at: Timestamp;
+}
+
+// --------------------------------------------
+// Table: share_invites
+// --------------------------------------------
+
+export type ShareInviteStatus = 'pending' | 'accepted';
+
+export interface ShareInvite {
+  id: UUID;
+  owner_id: UUID;
+  grantee_email: string;
+  share_type: ShareType;
+  target_id: UUID;
+  permission: SharePermission;
+  status: ShareInviteStatus;
+  created_at: Timestamp;
+}
+
+export type ShareInviteInsert = Omit<ShareInvite, 'id' | 'created_at' | 'status'> & {
+  id?: UUID;
+  created_at?: Timestamp;
+  status?: ShareInviteStatus;
+};
+
+// DataShare with joined profile info (for share management UI)
+export interface DataShareWithProfile extends DataShare {
+  grantee?: Profile;
+}
+
+// --------------------------------------------
 // Helper Types for UI
 // --------------------------------------------
 

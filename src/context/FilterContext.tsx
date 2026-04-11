@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID, BreadcrumbItem, Category } from '@/types';
+import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
 
 // --------------------------------------------
 // Constants
@@ -100,6 +101,12 @@ export interface FilterContextType {
   saveToStorage: () => void;
   clearStorage: () => void;
   
+  // Shared area context — populated when active area is owned by someone else
+  sharedContext: SharedContext | null;
+
+  // True when current user owns the area AND it has at least one active share (for owner User column)
+  areaHasActiveShares: boolean;
+
   // Computed
   hasActiveFilter: boolean;
   isFiltered: boolean;
@@ -142,6 +149,10 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
 
   // === Period label ===
   const [periodLabel, setPeriodLabel] = useState<string>('All time');
+
+  // === Shared context — null = owner ili nema filtera ===
+  const [sharedContext, setSharedContext] = useState<SharedContext | null>(null);
+  const [areaHasActiveShares, setAreaHasActiveShares] = useState(false);
   
   // === Restore tracking ===
   const [isRestored, setIsRestored] = useState(false);
@@ -251,6 +262,47 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     
     doRestore();
   }, []);
+
+  // --------------------------------------------
+  // Detect if active area is shared (grantee context) or owner with active shares
+  // --------------------------------------------
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      if (!filter.areaId) {
+        setSharedContext(null);
+        setAreaHasActiveShares(false);
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
+      const ctx = await fetchSharedContext(filter.areaId, user?.id ?? null);
+      if (cancelled) return;
+      if (ctx) {
+        // Grantee — has shared context, no need to check owner shares
+        setSharedContext(ctx);
+        setAreaHasActiveShares(false);
+      } else {
+        // Owner (or no shares at all) — check if area has active shares
+        setSharedContext(null);
+        if (user?.id) {
+          const { data } = await supabase
+            .from('data_shares')
+            .select('id')
+            .eq('target_id', filter.areaId)
+            .eq('owner_id', user.id)
+            .eq('share_type', 'area')
+            .limit(1);
+          if (!cancelled) setAreaHasActiveShares((data ?? []).length > 0);
+        } else {
+          if (!cancelled) setAreaHasActiveShares(false);
+        }
+      }
+    };
+    resolve();
+    return () => { cancelled = true; };
+  }, [filter.areaId]);
 
   // --------------------------------------------
   // Database helpers (moved from component)
@@ -433,6 +485,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     setSelectionChain([]);
     setDropdownOptions([]);
     setSelectedShortcutId(null);
+    setSharedContext(null);
+    setAreaHasActiveShares(false);
     clearStorage();
   }, [clearStorage]);
 
@@ -466,6 +520,13 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   useEffect(() => {
     const handler = async () => {
       if (!filter.areaId) return;
+      // Validate: check if selected areaId still exists (e.g. after TRUNCATE + re-import)
+      const { data: freshAreas } = await supabase.from('areas').select('id');
+      const validAreaIds = new Set((freshAreas ?? []).map((a: { id: string }) => a.id));
+      if (!validAreaIds.has(filter.areaId)) {
+        reset();
+        return;
+      }
       // If a category is selected, reload its siblings/children; otherwise reload L1+L2
       if (filter.categoryId) {
         const children = await loadChildCategories(filter.categoryId);
@@ -488,7 +549,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     };
     window.addEventListener('areas-changed', handler);
     return () => window.removeEventListener('areas-changed', handler);
-  }, [filter.areaId, filter.categoryId, selectionChain]);
+  }, [filter.areaId, filter.categoryId, selectionChain, reset]);
 
   // --------------------------------------------
   // Date & Search
@@ -562,6 +623,9 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     setSortOrder,
     saveToStorage,
     clearStorage,
+    // Shared context
+    sharedContext,
+    areaHasActiveShares,
     // Computed
     hasActiveFilter,
     isFiltered

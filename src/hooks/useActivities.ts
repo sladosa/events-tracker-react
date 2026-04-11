@@ -59,6 +59,7 @@ export interface ActivityEvent {
   comment: string | null;
   created_at: string;
   edited_at: string;
+  user_id: string;
   // Joined data
   category_name: string;
   category_path: string[];   // ['Fitness', 'Activity', 'Gym', 'Strength']
@@ -78,6 +79,8 @@ export interface ActivityGroup {
   events: ActivityEvent[];
   eventCount: number;
   has_photos: boolean;       // 1.4.3: true if any event in this group has attachments
+  user_id: string;           // Owner of this session
+  user_display_name: string; // display_name ili email iz profiles
 }
 
 interface UseActivitiesResult {
@@ -107,6 +110,7 @@ interface UseActivitiesOptions {
   dateTo?: string | null;
   sortOrder?: 'desc' | 'asc';   // D3: newest first (default) or oldest first
   pageSize?: number;
+  skip?: boolean;               // When true, skip fetch (e.g. caller already has list from location.state)
 }
 
 // --------------------------------------------
@@ -133,6 +137,7 @@ interface EventRow {
   comment: string | null;
   created_at: string;
   edited_at: string;
+  user_id: string;
 }
 
 // --------------------------------------------
@@ -146,11 +151,12 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     dateFrom = null,
     dateTo = null,
     sortOrder = 'desc',
-    pageSize = 20
+    pageSize = 20,
+    skip = false,
   } = options;
 
   const [activities, setActivities] = useState<ActivityGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!skip); // skip=true → no fetch → not loading
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -370,7 +376,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       // Build query
       let query = supabase
         .from('events')
-        .select('id, category_id, event_date, session_start, comment, created_at, edited_at', { count: 'exact' });
+        .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id', { count: 'exact' });
 
       // Apply filters
       if (categoryIds.length > 0) {
@@ -390,7 +396,8 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       query = query
         .order('event_date', { ascending: sortOrder === 'asc' })
         .order('session_start', { ascending: sortOrder === 'asc', nullsFirst: false })
-        .order('category_id', { ascending: true }) // Stabilni tiebreaker: isti datum+vrijeme → konzistentan redosljed
+        .order('user_id',      { ascending: true })   // tie-breaker: isti session_start + diff user → deterministički
+        .order('category_id', { ascending: true })    // tie-breaker za parent evente iste sesije
         .range(currentOffset, currentOffset + pageSize - 1);
 
       const { data: events, error: fetchError, count } = await query;
@@ -472,13 +479,15 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         })
       );
 
-      // Group by session (category_id + session_start)
+      // Group by session (user_id + category_id + session_start)
+      // user_id is included so that two users' events at the same session_start
+      // (e.g. after "Import as mine") appear as separate rows in shared view.
       const groupMap = new Map<string, ActivityGroup>();
-      
+
       for (const event of enrichedEvents) {
         // Create session key - if no session_start, use event id (each event is its own group)
-        const sessionKey = event.session_start 
-          ? `${event.category_id}_${event.session_start}`
+        const sessionKey = event.session_start
+          ? `${event.user_id}_${event.category_id}_${event.session_start}`
           : event.id;
 
         let group = groupMap.get(sessionKey);
@@ -495,6 +504,8 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
             events: [],
             eventCount: 0,
             has_photos: false,
+            user_id: event.user_id,
+            user_display_name: '',
           };
           groupMap.set(sessionKey, group);
         }
@@ -524,7 +535,38 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         }
       }
 
-      const newGroups = Array.from(groupMap.values());
+      // Batch fetch display names for unique user_ids
+      const uniqueUserIds = [...new Set(Array.from(groupMap.values()).map(g => g.user_id))];
+      if (uniqueUserIds.length > 0) {
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('id, email, display_name')
+          .in('id', uniqueUserIds);
+        const profileMap = new Map(
+          (profileRows ?? []).map(p => [
+            p.id as string,
+            ((p as { display_name?: string | null }).display_name || (p as { email?: string }).email || '') as string,
+          ])
+        );
+        for (const group of groupMap.values()) {
+          group.user_display_name = profileMap.get(group.user_id) ?? group.user_id;
+        }
+      }
+
+      // Explicit sort for deterministic order — DB query has no stable tie-breaker
+      // for groups with same (event_date, session_start). Without this, AppHome and
+      // ViewDetailsPage (separate useActivities calls) may return different orderings,
+      // causing Prev/Next to skip or repeat groups.
+      const sortMult = sortOrder === 'asc' ? 1 : -1;
+      const newGroups = Array.from(groupMap.values()).sort((a, b) => {
+        const dateCmp = a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0;
+        if (dateCmp !== 0) return dateCmp * sortMult;
+        const ssCmp = (a.session_start ?? '') < (b.session_start ?? '') ? -1
+                    : (a.session_start ?? '') > (b.session_start ?? '') ? 1 : 0;
+        if (ssCmp !== 0) return ssCmp * sortMult;
+        // Tie-breaker: user_id alphabetically (deterministic, consistent across calls)
+        return a.user_id < b.user_id ? -1 : a.user_id > b.user_id ? 1 : 0;
+      });
       
       logDebug('GROUPING_COMPLETE', { 
         fetchId,
@@ -576,9 +618,10 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
+    if (skip) return; // BUG-S45-1: skip fetch when caller already has the list
     logDebug('FILTER_EFFECT_TRIGGERED', { areaId, categoryId, dateFrom, dateTo });
     fetchActivities(false);
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, skip]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async () => {
     if (!loadingMore && hasMore) {

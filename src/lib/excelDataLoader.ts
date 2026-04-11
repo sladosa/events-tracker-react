@@ -20,11 +20,10 @@ import type {
 // Categories
 // ─────────────────────────────────────────────
 
-export async function loadCategoriesForExport(userId: string): Promise<ExportCategoriesDict> {
+export async function loadCategoriesForExport(_userId: string): Promise<ExportCategoriesDict> {
   const { data: areas } = await supabase
     .from('areas')
     .select('id, name, sort_order')
-    .eq('user_id', userId)
     .order('sort_order');
 
   const areasMap = new Map<string, string>((areas ?? []).map(a => [a.id, a.name]));
@@ -32,7 +31,6 @@ export async function loadCategoriesForExport(userId: string): Promise<ExportCat
   const { data: cats } = await supabase
     .from('categories')
     .select('id, name, parent_category_id, area_id, level, sort_order')
-    .eq('user_id', userId)
     .order('level')
     .order('sort_order');
 
@@ -112,7 +110,7 @@ function getCategoryIdsWithParents(
 // ─────────────────────────────────────────────
 
 export async function loadAttrDefsForCategories(
-  userId:         string,
+  _userId:        string,
   categoryIds:    string[],
   categoriesDict: ExportCategoriesDict,
 ): Promise<ExportAttrDef[]> {
@@ -124,7 +122,6 @@ export async function loadAttrDefsForCategories(
   const { data: attrs } = await supabase
     .from('attribute_definitions')
     .select('id, category_id, name, data_type, unit, is_required, default_value, validation_rules, sort_order')
-    .eq('user_id', userId)
     .in('category_id', allCatIds);
 
   if (!attrs || attrs.length === 0) return [];
@@ -156,14 +153,13 @@ export async function loadAttrDefsForCategories(
 
 /** Count events matching filters (cheap COUNT query for pagination UI) */
 export async function countEventsForExport(
-  userId:  string,
+  _userId:  string,
   filters: ExportFilters,
   categoryIds: string[],
 ): Promise<number> {
   let query = supabase
     .from('events')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId);
+    .select('id', { count: 'exact', head: true });
 
   if (categoryIds.length > 0) query = query.in('category_id', categoryIds);
   if (filters.dateFrom) query = query.gte('event_date', filters.dateFrom);
@@ -173,9 +169,9 @@ export async function countEventsForExport(
   return count ?? 0;
 }
 
-/** Load a page of events with their attributes */
+/** Load a page of events with their attributes and user emails */
 export async function loadEventsForExport(
-  userId:      string,
+  _userId:     string,
   filters:     ExportFilters,
   categoryIds: string[],
   offset:      number = 0,
@@ -183,25 +179,10 @@ export async function loadEventsForExport(
 ): Promise<ExportEvent[]> {
   const desc = filters.sortOrder === 'desc';
 
+  // RLS handles access control — no .eq('user_id') needed
   let query = supabase
     .from('events')
-    .select(`
-      id,
-      category_id,
-      event_date,
-      session_start,
-      comment,
-      created_at,
-      event_attributes (
-        id,
-        attribute_definition_id,
-        value_text,
-        value_number,
-        value_datetime,
-        value_boolean
-      )
-    `)
-    .eq('user_id', userId);
+    .select(`id,user_id,category_id,event_date,session_start,comment,created_at,event_attributes(id,attribute_definition_id,value_text,value_number,value_datetime,value_boolean)`);
 
   if (categoryIds.length > 0) query = query.in('category_id', categoryIds);
   if (filters.dateFrom) query = query.gte('event_date', filters.dateFrom);
@@ -210,12 +191,29 @@ export async function loadEventsForExport(
   query = query
     .order('event_date',    { ascending: !desc })
     .order('session_start', { ascending: !desc, nullsFirst: false })
+    .order('user_id',       { ascending: true })   // tie-breaker: isti sort kao useActivities
     .range(offset, offset + limit - 1);
 
   const { data, error } = await query;
   if (error) throw error;
 
-  return (data ?? []) as unknown as ExportEvent[];
+  const rawEvents = (data ?? []) as Array<Record<string, unknown>>;
+
+  // Batch-lookup emails from profiles
+  const userIds = [...new Set(rawEvents.map(e => e.user_id as string).filter(Boolean))];
+  let emailMap = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .in('id', userIds);
+    emailMap = new Map((profiles ?? []).map(p => [p.id as string, p.email as string]));
+  }
+
+  return rawEvents.map(e => ({
+    ...e,
+    user_email: emailMap.get(e.user_id as string) ?? '',
+  })) as unknown as ExportEvent[];
 }
 
 // ─────────────────────────────────────────────
@@ -253,11 +251,11 @@ export async function resolveExportCategoryIds(
  * but as a plain async function (no React, no event counts).
  * Used by ExcelExportModal to include Structure + HelpStructure sheets.
  */
-export async function loadStructureNodes(userId: string): Promise<StructureNode[]> {
+export async function loadStructureNodes(_userId: string): Promise<StructureNode[]> {
   const [{ data: areasRaw }, { data: catsRaw }, { data: attrsRaw }] = await Promise.all([
-    supabase.from('areas').select('*').eq('user_id', userId).order('sort_order'),
-    supabase.from('categories').select('*').eq('user_id', userId).order('sort_order'),
-    supabase.from('attribute_definitions').select('*').eq('user_id', userId).order('sort_order'),
+    supabase.from('areas').select('*').order('sort_order'),
+    supabase.from('categories').select('*').order('sort_order'),
+    supabase.from('attribute_definitions').select('*').order('sort_order'),
   ]);
 
   const areas      = (areasRaw  ?? []) as Area[];
@@ -380,5 +378,98 @@ export async function loadExportData(
   const rawEvents      = await loadEventsForExport(userId, filters, categoryIds, offset, limit);
   const attrDefs       = await loadAttrDefsForCategories(userId, categoryIds, categoriesDict);
 
+  // ── Merge parent event attributes into each leaf event ──────────────────
+  // Leaf events only have their own event_attributes. Parent category attributes
+  // (e.g. Sport.napomena) live on separate parent event rows in the DB.
+  // We batch-fetch all parent events for the same sessions and merge their attrs.
+  if (rawEvents.length > 0) {
+    // Collect all parent category IDs (non-leaf parents of our leaf categoryIds)
+    const parentCatIds = new Set<string>();
+    for (const leafCatId of categoryIds) {
+      let cur = categoriesDict[leafCatId]?.parent_category_id ?? null;
+      while (cur) {
+        parentCatIds.add(cur);
+        cur = categoriesDict[cur]?.parent_category_id ?? null;
+      }
+    }
+
+    if (parentCatIds.size > 0) {
+      // Collect unique session_starts across all leaf events
+      const sessionStarts = [...new Set(rawEvents.map(e => e.session_start).filter(Boolean))] as string[];
+
+      if (sessionStarts.length > 0) {
+        // Batch fetch all parent events for these sessions
+        const { data: parentEvents } = await supabase
+          .from('events')
+          .select('id, user_id, category_id, session_start, chain_key, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
+          .in('category_id', [...parentCatIds])
+          .in('session_start', sessionStarts);
+
+        if (parentEvents && parentEvents.length > 0) {
+          // Index parent events by (user_id + chain_key + session_start)
+          // chain_key = leaf category_id (set by Add/Edit/Import flows, BUG-G fix)
+          const parentMap = new Map<string, Array<{ attribute_definition_id: string; value_text: string | null; value_number: number | null; value_datetime: string | null; value_boolean: boolean | null }>>();
+          for (const pe of parentEvents as Array<Record<string, unknown>>) {
+            const key = `${pe.user_id}__${pe.chain_key}__${pe.session_start}`;
+            if (!parentMap.has(key)) parentMap.set(key, []);
+            const attrs = (pe.event_attributes as Array<Record<string, unknown>>) ?? [];
+            for (const a of attrs) {
+              parentMap.get(key)!.push(a as { attribute_definition_id: string; value_text: string | null; value_number: number | null; value_datetime: string | null; value_boolean: boolean | null });
+            }
+          }
+
+          // Merge parent attrs into each leaf event
+          for (const ev of rawEvents) {
+            const key = `${ev.user_email ? '' : ''}${(ev as unknown as Record<string, unknown>).user_id}__${ev.category_id}__${ev.session_start}`;
+            const parentAttrs = parentMap.get(key);
+            if (parentAttrs && parentAttrs.length > 0) {
+              // Append parent attrs — excelExport.ts reads event_attributes array
+              (ev.event_attributes as unknown[]).push(...parentAttrs);
+            }
+          }
+        }
+      }
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   return { events: rawEvents, attrDefs, categoriesDict, totalCount, categoryIds };
+}
+
+// ─────────────────────────────────────────────
+// Shared emails by area (for Structure sheet SharedWith column)
+// ─────────────────────────────────────────────
+
+/**
+ * Returns a map of areaId → pipe-separated grantee emails for all areas
+ * the current user owns and has active shares for.
+ */
+export async function loadSharedEmailsByArea(userId: string): Promise<Record<string, string>> {
+  const { data: sharesData } = await supabase
+    .from('data_shares')
+    .select('target_id, grantee_id')
+    .eq('owner_id', userId)
+    .eq('share_type', 'area');
+
+  if (!sharesData || sharesData.length === 0) return {};
+
+  const granteeIds = [...new Set((sharesData as Array<{ target_id: string; grantee_id: string }>).map(s => s.grantee_id))];
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .in('id', granteeIds);
+
+  const emailMap = new Map((profiles ?? []).map(p => [p.id as string, p.email as string]));
+
+  const result: Record<string, string> = {};
+  for (const share of sharesData as Array<{ target_id: string; grantee_id: string }>) {
+    const email = emailMap.get(share.grantee_id);
+    if (!email) continue;
+    if (result[share.target_id]) {
+      result[share.target_id] += '|' + email;
+    } else {
+      result[share.target_id] = email;
+    }
+  }
+  return result;
 }

@@ -403,12 +403,10 @@ export async function importStructureExcel(
       supabase.from('areas').select('id, name, slug').eq('user_id', userId),
       supabase
         .from('categories')
-        .select('id, area_id, parent_category_id, name, slug, level, sort_order, path')
-        .eq('user_id', userId),
+        .select('id, area_id, parent_category_id, name, slug, level, sort_order, path'),
       supabase
         .from('attribute_definitions')
-        .select('id, category_id, name, slug, unit, description, sort_order, validation_rules')
-        .eq('user_id', userId),
+        .select('id, category_id, name, slug, unit, description, sort_order, validation_rules'),
     ]);
 
   if (!dbAreas || !dbCats || !dbAttrs) {

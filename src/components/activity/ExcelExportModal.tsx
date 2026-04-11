@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { saveAs } from 'file-saver';
 import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
-import { loadExportData, loadStructureNodes } from '@/lib/excelDataLoader';
+import { loadExportData, loadStructureNodes, loadSharedEmailsByArea } from '@/lib/excelDataLoader';
 import { createEventsExcel, mergeSessionEvents } from '@/lib/excelExport';
 import { timestampSuffix, type FilterSheetInfo } from '@/lib/excelUtils';
 import type { ExportFilters } from '@/lib/excelTypes';
@@ -87,11 +87,12 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
 
       const offset = (fileIndex - 1) * batchSize;
 
-      const bundle = await loadExportData(user.id, filters, offset, batchSize);
+      const [bundle, structureNodes, sharedWithByArea] = await Promise.all([
+        loadExportData(user.id, filters, offset, batchSize),
+        loadStructureNodes(user.id),
+        loadSharedEmailsByArea(user.id),
+      ]);
       const merged = mergeSessionEvents(bundle.events, bundle.categoriesDict);
-
-      // Fetch structure nodes for unified workbook (Structure + HelpStructure sheets)
-      const structureNodes = await loadStructureNodes(user.id);
 
       // Derive actual date range from exported events (for Filter sheet)
       const eventDates = bundle.events.map(e => e.event_date).filter(Boolean).sort();
@@ -127,7 +128,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         structureNodes,
         filterInfo,
         // Structure sheet shows only the area/category matching the event filter
-        { filterAreaId: filters.areaId, filterCategoryId: filters.categoryId },
+        { filterAreaId: filters.areaId, filterCategoryId: filters.categoryId, sharedWithByArea },
       );
 
       const suffix   = fileCount > 1 ? `_part${fileIndex}of${fileCount}` : '';
