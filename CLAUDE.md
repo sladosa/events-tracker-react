@@ -5,7 +5,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 
 **Stack:** React 19 + TypeScript 5.9 + Vite 7 + Tailwind CSS 3 + Supabase + Netlify
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
-**Current dev branch:** `main` (collab merged S48) — nove features na feature branchevima
+**Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
 ---
 
@@ -25,6 +25,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md` | Collab spec detalji — SQL politike, frontend promjene |
 | `docs/RESTRUCTURE_ANALYSIS.md` | Scenariji reorganizacije A–F, opcije 1–4 |
 | `docs/RESTRUCTURE_DECISIONS_2026-04-01.md` | Odluke donijete o reorganizaciji i Financije data modelu |
+| `docs/TEMPLATE_SYSTEM_SPEC.md` | Template user sistem — starter Areas za nove korisnike, Add Area "From template" |
 
 ---
 
@@ -222,25 +223,34 @@ Faze i status:
 
 ### Backlog — sljedeći koraci (prioritetni redoslijed)
 
-**1. PROD smoke test** — manualni (T-S48-1 do T-S48-5 u PENDING_TESTS.md)
+**1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
 
-**2. Playwright E2E setup** — `main` privremeno na TEST Supabase
+**2. Template system** — `sql/010_template_seed.sql` kreiran (S49); spec: `docs/TEMPLATE_SYSTEM_SPEC.md`
+- ✅ Template user kreiran u TEST bazi (`00000000-0000-0000-0000-000000000001`)
+- ✅ RLS policies za areas/categories/attr_defs uključuju template user
+- ✅ `useAreas.ts` — template areas skrivene iz filter dropdowna (`TEMPLATE_USER_ID` fix)
+- ✅ Storage bucket `activity-attachments` kreiran u TEST s policies
+- ⬜ Add Area "From template" flow u `StructureAddAreaPanel` — dropdown template areas + copy mehanizam
+- ⬜ Template user password postaviti u TEST i PROD (Saša može loginati kao template user za upravljanje)
+- ⬜ 010_template_seed.sql pokrenuti na PROD (odgođeno — najprije testirati na TEST)
+- ⬜ Garmin API adapter (future) — template kao schema za external source mapping
+
+**3. Playwright E2E setup** — `test-branch` na TEST Supabase (`.env.local` već pointa na TEST)
 - `npm install -D @playwright/test` + `playwright.config.ts`
 - E1-E6: single-user scenariji (login, CRUD, Excel roundtrip)
 - E7-E10: collab scenariji (share, grantee write/read, revoke)
-- Storage bucket `event-photos` u TEST projektu treba kreirati
 - Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
 
-**3. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
+**4. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
    Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
 
-**4. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
+**5. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
 
-**5. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
+**6. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
 - `trening.xlsm` analiza — mapiranje kolona i sheetova na trenutni data model
 - Import historijskih podataka u finalnu produkcijsku bazu
 
-**6. Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
+**7. Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
 
 ---
 

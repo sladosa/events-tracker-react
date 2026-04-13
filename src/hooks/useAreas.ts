@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import type { Area } from '@/types';
 
 // Template user ID - koristi se za "starter" podatke za nove korisnike
-const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000000';
+const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 interface UseAreasOptions {
   includeTemplates?: boolean; // Default: false - prikaži samo svoje
@@ -41,12 +41,10 @@ export function useAreas(options: UseAreasOptions = {}): UseAreasReturn {
         .order('sort_order', { ascending: true });
 
       // Filter: RLS handles own + shared areas automatically.
-      // Only add explicit filter when templates are requested.
-      if (includeTemplates) {
-        // Include both user's and template's (RLS already covers own + shared)
-        query = query.or(`user_id.eq.${user.id},user_id.eq.${TEMPLATE_USER_ID}`);
+      // Explicitly exclude template user so they never appear in filter dropdown.
+      if (!includeTemplates) {
+        query = query.neq('user_id', TEMPLATE_USER_ID);
       }
-      // Default (no templates): rely on RLS — returns own areas + shared areas
 
       const { data, error: fetchError } = await query;
 
