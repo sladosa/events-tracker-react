@@ -65,11 +65,41 @@ kao polazna točka. Template data je manageable kroz postojeći UI (Structure ta
 
 **Napomena:** Ako user već ima Area s istim slugom — ne nudi je u dropdownu.
 
-### B. Template user password (prioritet 2)
+### B. Template user password + login procedura
 
-- Postaviti password u TEST Supabase dashboard → Authentication → Users → template user → Reset password
-- Isti postupak na PROD kad se 010_template_seed.sql pokrene na PROD
-- Login kao `system-templates@events-tracker.local` → koristiti Structure tab za upravljanje templateima
+#### Postavljanje passworda (jednom po bazi)
+
+**TEST:**
+1. Idi na TEST Supabase dashboard → Authentication → Users
+2. Template user nije vidljiv u listi (insertiran via SQL) → koristi SQL Editor:
+   ```sql
+   -- Postavi password direktno
+   UPDATE auth.users
+   SET encrypted_password = crypt('TvojPassword123!', gen_salt('bf'))
+   WHERE id = '00000000-0000-0000-0000-000000000001';
+   ```
+3. Alternativno: Supabase dashboard → Authentication → Users → "Add user" ne radi za postojećeg;
+   koristi gornji SQL
+
+**PROD:** isti postupak, ali tek nakon što se `010_template_seed.sql` pokrene na PROD.
+
+#### Login kao template user (za upravljanje templateima)
+
+1. Otvori `localhost:5173` (TEST) ili Netlify URL (PROD)
+2. Prijavi se s:
+   - Email: `system-templates@events-tracker.local`
+   - Password: (onaj koji si postavio gore)
+3. Vidiš normalnu aplikaciju — ali kao template user
+4. Koristi **Structure tab** za upravljanje Areas/Categories/Attributes
+5. Možeš koristiti **Excel export/import** za batch izmjene template strukture
+
+#### Provjera da filter fix radi (test procedura)
+
+1. Logiraj se kao `system-templates@events-tracker.local`
+2. Provjeri da vidiš svoje Areas (Health, Fitness, Finance, Work, Personal)
+3. Odjavi se → logiraj se kao `sasasladoljev59@gmail.com`
+4. Otvori Area dropdown → template areas **ne smiju biti vidljive**
+5. Otvori Structure tab → Edit Mode → Add Area → ovdje će biti "From template" opcija (kad se implementira)
 
 ### C. Garmin API adapter (future / backlog)
 
