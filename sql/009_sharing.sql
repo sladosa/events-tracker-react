@@ -82,6 +82,7 @@ DROP POLICY IF EXISTS "areas_select" ON public.areas;
 CREATE POLICY "areas_select" ON public.areas FOR SELECT
 USING (
   auth.uid() = user_id
+  OR user_id = '00000000-0000-0000-0000-000000000001'
   OR id IN (
     SELECT target_id FROM public.data_shares
     WHERE grantee_id = auth.uid() AND share_type = 'area'
