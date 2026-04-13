@@ -231,7 +231,7 @@ Faze i status:
 - ✅ `useAreas.ts` — template areas skrivene iz filter dropdowna (`TEMPLATE_USER_ID` fix)
 - ✅ Storage bucket `activity-attachments` kreiran u TEST s policies
 - ⬜ Add Area "From template" flow u `StructureAddAreaPanel` — dropdown template areas + copy mehanizam
-- ⬜ Template user password postaviti u TEST i PROD (Saša može loginati kao template user za upravljanje)
+- ⬜ Template user login — GoTrue ne prihvaća `.local` domenu; odgođeno; alternativa: pravi email (sasa+template@gmail.com) kad bude potrebno
 - ⬜ 010_template_seed.sql pokrenuti na PROD (odgođeno — najprije testirati na TEST)
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 

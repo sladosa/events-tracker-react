@@ -67,7 +67,13 @@ kao polazna točka. Template data je manageable kroz postojeći UI (Structure ta
 
 ### B. Template user password + login procedura
 
-#### Postavljanje passworda (jednom po bazi)
+#### Status: ODGOĐENO (backlog)
+
+GoTrue auth service ne prihvaća `.local` email domenu — login vraća "Database error querying schema" čak i s ispravnim passwordom i svim potrebnim poljima (`aud`, `instance_id`). Alternativa kad bude potrebno: kreirati template usera s pravim emailom (npr. `sasa+template@gmail.com`) i migrirati UUID.
+
+Za sada: template data se upravlja direktno u `sql/010_template_seed.sql`.
+
+#### Postavljanje passworda (jednom po bazi) — za buduću upotrebu
 
 **TEST:**
 1. Idi na TEST Supabase dashboard → Authentication → Users
