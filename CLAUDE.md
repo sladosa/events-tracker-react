@@ -235,11 +235,12 @@ Faze i status:
 - ⬜ 010_template_seed.sql pokrenuti na PROD (odgođeno — najprije testirati na TEST)
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
-**3. Playwright E2E setup** — `test-branch` na TEST Supabase (`.env.local` već pointa na TEST)
-- `npm install -D @playwright/test` + `playwright.config.ts`
-- E1-E6: single-user scenariji (login, CRUD, Excel roundtrip)
-- E7-E10: collab scenariji (share, grantee write/read, revoke)
-- Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
+**3. Playwright E2E setup** — infrastruktura kreirana S50 ⬜ (pending first run + selector tuning)
+- `playwright.config.ts` + `e2e/fixtures/auth.ts` + `e2e/setup/seed.sql` ✅
+- E1–E6 single-user + E7–E10 collab specs ✅
+- Instalacija još nije pokrenuta: `npm install -D @playwright/test dotenv && npx playwright install chromium`
+- Seed SQL treba pokrenuti jednokatno u TEST Supabase: `e2e/setup/seed.sql`
+- Potencijalni problemi: ⋮ menu selektori, combobox indeksi, Supabase LS key — vidi `Claude-temp_R/test-sessions/S50_tests.md`
 
 **4. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
    Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).

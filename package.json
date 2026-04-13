@@ -9,7 +9,11 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "check": "npm run typecheck && npm run lint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report e2e/playwright-report"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.0",

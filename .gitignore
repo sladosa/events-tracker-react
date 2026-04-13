@@ -182,3 +182,8 @@ supabase/.temp*
 
 # Test environment (credentials — never commit)
 .env.testing
+
+# Playwright
+/e2e/test-results/
+/e2e/playwright-report/
+/playwright-report/
