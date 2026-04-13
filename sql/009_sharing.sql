@@ -98,7 +98,7 @@ USING (
 DROP POLICY IF EXISTS "categories_select" ON public.categories;
 CREATE POLICY "categories_select" ON public.categories FOR SELECT
 USING (
-  area_id IN (SELECT id FROM public.areas WHERE user_id = auth.uid())
+  area_id IN (SELECT id FROM public.areas WHERE user_id = auth.uid() OR user_id = '00000000-0000-0000-0000-000000000001')
   OR area_id IN (
     SELECT target_id FROM public.data_shares
     WHERE grantee_id = auth.uid() AND share_type = 'area'
@@ -115,6 +115,7 @@ DROP POLICY IF EXISTS "attr_def_select" ON public.attribute_definitions;
 CREATE POLICY "attr_def_select" ON public.attribute_definitions FOR SELECT
 USING (
   auth.uid() = user_id
+  OR user_id = '00000000-0000-0000-0000-000000000001'
   OR category_id IN (
     SELECT c.id FROM public.categories c
     JOIN public.data_shares ds ON c.area_id = ds.target_id
