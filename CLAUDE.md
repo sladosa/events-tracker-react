@@ -213,10 +213,13 @@ Faze i status:
 - ✅ Faza 11 — Merge na main (S48): `009_sharing.sql` dodan unique constraint `data_shares_unique_share`; 008+009 pokrenuti na PROD; `collab` → `main` merge; Netlify deploy OK; tag `v1.0-collab`
 - ✅ S49: Template user setup u TEST bazi; RLS policies; `useAreas.ts` template filter; `activity-attachments` bucket
 - ✅ S50–S51: Playwright E2E — instalacija, `playwright.config.ts`, `auth.ts`, `filter.ts`, `seed.sql`, E1–E10 specs; selector tuning; `data-testid` na `CategoryChainRow`; svi E1–E10 prolaze
+- ✅ S52: Template "From template" flow — `StructureAddAreaPanel` radio toggle; `useTemplateAreas()` hook; slug filter (bug fix: `n.area.user_id === userId`); preview async counts; copy logic (area + categories + attr_defs s UUID remapiranjem); `e2e/tests/e11-template.spec.ts` E11-1 do E11-5 prolaze; `deleteAreaCascade` helper u auth.ts
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
 - **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
+- **BUG-S52-1:** Preview u "From template" modalu pokazuje krive counts (9/14 umjesto 3/2 za Health template) — `.eq('area_id', id)` query vraća sve template categories; needs investigation
+- **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 
 ---
@@ -230,9 +233,11 @@ Faze i status:
 - ✅ RLS policies za areas/categories/attr_defs uključuju template user
 - ✅ `useAreas.ts` — template areas skrivene iz filter dropdowna (`TEMPLATE_USER_ID` fix)
 - ✅ Storage bucket `activity-attachments` kreiran u TEST s policies
-- ⬜ Add Area "From template" flow u `StructureAddAreaPanel` — dropdown template areas + copy mehanizam
-- ⬜ Template user login — GoTrue ne prihvaća `.local` domenu; odgođeno; alternativa: pravi email (sasa+template@gmail.com) kad bude potrebno
-- ⬜ 010_template_seed.sql pokrenuti na PROD (odgođeno — najprije testirati na TEST)
+- ✅ Add Area "From template" flow — `StructureAddAreaPanel` radio toggle + dropdown + preview + copy (S52)
+- ⬜ **BUG-S52-1 istraga:** Preview counts pogrešni (9/14 umjesto 3/2) — `.eq('area_id', id)` query
+- ⬜ Manualni smoke test: kreirati Health area na TEST, provjeriti 3 categories + 2 attrs
+- ⬜ 010_template_seed.sql pokrenuti na PROD (odgođeno — najprije manualni smoke na TEST)
+- ⬜ Template user login — GoTrue ne prihvaća `.local` domenu; odgođeno
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
 **3. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
