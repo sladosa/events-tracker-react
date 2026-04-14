@@ -182,9 +182,7 @@ events (linked to category_id + user_id)
 
 **Faza 2: infrastruktura za suradnju**
 
-4. **Playwright E2E setup** — prerequisit za collaboration development.
-   TEST Supabase projekt kreiran (S34). Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
-   Requires: `.env.testing` ✅ popunjen; Storage bucket `event-photos` u TEST projektu nije kreiran.
+4. ~~**Playwright E2E setup**~~ — ✅ **kompletno (S50–S51)**. E1–E10 svi prolaze.
 
 **Faza 3: multi-user suradnja (`collab` grana — u tijeku)**
 
@@ -213,6 +211,8 @@ Faze i status:
 - ✅ S46 bugfixes: BUG-S45-1 — Prev/Next fix (Opcija A): `ActivitiesView` pre-builduje navActivities + prosljeđuje via `location.state`; skip option u `useActivities`; ViewDetailsPage koristi state listu; owner display — vlastiti event prikazuje email (ne "You"); tuđi event → Area: ownerEmail + Activity: foreignEmail u header; EditActivityPage "Tuđi zapis" → amber box s Area owner + Activity owner
 - ✅ S47 UX fixes: Import gumb u empty state (`ActivitiesTable`); FilterContext stale areaId reset (`areas-changed` handler validira da UUID još postoji, inače `reset()`); `ExcelImportModal` scrollable (`max-h-full flex-col`) — gumbi dostupni i s dugim listama
 - ✅ Faza 11 — Merge na main (S48): `009_sharing.sql` dodan unique constraint `data_shares_unique_share`; 008+009 pokrenuti na PROD; `collab` → `main` merge; Netlify deploy OK; tag `v1.0-collab`
+- ✅ S49: Template user setup u TEST bazi; RLS policies; `useAreas.ts` template filter; `activity-attachments` bucket
+- ✅ S50–S51: Playwright E2E — instalacija, `playwright.config.ts`, `auth.ts`, `filter.ts`, `seed.sql`, E1–E10 specs; selector tuning; `data-testid` na `CategoryChainRow`; svi E1–E10 prolaze
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
@@ -235,14 +235,7 @@ Faze i status:
 - ⬜ 010_template_seed.sql pokrenuti na PROD (odgođeno — najprije testirati na TEST)
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
-**3. Playwright E2E setup** — infrastruktura kreirana S50 ⬜ (pending first run + selector tuning)
-- `playwright.config.ts` + `e2e/fixtures/auth.ts` + `e2e/setup/seed.sql` ✅
-- E1–E6 single-user + E7–E10 collab specs ✅
-- Instalacija još nije pokrenuta: `npm install -D @playwright/test dotenv && npx playwright install chromium`
-- Seed SQL treba pokrenuti jednokatno u TEST Supabase: `e2e/setup/seed.sql`
-- Potencijalni problemi: ⋮ menu selektori, combobox indeksi, Supabase LS key — vidi `Claude-temp_R/test-sessions/S50_tests.md`
-
-**4. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
+**3. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
    Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
 
 **5. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
