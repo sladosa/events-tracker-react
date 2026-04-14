@@ -1,6 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM-compatible __dirname
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Load .env.testing (TEST Supabase credentials)
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') });

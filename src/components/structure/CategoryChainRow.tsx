@@ -268,6 +268,7 @@ export function CategoryChainRow({
 
   return (
     <div
+      data-testid={`structure-row-${node.id}`}
       className={cn(
         'flex items-start gap-3 px-4 py-3 border-b border-gray-100 transition-colors relative',
         isHighlighted

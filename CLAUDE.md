@@ -273,9 +273,24 @@ Faze i status:
 - Screenshots: paste directly into chat
 - Before committing: `npm run typecheck && npm run build`
 
+### E2E testing workflow (Playwright)
+- Pokreni testove: `npx playwright test e2e/tests/<spec>.ts --headed`
+  ili `npx playwright test --ui` za interaktivni debugger.
+  Dev server NE treba zasebni terminal — `playwright.config.ts` ga sam pokrene ako nije aktivan
+  (`reuseExistingServer: true`).
+- Kada test padne: samo reci "pao E2-X" — Claude čita artefakte direktno iz
+  `e2e/test-results/` (screenshot, video, trace). Nema potrebe za copy-paste ili screenshotom.
+- **Bug pronađen E2E testom = dokumentira se identično kao manualni bug:**
+  - Opis i fix u `CLAUDE.md` → "Done" sekcija (uz sesijsku oznaku, npr. `S51 bugfix`)
+  - Ako fix nije odmah napravljen → u "Open bugs" sekciju
+  - PENDING_TESTS.md status: ⬜ → ✅ (ili ❌ ako odgođeno)
+- **Selektor problem** (test pada, ali aplikacija radi ispravno) → fix samo u spec fajlu,
+  ne u aplikacijskom kodu; nije potrebno dokumentirati kao bug.
+
 ### End of session (OBAVEZNO)
 1. **Update `Claude-temp_R/PENDING_TESTS.md`** — add new tests for everything coded this session;
-   mark confirmed tests as ✅; remove tests older than 2 sessions
+   mark confirmed tests as ✅; remove tests older than 2 sessions.
+   E2E testovi (T-S50-x) idu u istu tablicu kao manualni.
 2. **Write detailed test steps in `Claude-temp_R/test-sessions/SXX_tests.md`** — one file per session,
    with numbered steps, preconditions, and expected vs fail behaviour for EVERY new test.
    Update the `Detalji testova:` link in PENDING_TESTS.md to point to the new file.
@@ -285,3 +300,4 @@ Faze i status:
 ### Test result reporting (next session)
 User says e.g. "T-S24-1 OK, T-S24-3 fail" → Claude updates PENDING_TESTS.md accordingly
 and investigates failures before coding new features.
+For E2E: user says e.g. "pao E2-2" → Claude reads `e2e/test-results/` artefacts directly.

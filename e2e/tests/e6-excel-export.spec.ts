@@ -1,68 +1,56 @@
 /**
- * E6 — Excel Export (roundtrip — export side)
+ * E6 — Excel Export
  *
- * Verifies that the export dialog opens and the download is triggered.
- * Full roundtrip (import) requires file picker automation — covered manually.
+ * Verifies export dialog opens and .xlsx download is triggered.
  *
- * Preconditions:
- *   - At least one event exists (seed Cardio event)
+ * ExcelExportModal is a plain <div> (no role="dialog") — identify by heading.
+ * Structure Export directly triggers download without modal.
  */
 
 import { test, expect } from '@playwright/test';
 import { loginAsOwner } from '../fixtures/auth';
+import { selectFilterPath, SEED } from '../fixtures/filter';
 
 test.describe('E6 — Excel Export', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsOwner(page);
     await page.goto('/app');
-    await expect(page.getByRole('tab', { name: /activities/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Activities' })).toBeVisible({ timeout: 15_000 });
   });
 
   test('E6-1: Export button opens Export modal', async ({ page }) => {
-    // Select Fitness to ensure there are events visible
-    const areaDropdown = page.getByRole('combobox').first();
-    await areaDropdown.selectOption({ label: /fitness/i });
+    await selectFilterPath(page, SEED.AREA_FITNESS);
 
-    // Find Export button (Activities tab)
-    const exportBtn = page.getByRole('button', { name: /export/i });
-    await expect(exportBtn).toBeVisible({ timeout: 8_000 });
-    await exportBtn.click();
+    const exportBtn = page.getByRole('button', { name: /📥 export|^export$/i });
+    await expect(exportBtn.first()).toBeVisible({ timeout: 8_000 });
+    await exportBtn.first().click();
 
-    // Export modal should appear
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText(/export|download/i).first()).toBeVisible();
+    // Modal identified by its heading (no role="dialog" on container)
+    await expect(page.getByRole('heading', { name: /export to excel/i })).toBeVisible({ timeout: 5_000 });
   });
 
-  test('E6-2: Export triggers file download', async ({ page }) => {
-    const areaDropdown = page.getByRole('combobox').first();
-    await areaDropdown.selectOption({ label: /fitness/i });
+  test('E6-2: Export triggers .xlsx download', async ({ page }) => {
+    await selectFilterPath(page, SEED.AREA_FITNESS);
 
-    const exportBtn = page.getByRole('button', { name: /export/i });
-    await exportBtn.click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('button', { name: /📥 export|^export$/i }).first().click();
+    await expect(page.getByRole('heading', { name: /export to excel/i })).toBeVisible({ timeout: 5_000 });
 
-    // Listen for the download event and click the download button inside the modal
     const downloadPromise = page.waitForEvent('download', { timeout: 15_000 });
-
-    // The export modal has a "Download" or "Export" button inside
-    await page.getByRole('dialog').getByRole('button', { name: /download|export/i }).first().click();
+    await page.getByRole('button', { name: /download excel/i }).first().click();
 
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.xlsx$/i);
   });
 
-  test('E6-3: Structure Export triggers file download', async ({ page }) => {
-    // Switch to Structure tab
-    await page.getByRole('tab', { name: /structure/i }).click();
-    await expect(page.getByText(/fitness/i).first()).toBeVisible({ timeout: 10_000 });
-
-    const exportBtn = page.getByRole('button', { name: /export/i });
-    await expect(exportBtn).toBeVisible({ timeout: 8_000 });
+  test('E6-3: Structure Export triggers .xlsx download', async ({ page }) => {
+    await page.getByRole('button', { name: 'Structure' }).click();
+    // Wait for Structure tab toolbar (Edit Mode button is unique to Structure tab)
+    await expect(page.getByRole('button', { name: /edit mode/i })).toBeVisible({ timeout: 10_000 });
 
     const downloadPromise = page.waitForEvent('download', { timeout: 15_000 });
-    await exportBtn.click();
+    await page.getByRole('button', { name: /export/i }).click();
 
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/structure.*\.xlsx$|\.xlsx$/i);
+    expect(download.suggestedFilename()).toMatch(/\.xlsx$/i);
   });
 });

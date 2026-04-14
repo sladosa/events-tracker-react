@@ -13,31 +13,35 @@
 
 import { test, expect } from '@playwright/test';
 import { loginAsOwner, supabaseDelete } from '../fixtures/auth';
+import { SEED } from '../fixtures/filter';
 
 const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
 const USERB_ID = '93b96e77-5c82-47ef-b0ba-011dc399cc4d';
-const FITNESS_AREA_ID = 'a1000000-0000-0000-0000-000000000001';
 
 async function openManageAccessModal(page: import('@playwright/test').Page) {
-  // Structure tab → ⋮ menu on Fitness area → Manage Access
-  await page.getByRole('tab', { name: /structure/i }).click();
-  await expect(page.getByText('Fitness')).toBeVisible({ timeout: 10_000 });
+  // Structure tab → switch to Table view → ⋮ menu on Fitness area → Manage Access
+  await page.getByRole('button', { name: 'Structure' }).click();
+  await expect(page.getByRole('button', { name: /edit mode/i })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Table' }).click();
 
-  // Hover over the Fitness area row to reveal the ⋮ menu button
-  const fitnessRow = page.locator('tr, [data-testid*="row"]').filter({ hasText: /^fitness$/i }).first();
+  // Wait for Fitness seed area row (identified by data-testid)
+  const fitnessRow = page.locator(`[data-testid="structure-row-${SEED.AREA_FITNESS}"]`);
+  await expect(fitnessRow).toBeVisible({ timeout: 10_000 });
   await fitnessRow.hover();
-  await fitnessRow.getByRole('button', { name: /menu|options|⋮|more/i }).first().click();
-  await page.getByRole('menuitem', { name: /manage access/i }).click();
+  // ⋮ action button has only an img inside (no text) — last button in the row
+  await fitnessRow.getByRole('button').last().click();
+  // Dropdown items are plain buttons, not menuitem role
+  await page.getByRole('button', { name: /manage access/i }).click();
 
-  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 8_000 });
-  await expect(page.getByText(/Share "Fitness"/i)).toBeVisible();
+  // Modal identified by its heading (no role="dialog" on container)
+  await expect(page.getByRole('heading', { name: /share.*fitness/i })).toBeVisible({ timeout: 8_000 });
 }
 
 test.describe('E7 — Share Management', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsOwner(page);
     await page.goto('/app');
-    await expect(page.getByRole('tab', { name: /activities/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Activities' })).toBeVisible({ timeout: 15_000 });
   });
 
   test('E7-1: Manage Access modal opens from Structure tab ⋮ menu', async ({ page }) => {
@@ -60,15 +64,14 @@ test.describe('E7 — Share Management', () => {
     await expect(page.getByText(/access granted/i)).toBeVisible({ timeout: 8_000 });
 
     // userb@test.com now listed in Active access
+    // Use exact:true to avoid strict mode conflict with toast "Access granted to userb@test.com"
     await expect(
-      page.getByText(process.env.PLAYWRIGHT_TEST_EMAIL_B!),
+      page.getByText(process.env.PLAYWRIGHT_TEST_EMAIL_B!, { exact: true }),
     ).toBeVisible({ timeout: 8_000 });
     await expect(page.getByRole('button', { name: /revoke/i }).first()).toBeVisible();
   });
 
   test('E7-3: Revoke access → user removed from Active access list', async ({ page }) => {
-    // First create the share programmatically so we have something to revoke
-    // (We do it via the UI to test the full flow)
     await openManageAccessModal(page);
     await page.getByPlaceholder(/email@example\.com/i).fill(process.env.PLAYWRIGHT_TEST_EMAIL_B!);
     await page.getByRole('button', { name: /^invite$/i }).click();
@@ -80,14 +83,12 @@ test.describe('E7 — Share Management', () => {
     // Toast: "Access revoked for ..."
     await expect(page.getByText(/access revoked/i)).toBeVisible({ timeout: 8_000 });
 
-    // userb@test.com no longer in the list (or "No active shares" shown)
-    await expect(
-      page.getByText(process.env.PLAYWRIGHT_TEST_EMAIL_B!),
-    ).not.toBeVisible({ timeout: 5_000 });
+    // No active shares remain — Revoke button gone is the reliable indicator
+    // (email text still appears in toasts, so we check button absence instead)
+    await expect(page.getByRole('button', { name: /revoke/i })).not.toBeVisible({ timeout: 5_000 });
   });
 
   test.afterEach(async ({ page }) => {
-    // Clean up any shares between owner and userb for Fitness area
     await supabaseDelete(page, 'data_shares', {
       owner_id: OWNER_ID,
       grantee_id: USERB_ID,

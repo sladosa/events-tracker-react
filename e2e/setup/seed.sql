@@ -11,12 +11,14 @@
 
 -- -----------------------------------------------------------------------
 -- Profiles (needed for display_name in collab UI)
+-- Trigger auto-kreira row kad se user registrira, ali display_name može biti NULL.
+-- Upsert da osiguramo display_name za test users.
 -- -----------------------------------------------------------------------
-INSERT INTO profiles (id, display_name, updated_at)
+INSERT INTO profiles (id, email, display_name)
 VALUES
-  ('eef0d779-05ee-4f79-9524-78589701a861', 'Owner Test',  now()),
-  ('93b96e77-5c82-47ef-b0ba-011dc399cc4d', 'UserB Test',  now())
-ON CONFLICT (id) DO NOTHING;
+  ('eef0d779-05ee-4f79-9524-78589701a861', 'owner@test.com', 'Owner Test'),
+  ('93b96e77-5c82-47ef-b0ba-011dc399cc4d', 'userb@test.com', 'UserB Test')
+ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name;
 
 -- -----------------------------------------------------------------------
 -- Areas (owner@test.com)

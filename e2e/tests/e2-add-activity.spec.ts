@@ -1,18 +1,15 @@
 /**
  * E2 — Add Activity
  *
- * Tests the full Add Activity flow for a leaf category without existing events.
- * Uses the Strength leaf (c1000000-0000-0000-0000-000000000003) which has no events.
- *
  * Preconditions (seed.sql):
  *   - Fitness > Activity > Gym > Strength (leaf, no events)
  *
- * Cleanup:
- *   - afterEach deletes any event created during the test via Supabase REST
+ * Cleanup: afterEach deletes any event created during the test
  */
 
 import { test, expect } from '@playwright/test';
 import { loginAsOwner, supabaseDelete } from '../fixtures/auth';
+import { selectFilterPath, SEED } from '../fixtures/filter';
 
 const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
 
@@ -20,66 +17,63 @@ test.describe('E2 — Add Activity', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsOwner(page);
     await page.goto('/app');
-    await expect(page.getByRole('tab', { name: /activities/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Activities' })).toBeVisible({ timeout: 15_000 });
   });
 
   test('E2-1: select leaf category → Add Activity button enabled', async ({ page }) => {
-    // Select Fitness area
-    const areaDropdown = page.getByRole('combobox').first();
-    await areaDropdown.selectOption({ label: /fitness/i });
+    await selectFilterPath(page, SEED.AREA_FITNESS, [
+      SEED.CAT_ACTIVITY,
+      SEED.CAT_GYM,
+      SEED.CAT_STRENGTH,
+    ]);
 
-    // Progressive selector — drill down to Strength
-    await page.getByRole('combobox').nth(1).selectOption({ label: /activity/i });
-    await page.getByRole('combobox').nth(2).selectOption({ label: /gym/i });
-    await page.getByRole('combobox').nth(3).selectOption({ label: /strength/i });
-
-    // Add Activity button should appear
-    await expect(
-      page.getByRole('button', { name: /add activity/i }),
-    ).toBeVisible();
+    // Button is always in DOM but disabled until leaf category detected (async fetch)
+    await expect(page.getByRole('button', { name: /add activity/i })).not.toBeDisabled({ timeout: 10_000 });
   });
 
   test('E2-2: save new activity → appears in activities list', async ({ page }) => {
-    // Navigate to Add Activity for Strength via the URL + category param
-    // First select the category in the filter to get the Add Activity button
-    const areaDropdown = page.getByRole('combobox').first();
-    await areaDropdown.selectOption({ label: /fitness/i });
-    await page.getByRole('combobox').nth(1).selectOption({ label: /activity/i });
-    await page.getByRole('combobox').nth(2).selectOption({ label: /gym/i });
-    await page.getByRole('combobox').nth(3).selectOption({ label: /strength/i });
+    await selectFilterPath(page, SEED.AREA_FITNESS, [
+      SEED.CAT_ACTIVITY,
+      SEED.CAT_GYM,
+      SEED.CAT_STRENGTH,
+    ]);
 
-    await page.getByRole('button', { name: /add activity/i }).click();
-    await expect(page).toHaveURL(/\/app\/add/);
+    const addBtn = page.getByRole('button', { name: /add activity/i });
+    await expect(addBtn).not.toBeDisabled({ timeout: 10_000 });
+    // Wait for category select to settle (async leaf-detection side-effects can
+    // briefly re-trigger isLoading on the select; stability before clicking)
+    const catSelect = page.locator('select').filter({
+      has: page.locator('option[value=""]'),
+    }).last();
+    await expect(catSelect).not.toBeDisabled({ timeout: 5_000 });
+    await addBtn.click();
+    await expect(page).toHaveURL(/\/app\/add/, { timeout: 10_000 });
 
-    // Add Activity page loaded — Finish / Save button visible
-    await expect(
-      page.getByRole('button', { name: /finish|save/i }).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    // Fill in Event Note to enable Finish button
+    // (canFinish requires at least one of: touched attr / note / photo)
+    await page.getByPlaceholder(/felt strong today/i).fill('PW test note');
+    const finishBtn = page.getByRole('button', { name: /finish/i }).first();
+    await expect(finishBtn).not.toBeDisabled({ timeout: 5_000 });
+    await finishBtn.click();
 
-    // Submit the form (no required attributes in seed data)
-    await page.getByRole('button', { name: /finish|save/i }).first().click();
+    // Success dialog appears — click "Go to Home"
+    await page.getByRole('button', { name: /go to home/i }).click();
 
-    // Redirected back to /app
+    // Back to /app
     await expect(page).toHaveURL(/\/app$|\/app\?/, { timeout: 15_000 });
 
-    // The Strength leaf should now appear in the activities list
-    await expect(
-      page.getByText(/strength/i).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    // Strength appears in list
+    await expect(page.getByText(/strength/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test.afterEach(async ({ page }) => {
-    // Clean up events we may have created (all events for Strength that aren't seed events)
-    // We target category c1000000-0000-0000-0000-000000000003 (Strength)
     await supabaseDelete(page, 'events', {
       user_id: OWNER_ID,
-      category_id: 'c1000000-0000-0000-0000-000000000003',
+      category_id: SEED.CAT_STRENGTH,
     });
-    // Also clean parent events created via chain (Activity + Gym with chain_key = Strength UUID)
-    // These are identified by chain_key = Strength category id
     await supabaseDelete(page, 'events', {
       user_id: OWNER_ID,
-      chain_key: 'c1000000-0000-0000-0000-000000000003',
+      chain_key: SEED.CAT_STRENGTH,
     });
   });
 });
