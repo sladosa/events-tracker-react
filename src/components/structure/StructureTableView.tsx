@@ -27,11 +27,14 @@
 //   - StructureAddAreaPanel: "+ Add Area" button in Edit Mode toolbar.
 // ============================================================
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { useFilter } from '@/context/FilterContext';
 import { useStructureData, filterStructureNodes } from '@/hooks/useStructureData';
+
+const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
+type NodeFilter = 'mine' | 'all' | 'templates';
 import { CategoryChainRow } from './CategoryChainRow';
 import { CategoryDetailPanel } from './CategoryDetailPanel';
 import { StructureNodeEditPanel } from './StructureNodeEditPanel';
@@ -150,6 +153,11 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
   // ---- Add Area panel state ----
   const [showAddArea, setShowAddArea] = useState(false);
 
+  // ---- Node filter (Mine / All / Templates) ----
+  const [nodeFilter, setNodeFilter] = useState<NodeFilter>('mine');
+  // In edit mode always show only own areas
+  const effectiveNodeFilter: NodeFilter = isEditMode ? 'mine' : nodeFilter;
+
   // ---- Current user ID (needed for Add Child insert) ----
   const [userId, setUserId] = useState<string>('');
   useEffect(() => {
@@ -183,11 +191,22 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
   }, [highlightedNodeId, loading]);
 
   // ---- Filter nodes ----
+  // Step 1: apply template visibility filter
+  const visibleNodes = useMemo(() => {
+    if (effectiveNodeFilter === 'mine') return nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
+    if (effectiveNodeFilter === 'templates') return nodes.filter(n => n.area.user_id === TEMPLATE_USER_ID);
+    return nodes;
+  }, [nodes, effectiveNodeFilter]);
+
+  // Step 2: apply area/category filter
   const filtered = filterStructureNodes(
-    nodes,
+    visibleNodes,
     filter.areaId ?? null,
     filter.categoryId ?? null,
   );
+
+  const showTemplateBanner = effectiveNodeFilter !== 'mine' &&
+    visibleNodes.some(n => n.area.user_id === TEMPLATE_USER_ID);
 
   // ---- Panel helpers ----
   const activeNode = activePanelIndex !== null ? filtered[activePanelIndex] ?? null : null;
@@ -323,6 +342,40 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
         </div>
       )}
 
+      {/* ── Node filter segments (hidden in Edit Mode) ── */}
+      {!isEditMode && (
+        <div className="flex items-center gap-1 px-4 py-2 border-b border-gray-100 bg-white">
+          <span className="text-xs text-gray-400 mr-1">Show:</span>
+          {(['mine', 'all', 'templates'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setNodeFilter(v)}
+              className={cn(
+                'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                nodeFilter === v
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-500 hover:bg-gray-100',
+              )}
+            >
+              {v === 'mine' ? 'Mine' : v === 'all' ? 'All' : 'Templates'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Template banner ── */}
+      {showTemplateBanner && (
+        <div className="flex items-start gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-xs text-slate-600">
+          <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            Template areas are read-only starter templates.
+            To use one, enter <strong className="font-semibold">Edit Mode → Add Area → &quot;From template&quot;</strong>.
+          </span>
+        </div>
+      )}
+
       <TableHeader />
 
       <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
@@ -337,6 +390,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
                 node={node}
                 isEditMode={isEditMode}
                 isHighlighted={isHighlighted}
+                isTemplate={node.area.user_id === TEMPLATE_USER_ID}
                 onView={openView}
                 onEdit={openEdit}
                 onDelete={isEditMode ? setDeleteNode : undefined}
