@@ -203,10 +203,16 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
   // Step 1: apply template visibility filter
   const visibleNodes = useMemo(() => {
     if (nodeFilter === 'mine') return nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
-    // For 'all' and 'templates': exclude templates already copied (same slug as own area)
     const ownNodes = nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
+    // Template areas already copied by this user (matched by slug)
+    const copiedTemplateAreaIds = new Set(
+      nodes
+        .filter(n => n.nodeType === 'area' && n.area.user_id === TEMPLATE_USER_ID && userAreaSlugs.has(n.area.slug))
+        .map(n => n.id),
+    );
+    // Exclude both the area node AND all its category children for copied templates
     const availableTemplateNodes = nodes.filter(
-      n => n.area.user_id === TEMPLATE_USER_ID && (n.nodeType !== 'area' || !userAreaSlugs.has(n.area.slug)),
+      n => n.area.user_id === TEMPLATE_USER_ID && !copiedTemplateAreaIds.has(n.areaId),
     );
     if (nodeFilter === 'templates') return availableTemplateNodes;
     return [...ownNodes, ...availableTemplateNodes];
