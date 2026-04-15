@@ -9,6 +9,7 @@ import { ActivitiesTable } from '@/components/activity/ActivitiesTable';
 import { ExcelExportModal } from '@/components/activity/ExcelExportModal';
 import { ExcelImportModal } from '@/components/activity/ExcelImportModal';
 import { StructureTableView } from '@/components/structure/StructureTableView';
+import type { NodeFilter } from '@/components/structure/StructureTableView';
 import { StructureSunburstView } from '@/components/structure/StructureSunburstView';
 import { StructureViewSwitcher } from '@/components/structure/StructureViewSwitcher';
 import type { StructureViewMode } from '@/components/structure/StructureViewSwitcher';
@@ -569,6 +570,11 @@ interface StructureTabContentProps {
 function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess }: StructureTabContentProps) {
   const { filter, fullPathDisplay } = useFilter();
 
+  // Node filter state lives here so both Table and Sunburst share it
+  const [nodeFilter, setNodeFilter] = useState<NodeFilter>('mine');
+  // In edit mode always show only own areas
+  const effectiveNodeFilter: NodeFilter = isEditMode ? 'mine' : nodeFilter;
+
   return (
     <div>
       {/* Shared area banner — Entry point 2: ⚙ Manage Access button (owner) */}
@@ -581,10 +587,31 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess 
         }
       />
 
+      {/* Node filter segments — shared between Table and Sunburst; hidden in Edit Mode */}
+      {!isEditMode && (
+        <div className="flex items-center gap-1 px-4 py-2 border-b border-gray-100 bg-white">
+          <span className="text-xs text-gray-400 mr-1">Show:</span>
+          {(['mine', 'all', 'templates'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setNodeFilter(v)}
+              className={cn(
+                'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                nodeFilter === v
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-500 hover:bg-gray-100',
+              )}
+            >
+              {v === 'mine' ? 'Mine' : v === 'all' ? 'All' : 'Templates'}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Sunburst — hidden on mobile via internal class; hidden when table mode */}
       {viewMode === 'sunburst' && !isEditMode && (
         <div className="hidden md:block p-2">
-          <StructureSunburstView />
+          <StructureSunburstView nodeFilter={effectiveNodeFilter} />
         </div>
       )}
 
@@ -595,6 +622,7 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess 
           isEditMode={isEditMode}
           refreshKey={refreshKey}
           onManageAccess={onManageAccess}
+          nodeFilter={effectiveNodeFilter}
         />
       </div>
     </div>

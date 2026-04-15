@@ -214,11 +214,13 @@ Faze i status:
 - ✅ S49: Template user setup u TEST bazi; RLS policies; `useAreas.ts` template filter; `activity-attachments` bucket
 - ✅ S50–S51: Playwright E2E — instalacija, `playwright.config.ts`, `auth.ts`, `filter.ts`, `seed.sql`, E1–E10 specs; selector tuning; `data-testid` na `CategoryChainRow`; svi E1–E10 prolaze
 - ✅ S52: Template "From template" flow — `StructureAddAreaPanel` radio toggle; `useTemplateAreas()` hook; slug filter (bug fix: `n.area.user_id === userId`); preview async counts; copy logic (area + categories + attr_defs s UUID remapiranjem); `e2e/tests/e11-template.spec.ts` E11-1 do E11-5 prolaze; `deleteAreaCascade` helper u auth.ts
+- ✅ S53: BUG-S52-1 fix — root cause DATA BUG u TEST bazi (sve template kategorije imale area_id = Health UUID); `sql/011_template_fix_area_ids.sql` UPDATE script; `sql/010_template_seed.sql` → `ON CONFLICT DO UPDATE SET area_id`; `StructureAddAreaPanel` defensive `.eq('user_id', TEMPLATE_USER_ID)` filter; E11-3 provjerava točne countove (3 cats, 2 attrs); svi E11 prolaze (5/5); T-S53-3 manualni smoke ✅
+- ✅ S54: Structure tab filter segments (Mine/All/Templates) — stanje podignuto u `StructureTabContent` u `AppHome.tsx`; segmenti vidljivi iznad i Tablea i Sunbursta; slug-based exclusion: already-copied templates skriveni iz "All"/"Templates" segmenata; `StructureSunburstView` dobio `nodeFilter` prop
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
 - **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
-- **BUG-S52-1:** Preview u "From template" modalu pokazuje krive counts (9/14 umjesto 3/2 za Health template) — `.eq('area_id', id)` query vraća sve template categories; needs investigation
+- **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 
@@ -234,8 +236,8 @@ Faze i status:
 - ✅ `useAreas.ts` — template areas skrivene iz filter dropdowna (`TEMPLATE_USER_ID` fix)
 - ✅ Storage bucket `activity-attachments` kreiran u TEST s policies
 - ✅ Add Area "From template" flow — `StructureAddAreaPanel` radio toggle + dropdown + preview + copy (S52)
-- ⬜ **BUG-S52-1 istraga:** Preview counts pogrešni (9/14 umjesto 3/2) — `.eq('area_id', id)` query
-- ⬜ Manualni smoke test: kreirati Health area na TEST, provjeriti 3 categories + 2 attrs
+- ✅ BUG-S52-1 riješen (S53) — DATA BUG u TEST bazi; sql/011 pokrenut
+- ✅ Manualni smoke test: kreirati Health area na TEST, provjeriti 3 categories + 2 attrs (T-S53-3 ✅)
 - ⬜ 010_template_seed.sql pokrenuti na PROD (odgođeno — najprije manualni smoke na TEST)
 - ⬜ Template user login — GoTrue ne prihvaća `.local` domenu; odgođeno
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping

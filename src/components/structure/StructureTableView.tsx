@@ -33,8 +33,8 @@ import { THEME } from '@/lib/theme';
 import { useFilter } from '@/context/FilterContext';
 import { useStructureData, filterStructureNodes } from '@/hooks/useStructureData';
 
-const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
-type NodeFilter = 'mine' | 'all' | 'templates';
+export const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
+export type NodeFilter = 'mine' | 'all' | 'templates';
 import { CategoryChainRow } from './CategoryChainRow';
 import { CategoryDetailPanel } from './CategoryDetailPanel';
 import { StructureNodeEditPanel } from './StructureNodeEditPanel';
@@ -54,6 +54,8 @@ interface StructureTableViewProps {
   refreshKey?: number;
   /** Owner only: open Share Management modal for an area node (Faza 7) */
   onManageAccess?: (areaId: string, areaName: string) => void;
+  /** Mine / All / Templates — controlled from parent (StructureTabContent) */
+  nodeFilter: NodeFilter;
 }
 
 // --------------------------------------------------------
@@ -132,7 +134,7 @@ function LoadingSkeleton() {
 // Main component
 // --------------------------------------------------------
 
-export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: StructureTableViewProps) {
+export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nodeFilter }: StructureTableViewProps) {
   const t = THEME.structure;
   const { filter, reset: resetFilter, sharedContext } = useFilter();
   const { nodes, loading, error, refetch } = useStructureData();
@@ -153,10 +155,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
   // ---- Add Area panel state ----
   const [showAddArea, setShowAddArea] = useState(false);
 
-  // ---- Node filter (Mine / All / Templates) ----
-  const [nodeFilter, setNodeFilter] = useState<NodeFilter>('mine');
-  // In edit mode always show only own areas
-  const effectiveNodeFilter: NodeFilter = isEditMode ? 'mine' : nodeFilter;
+  // nodeFilter is controlled by parent; in edit mode parent passes 'mine'
 
   // ---- Current user ID (needed for Add Child insert) ----
   const [userId, setUserId] = useState<string>('');
@@ -191,12 +190,27 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
   }, [highlightedNodeId, loading]);
 
   // ---- Filter nodes ----
+  // Slugs of areas the user already owns (used to exclude copied templates)
+  const userAreaSlugs = useMemo(
+    () => new Set(
+      nodes
+        .filter(n => n.nodeType === 'area' && n.area.user_id !== TEMPLATE_USER_ID)
+        .map(n => n.area.slug),
+    ),
+    [nodes],
+  );
+
   // Step 1: apply template visibility filter
   const visibleNodes = useMemo(() => {
-    if (effectiveNodeFilter === 'mine') return nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
-    if (effectiveNodeFilter === 'templates') return nodes.filter(n => n.area.user_id === TEMPLATE_USER_ID);
-    return nodes;
-  }, [nodes, effectiveNodeFilter]);
+    if (nodeFilter === 'mine') return nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
+    // For 'all' and 'templates': exclude templates already copied (same slug as own area)
+    const ownNodes = nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
+    const availableTemplateNodes = nodes.filter(
+      n => n.area.user_id === TEMPLATE_USER_ID && (n.nodeType !== 'area' || !userAreaSlugs.has(n.area.slug)),
+    );
+    if (nodeFilter === 'templates') return availableTemplateNodes;
+    return [...ownNodes, ...availableTemplateNodes];
+  }, [nodes, nodeFilter, userAreaSlugs]);
 
   // Step 2: apply area/category filter
   const filtered = filterStructureNodes(
@@ -205,7 +219,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
     filter.categoryId ?? null,
   );
 
-  const showTemplateBanner = effectiveNodeFilter !== 'mine' &&
+  const showTemplateBanner = nodeFilter !== 'mine' &&
     visibleNodes.some(n => n.area.user_id === TEMPLATE_USER_ID);
 
   // ---- Panel helpers ----
@@ -339,27 +353,6 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
             </svg>
             Add Area
           </button>
-        </div>
-      )}
-
-      {/* ── Node filter segments (hidden in Edit Mode) ── */}
-      {!isEditMode && (
-        <div className="flex items-center gap-1 px-4 py-2 border-b border-gray-100 bg-white">
-          <span className="text-xs text-gray-400 mr-1">Show:</span>
-          {(['mine', 'all', 'templates'] as const).map(v => (
-            <button
-              key={v}
-              onClick={() => setNodeFilter(v)}
-              className={cn(
-                'px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                nodeFilter === v
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'text-gray-500 hover:bg-gray-100',
-              )}
-            >
-              {v === 'mine' ? 'Mine' : v === 'all' ? 'All' : 'Templates'}
-            </button>
-          ))}
         </div>
       )}
 
