@@ -112,7 +112,7 @@ INSERT INTO categories (id, user_id, area_id, parent_category_id, name, slug, le
 ('20000000-0000-0000-0000-000000000020', '00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', NULL, 'Expenses',          'expenses',          1, 1, 'Track spending and purchases'),
 ('20000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', NULL, 'Income',            'income',            1, 2, 'Track salary, freelance, passive income'),
 ('20000000-0000-0000-0000-000000000022', '00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', NULL, 'Investments',       'investments',       1, 3, 'Track investments and portfolio')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET area_id = EXCLUDED.area_id;
 
 -- ------------------------------------------------------------
 -- 6. Attribute definitions

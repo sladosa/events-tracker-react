@@ -27,11 +27,14 @@
 //   - StructureAddAreaPanel: "+ Add Area" button in Edit Mode toolbar.
 // ============================================================
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { useFilter } from '@/context/FilterContext';
 import { useStructureData, filterStructureNodes } from '@/hooks/useStructureData';
+
+export const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
+export type NodeFilter = 'mine' | 'all' | 'templates';
 import { CategoryChainRow } from './CategoryChainRow';
 import { CategoryDetailPanel } from './CategoryDetailPanel';
 import { StructureNodeEditPanel } from './StructureNodeEditPanel';
@@ -51,6 +54,8 @@ interface StructureTableViewProps {
   refreshKey?: number;
   /** Owner only: open Share Management modal for an area node (Faza 7) */
   onManageAccess?: (areaId: string, areaName: string) => void;
+  /** Mine / All / Templates — controlled from parent (StructureTabContent) */
+  nodeFilter: NodeFilter;
 }
 
 // --------------------------------------------------------
@@ -129,7 +134,7 @@ function LoadingSkeleton() {
 // Main component
 // --------------------------------------------------------
 
-export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: StructureTableViewProps) {
+export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nodeFilter }: StructureTableViewProps) {
   const t = THEME.structure;
   const { filter, reset: resetFilter, sharedContext } = useFilter();
   const { nodes, loading, error, refetch } = useStructureData();
@@ -149,6 +154,8 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
 
   // ---- Add Area panel state ----
   const [showAddArea, setShowAddArea] = useState(false);
+
+  // nodeFilter is controlled by parent; in edit mode parent passes 'mine'
 
   // ---- Current user ID (needed for Add Child insert) ----
   const [userId, setUserId] = useState<string>('');
@@ -183,11 +190,43 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
   }, [highlightedNodeId, loading]);
 
   // ---- Filter nodes ----
+  // Slugs of areas the user already owns (used to exclude copied templates)
+  const userAreaSlugs = useMemo(
+    () => new Set(
+      nodes
+        .filter(n => n.nodeType === 'area' && n.area.user_id !== TEMPLATE_USER_ID)
+        .map(n => n.area.slug),
+    ),
+    [nodes],
+  );
+
+  // Step 1: apply template visibility filter
+  const visibleNodes = useMemo(() => {
+    if (nodeFilter === 'mine') return nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
+    const ownNodes = nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
+    // Template areas already copied by this user (matched by slug)
+    const copiedTemplateAreaIds = new Set(
+      nodes
+        .filter(n => n.nodeType === 'area' && n.area.user_id === TEMPLATE_USER_ID && userAreaSlugs.has(n.area.slug))
+        .map(n => n.id),
+    );
+    // Exclude both the area node AND all its category children for copied templates
+    const availableTemplateNodes = nodes.filter(
+      n => n.area.user_id === TEMPLATE_USER_ID && !copiedTemplateAreaIds.has(n.areaId),
+    );
+    if (nodeFilter === 'templates') return availableTemplateNodes;
+    return [...ownNodes, ...availableTemplateNodes];
+  }, [nodes, nodeFilter, userAreaSlugs]);
+
+  // Step 2: apply area/category filter
   const filtered = filterStructureNodes(
-    nodes,
+    visibleNodes,
     filter.areaId ?? null,
     filter.categoryId ?? null,
   );
+
+  const showTemplateBanner = nodeFilter !== 'mine' &&
+    visibleNodes.some(n => n.area.user_id === TEMPLATE_USER_ID);
 
   // ---- Panel helpers ----
   const activeNode = activePanelIndex !== null ? filtered[activePanelIndex] ?? null : null;
@@ -323,6 +362,19 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
         </div>
       )}
 
+      {/* ── Template banner ── */}
+      {showTemplateBanner && (
+        <div className="flex items-start gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-xs text-slate-600">
+          <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            Template areas are read-only starter templates.
+            To use one, enter <strong className="font-semibold">Edit Mode → Add Area → &quot;From template&quot;</strong>.
+          </span>
+        </div>
+      )}
+
       <TableHeader />
 
       <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
@@ -337,6 +389,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess }: S
                 node={node}
                 isEditMode={isEditMode}
                 isHighlighted={isHighlighted}
+                isTemplate={node.area.user_id === TEMPLATE_USER_ID}
                 onView={openView}
                 onEdit={openEdit}
                 onDelete={isEditMode ? setDeleteNode : undefined}

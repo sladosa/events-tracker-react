@@ -26,6 +26,8 @@ interface CategoryChainRowProps {
   node: StructureNode;
   isEditMode: boolean;
   isHighlighted?: boolean;
+  /** True when this node belongs to the system template user (read-only) */
+  isTemplate?: boolean;
   onView: (node: StructureNode) => void;
   onEdit?: (node: StructureNode) => void;
   onDelete?: (node: StructureNode) => void;
@@ -66,6 +68,7 @@ const DotsIcon = () => (
 interface ActionsMenuProps {
   node: StructureNode;
   isEditMode: boolean;
+  isTemplate?: boolean;
   menuPos: { top?: number; bottom?: number; right: number };
   onClose: () => void;
   onView: (node: StructureNode) => void;
@@ -81,6 +84,7 @@ interface ActionsMenuProps {
 function ActionsMenu({
   node,
   isEditMode,
+  isTemplate = false,
   menuPos,
   onClose,
   onView,
@@ -166,8 +170,8 @@ function ActionsMenu({
         ) : (
           // ── Owner menu ────────────────────────────────
           <>
-            {/* Manage Access — always visible for owner on area rows, regardless of edit mode */}
-            {node.nodeType === 'area' && (
+            {/* Manage Access — visible for owner on own area rows (not templates) */}
+            {node.nodeType === 'area' && !isTemplate && (
               <>
                 {item(
                   'Manage Access',
@@ -225,6 +229,7 @@ export function CategoryChainRow({
   node,
   isEditMode,
   isHighlighted = false,
+  isTemplate = false,
   onView,
   onEdit,
   onDelete,
@@ -268,11 +273,13 @@ export function CategoryChainRow({
 
   return (
     <div
+      data-testid={`structure-row-${node.id}`}
       className={cn(
         'flex items-start gap-3 px-4 py-3 border-b border-gray-100 transition-colors relative',
         isHighlighted
           ? 'bg-indigo-100 ring-2 ring-inset ring-indigo-400'
           : cn('hover:bg-gray-50/50', rowStyle(node)),
+        isTemplate && 'opacity-75',
       )}
     >
       {/* ---- Path + description ---- */}
@@ -285,6 +292,13 @@ export function CategoryChainRow({
           )}>
             {node.fullPath}
           </span>
+
+          {/* Template badge — shown on area rows when node belongs to template user */}
+          {isTemplate && node.nodeType === 'area' && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-slate-200 text-slate-500">
+              template
+            </span>
+          )}
 
           {/* Leaf badge */}
           {node.isLeaf && node.nodeType === 'category' && (
@@ -340,6 +354,7 @@ export function CategoryChainRow({
             <ActionsMenu
               node={node}
               isEditMode={isEditMode}
+              isTemplate={isTemplate}
               menuPos={menuPos}
               onClose={() => setMenuOpen(false)}
               onView={onView}

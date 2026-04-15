@@ -25,6 +25,8 @@ import { useFilter } from '@/context/FilterContext';
 import { useStructureData } from '@/hooks/useStructureData';
 import type { PlotMouseEvent } from 'plotly.js';
 import type { StructureNode } from '@/types/structure';
+import { TEMPLATE_USER_ID } from './StructureTableView';
+import type { NodeFilter } from './StructureTableView';
 
 // --------------------------------------------------------
 // Local type: SunburstTrace
@@ -169,7 +171,12 @@ function getFocusLevel(
 // Main component
 // --------------------------------------------------------
 
-export function StructureSunburstView() {
+interface StructureSunburstViewProps {
+  /** Mine / All / Templates — controlled from StructureTabContent */
+  nodeFilter: NodeFilter;
+}
+
+export function StructureSunburstView({ nodeFilter }: StructureSunburstViewProps) {
   const t = THEME.structure;
   const {
     filter,
@@ -178,13 +185,41 @@ export function StructureSunburstView() {
   } = useFilter();
   const { nodes, loading, error } = useStructureData();
 
-  // Build Plotly trace — memoised, recomputes only when nodes change
-  const trace = useMemo(() => buildSunburstTrace(nodes), [nodes]);
+  // Slugs of areas the user already owns (to exclude already-copied templates)
+  const userAreaSlugs = useMemo(
+    () => new Set(
+      nodes
+        .filter(n => n.nodeType === 'area' && n.area.user_id !== TEMPLATE_USER_ID)
+        .map(n => n.area.slug),
+    ),
+    [nodes],
+  );
+
+  // Apply same node filter logic as StructureTableView
+  const visibleNodes = useMemo(() => {
+    if (nodeFilter === 'mine') return nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
+    const ownNodes = nodes.filter(n => n.area.user_id !== TEMPLATE_USER_ID);
+    // Template areas already copied by this user (matched by slug)
+    const copiedTemplateAreaIds = new Set(
+      nodes
+        .filter(n => n.nodeType === 'area' && n.area.user_id === TEMPLATE_USER_ID && userAreaSlugs.has(n.area.slug))
+        .map(n => n.id),
+    );
+    // Exclude both the area node AND all its category children for copied templates
+    const availableTemplateNodes = nodes.filter(
+      n => n.area.user_id === TEMPLATE_USER_ID && !copiedTemplateAreaIds.has(n.areaId),
+    );
+    if (nodeFilter === 'templates') return availableTemplateNodes;
+    return [...ownNodes, ...availableTemplateNodes];
+  }, [nodes, nodeFilter, userAreaSlugs]);
+
+  // Build Plotly trace — memoised, recomputes only when visibleNodes change
+  const trace = useMemo(() => buildSunburstTrace(visibleNodes), [visibleNodes]);
 
   // Focus level — which node is the "root" of the current sunburst view
   const focusLevel = useMemo(
-    () => getFocusLevel(nodes, filter.areaId ?? null, filter.categoryId ?? null),
-    [nodes, filter.areaId, filter.categoryId],
+    () => getFocusLevel(visibleNodes, filter.areaId ?? null, filter.categoryId ?? null),
+    [visibleNodes, filter.areaId, filter.categoryId],
   );
 
   // The trace with the current focus level applied
@@ -207,7 +242,7 @@ export function StructureSunburstView() {
       return;
     }
 
-    const clickedNode = nodes.find(n => n.id === point.id);
+    const clickedNode = visibleNodes.find(n => n.id === point.id);
     if (!clickedNode) return;
 
     // UX-7: reset shortcut on any Sunburst navigation
@@ -226,7 +261,7 @@ export function StructureSunburstView() {
     } else {
       // Category click — selectAreaAndCategory updates filter.categoryId,
       // ProgressiveCategorySelector's categoryId useEffect rebuilds chain from DB
-      const path = buildCategoryIdPath(clickedNode, nodes);
+      const path = buildCategoryIdPath(clickedNode, visibleNodes);
       selectAreaAndCategory(clickedNode.areaId, clickedNode.id, path);
     }
   };
@@ -265,7 +300,7 @@ export function StructureSunburstView() {
   // --------------------------------------------------------
   // Empty state
   // --------------------------------------------------------
-  if (nodes.length === 0) {
+  if (visibleNodes.length === 0) {
     return (
       <div className={cn(
         'hidden md:flex items-center justify-center h-80 rounded-xl',
@@ -282,7 +317,7 @@ export function StructureSunburstView() {
   // Up button handler — sets filter one level up.
   // ProgressiveCategorySelector's categoryId useEffect rebuilds chain from DB.
   const handleUp = () => {
-    const currentNode = nodes.find(n => n.id === filter.categoryId);
+    const currentNode = visibleNodes.find(n => n.id === filter.categoryId);
     setSelectedShortcutId(null);
 
     if (!currentNode) {
@@ -293,9 +328,9 @@ export function StructureSunburstView() {
       // L1 → go up to Area level; areaId useEffect in ProgressiveCategorySelector clears chain
       selectAreaAndCategory(currentNode.areaId, null, []);
     } else {
-      const parentNode = nodes.find(n => n.id === currentNode.parentCategoryId);
+      const parentNode = visibleNodes.find(n => n.id === currentNode.parentCategoryId);
       if (parentNode) {
-        const path = buildCategoryIdPath(parentNode, nodes);
+        const path = buildCategoryIdPath(parentNode, visibleNodes);
         selectAreaAndCategory(parentNode.areaId, parentNode.id, path);
         // categoryId useEffect in ProgressiveCategorySelector will rebuild chain from DB
       } else {

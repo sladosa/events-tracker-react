@@ -182,9 +182,7 @@ events (linked to category_id + user_id)
 
 **Faza 2: infrastruktura za suradnju**
 
-4. **Playwright E2E setup** — prerequisit za collaboration development.
-   TEST Supabase projekt kreiran (S34). Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
-   Requires: `.env.testing` ✅ popunjen; Storage bucket `event-photos` u TEST projektu nije kreiran.
+4. ~~**Playwright E2E setup**~~ — ✅ **kompletno (S50–S51)**. E1–E10 svi prolaze.
 
 **Faza 3: multi-user suradnja (`collab` grana — u tijeku)**
 
@@ -213,10 +211,17 @@ Faze i status:
 - ✅ S46 bugfixes: BUG-S45-1 — Prev/Next fix (Opcija A): `ActivitiesView` pre-builduje navActivities + prosljeđuje via `location.state`; skip option u `useActivities`; ViewDetailsPage koristi state listu; owner display — vlastiti event prikazuje email (ne "You"); tuđi event → Area: ownerEmail + Activity: foreignEmail u header; EditActivityPage "Tuđi zapis" → amber box s Area owner + Activity owner
 - ✅ S47 UX fixes: Import gumb u empty state (`ActivitiesTable`); FilterContext stale areaId reset (`areas-changed` handler validira da UUID još postoji, inače `reset()`); `ExcelImportModal` scrollable (`max-h-full flex-col`) — gumbi dostupni i s dugim listama
 - ✅ Faza 11 — Merge na main (S48): `009_sharing.sql` dodan unique constraint `data_shares_unique_share`; 008+009 pokrenuti na PROD; `collab` → `main` merge; Netlify deploy OK; tag `v1.0-collab`
+- ✅ S49: Template user setup u TEST bazi; RLS policies; `useAreas.ts` template filter; `activity-attachments` bucket
+- ✅ S50–S51: Playwright E2E — instalacija, `playwright.config.ts`, `auth.ts`, `filter.ts`, `seed.sql`, E1–E10 specs; selector tuning; `data-testid` na `CategoryChainRow`; svi E1–E10 prolaze
+- ✅ S52: Template "From template" flow — `StructureAddAreaPanel` radio toggle; `useTemplateAreas()` hook; slug filter (bug fix: `n.area.user_id === userId`); preview async counts; copy logic (area + categories + attr_defs s UUID remapiranjem); `e2e/tests/e11-template.spec.ts` E11-1 do E11-5 prolaze; `deleteAreaCascade` helper u auth.ts
+- ✅ S53: BUG-S52-1 fix — root cause DATA BUG u TEST bazi (sve template kategorije imale area_id = Health UUID); `sql/011_template_fix_area_ids.sql` UPDATE script; `sql/010_template_seed.sql` → `ON CONFLICT DO UPDATE SET area_id`; `StructureAddAreaPanel` defensive `.eq('user_id', TEMPLATE_USER_ID)` filter; E11-3 provjerava točne countove (3 cats, 2 attrs); svi E11 prolaze (5/5); T-S53-3 manualni smoke ✅
+- ✅ S54: Structure tab filter segments (Mine/All/Templates) — stanje podignuto u `StructureTabContent` u `AppHome.tsx`; segmenti vidljivi iznad i Tablea i Sunbursta; slug-based exclusion: already-copied templates skriveni iz "All"/"Templates" segmenata; `StructureSunburstView` dobio `nodeFilter` prop; S54b bugfix: filter logic popravljan — `copiedTemplateAreaIds` set filtrira po `areaId` da isključi i area i sve njene kategorije; E12 spec (5/5 pass)
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
 - **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
+- **BUG-S52-1:** ✅ RIJEŠEN (S53)
+- **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 
 ---
@@ -230,18 +235,14 @@ Faze i status:
 - ✅ RLS policies za areas/categories/attr_defs uključuju template user
 - ✅ `useAreas.ts` — template areas skrivene iz filter dropdowna (`TEMPLATE_USER_ID` fix)
 - ✅ Storage bucket `activity-attachments` kreiran u TEST s policies
-- ⬜ Add Area "From template" flow u `StructureAddAreaPanel` — dropdown template areas + copy mehanizam
-- ⬜ Template user password postaviti u TEST i PROD (Saša može loginati kao template user za upravljanje)
-- ⬜ 010_template_seed.sql pokrenuti na PROD (odgođeno — najprije testirati na TEST)
+- ✅ Add Area "From template" flow — `StructureAddAreaPanel` radio toggle + dropdown + preview + copy (S52)
+- ✅ BUG-S52-1 riješen (S53) — DATA BUG u TEST bazi; sql/011 pokrenut
+- ✅ Manualni smoke test: kreirati Health area na TEST, provjeriti 3 categories + 2 attrs (T-S53-3 ✅)
+- ✅ 010_template_seed.sql + 011_template_fix_area_ids.sql pokrenuti na PROD (S54, 2026-04-15)
+- ⬜ Template user login — GoTrue ne prihvaća `.local` domenu; odgođeno
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
-**3. Playwright E2E setup** — `test-branch` na TEST Supabase (`.env.local` već pointa na TEST)
-- `npm install -D @playwright/test` + `playwright.config.ts`
-- E1-E6: single-user scenariji (login, CRUD, Excel roundtrip)
-- E7-E10: collab scenariji (share, grantee write/read, revoke)
-- Setup guide: `docs/Playwright_Supabase_Setup_Guide.md`
-
-**4. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
+**3. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
    Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
 
 **5. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
@@ -272,9 +273,24 @@ Faze i status:
 - Screenshots: paste directly into chat
 - Before committing: `npm run typecheck && npm run build`
 
+### E2E testing workflow (Playwright)
+- Pokreni testove: `npx playwright test e2e/tests/<spec>.ts --headed`
+  ili `npx playwright test --ui` za interaktivni debugger.
+  Dev server NE treba zasebni terminal — `playwright.config.ts` ga sam pokrene ako nije aktivan
+  (`reuseExistingServer: true`).
+- Kada test padne: samo reci "pao E2-X" — Claude čita artefakte direktno iz
+  `e2e/test-results/` (screenshot, video, trace). Nema potrebe za copy-paste ili screenshotom.
+- **Bug pronađen E2E testom = dokumentira se identično kao manualni bug:**
+  - Opis i fix u `CLAUDE.md` → "Done" sekcija (uz sesijsku oznaku, npr. `S51 bugfix`)
+  - Ako fix nije odmah napravljen → u "Open bugs" sekciju
+  - PENDING_TESTS.md status: ⬜ → ✅ (ili ❌ ako odgođeno)
+- **Selektor problem** (test pada, ali aplikacija radi ispravno) → fix samo u spec fajlu,
+  ne u aplikacijskom kodu; nije potrebno dokumentirati kao bug.
+
 ### End of session (OBAVEZNO)
 1. **Update `Claude-temp_R/PENDING_TESTS.md`** — add new tests for everything coded this session;
-   mark confirmed tests as ✅; remove tests older than 2 sessions
+   mark confirmed tests as ✅; remove tests older than 2 sessions.
+   E2E testovi (T-S50-x) idu u istu tablicu kao manualni.
 2. **Write detailed test steps in `Claude-temp_R/test-sessions/SXX_tests.md`** — one file per session,
    with numbered steps, preconditions, and expected vs fail behaviour for EVERY new test.
    Update the `Detalji testova:` link in PENDING_TESTS.md to point to the new file.
@@ -284,3 +300,4 @@ Faze i status:
 ### Test result reporting (next session)
 User says e.g. "T-S24-1 OK, T-S24-3 fail" → Claude updates PENDING_TESTS.md accordingly
 and investigates failures before coding new features.
+For E2E: user says e.g. "pao E2-2" → Claude reads `e2e/test-results/` artefacts directly.
