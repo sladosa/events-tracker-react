@@ -96,10 +96,11 @@ test.describe('E11 — Add Area from template', () => {
     await expect(templateSelect).toBeVisible({ timeout: 8_000 });
     await templateSelect.selectOption({ label: TEMPLATE_AREA_NAME });
 
-    // Preview loads and shows category/attribute counts (exact numbers depend on DB state)
-    // The "Includes" prefix is unique to the modal preview — not present in structure table badges
-    await expect(page.getByText(/Includes/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/categor/i).first()).toBeVisible({ timeout: 5_000 });
+    // Preview must show exactly 3 categories and 2 attributes (Health: Sleep+Nutrition+Medical, Duration+Quality on Sleep)
+    const previewEl = page.getByText(/Includes/i);
+    await expect(previewEl).toBeVisible({ timeout: 10_000 });
+    await expect(previewEl).toContainText('3 categories');
+    await expect(previewEl).toContainText('2 attributes');
   });
 
   test('E11-4: Create from Health template → area appears in Area filter dropdown', async ({ page }) => {

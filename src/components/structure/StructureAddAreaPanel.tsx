@@ -20,6 +20,8 @@ import { useTemplateAreas } from '@/hooks/useAreas';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
 
+const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
+
 // --------------------------------------------------------
 // Props
 // --------------------------------------------------------
@@ -138,6 +140,7 @@ export function StructureAddAreaPanel({
         const { data: cats } = await supabase
           .from('categories')
           .select('id')
+          .eq('user_id', TEMPLATE_USER_ID)
           .eq('area_id', selectedTemplateAreaId);
 
         if (cancelled) return;
@@ -236,6 +239,7 @@ export function StructureAddAreaPanel({
       const { data: templateCats, error: catFetchErr } = await supabase
         .from('categories')
         .select('*')
+        .eq('user_id', TEMPLATE_USER_ID)
         .eq('area_id', selectedTemplateAreaId)
         .order('level', { ascending: true })
         .order('sort_order', { ascending: true });
