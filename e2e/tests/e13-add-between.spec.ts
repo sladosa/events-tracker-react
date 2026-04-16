@@ -89,6 +89,8 @@ async function goToStructure(page: import('@playwright/test').Page) {
   await expect(page.getByRole('button', { name: 'Activities' })).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Structure' }).click();
   await expect(page.getByText('Mine')).toBeVisible({ timeout: 8_000 });
+  // Wait for actual structure rows — "Mine" segment button appears before useStructureData completes
+  await expect(page.locator('[data-testid^="structure-row-"]').first()).toBeVisible({ timeout: 15_000 });
 }
 
 // ── Open the ⋮ menu for a specific category row ──────────────────────────────
@@ -96,6 +98,10 @@ async function goToStructure(page: import('@playwright/test').Page) {
 async function openRowMenu(page: import('@playwright/test').Page, categoryId: string) {
   const row = page.locator(`[data-testid="structure-row-${categoryId}"]`);
   await expect(row).toBeVisible({ timeout: 8_000 });
+  // Scroll row into view BEFORE opening the menu — the portal menu has a
+  // window scroll listener that closes it, so we must ensure no scroll
+  // is needed after the menu opens.
+  await row.scrollIntoViewIfNeeded();
   await row.getByRole('button', { name: 'Actions' }).click();
 }
 
@@ -131,11 +137,18 @@ test.describe.serial('E13 — Add Between + Collapse Level', () => {
     await page.getByRole('button', { name: /edit mode/i }).click();
     await expect(page.getByRole('button', { name: /exit edit/i })).toBeVisible({ timeout: 5_000 });
 
+    // Wait for structure data to finish loading — the "Mine" segment button appears before
+    // useStructureData completes, so we must wait for actual rows to be in the DOM.
+    await expect(page.locator('[data-testid^="structure-row-"]').first()).toBeVisible({ timeout: 15_000 });
+
     // Open ⋮ menu on Gym row
     await openRowMenu(page, SEED.CAT_GYM);
 
-    // Click Add Between
-    await page.getByRole('button', { name: /add between/i }).click();
+    // Click Add Between — use filter locator to avoid getByRole rescrolling
+    // the fixed-position portal button, which would trigger the scroll-close listener
+    const addBetweenBtn = page.locator('button').filter({ hasText: /add between/i });
+    await expect(addBetweenBtn).toBeVisible({ timeout: 3_000 });
+    await addBetweenBtn.click();
     await expect(page.getByText('↕️ Add Category Between')).toBeVisible({ timeout: 5_000 });
 
     // Info box should mention Gym and 2 children
@@ -153,8 +166,7 @@ test.describe.serial('E13 — Add Between + Collapse Level', () => {
     // Panel should close and Mid Level row should appear
     await expect(page.getByText('↕️ Add Category Between')).not.toBeVisible({ timeout: 10_000 });
     await expect(
-      page.getByText(new RegExp(`Fitness.*Activity.*Gym.*${MID_LEVEL_NAME}`, 'i'))
-        .or(page.locator('[data-testid]').filter({ hasText: MID_LEVEL_NAME })),
+      page.locator('[data-testid^="structure-row-"]').filter({ hasText: MID_LEVEL_NAME }).first(),
     ).toBeVisible({ timeout: 10_000 });
 
     // Verify Strength is still visible (now under Mid Level)
@@ -171,6 +183,9 @@ test.describe.serial('E13 — Add Between + Collapse Level', () => {
     await page.getByRole('button', { name: /edit mode/i }).click();
     await expect(page.getByRole('button', { name: /exit edit/i })).toBeVisible({ timeout: 5_000 });
 
+    // Wait for structure data to finish loading
+    await expect(page.locator('[data-testid^="structure-row-"]').first()).toBeVisible({ timeout: 15_000 });
+
     // Mid Level node should be visible — find it by text in the structure table
     const midLevelRows = await supabaseGet(page, 'categories', {
       slug: MID_LEVEL_SLUG,
@@ -183,8 +198,10 @@ test.describe.serial('E13 — Add Between + Collapse Level', () => {
     // Open ⋮ menu on Mid Level row
     await openRowMenu(page, midId);
 
-    // Click Collapse Level
-    await page.getByRole('button', { name: /collapse level/i }).click();
+    // Click Collapse Level — same scroll-safety pattern as E13-1
+    const collapseLevelBtn = page.locator('button').filter({ hasText: /collapse level/i });
+    await expect(collapseLevelBtn).toBeVisible({ timeout: 3_000 });
+    await collapseLevelBtn.click();
     await expect(page.getByText('↑ Collapse Level')).toBeVisible({ timeout: 5_000 });
 
     // Modal should describe what will happen
