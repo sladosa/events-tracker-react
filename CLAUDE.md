@@ -242,8 +242,11 @@ Faze i status:
 - ⬜ Template user login — GoTrue ne prihvaća `.local` domenu; odgođeno
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
-**3. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
-   Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
+**3. ~~Add Category Between~~** — ✅ **kompletno (S55)**. Scenarij A (Add Between) + Scenarij D (Collapse Level) implementirani.
+   Spec: `docs/ADD_CATEGORY_BETWEEN_SPEC_v2.md`
+   Novi fajlovi: `StructureAddBetweenPanel.tsx`, `StructureCollapseLevelPanel.tsx`
+   E2E: `e2e/tests/e13-add-between.spec.ts` (E13-1, E13-2)
+   **Pending:** T-S55-1 do T-S55-4 manualni smoke testovi + E13-1/E13-2 Playwright (⬜)
 
 **5. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
 

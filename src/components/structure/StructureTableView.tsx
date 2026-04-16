@@ -41,6 +41,8 @@ import { StructureNodeEditPanel } from './StructureNodeEditPanel';
 import { StructureDeleteModal } from './StructureDeleteModal';
 import { StructureAddChildPanel } from './StructureAddChildPanel';
 import { StructureAddAreaPanel } from './StructureAddAreaPanel';
+import { StructureAddBetweenPanel } from './StructureAddBetweenPanel';
+import { StructureCollapseLevelPanel } from './StructureCollapseLevelPanel';
 import { supabase } from '@/lib/supabaseClient';
 import type { StructureNode } from '@/types/structure';
 
@@ -63,40 +65,7 @@ interface StructureTableViewProps {
 // --------------------------------------------------------
 type PanelMode = 'view' | 'edit' | null;
 
-// --------------------------------------------------------
-// "Add Between" placeholder modal
-// --------------------------------------------------------
-
-function AddBetweenModal({ node, onClose }: { node: StructureNode; onClose: () => void }) {
-  const t = THEME.structure;
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-        <h3 className={cn('text-base font-semibold mb-3', t.lightText)}>
-          Add Category Between
-        </h3>
-        <p className="text-sm text-gray-600 mb-2">
-          <span className="font-medium">{node.fullPath}</span>
-        </p>
-        <p className="text-sm text-gray-500 mb-5">
-          Inserting a category between existing levels is planned for a future version.
-          To restructure your hierarchy, please use the Export function to back up your data first.
-        </p>
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-colors', t.cancelBtn)}
-          >
-            OK
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// (AddBetweenModal placeholder removed — replaced by StructureAddBetweenPanel)
 
 // --------------------------------------------------------
 // Header row (desktop only)
@@ -149,8 +118,11 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
   // ---- Add Child panel state ----
   const [addChildParent, setAddChildParent] = useState<StructureNode | null>(null);
 
-  // ---- Add Between placeholder ----
+  // ---- Add Between panel state ----
   const [addBetweenNode, setAddBetweenNode] = useState<StructureNode | null>(null);
+
+  // ---- Collapse Level panel state ----
+  const [collapseLevelNode, setCollapseLevelNode] = useState<StructureNode | null>(null);
 
   // ---- Add Area panel state ----
   const [showAddArea, setShowAddArea] = useState(false);
@@ -290,6 +262,22 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
   }, [refetch]);
 
   // ---- Add Area callbacks ----
+  const handleBetweenCreated = useCallback(async (newNodeId: string) => {
+    setAddBetweenNode(null);
+    window.dispatchEvent(new CustomEvent('areas-changed'));
+    await refetch();
+    setHighlightedNodeId(newNodeId);
+  }, [refetch]);
+
+  const handleCollapsed = useCallback(async () => {
+    const parentId = collapseLevelNode?.category?.parent_category_id ?? null;
+    setCollapseLevelNode(null);
+    window.dispatchEvent(new CustomEvent('areas-changed'));
+    await refetch();
+    // Highlight the grandparent so user can see where children landed
+    if (parentId) setHighlightedNodeId(parentId);
+  }, [refetch, collapseLevelNode]);
+
   const handleAreaCreated = useCallback(async (newAreaId: string) => {
     setShowAddArea(false);
 
@@ -394,7 +382,8 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
                 onEdit={openEdit}
                 onDelete={isEditMode ? setDeleteNode : undefined}
                 onAddChild={isEditMode ? setAddChildParent : undefined}
-                onAddBetween={setAddBetweenNode}
+                onAddBetween={isEditMode ? setAddBetweenNode : undefined}
+                onCollapseLevel={isEditMode ? setCollapseLevelNode : undefined}
                 sharedContext={sharedContext}
                 onManageAccess={onManageAccess ? (n) => onManageAccess(n.id, n.name) : undefined}
               />
@@ -450,11 +439,25 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
         />
       )}
 
-      {/* ---- Add Between Placeholder Modal ---- */}
-      {addBetweenNode && (
-        <AddBetweenModal
-          node={addBetweenNode}
+      {/* ---- Add Between Panel ---- */}
+      {addBetweenNode && userId && (
+        <StructureAddBetweenPanel
+          parentNode={addBetweenNode}
+          allNodes={nodes}
+          userId={userId}
           onClose={() => setAddBetweenNode(null)}
+          onCreated={handleBetweenCreated}
+        />
+      )}
+
+      {/* ---- Collapse Level Panel ---- */}
+      {collapseLevelNode && userId && (
+        <StructureCollapseLevelPanel
+          node={collapseLevelNode}
+          allNodes={nodes}
+          userId={userId}
+          onClose={() => setCollapseLevelNode(null)}
+          onCollapsed={handleCollapsed}
         />
       )}
 

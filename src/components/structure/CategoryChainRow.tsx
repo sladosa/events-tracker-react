@@ -33,7 +33,8 @@ interface CategoryChainRowProps {
   onDelete?: (node: StructureNode) => void;
   /** Unified add-child callback for all node types (S22: replaces onAddCategory + onAddLeaf) */
   onAddChild?: (node: StructureNode) => void;
-  onAddBetween?: (node: StructureNode) => void;     // Non-leaf: "Add Between" (placeholder)
+  onAddBetween?: (node: StructureNode) => void;     // Non-leaf: insert level below
+  onCollapseLevel?: (node: StructureNode) => void;  // Non-leaf: remove this level, children move up
   /** Collab: shared context for grantee-specific menu (null = current user is owner) */
   sharedContext?: SharedContext | null;
   /** Owner only: open Share Management modal for this area node (Faza 7) */
@@ -76,6 +77,7 @@ interface ActionsMenuProps {
   onDelete?: (node: StructureNode) => void;
   onAddChild?: (node: StructureNode) => void;
   onAddBetween?: (node: StructureNode) => void;
+  onCollapseLevel?: (node: StructureNode) => void;
   sharedContext?: SharedContext | null;
   onManageAccess?: (node: StructureNode) => void;
   onRequestAccess?: () => void;
@@ -92,6 +94,7 @@ function ActionsMenu({
   onDelete,
   onAddChild,
   onAddBetween,
+  onCollapseLevel,
   sharedContext,
   onManageAccess,
   onRequestAccess,
@@ -200,6 +203,7 @@ function ActionsMenu({
                     {item('Edit', '✏️', () => onEdit?.(node))}
                     {item('+ Add Child', '➕', () => onAddChild?.(node))}
                     {item('Add Between', '↕️', () => onAddBetween?.(node))}
+                    {item('Collapse Level', '↑', () => onCollapseLevel?.(node), true)}
                     {item('Delete', '🗑️', () => onDelete?.(node), true)}
                   </>
                 )}
@@ -235,6 +239,7 @@ export function CategoryChainRow({
   onDelete,
   onAddChild,
   onAddBetween,
+  onCollapseLevel,
   sharedContext,
   onManageAccess,
 }: CategoryChainRowProps) {
@@ -362,6 +367,7 @@ export function CategoryChainRow({
               onDelete={onDelete}
               onAddChild={onAddChild}
               onAddBetween={onAddBetween}
+              onCollapseLevel={onCollapseLevel}
               sharedContext={sharedContext}
               onManageAccess={onManageAccess}
               onRequestAccess={() => setShowRequestModal(true)}
