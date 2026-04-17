@@ -235,17 +235,19 @@ export function StructureCollapseLevelPanel({
           const ownerChild = findOwnerChild(ubEvent.chain_key, directChildren, allNodes);
           if (!ownerChild) continue;
 
-          // Find target event on owner child
-          let targetEventId: string | null = null;
+          // Find target event(s) on owner child.
+          // Non-leaf: exactly 1 parent event per session (chain_key uniquely identifies it).
+          // Leaf: N events per session are allowed — transfer the value to ALL of them
+          // (the collapsed node's attr was session-level; after merge it is leaf-level).
+          const targetEventIds: string[] = [];
           if (ownerChild.isLeaf) {
-            const { data } = await supabase
+            const { data: leafEvts } = await supabase
               .from('events')
               .select('id')
               .eq('category_id', ownerChild.id)
               .eq('session_start', ubEvent.session_start)
-              .eq('user_id', userId)
-              .maybeSingle();
-            targetEventId = data?.id ?? null;
+              .eq('user_id', userId);
+            for (const e of (leafEvts ?? [])) targetEventIds.push((e as { id: string }).id);
           } else {
             const { data } = await supabase
               .from('events')
@@ -255,32 +257,34 @@ export function StructureCollapseLevelPanel({
               .eq('session_start', ubEvent.session_start)
               .eq('user_id', userId)
               .maybeSingle();
-            targetEventId = data?.id ?? null;
+            if (data?.id) targetEventIds.push((data as { id: string }).id);
           }
-          if (!targetEventId) continue;
+          if (targetEventIds.length === 0) continue;
 
           const childMap = attrDefIdMap.get(ownerChild.id);
           if (!childMap) continue;
 
-          for (const ea of eventAttrs as Array<{
-            attribute_definition_id: string;
-            value_text: string | null;
-            value_number: number | null;
-            value_datetime: string | null;
-            value_boolean: boolean | null;
-          }>) {
-            const newAttrDefId = childMap.get(ea.attribute_definition_id);
-            if (!newAttrDefId) continue; // was a slug collision skip
-            const { error: insertEaErr } = await supabase.from('event_attributes').insert({
-              event_id: targetEventId,
-              attribute_definition_id: newAttrDefId,
-              user_id: userId,
-              value_text: ea.value_text ?? null,
-              value_number: ea.value_number ?? null,
-              value_datetime: ea.value_datetime ?? null,
-              value_boolean: ea.value_boolean ?? null,
-            });
-            if (insertEaErr) throw insertEaErr;
+          for (const targetEventId of targetEventIds) {
+            for (const ea of eventAttrs as Array<{
+              attribute_definition_id: string;
+              value_text: string | null;
+              value_number: number | null;
+              value_datetime: string | null;
+              value_boolean: boolean | null;
+            }>) {
+              const newAttrDefId = childMap.get(ea.attribute_definition_id);
+              if (!newAttrDefId) continue; // incompatible type skip
+              const { error: insertEaErr } = await supabase.from('event_attributes').insert({
+                event_id: targetEventId,
+                attribute_definition_id: newAttrDefId,
+                user_id: userId,
+                value_text: ea.value_text ?? null,
+                value_number: ea.value_number ?? null,
+                value_datetime: ea.value_datetime ?? null,
+                value_boolean: ea.value_boolean ?? null,
+              });
+              if (insertEaErr) throw insertEaErr;
+            }
           }
         }
 
