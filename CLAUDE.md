@@ -245,8 +245,8 @@ Faze i status:
 **3. ~~Add Category Between~~** — ✅ **kompletno (S55)**. Scenarij A (Add Between) + Scenarij D (Collapse Level) implementirani.
    Spec: `docs/ADD_CATEGORY_BETWEEN_SPEC_v2.md`
    Novi fajlovi: `StructureAddBetweenPanel.tsx`, `StructureCollapseLevelPanel.tsx`
-   E2E: `e2e/tests/e13-add-between.spec.ts` (E13-1, E13-2)
-   **Pending:** T-S55-1 do T-S55-4 manualni smoke testovi + E13-1/E13-2 Playwright (⬜)
+   E2E: `e2e/tests/e13-add-between.spec.ts` (E13-1, E13-2) — ✅ prolaze (S55b)
+   **Pending:** T-S55-1 do T-S55-4 manualni smoke testovi (⬜)
 
 **5. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
 

@@ -89,6 +89,12 @@ async function goToStructure(page: import('@playwright/test').Page) {
   await expect(page.getByRole('button', { name: 'Activities' })).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Structure' }).click();
   await expect(page.getByText('Mine')).toBeVisible({ timeout: 8_000 });
+  // Force Table view — page may default to Sunburst mode; in that mode the table
+  // rows are wrapped in md:hidden and toBeVisible() fails even though they're in the DOM.
+  const tableBtn = page.getByTitle('Table View');
+  if (await tableBtn.isVisible()) {
+    await tableBtn.click();
+  }
   // Wait for actual structure rows — "Mine" segment button appears before useStructureData completes
   await expect(page.locator('[data-testid^="structure-row-"]').first()).toBeVisible({ timeout: 15_000 });
 }
@@ -169,8 +175,9 @@ test.describe.serial('E13 — Add Between + Collapse Level', () => {
       page.locator('[data-testid^="structure-row-"]').filter({ hasText: MID_LEVEL_NAME }).first(),
     ).toBeVisible({ timeout: 10_000 });
 
-    // Verify Strength is still visible (now under Mid Level)
-    await expect(page.getByText(/Strength/)).toBeVisible();
+    // Verify Strength is still visible (now under Mid Level) — use testid to avoid
+    // strict-mode failure when a stale Strength row from a prior run is also present
+    await expect(page.locator(`[data-testid="structure-row-${SEED.CAT_STRENGTH}"]`)).toBeVisible();
   });
 
   // ── E13-2: Collapse Level ─────────────────────────────────────────────────
@@ -220,7 +227,7 @@ test.describe.serial('E13 — Add Between + Collapse Level', () => {
     ).not.toBeVisible({ timeout: 10_000 });
 
     // Strength should still be visible (now back under Gym)
-    await expect(page.getByText(/Strength/)).toBeVisible();
+    await expect(page.locator(`[data-testid="structure-row-${SEED.CAT_STRENGTH}"]`)).toBeVisible();
 
     // Verify in DB: Mid Level is deleted
     const remaining = await supabaseGet(page, 'categories', {
