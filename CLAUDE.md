@@ -217,7 +217,7 @@ Faze i status:
 - ✅ S53: BUG-S52-1 fix — root cause DATA BUG u TEST bazi (sve template kategorije imale area_id = Health UUID); `sql/011_template_fix_area_ids.sql` UPDATE script; `sql/010_template_seed.sql` → `ON CONFLICT DO UPDATE SET area_id`; `StructureAddAreaPanel` defensive `.eq('user_id', TEMPLATE_USER_ID)` filter; E11-3 provjerava točne countove (3 cats, 2 attrs); svi E11 prolaze (5/5); T-S53-3 manualni smoke ✅
 - ✅ S54: Structure tab filter segments (Mine/All/Templates) — stanje podignuto u `StructureTabContent` u `AppHome.tsx`; segmenti vidljivi iznad i Tablea i Sunbursta; slug-based exclusion: already-copied templates skriveni iz "All"/"Templates" segmenata; `StructureSunburstView` dobio `nodeFilter` prop; S54b bugfix: filter logic popravljan — `copiedTemplateAreaIds` set filtrira po `areaId` da isključi i area i sve njene kategorije; E12 spec (5/5 pass)
 - ✅ S55: Add Category Between (Scenarij A) + Collapse Level (Scenarij D) implementirani; `StructureAddBetweenPanel.tsx`, `StructureCollapseLevelPanel.tsx`; E13-1/E13-2 Playwright (prolaze)
-- ✅ S55b: Collapse Level bugfixes + UX — (1) `event_attributes` INSERT nedostajao `user_id` → vrijednosti bile nevidljive zbog RLS; (2) slug konflikt isti tip sada prebacuje vrijednosti na postojeći attr def umjesto skip-a; (3) slug konflikt različit tip → warning s listom; modal tekst: "will become a direct child of X" umjesto "will move up to X"; E13 Playwright fix: force Table view u `goToStructure()`, strict-mode locator za Strength
+- ✅ S55b: Collapse Level bugfixes + UX — (1) `event_attributes` INSERT nedostajao `user_id` → vrijednosti bile nevidljive zbog RLS; (2) leaf direktno dijete: `maybeSingle()` pucao na 2+ leaf eventa u sesiji → prebačeno na loop po svim leaf eventima; (3) slug konflikt isti tip sada prebacuje vrijednosti na postojeći attr def umjesto skip-a; (4) slug konflikt različit tip → warning s listom; modal tekst: "will become a direct child of X", amber: "will be reassigned down to X"; E13 Playwright fix: force Table view u `goToStructure()`, strict-mode locator za Strength
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
@@ -249,6 +249,13 @@ Faze i status:
    Novi fajlovi: `StructureAddBetweenPanel.tsx`, `StructureCollapseLevelPanel.tsx`
    E2E: `e2e/tests/e13-add-between.spec.ts` (E13-1, E13-2) — ✅ prolaze (S55b)
    **Pending:** T-S55-4 do T-S55-6 manualni smoke testovi (⬜); T-S55-1/2/3 ✅
+
+**4. UX poboljšanja — Filter i Mobile**
+
+- **UX-F1: "Reset all" samo resetira Category, ne dira Area** — trenutno "Reset all" radi isto što i "Clear all". Željeno: "Reset all" postavi Category dropdown na "All Categories" ali ostavi Area filter netaknut. "Clear all" (header) i dalje resetira sve.
+  Implementacija: u `FilterContext` ili `ProgressiveCategorySelector` — "Reset all" poziva samo `setCategory(null)` / `setStep(1)`, ne `.reset()`.
+
+- **UX-M1: Swipe geste za Prev/Next na mobitelu** — na `ViewDetailsPage` (i potencijalno Structure category detail modalu), swipe lijevo = Next, swipe desno = Prev. Implementacija: custom `useTouchSwipe` hook (touchstart/touchend, min delta ~50px, bez vertical scroll konflikta). Samo na touch uređajima, ne utječe na desktop.
 
 **5. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
 
