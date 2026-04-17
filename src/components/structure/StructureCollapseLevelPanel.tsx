@@ -184,18 +184,30 @@ export function StructureCollapseLevelPanel({
           .eq('user_id', userId);
         if (evErr) throw evErr;
 
-        // Step 1: Copy attr defs to each direct child (skip slug collisions)
-        // attrDefIdMap[childId][oldId] = newId
+        // Step 1: Copy attr defs to each direct child
+        // Three cases per (attr def, child) pair:
+        //   a) No slug conflict → INSERT new attr def on child, map old id → new id
+        //   b) Slug exists, same data_type → skip INSERT (already there), map old id → existing id
+        //      so Step 2 still transfers the values to the existing attr def
+        //   c) Slug exists, different data_type → incompatible, skip both def and values
+        // attrDefIdMap[childId][oldId] = targetId (new or existing)
         const attrDefIdMap = new Map<string, Map<string, string>>();
 
         for (const child of directChildren) {
           const childMap = new Map<string, string>();
           for (const ad of (attrDefs ?? [])) {
-            const slugExists = child.attributeDefinitions.some(a => a.slug === ad.slug);
-            if (slugExists) {
-              if (!skipped.includes(ad.slug)) skipped.push(ad.slug);
+            const existingOnChild = child.attributeDefinitions.find(a => a.slug === ad.slug);
+            if (existingOnChild) {
+              if (existingOnChild.data_type === ad.data_type) {
+                // Compatible: reuse existing attr def for value transfer
+                childMap.set(ad.id, existingOnChild.id);
+              } else {
+                // Incompatible type: skip attr def and values, surface as warning
+                if (!skipped.includes(ad.slug)) skipped.push(ad.slug);
+              }
               continue;
             }
+            // No conflict: create new attr def on child
             const newAttrDefId = crypto.randomUUID();
             const { error: insertAdErr } = await supabase
               .from('attribute_definitions')
@@ -259,14 +271,16 @@ export function StructureCollapseLevelPanel({
           }>) {
             const newAttrDefId = childMap.get(ea.attribute_definition_id);
             if (!newAttrDefId) continue; // was a slug collision skip
-            await supabase.from('event_attributes').insert({
+            const { error: insertEaErr } = await supabase.from('event_attributes').insert({
               event_id: targetEventId,
               attribute_definition_id: newAttrDefId,
+              user_id: userId,
               value_text: ea.value_text ?? null,
               value_number: ea.value_number ?? null,
               value_datetime: ea.value_datetime ?? null,
               value_boolean: ea.value_boolean ?? null,
             });
+            if (insertEaErr) throw insertEaErr;
           }
         }
 
@@ -376,14 +390,13 @@ export function StructureCollapseLevelPanel({
         <div className="px-5 py-4 space-y-4">
 
           {collapsed ? (
-            /* Post-collapse warning state */
+            /* Post-collapse warning state — only shown when incompatible-type slugs were skipped */
             <div className="space-y-3">
               <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
                 <p className="font-semibold mb-1">Level collapsed with warnings</p>
                 <p>
-                  The following attribute{skippedSlugs.length > 1 ? 's' : ''}{' '}
-                  already existed on some children and{' '}
-                  {skippedSlugs.length > 1 ? 'were' : 'was'} not merged:
+                  The following attribute{skippedSlugs.length > 1 ? 's' : ''} could not be
+                  reassigned — incompatible data type on some children:
                 </p>
                 <ul className="mt-1 list-disc list-inside font-mono text-xs">
                   {skippedSlugs.map(s => <li key={s}>{s}</li>)}
@@ -393,27 +406,25 @@ export function StructureCollapseLevelPanel({
           ) : (
             <>
               {/* Scope description */}
-              <div className="px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 space-y-1">
+              <div className="px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
                 <p>
-                  Removing <span className="font-semibold">{node.name}</span> — its{' '}
-                  {directChildren.length}{' '}
-                  {directChildren.length === 1 ? 'child' : 'children'} will move up to{' '}
-                  <span className="font-semibold">{grandparentName}</span>.
-                </p>
-                <p className="text-xs text-red-700">
-                  Children: {directChildren.map(c => c.name).join(', ') || '—'}
+                  Removing <span className="font-semibold">{node.name}</span> —{' '}
+                  {directChildren.length === 1
+                    ? <><span className="font-semibold">{directChildren[0]?.name}</span> will become a direct child of <span className="font-semibold">{grandparentName}</span>.</>
+                    : <>{directChildren.length} children ({directChildren.map(c => c.name).join(', ')}) will become direct children of <span className="font-semibold">{grandparentName}</span>.</>
+                  }
                 </p>
               </div>
 
-              {/* Attr def merge notice */}
+              {/* Attr def reassign notice */}
               {hasAttrDefs && (
                 <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
                   <span className="font-semibold">
                     {node.attributeDefinitions.length} attribute definition
                     {node.attributeDefinitions.length > 1 ? 's' : ''}
                   </span>{' '}
-                  will be merged into children.
-                  Attribute values for sessions where no matching child event exists will be lost.
+                  will be reassigned down to{' '}
+                  <span className="font-semibold">{directChildren.map(c => c.name).join(', ')}</span>.
                 </div>
               )}
 
