@@ -28,7 +28,7 @@ export function ProgressiveCategorySelector({
     selectArea, 
     selectCategory,
     selectAreaAndCategory,
-    reset,
+    resetCategory,
     isLeafCategory,
     setIsLeafCategory,
     setFullPathDisplay,
@@ -552,7 +552,7 @@ export function ProgressiveCategorySelector({
   };
 
   const handleReset = () => {
-    reset();
+    resetCategory();
   };
 
   // --------------------------------------------

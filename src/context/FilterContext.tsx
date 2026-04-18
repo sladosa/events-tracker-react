@@ -85,6 +85,7 @@ export interface FilterContextType {
   navigateToPath: (path: BreadcrumbItem[]) => void;
   navigateUp: () => void;
   reset: () => void;
+  resetCategory: () => void;
   
   // Period label ('All time', 'Custom', or preset name like 'Last 3 months')
   periodLabel: string;
@@ -490,6 +491,12 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     clearStorage();
   }, [clearStorage]);
 
+  const resetCategory = useCallback(() => {
+    setFilter(prev => ({ ...prev, categoryId: null, categoryPath: [] }));
+    setIsLeafCategory(false);
+    setSelectionChain([]);
+  }, []);
+
   // --------------------------------------------
   // Reset filter if a deleted node was selected
   // --------------------------------------------
@@ -616,6 +623,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     navigateToPath,
     navigateUp,
     reset,
+    resetCategory,
     periodLabel,
     setPeriodLabel,
     setDateRange,

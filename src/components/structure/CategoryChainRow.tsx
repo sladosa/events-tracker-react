@@ -19,7 +19,7 @@ import type { StructureNode } from '@/types/structure';
 import type { SharedContext } from '@/hooks/useDataShares';
 
 // Approximate pixel height of the largest possible menu
-// (non-leaf in edit mode: View + Edit + Add Child + Add Between + Delete = 5 items × ~40px)
+// (non-leaf in edit mode: View + Edit + Add Leaf + Add Between + Delete = 5 items × ~40px)
 const MENU_HEIGHT = 220;
 
 interface CategoryChainRowProps {
@@ -192,7 +192,7 @@ function ActionsMenu({
                   <>
                     <div className="my-1 border-t border-gray-100" />
                     {item('Edit', '✏️', () => onEdit?.(node))}
-                    {item('+ Add Child', '➕', () => onAddChild?.(node))}
+                    {item('+ Add Leaf', '➕', () => onAddChild?.(node))}
                     {item('Delete', '🗑️', () => onDelete?.(node), true)}
                   </>
                 )}
@@ -201,7 +201,7 @@ function ActionsMenu({
                 {node.nodeType === 'category' && !node.isLeaf && (
                   <>
                     {item('Edit', '✏️', () => onEdit?.(node))}
-                    {item('+ Add Child', '➕', () => onAddChild?.(node))}
+                    {item('+ Add Leaf', '➕', () => onAddChild?.(node))}
                     {item('Add Between', '↕️', () => onAddBetween?.(node))}
                     {item('Collapse Level', '↑', () => onCollapseLevel?.(node), true)}
                     {item('Delete', '🗑️', () => onDelete?.(node), true)}
@@ -212,7 +212,7 @@ function ActionsMenu({
                 {node.nodeType === 'category' && node.isLeaf && (
                   <>
                     {item('Edit', '✏️', () => onEdit?.(node))}
-                    {item('+ Add Child', '➕', () => onAddChild?.(node))}
+                    {item('+ Add Leaf', '➕', () => onAddChild?.(node))}
                     {item('Delete', '🗑️', () => onDelete?.(node), true)}
                   </>
                 )}
