@@ -134,6 +134,9 @@ export function StructureCollapseLevelPanel({
   const [renameInputs, setRenameInputs] = useState<Record<string, string>>({});
   const [renaming, setRenaming] = useState<string | null>(null); // slug being renamed
   const [resolvedSlugs, setResolvedSlugs] = useState<Set<string>>(new Set());
+  // Fresh attr defs for direct children — fetched on mount so warning and collapse use the same data.
+  // Using props (node.attributeDefinitions / child.attributeDefinitions) risks stale data after a rename.
+  const [freshChildAttrsMap, setFreshChildAttrsMap] = useState<Map<string, Array<{ id: string; slug: string; data_type: string }>> | null>(null);
 
   // Direct children and deeper descendants
   const directChildren = allNodes.filter(
@@ -150,25 +153,46 @@ export function StructureCollapseLevelPanel({
 
   const hasAttrDefs = node.attributeDefinitions.length > 0;
 
-  // Pre-compute incompatible slug conflicts (no DB needed — data already in props).
+  // Fetch fresh attr defs for all direct children on mount.
+  // Props (child.attributeDefinitions) can be stale if the user just renamed a slug.
+  // The fresh map is also used in handleCollapse so warning and collapse always agree.
+  useEffect(() => {
+    if (directChildren.length === 0) { setFreshChildAttrsMap(new Map()); return; }
+    (async () => {
+      const map = new Map<string, Array<{ id: string; slug: string; data_type: string }>>();
+      for (const child of directChildren) {
+        const { data } = await supabase
+          .from('attribute_definitions')
+          .select('id, slug, data_type')
+          .eq('category_id', child.id);
+        map.set(child.id, data ?? []);
+      }
+      setFreshChildAttrsMap(map);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run once on mount
+
+  // Pre-compute incompatible slug conflicts using fresh DB data (not stale props).
   // A slug is incompatible when a direct child has the same slug but different data_type.
   const incompatibleSlugs = useMemo(() => {
+    if (!freshChildAttrsMap) return []; // not loaded yet — show no warning until ready
     const slugs: string[] = [];
     for (const ad of node.attributeDefinitions) {
       for (const child of directChildren) {
-        const existing = child.attributeDefinitions.find(a => a.slug === ad.slug);
+        const childAttrs = freshChildAttrsMap.get(child.id) ?? [];
+        const existing = childAttrs.find(a => a.slug === ad.slug);
         if (existing && existing.data_type !== ad.data_type && !slugs.includes(ad.slug)) {
           slugs.push(ad.slug);
         }
       }
     }
     return slugs;
-  }, [node.attributeDefinitions, directChildren]);
+  }, [freshChildAttrsMap, node.attributeDefinitions, directChildren]);
 
   // Conflicts still pending (not yet renamed away)
   const pendingConflicts = incompatibleSlugs.filter(s => !resolvedSlugs.has(s));
 
-  // Rename child's conflicting attr def slug in DB
+  // Rename child's conflicting attr def slug in DB, then refresh the fresh map
   const handleRenameConflict = useCallback(async (oldSlug: string) => {
     const newSlug = (renameInputs[oldSlug] ?? '').trim().toLowerCase()
       .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
@@ -176,18 +200,28 @@ export function StructureCollapseLevelPanel({
     setRenaming(oldSlug);
     try {
       for (const child of directChildren) {
-        const attrDef = child.attributeDefinitions.find(a => a.slug === oldSlug);
+        const childAttrs = freshChildAttrsMap?.get(child.id) ?? [];
+        const attrDef = childAttrs.find(a => a.slug === oldSlug);
         if (!attrDef) continue;
         // Check new slug not already taken on this child
-        const taken = child.attributeDefinitions.some(a => a.slug === newSlug);
+        const taken = childAttrs.some(a => a.slug === newSlug);
         if (taken) { setError(`Slug "${newSlug}" already exists on ${child.name}`); setRenaming(null); return; }
         const { error: renameErr } = await supabase
           .from('attribute_definitions')
           .update({ slug: newSlug })
-          .eq('id', attrDef.id)
-          .eq('user_id', userId);
+          .eq('id', attrDef.id);
         if (renameErr) throw renameErr;
       }
+      // Refresh fresh map so incompatibleSlugs recomputes and collapse uses updated slugs
+      const updatedMap = new Map<string, Array<{ id: string; slug: string; data_type: string }>>();
+      for (const child of directChildren) {
+        const { data } = await supabase
+          .from('attribute_definitions')
+          .select('id, slug, data_type')
+          .eq('category_id', child.id);
+        updatedMap.set(child.id, data ?? []);
+      }
+      setFreshChildAttrsMap(updatedMap);
       setResolvedSlugs(prev => new Set([...prev, oldSlug]));
       setError(null);
     } catch (err) {
@@ -195,7 +229,7 @@ export function StructureCollapseLevelPanel({
     } finally {
       setRenaming(null);
     }
-  }, [renameInputs, directChildren, userId]);
+  }, [renameInputs, directChildren, freshChildAttrsMap]);
 
   // Escape to close
   useEffect(() => {
@@ -243,8 +277,10 @@ export function StructureCollapseLevelPanel({
 
         for (const child of directChildren) {
           const childMap = new Map<string, string>();
+          // Use fresh attr defs fetched on mount (and refreshed after rename) — never stale props
+          const childFreshAttrs = freshChildAttrsMap?.get(child.id) ?? [];
           for (const ad of (attrDefs ?? [])) {
-            const existingOnChild = child.attributeDefinitions.find(a => a.slug === ad.slug);
+            const existingOnChild = childFreshAttrs.find(a => a.slug === ad.slug);
             if (existingOnChild) {
               if (existingOnChild.data_type === ad.data_type) {
                 // Compatible: reuse existing attr def for value transfer
@@ -399,7 +435,7 @@ export function StructureCollapseLevelPanel({
       setError(err instanceof Error ? err.message : 'Collapse failed. Please try again.');
       setCollapsing(false);
     }
-  }, [node, allNodes, userId, directChildren, deeperDescendants, grandparentId, hasAttrDefs, onCollapsed]);
+  }, [node, allNodes, userId, directChildren, deeperDescendants, grandparentId, hasAttrDefs, freshChildAttrsMap, onCollapsed]);
 
   return (
     <div
@@ -461,7 +497,7 @@ export function StructureCollapseLevelPanel({
                 Rename the child's slug to resolve the conflict, or proceed to skip the transfer.
               </p>
               {pendingConflicts.map(slug => {
-                const conflictChild = directChildren.find(c => c.attributeDefinitions.some(a => a.slug === slug));
+                const conflictChild = directChildren.find(c => (freshChildAttrsMap?.get(c.id) ?? []).some(a => a.slug === slug));
                 return (
                   <div key={slug} className="bg-white border border-red-200 rounded-lg px-2 py-1.5 space-y-1">
                     <div className="flex items-center gap-1 text-xs">
@@ -471,7 +507,7 @@ export function StructureCollapseLevelPanel({
                     <div className="flex gap-1.5">
                       <input
                         type="text"
-                        placeholder={`new slug for ${conflictChild?.name ?? 'child'}`}
+                        placeholder={`new name for '${slug}' on ${conflictChild?.name ?? 'child'}`}
                         value={renameInputs[slug] ?? ''}
                         onChange={e => setRenameInputs(prev => ({ ...prev, [slug]: e.target.value }))}
                         className="flex-1 px-2 py-1 text-xs font-mono border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-400"
