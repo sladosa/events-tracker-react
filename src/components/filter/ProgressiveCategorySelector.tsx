@@ -713,9 +713,9 @@ export function ProgressiveCategorySelector({
             <button
               onClick={handleReset}
               className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
-              title="Reset all filters"
+              title="Reset category filter (keeps Area)"
             >
-              Reset all
+              Reset cat.
             </button>
           </div>
         )}
