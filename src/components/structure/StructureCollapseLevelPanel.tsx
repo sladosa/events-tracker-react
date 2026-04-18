@@ -236,9 +236,10 @@ export function StructureCollapseLevelPanel({
           if (!ownerChild) continue;
 
           // Find target event(s) on owner child.
-          // Non-leaf: exactly 1 parent event per session (chain_key uniquely identifies it).
-          // Leaf: N events per session are allowed — transfer the value to ALL of them
-          // (the collapsed node's attr was session-level; after merge it is leaf-level).
+          // Leaf: N events per session allowed — transfer value to ALL of them.
+          // Non-leaf: normally 1 parent event per session (P2), but use array
+          // instead of maybeSingle() so a silent DB error never skips the transfer.
+          // Both branches: filter by chain_key to scope to this leaf's session chain.
           const targetEventIds: string[] = [];
           if (ownerChild.isLeaf) {
             const { data: leafEvts } = await supabase
@@ -249,15 +250,14 @@ export function StructureCollapseLevelPanel({
               .eq('user_id', userId);
             for (const e of (leafEvts ?? [])) targetEventIds.push((e as { id: string }).id);
           } else {
-            const { data } = await supabase
+            const { data: nonLeafEvts } = await supabase
               .from('events')
               .select('id')
               .eq('category_id', ownerChild.id)
               .eq('chain_key', ubEvent.chain_key)
               .eq('session_start', ubEvent.session_start)
-              .eq('user_id', userId)
-              .maybeSingle();
-            if (data?.id) targetEventIds.push((data as { id: string }).id);
+              .eq('user_id', userId);
+            for (const e of (nonLeafEvts ?? [])) targetEventIds.push((e as { id: string }).id);
           }
           if (targetEventIds.length === 0) continue;
 
