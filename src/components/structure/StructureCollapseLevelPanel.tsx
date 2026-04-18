@@ -25,7 +25,7 @@
 // parent_category_id chain from that leaf until we hit a direct child.
 // ============================================================
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabaseClient';
 import type { StructureNode } from '@/types/structure';
@@ -130,7 +130,6 @@ export function StructureCollapseLevelPanel({
 }: StructureCollapseLevelPanelProps) {
   const [collapsing, setCollapsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [skippedSlugs, setSkippedSlugs] = useState<string[]>([]);
 
   // Direct children and deeper descendants
   const directChildren = allNodes.filter(
@@ -147,6 +146,21 @@ export function StructureCollapseLevelPanel({
 
   const hasAttrDefs = node.attributeDefinitions.length > 0;
 
+  // Pre-compute incompatible slug conflicts (no DB needed — data already in props).
+  // A slug is incompatible when a direct child has the same slug but different data_type.
+  const incompatibleSlugs = useMemo(() => {
+    const slugs: string[] = [];
+    for (const ad of node.attributeDefinitions) {
+      for (const child of directChildren) {
+        const existing = child.attributeDefinitions.find(a => a.slug === ad.slug);
+        if (existing && existing.data_type !== ad.data_type && !slugs.includes(ad.slug)) {
+          slugs.push(ad.slug);
+        }
+      }
+    }
+    return slugs;
+  }, [node.attributeDefinitions, directChildren]);
+
   // Escape to close
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -160,10 +174,8 @@ export function StructureCollapseLevelPanel({
   const handleCollapse = useCallback(async () => {
     setCollapsing(true);
     setError(null);
-    setSkippedSlugs([]);
 
     try {
-      const skipped: string[] = [];
 
       if (hasAttrDefs) {
         // ── PATH 2: merge attr defs + event_attributes down ──────────
@@ -202,8 +214,7 @@ export function StructureCollapseLevelPanel({
                 // Compatible: reuse existing attr def for value transfer
                 childMap.set(ad.id, existingOnChild.id);
               } else {
-                // Incompatible type: skip attr def and values, surface as warning
-                if (!skipped.includes(ad.slug)) skipped.push(ad.slug);
+                // Incompatible type: skip — user was warned pre-collapse
               }
               continue;
             }
@@ -346,24 +357,13 @@ export function StructureCollapseLevelPanel({
         .eq('user_id', userId);
       if (deleteErr) throw deleteErr;
 
-      // Surface any slug warnings, then callback
-      setSkippedSlugs(skipped);
-      if (skipped.length === 0) {
-        onCollapsed();
-      } else {
-        // Stay open briefly to show warnings, then dismiss
-        setCollapsing(false);
-        // onCollapsed called after user reads warning via OK button
-      }
+      onCollapsed();
     } catch (err) {
       console.error('StructureCollapseLevelPanel: collapse failed', err);
       setError(err instanceof Error ? err.message : 'Collapse failed. Please try again.');
       setCollapsing(false);
     }
   }, [node, allNodes, userId, directChildren, deeperDescendants, grandparentId, hasAttrDefs, onCollapsed]);
-
-  // ── Determine what to show ────────────────────────────
-  const collapsed = skippedSlugs.length > 0 && !collapsing && !error;
 
   return (
     <div
@@ -393,90 +393,77 @@ export function StructureCollapseLevelPanel({
         {/* ── Body ── */}
         <div className="px-5 py-4 space-y-4">
 
-          {collapsed ? (
-            /* Post-collapse warning state — only shown when incompatible-type slugs were skipped */
-            <div className="space-y-3">
-              <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                <p className="font-semibold mb-1">Level collapsed with warnings</p>
-                <p>
-                  The following attribute{skippedSlugs.length > 1 ? 's' : ''} could not be
-                  reassigned — incompatible data type on some children:
-                </p>
-                <ul className="mt-1 list-disc list-inside font-mono text-xs">
-                  {skippedSlugs.map(s => <li key={s}>{s}</li>)}
-                </ul>
-              </div>
+          {/* Scope description */}
+          <div className="px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+            <p>
+              Removing <span className="font-semibold">{node.name}</span> —{' '}
+              {directChildren.length === 1
+                ? <><span className="font-semibold">{directChildren[0]?.name}</span> will become a direct child of <span className="font-semibold">{grandparentName}</span>.</>
+                : <>{directChildren.length} children ({directChildren.map(c => c.name).join(', ')}) will become direct children of <span className="font-semibold">{grandparentName}</span>.</>
+              }
+            </p>
+          </div>
+
+          {/* Attr def reassign notice */}
+          {hasAttrDefs && (
+            <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+              <span className="font-semibold">
+                {node.attributeDefinitions.length} attribute definition
+                {node.attributeDefinitions.length > 1 ? 's' : ''}
+              </span>{' '}
+              will be reassigned down to{' '}
+              <span className="font-semibold">{directChildren.map(c => c.name).join(', ')}</span>.
             </div>
-          ) : (
-            <>
-              {/* Scope description */}
-              <div className="px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-                <p>
-                  Removing <span className="font-semibold">{node.name}</span> —{' '}
-                  {directChildren.length === 1
-                    ? <><span className="font-semibold">{directChildren[0]?.name}</span> will become a direct child of <span className="font-semibold">{grandparentName}</span>.</>
-                    : <>{directChildren.length} children ({directChildren.map(c => c.name).join(', ')}) will become direct children of <span className="font-semibold">{grandparentName}</span>.</>
-                  }
-                </p>
-              </div>
+          )}
 
-              {/* Attr def reassign notice */}
-              {hasAttrDefs && (
-                <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                  <span className="font-semibold">
-                    {node.attributeDefinitions.length} attribute definition
-                    {node.attributeDefinitions.length > 1 ? 's' : ''}
-                  </span>{' '}
-                  will be reassigned down to{' '}
-                  <span className="font-semibold">{directChildren.map(c => c.name).join(', ')}</span>.
-                </div>
-              )}
+          {/* Pre-collapse data-loss warning for incompatible-type slug conflicts */}
+          {incompatibleSlugs.length > 0 && (
+            <div className="px-3 py-2.5 bg-red-50 border border-red-300 rounded-lg text-sm text-red-800">
+              <p className="font-semibold mb-1">⚠ Data will be lost</p>
+              <p className="mb-1">
+                The following attribute{incompatibleSlugs.length > 1 ? 's exist' : ' exists'} on
+                a child with an incompatible type. Existing values cannot be transferred and will
+                be permanently lost:
+              </p>
+              <ul className="list-disc list-inside font-mono text-xs">
+                {incompatibleSlugs.map(s => <li key={s}>{s}</li>)}
+              </ul>
+              <p className="mt-1 text-xs">Cancel if you want to fix the type conflict first.</p>
+            </div>
+          )}
 
-              {/* Error */}
-              {error && (
-                <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  Error: {error}
-                </div>
-              )}
-            </>
+          {/* Error */}
+          {error && (
+            <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              Error: {error}
+            </div>
           )}
         </div>
 
         {/* ── Footer ── */}
         <div className="flex justify-end gap-2 px-5 pb-4">
-          {collapsed ? (
-            <button
-              onClick={onCollapsed}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-            >
-              OK
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={onClose}
-                disabled={collapsing}
-                className={cn(
-                  'px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors',
-                  collapsing && 'opacity-50 cursor-not-allowed',
-                )}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCollapse}
-                disabled={collapsing}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                  'bg-red-600 hover:bg-red-700 text-white',
-                  collapsing && 'opacity-50 cursor-not-allowed',
-                )}
-              >
-                {collapsing && <Spinner />}
-                {collapsing ? 'Collapsing…' : 'Collapse Level'}
-              </button>
-            </>
-          )}
+          <button
+            onClick={onClose}
+            disabled={collapsing}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors',
+              collapsing && 'opacity-50 cursor-not-allowed',
+            )}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCollapse}
+            disabled={collapsing}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+              'bg-red-600 hover:bg-red-700 text-white',
+              collapsing && 'opacity-50 cursor-not-allowed',
+            )}
+          >
+            {collapsing && <Spinner />}
+            {collapsing ? 'Collapsing…' : 'Collapse Level'}
+          </button>
         </div>
 
       </div>
