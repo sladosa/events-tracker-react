@@ -130,6 +130,10 @@ export function StructureCollapseLevelPanel({
 }: StructureCollapseLevelPanelProps) {
   const [collapsing, setCollapsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Inline slug rename state: oldSlug → new name input
+  const [renameInputs, setRenameInputs] = useState<Record<string, string>>({});
+  const [renaming, setRenaming] = useState<string | null>(null); // slug being renamed
+  const [resolvedSlugs, setResolvedSlugs] = useState<Set<string>>(new Set());
 
   // Direct children and deeper descendants
   const directChildren = allNodes.filter(
@@ -160,6 +164,38 @@ export function StructureCollapseLevelPanel({
     }
     return slugs;
   }, [node.attributeDefinitions, directChildren]);
+
+  // Conflicts still pending (not yet renamed away)
+  const pendingConflicts = incompatibleSlugs.filter(s => !resolvedSlugs.has(s));
+
+  // Rename child's conflicting attr def slug in DB
+  const handleRenameConflict = useCallback(async (oldSlug: string) => {
+    const newSlug = (renameInputs[oldSlug] ?? '').trim().toLowerCase()
+      .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    if (!newSlug || newSlug === oldSlug) return;
+    setRenaming(oldSlug);
+    try {
+      for (const child of directChildren) {
+        const attrDef = child.attributeDefinitions.find(a => a.slug === oldSlug);
+        if (!attrDef) continue;
+        // Check new slug not already taken on this child
+        const taken = child.attributeDefinitions.some(a => a.slug === newSlug);
+        if (taken) { setError(`Slug "${newSlug}" already exists on ${child.name}`); setRenaming(null); return; }
+        const { error: renameErr } = await supabase
+          .from('attribute_definitions')
+          .update({ slug: newSlug })
+          .eq('id', attrDef.id)
+          .eq('user_id', userId);
+        if (renameErr) throw renameErr;
+      }
+      setResolvedSlugs(prev => new Set([...prev, oldSlug]));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Rename failed');
+    } finally {
+      setRenaming(null);
+    }
+  }, [renameInputs, directChildren, userId]);
 
   // Escape to close
   useEffect(() => {
@@ -416,19 +452,51 @@ export function StructureCollapseLevelPanel({
             </div>
           )}
 
-          {/* Pre-collapse data-loss warning for incompatible-type slug conflicts */}
-          {incompatibleSlugs.length > 0 && (
-            <div className="px-3 py-2.5 bg-red-50 border border-red-300 rounded-lg text-sm text-red-800">
-              <p className="font-semibold mb-1">⚠ Data will be lost</p>
-              <p className="mb-1">
-                The following attribute{incompatibleSlugs.length > 1 ? 's exist' : ' exists'} on
-                a child with an incompatible type. Existing values cannot be transferred and will
-                be permanently lost:
+          {/* Pre-collapse data-loss warning with inline slug rename */}
+          {pendingConflicts.length > 0 && (
+            <div className="px-3 py-2.5 bg-red-50 border border-red-300 rounded-lg text-sm text-red-800 space-y-2">
+              <p className="font-semibold">⚠ Data will be lost unless resolved</p>
+              <p className="text-xs">
+                These attributes exist on a child with an incompatible type.
+                Rename the child's slug to resolve the conflict, or proceed to skip the transfer.
               </p>
-              <ul className="list-disc list-inside font-mono text-xs">
-                {incompatibleSlugs.map(s => <li key={s}>{s}</li>)}
-              </ul>
-              <p className="mt-1 text-xs">Cancel if you want to fix the type conflict first.</p>
+              {pendingConflicts.map(slug => {
+                const conflictChild = directChildren.find(c => c.attributeDefinitions.some(a => a.slug === slug));
+                return (
+                  <div key={slug} className="bg-white border border-red-200 rounded-lg px-2 py-1.5 space-y-1">
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="font-mono font-semibold">{slug}</span>
+                      <span className="text-red-600">on {conflictChild?.name ?? 'child'} — incompatible type</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        placeholder={`new slug for ${conflictChild?.name ?? 'child'}`}
+                        value={renameInputs[slug] ?? ''}
+                        onChange={e => setRenameInputs(prev => ({ ...prev, [slug]: e.target.value }))}
+                        className="flex-1 px-2 py-1 text-xs font-mono border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRenameConflict(slug)}
+                        disabled={!renameInputs[slug]?.trim() || renaming === slug}
+                        className={cn(
+                          'px-2 py-1 text-xs rounded font-medium transition-colors',
+                          'bg-red-600 text-white hover:bg-red-700',
+                          (!renameInputs[slug]?.trim() || renaming === slug) && 'opacity-50 cursor-not-allowed',
+                        )}
+                      >
+                        {renaming === slug ? '…' : 'Rename'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {resolvedSlugs.size > 0 && pendingConflicts.length === 0 && (
+            <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+              ✓ All conflicts resolved — safe to collapse.
             </div>
           )}
 
