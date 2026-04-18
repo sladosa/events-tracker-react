@@ -55,7 +55,8 @@ interface DependsOnRow {
 
 interface AttrEditState {
   id: string;
-  slug: string;        // Stable identifier — never changed on update
+  slug: string;        // Current slug (may be edited)
+  originalSlug: string; // Slug at load time — used for depends_on ref updates
   name: string;
   unit: string;
   description: string;
@@ -168,7 +169,8 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
 
   return {
     id: attr.id,
-    slug: attr.slug,   // Preserved — never regenerated from name
+    slug: attr.slug,
+    originalSlug: attr.slug,
     name: attr.name,
     unit: attr.unit ?? '',
     description: attr.description ?? '',
@@ -393,6 +395,7 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
     const newAttrState: AttrEditState = {
       id:            `new_${Date.now()}`,
       slug,
+      originalSlug:  slug,
       name:          newForm.name.trim(),
       unit:          newForm.unit.trim(),
       description:   '',
@@ -612,6 +615,40 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
               placeholder="Optional description"
             />
           </div>
+
+          {/* Slug — editable (safe: events link by UUID, not slug) */}
+          {!attr.isNew && (
+            <div className="mb-3">
+              <FieldLabel>Slug</FieldLabel>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={attr.slug}
+                  onChange={e => update(i, { slug: e.target.value })}
+                  className={cn(
+                    'flex-1 px-3 py-1.5 text-sm font-mono rounded-lg border transition-colors focus:outline-none focus:ring-2',
+                    attr.slug !== attr.originalSlug
+                      ? 'border-amber-400 focus:ring-amber-300 bg-amber-50'
+                      : 'border-gray-200 focus:ring-amber-300 bg-gray-50',
+                  )}
+                />
+                {attr.slug !== attr.originalSlug && (
+                  <button
+                    type="button"
+                    onClick={() => update(i, { slug: attr.originalSlug })}
+                    className="text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              {attr.slug !== attr.originalSlug && (
+                <p className="mt-1 text-xs text-amber-700">
+                  Any depends_on references to "{attr.originalSlug}" will be updated automatically.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Text → Suggest conversion button */}
           {attr.dataType === 'text' && attr.validationType === 'none' && (
@@ -893,10 +930,13 @@ export function StructureNodeEditPanel({
             });
           if (error) throw error;
         } else {
+          const slugChanged = attr.slug !== attr.originalSlug;
+          const newSlug = attr.slug.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || attr.originalSlug;
           const { error } = await supabase
             .from('attribute_definitions')
             .update({
               name:             attr.name.trim(),
+              slug:             newSlug,
               unit:             attr.unit.trim() || null,
               description:      attr.description.trim() || null,
               sort_order:       attr.sortOrder,
@@ -906,6 +946,29 @@ export function StructureNodeEditPanel({
             })
             .eq('id', attr.id);
           if (error) throw error;
+
+          // If slug changed, update any depends_on references pointing to old slug
+          if (slugChanged && newSlug !== attr.originalSlug) {
+            for (const n of allNodes) {
+              for (const ad of n.attributeDefinitions) {
+                if (ad.id === attr.id) continue;
+                const parsed = parseValidationRules(ad.validation_rules);
+                if (parsed.dependsOn?.attributeSlug === attr.originalSlug) {
+                  const updatedRules = {
+                    ...ad.validation_rules as Record<string, unknown>,
+                    depends_on: {
+                      ...(parsed.dependsOn as Record<string, unknown>),
+                      attribute_slug: newSlug,
+                    },
+                  };
+                  await supabase
+                    .from('attribute_definitions')
+                    .update({ validation_rules: updatedRules })
+                    .eq('id', ad.id);
+                }
+              }
+            }
+          }
         }
       }
 

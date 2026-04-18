@@ -216,6 +216,15 @@ Faze i status:
 - ✅ S52: Template "From template" flow — `StructureAddAreaPanel` radio toggle; `useTemplateAreas()` hook; slug filter (bug fix: `n.area.user_id === userId`); preview async counts; copy logic (area + categories + attr_defs s UUID remapiranjem); `e2e/tests/e11-template.spec.ts` E11-1 do E11-5 prolaze; `deleteAreaCascade` helper u auth.ts
 - ✅ S53: BUG-S52-1 fix — root cause DATA BUG u TEST bazi (sve template kategorije imale area_id = Health UUID); `sql/011_template_fix_area_ids.sql` UPDATE script; `sql/010_template_seed.sql` → `ON CONFLICT DO UPDATE SET area_id`; `StructureAddAreaPanel` defensive `.eq('user_id', TEMPLATE_USER_ID)` filter; E11-3 provjerava točne countove (3 cats, 2 attrs); svi E11 prolaze (5/5); T-S53-3 manualni smoke ✅
 - ✅ S54: Structure tab filter segments (Mine/All/Templates) — stanje podignuto u `StructureTabContent` u `AppHome.tsx`; segmenti vidljivi iznad i Tablea i Sunbursta; slug-based exclusion: already-copied templates skriveni iz "All"/"Templates" segmenata; `StructureSunburstView` dobio `nodeFilter` prop; S54b bugfix: filter logic popravljan — `copiedTemplateAreaIds` set filtrira po `areaId` da isključi i area i sve njene kategorije; E12 spec (5/5 pass)
+- ✅ S55: Add Category Between (Scenarij A) + Collapse Level (Scenarij D) implementirani; `StructureAddBetweenPanel.tsx`, `StructureCollapseLevelPanel.tsx`; E13-1/E13-2 Playwright (prolaze)
+- ✅ S55b: Collapse Level bugfixes + UX — (1) `event_attributes` INSERT nedostajao `user_id` → vrijednosti bile nevidljive zbog RLS; (2) leaf direktno dijete: `maybeSingle()` pucao na 2+ leaf eventa u sesiji → prebačeno na loop po svim leaf eventima; (3) slug konflikt isti tip sada prebacuje vrijednosti na postojeći attr def umjesto skip-a; (4) slug konflikt različit tip → warning s listom; modal tekst: "will become a direct child of X", amber: "will be reassigned down to X"; E13 Playwright fix: force Table view u `goToStructure()`, strict-mode locator za Strength
+- ✅ S56: Collapse Level bugfix — non-leaf direktno dijete: `maybeSingle()` tiho pucao kad query vrati 0/2+ redova → vrijednosti preskočene; fix: zamijenjeno loopom (isti pattern kao leaf branch); T-S55-4 ✅
+- ✅ S56: UX-F1 — "Reset cat." u `ProgressiveCategorySelector`: `resetCategory()` resetira samo Category, Area ostaje netaknut; label promjenjen na "Reset cat."
+- ✅ S56: UX-M1 — `useTouchSwipe` hook u `ViewDetailsPage`: swipe lijevo = Next, swipe desno = Prev; vertical scroll ne interferira
+- ✅ S56: "Add Leaf" rename — `CategoryChainRow` ⋮ menu: "+ Add Child" → "+ Add Leaf" (sve 3 instance: area, non-leaf, leaf)
+- ✅ S56: Slug rename u `StructureNodeEditPanel` — inline edit slug na attr defu; amber border kad promijenjeno; Reset gumb; auto-update depends_on referenci u allNodes; nema utjecaja na event_attributes (veza je UUID, ne slug)
+- ✅ S56: Collapse Level pre-collapse warning — `incompatibleSlugs` useMemo prikazuje warning PRIJE collapse (ne nakon); inline rename input po konfliktu u modalu; green "✓ All conflicts resolved" kad sve riješeno; placeholder "new name for 'slug' on child"
+- ✅ S56: Collapse Level fresh fetch fix — `freshChildAttrsMap` state fetchan na mount (bez `user_id` filtera, RLS handle-a); i warning UI i `handleCollapse` koriste isti map; `handleRenameConflict` refresha map nakon rename → stale allNodes props više ne uzrokuju krive INSERT-e; T-S55-5/6 ✅
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
@@ -242,8 +251,16 @@ Faze i status:
 - ⬜ Template user login — GoTrue ne prihvaća `.local` domenu; odgođeno
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
-**3. Add Category Between** — umetanje razine unutar postojeće hijerarhije.
-   Zahtijeva data migraciju (UPDATE category_id + chain_key na eventima).
+**3. ~~Add Category Between~~** — ✅ **kompletno (S55–S56)**. Scenarij A (Add Between) + Scenarij D (Collapse Level) implementirani i testirani.
+   Spec: `docs/ADD_CATEGORY_BETWEEN_SPEC_v2.md`
+   Novi fajlovi: `StructureAddBetweenPanel.tsx`, `StructureCollapseLevelPanel.tsx`
+   E2E: `e2e/tests/e13-add-between.spec.ts` (E13-1, E13-2) — ✅ prolaze (S55b)
+   Manualni: T-S55-1/2/3/4/5/6 sve ✅; T-S56-1/2/3 ✅
+
+**4. ~~UX poboljšanja — Filter i Mobile~~** — ✅ **kompletno (S56)**
+
+- ✅ **UX-F1** — "Reset cat." resetira samo Category, Area ostaje (`resetCategory()` u `FilterContext`, `ProgressiveCategorySelector`)
+- ✅ **UX-M1** — Swipe geste na `ViewDetailsPage`: `useTouchSwipe` hook, swipe lijevo = Next, desno = Prev
 
 **5. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
 

@@ -18,6 +18,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
+import { useTouchSwipe } from '@/hooks/useTouchSwipe';
 import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
 import { useActivities, type ActivityGroup } from '@/hooks/useActivities';
 import { useFilter } from '@/context/FilterContext';
@@ -627,6 +628,8 @@ export function ViewDetailsPage() {
   const handleNext = useCallback(() => {
     if (hasNext) navigateToGroup(activities[currentIndex + 1]);
   }, [hasNext, currentIndex, activities, navigateToGroup]);
+
+  useTouchSwipe(handleNext, handlePrev);
 
   // ============================================
   // Navigate to Edit
