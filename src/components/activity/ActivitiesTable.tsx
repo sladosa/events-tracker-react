@@ -273,8 +273,8 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
           </button>
         </div>
 
-        {/* Bulk delete controls */}
-        {selectedKeys.size > 0 && (
+        {/* Bulk delete controls — hidden for grantees */}
+        {selectedKeys.size > 0 && !sharedContext && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">{selectedKeys.size} selected</span>
             {!showBulkConfirm ? (
@@ -314,12 +314,14 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
           <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
               <th className="px-3 py-3 text-left w-8">
-                <input
-                  type="checkbox"
-                  checked={selectedKeys.size === activities.length && activities.length > 0}
-                  onChange={toggleSelectAll}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
+                {!sharedContext && (
+                  <input
+                    type="checkbox"
+                    checked={selectedKeys.size === activities.length && activities.length > 0}
+                    onChange={toggleSelectAll}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                )}
               </th>
               <th className="px-3 py-3 text-left font-medium text-gray-700 w-28 whitespace-nowrap">Date</th>
               <th className="px-3 py-3 text-left font-medium text-gray-700 w-14 whitespace-nowrap">Time</th>
@@ -346,6 +348,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 highlightRef={group.sessionKey === highlightKey ? highlightRowRef : undefined}
                 showUserColumn={showUserColumn}
                 currentUserId={currentUserId}
+                canSelect={!sharedContext}
               />
             ))}
           </tbody>
@@ -372,9 +375,10 @@ interface ActivityRowProps {
   highlightRef?: React.RefObject<HTMLTableRowElement | null>;
   showUserColumn?: boolean;
   currentUserId?: string;
+  canSelect?: boolean;
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId, canSelect = true }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -444,14 +448,16 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
               : 'hover:bg-gray-50'
         }`}
       >
-        {/* Checkbox */}
+        {/* Checkbox — hidden for grantees */}
         <td className="px-3 py-2.5">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={onToggleSelect}
-            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-          />
+          {canSelect && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={onToggleSelect}
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+          )}
         </td>
 
         {/* Date */}
