@@ -23,8 +23,10 @@
 //   - Totals: X categories, Y leaf events
 // ============================================================
 
+import { useCallback } from 'react';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
+import { useTouchSwipe } from '@/hooks/useTouchSwipe';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
@@ -331,6 +333,16 @@ export function CategoryDetailPanel({
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < filteredNodes.length - 1;
+
+  const handleSwipeLeft = useCallback(() => {
+    if (hasNext) onNavigate(currentIndex + 1);
+  }, [hasNext, currentIndex, onNavigate]);
+
+  const handleSwipeRight = useCallback(() => {
+    if (hasPrev) onNavigate(currentIndex - 1);
+  }, [hasPrev, currentIndex, onNavigate]);
+
+  useTouchSwipe(handleSwipeLeft, handleSwipeRight);
 
   const eventLabel = node.eventCount === 1 ? '1 event' : `${node.eventCount} events`;
 

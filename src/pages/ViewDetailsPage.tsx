@@ -16,7 +16,6 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useTouchSwipe } from '@/hooks/useTouchSwipe';
 import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
@@ -24,7 +23,12 @@ import { useActivities, type ActivityGroup } from '@/hooks/useActivities';
 import { useFilter } from '@/context/FilterContext';
 import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
-import { loadParentAttrs } from '@/lib/parentEventLoader';
+import {
+  type CachedViewEvent,
+  getOrFetchActivity,
+  prefetchActivity,
+  makeCacheKey,
+} from '@/lib/activityViewCache';
 
 import type { UUID } from '@/types';
 
@@ -56,47 +60,7 @@ function formatDuration(seconds: number): string {
 // Types
 // ============================================
 
-interface LoadedEvent {
-  id: UUID;
-  category_id: UUID;
-  event_date: string;
-  session_start: string | null;
-  comment: string | null;
-  created_at: string;
-  edited_at: string;
-  user_id: string;
-}
-
-interface LoadedAttribute {
-  id: UUID;
-  attribute_definition_id: UUID;
-  value_text: string | null;
-  value_number: number | null;
-  value_datetime: string | null;
-  value_boolean: boolean | null;
-  attribute_definitions: {
-    id: UUID;
-    name: string;
-    data_type: string;
-    category_id: UUID;
-  } | null;
-}
-
-interface LoadedAttachment {
-  id: UUID;
-  event_id: UUID;
-  url: string;
-  filename: string | null;
-}
-
-interface ViewEvent {
-  id: UUID;
-  categoryId: UUID;
-  createdAt: Date;
-  note: string | null;
-  attributes: Map<string, { value: string | number | boolean | null; dataType: string }>;
-  photos: { id: UUID; url: string; filename: string | null }[];
-}
+type ViewEvent = CachedViewEvent;
 
 // ============================================
 // Read-only attribute value display
@@ -337,191 +301,33 @@ export function ViewDetailsPage() {
     if (!sessionStart) return;
     setIsLoading(true);
     setLoadError(null);
-    setSelectedEventIndex(0);   // Reset: sprečava prikaz krivog eventa kad novi activity ima manje eventa
-    setParentAttrValues(new Map()); // Reset: sprečava stale parent atribute pri Prev/Next navigaciji
-    setViewEvents([]);          // Reset: čisti stale evente dok se novi ne učitaju
-    setIsOwnEvent(true);        // Reset: neutral dok se ne odredi (sprečava stale "You")
-    setOwnerDisplayName(null);  // Reset: sprečava stale vlasnik dok se ne učita
-    setCurrentUserLabel(null);  // Reset
+    setSelectedEventIndex(0);
+    setParentAttrValues(new Map());
+    setViewEvents([]);
+    setIsOwnEvent(true);
+    setOwnerDisplayName(null);
+    setCurrentUserLabel(null);
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+    const decoded = noSession ? sessionStart : decodeURIComponent(sessionStart);
+    const key = makeCacheKey(decoded, categoryIdParam, ownerIdParam, noSession);
 
-      let events: LoadedEvent[];
+    const cached = await getOrFetchActivity(key, decoded, categoryIdParam, noSession, ownerIdParam);
 
-      if (noSession) {
-        const { data, error } = await supabase
-          .from('events')
-          .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id')
-          .eq('id', sessionStart);
-        if (error) throw error;
-        if (!data || data.length === 0) throw new Error('Activity not found');
-        events = data as LoadedEvent[];
-      } else {
-        const decoded = decodeURIComponent(sessionStart);
-        let query = supabase
-          .from('events')
-          .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id')
-          .eq('session_start', decoded);
-        if (categoryIdParam) {
-          query = query.eq('category_id', categoryIdParam);
-        }
-        if (ownerIdParam) {
-          query = query.eq('user_id', ownerIdParam);
-        }
-        const { data, error } = await query.order('created_at', { ascending: true });
-        if (error) throw error;
-        if (!data || data.length === 0) throw new Error('Activity not found');
-        events = data as LoadedEvent[];
-      }
-
-      const leafCategoryId = events[events.length - 1].category_id;
-      setCategoryId(leafCategoryId);
-      const ownEvent = events[0].user_id === user.id;
-      setIsOwnEvent(ownEvent);
-
-      // Fetch logged-in user's profile for label (scenarios 1 & 2: show own email)
-      const { data: myProfile } = await supabase
-        .from('profiles')
-        .select('email, display_name')
-        .eq('id', user.id)
-        .single();
-      const myLabel = (myProfile as { display_name?: string | null; email?: string } | null)?.display_name
-        || (myProfile as { display_name?: string | null; email?: string } | null)?.email
-        || user.email
-        || user.id;
-      setCurrentUserLabel(myLabel);
-
-      if (!ownEvent) {
-        // Foreign event: fetch activity owner's label
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('email, display_name')
-          .eq('id', events[0].user_id)
-          .single();
-        setOwnerDisplayName(
-          (profile as { display_name?: string | null; email?: string } | null)?.display_name ||
-          (profile as { display_name?: string | null; email?: string } | null)?.email ||
-          events[0].user_id
-        );
-      } else {
-        // Own event: ownerDisplayName = own email (scenarios 1 & 2)
-        setOwnerDisplayName(myLabel);
-      }
-
-      // Build category path
-      const path = await buildCategoryPath(leafCategoryId);
-      setCategoryPath(path);
-
-      // Set session datetime
-      const sessionDate = noSession
-        ? new Date(events[0].created_at)
-        : new Date(decodeURIComponent(sessionStart));
-      setSessionDateTime(sessionDate);
-
-      // Fetch attributes & attachments for each event
-      const loadedEvents: ViewEvent[] = [];
-
-      for (const event of events) {
-        const { data: attrs } = await supabase
-          .from('event_attributes')
-          .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-          .eq('event_id', event.id);
-
-        const { data: attachments } = await supabase
-          .from('event_attachments')
-          .select('id, event_id, url, filename')
-          .eq('event_id', event.id)
-          .eq('type', 'image');
-
-        const loadedAttrs = (attrs || []) as unknown as LoadedAttribute[];
-        const loadedAttachments = (attachments || []) as LoadedAttachment[];
-
-        const attrMap = new Map<string, { value: string | number | boolean | null; dataType: string }>();
-        for (const attr of loadedAttrs) {
-          if (!attr.attribute_definitions) continue;
-          const dataType = attr.attribute_definitions.data_type;
-          let value: string | number | boolean | null = null;
-          if (dataType === 'number' && attr.value_number !== null) value = attr.value_number;
-          else if (dataType === 'boolean' && attr.value_boolean !== null) value = attr.value_boolean;
-          else if (dataType === 'datetime' && attr.value_datetime !== null) value = attr.value_datetime;
-          else if (attr.value_text !== null) value = attr.value_text;
-
-          attrMap.set(attr.attribute_definition_id, { value, dataType });
-        }
-
-        loadedEvents.push({
-          id: event.id,
-          categoryId: event.category_id,
-          createdAt: new Date(event.created_at),
-          note: event.comment,
-          attributes: attrMap,
-          photos: loadedAttachments.map(a => ({ id: a.id, url: a.url, filename: a.filename })),
-        });
-      }
-
-      setViewEvents(loadedEvents);
-
-      // ============================================================
-      // VIEW-P2: Load parent events — delegirano na shared service
-      // parentEventLoader.ts je single source of truth za ovu logiku.
-      // Isti kod koriste ViewDetailsPage i EditActivityPage.
-      //
-      // KRITIČNO: prosljeđujemo session_start DIREKTNO IZ BAZE
-      // (events[0].session_start), ne iz URL-a. URL format (.000Z) i
-      // Supabase format (+00:00) su isti trenutak ali različit string —
-      // Supabase eq() filter ne matchira cross-format pouzdano kada su
-      // prisutni dodatni filteri. DB format garantira match.
-      // ============================================================
-      let newParentAttrValues = new Map<string, { value: string | number | boolean | null; dataType: string }>();
-
-      if (!noSession && events[0]?.session_start) {
-        // Koristimo user_id vlasnika eventa, ne nužno logged-in usera.
-        // Kad grantee pregledava tuđi event, parent Sport event pripada vlasniku (userb),
-        // ne logged-in korisniku (owner). Isti user_id koji je korišten u leaf query.
-        const eventOwnerId = events[0].user_id;
-        newParentAttrValues = await loadParentAttrs(
-          leafCategoryId,
-          events[0].session_start,   // DB format — ne URL decode!
-          eventOwnerId
-        );
-      }
-
-      setParentAttrValues(newParentAttrValues);
-
-    } catch (err) {
-      console.error('Failed to load activity:', err);
-      setLoadError(err instanceof Error ? err.message : 'Failed to load activity');
-    } finally {
+    if (!cached) {
+      setLoadError('Activity not found');
       setIsLoading(false);
-    }
-  };
-
-  const buildCategoryPath = async (catId: UUID): Promise<string[]> => {
-    const path: string[] = [];
-    let currentId: UUID | null = catId;
-    let areaId: UUID | null = null;
-
-    while (currentId) {
-      const { data: cat } = await supabase
-        .from('categories')
-        .select('id, name, parent_category_id, area_id')
-        .eq('id', currentId)
-        .single() as { data: { id: string; name: string; parent_category_id: string | null; area_id: string | null } | null };
-
-      if (!cat) break;
-      path.unshift(cat.name);
-      if (cat.area_id) areaId = cat.area_id;
-      currentId = cat.parent_category_id;
+      return;
     }
 
-    if (areaId) {
-      const { data: area } = await supabase.from('areas').select('name').eq('id', areaId).single();
-      if (area) path.unshift(area.name);
-    }
-
-    return path;
+    setCategoryId(cached.leafCategoryId);
+    setIsOwnEvent(cached.isOwnEvent);
+    setCurrentUserLabel(cached.currentUserLabel);
+    setOwnerDisplayName(cached.ownerDisplayName);
+    setCategoryPath(cached.categoryPath);
+    setSessionDateTime(cached.sessionDateTime);
+    setViewEvents(cached.viewEvents);
+    setParentAttrValues(cached.parentAttrValues);
+    setIsLoading(false);
   };
 
   // ============================================
@@ -591,6 +397,27 @@ export function ViewDetailsPage() {
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex >= 0 && currentIndex < activities.length - 1;
+
+  // Prefetch ±3 neighbours while user reads the current one.
+  // With MAX_SIZE=7 in the cache this fills the window exactly (N-3…N+3).
+  // Fires after both currentIndex and activities are resolved (list may arrive async).
+  useEffect(() => {
+    if (currentIndex < 0 || activities.length === 0) return;
+
+    const prefetchGroup = (group: ActivityGroup) => {
+      const isNoSession = !group.session_start;
+      const ss = group.session_start ?? group.events[0]?.id;
+      if (!ss) return;
+      const key = makeCacheKey(ss, group.category_id, group.user_id, isNoSession);
+      prefetchActivity(key, ss, group.category_id, isNoSession, group.user_id);
+    };
+
+    for (let offset = -3; offset <= 3; offset++) {
+      if (offset === 0) continue;
+      const idx = currentIndex + offset;
+      if (idx >= 0 && idx < activities.length) prefetchGroup(activities[idx]);
+    }
+  }, [currentIndex, activities]);
 
   // Konstruiraj sessionKey direktno iz URL params – isti format kao useActivities groupMap
   // Ne oslanjamo se na loaded activities (mogu biti još u loading stanju kad korisnik klikne X)
