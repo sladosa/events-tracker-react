@@ -99,20 +99,32 @@ export function StructureAddAreaPanel({
 
   const { areas: templateAreas, loading: templateAreasLoading } = useTemplateAreas();
 
-  // Slugs that the current user already has (exclude template/shared areas from allNodes)
-  const userAreaSlugs = useMemo(
-    () => new Set(
-      allNodes
-        .filter(n => n.nodeType === 'area' && n.area.user_id === userId)
-        .map(n => n.area.slug),
-    ),
+  // Slugs and names that the current user already has
+  const userOwnAreas = useMemo(
+    () => allNodes.filter(n => n.nodeType === 'area' && n.area.user_id === userId),
     [allNodes, userId],
   );
+  const userAreaSlugs = useMemo(
+    () => new Set(userOwnAreas.map(n => n.area.slug)),
+    [userOwnAreas],
+  );
+  const userAreaNames = useMemo(
+    () => new Set(userOwnAreas.map(n => n.name.toLowerCase().trim())),
+    [userOwnAreas],
+  );
 
-  // Template areas not yet copied by this user
+  // Template areas not yet copied by this user — check both slug AND name
   const availableTemplateAreas = useMemo(
-    () => templateAreas.filter(ta => !userAreaSlugs.has(ta.slug)),
-    [templateAreas, userAreaSlugs],
+    () => templateAreas.filter(
+      ta => !userAreaSlugs.has(ta.slug) && !userAreaNames.has(ta.name.toLowerCase().trim()),
+    ),
+    [templateAreas, userAreaSlugs, userAreaNames],
+  );
+
+  // Duplicate name check for "empty" mode
+  const nameIsDuplicate = useMemo(
+    () => !!name.trim() && userAreaNames.has(name.toLowerCase().trim()),
+    [name, userAreaNames],
   );
 
   // Auto-select first available template area when mode switches
@@ -343,7 +355,7 @@ export function StructureAddAreaPanel({
   };
 
   const canCreate = mode === 'empty'
-    ? !!name.trim() && !creating
+    ? !!name.trim() && !nameIsDuplicate && !creating
     : !!selectedTemplateAreaId && !creating;
 
   // ── Enter to submit (empty mode) ──────────────────────
@@ -445,6 +457,11 @@ export function StructureAddAreaPanel({
               <p className="mt-1 text-xs text-gray-400">
                 Slug: <span className="font-mono text-gray-500">{slug || '—'}</span>
               </p>
+              {nameIsDuplicate && (
+                <p className="mt-1.5 text-xs text-red-600 font-medium">
+                  Area with this name already exists. Rename the existing area first.
+                </p>
+              )}
             </div>
           )}
 

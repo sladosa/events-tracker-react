@@ -225,6 +225,11 @@ Faze i status:
 - ✅ S56: Slug rename u `StructureNodeEditPanel` — inline edit slug na attr defu; amber border kad promijenjeno; Reset gumb; auto-update depends_on referenci u allNodes; nema utjecaja na event_attributes (veza je UUID, ne slug)
 - ✅ S56: Collapse Level pre-collapse warning — `incompatibleSlugs` useMemo prikazuje warning PRIJE collapse (ne nakon); inline rename input po konfliktu u modalu; green "✓ All conflicts resolved" kad sve riješeno; placeholder "new name for 'slug' on child"
 - ✅ S56: Collapse Level fresh fetch fix — `freshChildAttrsMap` state fetchan na mount (bez `user_id` filtera, RLS handle-a); i warning UI i `handleCollapse` koriste isti map; `handleRenameConflict` refresha map nakon rename → stale allNodes props više ne uzrokuju krive INSERT-e; T-S55-5/6 ✅
+- ✅ S57: ViewDetailsPage prefetch cache — `src/lib/activityViewCache.ts` (LRU 7 entry-a, ms-normalized key); `loadActivityData` koristi cache; prefetch ±3 susjeda u pozadini dok korisnik čita; Add+Edit nije potrebno (ViewDetails je read-only)
+- ✅ S57: `CategoryDetailPanel` swipe — `useTouchSwipe` hook dodan; swipe lijevo = Next node, desno = Prev node
+- ✅ S57: Structure area collapse — `CategoryChainRow` dobio ▼/▶ chevron za area redove + "N hidden" badge; `StructureTableView` — `collapsedAreaIds` state, `visibleRows` filter, "Collapse all / Expand all" gumb (prikazuje se kad 2+ areaa); panel Prev/Next navigira kroz `visibleRows`
+- ✅ S57: AddAreaPanel duplikat zaštita — provjera po imenu (case-insensitive) za "empty" mode (inline error) i "template" mode (template se ne pojavljuje u dropdownu ako postoji area s istim imenom ili slugom)
+- ✅ S57: AttributeChainForm localStorage expand persist — `attrExpanded:<categoryId>` u localStorage; korisnikova preferencija (otvori/zatvori) pamti se per-category; radi za Add i Edit Activity
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
@@ -257,10 +262,14 @@ Faze i status:
    E2E: `e2e/tests/e13-add-between.spec.ts` (E13-1, E13-2) — ✅ prolaze (S55b)
    Manualni: T-S55-1/2/3/4/5/6 sve ✅; T-S56-1/2/3 ✅
 
-**4. ~~UX poboljšanja — Filter i Mobile~~** — ✅ **kompletno (S56)**
+**4. ~~UX poboljšanja — Filter i Mobile~~** — ✅ **kompletno (S56–S57)**
 
 - ✅ **UX-F1** — "Reset cat." resetira samo Category, Area ostaje (`resetCategory()` u `FilterContext`, `ProgressiveCategorySelector`)
 - ✅ **UX-M1** — Swipe geste na `ViewDetailsPage`: `useTouchSwipe` hook, swipe lijevo = Next, desno = Prev
+- ✅ **UX-M2** — Swipe geste na `CategoryDetailPanel` (Structure tab): swipe lijevo = Next node, desno = Prev node (S57)
+- ✅ **UX-P1** — Prefetch cache za ViewDetailsPage: LRU 7 entry-a, prefetch ±3 susjeda u pozadini (S57)
+- ✅ **UX-S1** — Structure area collapse/expand: per-area chevron + "Collapse all" gumb (S57)
+- ✅ **UX-A1** — AttributeChainForm expand state persist via localStorage per category (S57)
 
 **5. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
 

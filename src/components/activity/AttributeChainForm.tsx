@@ -3,6 +3,29 @@ import type { AttributeDefinition, Category } from '@/types';
 import { AttributeInput } from './AttributeInput';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 
+// ---- localStorage helpers ----
+// Key per category UUID: 'attrExpanded:<uuid>' → 'true' | 'false'
+// null = no preference stored → use default
+
+function getStoredExpanded(categoryId: string): boolean | null {
+  try {
+    const val = localStorage.getItem(`attrExpanded:${categoryId}`);
+    if (val === 'true') return true;
+    if (val === 'false') return false;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setStoredExpanded(categoryId: string, expanded: boolean): void {
+  try {
+    localStorage.setItem(`attrExpanded:${categoryId}`, expanded ? 'true' : 'false');
+  } catch {
+    // ignore — storage might be full or disabled
+  }
+}
+
 interface AttributeValue {
   definitionId: string;
   value: string | number | boolean | null;
@@ -40,16 +63,21 @@ export function AttributeChainForm({
   // Track which categories are expanded (leaf is always expanded)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  // Update expanded categories when chain changes
+  // Restore expanded state from localStorage when chain changes.
+  // Per-category preference overrides the default (leaf open, parents closed).
   useEffect(() => {
     if (categoryChain.length > 0) {
-      setExpandedCategories(prev => {
-        const next = new Set(prev);
-        // Leaf always expanded
-        next.add(categoryChain[0].id);
-        // Optionally expand all
-        if (expandedByDefault) {
-          categoryChain.forEach(c => next.add(c.id));
+      setExpandedCategories(() => {
+        const next = new Set<string>();
+        for (const cat of categoryChain) {
+          const stored = getStoredExpanded(cat.id);
+          const isLeaf = cat.id === categoryChain[0].id;
+          if (stored !== null) {
+            if (stored) next.add(cat.id);
+            // stored=false → don't add (collapsed)
+          } else if (isLeaf || expandedByDefault) {
+            next.add(cat.id);
+          }
         }
         return next;
       });
@@ -59,11 +87,9 @@ export function AttributeChainForm({
   const toggleCategory = useCallback((categoryId: string) => {
     setExpandedCategories(prev => {
       const next = new Set(prev);
-      if (next.has(categoryId)) {
-        next.delete(categoryId);
-      } else {
-        next.add(categoryId);
-      }
+      const willExpand = !next.has(categoryId);
+      if (willExpand) next.add(categoryId); else next.delete(categoryId);
+      setStoredExpanded(categoryId, willExpand);
       return next;
     });
   }, []);

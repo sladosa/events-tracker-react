@@ -39,6 +39,11 @@ interface CategoryChainRowProps {
   sharedContext?: SharedContext | null;
   /** Owner only: open Share Management modal for this area node (Faza 7) */
   onManageAccess?: (node: StructureNode) => void;
+  /** Area collapse/expand — only used when nodeType === 'area' */
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  /** Number of category rows hidden when collapsed (shown as badge) */
+  hiddenCount?: number;
 }
 
 // --------------------------------------------------------
@@ -242,6 +247,9 @@ export function CategoryChainRow({
   onCollapseLevel,
   sharedContext,
   onManageAccess,
+  isCollapsed = false,
+  onToggleCollapse,
+  hiddenCount,
 }: CategoryChainRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 });
@@ -287,6 +295,23 @@ export function CategoryChainRow({
         isTemplate && 'opacity-75',
       )}
     >
+      {/* ---- Collapse chevron (area rows only) ---- */}
+      {node.nodeType === 'area' && onToggleCollapse && (
+        <button
+          onClick={e => { e.stopPropagation(); onToggleCollapse(); }}
+          className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100 transition-colors mt-0.5"
+          title={isCollapsed ? 'Expand area' : 'Collapse area'}
+          aria-label={isCollapsed ? 'Expand area' : 'Collapse area'}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {isCollapsed
+              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+            }
+          </svg>
+        </button>
+      )}
+
       {/* ---- Path + description ---- */}
       <div className="flex-1 min-w-0">
         {/* Full path — wraps naturally on mobile (no truncation) */}
@@ -302,6 +327,13 @@ export function CategoryChainRow({
           {isTemplate && node.nodeType === 'area' && (
             <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-slate-200 text-slate-500">
               template
+            </span>
+          )}
+
+          {/* Collapsed badge — shows how many rows are hidden */}
+          {node.nodeType === 'area' && isCollapsed && hiddenCount !== undefined && hiddenCount > 0 && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-500 italic">
+              {hiddenCount} hidden
             </span>
           )}
 

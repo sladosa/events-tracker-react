@@ -127,6 +127,18 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
   // ---- Add Area panel state ----
   const [showAddArea, setShowAddArea] = useState(false);
 
+  // ---- Area collapse state ----
+  const [collapsedAreaIds, setCollapsedAreaIds] = useState<Set<string>>(new Set());
+
+  const toggleCollapseArea = useCallback((areaId: string) => {
+    setCollapsedAreaIds(prev => {
+      const next = new Set(prev);
+      if (next.has(areaId)) next.delete(areaId);
+      else next.add(areaId);
+      return next;
+    });
+  }, []);
+
   // nodeFilter is controlled by parent; in edit mode parent passes 'mine'
 
   // ---- Current user ID (needed for Add Child insert) ----
@@ -200,18 +212,49 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
   const showTemplateBanner = nodeFilter !== 'mine' &&
     visibleNodes.some(n => n.area.user_id === TEMPLATE_USER_ID);
 
+  // ---- Collapse helpers ----
+  // Count how many category rows each area has (used for "N hidden" badge)
+  const areaChildCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const node of filtered) {
+      if (node.nodeType === 'category') {
+        counts.set(node.areaId, (counts.get(node.areaId) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [filtered]);
+
+  // Rows actually rendered — area children hidden when area is collapsed
+  const visibleRows = useMemo(
+    () => filtered.filter(
+      node => node.nodeType === 'area' || !collapsedAreaIds.has(node.areaId),
+    ),
+    [filtered, collapsedAreaIds],
+  );
+
+  const areaNodes = useMemo(() => filtered.filter(n => n.nodeType === 'area'), [filtered]);
+  const allCollapsed = areaNodes.length > 0 && areaNodes.every(n => collapsedAreaIds.has(n.id));
+
+  const toggleCollapseAll = useCallback(() => {
+    if (allCollapsed) {
+      setCollapsedAreaIds(new Set());
+    } else {
+      setCollapsedAreaIds(new Set(areaNodes.map(n => n.id)));
+    }
+  }, [allCollapsed, areaNodes]);
+
   // ---- Panel helpers ----
-  const activeNode = activePanelIndex !== null ? filtered[activePanelIndex] ?? null : null;
+  const activeNode = activePanelIndex !== null ? visibleRows[activePanelIndex] ?? null : null;
 
   const openView = useCallback((node: StructureNode) => {
-    const idx = filtered.findIndex(n => n.id === node.id);
+    const idx = visibleRows.findIndex(n => n.id === node.id);
     if (idx >= 0) { setActivePanelIndex(idx); setPanelMode('view'); }
-  }, [filtered]);
+  }, [visibleRows]);
 
   const openEdit = useCallback((node: StructureNode) => {
-    const idx = filtered.findIndex(n => n.id === node.id);
+    const idx = visibleRows.findIndex(n => n.id === node.id);
     if (idx >= 0) { setActivePanelIndex(idx); setPanelMode('edit'); }
-  }, [filtered]);
+  }, [visibleRows]);
 
   const closePanel = useCallback((highlightId?: string) => {
     setPanelMode(null);
@@ -363,10 +406,29 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
         </div>
       )}
 
+      {/* ── Collapse-all toolbar (only when 2+ areas visible) ── */}
+      {areaNodes.length > 1 && (
+        <div className="flex items-center justify-end px-4 py-1 border-b border-gray-100 bg-gray-50/60">
+          <button
+            onClick={toggleCollapseAll}
+            className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
+            title={allCollapsed ? 'Expand all areas' : 'Collapse all areas'}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {allCollapsed
+                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              }
+            </svg>
+            {allCollapsed ? 'Expand all' : 'Collapse all'}
+          </button>
+        </div>
+      )}
+
       <TableHeader />
 
       <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
-        {filtered.map((node) => {
+        {visibleRows.map((node) => {
           const isHighlighted = node.id === highlightedNodeId;
           return (
             <div
@@ -386,6 +448,9 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
                 onCollapseLevel={isEditMode ? setCollapseLevelNode : undefined}
                 sharedContext={sharedContext}
                 onManageAccess={onManageAccess ? (n) => onManageAccess(n.id, n.name) : undefined}
+                isCollapsed={node.nodeType === 'area' ? collapsedAreaIds.has(node.id) : undefined}
+                onToggleCollapse={node.nodeType === 'area' ? () => toggleCollapseArea(node.id) : undefined}
+                hiddenCount={node.nodeType === 'area' ? (areaChildCounts.get(node.id) ?? 0) : undefined}
               />
             </div>
           );
@@ -397,7 +462,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
         <CategoryDetailPanel
           node={activeNode}
           allNodes={nodes}
-          filteredNodes={filtered}
+          filteredNodes={visibleRows}
           currentIndex={activePanelIndex!}
           onClose={() => closePanel()}
           onNavigate={handleNavigate}
