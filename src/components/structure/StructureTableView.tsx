@@ -33,8 +33,9 @@ import { THEME } from '@/lib/theme';
 import { useFilter } from '@/context/FilterContext';
 import { useStructureData, filterStructureNodes } from '@/hooks/useStructureData';
 
-export const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
 export type NodeFilter = 'mine' | 'all' | 'templates';
+import { TEMPLATE_USER_ID } from '@/lib/constants';
+export { TEMPLATE_USER_ID };
 import { CategoryChainRow } from './CategoryChainRow';
 import { CategoryDetailPanel } from './CategoryDetailPanel';
 import { StructureNodeEditPanel } from './StructureNodeEditPanel';
@@ -148,6 +149,67 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
       if (data.user) setUserId(data.user.id);
     });
   }, []);
+
+  // ---- Area shares map (owner view only): areaId → grantee display names ----
+  const [areaSharesMap, setAreaSharesMap] = useState<Map<string, string[]>>(new Map());
+  useEffect(() => {
+    if (!userId || sharedContext) return; // only for owner, not grantee
+    supabase
+      .from('data_shares')
+      .select('target_id, grantee_id')
+      .eq('owner_id', userId)
+      .eq('share_type', 'area')
+      .then(async ({ data }) => {
+        if (!data || data.length === 0) { setAreaSharesMap(new Map()); return; }
+        const granteeIds = [...new Set(data.map(s => s.grantee_id as string))];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, display_name')
+          .in('id', granteeIds);
+        const profileMap = new Map((profiles ?? []).map((p: { id: string; email: string; display_name: string | null }) => [p.id, p]));
+        const map = new Map<string, string[]>();
+        for (const share of data) {
+          const p = profileMap.get(share.grantee_id as string);
+          const name = (p as { display_name?: string | null; email?: string } | undefined)?.display_name
+            || (p as { display_name?: string | null; email?: string } | undefined)?.email
+            || (share.grantee_id as string);
+          const existing = map.get(share.target_id as string) ?? [];
+          existing.push(name);
+          map.set(share.target_id as string, existing);
+        }
+        setAreaSharesMap(map);
+      });
+  }, [userId, sharedContext]);
+
+  // ---- Grantee area info map: areaId → { ownerName, permission } for areas not owned by current user ----
+  const [granteeAreaInfoMap, setGranteeAreaInfoMap] = useState<Map<string, { ownerName: string; permission: string }>>(new Map());
+  useEffect(() => {
+    if (!userId || sharedContext) return;
+    // Find areas in current node list that belong to someone else
+    const foreignAreaOwnerIds = [...new Set(
+      nodes
+        .filter(n => n.nodeType === 'area' && n.area.user_id !== userId && n.area.user_id !== TEMPLATE_USER_ID)
+        .map(n => n.area.user_id),
+    )];
+    if (foreignAreaOwnerIds.length === 0) { setGranteeAreaInfoMap(new Map()); return; }
+
+    Promise.all([
+      supabase.from('data_shares').select('target_id, permission').eq('grantee_id', userId).eq('share_type', 'area'),
+      supabase.from('profiles').select('id, email, display_name').in('id', foreignAreaOwnerIds),
+    ]).then(([{ data: shares }, { data: profiles }]) => {
+      const permMap = new Map((shares ?? []).map(s => [s.target_id as string, s.permission as string]));
+      const profileMap = new Map((profiles ?? []).map((p: { id: string; email: string; display_name: string | null }) => [p.id, p]));
+      const map = new Map<string, { ownerName: string; permission: string }>();
+      for (const n of nodes.filter(nd => nd.nodeType === 'area' && nd.area.user_id !== userId && nd.area.user_id !== TEMPLATE_USER_ID)) {
+        const ownerId = n.area.user_id as string;
+        const p = profileMap.get(ownerId) as { display_name?: string | null; email?: string | null } | undefined;
+        const ownerName = p?.display_name ?? p?.email ?? ownerId;
+        const permission = permMap.get(n.areaId) ?? 'read';
+        map.set(n.areaId, { ownerName, permission });
+      }
+      setGranteeAreaInfoMap(map);
+    });
+  }, [userId, nodes, sharedContext]);
 
   // When parent signals a data refresh (e.g. after import), refetch and close panel
   useEffect(() => {
@@ -447,6 +509,8 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
                 onAddBetween={isEditMode ? setAddBetweenNode : undefined}
                 onCollapseLevel={isEditMode ? setCollapseLevelNode : undefined}
                 sharedContext={sharedContext}
+                sharedWith={node.nodeType === 'area' ? areaSharesMap.get(node.areaId) : undefined}
+                granteeInfo={node.nodeType === 'area' ? granteeAreaInfoMap.get(node.areaId) : undefined}
                 onManageAccess={onManageAccess ? (n) => onManageAccess(n.id, n.name) : undefined}
                 isCollapsed={node.nodeType === 'area' ? collapsedAreaIds.has(node.id) : undefined}
                 onToggleCollapse={node.nodeType === 'area' ? () => toggleCollapseArea(node.id) : undefined}

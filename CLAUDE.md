@@ -230,13 +230,16 @@ Faze i status:
 - ✅ S57: Structure area collapse — `CategoryChainRow` dobio ▼/▶ chevron za area redove + "N hidden" badge; `StructureTableView` — `collapsedAreaIds` state, `visibleRows` filter, "Collapse all / Expand all" gumb (prikazuje se kad 2+ areaa); panel Prev/Next navigira kroz `visibleRows`
 - ✅ S57: AddAreaPanel duplikat zaštita — provjera po imenu (case-insensitive) za "empty" mode (inline error) i "template" mode (template se ne pojavljuje u dropdownu ako postoji area s istim imenom ili slugom)
 - ✅ S57: AttributeChainForm localStorage expand persist — `attrExpanded:<categoryId>` u localStorage; korisnikova preferencija (otvori/zatvori) pamti se per-category; radi za Add i Edit Activity
+- ✅ S57b: E14 Playwright fix — ispravljen targetSession smjer (newest-first), `isNavigationFetchFor` guard za parent chain querije (`select=id%2C`), `waitForResponse` registriran prije `page.goto` (race condition fix); debug `console.log` uklonjen iz `activityViewCache.ts`
+- ✅ S57b: Remove dependency fix — `StructureNodeEditPanel` onChange za depends_on dropdown postavlja `validationType: 'suggest'` kad se slug ukloni; bez toga S31 validacija blokirala Save
+- ✅ S57b: Template user login — recreiran kroz Dashboard (`sasasladoljev59+template@gmail.com`); UUID `be785f09-b7c6-497f-b351-363d224c93c8`; `TEMPLATE_USER_ID` centraliziran u `src/lib/constants.ts` (uklonjen iz `StructureTableView`, `StructureAddAreaPanel`, `useAreas`, `useCategories`); stari UUID `...000000000000` u `useCategories` bio bug — fiksiran
+- ✅ S57b: UX-2 — Structure sharing indikatori po redu: owner view → purple `🔗` badge s grantee imenima (tooltip); grantee view → zeleni/amber tekst "owner: X · you have write/read access" ispod naziva areae; `areaSharesMap` + `granteeAreaInfoMap` u `StructureTableView`
+- ✅ S57b: Bulk delete disabled za grantee — checkbox bulk delete sakriven kad je aktivan `sharedContext`
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
-- **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
 - **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
-- Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 
 ---
 
@@ -253,7 +256,8 @@ Faze i status:
 - ✅ BUG-S52-1 riješen (S53) — DATA BUG u TEST bazi; sql/011 pokrenut
 - ✅ Manualni smoke test: kreirati Health area na TEST, provjeriti 3 categories + 2 attrs (T-S53-3 ✅)
 - ✅ 010_template_seed.sql + 011_template_fix_area_ids.sql pokrenuti na PROD (S54, 2026-04-15)
-- ⬜ Template user login — GoTrue ne prihvaća `.local` domenu; odgođeno
+- ✅ Template user login — riješeno (S57b): `sasasladoljev59+template@gmail.com`, UUID `be785f09-b7c6-497f-b351-363d224c93c8`; može se logirati i koristiti app normalno za konfiguraciju template podataka
+- ⬜ Template podaci — Health area obrisana pri resetiranju usera; treba rekreirati template Areas/kategorije kroz app ili Excel import kao template user
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
 **3. ~~Add Category Between~~** — ✅ **kompletno (S55–S56)**. Scenarij A (Add Between) + Scenarij D (Collapse Level) implementirani i testirani.

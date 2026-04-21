@@ -39,6 +39,10 @@ interface CategoryChainRowProps {
   sharedContext?: SharedContext | null;
   /** Owner only: open Share Management modal for this area node (Faza 7) */
   onManageAccess?: (node: StructureNode) => void;
+  /** Owner view: grantee display names for this area (shows sharing badge) */
+  sharedWith?: string[];
+  /** Grantee view: owner name + permission for areas not owned by current user */
+  granteeInfo?: { ownerName: string; permission: string };
   /** Area collapse/expand — only used when nodeType === 'area' */
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -246,6 +250,8 @@ export function CategoryChainRow({
   onAddBetween,
   onCollapseLevel,
   sharedContext,
+  sharedWith,
+  granteeInfo,
   onManageAccess,
   isCollapsed = false,
   onToggleCollapse,
@@ -337,6 +343,19 @@ export function CategoryChainRow({
             </span>
           )}
 
+          {/* Sharing badge — shown on area rows when owner has active shares */}
+          {node.nodeType === 'area' && sharedWith && sharedWith.length > 0 && (
+            <span
+              className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 flex items-center gap-1"
+              title={`Shared with: ${sharedWith.join(', ')}`}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              {sharedWith.length === 1 ? sharedWith[0].split('@')[0] : `${sharedWith.length} shared`}
+            </span>
+          )}
+
           {/* Leaf badge */}
           {node.isLeaf && node.nodeType === 'category' && (
             <span className={cn('text-xs px-1.5 py-0.5 rounded-full font-medium', t.badgeLeaf)}>
@@ -356,6 +375,16 @@ export function CategoryChainRow({
         {node.description && (
           <p className="mt-0.5 text-xs text-gray-500">
             {node.description}
+          </p>
+        )}
+
+        {/* Grantee info — shown on area rows where current user is grantee */}
+        {node.nodeType === 'area' && granteeInfo && (
+          <p className={cn(
+            'mt-0.5 text-xs font-medium',
+            granteeInfo.permission === 'write' ? 'text-green-600' : 'text-amber-600',
+          )}>
+            owner: {granteeInfo.ownerName} · you have {granteeInfo.permission} access
           </p>
         )}
       </div>

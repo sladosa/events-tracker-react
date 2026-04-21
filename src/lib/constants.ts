@@ -3,7 +3,7 @@
 // ============================================
 
 // Template user ID - koristi se za "starter" podatke i suggestions
-export const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000000';
+export const TEMPLATE_USER_ID = 'be785f09-b7c6-497f-b351-363d224c93c8';
 
 // Default time for historical imports (Excel)
 export const DEFAULT_TIME = '09:00';
