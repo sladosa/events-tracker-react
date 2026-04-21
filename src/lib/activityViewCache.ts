@@ -32,6 +32,8 @@ export interface CachedActivityData {
   currentUserLabel: string | null;
   parentAttrValues: Map<string, { value: string | number | boolean | null; dataType: string }>;
   leafCategoryId: UUID;
+  categoryChain: { id: UUID; name: string }[];
+  attributesByCategory: Map<string, { id: UUID; name: string; data_type: string }[]>;
 }
 
 // ---- Internal DB types ----
@@ -141,30 +143,57 @@ export function invalidateCacheKey(key: string): void {
 
 // ---- Fetch logic ----
 
-async function _buildCategoryPath(catId: UUID): Promise<string[]> {
-  const path: string[] = [];
-  let currentId: UUID | null = catId;
+async function _buildCategoryChain(leafCatId: UUID): Promise<{
+  chain: { id: UUID; name: string }[];
+  path: string[];
+  attributesByCategory: Map<string, { id: UUID; name: string; data_type: string }[]>;
+}> {
+  // Fetch all categories in one query, walk up from leaf
+  const { data: allCats } = await supabase
+    .from('categories')
+    .select('id, name, parent_category_id, area_id')
+    .order('level', { ascending: false }) as {
+      data: { id: string; name: string; parent_category_id: string | null; area_id: string | null }[] | null;
+    };
+
+  const catMap = new Map((allCats ?? []).map(c => [c.id, c]));
+  const chain: { id: UUID; name: string }[] = [];
+  let currentId: UUID | null = leafCatId;
   let areaId: UUID | null = null;
 
   while (currentId) {
-    const { data: cat } = await supabase
-      .from('categories')
-      .select('id, name, parent_category_id, area_id')
-      .eq('id', currentId)
-      .single() as { data: { id: string; name: string; parent_category_id: string | null; area_id: string | null } | null };
-
+    const cat = catMap.get(currentId);
     if (!cat) break;
-    path.unshift(cat.name);
-    if (cat.area_id) areaId = cat.area_id;
-    currentId = cat.parent_category_id;
+    chain.push({ id: cat.id as UUID, name: cat.name });
+    if (cat.area_id) areaId = cat.area_id as UUID;
+    currentId = cat.parent_category_id as UUID | null;
   }
 
+  // Build display path (root → leaf, with area prefix)
+  const path: string[] = [...chain].reverse().map(c => c.name);
   if (areaId) {
     const { data: area } = await supabase.from('areas').select('name').eq('id', areaId).single();
     if (area) path.unshift((area as { name: string }).name);
   }
 
-  return path;
+  // Fetch attr defs for all chain categories in one query
+  const chainIds = chain.map(c => c.id);
+  const { data: attrDefs } = await supabase
+    .from('attribute_definitions')
+    .select('id, name, data_type, category_id')
+    .in('category_id', chainIds)
+    .order('sort_order', { ascending: true }) as {
+      data: { id: string; name: string; data_type: string; category_id: string }[] | null;
+    };
+
+  const attributesByCategory = new Map<string, { id: UUID; name: string; data_type: string }[]>();
+  for (const attr of attrDefs ?? []) {
+    const existing = attributesByCategory.get(attr.category_id) ?? [];
+    existing.push({ id: attr.id as UUID, name: attr.name, data_type: attr.data_type });
+    attributesByCategory.set(attr.category_id, existing);
+  }
+
+  return { chain, path, attributesByCategory };
 }
 
 async function _fetchActivityData(
@@ -229,7 +258,7 @@ async function _fetchActivityData(
       ownerDisplayName = myLabel;
     }
 
-    const categoryPath = await _buildCategoryPath(leafCategoryId);
+    const { chain: categoryChain, path: categoryPath, attributesByCategory } = await _buildCategoryChain(leafCategoryId);
     const sessionDateTime = noSession
       ? new Date(events[0].created_at)
       : new Date(sessionStart);
@@ -290,6 +319,8 @@ async function _fetchActivityData(
       currentUserLabel: myLabel,
       parentAttrValues,
       leafCategoryId,
+      categoryChain,
+      attributesByCategory,
     };
   } catch (err) {
     console.error('[activityViewCache] fetch error:', err);
