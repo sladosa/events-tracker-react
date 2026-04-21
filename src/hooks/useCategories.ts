@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { TEMPLATE_USER_ID } from '@/lib/constants';
 import type { CategoryWithArea, UUID } from '@/types';
-
-// Template user ID - koristi se za "starter" podatke za nove korisnike
-const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface UseCategoriesOptions {
   areaId?: UUID | null;

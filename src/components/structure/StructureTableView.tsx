@@ -33,8 +33,9 @@ import { THEME } from '@/lib/theme';
 import { useFilter } from '@/context/FilterContext';
 import { useStructureData, filterStructureNodes } from '@/hooks/useStructureData';
 
-export const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
 export type NodeFilter = 'mine' | 'all' | 'templates';
+import { TEMPLATE_USER_ID } from '@/lib/constants';
+export { TEMPLATE_USER_ID };
 import { CategoryChainRow } from './CategoryChainRow';
 import { CategoryDetailPanel } from './CategoryDetailPanel';
 import { StructureNodeEditPanel } from './StructureNodeEditPanel';

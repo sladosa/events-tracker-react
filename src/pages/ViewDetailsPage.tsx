@@ -16,9 +16,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
-import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useTouchSwipe } from '@/hooks/useTouchSwipe';
-import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
 import { useActivities, type ActivityGroup } from '@/hooks/useActivities';
 import { useFilter } from '@/context/FilterContext';
 import { THEME } from '@/lib/theme';
@@ -276,7 +274,6 @@ export function ViewDetailsPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [categoryId, setCategoryId] = useState<UUID | null>(null);
   const [categoryPath, setCategoryPath] = useState<string[]>([]);
   const [sessionDateTime, setSessionDateTime] = useState<Date>(new Date());
   const [viewEvents, setViewEvents] = useState<ViewEvent[]>([]);
@@ -287,6 +284,9 @@ export function ViewDetailsPage() {
   const [currentUserLabel, setCurrentUserLabel] = useState<string | null>(null);
   // VIEW-P2: parent atributi dijeljeni za sve tabove (Activity, Gym itd.)
   const [parentAttrValues, setParentAttrValues] = useState<Map<string, { value: string | number | boolean | null; dataType: string }>>(new Map());
+  // Cached from activityViewCache — no hooks needed, avoids re-fetching on every Prev/Next
+  const [categoryChain, setCategoryChain] = useState<{ id: string; name: string }[]>([]);
+  const [attributesByCategory, setAttributesByCategory] = useState<Map<string, { id: string; name: string; data_type: string }[]>>(new Map());
 
   useEffect(() => {
     if (!sessionStart) {
@@ -307,6 +307,8 @@ export function ViewDetailsPage() {
     setIsOwnEvent(true);
     setOwnerDisplayName(null);
     setCurrentUserLabel(null);
+    setCategoryChain([]);
+    setAttributesByCategory(new Map());
 
     const decoded = noSession ? sessionStart : decodeURIComponent(sessionStart);
     const key = makeCacheKey(decoded, categoryIdParam, ownerIdParam, noSession);
@@ -319,7 +321,6 @@ export function ViewDetailsPage() {
       return;
     }
 
-    setCategoryId(cached.leafCategoryId);
     setIsOwnEvent(cached.isOwnEvent);
     setCurrentUserLabel(cached.currentUserLabel);
     setOwnerDisplayName(cached.ownerDisplayName);
@@ -327,18 +328,10 @@ export function ViewDetailsPage() {
     setSessionDateTime(cached.sessionDateTime);
     setViewEvents(cached.viewEvents);
     setParentAttrValues(cached.parentAttrValues);
+    setCategoryChain(cached.categoryChain);
+    setAttributesByCategory(cached.attributesByCategory);
     setIsLoading(false);
   };
-
-  // ============================================
-  // Category Chain & Attributes
-  // ============================================
-
-  const { chain: categoryChain, loading: chainLoading } = useCategoryChain(categoryId);
-
-  const chainCategoryIds = useMemo(() => categoryChain.map(c => c.id), [categoryChain]);
-
-  const { attributesByCategory, loading: attributesLoading } = useAttributeDefinitions(chainCategoryIds);
 
   // Build attribute values map for current event
   const currentEvent = viewEvents[selectedEventIndex];
@@ -696,12 +689,7 @@ export function ViewDetailsPage() {
 
           {/* Attributes */}
           <div className="px-3 pb-3 pt-2">
-            {(chainLoading || attributesLoading) ? (
-              <div className="flex items-center justify-center py-6">
-                <div className={cn('animate-spin rounded-full h-6 w-6 border-b-2', t.spinner)} />
-                <span className="ml-2 text-gray-500 text-sm">Loading...</span>
-              </div>
-            ) : categoryId && categoryChain.length > 0 ? (
+            {categoryChain.length > 0 ? (
               <ReadOnlyAttributeChain
                 categoryChain={categoryChain}
                 attributesByCategory={attributesByCategory}

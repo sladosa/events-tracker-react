@@ -17,10 +17,9 @@ import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { supabase } from '@/lib/supabaseClient';
 import { useTemplateAreas } from '@/hooks/useAreas';
+import { TEMPLATE_USER_ID } from '@/lib/constants';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
-
-const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // --------------------------------------------------------
 // Props

@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { TEMPLATE_USER_ID } from '@/lib/constants';
 import type { Area } from '@/types';
-
-// Template user ID - koristi se za "starter" podatke za nove korisnike
-const TEMPLATE_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 interface UseAreasOptions {
   includeTemplates?: boolean; // Default: false - prikaži samo svoje
