@@ -233,13 +233,13 @@ Faze i status:
 - ✅ S57b: E14 Playwright fix — ispravljen targetSession smjer (newest-first), `isNavigationFetchFor` guard za parent chain querije (`select=id%2C`), `waitForResponse` registriran prije `page.goto` (race condition fix); debug `console.log` uklonjen iz `activityViewCache.ts`
 - ✅ S57b: Remove dependency fix — `StructureNodeEditPanel` onChange za depends_on dropdown postavlja `validationType: 'suggest'` kad se slug ukloni; bez toga S31 validacija blokirala Save
 - ✅ S57b: Template user login — recreiran kroz Dashboard (`sasasladoljev59+template@gmail.com`); UUID `be785f09-b7c6-497f-b351-363d224c93c8`; `TEMPLATE_USER_ID` centraliziran u `src/lib/constants.ts` (uklonjen iz `StructureTableView`, `StructureAddAreaPanel`, `useAreas`, `useCategories`); stari UUID `...000000000000` u `useCategories` bio bug — fiksiran
+- ✅ S57b: UX-2 — Structure sharing indikatori po redu: owner view → purple `🔗` badge s grantee imenima (tooltip); grantee view → zeleni/amber tekst "owner: X · you have write/read access" ispod naziva areae; `areaSharesMap` + `granteeAreaInfoMap` u `StructureTableView`
+- ✅ S57b: Bulk delete disabled za grantee — checkbox bulk delete sakriven kad je aktivan `sharedContext`
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
-- **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
 - **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
-- Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 
 ---
 
