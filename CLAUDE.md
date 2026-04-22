@@ -11,21 +11,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 
 ## Key docs (read before touching related code)
 
-| Doc | When to read |
-|-----|-------------|
-| `docs/ARCHITECTURE_v1_6.md` | Always — data model, P1/P2/P3, chain_key, session identity |
-| `docs/STRUCTURE_TAB_SPEC_FOR_DEV_v1.1.md` | Structure tab work (zamjenjuje v1.5) |
-| `docs/EXCEL_FORMAT_ANALYSIS_v2.md` | Excel export/import work |
-| `docs/IMPORT_DIFF_SPEC.md` | Import "skipped" vs "updated" — ✅ implemented S28 |
-| `docs/ADD_ATTRIBUTE_SPEC.md` | Add/Delete Attribute u Structure Edit — ✅ implemented S28 |
-| `docs/SUGGEST_DEPENDSON_SPEC_v2.md` | Suggest + DependsOn editing — ✅ implemented S29–S31 |
-| `sql/SQL_schema_V5_commented.sql` | DB schema reference |
-| `docs/Code_Guidelines_React_v6.md` | Code conventions |
-| `docs/COLLAB_PLAN_v1.md` | Collab implementation plan — faze 0–8, prerequisites, checklist |
-| `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md` | Collab spec detalji — SQL politike, frontend promjene |
-| `docs/RESTRUCTURE_ANALYSIS.md` | Scenariji reorganizacije A–F, opcije 1–4 |
-| `docs/RESTRUCTURE_DECISIONS_2026-04-01.md` | Odluke donijete o reorganizaciji i Financije data modelu |
-| `docs/TEMPLATE_SYSTEM_SPEC.md` | Template user sistem — starter Areas za nove korisnike, Add Area "From template" |
+| Doc                                            | When to read                                                                     |
+| ---------------------------------------------- | -------------------------------------------------------------------------------- |
+| `docs/ARCHITECTURE_v1_6.md`                    | Always — data model, P1/P2/P3, chain_key, session identity                       |
+| `docs/STRUCTURE_TAB_SPEC_FOR_DEV_v1.1.md`      | Structure tab work (zamjenjuje v1.5)                                             |
+| `docs/EXCEL_FORMAT_ANALYSIS_v2.md`             | Excel export/import work                                                         |
+| `docs/IMPORT_DIFF_SPEC.md`                     | Import "skipped" vs "updated" — ✅ implemented S28                                |
+| `docs/ADD_ATTRIBUTE_SPEC.md`                   | Add/Delete Attribute u Structure Edit — ✅ implemented S28                        |
+| `docs/SUGGEST_DEPENDSON_SPEC_v2.md`            | Suggest + DependsOn editing — ✅ implemented S29–S31                              |
+| `sql/SQL_schema_V5_commented.sql`              | DB schema reference                                                              |
+| `docs/Code_Guidelines_React_v6.md`             | Code conventions                                                                 |
+| `docs/COLLAB_PLAN_v1.md`                       | Collab implementation plan — faze 0–8, prerequisites, checklist                  |
+| `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md` | Collab spec detalji — SQL politike, frontend promjene                            |
+| `docs/RESTRUCTURE_ANALYSIS.md`                 | Scenariji reorganizacije A–F, opcije 1–4                                         |
+| `docs/RESTRUCTURE_DECISIONS_2026-04-01.md`     | Odluke donijete o reorganizaciji i Financije data modelu                         |
+| `docs/TEMPLATE_SYSTEM_SPEC.md`                 | Template user sistem — starter Areas za nove korisnike, Add Area "From template" |
 
 ---
 
