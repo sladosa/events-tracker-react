@@ -230,16 +230,13 @@ Faze i status:
 - ✅ S57: Structure area collapse — `CategoryChainRow` dobio ▼/▶ chevron za area redove + "N hidden" badge; `StructureTableView` — `collapsedAreaIds` state, `visibleRows` filter, "Collapse all / Expand all" gumb (prikazuje se kad 2+ areaa); panel Prev/Next navigira kroz `visibleRows`
 - ✅ S57: AddAreaPanel duplikat zaštita — provjera po imenu (case-insensitive) za "empty" mode (inline error) i "template" mode (template se ne pojavljuje u dropdownu ako postoji area s istim imenom ili slugom)
 - ✅ S57: AttributeChainForm localStorage expand persist — `attrExpanded:<categoryId>` u localStorage; korisnikova preferencija (otvori/zatvori) pamti se per-category; radi za Add i Edit Activity
-- ✅ S57b: E14 Playwright fix — ispravljen targetSession smjer (newest-first), `isNavigationFetchFor` guard za parent chain querije (`select=id%2C`), `waitForResponse` registriran prije `page.goto` (race condition fix); debug `console.log` uklonjen iz `activityViewCache.ts`
-- ✅ S57b: Remove dependency fix — `StructureNodeEditPanel` onChange za depends_on dropdown postavlja `validationType: 'suggest'` kad se slug ukloni; bez toga S31 validacija blokirala Save
-- ✅ S57b: Template user login — recreiran kroz Dashboard (`sasasladoljev59+template@gmail.com`); UUID `be785f09-b7c6-497f-b351-363d224c93c8`; `TEMPLATE_USER_ID` centraliziran u `src/lib/constants.ts` (uklonjen iz `StructureTableView`, `StructureAddAreaPanel`, `useAreas`, `useCategories`); stari UUID `...000000000000` u `useCategories` bio bug — fiksiran
-- ✅ S57b: UX-2 — Structure sharing indikatori po redu: owner view → purple `🔗` badge s grantee imenima (tooltip); grantee view → zeleni/amber tekst "owner: X · you have write/read access" ispod naziva areae; `areaSharesMap` + `granteeAreaInfoMap` u `StructureTableView`
-- ✅ S57b: Bulk delete disabled za grantee — checkbox bulk delete sakriven kad je aktivan `sharedContext`
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
+- **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
 - **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
+- Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 
 ---
 
@@ -248,16 +245,16 @@ Faze i status:
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
 
 **2. Template system** — `sql/010_template_seed.sql` kreiran (S49); spec: `docs/TEMPLATE_SYSTEM_SPEC.md`
-- ✅ Template user kreiran u TEST bazi (`00000000-0000-0000-0000-000000000001`)
-- ✅ RLS policies za areas/categories/attr_defs uključuju template user
-- ✅ `useAreas.ts` — template areas skrivene iz filter dropdowna (`TEMPLATE_USER_ID` fix)
+- ✅ Template user kreiran u TEST bazi (`be785f09-b7c6-497f-b351-363d224c93c8`)
+- ✅ Template user kreiran u PROD bazi (`d6ab00dd-4fda-4e86-bfdc-34a17f032e92`) — S58, loginable
+- ✅ RLS policies za areas/categories/attr_defs uključuju template user (per-env UUID)
+- ✅ `TEMPLATE_USER_ID` centraliziran kao `VITE_TEMPLATE_USER_ID` env var (S58)
+- ✅ `useAreas.ts` — template areas skrivene iz filter dropdowna
 - ✅ Storage bucket `activity-attachments` kreiran u TEST s policies
 - ✅ Add Area "From template" flow — `StructureAddAreaPanel` radio toggle + dropdown + preview + copy (S52)
 - ✅ BUG-S52-1 riješen (S53) — DATA BUG u TEST bazi; sql/011 pokrenut
-- ✅ Manualni smoke test: kreirati Health area na TEST, provjeriti 3 categories + 2 attrs (T-S53-3 ✅)
-- ✅ 010_template_seed.sql + 011_template_fix_area_ids.sql pokrenuti na PROD (S54, 2026-04-15)
-- ✅ Template user login — riješeno (S57b): `sasasladoljev59+template@gmail.com`, UUID `be785f09-b7c6-497f-b351-363d224c93c8`; može se logirati i koristiti app normalno za konfiguraciju template podataka
-- ⬜ Template podaci — Health area obrisana pri resetiranju usera; treba rekreirati template Areas/kategorije kroz app ili Excel import kao template user
+- ✅ 010_template_seed.sql pokrenuto na PROD via 012_prod_template_uuid_fix.sql (S58)
+- ⬜ Template "Demo" Area — primjeri svih feature-a (dependent attrs, sve attr vrste, multi-level) — za Help sistem
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
 **3. ~~Add Category Between~~** — ✅ **kompletno (S55–S56)**. Scenarij A (Add Between) + Scenarij D (Collapse Level) implementirani i testirani.
@@ -275,13 +272,42 @@ Faze i status:
 - ✅ **UX-S1** — Structure area collapse/expand: per-area chevron + "Collapse all" gumb (S57)
 - ✅ **UX-A1** — AttributeChainForm expand state persist via localStorage per category (S57)
 
-**5. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
+**5. AI Help sistem** — Claude Haiku embedded u app, kontekstualni help + feedback + log
+Odlučeno S58, sve na TEST bazi. Plan po fazama:
 
-**6. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
+- **Faza H1 — Infrastruktura** (1 sesija):
+  - `sql/013_help_tables.sql` — Supabase tablice `help_log` + `feedback` (TEST + PROD)
+  - `docs/help/concepts.md` — kratki opisi svih feature-a (uvijek u system promptu)
+  - `docs/help/` — po jedan fajl po feature-u (activities, structure, sharing, excel, attributes, templates)
+  - `netlify/functions/help.ts` — Anthropic Haiku, streaming, logira u `help_log`
+  - `VITE_ANTHROPIC_API_KEY` env var na Netlifyu + `.env.local`
+
+- **Faza H2 — UI komponenta** (1 sesija):
+  - Floating `?` gumb u headeru (uvijek vidljiv)
+  - Chat panel: side panel na desktopu, bottom sheet na mobitelu
+  - 2 taba: **Ask** (AI chat) | **Feedback** (wish/bug/question → `feedback` tablica)
+  - Context payload: trenutna stranica + aktivan filter
+
+- **Faza H3 — Template Demo Area** (1 sesija):
+  - Nova Area u template useru: "Demo"
+  - Sadrži primjere: dependent attrs, sve attr vrste, multi-level hijerarhija
+  - Help odgovori citiraju Demo Area: "Pogledaj Structure → Demo → ..."
+
+- **Faza H4 — Merge na PROD** (1 sesija):
+  - `013_help_tables.sql` pokrenuti na PROD
+  - `VITE_ANTHROPIC_API_KEY` na Netlify
+  - Demo Area podaci na PROD template useru
+  - Smoke test
+
+**Napomena:** Svaki novi feature uz kod dobiva update `docs/help/` — dodano u End of session checklist.
+
+**6. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
+
+**7. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
 - `trening.xlsm` analiza — mapiranje kolona i sheetova na trenutni data model
 - Import historijskih podataka u finalnu produkcijsku bazu
 
-**7. Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
+**8. Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
 
 ---
 
@@ -325,7 +351,8 @@ Faze i status:
    with numbered steps, preconditions, and expected vs fail behaviour for EVERY new test.
    Update the `Detalji testova:` link in PENDING_TESTS.md to point to the new file.
 3. **Update `CLAUDE.md` backlog** — move done items out, add new S24+ items if discovered
-4. **Commit** with descriptive message (e.g. `S24 structure add-area, import fix, blocked leaf`)
+4. **Update `docs/help/`** — ako je dodan ili promijenjen bilo koji feature, ažuriraj odgovarajući help fajl
+5. **Commit** with descriptive message (e.g. `S24 structure add-area, import fix, blocked leaf`)
 
 ### Test result reporting (next session)
 User says e.g. "T-S24-1 OK, T-S24-3 fail" → Claude updates PENDING_TESTS.md accordingly

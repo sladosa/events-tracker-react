@@ -210,12 +210,21 @@ function AppContent() {
     });
   };
 
+  const isTestEnv = import.meta.env.VITE_APP_ENV !== 'prod';
+  const supabaseHost = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace('https://', '').split('.')[0] ?? '';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col">
+      {/* TEST environment banner */}
+      {isTestEnv && (
+        <div className="bg-amber-400 text-amber-900 text-xs font-semibold text-center py-1 px-3 sticky top-0 z-30">
+          ⚠ TEST DATABASE — {supabaseHost}
+        </div>
+      )}
       {/* ========================================
           HEADER - Fixed at top
           ======================================== */}
-      <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-20">
+      <header className={`bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky z-20 ${isTestEnv ? 'top-6' : 'top-0'}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6">
           <div className="flex items-center justify-between h-12 sm:h-14">
             {/* Logo / Title */}

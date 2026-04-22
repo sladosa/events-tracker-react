@@ -2,8 +2,8 @@
 // Constants - Events Tracker
 // ============================================
 
-// Template user ID - koristi se za "starter" podatke i suggestions
-export const TEMPLATE_USER_ID = 'be785f09-b7c6-497f-b351-363d224c93c8';
+// Template user ID - per-environment, set via VITE_TEMPLATE_USER_ID in .env
+export const TEMPLATE_USER_ID = import.meta.env.VITE_TEMPLATE_USER_ID as string;
 
 // Default time for historical imports (Excel)
 export const DEFAULT_TIME = '09:00';
