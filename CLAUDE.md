@@ -288,9 +288,13 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
   - 2 taba: **Pitaj AI** (chat + history) | **Povratna info** (wish/bug/question → `feedback`)
   - `HelpButton` (❓) u headeru `AppHome.tsx`
 
-- **Faza H3 — Template Demo Area** (1 sesija):
-  - Nova Area u template useru: "Demo"
-  - Sadrži primjere: dependent attrs, sve attr vrste, multi-level hijerarhija
+- **Faza H3 — Template Demo Area + `netlify dev`** (S60, test-branch):
+  - `netlify-cli` devDependency + `"dev:netlify"` script u `package.json`
+  - `.env.local`: `ANTHROPIC_API_KEY` + `VITE_HELP_API_URL` za lokalno testiranje
+  - Nova Area "Demo" u template useru: sve attr vrste, suggest, dependent suggest, 3+ razine
+  - SQL: `sql/014_demo_area.sql` za TEST (`be785f09...`) + PROD (`d6ab00dd...`)
+  - Ažurirati system prompt u `netlify/functions/help.ts` da citira Demo Area
+  - **Ne merge-ati na main** dok se ne testira lokalno
 
 - ✅ **Faza H4 — Aktivacija + Merge na PROD** (S59):
   - `013_help_tables.sql` pokrenuto na TEST + PROD ✅
