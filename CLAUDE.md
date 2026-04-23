@@ -275,29 +275,27 @@ Faze i status:
 **5. AI Help sistem** — Claude Haiku embedded u app, kontekstualni help + feedback + log
 Odlučeno S58, sve na TEST bazi. Plan po fazama:
 
-- **Faza H1 — Infrastruktura** (1 sesija):
-  - `sql/013_help_tables.sql` — Supabase tablice `help_log` + `feedback` (TEST + PROD)
-  - `docs/help/concepts.md` — kratki opisi svih feature-a (uvijek u system promptu)
-  - `docs/help/` — po jedan fajl po feature-u (activities, structure, sharing, excel, attributes, templates)
-  - `netlify/functions/help.ts` — Anthropic Haiku, streaming, logira u `help_log`
-  - `VITE_ANTHROPIC_API_KEY` env var na Netlifyu + `.env.local`
+- ✅ **Faza H1 — Infrastruktura** (S59):
+  - `sql/013_help_tables.sql` — tablice `help_log` + `feedback`; pokrenuti na TEST + PROD
+  - `docs/help/` — 7 fajlova: concepts, activities, structure, sharing, excel, attributes, templates
+  - `netlify/functions/help.ts` — Haiku, non-streaming, logira u `help_log` via service role
+  - `netlify.toml` — `[functions]` section s esbuild bundlerom
+  - Env vars: `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (Netlify + `.env.local`)
 
-- **Faza H2 — UI komponenta** (1 sesija):
-  - Floating `?` gumb u headeru (uvijek vidljiv)
-  - Chat panel: side panel na desktopu, bottom sheet na mobitelu
-  - 2 taba: **Ask** (AI chat) | **Feedback** (wish/bug/question → `feedback` tablica)
-  - Context payload: trenutna stranica + aktivan filter
+- ✅ **Faza H2 — UI komponenta** (S59):
+  - `src/components/help/HelpPanel.tsx` — `HelpPanel` + `HelpButton` eksporti
+  - Desktop: fixed side panel 400px, slide in s desna | Mobitel: bottom sheet 78vh
+  - 2 taba: **Pitaj AI** (chat + history) | **Povratna info** (wish/bug/question → `feedback`)
+  - `HelpButton` (❓) u headeru `AppHome.tsx`
 
 - **Faza H3 — Template Demo Area** (1 sesija):
   - Nova Area u template useru: "Demo"
   - Sadrži primjere: dependent attrs, sve attr vrste, multi-level hijerarhija
-  - Help odgovori citiraju Demo Area: "Pogledaj Structure → Demo → ..."
 
-- **Faza H4 — Merge na PROD** (1 sesija):
-  - `013_help_tables.sql` pokrenuti na PROD
-  - `VITE_ANTHROPIC_API_KEY` na Netlify
-  - Demo Area podaci na PROD template useru
-  - Smoke test
+- **Faza H4 — Aktivacija + Merge na PROD** (1 sesija):
+  - `013_help_tables.sql` pokrenuti na TEST + PROD
+  - `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` na Netlify
+  - Smoke test (AI odgovori rade, feedback se sprema)
 
 **Napomena:** Svaki novi feature uz kod dobiva update `docs/help/` — dodano u End of session checklist.
 

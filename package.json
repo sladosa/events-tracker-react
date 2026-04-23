@@ -17,6 +17,7 @@
     "test:e2e:report": "playwright show-report e2e/playwright-report"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@supabase/supabase-js": "^2.93.0",
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",

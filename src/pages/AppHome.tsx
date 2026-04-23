@@ -23,6 +23,7 @@ import { useStructureData } from '@/hooks/useStructureData';
 import { SharedAreaBanner } from '@/components/sharing/SharedAreaBanner';
 import { ShareManagementModal } from '@/components/sharing/ShareManagementModal';
 import { HeaderAvatar, ProfileSettingsModal } from '@/components/sharing/ProfileSettingsModal';
+import { HelpPanel, HelpButton } from '@/components/help/HelpPanel';
 import { useActivities } from '@/hooks/useActivities';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
@@ -104,6 +105,9 @@ function AppContent() {
     sharedContext,
     areaHasActiveShares,
   } = useFilter();
+
+  // Help panel state
+  const [showHelp, setShowHelp] = useState(false);
 
   // Share Management Modal state (Faza 7)
   const [shareModalTarget, setShareModalTarget] = useState<{ areaId: UUID; areaName: string } | null>(null);
@@ -245,8 +249,9 @@ function AppContent() {
               </div>
             </div>
 
-            {/* User section — avatar opens Profile Settings modal */}
+            {/* User section — help button + avatar */}
             <div className="flex items-center gap-2">
+              <HelpButton onClick={() => setShowHelp(v => !v)} isOpen={showHelp} />
               {userId && (
                 <HeaderAvatar
                   userId={userId}
@@ -503,6 +508,13 @@ function AppContent() {
           onSignOut={onSignOut}
         />
       )}
+
+      {/* Help Panel (H2) — always mounted to preserve chat history */}
+      <HelpPanel
+        isOpen={showHelp}
+        onClose={() => setShowHelp(false)}
+        currentPage={activeTab}
+      />
 
       {/* Share Management Modal (Faza 7) */}
       {shareModalTarget && (
