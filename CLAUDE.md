@@ -292,10 +292,10 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
   - Nova Area u template useru: "Demo"
   - Sadrži primjere: dependent attrs, sve attr vrste, multi-level hijerarhija
 
-- **Faza H4 — Aktivacija + Merge na PROD** (1 sesija):
-  - `013_help_tables.sql` pokrenuti na TEST + PROD
-  - `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` na Netlify
-  - Smoke test (AI odgovori rade, feedback se sprema)
+- ✅ **Faza H4 — Aktivacija + Merge na PROD** (S59):
+  - `013_help_tables.sql` pokrenuto na TEST + PROD ✅
+  - `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` na Netlify ✅
+  - Smoke test: AI odgovori rade, feedback se sprema u DB ✅
 
 **Napomena:** Svaki novi feature uz kod dobiva update `docs/help/` — dodano u End of session checklist.
 
