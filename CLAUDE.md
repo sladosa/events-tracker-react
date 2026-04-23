@@ -254,7 +254,8 @@ Faze i status:
 - ✅ Add Area "From template" flow — `StructureAddAreaPanel` radio toggle + dropdown + preview + copy (S52)
 - ✅ BUG-S52-1 riješen (S53) — DATA BUG u TEST bazi; sql/011 pokrenut
 - ✅ 010_template_seed.sql pokrenuto na PROD via 012_prod_template_uuid_fix.sql (S58)
-- ⬜ Template "Demo" Area — primjeri svih feature-a (dependent attrs, sve attr vrste, multi-level) — za Help sistem
+- ✅ Template "Demo" Area — `sql/014_demo_area.sql` kreiran (S60); 8 kategorija, sve attr vrste, suggest, dependent suggest; system prompt u help.ts ažuriran
+- ⬜ Pokrenuti `014_demo_area.sql` na TEST + PROD (S61)
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
 **3. ~~Add Category Between~~** — ✅ **kompletno (S55–S56)**. Scenarij A (Add Between) + Scenarij D (Collapse Level) implementirani i testirani.
@@ -288,13 +289,12 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
   - 2 taba: **Pitaj AI** (chat + history) | **Povratna info** (wish/bug/question → `feedback`)
   - `HelpButton` (❓) u headeru `AppHome.tsx`
 
-- **Faza H3 — Template Demo Area + `netlify dev`** (S60, test-branch):
+- ✅ **Faza H3 — Template Demo Area + `netlify dev`** (S60):
   - `netlify-cli` devDependency + `"dev:netlify"` script u `package.json`
-  - `.env.local`: `ANTHROPIC_API_KEY` + `VITE_HELP_API_URL` za lokalno testiranje
-  - Nova Area "Demo" u template useru: sve attr vrste, suggest, dependent suggest, 3+ razine
-  - SQL: `sql/014_demo_area.sql` za TEST (`be785f09...`) + PROD (`d6ab00dd...`)
-  - Ažurirati system prompt u `netlify/functions/help.ts` da citira Demo Area
-  - **Ne merge-ati na main** dok se ne testira lokalno
+  - `.env.local`: `ANTHROPIC_API_KEY` placeholder + `VITE_HELP_API_URL` aktivan za lokalno testiranje
+  - `sql/014_demo_area.sql` — Demo Area: 2 L1 (Exercise, Daily Log), 5 leaf kategorija, 21 attr def; sve attr vrste; suggest + dependent suggest; DO block s email-based user detection (radi na TEST i PROD)
+  - System prompt u `netlify/functions/help.ts` ažuriran — citira Demo Area po path-u
+  - ⚠️ **Pokrenuti na TEST + PROD u S61; Ne merge-ati dok ne prođe T-S60-1 do T-S60-6**
 
 - ✅ **Faza H4 — Aktivacija + Merge na PROD** (S59):
   - `013_help_tables.sql` pokrenuto na TEST + PROD ✅

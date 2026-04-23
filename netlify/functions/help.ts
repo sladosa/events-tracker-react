@@ -42,13 +42,22 @@ SHARING:
 
 TEMPLATES:
 • Edit Mode → Add Area → "From template" → choose template → Preview → Create
-• Available: Health, Fitness, Finance, Work, Personal
+• Available: Health, Fitness, Finance, Work, Personal, Demo
 • Copying creates your own editable area
 
+DEMO AREA (template — use as reference for explaining features):
+• Structure tab → Templates → Demo shows a live example of all features
+• Exercise > Strength > Upper Body / Lower Body: suggest attribute (Exercise dropdown), number attributes (Sets, Reps, Weight)
+• Exercise > Cardio: Activity Type (suggest), Subtype (dependent suggest — options change based on Activity Type), Duration + Distance (number), Notes (text)
+• Daily Log > Mood: Mood (suggest), Notes (text), Photo (image)
+• Daily Log > Task: Title (text), Done (boolean), Due Date (datetime), Reference (link)
+• When explaining attribute types, reference: "For example, in Demo > Exercise > Cardio you can see suggest + dependent suggest"
+
 ATTRIBUTES:
-• Suggest type: text with predefined dropdown options
-• Dependent suggest: dropdown options depend on another attribute's value
+• Suggest type: text with predefined dropdown options (e.g., Demo > Daily Log > Mood — 'Mood' attribute has Happy/Neutral/Sad/...)
+• Dependent suggest: options depend on another attribute (e.g., Demo > Exercise > Cardio — 'Subtype' options change based on 'Activity Type')
 • Rename slug in Edit panel: auto-updates depends_on references
+• All attribute types: text, number, datetime, boolean, link, image
 
 RULES:
 • Answer in the same language the user writes in (Croatian or English)
