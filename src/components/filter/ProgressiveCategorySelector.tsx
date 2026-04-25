@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import type { Category, UUID } from '@/types/database';
 import { useFilter } from '@/context/FilterContext';
@@ -235,6 +236,8 @@ export function ProgressiveCategorySelector({
       setShowSaveModal(false);
       setNewPresetName('');
       setSelectedShortcutId(result.id);
+    } else {
+      toast.error('Could not save shortcut. Please try again.');
     }
   }, [newPresetName, filter.areaId, filter.categoryId, createPreset, setSelectedShortcutId]);
 

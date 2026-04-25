@@ -79,7 +79,7 @@ BEGIN
     -- Upper Body (leaf L3): suggest + 3x number
     ('30000000-0000-0000-0000-000000000100', tpl, '20000000-0000-0000-0000-000000000102',
      'Exercise', 'exercise-upper', 'text', NULL, 1,
-     '{"options": ["Push-up", "Bench Press", "Shoulder Press", "Tricep Dip", "Pull-up", "Dumbbell Row"]}',
+     '{"type": "suggest", "suggest": ["Push-up", "Bench Press", "Shoulder Press", "Tricep Dip", "Pull-up", "Dumbbell Row"]}',
      'Type of upper body exercise — suggest type demo'),
     ('30000000-0000-0000-0000-000000000101', tpl, '20000000-0000-0000-0000-000000000102',
      'Sets', 'sets-upper', 'number', NULL, 2, '{}', 'Number of sets'),
@@ -91,7 +91,7 @@ BEGIN
     -- Lower Body (leaf L3): suggest + 3x number
     ('30000000-0000-0000-0000-000000000110', tpl, '20000000-0000-0000-0000-000000000103',
      'Exercise', 'exercise-lower', 'text', NULL, 1,
-     '{"options": ["Squat", "Deadlift", "Lunge", "Leg Press", "Calf Raise", "Hip Thrust"]}',
+     '{"type": "suggest", "suggest": ["Squat", "Deadlift", "Lunge", "Leg Press", "Calf Raise", "Hip Thrust"]}',
      'Type of lower body exercise — suggest type demo'),
     ('30000000-0000-0000-0000-000000000111', tpl, '20000000-0000-0000-0000-000000000103',
      'Sets', 'sets-lower', 'number', NULL, 2, '{}', 'Number of sets'),
@@ -103,11 +103,11 @@ BEGIN
     -- Cardio (leaf L2): suggest + dependent suggest + 2x number + text
     ('30000000-0000-0000-0000-000000000120', tpl, '20000000-0000-0000-0000-000000000104',
      'Activity Type', 'activity-type', 'text', NULL, 1,
-     '{"options": ["Running", "Cycling", "Swimming", "Rowing"]}',
+     '{"type": "suggest", "suggest": ["Running", "Cycling", "Swimming", "Rowing"]}',
      'Type of cardio — suggest type demo (parent for dependent suggest)'),
     ('30000000-0000-0000-0000-000000000121', tpl, '20000000-0000-0000-0000-000000000104',
      'Subtype', 'subtype', 'text', NULL, 2,
-     '{"depends_on": {"slug": "activity-type", "values": {"Running": ["Sprint", "Tempo Run", "Easy Run", "Long Run"], "Cycling": ["Road Ride", "Mountain Bike", "Indoor Trainer"], "Swimming": ["Freestyle", "Backstroke", "Mixed"], "Rowing": ["Machine", "Water"]}}}',
+     '{"type": "suggest", "suggest": [], "allow_other": true, "depends_on": {"attribute_slug": "activity-type", "options_map": {"Running": ["Sprint", "Tempo Run", "Easy Run", "Long Run"], "Cycling": ["Road Ride", "Mountain Bike", "Indoor Trainer"], "Swimming": ["Freestyle", "Backstroke", "Mixed"], "Rowing": ["Machine", "Water"]}}}',
      'Specific variant — dependent suggest demo (options change based on Activity Type)'),
     ('30000000-0000-0000-0000-000000000122', tpl, '20000000-0000-0000-0000-000000000104',
      'Duration', 'duration-cardio', 'number', 'min', 3, '{}', 'Duration in minutes'),
@@ -119,7 +119,7 @@ BEGIN
     -- Mood (leaf L2): suggest + text + image
     ('30000000-0000-0000-0000-000000000130', tpl, '20000000-0000-0000-0000-000000000111',
      'Mood', 'mood', 'text', NULL, 1,
-     '{"options": ["Happy", "Neutral", "Sad", "Anxious", "Energetic", "Tired"]}',
+     '{"type": "suggest", "suggest": ["Happy", "Neutral", "Sad", "Anxious", "Energetic", "Tired"]}',
      'Current mood — suggest type demo'),
     ('30000000-0000-0000-0000-000000000131', tpl, '20000000-0000-0000-0000-000000000111',
      'Notes', 'notes-mood', 'text', NULL, 2, '{}', 'What happened today — text type demo'),
@@ -135,7 +135,14 @@ BEGIN
      'Due Date', 'due-date-task', 'datetime', NULL, 3, '{}', 'Deadline — datetime type demo'),
     ('30000000-0000-0000-0000-000000000143', tpl, '20000000-0000-0000-0000-000000000112',
      'Reference', 'reference-task', 'link', NULL, 4, '{}', 'Related URL — link type demo')
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    name             = EXCLUDED.name,
+    slug             = EXCLUDED.slug,
+    data_type        = EXCLUDED.data_type,
+    unit             = EXCLUDED.unit,
+    sort_order       = EXCLUDED.sort_order,
+    validation_rules = EXCLUDED.validation_rules,
+    description      = EXCLUDED.description;
 
 END $$;
 

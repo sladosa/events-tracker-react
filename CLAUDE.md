@@ -230,6 +230,7 @@ Faze i status:
 - ✅ S57: Structure area collapse — `CategoryChainRow` dobio ▼/▶ chevron za area redove + "N hidden" badge; `StructureTableView` — `collapsedAreaIds` state, `visibleRows` filter, "Collapse all / Expand all" gumb (prikazuje se kad 2+ areaa); panel Prev/Next navigira kroz `visibleRows`
 - ✅ S57: AddAreaPanel duplikat zaštita — provjera po imenu (case-insensitive) za "empty" mode (inline error) i "template" mode (template se ne pojavljuje u dropdownu ako postoji area s istim imenom ili slugom)
 - ✅ S57: AttributeChainForm localStorage expand persist — `attrExpanded:<categoryId>` u localStorage; korisnikova preferencija (otvori/zatvori) pamti se per-category; radi za Add i Edit Activity
+- ✅ S61: Help sistem UX refaktor — `src/context/HelpContext.tsx` (global state: isOpen, pageHint); `App.tsx` refaktoriran: jedan `FilterProvider` + `HelpProvider` za sve `/app/*` rute, `AppShell` s nested Routes + `HelpOverlay`; `HelpPanel.tsx` rewritan: FAB (fixed bottom-right, globalno vidljiv na svim stranicama i modalima), draggable header (drag → floating 400×580, Pin → docked), context chips (3 brza pitanja po kontekstu: activities/structure/add/edit/view), context reset (chat se briše kad se Help otvori iz drugog konteksta), engleski UI; `AppHome.tsx` — uklonjen `showHelp` state i `HelpButton` iz headera, dodan `setPageHint(activeTab)` effect
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
@@ -237,6 +238,7 @@ Faze i status:
 - **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
+- **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 
 ---
 
