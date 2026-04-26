@@ -22,6 +22,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | `docs/RESTRUCTURE_DECISIONS_2026-04-01.md`| Odluke o reorganizaciji i Financije data modelu                                  |
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas za nove korisnike, Add Area "From template" |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
+| `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 
 ---
 
@@ -235,6 +236,12 @@ Faze i status:
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
+- ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
+- ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
+- ✅ S63: Help Structure chips update — Structure stranica: "What does the ⋮ menu do?" + "How do I share an area?" umjesto manje relevantnih chipova
+- ✅ S63: Edit Activity chip fix — "What happens when I change the time?" (bilo: "What is delta shift?")
+- ✅ S63: docs cleanup — 10 obsolete spec fajlova → `docs/obsolete/`; `Claude-temp_R` old artefakti → `Claude-temp_R/obsolete/`
+- ✅ S63: `docs/HELP_STRUCTURE.md` — referentni dokument za help sistem (chip map, context detection, Content Evolution Protocol)
 
 ---
 
