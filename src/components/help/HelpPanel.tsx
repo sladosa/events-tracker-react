@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  X, Send, HelpCircle, MessageCircle, ThumbsUp, Loader2, GripVertical, Pin, RotateCcw,
+  X, Send, HelpCircle, MessageCircle, ThumbsUp, Loader2, GripVertical, Pin, RotateCcw, BookOpen,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -8,7 +8,7 @@ import { useFilter } from '@/context/FilterContext';
 import { useHelp } from '@/context/HelpContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = 'ask' | 'feedback';
+type Tab = 'ask' | 'concepts' | 'feedback';
 type FeedbackType = 'wish' | 'bug' | 'question';
 
 interface ChatMessage {
@@ -39,8 +39,8 @@ const CHIPS: Record<string, string[]> = {
   ],
   structure: [
     'What are Area and Category?',
-    'How do I add a new category?',
-    'What is a suggest attribute?',
+    'What does the ⋮ menu do?',
+    'How do I share an area with someone?',
   ],
   add: [
     'What happens to parent categories?',
@@ -282,32 +282,30 @@ export function HelpPanel() {
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 flex-shrink-0">
-        <button
-          onClick={() => setTab('ask')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            tab === 'ask'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <MessageCircle size={14} />
-          Ask AI
-        </button>
-        <button
-          onClick={() => setTab('feedback')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            tab === 'feedback'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <ThumbsUp size={14} />
-          Feedback
-        </button>
+        {([
+          { id: 'ask', icon: <MessageCircle size={13} />, label: 'Ask AI' },
+          { id: 'concepts', icon: <BookOpen size={13} />, label: 'Concepts' },
+          { id: 'feedback', icon: <ThumbsUp size={13} />, label: 'Feedback' },
+        ] as { id: Tab; icon: React.ReactNode; label: string }[]).map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+              tab === t.id
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Tab content */}
-      {tab === 'ask' ? (
+      {tab === 'concepts' ? (
+        <ConceptsTab />
+      ) : tab === 'ask' ? (
         <>
           {/* Messages + chips */}
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0">
@@ -461,6 +459,87 @@ export function HelpPanel() {
         </div>
       )}
     </>
+  );
+}
+
+// ── Concepts Tab ─────────────────────────────────────────────────────────────
+
+interface TermEntry { name: string; children: React.ReactNode }
+function Term({ name, children }: TermEntry) {
+  return (
+    <div className="py-1.5 border-b border-gray-100 last:border-0">
+      <span className="font-semibold text-gray-800 text-xs">{name}</span>
+      <span className="text-gray-600 text-xs"> — {children}</span>
+    </div>
+  );
+}
+
+interface DecisionEntry { title: string; children: React.ReactNode }
+function Decision({ title, children }: DecisionEntry) {
+  return (
+    <div className="py-1.5 border-b border-amber-100 last:border-0">
+      <p className="font-semibold text-amber-900 text-xs mb-0.5">{title}</p>
+      <p className="text-amber-800 text-xs leading-snug">{children}</p>
+    </div>
+  );
+}
+
+interface SectionProps { title: string; children: React.ReactNode; amber?: boolean }
+function ConceptSection({ title, children, amber }: SectionProps) {
+  return (
+    <div className="mb-3">
+      <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${amber ? 'text-amber-600' : 'text-indigo-600'}`}>
+        {title}
+      </p>
+      <div className={`rounded-lg px-2.5 py-0.5 ${amber ? 'bg-amber-50' : 'bg-gray-50'}`}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ConceptsTab() {
+  return (
+    <div className="flex-1 overflow-y-auto px-3 py-3 min-h-0">
+      <ConceptSection title="Core Concepts">
+        <Term name="Area">Top-level grouping (e.g., Fitness, Health, Financije). Each area has its own category tree and access controls.</Term>
+        <Term name="Category">Subcategory within an area, arranged in a hierarchy (e.g., Fitness › Strength › Bench Press). Can be nested up to 10 levels.</Term>
+        <Term name="Leaf Category">The deepest category in a hierarchy — where individual activities are logged.</Term>
+        <Term name="Activity / Event">A logged record tied to a specific category, date/time, and attribute values.</Term>
+        <Term name="Session">A group of activities sharing the same session_start (date + time, rounded to the minute). All levels of a category hierarchy share one session.</Term>
+        <Term name="Session Start">The timestamp for a session, rounded to the nearest minute — two activities at HH:MM:00 belong to the same session.</Term>
+        <Term name="Attribute">A typed field defined per category: text, number, date/time, yes/no, link, image, or suggest.</Term>
+        <Term name="Suggest">An attribute with a predefined dropdown (e.g., Mood: Happy / Neutral / Sad).</Term>
+        <Term name="Dependent Suggest">A suggest whose options change based on another attribute's value (e.g., Subtype options change based on Activity Type).</Term>
+        <Term name="Shortcut">A saved filter (Area + Category combination) for quick navigation — 💾 icon in the filter bar.</Term>
+      </ConceptSection>
+
+      <ConceptSection title="Key Behaviors">
+        <Term name="Parent Events">When you log an activity at the leaf level, the app auto-creates one event per parent category in the same session — you don't manage them manually.</Term>
+        <Term name="Last Non-Empty Wins">When editing or importing, empty values never overwrite existing data. A blank Excel cell leaves the DB value unchanged.</Term>
+        <Term name="Delta Shift">When you change the date/time in Edit Activity, all parent events in the same session shift by the same amount, keeping the session consistent.</Term>
+        <Term name="Edit Mode">Structure tab toggle that unlocks category and attribute editing. Hidden for shared areas where you only have read access.</Term>
+        <Term name="Session Collision">Two activities for the same category at the same minute — the app detects this and asks how to proceed.</Term>
+      </ConceptSection>
+
+      <ConceptSection title="Design Decisions" amber>
+        <Decision title="Why flexible attributes (EAV model)?">
+          Each category can define its own fields without changing the database schema. Trade-off: attribute values live in a separate table, making queries more complex.
+        </Decision>
+        <Decision title="Why are parent events auto-created?">
+          So you can see aggregated data at every hierarchy level (e.g., all workouts on a day). Trade-off: parent events are computed summaries, not manually entered records.
+        </Decision>
+        <Decision title="Why does editing time shift all related records?">
+          A session is identified by its timestamp — moving one event moves the whole session to keep it consistent. Trade-off: you can't move a single event within a multi-record session independently.
+        </Decision>
+        <Decision title="Why does empty never overwrite (P3 rule)?">
+          Prevents accidental data loss when bulk-importing a partial update via Excel. Trade-off: to explicitly clear a value, use the Edit Activity form — it can't be done via import.
+        </Decision>
+        <Decision title="Why Excel as the primary bulk workflow?">
+          Familiar offline tool that supports complex edits and bulk operations. Trade-off: strict column format required; categories must exist before importing events.
+        </Decision>
+      </ConceptSection>
+    </div>
   );
 }
 
