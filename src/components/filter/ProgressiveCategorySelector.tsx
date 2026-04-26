@@ -258,6 +258,14 @@ export function ProgressiveCategorySelector({
   // Can save: has leaf category selected
   const canSaveShortcut = isLeafCategory && filter.categoryId;
 
+  // Auto-select shortcut when filter matches a preset but selectedShortcutId is null
+  // (e.g. after browser restart when sessionStorage is cleared but filter is restored)
+  useEffect(() => {
+    if (selectedShortcutId || !filter.categoryId || presetsLoading || !presets.length) return;
+    const match = presets.find(p => p.category_id === filter.categoryId);
+    if (match) setSelectedShortcutId(match.id);
+  }, [presets, presetsLoading, filter.categoryId, selectedShortcutId, setSelectedShortcutId]);
+
   // --------------------------------------------
   // Load L1+L2 when area changes (ONLY if not restoring)
   // --------------------------------------------

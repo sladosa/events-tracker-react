@@ -50,7 +50,7 @@ const CHIPS: Record<string, string[]> = {
   edit: [
     'Can I change the date?',
     "Why am I seeing someone else's record?",
-    'What is delta shift?',
+    'What happens when I change the time?',
   ],
   view: [
     'How do I edit this record?',
