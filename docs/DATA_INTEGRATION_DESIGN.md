@@ -88,15 +88,54 @@ Kad oba izvora imaju zapis za istu sesiju, strategija po atributu:
 - Pregledaj sessions gdje su oba izvora imala podatke
 - Manualni review outliera (Garmin sesije > X sati, netipične vrijednosti)
 
+### Konkretni plan: "Stage before merge" pristup
+
+Umjesto direktnog spajanja, drži izvore odvojeno dok QA nije gotov:
+
+```
+Garmin .fit files  →  [Garmin adapter]  →  Area: Garmin_fitness
+Excel trening.xlsm →  [Excel import]   →  Area: Excel_fitness
+
+         ↓ QA + photo matching ↓
+
+                Area: Fitness  (finalni lanac)
+```
+
+**Faza 1 — Import Garmin → Area: Garmin_fitness**
+- Garmin je autoritativan za: `session_start`, `duration`, `avg_hr`, `distance`,
+  `elevation`, `cadence`, GPS track
+- Filter outliera: sesije > 4h, HR > 220, nemoguće vrijednosti → označiti za review
+- Svaka sesija dobiva Garmin-specific atribute (bogat skup)
+
+**Faza 2 — Import Excel → Area: Excel_fitness**
+- Excel je autoritativan za: subjektivne bilješke, serije/ponavljanja/težine,
+  korekcije koje Garmin ne zna (npr. "sat ostao uključen 30min extra")
+- ~15 godina podataka, jednostavniji atributi
+
+**Faza 3 — Cross-QA između dva Area-a**
+- Usporedi coverage: koje datume ima Garmin ali ne Excel (novi treninzi)?
+  Koje ima Excel ali ne Garmin (preGarmin era ili zaboravljeno isključiti)?
+- Identificiraj sumnjive Garmin sesije (trajanje outlieri) → označi u Excel komentaru
+- Ovaj korak je ručan ali s dvije odvojene Area-e je pregledan
+
+**Faza 4 — Photo matching**
+- App već podržava `image` tip atributa i `activity-attachments` storage bucket
+- Workflow: skeniraj direktorije starih fotografija, match po datumu na sesiju,
+  upload kao event attachment
+- Nije potreban novi feature — ručni upload po sesiji via Edit Activity već radi
+- Opcija za budućnost: batch upload helper koji čita EXIF datum iz .jpg i predlaže
+  sesiju (osobito korisno za 15 godina materijala)
+
+**Faza 5 — Finalni merge → Area: Fitness**
+- Excel Roundtrip + Delete Backup za oba izvora
+- Attr def naming: Garmin i Excel Area-e dobivaju iste display name-ove na
+  finalnim atributima → import direktno mapira bez schema problema
+- Redoslijed: prvo importaj Excel (baseline), pa Garmin s `fill_gaps` pristupom
+  (Garmin popunjava precizne vrijednosti, ne overwritea ručne bilješke)
+
 ### Redoslijed implementacije
 
 1. Historijska migracija (Excel 15 godina) — može ići BEZ Garmin adaptera
 2. Garmin adapter — kad/ako Garmin integracija postane prioritet
-3. Enhanced Merge Import — samo ako se pokaže potreba kod migracije
-
-### Bilješka o Excel roundtrip + Delete za ovaj scenarij
-
-Za finalno spajanje Excel historijskog lanca i Garmin lanca u jedan:
-- Workflow je isti kao gore (Excel Roundtrip + Delete Backup)
-- Garmin adapter samo osigurava da Garmin podaci budu u ispravnom Excel formatu
-- Attribute mapping je ključan korak koji treba pažljivo pripremiti
+3. Photo batch helper — opcija ako je volumen fotografija velik
+4. Enhanced Merge Import — samo ako se pokaže potreba kod finalne faze
