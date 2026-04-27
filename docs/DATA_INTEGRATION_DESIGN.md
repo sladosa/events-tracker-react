@@ -139,3 +139,55 @@ Excel trening.xlsm →  [Excel import]   →  Area: Excel_fitness
 2. Garmin adapter — kad/ako Garmin integracija postane prioritet
 3. Photo batch helper — opcija ako je volumen fotografija velik
 4. Enhanced Merge Import — samo ako se pokaže potreba kod finalne faze
+
+---
+
+## Automatski dnevni sync (budući projekt)
+
+### Vizija
+
+Svaki dan automatski povuci Health metrike i Trening aktivnosti s Garmina
+(direktno ili via Strava) → kreira evente u aplikaciji bez ručnog unosa.
+
+### Arhitektura
+
+```
+Garmin device
+    ↓ auto-sync
+Garmin Connect  ──→  Garmin Health API (partner approval potreban)
+    ↓ auto-sync
+Strava  ──────────→  Strava API (javni, OAuth2, webhook podrška)  ← preporučeno
+    ↓
+Netlify scheduled function / webhook handler
+    ↓
+Supabase INSERT (events + event_attributes)
+```
+
+**Strava je preporučen ulazni punkt** jer:
+- Javni API, bez partner approvala
+- Garmin automatski syncira na Strava (korisnik samo jednom poveže)
+- Webhook podrška: nova aktivnost → odmah okida Netlify funkciju
+- Bogat skup podataka: tip, trajanje, distanca, avg/max HR, elevacija,
+  pace, cadenca, snaga (bicikl), training load
+
+**Garmin Health API** (sleep, HRV, stress, steps, SpO2) zahtijeva
+Garmin partner program approval — alternativa je Google Fit/Apple Health
+koji agregiraju iz Garmina i imaju pristupačnije API-je.
+
+### Dva moda
+
+**Real-time (webhook):** Strava webhook → Netlify function → INSERT
+- Aktivnost završi na Garminu → Strava sync (~5 min) → app event (~1 min)
+- Idealno za trening aktivnosti
+
+**Daily batch (cron):** Netlify scheduled function svaki dan u ponoć
+- Povuci sve aktivnosti i health metrike za prethodni dan
+- Idempotentno (upsert, ne insert) — sigurno za ponovni run
+- Za health metrike (sleep, HRV) koje se retroaktivno ažuriraju
+
+### Veza s historijskom migracijom
+
+Isti Garmin adapter koji se napravi za jednokratnu historijsku migraciju
+(.fit → Excel format) postaje temelj za automatski sync — samo s drugačijim
+inputom (Strava API response umjesto .fit datoteke), isti output format.
+
