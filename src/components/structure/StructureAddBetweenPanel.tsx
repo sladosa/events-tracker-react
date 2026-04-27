@@ -123,9 +123,16 @@ export function StructureAddBetweenPanel({
 
   const slug = generateSlug(name);
 
+  // For area parent (level=0), L1 categories reference area via areaId, not parent_category_id
+  const isAreaParent = parentNode.level === 0;
+
   // Direct children of parentNode
   const directChildren = allNodes.filter(
-    n => n.nodeType === 'category' && n.category?.parent_category_id === parentNode.id,
+    n => n.nodeType === 'category' && (
+      isAreaParent
+        ? n.areaId === parentNode.id && n.level === 1
+        : n.category?.parent_category_id === parentNode.id
+    ),
   );
 
   // Max descendant level (for level limit check)
@@ -133,6 +140,10 @@ export function StructureAddBetweenPanel({
   const allDescendants = [...directChildren, ...deeperDescendants];
   const maxDescendantLevel = allDescendants.reduce((max, n) => Math.max(max, n.level), 0);
   const levelLimitExceeded = maxDescendantLevel + 1 > 10;
+
+  // For area parent: new category is L1 with parent_category_id = null
+  const newLevel = isAreaParent ? 1 : parentNode.level + 1;
+  const newParentCategoryId = isAreaParent ? null : parentNode.id;
 
   // ── Save handler ────────────────────────────────────────
   const handleSave = useCallback(async () => {
@@ -144,7 +155,6 @@ export function StructureAddBetweenPanel({
 
     try {
       const newId = crypto.randomUUID();
-      const newLevel = parentNode.level + 1;
 
       // 1. INSERT new category
       const { error: insertErr } = await supabase
@@ -153,7 +163,7 @@ export function StructureAddBetweenPanel({
           id: newId,
           user_id: userId,
           area_id: parentNode.areaId,
-          parent_category_id: parentNode.id,
+          parent_category_id: newParentCategoryId,
           name: trimmedName,
           slug: slug || generateSlug(trimmedName),
           level: newLevel,
@@ -187,7 +197,7 @@ export function StructureAddBetweenPanel({
       setError(err instanceof Error ? err.message : 'Save failed. Please try again.');
       setSaving(false);
     }
-  }, [name, slug, parentNode, userId, directChildren, deeperDescendants, levelLimitExceeded, onCreated]);
+  }, [name, slug, parentNode, userId, directChildren, deeperDescendants, levelLimitExceeded, onCreated, newLevel, newParentCategoryId]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && name.trim() && !saving && !levelLimitExceeded) {
@@ -196,7 +206,7 @@ export function StructureAddBetweenPanel({
   };
 
   const childrenSummary = directChildren.map(c => c.name).join(', ') || '—';
-  const newLevel = parentNode.level + 1;
+  const parentLabel = isAreaParent ? 'Area' : `L${parentNode.level}`;
   const canSave = name.trim().length > 0 && !levelLimitExceeded && !saving;
 
   return (
@@ -243,7 +253,7 @@ export function StructureAddBetweenPanel({
               <span className="font-semibold">{name.trim() || '[name]'}</span>
               {' '}between{' '}
               <span className="font-semibold">{parentNode.name}</span>
-              {' '}(L{parentNode.level}) and its {directChildren.length}{' '}
+              {' '}({parentLabel}) and its {directChildren.length}{' '}
               {directChildren.length === 1 ? 'child' : 'children'} → Level {newLevel}
             </div>
             <div className="text-xs text-gray-500">

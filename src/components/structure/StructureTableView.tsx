@@ -515,6 +515,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
                 isCollapsed={node.nodeType === 'area' ? collapsedAreaIds.has(node.id) : undefined}
                 onToggleCollapse={node.nodeType === 'area' ? () => toggleCollapseArea(node.id) : undefined}
                 hiddenCount={node.nodeType === 'area' ? (areaChildCounts.get(node.id) ?? 0) : undefined}
+                isOwnedArea={node.area.user_id === userId}
               />
             </div>
           );

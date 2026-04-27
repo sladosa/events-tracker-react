@@ -14,8 +14,8 @@ Unlock-a sve strukturne promjene:
 
 ## Kategorije — ⋮ menu opcije
 - **+ Add Leaf**: dodaj dijete kategoriju (leaf = može imati activnosti)
-- **Add Between**: umetni novu razinu između ove i njezine djece
-- **Collapse Level**: makni razinu i premjesti njezinu djecu gore
+- **Add Between**: umetni novu razinu između ovog čvora i njegovih djece (novi čvor ide ispod odabranog, iznad djece)
+- **Collapse Level**: ukloni ovu razinu; djeca se pomiču gore (na roditeljski nivo), atributi se prenose dolje na svako dijete
 - **Delete**: brisanje (blokirano ako kategorija ima evente)
 - **Manage Access** (area red): upravljanje dijeljenjem
 
