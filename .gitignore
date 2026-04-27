@@ -190,3 +190,6 @@ supabase/.temp*
 
 # Local Netlify folder
 .netlify
+
+# Deno
+deno.lock
