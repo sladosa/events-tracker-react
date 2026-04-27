@@ -33,7 +33,8 @@ interface CategoryChainRowProps {
   onDelete?: (node: StructureNode) => void;
   /** Unified add-child callback for all node types (S22: replaces onAddCategory + onAddLeaf) */
   onAddChild?: (node: StructureNode) => void;
-  onAddBetween?: (node: StructureNode) => void;     // Non-leaf: insert level below
+  onAddBetween?: (node: StructureNode) => void;     // Non-leaf/Area: insert level below
+  onAddAbove?: (node: StructureNode) => void;       // Leaf: insert new parent above this leaf only
   onCollapseLevel?: (node: StructureNode) => void;  // Non-leaf: remove this level, children move up
   /** Collab: shared context for grantee-specific menu (null = current user is owner) */
   sharedContext?: SharedContext | null;
@@ -88,6 +89,7 @@ interface ActionsMenuProps {
   onDelete?: (node: StructureNode) => void;
   onAddChild?: (node: StructureNode) => void;
   onAddBetween?: (node: StructureNode) => void;
+  onAddAbove?: (node: StructureNode) => void;
   onCollapseLevel?: (node: StructureNode) => void;
   sharedContext?: SharedContext | null;
   onManageAccess?: (node: StructureNode) => void;
@@ -107,6 +109,7 @@ function ActionsMenu({
   onDelete,
   onAddChild,
   onAddBetween,
+  onAddAbove,
   onCollapseLevel,
   sharedContext,
   onManageAccess,
@@ -237,6 +240,7 @@ function ActionsMenu({
                   <>
                     {item('Edit', '✏️', () => onEdit?.(node))}
                     {item('+ Add Leaf', '➕', () => onAddChild?.(node))}
+                    {item('Add Above', '⬆️', () => onAddAbove?.(node))}
                     {item('Delete', '🗑️', () => onDelete?.(node), true)}
                   </>
                 )}
@@ -263,6 +267,7 @@ export function CategoryChainRow({
   onDelete,
   onAddChild,
   onAddBetween,
+  onAddAbove,
   onCollapseLevel,
   sharedContext,
   sharedWith,
@@ -444,6 +449,7 @@ export function CategoryChainRow({
               onDelete={onDelete}
               onAddChild={onAddChild}
               onAddBetween={onAddBetween}
+              onAddAbove={onAddAbove}
               onCollapseLevel={onCollapseLevel}
               sharedContext={sharedContext}
               onManageAccess={onManageAccess}

@@ -43,6 +43,7 @@ import { StructureDeleteModal } from './StructureDeleteModal';
 import { StructureAddChildPanel } from './StructureAddChildPanel';
 import { StructureAddAreaPanel } from './StructureAddAreaPanel';
 import { StructureAddBetweenPanel } from './StructureAddBetweenPanel';
+import { StructureAddAbovePanel } from './StructureAddAbovePanel';
 import { StructureCollapseLevelPanel } from './StructureCollapseLevelPanel';
 import { supabase } from '@/lib/supabaseClient';
 import type { StructureNode } from '@/types/structure';
@@ -121,6 +122,9 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
 
   // ---- Add Between panel state ----
   const [addBetweenNode, setAddBetweenNode] = useState<StructureNode | null>(null);
+
+  // ---- Add Above panel state ----
+  const [addAboveNode, setAddAboveNode] = useState<StructureNode | null>(null);
 
   // ---- Collapse Level panel state ----
   const [collapseLevelNode, setCollapseLevelNode] = useState<StructureNode | null>(null);
@@ -374,6 +378,13 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
     setHighlightedNodeId(newNodeId);
   }, [refetch]);
 
+  const handleAboveCreated = useCallback(async (newNodeId: string) => {
+    setAddAboveNode(null);
+    window.dispatchEvent(new CustomEvent('areas-changed'));
+    await refetch();
+    setHighlightedNodeId(newNodeId);
+  }, [refetch]);
+
   const handleCollapsed = useCallback(async () => {
     const parentId = collapseLevelNode?.category?.parent_category_id ?? null;
     setCollapseLevelNode(null);
@@ -507,6 +518,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
                 onDelete={isEditMode ? setDeleteNode : undefined}
                 onAddChild={isEditMode ? setAddChildParent : undefined}
                 onAddBetween={isEditMode ? setAddBetweenNode : undefined}
+                onAddAbove={isEditMode ? setAddAboveNode : undefined}
                 onCollapseLevel={isEditMode ? setCollapseLevelNode : undefined}
                 sharedContext={sharedContext}
                 sharedWith={node.nodeType === 'area' ? areaSharesMap.get(node.areaId) : undefined}
@@ -577,6 +589,17 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
           userId={userId}
           onClose={() => setAddBetweenNode(null)}
           onCreated={handleBetweenCreated}
+        />
+      )}
+
+      {/* ---- Add Above Panel ---- */}
+      {addAboveNode && userId && (
+        <StructureAddAbovePanel
+          leafNode={addAboveNode}
+          allNodes={nodes}
+          userId={userId}
+          onClose={() => setAddAboveNode(null)}
+          onCreated={handleAboveCreated}
         />
       )}
 
