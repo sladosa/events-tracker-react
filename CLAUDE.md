@@ -264,7 +264,7 @@ Faze i status:
 - ✅ BUG-S52-1 riješen (S53) — DATA BUG u TEST bazi; sql/011 pokrenut
 - ✅ 010_template_seed.sql pokrenuto na PROD via 012_prod_template_uuid_fix.sql (S58)
 - ✅ Template "Demo" Area — `sql/014_demo_area.sql` kreiran (S60); 8 kategorija, sve attr vrste, suggest, dependent suggest; system prompt u help.ts ažuriran
-- ⬜ Pokrenuti `014_demo_area.sql` na TEST + PROD (S61)
+- ✅ `014_demo_area.sql` pokrenuto na PROD (S64); Demo vidljiva u Templates ✅
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
 **3. ~~Add Category Between~~** — ✅ **kompletno (S55–S56)**. Scenarij A (Add Between) + Scenarij D (Collapse Level) implementirani i testirani.
@@ -303,7 +303,7 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
   - `.env.local`: `ANTHROPIC_API_KEY` placeholder + `VITE_HELP_API_URL` aktivan za lokalno testiranje
   - `sql/014_demo_area.sql` — Demo Area: 2 L1 (Exercise, Daily Log), 5 leaf kategorija, 21 attr def; sve attr vrste; suggest + dependent suggest; DO block s email-based user detection (radi na TEST i PROD)
   - System prompt u `netlify/functions/help.ts` ažuriran — citira Demo Area po path-u
-  - ⚠️ **Pokrenuti na TEST + PROD u S61; Ne merge-ati dok ne prođe T-S60-1 do T-S60-6**
+  - ✅ Pokrenuto na PROD (S64); smoke test prošao
 
 - ✅ **Faza H4 — Aktivacija + Merge na PROD** (S59):
   - `013_help_tables.sql` pokrenuto na TEST + PROD ✅
