@@ -1,23 +1,23 @@
 // ============================================================
-// StructureAddBetweenPanel.tsx
+// StructureAddAbovePanel.tsx
 // ============================================================
-// Inserts a new intermediate category level between a selected
-// non-leaf category and ALL of its direct children (Scenario A).
+// Inserts a new intermediate category ABOVE a leaf node —
+// between the leaf and its current parent (Scenario E).
 //
 // Example:
-//   BEFORE: Gym (L2) > [Strength (L3), Cardio (L3)]
-//   AFTER:  Gym (L2) > Upper Body (L3) > [Strength (L4), Cardio (L4)]
+//   BEFORE: Health (Area) > Sleep (L1, leaf)
+//   AFTER:  Health (Area) > Recovery (L1) > Sleep (L2, leaf)
 //
-// Events are NOT touched — leaf events keep category_id and chain_key.
-// New sessions pick up the new parent via buildParentChainIds().
-// Old sessions simply lack the new parent event (acceptable).
+//   BEFORE: Fitness > Gym (L1) > Bench Press (L2, leaf)
+//   AFTER:  Fitness > Gym (L1) > Push (L2) > Bench Press (L3, leaf)
+//
+// Existing events on the leaf are unaffected — they still
+// reference the same leaf category_id and chain_key.
+// buildParentChainIds() picks up the new parent automatically.
 //
 // DB operations:
-//   1. INSERT new category (level = parent.level + 1)
-//   2. UPDATE direct children (new parent + level++)
-//   3. UPDATE deeper descendants (level++ only)
-//
-// Replaces the AddBetweenModal placeholder in StructureTableView.
+//   1. INSERT new category Y at leaf's current level (same parent as leaf)
+//   2. UPDATE leaf: parent_category_id = Y.id, level = leaf.level + 1
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -26,21 +26,13 @@ import { THEME } from '@/lib/theme';
 import { supabase } from '@/lib/supabaseClient';
 import type { StructureNode } from '@/types/structure';
 
-// --------------------------------------------------------
-// Props
-// --------------------------------------------------------
-
-interface StructureAddBetweenPanelProps {
-  parentNode: StructureNode;   // the non-leaf category to insert below
-  allNodes: StructureNode[];   // full unfiltered node list
+interface StructureAddAbovePanelProps {
+  leafNode: StructureNode;
+  allNodes: StructureNode[];
   userId: string;
   onClose: () => void;
   onCreated: (newNodeId: string) => void;
 }
-
-// --------------------------------------------------------
-// Helpers
-// --------------------------------------------------------
 
 function generateSlug(name: string): string {
   return name
@@ -49,30 +41,6 @@ function generateSlug(name: string): string {
     .replace(/[^a-z0-9_]/g, '')
     .replace(/^_+|_+$/g, '');
 }
-
-/** BFS: collect all descendants of directChildren (not including them). */
-function collectDeeperDescendants(
-  directChildren: StructureNode[],
-  allNodes: StructureNode[],
-): StructureNode[] {
-  const queue = [...directChildren];
-  const result: StructureNode[] = [];
-  while (queue.length) {
-    const current = queue.shift()!;
-    const children = allNodes.filter(
-      n => n.nodeType === 'category' && n.category?.parent_category_id === current.id,
-    );
-    for (const child of children) {
-      result.push(child);
-      queue.push(child);
-    }
-  }
-  return result;
-}
-
-// --------------------------------------------------------
-// Icons
-// --------------------------------------------------------
 
 const CloseIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,29 +58,21 @@ function Spinner() {
   );
 }
 
-// --------------------------------------------------------
-// Main component
-// --------------------------------------------------------
-
-export function StructureAddBetweenPanel({
-  parentNode,
+export function StructureAddAbovePanel({
+  leafNode,
   allNodes,
   userId,
   onClose,
   onCreated,
-}: StructureAddBetweenPanelProps) {
+}: StructureAddAbovePanelProps) {
   const t = THEME.structureEdit;
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus on open
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
-  // Escape to close
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !saving) onClose();
@@ -123,29 +83,16 @@ export function StructureAddBetweenPanel({
 
   const slug = generateSlug(name);
 
-  // For area parent (level=0), L1 categories reference area via areaId, not parent_category_id
-  const isAreaParent = parentNode.level === 0;
+  // Find the parent's display name for the info box
+  const isL1Leaf = leafNode.level === 1;
+  const parentName = isL1Leaf
+    ? (allNodes.find(n => n.nodeType === 'area' && n.id === leafNode.areaId)?.name ?? 'Area')
+    : (allNodes.find(n => n.id === leafNode.category?.parent_category_id)?.name ?? '—');
 
-  // Direct children of parentNode
-  const directChildren = allNodes.filter(
-    n => n.nodeType === 'category' && (
-      isAreaParent
-        ? n.areaId === parentNode.id && n.level === 1
-        : n.category?.parent_category_id === parentNode.id
-    ),
-  );
+  // New category Y gets the leaf's current level; leaf gets level + 1
+  const newLevel = leafNode.level;
+  const levelLimitExceeded = leafNode.level + 1 > 10;
 
-  // Max descendant level (for level limit check)
-  const deeperDescendants = collectDeeperDescendants(directChildren, allNodes);
-  const allDescendants = [...directChildren, ...deeperDescendants];
-  const maxDescendantLevel = allDescendants.reduce((max, n) => Math.max(max, n.level), 0);
-  const levelLimitExceeded = maxDescendantLevel + 1 > 10;
-
-  // For area parent: new category is L1 with parent_category_id = null
-  const newLevel = isAreaParent ? 1 : parentNode.level + 1;
-  const newParentCategoryId = isAreaParent ? null : parentNode.id;
-
-  // ── Save handler ────────────────────────────────────────
   const handleSave = useCallback(async () => {
     const trimmedName = name.trim();
     if (!trimmedName || levelLimitExceeded) return;
@@ -156,14 +103,14 @@ export function StructureAddBetweenPanel({
     try {
       const newId = crypto.randomUUID();
 
-      // 1. INSERT new category
+      // 1. INSERT new category Y at leaf's current level, same parent as leaf
       const { error: insertErr } = await supabase
         .from('categories')
         .insert({
           id: newId,
           user_id: userId,
-          area_id: parentNode.areaId,
-          parent_category_id: newParentCategoryId,
+          area_id: leafNode.areaId,
+          parent_category_id: leafNode.category?.parent_category_id ?? null,
           name: trimmedName,
           slug: slug || generateSlug(trimmedName),
           level: newLevel,
@@ -171,42 +118,26 @@ export function StructureAddBetweenPanel({
         });
       if (insertErr) throw insertErr;
 
-      // 2. UPDATE direct children (re-parent + level++)
-      for (const child of directChildren) {
-        const { error: childErr } = await supabase
-          .from('categories')
-          .update({ parent_category_id: newId, level: child.level + 1 })
-          .eq('id', child.id)
-          .eq('user_id', userId);
-        if (childErr) throw childErr;
-      }
-
-      // 3. UPDATE deeper descendants (level++ only)
-      for (const desc of deeperDescendants) {
-        const { error: descErr } = await supabase
-          .from('categories')
-          .update({ level: desc.level + 1 })
-          .eq('id', desc.id)
-          .eq('user_id', userId);
-        if (descErr) throw descErr;
-      }
+      // 2. UPDATE leaf: new parent = Y, level++
+      const { error: updateErr } = await supabase
+        .from('categories')
+        .update({ parent_category_id: newId, level: leafNode.level + 1 })
+        .eq('id', leafNode.id)
+        .eq('user_id', userId);
+      if (updateErr) throw updateErr;
 
       onCreated(newId);
     } catch (err) {
-      console.error('StructureAddBetweenPanel: save failed', err);
+      console.error('StructureAddAbovePanel: save failed', err);
       setError(err instanceof Error ? err.message : 'Save failed. Please try again.');
       setSaving(false);
     }
-  }, [name, slug, parentNode, userId, directChildren, deeperDescendants, levelLimitExceeded, onCreated, newLevel, newParentCategoryId]);
+  }, [name, slug, leafNode, userId, levelLimitExceeded, newLevel, onCreated]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && name.trim() && !saving && !levelLimitExceeded) {
-      handleSave();
-    }
+    if (e.key === 'Enter' && name.trim() && !saving && !levelLimitExceeded) handleSave();
   };
 
-  const childrenSummary = directChildren.map(c => c.name).join(', ') || '—';
-  const parentLabel = isAreaParent ? 'Area' : `L${parentNode.level}`;
   const canSave = name.trim().length > 0 && !levelLimitExceeded && !saving;
 
   return (
@@ -219,16 +150,12 @@ export function StructureAddBetweenPanel({
         {/* ── Header ── */}
         <div className={cn('flex items-center justify-between px-5 py-4', t.headerBg)}>
           <h3 className={cn('text-base font-semibold', t.headerText)}>
-            ↕️ Add Category Between
+            ⬆️ Add Category Above
           </h3>
           <button
             onClick={onClose}
             disabled={saving}
-            className={cn(
-              'p-1.5 rounded-lg transition-colors',
-              t.accent,
-              saving && 'opacity-50 cursor-not-allowed',
-            )}
+            className={cn('p-1.5 rounded-lg transition-colors', t.accent, saving && 'opacity-50 cursor-not-allowed')}
             aria-label="Close"
           >
             <CloseIcon />
@@ -238,11 +165,9 @@ export function StructureAddBetweenPanel({
         {/* ── Body ── */}
         <div className="px-5 py-4 space-y-4">
 
-          {/* Level limit error */}
           {levelLimitExceeded && (
             <div className="px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-              Cannot insert — hierarchy would exceed max depth (10).
-              The deepest child is already at level {maxDescendantLevel}.
+              Cannot insert — leaf is already at level {leafNode.level} and would exceed max depth (10).
             </div>
           )}
 
@@ -252,12 +177,13 @@ export function StructureAddBetweenPanel({
               Inserting{' '}
               <span className="font-semibold">{name.trim() || '[name]'}</span>
               {' '}between{' '}
-              <span className="font-semibold">{parentNode.name}</span>
-              {' '}({parentLabel}) and its {directChildren.length}{' '}
-              {directChildren.length === 1 ? 'child' : 'children'} → Level {newLevel}
+              <span className="font-semibold">{parentName}</span>
+              {' '}and{' '}
+              <span className="font-semibold">{leafNode.name}</span>
+              {' '}→ Level {newLevel}
             </div>
             <div className="text-xs text-gray-500">
-              Children that will move: {childrenSummary}
+              Only <span className="font-medium">{leafNode.name}</span> moves — siblings are not affected.
             </div>
           </div>
 
@@ -274,7 +200,7 @@ export function StructureAddBetweenPanel({
                 onChange={(e) => { setName(e.target.value); setError(null); }}
                 onKeyDown={handleKeyDown}
                 disabled={saving}
-                placeholder="e.g. Upper Body"
+                placeholder="e.g. Recovery"
                 className={cn(
                   'w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors',
                   t.ring,
@@ -288,7 +214,6 @@ export function StructureAddBetweenPanel({
             </div>
           )}
 
-          {/* Error */}
           {error && (
             <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
               Error: {error}
@@ -299,10 +224,7 @@ export function StructureAddBetweenPanel({
         {/* ── Footer ── */}
         <div className="flex justify-end gap-2 px-5 pb-4">
           {levelLimitExceeded ? (
-            <button
-              onClick={onClose}
-              className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-colors', t.cancelBtn)}
-            >
+            <button onClick={onClose} className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-colors', t.cancelBtn)}>
               OK
             </button>
           ) : (
@@ -310,11 +232,7 @@ export function StructureAddBetweenPanel({
               <button
                 onClick={onClose}
                 disabled={saving}
-                className={cn(
-                  'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                  t.cancelBtn,
-                  saving && 'opacity-50 cursor-not-allowed',
-                )}
+                className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-colors', t.cancelBtn, saving && 'opacity-50 cursor-not-allowed')}
               >
                 Cancel
               </button>

@@ -24,8 +24,8 @@ ACTIVITIES TAB:
 
 STRUCTURE TAB (Edit Mode unlocks changes):
 • Add Leaf: ⋮ menu on category → "+ Add Leaf"
-• Add Between: ⋮ menu → "Add Between" — inserts new hierarchy level
-• Collapse Level: ⋮ menu → "Collapse Level" — merges a level down
+• Add Between: ⋮ menu → "Add Between" — inserts a new level BELOW the selected node and ABOVE its existing children (selected node's children become children of the new level; the selected node itself does NOT move)
+• Collapse Level: ⋮ menu → "Collapse Level" — REMOVES this level; its children move UP to become direct children of the grandparent; this level's attribute values are copied DOWN to each child
 • Add Area: Edit Mode → "Add Area" button (blank or From template)
 • Delete: ⋮ menu → Delete (blocked if category has events)
 • Attributes: click category → Edit panel → "+ Add Attribute"
@@ -42,13 +42,22 @@ SHARING:
 
 TEMPLATES:
 • Edit Mode → Add Area → "From template" → choose template → Preview → Create
-• Available: Health, Fitness, Finance, Work, Personal
+• Available: Health, Fitness, Finance, Work, Personal, Demo
 • Copying creates your own editable area
 
+DEMO AREA (template — use as reference for explaining features):
+• Structure tab → Templates → Demo shows a live example of all features
+• Exercise > Strength > Upper Body / Lower Body: suggest attribute (Exercise dropdown), number attributes (Sets, Reps, Weight)
+• Exercise > Cardio: Activity Type (suggest), Subtype (dependent suggest — options change based on Activity Type), Duration + Distance (number), Notes (text)
+• Daily Log > Mood: Mood (suggest), Notes (text), Photo (image)
+• Daily Log > Task: Title (text), Done (boolean), Due Date (datetime), Reference (link)
+• When explaining attribute types, reference: "For example, in Demo > Exercise > Cardio you can see suggest + dependent suggest"
+
 ATTRIBUTES:
-• Suggest type: text with predefined dropdown options
-• Dependent suggest: dropdown options depend on another attribute's value
+• Suggest type: text with predefined dropdown options (e.g., Demo > Daily Log > Mood — 'Mood' attribute has Happy/Neutral/Sad/...)
+• Dependent suggest: options depend on another attribute (e.g., Demo > Exercise > Cardio — 'Subtype' options change based on 'Activity Type')
 • Rename slug in Edit panel: auto-updates depends_on references
+• All attribute types: text, number, datetime, boolean, link, image
 
 RULES:
 • Answer in the same language the user writes in (Croatian or English)

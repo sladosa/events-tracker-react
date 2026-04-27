@@ -17,13 +17,14 @@ import { Button } from '@/components/ui/Button';
 import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
 import { exportStructureExcel, structureExportFilename } from '@/lib/structureExcel';
+import { TEMPLATE_USER_ID } from '@/lib/constants';
 import { StructureImportModal } from '@/components/structure/StructureImportModal';
 import { saveAs } from 'file-saver';
 import { useStructureData } from '@/hooks/useStructureData';
 import { SharedAreaBanner } from '@/components/sharing/SharedAreaBanner';
 import { ShareManagementModal } from '@/components/sharing/ShareManagementModal';
 import { HeaderAvatar, ProfileSettingsModal } from '@/components/sharing/ProfileSettingsModal';
-import { HelpPanel, HelpButton } from '@/components/help/HelpPanel';
+import { useHelp } from '@/context/HelpContext';
 import { useActivities } from '@/hooks/useActivities';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
@@ -106,8 +107,9 @@ function AppContent() {
     areaHasActiveShares,
   } = useFilter();
 
-  // Help panel state
-  const [showHelp, setShowHelp] = useState(false);
+  // Sync active tab into HelpContext so chips match the visible tab
+  const { setPageHint } = useHelp();
+  useEffect(() => { setPageHint(activeTab); }, [activeTab, setPageHint]);
 
   // Share Management Modal state (Faza 7)
   const [shareModalTarget, setShareModalTarget] = useState<{ areaId: UUID; areaName: string } | null>(null);
@@ -249,9 +251,8 @@ function AppContent() {
               </div>
             </div>
 
-            {/* User section — help button + avatar */}
+            {/* User section — avatar */}
             <div className="flex items-center gap-2">
-              <HelpButton onClick={() => setShowHelp(v => !v)} isOpen={showHelp} />
               {userId && (
                 <HeaderAvatar
                   userId={userId}
@@ -312,21 +313,22 @@ function AppContent() {
             </div>
           </div>
 
-          {/* Filter Content */}
-          {isFilterExpanded && (
-            <div className="px-3 pb-3 sm:px-4 sm:pb-4 border-t border-gray-100 pt-3">
-              <ProgressiveCategorySelector
-                onLeafSelected={handleLeafSelected}
-              />
-              
-              {/* Date Range Filter - only for Activities tab */}
-              {activeTab === 'activities' && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <DateRangeFilter />
-                </div>
-              )}
-            </div>
-          )}
+          {/* Filter Content — always mounted so areas-changed listener stays active */}
+          <div className={cn(
+            'px-3 pb-3 sm:px-4 sm:pb-4 border-t border-gray-100 pt-3',
+            !isFilterExpanded && 'hidden'
+          )}>
+            <ProgressiveCategorySelector
+              onLeafSelected={handleLeafSelected}
+            />
+
+            {/* Date Range Filter - only for Activities tab */}
+            {activeTab === 'activities' && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <DateRangeFilter />
+              </div>
+            )}
+          </div>
         </section>
 
         {/* ========================================
@@ -404,7 +406,11 @@ function AppContent() {
                   setIsExportingStructure(true);
                   try {
                     const freshNodes = await refetchStructure(); // Always export fresh data
-                    const buffer = await exportStructureExcel(freshNodes, {
+                    // When no specific area selected, exclude template areas from export
+                    const exportNodes = filter.areaId
+                      ? freshNodes
+                      : freshNodes.filter(n => n.area?.user_id !== TEMPLATE_USER_ID);
+                    const buffer = await exportStructureExcel(exportNodes, {
                       filterAreaId: filter.areaId ?? null,
                       filterCategoryId: filter.categoryId ?? null,
                     });
@@ -508,13 +514,6 @@ function AppContent() {
           onSignOut={onSignOut}
         />
       )}
-
-      {/* Help Panel (H2) — always mounted to preserve chat history */}
-      <HelpPanel
-        isOpen={showHelp}
-        onClose={() => setShowHelp(false)}
-        currentPage={activeTab}
-      />
 
       {/* Share Management Modal (Faza 7) */}
       {shareModalTarget && (

@@ -4,6 +4,8 @@ import { Toaster } from 'react-hot-toast'
 
 import { supabase } from '@/lib/supabaseClient'
 import { FilterProvider } from '@/context/FilterContext'
+import { HelpProvider } from '@/context/HelpContext'
+import { HelpOverlay } from '@/components/help/HelpPanel'
 import AuthPage from '@/pages/AuthPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import AppHome from '@/pages/AppHome'
@@ -49,10 +51,27 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+// All /app/* routes share one FilterProvider + HelpProvider.
+// HelpOverlay (FAB + panel) renders once here, stays mounted across navigations.
+function AppShell() {
+  return (
+    <>
+      <Routes>
+        <Route path="/" element={<AppHome />} />
+        <Route path="/add" element={<AddActivityPage />} />
+        <Route path="/edit/:sessionStart" element={<EditActivityPage />} />
+        <Route path="/view/:sessionStart" element={<ViewDetailsPage />} />
+        <Route path="*" element={<AppHome />} />
+      </Routes>
+      <HelpOverlay />
+    </>
+  )
+}
+
 export default function App() {
   return (
     <>
-      <Toaster 
+      <Toaster
         position="top-center"
         toastOptions={{
           duration: 4000,
@@ -76,65 +95,25 @@ export default function App() {
         }}
       />
       <Routes>
-        {/* Public routes */}
         <Route path="/" element={<Navigate to="/app" replace />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/debug" element={<DebugPage />} />
-        
-        {/* Protected routes - sve unutar FilterProvider da dijele isti filter state */}
-        <Route
-          path="/app"
-          element={
-            <RequireAuth>
-              <FilterProvider>
-                <AppHome />
-              </FilterProvider>
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/app/add"
-          element={
-            <RequireAuth>
-              <FilterProvider>
-                <AddActivityPage />
-              </FilterProvider>
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/app/edit/:sessionStart"
-          element={
-            <RequireAuth>
-              <FilterProvider>
-                <EditActivityPage />
-              </FilterProvider>
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/app/view/:sessionStart"
-          element={
-            <RequireAuth>
-              <FilterProvider>
-                <ViewDetailsPage />
-              </FilterProvider>
-            </RequireAuth>
-          }
-        />
+
+        {/* All protected app routes share one FilterProvider + HelpProvider */}
         <Route
           path="/app/*"
           element={
             <RequireAuth>
               <FilterProvider>
-                <AppHome />
+                <HelpProvider>
+                  <AppShell />
+                </HelpProvider>
               </FilterProvider>
             </RequireAuth>
           }
         />
-        
-        {/* Catch all - redirect to app */}
+
         <Route path="*" element={<Navigate to="/app" replace />} />
       </Routes>
     </>

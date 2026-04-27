@@ -16,7 +16,7 @@ Ažuriraj ga kad se dodaju ili mijenjaju feature-i.
 - **Activity/Event**: upisani zapis s `session_start` timestampom i vrijednostima atributa
 - **Attribute**: tipizirano polje (text, number, datetime, boolean, link, image)
 - **Session**: grupa eventova na isti `session_start` (datum+vrijeme, zaokruženo na minutu)
-- **Parent event**: roditeljna kategorija automatski dobiva 1 event po sesiji (sažetak)
+- **Parent event**: roditeljska kategorija automatski dobiva samo 1 event po sesiji
 
 ## Ključna pravila
 

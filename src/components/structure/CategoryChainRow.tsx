@@ -19,8 +19,8 @@ import type { StructureNode } from '@/types/structure';
 import type { SharedContext } from '@/hooks/useDataShares';
 
 // Approximate pixel height of the largest possible menu
-// (non-leaf in edit mode: View + Edit + Add Leaf + Add Between + Delete = 5 items × ~40px)
-const MENU_HEIGHT = 220;
+// (area in edit mode: Manage Access + Edit + Add Leaf + Add Between + Delete + separator = ~280px)
+const MENU_HEIGHT = 280;
 
 interface CategoryChainRowProps {
   node: StructureNode;
@@ -33,7 +33,8 @@ interface CategoryChainRowProps {
   onDelete?: (node: StructureNode) => void;
   /** Unified add-child callback for all node types (S22: replaces onAddCategory + onAddLeaf) */
   onAddChild?: (node: StructureNode) => void;
-  onAddBetween?: (node: StructureNode) => void;     // Non-leaf: insert level below
+  onAddBetween?: (node: StructureNode) => void;     // Non-leaf/Area: insert level below
+  onAddAbove?: (node: StructureNode) => void;       // Leaf: insert new parent above this leaf only
   onCollapseLevel?: (node: StructureNode) => void;  // Non-leaf: remove this level, children move up
   /** Collab: shared context for grantee-specific menu (null = current user is owner) */
   sharedContext?: SharedContext | null;
@@ -43,6 +44,8 @@ interface CategoryChainRowProps {
   sharedWith?: string[];
   /** Grantee view: owner name + permission for areas not owned by current user */
   granteeInfo?: { ownerName: string; permission: string };
+  /** True when this area/category is owned by the current user (false for shared areas in All view) */
+  isOwnedArea?: boolean;
   /** Area collapse/expand — only used when nodeType === 'area' */
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -86,10 +89,13 @@ interface ActionsMenuProps {
   onDelete?: (node: StructureNode) => void;
   onAddChild?: (node: StructureNode) => void;
   onAddBetween?: (node: StructureNode) => void;
+  onAddAbove?: (node: StructureNode) => void;
   onCollapseLevel?: (node: StructureNode) => void;
   sharedContext?: SharedContext | null;
   onManageAccess?: (node: StructureNode) => void;
   onRequestAccess?: () => void;
+  isOwnedArea?: boolean;
+  granteeInfo?: { ownerName: string; permission: string };
 }
 
 function ActionsMenu({
@@ -103,10 +109,13 @@ function ActionsMenu({
   onDelete,
   onAddChild,
   onAddBetween,
+  onAddAbove,
   onCollapseLevel,
   sharedContext,
   onManageAccess,
   onRequestAccess,
+  isOwnedArea = true,
+  granteeInfo,
 }: ActionsMenuProps) {
   const item = (label: string, icon: string, onClick: () => void, danger = false) => (
     <button
@@ -148,7 +157,7 @@ function ActionsMenu({
         {item('View details', '👁', () => onView(node))}
 
         {sharedContext ? (
-          // ── Grantee menu ──────────────────────────────
+          // ── Grantee menu (filtered view with sharedContext) ──────────
           <div className="border-t border-gray-100 mt-1 pt-1">
             {infoRow(
               '👤',
@@ -179,8 +188,16 @@ function ActionsMenu({
               </button>
             )}
           </div>
+        ) : !isOwnedArea ? (
+          // ── Non-owned area in "All" view (sharedContext not set) ──────
+          // Show owner info only — no edit actions allowed
+          granteeInfo ? (
+            <div className="border-t border-gray-100 mt-1 pt-1">
+              {infoRow('👤', `Owner: ${granteeInfo.ownerName}`)}
+            </div>
+          ) : null
         ) : (
-          // ── Owner menu ────────────────────────────────
+          // ── Owner menu ────────────────────────────────────────────────
           <>
             {/* Manage Access — visible for owner on own area rows (not templates) */}
             {node.nodeType === 'area' && !isTemplate && (
@@ -196,12 +213,13 @@ function ActionsMenu({
             {/* Edit mode actions */}
             {isEditMode && (
               <>
-                {/* Area-specific actions */}
+                {/* Area-specific actions (P2: Add Between added for area→leaf case) */}
                 {node.nodeType === 'area' && (
                   <>
                     <div className="my-1 border-t border-gray-100" />
                     {item('Edit', '✏️', () => onEdit?.(node))}
                     {item('+ Add Leaf', '➕', () => onAddChild?.(node))}
+                    {item('Add Between', '↕️', () => onAddBetween?.(node))}
                     {item('Delete', '🗑️', () => onDelete?.(node), true)}
                   </>
                 )}
@@ -222,6 +240,7 @@ function ActionsMenu({
                   <>
                     {item('Edit', '✏️', () => onEdit?.(node))}
                     {item('+ Add Leaf', '➕', () => onAddChild?.(node))}
+                    {item('Add Above', '⬆️', () => onAddAbove?.(node))}
                     {item('Delete', '🗑️', () => onDelete?.(node), true)}
                   </>
                 )}
@@ -248,6 +267,7 @@ export function CategoryChainRow({
   onDelete,
   onAddChild,
   onAddBetween,
+  onAddAbove,
   onCollapseLevel,
   sharedContext,
   sharedWith,
@@ -256,6 +276,7 @@ export function CategoryChainRow({
   isCollapsed = false,
   onToggleCollapse,
   hiddenCount,
+  isOwnedArea = true,
 }: CategoryChainRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 });
@@ -428,10 +449,13 @@ export function CategoryChainRow({
               onDelete={onDelete}
               onAddChild={onAddChild}
               onAddBetween={onAddBetween}
+              onAddAbove={onAddAbove}
               onCollapseLevel={onCollapseLevel}
               sharedContext={sharedContext}
               onManageAccess={onManageAccess}
               onRequestAccess={() => setShowRequestModal(true)}
+              isOwnedArea={isOwnedArea}
+              granteeInfo={granteeInfo}
             />
           )}
         </div>

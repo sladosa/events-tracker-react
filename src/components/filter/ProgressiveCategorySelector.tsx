@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import type { Category, UUID } from '@/types/database';
 import { useFilter } from '@/context/FilterContext';
@@ -235,6 +236,8 @@ export function ProgressiveCategorySelector({
       setShowSaveModal(false);
       setNewPresetName('');
       setSelectedShortcutId(result.id);
+    } else {
+      toast.error('Could not save shortcut. Please try again.');
     }
   }, [newPresetName, filter.areaId, filter.categoryId, createPreset, setSelectedShortcutId]);
 
@@ -254,6 +257,14 @@ export function ProgressiveCategorySelector({
 
   // Can save: has leaf category selected
   const canSaveShortcut = isLeafCategory && filter.categoryId;
+
+  // Auto-select shortcut when filter matches a preset but selectedShortcutId is null
+  // (e.g. after browser restart when sessionStorage is cleared but filter is restored)
+  useEffect(() => {
+    if (selectedShortcutId || !filter.categoryId || presetsLoading || !presets.length) return;
+    const match = presets.find(p => p.category_id === filter.categoryId);
+    if (match) setSelectedShortcutId(match.id);
+  }, [presets, presetsLoading, filter.categoryId, selectedShortcutId, setSelectedShortcutId]);
 
   // --------------------------------------------
   // Load L1+L2 when area changes (ONLY if not restoring)

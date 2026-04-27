@@ -84,6 +84,23 @@ function AttributeValueDisplay({
     );
   }
 
+  if (dataType === 'link' && typeof value === 'string') {
+    const href = value.startsWith('http://') || value.startsWith('https://') ? value : `https://${value}`;
+    return (
+      <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+        <span className="text-sm text-gray-600">{name}</span>
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn('text-sm font-medium underline truncate max-w-[60%]', t.lightText)}
+        >
+          {value}
+        </a>
+      </div>
+    );
+  }
+
   let displayValue: string;
   if (dataType === 'boolean') {
     displayValue = value ? 'Yes' : 'No';

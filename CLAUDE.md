@@ -11,21 +11,18 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 
 ## Key docs (read before touching related code)
 
-| Doc                                            | When to read                                                                     |
-| ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| `docs/ARCHITECTURE_v1_6.md`                    | Always — data model, P1/P2/P3, chain_key, session identity                       |
-| `docs/STRUCTURE_TAB_SPEC_FOR_DEV_v1.1.md`      | Structure tab work (zamjenjuje v1.5)                                             |
-| `docs/EXCEL_FORMAT_ANALYSIS_v2.md`             | Excel export/import work                                                         |
-| `docs/IMPORT_DIFF_SPEC.md`                     | Import "skipped" vs "updated" — ✅ implemented S28                                |
-| `docs/ADD_ATTRIBUTE_SPEC.md`                   | Add/Delete Attribute u Structure Edit — ✅ implemented S28                        |
-| `docs/SUGGEST_DEPENDSON_SPEC_v2.md`            | Suggest + DependsOn editing — ✅ implemented S29–S31                              |
-| `sql/SQL_schema_V5_commented.sql`              | DB schema reference                                                              |
-| `docs/Code_Guidelines_React_v6.md`             | Code conventions                                                                 |
-| `docs/COLLAB_PLAN_v1.md`                       | Collab implementation plan — faze 0–8, prerequisites, checklist                  |
-| `Claude-temp_R/MULTI_USER_SHARING_ANALYSIS.md` | Collab spec detalji — SQL politike, frontend promjene                            |
-| `docs/RESTRUCTURE_ANALYSIS.md`                 | Scenariji reorganizacije A–F, opcije 1–4                                         |
-| `docs/RESTRUCTURE_DECISIONS_2026-04-01.md`     | Odluke donijete o reorganizaciji i Financije data modelu                         |
-| `docs/TEMPLATE_SYSTEM_SPEC.md`                 | Template user sistem — starter Areas za nove korisnike, Add Area "From template" |
+| Doc                                        | When to read                                                                     |
+| ------------------------------------------ | -------------------------------------------------------------------------------- |
+| `docs/ARCHITECTURE_v1_6.md`               | Always — data model, P1/P2/P3, chain_key, session identity                       |
+| `docs/STRUCTURE_TAB_SPEC_FOR_DEV_v1.1.md` | Structure tab work                                                               |
+| `docs/EXCEL_FORMAT_ANALYSIS_v2.md`        | Excel export/import work                                                         |
+| `sql/SQL_schema_V5_commented.sql`         | DB schema reference                                                              |
+| `docs/Code_Guidelines_React_v6.md`        | Code conventions                                                                 |
+| `docs/COLLAB_PLAN_v2.md`                  | Collab implementation plan (v2) — faze 0–11, decisions                           |
+| `docs/RESTRUCTURE_DECISIONS_2026-04-01.md`| Odluke o reorganizaciji i Financije data modelu                                  |
+| `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas za nove korisnike, Add Area "From template" |
+| `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
+| `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 
 ---
 
@@ -230,6 +227,7 @@ Faze i status:
 - ✅ S57: Structure area collapse — `CategoryChainRow` dobio ▼/▶ chevron za area redove + "N hidden" badge; `StructureTableView` — `collapsedAreaIds` state, `visibleRows` filter, "Collapse all / Expand all" gumb (prikazuje se kad 2+ areaa); panel Prev/Next navigira kroz `visibleRows`
 - ✅ S57: AddAreaPanel duplikat zaštita — provjera po imenu (case-insensitive) za "empty" mode (inline error) i "template" mode (template se ne pojavljuje u dropdownu ako postoji area s istim imenom ili slugom)
 - ✅ S57: AttributeChainForm localStorage expand persist — `attrExpanded:<categoryId>` u localStorage; korisnikova preferencija (otvori/zatvori) pamti se per-category; radi za Add i Edit Activity
+- ✅ S61: Help sistem UX refaktor — `src/context/HelpContext.tsx` (global state: isOpen, pageHint); `App.tsx` refaktoriran: jedan `FilterProvider` + `HelpProvider` za sve `/app/*` rute, `AppShell` s nested Routes + `HelpOverlay`; `HelpPanel.tsx` rewritan: FAB (fixed bottom-right, globalno vidljiv na svim stranicama i modalima), draggable header (drag → floating 400×580, Pin → docked), context chips (3 brza pitanja po kontekstu: activities/structure/add/edit/view), context reset (chat se briše kad se Help otvori iz drugog konteksta), engleski UI; `AppHome.tsx` — uklonjen `showHelp` state i `HelpButton` iz headera, dodan `setPageHint(activeTab)` effect
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
@@ -237,6 +235,17 @@ Faze i status:
 - **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
+- **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
+- ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
+- ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
+- ✅ S63: Help Structure chips update — Structure stranica: "What does the ⋮ menu do?" + "How do I share an area?" umjesto manje relevantnih chipova
+- ✅ S63: Edit Activity chip fix — "What happens when I change the time?" (bilo: "What is delta shift?")
+- ✅ S63: docs cleanup — 10 obsolete spec fajlova → `docs/obsolete/`; `Claude-temp_R` old artefakti → `Claude-temp_R/obsolete/`
+- ✅ S63: `docs/HELP_STRUCTURE.md` — referentni dokument za help sistem (chip map, context detection, Content Evolution Protocol)
+- ✅ S64: Permissions fix — `isOwnedArea` prop na `CategoryChainRow`; edit akcije i Manage Access skriveni za tuđe areae u "All" view (root cause: `sharedContext` = null bez area filtera)
+- ✅ S64: Add Between na area ⋮ meniju — `StructureAddBetweenPanel` podržava area parent (level=0); L1 djeca traže se po `areaId`, INSERT s `parent_category_id = null`
+- ✅ S64: Add Above na leaf ⋮ meniju — novi `StructureAddAbovePanel`; INSERT Y na razini lista (isti parent), UPDATE leaf parent=Y level++; eventi netaknuti; siblizi nepromijenjeni
+- ✅ S64: `help.ts` system prompt — ispravljen opis Add Between (novi čvor ISPOD odabranog) i Collapse Level (djeca GORE, atributi DOLJE); docs/help/structure.md opis ažuriran
 
 ---
 
@@ -254,7 +263,8 @@ Faze i status:
 - ✅ Add Area "From template" flow — `StructureAddAreaPanel` radio toggle + dropdown + preview + copy (S52)
 - ✅ BUG-S52-1 riješen (S53) — DATA BUG u TEST bazi; sql/011 pokrenut
 - ✅ 010_template_seed.sql pokrenuto na PROD via 012_prod_template_uuid_fix.sql (S58)
-- ⬜ Template "Demo" Area — primjeri svih feature-a (dependent attrs, sve attr vrste, multi-level) — za Help sistem
+- ✅ Template "Demo" Area — `sql/014_demo_area.sql` kreiran (S60); 8 kategorija, sve attr vrste, suggest, dependent suggest; system prompt u help.ts ažuriran
+- ⬜ Pokrenuti `014_demo_area.sql` na TEST + PROD (S61)
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
 **3. ~~Add Category Between~~** — ✅ **kompletno (S55–S56)**. Scenarij A (Add Between) + Scenarij D (Collapse Level) implementirani i testirani.
@@ -288,14 +298,17 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
   - 2 taba: **Pitaj AI** (chat + history) | **Povratna info** (wish/bug/question → `feedback`)
   - `HelpButton` (❓) u headeru `AppHome.tsx`
 
-- **Faza H3 — Template Demo Area** (1 sesija):
-  - Nova Area u template useru: "Demo"
-  - Sadrži primjere: dependent attrs, sve attr vrste, multi-level hijerarhija
+- ✅ **Faza H3 — Template Demo Area + `netlify dev`** (S60):
+  - `netlify-cli` devDependency + `"dev:netlify"` script u `package.json`
+  - `.env.local`: `ANTHROPIC_API_KEY` placeholder + `VITE_HELP_API_URL` aktivan za lokalno testiranje
+  - `sql/014_demo_area.sql` — Demo Area: 2 L1 (Exercise, Daily Log), 5 leaf kategorija, 21 attr def; sve attr vrste; suggest + dependent suggest; DO block s email-based user detection (radi na TEST i PROD)
+  - System prompt u `netlify/functions/help.ts` ažuriran — citira Demo Area po path-u
+  - ⚠️ **Pokrenuti na TEST + PROD u S61; Ne merge-ati dok ne prođe T-S60-1 do T-S60-6**
 
-- **Faza H4 — Aktivacija + Merge na PROD** (1 sesija):
-  - `013_help_tables.sql` pokrenuti na TEST + PROD
-  - `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` na Netlify
-  - Smoke test (AI odgovori rade, feedback se sprema)
+- ✅ **Faza H4 — Aktivacija + Merge na PROD** (S59):
+  - `013_help_tables.sql` pokrenuto na TEST + PROD ✅
+  - `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` na Netlify ✅
+  - Smoke test: AI odgovori rade, feedback se sprema u DB ✅
 
 **Napomena:** Svaki novi feature uz kod dobiva update `docs/help/` — dodano u End of session checklist.
 
