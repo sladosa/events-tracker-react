@@ -242,6 +242,10 @@ Faze i status:
 - ✅ S63: Edit Activity chip fix — "What happens when I change the time?" (bilo: "What is delta shift?")
 - ✅ S63: docs cleanup — 10 obsolete spec fajlova → `docs/obsolete/`; `Claude-temp_R` old artefakti → `Claude-temp_R/obsolete/`
 - ✅ S63: `docs/HELP_STRUCTURE.md` — referentni dokument za help sistem (chip map, context detection, Content Evolution Protocol)
+- ✅ S64: Permissions fix — `isOwnedArea` prop na `CategoryChainRow`; edit akcije i Manage Access skriveni za tuđe areae u "All" view (root cause: `sharedContext` = null bez area filtera)
+- ✅ S64: Add Between na area ⋮ meniju — `StructureAddBetweenPanel` podržava area parent (level=0); L1 djeca traže se po `areaId`, INSERT s `parent_category_id = null`
+- ✅ S64: Add Above na leaf ⋮ meniju — novi `StructureAddAbovePanel`; INSERT Y na razini lista (isti parent), UPDATE leaf parent=Y level++; eventi netaknuti; siblizi nepromijenjeni
+- ✅ S64: `help.ts` system prompt — ispravljen opis Add Between (novi čvor ISPOD odabranog) i Collapse Level (djeca GORE, atributi DOLJE); docs/help/structure.md opis ažuriran
 
 ---
 
