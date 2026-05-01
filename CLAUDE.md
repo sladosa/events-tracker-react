@@ -327,6 +327,16 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 
 **8. Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
 
+**9. Health tracking Area** — Area "Health" s Lab Results + Medical Visit leaf kategorijama.
+   Plan: `Claude-temp_R/Health/HEALTH_TRACKING_PLAN.md`
+   Struktura: Medical > Lab Results (15 numeric attrs + Status suggest) + Medical Visit (Doktor, Vrsta, Iznos)
+   Sljedeći korak: kreirati u TEST bazi ručno, isprobati UX, zatim Python import skript za historijske podatke (od 2021).
+
+**10. Save+ toggle po Arei** — neke Areae (Financije, Health) trebaju sakriven Save+ gumb
+   jer je svaki event zasebna transakcija (ne batch). Spec: `Claude-temp_R/SAVE_PLUS_TOGGLE_SPEC.md`
+   Implementacija: `settings jsonb` kolona na `areas` tablici; `disable_save_plus: true` flag;
+   `ActivityHeader.tsx` conditionally renderira Save+ gumb. Nizak prioritet — implementirati kad bude friction.
+
 ---
 
 ## TypeScript known issue
