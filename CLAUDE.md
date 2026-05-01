@@ -264,7 +264,7 @@ Faze i status:
 - ✅ BUG-S52-1 riješen (S53) — DATA BUG u TEST bazi; sql/011 pokrenut
 - ✅ 010_template_seed.sql pokrenuto na PROD via 012_prod_template_uuid_fix.sql (S58)
 - ✅ Template "Demo" Area — `sql/014_demo_area.sql` kreiran (S60); 8 kategorija, sve attr vrste, suggest, dependent suggest; system prompt u help.ts ažuriran
-- ⬜ Pokrenuti `014_demo_area.sql` na TEST + PROD (S61)
+- ✅ `014_demo_area.sql` pokrenuto na PROD (S64); Demo vidljiva u Templates ✅
 - ⬜ Garmin API adapter (future) — template kao schema za external source mapping
 
 **3. ~~Add Category Between~~** — ✅ **kompletno (S55–S56)**. Scenarij A (Add Between) + Scenarij D (Collapse Level) implementirani i testirani.
@@ -303,7 +303,7 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
   - `.env.local`: `ANTHROPIC_API_KEY` placeholder + `VITE_HELP_API_URL` aktivan za lokalno testiranje
   - `sql/014_demo_area.sql` — Demo Area: 2 L1 (Exercise, Daily Log), 5 leaf kategorija, 21 attr def; sve attr vrste; suggest + dependent suggest; DO block s email-based user detection (radi na TEST i PROD)
   - System prompt u `netlify/functions/help.ts` ažuriran — citira Demo Area po path-u
-  - ⚠️ **Pokrenuti na TEST + PROD u S61; Ne merge-ati dok ne prođe T-S60-1 do T-S60-6**
+  - ✅ Pokrenuto na PROD (S64); smoke test prošao
 
 - ✅ **Faza H4 — Aktivacija + Merge na PROD** (S59):
   - `013_help_tables.sql` pokrenuto na TEST + PROD ✅
@@ -313,6 +313,11 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 **Napomena:** Svaki novi feature uz kod dobiva update `docs/help/` — dodano u End of session checklist.
 
 **6. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
+   Status S65: `Za Sašu` 2026 (356 redova) importiran u TEST bazu ✅. Struktura pre-složena
+   (19 listova), čeka Kokin feedback za pojednostavljenje (max L2, Vrsta dropdowns).
+   Process docs: `Claude-temp_R/Data_preparation/Financije/IMPORT_PROCES.md`
+   Prijedlog za Koku: `Claude-temp_R/Data_preparation/Financije/KOKA_STRUKTURA_PRIJEDLOG.md`
+   Skripte: `fix_dates.py` (datumi) + `make_import.py` (generira xlsx za import)
 
 **7. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
 - `trening.xlsm` analiza — mapiranje kolona i sheetova na trenutni data model

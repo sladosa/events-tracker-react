@@ -117,18 +117,6 @@ interface UseActivitiesOptions {
 // Type for Supabase responses
 // --------------------------------------------
 
-interface CategoryRow {
-  id: UUID;
-  name: string;
-  parent_category_id: UUID | null;
-  area_id: UUID | null;
-}
-
-interface AreaRow {
-  name: string;
-  icon: string | null;
-}
-
 interface EventRow {
   id: UUID;
   category_id: UUID;
@@ -234,55 +222,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     logDebug('GET_DESCENDANTS_RESULT', { parentId: catId, descendantIds: ids, count: ids.length });
     
     return ids;
-  }, []);
-
-  // Build category path from category to root
-  const buildCategoryPath = useCallback(async (catId: UUID): Promise<{
-    path: string[];
-    categoryName: string;
-    areaName: string;
-    areaIcon: string | null;
-  }> => {
-    const path: string[] = [];
-    let currentId: UUID | null = catId;
-    let categoryName = '';
-    let foundAreaId: UUID | null = null;
-
-    while (currentId) {
-      const { data: cat, error: catError } = await supabase
-        .from('categories')
-        .select('id, name, parent_category_id, area_id')
-        .eq('id', currentId)
-        .single();
-
-      if (catError || !cat) break;
-
-      const catData = cat as CategoryRow;
-      path.unshift(catData.name);
-      if (!categoryName) categoryName = catData.name;
-      if (catData.area_id) foundAreaId = catData.area_id;
-      currentId = catData.parent_category_id;
-    }
-
-    // Get area info
-    let areaName = '';
-    let areaIcon: string | null = null;
-    if (foundAreaId) {
-      const { data: area } = await supabase
-        .from('areas')
-        .select('name, icon')
-        .eq('id', foundAreaId)
-        .single();
-      
-      if (area) {
-        const areaData = area as AreaRow;
-        areaName = areaData.name;
-        areaIcon = areaData.icon;
-        path.unshift(areaData.name);
-      }
-    }
-
-    return { path, categoryName, areaName, areaIcon };
   }, []);
 
   // Fetch activities
@@ -458,26 +397,36 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         }
       }
 
-      // Build category paths (cache to avoid duplicate queries)
-      const pathCache = new Map<UUID, Awaited<ReturnType<typeof buildCategoryPath>>>();
-      
-      const enrichedEvents: ActivityEvent[] = await Promise.all(
-        eventRows.map(async (event) => {
-          let pathInfo = pathCache.get(event.category_id);
-          if (!pathInfo) {
-            pathInfo = await buildCategoryPath(event.category_id);
-            pathCache.set(event.category_id, pathInfo);
-          }
-          
-          return {
-            ...event,
-            category_name: pathInfo.categoryName,
-            category_path: pathInfo.path,
-            area_name: pathInfo.areaName,
-            area_icon: pathInfo.areaIcon
-          };
-        })
-      );
+      // Batch fetch all category paths in one query via category_full_paths view
+      // (replaces the old N+1 buildCategoryPath loop)
+      const uniqueCatIds = [...new Set(eventRows.map(e => e.category_id))];
+      const { data: pathRows } = await supabase
+        .from('category_full_paths')
+        .select('category_id, category_name, area_name, area_icon, full_path')
+        .in('category_id', uniqueCatIds);
+
+      const pathMap = new Map<UUID, { path: string[]; categoryName: string; areaName: string; areaIcon: string | null }>();
+      for (const row of pathRows ?? []) {
+        pathMap.set(row.category_id as UUID, {
+          path: (row.full_path as string[]) ?? [],
+          categoryName: (row.category_name as string) ?? '',
+          areaName: (row.area_name as string) ?? '',
+          areaIcon: row.area_icon as string | null,
+        });
+      }
+
+      const enrichedEvents: ActivityEvent[] = eventRows.map(event => {
+        const pathInfo = pathMap.get(event.category_id) ?? {
+          path: [], categoryName: '', areaName: '', areaIcon: null,
+        };
+        return {
+          ...event,
+          category_name: pathInfo.categoryName,
+          category_path: pathInfo.path,
+          area_name: pathInfo.areaName,
+          area_icon: pathInfo.areaIcon,
+        };
+      });
 
       // Group by session (user_id + category_id + session_start)
       // user_id is included so that two users' events at the same session_start
@@ -614,7 +563,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, pageSize, offset, checkHasChildren, getDescendantCategoryIds, buildCategoryPath]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, pageSize, offset, checkHasChildren, getDescendantCategoryIds]);
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
