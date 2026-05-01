@@ -313,6 +313,11 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 **Napomena:** Svaki novi feature uz kod dobiva update `docs/help/` — dodano u End of session checklist.
 
 **6. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
+   Status S65: `Za Sašu` 2026 (356 redova) importiran u TEST bazu ✅. Struktura pre-složena
+   (19 listova), čeka Kokin feedback za pojednostavljenje (max L2, Vrsta dropdowns).
+   Process docs: `Claude-temp_R/Data_preparation/Financije/IMPORT_PROCES.md`
+   Prijedlog za Koku: `Claude-temp_R/Data_preparation/Financije/KOKA_STRUKTURA_PRIJEDLOG.md`
+   Skripte: `fix_dates.py` (datumi) + `make_import.py` (generira xlsx za import)
 
 **7. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
 - `trening.xlsm` analiza — mapiranje kolona i sheetova na trenutni data model
