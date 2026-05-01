@@ -246,6 +246,8 @@ Faze i status:
 - ✅ S64: Add Between na area ⋮ meniju — `StructureAddBetweenPanel` podržava area parent (level=0); L1 djeca traže se po `areaId`, INSERT s `parent_category_id = null`
 - ✅ S64: Add Above na leaf ⋮ meniju — novi `StructureAddAbovePanel`; INSERT Y na razini lista (isti parent), UPDATE leaf parent=Y level++; eventi netaknuti; siblizi nepromijenjeni
 - ✅ S64: `help.ts` system prompt — ispravljen opis Add Between (novi čvor ISPOD odabranog) i Collapse Level (djeca GORE, atributi DOLJE); docs/help/structure.md opis ažuriran
+- ✅ S66: Perf — `category_full_paths` recursive CTE view (`sql/016_category_paths_view.sql`); `useActivities.ts` refaktoriran: `buildCategoryPath` N+1 loop uklonjen, zamijenjen jednim batch queryjem na view; pokrenuto na TEST + PROD. Stranica 20 eventa s 8 unique kategorija: ~32 querija → 1.
+- ✅ S66: `dev:prod` npm script + `.env.prod.local` (gitignored) za lokalni dev server koji koristi PROD Supabase bazu
 
 ---
 
