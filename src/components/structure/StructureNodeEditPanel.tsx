@@ -996,7 +996,7 @@ export function StructureNodeEditPanel({
     } finally {
       setSaving(false);
     }
-  }, [name, description, sortOrder, attrStates, node, onSaved]);
+  }, [name, description, sortOrder, disableSavePlus, attrStates, node, onSaved]);
 
   const nodeTypeLabel = node.nodeType === 'area' ? 'Area' : node.isLeaf ? 'Leaf' : `L${node.level}`;
 
