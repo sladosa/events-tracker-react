@@ -259,7 +259,7 @@ export function AddActivityPage() {
   });
   
   // Shared area context — guard za read-only pristup
-  const { sharedContext } = useFilter();
+  const { sharedContext, disableSavePlus } = useFilter();
 
   // ============================================
   // Dialog States
@@ -1096,6 +1096,7 @@ export function AddActivityPage() {
         onCancel={handleCancel}
         onSave={handleFinish}
         onSaveContinue={handleSaveContinue}
+        disableSavePlus={disableSavePlus}
         canSave={canFinish}
         saving={saving}
         pendingEventCount={pendingEvents.length}

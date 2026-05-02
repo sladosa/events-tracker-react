@@ -852,6 +852,9 @@ export function StructureNodeEditPanel({
   const [name, setName] = useState(node.name);
   const [description, setDescription] = useState(node.description ?? '');
   const [sortOrder, setSortOrder] = useState(node.sortOrder);
+  const [disableSavePlus, setDisableSavePlus] = useState(
+    node.area.settings?.disable_save_plus === true
+  );
 
   // ---- Attribute edit states ----
   const [attrStates, setAttrStates] = useState<AttrEditState[]>(() =>
@@ -896,6 +899,7 @@ export function StructureNodeEditPanel({
             sort_order: sortOrder,
             user_id: user.id,
             updated_at: new Date().toISOString(),
+            settings: { ...(node.area.settings ?? {}), disable_save_plus: disableSavePlus },
           })
           .eq('id', node.id);
         if (error) throw error;
@@ -1096,6 +1100,24 @@ export function StructureNodeEditPanel({
                 <FieldLabel>Sort order</FieldLabel>
                 <NumberInput value={sortOrder} onChange={setSortOrder} min={0} />
               </div>
+
+              {node.nodeType === 'area' && (
+                <div>
+                  <FieldLabel>Add Activity behaviour</FieldLabel>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={disableSavePlus}
+                      onChange={e => setDisableSavePlus(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 accent-amber-600"
+                    />
+                    <span className="text-sm text-gray-700">Disable "Save+" (batch entry)</span>
+                  </label>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Enable for areas where each event is a separate transaction (e.g. Financije, Health).
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

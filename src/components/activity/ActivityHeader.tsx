@@ -80,6 +80,8 @@ interface ActivityHeaderProps {
   onCancel: () => void;
   onSave: () => void;
   onSaveContinue?: () => void;
+  /** When true, Save+ button is hidden (areas where each entry is a separate transaction) */
+  disableSavePlus?: boolean;
 
   /** Delete entire session + photos (Edit mode only) */
   onDeleteSession?: () => void;
@@ -107,6 +109,7 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
       onCancel,
       onSave,
       onSaveContinue,
+      disableSavePlus = false,
       onDeleteSession,
       onViewMode,
       canSave,
@@ -306,7 +309,7 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
 
           {/* Right: Save+Continue (Add) + Finish / Save→View (Edit) */}
           <div className="flex items-center gap-2">
-            {isAddMode && onSaveContinue && (
+            {isAddMode && onSaveContinue && !disableSavePlus && (
               <button
                 type="button"
                 onClick={onSaveContinue}

@@ -332,10 +332,12 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
    Struktura: Medical > Lab Results (15 numeric attrs + Status suggest) + Medical Visit (Doktor, Vrsta, Iznos)
    Sljedeći korak: kreirati u TEST bazi ručno, isprobati UX, zatim Python import skript za historijske podatke (od 2021).
 
-**10. Save+ toggle po Arei** — neke Areae (Financije, Health) trebaju sakriven Save+ gumb
-   jer je svaki event zasebna transakcija (ne batch). Spec: `Claude-temp_R/SAVE_PLUS_TOGGLE_SPEC.md`
-   Implementacija: `settings jsonb` kolona na `areas` tablici; `disable_save_plus: true` flag;
-   `ActivityHeader.tsx` conditionally renderira Save+ gumb. Nizak prioritet — implementirati kad bude friction.
+**10. ~~Save+ toggle po Arei~~** — ✅ **kompletno (S67)**
+   `settings jsonb` kolona na `areas` tablici (`sql/017_area_settings.sql`);
+   `disable_save_plus: true` flag; `FilterContext` fetchuje area i eksponira `disableSavePlus`;
+   `ActivityHeader.tsx` conditionally renderira Save+ gumb; `StructureNodeEditPanel` ima
+   checkbox "Disable Save+" u Area edit panelu.
+   **Deploy needed:** pokrenuti `017_area_settings.sql` na TEST + PROD Supabase.
 
 ---
 
