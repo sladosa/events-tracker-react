@@ -549,6 +549,10 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
         reset();
         return;
       }
+      // Re-fetch selectedArea so settings changes (e.g. disable_save_plus) take effect
+      const { data: freshArea } = await supabase.from('areas').select('*').eq('id', filter.areaId).single();
+      if (freshArea) setSelectedArea(freshArea as Area);
+
       // If a category is selected, reload its siblings/children; otherwise reload L1+L2
       if (filter.categoryId) {
         const children = await loadChildCategories(filter.categoryId);

@@ -982,6 +982,9 @@ export function StructureNodeEditPanel({
       }
 
       toast.success('Saved successfully');
+      if (node.nodeType === 'area') {
+        window.dispatchEvent(new Event('areas-changed'));
+      }
       onSaved(node.id);
     } catch (err) {
       console.error('Save error (full):', err);
