@@ -375,6 +375,7 @@ export async function addActivitiesSheetsTo(
     labelCell.font      = { italic: true, color: { argb: 'FF666666' } };
     labelCell.alignment = { horizontal: 'right', vertical: 'middle' };
     labelCell.fill      = summaryLabelFill;
+    ws.getRow(summaryRow).outlineLevel = 1;
   }
 
   // ──────────────────────────────────────────
