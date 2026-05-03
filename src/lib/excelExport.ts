@@ -83,8 +83,8 @@ export const FIXED_COL_COUNT = FIXED_COLUMNS.length; // 8  (A–H)
 export const PADDING_COLS    = 0;                     // no padding (comment is single col H)
 export const ATTR_COL_START  = FIXED_COL_COUNT + PADDING_COLS + 1; // 9 → I
 
-// LEGEND columns (6 cols: removed Default / Min / Max vs old 9-col version)
-const LEGEND_COLS = ['Col', 'Area', 'Category_Path', 'Attribute', 'Type', 'Unit'];
+// LEGEND columns (7 cols: Col, Area, Category_Path, Attribute, Type, Unit, Description)
+const LEGEND_COLS = ['Col', 'Area', 'Category_Path', 'Attribute', 'Type', 'Unit', 'Description'];
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -164,6 +164,8 @@ interface AttrMeta {
   defaultValue: string | number;
   min: string | number;
   max: string | number;
+  sortOrder: number;
+  description: string;
 }
 
 interface AttrColumn {
@@ -207,6 +209,8 @@ export function buildAttrMeta(
       defaultValue: defaultVal,
       min:          minVal,
       max:          maxVal,
+      sortOrder:    def.sort_order ?? 0,
+      description:  def.description ?? '',
     });
 
     const key = `${catInfo.full_path ?? ''}||${def.name}||${def.id}`;
@@ -219,13 +223,13 @@ export function buildAttrMeta(
     attrByCat.get(def.category_id)!.add(def.id);
   }
 
-  // Sort columns by Area → CategoryPath → attrName for consistent legend + EVENT DATA column order
+  // Sort columns by Area → CategoryPath → sort_order (matches Structure tab definition order)
   attrColumns.sort((a, b) => {
     const ma = attrMeta.get(a.attrDefId)!;
     const mb = attrMeta.get(b.attrDefId)!;
     if (ma.areaName     !== mb.areaName)     return ma.areaName.localeCompare(mb.areaName);
     if (ma.categoryPath !== mb.categoryPath) return ma.categoryPath.localeCompare(mb.categoryPath);
-    return ma.name.localeCompare(mb.name);
+    return ma.sortOrder - mb.sortOrder;
   });
 
   return { attrMeta, attrColumns, attrByCat };
@@ -291,7 +295,7 @@ export async function addActivitiesSheetsTo(
     const colIdx  = ATTR_COL_START + idx;
     const letter  = colLetter(colIdx);
 
-    // 6 cols: Col, Area, Category_Path, Attribute, Type, Unit
+    // 7 cols: Col, Area, Category_Path, Attribute, Type, Unit, Description
     const rowData = [
       letter,
       meta.areaName,
@@ -299,6 +303,7 @@ export async function addActivitiesSheetsTo(
       attrName,
       meta.dataType,
       meta.unit,
+      meta.description,
     ];
 
     for (let ci = 0; ci < rowData.length; ci++) {
@@ -351,14 +356,32 @@ export async function addActivitiesSheetsTo(
   row++;
 
   // ──────────────────────────────────────────
+  // Max / Min / Sum summary rows
+  // (placed before EVENT DATA title; importer skips them — col A is not a valid column letter)
+  // Formulas are written after data rows when eventDataStart/End are known.
+  // ──────────────────────────────────────────
+  const maxSummaryRow = row++;
+  const minSummaryRow = row++;
+  const sumSummaryRow = row++;
+
+  const summaryLabelFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+  for (const [summaryRow, label] of [
+    [maxSummaryRow, 'Max (if relevant) ->'],
+    [minSummaryRow, 'Min (if relevant) ->'],
+    [sumSummaryRow, 'Summ (if relevant) ->'],
+  ] as [number, string][]) {
+    const labelCell = ws.getCell(summaryRow, FIXED_COL_COUNT);  // col H
+    labelCell.value     = label;
+    labelCell.font      = { italic: true, color: { argb: 'FF666666' } };
+    labelCell.alignment = { horizontal: 'right', vertical: 'middle' };
+    labelCell.fill      = summaryLabelFill;
+  }
+
+  // ──────────────────────────────────────────
   // SECTION 2: EVENT DATA
   // ──────────────────────────────────────────
-  const eventTitleRow = row;
-
   ws.getCell(row, 1).value = 'EVENT DATA:';
   ws.getCell(row, 1).font  = TITLE_FONT;
-  ws.getCell(row, 3).value = 'Summ (if relevant) ->';
-  ws.getCell(row, 3).alignment = { horizontal: 'right' };
   row++;
 
   // Header row
@@ -535,18 +558,38 @@ export async function addActivitiesSheetsTo(
   const eventDataEnd = row - 1;
 
   // ──────────────────────────────────────────
-  // SUBTOTAL formulas (in EVENT DATA title row)
+  // SUBTOTAL formulas for Max / Min / Sum rows
+  // Dynamic range: LOOKUP finds last non-empty row in col B → no hardcoded end row
+  // SUBTOTAL(4=MAX, 5=MIN, 9=SUM) respects active autofilter
   // ──────────────────────────────────────────
+  const bLetter = colLetter(2); // col B = Area
+  const dynamicEnd = (colLtr: string) =>
+    `INDEX(${colLtr}:${colLtr},LOOKUP(2,1/(${bLetter}${eventDataStart}:${bLetter}1048576<>""),ROW(${bLetter}${eventDataStart}:${bLetter}1048576)))`;
+
   for (let aidx = 0; aidx < attrColumns.length; aidx++) {
     const { attrDefId } = attrColumns[aidx];
     const meta          = attrMeta.get(attrDefId)!;
     if (meta.dataType !== 'number') continue;
 
-    const colNum  = ATTR_COL_START + aidx;
-    const letter  = colLetter(colNum);
-    const cell    = ws.getCell(eventTitleRow, colNum);
-    cell.value    = { formula: `SUBTOTAL(9,${letter}${eventDataStart}:${letter}${eventDataEnd})` };
-    cell.alignment = { horizontal: 'right' };
+    const colNum = ATTR_COL_START + aidx;
+    const ltr    = colLetter(colNum);
+    const rangeStart = `${ltr}${eventDataStart}`;
+    const rangeEnd   = dynamicEnd(ltr);
+
+    const maxCell = ws.getCell(maxSummaryRow, colNum);
+    maxCell.value     = { formula: `SUBTOTAL(4,${rangeStart}:${rangeEnd})` };
+    maxCell.alignment = { horizontal: 'right' };
+    maxCell.fill      = summaryLabelFill;
+
+    const minCell = ws.getCell(minSummaryRow, colNum);
+    minCell.value     = { formula: `SUBTOTAL(5,${rangeStart}:${rangeEnd})` };
+    minCell.alignment = { horizontal: 'right' };
+    minCell.fill      = summaryLabelFill;
+
+    const sumCell = ws.getCell(sumSummaryRow, colNum);
+    sumCell.value     = { formula: `SUBTOTAL(9,${rangeStart}:${rangeEnd})` };
+    sumCell.alignment = { horizontal: 'right' };
+    sumCell.fill      = summaryLabelFill;
   }
 
   // ──────────────────────────────────────────
@@ -586,8 +629,9 @@ export async function addActivitiesSheetsTo(
     ws.getColumn(ATTR_COL_START + aidx).width = 13;
   }
 
-  // Legend column widths (6 cols: Col=A, Area=B, Category_Path=C, Attribute=D, Type=E, Unit=F)
-  const legendWidths: Record<string, number> = { A: 6, B: 12, C: 32, D: 16, E: 10, F: 10 };
+  // Legend column widths (7 cols: Col=A..Unit=F, Description=G)
+  // G also serves as User email col in data section — use max of both needs
+  const legendWidths: Record<string, number> = { A: 6, B: 12, C: 32, D: 16, E: 10, F: 10, G: 40 };
   for (const [letter, width] of Object.entries(legendWidths)) {
     const col = ws.getColumn(letter);
     if (!col.width || col.width < width) col.width = width;
