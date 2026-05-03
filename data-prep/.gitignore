@@ -1,0 +1,18 @@
+# Python virtual environment — recreate with: Tools\setup.bat
+venv/
+
+# Data files — personal/private, not committed
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Context docs with personal notes (kept in Claude-temp_R only)
+*SESSION_CONTEXT.md
+*IMPORT_PROCES.md
+*PRIJEDLOG.md
