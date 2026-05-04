@@ -72,7 +72,7 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
     const email = inviteEmail.trim();
     if (!email) return;
     setIsInviting(true);
-    const result = await createShare(areaId, email, invitePermission);
+    const result = await createShare(areaId, email, invitePermission, areaName);
     setIsInviting(false);
     if (result.error) {
       toast.error(result.error);

@@ -30,7 +30,8 @@ export interface UseDataSharesReturn {
   createShare: (
     areaId: UUID,
     granteeEmail: string,
-    permission: SharePermission
+    permission: SharePermission,
+    areaName?: string
   ) => Promise<{ share?: DataShare; invite?: ShareInvite; error?: string }>;
   updateSharePermission: (shareId: UUID, permission: SharePermission) => Promise<{ error?: string }>;
   revokeShare: (shareId: UUID) => Promise<{ error?: string }>;
@@ -99,7 +100,8 @@ export function useDataShares(): UseDataSharesReturn {
   const createShare = useCallback(async (
     areaId: UUID,
     granteeEmail: string,
-    permission: SharePermission
+    permission: SharePermission,
+    areaName?: string
   ): Promise<{ share?: DataShare; invite?: ShareInvite; error?: string }> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -139,27 +141,51 @@ export function useDataShares(): UseDataSharesReturn {
         if (shareErr) throw shareErr;
         return { share: shareData as DataShare };
       } else {
-        // Korisnik još nije registriran — kreiraj pending invite
-        const { data: inviteData, error: inviteErr } = await supabase
-          .from('share_invites')
-          .insert({
-            owner_id: user.id,
-            grantee_email: granteeEmail.toLowerCase().trim(),
-            share_type: 'area',
-            target_id: areaId,
-            permission,
-            status: 'pending',
-          })
-          .select()
-          .single();
+        // Korisnik nije registriran — Netlify function šalje invite email i kreira share_invites
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
 
-        if (inviteErr) {
-          if (inviteErr.code === '23505') {
-            return { error: 'Pending invite za ovaj email već postoji' };
-          }
-          throw inviteErr;
+        const fnBase = import.meta.env.VITE_HELP_API_URL
+          ? import.meta.env.VITE_HELP_API_URL.replace(/\/help$/, '')
+          : '/.netlify/functions';
+
+        const res = await fetch(`${fnBase}/send-share-invite`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: JSON.stringify({
+            granteeEmail: granteeEmail.toLowerCase().trim(),
+            areaId,
+            areaName: areaName ?? '',
+            permission,
+            redirectTo: `${window.location.origin}/login`,
+          }),
+        });
+
+        const body = await res.json() as { success?: boolean; already_registered?: boolean; error?: string };
+
+        if (!res.ok) {
+          return { error: body.error ?? 'Failed to send invite' };
         }
-        return { invite: inviteData as ShareInvite };
+
+        if (body.already_registered) {
+          return { error: 'Korisnik ima account ali profil nije pronađen — pokušaj ponovo za nekoliko sekundi' };
+        }
+
+        // Dohvati kreirani invite record za UI
+        const { data: inviteData } = await supabase
+          .from('share_invites')
+          .select('*')
+          .eq('target_id', areaId)
+          .eq('grantee_email', granteeEmail.toLowerCase().trim())
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        return { invite: (inviteData ?? { id: '' }) as ShareInvite };
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Greška pri kreiranju dijeljenja';
