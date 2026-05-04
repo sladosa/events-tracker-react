@@ -25,17 +25,31 @@ export default function AuthPage() {
   useEffect(() => {
     const hash = window.location.hash
     const params = new URLSearchParams(hash.slice(1))
-    if (params.get('type') === 'invite') {
-      window.history.replaceState(null, '', window.location.pathname)
-      setActiveTab('set-password')
-      supabase.auth.getSession().then(({ data }) => {
-        const user = data.session?.user
-        if (user?.email) setEmail(user.email)
-        // Extract context passed via inviteUserByEmail data field
-        const meta = user?.user_metadata as Record<string, string> | undefined
+    if (params.get('type') !== 'invite') return
+
+    window.history.replaceState(null, '', window.location.pathname)
+    setActiveTab('set-password')
+
+    // Read email + metadata directly from the invite JWT token (not from the
+    // current session — another user may be logged in on this browser)
+    const accessToken = params.get('access_token')
+    if (accessToken) {
+      try {
+        const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+        if (payload.email) setEmail(payload.email)
+        const meta = payload.user_metadata as Record<string, string> | undefined
         if (meta?.invited_by) setInvitedBy(meta.invited_by)
         if (meta?.area_name) setAreaName(meta.area_name)
-      })
+      } catch {
+        // fallback: use current session
+        supabase.auth.getSession().then(({ data }) => {
+          const user = data.session?.user
+          if (user?.email) setEmail(user.email)
+          const meta = user?.user_metadata as Record<string, string> | undefined
+          if (meta?.invited_by) setInvitedBy(meta.invited_by)
+          if (meta?.area_name) setAreaName(meta.area_name)
+        })
+      }
     }
   }, [])
 
