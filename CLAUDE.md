@@ -336,8 +336,8 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
    - ✅ Korak 1 — Struktura importana u TEST bazu (Health > Medical > Lab Results + Medical Visit; 10 attr defs)
    - ✅ Korak 2 — UX verificiran (Add Activity radi)
    - ✅ Korak 3 — `make_health_events.py` generira `Health_events_import.xlsx` (58 eventa iz Bloodwork.xlsx)
-   - ⬜ Korak 4 — Import historijskih podataka u TEST (Health_events_import.xlsx)
-   - ⬜ Korak 5 — PROD deploy (struktura + eventi)
+   - ✅ Korak 4+5 — PROD deploy (S68): struktura + 58 eventa importani; Area preimenovana u "Health_Saša"
+   - ⬜ Koka → Read grantee pristup na Health_Saša (kad bude potrebno)
 
 **10. ~~Save+ toggle po Arei~~** — ✅ **kompletno (S67)**
    `settings jsonb` kolona na `areas` tablici (`sql/017_area_settings.sql`);
