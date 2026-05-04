@@ -1,23 +1,43 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { Eye, EyeOff, Mail, Lock, User, Loader2, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
-type AuthTab = 'login' | 'signup' | 'forgot'
+type AuthTab = 'login' | 'signup' | 'forgot' | 'set-password'
 
 export default function AuthPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<AuthTab>('login')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  
+  const [invitedBy, setInvitedBy] = useState<string>('')
+  const [areaName, setAreaName] = useState<string>('')
+
   // Form fields
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
+
+  // Detect Supabase invite link: /login#access_token=...&type=invite
+  useEffect(() => {
+    const hash = window.location.hash
+    const params = new URLSearchParams(hash.slice(1))
+    if (params.get('type') === 'invite') {
+      window.history.replaceState(null, '', window.location.pathname)
+      setActiveTab('set-password')
+      supabase.auth.getSession().then(({ data }) => {
+        const user = data.session?.user
+        if (user?.email) setEmail(user.email)
+        // Extract context passed via inviteUserByEmail data field
+        const meta = user?.user_metadata as Record<string, string> | undefined
+        if (meta?.invited_by) setInvitedBy(meta.invited_by)
+        if (meta?.area_name) setAreaName(meta.area_name)
+      })
+    }
+  }, [])
 
   const resetForm = () => {
     setPassword('')
@@ -91,6 +111,35 @@ export default function AuthPage() {
     resetForm()
   }
 
+  // ============ SET PASSWORD (invite flow) ============
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!password || !confirmPassword) {
+      toast.error('Please fill in all fields')
+      return
+    }
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+
+    setLoading(true)
+    const { error } = await supabase.auth.updateUser({ password })
+    setLoading(false)
+
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+
+    toast.success('Password set! Welcome to Events Tracker.')
+    navigate('/app')
+  }
+
   // ============ FORGOT PASSWORD ============
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -129,8 +178,8 @@ export default function AuthPage() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Tabs */}
-          <div className="flex border-b border-gray-100">
+          {/* Tabs — hidden in invite flow */}
+          <div className={cn('flex border-b border-gray-100', activeTab === 'set-password' && 'hidden')}>
             {[
               { id: 'login', label: 'Login' },
               { id: 'signup', label: 'Sign Up' },
@@ -331,6 +380,95 @@ export default function AuthPage() {
                     Login
                   </button>
                 </p>
+              </form>
+            )}
+
+            {/* SET PASSWORD FORM (invite flow) */}
+            {activeTab === 'set-password' && (
+              <form onSubmit={handleSetPassword} className="space-y-5">
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-3">
+                    <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-1">You've been invited!</h2>
+                  {invitedBy && (
+                    <p className="text-sm text-gray-500">
+                      <span className="font-medium text-gray-700">{invitedBy}</span> invited you to Events Tracker
+                      {areaName && <> and shared the <span className="font-medium text-gray-700">"{areaName}"</span> area</>}.
+                    </p>
+                  )}
+                  {!invitedBy && (
+                    <p className="text-sm text-gray-500">Set your password to get started.</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      readOnly
+                      className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      autoComplete="new-password"
+                      autoFocus
+                      className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repeat your password"
+                      autoComplete="new-password"
+                      className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:from-indigo-600 hover:to-purple-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      Set Password & Enter App
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
               </form>
             )}
 

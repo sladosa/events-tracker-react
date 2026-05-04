@@ -29,6 +29,7 @@ export interface ExportAttrDef {
   default_value: string | null;
   validation_rules: unknown;
   sort_order: number;
+  description?: string | null;
 }
 
 export interface ExportEventAttribute {

@@ -248,6 +248,9 @@ Faze i status:
 - ✅ S64: `help.ts` system prompt — ispravljen opis Add Between (novi čvor ISPOD odabranog) i Collapse Level (djeca GORE, atributi DOLJE); docs/help/structure.md opis ažuriran
 - ✅ S66: Perf — `category_full_paths` recursive CTE view (`sql/016_category_paths_view.sql`); `useActivities.ts` refaktoriran: `buildCategoryPath` N+1 loop uklonjen, zamijenjen jednim batch queryjem na view; pokrenuto na TEST + PROD. Stranica 20 eventa s 8 unique kategorija: ~32 querija → 1.
 - ✅ S66: `dev:prod` npm script + `.env.prod.local` (gitignored) za lokalni dev server koji koristi PROD Supabase bazu
+- ✅ S68: Health tracking — `make_health_events.py` (Korak 3): čita `Bloodwork.xlsx` sheet "Krv", filtrira `zdravstveni` redove, generira `Health_events_import.xlsx` (45 Lab Results + 13 Medical Visit); `range_flags()` generira H/L comment (samo out-of-range vrijednosti, format "Kolesterol H · Feritin L"); 2 preskočena retka (bez datuma / invalid date)
+- ✅ S68: Excel Export poboljšanja — (1) attr kolone sortirane po `sort_order` iz DB (ne abecedno); (2) Description dodana u ATTRIBUTE LEGEND (col G, 7 kolona ukupno); (3) Max/Min/Sum redovi iznad EVENT DATA s `SUBTOTAL(4/5/9)` i dinamičkim LOOKUP rangem; redovi grupirani (outlineLevel=1); label u col H desno poravnan
+- ✅ S68: `data-prep/` direktorij u korijenu repoa (tracked) — Python skripte za data preparation; `venv/` i `*.xlsx` gitignored; `Tools/`, `Health/`, `Financije/` poddirektoriji
 
 ---
 
@@ -328,14 +331,20 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 **8. Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
 
 **9. Health tracking Area** — Area "Health" s Lab Results + Medical Visit leaf kategorijama.
-   Plan: `Claude-temp_R/Health/HEALTH_TRACKING_PLAN.md`
-   Struktura: Medical > Lab Results (15 numeric attrs + Status suggest) + Medical Visit (Doktor, Vrsta, Iznos)
-   Sljedeći korak: kreirati u TEST bazi ručno, isprobati UX, zatim Python import skript za historijske podatke (od 2021).
+   Kontekst: `Claude-temp_R/Data_preparation/Health/HEALTH_SESSION_CONTEXT.md`
+   Skripte: `data-prep/Health/make_health_structure.py` + `make_health_events.py`
+   - ✅ Korak 1 — Struktura importana u TEST bazu (Health > Medical > Lab Results + Medical Visit; 10 attr defs)
+   - ✅ Korak 2 — UX verificiran (Add Activity radi)
+   - ✅ Korak 3 — `make_health_events.py` generira `Health_events_import.xlsx` (58 eventa iz Bloodwork.xlsx)
+   - ✅ Korak 4+5 — PROD deploy (S68): struktura + 58 eventa importani; Area preimenovana u "Health_Saša"
+   - ⬜ Koka → Read grantee pristup na Health_Saša (kad bude potrebno)
 
-**10. Save+ toggle po Arei** — neke Areae (Financije, Health) trebaju sakriven Save+ gumb
-   jer je svaki event zasebna transakcija (ne batch). Spec: `Claude-temp_R/SAVE_PLUS_TOGGLE_SPEC.md`
-   Implementacija: `settings jsonb` kolona na `areas` tablici; `disable_save_plus: true` flag;
-   `ActivityHeader.tsx` conditionally renderira Save+ gumb. Nizak prioritet — implementirati kad bude friction.
+**10. ~~Save+ toggle po Arei~~** — ✅ **kompletno (S67)**
+   `settings jsonb` kolona na `areas` tablici (`sql/017_area_settings.sql`);
+   `disable_save_plus: true` flag; `FilterContext` fetchuje area i eksponira `disableSavePlus`;
+   `ActivityHeader.tsx` conditionally renderira Save+ gumb; `StructureNodeEditPanel` ima
+   checkbox "Disable Save+" u Area edit panelu.
+   **Deploy needed:** pokrenuti `017_area_settings.sql` na TEST + PROD Supabase.
 
 ---
 

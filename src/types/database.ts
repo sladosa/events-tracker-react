@@ -34,6 +34,7 @@ export interface Area {
   sort_order: number;
   description: string | null;
   slug: string;
+  settings: Record<string, unknown> | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

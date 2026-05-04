@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { UUID, BreadcrumbItem, Category } from '@/types';
+import type { UUID, BreadcrumbItem, Category, Area } from '@/types';
 import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
 
 // --------------------------------------------
@@ -108,6 +108,11 @@ export interface FilterContextType {
   // True when current user owns the area AND it has at least one active share (for owner User column)
   areaHasActiveShares: boolean;
 
+  // Full area object for the currently selected area (null if no area selected)
+  selectedArea: Area | null;
+  // True when the selected area has disable_save_plus: true in its settings
+  disableSavePlus: boolean;
+
   // Computed
   hasActiveFilter: boolean;
   isFiltered: boolean;
@@ -154,6 +159,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   // === Shared context — null = owner ili nema filtera ===
   const [sharedContext, setSharedContext] = useState<SharedContext | null>(null);
   const [areaHasActiveShares, setAreaHasActiveShares] = useState(false);
+  const [selectedArea, setSelectedArea] = useState<Area | null>(null);
   
   // === Restore tracking ===
   const [isRestored, setIsRestored] = useState(false);
@@ -274,12 +280,21 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
       if (!filter.areaId) {
         setSharedContext(null);
         setAreaHasActiveShares(false);
+        setSelectedArea(null);
         return;
       }
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled) return;
-      const ctx = await fetchSharedContext(filter.areaId, user?.id ?? null);
+
+      // Fetch shared context and area data in parallel
+      const [ctx, areaResult] = await Promise.all([
+        fetchSharedContext(filter.areaId, user?.id ?? null),
+        supabase.from('areas').select('*').eq('id', filter.areaId).single(),
+      ]);
       if (cancelled) return;
+
+      setSelectedArea((areaResult.data as Area) ?? null);
+
       if (ctx) {
         // Grantee — has shared context, no need to check owner shares
         setSharedContext(ctx);
@@ -534,6 +549,10 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
         reset();
         return;
       }
+      // Re-fetch selectedArea so settings changes (e.g. disable_save_plus) take effect
+      const { data: freshArea } = await supabase.from('areas').select('*').eq('id', filter.areaId).single();
+      if (freshArea) setSelectedArea(freshArea as Area);
+
       // If a category is selected, reload its siblings/children; otherwise reload L1+L2
       if (filter.categoryId) {
         const children = await loadChildCategories(filter.categoryId);
@@ -634,6 +653,9 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     // Shared context
     sharedContext,
     areaHasActiveShares,
+    // Selected area
+    selectedArea,
+    disableSavePlus: selectedArea?.settings?.disable_save_plus === true,
     // Computed
     hasActiveFilter,
     isFiltered
