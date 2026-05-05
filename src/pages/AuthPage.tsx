@@ -45,26 +45,30 @@ export default function AuthPage() {
     window.history.replaceState(null, '', window.location.pathname)
     setActiveTab('set-password')
 
-    // Read email + metadata directly from the invite JWT token (not from the
-    // current session — another user may be logged in on this browser)
     const accessToken = params.get('access_token')
-    if (accessToken) {
-      try {
-        const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-        if (payload.email) setEmail(payload.email)
-        const meta = payload.user_metadata as Record<string, string> | undefined
-        if (meta?.invited_by) setInvitedBy(meta.invited_by)
-        if (meta?.area_name) setAreaName(meta.area_name)
-      } catch {
-        // fallback: use current session
-        supabase.auth.getSession().then(({ data }) => {
+    const refreshToken = params.get('refresh_token')
+
+    if (accessToken && refreshToken) {
+      // Explicitly set the invite session — this overrides any existing session
+      // (e.g. owner is logged in on the same browser) so that updateUser()
+      // in handleSetPassword updates the INVITED user's password, not the owner's.
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data }) => {
           const user = data.session?.user
           if (user?.email) setEmail(user.email)
           const meta = user?.user_metadata as Record<string, string> | undefined
           if (meta?.invited_by) setInvitedBy(meta.invited_by)
           if (meta?.area_name) setAreaName(meta.area_name)
         })
-      }
+    } else if (accessToken) {
+      // Fallback: extract from JWT payload only (no setSession possible without refresh_token)
+      try {
+        const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+        if (payload.email) setEmail(payload.email)
+        const meta = payload.user_metadata as Record<string, string> | undefined
+        if (meta?.invited_by) setInvitedBy(meta.invited_by)
+        if (meta?.area_name) setAreaName(meta.area_name)
+      } catch { /* ignore */ }
     }
   }, [])
 
