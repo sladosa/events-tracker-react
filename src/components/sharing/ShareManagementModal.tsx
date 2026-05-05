@@ -18,6 +18,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/cn';
+import { supabase } from '@/lib/supabaseClient';
 import { useDataShares } from '@/hooks/useDataShares';
 import type { UUID, DataShareWithProfile, ShareInvite, SharePermission } from '@/types/database';
 
@@ -46,10 +47,26 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
   const [cancellingId, setCancellingId] = useState<UUID | null>(null);
   const [updatingPermId, setUpdatingPermId] = useState<UUID | null>(null);
   const [gettingLinkForId, setGettingLinkForId] = useState<UUID | null>(null);
-  const [linkBox, setLinkBox] = useState<{ email: string; url: string } | null>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const [messageBox, setMessageBox] = useState<{ toEmail: string; body: string } | null>(null);
+  const [emailCopied, setEmailCopied] = useState(false);
+  const [messageCopied, setMessageCopied] = useState(false);
+  const [callerInfo, setCallerInfo] = useState<{ email: string; name: string } | null>(null);
   // Help panel: collapsed on mobile by default (expanded via ❓ toggle); always visible on desktop via CSS
   const [helpOpen, setHelpOpen] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, display_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      const email = (profile as { email?: string } | null)?.email ?? user.email ?? '';
+      const displayName = (profile as { display_name?: string | null } | null)?.display_name;
+      setCallerInfo({ email, name: displayName ?? email.split('@')[0] });
+    });
+  }, []);
 
   // --------------------------------------------------
   // Refresh both shares + pending invites
@@ -71,6 +88,21 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
   // Handlers
   // --------------------------------------------------
 
+  const buildMessage = (toEmail: string, inviteUrl: string | null): { toEmail: string; body: string } => {
+    const name = callerInfo?.name ?? 'Someone';
+    const email = callerInfo?.email ?? '';
+    if (inviteUrl) {
+      return {
+        toEmail,
+        body: `${name} (${email}) has shared the "${areaName}" area with you in Events Tracker.\n\nSet your password and access the app:\n${inviteUrl}`,
+      };
+    }
+    return {
+      toEmail,
+      body: `${name} (${email}) has shared the "${areaName}" area with you in Events Tracker.\n\nYou can access it now — just sign in at:\n${window.location.origin}`,
+    };
+  };
+
   const handleInvite = async () => {
     const email = inviteEmail.trim();
     if (!email) return;
@@ -80,22 +112,14 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
     if (result.error) {
       toast.error(result.error);
     } else if (result.share) {
-      toast.success(`Access granted to ${email}`);
       setInviteEmail('');
-      setLinkBox(null);
+      setMessageBox(buildMessage(email, null));
       await refresh();
     } else if (result.invite) {
       setInviteEmail('');
-      setLinkBox(result.invite_link ? { email, url: result.invite_link } : null);
+      setMessageBox(buildMessage(email, result.invite_link ?? null));
       await refresh();
     }
-  };
-
-  const handleCopyLink = async () => {
-    if (!linkBox) return;
-    await navigator.clipboard.writeText(linkBox.url);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
   };
 
   const handleGetLinkForInvite = async (invite: ShareInvite) => {
@@ -104,10 +128,8 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
     setGettingLinkForId(null);
     if (result.error) {
       toast.error(result.error);
-    } else if (result.invite_link) {
-      setLinkBox({ email: invite.grantee_email, url: result.invite_link });
     } else {
-      toast.error('Could not generate invite link');
+      setMessageBox(buildMessage(invite.grantee_email, result.invite_link ?? null));
     }
   };
 
@@ -304,35 +326,53 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
             </div>
           </div>
 
-          {/* ── Invite link box — shown after invite creation or "Copy link" on pending invite ── */}
-          {linkBox && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-medium text-blue-800">
-                Send this link to <span className="font-semibold">{linkBox.email}</span>:
-              </p>
-              <p className="text-xs text-blue-600">
-                They can click it to set a password and access the shared area — no prior account needed.
-              </p>
-              <div className="flex gap-2">
-                <input
-                  readOnly
-                  value={linkBox.url}
-                  className="flex-1 min-w-0 text-xs px-2 py-1.5 bg-white border border-blue-200 rounded font-mono truncate"
-                  onFocus={e => e.target.select()}
-                />
+          {/* ── Message box — shown after invite/share; copy to send via any channel ── */}
+          {messageBox && (
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              {/* TO row */}
+              <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center gap-3">
+                <span className="text-xs font-semibold text-gray-400 w-5 flex-shrink-0">TO</span>
+                <span className="flex-1 text-sm text-gray-800 font-medium truncate">{messageBox.toEmail}</span>
                 <button
-                  onClick={handleCopyLink}
-                  className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex-shrink-0"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(messageBox.toEmail);
+                    setEmailCopied(true);
+                    setTimeout(() => setEmailCopied(false), 2000);
+                  }}
+                  className="text-xs px-2.5 py-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-md transition-colors flex-shrink-0"
                 >
-                  {linkCopied ? 'Copied!' : 'Copy'}
+                  {emailCopied ? '✓' : 'Copy'}
                 </button>
               </div>
-              <button
-                onClick={() => setLinkBox(null)}
-                className="text-xs text-blue-400 hover:text-blue-600 transition-colors"
-              >
-                Dismiss
-              </button>
+              {/* Body */}
+              <div className="px-4 py-3 bg-white">
+                <textarea
+                  readOnly
+                  value={messageBox.body}
+                  rows={5}
+                  className="w-full text-sm text-gray-700 bg-transparent border-0 resize-none focus:outline-none leading-relaxed"
+                  onFocus={e => e.target.select()}
+                />
+              </div>
+              {/* Actions */}
+              <div className="bg-gray-50 border-t border-gray-200 px-4 py-2.5 flex items-center justify-between">
+                <button
+                  onClick={() => { setMessageBox(null); setEmailCopied(false); setMessageCopied(false); }}
+                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(messageBox.body);
+                    setMessageCopied(true);
+                    setTimeout(() => setMessageCopied(false), 2000);
+                  }}
+                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  {messageCopied ? '✓ Copied!' : 'Copy message'}
+                </button>
+              </div>
             </div>
           )}
 

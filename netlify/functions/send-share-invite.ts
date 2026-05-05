@@ -59,9 +59,9 @@ export const handler = async (event: {
 
     const email = granteeEmail.toLowerCase().trim();
 
-    // Insert share_invites BEFORE inviteUserByEmail to avoid race with DB trigger chain:
-    // inviteUserByEmail → auth.users INSERT → handle_new_user → profiles INSERT → handle_pending_invites → data_shares INSERT
-    const { error: inviteInsertErr } = await supabaseAdmin
+    // Insert share_invites BEFORE generateLink to avoid race with DB trigger chain:
+    // auth.users INSERT → handle_new_user → profiles INSERT → handle_pending_invites → data_shares INSERT
+    const { data: insertedInvite, error: inviteInsertErr } = await supabaseAdmin
       .from('share_invites')
       .insert({
         owner_id: callerUser.id,
@@ -70,11 +70,25 @@ export const handler = async (event: {
         target_id: areaId,
         permission,
         status: 'pending',
-      });
+      })
+      .select('id')
+      .single();
 
-    // 23505 = duplicate key — pending invite already exists, still send email
-    if (inviteInsertErr && inviteInsertErr.code !== '23505') {
+    // 23505 = duplicate key — pending invite already exists, fetch its ID
+    let inviteId: string | null = null;
+    if (inviteInsertErr?.code === '23505') {
+      const { data: existing } = await supabaseAdmin
+        .from('share_invites')
+        .select('id')
+        .eq('owner_id', callerUser.id)
+        .eq('grantee_email', email)
+        .eq('status', 'pending')
+        .maybeSingle();
+      inviteId = (existing as { id?: string } | null)?.id ?? null;
+    } else if (inviteInsertErr) {
       throw inviteInsertErr;
+    } else {
+      inviteId = (insertedInvite as { id?: string } | null)?.id ?? null;
     }
 
     // Generate invite link via admin API (no email rate limits, works regardless of SMTP config).
@@ -103,11 +117,23 @@ export const handler = async (event: {
       throw linkErr;
     }
 
-    const inviteLink = linkData?.properties?.action_link ?? null;
+    const actionLink = linkData?.properties?.action_link ?? null;
+
+    // Save action_link to DB so /invite/:id redirect can look it up
+    if (inviteId && actionLink) {
+      await supabaseAdmin
+        .from('share_invites')
+        .update({ action_link: actionLink })
+        .eq('id', inviteId);
+    }
+
+    // Return clean URL on our domain instead of raw Supabase verify URL
+    const baseUrl = process.env.URL || 'http://localhost:8888';
+    const cleanInviteUrl = inviteId ? `${baseUrl}/invite/${inviteId}` : actionLink;
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ success: true, invite_link: inviteLink }),
+      body: JSON.stringify({ success: true, invite_link: cleanInviteUrl }),
     };
   } catch (err) {
     console.error('send-share-invite error:', err);
