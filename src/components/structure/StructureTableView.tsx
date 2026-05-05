@@ -132,14 +132,20 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
   // ---- Add Area panel state ----
   const [showAddArea, setShowAddArea] = useState(false);
 
-  // ---- Area collapse state ----
-  const [collapsedAreaIds, setCollapsedAreaIds] = useState<Set<string>>(new Set());
+  // ---- Area collapse state (persisted across refreshes) ----
+  const [collapsedAreaIds, setCollapsedAreaIds] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem('ui:collapsedAreas');
+      return s ? new Set<string>(JSON.parse(s) as string[]) : new Set<string>();
+    } catch { return new Set<string>(); }
+  });
 
   const toggleCollapseArea = useCallback((areaId: string) => {
     setCollapsedAreaIds(prev => {
       const next = new Set(prev);
       if (next.has(areaId)) next.delete(areaId);
       else next.add(areaId);
+      localStorage.setItem('ui:collapsedAreas', JSON.stringify([...next]));
       return next;
     });
   }, []);

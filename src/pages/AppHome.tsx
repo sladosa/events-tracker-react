@@ -86,8 +86,14 @@ function AppContent() {
   const [userId, setUserId] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('activities');
-  const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>('sunburst');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const s = localStorage.getItem('ui:activeTab');
+    return s === 'structure' ? 'structure' : 'activities';
+  });
+  const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>(() => {
+    const s = localStorage.getItem('ui:structureViewMode');
+    return s === 'table' ? 'table' : 'sunburst';
+  });
   const [isEditMode, setIsEditMode] = useState(false);
   const [isExportingStructure, setIsExportingStructure] = useState(false);
   const [showStructureImport, setShowStructureImport] = useState(false);
@@ -110,6 +116,8 @@ function AppContent() {
   // Sync active tab into HelpContext so chips match the visible tab
   const { setPageHint } = useHelp();
   useEffect(() => { setPageHint(activeTab); }, [activeTab, setPageHint]);
+  useEffect(() => { localStorage.setItem('ui:activeTab', activeTab); }, [activeTab]);
+  useEffect(() => { localStorage.setItem('ui:structureViewMode', structureViewMode); }, [structureViewMode]);
 
   // Share Management Modal state (Faza 7)
   const [shareModalTarget, setShareModalTarget] = useState<{ areaId: UUID; areaName: string } | null>(null);
@@ -591,7 +599,11 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess 
   const { filter, fullPathDisplay } = useFilter();
 
   // Node filter state lives here so both Table and Sunburst share it
-  const [nodeFilter, setNodeFilter] = useState<NodeFilter>('mine');
+  const [nodeFilter, setNodeFilter] = useState<NodeFilter>(() => {
+    const s = localStorage.getItem('ui:structureSegment');
+    return (s === 'mine' || s === 'all' || s === 'templates') ? s as NodeFilter : 'mine';
+  });
+  useEffect(() => { localStorage.setItem('ui:structureSegment', nodeFilter); }, [nodeFilter]);
   // In edit mode always show only own areas
   const effectiveNodeFilter: NodeFilter = isEditMode ? 'mine' : nodeFilter;
 
