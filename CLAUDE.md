@@ -252,6 +252,15 @@ Faze i status:
 - ✅ S68: Excel Export poboljšanja — (1) attr kolone sortirane po `sort_order` iz DB (ne abecedno); (2) Description dodana u ATTRIBUTE LEGEND (col G, 7 kolona ukupno); (3) Max/Min/Sum redovi iznad EVENT DATA s `SUBTOTAL(4/5/9)` i dinamičkim LOOKUP rangem; redovi grupirani (outlineLevel=1); label u col H desno poravnan
 - ✅ S68: `data-prep/` direktorij u korijenu repoa (tracked) — Python skripte za data preparation; `venv/` i `*.xlsx` gitignored; `Tools/`, `Health/`, `Financije/` poddirektoriji
 - ✅ S69: Invite sustav — `netlify/functions/send-share-invite.ts`: verifikacija JWT, insert `share_invites` PRIJE `inviteUserByEmail()` (izbjegava race s DB trigger chainom), šalje Supabase invite email s `invited_by` + `area_name` kontekstom; `useDataShares.ts createShare`: za neregistrirane korisnike poziva Netlify funkciju umjesto direktnog inserta; `ShareManagementModal.tsx`: prosljeđuje `areaName`; `AuthPage.tsx`: detektira `#type=invite` u URL hash, čita email iz JWT tokena (ne aktivne sesije — bugfix), prikazuje set-password formu s pre-fillovanim emailom i porukom tko poziva; `npm run dev:netlify-prod` script (dotenv-cli, mergea .env.local + .env.prod.local); Supabase "Invite user" email template prilagođen
+- ✅ S70: Invite sustav — clean URL + message box + expired token handling:
+  - `generateLink` umjesto `inviteUserByEmail` (nema rate limita, nema Outlook deliverability problema)
+  - Clean invite URL `/invite/:id` na našoj domeni (umjesto raw Supabase verify URL)
+  - `sql/018_invite_action_link.sql`: ADD COLUMN action_link na share_invites
+  - `netlify/functions/get-invite-link.ts`: novi Netlify fn — lookup action_link by invite ID (service role); vraća owner_email za error poruke
+  - `src/pages/InviteRedirectPage.tsx`: `/invite/:id` → redirect na Supabase; sprema owner_email u sessionStorage
+  - `ShareManagementModal.tsx`: message box s TO + SUBJ + body + Copy gumbovima; dvije varijante poruke (registered/unregistered); caller info fetchan iz profiles
+  - `AuthPage.tsx`: `setSession()` eksplicitno s invite tokenima (bugfix: `updateUser` ažurirao owner password umjesto grantee); detektira `#error=access_denied` expired token → amber banner "Invite link has expired, ask [owner] to resend"
+  - `AppHome.tsx` + `StructureTableView.tsx`: localStorage persist za activeTab, structureViewMode, nodeFilter, collapsedAreaIds
 
 ---
 
