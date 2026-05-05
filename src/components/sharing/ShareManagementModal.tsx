@@ -45,6 +45,9 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
   const [revokingId, setRevokingId] = useState<UUID | null>(null);
   const [cancellingId, setCancellingId] = useState<UUID | null>(null);
   const [updatingPermId, setUpdatingPermId] = useState<UUID | null>(null);
+  const [gettingLinkForId, setGettingLinkForId] = useState<UUID | null>(null);
+  const [linkBox, setLinkBox] = useState<{ email: string; url: string } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   // Help panel: collapsed on mobile by default (expanded via ❓ toggle); always visible on desktop via CSS
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -79,11 +82,32 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
     } else if (result.share) {
       toast.success(`Access granted to ${email}`);
       setInviteEmail('');
+      setLinkBox(null);
       await refresh();
     } else if (result.invite) {
-      toast.success(`Invite sent to ${email} (pending registration)`);
       setInviteEmail('');
+      setLinkBox(result.invite_link ? { email, url: result.invite_link } : null);
       await refresh();
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!linkBox) return;
+    await navigator.clipboard.writeText(linkBox.url);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleGetLinkForInvite = async (invite: ShareInvite) => {
+    setGettingLinkForId(invite.id);
+    const result = await createShare(areaId, invite.grantee_email, invite.permission, areaName);
+    setGettingLinkForId(null);
+    if (result.error) {
+      toast.error(result.error);
+    } else if (result.invite_link) {
+      setLinkBox({ email: invite.grantee_email, url: result.invite_link });
+    } else {
+      toast.error('Could not generate invite link');
     }
   };
 
@@ -229,6 +253,13 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
                       {invite.permission}
                     </span>
                     <button
+                      disabled={gettingLinkForId === invite.id}
+                      onClick={() => handleGetLinkForInvite(invite)}
+                      className="text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md transition-colors disabled:opacity-50 flex-shrink-0"
+                    >
+                      {gettingLinkForId === invite.id ? '…' : 'Copy link'}
+                    </button>
+                    <button
                       disabled={cancellingId === invite.id}
                       onClick={() => handleCancel(invite)}
                       className="text-xs px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors disabled:opacity-50 flex-shrink-0"
@@ -272,6 +303,38 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
               </button>
             </div>
           </div>
+
+          {/* ── Invite link box — shown after invite creation or "Copy link" on pending invite ── */}
+          {linkBox && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-blue-800">
+                Send this link to <span className="font-semibold">{linkBox.email}</span>:
+              </p>
+              <p className="text-xs text-blue-600">
+                They can click it to set a password and access the shared area — no prior account needed.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={linkBox.url}
+                  className="flex-1 min-w-0 text-xs px-2 py-1.5 bg-white border border-blue-200 rounded font-mono truncate"
+                  onFocus={e => e.target.select()}
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex-shrink-0"
+                >
+                  {linkCopied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <button
+                onClick={() => setLinkBox(null)}
+                className="text-xs text-blue-400 hover:text-blue-600 transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           {/* ── Help text — always visible on desktop, toggle on mobile ── */}
           <div className="border-t border-gray-100 pt-3">

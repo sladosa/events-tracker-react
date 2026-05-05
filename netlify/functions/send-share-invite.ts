@@ -77,29 +77,38 @@ export const handler = async (event: {
       throw inviteInsertErr;
     }
 
-    // Send Supabase invite email (creates user in auth.users if not exists)
-    const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: redirectTo || `${process.env.URL || ''}/login`,
-      data: {
-        invited_by: callerUser.email ?? '',
-        area_name: areaName ?? '',
+    // Generate invite link via admin API (no email rate limits, works regardless of SMTP config).
+    // The returned action_link is equivalent to the email link — AuthPage #type=invite handles it.
+    const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'invite',
+      email,
+      options: {
+        redirectTo: redirectTo || `${process.env.URL || ''}/login`,
+        data: {
+          invited_by: callerUser.email ?? '',
+          area_name: areaName ?? '',
+        },
       },
     });
 
-    if (inviteErr) {
-      // User already has a confirmed account — shouldn't normally reach here
-      // (client checks profiles first), but handle gracefully
-      if (inviteErr.message?.toLowerCase().includes('already been registered')) {
+    if (linkErr) {
+      const msg = linkErr.message?.toLowerCase() ?? '';
+      if (msg.includes('already been registered') || msg.includes('email already confirmed')) {
         return {
           statusCode: 200,
           headers: corsHeaders,
           body: JSON.stringify({ already_registered: true }),
         };
       }
-      throw inviteErr;
+      throw linkErr;
     }
 
-    return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true }) };
+    const inviteLink = linkData?.properties?.action_link ?? null;
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ success: true, invite_link: inviteLink }),
+    };
   } catch (err) {
     console.error('send-share-invite error:', err);
     return {

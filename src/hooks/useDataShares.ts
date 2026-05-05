@@ -32,7 +32,7 @@ export interface UseDataSharesReturn {
     granteeEmail: string,
     permission: SharePermission,
     areaName?: string
-  ) => Promise<{ share?: DataShare; invite?: ShareInvite; error?: string }>;
+  ) => Promise<{ share?: DataShare; invite?: ShareInvite; invite_link?: string; error?: string }>;
   updateSharePermission: (shareId: UUID, permission: SharePermission) => Promise<{ error?: string }>;
   revokeShare: (shareId: UUID) => Promise<{ error?: string }>;
   cancelInvite: (inviteId: UUID) => Promise<{ error?: string }>;
@@ -102,7 +102,7 @@ export function useDataShares(): UseDataSharesReturn {
     granteeEmail: string,
     permission: SharePermission,
     areaName?: string
-  ): Promise<{ share?: DataShare; invite?: ShareInvite; error?: string }> => {
+  ): Promise<{ share?: DataShare; invite?: ShareInvite; invite_link?: string; error?: string }> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { error: 'Nisi prijavljen' };
@@ -164,7 +164,7 @@ export function useDataShares(): UseDataSharesReturn {
           }),
         });
 
-        const body = await res.json() as { success?: boolean; already_registered?: boolean; error?: string };
+        const body = await res.json() as { success?: boolean; already_registered?: boolean; error?: string; invite_link?: string };
 
         if (!res.ok) {
           return { error: body.error ?? 'Failed to send invite' };
@@ -185,7 +185,7 @@ export function useDataShares(): UseDataSharesReturn {
           .limit(1)
           .maybeSingle();
 
-        return { invite: (inviteData ?? { id: '' }) as ShareInvite };
+        return { invite: (inviteData ?? { id: '' }) as ShareInvite, invite_link: body.invite_link };
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Greška pri kreiranju dijeljenja';
