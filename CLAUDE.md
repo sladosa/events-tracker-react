@@ -349,6 +349,14 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
    - ✅ Korak 4+5 — PROD deploy (S68): struktura + 58 eventa importani; Area preimenovana u "Health_Saša"
    - ⬜ Koka → Read grantee pristup na Health_Saša (kad bude potrebno)
 
+**11. Netlify scheduled maintenance function** — kad se skupi 2-3 zadatka, implementirati
+   `netlify/functions/maintenance.ts` s `schedule = "@weekly"`. Kandidati:
+   - DELETE orphaned `share_invites` gdje user ne postoji u `auth.users`
+     (`DELETE FROM share_invites WHERE status = 'pending' AND NOT EXISTS (SELECT 1 FROM auth.users WHERE email = share_invites.grantee_email)`)
+   - DELETE stare accepted `share_invites` (> 30 dana)
+   - DELETE stare `help_log` zapise (> 90 dana)
+   Do tada: pokretati ručno po potrebi.
+
 **10. ~~Save+ toggle po Arei~~** — ✅ **kompletno (S67)**
    `settings jsonb` kolona na `areas` tablici (`sql/017_area_settings.sql`);
    `disable_save_plus: true` flag; `FilterContext` fetchuje area i eksponira `disableSavePlus`;
