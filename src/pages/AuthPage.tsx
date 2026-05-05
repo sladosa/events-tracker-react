@@ -14,12 +14,27 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [invitedBy, setInvitedBy] = useState<string>('')
   const [areaName, setAreaName] = useState<string>('')
+  const [expiredInviteOwner, setExpiredInviteOwner] = useState<string>('')
 
   // Form fields
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
+
+  // Detect Supabase expired-token redirect: /login#error=access_denied&error_description=...expired...
+  useEffect(() => {
+    const hash = window.location.hash
+    const params = new URLSearchParams(hash.slice(1))
+    const err = params.get('error')
+    const desc = (params.get('error_description') ?? '').toLowerCase()
+    if (err === 'access_denied' && (desc.includes('expired') || desc.includes('invalid'))) {
+      const owner = sessionStorage.getItem('invite_owner_email') ?? ''
+      sessionStorage.removeItem('invite_owner_email')
+      setExpiredInviteOwner(owner || 'the person who invited you')
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
 
   // Detect Supabase invite link: /login#access_token=...&type=invite
   useEffect(() => {
@@ -189,6 +204,18 @@ export default function AuthPage() {
           <h1 className="text-2xl font-bold text-gray-900">Events Tracker</h1>
           <p className="text-gray-500 mt-1">Track your activities, achieve your goals</p>
         </div>
+
+        {/* Expired invite banner */}
+        {expiredInviteOwner && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+            <p className="font-medium text-amber-800 mb-1">Invite link has expired</p>
+            <p className="text-amber-700">
+              Too much time has elapsed. Ask{' '}
+              <span className="font-semibold">{expiredInviteOwner}</span>{' '}
+              to send you a new invite link.
+            </p>
+          </div>
+        )}
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
