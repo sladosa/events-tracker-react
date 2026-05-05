@@ -49,7 +49,9 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
   const [gettingLinkForId, setGettingLinkForId] = useState<UUID | null>(null);
   const [messageBox, setMessageBox] = useState<{ toEmail: string; body: string } | null>(null);
   const [emailCopied, setEmailCopied] = useState(false);
+  const [subjectCopied, setSubjectCopied] = useState(false);
   const [messageCopied, setMessageCopied] = useState(false);
+  const INVITE_SUBJECT = 'Invite to Events Tracker';
   const [callerInfo, setCallerInfo] = useState<{ email: string; name: string } | null>(null);
   // Help panel: collapsed on mobile by default (expanded via ❓ toggle); always visible on desktop via CSS
   const [helpOpen, setHelpOpen] = useState(false);
@@ -331,7 +333,7 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               {/* TO row */}
               <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center gap-3">
-                <span className="text-xs font-semibold text-gray-400 w-5 flex-shrink-0">TO</span>
+                <span className="text-xs font-semibold text-gray-400 w-10 flex-shrink-0">TO</span>
                 <span className="flex-1 text-sm text-gray-800 font-medium truncate">{messageBox.toEmail}</span>
                 <button
                   onClick={async () => {
@@ -342,6 +344,21 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
                   className="text-xs px-2.5 py-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-md transition-colors flex-shrink-0"
                 >
                   {emailCopied ? '✓' : 'Copy'}
+                </button>
+              </div>
+              {/* Subject row */}
+              <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center gap-3">
+                <span className="text-xs font-semibold text-gray-400 w-10 flex-shrink-0">SUBJ</span>
+                <span className="flex-1 text-sm text-gray-700 truncate">{INVITE_SUBJECT}</span>
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(INVITE_SUBJECT);
+                    setSubjectCopied(true);
+                    setTimeout(() => setSubjectCopied(false), 2000);
+                  }}
+                  className="text-xs px-2.5 py-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-md transition-colors flex-shrink-0"
+                >
+                  {subjectCopied ? '✓' : 'Copy'}
                 </button>
               </div>
               {/* Body */}
@@ -357,7 +374,7 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
               {/* Actions */}
               <div className="bg-gray-50 border-t border-gray-200 px-4 py-2.5 flex items-center justify-between">
                 <button
-                  onClick={() => { setMessageBox(null); setEmailCopied(false); setMessageCopied(false); }}
+                  onClick={() => { setMessageBox(null); setEmailCopied(false); setSubjectCopied(false); setMessageCopied(false); }}
                   className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   Dismiss
