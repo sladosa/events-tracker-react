@@ -14,15 +14,39 @@ export function InviteRedirectPage() {
 
     fetch(`${fnBase}/get-invite-link?id=${encodeURIComponent(id)}`)
       .then(res => res.json())
-      .then((body: { action_link?: string; error?: string }) => {
+      .then((body: { action_link?: string; already_accepted?: boolean; error?: string }) => {
         if (body.action_link) {
           window.location.href = body.action_link;
+        } else if (body.already_accepted) {
+          setError('already_accepted');
         } else {
           setError(body.error ?? 'Invite not found or expired.');
         }
       })
       .catch(() => setError('Failed to load invite.'));
   }, [id]);
+
+  if (error === 'already_accepted') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center">
+          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h1 className="text-lg font-semibold text-gray-800 mb-2">You already have access!</h1>
+          <p className="text-sm text-gray-500 mb-5">This invite was already processed. Sign in to access the shared area.</p>
+          <a
+            href="/login"
+            className="inline-block px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Sign in
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (

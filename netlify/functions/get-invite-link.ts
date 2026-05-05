@@ -36,18 +36,28 @@ export const handler = async (event: {
 
   const { data, error } = await supabaseAdmin
     .from('share_invites')
-    .select('action_link')
+    .select('action_link, status')
     .eq('id', id)
-    .eq('status', 'pending')
     .maybeSingle();
 
-  if (error || !(data as { action_link?: string } | null)?.action_link) {
-    return { statusCode: 404, headers: corsHeaders, body: JSON.stringify({ error: 'Invite not found or expired' }) };
+  if (error || !data) {
+    return { statusCode: 404, headers: corsHeaders, body: JSON.stringify({ error: 'Invite not found' }) };
+  }
+
+  const row = data as { action_link: string | null; status: string };
+
+  // Invite was already processed (DB trigger auto-accepted it)
+  if (row.status === 'accepted') {
+    return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ already_accepted: true }) };
+  }
+
+  if (!row.action_link) {
+    return { statusCode: 404, headers: corsHeaders, body: JSON.stringify({ error: 'Invite link not available — try requesting a new invite' }) };
   }
 
   return {
     statusCode: 200,
     headers: corsHeaders,
-    body: JSON.stringify({ action_link: (data as { action_link: string }).action_link }),
+    body: JSON.stringify({ action_link: row.action_link }),
   };
 };
