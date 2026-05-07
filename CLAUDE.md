@@ -261,6 +261,18 @@ Faze i status:
   - `ShareManagementModal.tsx`: message box s TO + SUBJ + body + Copy gumbovima; dvije varijante poruke (registered/unregistered); caller info fetchan iz profiles
   - `AuthPage.tsx`: `setSession()` eksplicitno s invite tokenima (bugfix: `updateUser` ažurirao owner password umjesto grantee); detektira `#error=access_denied` expired token → amber banner "Invite link has expired, ask [owner] to resend"
   - `AppHome.tsx` + `StructureTableView.tsx`: localStorage persist za activeTab, structureViewMode, nodeFilter, collapsedAreaIds
+- ✅ S71: Migration tools + Garmin Activities import:
+  - `data-prep/Tools/supabase_structure_export.py` — read-only Supabase structure reader; ispisuje areas/categories/attrs + event counts kao markdown
+  - `data-prep/Tools/garmin_full_field_audit.py` — katalogizira sva polja iz svih Garmin JSON export tipova
+  - `data-prep/Tools/garmin_activities_to_xlsx.py` — generira roundtrip xlsx iz Garmin summarizedActivities:
+    - 3134 aktivnosti (2002 Outdoor, 1127 Gym/Cardio, 5 Strength), raspon 2015–02/2025
+    - `pace` kao text "MM:SS" (npr. "06:04") — u bazi `text`, ne `number`
+    - `location` attr na Activity nivou, popunjen Nominatim reverse geocode (zoom=18)
+    - 555 geocode zona cachirano u `data-prep/Tools/geocode_cache.json` (tracked)
+    - Structure sheet auto-included; pace attr auto-patch number→text
+  - `data-prep/MIGRATION_STATE.md` — tracking tablica za sve izvore podataka
+  - Output: `Claude-temp_R/Data_preparation/Fitness_Garmin_import.xlsx` (spreman za TEST import)
+  - Garmin distance u cm (ne meters!) → ÷100000 za km; elevationGain cm → ÷100 za metre
 
 ---
 
