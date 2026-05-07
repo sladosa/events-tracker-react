@@ -235,6 +235,9 @@ Faze i status:
 - **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
+- ✅ S71 bugfix: Export modal — `[object Object]` error display (Supabase plain error obj → `.message`); count query koristio puni `loadExportData` umjesto laganog count → statement timeout fiksano korištenjem `countEventsForExport` direktno; `loadEventsForExport` i parent event merge koristili PostgREST nested select (→ ogroman JOIN ~126k redova) → fiksano chunked `loadAttrsForEvents()` (200 event_id po queriju)
+- **UX-Import-1:** Excel Import modal nema progress indikator ni timer — veliki importi (3000+ redova) izgledaju frozen; dodati: elapsed time + "Processing row X of Y" ili spinner s brojevima
+- **UX-Unit-1:** View Activity — `unit` atributa nije prikazan uz vrijednost; dodati npr. `75.4 min`, `73 bpm`, `4.86 km` inline (sivi suffix). Add/Edit već prikazuje unit suffix ispravno. Unit dolazi iz `attribute_definitions.unit`.
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 - ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
 - ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)

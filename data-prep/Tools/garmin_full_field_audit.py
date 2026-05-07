@@ -11,8 +11,12 @@ from pathlib import Path
 from collections import defaultdict
 from datetime import datetime, timezone
 
-GARMIN_DIR_DEFAULT = Path(__file__).parent.parent.parent / \
-    "Claude-temp_R/Data_preparation/DataFromGarmin"
+import os as _os
+_env_garmin = _os.environ.get("GARMIN_DATA_DIR")
+GARMIN_DIR_DEFAULT = (
+    Path(_env_garmin) if _env_garmin
+    else Path(__file__).parent.parent.parent / "Claude-temp_R/Data_preparation/DataFromGarmin"
+)
 
 def ts_ms_to_date(ts):
     try:

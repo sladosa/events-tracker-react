@@ -47,13 +47,16 @@ except ImportError:
     sys.exit(1)
 
 # ─────────────────────────────────────────────────────────────────
-# Default paths (relative to repo root)
+# Default paths
 # ─────────────────────────────────────────────────────────────────
 SCRIPT_DIR  = Path(__file__).parent
 REPO_ROOT   = SCRIPT_DIR.parent.parent
 DATA_PREP   = REPO_ROOT / "Claude-temp_R/Data_preparation"
 
-DEFAULT_GARMIN    = DATA_PREP / "DataFromGarmin"
+# GARMIN_DATA_DIR env var overrides default (set if moved outside repo)
+# e.g.  set GARMIN_DATA_DIR=C:\0_Sasa\GarminData
+_env_garmin = os.environ.get("GARMIN_DATA_DIR")
+DEFAULT_GARMIN    = Path(_env_garmin) if _env_garmin else DATA_PREP / "DataFromGarmin"
 DEFAULT_STRUCTURE = DATA_PREP / "Sport_structure.xlsx"
 DEFAULT_OUT       = DATA_PREP / "Fitness_Garmin_import.xlsx"
 
