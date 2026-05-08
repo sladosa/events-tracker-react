@@ -253,7 +253,7 @@ Faze i status:
 - ✅ S66: `dev:prod` npm script + `.env.prod.local` (gitignored) za lokalni dev server koji koristi PROD Supabase bazu
 - ✅ S68: Health tracking — `make_health_events.py` (Korak 3): čita `Bloodwork.xlsx` sheet "Krv", filtrira `zdravstveni` redove, generira `Health_events_import.xlsx` (45 Lab Results + 13 Medical Visit); `range_flags()` generira H/L comment (samo out-of-range vrijednosti, format "Kolesterol H · Feritin L"); 2 preskočena retka (bez datuma / invalid date)
 - ✅ S68: Excel Export poboljšanja — (1) attr kolone sortirane po `sort_order` iz DB (ne abecedno); (2) Description dodana u ATTRIBUTE LEGEND (col G, 7 kolona ukupno); (3) Max/Min/Sum redovi iznad EVENT DATA s `SUBTOTAL(4/5/9)` i dinamičkim LOOKUP rangem; redovi grupirani (outlineLevel=1); label u col H desno poravnan
-- ✅ S68: `data-prep/` direktorij u korijenu repoa (tracked) — Python skripte za data preparation; `venv/` i `*.xlsx` gitignored; `Tools/`, `Health/`, `Financije/` poddirektoriji
+- ✅ S68: `data-prep_tools/` direktorij u korijenu repoa (tracked) — Python skripte za data preparation; `venv/` i `*.xlsx` gitignored; `Tools/`, `Health/`, `Financije/` poddirektoriji
 - ✅ S69: Invite sustav — `netlify/functions/send-share-invite.ts`: verifikacija JWT, insert `share_invites` PRIJE `inviteUserByEmail()` (izbjegava race s DB trigger chainom), šalje Supabase invite email s `invited_by` + `area_name` kontekstom; `useDataShares.ts createShare`: za neregistrirane korisnike poziva Netlify funkciju umjesto direktnog inserta; `ShareManagementModal.tsx`: prosljeđuje `areaName`; `AuthPage.tsx`: detektira `#type=invite` u URL hash, čita email iz JWT tokena (ne aktivne sesije — bugfix), prikazuje set-password formu s pre-fillovanim emailom i porukom tko poziva; `npm run dev:netlify-prod` script (dotenv-cli, mergea .env.local + .env.prod.local); Supabase "Invite user" email template prilagođen
 - ✅ S70: Invite sustav — clean URL + message box + expired token handling:
   - `generateLink` umjesto `inviteUserByEmail` (nema rate limita, nema Outlook deliverability problema)
@@ -265,17 +265,18 @@ Faze i status:
   - `AuthPage.tsx`: `setSession()` eksplicitno s invite tokenima (bugfix: `updateUser` ažurirao owner password umjesto grantee); detektira `#error=access_denied` expired token → amber banner "Invite link has expired, ask [owner] to resend"
   - `AppHome.tsx` + `StructureTableView.tsx`: localStorage persist za activeTab, structureViewMode, nodeFilter, collapsedAreaIds
 - ✅ S71: Migration tools + Garmin Activities import:
-  - `data-prep/Tools/supabase_structure_export.py` — read-only Supabase structure reader; ispisuje areas/categories/attrs + event counts kao markdown
-  - `data-prep/Tools/garmin_full_field_audit.py` — katalogizira sva polja iz svih Garmin JSON export tipova
-  - `data-prep/Tools/garmin_activities_to_xlsx.py` — generira roundtrip xlsx iz Garmin summarizedActivities:
+  - `data-prep_tools/Tools/supabase_structure_export.py` — read-only Supabase structure reader; ispisuje areas/categories/attrs + event counts kao markdown
+  - `data-prep_tools/Tools/garmin_full_field_audit.py` — katalogizira sva polja iz svih Garmin JSON export tipova
+  - `data-prep_tools/Tools/garmin_activities_to_xlsx.py` — generira roundtrip xlsx iz Garmin summarizedActivities:
     - 3134 aktivnosti (2002 Outdoor, 1127 Gym/Cardio, 5 Strength), raspon 2015–02/2025
     - `pace` kao text "MM:SS" (npr. "06:04") — u bazi `text`, ne `number`
     - `location` attr na Activity nivou, popunjen Nominatim reverse geocode (zoom=18)
-    - 555 geocode zona cachirano u `data-prep/Tools/geocode_cache.json` (tracked)
+    - 555 geocode zona cachirano u `data-prep_tools/Tools/geocode_cache.json` (tracked)
     - Structure sheet auto-included; pace attr auto-patch number→text
-  - `data-prep/MIGRATION_STATE.md` — tracking tablica za sve izvore podataka
-  - Output: `Claude-temp_R/Data_preparation/Fitness_Garmin_import.xlsx` (spreman za TEST import)
+  - `data-prep_tools/MIGRATION_STATE.md` — tracking tablica za sve izvore podataka
+  - Output: `data-prep_data/Fitness_Garmin_import.xlsx` (spreman za TEST import)
   - Garmin distance u cm (ne meters!) → ÷100000 za km; elevationGain cm → ÷100 za metre
+- ✅ S72: Reorganizacija direktorija — `data-prep/` → `data-prep_tools/` (tracked scripts); `Claude-temp_R/Data_preparation/` → `data-prep_data/` (gitignored data: xlsx, DataFromGarmin, Health, Financije)
 
 ---
 
@@ -345,8 +346,8 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 **6. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
    Status S65: `Za Sašu` 2026 (356 redova) importiran u TEST bazu ✅. Struktura pre-složena
    (19 listova), čeka Kokin feedback za pojednostavljenje (max L2, Vrsta dropdowns).
-   Process docs: `Claude-temp_R/Data_preparation/Financije/IMPORT_PROCES.md`
-   Prijedlog za Koku: `Claude-temp_R/Data_preparation/Financije/KOKA_STRUKTURA_PRIJEDLOG.md`
+   Process docs: `data-prep_data/Financije/IMPORT_PROCES.md`
+   Prijedlog za Koku: `data-prep_data/Financije/KOKA_STRUKTURA_PRIJEDLOG.md`
    Skripte: `fix_dates.py` (datumi) + `make_import.py` (generira xlsx za import)
 
 **7. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
@@ -356,8 +357,8 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 **8. Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
 
 **9. Health tracking Area** — Area "Health" s Lab Results + Medical Visit leaf kategorijama.
-   Kontekst: `Claude-temp_R/Data_preparation/Health/HEALTH_SESSION_CONTEXT.md`
-   Skripte: `data-prep/Health/make_health_structure.py` + `make_health_events.py`
+   Kontekst: `data-prep_data/Health/HEALTH_SESSION_CONTEXT.md`
+   Skripte: `data-prep_tools/Health/make_health_structure.py` + `make_health_events.py`
    - ✅ Korak 1 — Struktura importana u TEST bazu (Health > Medical > Lab Results + Medical Visit; 10 attr defs)
    - ✅ Korak 2 — UX verificiran (Add Activity radi)
    - ✅ Korak 3 — `make_health_events.py` generira `Health_events_import.xlsx` (58 eventa iz Bloodwork.xlsx)

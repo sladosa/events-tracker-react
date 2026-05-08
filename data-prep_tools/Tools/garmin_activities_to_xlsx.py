@@ -51,7 +51,7 @@ except ImportError:
 # ─────────────────────────────────────────────────────────────────
 SCRIPT_DIR  = Path(__file__).parent
 REPO_ROOT   = SCRIPT_DIR.parent.parent
-DATA_PREP   = REPO_ROOT / "Claude-temp_R/Data_preparation"
+DATA_PREP   = REPO_ROOT / "data-prep_data"
 
 # GARMIN_DATA_DIR env var overrides default (set if moved outside repo)
 # e.g.  set GARMIN_DATA_DIR=C:\0_Sasa\GarminData

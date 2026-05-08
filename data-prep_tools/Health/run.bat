@@ -1,6 +1,6 @@
 @echo off
 REM Run any script in the Health folder using the shared venv.
-REM Usage from Data_preparation root:  Health\run.bat make_health_structure.py
+REM Usage from data-prep_tools root:  Health\run.bat make_health_structure.py
 REM Or double-click to run make_health_structure.py directly.
 
 set HEALTH_DIR=%~dp0

@@ -17,7 +17,7 @@ __pycache__/
 *IMPORT_PROCES.md
 *PRIJEDLOG.md
 
-# ── What IS tracked in data-prep/ ──────────────────────────────
+# ── What IS tracked in data-prep_tools/ ────────────────────────
 # *.py scripts — tools for data preparation
 # geocode_cache.json — Nominatim reverse geocode cache (555 zones, took ~10 min to build)
 # MIGRATION_STATE.md — migration status tracking
@@ -28,5 +28,5 @@ __pycache__/
 # No credentials in this folder.
 #
 # ── Data location ───────────────────────────────────────────────
-# Raw data (Garmin JSON, xlsx exports): Claude-temp_R/Data_preparation/ (gitignored)
-# Generated import files: Claude-temp_R/Data_preparation/*.xlsx (gitignored)
+# Raw data (Garmin JSON, DataFromGarmin/): data-prep_data/ (gitignored via root .gitignore)
+# Generated import files: data-prep_data/*.xlsx (gitignored)

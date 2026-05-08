@@ -6,6 +6,9 @@
 Claude-temp_R/
 Perplexity-temp_R/
 
+# Data files — raw inputs, generated outputs, personal data (not scripts)
+data-prep_data/
+
 # Obsidian notes (if using for documentation)
 .obsidian/
 

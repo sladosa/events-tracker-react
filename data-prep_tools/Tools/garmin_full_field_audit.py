@@ -15,7 +15,7 @@ import os as _os
 _env_garmin = _os.environ.get("GARMIN_DATA_DIR")
 GARMIN_DIR_DEFAULT = (
     Path(_env_garmin) if _env_garmin
-    else Path(__file__).parent.parent.parent / "Claude-temp_R/Data_preparation/DataFromGarmin"
+    else Path(__file__).parent.parent.parent / "data-prep_data/DataFromGarmin"
 )
 
 def ts_ms_to_date(ts):

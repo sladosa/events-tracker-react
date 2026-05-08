@@ -16,12 +16,12 @@ Track what data sources exist, where we are in the pipeline, and what area they 
 
 ## Garmin / Activities — detalji (S71)
 
-**Source files:** `Claude-temp_R/Data_preparation/DataFromGarmin/DI_CONNECT/DI-Connect-Fitness/`
+**Source files:** `data-prep_data/DataFromGarmin/DI_CONNECT/DI-Connect-Fitness/`
 `sasasl_{0,1001,2002,3003}_summarizedActivities.json`
 
-**Script:** `data-prep/Tools/garmin_activities_to_xlsx.py`
+**Script:** `data-prep_tools/Tools/garmin_activities_to_xlsx.py`
 
-**Output:** `Claude-temp_R/Data_preparation/Fitness_Garmin_import.xlsx`
+**Output:** `data-prep_data/Fitness_Garmin_import.xlsx`
 - 3134 aktivnosti: 2002 Outdoor, 1127 Gym/Cardio, 5 Strength
 - Vremenski raspon: 2015–02/2025
 
@@ -83,7 +83,7 @@ prije importa. Trenutno ima samo `duration` i `quality`.
 
 ## Garmin data audit (S71)
 
-Detaljni audit u: `Claude-temp_R/Data_preparation/garmin_audit_report.md`
+Detaljni audit u: `data-prep_data/garmin_audit_report.md`
 
-Supabase struktura snapshot: `Claude-temp_R/Data_preparation/supabase_structure_report.md`
-(regeneriraj sa `python data-prep/Tools/supabase_structure_export.py`)
+Supabase struktura snapshot: `data-prep_data/supabase_structure_report.md`
+(regeneriraj sa `python data-prep_tools/Tools/supabase_structure_export.py`)
