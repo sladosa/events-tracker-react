@@ -68,10 +68,12 @@ function AttributeValueDisplay({
   value,
   dataType,
   name,
+  unit,
 }: {
   value: string | number | boolean | null;
   dataType: string;
   name: string;
+  unit?: string | null;
 }) {
   const t = THEME.view;
 
@@ -117,7 +119,12 @@ function AttributeValueDisplay({
   return (
     <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
       <span className="text-sm text-gray-600">{name}</span>
-      <span className={cn('text-sm font-medium', t.lightText)}>{displayValue}</span>
+      <span className={cn('text-sm font-medium', t.lightText)}>
+        {displayValue}
+        {unit && dataType === 'number' && (
+          <span className="text-gray-400 font-normal ml-1">{unit}</span>
+        )}
+      </span>
     </div>
   );
 }
@@ -132,7 +139,7 @@ function ReadOnlyAttributeChain({
   attributeValues,
 }: {
   categoryChain: { id: string; name: string }[];
-  attributesByCategory: Map<string, { id: string; name: string; data_type: string }[]>;
+  attributesByCategory: Map<string, { id: string; name: string; data_type: string; unit: string | null }[]>;
   attributeValues: Map<string, { value: string | number | boolean | null; dataType: string }>;
 }) {
   const t = THEME.view;
@@ -237,6 +244,7 @@ function ReadOnlyAttributeChain({
                         value={attributeValues.get(attr.id)?.value ?? null}
                         dataType={attr.data_type}
                         name={attr.name}
+                        unit={attr.unit}
                       />
                     ))}
                   </div>
@@ -303,7 +311,7 @@ export function ViewDetailsPage() {
   const [parentAttrValues, setParentAttrValues] = useState<Map<string, { value: string | number | boolean | null; dataType: string }>>(new Map());
   // Cached from activityViewCache — no hooks needed, avoids re-fetching on every Prev/Next
   const [categoryChain, setCategoryChain] = useState<{ id: string; name: string }[]>([]);
-  const [attributesByCategory, setAttributesByCategory] = useState<Map<string, { id: string; name: string; data_type: string }[]>>(new Map());
+  const [attributesByCategory, setAttributesByCategory] = useState<Map<string, { id: string; name: string; data_type: string; unit: string | null }[]>>(new Map());
 
   useEffect(() => {
     if (!sessionStart) {
