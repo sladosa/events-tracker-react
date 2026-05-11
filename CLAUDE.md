@@ -237,7 +237,7 @@ Faze i status:
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
 - ✅ S71 bugfix: Export modal — `[object Object]` error display (Supabase plain error obj → `.message`); count query koristio puni `loadExportData` umjesto laganog count → statement timeout fiksano korištenjem `countEventsForExport` direktno; `loadEventsForExport` i parent event merge koristili PostgREST nested select (→ ogroman JOIN ~126k redova) → fiksano chunked `loadAttrsForEvents()` (200 event_id po queriju)
 - **UX-Import-1:** Excel Import modal nema progress indikator ni timer — veliki importi (3000+ redova) izgledaju frozen; dodati: elapsed time + "Processing row X of Y" ili spinner s brojevima
-- **UX-Unit-1:** View Activity — `unit` atributa nije prikazan uz vrijednost; dodati npr. `75.4 min`, `73 bpm`, `4.86 km` inline (sivi suffix). Add/Edit već prikazuje unit suffix ispravno. Unit dolazi iz `attribute_definitions.unit`.
+- ✅ **UX-Unit-1** (S73): View Activity — `unit` dodan kao sivi suffix uz numeričke vrijednosti (`75.4 min`, `4.86 km`); `activityViewCache.ts` fetchuje `unit` iz `attribute_definitions`; prikazuje se samo za `data_type='number'`.
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 - ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
 - ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
@@ -281,6 +281,12 @@ Faze i status:
 ---
 
 ### Backlog — sljedeći koraci (prioritetni redoslijed)
+
+**Prioriteti za S73 (određeno na kraju S72):**
+1. **UX-Unit-1** — View Activity: dodati unit suffix uz numeričke vrijednosti (`75.4 min`, `73 bpm`) — mali zahvat u `ViewDetailsPage.tsx`
+2. **Garmin/Sleep importer** — `Health > Sleep` area; skripte u `data-prep_tools/Tools/`; `MIGRATION_STATE.md` ima plan
+3. **SQL deploy**: `018_invite_action_link.sql` pokrenuti na PROD
+
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
 
