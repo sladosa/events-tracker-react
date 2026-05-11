@@ -546,7 +546,10 @@ function AppContent() {
           areaName={leaveAreaTarget.areaName}
           permission={leaveAreaTarget.permission}
           onClose={() => setLeaveAreaTarget(null)}
-          onDone={() => setLeaveAreaTarget(null)}
+          onDone={() => {
+            setLeaveAreaTarget(null);
+            setStructureRefreshKey(k => k + 1);
+          }}
         />
       )}
 
