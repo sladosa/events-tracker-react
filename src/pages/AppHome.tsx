@@ -23,6 +23,7 @@ import { saveAs } from 'file-saver';
 import { useStructureData } from '@/hooks/useStructureData';
 import { SharedAreaBanner } from '@/components/sharing/SharedAreaBanner';
 import { ShareManagementModal } from '@/components/sharing/ShareManagementModal';
+import { LeaveAreaModal } from '@/components/sharing/LeaveAreaModal';
 import { HeaderAvatar, ProfileSettingsModal } from '@/components/sharing/ProfileSettingsModal';
 import { useHelp } from '@/context/HelpContext';
 import { useActivities } from '@/hooks/useActivities';
@@ -86,8 +87,14 @@ function AppContent() {
   const [userId, setUserId] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('activities');
-  const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>('sunburst');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const s = localStorage.getItem('ui:activeTab');
+    return s === 'structure' ? 'structure' : 'activities';
+  });
+  const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>(() => {
+    const s = localStorage.getItem('ui:structureViewMode');
+    return s === 'table' ? 'table' : 'sunburst';
+  });
   const [isEditMode, setIsEditMode] = useState(false);
   const [isExportingStructure, setIsExportingStructure] = useState(false);
   const [showStructureImport, setShowStructureImport] = useState(false);
@@ -110,10 +117,17 @@ function AppContent() {
   // Sync active tab into HelpContext so chips match the visible tab
   const { setPageHint } = useHelp();
   useEffect(() => { setPageHint(activeTab); }, [activeTab, setPageHint]);
+  useEffect(() => { localStorage.setItem('ui:activeTab', activeTab); }, [activeTab]);
+  useEffect(() => { localStorage.setItem('ui:structureViewMode', structureViewMode); }, [structureViewMode]);
 
   // Share Management Modal state (Faza 7)
   const [shareModalTarget, setShareModalTarget] = useState<{ areaId: UUID; areaName: string } | null>(null);
   const openShareModal = (areaId: UUID, areaName: string) => setShareModalTarget({ areaId, areaName });
+
+  // Leave Area Modal state (S73)
+  const [leaveAreaTarget, setLeaveAreaTarget] = useState<{ areaId: string; areaName: string; permission: 'read' | 'write' } | null>(null);
+  const openLeaveAreaModal = (areaId: string, areaName: string, permission: 'read' | 'write') =>
+    setLeaveAreaTarget({ areaId, areaName, permission });
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -487,6 +501,7 @@ function AppContent() {
               isEditMode={isEditMode}
               refreshKey={structureRefreshKey}
               onManageAccess={openShareModal}
+              onLeaveArea={openLeaveAreaModal}
             />
           ) : (
             <ActivitiesView />
@@ -521,6 +536,20 @@ function AppContent() {
           areaId={shareModalTarget.areaId}
           areaName={shareModalTarget.areaName}
           onClose={() => setShareModalTarget(null)}
+        />
+      )}
+
+      {/* Leave Area Modal (S73) */}
+      {leaveAreaTarget && (
+        <LeaveAreaModal
+          areaId={leaveAreaTarget.areaId}
+          areaName={leaveAreaTarget.areaName}
+          permission={leaveAreaTarget.permission}
+          onClose={() => setLeaveAreaTarget(null)}
+          onDone={() => {
+            setLeaveAreaTarget(null);
+            setStructureRefreshKey(k => k + 1);
+          }}
         />
       )}
 
@@ -585,13 +614,19 @@ interface StructureTabContentProps {
   refreshKey: number;
   /** Faza 7 — open Share Management modal */
   onManageAccess: (areaId: UUID, areaName: string) => void;
+  /** S73 — open Leave Area modal */
+  onLeaveArea?: (areaId: string, areaName: string, permission: 'read' | 'write') => void;
 }
 
-function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess }: StructureTabContentProps) {
+function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess, onLeaveArea }: StructureTabContentProps) {
   const { filter, fullPathDisplay } = useFilter();
 
   // Node filter state lives here so both Table and Sunburst share it
-  const [nodeFilter, setNodeFilter] = useState<NodeFilter>('mine');
+  const [nodeFilter, setNodeFilter] = useState<NodeFilter>(() => {
+    const s = localStorage.getItem('ui:structureSegment');
+    return (s === 'mine' || s === 'all' || s === 'templates') ? s as NodeFilter : 'mine';
+  });
+  useEffect(() => { localStorage.setItem('ui:structureSegment', nodeFilter); }, [nodeFilter]);
   // In edit mode always show only own areas
   const effectiveNodeFilter: NodeFilter = isEditMode ? 'mine' : nodeFilter;
 
@@ -642,6 +677,7 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess 
           isEditMode={isEditMode}
           refreshKey={refreshKey}
           onManageAccess={onManageAccess}
+          onLeaveArea={onLeaveArea}
           nodeFilter={effectiveNodeFilter}
         />
       </div>

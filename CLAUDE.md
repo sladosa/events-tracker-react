@@ -235,6 +235,11 @@ Faze i status:
 - **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
+- ✅ S71 bugfix: Export modal — `[object Object]` error display (Supabase plain error obj → `.message`); count query koristio puni `loadExportData` umjesto laganog count → statement timeout fiksano korištenjem `countEventsForExport` direktno; `loadEventsForExport` i parent event merge koristili PostgREST nested select (→ ogroman JOIN ~126k redova) → fiksano chunked `loadAttrsForEvents()` (200 event_id po queriju)
+- **UX-Import-1:** Excel Import modal nema progress indikator ni timer — veliki importi (3000+ redova) izgledaju frozen; dodati: elapsed time + "Processing row X of Y" ili spinner s brojevima
+- ✅ **UX-Unit-1** (S73): View Activity — `unit` dodan kao sivi suffix uz numeričke vrijednosti (`75.4 min`, `4.86 km`); `activityViewCache.ts` fetchuje `unit` iz `attribute_definitions`; prikazuje se samo za `data_type='number'`.
+- ✅ **View Activity description** (S73): `description` atributa prikazan u zagradi uz naziv (`Zeljezo (Ref: 9–30 μmol/L)`); fetchuje se u `activityViewCache.ts`.
+- ✅ **Leave shared area** (S73): grantee može se odvojiti od shared aree via ⋮ meni → "Leave this area"; write grantee s eventima dobiva modal s 2 opcije: "Detach with data" (kopira strukturu + batch-reassigna evente/attrs na nove UUID-ove) ili "Leave without data"; `sql/019_leave_area.sql` proširuje `data_shares_delete` policy; `src/lib/leaveArea.ts` + `src/components/sharing/LeaveAreaModal.tsx`.
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 - ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
 - ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
@@ -250,11 +255,40 @@ Faze i status:
 - ✅ S66: `dev:prod` npm script + `.env.prod.local` (gitignored) za lokalni dev server koji koristi PROD Supabase bazu
 - ✅ S68: Health tracking — `make_health_events.py` (Korak 3): čita `Bloodwork.xlsx` sheet "Krv", filtrira `zdravstveni` redove, generira `Health_events_import.xlsx` (45 Lab Results + 13 Medical Visit); `range_flags()` generira H/L comment (samo out-of-range vrijednosti, format "Kolesterol H · Feritin L"); 2 preskočena retka (bez datuma / invalid date)
 - ✅ S68: Excel Export poboljšanja — (1) attr kolone sortirane po `sort_order` iz DB (ne abecedno); (2) Description dodana u ATTRIBUTE LEGEND (col G, 7 kolona ukupno); (3) Max/Min/Sum redovi iznad EVENT DATA s `SUBTOTAL(4/5/9)` i dinamičkim LOOKUP rangem; redovi grupirani (outlineLevel=1); label u col H desno poravnan
-- ✅ S68: `data-prep/` direktorij u korijenu repoa (tracked) — Python skripte za data preparation; `venv/` i `*.xlsx` gitignored; `Tools/`, `Health/`, `Financije/` poddirektoriji
+- ✅ S68: `data-prep_tools/` direktorij u korijenu repoa (tracked) — Python skripte za data preparation; `venv/` i `*.xlsx` gitignored; `Tools/`, `Health/`, `Financije/` poddirektoriji
+- ✅ S69: Invite sustav — `netlify/functions/send-share-invite.ts`: verifikacija JWT, insert `share_invites` PRIJE `inviteUserByEmail()` (izbjegava race s DB trigger chainom), šalje Supabase invite email s `invited_by` + `area_name` kontekstom; `useDataShares.ts createShare`: za neregistrirane korisnike poziva Netlify funkciju umjesto direktnog inserta; `ShareManagementModal.tsx`: prosljeđuje `areaName`; `AuthPage.tsx`: detektira `#type=invite` u URL hash, čita email iz JWT tokena (ne aktivne sesije — bugfix), prikazuje set-password formu s pre-fillovanim emailom i porukom tko poziva; `npm run dev:netlify-prod` script (dotenv-cli, mergea .env.local + .env.prod.local); Supabase "Invite user" email template prilagođen
+- ✅ S70: Invite sustav — clean URL + message box + expired token handling:
+  - `generateLink` umjesto `inviteUserByEmail` (nema rate limita, nema Outlook deliverability problema)
+  - Clean invite URL `/invite/:id` na našoj domeni (umjesto raw Supabase verify URL)
+  - `sql/018_invite_action_link.sql`: ADD COLUMN action_link na share_invites
+  - `netlify/functions/get-invite-link.ts`: novi Netlify fn — lookup action_link by invite ID (service role); vraća owner_email za error poruke
+  - `src/pages/InviteRedirectPage.tsx`: `/invite/:id` → redirect na Supabase; sprema owner_email u sessionStorage
+  - `ShareManagementModal.tsx`: message box s TO + SUBJ + body + Copy gumbovima; dvije varijante poruke (registered/unregistered); caller info fetchan iz profiles
+  - `AuthPage.tsx`: `setSession()` eksplicitno s invite tokenima (bugfix: `updateUser` ažurirao owner password umjesto grantee); detektira `#error=access_denied` expired token → amber banner "Invite link has expired, ask [owner] to resend"
+  - `AppHome.tsx` + `StructureTableView.tsx`: localStorage persist za activeTab, structureViewMode, nodeFilter, collapsedAreaIds
+- ✅ S71: Migration tools + Garmin Activities import:
+  - `data-prep_tools/Tools/supabase_structure_export.py` — read-only Supabase structure reader; ispisuje areas/categories/attrs + event counts kao markdown
+  - `data-prep_tools/Tools/garmin_full_field_audit.py` — katalogizira sva polja iz svih Garmin JSON export tipova
+  - `data-prep_tools/Tools/garmin_activities_to_xlsx.py` — generira roundtrip xlsx iz Garmin summarizedActivities:
+    - 3134 aktivnosti (2002 Outdoor, 1127 Gym/Cardio, 5 Strength), raspon 2015–02/2025
+    - `pace` kao text "MM:SS" (npr. "06:04") — u bazi `text`, ne `number`
+    - `location` attr na Activity nivou, popunjen Nominatim reverse geocode (zoom=18)
+    - 555 geocode zona cachirano u `data-prep_tools/Tools/geocode_cache.json` (tracked)
+    - Structure sheet auto-included; pace attr auto-patch number→text
+  - `data-prep_tools/MIGRATION_STATE.md` — tracking tablica za sve izvore podataka
+  - Output: `data-prep_data/Fitness_Garmin_import.xlsx` (spreman za TEST import)
+  - Garmin distance u cm (ne meters!) → ÷100000 za km; elevationGain cm → ÷100 za metre
+- ✅ S72: Reorganizacija direktorija — `data-prep/` → `data-prep_tools/` (tracked scripts); `Claude-temp_R/Data_preparation/` → `data-prep_data/` (gitignored data: xlsx, DataFromGarmin, Health, Financije)
 
 ---
 
 ### Backlog — sljedeći koraci (prioritetni redoslijed)
+
+**Prioriteti za S74 (određeno na kraju S73):**
+1. **SQL deploy**: `018_invite_action_link.sql` + `019_leave_area.sql` pokrenuti na PROD
+2. **Garmin/Sleep importer** — `Health > Sleep` area; skripte u `data-prep_tools/Tools/`; `MIGRATION_STATE.md` ima plan
+3. **Financije reorganizacija** — srediti strukturu prije pusha na main (Koka feedback)
+
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
 
@@ -320,8 +354,8 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 **6. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
    Status S65: `Za Sašu` 2026 (356 redova) importiran u TEST bazu ✅. Struktura pre-složena
    (19 listova), čeka Kokin feedback za pojednostavljenje (max L2, Vrsta dropdowns).
-   Process docs: `Claude-temp_R/Data_preparation/Financije/IMPORT_PROCES.md`
-   Prijedlog za Koku: `Claude-temp_R/Data_preparation/Financije/KOKA_STRUKTURA_PRIJEDLOG.md`
+   Process docs: `data-prep_data/Financije/IMPORT_PROCES.md`
+   Prijedlog za Koku: `data-prep_data/Financije/KOKA_STRUKTURA_PRIJEDLOG.md`
    Skripte: `fix_dates.py` (datumi) + `make_import.py` (generira xlsx za import)
 
 **7. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
@@ -331,13 +365,21 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 **8. Plotly bundle size** — vendor-plotly ~4.9MB; prihvatljivo dok performanse nisu problem.
 
 **9. Health tracking Area** — Area "Health" s Lab Results + Medical Visit leaf kategorijama.
-   Kontekst: `Claude-temp_R/Data_preparation/Health/HEALTH_SESSION_CONTEXT.md`
-   Skripte: `data-prep/Health/make_health_structure.py` + `make_health_events.py`
+   Kontekst: `data-prep_data/Health/HEALTH_SESSION_CONTEXT.md`
+   Skripte: `data-prep_tools/Health/make_health_structure.py` + `make_health_events.py`
    - ✅ Korak 1 — Struktura importana u TEST bazu (Health > Medical > Lab Results + Medical Visit; 10 attr defs)
    - ✅ Korak 2 — UX verificiran (Add Activity radi)
    - ✅ Korak 3 — `make_health_events.py` generira `Health_events_import.xlsx` (58 eventa iz Bloodwork.xlsx)
    - ✅ Korak 4+5 — PROD deploy (S68): struktura + 58 eventa importani; Area preimenovana u "Health_Saša"
    - ⬜ Koka → Read grantee pristup na Health_Saša (kad bude potrebno)
+
+**11. Netlify scheduled maintenance function** — kad se skupi 2-3 zadatka, implementirati
+   `netlify/functions/maintenance.ts` s `schedule = "@weekly"`. Kandidati:
+   - DELETE orphaned `share_invites` gdje user ne postoji u `auth.users`
+     (`DELETE FROM share_invites WHERE status = 'pending' AND NOT EXISTS (SELECT 1 FROM auth.users WHERE email = share_invites.grantee_email)`)
+   - DELETE stare accepted `share_invites` (> 30 dana)
+   - DELETE stare `help_log` zapise (> 90 dana)
+   Do tada: pokretati ručno po potrebi.
 
 **10. ~~Save+ toggle po Arei~~** — ✅ **kompletno (S67)**
    `settings jsonb` kolona na `areas` tablici (`sql/017_area_settings.sql`);

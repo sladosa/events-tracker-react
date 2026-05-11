@@ -169,6 +169,29 @@ export async function countEventsForExport(
   return count ?? 0;
 }
 
+// Chunk size for event_attributes loading — avoids huge IN clauses and nested-select JOINs
+const ATTR_CHUNK_SIZE = 200;
+
+type RawAttr = { id: string; event_id: string; attribute_definition_id: string; value_text: string | null; value_number: number | null; value_datetime: string | null; value_boolean: boolean | null };
+
+/** Load event_attributes for a list of event IDs, chunked to avoid URL limits */
+async function loadAttrsForEvents(eventIds: string[]): Promise<Map<string, RawAttr[]>> {
+  const map = new Map<string, RawAttr[]>();
+  for (let i = 0; i < eventIds.length; i += ATTR_CHUNK_SIZE) {
+    const chunk = eventIds.slice(i, i + ATTR_CHUNK_SIZE);
+    const { data } = await supabase
+      .from('event_attributes')
+      .select('id, event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean')
+      .in('event_id', chunk);
+    for (const a of (data ?? []) as RawAttr[]) {
+      const list = map.get(a.event_id) ?? [];
+      list.push(a);
+      map.set(a.event_id, list);
+    }
+  }
+  return map;
+}
+
 /** Load a page of events with their attributes and user emails */
 export async function loadEventsForExport(
   _userId:     string,
@@ -179,10 +202,10 @@ export async function loadEventsForExport(
 ): Promise<ExportEvent[]> {
   const desc = filters.sortOrder === 'desc';
 
-  // RLS handles access control — no .eq('user_id') needed
+  // Step 1: load events WITHOUT nested event_attributes (avoids large JOIN)
   let query = supabase
     .from('events')
-    .select(`id,user_id,category_id,event_date,session_start,comment,created_at,event_attributes(id,attribute_definition_id,value_text,value_number,value_datetime,value_boolean)`);
+    .select('id,user_id,category_id,event_date,session_start,comment,created_at');
 
   if (categoryIds.length > 0) query = query.in('category_id', categoryIds);
   if (filters.dateFrom) query = query.gte('event_date', filters.dateFrom);
@@ -191,7 +214,7 @@ export async function loadEventsForExport(
   query = query
     .order('event_date',    { ascending: !desc })
     .order('session_start', { ascending: !desc, nullsFirst: false })
-    .order('user_id',       { ascending: true })   // tie-breaker: isti sort kao useActivities
+    .order('user_id',       { ascending: true })
     .range(offset, offset + limit - 1);
 
   const { data, error } = await query;
@@ -199,7 +222,16 @@ export async function loadEventsForExport(
 
   const rawEvents = (data ?? []) as Array<Record<string, unknown>>;
 
-  // Batch-lookup emails from profiles
+  // Step 2: load event_attributes separately in chunks
+  const eventIds = rawEvents.map(e => e.id as string);
+  const attrsMap = await loadAttrsForEvents(eventIds);
+
+  // Step 3: attach attributes to events
+  for (const ev of rawEvents) {
+    (ev as Record<string, unknown>).event_attributes = attrsMap.get(ev.id as string) ?? [];
+  }
+
+  // Step 4: batch-lookup emails from profiles
   const userIds = [...new Set(rawEvents.map(e => e.user_id as string).filter(Boolean))];
   let emailMap = new Map<string, string>();
   if (userIds.length > 0) {
@@ -394,16 +426,32 @@ export async function loadExportData(
     }
 
     if (parentCatIds.size > 0) {
-      // Collect unique session_starts across all leaf events
-      const sessionStarts = [...new Set(rawEvents.map(e => e.session_start).filter(Boolean))] as string[];
+      // Use date range of the batch instead of a huge IN(session_start) clause.
+      // Parent events share the same event_date as their leaf events (same session),
+      // so filtering by the batch's date range is equivalent and avoids URL length issues.
+      const eventDates = rawEvents.map(e => e.event_date).filter(Boolean).sort() as string[];
 
-      if (sessionStarts.length > 0) {
-        // Batch fetch all parent events for these sessions
-        const { data: parentEvents } = await supabase
+      if (eventDates.length > 0) {
+        const dateFrom = eventDates[0];
+        const dateTo   = eventDates[eventDates.length - 1];
+
+        // Fetch parent events WITHOUT nested attrs (avoids large JOIN)
+        const { data: parentEventsRaw } = await supabase
           .from('events')
-          .select('id, user_id, category_id, session_start, chain_key, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
+          .select('id, user_id, category_id, session_start, chain_key')
           .in('category_id', [...parentCatIds])
-          .in('session_start', sessionStarts);
+          .gte('event_date', dateFrom)
+          .lte('event_date', dateTo);
+
+        // Load parent event_attributes separately in chunks
+        const parentIds = (parentEventsRaw ?? []).map((pe: Record<string, unknown>) => pe.id as string);
+        const parentAttrsMap = await loadAttrsForEvents(parentIds);
+
+        // Attach attrs to parent events
+        const parentEvents = (parentEventsRaw ?? []).map((pe: Record<string, unknown>) => ({
+          ...pe,
+          event_attributes: parentAttrsMap.get(pe.id as string) ?? [],
+        }));
 
         if (parentEvents && parentEvents.length > 0) {
           // Index parent events by (user_id + chain_key + session_start)

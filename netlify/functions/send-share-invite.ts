@@ -59,9 +59,9 @@ export const handler = async (event: {
 
     const email = granteeEmail.toLowerCase().trim();
 
-    // Insert share_invites BEFORE inviteUserByEmail to avoid race with DB trigger chain:
-    // inviteUserByEmail → auth.users INSERT → handle_new_user → profiles INSERT → handle_pending_invites → data_shares INSERT
-    const { error: inviteInsertErr } = await supabaseAdmin
+    // Insert share_invites BEFORE generateLink to avoid race with DB trigger chain:
+    // auth.users INSERT → handle_new_user → profiles INSERT → handle_pending_invites → data_shares INSERT
+    const { data: insertedInvite, error: inviteInsertErr } = await supabaseAdmin
       .from('share_invites')
       .insert({
         owner_id: callerUser.id,
@@ -70,36 +70,71 @@ export const handler = async (event: {
         target_id: areaId,
         permission,
         status: 'pending',
-      });
+      })
+      .select('id')
+      .single();
 
-    // 23505 = duplicate key — pending invite already exists, still send email
-    if (inviteInsertErr && inviteInsertErr.code !== '23505') {
+    // 23505 = duplicate key — pending invite already exists, fetch its ID
+    let inviteId: string | null = null;
+    if (inviteInsertErr?.code === '23505') {
+      const { data: existing } = await supabaseAdmin
+        .from('share_invites')
+        .select('id')
+        .eq('owner_id', callerUser.id)
+        .eq('grantee_email', email)
+        .eq('status', 'pending')
+        .maybeSingle();
+      inviteId = (existing as { id?: string } | null)?.id ?? null;
+    } else if (inviteInsertErr) {
       throw inviteInsertErr;
+    } else {
+      inviteId = (insertedInvite as { id?: string } | null)?.id ?? null;
     }
 
-    // Send Supabase invite email (creates user in auth.users if not exists)
-    const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: redirectTo || `${process.env.URL || ''}/login`,
-      data: {
-        invited_by: callerUser.email ?? '',
-        area_name: areaName ?? '',
+    // Generate invite link via admin API (no email rate limits, works regardless of SMTP config).
+    // The returned action_link is equivalent to the email link — AuthPage #type=invite handles it.
+    const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'invite',
+      email,
+      options: {
+        redirectTo: redirectTo || `${process.env.URL || ''}/login`,
+        data: {
+          invited_by: callerUser.email ?? '',
+          area_name: areaName ?? '',
+        },
       },
     });
 
-    if (inviteErr) {
-      // User already has a confirmed account — shouldn't normally reach here
-      // (client checks profiles first), but handle gracefully
-      if (inviteErr.message?.toLowerCase().includes('already been registered')) {
+    if (linkErr) {
+      const msg = linkErr.message?.toLowerCase() ?? '';
+      if (msg.includes('already been registered') || msg.includes('email already confirmed')) {
         return {
           statusCode: 200,
           headers: corsHeaders,
           body: JSON.stringify({ already_registered: true }),
         };
       }
-      throw inviteErr;
+      throw linkErr;
     }
 
-    return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true }) };
+    const actionLink = linkData?.properties?.action_link ?? null;
+
+    // Save action_link to DB so /invite/:id redirect can look it up
+    if (inviteId && actionLink) {
+      await supabaseAdmin
+        .from('share_invites')
+        .update({ action_link: actionLink })
+        .eq('id', inviteId);
+    }
+
+    // Return clean URL on our domain instead of raw Supabase verify URL
+    const baseUrl = process.env.URL || 'http://localhost:8888';
+    const cleanInviteUrl = inviteId ? `${baseUrl}/invite/${inviteId}` : actionLink;
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ success: true, invite_link: cleanInviteUrl }),
+    };
   } catch (err) {
     console.error('send-share-invite error:', err);
     return {

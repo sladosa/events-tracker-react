@@ -1,6 +1,6 @@
 @echo off
 REM Usage: Tools\run.bat <path\to\script.py> [args...]
-REM   Called from the Data_preparation root, e.g.:
+REM   Called from the data-prep_tools root, e.g.:
 REM     Tools\run.bat Health\make_health_structure.py
 REM     Tools\run.bat Financije\make_import.py input.xlsx
 

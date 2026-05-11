@@ -33,7 +33,7 @@ export interface CachedActivityData {
   parentAttrValues: Map<string, { value: string | number | boolean | null; dataType: string }>;
   leafCategoryId: UUID;
   categoryChain: { id: UUID; name: string }[];
-  attributesByCategory: Map<string, { id: UUID; name: string; data_type: string }[]>;
+  attributesByCategory: Map<string, { id: UUID; name: string; data_type: string; unit: string | null; description: string | null }[]>;
 }
 
 // ---- Internal DB types ----
@@ -146,7 +146,7 @@ export function invalidateCacheKey(key: string): void {
 async function _buildCategoryChain(leafCatId: UUID): Promise<{
   chain: { id: UUID; name: string }[];
   path: string[];
-  attributesByCategory: Map<string, { id: UUID; name: string; data_type: string }[]>;
+  attributesByCategory: Map<string, { id: UUID; name: string; data_type: string; unit: string | null; description: string | null }[]>;
 }> {
   // Fetch all categories in one query, walk up from leaf
   const { data: allCats } = await supabase
@@ -180,16 +180,16 @@ async function _buildCategoryChain(leafCatId: UUID): Promise<{
   const chainIds = chain.map(c => c.id);
   const { data: attrDefs } = await supabase
     .from('attribute_definitions')
-    .select('id, name, data_type, category_id')
+    .select('id, name, data_type, unit, description, category_id')
     .in('category_id', chainIds)
     .order('sort_order', { ascending: true }) as {
-      data: { id: string; name: string; data_type: string; category_id: string }[] | null;
+      data: { id: string; name: string; data_type: string; unit: string | null; description: string | null; category_id: string }[] | null;
     };
 
-  const attributesByCategory = new Map<string, { id: UUID; name: string; data_type: string }[]>();
+  const attributesByCategory = new Map<string, { id: UUID; name: string; data_type: string; unit: string | null; description: string | null }[]>();
   for (const attr of attrDefs ?? []) {
     const existing = attributesByCategory.get(attr.category_id) ?? [];
-    existing.push({ id: attr.id as UUID, name: attr.name, data_type: attr.data_type });
+    existing.push({ id: attr.id as UUID, name: attr.name, data_type: attr.data_type, unit: attr.unit ?? null, description: attr.description ?? null });
     attributesByCategory.set(attr.category_id, existing);
   }
 

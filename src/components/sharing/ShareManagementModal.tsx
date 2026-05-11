@@ -18,6 +18,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/cn';
+import { supabase } from '@/lib/supabaseClient';
 import { useDataShares } from '@/hooks/useDataShares';
 import type { UUID, DataShareWithProfile, ShareInvite, SharePermission } from '@/types/database';
 
@@ -45,8 +46,29 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
   const [revokingId, setRevokingId] = useState<UUID | null>(null);
   const [cancellingId, setCancellingId] = useState<UUID | null>(null);
   const [updatingPermId, setUpdatingPermId] = useState<UUID | null>(null);
+  const [gettingLinkForId, setGettingLinkForId] = useState<UUID | null>(null);
+  const [messageBox, setMessageBox] = useState<{ toEmail: string; body: string } | null>(null);
+  const [emailCopied, setEmailCopied] = useState(false);
+  const [subjectCopied, setSubjectCopied] = useState(false);
+  const [messageCopied, setMessageCopied] = useState(false);
+  const INVITE_SUBJECT = 'Invite to Events Tracker';
+  const [callerInfo, setCallerInfo] = useState<{ email: string; name: string } | null>(null);
   // Help panel: collapsed on mobile by default (expanded via ❓ toggle); always visible on desktop via CSS
   const [helpOpen, setHelpOpen] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, display_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      const email = (profile as { email?: string } | null)?.email ?? user.email ?? '';
+      const displayName = (profile as { display_name?: string | null } | null)?.display_name;
+      setCallerInfo({ email, name: displayName ?? email.split('@')[0] });
+    });
+  }, []);
 
   // --------------------------------------------------
   // Refresh both shares + pending invites
@@ -68,6 +90,21 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
   // Handlers
   // --------------------------------------------------
 
+  const buildMessage = (toEmail: string, inviteUrl: string | null): { toEmail: string; body: string } => {
+    const name = callerInfo?.name ?? 'Someone';
+    const email = callerInfo?.email ?? '';
+    if (inviteUrl) {
+      return {
+        toEmail,
+        body: `${name} (${email}) has shared the "${areaName}" area with you in Events Tracker.\n\nSet your password and access the app:\n${inviteUrl}`,
+      };
+    }
+    return {
+      toEmail,
+      body: `${name} (${email}) has shared the "${areaName}" area with you in Events Tracker.\n\nYou can access it now — just sign in at:\n${window.location.origin}`,
+    };
+  };
+
   const handleInvite = async () => {
     const email = inviteEmail.trim();
     if (!email) return;
@@ -77,13 +114,24 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
     if (result.error) {
       toast.error(result.error);
     } else if (result.share) {
-      toast.success(`Access granted to ${email}`);
       setInviteEmail('');
+      setMessageBox(buildMessage(email, null));
       await refresh();
     } else if (result.invite) {
-      toast.success(`Invite sent to ${email} (pending registration)`);
       setInviteEmail('');
+      setMessageBox(buildMessage(email, result.invite_link ?? null));
       await refresh();
+    }
+  };
+
+  const handleGetLinkForInvite = async (invite: ShareInvite) => {
+    setGettingLinkForId(invite.id);
+    const result = await createShare(areaId, invite.grantee_email, invite.permission, areaName);
+    setGettingLinkForId(null);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      setMessageBox(buildMessage(invite.grantee_email, result.invite_link ?? null));
     }
   };
 
@@ -229,6 +277,13 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
                       {invite.permission}
                     </span>
                     <button
+                      disabled={gettingLinkForId === invite.id}
+                      onClick={() => handleGetLinkForInvite(invite)}
+                      className="text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md transition-colors disabled:opacity-50 flex-shrink-0"
+                    >
+                      {gettingLinkForId === invite.id ? '…' : 'Copy link'}
+                    </button>
+                    <button
                       disabled={cancellingId === invite.id}
                       onClick={() => handleCancel(invite)}
                       className="text-xs px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors disabled:opacity-50 flex-shrink-0"
@@ -272,6 +327,71 @@ export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagem
               </button>
             </div>
           </div>
+
+          {/* ── Message box — shown after invite/share; copy to send via any channel ── */}
+          {messageBox && (
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              {/* TO row */}
+              <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center gap-3">
+                <span className="text-xs font-semibold text-gray-400 w-10 flex-shrink-0">TO</span>
+                <span className="flex-1 text-sm text-gray-800 font-medium truncate">{messageBox.toEmail}</span>
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(messageBox.toEmail);
+                    setEmailCopied(true);
+                    setTimeout(() => setEmailCopied(false), 2000);
+                  }}
+                  className="text-xs px-2.5 py-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-md transition-colors flex-shrink-0"
+                >
+                  {emailCopied ? '✓' : 'Copy'}
+                </button>
+              </div>
+              {/* Subject row */}
+              <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center gap-3">
+                <span className="text-xs font-semibold text-gray-400 w-10 flex-shrink-0">SUBJ</span>
+                <span className="flex-1 text-sm text-gray-700 truncate">{INVITE_SUBJECT}</span>
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(INVITE_SUBJECT);
+                    setSubjectCopied(true);
+                    setTimeout(() => setSubjectCopied(false), 2000);
+                  }}
+                  className="text-xs px-2.5 py-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-md transition-colors flex-shrink-0"
+                >
+                  {subjectCopied ? '✓' : 'Copy'}
+                </button>
+              </div>
+              {/* Body */}
+              <div className="px-4 py-3 bg-white">
+                <textarea
+                  readOnly
+                  value={messageBox.body}
+                  rows={5}
+                  className="w-full text-sm text-gray-700 bg-transparent border-0 resize-none focus:outline-none leading-relaxed"
+                  onFocus={e => e.target.select()}
+                />
+              </div>
+              {/* Actions */}
+              <div className="bg-gray-50 border-t border-gray-200 px-4 py-2.5 flex items-center justify-between">
+                <button
+                  onClick={() => { setMessageBox(null); setEmailCopied(false); setSubjectCopied(false); setMessageCopied(false); }}
+                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(messageBox.body);
+                    setMessageCopied(true);
+                    setTimeout(() => setMessageCopied(false), 2000);
+                  }}
+                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  {messageCopied ? '✓ Copied!' : 'Copy message'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ── Help text — always visible on desktop, toggle on mobile ── */}
           <div className="border-t border-gray-100 pt-3">

@@ -58,6 +58,8 @@ interface StructureTableViewProps {
   refreshKey?: number;
   /** Owner only: open Share Management modal for an area node (Faza 7) */
   onManageAccess?: (areaId: string, areaName: string) => void;
+  /** Grantee: open Leave Area modal */
+  onLeaveArea?: (areaId: string, areaName: string, permission: 'read' | 'write') => void;
   /** Mine / All / Templates — controlled from parent (StructureTabContent) */
   nodeFilter: NodeFilter;
 }
@@ -105,7 +107,7 @@ function LoadingSkeleton() {
 // Main component
 // --------------------------------------------------------
 
-export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nodeFilter }: StructureTableViewProps) {
+export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onLeaveArea, nodeFilter }: StructureTableViewProps) {
   const t = THEME.structure;
   const { filter, reset: resetFilter, sharedContext } = useFilter();
   const { nodes, loading, error, refetch } = useStructureData();
@@ -132,14 +134,20 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
   // ---- Add Area panel state ----
   const [showAddArea, setShowAddArea] = useState(false);
 
-  // ---- Area collapse state ----
-  const [collapsedAreaIds, setCollapsedAreaIds] = useState<Set<string>>(new Set());
+  // ---- Area collapse state (persisted across refreshes) ----
+  const [collapsedAreaIds, setCollapsedAreaIds] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem('ui:collapsedAreas');
+      return s ? new Set<string>(JSON.parse(s) as string[]) : new Set<string>();
+    } catch { return new Set<string>(); }
+  });
 
   const toggleCollapseArea = useCallback((areaId: string) => {
     setCollapsedAreaIds(prev => {
       const next = new Set(prev);
       if (next.has(areaId)) next.delete(areaId);
       else next.add(areaId);
+      localStorage.setItem('ui:collapsedAreas', JSON.stringify([...next]));
       return next;
     });
   }, []);
@@ -524,6 +532,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
                 sharedWith={node.nodeType === 'area' ? areaSharesMap.get(node.areaId) : undefined}
                 granteeInfo={node.nodeType === 'area' ? granteeAreaInfoMap.get(node.areaId) : undefined}
                 onManageAccess={onManageAccess ? (n) => onManageAccess(n.id, n.name) : undefined}
+                onLeaveArea={onLeaveArea}
                 isCollapsed={node.nodeType === 'area' ? collapsedAreaIds.has(node.id) : undefined}
                 onToggleCollapse={node.nodeType === 'area' ? () => toggleCollapseArea(node.id) : undefined}
                 hiddenCount={node.nodeType === 'area' ? (areaChildCounts.get(node.id) ?? 0) : undefined}

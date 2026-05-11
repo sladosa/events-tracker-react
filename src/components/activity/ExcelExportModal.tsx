@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { saveAs } from 'file-saver';
 import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
-import { loadExportData, loadStructureNodes, loadSharedEmailsByArea } from '@/lib/excelDataLoader';
+import { loadExportData, loadStructureNodes, loadSharedEmailsByArea, loadCategoriesForExport, resolveExportCategoryIds, countEventsForExport } from '@/lib/excelDataLoader';
 import { createEventsExcel, mergeSessionEvents } from '@/lib/excelExport';
 import { timestampSuffix, type FilterSheetInfo } from '@/lib/excelUtils';
 import type { ExportFilters } from '@/lib/excelTypes';
@@ -54,13 +54,21 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
-        const bundle = await loadExportData(user.id, filters, 0, 1);
+        // Lightweight count — no event data loading, just 3 fast queries
+        const categoriesDict = await loadCategoriesForExport(user.id);
+        const categoryIds    = await resolveExportCategoryIds(user.id, filters, categoriesDict);
+        const total          = await countEventsForExport(user.id, filters, categoryIds);
+
         if (!cancelled) {
-          setTotalCount(bundle.totalCount);
-          setFileCount(Math.max(1, Math.ceil(bundle.totalCount / batchSize)));
+          setTotalCount(total);
+          setFileCount(Math.max(1, Math.ceil(total / batchSize)));
         }
       } catch (err) {
-        if (!cancelled) setError(String(err));
+        const msg = err instanceof Error ? err.message
+          : (typeof err === 'object' && err !== null && 'message' in err)
+            ? String((err as { message: unknown }).message)
+            : JSON.stringify(err);
+        if (!cancelled) setError(msg);
       } finally {
         if (!cancelled) setLoadingCount(false);
       }
@@ -139,7 +147,11 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       });
       saveAs(blob, filename);
     } catch (err) {
-      setError(`Export failed: ${String(err)}`);
+      const msg = err instanceof Error ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message: unknown }).message)
+          : JSON.stringify(err);
+      setError(`Export failed: ${msg}`);
     } finally {
       setCurrentFile(0);
     }

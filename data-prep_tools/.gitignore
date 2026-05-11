@@ -1,0 +1,32 @@
+# Python virtual environment — recreate with: Tools\setup.bat
+venv/
+
+# Data files — personal/private, regenerable from source
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Context docs with personal notes (kept in Claude-temp_R only)
+*SESSION_CONTEXT.md
+*IMPORT_PROCES.md
+*PRIJEDLOG.md
+
+# ── What IS tracked in data-prep_tools/ ────────────────────────
+# *.py scripts — tools for data preparation
+# geocode_cache.json — Nominatim reverse geocode cache (555 zones, took ~10 min to build)
+# MIGRATION_STATE.md — migration status tracking
+# requirements.txt — Python dependencies
+#
+# ── Credentials ─────────────────────────────────────────────────
+# Scripts read .env.local from repo root (gitignored).
+# No credentials in this folder.
+#
+# ── Data location ───────────────────────────────────────────────
+# Raw data (Garmin JSON, DataFromGarmin/): data-prep_data/ (gitignored via root .gitignore)
+# Generated import files: data-prep_data/*.xlsx (gitignored)

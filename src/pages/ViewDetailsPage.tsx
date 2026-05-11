@@ -68,18 +68,31 @@ function AttributeValueDisplay({
   value,
   dataType,
   name,
+  unit,
+  description,
 }: {
   value: string | number | boolean | null;
   dataType: string;
   name: string;
+  unit?: string | null;
+  description?: string | null;
 }) {
   const t = THEME.view;
+
+  const nameCell = (
+    <span className="text-sm text-gray-600 flex-1 min-w-0 pr-2">
+      {name}
+      {description && (
+        <span className="text-xs text-gray-400 font-normal ml-1">({description})</span>
+      )}
+    </span>
+  );
 
   if (value === null || value === undefined || value === '') {
     return (
       <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-        <span className="text-sm text-gray-500">{name}</span>
-        <span className="text-sm text-gray-300 italic">—</span>
+        {nameCell}
+        <span className="text-sm text-gray-300 italic shrink-0">—</span>
       </div>
     );
   }
@@ -88,12 +101,12 @@ function AttributeValueDisplay({
     const href = value.startsWith('http://') || value.startsWith('https://') ? value : `https://${value}`;
     return (
       <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-        <span className="text-sm text-gray-600">{name}</span>
+        {nameCell}
         <a
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className={cn('text-sm font-medium underline truncate max-w-[60%]', t.lightText)}
+          className={cn('text-sm font-medium underline truncate max-w-[60%] shrink-0', t.lightText)}
         >
           {value}
         </a>
@@ -116,8 +129,13 @@ function AttributeValueDisplay({
 
   return (
     <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-      <span className="text-sm text-gray-600">{name}</span>
-      <span className={cn('text-sm font-medium', t.lightText)}>{displayValue}</span>
+      {nameCell}
+      <span className={cn('text-sm font-medium shrink-0', t.lightText)}>
+        {displayValue}
+        {unit && dataType === 'number' && (
+          <span className="text-gray-400 font-normal ml-1">{unit}</span>
+        )}
+      </span>
     </div>
   );
 }
@@ -132,7 +150,7 @@ function ReadOnlyAttributeChain({
   attributeValues,
 }: {
   categoryChain: { id: string; name: string }[];
-  attributesByCategory: Map<string, { id: string; name: string; data_type: string }[]>;
+  attributesByCategory: Map<string, { id: string; name: string; data_type: string; unit: string | null; description: string | null }[]>;
   attributeValues: Map<string, { value: string | number | boolean | null; dataType: string }>;
 }) {
   const t = THEME.view;
@@ -237,6 +255,8 @@ function ReadOnlyAttributeChain({
                         value={attributeValues.get(attr.id)?.value ?? null}
                         dataType={attr.data_type}
                         name={attr.name}
+                        unit={attr.unit}
+                        description={attr.description}
                       />
                     ))}
                   </div>
@@ -303,7 +323,7 @@ export function ViewDetailsPage() {
   const [parentAttrValues, setParentAttrValues] = useState<Map<string, { value: string | number | boolean | null; dataType: string }>>(new Map());
   // Cached from activityViewCache — no hooks needed, avoids re-fetching on every Prev/Next
   const [categoryChain, setCategoryChain] = useState<{ id: string; name: string }[]>([]);
-  const [attributesByCategory, setAttributesByCategory] = useState<Map<string, { id: string; name: string; data_type: string }[]>>(new Map());
+  const [attributesByCategory, setAttributesByCategory] = useState<Map<string, { id: string; name: string; data_type: string; unit: string | null; description: string | null }[]>>(new Map());
 
   useEffect(() => {
     if (!sessionStart) {

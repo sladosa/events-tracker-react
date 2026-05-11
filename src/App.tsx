@@ -13,6 +13,7 @@ import { AddActivityPage } from '@/pages/AddActivityPage'
 import { EditActivityPage } from '@/pages/EditActivityPage'
 import { ViewDetailsPage } from '@/pages/ViewDetailsPage'
 import { DebugPage } from '@/pages/DebugPage'
+import { InviteRedirectPage } from '@/pages/InviteRedirectPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const location = useLocation()
@@ -98,6 +99,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/app" replace />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/invite/:id" element={<InviteRedirectPage />} />
         <Route path="/debug" element={<DebugPage />} />
 
         {/* All protected app routes share one FilterProvider + HelpProvider */}
