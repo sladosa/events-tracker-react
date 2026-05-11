@@ -46,6 +46,8 @@ interface CategoryChainRowProps {
   granteeInfo?: { ownerName: string; permission: string };
   /** True when this area/category is owned by the current user (false for shared areas in All view) */
   isOwnedArea?: boolean;
+  /** Grantee: leave shared area (area nodes only) */
+  onLeaveArea?: (areaId: string, areaName: string, permission: 'read' | 'write') => void;
   /** Area collapse/expand — only used when nodeType === 'area' */
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -94,6 +96,7 @@ interface ActionsMenuProps {
   sharedContext?: SharedContext | null;
   onManageAccess?: (node: StructureNode) => void;
   onRequestAccess?: () => void;
+  onLeaveArea?: (areaId: string, areaName: string, permission: 'read' | 'write') => void;
   isOwnedArea?: boolean;
   granteeInfo?: { ownerName: string; permission: string };
 }
@@ -114,6 +117,7 @@ function ActionsMenu({
   sharedContext,
   onManageAccess,
   onRequestAccess,
+  onLeaveArea,
   isOwnedArea = true,
   granteeInfo,
 }: ActionsMenuProps) {
@@ -187,13 +191,36 @@ function ActionsMenu({
                 <span>Request write access</span>
               </button>
             )}
+            {node.nodeType === 'area' && (
+              <button
+                onClick={() => {
+                  onLeaveArea?.(node.areaId, node.name, sharedContext.permission as 'read' | 'write');
+                  onClose();
+                }}
+                className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              >
+                <span>🚪</span>
+                <span>Leave this area</span>
+              </button>
+            )}
           </div>
         ) : !isOwnedArea ? (
           // ── Non-owned area in "All" view (sharedContext not set) ──────
-          // Show owner info only — no edit actions allowed
           granteeInfo ? (
             <div className="border-t border-gray-100 mt-1 pt-1">
               {infoRow('👤', `Owner: ${granteeInfo.ownerName}`)}
+              {node.nodeType === 'area' && (
+                <button
+                  onClick={() => {
+                    onLeaveArea?.(node.areaId, node.name, granteeInfo.permission as 'read' | 'write');
+                    onClose();
+                  }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                >
+                  <span>🚪</span>
+                  <span>Leave this area</span>
+                </button>
+              )}
             </div>
           ) : null
         ) : (
@@ -273,6 +300,7 @@ export function CategoryChainRow({
   sharedWith,
   granteeInfo,
   onManageAccess,
+  onLeaveArea,
   isCollapsed = false,
   onToggleCollapse,
   hiddenCount,
@@ -454,6 +482,7 @@ export function CategoryChainRow({
               sharedContext={sharedContext}
               onManageAccess={onManageAccess}
               onRequestAccess={() => setShowRequestModal(true)}
+              onLeaveArea={onLeaveArea}
               isOwnedArea={isOwnedArea}
               granteeInfo={granteeInfo}
             />

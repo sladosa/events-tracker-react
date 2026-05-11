@@ -58,6 +58,8 @@ interface StructureTableViewProps {
   refreshKey?: number;
   /** Owner only: open Share Management modal for an area node (Faza 7) */
   onManageAccess?: (areaId: string, areaName: string) => void;
+  /** Grantee: open Leave Area modal */
+  onLeaveArea?: (areaId: string, areaName: string, permission: 'read' | 'write') => void;
   /** Mine / All / Templates — controlled from parent (StructureTabContent) */
   nodeFilter: NodeFilter;
 }
@@ -105,7 +107,7 @@ function LoadingSkeleton() {
 // Main component
 // --------------------------------------------------------
 
-export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nodeFilter }: StructureTableViewProps) {
+export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onLeaveArea, nodeFilter }: StructureTableViewProps) {
   const t = THEME.structure;
   const { filter, reset: resetFilter, sharedContext } = useFilter();
   const { nodes, loading, error, refetch } = useStructureData();
@@ -530,6 +532,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, nod
                 sharedWith={node.nodeType === 'area' ? areaSharesMap.get(node.areaId) : undefined}
                 granteeInfo={node.nodeType === 'area' ? granteeAreaInfoMap.get(node.areaId) : undefined}
                 onManageAccess={onManageAccess ? (n) => onManageAccess(n.id, n.name) : undefined}
+                onLeaveArea={onLeaveArea}
                 isCollapsed={node.nodeType === 'area' ? collapsedAreaIds.has(node.id) : undefined}
                 onToggleCollapse={node.nodeType === 'area' ? () => toggleCollapseArea(node.id) : undefined}
                 hiddenCount={node.nodeType === 'area' ? (areaChildCounts.get(node.id) ?? 0) : undefined}
