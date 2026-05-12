@@ -278,6 +278,8 @@ export async function detachAreaWithData(
       progress('moving_events', `Moving ${granteeEvents.length} events to your area…`);
 
       // Group by (old_category_id : old_chain_key) pair → batch UPDATE
+      // Leaf events have chain_key = null (not set in AddActivityPage).
+      // Stringify null as "null" and handle it explicitly below.
       const pairMap = new Map<string, string[]>();
       for (const ev of granteeEvents) {
         const key = `${ev.category_id}:${ev.chain_key}`;
@@ -289,10 +291,20 @@ export async function detachAreaWithData(
       for (const [key, evIds] of pairMap) {
         const sep = key.indexOf(':');
         const oldCatId = key.slice(0, sep);
-        const oldChainKey = key.slice(sep + 1);
+        const oldChainKeyStr = key.slice(sep + 1);
+
         const newCatId = catIdMap.get(oldCatId);
-        const newChainKey = catIdMap.get(oldChainKey);
-        if (!newCatId || !newChainKey) continue;
+        if (!newCatId) continue;
+
+        // Leaf events have chain_key = null — keep it null, only remap category_id
+        let newChainKey: string | null;
+        if (oldChainKeyStr === 'null' || oldChainKeyStr === 'undefined') {
+          newChainKey = null;
+        } else {
+          const mapped = catIdMap.get(oldChainKeyStr);
+          if (mapped === undefined) continue;
+          newChainKey = mapped;
+        }
 
         for (let i = 0; i < evIds.length; i += CHUNK) {
           const { error: evUpdateErr } = await supabase

@@ -277,14 +277,26 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   useEffect(() => {
     let cancelled = false;
     const resolve = async () => {
-      if (!filter.areaId) {
-        setSharedContext(null);
-        setAreaHasActiveShares(false);
-        setSelectedArea(null);
-        return;
-      }
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled) return;
+
+      if (!filter.areaId) {
+        setSharedContext(null);
+        setSelectedArea(null);
+        // All Areas view — show User column if owner has any active share
+        if (user?.id) {
+          const { data } = await supabase
+            .from('data_shares')
+            .select('id')
+            .eq('owner_id', user.id)
+            .eq('share_type', 'area')
+            .limit(1);
+          if (!cancelled) setAreaHasActiveShares((data ?? []).length > 0);
+        } else {
+          if (!cancelled) setAreaHasActiveShares(false);
+        }
+        return;
+      }
 
       // Fetch shared context and area data in parallel
       const [ctx, areaResult] = await Promise.all([

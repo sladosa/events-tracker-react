@@ -231,7 +231,7 @@ Faze i status:
 
 **Open bugs (main):**
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
-- **UX-2:** Structure tablica ne prikazuje sharing indikatore po redu u All Areas pogledu — backlog
+- ✅ **UX-2** (S74): Activities "All Areas" — User kolona prikazuje se kad owner ima ijedan aktivan share (ranije samo kad je specifična area odabrana); fix u `FilterContext.tsx`: null-areaId branch sada queryja `data_shares` za bilo koji aktivan share umjesto immediate `false`
 - **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
@@ -240,6 +240,7 @@ Faze i status:
 - ✅ **UX-Unit-1** (S73): View Activity — `unit` dodan kao sivi suffix uz numeričke vrijednosti (`75.4 min`, `4.86 km`); `activityViewCache.ts` fetchuje `unit` iz `attribute_definitions`; prikazuje se samo za `data_type='number'`.
 - ✅ **View Activity description** (S73): `description` atributa prikazan u zagradi uz naziv (`Zeljezo (Ref: 9–30 μmol/L)`); fetchuje se u `activityViewCache.ts`.
 - ✅ **Leave shared area** (S73): grantee može se odvojiti od shared aree via ⋮ meni → "Leave this area"; write grantee s eventima dobiva modal s 2 opcije: "Detach with data" (kopira strukturu + batch-reassigna evente/attrs na nove UUID-ove) ili "Leave without data"; `sql/019_leave_area.sql` proširuje `data_shares_delete` policy; `src/lib/leaveArea.ts` + `src/components/sharing/LeaveAreaModal.tsx`.
+- ✅ S74 bugfix: `detachAreaWithData` — leaf event imaju `chain_key = NULL` (AddActivityPage ne upisuje chain_key na leaf INSERT); pairMap key bio `"catId:null"` → `catIdMap.get("null") = undefined` → silent skip leaf eventa; fix u `leaveArea.ts`: eksplicitni `'null'` string check, leaf event dobiva `category_id` update, `chain_key` ostaje null.
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 - ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
 - ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
@@ -284,10 +285,12 @@ Faze i status:
 
 ### Backlog — sljedeći koraci (prioritetni redoslijed)
 
-**Prioriteti za S74 (određeno na kraju S73):**
-1. **SQL deploy**: `018_invite_action_link.sql` + `019_leave_area.sql` pokrenuti na PROD
+**Prioriteti za S75 (određeno na kraju S74):**
+1. **Orphan events feature** — eventi u owner-ovoj areи od korisnika koji su otišli bez podataka; amber ring + ⚠ na avataru, tooltip, ⋮ menu: "Re-invite", "Claim ownership" (UPDATE user_id → owner), "Delete events"; detection: `user_id ≠ owner_id` AND nema `data_shares` za taj `(grantee_id, area_id)` par; `useActivities` dodaje `orphanedUserIds` set
 2. **Garmin/Sleep importer** — `Health > Sleep` area; skripte u `data-prep_tools/Tools/`; `MIGRATION_STATE.md` ima plan
 3. **Financije reorganizacija** — srediti strukturu prije pusha na main (Koka feedback)
+
+**Napomena S74:** test-branch ostaje odvojen od main dok se backlog izmjene ne završe.
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
