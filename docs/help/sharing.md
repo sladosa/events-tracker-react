@@ -23,6 +23,13 @@
 - X gumb za opoziv pristupa
 
 ## Invite flow
-- Invited korisnik ne dobiva email (za sada) — vlasnik ih obavijesti
-- Invite se prikazuje u "Pending" sekciji dok se ne prihvati
+- Unesi email → klikni Invite → pojavi se message box s tekstom poruke za kopiranje
+- Kopiraj link ili cijelu poruku i pošalji korisniku
+- Invite se prikazuje u "Pending" sekciji dok korisnik ne klikne link i postavi password
 - Korisnik vidi shared area čim se ulogira
+
+## Kad grantee napusti area ("Leave without data")
+Granteejev ⋮ menu na area banneru → "Leave this area" → "Leave without data"
+Efekt: data_shares se briše, eventi ostaju u owner-ovim kategorijama kao "orphan eventi".
+
+**Owner vidi:** amber banner u Activities tabu — vidi sekciju "Orphan eventi" u Activities helpu.
