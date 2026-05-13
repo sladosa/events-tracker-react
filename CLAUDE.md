@@ -241,6 +241,7 @@ Faze i status:
 - ✅ **View Activity description** (S73): `description` atributa prikazan u zagradi uz naziv (`Zeljezo (Ref: 9–30 μmol/L)`); fetchuje se u `activityViewCache.ts`.
 - ✅ **Leave shared area** (S73): grantee može se odvojiti od shared aree via ⋮ meni → "Leave this area"; write grantee s eventima dobiva modal s 2 opcije: "Detach with data" (kopira strukturu + batch-reassigna evente/attrs na nove UUID-ove) ili "Leave without data"; `sql/019_leave_area.sql` proširuje `data_shares_delete` policy; `src/lib/leaveArea.ts` + `src/components/sharing/LeaveAreaModal.tsx`.
 - ✅ S74 bugfix: `detachAreaWithData` — leaf event imaju `chain_key = NULL` (AddActivityPage ne upisuje chain_key na leaf INSERT); pairMap key bio `"catId:null"` → `catIdMap.get("null") = undefined` → silent skip leaf eventa; fix u `leaveArea.ts`: eksplicitni `'null'` string check, leaf event dobiva `category_id` update, `chain_key` ostaje null.
+- ✅ S75: Orphan events feature — `useOrphanUsers.ts` hook (batch `data_shares` query → `orphanedUserIds`); amber `OrphanBanner` (View events / Manage gumbi); `OrphanManagementModal` (per-user: Re-invite → ShareManagementModal, Claim all → UPDATE user_id, Delete all → CASCADE delete); `filterOrphans` bool u FilterContext → ActivitiesTable chip + client-side filter; amber ring + ⚠ badge na avataru za orphan redove; ⋮ menu "Manage orphan events"; `area_id` dodan u `ActivityGroup`; `sql/020_orphan_rls.sql` — owner UPDATE/DELETE policy na tuđim eventima u vlastitim areasima.
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 - ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
 - ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
@@ -285,8 +286,8 @@ Faze i status:
 
 ### Backlog — sljedeći koraci (prioritetni redoslijed)
 
-**Prioriteti za S75 (određeno na kraju S74):**
-1. **Orphan events feature** — eventi u owner-ovoj areи od korisnika koji su otišli bez podataka; amber ring + ⚠ na avataru, tooltip, ⋮ menu: "Re-invite", "Claim ownership" (UPDATE user_id → owner), "Delete events"; detection: `user_id ≠ owner_id` AND nema `data_shares` za taj `(grantee_id, area_id)` par; `useActivities` dodaje `orphanedUserIds` set
+**Prioriteti za S76 (određeno na kraju S75):**
+1. ✅ **Orphan events feature** — IMPLEMENTIRANO S75; čeka SQL migration 020 na TEST+PROD i manualne testove T-S75-1..9
 2. **Garmin/Sleep importer** — `Health > Sleep` area; skripte u `data-prep_tools/Tools/`; `MIGRATION_STATE.md` ima plan
 3. **Financije reorganizacija** — srediti strukturu prije pusha na main (Koka feedback)
 

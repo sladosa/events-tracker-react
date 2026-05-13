@@ -113,6 +113,10 @@ export interface FilterContextType {
   // True when the selected area has disable_save_plus: true in its settings
   disableSavePlus: boolean;
 
+  // Orphan events filter — when true, ActivitiesTable shows only orphan rows
+  filterOrphans: boolean;
+  setFilterOrphans: (v: boolean) => void;
+
   // Computed
   hasActiveFilter: boolean;
   isFiltered: boolean;
@@ -159,6 +163,9 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   // === Shared context — null = owner ili nema filtera ===
   const [sharedContext, setSharedContext] = useState<SharedContext | null>(null);
   const [areaHasActiveShares, setAreaHasActiveShares] = useState(false);
+  // === Orphan filter ===
+  const [filterOrphans, setFilterOrphans] = useState(false);
+
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
   
   // === Restore tracking ===
@@ -668,6 +675,9 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     // Selected area
     selectedArea,
     disableSavePlus: selectedArea?.settings?.disable_save_plus === true,
+    // Orphan filter
+    filterOrphans,
+    setFilterOrphans,
     // Computed
     hasActiveFilter,
     isFiltered

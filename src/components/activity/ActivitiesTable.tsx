@@ -33,16 +33,23 @@ interface UserAvatarProps {
   userId: string;
   displayName: string;
   isOwn: boolean;
+  isOrphan?: boolean;
 }
 
-function UserAvatar({ userId, displayName, isOwn }: UserAvatarProps) {
+function UserAvatar({ userId, displayName, isOwn, isOrphan }: UserAvatarProps) {
   const color = hashAvatarColor(userId);
   const initials = getInitials(displayName);
   return (
-    <div className="flex items-center gap-1.5 min-w-0">
-      <div className={`w-6 h-6 rounded-full ${color} flex items-center justify-center flex-shrink-0`}>
+    <div
+      className="flex items-center gap-1.5 min-w-0"
+      title={isOrphan ? `${displayName} no longer has access to this area` : undefined}
+    >
+      <div className={`w-6 h-6 rounded-full ${color} flex items-center justify-center flex-shrink-0 ${isOrphan ? 'ring-2 ring-amber-400' : ''}`}>
         <span className="text-white text-[10px] font-bold">{initials}</span>
       </div>
+      {isOrphan && (
+        <span className="text-amber-500 text-xs leading-none flex-shrink-0">⚠</span>
+      )}
       {isOwn ? (
         <span className="text-xs text-indigo-600 font-medium bg-indigo-50 px-1.5 py-0.5 rounded">You</span>
       ) : (
@@ -59,9 +66,15 @@ interface ActivitiesTableProps {
   onDeleteActivity?: (sessionStart: string, categoryId: UUID) => Promise<void>;
   onExport?: () => void;
   onImport?: () => void;
+  orphanedUserIds?: Set<string>;
+  /** "userId:areaId" keys — area-level orphan check */
+  orphanedPairKeys?: Set<string>;
+  filterOrphans?: boolean;
+  onClearOrphanFilter?: () => void;
+  onManageOrphan?: () => void;
 }
 
-export function ActivitiesTable({ className = '', onEditActivity, onViewDetails, onDeleteActivity, onExport, onImport }: ActivitiesTableProps) {
+export function ActivitiesTable({ className = '', onEditActivity, onViewDetails, onDeleteActivity, onExport, onImport, orphanedPairKeys, filterOrphans, onClearOrphanFilter, onManageOrphan }: ActivitiesTableProps) {
   const { filter, sharedContext, areaHasActiveShares } = useFilter();
   const PAGE_SIZE = 20;
   const location = useLocation();
@@ -106,9 +119,14 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     pageSize: PAGE_SIZE
   });
 
+  // Apply orphan filter client-side — area-level: "userId:areaId" pair check
+  const displayedActivities = filterOrphans && orphanedPairKeys && orphanedPairKeys.size > 0
+    ? activities.filter(g => orphanedPairKeys.has(`${g.user_id}:${g.area_id}`))
+    : activities;
+
   // HLT fix: react to loading→false + activities present (ref.current is not reactive)
   const hasHighlightRow = highlightKey
-    ? activities.some(g => g.sessionKey === highlightKey)
+    ? displayedActivities.some(g => g.sessionKey === highlightKey)
     : false;
 
   useEffect(() => {
@@ -223,20 +241,35 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     );
   }
 
-  const loadedCount = activities.length;
+  const loadedCount = displayedActivities.length;
 
   return (
     <div className={className}>
       {/* Header with count + load more + Export/Import + bulk delete */}
       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <h3 className="font-medium text-gray-900">
             Activities
           </h3>
+          {/* Orphan filter chip */}
+          {filterOrphans && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 border border-amber-300 text-amber-800 text-xs font-medium rounded-full">
+              ⚠ Orphan events only
+              <button
+                onClick={onClearOrphanFilter}
+                className="ml-0.5 text-amber-600 hover:text-amber-900 leading-none"
+                title="Clear filter"
+              >
+                ×
+              </button>
+            </span>
+          )}
           <span className="text-sm text-gray-500">
-            {hasMore 
-              ? `${loadedCount} loaded, more available`
-              : `All ${loadedCount} loaded · ${totalCount} events`
+            {filterOrphans
+              ? `${loadedCount} orphan ${loadedCount === 1 ? 'activity' : 'activities'}`
+              : hasMore
+                ? `${loadedCount} loaded, more available`
+                : `All ${loadedCount} loaded · ${totalCount} events`
             }
           </span>
           {hasMore && (
@@ -335,7 +368,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {activities.map((group) => (
+            {displayedActivities.map((group) => (
               <ActivityRow
                 key={group.sessionKey}
                 group={group}
@@ -349,6 +382,8 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 showUserColumn={showUserColumn}
                 currentUserId={currentUserId}
                 canSelect={!sharedContext}
+                isOrphan={orphanedPairKeys?.has(`${group.user_id}:${group.area_id}`) ?? false}
+                onManageOrphan={onManageOrphan}
               />
             ))}
           </tbody>
@@ -376,9 +411,11 @@ interface ActivityRowProps {
   showUserColumn?: boolean;
   currentUserId?: string;
   canSelect?: boolean;
+  isOrphan?: boolean;
+  onManageOrphan?: () => void;
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId, canSelect = true }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId, canSelect = true, isOrphan = false, onManageOrphan }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -499,6 +536,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
               userId={group.user_id}
               displayName={group.user_display_name || group.user_id}
               isOwn={isOwnEvent}
+              isOrphan={isOrphan}
             />
           </td>
         )}
@@ -549,6 +587,18 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
                 >
                   👁️ View Details
                 </button>
+                {/* Orphan management — shown when user is orphaned */}
+                {isOrphan && onManageOrphan && (
+                  <>
+                    <hr className="my-1 border-gray-100" />
+                    <button
+                      onClick={() => { onManageOrphan(); setShowMenu(false); }}
+                      className="w-full px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50"
+                    >
+                      ⚠ Manage orphan events
+                    </button>
+                  </>
+                )}
                 {/* D4: Edit + Delete samo za vlastite evente */}
                 {isOwnEvent && (
                   <>

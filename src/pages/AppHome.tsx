@@ -27,6 +27,9 @@ import { LeaveAreaModal } from '@/components/sharing/LeaveAreaModal';
 import { HeaderAvatar, ProfileSettingsModal } from '@/components/sharing/ProfileSettingsModal';
 import { useHelp } from '@/context/HelpContext';
 import { useActivities } from '@/hooks/useActivities';
+import { useOrphanUsers } from '@/hooks/useOrphanUsers';
+import { OrphanBanner } from '@/components/activity/OrphanBanner';
+import { OrphanManagementModal } from '@/components/activity/OrphanManagementModal';
 import type { Category } from '@/types/database';
 import type { UUID } from '@/types';
 
@@ -121,11 +124,21 @@ function AppContent() {
   useEffect(() => { localStorage.setItem('ui:structureViewMode', structureViewMode); }, [structureViewMode]);
 
   // Share Management Modal state (Faza 7)
-  const [shareModalTarget, setShareModalTarget] = useState<{ areaId: UUID; areaName: string } | null>(null);
-  const openShareModal = (areaId: UUID, areaName: string) => setShareModalTarget({ areaId, areaName });
+  const [shareModalTarget, setShareModalTarget] = useState<{ areaId: UUID; areaName: string; initialInviteEmail?: string } | null>(null);
+  const openShareModal = (areaId: UUID, areaName: string, initialInviteEmail?: string) => setShareModalTarget({ areaId, areaName, initialInviteEmail });
 
   // Leave Area Modal state (S73)
   const [leaveAreaTarget, setLeaveAreaTarget] = useState<{ areaId: string; areaName: string; permission: 'read' | 'write' } | null>(null);
+
+  // Listen for open-share-modal events dispatched from ActivitiesView (orphan Re-invite flow)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { areaId, areaName, inviteEmail } = (e as CustomEvent<{ areaId: UUID; areaName: string; inviteEmail?: string }>).detail;
+      openShareModal(areaId, areaName, inviteEmail);
+    };
+    window.addEventListener('open-share-modal', handler);
+    return () => window.removeEventListener('open-share-modal', handler);
+  }, []);
   const openLeaveAreaModal = (areaId: string, areaName: string, permission: 'read' | 'write') =>
     setLeaveAreaTarget({ areaId, areaName, permission });
   
@@ -535,6 +548,7 @@ function AppContent() {
         <ShareManagementModal
           areaId={shareModalTarget.areaId}
           areaName={shareModalTarget.areaName}
+          initialInviteEmail={shareModalTarget.initialInviteEmail}
           onClose={() => setShareModalTarget(null)}
         />
       )}
@@ -691,14 +705,21 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess,
 
 function ActivitiesView() {
   const nav = useNavigate();
-  const { filter, fullPathDisplay, isLeafCategory, setDateRange } = useFilter();
+  const { filter, fullPathDisplay, isLeafCategory, setDateRange, filterOrphans, setFilterOrphans } = useFilter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showOrphanModal, setShowOrphanModal] = useState(false);
+
+  // Current user id — needed for orphan detection and claim/delete
+  const [currentUserId, setCurrentUserId] = useState('');
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? ''));
+  }, []);
 
   // Nav activities — no date filter, 500 items — passed to ViewDetailsPage via location.state
   // so Prev/Next uses a guaranteed-identical list (BUG-S45-1 fix, Opcija A).
-  const { activities: navActivities } = useActivities({
+  const { activities: navActivities, refresh: refreshNav } = useActivities({
     areaId: filter.areaId,
     categoryId: filter.categoryId,
     dateFrom: null,
@@ -706,6 +727,15 @@ function ActivitiesView() {
     sortOrder: filter.sortOrder,
     pageSize: 500,
   });
+
+  // Orphan detection — runs after navActivities loads (area-level detection)
+  const { orphanedUserIds, orphanedPairKeys, orphanUsers, orphanGroupCount } = useOrphanUsers(navActivities, currentUserId);
+
+  // Open share modal for Re-invite (lifted from AppContent; we need it here too)
+  // We communicate upward via a custom event so AppContent can open ShareManagementModal.
+  const dispatchOpenShareModal = (areaId: UUID, areaName: string, inviteEmail?: string) => {
+    window.dispatchEvent(new CustomEvent('open-share-modal', { detail: { areaId, areaName, inviteEmail } }));
+  };
 
   const handleEditActivity = (sessionStart: string | null, categoryId: UUID, eventId: UUID) => {
     if (sessionStart) {
@@ -816,14 +846,29 @@ function ActivitiesView() {
       {/* Shared area banner */}
       <SharedAreaBanner tab="activities" />
 
+      {/* Orphan banner — shown to owner when former grantees left events behind */}
+      {orphanedUserIds.size > 0 && !filterOrphans && (
+        <OrphanBanner
+          orphanUserCount={orphanedUserIds.size}
+          orphanGroupCount={orphanGroupCount}
+          onViewEvents={() => setFilterOrphans(true)}
+          onManage={() => setShowOrphanModal(true)}
+        />
+      )}
+
       {/* Activities Table */}
-      <ActivitiesTable 
+      <ActivitiesTable
         key={refreshKey}
         onEditActivity={handleEditActivity}
         onViewDetails={handleViewDetails}
         onDeleteActivity={handleDeleteActivity}
         onExport={() => setShowExport(true)}
         onImport={() => setShowImport(true)}
+        orphanedUserIds={orphanedUserIds}
+        orphanedPairKeys={orphanedPairKeys}
+        filterOrphans={filterOrphans}
+        onClearOrphanFilter={() => setFilterOrphans(false)}
+        onManageOrphan={() => setShowOrphanModal(true)}
       />
 
       {/* Export Modal */}
@@ -840,6 +885,22 @@ function ActivitiesView() {
             setShowImport(false);
             // UX-3: reset date filter to All Time so newly imported events are visible
             setDateRange(null, null);
+          }}
+        />
+      )}
+
+      {/* Orphan Management Modal */}
+      {showOrphanModal && (
+        <OrphanManagementModal
+          orphanUsers={orphanUsers}
+          currentUserId={currentUserId}
+          onClose={() => setShowOrphanModal(false)}
+          onOpenShareModal={dispatchOpenShareModal}
+          onRefresh={() => {
+            setShowOrphanModal(false);
+            setFilterOrphans(false);
+            setRefreshKey(prev => prev + 1); // re-mounts ActivitiesTable
+            refreshNav(); // re-fetches navActivities → clears orphan detection
           }}
         />
       )}

@@ -30,17 +30,19 @@ interface ShareManagementModalProps {
   areaId: UUID;
   areaName: string;
   onClose: () => void;
+  /** Pre-fill invite email (e.g. from Re-invite orphan flow) */
+  initialInviteEmail?: string;
 }
 
 // --------------------------------------------------------
 // Main component
 // --------------------------------------------------------
 
-export function ShareManagementModal({ areaId, areaName, onClose }: ShareManagementModalProps) {
+export function ShareManagementModal({ areaId, areaName, onClose, initialInviteEmail }: ShareManagementModalProps) {
   const { shares, loading, listShares, createShare, updateSharePermission, revokeShare, cancelInvite, listInvites } =
     useDataShares();
   const [invites, setInvites] = useState<ShareInvite[]>([]);
-  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteEmail, setInviteEmail] = useState(initialInviteEmail ?? '');
   const [invitePermission, setInvitePermission] = useState<SharePermission>('write');
   const [isInviting, setIsInviting] = useState(false);
   const [revokingId, setRevokingId] = useState<UUID | null>(null);

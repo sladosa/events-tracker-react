@@ -63,6 +63,7 @@ export interface ActivityEvent {
   // Joined data
   category_name: string;
   category_path: string[];   // ['Fitness', 'Activity', 'Gym', 'Strength']
+  area_id: UUID;
   area_name: string;
   area_icon: string | null;
 }
@@ -72,6 +73,7 @@ export interface ActivityGroup {
   category_id: UUID;
   category_name: string;
   category_path: string[];
+  area_id: UUID;
   area_name: string;
   area_icon: string | null;
   event_date: string;
@@ -81,6 +83,7 @@ export interface ActivityGroup {
   has_photos: boolean;       // 1.4.3: true if any event in this group has attachments
   user_id: string;           // Owner of this session
   user_display_name: string; // display_name ili email iz profiles
+  user_email: string;        // raw email (za Re-invite pre-fill)
 }
 
 interface UseActivitiesResult {
@@ -402,14 +405,15 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       const uniqueCatIds = [...new Set(eventRows.map(e => e.category_id))];
       const { data: pathRows } = await supabase
         .from('category_full_paths')
-        .select('category_id, category_name, area_name, area_icon, full_path')
+        .select('category_id, category_name, area_id, area_name, area_icon, full_path')
         .in('category_id', uniqueCatIds);
 
-      const pathMap = new Map<UUID, { path: string[]; categoryName: string; areaName: string; areaIcon: string | null }>();
+      const pathMap = new Map<UUID, { path: string[]; categoryName: string; areaId: UUID; areaName: string; areaIcon: string | null }>();
       for (const row of pathRows ?? []) {
         pathMap.set(row.category_id as UUID, {
           path: (row.full_path as string[]) ?? [],
           categoryName: (row.category_name as string) ?? '',
+          areaId: (row.area_id as UUID) ?? ('' as UUID),
           areaName: (row.area_name as string) ?? '',
           areaIcon: row.area_icon as string | null,
         });
@@ -417,12 +421,13 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
       const enrichedEvents: ActivityEvent[] = eventRows.map(event => {
         const pathInfo = pathMap.get(event.category_id) ?? {
-          path: [], categoryName: '', areaName: '', areaIcon: null,
+          path: [], categoryName: '', areaId: '' as UUID, areaName: '', areaIcon: null,
         };
         return {
           ...event,
           category_name: pathInfo.categoryName,
           category_path: pathInfo.path,
+          area_id: pathInfo.areaId,
           area_name: pathInfo.areaName,
           area_icon: pathInfo.areaIcon,
         };
@@ -446,6 +451,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
             category_id: event.category_id,
             category_name: event.category_name,
             category_path: event.category_path,
+            area_id: event.area_id,
             area_name: event.area_name,
             area_icon: event.area_icon,
             event_date: event.event_date,
@@ -455,6 +461,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
             has_photos: false,
             user_id: event.user_id,
             user_display_name: '',
+            user_email: '',
           };
           groupMap.set(sessionKey, group);
         }
@@ -484,21 +491,25 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         }
       }
 
-      // Batch fetch display names for unique user_ids
+      // Batch fetch display names + emails for unique user_ids
       const uniqueUserIds = [...new Set(Array.from(groupMap.values()).map(g => g.user_id))];
       if (uniqueUserIds.length > 0) {
         const { data: profileRows } = await supabase
           .from('profiles')
           .select('id, email, display_name')
           .in('id', uniqueUserIds);
-        const profileMap = new Map(
+        const displayMap = new Map(
           (profileRows ?? []).map(p => [
             p.id as string,
             ((p as { display_name?: string | null }).display_name || (p as { email?: string }).email || '') as string,
           ])
         );
+        const emailMap = new Map(
+          (profileRows ?? []).map(p => [p.id as string, (p as { email?: string }).email ?? ''])
+        );
         for (const group of groupMap.values()) {
-          group.user_display_name = profileMap.get(group.user_id) ?? group.user_id;
+          group.user_display_name = displayMap.get(group.user_id) ?? group.user_id;
+          group.user_email = emailMap.get(group.user_id) ?? '';
         }
       }
 
