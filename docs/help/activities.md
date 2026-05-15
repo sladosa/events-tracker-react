@@ -30,8 +30,9 @@
 - Import gumb → upload .xlsx; detektira missing kategorije i nudi kreiranje
 
 ## Orphan eventi (owner pogled)
-Kad grantee napusti tvoju area bez podataka ("Leave without data"), njegovi
-eventi ostaju u tvojim kategorijama ali bez aktivnog sharea — "orphan eventi".
+Orphan eventi nastaju u dva scenarija:
+- Grantee napusti area bez podataka ("Leave without data")
+- Owner revokne pristup i odabere "Revoke only" (grantee ima evente)
 
 **Amber banner** iznad tablice: "N users no longer have access · M activities"
 - **[View events]** — prikazuje samo orphan redove u tablici (chip "Orphan events only ×")

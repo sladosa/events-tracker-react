@@ -38,9 +38,14 @@ EXCEL:
 SHARING:
 • Share area: "Manage Access" badge in filter bar OR Structure ⋮ menu → Manage Access modal
 • Modal sections: (1) Active access — inline write/read dropdown + Revoke button; (2) Pending invites + Cancel; (3) Invite form — enter email + permission → generates a message box with a copy-able invite link to send manually
+• Revoke button (owner): if grantee has NO events → immediate revoke; if grantee HAS events → amber dialog with 3 choices:
+  - "Revoke only": removes share, events stay as orphan events (manage via OrphanBanner)
+  - "Claim events": transfers ownership to owner (events appear as "You")
+  - "Delete events": permanently removes all grantee events + attributes
 • write = grantee can add/edit their own activities; read = view and export only
 • Edit Mode hidden for grantee (cannot change structure)
 • Grantee banners: green = write access, amber = read access, purple = owner with active shares
+• Green banner (write grantee): has a "Take your data" button — opens a dialog to copy the area structure + all your events to your own account (proactive protection before owner revokes)
 • Leave area (grantee): ⋮ on area banner → "Leave this area" → two options:
   - "Detach with data": copies structure to grantee's own account and moves their events there
   - "Leave without data": removes share only, grantee's events stay in owner's area as "orphan events"
