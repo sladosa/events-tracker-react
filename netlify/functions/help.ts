@@ -36,9 +36,30 @@ EXCEL:
 • Import: "Import" → upload .xlsx; offers to create missing categories; handles foreign user rows
 
 SHARING:
-• Share area: "Manage Access" on area banner → invite by email + choose write/read permission
-• write = can add activities; read = view only
-• Edit Mode hidden for grantee (read-only structure)
+• Share area: "Manage Access" badge in filter bar OR Structure ⋮ menu → Manage Access modal
+• Modal sections: (1) Active access — inline write/read dropdown + Revoke button; (2) Pending invites + Cancel; (3) Invite form — enter email + permission → generates a message box with a copy-able invite link to send manually
+• Revoke button (owner): if grantee has NO events → immediate revoke; if grantee HAS events → amber dialog with 3 choices:
+  - "Revoke only": removes share, events stay as orphan events (manage via OrphanBanner)
+  - "Claim events": transfers ownership to owner (events appear as "You")
+  - "Delete events": permanently removes all grantee events + attributes
+• write = grantee can add/edit their own activities; read = view and export only
+• Edit Mode hidden for grantee (cannot change structure)
+• Grantee banners: green = write access, amber = read access, purple = owner with active shares
+• Green banner (write grantee): has a "Take your data" button — opens a dialog to copy the area structure + all your events to your own account (proactive protection before owner revokes)
+• Leave area (grantee): ⋮ on area banner → "Leave this area" → two options:
+  - "Detach with data": copies structure to grantee's own account and moves their events there
+  - "Leave without data": removes share only, grantee's events stay in owner's area as "orphan events"
+
+ORPHAN EVENTS (owner view — after grantee leaves without data):
+• Amber banner above Activities table: "N users no longer have access · M activities"
+  - [View events]: filters table to show ONLY orphan rows; chip "⚠ Orphan events only ×" appears in header; × dismisses filter and banner returns
+  - [Manage]: opens Orphan Events modal
+• Orphan Events modal — per user section shows: display name, activity count, area tags, then 3 actions:
+  - Re-invite: opens Manage Access modal with that user's email pre-filled → owner can re-share
+  - Claim events: takes ownership (events appear as "You"); cannot be undone
+  - Delete events: permanently deletes all their events + attributes + photos; cannot be undone
+• Per-row visual: orphan rows have amber ring on avatar + ⚠ badge; hover = tooltip; ⋮ menu → "Manage orphan events" opens same modal
+• Detection: area-level — user can be active grantee in area A but orphaned in area B; only area B events are marked
 
 TEMPLATES:
 • Edit Mode → Add Area → "From template" → choose template → Preview → Create
