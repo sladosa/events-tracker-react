@@ -164,6 +164,12 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onL
 
   // ---- Area shares map (owner view only): areaId → grantee display names ----
   const [areaSharesMap, setAreaSharesMap] = useState<Map<string, string[]>>(new Map());
+  const [sharesVersion, setSharesVersion] = useState(0);
+  useEffect(() => {
+    const handler = () => setSharesVersion(v => v + 1);
+    window.addEventListener('shares-changed', handler);
+    return () => window.removeEventListener('shares-changed', handler);
+  }, []);
   useEffect(() => {
     if (!userId || sharedContext) return; // only for owner, not grantee
     supabase
@@ -191,7 +197,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onL
         }
         setAreaSharesMap(map);
       });
-  }, [userId, sharedContext]);
+  }, [userId, sharedContext, sharesVersion]);
 
   // ---- Grantee area info map: areaId → { ownerName, permission } for areas not owned by current user ----
   const [granteeAreaInfoMap, setGranteeAreaInfoMap] = useState<Map<string, { ownerName: string; permission: string }>>(new Map());
