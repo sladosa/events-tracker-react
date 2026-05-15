@@ -285,7 +285,14 @@ export function SharedAreaBanner({ tab, onManageAccess }: SharedAreaBannerProps)
   // Area name = first segment of full path display
   const areaName = fullPathDisplay.split(' > ')[0] || 'Area';
 
-  // For owner view: fetch grantees when area changes
+  const [sharesVersion, setSharesVersion] = useState(0);
+  useEffect(() => {
+    const handler = () => setSharesVersion(v => v + 1);
+    window.addEventListener('shares-changed', handler);
+    return () => window.removeEventListener('shares-changed', handler);
+  }, []);
+
+  // For owner view: fetch grantees when area changes or shares are modified
   useEffect(() => {
     if (sharedContext || !filter.areaId) {
       setOwnerGrantees([]);
@@ -296,7 +303,7 @@ export function SharedAreaBanner({ tab, onManageAccess }: SharedAreaBannerProps)
       if (!cancelled) setOwnerGrantees(grantees);
     });
     return () => { cancelled = true; };
-  }, [filter.areaId, sharedContext]);
+  }, [filter.areaId, sharedContext, sharesVersion]);
 
   // No banner if no area selected
   if (!filter.areaId) return null;
