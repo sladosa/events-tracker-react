@@ -81,8 +81,8 @@ export function useOrphanUsers(
     const detect = async () => {
       const nonOwnerUserIds = [...new Set([...pairMap.values()].map(p => p.userId))];
 
-      // Parallel: check active shares + fetch emails for non-owner users
-      const [shareResult, profileResult] = await Promise.all([
+      // Parallel: check active shares + fetch emails + fetch areas owned by current user
+      const [shareResult, profileResult, ownedAreasResult] = await Promise.all([
         supabase
           .from('data_shares')
           .select('grantee_id, target_id')
@@ -93,9 +93,21 @@ export function useOrphanUsers(
           .from('profiles')
           .select('id, email')
           .in('id', nonOwnerUserIds),
+        supabase
+          .from('areas')
+          .select('id')
+          .eq('user_id', currentUserId),
       ]);
 
       if (cancelled) return;
+
+      // Only consider orphans in areas the current user actually owns.
+      // Prevents false positives when current user is a grantee viewing the
+      // area owner's events — the owner has no data_shares row so they would
+      // otherwise be incorrectly flagged as orphan.
+      const ownedAreaIds = new Set(
+        (ownedAreasResult.data ?? []).map((a: { id: string }) => a.id)
+      );
 
       // Build set of active (userId:areaId) pairs
       const activeKeys = new Set(
@@ -112,10 +124,10 @@ export function useOrphanUsers(
         ])
       );
 
-      // Orphan pairs = those with no active share for THAT area
+      // Orphan pairs = no active share AND current user owns the area
       const orphanKeys = new Set<string>();
-      for (const [key] of pairMap) {
-        if (!activeKeys.has(key)) orphanKeys.add(key);
+      for (const [key, pair] of pairMap) {
+        if (ownedAreaIds.has(pair.areaId) && !activeKeys.has(key)) orphanKeys.add(key);
       }
 
       setDetection({ pairKeys: orphanKeys, emailMap });
