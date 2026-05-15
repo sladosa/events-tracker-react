@@ -127,6 +127,7 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
     } else if (result.share) {
       setInviteEmail('');
       setMessageBox(buildMessage(email, null));
+      window.dispatchEvent(new CustomEvent('shares-changed'));
       await refresh();
     } else if (result.invite) {
       setInviteEmail('');
@@ -166,6 +167,7 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
       toast.error(result.error);
     } else {
       toast.success(`Access revoked for ${email || 'user'}`);
+      window.dispatchEvent(new CustomEvent('shares-changed'));
       await refresh();
     }
   };
@@ -245,6 +247,7 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
 
     setRevokeExecuting(false);
     setRevokeTarget(null);
+    window.dispatchEvent(new CustomEvent('shares-changed'));
     await refresh();
   };
 

@@ -163,6 +163,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   // === Shared context — null = owner ili nema filtera ===
   const [sharedContext, setSharedContext] = useState<SharedContext | null>(null);
   const [areaHasActiveShares, setAreaHasActiveShares] = useState(false);
+  const [sharesVersion, setSharesVersion] = useState(0);
   // === Orphan filter ===
   const [filterOrphans, setFilterOrphans] = useState(false);
 
@@ -337,7 +338,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     };
     resolve();
     return () => { cancelled = true; };
-  }, [filter.areaId]);
+  }, [filter.areaId, sharesVersion]);
 
   // --------------------------------------------
   // Database helpers (moved from component)
@@ -595,6 +596,13 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     window.addEventListener('areas-changed', handler);
     return () => window.removeEventListener('areas-changed', handler);
   }, [filter.areaId, filter.categoryId, selectionChain, reset]);
+
+  // Re-fetch areaHasActiveShares when shares are created/revoked
+  useEffect(() => {
+    const handler = () => setSharesVersion(v => v + 1);
+    window.addEventListener('shares-changed', handler);
+    return () => window.removeEventListener('shares-changed', handler);
+  }, []);
 
   // --------------------------------------------
   // Date & Search
