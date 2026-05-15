@@ -248,6 +248,9 @@ Faze i status:
   - **Invite acceptance warning** (`AuthPage.tsx`): set-password form prikazuje ownership note kad `areaName` postoji u JWT metadata
   - Help system update: `netlify/functions/help.ts` system prompt + `docs/help/sharing.md` + `docs/help/activities.md`
   - E15 Playwright (3/3 pass): dialog pojava, revoke-only → orphan banner, grantee banner s gumbom
+- ✅ S76b bugfixes (pronađeni tijekom manualnih testova):
+  - `shares-changed` CustomEvent: `FilterContext` + `StructureTableView` + `SharedAreaBanner` sada re-fetchaju share status odmah nakon invite/revoke — bez page refresha
+  - `useOrphanUsers` false positive: grantee je vidio lažni orphan banner za owner-ove evente; fix: check `areas.user_id = currentUserId` prije označavanja kao orphan
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 - ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
 - ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
