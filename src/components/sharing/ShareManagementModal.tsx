@@ -318,6 +318,7 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
                     <input
                       type="radio"
                       name="revokeAction"
+                      value={opt.value}
                       checked={revokeAction === opt.value}
                       onChange={() => setRevokeAction(opt.value)}
                       className="mt-0.5 accent-amber-600 shrink-0"

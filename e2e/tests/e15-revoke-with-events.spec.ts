@@ -227,7 +227,7 @@ test.describe('E15 — Revoke with events + Take your data banner', () => {
 
     // Modal now shows no active shares
     await expect(page.getByText(/no active shares/i)).toBeVisible({ timeout: 8_000 });
-    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Close' }).first().click();
 
     // Activities tab → OrphanBanner should appear (userb events now orphaned)
     await page.getByRole('button', { name: 'Activities' }).click();
