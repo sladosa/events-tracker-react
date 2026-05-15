@@ -50,6 +50,12 @@ test.describe('E15 — Revoke with events + Take your data banner', () => {
     userbPage = await userbCtx.newPage();
     await loginAsUserB(userbPage);
 
+    // Navigate both pages so addInitScript runs and session lands in localStorage
+    await ownerPage.goto('/');
+    await ownerPage.waitForLoadState('domcontentloaded');
+    await userbPage.goto('/');
+    await userbPage.waitForLoadState('domcontentloaded');
+
     // 1. Create share: owner → userb, Fitness, write
     await supabasePost(ownerPage, 'data_shares', {
       owner_id: OWNER_ID,
@@ -58,10 +64,6 @@ test.describe('E15 — Revoke with events + Take your data banner', () => {
       target_id: SEED.AREA_FITNESS,
       permission: 'write',
     }, 'return=minimal');
-
-    // Need to navigate to trigger session injection for userb API calls
-    await userbPage.goto('/');
-    await userbPage.waitForLoadState('domcontentloaded');
 
     // 2. Create userb events in Cardio (leaf) — 2 sessions
     await supabasePost(userbPage, 'events', {
