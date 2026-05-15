@@ -447,6 +447,12 @@ export default function AuthPage() {
                   {!invitedBy && (
                     <p className="text-sm text-gray-500">Set your password to get started.</p>
                   )}
+                  {areaName && (
+                    <p className="text-xs text-gray-400 mt-2 bg-gray-50 rounded-lg px-3 py-2 text-left">
+                      Note: your events will be stored in the area owner&apos;s account.
+                      You can copy them to your own area at any time via the area menu.
+                    </p>
+                  )}
                 </div>
 
                 <div>

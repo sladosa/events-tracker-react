@@ -54,7 +54,16 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
   const [subjectCopied, setSubjectCopied] = useState(false);
   const [messageCopied, setMessageCopied] = useState(false);
   const INVITE_SUBJECT = 'Invite to Events Tracker';
-  const [callerInfo, setCallerInfo] = useState<{ email: string; name: string } | null>(null);
+  const [callerInfo, setCallerInfo] = useState<{ email: string; name: string; id: string } | null>(null);
+  // Revoke-with-events flow
+  const [revokeTarget, setRevokeTarget] = useState<{
+    share: DataShareWithProfile;
+    eventCount: number;
+    eventIds: string[];
+  } | null>(null);
+  const [revokeChecking, setRevokeChecking] = useState<UUID | null>(null);
+  const [revokeAction, setRevokeAction] = useState<'revoke_only' | 'claim' | 'delete'>('revoke_only');
+  const [revokeExecuting, setRevokeExecuting] = useState(false);
   // Help panel: collapsed on mobile by default (expanded via ❓ toggle); always visible on desktop via CSS
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -68,7 +77,7 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
         .maybeSingle();
       const email = (profile as { email?: string } | null)?.email ?? user.email ?? '';
       const displayName = (profile as { display_name?: string | null } | null)?.display_name;
-      setCallerInfo({ email, name: displayName ?? email.split('@')[0] });
+      setCallerInfo({ email, name: displayName ?? email.split('@')[0], id: user.id });
     });
   }, []);
 
@@ -148,7 +157,7 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
     }
   };
 
-  const handleRevoke = async (share: DataShareWithProfile) => {
+  const doSimpleRevoke = async (share: DataShareWithProfile) => {
     const email = share.grantee?.email ?? '';
     setRevokingId(share.id);
     const result = await revokeShare(share.id);
@@ -157,7 +166,86 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
       toast.error(result.error);
     } else {
       toast.success(`Access revoked for ${email || 'user'}`);
+      await refresh();
     }
+  };
+
+  const handleRevoke = async (share: DataShareWithProfile) => {
+    setRevokeChecking(share.id);
+
+    const { data: cats } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('area_id', areaId);
+    const catIds = (cats ?? []).map((c: { id: string }) => c.id);
+
+    if (catIds.length > 0) {
+      const { data: evtData } = await supabase
+        .from('events')
+        .select('id')
+        .eq('user_id', share.grantee_id)
+        .in('category_id', catIds);
+      const eventIds = (evtData ?? []).map((e: { id: string }) => e.id);
+
+      setRevokeChecking(null);
+
+      if (eventIds.length > 0) {
+        setRevokeTarget({ share, eventCount: eventIds.length, eventIds });
+        setRevokeAction('revoke_only');
+        return;
+      }
+    } else {
+      setRevokeChecking(null);
+    }
+
+    await doSimpleRevoke(share);
+  };
+
+  const handleRevokeWithAction = async () => {
+    if (!revokeTarget || !callerInfo) return;
+    const { share, eventIds } = revokeTarget;
+    const email = share.grantee?.email ?? '';
+    const CHUNK = 200;
+
+    setRevokeExecuting(true);
+
+    const result = await revokeShare(share.id);
+    if (result.error) {
+      toast.error(result.error);
+      setRevokeExecuting(false);
+      return;
+    }
+
+    if (revokeAction === 'claim') {
+      try {
+        for (let i = 0; i < eventIds.length; i += CHUNK) {
+          const chunk = eventIds.slice(i, i + CHUNK);
+          await supabase.from('event_attributes').update({ user_id: callerInfo.id }).in('event_id', chunk);
+          await supabase.from('events').update({ user_id: callerInfo.id }).in('id', chunk);
+        }
+        toast.success(`Revoked and claimed ${eventIds.length} events from ${email || 'user'}`);
+      } catch {
+        toast.error('Access revoked, but some events could not be claimed. Check Orphan Events.');
+      }
+    } else if (revokeAction === 'delete') {
+      try {
+        for (let i = 0; i < eventIds.length; i += CHUNK) {
+          const chunk = eventIds.slice(i, i + CHUNK);
+          await supabase.from('event_attachments').delete().in('event_id', chunk);
+          await supabase.from('event_attributes').delete().in('event_id', chunk);
+          await supabase.from('events').delete().in('id', chunk);
+        }
+        toast.success(`Revoked and deleted ${eventIds.length} events from ${email || 'user'}`);
+      } catch {
+        toast.error('Access revoked, but some events could not be deleted. Check Orphan Events.');
+      }
+    } else {
+      toast.success(`Access revoked for ${email || 'user'}. Events visible in Orphan Events.`);
+    }
+
+    setRevokeExecuting(false);
+    setRevokeTarget(null);
+    await refresh();
   };
 
   const handleCancel = async (invite: ShareInvite) => {
@@ -201,6 +289,71 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
 
         <div className="px-5 py-4 space-y-5 max-h-[80vh] overflow-y-auto">
 
+          {/* ── Revoke-with-events decision panel ── */}
+          {revokeTarget && (
+            <div className="border border-amber-300 bg-amber-50 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-amber-600 mt-0.5">⚠</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">
+                    {revokeTarget.share.grantee?.display_name || revokeTarget.share.grantee?.email || 'This user'} has{' '}
+                    <strong>{revokeTarget.eventCount}</strong> events in this area.
+                  </p>
+                  <p className="text-xs text-amber-700 mt-0.5">Choose what happens to their data when access is revoked:</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {([
+                  { value: 'revoke_only' as const, label: 'Revoke only', desc: 'Events stay in DB — manage later via Orphan Events banner' },
+                  { value: 'claim' as const, label: 'Claim events', desc: "Events will appear as yours (user_id changed to yours)" },
+                  { value: 'delete' as const, label: 'Delete events', desc: 'Permanently delete all their events and attributes' },
+                ] as const).map(opt => (
+                  <label key={opt.value} className={cn(
+                    'flex gap-3 p-2.5 rounded-lg border-2 cursor-pointer transition-colors',
+                    revokeAction === opt.value
+                      ? opt.value === 'delete' ? 'border-red-400 bg-red-50' : 'border-amber-400 bg-white'
+                      : 'border-amber-200 bg-white hover:border-amber-300',
+                  )}>
+                    <input
+                      type="radio"
+                      name="revokeAction"
+                      checked={revokeAction === opt.value}
+                      onChange={() => setRevokeAction(opt.value)}
+                      className="mt-0.5 accent-amber-600 shrink-0"
+                    />
+                    <div>
+                      <p className={cn('text-xs font-semibold', opt.value === 'delete' ? 'text-red-700' : 'text-gray-800')}>
+                        {opt.label}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  disabled={revokeExecuting}
+                  onClick={() => setRevokeTarget(null)}
+                  className="px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={revokeExecuting}
+                  onClick={handleRevokeWithAction}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors disabled:opacity-50',
+                    revokeAction === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700',
+                  )}
+                >
+                  {revokeExecuting ? '…' : 'Confirm revoke'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ── Active access ── */}
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -241,11 +394,11 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
                         <option value="read">read</option>
                       </select>
                       <button
-                        disabled={revokingId === share.id}
+                        disabled={revokingId === share.id || revokeChecking === share.id || revokeExecuting}
                         onClick={() => handleRevoke(share)}
                         className="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition-colors disabled:opacity-50 flex-shrink-0"
                       >
-                        {revokingId === share.id ? '…' : 'Revoke'}
+                        {(revokingId === share.id || revokeChecking === share.id) ? '…' : 'Revoke'}
                       </button>
                     </div>
                   );
