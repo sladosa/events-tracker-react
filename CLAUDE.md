@@ -23,6 +23,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas za nove korisnike, Add Area "From template" |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
+| `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist, alati     |
 
 ---
 
@@ -251,6 +252,7 @@ Faze i status:
 - ✅ S76b bugfixes (pronađeni tijekom manualnih testova):
   - `shares-changed` CustomEvent: `FilterContext` + `StructureTableView` + `SharedAreaBanner` sada re-fetchaju share status odmah nakon invite/revoke — bez page refresha
   - `useOrphanUsers` false positive: grantee je vidio lažni orphan banner za owner-ove evente; fix: check `areas.user_id = currentUserId` prije označavanja kao orphan
+- ✅ S77: SharedAreaBanner OwnerBanner UX — skraćen na jedan red: `🔗 This Area is shared` + `⚙ Manage Access` (bez liste granteeova, bez "Structure changes" teksta u banneru); "Structure changes affect all users" premješteno u Edit Mode toolbar (`StructureTableView`) — prikazuje se s lijeve strane "+ Add Area" gumba samo kad `areaHasActiveShares`
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 - ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
 - ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
@@ -278,7 +280,10 @@ Faze i status:
   - `AuthPage.tsx`: `setSession()` eksplicitno s invite tokenima (bugfix: `updateUser` ažurirao owner password umjesto grantee); detektira `#error=access_denied` expired token → amber banner "Invite link has expired, ask [owner] to resend"
   - `AppHome.tsx` + `StructureTableView.tsx`: localStorage persist za activeTab, structureViewMode, nodeFilter, collapsedAreaIds
 - ✅ S71: Migration tools + Garmin Activities import:
+  - `data-prep_tools/Tools/common_excel.py` — **SHARED LIBRARY**: `excel_date()`, `STRUCTURE_HEADERS`, `write_structure_row()` — importira se iz svih skripti
   - `data-prep_tools/Tools/supabase_structure_export.py` — read-only Supabase structure reader; ispisuje areas/categories/attrs + event counts kao markdown
+  - `data-prep_tools/Tools/excel_import_template.py` — **REFERENTNI TEMPLATE** za xlsx import skripte; točan LEGEND/EVENT DATA format + česte greške; kopiraj kao osnovu za novi importer
+  - `data-prep_tools/Tools/db_inspector.py` — inspekcija baze iz chata; `--area`, `--category`, `--fields`, `--limit`, `--check duplicates|ranges|empty`; service role, zaobilazi RLS
   - `data-prep_tools/Tools/garmin_full_field_audit.py` — katalogizira sva polja iz svih Garmin JSON export tipova
   - `data-prep_tools/Tools/garmin_activities_to_xlsx.py` — generira roundtrip xlsx iz Garmin summarizedActivities:
     - 3134 aktivnosti (2002 Outdoor, 1127 Gym/Cardio, 5 Strength), raspon 2015–02/2025
@@ -296,10 +301,12 @@ Faze i status:
 ### Backlog — sljedeći koraci (prioritetni redoslijed)
 
 **Prioriteti za S77 (određeno na kraju S76):**
-1. **Garmin/Sleep importer** — `Health > Sleep` area; skripte u `data-prep_tools/Tools/`; `MIGRATION_STATE.md` ima plan
-2. **Financije reorganizacija** — srediti strukturu prije pusha na main (Koka feedback)
+1. ✅ SharedAreaBanner UX cleanup (banner simplification + Edit Mode toolbar warning)
+2. **Garmin/Sleep importer** — `Health > Sleep` area; skripte u `data-prep_tools/Tools/`; `MIGRATION_STATE.md` ima plan
+3. **Financije reorganizacija** — srediti strukturu prije pusha na main (Koka feedback)
 
-**Napomena S76:** S76 mergean na main. E15 Playwright prolaze (3/3). Manualni testovi T-S76-1..5 još čekaju.
+**Napomena S76:** S76 mergean na main. E15 Playwright prolaze (3/3). Manualni testovi T-S76-1..5 svi OK
+**Napomena S77:** Docs cleanup (README, PENDING_TESTS, CLAUDE.md), SAVE_PLUS_TOGGLE_SPEC obrisan (feature done S67), Koka Health_Saša pristup potvrđen.
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
@@ -378,12 +385,13 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 
 **9. Health tracking Area** — Area "Health" s Lab Results + Medical Visit leaf kategorijama.
    Kontekst: `data-prep_data/Health/HEALTH_SESSION_CONTEXT.md`
-   Skripte: `data-prep_tools/Health/make_health_structure.py` + `make_health_events.py`
+   Skripte: `data-prep_tools/Health/make_health_structure.py` + `make_health_events.py` + `health_lab_review.py`
    - ✅ Korak 1 — Struktura importana u TEST bazu (Health > Medical > Lab Results + Medical Visit; 10 attr defs)
    - ✅ Korak 2 — UX verificiran (Add Activity radi)
    - ✅ Korak 3 — `make_health_events.py` generira `Health_events_import.xlsx` (58 eventa iz Bloodwork.xlsx)
    - ✅ Korak 4+5 — PROD deploy (S68): struktura + 58 eventa importani; Area preimenovana u "Health_Saša"
-   - ⬜ Koka → Read grantee pristup na Health_Saša (kad bude potrebno)
+   - ✅ Koka → Read grantee pristup na Health_Saša — potvrđeno S77
+   - ⬜ Cleanup — `health_lab_review.py`: čita Health_Saša iz baze, generira review xlsx za razdvajanje Medical Visit bilješki koje su pomiješane u Lab Results commentima
 
 **11. Netlify scheduled maintenance function** — kad se skupi 2-3 zadatka, implementirati
    `netlify/functions/maintenance.ts` s `schedule = "@weekly"`. Kandidati:

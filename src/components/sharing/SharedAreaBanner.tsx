@@ -83,23 +83,15 @@ function RequestAccessModal({
 // --------------------------------------------------------
 
 function OwnerBanner({
-  grantees,
   onManageAccess,
 }: {
   grantees: GranteeSummary[];
   onManageAccess?: () => void;
 }) {
-  const summary = grantees.map(g => `${g.name} (${g.permission})`).join(', ');
-
   return (
-    <div className="mx-4 mt-3 flex items-start gap-2 px-3 py-2.5 bg-purple-50 border border-purple-200 rounded-lg text-sm">
-      <span className="mt-0.5">🔗</span>
-      <div className="flex-1 min-w-0">
-        <span className="font-semibold text-purple-900">This Area is shared</span>
-        {summary && (
-          <span className="text-purple-700"> — {summary}. Structure changes affect all users.</span>
-        )}
-      </div>
+    <div className="mx-4 mt-3 flex items-center gap-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm">
+      <span>🔗</span>
+      <span className="flex-1 font-semibold text-purple-900">This Area is shared</span>
       {onManageAccess && (
         <button
           onClick={onManageAccess}
