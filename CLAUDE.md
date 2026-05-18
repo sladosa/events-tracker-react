@@ -302,11 +302,15 @@ Faze i status:
 
 **Prioriteti za S77 (određeno na kraju S76):**
 1. ✅ SharedAreaBanner UX cleanup (banner simplification + Edit Mode toolbar warning)
-2. **Garmin/Sleep importer** — `Health > Sleep` area; skripte u `data-prep_tools/Tools/`; `MIGRATION_STATE.md` ima plan
+2. ✅ Garmin Daily Metrics importer — `Health_Sasa > Daily_metrics > Garmin_data`; 3624 eventa (2014–2025); HR Rest/Min, Body Battery, VO2max, Steps, Active Min, Calories, Avg Stress, Training Status; importano u TEST ✅
 3. **Financije reorganizacija** — srediti strukturu prije pusha na main (Koka feedback)
 
-**Napomena S76:** S76 mergean na main. E15 Playwright prolaze (3/3). Manualni testovi T-S76-1..5 svi OK
-**Napomena S77:** Docs cleanup (README, PENDING_TESTS, CLAUDE.md), SAVE_PLUS_TOGGLE_SPEC obrisan (feature done S67), Koka Health_Saša pristup potvrđen.
+**Napomena S77:** Docs cleanup (README, PENDING_TESTS, CLAUDE.md), SAVE_PLUS_TOGGLE_SPEC obrisan, Koka Health_Saša pristup potvrđen. Garmin Daily Metrics: TEST import OK (trajao ~30min zbog sekvencijalnih API poziva — za PROD koristiti split po godinama). Sleep/HRV stubovi u strukturi, čekaju DI-Connect-Wellness fajlove.
+
+**Prioriteti za S78:**
+1. **Spot check** Garmin Daily Metrics u TEST bazi (T-S77-4/5) i push na PROD ako OK
+2. **Financije reorganizacija** — Koka feedback o strukturi
+3. Garmin/Sleep skripta (kad se nađu DI-Connect-Wellness fajlovi)
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
