@@ -109,7 +109,7 @@ function LoadingSkeleton() {
 
 export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onLeaveArea, nodeFilter }: StructureTableViewProps) {
   const t = THEME.structure;
-  const { filter, reset: resetFilter, sharedContext } = useFilter();
+  const { filter, reset: resetFilter, sharedContext, areaHasActiveShares } = useFilter();
   const { nodes, loading, error, refetch } = useStructureData();
 
   // ---- Panel state ----
@@ -464,7 +464,14 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onL
     <div>
       {/* ── Edit Mode toolbar ── */}
       {isEditMode && (
-        <div className="flex items-center justify-end px-4 py-2 border-b border-amber-100 bg-amber-50/50">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-amber-100 bg-amber-50/50">
+          {areaHasActiveShares ? (
+            <span className="text-xs text-amber-700 font-medium">
+              ⚠ Structure changes affect all users
+            </span>
+          ) : (
+            <span />
+          )}
           <button
             onClick={() => setShowAddArea(true)}
             className={cn(

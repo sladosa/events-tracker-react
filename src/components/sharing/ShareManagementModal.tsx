@@ -101,18 +101,20 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
   // Handlers
   // --------------------------------------------------
 
+  const DATA_NOTE = `Note: your activities will be stored in the shared area. You can copy them to your own area at any time using the "Take your data" option in the area menu.`;
+
   const buildMessage = (toEmail: string, inviteUrl: string | null): { toEmail: string; body: string } => {
     const name = callerInfo?.name ?? 'Someone';
     const email = callerInfo?.email ?? '';
     if (inviteUrl) {
       return {
         toEmail,
-        body: `${name} (${email}) has shared the "${areaName}" area with you in Events Tracker.\n\nSet your password and access the app:\n${inviteUrl}`,
+        body: `${name} (${email}) has shared the "${areaName}" area with you in Events Tracker.\n\nSet your password and access the app:\n${inviteUrl}\n\n${DATA_NOTE}`,
       };
     }
     return {
       toEmail,
-      body: `${name} (${email}) has shared the "${areaName}" area with you in Events Tracker.\n\nYou can access it now — just sign in at:\n${window.location.origin}`,
+      body: `${name} (${email}) has shared the "${areaName}" area with you in Events Tracker.\n\nYou can access it now — just sign in at:\n${window.location.origin}\n\n${DATA_NOTE}`,
     };
   };
 
