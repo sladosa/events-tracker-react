@@ -308,12 +308,12 @@ Faze i status:
 
 **Napomena S77:** Docs cleanup (README, PENDING_TESTS, CLAUDE.md), SAVE_PLUS_TOGGLE_SPEC obrisan, Koka Health_Saša pristup potvrđen. Garmin Daily Metrics: TEST import OK (trajao ~30min zbog sekvencijalnih API poziva — za PROD koristiti split po godinama). Sleep/HRV stubovi u strukturi, čekaju DI-Connect-Wellness fajlove.
 
-**Prioriteti za S78:**
-1. ✅ Spot check Garmin Daily Metrics u TEST bazi: T-S77-1/2/3/4 ✅, T-S77-5 ❌ → bugfix S78 (loadAttrsForEvents .limit())
-2. **T-S78-1** — potvrditi da je export fix ispravan (ponoviti export, provjeriti 2025-02 redove)
-3. Ako T-S78-1 ✅ → **push Garmin data na PROD** (split po godinama, npr. 2024+2025 odvojeno zbog ~30min import time)
-4. **Financije reorganizacija** — Koka feedback o strukturi
-5. Garmin/Sleep skripta (kad se nađu DI-Connect-Wellness fajlovi)
+**Napomena S78:** Export attrs bugfix (loadAttrsForEvents .limit() + ATTR_CHUNK_SIZE 200→80). Garmin Daily Metrics importan u PROD ✅. Health_Sasa Medical struktura fix importan u PROD ✅. Header left-align u xlsx exportu. compare_xlsx.py alat dodan. S78 mergean na main.
+
+**Prioriteti za S79:**
+1. **Financije reorganizacija** — Koka feedback o strukturi
+2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+3. **Health_Sasa cleanup** — Lab Results comment split (medical visit bilješke → Medical Visit eventi)
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
