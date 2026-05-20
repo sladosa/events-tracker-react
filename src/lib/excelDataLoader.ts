@@ -169,8 +169,9 @@ export async function countEventsForExport(
   return count ?? 0;
 }
 
-// Chunk size for event_attributes loading — avoids huge IN clauses and nested-select JOINs
-const ATTR_CHUNK_SIZE = 200;
+// Chunk size for event_attributes loading — avoids huge IN clauses and URL length limits.
+// 80 events × ~10 attrs/event = ~800 rows/chunk, safely under any Supabase max_rows default.
+const ATTR_CHUNK_SIZE = 80;
 
 type RawAttr = { id: string; event_id: string; attribute_definition_id: string; value_text: string | null; value_number: number | null; value_datetime: string | null; value_boolean: boolean | null };
 
@@ -182,7 +183,8 @@ async function loadAttrsForEvents(eventIds: string[]): Promise<Map<string, RawAt
     const { data } = await supabase
       .from('event_attributes')
       .select('id, event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean')
-      .in('event_id', chunk);
+      .in('event_id', chunk)
+      .limit(chunk.length * 50); // override Supabase default 1000-row limit (chunk×50 ≥ any real attr/event ratio)
     for (const a of (data ?? []) as RawAttr[]) {
       const list = map.get(a.event_id) ?? [];
       list.push(a);

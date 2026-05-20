@@ -408,7 +408,7 @@ export async function addActivitiesSheetsTo(
     cell.fill      = HEADER_FILL;
     cell.font      = HEADER_FONT;
     cell.border    = THIN_BORDER;
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.alignment = { horizontal: 'left', vertical: 'middle' };
   }
   row++;
 
