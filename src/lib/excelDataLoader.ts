@@ -169,8 +169,9 @@ export async function countEventsForExport(
   return count ?? 0;
 }
 
-// Chunk size for event_attributes loading — avoids huge IN clauses and nested-select JOINs
-const ATTR_CHUNK_SIZE = 200;
+// Chunk size for event_attributes loading — avoids huge IN clauses and URL length limits.
+// 80 events × ~10 attrs/event = ~800 rows/chunk, safely under any Supabase max_rows default.
+const ATTR_CHUNK_SIZE = 80;
 
 type RawAttr = { id: string; event_id: string; attribute_definition_id: string; value_text: string | null; value_number: number | null; value_datetime: string | null; value_boolean: boolean | null };
 
