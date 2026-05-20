@@ -182,7 +182,8 @@ async function loadAttrsForEvents(eventIds: string[]): Promise<Map<string, RawAt
     const { data } = await supabase
       .from('event_attributes')
       .select('id, event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean')
-      .in('event_id', chunk);
+      .in('event_id', chunk)
+      .limit(chunk.length * 50); // override Supabase default 1000-row limit (chunk×50 ≥ any real attr/event ratio)
     for (const a of (data ?? []) as RawAttr[]) {
       const list = map.get(a.event_id) ?? [];
       list.push(a);
