@@ -342,7 +342,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
 
       {/* Table – outer div: horizontal scroll; inner div: vertical scroll with sticky header */}
       <div className="overflow-x-auto">
-        <div ref={scrollContainerRef} className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+        <div ref={scrollContainerRef} className="overflow-y-auto pb-20" style={{ maxHeight: 'calc(100vh - 220px)' }}>
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>

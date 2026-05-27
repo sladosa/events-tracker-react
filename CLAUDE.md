@@ -254,6 +254,7 @@ Faze i status:
   - `useOrphanUsers` false positive: grantee je vidio lažni orphan banner za owner-ove evente; fix: check `areas.user_id = currentUserId` prije označavanja kao orphan
 - ✅ S77: SharedAreaBanner OwnerBanner UX — skraćen na jedan red: `🔗 This Area is shared` + `⚙ Manage Access` (bez liste granteeova, bez "Structure changes" teksta u banneru); "Structure changes affect all users" premješteno u Edit Mode toolbar (`StructureTableView`) — prikazuje se s lijeve strane "+ Add Area" gumba samo kad `areaHasActiveShares`
 - ✅ S78 bugfix: `loadAttrsForEvents` u `excelDataLoader.ts` — dodan `.limit(chunk.length * 50)` override; bez toga Supabase default 1000-row cap truncirao attrs za evente s 10+ atributima po chunku od 200 (200×10=2000>1000); vidljivi simptom: najnoviji eventi (uneseni zadnji u DB) imali prazne kolone u xlsx exportu dok su stariji radili ispravno
+- ✅ S79: Help FAB prekrivao ⋮ Actions meni — `ActivitiesTable` i `StructureTableView` scroll containeri dobili `pb-20` (80px); zadnji red tablice uvijek scrollable iznad FAB-a na mobilnom
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 - ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
 - ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
@@ -308,12 +309,12 @@ Faze i status:
 
 **Napomena S77:** Docs cleanup (README, PENDING_TESTS, CLAUDE.md), SAVE_PLUS_TOGGLE_SPEC obrisan, Koka Health_Saša pristup potvrđen. Garmin Daily Metrics: TEST import OK (trajao ~30min zbog sekvencijalnih API poziva — za PROD koristiti split po godinama). Sleep/HRV stubovi u strukturi, čekaju DI-Connect-Wellness fajlove.
 
-**Prioriteti za S78:**
-1. ✅ Spot check Garmin Daily Metrics u TEST bazi: T-S77-1/2/3/4 ✅, T-S77-5 ❌ → bugfix S78 (loadAttrsForEvents .limit())
-2. **T-S78-1** — potvrditi da je export fix ispravan (ponoviti export, provjeriti 2025-02 redove)
-3. Ako T-S78-1 ✅ → **push Garmin data na PROD** (split po godinama, npr. 2024+2025 odvojeno zbog ~30min import time)
-4. **Financije reorganizacija** — Koka feedback o strukturi
-5. Garmin/Sleep skripta (kad se nađu DI-Connect-Wellness fajlovi)
+**Napomena S78:** Export attrs bugfix (loadAttrsForEvents .limit() + ATTR_CHUNK_SIZE 200→80). Garmin Daily Metrics importan u PROD ✅. Health_Sasa Medical struktura fix importan u PROD ✅. Header left-align u xlsx exportu. compare_xlsx.py alat dodan. S78 mergean na main.
+
+**Prioriteti za S79:**
+1. **Financije reorganizacija** — Koka feedback o strukturi
+2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+3. **Health_Sasa cleanup** — Lab Results comment split (medical visit bilješke → Medical Visit eventi)
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
