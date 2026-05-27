@@ -254,7 +254,7 @@ Faze i status:
   - `useOrphanUsers` false positive: grantee je vidio lažni orphan banner za owner-ove evente; fix: check `areas.user_id = currentUserId` prije označavanja kao orphan
 - ✅ S77: SharedAreaBanner OwnerBanner UX — skraćen na jedan red: `🔗 This Area is shared` + `⚙ Manage Access` (bez liste granteeova, bez "Structure changes" teksta u banneru); "Structure changes affect all users" premješteno u Edit Mode toolbar (`StructureTableView`) — prikazuje se s lijeve strane "+ Add Area" gumba samo kad `areaHasActiveShares`
 - ✅ S78 bugfix: `loadAttrsForEvents` u `excelDataLoader.ts` — dodan `.limit(chunk.length * 50)` override; bez toga Supabase default 1000-row cap truncirao attrs za evente s 10+ atributima po chunku od 200 (200×10=2000>1000); vidljivi simptom: najnoviji eventi (uneseni zadnji u DB) imali prazne kolone u xlsx exportu dok su stariji radili ispravno
-- ✅ S79: Help FAB prekrivao ⋮ Actions meni — `ActivitiesTable` scroll container dobio `pb-20` (80px); zadnji red tablice uvijek scrollable iznad FAB-a na mobilnom
+- ✅ S79: Help FAB prekrivao ⋮ Actions meni — `ActivitiesTable` i `StructureTableView` scroll containeri dobili `pb-20` (80px); zadnji red tablice uvijek scrollable iznad FAB-a na mobilnom
 - **BUG-S61-1:** ✅ RIJEŠEN (S62) — toast error na fail; `ProgressiveCategorySelector` uvijek mounted (filter collapse ga više ne unmountira); `sql/015_activity_presets_rls.sql` pokrenut na PROD (missing INSERT policy)
 - ✅ S63: Delete Shortcut auto-select — `useEffect` u `ProgressiveCategorySelector` auto-selektira preset kad `filter.categoryId` odgovara nekom presetu (fix za browser restart koji briše sessionStorage)
 - ✅ S63: Help Concepts tab — treći tab s glosarijem (Core Concepts / Key Behaviors / Design Decisions s trade-offovima)
