@@ -521,7 +521,7 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onL
 
       <TableHeader />
 
-      <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+      <div className="overflow-y-auto pb-20" style={{ maxHeight: 'calc(100vh - 220px)' }}>
         {visibleRows.map((node) => {
           const isHighlighted = node.id === highlightedNodeId;
           return (
