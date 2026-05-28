@@ -311,10 +311,13 @@ Faze i status:
 
 **Napomena S78:** Export attrs bugfix (loadAttrsForEvents .limit() + ATTR_CHUNK_SIZE 200→80). Garmin Daily Metrics importan u PROD ✅. Health_Sasa Medical struktura fix importan u PROD ✅. Header left-align u xlsx exportu. compare_xlsx.py alat dodan. S78 mergean na main.
 
-**Prioriteti za S79:**
-1. **Financije reorganizacija** — Koka feedback o strukturi
-2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
-3. **Health_Sasa cleanup** — Lab Results comment split (medical visit bilješke → Medical Visit eventi)
+**Napomena S80:** `dev:netlify-prod` fix (--port 8889 + dotenv -o; netlify re-injektira .env.local pa za PROD pregled koristiti `npm run dev:prod`). Supabase PROD Site URL ispravljen (bio Streamlit, sad Netlify). Garmin_data dedupliciranje: `fix_garmin_duplicates.py` — 1000 duplikata obrisano iz TEST. Medical cleanup: `delete_by_comment.py` — 8 IZBRISATI eventa obrisano iz TEST. Export paginacija bug: `loadEventsForExport` udario u Supabase 1000-row cap; fiksano paginacijom po 1000 unutar funkcije. Health_Sasa TEST čist (3716 eventa), spreman za PROD import.
+
+**Prioriteti za S81:**
+1. **Health_Sasa PROD import** — obriši Area na PROD → importaj TEST xlsx (3716 eventa)
+2. **Comment filter u Activities** — text search po `leaf comment` (server-side `.ilike`) u Filter sekciji; spec: `docs/COMMENT_FILTER_SPEC.md`
+3. **Financije reorganizacija** — Koka feedback o strukturi
+4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)

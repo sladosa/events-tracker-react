@@ -205,24 +205,32 @@ export async function loadEventsForExport(
   const desc = filters.sortOrder === 'desc';
 
   // Step 1: load events WITHOUT nested event_attributes (avoids large JOIN)
-  let query = supabase
-    .from('events')
-    .select('id,user_id,category_id,event_date,session_start,comment,created_at');
+  // Paginate in chunks of 1000 to overcome Supabase default max_rows cap.
+  const buildBaseQuery = () => {
+    let q = supabase
+      .from('events')
+      .select('id,user_id,category_id,event_date,session_start,comment,created_at');
+    if (categoryIds.length > 0) q = q.in('category_id', categoryIds);
+    if (filters.dateFrom) q = q.gte('event_date', filters.dateFrom);
+    if (filters.dateTo)   q = q.lte('event_date', filters.dateTo);
+    return q
+      .order('event_date',    { ascending: !desc })
+      .order('session_start', { ascending: !desc, nullsFirst: false })
+      .order('user_id',       { ascending: true });
+  };
 
-  if (categoryIds.length > 0) query = query.in('category_id', categoryIds);
-  if (filters.dateFrom) query = query.gte('event_date', filters.dateFrom);
-  if (filters.dateTo)   query = query.lte('event_date', filters.dateTo);
+  const PAGE_SIZE = 1000;
+  const accumulated: Array<Record<string, unknown>> = [];
+  for (let pageStart = offset; accumulated.length < limit; pageStart += PAGE_SIZE) {
+    const pageLimit = Math.min(PAGE_SIZE, limit - accumulated.length);
+    const { data: pageData, error } = await buildBaseQuery().range(pageStart, pageStart + pageLimit - 1);
+    if (error) throw error;
+    const page = (pageData ?? []) as Array<Record<string, unknown>>;
+    accumulated.push(...page);
+    if (page.length < pageLimit) break;
+  }
 
-  query = query
-    .order('event_date',    { ascending: !desc })
-    .order('session_start', { ascending: !desc, nullsFirst: false })
-    .order('user_id',       { ascending: true })
-    .range(offset, offset + limit - 1);
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  const rawEvents = (data ?? []) as Array<Record<string, unknown>>;
+  const rawEvents = accumulated;
 
   // Step 2: load event_attributes separately in chunks
   const eventIds = rawEvents.map(e => e.id as string);
