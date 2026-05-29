@@ -112,6 +112,7 @@ interface UseActivitiesOptions {
   dateFrom?: string | null;
   dateTo?: string | null;
   sortOrder?: 'desc' | 'asc';   // D3: newest first (default) or oldest first
+  commentSearch?: string;
   pageSize?: number;
   skip?: boolean;               // When true, skip fetch (e.g. caller already has list from location.state)
 }
@@ -142,6 +143,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     dateFrom = null,
     dateTo = null,
     sortOrder = 'desc',
+    commentSearch = '',
     pageSize = 20,
     skip = false,
   } = options;
@@ -331,6 +333,10 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       
       if (dateTo) {
         query = query.lte('event_date', dateTo);
+      }
+
+      if (commentSearch) {
+        query = query.ilike('comment', `%${commentSearch}%`);
       }
 
       // Order and paginate
@@ -574,14 +580,14 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, pageSize, offset, checkHasChildren, getDescendantCategoryIds]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, pageSize, offset, checkHasChildren, getDescendantCategoryIds]);
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
     if (skip) return; // BUG-S45-1: skip fetch when caller already has the list
     logDebug('FILTER_EFFECT_TRIGGERED', { areaId, categoryId, dateFrom, dateTo });
     fetchActivities(false);
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, skip]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, skip]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async () => {
     if (!loadingMore && hasMore) {

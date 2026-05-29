@@ -311,10 +311,13 @@ Faze i status:
 
 **Napomena S78:** Export attrs bugfix (loadAttrsForEvents .limit() + ATTR_CHUNK_SIZE 200→80). Garmin Daily Metrics importan u PROD ✅. Health_Sasa Medical struktura fix importan u PROD ✅. Header left-align u xlsx exportu. compare_xlsx.py alat dodan. S78 mergean na main.
 
-**Prioriteti za S79:**
+**Napomena S80:** `dev:netlify-prod` fix (--port 8889 + dotenv -o; netlify re-injektira .env.local pa za PROD pregled koristiti `npm run dev:prod`). Supabase PROD Site URL ispravljen (bio Streamlit, sad Netlify). Garmin_data dedupliciranje: `fix_garmin_duplicates.py` — 1000 duplikata obrisano iz TEST. Medical cleanup: `delete_by_comment.py` — 8 IZBRISATI eventa obrisano iz TEST. Export paginacija bug: `loadEventsForExport` udario u Supabase 1000-row cap; fiksano paginacijom po 1000 unutar funkcije. Health_Sasa TEST čist (3716 eventa), spreman za PROD import.
+
+**Napomena S81:** Comment filter implementiran — `commentSearch` u `FilterState`, `.ilike('comment', '%text%')` u `useActivities`, text input u filter baru (Activities tab), chip u `ActivitiesTable` header; `navActivities` i `ActivitiesTable` oba koriste `commentSearch`. Health_Sasa PROD import potvrđen T-S80-3 ✅.
+
+**Prioriteti za S82:**
 1. **Financije reorganizacija** — Koka feedback o strukturi
 2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
-3. **Health_Sasa cleanup** — Lab Results comment split (medical visit bilješke → Medical Visit eventi)
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
@@ -376,7 +379,13 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
   - `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` na Netlify ✅
   - Smoke test: AI odgovori rade, feedback se sprema u DB ✅
 
-**Napomena:** Svaki novi feature uz kod dobiva update `docs/help/` — dodano u End of session checklist.
+- ✅ **Help docs — dinamički load (S81):**
+  - `netlify.toml`: `included_files = ["docs/help/**"]` — fajlovi bundlani uz funkciju
+  - `help.ts` refaktoriran: `STATIC_PROMPT` (pravila + Demo Area) + `HELP_DOCS` (čita svih 7 `.md` fajlova via `fs.readFileSync(process.cwd() + 'docs/help/*.md')`)
+  - Novi feature → samo ažuriraj `docs/help/<tema>.md` — `help.ts` se ne dirá
+  - `concepts.md`: uklonjen meta-komentar koji nije bio namijenjen AI-u
+
+**Pravilo:** `docs/help/*.md` = jedini izvor istine za feature docove. `help.ts` statički prompt = samo Demo Area putanje + pravila tona.
 
 **6. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
    Status S65: `Za Sašu` 2026 (356 redova) importiran u TEST bazu ✅. Struktura pre-složena
@@ -458,7 +467,9 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
    with numbered steps, preconditions, and expected vs fail behaviour for EVERY new test.
    Update the `Detalji testova:` link in PENDING_TESTS.md to point to the new file.
 3. **Update `CLAUDE.md` backlog** — move done items out, add new S24+ items if discovered
-4. **Update `docs/help/`** — ako je dodan ili promijenjen bilo koji feature, ažuriraj odgovarajući help fajl
+4. **Update `docs/help/`** — ako je dodan ili promijenjen bilo koji feature, ažuriraj odgovarajući help fajl.
+   `netlify/functions/help.ts` se **ne mijenja** za feature docove — AI čita markdown fajlove dinamički.
+   Iznimke koje idu direktno u `help.ts` statički prompt: Demo Area putanje, pravila tona, app framing.
 5. **Commit** with descriptive message (e.g. `S24 structure add-area, import fix, blocked leaf`)
 
 ### Test result reporting (next session)

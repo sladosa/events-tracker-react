@@ -1,10 +1,5 @@
 # Events Tracker — Help System Concepts
 
-Ovaj fajl je izvor istine za AI help system prompt.
-Ažuriraj ga kad se dodaju ili mijenjaju feature-i.
-
----
-
 ## Struktura podataka
 
 **Areas → Categories (hijerarhija) → Activities/Events + Attributes (EAV)**

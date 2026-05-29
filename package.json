@@ -8,7 +8,7 @@
     "dev:test": "vite --mode testing",
     "dev:prod": "vite --mode prod",
     "dev:netlify": "netlify dev",
-    "dev:netlify-prod": "dotenv -e .env.local -e .env.prod.local -- netlify dev",
+    "dev:netlify-prod": "dotenv -o -e .env.local -e .env.prod.local -- netlify dev --port 8889",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
