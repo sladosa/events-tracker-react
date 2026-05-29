@@ -115,6 +115,8 @@ function AppContent() {
     reset,
     sharedContext,
     areaHasActiveShares,
+    setCommentSearch,
+    clearCommentSearch,
   } = useFilter();
 
   // Sync active tab into HelpContext so chips match the visible tab
@@ -353,6 +355,33 @@ function AppContent() {
             {activeTab === 'activities' && (
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <DateRangeFilter />
+              </div>
+            )}
+
+            {/* Comment Search - only for Activities tab */}
+            {activeTab === 'activities' && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Comment contains</label>
+                  <div className="relative flex-1 max-w-xs">
+                    <input
+                      type="text"
+                      value={filter.commentSearch}
+                      onChange={(e) => setCommentSearch(e.target.value)}
+                      placeholder="search comments..."
+                      className="w-full px-3 py-2 pr-7 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                    {filter.commentSearch && (
+                      <button
+                        onClick={clearCommentSearch}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+                        title="Clear"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -725,6 +754,7 @@ function ActivitiesView() {
     dateFrom: null,
     dateTo: null,
     sortOrder: filter.sortOrder,
+    commentSearch: filter.commentSearch,
     pageSize: 500,
   });
 

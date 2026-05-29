@@ -20,6 +20,7 @@
 - Area dropdown + Category dropdown u Filter panelu
 - Shortcuts: sačuvaj filter s 💾 ikonom, učitaj iz dropdown-a
 - "Reset cat." resetira samo kategoriju, area ostaje
+- **Comment contains** — tekst polje na dnu filtera; pretražuje `comment` polje leaf eventa (case-insensitive, server-side); chip "comment: xyz ×" pojavljuje se u tablici kad je aktivan
 
 ## Bulk operacije
 - Checkbox na redovima → odaberi više

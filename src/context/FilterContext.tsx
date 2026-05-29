@@ -23,6 +23,7 @@ export interface FilterState {
   dateTo: string | null;
   searchQuery: string;
   sortOrder: SortOrder;   // D3: 'desc' = newest first (default), 'asc' = oldest first
+  commentSearch: string;
 }
 
 // --------------------------------------------
@@ -46,7 +47,8 @@ const defaultFilterState: FilterState = {
   dateFrom: null,
   dateTo: null,
   searchQuery: '',
-  sortOrder: 'desc'  // D3: default newest first
+  sortOrder: 'desc',  // D3: default newest first
+  commentSearch: '',
 };
 
 // --------------------------------------------
@@ -97,6 +99,10 @@ export interface FilterContextType {
   
   // Search
   setSearchQuery: (query: string) => void;
+
+  // Comment search
+  setCommentSearch: (v: string) => void;
+  clearCommentSearch: () => void;
   
   // Storage operations
   saveToStorage: () => void;
@@ -623,6 +629,14 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     }));
   }, []);
 
+  const setCommentSearch = useCallback((v: string) => {
+    setFilter(prev => ({ ...prev, commentSearch: v }));
+  }, []);
+
+  const clearCommentSearch = useCallback(() => {
+    setFilter(prev => ({ ...prev, commentSearch: '' }));
+  }, []);
+
   // D3: Sort order
   const setSortOrder = useCallback((order: SortOrder) => {
     setFilter(prev => ({ ...prev, sortOrder: order }));
@@ -633,11 +647,12 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   // --------------------------------------------
 
   const hasActiveFilter = Boolean(
-    filter.areaId || 
-    filter.categoryId || 
-    filter.dateFrom || 
-    filter.dateTo || 
-    filter.searchQuery
+    filter.areaId ||
+    filter.categoryId ||
+    filter.dateFrom ||
+    filter.dateTo ||
+    filter.searchQuery ||
+    filter.commentSearch
   );
 
   const isFiltered = Boolean(filter.areaId || filter.categoryId);
@@ -674,6 +689,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     setPeriodLabel,
     setDateRange,
     setSearchQuery,
+    setCommentSearch,
+    clearCommentSearch,
     setSortOrder,
     saveToStorage,
     clearStorage,
