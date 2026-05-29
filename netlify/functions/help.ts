@@ -21,6 +21,7 @@ ACTIVITIES TAB:
 • View Activity: click on row or ⋮ → View; Prev/Next for navigation; swipe on mobile
 • Filter: Area + Category dropdowns; Shortcuts = saved filters (💾 icon)
 • "Reset cat." resets only Category, Area stays
+• Comment contains: text input at the bottom of the filter panel (Activities tab only) — searches the leaf activity comment field (case-insensitive, server-side .ilike); combines with Area/Category/Date filters using AND logic (narrows already-filtered results); active filter shown as indigo chip "comment: xyz ×" in the Activities table header; × on chip or × inside the input both clear the filter; "Clear all" also resets it
 
 STRUCTURE TAB (Edit Mode unlocks changes):
 • Add Leaf: ⋮ menu on category → "+ Add Leaf"
