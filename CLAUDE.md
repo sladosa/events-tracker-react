@@ -379,7 +379,13 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
   - `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` na Netlify ✅
   - Smoke test: AI odgovori rade, feedback se sprema u DB ✅
 
-**Napomena:** Svaki novi feature uz kod dobiva update `docs/help/` — dodano u End of session checklist.
+- ✅ **Help docs — dinamički load (S81):**
+  - `netlify.toml`: `included_files = ["docs/help/**"]` — fajlovi bundlani uz funkciju
+  - `help.ts` refaktoriran: `STATIC_PROMPT` (pravila + Demo Area) + `HELP_DOCS` (čita svih 7 `.md` fajlova via `fs.readFileSync(process.cwd() + 'docs/help/*.md')`)
+  - Novi feature → samo ažuriraj `docs/help/<tema>.md` — `help.ts` se ne dirá
+  - `concepts.md`: uklonjen meta-komentar koji nije bio namijenjen AI-u
+
+**Pravilo:** `docs/help/*.md` = jedini izvor istine za feature docove. `help.ts` statički prompt = samo Demo Area putanje + pravila tona.
 
 **6. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
    Status S65: `Za Sašu` 2026 (356 redova) importiran u TEST bazu ✅. Struktura pre-složena
@@ -461,7 +467,9 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
    with numbered steps, preconditions, and expected vs fail behaviour for EVERY new test.
    Update the `Detalji testova:` link in PENDING_TESTS.md to point to the new file.
 3. **Update `CLAUDE.md` backlog** — move done items out, add new S24+ items if discovered
-4. **Update `docs/help/`** — ako je dodan ili promijenjen bilo koji feature, ažuriraj odgovarajući help fajl
+4. **Update `docs/help/`** — ako je dodan ili promijenjen bilo koji feature, ažuriraj odgovarajući help fajl.
+   `netlify/functions/help.ts` se **ne mijenja** za feature docove — AI čita markdown fajlove dinamički.
+   Iznimke koje idu direktno u `help.ts` statički prompt: Demo Area putanje, pravila tona, app framing.
 5. **Commit** with descriptive message (e.g. `S24 structure add-area, import fix, blocked leaf`)
 
 ### Test result reporting (next session)
