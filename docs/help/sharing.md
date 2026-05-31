@@ -12,8 +12,9 @@
 
 ## Grantee pogled
 - Shared areae vidljive u filter dropdown-u i Structure tabu
-- Zeleni banner: "owner: X · you have write access"
-- Amber banner: "owner: X · you have read access"
+- Zeleni banner: "✅ Write access" + [ℹ Info] + [Take your data]
+- Amber banner: "👁 Read-only access" + [ℹ Info]
+- Klik na [ℹ Info] → modal s owner emailom, copy email gumbom i listom dozvola
 - Edit Mode skriven za grantee-a (ne može mijenjati strukturu)
 
 ## Upravljanje pristupom (owner pogled)
