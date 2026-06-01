@@ -323,6 +323,19 @@ Faze i status:
 1. **Financije reorganizacija** — Koka feedback o strukturi
 2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 3. **Invite PROD test** — dubravka.pavic-sladoljev@dps-perceptum.com (debugging invite flow)
+4. **Mobile UX — Activities tablica** — vidjeti detalje u backlogu ispod
+
+**UX-Mobile-1: Activities tablica na mobilnom (dizajn dogovoren S84)**
+Problem: tablica s 6+ kolona ne radi na 375px (iPhone). Category je truncated, Comment se ne vidi.
+Prioriteti na mobilnom: Datum > Comment > Action menu.
+
+Rješenje — two-row kompaktni layout (samo mobile, Tailwind `sm:hidden`/`hidden sm:block`):
+- **Red 1:** Datum (prominentno) · Time (sitnije) · Events badge desno · ⋮ Actions
+- **Red 2:** Comment (truncated, muted) — prikazuje se samo ako postoji
+- **Category kolona:** sakrivena na mobilnom kad je leaf selektiran (breadcrumb je već u header tablice). Kratko u red 2 samo na "All" viewu bez filtera.
+- **User kolona:** na mobilnom sakrivena ili avatar (inicijal) pored Datuma — nije prioritet za brzi pregled
+- **Import/Export gumbi:** premjestiti u collapsible filter sekciju — na mobilnom su file operacije ionako rijetke/teške, gumbi zauzimaju previše prostora u tablici
+- Desktop ostaje netaknut — media query razdjeljuje layout
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
