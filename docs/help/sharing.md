@@ -14,7 +14,9 @@
 - Shared areae vidljive u filter dropdown-u i Structure tabu
 - Zeleni banner: "✅ Write access" + [ℹ Info] + [Take your data]
 - Amber banner: "👁 Read-only access" + [ℹ Info]
-- Klik na [ℹ Info] → modal s owner emailom, copy email gumbom i listom dozvola
+- Klik na [ℹ Info] → modal s owner emailom, **"Contact owner"** gumbom i listom dozvola
+  - **Read grantee**: "Contact owner" → pre-filled poruka za zahtjev write accessa (TO/SUBJ/body); "Copy message" kopira sve u clipboard za slanje emailom
+  - **Write grantee**: "Contact owner" → pre-filled header s tvojim pravima + textarea za vlastitu poruku (prijedlog, zamjerka, zahtjev za novi atribut...)
 - Edit Mode skriven za grantee-a (ne može mijenjati strukturu)
 
 ## Upravljanje pristupom (owner pogled)
