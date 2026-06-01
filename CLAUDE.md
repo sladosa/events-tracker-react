@@ -315,9 +315,14 @@ Faze i status:
 
 **Napomena S81:** Comment filter implementiran — `commentSearch` u `FilterState`, `.ilike('comment', '%text%')` u `useActivities`, text input u filter baru (Activities tab), chip u `ActivitiesTable` header; `navActivities` i `ActivitiesTable` oba koriste `commentSearch`. Health_Sasa PROD import potvrđen T-S80-3 ✅.
 
-**Prioriteti za S82:**
+**Napomena S82:** SharedAreaBanner UX kompresija — read i write grantee banneri svedeni na 1 kompaktni red (`👁 Read-only access` / `✅ Write access` + `[ℹ Info]` gumb). Info otvara modal s owner emailom, copy email i listom dozvola. Owner Structure row: sharing badge uklonjen email username, ostala samo 🔗 ikona (+ broj ako >1 grantee).
+
+**Napomena S83:** "Contact owner" message draft u Info modalima — `ReadGranteeInfoModal` i `WriteGranteeInfoModal` dobili "Contact owner" gumb umjesto "Copy email"; otvara TO/SUBJ/body message draft (identičan UX kao invite modal u ShareManagementModal); Read grantee: pre-filled poruka za zahtjev write accessa; Write grantee: pre-filled header + textarea za slobodni tekst; `← Back` vraća na info prikaz; oba modala fetchaju grantee email (supabase.auth.getUser) za personalizaciju.
+
+**Prioriteti za S84:**
 1. **Financije reorganizacija** — Koka feedback o strukturi
 2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+3. **Invite PROD test** — dubravka.pavic-sladoljev@dps-perceptum.com (debugging invite flow)
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)
