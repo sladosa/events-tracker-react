@@ -15,15 +15,106 @@ import { toast } from 'react-hot-toast';
 import { useFilter } from '@/context/FilterContext';
 import { fetchAreaGrantees, type GranteeSummary } from '@/hooks/useDataShares';
 import { LeaveAreaModal } from '@/components/sharing/LeaveAreaModal';
+import { supabase } from '@/lib/supabaseClient';
 
 // --------------------------------------------------------
 // Helpers
 // --------------------------------------------------------
 
-function copyEmail(email: string) {
-  navigator.clipboard.writeText(email).then(
-    () => toast.success('Email copied'),
-    () => toast.error('Could not copy email'),
+function copyToClipboard(text: string, label: string) {
+  navigator.clipboard.writeText(text).then(
+    () => toast.success(`${label} copied`),
+    () => toast.error('Could not copy'),
+  );
+}
+
+// --------------------------------------------------------
+// Message draft view (shared by both info modals)
+// --------------------------------------------------------
+
+function MessageDraftView({
+  to,
+  subject,
+  bodyPrefix,
+  bodyFixed,
+  customText,
+  onCustomTextChange,
+  onBack,
+}: {
+  to: string;
+  subject: string;
+  /** Fixed prefix shown above the textarea (write grantee mode) */
+  bodyPrefix?: string;
+  /** Full fixed body (read grantee mode — no textarea) */
+  bodyFixed?: string;
+  customText?: string;
+  onCustomTextChange?: (val: string) => void;
+  onBack: () => void;
+}) {
+  const messageToSend = bodyFixed
+    ? bodyFixed
+    : `${bodyPrefix ?? ''}${customText ?? ''}`;
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+      >
+        ← Back
+      </button>
+
+      {/* TO */}
+      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+        <span className="text-xs font-semibold text-gray-500 w-8 shrink-0">TO</span>
+        <span className="text-xs text-gray-800 flex-1 truncate">{to}</span>
+        <button
+          onClick={() => copyToClipboard(to, 'Email')}
+          className="px-2 py-0.5 text-xs bg-white border border-gray-300 hover:bg-gray-100 rounded transition-colors shrink-0"
+        >
+          Copy
+        </button>
+      </div>
+
+      {/* SUBJ */}
+      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+        <span className="text-xs font-semibold text-gray-500 w-8 shrink-0">SUBJ</span>
+        <span className="text-xs text-gray-800 flex-1">{subject}</span>
+        <button
+          onClick={() => copyToClipboard(subject, 'Subject')}
+          className="px-2 py-0.5 text-xs bg-white border border-gray-300 hover:bg-gray-100 rounded transition-colors shrink-0"
+        >
+          Copy
+        </button>
+      </div>
+
+      {/* Body */}
+      {bodyFixed ? (
+        <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-700 whitespace-pre-line leading-relaxed max-h-44 overflow-y-auto">
+          {bodyFixed}
+        </div>
+      ) : (
+        <div className="space-y-0">
+          <div className="p-2.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-200 text-xs text-gray-700 whitespace-pre-line leading-relaxed">
+            {bodyPrefix}
+          </div>
+          <textarea
+            className="w-full p-2.5 bg-white border border-gray-200 rounded-b-lg text-xs text-gray-800 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            rows={3}
+            placeholder="Type your message here..."
+            value={customText ?? ''}
+            onChange={e => onCustomTextChange?.(e.target.value)}
+          />
+        </div>
+      )}
+
+      <button
+        onClick={() => copyToClipboard(messageToSend, 'Message')}
+        className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors"
+      >
+        Copy message
+      </button>
+    </div>
   );
 }
 
@@ -42,6 +133,35 @@ function ReadGranteeInfoModal({
   ownerEmail: string;
   onClose: () => void;
 }) {
+  const [showMessage, setShowMessage] = useState(false);
+  const [granteeEmail, setGranteeEmail] = useState('');
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setGranteeEmail(user.email);
+    });
+  }, []);
+
+  const msgSubject = `Write access request — ${areaName}`;
+  const msgBody = [
+    `Hi,`,
+    ``,
+    `${granteeEmail || 'I'} currently have read-only access to your "${areaName}" area in Events Tracker.`,
+    ``,
+    `Read-only access allows me to:`,
+    `✓ View all activities in this Area`,
+    `✓ Export activities to Excel`,
+    `✗ Cannot add or edit activities`,
+    `✗ Cannot modify the category structure`,
+    ``,
+    `I would like to request write access, which would additionally allow me to:`,
+    `+ Add and edit my own activities`,
+    ``,
+    `Please update the sharing settings if you'd like to grant this.`,
+    ``,
+    `Thanks`,
+  ].join('\n');
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
@@ -52,37 +172,49 @@ function ReadGranteeInfoModal({
           <h3 className="text-sm font-semibold text-gray-900">👁 Read-only access</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
         </div>
-        <p className="text-sm text-gray-700 mb-3">
-          <span className="font-medium">{areaName}</span> is owned by{' '}
-          <span className="font-medium">{ownerName || ownerEmail}</span>.
-        </p>
-        {ownerEmail && (
-          <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg mb-3">
-            <span className="text-xs text-gray-700 flex-1 truncate">{ownerEmail}</span>
-            <button
-              onClick={() => { copyEmail(ownerEmail); onClose(); }}
-              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-medium transition-colors"
-            >
-              Copy email
-            </button>
-          </div>
+
+        {showMessage ? (
+          <MessageDraftView
+            to={ownerEmail}
+            subject={msgSubject}
+            bodyFixed={msgBody}
+            onBack={() => setShowMessage(false)}
+          />
+        ) : (
+          <>
+            <p className="text-sm text-gray-700 mb-3">
+              <span className="font-medium">{areaName}</span> is owned by{' '}
+              <span className="font-medium">{ownerName || ownerEmail}</span>.
+            </p>
+            {ownerEmail && (
+              <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg mb-3">
+                <span className="text-xs text-gray-700 flex-1 truncate">{ownerEmail}</span>
+                <button
+                  onClick={() => setShowMessage(true)}
+                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-medium transition-colors"
+                >
+                  Contact owner
+                </button>
+              </div>
+            )}
+            <div className="text-xs text-gray-600 space-y-1 mb-4">
+              <p className="font-medium text-gray-700 mb-1">What can I do?</p>
+              <p>✓ View all activities in this Area</p>
+              <p>✓ Export activities to Excel</p>
+              <p>✗ Cannot add or edit activities</p>
+              <p>✗ Cannot modify the category structure</p>
+              <p className="pt-1 text-gray-500">To get write access, contact the owner above.</p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </>
         )}
-        <div className="text-xs text-gray-600 space-y-1 mb-4">
-          <p className="font-medium text-gray-700 mb-1">What can I do?</p>
-          <p>✓ View all activities in this Area</p>
-          <p>✓ Export activities to Excel</p>
-          <p>✗ Cannot add or edit activities</p>
-          <p>✗ Cannot modify the category structure</p>
-          <p className="pt-1 text-gray-500">To get write access, contact the owner above.</p>
-        </div>
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -129,6 +261,33 @@ function WriteGranteeInfoModal({
   ownerEmail: string;
   onClose: () => void;
 }) {
+  const [showMessage, setShowMessage] = useState(false);
+  const [granteeEmail, setGranteeEmail] = useState('');
+  const [customText, setCustomText] = useState('');
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setGranteeEmail(user.email);
+    });
+  }, []);
+
+  const msgSubject = `Note about "${areaName}" area`;
+  const msgBodyPrefix = [
+    `Hi,`,
+    ``,
+    `${granteeEmail || 'I'} have write access to your "${areaName}" area in Events Tracker.`,
+    ``,
+    `Write access rights:`,
+    `✓ View all activities in this Area`,
+    `✓ Add and edit my own activities`,
+    `✓ Export activities to Excel`,
+    `✗ Cannot edit other users' activities`,
+    `✗ Cannot modify the category structure`,
+    ``,
+    `Message:`,
+    ``,
+  ].join('\n');
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
@@ -139,37 +298,51 @@ function WriteGranteeInfoModal({
           <h3 className="text-sm font-semibold text-gray-900">✅ Write access</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
         </div>
-        <p className="text-sm text-gray-700 mb-3">
-          <span className="font-medium">{areaName}</span> is owned by{' '}
-          <span className="font-medium">{ownerName || ownerEmail}</span>.
-        </p>
-        {ownerEmail && (
-          <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg mb-3">
-            <span className="text-xs text-gray-700 flex-1 truncate">{ownerEmail}</span>
-            <button
-              onClick={() => { copyEmail(ownerEmail); onClose(); }}
-              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-medium transition-colors"
-            >
-              Copy email
-            </button>
-          </div>
+
+        {showMessage ? (
+          <MessageDraftView
+            to={ownerEmail}
+            subject={msgSubject}
+            bodyPrefix={msgBodyPrefix}
+            customText={customText}
+            onCustomTextChange={setCustomText}
+            onBack={() => setShowMessage(false)}
+          />
+        ) : (
+          <>
+            <p className="text-sm text-gray-700 mb-3">
+              <span className="font-medium">{areaName}</span> is owned by{' '}
+              <span className="font-medium">{ownerName || ownerEmail}</span>.
+            </p>
+            {ownerEmail && (
+              <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg mb-3">
+                <span className="text-xs text-gray-700 flex-1 truncate">{ownerEmail}</span>
+                <button
+                  onClick={() => setShowMessage(true)}
+                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-medium transition-colors"
+                >
+                  Contact owner
+                </button>
+              </div>
+            )}
+            <div className="text-xs text-gray-600 space-y-1 mb-4">
+              <p className="font-medium text-gray-700 mb-1">What can I do?</p>
+              <p>✓ Add and edit your own activities in this Area</p>
+              <p>✓ Export activities to Excel</p>
+              <p>✗ Cannot edit other users' activities</p>
+              <p>✗ Cannot modify the category structure</p>
+              <p className="pt-1 text-gray-500 italic">Your events are stored in {ownerName || 'the owner'}'s area. You can copy them to your own area at any time.</p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </>
         )}
-        <div className="text-xs text-gray-600 space-y-1 mb-4">
-          <p className="font-medium text-gray-700 mb-1">What can I do?</p>
-          <p>✓ Add and edit your own activities in this Area</p>
-          <p>✓ Export activities to Excel</p>
-          <p>✗ Cannot edit other users' activities</p>
-          <p>✗ Cannot modify the category structure</p>
-          <p className="pt-1 text-gray-500 italic">Your events are stored in {ownerName || 'the owner'}'s area. You can copy them to your own area at any time.</p>
-        </div>
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );
