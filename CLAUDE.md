@@ -483,8 +483,11 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 4. **Update `docs/help/`** — ako je dodan ili promijenjen bilo koji feature, ažuriraj odgovarajući help fajl.
    `netlify/functions/help.ts` se **ne mijenja** za feature docove — AI čita markdown fajlove dinamički.
    Iznimke koje idu direktno u `help.ts` statički prompt: Demo Area putanje, pravila tona, app framing.
-5. **Commit** with descriptive message (e.g. `S24 structure add-area, import fix, blocked leaf`)
-6. **Merge test-branch → main + sync back:**
+5. **Commit + push test-branch** (nema Netlify deploya, nema troška):
+   ```
+   git push origin test-branch
+   ```
+6. **Samo kad je verzija spremna za PROD** — merge na main (Netlify build) + sync back:
    ```
    git checkout main && git merge test-branch --no-edit && git push origin main
    git checkout test-branch && git merge main --no-edit && git push origin test-branch
