@@ -319,10 +319,18 @@ Faze i status:
 
 **Napomena S83:** "Contact owner" message draft u Info modalima — `ReadGranteeInfoModal` i `WriteGranteeInfoModal` dobili "Contact owner" gumb umjesto "Copy email"; otvara TO/SUBJ/body message draft (identičan UX kao invite modal u ShareManagementModal); Read grantee: pre-filled poruka za zahtjev write accessa; Write grantee: pre-filled header + textarea za slobodni tekst; `← Back` vraća na info prikaz; oba modala fetchaju grantee email (supabase.auth.getUser) za personalizaciju.
 
-**Prioriteti za S84:**
+**Napomena S84:** ✅ UX-Mobile-1 implementirano — `ActivitiesTable.tsx`: desktop `<tr hidden sm:table-row>` + mobilni `<tr sm:hidden>` (2 ćelije: main content + sticky ⋮); `<thead hidden sm:table-header-group>`; Import/Export `hidden sm:flex` u headeru tablice. `AppHome.tsx`: mobilni Import/Export gumbi u filter sekciji (dispatchu `activities:open-import`/`activities:open-export` CustomEvente); `ActivitiesView` sluša iste. Desktop layout netaknut.
+
+**Prioriteti za S85:**
 1. **Financije reorganizacija** — Koka feedback o strukturi
 2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 3. **Invite PROD test** — dubravka.pavic-sladoljev@dps-perceptum.com (debugging invite flow)
+
+**✅ UX-Mobile-1: Activities tablica na mobilnom** — implementirano S84
+- `sm:hidden` mobilni redovi: Red 1 (datum · vrijeme · ⋮ sticky desno), Red 2 (kategorijna staza ako nema filtera · comment)
+- Bez events badge na mobilnom (nije kontekstualno jasno bez headera)
+- Import/Export premješteni u filter sekciju (mobile only, `sm:hidden`)
+- Desktop: potpuno netaknut
 
 
 **1. ✅ PROD smoke test** — T-S48-1 do T-S48-5 sve ✅ (S49, 2026-04-13)

@@ -384,6 +384,25 @@ function AppContent() {
                 </div>
               </div>
             )}
+
+            {/* Mobile-only Import/Export — inside filter so accessible via collapse/expand */}
+            {activeTab === 'activities' && (
+              <div className="sm:hidden mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+                <span className="text-sm text-gray-500 mr-1">Excel</span>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('activities:open-import'))}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                >
+                  📤 Import
+                </button>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('activities:open-export'))}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                >
+                  📥 Export
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -739,6 +758,18 @@ function ActivitiesView() {
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showOrphanModal, setShowOrphanModal] = useState(false);
+
+  // Listen for mobile Import/Export events dispatched from filter section
+  useEffect(() => {
+    const handleImport = () => setShowImport(true);
+    const handleExport = () => setShowExport(true);
+    window.addEventListener('activities:open-import', handleImport);
+    window.addEventListener('activities:open-export', handleExport);
+    return () => {
+      window.removeEventListener('activities:open-import', handleImport);
+      window.removeEventListener('activities:open-export', handleExport);
+    };
+  }, []);
 
   // Current user id — needed for orphan detection and claim/delete
   const [currentUserId, setCurrentUserId] = useState('');
