@@ -484,6 +484,12 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
    `netlify/functions/help.ts` se **ne mijenja** za feature docove — AI čita markdown fajlove dinamički.
    Iznimke koje idu direktno u `help.ts` statički prompt: Demo Area putanje, pravila tona, app framing.
 5. **Commit** with descriptive message (e.g. `S24 structure add-area, import fix, blocked leaf`)
+6. **Merge test-branch → main + sync back:**
+   ```
+   git checkout main && git merge test-branch --no-edit && git push origin main
+   git checkout test-branch && git merge main --no-edit && git push origin test-branch
+   ```
+   Bez sync-backa `test-branch` zaostaje za `main` (merge commiti ostaju samo na main).
 
 ### Test result reporting (next session)
 User says e.g. "T-S24-1 OK, T-S24-3 fail" → Claude updates PENDING_TESTS.md accordingly
