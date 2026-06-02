@@ -304,8 +304,8 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
           )}
         </div>
 
-        {/* Export/Import + Bulk delete controls */}
-        <div className="flex items-center gap-2">
+        {/* Export/Import — hidden on mobile (accessible via mobile strip above table) */}
+        <div className="hidden sm:flex items-center gap-2">
           <button
             onClick={onImport}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
@@ -358,7 +358,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
       <div className="overflow-x-auto">
         <div ref={scrollContainerRef} className="overflow-y-auto pb-20" style={{ maxHeight: 'calc(100vh - 220px)' }}>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+          <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 hidden sm:table-header-group">
             <tr>
               <th className="px-3 py-3 text-left w-8">
                 {!sharedContext && (
@@ -398,6 +398,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 canSelect={!sharedContext}
                 isOrphan={orphanedPairKeys?.has(`${group.user_id}:${group.area_id}`) ?? false}
                 onManageOrphan={onManageOrphan}
+                showCategoryOnMobile={!filter.categoryId}
               />
             ))}
           </tbody>
@@ -427,14 +428,14 @@ interface ActivityRowProps {
   canSelect?: boolean;
   isOrphan?: boolean;
   onManageOrphan?: () => void;
+  showCategoryOnMobile?: boolean;
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId, canSelect = true, isOrphan = false, onManageOrphan }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 });
-  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const firstEvent = group.events[0];
   const isOwnEvent = !currentUserId || group.user_id === currentUserId;
@@ -442,27 +443,15 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
   // Build path display (without area for brevity)
   const pathDisplay = group.category_path.slice(1).join(' > '); // Skip area name
 
-  const handleMenuOpen = useCallback(() => {
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const MENU_HEIGHT = 160; // approximate menu height
-      const spaceBelow = window.innerHeight - rect.bottom;
-      // D2: ensure min 4px from right edge so menu stays on screen
-      const right = Math.max(window.innerWidth - rect.right, 4);
-
-      if (spaceBelow < MENU_HEIGHT + 8) {
-        // Not enough space below – show above the button
-        setMenuPos({
-          bottom: window.innerHeight - rect.top + 4,
-          right,
-        });
-      } else {
-        // Default: show below
-        setMenuPos({
-          top: rect.bottom + 4,
-          right,
-        });
-      }
+  const handleMenuOpen = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const MENU_HEIGHT = 160;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const right = Math.max(window.innerWidth - rect.right, 4);
+    if (spaceBelow < MENU_HEIGHT + 8) {
+      setMenuPos({ bottom: window.innerHeight - rect.top + 4, right });
+    } else {
+      setMenuPos({ top: rect.bottom + 4, right });
     }
     setShowMenu(true);
   }, []);
@@ -487,17 +476,18 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
     }
   };
 
+  const highlightClass = isHighlighted
+    ? 'bg-indigo-100 ring-2 ring-inset ring-indigo-400'
+    : isSelected
+      ? 'bg-indigo-50 hover:bg-indigo-50'
+      : 'hover:bg-gray-50';
+
   return (
     <>
+      {/* Desktop row — hidden below sm (640px) */}
       <tr
         ref={highlightRef}
-        className={`transition-colors ${
-          isHighlighted
-            ? 'bg-indigo-100 ring-2 ring-inset ring-indigo-400'
-            : isSelected
-              ? 'bg-indigo-50 hover:bg-indigo-50'
-              : 'hover:bg-gray-50'
-        }`}
+        className={`transition-colors hidden sm:table-row ${highlightClass}`}
       >
         {/* Checkbox — hidden for grantees */}
         <td className="px-3 py-2.5">
@@ -564,10 +554,9 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
           </span>
         </td>
         
-        {/* Actions - sticky right so always visible */}
+        {/* Actions - sticky right so always visible on desktop */}
         <td className="px-2 py-2.5 text-right sticky right-0 bg-white z-[1]">
           <button
-            ref={buttonRef}
             onClick={handleMenuOpen}
             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
           >
@@ -575,99 +564,145 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
               <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
             </svg>
           </button>
-          
-          {/* Dropdown Menu - fixed positioning to escape overflow:hidden parents */}
-          {showMenu && createPortal(
-            <>
-              <div 
-                className="fixed inset-0 z-40" 
-                onClick={() => { setShowMenu(false); setShowDeleteConfirm(false); }}
-              />
-              <div 
-                className="fixed w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] py-1"
-                style={{ 
-                  top: menuPos.top, 
-                  bottom: menuPos.bottom, 
-                  right: menuPos.right 
-                }}
+        </td>
+      </tr>
+
+      {/* Mobile card row — two-row compact layout, hidden on sm+ */}
+      <tr className={`sm:hidden transition-colors ${highlightClass}`}>
+        {/* Main content — takes full remaining width, clips on overflow */}
+        <td className="px-3 py-2 min-w-0" style={{ width: '100%' }}>
+          {/* Row 1: avatar · Date · time */}
+          <div className="flex items-center gap-1.5 min-w-0">
+            {showUserColumn && (
+              <div
+                className={`w-5 h-5 rounded-full ${hashAvatarColor(group.user_id)} flex items-center justify-center flex-shrink-0 ${isOrphan ? 'ring-2 ring-amber-400' : ''}`}
+                title={group.user_display_name || group.user_id}
               >
-                {/* View Details — uvijek dostupno */}
+                <span className="text-white text-[8px] font-bold">{getInitials(group.user_display_name || group.user_id)}</span>
+              </div>
+            )}
+            <span className="font-medium text-gray-900 text-sm flex-shrink-0">{formatDate(group.event_date)}</span>
+            <span className="text-xs text-gray-400 ml-0.5 flex-shrink-0">{formatTime(group.session_start)}</span>
+          </div>
+          {/* Row 2: category path and/or comment */}
+          {((showCategoryOnMobile && pathDisplay) || firstEvent.comment) && (
+            <div className="mt-0.5 flex items-center gap-1 min-w-0 text-xs text-gray-500">
+              {showCategoryOnMobile && pathDisplay && (
+                <span className="text-indigo-500 truncate flex-shrink-0 max-w-[40%]">
+                  {group.area_icon ? `${group.area_icon} ${pathDisplay}` : pathDisplay}
+                </span>
+              )}
+              {showCategoryOnMobile && pathDisplay && firstEvent.comment && (
+                <span className="text-gray-300 flex-shrink-0">·</span>
+              )}
+              {firstEvent.comment && (
+                <span className="truncate">{firstEvent.comment}</span>
+              )}
+            </div>
+          )}
+        </td>
+        {/* Sticky Actions — always visible on right edge */}
+        <td className="py-2 pr-2 sticky right-0 bg-white z-[1] align-top">
+          <button
+            onClick={handleMenuOpen}
+            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+            </svg>
+          </button>
+        </td>
+      </tr>
+
+      {/* Dropdown menu portal — shared between desktop and mobile rows */}
+      {showMenu && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => { setShowMenu(false); setShowDeleteConfirm(false); }}
+          />
+          <div
+            className="fixed w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] py-1"
+            style={{
+              top: menuPos.top,
+              bottom: menuPos.bottom,
+              right: menuPos.right
+            }}
+          >
+            {/* View Details — uvijek dostupno */}
+            <button
+              onClick={() => {
+                onViewDetails?.(group.session_start, group.category_id, firstEvent.id, group.user_id);
+                setShowMenu(false);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+            >
+              👁️ View Details
+            </button>
+            {/* Orphan management — shown when user is orphaned */}
+            {isOrphan && onManageOrphan && (
+              <>
+                <hr className="my-1 border-gray-100" />
+                <button
+                  onClick={() => { onManageOrphan(); setShowMenu(false); }}
+                  className="w-full px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50"
+                >
+                  ⚠ Manage orphan events
+                </button>
+              </>
+            )}
+            {/* D4: Edit + Delete samo za vlastite evente */}
+            {isOwnEvent && (
+              <>
                 <button
                   onClick={() => {
-                    onViewDetails?.(group.session_start, group.category_id, firstEvent.id, group.user_id);
+                    onEdit?.(group.session_start, group.category_id, firstEvent.id);
                     setShowMenu(false);
                   }}
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                 >
-                  👁️ View Details
+                  ✏️ Edit
                 </button>
-                {/* Orphan management — shown when user is orphaned */}
-                {isOrphan && onManageOrphan && (
-                  <>
-                    <hr className="my-1 border-gray-100" />
-                    <button
-                      onClick={() => { onManageOrphan(); setShowMenu(false); }}
-                      className="w-full px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50"
-                    >
-                      ⚠ Manage orphan events
-                    </button>
-                  </>
-                )}
-                {/* D4: Edit + Delete samo za vlastite evente */}
-                {isOwnEvent && (
-                  <>
-                    <button
-                      onClick={() => {
-                        onEdit?.(group.session_start, group.category_id, firstEvent.id);
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      ✏️ Edit
-                    </button>
-                    <hr className="my-1 border-gray-100" />
-                    {/* Delete with inline confirmation */}
-                    {!showDeleteConfirm ? (
+                <hr className="my-1 border-gray-100" />
+                {!showDeleteConfirm ? (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                  >
+                    🗑️ Delete Activity
+                  </button>
+                ) : (
+                  <div className="px-3 py-2 bg-red-50">
+                    <p className="text-xs text-red-700 font-medium mb-2">
+                      Delete {group.eventCount} event{group.eventCount !== 1 ? 's' : ''} + all photos?
+                    </p>
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                        onClick={handleDeleteConfirm}
+                        disabled={isDeleting}
+                        className="flex-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
                       >
-                        🗑️ Delete Activity
+                        {isDeleting ? '...' : 'Yes, delete'}
                       </button>
-                    ) : (
-                      <div className="px-3 py-2 bg-red-50">
-                        <p className="text-xs text-red-700 font-medium mb-2">
-                          Delete {group.eventCount} event{group.eventCount !== 1 ? 's' : ''} + all photos?
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleDeleteConfirm}
-                            disabled={isDeleting}
-                            className="flex-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-                          >
-                            {isDeleting ? '...' : 'Yes, delete'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowDeleteConfirm(false);
-                              setShowMenu(false);
-                            }}
-                            disabled={isDeleting}
-                            className="flex-1 px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                      <button
+                        onClick={() => {
+                          setShowDeleteConfirm(false);
+                          setShowMenu(false);
+                        }}
+                        disabled={isDeleting}
+                        className="flex-1 px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </div>
-            </>,
-            document.body
-          )}
-        </td>
-      </tr>
+              </>
+            )}
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }
