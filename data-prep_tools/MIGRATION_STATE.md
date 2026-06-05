@@ -4,14 +4,14 @@ Track what data sources exist, where we are in the pipeline, and what area they 
 
 **Pipeline stages:** Audit → Script → xlsx → TEST import → Clean → PROD import
 
-| Source | Audit | Script | xlsx | TEST | Clean | PROD | Area u app |
-|--------|-------|--------|------|------|-------|------|------------|
-| Garmin / Activities | ✅ S71 | ✅ S71 | ✅ S71 | ✅ S71 | ⬜ | ⬜ | `Fitness_Garmin` |
-| Garmin / Daily metrics | ✅ S77 | ✅ S77 | ✅ S77 | ✅ S77 | ⬜ | ✅ S78 | `Health_Sasa > Daily_metrics > Garmin_data` |
-| Garmin / Sleep | ✅ S71 | ⬜ | ⬜ | ⬜ | — | ⬜ | `Health_Sasa > Daily_metrics > Garmin_data` (stub cols ready) |
-| Bloodwork.xlsx | ✅ S68 | ✅ S68 | ✅ S68 | ✅ | ✅ S74 | ✅ | `Health_Saša` |
-| Za Sašu 2026 (Financije) | ✅ S65 | ✅ S65 | ✅ S65 | ✅ | ⬜ | ⬜ | `Financije_1` |
-| trening.xlsm (ručni log) | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | (mapiranje u Fitness?) |
+| Source                   | Audit | Script | xlsx  | TEST  | Clean | PROD  | Area u app                                                    |
+| ------------------------ | ----- | ------ | ----- | ----- | ----- | ----- | ------------------------------------------------------------- |
+| Garmin / Activities      | ✅ S71 | ✅ S71  | ✅ S71 | ✅ S71 | ⬜     | ⬜     | `Fitness_Garmin`                                              |
+| Garmin / Daily metrics   | ✅ S77 | ✅ S77  | ✅ S77 | ✅ S77 | ⬜     | ✅ S78 | `Health_Sasa > Daily_metrics > Garmin_data`                   |
+| Garmin / Sleep           | ✅ S71 | ⬜      | ⬜     | ⬜     | —     | ⬜     | `Health_Sasa > Daily_metrics > Garmin_data` (stub cols ready) |
+| Bloodwork.xlsx           | ✅ S68 | ✅ S68  | ✅ S68 | ✅     | ✅ S74 | ✅     | `Health_Saša`                                                 |
+| Za Sašu 2026 (Financije) | ✅ S65 | ✅ S65  | ✅ S65 | ✅     | ⬜     | ⬜     | `Financije_1`                                                 |
+| trening.xlsm (ručni log) | ⬜     | ⬜      | ⬜     | ⬜     | —     | ⬜     | (mapiranje u Fitness?)                                        |
 
 ---
 
