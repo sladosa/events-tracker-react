@@ -151,37 +151,40 @@ export function StructureDeleteModal({
       .map(n => n.id);
 
     if (categoryIds.length > 0) {
-      if (includeEvents) {
-        // ── Delete events and their dependent rows ─────────────────────────
-        const { data: events } = await supabase
-          .from('events')
-          .select('id')
-          .in('category_id', categoryIds);
+      // ── Always clean up events (eventCount may be stale) ──────────────────
+      const { data: events } = await supabase
+        .from('events')
+        .select('id')
+        .in('category_id', categoryIds);
 
-        if (events && events.length > 0) {
-          const eventIds = (events as { id: string }[]).map(e => e.id);
+      if (events && events.length > 0) {
+        const eventIds = (events as { id: string }[]).map(e => e.id);
 
-          // Delete storage attachments
-          const { data: attachments } = await supabase
-            .from('event_attachments')
-            .select('url')
-            .in('event_id', eventIds);
-
-          if (attachments && attachments.length > 0) {
-            const paths = (attachments as { url: string }[])
-              .map(a => { const p = a.url.split('/activity-attachments/'); return p.length > 1 ? p[1] : null; })
-              .filter((p): p is string => p !== null);
-            if (paths.length > 0) {
-              await supabase.storage.from('activity-attachments').remove(paths);
-            }
-          }
-
-          await supabase.from('event_attachments').delete().in('event_id', eventIds);
-          await supabase.from('event_attributes').delete().in('event_id', eventIds);
-
-          const { error: evErr } = await supabase.from('events').delete().in('id', eventIds);
-          if (evErr) throw evErr;
+        if (!includeEvents) {
+          // Unexpected events found (stale UI count) — log but proceed with cleanup
+          console.warn('StructureDeleteModal: found events not reflected in UI eventCount, cleaning up', eventIds.length);
         }
+
+        // Delete storage attachments
+        const { data: attachments } = await supabase
+          .from('event_attachments')
+          .select('url')
+          .in('event_id', eventIds);
+
+        if (attachments && attachments.length > 0) {
+          const paths = (attachments as { url: string }[])
+            .map(a => { const p = a.url.split('/activity-attachments/'); return p.length > 1 ? p[1] : null; })
+            .filter((p): p is string => p !== null);
+          if (paths.length > 0) {
+            await supabase.storage.from('activity-attachments').remove(paths);
+          }
+        }
+
+        await supabase.from('event_attachments').delete().in('event_id', eventIds);
+        await supabase.from('event_attributes').delete().in('event_id', eventIds);
+
+        const { error: evErr } = await supabase.from('events').delete().in('id', eventIds);
+        if (evErr) throw evErr;
       }
 
       // ── Delete attribute_definitions ──────────────────────────────────────
@@ -225,7 +228,10 @@ export function StructureDeleteModal({
       onDeleted(node.id);
     } catch (err) {
       console.error('StructureDeleteModal: delete failed', err);
-      setError(err instanceof Error ? err.message : 'Delete failed. Please try again.');
+      const msg = err instanceof Error
+        ? err.message
+        : (err as { message?: string })?.message ?? JSON.stringify(err);
+      setError(msg || 'Delete failed. Please try again.');
       setDeleting(false);
     }
   }, [cascadeDelete, node.id, onDeleted]);
@@ -253,7 +259,10 @@ export function StructureDeleteModal({
       onDeleted(node.id);
     } catch (err) {
       console.error('StructureDeleteModal: delete-with-backup failed', err);
-      setError(err instanceof Error ? err.message : 'Operation failed. Please try again.');
+      const msg = err instanceof Error
+        ? err.message
+        : (err as { message?: string })?.message ?? JSON.stringify(err);
+      setError(msg || 'Operation failed. Please try again.');
       setDeleting(false);
       setPhase('idle');
     }

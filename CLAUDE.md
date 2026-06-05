@@ -321,8 +321,14 @@ Faze i status:
 
 **Napomena S84:** ✅ UX-Mobile-1 implementirano — `ActivitiesTable.tsx`: desktop `<tr hidden sm:table-row>` + mobilni `<tr sm:hidden>` (2 ćelije: main content + sticky ⋮); `<thead hidden sm:table-header-group>`; Import/Export `hidden sm:flex` u headeru tablice. `AppHome.tsx`: mobilni Import/Export gumbi u filter sekciji (dispatchu `activities:open-import`/`activities:open-export` CustomEvente); `ActivitiesView` sluša iste. Desktop layout netaknut.
 
-**Prioriteti za S85:**
-1. **Financije reorganizacija** — Koka feedback o strukturi
+**Napomena S86:**
+- ✅ **Bug fix: suggest atributi u make_import.py** — `Structure` sheet pisao `AttrType='suggest'`; DB ne prihvaća 'suggest' kao `data_type` (valjani: number/text/datetime/boolean/link/image); suggest atributi tiho preskočeni pri importu. Fix: `AttrType='text'` + `Val.Type='suggest'` (suggest = data_type='text' + validation_rules). Pravilo dokumentirano u `data-prep_tools/Tools/excel_import_template.py`.
+- ✅ **Bug fix: StructureDeleteModal error display** — `catch` blok prikazivao genericku "Delete failed" jer Supabase `PostgrestError` nije `instanceof Error`. Fix: `(err as {message?:string})?.message` prikazuje stvarnu DB grešku u modalu.
+- ✅ **Bug fix: StructureDeleteModal cascadeDelete** — `cascadeDelete(false)` (no-events path) nije brisao `events`/`event_attributes` → FK constraint `event_attributes_attribute_definition_id_fkey` pucao ako su eventi djelomično importani. Fix: uvijek čisti events za kategorije (stale `eventCount` u UI ne blokira cleanup).
+- ✅ **Financije_2 importana u TEST** — 458 eventa (2026-01 do 06), 39 atributa (uključujući svi suggest dropdowni), 20 kategorija. Struktura: Prihodi (Plaća/Najam/Ostali) + Rashodi (Dom/Svakodnevni/Restoran/Prijevoz/Zdravlje/Trening/Pretplate/Razvoj/Kupovina/Telekomunikacije/Rate/Porezi/Putovanje/Ostalo) + Transferi.
+
+**Prioriteti za S87:**
+1. **Financije — vizualni pregled** — pregledati importane podatke u TEST; provjeriti kategorizaciju i suggest opcije; usporedba s originalnim Excel source-om
 2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 3. **Invite PROD test** — dubravka.pavic-sladoljev@dps-perceptum.com (debugging invite flow)
 
@@ -401,11 +407,10 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
 **Pravilo:** `docs/help/*.md` = jedini izvor istine za feature docove. `help.ts` statički prompt = samo Demo Area putanje + pravila tona.
 
 **6. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
-   Status S65: `Za Sašu` 2026 (356 redova) importiran u TEST bazu ✅. Struktura pre-složena
-   (19 listova), čeka Kokin feedback za pojednostavljenje (max L2, Vrsta dropdowns).
-   Process docs: `data-prep_data/Financije/IMPORT_PROCES.md`
-   Prijedlog za Koku: `data-prep_data/Financije/KOKA_STRUKTURA_PRIJEDLOG.md`
-   Skripte: `fix_dates.py` (datumi) + `make_import.py` (generira xlsx za import)
+   Status S86: `Financije_2` importana u TEST ✅ — 458 eventa (2026-01 do 06), flat L2 struktura,
+   svi suggest dropdowni rade. Sljedeće: vizualni pregled podataka, usporedba s originalom.
+   Skripte: `data-prep_tools/Financije/make_import.py` (generira xlsx za import)
+   ⚠️ Pravilo: AttrType u Structure sheetu = 'text' za suggest (ne 'suggest') → vidi `excel_import_template.py`
 
 **7. Historijska migracija** (poseban projekt, bez vremenskog pritiska)
 - `trening.xlsm` analiza — mapiranje kolona i sheetova na trenutni data model

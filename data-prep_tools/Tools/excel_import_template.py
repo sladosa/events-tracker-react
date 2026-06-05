@@ -48,6 +48,20 @@ STRUCTURE SHEET (opciono, ali potreban za kreiranje kategorija):
           IsRequired | Val.Type | Default | ValMax | Unit | TextOptions |
           DependsOn | WhenValue | Description
 
+  ⚠️  KRITICNO: AttrType vs Val.Type za suggest atribute
+  ──────────────────────────────────────────────────────────
+  U bazi, 'suggest' NIJE validan data_type. Suggest atributi se pohranjuju kao:
+    data_type = 'text'  +  validation_rules = { "type": "suggest", "suggest": [...] }
+
+  U Structure sheetu mora biti:
+    AttrType (col F) = 'text'     ← uvijek 'text' za suggest (ovo je DB data_type)
+    Val.Type (col H) = 'suggest'  ← ovo triggerira kreiranje validation_rules
+    TextOptions (col L) = 'Opt1|Opt2|Opt3'
+
+  ❌ POGREŠKA: AttrType = 'suggest' → structureImport.ts pokušava INSERT data_type='suggest'
+     → DB odbija (nije valjani tip) → atribut se tiho preskače → u bazi nema suggest opcija
+  ✅ ISPRAVNO:  AttrType = 'text'  + Val.Type = 'suggest' + TextOptions = 'Opt1|Opt2'
+
 ─────────────────────────────────────────────────────────────────────────────
 CESTE GRESKE
 ─────────────────────────────────────────────────────────────────────────────
