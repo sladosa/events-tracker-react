@@ -490,7 +490,26 @@ export function AddActivityPage() {
   useEffect(() => {
     log(`Attrs state: loading=${attributesLoading}, error=${attributesError?.message || 'none'}, size=${attributesByCategory.size}`);
   }, [attributesByCategory, attributesLoading, attributesError, log]);
-  
+
+  // Apply default_value when attributes first load (e.g. Valuta → EUR)
+  // Only sets values not already in the map so draft restores are not overwritten
+  useEffect(() => {
+    if (attributesByCategory.size === 0) return;
+    setAttributeValues(prev => {
+      const next = new Map(prev);
+      let changed = false;
+      for (const attrs of attributesByCategory.values()) {
+        for (const attr of attrs) {
+          if (!attr.default_value) continue;
+          if (prev.has(attr.id)) continue;
+          next.set(attr.id, { definitionId: attr.id, value: attr.default_value, touched: true });
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [attributesByCategory]);
+
   // ============================================
   // Form Handlers
   // ============================================

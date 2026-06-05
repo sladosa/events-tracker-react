@@ -530,9 +530,9 @@ STRUCT = [
 
     # ── Prihodi ───────────────────────────────────────────────────────────────
     ('Category',  f'{AREA} > Prihodi',                        '','','','','','',''),
-    ('Attribute', f'{AREA} > Prihodi',  'Iznos',  'iznos',  'number',  'none',    '',    'EUR', ''),
-    ('Attribute', f'{AREA} > Prihodi',  'Račun',  'racun',  'text', 'suggest', '',    '',    RACUN_OPTS),
-    ('Attribute', f'{AREA} > Prihodi',  'Valuta', 'valuta', 'text', 'suggest', 'EUR', '',    'EUR|HRK|USD'),
+    ('Attribute', f'{AREA} > Prihodi',  'Iznos',  'iznos',  'number', 'none',    '',  '', ''),
+    ('Attribute', f'{AREA} > Prihodi',  'Račun',  'racun',  'text',   'suggest', '',  '', RACUN_OPTS),
+    ('Attribute', f'{AREA} > Prihodi',  'Valuta', 'valuta', 'text',   'suggest', 'EUR', '', 'EUR|HRK|USD'),
 
     ('Category',  f'{AREA} > Prihodi > Plaća i mirovina',     '','','','','','',''),
     ('Attribute', f'{AREA} > Prihodi > Plaća i mirovina', 'Vrsta', 'vrsta', 'text','suggest','','',
@@ -548,9 +548,9 @@ STRUCT = [
 
     # ── Rashodi ───────────────────────────────────────────────────────────────
     ('Category',  f'{AREA} > Rashodi',                        '','','','','','',''),
-    ('Attribute', f'{AREA} > Rashodi',  'Iznos',  'iznos',  'number', 'none',    '',    'EUR', ''),
-    ('Attribute', f'{AREA} > Rashodi',  'Račun',  'racun',  'text',   'suggest', '',    '',    RACUN_OPTS),
-    ('Attribute', f'{AREA} > Rashodi',  'Valuta', 'valuta', 'text',   'suggest', 'EUR', '',    'EUR|HRK|USD'),
+    ('Attribute', f'{AREA} > Rashodi',  'Iznos',  'iznos',  'number', 'none',    '',  '', ''),
+    ('Attribute', f'{AREA} > Rashodi',  'Račun',  'racun',  'text',   'suggest', '',  '', RACUN_OPTS),
+    ('Attribute', f'{AREA} > Rashodi',  'Valuta', 'valuta', 'text',   'suggest', 'EUR', '', 'EUR|HRK|USD'),
 
     ('Category',  f'{AREA} > Rashodi > Dom',                  '','','','','','',''),
     ('Attribute', f'{AREA} > Rashodi > Dom', 'Vrsta',  'vrsta',  'text','suggest','','',
@@ -621,7 +621,7 @@ STRUCT = [
 
     # ── Transferi ─────────────────────────────────────────────────────────────
     ('Category',  f'{AREA} > Transferi',                      '','','','','','',''),
-    ('Attribute', f'{AREA} > Transferi', 'Iznos',     'iznos',     'number', 'none',    '',    'EUR', ''),
+    ('Attribute', f'{AREA} > Transferi', 'Iznos',     'iznos',     'number', 'none',    '',  '', ''),
     ('Attribute', f'{AREA} > Transferi', 'Izvor',     'izvor',     'text',   'suggest', '',    '',    RACUN_OPTS),
     ('Attribute', f'{AREA} > Transferi', 'Napomena',  'napomena',  'text',   'none',    '',    '',    ''),
     ('Attribute', f'{AREA} > Transferi', 'Odredište', 'odrediste', 'text',   'suggest', '',    '',    RACUN_OPTS),

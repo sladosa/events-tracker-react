@@ -326,6 +326,8 @@ Faze i status:
 - ✅ **Bug fix: StructureDeleteModal error display** — `catch` blok prikazivao genericku "Delete failed" jer Supabase `PostgrestError` nije `instanceof Error`. Fix: `(err as {message?:string})?.message` prikazuje stvarnu DB grešku u modalu.
 - ✅ **Bug fix: StructureDeleteModal cascadeDelete** — `cascadeDelete(false)` (no-events path) nije brisao `events`/`event_attributes` → FK constraint `event_attributes_attribute_definition_id_fkey` pucao ako su eventi djelomično importani. Fix: uvijek čisti events za kategorije (stale `eventCount` u UI ne blokira cleanup).
 - ✅ **Financije_2 importana u TEST** — 458 eventa (2026-01 do 06), 39 atributa (uključujući svi suggest dropdowni), 20 kategorija. Struktura: Prihodi (Plaća/Najam/Ostali) + Rashodi (Dom/Svakodnevni/Restoran/Prijevoz/Zdravlje/Trening/Pretplate/Razvoj/Kupovina/Telekomunikacije/Rate/Porezi/Putovanje/Ostalo) + Transferi.
+- ✅ **S86b: `default_value` primjenjuje se u Add Activity** — `AddActivityPage.tsx` dobio `useEffect` koji inicijalizira `attributeValues` s `default_value` kad se atributi učitaju (samo za atribute koji nisu već u mapi → draft restore nije ugrožen); `touched: true` osigurava da se default sprema; primjer: Valuta → EUR pre-selected.
+- ✅ **S86b: Iznos bez EUR unit** — `make_import.py` uklonjen `unit='EUR'` s Iznos atributa (Prihodi + Rashodi + Transferi); Structure re-import updateirao 3 attr_defs (EUR → null); Iznos više nema statički EUR label koji bi bio netočan kad je Valuta = HRK/USD.
 
 **Prioriteti za S87:**
 1. **Financije — vizualni pregled** — pregledati importane podatke u TEST; provjeriti kategorizaciju i suggest opcije; usporedba s originalnim Excel source-om
