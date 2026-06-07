@@ -187,6 +187,13 @@ export function StructureDeleteModal({
         if (evErr) throw evErr;
       }
 
+      // ── Delete activity_presets (shortcuts) referencing these categories ──
+      const { error: presetErr } = await supabase
+        .from('activity_presets')
+        .delete()
+        .in('category_id', categoryIds);
+      if (presetErr) throw presetErr;
+
       // ── Delete attribute_definitions ──────────────────────────────────────
       const { error: attrErr } = await supabase
         .from('attribute_definitions')

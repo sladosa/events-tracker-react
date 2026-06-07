@@ -6,9 +6,10 @@ Generira xlsx za import u Events Tracker — Area 'Financije_3'.
 
 Izvor: Claude-temp_R/Financije 2026-06.xlsx (sheetovi: koka EU, sasa EU)
 
-Struktura:
-  L1: Transakcija  — Racun, Uplata, Isplata, Stanje, Valuta
-  L2: Kategorija   — Napomena, Smjer, Tip  (leaf)
+Struktura (flat — Transakcija je leaf):
+  L1: Transakcija (leaf) — Racun, Uplata, Isplata, Stanje, Valuta, Napomena, Smjer, Tip
+
+leaf_comment = 'ZABA: [Napomena]' ili 'RF: [Napomena]'
 
 Svaki red = jedna bankovna transakcija = jedna sesija.
 
@@ -36,8 +37,7 @@ OUTPUT     = OUTPUT_DIR / "Financije3_import.xlsx"
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 AREA       = "Financije_3"
-L1         = "Transakcija"
-L2         = "Kategorija"
+L1         = "Transakcija"   # flat — Transakcija je leaf, nema L2
 USER_EMAIL = "sasasladoljev59@gmail.com"
 MIN_DATE   = date(2023, 1, 1)
 MAX_DATE   = date(2026, 12, 31)
@@ -87,18 +87,16 @@ BORDER      = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 
 # ── Attribute definitions ──────────────────────────────────────────────────────
 # (cat_path_no_area, attr_name, data_type, unit, val_type, options, default, description)
+# Flat: sve na L1 Transakcija (koja je ujedno leaf)
 ATTRS = [
-    # L1: Transakcija
-    (L1, 'Racun',   'text',   '',    'suggest',
-     'Kokin tekući ZABA|Sašin tekući RF', '', ''),
-    (L1, 'Uplata',  'number', 'EUR', '',        '', '', ''),
-    (L1, 'Isplata', 'number', 'EUR', '',        '', '', ''),
-    (L1, 'Stanje',  'number', 'EUR', '',        '', '', 'Stanje računa nakon transakcije'),
-    (L1, 'Valuta',  'text',   '',    'suggest', 'EUR|HRK|USD', 'EUR', ''),
-    # L2: Kategorija (leaf)
-    (f'{L1} > {L2}', 'Napomena', 'text', '', '',        '', '', 'Originalni opis iz bankovnog izvoda'),
-    (f'{L1} > {L2}', 'Smjer',    'text', '', 'suggest', 'Uplata|Isplata|PROVJERI', '', ''),
-    (f'{L1} > {L2}', 'Tip',      'text', '', 'suggest', TIP_OPTIONS, 'N/A', ''),
+    (L1, 'Racun',    'text',   '',    'suggest', 'Kokin tekući ZABA|Sašin tekući RF', '',    ''),
+    (L1, 'Uplata',   'number', 'EUR', '',        '',                                   '',    ''),
+    (L1, 'Isplata',  'number', 'EUR', '',        '',                                   '',    ''),
+    (L1, 'Stanje',   'number', 'EUR', '',        '',                                   '',    'Stanje računa nakon transakcije'),
+    (L1, 'Valuta',   'text',   '',    'suggest', 'EUR|HRK|USD',                        'EUR', ''),
+    (L1, 'Napomena', 'text',   '',    '',        '',                                   '',    'Originalni opis iz bankovnog izvoda'),
+    (L1, 'Smjer',    'text',   '',    'suggest', 'Uplata|Isplata|PROVJERI',            '',    ''),
+    (L1, 'Tip',      'text',   '',    'suggest', TIP_OPTIONS,                          'N/A', ''),
 ]
 
 # Fixed columns before attributes: event_id, Area, Cat_Path, date, time, created, user, comment
@@ -189,15 +187,9 @@ def write_structure_sheet(ws):
         row('Area', f'{AREA}'),
         row('Category', f'{AREA} > {L1}'),
     ]
-    cat_sort: dict[str, int] = {}
-    l2_inserted = False
-    for cat, name, atype, unit, vtype, options, default, desc in ATTRS:
+    # Flat: sve ATTRS su pod L1, nema L2 kategorije
+    for sort_val, (cat, name, atype, unit, vtype, options, default, desc) in enumerate(ATTRS, 1):
         full_path = f'{AREA} > {cat}'
-        cat_sort[cat] = cat_sort.get(cat, 0) + 1
-        sort_val = cat_sort[cat]
-        if cat == f'{L1} > {L2}' and not l2_inserted:
-            rows.append(row('Category', f'{AREA} > {L1} > {L2}'))
-            l2_inserted = True
         rows.append(row('Attribute', full_path, sort_val, name, '', atype,
                         '', vtype, default, '', unit, options, '', '', desc))
 
@@ -244,16 +236,15 @@ def write_events_sheet(ws, events):
         cell.fill = BLUE_FILL
         cell.font = WHITE_FONT
 
-    leaf_path = f'{L1} > {L2}'
     for r_idx, ev in enumerate(events, hdr_row + 1):
-        ws.cell(r_idx, 1, '')                          # event_id (empty = create)
+        ws.cell(r_idx, 1, '')            # event_id (empty = create)
         ws.cell(r_idx, 2, AREA)
-        ws.cell(r_idx, 3, leaf_path)
+        ws.cell(r_idx, 3, L1)           # flat — Transakcija je direktno leaf
         ws.cell(r_idx, 4, ev['date'])
         ws.cell(r_idx, 5, ev['time'])
-        ws.cell(r_idx, 6, '')                          # created_at
+        ws.cell(r_idx, 6, '')            # created_at
         ws.cell(r_idx, 7, USER_EMAIL)
-        ws.cell(r_idx, 8, '')                          # leaf comment
+        ws.cell(r_idx, 8, ev['comment'])  # RF: Napomena / ZABA: Napomena
         # Attributes: Racun, Uplata, Isplata, Stanje, Valuta, Napomena, Smjer, Tip
         ws.cell(r_idx, 9,  ev['racun'])
         ws.cell(r_idx, 10, ev['uplata'])
@@ -267,8 +258,31 @@ def write_events_sheet(ws, events):
 
 # ── Read source sheet ──────────────────────────────────────────────────────────
 
-def read_sheet(ws, racun_label: str, skipped: list) -> list:
+def correct_date(d: date, last_valid: date) -> tuple[date, str]:
+    """Auto-correct plausible year typos. Returns (corrected, note)."""
+    if d.year < MIN_DATE.year:
+        try:
+            c = date(d.year + 20, d.month, d.day)
+            if MIN_DATE <= c <= MAX_DATE:
+                return c, f'{d} → {c} (+20yr)'
+        except ValueError:
+            pass
+        return last_valid, f'{d} → fallback (no correction)'
+    if d.year > MAX_DATE.year:
+        try:
+            c = date(d.year - 10, d.month, d.day)
+            if MIN_DATE <= c <= MAX_DATE:
+                return c, f'{d} → {c} (-10yr)'
+        except ValueError:
+            pass
+        return last_valid, f'{d} → fallback (no correction)'
+    return d, ''
+
+
+def read_sheet(ws, sheet_name: str, racun_label: str, skipped: list) -> list:
     events = []
+    last_valid_date = MIN_DATE  # fallback if no valid date seen before a bad row
+
     for r in range(2, ws.max_row + 1):
         opis    = ws.cell(r, 2).value
         datum   = ws.cell(r, 3).value
@@ -278,23 +292,34 @@ def read_sheet(ws, racun_label: str, skipped: list) -> list:
 
         d = parse_datum(datum)
 
-        # Skip empty rows
+        # Skip completely empty rows
         if d is None and uplata is None and isplata is None and opis is None:
             continue
 
-        # Skip bad dates
+        # Handle all date problems uniformly — include with fallback/correction + marker
+        datum_greska = None
         if d is None:
-            skipped.append(f'  row {r}: bad date {repr(datum)!s}')
-            continue
+            # Unparseable date
+            original = str(datum).strip() if datum is not None else '(prazno)'
+            datum_greska = original
+            d = last_valid_date
+            skipped.append(f'  row {r}: bad date {repr(datum)!s} → fallback {d}  [INCLUDED]')
+        elif d < MIN_DATE or d > MAX_DATE:
+            # Out-of-range — try auto-correction (2005→2025, 2036→2026, etc.)
+            corrected, note = correct_date(d, last_valid_date)
+            datum_greska = note
+            d = corrected
+            skipped.append(f'  row {r}: out-of-range {note}  [INCLUDED]')
+        else:
+            last_valid_date = d
 
-        # Skip out-of-range dates
-        if d < MIN_DATE or d > MAX_DATE:
-            skipped.append(f'  row {r}: out-of-range date {d}  opis={opis}')
-            continue
+        # Update last_valid_date even for corrected dates (if correction landed in range)
+        if datum_greska and MIN_DATE <= d <= MAX_DATE:
+            last_valid_date = d
 
-        # Skip opening-balance rows (no amounts)
+        # Skip opening-balance rows (no amounts, just a balance snapshot)
         if uplata is None and isplata is None:
-            skipped.append(f'  row {r}: no Uplata+Isplata (balance row)  date={d}')
+            skipped.append(f'  row {r}: no Uplata+Isplata (balance row)  date={d}  [SKIP]')
             continue
 
         # Normalize floats
@@ -307,6 +332,18 @@ def read_sheet(ws, racun_label: str, skipped: list) -> list:
             except (ValueError, TypeError):
                 return None
 
+        opis_str = str(opis).strip() if opis else ''
+
+        # Napomena: prepend error marker so bad-date rows are easily findable
+        if datum_greska:
+            napomena = f'[DATUM_GREŠKA: {datum_greska}] {opis_str}'.strip()
+        else:
+            napomena = opis_str
+
+        # leaf_comment: RF / ZABA prefix + original bank description
+        prefix = 'ZABA' if 'ZABA' in racun_label else 'RF'
+        comment = f'{prefix}: {opis_str}' if opis_str else prefix
+
         events.append({
             'date':     d.isoformat(),
             'date_obj': d,
@@ -315,9 +352,10 @@ def read_sheet(ws, racun_label: str, skipped: list) -> list:
             'isplata':  num(isplata),
             'stanje':   num(stanje),
             'valuta':   'EUR',
-            'napomena': str(opis).strip() if opis else '',
+            'napomena': napomena,
+            'comment':  comment,
             'smjer':    get_smjer(uplata, isplata),
-            'tip':      classify_tip(str(opis) if opis else None),
+            'tip':      classify_tip(opis_str),
         })
     return events
 
@@ -354,7 +392,7 @@ def main():
             continue
         ws = wb_src[sheet_name]
         skipped = []
-        evts = read_sheet(ws, racun_label, skipped)
+        evts = read_sheet(ws, sheet_name, racun_label, skipped)
         all_events.extend(evts)
         all_skipped.extend([f'[{sheet_name}] {s}' for s in skipped])
         tip_na = sum(1 for e in evts if e['tip'] == 'N/A')
@@ -393,11 +431,20 @@ def main():
         print(f'  {tip:<15} {cnt:>4}  {bar}')
     print(f'\nSmjer: {dict(smjer_dist)}')
     if all_skipped:
-        print(f'\nSkipped ({len(all_skipped)} rows):')
-        for s in all_skipped[:20]:
-            print(s)
-        if len(all_skipped) > 20:
-            print(f'  ... and {len(all_skipped) - 20} more')
+        included = [s for s in all_skipped if '[INCLUDED]' in s]
+        skipped_only = [s for s in all_skipped if '[SKIP]' in s]
+        print(f'\nProblematic rows: {len(all_skipped)} total '
+              f'({len(included)} included with fallback, {len(skipped_only)} skipped)')
+        if included:
+            print('  Included with fallback date (DATUM_GREŠKA marker in Napomena):')
+            for s in included:
+                print(f'    {s}')
+        if skipped_only:
+            print(f'  Skipped:')
+            for s in skipped_only[:15]:
+                print(f'    {s}')
+            if len(skipped_only) > 15:
+                print(f'    ... and {len(skipped_only) - 15} more')
     print(f'{"="*60}')
 
 

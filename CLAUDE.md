@@ -325,14 +325,21 @@ Faze i status:
 - ✅ **Bug fix: suggest atributi u make_import.py** — `Structure` sheet pisao `AttrType='suggest'`; DB ne prihvaća 'suggest' kao `data_type` (valjani: number/text/datetime/boolean/link/image); suggest atributi tiho preskočeni pri importu. Fix: `AttrType='text'` + `Val.Type='suggest'` (suggest = data_type='text' + validation_rules). Pravilo dokumentirano u `data-prep_tools/Tools/excel_import_template.py`.
 - ✅ **Bug fix: StructureDeleteModal error display** — `catch` blok prikazivao genericku "Delete failed" jer Supabase `PostgrestError` nije `instanceof Error`. Fix: `(err as {message?:string})?.message` prikazuje stvarnu DB grešku u modalu.
 - ✅ **Bug fix: StructureDeleteModal cascadeDelete** — `cascadeDelete(false)` (no-events path) nije brisao `events`/`event_attributes` → FK constraint `event_attributes_attribute_definition_id_fkey` pucao ako su eventi djelomično importani. Fix: uvijek čisti events za kategorije (stale `eventCount` u UI ne blokira cleanup).
+- ✅ **Bug fix: StructureDeleteModal activity_presets FK** (S87) — Delete Area pucao s FK constraint `activity_presets_category_id_fkey` ako je postojao shortcut na nekoj kategoriji u subtreeu. Fix: `cascadeDelete` briše `activity_presets` gdje `category_id IN categoryIds` prije brisanja `attribute_definitions` i `categories`.
 - ✅ **Financije_2 importana u TEST** — 458 eventa (2026-01 do 06), 39 atributa (uključujući svi suggest dropdowni), 20 kategorija. Struktura: Prihodi (Plaća/Najam/Ostali) + Rashodi (Dom/Svakodnevni/Restoran/Prijevoz/Zdravlje/Trening/Pretplate/Razvoj/Kupovina/Telekomunikacije/Rate/Porezi/Putovanje/Ostalo) + Transferi.
 - ✅ **S86b: `default_value` primjenjuje se u Add Activity** — `AddActivityPage.tsx` dobio `useEffect` koji inicijalizira `attributeValues` s `default_value` kad se atributi učitaju (samo za atribute koji nisu već u mapi → draft restore nije ugrožen); `touched: true` osigurava da se default sprema; primjer: Valuta → EUR pre-selected.
 - ✅ **S86b: Iznos bez EUR unit** — `make_import.py` uklonjen `unit='EUR'` s Iznos atributa (Prihodi + Rashodi + Transferi); Structure re-import updateirao 3 attr_defs (EUR → null); Iznos više nema statički EUR label koji bi bio netočan kad je Valuta = HRK/USD.
 
-**Prioriteti za S87:**
-1. **Financije — vizualni pregled** — pregledati importane podatke u TEST; provjeriti kategorizaciju i suggest opcije; usporedba s originalnim Excel source-om
-2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
-3. **Invite PROD test** — dubravka.pavic-sladoljev@dps-perceptum.com (debugging invite flow)
+**Napomena S87:**
+- ✅ `make_financije3_import.py` refaktoriran — flat struktura (Transakcija = leaf, nema L2 Kategorija); svih 8 atributa pod Transakcija; bad-date redovi uključeni s fallback datumom + `[DATUM_GREŠKA: ...]` u Napomeni; out-of-range datumi auto-korigirani (2005→2025 +20yr, 2036→2026 -10yr) ili fallback; leaf_comment = `RF: [Napomena]` / `ZABA: [Napomena]`
+- ✅ `StructureDeleteModal` bugfix — `cascadeDelete` sada briše `activity_presets` (shortcuts) prije `attribute_definitions`; FK constraint `activity_presets_category_id_fkey` više ne blokira brisanje Area
+- ✅ **Financije_3 importana u TEST** — flat, 3163 eventi; Activities tablica prikazuje `ZABA: Parking`, `RF: Mirovina I stup` itd.; View Activity: jedna Transakcija sekcija s 8 atributa + leaf badge
+- 41 DATUM_GREŠKA redova u bazi (pretraživivi via comment filter "DATUM_GREŠKA"); 3 SKIP (balance rows bez iznosa)
+
+**Prioriteti za S88:**
+1. **Shortcut pre-fill** — proširiti `activity_presets` s `default_attributes JSONB`; Add Activity primijeni defaults pri odabiru preseta; UI za definiranje u StructureNodeEditPanel ili preset managementu
+2. **Financije_3 bulk kategorización** — export → ručno popuniti N/A Tip (2434 redova) u Excelu → re-import
+3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **✅ UX-Mobile-1: Activities tablica na mobilnom** — implementirano S84
 - `sm:hidden` mobilni redovi: Red 1 (datum · vrijeme · ⋮ sticky desno), Red 2 (kategorijna staza ako nema filtera · comment)
