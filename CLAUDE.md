@@ -338,6 +338,7 @@ Faze i status:
 
 **Napomena S88 — Shortcut pre-fill (`default_attributes`) + UX bugfixes:**
 - ✅ `sql/022_preset_default_attributes.sql` — `activity_presets.default_attributes JSONB` dodan (pokrenuto na TEST); `ActivityPreset`/`ActivityPresetInsert` tipovi prošireni; `useActivityPresets` dobio `updatePresetAttributes`
+  **⬜ Deploy needed:** pokrenuti `sql/022_preset_default_attributes.sql` na PROD Supabase (idempotentno — `add column if not exists`, sigurno za pokrenuti bilo kad; potrebno prije/uz merge S88 koda na main)
 - ✅ Filter-bar "💾 Save Shortcut" — info nudge ("💡 Did you know?") prvi put kad shortcut nema atribute, objašnjava da treba Add Activity za defaults; localStorage flag `ui:shortcutAttrTipDismissed` pamti "Don't show again"
 - ✅ Add Activity "💾 Save as Shortcut (with these attribute values)" gumb — sprema `touched` atribute kao `default_attributes`; ako kategorija već ima shortcut → choice modal (Update postojećeg / Save as new / Cancel); inače name-input modal
 - ✅ Pre-fill efekt proširen — preset `default_attributes` ima prednost nad statičkim `attr.default_value`; oba poštuju "ne prepisuj postojeću/draft vrijednost" (`prev.has(attr.id)`)
@@ -426,6 +427,19 @@ Odlučeno S58, sve na TEST bazi. Plan po fazama:
   - `concepts.md`: uklonjen meta-komentar koji nije bio namijenjen AI-u
 
 **Pravilo:** `docs/help/*.md` = jedini izvor istine za feature docove. `help.ts` statički prompt = samo Demo Area putanje + pravila tona.
+
+**⭐ VAŽNO korisniku — "What can I do here?" discovery chip (predloženo S88, 2026-06-08):**
+Problem: Help sistem (Ask AI/Concepts/Feedback) odgovara na pitanja, ali ne pomaže korisniku
+otkriti mogućnosti za koje ne zna da postoje (npr. korisnik nije znao da "Disable Save+" postoji
+po Areai dok nije slučajno naišao na checkbox u Structure edit panelu).
+**Odluka:** NE novi 4. tab ("Details") — dupli content nasuprot `docs/help/*.md` koji bi brzo
+zastario. Umjesto toga: standing chip **"✨ What can I do on this screen?"** po `pageHint`
+kontekstu (isti `CHIPS`/`HelpContext` mehanizam kao danas), koji ruta kroz postojeći AI + markdown
+docs. Zahtijeva: `docs/help/*.md` dobiva sekciju "Feature inventory" po stranici/kontekstu
+(npr. "Add Activity: Save+, Save as Shortcut, Disable Save+ po Areai, default_value pre-fill...")
+— **mora biti dosta detaljno** (korisnikov izričit zahtjev), ne samo lista naziva nego kratak
+opis svake mogućnosti i gdje se nalazi/uključuje. Niska žurnost, ali visok prioritet kad se
+počne raditi na Help sistemu dalje.
 
 **6. Financije reorganizacija** — srediti strukturu kategorija i atributa u Area "Financije".
    Status S86: `Financije_2` importana u TEST ✅ — 458 eventa (2026-01 do 06), flat L2 struktura,
