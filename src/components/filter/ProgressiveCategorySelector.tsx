@@ -6,12 +6,16 @@ import { useFilter } from '@/context/FilterContext';
 import { useAreas } from '@/hooks/useAreas';
 import { useActivityPresets } from '@/hooks/useActivityPresets';
 
+const SHORTCUT_ATTR_TIP_DISMISSED_KEY = 'ui:shortcutAttrTipDismissed';
+
 // --------------------------------------------
 // Types
 // --------------------------------------------
 
 interface ProgressiveCategorySelectorProps {
-  onLeafSelected?: (category: Category, path: Category[]) => void;
+  onLeafSelected?: (category: Category, path: Category[], source?: 'manual' | 'shortcut') => void;
+  /** Jump straight to Add Activity for the currently selected shortcut (explicit fast-lane action) */
+  onUseShortcut?: () => void;
   className?: string;
 }
 
@@ -21,6 +25,7 @@ interface ProgressiveCategorySelectorProps {
 
 export function ProgressiveCategorySelector({
   onLeafSelected,
+  onUseShortcut,
   className = '',
 }: ProgressiveCategorySelectorProps) {
   // Get ALL state from context (Single Source of Truth)
@@ -63,6 +68,14 @@ export function ProgressiveCategorySelector({
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
   const [savingPreset, setSavingPreset] = useState(false);
+
+  // Shortcut whose Area/Category no longer exists (e.g. deleted from Structure)
+  const [brokenShortcutId, setBrokenShortcutId] = useState<string | null>(null);
+
+  // One-time nudge: shortcuts saved here only remember Area+Category;
+  // attribute defaults must be saved from the Add Activity page (S88)
+  const [showAttrTip, setShowAttrTip] = useState(false);
+  const [dontShowAttrTip, setDontShowAttrTip] = useState(false);
   
   // Local loading state for DB operations
   const [isLoading, setIsLoading] = useState(false);
@@ -157,6 +170,7 @@ export function ProgressiveCategorySelector({
   const handleShortcutSelect = useCallback(async (presetId: string) => {
     if (!presetId) {
       setSelectedShortcutId(null);
+      setBrokenShortcutId(null);
       return;
     }
 
@@ -165,7 +179,8 @@ export function ProgressiveCategorySelector({
 
     setIsLoading(true);
     setSelectedShortcutId(preset.id);
-    
+    setBrokenShortcutId(null);
+
     // P2: Reset date range to "All Time" when shortcut changes
     setDateRange(null, null);
 
@@ -177,7 +192,13 @@ export function ProgressiveCategorySelector({
         .eq('id', preset.category_id)
         .single();
 
-      if (error || !category) throw error;
+      if (error || !category) {
+        // Shortcut points to an Area/Category that no longer exists (e.g. deleted in Structure)
+        setBrokenShortcutId(preset.id);
+        resetCategory();
+        toast.error(`Shortcut "${preset.name}" points to a category that no longer exists`);
+        return;
+      }
 
       // Build full path
       const fullPath = await buildFullPath(category as Category);
@@ -214,22 +235,29 @@ export function ProgressiveCategorySelector({
       // Increment usage
       incrementUsage(preset.id);
 
-      // Notify if leaf
+      // Notify if leaf — flag the source as 'shortcut' so callers (e.g. mobile filter
+      // auto-collapse) can keep the panel open for follow-up actions like "⚡ Use"
       if (isLeaf) {
-        onLeafSelected?.(category as Category, fullPath);
+        onLeafSelected?.(category as Category, fullPath, 'shortcut');
       }
     } catch (error) {
       console.error('Error selecting shortcut:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectAreaAndCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange]);
+  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectAreaAndCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange, resetCategory]);
 
   const handleSavePreset = useCallback(async () => {
-    if (!newPresetName.trim() || !filter.categoryId) return;
+    const trimmedName = newPresetName.trim();
+    if (!trimmedName || !filter.categoryId) return;
+
+    if (presets.some(p => p.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      toast.error(`A shortcut named "${trimmedName}" already exists — choose a different name`);
+      return;
+    }
 
     setSavingPreset(true);
-    const result = await createPreset(newPresetName, filter.areaId, filter.categoryId);
+    const result = await createPreset(trimmedName, filter.areaId, filter.categoryId);
     setSavingPreset(false);
 
     if (result) {
@@ -239,7 +267,7 @@ export function ProgressiveCategorySelector({
     } else {
       toast.error('Could not save shortcut. Please try again.');
     }
-  }, [newPresetName, filter.areaId, filter.categoryId, createPreset, setSelectedShortcutId]);
+  }, [newPresetName, filter.areaId, filter.categoryId, createPreset, setSelectedShortcutId, presets]);
 
   const handleDeletePreset = useCallback(async () => {
     if (!selectedShortcutId) return;
@@ -252,11 +280,16 @@ export function ProgressiveCategorySelector({
     const success = await deletePreset(selectedShortcutId);
     if (success) {
       setSelectedShortcutId(null);
+      setBrokenShortcutId(null);
     }
   }, [selectedShortcutId, presets, deletePreset, setSelectedShortcutId]);
 
   // Can save: has leaf category selected
   const canSaveShortcut = isLeafCategory && filter.categoryId;
+
+  // Can jump to Add Activity: a shortcut is selected, it resolved to a leaf, and not read-only
+  const canUseShortcut = !!selectedShortcutId && isLeafCategory && !!filter.categoryId
+    && sharedContext?.permission !== 'read';
 
   // Auto-select shortcut when filter matches a preset but selectedShortcutId is null
   // (e.g. after browser restart when sessionStorage is cleared but filter is restored)
@@ -629,13 +662,31 @@ export function ProgressiveCategorySelector({
           </select>
         </div>
 
+        {/* Use Shortcut Button — jumps straight to Add Activity */}
+        {onUseShortcut && (
+          <button
+            type="button"
+            onClick={onUseShortcut}
+            disabled={!canUseShortcut || isLoading}
+            className="p-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Use this shortcut — go straight to Add Activity"
+          >
+            ⚡ Use
+          </button>
+        )}
+
         {/* Save Button */}
         <button
           type="button"
           onClick={() => {
             const lastCat = selectionChain[selectionChain.length - 1];
             setNewPresetName(lastCat?.name || '');
-            setShowSaveModal(true);
+            if (localStorage.getItem(SHORTCUT_ATTR_TIP_DISMISSED_KEY) === 'true') {
+              setShowSaveModal(true);
+            } else {
+              setDontShowAttrTip(false);
+              setShowAttrTip(true);
+            }
           }}
           disabled={!canSaveShortcut || isLoading}
           className="p-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -649,12 +700,28 @@ export function ProgressiveCategorySelector({
           type="button"
           onClick={handleDeletePreset}
           disabled={!selectedShortcutId || isLoading}
-          className="p-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="p-2 text-sm font-medium text-red-700 bg-red-100 border border-red-200 rounded-lg hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-40 disabled:bg-red-50 disabled:border-transparent disabled:cursor-not-allowed transition-colors"
           title="Delete selected shortcut"
         >
           🗑️
         </button>
       </div>
+
+      {/* Broken shortcut warning — its Area/Category was deleted from Structure */}
+      {brokenShortcutId && selectedShortcutId === brokenShortcutId && (
+        <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
+          <span className="text-xs text-amber-800">
+            ⚠ This shortcut's Area/Category no longer exists — it was probably deleted in Structure.
+          </span>
+          <button
+            type="button"
+            onClick={handleDeletePreset}
+            className="shrink-0 text-xs font-medium text-amber-900 underline hover:no-underline"
+          >
+            Delete shortcut
+          </button>
+        </div>
+      )}
 
       {/* Area/Category Dropdowns Row */}
       <div className="flex flex-wrap items-end gap-3">
@@ -763,6 +830,59 @@ export function ProgressiveCategorySelector({
               </p>
             )
           )}
+        </div>
+      )}
+
+      {/* Attribute defaults tip — shown once before the Save Shortcut modal */}
+      {showAttrTip && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              💡 Did you know?
+            </h3>
+            <p className="text-sm text-gray-600 mb-3">
+              A shortcut saved here remembers only the <strong>Area + Category</strong>.
+              If you also want it to pre-fill <strong>attribute values</strong> (e.g. Account,
+              Direction, Type), save it from the <strong>Add Activity</strong> page instead —
+              fill in the values you use most often, then tap "Save as Shortcut" there.
+            </p>
+            <label className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+              <input
+                type="checkbox"
+                checked={dontShowAttrTip}
+                onChange={(e) => setDontShowAttrTip(e.target.checked)}
+                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              Don't show this again
+            </label>
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (dontShowAttrTip) {
+                    localStorage.setItem(SHORTCUT_ATTR_TIP_DISMISSED_KEY, 'true');
+                  }
+                  setShowAttrTip(false);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Take me to Add Activity instead
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (dontShowAttrTip) {
+                    localStorage.setItem(SHORTCUT_ATTR_TIP_DISMISSED_KEY, 'true');
+                  }
+                  setShowAttrTip(false);
+                  setShowSaveModal(true);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+              >
+                No, Area + Category is enough
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

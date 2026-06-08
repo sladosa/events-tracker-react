@@ -206,6 +206,9 @@ export interface EventAttachment {
 // Table: activity_presets (shortcuts)
 // --------------------------------------------
 
+/** Default attribute values applied when the shortcut is selected — keyed by attribute_definition id */
+export type PresetDefaultAttributes = Record<string, string | number | boolean | null>;
+
 export interface ActivityPreset {
   id: UUID;
   user_id: UUID;
@@ -215,12 +218,14 @@ export interface ActivityPreset {
   usage_count: number;
   last_used: Timestamp | null;
   created_at: Timestamp;
+  default_attributes: PresetDefaultAttributes | null;
 }
 
-export type ActivityPresetInsert = Omit<ActivityPreset, 'id' | 'created_at' | 'usage_count'> & {
+export type ActivityPresetInsert = Omit<ActivityPreset, 'id' | 'created_at' | 'usage_count' | 'default_attributes'> & {
   id?: UUID;
   created_at?: Timestamp;
   usage_count?: number;
+  default_attributes?: PresetDefaultAttributes | null;
 };
 
 // With related data

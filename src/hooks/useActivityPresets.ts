@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { ActivityPreset, UUID } from '@/types';
+import type { ActivityPreset, PresetDefaultAttributes, UUID } from '@/types';
 
 interface UseActivityPresetsResult {
   presets: ActivityPreset[];
   loading: boolean;
   error: Error | null;
-  createPreset: (name: string, areaId: UUID | null, categoryId: UUID | null) => Promise<ActivityPreset | null>;
+  createPreset: (name: string, areaId: UUID | null, categoryId: UUID | null, defaultAttributes?: PresetDefaultAttributes | null) => Promise<ActivityPreset | null>;
   deletePreset: (presetId: UUID) => Promise<boolean>;
   incrementUsage: (presetId: UUID) => Promise<void>;
+  updatePresetAttributes: (presetId: UUID, defaultAttributes: PresetDefaultAttributes | null) => Promise<boolean>;
   refresh: () => Promise<void>;
 }
 
@@ -55,7 +56,8 @@ export function useActivityPresets(): UseActivityPresetsResult {
   const createPreset = useCallback(async (
     name: string,
     areaId: UUID | null,
-    categoryId: UUID | null
+    categoryId: UUID | null,
+    defaultAttributes: PresetDefaultAttributes | null = null
   ): Promise<ActivityPreset | null> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -70,6 +72,7 @@ export function useActivityPresets(): UseActivityPresetsResult {
           category_id: categoryId,
           usage_count: 0,
           last_used: null,
+          default_attributes: defaultAttributes,
         })
         .select()
         .single();
@@ -102,6 +105,30 @@ export function useActivityPresets(): UseActivityPresetsResult {
     } catch (err) {
       console.error('Failed to delete preset:', err);
       setError(err instanceof Error ? err : new Error('Failed to delete preset'));
+      return false;
+    }
+  }, []);
+
+  // Update a preset's default attribute values (e.g. re-snapshot from Add Activity)
+  const updatePresetAttributes = useCallback(async (
+    presetId: UUID,
+    defaultAttributes: PresetDefaultAttributes | null
+  ): Promise<boolean> => {
+    try {
+      const { error: updateError } = await supabase
+        .from('activity_presets')
+        .update({ default_attributes: defaultAttributes })
+        .eq('id', presetId);
+
+      if (updateError) throw updateError;
+
+      setPresets(prev => prev.map(p =>
+        p.id === presetId ? { ...p, default_attributes: defaultAttributes } : p
+      ));
+      return true;
+    } catch (err) {
+      console.error('Failed to update preset attributes:', err);
+      setError(err instanceof Error ? err : new Error('Failed to update preset attributes'));
       return false;
     }
   }, []);
@@ -149,6 +176,7 @@ export function useActivityPresets(): UseActivityPresetsResult {
     createPreset,
     deletePreset,
     incrementUsage,
+    updatePresetAttributes,
     refresh: fetchPresets,
   };
 }

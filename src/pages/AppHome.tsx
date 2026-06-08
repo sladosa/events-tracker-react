@@ -214,9 +214,11 @@ function AppContent() {
   };
 
   // Handle leaf category selection - show toast
-  const handleLeafSelected = (_category: Category, path: Category[]) => {
+  const handleLeafSelected = (_category: Category, path: Category[], source?: 'manual' | 'shortcut') => {
     toast.success(`✓ Category selected: ${path.map(c => c.name).join(' > ')}`);
-    if (isMobile) {
+    // Keep the filter panel open on mobile when a shortcut was used — the user
+    // likely wants to follow up with "⚡ Use" / "💾" / "🗑" right there (S88)
+    if (isMobile && source !== 'shortcut') {
       setIsFilterExpanded(false);
     }
   };
@@ -349,6 +351,7 @@ function AppContent() {
           )}>
             <ProgressiveCategorySelector
               onLeafSelected={handleLeafSelected}
+              onUseShortcut={handleAddActivity}
             />
 
             {/* Date Range Filter - only for Activities tab */}

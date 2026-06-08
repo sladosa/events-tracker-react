@@ -43,9 +43,9 @@ const CHIPS: Record<string, string[]> = {
     'How do I share an area with someone?',
   ],
   add: [
+    'How do I save my values as a Shortcut?',
     'What happens to parent categories?',
     'How does suggest work?',
-    "Why can't I select a category?",
   ],
   edit: [
     'Can I change the date?',

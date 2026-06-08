@@ -336,10 +336,22 @@ Faze i status:
 - ✅ **Financije_3 importana u TEST** — flat, 3163 eventi; Activities tablica prikazuje `ZABA: Parking`, `RF: Mirovina I stup` itd.; View Activity: jedna Transakcija sekcija s 8 atributa + leaf badge
 - 41 DATUM_GREŠKA redova u bazi (pretraživivi via comment filter "DATUM_GREŠKA"); 3 SKIP (balance rows bez iznosa)
 
-**Prioriteti za S88:**
-1. **Shortcut pre-fill** — proširiti `activity_presets` s `default_attributes JSONB`; Add Activity primijeni defaults pri odabiru preseta; UI za definiranje u StructureNodeEditPanel ili preset managementu
-2. **Financije_3 bulk kategorización** — export → ručno popuniti N/A Tip (2434 redova) u Excelu → re-import
-3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+**Napomena S88 — Shortcut pre-fill (`default_attributes`) + UX bugfixes:**
+- ✅ `sql/022_preset_default_attributes.sql` — `activity_presets.default_attributes JSONB` dodan (pokrenuto na TEST); `ActivityPreset`/`ActivityPresetInsert` tipovi prošireni; `useActivityPresets` dobio `updatePresetAttributes`
+- ✅ Filter-bar "💾 Save Shortcut" — info nudge ("💡 Did you know?") prvi put kad shortcut nema atribute, objašnjava da treba Add Activity za defaults; localStorage flag `ui:shortcutAttrTipDismissed` pamti "Don't show again"
+- ✅ Add Activity "💾 Save as Shortcut (with these attribute values)" gumb — sprema `touched` atribute kao `default_attributes`; ako kategorija već ima shortcut → choice modal (Update postojećeg / Save as new / Cancel); inače name-input modal
+- ✅ Pre-fill efekt proširen — preset `default_attributes` ima prednost nad statičkim `attr.default_value`; oba poštuju "ne prepisuj postojeću/draft vrijednost" (`prev.has(attr.id)`)
+- ✅ "⚡ Use" fast-lane gumb (`ProgressiveCategorySelector`) — kad je odabran shortcut koji vodi do leafa, preskače Activities tablicu i odmah otvara Add Activity (`onUseShortcut` prop, `canUseShortcut` derived check uključuje `sharedContext?.permission !== 'read'`)
+- ✅ Bugfix — broken shortcut (kategorija obrisana u Structure): `handleShortcutSelect` detektira `error || !category`, zove `resetCategory()` (briše stale filter state od prethodnog shortcuta), postavlja `brokenShortcutId`, prikazuje `toast.error` + amber warning banner s "Delete shortcut" linkom
+- ✅ Bugfix — mobile auto-collapse: `onLeafSelected` dobio treći param `source?: 'manual' | 'shortcut'`; `AppHome.handleLeafSelected` ne kolabira filter sekciju na mobilnom kad je leaf odabran preko shortcuta (čuva vidljivost "⚡ Use" gumba)
+- ✅ Bugfix — Delete Shortcut button vizualni kontrast: enabled `bg-red-100 border-red-200 text-red-700`, eksplicitni `disabled:bg-red-50 disabled:border-transparent disabled:opacity-40` (ranije `bg-red-50`/`opacity-40` izgledao identično u oba stanja)
+- ✅ Bugfix — duplikat imena shortcuta: case-insensitive provjera u `handleSavePreset` (filter bar) i `handleConfirmSaveNewShortcut` (Add Activity); `toast.error` blokira save ako ime već postoji
+- ✅ `docs/help/activities.md` — nova sekcija "Shortcuts (brzi pristup)" (Update vs Save as new, "⚡ Use", `default_attributes`); `HelpPanel.tsx` `CHIPS.add` dobio "How do I save my values as a Shortcut?"
+
+**Prioriteti za S89:**
+1. **Financije_3 bulk kategorización** — export → ručno popuniti N/A Tip (2434 redova) u Excelu → re-import
+2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+3. Manualno potvrditi T-S88-2/4/10 (choice modal, info nudge, help chip) — vidi `Claude-temp_R/PENDING_TESTS.md`
 
 **✅ UX-Mobile-1: Activities tablica na mobilnom** — implementirano S84
 - `sm:hidden` mobilni redovi: Red 1 (datum · vrijeme · ⋮ sticky desno), Red 2 (kategorijna staza ako nema filtera · comment)

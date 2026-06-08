@@ -13,12 +13,14 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, Component, type ErrorInfo, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { useFilter } from '@/context/FilterContext';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
+import { useActivityPresets } from '@/hooks/useActivityPresets';
 import {
   useLocalStorageSync,
   createDraftFromState,
@@ -36,7 +38,7 @@ import {
   FinishSuccessDialog,
 } from '@/components/activity/ConfirmDialog';
 
-import type { UUID, AttributeDefinition } from '@/types';
+import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
 import type {
   PendingEvent,
   PendingPhoto,
@@ -259,7 +261,10 @@ export function AddActivityPage() {
   });
   
   // Shared area context — guard za read-only pristup
-  const { sharedContext, disableSavePlus } = useFilter();
+  const { sharedContext, disableSavePlus, selectedShortcutId } = useFilter();
+
+  // Shortcuts (S88: "Save as Shortcut" with attribute defaults)
+  const { presets, createPreset, updatePresetAttributes } = useActivityPresets();
 
   // ============================================
   // Dialog States
@@ -271,6 +276,14 @@ export function AddActivityPage() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [savedSessionStart, setSavedSessionStart] = useState<string | null>(null);
   const [draftSummary, setDraftSummary] = useState<DraftSummary | null>(null);
+
+  // Save as Shortcut (S88)
+  const [showShortcutChoiceModal, setShowShortcutChoiceModal] = useState(false);
+  const [showShortcutNameModal, setShowShortcutNameModal] = useState(false);
+  const [shortcutName, setShortcutName] = useState('');
+  const [savingShortcut, setSavingShortcut] = useState(false);
+  const [existingPresetForCategory, setExistingPresetForCategory] = useState<ActivityPreset | null>(null);
+  const [pendingDefaultAttributes, setPendingDefaultAttributes] = useState<PresetDefaultAttributes>({});
   
   // ============================================
   // Session State
@@ -491,7 +504,13 @@ export function AddActivityPage() {
     log(`Attrs state: loading=${attributesLoading}, error=${attributesError?.message || 'none'}, size=${attributesByCategory.size}`);
   }, [attributesByCategory, attributesLoading, attributesError, log]);
 
-  // Apply default_value when attributes first load (e.g. Valuta → EUR)
+  // Selected shortcut's saved attribute defaults (S88) — take priority over attr.default_value
+  const selectedPresetDefaults = useMemo((): PresetDefaultAttributes | null => {
+    if (!selectedShortcutId) return null;
+    return presets.find(p => p.id === selectedShortcutId)?.default_attributes || null;
+  }, [selectedShortcutId, presets]);
+
+  // Apply preset default_attributes / default_value when attributes first load (e.g. Valuta → EUR)
   // Only sets values not already in the map so draft restores are not overwritten
   useEffect(() => {
     if (attributesByCategory.size === 0) return;
@@ -500,15 +519,20 @@ export function AddActivityPage() {
       let changed = false;
       for (const attrs of attributesByCategory.values()) {
         for (const attr of attrs) {
-          if (!attr.default_value) continue;
           if (prev.has(attr.id)) continue;
-          next.set(attr.id, { definitionId: attr.id, value: attr.default_value, touched: true });
-          changed = true;
+          const presetValue = selectedPresetDefaults?.[attr.id];
+          if (presetValue !== undefined && presetValue !== null) {
+            next.set(attr.id, { definitionId: attr.id, value: presetValue, touched: true });
+            changed = true;
+          } else if (attr.default_value) {
+            next.set(attr.id, { definitionId: attr.id, value: attr.default_value, touched: true });
+            changed = true;
+          }
         }
       }
       return changed ? next : prev;
     });
-  }, [attributesByCategory]);
+  }, [attributesByCategory, selectedPresetDefaults]);
 
   // ============================================
   // Form Handlers
@@ -573,7 +597,75 @@ export function AddActivityPage() {
   const leafCategoryName = useMemo(() => {
     return categoryChain[0]?.name || categoryPath[categoryPath.length - 1] || 'Unknown';
   }, [categoryChain, categoryPath]);
-  
+
+  // ============================================
+  // Save as Shortcut (S88) — snapshot current attribute values into a preset
+  // ============================================
+
+  const handleSaveAsShortcutClick = useCallback(() => {
+    if (!categoryId) return;
+
+    const defaults: PresetDefaultAttributes = {};
+    for (const [definitionId, lv] of attributeValues) {
+      if (lv.touched && lv.value !== null && lv.value !== '') {
+        defaults[definitionId] = lv.value;
+      }
+    }
+    if (Object.keys(defaults).length === 0) {
+      toast.error('Fill in some attribute values first');
+      return;
+    }
+
+    setPendingDefaultAttributes(defaults);
+    const existing = presets.find(p => p.category_id === categoryId);
+    if (existing) {
+      setExistingPresetForCategory(existing);
+      setShowShortcutChoiceModal(true);
+    } else {
+      setShortcutName(leafCategoryName);
+      setShowShortcutNameModal(true);
+    }
+  }, [categoryId, attributeValues, presets, leafCategoryName]);
+
+  const handleUpdateExistingShortcut = useCallback(async () => {
+    if (!existingPresetForCategory) return;
+    setSavingShortcut(true);
+    const ok = await updatePresetAttributes(existingPresetForCategory.id, pendingDefaultAttributes);
+    setSavingShortcut(false);
+    setShowShortcutChoiceModal(false);
+    if (ok) {
+      toast.success(`Shortcut "${existingPresetForCategory.name}" updated`);
+    } else {
+      toast.error('Failed to update shortcut');
+    }
+  }, [existingPresetForCategory, pendingDefaultAttributes, updatePresetAttributes]);
+
+  const handleSaveAsNewFromChoice = useCallback(() => {
+    setShowShortcutChoiceModal(false);
+    setShortcutName(leafCategoryName);
+    setShowShortcutNameModal(true);
+  }, [leafCategoryName]);
+
+  const handleConfirmSaveNewShortcut = useCallback(async () => {
+    const trimmedName = shortcutName.trim();
+    if (!trimmedName || !categoryId) return;
+
+    if (presets.some(p => p.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      toast.error(`A shortcut named "${trimmedName}" already exists — choose a different name`);
+      return;
+    }
+
+    setSavingShortcut(true);
+    const result = await createPreset(trimmedName, areaId, categoryId, pendingDefaultAttributes);
+    setSavingShortcut(false);
+    setShowShortcutNameModal(false);
+    if (result) {
+      toast.success(`Shortcut "${trimmedName}" saved`);
+    } else {
+      toast.error('Failed to save shortcut');
+    }
+  }, [shortcutName, areaId, categoryId, pendingDefaultAttributes, createPreset, presets]);
+
   const canFinish = useMemo(() => {
     return pendingEvents.length > 0 || canSave;
   }, [pendingEvents.length, canSave]);
@@ -1065,7 +1157,102 @@ export function AddActivityPage() {
         onEdit={handleEditAfterFinish}
         onGoHome={handleGoHome}
       />
-      
+
+      {/* Save as Shortcut: existing preset found — Update / Save as new / Cancel */}
+      {showShortcutChoiceModal && existingPresetForCategory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Update existing shortcut?
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              You already have a shortcut named <strong>"{existingPresetForCategory.name}"</strong> for
+              this category. Update it with these {Object.keys(pendingDefaultAttributes).length} attribute
+              value(s), or save a new shortcut instead?
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleUpdateExistingShortcut}
+                disabled={savingShortcut}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {savingShortcut ? 'Updating...' : `Update "${existingPresetForCategory.name}"`}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAsNewFromChoice}
+                disabled={savingShortcut}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+              >
+                Save as new shortcut
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowShortcutChoiceModal(false)}
+                disabled={savingShortcut}
+                className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save as Shortcut: name input for a new preset */}
+      {showShortcutNameModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Save as Shortcut
+            </h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Shortcut Name
+              </label>
+              <input
+                type="text"
+                value={shortcutName}
+                onChange={(e) => setShortcutName(e.target.value)}
+                placeholder="e.g., Koka plaća"
+                autoFocus
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && shortcutName.trim()) {
+                    handleConfirmSaveNewShortcut();
+                  }
+                  if (e.key === 'Escape') {
+                    setShowShortcutNameModal(false);
+                  }
+                }}
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Saves Area + Category and {Object.keys(pendingDefaultAttributes).length} attribute value(s) as defaults.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowShortcutNameModal(false)}
+                disabled={savingShortcut}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSaveNewShortcut}
+                disabled={savingShortcut || !shortcutName.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {savingShortcut ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Debug Panel */}
       {showDebug && (
         <div className="fixed bottom-0 left-0 right-0 bg-black text-green-400 text-xs font-mono p-2 max-h-48 overflow-auto z-50 border-t-2 border-yellow-500">
@@ -1178,8 +1365,21 @@ export function AddActivityPage() {
                 No category selected
               </div>
             )}
+
+            {categoryId && categoryChain.length > 0 && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveAsShortcutClick}
+                  disabled={saving}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                >
+                  💾 Save as Shortcut (with these attribute values)
+                </button>
+              </div>
+            )}
           </div>
-          
+
           {/* A6: Event Note - MOVED ABOVE Photos */}
           {categoryId && (
             <div className="px-3 pb-3">
