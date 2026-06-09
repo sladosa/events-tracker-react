@@ -8,6 +8,8 @@ import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
 // --------------------------------------------
 
 const FILTER_STORAGE_KEY = 'events-tracker-filter-state';
+// localStorage = persists across browser sessions (user sees last-used area on next open)
+const filterStorage = localStorage;
 
 // --------------------------------------------
 // Filter State Type
@@ -190,7 +192,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     restoreAttempted.current = true;
     
     const doRestore = async () => {
-      const stored = sessionStorage.getItem(FILTER_STORAGE_KEY);
+      const stored = filterStorage.getItem(FILTER_STORAGE_KEY);
       if (!stored) {
         setIsRestored(true);
         return;
@@ -394,11 +396,11 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
       selectionChain: selectionChain,
       selectedShortcutId: selectedShortcutId
     };
-    sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(state));
+    filterStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(state));
   }, [filter.areaId, selectionChain, selectedShortcutId]);
   
   const clearStorage = useCallback(() => {
-    sessionStorage.removeItem(FILTER_STORAGE_KEY);
+    filterStorage.removeItem(FILTER_STORAGE_KEY);
   }, []);
 
   // --------------------------------------------

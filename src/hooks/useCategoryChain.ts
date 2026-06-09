@@ -9,27 +9,56 @@ interface UseCategoryChainReturn {
   refetch: () => Promise<void>;
 }
 
+const CHAIN_CACHE_PREFIX = 'chain_v1_';
+
+function readChainCache(categoryId: string): Category[] | null {
+  try {
+    const raw = sessionStorage.getItem(CHAIN_CACHE_PREFIX + categoryId);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Category[];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeChainCache(categoryId: string, chain: Category[]) {
+  try {
+    sessionStorage.setItem(CHAIN_CACHE_PREFIX + categoryId, JSON.stringify(chain));
+  } catch {
+    // Storage full or disabled — ignore
+  }
+}
+
 /**
  * Dohvaća lanac kategorija od leaf do root.
  * Vraća array gdje je prvi element leaf kategorija, a zadnji root.
+ * Rezultat se cachira u sessionStorage — sljedeći Add Activity iste kategorije je trenutan.
  */
 export function useCategoryChain(leafCategoryId: UUID | null): UseCategoryChainReturn {
   const [chain, setChain] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchChain = useCallback(async () => {
+  const fetchChain = useCallback(async (skipCache = false) => {
     if (!leafCategoryId) {
       setChain([]);
       return;
+    }
+
+    // Cache hit — skip DB round trip
+    if (!skipCache) {
+      const cached = readChainCache(leafCategoryId);
+      if (cached) {
+        setChain(cached);
+        return;
+      }
     }
 
     try {
       setLoading(true);
       setError(null);
 
-      // Dohvati sve kategorije - RLS će filtrirati
-      // Ne filtriramo po user_id jer kategorija može biti shared ili importana
       const { data: allCategories, error: fetchError } = await supabase
         .from('categories')
         .select('id, user_id, area_id, parent_category_id, name, description, slug, level, sort_order, path, created_at, updated_at')
@@ -37,32 +66,22 @@ export function useCategoryChain(leafCategoryId: UUID | null): UseCategoryChainR
 
       if (fetchError) throw fetchError;
 
-      console.log('Fetched categories for chain:', allCategories?.length);
-
-      // Build chain od leaf do root
       const categoryMap = new Map<string, Category>();
       allCategories?.forEach(cat => categoryMap.set(cat.id, cat));
 
       const result: Category[] = [];
       let currentId: string | null = leafCategoryId;
-
-      // Traverse up the tree
       let iterations = 0;
-      const maxIterations = 20; // Prevent infinite loop
-      
-      while (currentId && iterations < maxIterations) {
+
+      while (currentId && iterations < 20) {
         const category = categoryMap.get(currentId);
-        if (!category) {
-          console.warn('Category not found in chain:', currentId);
-          break;
-        }
-        
+        if (!category) break;
         result.push(category);
         currentId = category.parent_category_id;
         iterations++;
       }
 
-      console.log('Category chain loaded:', result.map(c => c.name));
+      writeChainCache(leafCategoryId, result);
       setChain(result);
     } catch (err) {
       console.error('Error fetching category chain:', err);
@@ -76,7 +95,15 @@ export function useCategoryChain(leafCategoryId: UUID | null): UseCategoryChainR
     fetchChain();
   }, [fetchChain]);
 
-  return { chain, loading, error, refetch: fetchChain };
+  // Explicit refetch bypasses cache (called after Structure edits)
+  const refetch = useCallback(async () => {
+    if (leafCategoryId) {
+      try { sessionStorage.removeItem(CHAIN_CACHE_PREFIX + leafCategoryId); } catch {}
+    }
+    await fetchChain(true);
+  }, [fetchChain, leafCategoryId]);
+
+  return { chain, loading, error, refetch };
 }
 
 /**

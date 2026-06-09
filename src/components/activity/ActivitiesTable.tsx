@@ -185,14 +185,71 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     }
   };
 
-  // Loading state
+  // Skeleton loading state — keeps table structure visible, prevents layout shift
   if (loading) {
     return (
-      <div className={`p-6 ${className}`}>
-        <div className="flex items-center justify-center py-12">
-          <div className="flex items-center gap-3 text-gray-500">
-            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-            <span>Loading activities...</span>
+      <div className={className}>
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h3 className="font-medium text-gray-900">Activities</h3>
+            <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="h-8 w-20 bg-gray-100 rounded-lg animate-pulse" />
+            <div className="h-8 w-20 bg-gray-100 rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <div className="overflow-y-auto pb-20" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 hidden sm:table-header-group">
+                <tr>
+                  <th className="px-3 py-3 w-8" />
+                  <th className="px-3 py-3 text-left font-medium text-gray-700 w-28 whitespace-nowrap">Date</th>
+                  <th className="px-3 py-3 text-left font-medium text-gray-700 w-14 whitespace-nowrap">Time</th>
+                  <th className="px-3 py-3 text-left font-medium text-gray-700">Category</th>
+                  <th className="px-3 py-3 text-center font-medium text-gray-700 w-16">Events</th>
+                  <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell">Comment</th>
+                  <th className="px-3 py-3 w-12 sticky right-0 bg-gray-50" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    {/* Desktop row */}
+                    <td className="hidden sm:table-cell px-3 py-3 w-8">
+                      <div className="w-4 h-4 bg-gray-200 rounded" />
+                    </td>
+                    <td className="hidden sm:table-cell px-3 py-3">
+                      <div className="h-4 w-24 bg-gray-200 rounded" />
+                    </td>
+                    <td className="hidden sm:table-cell px-3 py-3">
+                      <div className="h-4 w-10 bg-gray-200 rounded" />
+                    </td>
+                    <td className="hidden sm:table-cell px-3 py-3">
+                      <div className="h-4 bg-gray-200 rounded" style={{ width: `${50 + (i * 13) % 35}%` }} />
+                    </td>
+                    <td className="hidden sm:table-cell px-3 py-3 text-center">
+                      <div className="h-5 w-6 bg-gray-200 rounded mx-auto" />
+                    </td>
+                    <td className="hidden sm:table-cell lg:table-cell px-3 py-3">
+                      <div className="h-4 bg-gray-100 rounded" style={{ width: `${30 + (i * 17) % 45}%` }} />
+                    </td>
+                    <td className="hidden sm:table-cell px-3 py-3 sticky right-0 bg-white">
+                      <div className="h-6 w-6 bg-gray-200 rounded ml-auto" />
+                    </td>
+                    {/* Mobile row */}
+                    <td className="sm:hidden px-3 py-3" colSpan={6}>
+                      <div className="h-4 bg-gray-200 rounded mb-1.5" style={{ width: `${55 + (i * 11) % 30}%` }} />
+                      <div className="h-3 bg-gray-100 rounded" style={{ width: `${35 + (i * 19) % 40}%` }} />
+                    </td>
+                    <td className="sm:hidden px-3 py-3 w-10 sticky right-0 bg-white">
+                      <div className="h-6 w-6 bg-gray-200 rounded ml-auto" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
