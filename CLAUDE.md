@@ -337,8 +337,7 @@ Faze i status:
 - 41 DATUM_GREŠKA redova u bazi (pretraživivi via comment filter "DATUM_GREŠKA"); 3 SKIP (balance rows bez iznosa)
 
 **Napomena S88 — Shortcut pre-fill (`default_attributes`) + UX bugfixes:**
-- ✅ `sql/022_preset_default_attributes.sql` — `activity_presets.default_attributes JSONB` dodan (pokrenuto na TEST); `ActivityPreset`/`ActivityPresetInsert` tipovi prošireni; `useActivityPresets` dobio `updatePresetAttributes`
-  **⬜ Deploy needed:** pokrenuti `sql/022_preset_default_attributes.sql` na PROD Supabase (idempotentno — `add column if not exists`, sigurno za pokrenuti bilo kad; potrebno prije/uz merge S88 koda na main)
+- ✅ `sql/022_preset_default_attributes.sql` — `activity_presets.default_attributes JSONB` dodan; pokrenuto na TEST + PROD ✅
 - ✅ Filter-bar "💾 Save Shortcut" — info nudge ("💡 Did you know?") prvi put kad shortcut nema atribute, objašnjava da treba Add Activity za defaults; localStorage flag `ui:shortcutAttrTipDismissed` pamti "Don't show again"
 - ✅ Add Activity "💾 Save as Shortcut (with these attribute values)" gumb — sprema `touched` atribute kao `default_attributes`; ako kategorija već ima shortcut → choice modal (Update postojećeg / Save as new / Cancel); inače name-input modal
 - ✅ Pre-fill efekt proširen — preset `default_attributes` ima prednost nad statičkim `attr.default_value`; oba poštuju "ne prepisuj postojeću/draft vrijednost" (`prev.has(attr.id)`)
