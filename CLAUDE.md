@@ -353,10 +353,13 @@ Faze i status:
 - ✅ `useCategoryChain`: sessionStorage cache po `categoryId` (`chain_v1_<id>`); drugi Add Activity za isti shortcut preskače SELECT * FROM categories; explicit `refetch()` invalidira cache
 - ✅ `ActivitiesTable`: loading spinner zamijenjen skeleton tablom (7 animate-pulse redova, desktop+mobile)
 - ✅ Svi T-S88 i T-S89 testovi prošli (2026-06-09)
+- ✅ `data-prep_tools/Financije/match_sasa_napomene.py` — matchira 'Što' opise iz 'Za Sašu' sheeta s export datotekom po ključu (datum, iznos); col R output za ručni pregled; 96 matchiranih, 9 duplikata (narančasto)
+- ✅ `data-prep_data/Financije/FINANCIJE_MODEL.md` — prijedlog novog data modela: Račun + Izvor plaćanja (Direktno/Visa/Mastercard/Cash) + Tip (kategorija troška) + Napomena; Transfer = interni, nije pravi trošak; za razgovor s Kokom
 
 **Prioriteti za S90:**
-1. **Financije_3 bulk kategorización** — export → ručno popuniti N/A Tip (2434 redova) u Excelu → re-import
-2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+1. **Financije model redesign** — dogovor s Kokom o `FINANCIJE_MODEL.md`; proširiti `Račun` suggest + dodati `Izvor plaćanja` atribut; uvesti kartične transakcije iz 'Za Sašu' umjesto Transfer lump-sum redova
+2. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova) nakon što je model dogovoren
+3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **✅ UX-Mobile-1: Activities tablica na mobilnom** — implementirano S84
 - `sm:hidden` mobilni redovi: Red 1 (datum · vrijeme · ⋮ sticky desno), Red 2 (kategorijna staza ako nema filtera · comment)
