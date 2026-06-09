@@ -349,10 +349,15 @@ Faze i status:
 - ✅ Bugfix — duplikat imena shortcuta: case-insensitive provjera u `handleSavePreset` (filter bar) i `handleConfirmSaveNewShortcut` (Add Activity); `toast.error` blokira save ako ime već postoji
 - ✅ `docs/help/activities.md` — nova sekcija "Shortcuts (brzi pristup)" (Update vs Save as new, "⚡ Use", `default_attributes`); `HelpPanel.tsx` `CHIPS.add` dobio "How do I save my values as a Shortcut?"
 
-**Prioriteti za S89:**
+**Napomena S89 — Perf: filter persist + chain cache + skeleton rows:**
+- ✅ `FilterContext`: filter state prebačen na `localStorage` (sessionStorage → localStorage); app se otvori s restauriranim Area+Category filterom iz prethodne sesije
+- ✅ `useCategoryChain`: sessionStorage cache po `categoryId` (`chain_v1_<id>`); drugi Add Activity za isti shortcut preskače SELECT * FROM categories; explicit `refetch()` invalidira cache
+- ✅ `ActivitiesTable`: loading spinner zamijenjen skeleton tablom (7 animate-pulse redova, desktop+mobile)
+- ✅ Svi T-S88 i T-S89 testovi prošli (2026-06-09)
+
+**Prioriteti za S90:**
 1. **Financije_3 bulk kategorización** — export → ručno popuniti N/A Tip (2434 redova) u Excelu → re-import
 2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
-3. Manualno potvrditi T-S88-2/4/10 (choice modal, info nudge, help chip) — vidi `Claude-temp_R/PENDING_TESTS.md`
 
 **✅ UX-Mobile-1: Activities tablica na mobilnom** — implementirano S84
 - `sm:hidden` mobilni redovi: Red 1 (datum · vrijeme · ⋮ sticky desno), Red 2 (kategorijna staza ako nema filtera · comment)
