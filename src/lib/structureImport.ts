@@ -466,29 +466,39 @@ export async function importStructureExcel(
     id: string;
     categoryId: string | null;
     name: string;
+    slug: string;
     unit: string | null;
     description: string | null;
     sortOrder: number;
     validationRules: Record<string, unknown>;
   }
   const attrBySlugCat = new Map<string, AttrRecord>(); // key: `${slug}||${categoryId}`
-  // attrKey: `${categoryId}/${name.lower}` → id (for slug-less lookup, unchanged)
+  // attrKey: `${categoryId}/${name.lower}` → id (for slug-less lookup)
   const attrByKey = new Map<string, string>();
+  const attrById  = new Map<string, AttrRecord>();     // id → record (for name-based fallback)
 
   for (const a of dbAttrs) {
     const key = `${a.slug}||${a.category_id ?? ''}`;
-    attrBySlugCat.set(key, {
+    const rec: AttrRecord = {
       id:              a.id,
       categoryId:      a.category_id,
       name:            a.name,
+      slug:            a.slug,
       unit:            a.unit ?? null,
       description:     a.description ?? null,
       sortOrder:       a.sort_order,
       validationRules: (a.validation_rules as Record<string, unknown>) ?? {},
-    });
+    };
+    attrBySlugCat.set(key, rec);
+    attrById.set(a.id, rec);
     if (a.category_id) {
       attrByKey.set(`${a.category_id}/${a.name.toLowerCase()}`, a.id);
     }
+  }
+
+  // Generate a URL-safe slug from an attribute name (mirrors UI logic)
+  function makeAttrSlug(name: string): string {
+    return name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
   }
 
   // Helper: find or create area by name
@@ -631,8 +641,17 @@ export async function importStructureExcel(
 
     // Per-category lookup: slug is unique within a category, NOT globally.
     // Two categories can have an attribute with the same slug — that's valid.
-    const slugCatKey = group.slug ? `${group.slug}||${categoryId}` : null;
-    const existing   = slugCatKey ? attrBySlugCat.get(slugCatKey) : null;
+    // When Excel slug is empty, generate one client-side (no DB trigger exists).
+    const effectiveSlug = group.slug || makeAttrSlug(group.attrName);
+    const slugCatKey    = effectiveSlug ? `${effectiveSlug}||${categoryId}` : null;
+    let   existing      = slugCatKey ? attrBySlugCat.get(slugCatKey) : null;
+
+    // Name-based fallback: if slug was empty AND slug-lookup missed (attr in DB also has empty slug)
+    if (!existing && !group.slug && categoryId) {
+      const nameKey    = `${categoryId}/${group.attrName.toLowerCase()}`;
+      const existingId = attrByKey.get(nameKey);
+      if (existingId) existing = attrById.get(existingId) ?? null;
+    }
 
     if (!existing) {
       // CREATE — slug not found in THIS category (or empty slug → trigger generates)
@@ -641,7 +660,7 @@ export async function importStructureExcel(
         user_id:          userId,
         category_id:      categoryId,
         name:             group.attrName,
-        slug:             group.slug || '', // trigger generates if empty
+        slug:             effectiveSlug,     // always non-empty — generated from name if Excel was blank
         data_type:        group.attrType as ('number'|'text'|'datetime'|'boolean'|'link'|'image'),
         unit:             group.unit || null,
         is_required:      group.isRequired,
@@ -656,16 +675,19 @@ export async function importStructureExcel(
       } else {
         result.created.attributes++;
         // Update in-memory cache so later rows in same import session see it
-        if (group.slug && slugCatKey) {
-          attrBySlugCat.set(slugCatKey, {
+        if (effectiveSlug && slugCatKey) {
+          const newRec: AttrRecord = {
             id:              '',
             categoryId,
             name:            group.attrName,
+            slug:            effectiveSlug,
             unit:            group.unit || null,
             description:     group.description || null,
             sortOrder:       group.sort,
             validationRules: validationRules,
-          });
+          };
+          attrBySlugCat.set(slugCatKey, newRec);
+          attrByKey.set(`${categoryId}/${group.attrName.toLowerCase()}`, '');
         }
       }
       continue;
@@ -704,7 +726,7 @@ export async function importStructureExcel(
     const { error } = await supabase
       .from('attribute_definitions')
       .update({
-        slug:             group.slug,  // explicit: prevents trigger overwrite
+        slug:             effectiveSlug || existing.slug,  // keep existing slug if Excel was blank
         name:             group.attrName,
         unit:             group.unit || null,
         description:      group.description || null,

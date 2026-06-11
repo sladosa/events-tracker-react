@@ -63,6 +63,21 @@ export function AttributeChainForm({
   // Track which categories are expanded (leaf is always expanded)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
+  // Whether to show attributes that are currently at their default value
+  const [showAllDefaults, setShowAllDefaults] = useState(false);
+
+  // Tracks which attributes the user has explicitly changed this session.
+  // Separate from `touched` (which is used for save logic) — pre-filled defaults
+  // set touched:true for saving but should not count as user-edited for hiding purposes.
+  const [userEditedIds, setUserEditedIds] = useState<Set<string>>(new Set());
+
+  // Reset both states when user selects a different category
+  const chainKey = useMemo(() => categoryChain.map(c => c.id).join(','), [categoryChain]);
+  useEffect(() => {
+    setShowAllDefaults(false);
+    setUserEditedIds(new Set());
+  }, [chainKey]);
+
   // Restore expanded state from localStorage when chain changes.
   // Per-category preference overrides the default (leaf open, parents closed).
   useEffect(() => {
@@ -114,6 +129,7 @@ export function AttributeChainForm({
   const handleChangeWithClearDependents = useCallback((attrId: string, value: string | number | boolean | null) => {
     // 1. Promijeni vrijednost samog atributa
     onChange(attrId, value);
+    setUserEditedIds(prev => { const next = new Set(prev); next.add(attrId); return next; });
 
     // 2. Nadji slug atributa koji se promijenio
     const changedAttr = allAttributes.find(a => a.id === attrId);
@@ -133,6 +149,23 @@ export function AttributeChainForm({
       }
     }
   }, [onChange, allAttributes, normalizeSlug]);
+
+  // Count attributes currently hidden because they match their default value
+  const hiddenByDefaultCount = useMemo(() => {
+    if (showAllDefaults) return 0;
+    let count = 0;
+    for (const category of categoryChain) {
+      const attrs = attributesByCategory.get(category.id) || [];
+      for (const attr of attrs) {
+        if (attr.default_value == null) continue;
+        if (userEditedIds.has(attr.id)) continue;
+        const currentValue = values.get(attr.id);
+        const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
+        if (currentStr === attr.default_value) count++;
+      }
+    }
+    return count;
+  }, [showAllDefaults, userEditedIds, categoryChain, attributesByCategory, values]);
 
   // Build a map of attribute slugs to their current values
   const attributeValuesBySlug = useMemo(() => {
@@ -201,11 +234,31 @@ export function AttributeChainForm({
     
     if (parsed.dependsOn) {
       const depSlug = parsed.dependsOn.attributeSlug;
-      dependencyValue = attributeValuesBySlug.get(depSlug) 
-        ?? attributeValuesBySlug.get(normalizeSlug(depSlug)) 
+      dependencyValue = attributeValuesBySlug.get(depSlug)
+        ?? attributeValuesBySlug.get(normalizeSlug(depSlug))
         ?? null;
     }
-    
+
+    // For non-text types (number, boolean, datetime): depends_on acts as visibility control.
+    // Hide the field unless the parent value matches a non-'*' WhenValue key (case-insensitive).
+    if (parsed.dependsOn && attr.data_type !== 'text') {
+      if (!dependencyValue) return null;
+      const depUpper = dependencyValue.toUpperCase();
+      const conditionMet = Object.keys(parsed.dependsOn.optionsMap)
+        .filter(k => k !== '*')
+        .some(k => k.toUpperCase() === depUpper);
+      if (!conditionMet) return null;
+    }
+
+    // Hide attributes whose current value matches their default_value and user hasn't
+    // explicitly changed the field this session. "Show all" toggle overrides this.
+    // Note: `touched` is not used here — pre-fill sets touched:true for save logic,
+    // but that must not prevent hiding.
+    if (!showAllDefaults && attr.default_value != null && !userEditedIds.has(attr.id)) {
+      const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
+      if (currentStr === attr.default_value) return null;
+    }
+
     return (
       <AttributeInput
         key={attr.id}
@@ -303,6 +356,31 @@ export function AttributeChainForm({
           </div>
         );
       })}
+
+      {/* Toggle for attributes hidden because they match their default value */}
+      {!showAllDefaults && hiddenByDefaultCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAllDefaults(true)}
+          className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg border border-dashed border-gray-200 transition-colors flex items-center gap-1.5"
+        >
+          <span className="text-gray-400">▸</span>
+          <span>
+            {hiddenByDefaultCount} {hiddenByDefaultCount === 1 ? 'polje skriveno' : 'polja skrivena'} (na defaultu)
+          </span>
+          <span className="ml-auto text-blue-500 font-medium">Prikaži sve</span>
+        </button>
+      )}
+      {showAllDefaults && (
+        <button
+          type="button"
+          onClick={() => setShowAllDefaults(false)}
+          className="w-full text-left px-3 py-2 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg border border-dashed border-gray-200 transition-colors flex items-center gap-1.5"
+        >
+          <span>▴</span>
+          <span>Sakrij polja na defaultu</span>
+        </button>
+      )}
     </div>
   );
 }

@@ -70,6 +70,7 @@ interface AttrEditState {
   dependsOnMap: DependsOnRow[];
   // Original validation_rules stored so we can reconstruct on save
   originalRules: AttributeDefinition['validation_rules'];
+  defaultValue: string;
   // true for newly added attrs not yet persisted (INSERT on Save)
   isNew?:     boolean;
   isRequired?: boolean; // only used for new attrs; maps to is_required column
@@ -80,6 +81,7 @@ interface NewAttrFormState {
   dataType: 'text' | 'number' | 'boolean' | 'datetime';
   unit: string;
   required: boolean;
+  defaultValue: string;
 }
 
 interface DeleteConfirmState {
@@ -181,6 +183,7 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
     dependsOnSlug,
     dependsOnMap,
     originalRules: attr.validation_rules,
+    defaultValue: attr.default_value ?? '',
   };
 }
 
@@ -325,7 +328,7 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
   const t = THEME.structureEdit;
 
   const [addOpen,      setAddOpen]      = useState(false);
-  const [newForm,      setNewForm]      = useState<NewAttrFormState>({ name: '', dataType: 'text', unit: '', required: false });
+  const [newForm,      setNewForm]      = useState<NewAttrFormState>({ name: '', dataType: 'text', unit: '', required: false, defaultValue: '' });
   const [deleteState,  setDeleteState]  = useState<DeleteConfirmState | null>(null);
 
   const update = (index: number, partial: Partial<AttrEditState>) => {
@@ -406,11 +409,12 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
       dependsOnSlug: '',
       dependsOnMap:  [],
       originalRules: {},
+      defaultValue:  newForm.defaultValue.trim(),
       isNew:         true,
       isRequired:    newForm.required,
     };
     onChange([...attrs, newAttrState]);
-    setNewForm({ name: '', dataType: 'text', unit: '', required: false });
+    setNewForm({ name: '', dataType: 'text', unit: '', required: false, defaultValue: '' });
     setAddOpen(false);
   };
 
@@ -518,9 +522,19 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
           <span className="text-xs text-gray-600">Required</span>
         </label>
       </div>
+      {newForm.dataType !== 'boolean' && (
+        <div className="mb-2">
+          <FieldLabel>Default value</FieldLabel>
+          <TextInput
+            value={newForm.defaultValue}
+            onChange={v => setNewForm(f => ({ ...f, defaultValue: v }))}
+            placeholder="Optional default"
+          />
+        </div>
+      )}
       <div className="flex gap-2 justify-end">
         <button
-          onClick={() => { setAddOpen(false); setNewForm({ name: '', dataType: 'text', unit: '', required: false }); }}
+          onClick={() => { setAddOpen(false); setNewForm({ name: '', dataType: 'text', unit: '', required: false, defaultValue: '' }); }}
           className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
         >
           Cancel
@@ -615,6 +629,21 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
               placeholder="Optional description"
             />
           </div>
+
+          {/* Default value — not shown for boolean (always false/unchecked) */}
+          {attr.dataType !== 'boolean' && (
+            <div className="mb-3">
+              <FieldLabel>Default value</FieldLabel>
+              <TextInput
+                value={attr.defaultValue}
+                onChange={v => update(i, { defaultValue: v })}
+                placeholder={attr.validationType === 'suggest' ? 'e.g. Izvršen (must match an option)' : 'Optional default'}
+              />
+              {attr.validationType === 'suggest' && attr.defaultValue && (
+                <p className="mt-1 text-xs text-gray-400">Must exactly match one of the options above.</p>
+              )}
+            </div>
+          )}
 
           {/* Slug — editable (safe: events link by UUID, not slug) */}
           {!attr.isNew && (
@@ -935,6 +964,7 @@ export function StructureNodeEditPanel({
               sort_order:       attr.sortOrder,
               validation_rules: newRules,
               is_required:      attr.isRequired ?? false,
+              default_value:    attr.defaultValue.trim() || null,
               user_id:          user.id,
             });
           if (error) throw error;
@@ -950,6 +980,7 @@ export function StructureNodeEditPanel({
               description:      attr.description.trim() || null,
               sort_order:       attr.sortOrder,
               validation_rules: newRules,
+              default_value:    attr.defaultValue.trim() || null,
               user_id:          user.id,
               updated_at:       new Date().toISOString(),
             })

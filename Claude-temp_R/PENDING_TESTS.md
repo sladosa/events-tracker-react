@@ -1,8 +1,23 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S89 (2026-06-09)
-**Detalji testova:** [S89_tests.md](test-sessions/S89_tests.md)
+**Zadnji update:** S91 (2026-06-11)
+**Detalji testova:** [S91_tests.md](test-sessions/S91_tests.md)
+
+---
+
+## S91 — default_value UI + depends_on visibility + hide-if-default
+
+| ID      | Test                                                                                                                                                              | Status |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| T-S91-1 | Structure Edit → Transakcija → uredi atribut → vidi se "Default value" polje; upiši "EUR" → Save → Export pokazuje Default=EUR u xlsx                            | ⬜      |
+| T-S91-2 | Add Activity → Financije_3 > Transakcija → Status i Valuta su **skriveni** pri otvaranju (defaulti: Izvrsen/EUR); dno forme pokazuje "N polja skrivena (na defaultu)" | ⬜      |
+| T-S91-3 | Klikni "Prikaži sve" → Status i Valuta se pojave; klikni "Sakrij polja na defaultu" → nestanu opet                                                               | ⬜      |
+| T-S91-4 | Promijeni Status na "Planiran" → Status ostaje vidljiv; promijeni ga nazad na "Izvrsen" → ostaje vidljiv (userEdited=true)                                        | ⬜      |
+| T-S91-5 | Odaberi drugu kategoriju pa se vrati na Transakcija → "show all" se resetirao, Status i Valuta opet skriveni                                                      | ⬜      |
+| T-S91-6 | Smjer = "Uplata" → Uplata polje vidljivo, Isplata skriveno; Smjer = "Isplata" → Isplata vidljiva, Uplata skrivena (nakon Structure import s novom konfiguracijom) | ⬜      |
+| T-S91-7 | Stanje polje nije vidljivo u Add Activity ni u Edit Activity (DependsOn=smjer, WhenValue=SKRIVENO)                                                                | ⬜      |
+| T-S91-8 | Structure Import → drugi import istog xlsx-a → **ne stvara duplikate** atributa (slug-based deduplication fix)                                                    | ⬜      |
 
 ---
 
@@ -15,21 +30,3 @@
 | T-S89-3 | Skeleton: dok se Activities tablica učitava vide se animated placeholder redovi (ne prazan div/spinner)                  | ✅      |
 
 ---
-
-## S88 — Shortcut pre-fill (default_attributes) + UX bugfixes
-
-| ID       | Test                                                                                                        | Status |
-| -------- | ----------------------------------------------------------------------------------------------------------- | ------ |
-| T-S88-1  | Save as Shortcut iz Add Activity (s atributima) — `default_attributes` populiran u DB                       | ✅      |
-| T-S88-2  | Update postojeći vs Save as new — choice modal, ne pravi duplikate slučajno                                 | ✅      |
-| T-S88-3  | Pre-fill vrijednosti pri odabiru shortcuta u Add Activity (preset default > static default_value)           | ✅      |
-| T-S88-4  | Filter-bar info nudge ("Did you know?") — prikaz prvi put, "Don't show again" perzistira                    | ✅      |
-| T-S88-5  | "⚡ Use" fast-lane gumb — odmah otvara Add Activity za odabrani shortcut                                     | ✅      |
-| T-S88-6  | Broken shortcut detekcija — toast + reset filtera + amber banner s "Delete shortcut" (BUGFIX)               | ✅      |
-| T-S88-7  | Mobile — filter ostaje otvoren nakon odabira shortcuta, "⚡ Use" ostaje vidljiv (BUGFIX)                     | ✅      |
-| T-S88-8  | Delete Shortcut button — vizualni kontrast aktivno/neaktivno (BUGFIX)                                       | ✅      |
-| T-S88-9  | Duplikat imena shortcuta blokiran — toast error, save odbijen (BUGFIX)                                      | ✅      |
-| T-S88-10 | Help panel — Add Activity chip "How do I save my values as a Shortcut?" + ažurirani docs/help/activities.md | ✅      |
-
----
-
