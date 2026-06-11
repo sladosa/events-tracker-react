@@ -379,8 +379,9 @@ Faze i status:
 **Prioriteti za S92:**
 1. **Financije forma — Structure import** za Transakcija atribute (Uplata/Isplata depends_on, Stanje skriven, Rate? fix)
 2. **Financije forma UX za Koku** — testiranje s Kokom, fine-tuning forme za efikasan unos
-3. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
-4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+3. **`dev:netlify` fix** — Vite 7 + Netlify CLI 25.3.0 blank page bug; potrebno za testiranje AI help funkcija lokalno i za mobilni pristup s PROD bazom. Trenutni workaround: `npm run dev:prod` (PROD baza, bez Netlify funkcija, dostupno na http://[local-ip]:5173). Opcije za fix: (a) upgrade netlify-cli na 26.1.0 (`npm install -D netlify-cli@latest`), (b) dodati `vite.config.ts` HMR override (`server.hmr.port: 5173`) da proxy ne remeti WebSocket, (c) koristiti `netlify dev --framework vite` flag
+4. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
+5. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **✅ UX-Mobile-1: Activities tablica na mobilnom** — implementirano S84
 - `sm:hidden` mobilni redovi: Red 1 (datum · vrijeme · ⋮ sticky desno), Red 2 (kategorijna staza ako nema filtera · comment)
