@@ -368,11 +368,28 @@ Faze i status:
 - ✅ `netlify.toml` — dodan `[dev]` section (`targetPort=5173, port=8888`); blank page fix za `npm run dev:netlify`
 - ✅ **Hide-if-default** u `AttributeChainForm.tsx` — atributi čija je vrijednost jednaka `default_value` skrivaju se pri otvaranju forme; toggle "Prikaži sve / Sakrij"; `userEditedIds` Set (odvojeno od `touched` koji je za save logiku); reset na promjenu kategorije
 - ✅ Bugfix: `touched: true` (pre-fill S86b) više ne sprječava skrivanje defaulta — koristi `userEditedIds.has(attr.id)` umjesto `!currentValue?.touched`
-- **Backlog: Structure Edit UX cleanup** — skupiti u jedan sprint kad bude vremena:
-  1. **Collapsible attribute kartice** — svaki atribut kolapsibilan na 1 red (name + sort + type badge), expand on click; rješava problem panela s 8+ atributa; koristit localStorage za persist stanja (isti pattern kao `attrExpanded:<categoryId>`)
-  2. **`suggest` direktno u "New attribute" formi** — umjesto 2-koračnog text → "→ Suggest", dodati `suggest` opciju u Type dropdown + inline textarea za opcije koja se pojavi odmah; "→ Suggest" gumb ostaje za konverziju postojećih text atributa
-  3. **Help docs update za Edit panel** — `docs/help/structure.md` dobiva sekciju "Editing attributes" koja objašnjava: tipove, suggest opcije, default_value (mora točno odgovarati opciji za suggest), depends_on, slug (siguran za preimenovanje)
-  4. **Post-Finish konfiguracija u Structure Edit** — category-level flag "Podržava planiranje" (boolean, area `settings` jsonb) koji aktivira post-Finish modal za generiranje budućih rata/treninga; dizajnirati tek kad je Korak 3 konkretan (znamo točno koja su polja potrebna)
+- **Backlog: Structure Edit UX cleanup** — skupiti u jedan sprint (~4-5h ukupno, sve u `StructureNodeEditPanel.tsx` ~1200 redova, nema DB promjena):
+
+  **1. Collapsible attribute kartice** (~2-3h)
+  - State: `collapsedAttrs: Set<string>` (po attr.id) u komponenti; persist u localStorage key `structAttrCollapsed:<nodeId>`
+  - Collapsed header (1 red): `name` + type badge (`text`, `suggest`, `number`...) + sort broj + chevron ▶/▼ + trash ikona
+  - Expanded: cijeli sadašnji sadržaj (kao danas)
+  - Trash/delete akcije moraju biti vidljive i u collapsed stanju (u headeru)
+  - "Collapse all / Expand all" gumb iznad liste (prikaže se kad 3+ atributa)
+  - Pattern: isti kao area collapse u `StructureTableView` (S57)
+
+  **2. `suggest` direktno u "New attribute" formi** (~1h)
+  - `NewAttrFormState` (trenutno: `{ name, dataType: 'text'|'number'|'boolean'|'datetime', unit, required, defaultValue }`)
+  - Dodati `suggest` kao opciju u Type `<select>` — ali interno to je `data_type='text'` + `val_type='suggest'`
+  - Kad je odabran `suggest`: ispod dropdowna se pojavljuje `<textarea>` "Options (one per line)"
+  - `handleAddAttr`: ako `dataType === 'suggest'` → `{ dataType: 'text', validationType: 'suggest', suggestOptions: textarea.value }`
+  - `NewAttrFormState` treba dobiti `suggestOptions: string` field
+  - `→ Suggest` gumb na postojećim text atributima ostaje (konverzija)
+
+  **3. Help docs update** (~20min)
+  - `docs/help/structure.md` → sekcija "Editing attributes": tipovi, suggest opcije, default_value (mora točno odgovarati opciji), depends_on (vidljivost / SKRIVENO), slug (siguran za rename)
+
+  **4. Post-Finish konfiguracija** — odgoditi dok Financije Korak 3 (rate modal) ne bude konkretan
 - **Konfiguracija za Stanje (uvijek skriven):** `DependsOn=smjer, WhenValue=SKRIVENO` — depends_on ima prednost pred hide-if-default; polje nikad vidljivo u formi ali postoji u bazi
 - **Konfiguracija za Uplata/Isplata (depends_on visibility):** SQL ili Excel import s `DependsOn=smjer, WhenValue=Uplata/PROVJERI` (za Uplata) i `WhenValue=Isplata/PROVJERI` (za Isplata)
 
