@@ -376,12 +376,19 @@ Faze i status:
 - **Konfiguracija za Stanje (uvijek skriven):** `DependsOn=smjer, WhenValue=SKRIVENO` — depends_on ima prednost pred hide-if-default; polje nikad vidljivo u formi ali postoji u bazi
 - **Konfiguracija za Uplata/Isplata (depends_on visibility):** SQL ili Excel import s `DependsOn=smjer, WhenValue=Uplata/PROVJERI` (za Uplata) i `WhenValue=Isplata/PROVJERI` (za Isplata)
 
-**Prioriteti za S92:**
+**Napomena S92:**
+- ✅ `netlify-cli` 25.3.0 → 26.1.0 + `netlify.toml [dev] framework = "vite"` — blank page s Vite 7 riješen; `npm run dev:netlify` radi (T-S92-4 ✅)
+- ✅ `_` sentinel u Activities Excel importu (`excelImport.ts`) — `_` briše vrijednost atributa (zaobilazi P3); novi eventi tretiraju `_` kao prazno; `hasChanges()` detektira `_` kao promjenu (T-S92-1,2,3 ✅)
+- ✅ `_` sentinel u Structure Excel importu (`structureImport.ts`) — `_` u Default koloni = `default_value = null`; implementirano istovremeno (T-S92-5 ✅)
+- ✅ Structure import bugfix — `default_value` nije bio u SELECT, dirty checku ni UPDATE payloadu; sva 3 mjesta dodana (T-S92-6 ✅)
+- ✅ Help docs — `structure.md`: "Atributi u Edit panelu" + `_` sentinel za Default kolonu; `activities.md`: vidljivost polja + `_` sentinel za xlsx
+- ✅ S91 testovi svi potvrđeni (T-S91-1..8); S92 testovi svi potvrđeni (T-S92-1..6)
+
+**Prioriteti za S93:**
 1. **Financije forma — Structure import** za Transakcija atribute (Uplata/Isplata depends_on, Stanje skriven, Rate? fix)
 2. **Financije forma UX za Koku** — testiranje s Kokom, fine-tuning forme za efikasan unos
-3. **`dev:netlify` fix** — Vite 7 + Netlify CLI 25.3.0 blank page bug; potrebno za testiranje AI help funkcija lokalno i za mobilni pristup s PROD bazom. Trenutni workaround: `npm run dev:prod` (PROD baza, bez Netlify funkcija, dostupno na http://[local-ip]:5173). Opcije za fix: (a) upgrade netlify-cli na 26.1.0 (`npm install -D netlify-cli@latest`), (b) dodati `vite.config.ts` HMR override (`server.hmr.port: 5173`) da proxy ne remeti WebSocket, (c) koristiti `netlify dev --framework vite` flag
-4. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
-5. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+3. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
+4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **✅ UX-Mobile-1: Activities tablica na mobilnom** — implementirano S84
 - `sm:hidden` mobilni redovi: Red 1 (datum · vrijeme · ⋮ sticky desno), Red 2 (kategorijna staza ako nema filtera · comment)

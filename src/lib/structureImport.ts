@@ -406,7 +406,7 @@ export async function importStructureExcel(
         .select('id, area_id, parent_category_id, name, slug, level, sort_order, path'),
       supabase
         .from('attribute_definitions')
-        .select('id, category_id, name, slug, unit, description, sort_order, validation_rules'),
+        .select('id, category_id, name, slug, unit, description, sort_order, validation_rules, default_value'),
     ]);
 
   if (!dbAreas || !dbCats || !dbAttrs) {
@@ -469,6 +469,7 @@ export async function importStructureExcel(
     slug: string;
     unit: string | null;
     description: string | null;
+    defaultValue: string | null;
     sortOrder: number;
     validationRules: Record<string, unknown>;
   }
@@ -486,6 +487,7 @@ export async function importStructureExcel(
       slug:            a.slug,
       unit:            a.unit ?? null,
       description:     a.description ?? null,
+      defaultValue:    (a as { default_value?: string | null }).default_value ?? null,
       sortOrder:       a.sort_order,
       validationRules: (a.validation_rules as Record<string, unknown>) ?? {},
     };
@@ -664,7 +666,7 @@ export async function importStructureExcel(
         data_type:        group.attrType as ('number'|'text'|'datetime'|'boolean'|'link'|'image'),
         unit:             group.unit || null,
         is_required:      group.isRequired,
-        default_value:    group.defaultVal || null,
+        default_value:    group.defaultVal === '_' ? null : (group.defaultVal || null),
         validation_rules: validationRules,
         sort_order:       group.sort,
         description:      group.description || null,
@@ -683,6 +685,7 @@ export async function importStructureExcel(
             slug:            effectiveSlug,
             unit:            group.unit || null,
             description:     group.description || null,
+            defaultValue:    group.defaultVal || null,
             sortOrder:       group.sort,
             validationRules: validationRules,
           };
@@ -697,13 +700,15 @@ export async function importStructureExcel(
     // Compare all updatable fields; if nothing changed, skip entirely (no DB write).
     const newRules = validationRules;
 
-    const nameDiff   = existing.name        !== group.attrName;
-    const unitDiff   = (existing.unit        ?? '') !== (group.unit        || '');
-    const descDiff   = (existing.description ?? '') !== (group.description || '');
-    const sortDiff   = existing.sortOrder   !== group.sort;
-    const rulesDiff  = normalizeJson(existing.validationRules) !== normalizeJson(newRules);
+    const nameDiff    = existing.name         !== group.attrName;
+    const unitDiff    = (existing.unit         ?? '') !== (group.unit        || '');
+    const descDiff    = (existing.description  ?? '') !== (group.description || '');
+    const importDefault = group.defaultVal === '_' ? '' : (group.defaultVal || '');
+    const defaultDiff = (existing.defaultValue ?? '') !== importDefault;
+    const sortDiff    = existing.sortOrder    !== group.sort;
+    const rulesDiff   = normalizeJson(existing.validationRules) !== normalizeJson(newRules);
 
-    const isDirty = nameDiff || unitDiff || descDiff || sortDiff || rulesDiff;
+    const isDirty = nameDiff || unitDiff || descDiff || defaultDiff || sortDiff || rulesDiff;
 
     // DEBUG — remove after S21 testing
     if (isDirty) {
@@ -730,6 +735,7 @@ export async function importStructureExcel(
         name:             group.attrName,
         unit:             group.unit || null,
         description:      group.description || null,
+        default_value:    group.defaultVal === '_' ? null : (group.defaultVal || null),
         sort_order:       group.sort,
         validation_rules: newRules,
         updated_at:       new Date().toISOString(),

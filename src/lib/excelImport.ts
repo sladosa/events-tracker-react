@@ -903,7 +903,7 @@ export async function applyImportChanges(
         // Skupi leaf atribute (samo atributi leaf kategorije)
         const leafAttrs: Record<string, ExportAttrDef> = {};
         for (const [attrName, value] of Object.entries(row.attributes)) {
-          if (value == null || value === '') continue;
+          if (value == null || value === '' || value === '_') continue; // '_' on new event = skip (same as empty)
           const def = attrByCatName.get(`${group.leafCategoryId}||${attrName}`);
           if (def) leafAttrs[attrName] = def;
         }
@@ -1079,15 +1079,17 @@ export async function applyImportChanges(
         const def = attrByCatName.get(`${existingCatId}||${attrName}`);
         if (!def) continue;
 
-        const attrData = buildAttrData(eventId, userId, def, value);
+        const isClear = value === '_'; // sentinel: explicit clear of existing value
+        if (!isClear && (value == null || value === '')) continue; // P3: prazna ne prepisuje
 
+        const attrData = buildAttrData(eventId, userId, def, value); // returns all-null for '_'
         if (existingAttrs.has(def.id)) {
           await supabase
             .from('event_attributes')
             .update(attrData)
             .eq('id', existingAttrs.get(def.id)!)
             .eq('user_id', userId);
-        } else if (value != null && value !== '') {
+        } else if (!isClear) {
           await supabase.from('event_attributes').insert(attrData);
         }
       }
@@ -1118,7 +1120,7 @@ function buildAttrData(
     value_boolean: null as boolean | null,
   };
 
-  if (value == null || value === '') return base;
+  if (value == null || value === '' || value === '_') return base;
 
   switch (def.data_type) {
     case 'number':
@@ -1189,6 +1191,15 @@ function hasChanges(
   for (const [attrName, importValue] of Object.entries(row.attributes)) {
     const def = attrByCatName.get(`${categoryId}||${attrName}`);
     if (!def) continue;
+
+    // '_' sentinel: explicit intent to clear an existing value
+    if (importValue === '_') {
+      const existingAttr = existingAttrMap.get(def.id);
+      if (existingAttr && (existingAttr.value_text != null || existingAttr.value_number != null || existingAttr.value_datetime != null || existingAttr.value_boolean != null)) {
+        return true;
+      }
+      continue;
+    }
 
     // P3: empty xlsx value → skip (don't change, don't count)
     if (importValue == null || importValue === '') continue;

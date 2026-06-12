@@ -7,6 +7,15 @@
 4. Ispuni atribute, klikni Save
 5. Gumb "💾 Save as Shortcut" ispod atributa sprema trenutne vrijednosti kao shortcut default — vidi sekciju **Shortcuts** niže
 
+**Vidljivost polja u formi:**
+- Polja čija vrijednost odgovara `default_value` automatski se skrivaju pri otvaranju.
+  Broj skrivenih polja prikazan je na dnu forme ("N polja skrivena — Prikaži").
+  Klik "Prikaži sve" otkriva sva polja; klik "Sakrij polja na defaultu" ih sakriva nazad.
+  Jednom kad ručno promijeniš vrijednost, polje ostaje vidljivo (čak i ako se vratiš na default).
+- Polja s `depends_on` prikazuju se samo kad drugi atribut ("parent") ima određenu vrijednost
+  (npr. `Broj rata` se pojavi tek kad označiš `Na rate?`).
+- Oba pravila vrijede i u Edit Activity.
+
 ## Uređivanje aktivnosti
 - ⋮ menu → Edit (ili ikona olovke na redu)
 - Mijenja atribute za tu sesiju
@@ -57,6 +66,14 @@ unose. Obično odabir shortcuta samo postavlja filter (za pregled povijesti te k
 ## Export/Import
 - Export gumb → download .xlsx (Activities sheet + Structure sheet)
 - Import gumb → upload .xlsx; detektira missing kategorije i nudi kreiranje
+
+**Brisanje vrijednosti atributa via Excel (sentinel `_`):**
+Prazne ćelije nikad ne brišu postojeće vrijednosti (P3 pravilo — blank ne prepisuje).
+Da eksplicitno obrišeš vrijednost nekog atributa, upiši `_` (underscore) u tu ćeliju.
+Import tretira `_` kao "postavi na prazno", zaobilazeći P3.
+- Primjer: atribut `Smjer` ima vrijednost "Isplata" (i to je default pa polje ne vidiš u formi);
+  želiš ga obrisati → upiši `_` u xlsx kolonu Smjer za taj event → import → vrijednost se briše
+- Za **nove redove** (novi eventi): `_` se tretira jednako kao prazno (atribut se ne kreira)
 
 ## Orphan eventi (owner pogled)
 Orphan eventi nastaju u dva scenarija:

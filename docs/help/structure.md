@@ -12,6 +12,23 @@ Unlock-a sve strukturne promjene:
 - Dodaj atribut: klikni na kategoriju → Edit panel → "+ Add Attribute"
 - Brišanje atributa: trash ikona uz atribut (zaštita ako ima eventa)
 
+## Atributi u Edit panelu
+
+**Tipovi:** text · number · boolean · datetime · suggest (text + predefinirane opcije u dropdown-u)
+
+**`default_value`:** vrijednost automatski upisana kad korisnik otvori Add Activity za tu kategoriju.
+Za suggest atribute mora točno odgovarati jednoj od opcija (case-sensitive).
+Polja na defaultu se skrivaju u formi (hide-if-default) — korisnik klika "Prikaži sve" ako ih želi urediti.
+Za brisanje `default_value` via Excel Structure importa: upiši `_` u Default kolonu — import postavlja null (prazno).
+
+**`depends_on` — uvjetna vidljivost:**
+Atribut se prikazuje u formi samo kad drugi atribut ("parent") ima određenu vrijednost.
+Konfigurira se u Edit panelu → klikni na atribut → "Depends on" / "When value".
+- Primjer: `Broj rata` vidljiv samo kad `Na rate? = true`
+- `WhenValue = SKRIVENO`: atribut je uvijek skriven u formi (postoji u bazi, ali korisnik ga ne uređuje — za interne/sistemske vrijednosti)
+
+Oba pravila (`default_value` i `depends_on`) vrijede u Add Activity i Edit Activity.
+
 ## Kategorije — ⋮ menu opcije
 - **+ Add Leaf**: dodaj dijete kategoriju (leaf = može imati activnosti)
 - **Add Between**: umetni novu razinu između ovog čvora i njegovih djece (novi čvor ide ispod odabranog, iznad djece)
