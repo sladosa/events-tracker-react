@@ -402,10 +402,17 @@ Faze i status:
 - ✅ S91 testovi svi potvrđeni (T-S91-1..8); S92 testovi svi potvrđeni (T-S92-1..6)
 
 **Prioriteti za S93:**
-1. **Financije forma — Structure import** za Transakcija atribute (Uplata/Isplata depends_on, Stanje skriven, Rate? fix)
-2. **Financije forma UX za Koku** — testiranje s Kokom, fine-tuning forme za efikasan unos
-3. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
-4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+1. **Python rata tool** (`data-prep_tools/Financije/generate_rata.py`) — ~30min, odmah koristivo za Koku; spec u `docs/AUTOMATION_SPEC.md`
+2. **Financije forma fine-tuning** — Excel/UI korekcije atributa (Uplata/Isplata depends_on, Stanje skriven)
+3. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
+4. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
+5. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+
+**Post-Finish automation** — spec: `docs/AUTOMATION_SPEC.md`
+- Faza 1: Python rata tool → Post-Finish modal u web app
+- Faza 2: Auto-comment template po leaf kategoriji
+- Faza 3: Excel Automations sheet (generalni engine)
+- Faza 4: Training parser/inverz (čeka `trening.xlsm` analizu)
 
 **✅ UX-Mobile-1: Activities tablica na mobilnom** — implementirano S84
 - `sm:hidden` mobilni redovi: Red 1 (datum · vrijeme · ⋮ sticky desno), Red 2 (kategorijna staza ako nema filtera · comment)
