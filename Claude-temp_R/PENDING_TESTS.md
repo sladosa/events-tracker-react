@@ -1,8 +1,27 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S92 (2026-06-12)
-**Detalji testova:** [S92_tests.md](test-sessions/S92_tests.md)
+**Zadnji update:** S93 (2026-06-14)
+**Detalji testova:** [S93_tests.md](test-sessions/S93_tests.md)
+
+---
+
+## S93 — Attribute filter + Rata modal
+
+| ID      | Test                                                                                                                                                          | Status |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| T-S93-1 | Filter bar: odaberi Financije_3 area → dropdown "Comment" se pojavi s attr opcijama (Status, Smjer, Izvor plaćanja, Tip...)                                   | ⬜      |
+| T-S93-2 | Filter bar: odaberi "Status" u dropdownu → pojavi se select s opcijama (Izvrsen, Planiran...); odaberi "Planiran" → tablica filtrira samo Planiran evente     | ⬜      |
+| T-S93-3 | Filter bar: odaberi "Smjer" → select s Uplata/Isplata; odaberi "Isplata" → chip "Isplata" prikazan u tablici; × briše filter                                 | ⬜      |
+| T-S93-4 | Filter bar: odaberi "Comment" → text input za pretragu; unesi tekst → filtrira po komentaru (staro ponašanje)                                                 | ⬜      |
+| T-S93-5 | Filter bar: promijeni Area → dropdown se resetira na "Comment" i attrFilter se briše                                                                          | ⬜      |
+| T-S93-6 | Filter area-only (bez kategorije): odaberi samo Financije_3 → u dropdownu su atributi iz cijele areae                                                        | ⬜      |
+| T-S93-7 | **Rata modal — happy path:** Add Activity → Financije_3 > Transakcija; postavi Na rate?=Da, Broj rata=3, Iznos=450, Izvor=Mastercard kartica; Finish → pojavi se modal s 3 rate po 150 EUR, datumi 11. u sljedeća 3 mj. | ⬜      |
+| T-S93-8 | Rata modal: klikni "Kreiraj 3 rata" → toast "Kreirano 3 rata"; u Activities tablici filteraj Status=Planiran → vide se 3 nova eventa s komentarima "… · rata 1/3" itd. | ⬜      |
+| T-S93-9 | Rata modal: klikni "Preskoči" → modal se zatvori, success dialog se otvori, rata eventi **nisu** kreirani                                                     | ⬜      |
+| T-S93-10 | Rata atributi: View Activity na rata eventu → iznos = 150 (ne 450), Status = Planiran, Na rate? = false (ili ne postoji)                                      | ⬜      |
+| T-S93-11 | Rata bez config (non-Financije area): Add Activity → Finish → **nema** rata modala, odmah success dialog                                                      | ⬜      |
+| T-S93-12 | Rata trigger nije aktivan: Na rate?=Ne, Broj rata=3 → Finish → nema rata modala                                                                               | ⬜      |
 
 ---
 
@@ -31,15 +50,5 @@
 | T-S91-6 | Smjer = "Uplata" → Uplata polje vidljivo, Isplata skriveno; Smjer = "Isplata" → Isplata vidljiva, Uplata skrivena (nakon Structure import s novom konfiguracijom)     | ✅      |
 | T-S91-7 | Stanje polje nije vidljivo u Add Activity ni u Edit Activity (DependsOn=smjer, WhenValue=SKRIVENO)                                                                    | ✅      |
 | T-S91-8 | Structure Import → drugi import istog xlsx-a → **ne stvara duplikate** atributa (slug-based deduplication fix)                                                        | ✅      |
-
----
-
-## S89 — Perf: filter persist + chain cache + skeleton
-
-| ID      | Test                                                                                                                     | Status |
-| ------- | ------------------------------------------------------------------------------------------------------------------------ | ------ |
-| T-S89-1 | Zatvori browser, otvori ponovo → aktivni filter (Area+Category) je restauriran, tablica odmah učitava filtriran sadržaj | ✅      |
-| T-S89-2 | Add Activity drugi put za isti shortcut (ista sesija) → forma se otvori brže nego prvi put (chain cache hit)             | ✅      |
-| T-S89-3 | Skeleton: dok se Activities tablica učitava vide se animated placeholder redovi (ne prazan div/spinner)                  | ✅      |
 
 ---

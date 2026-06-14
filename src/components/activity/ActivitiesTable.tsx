@@ -75,7 +75,7 @@ interface ActivitiesTableProps {
 }
 
 export function ActivitiesTable({ className = '', onEditActivity, onViewDetails, onDeleteActivity, onExport, onImport, orphanedPairKeys, filterOrphans, onClearOrphanFilter, onManageOrphan }: ActivitiesTableProps) {
-  const { filter, sharedContext, areaHasActiveShares, clearCommentSearch } = useFilter();
+  const { filter, sharedContext, areaHasActiveShares, clearCommentSearch, clearAttrFilter } = useFilter();
   const PAGE_SIZE = 20;
   const location = useLocation();
 
@@ -117,6 +117,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     dateTo: filter.dateTo,
     sortOrder: filter.sortOrder,
     commentSearch: filter.commentSearch,
+    attrFilter: filter.attrFilter,
     pageSize: PAGE_SIZE
   });
 
@@ -330,6 +331,19 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 onClick={clearCommentSearch}
                 className="ml-0.5 text-indigo-600 hover:text-indigo-900 leading-none"
                 title="Clear comment filter"
+              >
+                ×
+              </button>
+            </span>
+          )}
+          {/* Attr filter chip */}
+          {filter.attrFilter?.value && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-100 border border-indigo-300 text-indigo-800 text-xs font-medium rounded-full">
+              {filter.attrFilter.value}
+              <button
+                onClick={clearAttrFilter}
+                className="ml-0.5 text-indigo-600 hover:text-indigo-900 leading-none"
+                title="Clear attribute filter"
               >
                 ×
               </button>

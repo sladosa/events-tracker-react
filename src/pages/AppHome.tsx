@@ -30,8 +30,9 @@ import { useActivities } from '@/hooks/useActivities';
 import { useOrphanUsers } from '@/hooks/useOrphanUsers';
 import { OrphanBanner } from '@/components/activity/OrphanBanner';
 import { OrphanManagementModal } from '@/components/activity/OrphanManagementModal';
-import type { Category } from '@/types/database';
+import type { Category, AttributeDefinition } from '@/types/database';
 import type { UUID } from '@/types';
+import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 
 // --------------------------------------------
 // Icons
@@ -115,9 +116,74 @@ function AppContent() {
     reset,
     sharedContext,
     areaHasActiveShares,
+    selectionChain,
     setCommentSearch,
     clearCommentSearch,
+    setAttrFilter,
+    clearAttrFilter,
   } = useFilter();
+
+  // Attribute filter UI state — which field is selected in the "Filter by" dropdown
+  const [filterAttrDefs, setFilterAttrDefs] = useState<AttributeDefinition[]>([]);
+  const [selectedFilterAttr, setSelectedFilterAttr] = useState<string>('comment');
+
+  // Load attr defs when area or category changes
+  useEffect(() => {
+    const load = async () => {
+      if (!filter.areaId) {
+        setFilterAttrDefs([]);
+        return;
+      }
+
+      let categoryIds: string[];
+
+      if (selectionChain.length > 0) {
+        categoryIds = selectionChain.map(c => c.id);
+      } else {
+        const { data: cats } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('area_id', filter.areaId);
+        categoryIds = (cats ?? []).map(c => c.id as string);
+      }
+
+      if (categoryIds.length === 0) {
+        setFilterAttrDefs([]);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('attribute_definitions')
+        .select('id, name, slug, data_type, validation_rules, sort_order, category_id, user_id, description, unit, is_required, default_value, created_at, updated_at')
+        .in('category_id', categoryIds)
+        .order('sort_order');
+
+      // Deduplicate by slug — keep first occurrence (lowest sort_order)
+      const seen = new Set<string>();
+      const deduped = (data ?? []).filter(a => {
+        if (seen.has(a.slug)) return false;
+        seen.add(a.slug);
+        return true;
+      });
+      setFilterAttrDefs(deduped as AttributeDefinition[]);
+    };
+    load();
+  }, [filter.areaId, selectionChain]);
+
+  // Reset filter attr dropdown when area or category changes
+  useEffect(() => {
+    setSelectedFilterAttr('comment');
+    clearAttrFilter();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter.areaId, filter.categoryId]);
+
+  // Sync dropdown to context if attrFilter is set (e.g. after in-session navigation)
+  useEffect(() => {
+    if (filter.attrFilter && filterAttrDefs.length > 0) {
+      const found = filterAttrDefs.find(a => a.id === filter.attrFilter!.attrDefId);
+      if (found) setSelectedFilterAttr(found.id);
+    }
+  }, [filterAttrDefs, filter.attrFilter]);
 
   // Sync active tab into HelpContext so chips match the visible tab
   const { setPageHint } = useHelp();
@@ -361,29 +427,92 @@ function AppContent() {
               </div>
             )}
 
-            {/* Comment Search - only for Activities tab */}
+            {/* Attribute / Comment filter - only for Activities tab */}
             {activeTab === 'activities' && (
               <div className="mt-3 pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Comment contains</label>
-                  <div className="relative flex-1 max-w-xs">
-                    <input
-                      type="text"
-                      value={filter.commentSearch}
-                      onChange={(e) => setCommentSearch(e.target.value)}
-                      placeholder="search comments..."
-                      className="w-full px-3 py-2 pr-7 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                    {filter.commentSearch && (
-                      <button
-                        onClick={clearCommentSearch}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
-                        title="Clear"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* "Filter by" dropdown */}
+                  <select
+                    value={selectedFilterAttr}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedFilterAttr(val);
+                      clearCommentSearch();
+                      clearAttrFilter();
+                    }}
+                    className="text-sm font-medium border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="comment">Comment</option>
+                    {filterAttrDefs.map(attr => (
+                      <option key={attr.id} value={attr.id}>{attr.name}</option>
+                    ))}
+                  </select>
+
+                  {/* Comment text input */}
+                  {selectedFilterAttr === 'comment' && (
+                    <div className="relative flex-1 min-w-[160px] max-w-xs">
+                      <input
+                        type="text"
+                        value={filter.commentSearch}
+                        onChange={(e) => setCommentSearch(e.target.value)}
+                        placeholder="search comments..."
+                        className="w-full px-3 py-2 pr-7 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                      {filter.commentSearch && (
+                        <button onClick={clearCommentSearch} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Attr input — suggest dropdown or text */}
+                  {selectedFilterAttr !== 'comment' && (() => {
+                    const attrDef = filterAttrDefs.find(a => a.id === selectedFilterAttr);
+                    if (!attrDef) return null;
+                    const parsed = parseValidationRules(attrDef.validation_rules);
+                    const isSuggest = (parsed.type === 'suggest' || parsed.type === 'enum') && parsed.options.length > 0;
+
+                    if (isSuggest) {
+                      return (
+                        <select
+                          value={filter.attrFilter?.value ?? ''}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setAttrFilter({ attrDefId: selectedFilterAttr, value: e.target.value, isExact: true });
+                            } else {
+                              clearAttrFilter();
+                            }
+                          }}
+                          className="flex-1 min-w-[160px] max-w-xs text-sm border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        >
+                          <option value="">— All —</option>
+                          {parsed.options.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      );
+                    }
+
+                    return (
+                      <div className="relative flex-1 min-w-[160px] max-w-xs">
+                        <input
+                          type="text"
+                          value={filter.attrFilter?.value ?? ''}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setAttrFilter({ attrDefId: selectedFilterAttr, value: e.target.value, isExact: false });
+                            } else {
+                              clearAttrFilter();
+                            }
+                          }}
+                          placeholder={`filter by ${attrDef.name}...`}
+                          className="w-full px-3 py-2 pr-7 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                        {filter.attrFilter?.value && (
+                          <button onClick={clearAttrFilter} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -789,6 +918,7 @@ function ActivitiesView() {
     dateTo: null,
     sortOrder: filter.sortOrder,
     commentSearch: filter.commentSearch,
+    attrFilter: filter.attrFilter,
     pageSize: 500,
   });
 

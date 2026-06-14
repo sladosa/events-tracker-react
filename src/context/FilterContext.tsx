@@ -17,6 +17,12 @@ const filterStorage = localStorage;
 
 export type SortOrder = 'desc' | 'asc';
 
+export interface AttrFilterState {
+  attrDefId: string;
+  value: string;
+  isExact: boolean;
+}
+
 export interface FilterState {
   areaId: UUID | null;
   categoryId: UUID | null;
@@ -26,6 +32,7 @@ export interface FilterState {
   searchQuery: string;
   sortOrder: SortOrder;   // D3: 'desc' = newest first (default), 'asc' = oldest first
   commentSearch: string;
+  attrFilter: AttrFilterState | null;
 }
 
 // --------------------------------------------
@@ -51,6 +58,7 @@ const defaultFilterState: FilterState = {
   searchQuery: '',
   sortOrder: 'desc',  // D3: default newest first
   commentSearch: '',
+  attrFilter: null,
 };
 
 // --------------------------------------------
@@ -105,6 +113,10 @@ export interface FilterContextType {
   // Comment search
   setCommentSearch: (v: string) => void;
   clearCommentSearch: () => void;
+
+  // Attribute filter (replaces/extends comment search)
+  setAttrFilter: (f: AttrFilterState | null) => void;
+  clearAttrFilter: () => void;
   
   // Storage operations
   saveToStorage: () => void;
@@ -632,11 +644,19 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   }, []);
 
   const setCommentSearch = useCallback((v: string) => {
-    setFilter(prev => ({ ...prev, commentSearch: v }));
+    setFilter(prev => ({ ...prev, commentSearch: v, attrFilter: null }));
   }, []);
 
   const clearCommentSearch = useCallback(() => {
     setFilter(prev => ({ ...prev, commentSearch: '' }));
+  }, []);
+
+  const setAttrFilter = useCallback((f: AttrFilterState | null) => {
+    setFilter(prev => ({ ...prev, attrFilter: f, commentSearch: '' }));
+  }, []);
+
+  const clearAttrFilter = useCallback(() => {
+    setFilter(prev => ({ ...prev, attrFilter: null }));
   }, []);
 
   // D3: Sort order
@@ -654,7 +674,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     filter.dateFrom ||
     filter.dateTo ||
     filter.searchQuery ||
-    filter.commentSearch
+    filter.commentSearch ||
+    filter.attrFilter?.value
   );
 
   const isFiltered = Boolean(filter.areaId || filter.categoryId);
@@ -693,6 +714,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     setSearchQuery,
     setCommentSearch,
     clearCommentSearch,
+    setAttrFilter,
+    clearAttrFilter,
     setSortOrder,
     saveToStorage,
     clearStorage,

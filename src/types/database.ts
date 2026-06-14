@@ -25,6 +25,22 @@ export type AttachmentType = 'image' | 'link' | 'file';
 // Table: areas
 // --------------------------------------------
 
+export interface RataAutomationConfig {
+  trigger_slug: string;
+  count_slug: string;
+  amount_slug: string;
+  date_map_slug: string;
+  date_map: Record<string, number>;
+  override_attrs?: Record<string, string>;
+}
+
+export interface AreaSettings {
+  disable_save_plus?: boolean;
+  automations?: {
+    rata?: RataAutomationConfig;
+  };
+}
+
 export interface Area {
   id: UUID;
   user_id: UUID | null;
@@ -34,7 +50,7 @@ export interface Area {
   sort_order: number;
   description: string | null;
   slug: string;
-  settings: Record<string, unknown> | null;
+  settings: AreaSettings | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

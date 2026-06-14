@@ -39,6 +39,9 @@ import {
 } from '@/components/activity/ConfirmDialog';
 
 import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
+import { detectRata, generateRataDates, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
+import type { RataAutomationConfig } from '@/types/database';
+import { RataModal } from '@/components/activity/RataModal';
 import type {
   PendingEvent,
   PendingPhoto,
@@ -261,7 +264,7 @@ export function AddActivityPage() {
   });
   
   // Shared area context — guard za read-only pristup
-  const { sharedContext, disableSavePlus, selectedShortcutId } = useFilter();
+  const { sharedContext, disableSavePlus, selectedShortcutId, selectedArea } = useFilter();
 
   // Shortcuts (S88: "Save as Shortcut" with attribute defaults)
   const { presets, createPreset, updatePresetAttributes } = useActivityPresets();
@@ -312,6 +315,12 @@ export function AddActivityPage() {
   }>>([]);
   const [renderError, _setRenderError] = useState<string | null>(null);
   
+  // Rata modal state
+  const [showRataModal, setShowRataModal] = useState(false);
+  const [pendingRataInfo, setPendingRataInfo] = useState<RataInfo | null>(null);
+  const [pendingRataConfig, setPendingRataConfig] = useState<RataAutomationConfig | null>(null);
+  const [pendingRataAttrs, setPendingRataAttrs] = useState<Array<{ definitionId: string; value: string | number | boolean | null }>>([]);
+
   // Mobile detection - na mobitelu AddActivity otvara prednju kameru direktno
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
@@ -1026,9 +1035,27 @@ export function AddActivityPage() {
       }
       clearDraft();
       endSession();
-      
+
       // Store sessionStart for potential edit navigation
       setSavedSessionStart(sessionStartIso);
+
+      // Check rata automation
+      const rataConfig = selectedArea?.settings?.automations?.rata;
+      if (rataConfig) {
+        const allDefs = Array.from(attributesByCategory.values()).flat();
+        const lastEvent = eventsToSave[eventsToSave.length - 1];
+        const info = detectRata(lastEvent.attributes, allDefs, rataConfig);
+        if (info) {
+          info.dates = generateRataDates(sessionStart, info.count, info.dateMapValue, rataConfig);
+          info.originalComment = lastEvent.note;
+          setPendingRataInfo(info);
+          setPendingRataConfig(rataConfig);
+          setPendingRataAttrs(lastEvent.attributes);
+          setShowRataModal(true);
+          return; // Rata modal will show success dialog when done
+        }
+      }
+
       setShowSuccessDialog(true);
       
     } catch (err) {
@@ -1038,6 +1065,82 @@ export function AddActivityPage() {
       setSaving(false);
     }
   };
+
+  // ============================================
+  // Rata Modal Handlers
+  // ============================================
+
+  const handleRataConfirm = useCallback(async () => {
+    if (!pendingRataInfo || !pendingRataConfig || !categoryId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const allDefs = Array.from(attributesByCategory.values()).flat();
+
+      for (let i = 0; i < pendingRataInfo.dates.length; i++) {
+        const date = pendingRataInfo.dates[i];
+        const eventDate = date.toISOString().split('T')[0];
+        const rataSessionStart = date.toISOString();
+        const comment = buildRataComment(i + 1, pendingRataInfo.count, pendingRataInfo.originalComment);
+
+        const { data: newEvent, error: evErr } = await supabase
+          .from('events')
+          .insert({
+            user_id: user.id,
+            category_id: categoryId,
+            event_date: eventDate,
+            session_start: rataSessionStart,
+            comment,
+            created_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+
+        if (evErr || !newEvent) {
+          console.error('Failed to insert rata event:', evErr);
+          continue;
+        }
+
+        const attrsToInsert: Array<{ event_id: string; attribute_definition_id: string; user_id: string; value_text: string | null; value_number: number | null }> = [];
+
+        for (const attr of pendingRataAttrs) {
+          const def = allDefs.find(d => d.id === attr.definitionId);
+          if (!def) continue;
+
+          let finalValue: string | number | null;
+
+          if (def.slug === pendingRataConfig.amount_slug && def.data_type === 'number') {
+            finalValue = pendingRataInfo.amountPerRata;
+          } else if (pendingRataConfig.override_attrs?.[def.slug] !== undefined) {
+            finalValue = pendingRataConfig.override_attrs[def.slug];
+          } else {
+            finalValue = attr.value as string | number | null;
+          }
+
+          if (def.data_type === 'number') {
+            const num = typeof finalValue === 'number' ? finalValue : parseFloat(String(finalValue ?? ''));
+            attrsToInsert.push({ event_id: newEvent.id, attribute_definition_id: def.id, user_id: user.id, value_text: null, value_number: isNaN(num) ? null : num });
+          } else {
+            attrsToInsert.push({ event_id: newEvent.id, attribute_definition_id: def.id, user_id: user.id, value_text: String(finalValue ?? '') || null, value_number: null });
+          }
+        }
+
+        if (attrsToInsert.length > 0) {
+          await supabase.from('event_attributes').insert(attrsToInsert);
+        }
+      }
+
+      toast.success(`Kreirano ${pendingRataInfo.count} rata`);
+    } catch (err) {
+      console.error('Failed to create rata events:', err);
+      toast.error('Greška pri kreiranju rata');
+    }
+
+    setShowRataModal(false);
+    setShowSuccessDialog(true);
+  }, [pendingRataInfo, pendingRataConfig, pendingRataAttrs, categoryId, attributesByCategory]);
 
   // ============================================
   // Success Dialog Handlers
@@ -1150,6 +1253,16 @@ export function AddActivityPage() {
         onCancel={() => setShowCancelDialog(false)}
       />
       
+      {/* Rata Modal — shown between Finish and Success Dialog */}
+      {showRataModal && pendingRataInfo && (
+        <RataModal
+          isOpen={showRataModal}
+          rataInfo={pendingRataInfo}
+          onConfirm={handleRataConfirm}
+          onSkip={() => { setShowRataModal(false); setShowSuccessDialog(true); }}
+        />
+      )}
+
       {/* Finish Success Dialog */}
       <FinishSuccessDialog
         open={showSuccessDialog}

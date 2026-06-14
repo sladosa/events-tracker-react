@@ -113,6 +113,7 @@ interface UseActivitiesOptions {
   dateTo?: string | null;
   sortOrder?: 'desc' | 'asc';   // D3: newest first (default) or oldest first
   commentSearch?: string;
+  attrFilter?: { attrDefId: string; value: string; isExact: boolean } | null;
   pageSize?: number;
   skip?: boolean;               // When true, skip fetch (e.g. caller already has list from location.state)
 }
@@ -144,6 +145,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     dateTo = null,
     sortOrder = 'desc',
     commentSearch = '',
+    attrFilter = null,
     pageSize = 20,
     skip = false,
   } = options;
@@ -317,6 +319,38 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         expectedFilter: categoryIds.length > 0 ? 'BY_CATEGORY_IDS' : 'ALL_EVENTS'
       });
 
+      // Attr filter: resolve matching event IDs before main query
+      let attrEventIds: string[] | null = null;
+      if (attrFilter?.attrDefId && attrFilter.value) {
+        let attrQ = supabase
+          .from('event_attributes')
+          .select('event_id')
+          .eq('attribute_definition_id', attrFilter.attrDefId)
+          .limit(5000);
+
+        if (attrFilter.isExact) {
+          attrQ = attrQ.eq('value_text', attrFilter.value);
+        } else {
+          attrQ = attrQ.ilike('value_text', `%${attrFilter.value}%`);
+        }
+
+        const { data: attrRows } = await attrQ;
+        attrEventIds = (attrRows ?? []).map((r: { event_id: string }) => r.event_id);
+
+        if (attrEventIds.length === 0) {
+          if (fetchId !== latestFetchIdRef.current) return;
+          if (!isLoadMore) {
+            setActivities([]);
+            setActivityCount(0);
+            setTotalCount(0);
+          }
+          setHasMore(false);
+          setLoading(false);
+          setLoadingMore(false);
+          return;
+        }
+      }
+
       // Build query
       let query = supabase
         .from('events')
@@ -337,6 +371,10 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
       if (commentSearch) {
         query = query.ilike('comment', `%${commentSearch}%`);
+      }
+
+      if (attrEventIds !== null) {
+        query = query.in('id', attrEventIds);
       }
 
       // Order and paginate
@@ -580,14 +618,14 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, pageSize, offset, checkHasChildren, getDescendantCategoryIds]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, pageSize, offset, checkHasChildren, getDescendantCategoryIds]);
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
     if (skip) return; // BUG-S45-1: skip fetch when caller already has the list
     logDebug('FILTER_EFFECT_TRIGGERED', { areaId, categoryId, dateFrom, dateTo });
     fetchActivities(false);
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, skip]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, skip]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async () => {
     if (!loadingMore && hasMore) {
