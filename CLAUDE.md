@@ -401,12 +401,28 @@ Faze i status:
 - ✅ Help docs — `structure.md`: "Atributi u Edit panelu" + `_` sentinel za Default kolonu; `activities.md`: vidljivost polja + `_` sentinel za xlsx
 - ✅ S91 testovi svi potvrđeni (T-S91-1..8); S92 testovi svi potvrđeni (T-S92-1..6)
 
-**Prioriteti za S93:**
-1. **Python rata tool** (`data-prep_tools/Financije/generate_rata.py`) — ~30min, odmah koristivo za Koku; spec u `docs/AUTOMATION_SPEC.md`
-2. **Financije forma fine-tuning** — Excel/UI korekcije atributa (Uplata/Isplata depends_on, Stanje skriven)
-3. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
-4. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
-5. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+**Napomena S93 (prošla sesija — implementacija):**
+- ✅ Attribute filter u filter baru (`AppHome.tsx`): dropdown koji prikazuje atribute aree/kategorije; suggest → select s opcijama; text/number → text input; chip u tablici s × za brisanje; `FilterContext` proširen s `attrFilter: { attrDefId, value, isExact }`
+- ✅ Rata modal (`src/components/activity/RataModal.tsx`): post-Finish automation za Financije_3; triggerira se kad `Na rate?=Da`; generira N rata s iznosom Iznos/N, datumima 11. u sljedećim mjesecima, Status=Planiran; `sql/023_rata_config.sql` za `rata_config` tablicu (ali se koristi hardkodirana logika u Financije_3)
+- ✅ `generate_rata.py` Python tool za batch generiranje rata iz CSV-a
+- T-S93-1 ✅ T-S93-2 ✅ (Status=Planiran) — testovi iz S93
+
+**Napomena S93b (ova sesija — bugfixes):**
+- ✅ **URL length bug** (`useActivities.ts`): pre-fetch pristup koristio `.in('id', thousands_ids)` → URL > 8KB → silent fail → "Error loading activities"; fix: PostgREST `!inner` join (`event_attributes!event_attributes_event_id_fkey!inner(...)`) — filter server-side, nema URL limita
+- ✅ **Statement timeout** (`sql/024_event_attributes_indexes.sql`): nema indexa na `event_attributes(event_id, attribute_definition_id, attribute_definition_id+value_text)` → query skenira cijelu tablicu, timeout 8s; 3 indexa kreirana, **pokrenuto na TEST + PROD**
+- ✅ **Import duplicates** (`excelImport.ts`): `smartReclassify` koristio `.in('id', 3163_ids)` → isti URL limit → sve reklasificirano kao CREATE → 3163 duplikata; fix: chunked query po 200 IDs; `sql/fix_financije3_import_duplicates.sql` za cleanup TEST baze (pokrenut)
+- ✅ **PostgrestError propagation** (`useActivities.ts`): `PostgrestError` nije `instanceof Error` → catch blok gubio stvarnu poruku; fix: `pgErr?.message` direktno u `setError(new Error(...))`
+- ✅ **Filter dropdown dedup bug** (`AppHome.tsx`): atributi importani prije S91 (Health_Sasa Medical Visit: Doktor/Vrsta/Iznos/Napomena) imaju slug=`''`; deduplication kolabirala sve empty-slug atribute na prvi (Doktor); fix: preskači dedup za prazne slugove
+- ✅ **Filter dropdown ancestor walk** (`AppHome.tsx`): koristio `selectionChain` (async state, može biti stale); fix: direktni DB walk od `filter.categoryId` gore → determinističan
+- **⬜ SQL slug fix** (opcionalno): pokrenuti u Supabase SQL Editor (TEST + PROD): `UPDATE attribute_definitions SET slug = regexp_replace(lower(name), '[^a-z0-9]+', '_', 'g') WHERE slug IS NULL OR slug = '';`
+- T-S93b-1 ✅ T-S93b-2 ✅ T-S93-3 ✅ T-S93-4 ✅ T-S93-5 ✅ T-S93-6 ✅
+- **T-S93-7 do T-S93-12** (Rata modal testovi) — **čekaju sljedeću sesiju**
+
+**Prioriteti za S94:**
+1. **Rata modal testovi** (T-S93-7 do T-S93-12) — verify happy path + edge cases
+2. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
+3. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
+4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **Post-Finish automation** — spec: `docs/AUTOMATION_SPEC.md`
 - Faza 1: Python rata tool → Post-Finish modal u web app
