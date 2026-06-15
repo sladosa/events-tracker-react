@@ -391,14 +391,21 @@ async function smartReclassify(
 
   const eventIds = toUpdate.map(r => r.event_id!).filter(Boolean);
 
-  const { data: existingEvents } = await supabase
-    .from('events')
-    .select('id, category_id')
-    .in('id', eventIds)
-    .eq('user_id', userId);
+  // Chunk to avoid URL length limits in PostgREST (large exports have thousands of IDs)
+  const RECLASSIFY_CHUNK = 200;
+  const allExisting: Array<{ id: string; category_id: string }> = [];
+  for (let i = 0; i < eventIds.length; i += RECLASSIFY_CHUNK) {
+    const chunk = eventIds.slice(i, i + RECLASSIFY_CHUNK);
+    const { data } = await supabase
+      .from('events')
+      .select('id, category_id')
+      .in('id', chunk)
+      .eq('user_id', userId);
+    if (data) allExisting.push(...(data as { id: string; category_id: string }[]));
+  }
 
   const existingMap = new Map<string, string>(
-    (existingEvents ?? []).map(e => [e.id, e.category_id])
+    allExisting.map(e => [e.id, e.category_id])
   );
 
   const validUpdates:        ParsedImportRow[] = [];

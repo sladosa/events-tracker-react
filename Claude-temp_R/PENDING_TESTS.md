@@ -1,27 +1,36 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S93 (2026-06-14)
+**Zadnji update:** S93b (2026-06-15)
 **Detalji testova:** [S93_tests.md](test-sessions/S93_tests.md)
+
+---
+
+## S93b — Bugfixes: attrFilter large result + import duplicate
+
+| ID        | Test                                                                                                                                                                  | Status |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| T-S93b-1  | Filter Status=Izvrsen (velika količina podataka) → tablica prikazuje evente BEZ greške "Failed to fetch activities" (bugfix: !inner join umjesto pre-fetch+IN array) | ⬜      |
+| T-S93b-2  | Import xlsx s event_id u kol A (UPDATE path) → eventi se UPDATE-aju (Status dodan/promijenjen), BEZ kreiranja duplikata (bugfix: chunked smartReclassify)            | ⬜      |
 
 ---
 
 ## S93 — Attribute filter + Rata modal
 
-| ID      | Test                                                                                                                                                          | Status |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| T-S93-1 | Filter bar: odaberi Financije_3 area → dropdown "Comment" se pojavi s attr opcijama (Status, Smjer, Izvor plaćanja, Tip...)                                   | ⬜      |
-| T-S93-2 | Filter bar: odaberi "Status" u dropdownu → pojavi se select s opcijama (Izvrsen, Planiran...); odaberi "Planiran" → tablica filtrira samo Planiran evente     | ⬜      |
-| T-S93-3 | Filter bar: odaberi "Smjer" → select s Uplata/Isplata; odaberi "Isplata" → chip "Isplata" prikazan u tablici; × briše filter                                 | ⬜      |
-| T-S93-4 | Filter bar: odaberi "Comment" → text input za pretragu; unesi tekst → filtrira po komentaru (staro ponašanje)                                                 | ⬜      |
-| T-S93-5 | Filter bar: promijeni Area → dropdown se resetira na "Comment" i attrFilter se briše                                                                          | ⬜      |
-| T-S93-6 | Filter area-only (bez kategorije): odaberi samo Financije_3 → u dropdownu su atributi iz cijele areae                                                        | ⬜      |
-| T-S93-7 | **Rata modal — happy path:** Add Activity → Financije_3 > Transakcija; postavi Na rate?=Da, Broj rata=3, Iznos=450, Izvor=Mastercard kartica; Finish → pojavi se modal s 3 rate po 150 EUR, datumi 11. u sljedeća 3 mj. | ⬜      |
-| T-S93-8 | Rata modal: klikni "Kreiraj 3 rata" → toast "Kreirano 3 rata"; u Activities tablici filteraj Status=Planiran → vide se 3 nova eventa s komentarima "… · rata 1/3" itd. | ⬜      |
-| T-S93-9 | Rata modal: klikni "Preskoči" → modal se zatvori, success dialog se otvori, rata eventi **nisu** kreirani                                                     | ⬜      |
-| T-S93-10 | Rata atributi: View Activity na rata eventu → iznos = 150 (ne 450), Status = Planiran, Na rate? = false (ili ne postoji)                                      | ⬜      |
-| T-S93-11 | Rata bez config (non-Financije area): Add Activity → Finish → **nema** rata modala, odmah success dialog                                                      | ⬜      |
-| T-S93-12 | Rata trigger nije aktivan: Na rate?=Ne, Broj rata=3 → Finish → nema rata modala                                                                               | ⬜      |
+| ID       | Test                                                                                                                                                                                                                    | Status |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| T-S93-1  | Filter bar: odaberi Financije_3 area → dropdown "Comment" se pojavi s attr opcijama (Status, Smjer, Izvor plaćanja, Tip...)                                                                                             | ✅      |
+| T-S93-2  | Filter bar: odaberi "Status" u dropdownu → pojavi se select s opcijama (Izvrsen, Planiran...); odaberi "Planiran" → tablica filtrira samo Planiran evente                                                               | ✅      |
+| T-S93-3  | Filter bar: odaberi "Smjer" → select s Uplata/Isplata; odaberi "Isplata" → chip "Isplata" prikazan u tablici; × briše filter                                                                                            | ⬜      |
+| T-S93-4  | Filter bar: odaberi "Comment" → text input za pretragu; unesi tekst → filtrira po komentaru (staro ponašanje)                                                                                                           | ⬜      |
+| T-S93-5  | Filter bar: promijeni Area → dropdown se resetira na "Comment" i attrFilter se briše                                                                                                                                    | ⬜      |
+| T-S93-6  | Filter area-only (bez kategorije): odaberi samo Financije_3 → u dropdownu su atributi iz cijele areae                                                                                                                   | ⬜      |
+| T-S93-7  | **Rata modal — happy path:** Add Activity → Financije_3 > Transakcija; postavi Na rate?=Da, Broj rata=3, Iznos=450, Izvor=Mastercard kartica; Finish → pojavi se modal s 3 rate po 150 EUR, datumi 11. u sljedeća 3 mj. | ⬜      |
+| T-S93-8  | Rata modal: klikni "Kreiraj 3 rata" → toast "Kreirano 3 rata"; u Activities tablici filteraj Status=Planiran → vide se 3 nova eventa s komentarima "… · rata 1/3" itd.                                                  | ⬜      |
+| T-S93-9  | Rata modal: klikni "Preskoči" → modal se zatvori, success dialog se otvori, rata eventi **nisu** kreirani                                                                                                               | ⬜      |
+| T-S93-10 | Rata atributi: View Activity na rata eventu → iznos = 150 (ne 450), Status = Planiran, Na rate? = false (ili ne postoji)                                                                                                | ⬜      |
+| T-S93-11 | Rata bez config (non-Financije area): Add Activity → Finish → **nema** rata modala, odmah success dialog                                                                                                                | ⬜      |
+| T-S93-12 | Rata trigger nije aktivan: Na rate?=Ne, Broj rata=3 → Finish → nema rata modala                                                                                                                                         | ⬜      |
 
 ---
 

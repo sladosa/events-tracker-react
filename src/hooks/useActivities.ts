@@ -319,42 +319,19 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         expectedFilter: categoryIds.length > 0 ? 'BY_CATEGORY_IDS' : 'ALL_EVENTS'
       });
 
-      // Attr filter: resolve matching event IDs before main query
-      let attrEventIds: string[] | null = null;
-      if (attrFilter?.attrDefId && attrFilter.value) {
-        let attrQ = supabase
-          .from('event_attributes')
-          .select('event_id')
-          .eq('attribute_definition_id', attrFilter.attrDefId)
-          .limit(5000);
-
-        if (attrFilter.isExact) {
-          attrQ = attrQ.eq('value_text', attrFilter.value);
-        } else {
-          attrQ = attrQ.ilike('value_text', `%${attrFilter.value}%`);
-        }
-
-        const { data: attrRows } = await attrQ;
-        attrEventIds = (attrRows ?? []).map((r: { event_id: string }) => r.event_id);
-
-        if (attrEventIds.length === 0) {
-          if (fetchId !== latestFetchIdRef.current) return;
-          if (!isLoadMore) {
-            setActivities([]);
-            setActivityCount(0);
-            setTotalCount(0);
-          }
-          setHasMore(false);
-          setLoading(false);
-          setLoadingMore(false);
-          return;
-        }
-      }
-
-      // Build query
-      let query = supabase
+      // Build query — use !inner join for attr filter to avoid large IN() URL limits.
+      // Supabase TS types don't parse '!inner' syntax, so we cast to any when needed.
+      const attrJoinActive = !!(attrFilter?.attrDefId && attrFilter.value);
+      const baseSelectCols = 'id, category_id, event_date, session_start, comment, created_at, edited_at, user_id';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let query: any = supabase
         .from('events')
-        .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id', { count: 'exact' });
+        .select(
+          attrJoinActive
+            ? `${baseSelectCols}, event_attributes!inner(attribute_definition_id)`
+            : baseSelectCols,
+          { count: 'exact' }
+        );
 
       // Apply filters
       if (categoryIds.length > 0) {
@@ -373,8 +350,13 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         query = query.ilike('comment', `%${commentSearch}%`);
       }
 
-      if (attrEventIds !== null) {
-        query = query.in('id', attrEventIds);
+      if (attrJoinActive) {
+        query = query.eq('event_attributes.attribute_definition_id', attrFilter!.attrDefId);
+        if (attrFilter!.isExact) {
+          query = query.eq('event_attributes.value_text', attrFilter!.value);
+        } else {
+          query = query.ilike('event_attributes.value_text', `%${attrFilter!.value}%`);
+        }
       }
 
       // Order and paginate
