@@ -116,7 +116,6 @@ function AppContent() {
     reset,
     sharedContext,
     areaHasActiveShares,
-    selectionChain,
     setCommentSearch,
     clearCommentSearch,
     setAttrFilter,
@@ -127,7 +126,9 @@ function AppContent() {
   const [filterAttrDefs, setFilterAttrDefs] = useState<AttributeDefinition[]>([]);
   const [selectedFilterAttr, setSelectedFilterAttr] = useState<string>('comment');
 
-  // Load attr defs when area or category changes
+  // Load attr defs when area or category changes.
+  // Uses filter.categoryId directly (walks DB ancestor chain) to avoid race conditions
+  // with selectionChain, which updates asynchronously after buildFullPath().
   useEffect(() => {
     const load = async () => {
       if (!filter.areaId) {
@@ -137,9 +138,24 @@ function AppContent() {
 
       let categoryIds: string[];
 
-      if (selectionChain.length > 0) {
-        categoryIds = selectionChain.map(c => c.id);
+      if (filter.categoryId) {
+        // Walk up ancestor chain from the selected category in DB.
+        // More reliable than selectionChain which may be stale/partial.
+        const ids: string[] = [];
+        let currentId: string | null = filter.categoryId;
+        while (currentId) {
+          ids.push(currentId);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result: any = await supabase
+            .from('categories')
+            .select('parent_category_id')
+            .eq('id', currentId)
+            .single();
+          currentId = (result?.data?.parent_category_id as string | null | undefined) ?? null;
+        }
+        categoryIds = ids;
       } else {
+        // Area-only filter: all categories in area
         const { data: cats } = await supabase
           .from('categories')
           .select('id')
@@ -158,9 +174,11 @@ function AppContent() {
         .in('category_id', categoryIds)
         .order('sort_order');
 
-      // Deduplicate by slug — keep first occurrence (lowest sort_order)
+      // Deduplicate by slug — keep first occurrence (lowest sort_order).
+      // Skip dedup for empty/null slugs (attrs imported before S91 slug-gen fix).
       const seen = new Set<string>();
       const deduped = (data ?? []).filter(a => {
+        if (!a.slug) return true;              // empty slug: always keep (no dedup)
         if (seen.has(a.slug)) return false;
         seen.add(a.slug);
         return true;
@@ -168,7 +186,7 @@ function AppContent() {
       setFilterAttrDefs(deduped as AttributeDefinition[]);
     };
     load();
-  }, [filter.areaId, selectionChain]);
+  }, [filter.areaId, filter.categoryId]);
 
   // Reset filter attr dropdown when area or category changes
   useEffect(() => {
