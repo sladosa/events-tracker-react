@@ -328,7 +328,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         .from('events')
         .select(
           attrJoinActive
-            ? `${baseSelectCols}, event_attributes!inner(attribute_definition_id)`
+            ? `${baseSelectCols}, event_attributes!event_attributes_event_id_fkey!inner(id, attribute_definition_id, value_text)`
             : baseSelectCols,
           { count: 'exact' }
         );
@@ -590,12 +590,15 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       });
 
     } catch (err) {
-      console.error('Failed to fetch activities:', err);
-      logDebug('FETCH_ERROR', { 
-        error: err instanceof Error ? err.message : 'Unknown error',
-        stack: err instanceof Error ? err.stack : undefined
+      const pgErr = err as { message?: string; code?: string; details?: string; hint?: string };
+      console.error('Failed to fetch activities:', pgErr?.code, pgErr?.message, pgErr?.details);
+      logDebug('FETCH_ERROR', {
+        error: pgErr?.message ?? (err instanceof Error ? err.message : 'Unknown error'),
+        code: pgErr?.code,
+        details: pgErr?.details,
       });
-      setError(err instanceof Error ? err : new Error('Failed to fetch activities'));
+      const errMsg = pgErr?.message ?? (err instanceof Error ? err.message : 'Failed to fetch activities');
+      setError(new Error(errMsg));
     } finally {
       setLoading(false);
       setLoadingMore(false);
