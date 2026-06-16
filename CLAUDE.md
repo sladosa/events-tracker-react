@@ -429,6 +429,17 @@ Faze i status:
 - ✅ `sql/025_prod_rata_config.sql` kreiran za PROD deploy
 - ✅ PROD SQL deploy (S94 session): slug fix (hyphens→underscores na Financije attr_defs); `trigger_slug` ispravljen na `"rate"` (PROD attr se zove "Rate?" → slug `rate`, TEST je "Na rate?" → `na_rate`); rata modal spreman za Koka testiranje
 
+**⚠️ BUG — Boolean atributi ne pojavljuju se u depends_on dropdownu (`StructureNodeEditPanel`):**
+`StructureNodeEditPanel` buildAncestorAttrs() ili dropdown rendering filtrira van boolean atribute
+pa ih korisnik ne može odabrati kao parent u depends_on konfiguraciji. Workaround: direktni SQL
+(`jsonb_set validation_rules`). Fix: uključiti boolean (i ostale non-text) atribute u dropdown listu.
+
+**⚠️ BUG — `parseValidationRules` ignora `mapping` format u depends_on (`useAttributeDefinitions.ts` ~L255):**
+Kad `dropdown.depends_on` ima `mapping: Record<string,string>` (format koji StructureNodeEditPanel sprema),
+kod loguje warning ali **ne postavlja `result.dependsOn`** → visibility check u `AttributeChainForm` se ne izvršava
+→ polje uvijek vidljivo. Workaround: u DB koristiti `options_map: Record<string,string[]>` format.
+Fix: u `else if (dropdown.depends_on.mapping)` grani konvertirati mapping u optionsMap i postaviti `result.dependsOn`.
+
 **⚠️ Arhitekturalni dug — filter logika duplikacija:**
 `useActivities.ts` i `excelDataLoader.ts` imaju odvojene implementacije filter logike.
 Svaki novi filter mora biti dodan na oba mjesta. `commentSearch` je trenutno samo u
