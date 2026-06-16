@@ -32,6 +32,7 @@ export interface RataAutomationConfig {
   date_map_slug: string;
   date_map: Record<string, number>;
   override_attrs?: Record<string, string>;
+  comment_attr_slug?: string; // attr to use as comment prefix when event note is empty
 }
 
 export interface AreaSettings {

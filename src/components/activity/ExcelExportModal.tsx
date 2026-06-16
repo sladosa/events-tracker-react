@@ -41,6 +41,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     dateFrom:   filter.dateFrom,
     dateTo:     filter.dateTo,
     sortOrder:  filter.sortOrder,
+    attrFilter: filter.attrFilter,
   };
 
   // Load total count on mount

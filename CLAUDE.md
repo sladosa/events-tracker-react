@@ -418,8 +418,26 @@ Faze i status:
 - T-S93b-1 ✅ T-S93b-2 ✅ T-S93-3 ✅ T-S93-4 ✅ T-S93-5 ✅ T-S93-6 ✅
 - **T-S93-7 do T-S93-12** (Rata modal testovi) — **čekaju sljedeću sesiju**
 
-**Prioriteti za S94:**
-1. **Rata modal testovi** (T-S93-7 do T-S93-12) — verify happy path + edge cases
+**Napomena S94 (ova sesija):**
+- ✅ Rata modal bugfixes: `sql/023_rata_config.sql` pokrenut na TEST; `amount_slug` ispravljen na `"isplata"` (Financije_3 nema `iznos`); `date_map` ključevi usklađeni s opcijama (`"Mastercard"`, `"Visa"`); `comment_attr_slug: "napomena"` dodan za komentar prefix
+- ✅ Rata modal: original event briše se nakon "Kreiraj rate" (`pendingRataOriginalEventIds` state + DELETE u `handleRataConfirm`); `navigate('/app')` umjesto success dialoga
+- ✅ `buildRataComment` poboljšan: `rata 1/3 · 150 od 300` format (amountPerRata + totalAmount parametri)
+- ✅ Export attrFilter: `ExportFilters` proširen s `attrFilter`; `countEventsForExport` + `loadEventsForExport` u `excelDataLoader.ts` koriste `!inner` join (isti pattern kao `useActivities`)
+- ✅ T-S93-7 ✅ T-S93-8 ✅ T-S93-10 ✅ — potvrđeni ovom sesijom
+
+**⚠️ Arhitekturalni dug — filter logika duplikacija:**
+`useActivities.ts` i `excelDataLoader.ts` imaju odvojene implementacije filter logike.
+Svaki novi filter mora biti dodan na oba mjesta. `commentSearch` je trenutno samo u
+`useActivities` (Export ga ignorira). Rješenje: `src/lib/eventQueryBuilder.ts` shared
+helper koji oba mjesta importaju. Napraviti u zasebnom sprintu kad bude više filtera.
+
+**SQL na TEST (obavezno, pokrenutno u S94):**
+- `UPDATE areas SET settings = jsonb_set(settings, '{automations,rata,amount_slug}', '"isplata"') WHERE name LIKE 'Financije%';`
+- `UPDATE areas SET settings = jsonb_set(settings, '{automations,rata,date_map}', '{"Mastercard": 11, "Visa": 3}') WHERE name LIKE 'Financije%';`
+- `UPDATE areas SET settings = jsonb_set(settings, '{automations,rata,comment_attr_slug}', '"napomena"') WHERE name LIKE 'Financije%';`
+
+**Prioriteti za S95:**
+1. **Rata modal testovi** T-S93-9, T-S93-11, T-S93-12 — preostali edge case testovi
 2. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
 3. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
 4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi

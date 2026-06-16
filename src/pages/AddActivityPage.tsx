@@ -320,6 +320,7 @@ export function AddActivityPage() {
   const [pendingRataInfo, setPendingRataInfo] = useState<RataInfo | null>(null);
   const [pendingRataConfig, setPendingRataConfig] = useState<RataAutomationConfig | null>(null);
   const [pendingRataAttrs, setPendingRataAttrs] = useState<Array<{ definitionId: string; value: string | number | boolean | null }>>([]);
+  const [pendingRataOriginalEventIds, setPendingRataOriginalEventIds] = useState<string[]>([]);
 
   // Mobile detection - na mobitelu AddActivity otvara prednju kameru direktno
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -934,6 +935,7 @@ export function AddActivityPage() {
       // --- FAZA 2: Leaf eventi (1 po pendingEvent) ---
       const leafAttrDefs = attributesByCategory.get(leafCategoryId) || [];
       const leafAttrDefIds = new Set(leafAttrDefs.map(d => d.id));
+      const savedLeafEventIds: string[] = [];
 
       for (const pendingEvent of eventsToSave) {
         // Samo leaf atributi za leaf event
@@ -954,6 +956,7 @@ export function AddActivityPage() {
 
         if (leafEventError) throw leafEventError;
         log(`Inserted leaf event: ${leafEvent.id}`);
+        savedLeafEventIds.push(leafEvent.id);
 
         if (leafEventAttrs.length > 0) {
           const leafAttrRecords = leafEventAttrs.map(attr => {
@@ -1047,10 +1050,20 @@ export function AddActivityPage() {
         const info = detectRata(lastEvent.attributes, allDefs, rataConfig);
         if (info) {
           info.dates = generateRataDates(sessionStart, info.count, info.dateMapValue, rataConfig);
-          info.originalComment = lastEvent.note;
+          // Use event note as comment; fall back to comment_attr_slug attr value if note is empty
+          let rataComment = lastEvent.note ?? null;
+          if (!rataComment && rataConfig.comment_attr_slug) {
+            const commentDef = allDefs.find(d => d.slug === rataConfig.comment_attr_slug);
+            if (commentDef) {
+              const commentAttr = lastEvent.attributes.find(a => a.definitionId === commentDef.id);
+              if (commentAttr?.value) rataComment = String(commentAttr.value);
+            }
+          }
+          info.originalComment = rataComment;
           setPendingRataInfo(info);
           setPendingRataConfig(rataConfig);
           setPendingRataAttrs(lastEvent.attributes);
+          setPendingRataOriginalEventIds(savedLeafEventIds);
           setShowRataModal(true);
           return; // Rata modal will show success dialog when done
         }
@@ -1083,7 +1096,7 @@ export function AddActivityPage() {
         const date = pendingRataInfo.dates[i];
         const eventDate = date.toISOString().split('T')[0];
         const rataSessionStart = date.toISOString();
-        const comment = buildRataComment(i + 1, pendingRataInfo.count, pendingRataInfo.originalComment);
+        const comment = buildRataComment(i + 1, pendingRataInfo.count, pendingRataInfo.originalComment, pendingRataInfo.amountPerRata, pendingRataInfo.totalAmount);
 
         const { data: newEvent, error: evErr } = await supabase
           .from('events')
@@ -1132,6 +1145,13 @@ export function AddActivityPage() {
         }
       }
 
+      // Delete original event(s) — only the placeholder, rata events carry all data
+      if (pendingRataOriginalEventIds.length > 0) {
+        await supabase.from('event_attributes').delete().in('event_id', pendingRataOriginalEventIds);
+        await supabase.from('events').delete().in('id', pendingRataOriginalEventIds);
+        setPendingRataOriginalEventIds([]);
+      }
+
       toast.success(`Kreirano ${pendingRataInfo.count} rata`);
     } catch (err) {
       console.error('Failed to create rata events:', err);
@@ -1139,8 +1159,8 @@ export function AddActivityPage() {
     }
 
     setShowRataModal(false);
-    setShowSuccessDialog(true);
-  }, [pendingRataInfo, pendingRataConfig, pendingRataAttrs, categoryId, attributesByCategory]);
+    navigate('/app');
+  }, [pendingRataInfo, pendingRataConfig, pendingRataAttrs, pendingRataOriginalEventIds, categoryId, attributesByCategory, navigate]);
 
   // ============================================
   // Success Dialog Handlers

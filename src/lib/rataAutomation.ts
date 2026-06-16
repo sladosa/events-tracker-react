@@ -78,7 +78,16 @@ export function generateRataDates(
   return dates;
 }
 
-export function buildRataComment(index: number, total: number, originalComment: string | null): string {
+export function buildRataComment(
+  index: number,
+  total: number,
+  originalComment: string | null,
+  amountPerRata?: number,
+  totalAmount?: number
+): string {
   const base = originalComment?.trim() ? `${originalComment.trim()} · ` : '';
-  return `${base}rata ${index}/${total}`;
+  const amountPart = amountPerRata !== undefined && totalAmount !== undefined
+    ? ` · ${amountPerRata} od ${totalAmount}`
+    : '';
+  return `${base}rata ${index}/${total}${amountPart}`;
 }
