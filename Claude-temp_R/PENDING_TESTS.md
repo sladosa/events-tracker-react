@@ -1,8 +1,19 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S93b (2026-06-15)
-**Detalji testova:** [S93b_tests.md](test-sessions/S93b_tests.md)
+**Zadnji update:** S94 (2026-06-16)
+**Detalji testova:** [S94_tests.md](test-sessions/S94_tests.md)
+
+---
+
+## S94 — Rata modal bugfixes + Export attrFilter + PROD deploy
+
+| ID      | Test                                                                                                                                                                    | Status |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| T-S94-1 | PROD: Add Activity → Financije > Transakcija; Rate?=Da, Broj rata=3, Iznos=300, Izvor=Visa; Finish → rata modal se prikazuje s 3 rate po 100, datumi 3. u sljedeća 3 mj. | ⬜      |
+| T-S94-2 | PROD: "Kreiraj 3 rata" → originalni event nestaje iz tablice; u tablici su 3 nova rata eventa s Status=Planiran i komentarima "... · rata 1/3 · 100 od 300" itd.        | ⬜      |
+| T-S94-3 | PROD: "Preskoči" → modal se zatvori, originalni event ostaje u tablici s Rate?=Ne, Broj rata=—                                                                          | ⬜      |
+| T-S94-4 | Filter Status=Planiran → klikni Export → xlsx sadrži **samo** Planiran evente (attrFilter se primjenjuje na Export)                                                     | ⬜      |
 
 ---
 
@@ -27,10 +38,10 @@
 | T-S93-6  | Filter area-only (bez kategorije): odaberi samo Financije_3 → u dropdownu su atributi iz cijele areae                                                                                                                   | ✅      |
 | T-S93-7  | **Rata modal — happy path:** Add Activity → Financije_3 > Transakcija; postavi Na rate?=Da, Broj rata=3, Iznos=450, Izvor=Mastercard kartica; Finish → pojavi se modal s 3 rate po 150 EUR, datumi 11. u sljedeća 3 mj. | ✅      |
 | T-S93-8  | Rata modal: klikni "Kreiraj 3 rata" → toast "Kreirano 3 rata"; u Activities tablici filteraj Status=Planiran → vide se 3 nova eventa s komentarima "… · rata 1/3" itd.                                                  | ✅      |
-| T-S93-9  | Rata modal: klikni "Preskoči" → modal se zatvori, success dialog se otvori, rata eventi **nisu** kreirani                                                                                                               | ⬜      |
-| T-S93-10 | Rata atributi: View Activity na rata eventu → iznos = 150 (ne 450), Status = Planiran, Na rate? = Yes (nije override-ano jer override_attrs samo za tekst, boolean ostaje)                                              | ✅      |
-| T-S93-11 | Rata bez config (non-Financije area): Add Activity → Finish → **nema** rata modala, odmah success dialog                                                                                                                | ⬜      |
-| T-S93-12 | Rata trigger nije aktivan: Na rate?=Ne, Broj rata=3 → Finish → nema rata modala                                                                                                                                         | ⬜      |
+| T-S93-9  | Rata modal: klikni "Preskoči" → modal se zatvori, success dialog se otvori, rata eventi **nisu** kreirani; Rate?=No, Broj rata=— na originalnom eventu                                                                  | ✅      |
+| T-S93-10 | Rata atributi: View Activity na rata eventu → Isplata=110, Status=Planiran, Rate?=Yes+Broj rata=3 ostaju (korisno za tracing, by design)                                                                                | ✅      |
+| T-S93-11 | Rata bez config (non-Financije area): Add Activity → Finish → **nema** rata modala, odmah success dialog                                                                                                                | ✅      |
+| T-S93-12 | Rata trigger nije aktivan: Rate?=Ne → Broj rata polje skriveno (depends_on) → detectRata vraća null → nema modala (by design)                                                                                           | ✅      |
 
 ---
 

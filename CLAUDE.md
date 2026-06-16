@@ -427,16 +427,13 @@ Faze i status:
 - ✅ `RataAutomationConfig.comment_attr_slug` optional field u `database.ts`
 - ✅ Svi T-S93-7..T-S93-12 potvrđeni; T-S93-12 by design (Broj rata skriven kad Rate?=Ne)
 - ✅ `sql/025_prod_rata_config.sql` kreiran za PROD deploy
+- ✅ PROD SQL deploy (S94 session): slug fix (hyphens→underscores na Financije attr_defs); `trigger_slug` ispravljen na `"rate"` (PROD attr se zove "Rate?" → slug `rate`, TEST je "Na rate?" → `na_rate`); rata modal spreman za Koka testiranje
 
 **⚠️ Arhitekturalni dug — filter logika duplikacija:**
 `useActivities.ts` i `excelDataLoader.ts` imaju odvojene implementacije filter logike.
 Svaki novi filter mora biti dodan na oba mjesta. `commentSearch` je trenutno samo u
 `useActivities` (Export ga ignorira). Rješenje: `src/lib/eventQueryBuilder.ts` shared
 helper koji oba mjesta importaju. Napraviti u zasebnom sprintu kad bude više filtera.
-
-**⚠️ Rata config na PROD:** `sql/025_prod_rata_config.sql` — pokrenuti na PROD Supabase
-prije nego Koka testira rata modal. Provjeriti ime Financije areae na PROD (možda nije
-`Financije_3`).
 
 **Prioriteti za S95:**
 1. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning

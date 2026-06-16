@@ -6,6 +6,14 @@
 --
 -- If area is named differently (e.g. just 'Financije'), update the WHERE clause.
 -- Safe to run multiple times (jsonb_set is idempotent).
+--
+-- NOTE: trigger_slug = "rate" because PROD attr is named "Rate?" → slug "rate"
+--       (TEST uses "Na rate?" → slug "na_rate"; configs differ per environment)
+-- NOTE: After running, also fix hyphenated slugs if needed:
+--   UPDATE attribute_definitions
+--   SET slug = regexp_replace(regexp_replace(lower(name), '[^a-z0-9]+', '_', 'g'), '_+$', '')
+--   WHERE category_id IN (SELECT id FROM categories WHERE area_id IN (SELECT id FROM areas WHERE name ILIKE 'Financije%'))
+--   AND (slug LIKE '%-%' OR slug IS NULL OR slug = '');
 
 UPDATE areas
 SET settings = jsonb_set(
@@ -13,7 +21,7 @@ SET settings = jsonb_set(
   '{automations}',
   '{
     "rata": {
-      "trigger_slug":      "na_rate",
+      "trigger_slug":      "rate",
       "count_slug":        "broj_rata",
       "amount_slug":       "isplata",
       "date_map_slug":     "izvor_placanja",
