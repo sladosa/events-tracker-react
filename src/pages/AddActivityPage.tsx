@@ -1279,7 +1279,28 @@ export function AddActivityPage() {
           isOpen={showRataModal}
           rataInfo={pendingRataInfo}
           onConfirm={handleRataConfirm}
-          onSkip={() => { setShowRataModal(false); setShowSuccessDialog(true); }}
+          onSkip={async () => {
+            // Reset rata-trigger attrs on original event — Preskoči = not installments
+            if (pendingRataOriginalEventIds.length > 0 && pendingRataConfig) {
+              const allDefs = Array.from(attributesByCategory.values()).flat();
+              const triggerDef = allDefs.find(d => d.slug === pendingRataConfig.trigger_slug);
+              const countDef   = allDefs.find(d => d.slug === pendingRataConfig.count_slug);
+              if (triggerDef) {
+                await supabase.from('event_attributes')
+                  .update({ value_boolean: false })
+                  .in('event_id', pendingRataOriginalEventIds)
+                  .eq('attribute_definition_id', triggerDef.id);
+              }
+              if (countDef) {
+                await supabase.from('event_attributes')
+                  .update({ value_number: null })
+                  .in('event_id', pendingRataOriginalEventIds)
+                  .eq('attribute_definition_id', countDef.id);
+              }
+            }
+            setShowRataModal(false);
+            setShowSuccessDialog(true);
+          }}
         />
       )}
 
