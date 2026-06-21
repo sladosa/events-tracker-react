@@ -312,6 +312,86 @@ function TextArea({ value, onChange, placeholder, rows = 3 }: TextAreaProps) {
 }
 
 // --------------------------------------------------------
+// Comment template field with slug helper
+// --------------------------------------------------------
+
+interface CommentTemplateFieldProps {
+  value: string;
+  onChange: (v: string) => void;
+  inheritedTemplate?: string;
+  availableSlugs: string[];
+}
+
+function CommentTemplateField({ value, onChange, inheritedTemplate, availableSlugs }: CommentTemplateFieldProps) {
+  const t = THEME.structureEdit;
+
+  const effectiveTemplate = value || inheritedTemplate || '';
+  const preview = effectiveTemplate
+    ? effectiveTemplate.replace(/\{(\w+)\}/g, (_, slug) => {
+        if (availableSlugs.includes(slug)) return `[${slug}]`;
+        return `{${slug}}`;
+      })
+    : '';
+
+  return (
+    <div>
+      <FieldLabel>Auto-comment template</FieldLabel>
+      <div className="flex gap-1">
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={inheritedTemplate ? `Inherited: ${inheritedTemplate}` : 'e.g. {napomena} ({tip})'}
+          className={cn(
+            'flex-1 px-3 py-2 text-sm border rounded-lg bg-white',
+            'focus:outline-none focus:ring-2',
+            value ? 'border-amber-300' : 'border-gray-200',
+            t.ring,
+          )}
+        />
+        {availableSlugs.length > 0 && (
+          <select
+            value=""
+            onChange={e => {
+              if (!e.target.value) return;
+              onChange(value + `{${e.target.value}}`);
+              e.target.value = '';
+            }}
+            className={cn(
+              'px-2 py-2 text-sm border border-gray-200 rounded-lg bg-white',
+              'focus:outline-none focus:ring-2', t.ring,
+            )}
+          >
+            <option value="">+ slug</option>
+            {availableSlugs.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        )}
+      </div>
+      {inheritedTemplate && !value && (
+        <p className="mt-1 text-xs text-gray-400">
+          Inherited from Area. Set a value here to override.
+        </p>
+      )}
+      {value && inheritedTemplate && (
+        <p className="mt-1 text-xs text-amber-600">
+          Overrides Area template.
+        </p>
+      )}
+      {preview && (
+        <p className="mt-1 text-xs text-gray-500">
+          Preview: <span className="font-mono text-gray-700">{preview}</span>
+        </p>
+      )}
+      <p className="mt-1 text-xs text-gray-400">
+        Use {'{slug}'} to insert attribute values into the event comment on Finish.
+      </p>
+    </div>
+  );
+}
+
+// --------------------------------------------------------
 // Attribute edit section
 // --------------------------------------------------------
 
@@ -749,9 +829,9 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
                     if (sameLevelMatch || ancestorMatch) return null;
                     return <option key="__orphan__" value={attr.dependsOnSlug}>⚠ {attr.dependsOnSlug} (not found)</option>;
                   })()}
-                  {/* Same-level text/suggest attributes */}
+                  {/* Same-level attributes */}
                   {(() => {
-                    const sameLevelOpts = attrs.filter(a => a.slug !== attr.slug && (a.dataType === 'text' || a.validationType === 'suggest'));
+                    const sameLevelOpts = attrs.filter(a => a.slug !== attr.slug);
                     if (sameLevelOpts.length === 0) return null;
                     return (
                       <optgroup label="Same level">
@@ -763,11 +843,10 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
                   })()}
                   {/* Ancestor attributes grouped by level */}
                   {ancestorAttrs.map(group => {
-                    const filtered = group.attrs.filter(a => a.data_type === 'text');
-                    if (filtered.length === 0) return null;
+                    if (group.attrs.length === 0) return null;
                     return (
                       <optgroup key={group.levelName} label={`↑ ${group.levelName}`}>
-                        {filtered.map(a => (
+                        {group.attrs.map(a => (
                           <option key={a.slug} value={a.slug}>{a.name} ({a.slug})</option>
                         ))}
                       </optgroup>
@@ -884,6 +963,12 @@ export function StructureNodeEditPanel({
   const [disableSavePlus, setDisableSavePlus] = useState(
     node.area.settings?.disable_save_plus === true
   );
+  const [commentTemplate, setCommentTemplate] = useState(() => {
+    if (node.nodeType === 'area') return node.area.settings?.comment_template ?? '';
+    if (node.isLeaf) return node.category?.settings?.comment_template ?? '';
+    return '';
+  });
+  const areaCommentTemplate = node.area.settings?.comment_template ?? '';
 
   // ---- Attribute edit states ----
   const [attrStates, setAttrStates] = useState<AttrEditState[]>(() =>
@@ -928,20 +1013,31 @@ export function StructureNodeEditPanel({
             sort_order: sortOrder,
             user_id: user.id,
             updated_at: new Date().toISOString(),
-            settings: { ...(node.area.settings ?? {}), disable_save_plus: disableSavePlus },
+            settings: {
+              ...(node.area.settings ?? {}),
+              disable_save_plus: disableSavePlus,
+              comment_template: commentTemplate.trim() || undefined,
+            },
           })
           .eq('id', node.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('categories')
-          .update({
+        const catUpdate: Record<string, unknown> = {
             name: name.trim(),
             description: description.trim() || null,
             sort_order: sortOrder,
             user_id: user.id,
             updated_at: new Date().toISOString(),
-          })
+        };
+        if (node.isLeaf) {
+          catUpdate.settings = {
+            ...(node.category?.settings ?? {}),
+            comment_template: commentTemplate.trim() || undefined,
+          };
+        }
+        const { error } = await supabase
+          .from('categories')
+          .update(catUpdate)
           .eq('id', node.id);
         if (error) throw error;
       }
@@ -1027,7 +1123,7 @@ export function StructureNodeEditPanel({
     } finally {
       setSaving(false);
     }
-  }, [name, description, sortOrder, disableSavePlus, attrStates, node, onSaved]);
+  }, [name, description, sortOrder, disableSavePlus, commentTemplate, attrStates, node, onSaved]);
 
   const nodeTypeLabel = node.nodeType === 'area' ? 'Area' : node.isLeaf ? 'Leaf' : `L${node.level}`;
 
@@ -1151,6 +1247,29 @@ export function StructureNodeEditPanel({
                     Enable for areas where each event is a separate transaction (e.g. Financije, Health).
                   </p>
                 </div>
+              )}
+
+              {(node.nodeType === 'area' || node.isLeaf) && (
+                <CommentTemplateField
+                  value={commentTemplate}
+                  onChange={setCommentTemplate}
+                  inheritedTemplate={node.isLeaf ? areaCommentTemplate : undefined}
+                  availableSlugs={(() => {
+                    if (node.nodeType === 'area') {
+                      const slugs = new Set<string>();
+                      (allNodes ?? []).forEach(n => {
+                        if (n.areaId === node.id) {
+                          n.attributeDefinitions.forEach(a => { if (a.slug) slugs.add(a.slug); });
+                        }
+                      });
+                      return Array.from(slugs).sort();
+                    }
+                    const slugs = new Set<string>();
+                    node.attributeDefinitions.forEach(a => { if (a.slug) slugs.add(a.slug); });
+                    ancestorAttrs.forEach(g => g.attrs.forEach(a => { if (a.slug) slugs.add(a.slug); }));
+                    return Array.from(slugs).sort();
+                  })()}
+                />
               )}
             </div>
           </div>

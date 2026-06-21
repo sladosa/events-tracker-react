@@ -253,12 +253,6 @@ export function AttributeInput({
       
       {renderInput()}
 
-      {/* Dependency info - minimal */}
-      {parsedOptions.dependsOn && dependencyValue && (
-        <p className="text-xs text-gray-400">
-          → {dependencyValue}
-        </p>
-      )}
     </div>
   );
 }

@@ -94,6 +94,7 @@ const COLS = [
   { key: 'dependsOn',   header: 'DependsOn',         width: 18, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
   { key: 'whenValue',   header: 'WhenValue',         width: 12, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
   { key: 'description', header: 'Description',       width: 60, colColor: CLR.BLUE,   grouped: false, collapsed: false },
+  { key: 'commentTpl', header: 'CommentTemplate',   width: 30, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
 ] as const;
 
 const N_COLS = COLS.length; // 18
@@ -142,6 +143,7 @@ interface DataRow {
   dependsOn:    string;
   whenValue:    string;
   description:  string;
+  commentTpl:   string;
   // Row meta (not written to cells)
   _isAreaRow:   boolean;
   _isLeafRow:   boolean;
@@ -209,6 +211,7 @@ function buildAreaRow(node: StructureNode, sharedWith: string): DataRow {
     valType: '', defaultVal: '', valMax: '', unit: '',
     textOptions: '', dependsOn: '', whenValue: '',
     description: node.description ?? '',
+    commentTpl: node.area.settings?.comment_template ?? '',
     _isAreaRow: true, _isLeafRow: false, _isAttrRow: false,
   };
 }
@@ -225,6 +228,7 @@ function buildCategoryRow(node: StructureNode): DataRow {
     valType: '', defaultVal: '', valMax: '', unit: '',
     textOptions: '', dependsOn: '', whenValue: '',
     description: node.description ?? '',
+    commentTpl: (node.isLeaf ? node.category?.settings?.comment_template : '') ?? '',
     _isAreaRow: false, _isLeafRow: node.isLeaf, _isAttrRow: false,
   };
 }
@@ -248,6 +252,7 @@ function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[
     valMax: rules?.max != null ? String(rules.max) : '',
     unit: attr.unit ?? '',
     description: attr.description ?? '',
+    commentTpl: '',
     _isAreaRow: false as const,
     _isLeafRow: false as const,
     _isAttrRow: true as const,
@@ -507,6 +512,14 @@ function writeStructureSheet(
     type: 'list', allowBlank: true,
     formulae: ['"suggest,none"'],
   });
+
+  dv.add(dvRange(colLetter(colNum('commentTpl') - 1)), {
+    type: 'custom', allowBlank: true,
+    formulae: ['a'],
+    promptTitle: 'Auto-comment template',
+    prompt: 'Use {slug} to insert attribute values into event comment on Finish.\nArea row = default for all leaves. Leaf row = override.\nExample: {napomena} ({tip})',
+    showInputMessage: true,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -551,7 +564,7 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: 'Default open',      value: 'TextOptions/Val.Min (O), DependsOn (P), WhenValue (Q)' },
     { kind: 'row', label: '', value: '' },
 
-    { kind: 'section', text: 'Column Reference (A–R)' },
+    { kind: 'section', text: 'Column Reference (A–S)' },
     { kind: 'row', label: 'A  Type',              value: 'Area / Category / Attribute' },
     { kind: 'row', label: 'B  IsLeaf',            value: 'TRUE if leaf category (no children).  Informational — importer recalculates from DB.' },
     { kind: 'row', label: 'C  Area',              value: 'Auto-formula: extracts area name from CategoryPath.  Read-only.' },
@@ -570,6 +583,7 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: 'P  DependsOn',         value: 'Slug of the parent attribute that controls this dropdown.  Must be in the same category.' },
     { kind: 'row', label: 'Q  WhenValue',         value: 'Value of parent attribute for this row\'s options.  Use "*" as fallback for unlisted parent values.' },
     { kind: 'row', label: 'R  Description',       value: 'Optional documentation notes.' },
+    { kind: 'row', label: 'S  CommentTemplate',   value: 'Auto-comment template for Area or leaf Category.  Use {slug} to insert attribute values into event comment on Finish.  Leaf overrides Area.  Example: {napomena} ({tip})' },
     { kind: 'row', label: '', value: '' },
 
     { kind: 'section', text: 'Understanding DependsOn Rows' },

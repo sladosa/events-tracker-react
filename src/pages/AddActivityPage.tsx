@@ -40,6 +40,7 @@ import {
 
 import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
 import { detectRata, generateRataDates, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
+import { resolveCommentTemplate, evaluateCommentTemplate } from '@/lib/commentTemplate';
 import type { RataAutomationConfig } from '@/types/database';
 import { RataModal } from '@/components/activity/RataModal';
 import type {
@@ -608,6 +609,27 @@ export function AddActivityPage() {
     return categoryChain[0]?.name || categoryPath[categoryPath.length - 1] || 'Unknown';
   }, [categoryChain, categoryPath]);
 
+  const allAttrDefs = useMemo(() => {
+    const defs: AttributeDefinition[] = [];
+    for (const [, catAttrs] of attributesByCategory) defs.push(...catAttrs);
+    return defs;
+  }, [attributesByCategory]);
+
+  const resolveEventNote = useCallback((
+    userNote: string,
+    attrVals: Map<string, { definitionId: string; value: unknown; touched?: boolean }>,
+  ): string | null => {
+    const trimmed = userNote.trim();
+    if (trimmed) return trimmed;
+    const leafCategory = categoryChain[0] ?? null;
+    const template = resolveCommentTemplate(
+      selectedArea?.settings,
+      leafCategory?.settings,
+    );
+    if (!template) return null;
+    return evaluateCommentTemplate(template, attrVals, allAttrDefs);
+  }, [categoryChain, selectedArea, allAttrDefs]);
+
   // ============================================
   // Save as Shortcut (S88) — snapshot current attribute values into a preset
   // ============================================
@@ -732,7 +754,7 @@ export function AddActivityPage() {
           dataType: 'text' as const,
           touched: v.touched,
         })),
-      note: eventNote.trim() || null,
+      note: resolveEventNote(eventNote, workingAttrs),
       photos: [...currentPhotos],
       existingPhotos: [],
       photosToDelete: [],
@@ -740,7 +762,7 @@ export function AddActivityPage() {
       isNew: true,
       isDeleted: false,
     };
-    
+
     setPendingEvents(prev => [...prev, newEvent]);
     log(`Added pending event: ${newEvent.tempId}`);
     
@@ -848,7 +870,7 @@ export function AddActivityPage() {
               dataType: 'text' as const,
               touched: v.touched,
             })),
-          note: eventNote.trim() || null,
+          note: resolveEventNote(eventNote, workingAttrs),
           photos: [...currentPhotos],
           existingPhotos: [],
           photosToDelete: [],
@@ -856,7 +878,7 @@ export function AddActivityPage() {
           isNew: true,
           isDeleted: false,
         };
-        
+
         eventsToSave = [...eventsToSave, currentEvent];
       }
       

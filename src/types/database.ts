@@ -37,9 +37,14 @@ export interface RataAutomationConfig {
 
 export interface AreaSettings {
   disable_save_plus?: boolean;
+  comment_template?: string;
   automations?: {
     rata?: RataAutomationConfig;
   };
+}
+
+export interface CategorySettings {
+  comment_template?: string;
 }
 
 export interface Area {
@@ -78,6 +83,7 @@ export interface Category {
   level: number; // 1-10
   sort_order: number;
   path: string | null; // ltree path
+  settings: CategorySettings | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

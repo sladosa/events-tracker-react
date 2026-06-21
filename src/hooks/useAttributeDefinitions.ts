@@ -36,15 +36,6 @@ export function useAttributeDefinitions(categoryIds: UUID[]): UseAttributeDefini
         .order('sort_order', { ascending: true });
 
       if (fetchError) throw fetchError;
-      
-      // DEBUG: Log attributes that have dependencies or are exercise_name
-      data?.forEach(attr => {
-        if (attr.slug === 'exercise_name' || attr.slug === 'Strength_type') {
-          console.log(`[useAttributeDefinitions] "${attr.slug}" (${attr.id}):`, 
-            JSON.stringify(attr.validation_rules).slice(0, 300));
-        }
-      });
-      
       setAttributes(data || []);
     } catch (err) {
       console.error('Error fetching attribute definitions:', err);
@@ -175,9 +166,6 @@ export function parseValidationRules(
     return result;
   }
 
-  // DEBUG: Log raw rules to help diagnose format issues
-  console.log('[parseValidationRules] raw rules:', JSON.stringify(rules).slice(0, 200));
-
   // Check for type field (from V3 export)
   if ('type' in rules) {
     const vr = rules as {
@@ -207,8 +195,6 @@ export function parseValidationRules(
         attributeSlug: vr.depends_on.attribute_slug,
         optionsMap: vr.depends_on.options_map,
       };
-      console.log('[parseValidationRules] Found V3 depends_on:', vr.depends_on.attribute_slug, 
-        'keys:', Object.keys(vr.depends_on.options_map));
     }
 
     if (vr.allow_other !== undefined) {
@@ -243,9 +229,7 @@ export function parseValidationRules(
         result.allowOther = dropdown.allow_custom;
       }
 
-      // FIX: Parse depends_on from dropdown format too
       if (dropdown.depends_on) {
-        console.log('[parseValidationRules] Found dropdown depends_on:', dropdown.depends_on);
         if (dropdown.depends_on.options_map) {
           // New-style options_map within dropdown
           result.dependsOn = {
@@ -253,16 +237,18 @@ export function parseValidationRules(
             optionsMap: dropdown.depends_on.options_map,
           };
         } else if (dropdown.depends_on.mapping) {
-          // Old-style mapping (string→string) - try to use as-is
-          console.warn('[parseValidationRules] Old mapping format detected, may need migration');
+          const optionsMap: Record<string, string[]> = {};
+          for (const [key, val] of Object.entries(dropdown.depends_on.mapping)) {
+            optionsMap[key] = [val];
+          }
+          result.dependsOn = {
+            attributeSlug: dropdown.depends_on.field,
+            optionsMap,
+          };
         }
       }
     }
   }
-
-  console.log('[parseValidationRules] result:', result.type, 
-    'options:', result.options.length, 
-    'dependsOn:', result.dependsOn?.attributeSlug || 'none');
 
   return result;
 }

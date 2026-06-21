@@ -429,16 +429,12 @@ Faze i status:
 - ✅ `sql/025_prod_rata_config.sql` kreiran za PROD deploy
 - ✅ PROD SQL deploy (S94 session): slug fix (hyphens→underscores na Financije attr_defs); `trigger_slug` ispravljen na `"rate"` (PROD attr se zove "Rate?" → slug `rate`, TEST je "Na rate?" → `na_rate`); rata modal spreman za Koka testiranje
 
-**⚠️ BUG — Boolean atributi ne pojavljuju se u depends_on dropdownu (`StructureNodeEditPanel`):**
-`StructureNodeEditPanel` buildAncestorAttrs() ili dropdown rendering filtrira van boolean atribute
-pa ih korisnik ne može odabrati kao parent u depends_on konfiguraciji. Workaround: direktni SQL
-(`jsonb_set validation_rules`). Fix: uključiti boolean (i ostale non-text) atribute u dropdown listu.
-
-**⚠️ BUG — `parseValidationRules` ignora `mapping` format u depends_on (`useAttributeDefinitions.ts` ~L255):**
-Kad `dropdown.depends_on` ima `mapping: Record<string,string>` (format koji StructureNodeEditPanel sprema),
-kod loguje warning ali **ne postavlja `result.dependsOn`** → visibility check u `AttributeChainForm` se ne izvršava
-→ polje uvijek vidljivo. Workaround: u DB koristiti `options_map: Record<string,string[]>` format.
-Fix: u `else if (dropdown.depends_on.mapping)` grani konvertirati mapping u optionsMap i postaviti `result.dependsOn`.
+- ✅ S95 bugfix: Boolean/number atributi u depends_on dropdownu — `StructureNodeEditPanel` filtrirao na `data_type === 'text'`; fix: uklonjeni filtri za same-level i ancestor atribute
+- ✅ S95 bugfix: `parseValidationRules` — `dropdown.depends_on.mapping` format (Record<string,string>) sada se konvertira u `optionsMap` (Record<string,string[]>) i postavlja `result.dependsOn`
+- ✅ S95 bugfix: "→ true" vizualni artefakt uklonjen iz `AttributeInput.tsx` (dependency hint ispod zavisnih polja)
+- ✅ S95: Debug console.log cleanup u `useAttributeDefinitions.ts` (parseValidationRules + exercise_name logovi)
+- ✅ S95: **Auto-comment template** — `comment_template` string u `area.settings` (default) i `category.settings` (leaf override); `CommentTemplateField` UI u `StructureNodeEditPanel` sa slug dropdown helperom i live preview; `src/lib/commentTemplate.ts` (resolveCommentTemplate + evaluateCommentTemplate); `AddActivityPage` evaluira template na Finish ako korisnik nije upisao Event Note; `sql/026_category_settings.sql` (categories.settings JSONB kolona)
+- ✅ S95: Structure Excel export/import — nova kolona S "CommentTemplate"; Area red = area template, Leaf red = override; Data Validation input message; import čita kolonu i update-ira settings; `_` briše template
 
 **⚠️ Arhitekturalni dug — filter logika duplikacija:**
 `useActivities.ts` i `excelDataLoader.ts` imaju odvojene implementacije filter logike.
@@ -446,15 +442,14 @@ Svaki novi filter mora biti dodan na oba mjesta. `commentSearch` je trenutno sam
 `useActivities` (Export ga ignorira). Rješenje: `src/lib/eventQueryBuilder.ts` shared
 helper koji oba mjesta importaju. Napraviti u zasebnom sprintu kad bude više filtera.
 
-**Prioriteti za S95:**
+**Prioriteti za S96:**
 1. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
-2. **Auto leaf comment** (Napomena + Isplata) — `leaf_comment` config u area settings, S94 design dogovoren
-3. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
-4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+2. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
+3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **Post-Finish automation** — spec: `docs/AUTOMATION_SPEC.md`
-- Faza 1: Python rata tool → Post-Finish modal u web app
-- Faza 2: Auto-comment template po leaf kategoriji
+- ✅ Faza 1: Python rata tool → Post-Finish modal u web app
+- ✅ Faza 2: Auto-comment template po leaf kategoriji (S95)
 - Faza 3: Excel Automations sheet (generalni engine)
 - Faza 4: Training parser/inverz (čeka `trening.xlsm` analizu)
 

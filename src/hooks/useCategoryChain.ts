@@ -61,7 +61,7 @@ export function useCategoryChain(leafCategoryId: UUID | null): UseCategoryChainR
 
       const { data: allCategories, error: fetchError } = await supabase
         .from('categories')
-        .select('id, user_id, area_id, parent_category_id, name, description, slug, level, sort_order, path, created_at, updated_at')
+        .select('id, user_id, area_id, parent_category_id, name, description, slug, level, sort_order, path, settings, created_at, updated_at')
         .order('level', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -167,7 +167,7 @@ export function useLeafCategories(parentCategoryId: UUID | null, areaId: UUID | 
         // Dohvati sve kategorije za area
         const { data: allCategories, error: fetchError } = await supabase
           .from('categories')
-          .select('id, user_id, area_id, parent_category_id, name, description, slug, level, sort_order, path, created_at, updated_at')
+          .select('id, user_id, area_id, parent_category_id, name, description, slug, level, sort_order, path, settings, created_at, updated_at')
           .eq('area_id', areaId)
           .order('level', { ascending: true })
           .order('sort_order', { ascending: true });

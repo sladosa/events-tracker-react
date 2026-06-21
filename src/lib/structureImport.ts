@@ -71,6 +71,7 @@ interface ParsedRow {
   dependsOn:    string; // parent attr slug
   whenValue:    string; // '*' or specific value
   description:  string;
+  commentTpl:   string;
 }
 
 // Grouped attribute: combines multiple DependsOn rows
@@ -175,6 +176,7 @@ interface HeaderInfo {
   colDependsOn:   number;
   colWhenValue:   number;
   colDescription: number;
+  colCommentTpl:  number;
 }
 
 function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
@@ -220,6 +222,7 @@ function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
       colDependsOn:    findCol('dependson'),
       colWhenValue:    findCol('whenvalue'),
       colDescription:  findCol('description'),
+      colCommentTpl:   findCol('commenttemplate'),
     };
   }
   return null;
@@ -262,6 +265,7 @@ function parseRows(ws: ExcelJS.Worksheet, h: HeaderInfo): ParsedRow[] {
       dependsOn:    get(h.colDependsOn),
       whenValue:    get(h.colWhenValue),
       description:  get(h.colDescription),
+      commentTpl:   get(h.colCommentTpl),
     });
   }
   return rows;
@@ -400,7 +404,7 @@ export async function importStructureExcel(
   // ── 4. Load current DB state ──────────────────────────────
   const [{ data: dbAreas }, { data: dbCats }, { data: dbAttrs }] =
     await Promise.all([
-      supabase.from('areas').select('id, name, slug').eq('user_id', userId),
+      supabase.from('areas').select('id, name, slug, settings').eq('user_id', userId),
       supabase
         .from('categories')
         .select('id, area_id, parent_category_id, name, slug, level, sort_order, path'),
@@ -747,6 +751,31 @@ export async function importStructureExcel(
       result.skipped++;
     } else {
       result.updated.attributes++;
+    }
+  }
+
+  // ── 8. Update comment_template on Areas and leaf Categories ──
+  for (const row of parsedRows) {
+    if (!row.commentTpl) continue;
+    const tpl = row.commentTpl === '_' ? null : row.commentTpl;
+
+    if (row.type === 'Area') {
+      const areaId = areaByName.get(row.categoryPath.split('>')[0].trim().toLowerCase());
+      if (!areaId) continue;
+      const existingArea = dbAreas?.find(a => a.id === areaId);
+      const currentTpl = existingArea?.settings?.comment_template ?? null;
+      if (currentTpl === tpl) continue;
+      await supabase.from('areas').update({
+        settings: { ...(existingArea?.settings ?? {}), comment_template: tpl ?? undefined },
+      }).eq('id', areaId);
+    }
+
+    if (row.type === 'Category') {
+      const catId = catByPath.get(row.categoryPath);
+      if (!catId) continue;
+      await supabase.from('categories').update({
+        settings: { comment_template: tpl ?? undefined },
+      }).eq('id', catId);
     }
   }
 
