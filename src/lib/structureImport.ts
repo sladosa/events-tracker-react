@@ -755,27 +755,30 @@ export async function importStructureExcel(
   }
 
   // ── 8. Update comment_template on Areas and leaf Categories ──
-  for (const row of parsedRows) {
-    if (!row.commentTpl) continue;
-    const tpl = row.commentTpl === '_' ? null : row.commentTpl;
+  const hasCommentTplCol = header.colCommentTpl > 0;
+  if (hasCommentTplCol) {
+    for (const row of parsedRows) {
+      if (row.type !== 'Area' && row.type !== 'Category') continue;
+      const xlTpl = row.commentTpl === '_' ? null : (row.commentTpl || null);
 
-    if (row.type === 'Area') {
-      const areaId = areaByName.get(row.categoryPath.split('>')[0].trim().toLowerCase());
-      if (!areaId) continue;
-      const existingArea = dbAreas?.find(a => a.id === areaId);
-      const currentTpl = existingArea?.settings?.comment_template ?? null;
-      if (currentTpl === tpl) continue;
-      await supabase.from('areas').update({
-        settings: { ...(existingArea?.settings ?? {}), comment_template: tpl ?? undefined },
-      }).eq('id', areaId);
-    }
+      if (row.type === 'Area') {
+        const areaId = areaByName.get(row.categoryPath.split('>')[0].trim().toLowerCase());
+        if (!areaId) continue;
+        const existingArea = dbAreas?.find(a => a.id === areaId);
+        const dbTpl = existingArea?.settings?.comment_template ?? null;
+        if (dbTpl === xlTpl) continue;
+        await supabase.from('areas').update({
+          settings: { ...(existingArea?.settings ?? {}), comment_template: xlTpl ?? undefined },
+        }).eq('id', areaId);
+      }
 
-    if (row.type === 'Category') {
-      const catId = catByPath.get(row.categoryPath);
-      if (!catId) continue;
-      await supabase.from('categories').update({
-        settings: { comment_template: tpl ?? undefined },
-      }).eq('id', catId);
+      if (row.type === 'Category') {
+        const catId = catByPath.get(row.categoryPath);
+        if (!catId) continue;
+        await supabase.from('categories').update({
+          settings: { comment_template: xlTpl ?? undefined },
+        }).eq('id', catId);
+      }
     }
   }
 

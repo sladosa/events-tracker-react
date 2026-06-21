@@ -442,6 +442,13 @@ Svaki novi filter mora biti dodan na oba mjesta. `commentSearch` je trenutno sam
 `useActivities` (Export ga ignorira). Rješenje: `src/lib/eventQueryBuilder.ts` shared
 helper koji oba mjesta importaju. Napraviti u zasebnom sprintu kad bude više filtera.
 
+**⚠️ BUG — Shortcut ne sprema/restaurira datumski filter i sort order:**
+Prebacivanje između shortcuta ne resetira `dateFrom`/`dateTo`/sort order u FilterContext.
+Npr. "Godina do sad" postavi datume 2026-01-01→danas + Oldest sort, ali prebacivanje na
+"Rucak_AI" pa nazad ne restaurira te postavke. Shortcut sprema samo `areaId`+`categoryId`
+(+ `default_attributes` za Add Activity). Fix: proširiti `activity_presets` s opcionalnima
+`date_from`/`date_to`/`sort_order` ili uvesti zasebni filter-state reset mehanizam.
+
 **Prioriteti za S96:**
 1. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
 2. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
