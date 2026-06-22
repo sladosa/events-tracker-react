@@ -3,18 +3,23 @@
  * =====================================
  * Export Activities to Excel with:
  * - Filter-aware (uses FilterContext)
- * - Pagination for large exports (configurable batch size)
- * - Progress feedback
+ * - Export Profiles (column grouping recipes)
+ * - Preview mode (10 rows for profile creation)
+ * - Import Profile from xlsx (reads column grouping state)
+ * - Pagination for large exports
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'react-hot-toast';
 import { saveAs } from 'file-saver';
+import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
 import { loadExportData, loadStructureNodes, loadSharedEmailsByArea, loadCategoriesForExport, resolveExportCategoryIds, countEventsForExport } from '@/lib/excelDataLoader';
 import { createEventsExcel, mergeSessionEvents } from '@/lib/excelExport';
 import { timestampSuffix, type FilterSheetInfo } from '@/lib/excelUtils';
 import type { ExportFilters } from '@/lib/excelTypes';
+import { readProfileFromWorkbook, readProfileNameFromWorkbook, sanitizeProfileName, type ExportProfiles } from '@/lib/exportProfile';
 
 interface ExcelExportModalProps {
   onClose: () => void;
@@ -23,9 +28,10 @@ interface ExcelExportModalProps {
 const DEFAULT_BATCH_SIZE = 10000;
 const MIN_BATCH = 2;
 const MAX_BATCH = 50000;
+const PREVIEW_LIMIT = 10;
 
 export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
-  const { filter, periodLabel } = useFilter();
+  const { filter, periodLabel, selectedArea } = useFilter();
 
   const [totalCount,  setTotalCount]  = useState<number | null>(null);
   const [batchSize,   setBatchSize]   = useState(DEFAULT_BATCH_SIZE);
@@ -34,7 +40,12 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   const [loadingCount, setLoadingCount] = useState(true);
   const [error,       setError]       = useState('');
 
-  // Build ExportFilters from FilterContext
+  // Export Profile state
+  const [profiles, setProfiles]           = useState<ExportProfiles>({});
+  const [selectedProfile, setSelectedProfile] = useState<string>('');
+  const [importing, setImporting]         = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const filters: ExportFilters = {
     areaId:     filter.areaId,
     categoryId: filter.categoryId,
@@ -44,6 +55,15 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     commentSearch: filter.commentSearch,
     attrFilter: filter.attrFilter,
   };
+
+  // Load profiles from area.settings on mount
+  useEffect(() => {
+    if (!selectedArea?.settings?.export_profiles) {
+      setProfiles({});
+      return;
+    }
+    setProfiles(selectedArea.settings.export_profiles as ExportProfiles);
+  }, [selectedArea]);
 
   // Load total count on mount
   useEffect(() => {
@@ -56,7 +76,6 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
-        // Lightweight count — no event data loading, just 3 fast queries
         const categoriesDict = await loadCategoriesForExport(user.id);
         const categoryIds    = await resolveExportCategoryIds(user.id, filters, categoriesDict);
         const total          = await countEventsForExport(user.id, filters, categoryIds);
@@ -87,7 +106,8 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     }
   }, [batchSize, totalCount]);
 
-  const downloadFile = useCallback(async (fileIndex: number) => {
+  // ── Core download ─────────────────────────────────────────────────
+  const doDownload = useCallback(async (fileIndex: number, previewMode: boolean) => {
     try {
       setError('');
       setCurrentFile(fileIndex);
@@ -95,21 +115,20 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const offset = (fileIndex - 1) * batchSize;
+      const limit = previewMode ? PREVIEW_LIMIT : batchSize;
+      const offset = previewMode ? 0 : (fileIndex - 1) * batchSize;
 
       const [bundle, structureNodes, sharedWithByArea] = await Promise.all([
-        loadExportData(user.id, filters, offset, batchSize),
+        loadExportData(user.id, filters, offset, limit),
         loadStructureNodes(user.id),
         loadSharedEmailsByArea(user.id),
       ]);
       const merged = mergeSessionEvents(bundle.events, bundle.categoriesDict);
 
-      // Derive actual date range from exported events (for Filter sheet)
       const eventDates = bundle.events.map(e => e.event_date).filter(Boolean).sort();
       const firstRecord = eventDates.length > 0 ? eventDates[0] : undefined;
       const lastRecord  = eventDates.length > 0 ? eventDates[eventDates.length - 1] : undefined;
 
-      // Area/category display names from categoriesDict
       const catValues = Object.values(bundle.categoriesDict);
       const areaName     = filters.areaId
         ? catValues.find(c => c.area_id === filters.areaId)?.area_name ?? null
@@ -117,6 +136,9 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       const categoryPath = filters.categoryId
         ? bundle.categoriesDict[filters.categoryId]?.full_path ?? null
         : null;
+
+      const profileName = selectedProfile || undefined;
+      const activeProfile = profileName ? profiles[profileName] ?? null : null;
 
       const ts = timestampSuffix();
       const filterInfo: FilterSheetInfo = {
@@ -135,6 +157,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         attrFilterDesc: filter.attrFilter
           ? `${filter.attrFilter.attrDefId}: ${filter.attrFilter.isExact ? '=' : '~'}${filter.attrFilter.value}`
           : undefined,
+        exportProfile: profileName,
       };
 
       const buffer = await createEventsExcel(
@@ -142,17 +165,23 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         filters.sortOrder ?? 'desc',
         structureNodes,
         filterInfo,
-        // Structure sheet shows only the area/category matching the event filter
         { filterAreaId: filters.areaId, filterCategoryId: filters.categoryId, sharedWithByArea },
+        activeProfile,
       );
 
-      const suffix   = fileCount > 1 ? `_part${fileIndex}of${fileCount}` : '';
-      const filename = `events_export_${ts}${suffix}.xlsx`;
+      const profileSlug = profileName ? `_${sanitizeProfileName(profileName)}` : '';
+      const previewTag  = previewMode ? '_preview' : '';
+      const suffix      = !previewMode && fileCount > 1 ? `_part${fileIndex}of${fileCount}` : '';
+      const filename = `events_export${profileSlug}${previewTag}_${ts}${suffix}.xlsx`;
 
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
       saveAs(blob, filename);
+
+      if (previewMode) {
+        toast.success('Preview exported — group columns in Excel, then Import Profile here');
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message
         : (typeof err === 'object' && err !== null && 'message' in err)
@@ -162,23 +191,116 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     } finally {
       setCurrentFile(0);
     }
-  }, [batchSize, fileCount, filters]);
+  }, [batchSize, fileCount, filters, filter.periodKey, filter.commentSearch, filter.attrFilter, periodLabel, selectedProfile, profiles]);
+
+  const downloadFile = useCallback((fileIndex: number) => doDownload(fileIndex, false), [doDownload]);
+  const downloadPreview = useCallback(() => doDownload(1, true), [doDownload]);
 
   const downloadAll = useCallback(async () => {
     for (let i = 1; i <= fileCount; i++) {
       await downloadFile(i);
-      if (i < fileCount) await new Promise(r => setTimeout(r, 500)); // small delay between files
+      if (i < fileCount) await new Promise(r => setTimeout(r, 500));
     }
   }, [fileCount, downloadFile]);
 
+  // ── Import Profile from xlsx ──────────────────────────────────────
+  const handleImportProfile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setImporting(true);
+    setError('');
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buffer);
+
+      const profile = readProfileFromWorkbook(wb);
+      if (!profile) {
+        setError('Could not read column grouping from this file. Make sure it has an Events sheet with ATTRIBUTE LEGEND.');
+        return;
+      }
+
+      const existingName = readProfileNameFromWorkbook(wb);
+      const defaultName = existingName || file.name.replace(/\.xlsx?$/i, '').replace(/^events_export_?/, '');
+
+      const name = window.prompt('Profile name:', defaultName);
+      if (!name?.trim()) return;
+      const trimmedName = name.trim();
+
+      // Save to area.settings
+      if (!filter.areaId) {
+        setError('Select an Area before importing a profile');
+        return;
+      }
+
+      const newProfiles = { ...profiles, [trimmedName]: profile };
+
+      const { error: updateError } = await supabase
+        .from('areas')
+        .update({
+          settings: {
+            ...(selectedArea?.settings ?? {}),
+            export_profiles: newProfiles,
+          },
+        })
+        .eq('id', filter.areaId);
+
+      if (updateError) throw updateError;
+
+      setProfiles(newProfiles);
+      setSelectedProfile(trimmedName);
+      toast.success(`Profile "${trimmedName}" saved (${profile.columns.filter(c => c.hidden).length} hidden columns)`);
+      window.dispatchEvent(new CustomEvent('areas-changed'));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : JSON.stringify(err);
+      setError(`Import profile failed: ${msg}`);
+    } finally {
+      setImporting(false);
+    }
+  }, [filter.areaId, profiles, selectedArea]);
+
+  // ── Delete profile ────────────────────────────────────────────────
+  const handleDeleteProfile = useCallback(async () => {
+    if (!selectedProfile || !filter.areaId) return;
+    if (!window.confirm(`Delete profile "${selectedProfile}"?`)) return;
+
+    const newProfiles = { ...profiles };
+    delete newProfiles[selectedProfile];
+
+    const { error: updateError } = await supabase
+      .from('areas')
+      .update({
+        settings: {
+          ...(selectedArea?.settings ?? {}),
+          export_profiles: newProfiles,
+        },
+      })
+      .eq('id', filter.areaId);
+
+    if (updateError) {
+      setError(`Delete failed: ${updateError.message}`);
+      return;
+    }
+
+    setProfiles(newProfiles);
+    setSelectedProfile('');
+    toast.success('Profile deleted');
+    window.dispatchEvent(new CustomEvent('areas-changed'));
+  }, [selectedProfile, filter.areaId, profiles, selectedArea]);
+
   const isGenerating = currentFile > 0;
   const noData       = totalCount !== null && totalCount === 0;
+  const profileNames = Object.keys(profiles);
+  const activeProfile = selectedProfile ? profiles[selectedProfile] : null;
+  const hiddenCount  = activeProfile ? activeProfile.columns.filter(c => c.hidden).length : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-full flex flex-col">
         {/* Header */}
-        <div className="bg-emerald-600 px-6 py-4 flex items-center justify-between">
+        <div className="bg-emerald-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2 text-white">
             <span className="text-xl">📥</span>
             <h2 className="text-lg font-semibold">Export to Excel</h2>
@@ -192,7 +314,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           {/* Filters summary */}
           <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 space-y-1">
             <p className="font-medium text-gray-800 mb-1">Active filters:</p>
@@ -200,6 +322,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             {filter.areaId && <p>📁 Area filter active</p>}
             {filter.categoryId && <p>🏷️ Category filter active</p>}
             <p>🔃 Sort: {filter.sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}</p>
+            {filter.commentSearch && <p>💬 Comment: "{filter.commentSearch}"</p>}
           </div>
 
           {/* Count info */}
@@ -220,7 +343,71 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             </div>
           )}
 
-          {/* Batch size control (only if > default threshold) */}
+          {/* Export Profile section */}
+          {filter.areaId && !loadingCount && !noData && totalCount !== null && (
+            <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+              <p className="text-sm font-medium text-gray-800">Export Profile</p>
+
+              {/* Profile dropdown */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedProfile}
+                  onChange={(e) => setSelectedProfile(e.target.value)}
+                  disabled={isGenerating}
+                  className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100"
+                >
+                  <option value="">No profile (all columns)</option>
+                  {profileNames.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+                {selectedProfile && (
+                  <button
+                    onClick={handleDeleteProfile}
+                    disabled={isGenerating}
+                    title="Delete this profile"
+                    className="px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded border border-red-200 disabled:opacity-40"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Profile info */}
+              {activeProfile && (
+                <p className="text-xs text-gray-500">
+                  {hiddenCount} column{hiddenCount !== 1 ? 's' : ''} hidden (grouped + collapsed)
+                </p>
+              )}
+
+              {/* Preview + Import buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={downloadPreview}
+                  disabled={isGenerating || importing}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 disabled:opacity-50 transition-colors"
+                >
+                  {isGenerating ? '⏳' : '👁️'} Preview (10 rows)
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isGenerating || importing}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 disabled:opacity-50 transition-colors"
+                >
+                  {importing ? '⏳' : '📋'} Import Profile
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx"
+                  onChange={handleImportProfile}
+                  className="hidden"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Batch size control */}
           {!loadingCount && !noData && totalCount !== null && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
@@ -264,12 +451,11 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                   {isGenerating ? (
                     <><span className="animate-spin">⏳</span> Generating…</>
                   ) : (
-                    <><span>📥</span> Download Excel</>
+                    <><span>📥</span> Download Excel{selectedProfile ? ` (${selectedProfile})` : ''}</>
                   )}
                 </button>
               ) : (
                 <>
-                  {/* Individual file buttons */}
                   <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
                     {Array.from({ length: fileCount }, (_, i) => i + 1).map(n => (
                       <button
@@ -288,7 +474,6 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                     ))}
                   </div>
 
-                  {/* Download All */}
                   <button
                     onClick={downloadAll}
                     disabled={isGenerating}
@@ -307,7 +492,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="border-t px-6 py-3 bg-gray-50 flex justify-end">
+        <div className="border-t px-6 py-3 bg-gray-50 flex justify-end flex-shrink-0">
           <button
             onClick={onClose}
             disabled={isGenerating}

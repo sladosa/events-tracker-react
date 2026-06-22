@@ -136,6 +136,8 @@ export interface FilterSheetInfo {
   commentSearch?: string;
   /** Attribute filter applied */
   attrFilterDesc?: string;
+  /** Export profile name (if used) */
+  exportProfile?: string;
   /**
    * Backup-mode: date of the first event record in the database.
    * Displayed as "All time (first: YYYY-MM-DD)" when dateFrom is null.
@@ -193,6 +195,7 @@ export function addFilterSheet(
   ];
   if (info.commentSearch) rows.push(['Comment filter', info.commentSearch]);
   if (info.attrFilterDesc) rows.push(['Attribute filter', info.attrFilterDesc]);
+  if (info.exportProfile) rows.push(['Export profile', info.exportProfile]);
 
   for (const [key, value] of rows) {
     const row = ws.addRow([key, value]);

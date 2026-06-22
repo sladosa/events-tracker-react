@@ -41,6 +41,7 @@ export interface AreaSettings {
   automations?: {
     rata?: RataAutomationConfig;
   };
+  export_profiles?: Record<string, unknown>;
 }
 
 export interface CategorySettings {

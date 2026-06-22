@@ -33,6 +33,7 @@ import type {
 import type { StructureNode } from '@/types/structure';
 import { addStructureSheetsTo, type ExportStructureOptions } from './structureExcel';
 import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
+import { applyProfileToWorkbook, type ExportProfile } from './exportProfile';
 
 // ─────────────────────────────────────────────
 // Constants
@@ -83,8 +84,8 @@ export const FIXED_COL_COUNT = FIXED_COLUMNS.length; // 8  (A–H)
 export const PADDING_COLS    = 0;                     // no padding (comment is single col H)
 export const ATTR_COL_START  = FIXED_COL_COUNT + PADDING_COLS + 1; // 9 → I
 
-// LEGEND columns (7 cols: Col, Area, Category_Path, Attribute, Type, Unit, Description)
-const LEGEND_COLS = ['Col', 'Area', 'Category_Path', 'Attribute', 'Type', 'Unit', 'Description'];
+// LEGEND columns (7 cols: Col, Area, Category_Path, Attribute, Type, Default, Description)
+const LEGEND_COLS = ['Col', 'Area', 'Category_Path', 'Attribute', 'Type', 'Default', 'Description'];
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -166,6 +167,7 @@ interface AttrMeta {
   max: string | number;
   sortOrder: number;
   description: string;
+  suggestOptions: string[];
 }
 
 interface AttrColumn {
@@ -198,6 +200,15 @@ export function buildAttrMeta(
       if (maxVal     !== '') maxVal     = parseFloat(String(maxVal))     || maxVal;
     }
 
+    // Extract suggest options from validation_rules
+    const vr = validation as Record<string, unknown>;
+    let suggestOptions: string[] = [];
+    if (Array.isArray(vr.options)) suggestOptions = vr.options.map(String);
+    else if (Array.isArray(vr.suggest)) suggestOptions = vr.suggest.map(String);
+    if (vr.type === 'suggest' && suggestOptions.length === 0 && typeof vr.options === 'string') {
+      suggestOptions = (vr.options as string).split('|').map(s => s.trim()).filter(Boolean);
+    }
+
     attrMeta.set(def.id, {
       id:           def.id,
       name:         def.name,
@@ -211,6 +222,7 @@ export function buildAttrMeta(
       max:          maxVal,
       sortOrder:    def.sort_order ?? 0,
       description:  def.description ?? '',
+      suggestOptions,
     });
 
     const key = `${catInfo.full_path ?? ''}||${def.name}||${def.id}`;
@@ -295,14 +307,14 @@ export async function addActivitiesSheetsTo(
     const colIdx  = ATTR_COL_START + idx;
     const letter  = colLetter(colIdx);
 
-    // 7 cols: Col, Area, Category_Path, Attribute, Type, Unit, Description
+    // 7 cols: Col, Area, Category_Path, Attribute, Type, Default, Description
     const rowData = [
       letter,
       meta.areaName,
       meta.categoryPath,
       attrName,
       meta.dataType,
-      meta.unit,
+      meta.defaultValue === '' ? null : meta.defaultValue,
       meta.description,
     ];
 
@@ -559,6 +571,33 @@ export async function addActivitiesSheetsTo(
   const eventDataEnd = row - 1;
 
   // ──────────────────────────────────────────
+  // Data Validation (suggest dropdowns)
+  // ──────────────────────────────────────────
+  for (let aidx = 0; aidx < attrColumns.length; aidx++) {
+    const { attrDefId } = attrColumns[aidx];
+    const meta          = attrMeta.get(attrDefId)!;
+    if (meta.suggestOptions.length === 0) continue;
+
+    const colNum = ATTR_COL_START + aidx;
+    const formulae = `"${meta.suggestOptions.join(',')}"`;
+
+    // Excel inline list limit is 255 chars; use it when possible
+    if (formulae.length <= 255) {
+      for (let r = eventDataStart; r <= eventDataEnd; r++) {
+        ws.getCell(r, colNum).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [formulae],
+          showInputMessage: true,
+          promptTitle: meta.name,
+          prompt: `Options: ${meta.suggestOptions.join(', ')}`,
+        };
+      }
+    }
+    // >255 chars: skip (would need hidden sheet + named range — future enhancement)
+  }
+
+  // ──────────────────────────────────────────
   // SUBTOTAL formulas for Max / Min / Sum rows
   // Dynamic range: LOOKUP finds last non-empty row in col B → no hardcoded end row
   // SUBTOTAL(4=MAX, 5=MIN, 9=SUM) respects active autofilter
@@ -667,6 +706,7 @@ export async function createEventsExcel(
   structureNodes?:  StructureNode[],
   filterInfo?:      FilterSheetInfo,
   structureOptions?: ExportStructureOptions,
+  exportProfile?:   ExportProfile | null,
 ): Promise<ArrayBuffer> {
 
   const wb = new ExcelJS.Workbook();
@@ -675,6 +715,11 @@ export async function createEventsExcel(
 
   // Sheet 1 + 2: Events + HelpEvents
   await addActivitiesSheetsTo(wb, events, attrDefs, categoriesDict, sortOrder);
+
+  // Apply export profile (column grouping) after sheet is built
+  if (exportProfile) {
+    applyProfileToWorkbook(wb, exportProfile, attrDefs, categoriesDict);
+  }
 
   // Sheet 3 + 4: Structure + HelpStructure (filtered same as events)
   if (structureNodes) {
@@ -713,7 +758,7 @@ function _createHelpEventsSheet(wb: ExcelJS.Workbook): void {
     { text: '1. ATTRIBUTE LEGEND (top section)' },
     { text: '   Col: Column letter (H, I, J...) for this attribute in EVENT DATA' },
     { text: '   Area / Category_Path / Attribute: identify the attribute' },
-    { text: '   Type / Unit: attribute properties' },
+    { text: '   Type / Default: attribute type and default value' },
     { text: '   → Full details (default, min, max) available in the Structure sheet' },
     { text: '   Rows grouped (click +/- ABOVE group to expand/collapse)' },
     { text: '' },
