@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID } from '@/types';
+import { resolveLeafCategoryIds, applyEventFilters, attrFilterJoinClause } from '@/lib/eventQueryBuilder';
 
 // --------------------------------------------
 // Debug Configuration
@@ -172,65 +173,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
     logDebug('OPTIONS_CHANGED', { areaId, categoryId, dateFrom, dateTo, pageSize });
   }, [areaId, categoryId, dateFrom, dateTo, sortOrder, pageSize]);
 
-  // ── Filter a list of category IDs to only those that are leaf categories ──
-  // A category is a leaf if no other category has it as parent_category_id.
-  // This prevents parent events (Activity, Gym) from appearing as separate rows
-  // in the Activities table — only leaf events (Strength, Cardio, Outdoor…) are shown.
-  const filterToLeafCategories = useCallback(async (ids: UUID[]): Promise<UUID[]> => {
-    if (ids.length === 0) return ids;
-    const { data } = await supabase
-      .from('categories')
-      .select('parent_category_id')
-      .in('parent_category_id', ids);
-    const parentSet = new Set(
-      (data ?? []).map(r => (r as { parent_category_id: string }).parent_category_id)
-    );
-    return ids.filter(id => !parentSet.has(id));
-  }, []);
-
-  // Check if category has children (not a leaf)
-  const checkHasChildren = useCallback(async (catId: UUID): Promise<boolean> => {
-    logDebug('CHECK_HAS_CHILDREN', { categoryId: catId });
-    
-    const { data, error: checkError } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('parent_category_id', catId)
-      .limit(1);
-    
-    const hasChildren = !checkError && (data?.length || 0) > 0;
-    logDebug('CHECK_HAS_CHILDREN_RESULT', { categoryId: catId, hasChildren, childCount: data?.length || 0 });
-    
-    return hasChildren;
-  }, []);
-
-  // Get descendant category IDs for hierarchical filtering
-  const getDescendantCategoryIds = useCallback(async (catId: UUID): Promise<UUID[]> => {
-    logDebug('GET_DESCENDANTS_START', { parentId: catId });
-    
-    const ids: UUID[] = [catId];
-    
-    const getChildren = async (parentId: UUID): Promise<void> => {
-      const { data: children } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('parent_category_id', parentId);
-
-      if (children && children.length > 0) {
-        for (const child of children) {
-          ids.push(child.id);
-          await getChildren(child.id);
-        }
-      }
-    };
-
-    await getChildren(catId);
-    
-    logDebug('GET_DESCENDANTS_RESULT', { parentId: catId, descendantIds: ids, count: ids.length });
-    
-    return ids;
-  }, []);
-
   // Fetch activities
   const fetchActivities = useCallback(async (isLoadMore = false) => {
     const fetchId = Date.now(); // Unique ID for this fetch
@@ -253,55 +195,16 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       }
       setError(null);
 
-      // Determine category filter
-      let categoryIds: UUID[] = [];
-      let isLeafCategory = false;
-      
-      if (categoryId) {
-        // Check if this category has children (is it a leaf?)
-        const hasChildren = await checkHasChildren(categoryId);
-        isLeafCategory = !hasChildren;
-        
-        logDebug('CATEGORY_TYPE_DETERMINED', { 
-          fetchId,
-          categoryId, 
-          hasChildren, 
-          isLeaf: isLeafCategory 
-        });
-        
-        if (hasChildren) {
-          // Non-leaf: get all descendants, then filter to leaf categories only
-          // This prevents parent events (Activity, Gym) from appearing as separate rows
-          const allDesc = await getDescendantCategoryIds(categoryId);
-          categoryIds = await filterToLeafCategories(allDesc);
-        } else {
-          // LEAF: filter ONLY by this exact category - no descendants!
-          categoryIds = [categoryId];
-        }
-      } else if (areaId) {
-        // Get all category IDs for this area, filter to leaves only
-        logDebug('FETCHING_AREA_CATEGORIES', { fetchId, areaId });
-        
-        const { data: areaCats } = await supabase
-          .from('categories')
-          .select('id')
-          .eq('area_id', areaId);
-        const allAreaIds = (areaCats || []).map(c => c.id);
-        categoryIds = await filterToLeafCategories(allAreaIds);
-        
-        logDebug('AREA_CATEGORIES_LOADED', { 
-          fetchId, 
-          areaId, 
-          categoryCount: categoryIds.length 
-        });
-      } else {
-        // No area or category filter → get all leaf categories (for the user via RLS)
-        const { data: allCats } = await supabase
-          .from('categories')
-          .select('id');
-        const allCatIds = (allCats || []).map(c => c.id);
-        categoryIds = await filterToLeafCategories(allCatIds);
-      }
+      // Determine category filter (shared helper — leaf only for Activities table)
+      const resolved = await resolveLeafCategoryIds(areaId, categoryId);
+      const categoryIds = resolved.categoryIds;
+      const isLeafCategory = resolved.isLeafCategory;
+
+      logDebug('CATEGORIES_RESOLVED', {
+        fetchId, areaId, categoryId,
+        categoryIdCount: categoryIds.length,
+        isLeaf: isLeafCategory,
+      });
 
       // P4: Store debug info
       debugInfoRef.current.lastQuery = {
@@ -319,45 +222,15 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         expectedFilter: categoryIds.length > 0 ? 'BY_CATEGORY_IDS' : 'ALL_EVENTS'
       });
 
-      // Build query — use !inner join for attr filter to avoid large IN() URL limits.
-      // Supabase TS types don't parse '!inner' syntax, so we cast to any when needed.
-      const attrJoinActive = !!(attrFilter?.attrDefId && attrFilter.value);
+      // Build query — shared filter helper applies WHERE clause
       const baseSelectCols = 'id, category_id, event_date, session_start, comment, created_at, edited_at, user_id';
+      const joinSuffix = attrFilterJoinClause(attrFilter, true);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let query: any = supabase
         .from('events')
-        .select(
-          attrJoinActive
-            ? `${baseSelectCols}, event_attributes!event_attributes_event_id_fkey!inner(id, attribute_definition_id, value_text)`
-            : baseSelectCols,
-          { count: 'exact' }
-        );
+        .select(baseSelectCols + joinSuffix, { count: 'exact' });
 
-      // Apply filters
-      if (categoryIds.length > 0) {
-        query = query.in('category_id', categoryIds);
-      }
-      
-      if (dateFrom) {
-        query = query.gte('event_date', dateFrom);
-      }
-      
-      if (dateTo) {
-        query = query.lte('event_date', dateTo);
-      }
-
-      if (commentSearch) {
-        query = query.ilike('comment', `%${commentSearch}%`);
-      }
-
-      if (attrJoinActive) {
-        query = query.eq('event_attributes.attribute_definition_id', attrFilter!.attrDefId);
-        if (attrFilter!.isExact) {
-          query = query.eq('event_attributes.value_text', attrFilter!.value);
-        } else {
-          query = query.ilike('event_attributes.value_text', `%${attrFilter!.value}%`);
-        }
-      }
+      query = applyEventFilters(query, { categoryIds, dateFrom, dateTo, commentSearch, attrFilter });
 
       // Order and paginate
       const currentOffset = isLoadMore ? offset : 0;
@@ -603,7 +476,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, pageSize, offset, checkHasChildren, getDescendantCategoryIds]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, pageSize, offset]);
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {

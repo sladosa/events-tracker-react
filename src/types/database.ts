@@ -232,6 +232,14 @@ export interface EventAttachment {
 /** Default attribute values applied when the shortcut is selected — keyed by attribute_definition id */
 export type PresetDefaultAttributes = Record<string, string | number | boolean | null>;
 
+/** Saved filter state for shortcut — dynamic periods resolve on load */
+export interface PresetFilterState {
+  periodKey: string;        // PeriodKey enum value (e.g. 'this-year', 'last-3-months')
+  sortOrder: 'asc' | 'desc';
+  commentSearch?: string;
+  attrFilter?: { attrDefId: string; value: string; isExact: boolean } | null;
+}
+
 export interface ActivityPreset {
   id: UUID;
   user_id: UUID;
@@ -242,13 +250,15 @@ export interface ActivityPreset {
   last_used: Timestamp | null;
   created_at: Timestamp;
   default_attributes: PresetDefaultAttributes | null;
+  filter_state: PresetFilterState | null;
 }
 
-export type ActivityPresetInsert = Omit<ActivityPreset, 'id' | 'created_at' | 'usage_count' | 'default_attributes'> & {
+export type ActivityPresetInsert = Omit<ActivityPreset, 'id' | 'created_at' | 'usage_count' | 'default_attributes' | 'filter_state'> & {
   id?: UUID;
   created_at?: Timestamp;
   usage_count?: number;
   default_attributes?: PresetDefaultAttributes | null;
+  filter_state?: PresetFilterState | null;
 };
 
 // With related data

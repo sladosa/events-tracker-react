@@ -265,7 +265,7 @@ export function AddActivityPage() {
   });
   
   // Shared area context — guard za read-only pristup
-  const { sharedContext, disableSavePlus, selectedShortcutId, selectedArea } = useFilter();
+  const { filter, sharedContext, disableSavePlus, selectedShortcutId, selectedArea } = useFilter();
 
   // Shortcuts (S88: "Save as Shortcut" with attribute defaults)
   const { presets, createPreset, updatePresetAttributes } = useActivityPresets();
@@ -687,8 +687,15 @@ export function AddActivityPage() {
       return;
     }
 
+    const filterState = {
+      periodKey: filter.periodKey,
+      sortOrder: filter.sortOrder,
+      commentSearch: filter.commentSearch || undefined,
+      attrFilter: filter.attrFilter ?? undefined,
+    };
+
     setSavingShortcut(true);
-    const result = await createPreset(trimmedName, areaId, categoryId, pendingDefaultAttributes);
+    const result = await createPreset(trimmedName, areaId, categoryId, pendingDefaultAttributes, filterState);
     setSavingShortcut(false);
     setShowShortcutNameModal(false);
     if (result) {
@@ -696,7 +703,7 @@ export function AddActivityPage() {
     } else {
       toast.error('Failed to save shortcut');
     }
-  }, [shortcutName, areaId, categoryId, pendingDefaultAttributes, createPreset, presets]);
+  }, [shortcutName, areaId, categoryId, pendingDefaultAttributes, createPreset, presets, filter.periodKey, filter.sortOrder, filter.commentSearch, filter.attrFilter]);
 
   const canFinish = useMemo(() => {
     return pendingEvents.length > 0 || canSave;

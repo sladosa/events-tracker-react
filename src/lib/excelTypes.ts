@@ -107,5 +107,6 @@ export interface ExportFilters {
   dateFrom:   string | null;   // YYYY-MM-DD
   dateTo:     string | null;   // YYYY-MM-DD
   sortOrder:  'asc' | 'desc';
+  commentSearch?: string;
   attrFilter?: { attrDefId: string; value: string; isExact: boolean } | null;
 }

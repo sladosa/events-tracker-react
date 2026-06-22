@@ -41,6 +41,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     dateFrom:   filter.dateFrom,
     dateTo:     filter.dateTo,
     sortOrder:  filter.sortOrder,
+    commentSearch: filter.commentSearch,
     attrFilter: filter.attrFilter,
   };
 
@@ -129,6 +130,11 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         firstRecord: filters.dateFrom ? undefined : firstRecord,
         lastRecord:  filters.dateTo   ? undefined : lastRecord,
         periodLabel,
+        periodKey:   filter.periodKey,
+        commentSearch: filter.commentSearch || undefined,
+        attrFilterDesc: filter.attrFilter
+          ? `${filter.attrFilter.attrDefId}: ${filter.attrFilter.isExact ? '=' : '~'}${filter.attrFilter.value}`
+          : undefined,
       };
 
       const buffer = await createEventsExcel(

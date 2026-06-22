@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, ty
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID, BreadcrumbItem, Category, Area } from '@/types';
 import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
+import type { PeriodKey } from '@/hooks/useDateBounds';
 
 // --------------------------------------------
 // Constants
@@ -29,6 +30,7 @@ export interface FilterState {
   categoryPath: UUID[];
   dateFrom: string | null;
   dateTo: string | null;
+  periodKey: PeriodKey;
   searchQuery: string;
   sortOrder: SortOrder;   // D3: 'desc' = newest first (default), 'asc' = oldest first
   commentSearch: string;
@@ -55,6 +57,7 @@ const defaultFilterState: FilterState = {
   categoryPath: [],
   dateFrom: null,
   dateTo: null,
+  periodKey: 'all-time',
   searchQuery: '',
   sortOrder: 'desc',  // D3: default newest first
   commentSearch: '',
@@ -102,6 +105,9 @@ export interface FilterContextType {
   // Period label ('All time', 'Custom', or preset name like 'Last 3 months')
   periodLabel: string;
   setPeriodLabel: (label: string) => void;
+
+  // Period key (stable identifier for dynamic periods, saved in shortcuts)
+  setPeriodKey: (key: PeriodKey) => void;
 
   // Date filter actions
   setDateRange: (from: string | null, to: string | null) => void;
@@ -632,8 +638,12 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     setFilter(prev => ({
       ...prev,
       dateFrom: from,
-      dateTo: to
+      dateTo: to,
     }));
+  }, []);
+
+  const setPeriodKey = useCallback((key: PeriodKey) => {
+    setFilter(prev => ({ ...prev, periodKey: key }));
   }, []);
 
   const setSearchQuery = useCallback((query: string) => {
@@ -710,6 +720,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     resetCategory,
     periodLabel,
     setPeriodLabel,
+    setPeriodKey,
     setDateRange,
     setSearchQuery,
     setCommentSearch,

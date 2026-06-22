@@ -11,7 +11,7 @@ const ALL_TIME_VALUE = '__all_time__';
 const CUSTOM_VALUE   = '__custom__';
 
 export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
-  const { filter, setDateRange, setSortOrder, setPeriodLabel } = useFilter();
+  const { filter, setDateRange, setSortOrder, setPeriodLabel, setPeriodKey } = useFilter();
   const { bounds, loading, refresh } = useDateBounds(filter.areaId, filter.categoryId);
 
   // Local state for From/To inputs
@@ -31,8 +31,9 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       setLocalTo(bounds.maxDate);
       setDateRange(bounds.minDate, bounds.maxDate);
       setPeriodLabel('All time');
+      setPeriodKey('all-time');
     }
-  }, [bounds.minDate, bounds.maxDate, loading, userModified, setDateRange, setPeriodLabel]);
+  }, [bounds.minDate, bounds.maxDate, loading, userModified, setDateRange, setPeriodLabel, setPeriodKey]);
 
   // ── Sync when filter resets externally (e.g. after import) ─────────────────
   useEffect(() => {
@@ -55,6 +56,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     if (value && localTo) {
       setDateRange(value, localTo);
       setPeriodLabel('Custom');
+      setPeriodKey('custom');
     }
   };
 
@@ -64,23 +66,25 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     if (localFrom && value) {
       setDateRange(localFrom, value);
       setPeriodLabel('Custom');
+      setPeriodKey('custom');
     }
   };
 
-  // ── Apply preset by label ──────────────────────────────────────────────────
-  const handlePreset = (label: string) => {
-    if (label === ALL_TIME_VALUE || label === CUSTOM_VALUE) {
-      if (label === ALL_TIME_VALUE) handleAllTime();
+  // ── Apply preset by key ───────────────────────────────────────────────────
+  const handlePreset = (selectedKey: string) => {
+    if (selectedKey === ALL_TIME_VALUE || selectedKey === CUSTOM_VALUE) {
+      if (selectedKey === ALL_TIME_VALUE) handleAllTime();
       return;
     }
-    const preset = presets.find(p => p.label === label);
+    const preset = presets.find(p => p.key === selectedKey);
     if (!preset) return;
     const { from, to } = preset.getRange();
     setLocalFrom(from);
     setLocalTo(to);
     setDateRange(from, to);
     setUserModified(true);
-    setPeriodLabel(label);
+    setPeriodLabel(preset.label);
+    setPeriodKey(preset.key);
   };
 
   // ── Reset to full data range ───────────────────────────────────────────────
@@ -91,6 +95,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       setDateRange(bounds.minDate, bounds.maxDate);
       setUserModified(false);
       setPeriodLabel('All time');
+      setPeriodKey('all-time');
     }
   };
 
@@ -98,14 +103,12 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   // Compare localFrom/localTo against each preset's computed range.
   // If none matches and we're at All Time bounds → ALL_TIME_VALUE.
   // Otherwise → CUSTOM_VALUE (user typed something arbitrary).
-  const activePresetLabel = useMemo(() => {
+  const activePresetKey = useMemo((): string => {
     if (!localFrom || !localTo) return ALL_TIME_VALUE;
-    // Check All Time first
     if (localFrom === bounds.minDate && localTo === bounds.maxDate) return ALL_TIME_VALUE;
-    // Check each preset
     for (const p of presets) {
       const { from, to } = p.getRange();
-      if (from === localFrom && to === localTo) return p.label;
+      if (from === localFrom && to === localTo) return p.key;
     }
     return CUSTOM_VALUE;
   }, [localFrom, localTo, bounds.minDate, bounds.maxDate, presets]);
@@ -148,19 +151,17 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Period</label>
             <select
-              value={activePresetLabel}
+              value={activePresetKey}
               onChange={(e) => handlePreset(e.target.value)}
               disabled={loading}
               className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 text-sm text-gray-700 cursor-pointer"
             >
-              {/* All Time at top as default */}
               <option value={ALL_TIME_VALUE}>All Time</option>
               <option disabled>──────────</option>
               {presets.map(p => (
-                <option key={p.label} value={p.label}>{p.label}</option>
+                <option key={p.key} value={p.key}>{p.label}</option>
               ))}
-              {/* Custom only shown when user manually edited dates */}
-              {activePresetLabel === CUSTOM_VALUE && (
+              {activePresetKey === CUSTOM_VALUE && (
                 <option value={CUSTOM_VALUE} disabled>Custom</option>
               )}
             </select>

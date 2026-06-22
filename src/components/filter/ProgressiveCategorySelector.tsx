@@ -5,6 +5,7 @@ import type { Category, UUID } from '@/types/database';
 import { useFilter } from '@/context/FilterContext';
 import { useAreas } from '@/hooks/useAreas';
 import { useActivityPresets } from '@/hooks/useActivityPresets';
+import { resolvePeriodKey, getDatePresets, type PeriodKey } from '@/hooks/useDateBounds';
 
 const SHORTCUT_ATTR_TIP_DISMISSED_KEY = 'ui:shortcutAttrTipDismissed';
 
@@ -29,9 +30,9 @@ export function ProgressiveCategorySelector({
   className = '',
 }: ProgressiveCategorySelectorProps) {
   // Get ALL state from context (Single Source of Truth)
-  const { 
-    filter, 
-    selectArea, 
+  const {
+    filter,
+    selectArea,
     selectCategory,
     selectAreaAndCategory,
     resetCategory,
@@ -50,6 +51,11 @@ export function ProgressiveCategorySelector({
     setSelectedShortcutId,
     // Date range (for resetting when shortcut changes)
     setDateRange,
+    setPeriodLabel,
+    setPeriodKey,
+    setSortOrder,
+    setCommentSearch,
+    setAttrFilter,
     sharedContext
   } = useFilter();
   
@@ -181,8 +187,25 @@ export function ProgressiveCategorySelector({
     setSelectedShortcutId(preset.id);
     setBrokenShortcutId(null);
 
-    // P2: Reset date range to "All Time" when shortcut changes
-    setDateRange(null, null);
+    // Restore filter_state if saved, otherwise reset to "All Time"
+    if (preset.filter_state) {
+      const fs = preset.filter_state;
+      const pk = fs.periodKey as PeriodKey;
+      const resolved = resolvePeriodKey(pk);
+      if (resolved) {
+        setDateRange(resolved.from, resolved.to);
+        setPeriodLabel(getDatePresets().find(p => p.key === pk)?.label ?? pk);
+      } else {
+        setDateRange(null, null);
+        setPeriodLabel(pk === 'all-time' ? 'All time' : 'Custom');
+      }
+      setPeriodKey(pk);
+      setSortOrder(fs.sortOrder ?? 'desc');
+      if (fs.commentSearch) setCommentSearch(fs.commentSearch);
+      if (fs.attrFilter) setAttrFilter(fs.attrFilter);
+    } else {
+      setDateRange(null, null);
+    }
 
     try {
       // Fetch the category to build full path
@@ -245,7 +268,7 @@ export function ProgressiveCategorySelector({
     } finally {
       setIsLoading(false);
     }
-  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectAreaAndCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange, resetCategory]);
+  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectAreaAndCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange, resetCategory, setPeriodLabel, setPeriodKey, setSortOrder, setCommentSearch, setAttrFilter]);
 
   const handleSavePreset = useCallback(async () => {
     const trimmedName = newPresetName.trim();
@@ -256,8 +279,15 @@ export function ProgressiveCategorySelector({
       return;
     }
 
+    const filterState = {
+      periodKey: filter.periodKey,
+      sortOrder: filter.sortOrder,
+      commentSearch: filter.commentSearch || undefined,
+      attrFilter: filter.attrFilter ?? undefined,
+    };
+
     setSavingPreset(true);
-    const result = await createPreset(trimmedName, filter.areaId, filter.categoryId);
+    const result = await createPreset(trimmedName, filter.areaId, filter.categoryId, null, filterState);
     setSavingPreset(false);
 
     if (result) {
@@ -267,7 +297,7 @@ export function ProgressiveCategorySelector({
     } else {
       toast.error('Could not save shortcut. Please try again.');
     }
-  }, [newPresetName, filter.areaId, filter.categoryId, createPreset, setSelectedShortcutId, presets]);
+  }, [newPresetName, filter.areaId, filter.categoryId, filter.periodKey, filter.sortOrder, filter.commentSearch, filter.attrFilter, createPreset, setSelectedShortcutId, presets]);
 
   const handleDeletePreset = useCallback(async () => {
     if (!selectedShortcutId) return;

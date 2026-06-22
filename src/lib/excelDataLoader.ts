@@ -8,6 +8,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import type { Area, Category, AttributeDefinition } from '@/types/database';
 import type { StructureNode } from '@/types/structure';
+import { applyEventFilters, attrFilterJoinClause } from '@/lib/eventQueryBuilder';
 import type {
   ExportCategoriesDict,
   ExportCategoryInfo,
@@ -157,29 +158,20 @@ export async function countEventsForExport(
   filters: ExportFilters,
   categoryIds: string[],
 ): Promise<number> {
-  const attrJoinActive = !!(filters.attrFilter?.attrDefId && filters.attrFilter.value);
+  const joinSuffix = attrFilterJoinClause(filters.attrFilter);
+  const selectCols = joinSuffix ? `id${joinSuffix}` : 'id';
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
     .from('events')
-    .select(
-      attrJoinActive
-        ? 'id, event_attributes!event_attributes_event_id_fkey!inner(attribute_definition_id, value_text)'
-        : 'id',
-      { count: 'exact', head: true }
-    );
+    .select(selectCols, { count: 'exact', head: true });
 
-  if (categoryIds.length > 0) query = query.in('category_id', categoryIds);
-  if (filters.dateFrom) query = query.gte('event_date', filters.dateFrom);
-  if (filters.dateTo)   query = query.lte('event_date', filters.dateTo);
-
-  if (attrJoinActive) {
-    query = query.eq('event_attributes.attribute_definition_id', filters.attrFilter!.attrDefId);
-    if (filters.attrFilter!.isExact) {
-      query = query.eq('event_attributes.value_text', filters.attrFilter!.value);
-    } else {
-      query = query.ilike('event_attributes.value_text', `%${filters.attrFilter!.value}%`);
-    }
-  }
+  query = applyEventFilters(query, {
+    categoryIds,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    commentSearch: filters.commentSearch,
+    attrFilter: filters.attrFilter,
+  });
 
   const { count } = await query;
   return count ?? 0;
@@ -219,30 +211,25 @@ export async function loadEventsForExport(
   limit:       number = 10000,
 ): Promise<ExportEvent[]> {
   const desc = filters.sortOrder === 'desc';
-  const attrJoinActive = !!(filters.attrFilter?.attrDefId && filters.attrFilter.value);
-
   // Step 1: load events WITHOUT nested event_attributes (avoids large JOIN)
   // Paginate in chunks of 1000 to overcome Supabase default max_rows cap.
+  const baseCols = 'id,user_id,category_id,event_date,session_start,comment,created_at';
+  const joinSuffix = attrFilterJoinClause(filters.attrFilter);
+
   const buildBaseQuery = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase
       .from('events')
-      .select(
-        attrJoinActive
-          ? 'id,user_id,category_id,event_date,session_start,comment,created_at, event_attributes!event_attributes_event_id_fkey!inner(attribute_definition_id,value_text)'
-          : 'id,user_id,category_id,event_date,session_start,comment,created_at'
-      );
-    if (categoryIds.length > 0) q = q.in('category_id', categoryIds);
-    if (filters.dateFrom) q = q.gte('event_date', filters.dateFrom);
-    if (filters.dateTo)   q = q.lte('event_date', filters.dateTo);
-    if (attrJoinActive) {
-      q = q.eq('event_attributes.attribute_definition_id', filters.attrFilter!.attrDefId);
-      if (filters.attrFilter!.isExact) {
-        q = q.eq('event_attributes.value_text', filters.attrFilter!.value);
-      } else {
-        q = q.ilike('event_attributes.value_text', `%${filters.attrFilter!.value}%`);
-      }
-    }
+      .select(baseCols + joinSuffix);
+
+    q = applyEventFilters(q, {
+      categoryIds,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      commentSearch: filters.commentSearch,
+      attrFilter: filters.attrFilter,
+    });
+
     return q
       .order('event_date',    { ascending: !desc })
       .order('session_start', { ascending: !desc, nullsFirst: false })

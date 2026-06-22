@@ -128,8 +128,14 @@ export interface FilterSheetInfo {
   dateTo?: string | null;
   /** Human-readable period label, e.g. "Last 3 months" */
   periodLabel?: string;
+  /** Stable period key for re-import (e.g. "this-year", "last-3-months") */
+  periodKey?: string;
   /** Sort order shown to the user */
   sortOrder?: 'asc' | 'desc';
+  /** Comment search filter applied */
+  commentSearch?: string;
+  /** Attribute filter applied */
+  attrFilterDesc?: string;
   /**
    * Backup-mode: date of the first event record in the database.
    * Displayed as "All time (first: YYYY-MM-DD)" when dateFrom is null.
@@ -182,8 +188,11 @@ export function addFilterSheet(
     ['Date From',    _fmtDate(info.dateFrom, 'first', info.firstRecord)],
     ['Date To',      _fmtDate(info.dateTo,   'last',  info.lastRecord)],
     ['Period label', info.periodLabel ?? (info.exportType === 'Full Backup' ? 'All time at export' : '')],
+    ['Period key',   info.periodKey ?? ''],
     ['Sort order',   info.sortOrder === 'asc' ? 'Oldest first' : 'Newest first'],
   ];
+  if (info.commentSearch) rows.push(['Comment filter', info.commentSearch]);
+  if (info.attrFilterDesc) rows.push(['Attribute filter', info.attrFilterDesc]);
 
   for (const [key, value] of rows) {
     const row = ws.addRow([key, value]);

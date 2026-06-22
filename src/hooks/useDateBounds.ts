@@ -153,23 +153,49 @@ async function getDescendantCategoryIds(categoryId: UUID): Promise<UUID[]> {
 /**
  * Helper to get date presets
  */
-export function getDatePresets(): { label: string; getRange: () => { from: string; to: string } }[] {
+export type PeriodKey =
+  | 'all-time'
+  | 'today'
+  | 'this-week'
+  | 'this-month'
+  | 'last-2-months'
+  | 'last-3-months'
+  | 'this-year'
+  | 'last-year'
+  | 'last-3-years'
+  | 'last-5-years'
+  | 'custom';
+
+export interface DatePreset {
+  key: PeriodKey;
+  label: string;
+  getRange: () => { from: string; to: string };
+}
+
+export function getDatePresets(): DatePreset[] {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
 
-  /** Helper: subtract N years from today, return YYYY-MM-DD */
   const yearsAgo = (n: number): string => {
     const d = new Date(today);
     d.setFullYear(d.getFullYear() - n);
     return d.toISOString().split('T')[0];
   };
 
+  const monthsAgo = (n: number): string => {
+    const d = new Date(today);
+    d.setMonth(d.getMonth() - n);
+    return d.toISOString().split('T')[0];
+  };
+
   return [
     {
+      key: 'today',
       label: 'Today',
       getRange: () => ({ from: todayStr, to: todayStr }),
     },
     {
+      key: 'this-week',
       label: 'This Week',
       getRange: () => {
         const dayOfWeek = today.getDay();
@@ -184,6 +210,7 @@ export function getDatePresets(): { label: string; getRange: () => { from: strin
       },
     },
     {
+      key: 'this-month',
       label: 'This Month',
       getRange: () => {
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -195,26 +222,46 @@ export function getDatePresets(): { label: string; getRange: () => { from: strin
       },
     },
     {
+      key: 'last-2-months',
+      label: 'Last 2 Months',
+      getRange: () => ({ from: monthsAgo(2), to: todayStr }),
+    },
+    {
+      key: 'last-3-months',
+      label: 'Last 3 Months',
+      getRange: () => ({ from: monthsAgo(3), to: todayStr }),
+    },
+    {
+      key: 'this-year',
       label: 'This Year',
       getRange: () => ({
         from: new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0],
         to: new Date(today.getFullYear(), 11, 31).toISOString().split('T')[0],
       }),
     },
-    // Dynamic rolling windows — always relative to today
     {
+      key: 'last-year',
       label: 'Last Year',
       getRange: () => ({ from: yearsAgo(1), to: todayStr }),
     },
     {
+      key: 'last-3-years',
       label: 'Last 3 Years',
       getRange: () => ({ from: yearsAgo(3), to: todayStr }),
     },
     {
+      key: 'last-5-years',
       label: 'Last 5 Years',
       getRange: () => ({ from: yearsAgo(5), to: todayStr }),
     },
   ];
+}
+
+/** Resolve a PeriodKey to absolute date range. Returns null for 'custom' or 'all-time'. */
+export function resolvePeriodKey(key: PeriodKey): { from: string; to: string } | null {
+  if (key === 'all-time' || key === 'custom') return null;
+  const preset = getDatePresets().find(p => p.key === key);
+  return preset ? preset.getRange() : null;
 }
 
 /**

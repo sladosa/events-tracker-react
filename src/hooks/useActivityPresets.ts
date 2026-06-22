@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { ActivityPreset, PresetDefaultAttributes, UUID } from '@/types';
+import type { ActivityPreset, PresetDefaultAttributes, PresetFilterState, UUID } from '@/types';
 
 interface UseActivityPresetsResult {
   presets: ActivityPreset[];
   loading: boolean;
   error: Error | null;
-  createPreset: (name: string, areaId: UUID | null, categoryId: UUID | null, defaultAttributes?: PresetDefaultAttributes | null) => Promise<ActivityPreset | null>;
+  createPreset: (name: string, areaId: UUID | null, categoryId: UUID | null, defaultAttributes?: PresetDefaultAttributes | null, filterState?: PresetFilterState | null) => Promise<ActivityPreset | null>;
   deletePreset: (presetId: UUID) => Promise<boolean>;
   incrementUsage: (presetId: UUID) => Promise<void>;
   updatePresetAttributes: (presetId: UUID, defaultAttributes: PresetDefaultAttributes | null) => Promise<boolean>;
+  updatePresetFilterState: (presetId: UUID, filterState: PresetFilterState | null) => Promise<boolean>;
   refresh: () => Promise<void>;
 }
 
@@ -57,7 +58,8 @@ export function useActivityPresets(): UseActivityPresetsResult {
     name: string,
     areaId: UUID | null,
     categoryId: UUID | null,
-    defaultAttributes: PresetDefaultAttributes | null = null
+    defaultAttributes: PresetDefaultAttributes | null = null,
+    filterState: PresetFilterState | null = null,
   ): Promise<ActivityPreset | null> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -73,13 +75,13 @@ export function useActivityPresets(): UseActivityPresetsResult {
           usage_count: 0,
           last_used: null,
           default_attributes: defaultAttributes,
+          filter_state: filterState,
         })
         .select()
         .single();
 
       if (insertError) throw insertError;
 
-      // Refresh list
       await fetchPresets();
       return data;
     } catch (err) {
@@ -133,6 +135,30 @@ export function useActivityPresets(): UseActivityPresetsResult {
     }
   }, []);
 
+  // Update a preset's filter state (period, sort, attr filter)
+  const updatePresetFilterState = useCallback(async (
+    presetId: UUID,
+    filterState: PresetFilterState | null
+  ): Promise<boolean> => {
+    try {
+      const { error: updateError } = await supabase
+        .from('activity_presets')
+        .update({ filter_state: filterState })
+        .eq('id', presetId);
+
+      if (updateError) throw updateError;
+
+      setPresets(prev => prev.map(p =>
+        p.id === presetId ? { ...p, filter_state: filterState } : p
+      ));
+      return true;
+    } catch (err) {
+      console.error('Failed to update preset filter state:', err);
+      setError(err instanceof Error ? err : new Error('Failed to update preset filter state'));
+      return false;
+    }
+  }, []);
+
   // Increment usage count when preset is used
   // FIX: čita usage_count iz DB umjesto iz presets state-a
   // da izbjegne [presets] dependency koji uzrokuje infinite loop
@@ -177,6 +203,7 @@ export function useActivityPresets(): UseActivityPresetsResult {
     deletePreset,
     incrementUsage,
     updatePresetAttributes,
+    updatePresetFilterState,
     refresh: fetchPresets,
   };
 }
