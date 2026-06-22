@@ -436,11 +436,9 @@ Faze i status:
 - ✅ S95: **Auto-comment template** — `comment_template` string u `area.settings` (default) i `category.settings` (leaf override); `CommentTemplateField` UI u `StructureNodeEditPanel` sa slug dropdown helperom i live preview; `src/lib/commentTemplate.ts` (resolveCommentTemplate + evaluateCommentTemplate); `AddActivityPage` evaluira template na Finish ako korisnik nije upisao Event Note; `sql/026_category_settings.sql` (categories.settings JSONB kolona)
 - ✅ S95: Structure Excel export/import — nova kolona S "CommentTemplate"; Area red = area template, Leaf red = override; Data Validation input message; import čita kolonu i update-ira settings; `_` briše template
 
-**⚠️ Arhitekturalni dug — filter logika duplikacija:**
-`useActivities.ts` i `excelDataLoader.ts` imaju odvojene implementacije filter logike.
-Svaki novi filter mora biti dodan na oba mjesta. `commentSearch` je trenutno samo u
-`useActivities` (Export ga ignorira). Rješenje: `src/lib/eventQueryBuilder.ts` shared
-helper koji oba mjesta importaju. Napraviti u zasebnom sprintu kad bude više filtera.
+**✅ Arhitekturalni dug — filter logika duplikacija (RIJEŠENO S96):**
+`src/lib/eventQueryBuilder.ts` — shared helper koji `useActivities.ts` i `excelDataLoader.ts`
+oba koriste. Novi filteri se dodaju na jednom mjestu. `commentSearch` sada radi i u Exportu.
 
 **⚠️ BUG — Shortcut ne sprema/restaurira datumski filter i sort order:**
 Prebacivanje između shortcuta ne resetira `dateFrom`/`dateTo`/sort order u FilterContext.
@@ -449,10 +447,24 @@ Npr. "Godina do sad" postavi datume 2026-01-01→danas + Oldest sort, ali prebac
 (+ `default_attributes` za Add Activity). Fix: proširiti `activity_presets` s opcionalnima
 `date_from`/`date_to`/`sort_order` ili uvesti zasebni filter-state reset mehanizam.
 
-**Prioriteti za S96:**
-1. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
-2. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
-3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+**Napomena S96:**
+- ✅ **Shared filter helper** (`src/lib/eventQueryBuilder.ts`): `applyEventFilters()`, `attrFilterJoinClause()`, `resolveLeafCategoryIds()` — `useActivities.ts` i `excelDataLoader.ts` oboje koriste isti helper; `ExportFilters` proširen s `commentSearch` → Export sada poštuje comment filter
+- ✅ **Dynamic periods**: `useDateBounds.ts` preseti dobili stabilan `PeriodKey` tip (e.g. `this-year`, `last-3-months`); dodani "Last 2 Months" i "Last 3 Months"; `FilterState.periodKey` u FilterContext; `DateRangeFilter` koristi keys umjesto labels
+- ✅ **Shortcut filter_state**: `sql/027_preset_filter_state.sql` — `activity_presets.filter_state JSONB`; Save Shortcut (filter bar + Add Activity) sprema periodKey + sortOrder + commentSearch + attrFilter; Load Shortcut restaurira filter state s `resolvePeriodKey()` (dinamički resolve); `PresetFilterState` tip u `database.ts`
+- ✅ **Export Profile system**: `src/lib/exportProfile.ts` — `readProfileFromWorkbook()`, `applyProfileToWorkbook()`; ExcelExportModal: Preview (10 rows), Import Profile (čita column grouping state iz xlsx), profile dropdown, Delete profile; profili spremljeni u `area.settings.export_profiles`; `AreaSettings` proširen; profile name u Filter sheetu + filename
+- ✅ **LEGEND col F: Unit → Default** — `excelExport.ts` LEGEND cols sada prikazuju `default_value` umjesto `unit` (unit je već u Structure sheetu); import netaknut (ne čita col F)
+- ✅ **Suggest Data Validation**: attribute kolone s suggest opcijama dobivaju Excel Data Validation dropdown u exportanom xlsx-u; inline formulae za ≤255 znakova; `suggestOptions` dodan u `AttrMeta`
+- ✅ **Filter sheet proširenja**: novi redovi `Period key`, `Comment filter`, `Attribute filter`, `Export profile`
+
+**SQL za PROD deploy (kad bude spremno):**
+- `sql/027_preset_filter_state.sql` (activity_presets.filter_state JSONB)
+- `sql/026_category_settings.sql` (categories.settings JSONB — iz S95, ako nije pokrenut)
+
+**Prioriteti za S97:**
+1. **Testiranje S96 features** — smoke test na TEST bazi nakon 027 migracije
+2. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
+3. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
+4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **Post-Finish automation** — spec: `docs/AUTOMATION_SPEC.md`
 - ✅ Faza 1: Python rata tool → Post-Finish modal u web app

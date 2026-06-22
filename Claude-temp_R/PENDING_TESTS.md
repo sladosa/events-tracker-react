@@ -1,37 +1,47 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S95 (2026-06-21)
-**Detalji testova:** [S95_tests.md](test-sessions/S95_tests.md)
+**Zadnji update:** S96 (2026-06-22)
+**Detalji testova:** [S96_tests.md](test-sessions/S96_tests.md)
 
 ---
 
-## S95 — depends_on bugfixes + comment_template + Structure Excel
+## S96 — Shared filter helper + dynamic periods + Export Profile + suggest validation
 
-| ID       | Test                                                                                                                                       | Status |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
-| T-S95-1  | parseValidationRules: atribut s `dropdown.depends_on.mapping` formatom → depends_on se parsira, visibility radi                            | ⏭ (nema mapping formata u TEST bazi) |
-| T-S95-2  | Structure Edit → depends_on dropdown prikazuje boolean i number atribute (ne samo text/suggest)                                             | ✅      |
-| T-S95-3  | Add Activity → zavisno polje NEMA "→ true" ili "→ [vrijednost]" sivi tekst ispod sebe                                                      | ✅      |
-| T-S95-4  | Console: nema `[parseValidationRules]` ni `[useAttributeDefinitions]` debug logova                                                         | ✅      |
-| T-S95-5  | Financije_3 > Transakcija: Smjer=Uplata→Uplata vidljiv; Smjer=Isplata→Isplata vidljiv; Stanje nikad vidljiv (regression check)             | ✅      |
-| T-S95-6  | Structure Edit Area: "Auto-comment template" polje vidljivo; slug dropdown radi; Save sprema u area.settings                                | ✅      |
-| T-S95-7  | Structure Edit Leaf: template polje s "Inherited from Area" hintom; override radi                                                          | ✅      |
-| T-S95-8  | Add Activity → Finish bez Event Note → comment = evaluirani template                                                                       | ✅      |
-| T-S95-9  | Add Activity → Finish s Event Note → comment = korisnički unos (template ignoriran)                                                        | ✅      |
-| T-S95-10 | Add Activity → Finish s praznim atributima u templateu → comment null (ne prazan string)                                                   | ⬜      |
-| T-S95-11 | Structure Export → xlsx ima kolonu S "CommentTemplate" s area/leaf template vrijednostima + Data Validation hint                             | ⬜      |
-| T-S95-12 | Structure Import → xlsx s CommentTemplate → area.settings/category.settings se update-aju; `_` = briši template                             | ⬜      |
+| ID       | Test                                                                                                         | Status |
+| -------- | ------------------------------------------------------------------------------------------------------------ | ------ |
+| T-S96-1  | Activities table loads normally (regression — filter refactor)                                                | ⬜      |
+| T-S96-2  | Export respects commentSearch (count + data match)                                                            | ⬜      |
+| T-S96-3  | Period dropdown: "Last 2 Months" + "Last 3 Months" visible and resolve correctly                             | ⬜      |
+| T-S96-4  | Save shortcut with filter state (period + sort) → load restores dynamically                                  | ⬜      |
+| T-S96-5  | Shortcut with attrFilter saved/restored                                                                      | ⬜      |
+| T-S96-6  | Export xlsx Filter sheet includes "Period key" row                                                            | ⬜      |
+| T-S96-7  | Preview export (10 rows) — no grouping, all columns visible                                                  | ⬜      |
+| T-S96-8  | Import Profile from grouped xlsx → saved in area.settings                                                    | ⬜      |
+| T-S96-9  | Export with profile → columns grouped/collapsed + profile name in Filter sheet + filename                    | ⬜      |
+| T-S96-10 | Delete profile → removed from dropdown                                                                       | ⬜      |
+| T-S96-11 | LEGEND col F shows "Default" (not "Unit") with default_value data                                            | ⬜      |
+| T-S96-12 | Suggest columns have Excel dropdown Data Validation in exported xlsx                                         | ⬜      |
 
 ---
 
-## S94 — Rata modal bugfixes + Export attrFilter + PROD deploy
+## S95 — depends_on bugfixes + comment_template (carryover, low priority)
 
-| ID      | Test                                                                                                                                                                     | Status |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
-| T-S94-1 | PROD: Add Activity → Financije > Transakcija; Rate?=Da, Broj rata=3, Iznos=300, Izvor=Visa; Finish → rata modal se prikazuje s 3 rate po 100, datumi 3. u sljedeća 3 mj. | ⬜      |
-| T-S94-2 | PROD: "Kreiraj 3 rata" → originalni event nestaje iz tablice; u tablici su 3 nova rata eventa s Status=Planiran i komentarima "... · rata 1/3 · 100 od 300" itd.         | ⬜      |
-| T-S94-3 | PROD: "Preskoči" → modal se zatvori, originalni event ostaje u tablici s Rate?=Ne, Broj rata=—                                                                           | ⬜      |
-| T-S94-4 | Filter Status=Planiran → klikni Export → xlsx sadrži **samo** Planiran evente (attrFilter se primjenjuje na Export)                                                      | ⬜      |
+| ID       | Test                                                                                                   | Status |
+| -------- | ------------------------------------------------------------------------------------------------------ | ------ |
+| T-S95-10 | Add Activity → Finish s praznim atributima u templateu → comment null                                  | ⬜      |
+| T-S95-11 | Structure Export → xlsx ima kolonu S "CommentTemplate"                                                  | ⬜      |
+| T-S95-12 | Structure Import → CommentTemplate update-ira settings; `_` = briši                                    | ⬜      |
+
+---
+
+## S94 — Rata modal (PROD, Koka testiranje)
+
+| ID      | Test                                                                                                                                     | Status |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| T-S94-1 | PROD: Add Activity → Financije > Transakcija; Rate?=Da → rata modal s 3 rate                                                            | ⬜      |
+| T-S94-2 | PROD: "Kreiraj 3 rata" → originalni event nestaje, 3 nova rata eventa                                                                   | ⬜      |
+| T-S94-3 | PROD: "Preskoči" → modal se zatvori, event ostaje s Rate?=Ne                                                                            | ⬜      |
+| T-S94-4 | Filter Status=Planiran → Export → samo Planiran eventi                                                                                   | ⬜      |
 
 ---
