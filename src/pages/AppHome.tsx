@@ -125,7 +125,9 @@ function AppContent() {
   } = useFilter();
 
   // Attribute filter UI state — which field is selected in the "Filter by" dropdown
+  // Only text-based attrs (text/suggest) are filterable; number/boolean/datetime use different DB columns
   const [filterAttrDefs, setFilterAttrDefs] = useState<AttributeDefinition[]>([]);
+  const [hiddenAttrCount, setHiddenAttrCount] = useState(0);
   const [selectedFilterAttr, setSelectedFilterAttr] = useState<string>('comment');
 
   // Load attr defs when area or category changes.
@@ -185,7 +187,13 @@ function AppContent() {
         seen.add(a.slug);
         return true;
       });
-      setFilterAttrDefs(deduped as AttributeDefinition[]);
+
+      // Only text-based attrs are filterable (value_text column); number/boolean/datetime
+      // use different DB columns — full support is a backlog item.
+      const TEXT_TYPES = new Set(['text', 'link']);
+      const textAttrs = deduped.filter(a => TEXT_TYPES.has(a.data_type));
+      setFilterAttrDefs(textAttrs as AttributeDefinition[]);
+      setHiddenAttrCount(deduped.length - textAttrs.length);
     };
     load();
   }, [filter.areaId, filter.categoryId]);
@@ -568,6 +576,11 @@ function AppContent() {
                     );
                   })()}
                 </div>
+                {hiddenAttrCount > 0 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {hiddenAttrCount} numeric/other {hiddenAttrCount === 1 ? 'attribute' : 'attributes'} not shown — use Excel Export to filter by those.
+                  </p>
+                )}
               </div>
             )}
 
