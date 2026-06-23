@@ -12,6 +12,8 @@ import type { UUID } from '@/types';
 // Filter types
 // ─────────────────────────────────────────────
 
+export const ATTR_FILTER_ANY = '__any__';
+
 export interface AttrFilterParam {
   attrDefId: string;
   value: string;
@@ -54,6 +56,10 @@ export function isAttrFilterActive(attrFilter?: AttrFilterParam | null): boolean
   return !!(attrFilter?.attrDefId && attrFilter.value);
 }
 
+export function isAnyAttrFilter(attrFilter?: AttrFilterParam | null): boolean {
+  return attrFilter?.attrDefId === ATTR_FILTER_ANY;
+}
+
 // ─────────────────────────────────────────────
 // WHERE clause builder
 // ─────────────────────────────────────────────
@@ -84,7 +90,9 @@ export function applyEventFilters(query: any, filters: EventQueryFilters): any {
 
   if (isAttrFilterActive(filters.attrFilter)) {
     const af = filters.attrFilter!;
-    query = query.eq('event_attributes.attribute_definition_id', af.attrDefId);
+    if (!isAnyAttrFilter(af)) {
+      query = query.eq('event_attributes.attribute_definition_id', af.attrDefId);
+    }
     if (af.isExact) {
       query = query.eq('event_attributes.value_text', af.value);
     } else {

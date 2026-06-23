@@ -33,6 +33,7 @@ import { OrphanManagementModal } from '@/components/activity/OrphanManagementMod
 import type { Category, AttributeDefinition } from '@/types/database';
 import type { UUID } from '@/types';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
+import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
 
 // --------------------------------------------
 // Icons
@@ -120,6 +121,7 @@ function AppContent() {
     clearCommentSearch,
     setAttrFilter,
     clearAttrFilter,
+    skipNextFilterReset,
   } = useFilter();
 
   // Attribute filter UI state — which field is selected in the "Filter by" dropdown
@@ -189,7 +191,12 @@ function AppContent() {
   }, [filter.areaId, filter.categoryId]);
 
   // Reset filter attr dropdown when area or category changes
+  // (skip when a shortcut just restored its filter_state)
   useEffect(() => {
+    if (skipNextFilterReset.current) {
+      skipNextFilterReset.current = false;
+      return;
+    }
     setSelectedFilterAttr('comment');
     clearAttrFilter();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,8 +205,12 @@ function AppContent() {
   // Sync dropdown to context if attrFilter is set (e.g. after in-session navigation)
   useEffect(() => {
     if (filter.attrFilter && filterAttrDefs.length > 0) {
-      const found = filterAttrDefs.find(a => a.id === filter.attrFilter!.attrDefId);
-      if (found) setSelectedFilterAttr(found.id);
+      if (filter.attrFilter.attrDefId === ATTR_FILTER_ANY) {
+        setSelectedFilterAttr(ATTR_FILTER_ANY);
+      } else {
+        const found = filterAttrDefs.find(a => a.id === filter.attrFilter!.attrDefId);
+        if (found) setSelectedFilterAttr(found.id);
+      }
     }
   }, [filterAttrDefs, filter.attrFilter]);
 
@@ -461,6 +472,9 @@ function AppContent() {
                     className="text-sm font-medium border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     <option value="comment">Comment</option>
+                    {filterAttrDefs.length > 0 && (
+                      <option value={ATTR_FILTER_ANY}>In any attribute</option>
+                    )}
                     {filterAttrDefs.map(attr => (
                       <option key={attr.id} value={attr.id}>{attr.name}</option>
                     ))}
@@ -482,8 +496,30 @@ function AppContent() {
                     </div>
                   )}
 
+                  {/* "In any attribute" text input */}
+                  {selectedFilterAttr === ATTR_FILTER_ANY && (
+                    <div className="relative flex-1 min-w-[160px] max-w-xs">
+                      <input
+                        type="text"
+                        value={filter.attrFilter?.value ?? ''}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setAttrFilter({ attrDefId: ATTR_FILTER_ANY, value: e.target.value, isExact: false });
+                          } else {
+                            clearAttrFilter();
+                          }
+                        }}
+                        placeholder="search all attributes..."
+                        className="w-full px-3 py-2 pr-7 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                      {filter.attrFilter?.value && (
+                        <button onClick={clearAttrFilter} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Attr input — suggest dropdown or text */}
-                  {selectedFilterAttr !== 'comment' && (() => {
+                  {selectedFilterAttr !== 'comment' && selectedFilterAttr !== ATTR_FILTER_ANY && (() => {
                     const attrDef = filterAttrDefs.find(a => a.id === selectedFilterAttr);
                     if (!attrDef) return null;
                     const parsed = parseValidationRules(attrDef.validation_rules);

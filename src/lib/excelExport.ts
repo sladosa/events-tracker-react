@@ -154,9 +154,15 @@ function parseValidation(rules: unknown): Record<string, string> {
 // Build attr metadata
 // ─────────────────────────────────────────────
 
+interface AttrDependsOn {
+  attributeSlug: string;
+  optionsMap: Record<string, string[]>;
+}
+
 interface AttrMeta {
   id: string;
   name: string;
+  slug: string;
   categoryId: string;
   categoryPath: string;
   areaName: string;
@@ -168,6 +174,7 @@ interface AttrMeta {
   sortOrder: number;
   description: string;
   suggestOptions: string[];
+  dependsOn: AttrDependsOn | null;
 }
 
 interface AttrColumn {
@@ -209,9 +216,27 @@ export function buildAttrMeta(
       suggestOptions = (vr.options as string).split('|').map(s => s.trim()).filter(Boolean);
     }
 
+    // Extract depends_on
+    let dependsOn: AttrDependsOn | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vrAny = validation as any;
+    if (vrAny?.depends_on?.attribute_slug && vrAny.depends_on.options_map) {
+      dependsOn = { attributeSlug: vrAny.depends_on.attribute_slug, optionsMap: vrAny.depends_on.options_map };
+    } else if (vrAny?.dropdown?.depends_on) {
+      const dd = vrAny.dropdown.depends_on;
+      if (dd.options_map) {
+        dependsOn = { attributeSlug: dd.field, optionsMap: dd.options_map };
+      } else if (dd.mapping) {
+        const om: Record<string, string[]> = {};
+        for (const [k, v] of Object.entries(dd.mapping)) om[k] = [v as string];
+        dependsOn = { attributeSlug: dd.field, optionsMap: om };
+      }
+    }
+
     attrMeta.set(def.id, {
       id:           def.id,
       name:         def.name,
+      slug:         def.slug ?? '',
       categoryId:   def.category_id,
       categoryPath: catInfo.full_path ?? 'Unknown',
       areaName:     catInfo.area_name ?? 'Unknown',
@@ -223,6 +248,7 @@ export function buildAttrMeta(
       sortOrder:    def.sort_order ?? 0,
       description:  def.description ?? '',
       suggestOptions,
+      dependsOn,
     });
 
     const key = `${catInfo.full_path ?? ''}||${def.name}||${def.id}`;
@@ -245,6 +271,110 @@ export function buildAttrMeta(
   });
 
   return { attrMeta, attrColumns, attrByCat };
+}
+
+// ─────────────────────────────────────────────
+// Dependent dropdowns via INDIRECT + hidden sheet
+// ─────────────────────────────────────────────
+
+function sanitizeNamedRange(s: string): string {
+  return s.replace(/[^A-Za-z0-9_]/g, '_').replace(/^(\d)/, '_$1');
+}
+
+function addDependentDropdowns(
+  wb: ExcelJS.Workbook,
+  ws: ExcelJS.Worksheet,
+  attrMeta: Map<string, AttrMeta>,
+  attrColumns: AttrColumn[],
+  eventDataStart: number,
+  eventDataEnd: number,
+): void {
+  // Collect attrs that have dependsOn
+  const depAttrs: { meta: AttrMeta; colIdx: number }[] = [];
+  for (let aidx = 0; aidx < attrColumns.length; aidx++) {
+    const meta = attrMeta.get(attrColumns[aidx].attrDefId)!;
+    if (meta.dependsOn) depAttrs.push({ meta, colIdx: aidx });
+  }
+  if (depAttrs.length === 0) return;
+
+  // Build parent slug → column index map
+  const slugToColIdx = new Map<string, number>();
+  for (let aidx = 0; aidx < attrColumns.length; aidx++) {
+    const m = attrMeta.get(attrColumns[aidx].attrDefId)!;
+    if (m.slug) slugToColIdx.set(m.slug, aidx);
+  }
+
+  // Create hidden sheet for named range data
+  const ddSheet = wb.addWorksheet('DropdownData', { state: 'veryHidden' });
+  let ddCol = 1;
+
+  for (const { meta, colIdx } of depAttrs) {
+    const dep = meta.dependsOn!;
+    const parentColIdx = slugToColIdx.get(dep.attributeSlug);
+    if (parentColIdx === undefined) continue;
+
+    const parentColNum = ATTR_COL_START + parentColIdx;
+    const parentColLtr = colLetter(parentColNum);
+    const depColNum    = ATTR_COL_START + colIdx;
+
+    // prefix shared by all named ranges for this dependency
+    const prefix = sanitizeNamedRange(`Dep_${dep.attributeSlug}`);
+
+    // Write each parent value's options as a column on DropdownData
+    const parentValues = Object.keys(dep.optionsMap);
+    const rangeNameByValue = new Map<string, string>();
+
+    for (const pv of parentValues) {
+      const options = dep.optionsMap[pv];
+      if (!options || options.length === 0) continue;
+
+      const rangeName = sanitizeNamedRange(`${prefix}_${pv}`);
+      rangeNameByValue.set(pv, rangeName);
+
+      // Write header + options in this column
+      ddSheet.getCell(1, ddCol).value = `${dep.attributeSlug}=${pv}`;
+      for (let i = 0; i < options.length; i++) {
+        ddSheet.getCell(2 + i, ddCol).value = options[i];
+      }
+
+      // Define named range (absolute refs with $)
+      const cLtr = colLetter(ddCol);
+      const rangeStr = `DropdownData!$${cLtr}$2:$${cLtr}$${1 + options.length}`;
+      wb.definedNames.add(rangeStr, rangeName);
+
+      ddCol++;
+    }
+
+    if (rangeNameByValue.size === 0) continue;
+
+    // Set INDIRECT-based Data Validation on the dependent column.
+    // The SUBSTITUTE chain must produce exactly the sanitized named range name.
+    // sanitizeNamedRange replaces all non-[A-Za-z0-9_] with _,
+    // so the Excel formula does the same transformation at runtime.
+    for (let r = eventDataStart; r <= eventDataEnd; r++) {
+      const parentRef = `${parentColLtr}${r}`;
+      // Nested SUBSTITUTE: space, /, -, ., (, ) → underscore
+      // Covers most practical parent values; exotic chars → #REF (user can still type)
+      let sub = parentRef;
+      for (const ch of [' ', '/', '-', '.', '(', ')', ',', ':', '+', '&']) {
+        sub = `SUBSTITUTE(${sub},"${ch}","_")`;
+      }
+      const formula = `INDIRECT("${prefix}_"&${sub})`;
+      ws.getCell(r, depColNum).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [formula],
+        showInputMessage: true,
+        promptTitle: meta.name,
+        prompt: `Depends on: ${dep.attributeSlug}`,
+      };
+    }
+  }
+
+  // If no data was written, remove the empty sheet
+  if (ddCol === 1) {
+    wb.removeWorksheet(ddSheet.id);
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -571,11 +701,12 @@ export async function addActivitiesSheetsTo(
   const eventDataEnd = row - 1;
 
   // ──────────────────────────────────────────
-  // Data Validation (suggest dropdowns)
+  // Data Validation (suggest dropdowns — static, non-dependent)
   // ──────────────────────────────────────────
   for (let aidx = 0; aidx < attrColumns.length; aidx++) {
     const { attrDefId } = attrColumns[aidx];
     const meta          = attrMeta.get(attrDefId)!;
+    if (meta.dependsOn) continue; // handled by addDependentDropdowns
     if (meta.suggestOptions.length === 0) continue;
 
     const colNum = ATTR_COL_START + aidx;
@@ -596,6 +727,9 @@ export async function addActivitiesSheetsTo(
     }
     // >255 chars: skip (would need hidden sheet + named range — future enhancement)
   }
+
+  // Dependent dropdowns (INDIRECT + hidden DropdownData sheet)
+  addDependentDropdowns(wb, ws, attrMeta, attrColumns, eventDataStart, eventDataEnd);
 
   // ──────────────────────────────────────────
   // SUBTOTAL formulas for Max / Min / Sum rows

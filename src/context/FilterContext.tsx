@@ -143,6 +143,9 @@ export interface FilterContextType {
   filterOrphans: boolean;
   setFilterOrphans: (v: boolean) => void;
 
+  // Ref: shortcut just restored filter_state — consumers skip their next reset
+  skipNextFilterReset: React.RefObject<boolean>;
+
   // Computed
   hasActiveFilter: boolean;
   isFiltered: boolean;
@@ -199,6 +202,9 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   const [isRestored, setIsRestored] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const restoreAttempted = useRef(false);
+
+  // Shortcut filter_state was just applied — consumers should skip their next reset effect
+  const skipNextFilterReset = useRef(false);
 
   // --------------------------------------------
   // Restore from sessionStorage on mount
@@ -739,6 +745,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     // Orphan filter
     filterOrphans,
     setFilterOrphans,
+    // Shortcut filter_state skip flag
+    skipNextFilterReset,
     // Computed
     hasActiveFilter,
     isFiltered

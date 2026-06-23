@@ -23,6 +23,7 @@ export interface ExportAttrDef {
   id: string;
   category_id: string;
   name: string;
+  slug: string | null;
   data_type: string;
   unit: string | null;
   is_required: boolean;

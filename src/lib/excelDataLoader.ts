@@ -122,7 +122,7 @@ export async function loadAttrDefsForCategories(
 
   const { data: attrs } = await supabase
     .from('attribute_definitions')
-    .select('id, category_id, name, data_type, unit, is_required, default_value, validation_rules, sort_order, description')
+    .select('id, category_id, name, slug, data_type, unit, is_required, default_value, validation_rules, sort_order, description')
     .in('category_id', allCatIds);
 
   if (!attrs || attrs.length === 0) return [];

@@ -30,14 +30,18 @@
 - Area dropdown + Category dropdown u Filter panelu
 - Shortcuts dropdown — odaberi spremljeni shortcut da brzo postaviš Area + Category (i, ako ga ima, predefinirane vrijednosti atributa — vidi sekciju **Shortcuts**)
 - "Reset cat." resetira samo kategoriju, area ostaje
-- **Comment contains** — tekst polje na dnu filtera; pretražuje `comment` polje leaf eventa (case-insensitive, server-side); chip "comment: xyz ×" pojavljuje se u tablici kad je aktivan
+- **Filter by** dropdown: odaberi "Comment" za pretragu komentara, specifični atribut za pretragu po vrijednosti atributa, ili **"In any attribute"** za pretragu po tekstu u svim atributima odjednom
+- **Comment contains** — pretražuje `comment` polje leaf eventa (case-insensitive, server-side); chip "xyz ×" u tablici kad je aktivan
+- **Attribute filter** — odaberi atribut, pa za suggest atribute odaberi opciju iz dropdowna; za text/number upiši tekst za pretragu (partial match)
+- **"In any attribute"** — traži tekst u svim atributima odjednom (npr. upiši "EUR" da nađeš sve evente gdje bilo koji atribut sadrži "EUR")
 
 ## Shortcuts (brzi pristup)
 Shortcut pamti Area + Category, a po želji i predefinirane vrijednosti atributa — koristan
 za ponavljajuće unose (npr. ista vrsta transakcije, isti trening).
 
 **Spremanje iz Filter bara** (💾 ikona pored Shortcuts dropdowna):
-- Pamti samo Area + Category
+- Pamti Area + Category (ili samo Area za area-level shortcut) + filter state (period, sort, comment/attr filter)
+- Može se spremiti i za non-leaf kategoriju — korisno za izvješća/exporte koji uključuju cijelu granu
 - Prvi put se prikazuje info dijalog koji objašnjava da se vrijednosti atributa mogu spremiti
   jedino iz Add Activity stranice ("Don't show this again" pamti se trajno)
 

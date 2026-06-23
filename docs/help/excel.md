@@ -28,3 +28,13 @@
 - Col D: full path (sa area name, npr. `Fitness > Cardio > Running`)
 - Col E: level
 - Col F+: atributi
+
+## Dropdowni u exportu
+- **Suggest atributi** (text s opcijama) automatski dobivaju Excel Data Validation dropdown u exportanom xlsx-u
+- **Dependent suggest** (atribut ovisi o drugom atributu): koristi INDIRECT formulu + skriveni "DropdownData" sheet; kad odaberete vrijednost u parent koloni, dependent kolona automatski prikazuje odgovarajuće opcije
+- Ako je lista opcija duža od 255 znakova, dropdown se ne prikazuje (Excel ograničenje za inline liste); dependent dropdowni koriste Named Ranges pa nemaju ovo ograničenje
+
+## Export Profile
+- Profil = sačuvano grupiranje kolona iz prethodnog exporta
+- "Import Profile" u Export modalu učitava grouping state iz xlsx-a i sprema ga kao profil
+- Profil se primjenjuje na sljedeći export → kolone grupirane/sklopljene kao u originalu

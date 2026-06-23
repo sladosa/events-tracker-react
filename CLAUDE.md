@@ -440,12 +440,9 @@ Faze i status:
 `src/lib/eventQueryBuilder.ts` — shared helper koji `useActivities.ts` i `excelDataLoader.ts`
 oba koriste. Novi filteri se dodaju na jednom mjestu. `commentSearch` sada radi i u Exportu.
 
-**⚠️ BUG — Shortcut ne sprema/restaurira datumski filter i sort order:**
-Prebacivanje između shortcuta ne resetira `dateFrom`/`dateTo`/sort order u FilterContext.
-Npr. "Godina do sad" postavi datume 2026-01-01→danas + Oldest sort, ali prebacivanje na
-"Rucak_AI" pa nazad ne restaurira te postavke. Shortcut sprema samo `areaId`+`categoryId`
-(+ `default_attributes` za Add Activity). Fix: proširiti `activity_presets` s opcionalnima
-`date_from`/`date_to`/`sort_order` ili uvesti zasebni filter-state reset mehanizam.
+**✅ BUG — Shortcut ne sprema/restaurira datumski filter i sort order — RIJEŠENO S96+S97:**
+S96: `filter_state` JSONB kolona + save/restore logika.
+S97: fix za reset bug (attrFilter/commentSearch/sortOrder nisu se resetirali pri switch-u).
 
 **Napomena S96:**
 - ✅ **Shared filter helper** (`src/lib/eventQueryBuilder.ts`): `applyEventFilters()`, `attrFilterJoinClause()`, `resolveLeafCategoryIds()` — `useActivities.ts` i `excelDataLoader.ts` oboje koriste isti helper; `ExportFilters` proširen s `commentSearch` → Export sada poštuje comment filter
@@ -460,8 +457,14 @@ Npr. "Godina do sad" postavi datume 2026-01-01→danas + Oldest sort, ali prebac
 - `sql/027_preset_filter_state.sql` (activity_presets.filter_state JSONB)
 - `sql/026_category_settings.sql` (categories.settings JSONB — iz S95, ako nije pokrenut)
 
-**Prioriteti za S97:**
-1. **Testiranje S96 features** — smoke test na TEST bazi nakon 027 migracije
+**Napomena S97:**
+- ✅ **Shortcut filter_state reset bugfix** — prebacivanje između shortcuta nije resetiralo `attrFilter`/`commentSearch`/`sortOrder` kad target shortcut nema `filter_state` ili nema te specifične vrijednosti; root cause: (1) `handleShortcutSelect` postavljao attrFilter ali AppHome `useEffect` na `filter.categoryId` odmah brisao; (2) `else` grana (no filter_state) resetirala samo dateRange. Fix: `skipNextFilterReset` ref u FilterContext — shortcut handler postavlja flag, AppHome reset effect ga čita i preskače; explicit reset svih polja u oba brancha
+- ✅ **"In any attribute" filter** — nova opcija u filter dropdown: `ATTR_FILTER_ANY` sentinel (`__any__`) u `eventQueryBuilder.ts`; `applyEventFilters` preskače `attribute_definition_id` filter za `__any__` (traži `value_text` ilike u svim atributima); AppHome: opcija vidljiva kad postoje attr defs; text input za pretragu; radi i u Exportu (shared eventQueryBuilder)
+- ✅ **Non-leaf shortcut saving** — `canSaveShortcut` proširen: dozvoljava save kad je odabrana bilo koja kategorija ILI samo area (ne samo leaf); `handleSavePreset` prihvaća null `categoryId`; `handleShortcutSelect` area-only branch: učitava L1/L2, postavlja filter bez kategorije; "⚡ Use" gumb ostaje samo za leaf shortcuts
+- ✅ **Dependent dropdowns u Excel exportu** — INDIRECT + hidden "DropdownData" sheet (bez VBA!); `AttrMeta` proširen sa `slug` + `dependsOn`; `ExportAttrDef` dobio `slug` field; `addDependentDropdowns()` u `excelExport.ts`: skenira attrs s `dependsOn`, kreira DropdownData sheet s kolonama po parent_value, definira Named Ranges, postavlja `INDIRECT("Dep_slug_"&SUBSTITUTE(...))` Data Validation; SUBSTITUTE chain pokriva: space, `/`, `-`, `.`, `(`, `)`, `,`, `:`, `+`, `&`; statički suggest dropdowni preskačeni za attrs koji imaju dependsOn (handled by INDIRECT)
+
+**Prioriteti za S98:**
+1. **Testiranje S97 features** — T-S97-1..11 smoke test
 2. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
 3. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
 4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi

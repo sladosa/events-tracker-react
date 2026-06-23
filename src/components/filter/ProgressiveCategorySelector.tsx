@@ -55,7 +55,10 @@ export function ProgressiveCategorySelector({
     setPeriodKey,
     setSortOrder,
     setCommentSearch,
+    clearCommentSearch,
     setAttrFilter,
+    clearAttrFilter,
+    skipNextFilterReset,
     sharedContext
   } = useFilter();
   
@@ -85,6 +88,7 @@ export function ProgressiveCategorySelector({
   
   // Local loading state for DB operations
   const [isLoading, setIsLoading] = useState(false);
+
 
   // --------------------------------------------
   // Database helpers
@@ -181,15 +185,18 @@ export function ProgressiveCategorySelector({
     }
 
     const preset = presets.find(p => p.id === presetId);
-    if (!preset || !preset.category_id) return;
+    if (!preset) return;
 
     setIsLoading(true);
     setSelectedShortcutId(preset.id);
     setBrokenShortcutId(null);
 
-    // Restore filter_state if saved, otherwise reset to "All Time"
-    if (preset.filter_state) {
-      const fs = preset.filter_state;
+    // Flag: prevent AppHome's area/category-change useEffect from wiping restored filter state
+    skipNextFilterReset.current = true;
+
+    // Restore filter_state if saved, otherwise reset all filter fields
+    const fs = preset.filter_state;
+    if (fs) {
       const pk = fs.periodKey as PeriodKey;
       const resolved = resolvePeriodKey(pk);
       if (resolved) {
@@ -201,13 +208,32 @@ export function ProgressiveCategorySelector({
       }
       setPeriodKey(pk);
       setSortOrder(fs.sortOrder ?? 'desc');
-      if (fs.commentSearch) setCommentSearch(fs.commentSearch);
-      if (fs.attrFilter) setAttrFilter(fs.attrFilter);
+      fs.commentSearch ? setCommentSearch(fs.commentSearch) : clearCommentSearch();
+      fs.attrFilter ? setAttrFilter(fs.attrFilter) : clearAttrFilter();
     } else {
       setDateRange(null, null);
+      setPeriodKey('all-time');
+      setSortOrder('desc');
+      clearCommentSearch();
+      clearAttrFilter();
     }
 
     try {
+      // Area-only shortcut (no category)
+      if (!preset.category_id) {
+        if (preset.area_id) {
+          const l1l2 = await loadL1AndL2Categories(preset.area_id);
+          setSelectionChain([]);
+          setDropdownOptions(l1l2);
+          selectAreaAndCategory(preset.area_id, null, []);
+          setIsLeafCategory(false);
+          const area = areas.find(a => a.id === preset.area_id);
+          updatePathDisplay(area?.name || null, []);
+          incrementUsage(preset.id);
+        }
+        return;
+      }
+
       // Fetch the category to build full path
       const { data: category, error } = await supabase
         .from('categories')
@@ -216,7 +242,6 @@ export function ProgressiveCategorySelector({
         .single();
 
       if (error || !category) {
-        // Shortcut points to an Area/Category that no longer exists (e.g. deleted in Structure)
         setBrokenShortcutId(preset.id);
         resetCategory();
         toast.error(`Shortcut "${preset.name}" points to a category that no longer exists`);
@@ -244,22 +269,15 @@ export function ProgressiveCategorySelector({
         }
       }
 
-      // Update context – ATOMSKI: area i category u jednom setState pozivu
-      // Sprječava race condition gdje selectArea() resetira categoryId na null
-      // prije nego selectCategory() stigne postaviti ispravnu vrijednost (2.1)
       const pathIds: UUID[] = fullPath.map(c => c.id);
       selectAreaAndCategory(preset.area_id ?? null, preset.category_id, pathIds);
       setIsLeafCategory(isLeaf);
 
-      // Update display
       const area = areas.find(a => a.id === preset.area_id);
       updatePathDisplay(area?.name || null, fullPath);
 
-      // Increment usage
       incrementUsage(preset.id);
 
-      // Notify if leaf — flag the source as 'shortcut' so callers (e.g. mobile filter
-      // auto-collapse) can keep the panel open for follow-up actions like "⚡ Use"
       if (isLeaf) {
         onLeafSelected?.(category as Category, fullPath, 'shortcut');
       }
@@ -268,11 +286,11 @@ export function ProgressiveCategorySelector({
     } finally {
       setIsLoading(false);
     }
-  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectAreaAndCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange, resetCategory, setPeriodLabel, setPeriodKey, setSortOrder, setCommentSearch, setAttrFilter]);
+  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectAreaAndCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange, resetCategory, setPeriodLabel, setPeriodKey, setSortOrder, setCommentSearch, clearCommentSearch, setAttrFilter, clearAttrFilter]);
 
   const handleSavePreset = useCallback(async () => {
     const trimmedName = newPresetName.trim();
-    if (!trimmedName || !filter.categoryId) return;
+    if (!trimmedName || (!filter.categoryId && !filter.areaId)) return;
 
     if (presets.some(p => p.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
       toast.error(`A shortcut named "${trimmedName}" already exists — choose a different name`);
@@ -314,8 +332,8 @@ export function ProgressiveCategorySelector({
     }
   }, [selectedShortcutId, presets, deletePreset, setSelectedShortcutId]);
 
-  // Can save: has leaf category selected
-  const canSaveShortcut = isLeafCategory && filter.categoryId;
+  // Can save: has area or category selected (non-leaf shortcuts useful for reports/exports)
+  const canSaveShortcut = !!(filter.categoryId || filter.areaId);
 
   // Can jump to Add Activity: a shortcut is selected, it resolved to a leaf, and not read-only
   const canUseShortcut = !!selectedShortcutId && isLeafCategory && !!filter.categoryId
