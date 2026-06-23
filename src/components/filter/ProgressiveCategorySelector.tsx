@@ -889,7 +889,8 @@ export function ProgressiveCategorySelector({
               💡 Did you know?
             </h3>
             <p className="text-sm text-gray-600 mb-3">
-              A shortcut saved here remembers only the <strong>Area + Category</strong>.
+              A shortcut saved here remembers <strong>Area + Category</strong>, plus current
+              {' '}<strong>filters</strong> (period, sort order, attribute filter).
               If you also want it to pre-fill <strong>attribute values</strong> (e.g. Account,
               Direction, Type), save it from the <strong>Add Activity</strong> page instead —
               fill in the values you use most often, then tap "Save as Shortcut" there.
