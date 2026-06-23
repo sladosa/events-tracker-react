@@ -210,15 +210,17 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter.areaId, filter.categoryId]);
 
-  // Sync dropdown to context if attrFilter is set (e.g. after in-session navigation)
+  // Sync dropdown to context: restore selectedFilterAttr from attrFilter, or reset to 'comment'
   useEffect(() => {
-    if (filter.attrFilter && filterAttrDefs.length > 0) {
+    if (filter.attrFilter) {
       if (filter.attrFilter.attrDefId === ATTR_FILTER_ANY) {
         setSelectedFilterAttr(ATTR_FILTER_ANY);
-      } else {
+      } else if (filterAttrDefs.length > 0) {
         const found = filterAttrDefs.find(a => a.id === filter.attrFilter!.attrDefId);
         if (found) setSelectedFilterAttr(found.id);
       }
+    } else {
+      setSelectedFilterAttr('comment');
     }
   }, [filterAttrDefs, filter.attrFilter]);
 
