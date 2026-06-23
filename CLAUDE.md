@@ -477,6 +477,7 @@ S97: fix za reset bug (attrFilter/commentSearch/sortOrder nisu se resetirali pri
 **Backlog (iz S97):**
 - **Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`, koristiti odgovarajuću DB kolonu (`value_number` za number, `value_boolean` za boolean itd.) s odgovarajućim operatorima
 - **Structure Edit UX za depends_on opcije** — lakše dodavanje opcija u mapping bez odlaska u full edit panel; ili "Other" persist iz Add Activity koji doda opciju u odgovarajući `optionsMap` key
+- **Stanje post-processing** — automatski preračun Stanje atributa per-Račun (SUMIFS logika: kumulativ Uplata−Isplata po računu do datuma); Stanje je skriven attr (depends_on SKRIVENO) ali stored u DB jer omogućuje projekciju salda s planiranim ratama i prihodima; kandidat za post-import batch update ili Post-Finish automation
 
 **Post-Finish automation** — spec: `docs/AUTOMATION_SPEC.md`
 - ✅ Faza 1: Python rata tool → Post-Finish modal u web app
