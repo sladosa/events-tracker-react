@@ -222,13 +222,19 @@ export function ProgressiveCategorySelector({
       // Area-only shortcut (no category)
       if (!preset.category_id) {
         if (preset.area_id) {
+          const area = areas.find(a => a.id === preset.area_id);
+          if (!area) {
+            setBrokenShortcutId(preset.id);
+            resetCategory();
+            toast.error(`Shortcut "${preset.name}" points to an area that no longer exists`);
+            return;
+          }
           const l1l2 = await loadL1AndL2Categories(preset.area_id);
           setSelectionChain([]);
           setDropdownOptions(l1l2);
           selectAreaAndCategory(preset.area_id, null, []);
           setIsLeafCategory(false);
-          const area = areas.find(a => a.id === preset.area_id);
-          updatePathDisplay(area?.name || null, []);
+          updatePathDisplay(area.name, []);
           incrementUsage(preset.id);
         }
         return;
