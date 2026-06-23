@@ -462,12 +462,21 @@ S97: fix za reset bug (attrFilter/commentSearch/sortOrder nisu se resetirali pri
 - ✅ **"In any attribute" filter** — nova opcija u filter dropdown: `ATTR_FILTER_ANY` sentinel (`__any__`) u `eventQueryBuilder.ts`; `applyEventFilters` preskače `attribute_definition_id` filter za `__any__` (traži `value_text` ilike u svim atributima); AppHome: opcija vidljiva kad postoje attr defs; text input za pretragu; radi i u Exportu (shared eventQueryBuilder)
 - ✅ **Non-leaf shortcut saving** — `canSaveShortcut` proširen: dozvoljava save kad je odabrana bilo koja kategorija ILI samo area (ne samo leaf); `handleSavePreset` prihvaća null `categoryId`; `handleShortcutSelect` area-only branch: učitava L1/L2, postavlja filter bez kategorije; "⚡ Use" gumb ostaje samo za leaf shortcuts
 - ✅ **Dependent dropdowns u Excel exportu** — INDIRECT + hidden "DropdownData" sheet (bez VBA!); `AttrMeta` proširen sa `slug` + `dependsOn`; `ExportAttrDef` dobio `slug` field; `addDependentDropdowns()` u `excelExport.ts`: skenira attrs s `dependsOn`, kreira DropdownData sheet s kolonama po parent_value, definira Named Ranges, postavlja `INDIRECT("Dep_slug_"&SUBSTITUTE(...))` Data Validation; SUBSTITUTE chain pokriva: space, `/`, `-`, `.`, `(`, `)`, `,`, `:`, `+`, `&`; statički suggest dropdowni preskačeni za attrs koji imaju dependsOn (handled by INDIRECT)
+- ✅ **Non-text atributi skriveni iz filter dropdowna** — number/boolean/datetime koriste `value_number`/`value_boolean`/`value_datetime` u DB; text-based `ilike` filter na `value_text` ne radi za njih; hint poruka "N numeric/other attributes not shown — use Excel Export to filter by those." kad postoje skriveni
+- ✅ **selectedFilterAttr reset bugfix** — prebacivanje na shortcut bez attrFilter nije resetiralo dropdown na "Comment"; sync useEffect sada resetira na 'comment' kad `filter.attrFilter` postane null
+- ✅ **Shortcut info dialog tekst** — "Did you know?" dijalog ažuriran: sada navodi da shortcut pamti i filtere (period, sort, attr filter), ne samo Area+Category
+- ✅ **Broken area-only shortcut detekcija** — area-only shortcuti sada detektiraju obrisanu area; toast error + amber broken shortcut banner s "Delete" opcijom
+- ✅ **GIN trigram index** — `sql/028_value_text_trigram_index.sql`: `pg_trgm` extension + GIN index na `event_attributes.value_text`; potrebno za "In any attribute" filter performance (ILIKE s vodećim wildcarddom); pokrenuto na TEST + PROD ✅
+- Svi T-S97-1..14 testovi ✅
 
 **Prioriteti za S98:**
-1. **Testiranje S97 features** — T-S97-1..11 smoke test
-2. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
-3. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
-4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+1. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
+2. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
+3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+
+**Backlog (iz S97):**
+- **Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`, koristiti odgovarajuću DB kolonu (`value_number` za number, `value_boolean` za boolean itd.) s odgovarajućim operatorima
+- **Structure Edit UX za depends_on opcije** — lakše dodavanje opcija u mapping bez odlaska u full edit panel; ili "Other" persist iz Add Activity koji doda opciju u odgovarajući `optionsMap` key
 
 **Post-Finish automation** — spec: `docs/AUTOMATION_SPEC.md`
 - ✅ Faza 1: Python rata tool → Post-Finish modal u web app
