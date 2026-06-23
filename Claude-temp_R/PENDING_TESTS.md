@@ -23,6 +23,9 @@
 | T-S97-9  | DropdownData hidden sheet present in exported xlsx (verify in Excel)                       | ⬜      |
 | T-S97-10 | Dependent dropdown works: select Rashod in Smjer → Tip shows only expense categories      | ⬜      |
 | T-S97-11 | Non-dependent suggest attrs still have static dropdown (regression check)                 | ⬜      |
+| T-S97-12 | Filter dropdown: number/boolean/datetime atributi NISU u listi (samo text/suggest)        | ⬜      |
+| T-S97-13 | Hint poruka vidljiva kad postoje skriveni atributi ("N numeric/other attributes...")      | ⬜      |
+| T-S97-14 | Hint poruka NIJE vidljiva kad su svi atributi text/suggest (nema skrivenih)               | ⬜      |
 
 ---
 

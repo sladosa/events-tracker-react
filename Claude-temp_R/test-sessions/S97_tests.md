@@ -132,3 +132,35 @@
 4. **Expected:** Standard dropdown with all options (same as before S97)
 
 ---
+
+## T-S97-12: Number/boolean/datetime atributi skriveni iz filter dropdowna
+
+**Precondition:** Area s miješanim tipovima atributa (npr. Financije: Iznos=number, Na rate?=boolean, Status=text/suggest).
+
+1. Odaberi Financije area (ili kategoriju unutar nje)
+2. Otvori "Filter by" dropdown
+3. **Expected:** Iznos (number), Na rate? (boolean) i sl. NISU u listi
+4. Status, Tip, Smjer, Valuta i sl. (text/suggest) JESU u listi
+5. "Comment" i "In any attribute" su na vrhu
+
+---
+
+## T-S97-13: Hint poruka za skrivene atribute
+
+**Precondition:** Area koja ima barem 1 number/boolean/datetime atribut.
+
+1. Odaberi tu area/kategoriju
+2. Pogledaj ispod "Filter by" dropdowna
+3. **Expected:** Siva poruka: "N numeric/other attributes not shown — use Excel Export to filter by those."
+4. N odgovara broju skrivenih atributa (npr. 2 za Iznos + Na rate?)
+
+---
+
+## T-S97-14: Hint poruka se NE prikazuje kad nema skrivenih
+
+**Precondition:** Area gdje su svi atributi text ili suggest (npr. Demo area, ili area bez number/boolean atributa).
+
+1. Odaberi tu area/kategoriju
+2. **Expected:** Nema sive poruke ispod dropdowna
+
+---
