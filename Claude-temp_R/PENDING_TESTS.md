@@ -3,29 +3,23 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S97 (2026-06-23)
-**Detalji testova:** [S97_tests.md](test-sessions/S97_tests.md)
+**Zadnji update:** S99 (2026-06-25)
+**Detalji testova:** [S99_tests.md](test-sessions/S99_tests.md)
 
 ---
 
-## S97 — Shortcut filter fix + "In any attribute" + non-leaf shortcuts + dependent dropdowns
+## S99 — Delete Area fixes + Financije PROD reorganizacija
 
 | ID       | Test                                                                                     | Status |
 | -------- | ---------------------------------------------------------------------------------------- | ------ |
-| T-S97-1  | Switch between shortcuts: attrFilter/commentSearch/sortOrder properly reset              | ✅      |
-| T-S97-2  | Shortcut with saved attrFilter: filter restored correctly after switch                   | ✅      |
-| T-S97-3  | "In any attribute" filter: select option, type text → events filtered across all attrs   | ✅      |
-| T-S97-4  | "In any attribute" works with Export (correct count + data)                              | ✅      |
-| T-S97-5  | Save shortcut at non-leaf level (e.g. L1 category) → dropdown shows it, loads correctly  | ✅      |
-| T-S97-6  | Save shortcut at area-only level → loads correctly (no category selected)                | ✅      |
-| T-S97-7  | "⚡ Use" button only visible for leaf-level shortcuts (not non-leaf)                      | ✅      |
-| T-S97-8  | Export xlsx with dependent attr: "Tip" column has INDIRECT dropdown depending on "Smjer" | ✅      |
-| T-S97-9  | DropdownData hidden sheet present in exported xlsx (verify in Excel)                     | ✅      |
-| T-S97-10 | Dependent dropdown works: select Rashod in Smjer → Tip shows only expense categories     | ✅      |
-| T-S97-11 | Non-dependent suggest attrs still have static dropdown (regression check)                | ✅      |
-| T-S97-12 | Filter dropdown: number/boolean/datetime atributi NISU u listi (samo text/suggest)       | ✅      |
-| T-S97-13 | Hint poruka vidljiva kad postoje skriveni atributi ("N numeric/other attributes...")     | ✅      |
-| T-S97-14 | Hint poruka NIJE vidljiva kad su svi atributi text/suggest (nema skrivenih)              | ✅ n/a  |
+| T-S99-1  | Delete Area (no events) — radi bez problema (Financije_old obrisana OK)                  | ✅      |
+| T-S99-2  | Delete Area (with events) — "Delete without backup" gumb vidljiv, radi                   | ⬜      |
+| T-S99-3  | Delete Area (with events) — "Download Backup & Delete" skida area-scoped xlsx            | ✅      |
+| T-S99-4  | Backup xlsx sadrži samo tu area (ne cijelu bazu)                                         | ✅      |
+| T-S99-5  | Financije PROD obrisana via SQL (029_delete_financije_prod.sql)                          | ✅      |
+| T-S99-6  | Financije_old (pre-2026) importana na PROD, Koka dobila read-only pristup               | ✅      |
+| T-S99-7  | Koka importa Financije (2026+) na PROD kao owner                                        | ⬜      |
+| T-S99-8  | Error poruka u Delete modalu prikazuje step + code + details (ne samo "Bad Request")     | ✅      |
 
 ---
 

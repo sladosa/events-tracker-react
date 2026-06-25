@@ -112,7 +112,7 @@ export function formatTimestampSuffix(ts: string): string {
 
 export interface FilterSheetInfo {
   /** Label shown in "Export type" row */
-  exportType: 'Activities' | 'Structure' | 'Full Backup';
+  exportType: string;
   /**
    * Timestamp suffix (from timestampSuffix()) used for "Exported at".
    * If omitted, a fresh suffix is generated.

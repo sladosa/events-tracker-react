@@ -469,9 +469,18 @@ S97: fix za reset bug (attrFilter/commentSearch/sortOrder nisu se resetirali pri
 - ✅ **GIN trigram index** — `sql/028_value_text_trigram_index.sql`: `pg_trgm` extension + GIN index na `event_attributes.value_text`; potrebno za "In any attribute" filter performance (ILIKE s vodećim wildcarddom); pokrenuto na TEST + PROD ✅
 - Svi T-S97-1..14 testovi ✅
 
-**Prioriteti za S98:**
-1. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
-2. **Financije_3 bulk kategorizacija** — popuniti N/A Tip (~2434 redova)
+**Napomena S99 (2026-06-25) — Delete Area fixes + Financije PROD reorganizacija:**
+- ✅ **Backup scope fix** (`excelBackup.ts`): `exportFullBackup` sada prima opcionalni `areaId` + `areaName` → backup samo za tu area, ne cijelu bazu; `fullBackupFilename` generira `backup_AreaName_timestamp.xlsx`
+- ✅ **cascadeDelete robustnost** (`StructureDeleteModal.tsx`): (1) error checking na SVIM koracima (ranije `event_attachments` i `event_attributes` DELETE nisu provjeravali error); (2) step indicator u error poruci (`[delete events] P0001 — message — details`); (3) `data_shares` + `share_invites` cleanup prije brisanja aree; (4) `event_attachments` DELETE samo ako postoje (skip ako 0); (5) `event_attributes` DELETE po PK (SELECT IDs → chunked DELETE by id) umjesto `.in('event_id')` koji pada na nekim Supabase konfiguracijama
+- ✅ **"Delete without backup"** gumb u Delete modalu — sekundarna opcija (crveni tekst link) za slučaj kad backup nije potreban (npr. već skinut ili podaci nepotrebni)
+- ✅ **Financije PROD obrisana** via `sql/029_delete_financije_prod.sql` (postgres role, zaobilazi RLS + DB trigger koji je blokirao UI delete jer je vidio 2118 eventa nevidljivih kroz RLS)
+- ✅ **Financije_old (pre-2026)** importana na PROD, Koka dobila read-only pristup
+- ⬜ **Financije (2026+)** — čeka Koku: rename Financije_3 → Financije na TEST, export This Year, Koka importa na PROD kao owner
+- Root cause "Bad Request" grešaka: (1) full backup svih 7000+ eventa → Supabase query fail; (2) expired auth token (`Invalid Refresh Token`); (3) DB trigger `P0001` blokira DELETE kad RLS-nevidljivi eventi postoje
+
+**Prioriteti za S100:**
+1. **Koka importa Financije** — čeka Koku, rename na TEST + export + import na PROD
+2. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
 3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **Backlog (iz S97):**
