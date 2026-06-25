@@ -475,11 +475,12 @@ S97: fix za reset bug (attrFilter/commentSearch/sortOrder nisu se resetirali pri
 - ✅ **"Delete without backup"** gumb u Delete modalu — sekundarna opcija (crveni tekst link) za slučaj kad backup nije potreban (npr. već skinut ili podaci nepotrebni)
 - ✅ **Financije PROD obrisana** via `sql/029_delete_financije_prod.sql` (postgres role, zaobilazi RLS + DB trigger koji je blokirao UI delete jer je vidio 2118 eventa nevidljivih kroz RLS)
 - ✅ **Financije_old (pre-2026)** importana na PROD, Koka dobila read-only pristup
-- ⬜ **Financije (2026+)** — čeka Koku: rename Financije_3 → Financije na TEST, export This Year, Koka importa na PROD kao owner
+- ✅ **Financije (2026+)** — Koka importala na PROD kao owner (struktura kreirana via Structure Import, pa Events Import)
 - Root cause "Bad Request" grešaka: (1) full backup svih 7000+ eventa → Supabase query fail; (2) expired auth token (`Invalid Refresh Token`); (3) DB trigger `P0001` blokira DELETE kad RLS-nevidljivi eventi postoje
+- **BUG-S99-IMPORT:** Excel import matcha kategorije po `full_path` BEZ area name → ako 2 aree imaju istu kategoriju (npr. "Transakcija"), import pokupi krivu. Fix: composite key `area_name + full_path` u `catByPath`, `knownPaths`, `getHierarchyLevels`. Mjesta: `excelImport.ts` linije 390, 464, 1448, 500.
 
 **Prioriteti za S100:**
-1. **Koka importa Financije** — čeka Koku, rename na TEST + export + import na PROD
+1. **BUG-S99-IMPORT fix** — import mora matchati area name + category_path, ne samo category_path
 2. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
 3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
