@@ -19,7 +19,8 @@ import { loadExportData, loadStructureNodes, loadSharedEmailsByArea, loadCategor
 import { createEventsExcel, mergeSessionEvents } from '@/lib/excelExport';
 import { timestampSuffix, type FilterSheetInfo } from '@/lib/excelUtils';
 import type { ExportFilters } from '@/lib/excelTypes';
-import { readProfileFromWorkbook, readProfileNameFromWorkbook, sanitizeProfileName, type ExportProfiles } from '@/lib/exportProfile';
+import { readProfileFromWorkbook, readProfileNameFromWorkbook, readFilterFromWorkbook, sanitizeProfileName, type ExportProfiles, type ProfileFilterState } from '@/lib/exportProfile';
+import { resolvePeriodKey, type PeriodKey } from '@/hooks/useDateBounds';
 
 interface ExcelExportModalProps {
   onClose: () => void;
@@ -29,6 +30,49 @@ const DEFAULT_BATCH_SIZE = 10000;
 const MIN_BATCH = 2;
 const MAX_BATCH = 50000;
 const PREVIEW_LIMIT = 10;
+
+function parseAttrFilterRaw(raw: string): { attrDefId: string; value: string; isExact: boolean } | null {
+  // Format: "uuid: =value" or "uuid: ~value"
+  const match = raw.match(/^([0-9a-f-]+):\s*([=~])(.+)$/i);
+  if (!match) return null;
+  return { attrDefId: match[1], isExact: match[2] === '=', value: match[3] };
+}
+
+function applyProfileFilterOverrides(
+  baseFilters: ExportFilters,
+  pfs: ProfileFilterState,
+): { filters: ExportFilters; overrideLabel: string | null; periodKeyOverride: string | null } {
+  const filters = { ...baseFilters };
+  const parts: string[] = [];
+  let periodKeyOverride: string | null = null;
+
+  if (pfs.periodKey) {
+    const resolved = resolvePeriodKey(pfs.periodKey as PeriodKey);
+    if (resolved) {
+      filters.dateFrom = resolved.from;
+      filters.dateTo = resolved.to;
+      periodKeyOverride = pfs.periodKey;
+      parts.push(`Period: ${pfs.periodKey}`);
+    }
+  }
+  if (pfs.sortOrder) {
+    filters.sortOrder = pfs.sortOrder;
+    parts.push(`Sort: ${pfs.sortOrder === 'asc' ? 'Oldest first' : 'Newest first'}`);
+  }
+  if (pfs.commentSearch) {
+    filters.commentSearch = pfs.commentSearch;
+    parts.push(`Comment: "${pfs.commentSearch}"`);
+  }
+  if (pfs.attrFilterRaw) {
+    const parsed = parseAttrFilterRaw(pfs.attrFilterRaw);
+    if (parsed) {
+      filters.attrFilter = parsed;
+      parts.push(`Attr filter: ${parsed.value}`);
+    }
+  }
+
+  return { filters, overrideLabel: parts.length > 0 ? parts.join(', ') : null, periodKeyOverride };
+}
 
 export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   const { filter, periodLabel, selectedArea } = useFilter();
@@ -115,11 +159,37 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const profileName = selectedProfile || undefined;
+      const activeProfile = profileName ? profiles[profileName] ?? null : null;
+
+      // Apply profile filter overrides (if profile has saved filter state)
+      let effectiveFilters = filters;
+      let effectivePeriodKey: string | undefined = filter.periodKey;
+      let effectivePeriodLabel: string | undefined = periodLabel;
+      let effectiveCommentSearch = filter.commentSearch;
+      let effectiveAttrFilter = filter.attrFilter;
+
+      if (activeProfile?.filterState && !previewMode) {
+        const overrides = applyProfileFilterOverrides(filters, activeProfile.filterState);
+        effectiveFilters = overrides.filters;
+        if (overrides.periodKeyOverride) {
+          effectivePeriodKey = overrides.periodKeyOverride;
+          effectivePeriodLabel = overrides.periodKeyOverride;
+        }
+        if (activeProfile.filterState.commentSearch !== undefined) {
+          effectiveCommentSearch = activeProfile.filterState.commentSearch;
+        }
+        if (activeProfile.filterState.attrFilterRaw) {
+          const parsed = parseAttrFilterRaw(activeProfile.filterState.attrFilterRaw);
+          if (parsed) effectiveAttrFilter = parsed;
+        }
+      }
+
       const limit = previewMode ? PREVIEW_LIMIT : batchSize;
       const offset = previewMode ? 0 : (fileIndex - 1) * batchSize;
 
       const [bundle, structureNodes, sharedWithByArea] = await Promise.all([
-        loadExportData(user.id, filters, offset, limit),
+        loadExportData(user.id, effectiveFilters, offset, limit),
         loadStructureNodes(user.id),
         loadSharedEmailsByArea(user.id),
       ]);
@@ -130,15 +200,12 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       const lastRecord  = eventDates.length > 0 ? eventDates[eventDates.length - 1] : undefined;
 
       const catValues = Object.values(bundle.categoriesDict);
-      const areaName     = filters.areaId
-        ? catValues.find(c => c.area_id === filters.areaId)?.area_name ?? null
+      const areaName     = effectiveFilters.areaId
+        ? catValues.find(c => c.area_id === effectiveFilters.areaId)?.area_name ?? null
         : null;
-      const categoryPath = filters.categoryId
-        ? bundle.categoriesDict[filters.categoryId]?.full_path ?? null
+      const categoryPath = effectiveFilters.categoryId
+        ? bundle.categoriesDict[effectiveFilters.categoryId]?.full_path ?? null
         : null;
-
-      const profileName = selectedProfile || undefined;
-      const activeProfile = profileName ? profiles[profileName] ?? null : null;
 
       const ts = timestampSuffix();
       const filterInfo: FilterSheetInfo = {
@@ -146,26 +213,26 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         exportedAt:  ts,
         area:        areaName,
         category:    categoryPath,
-        dateFrom:    filters.dateFrom,
-        dateTo:      filters.dateTo,
-        sortOrder:   filters.sortOrder ?? 'desc',
-        firstRecord: filters.dateFrom ? undefined : firstRecord,
-        lastRecord:  filters.dateTo   ? undefined : lastRecord,
-        periodLabel,
-        periodKey:   filter.periodKey,
-        commentSearch: filter.commentSearch || undefined,
-        attrFilterDesc: filter.attrFilter
-          ? `${filter.attrFilter.attrDefId}: ${filter.attrFilter.isExact ? '=' : '~'}${filter.attrFilter.value}`
+        dateFrom:    effectiveFilters.dateFrom,
+        dateTo:      effectiveFilters.dateTo,
+        sortOrder:   effectiveFilters.sortOrder ?? 'desc',
+        firstRecord: effectiveFilters.dateFrom ? undefined : firstRecord,
+        lastRecord:  effectiveFilters.dateTo   ? undefined : lastRecord,
+        periodLabel: effectivePeriodLabel,
+        periodKey:   effectivePeriodKey,
+        commentSearch: effectiveCommentSearch || undefined,
+        attrFilterDesc: effectiveAttrFilter
+          ? `${effectiveAttrFilter.attrDefId}: ${effectiveAttrFilter.isExact ? '=' : '~'}${effectiveAttrFilter.value}`
           : undefined,
         exportProfile: profileName,
       };
 
       const buffer = await createEventsExcel(
         merged, bundle.attrDefs, bundle.categoriesDict,
-        filters.sortOrder ?? 'desc',
+        effectiveFilters.sortOrder ?? 'desc',
         structureNodes,
         filterInfo,
-        { filterAreaId: filters.areaId, filterCategoryId: filters.categoryId, sharedWithByArea },
+        { filterAreaId: effectiveFilters.areaId, filterCategoryId: effectiveFilters.categoryId, sharedWithByArea },
         activeProfile,
       );
 
@@ -222,6 +289,12 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         return;
       }
 
+      // Read filter settings from Filter sheet (if present)
+      const filterState = readFilterFromWorkbook(wb);
+      if (filterState) {
+        profile.filterState = filterState;
+      }
+
       const existingName = readProfileNameFromWorkbook(wb);
       const defaultName = existingName || file.name.replace(/\.xlsx?$/i, '').replace(/^events_export_?/, '');
 
@@ -251,7 +324,8 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
 
       setProfiles(newProfiles);
       setSelectedProfile(trimmedName);
-      toast.success(`Profile "${trimmedName}" saved (${profile.columns.filter(c => c.hidden).length} hidden columns)`);
+      const filterNote = profile.filterState ? ' + filter overrides' : '';
+      toast.success(`Profile "${trimmedName}" saved (${profile.columns.filter(c => c.hidden).length} hidden cols, column order + widths${filterNote})`);
       window.dispatchEvent(new CustomEvent('areas-changed'));
     } catch (err) {
       const msg = err instanceof Error ? err.message : JSON.stringify(err);
@@ -375,9 +449,23 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
 
               {/* Profile info */}
               {activeProfile && (
-                <p className="text-xs text-gray-500">
-                  {hiddenCount} column{hiddenCount !== 1 ? 's' : ''} hidden (grouped + collapsed)
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-500">
+                    {hiddenCount} column{hiddenCount !== 1 ? 's' : ''} hidden · column order from profile
+                  </p>
+                  {activeProfile.filterState && (
+                    <p className="text-xs text-blue-600">
+                      📋 Profile includes filter overrides: {(() => {
+                        const parts: string[] = [];
+                        if (activeProfile.filterState.periodKey) parts.push(`Period: ${activeProfile.filterState.periodKey}`);
+                        if (activeProfile.filterState.sortOrder) parts.push(`Sort: ${activeProfile.filterState.sortOrder === 'asc' ? 'Oldest' : 'Newest'}`);
+                        if (activeProfile.filterState.commentSearch) parts.push(`Comment: "${activeProfile.filterState.commentSearch}"`);
+                        if (activeProfile.filterState.attrFilterRaw) parts.push('Attr filter');
+                        return parts.join(', ');
+                      })()}
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* Preview + Import buttons */}

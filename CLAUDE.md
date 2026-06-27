@@ -477,12 +477,19 @@ S97: fix za reset bug (attrFilter/commentSearch/sortOrder nisu se resetirali pri
 - ✅ **Financije_old (pre-2026)** importana na PROD, Koka dobila read-only pristup
 - ✅ **Financije (2026+)** — Koka importala na PROD kao owner (struktura kreirana via Structure Import, pa Events Import)
 - Root cause "Bad Request" grešaka: (1) full backup svih 7000+ eventa → Supabase query fail; (2) expired auth token (`Invalid Refresh Token`); (3) DB trigger `P0001` blokira DELETE kad RLS-nevidljivi eventi postoje
-- **BUG-S99-IMPORT:** Excel import matcha kategorije po `full_path` BEZ area name → ako 2 aree imaju istu kategoriju (npr. "Transakcija"), import pokupi krivu. Fix: composite key `area_name + full_path` u `catByPath`, `knownPaths`, `getHierarchyLevels`. Mjesta: `excelImport.ts` linije 390, 464, 1448, 500.
+- ✅ **BUG-S99-IMPORT:** ~~Excel import matcha kategorije po `full_path` BEZ area name~~ → RIJEŠENO (S100). Fix: composite key `${area_name}||${full_path}` u `catByPath`, `knownPaths`, `getHierarchyLevels`; `areaName` parametar dodan u `getHierarchyLevels`; svih 5 `catByPath` buildova + svih 6 `getHierarchyLevels` poziva ažurirano
 
-**Prioriteti za S100:**
-1. **BUG-S99-IMPORT fix** — import mora matchati area name + category_path, ne samo category_path
-2. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
-3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+**Napomena S100 (2026-06-27) — Export Profile column order/widths + Filter override + bugfixes:**
+- ✅ **BUG-S99-IMPORT fix** — `excelImport.ts`: composite key `${area_name}||${full_path}` u svim `catByPath` mapama + `areaName` parametar u `getHierarchyLevels`; lookupovi koriste `${row.area}||${row.category_path}`; error poruka sad kaže "not found in area 'X'"
+- ✅ **Dependent dropdown diacriticals fix** — `excelExport.ts`: `transliterateDiacriticals` (č→c, ć→c, š→s, ž→z, đ→d) primijenjen u `sanitizeNamedRange` I u SUBSTITUTE chain INDIRECT formule; "Kokin tekući ZABA" sada producira isti named range name na obje strane
+- ✅ **Export Profile column order** — `readProfileFromWorkbook` čita LEGEND redove u redoslijedu iz xlsx-a; `getProfileAttrOrder` reorder-ira attrColumns prema profilu; `addActivitiesSheetsTo` prima `attrColumnOrder?: number[]`; kolone u exportu slijede raspored iz profila
+- ✅ **Export Profile column widths** — `ExportProfileColumn.width` dodan; `readProfileFromWorkbook` čita `col.width`; `applyProfileToWorkbook` postavlja custom width za svaku kolonu
+- ✅ **Export Profile filter overrides** — `ProfileFilterState` tip (periodKey, sortOrder, commentSearch, attrFilterRaw); `readFilterFromWorkbook` čita Filter sheet; profil sprema filterState; `ExcelExportModal` prikazuje "📋 Profile includes filter overrides"; `doDownload` primjenjuje filter overridee iz profila (date range, sort, comment, attr filter)
+- ✅ **Attr filter raw format** — `<attrDefId>: =<value>` (exact) / `<attrDefId>: ~<value>` (partial); korisnik može editirati Filter sheet u xlsx-u, promijeniti filter, reimportati kao profil
+
+**Prioriteti za S101:**
+1. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
+2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **Backlog (iz S97):**
 - **Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`, koristiti odgovarajuću DB kolonu (`value_number` za number, `value_boolean` za boolean itd.) s odgovarajućim operatorima

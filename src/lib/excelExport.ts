@@ -33,7 +33,7 @@ import type {
 import type { StructureNode } from '@/types/structure';
 import { addStructureSheetsTo, type ExportStructureOptions } from './structureExcel';
 import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
-import { applyProfileToWorkbook, type ExportProfile } from './exportProfile';
+import { applyProfileToWorkbook, getProfileAttrOrder, type ExportProfile } from './exportProfile';
 
 // ─────────────────────────────────────────────
 // Constants
@@ -277,8 +277,19 @@ export function buildAttrMeta(
 // Dependent dropdowns via INDIRECT + hidden sheet
 // ─────────────────────────────────────────────
 
+const DIACRITICAL_MAP: [string, string][] = [
+  ['č', 'c'], ['ć', 'c'], ['š', 's'], ['ž', 'z'], ['đ', 'd'],
+  ['Č', 'C'], ['Ć', 'C'], ['Š', 'S'], ['Ž', 'Z'], ['Đ', 'D'],
+];
+
+function transliterateDiacriticals(s: string): string {
+  let result = s;
+  for (const [from, to] of DIACRITICAL_MAP) result = result.replaceAll(from, to);
+  return result;
+}
+
 function sanitizeNamedRange(s: string): string {
-  return s.replace(/[^A-Za-z0-9_]/g, '_').replace(/^(\d)/, '_$1');
+  return transliterateDiacriticals(s).replace(/[^A-Za-z0-9_]/g, '_').replace(/^(\d)/, '_$1');
 }
 
 function addDependentDropdowns(
@@ -353,11 +364,13 @@ function addDependentDropdowns(
     // so the Excel formula does the same transformation at runtime.
     for (let r = eventDataStart; r <= eventDataEnd; r++) {
       const parentRef = `${parentColLtr}${r}`;
-      // Nested SUBSTITUTE: space, /, -, ., (, ) → underscore
-      // Covers most practical parent values; exotic chars → #REF (user can still type)
+      // Nested SUBSTITUTE: special chars + diacriticals → match sanitizeNamedRange output
       let sub = parentRef;
       for (const ch of [' ', '/', '-', '.', '(', ')', ',', ':', '+', '&']) {
         sub = `SUBSTITUTE(${sub},"${ch}","_")`;
+      }
+      for (const [from, to] of DIACRITICAL_MAP) {
+        sub = `SUBSTITUTE(${sub},"${from}","${to}")`;
       }
       const formula = `INDIRECT("${prefix}_"&${sub})`;
       ws.getCell(r, depColNum).dataValidation = {
@@ -392,9 +405,17 @@ export async function addActivitiesSheetsTo(
   attrDefs: ExportAttrDef[],
   categoriesDict: ExportCategoriesDict,
   sortOrder: 'asc' | 'desc' = 'desc',
+  attrColumnOrder?: number[],
 ): Promise<void> {
 
-  const { attrMeta, attrColumns, attrByCat } = buildAttrMeta(attrDefs, categoriesDict);
+  const built = buildAttrMeta(attrDefs, categoriesDict);
+  const attrMeta = built.attrMeta;
+  const attrByCat = built.attrByCat;
+
+  // Apply custom column order from profile (if provided)
+  const attrColumns = attrColumnOrder
+    ? attrColumnOrder.map(i => built.attrColumns[i]).filter(Boolean)
+    : built.attrColumns;
 
   const ws = wb.addWorksheet('Events');
 
@@ -847,10 +868,17 @@ export async function createEventsExcel(
   wb.creator = 'Events Tracker';
   wb.created = new Date();
 
-  // Sheet 1 + 2: Events + HelpEvents
-  await addActivitiesSheetsTo(wb, events, attrDefs, categoriesDict, sortOrder);
+  // Compute column order from profile (if any)
+  let attrColumnOrder: number[] | undefined;
+  if (exportProfile) {
+    const { attrMeta, attrColumns } = buildAttrMeta(attrDefs, categoriesDict);
+    attrColumnOrder = getProfileAttrOrder(exportProfile, attrColumns, attrMeta);
+  }
 
-  // Apply export profile (column grouping) after sheet is built
+  // Sheet 1 + 2: Events + HelpEvents (with profile column order)
+  await addActivitiesSheetsTo(wb, events, attrDefs, categoriesDict, sortOrder, attrColumnOrder);
+
+  // Apply export profile (column grouping + widths) after sheet is built
   if (exportProfile) {
     applyProfileToWorkbook(wb, exportProfile, attrDefs, categoriesDict);
   }

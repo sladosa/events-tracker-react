@@ -1,17 +1,17 @@
 /**
  * Export Profile System
  * ====================
- * Saves/loads column visibility and order as reusable "recipes" for Excel export.
+ * Saves/loads column visibility, order, and widths as reusable "recipes" for Excel export.
  *
  * Workflow:
- *   1. Export Preview (10 rows) → all columns visible
- *   2. User groups/collapses columns in Excel (Data > Group > Collapse)
- *   3. Import Profile → reads column grouping state → saves to area.settings
- *   4. Export with profile → applies grouping + order, profile name in Filter sheet + filename
+ *   1. Export Preview (10 rows) → all columns visible, default order
+ *   2. User rearranges columns, adjusts widths, groups/collapses in Excel
+ *   3. Import Profile → reads column order, widths, grouping → saves to area.settings
+ *   4. Export with profile → applies order + widths + grouping, profile name in Filter sheet + filename
  */
 
 import ExcelJS from 'exceljs';
-import { FIXED_COLUMNS, ATTR_COL_START, buildAttrMeta } from './excelExport';
+import { FIXED_COLUMNS, ATTR_COL_START } from './excelExport';
 import type { ExportAttrDef, ExportCategoriesDict } from './excelTypes';
 
 // ─────────────────────────────────────────────
@@ -19,17 +19,27 @@ import type { ExportAttrDef, ExportCategoriesDict } from './excelTypes';
 // ─────────────────────────────────────────────
 
 export interface ExportProfileColumn {
-  /** Column identifier: fixed column name (e.g. "event_id") or "attr:<attrDefId>" */
+  /** Column identifier: fixed column name (e.g. "event_id") or "attr:Area||CatPath||AttrName" */
   key: string;
   /** 0 = normal, 1+ = grouped */
   outlineLevel: number;
   /** true = collapsed/hidden */
   hidden: boolean;
+  /** Column width (Excel units) */
+  width?: number;
+}
+
+export interface ProfileFilterState {
+  periodKey?: string;
+  sortOrder?: 'asc' | 'desc';
+  commentSearch?: string;
+  attrFilterRaw?: string;
 }
 
 export interface ExportProfile {
   columns: ExportProfileColumn[];
   createdAt: string;
+  filterState?: ProfileFilterState;
 }
 
 export type ExportProfiles = Record<string, ExportProfile>;
@@ -39,16 +49,12 @@ export type ExportProfiles = Record<string, ExportProfile>;
 // ─────────────────────────────────────────────
 
 /**
- * Read column grouping state from an exported xlsx.
- * Returns an ExportProfile with each column's visibility state.
+ * Read column grouping state, order, and widths from an exported xlsx.
+ * The order of LEGEND entries determines the attribute column order in exports.
  */
 export function readProfileFromWorkbook(wb: ExcelJS.Workbook): ExportProfile | null {
   const ws = wb.getWorksheet('Events');
   if (!ws) return null;
-
-  // Build a map from column index → attrDefId by reading the LEGEND section.
-  // LEGEND format: row has col A = letter (e.g. "I"), col D = attribute name
-  // We need to find the LEGEND, read it, then check column states.
 
   // Find LEGEND start
   let legendHeaderRow = -1;
@@ -60,10 +66,8 @@ export function readProfileFromWorkbook(wb: ExcelJS.Workbook): ExportProfile | n
 
   if (legendHeaderRow === -1) return null;
 
-  // Read LEGEND rows to build colIndex → attrDefId mapping
-  // We don't have attrDefId in the xlsx, so we use "area:categoryPath:attrName" as key
-  // For import back, we'll match by col letter position
-  const colLetterToLegendKey = new Map<string, string>();
+  // Read LEGEND rows — order in file = desired column order
+  const legendEntries: { letter: string; legendKey: string }[] = [];
 
   ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber <= legendHeaderRow) return;
@@ -73,7 +77,7 @@ export function readProfileFromWorkbook(wb: ExcelJS.Workbook): ExportProfile | n
     const area = String(row.getCell(2).value ?? '').trim();
     const catPath = String(row.getCell(3).value ?? '').trim();
     const attrName = String(row.getCell(4).value ?? '').trim();
-    colLetterToLegendKey.set(letter, `${area}||${catPath}||${attrName}`);
+    legendEntries.push({ letter, legendKey: `${area}||${catPath}||${attrName}` });
   });
 
   const columns: ExportProfileColumn[] = [];
@@ -85,11 +89,12 @@ export function readProfileFromWorkbook(wb: ExcelJS.Workbook): ExportProfile | n
       key: FIXED_COLUMNS[i],
       outlineLevel: col.outlineLevel ?? 0,
       hidden: col.hidden ?? false,
+      width: col.width ?? undefined,
     });
   }
 
-  // Attribute columns (I+)
-  for (const [letter, legendKey] of colLetterToLegendKey) {
+  // Attribute columns — read in LEGEND order (= user's desired order)
+  for (const { letter, legendKey } of legendEntries) {
     const colIdx = colLetterToIndex(letter);
     if (colIdx < 1) continue;
     const col = ws.getColumn(colIdx);
@@ -97,6 +102,7 @@ export function readProfileFromWorkbook(wb: ExcelJS.Workbook): ExportProfile | n
       key: `attr:${legendKey}`,
       outlineLevel: col.outlineLevel ?? 0,
       hidden: col.hidden ?? false,
+      width: col.width ?? undefined,
     });
   }
 
@@ -107,51 +113,81 @@ export function readProfileFromWorkbook(wb: ExcelJS.Workbook): ExportProfile | n
 }
 
 // ─────────────────────────────────────────────
-// Apply profile to a workbook
+// Get column reorder from profile
 // ─────────────────────────────────────────────
 
 /**
- * Apply an ExportProfile to the Events worksheet — sets column grouping and collapse state.
- * Call this AFTER addActivitiesSheetsTo() has built the sheet.
+ * Given a profile and the default attr columns from buildAttrMeta,
+ * return the indices that reorder attrColumns to match the profile's LEGEND order.
+ * Attrs not in the profile are appended at the end.
+ */
+export function getProfileAttrOrder(
+  profile: ExportProfile,
+  attrColumns: { categoryPath: string; attrName: string; attrDefId: string }[],
+  attrMeta: Map<string, { areaName: string; categoryPath: string }>,
+): number[] {
+  // Build a map: legendKey → profile position (among attr columns only)
+  const profileOrder = new Map<string, number>();
+  let attrIdx = 0;
+  for (const pc of profile.columns) {
+    if (pc.key.startsWith('attr:')) {
+      profileOrder.set(pc.key, attrIdx++);
+    }
+  }
+
+  // Build legendKey for each attrColumn
+  const attrWithKeys = attrColumns.map((ac, idx) => {
+    const meta = attrMeta.get(ac.attrDefId);
+    const legendKey = meta
+      ? `attr:${meta.areaName}||${meta.categoryPath}||${ac.attrName}`
+      : `attr:||${ac.categoryPath}||${ac.attrName}`;
+    const order = profileOrder.get(legendKey) ?? 999999 + idx;
+    return { originalIdx: idx, order };
+  });
+
+  attrWithKeys.sort((a, b) => a.order - b.order);
+  return attrWithKeys.map(a => a.originalIdx);
+}
+
+// ─────────────────────────────────────────────
+// Apply profile to a workbook (grouping, widths)
+// ─────────────────────────────────────────────
+
+/**
+ * Apply an ExportProfile to the Events worksheet — sets column grouping, collapse, and widths.
+ * Column ORDER is applied BEFORE building the sheet (via getProfileAttrOrder + addActivitiesSheetsTo).
+ * This function handles post-build styling: grouping + widths.
+ * Attr columns are matched positionally (profile attr order = sheet column order).
  */
 export function applyProfileToWorkbook(
   wb: ExcelJS.Workbook,
   profile: ExportProfile,
-  attrDefs: ExportAttrDef[],
-  categoriesDict: ExportCategoriesDict,
+  _attrDefs: ExportAttrDef[],
+  _categoriesDict: ExportCategoriesDict,
 ): void {
   const ws = wb.getWorksheet('Events');
   if (!ws) return;
 
-  // Build lookup: key → profile column state
-  const profileMap = new Map<string, ExportProfileColumn>();
-  for (const pc of profile.columns) {
-    profileMap.set(pc.key, pc);
-  }
-
   // Apply to fixed columns
   for (let i = 0; i < FIXED_COLUMNS.length; i++) {
-    const pc = profileMap.get(FIXED_COLUMNS[i]);
+    const pc = profile.columns.find(c => c.key === FIXED_COLUMNS[i]);
     if (pc) {
       const col = ws.getColumn(i + 1);
       col.outlineLevel = pc.outlineLevel;
       col.hidden = pc.hidden;
+      if (pc.width) col.width = pc.width;
     }
   }
 
-  // Apply to attribute columns — match by "attr:area||catPath||attrName"
-  const { attrMeta, attrColumns } = buildAttrMeta(attrDefs, categoriesDict);
-  for (let idx = 0; idx < attrColumns.length; idx++) {
-    const ac = attrColumns[idx];
-    const meta = attrMeta.get(ac.attrDefId)!;
-    const legendKey = `attr:${meta.areaName}||${meta.categoryPath}||${ac.attrName}`;
-    const pc = profileMap.get(legendKey);
-    if (pc) {
-      const colIdx = ATTR_COL_START + idx;
-      const col = ws.getColumn(colIdx);
-      col.outlineLevel = pc.outlineLevel;
-      col.hidden = pc.hidden;
-    }
+  // Apply to attribute columns — profile attr order = sheet column order
+  const profileAttrCols = profile.columns.filter(c => c.key.startsWith('attr:'));
+  for (let idx = 0; idx < profileAttrCols.length; idx++) {
+    const pc = profileAttrCols[idx];
+    const colIdx = ATTR_COL_START + idx;
+    const col = ws.getColumn(colIdx);
+    col.outlineLevel = pc.outlineLevel;
+    col.hidden = pc.hidden;
+    if (pc.width) col.width = pc.width;
   }
 
   // Set max outline level for column grouping
@@ -188,6 +224,33 @@ export function readProfileNameFromWorkbook(wb: ExcelJS.Workbook): string | null
     }
   });
   return profileName;
+}
+
+/**
+ * Read filter settings from the Filter sheet of an exported xlsx.
+ * Returns a ProfileFilterState that can be stored with the profile.
+ */
+export function readFilterFromWorkbook(wb: ExcelJS.Workbook): ProfileFilterState | null {
+  const ws = wb.getWorksheet('Filter');
+  if (!ws) return null;
+
+  const kvs: Record<string, string> = {};
+  ws.eachRow({ includeEmpty: false }, (row) => {
+    const key = String(row.getCell(1).value ?? '').trim();
+    const val = String(row.getCell(2).value ?? '').trim();
+    if (key && val) kvs[key] = val;
+  });
+
+  if (Object.keys(kvs).length === 0) return null;
+
+  const result: ProfileFilterState = {};
+
+  if (kvs['Period key']) result.periodKey = kvs['Period key'];
+  if (kvs['Sort order']) result.sortOrder = kvs['Sort order'] === 'Oldest first' ? 'asc' : 'desc';
+  if (kvs['Comment filter']) result.commentSearch = kvs['Comment filter'];
+  if (kvs['Attribute filter']) result.attrFilterRaw = kvs['Attribute filter'];
+
+  return Object.keys(result).length > 0 ? result : null;
 }
 
 /**

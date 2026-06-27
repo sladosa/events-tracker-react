@@ -387,7 +387,7 @@ async function smartReclassify(
   if (toUpdate.length === 0) return { toCreate, toUpdate, warnings: [] };
 
   const catByPath: Record<string, string> = {};
-  for (const [id, info] of Object.entries(categoriesDict)) catByPath[info.full_path] = id;
+  for (const [id, info] of Object.entries(categoriesDict)) catByPath[`${info.area_name}||${info.full_path}`] = id;
 
   const eventIds = toUpdate.map(r => r.event_id!).filter(Boolean);
 
@@ -423,7 +423,7 @@ async function smartReclassify(
     }
 
     const existingCatId  = existingMap.get(eid)!;
-    const expectedCatId  = catByPath[row.category_path] ?? null;
+    const expectedCatId  = catByPath[`${row.area}||${row.category_path}`] ?? null;
 
     if (existingCatId !== expectedCatId) {
       reclassifiedCreates.push({ ...row, event_id: null });
@@ -461,7 +461,7 @@ export function validateImportData(
 ): ValidationResult {
   const errors: string[] = [];
   const catByPath: Record<string, string> = {};
-  for (const [id, info] of Object.entries(categoriesDict)) catByPath[info.full_path] = id;
+  for (const [id, info] of Object.entries(categoriesDict)) catByPath[`${info.area_name}||${info.full_path}`] = id;
 
   const validCreates: ParsedImportRow[] = [];
   const validUpdates: ParsedImportRow[] = [];
@@ -470,7 +470,7 @@ export function validateImportData(
     const rowErrors: string[] = [];
     if (!row.event_date)    rowErrors.push(`Row ${row._source_row}: event_date is required`);
     if (!row.category_path) rowErrors.push(`Row ${row._source_row}: Category_Path is required`);
-    else if (!catByPath[row.category_path]) rowErrors.push(`Row ${row._source_row}: Category_Path '${row.category_path}' not found`);
+    else if (!catByPath[`${row.area}||${row.category_path}`]) rowErrors.push(`Row ${row._source_row}: Category_Path '${row.category_path}' not found in area '${row.area}'`);
 
     if (rowErrors.length > 0) errors.push(...rowErrors);
     else validCreates.push(row);
@@ -495,16 +495,21 @@ export function validateImportData(
 function getHierarchyLevels(
   categoryPath:   string,
   categoriesDict: ExportCategoriesDict,
+  areaName?:      string,
 ): Array<{ partialPath: string; categoryId: string }> {
   const pathToId: Record<string, string> = {};
-  for (const [id, info] of Object.entries(categoriesDict)) pathToId[info.full_path] = id;
+  for (const [id, info] of Object.entries(categoriesDict)) {
+    pathToId[`${info.area_name}||${info.full_path}`] = id;
+    if (!areaName) pathToId[info.full_path] = id;
+  }
 
   const parts = categoryPath.split(' > ').map(p => p.trim());
   const result: Array<{ partialPath: string; categoryId: string }> = [];
 
   for (let i = 1; i <= parts.length; i++) {
     const partial = parts.slice(0, i).join(' > ');
-    const catId   = pathToId[partial];
+    const key     = areaName ? `${areaName}||${partial}` : partial;
+    const catId   = pathToId[key];
     if (catId) result.push({ partialPath: partial, categoryId: catId });
   }
 
@@ -546,7 +551,7 @@ export async function applyImportChanges(
   }
 
   const catByPath: Record<string, string> = {};
-  for (const [id, info] of Object.entries(categoriesDict)) catByPath[info.full_path] = id;
+  for (const [id, info] of Object.entries(categoriesDict)) catByPath[`${info.area_name}||${info.full_path}`] = id;
 
   // ── BUG-F fix: reclassify toUpdate rows za 'replace' sesije ──────────────
   // Ako je sesija odlučena kao 'replace', stari leaf eventi su već obrisani
@@ -559,7 +564,7 @@ export async function applyImportChanges(
     for (const row of toUpdate) {
       const ssParsed       = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
       const sessionISO     = toISO(row.event_date, ssParsed);
-      const levels         = getHierarchyLevels(row.category_path, categoriesDict);
+      const levels         = getHierarchyLevels(row.category_path, categoriesDict, row.area);
       const leafCatId      = levels[levels.length - 1]?.categoryId ?? '';
       const sessionKey     = `${row.event_date}__${sessionISO}__${leafCatId}`;
       if (overwriteDecisions.get(sessionKey) === 'replace') {
@@ -718,7 +723,7 @@ export async function applyImportChanges(
 
   // Prolaz 1: grupiraj redove po sessionISO, P3-merge parent atribute
   for (const row of toCreate) {
-    const hierarchyLevels = getHierarchyLevels(row.category_path, categoriesDict);
+    const hierarchyLevels = getHierarchyLevels(row.category_path, categoriesDict, row.area);
     if (hierarchyLevels.length === 0) {
       errors.push(`Row ${row._source_row}: Invalid category path '${row.category_path}'`);
       continue;
@@ -776,7 +781,7 @@ export async function applyImportChanges(
       // BUG-G fix: parent evente (Activity, Gym) treba brisati jer Replace ranije
       // ostavljao stare parent evente → ViewDetailsPage bi pronašao stare (krive) umjesto novih.
       // Brišemo parent evente koji NE SLUŽE drugom leaf lancu na istom session_start.
-      const firstRowLevelsForDelete = getHierarchyLevels(group.leafRows[0].category_path, categoriesDict);
+      const firstRowLevelsForDelete = getHierarchyLevels(group.leafRows[0].category_path, categoriesDict, group.leafRows[0].area);
       const parentLevelsForDelete   = firstRowLevelsForDelete.slice(0, -1);
 
       // Obriši leaf evente
@@ -825,7 +830,7 @@ export async function applyImportChanges(
     // Parent eventi — UPSERT: provjeri postoji li parent za ovaj lanac,
     // ako postoji UPDATE atribute, ako ne postoji INSERT.
     // Ovo sprečava kreiranje duplikata Activity evenata (npr. kod Overwrite).
-    const firstRowLevels = getHierarchyLevels(group.leafRows[0].category_path, categoriesDict);
+    const firstRowLevels = getHierarchyLevels(group.leafRows[0].category_path, categoriesDict, group.leafRows[0].area);
     const parentLevels = firstRowLevels.slice(0, -1);
 
     for (let i = 0; i < parentLevels.length; i++) {
@@ -964,7 +969,7 @@ export async function applyImportChanges(
   for (const row of toUpdate) {
     const ssParsed        = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
     const sessionISO      = toISO(row.event_date, ssParsed);
-    const hierarchyLevels = getHierarchyLevels(row.category_path, categoriesDict);
+    const hierarchyLevels = getHierarchyLevels(row.category_path, categoriesDict, row.area);
     const leafCategoryId  = hierarchyLevels[hierarchyLevels.length - 1]?.categoryId;
     // Isti session key kao u CREATE — leaf određuje lanac
     const sessionKey = `${row.event_date}__${sessionISO}__${leafCategoryId ?? ''}`;
@@ -1001,7 +1006,7 @@ export async function applyImportChanges(
   // Upsert parent eventi po sesiji (UPDATE tok — koristi chain disambiguation)
   for (const group of updateGroups.values()) {
     // Rekonstruiraj redosljed parent razina iz prvog reda grupe
-    const firstRowLevels = getHierarchyLevels(group.rows[0].category_path, categoriesDict);
+    const firstRowLevels = getHierarchyLevels(group.rows[0].category_path, categoriesDict, group.rows[0].area);
     // parentLevels = sve osim leaf
     const parentLevels = firstRowLevels.slice(0, -1);
 
@@ -1271,7 +1276,7 @@ export async function checkImportCollisions(
   if (toCreate.length === 0) return [];
 
   const catByPath: Record<string, string> = {};
-  for (const [id, info] of Object.entries(categoriesDict)) catByPath[info.full_path] = id;
+  for (const [id, info] of Object.entries(categoriesDict)) catByPath[`${info.area_name}||${info.full_path}`] = id;
 
   // Grupiraj CREATE redove po sessionKey (isti kao u applyImportChanges)
   const sessionMap = new Map<string, {
@@ -1280,7 +1285,7 @@ export async function checkImportCollisions(
   }>();
 
   for (const row of toCreate) {
-    const leafCategoryId = catByPath[row.category_path];
+    const leafCategoryId = catByPath[`${row.area}||${row.category_path}`];
     if (!leafCategoryId) continue;
     const ssParsed   = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
     const sessionISO = toISO(row.event_date, ssParsed);
@@ -1440,12 +1445,12 @@ export async function checkMissingCategories(
   const rows = parseDataRows(eventsWs, mapping, headerRow);
 
   const knownPaths = new Set<string>(
-    Object.values(categoriesDict).map(info => info.full_path),
+    Object.values(categoriesDict).map(info => `${info.area_name}||${info.full_path}`),
   );
 
   const missingSet = new Set<string>();
   for (const row of rows) {
-    if (row.category_path && !knownPaths.has(row.category_path)) {
+    if (row.category_path && !knownPaths.has(`${row.area}||${row.category_path}`)) {
       missingSet.add(row.category_path);
     }
   }
