@@ -487,9 +487,21 @@ S97: fix za reset bug (attrFilter/commentSearch/sortOrder nisu se resetirali pri
 - ✅ **Export Profile filter overrides** — `ProfileFilterState` tip (periodKey, sortOrder, commentSearch, attrFilterRaw); `readFilterFromWorkbook` čita Filter sheet; profil sprema filterState; `ExcelExportModal` prikazuje "📋 Profile includes filter overrides"; `doDownload` primjenjuje filter overridee iz profila (date range, sort, comment, attr filter)
 - ✅ **Attr filter raw format** — `<attrDefId>: =<value>` (exact) / `<attrDefId>: ~<value>` (partial); korisnik može editirati Filter sheet u xlsx-u, promijeniti filter, reimportati kao profil
 
-**Prioriteti za S101:**
-1. **Financije forma UX s Kokom** — testiranje na mobilnom, fine-tuning
-2. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+**Napomena S101 (2026-06-28) — Financije PROD fixes + Tip/Podtip reorganizacija:**
+- ✅ **Broj rata depends_on slug fix** — DependsOn referencirao `na_rate` umjesto stvarnog sluga `rate`; popravljeno via Structure Edit panel na PROD (Kokina Financije area)
+- ✅ **Rata config re-applied** — nova Financije area (nakon S99 reimporta) nije imala `settings.automations.rata`; SQL postavio config s ispravnim slugovima za obje area-e (`brojrata`/`izvorplacanja` za Kokinu, `broj-rata`/`izvor-placanja` za Sašinu)
+- ✅ **date_map_slug: racun** — rata datumi se sada računaju po Racunu (ZABA→11., RF→3.) umjesto po Izvoru plaćanja; `date_map` ključevi promijenjeni na račun imena
+- ✅ **Rata modal testiran** — 3 × 150 = 450, datumi 11.07/08/09 (Mastercard dan za ZABA) ✅
+- ✅ **S100 diacriticals fix NIJE uzrok** — `transliterateDiacriticals` je samo u `excelExport.ts` za Named Ranges/INDIRECT; web UI depends_on logika koristi `attributeValuesBySlug` — potpuno odvojen code path
+- ⬜ **Tip/Podtip reorganizacija** — `sql/030_financije_tip_podtip.sql` kreiran ali NIJE pokrenut; čeka Kokin pregled plana
+- ⬜ **classify_na_events.py** — Python skripta za keyword klasifikaciju N/A evenata kreirana (`data-prep_tools/Financije/`); generira xlsx s predloženim Tip/Podtip
+- 📄 **FINANCIJE_TIP_PODTIP_PLAN.md** — dizajn dokument v2 u `Claude-temp_R/`; Kokine izmjene: spojeno Domaćinstvo (bez Normal/Specijalno), auti po vozilu (C5/Lacetti), detaljna Informatika (svaki streaming servis), Zdravlje vraćeno; Povrat Nataša/Zoran pod Domaćinstvo Podtip (neto kalkulacija)
+
+**Prioriteti za S102:**
+1. **SQL 030 deploy** — pokrenuti `030_financije_tip_podtip.sql` na PROD (kad Koka potvrdi plan)
+2. **Export + Python klasifikacija** — export obje area-e, Python skripta predlaže Tip/Podtip po ključnim riječima, Koka pregledava xlsx s punim podacima (iznosi, datumi)
+3. **Bulk update** — reimport xlsx s ispravljenim Tip/Podtip vrijednostima
+4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 **Backlog (iz S97):**
 - **Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`, koristiti odgovarajuću DB kolonu (`value_number` za number, `value_boolean` za boolean itd.) s odgovarajućim operatorima
