@@ -493,15 +493,27 @@ S97: fix za reset bug (attrFilter/commentSearch/sortOrder nisu se resetirali pri
 - ✅ **date_map_slug: racun** — rata datumi se sada računaju po Racunu (ZABA→11., RF→3.) umjesto po Izvoru plaćanja; `date_map` ključevi promijenjeni na račun imena
 - ✅ **Rata modal testiran** — 3 × 150 = 450, datumi 11.07/08/09 (Mastercard dan za ZABA) ✅
 - ✅ **S100 diacriticals fix NIJE uzrok** — `transliterateDiacriticals` je samo u `excelExport.ts` za Named Ranges/INDIRECT; web UI depends_on logika koristi `attributeValuesBySlug` — potpuno odvojen code path
-- ⬜ **Tip/Podtip reorganizacija** — `sql/030_financije_tip_podtip.sql` kreiran ali NIJE pokrenut; čeka Kokin pregled plana
+- ✅ **SQL 030 Tip/Podtip** — `sql/030_financije_tip_podtip.sql` pokrenut na PROD; Tip opcije ažurirane, Podtip atribut kreiran s depends_on na Tip
 - ⬜ **classify_na_events.py** — Python skripta za keyword klasifikaciju N/A evenata kreirana (`data-prep_tools/Financije/`); generira xlsx s predloženim Tip/Podtip
 - 📄 **FINANCIJE_TIP_PODTIP_PLAN.md** — dizajn dokument v2 u `Claude-temp_R/`; Kokine izmjene: spojeno Domaćinstvo (bez Normal/Specijalno), auti po vozilu (C5/Lacetti), detaljna Informatika (svaki streaming servis), Zdravlje vraćeno; Povrat Nataša/Zoran pod Domaćinstvo Podtip (neto kalkulacija)
 
-**Prioriteti za S102:**
-1. **SQL 030 deploy** — pokrenuti `030_financije_tip_podtip.sql` na PROD (kad Koka potvrdi plan)
-2. **Export + Python klasifikacija** — export obje area-e, Python skripta predlaže Tip/Podtip po ključnim riječima, Koka pregledava xlsx s punim podacima (iznosi, datumi)
+**Napomena S102 (2026-06-29) — default_map + attr filter slug + Structure Import fix:**
+- ✅ **`default_map` u depends_on sustavu** — per-WhenValue default vrijednosti; `validation_rules.depends_on.default_map`; Izvor=Visa→Status=Planiran, Izvor=Račun→Status=Izvršen
+  - `useAttributeDefinitions.ts`: `ParsedAttributeOptions.dependsOn.defaultMap` + `getDefaultForDependency()`
+  - `structureImport.ts`: čita Default kolonu per-WhenValue → gradi `default_map`
+  - `structureExcel.ts`: piše Default kolonu per-WhenValue iz `default_map`
+  - `AttributeChainForm.tsx`: parent promjena → `default_map[parentValue]` umjesto `null`
+  - `AddActivityPage.tsx`: second pass u default pre-fill useEffect za shortcut pre-fill
+  - `StructureNodeEditPanel.tsx`: editabilno "default" polje uz svaki WhenValue red
+- ✅ **Structure Import slug-based grouping** — key `${categoryPath}||${slug || attrName}`; fiksira mismatch kad bazni red ima "Izvor placanja" a DependsOn redovi "Izvor" (isti slug)
+- ✅ **Attr filter slug format** — UUID → slug u Filter sheet exportu; `parseAttrFilterRaw()` prihvaća slug, UUID i `*`; Comment/Attribute filter uvijek prisutni; Data Validation input message
+- ✅ **Help docs** — `docs/help/structure.md`: `default_map`, `*` wildcard, uvjetni default sekcije
+
+**Prioriteti za S103:**
+1. **Testiranje S102** — T-S102-3/4/8/9/10/11/12 + carryover testovi
+2. **Export + Python klasifikacija** — export obje area-e, Python skripta predlaže Tip/Podtip
 3. **Bulk update** — reimport xlsx s ispravljenim Tip/Podtip vrijednostima
-4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlove
 
 **Backlog (iz S97):**
 - **Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`, koristiti odgovarajuću DB kolonu (`value_number` za number, `value_boolean` za boolean itd.) s odgovarajućim operatorima

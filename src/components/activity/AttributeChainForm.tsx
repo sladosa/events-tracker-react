@@ -136,7 +136,8 @@ export function AttributeChainForm({
     if (!changedAttr) return;
     const changedSlug = changedAttr.slug;
 
-    // 3. Pronadji sve atribute koji ovise o ovom slug-u i cleari ih
+    // 3. Pronadji sve atribute koji ovise o ovom slug-u i postavi default_map ili cleari
+    const parentVal = value != null ? String(value) : null;
     for (const attr of allAttributes) {
       const parsed = parseValidationRules(attr.validation_rules);
       if (!parsed.dependsOn) continue;
@@ -145,7 +146,10 @@ export function AttributeChainForm({
         depSlug === changedSlug ||
         normalizeSlug(depSlug) === normalizeSlug(changedSlug)
       ) {
-        onChange(attr.id, null); // reset dependent na null
+        const mappedDefault = parentVal && parsed.dependsOn.defaultMap
+          ? (parsed.dependsOn.defaultMap[parentVal] ?? parsed.dependsOn.defaultMap['*'] ?? null)
+          : null;
+        onChange(attr.id, mappedDefault);
       }
     }
   }, [onChange, allAttributes, normalizeSlug]);

@@ -523,13 +523,16 @@ export function AddActivityPage() {
 
   // Apply preset default_attributes / default_value when attributes first load (e.g. Valuta → EUR)
   // Only sets values not already in the map so draft restores are not overwritten
+  // Second pass: default_map overrides (e.g. Izvor plaćanja=Visa → Status=Planiran)
   useEffect(() => {
     if (attributesByCategory.size === 0) return;
     setAttributeValues(prev => {
       const next = new Map(prev);
       let changed = false;
+      const allAttrs: { attr: import('@/types').AttributeDefinition }[] = [];
       for (const attrs of attributesByCategory.values()) {
         for (const attr of attrs) {
+          allAttrs.push({ attr });
           if (prev.has(attr.id)) continue;
           const presetValue = selectedPresetDefaults?.[attr.id];
           if (presetValue !== undefined && presetValue !== null) {
@@ -539,6 +542,27 @@ export function AddActivityPage() {
             next.set(attr.id, { definitionId: attr.id, value: attr.default_value, touched: true });
             changed = true;
           }
+        }
+      }
+      // Second pass: apply default_map when parent was pre-filled (preset or default)
+      for (const { attr } of allAttrs) {
+        const presetValue = selectedPresetDefaults?.[attr.id];
+        if (presetValue !== undefined && presetValue !== null) continue;
+        const parsed = parseValidationRules(attr.validation_rules);
+        if (!parsed.dependsOn?.defaultMap) continue;
+        const depSlug = parsed.dependsOn!.attributeSlug;
+        const parentAttr = allAttrs.find(a =>
+          a.attr.slug === depSlug
+          || a.attr.slug.toLowerCase().replace(/[-_]/g, '_') === depSlug.toLowerCase().replace(/[-_]/g, '_')
+        )?.attr;
+        if (!parentAttr) continue;
+        const parentVal = next.get(parentAttr.id)?.value;
+        if (parentVal == null) continue;
+        const mapped = parsed.dependsOn.defaultMap[String(parentVal)]
+          ?? parsed.dependsOn.defaultMap['*'];
+        if (mapped && next.get(attr.id)?.value !== mapped) {
+          next.set(attr.id, { definitionId: attr.id, value: mapped, touched: true });
+          changed = true;
         }
       }
       return changed ? next : prev;

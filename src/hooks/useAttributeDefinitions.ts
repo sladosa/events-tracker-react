@@ -128,7 +128,7 @@ export function useLookupValues(lookupName: string, parentKey?: string | null): 
  * Podržava:
  * - suggest: string[] (static options from Excel import)
  * - enum: string[] (fixed options)
- * - depends_on: { attribute_slug, options_map }
+ * - depends_on: { attribute_slug, options_map, default_map? }
  */
 export interface ParsedAttributeOptions {
   type: 'none' | 'suggest' | 'enum';
@@ -137,6 +137,7 @@ export interface ParsedAttributeOptions {
   dependsOn?: {
     attributeSlug: string;
     optionsMap: Record<string, string[]>;
+    defaultMap?: Record<string, string>;
   };
 }
 
@@ -175,6 +176,7 @@ export function parseValidationRules(
       depends_on?: {
         attribute_slug: string;
         options_map: Record<string, string[]>;
+        default_map?: Record<string, string>;
       };
       allow_other?: boolean;
     };
@@ -194,6 +196,7 @@ export function parseValidationRules(
       result.dependsOn = {
         attributeSlug: vr.depends_on.attribute_slug,
         optionsMap: vr.depends_on.options_map,
+        ...(vr.depends_on.default_map && { defaultMap: vr.depends_on.default_map }),
       };
     }
 
@@ -279,4 +282,13 @@ export function getOptionsForDependency(
 
   // Fallback na default opcije
   return parsed.options;
+}
+
+export function getDefaultForDependency(
+  parsed: ParsedAttributeOptions,
+  dependencyValue: string | null
+): string | undefined {
+  if (!parsed.dependsOn?.defaultMap || !dependencyValue) return undefined;
+  return parsed.dependsOn.defaultMap[dependencyValue]
+    ?? parsed.dependsOn.defaultMap['*'];
 }

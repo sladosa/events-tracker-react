@@ -193,8 +193,8 @@ export function addFilterSheet(
     ['Period key',   info.periodKey ?? ''],
     ['Sort order',   info.sortOrder === 'asc' ? 'Oldest first' : 'Newest first'],
   ];
-  if (info.commentSearch) rows.push(['Comment filter', info.commentSearch]);
-  if (info.attrFilterDesc) rows.push(['Attribute filter', info.attrFilterDesc]);
+  rows.push(['Comment filter', info.commentSearch ?? '']);
+  rows.push(['Attribute filter', info.attrFilterDesc ?? '']);
   if (info.exportProfile) rows.push(['Export profile', info.exportProfile]);
 
   for (const [key, value] of rows) {
@@ -203,6 +203,16 @@ export function addFilterSheet(
     row.getCell(1).font = { bold: true };
     row.getCell(1).border = THIN_BORDER;
     row.getCell(2).border = THIN_BORDER;
+    if (key === 'Attribute filter') {
+      row.getCell(2).dataValidation = {
+        type: 'textLength',
+        operator: 'greaterThanOrEqual',
+        showInputMessage: true,
+        promptTitle: 'Attribute filter',
+        prompt: 'Format: slug: =exact or slug: ~partial\nExamples: racun: =Sašin tekući RF, tip: ~Dom\n*: ~text = search in any attribute\nEmpty = no filter. Slugs are in Structure sheet col H.',
+        formulae: [0],
+      };
+    }
   }
 }
 

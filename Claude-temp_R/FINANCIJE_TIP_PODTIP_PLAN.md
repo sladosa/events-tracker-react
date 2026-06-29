@@ -21,21 +21,21 @@ Atribut **Napomena** — slobodan tekst (originalni opis iz izvoda)
 
 ### Tip (L1) opcije — kompletna lista
 
-| Tip (L1)         | Podtip (L2) opcije                                                                                     | Smjer    | Napomena                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------ |
-| **Domaćinstvo**  | Struja · Voda · Holding (smeće) · Plin · Bankovni troškovi · Popravci i održavanje · Investicije · **Povrat Nataša** · **Povrat Zoran** | oba | Povrat = Uplata kad susjedi vrate svoj dio |
-| **Informatika**  | T-mobile · T-com · HP · Saša projekti · Disney · Sky · Prime · HBOmax · Youtube · AudibleKoka · AudibleSasa · Cloud backup · Microsoft | Isplata  | U Napomenu: detalji                        |
-| **Ostavine**     | Advokati                                                                                                | Isplata  | Pravni troškovi                            |
-| **Zdravlje**     | Medical · Lječnička komora · PP · PassSport · Sportski rekviziti                                        | Isplata  | PP = Posmrtna pripomoć                     |
-| **auto C5**      | gorivo · registracija · parking · popravci                                                              | Isplata  | U Napomenu: detalji                        |
-| **auto Lacetti** | gorivo · registracija · parking · popravci                                                              | Isplata  | U Napomenu: detalji                        |
-| **Putovanja**    | karte · smještaj · restoran                                                                             | Isplata  | U Napomenu: detalji                        |
-| **Ostalo**       | Odjeća/obuća · Pokloni · Kave/jelo vani · Temu · Taksi · Kino/Kazalište/Muzeji                         | Isplata  | U Napomenu: detalji                        |
-| **Mirovina**     | Saša · Koka                                                                                             | Uplata   | Redovni mjesečni prihod                    |
-| **Najam**        | Anja                                                                                                    | Uplata   | Rata pozajmice koju Anja vraća             |
-| **Transfer**     | *(bez podtipa)*                                                                                         | oba      | Interni prijenos između računa             |
-| **Povrat**       | *(slobodan tekst u Napomeni)*                                                                           | Uplata   | Ostali povrati koji ne spadaju u kategoriju |
-| **Ostali prihodi** | *(slobodan tekst u Napomeni)*                                                                         | Uplata   | Povrat poreza, naknada, ostalo             |
+| Tip (L1)           | Podtip (L2) opcije                                                                                                                      | Smjer   | Napomena                                    |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------- |
+| **Domaćinstvo**    | Struja · Voda · Holding (smeće) · Plin · Bankovni troškovi · Popravci i održavanje · Investicije · **Povrat Nataša** · **Povrat Zoran** | oba     | Povrat = Uplata kad susjedi vrate svoj dio  |
+| **Informatika**    | T-mobile · T-com · HP · Saša projekti · Disney · Sky · Prime · HBOmax · Youtube · AudibleKoka · AudibleSasa · Cloud backup · Microsoft  | Isplata | U Napomenu: detalji                         |
+| **Ostavine**       | Advokati                                                                                                                                | Isplata | Pravni troškovi                             |
+| **Zdravlje**       | Medical · Lječnička komora · PP · PassSport · Sportski rekviziti                                                                        | Isplata | PP = Posmrtna pripomoć                      |
+| **auto C5**        | gorivo · registracija · parking · popravci                                                                                              | Isplata | U Napomenu: detalji                         |
+| **auto Lacetti**   | gorivo · registracija · parking · popravci                                                                                              | Isplata | U Napomenu: detalji                         |
+| **Putovanja**      | karte · smještaj · restoran                                                                                                             | Isplata | U Napomenu: detalji                         |
+| **Ostalo**         | Odjeća/obuća · Pokloni · Kave/jelo vani · Temu · Taksi · Kino/Kazalište/Muzeji                                                          | Isplata | U Napomenu: detalji                         |
+| **Mirovina**       | Saša · Koka                                                                                                                             | Uplata  | Redovni mjesečni prihod                     |
+| **Najam**          | Anja                                                                                                                                    | Uplata  | Rata pozajmice koju Anja vraća              |
+| **Transfer**       | *(bez podtipa)*                                                                                                                         | oba     | Interni prijenos između računa              |
+| **Povrat**         | *(slobodan tekst u Napomeni)*                                                                                                           | Uplata  | Ostali povrati koji ne spadaju u kategoriju |
+| **Ostali prihodi** | *(slobodan tekst u Napomeni)*                                                                                                           | Uplata  | Povrat poreza, naknada, ostalo              |
 
 ### Primjer: Domaćinstvo filter prikazuje kompletnu sliku
 
@@ -78,20 +78,20 @@ PP, PassSport, Sportski rekviziti.
 
 ## Mapiranje starih Tip vrijednosti → novi Tip
 
-| Stari Tip      | → Novi Tip (L1)  | Podtip (L2)                 | Smjer   |
-| -------------- | ---------------- | --------------------------- | ------- |
-| Dom/hrana      | Domaćinstvo      | *(odrediti po Napomeni)*    | Isplata |
-| Prevoz         | auto C5 ili Lacetti ili Ostalo/Taksi | *(po Napomeni)*  | Isplata |
-| Zdravlje       | Zdravlje         | *(po Napomeni)*             | Isplata |
-| Osobni projekt | Informatika      | *(po Napomeni)*             | Isplata |
-| Zabava         | Ostalo           | *(po Napomeni)*             | Isplata |
-| PP             | Zdravlje         | PP                          | Isplata |
-| Rate           | *(originalni Tip)* | *(originalni Podtip)*     | Isplata |
-| Transfer       | Transfer         | —                           | oba     |
-| Povrat         | Domaćinstvo ili Povrat | Povrat Nataša/Zoran ili *(po Napomeni)* | Uplata |
-| Naknada        | Ostali prihodi   | —                           | Uplata  |
-| N/A            | *(klasificirati)* | —                          | oba     |
-| Ostalo         | Ostalo           | *(po Napomeni)*             | oba     |
+| Stari Tip      | → Novi Tip (L1)                      | Podtip (L2)                             | Smjer   |
+| -------------- | ------------------------------------ | --------------------------------------- | ------- |
+| Dom/hrana      | Domaćinstvo                          | *(odrediti po Napomeni)*                | Isplata |
+| Prevoz         | auto C5 ili Lacetti ili Ostalo/Taksi | *(po Napomeni)*                         | Isplata |
+| Zdravlje       | Zdravlje                             | *(po Napomeni)*                         | Isplata |
+| Osobni projekt | Informatika                          | *(po Napomeni)*                         | Isplata |
+| Zabava         | Ostalo                               | *(po Napomeni)*                         | Isplata |
+| PP             | Zdravlje                             | PP                                      | Isplata |
+| Rate           | *(originalni Tip)*                   | *(originalni Podtip)*                   | Isplata |
+| Transfer       | Transfer                             | —                                       | oba     |
+| Povrat         | Domaćinstvo ili Povrat               | Povrat Nataša/Zoran ili *(po Napomeni)* | Uplata  |
+| Naknada        | Ostali prihodi                       | —                                       | Uplata  |
+| N/A            | *(klasificirati)*                    | —                                       | oba     |
+| Ostalo         | Ostalo                               | *(po Napomeni)*                         | oba     |
 
 ---
 

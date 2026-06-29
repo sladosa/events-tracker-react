@@ -50,6 +50,7 @@ interface StructureNodeEditPanelProps {
 interface DependsOnRow {
   whenValue: string;
   options: string;   // newline-separated
+  defaultVal?: string;
   isNew?: boolean;
 }
 
@@ -159,9 +160,11 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
   if (parsed.dependsOn) {
     validationType = 'depends_on';
     dependsOnSlug = parsed.dependsOn.attributeSlug;
+    const defMap = parsed.dependsOn.defaultMap;
     dependsOnMap = Object.entries(parsed.dependsOn.optionsMap).map(([when, opts]) => ({
       whenValue: when,
       options: opts.join('\n'),
+      defaultVal: defMap?.[when] ?? '',
     }));
     suggestOptions = parsed.options.join('\n');
   } else if (parsed.type === 'suggest' || parsed.type === 'enum') {
@@ -200,14 +203,22 @@ function buildValidationRules(
       optionsMap[row.whenValue.trim()] = row.options
         .split('\n').map(s => s.trim()).filter(Boolean);
     }
+    const depObj: Record<string, unknown> = {
+      attribute_slug: state.dependsOnSlug,
+      options_map: optionsMap,
+    };
+    const defaultMap: Record<string, string> = {};
+    for (const row of state.dependsOnMap) {
+      if (row.defaultVal && row.whenValue.trim()) {
+        defaultMap[row.whenValue.trim()] = row.defaultVal;
+      }
+    }
+    if (Object.keys(defaultMap).length > 0) depObj.default_map = defaultMap;
     return {
       type: 'suggest',
       suggest: defaultOpts,
       allow_other: true,
-      depends_on: {
-        attribute_slug: state.dependsOnSlug,
-        options_map: optionsMap,
-      },
+      depends_on: depObj,
     };
   }
   if (state.validationType === 'suggest') {
@@ -856,7 +867,7 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
               </div>
 
               <div>
-                <FieldLabel>WhenValue → Options</FieldLabel>
+                <FieldLabel>WhenValue → Options (+ Default)</FieldLabel>
                 <div className="space-y-2">
                   {attr.dependsOnMap.map((row, rowIdx) => (
                     <div key={rowIdx} className="flex gap-2 items-start">
@@ -883,6 +894,17 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
                           rows={3}
                         />
                       </div>
+                      <div className="w-24 shrink-0">
+                        <TextInput
+                          value={row.defaultVal ?? ''}
+                          onChange={v => {
+                            const newMap = [...attr.dependsOnMap];
+                            newMap[rowIdx] = { ...newMap[rowIdx], defaultVal: v };
+                            update(i, { dependsOnMap: newMap });
+                          }}
+                          placeholder="default"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => update(i, { dependsOnMap: attr.dependsOnMap.filter((_, idx) => idx !== rowIdx) })}
@@ -898,7 +920,7 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
                 </div>
                 <button
                   type="button"
-                  onClick={() => update(i, { dependsOnMap: [...attr.dependsOnMap, { whenValue: '', options: '', isNew: true }] })}
+                  onClick={() => update(i, { dependsOnMap: [...attr.dependsOnMap, { whenValue: '', options: '', defaultVal: '', isNew: true }] })}
                   className={cn(
                     'mt-2 text-xs px-2.5 py-1 rounded border border-dashed transition-colors',
                     'border-amber-300 text-amber-600 hover:bg-amber-50',

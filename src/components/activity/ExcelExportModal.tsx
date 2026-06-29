@@ -21,6 +21,8 @@ import { timestampSuffix, type FilterSheetInfo } from '@/lib/excelUtils';
 import type { ExportFilters } from '@/lib/excelTypes';
 import { readProfileFromWorkbook, readProfileNameFromWorkbook, readFilterFromWorkbook, sanitizeProfileName, type ExportProfiles, type ProfileFilterState } from '@/lib/exportProfile';
 import { resolvePeriodKey, type PeriodKey } from '@/hooks/useDateBounds';
+import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
+import type { ExportAttrDef } from '@/lib/excelTypes';
 
 interface ExcelExportModalProps {
   onClose: () => void;
@@ -31,11 +33,55 @@ const MIN_BATCH = 2;
 const MAX_BATCH = 50000;
 const PREVIEW_LIMIT = 10;
 
-function parseAttrFilterRaw(raw: string): { attrDefId: string; value: string; isExact: boolean } | null {
-  // Format: "uuid: =value" or "uuid: ~value"
-  const match = raw.match(/^([0-9a-f-]+):\s*([=~])(.+)$/i);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function parseAttrFilterRaw(
+  raw: string,
+  attrDefs?: ExportAttrDef[],
+): { attrDefId: string; value: string; isExact: boolean } | null {
+  // Format: "slug: =value" or "slug: ~value" or "*: ~value" or legacy "uuid: =value"
+  const match = raw.match(/^([^:]+):\s*([=~])(.+)$/);
   if (!match) return null;
-  return { attrDefId: match[1], isExact: match[2] === '=', value: match[3] };
+  const key = match[1].trim();
+  const isExact = match[2] === '=';
+  const value = match[3];
+
+  if (key === '*') return { attrDefId: ATTR_FILTER_ANY, isExact: false, value };
+  if (UUID_RE.test(key)) return { attrDefId: key, isExact, value };
+  // Slug lookup
+  if (attrDefs) {
+    const def = attrDefs.find(d => d.slug === key);
+    if (def) return { attrDefId: def.id, isExact, value };
+  }
+  return null;
+}
+
+async function resolveAttrDefsForSlug(
+  _userId: string,
+  areaId?: string | null,
+  categoryId?: string | null,
+): Promise<ExportAttrDef[]> {
+  let query = supabase.from('attribute_definitions')
+    .select('id, category_id, name, slug, data_type, unit, is_required, default_value, validation_rules, sort_order, description');
+  if (categoryId) {
+    query = query.eq('category_id', categoryId);
+  } else if (areaId) {
+    const { data: cats } = await supabase.from('categories').select('id').eq('area_id', areaId);
+    if (cats?.length) query = query.in('category_id', cats.map(c => c.id));
+  }
+  const { data } = await query;
+  return (data ?? []) as ExportAttrDef[];
+}
+
+function formatAttrFilterDesc(
+  af: { attrDefId: string; value: string; isExact: boolean },
+  attrDefs?: ExportAttrDef[],
+): string {
+  const op = af.isExact ? '=' : '~';
+  if (af.attrDefId === ATTR_FILTER_ANY) return `*: ${op}${af.value}`;
+  const def = attrDefs?.find(d => d.id === af.attrDefId);
+  const label = def?.slug || af.attrDefId;
+  return `${label}: ${op}${af.value}`;
 }
 
 function applyProfileFilterOverrides(
@@ -180,7 +226,8 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
           effectiveCommentSearch = activeProfile.filterState.commentSearch;
         }
         if (activeProfile.filterState.attrFilterRaw) {
-          const parsed = parseAttrFilterRaw(activeProfile.filterState.attrFilterRaw);
+          const defs = await resolveAttrDefsForSlug(user.id, effectiveFilters.areaId, effectiveFilters.categoryId);
+          const parsed = parseAttrFilterRaw(activeProfile.filterState.attrFilterRaw, defs);
           if (parsed) effectiveAttrFilter = parsed;
         }
       }
@@ -222,7 +269,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         periodKey:   effectivePeriodKey,
         commentSearch: effectiveCommentSearch || undefined,
         attrFilterDesc: effectiveAttrFilter
-          ? `${effectiveAttrFilter.attrDefId}: ${effectiveAttrFilter.isExact ? '=' : '~'}${effectiveAttrFilter.value}`
+          ? formatAttrFilterDesc(effectiveAttrFilter, bundle.attrDefs)
           : undefined,
         exportProfile: profileName,
       };

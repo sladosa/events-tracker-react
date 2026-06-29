@@ -89,10 +89,11 @@ interface AttrGroup {
   sort:         number;
   // Simple suggest options (valType='suggest', no dependsOn)
   simpleOptions: string[];
-  // DependsOn: { parentSlug, optionsMap }
+  // DependsOn: { parentSlug, optionsMap, defaultMap? }
   dependsOn?: {
     parentSlug: string;
     optionsMap: Record<string, string[]>;
+    defaultMap?: Record<string, string>;
   };
   // For conflict tracking
   firstRowNum: number;
@@ -276,7 +277,7 @@ function parseRows(ws: ExcelJS.Worksheet, h: HeaderInfo): ParsedRow[] {
 // ─────────────────────────────────────────────────────────────
 
 function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
-  // Key: `${categoryPath}||${attrName}` — groups all rows for same attr
+  // Key: `${categoryPath}||${slug || attrName}` — groups by slug when available
   const map = new Map<string, AttrGroup>();
   const order: string[] = []; // preserve insertion order
 
@@ -284,7 +285,7 @@ function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
     if (row.type !== 'Attribute') continue;
     if (!row.attrName) continue;
 
-    const key = `${row.categoryPath}||${row.attrName}`;
+    const key = `${row.categoryPath}||${row.slug || row.attrName}`;
 
     if (!map.has(key)) {
       order.push(key);
@@ -308,7 +309,7 @@ function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
     const group = map.get(key)!;
 
     if (row.dependsOn) {
-      // DependsOn row — build options_map
+      // DependsOn row — build options_map + defaultMap
       if (!group.dependsOn) {
         group.dependsOn = { parentSlug: row.dependsOn, optionsMap: {} };
       }
@@ -316,6 +317,10 @@ function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
         ? row.textOptions.split('|').map(s => s.trim()).filter(Boolean)
         : [];
       group.dependsOn.optionsMap[row.whenValue || '*'] = opts;
+      if (row.defaultVal) {
+        if (!group.dependsOn.defaultMap) group.dependsOn.defaultMap = {};
+        group.dependsOn.defaultMap[row.whenValue || '*'] = row.defaultVal;
+      }
     } else if (row.valType === 'suggest' && row.textOptions) {
       // Simple suggest
       group.simpleOptions = row.textOptions
@@ -334,12 +339,16 @@ function buildValidationRules(
   group: AttrGroup,
 ): Record<string, unknown> {
   if (group.dependsOn) {
+    const dep: Record<string, unknown> = {
+      attribute_slug: group.dependsOn.parentSlug,
+      options_map: group.dependsOn.optionsMap,
+    };
+    if (group.dependsOn.defaultMap && Object.keys(group.dependsOn.defaultMap).length > 0) {
+      dep.default_map = group.dependsOn.defaultMap;
+    }
     return {
       type: 'suggest',
-      depends_on: {
-        attribute_slug: group.dependsOn.parentSlug,
-        options_map: group.dependsOn.optionsMap,
-      },
+      depends_on: dep,
     };
   }
   if (group.valType === 'suggest' && group.simpleOptions.length > 0) {

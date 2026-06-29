@@ -120,6 +120,7 @@ interface SuggestRules {
   depends_on?: {
     attribute_slug: string;
     options_map: Record<string, string[]>;
+    default_map?: Record<string, string>;
   };
 }
 
@@ -271,11 +272,13 @@ function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[
   // Dependent attribute: one row per WhenValue
   const parentSlug = rules.depends_on.attribute_slug;
   const optMap = rules.depends_on.options_map;
+  const defMap = rules.depends_on.default_map;
   const rows: DataRow[] = [];
 
   for (const [whenVal, opts] of Object.entries(optMap)) {
     rows.push({
       ...base,
+      defaultVal: defMap?.[whenVal] ?? '',
       textOptions: Array.isArray(opts) ? opts.join('|') : '',
       dependsOn: parentSlug,
       whenValue: whenVal,
@@ -286,6 +289,7 @@ function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[
   if (!('*' in optMap)) {
     rows.push({
       ...base,
+      defaultVal: defMap?.['*'] ?? '',
       textOptions: '',
       dependsOn: parentSlug,
       whenValue: '*',

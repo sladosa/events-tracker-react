@@ -26,8 +26,15 @@ Atribut se prikazuje u formi samo kad drugi atribut ("parent") ima određenu vri
 Konfigurira se u Edit panelu → klikni na atribut → "Depends on" / "When value".
 - Primjer: `Broj rata` vidljiv samo kad `Na rate? = true`
 - `WhenValue = SKRIVENO`: atribut je uvijek skriven u formi (postoji u bazi, ali korisnik ga ne uređuje — za interne/sistemske vrijednosti)
+- `WhenValue = *`: catch-all — koristi se kad parent ima vrijednost koja nije eksplicitno navedena u mapi
 
-Oba pravila (`default_value` i `depends_on`) vrijede u Add Activity i Edit Activity.
+**`default_map` — uvjetni default po parent vrijednosti:**
+Uz depends_on opcije, svaki WhenValue red može imati svoj Default. Kad korisnik odabere parent vrijednost u Add Activity, zavisni atribut automatski dobiva odgovarajući default.
+- Primjer: `Izvor plaćanja = Račun` → `Status = Izvršen`; `Izvor plaćanja = Visa` → `Status = Planiran`
+- Konfigurira se u Edit panelu (treće polje "default" uz svaki WhenValue red) ili via Excel Structure import (Default kolona per-WhenValue red)
+- Ako korisnik ručno promijeni vrijednost, default se ne primjenjuje ponovo
+
+Oba pravila (`default_value`, `depends_on`, `default_map`) vrijede u Add Activity i Edit Activity.
 
 ## Kategorije — ⋮ menu opcije
 - **+ Add Leaf**: dodaj dijete kategoriju (leaf = može imati activnosti)
