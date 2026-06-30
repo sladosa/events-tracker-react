@@ -126,8 +126,6 @@ export interface FilterSheetInfo {
   dateFrom?: string | null;
   /** YYYY-MM-DD — upper bound of the export filter, or null → "All time" */
   dateTo?: string | null;
-  /** Human-readable period label, e.g. "Last 3 months" */
-  periodLabel?: string;
   /** Stable period key for re-import (e.g. "this-year", "last-3-months") */
   periodKey?: string;
   /** Sort order shown to the user */
@@ -157,6 +155,15 @@ const FILTER_HEADER_FILL: ExcelJS.Fill = {
 const FILTER_KEY_FILL: ExcelJS.Fill = {
   type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' },
 };
+
+// Valid PeriodKey values (see src/hooks/useDateBounds.ts) — kept as plain strings here
+// to avoid a circular import. 'custom' pairs with explicit Date From/To values below.
+const PERIOD_KEY_OPTIONS = [
+  'all-time', 'today', 'this-week', 'this-month', 'last-2-months',
+  'last-3-months', 'this-year', 'last-year', 'last-3-years', 'last-5-years', 'custom',
+];
+
+const SORT_ORDER_OPTIONS = ['Newest first', 'Oldest first'];
 
 /**
  * Add the "Filter" sheet (5th sheet in the unified workbook) to wb.
@@ -189,7 +196,6 @@ export function addFilterSheet(
     ['Category',     info.category ?? 'All'],
     ['Date From',    _fmtDate(info.dateFrom, 'first', info.firstRecord)],
     ['Date To',      _fmtDate(info.dateTo,   'last',  info.lastRecord)],
-    ['Period label', info.periodLabel ?? (info.exportType === 'Full Backup' ? 'All time at export' : '')],
     ['Period key',   info.periodKey ?? ''],
     ['Sort order',   info.sortOrder === 'asc' ? 'Oldest first' : 'Newest first'],
   ];
@@ -203,14 +209,46 @@ export function addFilterSheet(
     row.getCell(1).font = { bold: true };
     row.getCell(1).border = THIN_BORDER;
     row.getCell(2).border = THIN_BORDER;
+    if (key === 'Date From' || key === 'Date To') {
+      row.getCell(2).dataValidation = {
+        type: 'textLength',
+        operator: 'greaterThanOrEqual',
+        showInputMessage: true,
+        promptTitle: 'Period=custom only',
+        prompt: 'YYYY-MM-DD plain text. Used only when Period key below = "custom".\nOtherwise ignored.',
+        formulae: [0],
+      };
+    }
     if (key === 'Attribute filter') {
       row.getCell(2).dataValidation = {
         type: 'textLength',
         operator: 'greaterThanOrEqual',
         showInputMessage: true,
         promptTitle: 'Attribute filter',
-        prompt: 'Format: slug: =exact or slug: ~partial\nExamples: racun: =Sašin tekući RF, tip: ~Dom\n*: ~text = search in any attribute\nEmpty = no filter. Slugs are in Structure sheet col H.',
+        prompt: 'Format: slug:=exact or slug:~partial | *:~text=any attr\nEmpty=no filter (inherits live value). Type _ to clear override.\nSlugs: see Structure sheet col H.',
         formulae: [0],
+      };
+    }
+    if (key === 'Period key') {
+      row.getCell(2).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        showInputMessage: true,
+        showErrorMessage: true,
+        promptTitle: 'Period key',
+        prompt: 'Pick a period — overrides Date From/To when this file is used as a profile.\n"custom" = use the literal Date From/To values above as the range.\nLeave blank to keep the live filter\'s date range.',
+        formulae: [`"${PERIOD_KEY_OPTIONS.join(',')}"`],
+      };
+    }
+    if (key === 'Sort order') {
+      row.getCell(2).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        showInputMessage: true,
+        showErrorMessage: true,
+        promptTitle: 'Sort order',
+        prompt: 'Pick the sort order for this profile.',
+        formulae: [`"${SORT_ORDER_OPTIONS.join(',')}"`],
       };
     }
   }

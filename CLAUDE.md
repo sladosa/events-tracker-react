@@ -48,6 +48,7 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **`touched: true`** must be set when loading attributes from DB in Edit flow — otherwise handleSave() skips them
 - **`parentEventLoader.ts`** is the single shared service for parent event logic — never duplicate
 - **Excel Category_Path format:** Activities Events sheet col C = **bez area name** (`Domacinstvo > Automobili > Gorivo`); Structure sheet col D = **sa area name** (`TEST > Domacinstvo > Automobili > Gorivo`). `ExportCategoryInfo.full_path` nikad ne uključuje area name (hodanje po `parent_category_id` staje na L1). `StructureNode.fullPath` uključuje area name.
+- **Excel Data Validation `promptTitle`/`prompt` limiti:** `promptTitle` ≤32 znaka, `prompt` ≤255 znakova — premašivanje generira neispravan OOXML i Excel javlja "We found a problem with some content" + nudi repair. Provjeri duljinu (`string.length`) prije dodavanja/proširivanja input-message teksta na bilo koju ćeliju (vidi `excelUtils.ts` Filter sheet).
 - **Before every commit:** `npm run typecheck && npm run build`
 
 ---
@@ -236,6 +237,7 @@ Faze i status:
 - **BUG-S52-1:** ✅ RIJEŠEN (S53)
 - **E7/E8/E9 parallel:** Padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - Bulk delete (checkbox) nije ograničen za grantee-a — backlog
+- **BUG-S102-DELETE:** `StructureDeleteModal` — backup prompt gate (`isBlocked = node.eventCount > 0`) koristi stale `node.eventCount` iz Structure tab snapshot-a; ako su eventi dodani (npr. Excel Import) u istoj sesiji prije nego se Structure tab snapshot osvježio, Delete Area briše bez ikakvog pitanja (no prompt at all — ALLOWED grana). `cascadeDelete` ipak uvijek fresh-queryja i briše stvarne evente (nema orphan datu), ali korisnik gubi backup priliku bez upozorenja. Fix: live recount eventa (COUNT query po category_id) prije nego se odluči isBlocked, umjesto oslanjanja na node.eventCount.
 - ✅ S71 bugfix: Export modal — `[object Object]` error display (Supabase plain error obj → `.message`); count query koristio puni `loadExportData` umjesto laganog count → statement timeout fiksano korištenjem `countEventsForExport` direktno; `loadEventsForExport` i parent event merge koristili PostgREST nested select (→ ogroman JOIN ~126k redova) → fiksano chunked `loadAttrsForEvents()` (200 event_id po queriju)
 - **UX-Import-1:** Excel Import modal nema progress indikator ni timer — veliki importi (3000+ redova) izgledaju frozen; dodati: elapsed time + "Processing row X of Y" ili spinner s brojevima
 - ✅ **UX-Unit-1** (S73): View Activity — `unit` dodan kao sivi suffix uz numeričke vrijednosti (`75.4 min`, `4.86 km`); `activityViewCache.ts` fetchuje `unit` iz `attribute_definitions`; prikazuje se samo za `data_type='number'`.
@@ -509,11 +511,28 @@ S97: fix za reset bug (attrFilter/commentSearch/sortOrder nisu se resetirali pri
 - ✅ **Attr filter slug format** — UUID → slug u Filter sheet exportu; `parseAttrFilterRaw()` prihvaća slug, UUID i `*`; Comment/Attribute filter uvijek prisutni; Data Validation input message
 - ✅ **Help docs** — `docs/help/structure.md`: `default_map`, `*` wildcard, uvjetni default sekcije
 
+**Napomena S102b (2026-06-30) — bugfixevi pronađeni tijekom S100/S102 testiranja (Export Profile filter overrides):**
+- ✅ **Period dropdown display bug** (`DateRangeFilter.tsx`) — `activePresetKey` se izvodio usporedbom `localFrom/localTo` s `bounds.minDate/maxDate` umjesto da čita `filter.periodKey` direktno; lažno prikazivao "All Time" kad se period (npr. "this-year") slučajno poklopio s punim rasponom podataka u trenutnom filteru. Fix: dropdown sad trusta `filter.periodKey` (koji svaki setter konzistentno održava).
+- ✅ **Export Profile attrFilterRaw override bug** (`ExcelExportModal.tsx`) — `applyProfileFilterOverrides()` interno je zvao `parseAttrFilterRaw()` BEZ `attrDefs`, pa je slug-based override (npr. `racun: =Sašin tekući RF`) tiho failao i ostavljao live filter aktivnim u stvarnom DB upitu, dok je Filter sheet tekst (odvojena, ispravna grana) pogrešno prikazivao da je override primijenjen. Fix: `attrDefs` se resolvaju PRIJE poziva, jedan izvor istine za query i opis.
+- ✅ **`all-time` periodKey override bio no-op** — `resolvePeriodKey('all-time')` namjerno vraća `null`, ali override kod nije imao posebnu granu pa datumi nisu bili dirani. Fix: eksplicitna grana koja postavlja `dateFrom/dateTo = null`.
+- ✅ **Novi `custom` periodKey override** — Period key = `custom` + eksplicitni Date From/To (plain `YYYY-MM-DD` text) u Filter sheetu sad rade kao profil override (mirror UI ponašanja); `ProfileFilterState.dateFrom/dateTo` dodano; `readFilterFromWorkbook` ih čita SAMO kad je Period key = `custom`.
+- ✅ **`_` sentinel za Attribute filter** — prazna ćelija = nema override (naslijedi live filter); `_` = eksplicitno obriši filter (forsiraj sve vrijednosti) — ista konvencija kao Excel Import/Structure Default `_`.
+- ✅ **"Period label" red uklonjen** iz Filter sheeta (bio redundantan/zbunjujuć duplikat Period key-a, nije se čitao pri importu); Date From/To dobili tooltip da su informativni osim kad Period key = custom.
+- ✅ **Period key / Sort order Data Validation dropdownovi** dodani na Filter sheet (lista validnih `PeriodKey` vrijednosti + Newest/Oldest first).
+- ✅ **HelpEvents sheet** — novi "EXPORT PROFILES" odjeljak (LEGEND row order = column order, kako spremiti profil, `custom` period, `_` sentinel).
+- ✅ **Bugfix: Excel "We found a problem with some content" greška** — Data Validation `promptTitle` (>32 znaka) i `prompt` (>255 znakova) premašili Excel-ove hard limite na Attribute filter i Date From/To ćelijama → neispravan OOXML. Skraćeni tekstovi; pravilo dodano u Critical rules.
+- ✅ **`docs/help/excel.md`** — prošireno: Export Profile workflow, Filter sheet override semantika (koji redovi djeluju kao override vs informativni), `_` sentinel.
+- 📋 Logiran (NE fixan) `BUG-S102-DELETE` — Delete Area backup-prompt gate koristi stale `node.eventCount`, može preskočiti backup prompt bez upozorenja ako su eventi dodani u istoj sesiji prije Structure tab refresha; cascade delete ipak svejedno briše stvarne evente (nema orphan data).
+- Svi T-S102b-1..9 testovi ✅; T-S100-1/3/4 ✅ (carryover); T-S102-3/4/12 ✅ (carryover, ranije propušteno upisati)
+
 **Prioriteti za S103:**
-1. **Testiranje S102** — T-S102-3/4/8/9/10/11/12 + carryover testovi
-2. **Export + Python klasifikacija** — export obje area-e, Python skripta predlaže Tip/Podtip
-3. **Bulk update** — reimport xlsx s ispravljenim Tip/Podtip vrijednostima
-4. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlove
+1. **T-S100-6 dovršiti** — Export Profile Attribute filter format: testirati `~` partial match i `*` "in any attribute" operator kao profile override (do sad testiran samo `=` exact)
+2. **T-S100-7** — Import Profile toast prikazuje column order + widths info (vizualna provjera)
+3. **T-S95-10** — Add Activity → Finish s praznim atributima u templateu → comment null
+4. **BUG-S102-DELETE fix** — live recount eventa prije isBlocked odluke u `StructureDeleteModal.tsx` (umjesto stale `node.eventCount`)
+5. **Export + Python klasifikacija** — export obje area-e, Python skripta predlaže Tip/Podtip
+6. **Bulk update** — reimport xlsx s ispravljenim Tip/Podtip vrijednostima
+7. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlove
 
 **Backlog (iz S97):**
 - **Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`, koristiti odgovarajuću DB kolonu (`value_number` za number, `value_boolean` za boolean itd.) s odgovarajućim operatorima

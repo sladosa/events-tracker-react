@@ -76,7 +76,6 @@ export async function exportFullBackup(
     dateTo:      null,
     firstRecord,
     lastRecord,
-    periodLabel: 'All time at export',
     sortOrder:   'desc',
   });
 

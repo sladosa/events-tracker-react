@@ -87,18 +87,38 @@ function formatAttrFilterDesc(
 function applyProfileFilterOverrides(
   baseFilters: ExportFilters,
   pfs: ProfileFilterState,
+  attrDefs?: ExportAttrDef[],
 ): { filters: ExportFilters; overrideLabel: string | null; periodKeyOverride: string | null } {
   const filters = { ...baseFilters };
   const parts: string[] = [];
   let periodKeyOverride: string | null = null;
 
   if (pfs.periodKey) {
-    const resolved = resolvePeriodKey(pfs.periodKey as PeriodKey);
-    if (resolved) {
-      filters.dateFrom = resolved.from;
-      filters.dateTo = resolved.to;
+    if (pfs.periodKey === 'all-time') {
+      // resolvePeriodKey('all-time') returns null by design (no resolvable
+      // range) — handle it explicitly so the override actually clears dates
+      // instead of silently leaving the live filter's date range in place.
+      filters.dateFrom = null;
+      filters.dateTo = null;
       periodKeyOverride = pfs.periodKey;
-      parts.push(`Period: ${pfs.periodKey}`);
+      parts.push('Period: all-time');
+    } else if (pfs.periodKey === 'custom') {
+      // Mirrors the live UI: explicit From/To dates + Period = "Custom".
+      // Only applies if readFilterFromWorkbook found valid ISO dates.
+      if (pfs.dateFrom && pfs.dateTo) {
+        filters.dateFrom = pfs.dateFrom;
+        filters.dateTo = pfs.dateTo;
+        periodKeyOverride = pfs.periodKey;
+        parts.push(`Period: custom (${pfs.dateFrom} → ${pfs.dateTo})`);
+      }
+    } else {
+      const resolved = resolvePeriodKey(pfs.periodKey as PeriodKey);
+      if (resolved) {
+        filters.dateFrom = resolved.from;
+        filters.dateTo = resolved.to;
+        periodKeyOverride = pfs.periodKey;
+        parts.push(`Period: ${pfs.periodKey}`);
+      }
     }
   }
   if (pfs.sortOrder) {
@@ -110,10 +130,18 @@ function applyProfileFilterOverrides(
     parts.push(`Comment: "${pfs.commentSearch}"`);
   }
   if (pfs.attrFilterRaw) {
-    const parsed = parseAttrFilterRaw(pfs.attrFilterRaw);
-    if (parsed) {
-      filters.attrFilter = parsed;
-      parts.push(`Attr filter: ${parsed.value}`);
+    if (pfs.attrFilterRaw === '_') {
+      // "_" sentinel = explicitly clear the attribute filter (same convention
+      // as Excel Import/Structure Import). Distinct from a blank cell, which
+      // means "no override — inherit whatever the live filter has".
+      filters.attrFilter = null;
+      parts.push('Attr filter: (cleared)');
+    } else {
+      const parsed = parseAttrFilterRaw(pfs.attrFilterRaw, attrDefs);
+      if (parsed) {
+        filters.attrFilter = parsed;
+        parts.push(`Attr filter: ${parsed.value}`);
+      }
     }
   }
 
@@ -121,7 +149,7 @@ function applyProfileFilterOverrides(
 }
 
 export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
-  const { filter, periodLabel, selectedArea } = useFilter();
+  const { filter, selectedArea } = useFilter();
 
   const [totalCount,  setTotalCount]  = useState<number | null>(null);
   const [batchSize,   setBatchSize]   = useState(DEFAULT_BATCH_SIZE);
@@ -211,24 +239,31 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       // Apply profile filter overrides (if profile has saved filter state)
       let effectiveFilters = filters;
       let effectivePeriodKey: string | undefined = filter.periodKey;
-      let effectivePeriodLabel: string | undefined = periodLabel;
       let effectiveCommentSearch = filter.commentSearch;
       let effectiveAttrFilter = filter.attrFilter;
 
       if (activeProfile?.filterState && !previewMode) {
-        const overrides = applyProfileFilterOverrides(filters, activeProfile.filterState);
+        // Resolve attrDefs BEFORE building overrides — parseAttrFilterRaw needs
+        // them to look up a slug-based filter (e.g. "racun: =Sašin tekući RF").
+        // Without attrDefs, slug lookups silently fail and the live filter's
+        // attrFilter stays in effect instead of the profile's override.
+        const attrFilterRaw = activeProfile.filterState.attrFilterRaw;
+        const attrDefsForOverride = attrFilterRaw && attrFilterRaw !== '_'
+          ? await resolveAttrDefsForSlug(user.id, filters.areaId, filters.categoryId)
+          : undefined;
+        const overrides = applyProfileFilterOverrides(filters, activeProfile.filterState, attrDefsForOverride);
         effectiveFilters = overrides.filters;
         if (overrides.periodKeyOverride) {
           effectivePeriodKey = overrides.periodKeyOverride;
-          effectivePeriodLabel = overrides.periodKeyOverride;
         }
         if (activeProfile.filterState.commentSearch !== undefined) {
           effectiveCommentSearch = activeProfile.filterState.commentSearch;
         }
-        if (activeProfile.filterState.attrFilterRaw) {
-          const defs = await resolveAttrDefsForSlug(user.id, effectiveFilters.areaId, effectiveFilters.categoryId);
-          const parsed = parseAttrFilterRaw(activeProfile.filterState.attrFilterRaw, defs);
-          if (parsed) effectiveAttrFilter = parsed;
+        if (attrFilterRaw) {
+          // attrFilterRaw was present (real filter or "_" clear sentinel) —
+          // effectiveFilters.attrFilter is now authoritative, including null
+          // (explicitly cleared). Falls through to the live value otherwise.
+          effectiveAttrFilter = effectiveFilters.attrFilter ?? null;
         }
       }
 
@@ -265,7 +300,6 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         sortOrder:   effectiveFilters.sortOrder ?? 'desc',
         firstRecord: effectiveFilters.dateFrom ? undefined : firstRecord,
         lastRecord:  effectiveFilters.dateTo   ? undefined : lastRecord,
-        periodLabel: effectivePeriodLabel,
         periodKey:   effectivePeriodKey,
         commentSearch: effectiveCommentSearch || undefined,
         attrFilterDesc: effectiveAttrFilter
@@ -305,7 +339,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     } finally {
       setCurrentFile(0);
     }
-  }, [batchSize, fileCount, filters, filter.periodKey, filter.commentSearch, filter.attrFilter, periodLabel, selectedProfile, profiles]);
+  }, [batchSize, fileCount, filters, filter.periodKey, filter.commentSearch, filter.attrFilter, selectedProfile, profiles]);
 
   const downloadFile = useCallback((fileIndex: number) => doDownload(fileIndex, false), [doDownload]);
   const downloadPreview = useCallback(() => doDownload(1, true), [doDownload]);

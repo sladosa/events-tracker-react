@@ -31,6 +31,9 @@ export interface ExportProfileColumn {
 
 export interface ProfileFilterState {
   periodKey?: string;
+  /** Only meaningful when periodKey === 'custom' — explicit ISO date range. */
+  dateFrom?: string;
+  dateTo?: string;
   sortOrder?: 'asc' | 'desc';
   commentSearch?: string;
   attrFilterRaw?: string;
@@ -249,6 +252,21 @@ export function readFilterFromWorkbook(wb: ExcelJS.Workbook): ProfileFilterState
   if (kvs['Sort order']) result.sortOrder = kvs['Sort order'] === 'Oldest first' ? 'asc' : 'desc';
   if (kvs['Comment filter']) result.commentSearch = kvs['Comment filter'];
   if (kvs['Attribute filter']) result.attrFilterRaw = kvs['Attribute filter'];
+
+  // Date From/To only matter (and are only read) when Period key = 'custom' —
+  // mirrors the live UI, where explicit dates flip the Period dropdown to
+  // "Custom". Must be plain ISO text (YYYY-MM-DD); if Excel auto-converted
+  // the cell to its native Date type on manual edit, this safely no-ops
+  // instead of misapplying a wrong range.
+  if (result.periodKey === 'custom') {
+    const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const from = kvs['Date From'];
+    const to   = kvs['Date To'];
+    if (from && to && ISO_DATE_RE.test(from) && ISO_DATE_RE.test(to)) {
+      result.dateFrom = from;
+      result.dateTo = to;
+    }
+  }
 
   return Object.keys(result).length > 0 ? result : null;
 }

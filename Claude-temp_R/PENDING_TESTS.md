@@ -3,27 +3,45 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S102 (2026-06-29)
-**Detalji testova:** [S102_tests.md](test-sessions/S102_tests.md)
+**Zadnji update:** S102b (2026-06-30)
+**Detalji testova:** [S102b_tests.md](test-sessions/S102b_tests.md), [S102_tests.md](test-sessions/S102_tests.md)
+
+---
+
+## S102b — bugfixes pronađeni tijekom S100/S102 testiranja (Export Profile filter overrides)
+
+| ID        | Test                                                                                                                   | Status |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- | ------ |
+| T-S102b-1 | Period dropdown nakon "Use" shortcuta prikazuje TOČAN period (ne lažno "All Time" kad se raspon poklopi s data bounds) | ✅      |
+| T-S102b-2 | Export Profile s attrFilterRaw (slug format) STVARNO filtrira exportane redove, ne samo Filter sheet tekst             | ✅      |
+| T-S102b-3 | Export Profile Period key = `all-time` stvarno briše datumski filter (prije bio no-op)                                 | ✅      |
+| T-S102b-4 | Export Profile Period key = `custom` + Date From/To stvarno postavlja eksplicitni raspon                               | ✅      |
+| T-S102b-5 | Filter sheet: "Period label" red uklonjen (12 redova umjesto 13); Date From/To tooltip ažuriran                        | ✅      |
+| T-S102b-6 | Filter sheet: Period key / Sort order dropdownovi (Data Validation liste) rade u Excelu                                | ✅      |
+| T-S102b-7 | HelpEvents sheet: novi "EXPORT PROFILES" odjeljak prikazan ispravno (vizualna provjera)                                | ✅      |
+| T-S102b-8 | Attribute filter `_` sentinel u profilu eksplicitno briše filter (sve vrijednosti), za razliku od prazne ćelije (inherit live) | ✅ |
+| T-S102b-9 | Excel se otvara bez "We found a problem with some content" greške (Data Validation prompt/title length fix)           | ✅      |
+
+**Napomena:** Logiran i (NE fixan, samo backlog) `BUG-S102-DELETE` u CLAUDE.md — Delete Area backup-prompt gate koristi stale `node.eventCount`; nema test stavku jer fix nije implementiran.
 
 ---
 
 ## S102 — default_map + attr filter slug + Structure Import slug grouping
 
-| ID        | Test                                                                              | Status |
-| --------- | --------------------------------------------------------------------------------- | ------ |
-| T-S102-1  | default_map: Izvor=Visa → Status=Planiran (Add Activity)                          | ✅      |
-| T-S102-2  | default_map: Izvor=Račun → Status=Izvršen (Add Activity)                          | ✅      |
-| T-S102-3  | default_map: promjena Izvor mijenja Status default (ne ostaje stari)              | ⬜      |
-| T-S102-4  | default_map: ručno editiran Status NE smije se resetirati pri promjeni Izvor-a    | ⬜      |
-| T-S102-5  | Structure Import: slug-based grouping (različita imena, isti slug → jedan atribut) | ✅      |
-| T-S102-6  | Structure Export: default_map → Default kolona per-WhenValue red                  | ✅      |
-| T-S102-7  | StructureNodeEditPanel: default polje vidljivo i editabilno uz WhenValue          | ✅      |
-| T-S102-8  | Export Filter sheet: Attribute filter prikazuje slug umjesto UUID                 | ⬜      |
-| T-S102-9  | Export Filter sheet: Comment filter i Attribute filter uvijek prisutni (čak prazni)| ⬜      |
-| T-S102-10 | Import Profile: slug-based attr filter (racun: =Sašin tekući RF) se ispravno parsira | ⬜   |
-| T-S102-11 | Export Filter sheet: Data Validation input message na Attribute filter ćeliji      | ⬜      |
-| T-S102-12 | Shortcut pre-fill: preset s Izvor=Visa → Status=Planiran (default_map second pass)| ⬜      |
+| ID        | Test                                                                                 | Status |
+| --------- | ------------------------------------------------------------------------------------ | ------ |
+| T-S102-1  | default_map: Izvor=Visa → Status=Planiran (Add Activity)                             | ✅      |
+| T-S102-2  | default_map: Izvor=Račun → Status=Izvršen (Add Activity)                             | ✅      |
+| T-S102-3  | default_map: promjena Izvor mijenja Status default (ne ostaje stari)                 | ✅      |
+| T-S102-4  | default_map: ručno editiran Status NE smije se resetirati pri promjeni Izvor-a       | ✅      |
+| T-S102-5  | Structure Import: slug-based grouping (različita imena, isti slug → jedan atribut)   | ✅      |
+| T-S102-6  | Structure Export: default_map → Default kolona per-WhenValue red                     | ✅      |
+| T-S102-7  | StructureNodeEditPanel: default polje vidljivo i editabilno uz WhenValue             | ✅      |
+| T-S102-8  | Export Filter sheet: Attribute filter prikazuje slug umjesto UUID                    | ✅      |
+| T-S102-9  | Export Filter sheet: Comment filter i Attribute filter uvijek prisutni (čak prazni)  | ✅      |
+| T-S102-10 | Import Profile: slug-based attr filter (racun: =Sašin tekući RF) se ispravno parsira | ✅      |
+| T-S102-11 | Export Filter sheet: Data Validation input message na Attribute filter ćeliji        | ✅      |
+| T-S102-12 | Shortcut pre-fill: preset s Izvor=Visa → Status=Planiran (default_map second pass)   | ✅      |
 
 ---
 
@@ -42,11 +60,11 @@
 
 | ID       | Test                                                                              | Status |
 | -------- | --------------------------------------------------------------------------------- | ------ |
-| T-S100-1 | BUG-S99-IMPORT fix — import ne matcha krivu kategoriju kad 2 aree imaju isti path | ⬜      |
+| T-S100-1 | BUG-S99-IMPORT fix — import ne matcha krivu kategoriju kad 2 aree imaju isti path | ✅      |
 | T-S100-2 | Dependent dropdown za 'Izvor placanja' — dijakritici u opcijama                   | ✅      |
-| T-S100-3 | Export Profile — column order iz LEGEND-a                                         | ⬜      |
-| T-S100-4 | Export Profile — column widths iz profila                                         | ⬜      |
-| T-S100-5 | Export Profile — Filter sheet override                                            | ⬜      |
+| T-S100-3 | Export Profile — column order iz LEGEND-a                                         | ✅      |
+| T-S100-4 | Export Profile — column widths iz profila                                         | ✅      |
+| T-S100-5 | Export Profile — Filter sheet override                                            | ✅ (pokriveno T-S102b-2/3/4) |
 | T-S100-6 | Export Profile — Filter sheet format za Attribute filter                          | ⬜      |
 | T-S100-7 | Import Profile toast prikazuje column order + widths info                         | ⬜      |
 

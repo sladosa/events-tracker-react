@@ -695,7 +695,6 @@ function _buildStructureFilterInfo(
     exportedAt:  ts,
     area,
     category,
-    periodLabel: 'All time', // structure has no date concept
   };
 }
 

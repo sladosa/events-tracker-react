@@ -100,18 +100,17 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   };
 
   // ── Determine which dropdown option is currently active ───────────────────
-  // Compare localFrom/localTo against each preset's computed range.
-  // If none matches and we're at All Time bounds → ALL_TIME_VALUE.
-  // Otherwise → CUSTOM_VALUE (user typed something arbitrary).
+  // Trust filter.periodKey (kept in sync by every setter) instead of
+  // re-deriving from date comparison — a date-comparison heuristic falsely
+  // showed "All Time" whenever a period's resolved range happened to match
+  // the full data bounds (e.g. "This Year" when all data is from this year).
   const activePresetKey = useMemo((): string => {
     if (!localFrom || !localTo) return ALL_TIME_VALUE;
-    if (localFrom === bounds.minDate && localTo === bounds.maxDate) return ALL_TIME_VALUE;
-    for (const p of presets) {
-      const { from, to } = p.getRange();
-      if (from === localFrom && to === localTo) return p.key;
-    }
+    if (filter.periodKey === 'all-time') return ALL_TIME_VALUE;
+    if (filter.periodKey === 'custom') return CUSTOM_VALUE;
+    if (presets.some(p => p.key === filter.periodKey)) return filter.periodKey;
     return CUSTOM_VALUE;
-  }, [localFrom, localTo, bounds.minDate, bounds.maxDate, presets]);
+  }, [localFrom, localTo, filter.periodKey, presets]);
 
   return (
     <div className={className}>
