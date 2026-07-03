@@ -88,6 +88,9 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   // Show User column when: grantee (sharedContext != null) OR owner with active shares
   const showUserColumn = sharedContext !== null || areaHasActiveShares;
 
+  // Read-only grantee cannot write events — Import writes new events, so hide the entry points
+  const isReadOnlyGrantee = sharedContext?.permission === 'read';
+
   // Highlight key from navigation state (after returning from Edit/View)
   const [highlightKey, setHighlightKey] = useState<string | null>(
     (location.state as { highlightKey?: string } | null)?.highlightKey ?? null
@@ -273,7 +276,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   if (activities.length === 0) {
     return (
       <div className={`p-6 ${className}`}>
-        {onImport && (
+        {onImport && !isReadOnlyGrantee && (
           <div className="flex justify-end mb-4">
             <button
               onClick={onImport}
@@ -377,12 +380,14 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
 
         {/* Export/Import — hidden on mobile (accessible via mobile strip above table) */}
         <div className="hidden sm:flex items-center gap-2">
-          <button
-            onClick={onImport}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
-          >
-            📤 Import
-          </button>
+          {!isReadOnlyGrantee && (
+            <button
+              onClick={onImport}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+            >
+              📤 Import
+            </button>
+          )}
           <button
             onClick={onExport}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"

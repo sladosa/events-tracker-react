@@ -26,13 +26,21 @@ export function evaluateCommentTemplate(
     if (def.slug) slugToDefId.set(def.slug, def.id);
   }
 
+  let placeholderCount = 0;
+  let filledCount = 0;
+
   const result = template.replace(/\{(\w+)\}/g, (_, slug: string) => {
+    placeholderCount++;
     const defId = slugToDefId.get(slug);
-    if (!defId) return '';
-    const attrVal = attributeValues.get(defId);
-    if (attrVal?.value == null) return '';
+    const attrVal = defId ? attributeValues.get(defId) : undefined;
+    if (attrVal?.value == null || attrVal.value === '') return '';
+    filledCount++;
     return String(attrVal.value);
   });
+
+  // Template has placeholders but none resolved to a value — literal separators
+  // (e.g. "/") would otherwise survive the trim and produce a junk comment.
+  if (placeholderCount > 0 && filledCount === 0) return null;
 
   const trimmed = result.trim();
   return trimmed || null;

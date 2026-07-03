@@ -583,6 +583,11 @@ function AppContent() {
                     {hiddenAttrCount} numeric/other {hiddenAttrCount === 1 ? 'attribute' : 'attributes'} not shown — use Excel Export to filter by those.
                   </p>
                 )}
+                {selectedFilterAttr === ATTR_FILTER_ANY && sharedContext && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1">
+                    ⚠️ Known issue: "In any attribute" can time out on shared areas — a fix is pending (BUG-S103-ANYATTR). Use a specific attribute or Comment search instead.
+                  </p>
+                )}
               </div>
             )}
 
@@ -590,12 +595,14 @@ function AppContent() {
             {activeTab === 'activities' && (
               <div className="sm:hidden mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
                 <span className="text-sm text-gray-500 mr-1">Excel</span>
-                <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('activities:open-import'))}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
-                >
-                  📤 Import
-                </button>
+                {!isReadOnlyGrantee && (
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('activities:open-import'))}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                  >
+                    📤 Import
+                  </button>
+                )}
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('activities:open-export'))}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"

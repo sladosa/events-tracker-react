@@ -3,8 +3,24 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S102b (2026-06-30)
+**Zadnji update:** S103 (2026-07-03)
 **Detalji testova:** [S102b_tests.md](test-sessions/S102b_tests.md), [S102_tests.md](test-sessions/S102_tests.md)
+
+---
+
+## S103 — RLS fix + grantee guard + FilterContext abort
+
+| ID       | Test                                                                                               | Status |
+| -------- | -------------------------------------------------------------------------------------------------- | ------ |
+| T-S103-1 | "In any attribute" filter radi za grantee (DP na Health_Sasa) — potrebno **nakon** 031 SQL na PROD | ❌ BUG-S103-ANYATTR (i dalje timeout; ILIKE nije leakproof → RLS eval na cijeloj tablici; notice dodan u UI umjesto punog fixa) |
+| T-S103-2 | Import Profile kao grantee → jasna poruka "no permission to save" (ne tihi fail)                   | ✅ (usput otkriven i fiksan BUG-S103-IMPORT-GRANTEE — Import gumb sad skriven za read grantee) |
+| T-S103-3 | Delete Profile kao grantee → toast "Read-only access — cannot delete profiles"                     | ✅      |
+| T-S103-4 | "Clear all" odmah briše "Restoring filter..." bez čekanja (i dok je doRestore u tijeku)            | ✅ (testirano pod 3G throttling; par "Uncaught AbortError" u konzoli od starih nadjačanih requesta — ne regresija, artefakt throttlinga) |
+| T-S103-5 | Nakon Clear all + refresh → app se učita normalno (nema zaglavljenog "Restoring filter...")        | ✅      |
+
+**Napomena:** `sql/031_rls_exists_fix.sql` pokrenut na TEST i PROD (2026-07-03, PROD status potvrđen Healthy). Djelomično uspio — specific-attribute filter za grantee sad radi (Doktor test ✅), ali "In any attribute" i dalje timeouta (BUG-S103-ANYATTR, vidi CLAUDE.md Open bugs). Pravi fix (SECURITY DEFINER RPC) odgođen u backlog; za sada amber notice u UI.
+
+**Napomena (T-S103-3):** Export profili su spremljeni u `area.settings.export_profiles` (JSONB na area razini) — svi korisnici s pristupom area-i (owner + svi grantee-i) vide ISTE profile, nisu per-user. Da bi se T-S103-3 testirao: (1) kao owner (sladosa) kreiraj profil na Health_Sasa; (2) prijavi se kao grantee (DP) i provjeri da profil postoji u dropdownu (read radi preko RLS na `areas`); (3) probaj Delete → očekivano toast "Read-only access — cannot delete profiles".
 
 ---
 
@@ -65,8 +81,8 @@
 | T-S100-3 | Export Profile — column order iz LEGEND-a                                         | ✅      |
 | T-S100-4 | Export Profile — column widths iz profila                                         | ✅      |
 | T-S100-5 | Export Profile — Filter sheet override                                            | ✅ (pokriveno T-S102b-2/3/4) |
-| T-S100-6 | Export Profile — Filter sheet format za Attribute filter                          | ⬜      |
-| T-S100-7 | Import Profile toast prikazuje column order + widths info                         | ⬜      |
+| T-S100-6 | Export Profile — Filter sheet format za Attribute filter (`~` partial, `*` any)   | ✅      |
+| T-S100-7 | Import Profile toast prikazuje column order + widths info                         | ✅      |
 
 ---
 
@@ -74,7 +90,7 @@
 
 | ID       | Test                                                                  | Status |
 | -------- | --------------------------------------------------------------------- | ------ |
-| T-S95-10 | Add Activity → Finish s praznim atributima u templateu → comment null | ⬜      |
+| T-S95-10 | Add Activity → Finish s praznim atributima u templateu → comment null | ✅ (otkriven i fiksan bug — vidi CLAUDE.md) |
 | T-S95-12 | Structure Import → CommentTemplate update-ira settings; `_` = briši   | ✅      |
 
 ---

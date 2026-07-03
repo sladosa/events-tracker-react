@@ -202,6 +202,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   const [isRestored, setIsRestored] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const restoreAttempted = useRef(false);
+  const restoreAbortedRef = useRef(false);
 
   // Shortcut filter_state was just applied — consumers should skip their next reset effect
   const skipNextFilterReset = useRef(false);
@@ -244,7 +245,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
           
           // Load appropriate dropdown options
           const children = await loadChildCategories(lastSelected.id);
-          
+          if (restoreAbortedRef.current) return;
+
           if (children.length > 0) {
             // Not a leaf - show children
             setDropdownOptions(children);
@@ -254,56 +256,63 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
             setIsLeafCategory(true);
             if (lastSelected.parent_category_id) {
               const siblings = await loadChildCategories(lastSelected.parent_category_id);
+              if (restoreAbortedRef.current) return;
               setDropdownOptions(siblings);
             } else {
               // L1 leaf (rare) - show L1+L2
               const l1l2 = await loadL1AndL2Categories(state.areaId);
+              if (restoreAbortedRef.current) return;
               setDropdownOptions(l1l2);
             }
           }
-          
+
           // Build path display
-          // We need to fetch area name
           const { data: areaData } = await supabase
             .from('areas')
             .select('name')
             .eq('id', state.areaId)
             .single();
-          
+          if (restoreAbortedRef.current) return;
+
           const areaName = areaData?.name || 'Unknown';
           const pathNames = [areaName, ...state.selectionChain.map(c => c.name)];
           setFullPathDisplay(pathNames.join(' > '));
-          
+
         } else if (state.areaId) {
           // Only area selected
           setFilter(prev => ({
             ...prev,
             areaId: state.areaId
           }));
-          
+
           // Load L1+L2 for this area
           const categories = await loadL1AndL2Categories(state.areaId);
+          if (restoreAbortedRef.current) return;
           setDropdownOptions(categories);
-          
+
           // Get area name for display
           const { data: areaData } = await supabase
             .from('areas')
             .select('name')
             .eq('id', state.areaId)
             .single();
-          
+          if (restoreAbortedRef.current) return;
+
           setFullPathDisplay(`${areaData?.name || 'Unknown'} > All Categories`);
         }
-        
+
         // Restore selected shortcut (if any)
         if (state.selectedShortcutId) {
           setSelectedShortcutId(state.selectedShortcutId);
         }
       } catch (e) {
+        if (restoreAbortedRef.current) return;
         console.error('Error restoring filter state:', e);
       } finally {
-        setIsRestoring(false);
-        setIsRestored(true);
+        if (!restoreAbortedRef.current) {
+          setIsRestoring(false);
+          setIsRestored(true);
+        }
       }
     };
     
@@ -547,6 +556,9 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   }, []);
 
   const reset = useCallback(() => {
+    restoreAbortedRef.current = true;   // abort any in-flight doRestore immediately
+    setIsRestoring(false);
+    setIsRestored(true);
     setFilter(defaultFilterState);
     setIsLeafCategory(false);
     setFullPathDisplay('');

@@ -149,7 +149,7 @@ function applyProfileFilterOverrides(
 }
 
 export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
-  const { filter, selectedArea } = useFilter();
+  const { filter, selectedArea, sharedContext } = useFilter();
 
   const [totalCount,  setTotalCount]  = useState<number | null>(null);
   const [batchSize,   setBatchSize]   = useState(DEFAULT_BATCH_SIZE);
@@ -388,6 +388,10 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         setError('Select an Area before importing a profile');
         return;
       }
+      if (sharedContext) {
+        setError("You don't have permission to save export profiles in this area (read-only access). Use the UI filters, or filter the full Excel locally after downloading.");
+        return;
+      }
 
       const newProfiles = { ...profiles, [trimmedName]: profile };
 
@@ -419,6 +423,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   // ── Delete profile ────────────────────────────────────────────────
   const handleDeleteProfile = useCallback(async () => {
     if (!selectedProfile || !filter.areaId) return;
+    if (sharedContext) { toast.error("Read-only access — cannot delete profiles"); return; }
     if (!window.confirm(`Delete profile "${selectedProfile}"?`)) return;
 
     const newProfiles = { ...profiles };
