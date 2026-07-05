@@ -49,6 +49,9 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const [foreignEmailsSummary, setForeignEmailsSummary] = useState<Record<string, number>>({});
   const [foreignMode,      setForeignMode]      = useState<'skip' | 'import_as_mine'>('skip');
   const [currentUserEmail, setCurrentUserEmail] = useState<string | undefined>(undefined);
+  // Q4 (S104, Fable): progress za veće importe (npr. Diary 7000+ redaka) — bez ovoga
+  // UI izgleda "frozen" jer applying nema drugog povratnog signala osim spinnera.
+  const [applyProgress, setApplyProgress] = useState<{ done: number; total: number } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -221,12 +224,16 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setApplyingMessage('Importing events…');
     setImportState('applying');
     setErrors([]);
+    setApplyProgress(null);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const importResult = await importEventsFromExcel(user.id, selectedFile, overwriteMap, currentUserEmail, foreignMode);
+      const importResult = await importEventsFromExcel(
+        user.id, selectedFile, overwriteMap, currentUserEmail, foreignMode,
+        (done, total) => setApplyProgress({ done, total })
+      );
 
       if (importResult.errors.length > 0) {
         setErrors(importResult.errors);
@@ -264,6 +271,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setForeignEmailsSummary({});
     setForeignMode('skip');
     setCurrentUserEmail(undefined);
+    setApplyProgress(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -640,6 +648,19 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
             <div className="flex flex-col items-center gap-3 py-6">
               <span className="text-4xl animate-spin">⏳</span>
               <p className="text-gray-600">{applyingMessage}</p>
+              {applyProgress && applyProgress.total > 0 && (
+                <div className="w-full max-w-xs">
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 transition-all duration-150"
+                      style={{ width: `${Math.min(100, Math.round((applyProgress.done / applyProgress.total) * 100))}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 text-center mt-1">
+                    {applyProgress.done} / {applyProgress.total} rows
+                  </p>
+                </div>
+              )}
               <p className="text-xs text-gray-400">Please wait, do not close this window</p>
             </div>
           )}

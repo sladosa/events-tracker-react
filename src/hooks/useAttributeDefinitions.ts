@@ -68,62 +68,6 @@ export function useAttributeDefinitions(categoryIds: UUID[]): UseAttributeDefini
 }
 
 /**
- * Dohvaća lookup vrijednosti za suggest/enum tipove.
- * Uključuje i template user vrijednosti.
- */
-export function useLookupValues(lookupName: string, parentKey?: string | null): {
-  values: string[];
-  loading: boolean;
-  error: Error | null;
-} {
-  const [values, setValues] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    const fetchValues = async () => {
-      if (!lookupName) {
-        setValues([]);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        let query = supabase
-          .from('lookup_values')
-          .select('value, sort_order')
-          .eq('lookup_name', lookupName)
-          .order('sort_order', { ascending: true });
-
-        // Ako ima parent_key, filtriraj po njemu
-        if (parentKey !== undefined) {
-          if (parentKey === null) {
-            query = query.is('parent_key', null);
-          } else {
-            query = query.eq('parent_key', parentKey);
-          }
-        }
-
-        const { data, error: fetchError } = await query;
-        if (fetchError) throw fetchError;
-
-        // Unique values, održavaj sort order
-        const uniqueValues = [...new Set(data?.map(d => d.value) || [])];
-        setValues(uniqueValues);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch lookup values'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchValues();
-  }, [lookupName, parentKey]);
-
-  return { values, loading, error };
-}
-
-/**
  * Parsira opcije iz validation_rules.
  * Podržava:
  * - suggest: string[] (static options from Excel import)

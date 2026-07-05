@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
-import { loadParentAttrs, buildParentChainIds } from '@/lib/parentEventLoader';
+import { loadParentAttrs, buildParentChainIds, findParentEventByChain, upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
 import { useFilter } from '@/context/FilterContext';
 
 import { ActivityHeader } from '@/components/activity/ActivityHeader';
@@ -392,31 +392,11 @@ export function EditActivityPage() {
         newParentDbIds.set(catId, null);
       }
 
-      // Dohvati parent event DB id-ove za save path (BUG-G v2: comment marker)
+      // Dohvati parent event DB id-ove za save path (shared lookup — parentEventLoader.ts)
       for (const catId of parentChainIds) {
-        const { data: byComment } = await supabase
-          .from('events')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('category_id', catId)
-          .eq('session_start', leafEvents[0].session_start) // DB format!
-          .eq('chain_key', leafCategoryId)
-          .limit(1);
-
-        if (byComment && byComment.length > 0) {
-          newParentDbIds.set(catId, (byComment[0] as { id: UUID }).id);
-          continue;
-        }
-        // Fallback: legacy data (comment IS NULL, samo 1 kandidat)
-        const { data: legacy } = await supabase
-          .from('events')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('category_id', catId)
-          .eq('session_start', leafEvents[0].session_start)
-          .is('chain_key', null);
-        if (legacy && legacy.length === 1) {
-          newParentDbIds.set(catId, (legacy[0] as { id: UUID }).id);
+        const parentId = await findParentEventByChain(catId, leafEvents[0].session_start, leafCategoryId, user.id);
+        if (parentId) {
+          newParentDbIds.set(catId, parentId);
         }
       }
 
@@ -1074,84 +1054,34 @@ export function EditActivityPage() {
       // Za svaku parent kategoriju: UPDATE ako postoji, INSERT ako ne.
       // Koristimo parentAttrValues (dijeljeni za cijelu sesiju).
       // ============================================================
-      for (const [catId, dbId] of parentDbIds) {
+      for (const [catId] of parentDbIds) {
         const catAttrDefs = attributesByCategory.get(catId) || [];
         // Filtriraj atribute koji pripadaju ovoj kategoriji i imaju vrijednost
         const attrsForCat = catAttrDefs
           .map(def => parentAttrValues.get(def.id))
           .filter((v): v is LocalAttributeValue => v != null && v.value != null);
-        
-        if (dbId) {
-          // UPDATE postojećeg parent eventa
-          const { error: parentUpdateError } = await supabase
-            .from('events')
-            .update({
-              event_date: eventDate,
-              session_start: newSessionStart,
-              edited_at: new Date().toISOString(),
-            })
-            .eq('id', dbId);
-          
-          if (parentUpdateError) throw parentUpdateError;
-          
-          // Delete + reinsert parent attrs
-          await supabase.from('event_attributes').delete().eq('event_id', dbId);
-          
-          if (attrsForCat.length > 0) {
-            const parentAttrRecords = attrsForCat.map(attr => {
-              const def = catAttrDefs.find(d => d.id === attr.definitionId);
-              const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
-              return {
-                event_id: dbId,
-                user_id: user.id,
-                attribute_definition_id: attr.definitionId,
-                [valueColumn]: attr.value,
-              };
-            });
-            const { error: parentAttrErr } = await supabase
-              .from('event_attributes')
-              .insert(parentAttrRecords);
-            if (parentAttrErr) throw parentAttrErr;
-          }
-        } else if (attrsForCat.length > 0) {
-          // INSERT novi parent event (nije postojao)
-          const { data: newParentEvent, error: newParentError } = await supabase
-            .from('events')
-            .insert({
-              user_id: user.id,
-              category_id: catId,
-              event_date: eventDate,
-              session_start: newSessionStart,
-              chain_key: categoryId, // BUG-G fix v2: chain discriminator = leaf category ID
-              created_at: sessionDateTime.toISOString(),
-            })
-            .select('id')
-            .single();
-          
-          if (newParentError) throw newParentError;
-          
-          const parentAttrRecords = attrsForCat.map(attr => {
-            const def = catAttrDefs.find(d => d.id === attr.definitionId);
-            const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
-            return {
-              event_id: newParentEvent.id,
-              user_id: user.id,
-              attribute_definition_id: attr.definitionId,
-              [valueColumn]: attr.value,
-            };
-          });
-          const { error: newParentAttrErr } = await supabase
-            .from('event_attributes')
-            .insert(parentAttrRecords);
-          if (newParentAttrErr) throw newParentAttrErr;
-          
-          // Ažuriraj parentDbIds s novim ID-em
-          setParentDbIds(prev => {
-            const next = new Map(prev);
-            next.set(catId, newParentEvent.id as UUID);
-            return next;
-          });
-        }
+
+        const parentAttrWrites: ParentAttrWrite[] = attrsForCat.map(attr => {
+          const def = catAttrDefs.find(d => d.id === attr.definitionId);
+          return { definitionId: attr.definitionId, value: attr.value, dataType: def?.data_type ?? 'text' };
+        });
+
+        // Upsert (shared service — S104 unifikacija, vidi parentEventLoader.ts):
+        // P2 anchor uvijek postoji, P3-safe per-attribute merge (fix za stari delete-all-then-reinsert gap).
+        const parentEventId = await upsertParentEvent(
+          catId,
+          categoryId!, // leaf category ID = chain discriminator
+          newSessionStart,
+          eventDate,
+          user.id,
+          parentAttrWrites
+        );
+
+        setParentDbIds(prev => {
+          const next = new Map(prev);
+          next.set(catId, parentEventId);
+          return next;
+        });
       }
       
       // Persist any "Other" options added during edit

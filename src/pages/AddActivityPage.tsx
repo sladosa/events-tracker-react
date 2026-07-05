@@ -17,6 +17,7 @@ import { toast } from 'react-hot-toast';
 import { useFilter } from '@/context/FilterContext';
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
+import { upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
@@ -729,9 +730,12 @@ export function AddActivityPage() {
     }
   }, [shortcutName, areaId, categoryId, pendingDefaultAttributes, createPreset, presets, filter.periodKey, filter.sortOrder, filter.commentSearch, filter.attrFilter]);
 
+  // S104 bugfix: canFinish did not wait for categoryChain to finish loading —
+  // clicking Finish before that DB round-trip resolves saved with an empty
+  // categoryChain, silently skipping P2 anchor (parent event) creation.
   const canFinish = useMemo(() => {
-    return pendingEvents.length > 0 || canSave;
-  }, [pendingEvents.length, canSave]);
+    return (pendingEvents.length > 0 || canSave) && !chainLoading;
+  }, [pendingEvents.length, canSave, chainLoading]);
 
   // Count total photos across pending events + current form
   const totalPhotoCount = useMemo(() => {
@@ -949,40 +953,21 @@ export function AddActivityPage() {
           }
         }
 
-        // INSERT 1 parent event
-        const { data: parentEvent, error: parentEventError } = await supabase
-          .from('events')
-          .insert({
-            user_id: user.id,
-            category_id: parentCat.id,
-            event_date: eventDate,
-            session_start: sessionStartIso,
-            chain_key: leafCategoryId, // BUG-G fix v2: chain discriminator
-            created_at: sessionStart.toISOString(),
-          })
-          .select('id')
-          .single();
+        // Upsert 1 parent event (shared service — S104 unifikacija, vidi parentEventLoader.ts)
+        const parentAttrWrites: ParentAttrWrite[] = Array.from(mergedParentAttrs.values()).map(attr => {
+          const def = parentAttrDefs.find(d => d.id === attr.definitionId);
+          return { definitionId: attr.definitionId, value: attr.value, dataType: def?.data_type ?? attr.dataType };
+        });
 
-        if (parentEventError) throw parentEventError;
-        log(`Inserted parent event for ${parentCat.name}: ${parentEvent.id}`);
-
-        // INSERT parent atributi
-        if (mergedParentAttrs.size > 0) {
-          const parentAttrRecords = Array.from(mergedParentAttrs.values()).map(attr => {
-            const def = parentAttrDefs.find(d => d.id === attr.definitionId);
-            const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
-            return {
-              event_id: parentEvent.id,
-              user_id: user.id,
-              attribute_definition_id: attr.definitionId,
-              [valueColumn]: attr.value,
-            };
-          });
-          const { error: parentAttrError } = await supabase
-            .from('event_attributes')
-            .insert(parentAttrRecords);
-          if (parentAttrError) throw parentAttrError;
-        }
+        const parentEventId = await upsertParentEvent(
+          parentCat.id,
+          leafCategoryId,
+          sessionStartIso,
+          eventDate,
+          user.id,
+          parentAttrWrites
+        );
+        log(`Upserted parent event for ${parentCat.name}: ${parentEventId}`);
       }
 
       // --- FAZA 2: Leaf eventi (1 po pendingEvent) ---

@@ -26,7 +26,7 @@
 //   onDeleted(deletedId) is called → StructureTableView refetches.
 // ============================================================
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { saveAs } from 'file-saver';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
@@ -125,8 +125,6 @@ export function StructureDeleteModal({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isBlocked = node.eventCount > 0;
-
   // ── Phase label for UX feedback ────────────────────────────────────────────
   type Phase = 'idle' | 'backup' | 'deleting';
   const [phase, setPhase] = useState<Phase>('idle');
@@ -138,6 +136,48 @@ export function StructureDeleteModal({
   const subCategoryCount = node.nodeType === 'area'
     ? subCategoryIds.length  // all descendants under area
     : subCategoryIds.length; // sub-categories under this category
+
+  // ── BUG-S102-DELETE fix: node.eventCount is a Structure-tab snapshot and can
+  // go stale within the same session (e.g. an event added after the tab loaded).
+  // A stale 0 would skip the backup-prompt gate entirely. Live COUNT query
+  // before rendering the isBlocked decision — countChecked gates the risky
+  // "Delete" (no-backup) button until the recount resolves.
+  const [liveEventCount, setLiveEventCount] = useState<number | null>(null);
+  const [countChecked, setCountChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const categoryIds = allNodes
+      .filter(n => subtreeIds.includes(n.id) && n.nodeType === 'category')
+      .map(n => n.id);
+
+    if (categoryIds.length === 0) {
+      setLiveEventCount(0);
+      setCountChecked(true);
+      return;
+    }
+
+    (async () => {
+      const { count, error } = await supabase
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .in('category_id', categoryIds);
+      if (cancelled) return;
+      if (error) {
+        console.error('StructureDeleteModal: live event recount failed, falling back to snapshot count', error);
+        setLiveEventCount(node.eventCount); // safer to keep stale snapshot than silently unblock
+      } else {
+        setLiveEventCount(count ?? 0);
+      }
+      setCountChecked(true);
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const eventCount = liveEventCount ?? node.eventCount;
+  const isBlocked = eventCount > 0;
 
   // Count attribute definitions in the whole subtree
   const attrCount = allNodes
@@ -363,7 +403,7 @@ export function StructureDeleteModal({
             <div className="space-y-3">
               <p className="text-sm text-gray-700">
                 <span className="font-semibold text-amber-700">
-                  {node.eventCount} {node.eventCount === 1 ? 'event exists' : 'events exist'}
+                  {eventCount} {eventCount === 1 ? 'event exists' : 'events exist'}
                 </span>{' '}
                 under this {node.nodeType === 'area' ? 'area' : 'category'}.
               </p>
@@ -478,15 +518,15 @@ export function StructureDeleteModal({
               </button>
               <button
                 onClick={handleDelete}
-                disabled={deleting}
+                disabled={deleting || !countChecked}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                   t.deleteBtn,
-                  deleting && 'opacity-60 cursor-not-allowed',
+                  (deleting || !countChecked) && 'opacity-60 cursor-not-allowed',
                 )}
               >
-                {deleting && <Spinner />}
-                {deleting ? 'Deleting…' : 'Delete'}
+                {(deleting || !countChecked) && <Spinner />}
+                {deleting ? 'Deleting…' : !countChecked ? 'Checking events…' : 'Delete'}
               </button>
             </>
           )}

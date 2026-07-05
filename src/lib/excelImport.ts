@@ -17,6 +17,7 @@ import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
 import { FIXED_COL_COUNT } from './excelExport';
 import { loadCategoriesForExport, loadAttrDefsForCategories } from './excelDataLoader';
+import { upsertParentEvent, type ParentAttrWrite } from './parentEventLoader';
 import type {
   ExportCategoriesDict,
   ExportAttrDef,
@@ -533,6 +534,9 @@ export async function applyImportChanges(
    *   undefined = nema kolizije, normalan INSERT
    */
   overwriteDecisions:  Map<string, 'replace' | 'add' | 'skip'> = new Map(),
+  /** Q4 (S104, Fable): row-level progress callback — velikih importi (Diary 7000+
+   *  redaka) inače izgledaju "frozen" bez ikakve povratne informacije. */
+  onProgress?:         (done: number, total: number) => void,
 ): Promise<ApplyResult> {
   // Local mutable copies so BUG-F fix can reclassify rows
   let toCreate = _toCreate; // eslint-disable-line prefer-const
@@ -581,6 +585,14 @@ export async function applyImportChanges(
   }
   // ─────────────────────────────────────────────────────────────────────────
 
+  // Q4: row-level progress tracking (leaf rows = 1:1 s Excel redovima)
+  const totalRows = toCreate.length + toUpdate.length;
+  let processedRows = 0;
+  const reportProgress = () => {
+    processedRows++;
+    onProgress?.(processedRows, totalRows);
+  };
+
   // ────────────────────────────────────────────────────────
   // Helper: pronađi parent event koristeći chain disambiguation
   // Traži event s (category_id + session_start) koji pripada
@@ -595,112 +607,17 @@ export async function applyImportChanges(
   // jer prvi lanac koji se procesira kreira Activity event i on postaje
   // jedini kandidat — ali možda ne pripada ovom lancu.
   // ────────────────────────────────────────────────────────
-  const findParentEventByChain = async (
-    categoryId:     string,
-    sessionISO:     string,
-    leafCategoryId: string, // leaf u lancu = chain discriminator (BUG-G fix v2)
-  ): Promise<string | null> => {
-    // BUG-G fix v2: comment field kao chain discriminator.
-    // Parent eventi imaju comment = leafCategoryId od importa.
-    // Ovo eliminira nedeterminizam candidates[0] kad postoji više
-    // parent evenata za isti category_id + session_start (npr. Cardio i
-    // Strength imaju svaki svoju Activity sesiju s istim session_start).
-    const { data: byChainKey } = await supabase
-      .from('events')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('category_id', categoryId)
-      .eq('session_start', sessionISO)
-      .eq('chain_key', leafCategoryId)
-      .limit(1);
-
-    if (byChainKey && byChainKey.length > 0) {
-      return (byChainKey[0] as { id: string }).id;
-    }
-
-    // Fallback za staru data (comment = null, kreirana prije BUG-G fix v2).
-    // Stara data ima samo 1 parent event po kategoriji po sesiji → sigurno je
-    // uzeti jedini pronađeni event.
-    const { data: legacy } = await supabase
-      .from('events')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('category_id', categoryId)
-      .eq('session_start', sessionISO)
-      .is('chain_key', null);
-
-    if (legacy && legacy.length === 1) {
-      return (legacy[0] as { id: string }).id;
-    }
-
-    return null;
-  };
-
-  // ────────────────────────────────────────────────────────
-  // Helper: upsert parent event za UPDATE tok
-  // Za CREATE tok koristimo direktni INSERT bez SELECT (vidi prolaz 2)
-  // ────────────────────────────────────────────────────────
-  const upsertParentEventForUpdate = async (
-    categoryId:     string,
-    leafCategoryId: string, // leaf u lancu za chain disambiguation (BUG-G fix)
-    sessionISO:     string,
-    eventDate:      string,
-    mergedAttrs:    Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>,
-  ): Promise<void> => {
-    if (mergedAttrs.size === 0) return;
-
-    const existingId = await findParentEventByChain(categoryId, sessionISO, leafCategoryId);
-
-    if (existingId) {
-      // UPDATE: dohvati postojeće atribute
-      const { data: existingAttrRows } = await supabase
-        .from('event_attributes')
-        .select('id, attribute_definition_id')
-        .eq('event_id', existingId);
-
-      const existingAttrs = new Map<string, string>(
-        ((existingAttrRows ?? []) as { id: string; attribute_definition_id: string }[])
-          .map(ea => [ea.attribute_definition_id, ea.id])
-      );
-
-      for (const { def, value } of mergedAttrs.values()) {
-        if (value == null || value === '') continue; // P3: prazna ne prepisuje
-        const attrData = buildAttrData(existingId, userId, def, value);
-        if (existingAttrs.has(def.id)) {
-          await supabase
-            .from('event_attributes')
-            .update(attrData)
-            .eq('id', existingAttrs.get(def.id)!)
-            .eq('user_id', userId);
-        } else {
-          await supabase.from('event_attributes').insert(attrData);
-        }
-      }
-    } else {
-      // INSERT: parent event ne postoji za ovaj lanac
-      const { data: newParent, error: parentErr } = await supabase
-        .from('events')
-        .insert({
-          user_id:       userId,
-          category_id:   categoryId,
-          event_date:    eventDate,
-          session_start: sessionISO,
-          chain_key:     leafCategoryId, // BUG-G fix v2: chain discriminator
-          created_at:    sessionISO,
-        })
-        .select('id')
-        .single();
-
-      if (parentErr || !newParent) return;
-
-      const parentId = (newParent as { id: string }).id;
-      for (const { def, value } of mergedAttrs.values()) {
-        if (value == null || value === '') continue;
-        const attrData = buildAttrData(parentId, userId, def, value);
-        await supabase.from('event_attributes').insert(attrData);
-      }
-    }
-  };
+  // NOTE (S104): findParentEventByChain + upsertParentEventForUpdate su ekstrahirani
+  // u src/lib/parentEventLoader.ts kao findParentEventByChain() + upsertParentEvent()
+  // — shared service koji koriste i Add/Edit Activity. Vidi docs/FABLE_PLAN.md I.2.
+  const mergedAttrsToWrites = (
+    mergedAttrs: Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>
+  ): ParentAttrWrite[] =>
+    Array.from(mergedAttrs.values()).map(({ def, value }) => ({
+      definitionId: def.id,
+      value,
+      dataType: def.data_type,
+    }));
 
   // ────── CREATE ──────
   // IMPORT-P2 fix: grupiraj po sessionISO → 1 parent event po sesiji
@@ -835,64 +752,22 @@ export async function applyImportChanges(
 
     for (let i = 0; i < parentLevels.length; i++) {
       const { categoryId } = parentLevels[i];
-      const mergedAttrs = group.parentMerged.get(categoryId);
-      if (!mergedAttrs || mergedAttrs.size === 0) continue;
+      const mergedAttrs = group.parentMerged.get(categoryId) ?? new Map();
 
       try {
-        // UPSERT: check if parent already exists for this chain+session
+        // Upsert (shared service — S104 unifikacija): P2 anchor uvijek postoji
+        // (čak i s 0 atributa), P3-safe per-attribute merge.
         // BUG-G fix: koristimo LEAF (group.leafCategoryId) kao disambiguator,
         // ne immediate child. Leaf je jedini ID koji je garantirano unique
         // po sesiji — intermediate čvorovi (npr. Gym) mogu biti dijeljeni.
-        const existingId = await findParentEventByChain(categoryId, group.sessionISO, group.leafCategoryId);
-
-        if (existingId) {
-          // UPDATE existing parent attrs (P3: prazna ne prepisuje)
-          const { data: existingAttrRows } = await supabase
-            .from('event_attributes')
-            .select('id, attribute_definition_id')
-            .eq('event_id', existingId);
-
-          const existingAttrs = new Map<string, string>(
-            ((existingAttrRows ?? []) as { id: string; attribute_definition_id: string }[])
-              .map(ea => [ea.attribute_definition_id, ea.id])
-          );
-
-          for (const { def, value } of mergedAttrs.values()) {
-            if (value == null || value === '') continue;
-            const attrData = buildAttrData(existingId, userId, def, value);
-            if (existingAttrs.has(def.id)) {
-              await supabase.from('event_attributes').update(attrData).eq('id', existingAttrs.get(def.id)!).eq('user_id', userId);
-            } else {
-              await supabase.from('event_attributes').insert(attrData);
-            }
-          }
-        } else {
-          // INSERT new parent event
-          const { data: newParent, error: parentErr } = await supabase
-            .from('events')
-            .insert({
-              user_id:       userId,
-              category_id:   categoryId,
-              event_date:    group.eventDate,
-              session_start: group.sessionISO,
-              chain_key:     group.leafCategoryId, // BUG-G fix v2: chain discriminator
-              created_at:    group.sessionISO,
-            })
-            .select('id')
-            .single();
-
-          if (parentErr || !newParent) {
-            errors.push(`Session ${group.sessionISO} parent insert error – ${parentErr?.message ?? 'unknown'}`);
-            continue;
-          }
-
-          const parentId = (newParent as { id: string }).id;
-          for (const { def, value } of mergedAttrs.values()) {
-            if (value == null || value === '') continue;
-            const attrData = buildAttrData(parentId, userId, def, value);
-            await supabase.from('event_attributes').insert(attrData);
-          }
-        }
+        await upsertParentEvent(
+          categoryId,
+          group.leafCategoryId,
+          group.sessionISO,
+          group.eventDate,
+          userId,
+          mergedAttrsToWrites(mergedAttrs)
+        );
       } catch (err) {
         errors.push(`Session ${group.sessionISO} parent event error – ${String(err)}`);
       }
@@ -941,14 +816,23 @@ export async function applyImportChanges(
 
         const leafId = (newLeaf as { id: string }).id;
 
-        for (const [attrName, def] of Object.entries(leafAttrs)) {
-          const attrData = buildAttrData(leafId, userId, def, row.attributes[attrName]);
-          await supabase.from('event_attributes').insert(attrData);
+        // Q3 (S104, Fable): batch svih atributa jedne sesije u 1 INSERT umjesto
+        // N sekvencijalnih poziva — kritično za Diary import (7000 redaka × ~10 atributa).
+        const leafAttrRecords = Object.entries(leafAttrs).map(([attrName, def]) =>
+          buildAttrData(leafId, userId, def, row.attributes[attrName])
+        );
+        if (leafAttrRecords.length > 0) {
+          const { error: leafAttrErr } = await supabase.from('event_attributes').insert(leafAttrRecords);
+          if (leafAttrErr) {
+            errors.push(`Row ${row._source_row}: Failed to insert attributes – ${leafAttrErr.message}`);
+          }
         }
 
         created++;
       } catch (err) {
         errors.push(`Row ${row._source_row}: Unexpected error – ${String(err)}`);
+      } finally {
+        reportProgress();
       }
     }
   }
@@ -1012,18 +896,18 @@ export async function applyImportChanges(
 
     for (let i = 0; i < parentLevels.length; i++) {
       const { categoryId } = parentLevels[i];
-      const mergedAttrs = group.parentMerged.get(categoryId);
-      if (!mergedAttrs || mergedAttrs.size === 0) continue;
+      const mergedAttrs = group.parentMerged.get(categoryId) ?? new Map();
 
       try {
         // BUG-G fix: koristimo LEAF kao disambiguator (vidi findParentEventByChain)
         const leafCategoryId = firstRowLevels[firstRowLevels.length - 1].categoryId;
-        await upsertParentEventForUpdate(
+        await upsertParentEvent(
           categoryId,
           leafCategoryId,
           group.sessionISO,
           group.eventDate,
-          mergedAttrs,
+          userId,
+          mergedAttrsToWrites(mergedAttrs)
         );
       } catch (err) {
         errors.push(`Session ${group.sessionISO} parent update error – ${String(err)}`);
@@ -1087,6 +971,9 @@ export async function applyImportChanges(
           .map((ea: { id: string; attribute_definition_id: string }) => [ea.attribute_definition_id, ea.id])
       );
 
+      // Q3 (S104, Fable): batch novi atributi u 1 INSERT; postojeći se i dalje
+      // update-aju pojedinačno (različiti WHERE targeti, nema shared upsert ključa).
+      const attrsToInsert: Record<string, unknown>[] = [];
       for (const [attrName, value] of Object.entries(row.attributes)) {
         const def = attrByCatName.get(`${existingCatId}||${attrName}`);
         if (!def) continue;
@@ -1102,13 +989,18 @@ export async function applyImportChanges(
             .eq('id', existingAttrs.get(def.id)!)
             .eq('user_id', userId);
         } else if (!isClear) {
-          await supabase.from('event_attributes').insert(attrData);
+          attrsToInsert.push(attrData);
         }
+      }
+      if (attrsToInsert.length > 0) {
+        await supabase.from('event_attributes').insert(attrsToInsert);
       }
 
       updated++;
     } catch (err) {
       errors.push(`Row ${row._source_row}: Unexpected update error – ${String(err)}`);
+    } finally {
+      reportProgress();
     }
   }
 
@@ -1356,6 +1248,7 @@ export async function importEventsFromExcel(
   overwriteDecisions: Map<string, 'replace' | 'add' | 'skip'> = new Map(),
   currentUserEmail?:  string,
   foreignMode:        'skip' | 'import_as_mine' = 'skip',
+  onProgress?:        (done: number, total: number) => void,
 ): Promise<ImportResult> {
   // Step 1: Parse file
   const parsed = await parseExcelFile(file, currentUserEmail, foreignMode);
@@ -1392,7 +1285,7 @@ export async function importEventsFromExcel(
   }
 
   // Step 5: Apply (s overwrite odlukama za kolizije)
-  const result = await applyImportChanges(userId, validCreates, validUpdates, categoriesDict, attrDefs, overwriteDecisions);
+  const result = await applyImportChanges(userId, validCreates, validUpdates, categoriesDict, attrDefs, overwriteDecisions, onProgress);
 
   return {
     created:  result.created,

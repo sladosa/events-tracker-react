@@ -165,6 +165,17 @@ events (linked to category_id + user_id)
 - Collab bugfixes + testiranje (S39): RLS `categories_select` bug — koristio `categories.user_id` umjesto area ownership → `009_sharing.sql` fixed; `canAddActivity` nije blokirao read grantee na leaf → `AppHome.tsx` fixed; leaf/non-leaf hint prikazivao se za read grantee → `ProgressiveCategorySelector.tsx` + `AppHome.tsx` fixed; ViewDetailsPage `isOwnEvent` — Edit Activity gumb sakriven za tuđe evente; `fetchSharedContext` guard `.neq('owner_id', userId)` dodan
 - Collab Faza 7 (S40): `src/components/sharing/ShareManagementModal.tsx` — 3 sekcije (active access + pending invites + invite form) + help text; 3 entry pointa: (1) `🔗 Manage Access` badge u filter baru (`areaHasActiveShares`), (2) `⚙ Manage Access` u Structure OwnerBanneru, (3) `Manage Access` u CategoryChainRow ⋮ meniju; `StructureTableView` dobio `onManageAccess` prop; `AppHome.tsx` drži `shareModalTarget` state
 - Collab bugfixes + inline permission dropdown (S41): `CategoryChainRow` — "Manage Access" izvučen iz `isEditMode` guarda (uvijek vidljiv za ownera); `useDataShares.listShares` — FK join zamijenjen s dva odvojena querija (isti pattern kao `fetchAreaGrantees`); `createShare` — upsert s `onConflict` umjesto INSERT (sprječava duplikate, update permission); nova fn `updateSharePermission`; `ShareManagementModal` — inline `<select>` dropdown za read↔write na aktivnim shareovima; DB: unique constraint `data_shares_unique_share`
+- **S104 — Fable critical findings (arh. ispravke + Diary prerequisit):**
+  - **Delete Activity bug fix** (Fable I.1): `AppHome.tsx handleDeleteActivity` sad prima `leafCategoryId` i briše samo `category_id = leafCategoryId OR chain_key = leafCategoryId` — prije je brisao SVE evente s istim `session_start`, uništavajući druge aktivnosti dodane u isto vrijeme (T-BUGG-5 klasa buga)
+  - **Parent event write logika ekstrahirana** (Fable I.2): `parentEventLoader.ts` dobio `findParentEventByChain()` + `upsertParentEvent()` — single source of truth za sva 4 mjesta (AddActivityPage, EditActivityPage, excelImport.ts create+update). Hibrid ponašanje: P2 anchor UVIJEK kreiran (čak i s 0 atributa, po uzoru na Add flow), P3 attribute write kroz per-attribute upsert (po uzoru na Import flow — fixa EditActivityPage-ov stari delete-all-then-reinsert koji je mogao izbrisati ne-praznu vrijednost kad korisnik očisti polje)
+  - **Bugfix pronađen kroz testiranje:** `canFinish` u `AddActivityPage.tsx` nije čekao da `categoryChain` završi loading — brzi klik na Finish je spremao leaf event bez parent chain-a (P2 anchor tiho preskočen). Fix: `canFinish` sad uključuje `!chainLoading`.
+  - **BUG-S102-DELETE fix**: `StructureDeleteModal` — live COUNT query (`liveEventCount`) prije `isBlocked` odluke; "Delete" gumb disabled dok recount ne završi (`countChecked`)
+  - **Q2**: `useMemo` na `FilterContext` value objekt (`FilterContext.tsx`)
+  - **Q3**: batch `event_attributes` INSERT u `excelImport.ts` (CREATE + UPDATE tok) umjesto sekvencijalnih poziva
+  - **Q4**: import progress bar (`onProgress(done, total)` kroz `applyImportChanges` → `ExcelImportModal`)
+  - **Q5**: ILIKE wildcard escaping (`%`, `_`, `\`) u `eventQueryBuilder.ts` (comment search + attr filter)
+  - **Q6**: dead code cleanup — `useLookupValues` (referencirao nepostojeću `lookup_values` tablicu), `DEBUG_ENABLED` logging sustav u `useActivities.ts`, dupli neiskorišteni `src/pages/useActivities.ts`
+  - **Testovi**: 3 nova Playwright E2E testa (`S104_delete_bug.spec.ts`, `S104_parent_event.spec.ts`, `S104_import_progress.spec.ts`) — svi passing; puni regresijski E2 + E3 + E6 set re-testiran, bez regresije
 
 ### Open bugs (main)
 
@@ -172,17 +183,34 @@ events (linked to category_id + user_id)
 - **E7/E8/E9 parallel:** Playwright padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
 - **Bulk delete (checkbox) nije ograničen za grantee-a** — backlog
 - **BACKLOG — "Import as mine" za write grantee unutar iste shared aree nema smisla:** Pravi put je Leave Area (Detach with data) ili normalan re-import u novu vlastitu area; flag samo, nije implementirano.
-- **BUG-S102-DELETE:** `StructureDeleteModal` — backup prompt gate (`isBlocked = node.eventCount > 0`) koristi stale `node.eventCount` iz Structure tab snapshot-a; ako su eventi dodani u istoj sesiji, Delete Area briše bez backup prompt upozorenja. `cascadeDelete` ipak uvijek fresh-queryja (nema orphan data). Fix: live recount (COUNT query po category_id) prije isBlocked odluke.
-- **BUG-S103-ANYATTR:** "In any attribute" filter (`ATTR_FILTER_ANY` u `eventQueryBuilder.ts`) timeouta za grantee-e — `ILIKE` nije leakproof operator, Postgres evaluira RLS EXISTS za cijelu `event_attributes` tablicu. Privremeno: amber notice u UI (`AppHome.tsx` kad `sharedContext` aktivan + `selectedFilterAttr === ATTR_FILTER_ANY`). Pravi fix: SECURITY DEFINER RPC.
-- **UX-Import-1:** Excel Import modal nema progress indikator — veliki importi (3000+ redova) izgledaju frozen
+- **BUG-S103-ANYATTR:** "In any attribute" filter (`ATTR_FILTER_ANY` u `eventQueryBuilder.ts`) timeouta za grantee-e — `ILIKE` nije leakproof operator, Postgres evaluira RLS EXISTS za cijelu `event_attributes` tablicu. Privremeno: amber notice u UI (`AppHome.tsx` kad `sharedContext` aktivan + `selectedFilterAttr === ATTR_FILTER_ANY`). Pravi fix: SECURITY DEFINER RPC — **odgođeno za S105+** (procjena 4-6h, vidi docs/FABLE_PLAN.md I.5).
 
-### Prioriteti za S104
+~~BUG-S102-DELETE~~ — ✅ Riješeno S104 (live recount u `StructureDeleteModal.tsx`).
+~~UX-Import-1~~ — ✅ Riješeno S104 (progress bar, Fable Q4).
 
-1. **BUG-S102-DELETE fix** — live recount eventa prije isBlocked odluke u `StructureDeleteModal.tsx`
-2. **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC za "In any attribute" pretragu koja zaobilazi ILIKE+RLS non-leakproof problem
-3. **Export + Python klasifikacija** — export obje Financije area-e, Python skripta predlaže Tip/Podtip
-4. **Bulk update** — reimport xlsx s ispravljenim Tip/Podtip vrijednostima
-5. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+### Prioriteti za S105
+
+1. **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC za "In any attribute" pretragu koja zaobilazi ILIKE+RLS non-leakproof problem
+2. **FilterContext koraci 2+3** (Fable I.4) — tipizirani event bus (`appEvents.ts`), eventualno split FilterProvider/SharingProvider
+3. **Diary archaeology session** (docs/Diary.md §3) — audit skripta + mapping tablica s korisnikom
+4. **Export + Python klasifikacija** — export obje Financije area-e, Python skripta predlaže Tip/Podtip
+5. **Bulk update** — reimport xlsx s ispravljenim Tip/Podtip vrijednostima
+6. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+
+### Doc Updates Checklist (S104–S110)
+
+**Reference:** `docs/FABLE_PLAN.md` (S104–S110 plan po sesijama), `docs/DOCUMENTATION_AUDIT_2026-07-05.md` (što obrisati)
+
+After each session:
+
+| Session | Doc updates | Checklist |
+|---------|------------|-----------|
+| S104 end | CLAUDE.md "Done (through S104)" + "Open bugs (main)" sekcije | [x] Delete bug + parent event + BUG-S102-DELETE markirani kao Done; BUG-S103-ANYATTR s napomenom S105 |
+| S105 end | CLAUDE.md backlog + docs/Diary.md § 6 mapping | [ ] Dairy archaeology hasil integrirani; mapping tablica popunjena |
+| S106 end | — | — |
+| S107 end | MIGRATION_STATE.md + CLAUDE.md backlog | [ ] trening.xlsm red dodana (PROD ✅); Garmin/Activities Clean ✅ |
+| S108 end | docs/HELP_STRUCTURE.md § H5 Analytics tab | [ ] Analytics tab feature inventory dodana ako je tab implementiran |
+| S110 end | FABLE_PLAN.md § VII ("Što se desilo — lessons learned") | [ ] Session notes + što se razlikovalo od plana |
 
 ### Active backlog
 

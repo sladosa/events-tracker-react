@@ -61,6 +61,19 @@ export function isAnyAttrFilter(attrFilter?: AttrFilterParam | null): boolean {
 }
 
 // ─────────────────────────────────────────────
+// ILIKE helpers
+// ─────────────────────────────────────────────
+
+/**
+ * Escapes ILIKE wildcard characters (%, _) and the escape char itself, so
+ * user-typed search text is matched literally instead of as a SQL pattern
+ * (e.g. "100%" or "_test_" would otherwise match far more than intended).
+ */
+function escapeIlike(value: string): string {
+  return value.replace(/[%_\\]/g, '\\$&');
+}
+
+// ─────────────────────────────────────────────
 // WHERE clause builder
 // ─────────────────────────────────────────────
 
@@ -85,7 +98,7 @@ export function applyEventFilters(query: any, filters: EventQueryFilters): any {
   }
 
   if (filters.commentSearch) {
-    query = query.ilike('comment', `%${filters.commentSearch}%`);
+    query = query.ilike('comment', `%${escapeIlike(filters.commentSearch)}%`);
   }
 
   if (isAttrFilterActive(filters.attrFilter)) {
@@ -96,7 +109,7 @@ export function applyEventFilters(query: any, filters: EventQueryFilters): any {
     if (af.isExact) {
       query = query.eq('event_attributes.value_text', af.value);
     } else {
-      query = query.ilike('event_attributes.value_text', `%${af.value}%`);
+      query = query.ilike('event_attributes.value_text', `%${escapeIlike(af.value)}%`);
     }
   }
 

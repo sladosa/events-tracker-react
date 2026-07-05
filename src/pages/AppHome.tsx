@@ -1029,17 +1029,21 @@ function ActivitiesView() {
   };
 
   // P1: Delete activity - briše events, attributes, storage fajlove
-  const handleDeleteActivity = async (sessionStart: string): Promise<void> => {
+  // Fix S104 (Fable I.1): filter po chain-u (leaf category_id ILI chain_key = leafCategoryId),
+  // inače brisanje jedne aktivnosti briše i sve druge lance sa istim session_start (T-BUGG-5 klasa buga).
+  const handleDeleteActivity = async (sessionStart: string, leafCategoryId: UUID): Promise<void> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Dohvati sve events za ovaj sessionStart
+      // Dohvati sve events za ovaj sessionStart KOJI PRIPADAJU OVOM LANCU
+      // (leaf event: category_id = leafCategoryId; parent eventi: chain_key = leafCategoryId)
       const { data: events, error: eventsError } = await supabase
         .from('events')
         .select('id')
         .eq('session_start', sessionStart)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .or(`category_id.eq.${leafCategoryId},chain_key.eq.${leafCategoryId}`);
 
       if (eventsError) throw eventsError;
       if (!events || events.length === 0) return;

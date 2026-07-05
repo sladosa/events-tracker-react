@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID, BreadcrumbItem, Category, Area } from '@/types';
 import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
@@ -712,7 +712,11 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   // Context value
   // --------------------------------------------
 
-  const value: FilterContextType = {
+  // Q2 (S104, Fable I.4 step 1): useMemo — bez ovoga se `value` kreira iznova
+  // na svakom renderu pa svi consumeri (ActivitiesTable, StructureTableView,
+  // ProgressiveCategorySelector...) re-renderiraju i kad se ništa relevantno
+  // nije promijenilo. Akcije su već useCallback-stabilne (vidi gore).
+  const value: FilterContextType = useMemo(() => ({
     filter,
     isLeafCategory,
     setIsLeafCategory,
@@ -762,7 +766,15 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     // Computed
     hasActiveFilter,
     isFiltered
-  };
+  }), [
+    filter, isLeafCategory, fullPathDisplay, selectionChain, dropdownOptions,
+    isRestored, isRestoring, selectedShortcutId, selectArea, selectCategory,
+    selectAreaAndCategory, navigateToPath, navigateUp, reset, resetCategory,
+    periodLabel, setPeriodKey, setDateRange, setSearchQuery, setCommentSearch,
+    clearCommentSearch, setAttrFilter, clearAttrFilter, setSortOrder,
+    saveToStorage, clearStorage, sharedContext, areaHasActiveShares,
+    selectedArea, filterOrphans, skipNextFilterReset, hasActiveFilter, isFiltered,
+  ]);
 
   return (
     <FilterContext.Provider value={value}>

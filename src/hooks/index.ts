@@ -12,9 +12,8 @@ export { useCategoryTree, useCategoryTreeByArea } from './useCategoryTree';
 
 // Add Activity hooks
 export { useCategoryChain, useIsLeafCategory, useLeafCategories } from './useCategoryChain';
-export { 
-  useAttributeDefinitions, 
-  useLookupValues,
+export {
+  useAttributeDefinitions,
   parseValidationRules,
   getOptionsForDependency
 } from './useAttributeDefinitions';
@@ -37,7 +36,7 @@ export {
 export { useDateBounds, getDatePresets, formatDateDisplay } from './useDateBounds';
 
 // Activities hooks
-export { useActivities, formatTime, formatDate, getActivitiesDebugLog, clearActivitiesDebugLog } from './useActivities';
+export { useActivities, formatTime, formatDate } from './useActivities';
 export type { ActivityEvent, ActivityGroup } from './useActivities';
 
 // Constants - moved to lib/constants.ts, re-export for backwards compatibility

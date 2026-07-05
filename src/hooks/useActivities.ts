@@ -4,51 +4,6 @@ import type { UUID } from '@/types';
 import { resolveLeafCategoryIds, applyEventFilters, attrFilterJoinClause } from '@/lib/eventQueryBuilder';
 
 // --------------------------------------------
-// Debug Configuration
-// --------------------------------------------
-
-// Debug Configuration - set to true to enable console logging
-const DEBUG_ENABLED = false;
-
-interface DebugLogEntry {
-  timestamp: string;
-  action: string;
-  details: Record<string, unknown>;
-}
-
-// Global debug log (accessible via window for debugging)
-const debugLog: DebugLogEntry[] = [];
-
-function logDebug(action: string, details: Record<string, unknown>) {
-  if (!DEBUG_ENABLED) return;
-  
-  const entry: DebugLogEntry = {
-    timestamp: new Date().toISOString(),
-    action,
-    details
-  };
-  
-  debugLog.push(entry);
-  
-  // Keep only last 100 entries
-  if (debugLog.length > 100) {
-    debugLog.shift();
-  }
-  
-  // Log to console with formatting
-  console.log(
-    `%c[useActivities] ${action}`,
-    'color: #6366f1; font-weight: bold;',
-    details
-  );
-}
-
-// Expose debug log to window for inspection
-if (typeof window !== 'undefined') {
-  (window as unknown as { __activitiesDebugLog: DebugLogEntry[] }).__activitiesDebugLog = debugLog;
-}
-
-// --------------------------------------------
 // Types
 // --------------------------------------------
 
@@ -168,22 +123,11 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   // Race condition fix: track the latest fetch so older async results don't overwrite newer ones
   const latestFetchIdRef = useRef<number>(0);
 
-  // P4: Log when options change
-  useEffect(() => {
-    logDebug('OPTIONS_CHANGED', { areaId, categoryId, dateFrom, dateTo, pageSize });
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, pageSize]);
-
   // Fetch activities
   const fetchActivities = useCallback(async (isLoadMore = false) => {
     const fetchId = Date.now(); // Unique ID for this fetch
     // Register as latest fetch - any older fetch that resolves later will be ignored
     latestFetchIdRef.current = fetchId;
-    logDebug('FETCH_START', { 
-      fetchId,
-      isLoadMore, 
-      currentFilters: { areaId, categoryId, dateFrom, dateTo },
-      currentOffset: offset 
-    });
 
     try {
       if (isLoadMore) {
@@ -200,27 +144,12 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       const categoryIds = resolved.categoryIds;
       const isLeafCategory = resolved.isLeafCategory;
 
-      logDebug('CATEGORIES_RESOLVED', {
-        fetchId, areaId, categoryId,
-        categoryIdCount: categoryIds.length,
-        isLeaf: isLeafCategory,
-      });
-
       // P4: Store debug info
       debugInfoRef.current.lastQuery = {
         categoryIds,
         filters: { areaId, categoryId, dateFrom, dateTo },
         isLeaf: isLeafCategory
       };
-
-      logDebug('BUILDING_QUERY', { 
-        fetchId,
-        categoryIds, 
-        categoryIdCount: categoryIds.length,
-        dateFrom, 
-        dateTo,
-        expectedFilter: categoryIds.length > 0 ? 'BY_CATEGORY_IDS' : 'ALL_EVENTS'
-      });
 
       // Build query — shared filter helper applies WHERE clause
       const baseSelectCols = 'id, category_id, event_date, session_start, comment, created_at, edited_at, user_id';
@@ -243,26 +172,13 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
       const { data: events, error: fetchError, count } = await query;
 
-      logDebug('QUERY_EXECUTED', { 
-        fetchId,
-        eventCount: events?.length || 0, 
-        totalCount: count,
-        error: fetchError?.message || null,
-        firstEvent: events?.[0] ? { 
-          id: events[0].id, 
-          category_id: events[0].category_id 
-        } : null
-      });
-
       if (fetchError) throw fetchError;
 
       // Note: Removed isMounted check - it was causing issues with React StrictMode
       // React handles state updates on unmounted components gracefully now
-      logDebug('QUERY_COMPLETED', { fetchId, eventCount: events?.length || 0, totalCount: count });
 
       // Stale fetch guard: if a newer fetch has started, discard these results
       if (fetchId !== latestFetchIdRef.current) {
-        logDebug('STALE_FETCH_DISCARDED', { fetchId, latestFetchId: latestFetchIdRef.current });
         return;
       }
 
@@ -274,7 +190,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       setHasMore((events?.length || 0) === pageSize);
 
       if (!events || events.length === 0) {
-        logDebug('NO_EVENTS_FOUND', { fetchId, isLoadMore });
         if (!isLoadMore) {
           setActivities([]);
           setActivityCount(0);
@@ -283,21 +198,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       }
 
       const eventRows = events as EventRow[];
-
-      // P4: Verify all events match our filter
-      if (categoryIds.length > 0) {
-        const mismatchedEvents = eventRows.filter(e => !categoryIds.includes(e.category_id));
-        if (mismatchedEvents.length > 0) {
-          logDebug('⚠️ FILTER_MISMATCH_DETECTED', {
-            fetchId,
-            expectedCategoryIds: categoryIds,
-            mismatchedEvents: mismatchedEvents.map(e => ({
-              id: e.id,
-              category_id: e.category_id
-            }))
-          });
-        }
-      }
 
       // Batch fetch all category paths in one query via category_full_paths view
       // (replaces the old N+1 buildCategoryPath loop)
@@ -426,25 +326,12 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         // Tie-breaker: user_id alphabetically (deterministic, consistent across calls)
         return a.user_id < b.user_id ? -1 : a.user_id > b.user_id ? 1 : 0;
       });
-      
-      logDebug('GROUPING_COMPLETE', { 
-        fetchId,
-        eventCount: enrichedEvents.length,
-        groupCount: newGroups.length,
-        groups: newGroups.map(g => ({
-          sessionKey: g.sessionKey,
-          category: g.category_name,
-          path: g.category_path.join(' > '),
-          eventCount: g.eventCount
-        }))
-      });
 
       // Second stale check after async path-building (most likely place for race condition)
       if (fetchId !== latestFetchIdRef.current) {
-        logDebug('STALE_FETCH_DISCARDED_POST_GROUPING', { fetchId, latestFetchId: latestFetchIdRef.current });
         return;
       }
-      
+
       if (isLoadMore) {
         setActivities(prev => [...prev, ...newGroups]);
         setActivityCount(prev => prev + newGroups.length);
@@ -455,21 +342,9 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         setOffset(pageSize);
       }
 
-      logDebug('FETCH_COMPLETE', { 
-        fetchId,
-        totalEvents: count,
-        loadedEvents: enrichedEvents.length,
-        activityGroups: newGroups.length
-      });
-
     } catch (err) {
       const pgErr = err as { message?: string; code?: string; details?: string; hint?: string };
       console.error('Failed to fetch activities:', pgErr?.code, pgErr?.message, pgErr?.details);
-      logDebug('FETCH_ERROR', {
-        error: pgErr?.message ?? (err instanceof Error ? err.message : 'Unknown error'),
-        code: pgErr?.code,
-        details: pgErr?.details,
-      });
       const errMsg = pgErr?.message ?? (err instanceof Error ? err.message : 'Failed to fetch activities');
       setError(new Error(errMsg));
     } finally {
@@ -481,7 +356,6 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   // Initial fetch and refetch on filter changes
   useEffect(() => {
     if (skip) return; // BUG-S45-1: skip fetch when caller already has the list
-    logDebug('FILTER_EFFECT_TRIGGERED', { areaId, categoryId, dateFrom, dateTo });
     fetchActivities(false);
   }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, skip]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -537,18 +411,4 @@ export function formatDate(dateStr: string): string {
   const d = String(date.getDate()).padStart(2, '0');
   const weekday = date.toLocaleDateString('hr-HR', { weekday: 'short' });
   return `${y}/${m}/${d} ${weekday}`;
-}
-
-/**
- * Get debug log (for testing/debugging)
- */
-export function getActivitiesDebugLog(): DebugLogEntry[] {
-  return [...debugLog];
-}
-
-/**
- * Clear debug log
- */
-export function clearActivitiesDebugLog(): void {
-  debugLog.length = 0;
 }
