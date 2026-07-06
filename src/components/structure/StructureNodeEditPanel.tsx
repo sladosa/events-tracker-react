@@ -1087,8 +1087,15 @@ export function StructureNodeEditPanel({
             });
           if (error) throw error;
         } else {
-          const slugChanged = attr.slug !== attr.originalSlug;
-          const newSlug = attr.slug.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || attr.originalSlug;
+          // KRITIČNO: slug se normalizira SAMO ako ga je korisnik stvarno mijenjao.
+          // Bezuvjetna normalizacija je tiho brisala crtice iz legacy slugova
+          // ("strength-type" → "strengthtype") pri svakom Save-u panela (i običan
+          // rename kategorije!), a fixup referenci se preskakao jer korisnik slug
+          // nije dirao → depends_on ostane pokazivati na nepostojeći slug (S105c bug).
+          const newSlug = attr.slug !== attr.originalSlug
+            ? (attr.slug.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || attr.originalSlug)
+            : attr.originalSlug;
+          const slugChanged = newSlug !== attr.originalSlug;
           const { error } = await supabase
             .from('attribute_definitions')
             .update({
@@ -1106,7 +1113,7 @@ export function StructureNodeEditPanel({
           if (error) throw error;
 
           // If slug changed, update any depends_on references pointing to old slug
-          if (slugChanged && newSlug !== attr.originalSlug) {
+          if (slugChanged) {
             for (const n of allNodes) {
               for (const ad of n.attributeDefinitions) {
                 if (ad.id === attr.id) continue;
@@ -1131,9 +1138,9 @@ export function StructureNodeEditPanel({
       }
 
       toast.success('Saved successfully');
-      if (node.nodeType === 'area') {
-        window.dispatchEvent(new Event('areas-changed'));
-      }
+      // Uvijek (ne samo za Area node): rename kategorije mora invalidirati
+      // categoryCache (breadcrumb putanje u View/Edit) i osvježiti dropdownove.
+      window.dispatchEvent(new Event('areas-changed'));
       onSaved(node.id);
     } catch (err) {
       console.error('Save error (full):', err);
