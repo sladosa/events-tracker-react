@@ -328,6 +328,11 @@ export function EditActivityPage() {
           .in('event_id', leafEventIds)
           .eq('type', 'image'),
       ]);
+      // KRITIČNO: greška se NE smije tiho progutati — Edit s prazno učitanim
+      // atributima + Save bi pregazio prave vrijednosti u bazi (P3 klasa rizika).
+      // Throw → catch → loadError ekran, korisnik proba ponovo.
+      if (attrsRes.error) throw attrsRes.error;
+      if (attachmentsRes.error) throw attachmentsRes.error;
 
       const attrsByEvent = new Map<string, LoadedAttribute[]>();
       for (const attr of (attrsRes.data || []) as unknown as LoadedAttribute[]) {

@@ -186,6 +186,10 @@ events (linked to category_id + user_id)
   - **E2E selector fixes (ne bugovi)**: e4 + e14 — `/prev|next/i` kolizija s AI Help chipom "What does Prev/Next do?" → egzaktna imena `'◀ Prev'`/`'Next ▶'`; e14 `isNavigationFetchFor` sad isključuje po `chain_key=` paramu (batched parent upit ima zarez u selectu pa stari "select=id bez zareza" prečac više ne diskriminira).
   - **Testovi**: E2, E3, E4, E14, T-S104-2 svi passing (`--workers=1`).
   - **PROD checklist**: Postgres upgrade na ≥17.6.1.121 (Settings → Infrastructure) — napraviti KAD Supabase incident bude Resolved; seli na novije instance tipove. Advisor "Security Definer View" (`category_full_paths`, iz 016) — riješiti s `security_invoker = true` u nekoj sesiji.
+- **S105b/c — error handling hardening (2026-07-06, samo test-branch od S105c):**
+  - **S105b**: `activityViewCache` — null (greška) se više ne lijepi u LRU (`_dropIfNull`); transient 500 je prikazivao trajni "Activity not found" do reloada
+  - **S105c**: `EditActivityPage` batch attrs/attachments load — `throw` na error umjesto tihog praznog forma (T-S105-2 prvi pokušaj imao 7 evenata s praznim atributima; **Save iz takvog stanja može pregaziti prave vrijednosti — P3 rizik**); isto `loadParentAttrs` (sva 3 upita) — greška se propagira do loadError/retry umjesto praznih parent atributa
+  - Backlog ideja (Saša): Edit bi mogao seedati iz View cachea umjesto refetcha — odbijeno za sada radi svježine podataka pri pisanju (mobitel/shared user mogu promijeniti podatke između View i Edit); kandidat: seed-from-cache + background revalidate
 
 ### Open bugs (main)
 
@@ -305,7 +309,8 @@ After each session:
    ```
    git push origin test-branch
    ```
-6. **Samo kad je verzija spremna za PROD** — merge na main (Netlify build) + sync back:
+6. **Samo kad korisnik IZRIČITO zatraži PROD deploy** — Netlify build troši kredite,
+   NIKAD ne pushati/mergati na main samoinicijativno! Tada merge na main + sync back:
    ```
    git checkout main && git merge test-branch --no-edit && git push origin main
    git checkout test-branch && git merge main --no-edit && git push origin test-branch

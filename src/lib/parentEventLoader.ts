@@ -261,13 +261,14 @@ export async function loadParentAttrs(
   // Isti disambiguation algoritam kao findParentEventByChain, samo batched:
   //   1. Primary:  chain_key = leafCategoryId
   //   2. Fallback: chain_key IS NULL + točno 1 kandidat po kategoriji (legacy)
-  const { data: primary } = await supabase
+  const { data: primary, error: primaryError } = await supabase
     .from('events')
     .select('id, category_id')
     .eq('user_id', userId)
     .in('category_id', parentChainIds)
     .eq('session_start', sessionStart)   // DB format — kritično!
     .eq('chain_key', leafCategoryId);
+  if (primaryError) throw primaryError;  // ne tiho prazno — pozivatelj prikazuje grešku/retry
 
   const eventIdByCategory = new Map<string, UUID>();
   for (const row of (primary ?? []) as { id: UUID; category_id: string }[]) {
@@ -276,13 +277,14 @@ export async function loadParentAttrs(
 
   const missingCatIds = parentChainIds.filter(id => !eventIdByCategory.has(id));
   if (missingCatIds.length > 0) {
-    const { data: legacy } = await supabase
+    const { data: legacy, error: legacyError } = await supabase
       .from('events')
       .select('id, category_id')
       .eq('user_id', userId)
       .in('category_id', missingCatIds)
       .eq('session_start', sessionStart)
       .is('chain_key', null);
+    if (legacyError) throw legacyError;
 
     const candidates = new Map<string, UUID[]>();
     for (const row of (legacy ?? []) as { id: UUID; category_id: string }[]) {
@@ -302,10 +304,11 @@ export async function loadParentAttrs(
   // ── Učitaj atribute svih parent evenata odjednom ──────────────────────────
   // Jedan parent event po kategoriji + attr defs pripadaju točno jednoj kategoriji,
   // pa flat merge po attribute_definition_id ne može kolidirati.
-  const { data: attrs } = await supabase
+  const { data: attrs, error: attrsError } = await supabase
     .from('event_attributes')
     .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
     .in('event_id', parentEventIds);
+  if (attrsError) throw attrsError;
 
   for (const raw of (attrs || []) as unknown as RawAttrRow[]) {
     if (!raw.attribute_definitions) continue;
