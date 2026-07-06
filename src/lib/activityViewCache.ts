@@ -103,6 +103,17 @@ export function makeCacheKey(
   return `ss|${ms}|${categoryId ?? ''}|${userId ?? ''}`;
 }
 
+/**
+ * Ne keširaj neuspjeh: null (greška/nije nađeno) izbaci iz cachea čim se sazna,
+ * inače se jedan transient 500 (PROD gušenje) zalijepi kao trajni
+ * "Activity not found" do reloada stranice.
+ */
+function _dropIfNull(key: string, p: Promise<CachedActivityData | null>): void {
+  p.then(res => {
+    if (res === null && _cache.get(key) === p) invalidateCacheKey(key);
+  });
+}
+
 /** Get cached data, or fetch and store. Returns null on error/not-found. */
 export async function getOrFetchActivity(
   key: string,
@@ -114,7 +125,9 @@ export async function getOrFetchActivity(
   if (!_cache.has(key)) {
     evict();
     _order.push(key);
-    _cache.set(key, _fetchActivityData(sessionStart, categoryIdParam, noSession, ownerIdParam));
+    const p = _fetchActivityData(sessionStart, categoryIdParam, noSession, ownerIdParam);
+    _cache.set(key, p);
+    _dropIfNull(key, p);
   }
   return _cache.get(key)!;
 }
@@ -130,10 +143,9 @@ export function prefetchActivity(
   if (_cache.has(key)) return;
   evict();
   _order.push(key);
-  _cache.set(
-    key,
-    _fetchActivityData(sessionStart, categoryIdParam, noSession, ownerIdParam).catch(() => null),
-  );
+  const p = _fetchActivityData(sessionStart, categoryIdParam, noSession, ownerIdParam).catch(() => null);
+  _cache.set(key, p);
+  _dropIfNull(key, p);
 }
 
 /** Remove a specific entry (e.g. after Edit saves new data). */
