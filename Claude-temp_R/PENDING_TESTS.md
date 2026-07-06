@@ -3,8 +3,20 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S104 (2026-07-05)
-**Detalji testova:** [S104_tests.md](test-sessions/S104_tests.md)
+**Zadnji update:** S105 (2026-07-06)
+**Detalji testova:** [S105_tests.md](test-sessions/S105_tests.md)
+
+---
+
+## S105 — PROD IO redukcija: categoryCache + batched loads
+
+| ID        | Test                                                                        | Status |
+| --------- | ---------------------------------------------------------------------------- | ------ |
+| T-S105-1  | View Activity (PROD, 7-event sesija): brzo učitavanje, svi atributi vidljivi | ⬜      |
+| T-S105-2  | Edit Activity: svi eventi + parent atributi ispravno učitani (batch load)    | ⬜      |
+| T-S105-3  | Structure rename kategorije → breadcrumb u View/Edit odmah pokazuje novo ime | ⬜      |
+| T-S105-4  | E14 prefetch cache: Next klik bez re-fetcha (E2E)                            | ✅      |
+| T-S105-5  | E2+E3+E4 regresija (Add/Edit/View flow s categoryCache)                      | ✅      |
 
 ---
 

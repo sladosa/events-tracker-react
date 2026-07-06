@@ -21,6 +21,7 @@ import { VALUE_COLUMNS } from '@/lib/constants';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { loadParentAttrs, buildParentChainIds, findParentEventByChain, upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
+import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
 import { useFilter } from '@/context/FilterContext';
 
 import { ActivityHeader } from '@/components/activity/ActivityHeader';
@@ -53,6 +54,7 @@ interface LoadedEvent {
 
 interface LoadedAttribute {
   id: UUID;
+  event_id: UUID;
   attribute_definition_id: UUID;
   value_text: string | null;
   value_number: number | null;
@@ -311,24 +313,40 @@ export function EditActivityPage() {
       setOriginalEventIds(leafEvents.map(e => e.id));
       
       // --- Load leaf events → pendingEvents ---
-      const pendingEventsData: PendingEvent[] = [];
-      
-      for (const event of leafEvents) {
-        const { data: attrs } = await supabase
+      // Batch: ONE query for all events' attributes + ONE for all attachments
+      // (was 2 queries per event). Fewer round trips, and one .in() scan instead
+      // of N separate scans — matters on PROD where event_attributes is large.
+      const leafEventIds = leafEvents.map(e => e.id);
+      const [attrsRes, attachmentsRes] = await Promise.all([
+        supabase
           .from('event_attributes')
-          .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-          .eq('event_id', event.id);
-        
-        const loadedAttrs = (attrs || []) as unknown as LoadedAttribute[];
-        
-        const { data: attachments } = await supabase
+          .select('id, event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
+          .in('event_id', leafEventIds),
+        supabase
           .from('event_attachments')
           .select('id, event_id, url, filename')
-          .eq('event_id', event.id)
-          .eq('type', 'image');
-        
-        const loadedAttachments = (attachments || []) as LoadedAttachment[];
-        
+          .in('event_id', leafEventIds)
+          .eq('type', 'image'),
+      ]);
+
+      const attrsByEvent = new Map<string, LoadedAttribute[]>();
+      for (const attr of (attrsRes.data || []) as unknown as LoadedAttribute[]) {
+        const list = attrsByEvent.get(attr.event_id) || [];
+        list.push(attr);
+        attrsByEvent.set(attr.event_id, list);
+      }
+      const attachmentsByEvent = new Map<string, LoadedAttachment[]>();
+      for (const att of (attachmentsRes.data || []) as LoadedAttachment[]) {
+        const list = attachmentsByEvent.get(att.event_id) || [];
+        list.push(att);
+        attachmentsByEvent.set(att.event_id, list);
+      }
+
+      const pendingEventsData: PendingEvent[] = [];
+
+      for (const event of leafEvents) {
+        const loadedAttrs = attrsByEvent.get(event.id) || [];
+        const loadedAttachments = attachmentsByEvent.get(event.id) || [];
         const attributes: AttributeValue[] = loadedAttrs
           .filter(attr => attr.attribute_definitions !== null)
           .map(attr => {
@@ -435,37 +453,27 @@ export function EditActivityPage() {
   // ============================================
   
   const buildCategoryPath = async (catId: UUID): Promise<string[]> => {
+    // Kategorije + area imena iz shared keša (categoryCache.ts) — bez hodanja
+    // po bazi upit-po-upit za svaku razinu.
+    const catMap = await getCategoryMap();
     const path: string[] = [];
     let currentId: UUID | null = catId;
     let areaId: UUID | null = null;
-    
-    while (currentId) {
-      const { data: cat } = await supabase
-        .from('categories')
-        .select('id, name, parent_category_id, area_id')
-        .eq('id', currentId)
-        .single() as { data: { id: string; name: string; parent_category_id: string | null; area_id: string | null } | null };
-      
+
+    while (currentId && path.length < 15) {
+      const cat = catMap.get(currentId);
       if (!cat) break;
-      
       path.unshift(cat.name);
       if (cat.area_id) areaId = cat.area_id;
       currentId = cat.parent_category_id;
     }
-    
-    // Add area name
+
     if (areaId) {
-      const { data: area } = await supabase
-        .from('areas')
-        .select('name')
-        .eq('id', areaId)
-        .single();
-      
-      if (area) {
-        path.unshift(area.name);
-      }
+      const areaNames = await getAreaNameMap();
+      const areaName = areaNames.get(areaId);
+      if (areaName) path.unshift(areaName);
     }
-    
+
     return path;
   };
   

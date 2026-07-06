@@ -10,6 +10,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { loadParentAttrs } from '@/lib/parentEventLoader';
+import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
 import type { UUID } from '@/types';
 
 // ---- Public types ----
@@ -51,6 +52,7 @@ interface DbEvent {
 
 interface DbAttribute {
   id: UUID;
+  event_id: UUID;
   attribute_definition_id: UUID;
   value_text: string | null;
   value_number: number | null;
@@ -148,15 +150,9 @@ async function _buildCategoryChain(leafCatId: UUID): Promise<{
   path: string[];
   attributesByCategory: Map<string, { id: UUID; name: string; data_type: string; unit: string | null; description: string | null }[]>;
 }> {
-  // Fetch all categories in one query, walk up from leaf
-  const { data: allCats } = await supabase
-    .from('categories')
-    .select('id, name, parent_category_id, area_id')
-    .order('level', { ascending: false }) as {
-      data: { id: string; name: string; parent_category_id: string | null; area_id: string | null }[] | null;
-    };
-
-  const catMap = new Map((allCats ?? []).map(c => [c.id, c]));
+  // Kategorije iz shared keša (categoryCache.ts) — 1 upit po sesiji umjesto
+  // full-table fetcha po svakoj aktivnosti (i svakom Prev/Next prefetchu).
+  const catMap = await getCategoryMap();
   const chain: { id: UUID; name: string }[] = [];
   let currentId: UUID | null = leafCatId;
   let areaId: UUID | null = null;
@@ -172,8 +168,9 @@ async function _buildCategoryChain(leafCatId: UUID): Promise<{
   // Build display path (root → leaf, with area prefix)
   const path: string[] = [...chain].reverse().map(c => c.name);
   if (areaId) {
-    const { data: area } = await supabase.from('areas').select('name').eq('id', areaId).single();
-    if (area) path.unshift((area as { name: string }).name);
+    const areaNames = await getAreaNameMap();
+    const areaName = areaNames.get(areaId);
+    if (areaName) path.unshift(areaName);
   }
 
   // Fetch attr defs for all chain categories in one query
@@ -263,22 +260,41 @@ async function _fetchActivityData(
       ? new Date(events[0].created_at)
       : new Date(sessionStart);
 
-    const viewEvents: CachedViewEvent[] = [];
-    for (const event of events) {
-      const { data: attrs } = await supabase
+    // Batch: ONE query for all events' attributes + ONE for all attachments
+    // (was 2 queries per event). Fewer round trips, and one .in() scan instead
+    // of N separate scans — matters on PROD where event_attributes is large.
+    const eventIds = events.map(e => e.id);
+    const [attrsRes, attachmentsRes] = await Promise.all([
+      supabase
         .from('event_attributes')
-        .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-        .eq('event_id', event.id);
-
-      const { data: attachments } = await supabase
+        .select('id, event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
+        .in('event_id', eventIds),
+      supabase
         .from('event_attachments')
         .select('id, event_id, url, filename')
-        .eq('event_id', event.id)
-        .eq('type', 'image');
+        .in('event_id', eventIds)
+        .eq('type', 'image'),
+    ]);
+    if (attrsRes.error) throw attrsRes.error;
+    if (attachmentsRes.error) throw attachmentsRes.error;
 
-      const loadedAttrs = (attrs || []) as unknown as DbAttribute[];
-      const loadedAttachments = (attachments || []) as DbAttachment[];
+    const attrsByEvent = new Map<string, DbAttribute[]>();
+    for (const attr of (attrsRes.data || []) as unknown as DbAttribute[]) {
+      const list = attrsByEvent.get(attr.event_id) || [];
+      list.push(attr);
+      attrsByEvent.set(attr.event_id, list);
+    }
+    const attachmentsByEvent = new Map<string, DbAttachment[]>();
+    for (const att of (attachmentsRes.data || []) as DbAttachment[]) {
+      const list = attachmentsByEvent.get(att.event_id) || [];
+      list.push(att);
+      attachmentsByEvent.set(att.event_id, list);
+    }
 
+    const viewEvents: CachedViewEvent[] = [];
+    for (const event of events) {
+      const loadedAttrs = attrsByEvent.get(event.id) || [];
+      const loadedAttachments = attachmentsByEvent.get(event.id) || [];
       const attrMap = new Map<string, { value: string | number | boolean | null; dataType: string }>();
       for (const attr of loadedAttrs) {
         if (!attr.attribute_definitions) continue;

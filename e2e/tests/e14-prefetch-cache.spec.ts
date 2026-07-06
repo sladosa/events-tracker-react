@@ -99,7 +99,10 @@ async function getAccessToken(
 function isNavigationFetchFor(url: string, targetSession: string): boolean {
   if (!url.includes('/rest/v1/events?select=')) return false;
   if (url.includes('event_attributes') || url.includes('event_attachments')) return false;
-  // Exclude parent chain queries — they use select=id only (no comma)
+  // Exclude parent chain queries — they carry a chain_key= filter
+  // (S105: batched loadParentAttrs uses select=id,category_id, so the old
+  //  "select=id only" shortcut no longer discriminates them)
+  if (url.includes('chain_key=')) return false;
   if (!url.includes('select=id%2C')) return false;
   // Supabase encodes the param value — check both raw and encoded forms
   const encodedTarget = encodeURIComponent(targetSession);
@@ -188,7 +191,7 @@ test.describe('E14 — Prefetch cache', () => {
     const urlBefore = page.url();
 
     // Klikni Next
-    const nextBtn = page.getByRole('button', { name: /next/i });
+    const nextBtn = page.getByRole('button', { name: 'Next ▶' });
     await expect(nextBtn).not.toBeDisabled({ timeout: 5_000 });
     await nextBtn.click();
 
@@ -225,7 +228,7 @@ test.describe('E14 — Prefetch cache', () => {
     await page.waitForTimeout(500);
 
     // Klik 1 — navigira na SESSIONS[3] (trebao biti prefetchan)
-    const nextBtn = page.getByRole('button', { name: /next/i });
+    const nextBtn = page.getByRole('button', { name: 'Next ▶' });
     await expect(nextBtn).not.toBeDisabled({ timeout: 5_000 });
     const url1 = page.url();
     await nextBtn.click();

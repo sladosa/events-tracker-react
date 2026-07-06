@@ -57,7 +57,7 @@ test.describe('E4 — View Activity', () => {
     await expect(page.getByRole('heading', { name: /view activity/i })).toBeVisible({ timeout: 10_000 });
 
     // Buttons are "◀ Prev" and "Next ▶" — may be disabled but must be present
-    await expect(page.getByRole('button', { name: /prev/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /next/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: '◀ Prev' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Next ▶' })).toBeVisible();
   });
 });

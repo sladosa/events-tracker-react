@@ -24,6 +24,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { VALUE_COLUMNS } from '@/lib/constants';
+import { getCategoryMap } from '@/lib/categoryCache';
 import type { UUID } from '@/types';
 
 // ─── Javni tipovi ─────────────────────────────────────────────────────────────
@@ -67,25 +68,13 @@ interface RawAttrRow {
  * Vraća niz npr. [gymUUID, activityUUID].
  */
 export async function buildParentChainIds(leafCategoryId: UUID): Promise<UUID[]> {
+  const catMap = await getCategoryMap();
   const parentChainIds: UUID[] = [];
-  let currentId: UUID | null = null;
+  let currentId: UUID | null = catMap.get(leafCategoryId)?.parent_category_id ?? null;
 
-  const { data: leafCat } = await supabase
-    .from('categories')
-    .select('parent_category_id')
-    .eq('id', leafCategoryId)
-    .single() as { data: { parent_category_id: string | null } | null };
-
-  currentId = (leafCat?.parent_category_id as UUID | null) ?? null;
-
-  while (currentId) {
+  while (currentId && parentChainIds.length < 15) { // max level je 10 — guard protiv ciklusa
     parentChainIds.push(currentId);
-    const { data: parentCat } = await supabase
-      .from('categories')
-      .select('parent_category_id')
-      .eq('id', currentId)
-      .single() as { data: { parent_category_id: string | null } | null };
-    currentId = (parentCat?.parent_category_id as UUID | null) ?? null;
+    currentId = catMap.get(currentId)?.parent_category_id ?? null;
   }
 
   return parentChainIds;
@@ -268,29 +257,68 @@ export async function loadParentAttrs(
   const parentChainIds = await buildParentChainIds(leafCategoryId);
   if (parentChainIds.length === 0) return result;
 
-  for (const catId of parentChainIds) {
-    const parentEventId = await findParentEventByChain(catId, sessionStart, leafCategoryId, userId);
-    if (!parentEventId) continue;
+  // ── Batch lookup parent evenata: 1 upit za sve razine (umjesto 1-2 po razini) ──
+  // Isti disambiguation algoritam kao findParentEventByChain, samo batched:
+  //   1. Primary:  chain_key = leafCategoryId
+  //   2. Fallback: chain_key IS NULL + točno 1 kandidat po kategoriji (legacy)
+  const { data: primary } = await supabase
+    .from('events')
+    .select('id, category_id')
+    .eq('user_id', userId)
+    .in('category_id', parentChainIds)
+    .eq('session_start', sessionStart)   // DB format — kritično!
+    .eq('chain_key', leafCategoryId);
 
-    // ── Učitaj atribute ──────────────────────────────────────────────
-    const { data: attrs } = await supabase
-      .from('event_attributes')
-      .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-      .eq('event_id', parentEventId);
+  const eventIdByCategory = new Map<string, UUID>();
+  for (const row of (primary ?? []) as { id: UUID; category_id: string }[]) {
+    if (!eventIdByCategory.has(row.category_id)) eventIdByCategory.set(row.category_id, row.id);
+  }
 
-    for (const raw of (attrs || []) as unknown as RawAttrRow[]) {
-      if (!raw.attribute_definitions) continue;
-      const { data_type } = raw.attribute_definitions;
-      let value: string | number | boolean | null = null;
+  const missingCatIds = parentChainIds.filter(id => !eventIdByCategory.has(id));
+  if (missingCatIds.length > 0) {
+    const { data: legacy } = await supabase
+      .from('events')
+      .select('id, category_id')
+      .eq('user_id', userId)
+      .in('category_id', missingCatIds)
+      .eq('session_start', sessionStart)
+      .is('chain_key', null);
 
-      if (data_type === 'number'   && raw.value_number   !== null) value = raw.value_number;
-      else if (data_type === 'boolean'  && raw.value_boolean  !== null) value = raw.value_boolean;
-      else if (data_type === 'datetime' && raw.value_datetime !== null) value = raw.value_datetime;
-      else if (raw.value_text !== null) value = raw.value_text;
+    const candidates = new Map<string, UUID[]>();
+    for (const row of (legacy ?? []) as { id: UUID; category_id: string }[]) {
+      const list = candidates.get(row.category_id) || [];
+      list.push(row.id);
+      candidates.set(row.category_id, list);
+    }
+    // >1 kandidata bez markera → ne možemo sigurno disambiguirati, preskačemo razinu
+    for (const [catId, ids] of candidates) {
+      if (ids.length === 1) eventIdByCategory.set(catId, ids[0]);
+    }
+  }
 
-      if (value !== null) {
-        result.set(raw.attribute_definition_id, { value, dataType: data_type });
-      }
+  const parentEventIds = [...eventIdByCategory.values()];
+  if (parentEventIds.length === 0) return result;
+
+  // ── Učitaj atribute svih parent evenata odjednom ──────────────────────────
+  // Jedan parent event po kategoriji + attr defs pripadaju točno jednoj kategoriji,
+  // pa flat merge po attribute_definition_id ne može kolidirati.
+  const { data: attrs } = await supabase
+    .from('event_attributes')
+    .select('id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
+    .in('event_id', parentEventIds);
+
+  for (const raw of (attrs || []) as unknown as RawAttrRow[]) {
+    if (!raw.attribute_definitions) continue;
+    const { data_type } = raw.attribute_definitions;
+    let value: string | number | boolean | null = null;
+
+    if (data_type === 'number'   && raw.value_number   !== null) value = raw.value_number;
+    else if (data_type === 'boolean'  && raw.value_boolean  !== null) value = raw.value_boolean;
+    else if (data_type === 'datetime' && raw.value_datetime !== null) value = raw.value_datetime;
+    else if (raw.value_text !== null) value = raw.value_text;
+
+    if (value !== null) {
+      result.set(raw.attribute_definition_id, { value, dataType: data_type });
     }
   }
 
