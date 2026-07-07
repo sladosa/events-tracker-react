@@ -60,6 +60,10 @@ test.describe('E7 — Share Management', () => {
     // Default permission is "write"
     await page.getByRole('button', { name: /^invite$/i }).click();
 
+    // Email invitation modal appears — dismiss it to proceed
+    await expect(page.getByRole('button', { name: /dismiss/i })).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('button', { name: /dismiss/i }).click();
+
     // Toast: "Access granted to ..."
     await expect(page.getByText(/access granted/i)).toBeVisible({ timeout: 8_000 });
 
@@ -75,13 +79,22 @@ test.describe('E7 — Share Management', () => {
     await openManageAccessModal(page);
     await page.getByPlaceholder(/email@example\.com/i).fill(process.env.PLAYWRIGHT_TEST_EMAIL_B!);
     await page.getByRole('button', { name: /^invite$/i }).click();
+
+    // Email invitation modal appears — dismiss it
+    await expect(page.getByRole('button', { name: /dismiss/i })).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('button', { name: /dismiss/i }).click();
+
     await expect(page.getByText(/access granted/i)).toBeVisible({ timeout: 8_000 });
 
     // Now revoke
     await page.getByRole('button', { name: /revoke/i }).first().click();
 
+    // Revoke confirmation dialog appears — confirm it
+    await expect(page.getByRole('button', { name: /confirm revoke/i })).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('button', { name: /confirm revoke/i }).click();
+
     // Toast: "Access revoked for ..."
-    await expect(page.getByText(/access revoked/i)).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByText(/revoked/i)).toBeVisible({ timeout: 8_000 });
 
     // No active shares remain — Revoke button gone is the reliable indicator
     // (email text still appears in toasts, so we check button absence instead)

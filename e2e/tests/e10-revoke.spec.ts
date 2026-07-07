@@ -66,7 +66,14 @@ test.describe('E10 — Revoke access', () => {
     await expect(page.getByText(process.env.PLAYWRIGHT_TEST_EMAIL_B!, { exact: true })).toBeVisible({ timeout: 8_000 });
 
     await page.getByRole('button', { name: /revoke/i }).first().click();
-    await expect(page.getByText(/access revoked/i)).toBeVisible({ timeout: 8_000 });
+
+    // Revoke confirmation dialog appears (since grantee has events in the area)
+    // Choose default "Revoke only" option and confirm
+    await expect(page.getByRole('button', { name: /confirm revoke/i })).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('button', { name: /confirm revoke/i }).click();
+
+    // Toast should appear after confirmation
+    await expect(page.getByText(/revoked/i)).toBeVisible({ timeout: 8_000 });
   });
 
   test('E10-3: after revoke — userb no longer sees Fitness area', async ({ page }) => {
