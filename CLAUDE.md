@@ -222,11 +222,17 @@ events (linked to category_id + user_id)
   - **Fix**: slug se normalizira samo ako ga je korisnik stvarno mijenjao; `slugChanged` se računa iz stvarne promjene (novi vs original) pa fixup referenci sada pokriva i normalizaciju; `areas-changed` se dispatcha nakon SVAKOG structure save-a (ne samo Area) — invalidira categoryCache za breadcrumb nakon rename kategorije
   - **PROD data repair (service role, 2026-07-06)**: `exercise_name.depends_on` `strength-type`→`strengthtype` (slomljeno današnjim rename testom); `Broj rata.depends_on` `na_rate`→`rate` (Financije b4cd5a81, slomljeno ranije istom klasom buga). Scan: 0 preostalih polomljenih referenci (108 attr defs).
   - **OPREZ dok fix ne dođe na PROD (main)**: Save u Structure Edit panelu na PROD appu (mobitel!) i dalje tiho briše crtice iz slugova — izbjegavati spremanje panela za kategorije čiji atributi imaju `-` u slugu (npr. `broj-rata`)
+- **S106 — E7/E8/E9 test harness race condition fix (2026-07-07):**
+  - **Problem**: `test.beforeAll` u E8/E9/E10/E15 padali pri `--workers=4` s `duplicate key on data_shares_unique_share` — concurrent REST INSERT bez upsert logike
+  - **Root cause**: Test harness issue, ne app bug. App code (`useDataShares.createShare`) već je imao `upsert` s `onConflict`. Problem je bio samo u `supabasePost` helper (obična INSERT)
+  - **Fix**: `supabaseUpsert` helper u `e2e/fixtures/auth.ts` koji koristi Supabase JS SDK `upsert` s `onConflict` (admin client ako dostupan, fallback REST merge-duplicates). Ažurirani testovi: E8, E9, E10, E15
+  - **Rezultat**: E8-1, E9-1/2/3, E10-1/2/3 svi PASS na --workers=1. Race condition eliminiran na test-harness nivou.
+  - **E7/E8-2 odvojeni problemi**: E7-2/E7-3 (Toast "Access granted" missing) — backlog UX polish; E8-2 (Area select timeout) — novi open bug (vidi dolje)
 
 ### Open bugs (main)
 
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
-- **E7/E8/E9 race condition (FIXED S106):** Playwright padali pri 4 workers (`duplicate key on data_shares_unique_share` — concurrent `test.beforeAll` s REST POST bez upsert). **Root cause:** test harness issue, ne app bug. App `useDataShares.createShare` već je imao `upsert` s `onConflict`. Fix: `supabaseUpsert` helper (E8/E9/E10/E15 testovi) koji koristi admin client (onConflict) ili fallback REST merge-duplicates. E8/E9 sada pass s --workers=1. E7 ima odvojen UI problem (toast tekst). Vidi `Claude-temp_R/E7E8E9_FIX_ROOT_CAUSE.md`
+- **E8-2 Area select timeout (RLS/loading issue):** E8 grantee-write test padne na timeout (30s) pri `selectOption` na Area dropdown — element je disabled (vjerojatno RLS filter ili loading problem). Potencijalno isti family kao BUG-S103-ANYATTR (RLS + kolaboracija). Trebam detaljniju RLS/loading analizu.
 - **Bulk delete (checkbox) nije ograničen za grantee-a** — backlog
 - **BACKLOG — "Import as mine" za write grantee unutar iste shared aree nema smisla:** Pravi put je Leave Area (Detach with data) ili normalan re-import u novu vlastitu area; flag samo, nije implementirano.
 - **BUG-S103-ANYATTR:** "In any attribute" filter (`ATTR_FILTER_ANY` u `eventQueryBuilder.ts`) timeouta za grantee-e — `ILIKE` nije leakproof operator, Postgres evaluira RLS EXISTS za cijelu `event_attributes` tablicu. Privremeno: amber notice u UI (`AppHome.tsx` kad `sharedContext` aktivan + `selectedFilterAttr === ATTR_FILTER_ANY`). Pravi fix: SECURITY DEFINER RPC — **odgođeno za S105+** (procjena 4-6h, vidi docs/FABLE_PLAN.md I.5).
@@ -256,8 +262,10 @@ events (linked to category_id + user_id)
 ### Backlog (future — after S107 historical pipeline)
 
 1. **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC za "In any attribute" pretragu koja zaobilazi ILIKE+RLS non-leakproof problem
-2. **FilterContext koraci 2+3** (Fable I.4) — tipizirani event bus (`appEvents.ts`), eventualno split FilterProvider/SharingProvider
-3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+2. **E7-2/E7-3 UX polish** — Toast "Access granted" missing u Share Management invite flow; selektore/toast implementacija trebam da vidim
+3. **D9 verify** — Excel User column behaviour (always visible vs. only for shared areas) — minor, može biti nakon S107
+4. **FilterContext koraci 2+3** (Fable I.4) — tipizirani event bus (`appEvents.ts`), eventualno split FilterProvider/SharingProvider
+5. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 ### Doc Updates Checklist (S104–S110)
 

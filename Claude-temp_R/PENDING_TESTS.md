@@ -3,8 +3,25 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S105 (2026-07-06)
-**Detalji testova:** [S105_tests.md](test-sessions/S105_tests.md)
+**Zadnji update:** S106 (2026-07-07)
+**Detalji testova:** [S106_tests.md](test-sessions/S106_tests.md)
+
+---
+
+## S106 — E7/E8/E9 test harness race condition fix
+
+| ID        | Test                                                                                  | Status |
+| --------- | ------------------------------------------------------------------------------------- | ------ |
+| E8-1      | Grantee write setup (supabaseUpsert): concurrent data_shares INSERT idempotent        | ✅      |
+| E8-2      | Grantee write: navigate to Add Activity (Area dropdown select)                        | ⚠️ (timeout: Area select disabled — RLS/loading issue) |
+| E9-1      | Grantee read setup + sees shared Fitness area in dropdown                             | ✅      |
+| E9-2      | Grantee read: Add Activity button disabled                                           | ✅      |
+| E9-3      | Grantee read: no Edit Mode button on Structure tab                                   | ✅      |
+| E10-1     | Before revoke — grantee sees Fitness area                                            | ✅      |
+| E10-2     | Owner revokes access via Share modal                                                 | ✅      |
+| E10-3     | After revoke — grantee no longer sees Fitness area                                   | ✅      |
+| E15-full  | Revoke with events: dialog + Take your data banner                                   | ⬜ (pending smoke test) |
+| E7-2/3    | Share Management: invite existing user → "Access granted" toast appears              | ⚠️ (Toast missing — UX polish backlog) |
 
 ---
 
