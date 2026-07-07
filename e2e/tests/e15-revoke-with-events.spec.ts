@@ -17,7 +17,7 @@
  */
 
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
-import { loginAsOwner, loginAsUserB, supabasePost, supabaseDelete } from '../fixtures/auth';
+import { loginAsOwner, loginAsUserB, supabaseUpsert, supabasePost, supabaseDelete } from '../fixtures/auth';
 import { SEED } from '../fixtures/filter';
 
 const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
@@ -56,14 +56,14 @@ test.describe('E15 — Revoke with events + Take your data banner', () => {
     await userbPage.goto('/');
     await userbPage.waitForLoadState('domcontentloaded');
 
-    // 1. Create share: owner → userb, Fitness, write
-    await supabasePost(ownerPage, 'data_shares', {
+    // 1. Create share: owner → userb, Fitness, write (use upsert for idempotency in parallel tests)
+    await supabaseUpsert(ownerPage, 'data_shares', {
       owner_id: OWNER_ID,
       grantee_id: USERB_ID,
       share_type: 'area',
       target_id: SEED.AREA_FITNESS,
       permission: 'write',
-    }, 'return=minimal');
+    }, 'owner_id,grantee_id,target_id,share_type');
 
     // 2. Create userb events in Cardio (leaf) — 2 sessions
     await supabasePost(userbPage, 'events', {

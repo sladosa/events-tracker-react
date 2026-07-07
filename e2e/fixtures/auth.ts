@@ -12,9 +12,18 @@
  */
 
 import type { Page } from '@playwright/test';
+import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY!;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Admin client for E2E setup/cleanup (requires service role key)
+const supabaseAdmin = SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    })
+  : null;
 
 async function loginAs(page: Page, email: string, password: string): Promise<void> {
   // 1. Exchange credentials for tokens via Supabase Auth REST API
@@ -77,6 +86,7 @@ export async function supabasePost(
   table: string,
   body: Record<string, unknown>,
   prefer = 'return=representation',
+  _onConflict?: string, // Kept for backwards compat but ignored (use supabaseUpsert instead)
 ): Promise<unknown> {
   const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
   const storageKey = `sb-${projectRef}-auth-token`;
@@ -107,6 +117,69 @@ export async function supabasePost(
   if (!res.ok()) {
     throw new Error(`supabasePost ${table} failed: ${res.status()} ${await res.text()}`);
   }
+  return res.json().catch(() => null);
+}
+
+/**
+ * Upsert via admin client (if service role key available) or REST API merge-duplicates.
+ *
+ * Usage:
+ *   - With SUPABASE_SERVICE_ROLE_KEY: proper onConflict semantics
+ *   - Without: fallback to REST API merge-duplicates (works for PRIMARY KEY conflicts)
+ *   - For parallel tests (--workers > 1): requires service role key for custom unique constraints
+ *
+ * Example: supabaseUpsert(page, 'data_shares', { owner_id, grantee_id, ... }, 'owner_id,grantee_id,target_id,share_type')
+ */
+export async function supabaseUpsert(
+  page: Page,
+  table: string,
+  body: Record<string, unknown>,
+  onConflict: string,
+): Promise<unknown> {
+  // Prefer admin client if available (proper onConflict semantics)
+  if (supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from(table)
+      .upsert(body, { onConflict })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Upsert failed: ${error.message}`);
+    return data;
+  }
+
+  // Fallback: REST API with merge-duplicates
+  // Note: This only works for PRIMARY KEY conflicts; custom unique constraints may not be properly merged.
+  const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
+  const storageKey = `sb-${projectRef}-auth-token`;
+
+  const session = await page.evaluate(
+    (key: string) => {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    },
+    storageKey,
+  );
+
+  if (!session?.access_token) throw new Error('No session available for supabaseUpsert');
+
+  const res = await page.request.post(
+    `${SUPABASE_URL}/rest/v1/${table}`,
+    {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates',
+      },
+      data: body,
+    },
+  );
+
+  if (!res.ok()) {
+    throw new Error(`supabaseUpsert ${table} failed: ${res.status()} ${await res.text()}`);
+  }
+
   return res.json().catch(() => null);
 }
 

@@ -9,6 +9,33 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 
 ---
 
+## Strategic Position (Decision snapshot — 2026-07-07)
+
+**Misija aplikacije:**
+Personal structured memory/decision system over historical data. Purpose: convert unstructured Excel (Financije, Zdravlje, Diary) into queryable, analysable data. Later: AI intelligence layer that surfaces insights/patterns for decisions.
+
+**Collab status:**
+- S38–S41 implemented all D1–D10 decisions (Share Management modal, User column, Avatar, permission-aware ⋮ menu)
+- **D9 pending:** Excel User column — verify current logic (always in FIXED_COLUMNS, collapsed by default) matches desired behaviour for shared Areas
+- **Technical threshold:** Done enough for 1–2 person shared areas (Financije, project) *after E7/E8/E9 race fix*
+- **NOT expanding further** until historical ingestion pipeline is complete
+
+**Supabase stance:**
+- NO architectural pivot now — query/pattern optimization suffices
+- categoryCache (S105) is template for further optimizations
+- Upgrade plan if perf becomes real problem
+- Local Postgres (ownership) is post-S110+ idea
+
+**Work priorities (S106–S108):**
+1. **S106 (tight scope):** E7/E8/E9 race condition fix (idempotent createShare model), D9 verify, smoke test E2/E3/E4/E14
+2. **S107 (parallel):** Financije historical pipeline — export both areas, audit, Python Tip/Podtip classification, re-import, spot-check; Diary archaeology non-blocking
+3. **S108+:** AI/intelligence layer (success criteria)
+
+**Why historical ingestion is next priority:**
+Without Financije/Zdravlje/Diary data flowing in, app is shell-only. Collab is stable-ish; ingestion unlocks the actual purpose. Historical data also feeds AI layer.
+
+---
+
 ## Key docs (read before touching related code)
 
 | Doc                                        | When to read                                                                     |
@@ -158,7 +185,7 @@ events (linked to category_id + user_id)
 - Collab Faza 2 (S35): `Profile` + `ShareInvite` + `DataShareWithProfile` types dodani u `database.ts`; `src/hooks/useDataShares.ts` kreiran (listShares, createShare, revokeShare, cancelInvite, listInvites, fetchSharedContext); `FilterContext` dobio `sharedContext: SharedContext | null` — auto-detektira kad je aktivan filter na shared Area (grantee view)
 - Collab Faza 3 (S35): `AppHome.tsx` — Edit Mode gumb sakriven za grantee (`!sharedContext`); `useEffect` resetira `isEditMode` ako se shared Area odabere dok je Edit Mode aktivan
 - Collab Faza 4 (S35): `AddActivityPage` — read-only guard (lock ekran) za `permission !== 'write'`; `EditActivityPage` — uklonjen `user_id` filter iz leaf events SELECT, `isOwnEvent` detekcija, tuđi event prikazuje "Tuđi zapis" + link na ViewDetailsPage
-- Collab UX Design (S35): `docs/COLLAB_UX_DESIGN_v1.html` — wireframe dizajn za sve collab scenarije (Owner, Grantee write/read, Share Management, User indicator, Excel format, Request access flow); D1–D10 open decisions čekaju potvrdu
+- Collab UX Design (S35): `docs/COLLAB_UX_DESIGN_v1.html` — wireframe dizajn za sve collab scenarije (Owner, Grantee write/read, Share Management, User indicator, Excel format, Request access flow); D1–D10 odluke (vidi `Claude-temp_R/OLD/COLLAB_UX_DESIGN_decisions.txt`) — praktički sve implementirane kroz S38–S40 (Add Activity disabled za read grantee, Share Management modal, avatar+ime prikaz, ⋮ meni samo View na tuđim eventima, Export dostupan read granteeu, Profile settings modal, User kolona = email u Excelu); D9 (User kolona uvijek vs. samo za shared Areas) — provjeriti odgovara li trenutni Excel export ponašanju koje želimo (kolona je u `FIXED_COLUMNS` uvijek, ali grupirana/collapsed po defaultu)
 - Collab Faza 5 (S36): `SharedContext` proširen s `ownerEmail`+`ownerDisplayName`; `fetchAreaGrantees` helper; `src/components/sharing/SharedAreaBanner.tsx` — 3 varijante bannera (owner purple, write grantee green, read grantee amber); integrirano u `AppHome.tsx` (Activities + Structure); `CategoryChainRow` — role-aware ⋮ menu (grantee: owner info + copy email + request access; owner: + Manage Access placeholder)
 - Collab bugfixes (S37): `fetchAreaGrantees` — FK join na `profiles` zamijenjen s dva odvojena querija (FK je bio na `auth.users`, ne `profiles`); `ViewDetailsPage` — uklonjen `user_id` filter koji je blokirao Prev/Next navigaciju na tuđim eventima
 - Collab Faza 6 (S38): User kolona u Activities listi — Avatar (inicijali + hash boja) + "You" badge za vlastite / ime za tuđe; `areaHasActiveShares` u `FilterContext` (owner view); `user_id`+`user_display_name` u `useActivities` (batch profile lookup); D1 — Add Activity disabled za read grantee (tooltip + toast); D4 — ⋮ menu samo View za tuđe evente
@@ -199,7 +226,7 @@ events (linked to category_id + user_id)
 ### Open bugs (main)
 
 - **BUG-1:** `useFilter must be used within a FilterProvider` na `AppHome.tsx:105` — vjerojatno StrictMode artefakt, nizak rizik
-- **E7/E8/E9 parallel:** Playwright padaju pri 4 workers (duplicate key na data_shares); prolaze `--workers=1`
+- **E7/E8/E9 race condition (FIXED S106):** Playwright padali pri 4 workers (`duplicate key on data_shares_unique_share` — concurrent `test.beforeAll` s REST POST bez upsert). **Root cause:** test harness issue, ne app bug. App `useDataShares.createShare` već je imao `upsert` s `onConflict`. Fix: `supabaseUpsert` helper (E8/E9/E10/E15 testovi) koji koristi admin client (onConflict) ili fallback REST merge-duplicates. E8/E9 sada pass s --workers=1. E7 ima odvojen UI problem (toast tekst). Vidi `Claude-temp_R/E7E8E9_FIX_ROOT_CAUSE.md`
 - **Bulk delete (checkbox) nije ograničen za grantee-a** — backlog
 - **BACKLOG — "Import as mine" za write grantee unutar iste shared aree nema smisla:** Pravi put je Leave Area (Detach with data) ili normalan re-import u novu vlastitu area; flag samo, nije implementirano.
 - **BUG-S103-ANYATTR:** "In any attribute" filter (`ATTR_FILTER_ANY` u `eventQueryBuilder.ts`) timeouta za grantee-e — `ILIKE` nije leakproof operator, Postgres evaluira RLS EXISTS za cijelu `event_attributes` tablicu. Privremeno: amber notice u UI (`AppHome.tsx` kad `sharedContext` aktivan + `selectedFilterAttr === ATTR_FILTER_ANY`). Pravi fix: SECURITY DEFINER RPC — **odgođeno za S105+** (procjena 4-6h, vidi docs/FABLE_PLAN.md I.5).
@@ -207,14 +234,30 @@ events (linked to category_id + user_id)
 ~~BUG-S102-DELETE~~ — ✅ Riješeno S104 (live recount u `StructureDeleteModal.tsx`).
 ~~UX-Import-1~~ — ✅ Riješeno S104 (progress bar, Fable Q4).
 
-### Prioriteti za S106 (bivši S105 plan — S105 je potrošen na PROD incident triage)
+### S106: Tight scope — stabilnost prije ekspanzije
+
+1. **E7/E8/E9 race fix** — idempotent createShare via onConflict model (prevent duplicate key error under concurrent calls)
+2. **D9 verify** — Excel User column logic (current: always in FIXED_COLUMNS, collapsed by default — does it match desired behaviour?)
+3. **Smoke test** — E2, E3, E4, E14 all green
+4. **Typecheck + build** — clean state before commit
+
+### S107: Historical Financije pipeline (parallel)
+
+1. **Export both Financije područja** — Activities Events + Structure (Category paths for audit)
+2. **Run audit skripta** — find missing categories, data anomalies, prepare mapping table
+3. **Python klasifikacija** — generate Tip/Podtip suggestions for reimport
+4. **Re-import + spot-check** — load corrected Excel, verify RLS/parent chain integrity
+5. **Diary archaeology (non-blocking)** — parallel audit session without timeline pressure
+
+### S108+: Intelligence layer (success criteria)
+
+---
+
+### Backlog (future — after S107 historical pipeline)
 
 1. **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC za "In any attribute" pretragu koja zaobilazi ILIKE+RLS non-leakproof problem
 2. **FilterContext koraci 2+3** (Fable I.4) — tipizirani event bus (`appEvents.ts`), eventualno split FilterProvider/SharingProvider
-3. **Diary archaeology session** (docs/Diary.md §3) — audit skripta + mapping tablica s korisnikom
-4. **Export + Python klasifikacija** — export obje Financije area-e, Python skripta predlaže Tip/Podtip
-5. **Bulk update** — reimport xlsx s ispravljenim Tip/Podtip vrijednostima
-6. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
+3. **Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi
 
 ### Doc Updates Checklist (S104–S110)
 

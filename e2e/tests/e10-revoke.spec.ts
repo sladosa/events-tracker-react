@@ -3,7 +3,7 @@
  */
 
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
-import { loginAsOwner, loginAsUserB, supabasePost, supabaseDelete } from '../fixtures/auth';
+import { loginAsOwner, loginAsUserB, supabaseUpsert, supabaseDelete } from '../fixtures/auth';
 import { SEED } from '../fixtures/filter';
 
 const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
@@ -20,13 +20,13 @@ test.describe('E10 — Revoke access', () => {
     await ownerPage.goto('/app');
     await ownerPage.waitForLoadState('networkidle');
 
-    await supabasePost(ownerPage, 'data_shares', {
+    await supabaseUpsert(ownerPage, 'data_shares', {
       owner_id: OWNER_ID,
       grantee_id: USERB_ID,
       share_type: 'area',
       target_id: SEED.AREA_FITNESS,
       permission: 'write',
-    }, 'return=minimal');
+    }, 'owner_id,grantee_id,target_id,share_type');
   });
 
   test.afterAll(async () => {
