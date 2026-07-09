@@ -72,6 +72,7 @@ export interface ParsedImportRow {
   attributes:     Record<string, string | number | boolean | null>;
   _source_row:    number;          // Original row number for error reporting
   _row_email?:    string;          // col G value (User/email), undefined if blank
+  _row_hash?:     string;          // row_hash col value (fingerprint written at export), undefined if absent
 }
 
 export interface ParseResult {
@@ -82,6 +83,8 @@ export interface ParseResult {
   legendMapping: LegendMapping;
   foreignRowCount:      number;
   foreignEmailsSummary: Record<string, number>;
+  /** S107 D7: UPDATE rows whose row_hash matched (not touched in Excel) — excluded from toUpdate, skipped without any DB call */
+  untouchedCount: number;
 }
 
 export interface ValidationResult {

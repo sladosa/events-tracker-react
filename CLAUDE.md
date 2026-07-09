@@ -247,13 +247,37 @@ events (linked to category_id + user_id)
 3. **Result** ✅ — E8-1, E8-2, E9-1/2/3, E10-1/2/3 ALL PASS; E7-2/E7-3 have app toast logika issue (backlog)
 4. **Typecheck + build** ✅ — clean state
 
-### S107: Historical Financije pipeline (parallel)
+### S107: Historical Financije pipeline — IN PROGRESS (2026-07-09)
 
-1. **Export both Financije područja** — Activities Events + Structure (Category paths for audit)
-2. **Run audit skripta** — find missing categories, data anomalies, prepare mapping table
-3. **Python klasifikacija** — generate Tip/Podtip suggestions for reimport
-4. **Re-import + spot-check** — load corrected Excel, verify RLS/parent chain integrity
-5. **Diary archaeology (non-blocking)** — parallel audit session without timeline pressure
+**Sve odluke donesene** (D1/D1a/D2/D6–D9) — vidi `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` §4.
+Ključne: nova area **`Financije_all` (owner = Koka!)**; novi Tip `Namirnice`/`Hrana i ostalo`;
+event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto default C5; Stanje se prepisuje.
+
+**Done ove sesije (2026-07-09):**
+1. **row_hash skip + update-guard (D7)** ✅ — `src/lib/excelFingerprint.ts` (novi shared modul,
+   FNV-1a 64 fingerprint normaliziranih vrijednosti); export piše `row_hash` kolonu (iza attr kolona,
+   UNUTAR autofiltera da sort nosi hash s redom, collapsible); import preskače nedirane redove BEZ
+   ijednog DB poziva (`untouchedCount` u ParseResult); `analyzeUpdates()` dry-run diff (staro→novo po
+   polju, batch fetch po 200); **update-guard u `ExcelImportModal`**: crvena lista promjena + checkbox
+   koji otključava Apply (anti "yes-to-all") + warning za zapise starije od 30 dana. Stari exporti bez
+   kolone rade kao prije (bez skipa, guard i dalje aktivan). `hasChanges()` refaktoriran kao wrapper
+   oko `computeRowDiff()` (single source of truth).
+   Testovi: novi `e2e/tests/S107_row_hash_guard.spec.ts` (T-S107-1/2 PASS); T-S104-3 spec ažuriran
+   (progress total sad bez untouched reda) PASS; E6 PASS; typecheck+build čisti.
+2. **`normalize_financije.py`** ✅ — `data-prep_tools/Financije/`; čita 3 sheeta `Financije 2026.xlsx`,
+   unified itemized model (D1 datumi, D9 Stanje, rate X/N parse), Za Sašu label-matching (datum ±2 dana
+   + iznos → 169 labela), rules-first klasifikacija → **review Excel** (`Financije_review_*.xlsx`):
+   dependent Tip→Podtip dropdowni u čistom xlsx (INDIRECT + named ranges; **DV formula mora biti <255
+   znakova** — SUBSTITUTE lanac samo za znakove koji postoje u Tip imenima), CF mismatch crveno /
+   N/A žuto, sheets Problemi (259) / Statistika / Pomoć. 3503 reda (Koka 2636 + Saša 867).
+   **⚠ Data gap otkriven:** 82% Kokinih Mastercard redova (2023–2025-06) NEMA opis → Tip=N/A,
+   pouzdanost NEMA (2104 redova); Za Sašu labele pokrivaju samo 2025-07+. Treba odluka Saša/Koka.
+
+**Sljedeći koraci (čekaju Sašu):**
+1. Saša/Koka review `Financije_review_*.xlsx` + odluka što s N/A masom (T-S107-6)
+2. Generiranje app-import Excela iz odobrenog reviewa + struktura `Financije_all`
+3. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
+4. Diary archaeology (non-blocking)
 
 ### S108+: Intelligence layer (success criteria)
 

@@ -3,8 +3,23 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S106 (2026-07-07)
-**Detalji testova:** [S106_tests.md](test-sessions/S106_tests.md)
+**Zadnji update:** S107 (2026-07-09)
+**Detalji testova:** [S107_tests.md](test-sessions/S107_tests.md)
+
+---
+
+## S107 — row_hash skip + update-guard (Excel roundtrip zaštita, D7)
+
+| ID        | Test                                                                                   | Status |
+| --------- | --------------------------------------------------------------------------------------- | ------ |
+| T-S107-1  | E2E: re-import nediranog exporta = potpuni no-op (svi redovi skipped, 0 DB poziva)      | ✅ (Playwright pass) |
+| T-S107-2  | E2E: izmjena 1 reda → update-guard lista staro→novo, Apply zaključan do checkboxa       | ✅ (Playwright pass) |
+| T-S107-3  | Manualno: export → promijeni atribut (ne comment) u Excelu → guard pokazuje promjenu polja | ⬜      |
+| T-S107-4  | Manualno: guard warning za stare zapise (>30 dana) — promijeni povijesni red             | ⬜      |
+| T-S107-5  | Manualno: stari export (bez row_hash kolone) i dalje radi normalno (bez skipa, guard aktivan) | ⬜      |
+| T-S107-6  | Review Excel (`Financije_review_*.xlsx`): Tip dropdown radi, Podtip se mijenja po Tipu, krivi Podtip pocrveni | ⬜      |
+| T-S104-3r | Regresija: import progress total sad BEZ untouched reda (spec ažuriran)                  | ✅ (Playwright pass) |
+| E6-r      | Regresija: export s novom row_hash kolonom, download OK                                  | ✅ (Playwright pass) |
 
 ---
 

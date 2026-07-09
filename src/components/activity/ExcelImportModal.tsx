@@ -15,10 +15,11 @@ import {
   checkImportCollisions,
   checkMissingCategories,
   parseExcelFile,
+  analyzeUpdates,
 } from '@/lib/excelImport';
 import { importStructureExcel } from '@/lib/structureImport';
-import { loadCategoriesForExport } from '@/lib/excelDataLoader';
-import type { CollisionInfo } from '@/lib/excelImport';
+import { loadCategoriesForExport, loadAttrDefsForCategories } from '@/lib/excelDataLoader';
+import type { CollisionInfo, UpdateAnalysis } from '@/lib/excelImport';
 
 interface ExcelImportModalProps {
   onClose:   () => void;
@@ -29,9 +30,11 @@ interface ExcelImportModalProps {
 type ImportState = 'idle' | 'parsing' | 'checking' | 'confirm-structure' | 'confirm-users' | 'ready' | 'applying' | 'done' | 'error';
 
 interface ParsePreview {
-  toCreateCount: number;
-  toUpdateCount: number;
-  warnings:      string[];
+  toCreateCount:  number;
+  toUpdateCount:  number;
+  /** S107 D7: rows whose row_hash matched — untouched in Excel, skipped without DB calls */
+  untouchedCount: number;
+  warnings:       string[];
 }
 
 export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportModalProps) {
@@ -52,6 +55,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   // Q4 (S104, Fable): progress za veće importe (npr. Diary 7000+ redaka) — bez ovoga
   // UI izgleda "frozen" jer applying nema drugog povratnog signala osim spinnera.
   const [applyProgress, setApplyProgress] = useState<{ done: number; total: number } | null>(null);
+  // S107 D7 update-guard: dry-run diff svih UPDATE redova prije primjene + eksplicitna
+  // potvrda. Anti-"yes-to-all": Apply je zaključan dok korisnik ne označi checkbox,
+  // a lista promjena (staro→novo) je vidljiva iznad njega.
+  const [updateAnalysis,      setUpdateAnalysis]      = useState<UpdateAnalysis | null>(null);
+  const [updatesAcknowledged, setUpdatesAcknowledged] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,6 +76,8 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setCollisions([]);
     setOverwriteMap(new Map());
     setMissingCatPaths([]);
+    setUpdateAnalysis(null);
+    setUpdatesAcknowledged(false);
     setImportState('parsing');
 
     try {
@@ -86,9 +96,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       }
 
       const previewData: ParsePreview = {
-        toCreateCount: parsed.toCreate.length,
-        toUpdateCount: parsed.toUpdate.length,
-        warnings:      parsed.warnings,
+        toCreateCount:  parsed.toCreate.length,
+        toUpdateCount:  parsed.toUpdate.length,
+        untouchedCount: parsed.untouchedCount,
+        warnings:       parsed.warnings,
       };
       setPreview(previewData);
       setForeignRowCount(parsed.foreignRowCount);
@@ -98,6 +109,17 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       setImportState('checking');
 
       const categoriesDict = await loadCategoriesForExport(user.id);
+
+      // S107 D7 update-guard: dry-run diff UPDATE redova (koje promjene bi Apply napravio)
+      if (parsed.toUpdate.length > 0) {
+        const attrDefs = await loadAttrDefsForCategories(user.id, Object.keys(categoriesDict), categoriesDict);
+        const analysis = await analyzeUpdates(user.id, parsed.toUpdate, categoriesDict, attrDefs);
+        setUpdateAnalysis(analysis);
+        setUpdatesAcknowledged(analysis.updates.length === 0);
+      } else {
+        setUpdateAnalysis(null);
+        setUpdatesAcknowledged(true);
+      }
 
       // Collision detection za CREATE redove
       if (parsed.toCreate.length > 0) {
@@ -194,6 +216,21 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     };
   }, [preview, collisions, overwriteMap]);
 
+  // S107 D7: brojevi za preview + update-guard
+  // updateCount = redovi koji STVARNO mijenjaju postojeće evente (dry-run diff);
+  // fallback na broj UPDATE kandidata dok analiza nije dostupna.
+  const updateCount    = updateAnalysis ? updateAnalysis.updates.length : effectiveUpdateCount;
+  const unchangedTotal = (preview?.untouchedCount ?? 0) + (updateAnalysis?.unchangedCount ?? 0);
+  // Stari zapisi (>30 dana) u update listi — tipičan potpis slučajne Excel izmjene
+  const oldRecordCount = useMemo(() => {
+    if (!updateAnalysis) return 0;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return updateAnalysis.updates.filter(u => u.existingEventDate < cutoffStr).length;
+  }, [updateAnalysis]);
+  const updateGuardActive = updateAnalysis !== null && updateAnalysis.updates.length > 0;
+
   // ── Korak 7: Create missing categories from Structure sheet, then continue ──
   const handleCreateStructure = async () => {
     if (!selectedFile) return;
@@ -272,6 +309,8 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setForeignMode('skip');
     setCurrentUserEmail(undefined);
     setApplyProgress(null);
+    setUpdateAnalysis(null);
+    setUpdatesAcknowledged(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -481,16 +520,85 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                 <span className="truncate font-medium">{selectedFile?.name}</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${unchangedTotal > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-green-700">{effectiveCreateCount}</p>
                   <p className="text-xs text-green-600 mt-0.5">New events to create</p>
                 </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-blue-700">{effectiveUpdateCount}</p>
-                  <p className="text-xs text-blue-600 mt-0.5">Events to update</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-amber-700">{updateCount}</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Events to modify</p>
                 </div>
+                {unchangedTotal > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-gray-500">{unchangedTotal}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Unchanged (skipped)</p>
+                  </div>
+                )}
               </div>
+
+              {/* ── S107 D7: Update-guard — explicit review + confirmation of modifications ── */}
+              {updateAnalysis && updateAnalysis.updates.length > 0 && (
+                <div className="bg-red-50 border border-red-300 rounded-lg p-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-red-800">
+                      ✏️ {updateAnalysis.updates.length} existing event{updateAnalysis.updates.length !== 1 ? 's' : ''} will be modified
+                    </p>
+                    <p className="text-xs text-red-700 mt-0.5">
+                      Review every change below before applying. Unlisted events are not touched.
+                    </p>
+                    {oldRecordCount > 0 && (
+                      <p className="text-xs font-semibold text-red-700 bg-red-100 border border-red-300 rounded p-2 mt-1.5">
+                        ⚠️ {oldRecordCount} of them {oldRecordCount === 1 ? 'is an older record' : 'are older records'} (event date more than 30 days ago).
+                        If you did not deliberately edit historical rows in Excel, this may be an accidental change (wrong sort, drag-fill) — check carefully!
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1" data-testid="update-guard-list">
+                    {updateAnalysis.updates.map(u => (
+                      <div key={u.eventId} className="border border-red-200 bg-white rounded-lg p-2.5">
+                        <div className="text-xs text-gray-700">
+                          <span className="font-semibold">{u.existingEventDate}</span>
+                          <span className="text-gray-400"> @ </span>
+                          <span className="font-semibold">{u.sessionStart}</span>
+                          <span className="text-gray-400 mx-1">·</span>
+                          <span className="text-gray-600">{u.categoryPath}</span>
+                          <span className="text-gray-300 ml-1.5 text-[10px]">(Excel row {u.sourceRow})</span>
+                        </div>
+                        <ul className="mt-1 space-y-0.5">
+                          {u.changes.map((c, i) => (
+                            <li key={i} className="text-[11px] font-mono text-gray-600">
+                              <span className="text-gray-500">{c.field}:</span>{' '}
+                              <span className="text-red-600 line-through">{c.oldValue}</span>
+                              <span className="text-gray-400"> → </span>
+                              <span className="text-green-700 font-semibold">{c.newValue}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+
+                  <label className="flex items-start gap-2 cursor-pointer bg-white border border-red-300 rounded-lg p-2.5">
+                    <input
+                      type="checkbox"
+                      checked={updatesAcknowledged}
+                      onChange={e => setUpdatesAcknowledged(e.target.checked)}
+                      className="mt-0.5"
+                      data-testid="update-guard-ack"
+                    />
+                    <span className="text-xs font-medium text-red-800">
+                      I reviewed the list — permanently modify {updateAnalysis.updates.length} existing event{updateAnalysis.updates.length !== 1 ? 's' : ''}.
+                    </span>
+                  </label>
+                </div>
+              )}
+              {updateAnalysis && updateAnalysis.invalidIdCount > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800">
+                  ⚠️ {updateAnalysis.invalidIdCount} row{updateAnalysis.invalidIdCount !== 1 ? 's have' : ' has'} an event_id that no longer matches the database — they will be imported as NEW events instead.
+                </div>
+              )}
 
               {/* Collision resolution */}
               {collisions.length > 0 && (
@@ -631,10 +739,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                 >
                   Abort
                 </button>
-                {/* UX-2: Apply is always enabled unless currently applying */}
+                {/* UX-2: Apply enabled — OSIM kad update-guard čeka potvrdu (S107 D7) */}
                 <button
                   onClick={handleApply}
-                  disabled={false}
+                  disabled={updateGuardActive && !updatesAcknowledged}
+                  title={updateGuardActive && !updatesAcknowledged ? 'Review the modification list and tick the checkbox first' : undefined}
                   className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {allSkipped ? '⏭ All skipped – Apply' : '✅ Apply Import'}

@@ -16,6 +16,7 @@
 import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
 import { FIXED_COL_COUNT } from './excelExport';
+import { computeRowFingerprint, ROW_HASH_HEADER } from './excelFingerprint';
 import { loadCategoriesForExport, loadAttrDefsForCategories } from './excelDataLoader';
 import { upsertParentEvent, type ParentAttrWrite } from './parentEventLoader';
 import type {
@@ -200,10 +201,22 @@ function colLetterToIndex(letter: string): number {
 // Step 4: Parse data rows
 // ─────────────────────────────────────────────
 
+/** Find the row_hash column index by scanning the header row (returns -1 if the file has none). */
+function findRowHashCol(ws: ExcelJS.Worksheet, headerRow: number): number {
+  let found = -1;
+  ws.getRow(headerRow).eachCell({ includeEmpty: false }, (cell, colNumber) => {
+    if (found === -1 && colNumber > FIXED_COL_COUNT && cellStr(cell.value) === ROW_HASH_HEADER) {
+      found = colNumber;
+    }
+  });
+  return found;
+}
+
 function parseDataRows(
-  ws:         ExcelJS.Worksheet,
-  mapping:    LegendMapping,
-  headerRow:  number,
+  ws:          ExcelJS.Worksheet,
+  mapping:     LegendMapping,
+  headerRow:   number,
+  rowHashCol:  number = -1,
 ): ParsedImportRow[] {
   const colToAttr: Record<number, string> = {};
   for (const [letter, { attrName }] of Object.entries(mapping)) {
@@ -243,6 +256,8 @@ function parseDataRows(
       }
     }
 
+    const rowHash = rowHashCol > 0 ? (cellStr(row.getCell(rowHashCol).value) || undefined) : undefined;
+
     rows.push({
       event_id:      eventId,
       area,
@@ -254,6 +269,7 @@ function parseDataRows(
       attributes,
       _source_row:   rowNumber,
       _row_email:    rowEmail,
+      _row_hash:     rowHash,
     });
   });
 
@@ -273,7 +289,7 @@ export async function parseExcelFile(
   const wb          = new ExcelJS.Workbook();
   await wb.xlsx.load(arrayBuffer);
 
-  const emptyForeign = { foreignRowCount: 0, foreignEmailsSummary: {} as Record<string, number> };
+  const emptyForeign = { foreignRowCount: 0, foreignEmailsSummary: {} as Record<string, number>, untouchedCount: 0 };
 
   // Try Events sheet by name (unified format), fall back to first worksheet
   const ws = wb.getWorksheet('Events') ?? wb.worksheets[0];
@@ -319,8 +335,9 @@ export async function parseExcelFile(
     return { toCreate: [], toUpdate: [], warnings: [], errors: [msg], legendMapping: mapping, ...emptyForeign };
   }
 
-  // Parse data rows
-  const allRows = parseDataRows(ws, mapping, headerRow);
+  // Parse data rows (row_hash col — if present — enables untouched-row skip, S107 D7)
+  const rowHashCol = findRowHashCol(ws, headerRow);
+  const allRows = parseDataRows(ws, mapping, headerRow, rowHashCol);
 
   // Validate time ordering per row: created_at >= session_start
   const warnings: string[] = [];
@@ -370,9 +387,34 @@ export async function parseExcelFile(
   }
 
   const toCreate = validRows.filter(r => !r.event_id);
-  const toUpdate = validRows.filter(r => !!r.event_id);
 
-  return { toCreate, toUpdate, warnings, errors: [], legendMapping: mapping, foreignRowCount, foreignEmailsSummary };
+  // S107 D7: untouched-row skip — UPDATE row whose recomputed fingerprint matches the
+  // row_hash written at export was NOT touched in Excel → drop it here entirely.
+  // No DB read, no write; also guarantees a stale export can never revert changes
+  // made in the app after the export. Only rows WITH event_id qualify (CREATE rows
+  // must never be skipped by hash).
+  let untouchedCount = 0;
+  const toUpdate: ParsedImportRow[] = [];
+  for (const r of validRows) {
+    if (!r.event_id) continue;
+    if (r._row_hash && computeRowFingerprint({
+      event_id:      r.event_id,
+      area:          r.area,
+      category_path: r.category_path,
+      event_date:    r.event_date,
+      session_start: r.session_start,
+      created_at:    r.created_at,
+      user_email:    r._row_email ?? '',
+      comment:       r.comment,
+      attributes:    r.attributes,
+    }) === r._row_hash) {
+      untouchedCount++;
+      continue;
+    }
+    toUpdate.push(r);
+  }
+
+  return { toCreate, toUpdate, warnings, errors: [], legendMapping: mapping, foreignRowCount, foreignEmailsSummary, untouchedCount };
 }
 
 // ─────────────────────────────────────────────
@@ -1060,32 +1102,62 @@ interface ExistingLeafEvent {
   }>;
 }
 
+/** One field-level change of an UPDATE row (used by the update-guard preview, S107 D7). */
+export interface UpdateFieldChange {
+  field:    string;
+  oldValue: string;
+  newValue: string;
+}
+
+/** Human-readable value of an existing event_attributes record (first non-null slot). */
+function existingAttrDisplay(ea: ExistingLeafEvent['event_attributes'][number]): string {
+  if (ea.value_number   != null) return String(ea.value_number);
+  if (ea.value_boolean  != null) return String(ea.value_boolean);
+  if (ea.value_datetime != null) return ea.value_datetime;
+  if (ea.value_text     != null) return ea.value_text;
+  return '(empty)';
+}
+
+const pad2 = (n: number) => n.toString().padStart(2, '0');
+
 /**
- * Returns true if the import row has at least one change compared to the existing DB event.
- * P3: empty xlsx value → treat as "no change" (don't touch, don't count as updated).
+ * Field-level diff of an import row vs the existing DB event.
+ * P3: empty xlsx value → "no change". Returns [] when nothing changed.
+ * Single source of truth for both hasChanges() (apply path) and
+ * analyzeUpdates() (update-guard preview).
  */
-function hasChanges(
+function computeRowDiff(
   existing:      ExistingLeafEvent,
   row:           ParsedImportRow,
   attrByCatName: Map<string, ExportAttrDef>,
   categoryId:    string,
-): boolean {
+): UpdateFieldChange[] {
+  const changes: UpdateFieldChange[] = [];
+
   // event_date
-  if (existing.event_date !== row.event_date) return true;
+  if (existing.event_date !== row.event_date) {
+    changes.push({ field: 'event_date', oldValue: existing.event_date, newValue: row.event_date });
+  }
 
   // session_start: existing is full ISO, row.session_start is HH:MM or HH:MM:SS
   if (existing.session_start) {
     const d = new Date(existing.session_start);
-    const eH = d.getHours();
-    const eM = d.getMinutes();
     const parsed = parseTimeStr(row.session_start);
-    if (parsed && (eH !== parsed.h || eM !== parsed.m)) return true;
+    if (parsed && (d.getHours() !== parsed.h || d.getMinutes() !== parsed.m)) {
+      changes.push({
+        field:    'session_start',
+        oldValue: `${pad2(d.getHours())}:${pad2(d.getMinutes())}`,
+        newValue: `${pad2(parsed.h)}:${pad2(parsed.m)}`,
+      });
+    }
   }
 
   // comment: null and '' are equivalent
   const existingComment = existing.comment ?? '';
   const rowComment      = row.comment ?? '';
-  if (existingComment !== rowComment) return true;
+  if (existingComment !== rowComment) {
+    changes.push({ field: 'comment', oldValue: existingComment || '(empty)', newValue: rowComment || '(empty)' });
+  }
 
   // attributes
   const existingAttrMap = new Map(
@@ -1100,7 +1172,7 @@ function hasChanges(
     if (importValue === '_') {
       const existingAttr = existingAttrMap.get(def.id);
       if (existingAttr && (existingAttr.value_text != null || existingAttr.value_number != null || existingAttr.value_datetime != null || existingAttr.value_boolean != null)) {
-        return true;
+        changes.push({ field: attrName, oldValue: existingAttrDisplay(existingAttr), newValue: '(cleared)' });
       }
       continue;
     }
@@ -1109,31 +1181,145 @@ function hasChanges(
     if (importValue == null || importValue === '') continue;
 
     const existingAttr = existingAttrMap.get(def.id);
-    if (!existingAttr) return true; // new value being added
+    if (!existingAttr) {
+      changes.push({ field: attrName, oldValue: '(empty)', newValue: String(importValue) });
+      continue;
+    }
 
     switch (def.data_type) {
       case 'number': {
         const n = typeof importValue === 'number' ? importValue : parseFloat(String(importValue));
-        if (existingAttr.value_number !== n) return true;
+        if (existingAttr.value_number !== n) {
+          changes.push({ field: attrName, oldValue: existingAttrDisplay(existingAttr), newValue: String(n) });
+        }
         break;
       }
       case 'boolean': {
         const b = typeof importValue === 'boolean' ? importValue : String(importValue).toLowerCase() === 'true';
-        if (existingAttr.value_boolean !== b) return true;
+        if (existingAttr.value_boolean !== b) {
+          changes.push({ field: attrName, oldValue: existingAttrDisplay(existingAttr), newValue: String(b) });
+        }
         break;
       }
       case 'datetime': {
-        if (existingAttr.value_datetime !== String(importValue)) return true;
+        if (existingAttr.value_datetime !== String(importValue)) {
+          changes.push({ field: attrName, oldValue: existingAttrDisplay(existingAttr), newValue: String(importValue) });
+        }
         break;
       }
       default: {
-        if (existingAttr.value_text !== String(importValue)) return true;
+        if (existingAttr.value_text !== String(importValue)) {
+          changes.push({ field: attrName, oldValue: existingAttrDisplay(existingAttr), newValue: String(importValue) });
+        }
         break;
       }
     }
   }
 
-  return false;
+  return changes;
+}
+
+/**
+ * Returns true if the import row has at least one change compared to the existing DB event.
+ * P3: empty xlsx value → treat as "no change" (don't touch, don't count as updated).
+ */
+function hasChanges(
+  existing:      ExistingLeafEvent,
+  row:           ParsedImportRow,
+  attrByCatName: Map<string, ExportAttrDef>,
+  categoryId:    string,
+): boolean {
+  return computeRowDiff(existing, row, attrByCatName, categoryId).length > 0;
+}
+
+// ─────────────────────────────────────────────
+// Update-guard dry-run analysis (S107 D7)
+// ─────────────────────────────────────────────
+
+export interface UpdatePreview {
+  eventId:           string;
+  sourceRow:         number;
+  /** New (Excel) values, for display */
+  eventDate:         string;
+  sessionStart:      string;   // HH:MM from Excel row
+  categoryPath:      string;
+  /** Existing DB event_date — old-record warnings key off this */
+  existingEventDate: string;
+  changes:           UpdateFieldChange[];
+}
+
+export interface UpdateAnalysis {
+  /** Rows that WILL modify an existing event, with field-level old→new diff */
+  updates:        UpdatePreview[];
+  /** Rows identical to DB state (will be counted as skipped at apply) */
+  unchangedCount: number;
+  /** event_id not found / category mismatch — smartReclassify turns these into CREATE at apply */
+  invalidIdCount: number;
+}
+
+/**
+ * Dry-run diff of all UPDATE rows vs current DB state, WITHOUT writing anything.
+ * Powers the update-guard confirmation step in ExcelImportModal: the user sees
+ * exactly which existing events would change (old → new per field) before Apply.
+ */
+export async function analyzeUpdates(
+  userId:         string,
+  toUpdate:       ParsedImportRow[],
+  categoriesDict: ExportCategoriesDict,
+  attrDefs:       ExportAttrDef[],
+): Promise<UpdateAnalysis> {
+  if (toUpdate.length === 0) return { updates: [], unchangedCount: 0, invalidIdCount: 0 };
+
+  const attrByCatName = new Map<string, ExportAttrDef>();
+  for (const def of attrDefs) attrByCatName.set(`${def.category_id}||${def.name}`, def);
+
+  const catByPath: Record<string, string> = {};
+  for (const [id, info] of Object.entries(categoriesDict)) catByPath[`${info.area_name}||${info.full_path}`] = id;
+
+  type ExistingRow = ExistingLeafEvent & { id: string; category_id: string };
+
+  // Batch fetch existing events (same fields as the apply path's per-row fetch)
+  const eventIds = toUpdate.map(r => r.event_id!).filter(Boolean);
+  const CHUNK = 200;
+  const existingById = new Map<string, ExistingRow>();
+  for (let i = 0; i < eventIds.length; i += CHUNK) {
+    const chunk = eventIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from('events')
+      .select('id, category_id, event_date, session_start, comment, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
+      .in('id', chunk)
+      .eq('user_id', userId);
+    if (error) throw new Error(`Update analysis failed: ${error.message}`);
+    for (const e of (data ?? []) as ExistingRow[]) existingById.set(e.id, e);
+  }
+
+  const updates: UpdatePreview[] = [];
+  let unchangedCount = 0;
+  let invalidIdCount = 0;
+
+  for (const row of toUpdate) {
+    const existing = existingById.get(row.event_id!);
+    if (!existing) { invalidIdCount++; continue; }
+
+    const expectedCatId = catByPath[`${row.area}||${row.category_path}`] ?? null;
+    if (existing.category_id !== expectedCatId) { invalidIdCount++; continue; }
+
+    const changes = computeRowDiff(existing, row, attrByCatName, existing.category_id);
+    if (changes.length === 0) { unchangedCount++; continue; }
+
+    const ssParsed = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
+    updates.push({
+      eventId:           row.event_id!,
+      sourceRow:         row._source_row,
+      eventDate:         row.event_date,
+      sessionStart:      `${pad2(ssParsed.h)}:${pad2(ssParsed.m)}`,
+      categoryPath:      row.category_path,
+      existingEventDate: existing.event_date,
+      changes,
+    });
+  }
+
+  return { updates, unchangedCount, invalidIdCount };
 }
 
 // ─────────────────────────────────────────────
@@ -1256,6 +1442,10 @@ export async function importEventsFromExcel(
     return { created: 0, updated: 0, skipped: 0, errors: parsed.errors, warnings: parsed.warnings };
   }
   if (parsed.toCreate.length === 0 && parsed.toUpdate.length === 0) {
+    // S107 D7: a file where every row matched its row_hash is a valid no-op, not an error
+    if (parsed.untouchedCount > 0) {
+      return { created: 0, updated: 0, skipped: parsed.untouchedCount, errors: [], warnings: parsed.warnings };
+    }
     return { created: 0, updated: 0, skipped: 0, errors: ['No events found in file'], warnings: [] };
   }
 
@@ -1290,7 +1480,7 @@ export async function importEventsFromExcel(
   return {
     created:  result.created,
     updated:  result.updated,
-    skipped:  result.skipped,
+    skipped:  result.skipped + parsed.untouchedCount, // untouched rows (row_hash match) count as skipped
     errors:   result.errors,
     warnings: [...parsed.warnings, ...reclassified.warnings, ...result.warnings],
   };

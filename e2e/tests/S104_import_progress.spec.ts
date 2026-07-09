@@ -151,9 +151,10 @@ test.describe('T-S104-3 — Import progress bar on a large batch', () => {
     await applyBtn.click();
 
     // ── 4. Progress bar should appear with the correct total while applying ──
-    // Total = CLONE_COUNT new rows + 1 pre-existing template row (counted as an
-    // UPDATE candidate, then skipped since its data is unchanged).
-    const expectedTotal = CLONE_COUNT + 1;
+    // Total = CLONE_COUNT new rows. The pre-existing template row is untouched in
+    // Excel, so the S107 row_hash skip drops it at parse time — it never reaches
+    // applyImportChanges (before S107 it was an UPDATE candidate → total was +1).
+    const expectedTotal = CLONE_COUNT;
     await expect(page.getByText(new RegExp(`/ ${expectedTotal} rows`))).toBeVisible({ timeout: 15_000 });
 
     // ── 5. Import completes (doesn't hang) — Done screen shows the created count ──

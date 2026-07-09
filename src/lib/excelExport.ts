@@ -34,6 +34,7 @@ import type { StructureNode } from '@/types/structure';
 import { addStructureSheetsTo, type ExportStructureOptions } from './structureExcel';
 import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
 import { applyProfileToWorkbook, getProfileAttrOrder, type ExportProfile } from './exportProfile';
+import { computeRowFingerprint, ROW_HASH_HEADER } from './excelFingerprint';
 
 // ─────────────────────────────────────────────
 // Constants
@@ -559,10 +560,11 @@ export async function addActivitiesSheetsTo(
     return `${attrName} (${shortCat})`;
   });
 
-  // Fixed display headers + attr headers (no padding cols)
+  // Fixed display headers + attr headers (no padding cols) + row_hash (last col)
   const allHeaders = [
     ...FIXED_DISPLAY_HEADERS,
     ...attrHeaderStrings,
+    ROW_HASH_HEADER,
   ];
 
   for (let ci = 0; ci < allHeaders.length; ci++) {
@@ -716,6 +718,33 @@ export async function addActivitiesSheetsTo(
       }
     }
 
+    // ---- row_hash column (S107 D7: fingerprint for untouched-row skip on import) ----
+    // Attr record mirrors parseDataRows semantics: keyed by attr NAME, iterated in
+    // column order (duplicate names: later non-empty column wins), empty cells skipped.
+    const hashAttrs: Record<string, string | number | boolean | null> = {};
+    for (const { attrDefId, attrName } of attrColumns) {
+      const v = attrValues.get(attrDefId) ?? null;
+      if (v == null) continue;
+      if (typeof v === 'string' && v.trim() === '') continue;
+      hashAttrs[attrName] = v;
+    }
+    const hashCell = ws.getCell(row, ATTR_COL_START + attrColumns.length);
+    hashCell.value = computeRowFingerprint({
+      event_id:      event.id,
+      area:          catInfo.area_name ?? '',
+      category_path: catInfo.full_path ?? '',
+      event_date:    event.event_date,
+      session_start: sessionTime,
+      created_at:    createdTime,
+      user_email:    event.user_email ?? '',
+      comment:       commentValue,
+      attributes:    hashAttrs,
+    });
+    hashCell.fill      = PINK_FILL;
+    hashCell.border    = THIN_BORDER;
+    hashCell.numFmt    = '@';
+    hashCell.alignment = { horizontal: 'left', vertical: 'middle' };
+
     row++;
   }
 
@@ -790,10 +819,11 @@ export async function addActivitiesSheetsTo(
   // ──────────────────────────────────────────
   // AUTOFILTER
   // ──────────────────────────────────────────
-  const lastDataCol = ATTR_COL_START + attrColumns.length - 1;
+  // row_hash col MUST be inside the autofilter range so Excel sorts move it with its row
+  const rowHashCol  = ATTR_COL_START + attrColumns.length;
   ws.autoFilter = {
     from: { row: eventHeaderRow, column: 1 },
-    to:   { row: eventDataEnd,   column: Math.max(lastDataCol, ATTR_COL_START - 1) },
+    to:   { row: eventDataEnd,   column: rowHashCol },
   };
 
   // ──────────────────────────────────────────
@@ -823,6 +853,10 @@ export async function addActivitiesSheetsTo(
   for (let aidx = 0; aidx < attrColumns.length; aidx++) {
     ws.getColumn(ATTR_COL_START + aidx).width = 13;
   }
+
+  // row_hash column: narrow + grouped so users can collapse it (like User col)
+  ws.getColumn(rowHashCol).width = 12;
+  ws.getColumn(rowHashCol).outlineLevel = 1;
 
   // Legend column widths (7 cols: Col=A..Unit=F, Description=G)
   // G also serves as User email col in data section — use max of both needs
