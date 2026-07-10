@@ -5,6 +5,22 @@ u Add Activity + **Automations sheet** u Structure Excel roundtripu.
 
 Spec: `docs/AUTOMATION_SPEC.md` § Faza 2b. E2E: `e2e/tests/S107b_set_attribute.spec.ts`.
 
+## 📸 Gdje pogledati što je napravljeno (demo, 2026-07-10)
+
+Snimljeno na TEST bazi kroz privremenu areu "Financije DEMO" (obrisana nakon snimanja).
+Sve u **`Claude-temp_R/S107b_demo/`**:
+
+| File | Što pokazuje |
+| --- | --- |
+| `1_prazan_form.png` | Add Activity prije odabira — Izvor i Datum naplate prazni |
+| `2_mastercard_prefill.png` | Izvor=Mastercard → **Datum naplate auto = 11.08.2026 12:00** (`next:11`) |
+| `3_racun_same_day.png` | Izvor=Racun → datum = danas (`same`) |
+| `4_rucni_unos_ostaje.png` | Ručno upisan 15.01.2030, promjena Izvora na Visa → **ručni datum OSTAJE** |
+| `structure_export_demo.xlsx` | Stvarni Structure export — otvori sheet **Automations** (red s pravilom + help blok) |
+
+Kod: `src/lib/attributeRules.ts` (engine), `AddActivityPage.tsx` (prefill useEffect),
+`structureExcel.ts` / `structureImport.ts` §9 (Excel roundtrip). Commit `607e9bb` (test-branch).
+
 **Preduvjet za ručne testove (T-S107b-3/5):** Area čiji `settings.automations.attribute_rules`
 sadrži pravilo, npr. (SQL na TEST bazi, zamijeni `<AREA_ID>`):
 
