@@ -553,6 +553,32 @@ def write_review(rows: list[Row], problems: list[list]) -> None:
     ws.auto_filter.ref = f'A1:{get_column_letter(len(COLS))}{last}'
     ws.freeze_panes = 'A2'
 
+    # ---- Taksonomija (vidljivi, EDITABILNI izvor taksonomije — MIGRACIJA §12.2) ----
+    # Korak 4 pipeline-a (generiranje import Excela + Structure redaka) čita OVAJ sheet,
+    # ne TAXONOMY dict — izmjene ovdje su izvor istine za dropdowne i Structure.
+    tws = out.create_sheet('Taksonomija')
+    for c, (h, w) in enumerate([('Tip', 16), ('Podtip', 26)], 1):
+        cell = tws.cell(1, c, h)
+        cell.fill, cell.font, cell.border = HDR_FILL, WHITE_BOLD, BORDER
+        tws.column_dimensions[get_column_letter(c)].width = w
+    t_i = 2
+    for tip, podtips in TAXONOMY.items():
+        for p in (podtips or ['']):
+            tws.cell(t_i, 1, tip).border = BORDER
+            tws.cell(t_i, 2, p).border = BORDER
+            t_i += 1
+    tws.auto_filter.ref = f'A1:B{t_i - 1}'
+    tws.freeze_panes = 'A2'
+    note = tws.cell(2, 4,
+        'EDITABILNI IZVOR TAKSONOMIJE — jedan red po (Tip, Podtip) paru; Tip bez podtipova = 1 red s praznim Podtipom.\n'
+        'Dodaj/izmijeni/obriši redove slobodno. Sljedeći korak pipeline-a čita OVAJ sheet i iz njega gradi\n'
+        'dropdowne i Structure (TextOptions/DependsOn/WhenValue) za Financije_all.\n'
+        'NAPOMENA: dropdowni na Review sheetu se NE osvježavaju sami — generirani su pri exportu.\n'
+        'Novu Tip vrijednost svejedno možeš slobodno UTIPKATI u Review (validacija ne blokira unos).')
+    note.alignment = Alignment(wrap_text=True, vertical='top')
+    tws.column_dimensions['D'].width = 100
+    tws.row_dimensions[2].height = 80
+
     # ---- Problemi ----
     pws = out.create_sheet('Problemi')
     for c, h in enumerate(['Sheet', 'Red', 'Problem', 'Akcija'], 1):
@@ -603,6 +629,8 @@ def write_review(rows: list[Row], problems: list[list]) -> None:
         '• Izvor=Racun redovi drže Stanje; Tip=Transfer se isključuje iz analize potrošnje (D3).',
         '• Kolone "Izvor reda"/"Labela iz": odakle red dolazi (sheet:red u Kokinom Excelu).',
         '• Sheet "Problemi": datumi izvan raspona, prazni smjerovi, nepodudarene labele.',
+        '• Sheet "Taksonomija": EDITABILNI izvor Tip/Podtip strukture — mijenjaj TAMO,',
+        '  ne u dropdownima; pipeline iz njega gradi dropdowne i Structure za Financije_all.',
         '',
         'VAŽNO — velika rupa u podacima: ~82% Mastercard redova (2023–2025-06) nema',
         'nikakav opis pa su Tip=N/A, Pouzdanost=NEMA. Odluka: ostaviti N/A (iznosi i',

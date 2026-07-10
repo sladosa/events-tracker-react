@@ -273,11 +273,37 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
    **⚠ Data gap otkriven:** 82% Kokinih Mastercard redova (2023–2025-06) NEMA opis → Tip=N/A,
    pouzdanost NEMA (2104 redova); Za Sašu labele pokrivaju samo 2025-07+. Treba odluka Saša/Koka.
 
+**Done 2026-07-10 (S107b — Faza 2b set_attribute + Automations Excel roundtrip):**
+1. **D1 dopuna odlučena:** `Datum naplate` NIJE opcionalan — auto-fill po Izvoru (v. FINANCIJE_MIGRACIJA.md §12).
+   **Postepena migracija odlučena:** prvo 2026 redovi, starija povijest gradualno; struktura+taksonomija
+   kompletne od prvog importa. **Taksonomija sheet** dodan u review Excel
+   (`Financije_review_20260710_1448.xlsx`) — editabilni izvor Tip/Podtip parova, pipeline korak 4 ga čita.
+2. **Faza 2b `set_attribute` automatika** ✅ — `src/lib/attributeRules.ts` (evaluateDateRule
+   `same`/`next:N`, computeSetAttributeValue, findDefBySlug); `AttributeRuleConfig` u `database.ts`
+   (`AreaSettings.automations.attribute_rules`); live-prefill useEffect u `AddActivityPage` —
+   `autoFilledValues` ref pamti zadnju auto-vrijednost po atributu (ručni unos se NIKAD ne gazi);
+   **VAŽNO:** sve odluke/ref mutacije IZVAN setState updatera (StrictMode ga zove 2×, prvi pokušaj
+   s mutacijom u updateru je gubio update — uhvaćeno T-S107b-1 testom).
+3. **Automations sheet u Structure Excel roundtripu** ✅ — export (`structureExcel.ts`
+   `writeAutomationsSheet`): kolone Area|RuleName|Action|TargetAttr|MapAttr|DateMap, format
+   `Mastercard=next:11 | Racun=same`, help blok; import (`structureImport.ts` §9): replace-per-area
+   semantika, validacija slugova+DateMap sintakse, nevaljani redovi → "Automation rules skipped";
+   `ImportResult.automations` + prikaz u `StructureImportModal`; §8 fix: comment_template update sad
+   osvježava in-memory settings (da ga §9 ne pregazi starim snapshotom).
+4. **Testovi:** novi `e2e/tests/S107b_set_attribute.spec.ts` (T-S107b-1/2 PASS, self-contained area);
+   regresija E2, E5 (svih 5), E6 (3), T-S104-2, T-S107-1/2 sve PASS. **E5-4/E5-5 selector fix**
+   (pre-existing, ne app bug): item preimenovan u "+ Add Leaf" + ⋮ meni se zatvara na scroll pa ga je
+   Playwrightov auto-scroll odmah zatvarao → `clickRowMenuItem()` retry helper u specu.
+5. Typecheck + build čisti. Direktorij `data-prep_data/Financije/izvodi/` kreiran za PDF e-izvode
+   (enrichment plan u FINANCIJE_MIGRACIJA.md §12.5).
+
 **Sljedeći koraci (čekaju Sašu):**
-1. Saša/Koka review `Financije_review_*.xlsx` + odluka što s N/A masom (T-S107-6)
-2. Generiranje app-import Excela iz odobrenog reviewa + struktura `Financije_all`
-3. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
-4. Diary archaeology (non-blocking)
+1. Saša/Koka review `Financije_review_20260710_1448.xlsx` (uklj. Taksonomija sheet) + odluka što s N/A masom (T-S107-6)
+2. S Kokom skinuti PDF e-izvode → `data-prep_data/Financije/izvodi/` → `enrich_from_izvoda.py` (smanjenje N/A)
+3. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
+4. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`
+5. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
+6. Diary archaeology (non-blocking)
 
 ### S108+: Intelligence layer (success criteria)
 
@@ -316,7 +342,8 @@ After each session:
 **Post-Finish automation** — spec: `docs/AUTOMATION_SPEC.md`
 - ✅ Faza 1: Python rata tool → Post-Finish modal u web app
 - ✅ Faza 2: Auto-comment template po leaf kategoriji (S95)
-- Faza 3: Excel Automations sheet (generalni engine)
+- ✅ Faza 2b (S107b): `set_attribute` pravila — auto `Datum naplate` po Izvoru; `attributeRules.ts` + AddActivityPage prefill
+- ◐ Faza 3 (djelomično, S107b): Automations sheet u Structure Excel roundtripu pokriva `set_attribute`; rata config još SQL
 - Faza 4: Training parser/inverz (čeka `trening.xlsm` analizu)
 
 **Structure Edit UX cleanup** (`StructureNodeEditPanel.tsx`, nema DB promjena):

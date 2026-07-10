@@ -40,6 +40,7 @@ import {
 } from '@/components/activity/ConfirmDialog';
 
 import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
+import { computeSetAttributeValue, findDefBySlug } from '@/lib/attributeRules';
 import { detectRata, generateRataDates, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
 import { resolveCommentTemplate, evaluateCommentTemplate } from '@/lib/commentTemplate';
 import type { RataAutomationConfig } from '@/types/database';
@@ -639,6 +640,56 @@ export function AddActivityPage() {
     for (const [, catAttrs] of attributesByCategory) defs.push(...catAttrs);
     return defs;
   }, [attributesByCategory]);
+
+  // ============================================
+  // set_attribute automatika (Faza 2b) — live prefill
+  // ============================================
+  // Prati vrijednost map atributa (npr. Izvor) + session date i auto-puni target
+  // (npr. Datum naplate). Ručno editiran target se NIKAD ne gazi: pamtimo zadnju
+  // auto-upisanu vrijednost po atributu — ako trenutna vrijednost nije ta (niti
+  // prazna), korisnik ju je promijenio i pravilo za taj atribut prestaje raditi.
+  const autoFilledValues = useRef(new Map<string, string>());
+
+  useEffect(() => {
+    const rules = selectedArea?.settings?.automations?.attribute_rules;
+    if (!rules?.length || allAttrDefs.length === 0) return;
+
+    // Sve odluke (uklj. mutaciju autoFilledValues ref-a) IZVAN setState updatera —
+    // React updater smije biti pozvan više puta (StrictMode) pa mora ostati čist.
+    const updates: Array<{ id: string; value: string }> = [];
+    for (const rule of rules) {
+      if (rule.action !== 'set_attribute') continue;
+      const targetDef = findDefBySlug(allAttrDefs, rule.target_slug);
+      const mapDef = findDefBySlug(allAttrDefs, rule.map_slug);
+      if (!targetDef || !mapDef) continue;
+
+      const mapVal = attributeValues.get(mapDef.id)?.value;
+      const current = attributeValues.get(targetDef.id)?.value;
+      const lastAuto = autoFilledValues.current.get(targetDef.id);
+      const userOwned = current != null && current !== '' && current !== lastAuto;
+      if (userOwned) continue;
+
+      const computed = computeSetAttributeValue(
+        rule,
+        mapVal == null ? null : String(mapVal),
+        sessionStart,
+      );
+      if (computed === null) continue; // map vrijednost bez pravila → ne diraj
+
+      autoFilledValues.current.set(targetDef.id, computed);
+      if (current !== computed) updates.push({ id: targetDef.id, value: computed });
+    }
+
+    if (updates.length > 0) {
+      setAttributeValues(prev => {
+        const next = new Map(prev);
+        for (const u of updates) {
+          next.set(u.id, { definitionId: u.id, value: u.value, touched: true });
+        }
+        return next;
+      });
+    }
+  }, [attributeValues, selectedArea, allAttrDefs, sessionStart]);
 
   const resolveEventNote = useCallback((
     userNote: string,

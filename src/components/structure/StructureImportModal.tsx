@@ -146,7 +146,9 @@ export function StructureImportModal({
   const totalCreated = result
     ? result.created.areas + result.created.categories + result.created.attributes
     : 0;
-  const totalChanged = result ? totalCreated + result.updated.attributes : 0;
+  const totalChanged = result
+    ? totalCreated + result.updated.attributes + (result.automations?.areasUpdated ?? 0)
+    : 0;
   const isDone = result !== null;
 
   return (
@@ -236,6 +238,12 @@ export function StructureImportModal({
                   <ResultRow label="Categories created"  value={result.created.categories} />
                   <ResultRow label="Attributes created"  value={result.created.attributes} />
                   <ResultRow label="Attributes updated"  value={result.updated.attributes} />
+                  {(result.automations?.rulesImported ?? 0) > 0 && (
+                    <ResultRow label="Automation rules"  value={result.automations.rulesImported} />
+                  )}
+                  {(result.automations?.rulesSkipped ?? 0) > 0 && (
+                    <ResultRow label="Automation rules skipped" value={result.automations.rulesSkipped} warn />
+                  )}
                   <ResultRow label="Rows skipped"        value={result.skipped} warn={result.skipped > 0} />
                 </div>
               </div>

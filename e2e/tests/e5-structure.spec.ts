@@ -8,12 +8,37 @@
  * CategoryChainRow renders <div data-testid="structure-row-<id>"> — used for row selection.
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 import { loginAsOwner, supabaseDelete } from '../fixtures/auth';
 import { SEED } from '../fixtures/filter';
 
 const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
 const PW_AREA_NAME = 'PW-TestArea';
+
+/**
+ * Open a row's ⋮ Actions menu and click a menu item.
+ * The menu closes on ANY scroll (capture listener in CategoryChainRow) — and
+ * Playwright's auto scroll-into-view on click fires exactly such a scroll,
+ * instantly closing the menu. Pre-scroll the row, then retry the click until
+ * the item is actually visible.
+ */
+async function clickRowMenuItem(page: Page, row: Locator, item: RegExp): Promise<void> {
+  await row.scrollIntoViewIfNeeded();
+  await row.hover();
+  const actionsBtn = row.getByRole('button', { name: /actions/i });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await actionsBtn.click();
+    const menuItem = page.getByRole('button', { name: item });
+    try {
+      await menuItem.waitFor({ state: 'visible', timeout: 1_500 });
+      await menuItem.click();
+      return;
+    } catch {
+      // menu got closed by a scroll — retry
+    }
+  }
+  throw new Error(`Row menu item ${item} never became visible`);
+}
 
 test.describe('E5 — Structure tab', () => {
   test.beforeEach(async ({ page }) => {
@@ -59,9 +84,8 @@ test.describe('E5 — Structure tab', () => {
     await page.getByRole('button', { name: /edit mode/i }).click();
 
     const cardioRow = page.locator(`[data-testid="structure-row-${SEED.CAT_CARDIO}"]`);
-    await cardioRow.hover();
-    await cardioRow.getByRole('button').last().click();
-    await page.getByRole('button', { name: /add child/i }).click();
+    // Menu item renamed "Add Child" → "+ Add Leaf" (P2 add-between rework)
+    await clickRowMenuItem(page, cardioRow, /add leaf/i);
 
     await expect(
       page.getByText(/cannot add child|has events|blocked/i).first(),
@@ -73,9 +97,8 @@ test.describe('E5 — Structure tab', () => {
     await page.getByRole('button', { name: /edit mode/i }).click();
 
     const strengthRow = page.locator(`[data-testid="structure-row-${SEED.CAT_STRENGTH}"]`);
-    await strengthRow.hover();
-    await strengthRow.getByRole('button').last().click();
-    await page.getByRole('button', { name: /add child/i }).click();
+    // Menu item renamed "Add Child" → "+ Add Leaf" (P2 add-between rework)
+    await clickRowMenuItem(page, strengthRow, /add leaf/i);
 
     await expect(page.getByRole('button', { name: /^create$/i })).toBeVisible({ timeout: 8_000 });
   });

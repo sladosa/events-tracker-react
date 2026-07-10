@@ -24,6 +24,8 @@
 
 import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
+import { isValidDateRule } from '@/lib/attributeRules';
+import type { AttributeRuleConfig } from '@/types/database';
 
 // ─────────────────────────────────────────────────────────────
 // Public types
@@ -48,6 +50,12 @@ export interface ImportResult {
   };
   skipped: number;
   conflicts: ConflictRow[];
+  /** Automations sheet (set_attribute rules) — Faza 2b */
+  automations: {
+    areasUpdated: number;
+    rulesImported: number;
+    rulesSkipped: number; // invalid rows (unknown area/slug, bad DateMap syntax)
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -384,6 +392,7 @@ export async function importStructureExcel(
     updated:  { attributes: 0 },
     skipped:  0,
     conflicts: [],
+    automations: { areasUpdated: 0, rulesImported: 0, rulesSkipped: 0 },
   };
 
   // ── 1. Read file ──────────────────────────────────────────
@@ -776,9 +785,11 @@ export async function importStructureExcel(
         const existingArea = dbAreas?.find(a => a.id === areaId);
         const dbTpl = existingArea?.settings?.comment_template ?? null;
         if (dbTpl === xlTpl) continue;
-        await supabase.from('areas').update({
-          settings: { ...(existingArea?.settings ?? {}), comment_template: xlTpl ?? undefined },
-        }).eq('id', areaId);
+        const newSettings = { ...(existingArea?.settings ?? {}), comment_template: xlTpl ?? undefined };
+        await supabase.from('areas').update({ settings: newSettings }).eq('id', areaId);
+        // Keep in-memory snapshot fresh — section 9 (Automations) spreads the same
+        // settings object; a stale copy would silently revert this template change.
+        if (existingArea) existingArea.settings = newSettings;
       }
 
       if (row.type === 'Category') {
@@ -787,6 +798,126 @@ export async function importStructureExcel(
         await supabase.from('categories').update({
           settings: { comment_template: xlTpl ?? undefined },
         }).eq('id', catId);
+      }
+    }
+  }
+
+  // ── 9. Automations sheet — set_attribute rules (Faza 2b) ──
+  // Redovi zamjenjuju SVA set_attribute pravila navedene Aree; Aree koje se
+  // ne spominju u sheetu ostaju netaknute. Stariji exporti bez sheeta = no-op.
+  const autoWs = wb.worksheets.find(s => s.name.toLowerCase() === 'automations');
+  if (autoWs) {
+    // Header (row 1): Area | RuleName | Action | TargetAttr | MapAttr | DateMap
+    const headerVals: string[] = [];
+    autoWs.getRow(1).eachCell({ includeEmpty: true }, (cell, colNum) => {
+      headerVals[colNum - 1] = cellStr(cell).toLowerCase();
+    });
+    const aCol = (name: string) => headerVals.findIndex(v => v === name) + 1; // 0 = not found
+
+    const colArea = aCol('area');
+    const colRuleName = aCol('rulename');
+    const colAction = aCol('action');
+    const colTarget = aCol('targetattr');
+    const colMap = aCol('mapattr');
+    const colDateMap = aCol('datemap');
+
+    if (colArea > 0 && colAction > 0 && colTarget > 0 && colMap > 0 && colDateMap > 0) {
+      // Per-area set of known attribute slugs (walk category → area via catById).
+      // attrBySlugCat already contains attrs created earlier in THIS import run.
+      const slugsByArea = new Map<string, Set<string>>();
+      for (const rec of attrBySlugCat.values()) {
+        const areaId = rec.categoryId ? catById.get(rec.categoryId)?.areaId : undefined;
+        if (!areaId) continue;
+        let set = slugsByArea.get(areaId);
+        if (!set) { set = new Set(); slugsByArea.set(areaId, set); }
+        set.add(rec.slug);
+      }
+
+      const rulesByArea = new Map<string, AttributeRuleConfig[]>();
+      const lastRow = autoWs.lastRow?.number ?? 1;
+
+      for (let r = 2; r <= lastRow; r++) {
+        const row = autoWs.getRow(r);
+        const get = (colNum: number): string => (colNum > 0 ? cellStr(row.getCell(colNum)) : '');
+
+        if (get(colAction).toLowerCase() !== 'set_attribute') continue; // help/blank rows
+
+        const areaName = get(colArea);
+        const targetSlug = get(colTarget);
+        const mapSlug = get(colMap);
+        const dateMapRaw = get(colDateMap);
+        const areaId = areaByName.get(areaName.toLowerCase());
+
+        if (!areaId || !targetSlug || !mapSlug || !dateMapRaw) {
+          console.warn(`[Automations import] row ${r}: unknown area or missing fields — skipped`);
+          result.automations.rulesSkipped++;
+          continue;
+        }
+
+        // Slugovi moraju postojati u toj Arei — mrtvo pravilo se ne uvozi
+        const areaSlugs = slugsByArea.get(areaId);
+        if (!areaSlugs?.has(targetSlug) || !areaSlugs.has(mapSlug)) {
+          console.warn(`[Automations import] row ${r}: slug "${!areaSlugs?.has(targetSlug) ? targetSlug : mapSlug}" not found in area "${areaName}" — skipped`);
+          result.automations.rulesSkipped++;
+          continue;
+        }
+
+        // DateMap: "Mastercard=next:11 | Visa=next:3 | Racun=same"
+        const dateMap: Record<string, string> = {};
+        let mapValid = true;
+        for (const entry of dateMapRaw.split('|')) {
+          const trimmed = entry.trim();
+          if (!trimmed) continue;
+          const eq = trimmed.indexOf('=');
+          const key = eq > 0 ? trimmed.slice(0, eq).trim() : '';
+          const ruleStr = eq > 0 ? trimmed.slice(eq + 1).trim() : '';
+          if (!key || !isValidDateRule(ruleStr)) { mapValid = false; break; }
+          dateMap[key] = ruleStr;
+        }
+        if (!mapValid || Object.keys(dateMap).length === 0) {
+          console.warn(`[Automations import] row ${r}: invalid DateMap "${dateMapRaw}" — skipped`);
+          result.automations.rulesSkipped++;
+          continue;
+        }
+
+        const rule: AttributeRuleConfig = {
+          action: 'set_attribute',
+          ...(get(colRuleName) ? { name: get(colRuleName) } : {}),
+          target_slug: targetSlug,
+          map_slug: mapSlug,
+          date_map: dateMap,
+        };
+        const list = rulesByArea.get(areaId) ?? [];
+        list.push(rule);
+        rulesByArea.set(areaId, list);
+      }
+
+      // Canonical compare — order-insensitive on date_map keys
+      const canon = (rules: AttributeRuleConfig[]): string =>
+        JSON.stringify(rules.map(rl => [
+          rl.action, rl.name ?? '', rl.target_slug, rl.map_slug,
+          Object.entries(rl.date_map).sort(([a], [b]) => a.localeCompare(b)),
+        ]));
+
+      for (const [areaId, rules] of rulesByArea) {
+        const existingArea = dbAreas?.find(a => a.id === areaId);
+        const existingRules = (existingArea?.settings?.automations?.attribute_rules ?? []) as AttributeRuleConfig[];
+        result.automations.rulesImported += rules.length;
+        if (canon(existingRules) === canon(rules)) continue; // unchanged
+
+        const newSettings = {
+          ...(existingArea?.settings ?? {}),
+          automations: { ...(existingArea?.settings?.automations ?? {}), attribute_rules: rules },
+        };
+        const { error } = await supabase.from('areas').update({ settings: newSettings }).eq('id', areaId);
+        if (error) {
+          console.error('[Automations import] failed to update area settings:', error);
+          result.automations.rulesSkipped += rules.length;
+          result.automations.rulesImported -= rules.length;
+        } else {
+          if (existingArea) existingArea.settings = newSettings;
+          result.automations.areasUpdated++;
+        }
       }
     }
   }

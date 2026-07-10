@@ -35,11 +35,22 @@ export interface RataAutomationConfig {
   comment_attr_slug?: string; // attr to use as comment prefix when event note is empty
 }
 
+// Faza 2b (AUTOMATION_SPEC.md): derive attribute value from another attribute.
+// date_map values: 'same' (= session date) | 'next:N' (Nth day of next month).
+export interface AttributeRuleConfig {
+  action: 'set_attribute';
+  name?: string; // display name in Automations sheet
+  target_slug: string;
+  map_slug: string;
+  date_map: Record<string, string>;
+}
+
 export interface AreaSettings {
   disable_save_plus?: boolean;
   comment_template?: string;
   automations?: {
     rata?: RataAutomationConfig;
+    attribute_rules?: AttributeRuleConfig[];
   };
   export_profiles?: Record<string, unknown>;
 }

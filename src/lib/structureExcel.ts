@@ -655,6 +655,86 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Automations sheet (Faza 2b/3 — AUTOMATION_SPEC.md)
+// ─────────────────────────────────────────────────────────────
+// Roundtrip editing surface za `set_attribute` pravila
+// (area.settings.automations.attribute_rules). Jedan red po pravilu.
+// Sheet se UVIJEK piše (i prazan služi kao template za dodavanje pravila).
+// Rata konfiguracija još NIJE u sheetu (puna Faza 3).
+//
+// DateMap format: "Mastercard=next:11 | Visa=next:3 | Racun=same"
+//   ('=' odvaja map-vrijednost od pravila jer pravilo samo sadrži ':')
+
+const AUTOMATION_COLS = [
+  { header: 'Area',       width: 20 },
+  { header: 'RuleName',   width: 20 },
+  { header: 'Action',     width: 14 },
+  { header: 'TargetAttr', width: 16 },
+  { header: 'MapAttr',    width: 12 },
+  { header: 'DateMap',    width: 60 },
+] as const;
+
+export function serializeDateMap(dateMap: Record<string, string>): string {
+  return Object.entries(dateMap).map(([k, v]) => `${k}=${v}`).join(' | ');
+}
+
+function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
+  const ws = wb.addWorksheet('Automations');
+  ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+  for (let ci = 0; ci < AUTOMATION_COLS.length; ci++) {
+    ws.getColumn(ci + 1).width = AUTOMATION_COLS[ci].width;
+    const cell = ws.getCell(1, ci + 1);
+    cell.value = AUTOMATION_COLS[ci].header;
+    cell.fill = makeFill(CLR.HEADER_BG);
+    cell.font = { name: 'Calibri', bold: true, size: 11, color: { argb: CLR.HEADER_FG } };
+    cell.border = THIN_BORDER;
+  }
+
+  let rowNum = 2;
+  for (const node of nodes) {
+    if (node.nodeType !== 'area') continue;
+    const rules = node.area.settings?.automations?.attribute_rules ?? [];
+    for (const rule of rules) {
+      if (rule.action !== 'set_attribute') continue;
+      const vals = [
+        node.name,
+        rule.name ?? '',
+        rule.action,
+        rule.target_slug,
+        rule.map_slug,
+        serializeDateMap(rule.date_map),
+      ];
+      for (let ci = 0; ci < vals.length; ci++) {
+        const cell = ws.getCell(rowNum, ci + 1);
+        cell.value = vals[ci];
+        cell.fill = makeFill(CLR.BLUE);
+        cell.border = THIN_BORDER;
+      }
+      rowNum++;
+    }
+  }
+
+  // Help block — 2 reda ispod podataka; import ga ignorira (Action ≠ set_attribute)
+  const helpLines = [
+    'HELP — set_attribute pravila (auto-punjenje atributa u Add Activity):',
+    'Jedan red po pravilu. Action mora biti "set_attribute" — redovi bez toga se ignoriraju na importu.',
+    'TargetAttr = slug atributa koji se puni (datetime). MapAttr = slug atributa čija vrijednost bira pravilo.',
+    'DateMap = "vrijednost=pravilo | vrijednost=pravilo". Pravila: same (= datum sesije), next:N (N-ti dan sljedećeg mjeseca).',
+    'Primjer: Mastercard=next:11 | Visa=next:3 | Racun=same | Cash=same',
+    'Vrijednost MapAttr-a koje nema u DateMap → pravilo se preskače (target se ne dira).',
+    'Import ZAMJENJUJE sva set_attribute pravila navedene Aree redovima iz ovog sheeta.',
+  ];
+  let hr = rowNum + 1;
+  for (const line of helpLines) {
+    const cell = ws.getCell(hr, 1);
+    cell.value = line;
+    cell.font = { italic: true, size: 9, color: { argb: 'FF888888' } };
+    hr++;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Events stub sheet (for Structure Export — no events included)
 // ─────────────────────────────────────────────────────────────
 function _addEventsStubSheet(wb: ExcelJS.Workbook): void {
@@ -734,6 +814,7 @@ export async function addStructureSheetsTo(
 
   const rows = buildAllRows(scoped, sharedWithByArea ?? {});
   writeStructureSheet(wb, rows, infoRow, conflictSlugs);
+  writeAutomationsSheet(wb, scoped);
   writeHelpStructureSheet(wb);
 }
 

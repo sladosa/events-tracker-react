@@ -3,8 +3,23 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107 (2026-07-09)
-**Detalji testova:** [S107_tests.md](test-sessions/S107_tests.md)
+**Zadnji update:** S107b (2026-07-10)
+**Detalji testova:** [S107b_tests.md](test-sessions/S107b_tests.md)
+
+---
+
+## S107b — set_attribute automatika (Faza 2b) + Automations Excel roundtrip
+
+| ID         | Test                                                                                              | Status |
+| ---------- | -------------------------------------------------------------------------------------------------- | ------ |
+| T-S107b-1  | E2E: Add Activity — Datum naplate live prefill po Izvoru (next:11 / same); ručni unos se ne gazi   | ✅ (Playwright pass) |
+| T-S107b-2  | E2E: Structure export sadrži Automations sheet; edit DateMap u Excelu + import mijenja area.settings | ✅ (Playwright pass) |
+| T-S107b-3  | Manualno: Add Activity UX — odabir Izvora puni Datum naplate, promjena Izvora ažurira, ručni edit "zaključa" | ⬜      |
+| T-S107b-4  | Manualno: Structure export → otvori Automations sheet u Excelu (header, help blok, postojeća pravila) | ⬜      |
+| T-S107b-5  | Manualno: dodaj NOVO pravilo u Automations sheet → import → pravilo radi u Add Activity            | ⬜      |
+| T-S107b-6  | Manualno: neispravan DateMap / nepostojeći slug u sheetu → import preskače uz "Automation rules skipped" | ⬜      |
+| E5-4/5-r   | Regresija: E5 spec fix (Add Child → "+ Add Leaf" label + menu-scroll retry helper) — selector fix, ne app bug | ✅ (Playwright pass) |
+| Regresija  | E2, E5 (svih 5), E6 (3), T-S104-2, T-S107-1/2 — sve PASS nakon S107b promjena                      | ✅      |
 
 ---
 
