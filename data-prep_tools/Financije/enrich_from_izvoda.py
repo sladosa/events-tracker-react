@@ -257,9 +257,7 @@ def pick_file(args: list[str]) -> Path:
         return p
     candidates = sorted(DATA_DIR.glob('Financije_review_*.xlsx'),
                         key=lambda p: p.stat().st_mtime, reverse=True)
-    candidates = [c for c in candidates
-                  if '.pre-sync-' not in c.name and '.pre-rules-' not in c.name
-                  and '.pre-izvod-' not in c.name]
+    candidates = [c for c in candidates if '.pre-' not in c.name]   # svi backup fileovi
     if not candidates:
         sys.exit(f'✗ Nema Financije_review_*.xlsx u {DATA_DIR}')
     return candidates[0]
