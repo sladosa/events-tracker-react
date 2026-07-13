@@ -22,9 +22,14 @@ Sve Kokino (ZABA + Mastercard + PBZ Visa, 2023-12 → 2026-06) je kompletno. ✔
 2. Odaberi tekući račun → potraži **"Izvadci"** (ponekad "Izvodi" ili unutar
    "Dokumenti").
 3. Odaberi godinu **2026** → **izvadak broj 5** (razdoblje otprilike
-   08.05.2026.–05.06.2026.).
+   **08.05.2026.–07.06.2026.**).
 4. Preuzmi kao **PDF**. ⚠ Treba baš *izvadak* (dokument s naslovom "Izvadak o
    stanju i prometu po tekućem računu"), NE "pregled prometa" s ekrana.
+5. **⚠ Nakon downloada OTVORI PDF i provjeri 1. stranicu**: mora pisati
+   `Broj izvatka: 5` i razdoblje 08.05.–07.06. U prvom pokušaju (13.7.) je pod
+   "5" stigao izvadak **6** (identičan onome koji već imamo — alat ga je sam
+   prepoznao kao duplikat, ništa nije pokvareno). Ako se ponovi, probaj
+   susjedni red u listi ili web verziju umjesto mobilne aplikacije.
 
 ### ZABA (Kokin račun) — za buduće mjesece
 

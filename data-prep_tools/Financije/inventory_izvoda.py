@@ -149,8 +149,18 @@ def load_cache() -> tuple[dict, dict]:
 
 
 def main() -> None:
-    dry = '--dry' in sys.argv[1:]
-    print(f'Izvodi: {IZVODI_DIR}{"  [DRY RUN]" if dry else ""}\n')
+    args = sys.argv[1:]
+    dry = '--dry' in args
+    # --reparse a,b,c → fajlovi čije keširano ime sadrži neki od substringova
+    # se parsiraju ISPOČETKA (npr. nakon poboljšanja OCR-a): --reparse RF_2026-06
+    reparse: list[str] = []
+    if '--reparse' in args:
+        idx = args.index('--reparse')
+        if idx + 1 >= len(args):
+            sys.exit('✗ --reparse traži argument (substring imena, zarezom odvojeni)')
+        reparse = [s.strip().lower() for s in args[idx + 1].split(',') if s.strip()]
+    print(f'Izvodi: {IZVODI_DIR}{"  [DRY RUN]" if dry else ""}'
+          f'{"  [REPARSE: " + ",".join(reparse) + "]" if reparse else ""}\n')
     cache_man, cache_tx = load_cache()
 
     # 1. Skupi PDF-ove (bez duplikati/) + md5 dedup po sadržaju
@@ -178,6 +188,8 @@ def main() -> None:
         rel = str(primary.relative_to(IZVODI_DIR))
 
         cached = cache_man.get(md5[:8])
+        if cached and any(s in cached['file'].lower() for s in reparse):
+            cached = None            # forsiraj svježi parse
         if cached and cached['file'] in cache_tx:
             rows = cache_tx[cached['file']]
             tip = cached['tip']

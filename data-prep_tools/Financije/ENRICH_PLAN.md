@@ -48,6 +48,34 @@ transakcija (1: RBA generira druge bajtove pri svakom downloadu, `2026-5.pdf` i
 - Parsiranje verificirano u cent na uzorcima (MC 2024-02: 1.642,83; PBZ 2024-12:
   1.505,17 + 1.612,81); RF preko stanje-chaina.
 
+## 2b. ⚠ GDJE SMO STALI (kraj sesije 2026-07-13 navečer — PROČITAJ PRVO)
+
+**RF OCR saga (kronologija):** single-pass strip OCR promašivao retke → dvoprolazni
+(fazni pomak traka) popravio 2 od 5 flaganih fajlova, ali 3 i dalje imaju promašene
+retke (delta hintovi: RF_2024-11: +225.34, -100.00, **+984.78 = MACGREGOR plaća!**;
+RF_2024-12: +47.78, -2.39; RF_2025-02: -150.00). Otkriveno i da je lipanjskom izvatku
+(RF_2026-06) falio red `PBZ Card d.o.o. 1.495,78` — **Sašin RBA plaća Kokinu PBZ Visu!**
+(sad uhvaćen dvoprolaznim).
+
+**NAPISAN ALI NETESTIRAN: recovery pass u `rf_ocr.py`** — kad se stanje-chain slomi
+između dva susjedna retka, re-OCR-a se uski y-pojas između njih (izolirani crop čita
+pouzdano — dokazano ranije) i red se umeće SAMO ako savršeno popravlja chain
+(+ zaštita od re-detekcije rubnih redova a/b). **Sesija prekinuta točno prije testa.**
+
+**Sljedeća sesija — točan redoslijed:**
+1. Test: `run.bat rf_ocr.py <path>\Analizirani_izvodi\RF_2024-11.pdf`
+   → očekivano: `✚ recovery ubacio ...` redovi (~225.34 uplata?, 100 isplata, 984.78
+   MACGREGOR uplata), 0 flagova na kraju. Pa isto RF_2024-12.pdf i RF_2025-02.pdf.
+2. `run.bat inventory_izvoda.py --reparse RF_2024-11,RF_2024-12,RF_2025-02`
+   (--reparse ignorira keš za te fajlove; ostali iz keša)
+3. `run.bat enrich_from_izvoda.py --dry` pa bez `--dry` (Review zatvoren!)
+4. Ažurirati brojke u §2 + CLAUDE.md S107d blok + memory; commit.
+
+**Stanje podataka SADA:** Izvodi_transakcije.xlsx ima 3501 tx ali RF_2024-11/12 i
+RF_2025-02 su iz dvoprolaznog runa BEZ recoveryja (falih ~6 redova, 6× `[OCR?]` flag).
+Review file: enrich zadnji put pokrenut PRIJE reparsa (1707 match) — brojke se
+neznatno mijenjaju nakon koraka 3.
+
 ## 3. SLJEDEĆI KORACI
 
 1. **Odluka: PBZ Visa transakcije (1538 u Nematchano sheetu).** Opcije:

@@ -66,31 +66,44 @@ def _norm(s: str) -> str:
 
 
 def ocr_page_boxes(arr: np.ndarray) -> list[tuple]:
-    """Strip-based OCR → [(ycen, x0, x1, text)] u globalnim koordinatama,
-    deduplicirano preko preklopa traka."""
+    """Strip-based OCR → [(ycen, x0, x1, text)] u globalnim koordinatama.
+    DVA prolaza s faznim pomakom traka (pola visine trake) — detekcija zna
+    tiho ispustiti dugu liniju u jednoj geometriji reza (viđeno i s trakama:
+    PBZ Card red na RF_2026-06 p2!), u pomaknutoj je uhvati. Preklapajući
+    boxovi iz oba prolaza se spajaju (pobjeđuje najdulji tekst)."""
     ocr = _get_ocr()
     H = arr.shape[0]
     raw: list[tuple] = []
-    y = 0
-    while y < H:
-        strip = arr[y:min(H, y + STRIP_PX + OVERLAP_PX), :, :]
-        result, _ = ocr(strip)
-        for box, text, _conf in (result or []):
-            ys = [p[1] for p in box]
-            top, bot = min(ys), max(ys)
-            # box koji traka reže na rubu preskačemo — cijel je u susjednoj traci
-            if (top < 2 and y > 0) or (bot > strip.shape[0] - 2 and y + STRIP_PX < H):
-                continue
-            xs = [p[0] for p in box]
-            raw.append((y + (top + bot) / 2, min(xs), max(xs), text.strip()))
-        y += STRIP_PX
+    for offset in (0, STRIP_PX // 2):
+        s = -offset if offset else 0
+        while s < H:
+            a = max(0, s)
+            b_end = min(H, s + STRIP_PX + OVERLAP_PX)
+            strip = arr[a:b_end, :, :]
+            result, _ = ocr(strip)
+            for box, text, _conf in (result or []):
+                ys = [p[1] for p in box]
+                top, bot = min(ys), max(ys)
+                # box koji traka reže na rubu preskačemo — cijel je u susjednoj
+                if (top < 2 and a > 0) or (bot > strip.shape[0] - 2 and b_end < H):
+                    continue
+                xs = [p[0] for p in box]
+                raw.append((a + (top + bot) / 2, min(xs), max(xs), text.strip()))
+            s += STRIP_PX
     raw.sort(key=lambda b: (b[0], b[1]))
     boxes: list[tuple] = []
-    for b in raw:                      # dedup: isti tekst na ~istoj poziciji
-        if any(abs(b[0] - o[0]) < 18 and abs(b[1] - o[1]) < 25 and b[3] == o[3]
-               for o in boxes[-8:]):
+    for b in raw:
+        # spoji s postojećim boxovima na istoj liniji koji se x-preklapaju
+        overlaps = [i for i, o in enumerate(boxes)
+                    if abs(b[0] - o[0]) < 18 and min(b[2], o[2]) - max(b[1], o[1]) > 5]
+        if not overlaps:
+            boxes.append(b)
             continue
-        boxes.append(b)
+        best = max([boxes[i] for i in overlaps] + [b], key=lambda x: len(x[3]))
+        for i in reversed(overlaps):
+            del boxes[i]
+        boxes.append(best)
+    boxes.sort(key=lambda b: (b[0], b[1]))
     return boxes
 
 
@@ -126,12 +139,35 @@ def parse_rf_ocr(path: Path) -> list[dict]:
     balance: float | None = None
     isplata_x = uplata_x = stanje_x = None
     flagged = 0
+    arrs: dict[int, np.ndarray] = {}   # render po stranici — za ciljani recovery
+
+    def split_line_amounts(ln: list[tuple]) -> tuple:
+        """(amt_i, amt_u, amt_s, text) — iznosi po koloni + ostatak teksta."""
+        amt_i = amt_u = amt_s = None
+        parts: list[str] = []
+        for b in ln:
+            t = b[3].replace(' ', '')
+            if RE_RF_AMOUNT.match(t) and isplata_x is not None:
+                xc = (b[1] + b[2]) / 2
+                col = min((('i', isplata_x), ('u', uplata_x), ('s', stanje_x)),
+                          key=lambda cx: abs(xc - cx[1]))[0]
+                val = parse_rf_amount(t)
+                if col == 'i':
+                    amt_i = val
+                elif col == 'u':
+                    amt_u = val
+                else:
+                    amt_s = val
+            else:
+                parts.append(b[3])
+        return amt_i, amt_u, amt_s, ' '.join(parts).strip()
 
     pdf = pdfium.PdfDocument(path)
     try:
         npages = len(pdf)
         for pno in range(npages):
             arr = np.array(pdf[pno].render(scale=DPI / 72).to_pil())
+            arrs[pno] = arr
             lines = _group_lines(ocr_page_boxes(arr))
             current: dict | None = None
             cont_left = 0
@@ -153,24 +189,7 @@ def parse_rf_ocr(path: Path) -> list[dict]:
                     current = None
                     continue
                 # iznosi na liniji, po koloni
-                amt_i = amt_u = amt_s = None
-                text_parts: list[str] = []
-                for b in ln:
-                    t = b[3].replace(' ', '')
-                    if RE_RF_AMOUNT.match(t) and isplata_x is not None:
-                        xc = (b[1] + b[2]) / 2
-                        col = min((('i', isplata_x), ('u', uplata_x), ('s', stanje_x)),
-                                  key=lambda cx: abs(xc - cx[1]))[0]
-                        val = parse_rf_amount(t)
-                        if col == 'i':
-                            amt_i = val
-                        elif col == 'u':
-                            amt_u = val
-                        else:
-                            amt_s = val
-                    else:
-                        text_parts.append(b[3])
-                text = ' '.join(text_parts).strip()
+                amt_i, amt_u, amt_s, text = split_line_amounts(ln)
 
                 if 'POCETNOSTANJE' in joined:
                     if amt_s is not None:
@@ -190,7 +209,7 @@ def parse_rf_ocr(path: Path) -> list[dict]:
                         'iznos': amt_i if amt_i is not None else amt_u,
                         'smjer': 'Isplata' if amt_i is not None else 'Uplata',
                         'kartica': '', 'src': f'{path.name}:p{pno + 1}',
-                        '_stanje': amt_s,
+                        '_stanje': amt_s, '_y': ln[0][0], '_page': pno,
                     }
                     txs.append(current)
                     cont_left = 3
@@ -202,7 +221,7 @@ def parse_rf_ocr(path: Path) -> list[dict]:
                         'iznos': amt_i if amt_i is not None else amt_u,
                         'smjer': 'Isplata' if amt_i is not None else 'Uplata',
                         'kartica': '', 'src': f'{path.name}:p{pno + 1}',
-                        '_stanje': amt_s,
+                        '_stanje': amt_s, '_y': ln[0][0], '_page': pno,
                     }
                     txs.append(current)
                     cont_left = 3
@@ -217,19 +236,88 @@ def parse_rf_ocr(path: Path) -> list[dict]:
     finally:
         pdf.close()
 
+    # ── ciljani RECOVERY: gdje se stanje-chain lomi između dva susjedna retka,
+    # re-OCR-aj uski pojas između njih (izolirani crop se čita pouzdano) i
+    # umetni red(ove) SAMO ako savršeno popravljaju chain ──────────────────────
+    def band_txs(pno: int, y0: float, y1: float) -> list[dict]:
+        if y1 - y0 < 28:
+            return []
+        crop = arrs[pno][int(y0):int(y1), :, :]
+        result, _ = _get_ocr()(crop)
+        boxes = sorted(((y0 + (min(p[1] for p in bx) + max(p[1] for p in bx)) / 2,
+                         min(p[0] for p in bx), max(p[0] for p in bx), txt.strip())
+                        for bx, txt, _c in (result or [])), key=lambda b: (b[0], b[1]))
+        found: list[dict] = []
+        for ln in _group_lines(boxes):
+            amt_i, amt_u, amt_s, text = split_line_amounts(ln)
+            if amt_s is None or (amt_i is None and amt_u is None):
+                continue
+            m = RE_RF_DATE.match(text.replace(' ', '', 1) if text[:1].isdigit() else text)
+            found.append({
+                'date': date(int(m.group(3)), int(m.group(2)), int(m.group(1))) if m else None,
+                'opis': (m.group(4).strip() if m else text),
+                'iznos': amt_i if amt_i is not None else amt_u,
+                'smjer': 'Isplata' if amt_i is not None else 'Uplata',
+                'kartica': '', 'src': f'{path.name}:p{pno + 1}',
+                '_stanje': amt_s, '_y': ln[0][0], '_page': pno,
+            })
+        return found
+
+    i = 0
+    while i < len(txs) - 1:
+        a, b = txs[i], txs[i + 1]
+        if a['_stanje'] is not None and b['_stanje'] is not None:
+            exp = round(a['_stanje'] - b['iznos'], 2) if b['smjer'] == 'Isplata' \
+                else round(a['_stanje'] + b['iznos'], 2)
+            if abs(exp - b['_stanje']) > 0.01:
+                if a['_page'] == b['_page']:
+                    cands = band_txs(a['_page'], a['_y'] + 14, b['_y'] - 8)
+                else:
+                    cands = (band_txs(a['_page'], a['_y'] + 14, arrs[a['_page']].shape[0] - 1)
+                             + band_txs(b['_page'], 0, b['_y'] - 8))
+                inserted: list[dict] = []
+                bal = a['_stanje']
+                for c in cands:
+                    ce = round(bal - c['iznos'], 2) if c['smjer'] == 'Isplata' \
+                        else round(bal + c['iznos'], 2)
+                    # ne smije biti re-detekcija samog a ili b (djelomični crop ruba)
+                    if (abs(c['_stanje'] - b['_stanje']) <= 0.001
+                            and abs(c['iznos'] - b['iznos']) <= 0.001):
+                        continue
+                    if abs(ce - c['_stanje']) <= 0.01 and abs(c['_stanje'] - a['_stanje']) > 0.001:
+                        if c['date'] is None:      # datum nečitljiv — naslijedi + flag
+                            c['date'] = a['date']
+                            c['opis'] += ' [OCR?]'
+                        inserted.append(c)
+                        bal = c['_stanje']
+                if inserted:
+                    for c in inserted:
+                        print(f'  ✚ {c["src"]}: recovery ubacio {c["date"]} '
+                              f'{c["smjer"]} {c["iznos"]:.2f}  {c["opis"][:50]}')
+                    txs[i + 1:i + 1] = inserted
+                    continue                        # re-provjeri par (a, prvi ubačeni)
+        i += 1
+
     # chain-validacija preko tekućeg stanja
+    if balance is None and txs:
+        print(f'  ⚠ {path.name}: POČETNO STANJE nije pročitano — chain-validacija '
+              f'PRESKOČENA (redovi neprovjereni!)')
     for t in txs:
         exp = None
         if balance is not None:
             exp = round(balance - t['iznos'], 2) if t['smjer'] == 'Isplata' \
                 else round(balance + t['iznos'], 2)
         st = t.pop('_stanje')
+        t.pop('_y', None)
+        t.pop('_page', None)
         if st is not None and exp is not None and abs(st - exp) > 0.01:
             if '[OCR?]' not in t['opis']:
                 t['opis'] += ' [OCR?]'
                 flagged += 1
             print(f'  ⚠ {t["src"]}: stanje-chain mismatch ({t["date"]} '
-                  f'{t["smjer"]} {t["iznos"]:.2f}: očekivano {exp}, na izvodu {st})')
+                  f'{t["smjer"]} {t["iznos"]:.2f}: očekivano {exp}, na izvodu {st}; '
+                  f'razlika {round(st - exp, 2):+} — vjerojatno OCR-u promakao red '
+                  f's tim neto iznosom PRIJE ovoga)')
         balance = st if st is not None else exp
 
     if flagged:
