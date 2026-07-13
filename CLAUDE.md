@@ -312,14 +312,24 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
    u Excelu** (nema Izvor='Visa' za Koku) → odluka pending; 2023. N/A masa slabo pokrivena
    (MC izvodi tek od 2024-01). Rupe u izvodima: MC 2026-05, ZABA 2024-07/08.
 4. **D1 header Review filea bio pregažen** slučajnim pasteom (`run.bat sync_taxonomy.py` umjesto
-   `Smjer`; podaci u koloni netaknuti) — popravak čekao zatvoren Excel (backup `*.pre-fixd1-*`).
+   `Smjer`; podaci u koloni netaknuti) — `enrich_from_izvoda.py` dobio auto-repair (prepozna
+   kolonu po Uplata/Isplata podacima) i popravio ga na pravom runu.
    Detalji + koraci: `data-prep_tools/Financije/ENRICH_PLAN.md` + FINANCIJE_MIGRACIJA.md §12.7.
+5. **RF OCR pipeline (`rf_ocr.py`, isti dan):** Sašini Raiffeisen izvodi nemaju tekst-sloj →
+   pypdfium2 render 300 DPI + RapidOCR **po horizontalnim trakama** (full-page OCR tiho gubi
+   retke!) + **stanje-chain validacija** (svaki red vs tekuće stanje; sumnjivi → `[OCR?]`, 9/246).
+   Inventory: NOTEXT → OCR klasifikacija; **md5 keš** (OCR se plaća jednom, ~25 s/str.); dedup i po
+   SADRŽAJU transakcija (RBA daje druge bajtove pri svakom downloadu — `2026-5.pdf`==`2026-6.pdf`!);
+   RF imenovanje po mjesecu PRVE transakcije (RBA period sredina→sredina mjeseca).
+   `propusteno_Koka/` rupe uključene (MC 2026-05, ZABA 2024-07/08). **ENRICH IZVRŠEN na Review:
+   1707/3501 match, 1069 od 2221 N/A redova pokriveno** (Koka MC 974 + Racun 516, Saša RF 217,
+   RF match 88%). Jedina preostala rupa: RF 2026-05; MC prije 2024-01 ne postoji u e-bankarstvu.
 
 **Sljedeći koraci (čekaju Sašu):**
-1. **Pravi enrich run** (Review zatvoren!): `run.bat enrich_from_izvoda.py --dry` pa bez `--dry`
-   (T-S107d-3) → zatim `apply_rules.py` pravila iterativno sa Sašom
-2. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (~1538) — importati kao nove retke ili ignorirati
-3. Koku pitati za rupe u izvodima: MC 2026-05, ZABA 2024-07/08, MC prije 2024-01 (2023. N/A masa)
+1. `apply_rules.py` pravila iterativno sa Sašom (Review sad ima `Izvod opis` na 1707 redova;
+   OCR opisi bez razmaka — substring match radi); pregledati 9 `[OCR?]` redova
+2. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (1538) — importati kao nove retke ili ignorirati
+3. Saša: skinuti RBA izvadak br. 5/2026 (svibanj) → `izvodi/` → inventory + enrich
 4. Saša/Koka review `Financije_review_20260710_1448.xlsx` (uklj. Taksonomija sheet) + odluka što s N/A masom (T-S107-6)
 5. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
 6. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`

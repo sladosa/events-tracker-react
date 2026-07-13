@@ -57,4 +57,29 @@ popravlja se automatski/skriptom prije enricha (backup `*.pre-fixd1-*` postoji).
 1. U Nematchano sheetu filtriraj Src po `PBZVISA` → ~1538 transakcija.
 2. Spot-check 3 nasumične protiv PDF-a u `Analizirani_izvodi/`.
 3. **Svrha:** podloga za odluku Saša/Koka — importati PBZ Visa kupovine kao nove retke,
-   ili ignorirati (v. ENRICH_PLAN.md §3.2).
+   ili ignorirati (v. ENRICH_PLAN.md §3.1).
+
+---
+
+**Dopuna (isti dan, RF OCR):** enrich je IZVRŠEN i s RF transakcijama — Review sad ima
+1707 redova s `Izvod opis` (backup `*.pre-izvod-20260713_152340.xlsx`). T-S107d-3 ✅.
+
+## T-S107d-6 — RF OCR spot-check
+
+**Kontekst:** RF izvodi parsirani OCR-om (`rf_ocr.py`, bez tekst-sloja). OCR opisi
+nemaju razmake (`RBAISPLATAGOTOVI...`) — to je očekivano, ne bug.
+
+1. U Review filtriraj `Izvod file` počinje s `RF_` (217 redova).
+2. Odaberi 3 nasumična reda → otvori odgovarajući PDF u `Analizirani_izvodi/`
+   → usporedi datum, iznos, smjer, opis.
+3. **Fail:** iznos ili datum ne odgovara PDF-u (opis bez razmaka/dijakritike je OK).
+
+## T-S107d-7 — pregled [OCR?] redova
+
+**Kontekst:** stanje-chain validacija flagala 9/246 RF redova (`[OCR?]` sufiks u opisu) —
+većinom OCR krivo pročitao kolonu Stanje (iznos je vjerojatno točan), ali treba provjeriti.
+
+1. Filtriraj `Izvod opis` sadrži `[OCR?]` u Review; + Transakcije/Nematchano sheet isto.
+2. Za svaki: otvori PDF (Src kolona kaže file:stranica) → provjeri iznos/datum/smjer.
+3. Krivo parsirane ispravi ručno u Review (Izvod kolone su informativne — ručni ispravak
+   se ne gazi jer enrich piše samo pri ponovnom runu; tada se red opet prepiše!).

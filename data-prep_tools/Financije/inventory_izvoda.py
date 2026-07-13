@@ -49,7 +49,8 @@ RE_GOOD_NAME = re.compile(r'^(ZABA|MC|PBZVISA|RF)_\d{4}-\d{2}[a-z]?\.pdf$')
 
 
 def classify(path: Path) -> str:
-    """Tip izvoda iz SADRŽAJA 1. stranice (imena fajlova su generička/nepouzdana)."""
+    """Tip izvoda iz SADRŽAJA 1. stranice (imena fajlova su generička/nepouzdana).
+    Bez tekst-sloja → OCR vrha stranice (RF izvodi su vektorske krivulje)."""
     try:
         with pdfplumber.open(path) as pdf:
             txt = pdf.pages[0].extract_text() or ''
@@ -57,6 +58,14 @@ def classify(path: Path) -> str:
         print(f'  ✗ {path.name}: PDF se ne da otvoriti ({e})')
         return 'ERROR'
     if len(txt.strip()) < 40:
+        try:
+            from rf_ocr import ocr_page1_head
+            head = ocr_page1_head(path)
+        except Exception as e:
+            print(f'  ✗ {path.name}: OCR klasifikacija pala ({e})')
+            return 'NOTEXT'
+        if 'RAIFFEISEN' in head and 'IZVADAK' in head:
+            return 'RF'
         return 'NOTEXT'
     if 'REFERENCIJA DATUM OPIS TRANSAKCIJE' in txt:
         return 'MC'
@@ -67,10 +76,19 @@ def classify(path: Path) -> str:
     return 'UNKNOWN'
 
 
-def coverage_period(txs: list[dict]) -> str:
-    """Mjesec s najviše transakcija (robusno na PBZ RATA retke sa starim datumima)."""
-    months = Counter(f'{t["date"]:%Y-%m}' for t in txs)
+def period_from_dates(dates: list, tip: str) -> str:
+    """Period za ime fajla. RF: mjesec PRVE transakcije (RBA izvadak ide od
+    sredine do sredine mjeseca → mode bi dva uzastopna izvatka znao staviti u
+    isti mjesec). Ostali: mjesec s najviše transakcija (robusno na PBZ RATA
+    retke sa starim datumima kupovine)."""
+    if tip == 'RF':
+        return f'{min(dates):%Y-%m}'
+    months = Counter(f'{d:%Y-%m}' for d in dates)
     return months.most_common(1)[0][0]
+
+
+def coverage_period(txs: list[dict], tip: str) -> str:
+    return period_from_dates([t['date'] for t in txs], tip)
 
 
 def month_gaps(periods: list[str]) -> list[str]:
@@ -108,9 +126,32 @@ def unique_target(tip: str, period: str, md5: str, taken: dict[Path, str],
     raise RuntimeError(f'Previše kolizija za {tip}_{period}')
 
 
+def load_cache() -> tuple[dict, dict]:
+    """Prethodni Izvodi_transakcije.xlsx kao keš: md5[:8] → manifest info +
+    transakcije po fajlu. Skupi parseri (RF = OCR, ~25 s/str.) se tako
+    plaćaju samo jednom po fajlu; rerun je jeftin."""
+    if not TX_XLSX.exists():
+        return {}, {}
+    wb = openpyxl.load_workbook(TX_XLSX, read_only=True)
+    tx_by_file: dict[str, list[tuple]] = defaultdict(list)
+    if 'Transakcije' in wb.sheetnames:
+        for r in wb['Transakcije'].iter_rows(min_row=2, values_only=True):
+            d = r[0].date() if hasattr(r[0], 'date') else r[0]
+            tx_by_file[str(r[8])].append((d,) + tuple(r[1:10]))
+    man_by_md5: dict[str, dict] = {}
+    if 'Manifest' in wb.sheetnames:
+        for r in wb['Manifest'].iter_rows(min_row=2, values_only=True):
+            if r[4] and r[4] > 0:   # samo fajlovi s parsiranim transakcijama
+                man_by_md5[str(r[5])] = {'file': str(r[0]), 'tip': str(r[2]),
+                                         'period': str(r[3]), 'ntx': int(r[4])}
+    wb.close()
+    return man_by_md5, tx_by_file
+
+
 def main() -> None:
     dry = '--dry' in sys.argv[1:]
     print(f'Izvodi: {IZVODI_DIR}{"  [DRY RUN]" if dry else ""}\n')
+    cache_man, cache_tx = load_cache()
 
     # 1. Skupi PDF-ove (bez duplikati/) + md5 dedup po sadržaju
     pdfs = [p for p in IZVODI_DIR.rglob('*.pdf') if DUPLIKATI not in p.parents]
@@ -128,14 +169,49 @@ def main() -> None:
     all_rows: list[tuple] = []         # retci za Transakcije sheet
     duplicates: list[tuple[Path, str]] = []
     taken: dict[Path, str] = {}        # planirani targeti (za dry i kolizije u istom runu)
+    content_sigs: dict[tuple, str] = {}  # potpis transakcija → file (isti izvod, drugi bajtovi)
 
     for md5, group in sorted(by_hash.items(), key=lambda kv: str(kv[1][0])):
         group.sort(key=primary_key)
         primary, dups = group[0], group[1:]
         duplicates.extend((d, md5) for d in dups)
+        rel = str(primary.relative_to(IZVODI_DIR))
+
+        cached = cache_man.get(md5[:8])
+        if cached and cached['file'] in cache_tx:
+            rows = cache_tx[cached['file']]
+            tip = cached['tip']
+            sig = (tip, tuple(sorted((str(r[0]), r[3], r[2], r[1]) for r in rows)))
+            if sig in content_sigs:
+                duplicates.append((primary, md5))
+                print(f'  ⚠ {rel}: iste transakcije kao {content_sigs[sig]} '
+                      f'(drugi bajtovi, isti izvod) → duplikat')
+                continue
+            content_sigs[sig] = cached['file']
+            # period/ime se RE-računa iz keširanih datuma — promjena pravila
+            # imenovanja se tako primijeni bez ponovnog parsiranja (OCR!)
+            period = period_from_dates([r[0] for r in rows], tip)
+            target = unique_target(tip, period, md5, taken, primary)
+            if target is None:
+                target = primary
+            status = 'ok (keš)'
+            if primary != target:
+                if not dry:
+                    ANALIZIRANI.mkdir(exist_ok=True)
+                    shutil.move(str(primary), str(target))
+                status = (f'preimenovan ← {cached["file"]} (keš)'
+                          if primary.parent == ANALIZIRANI else f'premješten ← {rel} (keš)')
+            taken[target] = md5
+            if target.name != cached['file']:
+                rows = [r[:8] + (target.name, str(r[9]).replace(cached['file'], target.name))
+                        for r in rows]
+            all_rows.extend(rows)
+            manifest.append(dict(file=target.name, original=rel, tip=tip,
+                                 period=period, ntx=cached['ntx'],
+                                 md5=md5[:8], status=status))
+            continue
 
         tip = classify(primary)
-        rel = str(primary.relative_to(IZVODI_DIR))
         if tip in ('NOTEXT', 'UNKNOWN', 'ERROR'):
             status = {'NOTEXT': 'bez tekst-sloja — treba OCR ili CSV export',
                       'UNKNOWN': 'nepoznat tip — pogledati ručno',
@@ -156,12 +232,21 @@ def main() -> None:
                                  ntx=0, md5=md5[:8], status='0 transakcija — ostaje na mjestu'))
             continue
 
-        period = coverage_period(txs)
+        sig = (tip, tuple(sorted((str(t['date']), t['smjer'], t['iznos'], t['opis'])
+                                 for t in txs)))
+        if sig in content_sigs:
+            duplicates.append((primary, md5))
+            print(f'  ⚠ {rel}: iste transakcije kao {content_sigs[sig]} '
+                  f'(drugi bajtovi, isti izvod) → duplikat')
+            continue
+
+        period = coverage_period(txs, tip)
         target = unique_target(tip, period, md5, taken, primary)
         if target is None:            # identičan sadržaj već analiziran pod tim imenom
             duplicates.append((primary, md5))
             continue
         taken[target] = md5
+        content_sigs[sig] = target.name
 
         status = 'ok'
         if primary != target:

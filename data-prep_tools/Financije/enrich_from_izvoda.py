@@ -25,7 +25,8 @@ Podržani formati (registry SOURCE_TYPES — proširivati po potrebi):
              ✅ (Izvor=Mastercard; uklj. Sašinu dodatnu karticu — [kartica: SAŠA])
   PBZVISA  — PBZ Card Visa Gold mjesečni račun ✅ (matcha na Izvor=Mastercard
              jer Koka nema 'Visa' izvor — praktički sve završi u Nematchano)
-  RF       — Sašin RF: NEMA tekst-sloja → preskače se; treba OCR/CSV export
+  RF       — Sašin Raiffeisen: NEMA tekst-sloja → OCR (rf_ocr.py, strip-based
+             RapidOCR + stanje-chain validacija; sumnjivi redovi = '[OCR?]')
 
 Pokretanje (review file zatvoren u Excelu!):
   Financije\\run.bat enrich_from_izvoda.py            → najnoviji review
@@ -129,10 +130,8 @@ def parse_zaba_racun(path: Path) -> list[dict]:
     return txs
 
 
-def parse_rf_racun(path: Path) -> list[dict]:
-    print(f'  ⚠ {path.name}: RF PDF nema tekst-sloj (vektorske krivulje) — PRESKOČEN.')
-    print('    Opcije: CSV/Excel export iz RF aplikacije ili OCR (v. ENRICH_PLAN.md).')
-    return []
+# RF (Sašin Raiffeisen) nema tekst-sloj → OCR parser u rf_ocr.py (S107d)
+from rf_ocr import parse_rf_ocr  # noqa: E402
 
 
 # ── Parser: ZABA Mastercard IZVOD KARTICE ("Obavijest o učinjenim troškovima") ─
@@ -237,7 +236,7 @@ SOURCE_TYPES: dict[str, tuple] = {
     'ZABA':    (parse_zaba_racun,   RACUN_KOKA, 'Racun'),
     'MC':      (parse_zaba_kartica, RACUN_KOKA, 'Mastercard'),
     'PBZVISA': (parse_pbz_visa,     RACUN_KOKA, 'Mastercard'),
-    'RF':      (parse_rf_racun,     RACUN_SASA, 'Racun'),
+    'RF':      (parse_rf_ocr,       RACUN_SASA, 'Racun'),
 }
 # prefix match: duži prefiksi prvi (PBZVISA prije P*)
 PARSERS: list[tuple[str, callable, str, str]] = [
