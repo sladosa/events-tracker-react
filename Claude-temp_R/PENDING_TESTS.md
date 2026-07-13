@@ -5,6 +5,7 @@
 **Branch:** `test-branch` (dev) / `main` (PROD)
 **Zadnji update:** S107d (2026-07-13)
 **Detalji testova:** [S107d_tests.md](test-sessions/S107d_tests.md) (novi) + [S107c_tests.md](test-sessions/S107c_tests.md) + [S107b_tests.md](test-sessions/S107b_tests.md)
+**Upute za izvode (i za Koku):** [UPUTE_izvodi.md](UPUTE_izvodi.md) — kako skinuti/spremiti/obraditi bankovne izvode
 
 ---
 

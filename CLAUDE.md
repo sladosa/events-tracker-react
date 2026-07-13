@@ -388,7 +388,7 @@ After each session:
 
 **Template system** — ✅ kompletno (S49–S58). Template user (`VITE_TEMPLATE_USER_ID` env var), "From template" flow, Demo Area na PROD, E11/E12 Playwright. Budući: Garmin API adapter (schema za external source mapping).
 
-**Financije reorganizacija** — Tip/Podtip bulk klasifikacija: export obje area-e, Python skripta `classify_na_events.py` (`data-prep_tools/Financije/`), reimport xlsx s ispravljenim Tip/Podtip. Plan u `Claude-temp_R/FINANCIJE_TIP_PODTIP_PLAN.md`.
+~~Financije reorganizacija (classify_na_events.py plan)~~ — superseded S107 pipelineom (review Excel + apply_rules + enrich); stari plan i skripta arhivirani u `Claude-temp_R/docs_OLD/` i `data-prep_tools/Financije/Obsolete/` (S107d).
 
 **Historijska migracija** (bez vremenskog pritiska) — `trening.xlsm` analiza + import
 
