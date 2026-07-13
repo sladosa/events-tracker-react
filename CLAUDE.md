@@ -297,13 +297,34 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
 5. Typecheck + build čisti. Direktorij `data-prep_data/Financije/izvodi/` kreiran za PDF e-izvode
    (enrichment plan u FINANCIJE_MIGRACIJA.md §12.5).
 
+**Done 2026-07-13 (S107d — svi Kokini izvodi + inventory pipeline):**
+1. **`inventory_izvoda.py`** (novo) — 117 Kokinih PDF-ova (generička download imena): md5 dedup
+   (6 duplikata → `izvodi/duplikati/`), klasifikacija po SADRŽAJU (ne imenu), parse, rename
+   `PREFIX_YYYY-MM.pdf` → `izvodi/Analizirani_izvodi/`, piše `izvodi/Izvodi_transakcije.xlsx`
+   (Transakcije 3182 tx + Manifest 117; report pokrivenosti s rupama). Idempotentno, `--dry`.
+2. **MC + PBZ Visa parseri** u `enrich_from_izvoda.py` — "Obavijest o učinjenim troškovima" =
+   ZABA MC izvod KARTICE koji je ENRICH_PLAN čekao (29 izvoda/1062 tx); neočekivano stigla i
+   PBZ Visa Gold (31/1539 tx; obje kartice imaju i Sašinu dodatnu → `[kartica: SAŠA]` tag u opisu).
+   Parsiranje verificirano u cent vs UKUPNO na dokumentima. Enrich sad čita Izvodi_transakcije.xlsx
+   (fallback: PDF-ovi po prefixu) i piše `Nematchano` sheet (transakcije kojih NEMA u Review).
+3. **Nalazi (enrich --dry na kopiji Review filea):** 1429/3182 match; 938 od 2218 N/A redova
+   dobiva `Izvod opis` (MC 89%, ZABA 83%); **PBZ Visa 1/1539 — Koka te kupovine uopće ne vodi
+   u Excelu** (nema Izvor='Visa' za Koku) → odluka pending; 2023. N/A masa slabo pokrivena
+   (MC izvodi tek od 2024-01). Rupe u izvodima: MC 2026-05, ZABA 2024-07/08.
+4. **D1 header Review filea bio pregažen** slučajnim pasteom (`run.bat sync_taxonomy.py` umjesto
+   `Smjer`; podaci u koloni netaknuti) — popravak čekao zatvoren Excel (backup `*.pre-fixd1-*`).
+   Detalji + koraci: `data-prep_tools/Financije/ENRICH_PLAN.md` + FINANCIJE_MIGRACIJA.md §12.7.
+
 **Sljedeći koraci (čekaju Sašu):**
-1. Saša/Koka review `Financije_review_20260710_1448.xlsx` (uklj. Taksonomija sheet) + odluka što s N/A masom (T-S107-6)
-2. S Kokom skinuti PDF e-izvode → `data-prep_data/Financije/izvodi/` → `enrich_from_izvoda.py` (smanjenje N/A)
-3. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
-4. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`
-5. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
-6. Diary archaeology (non-blocking)
+1. **Pravi enrich run** (Review zatvoren!): `run.bat enrich_from_izvoda.py --dry` pa bez `--dry`
+   (T-S107d-3) → zatim `apply_rules.py` pravila iterativno sa Sašom
+2. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (~1538) — importati kao nove retke ili ignorirati
+3. Koku pitati za rupe u izvodima: MC 2026-05, ZABA 2024-07/08, MC prije 2024-01 (2023. N/A masa)
+4. Saša/Koka review `Financije_review_20260710_1448.xlsx` (uklj. Taksonomija sheet) + odluka što s N/A masom (T-S107-6)
+5. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
+6. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`
+7. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
+8. Diary archaeology (non-blocking); RF izvodi (22 bez tekst-sloja) — CSV export iz RF aplikacije ili OCR
 
 ### S108+: Intelligence layer (success criteria)
 
