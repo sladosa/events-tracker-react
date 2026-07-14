@@ -203,6 +203,11 @@ def ensure_snapshot(ws, col_tip: int, col_pod: int, dry: bool) -> bool:
             ws.cell(r, c_tip_o, v_tip)
         if v_pod is not None:
             ws.cell(r, c_pod_o, v_pod)
+    # Autofilter mora obuhvatiti nove kolone — sort inače ne nosi _O s redom
+    if ws.auto_filter.ref:
+        first = ws.auto_filter.ref.split(':')[0]
+        from openpyxl.utils import get_column_letter
+        ws.auto_filter.ref = f'{first}:{get_column_letter(ws.max_column)}{ws.max_row}'
     print(f'✔ Snapshot: Tip_O/Podtip_O kolone kreirane (kopija Tip/Podtip prije pravila)')
     return True
 

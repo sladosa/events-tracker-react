@@ -391,6 +391,11 @@ def main() -> None:
     col['Smjer'] = find_smjer_col(ws)
     col_iopis = find_header_col(ws, 'Izvod opis', create=True)
     col_ifile = find_header_col(ws, 'Izvod file', create=True)
+    # Autofilter mora obuhvatiti i nove kolone — inače korisnikov sort u Excelu
+    # NE nosi Izvod opis/file s redom (ista lekcija kao row_hash u app exportu)
+    if ws.auto_filter.ref:
+        first = ws.auto_filter.ref.split(':')[0]
+        ws.auto_filter.ref = f'{first}:{openpyxl.utils.get_column_letter(ws.max_column)}{ws.max_row}'
 
     index: dict[tuple, list[int]] = defaultdict(list)
     for r in range(2, ws.max_row + 1):
