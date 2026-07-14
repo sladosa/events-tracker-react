@@ -331,8 +331,9 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
    (RF_2024-11: +225.34, −100.00, **+984.78 MACGREGOR plaća**; RF_2024-12: +47.78, −2.39;
    RF_2025-02: −150.00), 0 novih flagova. `[OCR?]` flagovi **9 → 1**.
 2. **RBA_2026-05 (Saša skinuo)** → inventory ga klasificirao/OCR-ao → `RF_2026-05.pdf` →
-   **RF pokrivenost bez rupa** (2024-09→2026-06). Jedini preostali `[OCR?]`: 2026-06-04
-   Isplata 1282.79, opis nečitljiv (iznos siguran preko chaina) — Saša provjerava na dokumentu.
+   **RF pokrivenost bez rupa** (2024-09→2026-06). Zadnji `[OCR?]` (1282.79) — Saša potvrdio
+   na dokumentu: PBZ Card/Visa Gold lump 05.06.2026 → ručno upisan u Transakcije+Review;
+   **0 flagova preostalo**.
 3. **Finalni enrich re-run: 3519 tx; 1725/3519 match; 1075/2219 N/A redova pokriveno**
    (MC 778, Koka Racun 177, Saša RF 120). Nematchano 1794 (PBZ Visa 1538).
    Backup: `*.pre-izvod-20260714_145329.xlsx`.
@@ -347,13 +348,12 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
 1. `apply_rules.py` dorade (v. S107e točka 4) pa pravila iterativno sa Sašom (Review sad ima
    `Izvod opis` na 1725 redova; OCR opisi bez razmaka — substring match radi)
 2. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (1538) — importati kao nove retke ili ignorirati
-3. Saša: provjeriti 1 preostali `[OCR?]` red (RF_2026-05, 2026-06-04, 1282.79 — vjerojatno PBZ Card/Visa lump)
-4. Saša/Koka review `Financije_review_20260710_1448.xlsx` (uklj. Taksonomija sheet) + odluka što s N/A masom (T-S107-6)
-5. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
-6. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`;
+3. Saša/Koka review `Financije_review_20260710_1448.xlsx` (uklj. Taksonomija sheet) + odluka što s N/A masom (T-S107-6)
+4. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
+5. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`;
    Leaf comment definira import generator kroz CommentTemplate (`{racun}/{tip}/{podtip}/{napomena}`)
-7. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
-8. Diary archaeology (non-blocking)
+6. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
+7. Diary archaeology (non-blocking)
 
 ### S108+: Intelligence layer (success criteria)
 

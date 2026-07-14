@@ -41,9 +41,11 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
   RF_2024-12: +47.78, −2.39; RF_2025-02: −150.00), 0 novih flagova na ta 3 fajla.
   `[OCR?]` flagovi pali **9 → 1**.
 - **RBA_2026-05.pdf** (Saša skinuo) → klasificiran, OCR-an, preimenovan `RF_2026-05.pdf`
-  → **RF pokrivenost BEZ rupa**. Recovery u njemu ubacio 1 red s nečitljivim opisom:
-  **2026-06-04 Isplata 1282.79 `[OCR?]`** (iznos siguran preko chaina; po uzorku vrlo
-  vjerojatno PBZ Card / Visa lump — provjeriti na dokumentu). To je JEDINI preostali flag.
+  → **RF pokrivenost BEZ rupa**. Recovery u njemu ubacio 1 red s nečitljivim opisom
+  (1282.79) — **Saša potvrdio na dokumentu (2026-07-14): PBZ Card / Visa Gold lump,
+  05.06.2026** → ručno upisan opis+datum u Transakcije i Review (red je bio matchan).
+  **0 `[OCR?]` flagova preostalo.** (Ručni fix je trajan: inventory koristi
+  Izvodi_transakcije.xlsx kao keš — gubi se samo uz `--reparse RF_2026-05`.)
 - **Enrich (2026-07-14): 1725/3519 matchano → `Izvod opis`/`Izvod file` u Review;
   1075 od 2219 N/A redova pokriveno** (Koka MC 778, Koka Racun 177, Saša RF 120).
   Backup: `*.pre-izvod-20260714_145329.xlsx`.
@@ -80,8 +82,8 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
      konflikt se samo REPORTA (staro→novo lista), ne piše.
    - Leaf comment se NE definira ovdje — gradi ga import generator iz CommentTemplate
      (`{racun}/{tip}/{podtip}/{napomena}`).
-3. **Provjeriti 1 preostali `[OCR?]` red:** RF_2026-05, 2026-06-04 Isplata 1282.79,
-   opis nečitljiv (Saša: pogledati na dokumentu — vjerojatno PBZ Card / Visa lump).
+3. ~~Provjeriti 1 preostali `[OCR?]` red~~ — ✅ riješeno 2026-07-14 (PBZ Card/Visa lump
+   05.06.2026, potvrdio Saša na dokumentu; ručno upisano u Transakcije + Review).
 
 ## 4. Pravila okruženja (OBAVEZNO pročitati)
 
