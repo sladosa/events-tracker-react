@@ -59,6 +59,22 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
   `,` kao delimiter. Reparse pokretati **jedan substring po pozivu** (ili popraviti
   skriptu da skuplja sve argove nakon `--reparse`).
 
+## 2c. Dopune kraja sesije S107e (2026-07-14 popodne)
+
+- **Autofilter Review sheeta proširen na SVE kolone (A1:V)** + trajno u alatima:
+  `enrich_from_izvoda.py` i `apply_rules.py` (ensure_snapshot) sami proširuju filter kad
+  dodaju kolone. Razlog nije komfor: kolona IZVAN autofiltera ne putuje s redom pri sortu
+  → tihi raspar podataka (ista lekcija kao row_hash u app exportu).
+- **Pravila pretražuju: `Napomena` + `Izvod opis`** (kombinirano); namjerno NE
+  `Izvod file`/`Izvor reda`/`source_key` ("zaba"/"koka" bi lažno matchale sve).
+- **`Datum naplate` — analiza praznih** (Racun 1630, Visa 220, Cash 1; MC kompletan):
+  Racun/Cash → = event_date (doslovno D1; backfill skripta na Sašinu potvrdu);
+  **Visa NE** = event_date (skida se 4.–7. idućeg mjeseca) → puni se pri generiranju
+  importa: pravilom `next:N` ILI stvarnim datumima RF lump isplata iz Izvodi_transakcije.xlsx.
+- **Enrich audit nalaz za Koku:** Review red 2025-11-26 Isplata 700,00 (Racun) — na ZABA
+  izvodu NE POSTOJI nikakva 700€ transakcija (bankomat podizanja u 11-12/2025: 100+150+100+200).
+  Pitanje za Koku: s kojeg računa / je li zbroj više podizanja?
+
 ## 3. SLJEDEĆI KORACI
 
 1. **Odluka: PBZ Visa transakcije (1538 u Nematchano sheetu).** Opcije:
@@ -87,6 +103,12 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
    (`{racun}/{tip}/{podtip}/{napomena}`).
 3. ~~Provjeriti 1 preostali `[OCR?]` red~~ — ✅ riješeno 2026-07-14 (PBZ Card/Visa lump
    05.06.2026, potvrdio Saša na dokumentu; ručno upisano u Transakcije + Review).
+4. **Saša potvrdi → backfill `Datum naplate` = event_date za Racun/Cash** (1631 redova,
+   D1 pravilo; Visa NE — v. §2c). Mala skripta uz backup.
+5. **`sync_taxonomy.py` pokrenuti** ako dropdowni/CF u Review još ne odražavaju Sašine
+   izmjene Taksonomija sheeta (validacija u apply_rules radi protiv sheeta pa je neovisna,
+   ali dropdown pri ručnom radu nudi stare vrijednosti dok se sync ne pokrene).
+6. **Pitanje za Koku:** 700€ isplata 2025-11-26 (v. §2c) + odluka o N/A masi.
 
 ## 4. Pravila okruženja (OBAVEZNO pročitati)
 

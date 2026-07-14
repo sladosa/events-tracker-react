@@ -347,18 +347,29 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
    Zamka openpyxl: `cell(r,c,None)` ne briše — mora `.value = None`.
 5. **Zamka: cmd/run.bat guši zarez u argumentima** (`--reparse A,B,C` → samo A) — reparse
    pokretati jedan substring po pozivu.
+6. **Autofilter Review sheeta proširen na sve kolone (A1:V)** + enrich/apply_rules ubuduće
+   sami proširuju filter kad dodaju kolone (kolona izvan filtera se pri sortu raspari od reda!).
+7. **`Datum naplate` analiza:** prazan kod Racun 1630 / Visa 220 / Cash 1. Odluka: Racun/Cash
+   backfill = event_date (D1; čeka Sašinu potvrdu); **Visa NE** — puni se pri import generaciji
+   (`next:N` ili stvarni datumi RF lump isplata iz Izvodi_transakcije.xlsx).
+8. **Audit nalaz za Koku:** Review 2025-11-26 Isplata 700€ (Racun) ne postoji na ZABA izvodu
+   (bankomat 11-12/2025: 100+150+100+200) — pitati Koku.
 
-**Sljedeći koraci (čekaju Sašu):**
-1. Pravila iterativno sa Sašom (`apply_rules.py` spreman; Review ima `Izvod opis` na 1725
+**Sljedeći koraci (čekaju Sašu) — v. i ENRICH_PLAN §3:**
+1. Saša potvrdi → **backfill `Datum naplate` = event_date za Racun/Cash** (1631 redova, D1)
+2. **`sync_taxonomy.py`** ako dropdowni u Review još ne prate izmijenjeni Taksonomija sheet
+3. **Pravila iterativno sa Sašom** (`apply_rules.py` spreman; Review ima `Izvod opis` na 1725
    redova; OCR opisi bez razmaka — substring match radi; prvi pravi run automatski radi
    snapshot + 196 TAKS reseta)
-2. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (1538) — importati kao nove retke ili ignorirati
-3. Saša/Koka review `Financije_review_20260710_1448.xlsx` (uklj. Taksonomija sheet) + odluka što s N/A masom (T-S107-6)
-4. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
-5. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`;
-   Leaf comment definira import generator kroz CommentTemplate (`{racun}/{tip}/{podtip}/{napomena}`)
-6. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
-7. Diary archaeology (non-blocking)
+4. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (1538) — importati kao nove retke ili ignorirati
+5. Koka: 700€ isplata 2025-11-26 (nije na izvodu) + odluka što s N/A masom (T-S107-6);
+   Saša/Koka review `Financije_review_20260710_1448.xlsx`
+6. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
+7. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`;
+   Leaf comment definira import generator kroz CommentTemplate (`{racun}/{tip}/{podtip}/{napomena}`);
+   Visa `Datum naplate` puni generator (RF lump datumi ili `next:N`)
+8. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
+9. Diary archaeology (non-blocking)
 
 ### S108+: Intelligence layer (success criteria)
 
