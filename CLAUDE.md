@@ -337,16 +337,21 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
 3. **Finalni enrich re-run: 3519 tx; 1725/3519 match; 1075/2219 N/A redova pokriveno**
    (MC 778, Koka Racun 177, Saša RF 120). Nematchano 1794 (PBZ Visa 1538).
    Backup: `*.pre-izvod-20260714_145329.xlsx`.
-4. **Dogovorene dorade `apply_rules.py` prije prvog runa** (Saša): `Tip_O`/`Podtip_O` snapshot
-   kolone; validacijski prolaz protiv Taksonomije (nepostojeći par → reset na N/A, ne resetirati
-   sve — VISOKA klasifikacije iz Za Sašu labela se čuvaju); `Napomena` output kolona u Pravila
-   sheetu; opcionalni `--all` report mod. Detalji: ENRICH_PLAN §3.2.
+4. **Dorade `apply_rules.py` ✅ IMPLEMENTIRANE + TESTIRANE** (na kopiji Review filea):
+   `Tip_O`/`Podtip_O` jednokratni snapshot; validacija protiv Taksonomije (nepostojeći par →
+   reset na N/A + `TAKS:` oznaka; VISOKA klasifikacije s valjanim parovima se čuvaju);
+   `Napomena` output kolona u Pravila sheetu (P3 — puna se ne gazi); `--all` report mod.
+   **--dry nalaz: 196 redova hvata validacija** (Sašina preimenovanja podtipova: T-com/T-mobile
+   81×, Sport/Medical/PassSport/PP 76×, izbačeni streaming podtipovi 33×…). Pravila sheet
+   kreiran (5 kolona); pravi run čeka pisanje pravila sa Sašom. Detalji: ENRICH_PLAN §3.2.
+   Zamka openpyxl: `cell(r,c,None)` ne briše — mora `.value = None`.
 5. **Zamka: cmd/run.bat guši zarez u argumentima** (`--reparse A,B,C` → samo A) — reparse
    pokretati jedan substring po pozivu.
 
 **Sljedeći koraci (čekaju Sašu):**
-1. `apply_rules.py` dorade (v. S107e točka 4) pa pravila iterativno sa Sašom (Review sad ima
-   `Izvod opis` na 1725 redova; OCR opisi bez razmaka — substring match radi)
+1. Pravila iterativno sa Sašom (`apply_rules.py` spreman; Review ima `Izvod opis` na 1725
+   redova; OCR opisi bez razmaka — substring match radi; prvi pravi run automatski radi
+   snapshot + 196 TAKS reseta)
 2. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (1538) — importati kao nove retke ili ignorirati
 3. Saša/Koka review `Financije_review_20260710_1448.xlsx` (uklj. Taksonomija sheet) + odluka što s N/A masom (T-S107-6)
 4. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)

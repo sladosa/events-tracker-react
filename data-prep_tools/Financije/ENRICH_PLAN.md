@@ -18,7 +18,7 @@ Pokretanje: `Financije\run.bat <skripta.py> [args]` (ili direktno venv python, `
 | `inventory_izvoda.py` | ✅ NOVO S107d | Sredi `izvodi/`: md5 dedup (→ `duplikati/`), klasifikacija PDF-a po SADRŽAJU (bez tekst-sloja → OCR vrha stranice), parse, rename `PREFIX_YYYY-MM.pdf` → `Analizirani_izvodi/`, piše **`izvodi/Izvodi_transakcije.xlsx`** (Transakcije + Manifest sheet, report pokrivenosti s rupama). **Md5 keš:** već parsirani fajlovi se ne parsiraju ponovno (bitno za OCR!). Idempotentno; `--dry` za probu. |
 | `rf_ocr.py` | ✅ + recovery S107e | OCR parser za Sašine RBA izvode (bez tekst-sloja): pypdfium2 render 300 DPI + RapidOCR **po horizontalnim trakama** (full-page OCR tiho gubi retke!) + **stanje-chain validacija** (svaki red se provjerava protiv tekućeg stanja; sumnjivi dobiju `[OCR?]` u opisu) + **recovery pass (S107e, testiran ✅)**: na chain-breaku re-OCR uskog y-pojasa između susjednih redova, red se umeće SAMO ako savršeno popravlja chain. ~25 s/stranici. |
 | `enrich_from_izvoda.py` | ✅ ZABA+MC+PBZVISA | Čita `Izvodi_transakcije.xlsx` (fallback: PDF-ovi) → match na Review (datum ±2 + iznos + smjer + Racun/Izvor) → `Izvod opis`/`Izvod file` kolone. Nematchane transakcije → **`Nematchano` sheet** u Izvodi_transakcije.xlsx (= kandidati za retke koji FALE u Kokinom Excelu). `--dry` za probu. |
-| `apply_rules.py` | ✅ radi | `Pravila` sheet (keyword → Tip/Podtip) na redove gdje je **Tip prazan ili N/A** (ručni rad se NIKAD ne gazi). Pretražuje Napomena + `Izvod opis`. Prvi run kreira sheet s primjerima. `--dry`. |
+| `apply_rules.py` | ✅ + dorade S107e | `Pravila` sheet (keyword → Tip/Podtip/**Napomena**) na redove gdje je **Tip prazan ili N/A** (ručni rad se NIKAD ne gazi; Napomena se puni samo ako je prazna — P3). Pretražuje Napomena + `Izvod opis`. Prije pravila: **jednokratni `Tip_O`/`Podtip_O` snapshot** + **validacija protiv Taksonomije** (nepostojeći par → reset na N/A, oznaka `TAKS:` u Alternativa). `--dry`; `--all` = report konflikata pravila s klasificiranim redovima (ne piše). Prvi run kreira sheet s primjerima. |
 | `sync_taxonomy.py` | ✅ radi | Taksonomija sheet → regenerira Tip/Podtip dropdowne Review sheeta |
 
 **Redoslijed:** `inventory_izvoda.py` → `enrich_from_izvoda.py` → `apply_rules.py` →
@@ -69,19 +69,22 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
    neprazan `Izvod opis` → grupiraj po merchantu → pravila. Zamke: prekratke riječi lažno
    pale (`zaba`, `eu`); specifičnija pravila IZNAD općenitijih; Tip/Podtip mora postojati
    u Taksonomiji. OCR opisi NEMAJU razmake (`RBAISPLATAGOTOVI...`) — substring match radi.
-   **Dogovorene dorade apply_rules.py PRIJE prvog runa (Saša, 2026-07-14):**
-   - **`Tip_O`/`Podtip_O` snapshot kolone** — jednom, prije prvog pisanja, iskopirati
-     trenutne Tip/Podtip vrijednosti (trajni trag "prije pravila").
-   - **Validacijski prolaz protiv Taksonomije:** red čiji Tip/Podtip par ne postoji u
-     aktualnom Taksonomija sheetu → reset na N/A (+oznaka; original ostaje u `_O`).
-     Hvata redove koje je izmjena Taksonomije učinila krivima — NE resetirati sve
-     (VISOKA klasifikacije iz Za Sašu labela su kvalitetniji signal od keyword pravila).
-   - **`Napomena` output kolona u Pravila sheetu** (keyword → Tip | Podtip | Napomena):
-     red bez napomene dobije čistu ljudsku labelu; puna Napomena se NE gazi (P3).
-   - Opcionalno `--all` mod: pravila se provjere i nad klasificiranim redovima,
-     konflikt se samo REPORTA (staro→novo lista), ne piše.
-   - Leaf comment se NE definira ovdje — gradi ga import generator iz CommentTemplate
-     (`{racun}/{tip}/{podtip}/{napomena}`).
+   **Dorade apply_rules.py — ✅ IMPLEMENTIRANO I TESTIRANO 2026-07-14 (S107e):**
+   snapshot, validacija, Napomena output, `--all` (v. tablicu §1). Test na kopiji Review
+   filea: 196 reseta korektno (Podtip očišćen, original u `_O`), P3 Napomena verificiran.
+   Zamka openpyxl: `cell(r,c,None)` NE briše vrijednost — mora `cell(r,c).value = None`.
+   **Nalaz --dry na pravom fileu (2026-07-14): validacija hvata 196 redova** — posljedica
+   Sašinih preimenovanja u Taksonomiji (T-com→`Komunikacije_T-com (internet, MaxTv)` 41×,
+   T-mobile 40×, `Sportski rekviziti`→`Sport_Koka` 29×, Medical→`Medical Koka/Sasa` 23×,
+   PassSport 12×, PP 12×, Audible/Youtube/Disney/Sky/Prime/Saša projekti izbačeni 33×,
+   Odjeća/obuća 4×). Većina se vraća trivijalnim pravilima (keyword isti kao stari podtip);
+   per-osoba splitovi (Medical Koka/Sasa) → filter po `Podtip_O` + Racun u Excelu, ili
+   buduća dorada: uvjet po Racun koloni u pravilu.
+   **Pravila sheet kreiran** u Review fileu (5 kolona, 4 seed primjera) — spreman za
+   iterativno pisanje pravila sa Sašom. NAPOMENA: pravi run još NIJE izvršen na pravom
+   fileu (snapshot+validacija se dogode automatski pri prvom pravom runu).
+   Leaf comment se NE definira ovdje — gradi ga import generator iz CommentTemplate
+   (`{racun}/{tip}/{podtip}/{napomena}`).
 3. ~~Provjeriti 1 preostali `[OCR?]` red~~ — ✅ riješeno 2026-07-14 (PBZ Card/Visa lump
    05.06.2026, potvrdio Saša na dokumentu; ručno upisano u Transakcije + Review).
 
