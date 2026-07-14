@@ -325,16 +325,35 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
    1707/3501 match, 1069 od 2221 N/A redova pokriveno** (Koka MC 974 + Racun 516, Saša RF 217,
    RF match 88%). Jedina preostala rupa: RF 2026-05; MC prije 2024-01 ne postoji u e-bankarstvu.
 
+**Done 2026-07-14 (S107e — recovery pass + kompletna pokrivenost + finalni enrich):**
+1. **`rf_ocr.py` recovery pass testiran i izvršen** (chain-break → re-OCR uskog y-pojasa,
+   red se umeće samo ako savršeno popravlja chain): svih 6 očekivanih redova ubačeno
+   (RF_2024-11: +225.34, −100.00, **+984.78 MACGREGOR plaća**; RF_2024-12: +47.78, −2.39;
+   RF_2025-02: −150.00), 0 novih flagova. `[OCR?]` flagovi **9 → 1**.
+2. **RBA_2026-05 (Saša skinuo)** → inventory ga klasificirao/OCR-ao → `RF_2026-05.pdf` →
+   **RF pokrivenost bez rupa** (2024-09→2026-06). Jedini preostali `[OCR?]`: 2026-06-04
+   Isplata 1282.79, opis nečitljiv (iznos siguran preko chaina) — Saša provjerava na dokumentu.
+3. **Finalni enrich re-run: 3519 tx; 1725/3519 match; 1075/2219 N/A redova pokriveno**
+   (MC 778, Koka Racun 177, Saša RF 120). Nematchano 1794 (PBZ Visa 1538).
+   Backup: `*.pre-izvod-20260714_145329.xlsx`.
+4. **Dogovorene dorade `apply_rules.py` prije prvog runa** (Saša): `Tip_O`/`Podtip_O` snapshot
+   kolone; validacijski prolaz protiv Taksonomije (nepostojeći par → reset na N/A, ne resetirati
+   sve — VISOKA klasifikacije iz Za Sašu labela se čuvaju); `Napomena` output kolona u Pravila
+   sheetu; opcionalni `--all` report mod. Detalji: ENRICH_PLAN §3.2.
+5. **Zamka: cmd/run.bat guši zarez u argumentima** (`--reparse A,B,C` → samo A) — reparse
+   pokretati jedan substring po pozivu.
+
 **Sljedeći koraci (čekaju Sašu):**
-1. `apply_rules.py` pravila iterativno sa Sašom (Review sad ima `Izvod opis` na 1707 redova;
-   OCR opisi bez razmaka — substring match radi); pregledati 9 `[OCR?]` redova
+1. `apply_rules.py` dorade (v. S107e točka 4) pa pravila iterativno sa Sašom (Review sad ima
+   `Izvod opis` na 1725 redova; OCR opisi bez razmaka — substring match radi)
 2. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (1538) — importati kao nove retke ili ignorirati
-3. Saša: skinuti RBA izvadak br. 5/2026 (svibanj) → `izvodi/` → inventory + enrich
+3. Saša: provjeriti 1 preostali `[OCR?]` red (RF_2026-05, 2026-06-04, 1282.79 — vjerojatno PBZ Card/Visa lump)
 4. Saša/Koka review `Financije_review_20260710_1448.xlsx` (uklj. Taksonomija sheet) + odluka što s N/A masom (T-S107-6)
 5. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
-6. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`
+6. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`;
+   Leaf comment definira import generator kroz CommentTemplate (`{racun}/{tip}/{podtip}/{napomena}`)
 7. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
-8. Diary archaeology (non-blocking); RF izvodi (22 bez tekst-sloja) — CSV export iz RF aplikacije ili OCR
+8. Diary archaeology (non-blocking)
 
 ### S108+: Intelligence layer (success criteria)
 
