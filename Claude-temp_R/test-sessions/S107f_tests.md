@@ -84,8 +84,8 @@ ukupno preimenovano+resetirano ≠ 196 (± redovi koje si ručno mijenjao u međ
 uključujući `Strength_type` o kojem ovisi `exercise_name`; expand kategorije Activity
 izgledao "mrtav" (svi atributi na defaultu → prazan panel). Fix na test-branchu (S107f).
 
-**Precondition:** `npm run dev` na test-branchu; Fitness area sa shortcutom Strength
-(ili bilo koji leaf s default vrijednostima + depends_on atributom).
+**Precondition:** fix je NA PROD-u (deploy 2026-07-15, main = cdbdff9) — testiraj
+direktno na PROD appu s mobitelom; Fitness area sa shortcutom Strength.
 
 1. Otvori Add Activity preko shortcuta Strength
 2. **`Strength_type` dropdown mora biti vidljiv ODMAH** (jer `exercise_name` ovisi o
@@ -102,5 +102,5 @@ izgledao "mrtav" (svi atributi na defaultu → prazan panel). Fix na test-branch
 
 **Fail:** Strength_type i dalje skriven; expand kategorije i dalje prazan; hrvatski stringovi.
 
-**Deploy napomena:** fix je na test-branchu; na PROD (main) ide tek kad izričito
-zatražiš deploy — do tada na mobitelu koristi "Prikaži sve" workaround.
+**Deploy napomena:** ✅ DEPLOYANO na PROD 2026-07-15 (E2E 12/12 prije deploya) —
+testiraj direktno na PROD-u, workaround više ne treba.

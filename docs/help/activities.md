@@ -9,9 +9,13 @@
 
 **Vidljivost polja u formi:**
 - Polja čija vrijednost odgovara `default_value` automatski se skrivaju pri otvaranju.
-  Broj skrivenih polja prikazan je na dnu forme ("N polja skrivena — Prikaži").
-  Klik "Prikaži sve" otkriva sva polja; klik "Sakrij polja na defaultu" ih sakriva nazad.
+  Broj skrivenih polja prikazan je na dnu forme ("N fields hidden (at default)").
+  Klik "Show all" otkriva sva polja; klik "Hide fields at default" ih sakriva nazad.
   Jednom kad ručno promijeniš vrijednost, polje ostaje vidljivo (čak i ako se vratiš na default).
+- **Iznimka (S107f):** polje o kojem ovisi neko VIDLJIVO polje (`depends_on` parent, npr.
+  `Strength_type` za `exercise_name`) nikad se ne skriva — inače dependent dropdown "visi u zraku".
+- Ako su SVI atributi neke kategorije skriveni (npr. shortcut je sve prefillao na default),
+  otvorena kategorija prikazuje poruku "All fields hidden (at default values)" umjesto praznine.
 - Polja s `depends_on` prikazuju se samo kad drugi atribut ("parent") ima određenu vrijednost
   (npr. `Broj rata` se pojavi tek kad označiš `Na rate?`).
 - Oba pravila vrijede i u Edit Activity.

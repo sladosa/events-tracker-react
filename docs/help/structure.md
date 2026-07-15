@@ -18,7 +18,8 @@ Unlock-a sve strukturne promjene:
 
 **`default_value`:** vrijednost automatski upisana kad korisnik otvori Add Activity za tu kategoriju.
 Za suggest atribute mora točno odgovarati jednoj od opcija (case-sensitive).
-Polja na defaultu se skrivaju u formi (hide-if-default) — korisnik klika "Prikaži sve" ako ih želi urediti.
+Polja na defaultu se skrivaju u formi (hide-if-default) — korisnik klika "Show all" ako ih želi urediti.
+Iznimka: polje o kojem ovisi vidljivo `depends_on` polje nikad se ne skriva (S107f).
 Za brisanje `default_value` via Excel Structure importa: upiši `_` u Default kolonu — import postavlja null (prazno).
 
 **`depends_on` — uvjetna vidljivost:**

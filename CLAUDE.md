@@ -221,7 +221,7 @@ events (linked to category_id + user_id)
   - **Bug**: `StructureNodeEditPanel` save je BEZUVJETNO normalizirao slug svih atributa (regex briše crtice: `strength-type` → `strengthtype`) pri svakom Save-u panela, uklj. običan rename kategorije; fixup depends_on referenci se preskakao jer je uspoređivao user-input (nepromijenjen), ne stvarno zapisani slug → depends_on ostane na nepostojećem slugu, dependent dropdown siv ("Select X first...") u Add i Edit
   - **Fix**: slug se normalizira samo ako ga je korisnik stvarno mijenjao; `slugChanged` se računa iz stvarne promjene (novi vs original) pa fixup referenci sada pokriva i normalizaciju; `areas-changed` se dispatcha nakon SVAKOG structure save-a (ne samo Area) — invalidira categoryCache za breadcrumb nakon rename kategorije
   - **PROD data repair (service role, 2026-07-06)**: `exercise_name.depends_on` `strength-type`→`strengthtype` (slomljeno današnjim rename testom); `Broj rata.depends_on` `na_rate`→`rate` (Financije b4cd5a81, slomljeno ranije istom klasom buga). Scan: 0 preostalih polomljenih referenci (108 attr defs).
-  - **OPREZ dok fix ne dođe na PROD (main)**: Save u Structure Edit panelu na PROD appu (mobitel!) i dalje tiho briše crtice iz slugova — izbjegavati spremanje panela za kategorije čiji atributi imaju `-` u slugu (npr. `broj-rata`)
+  - ~~OPREZ dok fix ne dođe na PROD~~ — ✅ fix je na PROD-u (bio uključen u raniji deploy; stanje potvrđeno deployem 2026-07-15 kad je main dostigao test-branch)
 - **S106 — E7/E8/E9 test harness race condition fix (2026-07-07):**
   - **Problem**: `test.beforeAll` u E8/E9/E10/E15 padali pri `--workers=4` s `duplicate key on data_shares_unique_share` — concurrent REST INSERT bez upsert logike
   - **Root cause**: Test harness issue, ne app bug. App code (`useDataShares.createShare`) već je imao `upsert` s `onConflict`. Problem je bio samo u `supabasePost` helper (obična INSERT)
@@ -376,8 +376,12 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
    kategorija sa svim atributima na defaultu pokazuje poruku umjesto praznog panela
    ("izgledalo kao da se Activity neće otvoriti"); stringovi prevedeni na engleski
    ("N fields hidden (at default)" / "Show all" / "Hide fields at default").
-   Typecheck+build čisti; manualni test T-S107f-3. **Na PROD-u (main) bug i dalje živi
-   dok se ne zatraži deploy** — workaround: "Prikaži sve".
+   Typecheck+build čisti; manualni test T-S107f-3.
+5. **PROD DEPLOY izvršen 2026-07-15** (Saša zatražio): E2E regresija 12/12 PASS prije deploya
+   (E2, E3, E6×3, T-S104-2, T-S107-1/2, T-S107b-1/2), zatim merge test-branch → main
+   (fast-forward `b343815..cdbdff9`) + sync back. Na PROD otišlo: S107 row_hash+update-guard
+   (D7 — preduvjet za Financije import!), S107b set_attribute automatika + Automations sheet,
+   S107f UI fix. Help docs (activities.md, structure.md) ažurirani za novo ponašanje.
 
 **Sljedeći koraci (čekaju Sašu) — v. i ENRICH_PLAN §3:**
 1. Saša potvrdi → **backfill `Datum naplate` = event_date za Racun/Cash** (1631 redova, D1)

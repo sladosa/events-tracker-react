@@ -1,92 +1,56 @@
-# S107 Session Prompt — Historical Financije Pipeline
+# S107g Session Prompt — Sašini testovi + Preimenovanja run (pratnja)
 
-**Date:** 2026-07-07 end of S106
-**Branch:** test-branch
-**Status:** S106 DONE (race condition fix merged to main)
-
----
-
-## Session Goal: S107 — Historical Financije Data Import & Python Classification
-
-**Mission:** Ingest historical Financije Excel data (both områja), audit for missing categories, generate Python Tip/Podtip classifications, and re-import corrected data.
-
-**Success criteria:** 
-- Financije data flows into DB with correct Tip/Podtip classification
-- No missing categories
-- Data quality spot-check passed
+**Datum:** 2026-07-15, kraj S107f
+**Branch:** test-branch (= main = PROD, commit cdbdff9; deploy izvršen, E2E 12/12)
+**Preporučeni model za ovu sesiju: Sonnet** (pratnja/objašnjenja/mali fixevi —
+NE velike implementacije; za njih vidi "NIJE za ovu sesiju" dolje)
 
 ---
 
-## S107 Scope (in order)
+## Prompt za copy-paste
 
-### Phase 1: Export & Audit (Manual first, then automate if needed)
-1. **Export both Financije områja** from app:
-   - Activities Events export (Excel) for each area
-   - Structure export (for audit mapping)
-   - Save to `data-prep_tools/Financije/export_<area>.xlsx`
+```
+Nastavljam Financije migraciju (S107g) — ovo je sesija PRATNJE: radim testove i
+Preimenovanja run, trebam objašnjenja i pomoć pri čitanju outputa, eventualno
+sitne fixeve. Kontekst pročitaj ovim redom:
+1. Claude-temp_R/test-sessions/S107f_tests.md — moji zadaci (T-S107f-1/2/3)
+2. data-prep_tools/Financije/ENRICH_PLAN.md — §2d (stanje S107f) + §3 SLJEDEĆI KORACI
 
-2. **Run audit skripta** (Python):
-   - Detect missing categories in import vs. DB
-   - List data anomalies (duplicates, malformed dates, etc.)
-   - Generate mapping table
-   - Script: `data-prep_tools/Financije/audit_financije.py`
+STANJE (kraj S107f, 2026-07-15, commit cdbdff9 — main == test-branch, PROD deployan):
+- Datum naplate backfill IZVRŠEN (1631 Racun/Cash = event_date; Visa 220 prazno namjerno)
+- Preimenovanja sheet kreiran u Financije_review_20260710_1448.xlsx, pred-popunjen
+  (test na kopiji: 135 preimenovano + 61 reset = 196); JA popunjavam 4 prazna para
+  i brišem seed pravila, pa apply_rules --dry → run
+- UI fix (shortcut/skriveni atributi) na PROD-u — testiram T-S107f-3 na mobitelu
 
-### Phase 2: Python Classification
-3. **Python Tip/Podtip classification**:
-   - Read exported Financije events
-   - Use heuristics/rules to suggest Tip/Podtip values
-   - Generate corrected Excel with classification results
-   - Script: `data-prep_tools/Financije/classify_na_events.py`
+ŠTO OČEKUJEM OD TEBE:
+- vodi me kroz korake iz S107f_tests.md kad zapnem; objasni outpute skripti
+- ako javim "pao T-S107f-X" → analiziraj i predloži; sitne fixeve smiješ kodirati
+  (typecheck+build prije commita), commit SAMO na test-branch
+- zapiši rezultate testova u PENDING_TESTS.md (⬜→✅/❌)
 
-### Phase 3: Re-import & Verify
-4. **Re-import corrected data**:
-   - Load classified Excel into app (standard import flow)
-   - Spot-check data integrity (parent chain, attributes, RLS)
-   - Verify no collisions with existing data
+PRAVILA: run.bat + PYTHONUTF8=1; Review file ZATVOREN u Excelu prije skripti;
+backup nastaje automatski; cmd guši zarez u argumentima (jedan substring po pozivu);
+NIKAD ne pushati/mergati na main; NE dirati vrijednosti u Review sheetu iz koda
+osim kroz postojeće skripte.
 
----
-
-## Key Context from S106
-
-- **Race condition FIXED:** Test harness (supabaseUpsert); tests updated for E7/E10 modal flows
-- **Collab is STABLE:** Ready for 1–2 person shared areas (Financije, projects)
-- **Main is deployed:** S106 fixes on PROD (Netlify)
-- **Test-branch is synced:** Ready for S107 work
+NIJE ZA OVU SESIJU (čeka jaču sesiju, plan u ENRICH_PLAN §2d/§3):
+PBZVISA split po Kartica koloni, Izvod kandidat kolona, reconcile report,
+Visa generator novih redaka, import generator.
+```
 
 ---
 
-## What NOT to do in S107
+## Kontekst za model (ne mora u prompt)
 
-- ❌ Expand collab (that's stable enough for now)
-- ❌ Rewrite Excel export/import logic (only use existing code)
-- ❌ Multi-user testing (not in scope)
-- ❌ Fix E7-2/E7-3 toast logika (backlog UX — not blocking)
-
----
-
-## Before you start
-
-1. Read `docs/EXCEL_FORMAT_ANALYSIS_v2.md` (export format)
-2. Check `data-prep_tools/DATA_PIPELINE_PLAN.md` (existing pipeline docs)
-3. Have both Financije områja (should be visible in app Structure tab)
-
----
-
-## Entry point next session
-
-- Branch: `test-branch` (synced with main)
-- Tasks: Export → Audit → Classify → Re-import
-- First step: Export both Financije områja from running app, save to `data-prep_tools/Financije/`
-
----
-
-## Open backlog (NOT for S107)
-
-- **E7-2/E7-3 UX:** Toast "Access granted" missing after email invitation modal dismiss
-- **BUG-S103-ANYATTR:** "In any attribute" filter timeout for grantees (SECURITY DEFINER RPC fix)
-- **D9 verify:** Excel User column behaviour (minor)
-- **Diary archaeology:** Non-blocking parallel to S107
-
----
-
-Generated: 2026-07-07 end of S106
+- **Preimenovanja mehanika:** apply_rules.py na pravom runu radi (redom): Tip_O/Podtip_O
+  snapshot (jednom) → preimenovanja (Pouzdanost se ČUVA, `PREIM:` u Alternativa) →
+  reset nevaljanih parova bez mappinga (N/A + `TAKS:`) → keyword pravila (samo na
+  Tip prazan/N/A). Prazan Pravila sheet je OK (renames su dovoljni za run).
+- **Očekivane brojke --dry runa:** preimenovano ≥135 (više ako Saša popuni 4 para:
+  Sportski rekviziti 29, PassSport 12, AudibleSasa 11, Saša projekti 9), reset =
+  ostatak do 196. Ukupno preimenovano+reset = 196.
+- **Ako Saša pita za PBZ Visa:** odluke su pale (dodati 1538 tx; lump→Transfer;
+  per-osoba Podtip; Kokina Visa se skida sa SAŠINOG RF računa) — implementacija NIJE
+  u ovoj sesiji.
+- **Deploy procedura** (samo na izričit zahtjev): CLAUDE.md → Session workflow → End of session.
