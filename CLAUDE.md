@@ -355,6 +355,30 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
 8. **Audit nalaz za Koku:** Review 2025-11-26 Isplata 700€ (Racun) ne postoji na ZABA izvodu
    (bankomat 11-12/2025: 100+150+100+200) — pitati Koku.
 
+**Done 2026-07-15 (S107f — backfill + Preimenovanja + UI fix; detalji ENRICH_PLAN §2d):**
+1. **`Datum naplate` backfill IZVRŠEN** — `backfill_datum_naplate.py` (novo): 1631 redova
+   (Racun 1630 + Cash 1) = event_date; Visa 220 namjerno preskočena. Saša sam pokrenuo
+   `sync_taxonomy.py` (dropdowni prate novu Taksonomiju).
+2. **`Preimenovanja` sheet u `apply_rules.py`** — nevaljan Tip/Podtip par se PREIMENUJE
+   u novi (VISOKA Pouzdanost se ČUVA, `PREIM:` marker) umjesto reseta na N/A; `Racun uvjet`
+   kolona = per-osoba split (kokin/sasin). Auto-kreira se pred-popunjen s prijedlozima
+   (substring match kandidata; 2 kandidata koka/sasa → 2 reda s uvjetom). Test na kopiji:
+   135 preimenovano + 61 reset = 196 ✓. Sheet u pravom fileu — Saša popunjava 4 para
+   (T-S107f-2). `pick_file` sad ignorira sve `.pre-*` backupe.
+3. **PBZ Visa odluke (Saša):** 1538 tx DODATI kao nove retke; lump → Transfer; Datum naplate
+   iz PBZ PDF-ova; osoba = per-osoba Podtip. **KLJUČNO: Kokina PBZ Visa se skida sa SAŠINOG
+   RF računa** (MC obje s Kokinog ZABA) → `[kartica: SAŠA]` tx vjerojatno matchaju postojeće
+   Sašine Visa retke → enrich treba PBZVISA split po Kartica koloni (objašnjava 1/1539 match).
+   Kandidati dizajn: kolona `Izvod kandidat` U Review (kontekst!) + reconcile report po
+   računu × mjesecu.
+4. **UI fix — shortcut/skriveni atributi (`AttributeChainForm.tsx`):** atribut o kojem ovisi
+   VIDLJIVO polje više se ne skriva na defaultu (Strength_type + exercise_name slučaj);
+   kategorija sa svim atributima na defaultu pokazuje poruku umjesto praznog panela
+   ("izgledalo kao da se Activity neće otvoriti"); stringovi prevedeni na engleski
+   ("N fields hidden (at default)" / "Show all" / "Hide fields at default").
+   Typecheck+build čisti; manualni test T-S107f-3. **Na PROD-u (main) bug i dalje živi
+   dok se ne zatraži deploy** — workaround: "Prikaži sve".
+
 **Sljedeći koraci (čekaju Sašu) — v. i ENRICH_PLAN §3:**
 1. Saša potvrdi → **backfill `Datum naplate` = event_date za Racun/Cash** (1631 redova, D1)
 2. **`sync_taxonomy.py`** ako dropdowni u Review još ne prate izmijenjeni Taksonomija sheet

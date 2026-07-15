@@ -20,6 +20,7 @@ Pokretanje: `Financije\run.bat <skripta.py> [args]` (ili direktno venv python, `
 | `enrich_from_izvoda.py` | ✅ ZABA+MC+PBZVISA | Čita `Izvodi_transakcije.xlsx` (fallback: PDF-ovi) → match na Review (datum ±2 + iznos + smjer + Racun/Izvor) → `Izvod opis`/`Izvod file` kolone. Nematchane transakcije → **`Nematchano` sheet** u Izvodi_transakcije.xlsx (= kandidati za retke koji FALE u Kokinom Excelu). `--dry` za probu. |
 | `apply_rules.py` | ✅ + dorade S107e | `Pravila` sheet (keyword → Tip/Podtip/**Napomena**) na redove gdje je **Tip prazan ili N/A** (ručni rad se NIKAD ne gazi; Napomena se puni samo ako je prazna — P3). Pretražuje Napomena + `Izvod opis`. Prije pravila: **jednokratni `Tip_O`/`Podtip_O` snapshot** + **validacija protiv Taksonomije** (nepostojeći par → reset na N/A, oznaka `TAKS:` u Alternativa). `--dry`; `--all` = report konflikata pravila s klasificiranim redovima (ne piše). Prvi run kreira sheet s primjerima. |
 | `sync_taxonomy.py` | ✅ radi | Taksonomija sheet → regenerira Tip/Podtip dropdowne Review sheeta |
+| `backfill_datum_naplate.py` | ✅ NOVO S107f | `Datum naplate` = event_date za Izvor Racun/Cash (D1). ✅ IZVRŠENO 2026-07-15: 1631 redova (Racun 1630 + Cash 1); Visa 220 namjerno preskočena (puni ih import generator). Backup `*.pre-naplata-20260715_112019.xlsx`. |
 
 **Redoslijed:** `inventory_izvoda.py` → `enrich_from_izvoda.py` → `apply_rules.py` →
 ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
@@ -75,6 +76,39 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
   izvodu NE POSTOJI nikakva 700€ transakcija (bankomat podizanja u 11-12/2025: 100+150+100+200).
   Pitanje za Koku: s kojeg računa / je li zbroj više podizanja?
 
+## 2d. S107f (2026-07-15) — backfill izvršen + Preimenovanja sheet + Visa odluke
+
+- **`Datum naplate` backfill IZVRŠEN** (v. tablicu §1) — Saša potvrdio; `sync_taxonomy.py`
+  Saša sam pokrenuo (dropdowni sada prate novu Taksonomiju).
+- **`Preimenovanja` sheet u apply_rules.py (NOVO):** stari Tip/Podtip par koji više ne
+  postoji u Taksonomiji se PREIMENUJE u novi (Pouzdanost OSTAJE — VISOKA se čuva,
+  `PREIM:` marker u Alternativa) umjesto reseta na N/A. `Racun uvjet` kolona =
+  per-osoba split (`kokin`/`sasin` substring u Racun). Prvi run auto-kreira sheet
+  pred-popunjen svim nevaljanim parovima + prijedlozima (jedini kandidat po substring
+  matchu; 2 kandidata koka/sasa → dva reda s uvjetom). Testirano na kopiji:
+  **135 preimenovano + 61 reset = 196** ✓; per-osoba Medical Koka 13× / Sasa 10× ✓.
+  Sheet kreiran u pravom fileu — **Saša treba popuniti 4 para bez kandidata**
+  (Sportski rekviziti→Sport_Koka?, PassSport, AudibleSasa, Saša projekti) i
+  pregledati auto-prijedloge. `pick_file` sad ignorira SVE `.pre-*` backupe.
+  ⚠ Seed pravila u Pravila sheetu će se primijeniti na prvom pravom runu
+  (`mirovinsk`→Mirovina/Koka hvata i Sašinu mirovinu!) — zamijeniti pravim pravilima prije.
+- **Visa odluke (Saša, 2026-07-15):** 1538 PBZ Visa tx iz Nematchano → DODATI kao nove
+  review retke; lump plaćanja → `Transfer/između računa` (ne trošak — bez duplog brojanja);
+  `Datum naplate` izvući iz PBZ PDF-ova (dospijeće/stvarna uplata); osoba se označava
+  **per-osoba Podtipom** (ne novom kolonom). **KLJUČNO (novo saznanje):** Kokina PBZ Visa
+  Gold se skida sa **Sašinog tekućeg RF** (lump 1282,79 od 05.06.2026 na RF izvodu = to!),
+  a Mastercard (obje kartice) sa Kokinog ZABA → novi Visa retci: Racun = `Sašin tekući RF`.
+  Posljedica za enrich: `[kartica: SAŠA]` tx s PBZVISA izvoda vjerojatno odgovaraju
+  POSTOJEĆIM Sašinim redovima (Racun=Sašin tekući, Izvor=Visa) — PBZVISA match mapping
+  treba split po Kartica koloni (SAŠA → Sašini redovi; DUBRAVKA → novi retci), što bi
+  objasnilo 1/1539 match. Ime Izvora za nove retke još otvoreno (prijedlog: isti `Visa`).
+- **Kandidati u kontekstu (dogovoren dizajn):** labaviji match (~256 ne-Visa nematchanih;
+  isti Racun/Izvor/Smjer + točan iznos ±7 dana) piše prijedlog u novu kolonu
+  `Izvod kandidat` U Review (unutar autofiltera!) — potvrda u kontekstu susjednih redova,
+  NE zaseban sheet; treći korak prebacuje potvrđene u `Izvod opis`/`Izvod file`.
+  Plus **reconcile report** po računu × mjesecu (zbroj Review vs saldo izvoda) — Saša želi
+  točna stanja po računu; lokalizira mjesece s manjkom (klasa "700€ bankomat").
+
 ## 3. SLJEDEĆI KORACI
 
 1. **Odluka: PBZ Visa transakcije (1538 u Nematchano sheetu).** Opcije:
@@ -103,11 +137,12 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
    (`{racun}/{tip}/{podtip}/{napomena}`).
 3. ~~Provjeriti 1 preostali `[OCR?]` red~~ — ✅ riješeno 2026-07-14 (PBZ Card/Visa lump
    05.06.2026, potvrdio Saša na dokumentu; ručno upisano u Transakcije + Review).
-4. **Saša potvrdi → backfill `Datum naplate` = event_date za Racun/Cash** (1631 redova,
-   D1 pravilo; Visa NE — v. §2c). Mala skripta uz backup.
-5. **`sync_taxonomy.py` pokrenuti** ako dropdowni/CF u Review još ne odražavaju Sašine
-   izmjene Taksonomija sheeta (validacija u apply_rules radi protiv sheeta pa je neovisna,
-   ali dropdown pri ručnom radu nudi stare vrijednosti dok se sync ne pokrene).
+4. ~~backfill `Datum naplate` za Racun/Cash~~ — ✅ IZVRŠENO 2026-07-15 (1631 redova, v. §2d).
+5. ~~`sync_taxonomy.py`~~ — ✅ Saša pokrenuo 2026-07-15.
+5b. **Saša: pregledati/popuniti `Preimenovanja` sheet** (4 para bez prijedloga) — v. §2d;
+   zatim prvi pravi `apply_rules.py` run (s pravim pravilima umjesto seed primjera!).
+5c. **Enrich dorada: PBZVISA split po Kartica koloni** (SAŠA → match na Sašine Visa retke,
+   DUBRAVKA → Nematchano/novi retci) + `Izvod kandidat` kolona + reconcile report — v. §2d.
 6. **Pitanje za Koku:** 700€ isplata 2025-11-26 (v. §2c) + odluka o N/A masi.
 
 ## 4. Pravila okruženja (OBAVEZNO pročitati)

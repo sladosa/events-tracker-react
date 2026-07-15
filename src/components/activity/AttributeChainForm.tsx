@@ -154,23 +154,6 @@ export function AttributeChainForm({
     }
   }, [onChange, allAttributes, normalizeSlug]);
 
-  // Count attributes currently hidden because they match their default value
-  const hiddenByDefaultCount = useMemo(() => {
-    if (showAllDefaults) return 0;
-    let count = 0;
-    for (const category of categoryChain) {
-      const attrs = attributesByCategory.get(category.id) || [];
-      for (const attr of attrs) {
-        if (attr.default_value == null) continue;
-        if (userEditedIds.has(attr.id)) continue;
-        const currentValue = values.get(attr.id);
-        const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
-        if (currentStr === attr.default_value) count++;
-      }
-    }
-    return count;
-  }, [showAllDefaults, userEditedIds, categoryChain, attributesByCategory, values]);
-
   // Build a map of attribute slugs to their current values
   const attributeValuesBySlug = useMemo(() => {
     const map = new Map<string, string | null>();
@@ -191,6 +174,59 @@ export function AttributeChainForm({
     return map;
   }, [categoryChain, attributesByCategory, values, normalizeSlug]);
 
+  // For non-text types (number, boolean, datetime): depends_on acts as visibility
+  // control — field is hidden until the parent value matches a non-'*' WhenValue key.
+  const isDependencyHidden = useCallback((attr: AttributeDefinition): boolean => {
+    const parsed = parseValidationRules(attr.validation_rules);
+    if (!parsed.dependsOn || attr.data_type === 'text') return false;
+    const depSlug = parsed.dependsOn.attributeSlug;
+    const dependencyValue = attributeValuesBySlug.get(depSlug)
+      ?? attributeValuesBySlug.get(normalizeSlug(depSlug))
+      ?? null;
+    if (!dependencyValue) return true;
+    const depUpper = dependencyValue.toUpperCase();
+    return !Object.keys(parsed.dependsOn.optionsMap)
+      .filter(k => k !== '*')
+      .some(k => k.toUpperCase() === depUpper);
+  }, [attributeValuesBySlug, normalizeSlug]);
+
+  // Slugs whose dropdown must stay visible because a VISIBLE attribute depends on
+  // them — hiding the parent (e.g. Strength_type at default) would strand the
+  // dependent field (exercise_name) with no way to see/change what drives it.
+  const requiredParentSlugs = useMemo(() => {
+    const required = new Set<string>();
+    if (showAllDefaults) return required;
+    for (const attr of allAttributes) {
+      const parsed = parseValidationRules(attr.validation_rules);
+      if (!parsed.dependsOn || isDependencyHidden(attr)) continue;
+      const currentValue = values.get(attr.id);
+      const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
+      const hiddenByDefault = attr.default_value != null
+        && !userEditedIds.has(attr.id)
+        && currentStr === attr.default_value;
+      if (!hiddenByDefault) required.add(normalizeSlug(parsed.dependsOn.attributeSlug));
+    }
+    return required;
+  }, [showAllDefaults, allAttributes, values, userEditedIds, isDependencyHidden, normalizeSlug]);
+
+  // Attribute is hidden because it sits at its default value and the user hasn't
+  // explicitly changed it this session. "Show all" overrides; depends_on parents of
+  // visible fields are exempt. Note: `touched` is not used here — pre-fill sets
+  // touched:true for save logic, but that must not prevent hiding.
+  const isHiddenByDefault = useCallback((attr: AttributeDefinition): boolean => {
+    if (showAllDefaults || attr.default_value == null || userEditedIds.has(attr.id)) return false;
+    if (requiredParentSlugs.has(normalizeSlug(attr.slug))) return false;
+    const currentValue = values.get(attr.id);
+    const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
+    return currentStr === attr.default_value;
+  }, [showAllDefaults, userEditedIds, requiredParentSlugs, values, normalizeSlug]);
+
+  // Count attributes currently hidden because they match their default value
+  const hiddenByDefaultCount = useMemo(
+    () => allAttributes.filter(isHiddenByDefault).length,
+    [allAttributes, isHiddenByDefault]
+  );
+
   // Render attributes for a single category
   const renderCategoryAttributes = (category: Category, isLeaf: boolean) => {
     const attributes = attributesByCategory.get(category.id) || [];
@@ -198,6 +234,16 @@ export function AttributeChainForm({
     if (attributes.length === 0) {
       return (
         <p className="text-sm text-gray-400 italic">No attributes defined</p>
+      );
+    }
+
+    // All attributes hidden (defaults / dependency) → say so instead of rendering
+    // an empty box that looks like the category "won't open"
+    if (attributes.every(a => isDependencyHidden(a) || isHiddenByDefault(a))) {
+      return (
+        <p className="text-sm text-gray-400 italic">
+          All fields hidden (at default values) — use "Show all" below
+        </p>
       );
     }
 
@@ -243,25 +289,7 @@ export function AttributeChainForm({
         ?? null;
     }
 
-    // For non-text types (number, boolean, datetime): depends_on acts as visibility control.
-    // Hide the field unless the parent value matches a non-'*' WhenValue key (case-insensitive).
-    if (parsed.dependsOn && attr.data_type !== 'text') {
-      if (!dependencyValue) return null;
-      const depUpper = dependencyValue.toUpperCase();
-      const conditionMet = Object.keys(parsed.dependsOn.optionsMap)
-        .filter(k => k !== '*')
-        .some(k => k.toUpperCase() === depUpper);
-      if (!conditionMet) return null;
-    }
-
-    // Hide attributes whose current value matches their default_value and user hasn't
-    // explicitly changed the field this session. "Show all" toggle overrides this.
-    // Note: `touched` is not used here — pre-fill sets touched:true for save logic,
-    // but that must not prevent hiding.
-    if (!showAllDefaults && attr.default_value != null && !userEditedIds.has(attr.id)) {
-      const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
-      if (currentStr === attr.default_value) return null;
-    }
+    if (isDependencyHidden(attr) || isHiddenByDefault(attr)) return null;
 
     return (
       <AttributeInput
@@ -370,9 +398,9 @@ export function AttributeChainForm({
         >
           <span className="text-gray-400">▸</span>
           <span>
-            {hiddenByDefaultCount} {hiddenByDefaultCount === 1 ? 'polje skriveno' : 'polja skrivena'} (na defaultu)
+            {hiddenByDefaultCount} {hiddenByDefaultCount === 1 ? 'field' : 'fields'} hidden (at default)
           </span>
-          <span className="ml-auto text-blue-500 font-medium">Prikaži sve</span>
+          <span className="ml-auto text-blue-500 font-medium">Show all</span>
         </button>
       )}
       {showAllDefaults && (
@@ -382,7 +410,7 @@ export function AttributeChainForm({
           className="w-full text-left px-3 py-2 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg border border-dashed border-gray-200 transition-colors flex items-center gap-1.5"
         >
           <span>▴</span>
-          <span>Sakrij polja na defaultu</span>
+          <span>Hide fields at default</span>
         </button>
       )}
     </div>
