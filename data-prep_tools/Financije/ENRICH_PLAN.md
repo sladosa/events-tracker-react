@@ -18,9 +18,11 @@ Pokretanje: `Financije\run.bat <skripta.py> [args]` (ili direktno venv python, `
 | `inventory_izvoda.py` | ✅ NOVO S107d | Sredi `izvodi/`: md5 dedup (→ `duplikati/`), klasifikacija PDF-a po SADRŽAJU (bez tekst-sloja → OCR vrha stranice), parse, rename `PREFIX_YYYY-MM.pdf` → `Analizirani_izvodi/`, piše **`izvodi/Izvodi_transakcije.xlsx`** (Transakcije + Manifest sheet, report pokrivenosti s rupama). **Md5 keš:** već parsirani fajlovi se ne parsiraju ponovno (bitno za OCR!). Idempotentno; `--dry` za probu. |
 | `rf_ocr.py` | ✅ + recovery S107e | OCR parser za Sašine RBA izvode (bez tekst-sloja): pypdfium2 render 300 DPI + RapidOCR **po horizontalnim trakama** (full-page OCR tiho gubi retke!) + **stanje-chain validacija** (svaki red se provjerava protiv tekućeg stanja; sumnjivi dobiju `[OCR?]` u opisu) + **recovery pass (S107e, testiran ✅)**: na chain-breaku re-OCR uskog y-pojasa između susjednih redova, red se umeće SAMO ako savršeno popravlja chain. ~25 s/stranici. |
 | `enrich_from_izvoda.py` | ✅ ZABA+MC+PBZVISA | Čita `Izvodi_transakcije.xlsx` (fallback: PDF-ovi) → match na Review (datum ±2 + iznos + smjer + Racun/Izvor) → `Izvod opis`/`Izvod file` kolone. Nematchane transakcije → **`Nematchano` sheet** u Izvodi_transakcije.xlsx (= kandidati za retke koji FALE u Kokinom Excelu). `--dry` za probu. |
-| `apply_rules.py` | ✅ + dorade S107e | `Pravila` sheet (keyword → Tip/Podtip/**Napomena**) na redove gdje je **Tip prazan ili N/A** (ručni rad se NIKAD ne gazi; Napomena se puni samo ako je prazna — P3). Pretražuje Napomena + `Izvod opis`. Prije pravila: **jednokratni `Tip_O`/`Podtip_O` snapshot** + **validacija protiv Taksonomije** (nepostojeći par → reset na N/A, oznaka `TAKS:` u Alternativa). `--dry`; `--all` = report konflikata pravila s klasificiranim redovima (ne piše). Prvi run kreira sheet s primjerima. |
+| `apply_rules.py` | ✅ + dorade S107e/S107g | `Pravila` sheet (keyword → Tip/Podtip/**Napomena**) na redove gdje je **Tip prazan ili N/A** (ručni rad se NIKAD ne gazi; Napomena se puni samo ako je prazna — P3). Pretražuje Napomena + `Izvod opis`. Prije pravila: **jednokratni `Tip_O`/`Podtip_O` snapshot** + **validacija protiv Taksonomije** (nepostojeći par → PRAVILO ako pogađa → inače Preimenovanja rename → inače reset na N/A, oznaka `TAKS:` u Alternativa). **`Pravilo run` kolona (S107g):** timestamp na svaki red koji taj run promijeni (rename/reset/pravilo) — filtriraj po zadnjem timestampu. **Prioritet (S107g):** Pravilo > Preimenovanja rename > reset — ako blanket rename par pogađa preširoko, specifičnije keyword pravilo ga nadvladava (mark `PRAVILO #N nadvladao Preimenovanja` u Alternativa). `--dry`; `--all` = report konflikata pravila s klasificiranim redovima (ne piše). Prvi run kreira sheet s primjerima. |
 | `sync_taxonomy.py` | ✅ radi | Taksonomija sheet → regenerira Tip/Podtip dropdowne Review sheeta |
 | `backfill_datum_naplate.py` | ✅ NOVO S107f | `Datum naplate` = event_date za Izvor Racun/Cash (D1). ✅ IZVRŠENO 2026-07-15: 1631 redova (Racun 1630 + Cash 1); Visa 220 namjerno preskočena (puni ih import generator). Backup `*.pre-naplata-20260715_112019.xlsx`. |
+| `fix_sportski_rekviziti_split.py` | ✅ one-off S107g | Preimenovanja blanket-rename za staru `Zdravlje/Sportski rekviziti` (29 redova, mješavina Multisport/Kreatin/Decathlon) razdvojen po sadržaju Napomene: multisport→`Zdravlje/Sport_Sasa` (23), Kreatin→`Namirnice/Hrana i ostalo` (3), Decathlon netaknuto (3). Prepoznaje preko `Podtip_O` snapshot kolone — siguran za ponovno pokretanje. |
+| `fix_tcom_tmobile_swap.py` | ✅ one-off S107g | Kokin originalni T-com/T-mobile label bio krivo upisan na 2 retka (od 41+40) — Izvod opis ("fiksna"/"mobilna" mreža) otkriva stvarnu uslugu, ispravlja Tip/Podtip. Ograničeno na `Tip_O=Informatika`, `Podtip_O` in (T-com, T-mobile). |
 
 **Redoslijed:** `inventory_izvoda.py` → `enrich_from_izvoda.py` → `apply_rules.py` →
 ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
@@ -109,41 +111,72 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
   Plus **reconcile report** po računu × mjesecu (zbroj Review vs saldo izvoda) — Saša želi
   točna stanja po računu; lokalizira mjesece s manjkom (klasa "700€ bankomat").
 
+## 2e. S107g (2026-07-16) — prvi pravi apply_rules run + Pravilo/Preimenovanja prioritet
+
+- **Preimenovanja sheet popunjen i pregledan** (Saša): 4 prazna para popunjena, 2 auto-prijedloga
+  bila zamijenjena (PassSport kokin/sasin i Medical Koka/Sasa — donja crta umjesto razmaka,
+  Taksonomija imala i duplikat `Sport_Koka` bez `Sport_Sasa`, oboje ispravljeno prije runa).
+- **`Pravilo run` kolona (novo, S107g):** timestamp na svaki red koji zadnji `apply_rules.py`
+  run promijeni (rename/reset/pravilo) — filtrabilan audit trail, neovisan o `Alternativa`.
+- **PRVI PRAVI RUN izvršen** (Pravila: 7 pravila — temu/bolt.eu/konzum/bauhaus/prime video/
+  skyshowtime/google*youtube): **196 preimenovano, 0 reset (TAKS), 217 pravilo-klasificirano**
+  (200 Napomena popunjeno). `Tip_O`/`Podtip_O`/`Pravilo run` kolone kreirane. Backup
+  `*.pre-rules-20260716_165928.xlsx`.
+- **Nalaz: blanket Preimenovanja rename može pogoditi preširoko** kad je stara kategorija
+  mješavina različitog sadržaja. `Zdravlje/Sportski rekviziti` (29 redova) blanket-preimenovan
+  u `Razno/Odjeća/obuća..._Sasa`, ali sadržavao je Multisport pretplatu (23), Kreatin/MyProtein
+  (3), Decathlon (3) — različiti stvarni troškovi. **Fix:** `fix_sportski_rekviziti_split.py`
+  (one-off) — multisport→`Zdravlje/Sport_Sasa`, Kreatin→`Namirnice/Hrana i ostalo` (Napomena
+  "Kreatin"), Decathlon netaknuto.
+- **Isti obrazac, druga uzrok:** T-com/T-mobile (41+40 redova) — Kokin ORIGINALNI label bio
+  krivo upisan na 2 retka (Izvod opis "fiksna"/"mobilna mreža" otkrio pravu uslugu). Fix:
+  `fix_tcom_tmobile_swap.py` (one-off) — 2 retka zamijenjena.
+- **Nova arhitektura, trajno u `apply_rules.py` (S107g):** prioritet za invalid-par retke sad je
+  **Pravilo (ako keyword pogađa) > Preimenovanja rename > reset na N/A** — ako specifičnije
+  Pravilo postoji PRIJE runa, automatski nadvladava preširoki blanket rename (umjesto da treba
+  one-off skriptu naknadno). Testirano sintetički (synthetic invalid-par red s "konzum" u
+  Napomeni ispravno preglasio Preimenovanja mapping), na pravom fileu trenutno 0 efekta (nema
+  više invalid parova). Marker u Alternativa: `PRAVILO #N nadvladao Preimenovanja: bio <stari par>`.
+- **Nevenka Pavić uplata (red 2436):** jednokratni poklon od majke → `Tip=Ostali prihodi`
+  (bez Podtipa, isti obrazac kao postojeći "Uplata mama"/"Nataša povrat"), Napomena netaknuta
+  (Izvod opis dovoljno govori), Pouzdanost=VISOKA. Pravilo NIJE napravljeno (samo 1 pojava).
+- **N/A stanje nakon sesije:** 2218 → **2000** (218 riješeno: 217 pravilima + 1 ručno Nevenka);
+  od toga 1142 još ima tekst (Napomena/Izvod opis) čeka pravila, 858 nema tekst uopće (čeka
+  drugi izvor ili ostaje ručno).
+- **Kandidati za sljedeći krug pravila** (identificirano, NE upisano — čeka Sašinu odluku o
+  Tip/Podtip za svaki): `paypal` (ostatak osim temu, ~45 redova, merchant varira — NE raditi
+  blanket pravilo), `apple.com/bill` (50×, nema Podtip u Taksonomiji), `spotify` (22×, nema
+  Podtip u Zabava), `allianz`/`triglav`/`zivotno`/`investicijsko` (životno osiguranje, ~26-43×,
+  nema Tip "Osiguranje"), `porez`/`prirez`/`dohodak` (APN porez, ~50×, nema Tip "Porezi"),
+  `leasing` (OTP Leasing, ~15×), `bmove` (30×, nepoznat merchant — pitati Sašu/Koku),
+  `keks pay` (63×, P2P transfer app — ovisi o namjeni), `zagrebparking` (45×, vjerojatno
+  `auto C5/parking` — sve dosadašnje auto-transakcije idu na C5, ali potvrditi).
+- **Split-workbook prijedlog** (Taksonomija/Pravila/Preimenovanja → zaseban file, da Saša može
+  ostaviti otvoren za referencu bez zatvaranja Reviewa) — DISKUTIRANO, tehnički izvedivo
+  (dropdown mehanizam u Review-u ostaje netaknut), ali ODGOĐENO na Sašin zahtjev dok se prvo
+  ne odradi par krugova s novom kolonom. Nije implementirano.
+
 ## 3. SLJEDEĆI KORACI
 
 1. **Odluka: PBZ Visa transakcije (1538 u Nematchano sheetu).** Opcije:
    (a) generirati NOVE review retke iz Nematchano (datum, iznos, opis, Izvor — treba novi
    Izvor `Visa Koka` ili slično u Review + Taksonomija odluka), (b) ignorirati za migraciju
    (Kokin Excel = izvor istine), (c) importati kasnije kao zaseban batch. Sašina odluka.
-2. **Pravila sa Sašom (iterativno):** `apply_rules.py` na obogaćenom Review — Tip=N/A +
-   neprazan `Izvod opis` → grupiraj po merchantu → pravila. Zamke: prekratke riječi lažno
-   pale (`zaba`, `eu`); specifičnija pravila IZNAD općenitijih; Tip/Podtip mora postojati
-   u Taksonomiji. OCR opisi NEMAJU razmake (`RBAISPLATAGOTOVI...`) — substring match radi.
-   **Dorade apply_rules.py — ✅ IMPLEMENTIRANO I TESTIRANO 2026-07-14 (S107e):**
-   snapshot, validacija, Napomena output, `--all` (v. tablicu §1). Test na kopiji Review
-   filea: 196 reseta korektno (Podtip očišćen, original u `_O`), P3 Napomena verificiran.
-   Zamka openpyxl: `cell(r,c,None)` NE briše vrijednost — mora `cell(r,c).value = None`.
-   **Nalaz --dry na pravom fileu (2026-07-14): validacija hvata 196 redova** — posljedica
-   Sašinih preimenovanja u Taksonomiji (T-com→`Komunikacije_T-com (internet, MaxTv)` 41×,
-   T-mobile 40×, `Sportski rekviziti`→`Sport_Koka` 29×, Medical→`Medical Koka/Sasa` 23×,
-   PassSport 12×, PP 12×, Audible/Youtube/Disney/Sky/Prime/Saša projekti izbačeni 33×,
-   Odjeća/obuća 4×). Većina se vraća trivijalnim pravilima (keyword isti kao stari podtip);
-   per-osoba splitovi (Medical Koka/Sasa) → filter po `Podtip_O` + Racun u Excelu, ili
-   buduća dorada: uvjet po Racun koloni u pravilu.
-   **Pravila sheet kreiran** u Review fileu (5 kolona, 4 seed primjera) — spreman za
-   iterativno pisanje pravila sa Sašom. NAPOMENA: pravi run još NIJE izvršen na pravom
-   fileu (snapshot+validacija se dogode automatski pri prvom pravom runu).
-   Leaf comment se NE definira ovdje — gradi ga import generator iz CommentTemplate
-   (`{racun}/{tip}/{podtip}/{napomena}`).
-3. ~~Provjeriti 1 preostali `[OCR?]` red~~ — ✅ riješeno 2026-07-14 (PBZ Card/Visa lump
-   05.06.2026, potvrdio Saša na dokumentu; ručno upisano u Transakcije + Review).
-4. ~~backfill `Datum naplate` za Racun/Cash~~ — ✅ IZVRŠENO 2026-07-15 (1631 redova, v. §2d).
+2. **Pravila sa Sašom (iterativno) — NASTAVAK.** Prvi krug gotov (v. §2e, 7 pravila, 217
+   redova). Sljedeći krug: kandidati navedeni u §2e (paypal ostatak, apple.com/bill, spotify,
+   osiguranje grupa, porez grupa, leasing, bmove, keks pay, zagrebparking) — treba Sašinu
+   odluku o Tip/Podtip za svaki (neki zahtijevaju nov red u Taksonomiji). Zamke: prekratke
+   riječi lažno pale (`zaba`, `eu`); specifičnija pravila IZNAD općenitijih; Tip/Podtip mora
+   postojati u Taksonomiji. OCR opisi NEMAJU razmake (`RBAISPLATAGOTOVI...`) — substring
+   match radi. Nakon svakog kruga: `--dry` prvo, provjeri `Pravilo run` kolonu za kontrolu.
+3. ~~Provjeriti 1 preostali `[OCR?]` red~~ — ✅ riješeno 2026-07-14.
+4. ~~backfill `Datum naplate` za Racun/Cash~~ — ✅ IZVRŠENO 2026-07-15.
 5. ~~`sync_taxonomy.py`~~ — ✅ Saša pokrenuo 2026-07-15.
-5b. **Saša: pregledati/popuniti `Preimenovanja` sheet** (4 para bez prijedloga) — v. §2d;
-   zatim prvi pravi `apply_rules.py` run (s pravim pravilima umjesto seed primjera!).
+5b. ~~Preimenovanja sheet popuna + prvi pravi run~~ — ✅ IZVRŠENO 2026-07-16 (v. §2e).
 5c. **Enrich dorada: PBZVISA split po Kartica koloni** (SAŠA → match na Sašine Visa retke,
    DUBRAVKA → Nematchano/novi retci) + `Izvod kandidat` kolona + reconcile report — v. §2d.
 6. **Pitanje za Koku:** 700€ isplata 2025-11-26 (v. §2c) + odluka o N/A masi.
+7. **Split-workbook** (opcionalno, v. §2e) — ako Saša želi nakon par kruga pravila.
 
 ## 4. Pravila okruženja (OBAVEZNO pročitati)
 

@@ -383,21 +383,50 @@ event_date = datum kupovine + `Datum naplate`/`Datum kupovine` atributi; auto de
    (D7 — preduvjet za Financije import!), S107b set_attribute automatika + Automations sheet,
    S107f UI fix. Help docs (activities.md, structure.md) ažurirani za novo ponašanje.
 
+**Done 2026-07-16 (S107g — prvi pravi apply_rules run + Pravilo/Preimenovanja prioritet;
+detalji ENRICH_PLAN §2e, sesija PRATNJE — Saša radio, Claude vodio kroz testove):**
+1. **T-S107f-1 potvrđen OK** (Datum naplate backfill kontrola); Preimenovanja sheet
+   pregledan — 2 auto-prijedloga bila pogrešna prije runa (PassSport kokin/sasin smjer +
+   Medical razmak/donja_crta mismatch s Taksonomijom; Taksonomija imala i duplikat
+   `Sport_Koka` bez `Sport_Sasa`) — sve ispravljeno prije prvog pravog runa.
+2. **`Pravilo run` kolona (novo)** — timestamp na svaki red koji zadnji `apply_rules.py`
+   run promijeni; filtrabilan audit trail (traženo od Saše: "da mogu provjeriti što sam
+   ispravio").
+3. **PRVI PRAVI RUN**: 196 preimenovano, 0 reset, 217 pravilo-klasificirano (7 pravila:
+   temu/bolt.eu/konzum/bauhaus/prime video/skyshowtime/google*youtube). N/A 2218→2000.
+4. **Nalaz: blanket Preimenovanja rename može pogoditi preširoko** kad stara kategorija
+   miješa različit sadržaj — `Zdravlje/Sportski rekviziti` (29) zapravo Multisport+Kreatin+
+   Decathlon. Fix: `fix_sportski_rekviziti_split.py` (one-off). Isti obrazac, drugi uzrok:
+   Kokin originalni T-com/T-mobile label krivo upisan na 2 retka (Izvod opis otkrio) —
+   `fix_tcom_tmobile_swap.py` (one-off).
+5. **Arhitekturna promjena u `apply_rules.py` (trajno):** prioritet za invalid-par retke
+   sad je **Pravilo (ako pogađa) > Preimenovanja rename > reset** — specifičnije keyword
+   pravilo automatski nadvladava preširoki blanket rename ubuduće (Saša predložio nakon
+   Sportski rekviziti nalaza). Testirano sintetički, 0 efekta na pravi file (nema više
+   invalid parova).
+6. **Nevenka Pavić uplata** (red 2436) ručno klasificirana: `Ostali prihodi` (bez Podtipa,
+   isti obrazac kao "Uplata mama"/"Nataša povrat"), pravilo nije napravljeno (samo 1 pojava).
+7. **Split-workbook prijedlog** (Taksonomija/Pravila/Preimenovanja → zaseban file za lakši
+   side-by-side rad) — diskutirano i tehnički potvrđeno izvedivo, ali ODGOĐENO na Sašin
+   zahtjev (prvo par krugova pravila s novom kolonom, pa eventualno split).
+
 **Sljedeći koraci (čekaju Sašu) — v. i ENRICH_PLAN §3:**
-1. Saša potvrdi → **backfill `Datum naplate` = event_date za Racun/Cash** (1631 redova, D1)
-2. **`sync_taxonomy.py`** ako dropdowni u Review još ne prate izmijenjeni Taksonomija sheet
-3. **Pravila iterativno sa Sašom** (`apply_rules.py` spreman; Review ima `Izvod opis` na 1725
-   redova; OCR opisi bez razmaka — substring match radi; prvi pravi run automatski radi
-   snapshot + 196 TAKS reseta)
-4. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (1538) — importati kao nove retke ili ignorirati
-5. Koka: 700€ isplata 2025-11-26 (nije na izvodu) + odluka što s N/A masom (T-S107-6);
+1. **Pravila iterativno sa Sašom — sljedeći krug.** Kandidati identificirani (ENRICH_PLAN
+   §2e): `paypal` ostatak, `apple.com/bill`, `spotify`, osiguranje grupa (allianz/triglav/
+   zivotno/investicijsko — treba nov Tip?), porez grupa (porez/prirez/dohodak — treba nov
+   Tip?), `leasing`, `bmove` (nepoznat merchant), `keks pay`, `zagrebparking`. Svaki treba
+   Sašinu odluku o Tip/Podtip prije pisanja pravila.
+2. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (1538) — importati kao nove retke ili ignorirati
+3. Koka: 700€ isplata 2025-11-26 (nije na izvodu) + odluka što s N/A masom (T-S107-6);
    Saša/Koka review `Financije_review_20260710_1448.xlsx`
-6. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip)
-7. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`;
+4. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip); T-S107f-3
+   (UI fix shortcut/skriveni atributi, PROD/mobitel — još netestirano)
+5. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`;
    Leaf comment definira import generator kroz CommentTemplate (`{racun}/{tip}/{podtip}/{napomena}`);
    Visa `Datum naplate` puni generator (RF lump datumi ili `next:N`)
-8. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
-9. Diary archaeology (non-blocking)
+6. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
+7. Diary archaeology (non-blocking)
+8. Split-workbook (Taksonomija/Pravila/Preimenovanja → zaseban file) — opcionalno, kad Saša poželi
 
 ### S108+: Intelligence layer (success criteria)
 

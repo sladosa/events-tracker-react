@@ -1,7 +1,7 @@
-# S107g Session Prompt — Sašini testovi + Preimenovanja run (pratnja)
+# S107h Session Prompt — drugi krug Pravila + preostali N/A
 
-**Datum:** 2026-07-15, kraj S107f
-**Branch:** test-branch (= main = PROD, commit cdbdff9; deploy izvršen, E2E 12/12)
+**Datum:** 2026-07-16, kraj S107g
+**Branch:** test-branch (commit uncommitted na kraju S107g — provjeri `git log -3`)
 **Preporučeni model za ovu sesiju: Sonnet** (pratnja/objašnjenja/mali fixevi —
 NE velike implementacije; za njih vidi "NIJE za ovu sesiju" dolje)
 
@@ -10,47 +10,73 @@ NE velike implementacije; za njih vidi "NIJE za ovu sesiju" dolje)
 ## Prompt za copy-paste
 
 ```
-Nastavljam Financije migraciju (S107g) — ovo je sesija PRATNJE: radim testove i
-Preimenovanja run, trebam objašnjenja i pomoć pri čitanju outputa, eventualno
-sitne fixeve. Kontekst pročitaj ovim redom:
-1. Claude-temp_R/test-sessions/S107f_tests.md — moji zadaci (T-S107f-1/2/3)
-2. data-prep_tools/Financije/ENRICH_PLAN.md — §2d (stanje S107f) + §3 SLJEDEĆI KORACI
+Nastavljam Financije migraciju (S107h) — drugi krug pisanja Pravila + preostali N/A
+redovi. Kontekst pročitaj ovim redom:
+1. Claude-temp_R/test-sessions/S107g_tests.md — što je odrađeno prošli put
+2. data-prep_tools/Financije/ENRICH_PLAN.md — §2e (stanje S107g) + §3 SLJEDEĆI KORACI
 
-STANJE (kraj S107f, 2026-07-15, commit cdbdff9 — main == test-branch, PROD deployan):
-- Datum naplate backfill IZVRŠEN (1631 Racun/Cash = event_date; Visa 220 prazno namjerno)
-- Preimenovanja sheet kreiran u Financije_review_20260710_1448.xlsx, pred-popunjen
-  (test na kopiji: 135 preimenovano + 61 reset = 196); JA popunjavam 4 prazna para
-  i brišem seed pravila, pa apply_rules --dry → run
-- UI fix (shortcut/skriveni atributi) na PROD-u — testiram T-S107f-3 na mobitelu
+STANJE (kraj S107g, 2026-07-16):
+- Prvi pravi apply_rules.py run izvršen: 196 preimenovano, 0 reset, 217 pravilo-
+  klasificirano (7 pravila: temu/bolt.eu/konzum/bauhaus/prime video/skyshowtime/
+  google*youtube). N/A pao 2218 → 2000.
+- Nova arhitektura u apply_rules.py: Pravilo (ako pogađa) > Preimenovanja rename > reset
+  za invalid-par retke — ako blanket rename par pogađa preširoko, specifičnije pravilo
+  ga automatski nadvladava. Nova kolona `Pravilo run` (timestamp audit trail po redu).
+- 2 one-off fixa napravljena za greške otkrivene u blanket Preimenovanja renameu:
+  fix_sportski_rekviziti_split.py (Multisport/Kreatin/Decathlon razdvojeni),
+  fix_tcom_tmobile_swap.py (2 retka gdje je Kokin originalni label bio krivo upisan —
+  Izvod opis otkrio pravu uslugu).
+- Nevenka Pavić uplata (jednokratni poklon) ručno klasificirana kao Ostali prihodi.
 
 ŠTO OČEKUJEM OD TEBE:
-- vodi me kroz korake iz S107f_tests.md kad zapnem; objasni outpute skripti
-- ako javim "pao T-S107f-X" → analiziraj i predloži; sitne fixeve smiješ kodirati
-  (typecheck+build prije commita), commit SAMO na test-branch
-- zapiši rezultate testova u PENDING_TESTS.md (⬜→✅/❌)
+- Pomozi mi napisati pravila za sljedeći krug (kandidati dolje) — svaki treba MOJU
+  odluku o Tip/Podtip prije upisa u Pravila sheet (neki trebaju nov red u Taksonomiji)
+- Nakon svakog kruga: --dry prvo, provjeri brojke, tek onda pravi run
+- Ako naiđeš na sličan "blanket rename pogodio preširoko" slučaj kao Sportski rekviziti/
+  T-com-T-mobile prošli put — provjeri je li Pravilo-nadvladava-Preimenovanja mehanizam
+  dovoljan (radi samo dok par još nije preimenovan!) ili treba opet one-off fix
+- Sitne fixeve smiješ kodirati (typecheck+build za app kod; py_compile za Python),
+  commit SAMO na test-branch
+- Zapiši rezultate u PENDING_TESTS.md (⬜→✅/❌)
+
+KANDIDATI ZA PRAVILA (iz S107g analize, ENRICH_PLAN §2e) — treba moju odluku o Tip/Podtip:
+- paypal ostatak (~45 redova osim temu, merchant varira — NE blanket pravilo)
+- apple.com/bill (50×, nema Podtip u Taksonomiji još)
+- spotify (22×, nema Podtip u Zabava još)
+- osiguranje grupa: allianz/triglav/zivotno/investicijsko (~26-43×, nema Tip "Osiguranje")
+- porez grupa: porez/prirez/dohodak (APN porez, ~50×, nema Tip "Porezi")
+- leasing (OTP Leasing, ~15×)
+- bmove (30×, ne znam koji je to trošak)
+- keks pay (63×, P2P transfer — ovisi o namjeni)
+- zagrebparking (45×, vjerojatno auto C5/parking — potvrditi)
 
 PRAVILA: run.bat + PYTHONUTF8=1; Review file ZATVOREN u Excelu prije skripti;
 backup nastaje automatski; cmd guši zarez u argumentima (jedan substring po pozivu);
 NIKAD ne pushati/mergati na main; NE dirati vrijednosti u Review sheetu iz koda
-osim kroz postojeće skripte.
+osim kroz postojeće (ili nove, ali backed-up) skripte.
 
-NIJE ZA OVU SESIJU (čeka jaču sesiju, plan u ENRICH_PLAN §2d/§3):
+NIJE ZA OVU SESIJU (čeka jaču sesiju, plan u ENRICH_PLAN §2e/§3):
 PBZVISA split po Kartica koloni, Izvod kandidat kolona, reconcile report,
-Visa generator novih redaka, import generator.
+Visa generator novih redaka, import generator, split-workbook (Taksonomija/Pravila/
+Preimenovanja → zaseban file — diskutirano, tehnički OK, ali čeka dok se ne odradi
+par krugova pravila).
 ```
 
 ---
 
 ## Kontekst za model (ne mora u prompt)
 
-- **Preimenovanja mehanika:** apply_rules.py na pravom runu radi (redom): Tip_O/Podtip_O
-  snapshot (jednom) → preimenovanja (Pouzdanost se ČUVA, `PREIM:` u Alternativa) →
-  reset nevaljanih parova bez mappinga (N/A + `TAKS:`) → keyword pravila (samo na
-  Tip prazan/N/A). Prazan Pravila sheet je OK (renames su dovoljni za run).
-- **Očekivane brojke --dry runa:** preimenovano ≥135 (više ako Saša popuni 4 para:
-  Sportski rekviziti 29, PassSport 12, AudibleSasa 11, Saša projekti 9), reset =
-  ostatak do 196. Ukupno preimenovano+reset = 196.
-- **Ako Saša pita za PBZ Visa:** odluke su pale (dodati 1538 tx; lump→Transfer;
-  per-osoba Podtip; Kokina Visa se skida sa SAŠINOG RF računa) — implementacija NIJE
-  u ovoj sesiji.
+- **apply_rules.py sad ima 3 razine prioriteta za invalid-par retke:** Pravilo (ako
+  keyword pogađa) > Preimenovanja rename > reset na N/A. Za retke koji su VEĆ preimenovani
+  (valjan par), novo pravilo ih više NE dira — ako se otkrije greška u već-preimenovanom
+  retku (kao T-com/T-mobile), treba one-off fix skriptu (pattern: `fix_*.py` u
+  data-prep_tools/Financije/, prepoznaje retke preko `Tip_O`/`Podtip_O` snapshot kolona).
+- **`Pravilo run` kolona** — filtriraj po zadnjem timestampu da vidiš što je zadnji run
+  promijenio, neovisno o starijim runovima.
+- **Prije pisanja pravila:** provjeri Taksonomija sheet ima li ciljani Tip/Podtip par —
+  ako ne, prvo treba Saša doda red u Taksonomiju (i eventualno `sync_taxonomy.py` za
+  dropdown refresh), tek onda pravilo.
+- **Split-workbook** (Taksonomija/Pravila/Preimenovanja → zaseban file, da Saša može
+  ostaviti otvoren za referencu bez zatvaranja Reviewa) — spreman prijedlog, čeka
+  Sašinu odluku želi li ga implementirati.
 - **Deploy procedura** (samo na izričit zahtjev): CLAUDE.md → Session workflow → End of session.

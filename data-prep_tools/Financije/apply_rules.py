@@ -40,6 +40,11 @@ labela (npr. "Konzum"). Upisuje se SAMO ako je Napomena reda prazna (P3 princip)
 Označavanje: pogođeni red dobije Pouzdanost='PRAVILO' i 'pravilo #N: <ključne riječi>'
 u koloni Alternativa / nap. — filtriraj Pouzdanost=PRAVILO za brzu kontrolu.
 
+Kolona `Pravilo run` (S107g): timestamp (YYYY-MM-DD HH:MM) upisan na SVAKI red koji
+je OVAJ run promijenio (rename, TAKS reset ili pravilo) — filtriraj po zadnjem
+timestampu da vidiš točno što je zadnji run dirao, neovisno od starijih runova.
+Kreira se jednom (kao Tip_O/Podtip_O), vrijednost se prepisuje na svakom runu.
+
 Validacija pravila: Tip/Podtip pravila moraju postojati u `Taksonomija` sheetu,
 inače se pravilo preskače uz upozorenje (da se u Review ne upiše nevaljan par).
 
@@ -60,6 +65,7 @@ from pathlib import Path
 
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -311,6 +317,13 @@ def read_renames(wb, tax: dict[str, set[str]]) -> list[dict]:
     return out
 
 
+def expand_autofilter(ws) -> None:
+    """Autofilter mora obuhvatiti sve kolone — sort inače ne nosi nove kolone s redom."""
+    if ws.auto_filter.ref:
+        first = ws.auto_filter.ref.split(':')[0]
+        ws.auto_filter.ref = f'{first}:{get_column_letter(ws.max_column)}{ws.max_row}'
+
+
 def ensure_snapshot(ws, col_tip: int, col_pod: int, dry: bool) -> bool:
     """Tip_O/Podtip_O kolone = kopija Tip/Podtip PRIJE prvog pisanja pravila.
     Kreira se jednom (postojanje kolona = marker); nikad se ne ažurira."""
@@ -330,13 +343,28 @@ def ensure_snapshot(ws, col_tip: int, col_pod: int, dry: bool) -> bool:
             ws.cell(r, c_tip_o, v_tip)
         if v_pod is not None:
             ws.cell(r, c_pod_o, v_pod)
-    # Autofilter mora obuhvatiti nove kolone — sort inače ne nosi _O s redom
-    if ws.auto_filter.ref:
-        first = ws.auto_filter.ref.split(':')[0]
-        from openpyxl.utils import get_column_letter
-        ws.auto_filter.ref = f'{first}:{get_column_letter(ws.max_column)}{ws.max_row}'
+    expand_autofilter(ws)
     print(f'✔ Snapshot: Tip_O/Podtip_O kolone kreirane (kopija Tip/Podtip prije pravila)')
     return True
+
+
+def ensure_run_column(ws, dry: bool) -> tuple[int | None, bool]:
+    """'Pravilo run' kolona — timestamp na svaki red koji OVAJ run promijeni.
+    Kreira se jednom (kao Tip_O), vrijednosti se prepisuju na svakom runu.
+    Vraća (col_index, created_now) — created_now forsira save i kad nema drugih promjena."""
+    for c in range(1, ws.max_column + 1):
+        if str(ws.cell(1, c).value or '').strip() == 'Pravilo run':
+            return c, False
+    if dry:
+        print('… (dry) "Pravilo run" kolona bi se kreirala pri pravom runu')
+        return None, False
+    c_run = ws.max_column + 1
+    cell = ws.cell(1, c_run, 'Pravilo run')
+    cell.fill, cell.font, cell.border = HDR_FILL, WHITE_BOLD, BORDER
+    ws.column_dimensions[get_column_letter(c_run)].width = 16
+    expand_autofilter(ws)
+    print('✔ Kreirana kolona "Pravilo run" (timestamp po redu za zadnji run)')
+    return c_run, True
 
 
 def main() -> None:
@@ -385,13 +413,36 @@ def main() -> None:
 
     # ── 1. SNAPSHOT (jednom): Tip_O/Podtip_O = original prije pravila ─────────
     snap_created = ensure_snapshot(ws, col_tip, col_pod, dry)
+    col_run, run_col_created = ensure_run_column(ws, dry)
+    run_stamp = datetime.now().strftime('%Y-%m-%d %H:%M')
 
-    # ── 2. PREIMENOVANJA + VALIDACIJA: nevaljan par → novi par ILI reset na N/A ──
+    hits_per_rule: dict[int, int] = {}
+
+    def match_text(r: int) -> str:
+        text = fold(ws.cell(r, col_nap).value)
+        for c in izvod_cols:
+            text += ' | ' + fold(ws.cell(r, c).value)
+        return text
+
+    def find_rule(r: int) -> tuple[int, dict] | None:
+        text = match_text(r)
+        if not text.strip(' |'):
+            return None
+        for i, rule in enumerate(rules):
+            if all(t in text for t in rule['terms']):
+                return i, rule
+        return None
+
+    # ── 2. PREIMENOVANJA + VALIDACIJA: nevaljan par → PRAVILO (ako pogađa) →
+    #        novi par (Preimenovanja) → reset na N/A. Pravilo nadvladava blanket
+    #        rename kad par-mapping pogađa preširoko (S107g).
     reset_rows: set[int] = set()
     tax_samples: list[str] = []
     renamed = 0
     ren_hits: dict[int, int] = {}
     ren_samples: list[str] = []
+    overridden = 0
+    over_samples: list[str] = []
     for r in range(2, ws.max_row + 1):
         tip_now = str(ws.cell(r, col_tip).value or '').strip()
         if tip_now in ('', 'N/A'):
@@ -401,6 +452,29 @@ def main() -> None:
             pod_now = ''
         if tip_now in tax and (not pod_now or pod_now in tax[tip_now]):
             continue                          # valjan par (prazan Podtip = valjan)
+        found = find_rule(r)
+        if found:
+            i, rule = found
+            overridden += 1
+            hits_per_rule[i] = hits_per_rule.get(i, 0) + 1
+            if not dry:
+                ws.cell(r, col_tip, rule['tip'])
+                if rule['pod']:
+                    ws.cell(r, col_pod, rule['pod'])
+                else:
+                    ws.cell(r, col_pod).value = None
+                ws.cell(r, col_conf, 'PRAVILO')
+                old_alt = str(ws.cell(r, col_alt).value or '').strip()
+                mark = f'PRAVILO #{i + 1} nadvladao Preimenovanja: bio {tip_now}/{pod_now or "—"}'
+                ws.cell(r, col_alt, f'{old_alt} | {mark}' if old_alt else mark)
+                if rule['nap'] and not str(ws.cell(r, col_nap).value or '').strip():
+                    ws.cell(r, col_nap, rule['nap'])
+                if col_run:
+                    ws.cell(r, col_run, run_stamp)
+            if len(over_samples) < 8:
+                over_samples.append(f'  red {r}: {tip_now}/{pod_now or "—"} → pravilo #{i + 1} '
+                                     f'"{rule["kw"]}" → {rule["tip"]}/{rule["pod"] or "—"}')
+            continue
         racun_f = fold(ws.cell(r, col_rac).value)
         m = next((m for m in renames
                   if m['old'] == (fold(tip_now), fold(pod_now))
@@ -417,6 +491,8 @@ def main() -> None:
                 old_alt = str(ws.cell(r, col_alt).value or '').strip()
                 mark = f'PREIM: bio {tip_now}/{pod_now or "—"}'
                 ws.cell(r, col_alt, f'{old_alt} | {mark}' if old_alt else mark)
+                if col_run:
+                    ws.cell(r, col_run, run_stamp)
             if len(ren_samples) < 8:
                 ren_samples.append(f'  red {r}: {tip_now}/{pod_now or "—"} → {m["nt"]}/{m["np"] or "—"}')
             continue
@@ -426,6 +502,8 @@ def main() -> None:
             ws.cell(r, col_pod).value = None   # cell(r,c,None) NE briše — mora preko .value
             ws.cell(r, col_conf, 'NEMA')
             ws.cell(r, col_alt, f'TAKS: bio {tip_now}/{pod_now or "—"}')
+            if col_run:
+                ws.cell(r, col_run, run_stamp)
         if len(tax_samples) < 8:
             tax_samples.append(f'  red {r}: {tip_now}/{pod_now or "—"} → N/A (nije u Taksonomiji)')
     if renamed:
@@ -444,9 +522,14 @@ def main() -> None:
         print('\n'.join(tax_samples))
         if len(reset_rows) > len(tax_samples):
             print(f'  ... i još {len(reset_rows) - len(tax_samples)}')
+    if overridden:
+        print(f'{"Bi pravilo nadvladalo" if dry else "Pravilo nadvladalo"} Preimenovanja (par bio '
+              f'preširok): {overridden} redova')
+        print('\n'.join(over_samples))
+        if overridden > len(over_samples):
+            print(f'  ... i još {overridden - len(over_samples)}')
 
     # ── 3. PRAVILA na Tip prazan/N/A (uklj. svježe resetirane) ────────────────
-    hits_per_rule: dict[int, int] = {}
     changed = nap_filled = 0
     samples: list[str] = []
     conflicts: list[str] = []
@@ -481,6 +564,8 @@ def main() -> None:
                     if rule['nap'] and not str(ws.cell(r, col_nap).value or '').strip():
                         ws.cell(r, col_nap, rule['nap'])   # P3: prazno se puni, puno NE
                         nap_filled += 1
+                    if col_run:
+                        ws.cell(r, col_run, run_stamp)
                 hits_per_rule[i] = hits_per_rule.get(i, 0) + 1
                 changed += 1
                 if len(samples) < 8:
@@ -502,7 +587,7 @@ def main() -> None:
         if n_conflicts > len(conflicts):
             print(f'  ... i još {n_conflicts - len(conflicts)}')
 
-    if dry or not (changed or reset_rows or renamed or snap_created):
+    if dry or not (changed or reset_rows or renamed or overridden or snap_created or run_col_created):
         return
 
     backup = path.with_name(f'{path.stem}.pre-rules-{datetime.now():%Y%m%d_%H%M%S}.xlsx')
@@ -512,7 +597,8 @@ def main() -> None:
     except PermissionError:
         sys.exit(f'✗ Ne mogu snimiti — zatvori file u Excelu i ponovi. (Backup: {backup.name})')
     print(f'✔ Snimljeno. Backup: {backup.name}')
-    print('  Kontrola: filtriraj Pouzdanost = PRAVILO (pravila) i "TAKS:" u Alternativa (reseti).')
+    print('  Kontrola: filtriraj Pouzdanost = PRAVILO (pravila) i "TAKS:" u Alternativa (reseti);'
+          f' ili "Pravilo run" = {run_stamp} za sve što je OVAJ run dirao.')
 
 
 if __name__ == '__main__':

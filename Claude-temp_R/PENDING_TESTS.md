@@ -3,9 +3,22 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107f (2026-07-15)
-**Detalji testova:** [S107f_tests.md](test-sessions/S107f_tests.md) (novi) + [S107d_tests.md](test-sessions/S107d_tests.md) + [S107c_tests.md](test-sessions/S107c_tests.md) + [S107b_tests.md](test-sessions/S107b_tests.md)
+**Zadnji update:** S107g (2026-07-16)
+**Detalji testova:** [S107g_tests.md](test-sessions/S107g_tests.md) (novi) + [S107f_tests.md](test-sessions/S107f_tests.md) + [S107d_tests.md](test-sessions/S107d_tests.md) + [S107c_tests.md](test-sessions/S107c_tests.md) + [S107b_tests.md](test-sessions/S107b_tests.md)
 **Upute za izvode (i za Koku):** [UPUTE_izvodi.md](UPUTE_izvodi.md) — kako skinuti/spremiti/obraditi bankovne izvode
+
+---
+
+## S107g — prvi pravi apply_rules run + Pravilo/Preimenovanja prioritet
+
+| ID        | Test                                                                                                          | Status              |
+| --------- | ------------------------------------------------------------------------------------------------------------- | ------------------- |
+| T-S107g-1 | Pravi `apply_rules.py` run: 196 preimenovano, 0 reset, 217 pravilo (7 pravila)                                | ✅ (programski provjereno; Sašin vizualni Excel pregled još pending) |
+| T-S107g-2 | `Pravilo run` kolona kreirana i timestampana (413 = 196+217)                                                  | ✅ (programski provjereno) |
+| T-S107g-3 | Pravilo nadvladava Preimenovanja (sintetički test)                                                            | ✅ (sintetički test)   |
+| T-S107g-4 | `fix_sportski_rekviziti_split.py`: 23 multisport→Sport_Sasa, 3 Kreatin→Namirnice, 3 Decathlon netaknuto       | ✅ (verificirano)    |
+| T-S107g-5 | `fix_tcom_tmobile_swap.py`: 2 retka (2281, 2282) zamijenjena po Izvod opisu                                    | ✅ (verificirano)    |
+| T-S107g-6 | Nevenka Pavić uplata (red 2436) → Ostali prihodi                                                               | ✅ (verificirano)    |
 
 ---
 
@@ -13,9 +26,9 @@
 
 | ID        | Test                                                                                                          | Status              |
 | --------- | ------------------------------------------------------------------------------------------------------------- | ------------------- |
-| T-S107f-1 | Kontrola backfilla: Racun/Cash `Datum naplate` = event_date (1631); Visa prazan; MC netaknut                  | ⬜                   |
-| T-S107f-2 | **GLAVNI POSAO:** Preimenovanja sheet popuna (4 prazna para + pregled prijedloga) → apply_rules --dry → run   | ⬜ (Sašin potez)     |
-| T-S107f-3 | UI fix (test-branch): shortcut Strength — Strength_type vidljiv, Activity expand pokazuje poruku, engleski    | ⬜                   |
+| T-S107f-1 | Kontrola backfilla: Racun/Cash `Datum naplate` = event_date (1631); Visa prazan; MC netaknut                  | ✅ (Saša potvrdio "OK") |
+| T-S107f-2 | **GLAVNI POSAO:** Preimenovanja sheet popuna (4 prazna para + pregled prijedloga) → apply_rules --dry → run   | ✅ (izvršeno S107g, v. gore)     |
+| T-S107f-3 | UI fix (test-branch): shortcut Strength — Strength_type vidljiv, Activity expand pokazuje poruku, engleski    | ⬜ (netestirano ove sesije — PROD/mobitel)                   |
 
 ---
 
