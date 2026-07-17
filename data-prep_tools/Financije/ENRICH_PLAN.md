@@ -156,26 +156,67 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
   (dropdown mehanizam u Review-u ostaje netaknut), ali ODGOĐENO na Sašin zahtjev dok se prvo
   ne odradi par krugova s novom kolonom. Nije implementirano.
 
+## 2f. S107h (2026-07-17) — drugi krug pravila + Iznos min/max novi feature
+
+- **Code review novih Pravila redova PRIJE runa** (Saša ih sam dodao) — 2 stvarna bug-a
+  nađena: `*osiguranje*`/`*porez*` zvjezdica se tretira doslovno (nije wildcard) → 0
+  pogodaka; `APPLE.COM` → Podtip "Apple" ne postoji u Taksonomiji → pravilo preskočeno.
+- **`Komentar` → `Alternativa` dopisivanje (novo, trajno u `apply_rules.py`):** kolona je
+  postojala ali se nikad nije čitala; sad se, ako popunjena, dopisuje uz keyword marker u
+  Alternativa/nap. — sigurno mjesto za "TODO razdvoji po X" bilješke, ne dira comment polje.
+- **Novi `Iznos min`/`Iznos max` uvjet (novo, trajno u `apply_rules.py`):** opcionalni
+  stupci u Pravila; pravilo pogađa samo ako je Isplata/Uplata reda unutar raspona. Otkriće:
+  APPLE.COM (60 redova) je iCloud pretplata (2 price-point clustera 2.99€/7.99→9.99€,
+  potvrđeno postojećim ručno klasificiranim redom), NE "Zabava" → `Informatika`/`Cloud
+  backup`. AUDIBLE razdvojen Audible_Koka/Sasa po pragu 10€ (Koka: Sasin je skuplji,
+  jasan gap 8.99→13.21 u podacima).
+- **Osiguranje/Allianz/Generali/Triglav redizajn (Koka odluke, chat s Kokom):** sve ide u
+  POSTOJEĆE kategorije, Taksonomija combined-bucket placeholder obrisan. Allianz (auto,
+  Koka ne zna pouzdano koji auto) → `auto C5`/`registracija` blanket (25×) + eksplicitno
+  označeni red "Allianz Lacetti" → `auto Lacetti`/`registracija` (1×, rule ORDER bitan —
+  specifičniji prije generičkog). Generali (kuća, oba računa) → `Domaćinstvo`/`Popravci,
+  održavanje, osiguranje` (5×). Triglav (životno, "prošlost", ne treba D/I split) →
+  `Osiguranje`/`Osiguranje` (16×).
+- **AMAZON pravilo maknuto** — samo 2 retka (48.45€, 52.41€), cijena ne odgovara Amazon
+  Prime pretplati na amazon.de (89.90€/god), transaction-reference format izgleda kao
+  obična narudžba. Ostaje ručno.
+- **`update_pravila_s107h.py` (novo, one-off):** Claude je na Sašin zahtjev direktno
+  regenerirao cijeli Pravila body iz `FINAL_RULES` liste (idempotentan, auto-backup).
+- **PRAVI RUN #2 izvršen:** 294 redova, +46 Napomena popunjeno. N/A **2000 → 1706**.
+  Sve programske kontrole prošle (Audible threshold 0 kršenja, Pravilo run timestamp
+  count = 294, Napomena fill count 43/44).
+- **Odluka za sljedeću sesiju (Saša + Claude, kraj S107h):** PRIJE sljedećeg kruga
+  pravila, odraditi **PBZ Visa split s jačim modelom** (v. §3 t.1) — 1538 tx trenutno
+  NISU u Review sheetu (sjede u Nematchano), pa ih pravila ne mogu ni vidjeti; nakon
+  merge-a kao novi Review redovi, postojeća pravila odmah klasificiraju dobar dio
+  besplatno. Zadatak i rizičniji (pravi novac, person-split, PDF datumi) → opravdano
+  jačim modelom nego dosadašnje Sonnet rules-craft sesije.
+
 ## 3. SLJEDEĆI KORACI
 
-1. **Odluka: PBZ Visa transakcije (1538 u Nematchano sheetu).** Opcije:
-   (a) generirati NOVE review retke iz Nematchano (datum, iznos, opis, Izvor — treba novi
-   Izvor `Visa Koka` ili slično u Review + Taksonomija odluka), (b) ignorirati za migraciju
-   (Kokin Excel = izvor istine), (c) importati kasnije kao zaseban batch. Sašina odluka.
-2. **Pravila sa Sašom (iterativno) — NASTAVAK.** Prvi krug gotov (v. §2e, 7 pravila, 217
-   redova). Sljedeći krug: kandidati navedeni u §2e (paypal ostatak, apple.com/bill, spotify,
-   osiguranje grupa, porez grupa, leasing, bmove, keks pay, zagrebparking) — treba Sašinu
-   odluku o Tip/Podtip za svaki (neki zahtijevaju nov red u Taksonomiji). Zamke: prekratke
-   riječi lažno pale (`zaba`, `eu`); specifičnija pravila IZNAD općenitijih; Tip/Podtip mora
-   postojati u Taksonomiji. OCR opisi NEMAJU razmake (`RBAISPLATAGOTOVI...`) — substring
-   match radi. Nakon svakog kruga: `--dry` prvo, provjeri `Pravilo run` kolonu za kontrolu.
+1. **PRIORITET sljedeće sesije (jači model) — PBZ Visa split (1538 tx u Nematchano sheetu).**
+   Person-split po Kartica koloni (SAŠA → match na postojeće Sašine Visa retke; DUBRAVKA/Koka
+   → novi retci, Racun = `Sašin tekući RF` — v. §2d KLJUČNO nalaz), `Datum naplate` iz PBZ
+   PDF-ova, `Izvod kandidat` kolona (labaviji match, ~256 ne-Visa nematchanih) + reconcile
+   report po računu×mjesecu (v. §2d). Lump plaćanja → `Transfer/između računa`. Rizičnije od
+   uobičajenog rules-craft (pravi novac, person-split) — zato jači model.
+2. **Pravila sa Sašom (iterativno) — NASTAVAK, kad PBZ Visa merge završi (Sonnet OK).**
+   Prvi + drugi krug gotovi (v. §2e/§2f). Preostali kandidati: `paypal` ostatak (~45 redova,
+   merchant varira — NE blanket pravilo), `spotify` ostatak, `leasing` (OTP Leasing — VEĆ
+   riješeno §2f, provjeri je li još što ostalo), `bmove` (30×, nepoznat merchant — pitati
+   Sašu/Koku), `keks pay` (63×, P2P transfer app — ovisi o namjeni), `zagrebparking` (45×,
+   vjerojatno `auto C5/parking` — potvrditi), porez grupa (porez/prirez/dohodak — treba nov
+   Tip "Porezi"? odgođeno, nije riješeno u §2f). Zamke: prekratke riječi lažno pale (`zaba`,
+   `eu`); specifičnija pravila IZNAD općenitijih (rule ORDER, v. allianz&lacetti primjer §2f);
+   Tip/Podtip mora postojati u Taksonomiji. Nakon svakog kruga: `--dry` prvo, provjeri
+   `Pravilo run` kolonu za kontrolu.
 3. ~~Provjeriti 1 preostali `[OCR?]` red~~ — ✅ riješeno 2026-07-14.
 4. ~~backfill `Datum naplate` za Racun/Cash~~ — ✅ IZVRŠENO 2026-07-15.
 5. ~~`sync_taxonomy.py`~~ — ✅ Saša pokrenuo 2026-07-15.
 5b. ~~Preimenovanja sheet popuna + prvi pravi run~~ — ✅ IZVRŠENO 2026-07-16 (v. §2e).
-5c. **Enrich dorada: PBZVISA split po Kartica koloni** (SAŠA → match na Sašine Visa retke,
-   DUBRAVKA → Nematchano/novi retci) + `Izvod kandidat` kolona + reconcile report — v. §2d.
-6. **Pitanje za Koku:** 700€ isplata 2025-11-26 (v. §2c) + odluka o N/A masi.
+5c. ~~Drugi krug pravila (Osiguranje/Allianz/Generali/Triglav/Apple/Audible)~~ — ✅
+   IZVRŠENO 2026-07-17 (v. §2f).
+6. **Pitanje za Koku:** 700€ isplata 2025-11-26 (v. §2c) + odluka o preostaloj N/A masi.
 7. **Split-workbook** (opcionalno, v. §2e) — ako Saša želi nakon par kruga pravila.
 
 ## 4. Pravila okruženja (OBAVEZNO pročitati)

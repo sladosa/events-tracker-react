@@ -36,9 +36,23 @@ Tekst po kojem se traži = Napomena kolona + 'Izvod opis*' kolone
 
 Napomena output (S107e): pravilo može imati i `Napomena` kolonu — čista ljudska
 labela (npr. "Konzum"). Upisuje se SAMO ako je Napomena reda prazna (P3 princip).
+OPREZ: Napomena reda na kraju hrani `comment` polje uvezenog eventa u appu —
+ne piši ovdje privremene/upitne bilješke sebi (npr. "odredi koje?"), samo gotove labele.
+
+Komentar (S107h): NIJE label, čita se samo za audit — ako je popunjen, dopisuje se
+uz keyword marker u Alternativa / nap. koloni (npr. "pravilo #14: triglav | provjeri policu").
+Sigurno mjesto za bilješke tipa "TODO razdvoji po ..." koje ti trebaju za kasnije filtriranje/
+suženje u Review-u, a da ne završe u pravom comment polju.
+
+Iznos min / Iznos max (opcionalno, S107h): dodatni uvjet uz ključne riječi — pravilo pogađa
+SAMO ako je Isplata/Uplata reda unutar raspona (prazno polje = bez granice na toj strani).
+Korisno kad isti merchant/tekst ima dvije cijenovne razine koje odgovaraju dvjema osobama
+(npr. Audible_Koka jeftinija pretplata vs Audible_Sasa skuplja — razlikuju se samo po iznosu,
+ne po tekstu).
 
 Označavanje: pogođeni red dobije Pouzdanost='PRAVILO' i 'pravilo #N: <ključne riječi>'
-u koloni Alternativa / nap. — filtriraj Pouzdanost=PRAVILO za brzu kontrolu.
+(+ Komentar ako postoji) u koloni Alternativa / nap. — filtriraj Pouzdanost=PRAVILO za
+brzu kontrolu, ili po tekstu Komentara za suženje na konkretno pravilo/podskup.
 
 Kolona `Pravilo run` (S107g): timestamp (YYYY-MM-DD HH:MM) upisan na SVAKI red koji
 je OVAJ run promijenio (rename, TAKS reset ili pravilo) — filtriraj po zadnjem
@@ -88,9 +102,19 @@ SEED_RULES = [  # primjeri — slobodno obriši/zamijeni (kolone: ključne rije�
 HELP_TEXT = (
     'PRAVILA KLASIFIKACIJE — jedan red = jedno pravilo; odozgo prema dolje, PRVI match pobjeđuje.\n'
     'Ključne riječi: "konzum" = tekst sadrži konzum; "telekom & racun" = sadrži OBJE riječi.\n'
+    'Zvjezdica * NIJE wildcard — traži se doslovno (radi samo ako tekst stvarno ima "*", npr.\n'
+    '"GOOGLE *YouTube"). Za "sadrži riječ bilo gdje" piši samo riječ, bez zvjezdica.\n'
     'Case i dijakritike se ignoriraju (Č=č=c). OR se piše kao dva odvojena reda pravila.\n'
     'Pravilo se primjenjuje SAMO na redove gdje je Tip prazan ili N/A — ručni rad se ne dira.\n'
-    'Napomena kolona (opcionalno): čista labela, upisuje se SAMO u redove s praznom Napomenom.\n'
+    'Napomena kolona (opcionalno): čista GOTOVA labela, upisuje se SAMO u redove s praznom\n'
+    'Napomenom — na kraju hrani comment polje uvezenog eventa u appu, NE piši ovdje "odredi\n'
+    'koje?" ili slične podsjetnike sebi.\n'
+    'Komentar kolona (opcionalno, S107h): NIJE label, ne ide u comment — dopisuje se uz\n'
+    '"pravilo #N: <ključne riječi>" u Alternativa / nap. koloni Reviewa, za tvoje filtriranje/\n'
+    'suženje kasnije (npr. "provjeri policu", "TODO razdvoji po X"). Sigurno mjesto za bilješke.\n'
+    'Iznos min / Iznos max (opcionalno, S107h): dodatni uvjet uz ključne riječi — red mora\n'
+    'imati Isplata/Uplata unutar raspona (jedno od dva polje smije ostati prazno = bez granice).\n'
+    'Za razdvajanje istog merchanta po cijeni (npr. dvije razine pretplate = dvije osobe).\n'
     'Tekst za pretragu = Napomena + "Izvod opis" kolone (nakon enrich_from_izvoda.py).\n'
     'Tip i Podtip moraju postojati u Taksonomija sheetu (inače se pravilo preskače uz upozorenje).\n'
     'Prije primjene: skripta jednom snima Tip_O/Podtip_O original kolone + resetira na N/A\n'
@@ -124,7 +148,8 @@ def pick_file(args: list[str]) -> Path:
 
 def create_pravila_sheet(wb, path: Path) -> None:
     ws = wb.create_sheet('Pravila', 2)   # odmah iza Taksonomije
-    headers = [('Ključne riječi', 32), ('Tip', 16), ('Podtip', 24), ('Napomena', 18), ('Komentar', 40)]
+    headers = [('Ključne riječi', 32), ('Tip', 16), ('Podtip', 24), ('Napomena', 18), ('Komentar', 40),
+               ('Iznos min', 10), ('Iznos max', 10)]
     for c, (h, w) in enumerate(headers, 1):
         cell = ws.cell(1, c, h)
         cell.fill, cell.font, cell.border = HDR_FILL, WHITE_BOLD, BORDER
@@ -132,10 +157,10 @@ def create_pravila_sheet(wb, path: Path) -> None:
     for r, rule in enumerate(SEED_RULES, 2):
         for c, v in enumerate(rule, 1):
             ws.cell(r, c, v).border = BORDER
-    note = ws.cell(2, 7, HELP_TEXT)
+    note = ws.cell(2, 8, HELP_TEXT)
     note.alignment = Alignment(wrap_text=True, vertical='top')
-    ws.column_dimensions['G'].width = 95
-    ws.row_dimensions[2].height = 150
+    ws.column_dimensions['H'].width = 95
+    ws.row_dimensions[2].height = 210
     ws.freeze_panes = 'A2'
     wb.save(path)
     print(f'✔ Kreiran "Pravila" sheet u {path.name} (s {len(SEED_RULES)} primjera).')
@@ -166,12 +191,18 @@ def read_rules(wb, tax: dict[str, set[str]]) -> list[dict]:
     c_tip = hdr.get('tip', 2)
     c_pod = hdr.get('podtip', 3)
     c_nap = hdr.get('napomena')          # None u starom (4-kolonskom) Pravila sheetu
+    c_kom = hdr.get('komentar')
+    c_imin = hdr.get('iznos min')        # None ako kolona ne postoji (stariji Pravila sheet)
+    c_imax = hdr.get('iznos max')
     rules, skipped = [], 0
     for r in range(2, ws.max_row + 1):
         kw  = str(ws.cell(r, c_kw).value or '').strip()
         tip = str(ws.cell(r, c_tip).value or '').strip()
         pod = str(ws.cell(r, c_pod).value or '').strip()
         nap = str(ws.cell(r, c_nap).value or '').strip() if c_nap else ''
+        kom = str(ws.cell(r, c_kom).value or '').strip() if c_kom else ''
+        imin_raw = ws.cell(r, c_imin).value if c_imin else None
+        imax_raw = ws.cell(r, c_imax).value if c_imax else None
         if not kw and not tip:
             continue
         if not kw or not tip:
@@ -183,8 +214,15 @@ def read_rules(wb, tax: dict[str, set[str]]) -> list[dict]:
         if pod and pod not in tax[tip]:
             print(f'⚠ Pravila red {r}: Podtip "{pod}" ne postoji pod Tipom "{tip}" — preskočen'); skipped += 1
             continue
+        try:
+            imin = float(imin_raw) if imin_raw not in (None, '') else None
+            imax = float(imax_raw) if imax_raw not in (None, '') else None
+        except (TypeError, ValueError):
+            print(f'⚠ Pravila red {r}: Iznos min/max nije broj — preskočen'); skipped += 1
+            continue
         terms = [fold(t.strip()) for t in kw.split('&') if t.strip()]
-        rules.append({'row': r, 'kw': kw, 'terms': terms, 'tip': tip, 'pod': pod, 'nap': nap})
+        rules.append({'row': r, 'kw': kw, 'terms': terms, 'tip': tip, 'pod': pod, 'nap': nap, 'kom': kom,
+                       'imin': imin, 'imax': imax})
     if skipped:
         print(f'  ({skipped} pravila preskočeno — ispravi pa ponovi)')
     return rules
@@ -392,6 +430,8 @@ def main() -> None:
     col_conf = find_header_col(ws, 'Pouzdanost')
     col_alt  = find_header_col(ws, 'Alternativa / nap.')
     col_rac  = find_header_col(ws, 'Racun')
+    col_upl  = find_header_col(ws, 'Uplata')
+    col_isp  = find_header_col(ws, 'Isplata')
 
     # ── 0. PREIMENOVANJA sheet: prvi put pred-popuni stare parove i stani ─────
     invalid_pairs = collect_invalid_pairs(ws, col_tip, col_pod, tax)
@@ -424,12 +464,35 @@ def main() -> None:
             text += ' | ' + fold(ws.cell(r, c).value)
         return text
 
+    def row_amount(r: int) -> float | None:
+        """Isplata ili Uplata (koji god je popunjen) kao broj — za Iznos min/max uvjet."""
+        for c in (col_isp, col_upl):
+            v = ws.cell(r, c).value
+            if v not in (None, ''):
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    continue
+        return None
+
+    def rule_amount_ok(rule: dict, amt: float | None) -> bool:
+        if rule['imin'] is None and rule['imax'] is None:
+            return True
+        if amt is None:
+            return False
+        if rule['imin'] is not None and amt < rule['imin']:
+            return False
+        if rule['imax'] is not None and amt > rule['imax']:
+            return False
+        return True
+
     def find_rule(r: int) -> tuple[int, dict] | None:
         text = match_text(r)
         if not text.strip(' |'):
             return None
+        amt = row_amount(r)
         for i, rule in enumerate(rules):
-            if all(t in text for t in rule['terms']):
+            if all(t in text for t in rule['terms']) and rule_amount_ok(rule, amt):
                 return i, rule
         return None
 
@@ -466,6 +529,8 @@ def main() -> None:
                 ws.cell(r, col_conf, 'PRAVILO')
                 old_alt = str(ws.cell(r, col_alt).value or '').strip()
                 mark = f'PRAVILO #{i + 1} nadvladao Preimenovanja: bio {tip_now}/{pod_now or "—"}'
+                if rule['kom']:
+                    mark += f' | {rule["kom"]}'
                 ws.cell(r, col_alt, f'{old_alt} | {mark}' if old_alt else mark)
                 if rule['nap'] and not str(ws.cell(r, col_nap).value or '').strip():
                     ws.cell(r, col_nap, rule['nap'])
@@ -544,8 +609,9 @@ def main() -> None:
             text += ' | ' + fold(ws.cell(r, c).value)
         if not text.strip(' |'):
             continue
+        amt = row_amount(r)
         for i, rule in enumerate(rules):
-            if all(t in text for t in rule['terms']):
+            if all(t in text for t in rule['terms']) and rule_amount_ok(rule, amt):
                 if not unclassified:
                     # --all: klasificiran red — samo REPORT ako se pravilo ne slaže
                     pod_now = str(ws.cell(r, col_pod).value or '').strip()
@@ -560,7 +626,10 @@ def main() -> None:
                     if rule['pod']:
                         ws.cell(r, col_pod, rule['pod'])
                     ws.cell(r, col_conf, 'PRAVILO')
-                    ws.cell(r, col_alt, f'pravilo #{i + 1}: {rule["kw"]}')
+                    alt_mark = f'pravilo #{i + 1}: {rule["kw"]}'
+                    if rule['kom']:
+                        alt_mark += f' | {rule["kom"]}'
+                    ws.cell(r, col_alt, alt_mark)
                     if rule['nap'] and not str(ws.cell(r, col_nap).value or '').strip():
                         ws.cell(r, col_nap, rule['nap'])   # P3: prazno se puni, puno NE
                         nap_filled += 1

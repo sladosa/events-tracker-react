@@ -410,14 +410,45 @@ detalji ENRICH_PLAN §2e, sesija PRATNJE — Saša radio, Claude vodio kroz test
    side-by-side rad) — diskutirano i tehnički potvrđeno izvedivo, ali ODGOĐENO na Sašin
    zahtjev (prvo par krugova pravila s novom kolonom, pa eventualno split).
 
-**Sljedeći koraci (čekaju Sašu) — v. i ENRICH_PLAN §3:**
-1. **Pravila iterativno sa Sašom — sljedeći krug.** Kandidati identificirani (ENRICH_PLAN
-   §2e): `paypal` ostatak, `apple.com/bill`, `spotify`, osiguranje grupa (allianz/triglav/
-   zivotno/investicijsko — treba nov Tip?), porez grupa (porez/prirez/dohodak — treba nov
-   Tip?), `leasing`, `bmove` (nepoznat merchant), `keks pay`, `zagrebparking`. Svaki treba
-   Sašinu odluku o Tip/Podtip prije pisanja pravila.
-2. Odluka: PBZ Visa transakcije iz `Nematchano` sheeta (1538) — importati kao nove retke ili ignorirati
-3. Koka: 700€ isplata 2025-11-26 (nije na izvodu) + odluka što s N/A masom (T-S107-6);
+**Done 2026-07-17 (S107h — drugi krug Pravila + Iznos min/max novi feature; detalji
+ENRICH_PLAN §2e/§3, test-sessions/S107h_tests.md):**
+1. **Code review novih Pravila redova PRIJE runa** (Saša ih sam dodao) — našao 2 stvarna
+   bug-a: `*osiguranje*`/`*porez*` zvjezdica se tretira doslovno (nije wildcard, kao
+   `google*youtube` koji radi jer Google stvarno ispisuje literalnu zvjezdicu) → 0 pogodaka;
+   `APPLE.COM` → Podtip "Apple" ne postoji u Taksonomiji → pravilo bi bilo preskočeno.
+2. **`Komentar` → `Alternativa` dopisivanje (novo, trajno u `apply_rules.py`)** — kolona
+   je postojala ali se nikad nije čitala; sad se, ako popunjena, dopisuje uz keyword marker
+   u Alternativa/nap. koloni Reviewa — sigurno mjesto za "TODO razdvoji po X" bilješke za
+   kasnije filtriranje, bez diranja pravog `comment` polja (Napomena kolona to hrani).
+3. **Novi `Iznos min`/`Iznos max` uvjet (novo, trajno u `apply_rules.py`)** — opcionalni
+   stupci u Pravila; pravilo pogađa samo ako je Isplata/Uplata reda unutar raspona. Otkrio
+   da je APPLE.COM (60 redova) zapravo iCloud pretplata (2 price-point clustera), NE
+   "Zabava" → `Informatika`/`Cloud backup`; razdvojio AUDIBLE na Audible_Koka/Sasa po
+   pragu 10€ (Koka: Sasin je skuplji, jasan gap u podacima).
+4. **Osiguranje/Allianz/Generali/Triglav redizajn (Koka odluke)** — sve ide u POSTOJEĆE
+   kategorije, Taksonomija combined-bucket placeholder obrisan: Allianz (auto, nesigurno
+   koji auto) → `auto C5`/`registracija` blanket + eksplicitno označeni red → `auto
+   Lacetti`/`registracija`; Generali (kuća) → `Domaćinstvo`/`Popravci, održavanje,
+   osiguranje`; Triglav (životno, "prošlost") → `Osiguranje`/`Osiguranje` (generic).
+5. **`update_pravila_s107h.py` (novo, one-off)** — Claude je na Sašin zahtjev direktno
+   regenerirao cijeli Pravila body (AMAZON maknut — 2 retka, cijena ne odgovara Prime
+   pretplati; APPLE.COM/AUDIBLE split); idempotentan, auto-backup.
+6. **Pravi run #2: 294 redova, +46 Napomena. N/A 2000→1706.** Sve programske kontrole
+   prošle (Audible threshold 0 kršenja, Pravilo run timestamp count, Napomena fill count).
+
+**Sljedeći koraci — v. i ENRICH_PLAN §3:**
+1. **PRIORITET sljedeće sesije (jači model) — PBZ Visa split.** 1538 tx trenutno NISU u
+   Review sheetu (sjede u `Nematchano` sheetu) — pravila ih ne vide. Nakon merge-a kao
+   novi Review redovi, postojeća pravila odmah klasificiraju dobar dio besplatno (bolji
+   ROI od nastavka sitnih pravila kruga). Posao: person-split po Kartica koloni (Kokina
+   PBZ Visa se skida sa Sašinog RF!), `Datum naplate` iz PBZ PDF-ova, `Izvod kandidat`
+   kolona + reconcile report po računu×mjesecu, row_hash-kompatibilni novi redovi.
+   Rizičnije (pravi novac, person-split) → opravdano jačim modelom.
+2. **Pravila iterativno sa Sašom — sljedeći krug (Sonnet OK).** Preostali kandidati
+   (ENRICH_PLAN §2e): `paypal` ostatak, `spotify` ostatak, porez grupa (porez/prirez/
+   dohodak — treba nov Tip?), `leasing`, `bmove` (nepoznat merchant), `keks pay`,
+   `zagrebparking`. Svaki treba Sašinu odluku o Tip/Podtip prije pisanja pravila.
+3. Koka: 700€ isplata 2025-11-26 (nije na izvodu) + odluka što s preostalom N/A masom;
    Saša/Koka review `Financije_review_20260710_1448.xlsx`
 4. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip); T-S107f-3
    (UI fix shortcut/skriveni atributi, PROD/mobitel — još netestirano)
