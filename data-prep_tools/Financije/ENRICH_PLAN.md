@@ -192,14 +192,44 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
   besplatno. Zadatak i rizičniji (pravi novac, person-split, PDF datumi) → opravdano
   jačim modelom nego dosadašnje Sonnet rules-craft sesije.
 
+## 2g. S107i (2026-07-20) — PBZ Visa merge u Review + reconcile/Problem dijagnoza
+
+- **Nalaz koji je promijenio plan:** Kartica tag **NIJE** pouzdan pokazatelj osobe — od 220 postojećih
+  Sašinih Visa redaka, **121 matcha KOKA-tagirane** PBZ tx, samo 66 SAŠA-tagirane (Saša je u Excel
+  bilježio kupovine s OBJE kartice). → dedup TAG-AGNOSTIČKI (protiv svih PBZ tx), i **BEZ person-splita**
+  (Odluka 2a, Saša): svi novi retci Racun=Sašin RF, Izvor=Visa; osoba samo kroz Podtip (pravila) gdje ima
+  signala. Kartica se čuva kao audit trag u `Izvor reda` (`PBZ Visa:Koka/SAŠA/lump`).
+- **`merge_pbzvisa.py` (novo):** 1538 PBZ tx → dedup 187 (matcha postojeće, plateau ±2 dana) → **1351
+  novih redaka** (Koka 895, SAŠA povijesne 424, lump 32). Povijesne Sašine Visa 2023-25 (nisu bile u
+  Excelu, 402 kom) → dodane. Lump `PRIMLJENA UPLATA` → Transfer/izmedju racuna. RATA → Rate?=DA + Broj rata.
+  **Opcija B sort:** cijeli Review presortiran po event_date (0 padova), stil naslijeđen s Visa template
+  reda, DV Tip/Podtip prošireni `J2:J4856`/`K2:K4856`, autofilter na sve. Idempotentno (source_key skip).
+  Review **3504 → 4855**; `Sašin RF|Visa` 220 → 1571. Backup `pre-pbzvisa-20260720_110952`.
+- **apply_rules run:** 257 novih N/A klasificirano besplatno postojećim pravilima (konzum 230, bauhaus 16,
+  parking 10) + 246 Napomena. Backup `pre-rules-20260720_111111`. N/A novih: 1351 → 289 klasificirano.
+- **`reconcile_izvoda.py` (novo):** coverage izvod→Review + `Nematchano_v1` freeze + `Nematchano_v2` s
+  **`Problem` kolonom** (dijagnoza) + `Coverage` sažetak, u `Izvodi_transakcije.xlsx` (backup
+  `pre-reconcile-20260720_123953`). **Coverage: PBZVISA 1538/1539** (bilo 1/1539!), ZABA 516/108, RF
+  235/29, MC 973/119. NEDOSTAJE 257: 101 "možda već u Reviewu (datum>±7d)", 66 kartična kupovina, 51
+  nedostaje, **39 Smjer?** (crveni u sheetu).
+- **⚠ KLJUČAN NALAZ — ZABA parser bug:** `parse_zaba_racun` krivo određuje Smjer za dio priljeva
+  (≥35: mirovina, Priljev iz inozemstva, uplate → Isplata) po X-poziciji iznosa; saldo-lanac
+  (POČETNO+Σtx=NOVO) NE zatvara (fali ~359-544€/mjesec 2026). **Account merge + bank kolone
+  (UplataB/IsplataB/SaldoB) + saldo-reconcile BLOKIRANI dok se ne popravi** (v. §3 t.1b). Dry-run
+  `merge_missing_account.py` uhvatio greške (117 "nedostajućih" account tx sadrži mirovine kao Isplata)
+  → NIŠTA upisano. Bankovni mjesečni saldi (ZABA POČETNO/NOVO STANJE) SU pouzdani i ulančavaju
+  (parsabilni iz teksta) — čekaju parser fix. Koka je vodila SALDO računa, ne svaku tx pojedinačno →
+  fokus reconcilea: tekuća godina, saldo-vs-Koka, dio s Kokom.
+
 ## 3. SLJEDEĆI KORACI
 
-1. **PRIORITET sljedeće sesije (jači model) — PBZ Visa split (1538 tx u Nematchano sheetu).**
-   Person-split po Kartica koloni (SAŠA → match na postojeće Sašine Visa retke; DUBRAVKA/Koka
-   → novi retci, Racun = `Sašin tekući RF` — v. §2d KLJUČNO nalaz), `Datum naplate` iz PBZ
-   PDF-ova, `Izvod kandidat` kolona (labaviji match, ~256 ne-Visa nematchanih) + reconcile
-   report po računu×mjesecu (v. §2d). Lump plaćanja → `Transfer/između računa`. Rizičnije od
-   uobičajenog rules-craft (pravi novac, person-split) — zato jači model.
+1. ~~PBZ Visa split (1538 tx)~~ — ✅ IZVRŠENO S107i (v. §2g). Coverage 1538/1539.
+1b. **NOVO — Fix `parse_zaba_racun` (Smjer + potpunost).** Pouzdana Priljev/Odljev detekcija (X-pozicija
+   nije dovoljna — provjeriti protiv saldo-lanca POČETNO+Σtx=NOVO) + provjera potpunosti (fale tx).
+   Kandidati za pregled: `Izvodi_transakcije.xlsx` → `Nematchano_v2`, filter `Problem`=`Smjer?` (39 crveni).
+   Tek nakon: `merge_missing_account.py` (spreman) + bank kolone `UplataB/IsplataB/SaldoB` (mjesečni
+   bankovni saldo vs Kokina `Stanje`, fokus 2026, dio s Kokom). Preostalih 51 "nedostaje" + 101 "možda
+   u Reviewu" (labaviji match/Izvod kandidat) + 66 MC kartičnih kupovina za dodati — poseban krug.
 2. **Pravila sa Sašom (iterativno) — NASTAVAK, kad PBZ Visa merge završi (Sonnet OK).**
    Prvi + drugi krug gotovi (v. §2e/§2f). Preostali kandidati: `paypal` ostatak (~45 redova,
    merchant varira — NE blanket pravilo), `spotify` ostatak, `leasing` (OTP Leasing — VEĆ

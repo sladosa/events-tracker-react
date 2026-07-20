@@ -436,14 +436,34 @@ ENRICH_PLAN §2e/§3, test-sessions/S107h_tests.md):**
 6. **Pravi run #2: 294 redova, +46 Napomena. N/A 2000→1706.** Sve programske kontrole
    prošle (Audible threshold 0 kršenja, Pravilo run timestamp count, Napomena fill count).
 
+**Done 2026-07-20 (S107i — PBZ Visa merge u Review + reconcile/Problem dijagnoza; detalji
+ENRICH_PLAN §2g, test-sessions/S107i_tests.md):**
+1. **`merge_pbzvisa.py` (novo):** 1538 PBZ tx → dedup **187** (TAG-AGNOSTIČKI — Kartica tag ≠ osoba,
+   Saša bilježio kupovine s obje kartice: 121 njegovih redaka nosi Kokinu karticu!) → **1351 novih
+   redaka** (Koka 895, SAŠA povijesne 424, lump 32). **Odluka 2a (Saša): BEZ person-splita** — svi
+   Racun=Sašin RF, Izvor=Visa, osoba samo kroz Podtip; Kartica kao audit trag u `Izvor reda`
+   (`PBZ Visa:Koka/SAŠA/lump`). Lump `PRIMLJENA UPLATA`→Transfer/izmedju racuna; RATA→Rate?=DA+Broj rata.
+   **Opcija B sort:** cijeli Review presortiran po event_date (0 padova), stil s Visa template reda,
+   DV Tip/Podtip prošireni `J2:J4856`/`K2:K4856`, autofilter na sve. Idempotentno (source_key skip).
+   Review **3504→4855**; `Sašin RF|Visa` 220→1571. Backup `pre-pbzvisa-20260720_110952`.
+2. **apply_rules run:** 257 novih N/A klasificirano besplatno (konzum 230, bauhaus 16, parking 10) +
+   246 Napomena. Backup `pre-rules-20260720_111111`.
+3. **`reconcile_izvoda.py` (novo):** coverage izvod→Review + `Nematchano_v1` freeze + `Nematchano_v2`
+   s **`Problem` kolonom** (Smjer?/nedostaje/možda-u-Reviewu/kartična) + `Coverage`, u
+   `Izvodi_transakcije.xlsx` (backup `pre-reconcile-20260720_123953`). **PBZVISA coverage 1538/1539**
+   (bilo 1/1539!). NEDOSTAJE 257: 101 "možda u Reviewu", 66 kartična, 51 nedostaje, **39 Smjer?**.
+4. **⚠ NALAZ (→ backlog): ZABA parser Smjer bug.** `parse_zaba_racun` krivo određuje Priljev/Odljev
+   za dio priljeva (≥35: mirovina/Priljev iz inozemstva/uplate → Isplata) po X-poziciji; saldo-lanac
+   (POČETNO+Σtx=NOVO) ne zatvara. **Account merge + bank kolone UplataB/IsplataB/SaldoB + saldo-vs-Koka
+   reconcile BLOKIRANI** dok se ne popravi. `merge_missing_account.py` napisan i spreman, ali NE
+   koristiti (dry-run uhvatio mirovine kao Isplata, ništa upisano). Bankovni mjesečni saldi (ZABA
+   POČETNO/NOVO STANJE) pouzdani i ulančavaju — čekaju parser fix. Koka je vodila SALDO, ne svaku tx.
+
 **Sljedeći koraci — v. i ENRICH_PLAN §3:**
-1. **PRIORITET sljedeće sesije (jači model) — PBZ Visa split.** 1538 tx trenutno NISU u
-   Review sheetu (sjede u `Nematchano` sheetu) — pravila ih ne vide. Nakon merge-a kao
-   novi Review redovi, postojeća pravila odmah klasificiraju dobar dio besplatno (bolji
-   ROI od nastavka sitnih pravila kruga). Posao: person-split po Kartica koloni (Kokina
-   PBZ Visa se skida sa Sašinog RF!), `Datum naplate` iz PBZ PDF-ova, `Izvod kandidat`
-   kolona + reconcile report po računu×mjesecu, row_hash-kompatibilni novi redovi.
-   Rizičnije (pravi novac, person-split) → opravdano jačim modelom.
+1. ~~PBZ Visa split~~ ✅ IZVRŠENO S107i. **NOVO — Fix `parse_zaba_racun` (Smjer + potpunost)** prije
+   account mergea/bank kolona/saldo-reconcilea (v. §2g/§3 t.1b). Kandidati: `Izvodi_transakcije.xlsx`
+   → `Nematchano_v2`, filter `Problem`=`Smjer?` (39 crveni). Reconcile fokus = tekuća godina, saldo
+   vs Kokina `Stanje`, dio s Kokom.
 2. **Pravila iterativno sa Sašom — sljedeći krug (Sonnet OK).** Preostali kandidati
    (ENRICH_PLAN §2e): `paypal` ostatak, `spotify` ostatak, porez grupa (porez/prirez/
    dohodak — treba nov Tip?), `leasing`, `bmove` (nepoznat merchant), `keks pay`,
