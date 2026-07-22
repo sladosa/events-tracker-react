@@ -63,6 +63,12 @@ RE_DATE   = re.compile(r'^(\d{2})\.(\d{2})\.(\d{4})\.$')
 RE_REF    = re.compile(r'^[A-Z]\d{12,18}$')
 RE_AMOUNT = re.compile(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$')
 
+# ZABA saldo/section markeri (ground truth za validaciju smjera + potpunosti)
+RE_ZABA_POCETNO = re.compile(r'PO[ČC]ETNO STANJE\s+(.+?)\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*$')
+RE_ZABA_NOVO    = re.compile(r'NOVO STANJE\s+EUR\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})')
+RE_ZABA_ZBROJ   = re.compile(r'Zbroj prometa:\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})')
+ZABA_FALLBACK_BOUNDARY = 516.0   # x granica Priljev|Odljev (stabilna kroz sve izvatke)
+
 
 def parse_amount(s: str) -> float:
     return round(float(s.replace('.', '').replace(',', '.')), 2)
@@ -70,39 +76,86 @@ def parse_amount(s: str) -> float:
 
 # ── Parser: ZABA izvadak tekućeg računa ────────────────────────────────────────
 
-def parse_zaba_racun(path: Path) -> list[dict]:
-    """→ [{date, opis, iznos, smjer('Uplata'/'Isplata'), src}]
-    Transakcijska linija: 'dd.mm.yyyy. REFERENCA Opis ... IZNOS' + eventualne
-    continuation linije opisa. Priljev/Odljev se razlikuje po x-poziciji iznosa
-    (granica = sredina između header riječi 'Priljev' i 'Odljev')."""
+def _zaba_header_boundary(words: list) -> float | None:
+    """x granica Priljev|Odljev iz PRAVOG header reda (Priljev i Odljev na istoj
+    liniji). Ignorira riječ 'Priljev' iz opisa ('Priljev iz inozemstva ...'),
+    koja sjedi u opis-koloni (x≈188) i lomila je staru heuristiku (zadnja pojava
+    'Priljev' → cijela stranica pada u Isplata). Vraća None ako nema header reda."""
+    lines: dict[float, dict] = defaultdict(dict)
+    for w in words:
+        if w['text'] in ('Priljev', 'Odljev'):
+            lines[round(w['top'], 0)][w['text']] = (w['x0'] + w['x1']) / 2
+    for y in sorted(lines):
+        if 'Priljev' in lines[y] and 'Odljev' in lines[y]:
+            return (lines[y]['Priljev'] + lines[y]['Odljev']) / 2
+    return None
+
+
+def _zaba_is_tekuci(acct: str | None) -> bool:
+    """'Tekući račun u eurima' = Kokin tekući ZABA (račun koji Koka vodi)."""
+    return bool(acct) and 'eku' in acct.lower()
+
+
+def _parse_zaba_all(path: Path) -> tuple[list[dict], list[dict]]:
+    """Sve ZABA promet transakcije (OBA računa) + saldo zapisi po računu.
+    → (txs, balances).
+    txs:      {date, opis, iznos, smjer, account, src}
+    balances: {account, pocetno, zbroj_p, zbroj_o, novo, page}  (bankovna istina)
+
+    Dvije popravke nad starom heuristikom:
+      • boundary iz header reda + PRENOS kroz stranice (header se NE ponavlja na
+        str. 2+ → stara verzija je tiho ispuštala sve transakcije tih stranica);
+      • account-tagging (izvadak ima Tekući račun + Multivalutni žiroračun)."""
     txs: list[dict] = []
+    balances: list[dict] = []
+    boundary = ZABA_FALLBACK_BOUNDARY
+    cur_acct: str | None = None
     with pdfplumber.open(path) as pdf:
         for pno, page in enumerate(pdf.pages, 1):
-            words = page.extract_words()
-            # gate: stranica mora imati tablicu prometa
-            priljev_x = odljev_x = None
-            for w in words:
-                if w['text'] == 'Priljev':
-                    priljev_x = (w['x0'] + w['x1']) / 2
-                elif w['text'] == 'Odljev':
-                    odljev_x = (w['x0'] + w['x1']) / 2
-            if priljev_x is None or odljev_x is None:
-                continue
-            boundary = (priljev_x + odljev_x) / 2
+            # (a) saldo/section markeri iz text-linija — pouzdano drže label+iznos
+            #     na istoj liniji (word-grouping ih zna razdvojiti po baseline-u)
+            for line in (page.extract_text() or '').split('\n'):
+                mp = RE_ZABA_POCETNO.search(line)
+                if mp:
+                    balances.append({'account': mp.group(1).strip(),
+                                     'pocetno': parse_amount(mp.group(2)),
+                                     'zbroj_p': None, 'zbroj_o': None,
+                                     'novo': None, 'page': pno})
+                    continue
+                mz = RE_ZABA_ZBROJ.search(line)
+                if mz and balances:
+                    balances[-1]['zbroj_p'] = parse_amount(mz.group(1))
+                    balances[-1]['zbroj_o'] = parse_amount(mz.group(2))
+                    continue
+                mn = RE_ZABA_NOVO.search(line)
+                if mn and balances:
+                    balances[-1]['novo'] = parse_amount(mn.group(1))
 
-            # grupiraj riječi u linije po y (top zaokružen)
-            lines: dict[float, list] = defaultdict(list)
+            # (b) transakcije + account tag iz word-pozicija (smjer treba geometriju)
+            words = page.extract_words()
+            b = _zaba_header_boundary(words)
+            if b is not None:
+                boundary = b                       # prenesi na str. 2+ (bez headera)
+            plines: dict[float, list] = defaultdict(list)
             for w in words:
-                lines[round(w['top'], 0)].append(w)
+                plines[round(w['top'], 0)].append(w)
             current: dict | None = None
             cont_left = 0
-            for top in sorted(lines):
-                ws_ = sorted(lines[top], key=lambda w: w['x0'])
+            for top in sorted(plines):
+                ws_ = sorted(plines[top], key=lambda w: w['x0'])
                 tokens = [w['text'] for w in ws_]
+                text = ' '.join(tokens)
+                mp = RE_ZABA_POCETNO.search(text)
+                if mp:
+                    cur_acct = mp.group(1).strip()
+                    current = None
+                    continue
+                if RE_ZABA_ZBROJ.search(text) or RE_ZABA_NOVO.search(text):
+                    current = None
+                    continue
                 m = RE_DATE.match(tokens[0]) if tokens else None
                 if m:
                     d = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
-                    # zadnji token koji izgleda kao iznos
                     amt_w = next((w for w in reversed(ws_) if RE_AMOUNT.match(w['text'])), None)
                     if amt_w is None:
                         current = None
@@ -110,24 +163,90 @@ def parse_zaba_racun(path: Path) -> list[dict]:
                     smjer = 'Uplata' if (amt_w['x0'] + amt_w['x1']) / 2 < boundary else 'Isplata'
                     mid = [t for t, w in zip(tokens[1:], ws_[1:]) if w is not amt_w]
                     if mid and RE_REF.match(mid[0]):
-                        mid = mid[1:]          # makni referencu (O16023...)
+                        mid = mid[1:]              # makni referencu (O16023...)
                     current = {
                         'date': d, 'opis': ' '.join(mid),
                         'iznos': parse_amount(amt_w['text']), 'smjer': smjer,
-                        'src': f'{path.name}:p{pno}',
+                        'account': cur_acct, 'src': f'{path.name}:p{pno}',
                     }
                     txs.append(current)
-                    cont_left = 2              # opis se prelama u max ~2 dodatna reda
+                    cont_left = 2                  # opis se prelama u max ~2 dodatna reda
                 elif current and cont_left > 0 and tokens:
                     first = tokens[0]
                     if first.isupper() and ('STANJE' in first or first in ('IZVADAK', 'S/N:')):
                         current = None
                         continue
-                    current['opis'] += ' ' + ' '.join(tokens)
+                    current['opis'] += ' ' + text
                     cont_left -= 1
                 else:
                     current = None
-    return txs
+    return txs, balances
+
+
+def _validate_zaba(path: Path, tekuci: list[dict], balances: list[dict]) -> None:
+    """Saldo-lanac provjera protiv bankovnih brojeva (POČETNO/Zbroj/NOVO). Σ naših
+    Uplata/Isplata MORA jednačiti bankov 'Zbroj prometa'; POČETNO+Σupl−Σisp=NOVO.
+    Mismatch → stderr upozorenje (uhvati promjenu formata izvatka ubuduće)."""
+    su = round(sum(t['iznos'] for t in tekuci if t['smjer'] == 'Uplata'), 2)
+    si = round(sum(t['iznos'] for t in tekuci if t['smjer'] == 'Isplata'), 2)
+    for b in (b for b in balances if _zaba_is_tekuci(b['account'])):
+        problems = []
+        if b['zbroj_p'] is not None and abs(su - b['zbroj_p']) >= 0.005:
+            problems.append(f"Σupl {su:.2f} ≠ Zbroj priljev {b['zbroj_p']:.2f}")
+        if b['zbroj_o'] is not None and abs(si - b['zbroj_o']) >= 0.005:
+            problems.append(f"Σisp {si:.2f} ≠ Zbroj odljev {b['zbroj_o']:.2f}")
+        if b['novo'] is not None:
+            calc = round(b['pocetno'] + su - si, 2)
+            if abs(calc - b['novo']) >= 0.005:
+                problems.append(f"saldo-lanac {calc:.2f} ≠ NOVO STANJE {b['novo']:.2f}")
+        if problems:
+            print(f"  ⚠ {path.name}: ZABA saldo provjera — {'; '.join(problems)}",
+                  file=sys.stderr)
+
+
+def parse_zaba_racun(path: Path) -> list[dict]:
+    """ZABA izvadak → SAMO transakcije Tekućeg računa (Kokin tekući ZABA).
+
+    Multivalutni žiroračun je pass-through (saldo 0→0): njegov 'Priljev iz
+    inozemstva' + 'Prijenos na vlastiti račun' se NE dodaju kao zasebni retci —
+    novac se već vidi na tekućem kao transfer-in Uplata (inače bi dvostruko brojao
+    i pravio 'transfere koji nemaju smisla'). Ime pošiljatelja s žiro priljeva se
+    PRENOSI na odgovarajući tekući transfer-in redak (traceability: od koga je).
+
+    Smjer i potpunost se validiraju protiv bankovnih saldi (v. _validate_zaba)."""
+    txs, balances = _parse_zaba_all(path)
+    tekuci = [t for t in txs if _zaba_is_tekuci(t['account'])]
+
+    # PRENOS imena pošiljatelja: žiro 'Priljev iz inozemstva X' → tekući self-transfer
+    # redak (Kokino ime + 'Prijenos na vlastiti/moj račun'). Priljevi se znaju
+    # agregirati (npr. 436+2038 → 1 lump transfer 2474) pa uz exact-amount match
+    # probamo i podskup-zbroj svih žiro priljeva bliskog datuma.
+    sources = sorted(
+        [t for t in txs if not _zaba_is_tekuci(t['account'])
+         and t['smjer'] == 'Uplata' and 'inozemstva' in t['opis'].lower()],
+        key=lambda t: t['date'])
+    targets = [t for t in tekuci if t['smjer'] == 'Uplata'
+               and 'pavić-sladoljev' in t['opis'].lower()
+               and 'prijenos' in t['opis'].lower()]
+    used_src: set[int] = set()
+    for tk in sorted(targets, key=lambda t: t['date']):
+        avail = [s for s in sources if id(s) not in used_src
+                 and abs((s['date'] - tk['date']).days) <= 5]
+        picks = [s for s in avail if abs(s['iznos'] - tk['iznos']) < 0.005]
+        if not picks and avail and abs(sum(s['iznos'] for s in avail) - tk['iznos']) < 0.005:
+            picks = avail                          # lump = zbroj svih žiro priljeva
+        if not picks:
+            continue
+        for s in picks:
+            used_src.add(id(s))
+        descs = ' + '.join(dict.fromkeys(s['opis'].strip() for s in picks))
+        if descs and descs.lower() not in tk['opis'].lower():
+            tk['opis'] = f"{tk['opis']} [izvor: {descs}]"
+
+    _validate_zaba(path, tekuci, balances)
+    for t in tekuci:                               # 'account' je interni ključ
+        t.pop('account', None)
+    return tekuci
 
 
 # RF (Sašin Raiffeisen) nema tekst-sloj → OCR parser u rf_ocr.py (S107d)

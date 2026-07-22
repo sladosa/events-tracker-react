@@ -221,15 +221,72 @@ ručno u Excelu što preostane → `sync_taxonomy.py` po potrebi.
   (parsabilni iz teksta) — čekaju parser fix. Koka je vodila SALDO računa, ne svaku tx pojedinačno →
   fokus reconcilea: tekuća godina, saldo-vs-Koka, dio s Kokom.
 
+## 2h. S107j (2026-07-22) — parse_zaba_racun fix (Smjer + potpunost + žiro split) ✅
+
+**Nalaz (Saša + Claude/Opus):** Saša ručno pregledao `Nematchano_v2` (crveni `Smjer?`), prebacio original
+Smjer u kolonu K, i ispravno zaključio da su ti retci zapravo `Uplata` + da transfere treba obrisati.
+Root cause potvrđen i **mehanički** (ne fundamentalni x-pozicija problem):
+1. **Smjer flip:** `parse_zaba_racun` je za granicu Priljev|Odljev uzimao **zadnju** pojavu riječi
+   "Priljev" na stranici — a "Priljev" se pojavljuje i **unutar opisa** *"**Priljev** iz inozemstva …"*
+   (x≈188, opis-kolona) → granica se pomakne i **cijela stranica padne u Isplata**. Pogađa točno
+   mjesece sa stranom uplatom (Pharmalog/Astrum/TechProtect/TOPFORSPORT) = baš one stranice s Uplatama
+   koje treba. 8/31 fajlova.
+2. **Potpunost:** continuation stranice (str. 2+) NE ponavljaju header "Priljev Odljev" → boundary=None →
+   parser je **tiho ispuštao sve transakcije tih stranica** (2024-01: baš 450 Anja + 49 multisport).
+3. **Dva računa:** izvadak ima **Tekući račun** (Kokin tekući ZABA) + **Multivalutni žiroračun**
+   (pass-through 0→0, samo strana uplata → odmah prijenos na tekući). Parser je oba tagirao kao tekući
+   → žiro retci = "transferi koji nemaju smisla".
+
+**Fix (`enrich_from_izvoda.py`):** `_zaba_header_boundary` (header red: Priljev+Odljev na istoj liniji) +
+**prijenos boundary kroz stranice** + account-tagging + `_validate_zaba` (saldo-lanac vs bankovni
+POČETNO/Zbroj prometa/NOVO STANJE, mismatch → stderr). `parse_zaba_racun` vraća **SAMO Tekući račun**;
+žiro pass-through se izostavlja (Odluka Saša: **izostavi + prenesi ime poslodavca** — žiro "Priljev iz
+inozemstva X" se dopisuje kao `[izvor: …]` na tekući self-transfer redak; podržava lump 436+2038→2474).
+
+**Dokaz (read-only, svih 31 ZABA):** Σupl/Σisp = bankov "Zbroj prometa" **40/40 account-mjeseci u cent**;
+**saldo-lanac tekućeg neprekinut 2023-12→2026-06, 0 pukotina** (calc svakog mjeseca = POČETNO idućeg);
+20 žiro redaka izostavljeno; 8 uplata dobilo `[izvor:]` tag. Protiv pravog Reviewa: **match 625/700**
+(bilo 516) → 39 "Smjer?" spalo na **11 pravih unmatched Uplata** (mirovine 2025-02/07, Anja rate…).
+Ostali unmatched očekivani (MASTERCARD lump = itemizirano MC izvodom; rani Kreditni transferi koje Koka
+nije vodila). Parser signatura nepromijenjena (vraća date/opis/iznos/smjer/src; `account` se popa) —
+inventory/reconcile/merge_missing_account svi importaju čisto, py_compile OK.
+
+**✅ POKRENUTO na podacima (2026-07-22):** `inventory --reparse ZABA` (ZABA 624→**700** tx, 0 saldo
+warninga) → `enrich` (**1834/3595** match, bilo 1725; Review backup `pre-izvod-20260722_090554`) →
+`reconcile` (**Smjer? 39→1**, NEDOSTAJE 257→**224**) → `apply_rules` (+16 N/A). Backup Izvodi_transakcije
+`pre-zabafix-20260722_090442` (čuva stari Nematchano_v2 s ručnim editima).
+**Nematchano_v2 (224) mapiran:** 110 možda-dup (date-shift, NE dodavati auto), 66 kartična (MC/Visa
+kupovine za dodati), 47 nedostaje (31 MASTERCARD lump→Transfer, 16 pravi account tx), 1 Smjer?.
+
+## 2i. S107j (2026-07-22 nastavak) — suggest_candidates.py (N/A rule-authoring petlja)
+
+**`suggest_candidates.py` (novo):** skenira N/A retke Review-a S TEKSTOM (Izvod opis/Napomena), grupira
+po normaliziranom merchant ključu (strip RATA-marker/IBAN/ref/boilerplate; ključ = 1. token ako ≥5 slova
+inače 2 tokena — spaja AFRODITA/AFRODITA BEAUTY, KEINDL/KEINDL SPORT), nudi **top N** (default 20, da ne
+preplavi) u sheetu **`Neklasificirano`** s Tip/Podtip **dropdownima** (isti TipList/INDIRECT named-range
+mehanizam kao Review). Fokus po godini (`--year 2026`). Petlja: popuni Tip/Podtip → `--harvest`
+(popunjeni → Pravila, dedup) → `apply_rules` → sljedeći krug kraći. `--preview` samo ispiše.
+Prvi run: `Neklasificirano` (2026, 20 klastera) zapisan (backup `pre-neklas-20260722_094229`);
+top: BIBERON 9, KEINDL 7, HLK članarina 5, TRAPERICE 5, PAYPAL 5, AFRODITA 4, BATES/EUROPA/AUTOCENTAR (rate).
+
+**N/A po godini (2026-07-22, Review 4855):** 2022 30 (0 text), 2023 808 (232 text), 2024 946 (**793 text**),
+2025 792 (**746 text**), 2026 174 (**155 text**). Po izvoru: Visa 1129 (SVE text!), MC 998 (479 text),
+Racun 623 (318 text). **Resolvable (2024-26 s tekstom) ~1694; hard no-text pre-2024 ~600** (nema izvoda
+tako daleko). **Plan (Saša): prvo zatvoriti 2026 → poslati u PROD da Koka nastavi u aplikaciji.**
+
 ## 3. SLJEDEĆI KORACI
 
 1. ~~PBZ Visa split (1538 tx)~~ — ✅ IZVRŠENO S107i (v. §2g). Coverage 1538/1539.
-1b. **NOVO — Fix `parse_zaba_racun` (Smjer + potpunost).** Pouzdana Priljev/Odljev detekcija (X-pozicija
-   nije dovoljna — provjeriti protiv saldo-lanca POČETNO+Σtx=NOVO) + provjera potpunosti (fale tx).
-   Kandidati za pregled: `Izvodi_transakcije.xlsx` → `Nematchano_v2`, filter `Problem`=`Smjer?` (39 crveni).
-   Tek nakon: `merge_missing_account.py` (spreman) + bank kolone `UplataB/IsplataB/SaldoB` (mjesečni
-   bankovni saldo vs Kokina `Stanje`, fokus 2026, dio s Kokom). Preostalih 51 "nedostaje" + 101 "možda
-   u Reviewu" (labaviji match/Izvod kandidat) + 66 MC kartičnih kupovina za dodati — poseban krug.
+1b. ~~Fix `parse_zaba_racun` (Smjer + potpunost)~~ — ✅ GOTOV + POKRENUT S107j (v. §2h). **Preostaje
+   KONSOLIDACIJA (#1+#3, Saša):** novi merge koji upiše u Review ~113 čistih Nematchano redaka
+   (31 MASTERCARD lump→**Transfer**, 66 kartičnih MC/Visa kupovina, 16 pravih account tx), a 110
+   možda-dup (date-shift) + 1 Smjer? → **`Nematchano_v3`** (ručni pregled). `merge_missing_account.py`
+   treba guard: SKIP MASTERCARD lump (dodaje se kao Transfer, ne Isplata) + SKIP možda-dup. Onda bank
+   kolone `UplataB/IsplataB/SaldoB` (mjesečni saldo vs Kokina `Stanje`, fokus 2026). NIJE hitno —
+   malo 2026 redaka fali, klasifikacija (t.1c) ne ovisi o tome.
+1c. **NOVO — N/A rule-authoring petlja (`suggest_candidates.py`, v. §2i):** Neklasificirano sheet →
+   Saša popuni Tip/Podtip → `--harvest` → `apply_rules` → sljedeći krug. **Prioritet 2026** (155 text
+   N/A) pa PROD. Zatim 2025 (746 text) + 2024 (793 text). Visa 1129 (sve text) = najveći target.
 2. **Pravila sa Sašom (iterativno) — NASTAVAK, kad PBZ Visa merge završi (Sonnet OK).**
    Prvi + drugi krug gotovi (v. §2e/§2f). Preostali kandidati: `paypal` ostatak (~45 redova,
    merchant varira — NE blanket pravilo), `spotify` ostatak, `leasing` (OTP Leasing — VEĆ

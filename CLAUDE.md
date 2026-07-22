@@ -459,11 +459,34 @@ ENRICH_PLAN §2g, test-sessions/S107i_tests.md):**
    koristiti (dry-run uhvatio mirovine kao Isplata, ništa upisano). Bankovni mjesečni saldi (ZABA
    POČETNO/NOVO STANJE) pouzdani i ulančavaju — čekaju parser fix. Koka je vodila SALDO, ne svaku tx.
 
+**Done 2026-07-22 (S107j — parse_zaba_racun fix + suggest_candidates.py N/A petlja; detalji
+ENRICH_PLAN §2h/§2i, sesija PRATNJE — Saša dijagnosticirao Nematchano_v2, Claude/Opus fix):**
+1. **`parse_zaba_racun` FIX + POKRENUT** (`enrich_from_izvoda.py`): Saša ručno pregledao crvene
+   `Smjer?` retke (original Smjer → kolona K) i ispravno zaključio da su Uplata + transfere treba
+   obrisati. Root cause **mehanički** (ne x-pozicija fundamentalno): (a) granica Priljev|Odljev uzimala
+   ZADNJU "Priljev" — a "Priljev" je i u opisu *"Priljev iz inozemstva…"* (x≈188) → cijela stranica →
+   Isplata (8/31 fajlova, baš mjeseci sa stranom uplatom); (b) continuation stranice bez headera →
+   boundary=None → tiho ispuštene sve tx tih stranica; (c) izvadak ima **Tekući + Multivalutni
+   žiroračun** (pass-through 0→0) — parser oba tagirao tekući. **Fix:** header-red boundary + prijenos
+   kroz stranice + account-tagging + `_validate_zaba` (saldo-lanac vs bankovni POČETNO/Zbroj/NOVO,
+   mismatch→stderr); vraća SAMO Tekući, žiro izostavljen, **ime poslodavca prenesen** (`[izvor:…]` na
+   self-transfer, Odluka Saša). **Dokaz:** Σupl/Σisp = bankov Zbroj **40/40 u cent**; saldo-lanac
+   neprekinut 2023-12→2026-06 (0 pukotina). **Pokrenuto:** inventory --reparse ZABA (624→700 tx) →
+   enrich (**1834/3595**, bilo 1725) → reconcile (**Smjer? 39→1**, NEDOSTAJE→224) → apply_rules (+16).
+2. **`suggest_candidates.py` (novo) — N/A rule-authoring petlja (Sašina ideja #4):** N/A retci s tekstom
+   → merchant klaster → **`Neklasificirano` sheet** (top 20, Tip/Podtip dropdowni preko TipList/INDIRECT
+   named rangeova) → Saša popuni → `--harvest` u Pravila → `apply_rules` → sljedeći krug kraći.
+   `--year 2026` fokus. Prvi run: Neklasificirano (2026, 20 klastera; BIBERON/KEINDL/HLK/TRAPERICE…).
+3. **N/A po godini:** 2024 946 (793 text), 2025 792 (746 text), 2026 174 (155 text); pre-2024 ~600
+   no-text (nema izvoda). **Plan (Saša): zatvoriti 2026 → PROD** (Koka nastavlja u app), pa 2025/2024.
+4. **Nematchano_v2 (224) mapiran; KONSOLIDACIJA (#1+#3) NIJE još izgrađena:** ~113 čistih za Review
+   (31 MASTERCARD lump→**Transfer** = Sašina ideja #1, 66 kartičnih, 16 account), 111→Nematchano_v3.
+
 **Sljedeći koraci — v. i ENRICH_PLAN §3:**
-1. ~~PBZ Visa split~~ ✅ IZVRŠENO S107i. **NOVO — Fix `parse_zaba_racun` (Smjer + potpunost)** prije
-   account mergea/bank kolona/saldo-reconcilea (v. §2g/§3 t.1b). Kandidati: `Izvodi_transakcije.xlsx`
-   → `Nematchano_v2`, filter `Problem`=`Smjer?` (39 crveni). Reconcile fokus = tekuća godina, saldo
-   vs Kokina `Stanje`, dio s Kokom.
+1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. **Konsolidacija (#1+#3):** merge ~113 čistih Nematchano_v2 u
+   Review (MASTERCARD→Transfer, kartične, account) + Nematchano_v3 residual; `merge_missing_account.py`
+   treba guard (skip MASTERCARD lump + možda-dup). Onda bank kolone UplataB/IsplataB/SaldoB. NIJE hitno.
+1c. **N/A petlja (`suggest_candidates.py`) — PRIORITET 2026** pa PROD, zatim 2025/2024 (v. §2i).
 2. **Pravila iterativno sa Sašom — sljedeći krug (Sonnet OK).** Preostali kandidati
    (ENRICH_PLAN §2e): `paypal` ostatak, `spotify` ostatak, porez grupa (porez/prirez/
    dohodak — treba nov Tip?), `leasing`, `bmove` (nepoznat merchant), `keks pay`,
