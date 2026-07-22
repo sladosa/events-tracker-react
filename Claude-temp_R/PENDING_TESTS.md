@@ -3,9 +3,26 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107i (2026-07-20)
-**Detalji testova:** [S107i_tests.md](test-sessions/S107i_tests.md) (novi) + [S107h_tests.md](test-sessions/S107h_tests.md) + [S107g_tests.md](test-sessions/S107g_tests.md) + [S107f_tests.md](test-sessions/S107f_tests.md) + [S107d_tests.md](test-sessions/S107d_tests.md) + [S107c_tests.md](test-sessions/S107c_tests.md) + [S107b_tests.md](test-sessions/S107b_tests.md)
+**Zadnji update:** S107j (2026-07-22)
+**Detalji testova:** [S107j_tests.md](test-sessions/S107j_tests.md) (novi) + [S107i_tests.md](test-sessions/S107i_tests.md) + [S107h_tests.md](test-sessions/S107h_tests.md) + [S107g_tests.md](test-sessions/S107g_tests.md) + [S107f_tests.md](test-sessions/S107f_tests.md) + [S107d_tests.md](test-sessions/S107d_tests.md)
 **Upute za izvode (i za Koku):** [UPUTE_izvodi.md](UPUTE_izvodi.md) — kako skinuti/spremiti/obraditi bankovne izvode
+
+---
+
+## S107j — ZABA parser fix + izvodi konsolidirani u Review + N/A rule petlja (Python, data-prep; NEMA app koda)
+
+| ID        | Test                                                                                                          | Status              |
+| --------- | ------------------------------------------------------------------------------------------------------------- | ------------------- |
+| T-S107j-A | `parse_zaba_racun` fix: saldo-lanac Σupl/Σisp = bankov Zbroj prometa 40/40 u cent; lanac neprekinut 2023-26   | ✅ (programski verificirano) |
+| T-S107j-B | `consolidate_review.py`: +113 (31 MASTERCARD→Transfer, 82 N/A); Nematchano_v3 57 + Saldo kontrola 21/31        | ✅ (programski verificirano) |
+| T-S107j-C | `suggest_candidates.py`: Neklasificirano 2026 top 20, Tip/Podtip dropdowni; `backfill_napomena` 1870          | ✅ (programski verificirano) |
+| T-S107j-1 | **Saša:** N/A klasifikacija petlja — Neklasificirano popuni → `--harvest` → `apply_rules` → sljedeći krug kraći | ⬜ (glavni put do PROD) |
+| T-S107j-2 | **Saša:** `Nematchano_v3` pregled — dismiss dup (peach=odluka, green=kontekst), dodaj genuine missing         | ⬜                   |
+| T-S107j-3 | **Saša:** `Saldo kontrola` — 21 OK + 10 razlika; velike (2026-01/2025-08/2024-09) = pitanja za Koku           | ⬜                   |
+| T-S107j-4 | **Saša:** Napomena backfill kontrola — 1870 popunjeno, Kokine ne-prazne netaknute (P3)                        | ⬜                   |
+
+**Backlog (S107j → sljedeća):** date-accuracy pass (Review datum ← bankovni, točniji); per-month
+reconcile view za 3 velike saldo razlike; PBZ Visa Transfer stragglers (3 N/A "PBZCARD" → Transfer).
 
 ---
 
