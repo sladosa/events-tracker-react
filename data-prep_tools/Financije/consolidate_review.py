@@ -217,6 +217,11 @@ def v3_verdict(tx, cands, koka_at_close, bank_saldo):
     iznos ≤7 dana ⇒ dup (date-shift); inače provjeri."""
     ym = f'{tx["date"]:%Y-%m}'
     if tx['pref'] == 'ZABA' and ym in bank_saldo and koka_at_close.get(ym) is not None:
+        # ZABA account: saldo je KONTEKST, ne per-red oracle — timing (Koka upiše par
+        # dana nakon zatvaranja izvatka) i agregacija (2×33.98 → 67.96) prave prividne
+        # manjkove. Iznos-kandidat je za sitne iznose (parking/naknade) slučajan. Zato
+        # samo balansiran mjesec = siguran DUP; ostalo PROVJERI (Saša odlučuje uz
+        # Izvor reda + side-by-side + Δ mjeseca).
         k, b = koka_at_close[ym], bank_saldo[ym][1]
         diff = round(k - b, 2)
         if abs(diff) < 0.01:
