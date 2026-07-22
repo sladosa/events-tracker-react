@@ -274,19 +274,34 @@ top: BIBERON 9, KEINDL 7, HLK članarina 5, TRAPERICE 5, PAYPAL 5, AFRODITA 4, B
 Racun 623 (318 text). **Resolvable (2024-26 s tekstom) ~1694; hard no-text pre-2024 ~600** (nema izvoda
 tako daleko). **Plan (Saša): prvo zatvoriti 2026 → poslati u PROD da Koka nastavi u aplikaciji.**
 
+## 2j. S107j (2026-07-22 nastavak) — consolidate_review.py: izvodi ZATVORENI, sve u Review ✅
+
+**`consolidate_review.py` (novo):** upiše u Review sve JASNO iz Izvodi_transakcije, ostatak → sheetovi
+**UNUTAR Review workbooka** (da Izvodi_transakcije.xlsx više ne treba za odluke). Match ±2 dana; ostatak:
+- **DODANO 113 redaka:** 31 ZABA MASTERCARD lump ("TROŠKOVI UČINJENI MASTERCARD KARTICOM") →
+  **Tip=Transfer/izmedju racuna** (Sašina ideja #1 — novac s tekućeg na karticu, itemizirano posebno MC
+  izvodom, Transfer isključuje dvostruko brojanje); 65 MC + 1 Visa kartične kupovine → N/A Mastercard/Visa;
+  16 ZABA/RF account tx → N/A Racun. Sort Opcija B, DV/autofilter prošireni, source_key dedup (idempotentno).
+- **`Nematchano_v3` sheet (111 izvod tx, 307 redaka):** side-by-side **Source Izvod↔Review** kandidat
+  (Sašin dizajn) — svaki dvojbeni izvod redak + najbliži Review redovi (Δ dana, njihov Tip/Napomena) +
+  **Transfer Y/n** (default n) + **Saldo-hint**. Za odluku dup-vs-dodaj.
+- **`Saldo kontrola` sheet:** po ZABA izvatku Kokin `Stanje` **na datumu zatvaranja izvatka** vs bankovni
+  NOVO STANJE (izvadak se zatvara par dana u idući mjesec → NE kalendarski kraj mjeseca!). **21/31
+  balansira u cent; 10 razlika:** rekurentni ±49 (multisport na granici izvatka), 2025-07 −2875 (Astrum
+  priljev Koka upisala kasnije), 2026-01 +359.43 / 2025-08 +200 / 2024-09 +149 (za provjeriti s Kokom).
+- **Pokrenuto:** Review 4855→**4968**; apply_rules klasificirao ~40 novih kartičnih (temu/konzum/audible…).
+  Backup `pre-consolidate-20260722_102449`. **Izvodi_transakcije.xlsx više NE treba za odluke.**
+
 ## 3. SLJEDEĆI KORACI
 
-1. ~~PBZ Visa split (1538 tx)~~ — ✅ IZVRŠENO S107i (v. §2g). Coverage 1538/1539.
-1b. ~~Fix `parse_zaba_racun` (Smjer + potpunost)~~ — ✅ GOTOV + POKRENUT S107j (v. §2h). **Preostaje
-   KONSOLIDACIJA (#1+#3, Saša):** novi merge koji upiše u Review ~113 čistih Nematchano redaka
-   (31 MASTERCARD lump→**Transfer**, 66 kartičnih MC/Visa kupovina, 16 pravih account tx), a 110
-   možda-dup (date-shift) + 1 Smjer? → **`Nematchano_v3`** (ručni pregled). `merge_missing_account.py`
-   treba guard: SKIP MASTERCARD lump (dodaje se kao Transfer, ne Isplata) + SKIP možda-dup. Onda bank
-   kolone `UplataB/IsplataB/SaldoB` (mjesečni saldo vs Kokina `Stanje`, fokus 2026). NIJE hitno —
-   malo 2026 redaka fali, klasifikacija (t.1c) ne ovisi o tome.
-1c. **NOVO — N/A rule-authoring petlja (`suggest_candidates.py`, v. §2i):** Neklasificirano sheet →
-   Saša popuni Tip/Podtip → `--harvest` → `apply_rules` → sljedeći krug. **Prioritet 2026** (155 text
-   N/A) pa PROD. Zatim 2025 (746 text) + 2024 (793 text). Visa 1129 (sve text) = najveći target.
+1. ~~PBZ Visa split~~ ✅ S107i. ~~Fix parse_zaba_racun~~ ✅ S107j (§2h). ~~Konsolidacija~~ ✅ S107j (§2j).
+   **Preostalo iz konsolidacije:** (a) `Nematchano_v3` (111) — Saša prođe side-by-side, odluči dup-vs-dodaj
+   (saldo-hint pomaže); (b) `Saldo kontrola` 10 razlika — pitanja za Koku (2026-01 +359, 2025-08 +200,
+   2024-09 +149); (c) bank kolone `UplataB/IsplataB/SaldoB` opcionalno (Saldo kontrola već daje kontrolu).
+1c. **N/A rule-authoring petlja (`suggest_candidates.py`, v. §2i):** Neklasificirano sheet → Saša popuni
+   Tip/Podtip → `--harvest` → `apply_rules` → sljedeći krug. **Prioritet 2026** (163 text N/A) pa PROD.
+   Zatim 2025 (767 text) + 2024 (817 text). Visa 1130 (sve text) = najveći target. Ukupno N/A 2803
+   (1979 text = resolvable, 824 no-text pre-2024 = hard).
 2. **Pravila sa Sašom (iterativno) — NASTAVAK, kad PBZ Visa merge završi (Sonnet OK).**
    Prvi + drugi krug gotovi (v. §2e/§2f). Preostali kandidati: `paypal` ostatak (~45 redova,
    merchant varira — NE blanket pravilo), `spotify` ostatak, `leasing` (OTP Leasing — VEĆ

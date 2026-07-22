@@ -479,14 +479,18 @@ ENRICH_PLAN §2h/§2i, sesija PRATNJE — Saša dijagnosticirao Nematchano_v2, C
    `--year 2026` fokus. Prvi run: Neklasificirano (2026, 20 klastera; BIBERON/KEINDL/HLK/TRAPERICE…).
 3. **N/A po godini:** 2024 946 (793 text), 2025 792 (746 text), 2026 174 (155 text); pre-2024 ~600
    no-text (nema izvoda). **Plan (Saša): zatvoriti 2026 → PROD** (Koka nastavlja u app), pa 2025/2024.
-4. **Nematchano_v2 (224) mapiran; KONSOLIDACIJA (#1+#3) NIJE još izgrađena:** ~113 čistih za Review
-   (31 MASTERCARD lump→**Transfer** = Sašina ideja #1, 66 kartičnih, 16 account), 111→Nematchano_v3.
+4. **`consolidate_review.py` (novo) — izvodi ZATVORENI, sve u Review:** DODANO **113** (31 MASTERCARD
+   lump→**Transfer/izmedju racuna**=ideja #1, 65 MC+1 Visa kartične→N/A, 16 account→N/A); **`Nematchano_v3`**
+   sheet (side-by-side Source Izvod↔Review + Transfer Y/n + saldo-hint, Sašin dizajn) i **`Saldo kontrola`**
+   sheet (Kokin Stanje NA datum zatvaranja izvatka vs bankovni NOVO STANJE — 21/31 balansira u cent, 10
+   razlika za Koku) sad ŽIVE U REVIEW workbooku (Izvodi_transakcije.xlsx više ne treba za odluke).
+   Review 4855→**4968**; apply_rules klasificirao ~40 novih. Backup `pre-consolidate-20260722_102449`.
 
 **Sljedeći koraci — v. i ENRICH_PLAN §3:**
-1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. **Konsolidacija (#1+#3):** merge ~113 čistih Nematchano_v2 u
-   Review (MASTERCARD→Transfer, kartične, account) + Nematchano_v3 residual; `merge_missing_account.py`
-   treba guard (skip MASTERCARD lump + možda-dup). Onda bank kolone UplataB/IsplataB/SaldoB. NIJE hitno.
-1c. **N/A petlja (`suggest_candidates.py`) — PRIORITET 2026** pa PROD, zatim 2025/2024 (v. §2i).
+1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j (`consolidate_review.py`). **Preostalo:**
+   Saša prođe `Nematchano_v3` (111, dup-vs-dodaj, saldo-hint pomaže) + `Saldo kontrola` 10 razlika →
+   pitanja za Koku (2026-01 +359, 2025-08 +200, 2024-09 +149).
+1c. **N/A petlja (`suggest_candidates.py`) — PRIORITET 2026** (163 text N/A) pa PROD, zatim 2025/2024 (§2i).
 2. **Pravila iterativno sa Sašom — sljedeći krug (Sonnet OK).** Preostali kandidati
    (ENRICH_PLAN §2e): `paypal` ostatak, `spotify` ostatak, porez grupa (porez/prirez/
    dohodak — treba nov Tip?), `leasing`, `bmove` (nepoznat merchant), `keks pay`,
