@@ -174,7 +174,7 @@ def write_sheet(wb, review, ranked, ncols_review):
         formula1='INDIRECT("Tip_"&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(F2," ","_"),"ć","c"),"/","_"))')
     dv_sub.sqref = f'G2:G{max(2, last)}'
     ws.add_data_validation(dv_sub)
-    ws.freeze_panes = 'A2'
+    ws.freeze_panes = 'F2'                          # split: pinaj A–E + header
     ws.auto_filter.ref = f'A1:K{max(2, last)}'
     ws.sheet_view.tabColor = 'C55A11'
 

@@ -291,6 +291,15 @@ tako daleko). **Plan (Saša): prvo zatvoriti 2026 → poslati u PROD da Koka nas
   priljev Koka upisala kasnije), 2026-01 +359.43 / 2025-08 +200 / 2024-09 +149 (za provjeriti s Kokom).
 - **Pokrenuto:** Review 4855→**4968**; apply_rules klasificirao ~40 novih kartičnih (temu/konzum/audible…).
   Backup `pre-consolidate-20260722_102449`. **Izvodi_transakcije.xlsx više NE treba za odluke.**
+- **Dorada (Sašin zahtjev):** `Nematchano_v3` reduciran na **SAMO problematične** (`v3_verdict`: ZABA
+  balansiran mjesec ⇒ DUP izbačen; kartica/RF kandidat ≤7 dana ⇒ DUP; ostalo PROVJERI) — 111→**57
+  zadržano** (54 dupa izbačeno), **recent-first sort** (2026/2025 gore; 44/57 su 2025-26), `Verdikt`
+  kolona objašnjava zašto je zadržan. 10 ZABA-account (saldo-vođeno) + 47 kartica/RF (kandidat >7d).
+- **`backfill_napomena.py` (novo):** prazna `Napomena` ← očišćen `Izvod opis` (makne "Kreditni
+  transfer… (m-zaba)" prefiks + IBAN); **1870 popunjeno**, 824 ostaje prazno (pre-2024 no-text). P3 —
+  ne dira ne-praznu Napomenu. Cilj: svaki potvrđeni redak čitljiv za ručnu Tip/Podtip klasifikaciju.
+- **Split-screen:** Review/Nematchano_v3/Neklasificirano `freeze_panes='F2'` (pinaj A–E + header).
+  **Alati identificiraju sheetove po IMENU (ne poziciji) → Saša smije slobodno presložiti tabove.**
 
 ## 3. SLJEDEĆI KORACI
 

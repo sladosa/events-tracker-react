@@ -211,31 +211,52 @@ def sort_review(ws, col, ncols):
         ws.auto_filter.ref = f'{first}:{get_column_letter(ncols)}{n}'
 
 
-def write_v3(wb, v3_items, koka_monthend, bank_saldo):
+def v3_verdict(tx, cands, koka_at_close, bank_saldo):
+    """→ (keep: bool, verdikt: str). Zadrži samo PROBLEMATIČNE (dup se izbaci).
+    ZABA: mjesec balansira ⇒ dup; inače provjeri (Δ). Kartica/RF: kandidat isti
+    iznos ≤7 dana ⇒ dup (date-shift); inače provjeri."""
+    ym = f'{tx["date"]:%Y-%m}'
+    if tx['pref'] == 'ZABA' and ym in bank_saldo and koka_at_close.get(ym) is not None:
+        k, b = koka_at_close[ym], bank_saldo[ym][1]
+        diff = round(k - b, 2)
+        if abs(diff) < 0.01:
+            return (False, f'DUP — {ym} mjesec balansira ({k:.2f})')
+        return (True, f'PROVJERI — {ym} Koka {k:.2f} vs banka {b:.2f} (Δ{diff:+.2f})')
+    nd = min((abs((c['date'] - tx['date']).days) for c in cands), default=None)
+    if nd is not None and nd <= 7:
+        return (False, f'DUP — isti iznos u Reviewu {nd} dana blizu')
+    if nd is not None:
+        return (True, f'PROVJERI — kandidat {nd} dana daleko')
+    return (True, 'PROVJERI — nema kandidata u Reviewu')
+
+
+def write_v3(wb, v3_items, koka_at_close, bank_saldo):
+    """Piše SAMO problematične (dup se izbaci), recent-first (2025/2026 gore)."""
     if 'Nematchano_v3' in wb.sheetnames:
         del wb['Nematchano_v3']
     ws = wb.create_sheet('Nematchano_v3')
     heads = ('Source', 'Datum', 'Iznos', 'Smjer', 'Racun', 'Izvor',
-             'Opis / Napomena', 'Tip (Review)', 'Δ dana', 'Transfer', 'Saldo-hint')
+             'Opis / Napomena', 'Tip (Review)', 'Δ dana', 'Transfer', 'Verdikt / saldo')
     for c, hh in enumerate(heads, 1):
         cell = ws.cell(1, c, hh)
         cell.fill, cell.font, cell.border = HDR_FILL, WHITE_BOLD, BORDER
-    for c, w in zip('ABCDEFGHIJK', (9, 11, 10, 8, 18, 11, 46, 16, 7, 9, 40)):
+    for c, w in zip('ABCDEFGHIJK', (9, 11, 10, 8, 18, 11, 46, 16, 7, 9, 48)):
         ws.column_dimensions[c].width = w
-    r = 2
+    # verdikt + zadrži samo problematične, sortiraj recent-first
+    kept, dropped = [], 0
     for tx, cands in v3_items:
-        ym = f'{tx["date"]:%Y-%m}'
-        hint = ''
-        if tx['pref'] == 'ZABA' and ym in bank_saldo and koka_monthend.get(ym) is not None:
-            k, b = koka_monthend[ym], bank_saldo[ym][1]
-            diff = round(k - b, 2)
-            hint = (f'{ym}: Koka {k:.2f} = banka {b:.2f} → mjesec balansira (vjerojatno dup)'
-                    if abs(diff) < 0.01
-                    else f'{ym}: Koka {k:.2f} vs banka {b:.2f} (Δ{diff:+.2f} → možda dodaj)')
+        keep, verd = v3_verdict(tx, cands, koka_at_close, bank_saldo)
+        if keep:
+            kept.append((tx, cands, verd))
+        else:
+            dropped += 1
+    kept.sort(key=lambda x: x[0]['date'], reverse=True)   # 2026/2025 gore
+    r = 2
+    for tx, cands, verd in kept:
         ws.cell(r, 1, 'Izvod'); ws.cell(r, 2, tx['date']).number_format = 'DD.MM.YYYY'
         ws.cell(r, 3, tx['iznos']).number_format = '#,##0.00'
         ws.cell(r, 4, tx['smjer']); ws.cell(r, 5, tx['racun']); ws.cell(r, 6, tx['izvor'])
-        ws.cell(r, 7, tx['opis'][:120]); ws.cell(r, 10, 'n'); ws.cell(r, 11, hint)
+        ws.cell(r, 7, tx['opis'][:120]); ws.cell(r, 10, 'n'); ws.cell(r, 11, verd)
         for c in range(1, 12):
             ws.cell(r, c).fill = V3_IZV_FILL
         r += 1
@@ -248,9 +269,10 @@ def write_v3(wb, v3_items, koka_monthend, bank_saldo):
             for cc in range(1, 12):
                 ws.cell(r, cc).fill = V3_REV_FILL
             r += 1
-    ws.freeze_panes = 'A2'
+    ws.freeze_panes = 'F2'                      # split: pinaj A–E + header
     ws.auto_filter.ref = f'A1:K{max(2, r - 1)}'
     ws.sheet_view.tabColor = 'C55A11'
+    print(f'  Nematchano_v3: {len(kept)} problematičnih zadržano, {dropped} dupova izbačeno')
 
 
 def write_saldo_kontrola(wb, koka_monthend, bank_saldo):
@@ -385,6 +407,7 @@ def main():
             cell._style = tstyles[c - 1]
     if rows_to_add:
         sort_review(ws, col, ncols)
+    ws.freeze_panes = 'F2'                        # split: pinaj A–E + header (Review)
     write_v3(wb, v3, koka_at_close, bank_saldo)
     write_saldo_kontrola(wb, koka_at_close, bank_saldo)
 
