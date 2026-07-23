@@ -3,9 +3,28 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107j (2026-07-22)
-**Detalji testova:** [S107j_tests.md](test-sessions/S107j_tests.md) (novi) + [S107i_tests.md](test-sessions/S107i_tests.md) + [S107h_tests.md](test-sessions/S107h_tests.md) + [S107g_tests.md](test-sessions/S107g_tests.md) + [S107f_tests.md](test-sessions/S107f_tests.md) + [S107d_tests.md](test-sessions/S107d_tests.md)
+**Zadnji update:** S107k (2026-07-23)
+**Detalji testova:** [S107k_tests.md](test-sessions/S107k_tests.md) (novi) + [S107j_tests.md](test-sessions/S107j_tests.md) + [S107i_tests.md](test-sessions/S107i_tests.md) + [S107h_tests.md](test-sessions/S107h_tests.md) + [S107g_tests.md](test-sessions/S107g_tests.md) + [S107f_tests.md](test-sessions/S107f_tests.md)
 **Upute za izvode (i za Koku):** [UPUTE_izvodi.md](UPUTE_izvodi.md) — kako skinuti/spremiti/obraditi bankovne izvode
+
+---
+
+## S107k — v3 Verdikt tok + date_accuracy + kartice_datum_naplate (Python, data-prep; NEMA app koda)
+
+Svi pravi runovi IZVRŠENI ove sesije (v. S107k_tests.md). Review: 5004 redaka; **Datum naplate
+100% popunjen**; Saldo kontrola 10→7; Nematchano_v3 **0 za odluku**; N/A 2026 = 178.
+
+| ID        | Test                                                                                                          | Status              |
+| --------- | ------------------------------------------------------------------------------------------------------------- | ------------------- |
+| T-S107k-A | date_accuracy: 360 event_date → bankovni datum; dry=real; re-sort bez gubitka                                  | ✅ (programski)      |
+| T-S107k-B | Harvest E2E ciklus (test kopija): prefill → harvest → v3 44→0; idempotentan                                    | ✅ (programski)      |
+| T-S107k-C | "Used kandidat" zaštita: DUP ne sinka red matchan drugom tx; `Review (matchan)` info-only                      | ✅ (programski; bug uhvaćen i fiksan prije pravog runa) |
+| T-S107k-D | kartice_datum_naplate spot-check: stm 2024-09→2024-10-08, 2026-06→2026-07-06; 0 naplata<kupovina; P3           | ✅ (programski)      |
+| T-S107k-E | Saldo kontrola 10→7 bez novih razlika (2025-02, 2025-07 Astrum, 2025-08 riješene)                              | ✅ (programski)      |
+| T-S107k-F | Claude tipfeler (sasa EU:549, 2024→2025) — DUP sync + pravilo #15 → Projekti                                   | ✅ (Saša otkrio)     |
+| T-S107k-1 | **Saša:** vizualni pregled — filter `Pravilo run`=2026-07-23 (30 klasifikacija) + `Izvor reda`=Konsolidacija   | ⬜                   |
+| T-S107k-2 | **Saša:** Datum naplate kontrola — Visa ~4.–8. u M+1; MC = 11. u M+1                                           | ⬜                   |
+| T-S107k-3 | **Saša:** Saldo kontrola 7 preostalih — velike 3 = pitanja za Koku (2026-01 +359, 2024-09 +149, 2×±49)         | ⬜                   |
 
 ---
 
@@ -17,12 +36,12 @@
 | T-S107j-B | `consolidate_review.py`: +113 (31 MASTERCARD→Transfer, 82 N/A); Nematchano_v3 57 + Saldo kontrola 21/31        | ✅ (programski verificirano) |
 | T-S107j-C | `suggest_candidates.py`: Neklasificirano 2026 top 20, Tip/Podtip dropdowni; `backfill_napomena` 1870          | ✅ (programski verificirano) |
 | T-S107j-1 | **Saša:** N/A klasifikacija petlja — Neklasificirano popuni → `--harvest` → `apply_rules` → sljedeći krug kraći | ⬜ (glavni put do PROD) |
-| T-S107j-2 | **Saša:** `Nematchano_v3` pregled — dismiss dup (peach=odluka, green=kontekst), dodaj genuine missing         | ⬜                   |
-| T-S107j-3 | **Saša:** `Saldo kontrola` — 21 OK + 10 razlika; velike (2026-01/2025-08/2024-09) = pitanja za Koku           | ⬜                   |
+| T-S107j-2 | **Saša:** `Nematchano_v3` pregled — dismiss dup, dodaj genuine missing                                        | ✅ (S107k Verdikt pass — 0 za odluku) |
+| T-S107j-3 | **Saša:** `Saldo kontrola` — razlike → pitanja za Koku                                                        | → T-S107k-3 (sad 7)  |
 | T-S107j-4 | **Saša:** Napomena backfill kontrola — 1870 popunjeno, Kokine ne-prazne netaknute (P3)                        | ⬜                   |
 
-**Backlog (S107j → sljedeća):** date-accuracy pass (Review datum ← bankovni, točniji); per-month
-reconcile view za 3 velike saldo razlike; PBZ Visa Transfer stragglers (3 N/A "PBZCARD" → Transfer).
+**Backlog (S107j):** ~~date-accuracy pass~~ ✅ S107k; per-month reconcile view za velike saldo razlike;
+~~PBZ Visa Transfer stragglers~~ — provjeriti je li ostalo N/A "PBZCARD" redova nakon S107k pravila.
 
 ---
 

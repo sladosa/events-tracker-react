@@ -486,11 +486,36 @@ ENRICH_PLAN §2h/§2i, sesija PRATNJE — Saša dijagnosticirao Nematchano_v2, C
    razlika za Koku) sad ŽIVE U REVIEW workbooku (Izvodi_transakcije.xlsx više ne treba za odluke).
    Review 4855→**4968**; apply_rules klasificirao ~40 novih. Backup `pre-consolidate-20260722_102449`.
 
+**Done 2026-07-23 (S107k — v3 Verdikt tok + date-accuracy + Datum naplate KOMPLETAN; detalji
+ENRICH_PLAN §2k, test-sessions/S107k_tests.md; SVE IZVRŠENO na pravom Reviewu):**
+1. **Odluke (Saša):** prag sitniša **5 €** (ispod = auto-verdikt, ništa se ne baca — bez slobodnog
+   kandidata auto-DODAJ pa pravila klasificiraju); DUP verdikt = potvrđen par ⇒ **event_date sync na
+   bankovni datum** (kombinirani v3+date-accuracy pass); `Datum naplate` se puni u Review SADA.
+2. **`date_accuracy.py` (novo):** matchani parovi Δ±1/±2 → event_date ← bankovni datum. **Izvršeno:
+   360 pomaka** + 89 naplata follow + 187 Izvod opis. **Verificiran obrazac PBZ naplate:** suma
+   statementa M == PRIMLJENA UPLATA u M+1 == RF PBZCARD isplata isti dan (30/30 u cent).
+3. **`consolidate_review.py` — Verdikt tok:** kandidati **slobodan vs. `(matchan)`** (bug uhvaćen na
+   test kopiji: DUP sync krao Δ0-matchane retke tuđih tx → fix prije pravog runa); sitniš<5€ auto-DUP/
+   auto-DODAJ; v3 `Verdikt` dropdown (DUP/DODAJ/PRESKOČI, pre-popunjen) + `Src`+`key`; **`--harvest`**
+   primjenjuje verdikte PRIJE regeneracije (DODAJ→novi red s Izvod opis; DUP→datum-sync+opis;
+   PRESKOČI→hidden `V3 preskočeno`). **Sašin pass:** 41 red → 20 DUP + 19 DODAJ + 2 PRESKOČI →
+   **v3 = 0 za odluku**. Ulov: Claude pretplata `sasa EU:549` imala tipfeler godine (2024→2025) —
+   DUP sync popravio; KONZUM RATA 2/3 stvarno falila (kandidati matchani drugim ratama) → DODAJ.
+4. **`kartice_datum_naplate.py` (novo, bivši visa_datum_naplate):** Visa ← stvarni datum uplate
+   statementa (lump M+1/RF, cutoff dan≤3 fallback); MC ← 11. u M+1 (Kokino pravilo, 1650/1653
+   potvrda). **Datum naplate 100% popunjen — svih 5004 redaka, 0 praznih.**
+5. **Saldo kontrola 10 → 7 razlika** (2025-02, 2025-07 Astrum −2875, 2025-08 +200 riješene datumima!);
+   preostale = prava pitanja za Koku: 2026-01 +359, 2024-09 +149, 2×±49 multisport + 3 sitna.
+6. **PBZCARD pravilo #26** → 4 preostala N/A → Transfer/izmedju racuna (stragglers zatvoreni);
+   apply_rules ukupno +35 novih klasifikacija (parking 8, Spotify 4, Prime 4, Claude→Projekti…).
+   **N/A 2026 = 178** (od 2812 ukupno). Poznat 1 pre-postojeći dupli source_key (`koka EU:31`,
+   2022, 2×17.82) — pre-2024 cleanup.
+
 **Sljedeći koraci — v. i ENRICH_PLAN §3:**
-1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j (`consolidate_review.py`). **Preostalo:**
-   Saša prođe `Nematchano_v3` (111, dup-vs-dodaj, saldo-hint pomaže) + `Saldo kontrola` 10 razlika →
-   pitanja za Koku (2026-01 +359, 2025-08 +200, 2024-09 +149).
-1c. **N/A petlja (`suggest_candidates.py`) — PRIORITET 2026** (163 text N/A) pa PROD, zatim 2025/2024 (§2i).
+1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
+   + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
+   (2026-01 +359, 2024-09 +149, 2×±49 multisport); 2 PRESKOČENA bankomat reda čekaju Kokin odgovor o 700 €.
+1c. **N/A petlja (`suggest_candidates.py`) — PRIORITET 2026** (178 N/A) pa PROD, zatim 2025/2024 (§2i).
 2. **Pravila iterativno sa Sašom — sljedeći krug (Sonnet OK).** Preostali kandidati
    (ENRICH_PLAN §2e): `paypal` ostatak, `spotify` ostatak, porez grupa (porez/prirez/
    dohodak — treba nov Tip?), `leasing`, `bmove` (nepoznat merchant), `keks pay`,

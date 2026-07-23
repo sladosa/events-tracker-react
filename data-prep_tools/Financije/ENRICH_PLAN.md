@@ -21,6 +21,8 @@ Pokretanje: `Financije\run.bat <skripta.py> [args]` (ili direktno venv python, `
 | `apply_rules.py` | ✅ + dorade S107e/S107g | `Pravila` sheet (keyword → Tip/Podtip/**Napomena**) na redove gdje je **Tip prazan ili N/A** (ručni rad se NIKAD ne gazi; Napomena se puni samo ako je prazna — P3). Pretražuje Napomena + `Izvod opis`. Prije pravila: **jednokratni `Tip_O`/`Podtip_O` snapshot** + **validacija protiv Taksonomije** (nepostojeći par → PRAVILO ako pogađa → inače Preimenovanja rename → inače reset na N/A, oznaka `TAKS:` u Alternativa). **`Pravilo run` kolona (S107g):** timestamp na svaki red koji taj run promijeni (rename/reset/pravilo) — filtriraj po zadnjem timestampu. **Prioritet (S107g):** Pravilo > Preimenovanja rename > reset — ako blanket rename par pogađa preširoko, specifičnije keyword pravilo ga nadvladava (mark `PRAVILO #N nadvladao Preimenovanja` u Alternativa). `--dry`; `--all` = report konflikata pravila s klasificiranim redovima (ne piše). Prvi run kreira sheet s primjerima. |
 | `sync_taxonomy.py` | ✅ radi | Taksonomija sheet → regenerira Tip/Podtip dropdowne Review sheeta |
 | `backfill_datum_naplate.py` | ✅ NOVO S107f | `Datum naplate` = event_date za Izvor Racun/Cash (D1). ✅ IZVRŠENO 2026-07-15: 1631 redova (Racun 1630 + Cash 1); Visa 220 namjerno preskočena (puni ih import generator). Backup `*.pre-naplata-20260715_112019.xlsx`. |
+| `date_accuracy.py` | ✅ NOVO S107k | Tier A datum-sync: matchani parovi Δ=±1/±2 → `event_date` ← bankovni datum (+ `Datum naplate` follow-up ako je bio == event_date) + prazan `Izvod opis` usput. Re-sort. `--dry`. V. §2k. |
+| `kartice_datum_naplate.py` | ✅ NOVO S107k | Prazan `Datum naplate` kartičnih redaka: **Visa** ← stvarni datum uplate statementa (lump M+1 / RF PBZCARD; cutoff pravilo dan≤3 bez `Izvod file`); **Mastercard** ← 11. u mjesecu M+1 (Kokino pravilo, statement iz `Izvod file`). P3. `--dry`. V. §2k. |
 | `fix_sportski_rekviziti_split.py` | ✅ one-off S107g | Preimenovanja blanket-rename za staru `Zdravlje/Sportski rekviziti` (29 redova, mješavina Multisport/Kreatin/Decathlon) razdvojen po sadržaju Napomene: multisport→`Zdravlje/Sport_Sasa` (23), Kreatin→`Namirnice/Hrana i ostalo` (3), Decathlon netaknuto (3). Prepoznaje preko `Podtip_O` snapshot kolone — siguran za ponovno pokretanje. |
 | `fix_tcom_tmobile_swap.py` | ✅ one-off S107g | Kokin originalni T-com/T-mobile label bio krivo upisan na 2 retka (od 41+40) — Izvod opis ("fiksna"/"mobilna" mreža) otkriva stvarnu uslugu, ispravlja Tip/Podtip. Ograničeno na `Tip_O=Informatika`, `Podtip_O` in (T-com, T-mobile). |
 
@@ -301,12 +303,64 @@ tako daleko). **Plan (Saša): prvo zatvoriti 2026 → poslati u PROD da Koka nas
 - **Split-screen:** Review/Nematchano_v3/Neklasificirano `freeze_panes='F2'` (pinaj A–E + header).
   **Alati identificiraju sheetove po IMENU (ne poziciji) → Saša smije slobodno presložiti tabove.**
 
+## 2k. S107k (2026-07-23) — v3 Verdikt tok + date_accuracy + visa_datum_naplate (alati NAPISANI, čeka Sašin run)
+
+**Kontekst (Sašine odluke):** prag sitniša **5 €**; klasifikacija NEMA prag (sitniš se DODAJE pa ga
+pravila klasificiraju); `Datum naplate` za Visu punimo **u Review sada** (ne tek u import generatoru);
+Nematchano_v3 pass i date-accuracy su JEDAN kombinirani tok (DUP verdikt = potvrđen par ⇒ datum-sync).
+
+**Verificiran obrazac naplate (30/30 statementa u cent):** suma kupovina PBZ statementa M ==
+`PRIMLJENA UPLATA` u statementu M+1 == PBZCARD isplata sa Sašinog RF **isti dan** (≈4.–8. u M+1).
+
+**1. `date_accuracy.py` (novo) — Tier A:** matcha sve izvod tx na Review (±2d, isti algoritam kao
+consolidate); parovi s Δ=±1/±2 dobiju `event_date` ← bankovni datum; `Datum naplate` prati ako je bio
+== starom event_date; usput puni prazan `Izvod opis`; re-sort. **Dry na pravom Reviewu: 360 pomaka**
+(MC 254, ZABA 65, RF 23, PBZVISA 18; Δ=0 već točnih 3124).
+
+**2. `consolidate_review.py` nadogradnja — Verdikt tok:**
+- kandidati se označavaju **slobodan vs. već matchan** drugim izvod-tx (`used`) — DUP se smije
+  predložiti/sinkati SAMO na slobodnog kandidata ≤31d (bug uhvaćen na test kopiji: sync je krao
+  Δ0-matchane retke drugih transakcija, raw v3 rastao umjesto padao)
+- **sitniš < 5 €:** slobodan kandidat ⇒ auto-DUP (izbačen iz v3, samo brojka); bez slobodnog
+  kandidata ⇒ **auto-DODAJ u Review kao N/A** (parking/naknade — apply_rules ih klasificira)
+- v3 kolone: `Analiza / saldo` (razlog) + **`Verdikt` dropdown DUP/DODAJ/PRESKOČI (pre-popunjen
+  prijedlogom — Saša samo overridea)** + `Src` + `key`; green red `Review (matchan)` = info-only
+- **`--harvest`:** pročita Verdikt PRIJE regeneracije: DODAJ → novi red (Transfer ako kolona
+  Transfer='y' ili MC lump); DUP → slobodni green kandidat dobiva event_date ← bankovni datum
+  (par time trajno nestaje iz v3); PRESKOČI → hidden sheet `V3 preskočeno`; prazno → ostaje
+- **Test kopija, puni ciklus:** 44 za odluku (13 sitniš auto-DUP + 18 sitniš auto-DODAJ) → harvest
+  prefillova (24 DUP + 20 DODAJ) → **0 za odluku**; drugi harvest idempotentan (0 grupa)
+
+**3. `kartice_datum_naplate.py` (novo; bivši visa_datum_naplate):** puni prazan `Datum naplate`
+kartičnih redaka. **Visa:** lump redci = event_date; `Izvod file` PBZVISA_ym ⇒ **egzaktni** datum
+uplate statementa (lump ym+1, RF fallback); bez filea ⇒ cutoff pravilo (dan ≤3 → prethodni statement;
+Kokino "račun se formira 3.–5."). **Mastercard (Sašino pitanje 2026-07-23):** prazni MC redci su oni
+dodani konsolidacijom (build_row kartici ne puni naplatu) — naplata = **11. u mjesecu M+1** (Kokino
+pravilo, potvrđeno: 1650/1653 njenih redaka = dan 11); svi imaju `Izvod file` MC_ym ⇒ egzaktno. P3 —
+postojeće vrijednosti se ne gaze. **Dry na pravom Reviewu: 1636 popunjivo** (Visa 1571: 1311 egzaktno
++ 219 cutoff + 32 lump + 9 RF; MC 65 egzaktno); nakon harvesta više (test: MC 86). Spot-check na test
+kopiji: stm 2024-09 → 2024-10-08 ✓, stm 2026-06 → 2026-07-06 ✓, 0 redaka s naplatom prije kupovine.
+
+**Utjecaj na Saldo kontrolu (Sašino pitanje 2026-07-23) — IZMJEREN na test kopiji:** datum-syncevi
+(date_accuracy + harvest DUP) pomiču Kokine retke na bankovnu vremensku liniju → razlike **10 → 7,
+nijedna nova**: riješeni 2025-07 (−2875 Astrum — DUP sync priljeva u pravi izvadak), 2025-02 (−49) i
+2025-08 (+200, granica izvatka). Ostaje 7: 2×±49 rekurentni multisport (2023-12/2024-02, prije MC
+pokrivenosti), 2024-09 +149, 2026-01 +359.43 (prava pitanja za Koku) + 3 sitna (0.70/1.60/8.40).
+Kokin `Stanje` IZNOS se ne dira — miču se samo datumi; usporedba "zadnji Stanje ≤ zatvaranje izvatka"
+zato postaje točnija.
+
+**Redoslijed pravih runova (čeka Sašin GO; Review zatvoren):**
+1. `date_accuracy.py` (360 pomaka) → 2. `consolidate_review.py` (regen v3 s Verdiktom + ~18 sitniš
+DODAJ) → 3. **Saša: Verdikt pass u Excelu (~44 reda, prefill)** → 4. `consolidate_review.py --harvest`
+→ 5. `kartice_datum_naplate.py` → 6. `apply_rules.py` (klasificira nove N/A retke).
+
 ## 3. SLJEDEĆI KORACI
 
 1. ~~PBZ Visa split~~ ✅ S107i. ~~Fix parse_zaba_racun~~ ✅ S107j (§2h). ~~Konsolidacija~~ ✅ S107j (§2j).
-   **Preostalo iz konsolidacije:** (a) `Nematchano_v3` (111) — Saša prođe side-by-side, odluči dup-vs-dodaj
-   (saldo-hint pomaže); (b) `Saldo kontrola` 10 razlika — pitanja za Koku (2026-01 +359, 2025-08 +200,
-   2024-09 +149); (c) bank kolone `UplataB/IsplataB/SaldoB` opcionalno (Saldo kontrola već daje kontrolu).
+   **Preostalo iz konsolidacije — SADA KROZ §2k TOK:** (a) pravi runovi date_accuracy → consolidate →
+   **Saša Verdikt pass (~44 reda)** → --harvest → kartice_datum_naplate → apply_rules; (b) `Saldo
+   kontrola` 10 razlika — pitanja za Koku (2026-01 +359, 2025-08 +200, 2024-09 +149); (c) bank kolone
+   `UplataB/IsplataB/SaldoB` opcionalno (Saldo kontrola već daje kontrolu).
 1c. **N/A rule-authoring petlja (`suggest_candidates.py`, v. §2i):** Neklasificirano sheet → Saša popuni
    Tip/Podtip → `--harvest` → `apply_rules` → sljedeći krug. **Prioritet 2026** (163 text N/A) pa PROD.
    Zatim 2025 (767 text) + 2024 (817 text). Visa 1130 (sve text) = najveći target. Ukupno N/A 2803
