@@ -511,11 +511,49 @@ ENRICH_PLAN §2k, test-sessions/S107k_tests.md; SVE IZVRŠENO na pravom Reviewu)
    **N/A 2026 = 178** (od 2812 ukupno). Poznat 1 pre-postojeći dupli source_key (`koka EU:31`,
    2022, 2×17.82) — pre-2024 cleanup.
 
+**Done 2026-07-25 (S107l — N/A petlja 2026, 3 kruga, ručni fixevi + priority-order pravilo;
+Sonnet pratnja sesija):**
+1. **T-S107k-1/T-S107k-2 potvrđeni OK** (Saša vizualni pregled); T-S107k-3 (Saldo kontrola 7 razlika)
+   odgođeno — pitanja za Koku.
+2. **3 kruga `suggest_candidates.py --year 2026` → popuni → harvest → `apply_rules.py`:**
+   Krug 1 (15 pravila, 201 redaka: BIBERON/KEINDL/HLK ČLANARINA/TRAPERICE/AFRODITA/IGOMAT/
+   VIDIKOVAC/BATES/TEKSTILPROMET/ŠATRAK/EUROPA/REG/HRANA/FISHERIJA/PUREX); Krug 2 (15 pravila,
+   104 redaka: CHIPOTEKA/AGRAM/AUTOCENTAR/IQNIO/LUFTHAN/NAKNADA/DUBRAVICA-II/PRO STAKLO/MELODIJA/
+   NATURAL/TISAK/VIDEO/KORICA/LJEKARNA); Krug 3 (12 pravila, 66 redaka: GRAFOCENTAR/MINI MLJEKARA/
+   MASLINA/MLINAR/BODY SHOP/CINESTAR/MULLER/BOFROST/NETDOMENA/COREEVENT/BATAK).
+   **N/A 2026: 178 → 85** (68 s tekstom preostalo za krug 4, 17 bez teksta — hard/ručno).
+3. **Pravilo-review prije svakog harvesta ulovio 4 stvarna problema** (Claude provjerava
+   Tip/Podtip protiv stvarnog Izvod opisa PRIJE svakog runa — obrazac za buduće krugove):
+   - **PAYPAL, KEKS PAY, GLS, GLS-D isključeni iz pravila** — dostavljač/servis, ne merchant;
+     stvarni sadržaj varira previše za blanket (npr. GLS je nosio i Nespresso i Yasenka odjeću
+     pod istim ključem) — ista klasa problema kao već poznati `paypal`/`keks pay` backlog.
+   - **NATURAL → Zdravlje/Medical_Koka** (bio pogrešno Razno/Odjeća; opis "Natural Pharmaceutical"
+     + Napomena "D-vitamin" otkrili pravi kontekst).
+   - **GRAFOCENTAR krug 1 izostavljen** (2 pojavljivanja, različit kontekst po osobi — Koka "Čaše",
+     Sašin nejasan); krug 3 Saša sam klasificirao (Razno/Pokloni), prihvaćeno.
+   - **NAKNADA prepoznat kao preširok ključ** — 45 stvarnih bankovnih naknada ALI i 3 "Grobna
+     naknada" retka (godišnja gradska pristojba za grob, Zagrebački holding — ISTA firma kao
+     "Holding (smeće)") koja bi pogrešno pala pod Domaćinstvo/Bankovni troškovi. **Fix: nova
+     Taksonomija par Domaćinstvo/Groblja + specifičnije "grobn" pravilo UMETNUTO IZNAD "NAKNADA"
+     reda u Pravila sheetu** (`ws.insert_rows()` — prvi-match-pobjeđuje znači redoslijed rješava
+     over-broad keyword bez potrebe za NOT/exclusion sintaksom, koja ne postoji).
+   - **LJEKARNA 1 poznati outlier** — "LJEKARNA OREBIC" (red 2115) je Kokina transakcija ali
+     blanket pravilo je stavilo Medical_Sasa (Pravila sheet nema per-račun uvjet kao Preimenovanja);
+     Saša ručno ispravlja.
+   - **MULLER → Namirnice/Hrana i ostalo provjeren protiv presedana** (DM Drogerie Markt već ide
+     u istu kategoriju) — potvrđeno da je to ustaljena "drogerija+hrana" konvencija, ne greška.
+4. **Backup lanac:** svaki harvest/apply_rules/manual-fix korak ostavio `.pre-*` backup
+   (uklj. `pre-manual-fix-20260725_132637` za ručni openpyxl fix izvan standardnih alata).
+
 **Sljedeći koraci — v. i ENRICH_PLAN §3:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
    (2026-01 +359, 2024-09 +149, 2×±49 multisport); 2 PRESKOČENA bankomat reda čekaju Kokin odgovor o 700 €.
-1c. **N/A petlja (`suggest_candidates.py`) — PRIORITET 2026** (178 N/A) pa PROD, zatim 2025/2024 (§2i).
+1b. **Red 2115 (LJEKARNA OREBIC)** — ručno promijeniti Medical_Sasa → Medical_Koka (Kokin račun).
+1c. **N/A petlja (`suggest_candidates.py`) — PRIORITET 2026** (85 preostalo, 68 s tekstom) pa PROD,
+    zatim 2025/2024 (§2i). Isti obrazac kao S107l krugovi: suggest → Saša popuni → Claude pregleda
+    (usporedi Primjer opis sa stvarnim Review retcima PRIJE harvesta, provjeri Taksonomija parove i
+    person/account konzistentnost) → harvest → apply_rules --dry → potvrda → pravi run.
 2. **Pravila iterativno sa Sašom — sljedeći krug (Sonnet OK).** Preostali kandidati
    (ENRICH_PLAN §2e): `paypal` ostatak, `spotify` ostatak, porez grupa (porez/prirez/
    dohodak — treba nov Tip?), `leasing`, `bmove` (nepoznat merchant), `keks pay`,
