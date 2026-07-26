@@ -3,7 +3,29 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107k (2026-07-23)
+**Zadnji update:** S107m (2026-07-26) — AI klasifikacija + čišćenje labela
+**Detalji S107m:** [S107m_tests.md](test-sessions/S107m_tests.md)
+
+---
+
+## S107m — AI klasifikacija: eval + 223 ispravke labela (Python data-prep; NEMA app koda)
+
+Eval naslijepo na već klasificiranim redcima. **v1 62,5 % → v2 80,3 % → v3 80,8 % / Tip 91,9 %**
+(ručne labele, zamrznut uzorak 600). `visoka` pouzdanost = 95 % točno na 47 % redaka.
+Nevaljanih parova **171 → 0**. Potrošeno na API ~$4,4. Puni kontekst: `NEXT_SESSION_PROMPT.md`.
+
+| ID          | Test                                                                     | Status |
+| ----------- | ------------------------------------------------------------------------ | ------ |
+| T-S107m-A…J | Eval v1/v2/v3, razlaganje neslaganja, kontrola upisa, store, guardovi     | ✅ (programski) |
+| T-S107m-1   | **Saša:** pregled 223 ispravljena retka (filter `Pravilo run`=2026-07-26) | ⬜ |
+| T-S107m-2   | **Saša:** Konzum/Radnička — 30 redaka, RATA retci ostaju `Namirnice`      | ⬜ |
+| T-S107m-3   | **Saša:** BIBERON — svih 55 `Projekti \| Sasa_Informatika`               | ⬜ |
+| T-S107m-4   | **Saša:** HAK raspored C5/Lacetti                                        | ⬜ |
+| T-S107m-5   | **Saša:** `Investicije \| Dionice` vidljiv u dropdownu                   | ⬜ |
+| T-S107m-6   | **Saša:** freeze + collapse grupa prežive script run                     | ⬜ |
+
+**Otvoreno za sljedeću sesiju:** `--run` mode (upis `Tip_AI`/`Podtip_AI`) NIJE napisan;
+produkcijski run na 2424 N/A retka nije pokrenut; `source_key` fix i staging schema nisu.
 **Detalji testova:** [S107k_tests.md](test-sessions/S107k_tests.md) (novi) + [S107j_tests.md](test-sessions/S107j_tests.md) + [S107i_tests.md](test-sessions/S107i_tests.md) + [S107h_tests.md](test-sessions/S107h_tests.md) + [S107g_tests.md](test-sessions/S107g_tests.md) + [S107f_tests.md](test-sessions/S107f_tests.md)
 **Upute za izvode (i za Koku):** [UPUTE_izvodi.md](UPUTE_izvodi.md) — kako skinuti/spremiti/obraditi bankovne izvode
 
@@ -22,9 +44,28 @@ Svi pravi runovi IZVRŠENI ove sesije (v. S107k_tests.md). Review: 5004 redaka; 
 | T-S107k-D | kartice_datum_naplate spot-check: stm 2024-09→2024-10-08, 2026-06→2026-07-06; 0 naplata<kupovina; P3           | ✅ (programski)      |
 | T-S107k-E | Saldo kontrola 10→7 bez novih razlika (2025-02, 2025-07 Astrum, 2025-08 riješene)                              | ✅ (programski)      |
 | T-S107k-F | Claude tipfeler (sasa EU:549, 2024→2025) — DUP sync + pravilo #15 → Projekti                                   | ✅ (Saša otkrio)     |
-| T-S107k-1 | **Saša:** vizualni pregled — filter `Pravilo run`=2026-07-23 (30 klasifikacija) + `Izvor reda`=Konsolidacija   | ⬜                   |
-| T-S107k-2 | **Saša:** Datum naplate kontrola — Visa ~4.–8. u M+1; MC = 11. u M+1                                           | ⬜                   |
-| T-S107k-3 | **Saša:** Saldo kontrola 7 preostalih — velike 3 = pitanja za Koku (2026-01 +359, 2024-09 +149, 2×±49)         | ⬜                   |
+| T-S107k-1 | **Saša:** vizualni pregled — filter `Pravilo run`=2026-07-23 (30 klasifikacija) + `Izvor reda`=Konsolidacija   | ✅ (Saša 2026-07-26) |
+| T-S107k-2 | **Saša:** Datum naplate kontrola — Visa ~4.–8. u M+1; MC = 11. u M+1                                           | ✅ (Saša 2026-07-26) |
+| T-S107k-3 | **Saša:** Saldo kontrola 7 preostalih — velike 3 = pitanja za Koku (2026-01 +359, 2024-09 +149, 2×±49)         | ⏸ BLOKIRANO — čeka Koku (nije test nego pitanja za nju) |
+
+---
+
+## S107l/m — N/A petlja 2026 (Python, data-prep; NEMA app koda)
+
+S107l (2026-07-25, Sonnet): 3 kruga `suggest_candidates` → 42 nova pravila → **N/A 2026 178 → 85**.
+Stanje u fileu 2026-07-26: Review 5004 redaka, **69 pravila** + 17 Preimenovanja, **N/A 2026 = 76**,
+N/A ukupno 2424 (1606 s tekstom). PENDING_TESTS nije bio ažuriran u S107l — nadoknađeno ovdje.
+
+| ID        | Test                                                                                                          | Status              |
+| --------- | ------------------------------------------------------------------------------------------------------------- | ------------------- |
+| T-S107l-1 | 3 kruga pravila (15+15+12) — svaki `--dry` prije pravog runa, backup lanac `.pre-*` kompletan                 | ✅ (programski)      |
+| T-S107l-2 | Pravilo-review prije harvesta ulovio 4 problema (PAYPAL/KEKS PAY/GLS isključeni, NATURAL→Medical_Koka, NAKNADA vs `grobn` priority-order) | ✅ (programski)      |
+| T-S107l-3 | Priority-order pattern: specifičnije pravilo (`grobn`) umetnuto IZNAD preširokog (`NAKNADA`) — prvi match pobjeđuje | ✅ (programski)      |
+| T-S107m-1 | **Saša:** red 2115 `LJEKARNA OREBIC` Medical_Sasa → Medical_Koka (ručna izmjena u Excelu)                     | ✅ (Saša 2026-07-26) |
+
+**Otvoreno za Koku (ne testovi — pitanja):** 700 € bankomat 26.11.2025 (2 PRESKOČENA v3 reda);
+Saldo kontrola 7 razlika (2026-01 +359,43; 2024-09 +149; 2×±49 multisport; 3 sitna);
+odluka o pre-2024 no-text N/A masi (~818 redaka, nema izvoda).
 
 ---
 

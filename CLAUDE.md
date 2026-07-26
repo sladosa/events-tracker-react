@@ -545,7 +545,66 @@ Sonnet pratnja sesija):**
 4. **Backup lanac:** svaki harvest/apply_rules/manual-fix korak ostavio `.pre-*` backup
    (uklj. `pre-manual-fix-20260725_132637` za ručni openpyxl fix izvan standardnih alata).
 
-**Sljedeći koraci — v. i ENRICH_PLAN §3:**
+**Done 2026-07-26 (S107m — strateški zaokret + IZVRŠEN eval i čišćenje labela;
+puni handoff: `NEXT_SESSION_PROMPT.md`, testovi: `Claude-temp_R/test-sessions/S107m_tests.md`):**
+
+**A) Izvršeno (kod + podaci):**
+- **`ai_classify.py` (novo)** — AI klasifikacija Tip/Podtip, Sonnet 5. Eval naslijepo na već
+  klasificiranim redcima, zamrznut stratificiran uzorak (`--sample 600`, seed 20260726) pa su
+  runovi usporedivi. Store **`ai_predictions.jsonl`** append-only, **ključ `source_key`** (ne broj
+  retka — pomiče se pri re-sortu), s `--resume` i `--only-conf niska` (ponovi samo nesigurne).
+- **Rezultat (ručne labele):** v1 samo popis kategorija **62,5 %** → v2 + Sašin kontekst file
+  **80,3 %** → v3 + tvrda pravila 80,8 % → **v3 + `--effort high` 81,5 %, Tip 92,3 %**.
+  `visoka` pouzdanost = **95 % točno na 57 % redaka** → bulk-accept traka. Prag postavljen prije
+  mjerenja: ~80 % = **model predlaže, čovjek potvrđuje** (ne puna automatika). Dorada prompta je
+  na granici povrata. **`--effort high` je odabran** ne zbog točnosti (unutar šuma) nego jer pri
+  istoj preciznosti gura 10 pp više redaka u `visoka` traku. ⚠ Potpunost pada s effortom
+  (600→577→550 vraćenih od 600) — prije produkcijskog runa smanjiti `BATCH` 40 → ~25.
+- **`AI_KONTEKST_pitanja.txt` + `make_context_questions.py` (novo)** — generirana pitanja iz
+  stvarnih podataka, Saša popunio; **najveći pojedinačni skok točnosti dolazi odatle, ne od modela.**
+  Ide u prompt DOSLOVNO (Saša je odgovarao inline, parser bi nešto pojeo).
+- **`apply_label_fixes.py` (novo) — 223 retka ispravljena.** Eval je otkrio da dio "grešaka
+  modela" nisu greške: **171 redak imao Tip bez Podtipa** (par ne postoji u Taksonomiji pa ga
+  model ne može vratiti; `apply_rules` ih nikad nije prijavio jer preskače prazan Podtip) → **0**;
+  **BIBERON bio 33/22 nedosljedan** → svih 55 `Projekti | Sasa_Informatika`. Novi par
+  **`Investicije | Dionice`**. Backup `pre-labelfix-20260726_145103`.
+- **`date_accuracy.py` fix** — bezuvjetno je gazio `freeze_panes='F2'` na Reviewu; više ne dira
+  korisnikovu postavku (openpyxl je ionako čuva).
+- **Zamke (sve plaćene otkrićem, v. NEXT_SESSION_PROMPT):** `effort: low` vraća **1 rezultat na
+  40 redaka** uz uredan `stop_reason: end_turn` → guard uspoređuje poslano/vraćeno; **structured-output
+  `enum` NIJE obvezujuć** (vraćao `Hrana I ostalo`) → normalizacija; heredoc patchevi tiho ne pogode
+  a `py_compile` prođe → provjeravati grep-om; preširok keyword (Konzum+Radnička hvatao i `RATA`
+  retke = rate velike kupovine, ne ručak).
+
+**B) Strateške odluke (dogovorene, NISU implementirane):**
+1. **"2026-first → PROD" NAPUŠTEN** (Sašin argument): Koka je otišla dalje u svom
+   `Financije 2026.xlsm` → PROD u koji ona ne prelazi ne otključava ništa. **Pravi gate =
+   mehanizam na koji Koka prelazi, ne postotak N/A.** Mjerenje potvrdilo: 59 N/A 2026 s tekstom
+   = 46 brandova, isti brandovi u 265 redaka prije 2026 (rad na 2026 nije izoliran).
+2. **Ručno autorstvo keyword pravila napušteno kao glavni tok** — ne skalira se: 1606 text
+   redaka → 662 klastera, 427 s 1 pojavom; top 20/krug = 26% → ~30 krugova. **Model klasificira,
+   čovjek pregledava** (taksonomija zatvorena, 63 para u upotrebi). Pravila ostaju samo za
+   ponovljiv budući import, pišu se kao nusprodukt. **PRVI KORAK: eval naslijepo na 2580 već
+   klasificiranih redaka** — taj broj određuje sve dalje. Otvoreno: API batch ili u razgovoru.
+3. **⚠ `source_key` nije stabilan** (`normalize_financije.py:202`, `seq_per_day` = redoslijed u
+   fileu) → Kokin ubačeni redak mijenja ključeve svih redaka tog dana iza njega. Preduvjet za
+   ponovljivi re-ingest; fix = deterministički sort unutar dana.
+4. **Store ≠ UI** — korijen svih frikcija (Excel lock, 25 kolona, 11 `.pre-*` backupa,
+   split-brain, taksonomija se ne pamti). SQLite predložen pa **odbačen** (ne rješava Koku na
+   drugom laptopu); **NE nova Area** (EAV = krivi model za ravnu tablicu); **DA
+   `staging_financije` obična tablica u Supabaseu** + audit log; import u Areu = transformacija
+   u bazi. Zdravlje/Diary/trening kasnije = nove tablice.
+5. **Review ekran (Sašin dizajn):** prijedlog Tip/Podtip + ✓OK toggle + override kolone
+   (prijedlog ostaje vidljiv); dopune: grupiranje po merchantu, sort po sigurnosti modela,
+   dokaz u retku. **Taj ekran = Kokin prvi kontakt s aplikacijom.** Dev ruta, ne feature.
+6. **Nalazi u Review fileu:** `freeze_panes = F4855` (zamrznuti redovi 1–4854, vjerojatno
+   slučajan klik); `Taksonomija!D1` zalutali paste; `Izvod opis` na koloni U → reorder + outline
+   grupe (ništa se ne briše; `apply_rules` rješava kolone po imenu pa je siguran).
+   openpyxl **čuva** layout izmjene, ali **gubi grafove/slike/pivote**.
+7. Backupi → git umjesto hrpe fileova; `merge-by-source_key` alat (~40 linija) da Saša ne mora
+   zatvarati Excel. T-S107k-1/2 ✅, T-S107k-3 ⏸ (Koka), red 2115 ✅ ručno ispravljen.
+
+**Sljedeći koraci — ⚠ ZASTARJELO od S107m, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
    (2026-01 +359, 2024-09 +149, 2×±49 multisport); 2 PRESKOČENA bankomat reda čekaju Kokin odgovor o 700 €.

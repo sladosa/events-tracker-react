@@ -127,7 +127,9 @@ def main():
         return
     if shifts:
         sort_review(ws, col, ncols)
-        ws.freeze_panes = 'F2'
+        # freeze_panes se NE dira — Saša ga namješta ručno i openpyxl ga čuva.
+        # (Ranije je ovdje stajalo 'F2', što je gazilo korisnikovu postavku pri
+        #  svakom re-sortu i pretpostavljalo stari raspored kolona.)
     backup = review.with_name(f'{review.stem}.pre-dateacc-{datetime.now():%Y%m%d_%H%M%S}.xlsx')
     shutil.copy2(review, backup)
     try:
