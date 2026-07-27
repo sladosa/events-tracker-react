@@ -604,6 +604,33 @@ puni handoff: `NEXT_SESSION_PROMPT.md`, testovi: `Claude-temp_R/test-sessions/S1
 7. Backupi → git umjesto hrpe fileova; `merge-by-source_key` alat (~40 linija) da Saša ne mora
    zatvarati Excel. T-S107k-1/2 ✅, T-S107k-3 ⏸ (Koka), red 2115 ✅ ručno ispravljen.
 
+**Done 2026-07-27 (S107n — AI `--run` izvršen + NALAZ duplikati rata; detalji ENRICH_PLAN §2l,
+testovi `Claude-temp_R/test-sessions/S107n_tests.md`):**
+1. **`ai_classify.py --run` napisan i IZVRŠEN** — `BATCH` 40→25; nove kolone **`Tip_AI`/`Podtip_AI`**
+   (vidljive, odmah desno od `Podtip`) + **`Pouzdanost_AI`/`AI run`** (collapsed grupa), umetnute
+   DESNO od J/K pa DV i CF ostaju netaknuti. **Model nikad ne piše u `Tip`/`Podtip`.**
+   `--dry` bez `--limit` = plan bez API poziva; `--dry --limit N` = prava predikcija bez pisanja.
+   **Rezultat: 1593 retka** (od 1606 s tekstom; 818 bez teksta preskočeno — Sašina odluka),
+   **visoka 261 / srednja 239 / niska 1093**, NEPOZNATO 196, **$1,17**.
+   Kontrola vs backup: 0 promjena u starim kolonama, 0 AI upisa na klasificiran redak.
+   **⚠ `visoka` je 16 %, a eval je davao 57 %** — nije regresija, eval je mjeren na već klasificiranim
+   (prepoznatljivim) redcima; N/A hrpa je teži ostatak. Bulk-accept traka je tanka.
+2. **Robusnost:** `is_fatal()` — prazan kredit/400/401/403 ne ide u 4 retry-a; **pali batch više ne ruši
+   run**, djelomičan rezultat se zadrži i upiše, ostatak s `--resume`. (Naučeno skupo: kredit je pao na
+   19/64 batcheva i cijeli posao propao iako je 491 predikcija bila u storeu.)
+3. **⚠ NALAZ — duplikati rata: 8 redaka, 636,36 €.** Kad Koka ratu vodi mjesečno, a izvod sve rate
+   knjiži na datum kupovine, rate 2..N se udvostruče. Dedup i v3 (±2 dana) to **strukturno ne mogu**
+   uhvatiti. Detekcija ide po **`Datum naplate` + iznos** (moguće tek otkad je 100 % popunjen, S107k).
+   Plodine/Šatrak×2/Levis×3/Agram×2. 2 lažna pozitivna (ZAKS vs e-Zaba 7,96 €) odbačena.
+   **Odobreno, NIJE izvršeno.**
+4. **Nalazi iz T-S107m-4:** pravilo #43 `AGRAM` ne može odrediti auto (oba auta, isti merchant) —
+   hipoteza ožujak=C5 / listopad=Lacetti čeka Sašin pregled; `Voćarna` (4512) krivo u `auto Lacetti`.
+5. **Odluka o označavanju "pregledaj ručno":** ne nova flag-kolona, ne `Problem` (zauzet parse-problemima)
+   — kad naraste, sheet `Za pregled` + `Odluka` dropdown + `--harvest` koji ga isprazni (uzor
+   `Nematchano_v3`, radio 41→0). Za šačicu redaka ne graditi.
+6. **T-S107m-1…5 potvrđeni** (v. PENDING_TESTS); T-S107m-3 "54 vs 55" objašnjeno — red 4759 ima
+   "biberon" samo u `Izvod opis`.
+
 **Sljedeći koraci — ⚠ ZASTARJELO od S107m, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku

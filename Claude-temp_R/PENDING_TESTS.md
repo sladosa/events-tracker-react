@@ -3,8 +3,31 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107m (2026-07-26) — AI klasifikacija + čišćenje labela
-**Detalji S107m:** [S107m_tests.md](test-sessions/S107m_tests.md)
+**Zadnji update:** S107n (2026-07-27) — AI `--run` izvršen + nalaz duplikata rata
+**Detalji S107n:** [S107n_tests.md](test-sessions/S107n_tests.md)
+
+---
+
+## S107n — AI `--run` IZVRŠEN (1593 prijedloga) + duplikati rata (Python data-prep; NEMA app koda)
+
+`ai_classify.py --run` napisan i pokrenut. **1593 retka** ima `Tip_AI`/`Podtip_AI`/`Pouzdanost_AI`/
+`AI run`; `Tip`/`Podtip` netaknuti. **visoka 261 · srednja 239 · niska 1093** · NEPOZNATO 196 · $1,17.
+⚠ `visoka` 16 % (eval je davao 57 %) — N/A hrpa je teži ostatak, bulk-accept traka je tanka.
+**NALAZ: 8 duplikata rata, 636,36 €** (odobreno, nije izvršeno). Detalji: ENRICH_PLAN §2l.
+
+| ID          | Test                                                                                     | Status |
+| ----------- | ---------------------------------------------------------------------------------------- | ------ |
+| T-S107n-A…I | Umetanje kolona na kopiji, dry/limit modovi, recovery nakon pada kredita, eval regresija, kontrola upisa, skeniranje duplikata | ✅ (programski) |
+| T-S107n-1   | **Saša: GLAVNI POSAO** — pregled AI prijedloga, sort po `Pouzdanost_AI`, kreni od `visoka` | ⬜ |
+| T-S107n-2   | **Saša:** kontrola — svaki redak s `AI run` mora imati `Tip` = N/A/prazan                 | ⬜ |
+| T-S107n-3   | **Saša:** 196 `NEPOZNATO` — je li stvarno neodredivo iz teksta                            | ⬜ |
+| T-S107n-4   | **Saša:** Agram — ožujak=C5 / listopad=Lacetti? (blokira popravak pravila #43)            | ⬜ |
+| T-S107n-5   | **Saša:** 8 duplikata rata — potvrdi da Kokin redak ostaje                                | ⬜ |
+| T-S107n-6   | **Saša:** red 4759 BIBERON / "Amsteradam"                                                 | ⬜ |
+| T-S107n-7   | **Saša:** freeze + collapse grupe prežive AI run                                          | ⬜ |
+
+**Odobreno a NIJE izvršeno:** fix 8 duplikata (DUP semantika); `reconcile_izvoda.py` matcher po
+`Datum naplate`+iznos; pravilo `voce i povrce` iznad #43.
 
 ---
 
@@ -17,15 +40,15 @@ Nevaljanih parova **171 → 0**. Potrošeno na API ~$4,4. Puni kontekst: `NEXT_S
 | ID          | Test                                                                     | Status |
 | ----------- | ------------------------------------------------------------------------ | ------ |
 | T-S107m-A…J | Eval v1/v2/v3, razlaganje neslaganja, kontrola upisa, store, guardovi     | ✅ (programski) |
-| T-S107m-1   | **Saša:** pregled 223 ispravljena retka (filter `Pravilo run`=2026-07-26) | ⬜ |
-| T-S107m-2   | **Saša:** Konzum/Radnička — 30 redaka, RATA retci ostaju `Namirnice`      | ⬜ |
-| T-S107m-3   | **Saša:** BIBERON — svih 55 `Projekti \| Sasa_Informatika`               | ⬜ |
-| T-S107m-4   | **Saša:** HAK raspored C5/Lacetti                                        | ⬜ |
-| T-S107m-5   | **Saša:** `Investicije \| Dionice` vidljiv u dropdownu                   | ⬜ |
-| T-S107m-6   | **Saša:** freeze + collapse grupa prežive script run                     | ⬜ |
+| T-S107m-1   | **Saša:** pregled 223 ispravljena retka (filter `Pravilo run`=2026-07-26) | ✅ (Saša 2026-07-27) |
+| T-S107m-2   | **Saša:** Konzum/Radnička — 30 redaka, RATA retci ostaju `Namirnice`      | ✅ (Saša 2026-07-27) |
+| T-S107m-3   | **Saša:** BIBERON — svih 55 `Projekti \| Sasa_Informatika`               | ✅ (Saša nabrojao 54; razlika objašnjena — red 4759 ima "biberon" samo u `Izvod opis`, `Napomena`="Amsteradam" → T-S107n-6) |
+| T-S107m-4   | **Saša:** HAK raspored C5/Lacetti                                        | ✅ (OK) — **ali otkrio `Voćarna` red 4512 pod `AGRAM` pravilom → lančano do nalaza duplikata rata, v. S107n** |
+| T-S107m-5   | **Saša:** `Investicije \| Dionice` vidljiv u dropdownu                   | ✅ (Saša 2026-07-27) |
+| T-S107m-6   | **Saša:** freeze + collapse grupa prežive script run                     | ⬜ → T-S107n-7 |
 
-**Otvoreno za sljedeću sesiju:** `--run` mode (upis `Tip_AI`/`Podtip_AI`) NIJE napisan;
-produkcijski run na 2424 N/A retka nije pokrenut; `source_key` fix i staging schema nisu.
+**Riješeno u S107n:** `--run` mode napisan i izvršen (1593 prijedloga).
+**Još otvoreno:** `source_key` fix i `sql/0NN_staging_financije.sql` nisu napravljeni.
 **Detalji testova:** [S107k_tests.md](test-sessions/S107k_tests.md) (novi) + [S107j_tests.md](test-sessions/S107j_tests.md) + [S107i_tests.md](test-sessions/S107i_tests.md) + [S107h_tests.md](test-sessions/S107h_tests.md) + [S107g_tests.md](test-sessions/S107g_tests.md) + [S107f_tests.md](test-sessions/S107f_tests.md)
 **Upute za izvode (i za Koku):** [UPUTE_izvodi.md](UPUTE_izvodi.md) — kako skinuti/spremiti/obraditi bankovne izvode
 

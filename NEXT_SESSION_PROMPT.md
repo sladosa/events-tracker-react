@@ -1,164 +1,125 @@
-# NEXT SESSION PROMPT — Financije: AI klasifikacija, produkcijski run
+# NEXT SESSION PROMPT — Financije: pregled AI prijedloga + 3 odobrena popravka
 
-**Prethodna sesija: S107m (2026-07-26).** Izmjeren je AI pristup klasifikaciji, očišćene su
-labele, napisan je alat. **Odgovor na pitanje "isplati li se AI" je DA, kao predlagač** —
-i to sad znamo mjereno, ne po osjećaju.
+**Prethodna sesija: S107n (2026-07-27).** AI `--run` je napisan i **izvršen** — 1593 N/A retka ima
+prijedlog Tip/Podtip u Reviewu. Usput je ispao nalaz koji nitko nije tražio: **8 duplikata rata,
+636 €**. Tri popravka su odobrena ali **nisu izvršena** jer je Saša morao otići.
 
 ## Kontekst pročitaj ovim redom
-1. `CLAUDE.md` — blok "Done 2026-07-26 (S107m)"
-2. **ovaj file** — brojke, zamke, što je otvoreno
-3. `Claude-temp_R/test-sessions/S107m_tests.md` — koraci i kontrole
-4. `data-prep_tools/Financije/ai_classify.py` — docstring + `SYSTEM` prompt
+1. `CLAUDE.md` — blok "Done 2026-07-27 (S107n)"
+2. **ovaj file** — što je odlučeno, što čeka
+3. `data-prep_tools/Financije/ENRICH_PLAN.md` **§2l** — puni nalazi, tablice, zamke
+4. `Claude-temp_R/test-sessions/S107n_tests.md` — kontrole i ručni testovi
+5. `data-prep_tools/Financije/ai_classify.py` — docstring + `SYSTEM` prompt
 
 ---
 
-## GDJE SMO — izmjereno, ne procijenjeno
+## GDJE SMO
 
-Eval je **naslijepo** na već klasificiranim redcima, na **zamrznutom stratificiranom uzorku
-od 600** (`--sample 600`, `EVAL_SEED=20260726`) — isti uzorak svaki put, pa su runovi usporedivi.
+**AI klasifikacija je gotova i upisana.** `ai_classify.py --run --only-text --effort high`:
 
-| Verzija prompta | Ručne labele — par | Ručne — Tip | `visoka` točnost / pokrivenost | Trošak |
-| --- | --- | --- | --- | --- |
-| v1 (samo popis kategorija, cijelih 2525) | 62,5 % | 79,7 % | 84,8 % / 51 % | $1,91 |
-| v2 (+ Sašin kontekst file) | 80,3 % | 88,3 % | 92,7 % / 57 % | $0,57 |
-| v3 (+ tvrda pravila), effort medium | 80,8 % | 91,9 % | 95,0 % / 47 % | $0,77 |
-| **v3 + `--effort high`** ← ODABRANO | **81,5 %** | **92,3 %** | **95,2 % / 57 %** | $0,73 |
+| | |
+| --- | --- |
+| Upisano | **1593 retka** → `Tip_AI` / `Podtip_AI` (vidljive, uz `Tip`/`Podtip`) + `Pouzdanost_AI` / `AI run` (collapsed grupa) |
+| Pouzdanost | **visoka 261 (16,4 %)** · srednja 239 (15,0 %) · niska 1093 (68,6 %) · NEPOZNATO 196 |
+| Trošak | $1,17 |
+| Kontrola | 0 promjena u starim kolonama · 0 AI upisa na već klasificiran redak |
+| Backup | `Financije_review_20260710_1448.pre-aiclass-20260727_092128.xlsx` |
 
-**Zašto `high` pobjeđuje:** točnost je unutar šuma (+0,7 pp), ali `visoka` pokriva **57 % umjesto
-47 % redaka uz istu preciznost od 95 %** — deset postotnih bodova više ide u bulk-accept traku,
-a to je izravno manje posla za Sašu. Cijena je ista. **Produkcijski run vrtjeti s `--effort high`.**
+**`Tip`/`Podtip` su netaknuti i tako mora ostati** — prijenos prijedloga u prave kolone je zaseban,
+svjestan korak i **skripta za to još ne postoji**.
 
-⚠ **Potpunost pada s effortom:** vraćeno 600 → 577 (medium) → 550 (high) redaka od 600.
-Guard to prijavljuje, ali prije produkcijskog runa **treba istražiti zašto** — vjerojatno smanjiti
-`BATCH` s 40 na ~25.
-
-**Kako čitati:** v1→v2 je pravi skok i dolazi od Sašinih objašnjenja, ne od modela.
-v2→v3 nije pomaknuo točan par (razlika ≈ 1,5 retka = šum) ali jest Tip (+3,6 pp) i
-preciznost `visoka` (+2,3 pp). **To je granica povrata od dorade prompta.**
-
-**Pragovi postavljeni PRIJE mjerenja:** 95 %+ → puna automatika · **~80 % → model predlaže,
-čovjek potvrđuje** · <70 % → taksonomija je problem. **Sletjeli smo u srednju kategoriju.**
-
-Radna podjela koja iz toga slijedi (nema smisla fiksni prag — sortira se po pouzdanosti):
-```
-visoka   47 %  ·  95 % točno   →  bulk-accept + pregled na uzorku
-srednja  11 %  ·  63 % točno   →  pregled
-niska    38 %  ·  65 % točno   →  pregled
-```
-
-Preostale greške su uglavnom **neizvedive iz teksta**: koji auto (`auto C5 ↔ Lacetti`, D8
-default), atribucija osobe kod mirovine, i nešto šuma u samim labelama.
+⚠ **`visoka` je 16 %, a eval je davao 57 %.** Nije regresija: eval je mjeren na *već klasificiranim*
+redcima (prepoznatljivi merchanti), a N/A hrpa je po definiciji ostatak koji ni Koka ni keyword
+pravila nisu uhvatili. Bulk-accept traka je zato tanka — pregled je pretežno ručni.
 
 ---
 
-## ŠTO JE NAPRAVLJENO U S107m
+## ŠTO JE ODOBRENO A NIJE IZVRŠENO (tri stvari, redom)
 
-### 1. Očišćene labele — 223 retka (`apply_label_fixes.py`, IZVRŠENO)
-Eval je otkrio da dio "grešaka modela" nisu greške modela:
-- **171 redak imao je Tip bez Podtipa** — par koji ne postoji u Taksonomiji, pa ga model
-  nije mogao ni vratiti. `apply_rules.py` ih nikad nije prijavio jer njegova validacija
-  preskače prazan Podtip. **Sad 0.**
-- **BIBERON je bio 33/22 nedosljedan** (isti restoran, ista adresa, dvije različite labele).
-  Sad 55/55 `Projekti | Sasa_Informatika`.
-- Nova Taksonomija: **`Investicije | Dionice`** (Sašino ime; napomena: sudara se s postojećim
-  Podtipom `Domaćinstvo | Investicije` — 4 retka, trivijalno preimenovati ako zasmeta).
+### 1. Fix 8 duplikata rata — 636,36 €
+Kad Koka ratu vodi mjesečno, a izvod sve rate knjiži na datum kupovine, rate 2..N se **udvostruče**.
+Dedup i v3 Verdikt (±2 dana) to strukturno ne mogu uhvatiti — rata je mjesec dana odmaknuta.
+Detekcija ide po **`Datum naplate` + iznos**. Tablica 8 parova: ENRICH_PLAN §2l.
 
-Backup: `Financije_review_20260710_1448.pre-labelfix-20260726_145103.xlsx`.
-Svaki dirani redak nosi žig `2026-07-26` u `Pravilo run` i marker `fix-2026-07-26: <pravilo>`
-u `Alternativa / nap.` (P3 — stara vrijednost dopisana, ne pregažena). `Tip_O`/`Podtip_O` netaknuti.
+**Odluka:** zadržati **Kokin** redak + prepisati `Izvod opis`, izvodni u `V3 preskočeno` — ista `DUP`
+semantika kao S107k. `--dry` prvo, pokazati popis, čekati potvrdu.
+**Ne dirati redove 929 i 933** — provjereni lažni pozitivni (ZAKS 7,96 € vs e-Zaba).
 
-**Odluke koje su to omogućile (Saša):** Visa → `Transfer | izmedju racuna`; BIBERON sve u
-Projekti; Konzum+Radnička **< 30 €** → Projekti; Putovanja → `Restoran`; pričuva → Transfer;
-Dionice → novi Tip; Audible prag ostaje 10 €. **Ašo/Aso** (25 redaka, 24× točno 20 €) je bio
-personal trener → `Zdravlje | Sport_Sasa`. **SS = Saša Sladoljev, DPS = Dubravka Pavić-Sladoljev.**
+### 2. `reconcile_izvoda.py` — matcher po `Datum naplate` + iznos
+Uz postojeći ±2 dana, da se ova klasa ne vrati pri sljedećem importu. Moguće tek otkad je
+`Datum naplate` 100 % popunjen (S107k).
 
-### 2. `AI_KONTEKST_pitanja.txt` — Sašini odgovori (NAJVRJEDNIJI ARTEFAKT)
-`data-prep_data/Financije/AI_KONTEKST_pitanja.txt`, generiran s `make_context_questions.py`,
-popunio Saša. Sadrži: značenje `N/M` (rata N od M, 354 retka), Bulatova 19 = kuća s tri
-kućanstva (zato Nataša/Zoran vraćaju svoj dio), e-Zaba do ~15 € = bankovni trošak a iznad
-ostaje N/A, Temu/BOLT/Konzum glosar, Radnička 49 = Sašino radno mjesto.
-
-**Ide u prompt DOSLOVNO, ne parsira se** — Saša je odgovarao inline uz stavke, ne iza
-`ODGOVOR:`, i svaki parser bi nešto pojeo. 22 410 znakova, kešira se.
-
-### 3. `ai_classify.py` — alat
-```
---eval                 obavezno; naslijepo na klasificiranim redcima, NE PIŠE u Review
---sample 600           zamrznut stratificiran uzorak (pola ručnih / pola pravilo)
---limit N              nasumičnih N (smoke test)
---resume               preskoči što store već ima za isti prompt_ver+model+effort
---only-conf niska      ponovi SAMO nesigurne, jačim configom
---effort low|medium|high|xhigh        --model, --workers
-```
-Store: **`ai_predictions.jsonl`**, append-only, **ključ = `source_key`** (NE broj retka —
-retci se pomiču pri re-sortu). Zapis: key, row, run_id, prompt_ver, model, effort, par, conf, ts.
-`PROMPT_VER` se bumpa pri svakoj promjeni prompta; predikcije iz starije verzije se ne recikliraju.
+### 3. Pravilo `voce i povrce` → `Namirnice / Hrana i ostalo`
+Umetnuto **IZNAD** #43 `AGRAM` (priority-order pattern iz S107l). Red 4512 je vočarna koja se
+slučajno zove Agram, a pravilo ju je stavilo u `auto Lacetti / registracija`.
 
 ---
 
-## ⚠ ZAMKE — sve su plaćene otkrićem, ne ponavljaj ih
+## ČEKA SAŠIN PREGLED (blokira 4. popravak)
 
-1. **`effort: low` vraća 1 rezultat na 40 redaka**, uz uredan `stop_reason: end_turn` i bez
-   greške. Sonnet 5 čita upute doslovno i ne generalizira s prve stavke na ostale. Rješenje
-   u kodu: broj redaka i popis ID-eva **eksplicitno** u user poruci + `classify()` doziva
-   nedostajuće i **glasno prijavljuje** ako ih i dalje nema. **Nikad ne vjeruj da je odgovor
-   potpun — usporedi broj poslanih i vraćenih redaka.**
-2. **Structured-output `enum` NIJE obvezujuć.** Model je vraćao `Hrana I ostalo` (veliko I)
-   iako taj par nije u enumu od 64. U kodu postoji normalizacija natrag na kanonski par.
-3. **`python - <<PY` patchevi znaju tiho ne pogoditi**, a `py_compile` svejedno prođe —
-   pa izgleda kao uspjeh. **Uvijek provjeri `grep`-om da je zamjena stvarno primijenjena**,
-   ne samo da se kompajlira. Za izmjene koda koristi Edit alat, ne heredoc patch.
-4. **`date_accuracy.py` je bezuvjetno gazio `freeze_panes = 'F2'` na Reviewu** — popravljeno,
-   više ne dira korisnikovu postavku.
-5. **Preširoki keyword** (isti obrazac kao `NAKNADA`/`grobn` iz S107l): Konzum+Radnička<30 €
-   hvatao je i 22 retka `RATA nn/mm`, a rata od 18 € je dio kupovine od 180 € — nije ručak.
-   Izuzeto.
-6. Eval mora dati **DVA broja** — od 2580 labela ~1414 je od `apply_rules` (keyword =
-   trivijalno predvidljivo, napuhuje). Odluka se donosi na **ručnim** labelama.
-7. **`ai_eval_neslaganja.tsv` se PREPISUJE pri svakom runu** — ako trebaš usporedbu, kopiraj ga.
+**Agram — koji auto.** Pravilo #43 `AGRAM` ne može odrediti auto: oba se servisiraju kod istog
+merchanta. Obrazac iz podataka (**hipoteza**): **ožujak = C5** (2026. eksplicitno "Reg C5" +
+"Tehnički C5"; 2025. identična struktura, isti iznos tehničkog 50,63), **listopad = Lacetti**
+(50,05 + 82,73, isti par 2024. i 2025.).
+
+Ako Saša potvrdi → na `auto C5` idu **1463, 3038, 3039, 3040, 3041, 4499**; listopadski
+(2435, 2436, 3953, 3956) ostaju Lacetti; pravilo #43 dobiva `Iznos min/max` split (S107h feature),
+jer datum nije dostupan kao uvjet.
 
 ---
 
-## OTVORENO — prvo pitanje za sljedeću sesiju
+## ⚠ ZAMKE (plaćene otkrićem — ne ponavljati)
 
-### A. `--run` mode NE POSTOJI (glavna rupa)
-Docstring ga spominje kao "dolazi kasnije". Treba napisati: čita N/A retke (2424), zove model,
-piše **`Tip_AI` / `Podtip_AI` / `Pouzdanost_AI` / `AI run`** u Review.
-**Odlučeno u S107m:** imena s `_AI` sufiksom (konzistentno s postojećim `Tip_O`/`Podtip_O`),
-`Tip_AI`+`Podtip_AI` **vidljive** uz `Tip`/`Podtip`, `Pouzdanost_AI`+`AI run` u collapsed grupi.
-**Model NIKAD ne piše u `Tip`/`Podtip`** — prijenos je zaseban svjestan korak (skripta s pragom
-pouzdanosti ili kolona s kvačicom).
+1. **Prekinut run se ne smije tiho izgubiti.** Kredit je pao na 19/64 batcheva i cijeli je posao
+   propao pri izlasku, iako je 491 predikcija bila u storeu. Sad: `is_fatal()` (400/401/403 +
+   "credit balance") preskače retry, pali batch ne ruši run, djelomičan rezultat se upiše, ostatak
+   ide s `--resume`.
+2. **`BATCH` je 25, ne 40** — potpunost pada s effortom. Pomaže, ali nije lijek: jedan batch je i na
+   25 vratio 11/25. **Guard prijavljuje broj poslanih vs vraćenih — ne ignorirati tu poruku.**
+3. **Prvi prijedlog je zamalo bio kriv.** Redovi 4505/4506 izgledali su kao pogrešno klasificirani
+   (`auto Lacetti` umjesto `auto C5`); da su prebačeni, uredno bi se kategorizirao dvostruki trošak.
+   `Datum naplate` je otkrio da su duplikati. **Kod svake "krive kategorije" prvo provjeriti postoji
+   li par.**
+4. **`openpyxl`**: `ColumnDimension.customWidth` je read-only; `insert_cols` **ne pomiče**
+   `column_dimensions` (širine/outline treba prenijeti ručno); DV i CF se ne pomiču — zato se AI
+   kolone umeću **desno** od `J`/`K`.
+5. Skripta se ne smije zvati `inspect.py` (sjeni stdlib, ruši openpyxl).
+6. Sve što nosi status **mora biti unutar autofiltera** (sad `A1:AC`) — inače se pri sortu raspari.
 
-### B. Produkcijski run na 2424 N/A retka
-Procjena ~$2–3 uz `--effort` koji pobijedi. Nakon toga Sašin pregled sortiran po pouzdanosti.
+---
 
-### C. Ostalo iz ranijih odluka (nepromijenjeno)
-- **`source_key` nije stabilan** (`normalize_financije.py:202`, `seq_per_day` = redoslijed u
-  fileu) → preduvjet za ponovljivi re-ingest Kokinog filea. NIJE napravljeno.
-- **Staging u TEST Supabase** (`events-tracker-test`, Saša ga restorirao 2026-07-26, Healthy).
-  `sql/0NN_staging_financije.sql` nije napisan. Seli u PROD kad UI bude gotov (Koka tamo ima
-  account; app ima 1 Supabase klijent po buildu).
-- **Preparation tab** — gating preko `profiles` flaga (NE env var: rebuild = Netlify krediti),
-  **dva moda** (pregled + Kokin dnevni unos, inače se vraća u Excel).
-- **⭐ Reconciliation engine iz S107d–S107k JE Kokin budući mjesečni workflow**, nije
-  jednokratni alat. To je odgovor na "što dobiva prvog dana".
+## ODLUKA: kako označavati "PREGLEDAJ RUČNO"
+
+**Ne** nova flag-kolona (zastava kaže *da* treba pogledati, nikad *jesi li gotov* — tiho truli).
+**Ne** `Problem` kolona (zauzeta parse-problemima iz importa, 37 redaka).
+
+**Kad naraste:** sheet `Za pregled` po uzoru na `Nematchano_v3` (radio: 41 → 0) —
+`red | datum | iznos | Napomena | Izvod opis | Tip/Podtip sada | Prijedlog | Odluka ▾ | Ispravak Tip |
+Ispravak Podtip | Zašto`; `Odluka` = `POTVRDI`/`ODBIJ`/`ISPRAVAK`, pre-popunjena gdje je stroj
+siguran; `--harvest` primijeni i **isprazni** sheet (prazan = nema ničega za odlučiti); trag kroz
+postojeće `Alternativa / nap.` + `Pravilo run`. **Nula novih kolona.** Za šačicu redaka ne graditi.
+
+---
+
+## DALJE (nepromijenjeno od S107m)
+
+- **Skripta za prijenos** `Tip_AI`/`Podtip_AI` → `Tip`/`Podtip` s pragom pouzdanosti — ne postoji
+- **`source_key` nije stabilan** (`normalize_financije.py:202`, `seq_per_day` = redoslijed u fileu) →
+  Kokin ubačeni redak mijenja ključeve svih redaka tog dana iza njega. Preduvjet za ponovljiv
+  re-ingest. NIJE napravljeno.
+- **`sql/0NN_staging_financije.sql`** za TEST Supabase — nije napisan. Store ≠ UI je korijen frikcija;
+  odbačeni: SQLite (ne rješava Koku na drugom laptopu), nova Area (EAV je krivi model za ravnu tablicu).
+- **Review ekran** (prijedlog + ✓OK toggle + override kolone) = Kokin prvi kontakt s aplikacijom.
+- **Pravi gate nije postotak N/A nego mehanizam na koji Koka prelazi.** "2026-first → PROD" je napušten.
 - Merge-by-source_key alat (~40 linija) da Saša ne mora zatvarati Excel.
-
----
-
-## STANJE PODATAKA (2026-07-26, nakon ispravki)
-Review `Financije_review_20260710_1448.xlsx` · 5004 retka · klasificiranih s tekstom 2580 ·
-**nevaljanih parova 0** (bilo 171) · N/A ukupno ~2424 (1606 s tekstom) · Taksonomija 64 para
-(18+1 Tipova) · Pravila 69 + Preimenovanja 17.
-
-**Ukupno potrošeno na API u S107m: ~$4,4.**
+- Za Koku: 700 € bankomat 26.11.2025; `Saldo kontrola` 7 razlika (2026-01 +359, 2024-09 +149, 2×±49).
 
 ## PRAVILA OKRUŽENJA
-Python `data-prep_tools/Tools/venv/Scripts/python.exe` (NE `run.bat` — `pause` visi
-non-interactive); `PYTHONUTF8=1`; `anthropic` SDK instaliran u venv; `ANTHROPIC_API_KEY` je u
-`.env.local` (od AI Help funkcije). Review mora biti **zatvoren** samo za pisanje — eval čita.
-`--dry` prvo, pokazati brojke, čekati potvrdu prije pravog pisanja.
-**NIKAD ne pushati/mergati na main bez izričitog Sašinog zahtjeva.**
 
-⚠ **`data-prep_data/` i `Claude-temp_R/` su gitignorirani = postoje SAMO na Sašinom disku,
-u jednom primjerku.** Git čuva alate, ne podatke. Vrijedi napraviti vanjsku kopiju.
+Python `data-prep_tools/Tools/venv/Scripts/python.exe` (NE `run.bat` — `pause` visi non-interactive);
+`PYTHONUTF8=1`; `ANTHROPIC_API_KEY` je u `.env.local`. Review mora biti **zatvoren** samo za pisanje.
+**`--dry` prvo, pokazati brojke, čekati potvrdu prije upisa u Review.**
+**NIKAD ne pushati/mergati na `main` bez izričitog Sašinog zahtjeva.**
+
+⚠ **`data-prep_data/` i `Claude-temp_R/` su gitignorirani = postoje SAMO na Sašinom disku, u jednom
+primjerku.** Git čuva alate, ne podatke. Vanjska kopija Reviewa i dalje nije napravljena.

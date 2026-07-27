@@ -354,8 +354,124 @@ zato postaje točnija.
 DODAJ) → 3. **Saša: Verdikt pass u Excelu (~44 reda, prefill)** → 4. `consolidate_review.py --harvest`
 → 5. `kartice_datum_naplate.py` → 6. `apply_rules.py` (klasificira nove N/A retke).
 
+## 2l. S107n (2026-07-27) — AI `--run` izvršen + NALAZ: duplikati rata
+
+### AI klasifikacija — produkcijski run IZVRŠEN
+
+`ai_classify.py --run --only-text --effort high` (v. §1). **1593 retka** dobilo prijedlog u
+**`Tip_AI` / `Podtip_AI` / `Pouzdanost_AI` / `AI run`** (nove kolone L–O, odmah desno od `Podtip`;
+`Pouzdanost_AI`+`AI run` u collapsed grupi). **Model NIKAD ne piše u `Tip`/`Podtip`.**
+
+| | |
+| --- | --- |
+| Opseg | 1606 N/A redaka **s tekstom** (818 bez teksta namjerno preskočeno — Sašina odluka) |
+| Vraćeno | 1593 (13 bez odgovora, guard prijavio) · NEPOZNATO 196 |
+| Pouzdanost | visoka **261 (16,4 %)** · srednja 239 (15,0 %) · niska 1093 (68,6 %) |
+| Trošak | $1,17 (+$0,13 smoke/prekinuti run) |
+| Backup | `Financije_review_20260710_1448.pre-aiclass-20260727_092128.xlsx` |
+
+**⚠ Pouzdanost NE prati eval.** Eval je davao `visoka` na 57 % redaka; ovdje je 16 %. Nije regresija —
+eval je mjeren na **već klasificiranim** redcima (prepoznatljivi merchanti), a N/A hrpa je po definiciji
+ostatak koji ni Koka ni keyword pravila nisu uhvatili. Bulk-accept traka je zato tanka; pregled je
+pretežno ručni, sortiran po `Pouzdanost_AI`.
+
+Kontrola nakon upisa (skriptom, vs backup): **0 promjena u starim kolonama**, **0 AI upisa na već
+klasificiran redak**, autofilter proširen `A1:Y` → `A1:AC`, `freeze_panes` netaknut, širine/outline
+razine prate svoju kolonu.
+
+**Zamke plaćene ovom sesijom:**
+- `BATCH` 40 → **25** (potpunost pada s effortom). Pomaže, ali nije lijek: jedan batch je i na 25
+  vratio 11/25 — guard to prijavi, ne ignorirati.
+- **Kredit je pao usred runa** (19/64 batcheva) i cijeli je posao propao pri izlasku iako je 491
+  predikcija bila u storeu. Popravljeno: `is_fatal()` (400/401/403 + "credit balance") ne ide u retry,
+  pali batch ne ruši run, djelomičan rezultat se **zadrži i upiše**, ostatak s `--resume`.
+- `openpyxl` `ColumnDimension.customWidth` je **read-only** (izvedena iz `width`).
+- Skripta se ne smije zvati `inspect.py` — sjeni stdlib i ruši openpyxl importom.
+
+### ⚠ NALAZ — duplikati rata: 8 redaka, 636,36 €
+
+Otkriveno pri provjeri Sašinog testa T-S107m-4 (Agram). **Kad Koka ratu vodi mjesečno, a izvod sve rate
+knjiži na datum kupovine, rate 2..N se udvostruče.** Dedup (`merge_pbzvisa`) i v3 Verdikt pass (±2 dana)
+strukturno **ne mogu** to uhvatiti — rata je po definiciji mjesec dana odmaknuta.
+
+Mehanizam vidljiv u retku 4500: nosi i Kokinu `Napomena` "Reg C5 1/3" **i** `Izvod opis` "RATA 01/03" —
+prva rata se knjiži na datum kupovine, isti kao Kokin unos, pa ju je dedup spojio. Rate 2 i 3 nije.
+
+**Ključ za detekciju je `Datum naplate` + iznos** (ne `event_date`) — zato ovo tek sad postaje moguće,
+`Datum naplate` je 100 % popunjen od S107k.
+
+| Izvodni red | Ručni red | Iznos |
+| --- | --- | --- |
+| 3665 RATA 06/06 PLODINE | 4271 "Plodine 6/6" | 24,50 |
+| 3854 RATA 05/06 ŠATRAK | 4327 "AC Šatrak 5/6" | 157,03 |
+| 3855 RATA 06/06 ŠATRAK | 4450 "Auto Šatrak 6/6" | 157,03 |
+| 4418 RATA 02/04 LEVIS | 4528 "Traperice 2/4" | 62,50 |
+| 4419 RATA 03/04 LEVIS | 4634 "Traperice 3/4" | 62,50 |
+| 4420 RATA 04/04 LEVIS | 4752 "Traperice 3/4" | 62,50 |
+| 4505 RATA 02/03 AGRAM | 4609 "Reg C5 2/3" | 55,15 |
+| 4506 RATA 03/03 AGRAM | 4720 "Reg C5 2/3" | 55,15 |
+
+Potvrda nije po iznosu nego po sadržaju — Kokina napomena imenuje **istu ratu**. Usput: "Traperice 3/4"
+i "Reg C5 2/3" pojavljuju se **dvaput** (kopirala prethodni red, zaboravila brojač) — isti ljudski
+obrazac na dva mjesta, dodatna potvrda mapiranja.
+
+**2 lažna pozitivna, odbačena:** redovi 929 i 933 (RATA ZAKS 7,96 €) slučajno se poklapaju s "e-Zaba"
+bankovnim troškom istog iznosa i datuma naplate. Različiti merchanti.
+
+Od 159 izvodnih rata s brojem >1 samo 10 ima ručni par — ostale je Koka nije vodila, legitimno su
+jedini zapis.
+
+**Odluke (Saša):** (1) popraviti — zadržati **Kokin** redak + prepisati `Izvod opis`, izvodni u
+`V3 preskočeno` (ista `DUP` semantika kao S107k); (2) dodati u `reconcile_izvoda.py` matcher po
+**`Datum naplate` + iznos** uz postojeći ±2 dana, da se klasa ne vrati pri sljedećem importu.
+**NIJE JOŠ IZVRŠENO.**
+
+### Nalaz — pravilo #43 `AGRAM` ne može odrediti auto
+
+Oba auta se servisiraju kod istog merchanta, pa keyword ne nosi informaciju o autu. Obrazac iz podataka
+(**hipoteza, čeka Sašin/Kokin pregled**): **ožujak = C5** (2026. eksplicitno "Reg C5" + "Tehnički C5";
+2025. identična struktura i isti iznos tehničkog 50,63), **listopad = Lacetti** (50,05 + 82,73, isti
+par 2024. i 2025.). Ako se potvrdi, na `auto C5` idu redovi **1463, 3038, 3039, 3040, 3041, 4499**;
+listopadski (2435, 2436, 3953, 3956) ostaju Lacetti. Rješenje za pravilo: `Iznos min/max` split
+(S107h feature), jer datum nije dostupan kao uvjet.
+
+Osim `HAK SS` (3657), **svaki** Lacetti redak s Podtipom `registracija` dolazi iz ovog pravila — tj.
+pravilo je jedino što tvrdi da Lacetti uopće ima registracije.
+
+### Nalaz — `Voćarna` (red 4512)
+
+`Agram - voce i povrce Zagreb`, 10,33 € → pravilo #43 ga je stavilo u `auto Lacetti / registracija`.
+Vočarna se slučajno zove Agram. Fix: pravilo `voce i povrce` → `Namirnice / Hrana i ostalo`, umetnuto
+**IZNAD** #43 (priority-order pattern iz S107l). **Odobreno, nije izvršeno.**
+
+### T-S107m-3: 54 vs 55 BIBERON — oba broja točna
+
+Saša je nabrojao 54 filtrirajući po `Napomena`. Jedan redak (**4759**) ima "biberon" samo u
+`Izvod opis`; `Napomena` mu je "Amsteradam". Banka kaže `BIBERON RESTORAN - RADNIČKA 49 - ZAGREB`, pa
+je `Projekti` vjerojatno točno — ali bilješka je zalutala, vrijedi Sašin pogled.
+
+### Odluka: kako označavati "PREGLEDAJ RUČNO"
+
+**Ne nova flag-kolona** — zastava u 5000 redaka kaže *da* nešto treba pogledati, ali nikad *jesi li
+gotov*; nema signala završetka pa tiho truli. **Ne `Problem` kolona** — zauzeta je parse-problemima iz
+importa (`datum → fallback …`, 37 redaka), miješanje bi ubilo filtriranje.
+
+**Dogovoreni oblik kad naraste:** zaseban sheet `Za pregled` po uzoru na `Nematchano_v3` (koji je
+radio: 41 → 0) — `red | datum | iznos | Napomena | Izvod opis | Tip/Podtip sada | Prijedlog |
+Odluka ▾ | Ispravak Tip | Ispravak Podtip | Zašto`, `Odluka` = `POTVRDI`/`ODBIJ`/`ISPRAVAK`
+pre-popunjena gdje je stroj siguran, `--harvest` primijeni i **isprazni** sheet (prazan = nema ničega
+za odlučiti), obrađeni u skriveni arhiv. Trag u Reviewu kroz postojeće: marker u `Alternativa / nap.`
++ žig u `Pravilo run`. **Nula novih kolona.** Za šačicu redaka (kao ovih 6 Agram) ne graditi — brže je
+filtrirati i reći. Što god nosilo status **mora biti unutar autofiltera** (sad `A1:AC`), inače se
+pri sortu raspari (zamka iz S107e).
+
+Bulk AI pregled je drugi alat: sort po `Pouzdanost_AI` + zasebna skripta za prijenos u `Tip`/`Podtip`.
+
 ## 3. SLJEDEĆI KORACI
 
+0. **(S107n, odobreno, NIJE izvršeno)** (a) fix 8 duplikata rata po `DUP` semantici; (b)
+   `reconcile_izvoda.py` matcher po `Datum naplate`+iznos; (c) pravilo `voce i povrce` iznad #43;
+   (d) Sašin pregled Agrama (ožujak=C5?) pa `Iznos min/max` split pravila #43. Detalji §2l.
 1. ~~PBZ Visa split~~ ✅ S107i. ~~Fix parse_zaba_racun~~ ✅ S107j (§2h). ~~Konsolidacija~~ ✅ S107j (§2j).
    **Preostalo iz konsolidacije — SADA KROZ §2k TOK:** (a) pravi runovi date_accuracy → consolidate →
    **Saša Verdikt pass (~44 reda)** → --harvest → kartice_datum_naplate → apply_rules; (b) `Saldo

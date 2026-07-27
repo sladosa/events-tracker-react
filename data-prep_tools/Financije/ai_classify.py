@@ -3,7 +3,7 @@ ai_classify.py — AI klasifikacija Tip/Podtip za Financije Review.
 
 Dva moda:
   --eval   NASLIJEPO na već klasificiranim redcima → mjeri točnost. NE PIŠE NIŠTA.
-  (--run   dolazi kasnije: piše Tip_AI/Podtip_AI/Pouzdanost_AI/AI run na N/A retke.)
+  --run    klasificira N/A retke i piše Tip_AI/Podtip_AI/Pouzdanost_AI/AI run.
 
 Zašto eval daje DVA broja (v. NEXT_SESSION_PROMPT O9a):
   Od ~2580 klasificiranih redaka s tekstom, ~1414 je klasificirao `apply_rules.py`
@@ -13,8 +13,23 @@ Zašto eval daje DVA broja (v. NEXT_SESSION_PROMPT O9a):
 Model se bira tako da EVAL VRTI ISTI MODEL I ISTI PROMPT koji ide u pravi run —
 inače je izmjereni broj lažan.
 
-Pokretanje (Review NE mora biti zatvoren — eval samo čita):
-  python ai_classify.py --eval [--limit N] [--workers 5] [--model claude-sonnet-5]
+MODEL NIKAD NE PIŠE U `Tip`/`Podtip`. Izmjereno je 81,5 % točnih parova na ručnim
+labelama (`visoka` pouzdanost: 95 % na 57 % redaka) — to je razina "model predlaže,
+čovjek potvrđuje". Prijenos AI stupaca u prave je zaseban, svjestan korak.
+
+Pokretanje:
+  # eval (Review NE mora biti zatvoren — samo čita)
+  python ai_classify.py --eval --sample 600 --effort high
+
+  # run: plan bez ijednog API poziva
+  python ai_classify.py --run --dry
+  # run: prava predikcija na 30 redaka, ali BEZ pisanja u Review (proba prompta)
+  python ai_classify.py --run --dry --limit 30 --effort high
+  # run: pravi upis (Review mora biti ZATVOREN; radi backup .pre-aiclass-*)
+  python ai_classify.py --run --effort high [--resume] [--only-text]
+
+Predikcije se uvijek spremaju u ai_predictions.jsonl, pa `--resume` poslije --dry
+runa ne plaća isti redak dvaput.
 """
 from __future__ import annotations
 
@@ -24,20 +39,25 @@ import json
 import os
 import random
 import re
+import shutil
 import sys
 import time
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import openpyxl
+from openpyxl.styles import Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent.parent / 'data-prep_data' / 'Financije'
 ENV_FILE = HERE.parent.parent / '.env.local'
 
 MODEL = 'claude-sonnet-5'
-BATCH = 40
+# 25, ne 40: potpunost odgovora pada s effortom (pri `--effort high` vratilo se 550
+# od 600 poslanih redaka, uz uredan stop_reason). Manji batch = manje dozivanja.
+BATCH = 25
 UNKNOWN = 'NEPOZNATO'
 
 # Bumpaj kad se promijeni prompt — predikcije iz starije verzije se NE recikliraju.
@@ -112,8 +132,14 @@ def load_context() -> str:
     return p.read_text(encoding='utf-8')
 
 
-def load_rows(wb) -> list[dict]:
-    """Već klasificirani retci s tekstom = eval set."""
+def load_rows(wb, want: str = 'classified') -> list[dict]:
+    """Retci Reviewa u obliku koji ide modelu.
+
+    want='classified' → već klasificirani retci S TEKSTOM (eval set, nosi 'istina').
+    want='na'         → N/A retci (Tip prazan ili 'N/A') = kandidati za --run.
+                        Retci bez teksta se NE izbacuju ovdje (v. --only-text) — model
+                        za njih vraća NEPOZNATO, a poziv je svjesna odluka, ne slučaj.
+    """
     ws = wb['Review']
     H = header_map(ws)
     need = ['Tip', 'Podtip', 'Napomena', 'Izvod opis', 'Izvor', 'Racun',
@@ -125,10 +151,11 @@ def load_rows(wb) -> list[dict]:
     out = []
     for i, r in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         tip = clean(r[H['Tip']])
-        if not tip or tip == 'N/A':
+        is_na = (not tip) or tip == 'N/A'
+        if is_na != (want == 'na'):
             continue
         napomena, izvod = clean(r[H['Napomena']]), clean(r[H['Izvod opis']])
-        if not (napomena or izvod):
+        if want == 'classified' and not (napomena or izvod):
             continue
         iznos = r[H['Isplata']] or r[H['Uplata']] or 0
         d = r[H['event_date']]
@@ -143,7 +170,8 @@ def load_rows(wb) -> list[dict]:
             'iznos': round(float(iznos), 2) if iznos else 0.0,
             'napomena': napomena,
             'izvod': izvod,
-            'istina': f'{tip} | {clean(r[H["Podtip"]])}',
+            'ima_tekst': bool(napomena or izvod),
+            'istina': f'{tip} | {clean(r[H["Podtip"]])}' if not is_na else '',
             'izvor_labele': 'pravilo' if clean(r[H['Pravilo run']]) else 'rucno',
         })
     return out
@@ -239,6 +267,17 @@ def schema(pairs: list[str]) -> dict:
     }
 
 
+def is_fatal(e: Exception) -> bool:
+    """Greške koje ponavljanje ne rješava: prazan kredit, loš ključ, neispravan zahtjev.
+
+    Naučeno na pravom runu: kad je kredit pao usred posla, svaki od preostalih batcheva
+    bi inače odradio 4 pokušaja s backoffom prije nego što odustane.
+    """
+    if getattr(e, 'status_code', None) in (400, 401, 403):
+        return True
+    return 'credit balance' in str(e).lower()
+
+
 def _call(client, model: str, pairs: list[str], rows: list[dict],
           effort: str, context: str = '') -> tuple[dict, dict]:
     """Jedan poziv. Vraća ({row: (par, conf)}, usage)."""
@@ -268,6 +307,8 @@ def _call(client, model: str, pairs: list[str], rows: list[dict],
             )
             break
         except Exception as e:                                   # noqa: BLE001
+            if is_fatal(e):        # prazan kredit / loš zahtjev — retry je čisti gubitak
+                raise
             last = e
             time.sleep(2 ** attempt + random.random())
     else:
@@ -398,6 +439,147 @@ def report(rows: list[dict], pred: dict, usage: dict, model: str) -> None:
     print(f'Neslaganja ({len(misses)}) → {out.name}   ← ovo je i detektor postojećih grešaka')
 
 
+# ── Upis u Review (--run) ────────────────────────────────────────────────────
+
+AI_COLS = ['Tip_AI', 'Podtip_AI', 'Pouzdanost_AI', 'AI run']
+AI_HIDDEN = {'Pouzdanost_AI', 'AI run'}          # collapsed grupa (odluka S107m)
+AI_WIDTH = {'Tip_AI': 14, 'Podtip_AI': 17, 'Pouzdanost_AI': 13, 'AI run': 17}
+
+HDR_FILL = PatternFill('solid', fgColor='7030A0')   # ljubičasto = AI, da se ne miješa
+WHITE_BOLD = Font(color='FFFFFF', bold=True)        # s plavim ljudskim kolonama
+_THIN = Side(style='thin')
+BORDER = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
+
+
+def ensure_ai_columns(ws) -> dict[str, int]:
+    """AI kolone odmah desno od `Podtip`, 1-based indeksi. Idempotentno.
+
+    Umeće se DESNO od J/K (Tip/Podtip) pa data validation i conditional formatting,
+    koji žive na J2:J* / K2:K*, ostaju netaknuti — openpyxl ih ionako ne bi pomaknuo.
+    Zato je smjer umetanja bitan i provjerava se na kraju.
+    """
+    H = header_map(ws)
+    have = [c for c in AI_COLS if c in H]
+    if len(have) == len(AI_COLS):
+        return {c: H[c] + 1 for c in AI_COLS}          # header_map je 0-based
+    if have:
+        sys.exit(f'✗ Postoji samo dio AI kolona: {have}. Očekujem sve četiri ili nijednu — '
+                 f'obriši te kolone pa ponovi.')
+    if 'Podtip' not in H:
+        sys.exit('✗ Review nema kolonu "Podtip" — ne znam gdje umetnuti AI kolone.')
+
+    at = H['Podtip'] + 2                                # 1-based, odmah iza Podtipa
+    n = len(AI_COLS)
+
+    # insert_cols pomiče ćelije, ali NE i column_dimensions (širine/outline ostale bi
+    # na starim slovima i raspale bi se po smislu). Zato ih prenosimo ručno.
+    snap = {}
+    for i in range(1, ws.max_column + 1):
+        L = get_column_letter(i)
+        if L in ws.column_dimensions:
+            d = ws.column_dimensions[L]
+            snap[i] = (d.width, d.outlineLevel, d.hidden)   # customWidth je izveden, read-only
+
+    ws.insert_cols(at, n)
+
+    for L in list(ws.column_dimensions):
+        del ws.column_dimensions[L]
+    for i, (w, lvl, hid) in snap.items():
+        d = ws.column_dimensions[get_column_letter(i if i < at else i + n)]
+        d.width, d.outlineLevel, d.hidden = w, lvl, hid
+
+    for k, name in enumerate(AI_COLS):
+        c = at + k
+        cell = ws.cell(1, c, name)
+        cell.fill, cell.font, cell.border = HDR_FILL, WHITE_BOLD, BORDER
+        ws.column_dimensions[get_column_letter(c)].width = AI_WIDTH[name]
+        d = ws.column_dimensions[get_column_letter(c)]
+        if name in AI_HIDDEN:
+            d.outlineLevel, d.hidden = 1, True
+
+    if ws.auto_filter.ref:
+        first = ws.auto_filter.ref.split(':')[0]
+        ws.auto_filter.ref = f'{first}:{get_column_letter(ws.max_column)}{ws.max_row}'
+
+    _check_dv_alignment(ws)
+    print(f'✔ Kreirane kolone {", ".join(AI_COLS)} '
+          f'({get_column_letter(at)}–{get_column_letter(at + n - 1)}); '
+          f'{", ".join(sorted(AI_HIDDEN))} u collapsed grupi')
+    return {name: at + k for k, name in enumerate(AI_COLS)}
+
+
+def _check_dv_alignment(ws) -> None:
+    """Dropdowni Tip/Podtip moraju i dalje sjediti na kolonama Tip/Podtip."""
+    H = header_map(ws)
+    want = {get_column_letter(H['Tip'] + 1): 'Tip', get_column_letter(H['Podtip'] + 1): 'Podtip'}
+    for dv in ws.data_validations.dataValidation:
+        cols = {re.match(r'([A-Z]+)', str(rng)).group(1) for rng in dv.sqref.ranges}
+        for col in cols:
+            if col not in want:
+                print(f'⚠ Data validation ({dv.formula1}) sjedi na koloni {col}, '
+                      f'a to više nije Tip/Podtip — provjeri raspored kolona!')
+
+
+def write_predictions(ws, col: dict[str, int], rows: list[dict],
+                      pred: dict, stamp: str, effort: str) -> int:
+    """Piše SAMO u AI kolone. `Tip`/`Podtip` se ne diraju — nikad, ni pri visokoj conf."""
+    mark = f'{stamp} · {PROMPT_VER} · {effort}'
+    written = 0
+    for r in rows:
+        p = pred.get(r['row'])
+        if not p:
+            continue
+        par, conf = p
+        tip, pod = (('', '') if par == UNKNOWN else
+                    (par.split(' | ')[0], par.split(' | ')[1] if ' | ' in par else ''))
+        ws.cell(r['row'], col['Tip_AI'], tip or UNKNOWN)
+        ws.cell(r['row'], col['Podtip_AI']).value = pod or None
+        ws.cell(r['row'], col['Pouzdanost_AI'], conf)
+        ws.cell(r['row'], col['AI run'], mark)
+        written += 1
+    return written
+
+
+def run_report(rows: list[dict], pred: dict, usage: dict, model: str, effort: str) -> None:
+    conf_n = collections.Counter()
+    pairs_n = collections.Counter()
+    unk = 0
+    for r in rows:
+        p = pred.get(r['row'])
+        if not p:
+            continue
+        par, conf = p
+        conf_n[conf] += 1
+        if par == UNKNOWN:
+            unk += 1
+        else:
+            pairs_n[par] += 1
+
+    got = sum(conf_n.values())
+    print('\n' + '=' * 78)
+    print(f'  RUN — {model} · effort {effort}')
+    print('=' * 78)
+    print(f'\nPoslano {len(rows)} · vraćeno {got}'
+          + (f'  ⚠ BEZ ODGOVORA: {len(rows) - got}' if got < len(rows) else '  (potpuno)'))
+    print(f'NEPOZNATO (model priznaje da ne zna): {unk}')
+    print(f'\n{"pouzdanost":<14}{"N":>7}{"udio":>9}')
+    print('-' * 32)
+    for c in ('visoka', 'srednja', 'niska'):
+        if conf_n[c]:
+            print(f'{c:<14}{conf_n[c]:>7}{conf_n[c] / got * 100:>8.1f}%')
+    print(f'\nNajčešći predloženi parovi, top 15:')
+    print('-' * 60)
+    for par, n in pairs_n.most_common(15):
+        print(f'{n:>5}×  {par}')
+
+    if usage:
+        cost = ((usage['in'] + usage['cache_w'] * 1.25 + usage['cache_r'] * 0.1) / 1e6 * PRICE_IN
+                + usage['out'] / 1e6 * PRICE_OUT)
+        print(f'\nTokeni: {usage["in"] + usage["cache_w"] + usage["cache_r"]:,} ulaz '
+              f'({usage["cache_r"]:,} iz keša) · {usage["out"]:,} izlaz')
+        print(f'STVARNI TROŠAK: ${cost:.2f}')
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def store_load(model: str, effort: str) -> dict[str, tuple[str, str]]:
@@ -434,12 +616,24 @@ def stratified(rows: list[dict], n: int) -> list[dict]:
     return out
 
 
+# Iz izmjerenih runova (600 redaka · effort high · $0,73). Samo za procjenu u --dry.
+EST_PER_ROW = 0.0013
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument('--eval', action='store_true', required=True)
+    ap.add_argument('--eval', action='store_true',
+                    help='naslijepo na klasificiranim redcima; NE PIŠE u Review')
+    ap.add_argument('--run', action='store_true',
+                    help='klasificiraj N/A retke i upiši Tip_AI/Podtip_AI/Pouzdanost_AI/AI run')
+    ap.add_argument('--dry', action='store_true',
+                    help='--run bez pisanja u Review. Bez --limit ne zove ni model (samo plan); '
+                         's --limit N odradi pravu predikciju na N redaka i pokaže uzorak.')
+    ap.add_argument('--only-text', action='store_true',
+                    help='--run samo na retke koji imaju Napomenu ili Izvod opis')
     ap.add_argument('--sample', type=int, default=0,
-                    help='zamrznut stratificiran uzorak od N (jeftino podešavanje prompta)')
-    ap.add_argument('--limit', type=int, default=0, help='prvih N nasumično (smoke test)')
+                    help='zamrznut stratificiran uzorak od N (samo --eval)')
+    ap.add_argument('--limit', type=int, default=0, help='N nasumičnih redaka (smoke test)')
     ap.add_argument('--resume', action='store_true',
                     help='preskoči retke koje store već ima za isti prompt_ver+model+effort')
     ap.add_argument('--only-conf', default='',
@@ -449,19 +643,31 @@ def main() -> None:
     ap.add_argument('--effort', default='medium', choices=['low', 'medium', 'high', 'xhigh'])
     args = ap.parse_args()
 
-    import anthropic
+    if args.eval == args.run:
+        ap.error('odaberi točno jedan mod: --eval ILI --run')
+    if args.eval and (args.dry or args.only_text):
+        ap.error('--dry i --only-text vrijede samo uz --run (eval ionako ništa ne piše)')
+    if args.run and args.sample:
+        ap.error('--sample je stratificiran po izvoru labele — vrijedi samo uz --eval')
 
     review = pick_review()
-    wb = openpyxl.load_workbook(review, data_only=True)
+    # data_only=True bi pri spremanju formule pretvorio u vrijednosti → samo za eval.
+    wb = openpyxl.load_workbook(review, data_only=args.eval)
     pairs = load_taxonomy(wb)
-    rows = load_rows(wb)
-    wb.close()
+    rows = load_rows(wb, 'na' if args.run else 'classified')
+    if args.eval:
+        wb.close()
     context = load_context()
 
+    n_all = len(rows)
+    n_text = sum(1 for r in rows if r['ima_tekst'])
+    if args.run and args.only_text:
+        rows = [r for r in rows if r['ima_tekst']]
     if args.sample:
         rows = stratified(rows, args.sample)
     elif args.limit:
         rnd = random.Random(EVAL_SEED)
+        rows = list(rows)
         rnd.shuffle(rows)
         rows = rows[:args.limit]
 
@@ -473,20 +679,42 @@ def main() -> None:
     elif args.resume:
         todo = [r for r in rows if r['key'] not in cached]
 
-    src = collections.Counter(r['izvor_labele'] for r in rows)
     print(f'Review: {review.name}')
     print(f'Taksonomija: {len(pairs)} parova · '
           + (f'kontekst {len(context):,} znakova' if context else 'kontekst: NEMA'))
-    print(f'Eval set: {len(rows)} redaka  (ručno {src["rucno"]} · pravilo {src["pravilo"]})')
+    if args.eval:
+        src = collections.Counter(r['izvor_labele'] for r in rows)
+        print(f'Eval set: {len(rows)} redaka  (ručno {src["rucno"]} · pravilo {src["pravilo"]})')
+    else:
+        print(f'N/A retci: {n_all} ukupno  (s tekstom {n_text} · bez teksta {n_all - n_text})')
+        print(f'Za klasifikaciju: {len(rows)} redaka'
+              + ('  [--only-text]' if args.only_text else '')
+              + (f'  [--limit {args.limit}]' if args.limit else ''))
     print(f'Store: {len(cached)} predikcija za {PROMPT_VER}/{args.model}/{args.effort}'
           f'  →  zovem model za {len(todo)}')
     print(f'Model: {args.model} · effort {args.effort} · batch {BATCH} · '
-          f'{args.workers} paralelno\n')
+          f'{args.workers} paralelno')
+
+    if args.run and args.dry and not args.limit:
+        H = header_map(wb['Review'])
+        stanje = ('postoje' if all(c in H for c in AI_COLS)
+                  else f'kreiraju se desno od "Podtip" ({", ".join(AI_COLS)})')
+        print(f'\n[DRY — PLAN, bez ijednog API poziva]')
+        print(f'  AI kolone: {stanje}; '
+              f'{", ".join(sorted(AI_HIDDEN))} idu u collapsed grupu')
+        print(f'  Tip/Podtip se NE diraju ni u jednom slučaju.')
+        print(f'  Procjena troška za {len(todo)} redaka: ~${len(todo) * EST_PER_ROW:.2f}')
+        print(f'\n  Proba prompta bez pisanja:  --run --dry --limit 30 --effort {args.effort}')
+        print(f'  Pravi upis:                 --run --effort {args.effort} --resume')
+        return
+    print()
 
     pred = {r['row']: cached[r['key']] for r in rows if r['key'] in cached}
     usage: collections.Counter = collections.Counter()
 
     if todo:
+        import anthropic
+
         batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]
         client = anthropic.Anthropic(api_key=load_api_key())
         by_row = {r['row']: r for r in todo}
@@ -497,22 +725,81 @@ def main() -> None:
         def work(b):
             return classify(client, args.model, pairs, b, args.effort, context)
 
+        # Pao batch NE ruši cijeli run: ono što je plaćeno i dobiveno se zadrži i upiše,
+        # a ostatak se dovrši s --resume. (Naučeno: kredit je pao na 19/64 batcheva i
+        # cijeli je posao propao pri izlasku, iako je 491 predikcija bila u storeu.)
+        failed_rows, fatal = 0, None
         with ThreadPoolExecutor(max_workers=args.workers) as ex:
-            for got, u in ex.map(work, batches):
+            futs = {ex.submit(work, b): b for b in batches}
+            for fut in as_completed(futs):
+                try:
+                    got, u = fut.result()
+                except Exception as e:                           # noqa: BLE001
+                    failed_rows += len(futs[fut])
+                    if is_fatal(e):
+                        fatal = e
+                        for f in futs:
+                            f.cancel()
+                        break
+                    print(f'\n  ⚠ batch pao ({e}) — nastavljam s ostalima')
+                    continue
                 pred.update(got)
                 usage.update(u)
                 store_append([
                     {'key': by_row[row]['key'], 'row': row, 'run_id': run_id,
                      'prompt_ver': PROMPT_VER, 'model': args.model, 'effort': args.effort,
+                     'mode': 'run' if args.run else 'eval',
                      'par': par, 'conf': conf, 'ts': stamp}
                     for row, (par, conf) in got.items() if row in by_row
                 ])
                 done += 1
                 print(f'\r  batch {done}/{len(batches)}', end='', flush=True)
         print()
+        if fatal:
+            print(f'\n✗ PREKID: {fatal}')
+            print(f'  Zadržavam {len(pred)} predikcija; ostatak dovrši s --resume '
+                  f'(store ih ne plaća ponovo).')
+        elif failed_rows:
+            print(f'\n⚠ {failed_rows} redaka je ostalo bez odgovora zbog palih batcheva.')
 
-    report(rows, pred, dict(usage), args.model)
+    if args.eval:
+        report(rows, pred, dict(usage), args.model)
+        print(f'Predikcije → {PRED_FILE}   ({len(pred)} u ovom izvještaju)')
+        return
+
+    run_report(rows, pred, dict(usage), args.model, args.effort)
     print(f'Predikcije → {PRED_FILE}   ({len(pred)} u ovom izvještaju)')
+
+    if args.dry:
+        print('\nUzorak (redak · pouzdanost · prijedlog · tekst) — prvih 25:')
+        print('-' * 78)
+        for r in sorted(rows, key=lambda r: r['row']):
+            p = pred.get(r['row'])
+            if not p:
+                continue
+            txt = (r['napomena'] or r['izvod'])[:40]
+            print(f'{r["row"]:>6}  {p[1]:<8} {p[0][:36]:<38} {txt}')
+        print(f'\n✔ [DRY] Ništa nije pisano u Review. Predikcije su u storeu — '
+              f'pravi run s --resume ih ne plaća ponovo.')
+        return
+
+    if not pred:
+        print('\n✔ Nema nijedne predikcije — ništa za snimiti, Review netaknut.')
+        return
+
+    ws = wb['Review']
+    col = ensure_ai_columns(ws)
+    written = write_predictions(ws, col, rows, pred,
+                                datetime.now().strftime('%Y-%m-%d %H:%M'), args.effort)
+    backup = review.with_name(f'{review.stem}.pre-aiclass-{datetime.now():%Y%m%d_%H%M%S}.xlsx')
+    shutil.copy2(review, backup)
+    try:
+        wb.save(review)
+    except PermissionError:
+        sys.exit(f'✗ Zatvori Review u Excelu i ponovi. (Backup: {backup.name})')
+    print(f'\n✔ Snimljeno: {written} redaka u Tip_AI/Podtip_AI/Pouzdanost_AI/AI run. '
+          f'Tip/Podtip netaknuti.')
+    print(f'  Backup: {backup.name}')
 
 
 if __name__ == '__main__':
