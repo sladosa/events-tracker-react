@@ -3,8 +3,27 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107n (2026-07-27) — AI `--run` izvršen + nalaz duplikata rata
-**Detalji S107n:** [S107n_tests.md](test-sessions/S107n_tests.md)
+**Zadnji update:** S107o (2026-07-28) — mehanizam `AI odluka` + duplikati rata izvršeni
+**Detalji S107o:** [S107o_tests.md](test-sessions/S107o_tests.md)
+
+---
+
+## S107o — kolona `AI odluka` + 2 odobrena popravka IZVRŠENA (Python data-prep; NEMA app koda)
+
+Mehanizam za bilježenje odluke o AI prijedlogu nije postojao — T-S107n-1 je bio neizvediv
+kako je napisan. Sad: kolona **`AI odluka`** (`OK`/`NE`/`?`) + `apply_ai.py --harvest`.
+Review **5004 → 4996** redaka (−636,36 € dvostrukog troška), `Pravila` 69 → **70**.
+
+| ID          | Test                                                                                     | Status         |
+| ----------- | ---------------------------------------------------------------------------------------- | -------------- |
+| T-S107o-A…E | Kolona na kopiji, harvest ciklus s rubnim slučajevima, eval guard, dedup, pravilo         | ✅ (programski) |
+| T-S107o-1   | **Saša: GLAVNI POSAO** — `visoka` traka (261 redaka / **31 par**), upiši `OK` po grupi     | ⬜              |
+| T-S107o-2   | **Saša:** kontrola nakon `--harvest` — `OK` očišćen, `Labela iz` = `AI:visoka …`          | ⬜              |
+| T-S107o-3   | **Saša:** 8 Kokinih redaka dobilo `Izvod opis`; izvodnih parnjaka nema                     | ⬜              |
+| T-S107o-4   | **Saša:** `freeze_panes` `F4855` → `F2` — odgovara li ti tako                              | ⬜              |
+
+**Odobreno a NIJE izvršeno:** `reconcile_izvoda.py` matcher po `Datum naplate`+iznos (jedino
+preostalo od tri S107n stavke — ne dira Review, može bilo kad).
 
 ---
 
@@ -15,19 +34,19 @@
 ⚠ `visoka` 16 % (eval je davao 57 %) — N/A hrpa je teži ostatak, bulk-accept traka je tanka.
 **NALAZ: 8 duplikata rata, 636,36 €** (odobreno, nije izvršeno). Detalji: ENRICH_PLAN §2l.
 
-| ID          | Test                                                                                     | Status |
-| ----------- | ---------------------------------------------------------------------------------------- | ------ |
+| ID          | Test                                                                                                                           | Status         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------- |
 | T-S107n-A…I | Umetanje kolona na kopiji, dry/limit modovi, recovery nakon pada kredita, eval regresija, kontrola upisa, skeniranje duplikata | ✅ (programski) |
-| T-S107n-1   | **Saša: GLAVNI POSAO** — pregled AI prijedloga, sort po `Pouzdanost_AI`, kreni od `visoka` | ⬜ |
-| T-S107n-2   | **Saša:** kontrola — svaki redak s `AI run` mora imati `Tip` = N/A/prazan                 | ⬜ |
-| T-S107n-3   | **Saša:** 196 `NEPOZNATO` — je li stvarno neodredivo iz teksta                            | ⬜ |
-| T-S107n-4   | **Saša:** Agram — ožujak=C5 / listopad=Lacetti? (blokira popravak pravila #43)            | ⬜ |
-| T-S107n-5   | **Saša:** 8 duplikata rata — potvrdi da Kokin redak ostaje                                | ⬜ |
-| T-S107n-6   | **Saša:** red 4759 BIBERON / "Amsteradam"                                                 | ⬜ |
-| T-S107n-7   | **Saša:** freeze + collapse grupe prežive AI run                                          | ⬜ |
+| T-S107n-1   | **Saša: GLAVNI POSAO** — pregled AI prijedloga, sort po `Pouzdanost_AI`, kreni od `visoka`                                     | → T-S107o-1 (mehanizam sad postoji) |
+| T-S107n-2   | **Saša:** kontrola — svaki redak s `AI run` mora imati `Tip` = N/A/prazan                                                      | ✅ (Claude programski, 0 kršenja) |
+| T-S107n-3   | **Saša:** 196 `NEPOZNATO` — je li stvarno neodredivo iz teksta                                                                 | ⬜              |
+| T-S107n-4   | **Saša:** Agram — ožujak=C5 / listopad=Lacetti? (blokira popravak pravila #43)                                                 | ◐ (par 4505 potvrdio ožujak=C5; ostatak čeka Sašu) |
+| T-S107n-5   | **Saša:** 8 duplikata rata — potvrdi da Kokin redak ostaje                                                                     | ✅ (potvrdio 2026-07-28, izvršeno) |
+| T-S107n-6   | **Saša:** red 4759 BIBERON / "Amsteradam"                                                                                      | ⬜              |
+| T-S107n-7   | **Saša:** freeze + collapse grupe prežive AI run                                                                               | → T-S107o-4 (freeze namjerno promijenjen na F2) |
 
-**Odobreno a NIJE izvršeno:** fix 8 duplikata (DUP semantika); `reconcile_izvoda.py` matcher po
-`Datum naplate`+iznos; pravilo `voce i povrce` iznad #43.
+**Sve tri odobrene stavke:** ~~fix 8 duplikata~~ ✅ S107o · ~~pravilo `voce i povrce`~~ ✅ S107o ·
+`reconcile_izvoda.py` matcher po `Datum naplate`+iznos — **još otvoreno**.
 
 ---
 

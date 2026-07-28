@@ -143,7 +143,8 @@ def load_rows(wb, want: str = 'classified') -> list[dict]:
     ws = wb['Review']
     H = header_map(ws)
     need = ['Tip', 'Podtip', 'Napomena', 'Izvod opis', 'Izvor', 'Racun',
-            'Uplata', 'Isplata', 'event_date', 'Pravilo run', 'Pouzdanost', 'source_key']
+            'Uplata', 'Isplata', 'event_date', 'Pravilo run', 'Pouzdanost', 'source_key',
+            'Labela iz']
     missing = [c for c in need if c not in H]
     if missing:
         sys.exit(f'✗ Review sheetu nedostaju kolone: {missing}')
@@ -155,8 +156,14 @@ def load_rows(wb, want: str = 'classified') -> list[dict]:
         if is_na != (want == 'na'):
             continue
         napomena, izvod = clean(r[H['Napomena']]), clean(r[H['Izvod opis']])
-        if want == 'classified' and not (napomena or izvod):
-            continue
+        labela_iz = clean(r[H['Labela iz']])
+        if want == 'classified':
+            if not (napomena or izvod):
+                continue
+            # Labelu je prenio apply_ai.py iz Tip_AI → eval bi mjerio model protiv
+            # njegovog vlastitog izlaza. Takvi retci NIKAD ne ulaze u eval set.
+            if labela_iz.startswith('AI:'):
+                continue
         iznos = r[H['Isplata']] or r[H['Uplata']] or 0
         d = r[H['event_date']]
         out.append({
@@ -172,7 +179,8 @@ def load_rows(wb, want: str = 'classified') -> list[dict]:
             'izvod': izvod,
             'ima_tekst': bool(napomena or izvod),
             'istina': f'{tip} | {clean(r[H["Podtip"]])}' if not is_na else '',
-            'izvor_labele': 'pravilo' if clean(r[H['Pravilo run']]) else 'rucno',
+            'izvor_labele': ('ai' if labela_iz.startswith('AI:') else
+                             'pravilo' if clean(r[H['Pravilo run']]) else 'rucno'),
         })
     return out
 

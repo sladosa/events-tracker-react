@@ -467,11 +467,72 @@ pri sortu raspari (zamka iz S107e).
 
 Bulk AI pregled je drugi alat: sort po `Pouzdanost_AI` + zasebna skripta za prijenos u `Tip`/`Podtip`.
 
+## 2m. S107o (2026-07-28) — mehanizam `AI odluka` + duplikati rata IZVRŠENI
+
+Sesija je krenula od Sašinog pitanja "što točno da radim s T-S107n-1". Odgovor je bio da
+**mehanizam za bilježenje odluke ne postoji** — test je bio neizvediv kako je napisan.
+
+### `apply_ai.py` (novo) — kolona `AI odluka`
+
+Dropdown `OK` / `NE` / `?` odmah desno od `Podtip_AI` (kolona `N`), unutar autofiltera.
+
+| | |
+| --- | --- |
+| `OK` | `--harvest` prepiše `Tip_AI`/`Podtip_AI` → `Tip`/`Podtip` i **očisti ćeliju** |
+| `NE` / `?` | ostaje — filter "nije prazno" = preostali posao (uzor `Nematchano_v3`, 41 → 0) |
+| prazno | nepregledano, ne dira se |
+
+Tvrda pravila: nikad preko postojećeg `Tip`a; par mora postojati u Taksonomiji; `NEPOZNATO`
+se ne prenosi. Ispravak se piše **izravno u `Tip`/`Podtip`** — harvest preskače ne-N/A retke.
+Provenijencija u **`Labela iz`** (`AI:visoka <datum>`), namjerno **ne** u `Pravilo run`: tu
+kolonu `ai_classify.py --eval` čita kao "labelu je stavilo keyword pravilo", pa bi AI labele
+ušle u vlastiti eval set — i to kao `rucno`, tj. baš kao pošteni benchmark. `ai_classify.py`
+dodatno izbacuje `Labela iz` = `AI:*` retke iz eval seta.
+
+**Jedinica pregleda je par, ne redak:** `visoka` = 261 redaka, ali **31 par**; tri para nose
+165 (`Namirnice|Hrana i ostalo` 81, `Porezi|porez/prirez/dohodak` 47, `Razno|Kave/jelo vani` 37).
+Svih 31 parova je valjano u Taksonomiji.
+
+### `fix_duplikati_rata.py` (novo) — IZVRŠENO
+
+8 parova iz §2l, `DUP` semantika: Kokin redak ostaje + dobiva `Izvod opis`/`Izvod file`,
+izvodni obrisan, ključ u `V3 preskočeno`. Parovi se traže po **`source_key`**, ne po broju
+retka, i svaki se prije diranja provjerava po iznosu + `Datum naplate` + Napomeni.
+
+Review **5004 → 4996**; Σ Isplata 375.833,16 → **375.196,80** (−636,36 u cent); 0 razlika u
+149.834 ćelija ostalih redaka. Redovi 929/933 (ZAKS) netaknuti kao lažni pozitivni.
+
+⚠ **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** — on preskače `source_key`eve
+*koji postoje u Reviewu*, pa bi obrisani duplikat vratio pri sljedećem runu. Popravljeno:
+`V3 preskočeno` je sad registar koji i `merge_pbzvisa` čita (isti koji `consolidate_review.py`
+već koristi za trajno odbačene tx).
+
+### `fix_vocarna_pravilo.py` (novo) — IZVRŠENO
+
+⚠ **Pravilo samo ne bi popravilo ništa.** `apply_rules.py` (~linija 516) preskače svaki redak
+čiji je par **valjan** u Taksonomiji — `auto Lacetti | registracija` jest valjan, samo je kriv.
+Zato alat radi oboje: pravilo `voce i povrce` → `Namirnice | Hrana i ostalo` na red 44 (iznad
+#43 `AGRAM`, priority-order) **i** jednokratni ispravak retka. Redak nađen po `source_key` na
+**4504** (bio 4512 prije dedupa — dokaz da je traženje po ključu ispravno). Ključ pogađa točno
+1 redak. `Pravila` 69 → **70**.
+
+### Usput
+
+- `freeze_panes` `F4855` → **`F2`** (potvrđeno kao slučajan klik, §2l nalaz 6).
+- **Par 4505 potvrđuje hipotezu Agram:** izvodni `RATA 02/03 AUTOCENTAR AGRAM`, `event_date`
+  11.03.2026, Kokina napomena "Reg C5 2/3" → **ožujak = C5**.
+- **Petlja učenja (načelno, nije građeno):** `NE` sam ne nosi informaciju; vrijednost je u
+  **ispravku**. `Tip_AI` ostaje u retku i nakon harvesta, pa je ispravak rekonstruktibilan
+  bez ikakve oznake (`Tip` popunjen + `Tip_AI` postoji + različiti). Put natrag: ispravci →
+  `AI_KONTEKST_pitanja.txt` → bump `PROMPT_VER` → re-run samo `niska`+`srednja` (~$1).
+  Ponovljivi merchanti idu u `Pravila`, ne u model. Graditi tek kad se vidi koliko ispravaka
+  padne iz `visoka` trake.
+
 ## 3. SLJEDEĆI KORACI
 
-0. **(S107n, odobreno, NIJE izvršeno)** (a) fix 8 duplikata rata po `DUP` semantici; (b)
-   `reconcile_izvoda.py` matcher po `Datum naplate`+iznos; (c) pravilo `voce i povrce` iznad #43;
-   (d) Sašin pregled Agrama (ožujak=C5?) pa `Iznos min/max` split pravila #43. Detalji §2l.
+0. **(S107n odobreno)** ~~(a) fix 8 duplikata rata~~ ✅ S107o · ~~(c) pravilo `voce i povrce`~~ ✅ S107o ·
+   **(b) `reconcile_izvoda.py` matcher po `Datum naplate`+iznos — JOŠ OTVORENO** (ne dira Review) ·
+   (d) Sašin pregled Agrama pa `Iznos min/max` split pravila #43 (ožujak=C5 već potvrđen preko 4505).
 1. ~~PBZ Visa split~~ ✅ S107i. ~~Fix parse_zaba_racun~~ ✅ S107j (§2h). ~~Konsolidacija~~ ✅ S107j (§2j).
    **Preostalo iz konsolidacije — SADA KROZ §2k TOK:** (a) pravi runovi date_accuracy → consolidate →
    **Saša Verdikt pass (~44 reda)** → --harvest → kartice_datum_naplate → apply_rules; (b) `Saldo

@@ -631,6 +631,31 @@ testovi `Claude-temp_R/test-sessions/S107n_tests.md`):**
 6. **T-S107m-1…5 potvrđeni** (v. PENDING_TESTS); T-S107m-3 "54 vs 55" objašnjeno — red 4759 ima
    "biberon" samo u `Izvod opis`.
 
+**Done 2026-07-28 (S107o — mehanizam `AI odluka` + 2 odobrena popravka izvršena; detalji
+ENRICH_PLAN §2m, testovi `Claude-temp_R/test-sessions/S107o_tests.md`):**
+1. **`apply_ai.py` (novo)** — kolona **`AI odluka`** (dropdown `OK`/`NE`/`?`) desno od `Podtip_AI`,
+   unutar autofiltera. `--harvest` prenosi `OK` u `Tip`/`Podtip` i **čisti ćeliju**; `NE`/`?` ostaju
+   pa je filter "nije prazno" uvijek preostali posao (uzor `Nematchano_v3`). Nikad preko postojećeg
+   `Tip`a, par mora biti u Taksonomiji, `NEPOZNATO` se ne prenosi. Povod: T-S107n-1 je bio neizvediv
+   jer mehanizam za bilježenje odluke nije postojao.
+   **Provenijencija u `Labela iz` (`AI:visoka …`), NE u `Pravilo run`** — tu kolonu `ai_classify --eval`
+   čita kao "labelirano keyword pravilom", pa bi AI labele ušle u vlastiti eval set kao `rucno`
+   (pošteni benchmark). `ai_classify.py` sad izbacuje `Labela iz`=`AI:*` iz eval seta.
+   **Jedinica pregleda je par, ne redak:** `visoka` = 261 redaka ali **31 par**, 3 para nose 165.
+2. **`fix_duplikati_rata.py` (novo) — IZVRŠENO:** 8 parova, `DUP` semantika (Kokin ostaje + `Izvod opis`,
+   izvodni obrisan → `V3 preskočeno`). Traži po `source_key`, ne po broju retka. Review **5004 → 4996**,
+   Σ Isplata −**636,36 €** u cent, **0 razlika u 149.834 ćelija** ostalih redaka.
+   ⚠ **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** (preskače `source_key`eve koji POSTOJE u
+   Reviewu) → `V3 preskočeno` je sad registar koji i taj alat čita.
+3. **`fix_vocarna_pravilo.py` (novo) — IZVRŠENO:** ⚠ pravilo samo ne bi popravilo ništa —
+   `apply_rules.py` preskače retke s **valjanim** parom, a `auto Lacetti|registracija` jest valjan,
+   samo kriv. Zato: pravilo `voce i povrce` na red 44 (iznad #43 `AGRAM`) **+** jednokratni ispravak
+   retka (nađen po ključu na 4504, bio 4512 prije dedupa). `Pravila` 69 → 70.
+4. `freeze_panes` `F4855` → **`F2`**. **Par 4505 potvrdio ožujak = C5** (T-S107n-4).
+5. **Petlja učenja (načelno, nije građeno):** `NE` sam ne nosi informaciju — vrijednost je u **ispravku**;
+   `Tip_AI` ostaje u retku pa je ispravak rekonstruktibilan bez oznake. Put natrag: ispravci →
+   `AI_KONTEKST_pitanja.txt` → bump `PROMPT_VER` → re-run `niska`+`srednja` (~$1).
+
 **Sljedeći koraci — ⚠ ZASTARJELO od S107m, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku

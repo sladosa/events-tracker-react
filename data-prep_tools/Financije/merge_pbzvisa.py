@@ -61,6 +61,7 @@ PREVIEW  = DATA_DIR / 'pbzvisa_PREVIEW.xlsx'   # pick_file drugih alata ovo IGNO
 
 RACUN_SASA = 'Sašin tekući RF'
 IZVOR      = 'Visa'
+SKIP_SHEET = 'V3 preskočeno'                   # registar trajno odbačenih tx (S107o)
 DELTAS     = (0, 1, -1, 2, -2, 3, -3)          # datum tolerancija za dedup (plateau na ±2)
 RE_RATA    = re.compile(r'\bRATA\s+(\d+)\s*/\s*(\d+)\b', re.IGNORECASE)
 
@@ -267,6 +268,15 @@ def main() -> None:
     existing_keys = {str(ws.cell(r, col['source_key']).value or '')
                      for r in range(2, ws.max_row + 1)
                      if ws.cell(r, col['source_key']).value}
+    # Trajno odbačene tx (S107o): redak koji je svjesno OBRISAN iz Reviewa više ne nosi
+    # svoj source_key, pa bi ga idempotencija gore vratila. Registar `V3 preskočeno`
+    # (isti koji koristi consolidate_review.py) pamti da se ne smiju vratiti.
+    skipped_keys = set()
+    if SKIP_SHEET in wb.sheetnames:
+        skipped_keys = {str(r[0]) for r in wb[SKIP_SHEET].iter_rows(min_row=2, values_only=True) if r[0]}
+        if skipped_keys:
+            print(f'Trajno odbačenih ({SKIP_SHEET}): {len(skipped_keys)}')
+    existing_keys |= skipped_keys
     idx, n_existing_visa, template_row = build_existing_index(ws, col)
     print(f'Postojeći Sašini Visa redovi: {n_existing_visa}')
     template_styles = ([ws.cell(template_row, c)._style for c in range(1, ncols + 1)]
