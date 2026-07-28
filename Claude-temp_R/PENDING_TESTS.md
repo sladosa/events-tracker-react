@@ -3,8 +3,24 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107o (2026-07-28) — mehanizam `AI odluka` + duplikati rata izvršeni
-**Detalji S107o:** [S107o_tests.md](test-sessions/S107o_tests.md)
+**Zadnji update:** S107p (2026-07-28) — harvest `visoka` trake izvršen (347 redaka)
+**Detalji S107p:** [S107p_tests.md](test-sessions/S107p_tests.md)
+
+---
+
+## S107p — harvest `visoka` trake (Python data-prep; NEMA app koda)
+
+`apply_ai.py --harvest`: 347 redaka preneseno `Tip_AI`/`Podtip_AI` → `Tip`/`Podtip` (Saša prošao
+`visoka` + dio `srednja`/`niska`). 3 retka preskočena (861/887/3166 — imali ručni `Tip`, `OK`
+ostaje trajno kao poznat ne-bug slučaj). Preostalo po traci: visoka 2, srednja 205, niska 1023.
+
+| ID          | Test                                                                                     | Status         |
+| ----------- | ---------------------------------------------------------------------------------------- | -------------- |
+| T-S107p-A…D | Dry vs pravi harvest identični brojevi, report konzistentan, remaining-po-traci izračun   | ✅ (programski) |
+| T-S107p-1   | **Saša:** vizualni pregled 347 novoklasificiranih redaka (`Labela iz` = `AI:* 2026-07-28`) | ⬜              |
+| T-S107p-2   | **Saša:** 3 preskočena retka i dalje imaju ručni `Tip`, `AI odluka` ostaje `OK` (namjerno)  | ⬜              |
+
+**Sljedeće:** `srednja` traka (205), pa `niska` (1023). V. `NEXT_SESSION_PROMPT.md`.
 
 ---
 
@@ -17,8 +33,8 @@ Review **5004 → 4996** redaka (−636,36 € dvostrukog troška), `Pravila` 69
 | ID          | Test                                                                                     | Status         |
 | ----------- | ---------------------------------------------------------------------------------------- | -------------- |
 | T-S107o-A…E | Kolona na kopiji, harvest ciklus s rubnim slučajevima, eval guard, dedup, pravilo         | ✅ (programski) |
-| T-S107o-1   | **Saša: GLAVNI POSAO** — `visoka` traka (261 redaka / **31 par**), upiši `OK` po grupi     | ⬜              |
-| T-S107o-2   | **Saša:** kontrola nakon `--harvest` — `OK` očišćen, `Labela iz` = `AI:visoka …`          | ⬜              |
+| T-S107o-1   | **Saša: GLAVNI POSAO** — `visoka` traka (261 redaka / **31 par**), upiši `OK` po grupi     | ✅ (S107p — prošao i dio srednja/niska) |
+| T-S107o-2   | **Saša:** kontrola nakon `--harvest` — `OK` očišćen, `Labela iz` = `AI:visoka …`          | ✅ (S107p harvest, brojke se poklapaju; T-S107p-1 čeka vizualnu potvrdu) |
 | T-S107o-3   | **Saša:** 8 Kokinih redaka dobilo `Izvod opis`; izvodnih parnjaka nema                     | ⬜              |
 | T-S107o-4   | **Saša:** `freeze_panes` `F4855` → `F2` — odgovara li ti tako                              | ⬜              |
 

@@ -1,7 +1,7 @@
-# NEXT SESSION PROMPT — Financije: harvest `visoka` trake + sljedeća traka
+# NEXT SESSION PROMPT — Financije: `srednja` traka (+ ostatak `niska`)
 
-**Prethodna sesija: S107o (2026-07-28).** Mehanizam odluke sad postoji (`AI odluka` kolona),
-dva od tri odobrena popravka izvršena. Ostatak je **Sašin rad u Excelu**, koji ne troši ništa.
+**Prethodna sesija: S107p (2026-07-28).** `visoka` traka harvestana — praktički gotova
+(2 retka ostala). Sljedeći korak je `srednja` (205 preostalo), pa `niska` (1023 preostalo).
 
 ---
 
@@ -10,37 +10,44 @@ dva od tri odobrena popravka izvršena. Ostatak je **Sašin rad u Excelu**, koji
 **Otvori NOVU sesiju** (ne `--continue`, ne `--resume` — stari transkript se ponovno šalje i
 skupo je). Zalijepi ovo:
 
-> Nastavljam Financije migraciju (S107o → S107p). Pročitaj ovim redom:
-> 1. `CLAUDE.md` — blok "Done 2026-07-28 (S107o)"
+> Nastavljam Financije migraciju (S107p → S107q). Pročitaj ovim redom:
+> 1. `CLAUDE.md` — blok "Done 2026-07-28 (S107p)"
 > 2. `NEXT_SESSION_PROMPT.md` — ovaj file
-> 3. `data-prep_tools/Financije/ENRICH_PLAN.md` §2m
-> 4. `Claude-temp_R/test-sessions/S107o_tests.md`
+> 3. `data-prep_tools/Financije/ENRICH_PLAN.md` §2n
+> 4. `Claude-temp_R/test-sessions/S107p_tests.md`
 >
-> Prošao sam `visoka` traku u Reviewu i upisao `OK`/`NE`/ispravke u kolonu `AI odluka`.
+> Prošao sam `srednja`/`niska` traku u Reviewu i upisao `OK`/`NE`/ispravke u kolonu `AI odluka`.
 > Excel je zatvoren. Pokreni `apply_ai.py --harvest --dry`, pokaži mi brojke, pa nakon
-> moje potvrde pravi run. Zatim idemo na `srednja` traku.
+> moje potvrde pravi run.
 >
 > Pravila: `--dry` prvo i čekaj potvrdu prije pisanja u Review; NIKAD push/merge na `main`
 > bez mog izričitog zahtjeva.
 
-Ako **nisi** stigao proći traku, samo napiši dokle si došao — nema veze, harvest radi i na 20 redaka.
+Ako **nisi** stigao proći cijelu traku, samo napiši dokle si došao — nema veze, harvest radi
+i na 20 redaka.
 
 ---
 
 ## ŠTO TI TREBA NAPRAVITI U EXCELU (bez Claudea, ne troši ništa)
 
 1. Otvori `data-prep_data/Financije/Financije_review_20260710_1448.xlsx`, sheet `Review`.
-2. Filter **`Pouzdanost_AI` = `visoka`** (261 redaka), sortiraj po **`Tip_AI`** pa **`Podtip_AI`**.
-3. Idi **grupu po grupu** (31 par, tri para nose 165 redaka — `Namirnice|Hrana i ostalo` 81,
-   `Porezi|porez/prirez/dohodak` 47, `Razno|Kave/jelo vani` 37):
+2. Filter **`Pouzdanost_AI` = `srednja`** (205 preostalo od 239), sortiraj po **`Tip_AI`**
+   pa **`Podtip_AI`** (32 para).
+3. Isti postupak kao `visoka`:
    - grupa je dobra → upiši **`OK`** u `AI odluka` u prvoj ćeliji i povuci kroz grupu
    - **znaš točan odgovor → upiši ga u `Tip`/`Podtip`** (dropdown radi), **ne** `NE` —
      jedino ispravak nosi informaciju za sljedeći AI run
    - ne znaš → **`NE`**, treba razgovor → **`?`**
-4. Zatvori Excel i pokreni novu sesiju s promptom gore.
+4. Kad `srednja` gotova (ili dosta), po volji nastavi na `niska` (1023 preostalo, teži ostatak —
+   `visoka`+`srednja` su bile bulk-accept traka, `niska` će tražiti više pojedinačnih odluka).
+5. Zatvori Excel i pokreni novu sesiju s promptom gore.
 
 **Pazi na dvije slične kolone:** `Pouzdanost_AI` = AI (visoka/srednja/niska), `Pouzdanost` =
 stara iz pravila (NEMA/NISKA). `AI odluka` je odmah desno od `Podtip_AI`.
+
+**Napomena (S107p, ostavljeno namjerno):** 3 retka (861, 887, 3166) ostaju trajno `OK` u
+`AI odluka` jer su već imali ručni `Tip` prije harvesta — harvest ih preskače i ne čisti
+ćeliju (to je jedini slučaj gdje `OK` ne znači "još čeka"). Nije bug, ne diraj.
 
 ---
 
@@ -48,27 +55,28 @@ stara iz pravila (NEMA/NISKA). `AI odluka` je odmah desno od `Podtip_AI`.
 
 | | |
 | --- | --- |
-| Review | **4996** redaka (bilo 5004 — 8 duplikata rata obrisano, −636,36 €) |
+| Review | **4996** redaka (nepromijenjeno ove sesije) |
 | AI prijedlozi | **1592** · visoka 261 / srednja 239 / niska 1092 · NEPOZNATO 196 |
-| N/A ukupno | **2423** (od toga 818 bez teksta — AI ih nije ni dirao, Sašina odluka) |
+| Harvestano ukupno (kroz S107p) | **347** redaka prenesena u Tip/Podtip |
+| Preostalo po traci (Tip i dalje N/A) | **visoka 2** · **srednja 205** · **niska 1023** |
+| `AI odluka` stanje | `(prazno)` 1586 · `?` 3 · `OK` 3 (namjerno ostavljeni, v. napomena gore) |
 | Pravila | **70** · Taksonomija 65 parova |
-| `freeze_panes` | `F2` (bio `F4855`) |
+| `freeze_panes` | `F2` |
 
-**Backupi ove sesije:** `*.pre-aiapply-20260728_082727` · `*.pre-duprata-20260728_083704` ·
-`*.pre-vocarna-20260728_083708`
+**Backup ove sesije:** `Financije_review_20260710_1448.pre-aiapply-20260728_171029.xlsx`
 
 ---
 
 ## OTVORENO (redom po prioritetu)
 
-1. **Harvest `visoka` trake** — čeka Sašin pass, gore opisano.
-2. **`srednja` traka (239)** — isti postupak nakon `visoka`.
+1. **`srednja` traka (205)** — glavni posao, gore opisano.
+2. **`niska` traka (1023)** — nakon `srednja`, teži ostatak (52 para, manje bulk-accept).
 3. **`reconcile_izvoda.py` matcher po `Datum naplate` + iznos** — jedina neizvršena od tri
-   S107n stavke. Ne dira Review, može bilo kad. Sprječava povratak klase "duplikat rate".
-4. **Agram / pravilo #43** — ožujak = C5 **potvrđen** (par 4505: Kokina napomena "Reg C5 2/3"
-   na `AUTOCENTAR AGRAM` 11.03.2026). Ostaje Sašin pregled listopadskih pa `Iznos min/max` split.
-   Kandidati za `auto C5`: redovi 1463, 3038–3041, 4499 (⚠ brojevi su prije dedupa — provjeriti).
-5. **Petlja učenja** — kad se vidi koliko ispravaka padne iz `visoka`: ispravci →
+   S107n stavke. Ne dira Review, može bilo kad.
+4. **Agram / pravilo #43** — ožujak = C5 **potvrđen** (par 4505). Ostaje Sašin pregled
+   listopadskih pa `Iznos min/max` split. Kandidati za `auto C5`: redovi 1463, 3038–3041, 4499
+   (⚠ brojevi su prije dedupa — provjeriti).
+5. **Petlja učenja** — kad se vidi koliko ispravaka pada iz `srednja`/`niska`: ispravci →
    `AI_KONTEKST_pitanja.txt` → bump `PROMPT_VER` → re-run samo `niska`+`srednja` (~$1).
    Ponovljivi merchanti idu u `Pravila`, ne u model.
 6. **T-S107n-3** (196 `NEPOZNATO` — je li stvarno neodredivo) i **T-S107n-6** (red 4759
@@ -106,3 +114,5 @@ jednom primjerku.** Git čuva alate, ne podatke. Vanjska kopija Reviewa i dalje 
    širine/outline prenositi ručno, nove kolone umetati **desno** od `J`/`K`.
 5. Sve što nosi status mora biti **unutar autofiltera** (sad `A1:AD`) — inače se pri sortu raspari.
 6. `BATCH` je 25, ne 40; guard poslano-vs-vraćeno se ne ignorira.
+7. **`OK` retci već-klasificiranih redaka ostaju trajno `OK`** nakon harvesta (harvest ih
+   preskače i ne čisti ćeliju) — 3 poznata slučaja (861, 887, 3166), ne trebaju popravak.

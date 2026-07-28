@@ -528,6 +528,24 @@ Zato alat radi oboje: pravilo `voce i povrce` → `Namirnice | Hrana i ostalo` n
   Ponovljivi merchanti idu u `Pravila`, ne u model. Graditi tek kad se vidi koliko ispravaka
   padne iz `visoka` trake.
 
+## 2n. S107p (2026-07-28) — harvest `visoka` trake IZVRŠEN
+
+Kratka sesija: Saša prošao `visoka` (261) + dio `srednja`/`niska` u Reviewu, upisao `OK`/
+ispravke u `AI odluka`. Claude pokrenuo `apply_ai.py --harvest --dry` → pokazao brojke →
+Saša potvrdio → pravi `--harvest`.
+
+**Rezultat:** 347 redaka preneseno `Tip_AI`/`Podtip_AI` → `Tip`/`Podtip` (37 parova; najveći:
+Namirnice|Hrana i ostalo 89, Porezi|porez/prirez/dohodak 48, Razno|Kave/jelo vani 47,
+Osiguranje|Osiguranje 25, Transfer|izmedju racuna 14). 3 retka preskočena (861, 887, 3166 —
+već imali ručni `Tip`, `OK` ignoriran po dizajnu `harvest()`). Backup
+`*.pre-aiapply-20260728_171029`. Review i dalje 4996 redaka (harvest ne dira broj redaka).
+
+**Preostalo po traci (Tip i dalje N/A), izmjereno nakon harvesta:** visoka **2**, srednja
+**205**, niska **1023**. `AI odluka`: `(prazno)` 1586 · `?` 3 · `OK` 3.
+
+**Namjerna odluka (Saša):** ta 3 preskočena retka ostaju trajno `OK` u koloni — harvest ih
+ne čisti jer ih ne primjenjuje. Dokumentirano kao poznat slučaj, ne popravlja se.
+
 ## 3. SLJEDEĆI KORACI
 
 0. **(S107n odobreno)** ~~(a) fix 8 duplikata rata~~ ✅ S107o · ~~(c) pravilo `voce i povrce`~~ ✅ S107o ·

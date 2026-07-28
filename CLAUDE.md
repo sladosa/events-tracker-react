@@ -656,6 +656,16 @@ ENRICH_PLAN §2m, testovi `Claude-temp_R/test-sessions/S107o_tests.md`):**
    `Tip_AI` ostaje u retku pa je ispravak rekonstruktibilan bez oznake. Put natrag: ispravci →
    `AI_KONTEKST_pitanja.txt` → bump `PROMPT_VER` → re-run `niska`+`srednja` (~$1).
 
+**Done 2026-07-28 (S107p — harvest `visoka` trake):**
+1. **`apply_ai.py --harvest`** (dry pa pravi run) — **347 redaka** preneseno iz `Tip_AI`/`Podtip_AI`
+   u `Tip`/`Podtip` (Saša je prošao `visoka` i dio `srednja`/`niska` prije harvesta). 3 retka
+   preskočena (861/887/3166 — već imali ručni `Tip`, `OK` ignoriran po dizajnu). Backup
+   `*.pre-aiapply-20260728_171029`. Review i dalje 4996 redaka (harvest ne mijenja broj redaka).
+2. **Preostalo po traci (Tip i dalje N/A):** visoka 2, srednja 205, niska 1023.
+3. **Namjerna odluka:** 3 skipnuta retka ostaju trajno `OK` u `AI odluka` (harvest ih ne čisti) —
+   dokumentirano kao poznat, ne-bug slučaj umjesto popravljano.
+4. **Sljedeće:** `srednja` traka (205), pa `niska` (1023) — v. `NEXT_SESSION_PROMPT.md`.
+
 **Sljedeći koraci — ⚠ ZASTARJELO od S107m, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
