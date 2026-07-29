@@ -58,10 +58,14 @@ Prethodno: S107p (2026-07-28) harvestao `visoka` traku (347 redaka).
   (`sql/` staje na `032`). Njeno glavno opravdanje bilo je "treba nam mjesto za masovni
   pregled koje nije Excel" — a ako podaci ionako idu u aplikaciju, to mjesto je aplikacija.
 
-- **Potreba koja ostaje — vidjeti samo dio kolona i masovno potvrđivati AI prijedloge —
-  ostaje kao mogući feature aplikacije**, nad pravim eventima, i koristan je za svako
-  područje, ne samo za Financije. Gradi se **tek ako** se rad kroz Excel nakon importa
-  pokaže prespor. Do tada ne gradimo treće mjesto za podatke između Excela i baze.
+- **"Vidjeti samo dio kolona" već postoji i ne treba se graditi.** Provjereno u bazi
+  2026-07-29: area već ima spremljene `export_profiles` (profil `2026_RF-Sasa`) gdje je za
+  svaku kolonu zapisana širina, je li skrivena i u koju grupu ide. Znači da izvoz u Excel
+  daje točno onaj skup kolona koji odabereš, bez ijedne nove tablice.
+
+- **Masovno potvrđivanje AI prijedloga** ostaje kao mogući feature aplikacije nad pravim
+  eventima, koristan za svako područje. Gradi se **tek ako** se rad kroz Excel nakon importa
+  pokaže prespor.
 
 ## Redoslijed koraka
 
@@ -99,15 +103,69 @@ Prethodno: S107p (2026-07-28) harvestao `visoka` traku (347 redaka).
   ciklusa izvoz-uvoz, a preimenovanja su povijesno mjesto gdje pukne (S105d).
 
 - **Ako stigneš, iskoristi to što je prisutna za pripremu prelaska.** Area se uvozi **pod
-  njenim računom** (odluka D6), pa je ovo prilika da napravi login, ručno doda jednu
-  transakciju i kaže je li unos podnošljiv za 5–8 transakcija dnevno. Ta jedna informacija
-  određuje je li cijeli plan izvediv, a doznaje se u pet minuta. **To je jedina stvar koja
-  još može srušiti plan** — sve ostalo je posao koji znamo napraviti.
+  njenim računom** (odluka D6), pa je ovo prilika da napravi login. Ručni unos jedne
+  transakcije je i dalje koristan kao mjerenje, ali **više nije prijelomna stvar** (v. odjeljak
+  o Excel roundtripu ispod).
 
 - **Rad na koloni `AI odluka` nije bačen.** `apply_ai --harvest` upisuje u `Tip`/`Podtip`
   Reviewa, a Review je ono što se uvozi. Što stigneš do importa ide unutra klasificirano,
   ostatak ide kao N/A i dovršava se poslije. Promijenilo se samo to da to više nije uvjet
   za početak.
+
+## Kako Koka zapravo prelazi: Excel roundtrip, ne Add Activity
+
+**Nalaz od 2026-07-29 (Sašina napomena + provjera koda):** Koka se bolje snalazi na laptopu u
+Excelu nego u ekranu za unos. To ne ruši plan — naprotiv, rješava ga, jer aplikacija taj put
+već ima izgrađen.
+
+- **Izvoz aktivnosti u Excel sam generira dropdowne, uključujući lančane.** Provjereno u
+  `excelExport.ts`: za svaki atribut koji ovisi o drugome gradi se izbornik koji čita vrijednost
+  iz roditeljske ćelije. U Financijama to znači da Koka u izvezenom file-u dobiva cijeli lanac
+  **Racun → Izvor → Status** i **Tip → Podtip**, isto kao u Review file-u na koji je navikla,
+  samo spojeno na pravu bazu umjesto na međufile.
+
+- **Stari retci su zaštićeni.** `row_hash` prepozna retke koje nije dirala i preskoči ih bez
+  ijednog upita u bazu, a za one koje jest aplikacija prije upisa pokaže popis promjena
+  staro→novo i traži izričitu potvrdu.
+
+- **Novi retci se samo dopišu na dno.** Redak bez `event_id` aplikacija tretira kao novi zapis,
+  pa je "dodaj transakcije koje su se dogodile ovaj mjesec" jednako lako kao i sada.
+
+- **Zaključak: mehanizam prelaska je mjesečni Excel roundtrip nad `Financije_all`.** Ekran za
+  unos ostaje za mobitel i usputne unose (Sašin način rada). Time otpada ovisnost koja je do
+  sada bila označena kao jedina koja može srušiti plan.
+
+- **⚠ Jedina rupa koju to otvara: `Datum naplate` se automatski popunjava samo pri unosu u
+  aplikaciji, ne i pri uvozu iz Excela.** Za nove retke bi ostao prazan, a odluka D1 je izričito
+  bila da ga nitko ne tipka ručno. Tri izlaza: (1) Koka ga povuče kroz stupac, jer pravilo zna
+  napamet (Mastercard = 11. u sljedećem mjesecu); (2) Python korak prije uvoza — loše, vraća
+  Python u njenu petlju; (3) proširiti automatiku i na uvoz, uz pravilo "popuni samo ako je
+  prazno". **Preporuka: (3)** — mali, ograničen zahvat u već postojećem modulu.
+
+## Struktura: što već imamo u bazi (provjereno 2026-07-29, read-only)
+
+PROD area `Financije` (357 eventa), leaf `Transakcija`, 13 atributa. **Oblik je pravi, sadržaj
+taksonomije je zaostao** — nije riječ o prepravljanju strukture nego o osvježavanju izbornika.
+
+**Već točno i ne treba dirati:** `Racun` (dva računa) · `Izvor` ovisi o `Racun` (RF nudi
+Racun/Visa/Cash, ZABA nudi Racun/Mastercard/Cash) · `Status` ovisi o `Izvor` uz automatski
+prijedlog (Racun/Cash → `Izvrsen`, kartice → `Planiran`) · `Podtip` ovisi o `Tip` ·
+`automations.rata` konfiguriran (ono što je Saša testirao na mobitelu) · `export_profiles`.
+
+**Zastarjelo ili nedostaje:**
+- `Tip` ima **13 starih opcija**, Taksonomija u Reviewu ih ima **19** — fale `Osiguranje`,
+  `Projekti`, `Zabava`, `Namirnice`, `Porezi`, `Investicije`.
+- `Podtip` popis je od **prije svih preimenovanja** iz S107g–S107m (`Medical` umjesto
+  `Medical_Sasa`/`Medical_Koka`, `Sportski rekviziti` umjesto `Sport_Sasa`/`Sport_Koka`,
+  Audible još pod Informatikom umjesto pod novim Tipom `Zabava`…).
+- **`Datum naplate` i `Datum kupovine` ne postoje** kao atributi.
+- U automatikama je **samo `rata`** — nema pravila za auto-popunu `Datum naplate`.
+- Sitno: `Valuta` je višak, `Smjer` ima radnu opciju `PROVJERI`.
+
+**Put:** izvezi postojeću strukturu u Structure Excel → osvježi Tip/Podtip iz `Taksonomija`
+sheeta → dodaj dva atributa i pravilo za `Datum naplate` → uvezi kao novu areu `Financije_all`
+pod Kokinim računom. To je strukturna polovica pipeline koraka 4 i puno je manje posla nego
+graditi ispočetka.
 
 ## Tri pravila o mijenjanju podataka
 
@@ -139,10 +197,56 @@ Redoslijed **obrnut**: import → cutover → reklasifikacija, umjesto klasifika
 `event_id`, čime `source_key` instabilnost prestaje biti blocker. Reklasifikacija ide kroz
 D7 (`row_hash` + update-guard, već na PROD-u od 2026-07-15).
 
-**Jedina otvorena ovisnost koja može srušiti plan:** ergonomija `Add Activity` za Kokin
-dnevni tempo (5–8 tx/dan, atributi Racun/Smjer/Izvor/iznos/Tip/Podtip/Napomena). Mjeri se
-tako da Koka doda jednu transakciju. `set_attribute` automatika + comment template +
-shortcut prefill već režu dio unosa.
+**Cutover mehanizam = Excel roundtrip nad `Financije_all`, NE `Add Activity`** (Sašin nalaz
+2026-07-29: Koka je produktivnija u Excelu na laptopu). Ovisnost "ergonomija Add Activity"
+time **otpada**. Potvrđeno u kodu:
+- `excelExport.ts:278–395` — dependent dropdowni preko INDIRECT + hidden `DropdownData` sheet,
+  petlja po **svim** atributima s `depends_on` ⇒ lanci rade u više razina:
+  `Racun → Izvor → Status` i `Tip → Podtip`. SUBSTITUTE lanac + `sanitizeNamedRange`
+  transliteriraju dijakritike; `prompt`/`promptTitle` unutar limita (32/255).
+- `row_hash` skip + update-guard (D7) štite postojeće retke; novi redak bez `event_id` = CREATE.
+- `areas.settings.export_profiles` (postoji, profil `2026_RF-Sasa`) = per-kolona
+  `width`/`hidden`/`outlineLevel` ⇒ "podskup kolona" je **riješen**, ne treba se graditi.
+
+⚠ **Otvorena rupa:** `set_attribute` (`attributeRules.ts`) evaluira se **samo u Add Activity**
+— Edit i Import ne. U Excel putu `Datum naplate` novim retcima ostaje prazan, protivno D1.
+Preporuka: proširiti evaluaciju na Import sa semantikom "popuni samo ako je prazno"
+(P3-kompatibilno, isti modul). Alternative: Koka drag-fill (zna pravilo) ili Python korak
+prije uvoza (vraća Python u njenu petlju — odbaciti).
+
+## Inventura strukture — PROD `Financije` (read-only provjera 2026-07-29)
+
+`areas.id = eb786029-6ceb-4c36-ad62-9851092dad10` · leaf L1 `Transakcija`
+(`e546d895-5e8a-454c-96c9-5815fc2cd234`) · **357 eventa** · 13 attr defs.
+(Postoji i `Financije_old` `126f84fc-…`; oba se brišu NA KRAJU po D6.)
+
+**Ispravno, za preuzimanje 1:1:**
+
+| Attr | `validation_rules` |
+| --- | --- |
+| `Racun` | suggest: `Kokin tekući ZABA`, `Sašin tekući RF` |
+| `Izvor` (`izvorplacanja`) | `depends_on.attribute_slug=racun`; RF→Racun/Visa/Cash, ZABA→Racun/Mastercard/Cash |
+| `Status` | `depends_on.attribute_slug=izvorplacanja` + **`default_map`** Racun/Cash→`Izvrsen`, Visa/MC→`Planiran` |
+| `Podtip` | `depends_on` na `tip`, `options_map` |
+| `settings.automations.rata` | `date_map` {RF:3, ZABA:11}, `count_slug=brojrata`, `amount_slug=isplata`, `trigger_slug=rate`, `override_attrs.status=Planiran` |
+
+**Za regeneraciju iz `Taksonomija` sheeta (65 parova / 19 Tipova):**
+- `Tip` u bazi = **13 starih opcija**; fale `Osiguranje`, `Projekti`, `Zabava`, `Namirnice`,
+  `Porezi`, `Investicije`.
+- `Podtip.options_map` = **pre-S107g** stanje (`Medical` vs `Medical_Sasa`/`_Koka`;
+  `Sportski rekviziti` vs `Sport_Sasa`/`_Koka`; `PassSport` izbačen; Audible pod `Informatika`
+  umjesto pod novim `Zabava`; `Komunikacije_T-mobile`/`_T-com`, `Groblja`, `leasing`… nedostaju).
+- **`Datum naplate` / `Datum kupovine` — ne postoje** (datetime, §8).
+- `automations` nema `attribute_rules` (auto `Datum naplate`).
+- Višak: `Valuta` (2 opcije); `Smjer` ima radnu opciju `PROVJERI`.
+
+**Put:** Structure Excel export postojeće aree → osvježi Tip/Podtip iz `Taksonomija` →
+dodaj 2 atributa + `Automations` red → import kao **nova area `Financije_all` pod Kokinim
+accountom** (D6). Strukturna polovica koraka 4; jeftinije nego graditi ispočetka.
+
+**Read-only inspekcija baze:** `.env.prod.local` (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`),
+REST preko `urllib` — `data-prep_tools/Tools/supabase_structure_export.py` **ne radi**
+u `Tools/venv` (nema `supabase` modula).
 
 ## Stanje podataka (izmjereno 2026-07-29)
 

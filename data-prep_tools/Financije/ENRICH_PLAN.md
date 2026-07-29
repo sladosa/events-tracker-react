@@ -608,11 +608,55 @@ ako** se Excel petlja nakon importa pokaže prespora. Ne gradimo treći store iz
 5. **Cutover** → divergencija prestaje; Excel postaje arhiva; `.pre-*` lanac prestaje rasti.
 6. **Reklasifikacija povijesti** kroz export → pravila/AI → import s update-guardom, bez pritiska.
 
-### Jedina otvorena ovisnost koja može srušiti plan
+### Cutover mehanizam = Excel roundtrip, NE `Add Activity` (nalaz istog dana)
 
-**Ergonomija `Add Activity` za Kokin dnevni tempo** (5–8 tx/dan × Racun/Smjer/Izvor/iznos/
-Tip/Podtip/Napomena). Mjeri se u 5 minuta: Koka doda jednu transakciju. `set_attribute`
-automatika + comment template + shortcut prefill već režu dio unosa.
+Saša: **Koka je produktivnija u Excelu na laptopu nego u ekranu za unos.** Ovisnost
+"ergonomija Add Activity" time **otpada** — aplikacija taj put već ima izgrađen.
+
+Potvrđeno u kodu (`excelExport.ts:278–395`): izvoz aktivnosti generira **dependent dropdowne
+preko INDIRECT + hidden `DropdownData` sheet**, petljom po **svim** atributima s `depends_on`
+⇒ višerazinski lanci rade: **`Racun → Izvor → Status`** i **`Tip → Podtip`**. SUBSTITUTE lanac
++ `sanitizeNamedRange` transliteriraju dijakritike; `prompt`/`promptTitle` unutar limita.
+Isti mehanizam kao u Review file-u, samo spojen na bazu. Uz to: `row_hash`+update-guard štite
+stare retke, novi redak bez `event_id` = CREATE.
+
+**`export_profiles` već postoji** (`areas.settings`, profil `2026_RF-Sasa`: per-kolona
+`width`/`hidden`/`outlineLevel`) ⇒ potreba "podskup kolona" je **riješena**, ne gradi se.
+Time pada i zadnji ostatak opravdanja za `staging_financije`.
+
+⚠ **Rupa koju to otvara:** `set_attribute` (`attributeRules.ts`) evaluira se **samo u Add
+Activity** (Edit i Import ne) → `Datum naplate` bi novim Excel retcima ostao prazan, protivno
+D1 ("nitko ga ne tipka ručno"). Izlazi: (1) Koka drag-fill (zna pravilo: MC = 11. u M+1);
+(2) Python korak prije uvoza — **odbaciti**, vraća Python u njenu petlju; (3) **preporuka:**
+proširiti evaluaciju na Import sa semantikom "popuni samo ako je prazno" (P3-kompatibilno).
+
+### Inventura strukture — PROD `Financije` (read-only, 2026-07-29)
+
+`eb786029-6ceb-4c36-ad62-9851092dad10` · leaf L1 `Transakcija`
+(`e546d895-5e8a-454c-96c9-5815fc2cd234`) · **357 eventa** · 13 attr defs.
+Postoji i `Financije_old` (`126f84fc-…`); oba se brišu NA KRAJU (D6).
+
+**Oblik je pravi, sadržaj taksonomije je zaostao.** Ispravno i za preuzimanje 1:1:
+`Racun` (2 računa) · `Izvor` `depends_on=racun` (RF→Racun/Visa/Cash, ZABA→Racun/Mastercard/Cash)
+· `Status` `depends_on=izvorplacanja` + **`default_map`** (Racun/Cash→`Izvrsen`, kartice→`Planiran`)
+· `Podtip` `depends_on=tip` · `settings.automations.rata` (`date_map` {RF:3, ZABA:11},
+`count_slug=brojrata`, `amount_slug=isplata`, `trigger_slug=rate`, `override_attrs.status=Planiran`)
+· `export_profiles`.
+
+**Za regeneraciju iz `Taksonomija` sheeta (65 parova / 19 Tipova):**
+- `Tip` u bazi = **13 starih opcija**; fale `Osiguranje`, `Projekti`, `Zabava`, `Namirnice`,
+  `Porezi`, `Investicije`.
+- `Podtip.options_map` = **pre-S107g** stanje (`Medical` vs `Medical_Sasa`/`_Koka`;
+  `Sportski rekviziti` vs `Sport_Sasa`/`_Koka`; `PassSport` izbačen; Audible pod `Informatika`
+  umjesto pod novim Tipom `Zabava`; `Komunikacije_T-mobile`/`_T-com`, `Groblja`, `leasing` fale).
+- **`Datum naplate` / `Datum kupovine` NE POSTOJE** (datetime, §8).
+- `automations` nema `attribute_rules`. Višak: `Valuta`; `Smjer` ima radnu opciju `PROVJERI`.
+
+**Put:** Structure Excel export postojeće aree → osvježi Tip/Podtip iz `Taksonomija` → dodaj
+2 atributa + `Automations` red → import kao **nova area `Financije_all` pod Kokinim accountom**.
+
+**Read-only inspekcija:** `.env.prod.local` (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`) preko
+`urllib`; `Tools/supabase_structure_export.py` **ne radi** u `Tools/venv` (nema `supabase` modula).
 
 ### Politika izvora podataka (odgovor na "izvodi kasne, Koka pamti novo")
 

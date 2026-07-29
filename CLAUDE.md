@@ -688,8 +688,22 @@ Detalji: `ENRICH_PLAN.md` §2o, plan za netehnički pregled: `NEXT_SESSION_PROMP
    rupa, `make_import.py` u `Obsolete/` = baza → `Financije_all` struktura → batch import (2026 prva
    kao proba mehanizma; ~50k `event_attributes` ne u jednom naletu, S105 IO) → cutover →
    reklasifikacija bez pritiska.
-5. **Jedina otvorena ovisnost koja može srušiti plan:** ergonomija `Add Activity` za 5–8 tx/dan.
-   Mjeri se u 5 min (Koka doda jednu transakciju).
+5. **Cutover mehanizam = Excel roundtrip, NE `Add Activity`** (Sašin nalaz + provjera koda isti dan;
+   ovisnost "ergonomija Add Activity" OTPADA). `excelExport.ts:278–395` generira dependent dropdowne
+   (INDIRECT + hidden `DropdownData`) petljom po SVIM `depends_on` atributima ⇒ lanci
+   **`Racun → Izvor → Status`** i **`Tip → Podtip`** rade u izvezenom fileu — ista UX kao Review, samo
+   spojena na bazu. `export_profiles` (već u `areas.settings`) rješava "podskup kolona" ⇒ zadnji ostatak
+   opravdanja za staging pada. ⚠ **Rupa:** `set_attribute` se evaluira samo u Add Activity (Edit/Import
+   ne) → `Datum naplate` bi novim Excel retcima ostao prazan (protivno D1); preporuka = proširiti na
+   Import sa "popuni samo ako je prazno".
+5b. **Inventura strukture (PROD `Financije`, read-only 2026-07-29):** leaf L1 `Transakcija`, 357 eventa,
+   13 attr. **Oblik pravi, taksonomija zaostala.** Ispravno 1:1: `Racun`; `Izvor` depends_on `racun`;
+   `Status` depends_on `izvorplacanja` + `default_map`; `Podtip` depends_on `tip`; `automations.rata`
+   (testirano na mobitelu); `export_profiles`. **Zastarjelo/fali:** `Tip` 13 starih opcija vs 19 u
+   Taksonomiji (fale `Osiguranje`/`Projekti`/`Zabava`/`Namirnice`/`Porezi`/`Investicije`); `Podtip`
+   options_map pre-S107g; **`Datum naplate`/`Datum kupovine` ne postoje**; nema `attribute_rules`;
+   višak `Valuta`, `Smjer` ima `PROVJERI`. Put = Structure export → osvježi iz `Taksonomija` → +2 atributa
+   → import kao `Financije_all` pod Kokinim accountom.
 6. **Politika izvora:** izvodi rješavaju staro, Koka novo — ne sudaraju se. `enrich_from_izvoda.py`
    piše samo `Izvod opis`/`Izvod file` i **ne može** dirnuti Tip/Podtip; `apply_rules.py` samo retke
    s Tip prazan/N/A. ⇒ **ne čekati izvode za retke koje Koka pamti.**
