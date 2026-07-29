@@ -546,7 +546,110 @@ već imali ručni `Tip`, `OK` ignoriran po dizajnu `harvest()`). Backup
 **Namjerna odluka (Saša):** ta 3 preskočena retka ostaju trajno `OK` u koloni — harvest ih
 ne čisti jer ih ne primjenjuje. Dokumentirano kao poznat slučaj, ne popravlja se.
 
+## 2o. S107q (2026-07-29) — STRATEŠKI ZAOKRET: import prvi, klasifikacija poslije
+
+**Nema koda.** Revizija redoslijeda cijele migracije (Opus). Odluka Saša + Claude.
+
+### Odluka
+
+Redoslijed je **obrnut**: `import → cutover → reklasifikacija`, umjesto dosadašnjeg
+`klasifikacija → import`. **`staging_financije` se NE gradi** (S107m odluka poništena;
+`sql/` i dalje staje na `032`).
+
+### Zašto — mjerenje koje je odluku prelomilo
+
+Backlog se puni brže nego što se prazni. Kokin tempo ≈ **147 tx/mjesec** u file-u **bez
+Tip/Podtip**; snapshot Reviewa je od **2026-07-08** → divergencija danas ~3 tjedna / ~150 tx
+i raste. Svaki mjesec čekanja = nova hrpa kroz puni ciklus (normalize → enrich → AI → pregled).
+
+Suprotno tome, unos u appu ima **obavezan Tip/Podtip dropdown na unosu** → klasificira osoba
+koja zna transakciju, isti dan, besplatno i s 100 % točnošću. Usporedba: AI na N/A hrpi daje
+`visoka` na samo **16 %** redaka (S107n).
+
+Saša je isti zaključak zapisao još u S107m — *"Pravi gate = mehanizam na koji Koka prelazi,
+ne postotak N/A"* — ali rad S107n–S107p je i dalje išao na N/A masu.
+
+**N/A ne blokira:** `N/A` je legitimna vrijednost u taksonomiji; redak bez Tipa i dalje nosi
+datum/račun/iznos/opis/`Izvod opis`. Ovo nije novi izum nego promocija već zapisanog fallbacka
+(`FINANCIJE_MIGRACIJA.md` §12.3: *"sve odjednom kao N/A pa reklasifikacija kroz D7 update flow"*).
+
+### Tri tehnička dobitka
+
+1. **`source_key` instabilnost nestaje umjesto da se popravlja** — nakon importa identitet je
+   `event_id` (stabilan), a ne `hash(racun+datum+seq+iznos+opis)` sa `seq_per_day` problemom
+   (`normalize_financije.py:202`). Prestaje biti preduvjet za bilo što.
+2. **Mehanizam reklasifikacije već postoji i već je na PROD-u** — D7 (`row_hash` skip +
+   update-guard, deploy 2026-07-15) je napravljen baš za ovo: export Area → `apply_rules`/
+   `apply_ai` nad exportom → re-import → guard pokaže staro→novo i traži izričitu potvrdu.
+3. **30 kolona je simptom, ne bolest** — ~13/30 kolona Reviewa je skela pipelinea (`Tip_O`,
+   `Podtip_O`, `Izvor reda`, `Labela iz`, `Problem`, `source_key`, `Izvod file`, `Pravilo run`,
+   `Pouzdanost`, `AI run`, `Pouzdanost_AI`…) i **u app exportu ne postoji**. Excel petlja nakon
+   importa je lakša nego danas, bez ijedne nove tablice.
+
+### Posljedica za `staging_financije`
+
+Glavno opravdanje ("treba mjesto za masovni pregled koje nije Excel") pada ako podaci ionako
+idu u app. Potreba koja ostaje — podskup kolona + masovno potvrđivanje AI prijedloga — postaje
+**mogući feature appa nad pravim eventima** (generički koristan za svaku Areu), gradi se **tek
+ako** se Excel petlja nakon importa pokaže prespora. Ne gradimo treći store između Excela i baze.
+
+### Kritični put (v. `NEXT_SESSION_PROMPT.md` DIO 2 za detalje)
+
+1. **Delta merge Kokinog `.xlsm`** (~90 min) — `normalize_financije.py` ima hardkodiran INPUT i
+   uvijek generira NOVI Review; treba input-param + filter `event_date >` cutoff + append po
+   uzoru `merge_pbzvisa.py`, uz čitanje `V3 preskočeno`.
+2. **Import generator (korak 4)** — **NE POSTOJI**; `make_import.py`/`make_financije3_import.py`
+   u `Obsolete/` = baza. Jedina prava rupa na putu. Dijeli `normalize` logiku s (1) → ista sesija.
+3. **`Financije_all` struktura** iz `Taksonomija` sheeta + `Automations` (`Datum naplate`).
+4. **Batch import, 2026 prva kao proba mehanizma** (ne kao strategija — "2026-first" je pao kao
+   *klasifikacijska* strategija u S107m, ali kao *import batching* i dalje vrijedi). ~5000 eventa
+   × ~10 atributa ≈ 50k `event_attributes` → ne u jednom naletu (S105 IO incident). Pod **Kokinim**
+   accountom (D6).
+5. **Cutover** → divergencija prestaje; Excel postaje arhiva; `.pre-*` lanac prestaje rasti.
+6. **Reklasifikacija povijesti** kroz export → pravila/AI → import s update-guardom, bez pritiska.
+
+### Jedina otvorena ovisnost koja može srušiti plan
+
+**Ergonomija `Add Activity` za Kokin dnevni tempo** (5–8 tx/dan × Racun/Smjer/Izvor/iznos/
+Tip/Podtip/Napomena). Mjeri se u 5 minuta: Koka doda jednu transakciju. `set_attribute`
+automatika + comment template + shortcut prefill već režu dio unosa.
+
+### Politika izvora podataka (odgovor na "izvodi kasne, Koka pamti novo")
+
+**Izvodi rješavaju staro, Koka rješava novo — i ne sudaraju se.** `enrich_from_izvoda.py` piše
+isključivo u `Izvod opis`/`Izvod file` i **ne može** dirnuti `Tip`/`Podtip`; `apply_rules.py`
+primjenjuje se samo na retke s Tip prazan/N/A. Klasifikacija prije dolaska izvoda ne zaključava
+ništa — izvod poslije samo dodaje dokaz uz već donesenu odluku. Zato: **ne čekati izvode za
+retke koje Koka pamti.**
+
+### Pravila mijenjanja redaka (provjereno u kodu 2026-07-29)
+
+| Operacija | Prije importa | Poslije importa |
+| --- | --- | --- |
+| **Dodavanje retka** | Sigurno — novi dan nema sudar `seq_per_day` | Sigurno — redak bez `event_id` = CREATE |
+| **Spajanje / brisanje** | Samo kroz skriptu; obrisani `source_key` **mora** u `V3 preskočeno` (uzorak `fix_duplikati_rata.py`, 183 l.), inače ga `merge_pbzvisa.py` vrati | **NE u Excelu** — `excelImport.ts` briše samo u `replace` grani kolizije (~756/~778); redak odsutan iz file-a se ne obrađuje → event tiho preživi. Spajati u appu (Delete Activity) |
+| **Preimenovanje Tip/Podtip** | Jeftino: `Taksonomija` sheet → `sync_taxonomy.py` (DV) + `Preimenovanja` sheet (čuva VISOKA pouzdanost, `PREIM:` marker) | Skupo: ime živi u `attribute_definitions.validation_rules` **i** u `event_attributes.value_text` svakog eventa + `depends_on` za Podtip → Structure roundtrip + data roundtrip. Povijesni rizik S105d (BUG-SLUG-NORMALIZE) |
+
+⇒ **Taksonomiju zaključati PRIJE importa.** Podudara se s već postojećim uvjetom iz §12.3
+("struktura + taksonomija moraju biti kompletne od prvog importa").
+
+### Preporuka za sesiju s Kokom
+
+- **`niska` traka (1023), ne `srednja` (205)** — `srednja` se može sama, `niska` je gdje je model
+  nesiguran i gdje je **njeno sjećanje jedini izvor**; te su transakcije 2023–2025, dakle upravo
+  one kod kojih sjećanje trenutno curi. Novih ~150 redaka je sigurno još mjesec dana.
+- **Formulacije taksonomije riješiti dok je prisutna** (v. tablicu gore).
+- **Ako stigne — login + jedna ručna transakcija** = mjerenje jedine otvorene ovisnosti.
+- **Rad na `AI odluka` nije bačen** — `apply_ai --harvest` piše u `Tip`/`Podtip` Reviewa, a Review
+  je ono što se uvozi. Što stigne do importa ide klasificirano, ostatak kao N/A. Promijenilo se
+  samo to da to više nije *gate*.
+
 ## 3. SLJEDEĆI KORACI
+
+⚠ **Prioriteti ispod su prekrojeni odlukom §2o (2026-07-29).** Novi glavni redoslijed je
+kritični put iz §2o (delta merge → import generator → struktura → batch import → cutover →
+reklasifikacija). Stavke ispod ostaju važeće kao *sadržaj* posla, ali **nijedna od njih više
+nije uvjet za početak importa.**
 
 0. **(S107n odobreno)** ~~(a) fix 8 duplikata rata~~ ✅ S107o · ~~(c) pravilo `voce i povrce`~~ ✅ S107o ·
    **(b) `reconcile_izvoda.py` matcher po `Datum naplate`+iznos — JOŠ OTVORENO** (ne dira Review) ·

@@ -666,7 +666,40 @@ ENRICH_PLAN §2m, testovi `Claude-temp_R/test-sessions/S107o_tests.md`):**
    dokumentirano kao poznat, ne-bug slučaj umjesto popravljano.
 4. **Sljedeće:** `srednja` traka (205), pa `niska` (1023) — v. `NEXT_SESSION_PROMPT.md`.
 
-**Sljedeći koraci — ⚠ ZASTARJELO od S107m, v. `NEXT_SESSION_PROMPT.md`:**
+**Done 2026-07-29 (S107q — STRATEŠKI ZAOKRET: import prvi, klasifikacija poslije; nema koda.
+Detalji: `ENRICH_PLAN.md` §2o, plan za netehnički pregled: `NEXT_SESSION_PROMPT.md` DIO 1):**
+1. **Redoslijed migracije OBRNUT:** `import → cutover → reklasifikacija` umjesto
+   `klasifikacija → import`. Povod (izmjereno): Kokin tempo ≈147 tx/mj u file-u **bez
+   Tip/Podtip**, Review snapshot od 2026-07-08 → divergencija ~3 tjedna/~150 tx i **raste brže
+   nego što se N/A prazni**. Unos u appu ima obavezan Tip/Podtip dropdown → klasificira osoba
+   koja zna transakciju, isti dan, besplatno; AI na N/A hrpi daje `visoka` na samo 16 % redaka.
+   `N/A` je legitimna vrijednost u taksonomiji → ne blokira. Promocija već zapisanog fallbacka
+   (`FINANCIJE_MIGRACIJA.md` §12.3).
+2. **`staging_financije` OTKAZANA** (S107m odluka poništena; `sql/` staje na `032`). Ako podaci
+   idu u app, mjesto za masovni pregled je app. Potreba "podskup kolona + bulk potvrda AI
+   prijedloga" ostaje kao **mogući feature nad pravim eventima** (generički za svaku Areu), gradi
+   se tek ako Excel petlja nakon importa bude prespora. Bez trećeg storea između Excela i baze.
+3. **Tri tehnička dobitka:** (a) `source_key` instabilnost **nestaje** — identitet postaje
+   `event_id`; (b) mehanizam reklasifikacije već na PROD-u — D7 `row_hash`+update-guard (deploy
+   2026-07-15) je točno export→pravila/AI→re-import s diff potvrdom; (c) ~13/30 kolona Reviewa je
+   skela pipelinea koja **u app exportu ne postoji** → Excel petlja poslije importa lakša nego danas.
+4. **Kritični put:** delta merge Kokinog `.xlsm` (~90 min; `normalize_financije.py` ima hardkodiran
+   INPUT i uvijek generira NOVI Review) → **import generator (korak 4) — NE POSTOJI**, jedina prava
+   rupa, `make_import.py` u `Obsolete/` = baza → `Financije_all` struktura → batch import (2026 prva
+   kao proba mehanizma; ~50k `event_attributes` ne u jednom naletu, S105 IO) → cutover →
+   reklasifikacija bez pritiska.
+5. **Jedina otvorena ovisnost koja može srušiti plan:** ergonomija `Add Activity` za 5–8 tx/dan.
+   Mjeri se u 5 min (Koka doda jednu transakciju).
+6. **Politika izvora:** izvodi rješavaju staro, Koka novo — ne sudaraju se. `enrich_from_izvoda.py`
+   piše samo `Izvod opis`/`Izvod file` i **ne može** dirnuti Tip/Podtip; `apply_rules.py` samo retke
+   s Tip prazan/N/A. ⇒ **ne čekati izvode za retke koje Koka pamti.**
+7. **Pravila mijenjanja redaka (provjereno u kodu):** dodavanje uvijek sigurno; **spajanje/brisanje
+   samo prije importa i kroz skriptu** (`V3 preskočeno` registar — `excelImport.ts` briše samo u
+   `replace` grani kolizije, redak odsutan iz file-a se ne obrađuje pa event tiho preživi);
+   **taksonomiju zaključati PRIJE importa** (poslije ime živi i u `validation_rules` i u
+   `value_text` svakog eventa; rizik S105d).
+
+**Sljedeći koraci — ⚠ ZASTARJELO od S107m, prekrojeno S107q, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
    (2026-01 +359, 2024-09 +149, 2×±49 multisport); 2 PRESKOČENA bankomat reda čekaju Kokin odgovor o 700 €.
