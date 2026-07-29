@@ -112,6 +112,117 @@ Prethodno: S107p (2026-07-28) harvestao `visoka` traku (347 redaka).
   ostatak ide kao N/A i dovršava se poslije. Promijenilo se samo to da to više nije uvjet
   za početak.
 
+## Mijenjanje Taksonomije tijekom sesije — postupak
+
+Dva su slučaja i imaju različit odgovor. Razlika je u tome dira li promjena retke koji
+u Reviewu već postoje.
+
+### A) Dodavanje novog para — Saša radi sam, jedna komanda
+
+Novi red ništa ne kvari, jer nijedan postojeći redak u Reviewu ne nosi tu vrijednost.
+
+1. Dopiši red u `Taksonomija` sheet (Tip | Podtip)
+2. Zatvori Excel
+3. Pokreni:
+
+```powershell
+$env:PYTHONUTF8=1
+C:\0_Sasa\events-tracker-react\data-prep_tools\Tools\venv\Scripts\python.exe `
+  C:\0_Sasa\events-tracker-react\data-prep_tools\Financije\sync_taxonomy.py
+```
+
+Bez argumenta uzima najnoviji `Financije_review_*.xlsx` i sam napravi backup prije snimanja.
+**Pazi samo na ime novog Tipa** — neka koristi znakove koji već postoje u drugim Tipovima
+(slova, razmak, crtica). Formula izbornika ima ograničenje od 255 znakova i gradi se lancem
+zamjena po posebnim znakovima, pa novi znak koji se dosad nije pojavio može je prebaciti.
+`sync_taxonomy.py` to provjerava i javit će, ali lakše je izbjeći.
+
+### B) Ispravak ili preimenovanje postojećeg para — kroz Sonneta
+
+Ovdje je razlika bitna: čim promijeniš par u `Taksonomija`, svi retci u Reviewu koji nose
+stari par postaju **nevaljani**, a sljedeći `apply_rules.py` ih **resetira na N/A** — osim ako
+prije toga ne postoji odgovarajući red u `Preimenovanja` sheetu. To tiho poništi već obavljen
+posao. Oporavljivo je iz backupa, ali ne želiš to otkriti slučajno.
+
+Redoslijed:
+
+1. `Taksonomija` — promijeni par
+2. `Preimenovanja` — dodaj red: `Stari Tip` | `Stari Podtip` | `Racun uvjet` (opcionalno, za
+   koka/sasa razdvajanje) | `Novi Tip` | `Novi Podtip`
+3. Zatvori Excel
+4. `apply_rules.py --dry` → provjeri broj
+5. `apply_rules.py` (pravi run)
+6. `sync_taxonomy.py`
+
+Preimenovanje kroz taj sheet **čuva VISOKU pouzdanost** i ostavlja trag (`PREIM: bio <stari
+par>` u Alternativi + timestamp u `Pravilo run`), dok reset sve to izgubi.
+
+**Zašto Sonnet:** može prije promjene prebrojati koliko redaka nosi stari par, pa broj iz
+`--dry` postaje provjerljiv umjesto da ga prihvatiš na riječ. To je ista kontrola koja je u
+S107g ulovila da je blanket rename `Sportski rekviziti` pogodio preširoko.
+
+### Find & Replace u Reviewu — nikad
+
+- Review ima 30 kolona, a Find & Replace po defaultu ide po cijelom sheetu — pogodit će
+  `Napomena`, `Izvod opis`, `Alternativa / nap.`, a najgore **`Tip_O`/`Podtip_O`**, koje su
+  zamrznuti snimak originala i moraju ostati netaknute.
+- Djelomično podudaranje: zamjena `Medical` pogodila bi i `Medical_Koka` i `Medical_Sasa`.
+- Ne ostavlja trag — poslije ne možeš filtrirati što si promijenio.
+
+### Praktično tijekom razgovora s Kokom
+
+Skripte pišu u datoteku, pa **Excel mora biti zatvoren**. Nemoj ga zatvarati i otvarati pet
+puta — **skupljaj sve izmjene u sheet dok razgovarate, pa pokreni skripte jednom na kraju.**
+
+## Kako Taksonomiju prenijeti u bazu (Structure Excel roundtrip)
+
+### Kada to raditi — ne danas i ne po svakoj izmjeni
+
+Trenutna PROD area `Financije` je **ona koja se na kraju briše** (odluka D6) i zamjenjuje s
+`Financije_all`. Održavati njenu taksonomiju u koraku sa svakom izmjenom je posao za bacanje.
+`Taksonomija` sheet je jedini izvor istine i u bazu se prenosi **jednom**, kad se gradi
+`Financije_all`.
+
+**Ima ipak jedan dobar razlog da se roundtrip odradi ranije, jednom: kao proba.** To je točno
+isti mehanizam kojim će nastati `Financije_all`, pa je bolje da se eventualni problem pojavi
+na areai koja se ionako briše nego na dan prelaska. Preporuka: napravi to jednom prije gradnje
+`Financije_all`, ne nakon svake izmjene taksonomije.
+
+### Jednostavni put (bez skripti)
+
+1. U aplikaciji odaberi **Financije** u filteru pa otvori **Structure** tab.
+2. Klikni **Export** — dobiješ Structure Excel samo za tu areu. Zaglavlje je u **7. redu**,
+   a stupci su obojeni: **žuto** = ključevi koje za postojeće retke ne smiješ mijenjati,
+   **plavo** = slobodno uredivo, **zeleno** = ovisnosti.
+3. Uredi dva mjesta:
+   - redak atributa **`Tip`** → u stupcu `TextOptions/Val.Min` upiši sve Tipove odvojene
+     uspravnom crtom: `Razno|Osiguranje|auto C5|…`
+   - atribut **`Podtip`** ima **jedan redak po Tipu** — u svakom je `DependsOn` = `tip`,
+     `WhenValue` = ime Tipa, a `TextOptions/Val.Min` = Podtipovi tog Tipa odvojeni crtom.
+     Za novi Tip dodaš novi redak po istom uzorku.
+4. Vrati se u **Structure** tab pa klikni **Import** i odaberi datoteku.
+
+Uvoz je **nerazoran** — prepoznaje atribute po `Slug` stupcu i mijenja samo sigurne stvari
+(ime, opis, jedinicu i popis opcija). Nikad ne mijenja tip podatka i ne premješta ništa.
+
+**Dvije zamke:** `Slug` se **nikad** ne dira (po njemu se prepoznaje o kojem se atributu radi);
+žuti stupci se za postojeće retke ne mijenjaju, jer promjena ondje stvara duplikat umjesto
+izmjene.
+
+### Sonnet put
+
+Isplati se kad je izmjena veća od jedne opcije — primjerice puni prijenos 65 parova iz
+`Taksonomija` sheeta, gdje bi ručno prepisivanje 19 redaka s crticama bilo i sporo i podložno
+tipfeleru. Zatraži otprilike ovo:
+
+> Iz `Taksonomija` sheeta u Review fileu generiraj `TextOptions` za atribut `Tip` i po jedan
+> `Podtip` redak za svaki Tip (`DependsOn=tip`, `WhenValue=<Tip>`), pa mi ih ispiši u obliku
+> koji zalijepim u Structure Excel. Prije toga usporedi s trenutnim stanjem u PROD bazi i
+> reci mi što se točno mijenja.
+
+Usporedba s bazom je čitanje bez pisanja i Sonnet je može napraviti sam (v. DIO 2). Samo
+lijepljenje u Structure Excel i klik na Import ostaju na tebi — tako uvijek vidiš što ulazi.
+
 ## Kako Koka zapravo prelazi: Excel roundtrip, ne Add Activity
 
 **Nalaz od 2026-07-29 (Sašina napomena + provjera koda):** Koka se bolje snalazi na laptopu u
@@ -247,6 +358,55 @@ accountom** (D6). Strukturna polovica koraka 4; jeftinije nego graditi ispočetk
 **Read-only inspekcija baze:** `.env.prod.local` (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`),
 REST preko `urllib` — `data-prep_tools/Tools/supabase_structure_export.py` **ne radi**
 u `Tools/venv` (nema `supabase` modula).
+
+## Taksonomija — operativni postupak (sažeto)
+
+| Slučaj | Tko | Koraci |
+| --- | --- | --- |
+| **Dodavanje para** | Saša sam | `Taksonomija` +red → zatvori Excel → `sync_taxonomy.py` |
+| **Rename para** | Sonnet | `Taksonomija` izmjena → **`Preimenovanja` red** (`Stari Tip`\|`Stari Podtip`\|`Racun uvjet`\|`Novi Tip`\|`Novi Podtip`) → `apply_rules.py --dry` → pravi run → `sync_taxonomy.py` |
+
+Oba skripta primaju **opcionalni pozicijski arg** (put do Review filea); bez njega uzimaju
+najnoviji `Financije_review_*.xlsx`. Backup se radi sam. Excel mora biti zatvoren.
+
+⚠ **Rename bez `Preimenovanja` reda = tihi reset na N/A** + `TAKS: bio <par>` u Alternativi
+(`apply_rules.py` §2, prioritet: **Pravilo > Preimenovanja > reset**). Prije `--dry` prebrojati
+retke sa starim parom da je `--dry` broj provjerljiv (presedan: `Sportski rekviziti`, S107g).
+
+⚠ **Nikad Find & Replace u Reviewu** — 30 kolona, F&R ide po cijelom sheetu i pogađa `Napomena`
+/ `Izvod opis` / `Alternativa` i, najgore, **`Tip_O`/`Podtip_O`** (zamrznut snimak originala);
+uz to djelomično podudaranje (`Medical` → `Medical_Koka`/`_Sasa`) i nula audit traga.
+
+⚠ Novi Tip s **novim posebnim znakom** može prebaciti DV formulu preko 255 znakova
+(SUBSTITUTE lanac se gradi po znakovima prisutnima u imenima Tipova). `sync_taxonomy.py`
+provjerava, ali radije koristiti postojeći repertoar znakova.
+
+## Prijenos taksonomije u bazu — Structure Excel roundtrip
+
+**Kada:** NE po svakoj izmjeni. PROD `Financije` je area koja se briše (D6) → sync je posao za
+bacanje. **Jednom, kao proba mehanizma prije gradnje `Financije_all`** — isti put, a problem je
+jeftinije naći na areai koja se ionako briše.
+
+**Mehanizam** (`structureExcel.ts` v2, 17 kolona, header u **redu 7**; `structureImport.ts`):
+- `Tip` (jedan redak): `TextOptions/Val.Min` = `Razno|Osiguranje|auto C5|…` (pipe-separated).
+- `Podtip` (**jedan redak po Tipu**, multi-row DependsOn): `DependsOn=tip`, `WhenValue=<Tip>`,
+  `TextOptions/Val.Min` = Podtipovi tog Tipa. `WhenValue` prazan → `*`.
+  `Default` na DependsOn retku puni `default_map` (tako `Status` ima svoj default po `Izvor`u).
+- Import: `structureImport.ts:16` — *"Slug present, in this cat, different → UPDATE safe ops
+  (name, unit, desc, validation_rules)"*. Rebuilda `depends_on.options_map` + `default_map` iz
+  DependsOn/WhenValue/TextOptions redaka. **Nerazorno**, nikad ne mijenja `data_type` ni pomiče.
+- UI: filter na areu → **Structure** tab → **Export** (poštuje `filterAreaId`) / **Import**
+  (`StructureImportModal`).
+
+**Zamke:** `Slug` (žuta kolona) je ključ podudaranja — mijenjanje na postojećem retku stvara
+duplikat umjesto izmjene; žute kolone se uređuju **samo za nove retke**.
+
+**Sonnetov dio:** generirati `TextOptions`/`WhenValue` retke iz `Taksonomija` sheeta + diff
+protiv trenutnog `validation_rules` u bazi (read-only, v. gore). **Lijepljenje u Structure Excel
+i klik na Import ostaju ručni** — vidljivost onoga što ulazi u bazu.
+
+**Napomena:** generiranje Structure redaka iz `Taksonomija` sheeta je formalno dio pipeline
+koraka 4 (`FINANCIJE_MIGRACIJA.md` §12.2), koji još nije napisan.
 
 ## Stanje podataka (izmjereno 2026-07-29)
 
