@@ -161,6 +161,37 @@ par>` u Alternativi + timestamp u `Pravilo run`), dok reset sve to izgubi.
 `--dry` postaje provjerljiv umjesto da ga prihvatiš na riječ. To je ista kontrola koja je u
 S107g ulovila da je blanket rename `Sportski rekviziti` pogodio preširoko.
 
+### Što točno reći Sonnetu nakon izmjene Taksonomije
+
+**Ne moraš reći što si promijenio** — `apply_rules.py` to sam otkrije (`collect_invalid_pairs()`
+prođe Review i nađe svaki redak čiji par više ne postoji). Zato jedan prompt pokriva i
+dodavanje i preimenovanje:
+
+> Ručno sam mijenjao `Taksonomija` sheet u Reviewu. Excel je zatvoren.
+>
+> 1. Pokreni `apply_rules.py --dry` i pokaži mi koliko redaka ima par koji više ne postoji
+>    u Taksonomiji, razvrstano po paru.
+> 2. Za svaki takav par predloži red za `Preimenovanja` sheet (stari par → novi par,
+>    `Racun uvjet` ako treba koka/sasa razdvajanje) i reci mi koliko redaka svaki pogađa.
+> 3. Ne piši ništa u file dok ne potvrdim brojke.
+> 4. Nakon mojeg OK: upiši `Preimenovanja` redove, `apply_rules.py --dry` pa pravi run,
+>    i na kraju `sync_taxonomy.py`.
+>
+> Ne diraj Review ćelije izravno i ne koristi Find & Replace — samo kroz `Preimenovanja`
+> i `apply_rules.py`.
+
+Ako si **samo dodavao** parove, korak 1 vrati nulu i sve se svede na `sync_taxonomy.py`.
+Isti prompt, kraći ishod — zato ne treba unaprijed odlučivati koji je slučaj.
+
+⚠ **Zašto je `--dry` disciplina nužna:** postoji zaštita koja pri **prvom** nailasku na
+nevaljane parove sama kreira `Preimenovanja` sheet i stane bez pisanja — ali okida samo kad
+tog sheeta nema. U pravom fileu postoji od S107f, pa se **neće** aktivirati.
+
+**Vrijedi dodati ako znaš:** kad par mijenjaš zato što je stara formulacija bila **kriva**
+(a ne samo nespretna), reci to. U S107g je blanket rename `Sportski rekviziti` pogodio 29
+redaka koji su bili tri različite stvari (Multisport, Kreatin, Decathlon) — tamo je trebalo
+pravilo, ne preimenovanje.
+
 ### Find & Replace u Reviewu — nikad
 
 - Review ima 30 kolona, a Find & Replace po defaultu ide po cijelom sheetu — pogodit će
