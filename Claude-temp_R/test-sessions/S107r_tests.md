@@ -120,8 +120,9 @@ pokazuje **novi** par (mora pokazivati stari).
 
 ### T-S107r-2 — 4 uvjetna slučaja ⬜ (brojke provjerene programski)
 Filtriraj i pogledaj sadržaj:
-1. `Prihodi|Povrat Anja` → **41** retka, svi `Smjer=Uplata` 450 €.
-2. `Transfer|Anja` → **31** (sve što nije uplata od 450: iznosi 20–600 €).
+1. `Prihodi|Povrat Anja` → **45** retka (41 iz migracije + 4 iz `fix_anja_rate.py`).
+   To su **svi** retci serije `X/96`; 42 su uplata od 450 €, 3 su rubni slučajevi iz T-S107r-7.
+2. `Transfer|Anja` → **27** (sve što nije rata: iznosi 20–600 €).
 3. `Kuća|Holding (smeće)` → **91** = 45 (`Podtip_O` = `Holding (smeće)`) + 41
    (`Podtip_O` = `Povrat Nataša`) + 5 (`Podtip_O` prazan — bili N/A u trenutku snapshota,
    klasificirani pravilom kasnije).
