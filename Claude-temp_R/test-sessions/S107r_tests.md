@@ -152,11 +152,33 @@ kolone iznosa (397, 3727, i 3264 = bankovna naknada 0,26/0,17, ispravno klasific
 `Smjer` se svugdje inače slaže s popunjenom kolonom ⇒ **nema sistemskog rizika** za
 `row_amount()` i `Iznos min/max` pravila.
 
-**Predlažem:** sva 4 retka → `Prihodi|Povrat Anja` (sve su uplate Anje po istoj posudbi).
-⚠ `apply_rules` ih **neće** dirnuti — `Transfer|Anja` je sad **valjan** par, a alat preskače
-retke s valjanim parom (poznata zamka). Treba jednokratna skripta, uzor
-`fix_vocarna_pravilo.py`. Iznose (0,30/0,70) ne dirati — izgledaju kao naknada za transfer.
-**Čeka Sašinu potvrdu** (posebno je li 400+50 split isto povrat).
+**ODLUKA (Saša, 2026-07-30): sva 4 retka → `Prihodi|Povrat Anja`.** Napomena redova
+3612/3613 to potvrđuje eksplicitno: `M-ZABA UPLATA ANJA CRNKOVIĆ 72/96 (1/2)` i `(2/2)`.
+
+**`fix_anja_rate.py` (novo)** — traži retke po `source_key` (ne po broju retka, nauk S107o),
+uz **guard**: prije upisa provjerava da Napomena sadrži očekivanu oznaku (`Anja 45/96`…) i da
+`Uplata` odgovara (450/450/400/50); na neslaganje **prekida bez upisa**. Ne dira iznose
+(0,30/0,70 = naknada za transfer), `Smjer` ni `Pouzdanost`.
+
+⚠ Zašto jednokratna skripta a ne pravilo/`Preimenovanja` red: `Transfer|Anja` je nakon
+migracije **valjan** par, a `apply_rules.py` (~516) preskače retke s valjanim parom — ista
+zamka kao `fix_vocarna_pravilo.py` (S107o). Fix je **stabilan**: `Prihodi|Povrat Anja` nije
+N/A pa ga budući `apply_rules` run ne dira. Pravilo za budući import se **namjerno ne dodaje**
+— oba obrasca su jednokratna anomalija, a "Uplata=450 kad Smjer=Isplata" se keyword pravilom
+ionako ne može izraziti.
+
+**IZVRŠENO 2026-07-30 12:08** (backup `*.pre-anjarate-20260730_120836.xlsx`). Kontrole:
+
+| kontrola | rezultat |
+| --- | --- |
+| `Prihodi\|Povrat Anja` | 41 → **45** ✅ |
+| `Transfer\|Anja` | 31 → **27** ✅ |
+| **svi retci s oznakom `X/96`** | **45/45 u `Prihodi\|Povrat Anja`**, 0 izvan ✅ |
+| nevaljanih parova | 0 ✅ |
+| `Pouzdanost` distribucija | nepromijenjena (`VISOKA` 1014) ✅ |
+| Σ Uplata / Σ Isplata | 321.192,07 / 375.196,80 — nepromijenjeno ✅ |
+
+**Ostaje Saši za vizualnu potvrdu:** filtriraj `Pravilo run` = `2026-07-30 12:08` → 4 retka.
 
 ### T-S107r-3 — Preimenovanja i Taksonomija sheetovi ⬜
 1. `Taksonomija` = Kokina verzija (18 Tipova, `Kuća`/`Prihodi`/`Prijevoz`/`Advokati`,
@@ -203,14 +225,41 @@ Sve troje + Review u konačnom stanju su i na **vanjskom disku** (`D:`, 11:25).
 
 ---
 
+## Zatvaranje sesije — stanje na kraju
+
+| | |
+| --- | --- |
+| Review redaka | 4996 (nepromijenjeno) |
+| Taksonomija | **Kokina**, 18 Tipova (+ `Investicije\|Štednja`); stara u `Taksonomija_v1` (skriven) |
+| Preimenovanih redaka | 2061 · resetiranih na N/A: **0** |
+| Nevaljanih parova | **0** (`Tip` i `Tip_AI`) |
+| N/A | 1570 (2022: 30 · 2023: 587 · 2024: 476 · 2025: 429 · 2026: 48) |
+| Pravila | 71 valjanih, 0 preskočenih |
+| Vanjski backup | `D:\DATA\events-tracker-react` — osvježen na kraju sesije |
+| Git | `test-branch`, sve commitano i pushano; `main` nedirano |
+
+**Preostali testovi za Sašu:** T-S107r-2 (4 brojke), T-S107r-3 (sheetovi + dropdowni),
+T-S107r-4 (`Pravila` 71 red + redoslijed), T-S107r-5 (`Tip_AI` = 0 starih), T-S107r-6
+(`backup_to_external.bat`), + vizualna potvrda 4 retka iz T-S107r-7.
+
 ## Otvoreno / sljedeće
 
-1. **Layout faza 1** (`sheet_layout.py`) — header-row-tolerantni čitači prije promjene
-   rasporeda. Odluke: Review freeze `F4` **tek kad header pređe u red 3** (dok je u redu 1
-   ispravno je `F2`, sad garantirano); help u collapsed redove 1–2, kolona **B**.
-   Blast radius: header red 1 hardkodiran u **15** skripti, `min_row=2`/`range(2,` u **22**,
-   **12 kopija** funkcije za traženje kolone.
-2. `apply_ai.py` — nastavak `srednja` (205) / `niska` (1023) trake nad **novom** taksonomijom.
-3. AI re-run: bump `PROMPT_VER`, **nov eval** (baseline 81,5 %/Tip 92,3 % je mjeren na
-   staroj taksonomiji i više ne vrijedi), pa `niska`+`srednja` (~$1).
-4. Za Koku: 700 € bankomat 26.11.2025; `Saldo kontrola` 7 razlika.
+**Važno: migracijom je ispunjen preduvjet iz S107q** — *"taksonomiju zaključati PRIJE
+importa"* (poslije importa ime živi i u `validation_rules` i u `value_text` svakog eventa;
+rizik S105d). Time je kritični put prema PROD-u otvoren.
+
+1. **Kritični put (S107q):** delta merge Kokinog `.xlsm` (~150 tx od 2026-07-08) →
+   **import generator (korak 4) — NE POSTOJI**, jedina prava rupa → `Financije_all` struktura
+   iz `Taksonomija` sheeta → batch import 2026-prva pod **Kokinim** accountom (D6).
+2. **Layout faza 1** (`sheet_layout.py`) — header-row-tolerantni čitači **prije** promjene
+   rasporeda. Odluke: header u **red 3**, freeze `F4` **tek tada** (dok je header u redu 1
+   ispravno je `F2`, sad garantirano u `sync_taxonomy.py`), help u collapsed redove 1–2
+   kolona **B**. Blast radius: header red 1 hardkodiran u **15** skripti,
+   `min_row=2`/`range(2,` u **22**, **12 kopija** funkcije za traženje kolone.
+3. **Klasifikacija ostatka** — `srednja` (205) / `niska` (1023) traka nad **novom**
+   taksonomijom. ⚠ Prije toga bump `PROMPT_VER` + **nov eval**: baseline 81,5 % / Tip 92,3 %
+   mjeren je na staroj taksonomiji i **više ne vrijedi**. Nije blocker za import — `N/A` je
+   legitimna vrijednost, a reklasifikacija ide kroz D7 roundtrip nad pravim eventima.
+4. **Za Koku:** zadnja provjera **imena** Tip/Podtip (sad je promjena jeftina, poslije importa
+   dvostruko skuplja); 700 € bankomat 26.11.2025 (nije na izvodu); `Saldo kontrola` 7 razlika
+   (2026-01 +359, 2024-09 +149, 2×±49 multisport, 3 sitna).

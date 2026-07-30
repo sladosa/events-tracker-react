@@ -756,7 +756,26 @@ testovi `Claude-temp_R/test-sessions/S107r_tests.md`):**
    mirror prenese lokalno brisanje/kvar na jedinu drugu kopiju) za `data-prep_data/` +
    `Claude-temp_R/`; oba gitignorirana ⇒ vanjski disk je jedina druga kopija. Backup napravljen
    prije i poslije migracije; ključni fajlovi verificirani po veličini.
-10. **Otvoreno:** layout faza 1 (`sheet_layout.py` — header u red 3, freeze `F4` **tek tada**,
+10b. **⚠ NALAZ iz testiranja → `fix_anja_rate.py` (novo, IZVRŠENO):** od 45 redaka Anjine
+    posudbe (`X/96`, 96 rata × 450 €) **4 su pala u `Transfer|Anja`** jer nisu zadovoljila
+    uvjet `Smjer=Uplata` + 450 €: redovi 397 i 3727 imaju **popunjene OBJE kolone iznosa**
+    (`Uplata`=450 uz `Isplata`=0,30/0,70) i `Smjer=Isplata` — a `row_amount()` čita `Isplata`
+    PRVO pa vidi 0,30; redovi 3612+3613 su **jedna rata plaćena u dva dijela** (400+50,
+    Napomena `72/96 (1/2)`/`(2/2)`). **Nije regresija migracije** — anomalija u izvoru koju je
+    migracija razotkrila. Opseg zatvoren: u cijelom fileu **samo 3** retka imaju obje kolone
+    popunjene (treći je bankovna naknada 0,26/0,17, ispravno klasificirana), `Smjer` se inače
+    svugdje slaže ⇒ nema sistemskog rizika za `Iznos min/max` pravila. Fix traži retke po
+    `source_key` s guardom na Napomenu+iznos; ⚠ **pravilo/`Preimenovanja` to ne mogu popraviti
+    jer je `Transfer|Anja` sad VALJAN par** (`apply_rules` preskače valjane — ista zamka kao
+    `fix_vocarna_pravilo.py`). Rezultat: `Prihodi|Povrat Anja` 41 → **45**, `Transfer|Anja`
+    31 → 27, svih 45 `X/96` na jednom mjestu.
+10c. **Dva testna kriterija koja sam sam loše napisao pa dala lažni alarm** (ispravljena u
+    `S107r_tests.md`): (a) "`Pouzdanost` na preimenovanim redcima nije `PRAVILO`" — redak
+    klasificiran keyword pravilom u S107g/h/l legitimno nosi `PRAVILO` **od tada**, a
+    preimenovanje `Pouzdanost` ne dira; takvih je 661 i **svih 661 imalo je `PRAVILO` i prije**
+    (0 novih). Pravi dokaz je **nepromijenjen raspored**, ne odsutnost oznake. (b) "među
+    `Transfer|Anja` su 2 Isplate od 450 koje namjerno nisu povrat" — v. 10b, dvostruko pogrešno.
+11. **Otvoreno:** layout faza 1 (`sheet_layout.py` — header u red 3, freeze `F4` **tek tada**,
     help u collapsed redove 1–2 kol. B; header red 1 hardkodiran u **15** skripti, **12 kopija**
     funkcije za traženje kolone ⇒ prvo čitači tolerantni na raspored, pa promjena rasporeda).
     **AI eval baseline 81,5 % / Tip 92,3 % više ne vrijedi** — mjeren na staroj taksonomiji;
