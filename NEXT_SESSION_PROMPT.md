@@ -1,524 +1,263 @@
-# NEXT SESSION PROMPT — Financije: zaokret na "import prvi, klasifikacija poslije"
+# NEXT SESSION PROMPT — Financije: import generator (kritični put)
 
-**Zadnja sesija: S107q (2026-07-29, Opus).** Nije bilo koda — strateška revizija redoslijeda.
-Prethodno: S107p (2026-07-28) harvestao `visoka` traku (347 redaka).
+**Zadnja sesija: S107r (2026-07-30, Opus).** Migracija na Kokinu taksonomiju izvršena
+(2061 redak preimenovan, `VISOKA` 1014 očuvana, 0 nevaljanih parova, 12/12 testova).
+Time je pao preduvjet *"taksonomiju zaključati PRIJE importa"* → kritični put je otvoren.
+
+**Sljedeća sesija = korak 4 pipelinea: generator app-import Excela.** To je **jedina prava
+rupa** na putu do PROD-a. Trajni plan prelaska: `FINANCIJE_MIGRACIJA.md` **§13**.
 
 ---
 
-# DIO 1 — Plan jednostavnim rječnikom
+# DIO 1 — Jednostavnim rječnikom (za Sašu)
 
-## Što se promijenilo u razmišljanju
+## Kako import uopće radi
 
-- **Do sada je plan bio: prvo posloži svu povijest, pa onda Koka prelazi u aplikaciju.**
-  Ispalo je da to ne funkcionira, jer se posao puni brže nego što se prazni. Koka u svom
-  Excelu dodaje otprilike 147 transakcija mjesečno, a to su redovi bez Tipa i Podtipa —
-  znači da svaki mjesec čekanja stvara novu hrpu koja poslije treba proći cijeli isti
-  postupak (normalizacija, izvodi, AI klasifikacija, tvoj pregled). Trenutna razlika
-  između Reviewa i njenog file-a je već **tri tjedna, oko 150 transakcija**.
+Aplikacija uvozi Excel u kojem je **jedan red = jedna transakcija**. Prvih osam stupaca su
+fiksni i aplikacija ih traži po imenu, a od devetog nadalje idu atributi (jedan stupac po
+atributu, u zaglavlju piše ime atributa — `Racun`, `Tip`, `Podtip`, `Uplata`…).
 
-- **Novi plan: Koka prelazi u aplikaciju prvo, povijest se dovršava poslije.**
-  Razlog je jednostavan: kad Koka unosi transakciju u aplikaciju, Tip i Podtip su
-  obavezni izbornik na samom unosu. Klasificira ih osoba koja zna što je transakcija
-  bila, isti dan, i to je najbolja moguća klasifikacija — a besplatna je. Kad ista
-  transakcija ostane u Excelu, za tri mjeseca postaje redak nad kojim AI pogađa i nad
-  kojim ti moraš potvrđivati.
+Najvažniji stupac je **prvi, `event_id`**:
 
-- **Neklasificirani stari redovi ne blokiraju ništa.** `N/A` je legitimna vrijednost u
-  taksonomiji (doslovno je u popisu Tipova). Redak iz 2023. bez Tipa i dalje nosi datum,
-  račun, iznos, opis i opis s izvoda. Analitika za 2023. je time slabija, ali nije
-  pokvarena — i ni na koji način ne sprječava Koku da unese jučerašnju kupovinu.
+- **prazan** → aplikacija to čita kao **novi zapis** i kreira ga
+- **popunjen** → to je postojeći zapis i aplikacija ga **ažurira**
 
-- **Ovo nije novi izum, nego opcija koja je odavno zapisana kao rezerva.**
-  U `FINANCIJE_MIGRACIJA.md` §12.3 već piše: "sve odjednom kao N/A pa reklasifikacija kroz
-  D7 update flow ostaje fallback". Odluka od 2026-07-29 je da ta rezerva postane glavni plan.
+Zato je uvoz povijesti jednostavan: svih ~5000 redaka ide s praznim `event_id`, dakle sve su
+to novi zapisi. Aplikacija nikad ne briše zapis zato što ga u file-u nema — vidi samo ono
+što joj daš.
 
-## Zašto je to i tehnički povoljnije
+## Što treba napisati
 
-- **Problem s `source_key` nestaje sam od sebe.** Sada se svaki redak prepoznaje po ključu
-  izračunatom iz datuma, iznosa i rednog broja unutar dana — a taj se ključ pomakne čim
-  Koka umetne redak u sredinu nekog starog dana. Nakon importa svaki redak ima svoj
-  `event_id` iz baze, koji se ne mijenja nikad. Problem koji je zapisan kao "preduvjet za
-  ponovljiv re-ingest" prestaje postojati umjesto da ga rješavamo.
+**Alat koji od odobrenog Reviewa napravi taj Excel.** Ništa više. Mapiranje je gotovo 1:1
+jer je Review od početka pravljen s ciljnim stupcima:
 
-- **Mehanizam za popravljanje već postoji i već je na PROD-u.** `row_hash` + update-guard
-  (D7, deploy 2026-07-15) napravljeni su baš za ovo: izvezeš Areu u Excel, pustiš pravila
-  ili AI po njoj, uvezeš natrag, a aplikacija ti prije upisa pokaže popis promjena
-  staro→novo i traži izričitu potvrdu. Reklasifikacija povijesti radi točno isto kao sada,
-  samo nad pravim podacima umjesto nad međufileom.
-
-- **Onih 30 kolona u Reviewu je posljedica, ne uzrok.** Otprilike 13 od 30 kolona
-  (`Tip_O`, `Podtip_O`, `Izvor reda`, `Labela iz`, `Problem`, `source_key`, `Izvod file`,
-  `Pravilo run`, `Pouzdanost`, `AI run`, `Pouzdanost_AI`…) su radne kolone ovog pipelinea
-  i **u exportu iz aplikacije uopće ne postoje**. Znači da je rad kroz Excel nakon importa
-  lakši nego danas, bez ijedne nove tablice.
-
-## Što je s dodatnom tablicom u Supabaseu (`staging_financije`)
-
-- **Odluka od 2026-07-29: ne gradi se.** Bila je odlučena u S107m i nikad napisana
-  (`sql/` staje na `032`). Njeno glavno opravdanje bilo je "treba nam mjesto za masovni
-  pregled koje nije Excel" — a ako podaci ionako idu u aplikaciju, to mjesto je aplikacija.
-
-- **"Vidjeti samo dio kolona" već postoji i ne treba se graditi.** Provjereno u bazi
-  2026-07-29: area već ima spremljene `export_profiles` (profil `2026_RF-Sasa`) gdje je za
-  svaku kolonu zapisana širina, je li skrivena i u koju grupu ide. Znači da izvoz u Excel
-  daje točno onaj skup kolona koji odabereš, bez ijedne nove tablice.
-
-- **Masovno potvrđivanje AI prijedloga** ostaje kao mogući feature aplikacije nad pravim
-  eventima, koristan za svako područje. Gradi se **tek ako** se rad kroz Excel nakon importa
-  pokaže prespor.
-
-## Redoslijed koraka
-
-1. **Zamrzni razliku prema Kokinom file-u.** Uzmi svjež izvoz njenog `Financije 2026.xlsm`
-   i dopiši u Review samo ono što je novije od 2026-07-08. To je oko 150 redaka. Za nove
-   dane je siguran postupak, jer za dan koji u Reviewu još ne postoji ne može biti sudara
-   ključeva — treba samo provjeriti da nije umetala retke u stare dane.
-2. **Napiši generator import file-a.** Ovo je jedina prava rupa na putu: alat koji od
-   odobrenog Reviewa radi Excel u formatu koji aplikacija uvozi (`Activities Events`).
-   Struktura i taksonomija su gotove (65 parova), ostaje samo generator.
-3. **Uvozi u batchevima, 2026. prva.** Prva godina služi kao proba mehanizma, ne kao
-   strategija: provjeriš parent chain, atribute, prava pristupa i Stanje, pa tek onda
-   ide 2025 → 2024 → 2023. Oko 5000 transakcija znači nekoliko desetaka tisuća zapisa
-   atributa i to se ne gura odjednom — pogotovo nakon incidenta s opterećenjem baze (S105).
-4. **Koka prelazi na unos u aplikaciji.** Od tog dana razlika više ne raste, njen Excel
-   postaje samo arhiva, a lanac `.pre-*` backupa prestaje rasti.
-5. **Povijest se dovršava kroz izvoz → pravila/AI → uvoz** s update-guardom, u svom tempu,
-   bez pritiska.
-
-## Što danas raditi s Kokom (Sonnet sesija)
-
-- **Radi `niska` traku (1023 retka), ne `srednja` (205).** `srednja` možeš i sam kasnije.
-  `niska` je hrpa gdje je model nesiguran i gdje je **njeno sjećanje jedini izvor** — a te
-  su transakcije uglavnom iz 2023–2025, dakle upravo one kod kojih sjećanje trenutno curi.
-
-- **Ne čekaj bankovne izvode za ono što ona pamti.** Izvodi uvijek kasne, ali to nije
-  problem: alat za obogaćivanje piše isključivo u kolone `Izvod opis` i `Izvod file` i
-  **fizički ne može pregaziti Tip ili Podtip**, a pravila diraju samo retke gdje je Tip
-  prazan ili N/A. Ako Koka danas odluči, a izvod stigne u rujnu, izvod će samo dodati dokaz
-  uz njenu odluku. Podjela je čista: **izvodi rješavaju staro, Koka rješava novo.**
-
-- **Ako ima primjedbu na formulaciju bilo kojeg Tipa ili Podtipa — riješi to danas.**
-  Sad je promjena imena jeftina. Nakon importa isto ime živi na dva mjesta — u definiciji
-  izbornika i kao spremljena vrijednost na svakom pojedinom eventu — pa traži dva odvojena
-  ciklusa izvoz-uvoz, a preimenovanja su povijesno mjesto gdje pukne (S105d).
-
-- **Ako stigneš, iskoristi to što je prisutna za pripremu prelaska.** Area se uvozi **pod
-  njenim računom** (odluka D6), pa je ovo prilika da napravi login. Ručni unos jedne
-  transakcije je i dalje koristan kao mjerenje, ali **više nije prijelomna stvar** (v. odjeljak
-  o Excel roundtripu ispod).
-
-- **Rad na koloni `AI odluka` nije bačen.** `apply_ai --harvest` upisuje u `Tip`/`Podtip`
-  Reviewa, a Review je ono što se uvozi. Što stigneš do importa ide unutra klasificirano,
-  ostatak ide kao N/A i dovršava se poslije. Promijenilo se samo to da to više nije uvjet
-  za početak.
-
-## Mijenjanje Taksonomije tijekom sesije — postupak
-
-Dva su slučaja i imaju različit odgovor. Razlika je u tome dira li promjena retke koji
-u Reviewu već postoje.
-
-### A) Dodavanje novog para — Saša radi sam, jedna komanda
-
-Novi red ništa ne kvari, jer nijedan postojeći redak u Reviewu ne nosi tu vrijednost.
-
-1. Dopiši red u `Taksonomija` sheet (Tip | Podtip)
-2. Zatvori Excel
-3. Pokreni:
-
-```powershell
-$env:PYTHONUTF8=1
-C:\0_Sasa\events-tracker-react\data-prep_tools\Tools\venv\Scripts\python.exe `
-  C:\0_Sasa\events-tracker-react\data-prep_tools\Financije\sync_taxonomy.py
+```
+Review                    →  import Excel
+─────────────────────────────────────────────
+(ništa)                   →  event_id        (prazno = novi zapis)
+(konstanta)               →  Area            = Financije_all
+(konstanta)               →  Category_Path   = Transakcija
+event_date                →  event_date
+Napomena                  →  comment
+Racun, Izvor, Smjer,      →  isti atributi
+Uplata, Isplata, Stanje,
+Tip, Podtip, Status,
+Rate?, Broj rata,
+Datum naplate
 ```
 
-Bez argumenta uzima najnoviji `Financije_review_*.xlsx` i sam napravi backup prije snimanja.
-**Pazi samo na ime novog Tipa** — neka koristi znakove koji već postoje u drugim Tipovima
-(slova, razmak, crtica). Formula izbornika ima ograničenje od 255 znakova i gradi se lancem
-zamjena po posebnim znakovima, pa novi znak koji se dosad nije pojavio može je prebaciti.
-`sync_taxonomy.py` to provjerava i javit će, ali lakše je izbjeći.
+Radne kolone pipelinea (`Tip_O`, `Tip_AI`, `Pouzdanost`, `source_key`, `Izvod *`, `Pravilo run`…)
+**ne idu u import** — njih je 13 od 30 i one su skela, ne podaci.
 
-### B) Ispravak ili preimenovanje postojećeg para — kroz Sonneta
+## Kako izgleda prelazak — i što s Kokinim finalnim file-om
 
-Ovdje je razlika bitna: čim promijeniš par u `Taksonomija`, svi retci u Reviewu koji nose
-stari par postaju **nevaljani**, a sljedeći `apply_rules.py` ih **resetira na N/A** — osim ako
-prije toga ne postoji odgovarajući red u `Preimenovanja` sheetu. To tiho poništi već obavljen
-posao. Oporavljivo je iz backupa, ali ne želiš to otkriti slučajno.
+Ovo je odgovor na tvoju brigu da nakon predaje file-a treba "relativno brzo" prijeći.
+**Ne treba** — jer se povijest uvozi dok ona normalno radi.
 
-Redoslijed:
+| kad | što se radi | Koka |
+| --- | --- | --- |
+| T1 | struktura `Financije_all` u bazi, pod **njenim** računom | **napravi login** |
+| T2 | uvoz povijesti u batchevima (2026 prva kao proba, pa 2025 → 2024 → 2023) | radi normalno u Excelu |
+| T3 | provjera: brojevi, atributi, `Stanje`, prava pristupa | radi normalno |
+| **T4** | **dan prelaska:** pošalje finalni `.xlsm` → uvezu se samo redovi noviji od zadnjeg uvezenog datuma | **od tad unosi u appu** |
+| T5+ | mjesečni Excel roundtrip | export → dopiši → import |
 
-1. `Taksonomija` — promijeni par
-2. `Preimenovanja` — dodaj red: `Stari Tip` | `Stari Podtip` | `Racun uvjet` (opcionalno, za
-   koka/sasa razdvajanje) | `Novi Tip` | `Novi Podtip`
-3. Zatvori Excel
-4. `apply_rules.py --dry` → provjeri broj
-5. `apply_rules.py` (pravi run)
-6. `sync_taxonomy.py`
+**Prozor u kojem ne smije unositi je samo T4 — nekoliko sati, ne tjedana.**
 
-Preimenovanje kroz taj sheet **čuva VISOKU pouzdanost** i ostavlja trag (`PREIM: bio <stari
-par>` u Alternativi + timestamp u `Pravilo run`), dok reset sve to izgubi.
+**Njeni novi redovi ne moraju proći kroz Review.** Oni nemaju Tip/Podtip (ona ih ne vodi),
+pa ulaze kao **`N/A`** i ona ih klasificira poslije, u appu. To je upravo poanta zaokreta od
+29.7.: klasificira osoba koja zna transakciju. Time otpada i ona procjena od ~90 min za
+"delta merge u Review" — ne treba ga.
 
-**Zašto Sonnet:** može prije promjene prebrojati koliko redaka nosi stari par, pa broj iz
-`--dry` postaje provjerljiv umjesto da ga prihvatiš na riječ. To je ista kontrola koja je u
-S107g ulovila da je blanket rename `Sportski rekviziti` pogodio preširoko.
+## Tri stvari koje moraju biti gotove prije dana prelaska
 
-### Što točno reći Sonnetu nakon izmjene Taksonomije
+1. **Kokin login** i da vidi `Financije_all`.
+2. **`Datum naplate` na uvozu.** Automatika koja ga popunjava radi **samo** kod unosa u
+   aplikaciji, ne i kod uvoza iz Excela. Bez male dorade bi novim redovima ostao prazan, a
+   odluka D1 je bila da ga nitko ne tipka ručno.
+3. **Jedan probni roundtrip s njom** — export, dopiši jedan red, import. To je ono što će
+   raditi svaki mjesec; bolje da prvi put pukne dok smo tu.
 
-**Ne moraš reći što si promijenio** — `apply_rules.py` to sam otkrije (`collect_invalid_pairs()`
-prođe Review i nađe svaki redak čiji par više ne postoji). Zato jedan prompt pokriva i
-dodavanje i preimenovanje:
+## Što se NE dira
 
-> Ručno sam mijenjao `Taksonomija` sheet u Reviewu. Excel je zatvoren.
->
-> 1. Pokreni `apply_rules.py --dry` i pokaži mi koliko redaka ima par koji više ne postoji
->    u Taksonomiji, razvrstano po paru.
-> 2. Za svaki takav par predloži red za `Preimenovanja` sheet (stari par → novi par,
->    `Racun uvjet` ako treba koka/sasa razdvajanje) i reci mi koliko redaka svaki pogađa.
-> 3. Ne piši ništa u file dok ne potvrdim brojke.
-> 4. Nakon mojeg OK: upiši `Preimenovanja` redove, `apply_rules.py --dry` pa pravi run,
->    i na kraju `sync_taxonomy.py`.
->
-> Ne diraj Review ćelije izravno i ne koristi Find & Replace — samo kroz `Preimenovanja`
-> i `apply_rules.py`.
-
-Ako si **samo dodavao** parove, korak 1 vrati nulu i sve se svede na `sync_taxonomy.py`.
-Isti prompt, kraći ishod — zato ne treba unaprijed odlučivati koji je slučaj.
-
-⚠ **Zašto je `--dry` disciplina nužna:** postoji zaštita koja pri **prvom** nailasku na
-nevaljane parove sama kreira `Preimenovanja` sheet i stane bez pisanja — ali okida samo kad
-tog sheeta nema. U pravom fileu postoji od S107f, pa se **neće** aktivirati.
-
-**Vrijedi dodati ako znaš:** kad par mijenjaš zato što je stara formulacija bila **kriva**
-(a ne samo nespretna), reci to. U S107g je blanket rename `Sportski rekviziti` pogodio 29
-redaka koji su bili tri različite stvari (Multisport, Kreatin, Decathlon) — tamo je trebalo
-pravilo, ne preimenovanje.
-
-### Find & Replace u Reviewu — nikad
-
-- Review ima 30 kolona, a Find & Replace po defaultu ide po cijelom sheetu — pogodit će
-  `Napomena`, `Izvod opis`, `Alternativa / nap.`, a najgore **`Tip_O`/`Podtip_O`**, koje su
-  zamrznuti snimak originala i moraju ostati netaknute.
-- Djelomično podudaranje: zamjena `Medical` pogodila bi i `Medical_Koka` i `Medical_Sasa`.
-- Ne ostavlja trag — poslije ne možeš filtrirati što si promijenio.
-
-### Praktično tijekom razgovora s Kokom
-
-Skripte pišu u datoteku, pa **Excel mora biti zatvoren**. Nemoj ga zatvarati i otvarati pet
-puta — **skupljaj sve izmjene u sheet dok razgovarate, pa pokreni skripte jednom na kraju.**
-
-## Kako Taksonomiju prenijeti u bazu (Structure Excel roundtrip)
-
-### Kada to raditi — ne danas i ne po svakoj izmjeni
-
-Trenutna PROD area `Financije` je **ona koja se na kraju briše** (odluka D6) i zamjenjuje s
-`Financije_all`. Održavati njenu taksonomiju u koraku sa svakom izmjenom je posao za bacanje.
-`Taksonomija` sheet je jedini izvor istine i u bazu se prenosi **jednom**, kad se gradi
-`Financije_all`.
-
-**Ima ipak jedan dobar razlog da se roundtrip odradi ranije, jednom: kao proba.** To je točno
-isti mehanizam kojim će nastati `Financije_all`, pa je bolje da se eventualni problem pojavi
-na areai koja se ionako briše nego na dan prelaska. Preporuka: napravi to jednom prije gradnje
-`Financije_all`, ne nakon svake izmjene taksonomije.
-
-### Jednostavni put (bez skripti)
-
-1. U aplikaciji odaberi **Financije** u filteru pa otvori **Structure** tab.
-2. Klikni **Export** — dobiješ Structure Excel samo za tu areu. Zaglavlje je u **7. redu**,
-   a stupci su obojeni: **žuto** = ključevi koje za postojeće retke ne smiješ mijenjati,
-   **plavo** = slobodno uredivo, **zeleno** = ovisnosti.
-3. Uredi dva mjesta:
-   - redak atributa **`Tip`** → u stupcu `TextOptions/Val.Min` upiši sve Tipove odvojene
-     uspravnom crtom: `Razno|Osiguranje|auto C5|…`
-   - atribut **`Podtip`** ima **jedan redak po Tipu** — u svakom je `DependsOn` = `tip`,
-     `WhenValue` = ime Tipa, a `TextOptions/Val.Min` = Podtipovi tog Tipa odvojeni crtom.
-     Za novi Tip dodaš novi redak po istom uzorku.
-4. Vrati se u **Structure** tab pa klikni **Import** i odaberi datoteku.
-
-Uvoz je **nerazoran** — prepoznaje atribute po `Slug` stupcu i mijenja samo sigurne stvari
-(ime, opis, jedinicu i popis opcija). Nikad ne mijenja tip podatka i ne premješta ništa.
-
-**Dvije zamke:** `Slug` se **nikad** ne dira (po njemu se prepoznaje o kojem se atributu radi);
-žuti stupci se za postojeće retke ne mijenjaju, jer promjena ondje stvara duplikat umjesto
-izmjene.
-
-### Sonnet put
-
-Isplati se kad je izmjena veća od jedne opcije — primjerice puni prijenos 65 parova iz
-`Taksonomija` sheeta, gdje bi ručno prepisivanje 19 redaka s crticama bilo i sporo i podložno
-tipfeleru. Zatraži otprilike ovo:
-
-> Iz `Taksonomija` sheeta u Review fileu generiraj `TextOptions` za atribut `Tip` i po jedan
-> `Podtip` redak za svaki Tip (`DependsOn=tip`, `WhenValue=<Tip>`), pa mi ih ispiši u obliku
-> koji zalijepim u Structure Excel. Prije toga usporedi s trenutnim stanjem u PROD bazi i
-> reci mi što se točno mijenja.
-
-Usporedba s bazom je čitanje bez pisanja i Sonnet je može napraviti sam (v. DIO 2). Samo
-lijepljenje u Structure Excel i klik na Import ostaju na tebi — tako uvijek vidiš što ulazi.
-
-## Kako Koka zapravo prelazi: Excel roundtrip, ne Add Activity
-
-**Nalaz od 2026-07-29 (Sašina napomena + provjera koda):** Koka se bolje snalazi na laptopu u
-Excelu nego u ekranu za unos. To ne ruši plan — naprotiv, rješava ga, jer aplikacija taj put
-već ima izgrađen.
-
-- **Izvoz aktivnosti u Excel sam generira dropdowne, uključujući lančane.** Provjereno u
-  `excelExport.ts`: za svaki atribut koji ovisi o drugome gradi se izbornik koji čita vrijednost
-  iz roditeljske ćelije. U Financijama to znači da Koka u izvezenom file-u dobiva cijeli lanac
-  **Racun → Izvor → Status** i **Tip → Podtip**, isto kao u Review file-u na koji je navikla,
-  samo spojeno na pravu bazu umjesto na međufile.
-
-- **Stari retci su zaštićeni.** `row_hash` prepozna retke koje nije dirala i preskoči ih bez
-  ijednog upita u bazu, a za one koje jest aplikacija prije upisa pokaže popis promjena
-  staro→novo i traži izričitu potvrdu.
-
-- **Novi retci se samo dopišu na dno.** Redak bez `event_id` aplikacija tretira kao novi zapis,
-  pa je "dodaj transakcije koje su se dogodile ovaj mjesec" jednako lako kao i sada.
-
-- **Zaključak: mehanizam prelaska je mjesečni Excel roundtrip nad `Financije_all`.** Ekran za
-  unos ostaje za mobitel i usputne unose (Sašin način rada). Time otpada ovisnost koja je do
-  sada bila označena kao jedina koja može srušiti plan.
-
-- **⚠ Jedina rupa koju to otvara: `Datum naplate` se automatski popunjava samo pri unosu u
-  aplikaciji, ne i pri uvozu iz Excela.** Za nove retke bi ostao prazan, a odluka D1 je izričito
-  bila da ga nitko ne tipka ručno. Tri izlaza: (1) Koka ga povuče kroz stupac, jer pravilo zna
-  napamet (Mastercard = 11. u sljedećem mjesecu); (2) Python korak prije uvoza — loše, vraća
-  Python u njenu petlju; (3) proširiti automatiku i na uvoz, uz pravilo "popuni samo ako je
-  prazno". **Preporuka: (3)** — mali, ograničen zahvat u već postojećem modulu.
-
-## Struktura: što već imamo u bazi (provjereno 2026-07-29, read-only)
-
-PROD area `Financije` (357 eventa), leaf `Transakcija`, 13 atributa. **Oblik je pravi, sadržaj
-taksonomije je zaostao** — nije riječ o prepravljanju strukture nego o osvježavanju izbornika.
-
-**Već točno i ne treba dirati:** `Racun` (dva računa) · `Izvor` ovisi o `Racun` (RF nudi
-Racun/Visa/Cash, ZABA nudi Racun/Mastercard/Cash) · `Status` ovisi o `Izvor` uz automatski
-prijedlog (Racun/Cash → `Izvrsen`, kartice → `Planiran`) · `Podtip` ovisi o `Tip` ·
-`automations.rata` konfiguriran (ono što je Saša testirao na mobitelu) · `export_profiles`.
-
-**Zastarjelo ili nedostaje:**
-- `Tip` ima **13 starih opcija**, Taksonomija u Reviewu ih ima **19** — fale `Osiguranje`,
-  `Projekti`, `Zabava`, `Namirnice`, `Porezi`, `Investicije`.
-- `Podtip` popis je od **prije svih preimenovanja** iz S107g–S107m (`Medical` umjesto
-  `Medical_Sasa`/`Medical_Koka`, `Sportski rekviziti` umjesto `Sport_Sasa`/`Sport_Koka`,
-  Audible još pod Informatikom umjesto pod novim Tipom `Zabava`…).
-- **`Datum naplate` i `Datum kupovine` ne postoje** kao atributi.
-- U automatikama je **samo `rata`** — nema pravila za auto-popunu `Datum naplate`.
-- Sitno: `Valuta` je višak, `Smjer` ima radnu opciju `PROVJERI`.
-
-**Put:** izvezi postojeću strukturu u Structure Excel → osvježi Tip/Podtip iz `Taksonomija`
-sheeta → dodaj dva atributa i pravilo za `Datum naplate` → uvezi kao novu areu `Financije_all`
-pod Kokinim računom. To je strukturna polovica pipeline koraka 4 i puno je manje posla nego
-graditi ispočetka.
-
-## Tri pravila o mijenjanju podataka
-
-- **Dodavanje redaka je uvijek sigurno**, i prije i poslije importa. Prije importa novi dan
-  dobiva svoj ključ bez sudara; poslije importa redak bez `event_id` aplikacija tretira
-  kao novi zapis.
-
-- **Spajanje ili brisanje redaka — samo prije importa i samo kroz skriptu.** Ako se redak
-  obriše iz Reviewa, alat za spajanje PBZ Vise bi ga sljedeći put vratio natrag, jer
-  preskače samo one ključeve koje **vidi** u Reviewu. Zato obrisani ključ mora u registar
-  `V3 preskočeno` — točno to radi `fix_duplikati_rata.py` i to je gotov uzorak za svako
-  buduće spajanje. **Nakon importa se u Excelu više ne briše ništa:** uvoz zna samo
-  stvoriti i ažurirati retke koje **vidi** u file-u, a redak koji si maknuo naprosto ne
-  vidi — event tiho ostaje u bazi. Spajanje nakon importa radi se u aplikaciji.
-
-- **Taksonomija se mijenja sada.** Prije importa: urediš `Taksonomija` sheet, pokreneš
-  `sync_taxonomy.py` za izbornike i po potrebi `Preimenovanja` sheet koji preimenuje već
-  klasificirane retke i pritom čuva visoku pouzdanost. Poslije importa je to dvostruko
-  veći posao s realnim rizikom.
+Stare aree `Financije` i `Financije_old` brišu se **na kraju**, nakon provjere i s backupom.
+Do tada su netaknuta rezerva.
 
 ---
 
 # DIO 2 — Tehnički dio (za Claudea)
 
-## Odluka S107q (2026-07-29) — sažetak
+## Cilj sesije
 
-Redoslijed **obrnut**: import → cutover → reklasifikacija, umjesto klasifikacija → import.
-`staging_financije` **otkazana** (S107m odluka poništena). Identitet nakon importa =
-`event_id`, čime `source_key` instabilnost prestaje biti blocker. Reklasifikacija ide kroz
-D7 (`row_hash` + update-guard, već na PROD-u od 2026-07-15).
+Napisati **`make_financije_import.py`**: odobreni Review → `Activities Events` Excel za
+`ExcelImportModal`. Podržati `--from/--to` (batch po razdoblju, §12) i `--dry`.
 
-**Cutover mehanizam = Excel roundtrip nad `Financije_all`, NE `Add Activity`** (Sašin nalaz
-2026-07-29: Koka je produktivnija u Excelu na laptopu). Ovisnost "ergonomija Add Activity"
-time **otpada**. Potvrđeno u kodu:
-- `excelExport.ts:278–395` — dependent dropdowni preko INDIRECT + hidden `DropdownData` sheet,
-  petlja po **svim** atributima s `depends_on` ⇒ lanci rade u više razina:
-  `Racun → Izvor → Status` i `Tip → Podtip`. SUBSTITUTE lanac + `sanitizeNamedRange`
-  transliteriraju dijakritike; `prompt`/`promptTitle` unutar limita (32/255).
-- `row_hash` skip + update-guard (D7) štite postojeće retke; novi redak bez `event_id` = CREATE.
-- `areas.settings.export_profiles` (postoji, profil `2026_RF-Sasa`) = per-kolona
-  `width`/`hidden`/`outlineLevel` ⇒ "podskup kolona" je **riješen**, ne treba se graditi.
+## Format (provjereno u kodu 2026-07-30)
 
-⚠ **Otvorena rupa:** `set_attribute` (`attributeRules.ts`) evaluira se **samo u Add Activity**
-— Edit i Import ne. U Excel putu `Datum naplate` novim retcima ostaje prazan, protivno D1.
-Preporuka: proširiti evaluaciju na Import sa semantikom "popuni samo ako je prazno"
-(P3-kompatibilno, isti modul). Alternative: Koka drag-fill (zna pravilo) ili Python korak
-prije uvoza (vraća Python u njenu petlju — odbaciti).
+`src/lib/excelExport.ts:61` — `FIXED_COLUMNS`, **redoslijed je obvezan** (A–H):
 
-## Inventura strukture — PROD `Financije` (read-only provjera 2026-07-29)
+```
+event_id | Area | Category_Path | event_date | session_start | created_at | user_email | comment
+```
 
-`areas.id = eb786029-6ceb-4c36-ad62-9851092dad10` · leaf L1 `Transakcija`
-(`e546d895-5e8a-454c-96c9-5815fc2cd234`) · **357 eventa** · 13 attr defs.
-(Postoji i `Financije_old` `126f84fc-…`; oba se brišu NA KRAJU po D6.)
+- Display zaglavlja se razlikuju od internih imena: G = `User`, H = `leaf comment`
+  (`FIXED_DISPLAY_HEADERS`). `excelImport.ts` mapira po **poziciji** za A–H.
+- `ATTR_COL_START = 9` (I) — jedan stupac po atributu, zaglavlje = **ime atributa**.
+- `row_hash` kolona je **opcionalna**, traži se po imenu zaglavlja (`excelImport.ts:204`).
+  Za CREATE retke je nepotrebna (skip vrijedi samo za retke s `event_id`, linija ~399).
+- Iznad podataka postoji **LEGEND blok**; `parseExcelFile` ga sam prepoznaje i preskače
+  (`excelImport.ts:119`). Uzor generiranja: `data-prep_tools/Tools/excel_import_template.py`.
+- **`Category_Path` = BEZ imena aree** (kritično pravilo iz CLAUDE.md). Leaf `Transakcija`
+  je **L1**, pa je puna putanja samo `Transakcija`.
 
-**Ispravno, za preuzimanje 1:1:**
+## ⚠ Otvoreno pitanje #1 — `session_start` mora biti jedinstven po transakciji
 
-| Attr | `validation_rules` |
+Leaf je L1, dakle **nema roditeljskih kategorija** → **P2 parent eventi ne nastaju**
+(area nije kategorija). To uklanja cijelu klasu složenosti i `parentEventLoader` iz igre.
+
+Ali: `session_start` je **sidro sesije**, zaokruženo na minutu, i po njemu ide detekcija
+kolizije. Ako svih 4996 redaka dobije isti `session_start` (npr. datum 00:00), aplikacija
+će ih tretirati kao **jednu sesiju** — a `replace` grana kolizije briše po `chain_key`/
+`session_start` (linije ~756, ~778; klasa buga T-BUGG-5, fix S104).
+
+**Hipoteza: svaka transakcija = svoja sesija**, pa `session_start` treba biti unikatan —
+npr. `event_date` + inkrementalna minuta po danu (1440/dan je više nego dovoljno).
+**Prvi zadatak sesije: pročitati collision granu `excelImport.ts` i potvrditi ili oboriti
+ovo prije generiranja ijednog reda.** Nije provjereno u S107r.
+
+## ⚠ Otvoreno pitanje #2 — `Datum naplate` pri importu
+
+`attributeRules.ts` (`set_attribute`) evaluira se **samo u `AddActivityPage`**. Import i Edit
+ga ne zovu. Preporuka S107q: proširiti na Import sa *"popuni samo ako je prazno"*
+(P3-kompatibilno, isti modul). Za **povijesni** import nije blocker — `Datum naplate` je u
+Reviewu **100 % popunjen** (S107k) pa ide kao vrijednost. Blocker je za **T4+ / roundtrip**.
+
+## Mapiranje Review → import
+
+| import stupac | izvor |
 | --- | --- |
-| `Racun` | suggest: `Kokin tekući ZABA`, `Sašin tekući RF` |
-| `Izvor` (`izvorplacanja`) | `depends_on.attribute_slug=racun`; RF→Racun/Visa/Cash, ZABA→Racun/Mastercard/Cash |
-| `Status` | `depends_on.attribute_slug=izvorplacanja` + **`default_map`** Racun/Cash→`Izvrsen`, Visa/MC→`Planiran` |
-| `Podtip` | `depends_on` na `tip`, `options_map` |
-| `settings.automations.rata` | `date_map` {RF:3, ZABA:11}, `count_slug=brojrata`, `amount_slug=isplata`, `trigger_slug=rate`, `override_attrs.status=Planiran` |
+| `event_id` | **prazno** (sve CREATE) |
+| `Area` | `Financije_all` |
+| `Category_Path` | `Transakcija` |
+| `event_date` | `event_date` |
+| `session_start` | izvedeno (v. otvoreno #1) |
+| `created_at` | prazno / now |
+| `user_email` | Kokin (area je pod njenim accountom, D6) |
+| `comment` | `Napomena` |
+| atributi I+ | `Racun`, `Izvor`, `Smjer`, `Uplata`, `Isplata`, `Stanje`, `Tip`, `Podtip`, `Status`, `Rate?`, `Broj rata`, `Datum naplate` |
 
-**Za regeneraciju iz `Taksonomija` sheeta (65 parova / 19 Tipova):**
-- `Tip` u bazi = **13 starih opcija**; fale `Osiguranje`, `Projekti`, `Zabava`, `Namirnice`,
-  `Porezi`, `Investicije`.
-- `Podtip.options_map` = **pre-S107g** stanje (`Medical` vs `Medical_Sasa`/`_Koka`;
-  `Sportski rekviziti` vs `Sport_Sasa`/`_Koka`; `PassSport` izbačen; Audible pod `Informatika`
-  umjesto pod novim `Zabava`; `Komunikacije_T-mobile`/`_T-com`, `Groblja`, `leasing`… nedostaju).
-- **`Datum naplate` / `Datum kupovine` — ne postoje** (datetime, §8).
-- `automations` nema `attribute_rules` (auto `Datum naplate`).
-- Višak: `Valuta` (2 opcije); `Smjer` ima radnu opciju `PROVJERI`.
+**Ne prenositi:** `Tip_O`, `Podtip_O`, `Tip_AI`, `Podtip_AI`, `AI odluka`, `Pouzdanost*`,
+`AI run`, `Alternativa / nap.`, `Labela iz`, `Problem`, `source_key`, `Izvod opis`,
+`Izvod file`, `Izvor reda`, `Pravilo run`.
 
-**Put:** Structure Excel export postojeće aree → osvježi Tip/Podtip iz `Taksonomija` →
-dodaj 2 atributa + `Automations` red → import kao **nova area `Financije_all` pod Kokinim
-accountom** (D6). Strukturna polovica koraka 4; jeftinije nego graditi ispočetka.
+⚠ **Imena atributa u zaglavlju moraju točno odgovarati `attribute_definitions.name`** u
+`Financije_all` (ne slugu). Provjeriti nakon T1 exportom strukture.
 
-**Read-only inspekcija baze:** `.env.prod.local` (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`),
-REST preko `urllib` — `data-prep_tools/Tools/supabase_structure_export.py` **ne radi**
-u `Tools/venv` (nema `supabase` modula).
+## Struktura `Financije_all` (T1) — što treba prije generatora
 
-## Taksonomija — operativni postupak (sažeto)
+Put: Structure Excel export postojeće PROD aree `Financije` → osvježi `Tip`/`Podtip` iz
+`Taksonomija` sheeta → dodaj 2 atributa + `Automations` red → import kao **nova** area pod
+Kokinim accountom. Detalji i inventura zatečenog stanja: `ENRICH_PLAN.md` §2o / stari
+`NEXT_SESSION_PROMPT` odjeljak (u gitu, commit `9b1cd8a`).
 
-| Slučaj | Tko | Koraci |
-| --- | --- | --- |
-| **Dodavanje para** | Saša sam | `Taksonomija` +red → zatvori Excel → `sync_taxonomy.py` |
-| **Rename para** | Sonnet | `Taksonomija` izmjena → **`Preimenovanja` red** (`Stari Tip`\|`Stari Podtip`\|`Racun uvjet`\|`Novi Tip`\|`Novi Podtip`) → `apply_rules.py --dry` → pravi run → `sync_taxonomy.py` |
+- Za preuzimanje 1:1: `Racun`, `Izvor` (`depends_on` na `racun`), `Status` (`depends_on` +
+  `default_map`), `Podtip` (`depends_on` na `tip`), `settings.automations.rata`, `export_profiles`.
+- **Nedostaje:** `Datum naplate`, `Datum kupovine` (datetime), `attribute_rules`.
+- **Zastarjelo:** `Tip` 13 starih opcija (treba **18** iz nove `Taksonomija`), `Podtip`
+  `options_map` pre-S107g. Višak: `Valuta`; `Smjer` ima radnu opciju `PROVJERI`.
 
-Oba skripta primaju **opcionalni pozicijski arg** (put do Review filea); bez njega uzimaju
-najnoviji `Financije_review_*.xlsx`. Backup se radi sam. Excel mora biti zatvoren.
+## Volumen / batching
 
-⚠ **Rename bez `Preimenovanja` reda = tihi reset na N/A** + `TAKS: bio <par>` u Alternativi
-(`apply_rules.py` §2, prioritet: **Pravilo > Preimenovanja > reset**). Prije `--dry` prebrojati
-retke sa starim parom da je `--dry` broj provjerljiv (presedan: `Sportski rekviziti`, S107g).
+4996 eventa × ~12 atributa ≈ **60k `event_attributes`**. Ne u jednom naletu (S105 IO
+incident). `--from/--to`, 2026 prva kao proba mehanizma (750 redaka).
 
-⚠ **Nikad Find & Replace u Reviewu** — 30 kolona, F&R ide po cijelom sheetu i pogađa `Napomena`
-/ `Izvod opis` / `Alternativa` i, najgore, **`Tip_O`/`Podtip_O`** (zamrznut snimak originala);
-uz to djelomično podudaranje (`Medical` → `Medical_Koka`/`_Sasa`) i nula audit traga.
+## Reuse
 
-⚠ Novi Tip s **novim posebnim znakom** može prebaciti DV formulu preko 255 znakova
-(SUBSTITUTE lanac se gradi po znakovima prisutnima u imenima Tipova). `sync_taxonomy.py`
-provjerava, ali radije koristiti postojeći repertoar znakova.
+`data-prep_tools/Financije/Obsolete/make_import.py` (32 kB) i `make_financije3_import.py`
+(19 kB) = baza; `Tools/excel_import_template.py` = LEGEND/EVENT DATA format;
+spec `docs/EXCEL_FORMAT_ANALYSIS_v2.md`. `Obsolete/verify_financije3_import.py` = uzor za
+post-import spot-check.
 
-## Prijenos taksonomije u bazu — Structure Excel roundtrip
+## Redoslijed rada u sesiji
 
-**Kada:** NE po svakoj izmjeni. PROD `Financije` je area koja se briše (D6) → sync je posao za
-bacanje. **Jednom, kao proba mehanizma prije gradnje `Financije_all`** — isti put, a problem je
-jeftinije naći na areai koja se ionako briše.
+1. Pročitati collision granu `excelImport.ts` → riješiti otvoreno #1 **prije** koda.
+2. `make_financije_import.py --dry` na 2026 → pokazati Saši brojke (redaka, atributa, raspon
+   datuma), pa generirati file.
+3. Ručni pregled generiranog file-a (Saša) → import u **TEST** area/projekt kao proba.
+4. Tek onda T1 (`Financije_all` struktura na PROD-u) i pravi batch import.
 
-**Mehanizam** (`structureExcel.ts` v2, 17 kolona, header u **redu 7**; `structureImport.ts`):
-- `Tip` (jedan redak): `TextOptions/Val.Min` = `Razno|Osiguranje|auto C5|…` (pipe-separated).
-- `Podtip` (**jedan redak po Tipu**, multi-row DependsOn): `DependsOn=tip`, `WhenValue=<Tip>`,
-  `TextOptions/Val.Min` = Podtipovi tog Tipa. `WhenValue` prazan → `*`.
-  `Default` na DependsOn retku puni `default_map` (tako `Status` ima svoj default po `Izvor`u).
-- Import: `structureImport.ts:16` — *"Slug present, in this cat, different → UPDATE safe ops
-  (name, unit, desc, validation_rules)"*. Rebuilda `depends_on.options_map` + `default_map` iz
-  DependsOn/WhenValue/TextOptions redaka. **Nerazorno**, nikad ne mijenja `data_type` ni pomiče.
-- UI: filter na areu → **Structure** tab → **Export** (poštuje `filterAreaId`) / **Import**
-  (`StructureImportModal`).
-
-**Zamke:** `Slug` (žuta kolona) je ključ podudaranja — mijenjanje na postojećem retku stvara
-duplikat umjesto izmjene; žute kolone se uređuju **samo za nove retke**.
-
-**Sonnetov dio:** generirati `TextOptions`/`WhenValue` retke iz `Taksonomija` sheeta + diff
-protiv trenutnog `validation_rules` u bazi (read-only, v. gore). **Lijepljenje u Structure Excel
-i klik na Import ostaju ručni** — vidljivost onoga što ulazi u bazu.
-
-**Napomena:** generiranje Structure redaka iz `Taksonomija` sheeta je formalno dio pipeline
-koraka 4 (`FINANCIJE_MIGRACIJA.md` §12.2), koji još nije napisan.
-
-## Stanje podataka (izmjereno 2026-07-29)
+## Stanje podataka (2026-07-30)
 
 | | |
 | --- | --- |
-| Review redaka | **4996** · raspon `event_date` 2022-12-01 → 2026-07-08 (+2 buduća) |
-| Po godinama | 2022: 30 · 2023: 1135 · 2024: 1607 · 2025: 1474 · 2026: 750 |
-| Po računu | Kokin ZABA 2774 · Sašin RF 2222 |
-| N/A ukupno | **2059** — 2022: 30 · 2023: 680 · 2024: 718 · 2025: 564 · **2026: 60** |
-| Preostalo po AI traci (Tip=N/A) | visoka 2 · **srednja 205** · **niska 1023** |
-| AI prijedlozi | 1592 · visoka 261 / srednja 239 / niska 1092 · NEPOZNATO 196 |
-| `AI odluka` | `(prazno)` 1586 · `?` 3 · `OK` 3 (namjerno, v. zamka 7) |
-| Pravila / Taksonomija | 70 pravila · 65 parova |
-| Kokin snapshot | `Financije 2026.xlsx` od **2026-07-08** → divergencija ~3 tjedna, ~150 tx (lipanj 147/mj) |
-| `freeze_panes` | `F2` |
+| Review | **4996** redaka, `event_date` 2022-12-01 → 2026-07-08 |
+| Taksonomija | **18 Tipova / 65 parova** (Kokina, `Taksonomija_v1` = stara, skrivena) |
+| N/A | **1570** (2022: 30 · 2023: 587 · 2024: 476 · 2025: 429 · **2026: 48**) |
+| — od toga bez ikakvog teksta | **818** ⇒ trajno nerješivo, ne čekati ih |
+| `Datum naplate` | **100 % popunjen** (svih 4996) |
+| Pravila | **71** valjano, 0 preskočeno |
+| Kokin snapshot | `Financije 2026.xlsx` od **2026-07-08** (divergencija ~3,5 tj.) |
+| Zadnji backup | `*.pre-anjarate-20260730_120836.xlsx` + vanjski disk `D:` |
 
-**Zadnji backup:** `Financije_review_20260710_1448.pre-aiapply-20260728_171029.xlsx`
+## Nije na kritičnom putu (svjesno odgođeno)
 
-## Kritični put — što treba napisati
-
-| # | Stavka | Veličina | Bilješke |
-| --- | --- | --- | --- |
-| 1 | **Delta merge Kokinog `.xlsm`** | ~90 min | `normalize_financije.py` ima **hardkodiran** `INPUT = "Financije 2026.xlsx"` i uvijek generira **novi** timestampani Review — ne zna dopisati. Treba: parametar za input + filter `event_date >` cutoff + append po uzoru `merge_pbzvisa.py` (358 l.), uz čitanje `V3 preskočeno`. Za dane kojih nema u Reviewu `seq_per_day` ne može kolidirati; provjeriti hashom da nije umetala u stare dane. |
-| 2 | **Import generator (korak 4)** | 1 sesija | **Ne postoji.** `make_import.py` i `make_financije3_import.py` su u `Obsolete/` = baza za reuse. Format: `data-prep_tools/Tools/excel_import_template.py` (LEGEND/EVENT DATA), spec `docs/EXCEL_FORMAT_ANALYSIS_v2.md`. Treba `--from/--to` za batch po razdoblju (§12.3). |
-| 3 | **`Financije_all` struktura** | mala | Iz `Taksonomija` sheeta → Structure retci + `Automations` sheet (`Datum naplate` `set_attribute`). Novi atributi `Datum naplate`/`Datum kupovine` na `Transakcija`. |
-| 4 | **Batch import + spot-check** | po batchu | 2026 prva kao proba. ~5000 eventa × ~10 atributa ≈ 50k `event_attributes` — ne u jednom naletu (S105 IO). Pod **Kokinim** accountom (D6). |
-
-Zajednička ovisnost 1 i 2 = `normalize_financije` logika → raditi ih u istoj sesiji.
-
-## Semantika mijenjanja redaka (provjereno u kodu 2026-07-29)
-
-- **CREATE/UPDATE only.** `excelImport.ts` briše evente **isključivo** u `replace` grani
-  kolizije sesije (linije ~756, ~778 — `chain_key`-specific delete, T-BUGG-5 fix). Redak
-  odsutan iz file-a se **ne obrađuje** → event preživi u bazi. Import nikad ne briše zbog
-  odsutnosti retka.
-- **Prije importa:** brisanje retka u Reviewu lomi idempotenciju `merge_pbzvisa.py`
-  (preskače `source_key`eve koji POSTOJE u Reviewu) → obrisani ključ mora u `V3 preskočeno`.
-  Uzorak: `fix_duplikati_rata.py` (183 l.), registar čitaju `consolidate_review.py`,
-  `merge_pbzvisa.py`, `fix_duplikati_rata.py`.
-- **Izvod enrich je neutralan prema klasifikaciji:** `enrich_from_izvoda.py` piše samo
-  `Izvod opis`/`Izvod file`; `apply_rules.py` dira samo retke s Tip prazan/N/A. Klasifikacija
-  prije dolaska izvoda ne zaključava ništa.
-- **Taksonomija poslije importa** = ime u `attribute_definitions.validation_rules` **i** u
-  `event_attributes.value_text` svakog eventa + `depends_on` mapping za Podtip → Structure
-  roundtrip + data roundtrip. Povijesni rizik: S105d BUG-SLUG-NORMALIZE. Zaključati prije importa.
-
-## Otvoreno (nepromijenjeno)
-
-1. `reconcile_izvoda.py` matcher po `Datum naplate` + iznos (jedina neizvršena S107n stavka; ne dira Review).
-2. Agram / pravilo #43 — ožujak = C5 potvrđen (par 4505); ostaje pregled listopadskih pa `Iznos min/max` split.
-   Kandidati za `auto C5`: redovi 1463, 3038–3041, 4499 (⚠ brojevi prije dedupa).
-3. Petlja učenja: ispravci → `AI_KONTEKST_pitanja.txt` → bump `PROMPT_VER` → re-run `niska`+`srednja` (~$1).
-4. T-S107n-3 (196 `NEPOZNATO`) i T-S107n-6 (red 4759 BIBERON / "Amsteradam").
-5. Za Koku: 700 € bankomat 26.11.2025; `Saldo kontrola` 7 razlika (2026-01 +359, 2024-09 +149, 2×±49).
-6. T-S107p-1/2 (vizualni pregled 347 harvestanih + 3 preskočena retka).
+1. **Layout faza 1** (`sheet_layout.py`) — Sašin zahtjev: header u **red 3**, freeze `F4`
+   **tek tada** (dok je header u redu 1 ispravno je `F2`, sad garantirano u
+   `sync_taxonomy.py`), help u collapsed redove 1–2 **kolona B**, za sve sheetove.
+   Blast radius: header red 1 hardkodiran u **15** skripti, `min_row=2`/`range(2,` u **22**,
+   **12 kopija** funkcije za traženje kolone (`find_header_col` ×5, `hdr_index` ×4,
+   `header_map` ×3). Red: **prvo čitači tolerantni na raspored** (`find_header_row` skenira
+   1–6, radi i na starom i na novom), pa promjena rasporeda, Review **zadnji**.
+2. **Kvaliteta klasifikacije** (izmjereno S107r, ako se ikad vrati na to):
+   - **Ne gledati sadašnje AI kolone na N/A** — 736/739 je `niska`, a nastale su protiv
+     taksonomije kojoj su fala 4 od 18 Tipova (`Kuća`/`Prihodi`/`Prijevoz`/`Advokati`);
+     u tim novim Tipovima danas sjedi **24 %** klasificiranih redaka. Valjane su (0 nevaljanih),
+     ali nisu svježe.
+   - **Prvi korak nije AI nego lookup:** od 752 N/A s tekstom, **209 (73 merchanta)** dijeli
+     brand-ključ s klasificiranim retkom koji **jednoznačno** ima isti par → besplatan
+     prijedlog iz vlastite prošle odluke. 172 višeznačna, 371 merchant nikad viđen.
+     ⚠ Obavezan pregled, ne auto-apply: `GLS-D` i `GOOGLE` su preširoki (u S107l izričito
+     odbačeni kao dostavljač/multi-servis).
+   - **AI re-run** tek na ostatak, s **few-shot primjerima iz 3426 klasificiranih redaka**
+     (nema fine-tuninga; "učenje" = primjeri u promptu — isti mehanizam koji je dao skok
+     62,5 → 80,3 %). ~$1. **Nov eval obavezan** — stari 81,5 % / Tip 92,3 % je mjeren na
+     staroj taksonomiji i **void**; mjeriti na uzorku tipa N/A, ne na klasificiranima
+     (S107n: `visoka` 57 % na klasificiranima vs 16 % na N/A hrpi).
+3. **Za Koku:** 700 € bankomat 26.11.2025; `Saldo kontrola` 7 razlika (2026-01 +359,
+   2024-09 +149, 2×±49 multisport, 3 sitna). Ne blokiraju import.
+4. `reconcile_izvoda.py` matcher po `Datum naplate`+iznos (jedina neizvršena S107n stavka).
+5. Otvoreni testovi iz starijih sesija: T-S107p-1/2, T-S107o-3/4, T-S107n-3/6.
 
 ## Pravila okruženja
 
 Python `data-prep_tools/Tools/venv/Scripts/python.exe` (NE `run.bat` — `pause` visi
 non-interactive; **cmd guši zarez u argumentima**); `PYTHONUTF8=1`; `ANTHROPIC_API_KEY` u
-`.env.local`. Review mora biti **zatvoren** samo za pisanje.
+`.env.local`. Review mora biti **zatvoren** za pisanje.
 **`--dry` prvo, pokazati brojke, čekati potvrdu prije upisa.**
 **NIKAD ne pushati/mergati na `main` bez izričitog Sašinog zahtjeva.**
+Backup na vanjski disk: `data-prep_tools\Tools\backup_to_external.bat` (additive, bez `/MIR`).
 
-⚠ **`data-prep_data/` i `Claude-temp_R/` su gitignorirani = postoje SAMO na Sašinom disku, u
-jednom primjerku.** Git čuva alate, ne podatke. Vanjska kopija Reviewa i dalje nije napravljena.
+⚠ `data-prep_data/` i `Claude-temp_R/` su gitignorirani ⇒ postoje samo na Sašinom disku +
+vanjskom disku `D:`. Git čuva alate, ne podatke.
 
 ## Zamke (plaćene otkrićem — ne ponavljati)
 
-1. **Pravilo ne popravlja postojeći redak** ako mu je par valjan u Taksonomiji —
-   `apply_rules.py` ga preskače (~linija 516). Treba i jednokratni ispravak.
-2. **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** — zato `V3 preskočeno` registar.
-3. **AI provenijencija ne smije u `Pravilo run`** — `--eval` bi AI labele brojao kao `rucno`.
-   Ide u `Labela iz` (`AI:visoka …`).
-4. **`openpyxl`**: `insert_cols`/`insert_rows` ne pomiču `column_dimensions`, DV ni CF —
-   širine/outline prenositi ručno, nove kolone umetati **desno** od `J`/`K`.
-   `cell(r,c,None)` ne briše — mora `.value = None`.
-5. Sve što nosi status mora biti **unutar autofiltera** (sad `A1:AD`) — inače se pri sortu raspari.
-6. `BATCH` u `ai_classify.py` je 25, ne 40; guard poslano-vs-vraćeno se ne ignorira.
-   `effort: low` zna vratiti 1/40 uz uredan `stop_reason`; structured-output `enum` nije obvezujuć.
-7. **`OK` retci već-klasificiranih redaka ostaju trajno `OK`** nakon harvesta (harvest ih
-   preskače i ne čisti ćeliju) — 3 poznata slučaja (861, 887, 3166), ne trebaju popravak.
-8. **`source_key` nije stabilan** (`normalize_financije.py:202`, `seq_per_day`) — bitno samo
-   do importa; poslije njega identitet je `event_id`.
+1. **Odluka koja nije u sheetu ne postoji.** Koka je *rekla* da ukida
+   `Domaćinstvo|Investicije`, ali red je stajao u Taksonomiji → par valjan → rename se nikad
+   ne bi aktivirao. Isto: mapping izveden samo iz stvarnih `Tip` vrijednosti promašio je
+   `auto Lacetti|parking` (0 u `Tip`, **8 u `Tip_AI`**). Oba uhvatio `--dry`.
+2. **`apply_rules` ne popravlja redak s VALJANIM parom** (~linija 516) — kriva ali valjana
+   klasifikacija traži jednokratnu skriptu (`fix_vocarna_pravilo.py`, `fix_anja_rate.py`).
+3. **Retke tražiti po `source_key`, ne po broju retka** — pomiču se pri sortu/dedupu.
+4. **`openpyxl`**: `insert_cols`/`insert_rows` ne pomiču `column_dimensions`, DV ni CF; nove
+   kolone umetati **desno** od `J`/`K`; `cell(r,c,None)` ne briše — mora `.value = None`.
+   Čuva layout, **gubi grafove/slike/pivote**.
+5. Sve što nosi status mora biti **unutar autofiltera** — inače se pri sortu raspari od reda.
+6. **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** → obrisani `source_key` mora u
+   registar `V3 preskočeno`.
+7. `BATCH` u `ai_classify.py` je 25; `effort: low` zna vratiti 1/40 uz uredan `stop_reason`;
+   structured-output `enum` **nije** obvezujuć.
+8. **Ne pisati testni kriterij kao "X se ne smije pojaviti"** ako X ima legitiman povijesni
+   izvor — u S107r su dva takva kriterija dala lažni alarm (`Pouzdanost=PRAVILO` na
+   preimenovanim redcima je legitimno od prije migracije). Kriterij vezati na **nepromijenjen
+   agregat**, ne na odsutnost vrijednosti.

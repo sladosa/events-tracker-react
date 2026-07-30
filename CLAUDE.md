@@ -51,6 +51,8 @@ Without Financije/Zdravlje/Diary data flowing in, app is shell-only. Collab is s
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist, alati     |
+| `NEXT_SESSION_PROMPT.md`                  | **Handoff za sljedeću sesiju** — DIO 1 netehnički, DIO 2 tehnički                 |
+| `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** — kako Koka prelazi s Excela na bazu (⚠ gitignoriran, samo lokalno + `D:`; sažetak je u `NEXT_SESSION_PROMPT.md` DIO 1) |
 
 ---
 
