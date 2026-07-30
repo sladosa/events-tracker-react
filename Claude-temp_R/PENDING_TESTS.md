@@ -3,7 +3,7 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107r (2026-07-30) — migracija na Kokinu taksonomiju (2061 redaka)
+**Zadnji update:** S107r (2026-07-30) — migracija na Kokinu taksonomiju ZATVORENA (12/12 testova)
 **Detalji S107r:** [S107r_tests.md](test-sessions/S107r_tests.md)
 
 ---
@@ -23,13 +23,15 @@ uvjetne kolone (`Smjer uvjet`/`Iznos min`/`Iznos max`/`Napomena uvjet`) + `--onl
 | ID          | Test                                                                                      | Status         |
 | ----------- | ----------------------------------------------------------------------------------------- | -------------- |
 | T-S107r-A…F | Regresija `--dry`, pokrivenost 2061/2061, lanac na kopiji, integritet, rekonsilijacija brojki, sync | ✅ (programski) |
-| T-S107r-1   | **Saša:** spot-check 2061 retka — `Tip_O` stari par + `Pouzdanost` raspored nepromijenjen (⚠ kriterij ispravljen: `PRAVILO` na 661 retku je legitimno, od prije migracije) | ✅ (2061 potvrđeno) |
-| T-S107r-2   | **Saša:** 4 uvjetna slučaja — `Prihodi\|Povrat Anja` 41, `Transfer\|Anja` 31, `Kuća\|Holding (smeće)` 91, `Investicije\|Štednja` 1 | ⬜              |
+| T-S107r-1   | **Saša:** spot-check 2061 retka — `Tip_O` stari par + `Pouzdanost` raspored nepromijenjen (⚠ kriterij ispravljen: `PRAVILO` na 661 retku je legitimno, od prije migracije) | ✅ (2061 + `VISOKA` 646) |
+| T-S107r-2   | **Saša:** 4 uvjetna slučaja — `Prihodi\|Povrat Anja` **45**, `Transfer\|Anja` **27**, `Kuća\|Holding (smeće)` 91, `Investicije\|Štednja` 1 | ✅              |
 | T-S107r-7   | **⚠ NALAZ → IZVRŠENO:** 4 rate Anjine posudbe (397, 3727, 3612, 3613) pale u `Transfer\|Anja` zbog anomalije u izvoru (`Smjer=Isplata` uz `Uplata`=450; rata plaćena 400+50). `fix_anja_rate.py` (novo, guard po `source_key`+Napomena+iznos). `Prihodi\|Povrat Anja` 41→**45**, svi `X/96` na jednom mjestu | ✅ (Saša: vizualna potvrda 4 retka, filter `Pravilo run` = `2026-07-30 12:08`) |
-| T-S107r-3   | **Saša:** `Taksonomija`/`_v1`/`Preimenovanja` (33 reda) + dropdowni rade na svim redcima   | ⬜              |
-| T-S107r-4   | **Saša:** `Pravila` 71 red; 2× Anja u pravom redoslijedu; `grobn` iznad `NAKNADA`          | ⬜              |
-| T-S107r-5   | **Saša:** `Tip_AI` filtriran na stare vrijednosti = 0 redaka                               | ⬜              |
-| T-S107r-6   | **Saša:** `backup_to_external.bat` dvoklikom (disk priključen)                             | ⬜              |
+| T-S107r-3   | **Saša:** `Taksonomija`/`_v1`/`Preimenovanja` (33 reda) + dropdowni rade na svim redcima   | ✅              |
+| T-S107r-4   | **Saša:** `Pravila` 71 red; 2× Anja u pravom redoslijedu; `grobn` iznad `NAKNADA`          | ✅              |
+| T-S107r-5   | **Saša:** `Tip_AI` filtriran na stare vrijednosti = 0 redaka                               | ✅              |
+| T-S107r-6   | **Saša:** `backup_to_external.bat` dvoklikom — `[OK] Backup zavrsen`, 0 FAILED. `*EXTRA File` linije su **namjerne**: 12 starih `.pre-*` backupa koje `/E /XO` bez `/MIR` prijavi ali **ne briše**. Provjereno: lokalno 179 / na D: 191 fajlova, **0 lokalnih fajlova nije backupirano** | ✅              |
+
+**✅ S107r ZATVOREN — svih 6 Sašinih + svih 6 programskih testova prošlo, 0 otvorenih stavki.**
 
 **Sljedeće:** layout faza 1 (`sheet_layout.py`, header red 3 / freeze / collapsed help);
 `srednja` (205) i `niska` (1023) traka nad NOVOM taksonomijom; AI re-run + **nov eval**
