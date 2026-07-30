@@ -92,24 +92,71 @@ DV rasponi konsolidirani iz **26 fragmenata s ~30 rupa** u 2 čista (`J2:J4997`,
 
 ## Testovi za Sašu (ručno / vizualno)
 
-### T-S107r-1 — spot-check preimenovanih redaka ⬜
+### T-S107r-1 — spot-check preimenovanih redaka ✅ (2026-07-30, Saša)
 1. Otvori Review, filtriraj `Pravilo run` = `2026-07-30 11:23` (ili `Alternativa / nap.`
    sadrži `PREIM:`) → mora biti **2061 redaka**.
+   → **Potvrđeno:** statusna traka `2061 of 4996 records found`. ✅
 2. Provjeri da svaki takav redak ima **isti `Tip_O`/`Podtip_O`** kao prije (stari par) i
-   **novi** `Tip`/`Podtip`.
-3. **Ključno:** `Pouzdanost` na tim redcima **nije** `PRAVILO` nego što je i bila
-   (`VISOKA`/`SREDNJA`/`NISKA`/`NEMA`) — to je dokaz da nijedno pravilo nije pregazilo
-   Kokinu ručnu odluku.
-**Pad:** ako se ijedan redak s `PREIM:` ima `Pouzdanost = PRAVILO`.
+   **novi** `Tip`/`Podtip`. → potvrđeno vizualno (`Domaćinstvo|Povrat Nataša` → `(smeće)`,
+   `Domaćinstvo|Struja/Plin` → `Kuća|…`, `Povrat|Anja` → `…nja`). ✅
+3. Dodaj **drugi filtar `Pouzdanost` = `VISOKA`** → mora biti **646**.
+   Raspored na tih 2061 redaka: `VISOKA` 646 · `PRAVILO` 661 · `NEMA` 558 · `SREDNJA` 116 ·
+   `NISKA` 80.
 
-### T-S107r-2 — 4 uvjetna slučaja ⬜
+> ⚠ **KOREKCIJA (2026-07-30):** prvotni kriterij "`Pouzdanost` na tim redcima **nije**
+> `PRAVILO`" bio je **pogrešno formuliran** i dao je lažni alarm. Redak koji je u S107g/h/l
+> klasificiralo keyword pravilo legitimno **ima** `Pouzdanost = PRAVILO` još od tada;
+> preimenovanje `Pouzdanost` **ne dira**, pa oznaka ostaje. Takvih je **661**, i **svih 661
+> imalo je `PRAVILO` i prije migracije** — novih `PRAVILO` oznaka je **0**.
+> Trag u `Alternativa / nap.` pokazuje oba koraka, npr.:
+> `pravilo #19: generali | PREIM: bio Domaćinstvo/Popravci, održavanje, osiguranje`.
+>
+> **Pravi dokaz da nijedno pravilo nije pregazilo ručnu odluku je nepromijenjen RASPORED**,
+> ne odsutnost `PRAVILO`: programski provjereno da je `Pouzdanost` **identična po retku**
+> (0 promjena na svih 2061) i u cijelom fileu (`VISOKA` 1014 → 1014).
+
+**Pad:** broj redaka ≠ 2061, ili `VISOKA` pod tim filtrom ≠ 646, ili `Tip_O`/`Podtip_O`
+pokazuje **novi** par (mora pokazivati stari).
+
+### T-S107r-2 — 4 uvjetna slučaja ⬜ (brojke provjerene programski)
 Filtriraj i pogledaj sadržaj:
-1. `Tip` = `Prihodi`, `Podtip` = `Povrat Anja` → **41** redaka, svi Uplata 450 €.
-2. `Tip` = `Transfer`, `Podtip` = `Anja` → **31**; među njima i **2 Isplate od 450 €**
-   (te namjerno NISU povrat).
-3. `Kuća|Holding (smeće)` → 50 starih + **41** novih (Napomena `Nataša Holding`) = **91**.
+1. `Prihodi|Povrat Anja` → **41** retka, svi `Smjer=Uplata` 450 €.
+2. `Transfer|Anja` → **31** (sve što nije uplata od 450: iznosi 20–600 €).
+3. `Kuća|Holding (smeće)` → **91** = 45 (`Podtip_O` = `Holding (smeće)`) + 41
+   (`Podtip_O` = `Povrat Nataša`) + 5 (`Podtip_O` prazan — bili N/A u trenutku snapshota,
+   klasificirani pravilom kasnije).
 4. `Investicije|Štednja` → **1** redak (2024-03-04, Sašin RF, 550 €, Napomena `Stednja`).
-**Pad:** brojevi ne odgovaraju, ili u `Transfer|Anja` nema onih 2 isplate.
+**Pad:** brojevi ne odgovaraju.
+
+> ⚠ **KOREKCIJA (2026-07-30):** prvotna tvrdnja "među 31 su i **2 Isplate od 450 €** koje
+> namjerno nisu povrat" je **dvostruko pogrešna** i ispod nje je pravi nalaz — v.
+> **T-S107r-7** ispod. Ta dva retka (397, 3727) nemaju Isplatu od 450 (imaju `Uplata` = 450
+> **i** `Isplata` = 0,30/0,70), i **nisu** ispravno izuzeta: to su `rata 45/96` i `rata 73/96`
+> iste serije čijih je ostalih 38 otišlo u `Prihodi|Povrat Anja`.
+
+### T-S107r-7 — ⚠ NALAZ: 4 rate Anjine posudbe izvan `Prihodi|Povrat Anja` ⬜ ODLUKA
+**Nije regresija migracije** — anomalija u izvornim podacima koju je migracija razotkrila.
+
+Od **41** retka s oznakom `X/96`, **38** je u `Prihodi|Povrat Anja`, a **3** su pala u
+`Transfer|Anja` (+ 1 parnjak bez oznake):
+
+| red | oznaka | Smjer | Uplata | Isplata | zašto je promašilo mapping |
+| --- | --- | --- | --- | --- | --- |
+| 397 | `rata 45/96` | **Isplata** | 450 | 0,30 | uvjet je `Smjer=Uplata`; uz to `row_amount()` čita `Isplata` prvo pa vidi 0,30, ne 450 |
+| 3727 | `rata 73/96` | **Isplata** | 450 | 0,70 | isto |
+| 3612 | `72/96` | Uplata | 400 | — | rata plaćena u **dva dijela** (400 + 50 = 450) pa ni jedan nije 450 |
+| 3613 | `72/96` | Uplata | 50 | — | isto |
+
+**Opseg anomalije je zatvoren:** u cijelom fileu samo **3** retka imaju popunjene **obje**
+kolone iznosa (397, 3727, i 3264 = bankovna naknada 0,26/0,17, ispravno klasificirana);
+`Smjer` se svugdje inače slaže s popunjenom kolonom ⇒ **nema sistemskog rizika** za
+`row_amount()` i `Iznos min/max` pravila.
+
+**Predlažem:** sva 4 retka → `Prihodi|Povrat Anja` (sve su uplate Anje po istoj posudbi).
+⚠ `apply_rules` ih **neće** dirnuti — `Transfer|Anja` je sad **valjan** par, a alat preskače
+retke s valjanim parom (poznata zamka). Treba jednokratna skripta, uzor
+`fix_vocarna_pravilo.py`. Iznose (0,30/0,70) ne dirati — izgledaju kao naknada za transfer.
+**Čeka Sašinu potvrdu** (posebno je li 400+50 split isto povrat).
 
 ### T-S107r-3 — Preimenovanja i Taksonomija sheetovi ⬜
 1. `Taksonomija` = Kokina verzija (18 Tipova, `Kuća`/`Prihodi`/`Prijevoz`/`Advokati`,
