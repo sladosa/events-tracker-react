@@ -42,6 +42,11 @@ DATA_DIR = Path(r"C:\0_Sasa\events-tracker-react\data-prep_data\Financije")
 RED_FILL = PatternFill('solid', fgColor='FFC7CE')
 YEL_FILL = PatternFill('solid', fgColor='FFEB9C')
 
+# Red u kojem su zaglavlja Review sheeta. Zasad 1; kad se raspored promijeni na
+# "help u redovima 1–2 (collapsed) + header u redu 3", ovo postaje 3 i freeze
+# sam postane F4. Tada ide u zajednički sheet_layout modul.
+HEADER_ROW = 1
+
 # Dijakritike → ASCII (mora ostati usklađeno s normalize_financije.sanitize_name)
 DIACRITICS = {'ć': 'c', 'č': 'c', 'š': 's', 'ž': 'z', 'đ': 'd',
               'Ć': 'C', 'Č': 'C', 'Š': 'S', 'Ž': 'Z', 'Đ': 'D'}
@@ -204,6 +209,15 @@ def main() -> None:
         f'{tip_ltr}2:{tip_ltr}{last}',
         FormulaRule(formula=[f'OR({tip_ltr}2="",{tip_ltr}2="N/A")'], fill=YEL_FILL),
     )
+
+    # ── 3b. Garantiraj freeze panes (S107r) ──────────────────────────────────
+    # Freeze je već tri puta odlutao slučajnim klikom (F2 → F4855 u S107m →
+    # F2 u S107o → F68 zatečen u S107r), a Excel ga snima u file pa ostaje.
+    # Sidro je red ISPOD headera; kad header pređe u red 3, ovo postaje 'F4'.
+    want_freeze = f'F{HEADER_ROW + 1}'
+    if ws.freeze_panes != want_freeze:
+        print(f'· freeze panes: {ws.freeze_panes} → {want_freeze}')
+        ws.freeze_panes = want_freeze
 
     # ── 4. Backup + save in place ─────────────────────────────────────────────
     backup = path.with_name(f'{path.stem}.pre-sync-{datetime.now():%Y%m%d_%H%M%S}.xlsx')

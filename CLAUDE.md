@@ -713,6 +713,55 @@ Detalji: `ENRICH_PLAN.md` §2o, plan za netehnički pregled: `NEXT_SESSION_PROMP
    **taksonomiju zaključati PRIJE importa** (poslije ime živi i u `validation_rules` i u
    `value_text` svakog eventa; rizik S105d).
 
+**Done 2026-07-30 (S107r — migracija na Kokinu taksonomiju; detalji ENRICH_PLAN §2p,
+testovi `Claude-temp_R/test-sessions/S107r_tests.md`):**
+1. **Povod:** Koka klasificirala dosta redaka u sesijama sa Sašom, ali imala primjedbu na
+   taksonomiju → Saša duplicirao sheet (`Taksonomija (2)`) i pustio je da je složi po svom.
+   Nova: **18 Tipova** (novi `Kuća`/`Prihodi`/`Prijevoz`/`Advokati`; ukinuti `Namirnice`/
+   `Mirovina`/`Povrat`/`Ostali prihodi`/`Ostavine`). **2061 od 3426 klasificiranih redaka
+   (58 %)** nosilo par kojeg više nema — bez migracije bi ih `apply_rules.py` tiho resetirao.
+2. **`migrate_taksonomija.py` (novo)** — `Preimenovanja` pokriva samo **1 od 4** mjesta gdje
+   ime taksonomije živi; ostala tri bi tiho propala: `Pravila` (37/70 nevaljanih → `read_rules`
+   ih preskoči, izgubio bi se S107l/S107h posao), `Tip_AI`/`Podtip_AI` (911 predikcija →
+   `apply_ai --harvest` ih odbija, $1,17 + pregled u smeće), `Neklasificirano` (10). Jedna
+   `MAP` tablica (33 reda) na sva 4 mjesta, jedan `wb.save()` = atomično. **Nema "training
+   runa"** — remap je deterministički; jedino model-side je AI re-run, i to poslije.
+3. **`Preimenovanja` dobio uvjetne kolone** `Smjer uvjet`/`Iznos min`/`Iznos max`/
+   `Napomena uvjet` (uz postojeći `Racun uvjet`) — AND-ane, prvi red pobjeđuje, uvjetni iznad
+   bezuvjetnog za isti par. Trebalo za: `Povrat|Anja` (41 Uplata **450 €** → `Prihodi|Povrat
+   Anja`, ostalo uklj. **2 Isplate od 450** → `Transfer|Anja`), `Povrat Nataša` (41 s `Nataša
+   Holding` u napomeni → `Kuća|Holding (smeće)`, 3 bez → `Transfer|Natasa`), `Groblja`
+   (Nena/Nataša iz napomene). Stari 7-kolonski sheet radi nepromijenjeno (kolone po imenu;
+   regresija: `--dry` prije/poslije bajt-identičan).
+4. **`--only-renames` flag** — prioritet `Pravilo > Preimenovanja` (uveden S107g za obrnutu
+   situaciju) bi nad 2061 retkom × 70 pravila prepisao Kokine ručne odluke i spustio
+   `VISOKA`→`PRAVILO`. Nakon migracije se pokrene normalan run za N/A hrpu.
+5. **Rezultat:** 2061 preimenovano, **0 resetirano**, **0 preostalih nevaljanih parova** ni u
+   `Tip` ni u `Tip_AI`; **`Pouzdanost` distribucija identična (`VISOKA` 1014 → 1014)** = nijedno
+   pravilo nije pregazilo ručnu odluku; `Tip_O`/`Podtip_O` netaknuti; **Σ Uplata/Isplata delta
+   0,00**; `Pravila` 70 → **71** (Anja split), 0 preskočenih.
+6. **Dva nalaza koja su otkrili `--dry` runovi:** (a) `auto Lacetti|parking` ima 0 redaka u
+   `Tip` ali **8 predikcija** u `Tip_AI` → mapping izveden samo iz stvarnih `Tip` vrijednosti
+   imao je rupu; (b) **odluka koja nije u sheetu ne postoji** — Koka je *rekla* da ukida
+   `Domaćinstvo|Investicije`, ali red je stajao u `Taksonomija (2)` → par valjan → rename se
+   nikad ne bi aktivirao (ista klasa kao zamka "pravilo ne popravlja redak s valjanim parom").
+7. **`grobn` pravilo zadržano i preusmjereno** na `Transfer|Natasa` (ne obrisano): prag po
+   iznosu ne razdvaja grobnu (26–28 €) od bankovnih naknada (0,13–50 €); 3 postojeća retka su
+   nakon renamea trajno imuna, a bez pravila bi `NAKNADA` buduću grobnu zakopala među 102
+   bankovne naknade.
+8. **`sync_taxonomy.py` sad garantira `freeze_panes`** (`F{HEADER_ROW+1}`) — odlutao treći put
+   (F2 → F4855 → F2 → F84). DV rasponi konsolidirani iz **26 fragmenata s ~30 rupa** (redaka
+   BEZ dropdowna) u 2 čista raspona.
+9. **`Tools/backup_to_external.bat` (novo)** — additive robocopy (`/E /XO`, **bez `/MIR`** jer
+   mirror prenese lokalno brisanje/kvar na jedinu drugu kopiju) za `data-prep_data/` +
+   `Claude-temp_R/`; oba gitignorirana ⇒ vanjski disk je jedina druga kopija. Backup napravljen
+   prije i poslije migracije; ključni fajlovi verificirani po veličini.
+10. **Otvoreno:** layout faza 1 (`sheet_layout.py` — header u red 3, freeze `F4` **tek tada**,
+    help u collapsed redove 1–2 kol. B; header red 1 hardkodiran u **15** skripti, **12 kopija**
+    funkcije za traženje kolone ⇒ prvo čitači tolerantni na raspored, pa promjena rasporeda).
+    **AI eval baseline 81,5 % / Tip 92,3 % više ne vrijedi** — mjeren na staroj taksonomiji;
+    `srednja` (205) i `niska` (1023) traka rade se nad novom.
+
 **Sljedeći koraci — ⚠ ZASTARJELO od S107m, prekrojeno S107q, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku

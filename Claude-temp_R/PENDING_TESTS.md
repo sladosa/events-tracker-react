@@ -3,8 +3,36 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107p (2026-07-28) — harvest `visoka` trake izvršen (347 redaka)
-**Detalji S107p:** [S107p_tests.md](test-sessions/S107p_tests.md)
+**Zadnji update:** S107r (2026-07-30) — migracija na Kokinu taksonomiju (2061 redaka)
+**Detalji S107r:** [S107r_tests.md](test-sessions/S107r_tests.md)
+
+---
+
+## S107r — migracija na Kokinu taksonomiju `Taksonomija (2)` (Python data-prep; NEMA app koda)
+
+Koka složila vlastitu taksonomiju (18 Tipova; novi `Kuća`/`Prihodi`/`Prijevoz`/`Advokati`,
+ukinuti `Namirnice`/`Mirovina`/`Povrat`/`Ostali prihodi`/`Ostavine`). **2061 od 3426
+klasificiranih redaka (58 %)** nosilo je par kojeg više nema — bez migracije bi ih
+`apply_rules.py` tiho resetirao na N/A.
+
+Novo: `migrate_taksonomija.py` (remapira **4** mjesta istom tablicom), `Preimenovanja`
+uvjetne kolone (`Smjer uvjet`/`Iznos min`/`Iznos max`/`Napomena uvjet`) + `--only-renames`,
+`Tools/backup_to_external.bat`. `Pravila` 70 → **71**, `Tip_AI` 911 remapirano, `Neklasificirano` 10.
+**`Pouzdanost` distribucija identična — `VISOKA` 1014 → 1014**, Σ novca delta 0,00.
+
+| ID          | Test                                                                                      | Status         |
+| ----------- | ----------------------------------------------------------------------------------------- | -------------- |
+| T-S107r-A…F | Regresija `--dry`, pokrivenost 2061/2061, lanac na kopiji, integritet, rekonsilijacija brojki, sync | ✅ (programski) |
+| T-S107r-1   | **Saša:** spot-check 2061 retka — `Tip_O` stari par, `Pouzdanost` NIJE `PRAVILO`           | ⬜              |
+| T-S107r-2   | **Saša:** 4 uvjetna slučaja (Anja 41/31 uklj. 2 isplate, Holding 91, Štednja 1)            | ⬜              |
+| T-S107r-3   | **Saša:** `Taksonomija`/`_v1`/`Preimenovanja` (33 reda) + dropdowni rade na svim redcima   | ⬜              |
+| T-S107r-4   | **Saša:** `Pravila` 71 red; 2× Anja u pravom redoslijedu; `grobn` iznad `NAKNADA`          | ⬜              |
+| T-S107r-5   | **Saša:** `Tip_AI` filtriran na stare vrijednosti = 0 redaka                               | ⬜              |
+| T-S107r-6   | **Saša:** `backup_to_external.bat` dvoklikom (disk priključen)                             | ⬜              |
+
+**Sljedeće:** layout faza 1 (`sheet_layout.py`, header red 3 / freeze / collapsed help);
+`srednja` (205) i `niska` (1023) traka nad NOVOM taksonomijom; AI re-run + **nov eval**
+(stari baseline 81,5 % je mjeren na staroj taksonomiji).
 
 ---
 

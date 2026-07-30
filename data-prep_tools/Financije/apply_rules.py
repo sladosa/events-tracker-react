@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-apply_rules.py  (S107c, 2026-07-12; dorade S107e, 2026-07-14)
-=============================================================
+apply_rules.py  (S107c, 2026-07-12; dorade S107e, 2026-07-14; S107r, 2026-07-30)
+================================================================================
 Primjenjuje EDITABILNA keyword pravila (`Pravila` sheet) na neklasificirane redove
 Financije REVIEW Excela — cilj: minimalan ručni rad u Tip/Podtip klasifikaciji.
 
@@ -18,6 +18,10 @@ Kako radi (svaki pravi run, ovim redom):
      `Preimenovanja` sheetu → dobije Novi Tip/Podtip UMJESTO reseta —
      Pouzdanost OSTAJE (VISOKA se čuva!), 'PREIM: bio <tip>/<pod>' se dodaje
      u Alternativa. 'Racun uvjet' kolona = per-osoba split (kokin/sasin).
+     S107r: uz `Racun uvjet` postoje i `Smjer uvjet`, `Iznos min`, `Iznos max`,
+     `Napomena uvjet` — svi opcionalni, AND-ani, prvi red koji odgovara pobjeđuje.
+     Time se jedan stari par može razdvojiti na više novih (npr. Povrat|Anja →
+     Prihodi|Povrat Anja za Uplatu od 450 €, ostalo → Transfer|Anja).
   5. VALIDACIJA TAKSONOMIJE (S107e): preostali red čiji Tip/Podtip par NE
      postoji u Taksonomiji → reset na N/A + Pouzdanost='NEMA' +
      'TAKS: bio <tip>/<pod>' u Alternativa (original ostaje u _O kolonama).
@@ -68,6 +72,13 @@ Pokretanje (file zatvoren u Excelu!):
   Financije\\run.bat apply_rules.py --all      → + REPORT konflikata na već
                                                  klasificiranim redovima (ne piše!)
   ... apply_rules.py <putanja.xlsx> [--dry] [--all]  → eksplicitni file
+
+--only-renames (S107r): pravila se UOPĆE ne čitaju — radi se samo korak 4+5
+(Preimenovanja, pa reset ostatka). Za masovnu migraciju taksonomije, gdje bi
+inače 70 pravila prošlo preko ~2000 nevaljanih redaka i prepisalo ručne odluke
+(Pouzdanost VISOKA → PRAVILO) prije nego Preimenovanja dođu na red. Sva potrebna
+specifičnost se u tom slučaju izražava uvjetnim kolonama u `Preimenovanja`.
+Nakon takvog runa pokreni skriptu još jednom bez flaga da pravila odrade N/A hrpu.
 """
 
 import re
@@ -240,14 +251,31 @@ def find_header_col(ws, header: str) -> int:
 PREIM_HELP = (
     'PREIMENOVANJA — spašava redove čiji stari Tip/Podtip par više ne postoji u Taksonomiji.\n'
     'Umjesto reseta na N/A red dobije Novi Tip/Podtip; Pouzdanost se NE dira (VISOKA ostaje).\n'
-    'Racun uvjet (opcionalno): red se primijeni samo ako Racun sadrži taj tekst — per-osoba\n'
-    'split, npr. "kokin" → Kokin tekući ZABA, "sasin" → Sašin tekući RF.\n'
-    'Redovi se čitaju odozgo; PRVI koji odgovara (stari par + uvjet) pobjeđuje.\n'
+    '\n'
+    'UVJETI (sve kolone opcionalne; prazno = uvjet se ne provjerava). Ako ih je više na istom\n'
+    'redu, moraju biti zadovoljeni SVI (AND):\n'
+    '  Racun uvjet     — Racun reda SADRŽI taj tekst; per-osoba split: "kokin" / "sasin"\n'
+    '  Smjer uvjet     — Smjer reda je točno to: "Uplata" ili "Isplata"\n'
+    '  Iznos min/max   — Isplata/Uplata reda je unutar raspona (prazno = bez granice)\n'
+    '  Napomena uvjet  — Napomena ili "Izvod opis" reda SADRŽI taj tekst\n'
+    'Tako se jedan stari par može razdvojiti na više novih: stavi UVJETNE redove IZNAD\n'
+    'bezuvjetnog reda za isti par (bezuvjetni je onda "sve ostalo").\n'
+    '\n'
+    'Redovi se čitaju odozgo; PRVI koji odgovara (stari par + svi uvjeti) pobjeđuje.\n'
     'Prazan Novi Tip = par se NE preimenuje → ide na reset na N/A (kao dosad).\n'
     'Novi par mora postojati u Taksonomiji (inače se red preskače uz upozorenje).\n'
     'Auto-prijedlozi su popunjeni gdje je kandidat bio očit — SVAKI RED PROVJERI prije runa!\n'
-    'Nakon popune: Financije\\run.bat apply_rules.py --dry (proba) pa bez --dry.'
+    'Nakon popune: Financije\\run.bat apply_rules.py --dry (proba) pa bez --dry.\n'
+    'Za masovnu migraciju taksonomije koristi --only-renames (pravila se ne čitaju).'
 )
+
+# (header, širina) — uvjetne kolone grupirane odmah do starog para, radi čitljivosti.
+# read_renames() traži kolone PO IMENU, pa je poredak slobodan, a stari 7-kolonski
+# sheet (bez uvjetnih kolona) i dalje radi.
+PREIM_HEADERS = [('Stari Tip', 18), ('Stari Podtip', 26), ('Racun uvjet', 12),
+                 ('Smjer uvjet', 12), ('Iznos min', 10), ('Iznos max', 10),
+                 ('Napomena uvjet', 22), ('Novi Tip', 18), ('Novi Podtip', 34),
+                 ('Redova', 8), ('Komentar', 60)]
 
 
 def collect_invalid_pairs(ws, col_tip: int, col_pod: int, tax: dict[str, set[str]]) -> Counter:
@@ -282,12 +310,11 @@ def create_preimenovanja_sheet(wb, path: Path, pairs: Counter, tax: dict[str, se
     """Pred-popunjen sheet: svaki nevaljani par + auto-prijedlog gdje je očit.
     2 kandidata koji se razlikuju po koka/sasa → dva reda s Racun uvjetom."""
     ws = wb.create_sheet('Preimenovanja', wb.sheetnames.index('Pravila') + 1)
-    headers = [('Stari Tip', 18), ('Stari Podtip', 26), ('Racun uvjet', 12),
-               ('Novi Tip', 18), ('Novi Podtip', 34), ('Redova', 8), ('Komentar', 60)]
-    for c, (h, w) in enumerate(headers, 1):
+    for c, (h, w) in enumerate(PREIM_HEADERS, 1):
         cell = ws.cell(1, c, h)
         cell.fill, cell.font, cell.border = HDR_FILL, WHITE_BOLD, BORDER
-        ws.column_dimensions[chr(64 + c)].width = w
+        ws.column_dimensions[get_column_letter(c)].width = w
+    col = {h: i for i, (h, _) in enumerate(PREIM_HEADERS, 1)}
 
     r = 2
     for (tip, pod), n in pairs.most_common():
@@ -311,15 +338,19 @@ def create_preimenovanja_sheet(wb, path: Path, pairs: Counter, tax: dict[str, se
                 hint = 'nema kandidata u Taksonomiji — prazno = reset na N/A'
             rows = [('', '', '', hint)]
         for i, (uvjet, nt, np_, kom) in enumerate(rows):
-            for c, v in enumerate((tip, pod, uvjet, nt, np_, n if i == 0 else None, kom), 1):
-                ws.cell(r, c, v).border = BORDER
+            vals = {'Stari Tip': tip, 'Stari Podtip': pod, 'Racun uvjet': uvjet,
+                    'Novi Tip': nt, 'Novi Podtip': np_, 'Komentar': kom,
+                    'Redova': n if i == 0 else None}
+            for c in range(1, len(PREIM_HEADERS) + 1):
+                ws.cell(r, c, vals.get(PREIM_HEADERS[c - 1][0])).border = BORDER
             r += 1
 
-    note = ws.cell(2, 9, PREIM_HELP)
+    help_col = len(PREIM_HEADERS) + 2
+    note = ws.cell(2, help_col, PREIM_HELP)
     note.alignment = Alignment(wrap_text=True, vertical='top')
-    ws.column_dimensions['I'].width = 95
-    ws.row_dimensions[2].height = 145
-    ws.freeze_panes = 'A2'
+    ws.column_dimensions[get_column_letter(help_col)].width = 95
+    ws.row_dimensions[2].height = 230
+    ws.freeze_panes = ws.cell(2, col['Novi Tip']).coordinate
     try:
         wb.save(path)
     except PermissionError:
@@ -330,14 +361,27 @@ def create_preimenovanja_sheet(wb, path: Path, pairs: Counter, tax: dict[str, se
 
 
 def read_renames(wb, tax: dict[str, set[str]]) -> list[dict]:
+    """Mapping stari par → novi par, uz opcionalne uvjete (S107r).
+    Kolone se traže PO IMENU — stari 7-kolonski sheet (bez uvjetnih kolona) radi
+    identično kao prije, jer nepostojeća kolona = uvjet se ne provjerava."""
     ws = wb['Preimenovanja']
     hdr = {str(ws.cell(1, c).value or '').strip().lower(): c
            for c in range(1, ws.max_column + 1)}
-    cols = (hdr.get('stari tip', 1), hdr.get('stari podtip', 2), hdr.get('racun uvjet', 3),
-            hdr.get('novi tip', 4), hdr.get('novi podtip', 5))
+    # Novi Tip/Podtip se NE smiju pogađati po poziciji — u sheetu s uvjetnim
+    # kolonama bi pozicijski fallback pročitao "Smjer uvjet" kao "Novi Tip".
+    missing = [h for h in ('stari tip', 'stari podtip', 'novi tip', 'novi podtip') if h not in hdr]
+    if missing:
+        sys.exit(f'✗ Preimenovanja sheet nema kolone: {", ".join(missing)}')
+    c_st, c_sp, c_nt, c_np = (hdr[h] for h in ('stari tip', 'stari podtip', 'novi tip', 'novi podtip'))
+    c_uv, c_us, c_un = hdr.get('racun uvjet'), hdr.get('smjer uvjet'), hdr.get('napomena uvjet')
+    c_imin, c_imax = hdr.get('iznos min'), hdr.get('iznos max')
+
+    def txt(r: int, c: int | None) -> str:
+        return str(ws.cell(r, c).value or '').strip() if c else ''
+
     out, skipped = [], 0
     for r in range(2, ws.max_row + 1):
-        st, sp, uv, nt, np_ = (str(ws.cell(r, c).value or '').strip() for c in cols)
+        st, sp, nt, np_ = (str(ws.cell(r, c).value or '').strip() for c in (c_st, c_sp, c_nt, c_np))
         sp, np_ = ('' if v == '—' else v for v in (sp, np_))
         if not nt:
             continue                     # nepopunjen red — taj par ide na reset (namjerno)
@@ -348,8 +392,33 @@ def read_renames(wb, tax: dict[str, set[str]]) -> list[dict]:
             print(f'⚠ Preimenovanja red {r}: novi par "{nt}/{np_ or "—"}" ne postoji u Taksonomiji — preskočen')
             skipped += 1
             continue
-        out.append({'row': r, 'old': (fold(st), fold(sp)), 'uvjet': fold(uv),
-                    'nt': nt, 'np': np_, 'label': f'{st}/{sp or "—"}'})
+        imin_raw = ws.cell(r, c_imin).value if c_imin else None
+        imax_raw = ws.cell(r, c_imax).value if c_imax else None
+        try:
+            imin = float(imin_raw) if imin_raw not in (None, '') else None
+            imax = float(imax_raw) if imax_raw not in (None, '') else None
+        except (TypeError, ValueError):
+            print(f'⚠ Preimenovanja red {r}: Iznos min/max nije broj — preskočen'); skipped += 1
+            continue
+        smjer = fold(txt(r, c_us))
+        if smjer and smjer not in ('uplata', 'isplata'):
+            print(f'⚠ Preimenovanja red {r}: Smjer uvjet "{txt(r, c_us)}" nije Uplata/Isplata — preskočen')
+            skipped += 1
+            continue
+        rng = ''
+        if imin is not None or imax is not None:
+            lo = '' if imin is None else f'{imin:g}'
+            hi = '' if imax is None else f'{imax:g}'
+            rng = f'{lo}–{hi}€'
+        cond = ' '.join(filter(None, [
+            f'Racun~{txt(r, c_uv)}' if txt(r, c_uv) else '',
+            f'Smjer={txt(r, c_us)}' if smjer else '',
+            rng,
+            f'nap~{txt(r, c_un)}' if txt(r, c_un) else '']))
+        out.append({'row': r, 'old': (fold(st), fold(sp)), 'uvjet': fold(txt(r, c_uv)),
+                    'smjer': smjer, 'imin': imin, 'imax': imax, 'nap': fold(txt(r, c_un)),
+                    'nt': nt, 'np': np_,
+                    'label': f'{st}/{sp or "—"}' + (f'  [{cond}]' if cond else '')})
     if skipped:
         print(f'  ({skipped} preimenovanja preskočeno — ispravi pa ponovi)')
     return out
@@ -409,9 +478,11 @@ def main() -> None:
     args = sys.argv[1:]
     dry = '--dry' in args
     report_all = '--all' in args
+    only_renames = '--only-renames' in args
     path = pick_file(args)
     print(f'File: {path.name}{"  [DRY RUN — bez snimanja]" if dry else ""}'
-          f'{"  [--all: report konflikata]" if report_all else ""}')
+          f'{"  [--all: report konflikata]" if report_all else ""}'
+          f'{"  [--only-renames: pravila se NE čitaju]" if only_renames else ""}')
 
     wb = openpyxl.load_workbook(path)
     if 'Review' not in wb.sheetnames or 'Taksonomija' not in wb.sheetnames:
@@ -432,6 +503,7 @@ def main() -> None:
     col_rac  = find_header_col(ws, 'Racun')
     col_upl  = find_header_col(ws, 'Uplata')
     col_isp  = find_header_col(ws, 'Isplata')
+    col_smj  = find_header_col(ws, 'Smjer')
 
     # ── 0. PREIMENOVANJA sheet: prvi put pred-popuni stare parove i stani ─────
     invalid_pairs = collect_invalid_pairs(ws, col_tip, col_pod, tax)
@@ -442,10 +514,12 @@ def main() -> None:
     if renames:
         print(f'Preimenovanja: {len(renames)} valjanih mappinga')
 
-    rules = read_rules(wb, tax)
+    # --only-renames: rules ostaje prazan → find_rule() nikad ne pogodi (korak 2)
+    # i korak 3 ne piše ništa. Nema uslovljavanja u petljama.
+    rules = [] if only_renames else read_rules(wb, tax)
     if not rules and not renames:
         sys.exit('✗ Nema valjanih pravila u "Pravila" sheetu (ni preimenovanja).')
-    print(f'Pravila: {len(rules)} valjanih')
+    print('Pravila: preskočena (--only-renames)' if only_renames else f'Pravila: {len(rules)} valjanih')
     # SAMO 'Izvod opis*' kolone — NE 'Izvod reda' (koka EU:...) ni 'Izvod file'
     # (ZABA_*.pdf) jer bi ključne riječi poput "zaba"/"koka" lažno matchale sve.
     izvod_cols = [c for c in range(1, ws.max_column + 1)
@@ -496,6 +570,19 @@ def main() -> None:
                 return i, rule
         return None
 
+    def rename_conds_ok(m: dict, r: int) -> bool:
+        """Svi popunjeni uvjeti Preimenovanja reda moraju vrijediti (AND).
+        Prazan uvjet se ne provjerava, pa je bezuvjetan red = "sve ostalo"."""
+        if m['uvjet'] and m['uvjet'] not in fold(ws.cell(r, col_rac).value):
+            return False
+        if m['smjer'] and m['smjer'] != fold(ws.cell(r, col_smj).value):
+            return False
+        if not rule_amount_ok(m, row_amount(r)):
+            return False
+        if m['nap'] and m['nap'] not in match_text(r):
+            return False
+        return True
+
     # ── 2. PREIMENOVANJA + VALIDACIJA: nevaljan par → PRAVILO (ako pogađa) →
     #        novi par (Preimenovanja) → reset na N/A. Pravilo nadvladava blanket
     #        rename kad par-mapping pogađa preširoko (S107g).
@@ -540,10 +627,9 @@ def main() -> None:
                 over_samples.append(f'  red {r}: {tip_now}/{pod_now or "—"} → pravilo #{i + 1} '
                                      f'"{rule["kw"]}" → {rule["tip"]}/{rule["pod"] or "—"}')
             continue
-        racun_f = fold(ws.cell(r, col_rac).value)
         m = next((m for m in renames
                   if m['old'] == (fold(tip_now), fold(pod_now))
-                  and (not m['uvjet'] or m['uvjet'] in racun_f)), None)
+                  and rename_conds_ok(m, r)), None)
         if m:
             renamed += 1
             ren_hits[m['row']] = ren_hits.get(m['row'], 0) + 1
