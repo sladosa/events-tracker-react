@@ -3,8 +3,34 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107r (2026-07-30) — migracija na Kokinu taksonomiju ZATVORENA (12/12 testova)
-**Detalji S107r:** [S107r_tests.md](test-sessions/S107r_tests.md)
+**Zadnji update:** S107s (2026-07-31) — struktura `Financije_all` generirana, čeka Sašin pregled + TEST import
+**Detalji S107s:** [S107s_tests.md](test-sessions/S107s_tests.md)
+
+---
+
+## S107s — odluke o formatu importa + generator strukture `Financije_all` (Python; NEMA app koda)
+
+Sve otvorene odluke oko app-import Excela donesene (`session_start`, `comment` vs atribut,
+`Valuta`, `Sort`, email u kol. G). **`make_financije_all_structure.py` (novo)** generira
+Structure Excel za novu areu iz PROD exporta + `Taksonomija` sheeta: 15 atributa,
+Tip/Podtip regenerirani (18/65), `Napomena` → **`Izvod opis`**, novi `Datum naplate`/
+`Datum kupovine`, Unit EUR, `Valuta` bez defaulta, `Automations` set_attribute pravilo.
+
+**Četiri tihe rupe u importu nađene čitanjem koda** (sve u `NEXT_SESSION_PROMPT.md` DIO 2):
+`session_start` mora biti **tekst** (inače svi redovi → 09:00 bez upozorenja) · krivo ime
+atributa se gubi **bez greške** · `Rate?` je boolean pa bi `'DA'` postao **FALSE** · email u
+kol. G mora biti račun koji **izvodi** import (inače se svi redovi preskoče kao „tuđi").
+
+| ID | Test | Status |
+| --- | --- | --- |
+| P-1…P-7 | Programske kontrole (dry run, simulacija `buildValidationRules`, `\|` u taksonomiji, `DateMap`, CommentTemplate, Automations zaglavlje, SORT_ORDER pokrivenost) | ✅ (programski) |
+| T-S107s-1 | **Saša:** pregled generiranog structure filea (Sort, Podtip 19 redaka, Tip 18 opcija, Unit EUR, Valuta bez defaulta) | ⬜ |
+| T-S107s-2 | **Saša:** Structure import u TEST (`npm run dev:test`) — očekivano 1 area / 1 kategorija / 15 atributa / 1 automations pravilo | ⬜ |
+| T-S107s-3 | **Saša:** Add Activity na novoj aree — lanac `Racun→Izvor→Status`, `Tip→Podtip`, EUR uz iznos, `Datum naplate` auto, comment bez praznog repa | ⬜ |
+
+**Sljedeće:** `make_financije_import.py` (10 zapisa u TEST) → spot-check → export roundtrip
+→ batch po godinama. **Izmjereno ali neizvršeno:** 15 nemarkiranih rata; `Datum kupovine`
+na ratama (199 grupa, 105 s ratom 1, anker aritmetički); `automations.rata` prijenos.
 
 ---
 

@@ -783,7 +783,48 @@ testovi `Claude-temp_R/test-sessions/S107r_tests.md`):**
     **AI eval baseline 81,5 % / Tip 92,3 % više ne vrijedi** — mjeren na staroj taksonomiji;
     `srednja` (205) i `niska` (1023) traka rade se nad novom.
 
-**Sljedeći koraci — ⚠ ZASTARJELO od S107m, prekrojeno S107q, v. `NEXT_SESSION_PROMPT.md`:**
+**Done 2026-07-31 (S107s — odluke o formatu importa + generator strukture `Financije_all`;
+detalji `NEXT_SESSION_PROMPT.md`, testovi `Claude-temp_R/test-sessions/S107s_tests.md`):**
+1. **Redoslijed obrnut u odnosu na plan:** prije generatora importa trebala je **struktura**,
+   jer zaglavlja uvoznog filea moraju nositi točna `attribute_definitions.name` imena.
+2. **⚠ Četiri tihe rupe u `excelImport.ts` nađene čitanjem koda** (nijedna ne javlja grešku):
+   (a) **`session_start` mora biti tekst `"HH:MM"`** — `cellStr` na pravoj Excel time
+   vrijednosti vrati puni ISO, `parseTimeStr` → `null`, fallback `?? {h:9}` ⇒ **svi redovi
+   dobiju 09:00**; (b) **krivo ime atributa se tiho preskoči** (`:836`) — `validateLegendHeaders`
+   provjerava LEGEND vs zaglavlje samo *unutar filea*, ne protiv baze; (c) **`Rate?` je
+   `boolean`**, a Review ima `'DA'` → `String(v).toLowerCase()==='true'` bi spremio **FALSE**
+   na svih 661 rata; (d) **email u kol. G mora biti račun koji IZVODI import** — inače se
+   redak klasificira kao „tuđi" i preskoči (`foreignMode='skip'`).
+3. **`session_start` unikatan po transakciji — potvrđeno jačim razlogom nego što je handoff
+   pretpostavljao:** `useActivities.ts:242` grupira listu po
+   `user_id_category_id_session_start`, a leaf je L1 ⇒ isti `category_id` za sve retke ⇒ dan
+   s 21 transakcijom bi bio **jedan redak u listi**. Odluka `09:00 + n` — isti obrazac koji
+   postojeći PROD podaci već koriste.
+4. **`make_financije_all_structure.py` (novo)** — BASE (PROD export) + `Taksonomija` sheet →
+   `Financije_all_structure_20260731_180411.xlsx`. 15 atributa: Tip/Podtip regenerirani
+   (18 Tipova / 65 parova), `Napomena` → **`Izvod opis`** (slug `izvod_opis`), novi
+   `Datum naplate`/`Datum kupovine` (datetime), `Unit=EUR` na Uplata/Isplata/Stanje,
+   **`Valuta` bez defaulta** (default se piše s `touched:true` ⇒ 1 suvišan zapis po
+   transakciji zauvijek), novi `Sort` (lanac ovisnosti odozgo), `CommentTemplate`
+   skraćen na `{racun}/{tip}/{podtip}`, `Automations` red
+   `datum_naplate ← izvorplacanja` (`Racun=same | Cash=same | Mastercard=next:11 | Visa=next:3`).
+   Sve odluke u `MODS` bloku ⇒ promjena = jedna linija + rerun.
+5. **Verifikacija simulacijom, ne pogledom:** `groupAttributes()` + `buildValidationRules()`
+   iz `structureImport.ts` reproducirani nad generiranim fileom → ispisan točan JSON koji bi
+   završio u `validation_rules`; Taksonomija provjerena na `|`; `DateMap` na `isValidDateRule`.
+6. **⚠ `automations.rata` NE ide Structure importom** — `Automations` sheet pokriva samo
+   `set_attribute`. Rata konfiguraciju treba prenijeti ručno/SQL-om, inače Post-Finish rata
+   modal na `Financije_all` prestaje raditi.
+7. **`PROVJERI` razriješen:** nisu dvojbeni smjer — sva 4 retka **nemaju iznos**. 32/33 =
+   početna stanja (1.1.2023.), 4983 = prazan placeholder (sva tri se ne uvoze), 1521 = pravi
+   zapis bez iznosa (čeka Sašinu odluku; iznos je izvediv iz razlike salda).
+8. **Izmjereno, neizvršeno:** **15 nemarkiranih rata** (banka zapisala `RATA n/m`, Koka nije;
+   ključ mora biti `RATA n/m` — goli `n/m` daje **31 lažni pozitiv**, datumi `03/23`);
+   **`Datum kupovine` na ratama** — ključ grupe **mora sadržavati iznos** (`Konzum 1/6`
+   postoji 4× kao različite kupovine), 199 grupa / **samo 105 ima ratu 1** ⇒ anker računati
+   aritmetički (min `n` − (n−1) mjeseci), 136 parova ima nemjesečni korak ⇒ flagirati.
+
+**Sljedeći koraci — ⚠ ZASTARJELO od S107m, prekrojeno S107q/S107s, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
    (2026-01 +359, 2024-09 +149, 2×±49 multisport); 2 PRESKOČENA bankomat reda čekaju Kokin odgovor o 700 €.
