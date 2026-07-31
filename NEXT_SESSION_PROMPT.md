@@ -49,8 +49,10 @@ s 15 atributa. Ništa se ne briše — import je nedestruktivan.
 
 ## Što još čeka tebe
 
-1. **Redak 1521** („Ašo", 27.3.2024., RF) — ima saldo i klasifikaciju ali **nema iznos**.
-   Iznos se da izračunati iz razlike salda prema prethodnom RF retku. Reci hoćeš li.
+1. ~~Redak 1521 („Ašo")~~ — ✅ **riješeno**: saldo se ne pomiče (5640,16 → 5640,16), a
+   sljedeći redak se zatvara iz iste brojke ⇒ **nepotpuni duplikat** retka 1503 (isti tekst
+   „Ašo", isti saldo, 20 € tjedan ranije). **Ne uvozi se.** Ograda: RF izvodi počinju
+   2024-09, pa se 2024-03 ne može unakrsno provjeriti bankom.
 2. **Kredencijali TEST baze** (`.env.testing`) — zadnji put korišteni u S106; ako `npm run
    dev:test` ne prođe login, javi.
 3. Iz starijih sesija: 700 € bankomat 26.11.2025 (pitanje za Koku); `Saldo kontrola`
@@ -131,8 +133,9 @@ Uzorak: `data-prep_data/Financije/events_export_preview_20260731_163957.xlsx` (s
 `AI run`, `Alternativa / nap.`, `Labela iz`, `Problem`, `source_key`, `Izvod file`,
 `Izvor reda`, `Pravilo run`. **`Valuta` se ne piše** (prazno = EUR).
 
-**Ne uvoziti retke:** 32, 33 (početna stanja 1.1.2023.), 4983 (prazan placeholder).
-1521 („Ašo", nema iznos) — čeka Sašinu odluku.
+**Ne uvoziti retke:** 32, 33 (početna stanja 1.1.2023.), 4983 (prazan placeholder),
+**1521** (nepotpuni duplikat retka 1503 — saldo se ne pomiče, v. DIO 1).
+⇒ svi retci sa `Smjer=PROVJERI` ispadaju; filtrirati po tome, ne po brojevima redaka.
 
 ## Struktura `Financije_all` — ✅ NAPRAVLJENO (S107s)
 
@@ -169,6 +172,14 @@ koji bi završio u `validation_rules`. Sve mape ispravne; Taksonomija provjerena
 ⚠ **`automations.rata` se NE prenosi Structure importom** — `Automations` sheet pokriva samo
 `set_attribute`. Rata konfiguraciju treba prenijeti ručno/SQL-om na `Financije_all`, inače
 se gubi (Post-Finish rata modal prestaje raditi).
+
+⇒ **Sašin princip (S107s): „sve bi trebalo ići importom".** Prijenos aree je stvaran
+scenarij, pa je svaki dio konfiguracije koji roundtrip ne pokriva **tihi gubitak** — otkrije
+se tek kad nešto prestane raditi. Poznate rupe: **`automations.rata`** i **`export_profiles`**
+(ključ kolone je `attr:Area||CatPath||AttrName` ⇒ profil ne preživi promjenu imena aree ni
+atributa). Kandidat za app backlog: proširiti `Automations` sheet na `rata` + dodati
+`ExportProfiles` sheet u Structure roundtrip. **Nije blocker za Financije migraciju** —
+rata config se za `Financije_all` prenese ručno.
 
 ## Stanje podataka (2026-07-31)
 

@@ -815,9 +815,16 @@ detalji `NEXT_SESSION_PROMPT.md`, testovi `Claude-temp_R/test-sessions/S107s_tes
 6. **⚠ `automations.rata` NE ide Structure importom** — `Automations` sheet pokriva samo
    `set_attribute`. Rata konfiguraciju treba prenijeti ručno/SQL-om, inače Post-Finish rata
    modal na `Financije_all` prestaje raditi.
-7. **`PROVJERI` razriješen:** nisu dvojbeni smjer — sva 4 retka **nemaju iznos**. 32/33 =
-   početna stanja (1.1.2023.), 4983 = prazan placeholder (sva tri se ne uvoze), 1521 = pravi
-   zapis bez iznosa (čeka Sašinu odluku; iznos je izvediv iz razlike salda).
+7. **`PROVJERI` razriješen — sva 4 retka ispadaju iz importa:** nisu dvojbeni smjer, nego
+   **nemaju iznos**. 32/33 = početna stanja (1.1.2023.), 4983 = prazan placeholder,
+   **1521** = nepotpuni duplikat retka 1503 — saldo se **ne pomiče** (5640,16 → 5640,16) a
+   sljedeći redak se zatvara iz iste brojke, dakle novca nije bilo; ista napomena „Ašo",
+   20 € tjedan ranije. (Ograda: RF izvodi počinju 2024-09 ⇒ nema bankovne potvrde za 2024-03.)
+7b. **Princip (Saša): „sve bi trebalo ići importom".** Povod: `automations.rata` ne prolazi
+   Structure roundtripom. Prijenos aree je stvaran scenarij ⇒ konfiguracija koju roundtrip ne
+   pokriva je **tihi gubitak**. Poznate rupe: `automations.rata`, `export_profiles` (ključ
+   `attr:Area||CatPath||AttrName` ne preživi promjenu imena aree/atributa). App backlog:
+   proširiti `Automations` sheet na `rata` + `ExportProfiles` sheet u Structure roundtrip.
 8. **Izmjereno, neizvršeno:** **15 nemarkiranih rata** (banka zapisala `RATA n/m`, Koka nije;
    ključ mora biti `RATA n/m` — goli `n/m` daje **31 lažni pozitiv**, datumi `03/23`);
    **`Datum kupovine` na ratama** — ključ grupe **mora sadržavati iznos** (`Konzum 1/6`
@@ -854,6 +861,10 @@ detalji `NEXT_SESSION_PROMPT.md`, testovi `Claude-temp_R/test-sessions/S107s_tes
 
 ### Backlog (future — after S107 historical pipeline)
 
+0. **Roundtrip completeness (S107s, Sašin princip)** — `automations.rata` i `export_profiles`
+   ne prolaze Structure Excel roundtripom ⇒ tiho se gube pri prijenosu aree. Fix: proširiti
+   `Automations` sheet na `rata` akciju + dodati `ExportProfiles` sheet (export+import,
+   replace-per-area, isti obrazac kao Faza 2b)
 1. **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC za "In any attribute" pretragu koja zaobilazi ILIKE+RLS non-leakproof problem
 2. **E7-2/E7-3 UX polish** — Toast "Access granted" missing u Share Management invite flow; selektore/toast implementacija trebam da vidim
 3. **D9 verify** — Excel User column behaviour (always visible vs. only for shared areas) — minor, može biti nakon S107
