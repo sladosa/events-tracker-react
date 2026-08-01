@@ -8,7 +8,13 @@ export interface RataInfo {
   amountPerRata: number;
   totalAmount: number;
   dateMapValue: string;
-  dates: Date[];
+  /**
+   * Datumi NAPLATE rata (1..count) — idu u `Datum naplate` atribut.
+   * NE u `event_date`: sve rate jedne kupovine dijele event_date = dan kupnje
+   * (v. FINANCIJE_MIGRACIJA D1). Kartična kupovina na rate ponaša se identično
+   * kao obična kartična kupovina, samo ima više datuma naplate.
+   */
+  chargeDates: Date[];
   originalComment: string | null;
 }
 
@@ -54,11 +60,16 @@ export function detectRata(
     dateMapValue = String(dmAttr?.value ?? '');
   }
 
-  return { count, amountPerRata, totalAmount, dateMapValue, dates: [], originalComment: null };
+  return { count, amountPerRata, totalAmount, dateMapValue, chargeDates: [], originalComment: null };
 }
 
-export function generateRataDates(
-  sessionStart: Date,
+/**
+ * Datumi naplate rata 1..count: N-ti dan svakog sljedećeg mjeseca od kupnje.
+ * Podne (12:00) je namjerno — izbjegava pomak dana po vremenskoj zoni, isto
+ * kao `evaluateDateRule` u attributeRules.ts.
+ */
+export function generateRataChargeDates(
+  purchaseDate: Date,
   count: number,
   dateMapValue: string,
   config: RataAutomationConfig
@@ -67,7 +78,7 @@ export function generateRataDates(
   const dates: Date[] = [];
 
   for (let i = 1; i <= count; i++) {
-    const d = new Date(sessionStart);
+    const d = new Date(purchaseDate);
     d.setDate(1); // reset day first to avoid month-overflow (e.g. Jan 31 → Mar 3)
     d.setMonth(d.getMonth() + i);
     d.setDate(dayOfMonth);
@@ -76,6 +87,25 @@ export function generateRataDates(
   }
 
   return dates;
+}
+
+/**
+ * `session_start` za rate 2..count — base + 1 min po rati.
+ *
+ * Sve rate dijele `event_date`, a `useActivities.ts` grupira listu po
+ * user+category+session_start. Bez pomaka bi se cijela kupovina slijepila u
+ * JEDAN redak u listi. Sekunde se nuliraju — collision detekcija ovisi o tome
+ * da je `session_start` zaokružen na minutu.
+ */
+export function rataSessionStarts(base: Date, count: number): Date[] {
+  const out: Date[] = [];
+  for (let i = 1; i < count; i++) {
+    const d = new Date(base);
+    d.setSeconds(0, 0);
+    d.setMinutes(d.getMinutes() + i);
+    out.push(d);
+  }
+  return out;
 }
 
 export function buildRataComment(

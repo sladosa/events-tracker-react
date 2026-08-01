@@ -74,13 +74,20 @@ SORT_ORDER = [
     "Podtip",         # 7  ┘ Tip -> Podtip
     "Izvod opis",     # 8  (bivsa `Napomena`)
     "Rate?",          # 9  ┐
-    "Broj rata",      # 10 ┘
-    "Datum naplate",  # 11 auto (set_attribute)
-    "Datum kupovine", # 12 auto (samo rate)
+    "Broj rata",      # 10 ┤ ukupno N
+    "Rata br",        # 11 ┘ redni broj OVE uplate (1..N)
+    "Datum naplate",  # 12 auto (set_attribute + rata automatika)
     "Status",         # 13 auto (default_map po Izvoru)
     "Stanje",         # 14 skriven u formi
     "Valuta",         # 15 rijetko
 ]
+
+# `Datum kupovine` NAMJERNO IZOSTAVLJEN (odluka S107t, poništava D1a):
+# postojao je samo kao zakrpa za iznimku iz D1 ("rata nosi event_date = datum
+# naplate"). Iznimka je ukinuta — sve rate jedne kupovine dijele event_date =
+# dan kupnje, a razlikuje ih `Datum naplate` — pa bi `Datum kupovine` bio
+# doslovno jednak event_date-u na svakom retku. Ako zatreba kao povijesni
+# anker, dodaje se natrag jednim nedestruktivnim Structure importom.
 
 # Preimenovanja: stari AttrName -> (novi AttrName, novi Slug)
 RENAME = {
@@ -97,21 +104,31 @@ SET_UNIT = {
 # Atributi kojima se BRISE default_value
 CLEAR_DEFAULT = {"Valuta"}
 
-# Novi atributi (emitiraju se kao jedan redak svaki)
+# Novi atributi. Bez `Variants` = jedan redak; s `Variants` = po redak za svaku
+# (DependsOn, WhenValue) kombinaciju (isti obrazac kojim BASE opisuje `Broj rata`).
 NEW_ATTRS = [
+    {
+        "AttrName": "Rata br",
+        "Slug": "rata_br",
+        "AttrType": "number",
+        "Val.Type": "suggest",
+        # Vidljiv pod istim uvjetom kao `Broj rata` (rate=TRUE). Prazne
+        # TextOptions -> options_map {'*': [], 'TRUE': []}, tj. cisto gatanje
+        # vidljivosti bez dropdowna (v. structureImport.ts:327).
+        "Variants": [
+            {"DependsOn": "rate", "WhenValue": "*"},
+            {"DependsOn": "rate", "WhenValue": "TRUE"},
+        ],
+        "Description": "Redni broj OVE uplate unutar plana (1..Broj rata). "
+                       "Smije biti prazan (nepoznato ili zbirna uplata za vise rata).",
+    },
     {
         "AttrName": "Datum naplate",
         "Slug": "datum_naplate",
         "AttrType": "datetime",
         "Description": "Dan kad banka/kartica stvarno skine iznos "
-                       "(Racun/Cash = isti dan, kartice = sljedeci mjesec).",
-    },
-    {
-        "AttrName": "Datum kupovine",
-        "Slug": "datum_kupovine",
-        "AttrType": "datetime",
-        "Description": "Popunjava se samo na ratama — datum izvorne kupovine, "
-                       "isti na svim ratama iste kupovine.",
+                       "(Racun/Cash = isti dan, kartice = sljedeci mjesec; "
+                       "na ratama = dan naplate te rate).",
     },
 ]
 
@@ -133,6 +150,24 @@ AUTOMATION_ROWS = [
         "TargetAttr": "datum_naplate",
         "MapAttr": "izvorplacanja",
         "DateMap": "Racun=same | Cash=same | Mastercard=next:11 | Visa=next:3",
+    },
+    # Post-Finish rata modal. Do S107t ova konfiguracija NIJE prolazila Structure
+    # roundtripom (isla je SQL-om) pa se tiho gubila pri prijenosu aree — v.
+    # Sasin princip "sve ide importom". Dani naplate su isti brojevi kao u
+    # `datum_naplate` pravilu gore (ZABA/Mastercard 11., RF/Visa 3.).
+    {
+        "Area": NEW_AREA,
+        "RuleName": "Generiraj rate",
+        "Action": "rata",
+        "TargetAttr": "datum_naplate",   # kamo ide datum naplate svake rate
+        "MapAttr": "izvorplacanja",
+        "DateMap": "Mastercard=11 | Visa=3",
+        "TriggerAttr": "rate",
+        "CountAttr": "brojrata",
+        "AmountAttr": "isplata",
+        "OverrideAttrs": "status=Planiran",
+        "CommentAttr": "",
+        "IndexAttr": "rata_br",          # redni broj rate 1..N
     },
 ]
 
@@ -276,10 +311,16 @@ def build_rows(base: list[dict], taks: "dict[str, list[str]]") -> list[dict]:
 
     # Novi atributi
     for spec in NEW_ATTRS:
-        rw = blank_row()
-        rw.update({"Type": "Attribute", "IsRequired": "FALSE", "Val.Type": "none"})
-        rw.update(spec)
-        groups[spec["AttrName"]] = [rw]
+        spec = dict(spec)
+        variants = spec.pop("Variants", [{}])
+        rows = []
+        for var in variants:
+            rw = blank_row()
+            rw.update({"Type": "Attribute", "IsRequired": "FALSE", "Val.Type": "none"})
+            rw.update(spec)
+            rw.update(var)
+            rows.append(rw)
+        groups[spec["AttrName"]] = rows
 
     # Tip — jedan redak, sve opcije
     tip_row = blank_row()
@@ -394,7 +435,9 @@ def write_xlsx(rows: list[dict], out_path: str) -> None:
 
     # ── Automations sheet (zaglavlje MORA biti u redu 1) ─────
     wa = wb.create_sheet("Automations")
-    acols = ["Area", "RuleName", "Action", "TargetAttr", "MapAttr", "DateMap"]
+    acols = ["Area", "RuleName", "Action", "TargetAttr", "MapAttr", "DateMap",
+             "TriggerAttr", "CountAttr", "AmountAttr", "OverrideAttrs",
+             "CommentAttr", "IndexAttr"]
     for c, name in enumerate(acols, start=1):
         cell = wa.cell(1, c, name)
         cell.fill = FILL_HDR
@@ -403,9 +446,16 @@ def write_xlsx(rows: list[dict], out_path: str) -> None:
         for c, name in enumerate(acols, start=1):
             wa.cell(i, c, rule.get(name, ""))
     note = len(AUTOMATION_ROWS) + 3
-    wa.cell(note, 1, "Import ZAMJENJUJE sva set_attribute pravila navedene Aree. "
-                     "DateMap sintaksa: 'vrijednost=same' ili 'vrijednost=next:N' (N = 1..31).")
-    for c, w in zip("ABCDEF", (16, 26, 15, 16, 16, 56)):
+    for i, line in enumerate((
+        "Import ZAMJENJUJE navedene automatike svake Aree koja se pojavi u sheetu.",
+        "set_attribute DateMap: 'vrijednost=same' ili 'vrijednost=next:N' (N = 1..31).",
+        "rata DateMap: 'vrijednost=DAN' gdje je DAN broj 1..31 (dan naplate u mjesecu).",
+        "rata: sve rate dijele event_date (dan kupnje); razlikuje ih TargetAttr (datum naplate) "
+        "i pomak session_start-a za 1 min.",
+    )):
+        wa.cell(note + i, 1, line)
+    for c, w in zip("ABCDEFGHIJKL",
+                    (16, 20, 12, 16, 16, 34, 13, 12, 12, 20, 13, 12)):
         wa.column_dimensions[c].width = w
 
     wb.save(out_path)
@@ -447,9 +497,16 @@ def report(rows: list[dict], taks: "dict[str, list[str]]") -> None:
     print()
     for old, (new, slug) in RENAME.items():
         print(f"  preimenovano  : {old} -> {new} (slug '{slug}')")
-    print(f"  automations   : {len(AUTOMATION_ROWS)} set_attribute pravilo/a")
+    print(f"  automations   : {len(AUTOMATION_ROWS)} pravilo/a")
     for a in AUTOMATION_ROWS:
-        print(f"                  {a['TargetAttr']} <- {a['MapAttr']}: {a['DateMap']}")
+        if a["Action"] == "rata":
+            print(f"                  rata: trigger={a['TriggerAttr']} count={a['CountAttr']} "
+                  f"amount={a['AmountAttr']} index={a['IndexAttr']}")
+            print(f"                        naplata -> {a['TargetAttr']} "
+                  f"({a['MapAttr']}: {a['DateMap']}), override {a['OverrideAttrs']}")
+        else:
+            print(f"                  set_attribute: {a['TargetAttr']} <- "
+                  f"{a['MapAttr']}: {a['DateMap']}")
 
 
 def main() -> None:

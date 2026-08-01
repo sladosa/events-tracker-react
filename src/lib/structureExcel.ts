@@ -665,17 +665,30 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
 // DateMap format: "Mastercard=next:11 | Visa=next:3 | Racun=same"
 //   ('=' odvaja map-vrijednost od pravila jer pravilo samo sadrži ':')
 
+// Kolone 1–6 su Faza 2b (set_attribute); 7–11 dodane za `rata` akciju (S107t).
+// Import traži kolone PO IMENU, pa stariji fajlovi bez zadnjih 5 rade nepromijenjeno.
 const AUTOMATION_COLS = [
-  { header: 'Area',       width: 20 },
-  { header: 'RuleName',   width: 20 },
-  { header: 'Action',     width: 14 },
-  { header: 'TargetAttr', width: 16 },
-  { header: 'MapAttr',    width: 12 },
-  { header: 'DateMap',    width: 60 },
+  { header: 'Area',          width: 20 },
+  { header: 'RuleName',      width: 20 },
+  { header: 'Action',        width: 14 },
+  { header: 'TargetAttr',    width: 16 },
+  { header: 'MapAttr',       width: 14 },
+  { header: 'DateMap',       width: 52 },
+  { header: 'TriggerAttr',   width: 13 },
+  { header: 'CountAttr',     width: 12 },
+  { header: 'AmountAttr',    width: 12 },
+  { header: 'OverrideAttrs', width: 22 },
+  { header: 'CommentAttr',   width: 14 },
+  { header: 'IndexAttr',     width: 12 },
 ] as const;
 
-export function serializeDateMap(dateMap: Record<string, string>): string {
+export function serializeDateMap(dateMap: Record<string, string | number>): string {
   return Object.entries(dateMap).map(([k, v]) => `${k}=${v}`).join(' | ');
+}
+
+export function serializeOverrideAttrs(over: Record<string, string> | undefined): string {
+  if (!over) return '';
+  return Object.entries(over).map(([k, v]) => `${k}=${v}`).join(' | ');
 }
 
 function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
@@ -692,38 +705,68 @@ function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
   }
 
   let rowNum = 2;
+  const emit = (vals: (string | number)[]): void => {
+    for (let ci = 0; ci < AUTOMATION_COLS.length; ci++) {
+      const cell = ws.getCell(rowNum, ci + 1);
+      cell.value = vals[ci] ?? '';
+      cell.fill = makeFill(CLR.BLUE);
+      cell.border = THIN_BORDER;
+    }
+    rowNum++;
+  };
+
   for (const node of nodes) {
     if (node.nodeType !== 'area') continue;
-    const rules = node.area.settings?.automations?.attribute_rules ?? [];
-    for (const rule of rules) {
+    const automations = node.area.settings?.automations;
+
+    for (const rule of automations?.attribute_rules ?? []) {
       if (rule.action !== 'set_attribute') continue;
-      const vals = [
-        node.name,
-        rule.name ?? '',
-        rule.action,
-        rule.target_slug,
-        rule.map_slug,
-        serializeDateMap(rule.date_map),
-      ];
-      for (let ci = 0; ci < vals.length; ci++) {
-        const cell = ws.getCell(rowNum, ci + 1);
-        cell.value = vals[ci];
-        cell.fill = makeFill(CLR.BLUE);
-        cell.border = THIN_BORDER;
-      }
-      rowNum++;
+      emit([
+        node.name, rule.name ?? '', rule.action,
+        rule.target_slug, rule.map_slug, serializeDateMap(rule.date_map),
+      ]);
+    }
+
+    // `rata` — jedna konfiguracija po Arei (create_events na Post-Finish).
+    // DateMap su ovdje DANI u mjesecu (brojevi), ne 'same'/'next:N'.
+    const rata = automations?.rata;
+    if (rata) {
+      emit([
+        node.name, 'Generiraj rate', 'rata',
+        rata.charge_date_slug ?? '',          // TargetAttr = kamo ide datum naplate
+        rata.date_map_slug,
+        serializeDateMap(rata.date_map),
+        rata.trigger_slug,
+        rata.count_slug,
+        rata.amount_slug,
+        serializeOverrideAttrs(rata.override_attrs),
+        rata.comment_attr_slug ?? '',
+        rata.index_slug ?? '',
+      ]);
     }
   }
 
-  // Help block — 2 reda ispod podataka; import ga ignorira (Action ≠ set_attribute)
+  // Help block — 2 reda ispod podataka; import ga ignorira (Action prazan)
   const helpLines = [
-    'HELP — set_attribute pravila (auto-punjenje atributa u Add Activity):',
-    'Jedan red po pravilu. Action mora biti "set_attribute" — redovi bez toga se ignoriraju na importu.',
-    'TargetAttr = slug atributa koji se puni (datetime). MapAttr = slug atributa čija vrijednost bira pravilo.',
-    'DateMap = "vrijednost=pravilo | vrijednost=pravilo". Pravila: same (= datum sesije), next:N (N-ti dan sljedećeg mjeseca).',
-    'Primjer: Mastercard=next:11 | Visa=next:3 | Racun=same | Cash=same',
-    'Vrijednost MapAttr-a koje nema u DateMap → pravilo se preskače (target se ne dira).',
-    'Import ZAMJENJUJE sva set_attribute pravila navedene Aree redovima iz ovog sheeta.',
+    'HELP — automatike po Arei. Jedan red po pravilu; Action određuje koje se kolone čitaju.',
+    '',
+    'Action = set_attribute  (auto-punjenje atributa u Add Activity)',
+    '  TargetAttr = slug atributa koji se puni (datetime). MapAttr = slug atributa čija vrijednost bira pravilo.',
+    '  DateMap = "vrijednost=pravilo | ...". Pravila: same (= datum sesije), next:N (N-ti dan sljedećeg mjeseca).',
+    '  Primjer: Mastercard=next:11 | Visa=next:3 | Racun=same | Cash=same',
+    '  Vrijednost MapAttr-a koje nema u DateMap → pravilo se preskače (target se ne dira).',
+    '',
+    'Action = rata  (Post-Finish modal koji razdijeli kupovinu na rate; najviše JEDNA po Arei)',
+    '  TriggerAttr = boolean slug koji pali modal. CountAttr = broj rata. AmountAttr = iznos.',
+    '  MapAttr = slug po kojem se bira dan naplate. DateMap = "vrijednost=DAN" (DAN 1–31, broj!).',
+    '  Primjer: Mastercard=11 | Visa=3        (11. odn. 3. u mjesecu)',
+    '  TargetAttr = datetime slug koji prima datum naplate te rate. IndexAttr = number slug za redni broj rate.',
+    '  OverrideAttrs = "slug=vrijednost | ..." koje se postavlja na generirane rate (npr. status=Planiran).',
+    '  CommentAttr = slug atributa koji se koristi kao prefiks komentara (neobavezno).',
+    '  Sve rate dijele event_date (= dan kupnje); razlikuje ih datum naplate i pomak session_start-a za 1 min.',
+    '',
+    'Import ZAMJENJUJE navedene automatike svake Aree koja se pojavi u sheetu.',
+    'Odsutnost NE briše: stariji export bez rata kolona ne može pobrisati postojeću rata konfiguraciju.',
   ];
   let hr = rowNum + 1;
   for (const line of helpLines) {

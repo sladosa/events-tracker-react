@@ -50,11 +50,28 @@ Nakon Finish, app detektira `na_rate = true` i prikazuje modal:
 ```
 Kreirati rate?
 Iznos po rati: 150.00 EUR (450.00 / 3)
-→ 2026-07-11  rata 1/3  150.00 EUR
-→ 2026-08-11  rata 2/3  150.00 EUR
-→ 2026-09-11  rata 3/3  150.00 EUR
+Sve rate ostaju na danu kupnje — razlikuje ih datum naplate.
+rata 1/3   naplata 11.07.2026.   150.00
+rata 2/3   naplata 11.08.2026.   150.00
+rata 3/3   naplata 11.09.2026.   150.00
 [Kreiraj rate]   [Preskoči]
 ```
+
+**⚠ Model datuma promijenjen u S107t** (poništava raniju D1 iznimku za rate):
+
+- **sve rate dijele `event_date` = dan kupnje.** Kartična kupovina na rate ponaša se
+  identično kao obična kartična kupovina — jedna kupnja, samo više datuma naplate.
+- **`Datum naplate`** (`charge_date_slug`) nosi raspored: 11. odn. 3. u svakom sljedećem
+  mjesecu. Set_attribute pravilo popuni ga za prvu ratu; rata automatika ga za rate 2..N
+  pregazi.
+- **`session_start` +1 min po rati** — `useActivities` grupira listu po
+  `user+category+session_start`, pa bi se bez pomaka cijela kupovina slijepila u **jedan**
+  redak liste.
+- **`Rata br`** (`index_slug`) = 1..N; iznos svake rate = ukupno / N.
+- Originalni (uneseni) event se briše — rate nose sve podatke, pa nema stavke s punim
+  iznosom koja bi se dvaput brojala.
+- Posljedica: stanje na budući datum traži pogled sortiran po `Datum naplate`, ne po
+  `event_date`.
 
 Detalji u `data-prep_data/Financije/FINANCIJE_MODEL.md` → sekcija "Korak 3".
 
@@ -130,24 +147,46 @@ E2E `e2e/tests/S107b_set_attribute.spec.ts` (T-S107b-1/2 PASS).
 
 ---
 
-## Faza 3 — Excel Automations sheet (generalni engine)
+## Faza 3 — Excel Automations sheet — ✅ gotovo (S107b + S107t)
 
-Novi sheet u Activities xlsx (ili zasebni `Automations.xlsx`).
-Strukturirana tablica — **ne DSL**, nego fiksne kolone:
+`Automations` sheet u Structure exportu/importu. Strukturirana tablica — **ne DSL**,
+fiksne kolone; `Action` određuje koje se kolone čitaju:
 
-| Area | Category | Rule name | Trigger | Action | Count source | Date source | Date map | Override attrs | Comment template |
-|---|---|---|---|---|---|---|---|---|---|
-| Financije | Transakcija | Generiraj rate | na_rate=true | create_events | broj_rata | izvor_placanja | Mastercard:11, Visa:3 | status=Planiran\|iznos=iznos/count | {napomena} · rata {i}/{count} |
-| Fitness | Snaga | Tjedni plan | ponavljaj=true | create_events | broj_tjedana | — | weekly:7 | status=Planiran | {tip} tjedan {i}/{count} |
-| Financije_all | Transakcija | Datum naplate | (uvijek) | set_attribute | — | datum_naplate ← izvor | Mastercard:next:11, Visa:next:3, Racun:same, Cash:same | — | — |
+| Kolona | `set_attribute` | `rata` |
+|---|---|---|
+| `Area` | ✔ | ✔ |
+| `RuleName` | opis | opis |
+| `Action` | `set_attribute` | `rata` |
+| `TargetAttr` | slug atributa koji se puni | slug koji prima **datum naplate** te rate |
+| `MapAttr` | slug čija vrijednost bira pravilo | slug po kojem se bira dan naplate |
+| `DateMap` | `vrijednost=same` / `vrijednost=next:N` | `vrijednost=DAN` (DAN = **broj** 1–31) |
+| `TriggerAttr` | — | boolean slug koji pali modal |
+| `CountAttr` | — | slug s brojem rata |
+| `AmountAttr` | — | slug s iznosom |
+| `OverrideAttrs` | — | `slug=vrijednost \| ...` nametnuto svakoj rati |
+| `CommentAttr` | — | slug za prefiks komentara (neobavezno) |
+| `IndexAttr` | — | number slug koji prima redni broj rate (1..N) |
 
-**Trigger sintaksa:** `slug=vrijednost` (npr. `na_rate=true`, `status=Planiran`)
-**Action:** `create_events` | `set_attribute` (Faza 2b)
-**Date map:** `IzvorPlacanjaOpcija:dan` (npr. `Mastercard:11`)
-**Override attrs:** `slug=vrijednost|slug2=izraz` (pipe-separator)
-**Izraz:** `iznos/count`, `iznos*0.1` (jednostavna aritmetika, reference na attr slugove)
+Primjer (`Financije_all`):
 
-Import ovog sheeta sprema pravila u `area.settings.automations` JSONB.
+```
+Area           Action          TargetAttr     MapAttr         DateMap
+Financije_all  set_attribute   datum_naplate  izvorplacanja   Racun=same | Cash=same | Mastercard=next:11 | Visa=next:3
+Financije_all  rata            datum_naplate  izvorplacanja   Mastercard=11 | Visa=3
+               TriggerAttr=rate  CountAttr=brojrata  AmountAttr=isplata
+               OverrideAttrs=status=Planiran  IndexAttr=rata_br
+```
+
+**Semantika importa:** zamjenjuje navedene automatike **svake Aree koja se pojavi** u sheetu.
+**Odsutnost ne briše** — stariji export bez `rata` kolona ne može pobrisati postojeću rata
+konfiguraciju. Najviše **jedna** `rata` konfiguracija po Arei; višak se preskače uz warning.
+Svaki slug se provjerava protiv atributa te Aree — mrtvo pravilo se ne uvozi.
+
+Import sprema u `area.settings.automations` JSONB
+(`attribute_rules: [...]` + `rata: {...}`).
+
+⚠ Preostala roundtrip rupa: **`export_profiles`** (ključ kolone je
+`attr:Area||CatPath||AttrName` pa profil ne preživi promjenu imena aree ni atributa).
 
 ---
 
@@ -173,5 +212,5 @@ Dizajn tek kad vidimo strukturu trening tablice (`trening.xlsm` analiza).
 | Faza 1 — Post-Finish modal (web) | ✅ | `RataModal.tsx` + `rataAutomation.ts`; config u `area.settings.automations.rata` |
 | Faza 2 — Auto-comment template | ✅ S95 | `commentTemplate.ts`; roundtrip kroz Structure sheet |
 | Faza 2b — set_attribute pravila | ✅ S107b | `attributeRules.ts` + live prefill u AddActivityPage; T-S107b-1/2 Playwright PASS |
-| Faza 3 — Excel Automations sheet | ◐ djelomično (S107b) | `Automations` sheet u Structure exportu/importu pokriva `set_attribute` retke; rata konfiguracija još ide SQL-om |
+| Faza 3 — Excel Automations sheet | ✅ S107t | `set_attribute` (S107b) + **`rata`** (S107t) prolaze Structure roundtripom; rata više ne treba SQL |
 | Faza 4 — Training parser | ⬜ | Čeka `trening.xlsm` analizu |

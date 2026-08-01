@@ -40,8 +40,8 @@ import {
 } from '@/components/activity/ConfirmDialog';
 
 import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
-import { computeSetAttributeValue, findDefBySlug } from '@/lib/attributeRules';
-import { detectRata, generateRataDates, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
+import { computeSetAttributeValue, findDefBySlug, formatForDatetimeInput } from '@/lib/attributeRules';
+import { detectRata, generateRataChargeDates, rataSessionStarts, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
 import { resolveCommentTemplate, evaluateCommentTemplate } from '@/lib/commentTemplate';
 import type { RataAutomationConfig } from '@/types/database';
 import { RataModal } from '@/components/activity/RataModal';
@@ -324,6 +324,9 @@ export function AddActivityPage() {
   const [pendingRataConfig, setPendingRataConfig] = useState<RataAutomationConfig | null>(null);
   const [pendingRataAttrs, setPendingRataAttrs] = useState<Array<{ definitionId: string; value: string | number | boolean | null }>>([]);
   const [pendingRataOriginalEventIds, setPendingRataOriginalEventIds] = useState<string[]>([]);
+  // Dan kupnje + polazni session_start — snimljeni pri otvaranju modala jer
+  // `endSession()` odmah nakon toga resetira sesiju.
+  const [pendingRataBase, setPendingRataBase] = useState<{ eventDate: string; sessionStart: string } | null>(null);
 
   // Mobile detection - na mobitelu AddActivity otvara prednju kameru direktno
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -1138,7 +1141,7 @@ export function AddActivityPage() {
         const lastEvent = eventsToSave[eventsToSave.length - 1];
         const info = detectRata(lastEvent.attributes, allDefs, rataConfig);
         if (info) {
-          info.dates = generateRataDates(sessionStart, info.count, info.dateMapValue, rataConfig);
+          info.chargeDates = generateRataChargeDates(sessionStart, info.count, info.dateMapValue, rataConfig);
           // Use event note as comment; fall back to comment_attr_slug attr value if note is empty
           let rataComment = lastEvent.note ?? null;
           if (!rataComment && rataConfig.comment_attr_slug) {
@@ -1153,6 +1156,7 @@ export function AddActivityPage() {
           setPendingRataConfig(rataConfig);
           setPendingRataAttrs(lastEvent.attributes);
           setPendingRataOriginalEventIds(savedLeafEventIds);
+          setPendingRataBase({ eventDate, sessionStart: sessionStartIso });
           setShowRataModal(true);
           return; // Rata modal will show success dialog when done
         }
@@ -1181,10 +1185,16 @@ export function AddActivityPage() {
 
       const allDefs = Array.from(attributesByCategory.values()).flat();
 
-      for (let i = 0; i < pendingRataInfo.dates.length; i++) {
-        const date = pendingRataInfo.dates[i];
-        const eventDate = date.toISOString().split('T')[0];
-        const rataSessionStart = date.toISOString();
+      // Sve rate dijele event_date = DAN KUPNJE (D1); razlikuje ih `Datum naplate`.
+      // session_start se pomiče +1 min po rati, inače ih `useActivities` slijepi
+      // u jedan redak liste (grupira po user+category+session_start).
+      const purchaseDate = pendingRataBase?.eventDate
+        ?? pendingRataInfo.chargeDates[0].toISOString().split('T')[0];
+      const baseSession = pendingRataBase ? new Date(pendingRataBase.sessionStart) : new Date();
+      const sessionStarts = [baseSession, ...rataSessionStarts(baseSession, pendingRataInfo.count)];
+
+      for (let i = 0; i < pendingRataInfo.chargeDates.length; i++) {
+        const chargeDate = pendingRataInfo.chargeDates[i];
         const comment = buildRataComment(i + 1, pendingRataInfo.count, pendingRataInfo.originalComment, pendingRataInfo.amountPerRata, pendingRataInfo.totalAmount);
 
         const { data: newEvent, error: evErr } = await supabase
@@ -1192,8 +1202,8 @@ export function AddActivityPage() {
           .insert({
             user_id: user.id,
             category_id: categoryId,
-            event_date: eventDate,
-            session_start: rataSessionStart,
+            event_date: purchaseDate,
+            session_start: sessionStarts[i].toISOString(),
             comment,
             created_at: new Date().toISOString(),
           })
@@ -1205,28 +1215,52 @@ export function AddActivityPage() {
           continue;
         }
 
-        const attrsToInsert: Array<{ event_id: string; attribute_definition_id: string; user_id: string; value_text: string | null; value_number: number | null }> = [];
+        const attrsToInsert: Array<{
+          event_id: string; attribute_definition_id: string; user_id: string;
+          value_text: string | null; value_number: number | null; value_datetime?: string | null;
+        }> = [];
 
+        // Vrijednosti koje rata automatika NAMEĆE, po slugu. `Datum naplate` je
+        // već auto-popunjen set_attribute pravilom (za prvu ratu točno), pa ga
+        // za rate 2..N treba pregaziti.
+        const forced = new Map<string, string | number>();
+        forced.set(pendingRataConfig.amount_slug, pendingRataInfo.amountPerRata);
+        for (const [slug, val] of Object.entries(pendingRataConfig.override_attrs ?? {})) {
+          forced.set(slug, val);
+        }
+        if (pendingRataConfig.charge_date_slug) {
+          forced.set(pendingRataConfig.charge_date_slug, formatForDatetimeInput(chargeDate));
+        }
+        if (pendingRataConfig.index_slug) {
+          forced.set(pendingRataConfig.index_slug, i + 1);
+        }
+
+        const push = (def: AttributeDefinition, value: string | number | null): void => {
+          if (value === null || value === '') return;
+          if (def.data_type === 'number') {
+            const num = typeof value === 'number' ? value : parseFloat(String(value));
+            if (isNaN(num)) return;
+            attrsToInsert.push({ event_id: newEvent.id, attribute_definition_id: def.id, user_id: user.id, value_text: null, value_number: num });
+          } else if (def.data_type === 'datetime') {
+            attrsToInsert.push({ event_id: newEvent.id, attribute_definition_id: def.id, user_id: user.id, value_text: null, value_number: null, value_datetime: String(value) });
+          } else {
+            attrsToInsert.push({ event_id: newEvent.id, attribute_definition_id: def.id, user_id: user.id, value_text: String(value), value_number: null });
+          }
+        };
+
+        const written = new Set<string>();
         for (const attr of pendingRataAttrs) {
           const def = allDefs.find(d => d.id === attr.definitionId);
           if (!def) continue;
-
-          let finalValue: string | number | null;
-
-          if (def.slug === pendingRataConfig.amount_slug && def.data_type === 'number') {
-            finalValue = pendingRataInfo.amountPerRata;
-          } else if (pendingRataConfig.override_attrs?.[def.slug] !== undefined) {
-            finalValue = pendingRataConfig.override_attrs[def.slug];
-          } else {
-            finalValue = attr.value as string | number | null;
-          }
-
-          if (def.data_type === 'number') {
-            const num = typeof finalValue === 'number' ? finalValue : parseFloat(String(finalValue ?? ''));
-            attrsToInsert.push({ event_id: newEvent.id, attribute_definition_id: def.id, user_id: user.id, value_text: null, value_number: isNaN(num) ? null : num });
-          } else {
-            attrsToInsert.push({ event_id: newEvent.id, attribute_definition_id: def.id, user_id: user.id, value_text: String(finalValue ?? '') || null, value_number: null });
-          }
+          written.add(def.slug);
+          const override = forced.get(def.slug);
+          push(def, override !== undefined ? override : (attr.value as string | number | null));
+        }
+        // Atributi koje korisnik nije dirao (npr. `Rata br`) — dopiši ih
+        for (const [slug, value] of forced) {
+          if (written.has(slug)) continue;
+          const def = allDefs.find(d => d.slug === slug);
+          if (def) push(def, value);
         }
 
         if (attrsToInsert.length > 0) {

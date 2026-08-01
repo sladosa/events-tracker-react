@@ -20,6 +20,27 @@
   (npr. `Broj rata` se pojavi tek kad označiš `Na rate?`).
 - Oba pravila vrijede i u Edit Activity.
 
+## Automatike nakon Finish
+
+Ovise o postavkama area (Structure tab → `Automations` sheet u exportu/importu).
+
+**Auto-popunjavanje datuma (`set_attribute`)** — čim odabereš vrijednost o kojoj pravilo ovisi,
+ciljano polje se popuni samo. Primjer: odabir `Izvor = Mastercard` popuni `Datum naplate` na
+11. sljedećeg mjeseca. **Ručni unos se nikad ne gazi** — ako sam upišeš vrijednost, automatika
+je više ne dira.
+
+**Rate** — ako area ima rata pravilo, nakon Finish se pojavi modal koji ponudi razdvajanje
+kupovine na rate. Prikazuje iznos po rati i **datume naplate** svake rate.
+
+- Nastane onoliko zapisa koliko je rata; iznos svake = ukupno ÷ broj rata.
+- **Sve rate ostaju na danu kupnje** (`event_date`) — kupovina je jedna, samo se plaća u
+  više navrata. Zato u listi stoje jedna do druge.
+- Razlikuje ih **`Datum naplate`** (kad novac stvarno ode) i **`Rata br`** (redni broj).
+- Rate dobiju `Status = Planiran`; izvorni zapis se ukloni jer rate nose sve podatke — nema
+  dvostrukog zbrajanja.
+- Za pregled "koliko me čeka kojeg datuma" koristi export sortiran po `Datum naplate`, ne po
+  datumu aktivnosti.
+
 ## Uređivanje aktivnosti
 - ⋮ menu → Edit (ili ikona olovke na redu)
 - Mijenja atribute za tu sesiju

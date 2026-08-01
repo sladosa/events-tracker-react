@@ -3,8 +3,38 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107s (2026-07-31) — struktura `Financije_all` generirana, čeka Sašin pregled + TEST import
-**Detalji S107s:** [S107s_tests.md](test-sessions/S107s_tests.md)
+**Zadnji update:** S107t (2026-08-01) — struktura + import generator gotovi, rata tok prepravljen; sve čeka TEST
+**Detalji S107t:** [S107t_tests.md](test-sessions/S107t_tests.md)
+
+---
+
+## S107t — `Rata br` · čišćenje lažnih rata · import generator · `rata` u Automations roundtripu
+
+**App kod (prvi put nakon S107f):** `Automations` sheet proširen na **`rata`** akciju
+(export+import) — zadnja rupa roundtripa uz `export_profiles`. **Rata tok prebačen na model B
+i novi model datuma:** sve rate jedne kupovine dijele `event_date` = dan kupnje, razlikuje ih
+`Datum naplate` + pomak `session_start`-a za 1 min; `Rata br` = 1..N. **D1 iznimka za rate
+ukinuta, D1a (`Datum kupovine`) povučen** — atribut izbačen iz strukture.
+
+**Python:** `make_financije_import.py` (novo) — Review → `Activities Events` xlsx, sve 4 tihe
+rupe ugrađene + guard imena/tipova atributa protiv strukture. `fix_lazne_rate.py` (novo) —
+**32** HLK/APN retka gdje je `mjesec/godina` pročitan kao `rata n/N` (ne 19 kako je isprva
+procijenjeno; `Broj rata = 24` je isti obrazac).
+
+| ID | Test | Status |
+| --- | --- | --- |
+| P-1…P-9 | Programske kontrole (paritet `validation_rules`, diff protiv backupa, simulacija oba parsera, typecheck+build) | ✅ (programski) |
+| T-S107t-1 | **Saša:** Structure import — 15 atributa (⚠ ne 16), **Automation rules 2** | ⬜ |
+| T-S107t-2 | **Saša:** `Rata br` se pojavljuje/nestaje zajedno s `Broj rata` | ⬜ |
+| T-S107t-3 | **Saša:** ⭐ **rata tok** (novi kod) — 6 rata na istom danu, `Datum naplate` 11./3., `Rata br` 1..6, bez zapisa s punim iznosom | ⬜ |
+| T-S107t-4 | **Saša:** Activities import 10 zapisa — 28.02.2023. daje **3 reda**, `Rate? = Yes` na Anjinoj rati | ⬜ |
+| T-S107t-5 | **Saša:** export roundtrip — `rata` redak u Automations sheetu, re-import bez promjena | ⬜ |
+| T-S107t-6 | **Saša:** obrisan `rata` redak pri uvozu **ne briše** konfiguraciju | ⬜ |
+| T-S107t-7 | **Saša:** Review — 32 očišćena retka, `Rate?=DA` 661 → 629 | ⬜ |
+
+**Sljedeće:** popravci iz testova → batch import po godinama → `Financije_all` na PROD pod
+Kokinim računom (D6). **Ostaje neizvršeno:** 15 nemarkiranih rata; `Saldo kontrola` 7 razlika
+(pitanja za Koku); `export_profiles` roundtrip rupa.
 
 ---
 
@@ -24,9 +54,9 @@ kol. G mora biti račun koji **izvodi** import (inače se svi redovi preskoče k
 | ID | Test | Status |
 | --- | --- | --- |
 | P-1…P-7 | Programske kontrole (dry run, simulacija `buildValidationRules`, `\|` u taksonomiji, `DateMap`, CommentTemplate, Automations zaglavlje, SORT_ORDER pokrivenost) | ✅ (programski) |
-| T-S107s-1 | **Saša:** pregled generiranog structure filea (Sort, Podtip 19 redaka, Tip 18 opcija, Unit EUR, Valuta bez defaulta) | ⬜ |
-| T-S107s-2 | **Saša:** Structure import u TEST (`npm run dev:test`) — očekivano 1 area / 1 kategorija / 15 atributa / 1 automations pravilo | ⬜ |
-| T-S107s-3 | **Saša:** Add Activity na novoj aree — lanac `Racun→Izvor→Status`, `Tip→Podtip`, EUR uz iznos, `Datum naplate` auto, comment bez praznog repa | ⬜ |
+| T-S107s-1 | **Saša:** pregled generiranog structure filea | ✅ (Sort OK; nalaz „stara taksonomija" bio je pogled u BASE `events_export_preview`, ne u generirani file) |
+| T-S107s-2 | **Saša:** Structure import u TEST | ✅ (16 atributa / 1 pravilo) — **nadomješten T-S107t-1** jer se struktura promijenila |
+| T-S107s-3 | **Saša:** Add Activity — lanac `Racun→Izvor→Status`, `Tip→Podtip`, EUR, `Datum naplate` auto | ✅ (potvrđeno na ekranu) |
 
 **Sljedeće:** `make_financije_import.py` (10 zapisa u TEST) → spot-check → export roundtrip
 → batch po godinama. **Izmjereno ali neizvršeno:** 15 nemarkiranih rata; `Datum kupovine`

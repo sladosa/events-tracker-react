@@ -55,3 +55,21 @@ Oba pravila (`default_value`, `depends_on`, `default_map`) vrijede u Add Activit
 
 ## Brisanje s backupom
 - ⋮ → Delete → "Download Backup & Delete" preuzima .xlsx backup pa briše
+
+## Automations sheet (Structure export/import)
+Zaseban sheet u Structure .xlsx-u — automatike po arei putuju **zajedno sa strukturom**,
+pa se ne izgube pri prijenosu ili ponovnom uvozu area.
+
+Kolona `Action` određuje vrstu pravila:
+
+- **`set_attribute`** — auto-popunjavanje datumskog atributa iz vrijednosti drugog atributa.
+  `TargetAttr` = polje koje se puni, `MapAttr` = polje koje bira pravilo,
+  `DateMap` = `vrijednost=same` ili `vrijednost=next:N` (N-ti dan sljedećeg mjeseca).
+- **`rata`** — Post-Finish modal koji kupovinu razdijeli na rate; najviše jedno po arei.
+  `TriggerAttr` (checkbox koji pali modal), `CountAttr`, `AmountAttr`, `IndexAttr` (redni broj
+  rate), `TargetAttr` (kamo ide datum naplate), `DateMap` = `vrijednost=DAN` (broj 1–31),
+  `OverrideAttrs` = vrijednosti nametnute svakoj rati (npr. `status=Planiran`).
+
+Import zamjenjuje navedene automatike svake area koja se pojavi u sheetu. **Odsutnost ne briše** —
+stariji export bez rata kolona ne može pobrisati postojeću rata konfiguraciju. Pravilo koje
+referencira nepostojeći slug se preskače (vidljivo u "Automation rules skipped").

@@ -30,9 +30,13 @@ export interface RataAutomationConfig {
   count_slug: string;
   amount_slug: string;
   date_map_slug: string;
-  date_map: Record<string, number>;
+  date_map: Record<string, number>;   // vrijednost date_map_slug atributa → dan naplate (1–31)
   override_attrs?: Record<string, string>;
   comment_attr_slug?: string; // attr to use as comment prefix when event note is empty
+  // S107t — sve rate dijele event_date (= dan kupnje), pa datum naplate ide u
+  // atribut, a ne u event_date. Oba su opcionalna radi starijih konfiguracija.
+  charge_date_slug?: string;  // datetime attr koji prima datum naplate te rate
+  index_slug?: string;        // number attr koji prima redni broj rate (1..count)
 }
 
 // Faza 2b (AUTOMATION_SPEC.md): derive attribute value from another attribute.

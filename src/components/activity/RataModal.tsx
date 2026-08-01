@@ -30,21 +30,24 @@ export function RataModal({ isOpen, rataInfo, onConfirm, onSkip }: Props) {
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
         <div className="p-5">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Kreirati rate?</h2>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-gray-500 mb-1">
             Iznos po rati:{' '}
             <strong className="text-gray-800">{rataInfo.amountPerRata.toFixed(2)}</strong>
             {' '}({rataInfo.totalAmount.toFixed(2)} / {rataInfo.count})
           </p>
+          <p className="text-xs text-gray-400 mb-4">
+            Sve rate ostaju na danu kupnje — razlikuje ih datum naplate.
+          </p>
 
           <div className="space-y-1.5 mb-5 max-h-64 overflow-y-auto">
-            {rataInfo.dates.map((date, i) => (
+            {rataInfo.chargeDates.map((date, i) => (
               <div
                 key={i}
                 className="flex items-center gap-3 text-sm py-1.5 px-3 bg-blue-50 rounded-lg"
               >
-                <span className="text-blue-400 font-mono text-xs">→</span>
+                <span className="text-gray-400 text-xs w-12 shrink-0">rata {i + 1}/{rataInfo.count}</span>
+                <span className="text-blue-400 font-mono text-xs">naplata</span>
                 <span className="text-gray-700 font-medium tabular-nums">{formatDate(date)}</span>
-                <span className="text-gray-400 text-xs">rata {i + 1}/{rataInfo.count}</span>
                 <span className="ml-auto font-semibold text-gray-800 tabular-nums">
                   {rataInfo.amountPerRata.toFixed(2)}
                 </span>

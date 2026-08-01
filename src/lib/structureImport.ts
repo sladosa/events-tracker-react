@@ -25,7 +25,7 @@
 import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
 import { isValidDateRule } from '@/lib/attributeRules';
-import type { AttributeRuleConfig } from '@/types/database';
+import type { AttributeRuleConfig, RataAutomationConfig } from '@/types/database';
 
 // ─────────────────────────────────────────────────────────────
 // Public types
@@ -820,6 +820,14 @@ export async function importStructureExcel(
     const colTarget = aCol('targetattr');
     const colMap = aCol('mapattr');
     const colDateMap = aCol('datemap');
+    // `rata` kolone (S107t) — stariji exporti ih nemaju, tada aCol vrati 0 i
+    // rata redovi se jednostavno ne mogu pojaviti (Action kolona ih ionako filtrira).
+    const colTrigger = aCol('triggerattr');
+    const colCount = aCol('countattr');
+    const colAmount = aCol('amountattr');
+    const colOverride = aCol('overrideattrs');
+    const colCommentAttr = aCol('commentattr');
+    const colIndexAttr = aCol('indexattr');
 
     if (colArea > 0 && colAction > 0 && colTarget > 0 && colMap > 0 && colDateMap > 0) {
       // Per-area set of known attribute slugs (walk category → area via catById).
@@ -834,62 +842,160 @@ export async function importStructureExcel(
       }
 
       const rulesByArea = new Map<string, AttributeRuleConfig[]>();
+      const rataByArea = new Map<string, RataAutomationConfig>();
       const lastRow = autoWs.lastRow?.number ?? 1;
+
+      /** "slug=vrijednost | slug2=vrijednost" → objekt; null ako je ijedan slug nepoznat. */
+      const parsePairs = (
+        raw: string,
+        known: Set<string> | undefined,
+      ): Record<string, string> | null => {
+        const out: Record<string, string> = {};
+        for (const entry of raw.split('|')) {
+          const trimmed = entry.trim();
+          if (!trimmed) continue;
+          const eq = trimmed.indexOf('=');
+          const key = eq > 0 ? trimmed.slice(0, eq).trim() : '';
+          const val = eq > 0 ? trimmed.slice(eq + 1).trim() : '';
+          if (!key || !val || !known?.has(key)) return null;
+          out[key] = val;
+        }
+        return out;
+      };
 
       for (let r = 2; r <= lastRow; r++) {
         const row = autoWs.getRow(r);
         const get = (colNum: number): string => (colNum > 0 ? cellStr(row.getCell(colNum)) : '');
 
-        if (get(colAction).toLowerCase() !== 'set_attribute') continue; // help/blank rows
+        const action = get(colAction).toLowerCase();
+        if (action !== 'set_attribute' && action !== 'rata') continue; // help/blank rows
 
         const areaName = get(colArea);
-        const targetSlug = get(colTarget);
-        const mapSlug = get(colMap);
-        const dateMapRaw = get(colDateMap);
         const areaId = areaByName.get(areaName.toLowerCase());
-
-        if (!areaId || !targetSlug || !mapSlug || !dateMapRaw) {
+        const dateMapRaw = get(colDateMap);
+        const mapSlug = get(colMap);
+        if (!areaId || !mapSlug || !dateMapRaw) {
           console.warn(`[Automations import] row ${r}: unknown area or missing fields — skipped`);
           result.automations.rulesSkipped++;
           continue;
         }
-
         // Slugovi moraju postojati u toj Arei — mrtvo pravilo se ne uvozi
         const areaSlugs = slugsByArea.get(areaId);
-        if (!areaSlugs?.has(targetSlug) || !areaSlugs.has(mapSlug)) {
-          console.warn(`[Automations import] row ${r}: slug "${!areaSlugs?.has(targetSlug) ? targetSlug : mapSlug}" not found in area "${areaName}" — skipped`);
+        const unknownSlug = (...slugs: string[]): string | null =>
+          slugs.find(s => !areaSlugs?.has(s)) ?? null;
+
+        if (action === 'set_attribute') {
+          const targetSlug = get(colTarget);
+          if (!targetSlug) {
+            console.warn(`[Automations import] row ${r}: missing TargetAttr — skipped`);
+            result.automations.rulesSkipped++;
+            continue;
+          }
+          const bad = unknownSlug(targetSlug, mapSlug);
+          if (bad) {
+            console.warn(`[Automations import] row ${r}: slug "${bad}" not found in area "${areaName}" — skipped`);
+            result.automations.rulesSkipped++;
+            continue;
+          }
+
+          // DateMap: "Mastercard=next:11 | Visa=next:3 | Racun=same"
+          const dateMap: Record<string, string> = {};
+          let mapValid = true;
+          for (const entry of dateMapRaw.split('|')) {
+            const trimmed = entry.trim();
+            if (!trimmed) continue;
+            const eq = trimmed.indexOf('=');
+            const key = eq > 0 ? trimmed.slice(0, eq).trim() : '';
+            const ruleStr = eq > 0 ? trimmed.slice(eq + 1).trim() : '';
+            if (!key || !isValidDateRule(ruleStr)) { mapValid = false; break; }
+            dateMap[key] = ruleStr;
+          }
+          if (!mapValid || Object.keys(dateMap).length === 0) {
+            console.warn(`[Automations import] row ${r}: invalid DateMap "${dateMapRaw}" — skipped`);
+            result.automations.rulesSkipped++;
+            continue;
+          }
+
+          const rule: AttributeRuleConfig = {
+            action: 'set_attribute',
+            ...(get(colRuleName) ? { name: get(colRuleName) } : {}),
+            target_slug: targetSlug,
+            map_slug: mapSlug,
+            date_map: dateMap,
+          };
+          const list = rulesByArea.get(areaId) ?? [];
+          list.push(rule);
+          rulesByArea.set(areaId, list);
+          continue;
+        }
+
+        // ── action === 'rata' — najviše jedna konfiguracija po Arei ──
+        if (rataByArea.has(areaId)) {
+          console.warn(`[Automations import] row ${r}: area "${areaName}" already has a rata rule — skipped`);
+          result.automations.rulesSkipped++;
+          continue;
+        }
+        const triggerSlug = get(colTrigger);
+        const countSlug = get(colCount);
+        const amountSlug = get(colAmount);
+        if (!triggerSlug || !countSlug || !amountSlug) {
+          console.warn(`[Automations import] row ${r}: rata needs TriggerAttr + CountAttr + AmountAttr — skipped`);
+          result.automations.rulesSkipped++;
+          continue;
+        }
+        const badRata = unknownSlug(triggerSlug, countSlug, amountSlug, mapSlug);
+        if (badRata) {
+          console.warn(`[Automations import] row ${r}: slug "${badRata}" not found in area "${areaName}" — skipped`);
           result.automations.rulesSkipped++;
           continue;
         }
 
-        // DateMap: "Mastercard=next:11 | Visa=next:3 | Racun=same"
-        const dateMap: Record<string, string> = {};
-        let mapValid = true;
+        // DateMap za rate su DANI u mjesecu (brojevi): "Mastercard=11 | Visa=3"
+        const dayMap: Record<string, number> = {};
+        let dayValid = true;
         for (const entry of dateMapRaw.split('|')) {
           const trimmed = entry.trim();
           if (!trimmed) continue;
           const eq = trimmed.indexOf('=');
           const key = eq > 0 ? trimmed.slice(0, eq).trim() : '';
-          const ruleStr = eq > 0 ? trimmed.slice(eq + 1).trim() : '';
-          if (!key || !isValidDateRule(ruleStr)) { mapValid = false; break; }
-          dateMap[key] = ruleStr;
+          const day = eq > 0 ? Number(trimmed.slice(eq + 1).trim()) : NaN;
+          if (!key || !Number.isInteger(day) || day < 1 || day > 31) { dayValid = false; break; }
+          dayMap[key] = day;
         }
-        if (!mapValid || Object.keys(dateMap).length === 0) {
-          console.warn(`[Automations import] row ${r}: invalid DateMap "${dateMapRaw}" — skipped`);
+        if (!dayValid || Object.keys(dayMap).length === 0) {
+          console.warn(`[Automations import] row ${r}: invalid rata DateMap "${dateMapRaw}" (expects "value=DAY", DAY 1–31) — skipped`);
           result.automations.rulesSkipped++;
           continue;
         }
 
-        const rule: AttributeRuleConfig = {
-          action: 'set_attribute',
-          ...(get(colRuleName) ? { name: get(colRuleName) } : {}),
-          target_slug: targetSlug,
-          map_slug: mapSlug,
-          date_map: dateMap,
-        };
-        const list = rulesByArea.get(areaId) ?? [];
-        list.push(rule);
-        rulesByArea.set(areaId, list);
+        const overrideRaw = get(colOverride);
+        const overrideAttrs = overrideRaw ? parsePairs(overrideRaw, areaSlugs) : {};
+        if (overrideAttrs === null) {
+          console.warn(`[Automations import] row ${r}: OverrideAttrs "${overrideRaw}" references an unknown slug — skipped`);
+          result.automations.rulesSkipped++;
+          continue;
+        }
+        const commentAttr = get(colCommentAttr);
+        const chargeAttr = get(colTarget);   // TargetAttr = kamo ide datum naplate
+        const indexAttr = get(colIndexAttr);
+        const badOpt = unknownSlug(...[commentAttr, chargeAttr, indexAttr].filter(Boolean));
+        if (badOpt) {
+          console.warn(`[Automations import] row ${r}: slug "${badOpt}" not found in area "${areaName}" — skipped`);
+          result.automations.rulesSkipped++;
+          continue;
+        }
+
+        rataByArea.set(areaId, {
+          trigger_slug: triggerSlug,
+          count_slug: countSlug,
+          amount_slug: amountSlug,
+          date_map_slug: mapSlug,
+          date_map: dayMap,
+          ...(Object.keys(overrideAttrs).length > 0 ? { override_attrs: overrideAttrs } : {}),
+          ...(commentAttr ? { comment_attr_slug: commentAttr } : {}),
+          ...(chargeAttr ? { charge_date_slug: chargeAttr } : {}),
+          ...(indexAttr ? { index_slug: indexAttr } : {}),
+        });
       }
 
       // Canonical compare — order-insensitive on date_map keys
@@ -898,22 +1004,43 @@ export async function importStructureExcel(
           rl.action, rl.name ?? '', rl.target_slug, rl.map_slug,
           Object.entries(rl.date_map).sort(([a], [b]) => a.localeCompare(b)),
         ]));
+      const canonRata = (c: RataAutomationConfig | undefined): string =>
+        c ? JSON.stringify([
+          c.trigger_slug, c.count_slug, c.amount_slug, c.date_map_slug,
+          Object.entries(c.date_map).sort(([a], [b]) => a.localeCompare(b)),
+          Object.entries(c.override_attrs ?? {}).sort(([a], [b]) => a.localeCompare(b)),
+          c.comment_attr_slug ?? '', c.charge_date_slug ?? '', c.index_slug ?? '',
+        ]) : '';
 
-      for (const [areaId, rules] of rulesByArea) {
+      // Area koja se pojavljuje u ijednoj mapi. Odsutnost NE briše postojeću
+      // konfiguraciju — stariji export bez `rata` kolona ne smije je pobrisati.
+      const touchedAreas = new Set([...rulesByArea.keys(), ...rataByArea.keys()]);
+      for (const areaId of touchedAreas) {
+        const rules = rulesByArea.get(areaId);
+        const rata = rataByArea.get(areaId);
         const existingArea = dbAreas?.find(a => a.id === areaId);
-        const existingRules = (existingArea?.settings?.automations?.attribute_rules ?? []) as AttributeRuleConfig[];
-        result.automations.rulesImported += rules.length;
-        if (canon(existingRules) === canon(rules)) continue; // unchanged
+        const existingAuto = existingArea?.settings?.automations;
+        const existingRules = (existingAuto?.attribute_rules ?? []) as AttributeRuleConfig[];
+        result.automations.rulesImported += (rules?.length ?? 0) + (rata ? 1 : 0);
+
+        const rulesSame = !rules || canon(existingRules) === canon(rules);
+        const rataSame = !rata || canonRata(existingAuto?.rata) === canonRata(rata);
+        if (rulesSame && rataSame) continue; // unchanged
 
         const newSettings = {
           ...(existingArea?.settings ?? {}),
-          automations: { ...(existingArea?.settings?.automations ?? {}), attribute_rules: rules },
+          automations: {
+            ...(existingAuto ?? {}),
+            ...(rules ? { attribute_rules: rules } : {}),
+            ...(rata ? { rata } : {}),
+          },
         };
         const { error } = await supabase.from('areas').update({ settings: newSettings }).eq('id', areaId);
         if (error) {
           console.error('[Automations import] failed to update area settings:', error);
-          result.automations.rulesSkipped += rules.length;
-          result.automations.rulesImported -= rules.length;
+          const n = (rules?.length ?? 0) + (rata ? 1 : 0);
+          result.automations.rulesSkipped += n;
+          result.automations.rulesImported -= n;
         } else {
           if (existingArea) existingArea.settings = newSettings;
           result.automations.areasUpdated++;

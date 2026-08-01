@@ -831,6 +831,56 @@ detalji `NEXT_SESSION_PROMPT.md`, testovi `Claude-temp_R/test-sessions/S107s_tes
    postoji 4× kao različite kupovine), 199 grupa / **samo 105 ima ratu 1** ⇒ anker računati
    aritmetički (min `n` − (n−1) mjeseci), 136 parova ima nemjesečni korak ⇒ flagirati.
 
+**Done 2026-08-01 (S107t — `Rata br` + čišćenje lažnih rata + import generator + `rata` u
+Automations roundtripu; detalji `Claude-temp_R/test-sessions/S107t_tests.md`):**
+1. **`Rata br` (novi atribut, `rata_br`)** — `Broj rata` je ukupno N, ali redni broj TE uplate
+   živio je samo kao tekst u `Napomena`. Nije izvediv iz datuma: **136 grupa ima nemjesečni korak**
+   i **samo 105 od 199 grupa ima ratu 1** (Anja počinje na 41/96) ⇒ indeks je činjenica iz izvora,
+   ne izvedena vrijednost. Samovalidirajući parse (`n/m` gdje se **m poklapa s `Broj rata`**):
+   **621 od 661** redaka, **0 sudara**. Zrcali `Broj rata` (`depends_on rate=TRUE`), Sort 11.
+2. **`fix_lazne_rate.py` (novo) — IZVRŠENO, 32 retka (ne 19).** `normalize_financije.py` čitao je
+   Kokin `mjesec/godina` kao `rata n/N`: `HLK 3/26` → `Rate?=DA, Broj rata=26`. Prvotna procjena
+   (19) promašila je **`Broj rata = 24`** — izgledao je kao uvjerljiv broj rata. Detekcija je
+   samovalidirajuća (**`2000 + Broj rata == godina event_date-a`** ∧ `n/m` s n ≤ 12): nijedan pravi
+   plan (2,3,4,5,6,10,12,48,60,96) je ne pogađa, svih 32 nose `HLK`/`APN`. Kontrola protiv backupa:
+   samo 4 stupca dirnuta, Σ Uplata/Isplata **u cent**, `Tip`/`Podtip` 0 promjena. `Rate?=DA` 661→**629**.
+3. **`make_financije_import.py` (novo)** — Review → `Activities Events` xlsx. Sve četiri tihe rupe
+   ugrađene (`session_start` kao **tekst**, `Rate?` kao pravi bool, email u kol. G, imena atributa)
+   + **guard koji uspoređuje svih 15 imena I tipova protiv generirane strukture** i prekida ako se
+   ne poklapaju — jedina obrana od tihog preskakanja (`excelImport.ts:836` nema `else`).
+   `--sample N` bira raznolik uzorak i **rezervira 3 mjesta za istu datum** (bez toga uzorak ne
+   testira ono najrizičnije: `useActivities.ts:242` grupira po `session_start`).
+   Verificirano simulacijom `parseLegend`→`parseDataRows`, ne pogledom.
+4. **⚠ D1a POVUČEN, D1 iznimka za rate UKINUTA (nova D1b).** Sašino pitanje „zašto još čuvamo
+   `Datum kupovine`?" razotkrilo je da atribut postoji **samo kao zakrpa za iznimku** koju smo istog
+   dana ukinuli — uz `event_date` = uvijek dan kupnje bio bi doslovno jednak `event_date`-u na svakom
+   retku (suvišan zapis po transakciji + suvišno polje u Kokinoj formi). **Izbačen iz strukture**;
+   vraća se jednim nedestruktivnim importom ako zatreba kao povijesni anker. Ograda: datum 1. rate
+   **nije** datum kupnje nego prve naplate (~ciklus kasnije).
+5. **Rata tok → model B + novi model datuma:** sve rate jedne kupovine dijele **`event_date` = dan
+   kupnje**; razlikuje ih **`Datum naplate`** (11./3. svakog sljedećeg mjeseca) i **pomak
+   `session_start`-a za +1 min** (inače ih `useActivities` slijepi u jedan redak liste). `Rata br`
+   1..N, iznos = ukupno/N, `Status=Planiran`. `generateRataDates` → `generateRataChargeDates`,
+   nova `rataSessionStarts`; `RataModal` prikazuje naplate. **Povijest se NE mijenja** — Kokinih 629
+   rata redaka zadržava `event_date` = mjesec naplate (pravi datum kupnje za većinu nije poznat);
+   pogled po `Datum naplate` ostaje konzistentan za oboje, pogled po `event_date` ne.
+   ⚠ **Ispravak ranije tvrdnje:** stari tok NIJE dvostruko brojao — `AddActivityPage.tsx:1237`
+   **briše uneseni event** nakon generiranja rata.
+6. **`Automations` sheet proširen na `rata`** (Faza 3 ✅) — 6 novih kolona (`TriggerAttr`,
+   `CountAttr`, `AmountAttr`, `OverrideAttrs`, `CommentAttr`, `IndexAttr`), `TargetAttr` = kamo ide
+   datum naplate. **Povod:** Finish nije okidao rata modal na `Financije_all` — ne bug, nego točno
+   ona rupa koju je S107s zapisao (`automations.rata` išla je SQL-om). **Odsutnost NE briše** —
+   stariji export bez tih kolona ne smije pobrisati konfiguraciju (inače bi popravak rupe uveo novi
+   način tihog gubitka). Slugovi se provjeravaju protiv atributa te Aree; max 1 rata po Arei.
+   Preostala rupa: **`export_profiles`**.
+7. **Verifikacija:** simulacija novog Automations parsera nad generiranim sheetom (2 pravila,
+   0 preskočenih); `typecheck` + `build` čisti. **Nijedan app test još nije odrađen** — T-S107t-1…7
+   čekaju Sašu.
+8. **Zamke zabilježene:** `npm` se mora pokretati iz direktorija projekta (ENOENT `package.json`);
+   Browserslist poruka je upozorenje, ne greška; generirani structure/import fajlovi se brišu čim
+   nastane novi (jutros je pogled u **BASE `events_export_preview`** umjesto u generirani file
+   proizveo lažni nalaz „stara taksonomija").
+
 **Sljedeći koraci — ⚠ ZASTARJELO od S107m, prekrojeno S107q/S107s, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
@@ -861,10 +911,10 @@ detalji `NEXT_SESSION_PROMPT.md`, testovi `Claude-temp_R/test-sessions/S107s_tes
 
 ### Backlog (future — after S107 historical pipeline)
 
-0. **Roundtrip completeness (S107s, Sašin princip)** — `automations.rata` i `export_profiles`
-   ne prolaze Structure Excel roundtripom ⇒ tiho se gube pri prijenosu aree. Fix: proširiti
-   `Automations` sheet na `rata` akciju + dodati `ExportProfiles` sheet (export+import,
-   replace-per-area, isti obrazac kao Faza 2b)
+0. **Roundtrip completeness (S107s, Sašin princip)** — ~~`automations.rata`~~ ✅ riješeno S107t
+   (`Automations` sheet nosi `rata` akciju). **Preostalo: `export_profiles`** — ključ kolone je
+   `attr:Area||CatPath||AttrName` pa profil ne preživi promjenu imena aree ni atributa; fix =
+   `ExportProfiles` sheet (export+import, replace-per-area, isti obrazac kao Faza 2b)
 1. **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC za "In any attribute" pretragu koja zaobilazi ILIKE+RLS non-leakproof problem
 2. **E7-2/E7-3 UX polish** — Toast "Access granted" missing u Share Management invite flow; selektore/toast implementacija trebam da vidim
 3. **D9 verify** — Excel User column behaviour (always visible vs. only for shared areas) — minor, može biti nakon S107
