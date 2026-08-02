@@ -47,6 +47,8 @@ export interface ImportResult {
   };
   updated: {
     attributes: number;
+    /** Area/Category settings zapisani iz §8 (CommentTemplate, DisableSavePlus) */
+    settings: number;
   };
   skipped: number;
   conflicts: ConflictRow[];
@@ -393,7 +395,7 @@ export async function importStructureExcel(
 ): Promise<ImportResult> {
   const result: ImportResult = {
     created:  { areas: 0, categories: 0, attributes: 0 },
-    updated:  { attributes: 0 },
+    updated:  { attributes: 0, settings: 0 },
     skipped:  0,
     conflicts: [],
     automations: { areasUpdated: 0, rulesImported: 0, rulesSkipped: 0 },
@@ -429,7 +431,7 @@ export async function importStructureExcel(
       supabase.from('areas').select('id, name, slug, settings').eq('user_id', userId),
       supabase
         .from('categories')
-        .select('id, area_id, parent_category_id, name, slug, level, sort_order, path'),
+        .select('id, area_id, parent_category_id, name, slug, level, sort_order, path, settings'),
       supabase
         .from('attribute_definitions')
         .select('id, category_id, name, slug, unit, description, sort_order, validation_rules, default_value'),
@@ -816,6 +818,7 @@ export async function importStructureExcel(
 
         if (!dirty) continue;
         await supabase.from('areas').update({ settings: newSettings }).eq('id', areaId);
+        result.updated.settings++;
         // Keep in-memory snapshot fresh — section 9 (Automations) spreads the same
         // settings object; a stale copy would silently revert these changes.
         if (existingArea) existingArea.settings = newSettings;
@@ -824,9 +827,16 @@ export async function importStructureExcel(
       if (row.type === 'Category' && hasCommentTplCol) {
         const catId = catByPath.get(row.categoryPath);
         if (!catId) continue;
+        // Dirty check — bez njega svaki uvoz prepisuje settings svakog leafa
+        // i brojač bi prijavljivao promjenu koje nema.
+        const existingCat = dbCats?.find(c => c.id === catId);
+        const dbCatTpl = existingCat?.settings?.comment_template ?? null;
+        if (dbCatTpl === xlTpl) continue;
         await supabase.from('categories').update({
           settings: { comment_template: xlTpl ?? undefined },
         }).eq('id', catId);
+        result.updated.settings++;
+        if (existingCat) existingCat.settings = { comment_template: xlTpl ?? undefined };
       }
     }
   }

@@ -99,12 +99,12 @@ export function StructureImportModal({
       const res = await importStructureExcel(file, userId);
       setResult(res);
 
-      const totalCreated =
-        res.created.areas + res.created.categories + res.created.attributes;
-
-      if (totalCreated > 0 || res.updated.attributes > 0) {
-        onImported(); // trigger refetch in parent
-      }
+      // Uvijek refetch, i kad su svi brojači 0. Uvoz koji mijenja SAMO
+      // postavke Area (CommentTemplate, DisableSavePlus, Automations) ne
+      // stvara ni jedan created/updated redak, a stari uvjet ga je zato
+      // preskakao: podaci u bazi novi, `nodes` u appu stari, Edit panel bi
+      // pri Save-u vratio staru snimku settingsa natrag u bazu.
+      onImported(); // trigger refetch in parent
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Import failed');
     } finally {
@@ -147,7 +147,8 @@ export function StructureImportModal({
     ? result.created.areas + result.created.categories + result.created.attributes
     : 0;
   const totalChanged = result
-    ? totalCreated + result.updated.attributes + (result.automations?.areasUpdated ?? 0)
+    ? totalCreated + result.updated.attributes + (result.updated.settings ?? 0)
+      + (result.automations?.areasUpdated ?? 0)
     : 0;
   const isDone = result !== null;
 
@@ -238,6 +239,9 @@ export function StructureImportModal({
                   <ResultRow label="Categories created"  value={result.created.categories} />
                   <ResultRow label="Attributes created"  value={result.created.attributes} />
                   <ResultRow label="Attributes updated"  value={result.updated.attributes} />
+                  {(result.updated.settings ?? 0) > 0 && (
+                    <ResultRow label="Settings updated"  value={result.updated.settings} />
+                  )}
                   {(result.automations?.rulesImported ?? 0) > 0 && (
                     <ResultRow label="Automation rules"  value={result.automations.rulesImported} />
                   )}

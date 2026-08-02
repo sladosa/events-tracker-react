@@ -935,6 +935,19 @@ retku; import je čita u §8 zajedno s `comment_template` **jednim** upisom sett
 dva odvojena spreada nad istim objektom). Odsutnost kolone = postavka se ne dira (isti princip kao
 `rata` u §9); prazna ćelija = `FALSE`. Povod: Saša ju je morao ručno kvačiti nakon svakog uvoza
 `Financije_all`. Test T-S107u-3.
+
+**S107u — uvoz koji mijenja SAMO postavke nije okidao refetch** (`StructureImportModal.tsx`,
+`structureImport.ts`): `onImported()` se zvao samo uz `totalCreated > 0 || updated.attributes > 0`,
+a uvoz koji dira isključivo `comment_template`/`disable_save_plus`/automatike vraća sve nule ⇒
+nema refetcha, `nodes` ostaju stari, Edit panel prikazuje staru vrijednost — i **Save iz takvog
+panela vraća cijelu staru snimku `settings` u bazu** (`{ ...node.area.settings }` spread nosi i
+`automations` ⇒ tek uvezena rata konfiguracija bi nestala; lost update, bez ijedne poruke).
+Fix: `onImported()` bezuvjetno nakon uspješnog uvoza + novi brojač `updated.settings` (§8 promjene
+prije nisu ulazile ni u jedan broj, pa je modal javljao „Nothing to import" iako je prepisao
+postavke) + dirty-check na `categories.settings` (prije se svaki leaf prepisivao pri svakom uvozu;
+`settings` dodan u SELECT). Uz to `StructureNodeEditPanel` sinkronizira `disableSavePlus`/
+`commentTemplate` na promjenu `node`-a (`useState` inicijalizator se pri re-renderu ne zove).
+Testovi T-S107u-4/5.
 1. **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC za "In any attribute" pretragu koja zaobilazi ILIKE+RLS non-leakproof problem
 2. **E7-2/E7-3 UX polish** — Toast "Access granted" missing u Share Management invite flow; selektore/toast implementacija trebam da vidim
 3. **D9 verify** — Excel User column behaviour (always visible vs. only for shared areas) — minor, može biti nakon S107
