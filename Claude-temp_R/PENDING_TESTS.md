@@ -8,6 +8,22 @@
 
 ---
 
+## S107u — bugfix: nova Area gubi `comment_template` pri Structure importu
+
+**Nađeno pri T-S107t testiranju** (`Financije_all` Area panel imao praznu „Auto-comment
+template" iako je u fileu `{racun}/{tip}/{podtip}`). `dbAreas` je snapshot **prije** importa pa
+za tek stvorenu Areu §8 (`comment_template`) i §9 (`Automations`) oboje rade
+`{ ...existingArea?.settings }` nad `undefined` ⇒ §9 piše preko §8. Pogađa samo Aree stvorene
+**u istom** importu koje imaju i CommentTemplate i Automations redak. Fix: `findOrCreateArea`
+gura novu Areu u `dbAreas`. (`structureImport.ts`)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S107u-1 | **Saša:** obriši `Financije_all` → Structure import → Area panel ima `{racun}/{tip}/{podtip}` u „Auto-comment template", a Automations i dalje javlja **2** | ✅ (template + Preview `[racun]/[tip]/[podtip]` vidljivi u Area panelu) |
+| T-S107u-2 | (backlog, ne blokira) `groupAttributes` uzima `Default` s prvog retka grupe ⇒ atributski `default_value` ovisi o redoslijedu redaka; export piše `*` prvi, generator zadnji → `Status.default_value` `Izvrsen`↔`null` klackanje. Fix: ignorirati `Default` na retku koji ima `DependsOn` (pripada u `default_map`) | ⬜ |
+
+---
+
 ## S107t — `Rata br` · čišćenje lažnih rata · import generator · `rata` u Automations roundtripu
 
 **App kod (prvi put nakon S107f):** `Automations` sheet proširen na **`rata`** akciju
@@ -24,13 +40,13 @@ procijenjeno; `Broj rata = 24` je isti obrazac).
 | ID | Test | Status |
 | --- | --- | --- |
 | P-1…P-9 | Programske kontrole (paritet `validation_rules`, diff protiv backupa, simulacija oba parsera, typecheck+build) | ✅ (programski) |
-| T-S107t-1 | **Saša:** Structure import — 15 atributa (⚠ ne 16), **Automation rules 2** | ⬜ |
-| T-S107t-2 | **Saša:** `Rata br` se pojavljuje/nestaje zajedno s `Broj rata` | ⬜ |
-| T-S107t-3 | **Saša:** ⭐ **rata tok** (novi kod) — 6 rata na istom danu, `Datum naplate` 11./3., `Rata br` 1..6, bez zapisa s punim iznosom | ⬜ |
-| T-S107t-4 | **Saša:** Activities import 10 zapisa — 28.02.2023. daje **3 reda**, `Rate? = Yes` na Anjinoj rati | ⬜ |
-| T-S107t-5 | **Saša:** export roundtrip — `rata` redak u Automations sheetu, re-import bez promjena | ⬜ |
-| T-S107t-6 | **Saša:** obrisan `rata` redak pri uvozu **ne briše** konfiguraciju | ⬜ |
-| T-S107t-7 | **Saša:** Review — 32 očišćena retka, `Rate?=DA` 661 → 629 | ⬜ |
+| T-S107t-1 | **Saša:** Structure import — 15 atributa (⚠ ne 16), **Automation rules 2** | ✅ (1 area / 1 kat. / 15 attr / 2 rules / 0 skipped) |
+| T-S107t-2 | **Saša:** `Rata br` se pojavljuje/nestaje zajedno s `Broj rata` | ✅ (Not set → No → Yes; oba se pojave/nestanu zajedno; `Datum naplate` auto 11.09. za Mastercard) |
+| T-S107t-3 | **Saša:** ⭐ **rata tok** (novi kod) — rate na istom danu, `Datum naplate` 11./3., `Rata br` 1..N, bez zapisa s punim iznosom | ✅ (300/3: modal 3×100 · 3 reda na današnjem danu 19:11/12/13 · 13 = 10+3 ⇒ nema zapisa od 300 · rata 3: `Isplata` 100, `Rata br` 3, naplata 11.11.2026, `Status` Planiran, komentar `…/Hrana i ostalo · rata 3/3 · 100 od 300`) |
+| T-S107t-4 | **Saša:** Activities import 10 zapisa — 28.02.2023. daje **3 reda**, `Rate? = Yes` na Anjinoj rati | ✅ (Anja redak: `Rate?`=Yes, `Broj rata` 96, `Rata br` 43, Uplata 450, `Prihodi`/`Povrat Anja`, naplata 28.02.2023, `Stanje` 1744,76, „3 empty" = točno Isplata/Izvod opis/Valuta) |
+| T-S107t-5 | **Saša:** export roundtrip — `rata` redak u Automations sheetu, re-import bez promjena | ✅ (export: oba retka s punim `rata` kolonama · Activities re-import **0 new / 0 modify / 10 unchanged (skipped)** ⇒ `row_hash` skip radi · Structure re-import: 1 attr updated = `Status.default_value`, v. T-S107u-2, i „Automation rules 2" = brojač pročitanih, ne zapisanih) |
+| T-S107t-6 | **Saša:** obrisan `rata` redak pri uvozu **ne briše** konfiguraciju | ✅ (import: „Automation rules 1" + 0 updated + „Nothing to import"; modal nakon toga i dalje radi — 400/2 → 2×200, naplate 11.09./11.10.) |
+| T-S107t-7 | **Saša:** Review — 32 očišćena retka, `Rate?=DA` 661 → 629 | ✅ (32 redaka, svih 32 `Rate?`/`Broj rata` prazni — filter nudi samo „(Blanks)"; `Rate?=DA` **629** od 4996, prije fixa 661 i svih 32 bilo DA; `Tip`/`Podtip` 0 promjena vs backup) |
 
 **Sljedeće:** popravci iz testova → batch import po godinama → `Financije_all` na PROD pod
 Kokinim računom (D6). **Ostaje neizvršeno:** 15 nemarkiranih rata; `Saldo kontrola` 7 razlika

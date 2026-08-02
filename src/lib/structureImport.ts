@@ -532,14 +532,20 @@ export async function importStructureExcel(
 
     const slug = generateSlug(areaName);
     const id   = crypto.randomUUID();
+    const finalSlug = areaBySlug.has(slug) ? `${slug}-${id.slice(0, 6)}` : slug;
     const { error } = await supabase.from('areas').insert({
       id,
       user_id:    userId,
       name:       areaName,
-      slug:       areaBySlug.has(slug) ? `${slug}-${id.slice(0, 6)}` : slug,
+      slug:       finalSlug,
       sort_order: (dbAreas?.length ?? 0) + result.created.areas + 1,
     });
     if (error) throw new Error(`Failed to create Area "${areaName}": ${error.message}`);
+
+    // Novu Areu odmah upiši u snapshot: §8 (comment_template) i §9 (Automations)
+    // oboje rade `{ ...existingArea.settings }`, pa bi bez ovoga druga sekcija
+    // pisala preko prve (nova Area = `existingArea === undefined` = prazan spread).
+    dbAreas?.push({ id, name: areaName, slug: finalSlug, settings: null });
 
     areaByName.set(areaName.toLowerCase(), id);
     areaBySlug.set(slug, id);

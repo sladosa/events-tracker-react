@@ -18,12 +18,12 @@ Sesija je stala na tome.
 Prvo obriši `Financije_all` iz TEST baze (struktura se mijenjala tri puta u toku dana), pa
 uvezi ispočetka.
 
-| korak | što | file |
-| --- | --- | --- |
-| 1 | obriši areu `Financije_all` u TEST-u | — |
-| 2 | Structure tab → Import | `Financije_all_structure_20260801_172202.xlsx` |
-| 3 | Activities tab → Import | `Financije_all_import_20260801_172535.xlsx` |
-| 4 | testovi **T-S107t-1 … T-S107t-7** | `Claude-temp_R/test-sessions/S107t_tests.md` |
+| korak | što                                  | file                                           |
+| ----- | ------------------------------------ | ---------------------------------------------- |
+| 1     | obriši areu `Financije_all` u TEST-u | —                                              |
+| 2     | Structure tab → Import               | `Financije_all_structure_20260801_172202.xlsx` |
+| 3     | Activities tab → Import              | `Financije_all_import_20260801_172535.xlsx`    |
+| 4     | testovi **T-S107t-1 … T-S107t-7**    | `Claude-temp_R/test-sessions/S107t_tests.md`   |
 
 Pokretanje: `cd C:\0_Sasa\events-tracker-react` pa `npm run dev:test`.
 (Zapamti: `npm` mora ići **iz direktorija projekta**, inače javi da nema `package.json`.
