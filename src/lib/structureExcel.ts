@@ -4,7 +4,7 @@
 //
 // v2 vs v1:
 //   • Single sheet "Structure" (was: "HierarchicalView" pre-S26)
-//   • 17 fixed columns A–Q (no dynamic DependsOnWhen_* columns)
+//   • 20 fixed columns A–T (no dynamic DependsOnWhen_* columns)
 //   • Multi-row DependsOn: one row per WhenValue (Streamlit style)
 //   • Rows 1–5: color legend (row-grouped, default collapsed)
 //   • Row 6: always-visible info/backup row
@@ -68,7 +68,7 @@ const CLR = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────
-// Column specification (A–Q, 17 columns)
+// Column specification (A–T, 20 columns)
 // ─────────────────────────────────────────────────────────────
 // colColor  : fill applied to every data cell in this column
 // grouped   : adds outlineLevel = 1
@@ -95,9 +95,10 @@ const COLS = [
   { key: 'whenValue',   header: 'WhenValue',         width: 12, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
   { key: 'description', header: 'Description',       width: 60, colColor: CLR.BLUE,   grouped: false, collapsed: false },
   { key: 'commentTpl', header: 'CommentTemplate',   width: 30, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
+  { key: 'disableSavePlus', header: 'DisableSavePlus', width: 16, colColor: CLR.GREEN, grouped: true, collapsed: true },
 ] as const;
 
-const N_COLS = COLS.length; // 18
+const N_COLS = COLS.length; // 20
 
 // Column letter helpers (0-based index: A=0, B=1, ...)
 function colLetter(idx: number): string {
@@ -145,6 +146,7 @@ interface DataRow {
   whenValue:    string;
   description:  string;
   commentTpl:   string;
+  disableSavePlus: string; // TRUE | FALSE | '' (Area rows only)
   // Row meta (not written to cells)
   _isAreaRow:   boolean;
   _isLeafRow:   boolean;
@@ -213,6 +215,7 @@ function buildAreaRow(node: StructureNode, sharedWith: string): DataRow {
     textOptions: '', dependsOn: '', whenValue: '',
     description: node.description ?? '',
     commentTpl: node.area.settings?.comment_template ?? '',
+    disableSavePlus: node.area.settings?.disable_save_plus ? 'TRUE' : 'FALSE',
     _isAreaRow: true, _isLeafRow: false, _isAttrRow: false,
   };
 }
@@ -230,6 +233,7 @@ function buildCategoryRow(node: StructureNode): DataRow {
     textOptions: '', dependsOn: '', whenValue: '',
     description: node.description ?? '',
     commentTpl: (node.isLeaf ? node.category?.settings?.comment_template : '') ?? '',
+    disableSavePlus: '', // Area-level setting only
     _isAreaRow: false, _isLeafRow: node.isLeaf, _isAttrRow: false,
   };
 }
@@ -254,6 +258,7 @@ function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[
     unit: attr.unit ?? '',
     description: attr.description ?? '',
     commentTpl: '',
+    disableSavePlus: '' as const,
     _isAreaRow: false as const,
     _isLeafRow: false as const,
     _isAttrRow: true as const,
@@ -517,6 +522,14 @@ function writeStructureSheet(
     formulae: ['"suggest,none"'],
   });
 
+  dv.add(dvRange(colLetter(colNum('disableSavePlus') - 1)), {
+    type: 'list', allowBlank: true,
+    formulae: ['"TRUE,FALSE"'],
+    promptTitle: 'Disable Save+ (Area row)',
+    prompt: 'TRUE = hide "Save +" in Add Activity (one event per session).\nOnly read from Area rows; blank = FALSE.',
+    showInputMessage: true,
+  });
+
   dv.add(dvRange(colLetter(colNum('commentTpl') - 1)), {
     type: 'custom', allowBlank: true,
     formulae: ['a'],
@@ -588,6 +601,7 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: 'Q  WhenValue',         value: 'Value of parent attribute for this row\'s options.  Use "*" as fallback for unlisted parent values.' },
     { kind: 'row', label: 'R  Description',       value: 'Optional documentation notes.' },
     { kind: 'row', label: 'S  CommentTemplate',   value: 'Auto-comment template for Area or leaf Category.  Use {slug} to insert attribute values into event comment on Finish.  Leaf overrides Area.  Example: {napomena} ({tip})' },
+    { kind: 'row', label: 'T  DisableSavePlus',    value: 'Area rows only.  TRUE hides the "Save +" button in Add Activity (one event per session — e.g. Financije, Health).  Blank = FALSE.  Column absent from the file = setting left unchanged.' },
     { kind: 'row', label: '', value: '' },
 
     { kind: 'section', text: 'Understanding DependsOn Rows' },

@@ -80,6 +80,7 @@ interface ParsedRow {
   whenValue:    string; // '*' or specific value
   description:  string;
   commentTpl:   string;
+  disableSavePlus: string;
 }
 
 // Grouped attribute: combines multiple DependsOn rows
@@ -186,6 +187,7 @@ interface HeaderInfo {
   colWhenValue:   number;
   colDescription: number;
   colCommentTpl:  number;
+  colDisableSavePlus: number;
 }
 
 function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
@@ -232,6 +234,7 @@ function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
       colWhenValue:    findCol('whenvalue'),
       colDescription:  findCol('description'),
       colCommentTpl:   findCol('commenttemplate'),
+      colDisableSavePlus: findCol('disablesaveplus'),
     };
   }
   return null;
@@ -275,6 +278,7 @@ function parseRows(ws: ExcelJS.Worksheet, h: HeaderInfo): ParsedRow[] {
       whenValue:    get(h.colWhenValue),
       description:  get(h.colDescription),
       commentTpl:   get(h.colCommentTpl),
+      disableSavePlus: get(h.colDisableSavePlus),
     });
   }
   return rows;
@@ -778,9 +782,12 @@ export async function importStructureExcel(
     }
   }
 
-  // ── 8. Update comment_template on Areas and leaf Categories ──
+  // ── 8. Update Area settings (comment_template, disable_save_plus) + leaf comment_template ──
+  // Kolona koje NEMA u fileu ne dira svoju postavku — stariji export bez
+  // `DisableSavePlus` kolone ne smije je pobrisati (isti princip kao rata u §9).
   const hasCommentTplCol = header.colCommentTpl > 0;
-  if (hasCommentTplCol) {
+  const hasSavePlusCol   = header.colDisableSavePlus > 0;
+  if (hasCommentTplCol || hasSavePlusCol) {
     for (const row of parsedRows) {
       if (row.type !== 'Area' && row.type !== 'Category') continue;
       const xlTpl = row.commentTpl === '_' ? null : (row.commentTpl || null);
@@ -789,16 +796,32 @@ export async function importStructureExcel(
         const areaId = areaByName.get(row.categoryPath.split('>')[0].trim().toLowerCase());
         if (!areaId) continue;
         const existingArea = dbAreas?.find(a => a.id === areaId);
-        const dbTpl = existingArea?.settings?.comment_template ?? null;
-        if (dbTpl === xlTpl) continue;
-        const newSettings = { ...(existingArea?.settings ?? {}), comment_template: xlTpl ?? undefined };
+        const newSettings = { ...(existingArea?.settings ?? {}) };
+        let dirty = false;
+
+        if (hasCommentTplCol) {
+          const dbTpl = existingArea?.settings?.comment_template ?? null;
+          if (dbTpl !== xlTpl) {
+            newSettings.comment_template = xlTpl ?? undefined;
+            dirty = true;
+          }
+        }
+        if (hasSavePlusCol) {
+          const xlSavePlus = row.disableSavePlus.toUpperCase() === 'TRUE';
+          if ((existingArea?.settings?.disable_save_plus ?? false) !== xlSavePlus) {
+            newSettings.disable_save_plus = xlSavePlus || undefined;
+            dirty = true;
+          }
+        }
+
+        if (!dirty) continue;
         await supabase.from('areas').update({ settings: newSettings }).eq('id', areaId);
         // Keep in-memory snapshot fresh — section 9 (Automations) spreads the same
-        // settings object; a stale copy would silently revert this template change.
+        // settings object; a stale copy would silently revert these changes.
         if (existingArea) existingArea.settings = newSettings;
       }
 
-      if (row.type === 'Category') {
+      if (row.type === 'Category' && hasCommentTplCol) {
         const catId = catByPath.get(row.categoryPath);
         if (!catId) continue;
         await supabase.from('categories').update({

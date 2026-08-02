@@ -915,9 +915,10 @@ Automations roundtripu; detalji `Claude-temp_R/test-sessions/S107t_tests.md`):**
    (`Automations` sheet nosi `rata` akciju). **Preostalo: `export_profiles`** — ključ kolone je
    `attr:Area||CatPath||AttrName` pa profil ne preživi promjenu imena aree ni atributa; fix =
    `ExportProfiles` sheet (export+import, replace-per-area, isti obrazac kao Faza 2b).
-   **Također `disable_save_plus`** (nađeno S107u pri uvozu `Financije_all` — Saša ga je morao
-   ručno kvačiti nakon Structure importa): od 4 ključa `AreaSettings` roundtrip pokriva
-   `comment_template` i `automations`, a ne pokriva `disable_save_plus` ni `export_profiles`
+   ~~**Također `disable_save_plus`**~~ ✅ riješeno S107u — nova kolona `DisableSavePlus`
+   na Area retku Structure sheeta (export+import, odsutnost kolone ne mijenja postavku).
+   Od 4 ključa `AreaSettings` roundtrip sad pokriva `comment_template`, `automations` i
+   `disable_save_plus`; **ostaje samo `export_profiles`**
 
 **S107u bugfix — nova Area gubi `comment_template`** (`structureImport.ts`): `dbAreas` je
 snapshot učitan **prije** importa, a `findOrCreateArea` novu Areu nije gurao u njega ⇒ za Areu
@@ -927,6 +928,13 @@ stvorenu u istom runu i §8 (`comment_template`) i §9 (`Automations`) rade
 imale zaštitu (`existingArea.settings = newSettings` nakon §8). Leaf `comment_template` je
 preživio (§9 ne dira kategorije) pa se u appu nije vidjelo. Fix: novi zapis se odmah gura u
 `dbAreas`. Test T-S107u-1.
+
+**S107u — `disable_save_plus` u Structure roundtripu** (`structureExcel.ts` + `structureImport.ts`):
+nova kolona **`DisableSavePlus`** (T, grouped+collapsed, DV `TRUE/FALSE`) piše se samo na **Area**
+retku; import je čita u §8 zajedno s `comment_template` **jednim** upisom settingsa (prije su bila
+dva odvojena spreada nad istim objektom). Odsutnost kolone = postavka se ne dira (isti princip kao
+`rata` u §9); prazna ćelija = `FALSE`. Povod: Saša ju je morao ručno kvačiti nakon svakog uvoza
+`Financije_all`. Test T-S107u-3.
 1. **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC za "In any attribute" pretragu koja zaobilazi ILIKE+RLS non-leakproof problem
 2. **E7-2/E7-3 UX polish** — Toast "Access granted" missing u Share Management invite flow; selektore/toast implementacija trebam da vidim
 3. **D9 verify** — Excel User column behaviour (always visible vs. only for shared areas) — minor, može biti nakon S107

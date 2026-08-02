@@ -17,9 +17,27 @@ za tek stvorenu Areu §8 (`comment_template`) i §9 (`Automations`) oboje rade
 **u istom** importu koje imaju i CommentTemplate i Automations redak. Fix: `findOrCreateArea`
 gura novu Areu u `dbAreas`. (`structureImport.ts`)
 
+**Drugi dio S107u — `disable_save_plus` u roundtripu:** nova kolona **`DisableSavePlus`** (kol. T,
+grouped+collapsed, DV `TRUE/FALSE`) na **Area** retku `Structure` sheeta. §8 sad piše
+`comment_template` i `disable_save_plus` **jednim** upisom. Odsutnost kolone = postavka se ne dira;
+prazna ćelija = `FALSE`. Roundtrip `AreaSettings` sad pokriva 3 od 4 ključa — ostaje `export_profiles`.
+
+**Koraci T-S107u-3:**
+1. Na `Financije_all` uključi `Disable "Save+"` u Area panelu → Save
+2. Structure tab → Export → u `Structure` sheetu kolona **T `DisableSavePlus`** = `TRUE` na Area
+   retku (kolona je collapsed — otvori grupu ili idi na ćeliju `T8`); Category/Attribute retci prazni
+3. Uvezi taj file natrag → `Disable "Save+"` **ostaje uključen**, „Attributes updated 0"
+4. U fileu promijeni `TRUE` → `FALSE`, uvezi → kvačica se **isključi** (dokaz da radi u oba smjera)
+5. Uvezi **stari** file bez te kolone (`Financije_all_structure_20260801_172202.xlsx`) → postavka
+   **ostaje nepromijenjena** (odsutnost ne briše)
+
+**Fail ako:** kolone nema u exportu · uvoz ne mijenja kvačicu · stari file bez kolone je resetira ·
+`comment_template` se izgubi pri bilo kojem od ovih uvoza (regresija na §8 spajanju)
+
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S107u-1 | **Saša:** obriši `Financije_all` → Structure import → Area panel ima `{racun}/{tip}/{podtip}` u „Auto-comment template", a Automations i dalje javlja **2** | ✅ (template + Preview `[racun]/[tip]/[podtip]` vidljivi u Area panelu) |
+| T-S107u-3 | **Saša:** `disable_save_plus` roundtrip — vidi korake ispod | ⬜ |
 | T-S107u-2 | (backlog, ne blokira) `groupAttributes` uzima `Default` s prvog retka grupe ⇒ atributski `default_value` ovisi o redoslijedu redaka; export piše `*` prvi, generator zadnji → `Status.default_value` `Izvrsen`↔`null` klackanje. Fix: ignorirati `Default` na retku koji ima `DependsOn` (pripada u `default_map`) | ⬜ |
 
 ---

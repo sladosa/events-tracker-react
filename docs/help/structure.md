@@ -73,3 +73,15 @@ Kolona `Action` određuje vrstu pravila:
 Import zamjenjuje navedene automatike svake area koja se pojavi u sheetu. **Odsutnost ne briše** —
 stariji export bez rata kolona ne može pobrisati postojeću rata konfiguraciju. Pravilo koje
 referencira nepostojeći slug se preskače (vidljivo u "Automation rules skipped").
+
+## Postavke area u Structure sheetu
+
+Dvije kolone na **Area** retku nose postavke same area, pa i one putuju roundtripom:
+
+- **`CommentTemplate`** — auto-komentar na Finish; `{slug}` umeće vrijednost atributa.
+  Na Area retku = default za sve leafove, na leaf Category retku = override.
+- **`DisableSavePlus`** — `TRUE` skriva "Save +" u Add Activity (jedan event po sesiji,
+  npr. Financije, Health). Prazno = `FALSE`. Čita se **samo** s Area retka.
+
+Kolone koje u fileu **nema** ne diraju svoju postavku — stariji export bez `DisableSavePlus`
+kolone je ne može pobrisati (isti princip kao rata automatika).
