@@ -37,9 +37,9 @@ prazna ćelija = `FALSE`. Roundtrip `AreaSettings` sad pokriva 3 od 4 ključa �
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S107u-1 | **Saša:** obriši `Financije_all` → Structure import → Area panel ima `{racun}/{tip}/{podtip}` u „Auto-comment template", a Automations i dalje javlja **2** | ✅ (template + Preview `[racun]/[tip]/[podtip]` vidljivi u Area panelu) |
-| T-S107u-3 | **Saša:** `disable_save_plus` roundtrip — vidi korake ispod | ◐ (smjer TRUE→FALSE ✅ potvrđen kroz bazu + export + „Save +" u Add Activity; ostaje smjer FALSE→TRUE i stari file bez kolone) |
-| T-S107u-4 | **Saša:** panel više ne prikazuje staru vrijednost nakon importa (bez reloada) | ⬜ |
-| T-S107u-5 | **Saša:** uvoz koji mijenja SAMO postavke javlja **„Settings updated: 1"** umjesto „Nothing to import" | ⬜ |
+| T-S107u-3 | **Saša:** `disable_save_plus` roundtrip — vidi korake ispod | ✅ (oba smjera: TRUE→FALSE potvrđen kroz bazu + export + „Save +" u Add Activity; FALSE→TRUE kroz panel + nestali „Save +"; stari file bez kolone **ne resetira** postavku) |
+| T-S107u-4 | **Saša:** panel više ne prikazuje staru vrijednost nakon importa (bez reloada) | ✅ (kvačica se ažurirala bez reloada) |
+| T-S107u-5 | **Saša:** uvoz koji mijenja SAMO postavke javlja **„Settings updated: 1"** umjesto „Nothing to import" | ✅ (Settings updated 1, Automation rules 2, ostalo 0) |
 | T-S107u-2 | (backlog, ne blokira) `groupAttributes` uzima `Default` s prvog retka grupe ⇒ atributski `default_value` ovisi o redoslijedu redaka; export piše `*` prvi, generator zadnji → `Status.default_value` `Izvrsen`↔`null` klackanje. Fix: ignorirati `Default` na retku koji ima `DependsOn` (pripada u `default_map`) | ⬜ |
 
 ---
