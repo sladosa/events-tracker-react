@@ -3,8 +3,9 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107t (2026-08-01) — struktura + import generator gotovi, rata tok prepravljen; sve čeka TEST
-**Detalji S107t:** [S107t_tests.md](test-sessions/S107t_tests.md)
+**Zadnji update:** S107u (2026-08-02) — S107t odtestiran u appu (7/7), 3 buga nađena i popravljena,
+`disable_save_plus` dodan u roundtrip. **Sve otvoreno: samo T-S107u-2 (backlog).**
+**Detalji S107u:** [S107u_tests.md](test-sessions/S107u_tests.md) · **S107t:** [S107t_tests.md](test-sessions/S107t_tests.md)
 
 ---
 

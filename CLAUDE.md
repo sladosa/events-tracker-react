@@ -881,6 +881,40 @@ Automations roundtripu; detalji `Claude-temp_R/test-sessions/S107t_tests.md`):**
    nastane novi (jutros je pogled u **BASE `events_export_preview`** umjesto u generirani file
    proizveo lažni nalaz „stara taksonomija").
 
+**Done 2026-08-02 (S107u — S107t odtestiran u appu + 3 buga + `disable_save_plus` u roundtripu;
+testovi: `Claude-temp_R/test-sessions/S107u_tests.md`):**
+1. **S107t app testovi 7/7 PASS.** Potvrđeno na `Financije_all` u TEST-u: struktura (15 attr /
+   2 automatike), `Rata br` vidljivost, **rata tok** (300/3 → 3 rate na danu kupnje, naplate
+   11.09./11.10./11.11., `Rata br` 1..3, `Status=Planiran`, komentar `…· rata 3/3 · 100 od 300`,
+   **bez** zapisa s punim iznosom), Activities import 10 zapisa (28.02.2023. = 3 reda
+   09:00/09:01/09:02 ⇒ `session_start` kao tekst radi; Anja rata `Rate?=Yes`, `Broj rata` 96,
+   `Rata br` 43), roundtrip u oba smjera (Activities re-import **0/0/10 unchanged** ⇒ `row_hash`
+   skip), odsutnost `rata` retka ne briše konfiguraciju, Review 32 očišćena retka / `Rate?=DA` 629.
+2. **BUG — nova Area gubila `comment_template`** (`structureImport.ts`): `dbAreas` je snapshot
+   učitan **prije** importa, a `findOrCreateArea` novu Areu nije gurao u njega ⇒ §8 i §9 oboje
+   rade `{ ...existingArea?.settings }` nad `undefined`, §9 piše preko §8. Fix: novi zapis odmah
+   u `dbAreas`. (T-S107u-1)
+3. **BUG — uvoz koji mijenja SAMO postavke nije okidao refetch** (`StructureImportModal.tsx`):
+   `onImported()` se zvao samo uz `totalCreated > 0 || updated.attributes > 0`, a takav uvoz vraća
+   sve nule ⇒ `nodes` ostaju stari, Edit panel prikazuje staru vrijednost, a **Save iz njega vraća
+   cijelu staru snimku `settings` u bazu** (spread nosi i `automations` ⇒ tek uvezena rata
+   konfiguracija tiho nestaje). Fix: bezuvjetni `onImported()` + `useEffect` sync u
+   `StructureNodeEditPanel` (`useState` inicijalizator se pri re-renderu ne zove). (T-S107u-4)
+4. **Novi brojač `updated.settings` + redak „Settings updated"** — §8 promjene prije nisu ulazile
+   ni u jedan broj pa je modal javljao „Nothing to import" iako je prepisao postavke; uz to
+   **dirty-check na `categories.settings`** (prije se svaki leaf prepisivao pri svakom uvozu,
+   `settings` dodan u SELECT). (T-S107u-5)
+5. **`disable_save_plus` u Structure roundtripu** — kolona `DisableSavePlus` (T, vidljiva,
+   DV `TRUE/FALSE`) na Area retku; odsutnost kolone ne dira postavku, prazna ćelija = `FALSE`.
+   `AreaSettings` roundtrip sad pokriva 3 od 4 ključa. (T-S107u-3)
+6. **Backlog T-S107u-2 (bezopasno):** `groupAttributes` uzima `Default` s **prvog** retka grupe ⇒
+   atributski `default_value` ovisi o redoslijedu (generator piše `*` zadnji, export prvi) →
+   `Status.default_value` se klacka `Izvrsen`↔`null`. `default_map` netaknut, konvergira nakon
+   jednog kruga. Fix: ignorirati `Default` na retku s `DependsOn`.
+7. **Zamka pri testiranju:** kvačica u Area panelu je lokalno stanje forme — pokazuje tvoj klik
+   dok ne pritisneš Save. Stvarno stanje se provjerava kroz **Add Activity** (je li „Save +" tu)
+   ili novi export, ne kroz panel.
+
 **Sljedeći koraci — ⚠ ZASTARJELO od S107m, prekrojeno S107q/S107s, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
