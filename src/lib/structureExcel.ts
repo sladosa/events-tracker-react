@@ -95,7 +95,7 @@ const COLS = [
   { key: 'whenValue',   header: 'WhenValue',         width: 12, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
   { key: 'description', header: 'Description',       width: 60, colColor: CLR.BLUE,   grouped: false, collapsed: false },
   { key: 'commentTpl', header: 'CommentTemplate',   width: 30, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
-  { key: 'disableSavePlus', header: 'DisableSavePlus', width: 16, colColor: CLR.GREEN, grouped: true, collapsed: true },
+  { key: 'disableSavePlus', header: 'DisableSavePlus', width: 16, colColor: CLR.GREEN, grouped: true, collapsed: false },
 ] as const;
 
 const N_COLS = COLS.length; // 20

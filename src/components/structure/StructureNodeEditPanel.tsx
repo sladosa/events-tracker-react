@@ -22,7 +22,7 @@
 //   - Calls onSaved(nodeId) → StructureTableView triggers highlight + refetch
 // ============================================================
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'react-hot-toast';
@@ -991,6 +991,21 @@ export function StructureNodeEditPanel({
     return '';
   });
   const areaCommentTemplate = node.area.settings?.comment_template ?? '';
+
+  // Settings mogu se promijeniti izvan panela (Structure import piše
+  // comment_template + disable_save_plus). useState inicijalizator se pri
+  // ponovnom renderu istog panela NE zove, pa bi kvačica ostala na staroj
+  // vrijednosti i sljedeći Save bi je vratio u bazu.
+  useEffect(() => {
+    setDisableSavePlus(node.area.settings?.disable_save_plus === true);
+    setCommentTemplate(
+      node.nodeType === 'area'
+        ? node.area.settings?.comment_template ?? ''
+        : node.isLeaf
+          ? node.category?.settings?.comment_template ?? ''
+          : '',
+    );
+  }, [node]);
 
   // ---- Attribute edit states ----
   const [attrStates, setAttrStates] = useState<AttrEditState[]>(() =>
