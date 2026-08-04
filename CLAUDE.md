@@ -966,6 +966,50 @@ testovi: `Claude-temp_R/test-sessions/S107v_tests.md`):**
    čiji su `user_id` na atributima + **jesu li 4 policyja iz `020_orphan_rls.sql` uopće na toj
    bazi** — ako fale, to je uzrok i primjena `020` vraća UI brisanje u funkciju.
 
+**Done 2026-08-04 (S107w — `Delete?` kolona + izvještaj nakon uvoza kao radni file;
+testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
+1. **Kolona `Delete?` u exportu** (`excelExport.ts`) — skroz desno uz `row_hash`, **vidljiva**
+   (nikad grupirana), dropdown **samo `DELETE`** + prazno (namjerno NE `TRUE`/`FALSE`: to koriste
+   obični booleani poput `Rate?`, a `TRUE` je najvjerojatniji preživjeli nepažljivog fill-downa),
+   **crveni CF** na označenom retku, **unutar autofiltera** (inače Excelov sort raspari zastavicu
+   od retka i brisanje pogodi krivi zapis). Odsutnost kolone = ništa se ne briše (kao
+   `DisableSavePlus`).
+2. **Import** (`excelImport.ts`): kolona se traži **skeniranjem zaglavlja**; bilo koja druga
+   vrijednost = **greška koja prekida uvoz** (tiho ignoriranje je način da se izgubi brisanje koje
+   je korisnik htio). **⚠ Redoslijed:** delete se odvaja **prije** `row_hash` skipa — otisak pokriva
+   samo polja zapisa, pa bi nediran redak sa zastavicom matchao svoj hash i ispao kao „unchanged".
+   **Kopirani redak označen DELETE = greška**, ne brisanje (kopija nosi originalov `event_id` ⇒
+   obrisao bi zapis na koji se poziva drugi redak). Redak bez `event_id`: ništa za brisati **i ne
+   kreira se**.
+3. **`applyDeletes()`** — briše označene leaf zapise, pa **tek kad ode zadnji zapis sesije** ruši
+   parent lanac (`chain_key` = leaf kat.), isto pravilo kao `AppHome.handleDeleteActivity` (S104,
+   Fable I.1); ključevi lanca dolaze iz **DB redaka pročitanih prije brisanja**, ne iz Excel
+   vrijednosti. Attachmenti i iz storagea, popis **paginirano** (`fetchAllPagedIn`); `DELETE` ide
+   s `.select('id')` jer RLS-blokiran DELETE „uspije" s 0 redaka. Brisanja se izvršavaju **prije**
+   create/update ⇒ pad zaustavi uvoz prije ijednog upisa, a u istom fileu se smije obrisati zapis
+   i sesiju ponovo izgraditi.
+4. **Delete guard** (`ExcelImportModal.tsx`) — **zaseban popis i zasebna kvačica**, odvojeni od
+   update-guarda; po zapisu: datum, kategorija, komentar, broj atributa, fotografije, oznaka
+   „zadnji zapis sesije → parent zapisi idu s njim". Apply zaključan dok obje potrebne kvačice
+   nisu označene.
+5. **`src/lib/excelImportReport.ts` (novo) — izvještaj JE radni file**, ne log: običan export s
+   točno dirnutim zapisima (pravi `event_id`, ispravan `row_hash`, `Delete?` dropdown na njemu),
+   skida se **automatski** nakon Applya ⇒ petlja *uvoz → izvještaj → označiš krivu kopiju `DELETE`
+   → uvezeš taj isti file*. Kolone `Result`/`Source row`/`Changed` skroz desno — **provjereno u
+   kodu**: `parseDataRows` čita fiksne A–H, LEGEND kolone i `row_hash`/`Delete?` po zaglavlju, sve
+   desno se ignorira. Sheetovi `ImportReport` + `Deleted` (obrisane se ne može izvesti). Workbook
+   se **sastavlja u jednom prolazu** — ExcelJS load/save roundtrip ne jamči očuvanje DV/CF/skrivenog
+   `DropdownData` sheeta, a to je upravo ono što file čini editabilnim. Novo:
+   `loadEventsByIdsForExport()` + `mergeParentAttrsIntoEvents()` (izvučeno iz `loadExportData`).
+6. **`hasChanges()` uklonjen** — apply put koristi `computeRowDiff()` izravno (treba mu popis
+   polja za `Changed` kolonu); single source of truth ostaje jedan.
+7. **Testovi:** novi `e2e/tests/S107w_delete_column.spec.ts` (T-S107w-1/2/3 PASS na živoj TEST
+   bazi); regresija E2, E3, E6×3, S107_row_hash×3, S104_import_progress×3 — **11/11 PASS**.
+   `S104_delete_bug` pao u batchu pa **prošao sam** (leftover redci prekinutog pokušaja —
+   `beforeEach` inserta bez čišćenja), ne regresija. ⚠ **Zamka u E2E:** testovi koji dijele
+   komentar i `session_start` — ostatak prekinutog pokušaja ne izazove grešku nego **koliziju**,
+   Apply postane „All skipped" i to izgleda kao pad featurea; sad cleanup **po prefiksu**.
+
 **Sljedeći koraci — ⚠ ZASTARJELO od S107m, prekrojeno S107q/S107s, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku

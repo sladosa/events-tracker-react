@@ -3,9 +3,42 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107v (2026-08-04) — batch import 2026 generiran (747 redaka) + čitljive greške
-pri brisanju Aree. **Otvoreno: T-S107v-1…4, T-S107u-2 (backlog).**
-**Detalji S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md) · **S107t:** [S107t_tests.md](test-sessions/S107t_tests.md)
+**Zadnji update:** S107w (2026-08-04) — `Delete?` kolona + izvještaj nakon uvoza kao radni file.
+**Otvoreno: T-S107w-4…9, T-S107v-1…4 i 7, T-S107u-2 (backlog).**
+**Detalji S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+
+---
+
+## S107w — `Delete?` kolona + izvještaj nakon uvoza kao radni file
+
+Excel roundtrip je znao dodati i izmijeniti zapis, ali **ne obrisati** — rupa koja se osjeti
+čim netko slučajno napravi kopiju retka. Sad: kolona **`Delete?`** (dropdown `DELETE`/prazno,
+crveni CF, unutar autofiltera, **vidljiva**) + **zaseban delete guard** (vlastiti popis i
+vlastita kvačica — „da, promijeni" nikad ne znači i „da, obriši") + **izvještaj koji se sam
+skine nakon Applya i JEST radni file**: običan export dirnutih zapisa, pravi `event_id`,
+ispravan `row_hash`, `Delete?` već na njemu ⇒ krivu kopiju označiš `DELETE` i uvezeš taj isti file.
+
+Novo: `src/lib/excelImportReport.ts`, `loadEventsByIdsForExport()`. Parent lanac pada **tek kad
+ode zadnji zapis sesije** (pravilo iz `AppHome.handleDeleteActivity`, S104). Delete se odvaja
+**prije** `row_hash` skipa — otisak ne pokriva zastavicu, pa bi inače nedirani redak s `DELETE`
+ispao kao „unchanged" i brisanje bi tiho nestalo.
+
+| ID | Test | Status |
+| --- | --- | --- |
+| P-1…P-5 | Programske kontrole (typecheck+build, E2E, regresija 11/11, `hasChanges` → `computeRowDiff`) | ✅ (programski) |
+| T-S107w-1 | E2E: ⭐ puna petlja — kopija → uvoz → izvještaj → `DELETE` u izvještaju → uvoz → zapis obrisan; Apply disabled do kvačice | ✅ (Playwright pass) |
+| T-S107w-2 | E2E: `TRUE` u `Delete?` = greška, uvoz se ne otvori | ✅ (Playwright pass) |
+| T-S107w-3 | E2E: ponovni uvoz nediranog izvještaja = no-op (dodatne kolone desno ne lome parsiranje) | ✅ (Playwright pass) |
+| T-S107w-4 | **Saša:** Excel izgled — dropdown samo `DELETE`, crveni redak, Excel odbija proizvoljan tekst, nema „repair" | ⬜ |
+| T-S107w-5 | **Saša:** sort po drugoj koloni **ne rasparuje** zastavicu od retka | ⬜ |
+| T-S107w-6 | **Saša:** izmjena + brisanje u istom fileu → **dva** bloka, **dvije** kvačice, Apply traži obje | ⬜ |
+| T-S107w-7 | **Saša:** `Financije_all` — obriši jedan testni redak; ostali zapisi istog dana ostaju (klasa T-BUGG-5) | ⬜ |
+| T-S107w-8 | **Saša:** ⭐ Fitness — sesija s 2 zapisa: brisanje prvog **ne ruši** parent lanac, brisanje drugog ga ruši | ⬜ |
+| T-S107w-9 | **Saša:** izvještaj kao radni file — sadrži samo dirnute zapise, `Deleted` sheet, re-import radi | ⬜ |
+
+**Fail ako:** brisanje makne više od označenog · parent lanac padne dok sesija još ima zapise ·
+zastavica preživi sort na krivom retku · jedna kvačica otključa oboje · izvještaj se ne skine
+ili se ne da ponovo uvesti.
 
 ---
 

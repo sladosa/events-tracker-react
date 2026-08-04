@@ -73,11 +73,14 @@ export interface ParsedImportRow {
   _source_row:    number;          // Original row number for error reporting
   _row_email?:    string;          // col G value (User/email), undefined if blank
   _row_hash?:     string;          // row_hash col value (fingerprint written at export), undefined if absent
+  _delete?:       boolean;         // Delete? col held the DELETE marker (S107w)
 }
 
 export interface ParseResult {
   toCreate:   ParsedImportRow[];
   toUpdate:   ParsedImportRow[];
+  /** S107w: rows flagged DELETE in the Delete? column — deduped by event_id */
+  toDelete:   ParsedImportRow[];
   warnings:   string[];
   errors:     string[];
   legendMapping: LegendMapping;
@@ -93,12 +96,23 @@ export interface ValidationResult {
   errors:         string[];
 }
 
+/** What the import did to one event — feeds the post-import report (S107w) */
+export interface ImportOutcome {
+  eventId:   string;
+  sourceRow: number;
+  result:    'Created' | 'Updated';
+  /** Field names an update changed; empty for a create */
+  changed:   string[];
+}
+
 export interface ApplyResult {
   created:  number;
   updated:  number;
   skipped:  number;
   errors:   string[];
   warnings: string[];
+  /** S107w: per-row result of every created/updated event, for the report file */
+  outcomes: ImportOutcome[];
 }
 
 // ─────────────────────────────────────────────

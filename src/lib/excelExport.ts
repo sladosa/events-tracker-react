@@ -85,8 +85,45 @@ export const FIXED_COL_COUNT = FIXED_COLUMNS.length; // 8  (A–H)
 export const PADDING_COLS    = 0;                     // no padding (comment is single col H)
 export const ATTR_COL_START  = FIXED_COL_COUNT + PADDING_COLS + 1; // 9 → I
 
+/**
+ * Header of the delete-flag column (S107w). Sits to the right of row_hash and is
+ * found on import by scanning the header row, so its position may change freely.
+ *
+ * The only accepted value is DELETE_MARKER — deliberately NOT TRUE/FALSE, which
+ * booleans like `Rate?` use: a destructive flag must not look like an attribute,
+ * and TRUE is the value most likely to survive a careless fill-down. Any other
+ * value is an import error rather than a silent skip; silently ignoring it is
+ * how a deletion the user asked for goes missing.
+ */
+export const DELETE_COL_HEADER = 'Delete?';
+export const DELETE_MARKER     = 'DELETE';
+
 // LEGEND columns (7 cols: Col, Area, Category_Path, Attribute, Type, Default, Description)
 const LEGEND_COLS = ['Col', 'Area', 'Category_Path', 'Attribute', 'Type', 'Default', 'Description'];
+
+// ─────────────────────────────────────────────
+// Import-report annotations (S107w)
+// ─────────────────────────────────────────────
+
+/**
+ * What an import did to one event, written into extra columns at the far right
+ * of the report workbook. Purely informational: the columns sit to the right of
+ * every column import reads (fixed A–H, LEGEND-mapped attrs, row_hash, Delete?),
+ * so the report re-imports as an ordinary export file.
+ */
+export interface RowAnnotation {
+  /** 'Created' | 'Updated' */
+  result:    string;
+  /** Row number in the imported file this event came from */
+  sourceRow: number;
+  /** Field names changed by an update ('' for a create) */
+  changed:   string;
+}
+
+/** eventId → annotation */
+export type RowAnnotations = Map<string, RowAnnotation>;
+
+const ANNOTATION_HEADERS = ['Result', 'Source row', 'Changed'] as const;
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -407,6 +444,7 @@ export async function addActivitiesSheetsTo(
   categoriesDict: ExportCategoriesDict,
   sortOrder: 'asc' | 'desc' = 'desc',
   attrColumnOrder?: number[],
+  annotations?: RowAnnotations,
 ): Promise<void> {
 
   const built = buildAttrMeta(attrDefs, categoriesDict);
@@ -560,11 +598,14 @@ export async function addActivitiesSheetsTo(
     return `${attrName} (${shortCat})`;
   });
 
-  // Fixed display headers + attr headers (no padding cols) + row_hash (last col)
+  // Fixed display headers + attr headers (no padding cols) + row_hash + Delete?
+  // (+ report annotation columns, only when this workbook is an import report)
   const allHeaders = [
     ...FIXED_DISPLAY_HEADERS,
     ...attrHeaderStrings,
     ROW_HASH_HEADER,
+    DELETE_COL_HEADER,
+    ...(annotations ? ANNOTATION_HEADERS : []),
   ];
 
   for (let ci = 0; ci < allHeaders.length; ci++) {
@@ -578,6 +619,12 @@ export async function addActivitiesSheetsTo(
   row++;
 
   const eventDataStart = row;
+
+  // Trailing columns, right of the last attribute
+  const rowHashColNum  = ATTR_COL_START + attrColumns.length;
+  const deleteColNum   = rowHashColNum + 1;
+  const annotStartCol  = deleteColNum + 1;
+  const lastColNum     = annotations ? annotStartCol + ANNOTATION_HEADERS.length - 1 : deleteColNum;
 
   // ──────────────────────────────────────────
   // EVENT DATA ROWS
@@ -728,7 +775,7 @@ export async function addActivitiesSheetsTo(
       if (typeof v === 'string' && v.trim() === '') continue;
       hashAttrs[attrName] = v;
     }
-    const hashCell = ws.getCell(row, ATTR_COL_START + attrColumns.length);
+    const hashCell = ws.getCell(row, rowHashColNum);
     hashCell.value = computeRowFingerprint({
       event_id:      event.id,
       area:          catInfo.area_name ?? '',
@@ -744,6 +791,31 @@ export async function addActivitiesSheetsTo(
     hashCell.border    = THIN_BORDER;
     hashCell.numFmt    = '@';
     hashCell.alignment = { horizontal: 'left', vertical: 'middle' };
+
+    // ---- Delete? column (S107w) — empty by default, dropdown added below ----
+    const delCell = ws.getCell(row, deleteColNum);
+    delCell.value     = null;
+    delCell.fill      = BLUE_FILL;
+    delCell.border    = THIN_BORDER;
+    delCell.numFmt    = '@';
+    delCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // ---- Import-report annotation columns (report workbooks only) ----
+    if (annotations) {
+      const ann = annotations.get(event.id);
+      const annValues: (string | number | null)[] = [
+        ann?.result ?? null,
+        ann?.sourceRow ?? null,
+        ann?.changed || null,
+      ];
+      for (let ai = 0; ai < annValues.length; ai++) {
+        const cell = ws.getCell(row, annotStartCol + ai);
+        cell.value     = annValues[ai];
+        cell.fill      = PINK_FILL;
+        cell.border    = THIN_BORDER;
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+    }
 
     row++;
   }
@@ -780,6 +852,45 @@ export async function addActivitiesSheetsTo(
 
   // Dependent dropdowns (INDIRECT + hidden DropdownData sheet)
   addDependentDropdowns(wb, ws, attrMeta, attrColumns, eventDataStart, eventDataEnd);
+
+  // ──────────────────────────────────────────
+  // Delete? column: dropdown + red row highlight  (S107w)
+  // ──────────────────────────────────────────
+  // allowBlank + a single-item list = the two states we accept, empty and DELETE.
+  // showErrorMessage rejects anything else at typing time; import rejects it too,
+  // for values that arrive by paste or from a hand-made file.
+  // ⚠ Excel limits: promptTitle ≤32 chars, prompt ≤255, same for error fields.
+  for (let r = eventDataStart; r <= eventDataEnd; r++) {
+    ws.getCell(r, deleteColNum).dataValidation = {
+      type: 'list',
+      allowBlank: true,
+      formulae: [`"${DELETE_MARKER}"`],
+      showInputMessage: true,
+      promptTitle: 'Delete this record?',
+      prompt: 'Pick DELETE to permanently remove this record when the file is imported. Leave empty to keep it.',
+      showErrorMessage: true,
+      errorStyle: 'error',
+      errorTitle: 'Only DELETE or empty',
+      error: 'This column accepts only DELETE (from the dropdown) or an empty cell.',
+    };
+  }
+
+  if (eventDataEnd >= eventDataStart) {
+    const delLtr = colLetter(deleteColNum);
+    ws.addConditionalFormatting({
+      ref: `A${eventDataStart}:${colLetter(lastColNum)}${eventDataEnd}`,
+      rules: [{
+        type: 'expression',
+        priority: 1,
+        // Absolute column, relative row → the whole row lights up for the marked record
+        formulae: [`$${delLtr}${eventDataStart}="${DELETE_MARKER}"`],
+        style: {
+          fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFC7CE' } },
+          font: { color: { argb: 'FF9C0006' }, bold: true },
+        },
+      }],
+    });
+  }
 
   // ──────────────────────────────────────────
   // SUBTOTAL formulas for Max / Min / Sum rows
@@ -819,11 +930,11 @@ export async function addActivitiesSheetsTo(
   // ──────────────────────────────────────────
   // AUTOFILTER
   // ──────────────────────────────────────────
-  // row_hash col MUST be inside the autofilter range so Excel sorts move it with its row
-  const rowHashCol  = ATTR_COL_START + attrColumns.length;
+  // row_hash and Delete? MUST be inside the autofilter range so Excel sorts move
+  // them with their row — a flag left behind by a sort would delete the wrong record
   ws.autoFilter = {
     from: { row: eventHeaderRow, column: 1 },
-    to:   { row: eventDataEnd,   column: rowHashCol },
+    to:   { row: eventDataEnd,   column: lastColNum },
   };
 
   // ──────────────────────────────────────────
@@ -855,8 +966,18 @@ export async function addActivitiesSheetsTo(
   }
 
   // row_hash column: narrow + grouped so users can collapse it (like User col)
-  ws.getColumn(rowHashCol).width = 12;
-  ws.getColumn(rowHashCol).outlineLevel = 1;
+  ws.getColumn(rowHashColNum).width = 12;
+  ws.getColumn(rowHashColNum).outlineLevel = 1;
+
+  // Delete? stays VISIBLE (never grouped) — a flag nobody can find is a flag
+  // nobody can un-set
+  ws.getColumn(deleteColNum).width = 10;
+
+  if (annotations) {
+    ws.getColumn(annotStartCol).width     = 10;  // Result
+    ws.getColumn(annotStartCol + 1).width = 10;  // Source row
+    ws.getColumn(annotStartCol + 2).width = 40;  // Changed
+  }
 
   // Legend column widths (7 cols: Col=A..Unit=F, Description=G)
   // G also serves as User email col in data section — use max of both needs
@@ -896,6 +1017,7 @@ export async function createEventsExcel(
   filterInfo?:      FilterSheetInfo,
   structureOptions?: ExportStructureOptions,
   exportProfile?:   ExportProfile | null,
+  annotations?:     RowAnnotations,
 ): Promise<ArrayBuffer> {
 
   const wb = new ExcelJS.Workbook();
@@ -910,7 +1032,7 @@ export async function createEventsExcel(
   }
 
   // Sheet 1 + 2: Events + HelpEvents (with profile column order)
-  await addActivitiesSheetsTo(wb, events, attrDefs, categoriesDict, sortOrder, attrColumnOrder);
+  await addActivitiesSheetsTo(wb, events, attrDefs, categoriesDict, sortOrder, attrColumnOrder, annotations);
 
   // Apply export profile (column grouping + widths) after sheet is built
   if (exportProfile) {
@@ -1007,6 +1129,25 @@ function _createHelpEventsSheet(wb: ExcelJS.Workbook): void {
     { text: '  6. User (col G): leave as-is or set email for Smart Import' },
     { text: '  7. Fill relevant attribute values (blue cells)' },
     { text: '  8. Save and import' },
+    { text: '' },
+    { text: 'DELETE EVENTS:' },
+    { text: '  1. Find the row you want gone (event_id must be filled)' },
+    { text: '  2. In the "Delete?" column (far right, next to row_hash) pick DELETE' },
+    { text: '  3. Save and import — the import shows exactly what will disappear' },
+    { text: '     and asks for a separate confirmation before deleting anything' },
+    { text: '  Only DELETE or an empty cell are accepted — any other value is an error.' },
+    { text: '  Deleting the last record of a session also removes its parent events.' },
+    { text: '  ⚠ Deleting a row is permanent — there is no undo. Removing the ROW from' },
+    { text: '     Excel does NOT delete anything; only the Delete? flag does.' },
+    { text: '' },
+    { text: '📄 IMPORT REPORT:' },
+    { text: '' },
+    { text: '  After every import a report file downloads automatically. It is a normal' },
+    { text: '  export file (real event_id, valid row_hash, Delete? dropdown) listing only' },
+    { text: '  the records that import just created or changed, plus three columns on the' },
+    { text: '  far right: Result, Source row, Changed.' },
+    { text: '  So if you spot a mistake — e.g. a duplicate you created by copying a row —' },
+    { text: '  mark it DELETE in the report and import that same file back.' },
     { text: '' },
     { text: '═══════════════════════════════════════════════════════' },
     { text: '' },

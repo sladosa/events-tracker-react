@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabaseClient';
 import type { Area, Category, AttributeDefinition } from '@/types/database';
 import type { StructureNode } from '@/types/structure';
 import { applyEventFilters, attrFilterJoinClause } from '@/lib/eventQueryBuilder';
+import { fetchAllPagedIn } from '@/lib/supabasePaging';
 import type {
   ExportCategoriesDict,
   ExportCategoryInfo,
@@ -437,10 +438,23 @@ export async function loadExportData(
   const rawEvents      = await loadEventsForExport(userId, filters, categoryIds, offset, limit);
   const attrDefs       = await loadAttrDefsForCategories(userId, categoryIds, categoriesDict);
 
-  // ── Merge parent event attributes into each leaf event ──────────────────
-  // Leaf events only have their own event_attributes. Parent category attributes
-  // (e.g. Sport.napomena) live on separate parent event rows in the DB.
-  // We batch-fetch all parent events for the same sessions and merge their attrs.
+  await mergeParentAttrsIntoEvents(rawEvents, categoriesDict, categoryIds);
+
+  return { events: rawEvents, attrDefs, categoriesDict, totalCount, categoryIds };
+}
+
+/**
+ * Merge parent event attributes into each leaf event, in place.
+ *
+ * Leaf events only carry their own event_attributes. Parent category attributes
+ * (e.g. Sport.napomena) live on separate parent event rows in the DB, so they are
+ * batch-fetched for the same sessions and appended to the leaf rows the export writes.
+ */
+async function mergeParentAttrsIntoEvents(
+  rawEvents:      ExportEvent[],
+  categoriesDict: ExportCategoriesDict,
+  categoryIds:    string[],
+): Promise<void> {
   if (rawEvents.length > 0) {
     // Collect all parent category IDs (non-leaf parents of our leaf categoryIds)
     const parentCatIds = new Set<string>();
@@ -506,9 +520,52 @@ export async function loadExportData(
       }
     }
   }
-  // ────────────────────────────────────────────────────────────────────────
+}
 
-  return { events: rawEvents, attrDefs, categoriesDict, totalCount, categoryIds };
+/**
+ * Load a specific set of events (by id) in export shape — attributes, user emails
+ * and merged parent attributes included.
+ *
+ * Used by the post-import report (S107w): the report must contain exactly the
+ * records the import touched, which no filter can express.
+ */
+export async function loadEventsByIdsForExport(
+  userId:   string,
+  eventIds: string[],
+): Promise<ExportDataBundle> {
+  const categoriesDict = await loadCategoriesForExport(userId);
+  if (eventIds.length === 0) {
+    return { events: [], attrDefs: [], categoriesDict, totalCount: 0, categoryIds: [] };
+  }
+
+  const baseCols = 'id,user_id,category_id,event_date,session_start,comment,created_at';
+  const { data: rows, error } = await fetchAllPagedIn<Record<string, unknown>>(
+    eventIds,
+    (chunk, from, to) => supabase.from('events').select(baseCols).in('id', chunk).range(from, to),
+  );
+  if (error) throw new Error(`Could not load imported events: ${String(error)}`);
+
+  const attrsMap = await loadAttrsForEvents(rows.map(e => e.id as string));
+  for (const ev of rows) ev.event_attributes = attrsMap.get(ev.id as string) ?? [];
+
+  const userIds = [...new Set(rows.map(e => e.user_id as string).filter(Boolean))];
+  let emailMap = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase.from('profiles').select('id, email').in('id', userIds);
+    emailMap = new Map((profiles ?? []).map(p => [p.id as string, p.email as string]));
+  }
+
+  const events = rows.map(e => ({
+    ...e,
+    user_email: emailMap.get(e.user_id as string) ?? '',
+  })) as unknown as ExportEvent[];
+
+  const categoryIds = [...new Set(events.map(e => e.category_id))];
+  await mergeParentAttrsIntoEvents(events, categoriesDict, categoryIds);
+
+  const attrDefs = await loadAttrDefsForCategories(userId, categoryIds, categoriesDict);
+
+  return { events, attrDefs, categoriesDict, totalCount: events.length, categoryIds };
 }
 
 // ─────────────────────────────────────────────

@@ -15,10 +15,11 @@
 
 import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
-import { FIXED_COL_COUNT } from './excelExport';
+import { FIXED_COL_COUNT, DELETE_COL_HEADER, DELETE_MARKER } from './excelExport';
 import { computeRowFingerprint, ROW_HASH_HEADER } from './excelFingerprint';
 import { loadCategoriesForExport, loadAttrDefsForCategories } from './excelDataLoader';
 import { upsertParentEvent, type ParentAttrWrite } from './parentEventLoader';
+import { fetchAllPagedIn } from './supabasePaging';
 import type {
   ExportCategoriesDict,
   ExportAttrDef,
@@ -27,6 +28,7 @@ import type {
   ParseResult,
   ValidationResult,
   ApplyResult,
+  ImportOutcome,
 } from './excelTypes';
 
 // ─────────────────────────────────────────────
@@ -201,22 +203,30 @@ function colLetterToIndex(letter: string): number {
 // Step 4: Parse data rows
 // ─────────────────────────────────────────────
 
-/** Find the row_hash column index by scanning the header row (returns -1 if the file has none). */
-function findRowHashCol(ws: ExcelJS.Worksheet, headerRow: number): number {
+/** Find a trailing marker column by scanning the header row (returns -1 if the file has none). */
+function findMarkerCol(ws: ExcelJS.Worksheet, headerRow: number, header: string): number {
   let found = -1;
   ws.getRow(headerRow).eachCell({ includeEmpty: false }, (cell, colNumber) => {
-    if (found === -1 && colNumber > FIXED_COL_COUNT && cellStr(cell.value) === ROW_HASH_HEADER) {
+    if (found === -1 && colNumber > FIXED_COL_COUNT && cellStr(cell.value) === header) {
       found = colNumber;
     }
   });
   return found;
 }
 
+/** One row whose Delete? cell held something other than DELETE or blank. */
+export interface BadDeleteValue {
+  sourceRow: number;
+  value:     string;
+}
+
 function parseDataRows(
-  ws:          ExcelJS.Worksheet,
-  mapping:     LegendMapping,
-  headerRow:   number,
-  rowHashCol:  number = -1,
+  ws:            ExcelJS.Worksheet,
+  mapping:       LegendMapping,
+  headerRow:     number,
+  rowHashCol:    number = -1,
+  deleteCol:     number = -1,
+  badDeleteOut?: BadDeleteValue[],
 ): ParsedImportRow[] {
   const colToAttr: Record<number, string> = {};
   for (const [letter, { attrName }] of Object.entries(mapping)) {
@@ -258,6 +268,17 @@ function parseDataRows(
 
     const rowHash = rowHashCol > 0 ? (cellStr(row.getCell(rowHashCol).value) || undefined) : undefined;
 
+    // Delete? flag (S107w). Anything other than the marker or an empty cell is
+    // collected as an error — a typo must never read as "keep this record".
+    let isDelete = false;
+    if (deleteCol > 0) {
+      const raw = cellStr(row.getCell(deleteCol).value);
+      if (raw !== '') {
+        if (raw.trim().toUpperCase() === DELETE_MARKER) isDelete = true;
+        else badDeleteOut?.push({ sourceRow: rowNumber, value: raw });
+      }
+    }
+
     rows.push({
       event_id:      eventId,
       area,
@@ -270,6 +291,7 @@ function parseDataRows(
       _source_row:   rowNumber,
       _row_email:    rowEmail,
       _row_hash:     rowHash,
+      _delete:       isDelete || undefined,
     });
   });
 
@@ -290,16 +312,17 @@ export async function parseExcelFile(
   await wb.xlsx.load(arrayBuffer);
 
   const emptyForeign = { foreignRowCount: 0, foreignEmailsSummary: {} as Record<string, number>, untouchedCount: 0 };
+  const emptyLists   = { toCreate: [], toUpdate: [], toDelete: [] };
 
   // Try Events sheet by name (unified format), fall back to first worksheet
   const ws = wb.getWorksheet('Events') ?? wb.worksheets[0];
-  if (!ws) return { toCreate: [], toUpdate: [], warnings: [], errors: ['Excel file has no worksheets.'], legendMapping: {}, ...emptyForeign };
+  if (!ws) return { ...emptyLists, warnings: [], errors: ['Excel file has no worksheets.'], legendMapping: {}, ...emptyForeign };
 
   // Detect structure-only stub (file exported from Structure tab, not Activities)
   const stubText = cellStr(ws.getRow(1).getCell(1).value);
   if (stubText.includes('Export initiated from Structure tab')) {
     return {
-      toCreate: [], toUpdate: [], warnings: [],
+      ...emptyLists, warnings: [],
       errors: [
         'This file was exported from the Structure tab — it contains no events.\n' +
         'To import structure, use the Structure tab → Import button.\n' +
@@ -312,11 +335,11 @@ export async function parseExcelFile(
 
   // Parse legend
   const { mapping, legendEndRow, error: legendError } = parseLegend(ws);
-  if (legendError) return { toCreate: [], toUpdate: [], warnings: [], errors: [legendError], legendMapping: {}, ...emptyForeign };
+  if (legendError) return { ...emptyLists, warnings: [], errors: [legendError], legendMapping: {}, ...emptyForeign };
 
   // Find EVENT DATA
   const { headerRow, error: sectionError } = findEventDataSection(ws, legendEndRow);
-  if (sectionError) return { toCreate: [], toUpdate: [], warnings: [], errors: [sectionError], legendMapping: mapping, ...emptyForeign };
+  if (sectionError) return { ...emptyLists, warnings: [], errors: [sectionError], legendMapping: mapping, ...emptyForeign };
 
   // Validate legend vs headers
   const mismatchErrors = validateLegendHeaders(ws, mapping, headerRow);
@@ -332,12 +355,26 @@ export async function parseExcelFile(
       '  2. For each mismatch: UPDATE "Col" letter OR DELETE the legend row\n' +
       '  3. Save Excel and import again\n\n' +
       '✅ Remember: ATTRIBUTE LEGEND = source of truth!';
-    return { toCreate: [], toUpdate: [], warnings: [], errors: [msg], legendMapping: mapping, ...emptyForeign };
+    return { ...emptyLists, warnings: [], errors: [msg], legendMapping: mapping, ...emptyForeign };
   }
 
-  // Parse data rows (row_hash col — if present — enables untouched-row skip, S107 D7)
-  const rowHashCol = findRowHashCol(ws, headerRow);
-  const allRows = parseDataRows(ws, mapping, headerRow, rowHashCol);
+  // Parse data rows (row_hash col — if present — enables untouched-row skip, S107 D7;
+  // Delete? col — if present — flags rows for deletion, S107w. Older exports have
+  // neither column and behave exactly as before: nothing is skipped, nothing deleted.)
+  const rowHashCol = findMarkerCol(ws, headerRow, ROW_HASH_HEADER);
+  const deleteCol  = findMarkerCol(ws, headerRow, DELETE_COL_HEADER);
+  const badDeletes: BadDeleteValue[] = [];
+  const allRows = parseDataRows(ws, mapping, headerRow, rowHashCol, deleteCol, badDeletes);
+
+  if (badDeletes.length > 0) {
+    const msg =
+      `❌ Invalid value in the "${DELETE_COL_HEADER}" column.\n\n` +
+      `Only ${DELETE_MARKER} (from the dropdown) or an empty cell are accepted.\n\n` +
+      badDeletes.slice(0, 20).map(b => `  • Row ${b.sourceRow}: '${b.value}'`).join('\n') +
+      (badDeletes.length > 20 ? `\n  … and ${badDeletes.length - 20} more` : '') +
+      '\n\nFix or clear those cells and import again. Nothing was imported.';
+    return { ...emptyLists, warnings: [], errors: [msg], legendMapping: mapping, ...emptyForeign };
+  }
 
   // Validate time ordering per row: created_at >= session_start
   const warnings: string[] = [];
@@ -400,6 +437,51 @@ export async function parseExcelFile(
       attributes:    r.attributes,
     }) === r._row_hash;
 
+  // ── Delete rows (S107w) ──────────────────────────────────────────────────
+  // Must run BEFORE the untouched-row skip: the fingerprint covers event fields
+  // only, so a row that is untouched except for the DELETE flag still matches its
+  // row_hash and would otherwise be dropped as "unchanged" — losing the deletion.
+  const toDelete: ParsedImportRow[] = [];
+  {
+    const flagged = validRows.filter(r => r._delete);
+    if (flagged.length > 0) {
+      // event_ids that another, unflagged row in this same file still refers to
+      const keptIds = new Set(
+        validRows.filter(r => !r._delete && r.event_id).map(r => r.event_id!),
+      );
+      const ambiguous: ParsedImportRow[] = [];
+      const seenIds = new Set<string>();
+
+      for (const r of flagged) {
+        if (!r.event_id) {
+          // A new row (no event_id) marked DELETE: nothing exists to delete, and
+          // the row must certainly not be created either.
+          warnings.push(
+            `Row ${r._source_row} is marked ${DELETE_MARKER} but has no event_id — ` +
+            `there is no saved record to delete, so the row was ignored (and not created).`,
+          );
+          continue;
+        }
+        if (keptIds.has(r.event_id)) { ambiguous.push(r); continue; }
+        if (seenIds.has(r.event_id)) continue;  // same record flagged on two rows
+        seenIds.add(r.event_id);
+        toDelete.push(r);
+      }
+
+      if (ambiguous.length > 0) {
+        const msg =
+          `❌ Cannot import: a row marked ${DELETE_MARKER} shares its event_id with a row that is not marked.\n\n` +
+          'That happens after copying a row in Excel — the copy carries the original\'s event_id, ' +
+          'so deleting it would remove the record the other row refers to.\n\n' +
+          ambiguous.map(r => `  • Row ${r._source_row} (event_id ${r.event_id!.slice(0, 8)}…)`).join('\n') +
+          '\n\nFix: clear column A (event_id) on the copy, or un-mark it. Nothing was imported.';
+        return { ...emptyLists, warnings, errors: [msg], legendMapping: mapping, ...emptyForeign };
+      }
+
+      validRows = validRows.filter(r => !r._delete);
+    }
+  }
+
   // ── Copied rows: same event_id more than once in the file ────────────────
   // Adding a transaction by copying an existing row is the natural thing to do
   // in Excel, and the copy carries the original's `event_id` AND `row_hash`.
@@ -458,7 +540,7 @@ export async function parseExcelFile(
     toUpdate.push(r);
   }
 
-  return { toCreate, toUpdate, warnings, errors: [], legendMapping: mapping, foreignRowCount, foreignEmailsSummary, untouchedCount };
+  return { toCreate, toUpdate, toDelete, warnings, errors: [], legendMapping: mapping, foreignRowCount, foreignEmailsSummary, untouchedCount };
 }
 
 // ─────────────────────────────────────────────
@@ -633,6 +715,9 @@ export async function applyImportChanges(
   let skipped  = 0;
   const errors:   string[] = [];
   const warnings: string[] = [];
+  // S107w: what happened to each row, so the post-import report can re-export
+  // exactly the touched records (and only those)
+  const outcomes: ImportOutcome[] = [];
 
   // Build (category_id, attr_name) → attr_def lookup
   const attrByCatName = new Map<string, ExportAttrDef>();
@@ -915,6 +1000,7 @@ export async function applyImportChanges(
         }
 
         created++;
+        outcomes.push({ eventId: leafId, sourceRow: row._source_row, result: 'Created', changed: [] });
       } catch (err) {
         errors.push(`Row ${row._source_row}: Unexpected error – ${String(err)}`);
       } finally {
@@ -1019,9 +1105,11 @@ export async function applyImportChanges(
         continue;
       }
 
-      // Diff check: if nothing changed, skip (don't update, count as skipped)
+      // Diff check: if nothing changed, skip (don't update, count as skipped).
+      // The field list doubles as the report's "Changed" column (S107w).
       const existingCatId = (existing as { category_id: string }).category_id;
-      if (!hasChanges(existing as ExistingLeafEvent, row, attrByCatName, existingCatId)) {
+      const rowChanges    = computeRowDiff(existing as ExistingLeafEvent, row, attrByCatName, existingCatId);
+      if (rowChanges.length === 0) {
         skipped++;
         continue;
       }
@@ -1083,6 +1171,12 @@ export async function applyImportChanges(
       }
 
       updated++;
+      outcomes.push({
+        eventId:   eventId,
+        sourceRow: row._source_row,
+        result:    'Updated',
+        changed:   rowChanges.map(c => c.field),
+      });
     } catch (err) {
       errors.push(`Row ${row._source_row}: Unexpected update error – ${String(err)}`);
     } finally {
@@ -1090,7 +1184,7 @@ export async function applyImportChanges(
     }
   }
 
-  return { created, updated, skipped, errors, warnings };
+  return { created, updated, skipped, errors, warnings, outcomes };
 }
 
 /** Build event_attributes insert/update payload */
@@ -1167,8 +1261,8 @@ const pad2 = (n: number) => n.toString().padStart(2, '0');
 /**
  * Field-level diff of an import row vs the existing DB event.
  * P3: empty xlsx value → "no change". Returns [] when nothing changed.
- * Single source of truth for both hasChanges() (apply path) and
- * analyzeUpdates() (update-guard preview).
+ * Single source of truth for the apply path (change? → what changed, for the
+ * report's Changed column) and analyzeUpdates() (update-guard preview).
  */
 function computeRowDiff(
   existing:      ExistingLeafEvent,
@@ -1261,19 +1355,6 @@ function computeRowDiff(
   }
 
   return changes;
-}
-
-/**
- * Returns true if the import row has at least one change compared to the existing DB event.
- * P3: empty xlsx value → treat as "no change" (don't touch, don't count as updated).
- */
-function hasChanges(
-  existing:      ExistingLeafEvent,
-  row:           ParsedImportRow,
-  attrByCatName: Map<string, ExportAttrDef>,
-  categoryId:    string,
-): boolean {
-  return computeRowDiff(existing, row, attrByCatName, categoryId).length > 0;
 }
 
 // ─────────────────────────────────────────────
@@ -1464,12 +1545,272 @@ export async function checkImportCollisions(
 
 
 
+// ─────────────────────────────────────────────
+// Delete flow (S107w — Delete? column)
+// ─────────────────────────────────────────────
+
+/** One record that the Delete? column marks for removal, as it exists in the DB now. */
+export interface DeletePreview {
+  eventId:      string;
+  sourceRow:    number;
+  eventDate:    string;
+  sessionStart: string;   // HH:MM (from the DB value, not the Excel cell)
+  categoryPath: string;
+  comment:      string;
+  attrCount:    number;
+  photoCount:   number;
+  /** Last remaining record of its session → the session's parent events go too */
+  lastOfSession: boolean;
+  /** Raw DB values — the parent-chain cleanup keys off these, no re-derivation */
+  categoryId:   string;
+  sessionISO:   string;
+}
+
+export interface DeleteAnalysis {
+  deletes: DeletePreview[];
+  /** Flagged event_ids that are not in the database (already deleted, or not ours) */
+  notFoundCount: number;
+}
+
+type DeleteTargetRow = { id: string; category_id: string; event_date: string; session_start: string | null; comment: string | null };
+
+/** Fetch the DB rows behind a set of delete-flagged Excel rows (chunked by URL length). */
+async function fetchDeleteTargets(userId: string, eventIds: string[]): Promise<Map<string, DeleteTargetRow>> {
+  const byId = new Map<string, DeleteTargetRow>();
+  const CHUNK = 200;
+  for (let i = 0; i < eventIds.length; i += CHUNK) {
+    const chunk = eventIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from('events')
+      .select('id, category_id, event_date, session_start, comment')
+      .in('id', chunk)
+      .eq('user_id', userId);
+    if (error) throw new Error(`Delete analysis failed: ${error.message}`);
+    for (const e of (data ?? []) as DeleteTargetRow[]) byId.set(e.id, e);
+  }
+  return byId;
+}
+
+/**
+ * Dry run of the Delete? column: what disappears, WITHOUT touching anything.
+ * Powers the delete guard in ExcelImportModal — deletion is irreversible, so it
+ * gets its own list and its own confirmation, separate from the update guard.
+ */
+export async function analyzeDeletes(
+  userId:         string,
+  toDelete:       ParsedImportRow[],
+  categoriesDict: ExportCategoriesDict,
+): Promise<DeleteAnalysis> {
+  if (toDelete.length === 0) return { deletes: [], notFoundCount: 0 };
+
+  const eventIds = toDelete.map(r => r.event_id!).filter(Boolean);
+  const byId     = await fetchDeleteTargets(userId, eventIds);
+
+  const foundIds = [...byId.keys()];
+
+  // Attribute + photo counts, so the user sees the weight of what they are removing
+  const { data: attrRows, error: attrErr } = await fetchAllPagedIn<{ event_id: string }>(
+    foundIds,
+    (chunk, from, to) => supabase.from('event_attributes').select('event_id').in('event_id', chunk).range(from, to),
+  );
+  if (attrErr) throw new Error(`Delete analysis failed: ${String(attrErr)}`);
+
+  const { data: photoRows, error: photoErr } = await fetchAllPagedIn<{ event_id: string }>(
+    foundIds,
+    (chunk, from, to) => supabase.from('event_attachments').select('event_id').in('event_id', chunk).range(from, to),
+  );
+  if (photoErr) throw new Error(`Delete analysis failed: ${String(photoErr)}`);
+
+  const attrCounts  = new Map<string, number>();
+  for (const a of attrRows)  attrCounts.set(a.event_id, (attrCounts.get(a.event_id) ?? 0) + 1);
+  const photoCounts = new Map<string, number>();
+  for (const p of photoRows) photoCounts.set(p.event_id, (photoCounts.get(p.event_id) ?? 0) + 1);
+
+  // Per session (category_id + session_start): is every record of that session being deleted?
+  // Only then does the parent chain fall — P2 says the parents belong to the whole
+  // session, not to one leaf record.
+  const sessionKeys = new Map<string, { categoryId: string; sessionStart: string; deletingIds: Set<string> }>();
+  for (const id of foundIds) {
+    const ev  = byId.get(id)!;
+    const key = `${ev.category_id}__${ev.session_start ?? ''}`;
+    if (!sessionKeys.has(key)) {
+      sessionKeys.set(key, { categoryId: ev.category_id, sessionStart: ev.session_start ?? '', deletingIds: new Set() });
+    }
+    sessionKeys.get(key)!.deletingIds.add(id);
+  }
+
+  const lastOfSessionKeys = new Set<string>();
+  for (const [key, info] of sessionKeys) {
+    if (!info.sessionStart) continue;
+    const { data } = await supabase
+      .from('events')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('category_id', info.categoryId)
+      .eq('session_start', info.sessionStart);
+    const existing = (data ?? []) as { id: string }[];
+    if (existing.length > 0 && existing.every(e => info.deletingIds.has(e.id))) {
+      lastOfSessionKeys.add(key);
+    }
+  }
+
+  const deletes: DeletePreview[] = [];
+  let notFoundCount = 0;
+
+  for (const row of toDelete) {
+    const ev = byId.get(row.event_id!);
+    if (!ev) { notFoundCount++; continue; }
+
+    const ssDate = ev.session_start ? new Date(ev.session_start) : null;
+    deletes.push({
+      eventId:      ev.id,
+      sourceRow:    row._source_row,
+      eventDate:    ev.event_date,
+      sessionStart: ssDate ? `${pad2(ssDate.getHours())}:${pad2(ssDate.getMinutes())}` : '',
+      categoryPath: categoriesDict[ev.category_id]?.full_path ?? row.category_path,
+      comment:      ev.comment ?? '',
+      attrCount:    attrCounts.get(ev.id) ?? 0,
+      photoCount:   photoCounts.get(ev.id) ?? 0,
+      lastOfSession: lastOfSessionKeys.has(`${ev.category_id}__${ev.session_start ?? ''}`),
+      categoryId:   ev.category_id,
+      sessionISO:   ev.session_start ?? '',
+    });
+  }
+
+  return { deletes, notFoundCount };
+}
+
+export interface DeleteResult {
+  deleted:        number;
+  parentsDeleted: number;
+  errors:         string[];
+  warnings:       string[];
+  /** Snapshot of what was removed — the report lists it, since it can no longer be exported */
+  removed:        DeletePreview[];
+}
+
+/**
+ * Execute the deletions flagged in the Delete? column.
+ *
+ * Deletes the flagged leaf records only, then drops the session's parent events
+ * (chain_key = leaf category) once the last record of that session is gone —
+ * same rule as AppHome.handleDeleteActivity (S104, Fable I.1). Deleting parents
+ * earlier would break the chain for the records still there.
+ */
+export async function applyDeletes(
+  userId:         string,
+  toDelete:       ParsedImportRow[],
+  categoriesDict: ExportCategoriesDict,
+): Promise<DeleteResult> {
+  const errors:   string[] = [];
+  const warnings: string[] = [];
+  if (toDelete.length === 0) return { deleted: 0, parentsDeleted: 0, errors, warnings, removed: [] };
+
+  // Snapshot first: after the delete there is nothing left to describe
+  const analysis = await analyzeDeletes(userId, toDelete, categoriesDict);
+  if (analysis.notFoundCount > 0) {
+    warnings.push(
+      `${analysis.notFoundCount} row(s) marked ${DELETE_MARKER} no longer exist in the database — nothing to delete for them.`,
+    );
+  }
+  const targetIds = analysis.deletes.map(d => d.eventId);
+  if (targetIds.length === 0) return { deleted: 0, parentsDeleted: 0, errors, warnings, removed: [] };
+
+  const ID_CHUNK = 100;
+  const chunks = <T,>(arr: T[]): T[][] => {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += ID_CHUNK) out.push(arr.slice(i, i + ID_CHUNK));
+    return out;
+  };
+
+  /** Delete an event set: storage files, attachments, attributes, then the events. */
+  const deleteEvents = async (ids: string[]): Promise<number> => {
+    if (ids.length === 0) return 0;
+
+    // Storage files behind the attachments (paged — a truncated read leaves orphan files)
+    const { data: attachments, error: attErr } = await fetchAllPagedIn<{ url: string }>(
+      ids,
+      (chunk, from, to) => supabase.from('event_attachments').select('url').in('event_id', chunk).range(from, to),
+    );
+    if (attErr) {
+      warnings.push(`Could not list attachments before deleting (files may stay in storage): ${String(attErr)}`);
+    } else if (attachments.length > 0) {
+      const paths = attachments
+        .map(a => { const parts = a.url.split('/activity-attachments/'); return parts.length > 1 ? parts[1] : null; })
+        .filter((p): p is string => p !== null);
+      if (paths.length > 0) {
+        const { error: storageError } = await supabase.storage.from('activity-attachments').remove(paths);
+        if (storageError) warnings.push(`Some attachment files could not be removed from storage: ${storageError.message}`);
+      }
+    }
+
+    for (const chunk of chunks(ids)) {
+      const { error: e1 } = await supabase.from('event_attachments').delete().in('event_id', chunk);
+      if (e1) { errors.push(`Failed to delete attachments: ${e1.message}`); return 0; }
+      const { error: e2 } = await supabase.from('event_attributes').delete().in('event_id', chunk);
+      if (e2) { errors.push(`Failed to delete attribute values: ${e2.message}`); return 0; }
+    }
+
+    let removed = 0;
+    for (const chunk of chunks(ids)) {
+      // .select() so an RLS-blocked delete shows up as 0 rows instead of silent success (S107v)
+      const { data, error } = await supabase
+        .from('events').delete().in('id', chunk).eq('user_id', userId).select('id');
+      if (error) { errors.push(`Failed to delete events: ${error.message}`); return removed; }
+      removed += (data ?? []).length;
+    }
+    return removed;
+  };
+
+  const deleted = await deleteEvents(targetIds);
+  if (errors.length > 0) return { deleted, parentsDeleted: 0, errors, warnings, removed: analysis.deletes };
+
+  if (deleted < targetIds.length) {
+    warnings.push(
+      `${targetIds.length - deleted} record(s) were not deleted — the database refused them ` +
+      `(you may not be the owner). Everything else was deleted.`,
+    );
+  }
+
+  // Parent chain: only for the sessions whose last record just went.
+  // Keys come straight from the DB rows read before the delete — no re-derivation
+  // from Excel values, so a mismatch in date/time formatting cannot orphan a chain.
+  let parentsDeleted = 0;
+  const emptiedSessions = new Map<string, { leafCategoryId: string; sessionISO: string }>();
+  for (const d of analysis.deletes) {
+    if (!d.lastOfSession || !d.sessionISO) continue;
+    emptiedSessions.set(`${d.categoryId}__${d.sessionISO}`, { leafCategoryId: d.categoryId, sessionISO: d.sessionISO });
+  }
+
+  for (const { leafCategoryId, sessionISO } of emptiedSessions.values()) {
+    const { data: parents, error } = await supabase
+      .from('events')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('chain_key', leafCategoryId)
+      .eq('session_start', sessionISO);
+    if (error) { warnings.push(`Could not clean up parent records for one session: ${error.message}`); continue; }
+
+    const parentIds = (parents ?? []).map(p => (p as { id: string }).id);
+    if (parentIds.length === 0) continue;
+    parentsDeleted += await deleteEvents(parentIds);
+  }
+
+  return { deleted, parentsDeleted, errors, warnings, removed: analysis.deletes };
+}
+
 export interface ImportResult {
   created:  number;
   updated:  number;
   skipped:  number;
+  /** S107w */
+  deleted:  number;
   errors:   string[];
   warnings: string[];
+  /** S107w: per-event result, feeds the auto-downloaded import report */
+  outcomes: ImportOutcome[];
+  /** S107w: what the Delete? column removed (cannot be re-exported) */
+  removed:  DeletePreview[];
 }
 
 export async function importEventsFromExcel(
@@ -1480,17 +1821,19 @@ export async function importEventsFromExcel(
   foreignMode:        'skip' | 'import_as_mine' = 'skip',
   onProgress?:        (done: number, total: number) => void,
 ): Promise<ImportResult> {
+  const empty = { created: 0, updated: 0, skipped: 0, deleted: 0, outcomes: [] as ImportOutcome[], removed: [] as DeletePreview[] };
+
   // Step 1: Parse file
   const parsed = await parseExcelFile(file, currentUserEmail, foreignMode);
   if (parsed.errors.length > 0) {
-    return { created: 0, updated: 0, skipped: 0, errors: parsed.errors, warnings: parsed.warnings };
+    return { ...empty, errors: parsed.errors, warnings: parsed.warnings };
   }
-  if (parsed.toCreate.length === 0 && parsed.toUpdate.length === 0) {
+  if (parsed.toCreate.length === 0 && parsed.toUpdate.length === 0 && parsed.toDelete.length === 0) {
     // S107 D7: a file where every row matched its row_hash is a valid no-op, not an error
     if (parsed.untouchedCount > 0) {
-      return { created: 0, updated: 0, skipped: parsed.untouchedCount, errors: [], warnings: parsed.warnings };
+      return { ...empty, skipped: parsed.untouchedCount, errors: [], warnings: parsed.warnings };
     }
-    return { created: 0, updated: 0, skipped: 0, errors: ['No events found in file'], warnings: [] };
+    return { ...empty, errors: ['No events found in file'], warnings: [] };
   }
 
   // Step 2: Load categories + attr defs
@@ -1498,10 +1841,27 @@ export async function importEventsFromExcel(
   const allCatIds      = Object.keys(categoriesDict);
   const attrDefs       = await loadAttrDefsForCategories(userId, allCatIds, categoriesDict);
 
-  // Step 3: Smart reclassify (invalid event_ids → CREATE)
+  // Step 3 (S107w): deletions first — so a row can be deleted and its session
+  // rebuilt by other rows of the same file in one pass. A failure here stops the
+  // import before anything is created or updated.
+  let deleteResult: DeleteResult = { deleted: 0, parentsDeleted: 0, errors: [], warnings: [], removed: [] };
+  if (parsed.toDelete.length > 0) {
+    deleteResult = await applyDeletes(userId, parsed.toDelete, categoriesDict);
+    if (deleteResult.errors.length > 0) {
+      return {
+        ...empty,
+        deleted:  deleteResult.deleted,
+        removed:  deleteResult.removed,
+        errors:   deleteResult.errors,
+        warnings: [...parsed.warnings, ...deleteResult.warnings],
+      };
+    }
+  }
+
+  // Step 4: Smart reclassify (invalid event_ids → CREATE)
   const reclassified = await smartReclassify(userId, parsed.toCreate, parsed.toUpdate, categoriesDict);
 
-  // Step 4: Validate
+  // Step 5: Validate
   const { validCreates, validUpdates, errors: validationErrors } = validateImportData(
     reclassified.toCreate,
     reclassified.toUpdate,
@@ -1510,23 +1870,26 @@ export async function importEventsFromExcel(
 
   if (validationErrors.length > 0) {
     return {
-      created:  0,
-      updated:  0,
-      skipped:  0,
+      ...empty,
+      deleted:  deleteResult.deleted,
+      removed:  deleteResult.removed,
       errors:   validationErrors,
-      warnings: [...parsed.warnings, ...reclassified.warnings],
+      warnings: [...parsed.warnings, ...deleteResult.warnings, ...reclassified.warnings],
     };
   }
 
-  // Step 5: Apply (s overwrite odlukama za kolizije)
+  // Step 6: Apply (s overwrite odlukama za kolizije)
   const result = await applyImportChanges(userId, validCreates, validUpdates, categoriesDict, attrDefs, overwriteDecisions, onProgress);
 
   return {
     created:  result.created,
     updated:  result.updated,
     skipped:  result.skipped + parsed.untouchedCount, // untouched rows (row_hash match) count as skipped
+    deleted:  deleteResult.deleted,
+    outcomes: result.outcomes,
+    removed:  deleteResult.removed,
     errors:   result.errors,
-    warnings: [...parsed.warnings, ...reclassified.warnings, ...result.warnings],
+    warnings: [...parsed.warnings, ...deleteResult.warnings, ...reclassified.warnings, ...result.warnings],
   };
 }
 

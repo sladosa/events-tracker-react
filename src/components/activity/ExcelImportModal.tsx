@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useCallback, useMemo } from 'react';
+import { saveAs } from 'file-saver';
 import { supabase } from '@/lib/supabaseClient';
 import {
   importEventsFromExcel,
@@ -16,10 +17,12 @@ import {
   checkMissingCategories,
   parseExcelFile,
   analyzeUpdates,
+  analyzeDeletes,
 } from '@/lib/excelImport';
 import { importStructureExcel } from '@/lib/structureImport';
 import { loadCategoriesForExport, loadAttrDefsForCategories } from '@/lib/excelDataLoader';
-import type { CollisionInfo, UpdateAnalysis } from '@/lib/excelImport';
+import { buildImportReport } from '@/lib/excelImportReport';
+import type { CollisionInfo, UpdateAnalysis, DeleteAnalysis } from '@/lib/excelImport';
 
 interface ExcelImportModalProps {
   onClose:   () => void;
@@ -43,7 +46,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const [preview,       setPreview]       = useState<ParsePreview | null>(null);
   const [collisions,    setCollisions]    = useState<CollisionInfo[]>([]);
   const [overwriteMap,  setOverwriteMap]  = useState<Map<string, 'replace' | 'add' | 'skip'>>(new Map());
-  const [result,        setResult]        = useState<{ created: number; updated: number; skipped: number; warnings: string[] } | null>(null);
+  const [result,        setResult]        = useState<{ created: number; updated: number; skipped: number; deleted: number; warnings: string[] } | null>(null);
   const [errors,        setErrors]        = useState<string[]>([]);
   const [isDragOver,       setIsDragOver]       = useState(false);
   const [missingCatPaths,  setMissingCatPaths]  = useState<string[]>([]);
@@ -60,6 +63,13 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   // a lista promjena (staro→novo) je vidljiva iznad njega.
   const [updateAnalysis,      setUpdateAnalysis]      = useState<UpdateAnalysis | null>(null);
   const [updatesAcknowledged, setUpdatesAcknowledged] = useState(false);
+  // S107w delete-guard: deletion is irreversible, so it gets its OWN list and its
+  // own checkbox — ticking "yes, modify" must never also mean "yes, destroy".
+  const [deleteAnalysis,      setDeleteAnalysis]      = useState<DeleteAnalysis | null>(null);
+  const [deletesAcknowledged, setDeletesAcknowledged] = useState(false);
+  // S107w: the report file that downloaded after Apply (name shown on the done screen)
+  const [reportFilename,      setReportFilename]      = useState<string | null>(null);
+  const [reportError,         setReportError]         = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,6 +88,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setMissingCatPaths([]);
     setUpdateAnalysis(null);
     setUpdatesAcknowledged(false);
+    setDeleteAnalysis(null);
+    setDeletesAcknowledged(false);
+    setReportFilename(null);
+    setReportError(null);
     setImportState('parsing');
 
     try {
@@ -119,6 +133,16 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       } else {
         setUpdateAnalysis(null);
         setUpdatesAcknowledged(true);
+      }
+
+      // S107w delete-guard: what the Delete? column would remove, before anything happens
+      if (parsed.toDelete.length > 0) {
+        const delAnalysis = await analyzeDeletes(user.id, parsed.toDelete, categoriesDict);
+        setDeleteAnalysis(delAnalysis);
+        setDeletesAcknowledged(delAnalysis.deletes.length === 0);
+      } else {
+        setDeleteAnalysis(null);
+        setDeletesAcknowledged(true);
       }
 
       // Collision detection za CREATE redove
@@ -230,6 +254,9 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     return updateAnalysis.updates.filter(u => u.existingEventDate < cutoffStr).length;
   }, [updateAnalysis]);
   const updateGuardActive = updateAnalysis !== null && updateAnalysis.updates.length > 0;
+  const deleteCount       = deleteAnalysis?.deletes.length ?? 0;
+  const deleteGuardActive = deleteCount > 0;
+  const applyBlocked      = (updateGuardActive && !updatesAcknowledged) || (deleteGuardActive && !deletesAcknowledged);
 
   // ── Korak 7: Create missing categories from Structure sheet, then continue ──
   const handleCreateStructure = async () => {
@@ -282,11 +309,39 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
         created:  importResult.created,
         updated:  importResult.updated,
         skipped:  importResult.skipped,
+        deleted:  importResult.deleted,
         warnings: importResult.warnings,
       });
+
+      // S107w: the report is a working file, not a receipt — it re-exports the
+      // records just touched (real event_id + row_hash) with the Delete? column on
+      // them, so a mistake can be undone by importing this very file back.
+      // Generated AFTER apply so those ids and hashes are the real, saved ones.
+      setApplyingMessage('Preparing import report…');
+      try {
+        const report = await buildImportReport({
+          userId:     user.id,
+          sourceFile: selectedFile.name,
+          outcomes:   importResult.outcomes,
+          removed:    importResult.removed,
+          skipped:    importResult.skipped,
+          warnings:   importResult.warnings,
+        });
+        if (report) {
+          saveAs(
+            new Blob([report.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+            report.filename,
+          );
+          setReportFilename(report.filename);
+        }
+      } catch (err) {
+        // The import itself succeeded — a failed report must not look like a failed import
+        setReportError(String(err));
+      }
+
       setImportState('done');
-      // Refresh the activities table immediately if anything was actually imported
-      if (importResult.created > 0 || importResult.updated > 0) {
+      // Refresh the activities table immediately if anything was actually changed
+      if (importResult.created > 0 || importResult.updated > 0 || importResult.deleted > 0) {
         onRefresh();
       }
     } catch (err) {
@@ -311,6 +366,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setApplyProgress(null);
     setUpdateAnalysis(null);
     setUpdatesAcknowledged(false);
+    setDeleteAnalysis(null);
+    setDeletesAcknowledged(false);
+    setReportFilename(null);
+    setReportError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -520,7 +579,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                 <span className="truncate font-medium">{selectedFile?.name}</span>
               </div>
 
-              <div className={`grid gap-3 ${unchangedTotal > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              <div className="grid gap-3 grid-cols-2">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-green-700">{effectiveCreateCount}</p>
                   <p className="text-xs text-green-600 mt-0.5">New events to create</p>
@@ -529,6 +588,12 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   <p className="text-2xl font-bold text-amber-700">{updateCount}</p>
                   <p className="text-xs text-amber-600 mt-0.5">Events to modify</p>
                 </div>
+                {deleteCount > 0 && (
+                  <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-center" data-testid="delete-count-tile">
+                    <p className="text-2xl font-bold text-red-700">{deleteCount}</p>
+                    <p className="text-xs text-red-600 mt-0.5">Events to DELETE</p>
+                  </div>
+                )}
                 {unchangedTotal > 0 && (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
                     <p className="text-2xl font-bold text-gray-500">{unchangedTotal}</p>
@@ -536,6 +601,68 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   </div>
                 )}
               </div>
+
+              {/* ── S107w: Delete-guard — its own list, its own confirmation ── */}
+              {deleteAnalysis && deleteAnalysis.deletes.length > 0 && (
+                <div className="bg-red-50 border-2 border-red-500 rounded-lg p-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-bold text-red-800">
+                      🗑 {deleteAnalysis.deletes.length} event{deleteAnalysis.deletes.length !== 1 ? 's' : ''} will be permanently deleted
+                    </p>
+                    <p className="text-xs text-red-700 mt-0.5">
+                      Marked <span className="font-mono font-semibold">DELETE</span> in the Delete? column. This cannot be undone —
+                      values, photos and (for the last event of a session) its parent records go with them.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1" data-testid="delete-guard-list">
+                    {deleteAnalysis.deletes.map(d => (
+                      <div key={d.eventId} className="border border-red-300 bg-white rounded-lg p-2.5">
+                        <div className="text-xs text-gray-700">
+                          <span className="font-semibold">{d.eventDate}</span>
+                          <span className="text-gray-400"> @ </span>
+                          <span className="font-semibold">{d.sessionStart}</span>
+                          <span className="text-gray-400 mx-1">·</span>
+                          <span className="text-gray-600">{d.categoryPath}</span>
+                          <span className="text-gray-300 ml-1.5 text-[10px]">(Excel row {d.sourceRow})</span>
+                        </div>
+                        {d.comment && (
+                          <p className="text-[11px] text-gray-500 mt-0.5 truncate" title={d.comment}>{d.comment}</p>
+                        )}
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          {d.attrCount} attribute value{d.attrCount !== 1 ? 's' : ''}
+                          {d.photoCount > 0 && (
+                            <span className="ml-1.5 font-bold text-yellow-700">📷 {d.photoCount} photo{d.photoCount !== 1 ? 's' : ''} deleted too</span>
+                          )}
+                          {d.lastOfSession && (
+                            <span className="ml-1.5 text-red-600 font-medium">· last event of its session → parent records removed too</span>
+                          )}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {deleteAnalysis.notFoundCount > 0 && (
+                    <p className="text-[11px] text-red-700">
+                      ⚠️ {deleteAnalysis.notFoundCount} more row{deleteAnalysis.notFoundCount !== 1 ? 's are' : ' is'} marked DELETE but
+                      {deleteAnalysis.notFoundCount !== 1 ? ' those records are' : ' that record is'} not in the database (already deleted, or not yours) — nothing to do.
+                    </p>
+                  )}
+
+                  <label className="flex items-start gap-2 cursor-pointer bg-white border-2 border-red-400 rounded-lg p-2.5">
+                    <input
+                      type="checkbox"
+                      checked={deletesAcknowledged}
+                      onChange={e => setDeletesAcknowledged(e.target.checked)}
+                      className="mt-0.5"
+                      data-testid="delete-guard-ack"
+                    />
+                    <span className="text-xs font-bold text-red-800">
+                      I reviewed the list — permanently delete {deleteAnalysis.deletes.length} event{deleteAnalysis.deletes.length !== 1 ? 's' : ''}.
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {/* ── S107 D7: Update-guard — explicit review + confirmation of modifications ── */}
               {updateAnalysis && updateAnalysis.updates.length > 0 && (
@@ -742,8 +869,14 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                 {/* UX-2: Apply enabled — OSIM kad update-guard čeka potvrdu (S107 D7) */}
                 <button
                   onClick={handleApply}
-                  disabled={updateGuardActive && !updatesAcknowledged}
-                  title={updateGuardActive && !updatesAcknowledged ? 'Review the modification list and tick the checkbox first' : undefined}
+                  disabled={applyBlocked}
+                  title={
+                    applyBlocked
+                      ? (deleteGuardActive && !deletesAcknowledged
+                          ? 'Review the deletion list and tick its checkbox first'
+                          : 'Review the modification list and tick the checkbox first')
+                      : undefined
+                  }
                   className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {allSkipped ? '⏭ All skipped – Apply' : '✅ Apply Import'}
@@ -782,7 +915,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                 <p className="text-lg font-semibold text-gray-800">Import successful!</p>
               </div>
 
-              <div className={`grid gap-3 ${result.skipped > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              <div className="grid gap-3 grid-cols-2">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-green-700">{result.created}</p>
                   <p className="text-xs text-green-600 mt-0.5">Events created</p>
@@ -791,6 +924,12 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   <p className="text-2xl font-bold text-blue-700">{result.updated}</p>
                   <p className="text-xs text-blue-600 mt-0.5">Events updated</p>
                 </div>
+                {result.deleted > 0 && (
+                  <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-center" data-testid="deleted-result-tile">
+                    <p className="text-2xl font-bold text-red-700">{result.deleted}</p>
+                    <p className="text-xs text-red-600 mt-0.5">Events deleted</p>
+                  </div>
+                )}
                 {result.skipped > 0 && (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
                     <p className="text-2xl font-bold text-gray-500">{result.skipped}</p>
@@ -798,6 +937,23 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   </div>
                 )}
               </div>
+
+              {/* S107w: report download confirmation */}
+              {reportFilename && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-xs text-indigo-800 space-y-1" data-testid="import-report-note">
+                  <p className="font-medium">📄 Import report downloaded</p>
+                  <p className="font-mono text-[11px] text-indigo-700 break-all">{reportFilename}</p>
+                  <p className="text-indigo-600">
+                    It contains only the records this import touched, in normal export format.
+                    Spot a mistake? Mark it <span className="font-mono font-semibold">DELETE</span> in that file and import it back.
+                  </p>
+                </div>
+              )}
+              {reportError && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                  ⚠️ The import finished, but the report file could not be generated: {reportError}
+                </div>
+              )}
 
               {result.warnings.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 space-y-1">

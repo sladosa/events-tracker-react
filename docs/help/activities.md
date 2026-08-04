@@ -104,6 +104,31 @@ Import tretira `_` kao "postavi na prazno", zaobilazeći P3.
   želiš ga obrisati → upiši `_` u xlsx kolonu Smjer za taj event → import → vrijednost se briše
 - Za **nove redove** (novi eventi): `_` se tretira jednako kao prazno (atribut se ne kreira)
 
+**Brisanje zapisa via Excel — kolona `Delete?` (S107w):**
+Skroz desno u EVENT DATA sekciji (do `row_hash`) stoji kolona **`Delete?`** s padajućim
+izbornikom. Odabereš `DELETE` na retku → import taj zapis **trajno briše**.
+- Prihvaćaju se **samo** `DELETE` ili prazna ćelija; bilo koja druga vrijednost (npr. `TRUE`)
+  je **greška** i import se prekida — ništa se ne uveze dok se ne ispravi
+- Označeni redak se u Excelu oboji crveno (conditional formatting)
+- Prije primjene import pokaže **zaseban popis što nestaje** (datum, kategorija, komentar,
+  broj atributa, fotografije) i **vlastitu kvačicu** — Apply je zaključan dok je ne označiš.
+  Odvojena je od kvačice za izmjene: "da, promijeni" nikad ne znači i "da, obriši"
+- Ako je to bio **zadnji zapis svoje sesije**, brišu se i parent zapisi te sesije
+  (isto pravilo kao Delete Activity u UI-u)
+- **Brisanje retka iz Excela ne briše ništa** — zapis koji nije u fileu se jednostavno ne dira.
+  Briše samo `Delete?` zastavica
+- Stariji exporti (bez te kolone) rade nepromijenjeno — ništa se ne briše
+
+**Izvještaj nakon uvoza (auto-download):**
+Nakon svakog importa automatski se skine **`import_report_*.xlsx`**. To **nije pasivan log**
+nego **radni file** — običan export format sa samo onim zapisima koje je import kreirao ili
+promijenio: pravi `event_id`, ispravan `row_hash`, `Delete?` dropdown već na njemu.
+- Petlja: uvoz → izvještaj → označiš krivi redak `DELETE` → uvezeš **taj isti file**
+- Tri dodatne kolone skroz desno: `Result` (Created/Updated), `Source row` (redak uvoznog
+  filea), `Changed` (koja polja su se promijenila). Pri ponovnom uvozu se ignoriraju
+- Sheet `ImportReport` = sažetak; sheet `Deleted` = popis obrisanih zapisa
+  (njih se ne može izvesti — postoje samo kao zapis što je otišlo)
+
 ## Orphan eventi (owner pogled)
 Orphan eventi nastaju u dva scenarija:
 - Grantee napusti area bez podataka ("Leave without data")
