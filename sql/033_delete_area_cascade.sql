@@ -53,22 +53,56 @@ ORDER BY a.name, a.created_at;
 -- SECTION 2 — diagnose why the UI could not delete it (read-only)
 -- ============================================================
 -- Paste the area id below.
--- 2a: whose user_id sits on the attributes? Any row whose user_id is NOT the
---     area owner (or is NULL) is what the UI could not see.
+-- 2a: WHO OWNS IT AND WHOSE RECORDS ARE INSIDE — one roster.
+--     `role` tells you what to do:
+--       owner          → the account that can delete the Area
+--       active grantee → still shared with them; ask them, or revoke first
+--       ORPHAN         → had access once, data stayed behind. This is the row
+--                        that blocks the delete, and the UI cannot see it.
 
+WITH a AS (
+  SELECT id, user_id FROM areas
+  WHERE id = '00000000-0000-0000-0000-000000000000'   -- ← area id
+),
+people AS (
+  SELECT e.user_id, count(*) AS events, 0 AS attr_rows
+  FROM events e JOIN categories c ON c.id = e.category_id, a
+  WHERE c.area_id = a.id
+  GROUP BY e.user_id
+  UNION ALL
+  SELECT ea.user_id, 0, count(*)
+  FROM event_attributes ea
+  JOIN events e     ON e.id = ea.event_id
+  JOIN categories c ON c.id = e.category_id, a
+  WHERE c.area_id = a.id
+  GROUP BY ea.user_id
+)
 SELECT
-  ea.user_id,
-  (ea.user_id = a.user_id) AS is_area_owner,
-  u.email,
-  count(*)                 AS attr_rows
-FROM event_attributes ea
-JOIN events e     ON e.id = ea.event_id
-JOIN categories c ON c.id = e.category_id
-JOIN areas a      ON a.id = c.area_id
-LEFT JOIN auth.users u ON u.id = ea.user_id
-WHERE a.id = '00000000-0000-0000-0000-000000000000'   -- ← area id
-GROUP BY ea.user_id, a.user_id, u.email
-ORDER BY attr_rows DESC;
+  coalesce(u.email, p.user_id::text, '(no user_id)') AS who,
+  CASE
+    WHEN p.user_id = a.user_id THEN 'owner'
+    WHEN p.user_id IS NULL     THEN 'orphan row without user_id'
+    WHEN EXISTS (SELECT 1 FROM data_shares d
+                  WHERE d.target_id = a.id AND d.share_type = 'area'
+                    AND d.grantee_id = p.user_id) THEN 'active grantee'
+    ELSE 'ORPHAN — no longer has access'
+  END                        AS role,
+  sum(p.events)              AS events,
+  sum(p.attr_rows)           AS attribute_values
+FROM people p
+CROSS JOIN a
+LEFT JOIN auth.users u ON u.id = p.user_id
+GROUP BY who, role
+ORDER BY events DESC, attribute_values DESC;
+
+-- 2a-bis: everyone the Area is currently shared with (even with no records yet)
+
+SELECT u.email, d.permission, d.created_at
+FROM data_shares d
+LEFT JOIN auth.users u ON u.id = d.grantee_id
+WHERE d.target_id = '00000000-0000-0000-0000-000000000000'   -- ← area id
+  AND d.share_type = 'area'
+ORDER BY d.created_at;
 
 -- 2b: are the S75 owner-fallback policies (020_orphan_rls.sql) present on this
 --     database? If these four rows are missing, that alone explains the failure

@@ -38,6 +38,7 @@ import {
   classifyDeleteError,
   type DeleteErrorInfo,
 } from '@/lib/deleteErrors';
+import { fetchAreaRoster, type AreaRoster } from '@/lib/areaOccupants';
 import type { StructureNode } from '@/types/structure';
 
 // --------------------------------------------------------
@@ -142,6 +143,54 @@ function DeleteErrorBox({ info }: { info: DeleteErrorInfo }) {
 }
 
 // --------------------------------------------------------
+// Ownership / occupancy panel — "whose Area is this, who has records in it"
+// --------------------------------------------------------
+
+function RosterPanel({ roster }: { roster: AreaRoster }) {
+  const others = roster.occupants.filter(o => !o.isYou);
+  const hasOrphans = roster.occupants.some(o => o.isOrphan);
+
+  return (
+    <div className="mt-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs space-y-2">
+      <p className="text-gray-700">
+        <span className="font-semibold">Owner:</span>{' '}
+        {roster.ownerLabel ?? <span className="text-gray-400">unknown</span>}
+      </p>
+
+      {roster.occupants.length > 0 && (
+        <div className="space-y-1">
+          <p className="font-semibold text-gray-700">Records inside, by user:</p>
+          <ul className="space-y-0.5">
+            {roster.occupants.map(o => (
+              <li key={o.userId} className="flex justify-between gap-3">
+                <span className="truncate">
+                  {o.label}
+                  {o.isYou && <span className="text-gray-500"> (you)</span>}
+                  {o.isOwner && !o.isYou && <span className="text-gray-500"> (owner)</span>}
+                  {o.isOrphan && (
+                    <span className="text-amber-700"> — no longer has access</span>
+                  )}
+                </span>
+                <span className="tabular-nums text-gray-600 shrink-0">{o.eventCount}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {hasOrphans && (
+        <p className="text-amber-700">
+          Records from someone who no longer has access are what usually blocks the delete.
+        </p>
+      )}
+      {others.length === 0 && roster.occupants.length > 0 && (
+        <p className="text-gray-500">All records here are yours.</p>
+      )}
+    </div>
+  );
+}
+
+// --------------------------------------------------------
 // Main component
 // --------------------------------------------------------
 
@@ -218,16 +267,27 @@ export function StructureDeleteModal({
   // steps that delete nothing, not at all).
   const [notOwner, setNotOwner] = useState(false);
 
+  // Who owns it and whose records are inside — loaded up front so the user can
+  // see it BEFORE clicking delete, not only after it fails.
+  const [roster, setRoster] = useState<AreaRoster | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (cancelled || !user) return;
+      if (cancelled) return;
       const ownerId = node.area?.user_id ?? null;
-      if (ownerId && ownerId !== user.id) setNotOwner(true);
+      if (user && ownerId && ownerId !== user.id) setNotOwner(true);
+
+      const categoryIds = allNodes
+        .filter(n => subtreeIds.includes(n.id) && n.nodeType === 'category')
+        .map(n => n.id);
+      const r = await fetchAreaRoster(ownerId, categoryIds, user?.id ?? null, node.areaId);
+      if (!cancelled) setRoster(r);
     })();
     return () => { cancelled = true; };
-  }, [node.area?.user_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const isBlocked = eventCount > 0;
 
   // Count attribute definitions in the whole subtree
@@ -377,7 +437,7 @@ export function StructureDeleteModal({
       setError(classifyDeleteError(err, nodeLabel));
       setDeleting(false);
     }
-  }, [cascadeDelete, node.id, onDeleted]);
+  }, [cascadeDelete, node.id, nodeLabel, onDeleted]);
 
   /** BLOCKED path — skip backup, delete directly (user already has backup or doesn't need one). */
   const handleDeleteWithoutBackup = useCallback(async () => {
@@ -396,7 +456,7 @@ export function StructureDeleteModal({
       setDeleting(false);
       setPhase('idle');
     }
-  }, [cascadeDelete, node.id, onDeleted]);
+  }, [cascadeDelete, node.id, nodeLabel, onDeleted]);
 
   /** BLOCKED path — backup first, then full cascade delete including events. */
   const handleDeleteWithBackup = useCallback(async () => {
@@ -427,7 +487,7 @@ export function StructureDeleteModal({
       setDeleting(false);
       setPhase('idle');
     }
-  }, [cascadeDelete, node.id, onDeleted]);
+  }, [cascadeDelete, node.id, nodeLabel, onDeleted]);
 
   const headerBg = isBlocked ? 'bg-amber-600' : 'bg-red-600';
 
@@ -493,6 +553,10 @@ export function StructureDeleteModal({
                   {phase === 'backup' ? '⏳ Generating backup…' : '🗑 Deleting…'}
                 </p>
               )}
+              {roster && (roster.occupants.length > 0 || notOwner) && (
+                <RosterPanel roster={roster} />
+              )}
+
               {error && <DeleteErrorBox info={error} />}
             </div>
           ) : (
@@ -513,6 +577,10 @@ export function StructureDeleteModal({
               <p className="text-sm text-red-600 font-medium">
                 This action cannot be undone.
               </p>
+
+              {roster && (roster.occupants.length > 0 || notOwner) && (
+                <RosterPanel roster={roster} />
+              )}
 
               {error && <DeleteErrorBox info={error} />}
             </div>
