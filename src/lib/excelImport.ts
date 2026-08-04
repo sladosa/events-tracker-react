@@ -386,6 +386,60 @@ export async function parseExcelFile(
     validRows = ownRows;
   }
 
+  /** Does the row still carry the fingerprint written for it at export? */
+  const matchesRowHash = (r: ParsedImportRow): boolean =>
+    !!r._row_hash && !!r.event_id && computeRowFingerprint({
+      event_id:      r.event_id,
+      area:          r.area,
+      category_path: r.category_path,
+      event_date:    r.event_date,
+      session_start: r.session_start,
+      created_at:    r.created_at,
+      user_email:    r._row_email ?? '',
+      comment:       r.comment,
+      attributes:    r.attributes,
+    }) === r._row_hash;
+
+  // ── Copied rows: same event_id more than once in the file ────────────────
+  // Adding a transaction by copying an existing row is the natural thing to do
+  // in Excel, and the copy carries the original's `event_id` AND `row_hash`.
+  // Without this, the copy is classified as an UPDATE of the row it was copied
+  // from: the original transaction is overwritten with the copy's values and no
+  // new event is created — one record silently destroyed, one never added.
+  //
+  // One event cannot legitimately be two rows, so a repeated event_id means a
+  // copy. Exactly one row keeps the id: the one still matching its row_hash
+  // (the untouched original). If none match — both were edited — the first
+  // occurrence keeps it. Everything else becomes a CREATE, which is the
+  // non-destructive reading and what the user meant by copying the row.
+  const rowsById = new Map<string, ParsedImportRow[]>();
+  for (const r of validRows) {
+    if (!r.event_id) continue;
+    const list = rowsById.get(r.event_id) ?? [];
+    list.push(r);
+    rowsById.set(r.event_id, list);
+  }
+
+  const forcedCreates = new Set<ParsedImportRow>();
+  for (const [eventId, rows] of rowsById) {
+    if (rows.length < 2) continue;
+    const keeper = rows.find(r => r._row_hash && matchesRowHash(r)) ?? rows[0];
+    for (const r of rows) {
+      if (r === keeper) continue;
+      forcedCreates.add(r);
+    }
+    warnings.push(
+      `event_id ${eventId.slice(0, 8)}… appears on ${rows.length} rows ` +
+      `(${rows.map(r => r._source_row).join(', ')}) — looks like a copied row. ` +
+      `Row ${keeper._source_row} updates the existing record; the other ` +
+      `${rows.length - 1} will be created as new activities.`,
+    );
+  }
+
+  if (forcedCreates.size > 0) {
+    validRows = validRows.map(r => (forcedCreates.has(r) ? { ...r, event_id: null } : r));
+  }
+
   const toCreate = validRows.filter(r => !r.event_id);
 
   // S107 D7: untouched-row skip — UPDATE row whose recomputed fingerprint matches the
@@ -397,17 +451,7 @@ export async function parseExcelFile(
   const toUpdate: ParsedImportRow[] = [];
   for (const r of validRows) {
     if (!r.event_id) continue;
-    if (r._row_hash && computeRowFingerprint({
-      event_id:      r.event_id,
-      area:          r.area,
-      category_path: r.category_path,
-      event_date:    r.event_date,
-      session_start: r.session_start,
-      created_at:    r.created_at,
-      user_email:    r._row_email ?? '',
-      comment:       r.comment,
-      attributes:    r.attributes,
-    }) === r._row_hash) {
+    if (matchesRowHash(r)) {
       untouchedCount++;
       continue;
     }

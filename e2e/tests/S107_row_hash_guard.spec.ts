@@ -28,30 +28,63 @@ import { selectFilterPath, SEED } from '../fixtures/filter';
 const SUPABASE_URL      = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY!;
 
-const GUARD_COMMENT = 'T-S107 guard edit';
+const GUARD_COMMENT  = 'T-S107 guard edit';
+const COPIED_COMMENT = 'T-S107 copied row';
 
-/** Restore a leaf event's comment via REST (cleanup — keeps seed data stable for E3/E4). */
-async function patchComment(page: Page, eventId: string, comment: string | null): Promise<void> {
+/** REST headers carrying the logged-in session, or null if not signed in. */
+async function restHeaders(page: Page): Promise<Record<string, string> | null> {
   const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
   const storageKey = `sb-${projectRef}-auth-token`;
   const session = await page.evaluate((key: string) => {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : null;
   }, storageKey);
-  if (!session?.access_token) return;
+  if (!session?.access_token) return null;
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${session.access_token}`,
+    'Content-Type': 'application/json',
+  };
+}
 
-  await page.request.patch(
+/** Restore a leaf event's comment via REST (cleanup — keeps seed data stable for E3/E4). */
+async function patchComment(page: Page, eventId: string, comment: string | null): Promise<void> {
+  const headers = await restHeaders(page);
+  if (!headers) return;
+  await page.request.patch(`${SUPABASE_URL}/rest/v1/events?id=eq.${eventId}`, {
+    headers: { ...headers, Prefer: 'return=minimal' },
+    data: { comment },
+  });
+}
+
+async function fetchComment(page: Page, eventId: string): Promise<string | null> {
+  const headers = await restHeaders(page);
+  if (!headers) return null;
+  const res = await page.request.get(
+    `${SUPABASE_URL}/rest/v1/events?id=eq.${eventId}&select=comment`, { headers });
+  const rows = await res.json();
+  return rows?.[0]?.comment ?? null;
+}
+
+async function findEventIdByComment(page: Page, comment: string): Promise<string | null> {
+  const headers = await restHeaders(page);
+  if (!headers) return null;
+  const res = await page.request.get(
+    `${SUPABASE_URL}/rest/v1/events?comment=eq.${encodeURIComponent(comment)}&select=id`, { headers });
+  const rows = await res.json();
+  return rows?.[0]?.id ?? null;
+}
+
+/** Remove an event created by the test, attributes first (FK). */
+async function deleteEvent(page: Page, eventId: string): Promise<void> {
+  const headers = await restHeaders(page);
+  if (!headers) return;
+  await page.request.delete(
+    `${SUPABASE_URL}/rest/v1/event_attributes?event_id=eq.${eventId}`,
+    { headers: { ...headers, Prefer: 'return=minimal' } });
+  await page.request.delete(
     `${SUPABASE_URL}/rest/v1/events?id=eq.${eventId}`,
-    {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      },
-      data: { comment },
-    },
-  );
+    { headers: { ...headers, Prefer: 'return=minimal' } });
 }
 
 /** Export the current filter selection and return a saved .xlsx path.
@@ -172,6 +205,79 @@ test.describe('T-S107 — row_hash skip + update-guard', () => {
       await expect(createdStat).toHaveText('0');
     } finally {
       // Restore the original comment so seed data stays stable for E3/E4
+      await patchComment(page, eventId, oldComment);
+    }
+  });
+
+  /**
+   * T-S107-3 — adding a transaction by COPYING a row in Excel.
+   *
+   * The natural way to add a row in a spreadsheet is to copy one and edit it,
+   * but the copy carries the original's `event_id` AND `row_hash`. Classified
+   * naively that is an UPDATE of the row it was copied from: the original is
+   * overwritten with the copy's values and no new event appears — one record
+   * destroyed, one never created, silently.
+   *
+   * Expected: the original (hash still matching) keeps the id and is skipped as
+   * untouched; the copy becomes a CREATE.
+   */
+  test('T-S107-3: a copied row becomes a new event, it does not overwrite the original', async ({ page }) => {
+    test.setTimeout(180_000);
+
+    const templatePath = await exportTemplate(page);
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(templatePath);
+    const ws = workbook.getWorksheet('Events');
+    if (!ws) throw new Error('Events sheet not found in exported template');
+
+    const headerRow = findHeaderRow(ws);
+    const source    = ws.getRow(headerRow + 1);
+    const eventId   = String(source.getCell(1).value ?? '');
+    const oldComment = source.getCell(8).value == null ? null : String(source.getCell(8).value);
+    expect(eventId).toBeTruthy();
+
+    // Duplicate the row verbatim (event_id + row_hash included), then edit the
+    // copy's comment and session time — exactly what copy/paste in Excel gives.
+    const lastRow = ws.lastRow?.number ?? headerRow + 1;
+    const copy    = ws.getRow(lastRow + 1);
+    source.eachCell({ includeEmpty: true }, (cell, col) => {
+      copy.getCell(col).value = cell.value;
+    });
+    copy.getCell(5).value = '23:47';            // session_start — avoid a collision
+    copy.getCell(8).value = COPIED_COMMENT;
+    copy.commit();
+
+    const tmpDir = mkdtempSync(path.join(tmpdir(), 'S107-copy-'));
+    const copiedPath = path.join(tmpDir, 'S107_copied_row.xlsx');
+    await workbook.xlsx.writeFile(copiedPath);
+
+    let createdId: string | null = null;
+    try {
+      await startImport(page, copiedPath);
+
+      // The copy is a CREATE; the untouched original must NOT be modified.
+      await expect(page.getByText('New events to create')).toBeVisible({ timeout: 60_000 });
+      await expect(page.getByText(/will be modified/i)).not.toBeVisible();
+
+      const applyBtn = page.getByRole('button', { name: /apply import/i });
+      await expect(applyBtn).toBeEnabled();
+      await applyBtn.click();
+
+      await expect(page.getByText(/import successful/i)).toBeVisible({ timeout: 60_000 });
+      const createdStat = page.getByText('Events created', { exact: true }).locator('xpath=preceding-sibling::p[1]');
+      await expect(createdStat).toHaveText('1');
+      const updatedStat = page.getByText('Events updated', { exact: true }).locator('xpath=preceding-sibling::p[1]');
+      await expect(updatedStat).toHaveText('0');
+
+      // The original still carries its own comment — proof it was not overwritten.
+      createdId = await findEventIdByComment(page, COPIED_COMMENT);
+      expect(createdId).toBeTruthy();
+      expect(createdId).not.toBe(eventId);
+      const originalComment = await fetchComment(page, eventId);
+      expect(originalComment).toBe(oldComment);
+    } finally {
+      if (createdId) await deleteEvent(page, createdId);
       await patchComment(page, eventId, oldComment);
     }
   });
