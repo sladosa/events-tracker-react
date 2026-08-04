@@ -39,6 +39,7 @@ import {
   type DeleteErrorInfo,
 } from '@/lib/deleteErrors';
 import { fetchAreaRoster, type AreaRoster } from '@/lib/areaOccupants';
+import { fetchAllPaged, fetchAllPagedIn } from '@/lib/supabasePaging';
 import type { StructureNode } from '@/types/structure';
 
 // --------------------------------------------------------
@@ -312,44 +313,52 @@ export function StructureDeleteModal({
 
     if (categoryIds.length > 0) {
       // ── Always clean up events (eventCount may be stale) ──────────────────
-      const { data: events, error: selErr } = await supabase
-        .from('events')
-        .select('id')
-        .in('category_id', categoryIds);
+      // Every SELECT here MUST page: PostgREST truncates at the project's
+      // max-rows (1000) without raising an error, so an unpaged fetch would
+      // delete a prefix of the children and then hit a foreign key violation
+      // on the parent. That is exactly what used to fail on large Areas.
+      const { data: events, error: selErr } = await fetchAllPaged<{ id: string }>(
+        (from, to) => supabase.from('events').select('id').in('category_id', categoryIds).range(from, to),
+      );
       if (selErr) throwStep('select events', selErr);
 
-      if (events && events.length > 0) {
-        const eventIds = (events as { id: string }[]).map(e => e.id);
+      if (events.length > 0) {
+        const eventIds = events.map(e => e.id);
 
         if (!includeEvents) {
           console.warn('StructureDeleteModal: found events not reflected in UI eventCount, cleaning up', eventIds.length);
         }
 
         // Delete storage attachments (only if any exist)
-        const { data: attachments } = await supabase
-          .from('event_attachments')
-          .select('id, url')
-          .in('event_id', eventIds);
+        const { data: attachments, error: attSelErr } = await fetchAllPagedIn<{ id: string; url: string }>(
+          eventIds,
+          (chunk, from, to) => supabase.from('event_attachments').select('id, url').in('event_id', chunk).range(from, to),
+        );
+        if (attSelErr) throwStep('select event_attachments', attSelErr);
 
-        if (attachments && attachments.length > 0) {
-          const paths = (attachments as { url: string }[])
+        if (attachments.length > 0) {
+          const paths = attachments
             .map(a => { const p = a.url.split('/activity-attachments/'); return p.length > 1 ? p[1] : null; })
             .filter((p): p is string => p !== null);
           if (paths.length > 0) {
             await supabase.storage.from('activity-attachments').remove(paths);
           }
-          const attIds = (attachments as { id: string }[]).map(a => a.id);
-          const { error: attErr } = await supabase.from('event_attachments').delete().in('id', attIds);
-          if (attErr) throwStep('delete event_attachments', attErr);
+          const attIds = attachments.map(a => a.id);
+          for (let i = 0; i < attIds.length; i += 200) {
+            const { error: attErr } = await supabase
+              .from('event_attachments').delete().in('id', attIds.slice(i, i + 200));
+            if (attErr) throwStep('delete event_attachments', attErr);
+          }
         }
 
         // Delete event_attributes by PK (`.in('event_id')` DELETE fails on some Supabase configs)
-        const { data: eaRows } = await supabase
-          .from('event_attributes')
-          .select('id')
-          .in('event_id', eventIds);
-        if (eaRows && eaRows.length > 0) {
-          const eaIds = (eaRows as { id: string }[]).map(r => r.id);
+        const { data: eaRows, error: eaSelErr } = await fetchAllPagedIn<{ id: string }>(
+          eventIds,
+          (chunk, from, to) => supabase.from('event_attributes').select('id').in('event_id', chunk).range(from, to),
+        );
+        if (eaSelErr) throwStep('select event_attributes', eaSelErr);
+        if (eaRows.length > 0) {
+          const eaIds = eaRows.map(r => r.id);
           for (let i = 0; i < eaIds.length; i += 200) {
             const chunk = eaIds.slice(i, i + 200);
             const { error: eaErr } = await supabase.from('event_attributes').delete().in('id', chunk);

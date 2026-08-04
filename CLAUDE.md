@@ -939,6 +939,18 @@ testovi: `Claude-temp_R/test-sessions/S107v_tests.md`):**
    „You are not the owner" i sva tri gumba za brisanje su disabled. **Bitnije:** RLS-blokiran
    DELETE ne javlja grešku nego uspijeva s **0 redaka**, pa je dosad izgledalo kao da je brisanje
    prošlo — `areas` DELETE sad ide s `.select('id')` i prazan rezultat daje „Nothing was deleted".
+4b. **⚠ PRAVI UZROK pada brisanja — PostgREST `max-rows = 1000`, NE RLS** (nađeno kad je roster
+   panel pokazao da su **sva 774 eventa Sašina**, čime je prva dijagnoza pala). Izmjereno na TEST
+   bazi: `event_attributes` → `Content-Range: 0-999/24729`, **vraćeno 1000**. Svaki `select` tiho
+   staje na 1000 redaka **bez greške**. `Financije_2` ima ~10.000 `event_attributes` ⇒ kaskada
+   obriše prvih 1000, pa `DELETE` na eventima padne preko ostatka kao FK violation.
+   **Fix:** `src/lib/supabasePaging.ts` (novo) — `fetchAllPaged`/`fetchAllPagedIn`; napreduje za
+   **stvarno vraćeni** broj redaka (radi i ako je cap drukčiji od 1000), uz jedan prazan zadnji
+   poziv kao cijenu. Primijenjeno na sva tri neograničena SELECT-a u kaskadi + roster.
+   Verificirano na živoj TEST bazi: 24.729 redaka u 26 poziva (prije 1000 u 1).
+   **Nije pogođeno:** `excelDataLoader.ts` (export + backup) je za granicu već znao
+   (`.limit()`/`.range()`), `useActivities` koristi `.range()`. ⚠ Pravilo za ubuduće: svaki
+   `select` koji mora vratiti *sve* retke mora paginirati — truncation je tih.
 5. **`sql/033_delete_area_cascade.sql` (novo)** — generički cascade delete po UUID-u (⚠ ne po
    imenu; imena nisu jedinstvena po korisnicima), poopćen iz `029`. SECTION 2 je dijagnostika:
    čiji su `user_id` na atributima + **jesu li 4 policyja iz `020_orphan_rls.sql` uopće na toj

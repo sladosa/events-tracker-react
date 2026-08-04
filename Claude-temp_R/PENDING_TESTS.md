@@ -30,7 +30,23 @@ brisanje prošlo. `sql/033_delete_area_cascade.sql` (novo) — generički SQL ca
 | T-S107v-2 | **Saša:** brisanje `Financije_2` — čitljiva poruka umjesto sirovog `23503`, original iza „Technical details" | ⬜ |
 | T-S107v-3 | **Saša:** grantee → „You are not the owner" + sva tri gumba disabled | ⬜ |
 | T-S107v-4 | **Saša:** `sql/033_delete_area_cascade.sql` — SECTION 2a roster (tko ima zapise + `role`) i 2b **jesu li policyji iz `020_orphan_rls.sql` na TEST-u** (određuje je li UI fix moguć) | ⬜ |
-| T-S107v-5 | **Saša:** Delete modal na `Financije_2` — sivi panel s **Owner:** i **popisom po korisniku** s brojem zapisa; tuđi korisnik bez sharea označen „— no longer has access". Usporedi te brojke s SQL SECTION 2a | ⬜ |
+| T-S107v-5 | **Saša:** Delete modal na `Financije_2` — sivi panel s **Owner:** i **popisom po korisniku** s brojem zapisa | ✅ (Owner: sladosa, 774 sve njegovo — **i to je oborilo prvu dijagnozu**) |
+| T-S107v-6 | **Saša:** ⭐ **pravi uzrok** — reloadaj pa obriši `Financije_2`: sad mora **proći do kraja**. Traje (774 eventa se brišu jedan po jedan) — pusti da završi | ⬜ |
+
+### ⚠ PRAVI UZROK (nađen T-S107v-5): PostgREST `max-rows = 1000`
+
+Roster je pokazao da su **sva 774 eventa Sašina** — dakle RLS/tuđi podaci **nisu** bili uzrok.
+Izmjereno na TEST bazi: `event_attributes` → `Content-Range: 0-999/24729`, **vraćeno 1000**.
+Svaki `select` tiho staje na 1000 redaka, **bez greške**. `Financije_2` ima ~10.000
+`event_attributes` ⇒ kaskada obriše prvih 1000, pa `DELETE` na eventima padne preko ostatka.
+
+**Fix:** `src/lib/supabasePaging.ts` (novo) — `fetchAllPaged` / `fetchAllPagedIn`; napreduje za
+**stvarno vraćeni** broj redaka, pa radi i ako je cap drukčiji od 1000. Primijenjeno na sva tri
+neograničena SELECT-a u kaskadi (`events`, `event_attachments`, `event_attributes`) i na roster.
+Verificirano na živoj TEST bazi: **24.729 redaka u 26 poziva** (prije 1000 u 1).
+
+`excelDataLoader.ts` je za tu granicu **već** znao (`.limit()` + `.range()`) ⇒ Excel export i
+backup nisu bili pogođeni. `useActivities` koristi `.range()`. Pogođena je bila samo kaskada.
 
 ⚠ **Zamka:** kad se red 4996 riješi, **ne** generirati ga novim batchom — dobio bi `09:00` na dan
 koji je već uvezen. Dodati kroz app ili export → uredi → import.

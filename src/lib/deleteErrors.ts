@@ -101,14 +101,13 @@ export function classifyDeleteError(err: unknown, nodeLabel = 'this item'): Dele
     return {
       title: 'Some records could not be removed',
       explanation:
-        `${nodeLabel} still contains ${what} that your account is not allowed to see — ` +
-        'typically data entered by another user who once had access to this Area. ' +
-        'Everything visible to you was deleted, but those hidden rows remain, so the ' +
-        'delete could not finish.',
+        `${nodeLabel} still contains ${what} that were not deleted, so removing the ` +
+        'records they belong to was refused. Nothing was lost — the Area and everything ' +
+        'still in it are intact.',
       actions: [
-        'If this Area is or was shared, ask that person to remove their records first — or revoke their access and take over their data.',
-        'Nothing is lost: the Area and the remaining records are still intact.',
-        'If you need it gone regardless, it has to be deleted directly in the database (sql/033_delete_area_cascade.sql).',
+        'Reload the page and try once more — a partly finished delete is safe to repeat.',
+        'Check the list above: if records here belong to someone who no longer has access, they are the ones blocking it — re-invite them and take over their data, or delete the Area directly in the database.',
+        'If everything here is yours and it still fails, that is a bug worth reporting with the technical details below.',
       ],
       technical,
     };

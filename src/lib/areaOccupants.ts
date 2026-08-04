@@ -14,6 +14,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabaseClient';
+import { fetchAllPaged } from '@/lib/supabasePaging';
 import type { UUID } from '@/types';
 
 export interface AreaOccupant {
@@ -64,13 +65,14 @@ export async function fetchAreaRoster(
       return { ownerLabel: areaOwnerId ? labels.get(areaOwnerId) ?? null : null, occupants: [] };
     }
 
-    const { data: events } = await supabase
-      .from('events')
-      .select('user_id')
-      .in('category_id', categoryIds);
+    // Paged: PostgREST truncates at max-rows (1000) silently, which would
+    // under-report the counts shown to the user.
+    const { data: events } = await fetchAllPaged<{ user_id: string | null }>(
+      (from, to) => supabase.from('events').select('user_id').in('category_id', categoryIds).range(from, to),
+    );
 
     const counts = new Map<string, number>();
-    for (const e of (events ?? []) as { user_id: string | null }[]) {
+    for (const e of events) {
       const uid = e.user_id ?? 'unknown';
       counts.set(uid, (counts.get(uid) ?? 0) + 1);
     }
