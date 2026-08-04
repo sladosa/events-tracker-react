@@ -26,6 +26,7 @@ import {
   getOrFetchActivity,
   prefetchActivity,
   makeCacheKey,
+  takeLastFetchError,
 } from '@/lib/activityViewCache';
 
 import type { UUID } from '@/types';
@@ -353,7 +354,17 @@ export function ViewDetailsPage() {
     const cached = await getOrFetchActivity(key, decoded, categoryIdParam, noSession, ownerIdParam);
 
     if (!cached) {
-      setLoadError('Activity not found');
+      // Distinguish "does not exist" from "the load failed". Both used to render
+      // the same dead-end screen, which is why intermittent View failures were
+      // never diagnosable.
+      const err = takeLastFetchError(key);
+      if (err) {
+        const pg = err as { message?: string; code?: string; details?: string };
+        setLoadError([pg.code, pg.message ?? String(err), pg.details]
+          .filter(Boolean).join(' — '));
+      } else {
+        setLoadError(null);
+      }
       setIsLoading(false);
       return;
     }
@@ -530,13 +541,27 @@ export function ViewDetailsPage() {
   if (loadError) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center p-6">
+        <div className="text-center p-6 max-w-md">
           <div className="text-red-500 text-4xl mb-4">⚠️</div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Failed to load activity</h2>
-          <p className="text-gray-500 mb-4">{loadError}</p>
-          <button onClick={navigateBack} className={cn('px-4 py-2 rounded-lg text-white', t.accent)}>
-            Back to Home
-          </button>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Couldn’t load this activity</h2>
+          <p className="text-gray-600 mb-2 text-sm">
+            The activity is there — a query failed while loading it. This is usually temporary.
+          </p>
+          <p className="text-gray-400 mb-4 text-xs font-mono break-words">{loadError}</p>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => loadActivityData()}
+              className={cn('px-4 py-2 rounded-lg text-white', t.accent)}
+            >
+              Try again
+            </button>
+            <button
+              onClick={navigateBack}
+              className="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200"
+            >
+              Back to Home
+            </button>
+          </div>
         </div>
       </div>
     );

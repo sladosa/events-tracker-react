@@ -951,6 +951,16 @@ testovi: `Claude-temp_R/test-sessions/S107v_tests.md`):**
    **Nije pogođeno:** `excelDataLoader.ts` (export + backup) je za granicu već znao
    (`.limit()`/`.range()`), `useActivities` koristi `.range()`. ⚠ Pravilo za ubuduće: svaki
    `select` koji mora vratiti *sve* retke mora paginirati — truncation je tih.
+4c. **View nakon Finish ne otvara (PROD, Fitness/Strength) — dijagnostika, ne fix.** Simptom: nakon
+   Finish View često ne otvori, Edit otvori, i nakon Edit→Save View radi. **Eliminirano dokazima:**
+   format `session_start` (Edit i View traže evente **identičnim** upitom ⇒ mismatch bi srušio oba);
+   `user_id` (PROD: 0 NULL, jedan `user_id`, `session_start` zaokružen na minutu); `categoryCache`
+   truncation (PROD ima **30** kategorija). **Nađeno umjesto toga:** `_fetchActivityData` je hvatao
+   **svaku** grešku i vraćao `null`, a `ViewDetailsPage` je `null` prikazivao kao „Activity not
+   found" — isti mrtvi ekran za „nema zapisa" i za „upit je pukao", bez teksta greške i bez Retry.
+   Zato bug nikad nije bio dijagnostičan (i zato je izgledao kao da je stvar u View-u, a ne u
+   transientu). Fix: greška se propagira (`takeLastFetchError`), View razlikuje ta dva slučaja i
+   nudi **„Try again"**. Pravi uzrok se hvata iduće pojave — T-S107v-7.
 5. **`sql/033_delete_area_cascade.sql` (novo)** — generički cascade delete po UUID-u (⚠ ne po
    imenu; imena nisu jedinstvena po korisnicima), poopćen iz `029`. SECTION 2 je dijagnostika:
    čiji su `user_id` na atributima + **jesu li 4 policyja iz `020_orphan_rls.sql` uopće na toj

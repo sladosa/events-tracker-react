@@ -31,7 +31,9 @@ brisanje prošlo. `sql/033_delete_area_cascade.sql` (novo) — generički SQL ca
 | T-S107v-3 | **Saša:** grantee → „You are not the owner" + sva tri gumba disabled | ⬜ |
 | T-S107v-4 | **Saša:** `sql/033_delete_area_cascade.sql` — SECTION 2a roster (tko ima zapise + `role`) i 2b **jesu li policyji iz `020_orphan_rls.sql` na TEST-u** (određuje je li UI fix moguć) | ⬜ |
 | T-S107v-5 | **Saša:** Delete modal na `Financije_2` — sivi panel s **Owner:** i **popisom po korisniku** s brojem zapisa | ✅ (Owner: sladosa, 774 sve njegovo — **i to je oborilo prvu dijagnozu**) |
-| T-S107v-6 | **Saša:** ⭐ **pravi uzrok** — reloadaj pa obriši `Financije_2`: sad mora **proći do kraja**. Traje (774 eventa se brišu jedan po jedan) — pusti da završi | ⬜ |
+| T-S107v-6 | **Saša:** ⭐ **pravi uzrok** — obriši `Financije_2`: mora **proći do kraja** | ✅ (obrisane i `Financije_2` i `Financije`) |
+| T-S107v-7 | **Saša (PROD, kad se opet dogodi):** View nakon Finish — ako ne otvori, ekran sad kaže **„Couldn't load this activity"** + tekst greške + **Try again**. **Pošalji tu poruku** — ona je dijagnoza koju dosad nismo imali. Ako piše „Activity not found", uzrok je drukčiji (zapisa stvarno nema) | ⬜ |
+| Regresija | E2, E3, E4 (3), E5 (5), E6 (3), E14 (2), S104_delete_bug, S107_row_hash (2) — **20/20 PASS** prije mergea na main | ✅ (jedan flake T-S107-2 u prvom prolazu, ne reproducira se u 2 ponovna pokretanja) |
 
 ### ⚠ PRAVI UZROK (nađen T-S107v-5): PostgREST `max-rows = 1000`
 
@@ -47,6 +49,19 @@ Verificirano na živoj TEST bazi: **24.729 redaka u 26 poziva** (prije 1000 u 1)
 
 `excelDataLoader.ts` je za tu granicu **već** znao (`.limit()` + `.range()`) ⇒ Excel export i
 backup nisu bili pogođeni. `useActivities` koristi `.range()`. Pogođena je bila samo kaskada.
+
+### View nakon Finish ne otvara (PROD, Fitness/Strength) — dijagnostika, ne fix
+
+Saša: nakon Finish View često ne otvori, Edit otvori, i nakon Edit→Save View radi.
+**Eliminirano dokazima:** format `session_start` (Edit i View traže evente **identičnim** upitom);
+`user_id` (PROD podaci: 0 NULL, jedan jedini `user_id`, `session_start` uredno zaokružen na minutu);
+`categoryCache` truncation (PROD ima **30** kategorija, daleko ispod 1000); Excel/backup truncation.
+
+**Nađeno umjesto toga:** `_fetchActivityData` je **svaku** grešku hvatao i vraćao `null`, a
+ViewDetailsPage je `null` prikazivao kao **„Activity not found"** — isti mrtvi ekran za „zapisa
+nema" i za „upit je pukao", bez teksta greške i **bez Retry**. Zato bug nikad nije bio dijagnostičan.
+**Fix:** greška se propagira (`takeLastFetchError`), View razlikuje ta dva slučaja i nudi
+**„Try again"**. Uzrok se hvata sljedeći put kad se dogodi — v. T-S107v-7.
 
 ⚠ **Zamka:** kad se red 4996 riješi, **ne** generirati ga novim batchom — dobio bi `09:00` na dan
 koji je već uvezen. Dodati kroz app ili export → uredi → import.

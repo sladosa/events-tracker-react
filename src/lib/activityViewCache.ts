@@ -114,6 +114,24 @@ function _dropIfNull(key: string, p: Promise<CachedActivityData | null>): void {
   });
 }
 
+/**
+ * Why a fetch returned null, kept per key until read.
+ *
+ * `null` means two very different things — "this activity does not exist" and
+ * "a query failed" — and the View screen used to render both as
+ * "Activity not found", with no message and no retry. A transient PROD timeout
+ * (S105) was therefore indistinguishable from deleted data, which is why the
+ * "View won't open but Edit will" reports were never diagnosable.
+ */
+const _lastError = new Map<string, unknown>();
+
+/** Read and clear the recorded failure for a key, if the fetch failed. */
+export function takeLastFetchError(key: string): unknown | null {
+  const err = _lastError.get(key) ?? null;
+  _lastError.delete(key);
+  return err;
+}
+
 /** Get cached data, or fetch and store. Returns null on error/not-found. */
 export async function getOrFetchActivity(
   key: string,
@@ -125,7 +143,13 @@ export async function getOrFetchActivity(
   if (!_cache.has(key)) {
     evict();
     _order.push(key);
-    const p = _fetchActivityData(sessionStart, categoryIdParam, noSession, ownerIdParam);
+    _lastError.delete(key);
+    const p = _fetchActivityData(sessionStart, categoryIdParam, noSession, ownerIdParam)
+      .catch(err => {
+        console.error('[activityViewCache] fetch error:', err);
+        _lastError.set(key, err);
+        return null;
+      });
     _cache.set(key, p);
     _dropIfNull(key, p);
   }
@@ -351,7 +375,9 @@ async function _fetchActivityData(
       attributesByCategory,
     };
   } catch (err) {
-    console.error('[activityViewCache] fetch error:', err);
-    return null;
+    // Deliberately rethrown, not swallowed: the caller records it so the View
+    // screen can say "loading failed" instead of "activity not found".
+    // `null` is reserved for genuinely absent data (no user, no matching rows).
+    throw err;
   }
 }
