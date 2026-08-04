@@ -1,8 +1,8 @@
-# NEXT SESSION PROMPT — Financije: batch import 2026
+# NEXT SESSION PROMPT — Excel roundtrip: Delete + izvještaj kao radni file
 
-**Zadnja sesija: S107u (2026-08-02, Opus).** Sav app kod iz S107t je **odtestiran u appu — 7/7
-prolazi**. Usput su nađena i popravljena tri buga u Structure importu; `disable_save_plus` je
-dodan u roundtrip. **Ništa više ne stoji na putu batch importu.**
+**Zadnja sesija: S107v (2026-08-04, Opus).** Batch 2026 **uvezen u TEST (747 zapisa, čisto)**.
+Popravljena tri stvarna buga (brisanje aree, kopirani redak, dijagnostika View-a). Sve odluke za
+sljedeći korak su donesene — **kod još nije napisan**.
 
 **Trajni plan prelaska:** `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13**.
 
@@ -12,104 +12,138 @@ dodan u roundtrip. **Ništa više ne stoji na putu batch importu.**
 
 ## Gdje smo stali
 
-Prošla sesija je bila testiranje i sve je prošlo. Rate rade, uvoz zapisa radi, izvoz i ponovni
-uvoz ne prave lažne izmjene. Tri sitna kvara koja su iskočila usput su popravljena i provjerena.
+2026. je uvezena u TEST i provjerena — 747 zapisa, dan s 13 transakcija daje 13 redaka.
+Mehanizam radi.
 
-**Sljedeći korak je pravi posao: uvoz 2026. godine u TEST bazu.**
+Usput su iskočila tri kvara i sva tri su popravljena:
 
-To je proba mehanizma na najmanjem batchu (~750 redaka). Ako 2026. prođe čisto, ide se unatrag
-po godinama.
+1. **Brisanje aree nije radilo.** Uzrok nije bio ono što je izgledalo — Supabase svaki upit
+   odsiječe na 1000 redaka i to **ne javi kao grešku**, pa je brisanje obrisalo prvih 1000
+   atributa i zapelo na ostatku. Sad se dohvaća po stranicama.
+2. **Kopiranje retka u Excelu je uništavalo podatke.** Ako Koka doda transakciju tako da
+   kopira postojeći redak, kopija nosi originalov `event_id` — pa se original prepisao, a nova
+   transakcija se nije stvorila. Sad kopija postaje **novi zapis**.
+3. **View koji se ne otvori** sad kaže *zašto* i nudi „Try again" (prije je svaki kvar
+   izgledao kao „aktivnost ne postoji").
+
+## Što slijedi
+
+Excel roundtrip zna dodati i izmijeniti zapis, ali **ne zna obrisati**. To je rupa koja se
+osjeti čim netko slučajno napravi kopiju — nema načina da je makne.
+
+Gradi se dvoje:
 
 | korak | što |
-| ----- | --- |
-| 1 | generiraj uvozni file za 2026. |
-| 2 | uvezi u TEST (`Financije_all`) |
-| 3 | spot-check: par redaka usporediti s Reviewom, provjeriti broj zapisa |
-| 4 | ako je čisto → sljedeća godina unatrag |
+| --- | --- |
+| 1 | **Kolona `Delete?`** u exportu — odabereš `DELETE` iz padajućeg izbornika, uvezeš, zapis nestane (uz potvrdu i popis što nestaje) |
+| 2 | **Izvještaj nakon uvoza** koji se sam skine — i koji je **radni file**, ne popis: u njemu odmah označiš krivu kopiju s `DELETE` i uvezeš ga natrag |
 
-Pokretanje appa: `cd C:\0_Sasa\events-tracker-react` pa `npm run dev:test`.
-(`npm` mora ići **iz direktorija projekta**. Browserslist poruka je upozorenje, ne greška.)
+Tvoja ideja iz razgovora, i dobra je: izvještaj izgleda kao obični export, pa se na njemu može
+odmah raditi.
 
-## Dvije stvari koje treba znati prije uvoza
+## Što još čeka tebe
 
-1. **Batchevi se ne smiju preklapati po datumima.** Vrijeme zapisa se dodjeljuje po danu
-   (`09:00`, `09:01`, `09:02`…), pa bi isti dan u dva batcha sudario vremena. Rez uvijek na
-   granici dana.
-2. **Ne uvoziti sve odjednom.** ~50k redova atributa u jednom naletu je ono što je u srpnju
-   srušilo PROD (S105). Godina po godina.
-
-## Što još čeka tebe (ne blokira uvoz)
-
-1. 700 € bankomat 26.11.2025. — pitanje za Koku (nije na izvodu)
-2. `Saldo kontrola` — 7 razlika, pitanja za Koku (2026-01 +359, 2024-09 +149, 2×±49 multisport)
-3. 15 nemarkiranih rata (banka zapisala `RATA n/m`, Koka nije) — izmjereno, neizvršeno
+1. **Red 4997 u Reviewu** (MC 21,88 €) — pitanje za Koku: je li duplikat reda 4247 („Kokin Temu",
+   31.12.2025.)? Na izvodima postoji samo **jedna** takva transakcija, a nju već nosi 4247.
+2. **Red 4996** (parking 1,60 €) — datum je kriv (stoji 07.08., pripada 04.–08.07.). Reci koji dan.
+   ⚠ Kad ga popravimo, **ne** kroz novi batch — dobio bi 09:00 na dan koji je već uvezen.
+3. 700 € bankomat 26.11.2025. i `Saldo kontrola` (7 razlika) — i dalje pitanja za Koku.
 
 ---
 
 # DIO 2 — Tehnički dio (za Claudea)
 
-## Stanje
+## Stanje grana
 
-`test-branch`, sve commitano i gurnuto. `typecheck` + `build` čisti.
+| grana | commit | sadrži |
+| --- | --- | --- |
+| `test-branch` | `74b52d4` | sve iz S107v |
+| `main` (PROD) | `3930c8e` | sve osim fixa za kopirani redak |
 
-| područje | stanje |
-| --- | --- |
-| S107t app testovi | **7/7 PASS** (`Claude-temp_R/test-sessions/S107t_tests.md`) |
-| S107u testovi | T-S107u-1/3/4/5 ✅; **T-S107u-2 ⬜ backlog** (`S107u_tests.md`) |
-| `Financije_all` u TEST-u | uvezena, 15 atributa, 2 automatike, 10 test zapisa + rate |
-| Review | 4996 redaka; `Rate?=DA` 629; `Datum naplate` 100 % popunjen |
-| roundtrip `AreaSettings` | 3 od 4 ključa; ostaje **`export_profiles`** |
+`typecheck` + `build` čisti. Radna kopija čista.
 
-## Prvo: batch import 2026
+**`main` namjerno zaostaje za jedan commit** — fix za kopirani redak nije hitan na PROD-u jer
+Koka još ne koristi Excel roundtrip. Ide na `main` zajedno s Delete + izvještajem.
 
-```
-python data-prep_tools/Financije/make_financije_import.py --from 2026-01-01 --to 2026-12-31
-```
+## Stanje TEST baze
 
-Generator ima guard koji uspoređuje svih 15 imena **i tipova** atributa protiv generirane
-strukture i prekida ako se ne poklapaju — to je jedina obrana od tihog preskakanja
-(`excelImport.ts:836` nema `else`).
+- `Financije_all`: **747 zapisa** (2026-01-02 → 2026-07-11), struktura 15 atributa / 2 automatike
+- `Financije_2` i `Financije` **obrisane** (bile stare, smetale)
+- Ostatak seed podataka netaknut
 
-Nakon uvoza spot-check: broj zapisa vs broj redaka u Reviewu za 2026., par redaka usporediti
-po `Tip`/`Podtip`/`Datum naplate`, i provjeriti da dani s više transakcija daju **više redaka**
-u listi (ne jedan slijepljeni — `useActivities.ts:242` grupira po `session_start`).
+## Odluke donesene, kod NIJE napisan
 
-**Batchevi moraju biti datumski disjunktni** (`session_start` = `09:00 + n` po danu).
-Redoslijed: 2026 (najmanji) → pa unatrag.
+### 1. Kolona `Delete?`
 
-## Četiri tihe rupe u `excelImport.ts` (ugrađene u generator, NE otkrivati ponovo)
+- **Dropdown s dvije stavke: prazno i `DELETE`.** Ne `TRUE`/`FALSE` — to koriste obični booleani
+  (`Rate?`), a destruktivna zastavica ne smije izgledati kao atribut; `TRUE` je i najvjerojatnija
+  stvar koja preživi nepažljivi fill-down.
+- **Bilo koja druga vrijednost = greška**, ne tiho ignoriranje. Tiho ignoriranje je način da se
+  izgubi brisanje koje je korisnik htio.
+- Kolona **vidljiva** (ne collapsed — mora se moći naći), skroz desno uz `row_hash`,
+  **crveni conditional formatting** na retku gdje je postavljena.
+- Odsutnost kolone (stariji export) = ništa se ne briše — isti princip kao `DisableSavePlus`.
+- **Vlastiti guard**, odvojen od update-guarda: popis što nestaje + zasebna kvačica. Brisanje je
+  nepovratno pa mora biti barem jednako zaštićeno kao update.
+- ⚠ **Parent eventi:** preuzeti logiku iz `AppHome.handleDeleteActivity` (S104, Fable I.1) —
+  briše se po `category_id = leaf OR chain_key = leaf`, i lanac ne smije pasti dok nije obrisana
+  zadnja leaf serija. Za Financije nije pitanje (leaf je L1, nema roditelja), za Fitness jest.
+- ⚠ DV limiti: `promptTitle` ≤32 znaka, `prompt` ≤255 — inače Excel nudi repair.
 
-1. `session_start` mora biti **tekst `"HH:MM"`** — inače svi redovi dobiju 09:00 bez upozorenja
-2. krivo ime atributa se **tiho preskoči** (`:836`, nema `else`) → guard u generatoru
-3. `Rate?` je `boolean` — `'DA'` bi se spremio kao **FALSE**
-4. email u kol. G mora biti račun koji **izvodi** import (`foreignMode='skip'`)
+### 2. `session_start` za kopirani redak
 
-## Odluke koje se ne otvaraju ponovo
+Redak prepoznat kao kopija (dupli `event_id`, već implementirano) **automatski dobiva prvu
+slobodnu minutu tog dana**. Koka ne mora znati da `session_start` postoji.
 
-- **D1** `event_date` = datum kupnje; `Datum naplate` = zaseban atribut (kad novac ode)
-- **D1b** sve rate jedne kupovine dijele `event_date` = dan kupnje; razlikuje ih `Datum naplate`
-  + pomak `session_start`-a za 1 min; `Rata br` = 1..N
-- **D1a POVUČEN** — `Datum kupovine` izbačen iz strukture
-- **D6** import pod **Kokinim** accountom na PROD-u (kol. G = njen email)
-- Nema `staging_financije`; nema trećeg storea između Excela i baze (S107q)
+⚠ **NE globalno pravilo „dupli `session_start` = greška".** U Fitnessu više leaf evenata
+**namjerno** dijeli isti `session_start` — to je P2 (N serija = jedna aktivnost s N zapisa).
+Globalno pravilo bi srušilo Fitness import. Usko pravilo pogađa samo retke koje smo već
+prepoznali kao kopije.
 
-## Zamke pri testiranju (naučene S107u)
+### 3. Izvještaj nakon uvoza
 
-- **Kvačica u Area panelu je lokalno stanje forme** — pokazuje klik, ne bazu, dok se ne pritisne
-  Save. Stvarno stanje: **Add Activity** (je li „Save +" tu) ili novi export.
-- Modalov **„Automation rules: N" je brojač pročitanih** pravila iz sheeta, ne zapisanih.
-- Provjera baze bez UI-ja: service role key iz `.env.local`,
-  `GET /rest/v1/areas?select=name,settings&name=eq.Financije_all`.
-- Generirani structure/import fajlovi se brišu čim nastane novi; pazi da ne gledaš u **BASE**
-  `events_export_preview` umjesto u generirani file.
+Skida se **automatski** nakon Apply. Ključno: **izvještaj JE workbook u formatu exporta**, ne
+pasivan log — isti `Events` sheet, pravi `event_id`, ispravan `row_hash`, `Delete?` dropdown već
+na njemu. Petlja: uvoz → izvještaj → označiš krivu kopiju `DELETE` → uvezeš **taj isti file**.
 
-## Backlog
+Dodatne kolone skroz desno: `Result` (Created/Updated), `Source row` (redak uvoznog filea),
+`Changed` (koja polja su se promijenila). Obrisani zapisi se ne mogu izvesti → zaseban
+informativni list.
 
-- **T-S107u-2** — `groupAttributes` uzima `Default` s prvog retka grupe ⇒ atributski
-  `default_value` ovisi o redoslijedu redaka (`Status.default_value` `Izvrsen`↔`null`).
-  Bezopasno, konvergira. Fix: ignorirati `Default` na retku koji ima `DependsOn`.
-- **`export_profiles`** ne prolazi Structure roundtripom (ključ `attr:Area||CatPath||AttrName`)
-  ⇒ `ExportProfiles` sheet, isti obrazac kao `DisableSavePlus`/`Automations`
-- `BUG-S103-ANYATTR` — SECURITY DEFINER RPC (4–6 h)
-- E2E za rata tok ne postoji — kandidat sad kad je T-S107t-3 prošao ručno
-- `npx update-browserslist-db@latest` — namjerno odgođeno
+⚠ **Provjeriti u kodu prije gradnje** (ne pretpostaviti): da dodatne kolone desno ne razbiju
+`parseLegend`/`parseDataRows` pri ponovnom uvozu. Atributi se mapiraju po slovima kolona iz
+LEGEND bloka, pa bi višak desno trebao biti ignoriran — ali to treba potvrditi.
+
+Mora se generirati **nakon** Applya (da `event_id` i `row_hash` budu stvarni) ⇒ ponovni export
+tih zapisa iz baze preko `excelDataLoader`/`excelExport` s filtrom po id-evima.
+
+### 4. Redoslijed
+
+`Delete?` + guard **prvo** (bez toga izvještaj nema što ponuditi), pa izvještaj.
+
+## Naučeno ove sesije — ne otkrivati ponovo
+
+- **PostgREST `max-rows = 1000`.** Svaki `select` staje na 1000 redaka **bez greške**. Koristiti
+  `fetchAllPaged` / `fetchAllPagedIn` (`src/lib/supabasePaging.ts`) za svaki upit koji mora vratiti
+  *sve* retke. `excelDataLoader.ts` i `useActivities` su za to već znali; kaskada brisanja nije.
+- **Dijagnoza koja izgleda uvjerljivo nije dokaz.** „Tuđi podaci skriveni RLS-om" je savršeno
+  objašnjavalo FK grešku i bilo je **krivo** — oborio ju je panel koji je pokazao da su svi zapisi
+  Sašini. Isto s View bugom: četiri uvjerljive hipoteze pale su na podacima.
+- **E2E cold start:** prvi test u hladnom pokretanju zna pasti na `selectFilterPath`
+  (10 s čekanje na opciju u dropdownu). Nije app bug. Popravak = podići timeout u
+  `e2e/fixtures/filter.ts` na 20 s (nije napravljeno, čeka dogovor).
+- `Claude-temp_R/` je gitignoriran — test-session dokumenti su **samo lokalni** + na vanjskom
+  disku (`Tools/backup_to_external.bat`). Trajni zapis ide u `CLAUDE.md`.
+
+## Otvoreno
+
+- **T-S107v-7 (PROD):** kad se View opet ne otvori nakon Finish — **poslati poruku s ekrana**.
+  Sad razlikuje „Couldn't load this activity" (+ tekst greške + Try again) od „Activity not found".
+  To je dijagnoza koja dosad nije postojala; uzrok View buga još **nije** nađen.
+- **`sql/033_delete_area_cascade.sql` SECTION 2b** — jesu li policyji iz `020_orphan_rls.sql` na
+  TEST-u? Nije provjereno; nije hitno otkad je pravi uzrok bio paginacija.
+- E2E fixture timeout 10 → 20 s.
+- **Sljedeći batchevi:** `--to 2025-12-31`, pa unatrag. Granica **uvijek na danu** — inače se
+  `session_start` (09:00 + n) sudari s već uvezenim danom.
+- `export_profiles` — jedina preostala rupa u `AreaSettings` roundtripu.
+- `T-S107u-2` — `groupAttributes` uzima `Default` s prvog retka grupe (bezopasno, konvergira).
