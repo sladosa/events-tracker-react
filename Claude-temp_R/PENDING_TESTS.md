@@ -29,7 +29,8 @@ brisanje prošlo. `sql/033_delete_area_cascade.sql` (novo) — generički SQL ca
 | T-S107v-1 | **Saša:** ⭐ batch import 2026 — **747 new**; dan s 13 transakcija daje **13 redaka**; spot-check 3 retka + jedna rata | ⬜ |
 | T-S107v-2 | **Saša:** brisanje `Financije_2` — čitljiva poruka umjesto sirovog `23503`, original iza „Technical details" | ⬜ |
 | T-S107v-3 | **Saša:** grantee → „You are not the owner" + sva tri gumba disabled | ⬜ |
-| T-S107v-4 | **Saša:** `sql/033_delete_area_cascade.sql` — SECTION 2b kaže **jesu li policyji iz `020_orphan_rls.sql` na TEST-u** (određuje je li UI fix moguć) | ⬜ |
+| T-S107v-4 | **Saša:** `sql/033_delete_area_cascade.sql` — SECTION 2a roster (tko ima zapise + `role`) i 2b **jesu li policyji iz `020_orphan_rls.sql` na TEST-u** (određuje je li UI fix moguć) | ⬜ |
+| T-S107v-5 | **Saša:** Delete modal na `Financije_2` — sivi panel s **Owner:** i **popisom po korisniku** s brojem zapisa; tuđi korisnik bez sharea označen „— no longer has access". Usporedi te brojke s SQL SECTION 2a | ⬜ |
 
 ⚠ **Zamka:** kad se red 4996 riješi, **ne** generirati ga novim batchom — dobio bi `09:00` na dan
 koji je već uvezen. Dodati kroz app ili export → uredi → import.
