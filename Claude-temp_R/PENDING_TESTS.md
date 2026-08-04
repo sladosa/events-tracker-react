@@ -3,9 +3,36 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107u (2026-08-02) — S107t odtestiran u appu (7/7), 3 buga nađena i popravljena,
-`disable_save_plus` dodan u roundtrip. **Sve otvoreno: samo T-S107u-2 (backlog).**
-**Detalji S107u:** [S107u_tests.md](test-sessions/S107u_tests.md) · **S107t:** [S107t_tests.md](test-sessions/S107t_tests.md)
+**Zadnji update:** S107v (2026-08-04) — batch import 2026 generiran (747 redaka) + čitljive greške
+pri brisanju Aree. **Otvoreno: T-S107v-1…4, T-S107u-2 (backlog).**
+**Detalji S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md) · **S107t:** [S107t_tests.md](test-sessions/S107t_tests.md)
+
+---
+
+## S107v — batch import 2026 + čitljive greške pri brisanju Aree
+
+**Import:** `Financije_all_import_20260804_083908.xlsx`, **747 redaka**, 02.01. → 11.07.2026.
+Rez na `--to 2026-07-31` namjerno izostavlja **dva retka s krivim `event_date`** koje je ova sesija
+našla (red 4996 parking 1,60 € — `Stanje` lanac ga stavlja u 04.–08.07., ne 07.08.; red 4997
+MC 21,88 € — `Datum naplate` 10 mjeseci **prije** kupovine, moguć duplikat reda 4247, **čeka Koku**).
+
+**App kod:** `src/lib/deleteErrors.ts` (novo) — `classifyDeleteError()` pretvara sirovu Postgres
+grešku u naslov + objašnjenje + konkretne korake, uz original iza „Technical details". Pokriva FK
+violation (tuđi `event_attributes` koje RLS skriva), trigger `P0001`, `42501`, istekli JWT, mrežu.
+Uz to: **predprovjera vlasništva** (grantee vidi „You are not the owner", gumbi disabled) i
+**`SilentNoOp`** — RLS-blokiran DELETE vraća uspjeh s 0 redaka, što je dosad izgledalo kao da je
+brisanje prošlo. `sql/033_delete_area_cascade.sql` (novo) — generički SQL cascade + dijagnostika.
+
+| ID | Test | Status |
+| --- | --- | --- |
+| P-1…P-8 | Programske kontrole (4 tihe rupe, guard, 0 duplih `session_start`, klasifikator na 6 oblika grešaka, typecheck+build) | ✅ (programski) |
+| T-S107v-1 | **Saša:** ⭐ batch import 2026 — **747 new**; dan s 13 transakcija daje **13 redaka**; spot-check 3 retka + jedna rata | ⬜ |
+| T-S107v-2 | **Saša:** brisanje `Financije_2` — čitljiva poruka umjesto sirovog `23503`, original iza „Technical details" | ⬜ |
+| T-S107v-3 | **Saša:** grantee → „You are not the owner" + sva tri gumba disabled | ⬜ |
+| T-S107v-4 | **Saša:** `sql/033_delete_area_cascade.sql` — SECTION 2b kaže **jesu li policyji iz `020_orphan_rls.sql` na TEST-u** (određuje je li UI fix moguć) | ⬜ |
+
+⚠ **Zamka:** kad se red 4996 riješi, **ne** generirati ga novim batchom — dobio bi `09:00` na dan
+koji je već uvezen. Dodati kroz app ili export → uredi → import.
 
 ---
 

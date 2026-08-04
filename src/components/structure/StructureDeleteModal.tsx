@@ -32,6 +32,12 @@ import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { supabase } from '@/lib/supabaseClient';
 import { exportFullBackup, fullBackupFilename } from '@/lib/excelBackup';
+import {
+  DeleteStepError,
+  SilentNoOp,
+  classifyDeleteError,
+  type DeleteErrorInfo,
+} from '@/lib/deleteErrors';
 import type { StructureNode } from '@/types/structure';
 
 // --------------------------------------------------------
@@ -112,6 +118,30 @@ function Spinner() {
 }
 
 // --------------------------------------------------------
+// Error box — plain-language cause + steps, raw text on demand
+// --------------------------------------------------------
+
+function DeleteErrorBox({ info }: { info: DeleteErrorInfo }) {
+  return (
+    <div className="mt-2 px-3 py-3 bg-red-50 border border-red-200 rounded-lg text-sm space-y-2">
+      <p className="font-semibold text-red-800">{info.title}</p>
+      <p className="text-red-700">{info.explanation}</p>
+      {info.actions.length > 0 && (
+        <ul className="text-red-700 space-y-1 pl-4">
+          {info.actions.map(a => <li key={a}>• {a}</li>)}
+        </ul>
+      )}
+      <details className="text-xs text-red-600">
+        <summary className="cursor-pointer select-none hover:text-red-800">
+          Technical details
+        </summary>
+        <p className="mt-1 font-mono break-all whitespace-pre-wrap">{info.technical}</p>
+      </details>
+    </div>
+  );
+}
+
+// --------------------------------------------------------
 // Main component
 // --------------------------------------------------------
 
@@ -123,7 +153,7 @@ export function StructureDeleteModal({
 }: StructureDeleteModalProps) {
   const t = THEME.structureEdit;
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DeleteErrorInfo | null>(null);
 
   // ── Phase label for UX feedback ────────────────────────────────────────────
   type Phase = 'idle' | 'backup' | 'deleting';
@@ -177,6 +207,27 @@ export function StructureDeleteModal({
   }, []);
 
   const eventCount = liveEventCount ?? node.eventCount;
+
+  const nodeLabel = node.nodeType === 'area'
+    ? `the Area "${node.name}"`
+    : `"${node.name}"`;
+
+  // ── Ownership pre-check ────────────────────────────────────────────────────
+  // Only the Area owner may delete anything inside it. Without this the cascade
+  // just no-ops its way through RLS and the failure surfaces late (or, for the
+  // steps that delete nothing, not at all).
+  const [notOwner, setNotOwner] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled || !user) return;
+      const ownerId = node.area?.user_id ?? null;
+      if (ownerId && ownerId !== user.id) setNotOwner(true);
+    })();
+    return () => { cancelled = true; };
+  }, [node.area?.user_id]);
   const isBlocked = eventCount > 0;
 
   // Count attribute definitions in the whole subtree
@@ -186,11 +237,13 @@ export function StructureDeleteModal({
 
   /** Cascade delete structure + (optionally) events under the subtree. */
   const cascadeDelete = useCallback(async (includeEvents: boolean) => {
-    const throwStep = (step: string, err: unknown) => {
+    const throwStep = (step: string, err: unknown): never => {
       console.error(`cascadeDelete [${step}] full error:`, JSON.stringify(err, null, 2));
-      const pgErr = err as { message?: string; code?: string; details?: string; hint?: string };
+      const pgErr = (err ?? {}) as { message?: string; code?: string; details?: string; hint?: string };
       const detail = [pgErr.code, pgErr.message, pgErr.details, pgErr.hint].filter(Boolean).join(' — ');
-      throw new Error(`[${step}] ${detail || JSON.stringify(err)}`);
+      // DeleteStepError keeps the PG fields so classifyDeleteError() can tell
+      // an FK violation from a permission problem instead of guessing on text.
+      throw new DeleteStepError(step, pgErr, `[${step}] ${detail || JSON.stringify(err)}`);
     };
 
     const categoryIds = allNodes
@@ -294,8 +347,18 @@ export function StructureDeleteModal({
         .eq('target_id', node.id);
       if (siErr) throwStep('delete share_invites', siErr);
 
-      const { error: areaErr } = await supabase.from('areas').delete().eq('id', node.id);
+      // `.select()` so a delete blocked by RLS is visible: it returns success
+      // with zero rows instead of an error, which would otherwise read as
+      // "deleted" while the Area is still there (non-owner case).
+      const { data: deletedAreas, error: areaErr } = await supabase
+        .from('areas')
+        .delete()
+        .eq('id', node.id)
+        .select('id');
       if (areaErr) throwStep('delete area', areaErr);
+      if (!deletedAreas || deletedAreas.length === 0) {
+        throw new SilentNoOp();
+      }
     }
   }, [node, allNodes, subtreeIds]);
 
@@ -311,10 +374,7 @@ export function StructureDeleteModal({
       onDeleted(node.id);
     } catch (err) {
       console.error('StructureDeleteModal: delete failed', err);
-      const msg = err instanceof Error
-        ? err.message
-        : (err as { message?: string })?.message ?? JSON.stringify(err);
-      setError(msg || 'Delete failed. Please try again.');
+      setError(classifyDeleteError(err, nodeLabel));
       setDeleting(false);
     }
   }, [cascadeDelete, node.id, onDeleted]);
@@ -332,10 +392,7 @@ export function StructureDeleteModal({
       onDeleted(node.id);
     } catch (err) {
       console.error('StructureDeleteModal: delete-without-backup failed', err);
-      const msg = err instanceof Error
-        ? err.message
-        : (err as { message?: string })?.message ?? JSON.stringify(err);
-      setError(msg || 'Delete failed. Please try again.');
+      setError(classifyDeleteError(err, nodeLabel));
       setDeleting(false);
       setPhase('idle');
     }
@@ -366,10 +423,7 @@ export function StructureDeleteModal({
       onDeleted(node.id);
     } catch (err) {
       console.error('StructureDeleteModal: delete-with-backup failed', err);
-      const msg = err instanceof Error
-        ? err.message
-        : (err as { message?: string })?.message ?? JSON.stringify(err);
-      setError(msg || 'Operation failed. Please try again.');
+      setError(classifyDeleteError(err, nodeLabel));
       setDeleting(false);
       setPhase('idle');
     }
@@ -397,6 +451,17 @@ export function StructureDeleteModal({
 
         {/* ── Body ── */}
         <div className="px-5 py-4">
+
+          {notOwner && (
+            <div className="mb-3 px-3 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm space-y-1">
+              <p className="font-semibold text-amber-800">You are not the owner</p>
+              <p className="text-amber-700">
+                {node.nodeType === 'area' ? 'This Area' : 'This category'} belongs to someone
+                who shared it with you. Only the owner can delete it — ask them to do it, or
+                remove your own access to the Area instead.
+              </p>
+            </div>
+          )}
 
           {isBlocked ? (
             /* ── BLOCKED → backup-then-delete state ── */
@@ -428,11 +493,7 @@ export function StructureDeleteModal({
                   {phase === 'backup' ? '⏳ Generating backup…' : '🗑 Deleting…'}
                 </p>
               )}
-              {error && (
-                <div className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  {error}
-                </div>
-              )}
+              {error && <DeleteErrorBox info={error} />}
             </div>
           ) : (
             /* ── ALLOWED state ── */
@@ -453,11 +514,7 @@ export function StructureDeleteModal({
                 This action cannot be undone.
               </p>
 
-              {error && (
-                <div className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  {error}
-                </div>
-              )}
+              {error && <DeleteErrorBox info={error} />}
             </div>
           )}
         </div>
@@ -479,22 +536,22 @@ export function StructureDeleteModal({
               </button>
               <button
                 onClick={handleDeleteWithoutBackup}
-                disabled={deleting}
+                disabled={deleting || notOwner}
                 className={cn(
                   'px-3 py-2 rounded-lg text-xs font-medium transition-colors',
                   'text-red-600 hover:bg-red-50',
-                  deleting && 'opacity-50 cursor-not-allowed',
+                  (deleting || notOwner) && 'opacity-50 cursor-not-allowed',
                 )}
               >
                 Delete without backup
               </button>
               <button
                 onClick={handleDeleteWithBackup}
-                disabled={deleting}
+                disabled={deleting || notOwner}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                   'bg-amber-600 text-white hover:bg-amber-700',
-                  deleting && 'opacity-60 cursor-not-allowed',
+                  (deleting || notOwner) && 'opacity-60 cursor-not-allowed',
                 )}
               >
                 {deleting && <Spinner />}
@@ -518,11 +575,11 @@ export function StructureDeleteModal({
               </button>
               <button
                 onClick={handleDelete}
-                disabled={deleting || !countChecked}
+                disabled={deleting || !countChecked || notOwner}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                   t.deleteBtn,
-                  (deleting || !countChecked) && 'opacity-60 cursor-not-allowed',
+                  (deleting || !countChecked || notOwner) && 'opacity-60 cursor-not-allowed',
                 )}
               >
                 {(deleting || !countChecked) && <Spinner />}

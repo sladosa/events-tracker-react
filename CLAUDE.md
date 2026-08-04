@@ -915,6 +915,35 @@ testovi: `Claude-temp_R/test-sessions/S107u_tests.md`):**
    dok ne pritisneš Save. Stvarno stanje se provjerava kroz **Add Activity** (je li „Save +" tu)
    ili novi export, ne kroz panel.
 
+**Done 2026-08-04 (S107v — batch import 2026 + čitljive greške pri brisanju Aree;
+testovi: `Claude-temp_R/test-sessions/S107v_tests.md`):**
+1. **Batch import 2026 generiran** — `Financije_all_import_20260804_083908.xlsx`, **747 redaka**,
+   02.01. → 11.07.2026. Verificiran protiv sve četiri tihe rupe (`session_start` tekst svih 747,
+   0 duplih parova datum+vrijeme, `Rate?` pravi bool 107×, kolona G = račun koji uvozi).
+2. **⚠ NALAZ — dva retka u Reviewu s krivim `event_date`** (nije bug u kodu; iskočili jer je batch
+   sezao do 2026-12-01): **red 4996** (parking 1,60 €, stoji na 07.08.) — `Stanje` lanac ga
+   zaključava u 04.–08.07., u cent s obje strane (`2144,34 − 1,60 = 2142,74`, pa `+1261 = 3403,74`);
+   **red 4997** (MC 21,88 €, stoji na 01.12.) — `Datum naplate` 11.02.2026 je **10 mjeseci prije**
+   kupovine, a jedina MC transakcija od 21,88 u tom razdoblju (31.12.2025 `PAYPAL *TEMU`) već je
+   na redu 4247 ⇒ moguć duplikat, **čeka Kokin odgovor**. Odluka: **oba preskočena** rezom
+   `--to 2026-07-31` (zadnji stvarni redak je 11.07.), Review netaknut.
+   ⚠ Kad se 4996 riješi, **ne** generirati ga novim batchom — dobio bi `09:00` na već uvezen dan.
+3. **`src/lib/deleteErrors.ts` (novo)** — `classifyDeleteError()` pretvara sirovu Postgres grešku
+   iz Delete Area kaskade u naslov + objašnjenje + korake, s originalom iza „Technical details".
+   Povod: brisanje stare `Financije_2` padalo je uz `23503 … event_attributes_event_id_fkey`, iz
+   čega se ne vidi da je uzrok **RLS** — kaskada obriše samo *vidljive* `event_attributes`, pa
+   `DELETE` na eventu padne preko skrivenih. Klase: FK violation, trigger `P0001`, `42501`,
+   istekli JWT, mreža, fallback. `throwStep` sad baca `DeleteStepError` s PG poljima (`code`
+   umjesto pogađanja po tekstu).
+4. **Predprovjera vlasništva + `SilentNoOp`** (`StructureDeleteModal.tsx`) — grantee vidi amber
+   „You are not the owner" i sva tri gumba za brisanje su disabled. **Bitnije:** RLS-blokiran
+   DELETE ne javlja grešku nego uspijeva s **0 redaka**, pa je dosad izgledalo kao da je brisanje
+   prošlo — `areas` DELETE sad ide s `.select('id')` i prazan rezultat daje „Nothing was deleted".
+5. **`sql/033_delete_area_cascade.sql` (novo)** — generički cascade delete po UUID-u (⚠ ne po
+   imenu; imena nisu jedinstvena po korisnicima), poopćen iz `029`. SECTION 2 je dijagnostika:
+   čiji su `user_id` na atributima + **jesu li 4 policyja iz `020_orphan_rls.sql` uopće na toj
+   bazi** — ako fale, to je uzrok i primjena `020` vraća UI brisanje u funkciju.
+
 **Sljedeći koraci — ⚠ ZASTARJELO od S107m, prekrojeno S107q/S107s, v. `NEXT_SESSION_PROMPT.md`:**
 1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
    + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
