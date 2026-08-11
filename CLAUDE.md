@@ -48,6 +48,8 @@ Without Financije/Zdravlje/Diary data flowing in, app is shell-only. Collab is s
 | `docs/COLLAB_PLAN_v2.md`                  | Collab implementation plan (v2) — faze 0–11, decisions                           |
 | `docs/RESTRUCTURE_DECISIONS_2026-04-01.md`| Odluke o reorganizaciji i Financije data modelu                                  |
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas za nove korisnike, Add Area "From template" |
+| `docs/OVERVIEW_TAB_SPEC.md`               | **Overview tab — dashboard po Arei** (stanja računa, pločice iz atributa); F1/F2 odluke, plan rada, OQ-1…5 |
+| `docs/Analytics_tab.md`                   | Cross-Area analitika — `periods` tablica, Series, AnalyticsDef Excel. **Čeka drugu gustu Areu** |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist, alati     |
@@ -1033,6 +1035,69 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
 6. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
 7. Diary archaeology (non-blocking)
 8. Split-workbook (Taksonomija/Pravila/Preimenovanja → zaseban file) — opcionalno, kad Saša poželi
+
+### S107x — Overview tab: zašto Koka još bira svoj Excel (2026-08-11, odluke; NEMA koda)
+
+**Puni spec: `docs/OVERVIEW_TAB_SPEC.md` + vizualna skica (link u §Vizualna skica).**
+
+1. **T-S107v-1 ✅** — batch 2026 (747 eventa) uvezen u TEST pod Sašinim accountom; dokazano
+   exportom od 11.08. Lanac `Review → generator → import` radi.
+2. **F1 — dijagnoza: aplikacija ne radi posao zbog kojeg Koka koristi Excel.** Njen kriterij
+   je jedan (*koliko je na računu, slaže li se s bankom*), a `Stanje` je u appu **obično polje
+   koje netko upisuje**, ne izračun. Ona ne bira lošije — bira bolje, po svom kriteriju.
+   Aplikacija ima tri prednosti koje Excel nema: zbroj ne može puknuti (njena `=F655+D656-E656`
+   je lanac, zbroj po računu je neovisan o redoslijedu), rate se ne parkiraju ručno
+   (`Status: Planiran → Izvršen` + rata modal), i **mobitel** (ona gleda banku na telefonu).
+3. **⚠ Ispravak pretpostavke iz `Analytics_tab.md` §3** („bucketiranje client-side, stotine
+   sesija"): vrijedi za period, **ne za pogled na cijelu Areu**. Financije → ~5.000 eventa ×
+   13 atributa ≈ **65k `event_attributes`** ⇒ S105 timeout + tiho krivi rezultat zbog
+   PostgREST `max-rows 1000`. **Agregacija mora u Postgres (RPC)** — uvjet ispravnosti, ne
+   optimizacija. Isti RPC sloj je pravi fix za **BUG-S103-ANYATTR**.
+4. **Model pločice:** `areas.settings.dashboard.widgets[]`, slug-based, isti obrazac kao
+   `automations`/`export_profiles`. Tipovi v1: `balance_by_group`, `breakdown`, `trend`,
+   `count`, `latest`. Fitness nema saldo jer nije konfiguriran — **ne** jer je kod drukčiji.
+   Tri pravila za RPC: `SECURITY DEFINER` mora **sam** provjeriti pristup (inače leak preko
+   cijele baze); **P2 parent eventi se nikad ne zbrajaju** (dvostruki iznos); čita se
+   `value_number`, ne parse teksta.
+5. **Redoslijed:** (0) Delete testovi → PROD · (1) `balance_by_group` = F1 fix · (2) brzi unos ·
+   (3) **Koka proba na mobitelu = prava vaga** · (4) Overview tab + `Dashboard` sheet u
+   roundtripu · (5) batchevi 2025/2024/2023 + cutover · (6) cross-Area kad postoji druga gusta
+   Area. Koraci 0 i 1 su neovisni. **Ako korak 3 padne, njen Excel ostaje trajni ulaz i
+   pipeline se automatizira umjesto gasi — legitiman ishod, ali mora se izabrati svjesno.**
+6. **F2 — sudbina `Financije_review` workbooka:** `Preimenovanja` **gotova** (bila sprava za
+   jednu situaciju); `Taksonomija` **već preseljena** u `Structure` sheet od `Financije_all`
+   (kopija u Reviewu je zastarjeli duplikat); `Pravila`+`Neklasificirano` **žive dalje, ali
+   nad app exportom** — alati ne umiru, mijenjaju ulazni file. Identitet retka postaje
+   `event_id` umjesto nestabilnog `source_key`, otpada ~13 od 30 kolona skele. Novo mjesto =
+   mali „Pravila workbook" sa strane (Sašin split-workbook prijedlog iz S107g, sad ima razlog).
+   Kokina delta ne ide kroz Review uopće (`FINANCIJE_MIGRACIJA.md` §13).
+7. **Otvoreno prije koda: OQ-1…OQ-6** (spremanje usklađenja · brzi unos kao profil vs zaseban
+   ekran · rate u saldu ili pored · Area bez konfiguracije · ostaje li atribut `Stanje` ·
+   ograničiti Koki Structure).
+8. **Dopune nakon prve skice (Saša, isti dan):** redoslijed tabova →
+   **`Overview → Activities → Structure`** (prava se NE diraju — ona je vlasnik po D6, pa bi
+   zaključavanje vratilo ovisnost o Saši); **klik na račun = dva drilla** (iznos → Activities
+   filtriran na račun; „+ planirano" → isti račun + `Status=Planiran`);
+   **⚠ automat `Planiran → Izvršen` po dospijeću ODBAČEN** (spec §2.5a) — dospjeli datum nije
+   dokaz da je banka naplatila, pa bi automat **sam proizveo razliku prema banci**, tj. napao
+   jedini kriterij zbog kojeg bi prešla. Asimetrija: ako ne flipne, saldo je u zaostatku i
+   **ona to vidi**; ako flipne krivo, saldo je pogrešan i **izgleda točno**. Umjesto toga
+   **„Dospjelo → potvrdi"** (pojedinačno + skupno) — traka **iznad** „Stanje po računu", i samo
+   kad ima čega; potvrda odmah pomiče saldo ispod (uzrok i posljedica na istom ekranu).
+9. **OQ-2 RIJEŠEN čitanjem koda (spec §2.9): brzi unos = postojeći Shortcut (S88), ne novi
+   ekran ni novi „profil vidljivih polja".** `activity_presets.default_attributes` već nosi
+   snimku vrijednosti; primjenjuju se s **prioritetom nad `attr.default_value`**
+   (`AddActivityPage.tsx:542`, `touched:true`), `default_map` drugi prolaz to poštuje, a
+   „Use Shortcut" već skače u Add Activity. **Fale dvije sitnice:** (a) prefilana polja se ne
+   skupljaju — `isHiddenByDefault` (`AttributeChainForm.tsx:216`) gleda `attr.default_value`,
+   ne vrijednost iz preseta ⇒ tretirati „iz preseta i nedirano" kao „na defaultu";
+   (b) dropdown shortcuta je ravan `presets.map` (`ProgressiveCategorySelector.tsx:711`) ⇒
+   `<optgroup>` po Arei (`area_id` **već postoji**, nema promjene sheme) + sort po
+   `usage_count`/`last_used`. ⚠ **Grupirati da, filtrirati na trenutnu Areu NE** — kružno je,
+   posao shortcuta je upravo prebaciti te u drugu Areu.
+10. **Usklađenje ✓ / Δ:** polje „u banci" gdje korisnik utipka iznos iz bankovne aplikacije;
+   čip je usporedba s izračunatim saldom. Δ **nije greška appa** nego signal da nešto fali/je
+   dvaput/je krivo. ⚠ Polje mora postojati **i na mobitelu** (u prvoj skici izostavljeno).
 
 ### S108+: Intelligence layer (success criteria)
 
