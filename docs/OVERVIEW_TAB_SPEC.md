@@ -237,8 +237,10 @@ cijele `event_attributes`** (BUG-S103-ANYATTR).
 broj točan, a to se dokazuje nad 4.996 stvarnih redaka bez ijednog reda TypeScripta. **Tri
 provjere:**
 
-1. **Reproducira li `Izvor ∈ {Racun, Cash}` (§2.10) `Saldo kontrola` sheet?** — 21 od 31
-   mjeseca tamo balansira u cent; ista formula mora dati iste brojke.
+1. **Reproducira li `Izvor ∈ {Racun, Cash}` (§2.10) `Saldo kontrola` sheet?** — tamo je nakon
+   S107k ostalo **7 razlika** (od 10; sve ostalo balansira u cent). Ista formula mora dati iste
+   brojke, i **isti popis od 7** — ni manje ni više. Novo neslaganje = model je kriv;
+   nestalo neslaganje = model tiho krije pravu razliku.
 2. **Je li interni transfer zapisan jednom ili dvaput?** (§2.14) — ako jednom, jedan račun je
    kriv za cijeli iznos i model treba dopunu.
 3. **Koliko „planirano" ostaje po kanti** (§2.13) — dospjelo / uskoro / kasnije, oba smjera.
@@ -382,7 +384,8 @@ Skupna naplata je `Izvor = Racun` pa uđe u izvršeno u trenutku kad je banka st
 točno kako se ponaša i na izvatku.
 
 **Verifikacija PRIJE koda (korak 1a):** `Saldo kontrola` sheet već uspoređuje Kokino stanje na
-datum zatvaranja izvatka s bankovnim `NOVO STANJE` — **21 od 31 mjeseca balansira u cent**.
+datum zatvaranja izvatka s bankovnim `NOVO STANJE` — nakon S107k ostalo je **7 razlika od 31
+mjeseca**, sve ostalo balansira u cent.
 Isto pravilo se pusti u Pythonu nad Reviewom i usporedi s tim brojkama. ⇒ pravilo se dokazuje
 na **4.996 stvarnih redaka prije nego RPC uopće nastane**. Ako padne, saznali smo besplatno.
 
