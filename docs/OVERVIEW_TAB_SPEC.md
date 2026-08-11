@@ -233,6 +233,11 @@ cijele `event_attributes`** (BUG-S103-ANYATTR).
 
 ## 2.5 Faze
 
+**Faza 1a — dokaz formule salda u Pythonu (XS), PRIJE koda.** Pravilo iz §2.10
+(`Izvor ∈ {Racun, Cash}` = izvršeno; kartično = planirano) pusti se nad Reviewom i usporedi sa
+`Saldo kontrola` sheetom (21/31 mjeseci balansira u cent). Cijela pločica stoji na tome da je
+broj točan — a ovako se to dokazuje na 4.996 stvarnih redaka bez ijednog reda TypeScripta.
+
 **Faza 1 — `balance_by_group` (S–M).** `sql/034_area_group_agg.sql` + hook + jedna pločica
 prikazana iznad Activities liste za Financije. Konfiguracija se piše u obliku iz §2.3 **već
 sad**, čak i ako je zasad hardkodirana za jednu Areu. Ovo je F1 fix.
@@ -296,10 +301,12 @@ zasebnu tablicu (i time u `AnalyticsDef` sheet).
 
 ## 2.7 Otvorena pitanja
 
-- **OQ-1:** Je li `reconcile` (upiši stanje iz banke → vidi razliku) samo prikaz, ili se
-  sprema? *Prijedlog: sprema se — `area.settings.dashboard.reconcile_snapshots[]` po računu
-  i datumu. Bez povijesti se ne vidi kad je razlika nastala, a to je jedino pitanje koje
-  Koku zanima kad se ne slaže.*
+- **OQ-1:** Je li `reconcile` samo prikaz, ili se sprema? *Prijedlog: **sprema se**, i argument
+  je jači nego prvotni („da se vidi kad je razlika nastala"). **Spremljeno sidro ograđuje
+  pretragu:** sve prije potvrđene točke vrijedi kao provjereno, pa se razlika od 49 € traži
+  po desetak redaka umjesto po 4.996. Uz to je sidro **sjeme formule** u koloni `Provjera
+  stanja` (§2.11) ⇒ bez spremanja ta kolona nema odakle početi. Sidro je **po računu** —
+  drukčije nema smisla.*
 - ~~**OQ-2:** Brzi unos = zaseban ekran ili profil vidljivih polja?~~ **RIJEŠENO 2026-08-11
   čitanjem koda — ni jedno ni drugo, v. §2.9.** Mehanizam već postoji (Shortcuts / S88).
 - **OQ-3:** Prikazuje li `balance_by_group` planirane rate u saldu ili samo pored njega?
@@ -343,6 +350,82 @@ popunjeni, korisnik upiše samo iznos) **radi već danas**.
 
 ⚠ **Grupirati da, filtrirati ne.** Sakrivanje shortcuta drugih Area je kružno — posao
 shortcuta je upravo da te *prebaci* u drugu Areu.
+
+## 2.10 ⚠ Što stvarno miče saldo — `Izvor`, ne `Racun` (inače dvostruko brojanje)
+
+**Najozbiljniji nalaz u ovoj specifikaciji.** Naivni `balance_by_group` (zbroji sve po
+`Racun`) daje **krivi broj**, i to odmah.
+
+Na jednom tekućem računu postoje **oba** zapisa iste potrošnje:
+pojedinačne kartične kupovine (`Racun = Sašin RF`, `Izvor = Visa`) **i** skupna naplata
+kartice (`Transfer | izmedju racuna`). Zbroj po `Racun`u ih broji dvaput.
+
+Uzrok: `Racun` ne znači „račun čiji se saldo miče", nego **„račun na koji se to na kraju
+naplati"** (odluka 2a, S107i — svi PBZ Visa retci nose `Racun = Sašin RF`). Ono što miče
+saldo je **`Izvor`**:
+
+| `Izvor` | miče saldo | gdje se prikazuje |
+| --- | --- | --- |
+| `Racun`, `Cash` | odmah | **izvršeno** (glavni broj) |
+| `Visa`, `Mastercard` | tek kroz skupnu naplatu | **„+ planirano"** |
+
+Skupna naplata je `Izvor = Racun` pa uđe u izvršeno u trenutku kad je banka stvarno knjižila —
+točno kako se ponaša i na izvatku.
+
+**Verifikacija PRIJE koda (korak 1a):** `Saldo kontrola` sheet već uspoređuje Kokino stanje na
+datum zatvaranja izvatka s bankovnim `NOVO STANJE` — **21 od 31 mjeseca balansira u cent**.
+Isto pravilo se pusti u Pythonu nad Reviewom i usporedi s tim brojkama. ⇒ pravilo se dokazuje
+na **4.996 stvarnih redaka prije nego RPC uopće nastane**. Ako padne, saznali smo besplatno.
+
+⚠ Ovo je i test za `p_filter_slug` iz §2.4: filtar pločice nije `status`, nego **`izvorplacanja`**
+(uz `status` za planirano). Konfiguracija iz §2.3 to podnosi bez promjene oblika.
+
+## 2.11 Usklađenje u Excelu — kolona `Provjera stanja` (Sašin prijedlog, 2026-08-11)
+
+Rješava ono što je najveća frikcija UI varijante: **ne prepisuje se nijedan broj.**
+
+U izvezeni file ide kolona s **pravom Excel formulom** — tekući zbroj, ekvivalent njenog
+`=F655+D656-E656`. Ona dopiše nove retke, formula se preračunava dok tipka (ista neposrednost
+koju ima danas), i kad zadnji redak pokaže broj koji istovremeno vidi u bankovnoj aplikaciji —
+**uveze**. Usporedba je vizualna, greška nikad ne uđe u bazu.
+
+Tri uvjeta:
+
+1. **Sidro je sjeme formule.** Tekući zbroj mora odnekud početi = zadnje potvrđeno stanje ⇒
+   **OQ-1 i ova kolona su ista stvar**, ne dvije.
+2. **Sortiranje najstarije-prvo** za taj export profil (lanac ide prema dolje). Postojeći
+   `export_profiles` već nosi override sortiranja.
+3. **Kolona se pri uvozu ignorira** — izvedena je. Ide skroz desno, gdje `parseDataRows`
+   ionako ne gleda (isti prostor u kojem već žive `Result`/`Source row`/`Changed`, S107w).
+
+**Dva puta usklađenja, različiti poslovi — oba pišu u isto sidro:**
+
+| put | gdje | kada |
+| --- | --- | --- |
+| Excel + `Provjera stanja` | laptop | periodično **pravo** usklađenje, bez prepisivanja |
+| ✓ / Δ u Overviewu | mobitel | brzi pogled „štima li otprilike" |
+
+**Njene korekcije prežive selidbu bez promjene navike:** redak korekcije = običan novi zapis;
+korekcija utopljena u postojeći redak = izmjena, koju hvata `row_hash` + update-guard (D7).
+
+## 2.12 Izračunata kolona `Stanje` u Activities listi
+
+Njena Excelica nema *jedan* saldo nego **saldo uz svaki redak**. To nije isti zahtjev: jedan
+broj kaže *„nešto ne štima"*, kolona kaže *„ne štima OD OVOG RETKA"*. Za traženje greške to je
+razlika između beskorisnog i korisnog.
+
+**Jeftino je:** lista je već najnovije-prvo, a ukupni saldo dolazi iz RPC-a ⇒ saldo svakog
+retka se izračuna **iz same vidljive stranice**, silazeći (`saldo(i) = ukupno − Σ novijih`).
+Ne povlači se povijest; radi i s „Load next 20".
+
+Dva uvjeta, oba prirodna:
+- **samo kad je lista filtrirana na jedan račun** (miješani računi = besmislen tekući zbroj) —
+  a to je točno ono što drill s Overviewa radi;
+- **samo u kanonskom datumskom poretku** — presortiranje po drugoj koloni kolonu obesmišljava
+  pa mora nestati.
+
+⚠ **Ovo odlučuje OQ-5:** ako se `Stanje` računa, stari upisani atribut `Stanje` mora **prestati
+biti u upotrebi**, inače postoje dvije kolone istog imena s različitim brojem.
 
 ## 2.8 Što ovo NE mijenja
 

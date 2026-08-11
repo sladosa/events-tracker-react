@@ -1098,6 +1098,28 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
 10. **Usklađenje ✓ / Δ:** polje „u banci" gdje korisnik utipka iznos iz bankovne aplikacije;
    čip je usporedba s izračunatim saldom. Δ **nije greška appa** nego signal da nešto fali/je
    dvaput/je krivo. ⚠ Polje mora postojati **i na mobitelu** (u prvoj skici izostavljeno).
+11. **⚠ NAJOZBILJNIJI NALAZ (spec §2.10): saldo miče `Izvor`, NE `Racun`.** Naivni zbroj po
+   `Racun`u **dvostruko broji** — na istom tekućem računu stoje i pojedinačne kartične kupovine
+   (`Racun=Sašin RF`, `Izvor=Visa`) i skupna naplata kartice (`Transfer`). `Racun` znači „gdje
+   se to na kraju naplati" (odluka 2a, S107i), a ne „čiji se saldo miče". Pravilo:
+   `Izvor ∈ {Racun, Cash}` → **izvršeno**; `Visa`/`Mastercard` → **„+ planirano"** dok ne dođe
+   skupna naplata. **Faza 1a (prije koda):** pravilo se pusti u Pythonu nad Reviewom i usporedi
+   sa `Saldo kontrola` (21/31 mjeseci u cent) ⇒ dokaz na 4.996 redaka bez TypeScripta.
+12. **Kolona `Provjera stanja` u exportu (Sašina ideja):** prava Excel formula = tekući zbroj,
+   ekvivalent njenog `=F655+D656-E656`. Ona dopiše retke, formula računa dok tipka, i kad zadnji
+   redak pokaže broj koji vidi u banci — uveze. **Ništa se ne prepisuje.** Traži: sidro kao
+   sjeme formule (⇒ OQ-1 i ova kolona su ista stvar), export **najstarije-prvo** (profil već nosi
+   override sortiranja), i da se kolona pri uvozu **ignorira** (skroz desno, gdje `parseDataRows`
+   ne gleda — isti prostor kao `Result`/`Changed` iz S107w). Dva puta usklađenja, isti sidro:
+   **Excel = pravo periodično usklađenje (laptop), ✓/Δ = brzi pogled (mobitel).**
+13. **Izračunata kolona `Stanje` u Activities listi (spec §2.12):** njena Excelica ima saldo uz
+   **svaki** redak — jedan broj kaže „nešto ne štima", kolona kaže „ne štima OD OVOG RETKA".
+   Jeftino: lista je najnovije-prvo + ukupni saldo iz RPC-a ⇒ `saldo(i) = ukupno − Σ novijih`,
+   računa se **iz vidljive stranice**, bez povlačenja povijesti. Uvjeti: samo uz filtar na
+   **jedan račun** i samo u kanonskom datumskom poretku. ⚠ **Time OQ-5 pada na „stari atribut
+   `Stanje` se prestaje pisati"** — inače dvije kolone istog imena s različitim brojem.
+14. **Njene korekcije prežive selidbu:** redak korekcije = novi zapis; korekcija utopljena u
+   postojeći redak = izmjena koju hvata `row_hash` + update-guard (D7). Navika se ne mijenja.
 
 ### S108+: Intelligence layer (success criteria)
 
