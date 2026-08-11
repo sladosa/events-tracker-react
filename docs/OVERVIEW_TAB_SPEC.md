@@ -233,10 +233,17 @@ cijele `event_attributes`** (BUG-S103-ANYATTR).
 
 ## 2.5 Faze
 
-**Faza 1a — dokaz formule salda u Pythonu (XS), PRIJE koda.** Pravilo iz §2.10
-(`Izvor ∈ {Racun, Cash}` = izvršeno; kartično = planirano) pusti se nad Reviewom i usporedi sa
-`Saldo kontrola` sheetom (21/31 mjeseci balansira u cent). Cijela pločica stoji na tome da je
-broj točan — a ovako se to dokazuje na 4.996 stvarnih redaka bez ijednog reda TypeScripta.
+**Faza 1a — dokaz modela salda u Pythonu (XS), PRIJE koda.** Cijela pločica stoji na tome da je
+broj točan, a to se dokazuje nad 4.996 stvarnih redaka bez ijednog reda TypeScripta. **Tri
+provjere:**
+
+1. **Reproducira li `Izvor ∈ {Racun, Cash}` (§2.10) `Saldo kontrola` sheet?** — 21 od 31
+   mjeseca tamo balansira u cent; ista formula mora dati iste brojke.
+2. **Je li interni transfer zapisan jednom ili dvaput?** (§2.14) — ako jednom, jedan račun je
+   kriv za cijeli iznos i model treba dopunu.
+3. **Koliko „planirano" ostaje po kanti** (§2.13) — dospjelo / uskoro / kasnije, oba smjera.
+   Provjera zdravog razuma: ako je „dospjelo" velik broj, znači da povijesni uvoz nosi rate
+   koje su davno naplaćene a stoje kao `Planiran`.
 
 **Faza 1 — `balance_by_group` (S–M).** `sql/034_area_group_agg.sql` + hook + jedna pločica
 prikazana iznad Activities liste za Financije. Konfiguracija se piše u obliku iz §2.3 **već
@@ -309,15 +316,17 @@ zasebnu tablicu (i time u `AnalyticsDef` sheet).
   drukčije nema smisla.*
 - ~~**OQ-2:** Brzi unos = zaseban ekran ili profil vidljivih polja?~~ **RIJEŠENO 2026-08-11
   čitanjem koda — ni jedno ni drugo, v. §2.9.** Mehanizam već postoji (Shortcuts / S88).
-- **OQ-3:** Prikazuje li `balance_by_group` planirane rate u saldu ili samo pored njega?
-  *Prijedlog: pored — banka ih ne vidi, pa bi ih zbrajanje odmah rasparilo s Kokinim
-  kriterijem („slaže li se s bankom").*
-- **OQ-4:** Overview za Areu bez konfiguracije — prazan tab, ili se tab ne prikazuje?
-  *Prijedlog: ne prikazuje se. Prazan tab je poziv na razočaranje.*
-- **OQ-6:** Treba li Koki ograničiti Structure/Edit Mode na vlastitoj Arei? *Prijedlog: ne —
-  vlasnik je (D6), a zaključavanje vraća ovisnost o Saši. Redoslijed tabova (Structure treći)
-  je dovoljan. Postavka po Arei tek ako se pokaže potreba; svaki novi ključ `AreaSettings`
-  otvara i novu rupu u roundtripu dok se ne pokrije sheetom.*
+- ~~**OQ-3:** rate u saldu ili pored?~~ **ODLUČENO 2026-08-11: pored, i razloženo na tri kante
+  + dva smjera — v. §2.13.** Banka planirano ne vidi, pa bi zbrajanje odmah rasparilo saldo s
+  Kokinim kriterijem.
+- ~~**OQ-4:** Overview za Areu bez konfiguracije — prazan tab ili nema taba?~~
+  **ODLUČENO 2026-08-11 (Saša): nema taba.** Prazan tab je poziv na razočaranje.
+- ~~**OQ-6:** ograničiti Koki Structure/Edit Mode?~~ **ODLUČENO 2026-08-11 (Saša): NE
+  ograničavati.** Vlasnik je (D6) pa bi zaključavanje vratilo ovisnost o Saši; Edit Mode je
+  ionako zaseban toggle (dva klika, ne jedan); a novi ključ `AreaSettings` tražio bi i svoj
+  stupac u roundtripu, inače se gubi pri prijenosu aree.
+
+**✅ Nema više otvorenih odluka — specifikacija je spremna za Fazu 1a.**
 - **OQ-5:** Ostaje li `Stanje` atribut nakon Faze 1? *Prijedlog: ostaje kao povijesni
   artefakt importa, ali se **prestaje pisati** — inače imamo dvije istine o istom broju.
   Odluku donijeti prije Faze 5 batcheva, ne poslije.*
@@ -426,6 +435,49 @@ Dva uvjeta, oba prirodna:
 
 ⚠ **Ovo odlučuje OQ-5:** ako se `Stanje` računa, stari upisani atribut `Stanje` mora **prestati
 biti u upotrebi**, inače postoje dvije kolone istog imena s različitim brojem.
+
+## 2.13 „Planirano" treba horizont i dva smjera (odluka 2026-08-11)
+
+Jedan broj „+ planirano" ne odgovara ni na jedno pitanje: Anjinih 96 rata seže **osam godina**
+naprijed, pa isti zbroj miješa ratu koja stiže za tri dana i ratu iz 2032.
+
+**Tri kante — tri različita mentalna stanja:**
+
+| kanta | definicija | čemu služi |
+| --- | --- | --- |
+| **Dospjelo** | `Status = Planiran` ∧ `Datum naplate ≤ danas` | **potvrda** (traka s vrha, §2.5a) |
+| **Uskoro** | sljedeći ciklus (~30 dana) | *„hoću li imati dovoljno"* |
+| **Kasnije** | sve ostalo | obveza, ne novčani tok — **ovdje toggle ima smisla** |
+
+**⚠ `Dospjelo` mora biti IZVEDENO, ne spremljeno.** Ako postane treća vrijednost `Status`
+atributa, netko je mora upisati — a to je **točno onaj automat koji je §2.5a odbacio**, samo pod
+drugim imenom. Izvedeno ne može zastarjeti, ne piše ništa i računa se u istom upitu. Dodatno:
+nova vrijednost `Status`a živjela bi i u `validation_rules` **i** u `value_text` svakog zapisa
+(rizik S105d) bez ikakve koristi.
+
+**Dva smjera, ne jedan.** Planirani **prihodi** koriste isti mehanizam (`Uplata` + `Planiran`) —
+i Kokina mirovina je točno to (`Mirovina I/II/III stup`, svaki mjesec). Zato „planirano" nisu
+jedan nego **dva broja**: `−218,00` odlazi / `+1.350,22` dolazi. Tek tada odgovara na *„hoću li
+imati dovoljno"*, što je jedino pitanje zbog kojeg se planirano gleda.
+
+## 2.14 Transfer — isti redak, različito pravilo po pločici
+
+Drugi problem od Visa lumpa (§2.10), ne isti:
+
+| pločica | Transfer retci | zašto |
+| --- | --- | --- |
+| `balance_by_group` | **broje se** | novac je stvarno otišao s računa; izostavljanje razilazi saldo s bankom |
+| `breakdown` (trošak po Tipu) | **izbacuju se** | prebacivanje između vlastitih računa nije potrošnja i napuhuje razrez |
+
+Isti redak dakle ulazi u jednu pločicu a ne u drugu — normalno, ali mora biti zapisano da se ne
+„popravi" kasnije kao nedosljednost.
+
+**⚠ Empirijsko pitanje za Fazu 1a:** je li interni transfer u podacima zapisan **jednom ili
+dvaput**?
+- **dvaput** (isplata na jednom računu, uplata na drugom) → oba salda točna, ništa se ne dupla
+- **jednom** → jedan račun je kriv **za cijeli iznos**
+
+Ne da se pogoditi iz koda — mjeri se nad Reviewom.
 
 ## 2.8 Što ovo NE mijenja
 

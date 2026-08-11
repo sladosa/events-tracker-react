@@ -1120,6 +1120,23 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
    `Stanje` se prestaje pisati"** — inače dvije kolone istog imena s različitim brojem.
 14. **Njene korekcije prežive selidbu:** redak korekcije = novi zapis; korekcija utopljena u
    postojeći redak = izmjena koju hvata `row_hash` + update-guard (D7). Navika se ne mijenja.
+15. **„Planirano" ima horizont i dva smjera (spec §2.13):** jedan broj ne odgovara ni na jedno
+   pitanje (Anjinih 96 rata seže 8 godina). Tri kante — **Dospjelo** (`Planiran` ∧
+   `Datum naplate ≤ danas`, traži potvrdu) · **Uskoro** (~30 dana, „hoću li imati dovoljno") ·
+   **Kasnije** (obveza, ne novčani tok — tu toggle ima smisla). **⚠ `Dospjelo` mora biti
+   IZVEDENO, ne treća vrijednost `Status`a** — spremljena vrijednost traži pisca, a to je točno
+   automat odbačen u §2.5a pod drugim imenom (+ S105d rizik: ime bi živjelo i u
+   `validation_rules` i u `value_text` svakog zapisa). **Dva smjera:** planirani prihodi rade
+   isto (`Uplata` + `Planiran`) — Kokina mirovina I/II/III stup je točno to ⇒ „planirano" su
+   **dva broja** (odlazi / dolazi), inače ne odgovara na „hoću li imati dovoljno".
+16. **Transfer — pravilo ovisi o pločici (spec §2.14):** u **saldo ULAZI** (novac je stvarno
+   otišao; izostavljanje razilazi saldo s bankom), iz **razreza po Tipu IZLAZI** (nije potrošnja,
+   napuhuje). Isti redak, dva pravila — zapisano da se kasnije ne „popravi" kao nedosljednost.
+   **⚠ Otvoreno empirijski:** je li interni transfer zapisan **jednom ili dvaput**? Dvaput ⇒ oba
+   salda točna; jednom ⇒ jedan račun kriv za cijeli iznos. Mjeri se u Fazi 1a.
+17. **Faza 1a sad ima TRI provjere** (ne jednu): (1) reproducira li `Izvor ∈ {Racun,Cash}`
+   `Saldo kontrola` (21/31 u cent) · (2) transfer jednom ili dvaput · (3) raspodjela „planiranog"
+   po kantama i smjerovima. **Sve OQ (1–6) zatvorene ⇒ specifikacija spremna.**
 
 ### S108+: Intelligence layer (success criteria)
 
