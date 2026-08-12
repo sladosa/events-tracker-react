@@ -58,6 +58,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import openpyxl
+from openpyxl.styles import Font, PatternFill
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -618,17 +619,47 @@ def nalazi(rows, rezid, danas: date, out: Path | None):
             print(f'   … još {len(f[k]) - 12} (puni popis u TSV-u)')
 
     if out:
-        lines = ['sifra\tred\tevent_date\tdatum_naplate\tracun\tizvor\tiznos\t'
-                 'napomena\tpouzdanost\tzasto']
-        for k in red:
-            for r, det in sorted(f[k], key=lambda x: x[0]['xl']):
-                lines.append('\t'.join(str(x) for x in (
-                    k, r['xl'], r['date'], r['naplata'] or '', r['racun'], r['izvor'],
-                    f'{r["signed"]:.2f}', (r['napomena'] or r['opis'])[:60],
-                    zasto[k][1], det)))
-        out.write_text('\n'.join(lines), encoding='utf-8')
-        print(f'\n✔ TSV: {out}  ({len(lines) - 1} redaka)')
-        print('  (nov file — Review NIJE diran; otvori u Excelu ili filtriraj po šifri)')
+        zaglavlje = ('sifra', 'red', 'event_date', 'datum_naplate', 'racun', 'izvor',
+                     'iznos', 'napomena', 'pouzdanost', 'zasto')
+        podaci = [(k, r['xl'], r['date'], r['naplata'] or '', r['racun'], r['izvor'],
+                   round(r['signed'], 2), (r['napomena'] or r['opis'])[:60],
+                   zasto[k][1], det)
+                  for k in red for r, det in sorted(f[k], key=lambda x: x[0]['xl'])]
+
+        out.write_text(
+            '\n'.join(['\t'.join(zaglavlje)]
+                      + ['\t'.join(str(x) for x in row) for row in podaci]),
+            encoding='utf-8')
+        print(f'\n✔ TSV : {out}  ({len(podaci)} redaka)')
+
+        # .xlsx — jer .tsv nije registriran na Windowsu i traži "Choose an app"
+        xl_out = out.with_suffix('.xlsx')
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Nalazi'
+        hdr_fill = PatternFill('solid', fgColor='C55A11')
+        hdr_font = Font(color='FFFFFF', bold=True)
+        boja = {'visoka': 'FFC7CE', 'srednja': 'FFEB9C', 'niska': 'EDEDED',
+                'n/p': 'DDEBF7'}
+        for c, hh in enumerate(zaglavlje, 1):
+            cell = ws.cell(1, c, hh)
+            cell.fill, cell.font = hdr_fill, hdr_font
+        for r_i, row in enumerate(podaci, 2):
+            fill = PatternFill('solid', fgColor=boja.get(row[8], 'FFFFFF'))
+            for c_i, v in enumerate(row, 1):
+                cell = ws.cell(r_i, c_i, v)
+                cell.fill = fill
+                if c_i in (3, 4) and v:
+                    cell.number_format = 'DD.MM.YYYY'
+                elif c_i == 7:
+                    cell.number_format = '#,##0.00'
+        for c, w in zip('ABCDEFGHIJ', (19, 7, 12, 13, 19, 12, 11, 34, 11, 62)):
+            ws.column_dimensions[c].width = w
+        ws.freeze_panes = 'C2'
+        ws.auto_filter.ref = f'A1:J{max(2, len(podaci) + 1)}'
+        wb.save(xl_out)
+        print(f'✔ XLSX: {xl_out}  ← otvori ovaj (autofiltar na `sifra`)')
+        print('  (nova fileova — Review NIJE diran)')
     return f
 
 
