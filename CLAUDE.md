@@ -1138,6 +1138,36 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
    `Saldo kontrola` (21/31 u cent) · (2) transfer jednom ili dvaput · (3) raspodjela „planiranog"
    po kantama i smjerovima. **Sve OQ (1–6) zatvorene ⇒ specifikacija spremna.**
 
+**Done 2026-08-12 (S107w — ručni testovi T-S107w-4…9 ZAVRŠENI + 2 sitna nalaza; testovi:
+`Claude-temp_R/test-sessions/S107w_tests.md`):**
+1. **Svih 6 ručnih testova prošlo** — Excel izgled (`DELETE` dropdown, crveni redak, Excel
+   odbija proizvoljan tekst), sort ne rasparuje zastavicu, dvije odvojene guard kvačice
+   (ni jedna ne otključava drugu), Financije brisanje (1 zapis, `Deleted` sheet točan),
+   **⭐ Fitness parent lanac** (brisanje prvog od 2 zapisa sesije ostavlja `Workout Type`
+   netaknut; brisanje zadnjeg ispravno ruši i parent lanac — poruka "last event of its
+   session" se pojavljuje točno kad treba), izvještaj kao radni file (puna petlja
+   create→report→DELETE u reportu→re-import, uklj. `event_id` iste kopije u kodu
+   `matchesRowHash`/"copied row" dedup — provjereno da radi i kad korisnik namjerno/greškom
+   ne očisti `event_id`+`row_hash` na kopiranom retku, ne samo kad ga ručno makne).
+2. **UI polish** (`ExcelImportModal.tsx`) — "(Excel row N)" oznaka u delete/update guard
+   listama bila `text-gray-300 text-[10px]` (jedva čitljivo); `text-gray-500 text-[11px]`
+   na oba mjesta (delete guard + update guard).
+3. **`sql/034_s107w_test_area.sql` (novo)** — scratch testna Area (Workout L1 s atributom →
+   Set leaf s atributom) za sigurno testiranje P2 parent-chain scenarija bez diranja pravih
+   Areas (Financije_all, Health_Sasa); idempotentan, borrow-a `user_id` sa `financije-all`
+   sluga (⚠ TEST baza ima više simuliranih usera koji dijele imena/slugove kao `Financije`/
+   `Health` — `financije-all` je jedini slug jedinstven Sašinom pravom TEST accountu).
+4. **⚠ NALAZ — TEST seed data drift:** `e5-structure.spec.ts` T-S107w-4 (Add Child na Cardio
+   → blocked state) je konzistentno padao — Cardio leaf u TEST bazi izgubio svoj seed event
+   (`e1000000-...-01`) nekad prije ove sesije (nepoznato kad/čime), pa app ispravno prikazuje
+   "no events yet" i ne blokira Add Child — **nije regresija S107w koda** (ne dira Structure
+   logiku). Fix: `e2e/setup/seed.sql` je potpuno idempotentan (`ON CONFLICT DO NOTHING`,
+   fiksni ID-jevi izolirani od pravih podataka) — ponovno pokretanje je vratilo Cardio event,
+   E5 5/5 PASS nakon toga.
+5. **Puni regresijski set 28/28 PASS** (E2, E3, E4×3, E5×5, E6×3, E14×2, S104_delete_bug,
+   S104_parent_event, S104_import_progress, S107_row_hash_guard×3, S107b×2,
+   S107w_delete_column×3) — spreman za PROD kad Saša zatraži deploy.
+
 ### S108+: Intelligence layer (success criteria)
 
 ---

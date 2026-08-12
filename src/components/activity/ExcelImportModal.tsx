@@ -624,7 +624,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                           <span className="font-semibold">{d.sessionStart}</span>
                           <span className="text-gray-400 mx-1">·</span>
                           <span className="text-gray-600">{d.categoryPath}</span>
-                          <span className="text-gray-300 ml-1.5 text-[10px]">(Excel row {d.sourceRow})</span>
+                          <span className="text-gray-500 ml-1.5 text-[11px]">(Excel row {d.sourceRow})</span>
                         </div>
                         {d.comment && (
                           <p className="text-[11px] text-gray-500 mt-0.5 truncate" title={d.comment}>{d.comment}</p>
@@ -691,7 +691,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                           <span className="font-semibold">{u.sessionStart}</span>
                           <span className="text-gray-400 mx-1">·</span>
                           <span className="text-gray-600">{u.categoryPath}</span>
-                          <span className="text-gray-300 ml-1.5 text-[10px]">(Excel row {u.sourceRow})</span>
+                          <span className="text-gray-500 ml-1.5 text-[11px]">(Excel row {u.sourceRow})</span>
                         </div>
                         <ul className="mt-1 space-y-0.5">
                           {u.changes.map((c, i) => (

@@ -3,8 +3,8 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107w (2026-08-04) — `Delete?` kolona + izvještaj nakon uvoza kao radni file.
-**Otvoreno: T-S107w-4…9, T-S107v-1…4 i 7, T-S107u-2 (backlog).**
+**Zadnji update:** S107w ručni testovi ZAVRŠENI (2026-08-12) — svih 6 prošlo, puni regresijski set 28/28 PASS, spreman za PROD kad Saša zatraži deploy.
+**Otvoreno: T-S107v-2…4 i 7, T-S107u-2 (backlog).**
 **Detalji S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
 
 ---
@@ -29,12 +29,12 @@ ispao kao „unchanged" i brisanje bi tiho nestalo.
 | T-S107w-1 | E2E: ⭐ puna petlja — kopija → uvoz → izvještaj → `DELETE` u izvještaju → uvoz → zapis obrisan; Apply disabled do kvačice | ✅ (Playwright pass) |
 | T-S107w-2 | E2E: `TRUE` u `Delete?` = greška, uvoz se ne otvori | ✅ (Playwright pass) |
 | T-S107w-3 | E2E: ponovni uvoz nediranog izvještaja = no-op (dodatne kolone desno ne lome parsiranje) | ✅ (Playwright pass) |
-| T-S107w-4 | **Saša:** Excel izgled — dropdown samo `DELETE`, crveni redak, Excel odbija proizvoljan tekst, nema „repair" | ⬜ |
-| T-S107w-5 | **Saša:** sort po drugoj koloni **ne rasparuje** zastavicu od retka | ⬜ |
-| T-S107w-6 | **Saša:** izmjena + brisanje u istom fileu → **dva** bloka, **dvije** kvačice, Apply traži obje | ⬜ |
-| T-S107w-7 | **Saša:** `Financije_all` — obriši jedan testni redak; ostali zapisi istog dana ostaju (klasa T-BUGG-5) | ⬜ |
-| T-S107w-8 | **Saša:** ⭐ Fitness — sesija s 2 zapisa: brisanje prvog **ne ruši** parent lanac, brisanje drugog ga ruši | ⬜ |
-| T-S107w-9 | **Saša:** izvještaj kao radni file — sadrži samo dirnute zapise, `Deleted` sheet, re-import radi | ⬜ |
+| T-S107w-4 | **Saša:** Excel izgled — dropdown samo `DELETE`, crveni redak, Excel odbija proizvoljan tekst, nema „repair" | ✅ (2026-08-12) |
+| T-S107w-5 | **Saša:** sort po drugoj koloni **ne rasparuje** zastavicu od retka | ✅ (2026-08-12) |
+| T-S107w-6 | **Saša:** izmjena + brisanje u istom fileu → **dva** bloka, **dvije** kvačice, Apply traži obje | ✅ (2026-08-12) |
+| T-S107w-7 | **Saša:** `Financije_all` — obriši jedan testni redak; ostali zapisi istog dana ostaju (klasa T-BUGG-5) | ✅ (2026-08-12, testni redak kreiran kroz Add Activity) |
+| T-S107w-8 | **Saša:** ⭐ Fitness — sesija s 2 zapisa: brisanje prvog **ne ruši** parent lanac, brisanje drugog ga ruši | ✅ (2026-08-12, na novoj scratch `S107w Test` aredi — `sql/034_s107w_test_area.sql`) |
+| T-S107w-9 | **Saša:** izvještaj kao radni file — sadrži samo dirnute zapise, `Deleted` sheet, re-import radi | ✅ (2026-08-12, uklj. "copied row" dedup slučaj) |
 
 **Fail ako:** brisanje makne više od označenog · parent lanac padne dok sesija još ima zapise ·
 zastavica preživi sort na krivom retku · jedna kvačica otključa oboje · izvještaj se ne skine
@@ -59,7 +59,7 @@ brisanje prošlo. `sql/033_delete_area_cascade.sql` (novo) — generički SQL ca
 | ID | Test | Status |
 | --- | --- | --- |
 | P-1…P-8 | Programske kontrole (4 tihe rupe, guard, 0 duplih `session_start`, klasifikator na 6 oblika grešaka, typecheck+build) | ✅ (programski) |
-| T-S107v-1 | **Saša:** ⭐ batch import 2026 — **747 new**; dan s 13 transakcija daje **13 redaka**; spot-check 3 retka + jedna rata | ⬜ |
+| T-S107v-1 | **Saša:** ⭐ batch import 2026 — **747 new**; dan s 13 transakcija daje **13 redaka**; spot-check 3 retka + jedna rata | ✅ (747 eventa uvezeno u TEST, dokazano exportom 11.08.) |
 | T-S107v-2 | **Saša:** brisanje `Financije_2` — čitljiva poruka umjesto sirovog `23503`, original iza „Technical details" | ⬜ |
 | T-S107v-3 | **Saša:** grantee → „You are not the owner" + sva tri gumba disabled | ⬜ |
 | T-S107v-4 | **Saša:** `sql/033_delete_area_cascade.sql` — SECTION 2a roster (tko ima zapise + `role`) i 2b **jesu li policyji iz `020_orphan_rls.sql` na TEST-u** (određuje je li UI fix moguć) | ⬜ |
