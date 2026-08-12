@@ -139,6 +139,38 @@ Poznati loši retci iz S107v se potvrđuju: **4997** (naplata 10 mjeseci prije k
 
 ---
 
+## 4b. Popravljeno 2026-08-12 (isti dan, nakon nalaza)
+
+| alat | što | rezultat |
+| --- | --- | --- |
+| `fix_datum_naplate_statement.py` | `Datum naplate` preračunat iz `Izvod file` | **49 redaka** (48× 2025, 1× 2026) |
+| `fix_keks_trener.py` | 20 KEKS Pay uplata treneru → `Zdravlje\|Sport_Sasa` | **20 redaka**, 400 € |
+
+**Nalaz koji je popravak otkrio: „nemogući" retci bili su samo vidljivi vrh.** Usporedba
+protiv statementa (`Izvod file`) pokazala je **57** neslaganja, od čega je 30 bilo *tiho*
+krivo (naplata poslije kupnje pa izgleda uredno). Jezgra: **cijeli statement `MC_2025-10`**
+(40 redaka) nosio je 11.10. umjesto 11.11.
+
+**Uzrok:** `kartice_datum_naplate.py` namjerno ne dira retke koji već imaju popunjen
+`Datum naplate`. Stara vrijednost je preživjela, `enrich_from_izvoda.py` je poslije
+pridružio statement, a `date_accuracy.py` (S107k) pomaknuo `event_date` — naplatu nitko
+nije preračunao.
+
+**⚠ 8 redaka namjerno NIJE dirnuto** iako je odobren opseg od 57. Provjera po statementu
+pokazala je da su to **manjinska odstupanja unutar statementa koji inače slijedi pravilo**
+(npr. `MC_2025-05`: 32 retka točno, 6 odstupa), dakle drukčiji obrazac od veleprodajne
+greške. Jedan je pomak od jednog dana (11.04.2026. je **subota**) — vjerojatnije stvarni
+datum knjiženja nego greška. Šest su koherentna skupina rata kupljenih 29.05.2025.
+**Ostaju za Sašin/Kokin pogled;** pokreće ih `--include-obrnute`.
+
+**Kontrola nakon oba popravka:** 49 promijenjenih ćelija, sve u `Datum naplate`; 80 ćelija
+za KEKS (20 redaka × Tip/Podtip/Alternativa/Pravilo run); **Σ Uplata i Σ Isplata nepromijenjeni
+u cent**; broj redaka i kolona isti. Model salda i dalje **17/30** (ni jedan popravak ne dira
+iznos ni `event_date`), a dvostranost transfera **90,6 % → 91,9 %**.
+
+**Označenih redaka ukupno: 115 → 69.** `NAPLATA<KUPNJA` 28 → **1** (ostaje red 4997, poznati
+loši redak iz S107v — pitanje za Koku); `TRANSFER-BEZ-PARA` 42 → **23**.
+
 ## 5. Zamke zabilježene
 
 - **Ime skripte ne smije biti ime stdlib modula.** `inspect.py` je odmah srušio `openpyxl`

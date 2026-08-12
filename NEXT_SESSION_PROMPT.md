@@ -1,6 +1,6 @@
 # NEXT SESSION PROMPT — nakon S107w (testovi gotovi) + S107x Faza 1a (model dokazan)
 
-**Zadnje dvije sesije, obje na `test-branch`, PROD nije diran:**
+**Zadnje dvije sesije. PROD deploy izvršen 2026-08-12 (`main` = `7239c8d`).**
 
 | sesija | što | commit |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ Poredano po tome što otključava odluku. Ukupno ~30 min.
 | --- | --- | --- | --- |
 | 1 | **Ovaj file, DIO 1** | 5 min | tri odluke koje čekaju tebe |
 | 2 | `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` — **§1 i §2** | 10 min | presuda + tri stvari koje su mi promijenile način mjerenja. §3 preskoči zasad. |
-| 3 | `data-prep_data/Financije/saldo_model_nalazi.tsv` — filtriraj `sifra = NAPLATA<KUPNJA` | 10 min | **ovo otključava batch 2025.** Pogledaj 3–4 retka i reci slažeš li se s dijagnozom u DIO 1 §B |
+| 3 | `data-prep_data/Financije/saldo_model_nalazi.xlsx` (⚠ **.xlsx**, ne .tsv — dvoklik) | 10 min | preostalih 69 označenih redaka, autofiltar na `sifra`. Ono što je bilo hitno (`NAPLATA<KUPNJA`) je **popravljeno** — v. §B |
 | 4 | `docs/OVERVIEW_TAB_SPEC.md` — **samo** „Faza 1a" u §2.5, plus §2.10 i §2.14 | 5 min | ta tri bloka su prepisana s rezultatima; ostatak si već pregledao |
 
 **Opcionalno, samo ako želiš još jednom prije PROD-a:** `Claude-temp_R/test-sessions/S107w_tests.md`
@@ -43,17 +43,32 @@ nije bilo „malo netočno", nego besmisleno. Formula može ravno u bazu.
 ovim podacima **ne može** provjeriti, jer buduće rate u Reviewu ne postoje kao retci — njih tek
 generira rata modal nakon uvoza. Nije rizik za pločicu salda, ali ne vodimo to kao potvrđeno.
 
-## Tri odluke koje čekaju tebe
+## Odluke (sve tri zatvorene 2026-08-12)
 
-### A. PROD deploy — da ili ne
+### A. ✅ NAPRAVLJENO 2026-08-12 — PROD deploy izvršen
 
-Na PROD bi otišao S107v + S107w (`Delete?` kolona + izvještaj kao radni file). 28/28 testova
-prošlo. Moje dodatke deploy ne dira (Python alat i dokumentacija; Netlify gradi samo `src/`).
+Merge `test-branch` → `main` (fast-forward `3930c8e..7239c8d`), `typecheck` + `build` čisti
+prije mergea. Na PROD otišlo: S107v (kopirani redak = novi event) + S107w (`Delete?` kolona
++ izvještaj kao radni file) + S107x Faza 1a (alat i dokumentacija, ne dira bundle).
 
-Jedina stvar koju bih rekao naglas: **ovo je prvi put da Excel može brisati zapise na PROD-u.**
-Zaštita postoji (zaseban popis + zasebna kvačica), ali neka „da" bude svjesno.
+**⚠ Ovo je prvi put da Excel može brisati zapise na PROD-u.** Zaštita: zaseban popis + zasebna
+kvačica. Smoke test na jednom bezopasnom zapisu nije naodmet.
+**⚠ `sql/034_s107w_test_area.sql` je u mergeu ali se NE izvršava sam** — za TEST bazu je,
+ne pokretati na PROD-u.
 
-### B. 28 redaka s krivim datumom naplate — popraviti PRIJE batcha 2025
+### B. ✅ NAPRAVLJENO 2026-08-12 — `Datum naplate` popravljen (49 redaka) + KEKS/trener (20)
+
+`fix_datum_naplate_statement.py` i `fix_keks_trener.py`, oba s `.pre-*` backupom i
+kontrolom (Σ Uplata/Isplata nepromijenjeni u cent, mijenjaju se samo ciljane kolone).
+Označenih redaka **115 → 69**. Detalji: `SALDO_MODEL_NALAZI.md` §4b.
+
+**⚠ 8 redaka svjesno ostavljeno** (`--include-obrnute` ih pokreće) — manjinska odstupanja
+unutar statementa koji inače slijedi pravilo; jedan je pomak od 1 dana (11.04.2026. =
+subota), šest su rate kupljene 29.05.2025. Treba ljudski pogled prije diranja.
+
+**Sljedeće je batch 2025** (odluka C).
+
+<details><summary>Izvorni opis nalaza (za kontekst)</summary>
 
 Simptom: **`Datum naplate` je PRIJE datuma kupnje** — naplaćeno prije nego kupljeno, nemoguće.
 Primjer: red 3494, kupnja **28.06.2025.**, naplata **11.06.2025.** (trebalo bi 11.07.2025.).
@@ -86,14 +101,13 @@ popravak poslije je ručni rad kroz app. **26 od 28 je u 2025.** — a 2025. je 
 **Pregled (ako želiš vidjeti sam):** `data-prep_data/Financije/saldo_model_nalazi.tsv`,
 filtar `sifra = NAPLATA<KUPNJA`; kolona `red` je broj retka u Review sheetu.
 
-### C. Ide li Faza 1 (pločica salda) sad, ili prvo batch 2025
+</details>
 
-Po specu su neovisni. Moje mišljenje: **prvo B pa batch 2025, onda Faza 1** — jer je pločica
-tek onda zanimljiva Koki (više podataka), a popravak B ima rok trajanja.
+### C. ✅ ODLUČENO — prvo batch 2025, pa Faza 1
 
-Ali ako ti je važnije vidjeti pločicu prije nego uložiš još vremena u podatke, to je isto
-legitimno — spec kaže da je **korak 3 (Koka proba na mobitelu) prava vaga**, i što prije do
-njega dođemo, prije znamo je li cijeli smjer dobar.
+Saša, 2026-08-12. Popravak podataka (B) je gotov, pa je **batch 2025 sljedeći korak**,
+a `balance_by_group` pločica (Faza 1) dolazi nakon njega — s više podataka je i zanimljivija
+Koki kad dođe do koraka 3 (proba na mobitelu).
 
 ## Što ostaje za Koku (nepromijenjeno)
 
@@ -118,10 +132,10 @@ Faza 1a je dodala još četiri, sve iz 2025., sve s dokazom iz banke:
 
 | grana | commit | sadrži |
 | --- | --- | --- |
-| `test-branch` | `8579bba` | S107v + S107w + S107x Faza 1a |
-| `main` (PROD) | `3930c8e` | sve osim S107v fixa, cijelog S107w i Faze 1a |
+| `test-branch` | v. `git log` | S107v + S107w + S107x Faza 1a + popravci podataka |
+| `main` (PROD) | `7239c8d` | **isto** — PROD deploy izvršen 2026-08-12 |
 
-`typecheck` + `build` čisti (S107w). Faza 1a nije dirala `src/`.
+`typecheck` + `build` čisti (pokrenuti prije mergea na `main`). Faza 1a nije dirala `src/`.
 Radna kopija: samo `Claude-temp_R/test-sessions/S107_tests.md` (gitignoriran direktorij).
 
 ## Faza 1a — što je dokazano i čime
@@ -149,10 +163,9 @@ Alat `data-prep_tools/Financije/verify_saldo_model.py` (READ-ONLY, nema `.save()
 1. **PROD deploy** — ⚠ samo na izričit Sašin zahtjev (Netlify troši kredite). Slijed:
    `git checkout main && git merge test-branch --no-edit && git push origin main`, pa
    **sync back** na `test-branch` (bez toga `test-branch` zaostaje).
-2. **Preračunati `Datum naplate` na 28 zaostalih redaka** (`Datum naplate < event_date` ⇒
-   11. sljedećeg mjeseca). **Pravilo NE dirati** — 1096 istih takvih redaka je točno, krivih je
-   28 od 1124, u grozdovima 06/2025 i 10/2025. Prvo pogledati u `kartice_datum_naplate.py`
-   zašto su baš ti ispali. 26 od 28 je u 2025. ⇒ **prije batcha 2025.** Backup prije pisanja.
+2. ~~Preračunati `Datum naplate`~~ ✅ **NAPRAVLJENO 2026-08-12** —
+   `fix_datum_naplate_statement.py` (49 redaka) + `fix_keks_trener.py` (20). Označenih
+   115 → 69. **8 redaka svjesno ostavljeno**, pokreće ih `--include-obrnute` (v. §4b NALAZI).
 3. **Batch 2025** — `--to 2025-12-31`, granica **uvijek na danu** (inače `session_start`
    `09:00 + n` sudara s već uvezenim danom).
 4. **Faza 1 — `sql/035_area_group_agg.sql`** (⚠ **ne 034**, zauzeo ga `034_s107w_test_area.sql`)

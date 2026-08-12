@@ -1208,6 +1208,39 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
 7. **⚠ RPC ide na `sql/035_area_group_agg.sql`** — `034` je zauzeo `034_s107w_test_area.sql`.
 8. **Zamka:** ime skripte ne smije biti ime stdlib modula — `inspect.py` je srušio `openpyxl`
    (`partially initialized module`, jer `numpy` radi `import inspect`).
+9. **PROD deploy izvršen 2026-08-12** — merge `test-branch` → `main` (fast-forward
+   `3930c8e..7239c8d`), `typecheck`+`build` čisti prije mergea. Na PROD: S107v + S107w + Faza 1a.
+   ⚠ `sql/034_s107w_test_area.sql` putuje u mergeu ali se **ne izvršava sam** (TEST-only).
+
+**Popravci podataka izvršeni isti dan (oba s `.pre-*` backupom i kontrolom):**
+
+- **`fix_datum_naplate_statement.py` (novo) — 49 redaka.** `Datum naplate` preračunat iz
+  `Izvod file` (11. u mjesecu NAKON statementa). **Nalaz je bio veći od simptoma:** 27
+  „nemogućih" (naplata prije kupnje) bilo je samo vidljivi vrh — usporedba protiv statementa
+  dala je **57** neslaganja, od čega 30 **tiho** krivih. Jezgra: cijeli statement `MC_2025-10`
+  (40 redaka) nosio je 11.10. umjesto 11.11.
+  **Uzrok:** `kartice_datum_naplate.py` namjerno ne dira retke s već popunjenim `Datum naplate`;
+  stara vrijednost je preživjela, `enrich_from_izvoda.py` je poslije pridružio statement, a
+  `date_accuracy.py` (S107k) pomaknuo `event_date`.
+  ⚠ **8 redaka svjesno NIJE dirnuto** iako je odobren opseg 57: to su **manjinska odstupanja
+  unutar statementa koji inače slijedi pravilo** (`MC_2025-05`: 32 točno, 6 odstupa) — drukčiji
+  obrazac od veleprodajne greške; jedan je pomak od 1 dana (11.04.2026. = **subota**, dakle
+  vjerojatno stvarni datum knjiženja). Pokreće ih `--include-obrnute`.
+- **`fix_keks_trener.py` (novo) — 20 redaka, 400 €.** KEKS Pay uplate osobnom treneru
+  (`Transfer|izmedju racuna` → `Zdravlje|Sport_Sasa`). Saša ih uočio pregledavajući
+  `saldo_model_nalazi.xlsx`; potvrda u podacima: 27 `Ašo/Aša` redaka je već `Zdravlje|Sport_Sasa`,
+  a 20 `KEKS` −20,00 (21.07.2023.→14.03.2024., **tjedna kadenca**) nije — prešao je s izravne
+  uplate na KEKS Pay. 2025./2026. je prestao (potvrdio), pa preostala 2 KEKS −20 nisu trener.
+  ⚠ Ni pravilo ni `Preimenovanja` to ne mogu — `Transfer|izmedju racuna` je **valjan** par
+  (ista zamka kao `fix_vocarna_pravilo.py`, `fix_anja_rate.py`). Keyword pravilo se namjerno
+  **ne** dodaje: `KEKS` je aplikacija za plaćanje, ne trgovac (isti razlog kao `PAYPAL`/`GLS`, S107l).
+- **Kontrola:** 49 ćelija (sve `Datum naplate`) + 80 ćelija (20 × Tip/Podtip/Alternativa/
+  Pravilo run); **Σ Uplata i Σ Isplata nepromijenjeni u cent**; broj redaka/kolona isti.
+  Model salda i dalje **17/30** (popravci ne diraju iznos ni `event_date`), dvostranost
+  transfera **90,6 % → 91,9 %**. Označenih redaka **115 → 69**; `NAPLATA<KUPNJA` 28 → **1**
+  (ostaje red 4997, poznat iz S107v).
+- **`verify_saldo_model.py --nalazi` sad piše i `.xlsx`** — `.tsv` nije registriran tip na
+  Windowsu (dvoklik nudi „Select an app"), a ostatak pipelinea je ionako xlsx.
 
 ### S108+: Intelligence layer (success criteria)
 
