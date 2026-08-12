@@ -48,7 +48,8 @@ Without Financije/Zdravlje/Diary data flowing in, app is shell-only. Collab is s
 | `docs/COLLAB_PLAN_v2.md`                  | Collab implementation plan (v2) — faze 0–11, decisions                           |
 | `docs/RESTRUCTURE_DECISIONS_2026-04-01.md`| Odluke o reorganizaciji i Financije data modelu                                  |
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas za nove korisnike, Add Area "From template" |
-| `docs/OVERVIEW_TAB_SPEC.md`               | **Overview tab — dashboard po Arei** (stanja računa, pločice iz atributa); F1/F2 odluke, plan rada, OQ-1…5 |
+| `docs/OVERVIEW_TAB_SPEC.md`               | **Overview tab — dashboard po Arei** (stanja računa, pločice iz atributa); F1/F2 odluke, plan rada, OQ-1…6 (sve zatvorene); Faza 1a ✅ |
+| `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` | **⚠ PROČITATI prije Faze 1 (RPC/pločica salda)** — dokaz modela nad 4.996 redaka, 3 zamke u mjerenju, 115 označenih loših redaka (`saldo_model_nalazi.tsv`) |
 | `docs/Analytics_tab.md`                   | Cross-Area analitika — `periods` tablica, Series, AnalyticsDef Excel. **Čeka drugu gustu Areu** |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
@@ -1103,7 +1104,7 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
    (`Racun=Sašin RF`, `Izvor=Visa`) i skupna naplata kartice (`Transfer`). `Racun` znači „gdje
    se to na kraju naplati" (odluka 2a, S107i), a ne „čiji se saldo miče". Pravilo:
    `Izvor ∈ {Racun, Cash}` → **izvršeno**; `Visa`/`Mastercard` → **„+ planirano"** dok ne dođe
-   skupna naplata. **Faza 1a (prije koda):** pravilo se pusti u Pythonu nad Reviewom i usporedi
+   skupna naplata. **Faza 1a (prije koda) — ✅ IZVRŠENA, v. sekciju „S107x Faza 1a":** pravilo se pusti u Pythonu nad Reviewom i usporedi
    sa `Saldo kontrola` (21/31 mjeseci u cent) ⇒ dokaz na 4.996 redaka bez TypeScripta.
 12. **Kolona `Provjera stanja` u exportu (Sašina ideja):** prava Excel formula = tekući zbroj,
    ekvivalent njenog `=F655+D656-E656`. Ona dopiše retke, formula računa dok tipka, i kad zadnji
@@ -1137,6 +1138,9 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
 17. **Faza 1a sad ima TRI provjere** (ne jednu): (1) reproducira li `Izvor ∈ {Racun,Cash}`
    `Saldo kontrola` (21/31 u cent) · (2) transfer jednom ili dvaput · (3) raspodjela „planiranog"
    po kantama i smjerovima. **Sve OQ (1–6) zatvorene ⇒ specifikacija spremna.**
+   ➡ **✅ IZVRŠENO 2026-08-12 — v. zasebnu sekciju „S107x Faza 1a" niže.** Ishod: (1) pravilo
+   potvrđeno ali **mjeri se pomak, ne razina** (usporedba sa `Saldo kontrola` nije bila
+   izvediva — lanac razbijen sortom); (2) **dvaput**; (3) **neprovjerljivo** na ovim podacima.
 
 **Done 2026-08-12 (S107w — ručni testovi T-S107w-4…9 ZAVRŠENI + 2 sitna nalaza; testovi:
 `Claude-temp_R/test-sessions/S107w_tests.md`):**
@@ -1167,6 +1171,43 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
 5. **Puni regresijski set 28/28 PASS** (E2, E3, E4×3, E5×5, E6×3, E14×2, S104_delete_bug,
    S104_parent_event, S104_import_progress, S107_row_hash_guard×3, S107b×2,
    S107w_delete_column×3) — spreman za PROD kad Saša zatraži deploy.
+
+### S107x Faza 1a — model salda DOKAZAN u Pythonu (2026-08-12; alat + nalazi, NEMA app koda)
+
+**Alat:** `data-prep_tools/Financije/verify_saldo_model.py` (READ-ONLY nad Reviewom, nema
+`.save()`; `--rows` detalj, `--nalazi` izvoz loših redaka).
+**Nalazi:** `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` + `data-prep_data/Financije/saldo_model_nalazi.tsv`.
+**⚠ Pročitati oboje prije pisanja RPC-a** — mjerenje je promijenilo tri stvari u specu.
+
+1. **§2.10 POTVRĐENO:** `Izvor ∈ {Racun, Cash}` reproducira **bankovni pomak u 17/30 mjeseci
+   u cent**; naivni zbroj po `Racun`u u **0/30**. Bruto dvostruko brojanje **56.894 €** (ZABA),
+   **81.591 €** (RF). Formula ide u RPC kakva jest.
+2. **⚠ Traženi test „isti popis od 7" NIJE bio izvediv — i to je nalaz.** `Saldo kontrola`
+   uspoređuje *razinu* Kokinog ručnog `Stanje` s bankom, a taj lanac je razbijen sortiranjem
+   Reviewa po `event_date` (S107i): **969 puknuća od 2.564**. Usporedba razine mjerila bi
+   artefakt sortiranja. Zato se mjeri **pomak protiv banke** (neovisan o sidru — jedna rana
+   greška ne razmazuje se kroz 31 mjesec). Presjek s onih 7 je samo `2026-05`, jer su to
+   različite veličine. **➡ Potvrđuje OQ-5: `Stanje` nije istina, prestaje se pisati.**
+3. **§2.14 ODGOVORENO — transfer je zapisan DVAPUT** (90,6 % **iznosa**; 23.789 € od 26.270 €)
+   ⇒ oba salda točna. Uvjet: prvo razvrstati po ulozi — naplata kartice (108), bankomat (78),
+   „druga osoba" (38) **po definiciji nemaju** protupartiju; samo `izmedju racuna` (73) smije.
+   ⚠ Udio po komadima (42,5 %) vodi u suprotan zaključak od udjela po iznosu.
+4. **§2.13 (tri kante) ⏸ NEPROVJERLJIVO** — `Planiran` ima 15 redaka i svih 15 je dospjelo;
+   buduće rate u Reviewu **ne postoje kao retci** (generira ih rata modal nakon importa).
+   **Ne smatrati potvrđenim do prvog importa.** Dobra vijest: od 629 `Rate?=DA` samo 11 je
+   `Planiran` ⇒ povijesni uvoz ne nosi davno naplaćene rate kao planirane.
+5. **13 rezidualnih mjeseci ⇒ `✓/Δ` čip će pokazivati Δ i kad je model točan.** To je
+   **potvrda dizajna §2.11**, ne greška — model se **ne smije ugađati** da Δ nestane.
+6. **115 označenih loših redaka u 7 kategorija** (TSV, filtriraj po `sifra`):
+   `NAPLATA<KUPNJA` 28 (naplata prije kupnje — nemoguće), `TRANSFER-BEZ-PARA` 42 (labela;
+   **popraviti prije `breakdown` pločice, ne prije `balance_by_group`** — saldo ne diraju),
+   `BANKA-NE-VIDI` 10, `DUPLI-IZVOR` 12, `OBJE-KOLONE` 3 (S107r §10b), `BEZ-IZNOSA` 4,
+   `PLANIRAN-DOSPIO` 16 (po dizajnu §2.5a). Imenovani za ispravak: Mirovina+Triglav krivo
+   datirani (2.385,65 seli iz 2025-01 u 2025-02), Anjina rata 72/96 dvaput (Kokinih 450 +
+   bankovni split 400+50), Allianz Lacetti 2024-10, dvije Mirovine 2024-07.
+7. **⚠ RPC ide na `sql/035_area_group_agg.sql`** — `034` je zauzeo `034_s107w_test_area.sql`.
+8. **Zamka:** ime skripte ne smije biti ime stdlib modula — `inspect.py` je srušio `openpyxl`
+   (`partially initialized module`, jer `numpy` radi `import inspect`).
 
 ### S108+: Intelligence layer (success criteria)
 
