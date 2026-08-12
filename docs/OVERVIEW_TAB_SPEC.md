@@ -233,21 +233,35 @@ cijele `event_attributes`** (BUG-S103-ANYATTR).
 
 ## 2.5 Faze
 
-**Faza 1a — dokaz modela salda u Pythonu (XS), PRIJE koda.** Cijela pločica stoji na tome da je
-broj točan, a to se dokazuje nad 4.996 stvarnih redaka bez ijednog reda TypeScripta. **Tri
-provjere:**
+**Faza 1a — dokaz modela salda u Pythonu (XS), PRIJE koda. ✅ IZVRŠENO 2026-08-12.**
+Alat: `data-prep_tools/Financije/verify_saldo_model.py` (READ-ONLY nad Reviewom).
+Puni nalazi: `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` + `saldo_model_nalazi.tsv`.
 
-1. **Reproducira li `Izvor ∈ {Racun, Cash}` (§2.10) `Saldo kontrola` sheet?** — tamo je nakon
-   S107k ostalo **7 razlika** (od 10; sve ostalo balansira u cent). Ista formula mora dati iste
-   brojke, i **isti popis od 7** — ni manje ni više. Novo neslaganje = model je kriv;
-   nestalo neslaganje = model tiho krije pravu razliku.
-2. **Je li interni transfer zapisan jednom ili dvaput?** (§2.14) — ako jednom, jedan račun je
-   kriv za cijeli iznos i model treba dopunu.
-3. **Koliko „planirano" ostaje po kanti** (§2.13) — dospjelo / uskoro / kasnije, oba smjera.
-   Provjera zdravog razuma: ako je „dospjelo" velik broj, znači da povijesni uvoz nosi rate
-   koje su davno naplaćene a stoje kao `Planiran`.
+1. **Pravilo `Izvor ∈ {Racun, Cash}` (§2.10) ✅ POTVRĐENO.** Reproducira **bankovni pomak u
+   17/30 mjeseci u cent**; naivni zbroj po `Racun`u u **0/30**. Bruto dvostruko brojanje:
+   56.894 € (ZABA), 81.591 € (RF).
+   ⚠ **Traženi test „isti popis od 7" pokazao se neizvedivim, i to je nalaz.** `Saldo kontrola`
+   uspoređuje *razinu* Kokinog ručnog `Stanje` s bankom, a taj se stupac u ovom fileu ne može
+   hodati: Review je presortiran po `event_date` (S107i), pa lanac puca na **969 od 2.564**
+   mjesta. Usporedba razine mjerila bi artefakt sortiranja. Zato se mjeri **pomak protiv banke**
+   (neovisan o sidru). Presjek s onih 7 je samo `2026-05` — očekivano, jer su to različite
+   veličine. **➡ Potvrđuje OQ-5:** `Stanje` nije upotrebljiv kao istina, prestaje se pisati.
+2. **Transfer ✅ zapisan DVAPUT** — 90,6 % *iznosa* međuračunskih transfera je dvostrano
+   (23.789 € od 26.270 €) ⇒ oba salda točna. Prije mjerenja treba razvrstati po ulozi: naplata
+   kartice (108), bankomat (78) i „druga osoba" (38) **nemaju** protupartiju po definiciji.
+   ⚠ Mjerodavan je udio po iznosu, ne po komadima (42,5 % kom. vodi u suprotan zaključak).
+3. **§2.13 (tri kante) ⏸ NEPROVJERLJIVO na ovim podacima.** `Planiran` ima 15 redaka i svih 15
+   je dospjelo; `Uskoro`/`Kasnije` prazne — jer buduće rate u Reviewu **ne postoje kao retci**
+   (generira ih rata modal nakon importa). **Ne smatrati potvrđenim do prvog importa.**
+   Dobra vijest: od 629 `Rate?=DA` samo 11 stoji kao `Planiran` ⇒ povijesni uvoz **ne** nosi
+   davno naplaćene rate kao planirane.
 
-**Faza 1 — `balance_by_group` (S–M).** `sql/034_area_group_agg.sql` + hook + jedna pločica
+**Posljedica za Fazu 1:** 13 rezidualnih mjeseci znači da će `✓/Δ` čip pokazivati Δ i kad je
+model točan. To je **potvrda dizajna §2.11**, ne greška — Δ je signal da nešto fali/je dvaput/je
+krivo, i već je izbacio 4 konkretna slučaja (v. NALAZI §3.1). Model se **ne smije** „ugađati" da
+Δ nestane.
+
+**Faza 1 — `balance_by_group` (S–M).** `sql/035_area_group_agg.sql` (⚠ ne 034 — zauzeo ga `034_s107w_test_area.sql`) + hook + jedna pločica
 prikazana iznad Activities liste za Financije. Konfiguracija se piše u obliku iz §2.3 **već
 sad**, čak i ako je zasad hardkodirana za jednu Areu. Ovo je F1 fix.
 
@@ -383,11 +397,15 @@ saldo je **`Izvor`**:
 Skupna naplata je `Izvor = Racun` pa uđe u izvršeno u trenutku kad je banka stvarno knjižila —
 točno kako se ponaša i na izvatku.
 
-**Verifikacija PRIJE koda (korak 1a):** `Saldo kontrola` sheet već uspoređuje Kokino stanje na
-datum zatvaranja izvatka s bankovnim `NOVO STANJE` — nakon S107k ostalo je **7 razlika od 31
-mjeseca**, sve ostalo balansira u cent.
-Isto pravilo se pusti u Pythonu nad Reviewom i usporedi s tim brojkama. ⇒ pravilo se dokazuje
-na **4.996 stvarnih redaka prije nego RPC uopće nastane**. Ako padne, saznali smo besplatno.
+**Verifikacija PRIJE koda (korak 1a): ✅ IZVRŠENA 2026-08-12 — pravilo POTVRĐENO.**
+Mjereno je nad 4.996 stvarnih redaka, prije nego je RPC nastao: model reproducira **bankovni
+pomak u 17/30 mjeseci u cent**, naivni zbroj po `Racun`u u **0/30**. Detalji i zamke u
+`data-prep_tools/Financije/SALDO_MODEL_NALAZI.md`.
+
+⚠ **Mjeri se pomak, ne razina.** Prvotna zamisao (usporediti izračunatu razinu s Kokinim
+`Stanje` stupcem preko `Saldo kontrola`) ne radi jer je taj lanac razbijen sortiranjem Reviewa
+po `event_date` — 969 puknuća od 2.564. Pomak protiv bankovnog `NOVO STANJE` je neovisan o
+sidru, pa jedna rana greška ne razmazuje se kroz svih 31 mjesec.
 
 ⚠ Ovo je i test za `p_filter_slug` iz §2.4: filtar pločice nije `status`, nego **`izvorplacanja`**
 (uz `status` za planirano). Konfiguracija iz §2.3 to podnosi bez promjene oblika.
@@ -475,12 +493,18 @@ Drugi problem od Visa lumpa (§2.10), ne isti:
 Isti redak dakle ulazi u jednu pločicu a ne u drugu — normalno, ali mora biti zapisano da se ne
 „popravi" kasnije kao nedosljednost.
 
-**⚠ Empirijsko pitanje za Fazu 1a:** je li interni transfer u podacima zapisan **jednom ili
-dvaput**?
-- **dvaput** (isplata na jednom računu, uplata na drugom) → oba salda točna, ništa se ne dupla
-- **jednom** → jedan račun je kriv **za cijeli iznos**
+**⚠ Empirijsko pitanje za Fazu 1a: ✅ ODGOVORENO 2026-08-12 — zapisan je DVAPUT.**
+**90,6 % iznosa** međuračunskih transfera ima protupartiju na drugom računu (23.789 € od
+26.270 €) ⇒ oba salda točna, ništa se ne dupla.
 
-Ne da se pogoditi iz koda — mjeri se nad Reviewom.
+Uvjet za ispravno mjerenje: `Transfer` retke treba **prvo razvrstati po ulozi**, jer većina ih
+po definiciji nema protupartiju — naplata kartice (108 redaka, druga strana je kartica),
+bankomat (78, druga strana je novčanik) i „druga osoba" (38, tuđi račun). Samo `izmedju racuna`
+(73) smije imati par.
+
+Preostalih 42 jednostranih (Σ 2.481 €) su **pogrešna labela** — idu Seki, Neni, Revolutu, APN-u,
+a označeni su `izmedju racuna`. Saldo ne kvare, ali po gornjoj tablici ispadaju iz razreza po
+Tipu ⇒ **popraviti prije `breakdown` pločice**, ne prije `balance_by_group`.
 
 ## 2.8 Što ovo NE mijenja
 
