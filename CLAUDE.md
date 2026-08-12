@@ -1242,6 +1242,35 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
 - **`verify_saldo_model.py --nalazi` sad piše i `.xlsx`** — `.tsv` nije registriran tip na
   Windowsu (dvoklik nudi „Select an app"), a ostatak pipelinea je ionako xlsx.
 
+**`make_pitanja_koka.py` (novo) — sheet `Pitanja za Koku` u Review workbooku.** 14 otvorenih
+pitanja skupljenih na jedno mjesto, u obliku na koji se odgovara. Obrazac preuzet od
+`Nematchano_v3` (S107k), koji je s `Verdikt` dropdownom otišao 41 → 0: kontekst u retku,
+jedna kolona za odluku, `source_key` za kasniju programsku primjenu.
+**7 pitanja na razini retka** (konkretna transakcija koju prepozna — idu PRVA jer lakše kreće)
++ **7 na razini mjeseca** (`Saldo kontrola` razlike; nema retka za pokazati, pita se sjećanje).
+⚠ Ključna kolona je **`U čemu je nejasnoća`** — mora reći ŠTO nije bilo moguće zaključiti i
+ZAŠTO; „provjeri redak 2787" nije pitanje na koje se može odgovoriti.
+⚠ Skripta je **idempotentna** ⇒ ponovni run **briše popunjene odgovore**; `--harvest` još nije
+napisan (za 14 redaka je ručna primjena vjerojatno brža).
+**Trag nađen usput:** ona dva `±49` iz `Saldo kontrola` točno su iznos mjesečne Multisport
+uplate, a Multisport **nedostaje u 4 mjeseca** (07/2023, 11/2023, 06/2024, 03/2025) — jedan
+Kokin odgovor vjerojatno pokriva oba pitanja.
+
+**Kontekst koji određuje dizajn (Saša, 2026-08-12):** radi se u **TEST bazi**, Koka **još ne
+otvara Sašine fileove**. Prioritet je (a) **točnost podataka** kao uvjet za PROD i (b) da ona
+razumije gdje su greške — **ne** izgradnja njenog alata, koji dolazi tek nakon odluke o
+cutoveru (spec, korak 3). Zato je `Pitanja za Koku` namjerno **malo kolona i čitljivo**, a ne
+bogat export s njenim originalnim podacima. Ta ideja (app export + kolone `Sheet`/`row_no`/
+originalni iznosi + `Nalaz`) ostaje za kasnije i **traži manifest** `source_key ↔
+(event_date, session_start)` iz generatora — `source_key` NIJE u `ATTRS` pa nakon importa ne
+postoji veza natrag na redak Reviewa; bez manifesta bi spajanje bilo fuzzy match po
+datumu+iznosu, tj. povratak na `Nematchano_v*` bol.
+
+**⚠ Redoslijed ispravljen (Saša):** `Pitanja za Koku` → ispravci → **batch 2025** → Faza 1.
+Prvotni prijedlog (generiraj batch pa izostavi sporne retke) je odbačen jer izostavljen redak
+**ne može** natrag novim batchom (sudar `session_start` za isti dan, S107v) nego samo ručno
+kroz app. Ispraviti pa generirati jednom je jeftinije.
+
 ### S108+: Intelligence layer (success criteria)
 
 ---

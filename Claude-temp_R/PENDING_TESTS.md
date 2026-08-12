@@ -3,9 +3,32 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107w ručni testovi ZAVRŠENI (2026-08-12) — svih 6 prošlo, puni regresijski set 28/28 PASS, spreman za PROD kad Saša zatraži deploy.
-**Otvoreno: T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+**Zadnji update:** S107x (2026-08-12) — Faza 1a model salda DOKAZAN, popravci podataka izvršeni, sheet `Pitanja za Koku` pripremljen. **PROD deploy izvršen** (`main` = `7239c8d`).
+**Otvoreno: T-S107x-1…5, T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Detalji S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+
+---
+
+## S107x — Faza 1a: model salda dokazan + popravci podataka + `Pitanja za Koku`
+
+**Nema promjena u `src/`** — Python data-prep + dokumentacija. Model salda iz
+`OVERVIEW_TAB_SPEC.md` §2.10 dokazan nad 4.996 stvarnih redaka **prije** pisanja RPC-a:
+pravilo `Izvor ∈ {Racun, Cash}` reproducira bankovni pomak u **17/30 mjeseci u cent**,
+naivni zbroj po `Racun`u u **0/30**. Usput otkriveno i popravljeno 69 redaka podataka.
+
+⚠ Mjeri se **pomak** protiv banke, ne razina — Kokin `Stanje` lanac je razbijen sortiranjem
+Reviewa po `event_date` (969 puknuća od 2.564), pa bi usporedba razine mjerila artefakt sorta.
+
+| ID | Test | Status |
+| --- | --- | --- |
+| P-1…P-7 | Programske kontrole (model 17/30, Review netaknut u fazi mjerenja, 49+80 ćelija, Σ u cent, 115 → 69 označenih) | ✅ (programski) |
+| T-S107x-1 | ⭐ `Pitanja za Koku` — 14 redaka, dropdown radi, tekst pitanja čitljiv naglas | ⬜ |
+| T-S107x-2 | `Datum naplate` popravak — redovi 3494 i 3931; nema drugih „nemogućih" osim 4997 | ⬜ |
+| T-S107x-3 | KEKS/trener — 20 redaka u `Zdravlje\|Sport_Sasa`, ona 2 netaknuta | ⬜ |
+| T-S107x-4 | ⏸ Odluka o 8 „prekasnih" redaka (traži sud, nije test) | ⬜ |
+| T-S107x-5 | Sjedenje s Kokom — popuni `Odluka`; ⚠ ne pokretati generator ponovo (briše odgovore) | ⬜ |
+
+**Nakon T-S107x-5: batch 2025** (jednom, bez izuzetaka), pa dogovor o Fazi 1.
 
 ---
 
