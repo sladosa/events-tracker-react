@@ -53,24 +53,38 @@ prošlo. Moje dodatke deploy ne dira (Python alat i dokumentacija; Netlify gradi
 Jedina stvar koju bih rekao naglas: **ovo je prvi put da Excel može brisati zapise na PROD-u.**
 Zaštita postoji (zaseban popis + zasebna kvačica), ali neka „da" bude svjesno.
 
-### B. 27 redaka s krivim datumom naplate — popraviti PRIJE batcha 2025
+### B. 28 redaka s krivim datumom naplate — popraviti PRIJE batcha 2025
 
-Ovo je najkonkretniji nalaz. **Jedan bug, jedan uzrok:**
+Simptom: **`Datum naplate` je PRIJE datuma kupnje** — naplaćeno prije nego kupljeno, nemoguće.
+Primjer: red 3494, kupnja **28.06.2025.**, naplata **11.06.2025.** (trebalo bi 11.07.2025.).
 
-> Kupovina Mastercardom **poslije 11. u mjesecu** dobila je `Datum naplate` = 11. **istog**
-> mjeseca umjesto 11. **sljedećeg**. Dakle naplaćeno prije nego kupljeno — nemoguće.
+**Koji je datum kriv — riješeno dokazom, ne pogledom:** svih 27 (od 28) ima popunjen
+`Izvod opis`, dakle matchani su na bankovnu transakciju i `event_date` im je sinkroniziran na
+bankovni datum (`date_accuracy.py`, S107k). ⇒ **datum kupnje je bankovno potvrđen, kriva je
+naplata.** 28. je red 4997, poznati loši redak iz S107v.
 
-Primjer: red 3494, kupnja **28.06.2025.**, naplata **11.06.2025.** Trebalo bi 11.07.2025.
-Svih 27 su Mastercard, **26 ih je u 2025.** — a 2025. je **sljedeći batch za uvoz**.
+**⚠ Nije sustavni bug pravila.** Provjereno koliko *ostalih* MC kupnji poslije 11. ima ispravnu
+naplatu:
 
-Zašto sad, a ne poslije: kad redak jednom uđe u bazu, ne može se popraviti novim batchom
+| tok | ukupno MC | kriva naplata | kupnja >11. **ispravna** |
+| --- | --- | --- | --- |
+| `koka EU` | 1653 | 28 | **1096** |
+| `Konsolidacija` | 88 | 0 | 68 |
+
+Krivih je **28 od 1124**, u dva uska grozda: **3 retka 28.06.2025.** i **24 retka
+16.–31.10.2025.** Pravilo dakle radi; ovo su zaostali.
+
+**Popravak:** ne dirati pravilo u `kartice_datum_naplate.py`, nego **preračunati tih 28** —
+nađi `Datum naplate < event_date`, dodijeli 11. sljedećeg mjeseca. Prije pisanja pogledati u
+skripti zašto su baš lipanj i listopad 2025. ispali, da se ne ponovi kod sljedećeg batcha.
+Backup prije pisanja.
+
+**Zašto sad, a ne poslije:** kad redak jednom uđe u bazu, ne može se popraviti novim batchom
 (sudario bi se `session_start` s već uvezenim danom, S107v). Popravak sad je izmjena u Reviewu;
-popravak poslije je ručni rad kroz app.
+popravak poslije je ručni rad kroz app. **26 od 28 je u 2025.** — a 2025. je sljedeći batch.
 
-**Što trebam od tebe:** potvrdi da je dijagnoza točna (pogledaj par redaka u TSV-u) — je li
-kriva **naplata**, ili je kriv **datum kupnje**? Ja mislim naplata, jer je uzorak savršeno
-pravilan (svih 27 su kupnje poslije 11., svima je naplata 11. istog mjeseca). Ako potvrdiš,
-popravak je nekoliko linija u `kartice_datum_naplate.py` + ponovni prolaz.
+**Pregled (ako želiš vidjeti sam):** `data-prep_data/Financije/saldo_model_nalazi.tsv`,
+filtar `sifra = NAPLATA<KUPNJA`; kolona `red` je broj retka u Review sheetu.
 
 ### C. Ide li Faza 1 (pločica salda) sad, ili prvo batch 2025
 
@@ -135,8 +149,10 @@ Alat `data-prep_tools/Financije/verify_saldo_model.py` (READ-ONLY, nema `.save()
 1. **PROD deploy** — ⚠ samo na izričit Sašin zahtjev (Netlify troši kredite). Slijed:
    `git checkout main && git merge test-branch --no-edit && git push origin main`, pa
    **sync back** na `test-branch` (bez toga `test-branch` zaostaje).
-2. **Fix `kartice_datum_naplate.py`** — MC kupnja poslije 11. mora dobiti 11. *sljedećeg*
-   mjeseca. 27 redaka, 26 u 2025. Napraviti **prije** batcha 2025. Backup prije pisanja.
+2. **Preračunati `Datum naplate` na 28 zaostalih redaka** (`Datum naplate < event_date` ⇒
+   11. sljedećeg mjeseca). **Pravilo NE dirati** — 1096 istih takvih redaka je točno, krivih je
+   28 od 1124, u grozdovima 06/2025 i 10/2025. Prvo pogledati u `kartice_datum_naplate.py`
+   zašto su baš ti ispali. 26 od 28 je u 2025. ⇒ **prije batcha 2025.** Backup prije pisanja.
 3. **Batch 2025** — `--to 2025-12-31`, granica **uvijek na danu** (inače `session_start`
    `09:00 + n` sudara s već uvezenim danom).
 4. **Faza 1 — `sql/035_area_group_agg.sql`** (⚠ **ne 034**, zauzeo ga `034_s107w_test_area.sql`)
