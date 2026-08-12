@@ -103,11 +103,29 @@ filtar `sifra = NAPLATA<KUPNJA`; kolona `red` je broj retka u Review sheetu.
 
 </details>
 
-### C. ✅ ODLUČENO — prvo batch 2025, pa Faza 1
+### C. ✅ ODLUČENO — Pitanja za Koku → ispravci → batch 2025 → Faza 1
 
-Saša, 2026-08-12. Popravak podataka (B) je gotov, pa je **batch 2025 sljedeći korak**,
-a `balance_by_group` pločica (Faza 1) dolazi nakon njega — s više podataka je i zanimljivija
-Koki kad dođe do koraka 3 (proba na mobitelu).
+Saša, 2026-08-12. **Redoslijed je ispravljen na Sašin prijedlog:** pitanja se rješavaju
+PRIJE generiranja batcha, ne poslije. Razlog: izostavljen redak se ne može vratiti novim
+batchom (sudar `session_start` za isti dan, S107v) nego samo ručno kroz app — pa je jeftinije
+ispraviti pa generirati jednom.
+
+**Sheet `Pitanja za Koku` je pripremljen** (`make_pitanja_koka.py`, u Review workbooku,
+odmah iza Taksonomije). 14 pitanja: **7 na razini retka** (konkretna transakcija koju
+prepozna — idu prva) i **7 na razini mjeseca** (`Saldo kontrola` razlike, pita se sjećanje).
+
+Ključna kolona je **`U čemu je nejasnoća`** — govori ŠTO nije bilo moguće zaključiti i ZAŠTO.
+Kolona `Odluka` je dropdown (`točno je` / `datum je kriv` / `iznos je kriv` /
+`duplikat — obriši` / `nedostaje zapis` / `ne sjećam se`) + slobodna `Njena napomena`.
+
+⚠ **`--harvest` još NIJE napisan** — kad Koka popuni, odgovori se primjenjuju ručno ili
+se prvo napiše harvest (uzor: `consolidate_review.py --harvest`, koji je v3 odveo 41 → 0).
+⚠ Skripta je idempotentna: ponovni run **briše popunjene odgovore**. Prvo harvestaj.
+
+**Trag za ona dva `±49`:** mjesečna Multisport uplata od 49 € nedostaje u 4 mjeseca —
+07/2023, 11/2023, 06/2024, 03/2025. Jedan njen odgovor vjerojatno pokriva oba pitanja.
+
+Nakon toga: **batch 2025** (jednom, bez izuzetaka), pa dogovor o **Fazi 1**.
 
 ## Što ostaje za Koku (nepromijenjeno)
 
