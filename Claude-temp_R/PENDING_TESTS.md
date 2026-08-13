@@ -3,9 +3,30 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107x (2026-08-12) — Faza 1a model salda DOKAZAN, popravci podataka izvršeni, sheet `Pitanja za Koku` pripremljen. **PROD deploy izvršen** (`main` = `7239c8d`).
-**Otvoreno: T-S107x-1…5, T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+**Zadnji update:** S107y (2026-08-13) — `Pitanja za Koku` 14/14 odgovoreno, popravci primijenjeni, batch 2025 (1473 eventa) uvezen u TEST. Dogovor o Fazi 1 odgođen za sljedeći session.
+**Otvoreno: T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Detalji S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+
+---
+
+## S107y — `Pitanja za Koku` odgovoreno + popravci + batch 2025 uvezen
+
+Sjedenje s Kokom: svih 14 pitanja odgovoreno. `fix_pitanja_koka.py` (novo) primijenio 3
+popravka datuma (red 4996, redovi 2787+2788) i 3 brisanja (redovi 4997, 3609, 2004) na pravi
+Review — verifikacija po `source_key`+iznos+datum prije pisanja, `.pre-pitanja-*` backup,
+kontrola čista (Isplata delta 21,88 €, Uplata delta 1608,99 €, samo 3 retka promijenjena).
+Zatim `make_financije_import.py --from 2025-01-01 --to 2025-12-31` → 1473 redaka → uvezeno u
+TEST (Financije_all): **1473 created / 0 updated**. Spot-check OK (07.02.2025 Mirovina+Triglav
+prisutni, `Rate?=TRUE` vidljiv, ukupno 2220 = 1473+747 iz S107v batcha).
+
+| ID | Test | Status |
+| --- | --- | --- |
+| P-1…P-7 | Programske kontrole (`fix_pitanja_koka.py` verifikacija, Σ u cent, samo 3 retka dirnuta, 0 dodanih) | ✅ (programski) |
+| T-S107y-1 | ⭐ Import batcha 2025 u TEST app — 1473 new / 0 modify | ✅ (2026-08-13) |
+| T-S107y-2 | Spot-check: 07.02.2025 Mirovina+Triglav, `Rate?=TRUE`, ukupno 2220 | ✅ (2026-08-13) |
+
+**Sljedeće:** dogovor o Fazi 1 (`sql/035_area_group_agg.sql`, RPC `balance_by_group`) — sljedeći
+session. Batch 2024/2023 se ne priprema unaprijed (vetting je usko grlo, ne generiranje).
 
 ---
 
@@ -22,13 +43,13 @@ Reviewa po `event_date` (969 puknuća od 2.564), pa bi usporedba razine mjerila 
 | ID | Test | Status |
 | --- | --- | --- |
 | P-1…P-7 | Programske kontrole (model 17/30, Review netaknut u fazi mjerenja, 49+80 ćelija, Σ u cent, 115 → 69 označenih) | ✅ (programski) |
-| T-S107x-1 | ⭐ `Pitanja za Koku` — 14 redaka, dropdown radi, tekst pitanja čitljiv naglas | ⬜ |
-| T-S107x-2 | `Datum naplate` popravak — redovi 3494 i 3931; nema drugih „nemogućih" osim 4997 | ⬜ |
-| T-S107x-3 | KEKS/trener — 20 redaka u `Zdravlje\|Sport_Sasa`, ona 2 netaknuta | ⬜ |
-| T-S107x-4 | ⏸ Odluka o 8 „prekasnih" redaka (traži sud, nije test) | ⬜ |
-| T-S107x-5 | Sjedenje s Kokom — popuni `Odluka`; ⚠ ne pokretati generator ponovo (briše odgovore) | ⬜ |
+| T-S107x-1 | ⭐ `Pitanja za Koku` — 14 redaka, dropdown radi, tekst pitanja čitljiv naglas | ✅ (2026-08-13, korišteno uživo s Kokom) |
+| T-S107x-2 | `Datum naplate` popravak — redovi 3494 i 3931; nema drugih „nemogućih" osim 4997 | ✅ (2026-08-12) |
+| T-S107x-3 | KEKS/trener — 20 redaka u `Zdravlje\|Sport_Sasa`, ona 2 netaknuta | ✅ (2026-08-12) |
+| T-S107x-4 | ⏸ Odluka o 8 „prekasnih" redaka (traži sud, nije test) | ⬜ (backlog, i dalje otvoreno) |
+| T-S107x-5 | Sjedenje s Kokom — popuni `Odluka`; ⚠ ne pokretati generator ponovo (briše odgovore) | ✅ → S107y |
 
-**Nakon T-S107x-5: batch 2025** (jednom, bez izuzetaka), pa dogovor o Fazi 1.
+**Nakon T-S107x-5: batch 2025** ✅ **IZVRŠENO — v. S107y iznad.**
 
 ---
 

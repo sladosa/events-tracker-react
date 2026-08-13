@@ -1013,27 +1013,23 @@ testovi: `Claude-temp_R/test-sessions/S107w_tests.md`):**
    komentar i `session_start` — ostatak prekinutog pokušaja ne izazove grešku nego **koliziju**,
    Apply postane „All skipped" i to izgleda kao pad featurea; sad cleanup **po prefiksu**.
 
-**Sljedeći koraci — ⚠ ZASTARJELO od S107m, prekrojeno S107q/S107s, v. `NEXT_SESSION_PROMPT.md`:**
-1. ~~Fix `parse_zaba_racun`~~ ✅ S107j. ~~Konsolidacija~~ ✅ S107j. ~~Nematchano_v3 pass + date-accuracy
-   + Datum naplate~~ ✅ S107k (v3 = 0). **Preostalo:** `Saldo kontrola` 7 razlika → pitanja za Koku
-   (2026-01 +359, 2024-09 +149, 2×±49 multisport); 2 PRESKOČENA bankomat reda čekaju Kokin odgovor o 700 €.
-1b. **Red 2115 (LJEKARNA OREBIC)** — ručno promijeniti Medical_Sasa → Medical_Koka (Kokin račun).
-1c. **N/A petlja (`suggest_candidates.py`) — PRIORITET 2026** (85 preostalo, 68 s tekstom) pa PROD,
-    zatim 2025/2024 (§2i). Isti obrazac kao S107l krugovi: suggest → Saša popuni → Claude pregleda
-    (usporedi Primjer opis sa stvarnim Review retcima PRIJE harvesta, provjeri Taksonomija parove i
-    person/account konzistentnost) → harvest → apply_rules --dry → potvrda → pravi run.
-2. **Pravila iterativno sa Sašom — sljedeći krug (Sonnet OK).** Preostali kandidati
-   (ENRICH_PLAN §2e): `paypal` ostatak, `spotify` ostatak, porez grupa (porez/prirez/
-   dohodak — treba nov Tip?), `leasing`, `bmove` (nepoznat merchant), `keks pay`,
-   `zagrebparking`. Svaki treba Sašinu odluku o Tip/Podtip prije pisanja pravila.
-3. Koka: 700€ isplata 2025-11-26 (nije na izvodu) + odluka što s preostalom N/A masom;
-   Saša/Koka review `Financije_review_20260710_1448.xlsx`
-4. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip); T-S107f-3
+**Sljedeći koraci (stanje 2026-08-13, nakon S107y):**
+1. **Dogovor o Fazi 1** (RPC `balance_by_group`, `sql/035_area_group_agg.sql` — ⚠ ne 034,
+   zauzeo ga `034_s107w_test_area.sql`) — sljedeći session, Sašin zahtjev.
+2. **Batch 2024, pa 2023** — generirati **tek nakon** Pitanja-za-Koku vetting prolaska za
+   svaki period (isti obrazac kao 2025/S107y); ne pripremati unaprijed (S107y odluka —
+   vetting je usko grlo, ne generiranje).
+3. ~~Saldo kontrola 7 razlika~~ ✅ S107y (#8–14: "ne sjećam se", ostaje rezidual, dizajn
+   dopušta). ~~700€ bankomat~~ ✅ S107y (#3: točno je, zbroj podizanja).
+3b. **Red 2115 (LJEKARNA OREBIC)** — ručno promijeniti Medical_Sasa → Medical_Koka (Kokin račun).
+3c. N/A petlja (`suggest_candidates.py`) za 2024/2023 — isti obrazac kao S107l krugovi,
+    radi se usput s vettingom prije svakog batcha.
+4. **Pravila iterativno sa Sašom.** Preostali kandidati (ENRICH_PLAN §2e): `paypal` ostatak,
+   `spotify` ostatak, porez grupa, `leasing`, `bmove`, `keks pay`, `zagrebparking`.
+5. Ručni testovi T-S107b-3..6 (Add prefill UX + Automations sheet roundtrip); T-S107f-3
    (UI fix shortcut/skriveni atributi, PROD/mobitel — još netestirano)
-5. Generiranje app-import Excela iz odobrenog reviewa (period filter `--from/--to`) + struktura `Financije_all`;
-   Leaf comment definira import generator kroz CommentTemplate (`{racun}/{tip}/{podtip}/{napomena}`);
-   Visa `Datum naplate` puni generator (RF lump datumi ili `next:N`)
-6. Import pod **Kokinim accountom** (D6) + spot-check; stare Financije aree obrisati NA KRAJU (backup!)
+6. Import pod **Kokinim accountom** (D6) nakon svih batcheva + spot-check; stare Financije
+   aree obrisati NA KRAJU (backup!)
 7. Diary archaeology (non-blocking)
 8. Split-workbook (Taksonomija/Pravila/Preimenovanja → zaseban file) — opcionalno, kad Saša poželi
 
@@ -1255,6 +1251,37 @@ napisan (za 14 redaka je ručna primjena vjerojatno brža).
 **Trag nađen usput:** ona dva `±49` iz `Saldo kontrola` točno su iznos mjesečne Multisport
 uplate, a Multisport **nedostaje u 4 mjeseca** (07/2023, 11/2023, 06/2024, 03/2025) — jedan
 Kokin odgovor vjerojatno pokriva oba pitanja.
+
+**Done 2026-08-13 (S107y — `Pitanja za Koku` odgovoreno + popravci + batch 2025 uvezen;
+testovi: `Claude-temp_R/test-sessions/S107y_tests.md`):**
+1. **Sjedenje s Kokom — svih 14 pitanja odgovoreno.** #1 (red 4996 parking): datum kriv,
+   07.08.2026→07.07.2026. #2 (red 4997 MC 21,88): duplikat reda 4247, obriši. #3 (red 4101,
+   700€ bankomat): točno je, zbroj podizanja, bez izmjene. #4 (redovi 2787+2788, Mirovina+
+   Triglav): datum kriv → **07.02.2025** (pravi bankovni datum nađen u
+   `Izvodi_transakcije.xlsx`, ZABA_2025-02.pdf). #5 (red 3609 vs 3612+3613, Anja rata):
+   duplikat, 3609 obriši (3612/3613 već nose "72/96" u Napomeni). #6 (red 2368 Allianz):
+   točno je, gotovina. #7 (redovi 2001+2004, dvije Mirovine): 2004 duplikat, obriši.
+   #8–14 (Saldo kontrola mjesečne razlike): **ne rekonstruirati bankovne datume unatrag**
+   (Sašina odluka) — nema pouzdanog matcha za te mjesece, Kokini `event_date`/`Stanje`
+   ostaju izvor istine, rezidual je prihvatljiv (saldo na kraju već točan, dizajn to dopušta).
+2. **`fix_pitanja_koka.py` (novo)** — primijenio sve odgovore na pravi Review: verifikacija
+   po `source_key`+iznos+trenutni datum PRIJE ijedne izmjene (isti obrazac kao
+   `fix_duplikati_rata.py`), `--dry` pa pravi run. Rezultat: 3 datuma ispravljena, 3 retka
+   obrisana (4995→4992 podatkovnih redaka), 14 odgovora prepisano u `Pitanja za Koku` sheet
+   pravog Reviewa. Kontrola: Isplata delta 21,88 €, Uplata delta 1608,99 € (= 450+1158,99,
+   točno zbroj obrisanih), samo 3 retka dirnuta (isključivo `event_date`/`Datum naplate`/
+   `Alternativa / nap.`), 0 neočekivanih izmjena. Backup `.pre-pitanja-20260813_105537.xlsx`.
+3. **Odluka: ne pripremati batch 2024/2023 unaprijed.** Usko grlo je vetting (Pitanja-za-Koku
+   pass po periodu), ne generiranje — pre-generiran file bi zastario prije nego se stigne
+   uvesti (isti razlog zašto je 2025 trebao ispravke PRIJE generiranja, ne poslije).
+4. **Batch 2025 generiran i uvezen u TEST** — `make_financije_import.py --from 2025-01-01
+   --to 2025-12-31` → `Financije_all_import_20260813_110152.xlsx`, 1473 redaka, 351 dana,
+   max 16 tx/dan. 4 retka izostavljena (`Smjer=PROVJERI`, poznata odluka S107s). Import kroz
+   app UI (TEST, Financije_all): **1473 created / 0 updated**. Spot-check: 07.02.2025
+   Mirovina+Triglav prisutni (današnji fix), `Rate?=TRUE` vidljiv u exportu, ukupno u bazi
+   **2220** = 1473 (2025) + 747 (2026, S107v) — brojevi se poklapaju.
+5. **Sljedeće:** dogovor o **Fazi 1** (RPC `balance_by_group`, `sql/035_area_group_agg.sql`)
+   — odgođeno na Sašin zahtjev za sljedeći session.
 
 **Kontekst koji određuje dizajn (Saša, 2026-08-12):** radi se u **TEST bazi**, Koka **još ne
 otvara Sašine fileove**. Prioritet je (a) **točnost podataka** kao uvjet za PROD i (b) da ona

@@ -1,208 +1,93 @@
-# NEXT SESSION PROMPT — nakon S107w (testovi gotovi) + S107x Faza 1a (model dokazan)
+# NEXT SESSION PROMPT — nakon S107y (Pitanja za Koku + batch 2025)
 
-**Zadnje dvije sesije. PROD deploy izvršen 2026-08-12 (`main` = `7239c8d`).**
-
-| sesija | što | commit |
-| --- | --- | --- |
-| **S107w** (Sonnet) | ručni testovi T-S107w-4…9 ✅, **regresija 28/28 PASS** | `837a201` |
-| **S107x Faza 1a** (Opus) | model salda **dokazan** nad 4.996 redaka, prije ijednog reda koda | `d692791`, `8579bba` |
-
-**Trajni plan prelaska:** `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13**.
-
----
-
-# ŠTO PROČITATI PRIJE NEGO SE DOGOVORIMO
-
-Poredano po tome što otključava odluku. Ukupno ~30 min.
-
-| # | Što | Koliko | Zašto baš to |
-| --- | --- | --- | --- |
-| 1 | **Ovaj file, DIO 1** | 5 min | tri odluke koje čekaju tebe |
-| 2 | `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` — **§1 i §2** | 10 min | presuda + tri stvari koje su mi promijenile način mjerenja. §3 preskoči zasad. |
-| 3 | `data-prep_data/Financije/saldo_model_nalazi.xlsx` (⚠ **.xlsx**, ne .tsv — dvoklik) | 10 min | preostalih 69 označenih redaka, autofiltar na `sifra`. Ono što je bilo hitno (`NAPLATA<KUPNJA`) je **popravljeno** — v. §B |
-| 4 | `docs/OVERVIEW_TAB_SPEC.md` — **samo** „Faza 1a" u §2.5, plus §2.10 i §2.14 | 5 min | ta tri bloka su prepisana s rezultatima; ostatak si već pregledao |
-
-**Opcionalno, samo ako želiš još jednom prije PROD-a:** `Claude-temp_R/test-sessions/S107w_tests.md`
-(rezultati Sonnetove sesije) i `Claude-temp_R/PENDING_TESTS.md`.
-
-**Ne moraš čitati** `verify_saldo_model.py` — sve što iz njega slijedi je u NALAZI dokumentu.
+**Zadnja sesija: S107y (2026-08-13).** `test-branch` = `main` = `7239c8d` na kodu (nema promjena
+u `src/` od PROD deploya 2026-08-12); Python data-prep + jedan uvoz u TEST bazu su se dogodili.
 
 ---
 
 # DIO 1 — Jednostavnim rječnikom (za Sašu)
 
-## Što je novo
+## Što je gotovo
 
-**Model salda je dokazan.** Pravilo „saldo miče `Izvor`, ne `Racun`" reproducira **bankovni
-pomak u 17 od 30 mjeseci u cent**. Naivni zbroj (sve po računu) pogađa **0 od 30** — dakle to
-nije bilo „malo netočno", nego besmisleno. Formula može ravno u bazu.
+**Sve iz `Pitanja za Koku` odgovoreno** (14/14) i primijenjeno na Review:
+- 3 datuma ispravljena (parking 07.08→07.07.2026; Mirovina+Triglav 07.01→07.02.2025 — pravi
+  bankovni datum nađen u izvodima)
+- 3 duplikata obrisana (MC 21,88 red 4997, Anjina rata red 3609, druga Mirovina red 2004)
+- Ostatak (700€ bankomat, 6 mjesečnih "Saldo kontrola" razlika) ostaje kako jest — Koka se ne
+  sjeća, a saldo je danas ionako točan, pa se ne lovi unatrag
 
-**Transfer se piše dvaput** (90,6 % iznosa), pa su oba salda točna i ništa se ne dupla.
+**Batch 2025 uvezen u TEST** — 1473 zapisa, provjereno (spot-check prošao). Baza sad ima 2220
+zapisa (747 iz 2026 + 1473 iz 2025).
 
-**Jedno pitanje ostaje neodgovoreno**: raspodjela „planiranog" na dospjelo/uskoro/kasnije se na
-ovim podacima **ne može** provjeriti, jer buduće rate u Reviewu ne postoje kao retci — njih tek
-generira rata modal nakon uvoza. Nije rizik za pločicu salda, ali ne vodimo to kao potvrđeno.
+**Odluka:** batch 2024/2023 se NE priprema unaprijed — svaki period prvo prolazi kroz istu
+vrstu provjere s Kokom (kao danas), tek onda se generira i uvozi. Iskustvo s 2025 (gdje smo
+ispravke morali napraviti PRIJE generiranja, ne poslije, jer se uvezeni redak ne da lako
+popraviti) kaže da je to jeftinije nego popravljati poslije.
 
-## Odluke (sve tri zatvorene 2026-08-12)
+## Što slijedi
 
-### A. ✅ NAPRAVLJENO 2026-08-12 — PROD deploy izvršen
+**Dogovor o Fazi 1** — pločica "stanje po računu" na Overview tabu. Ti si ovo htio ostaviti za
+sljedeći session. Kratka podsjetnik prije razgovora:
+- Model je **dokazan** (S107x Faza 1a, 12.08.): pravilo "saldo miče Izvor, ne Račun" pogađa
+  banku u 17/30 mjeseci u cent; naivan zbroj po Računu ne pogađa nijedan.
+- Za kod treba: SQL funkcija (RPC) koja to računa u bazi (ne u browseru — inače je presporo
+  i krivo zbog Supabase limita na broj vraćenih redaka), plus jedna pločica na Overview tabu.
+- Prije nego kreneš, vrijedi razjasniti: koliko brzo želiš to vidjeti (mala pločica odmah vs.
+  čekati da imamo više uvezenih godina), i je li 2025 dovoljno podataka za prvu probu ili
+  čekamo bar 2024 da bude smislenije.
 
-Merge `test-branch` → `main` (fast-forward `3930c8e..7239c8d`), `typecheck` + `build` čisti
-prije mergea. Na PROD otišlo: S107v (kopirani redak = novi event) + S107w (`Delete?` kolona
-+ izvještaj kao radni file) + S107x Faza 1a (alat i dokumentacija, ne dira bundle).
+## Ostalo za Koku (nepromijenjeno)
 
-**⚠ Ovo je prvi put da Excel može brisati zapise na PROD-u.** Zaštita: zaseban popis + zasebna
-kvačica. Smoke test na jednom bezopasnom zapisu nije naodmet.
-**⚠ `sql/034_s107w_test_area.sql` je u mergeu ali se NE izvršava sam** — za TEST bazu je,
-ne pokretati na PROD-u.
-
-### B. ✅ NAPRAVLJENO 2026-08-12 — `Datum naplate` popravljen (49 redaka) + KEKS/trener (20)
-
-`fix_datum_naplate_statement.py` i `fix_keks_trener.py`, oba s `.pre-*` backupom i
-kontrolom (Σ Uplata/Isplata nepromijenjeni u cent, mijenjaju se samo ciljane kolone).
-Označenih redaka **115 → 69**. Detalji: `SALDO_MODEL_NALAZI.md` §4b.
-
-**⚠ 8 redaka svjesno ostavljeno** (`--include-obrnute` ih pokreće) — manjinska odstupanja
-unutar statementa koji inače slijedi pravilo; jedan je pomak od 1 dana (11.04.2026. =
-subota), šest su rate kupljene 29.05.2025. Treba ljudski pogled prije diranja.
-
-**Sljedeće je batch 2025** (odluka C).
-
-<details><summary>Izvorni opis nalaza (za kontekst)</summary>
-
-Simptom: **`Datum naplate` je PRIJE datuma kupnje** — naplaćeno prije nego kupljeno, nemoguće.
-Primjer: red 3494, kupnja **28.06.2025.**, naplata **11.06.2025.** (trebalo bi 11.07.2025.).
-
-**Koji je datum kriv — riješeno dokazom, ne pogledom:** svih 27 (od 28) ima popunjen
-`Izvod opis`, dakle matchani su na bankovnu transakciju i `event_date` im je sinkroniziran na
-bankovni datum (`date_accuracy.py`, S107k). ⇒ **datum kupnje je bankovno potvrđen, kriva je
-naplata.** 28. je red 4997, poznati loši redak iz S107v.
-
-**⚠ Nije sustavni bug pravila.** Provjereno koliko *ostalih* MC kupnji poslije 11. ima ispravnu
-naplatu:
-
-| tok | ukupno MC | kriva naplata | kupnja >11. **ispravna** |
-| --- | --- | --- | --- |
-| `koka EU` | 1653 | 28 | **1096** |
-| `Konsolidacija` | 88 | 0 | 68 |
-
-Krivih je **28 od 1124**, u dva uska grozda: **3 retka 28.06.2025.** i **24 retka
-16.–31.10.2025.** Pravilo dakle radi; ovo su zaostali.
-
-**Popravak:** ne dirati pravilo u `kartice_datum_naplate.py`, nego **preračunati tih 28** —
-nađi `Datum naplate < event_date`, dodijeli 11. sljedećeg mjeseca. Prije pisanja pogledati u
-skripti zašto su baš lipanj i listopad 2025. ispali, da se ne ponovi kod sljedećeg batcha.
-Backup prije pisanja.
-
-**Zašto sad, a ne poslije:** kad redak jednom uđe u bazu, ne može se popraviti novim batchom
-(sudario bi se `session_start` s već uvezenim danom, S107v). Popravak sad je izmjena u Reviewu;
-popravak poslije je ručni rad kroz app. **26 od 28 je u 2025.** — a 2025. je sljedeći batch.
-
-**Pregled (ako želiš vidjeti sam):** `data-prep_data/Financije/saldo_model_nalazi.tsv`,
-filtar `sifra = NAPLATA<KUPNJA`; kolona `red` je broj retka u Review sheetu.
-
-</details>
-
-### C. ✅ ODLUČENO — Pitanja za Koku → ispravci → batch 2025 → Faza 1
-
-Saša, 2026-08-12. **Redoslijed je ispravljen na Sašin prijedlog:** pitanja se rješavaju
-PRIJE generiranja batcha, ne poslije. Razlog: izostavljen redak se ne može vratiti novim
-batchom (sudar `session_start` za isti dan, S107v) nego samo ručno kroz app — pa je jeftinije
-ispraviti pa generirati jednom.
-
-**Sheet `Pitanja za Koku` je pripremljen** (`make_pitanja_koka.py`, u Review workbooku,
-odmah iza Taksonomije). 14 pitanja: **7 na razini retka** (konkretna transakcija koju
-prepozna — idu prva) i **7 na razini mjeseca** (`Saldo kontrola` razlike, pita se sjećanje).
-
-Ključna kolona je **`U čemu je nejasnoća`** — govori ŠTO nije bilo moguće zaključiti i ZAŠTO.
-Kolona `Odluka` je dropdown (`točno je` / `datum je kriv` / `iznos je kriv` /
-`duplikat — obriši` / `nedostaje zapis` / `ne sjećam se`) + slobodna `Njena napomena`.
-
-⚠ **`--harvest` još NIJE napisan** — kad Koka popuni, odgovori se primjenjuju ručno ili
-se prvo napiše harvest (uzor: `consolidate_review.py --harvest`, koji je v3 odveo 41 → 0).
-⚠ Skripta je idempotentna: ponovni run **briše popunjene odgovore**. Prvo harvestaj.
-
-**Trag za ona dva `±49`:** mjesečna Multisport uplata od 49 € nedostaje u 4 mjeseca —
-07/2023, 11/2023, 06/2024, 03/2025. Jedan njen odgovor vjerojatno pokriva oba pitanja.
-
-Nakon toga: **batch 2025** (jednom, bez izuzetaka), pa dogovor o **Fazi 1**.
-
-## Što ostaje za Koku (nepromijenjeno)
-
-1. **700 € bankomat 26.11.2025.** — nije na izvodu
-2. **`Saldo kontrola`, 7 razlika** — 2026-01 `+359`, 2024-09 `+149`, 2×`±49` multisport, 3 sitna
-3. **Red 4997** (MC 21,88 €) — duplikat reda 4247?
-4. **Red 4996** (parking 1,60 €) — datum kriv (stoji 07.08., pripada 04.–08.07.)
-
-Faza 1a je dodala još četiri, sve iz 2025., sve s dokazom iz banke:
-
-5. **Mirovina + Triglav** (redovi 2787/2788) — datirani u siječanj, banka ih vidi u veljači
-   (2.385,65 €). Poništavaju se između dva mjeseca, pa je to sigurno datum, ne iznos.
-6. **Anjina rata 72/96 dvaput** — Kokinih 450 € (red 3609) *i* bankovni split 400+50 (3612/3613)
-7. **Allianz Lacetti** (red 2368, 236,04 €) — banka ga nema u tom prozoru
-8. **Dvije Mirovine isti dan** 08.07.2024. (redovi 2001/2004, različiti iznosi)
+- **Red 2115** (LJEKARNA OREBIC) — ručna izmjena Medical_Sasa → Medical_Koka, nisi još stigao
+- N/A klasifikacija za 2024/2023 — radit ćemo je usput s vettingom prije svakog batcha
 
 ---
 
 # DIO 2 — Tehnički dio (za Claudea)
 
-## Stanje grana
+## Stanje
 
 | grana | commit | sadrži |
 | --- | --- | --- |
-| `test-branch` | v. `git log` | S107v + S107w + S107x Faza 1a + popravci podataka |
-| `main` (PROD) | `7239c8d` | **isto** — PROD deploy izvršen 2026-08-12 |
+| `test-branch` | v. `git log` | isto kao main + S107y Python/data promjene (nema `src/` diffa) |
+| `main` (PROD) | `7239c8d` | S107v+S107w+S107x Faza 1a (2026-08-12 deploy) |
 
-`typecheck` + `build` čisti (pokrenuti prije mergea na `main`). Faza 1a nije dirala `src/`.
-Radna kopija: samo `Claude-temp_R/test-sessions/S107_tests.md` (gitignoriran direktorij).
+Nema pending `src/` promjena — S107y je bio čisto data-prep + import kroz postojeći UI.
+`Review` = `Financije_review_20260710_1448.xlsx`, sad **4992 podatkovna retka** (bilo 4995).
 
-## Faza 1a — što je dokazano i čime
+## Novi alat
 
-Alat `data-prep_tools/Financije/verify_saldo_model.py` (READ-ONLY, nema `.save()`;
-`--rows` = detalj rezidualnih mjeseci, `--nalazi` = izvoz u TSV).
+`data-prep_tools/Financije/fix_pitanja_koka.py` — jednokratni popravak, već izvršen. Čita
+Odluka/Njena napomena iz `Financije_review-prolaz-s-Kokom.xlsx` (radna kopija s Kokinim
+odgovorima), primjenjuje 3 datuma + 3 brisanja na pravi Review, prepisuje odgovore u
+`Pitanja za Koku` sheet pravog Reviewa. Ne treba se ponovo pokretati.
 
-**Tri stvari koje ne otkrivati ponovo:**
+## Batch generiranje — obrazac za 2024/2023
 
-1. **Mjeri se POMAK protiv banke, ne razina.** Usporedba s `Saldo kontrola` (kako je izvorno
-   planirano) **nije izvediva** — Kokin `Stanje` je lanac iz redoslijeda *njenog* workbooka, a
-   Review je presortiran po `event_date` (S107i) ⇒ **969 puknuća od 2.564**. Usporedba razine
-   mjerila bi artefakt sortiranja. Pomak je neovisan o sidru. ➡ potvrđuje **OQ-5**.
-2. **Udio po iznosu ≠ udio po komadima.** Transferi: 42,5 % po komadima, **90,6 % po iznosu** —
-   vodi u suprotan zaključak.
-3. **Neto zbroj isključenih redaka može podcijeniti problem** kad isključeni skup nosi obje
-   strane iste stvari (32 retka `PRIMLJENA UPLATA` imaju `Izvor=Visa`, Σ +40.244,88, pa se s
-   Visa potrošnjom skrate). Mjeriti bruto: **81.591 €** RF, **56.894 €** ZABA.
+```
+python make_financije_import.py --from 2024-01-01 --to 2024-12-31 --dry   # prvo pogledaj report
+python make_financije_import.py --from 2024-01-01 --to 2024-12-31         # pravi file
+```
 
-**Zamka:** ime skripte ne smije biti ime stdlib modula — `inspect.py` je srušio `openpyxl`
-(`partially initialized module`, jer `numpy` radi `import inspect`).
+⚠ **Prije generiranja:** provjeri ima li za taj period otvorenih pitanja slične vrste kao
+`Pitanja za Koku` (neobjašnjeni saldo, sumnjivi duplikati, krivi datumi) — `verify_saldo_model.py`
+je alat za to (v. `SALDO_MODEL_NALAZI.md` za obrazac izvještaja). Cilj: ne uvoziti podatke koje
+ćeš poslije morati ručno ispravljati kroz app (uvezeni redak se ne da vratiti novim batchom —
+`session_start` bi se sudario s već uvezenim danom).
 
-## Sljedeći koraci (prijedlog, ovisan o odlukama A/B/C)
+## Faza 1 — što je spremno
 
-1. **PROD deploy** — ⚠ samo na izričit Sašin zahtjev (Netlify troši kredite). Slijed:
-   `git checkout main && git merge test-branch --no-edit && git push origin main`, pa
-   **sync back** na `test-branch` (bez toga `test-branch` zaostaje).
-2. ~~Preračunati `Datum naplate`~~ ✅ **NAPRAVLJENO 2026-08-12** —
-   `fix_datum_naplate_statement.py` (49 redaka) + `fix_keks_trener.py` (20). Označenih
-   115 → 69. **8 redaka svjesno ostavljeno**, pokreće ih `--include-obrnute` (v. §4b NALAZI).
-3. **Batch 2025** — `--to 2025-12-31`, granica **uvijek na danu** (inače `session_start`
-   `09:00 + n` sudara s već uvezenim danom).
-4. **Faza 1 — `sql/035_area_group_agg.sql`** (⚠ **ne 034**, zauzeo ga `034_s107w_test_area.sql`)
-   + hook + jedna pločica `balance_by_group` iznad Activities liste.
-   Tri pravila iz §2.4 koja se ne smiju prekršiti: `SECURITY DEFINER` **mora sam provjeriti
-   pristup**; **P2 parent eventi se nikad ne zbrajaju**; čita se `value_number`, ne parse teksta.
-5. **`TRANSFER-BEZ-PARA` (42 retka)** — labela, ne saldo. Popraviti **prije `breakdown`
-   pločice**, ne prije `balance_by_group`. 23 od 42 su u 2023. (zadnji batch) ⇒ nema žurbe.
+- Model dokaz: `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` §1-2
+- Spec: `docs/OVERVIEW_TAB_SPEC.md` §2.4, §2.10, §2.14
+- SQL file ide na `sql/035_area_group_agg.sql` (⚠ ne 034, zauzeo ga `034_s107w_test_area.sql`)
+- Tri pravila koja se ne smiju prekršiti: `SECURITY DEFINER` mora sam provjeriti pristup;
+  P2 parent eventi se nikad ne zbrajaju; čita se `value_number`, ne parse teksta.
 
-## Otvoreno (nepromijenjeno)
+## Otvoreno (nepromijenjeno od S107x)
 
-- **T-S107v-7 (PROD):** kad se View opet ne otvori nakon Finish — poslati poruku s ekrana
-  („Couldn't load this activity" + tekst greške vs „Activity not found"). Uzrok još nije nađen.
-- **E2E cold start:** prvi test u hladnom pokretanju zna pasti (leftover iz prekinutog pokušaja;
-  `beforeEach` inserta bez čišćenja). Predloženo: timeout 10 → 20 s u `e2e/fixtures/filter.ts`.
+- **T-S107v-7 (PROD):** kad se View opet ne otvori nakon Finish — poslati poruku s ekrana.
 - `sql/033_delete_area_cascade.sql` SECTION 2b — jesu li policyji iz `020_orphan_rls.sql` na TEST-u
 - `export_profiles` — jedina preostala rupa u `AreaSettings` roundtripu
 - `T-S107u-2` — `groupAttributes` uzima `Default` s prvog retka grupe (bezopasno, konvergira)
 - **Bulk delete (checkbox) nije ograničen za grantee-a** — stari backlog
 - **§2.13 (tri kante planiranog)** — neprovjerljivo do prvog importa s generiranim ratama
-- `Claude-temp_R/` i `data-prep_data/` su gitignorirani ⇒ test-session dokumenti i TSV su **samo
-  lokalni** + na vanjskom disku (`Tools/backup_to_external.bat`). Trajni zapis ide u `CLAUDE.md`.
