@@ -109,13 +109,25 @@ ili tekst koji ne kaže da je zbroj od početka podataka.
 
 ### T-S108-4 ⭐ Sidro — „u banci" + Potvrdi
 
-1. U polje **u banci** uz ZABA upiši `100`. **Očekivano:** čip `Δ +50,80` (app pokazuje više nego banka).
-2. Upiši `150,80`. **Očekivano:** čip `✓ slaže se`.
-3. Klikni **Potvrdi**. **Očekivano:** toast, pločica se osvježi, saldo je i dalje `150,80 €`, a podnaslov sad kaže **„od potvrde 15.08.2026. · 150,80 € · 0 promjena poslije"**.
-4. Dodaj novu transakciju na ZABA s `Izvor=Racun`, `Isplata=10`, datum **danas**. Vrati se na Overview. **Očekivano:** `140,80 €`, „1 promjena poslije".
-5. Dodaj transakciju datiranu **jučer** (dakle ≤ datum potvrde). **Očekivano:** saldo se **NE mijenja** — pravilo je „strogo nakon".
+⚠ **Ispravljeno 2026-08-15.** Prva verzija ovog testa bila je nemoguća: „Potvrdi" uvijek
+datira sidro na **danas**, a pravilo je „strogo nakon", pa transakcija datirana **danas** po
+definiciji **ne** ulazi u saldo. Korak koji je tražio da uđe nije mogao proći ni s ispravnim
+kodom. Zato korak 4 sad koristi **sutrašnji** datum.
 
-**Pad:** korak 5 promijeni saldo ⇒ dvostruko brojanje oko sidra (§2.17, točka 3).
+1. U polje **u banci** uz ZABA upiši `100`. **Očekivano:** čip `Δ +50,80` (app pokazuje više nego banka).
+2. Obriši i upiši točan prikazani saldo. **Očekivano:** čip `✓ slaže se`.
+3. **Klikni „Potvrdi".** **Očekivano:** zeleni toast `Potvrđeno: Kokin tekući ZABA = …`, polje se isprazni, pločica se osvježi i podnaslov se mijenja iz **„od početka podataka · N zapisa"** u **„od potvrde 15.08.2026. · … · 0 promjena poslije"**.
+   **Pad:** crveni toast (prepiši ga doslovno), ili podnaslov ostane „od početka podataka" — to znači da sidro nije spremljeno.
+4. Dodaj transakciju na ZABA: `Racun = Kokin tekući ZABA`, `Izvor = Racun`, `Isplata = 10`, `Status = Izvrsen`, datum **sutra**. Vrati se na Overview. **Očekivano:** saldo je **10 € manji**, podnaslov kaže „1 promjena poslije".
+5. Dodaj još jednu istu takvu, ali datiranu **danas ili ranije**. **Očekivano:** saldo se **NE mijenja**, i dalje „1 promjena poslije".
+
+**Pad koraka 5:** saldo se pomakne ⇒ dvostruko brojanje oko sidra (§2.17, točka 3).
+
+**Napomena:** pločica se osvježava pri ulasku u tab i na ↻ gumb. Ako si ostao na Overviewu
+dok se podatak mijenjao drugdje, klikni ↻ prije nego zaključiš da se ništa nije promijenilo.
+
+⚠ **Poslije testa obriši testne zapise i sidro** — inače ostaju u TEST bazi i sljedeći put
+brojevi neće odgovarati ovima iz T-S108-2.
 
 ### T-S108-5 Δ ostaje kad se ne slaže
 

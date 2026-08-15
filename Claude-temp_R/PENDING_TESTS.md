@@ -4,7 +4,8 @@
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
 **Zadnji update:** S108 (2026-08-15) — Faza 1: RPC salda verificiran protiv Python modela (0,00 razlike), Overview tab + pločica sa sidrom + izračunata kolona `Stanje`.
-**Otvoreno: T-S108-1…12 (sve novo), T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Prošlo 2026-08-15: T-S108-1, -2, -3.**
+**Otvoreno: T-S108-4 (djelomično), T-S108-5…12; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
 **Detalji S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
 
 ---
@@ -22,10 +23,10 @@ ZABA `−22.943,71`.
 | --- | --- | --- |
 | P-1…P-6 | `verify_rpc_vs_model.py`: B vs C 0,00, A vs B 0,00, sidro 0,00, D1b 634/634 | ✅ (programski) |
 | P-7…P-12 | `rpc_area_balance_anchored` end-to-end: sidro zbraja, granica **stvarno** isključiva (1 redak na granici), grupa bez prometa se i dalje prikazuje, poziv bez prava 401, nepoznat slug 400 s imenom | ✅ (programski) |
-| T-S108-1 | ⭐ Overview tab postoji samo uz `dashboard` config (OQ-4), redoslijed Overview → Activities → Structure | ⬜ |
-| T-S108-2 | ⭐ Pločica — ZABA 150,80 €, RF −1.978,32 €, „od početka podataka" | ⬜ |
-| T-S108-3 | „planirano" — ZABA −2.521,38 € (13) | ⬜ |
-| T-S108-4 | ⭐ Sidro: Δ → Potvrdi → „od potvrde"; retak datiran **na** dan potvrde NE mijenja saldo | ⬜ |
+| T-S108-1 | ⭐ Overview tab postoji samo uz `dashboard` config (OQ-4), redoslijed Overview → Activities → Structure | ✅ (2026-08-15) |
+| T-S108-2 | ⭐ Pločica — ZABA 150,80 €, RF −1.978,32 €, „od početka podataka" | ✅ (2026-08-15) |
+| T-S108-3 | „planirano" — ZABA −2.521,38 € (13) | ✅ (2026-08-15) |
+| T-S108-4 | ⭐ Sidro: Δ čip ✅; **„Potvrdi“ još neisproban** — u bazi je 0 sidara. ⚠ Koraci ISPRAVLJENI: prva verzija tražila je nemoguće (transakcija datirana danas ne može ući u saldo usidren danas) | 🟡 djelomično |
 | T-S108-5 | Δ ostaje dok se ne slaže; ništa se ne mijenja bez Potvrdi | ⬜ |
 | T-S108-6 | ⭐ Drill s pločice → Activities filtriran na račun / na `Status=Planiran` | ⬜ |
 | T-S108-7 | ⭐ Izračunata kolona `Stanje` — silazi do salda, nestaje kod miješanih računa i obrnutog sorta | ⬜ |
