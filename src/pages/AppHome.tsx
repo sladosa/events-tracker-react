@@ -672,12 +672,13 @@ function AppContent() {
             />
           </div>
 
-          {/* Right-side action area — changes per tab. Overview has no actions
-              of its own: every control it needs lives inside its tiles. */}
-          {activeTab === 'overview' ? (
-            <div />
-          ) : activeTab === 'activities' ? (
-            /* ---- Activities: Add Activity button ---- */
+          {/* Right-side action area — changes per tab.
+              Overview shares the Activities action: the tile shows the balance,
+              and the natural next move is to enter the transaction that changes
+              it. Add Activity returns to whichever tab it was launched from, so
+              the number is re-read on the way back. */}
+          {activeTab !== 'structure' ? (
+            /* ---- Overview + Activities: Add Activity button ---- */
             <Button
               leftIcon={<AddIcon />}
               onClick={handleAddActivity}
@@ -789,8 +790,9 @@ function AppContent() {
           )}
         </div>
 
-        {/* Leaf category hint — Activities tab only, not shown for read grantee */}
-        {activeTab === 'activities' && !isLeafCategory && filter.categoryId && !isReadOnlyGrantee && (
+        {/* Leaf category hint — wherever Add Activity is offered, so a disabled
+            button always has its reason next to it. Not shown for read grantee. */}
+        {activeTab !== 'structure' && !isLeafCategory && filter.categoryId && !isReadOnlyGrantee && (
           <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
             ⚠️ Select a leaf category (no subcategories) to add an activity
           </div>

@@ -24,6 +24,7 @@ ZABA `−22.943,71`.
 | P-1…P-6 | `verify_rpc_vs_model.py`: B vs C 0,00, A vs B 0,00, sidro 0,00, D1b 634/634 | ✅ (programski) |
 | P-7…P-12 | `rpc_area_balance_anchored` end-to-end: sidro zbraja, granica **stvarno** isključiva (1 redak na granici), grupa bez prometa se i dalje prikazuje, poziv bez prava 401, nepoznat slug 400 s imenom | ✅ (programski) |
 | T-S108-1 | ⭐ Overview tab postoji samo uz `dashboard` config (OQ-4), redoslijed Overview → Activities → Structure | ✅ (2026-08-15) |
+| T-S108-1b | Add Activity + “⚡ Use” rade i iz Overviewa; povratak nakon spremanja ide na Overview; leaf hint uz sivi gumb | ⬜ |
 | T-S108-2 | ⭐ Pločica — ZABA 150,80 €, RF −1.978,32 €, „od početka podataka" | ✅ (2026-08-15) |
 | T-S108-3 | „planirano" — ZABA −2.521,38 € (13) | ✅ (2026-08-15) |
 | T-S108-4 | ⭐ Sidro: Δ čip ✅; **„Potvrdi“ još neisproban** — u bazi je 0 sidara. ⚠ Koraci ISPRAVLJENI: prva verzija tražila je nemoguće (transakcija datirana danas ne može ući u saldo usidren danas) | 🟡 djelomično |

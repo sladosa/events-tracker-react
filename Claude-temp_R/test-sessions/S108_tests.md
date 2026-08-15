@@ -92,6 +92,19 @@ prikazuje, a `rpc_area_group_agg` (035) i dalje radi normalno.
 
 **Pad:** prazan Overview tab na Arei bez configa, ili tab koji ostane vidljiv nakon promjene Aree.
 
+### T-S108-1b Add Activity i „⚡ Use" rade i iz Overviewa (Sašin zahtjev, 2026-08-15)
+
+1. Overview tab, u filtru odaberi **leaf** kategoriju (`Financije_all > Transakcija`).
+2. **Očekivano:** gumb **Add Activity** je zelen i aktivan, isto kao na Activities tabu.
+3. Odaberi neki Shortcut → **⚡ Use**. **Očekivano:** vodi ravno u Add Activity.
+4. Spremi unos. **Očekivano:** vraća te **na Overview** (ne na Activities) i saldo je
+   preračunat — pločica se osvježava pri ulasku u tab.
+5. Vrati filtar na `All Categories` (nije leaf). **Očekivano:** gumb je siv **i ispod stoji
+   žuti hint** „Select a leaf category…", isti kao na Activities tabu.
+
+**Zašto:** saldo je razlog zbog kojeg se tab otvara, a idući potez je unijeti transakciju koja
+ga mijenja. Slanje korisnika na drugi tab da bi to napravio je nepotreban skok.
+
 ### T-S108-2 ⭐ Pločica „Stanje po računu" — brojevi
 
 1. Overview tab na `Financije_all`.
