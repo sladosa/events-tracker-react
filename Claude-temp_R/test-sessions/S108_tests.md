@@ -209,6 +209,19 @@ Vrijednost testa je da ne padne.
 **Pad:** polje „u banci" izostavljeno na mobitelu — čip tada visi bez konteksta (to je bio
 prvi nesporazum pri pregledu skice).
 
+### T-S108-13 Help sistem zna za Overview
+
+1. Otvori Overview tab, klikni **?** (plavi FAB).
+2. **Očekivano:** tri ponuđena pitanja (chipa) o Overviewu — Δ, „Potvrdi", zašto neka Area
+   nema tab. **Pad:** nema nijednog chipa (znači `CHIPS` nema unos za `overview`).
+3. Pitaj *„Što znači Δ uz stanje računa?"*. **Očekivano:** odgovor kaže da app pokazuje
+   **više** nego banka i da Δ **nije greška izračuna** nego signal.
+4. Pitaj *„Od kad se računa saldo?"*. **Očekivano:** spominje potvrđeno stanje i pravilo
+   „strogo nakon".
+
+⚠ Help radi kroz Netlify funkciju — lokalno traži `npm run dev:netlify`, inače će javiti
+grešku mreže. Na TEST/PROD deployu radi normalno.
+
 ---
 
 ## Otvoreno / nije u ovoj fazi
@@ -224,3 +237,6 @@ prvi nesporazum pri pregledu skice).
   atribute), ali u Excel exportu se pojavljuju dvije kolone istog imena.
 - **Drill s dva uvjeta** — `FilterContext` nosi jedan `attrFilter`. Predviđeno u §2.16 kao
   test; ispalo je da filtru fali mogućnost, ne da je widget izmislio nešto.
+- **Datum potvrde nije izbor** — „Potvrdi" uvijek datira na danas. To je namjerno (čovjek
+  gleda banku *sada*), ali znači da se sidro ne može unijeti unatrag ako je propušteno.
+  Ako se pokaže da smeta, polje za datum je mala izmjena.

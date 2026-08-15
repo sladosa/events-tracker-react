@@ -32,6 +32,11 @@ const FEEDBACK_LABELS: Record<FeedbackType, string> = {
 
 // Context-aware quick questions shown before first user message
 const CHIPS: Record<string, string[]> = {
+  overview: [
+    'Što znači Δ uz stanje računa?',
+    'Kako radi „Potvrdi" i od kad se saldo računa?',
+    'Zašto neka Area nema Overview tab?',
+  ],
   activities: [
     'How do I add an activity?',
     'What is a session?',

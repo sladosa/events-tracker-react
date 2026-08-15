@@ -5,7 +5,7 @@
 **Branch:** `test-branch` (dev) / `main` (PROD)
 **Zadnji update:** S108 (2026-08-15) — Faza 1: RPC salda verificiran protiv Python modela (0,00 razlike), Overview tab + pločica sa sidrom + izračunata kolona `Stanje`.
 **Prošlo 2026-08-15: T-S108-1, -2, -3.**
-**Otvoreno: T-S108-4 (djelomično), T-S108-5…12; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Otvoreno: T-S108-4 (djelomično), T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
 **Detalji S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
 
 ---
@@ -36,6 +36,7 @@ ZABA `−22.943,71`.
 | T-S108-10 | „From template" nosi `settings` bez `export_profiles` i bez sidara | ⬜ |
 | T-S108-11 | Read grantee vidi pločicu, nema „Potvrdi"; write grantee ima | ⬜ |
 | T-S108-12 | Mobitel — polje „u banci" i čip vidljivi i upotrebljivi | ⬜ |
+| T-S108-13 | Help zna za Overview — chipovi na tabu, odgovori o Δ i o sidru | ⬜ |
 
 **Sljedeće nakon prolaza:** Faza 2 (brzi unos — §2.9, dvije sitnice nad postojećim
 Shortcut sustavom), pa Faza 3 (Koka proba na mobitelu → odluka o cutoveru).

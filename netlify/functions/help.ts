@@ -10,6 +10,7 @@ import path from 'path';
 
 const HELP_DOC_NAMES = [
   'concepts',
+  'overview',
   'activities',
   'structure',
   'sharing',

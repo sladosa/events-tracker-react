@@ -127,6 +127,11 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   bi u drugačije nazvanoj Arei svaki ključ bio mrtav. Vraća se kad se format ključa popravi.
   ⚠ `balance_anchors` **nikad** ne putuju — config smije putovati, potvrđeno stanje ne (§2.17).
 
+- **Nov tab = nov `CHIPS` unos, inače Help tiho nema chipova.** `pageHint` je ime taba;
+  `HelpPanel.CHIPS` bez tog ključa ne javlja grešku nego ne prikaže ništa. Nova tema u
+  `docs/help/` mora ići i u `HELP_DOC_NAMES` (`netlify/functions/help.ts`) — to je jedini
+  razlog da se taj file dira; sadržaj postojeće teme ne traži promjenu koda.
+
 **Prije svakog commita:** `npm run typecheck && npm run build` (⚠ `npm` se pokreće **iz
 direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upozorenje, ne greška)
 
@@ -279,7 +284,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   pravila (`Datum naplate` po Izvoru)
 - **Shortcuts (S88):** `activity_presets` — snimka vrijednosti atributa (`default_attributes`,
   prioritet nad `attr.default_value`) + spremljeno filter stanje (`filter_state`)
-- **AI Help:** Haiku FAB, 3 taba, dinamički load `docs/help/*.md`, context chips po `pageHint`
+- **AI Help:** Haiku FAB, 3 taba, dinamički load `docs/help/*.md` (8 tema, uklj. `overview`), context chips po `pageHint`
 - **Template sustav:** template user, „From template" flow (nosi `settings` bez `export_profiles`), Demo Area na PROD
 - **Overview (S108):** tab po Arei, postoji **samo** uz `settings.dashboard` (OQ-4). Pločica
   `balance_by_group` sa sidrom i `✓/Δ` čipom, drill u Activities, izračunata kolona `Stanje`.

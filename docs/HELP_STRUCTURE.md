@@ -39,11 +39,12 @@ Context is determined by `useCurrentPage()` in `HelpPanel.tsx`:
 - pathname `/add` → `'add'`
 - pathname `/edit` → `'edit'`
 - pathname `/view` → `'view'`
-- `pageHint` from `HelpContext` → `'activities'` or `'structure'` (set by `AppHome.tsx`)
+- `pageHint` from `HelpContext` → `'overview'`, `'activities'` or `'structure'` (set by `AppHome.tsx`)
 - fallback → `'activities'`
 
 | Context      | Page/Route          | Chip 1                              | Chip 2                               | Chip 3                                    |
 | ------------ | ------------------- | ----------------------------------- | ------------------------------------ | ----------------------------------------- |
+| `overview`   | AppHome Overview    | Što znači Δ uz stanje računa?          | Kako radi „Potvrdi“ i od kad se saldo računa? | Zašto neka Area nema Overview tab?      |
 | `activities` | AppHome Activities  | How do I add an activity?           | What is a session?                   | How do I import from Excel?               |
 | `structure`  | AppHome Structure   | What are Area and Category?         | What does the ⋮ menu do?             | How do I share an area with someone?      |
 | `add`        | AddActivityPage     | What happens to parent categories?  | How does suggest work?               | Why can't I select a category?            |
@@ -182,6 +183,19 @@ Look for:
 
 After updates: run `npm run dev:netlify` and test the changed questions manually.
 Verify AI answers with updated system prompt are correct and concise.
+
+---
+
+## Adding a new help topic (procedure used for `overview`, S108)
+
+1. Write `docs/help/<topic>.md` — that is where the content lives, never in `help.ts`.
+2. Register the file name in `HELP_DOC_NAMES` in `netlify/functions/help.ts`.
+   ⚠ This is the **only** reason to touch `help.ts` for a feature: the list of files.
+   Content changes to an existing doc need no code change at all.
+3. Add the context to `CHIPS` in `HelpPanel.tsx`, and to the table above.
+4. If the context comes from a tab, make sure `AppHome.tsx` sets `setPageHint(<name>)` —
+   it already does, via `activeTab`. **A tab whose name has no `CHIPS` entry silently shows
+   no chips**, which is how a new tab quietly ships without help.
 
 ---
 
