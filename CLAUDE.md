@@ -53,7 +53,7 @@ podaci hrane i AI sloj.
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist            |
 | `data-prep_tools/Financije/ENRICH_PLAN.md` | Financije pipeline — alati, koraci, nalazi po sesijama                          |
-| `NEXT_SESSION_PROMPT.md`                  | Handoff za sljedeću sesiju — DIO 1 netehnički, DIO 2 tehnički                     |
+| `NEXT_SESSION_PROMPT.md`                  | **Na početku svake sesije** — handoff, DIO 1 netehnički / DIO 2 tehnički. Prepisuje se na kraju svake sesije (v. „End of session" 5). ⚠ Provjeri commit u zaglavlju: ako nije zadnji, čitaj ga kao povijest, ne kao stanje |
 | `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** (⚠ gitignoriran — samo lokalno + `D:`)           |
 
 ---
@@ -106,7 +106,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   (a) `session_start` mora biti **tekst** `"HH:MM"` — prava Excel time vrijednost daje puni ISO,
   `parseTimeStr` → `null`, fallback ⇒ **svi redovi dobiju 09:00**;
   (b) **krivo ime atributa se tiho preskoči** (`:836`, nema `else`);
-  (c) `boolean` mora biti pravi bool — `'DA'` se sprema kao **FALSE**;
+  (c) `boolean` mora biti pravi bool — sve osim doslovnog stringa `'true'` sprema se kao
+  **FALSE** (`:1214`, isto u update-guardu `:1336`). `'DA'` tiho postane FALSE; `'NE'` ispadne
+  točno **slučajno**, pa greška ne upada u oči;
   (d) email u kol. G mora biti račun koji **izvodi** import, inače je redak „tuđi" i preskočen.
 - **Data Validation limiti:** `promptTitle` ≤32 znaka, `prompt` ≤255 — premašivanje daje
   neispravan OOXML i Excel nudi repair. Provjeri `string.length` prije proširivanja teksta.
@@ -425,7 +427,9 @@ does not block build. Ignore it.
 ### Start of session
 1. Claude reads this file automatically
 2. `git log --oneline -10` for recent context
-3. Read `Claude-temp_R/PENDING_TESTS.md` — check if user confirmed previous tests
+3. Read `NEXT_SESSION_PROMPT.md` — usporedi commit iz njegovog zaglavlja sa `git log`om;
+   ako je stariji, tretiraj ga kao povijest (CLAUDE.md je autoritet)
+4. Read `Claude-temp_R/PENDING_TESTS.md` — check if user confirmed previous tests
 
 ### During session
 - Screenshots: paste directly into chat
@@ -450,14 +454,39 @@ does not block build. Ignore it.
      (⚠ **ne po starosti** — otvoreni testovi sežu unatrag više sesija)
    - `.pre-*` backupi stariji od zadnja 3 → `data-prep_data/Financije/_arhiva/backup/`
    - generirani izlazi (import/structure/export xlsx) → `_arhiva/izlazi/`
-4. **`CLAUDE.md`** — nova zamka ide u „Critical rules"/„Zamke", kronologija u `DONE_HISTORY.md`.
-   **Ne dopisuj sesijski narativ ovdje.**
-5. **`docs/help/`** — ako je feature dodan ili promijenjen. `netlify/functions/help.ts` se
+4. **`CLAUDE.md`** — nova zamka ide u „Critical rules"/„Zamke". **Ne dopisuj sesijski
+   narativ ovdje** — on ide u `DONE_HISTORY.md` (korak 5).
+5. **`Claude-temp_R/DONE_HISTORY.md`** — kronologija sesije. Vlastiti korak, ne podrečenica
+   uz CLAUDE.md: kao podrečenica je preskočen za S107y i S107z. Ažuriraj i raspon sesija
+   u zaglavlju CLAUDE.md-a (`> Povijest po sesijama…`) da se zaostajanje vidi odmah.
+6. **`NEXT_SESSION_PROMPT.md` — prepiši ga, uvijek, bez da Saša traži.** Ako izostane, sljedeća
+   sesija dobije handoff **pretprošle** sesije i otvara pitanja koja su već odgovorena. Pravila:
+   - **prepiši cijeli file, ne dopisuj** — stari sadržaj je već u `DONE_HISTORY.md`
+   - **prvi redak nosi commit protiv kojeg je pisan** ⇒ zastarjelost se vidi jednim `git log`om
+   - **DIO 1 netehnički** (za Sašu: što je gotovo, što slijedi, što treba od njega/Koke),
+     **DIO 2 tehnički** (za Claudea: stanje grana, novi alati, otvoreno)
+   - ne prepisuj ono što CLAUDE.md već ima — handoff nosi **stanje u letu**
+     (što čeka Sašinu akciju, što je neverificirano), CLAUDE.md nosi **trajna pravila**
+   - ⚠ ako je paralelna sesija radila na istoj temi, njen rezultat ide ovdje označen kao
+     **neverificiran** dok ga netko ne potvrdi — ne kao činjenica
+7. **Memory** (`~/.claude/projects/c--0-Sasa-events-tracker-react/memory/`) — **jedini artefakt
+   koji se učitava u kontekst PRIJE CLAUDE.md-a**, pa zastarjeli unos ne izgleda kao povijest
+   nego kao činjenica o sadašnjosti. Zato:
+   - **`MEMORY.md` mora odgovarati fajlovima na disku** — fajl bez retka u indeksu se nikad ne
+     dozove (tako je `no_main_push.md` 39 dana bio nevidljiv)
+   - **ne dupliciraj CLAUDE.md** — memorija nosi samo ono što se ne vidi iz repoa:
+     tko je Saša, kako radi, što je izričito tražio, otvorena pitanja o PROD okolini
+   - unos koji je CLAUDE.md preuzeo → `memory/_archive/` (ne brisati — nije u gitu)
+   - status sesije („S103 je gotov", „SLJEDEĆE: …") **nikad** ne ide u memoriju — to je posao
+     `DONE_HISTORY.md` i `NEXT_SESSION_PROMPT.md`
+8. **`docs/help/`** — ako je feature dodan ili promijenjen. `netlify/functions/help.ts` se
    **ne mijenja** za feature docove (AI čita markdown dinamički); iznimke: Demo Area putanje,
    pravila tona, app framing.
-6. **Commit + push `test-branch`** (nema Netlify deploya, nema troška):
+9. **`ENRICH_PLAN.md`** — **samo ako je sesija dirala data-prep.** Nalazi/prolazi po sesijama.
+   (Zadnji upisan prolaz je S107r/30.7. — S107v–y nedostaju.)
+10. **Commit + push `test-branch`** (nema Netlify deploya, nema troška):
    `git push origin test-branch`
-7. **Samo kad korisnik IZRIČITO zatraži PROD deploy** — Netlify build troši kredite,
+11. **Samo kad korisnik IZRIČITO zatraži PROD deploy** — Netlify build troši kredite,
    NIKAD ne pushati/mergati na main samoinicijativno:
    ```
    git checkout main && git merge test-branch --no-edit && git push origin main
