@@ -46,6 +46,20 @@ protiv banke: 17/30 mjeseci u cent, naivni zbroj 0/30).
 | P-5 | D1b nad podacima: za svih 634 izvršenih redaka `Datum naplate == event_date` | ✅ 0 iznimaka ⇒ sidro smije uspoređivati po `event_date` |
 | P-6 | P2 guard: `chain_key ≠ NULL` eventa u Arei | 0 (L1 leaf) — guard nema što izbaciti, ali stoji u SQL-u |
 
+Nakon ponovnog puštanja `sql/036` (2026-08-15), `rpc_area_balance_anchored` end-to-end:
+
+| ID | Kontrola | Rezultat |
+| --- | --- | --- |
+| P-7 | Bez sidra: `anchored=false`, saldo identičan `rpc_area_group_agg` | ✅ 150,80 / −1.978,32 |
+| P-8 | Sidro ZABA `1000 @ 2026-06-30` → `1000 + (1.262,11 − 112,30)` | ✅ 2.149,81, `n=6` na obje putanje |
+| P-9 | RF (bez sidra) nepromijenjen dok ZABA ima sidro | ✅ |
+| P-10 | ⭐ **Granica je stvarno isključiva**, ne samo sama sa sobom dosljedna: postoji točno **1 redak datiran 2026-06-30** (−1,60); `> D` daje `n=6`, `> D−1` daje `n=7`, razlika = taj redak. Sidro `0,00 @ D` daje isti saldo kao `p_from = D`. | ✅ |
+| P-11 | Grupa sa sidrom a **bez prometa poslije** i dalje se prikazuje (`UNION` putanja): sidro `777,77 @ 2026-12-31` → saldo 777,77, `n=0`. Isto za grupu koja **nema nijedan redak**, samo sidro. | ✅ |
+| P-12 | Zaštita: poziv bez prava → **HTTP 401** `No access to area …`; nepostojeći slug → **HTTP 400** koji **imenuje** slug, ne 0,00 | ✅ |
+
+⚠ Zanimljivo: redak koji sjedi na granici je isti onaj od **1,60 €** koji se pojavljuje kao
+`A vs B` razlika. Sretna slučajnost — da je granica bila uključiva, P-10 bi to uhvatio.
+
 **Verificirani brojevi** (izvršeno, `Izvor ∈ {Racun, Cash} ∧ Status ≠ Planiran`):
 
 | račun | uplata | isplata | saldo | n |

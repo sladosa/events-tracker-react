@@ -11,8 +11,8 @@
 
 ## S108 — Faza 1: RPC salda + Overview tab + pločica sa sidrom
 
-⚠ **Preduvjet:** `sql/035`, **`sql/036` (ponovo — ispravljen `FULL JOIN`)** i `sql/037`
-moraju biti puštene na TEST prije testiranja.
+**Preduvjet:** `sql/035`, `sql/036` i `sql/037` puštene na TEST — ✅ sve tri (2026-08-15;
+`036` je pušten dvaput, druga verzija ispravlja `FULL JOIN`).
 
 Prihvatni kriterij prošao **prije** pisanja UI-ja: RPC reproducira Python model (već validiran
 protiv banke) **u cent** — ZABA `150,80`, RF `−1.978,32`. Naivni zbroj po `Racun`u dao bi
@@ -20,7 +20,8 @@ ZABA `−22.943,71`.
 
 | ID | Test | Status |
 | --- | --- | --- |
-| P-1…P-6 | Programske kontrole (`verify_rpc_vs_model.py`: B vs C 0,00, A vs B 0,00, sidro 0,00, D1b 634/634) | ✅ (programski) |
+| P-1…P-6 | `verify_rpc_vs_model.py`: B vs C 0,00, A vs B 0,00, sidro 0,00, D1b 634/634 | ✅ (programski) |
+| P-7…P-12 | `rpc_area_balance_anchored` end-to-end: sidro zbraja, granica **stvarno** isključiva (1 redak na granici), grupa bez prometa se i dalje prikazuje, poziv bez prava 401, nepoznat slug 400 s imenom | ✅ (programski) |
 | T-S108-1 | ⭐ Overview tab postoji samo uz `dashboard` config (OQ-4), redoslijed Overview → Activities → Structure | ⬜ |
 | T-S108-2 | ⭐ Pločica — ZABA 150,80 €, RF −1.978,32 €, „od početka podataka" | ⬜ |
 | T-S108-3 | „planirano" — ZABA −2.521,38 € (13) | ⬜ |
