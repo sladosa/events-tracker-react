@@ -616,7 +616,7 @@ def nalazi(rows, rezid, danas: date, out: Path | None):
             print(f'   red {r["xl"]:>5} {r["date"]} {r["signed"]:>+10.2f} '
                   f'{r["racun"]:<18} {det[:44]}')
         if len(f[k]) > 12:
-            print(f'   … još {len(f[k]) - 12} (puni popis u TSV-u)')
+            print(f'   … još {len(f[k]) - 12} (puni popis u XLSX-u)')
 
     if out:
         zaglavlje = ('sifra', 'red', 'event_date', 'datum_naplate', 'racun', 'izvor',
@@ -626,14 +626,9 @@ def nalazi(rows, rezid, danas: date, out: Path | None):
                    zasto[k][1], det)
                   for k in red for r, det in sorted(f[k], key=lambda x: x[0]['xl'])]
 
-        out.write_text(
-            '\n'.join(['\t'.join(zaglavlje)]
-                      + ['\t'.join(str(x) for x in row) for row in podaci]),
-            encoding='utf-8')
-        print(f'\n✔ TSV : {out}  ({len(podaci)} redaka)')
-
-        # .xlsx — jer .tsv nije registriran na Windowsu i traži "Choose an app"
-        xl_out = out.with_suffix('.xlsx')
+        # Samo .xlsx — .tsv nije registriran na Windowsu (dvoklik nudi
+        # "Choose an app") pa se u praksi nikad nije otvarao (S107x cleanup).
+        xl_out = out
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Nalazi'
@@ -692,7 +687,7 @@ def main():
     provjera_2(rows)
     provjera_3(rows, danas)
     if '--nalazi' in args:
-        nalazi(rows, rezid, danas, DATA_DIR / 'saldo_model_nalazi.tsv')
+        nalazi(rows, rezid, danas, DATA_DIR / 'saldo_model_nalazi.xlsx')
 
     print()
     print(SEP)

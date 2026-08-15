@@ -4,7 +4,7 @@
 **Spec:** `docs/OVERVIEW_TAB_SPEC.md` §2.10, §2.13, §2.14, „Faza 1a"
 
 > Cilj: dokazati formulu salda nad stvarnim podacima **prije** pisanja RPC-a i pločice.
-> Skripta ništa ne piše u Review — nema `.save()`. Nalazi idu u `saldo_model_nalazi.tsv` (nov file).
+> Skripta ništa ne piše u Review — nema `.save()`. Nalazi idu u `saldo_model_nalazi.xlsx` (nov file).
 
 Pokretanje:
 
@@ -99,7 +99,9 @@ u ispis da se broj ne čita krivo.
 
 ## 3. Retci koji nisu u redu
 
-Puni popis: **`data-prep_data/Financije/saldo_model_nalazi.tsv`** (115 redaka, filtriraj po `sifra`).
+Puni popis: **`data-prep_data/Financije/saldo_model_nalazi.xlsx`** (filtriraj po `sifra`).
+Brojke dolje su stanje **pri mjerenju** (115 redaka); nakon popravaka istog dana ostalo je **69** — v. §4b.
+File se regenerira svakim `--nalazi` runom, pa uvijek prikazuje trenutno stanje.
 
 | šifra | n | pouzdanost | što nije u redu i zašto je bitno |
 |---|---|---|---|

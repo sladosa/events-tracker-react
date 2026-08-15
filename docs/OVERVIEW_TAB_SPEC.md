@@ -1,7 +1,9 @@
 # Overview tab — dashboard po Arei (spec + plan rada)
 
-**Datum:** 2026-08-11 · **Status:** PRIJEDLOG — čeka Sašin pregled
+**Datum:** 2026-08-11, dopunjeno 2026-08-15 · **Status:** ODOBRENO — Faza 1 spremna za kod
 **Povod:** sesija S107x — frustracije F1/F2 (zašto Koka i dalje bira svoj Excel)
+**Zadnje odluke (2026-08-15):** §2.15 (gdje živi konfiguracija — univerzalnost),
+§2.16 (preset vs widget), §2.17 (**saldo se računa od sidra**) + revidiran opseg Faze 1
 **Vizualna skica:** v. link na kraju DIO 1
 
 > **Odnos prema `docs/Analytics_tab.md`** — to je **drugi dokument o drugoj stvari** i oba
@@ -85,15 +87,19 @@ biti **i na mobitelu** — u prvoj skici je bilo izostavljeno pa je čip visio b
 
 | # | Što | Tko | Ovisi o |
 |---|---|---|---|
-| 0 | Delete testovi → PROD deploy | Saša + Sonnet sesija | ničemu |
-| 1 | **Stanje po računu** — jedna pločica + upit u bazi | Claude | ničemu |
-| 2 | **Brzi unos** za Financije | Claude | 1 |
-| 3 | Koka proba na mobitelu → **odluka o cutoveru** | Koka | 1+2 |
-| 4 | Overview tab + ostale pločice | Claude | 3 (tek ako je 3 prošlo) |
-| 5 | Batchevi 2025/2024/2023 + cutover | Saša | 3 |
-| 6 | Cross-Area (`Analytics_tab.md`) | — | druga gusta Area |
+| 0 | Delete testovi → PROD deploy | Saša | ✅ 2026-08-12 |
+| 1 | **Kokina delta** u TEST (uvoz kao `N/A`) | Saša | ničemu |
+| 2 | **Stanje po računu** — RPC + ljuska taba + pločica sa sidrom | Claude | ničemu |
+| 3 | **Brzi unos** (= Shortcut + 2 sitnice, §2.9) | Claude | 2 |
+| 4 | Koka proba na TEST-u (mobitel) → **odluka o cutoveru** | Koka | 1+2+3 |
+| 5 | Overview tab dovršen + ostale pločice + `Dashboard` sheet | Claude | 4 |
+| 6 | Batchevi 2024/2023 | Saša | ne blokira cutover (§2.17) |
+| 7 | Cross-Area (`Analytics_tab.md`) | — | druga gusta Area |
 
-Koraci 0 i 1 ne ovise jedan o drugom i mogu ići paralelno.
+Koraci 1 i 2 ne ovise jedan o drugom i idu paralelno (1 je Sašin ručni rad, 2 je Claudeov kod).
+
+⚠ **Batchevi 2024/2023 su ispali s kritičnog puta** (§2.17): sidro čini saldo točnim od dana
+potvrde bez obzira na staru povijest. Idu zbog analize i AI sloja, ne zbog salda.
 
 **Korak 3 je prava vaga.** Ako Koka nakon 1+2 i dalje bira Excel, ne guramo dalje —
 mijenjamo plan i njen Excel ostaje trajni ulaz, a pipeline se automatizira umjesto gasi.
@@ -235,7 +241,7 @@ cijele `event_attributes`** (BUG-S103-ANYATTR).
 
 **Faza 1a — dokaz modela salda u Pythonu (XS), PRIJE koda. ✅ IZVRŠENO 2026-08-12.**
 Alat: `data-prep_tools/Financije/verify_saldo_model.py` (READ-ONLY nad Reviewom).
-Puni nalazi: `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` + `saldo_model_nalazi.tsv`.
+Puni nalazi: `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` + `saldo_model_nalazi.xlsx`.
 
 1. **Pravilo `Izvor ∈ {Racun, Cash}` (§2.10) ✅ POTVRĐENO.** Reproducira **bankovni pomak u
    17/30 mjeseci u cent**; naivni zbroj po `Racun`u u **0/30**. Bruto dvostruko brojanje:
@@ -261,9 +267,24 @@ model točan. To je **potvrda dizajna §2.11**, ne greška — Δ je signal da n
 krivo, i već je izbacio 4 konkretna slučaja (v. NALAZI §3.1). Model se **ne smije** „ugađati" da
 Δ nestane.
 
-**Faza 1 — `balance_by_group` (S–M).** `sql/035_area_group_agg.sql` (⚠ ne 034 — zauzeo ga `034_s107w_test_area.sql`) + hook + jedna pločica
-prikazana iznad Activities liste za Financije. Konfiguracija se piše u obliku iz §2.3 **već
-sad**, čak i ako je zasad hardkodirana za jednu Areu. Ovo je F1 fix.
+**Faza 1 — `balance_by_group` (S–M).** Opseg revidiran 2026-08-15 nakon Sašinih prigovora
+(§2.15 univerzalnost, §2.17 sidro):
+
+1. `sql/035_area_group_agg.sql` (⚠ ne 034 — zauzeo ga `034_s107w_test_area.sql`) — generički
+   RPC po §2.4; u potpisu **nema riječi „Financije"**
+2. `sql/036_balance_anchors.sql` — tablica sidara (§2.17), **ne** `areas.settings`
+3. **Ljuska Overview taba**, ne blok iznad Activities liste. Tab postoji **iff** Area ima
+   `dashboard` konfiguraciju (OQ-4); redoslijed `Overview → Activities → Structure`.
+   Konfigurator UI **se ne gradi** (N=1, §2.15) — konfiguracija se upiše ručno.
+4. Pločica `balance_by_group` **sa sidrom i `✓/Δ` čipom** — bez sidra broj nije usporediv s
+   bankom, a to je jedini razlog zašto pločica postoji
+5. **Fixup `dashboard.widgets[]` referenci pri renameu sluga** (§2.15, S105d klasa)
+6. **Kopiranje `areas.settings` u „From template"** (§2.15 — provjerena rupa)
+
+Kandidat za isti potez: izračunata kolona `Stanje` u Activities listi (§2.12) — bez nje drill
+s pločice vodi u listu koja je za traženje greške neupotrebljiva.
+
+Ovo je F1 fix. Konfiguracija se piše u obliku iz §2.3 **već sad**.
 
 **Faza 2 — brzi unos (S–M).** Podskup atributa u Add Activity + zapamćen zadnji `Racun`.
 Otvoreno pitanje OQ-2 dolje.
@@ -324,12 +345,9 @@ zasebnu tablicu (i time u `AnalyticsDef` sheet).
 
 ## 2.7 Otvorena pitanja
 
-- **OQ-1:** Je li `reconcile` samo prikaz, ili se sprema? *Prijedlog: **sprema se**, i argument
-  je jači nego prvotni („da se vidi kad je razlika nastala"). **Spremljeno sidro ograđuje
-  pretragu:** sve prije potvrđene točke vrijedi kao provjereno, pa se razlika od 49 € traži
-  po desetak redaka umjesto po 4.996. Uz to je sidro **sjeme formule** u koloni `Provjera
-  stanja` (§2.11) ⇒ bez spremanja ta kolona nema odakle početi. Sidro je **po računu** —
-  drukčije nema smisla.*
+- ~~**OQ-1:** Je li `reconcile` samo prikaz, ili se sprema?~~ **ZATVOREN 2026-08-15 (Saša):
+  sprema se, i to je NOSIVO — v. §2.17.** Sidro ne ograđuje samo pretragu nego **definira
+  saldo**. Podignuto s „lijepo bi bilo" na „ovako je saldo definiran".
 - ~~**OQ-2:** Brzi unos = zaseban ekran ili profil vidljivih polja?~~ **RIJEŠENO 2026-08-11
   čitanjem koda — ni jedno ni drugo, v. §2.9.** Mehanizam već postoji (Shortcuts / S88).
 - ~~**OQ-3:** rate u saldu ili pored?~~ **ODLUČENO 2026-08-11: pored, i razloženo na tri kante
@@ -506,6 +524,178 @@ Preostalih 42 jednostranih (Σ 2.481 €) su **pogrešna labela** — idu Seki, 
 a označeni su `izmedju racuna`. Saldo ne kvare, ali po gornjoj tablici ispadaju iz razreza po
 Tipu ⇒ **popraviti prije `breakdown` pločice**, ne prije `balance_by_group`.
 
+## 2.15 Gdje živi konfiguracija analitike (odluka 2026-08-15)
+
+**Povod (Sašin prigovor):** *„pločica iznad Activities liste kad je filtar na Financije_all"*
+ruši univerzalnost aplikacije. **Prigovor prihvaćen** — v. izmjenu Faze 1 u §2.5.
+
+### Zašto je analitika drukčija od Activities/Structure
+
+Activities i Structure su generični jer rade nad **oblikom** modela: svaka Area ima kategorije,
+atribute, evente, i alatu je dovoljno da postoje. Analitika ne može tako — da izračuna saldo,
+netko mora znati koji je atribut *novac unutra*, koji *van*, po čemu se grupira, i koje
+vrijednosti znače *„već se dogodilo"*.
+
+**Model tu semantiku ne nosi.** `Uplata` je bazi običan `number`, isti kao `Težina`. Zato
+konfiguracija pločice nije „postavka" nego **taj nedostajući sloj značenja** — preslikavanje
+generičkih EAV atributa u uloge koje računu trebaju.
+
+### Četiri sloja, četiri mjesta
+
+| sloj | što je | gdje živi | putuje s Areom? |
+| --- | --- | --- | --- |
+| **rječnik** | koji tipovi pločica postoje (`balance_by_group`, `breakdown`, `trend`, `count`, `latest`) | **u kodu** (RPC grana + renderer) | n/p |
+| **semantika jedne Aree** | koji slug je plus, koji grupa, što je „izvršeno" | `areas.settings.dashboard` → `Dashboard` sheet | **da** |
+| **semantika preko Area** | Series, `periods` (`Analytics_tab.md`) | **zasebna tablica** → `AnalyticsDef` Excel | ne (nema vlasnika među Areama) |
+| **sidro salda** | potvrđeno stanje po računu | **zasebna tablica** (v. §2.17) | **ne smije** |
+| trenutno stanje | filtar, raspon, drill | `FilterContext`, ne perzistira | n/p |
+
+**Rječnik je u kodu namjerno, ne kao kompromis.** Presedan postoji: `data_type` atributa
+(`text`/`number`/`datetime`/`boolean`/`suggest`) je isto rječnik u kodu — korisnik ne izmišlja
+nove tipove podataka, slaže iz postojećih. Pločice su isto na razini više.
+
+### Ovo nije nov obrazac — treći je put
+
+`areas.settings` već nosi dva ista slučaja. `automations.attribute_rules` kaže *„atribut
+`datum_naplate` dobiva vrijednost iz `izvorplacanja` po ovoj mapi"* — doslovno ista stvar:
+**dodjela uloga slugovima da bi generički motor mogao djelovati** (`attributeRules.ts` ne zna
+ništa o Financijama, zna samo `same`/`next:N`). `export_profiles` isto.
+
+### Test generičnosti
+
+> **Nova Area smije tražiti nula linija koda — samo konfiguraciju.**
+
+Ako Fitness traži „broj treninga po mjesecu", to mora biti `count` + `bucket: month` nad
+postojećim atributima. Ako traži kod, ili rječniku fali unos, ili to pitanje nije analitika.
+
+Praktično: pločice su parametrizirane **po ulogama** (`group`/`plus`/`minus`/`filter`/`bucket`),
+nikad po domeni. Isti `balance_by_group` s drugim slugovima odgovara na „stanje po računu",
+„kalorije po tjednu" i „sati po projektu".
+
+⚠ **Iskren rizik: generaliziramo iz N=1.** Ne znamo je li rječnik stvarno generičan dok ga
+druga gusta Area ne upotrijebi. Zaštita: oblik widgeta je **podskup** `AnalyticsSeries` (§2.6),
+i **konfigurator se ne gradi dok N nije 2** — inače betoniramo pogrešan rječnik u UI.
+
+### Ime Aree i slugovi — dvije krhkosti
+
+Konfiguracija živi **unutar retka te Aree**, pa se ime nigdje ne spominje: `Financije_all` →
+`Financije_Bulatova` → `Financije` je preimenovanje jednog stupca. Ali:
+
+1. **Ne ponoviti grešku `export_profiles`** — njegov ključ je `attr:Area||CatPath||AttrName` pa
+   ne preživi rename. Dashboard config referencira **samo slugove atributa**, nikad ime aree
+   ni putanju kategorije.
+2. **Slug atributa nije nepromjenjiv** ⇒ rename ga može razbiti (S105d klasa: normalizacija
+   sluga je razbila `depends_on`, dropdowni posivili). `StructureNodeEditPanel` već popravlja
+   `depends_on` reference pri promjeni sluga — **mora popravljati i `dashboard.widgets[]`.**
+   To ide u Fazu 1, ne kasnije.
+
+### „Tip Aree" = Template, i to samo u trenutku nastanka
+
+U shemi nema `area_type` i ne treba ga. Scenarij *„Igor uzme nešto financijskog oblika pa
+prilagodi svom jeziku i situaciji (firma + privatno)"* pokriva **Template sustav** (S49–S58):
+uzme financijski template, preimenuje račune, doda `Kontekst = firma/privatno`, izbaci suvišno.
+Nema flag koji ga drži u „finance" ladici.
+
+Igorovo firma/privatno je usput dobar test rječnika: može biti **dvije Aree** (svaka svoj
+dashboard) **ili jedna Area s atributom `Kontekst`** i pločicom koja po njemu grupira — oba
+rade s istim `balance_by_group`, bez linije koda.
+
+⚠ **Provjereno 2026-08-15: „From template" NE kopira `areas.settings`**
+(`StructureAddAreaPanel.tsx:275` kopira `name`, `slug`, `icon`, `color`, `description`).
+Igor bi dobio strukturu **bez** automatike i bez dashboarda. Ista rupa kao u principu „sve ide
+importom", samo na drugom putu → **popraviti u Fazi 1** (uz odluku kopira li se `export_profiles`).
+
+## 2.16 Preset (Shortcut) vs widget — rođaci koji se ne smiju spojiti
+
+**Sašino zapažanje:** Shortcut sustav je usko vezan uz filtriranje, pa izgleda kao ista stvar
+kao widget. Poveznica je stvarna, spajanje nije.
+
+`activity_presets` od S96 (`sql/027`) nosi `filter_state`:
+`{ periodKey, sortOrder, commentSearch?, attrFilter? }` — dakle preset **već** je „spremljeni
+pogled + spremljene vrijednosti za unos". Zajednički komad je **predikat odabira**.
+
+Razlika je u glagolu: **preset piše, widget čita.** Preset nosi vrijednosti koje se upisuju u
+novi zapis; widget nosi uloge po kojima se postojeći zapisi zbrajaju.
+
+**Zašto se ne spajaju — mehanički, ne estetski:**
+
+| | preset | widget |
+| --- | --- | --- |
+| vlasnik | **korisnik** (`user_id`) | **Area** |
+| referencira atribut preko | **ID-a** (`attrDefId`; `default_attributes` keyed by attr def id) | **sluga** |
+| putuje | **nikad** — ostaje u bazi | **mora** preživjeti Structure Excel u tuđu bazu |
+
+Preset smije koristiti ID jer nikad ne napušta bazu i precizniji je. Widget ne smije — nakon
+importa u drugu bazu ID-evi ne postoje. Spajanje bi jednom od njih nametnulo krivi izbor.
+
+**Susreću se u runtimeu, ne na disku:** oba se razriješe u isto `FilterContext` stanje.
+Isplata: **drill s pločice proizvodi točno filter stanje kakvo preset sprema** ⇒ „Save as
+Shortcut" (već postoji) snimi baš taj pogled, bez nove šifre.
+
+**Pravilo za Fazu 1:** widgetov `filter` mora se moći razriješiti u `PresetFilterState` oblik.
+Ako ne može, ili je widget izmislio nešto što filtar ne zna, ili filtru fali mogućnost — bolje
+vidjeti odmah nego kad se drill pokaže kao slijepa ulica.
+
+## 2.17 Saldo se računa OD SIDRA, ne od početka povijesti (odluka 2026-08-15)
+
+**Sašin prigovor:** *„opasno je ići u duboku prošlost i računati stanje svaki put od početka —
+Koka je jako ponosna na to da joj se sve u Excelici slaže u cent."*
+
+**Prihvaćeno, i to mijenja definiciju salda.**
+
+### Zašto — i koji argument je zapravo nosio
+
+**Brzina nije pravi razlog.** ~5.000 eventa je za Postgres ništa (indeksi 024/032 postoje), a
+sidro ne mijenja oblik upita (isti EAV pivot), samo dodaje datumski filtar. Dobitak je stvaran
+ali marginalan.
+
+**Povjerenje jest.** Da se Koki sve slaže u cent nije taština nego **njena kontrola kvalitete**.
+A u podacima znamo da postoji **13 rezidualnih mjeseci** i **69 označenih loših redaka**
+(`SALDO_MODEL_NALAZI.md` §3). Zbroj od 1.1.2023. bi gotovo sigurno promašio banku, a njen bi
+zaključak bio *„aplikacija je kriva, moja Excelica je točna"* — **i bio bi točan**.
+
+### ⚠ Ispravak ranije tvrdnje u ovom dokumentu
+
+Ranije je stajalo da je sidro opasno jer je „nosivo za točnost, pa krivo sidro daje krivi saldo
+koji izgleda točno". **To je bilo naopako.** Analogija s odbačenim automatom (§2.5a) ne vrijedi:
+tamo **stroj tvrdi nešto što ne može znati** (da je banka naplatila). Sidro je suprotno —
+**čovjek gleda bankovnu aplikaciju i prepisuje broj**, što je najkvalitetniji podatak u sustavu.
+
+I obrnuto: sidro je **robusnije**. Greška u 5.000 redaka tiho pomakne današnji broj i traži se
+kao igla u plastu; greška poslije sidra traži se po desetak redaka.
+
+### Definicija
+
+```
+saldo = potvrđeno_stanje + Σ(promjene STROGO nakon datuma potvrde)
+```
+
+Povijest ostaje u bazi i dalje hrani `breakdown`, `trend` i AI sloj — samo ne hrani glavni broj.
+
+Četiri posljedice:
+
+1. **Sidro NE ide u `areas.settings`.** Config putuje s Areom (template, Structure export), a
+   Igor ne smije naslijediti Kokin saldo ⇒ **zasebna tablica** (`area_id`, `group_value`,
+   iznos, datum, tko, kad). Ovo je prvi slučaj konfiguracije koja *ne smije* putovati —
+   čist kriterij za granicu iz §2.15.
+2. **Čuva se povijest potvrda, ne jedna vrijednost.** Jeftino, daje „otkad se razilazi", i
+   sjeme je formule za kolonu `Provjera stanja` (§2.11).
+3. **⚠ Sidro uvodi vlastiti rizik dvostrukog brojanja** — ista klasa kao `Racun` vs `Izvor`
+   (§2.10). Ako se sidro postavi danas, a u bazi su 2025+2026, ti retci **ne smiju** ući u
+   zbroj. Pravilo je „strogo nakon", bez iznimke.
+4. **Bez sidra → zbroj od početka, ali izričito označen** *(„od početka podataka")*. Nikad tiho.
+
+### Posljedica za redoslijed rada
+
+**Ovo vadi 2023 i 2024 s kritičnog puta.** Ako Koka pri cutoveru upiše stanje po računu s
+mobitela, pločica je točna od tog dana bez obzira koliko je 2023. neuredna. Stari batchevi
+tada služe analizi i AI sloju — **ne blokiraju prelazak**.
+
+⚠ **Delta je i dalje prva, ali iz drugog razloga nego što se prvo činilo:** sidro popravlja
+**glavni broj**, delta popravlja **zapis**. Bez delte joj u aplikaciji fali ~6 tjedana vlastite
+povijesti — a to je razlog zbog kojeg ne bi vjerovala ostatku. Pritisak nije „netočnost raste",
+nego „posao uvoza raste".
+
 ## 2.8 Što ovo NE mijenja
 
 Migracija (`FINANCIJE_MIGRACIJA.md` §13) teče paralelno i nepromijenjeno — to je podatkovni
@@ -525,4 +715,5 @@ odlučuje)**, **Fitness (ista mehanika, drugi rezultat)** — plus tablica „pl
 
 ---
 
-*Sljedeći korak: Sašin pregled ovog dokumenta + skice → odluka o OQ-1…OQ-5 → Faza 1.*
+*Stanje 2026-08-15: sve OQ zatvorene, Faza 1a izvršena, opseg Faze 1 revidiran (§2.5).
+Sljedeći korak: Kokina delta (Saša) + Faza 1 (Claude), paralelno.*
