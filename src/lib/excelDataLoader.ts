@@ -541,7 +541,7 @@ export async function loadEventsByIdsForExport(
   const baseCols = 'id,user_id,category_id,event_date,session_start,comment,created_at';
   const { data: rows, error } = await fetchAllPagedIn<Record<string, unknown>>(
     eventIds,
-    (chunk, from, to) => supabase.from('events').select(baseCols).in('id', chunk).range(from, to),
+    (chunk, from, to) => supabase.from('events').select(baseCols).in('id', chunk).order('id').range(from, to),
   );
   if (error) throw new Error(`Could not load imported events: ${String(error)}`);
 

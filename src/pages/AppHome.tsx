@@ -27,6 +27,8 @@ import { LeaveAreaModal } from '@/components/sharing/LeaveAreaModal';
 import { HeaderAvatar, ProfileSettingsModal } from '@/components/sharing/ProfileSettingsModal';
 import { useHelp } from '@/context/HelpContext';
 import { useActivities } from '@/hooks/useActivities';
+import { useAreaDashboard } from '@/hooks/useAreaDashboard';
+import { OverviewTab } from '@/components/overview/OverviewTab';
 import { useOrphanUsers } from '@/hooks/useOrphanUsers';
 import { OrphanBanner } from '@/components/activity/OrphanBanner';
 import { OrphanManagementModal } from '@/components/activity/OrphanManagementModal';
@@ -48,6 +50,12 @@ const StructureIcon = () => (
 const ActivitiesIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+  </svg>
+);
+
+const OverviewIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h4l3 8 4-16 3 8h4" />
   </svg>
 );
 
@@ -79,7 +87,11 @@ const FolderIcon = () => (
 // Tab Types
 // --------------------------------------------
 
-type TabType = 'activities' | 'structure';
+// Overview sits first because it is the reason the app gets opened; Activities
+// is the detail, Structure the rarity (OVERVIEW_TAB_SPEC.md, DIO 1).
+// It only appears for Areas that carry a dashboard config (OQ-4) — an empty
+// Overview would be an invitation to disappointment.
+type TabType = 'overview' | 'activities' | 'structure';
 
 // --------------------------------------------
 // Main Content (inside FilterProvider)
@@ -94,7 +106,8 @@ function AppContent() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const s = localStorage.getItem('ui:activeTab');
-    return s === 'structure' ? 'structure' : 'activities';
+    if (s === 'structure' || s === 'overview') return s;
+    return 'activities';
   });
   const [structureViewMode, setStructureViewMode] = useState<StructureViewMode>(() => {
     const s = localStorage.getItem('ui:structureViewMode');
@@ -223,6 +236,18 @@ function AppContent() {
       setSelectedFilterAttr('comment');
     }
   }, [filterAttrDefs, filter.attrFilter]);
+
+  // Overview tab — exists only for Areas that carry a dashboard config (OQ-4)
+  const { config: dashboardConfig, loaded: dashboardLoaded } = useAreaDashboard(filter.areaId);
+  const hasOverview = dashboardLoaded && !!dashboardConfig;
+
+  // Switching to an Area without a dashboard must not leave the user staring at
+  // a tab that no longer exists.
+  useEffect(() => {
+    if (activeTab === 'overview' && dashboardLoaded && !dashboardConfig) {
+      setActiveTab('activities');
+    }
+  }, [activeTab, dashboardLoaded, dashboardConfig]);
 
   // Sync active tab into HelpContext so chips match the visible tab
   const { setPageHint } = useHelp();
@@ -622,6 +647,15 @@ function AppContent() {
         <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
           {/* Tabs */}
           <div className="flex bg-white rounded-lg p-1 shadow-sm border border-gray-100">
+            {hasOverview && (
+              <TabButton
+                active={activeTab === 'overview'}
+                onClick={() => setActiveTab('overview')}
+                icon={<OverviewIcon />}
+                label="Overview"
+                isMobile={isMobile}
+              />
+            )}
             <TabButton
               active={activeTab === 'activities'}
               onClick={() => setActiveTab('activities')}
@@ -638,8 +672,11 @@ function AppContent() {
             />
           </div>
 
-          {/* Right-side action area — changes per tab */}
-          {activeTab === 'activities' ? (
+          {/* Right-side action area — changes per tab. Overview has no actions
+              of its own: every control it needs lives inside its tiles. */}
+          {activeTab === 'overview' ? (
+            <div />
+          ) : activeTab === 'activities' ? (
             /* ---- Activities: Add Activity button ---- */
             <Button
               leftIcon={<AddIcon />}
@@ -771,6 +808,13 @@ function AppContent() {
               refreshKey={structureRefreshKey}
               onManageAccess={openShareModal}
               onLeaveArea={openLeaveAreaModal}
+            />
+          ) : activeTab === 'overview' && filter.areaId && dashboardConfig ? (
+            <OverviewTab
+              areaId={filter.areaId}
+              config={dashboardConfig}
+              canWrite={!isReadOnlyGrantee}
+              onNavigateToActivities={() => setActiveTab('activities')}
             />
           ) : (
             <ActivitiesView />

@@ -31,6 +31,7 @@ import { THEME } from '@/lib/theme';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
+import { fixupDashboardSlug } from '@/lib/dashboardConfig';
 
 // --------------------------------------------------------
 // Types
@@ -1129,6 +1130,21 @@ export function StructureNodeEditPanel({
 
           // If slug changed, update any depends_on references pointing to old slug
           if (slugChanged) {
+            // …and the Overview dashboard config, which references attributes by
+            // slug for exactly the same reason (§2.15). Same save, same rename —
+            // otherwise the balance tile stops rendering a number, because the
+            // RPC raises on an unknown slug instead of quietly showing 0.
+            try {
+              const fixed = await fixupDashboardSlug(node.areaId, attr.originalSlug, newSlug);
+              if (fixed > 0) {
+                toast.success(`Overview: ${fixed} reference${fixed === 1 ? '' : 's'} updated to "${newSlug}"`);
+              }
+            } catch (e) {
+              // Loud, not fatal: the attribute rename itself already succeeded.
+              console.error('dashboard slug fixup failed:', e);
+              toast.error(`Attribute renamed, but the Overview config still points at "${attr.originalSlug}" — fix it before using the tab.`, { duration: 8000 });
+            }
+
             for (const n of allNodes) {
               for (const ad of n.attributeDefinitions) {
                 if (ad.id === attr.id) continue;

@@ -49,6 +49,51 @@ export interface AttributeRuleConfig {
   date_map: Record<string, string>;
 }
 
+// --------------------------------------------
+// Overview dashboard (docs/OVERVIEW_TAB_SPEC.md §2.3, §2.15)
+// --------------------------------------------
+// The config is the missing layer of MEANING over a generic EAV model: which
+// slug is money in, which is money out, what counts as "already happened".
+// The model does not carry that — `Uplata` is just a number, same as `Težina`.
+//
+// Slug-based, never ID-based: this travels through the Structure Excel into
+// another database, where IDs do not exist (§2.16). And it never names the Area
+// or a category path — that is the mistake `export_profiles` made.
+
+/** One attribute condition. Mirrors `p_filters` in sql/035_area_group_agg.sql. */
+export interface WidgetFilter {
+  slug: string;
+  op: 'in' | 'not_in';
+  values: string[];
+}
+
+export interface BalanceByGroupWidget {
+  type: 'balance_by_group';
+  title: string;
+  /** Attribute slug to group by, e.g. `racun`. */
+  group_by: string;
+  /** Numeric slug added to the balance. */
+  plus?: string;
+  /** Numeric slug subtracted from it. */
+  minus?: string;
+  /** What counts as "already happened" — for Financije this is the §2.10 rule. */
+  filters?: WidgetFilter[];
+  /** A second, separate number beside the balance (e.g. Status = Planiran). */
+  split?: { label: string; filters: WidgetFilter[] };
+  /** Show the "u banci" field, the ✓/Δ chip, and let the user write an anchor. */
+  reconcile?: boolean;
+  /** Suffix appended to every amount, e.g. `€`. */
+  unit?: string;
+}
+
+/** v1 dictionary. Widening it is a code change on purpose (§2.15 — the
+ *  dictionary lives in code, the semantics of one Area live in config). */
+export type DashboardWidget = BalanceByGroupWidget;
+
+export interface DashboardConfig {
+  widgets: DashboardWidget[];
+}
+
 export interface AreaSettings {
   disable_save_plus?: boolean;
   comment_template?: string;
@@ -57,6 +102,7 @@ export interface AreaSettings {
     attribute_rules?: AttributeRuleConfig[];
   };
   export_profiles?: Record<string, unknown>;
+  dashboard?: DashboardConfig;
 }
 
 export interface CategorySettings {

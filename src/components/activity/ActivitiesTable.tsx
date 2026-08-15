@@ -4,6 +4,9 @@ import { useLocation } from 'react-router-dom';
 import { useFilter } from '@/context/FilterContext';
 import { supabase } from '@/lib/supabaseClient';
 import { useActivities, formatTime, formatDate, type ActivityGroup } from '@/hooks/useActivities';
+import { useAreaDashboard } from '@/hooks/useAreaDashboard';
+import { useRunningBalance } from '@/hooks/useRunningBalance';
+import { formatAmount, formatDateHr } from '@/lib/amountFormat';
 import type { UUID } from '@/types';
 
 // --------------------------------------------
@@ -128,6 +131,18 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   const displayedActivities = filterOrphans && orphanedPairKeys && orphanedPairKeys.size > 0
     ? activities.filter(g => orphanedPairKeys.has(`${g.user_id}:${g.area_id}`))
     : activities;
+
+  // Running balance column (OVERVIEW_TAB_SPEC §2.12). Appears only when the list
+  // is one account, newest-first — the hook decides and hides itself otherwise.
+  const { config: dashboardConfig } = useAreaDashboard(filter.areaId);
+  const running = useRunningBalance({
+    areaId: filter.areaId,
+    config: dashboardConfig,
+    activities: displayedActivities,
+    attrFilter: filter.attrFilter,
+    sortOrder: filter.sortOrder,
+    dateTo: filter.dateTo,
+  });
 
   // HLT fix: react to loading→false + activities present (ref.current is not reactive)
   const hasHighlightRow = highlightKey
@@ -454,6 +469,19 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell w-32">User</th>
               )}
               <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell max-w-[140px]">Comment</th>
+              {running.enabled && (
+                <th
+                  className="px-3 py-3 text-right font-medium text-gray-700 w-28 whitespace-nowrap"
+                  title={
+                    `Izračunato stanje za "${running.groupValue}" nakon svakog retka.` +
+                    (running.anchorOn
+                      ? ` Računa se od potvrde ${formatDateHr(running.anchorOn)} — stariji retci nemaju definirano stanje.`
+                      : ' Nema potvrđenog stanja, pa se računa od početka podataka.')
+                  }
+                >
+                  Stanje
+                </th>
+              )}
               <th className="px-3 py-3 text-right font-medium text-gray-700 w-12 sticky right-0 bg-gray-50 z-[2]">Actions</th>
             </tr>
           </thead>
@@ -462,6 +490,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
               <ActivityRow
                 key={group.sessionKey}
                 group={group}
+                runningBalance={running.enabled ? { value: running.byKey.get(group.sessionKey) ?? null, unit: running.unit } : undefined}
                 isSelected={selectedKeys.has(group.sessionKey)}
                 onToggleSelect={() => toggleSelect(group.sessionKey)}
                 onEdit={onEditActivity}
@@ -505,9 +534,11 @@ interface ActivityRowProps {
   isOrphan?: boolean;
   onManageOrphan?: () => void;
   showCategoryOnMobile?: boolean;
+  /** §2.12 — undefined = column is off; { value: null } = defined but not applicable to this row. */
+  runningBalance?: { value: number | null; unit?: string };
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -630,6 +661,24 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
           </span>
         </td>
         
+        {/* Running balance (§2.12) — only rendered when the header is too */}
+        {runningBalance && (
+          <td className="px-3 py-2.5 text-right whitespace-nowrap tabular-nums">
+            {runningBalance.value === null ? (
+              <span
+                className="text-gray-300"
+                title="Ovaj redak ne miče stanje — ili je prije potvrđenog stanja, ili ne ulazi u saldo (npr. kartično plaćanje koje tereti račun tek skupnom naplatom)."
+              >
+                —
+              </span>
+            ) : (
+              <span className={runningBalance.value < 0 ? 'text-rose-700' : 'text-gray-900'}>
+                {formatAmount(runningBalance.value, runningBalance.unit)}
+              </span>
+            )}
+          </td>
+        )}
+
         {/* Actions - sticky right so always visible on desktop */}
         <td className="px-2 py-2.5 text-right sticky right-0 bg-white z-[1]">
           <button

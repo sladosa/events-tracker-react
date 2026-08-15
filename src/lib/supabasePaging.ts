@@ -25,6 +25,20 @@ export interface PagedResult<T> {
 /**
  * Run `page(from, to)` repeatedly until it stops returning rows.
  *
+ * ⚠ THE QUERY YOU PASS MUST HAVE `.order(...)` ON A UNIQUE COLUMN.
+ * Range paging without a stable sort is silently wrong: Postgres does not
+ * promise the same row order across two queries, so rows overlap between pages
+ * and are skipped at the same time. The result looks perfectly normal — it is
+ * just missing rows, different ones each run.
+ *
+ * That is not hypothetical. A verification tool for the Overview RPC hit exactly
+ * this (2026-08-15) and produced 45 "events with no attributes" on one run and
+ * 49 different ones on the next; neither existed. Here the same bug is worse:
+ * these callers page in order to DELETE, so a skipped row means the parent
+ * delete trips the foreign key it was paging to avoid.
+ *
+ * This helper cannot add the order itself — it does not build the query.
+ *
  * Advances by however many rows actually came back rather than by PAGE, so a
  * server cap lower than PAGE still pages correctly instead of stopping short.
  * That costs one extra empty request at the end — cheap next to reading a

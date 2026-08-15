@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `Claude-temp_R/DONE_HISTORY.md`** (S1–S107y).
+> **Povijest po sesijama je u `Claude-temp_R/DONE_HISTORY.md`** (S1–S108).
 > Ovdje ostaje samo ono što mijenja buduće odluke. Zamke iz starih sesija su
 > promaknute u „Critical rules" i „Zamke" — ne traži ih u povijesti.
 
@@ -77,6 +77,12 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **PostgREST `max-rows = 1000` reže BEZ GREŠKE.** Svaki `select` koji mora vratiti *sve* retke
   mora paginirati — `src/lib/supabasePaging.ts` (`fetchAllPaged`/`fetchAllPagedIn`).
   Truncation je tih; `event_attributes` na jednoj Arei lako prijeđe 20k.
+- **⚠ Paginacija BEZ `.order()` je tiho pogrešna** (S108). Postgres ne jamči isti redoslijed
+  između dva upita, pa se retci između stranica **preklope i istovremeno preskoče**. Rezultat
+  izgleda uredno, samo mu fali dio redaka — **svaki put drugi**. Otkriveno kad je alat
+  „našao" 45 eventa bez atributa u jednom runu i 49 drugih u sljedećem; nijedan nije postojao.
+  Svaki `range()`/`Range:` upit mora imati `.order('id')` (ili drugi jedinstveni stupac).
+  Kod brisanja je gore od krive brojke: preskočeni redak ⇒ parent DELETE padne na FK.
 - **RLS-blokiran `DELETE` „uspije" s 0 redaka.** Uvijek `.select('id')` i provjeri je li
   rezultat prazan — inače brisanje izgleda kao da je prošlo.
 - **Supabase SELECT mora biti jednoredni** — ugniježđeni multiline selecti tiho ignoriraju relacije
@@ -116,8 +122,10 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `auto_filter.ref` (vrijedi i za app export i za Python alate).
 - **`export_profiles` još ne preživljava Structure roundtrip** (ključ `attr:Area||CatPath||AttrName`
   ne preživi rename aree/atributa) — jedina preostala rupa u „sve ide importom".
-- **„From template" ne kopira `areas.settings`** (`StructureAddAreaPanel.tsx:275`) ⇒
-  `comment_template`, `automations`, `export_profiles` ne putuju s templateom.
+- **„From template" kopira `areas.settings` OSIM `export_profiles`** (popravljeno S108).
+  Izostavljen je namjerno: ključ `attr:Area||CatPath||AttrName` nosi **ime izvorne aree**, pa
+  bi u drugačije nazvanoj Arei svaki ključ bio mrtav. Vraća se kad se format ključa popravi.
+  ⚠ `balance_anchors` **nikad** ne putuju — config smije putovati, potvrđeno stanje ne (§2.17).
 
 **Prije svakog commita:** `npm run typecheck && npm run build` (⚠ `npm` se pokreće **iz
 direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upozorenje, ne greška)
@@ -176,6 +184,7 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 | Add Activity | Blue | `THEME.add` |
 | Structure tab | Indigo/Purple | `THEME.structure` |
 | Structure Edit panels | Amber | `THEME.structureEdit` |
+| Overview tab | Teal | `THEME.overview` |
 
 Preview all at `/app/debug` → Theme Preview tab.
 
@@ -197,6 +206,13 @@ src/lib/structureImport.ts         Structure import — non-destructive, slug lo
 src/lib/attributeRules.ts          set_attribute automatika (evaluateDateRule, same/next:N)
 src/lib/deleteErrors.ts            classifyDeleteError() — čitljive poruke iz PG grešaka
 src/lib/theme.ts                   Theme colour tokens
+src/lib/overviewApi.ts             Overview read model — rpc_area_group_agg / _balance_anchored,
+                                   CRUD sidara. Jedini `.rpc()` pozivi u aplikaciji.
+src/lib/dashboardConfig.ts         Fixup slug referenci u dashboard configu (S105d razred)
+src/lib/amountFormat.ts            formatAmount / parseAmountInput (hr 1.234,56)
+src/hooks/useAreaDashboard.ts      Ima li Area `settings.dashboard` ⇒ postoji li Overview tab
+src/hooks/useRunningBalance.ts     Izračunata kolona `Stanje` u Activities listi (§2.12)
+src/components/overview/           OverviewTab + BalanceByGroupTile
 src/pages/AppHome.tsx              Home: tabs, filter, export/import triggers
 src/pages/AddActivityPage.tsx      Add flow — chain_key na parent INSERT, rata modal
 src/pages/EditActivityPage.tsx     Edit flow — delta-shift, collision check, parent upsert
@@ -242,7 +258,9 @@ events (linked to category_id + user_id)
 `validation_rules` (JSONB) na `attribute_definitions` pokreće sve dropdowne — nema zasebne tablice.
 
 `areas.settings` (JSONB) nosi per-Area konfiguraciju: `comment_template`, `automations`
-(`attribute_rules` + `rata`), `export_profiles`, `disable_save_plus`, uskoro `dashboard`.
+(`attribute_rules` + `rata`), `export_profiles`, `disable_save_plus`, `dashboard` (S108).
+⚠ **Sidro salda NIJE tu** — `balance_anchors` je zasebna tablica jer config smije putovati
+s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 **Sve što je tu mora ići kroz Structure Excel roundtrip** (Sašin princip „sve ide importom").
 
 ---
@@ -262,7 +280,10 @@ events (linked to category_id + user_id)
 - **Shortcuts (S88):** `activity_presets` — snimka vrijednosti atributa (`default_attributes`,
   prioritet nad `attr.default_value`) + spremljeno filter stanje (`filter_state`)
 - **AI Help:** Haiku FAB, 3 taba, dinamički load `docs/help/*.md`, context chips po `pageHint`
-- **Template sustav:** template user, „From template" flow, Demo Area na PROD
+- **Template sustav:** template user, „From template" flow (nosi `settings` bez `export_profiles`), Demo Area na PROD
+- **Overview (S108):** tab po Arei, postoji **samo** uz `settings.dashboard` (OQ-4). Pločica
+  `balance_by_group` sa sidrom i `✓/Δ` čipom, drill u Activities, izračunata kolona `Stanje`.
+  Agregacija ide u Postgres (`rpc_area_group_agg`, `rpc_area_balance_anchored`) — nikad u preglednik.
 
 ---
 
@@ -330,9 +351,10 @@ N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravil
 1. **Kokina delta** — `normalize_financije.py` → generator → import kao `N/A`.
    Prva jer je jedini dio koji **raste**, i jer bez nje Koki fali ~6 tjedana vlastite povijesti.
    Ne treba `Pitanja za Koku` prolaz (svježe je, ona pamti).
-2. **Faza 1 — `balance_by_group`** (paralelno s 1): `sql/035_area_group_agg.sql` (⚠ ne 034 —
-   zauzeo `034_s107w_test_area.sql`) + ljuska Overview taba + jedna pločica **sa sidrom**.
-   Puni opseg i odluke: `docs/OVERVIEW_TAB_SPEC.md`.
+2. ~~**Faza 1 — `balance_by_group`**~~ **✅ NAPISANO S108** (`sql/035`+`036`+`037`, Overview tab,
+   pločica sa sidrom, kolona `Stanje`). RPC verificiran protiv Python modela u cent.
+   **Čeka ručne testove T-S108-1…12** i ponovno puštanje `sql/036` (ispravljen `FULL JOIN`).
+   **Sljedeće:** Faza 2 — brzi unos (§2.9: dvije sitnice nad postojećim Shortcut sustavom).
 3. **Koka proba na TEST-u (mobitel) → odluka o cutoveru.** Ovo je prava vaga; ako padne,
    njen Excel ostaje trajni ulaz i pipeline se automatizira umjesto gasi.
 4. **Batch 2024, pa 2023** — svaki uz `Pitanja za Koku` vetting prije generiranja.
@@ -382,9 +404,13 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 
 ## Backlog
 
-**Roundtrip completeness** — ostaje samo `export_profiles` (ključ `attr:Area||CatPath||AttrName`
-ne preživi rename); fix = `ExportProfiles` sheet, isti obrazac kao `Automations`.
-**Također: „From template" ne kopira `areas.settings`** — nađeno 2026-08-15.
+**Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
+rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
+(fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
+
+**Drill s dva uvjeta** — `FilterContext` nosi jedan `attrFilter`, a uvjet pločice ima dva
+(`Izvor` + `Status`), pa drill znači „pokaži mi ovaj račun", ne „točno ove retke".
+Predviđeno u OVERVIEW_TAB_SPEC §2.16 kao test; ispalo da filtru fali mogućnost.
 
 **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC; ista investicija kao Faza 1.
 

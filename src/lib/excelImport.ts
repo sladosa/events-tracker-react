@@ -1611,13 +1611,13 @@ export async function analyzeDeletes(
   // Attribute + photo counts, so the user sees the weight of what they are removing
   const { data: attrRows, error: attrErr } = await fetchAllPagedIn<{ event_id: string }>(
     foundIds,
-    (chunk, from, to) => supabase.from('event_attributes').select('event_id').in('event_id', chunk).range(from, to),
+    (chunk, from, to) => supabase.from('event_attributes').select('event_id').in('event_id', chunk).order('id').range(from, to),
   );
   if (attrErr) throw new Error(`Delete analysis failed: ${String(attrErr)}`);
 
   const { data: photoRows, error: photoErr } = await fetchAllPagedIn<{ event_id: string }>(
     foundIds,
-    (chunk, from, to) => supabase.from('event_attachments').select('event_id').in('event_id', chunk).range(from, to),
+    (chunk, from, to) => supabase.from('event_attachments').select('event_id').in('event_id', chunk).order('id').range(from, to),
   );
   if (photoErr) throw new Error(`Delete analysis failed: ${String(photoErr)}`);
 
@@ -1730,7 +1730,7 @@ export async function applyDeletes(
     // Storage files behind the attachments (paged — a truncated read leaves orphan files)
     const { data: attachments, error: attErr } = await fetchAllPagedIn<{ url: string }>(
       ids,
-      (chunk, from, to) => supabase.from('event_attachments').select('url').in('event_id', chunk).range(from, to),
+      (chunk, from, to) => supabase.from('event_attachments').select('url').in('event_id', chunk).order('id').range(from, to),
     );
     if (attErr) {
       warnings.push(`Could not list attachments before deleting (files may stay in storage): ${String(attErr)}`);

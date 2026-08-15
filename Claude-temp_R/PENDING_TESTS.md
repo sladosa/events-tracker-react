@@ -3,9 +3,39 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S107y (2026-08-13) — `Pitanja za Koku` 14/14 odgovoreno, popravci primijenjeni, batch 2025 (1473 eventa) uvezen u TEST. Dogovor o Fazi 1 odgođen za sljedeći session.
-**Otvoreno: T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+**Zadnji update:** S108 (2026-08-15) — Faza 1: RPC salda verificiran protiv Python modela (0,00 razlike), Overview tab + pločica sa sidrom + izračunata kolona `Stanje`.
+**Otvoreno: T-S108-1…12 (sve novo), T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Detalji S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+
+---
+
+## S108 — Faza 1: RPC salda + Overview tab + pločica sa sidrom
+
+⚠ **Preduvjet:** `sql/035`, **`sql/036` (ponovo — ispravljen `FULL JOIN`)** i `sql/037`
+moraju biti puštene na TEST prije testiranja.
+
+Prihvatni kriterij prošao **prije** pisanja UI-ja: RPC reproducira Python model (već validiran
+protiv banke) **u cent** — ZABA `150,80`, RF `−1.978,32`. Naivni zbroj po `Racun`u dao bi
+ZABA `−22.943,71`.
+
+| ID | Test | Status |
+| --- | --- | --- |
+| P-1…P-6 | Programske kontrole (`verify_rpc_vs_model.py`: B vs C 0,00, A vs B 0,00, sidro 0,00, D1b 634/634) | ✅ (programski) |
+| T-S108-1 | ⭐ Overview tab postoji samo uz `dashboard` config (OQ-4), redoslijed Overview → Activities → Structure | ⬜ |
+| T-S108-2 | ⭐ Pločica — ZABA 150,80 €, RF −1.978,32 €, „od početka podataka" | ⬜ |
+| T-S108-3 | „planirano" — ZABA −2.521,38 € (13) | ⬜ |
+| T-S108-4 | ⭐ Sidro: Δ → Potvrdi → „od potvrde"; retak datiran **na** dan potvrde NE mijenja saldo | ⬜ |
+| T-S108-5 | Δ ostaje dok se ne slaže; ništa se ne mijenja bez Potvrdi | ⬜ |
+| T-S108-6 | ⭐ Drill s pločice → Activities filtriran na račun / na `Status=Planiran` | ⬜ |
+| T-S108-7 | ⭐ Izračunata kolona `Stanje` — silazi do salda, nestaje kod miješanih računa i obrnutog sorta | ⬜ |
+| T-S108-8 | Rename sluga popravlja `dashboard.widgets[]`; pokvaren slug daje **imenovanu** grešku, ne 0,00 | ⬜ |
+| T-S108-9 | Paginacija bez stabilnog sorta — Delete Area / Import Delete? nad >1000 atributa (regresija, nedeterministički) | ⬜ |
+| T-S108-10 | „From template" nosi `settings` bez `export_profiles` i bez sidara | ⬜ |
+| T-S108-11 | Read grantee vidi pločicu, nema „Potvrdi"; write grantee ima | ⬜ |
+| T-S108-12 | Mobitel — polje „u banci" i čip vidljivi i upotrebljivi | ⬜ |
+
+**Sljedeće nakon prolaza:** Faza 2 (brzi unos — §2.9, dvije sitnice nad postojećim
+Shortcut sustavom), pa Faza 3 (Koka proba na mobitelu → odluka o cutoveru).
 
 ---
 

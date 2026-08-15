@@ -318,7 +318,7 @@ export function StructureDeleteModal({
       // delete a prefix of the children and then hit a foreign key violation
       // on the parent. That is exactly what used to fail on large Areas.
       const { data: events, error: selErr } = await fetchAllPaged<{ id: string }>(
-        (from, to) => supabase.from('events').select('id').in('category_id', categoryIds).range(from, to),
+        (from, to) => supabase.from('events').select('id').in('category_id', categoryIds).order('id').range(from, to),
       );
       if (selErr) throwStep('select events', selErr);
 
@@ -332,7 +332,7 @@ export function StructureDeleteModal({
         // Delete storage attachments (only if any exist)
         const { data: attachments, error: attSelErr } = await fetchAllPagedIn<{ id: string; url: string }>(
           eventIds,
-          (chunk, from, to) => supabase.from('event_attachments').select('id, url').in('event_id', chunk).range(from, to),
+          (chunk, from, to) => supabase.from('event_attachments').select('id, url').in('event_id', chunk).order('id').range(from, to),
         );
         if (attSelErr) throwStep('select event_attachments', attSelErr);
 
@@ -354,7 +354,7 @@ export function StructureDeleteModal({
         // Delete event_attributes by PK (`.in('event_id')` DELETE fails on some Supabase configs)
         const { data: eaRows, error: eaSelErr } = await fetchAllPagedIn<{ id: string }>(
           eventIds,
-          (chunk, from, to) => supabase.from('event_attributes').select('id').in('event_id', chunk).range(from, to),
+          (chunk, from, to) => supabase.from('event_attributes').select('id').in('event_id', chunk).order('id').range(from, to),
         );
         if (eaSelErr) throwStep('select event_attributes', eaSelErr);
         if (eaRows.length > 0) {

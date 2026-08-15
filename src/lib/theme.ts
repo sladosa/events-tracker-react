@@ -80,6 +80,31 @@ export const THEME = {
     spinner:      'border-amber-500',
     ring:         'focus:ring-amber-500',
   },
+  // Overview tab theme — teal, independent from Activities and Structure.
+  // Used by src/components/overview/*. The amount tokens are semantic, not
+  // decorative: a balance that reads green when it is negative is a lie.
+  overview: {
+    headerBg:     'bg-teal-600',
+    headerText:   'text-white',
+    headerBorder: 'border-teal-700',
+    accent:       'bg-white text-teal-700 hover:bg-teal-50',
+    cancelBtn:    'bg-teal-500 hover:bg-teal-700 text-white',
+    deleteBtn:    'bg-red-500 hover:bg-red-600 text-white',
+    light:        'bg-teal-50',
+    lightBorder:  'border-teal-200',
+    lightText:    'text-teal-800',
+    spinner:      'border-teal-600',
+    ring:         'focus:ring-teal-500',
+    // Overview-specific tokens
+    tabActive:    'bg-teal-600 text-white',
+    tileBorder:   'border-teal-100',
+    btnConfirm:   'bg-teal-600 hover:bg-teal-700 text-white border border-teal-700',
+    chipOk:       'bg-emerald-100 text-emerald-800 border border-emerald-200',
+    chipDiff:     'bg-amber-100 text-amber-900 border border-amber-300',
+    chipNoAnchor: 'bg-slate-100 text-slate-700 border border-slate-300',
+    amountPos:    'text-emerald-700',
+    amountNeg:    'text-rose-700',
+  },
   // Structure tab theme — independent from 'view' so it can be changed separately.
   // Colour: indigo/purple. Edit here only; never hardcode in structure components.
   structure: {

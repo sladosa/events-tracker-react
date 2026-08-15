@@ -19,7 +19,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useTemplateAreas } from '@/hooks/useAreas';
 import { TEMPLATE_USER_ID } from '@/lib/constants';
 import type { StructureNode } from '@/types/structure';
-import type { AttributeDefinition } from '@/types/database';
+import type { AreaSettings, AttributeDefinition } from '@/types/database';
 
 // --------------------------------------------------------
 // Props
@@ -272,6 +272,25 @@ export function StructureAddAreaPanel({
       }
 
       // 3. Insert the new area
+      //
+      // `settings` travels with the template (found missing 2026-08-15, see
+      // OVERVIEW_TAB_SPEC.md §2.15). Without it a copied Area arrives as a bare
+      // skeleton: no rata modal, no auto-comment, no Overview — the same hole as
+      // the "everything goes through import" principle, just on the other path.
+      //
+      // ⚠ `export_profiles` is DELIBERATELY LEFT BEHIND. Its keys are
+      //   `attr:Area||CatPath||AttrName` and therefore contain the SOURCE Area's
+      //   name, so in a differently named Area every key is dead: the profile
+      //   silently does nothing, or hides the wrong columns. Copying it would
+      //   transplant a known-broken reference into every new Area. It comes back
+      //   when the key format is fixed (backlog: ExportProfiles sheet), not before.
+      //
+      // ⚠ `balance_anchors` are NOT here and must never be: config may travel,
+      //   a confirmed bank balance may not (§2.17). They live in their own table
+      //   precisely so this copy cannot pick them up by accident.
+      const { export_profiles: _skipExportProfiles, ...templateSettings } =
+        (templateArea.settings ?? {}) as AreaSettings;
+
       const { error: areaErr } = await supabase.from('areas').insert({
         id: newAreaId,
         user_id: userId,
@@ -281,6 +300,7 @@ export function StructureAddAreaPanel({
         icon: templateArea.icon,
         color: templateArea.color,
         description: templateArea.description,
+        settings: templateSettings,
       });
       if (areaErr) throw areaErr;
 

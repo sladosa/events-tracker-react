@@ -68,7 +68,7 @@ export async function fetchAreaRoster(
     // Paged: PostgREST truncates at max-rows (1000) silently, which would
     // under-report the counts shown to the user.
     const { data: events } = await fetchAllPaged<{ user_id: string | null }>(
-      (from, to) => supabase.from('events').select('user_id').in('category_id', categoryIds).range(from, to),
+      (from, to) => supabase.from('events').select('user_id').in('category_id', categoryIds).order('id').range(from, to),
     );
 
     const counts = new Map<string, number>();
