@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `Claude-temp_R/DONE_HISTORY.md`** (S1–S108).
+> **Povijest po sesijama je u `Claude-temp_R/DONE_HISTORY.md`** (S1–S109).
 > Ovdje ostaje samo ono što mijenja buduće odluke. Zamke iz starih sesija su
 > promaknute u „Critical rules" i „Zamke" — ne traži ih u povijesti.
 
@@ -351,15 +351,31 @@ N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravil
 
 ---
 
-## Sljedeći koraci (2026-08-15)
+## Sljedeći koraci (2026-08-16)
+
+**Aktivna nit — provjera lanca salda (S109 plan, puni kontekst u `NEXT_SESSION_PROMPT.md`):**
+
+0a. **Pločica prima `asOf = filter.dateTo`** (+ podnaslov „na dan …"). Preživljava svaku
+    kasniju odluku o pohrani, zato ide prva. ⚠ **Ne graditi** popis sidara s brisanjem —
+    bačen posao ako stanja sele u evente.
+0b. **Skripta: mjesečna stanja iz izvoda → `balance_anchors`.** ZABA lanac je verificiran
+    (40/40 u cent, T-S107j-A); ⚠ RF je išao kroz OCR i T-S107d-6 je otvoren.
+0c. **Provjera:** sidro 31.12.2024. → filtar „do" 08.07.2026. → očekivano ZABA **3.403,74**.
+    ⚠ Kokin lanac nije u datumskom redoslijedu ⇒ očekivana razlika **1,60** (red 4996) nije pad.
+0d. **Odluka o `Financije_all > Stanja`** — tek s brojevima. Pa automat iz izvoda.
+
+**Ostalo:**
 
 1. **Kokina delta** — `normalize_financije.py` → generator → import kao `N/A`.
-   Prva jer je jedini dio koji **raste**, i jer bez nje Koki fali ~6 tjedana vlastite povijesti.
+   Jedini dio koji **raste**; bez nje Koki fali ~6 tjedana vlastite povijesti.
+   ⚠ Sidro ju je **maknulo s kritičnog puta za saldo** — ostaje zbog analize i zbog Koke.
    Ne treba `Pitanja za Koku` prolaz (svježe je, ona pamti).
 2. ~~**Faza 1 — `balance_by_group`**~~ **✅ NAPISANO S108** (`sql/035`+`036`+`037`, Overview tab,
    pločica sa sidrom, kolona `Stanje`). RPC verificiran protiv Python modela u cent.
-   **Čeka ručne testove T-S108-1…12** i ponovno puštanje `sql/036` (ispravljen `FULL JOIN`).
-   **Sljedeće:** Faza 2 — brzi unos (§2.9: dvije sitnice nad postojećim Shortcut sustavom).
+   **T-S108-1, -2, -3 ✅; -4 3/5 ✅ (uklj. „Potvrdi"); ostalo čeka.**
+   **Poslije provjere lanca:** Faza 2 — brzi unos (§2.9, dvije sitnice nad Shortcut sustavom).
+2b. **Red 4996 (Parking 1,60)** — ispravljen u Reviewu na `2026-07-07`, **nije u bazi**
+    (batch 2026 rezan na 31.07. kad je još bio `2026-08-07`). Dodati **kroz app**, ⚠ ne batchom.
 3. **Koka proba na TEST-u (mobitel) → odluka o cutoveru.** Ovo je prava vaga; ako padne,
    njen Excel ostaje trajni ulaz i pipeline se automatizira umjesto gasi.
 4. **Batch 2024, pa 2023** — svaki uz `Pitanja za Koku` vetting prije generiranja.
@@ -382,8 +398,20 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   `saldo = potvrđeno_stanje + Σ(promjene STROGO nakon datuma potvrde)`.
   Sidro upisuje **čovjek gledajući bankovnu aplikaciju** — najkvalitetniji podatak u sustavu.
   ⚠ Sidro nosi vlastiti rizik dvostrukog brojanja: retci prije datuma potvrde **ne smiju** ući.
+- **⚠ POTVRĐENO STANJE MORA DOĆI IZVANA** (S109) — s ekrana bankovne aplikacije ili kao
+  **ispisani** saldo s izvoda. **Nikad izračunato iz zapisa u bazi.** Prekršaj se **ne vidi**:
+  Δ postane trajno nula, sve izgleda savršeno, a usklađenje je mrtvo bez ijedne greške.
+  Isti razred kao odbačeni automat `Planiran → Izvršen`. Vrijedi i za budući automat iz izvoda.
+- **Sidro unatrag je provjera, sidro na danas je pokrivač** (S109). Datirano na početak
+  uvezene povijesti, sidro mjeri **reproducira li app tuđi lanac**; datirano na danas samo
+  skriva rupu. `confirmed_on` je obična `date` — baza to već podržava, UI još ne.
 - **Sidro NE ide u `areas.settings`** — config putuje s Areom (template, Structure export),
-  a saldo ne smije putovati. Zasebna tablica.
+  a saldo ne smije putovati. ⚠ Taj argument **ne pokriva** ideju „sidro kao obična kategorija
+  s eventima" (`Financije_all > Stanja`) — eventi ne putuju Structure exportom. Ta je selidba
+  u S109 prihvaćena u načelu, čeka rezultate provjere. V. `NEXT_SESSION_PROMPT.md`.
+- **`Status` je trenutno stanje, ne povijest.** App ne pamti kad je nešto prešlo iz `Planiran`
+  u `Izvrsen` ⇒ „što je bilo planirano na dan X" nije pitanje na koje se može pošteno
+  odgovoriti — samo „od datiranog do X, što je **i danas** još planirano".
 - **Tri sloja konfiguracije:** rječnik pločica **u kodu** · semantika jedne Aree u
   `areas.settings.dashboard` (slug-based, ide u roundtrip) · cross-Area u zasebnoj tablici.
 - **Test generičnosti:** *nova Area smije tražiti nula linija koda, samo konfiguraciju.*
@@ -401,9 +429,10 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
 
 ---
 
-## S108+: Intelligence layer
+## S110+: Intelligence layer
 
 Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza 3 prođe.
+(Broj pomican dvaput — S108 i S109 su zauzeli mjesto.)
 
 ---
 
@@ -412,6 +441,11 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
 (fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
+
+**Sidra se ne mogu vidjeti ni obrisati iz aplikacije** (S109) — `listAnchors()` i
+`deleteAnchor()` postoje u `overviewApi.ts` i **nitko ih ne zove**; jedini put je SQL Editor.
+⚠ Namjerno se **ne gradi** dok ne padne odluka o `Financije_all > Stanja` — ako stanja postanu
+eventi, Add/Edit/Delete/Excel roundtrip to rješavaju sami i ovaj UI bi bio bačen posao.
 
 **Drill s dva uvjeta** — `FilterContext` nosi jedan `attrFilter`, a uvjet pločice ima dva
 (`Izvor` + `Status`), pa drill znači „pokaži mi ovaj račun", ne „točno ove retke".
@@ -432,8 +466,10 @@ formi · lakše dodavanje opcija u depends_on mapping · help docs update.
 **⭐ Help „What can I do here?" chip** — standing chip po `pageHint` kontekstu; zahtijeva
 sekciju „Feature inventory" u `docs/help/*.md`, **dosta detaljno** (korisnikov izričit zahtjev).
 
-**Stanje post-processing** — ⚠ vjerojatno **otpada**: OQ-5 je odlučio da se atribut `Stanje`
-prestaje pisati čim saldo postane izračunat (inače dvije istine o istom broju).
+**Stanje post-processing** — **otpada** (potvrđeno S109). `make_financije_import.py` prestaje
+pisati atribut `Stanje` na Transakciju; vrijednost seli u zasebnu kategoriju `Stanja`.
+⚠ **Postojećih 2220 zapisa se NE dira** — Kokin per-redak lanac je jedini **neovisni svjedok**
+protiv kojeg se app-ov izračun može provjeriti. Prestani pisati, nemoj brisati.
 
 **Netlify scheduled maintenance** — kad se skupi 2–3 zadatka: `netlify/functions/maintenance.ts`
 sa `schedule = "@weekly"` (orphaned share_invites, stari accepted invites, stari help_log).

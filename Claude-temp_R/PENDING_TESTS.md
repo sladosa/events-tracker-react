@@ -3,10 +3,29 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S108 (2026-08-15) — Faza 1: RPC salda verificiran protiv Python modela (0,00 razlike), Overview tab + pločica sa sidrom + izračunata kolona `Stanje`.
-**Prošlo 2026-08-15: T-S108-1, -2, -3.**
-**Otvoreno: T-S108-4 (djelomično), T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Zadnji update:** S109 (2026-08-16) — sesija odluka, **bez `src/` koda**. Testiranje S108 otkrilo da sidro treba ići **unatrag** (provjera lanca), ne na danas.
+**Prošlo 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3 („Potvrdi" kroz UI).**
+**Otvoreno: T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
 **Detalji S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+
+---
+
+## S109 — sesija odluka (NEMA `src/` koda, nema novih testova)
+
+Testiranje S108 skrenulo u dizajn: sidro na **danas** pokriva rupu u povijesti, sidro
+**unatrag** je provjerava. Plan i obrazloženje: `NEXT_SESSION_PROMPT.md`.
+
+**Tri „pada" koja NISU pad — ne istraživati ponovo:**
+
+| Opažanje | Objašnjenje |
+| --- | --- |
+| Kolona `Stanje` sve `—` nakon drill downa | Dva neovisna i ispravna razloga: sidro datirano **danas** ⇒ ispod sidra saldo nije definiran (`useRunningBalance` uvjet 4); i svi vidljivi retci su `Izvor = Mastercard`, koji ne miču saldo (uvjet 3) |
+| Parking redak (2026-07-07) se ne nalazi u bazi | Nije ni uvezen — batch 2026 rezan na 31.07., a redak je tada bio datiran `2026-08-07`. Treba ga **dodati kroz app**, ⚠ ne novim batchom |
+| „planirano −2.521,38 (13)" ne reagira na sidro | Namjerno — `split` je **plain sum, nije usidren** (`BalanceByGroupTile:78`). „Što je još planirano" je pogled naprijed |
+
+**Otvoreno za sljedeću sesiju (bit će testovi kad se napiše):** pločica prima `asOf`;
+skripta mjesečnih stanja iz izvoda; provjera lanca (ZABA `3.403,74` na 08.07.2026.);
+odluka o `Financije_all > Stanja`.
 
 ---
 
@@ -27,7 +46,7 @@ ZABA `−22.943,71`.
 | T-S108-1b | Add Activity + “⚡ Use” rade i iz Overviewa; povratak nakon spremanja ide na Overview; leaf hint uz sivi gumb | ⬜ |
 | T-S108-2 | ⭐ Pločica — ZABA 150,80 €, RF −1.978,32 €, „od početka podataka" | ✅ (2026-08-15) |
 | T-S108-3 | „planirano" — ZABA −2.521,38 € (13) | ✅ (2026-08-15) |
-| T-S108-4 | ⭐ Sidro: Δ čip ✅; **„Potvrdi“ još neisproban** — u bazi je 0 sidara. ⚠ Koraci ISPRAVLJENI: prva verzija tražila je nemoguće (transakcija datirana danas ne može ući u saldo usidren danas) | 🟡 djelomično |
+| T-S108-4 | ⭐ Sidro: Δ čip ✅; **„Potvrdi" ✅ (2026-08-16)** — sidro 3.000 spremljeno, podnaslov prešao na „od potvrde 16.08.2026. · 3.000,00 € · 0 promjena poslije". Koraci **4–5 (transakcija poslije / prije sidra) još neisprobani** | 🟡 3/5 |
 | T-S108-5 | Δ ostaje dok se ne slaže; ništa se ne mijenja bez Potvrdi | ⬜ |
 | T-S108-6 | ⭐ Drill s pločice → Activities filtriran na račun / na `Status=Planiran` | ⬜ |
 | T-S108-7 | ⭐ Izračunata kolona `Stanje` — silazi do salda, nestaje kod miješanih računa i obrnutog sorta | ⬜ |
