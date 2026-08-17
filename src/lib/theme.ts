@@ -104,6 +104,8 @@ export const THEME = {
     chipNoAnchor: 'bg-slate-100 text-slate-700 border border-slate-300',
     amountPos:    'text-emerald-700',
     amountNeg:    'text-rose-700',
+    // "na dan …" — a historical reading must not look like the live one.
+    asOfNote:     'text-amber-700',
   },
   // Structure tab theme — independent from 'view' so it can be changed separately.
   // Colour: indigo/purple. Edit here only; never hardcode in structure components.

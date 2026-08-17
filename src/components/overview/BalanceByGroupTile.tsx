@@ -18,6 +18,15 @@
 //   3. The "u banci" field must exist on mobile too. That is the screen where
 //      the decision gets made; without the field the chip floats without
 //      context (the first misreading of the sketch).
+//
+// `asOf` (S109) — the date filter reaches the tile, so "balance on 31.03.2025"
+// is answerable. Two rules come with it:
+//   * whenever asOf is set, the tile SAYS "na dan …" — in the subtitle and on
+//     the "u banci" label. A past number rendered as the present one is the
+//     same class of error as rule 1.
+//   * "Potvrdi" then anchors ON that date, not today. Anchoring backwards is
+//     what turns the anchor from a cover into a check (§2.17), and it must be
+//     visible in the button before it is clicked, never a surprise after.
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,11 +58,16 @@ interface Props {
   widget: BalanceByGroupWidget;
   /** Read-only grantee: may look, may not confirm a balance. */
   canWrite: boolean;
+  /**
+   * Global date filter `dateTo` (`YYYY-MM-DD`), or null for "up to today".
+   * Drives both the reading and the date a confirmation is stamped with.
+   */
+  asOf?: string | null;
   /** Open Activities filtered on this group value (§2.16 — drill = filter state). */
   onDrill?: (groupValue: string, opts: { planned: boolean }) => void;
 }
 
-export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props) {
+export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: Props) {
   const [rows, setRows] = useState<AnchoredBalanceRow[]>([]);
   const [splitRows, setSplitRows] = useState<GroupAggRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +85,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props)
         plusSlug: widget.plus ?? null,
         minusSlug: widget.minus ?? null,
         filters: widget.filters ?? [],
+        asOf: asOf ?? null,
       });
       setRows(balance);
 
@@ -78,6 +93,13 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props)
         // The second number is a plain sum, NOT anchored: "what is still
         // planned" is a forward-looking total, so subtracting a past
         // confirmation from it would be meaningless.
+        //
+        // ⚠ asOf is passed here too, for consistency with the balance above —
+        //   but the answer is only half a one. `Status` is CURRENT state, not
+        //   history: the app never recorded WHEN a row went Planiran → Izvrsen.
+        //   So "planirano na 31.03.2025" can only mean "dated up to 31.03.2025
+        //   and STILL planned today". A true retrospective needs status history
+        //   — a new thing, not a tweak here.
         setSplitRows(
           await fetchGroupAgg({
             areaId,
@@ -85,6 +107,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props)
             plusSlug: widget.plus ?? null,
             minusSlug: widget.minus ?? null,
             filters: widget.split.filters,
+            asOf: asOf ?? null,
           }),
         );
       } else {
@@ -100,7 +123,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props)
     } finally {
       setLoading(false);
     }
-  }, [areaId, widget]);
+  }, [areaId, widget, asOf]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -109,6 +132,11 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props)
     for (const r of splitRows) m.set(r.group_value ?? NO_VALUE, r);
     return m;
   }, [splitRows]);
+
+  // A confirmation is stamped with the date being LOOKED AT, not the date of
+  // the click: with the filter on 31.03.2025 the number typed in is that day's
+  // printed balance, so today's date would be a lie about its own source.
+  const confirmOn = asOf ?? todayIso();
 
   const confirm = async (groupValue: string, typed: string) => {
     const amount = parseAmountInput(typed);
@@ -123,10 +151,12 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props)
         groupSlug: widget.group_by,
         groupValue,
         amount,
-        confirmedOn: todayIso(),
+        confirmedOn: confirmOn,
       });
       setBankInput(prev => ({ ...prev, [groupValue]: '' }));
-      toast.success(`Potvrđeno: ${groupValue} = ${formatAmount(amount, widget.unit)}`);
+      toast.success(
+        `Potvrđeno na ${formatDateHr(confirmOn)}: ${groupValue} = ${formatAmount(amount, widget.unit)}`,
+      );
       await load();
     } catch (e) {
       toast.error((e as { message?: string })?.message ?? 'Spremanje nije uspjelo');
@@ -139,7 +169,15 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props)
   return (
     <div className={cn('bg-white rounded-xl shadow-sm border p-3 sm:p-4', T.tileBorder)}>
       <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{widget.title}</h3>
+        <div className="min-w-0">
+          <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{widget.title}</h3>
+          {/* Rule: when the reading is not "now", the tile says so. */}
+          {asOf && (
+            <p className={cn('text-xs mt-0.5 font-medium', T.asOfNote)}>
+              na dan {formatDateHr(asOf)}
+            </p>
+          )}
+        </div>
         <button
           onClick={() => void load()}
           disabled={loading}
@@ -243,7 +281,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props)
               {widget.reconcile && (
                 <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-2 flex-wrap">
                   <label className="text-xs text-gray-500 shrink-0" htmlFor={`bank-${key}`}>
-                    u banci
+                    u banci{asOf ? ` na ${formatDateHr(asOf)}` : ''}
                   </label>
                   <input
                     id={`bank-${key}`}
@@ -292,9 +330,17 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, onDrill }: Props)
                         'disabled:opacity-40 disabled:cursor-not-allowed',
                         T.btnConfirm,
                       )}
-                      title="Spremi ovaj broj kao potvrđeno stanje — saldo se od danas računa od njega"
+                      title={
+                        asOf
+                          ? `Spremi ovaj broj kao potvrđeno stanje na ${formatDateHr(asOf)} — saldo se od tog dana računa od njega`
+                          : 'Spremi ovaj broj kao potvrđeno stanje — saldo se od danas računa od njega'
+                      }
                     >
-                      {savingKey === key ? 'Spremam…' : 'Potvrdi'}
+                      {savingKey === key
+                        ? 'Spremam…'
+                        : asOf
+                          ? `Potvrdi na ${formatDateHr(asOf)}`
+                          : 'Potvrdi'}
                     </button>
                   )}
                 </div>

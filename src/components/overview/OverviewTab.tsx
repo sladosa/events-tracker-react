@@ -28,7 +28,7 @@ interface Props {
 }
 
 export function OverviewTab({ areaId, config, canWrite, onNavigateToActivities }: Props) {
-  const { setAttrFilter } = useFilter();
+  const { filter, setAttrFilter } = useFilter();
 
   /**
    * Drill = produce filter state, exactly the shape a Shortcut already saves
@@ -73,6 +73,12 @@ export function OverviewTab({ areaId, config, canWrite, onNavigateToActivities }
                 areaId={areaId}
                 widget={w}
                 canWrite={canWrite}
+                // The global date filter reaches the tile, so "balance on
+                // 31.03.2025" is answerable — and the same date stamps a
+                // confirmation, which is what makes the anchor a check (§2.17).
+                // `dateFrom` is deliberately NOT passed: a balance has no start,
+                // it accumulates from the anchor.
+                asOf={filter.dateTo}
                 onDrill={(groupValue, opts) => {
                   // The planned number drills on its own condition; the balance
                   // drills on the group value. Both are single-attribute, which
