@@ -182,3 +182,56 @@ loši redak iz S107v — pitanje za Koku); `TRANSFER-BEZ-PARA` 42 → **23**.
 - **Neto zbroj isključenih redaka može podcijeniti problem** kad isključeni skup sadrži obje
   strane iste stvari (Visa potrošnja + Visa podmirenje). Mjeriti bruto.
 - **`Stanje` stupac se ne smije hodati u ovom fileu** — sortiranje po datumu ga je rasparilo.
+
+---
+
+## 6. Provjera lanca protiv ISPISANIH bankovnih stanja (S110, 2026-08-17)
+
+Faza 1a je mjerila model nad Excelom. Ovdje se mjeri **app** (RPC nad bazom) protiv
+**ispisanog `NOVO STANJE`** s 31 ZABA izvoda — alat `make_saldo_anchors.py --report`.
+
+**Presuda: model reproducira banku.** Sa sidrom `2025-01-01 = 3.054,41` (ispisano) app
+pogađa **u cent** siječanj, ožujak, travanj, svibanj i lipanj 2025. Provjera od tjedan dana
+(sidro `2026-07-01 = 2.255,64` → 08.07.2026.) daje **3.403,74** — Kokin broj, bez korekcije.
+
+### 6.1 Zamke otkrivene mjerenjem
+
+- **⚠ Izvod se NE zatvara na kraju mjeseca.** `ZABA_2024-12` ima zadnju tekuću transakciju
+  `2025-01-01`, `ZABA_2025-12` ima `2025-12-24`. Ispisano stanje pripada TOM datumu. Sidro
+  datirano na kalendarski kraj mjeseca dvostruko broji sve iz preklopa (pravilo je
+  „promjene **strogo nakon**"). Plan je izvorno govorio „sidro na 31.12.2024." — krivo.
+- **⚠ Mjesečna sidra ubijaju provjeru na svojim datumima.** Sidro NA datum usporedbe daje
+  `balance == amount` po konstrukciji ⇒ Δ = 0 bez ikakve informacije. `--report` takav redak
+  označi `SIDRO (nije provjera)`. **Prvo provjera, sidra poslije.**
+- **⚠ Poništavanje može lažirati zdravlje.** Ostatak na 28.04.2026. bio je `−0,14` i izgledao
+  kao dokaz ispravnosti. Nije bio: nedostajućih `+200` iz svibnja 2025. slučajno je poništavalo
+  nepovezanih `−200,94` iz kasnijih mjeseci. Tek kad je 200 sjela na mjesto, ostatak se pokazao.
+  **Mali zbirni Δ nije dokaz da nema grešaka — može biti dokaz da ih ima parni broj.**
+
+### 6.2 Ispravljeno
+
+**Kokina tipfelerica u godini** (`fix_koka_datum_200.py`): podizanje `200,00` s bankomata
+datirano `2026-05-29` umjesto `2025-05-29`. Dokaz: `ZABA_2025-05` ima DVA podizanja po 200
+(19.05. i 29.05.), Review je imao samo prvo; `ZABA_2026-05` nema nijedno; Kokin redak `EU:1780`
+je osam redaka iza `EU:1772` a njeno vlastito `Stanje` (925,33) ga smješta u svibanj 2025.
+
+### 6.3 POZNATO ODSTUPANJE — ne tražiti ponovno
+
+**`−200,14` na ZABA lancu, 2025-08 → 2026-04.** Četiri retka u bazi **bez opisa** i **bez
+protustavke u izvodu**:
+
+| datum | iznos | provjereno |
+|---|---|---|
+| 2025-08-17 | `−45,94` | iznos se **nikad** ne pojavljuje ni u jednom ZABA izvodu 2023-12…2026-06 |
+| 2025-10-12 | `−150,00` | banka ima `150,00` na 12.11.2025., ali app tu već ima (studeni `Δpromet = 0,00`) ⇒ **nije pomaknuta kopija** |
+| 2026-03 | `−2,80` | nikad se ne pojavljuje u izvodima |
+| 2026-04 | `−1,40` | nikad se ne pojavljuje u izvodima |
+
+Uz njih `±0,80` (naknada za kreditni transfer, 19 pojava kroz izvode) — granica mjeseca, šum.
+Kolovoška `Anja 73/96`: Koka knjiži `449,30`, banka `450,00` + naknada `0,70` — **poništava se,
+nije greška**, samo drukčije knjiženje.
+
+Iz izvoda se ovi retci više ne mogu razriješiti — nemaju bankovnu protustavku, pa bi odgovor
+znala samo Koka. Iznosi su mali i stari. **Odluka (Saša, 2026-08-17): ne loviti dalje.**
+
+⚠ Odstupanje **ne dodiruje današnji broj** — sidro od 01.07.2026. ga presijeca.
