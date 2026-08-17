@@ -177,6 +177,8 @@ export function EditActivityPage() {
   const [categoryPath, setCategoryPath] = useState<string[]>([]);
   const [sessionDateTime, setSessionDateTime] = useState<Date>(new Date());
   const [originalDateTime, setOriginalDateTime] = useState<Date>(new Date());
+  /** Zadnja vrijednost od koje je pomak stvarno primijenjen (v. handleDateTimeChange). */
+  const lastAppliedDateTimeRef = useRef<Date | null>(null);
   const [, setOriginalEventIds] = useState<UUID[]>([]);
   
   // Events being edited
@@ -310,6 +312,9 @@ export function EditActivityPage() {
         : new Date(decodedSessionStart);
       setSessionDateTime(sessionDate);
       setOriginalDateTime(sessionDate);
+      // Nova aktivnost ⇒ nema prethodno primijenjenog pomaka. Bez ovoga bi
+      // otvaranje druge aktivnosti bez unmounta krenulo od tuđe baseline.
+      lastAppliedDateTimeRef.current = null;
       setOriginalEventIds(leafEvents.map(e => e.id));
       
       // --- Load leaf events → pendingEvents ---
@@ -682,20 +687,37 @@ export function EditActivityPage() {
   // ============================================
   
   const handleDateTimeChange = useCallback((newDateTime: Date) => {
+    // ⚠ INKREMENTALNI pomak, mjeren od ZADNJE PRIMIJENJENE vrijednosti.
+    //
+    //   Prije se delta računala od `originalDateTime` (fiksne), a primjenjivala
+    //   na `event.createdAt` koji je VEĆ bio pomaknut ⇒ svaki sljedeći poziv
+    //   dodao bi cijelu deltu ponovno. Dovoljno je promijeniti datum pa vrijeme
+    //   da se godina pomakne dvaput.
+    //
+    //   Gore od toga: `<input type="date">` javlja onChange i na međustanjima
+    //   dok se tipka godina (2026 → 0002 → 0020 → 0202 → 2025), pa se pomaci od
+    //   po ~2000 godina nagomilaju. Tako je jedan event završio na godini −3831,
+    //   `toISOString()` dao `-003831-05-29T…`, Postgres odbio zapis i Save je
+    //   tiho pao — bez poruke, samo bez navigacije na View.
+    //
+    //   Inkrementalna verzija se sama ispravlja: zbroj pomaka uvijek je
+    //   (konačno − izvorno), bez obzira koliko je međustanja prošlo.
+    const prev = lastAppliedDateTimeRef.current ?? originalDateTime;
+    const deltaMs = newDateTime.getTime() - prev.getTime();
+    lastAppliedDateTimeRef.current = newDateTime;
+
     setSessionDateTime(newDateTime);
     setIsDirty(true);
-    
-    // Calculate time delta
-    const deltaMs = newDateTime.getTime() - originalDateTime.getTime();
-    
-    // Shift all event times by the delta
-    setPendingEvents(prev => {
-      return prev.map(event => ({
+
+    if (deltaMs === 0) return;
+
+    setPendingEvents(evts =>
+      evts.map(event => ({
         ...event,
         createdAt: new Date(event.createdAt.getTime() + deltaMs),
         isModified: true,
-      }));
-    });
+      })),
+    );
   }, [originalDateTime]);
   
   // ============================================
@@ -815,6 +837,29 @@ export function EditActivityPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       
+      // ── Sanity guard na datume ───────────────────────────────────
+      // Postgres odbija godinu izvan raspona, ali poruka koja se vrati ne kaže
+      // ništa upotrebljivo — Save samo padne i korisnik ostane na formi bez
+      // objašnjenja (tako je otkriven compounding bug u handleDateTimeChange).
+      // Bolje stati ovdje i reći ŠTO je krivo nego poslati smeće u bazu.
+      const sane = (d: Date) => {
+        const y = d.getFullYear();
+        return Number.isFinite(d.getTime()) && y >= 1900 && y <= 2200;
+      };
+      if (!sane(sessionDateTime)) {
+        throw new Error(
+          `Datum aktivnosti je neispravan (${sessionDateTime.getFullYear()}). ` +
+          `Zatvori bez spremanja i otvori aktivnost ponovno.`,
+        );
+      }
+      const insaneEvent = pendingEvents.find(e => !e.isDeleted && !sane(e.createdAt));
+      if (insaneEvent) {
+        throw new Error(
+          `Vrijeme jednog zapisa je neispravno (godina ${insaneEvent.createdAt.getFullYear()}). ` +
+          `Zatvori bez spremanja i otvori aktivnost ponovno.`,
+        );
+      }
+
       const newSessionStart = sessionDateTime.toISOString();
       const eventDate = sessionDateTime.toISOString().split('T')[0];
 
