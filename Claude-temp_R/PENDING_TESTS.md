@@ -4,8 +4,8 @@
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
 **Zadnji update:** S110 (2026-08-17) — pločica prima `asOf`, provjera lanca **zatvorena**, BUG-S110-DATESHIFT nađen i popravljen.
-**Prošlo 2026-08-17: T-S110-1, -3, -6, -7.** · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
-**Otvoreno: T-S110-2, -4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Prošlo 2026-08-17: T-S110-1, -2, -3, -6, -7 — svi ⭐ testovi S110 zatvoreni.** · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
+**Otvoreno: T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
 **Detalji S110:** [S110_tests.md](test-sessions/S110_tests.md) · **S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
 
 ---
@@ -18,7 +18,7 @@ intervala. Puni koraci: [S110_tests.md](test-sessions/S110_tests.md).
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S110-1 | ⭐ Pločica prima `asOf` — podnaslov „na dan …", 2.546,55 na 31.03.2025., `dateFrom` se ignorira | ✅ (2026-08-17) |
-| T-S110-2 | ⭐ „Potvrdi na `<datum>`" sidri **unatrag**, ne na danas ⚠ piše u bazu | ⬜ |
+| T-S110-2 | ⭐ „Potvrdi na `<datum>`" sidri **unatrag**, ne na danas; sidro `2025-12-31 = 1.184,86` presjeklo odstupanje (Δ `−200,14` → `−4,20`) | ✅ (2026-08-17) |
 | T-S110-3 | ⭐ BUG-S110-DATESHIFT regresija — `Event #1` prati zaglavlje kroz 4 promjene datum/vrijeme | ✅ (2026-08-17) |
 | T-S110-4 | Sanity guard 1900–2200 — neispravan datum daje **poruku**, ne tihi pad | ⬜ |
 | T-S110-5 | `split` („planirano") poštuje `asOf` ⚠ odgovor je namjerno polovičan (`Status` je stanje, ne povijest) | ⬜ |

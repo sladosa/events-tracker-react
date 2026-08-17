@@ -67,8 +67,7 @@ stanjima ugodnije živjeti.
 
 - **Ništa prije sesije.**
 - Tijekom: odluka o `Stanja` (skica atributa je spremna, v. DIO 2).
-- Kad budeš imao volje: **T-S110-2** (potvrdi sidro unatrag kroz UI) — jedini ⭐ test iz S110
-  koji nije prošao. ⚠ piše u bazu.
+- Ništa od testova — **svi ⭐ testovi iz S110 su prošli** (T-S110-2 zatvoren 17.08.2026.).
 
 ---
 
@@ -90,8 +89,9 @@ stanjima ugodnije živjeti.
 | Ispisana bankovna stanja → `balance_anchors` | `data-prep_tools/Financije/make_saldo_anchors.py` |
 | One-off popravci Reviewa | `fix_koka_datum_200.py`, `align_review_s110.py` |
 
-**Sidra u TEST bazi:** `2025-01-01 = 3.054,41` i `2026-07-01 = 2.255,64`. Oba **ispisana** s
-izvoda. ⚠ Namjerno su samo dva — v. zamku 2 niže.
+**Sidra u TEST bazi — tri:** `2025-01-01 = 3.054,41`, `2025-12-31 = 1.184,86` (upisano ručno
+kroz UI u T-S110-2) i `2026-07-01 = 2.255,64`. Sva tri **ispisana** s izvoda.
+⚠ Ono na `2025-12-31` mijenja očekivane brojeve u T-S110-1 — v. `S110_tests.md` preduvjete.
 
 ## Tri zamke koje S110 dodaje (sve su u `CLAUDE.md`)
 
@@ -146,7 +146,9 @@ pitanje ergonomije, ne točnosti.
 - **OQ-5** — `make_financije_import.py` treba prestati pisati atribut `Stanje`. Potvrđeno kao
   odluka u S109, **nije izvršeno**. ⚠ Postojećih 2220 zapisa se ne dira — Kokin lanac je
   neovisni svjedok. (S110 ga je upravo tako i koristio.)
-- **T-S110-2, -4, -5** i cijeli neverificirani rep iz S108 (`PENDING_TESTS.md`).
+- **T-S110-4, -5** i cijeli neverificirani rep iz S108 (`PENDING_TESTS.md`).
+- **`balance_anchors.note` je `NULL` za sidra iz UI-ja** — podrijetlo broja se gubi. Odgođeno
+  do odluke o `Stanja`, gdje ga atribut `Izvor podatka` rješava strukturno. V. backlog.
 - **`Datum naplate` ne prati delta-shift** — v. backlog u `CLAUDE.md`.
 
 ## Sitnica

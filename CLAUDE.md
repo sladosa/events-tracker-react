@@ -463,6 +463,14 @@ rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashb
 ⚠ Namjerno se **ne gradi** dok ne padne odluka o `Financije_all > Stanja` — ako stanja postanu
 eventi, Add/Edit/Delete/Excel roundtrip to rješavaju sami i ovaj UI bi bio bačen posao.
 
+**Sidro upisano kroz UI nema podrijetlo** (S110) — `balance_anchors.note` postoji, skripta ga
+puni („ispisano NOVO STANJE, `ZABA_2024-12.pdf`"), a `saveAnchor()` iz pločice ga ostavlja
+`NULL`. Smeta baš zbog pravila oko kojeg je mehanizam građen — **stanje smije doći samo
+izvana** (§2.17) — jer se poslije iz baze ne vidi je li broj s izvoda, s ekrana banke ili
+izračunat. Fix: malo polje „odakle" uz „u banci", ili barem automatski `note`.
+⚠ Odgoditi do odluke o `Stanja`: kao atribut `Izvor podatka` (dropdown bez opcije
+„izračunato") isto pitanje rješava strukturno.
+
 **`Datum naplate` ne prati promjenu datuma u Editu** (S110) — delta-shift
 (`EditActivityPage.handleDateTimeChange`) pomiče samo *vremena eventa*, ne i datumske atribute.
 Oba popravka u S110 tražila su ručnu izmjenu. D1b kaže `Izvor ∈ {Racun, Cash}` ⇒ `Datum naplate`
