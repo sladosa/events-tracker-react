@@ -58,7 +58,9 @@ Kako se potvrđuje: otvoriš bankovnu aplikaciju, prepišeš broj u polje **„u
 
 Tri stvari koje je korisno znati:
 
-- **Potvrda se datira na danas.** Zapis datiran **na sam dan potvrde ne ulazi** u saldo —
+- **Potvrda se datira na dan koji gledaš.** Bez datumskog filtra to je današnji dan i gumb
+  piše „Potvrdi". Ako je u filtru postavljen datum „do", gumb piše **„Potvrdi na 31.03.2025."**
+  i potvrda se sprema na **taj** dan. Zapis datiran **na sam dan potvrde ne ulazi** u saldo —
   pravilo je "strogo nakon", bez iznimke. To sprječava da se isti iznos broji dvaput.
 - **Ispravak je nova potvrda**, ne izmjena stare. Čuva se povijest svih potvrda, pa se vidi
   otkad se app i banka razilaze.
@@ -67,6 +69,23 @@ Tri stvari koje je korisno znati:
 
 Potvrdu može upisati vlasnik Aree i osoba s **write** pristupom. Tko ima samo pregled, vidi
 brojeve ali nema gumb.
+
+## „Na dan …" — saldo u prošlosti
+
+Ako u filtru postaviš datum **„do"**, pločica pokazuje stanje **na taj dan** i to izričito
+piše — žutim tekstom „na dan 31.03.2025." ispod naslova. Bez te oznake bi prošli broj
+izgledao kao sadašnji.
+
+Datum **„od"** pločica namjerno **ignorira**: saldo nema početak, on se nakuplja od zadnje
+potvrde. („od" i dalje reže popis zapisa ispod, samo ne pločicu.)
+
+Čemu služi: usporediti app sa starim izvodom ili s tuđom tablicom na točno određeni dan. Ako
+se brojevi razilaze, kolona **`Stanje`** u popisu zapisa pokazuje **na kojem retku** je razlika
+nastala — jedan broj kaže „nešto ne valja", kolona kaže „evo gdje".
+
+⚠ Broj uz **„planirano"** također poštuje taj datum, ali odgovor je polovičan: app pamti
+*trenutni* status zapisa, ne kad se promijenio. „Planirano na 31.03.2025." zato znači
+„datirano do tog dana i **danas još** planirano".
 
 ## Što znači Δ
 

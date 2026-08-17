@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `Claude-temp_R/DONE_HISTORY.md`** (S1–S109).
+> **Povijest po sesijama je u `Claude-temp_R/DONE_HISTORY.md`** (S1–S110).
 > Ovdje ostaje samo ono što mijenja buduće odluke. Zamke iz starih sesija su
 > promaknute u „Critical rules" i „Zamke" — ne traži ih u povijesti.
 
@@ -131,6 +131,23 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `HelpPanel.CHIPS` bez tog ključa ne javlja grešku nego ne prikaže ništa. Nova tema u
   `docs/help/` mora ići i u `HELP_DOC_NAMES` (`netlify/functions/help.ts`) — to je jedini
   razlog da se taj file dira; sadržaj postojeće teme ne traži promjenu koda.
+
+**Mjerenje / usklađenje**
+
+- **⚠ Mali zbirni Δ nije dokaz da nema grešaka — može biti dokaz da ih ima paran broj** (S110).
+  Ostatak lanca salda bio je `−0,14` i izgledao kao potvrda ispravnosti; zapravo je
+  nedostajućih `+200` poništavalo nepovezanih `−200,94` iz kasnijih mjeseci. Tek kad je jedna
+  greška ispravljena, ostatak se pokazao. **Mjeri po razdoblju (Δ prometa), ne samo na kraju.**
+- **⚠ Bankovni izvod se NE zatvara na kraju mjeseca** (S110). `ZABA_2024-12` ima zadnju
+  transakciju `2025-01-01`, `ZABA_2025-12` ima `2025-12-24`. Ispisano stanje pripada **tom**
+  datumu. Sidro datirano na kalendarski kraj mjeseca dvostruko broji preklop (pravilo je
+  „promjene **strogo nakon**"). `confirmed_on` = *close date izvoda*, uvijek.
+- **⚠ Sidro NA datum usporedbe čini provjeru tautološkom** (S110). `036` bira najnovije sidro
+  `confirmed_on <= p_as_of` i zbraja promjene strogo nakon njega ⇒ `balance == amount`, Δ = 0
+  po konstrukciji. **Prvo provjera, sidra poslije.** `make_saldo_anchors.py --report` to
+  detektira i označi `SIDRO (nije provjera)` umjesto lažne kvačice.
+- **Baza drži UTC, app prikazuje lokalno** (+2h ljeti). DB `07:00` = UI `09:00`. Bitno kad se
+  traži slobodan `session_start` — kolizija se računa na razini minute.
 
 **Prije svakog commita:** `npm run typecheck && npm run build` (⚠ `npm` se pokreće **iz
 direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upozorenje, ne greška)
@@ -351,18 +368,16 @@ N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravil
 
 ---
 
-## Sljedeći koraci (2026-08-16)
+## Sljedeći koraci (2026-08-17)
 
-**Aktivna nit — provjera lanca salda (S109 plan, puni kontekst u `NEXT_SESSION_PROMPT.md`):**
+**✅ Provjera lanca salda je ZATVORENA (S110).** App reproducira banku i Kokin Excel **do centa**
+na oba kraja: `2.546,55` na 31.03.2025. (tri svjedoka) i `3.403,74` na 08.07.2026. (Kokin broj,
+bez korekcije). Sidra u TEST bazi: `2025-01-01 = 3.054,41` i `2026-07-01 = 2.255,64`, oba
+**ispisana** s izvoda. Alat: `data-prep_tools/Financije/make_saldo_anchors.py`.
 
-0a. **Pločica prima `asOf = filter.dateTo`** (+ podnaslov „na dan …"). Preživljava svaku
-    kasniju odluku o pohrani, zato ide prva. ⚠ **Ne graditi** popis sidara s brisanjem —
-    bačen posao ako stanja sele u evente.
-0b. **Skripta: mjesečna stanja iz izvoda → `balance_anchors`.** ZABA lanac je verificiran
-    (40/40 u cent, T-S107j-A); ⚠ RF je išao kroz OCR i T-S107d-6 je otvoren.
-0c. **Provjera:** sidro 31.12.2024. → filtar „do" 08.07.2026. → očekivano ZABA **3.403,74**.
-    ⚠ Kokin lanac nije u datumskom redoslijedu ⇒ očekivana razlika **1,60** (red 4996) nije pad.
-0d. **Odluka o `Financije_all > Stanja`** — tek s brojevima. Pa automat iz izvoda.
+**Aktivna nit — odluka o `Financije_all > Stanja`** (Sašin zahtjev: razgovor u svježoj sesiji).
+Provjera ju je oslobodila pritiska točnosti — pitanje je čisto gdje je stanjima ugodnije
+živjeti, ne hoće li saldo biti pouzdan. Skica atributa i otvorene sitnice: `NEXT_SESSION_PROMPT.md`.
 
 **Ostalo:**
 
@@ -374,8 +389,9 @@ N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravil
    pločica sa sidrom, kolona `Stanje`). RPC verificiran protiv Python modela u cent.
    **T-S108-1, -2, -3 ✅; -4 3/5 ✅ (uklj. „Potvrdi"); ostalo čeka.**
    **Poslije provjere lanca:** Faza 2 — brzi unos (§2.9, dvije sitnice nad Shortcut sustavom).
-2b. **Red 4996 (Parking 1,60)** — ispravljen u Reviewu na `2026-07-07`, **nije u bazi**
-    (batch 2026 rezan na 31.07. kad je još bio `2026-08-07`). Dodati **kroz app**, ⚠ ne batchom.
+2b. ~~**Red 4996 (Parking 1,60)**~~ **✅ UNESEN S110** kroz Add Activity na `2026-07-07`;
+    Review usklađen (`Status = Izvrsen`). Zajedno s Kokinom tipfelericom u godini
+    (200,00 bankomat, `2026-05-29` → `2025-05-29`) time app daje **točno** Kokin `3.403,74`.
 3. **Koka proba na TEST-u (mobitel) → odluka o cutoveru.** Ovo je prava vaga; ako padne,
    njen Excel ostaje trajni ulaz i pipeline se automatizira umjesto gasi.
 4. **Batch 2024, pa 2023** — svaki uz `Pitanja za Koku` vetting prije generiranja.
@@ -446,6 +462,12 @@ rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashb
 `deleteAnchor()` postoje u `overviewApi.ts` i **nitko ih ne zove**; jedini put je SQL Editor.
 ⚠ Namjerno se **ne gradi** dok ne padne odluka o `Financije_all > Stanja` — ako stanja postanu
 eventi, Add/Edit/Delete/Excel roundtrip to rješavaju sami i ovaj UI bi bio bačen posao.
+
+**`Datum naplate` ne prati promjenu datuma u Editu** (S110) — delta-shift
+(`EditActivityPage.handleDateTimeChange`) pomiče samo *vremena eventa*, ne i datumske atribute.
+Oba popravka u S110 tražila su ručnu izmjenu. D1b kaže `Izvor ∈ {Racun, Cash}` ⇒ `Datum naplate`
+= `event_date`, pa bi se za te retke moglo pomicati automatski. ⚠ Za kartice **ne smije** —
+tamo je datum naplate vezan uz ciklus banke, ne uz dan kupovine.
 
 **Drill s dva uvjeta** — `FilterContext` nosi jedan `attrFilter`, a uvjet pločice ima dva
 (`Izvor` + `Status`), pa drill znači „pokaži mi ovaj račun", ne „točno ove retke".

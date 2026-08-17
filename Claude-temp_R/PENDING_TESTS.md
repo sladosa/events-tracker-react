@@ -3,10 +3,37 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S109 (2026-08-16) — sesija odluka, **bez `src/` koda**. Testiranje S108 otkrilo da sidro treba ići **unatrag** (provjera lanca), ne na danas.
-**Prošlo 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3 („Potvrdi" kroz UI).**
-**Otvoreno: T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+**Zadnji update:** S110 (2026-08-17) — pločica prima `asOf`, provjera lanca **zatvorena**, BUG-S110-DATESHIFT nađen i popravljen.
+**Prošlo 2026-08-17: T-S110-1, -3, -6, -7.** · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
+**Otvoreno: T-S110-2, -4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Detalji S110:** [S110_tests.md](test-sessions/S110_tests.md) · **S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+
+---
+
+## S110 — pločica prima `asOf` + provjera lanca salda
+
+**Provjera lanca je ZATVORENA.** App reproducira banku i Kokin Excel do centa na oba kraja
+intervala. Puni koraci: [S110_tests.md](test-sessions/S110_tests.md).
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S110-1 | ⭐ Pločica prima `asOf` — podnaslov „na dan …", 2.546,55 na 31.03.2025., `dateFrom` se ignorira | ✅ (2026-08-17) |
+| T-S110-2 | ⭐ „Potvrdi na `<datum>`" sidri **unatrag**, ne na danas ⚠ piše u bazu | ⬜ |
+| T-S110-3 | ⭐ BUG-S110-DATESHIFT regresija — `Event #1` prati zaglavlje kroz 4 promjene datum/vrijeme | ✅ (2026-08-17) |
+| T-S110-4 | Sanity guard 1900–2200 — neispravan datum daje **poruku**, ne tihi pad | ⬜ |
+| T-S110-5 | `split` („planirano") poštuje `asOf` ⚠ odgovor je namjerno polovičan (`Status` je stanje, ne povijest) | ⬜ |
+| T-S110-6 | `make_saldo_anchors.py` — lanac 31 izvoda, `--report`, tautology guard, idempotencija | ✅ (programski) |
+| T-S110-7 | ⭐ Lanac end-to-end: 31.03.2025. = 2.546,55 (3 svjedoka) · 08.07.2026. = 3.403,74 (Kokin broj) | ✅ (programski + UI) |
+
+**Dva „pada" koja NISU pad:**
+
+| Opažanje | Objašnjenje |
+| --- | --- |
+| Pločica pokazuje krivi broj uz aktivan filtar | Provjeri **godinu** u `To`. Prvi prijavljeni „pad" bio je filtar na `31/03/2026` umjesto `2025` — pločica je pokazala `591,98`, što je točan broj za taj datum |
+| Vremena u bazi ne odgovaraju onima u listi | Baza drži **UTC**, app prikazuje **lokalno** (+2h ljeti). DB `07:00` = UI `09:00`. Bitno kad se traži slobodan `session_start` |
+
+**Poznato odstupanje — ne istraživati ponovo:** `−200,14` na ZABA lancu 2025-08 → 2026-04,
+četiri neopisana retka bez bankovne protustavke. Puni nalaz i odluka: `SALDO_MODEL_NALAZI.md` §6.3.
 
 ---
 

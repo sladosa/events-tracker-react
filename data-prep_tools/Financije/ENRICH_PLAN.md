@@ -819,3 +819,61 @@ nije uvjet za početak importa.**
   v. FINANCIJE_MIGRACIJA.md §8 korak 4).
 - `izvodi/` struktura: `Analizirani_izvodi/` (prepoznati, preimenovani), `duplikati/`
   (identičan sadržaj — ništa se ne briše), root = još neobrađeno/neparsabilno.
+
+---
+
+## 5. S110 (2026-08-17) — provjera lanca salda protiv ispisanih izvoda
+
+**Nov alat: `make_saldo_anchors.py`.** Čita ispisano `NOVO STANJE` s 31 ZABA izvoda
+(2023-12 … 2026-06) i upisuje ga u `balance_anchors`. Ponovno koristi `_parse_zaba_all`
+iz `enrich_from_izvoda.py` — nije pisan nov parser.
+
+```
+run.bat make_saldo_anchors.py             ispisana stanja + provjera lanca izvoda
+run.bat make_saldo_anchors.py --report    app (RPC) vs banka, po izvodu
+run.bat make_saldo_anchors.py --anchor 2025-01-01
+run.bat make_saldo_anchors.py --load-all  (⚠ tek nakon reporta — v. zamku 2)
+```
+
+**Rezultat:** lanac izvoda **neprekinut** kroz sva 31 (`novo[i] == pocetno[i+1]`).
+App reproducira banku do centa: `2.546,55` na 31.03.2025., `3.403,74` na 08.07.2026.
+
+### 5.1 Tri zamke (sve izmjerene, ne pretpostavljene)
+
+1. **Izvod se NE zatvara na kraju mjeseca** — `ZABA_2024-12` → `2025-01-01`,
+   `ZABA_2025-12` → `2025-12-24`. `confirmed_on` mora biti *close date izvoda*.
+2. **Sidro NA datum usporedbe čini provjeru tautološkom** (`balance == amount`).
+   `--report` to detektira i označi `SIDRO (nije provjera)`. **Prvo provjera, sidra poslije.**
+3. **RF nije pokriven** — OCR, `T-S107d-6` otvoren. Ne uvoditi „radi konzistentnosti".
+
+### 5.2 Popravci Reviewa
+
+- `fix_koka_datum_200.py` — Kokina tipfelerica u godini: podizanje `200,00` s bankomata
+  `2026-05-29` → `2025-05-29` (+ `Datum naplate`). Dokaz: `ZABA_2025-05` ima **dva** podizanja
+  po 200, Review je imao samo prvo; `ZABA_2026-05` nema nijedno; Kokin `Stanje` (925,33) ga
+  smješta u svibanj 2025.
+- `align_review_s110.py` — Review usklađen s ručnim unosima u app: Tip/Podtip na onoj 200
+  (`Transfer` / `cash - bankomat`), `Status = Izvrsen` na parkingu 1,60.
+
+Oba alata: uski potpis retka, staju ako ne pogode **točno jedan**, rade backup, i ne diraju
+`Stanje` (Kokin neovisni svjedok) ni `source_key` (vezan uz već uvezeni redak — svjež ključ bi
+prekinuo idempotenciju `merge_pbzvisa.py`).
+
+### 5.3 ⚠ Pravila iz §4 su zastarjela
+
+Dva pravila iz „Pravila okruženja" više ne vrijede doslovno, i S110 ih je svjesno prekršio
+uz Sašino odobrenje:
+
+- **„Nikad ne mijenjati postojeće vrijednosti Review sheeta osim Tip/Podtip/Pouzdanost/
+  Alternativa…"** — S110 je mijenjao i `event_date`, `Datum naplate`, `Napomena`, `Status`.
+  Pravilo je pisano za pre-import fazu; ispravljanje **dokazane** greške u datumu je druga
+  stvar od prekrajanja klasifikacije. I dalje vrijedi: samo kroz skriptu, s backupom i s
+  potpisom koji pogađa točno jedan redak.
+- **„NE pisati ništa u bazu — sve ovo je pre-import review faza"** — 2025 i 2026 su
+  **uvezeni**. Review je sada *paralelni izvor* koji se mora održavati u skladu s bazom,
+  inače sljedeći uvoz tiho vrati staro (update-guard gleda `row_hash`).
+
+### 5.4 Poznato odstupanje — ne istraživati ponovo
+
+`−200,14` na ZABA lancu 2025-08 → 2026-04: četiri retka bez opisa i bez bankovne protustavke.
+Puni nalaz, provjere i odluka: `SALDO_MODEL_NALAZI.md` §6.3.
