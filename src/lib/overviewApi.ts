@@ -82,6 +82,13 @@ export interface AnchoredBalanceRow {
   minus_sum: number;
   n: number;
   balance: number;
+  /**
+   * Newest `event_date` among the rows that actually entered this balance
+   * (sql/038). NOT "last row in the Area": something sitting in "+ planirano"
+   * has not moved the balance, so it must not make the number look fresher
+   * than it is. `null` = anchored and nothing since.
+   */
+  last_on: string | null;
 }
 
 export async function fetchAnchoredBalance(p: {
@@ -110,6 +117,7 @@ export async function fetchAnchoredBalance(p: {
     minus_sum: Number(r.minus_sum ?? 0),
     n: Number(r.n ?? 0),
     balance: Number(r.balance ?? 0),
+    last_on: (r.last_on as string | null) ?? null,
   }));
 }
 

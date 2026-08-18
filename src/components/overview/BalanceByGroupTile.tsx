@@ -53,6 +53,27 @@ const T = THEME.overview;
 
 const NO_VALUE = '(bez vrijednosti)';
 
+/**
+ * Gap (in days) above which the freshness line turns amber.
+ *
+ * The threshold only picks a COLOUR — the day count is always in the text, so
+ * getting it wrong cannot mislead anyone, only under- or over-emphasise. That
+ * is deliberate: a number nobody can defend must not be load-bearing.
+ */
+const STALE_DAYS = 7;
+
+/** Whole days from `from` to `to`, both `YYYY-MM-DD`. UTC on both sides so DST never shifts it. */
+function daysBetween(from: string, to: string): number {
+  return Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000,
+  );
+}
+
+/** 1 dan · 2 dana · 21 dan · 39 dana */
+function danWord(n: number): string {
+  return n % 10 === 1 && n % 100 !== 11 ? 'dan' : 'dana';
+}
+
 interface Props {
   areaId: UUID;
   widget: BalanceByGroupWidget;
@@ -215,6 +236,12 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
           // Δ > 0 ⇒ the app shows MORE than the bank.
           const delta = bank === null ? null : row.balance - bank;
 
+          // How far the data actually reaches, vs how far the question reached
+          // (sql/038). Measured against the effective as-of, not against today:
+          // if the user asked "na dan 06.07.2026." and the last movement IS
+          // 06.07.2026., nothing is stale — the answer is complete.
+          const gap = row.last_on ? daysBetween(row.last_on, asOf ?? todayIso()) : null;
+
           return (
             <div key={key} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
               {/* --- account + balance --- */}
@@ -234,6 +261,34 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                       <>od početka podataka · {row.n} zapisa</>
                     )}
                   </p>
+
+                  {/* Freshness (§038) — the header says WHICH DAY was asked
+                      about; this says how far this account can actually answer.
+                      Without it a 39-day-old number renders as today's.
+                      ⚠ `last_on == null` is ambiguous on purpose-of-failure: it
+                      means "nothing since the anchor" only when n === 0. If the
+                      RPC has not been upgraded (038 not run yet) the field is
+                      simply absent, and claiming "nothing since" would be a
+                      FALSE statement rather than a missing one — so that case
+                      renders nothing at all. */}
+                  {(row.last_on || row.n === 0) && (
+                    <p
+                      className={cn(
+                        'text-xs mt-0.5',
+                        gap !== null && gap > STALE_DAYS ? T.asOfNote : 'text-gray-500',
+                      )}
+                    >
+                      {row.last_on ? (
+                        <>
+                          zadnji zapis{' '}
+                          <span className="font-medium">{formatDateHr(row.last_on)}</span>
+                          {gap !== null && gap > 0 && <> · prije {gap} {danWord(gap)}</>}
+                        </>
+                      ) : (
+                        <>zadnji zapis: nema poslije potvrde</>
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 <button

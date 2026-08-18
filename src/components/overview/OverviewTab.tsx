@@ -36,7 +36,7 @@ export function OverviewTab({ areaId, config, canWrite, onNavigateToActivities }
    * machinery.
    *
    * ⚠ KNOWN LIMIT, and §2.16 predicted it: FilterContext holds ONE attrFilter,
-   *   while the tile's own condition is two (`Izvor ∈ {Racun, Cash}` AND
+   *   while the tile's own condition is two (`Izvor = Racun` AND
    *   `Status ≠ Planiran`). So the drill deliberately means "show me this
    *   account", not "show me exactly the rows this number summed". For hunting
    *   a discrepancy that is the more useful list anyway — but it is a gap, not

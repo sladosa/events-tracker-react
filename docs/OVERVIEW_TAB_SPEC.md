@@ -243,7 +243,9 @@ cijele `event_attributes`** (BUG-S103-ANYATTR).
 Alat: `data-prep_tools/Financije/verify_saldo_model.py` (READ-ONLY nad Reviewom).
 Puni nalazi: `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` + `saldo_model_nalazi.xlsx`.
 
-1. **Pravilo `Izvor ∈ {Racun, Cash}` (§2.10) ✅ POTVRĐENO.** Reproducira **bankovni pomak u
+1. **Pravilo `Izvor ∈ {Racun, Cash}` (§2.10) ✅ POTVRĐENO.** *(Povijesni zapis mjerenja od
+   2026-08-12. `Cash` je iz filtra izbačen 2026-08-18 — v. §2.10; mjerenje time nije ugroženo
+   jer na ZABA-i nema nijednog `Cash` retka.)* Reproducira **bankovni pomak u
    17/30 mjeseci u cent**; naivni zbroj po `Racun`u u **0/30**. Bruto dvostruko brojanje:
    56.894 € (ZABA), 81.591 € (RF).
    ⚠ **Traženi test „isti popis od 7" pokazao se neizvedivim, i to je nalaz.** `Saldo kontrola`
@@ -409,11 +411,50 @@ saldo je **`Izvor`**:
 
 | `Izvor` | miče saldo | gdje se prikazuje |
 | --- | --- | --- |
-| `Racun`, `Cash` | odmah | **izvršeno** (glavni broj) |
+| `Racun` | odmah | **izvršeno** (glavni broj) |
 | `Visa`, `Mastercard` | tek kroz skupnu naplatu | **„+ planirano"** |
+| `Cash` | **nikad** — podizanje je već oduzelo novac | samo u razrezu po `Tip`u |
 
 Skupna naplata je `Izvor = Racun` pa uđe u izvršeno u trenutku kad je banka stvarno knjižila —
 točno kako se ponaša i na izvatku.
+
+### ⚠ `Cash` je izbačen iz filtra (2026-08-18, S111) — ista greška, drugi pot
+
+Prvotni filtar bio je `Izvor ∈ {Racun, Cash}` i **bio je pogrešan iz istog razloga zbog kojeg
+je pogrešan naivni zbroj po `Racun`u** — samo se nije imao gdje pokazati.
+
+Gotovina je **pot kao i kartica**, i zrcalna joj je:
+
+| | puni pot | prazni pot | u saldo ulazi |
+| --- | --- | --- | --- |
+| **Visa / MC** | pojedinačne kupovine `Izvor=Visa` | skupna naplata `Transfer \| izmedju racuna` | **skupna naplata** |
+| **Gotovina** | podizanje `Transfer \| cash - bankomat` | pojedinačni troškovi `Izvor=Cash` | **podizanje** |
+
+U oba slučaja novac napusti banku **jednom**, kroz jedan `Transfer` redak. Zato gotovinski
+trošak ne smije ulaziti u bankovni saldo — on opisuje **što se s već podignutim novcem
+dogodilo**.
+
+**Nalaz koji je to otkrio** (mjereno, ne zaključeno): `Sašin tekući RF`, 18.05.2026. podizanje
+`−150,00` (`Transfer | cash - bankomat`, `Izvor = Racun`), 20.05.2026. trošak `−66,00`
+(`Izvor = Cash`, „Promjena guma"). Banka je izgubila 150 €; baza ih je oduzimala **216 €**.
+
+**Zašto se nije vidjelo 18 mjeseci:** u cijeloj Arei postoji **46 podizanja** i **točno jedan**
+gotovinski trošak. Verifikacija 17/30 mjeseci stoji netaknuta jer na ZABA-i nema nijednog
+`Cash` retka — staro pravilo bilo je istinito na podacima na kojima je mjereno.
+
+**Zrcalno pravilo, dvije osi.** `Transfer` **ulazi u saldo, izlazi iz razreza** po `Tip`u;
+gotovinski trošak **izlazi iz salda, ulazi u razrez**. Nije nedosljednost nego isti princip:
+svaki euro točno jednom u svakom pogledu. Vrijedi i za gotovinu dobivenu izvana (netko ti da
+novac za protuuslugu): `Izvor = Cash`, `Tip = Prihodi` — banka je nije vidjela, razrez jest.
+
+**Odbačena alternativa — `Gotovina` kao pravi račun.** Nova vrijednost atributa `Racun`; pločica
+bi ju prikazala **bez ijedne linije koda** (test §2.15), a mogla bi se i sidriti — prebrojati
+novčanik je isti epistemički čin kao pogledati bankovnu aplikaciju (§2.18, *očitanja vanjske
+istine*). Odbijeno jer traži **drugi redak uz svako podizanje** (46 unatrag) i disciplinu
+bilježenja **svakog** gotovinskog troška, inače pot tiho odluta. Za 1 redak na 2.220 preskupo —
+i posao bi pao na Koku, na mjestu gdje ga pokušavamo smanjiti (Sašina odluka, 2026-08-18).
+⇒ Cijena koju svjesno plaćamo: **stanje novčanika se ne zna.** Prijelaz na tu varijantu poslije
+ne stvara dug — današnja odluka ne dira nijedan podatak, samo `filters` u configu.
 
 **Verifikacija PRIJE koda (korak 1a): ✅ IZVRŠENA 2026-08-12 — pravilo POTVRĐENO.**
 Mjereno je nad 4.996 stvarnih redaka, prije nego je RPC nastao: model reproducira **bankovni
@@ -715,5 +756,85 @@ odlučuje)**, **Fitness (ista mehanika, drugi rezultat)** — plus tablica „pl
 
 ---
 
-*Stanje 2026-08-15: sve OQ zatvorene, Faza 1a izvršena, opseg Faze 1 revidiran (§2.5).
-Sljedeći korak: Kokina delta (Saša) + Faza 1 (Claude), paralelno.*
+## 2.18 Zapis vs. očitanje — razred, ne iznimka (odluka 2026-08-17)
+
+Sašina primjedba: *„smeta me da imamo tako specifičnu tablicu — cijela poanta aplikacije je
+općenitost."*
+
+**Provjereno mjerenjem, ne raspravom.** Grep kroz `src/components/overview/`, `overviewApi.ts`
+i `useRunningBalance.ts` na `financ|racun|kokin|planiran|izvorplacanja|uplata|isplata|saldo`
+daje **tri pogotka, sva tri tekst u tooltipu**. Nula u logici, RPC-ovima, dispatchu pločica.
+Shema `balance_anchors` nema financijsku riječ osim `amount`; RPC prima slugove kao parametre.
+Jedina domenska stvar je `037` — a on je **podatak, ne shema**.
+
+Dokaz općenitosti: Area „Auto" s `group_by: vozilo`, `plus: natočeno` i sidrom = **očitanje
+kilometraže** radi **danas, bez linije koda**. Isto vaga, brojilo struje, zaliha. Obrazac je
+**kumulativna veličina + povremeno vanjsko očitanje**, ne „novac".
+
+⇒ **Nelagoda je bila točan detektor, ali je pokazala na ime i tekst, ne na strukturu.**
+
+### Pravilo koje razdvaja dva razreda
+
+| | **zapis** (event) | **očitanje** (sidro) |
+| --- | --- | --- |
+| što je | što korisnik tvrdi da se dogodilo | što je **vanjski izvor** pokazao na datum |
+| pisanje | popravljivo, brisivo, P3 | samo dopisivanje — ispravak je novi redak |
+| putuje? | da (Excel roundtrip) | nikad |
+
+**Ne popravljaš mjerilo da bi daska stala.** Zabrana editiranja stanja u financijskim
+sustavima **nije financijska osobitost** — isto vrijedi za očitanje vage, brojila, lab nalaza:
+zapis je dokaz, a dokaz koji se može naknadno doraditi prestaje biti dokaz (razred „prekršaj
+se ne vidi", §2.17).
+
+⇒ Ovo je i **konačni argument protiv selidbe sidara u `Financije_all > Stanja`**: eventi imaju
+namjerno **suprotnu** disciplinu pisanja (Edit, P3, roundtrip). Selidba ne bi bila povećanje
+općenitosti nego **stapanje dviju disciplina u onu labaviju**. Dvije discipline ⇒ dva doma.
+(Jači od argumenta o Δ čipu iz iste sesije, jer nije o plumbingu nego o vrsti zapisa.)
+
+### Dogovoreno, još neizvedeno
+
+`036` je pokrenut **samo na TEST-u** (potvrdio Saša, 2026-08-17), tablica ima 3 retka, na PROD-u
+ničega ⇒ **preimenovanje je sada besplatno i nikad neće biti jeftinije.**
+
+1. Generički rječnik: `balance_anchors` → `confirmed_readings` (radni naziv), `amount` → `value`,
+   `rpc_area_balance_anchored` → `rpc_area_value_anchored`. **Imena još probrati** — nije hitno.
+2. Tekst pločice iz configa, ne iz koda: `confirm_label` / `source_label` ⇒ Financije kažu
+   „u banci", Fitness „na vagi". Danas su `bankInput`, „Upiši broj koji piše u bankovnoj
+   aplikaciji" i sl. tvrdo u `BalanceByGroupTile.tsx`.
+3. §2.15 dobiva **imenovan treći razred** — *očitanja vanjske istine* — umjesto jedne iznimke.
+   Razred s jednim članom izgleda proizvoljan; s kriterijem se sljedeći član prepozna sam.
+
+## 2.19 ⏸ OTVORENA NIT — što Overview daje pri ulasku dublje u podatke
+
+**Prekinuto zbog vremena 2026-08-17; nastavlja se razgovorom, ne kodom.**
+
+Polazište (Sašine slike): najviša razina je pločica `Stanje po računu`; klik na `3.403,74 €`
+radi drill u Activities **s ispravnim stanjem filtera** (`Racun = Kokin tekući ZABA`, raspon
+datuma, leaf `Transakcija`). **Taj dio već radi.**
+
+Pitanje je što to mjesto treba dati **dvjema različitim osobama**:
+
+- **Koka** — sve što joj treba da **upiše deltu** od stanja koje ima. (Operativa, ne analiza.)
+- **Saša** — analitika: **koliko je potrošeno po `Tip`/`Podtip` taksonomiji**, eventualno
+  grafika (pie chart).
+
+**Poveznice na već poznate rupe — provjeriti prije dizajniranja bilo čega novog:**
+
+- **Drill nosi jedan uvjet, a uvjet pločice ima dva** (`Izvor` + `Status`) ⇒ drill danas znači
+  „pokaži mi ovaj račun", ne „točno ove retke". Predviđeno u §2.16 kao test; ispalo da
+  `FilterContext` nosi jedan `attrFilter`. (Backlog u `CLAUDE.md`.)
+- **Amber notica na slici 2** — „7 numeric/other attributes not shown — use Excel Export to
+  filter by those" — isti razred: backlog „Potpuni attrFilter za number/boolean/datetime".
+- Razrez po `Tip`/`Podtip` je **nova pločica** (`breakdown`), ne proširenje `balance_by_group`.
+  Mora proći test §2.15: parametrizirana po ulogama, nula linija koda za novu Areu.
+- ⚠ **Transfer izlazi iz razreza po Tipu, a ulazi u saldo** (§2.10) — razrez ne smije naslijediti
+  filtar pločice salda nekritički.
+
+*(Na slici 1 vidljivo i očekivano: `Sašin tekući RF` = „od početka podataka · 213 zapisa" +
+čip „još nije potvrđeno" — §2.17 točka 4 radi kako je zamišljeno.)*
+
+---
+
+*Stanje 2026-08-17: §2.18 zatvara pitanje doma za sidra (ostaju zasebna tablica, dobivaju
+generički rječnik). §2.19 je otvorena nit — drill i analitika. Ostalo nepromijenjeno:
+Kokina delta (Saša), Faza 2 — brzi unos (§2.9).*

@@ -3,10 +3,36 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S110 (2026-08-17) — pločica prima `asOf`, provjera lanca **zatvorena**, BUG-S110-DATESHIFT nađen i popravljen.
+**Zadnji update:** S111 (2026-08-18) — RF lanac zatvoren, `Cash` izvan salda, filtar datuma na Overviewu, `038` datum zadnjeg zapisa.
 **Prošlo 2026-08-17: T-S110-1, -2, -3, -6, -7 — svi ⭐ testovi S110 zatvoreni.** · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
-**Otvoreno: T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S110:** [S110_tests.md](test-sessions/S110_tests.md) · **S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+**Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
+**Otvoreno: T-S111-1…6 (NOVO, svi ⬜); T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Detalji S111:** [S111_tests.md](test-sessions/S111_tests.md) · **S110:** [S110_tests.md](test-sessions/S110_tests.md) · **S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+
+---
+
+## S111 — RF lanac zatvoren · `Cash` izvan salda · `038`
+
+⚠ **Preduvjet za sve:** `sql/037` **ponovno** pušten (bez `Cash`) + **`sql/038`**.
+Puni koraci i očekivane brojke: [S111_tests.md](test-sessions/S111_tests.md).
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S111-1 | ⭐ Filtar datuma postoji na Overviewu **i ne resetira se** pri povratku na Activities | ⬜ |
+| T-S111-2 | ⭐ Ispravak sidra = **novi redak** (dva sidra istog dana, vrijedi najnovije); Δ −5,00 | ⬜ |
+| T-S111-3 | ⭐ RF na 06.07.2026. = **461,82 €** (= ispisano na `RF_2026-06.pdf`), 196 promjena | ⬜ |
+| T-S111-4 | ⭐ `Cash` ne miče saldo, ali zapis „Promjena guma" **postoji** i ide u Excel export | ⬜ |
+| T-S111-5 | ⭐ `038` — `zadnji zapis <datum> · prije N dana`, amber preko 7 dana; bez `038` redak **izostaje** | ⬜ |
+| T-S111-6 | Skripte idempotentne, backupi na mjestu, zaštita blizanca blokira | ⬜ |
+
+**Brojke koje se ne smiju izgubiti** (sve mjerene, ne procijenjene):
+
+| Što | Vrijednost |
+| --- | --- |
+| RF izvodi 03.01.2025 → 06.07.2026 | 196 tx, Σ `−2.996,21` ⇒ `3.458,03 − 2.996,21 = 461,82` (Δ **0,00**) |
+| duplikati očišćeni u `fix_rf_duplikati.py` | 9 redaka, neto `−44,23`, **bruto 2.609,78** |
+| ostatak u `fix_rf_ostatak.py` | 4 retka (`+20,28`) + 1 suvišan atribut (`−0,26`) |
+| gotovina izvan salda (config) | `+66,00` |
 
 ---
 

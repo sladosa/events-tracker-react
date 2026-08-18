@@ -484,8 +484,17 @@ function AppContent() {
               onUseShortcut={handleAddActivity}
             />
 
-            {/* Date Range Filter - only for Activities tab */}
-            {activeTab === 'activities' && (
+            {/* Date Range Filter — Activities AND Overview.
+                Overview needs it because `dateTo` IS the tile's `asOf` (§2.17:
+                "sidro unatrag je provjera"); without it the only way to confirm
+                a past balance was to hop to Activities and back.
+                ⚠ It must stay MOUNTED across that tab switch: DateRangeFilter
+                keeps `userModified` in local state, so unmounting silently
+                re-armed the bounds auto-init and threw the user's range back to
+                "All time" on return. Same one condition fixes both.
+                On Overview `dateFrom` is ignored by the tile (a balance has no
+                start) but is still carried into the drill. */}
+            {activeTab !== 'structure' && (
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <DateRangeFilter />
               </div>

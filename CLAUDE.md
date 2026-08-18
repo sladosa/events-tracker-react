@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `Claude-temp_R/DONE_HISTORY.md`** (S1–S110).
+> **Povijest po sesijama je u `Claude-temp_R/DONE_HISTORY.md`** (S1–S111).
 > Ovdje ostaje samo ono što mijenja buduće odluke. Zamke iz starih sesija su
 > promaknute u „Critical rules" i „Zamke" — ne traži ih u povijesti.
 
@@ -134,6 +134,10 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 
 **Mjerenje / usklađenje**
 
+- **⚠ Neto Δ krije bruto.** U S111 je ostatak od `−130,25` bio **neto od 2.609,78 bruto** —
+  dvadeset puta. Sastojao se od `+1.239,68` viška uplata i `−1.370,01` viška isplata koji su
+  se skoro poništili. Pravilo: kad tražiš uzrok razlike, **zbroji apsolutne vrijednosti
+  nesparenih redaka**, ne njihov neto — neto ti kaže koliko fali, bruto koliko je grešaka.
 - **⚠ Mali zbirni Δ nije dokaz da nema grešaka — može biti dokaz da ih ima paran broj** (S110).
   Ostatak lanca salda bio je `−0,14` i izgledao kao potvrda ispravnosti; zapravo je
   nedostajućih `+200` poništavalo nepovezanih `−200,94` iz kasnijih mjeseci. Tek kad je jedna
@@ -165,6 +169,17 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 - **`apply_rules.py` preskače redak s VALJANIM parom** ⇒ pravilo ne može popraviti
   krivo-ali-valjano klasificiran redak. Zato postoje one-off skripte
   (`fix_vocarna_pravilo.py`, `fix_anja_rate.py`, `fix_keks_trener.py`).
+- **⚠ Dedup po `(datum, iznos)` ne hvata skoro-duplikate** (S111). Kad dva izvora opisuju
+  **isti** događaj različitim iznosom (Koka `1.265,59`, banka `1.285,59` — zamijenjena
+  znamenka), ključ se razlikuje i **oba retka uđu**. Nađeno 9 takvih na jednom računu, razlike
+  od `0,02` do `25,70` €. Otkriva se samo sparivanjem s **tolerancijom na iznos**, ne točnim
+  poklapanjem. ⚠ Vrijedi i obrnuto: `ZABA 25.08.2025. „Anja 73/96"` ima uplatu 450,00 **i**
+  isplatu 0,70 u istom eventu, i to **nije** greška nego vjeran spoj dvaju stvarnih redaka
+  izvoda. Prije brisanja uvijek provjeri postoji li protustavka na izvodu.
+- **Autoritet za iznos je izvod, za opis i klasifikaciju Kokin redak.** Njen lanac i bankov se
+  razlikuju redak po redak a **slažu u zbroju** (oba daju `461,82` na 06.07.2026.) — višak na
+  jednoj strani ima kompenzaciju na drugoj. Baza koja spoji oba izvora dobije **najgoru** od
+  tri varijante: dvostruko brojanje ondje gdje se opisi razlikuju.
 - **`source_key` nije stabilan** (`normalize_financije.py:202`, `seq_per_day` = redoslijed u fileu)
   ⇒ ubačeni redak mijenja ključeve svih redaka tog dana iza njega
 - **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** (preskače `source_key`eve koji POSTOJE
@@ -184,6 +199,18 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 - **Pali batch ne smije srušiti run** — `is_fatal()` (kredit/400/401/403 bez retryja),
   djelomičan rezultat se zadrži i dopuni s `--resume`
 - **heredoc patch tiho promaši a `py_compile` prođe** ⇒ provjeri grepom, ne pretpostavkom
+
+**UI (React)**
+
+- **⚠ Uvjetno renderirana komponenta gubi lokalno stanje pri svakom skrivanju** (S111).
+  `DateRangeFilter` je bio montiran samo uz `activeTab === 'activities'`; svaki prolaz kroz
+  Overview ga je odmontirao, resetirao njegov `userModified` flag i pustio auto-init iz
+  `useDateBounds` da **prepiše korisnikov raspon s „All time"**. Izgledalo je kao povremeni bug
+  („često se resetira"), a bilo je deterministično. Filter panel je namjerno uvijek montiran
+  (`hidden` klasa, ne uvjet) — isto vrijedi za sve što drži stanje.
+- **Nedostajuće polje iz RPC-a ne smije se čitati kao „nema ničega".** Kad `038` nije pušten,
+  `last_on` je `undefined` ⇒ `null` — isto kao „ništa poslije sidra". Zato uvjet u
+  `BalanceByGroupTile` glasi `row.last_on || row.n === 0`: neistina je gora od izostanka.
 
 **E2E (Playwright)**
 
@@ -368,48 +395,72 @@ N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravil
 
 ---
 
-## Sljedeći koraci (2026-08-17)
+## Sljedeći koraci (2026-08-18)
 
-**✅ Provjera lanca salda je ZATVORENA (S110).** App reproducira banku i Kokin Excel **do centa**
-na oba kraja: `2.546,55` na 31.03.2025. (tri svjedoka) i `3.403,74` na 08.07.2026. (Kokin broj,
-bez korekcije). Sidra u TEST bazi: `2025-01-01 = 3.054,41` i `2026-07-01 = 2.255,64`, oba
-**ispisana** s izvoda. Alat: `data-prep_tools/Financije/make_saldo_anchors.py`.
+**✅ OBA LANCA SALDA SU ZATVORENA.** App reproducira **ispisana bankovna stanja u cent**:
 
-**Aktivna nit — odluka o `Financije_all > Stanja`** (Sašin zahtjev: razgovor u svježoj sesiji).
-Provjera ju je oslobodila pritiska točnosti — pitanje je čisto gdje je stanjima ugodnije
-živjeti, ne hoće li saldo biti pouzdan. Skica atributa i otvorene sitnice: `NEXT_SESSION_PROMPT.md`.
+| Račun | Datum | App | Izvor istine |
+| --- | --- | --- | --- |
+| Kokin tekući ZABA | 31.03.2025. | 2.546,55 | banka + Kokin red 1641 (S110) |
+| Kokin tekući ZABA | 08.07.2026. | 3.403,74 | Kokin broj, bez korekcije (S110) |
+| Sašin tekući RF | 06.07.2026. | **461,82** | ispisano na `RF_2026-06.pdf` (S111) |
 
-**Ostalo:**
+RF je usput zatvorio i **`T-S107d-6`**: OCR lanac izvoda daje `3.458,03 − 2.996,21 = 461,82`,
+Δ **0,00** kroz 196 transakcija i 18 mjeseci. Sumnja u RF OCR bila je neopravdana — greške su
+bile u **spajanju** Kokinog Excela s izvodima, ne u čitanju izvoda.
 
-1. **Kokina delta** — `normalize_financije.py` → generator → import kao `N/A`.
-   Jedini dio koji **raste**; bez nje Koki fali ~6 tjedana vlastite povijesti.
-   ⚠ Sidro ju je **maknulo s kritičnog puta za saldo** — ostaje zbog analize i zbog Koke.
-   Ne treba `Pitanja za Koku` prolaz (svježe je, ona pamti).
-2. ~~**Faza 1 — `balance_by_group`**~~ **✅ NAPISANO S108** (`sql/035`+`036`+`037`, Overview tab,
-   pločica sa sidrom, kolona `Stanje`). RPC verificiran protiv Python modela u cent.
-   **T-S108-1, -2, -3 ✅; -4 3/5 ✅ (uklj. „Potvrdi"); ostalo čeka.**
-   **Poslije provjere lanca:** Faza 2 — brzi unos (§2.9, dvije sitnice nad Shortcut sustavom).
-2b. ~~**Red 4996 (Parking 1,60)**~~ **✅ UNESEN S110** kroz Add Activity na `2026-07-07`;
-    Review usklađen (`Status = Izvrsen`). Zajedno s Kokinom tipfelericom u godini
-    (200,00 bankomat, `2026-05-29` → `2025-05-29`) time app daje **točno** Kokin `3.403,74`.
-3. **Koka proba na TEST-u (mobitel) → odluka o cutoveru.** Ovo je prava vaga; ako padne,
-   njen Excel ostaje trajni ulaz i pipeline se automatizira umjesto gasi.
-4. **Batch 2024, pa 2023** — svaki uz `Pitanja za Koku` vetting prije generiranja.
-   ⚠ **Sidro ih vadi s kritičnog puta** — saldo je točan od dana potvrde bez obzira na
-   staru povijest. Idu zbog analize i AI sloja, ne zbog salda.
-5. Ručni testovi T-S107b-3..6, T-S107f-3, T-S107v-2/3/4/7
-6. Stare Financije aree obrisati **na kraju** (backup!)
-7. Diary archaeology (non-blocking)
+**⚠ Prije nastavka pustiti na TEST-u:** `sql/037` (ponovno, bez `Cash`) + `sql/038`.
+Bez toga pločica pokazuje `395,82` umjesto `461,82` i nema retka o svježini.
 
----
+1. **Kokina delta** (`Financije 2026-08-16.xlsx`) — **sljedeći veliki korak**.
+   - ZABA: +117 redaka (do 13.08.), RF: +323 (do 11.08.)
+   - ⚠ **Od tih 323 njih ~186 NIJE nova potrošnja** nego preformulacija Visa naplata koje baza
+     već ima iz PBZ izvoda. Koka je ukinula sheet `Za Sašu` i pojedinačne Visa retke preselila
+     u `sasa EU` s datumom naplate u kol. C i **datumom kupovine u kol. G**.
+   - ⚠ Njena restrukturacija je **provjerena i čista**: 911 redaka lanca, 0 puknuća, razina
+     identična starom fileu na **svih 376 zajedničkih datuma** (Δ 0,00).
+   - ⚠ Maknula je i **skupnu Visa naplatu** — generator je mora **sintetizirati** iz zbroja
+     svake skupine (provjera: mora dati iznos s RF izvoda). Ne mijenjati os salda.
+   - ⚠ Dedup **mora imati toleranciju na iznos** (v. zamke) — inače isti razred grešaka koji je
+     S111 čistio, samo dvadeset puta veći.
+2. **Faza 2 — brzi unos** (§2.9, dvije sitnice nad Shortcut sustavom): prefilana polja se ne
+   skupljaju (`AttributeChainForm.tsx:216–222`), shortcut dropdown je ravan popis
+   (`ProgressiveCategorySelector.tsx:711`). Male, i **direktno za Koku**.
+3. **Tip/Podtip automatika** — shortcutovi po trgovcu **prvo** (nula koda, koristi
+   `activity_presets`), tekstualno pravilo `opis → Tip/Podtip` tek ako popis postane nezgrapan,
+   AI u appu tek nakon toga.
+4. **Koka proba na TEST-u (mobitel) → odluka o cutoveru.** Prava vaga; ako padne, njen Excel
+   ostaje trajni ulaz i pipeline se automatizira umjesto gasi. ⚠ Prije toga vrijedi da Saša
+   **odglumi Koku 3 dana stvarnog unosa na mobitelu** i izmjeri frikciju — to pretvara
+   „bi li bila zadovoljna" u brojku.
+5. **Batch 2024, pa 2023** — svaki uz `Pitanja za Koku` vetting. ⚠ Sidro ih **vadi s kritičnog
+   puta**; idu zbog analize i AI sloja, ne zbog salda.
+6. Ručni testovi: **T-S111-1…6** (novi), T-S110-4/-5, T-S107b-3..6, T-S107f-3, T-S107v-2/3/4/7
+7. Stare Financije aree obrisati **na kraju** (backup!)
+8. Diary archaeology (non-blocking)
+
+**Preostali poznati Δ, oba svjesno ostavljena:**
+`−200,14` na ZABA lancu 2025-08 → 2026-04 (`SALDO_MODEL_NALAZI.md` §6.3) · RF nema više ništa.
 
 ## Overview tab / analitika — sažetak odluka
 
 Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zaboraviti:
 
-- **Saldo miče `Izvor`, NE `Racun`.** `Izvor ∈ {Racun, Cash}` = izvršeno; `Visa`/`Mastercard`
-  = planirano dok ne dođe skupna naplata. Naivni zbroj po `Racun`u dvostruko broji
-  (dokazano: 17/30 mjeseci u cent vs **0/30**).
+- **Saldo miče `Izvor`, NE `Racun`.** Bankovni saldo miče **samo `Izvor = Racun`**;
+  `Visa`/`Mastercard`/`Cash` su **potovi** koji se s bankom poravnaju jednim zasebnim retkom.
+  Naivni zbroj po `Racun`u dvostruko broji (dokazano: 17/30 mjeseci u cent vs **0/30**).
+- **⚠ `Cash` je IZBAČEN iz filtra salda (S111).** Podizanje gotovine već postoji kao
+  `Transfer | cash - bankomat` s `Izvor = Racun` i **već je oduzeto od računa**; gotovinski
+  trošak (`Izvor = Cash`) isti novac broji drugi put. Nije se vidjelo 18 mjeseci jer u cijeloj
+  Arei postoji **jedan jedini** takav redak (66,00 „Promjena guma", 20.05.2026.) uz **46
+  podizanja**. Staro pravilo `∈ {Racun, Cash}` **ostaje istinito za ZABA-u** (ondje nema
+  nijednog `Cash` retka) ⇒ provjera 17/30 nije ugrožena. Odbačena alternativa: `Gotovina`
+  kao pravi račun s vlastitim saldom — traži drugi redak uz svako podizanje i disciplinu
+  bilježenja svakog gotovinskog troška; preskupo za 1 redak na 2.220 (Sašina odluka).
+- **Zrcalno pravilo, dvije osi:** `Transfer` **ulazi u saldo, izlazi iz razreza** po Tipu;
+  gotovinski trošak **izlazi iz salda, ulazi u razrez**. Isti princip — svaki euro točno
+  jednom u svakom pogledu. Isto vrijedi za gotovinu dobivenu izvana (`Izvor = Cash`,
+  `Tip = Prihodi`): banka je nije vidjela, razrez jest.
 - **Saldo se računa od sidra, ne od početka povijesti:**
   `saldo = potvrđeno_stanje + Σ(promjene STROGO nakon datuma potvrde)`.
   Sidro upisuje **čovjek gledajući bankovnu aplikaciju** — najkvalitetniji podatak u sustavu.
@@ -423,8 +474,12 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   skriva rupu. `confirmed_on` je obična `date` — baza to već podržava, UI još ne.
 - **Sidro NE ide u `areas.settings`** — config putuje s Areom (template, Structure export),
   a saldo ne smije putovati. ⚠ Taj argument **ne pokriva** ideju „sidro kao obična kategorija
-  s eventima" (`Financije_all > Stanja`) — eventi ne putuju Structure exportom. Ta je selidba
-  u S109 prihvaćena u načelu, čeka rezultate provjere. V. `NEXT_SESSION_PROMPT.md`.
+  s eventima" (`Financije_all > Stanja`) — eventi ne putuju Structure exportom.
+  **✅ ZATVORENO (§2.18, 2026-08-17): sidra OSTAJU u zasebnoj tablici.** Odlučujući argument
+  nije o saldu nego o **vrsti zapisa** — event je popravljiv, brisiv, P3, putuje Excelom;
+  očitanje se samo dopisuje i nikad ne putuje. Selidba bi bila stapanje dviju disciplina
+  u onu labaviju. Ostaje neizvedeno: generički rječnik (`balance_anchors` → `confirmed_readings`,
+  `amount` → `value`) + tekst pločice iz configa. Besplatno je dok je tablica samo na TEST-u.
 - **`Status` je trenutno stanje, ne povijest.** App ne pamti kad je nešto prešlo iz `Planiran`
   u `Izvrsen` ⇒ „što je bilo planirano na dan X" nije pitanje na koje se može pošteno
   odgovoriti — samo „od datiranog do X, što je **i danas** još planirano".
@@ -445,10 +500,10 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
 
 ---
 
-## S110+: Intelligence layer
+## S112+: Intelligence layer
 
 Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza 3 prođe.
-(Broj pomican dvaput — S108 i S109 su zauzeli mjesto.)
+(Broj pomican četiri puta — S108, S109, S110, S111 su zauzeli mjesto.)
 
 ---
 
@@ -460,21 +515,24 @@ rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashb
 
 **Sidra se ne mogu vidjeti ni obrisati iz aplikacije** (S109) — `listAnchors()` i
 `deleteAnchor()` postoje u `overviewApi.ts` i **nitko ih ne zove**; jedini put je SQL Editor.
-⚠ Namjerno se **ne gradi** dok ne padne odluka o `Financije_all > Stanja` — ako stanja postanu
-eventi, Add/Edit/Delete/Excel roundtrip to rješavaju sami i ovaj UI bi bio bačen posao.
+⚠ Blokada je **otpala** (§2.18 — sidra ostaju zasebna tablica), pa se ovo sada smije graditi.
+Postalo je i konkretnije: u S111 je jedno sidro upisano s tipfelericom (3.453,03 umjesto
+3.458,03) i **ispravlja se samo novim retkom** — bez popisa u UI-ju korisnik ne vidi da uz
+važeće sidro stoji i ono krivo.
 
 **Sidro upisano kroz UI nema podrijetlo** (S110) — `balance_anchors.note` postoji, skripta ga
 puni („ispisano NOVO STANJE, `ZABA_2024-12.pdf`"), a `saveAnchor()` iz pločice ga ostavlja
 `NULL`. Smeta baš zbog pravila oko kojeg je mehanizam građen — **stanje smije doći samo
 izvana** (§2.17) — jer se poslije iz baze ne vidi je li broj s izvoda, s ekrana banke ili
 izračunat. Fix: malo polje „odakle" uz „u banci", ili barem automatski `note`.
-⚠ Odgoditi do odluke o `Stanja`: kao atribut `Izvor podatka` (dropdown bez opcije
-„izračunato") isto pitanje rješava strukturno.
+⚠ Više se **ne odgađa** (§2.18 zatvorio `Stanja`). Rješenje je sada malo polje „odakle" uz
+„u banci" — istu ulogu koju je trebao imati atribut `Izvor podatka`, bez selidbe u evente.
 
 **`Datum naplate` ne prati promjenu datuma u Editu** (S110) — delta-shift
 (`EditActivityPage.handleDateTimeChange`) pomiče samo *vremena eventa*, ne i datumske atribute.
 Oba popravka u S110 tražila su ručnu izmjenu. D1b kaže `Izvor ∈ {Racun, Cash}` ⇒ `Datum naplate`
-= `event_date`, pa bi se za te retke moglo pomicati automatski. ⚠ Za kartice **ne smije** —
+= `event_date` (ovdje `Cash` **ostaje** — D1b je o datumu naplate, ne o saldu; v. S111),
+pa bi se za te retke moglo pomicati automatski. ⚠ Za kartice **ne smije** —
 tamo je datum naplate vezan uz ciklus banke, ne uz dan kupovine.
 
 **Drill s dva uvjeta** — `FilterContext` nosi jedan `attrFilter`, a uvjet pločice ima dva

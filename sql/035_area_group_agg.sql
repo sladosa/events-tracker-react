@@ -35,7 +35,9 @@
 -- DEVIATIONS FROM THE §2.4 SKETCH (deliberate, documented here)
 --   a) p_filter_slug/p_filter_val (one pair) → p_filters jsonb (a list).
 --      The Financije balance needs TWO conditions at once:
---        izvorplacanja IN (Racun, Cash)   AND   status NOT IN (Planiran)
+--        izvorplacanja IN (Racun)   AND   status NOT IN (Planiran)
+--      (`Cash` was in that list until 2026-08-18 — see 037 and §2.10. It is
+--      still TWO conditions, which is what this deviation is about.)
 --      SALDO_MODEL_NALAZI.md §2.1 measured exactly that combination against the
 --      bank (17/30 months to the cent). One pair cannot express it.
 --   b) p_from added next to p_as_of. §2.17 defines the balance as
@@ -372,7 +374,8 @@ GRANT EXECUTE ON FUNCTION public.rpc_area_group_agg(uuid, text, text, text, json
 --   the numbers, or call the RPC from a signed-in client.
 --
 -- Executed balance per account — the §2.10 rule:
---   Izvor ∈ {Racun, Cash} = money already moved; Visa/Mastercard = still planned.
+--   Izvor = Racun = money already left the account; Visa/Mastercard = still
+--   planned; Cash = already gone via the ATM withdrawal, so never here (§2.10).
 --
 -- SELECT r.group_value,
 --        round(sum(coalesce(r.plus_val, 0)), 2)                              AS uplata,

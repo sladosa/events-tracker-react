@@ -33,9 +33,17 @@ podatak mijenja drugdje, klikni ↻.
 
 ## Što točno miče saldo (i zašto nije zbroj po računu)
 
-U saldo ulaze samo zapisi kod kojih se novac **već pomaknuo** — za Financije to znači
-`Izvor = Racun` ili `Cash`. Kartična kupovina (`Visa`, `Mastercard`) **ne** ulazi, jer račun
-tereti tek skupna naplata kartice, koja je zaseban zapis.
+U saldo ulaze samo zapisi kod kojih se novac **već pomaknuo s računa** — za Financije to znači
+`Izvor = Racun`. Kartična kupovina (`Visa`, `Mastercard`) **ne** ulazi, jer račun tereti tek
+skupna naplata kartice, koja je zaseban zapis.
+
+**Ni gotovinski trošak (`Izvor = Cash`) ne ulazi u saldo**, i to iz istog razloga: novac je
+račun napustio već kad si ga podigao s bankomata, a to podizanje je vlastiti zapis
+(`Transfer | cash - bankomat`). Da se brojilo oboje, isti bi novac otišao dvaput. Gotovinski
+trošak zato **ostaje potpuno vidljiv u razrezu po `Tip`u** — samo ne pomiče bankovni broj.
+
+⚠ Posljedica koju je dobro znati: aplikacija **ne prati koliko gotovine imaš u novčaniku**.
+Vidi se koliko je podignuto i na što je potrošeno, ali ne i koliko je ostalo.
 
 Da se zbrajalo naivno "sve po računu", ista bi se potrošnja brojila **dvaput**: jednom kao
 kupovina, drugi put kao naplata kartice. Razlika nije mala — na stvarnim podacima naivni zbroj

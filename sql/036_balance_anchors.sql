@@ -146,7 +146,7 @@ USING (
 -- without subtracting, which v1 does not do.
 --
 -- ⚠ Which date the comparison uses: event_date. For everything that actually
---   moves a balance (Izvor ∈ {Racun, Cash}) D1b makes `Datum naplate` equal to
+--   moves a balance (Izvor = Racun) D1b makes `Datum naplate` equal to
 --   event_date, and the Python model that was validated against the bank uses
 --   event_date too. Rows whose charge lands later (Visa/Mastercard) are not in
 --   the executed bucket at all — they are the "+ planirano" number.
