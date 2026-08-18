@@ -132,7 +132,7 @@ kodom. Zato korak 4 sad koristi **sutrašnji** datum.
 3. **Klikni „Potvrdi".** **Očekivano:** zeleni toast `Potvrđeno: Kokin tekući ZABA = …`, polje se isprazni, pločica se osvježi i podnaslov se mijenja iz **„od početka podataka · N zapisa"** u **„od potvrde 15.08.2026. · … · 0 promjena poslije"**.
    **Pad:** crveni toast (prepiši ga doslovno), ili podnaslov ostane „od početka podataka" — to znači da sidro nije spremljeno.
    ✅ **PROŠAO 2026-08-16.** Sidro `3.000` spremljeno kroz UI; podnaslov „od potvrde 16.08.2026. · 3.000,00 € · 0 promjena poslije", saldo 3.000,00 €. Time je pala najveća nepoznanica iz S108 — `BalanceByGroupTile.confirm()` / `saveAnchor()` rade, RLS ne smeta.
-   ⚠ Usput opaženo i **ispravno**: `planirano −2.521,38 € (13)` se **nije** promijenilo. `split` je namjerno neusidren plain sum ([BalanceByGroupTile:78](../../src/components/overview/BalanceByGroupTile.tsx#L78)).
+   ⚠ Usput opaženo i **ispravno**: `planirano −2.521,38 € (13)` se **nije** promijenilo. `split` je namjerno neusidren plain sum ([BalanceByGroupTile:78](../../../src/components/overview/BalanceByGroupTile.tsx#L78)).
 4. Dodaj transakciju na ZABA: `Racun = Kokin tekući ZABA`, `Izvor = Racun`, `Isplata = 10`, `Status = Izvrsen`, datum **sutra**. Vrati se na Overview. **Očekivano:** saldo je **10 € manji**, podnaslov kaže „1 promjena poslije".
 5. Dodaj još jednu istu takvu, ali datiranu **danas ili ranije**. **Očekivano:** saldo se **NE mijenja**, i dalje „1 promjena poslije".
 

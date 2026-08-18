@@ -7,14 +7,14 @@
 **Prošlo 2026-08-17: T-S110-1, -2, -3, -6, -7 — svi ⭐ testovi S110 zatvoreni.** · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **Otvoreno: T-S111-1…6 (NOVO, svi ⬜); T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S111:** [S111_tests.md](test-sessions/S111_tests.md) · **S110:** [S110_tests.md](test-sessions/S110_tests.md) · **S108:** [S108_tests.md](test-sessions/S108_tests.md) · **S107y:** [S107y_tests.md](test-sessions/S107y_tests.md) · **S107x:** [S107x_tests.md](test-sessions/S107x_tests.md) · **S107w:** [S107w_tests.md](test-sessions/S107w_tests.md) · **S107v:** [S107v_tests.md](test-sessions/S107v_tests.md) · **S107u:** [S107u_tests.md](test-sessions/S107u_tests.md)
+**Detalji S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
 
 ---
 
 ## S111 — RF lanac zatvoren · `Cash` izvan salda · `038`
 
 ⚠ **Preduvjet za sve:** `sql/037` **ponovno** pušten (bez `Cash`) + **`sql/038`**.
-Puni koraci i očekivane brojke: [S111_tests.md](test-sessions/S111_tests.md).
+Puni koraci i očekivane brojke: [S111_tests.md](tests/S111_tests.md).
 
 | ID | Test | Status |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ Puni koraci i očekivane brojke: [S111_tests.md](test-sessions/S111_tests.md).
 ## S110 — pločica prima `asOf` + provjera lanca salda
 
 **Provjera lanca je ZATVORENA.** App reproducira banku i Kokin Excel do centa na oba kraja
-intervala. Puni koraci: [S110_tests.md](test-sessions/S110_tests.md).
+intervala. Puni koraci: [S110_tests.md](tests/S110_tests.md).
 
 | ID | Test | Status |
 | --- | --- | --- |
@@ -450,8 +450,8 @@ Nevaljanih parova **171 → 0**. Potrošeno na API ~$4,4. Puni kontekst: `NEXT_S
 
 **Riješeno u S107n:** `--run` mode napisan i izvršen (1593 prijedloga).
 **Još otvoreno:** `source_key` fix i `sql/0NN_staging_financije.sql` nisu napravljeni.
-**Detalji testova:** [S107k_tests.md](test-sessions/S107k_tests.md) (novi) + [S107j_tests.md](test-sessions/S107j_tests.md) + [S107i_tests.md](test-sessions/S107i_tests.md) + [S107h_tests.md](test-sessions/S107h_tests.md) + [S107g_tests.md](test-sessions/S107g_tests.md) + [S107f_tests.md](test-sessions/S107f_tests.md)
-**Upute za izvode (i za Koku):** [UPUTE_izvodi.md](UPUTE_izvodi.md) — kako skinuti/spremiti/obraditi bankovne izvode
+**Detalji testova:** [S107k_tests.md](tests/S107k_tests.md) (novi) + [S107j_tests.md](tests/S107j_tests.md) + [S107i_tests.md](tests/S107i_tests.md) + [S107h_tests.md](tests/S107h_tests.md) + [S107g_tests.md](tests/S107g_tests.md) + [S107f_tests.md](tests/S107f_tests.md)
+**Upute za izvode (i za Koku):** [UPUTE_izvodi.md](../../Claude-temp_R/UPUTE_izvodi.md) — kako skinuti/spremiti/obraditi bankovne izvode
 
 ---
 

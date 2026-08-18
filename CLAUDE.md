@@ -7,7 +7,12 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `Claude-temp_R/DONE_HISTORY.md`** (S1–S111).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S111).
+> ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
+> `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
+> — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
+> Sada vrijedi kriterij bez iznimaka: **što ritual proizvede → `docs/sessions/`** (praćeno),
+> **radni stol → `Claude-temp_R/`** (ignorirano u cijelosti, bez negacija i bez `-f`).
 > Ovdje ostaje samo ono što mijenja buduće odluke. Zamke iz starih sesija su
 > promaknute u „Critical rules" i „Zamke" — ne traži ih u povijesti.
 
@@ -590,7 +595,7 @@ does not block build. Ignore it.
 2. `git log --oneline -10` for recent context
 3. Read `NEXT_SESSION_PROMPT.md` — usporedi commit iz njegovog zaglavlja sa `git log`om;
    ako je stariji, tretiraj ga kao povijest (CLAUDE.md je autoritet)
-4. Read `Claude-temp_R/PENDING_TESTS.md` — check if user confirmed previous tests
+4. Read `docs/sessions/PENDING_TESTS.md` — check if user confirmed previous tests
 
 ### During session
 - Screenshots: paste directly into chat
@@ -607,17 +612,18 @@ does not block build. Ignore it.
   ne dokumentira se kao bug.
 
 ### End of session (OBAVEZNO)
-1. **`Claude-temp_R/PENDING_TESTS.md`** — dodaj testove za sve novo; potvrđene označi ✅
-2. **`Claude-temp_R/test-sessions/SXX_tests.md`** — detaljni koraci za SVAKI novi test
+1. **`docs/sessions/PENDING_TESTS.md`** — dodaj testove za sve novo; potvrđene označi ✅
+2. **`docs/sessions/tests/SXX_tests.md`** — detaljni koraci za SVAKI novi test
    (preduvjeti, numerirani koraci, očekivano vs. pad). Ažuriraj `Detalji testova:` link.
 3. **Arhiviranje (inače se ne dogodi):**
    - session file čiji su **svi** testovi ✅ → `Claude-temp_R/test-sessions/archive/`
+     (⚠ arhiviranje **izlazi iz gita** — arhiviran test je zatvoren, pa seli na radni stol)
      (⚠ **ne po starosti** — otvoreni testovi sežu unatrag više sesija)
    - `.pre-*` backupi stariji od zadnja 3 → `data-prep_data/Financije/_arhiva/backup/`
    - generirani izlazi (import/structure/export xlsx) → `_arhiva/izlazi/`
 4. **`CLAUDE.md`** — nova zamka ide u „Critical rules"/„Zamke". **Ne dopisuj sesijski
    narativ ovdje** — on ide u `DONE_HISTORY.md` (korak 5).
-5. **`Claude-temp_R/DONE_HISTORY.md`** — kronologija sesije. Vlastiti korak, ne podrečenica
+5. **`docs/sessions/DONE_HISTORY.md`** — kronologija sesije. Vlastiti korak, ne podrečenica
    uz CLAUDE.md: kao podrečenica je preskočen za S107y i S107z. Ažuriraj i raspon sesija
    u zaglavlju CLAUDE.md-a (`> Povijest po sesijama…`) da se zaostajanje vidi odmah.
 6. **`NEXT_SESSION_PROMPT.md` — prepiši ga, uvijek, bez da Saša traži.** Ako izostane, sljedeća

@@ -157,7 +157,7 @@ sql/
 | `docs/Code_Guidelines_React_v6.md` | Code conventions |
 | `sql/SQL_schema_V5_commented.sql` | Full DB schema with comments |
 | `data-prep_tools/MIGRATION_STATE.md` | Data migration pipeline status |
-| `Claude-temp_R/PENDING_TESTS.md` | Active manual tests pending confirmation |
+| `docs/sessions/PENDING_TESTS.md` | Active manual tests pending confirmation |
 
 ---
 

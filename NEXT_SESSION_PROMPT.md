@@ -63,7 +63,7 @@ je i u dokumentima i u Help tekstu, da to poslije ne izgleda kao propust.
 ⚠ Ako ovo nije pušteno, pločica pokazuje **395,82** umjesto **461,82** i nema retka o svježini.
 *(Ako si to već napravio na kraju S111, provjeri samo da pločica daje 461,82 na 06.07.2026.)*
 
-**Zatim ručni testovi T-S111-1…6** — koraci su u `Claude-temp_R/test-sessions/S111_tests.md`.
+**Zatim ručni testovi T-S111-1…6** — koraci su u `docs/sessions/tests/S111_tests.md`.
 Najvažniji je **T-S111-3** (brojka 461,82); ostali su brzi.
 
 ## Što slijedi
@@ -83,7 +83,7 @@ bez ijedne linije novog koda.
 
 `docs/OVERVIEW_TAB_SPEC.md` **§2.10** (bitno prepisan — `Cash` van salda, zrcalna tablica
 pot↔poravnanje, odbačena `Gotovina` varijanta) · **§2.18** (zatvara `Stanja`) ·
-`Claude-temp_R/test-sessions/S111_tests.md` · CLAUDE.md „Zamke" (tri nove).
+`docs/sessions/tests/S111_tests.md` · CLAUDE.md „Zamke" (tri nove).
 
 ## ⚠ Prvo provjeri je li TEST u očekivanom stanju
 
@@ -155,6 +155,20 @@ Backupi obrisanog: `data-prep_data/Financije/_arhiva/rf_duplikati_obrisano_*.jso
 - **Backlog je pomaknut:** UI za popis/brisanje sidara **više ne čeka** odluku o `Stanja`
   (§2.18 ju je zatvorio) i sada ima konkretan povod — dva sidra istog dana, korisnik ne vidi
   koje vrijedi.
+
+## ⚠ Session artefakti su preseljeni (S111)
+
+`Claude-temp_R/DONE_HISTORY.md` → **`docs/sessions/DONE_HISTORY.md`**
+`Claude-temp_R/PENDING_TESTS.md` → **`docs/sessions/PENDING_TESTS.md`**
+`Claude-temp_R/test-sessions/*.md` → **`docs/sessions/tests/*.md`** (32 fajla)
+
+`archive/` **ostaje** u `Claude-temp_R/` — arhiviran test je zatvoren, pa izlazi iz gita.
+`.gitignore` nije diran: `Claude-temp_R/` ostaje ignoriran **u cijelosti**, bez negacija.
+
+Povod: mapa je ignorirana od 03.02.2026., pa je svaki praćeni test file bio ručna iznimka
+(`git add -f`) — S108 je ušao, S107u–y i S110 nisu, `DONE_HISTORY` nikad. Sada to više ne
+ovisi o pamćenju. Sve reference prepisane i **provjereno programski da su svi linkovi
+razrješivi** (37 fajlova, 0 mrtvih).
 
 ## Sitnica
 

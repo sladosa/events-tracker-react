@@ -749,7 +749,7 @@ iznosu **ne razdvaja** grobnu naknadu (26–28 €) od bankovnih (0,13–50 €)
 pojavu je "Natasa umjesto Nena" **vidljiva** greška, dok bi bez pravila `NAKNADA` zakopala
 grobnu među 102 bankovne naknade.
 
-**Rezultat (sve kontrole u `Claude-temp_R/test-sessions/S107r_tests.md`):** 2061 preimenovano,
+**Rezultat (sve kontrole u `docs/sessions/tests/S107r_tests.md`):** 2061 preimenovano,
 0 resetirano na N/A, **0 preostalih nevaljanih parova** ni u `Tip` ni u `Tip_AI`;
 `Pouzdanost` distribucija **identična** (`VISOKA` 1014 → 1014) = nijedno pravilo nije
 pregazilo ručnu odluku; `Tip_O`/`Podtip_O` netaknuti; Σ Uplata/Isplata **delta 0,00**;
