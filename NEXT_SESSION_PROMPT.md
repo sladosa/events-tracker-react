@@ -108,6 +108,7 @@ Overview → Date To = 06.07.2026. → `Sašin tekući RF` mora dati 461,82 €
 | prikaz svježine | `BalanceByGroupTile.tsx` (`STALE_DAYS`, `daysBetween`, `danWord`) |
 | `AnchoredBalanceRow.last_on` | `src/lib/overviewApi.ts` |
 | filtar datuma na Overviewu | `AppHome.tsx:487` (`activeTab !== 'structure'`) |
+| ⚠ `asOf` stegnut na danas (samo saldo, ne `split`) | `BalanceByGroupTile.tsx` (`effectiveAsOf`, `isPast`) — inače „Potvrdi na 30.04.2027." |
 | čišćenje 9 duplikata | `data-prep_tools/Financije/fix_rf_duplikati.py` |
 | čišćenje ostatka | `data-prep_tools/Financije/fix_rf_ostatak.py` |
 

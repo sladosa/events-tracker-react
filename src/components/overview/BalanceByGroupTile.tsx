@@ -27,6 +27,10 @@
 //   * "Potvrdi" then anchors ON that date, not today. Anchoring backwards is
 //     what turns the anchor from a cover into a check (§2.17), and it must be
 //     visible in the button before it is clicked, never a surprise after.
+//   * …but only BACKWARDS (S111). `asOf` is clamped to today for the balance,
+//     because "All time" resolves dateTo to the newest event in the Area and
+//     future instalments push that into 2027. The split ("planirano") keeps the
+//     raw value — see the comment at the clamp for why the two must differ.
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -96,6 +100,22 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
   const [bankInput, setBankInput] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
+  // ── A BALANCE CANNOT BE "AS OF" A FUTURE DATE ────────────────────────────
+  // "All time" resolves dateTo to the newest event in the Area, and with future
+  // instalments in the data that is 30.04.2027. Left unclamped it produced three
+  // separate lies at once: the header claimed a 2027 reading, the staleness gap
+  // counted 296 days against a day that has not happened, and — worst — the
+  // button offered "Potvrdi na 30.04.2027.", which would stamp an anchor in the
+  // future and silently cut every row before it out of the balance (§2.17, the
+  // strictly-after rule).
+  //
+  // The future has no balance, only plans — and plans are already the OTHER
+  // number on this tile. So the clamp loses nothing.
+  const today = todayIso();
+  const effectiveAsOf = asOf && asOf < today ? asOf : today;
+  /** Is the user actually looking at the past? Drives the "na dan …" wording. */
+  const isPast = effectiveAsOf < today;
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -106,7 +126,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
         plusSlug: widget.plus ?? null,
         minusSlug: widget.minus ?? null,
         filters: widget.filters ?? [],
-        asOf: asOf ?? null,
+        asOf: effectiveAsOf,
       });
       setRows(balance);
 
@@ -115,8 +135,13 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
         // planned" is a forward-looking total, so subtracting a past
         // confirmation from it would be meaningless.
         //
-        // ⚠ asOf is passed here too, for consistency with the balance above —
-        //   but the answer is only half a one. `Status` is CURRENT state, not
+        // ⚠ THE RAW `asOf` ON PURPOSE — this one is NOT clamped to today.
+        //   Clamping is right for the balance (the future has no balance) and
+        //   wrong here for the same reason: a planned instalment dated 2027 is
+        //   exactly what "planirano" is supposed to count. Clamping would have
+        //   quietly dropped most of it.
+        //
+        // ⚠ The answer is still only half a one. `Status` is CURRENT state, not
         //   history: the app never recorded WHEN a row went Planiran → Izvrsen.
         //   So "planirano na 31.03.2025" can only mean "dated up to 31.03.2025
         //   and STILL planned today". A true retrospective needs status history
@@ -144,7 +169,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
     } finally {
       setLoading(false);
     }
-  }, [areaId, widget, asOf]);
+  }, [areaId, widget, asOf, effectiveAsOf]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -157,7 +182,9 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
   // A confirmation is stamped with the date being LOOKED AT, not the date of
   // the click: with the filter on 31.03.2025 the number typed in is that day's
   // printed balance, so today's date would be a lie about its own source.
-  const confirmOn = asOf ?? todayIso();
+  // ⚠ Never the raw `asOf`: a future filter bound must not become a future
+  //   anchor. `effectiveAsOf` is the clamped, real day being looked at.
+  const confirmOn = effectiveAsOf;
 
   const confirm = async (groupValue: string, typed: string) => {
     const amount = parseAmountInput(typed);
@@ -192,10 +219,11 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="min-w-0">
           <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{widget.title}</h3>
-          {/* Rule: when the reading is not "now", the tile says so. */}
-          {asOf && (
+          {/* Rule: when the reading is not "now", the tile says so. A future
+              dateTo is not a past reading, so it correctly says nothing. */}
+          {isPast && (
             <p className={cn('text-xs mt-0.5 font-medium', T.asOfNote)}>
-              na dan {formatDateHr(asOf)}
+              na dan {formatDateHr(effectiveAsOf)}
             </p>
           )}
         </div>
@@ -240,7 +268,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
           // (sql/038). Measured against the effective as-of, not against today:
           // if the user asked "na dan 06.07.2026." and the last movement IS
           // 06.07.2026., nothing is stale — the answer is complete.
-          const gap = row.last_on ? daysBetween(row.last_on, asOf ?? todayIso()) : null;
+          const gap = row.last_on ? daysBetween(row.last_on, effectiveAsOf) : null;
 
           return (
             <div key={key} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
@@ -336,7 +364,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
               {widget.reconcile && (
                 <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-2 flex-wrap">
                   <label className="text-xs text-gray-500 shrink-0" htmlFor={`bank-${key}`}>
-                    u banci{asOf ? ` na ${formatDateHr(asOf)}` : ''}
+                    u banci{isPast ? ` na ${formatDateHr(effectiveAsOf)}` : ''}
                   </label>
                   <input
                     id={`bank-${key}`}
@@ -386,15 +414,15 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                         T.btnConfirm,
                       )}
                       title={
-                        asOf
-                          ? `Spremi ovaj broj kao potvrđeno stanje na ${formatDateHr(asOf)} — saldo se od tog dana računa od njega`
+                        isPast
+                          ? `Spremi ovaj broj kao potvrđeno stanje na ${formatDateHr(effectiveAsOf)} — saldo se od tog dana računa od njega`
                           : 'Spremi ovaj broj kao potvrđeno stanje — saldo se od danas računa od njega'
                       }
                     >
                       {savingKey === key
                         ? 'Spremam…'
-                        : asOf
-                          ? `Potvrdi na ${formatDateHr(asOf)}`
+                        : isPast
+                          ? `Potvrdi na ${formatDateHr(effectiveAsOf)}`
                           : 'Potvrdi'}
                     </button>
                   )}

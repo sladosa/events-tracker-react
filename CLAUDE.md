@@ -469,6 +469,12 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   **ispisani** saldo s izvoda. **Nikad izračunato iz zapisa u bazi.** Prekršaj se **ne vidi**:
   Δ postane trajno nula, sve izgleda savršeno, a usklađenje je mrtvo bez ijedne greške.
   Isti razred kao odbačeni automat `Planiran → Izvršen`. Vrijedi i za budući automat iz izvoda.
+- **⚠ `asOf` se steže na danas — ali samo za saldo** (S111). „All time" razrješava `dateTo` na
+  najnoviji event u Arei, a s budućim ratama to je `2027`. Nestegnuto: zaglavlje tvrdi očitanje
+  u budućnosti, razmak svježine se broji protiv nepostojećeg dana, i — najgore — gumb nudi
+  **„Potvrdi na <budući datum>"**, čime bi sidro po pravilu „strogo nakon" **presjeklo sve
+  retke do tada**. `split` („planirano") dobiva **sirovi** `asOf`, jer je rata u 2027. upravo
+  ono što taj broj broji. Dvije upite, dva pravila.
 - **Sidro unatrag je provjera, sidro na danas je pokrivač** (S109). Datirano na početak
   uvezene povijesti, sidro mjeri **reproducira li app tuđi lanac**; datirano na danas samo
   skriva rupu. `confirmed_on` je obična `date` — baza to već podržava, UI još ne.

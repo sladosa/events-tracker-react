@@ -804,6 +804,23 @@ ničega ⇒ **preimenovanje je sada besplatno i nikad neće biti jeftinije.**
 3. §2.15 dobiva **imenovan treći razred** — *očitanja vanjske istine* — umjesto jedne iznimke.
    Razred s jednim članom izgleda proizvoljan; s kriterijem se sljedeći član prepozna sam.
 
+### ⚠ `asOf` se steže na danas — saldo, ne i „planirano" (2026-08-18, S111)
+
+„All time" razrješava `dateTo` na **najnoviji event u Arei**, a s budućim ratama to je
+`30.04.2027.` Nestegnuto je to proizvodilo **tri laži odjednom**:
+
+1. zaglavlje je tvrdilo očitanje na dan koji se nije dogodio,
+2. razmak svježine se brojao protiv budućnosti (`prije 296 dana`),
+3. gumb je nudio **„Potvrdi na 30.04.2027."** — sidro u budućnosti, koje bi po pravilu
+   „strogo nakon" **presjeklo sve retke do tada.** Najgora od tri, i tiha.
+
+Pravilo: **budućnost nema saldo, ima planove** — a planovi su već *drugi* broj na pločici.
+Zato se steže samo `balance`; `split` („planirano") dobiva **sirovi `asOf`**, jer je rata
+datirana u 2027. točno ono što taj broj treba brojati. Dvije upite, dva pravila, namjerno.
+
+Posljedica koju je Saša tražio: razmak `zadnji zapis … · prije N dana` sada mjeri **od danas**,
+što je jedino pitanje koje Koku zanima.
+
 ## 2.19 ⏸ OTVORENA NIT — što Overview daje pri ulasku dublje u podatke
 
 **Prekinuto zbog vremena 2026-08-17; nastavlja se razgovorom, ne kodom.**
