@@ -83,8 +83,21 @@ export function OverviewTab({ areaId, config, canWrite, onNavigateToActivities }
                   // The planned number drills on its own condition; the balance
                   // drills on the group value. Both are single-attribute, which
                   // is all the filter can carry today.
+                  //
+                  // ⚠ NOT `split.filters[0]`. Since 2026-08-19 the split repeats
+                  //   the balance's own `Izvor` condition (sql/037), so the first
+                  //   entry is the SHARED one and drilling on it would just say
+                  //   "this account" — the same thing the balance drill does.
+                  //   What makes the split a split is the condition the base
+                  //   filter does NOT have; that is the one worth drilling on.
                   if (opts.planned && w.split?.filters?.length) {
-                    const f = w.split.filters[0];
+                    const base = w.filters ?? [];
+                    const same = (a: typeof base[number], b: typeof base[number]) =>
+                      a.slug === b.slug && a.op === b.op &&
+                      a.values.length === b.values.length &&
+                      a.values.every((v, vi) => v === b.values[vi]);
+                    const f = w.split.filters.find(sf => !base.some(bf => same(sf, bf)))
+                      ?? w.split.filters[0];
                     void drill(f.slug, f.values[0] ?? '');
                   } else {
                     void drill(w.group_by, groupValue);

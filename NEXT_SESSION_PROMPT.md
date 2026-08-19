@@ -1,79 +1,68 @@
-# NEXT SESSION PROMPT — nakon S111 (oba lanca salda zatvorena)
+# NEXT SESSION PROMPT — nakon S112 (delta sheet radi, tranše čekaju)
 
-**Pisan protiv commita `56617e2`** (zadnji prije S111) **+ commit S111 koji slijedi odmah iza.**
+**Pisan protiv commita `8d7e3ce`** (zadnji prije S112) **+ commit S112 koji slijedi odmah iza.**
 Ako `git log --oneline -1` pokazuje nešto novije, čitaj ovo kao povijest; `CLAUDE.md` je autoritet.
 
-**Stanje grana:** `test-branch` nosi S108 + S109 + S110 + S111. `main` = PROD, nije diran.
+**Stanje grana:** `test-branch` nosi S108 + S109 + S110 + S111 + S112. `main` = PROD, nije diran.
 
 ---
 
 # DIO 1 — Jednostavnim rječnikom (za Sašu)
 
-## Što je S111 zatvorio
+## Što je S112 napravio
 
-**Oba računa sada reproduciraju banku do centa.** ZABA je bila gotova u S110; sada je i RF:
+Sesija je počela razgovorom, ne kodom — na tvoj zahtjev. Pitanje nije bilo „kako uvesti ovu
+deltu" nego **„kako da Koka rješava deltu, svaki mjesec, bez nas"**. Odgovor je alat, i on sada
+postoji.
 
-> **461,82 €** na 06.07.2026. — isto što piše na `RF_2026-06.pdf`, i isto što daje Kokin lanac.
+**Delta sheet** je Excel koji app napravi za **jedan račun**: pokaže zadnjih 60 dana, doda 40
+praznih redaka, i uz njih kolonu koja **računa stanje dok tipkaš**. Gore je ćelija „u banci
+piše" — upišeš broj s mobitela, i razlika mora biti `0,00` i zelena. **Greška se vidi prije
+uvoza**, a ne u izvještaju poslije.
 
-Uz iznos se poklopio i **broj redaka**: pločica kaže 196 promjena, izvod ima 196 transakcija.
+Prije je za RF izlazilo 1.010 redaka. Sada ih je **devet**.
 
-Crveni RF nije bio kvar. Nedostajalo mu je sidro — a kad smo ga stavili, ispod se pokazalo
-nešto vrjednije od same brojke.
+## Što treba od tebe — pet minuta
 
-## Ono što je zapravo bilo pokvareno
+**T-S112-3:** Overview → klikni saldo `Sašin tekući RF` → Activities → Export → kvačica
+**„Delta sheet"** → Download.
 
-**Izvodi su bili u redu.** Sumnja u RF (jer je išao kroz OCR) pokazala se neopravdanom: 196
-transakcija kroz 18 mjeseci daje razliku **0,00**. Ta je stavka zatvorena.
+- 9 redaka, prvi 20.06.2026.
+- zadnji u koloni `Stanje (kontrola)` mora biti **`712,75`**
+- upiši `712,75` u „u banci piše" → **razlika 0,00, zeleno**
 
-Pokvareno je bilo **spajanje** tvojih dvaju izvora. Koka i banka isti događaj ponekad opišu
-**skoro** istim iznosom — njeno `1.265,59` protiv bankovnog `1.285,59`, zamijenjena znamenka.
-Dedup je uspoređivao datum i iznos, pa je propuštao oba retka u bazu.
+Ako to prođe, **tranša 1** je samo popunjavanje sedam redaka i jedan ispravak — koraci su u
+`docs/sessions/tests/S112_tests.md`.
 
-**Neto je izgledalo bezopasno (`−130,25`), a bruto je bilo `2.609,78`** — dvadeset puta veće.
-Višak uplata i višak isplata su se skoro poništili. To je isti obrazac kao lekcija iz S110,
-samo grublji, i sad je zapisan kao pravilo: *kad tražiš uzrok, zbroji apsolutne vrijednosti,
-ne neto.*
+## Kako sada izgleda plan za Kokinu deltu
 
-## Gotovina — pravilo koje si promijenio
+Ne ide odjednom nego u **četiri tranše**, svaka provjerava drugi mehanizam i svaka ima brojku
+**iz Kokinog lanca** (dakle iz izvora neovisnog o aplikaciji):
 
-Našli smo da je Koka 18.05. podigla 150 € s tvog računa i 20.05. platila majstoru 66 €.
-Banka je izgubila 150; aplikacija je oduzimala 216.
+| # | Što | Brojka koja mora izaći |
+| --- | --- | --- |
+| 1 | RF banka: 7 novih redaka + ispravak `250,93 → 253,51` | RF na 04.08. = **1.716,55** |
+| 2 | RF Visa iz izvoda (42 stavke + naplata) | RF na 11.08. = **799,12** |
+| 3 | ZABA banka: 110 redaka + potvrda naplate | ZABA na 09.08. = **14.722,84** |
+| 4 | MC iz izvoda (45 stavki, 12 baza već ima) | ZABA na 13.08. = **13.239,31** |
 
-Odlučio si da **gotovina ne miče bankovni saldo** (podizanje ga već pomakne), umjesto da se
-gradi „novčanik" kao poseban račun. Trošak od 66 € **ostaje potpuno vidljiv** u razrezu po
-Tipu — samo ne dira bankovnu brojku.
+**Dobra vijest o izvodima:** ona dva nova PDF-a sadrže **točno** zbrojeve koje sam prošli put
+predlagao da ih izračunamo sami — `1.332,52` i `1.171,59`, u cent jednako Kokinim grupama.
+Ne treba ništa izmišljati.
 
-Cijena koju svjesno plaćaš: **aplikacija ne zna koliko gotovine imaš u novčaniku.** Zapisano
-je i u dokumentima i u Help tekstu, da to poslije ne izgleda kao propust.
+## Tri stvari koje su bile pokvarene, a nisu se vidjele
 
-## Dvije stvari koje si tražio, i obje su gotove
+1. **Svaki dodirnut redak je pri uvozu prepisivao `Datum naplate`** — jer su baza i Excel isti
+   trenutak zapisivali drukčije. Sad je datum pravi datum (`7.1.2025`), s provjerom pri upisu.
+2. **Broj „planirano" na pločici je brojio dvaput** — `−2.521,38` umjesto `−2.089,86`.
+3. **Razlika `0,00` se bojala crveno** — zbroj u Excelu nije bio baš nula nego `0,0000000000001`.
 
-1. **Filtar datuma sada postoji i na Overviewu.** Usput je nestao i onaj reset na „All time"
-   — imali su isti uzrok, pa ih je popravila jedna linija.
-2. **Svaki račun piše dokle podaci sežu** — „zadnji zapis 10.07.2026. · prije 39 dana", i to
-   amber kad je razmak velik. Bez toga je broj star 39 dana izgledao kao današnji.
+## Što ostaje otvoreno za tebe
 
-## Što treba od tebe — prije nego išta drugo
-
-**Dvije skripte u Supabase SQL Editoru, na TEST-u:**
-
-1. `sql/037_financije_dashboard.sql` — **ponovno** (idempotentan je; sada bez `Cash` u filtru)
-2. `sql/038_balance_last_on.sql` — nov
-
-⚠ Ako ovo nije pušteno, pločica pokazuje **395,82** umjesto **461,82** i nema retka o svježini.
-*(Ako si to već napravio na kraju S111, provjeri samo da pločica daje 461,82 na 06.07.2026.)*
-
-**Zatim ručni testovi T-S111-1…6** — koraci su u `docs/sessions/tests/S111_tests.md`.
-Najvažniji je **T-S111-3** (brojka 461,82); ostali su brzi.
-
-## Što slijedi
-
-**Kokina delta** — njen file od 16.08. Ovo je sljedeći veliki komad i **jedini dio koji raste**.
-Bez njega joj fali ~6 tjedana vlastite povijesti.
-
-Nakon toga dvije male stvari koje su **direktno za Koku**: brzi unos (da prefilana polja ne
-zatrpaju ekran) i shortcutovi po trgovcu — koji usput rješavaju i Tip/Podtip klasifikaciju,
-bez ijedne linije novog koda.
+- **Onih 5 redaka od 16–17.06.** (Σ `373,11`): provjerio sam ih protiv lipanjskog ZABA izvoda —
+  **nisu na njemu**. Sumnja: kolovoški računi s krivo utipkanim mjesecom. **Pitanje za Koku.**
+- **`845,12`** — planirani redak u bazi bez komentara, ne odgovara nijednoj njenoj grupi.
+- **`ZABA_2026-07`** izvod, ako ga možeš skinuti — zatvara tranšu 3 bez pogađanja.
 
 ---
 
@@ -81,95 +70,51 @@ bez ijedne linije novog koda.
 
 ## Prvo pročitaj
 
-`docs/OVERVIEW_TAB_SPEC.md` **§2.10** (bitno prepisan — `Cash` van salda, zrcalna tablica
-pot↔poravnanje, odbačena `Gotovina` varijanta) · **§2.18** (zatvara `Stanja`) ·
-`docs/sessions/tests/S111_tests.md` · CLAUDE.md „Zamke" (tri nove).
+`docs/sessions/tests/S112_tests.md` (kontrolne brojke svih tranši) · CLAUDE.md sekcija
+**„Delta sheet (usklađenje s bankom)"** (nova) · `docs/sessions/DONE_HISTORY.md` S112.
 
 ## ⚠ Prvo provjeri je li TEST u očekivanom stanju
 
 ```
-Overview → Date To = 06.07.2026. → `Sašin tekući RF` mora dati 461,82 €
+Overview → Kokin tekući ZABA → redak "planirano" mora glasiti  −2.089,86 (2)
 ```
 
 | Vidiš | Znači |
 | --- | --- |
-| `461,82` | sve je pušteno, kreni dalje |
-| `395,82` | `sql/037` nije ponovno pušten (`Cash` još u filtru) |
-| `441,80` | `fix_rf_ostatak.py --apply` nije pokrenut |
-| `375,80` | ni jedno ni drugo |
-| nema retka „zadnji zapis …" | `sql/038` nije pušten |
+| `−2.089,86 (2)` | `sql/037` je ponovno pušten, sve je na mjestu |
+| `−2.521,38 (13)` | `037` nije pušten nakon 2026-08-19 — split nema `Izvor` uvjet |
 
-## Novo u S111
+## Novo u S112
 
 | Što | Gdje |
 | --- | --- |
-| `Cash` van filtra salda | `sql/037` (values `['Racun']`) + §2.10 + CLAUDE.md + `docs/help/overview.md` |
-| `last_on` po grupi | `sql/038_balance_last_on.sql` (⚠ `DROP FUNCTION` — mijenja se povratni tip) |
-| prikaz svježine | `BalanceByGroupTile.tsx` (`STALE_DAYS`, `daysBetween`, `danWord`) |
-| `AnchoredBalanceRow.last_on` | `src/lib/overviewApi.ts` |
-| filtar datuma na Overviewu | `AppHome.tsx:487` (`activeTab !== 'structure'`) |
-| ⚠ `asOf` stegnut na danas (samo saldo, ne `split`) | `BalanceByGroupTile.tsx` (`effectiveAsOf`, `isPast`) — inače „Potvrdi na 30.04.2027." |
-| čišćenje 9 duplikata | `data-prep_tools/Financije/fix_rf_duplikati.py` |
-| čišćenje ostatka | `data-prep_tools/Financije/fix_rf_ostatak.py` |
+| kanonski oblik datum-atributa (baza ↔ app ↔ Excel) | `src/lib/excelDatetime.ts` (novo) |
+| datumska ćelija + Data Validation `date` u exportu | `excelExport.ts` |
+| import: datumska ćelija → kanonski oblik; usporedba po kanonskom | `excelImport.ts` |
+| **delta sheet** (prozor, kontrolni stupac, „u banci piše") | `src/lib/deltaSheet.ts` (novo) |
+| import: redak predloška se preskače i broji | `excelImport.ts` (`templateSkippedOut`) |
+| `split` dobio `izvorplacanja in (Racun)` | `sql/037` — ⚠ **pustiti ponovno** |
+| drill na „planirano" bira razlikovni uvjet, ne `filters[0]` | `OverviewTab.tsx` |
+| delta mod u Export modalu (kvačica + prozor u danima) | `ExcelExportModal.tsx` |
 
-Backupi obrisanog: `data-prep_data/Financije/_arhiva/rf_duplikati_obrisano_*.json`,
-`rf_ostatak_*.json` (pun `event` + svi `attributes`, dovoljno za ručni povrat).
+## Što je namjerno NIJE napravljeno
 
-## Sidra u TEST bazi — pet, i jedno je namjerno krivo
-
-| `confirmed_on` | grupa | iznos | napomena |
-| --- | --- | --- | --- |
-| `2025-01-01` | ZABA | 3.054,41 | `ZABA_2024-12.pdf` |
-| `2025-12-31` | ZABA | 1.184,86 | `ZABA_2025-12.pdf`, ručno kroz UI (T-S110-2) |
-| `2026-07-01` | ZABA | 2.255,64 | `ZABA_2026-06.pdf` |
-| `2025-01-02` | RF | **3.453,03** | ⚠ tipfelerica, **ostaje kao povijest** |
-| `2025-01-02` | RF | **3.458,03** | `RF_2024-12.pdf` — **važeće** (najnoviji `created_at`) |
-
-⚠ Ne „čistiti" ono krivo — ono **je** T-S111-2. `036` nema UPDATE policy namjerno.
-
-## Kokina delta — što je izmjereno, i gdje je mina
-
-`data-prep_data/Financije/Financije 2026-08-16.xlsx`
-
-- `koka EU` +117 redaka (do 13.08.), `sasa EU` +323 (do 11.08.)
-- ⚠ **~186 od tih 323 nisu nova potrošnja** nego preformulacija Visa naplata koje baza već
-  ima iz PBZ izvoda. Naivan uvoz ih broji dvaput.
-- Njena restrukturacija je **provjerena čista**: 911 redaka lanca, 0 puknuća, razina identična
-  starom fileu na **svih 376 zajedničkih datuma**. Format joj se **približio** modelu:
-  kol. **C = datum naplate**, kol. **G = datum kupovine**, prazan C ⇒ `Status = Planiran`.
-- ⚠ Maknula je **skupnu Visa naplatu** — generator je mora **sintetizirati** iz zbroja svake
-  skupine po datumu naplate. Kontrola: mora dati iznos s RF izvoda. **Ne mijenjati os salda**
-  (`event_date`) — ta je varijanta razmotrena i odbačena, razbila bi model dokazan na ZABA-i.
-- ⚠ **Dedup mora imati toleranciju na iznos.** S111 je čistio 9 takvih na 213 redaka; ovdje ih
-  je red veličine više.
-- Za `koka EU`: 6 puknuća lanca u dvije skupine, **svaka neto 0,00** ⇒ zamijenjeni redoslijedi.
-  Ne tražiti novac ondje.
+- **`session_start` se NE dodjeljuje automatski u importu.** Kolizija je zaštita od dvostrukog
+  uvoza istog filea; auto-dodjela bi je ubila. Vremena piše generator (`14:00+n`).
+- **Upozorenje na pred-sidreni redak nije u importu** — traži da import poznaje `dashboard`
+  config i sidra. Ide u alat kad zatreba (relevantno za onih 5 spornih lipanjskih redaka).
+- **Automatika na Import putu (Faza 3)** — `set_attribute` se i dalje evaluira samo u Add
+  Activity. Jedna rupa drži tri featurea: `Datum naplate` na uvozu, pravila `Tip/Podtip`,
+  širenje rata. **To je sljedeći veliki komad koda**, nakon tranši.
 
 ## Otvoreno / neverificirano
 
-- **T-S111-1…6 svi ⬜.** T-S111-3 je onaj koji potvrđuje glavni rezultat.
-- **`AppHome.tsx` izmjena nije ručno testirana** (typecheck + build prolaze) — to je T-S111-1.
-- **`sql/038` nije pokrenut na PROD-u** (kao ni 035–037; Overview je zasad TEST-only).
-- **Preostali poznati Δ:** `−200,14` na ZABA lancu 2025-08 → 2026-04
-  (`SALDO_MODEL_NALAZI.md` §6.3, Sašina odluka: ne loviti). RF nema više ništa.
-- **Backlog je pomaknut:** UI za popis/brisanje sidara **više ne čeka** odluku o `Stanja`
-  (§2.18 ju je zatvorio) i sada ima konkretan povod — dva sidra istog dana, korisnik ne vidi
-  koje vrijedi.
-
-## ⚠ Session artefakti su preseljeni (S111)
-
-`Claude-temp_R/DONE_HISTORY.md` → **`docs/sessions/DONE_HISTORY.md`**
-`Claude-temp_R/PENDING_TESTS.md` → **`docs/sessions/PENDING_TESTS.md`**
-`Claude-temp_R/test-sessions/*.md` → **`docs/sessions/tests/*.md`** (32 fajla)
-
-`archive/` **ostaje** u `Claude-temp_R/` — arhiviran test je zatvoren, pa izlazi iz gita.
-`.gitignore` nije diran: `Claude-temp_R/` ostaje ignoriran **u cijelosti**, bez negacija.
-
-Povod: mapa je ignorirana od 03.02.2026., pa je svaki praćeni test file bio ručna iznimka
-(`git add -f`) — S108 je ušao, S107u–y i S110 nisu, `DONE_HISTORY` nikad. Sada to više ne
-ovisi o pamćenju. Sve reference prepisane i **provjereno programski da su svi linkovi
-razrješivi** (37 fajlova, 0 mrtvih).
-
-## Sitnica
-
-Intelligence layer je sada **S112+**. (Pomican četiri puta: S108, S109, S110, S111.)
+- **T-S112-3…6 svi ⬜.** T-S112-4 je tranša 1.
+- **Delta sheet nije nijednom uvezen** — generiranje je provjereno strojno (headless test kroz
+  pravi `.xlsx`), ali put natrag u bazu još nije prošao ni jednom.
+- **T-S111-1, -3, -4, -5, -6 i dalje ⬜.** `T-S111-2` **otpada** — krivo RF sidro (`3.453,03`)
+  više ne postoji u bazi, pa nema što provjeriti.
+- **`sql/037` (nova verzija) i `038` nisu na PROD-u** — Overview je zasad TEST-only.
+- **Preostali poznati Δ:** `−200,14` na ZABA lancu 2025-08 → 2026-04, Sašina odluka: ne loviti.
+- **Backlog dobiva novu stavku:** `Datum naplate` je kriv na 12 MC redaka (11.07. umjesto
+  11.08.). Saldo ne dira, ali lomi buduću automatiku „dospjelo → potvrdi". Popravlja se uz tranšu 4.

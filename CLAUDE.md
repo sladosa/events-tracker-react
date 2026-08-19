@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S111).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S112).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -123,6 +123,18 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   (d) email u kol. G mora biti račun koji **izvodi** import, inače je redak „tuđi" i preskočen.
 - **Data Validation limiti:** `promptTitle` ≤32 znaka, `prompt` ≤255 — premašivanje daje
   neispravan OOXML i Excel nudi repair. Provjeri `string.length` prije proširivanja teksta.
+- **`datetime` atribut ima TRI oblika i svi moraju proći kroz `excelDatetime.ts`** (S112):
+  baza vraća `2025-01-07T12:00:00+00:00`, aplikacija piše `2025-01-07T12:00`, Excel drži pravu
+  datumsku ćeliju. Kao **stringovi** se razlikuju, kao **trenutak** ne. Dok je usporedba bila
+  sirova, `computeRowDiff` je **svaki dodirnut redak** prijavljivao kao promjenu datuma i
+  prepisivao ga. ⚠ Isti kanonski oblik mora ući i u **otisak retka** — inače se `row_hash`
+  nikad ne poklopi i D7 skip nedirnutih redaka tiho prestane raditi.
+  ⚠ Datumska ćelija se sidri u **podne UTC**: exceljs prevodi serial ↔ `Date` čistim UTC-om
+  (`utils.dateToExcel`), a kod čita lokalnim getterima — podne ima 12 h margine u obje zone.
+- **⚠ Zbroj u Excelu nije nula ni kad piše `0,00`** (S112). Razlika `banka − Σ SUMIFS` nosi
+  grešku binarnog zapisa (~`1e-13`), pa je uvjetni format bojao **crveno nad savršeno usklađenim
+  sheetom**. Svaka usporedba novca s nulom mora ići kroz `ROUND(…, 2)` — jedinicu u kojoj su i
+  svi ulazi. Vrijedi za svaku buduću kontrolnu ćeliju, ne samo za ovu.
 - **Kolona izvan autofiltera se pri sortu raspari od retka.** Svaka nova kolona mora ući u
   `auto_filter.ref` (vrijedi i za app export i za Python alate).
 - **`export_profiles` još ne preživljava Structure roundtrip** (ključ `attr:Area||CatPath||AttrName`
@@ -136,6 +148,37 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `HelpPanel.CHIPS` bez tog ključa ne javlja grešku nego ne prikaže ništa. Nova tema u
   `docs/help/` mora ići i u `HELP_DOC_NAMES` (`netlify/functions/help.ts`) — to je jedini
   razlog da se taj file dira; sadržaj postojeće teme ne traži promjenu koda.
+
+**Delta sheet (usklađenje s bankom)**
+
+- **Prozor NIJE sidro.** Sidro je potvrđeno izvana i može biti staro godinu i pol (RF:
+  02.01.2025.), pa „od sidra do danas" daje **1.010 redaka** za usklađenje zadnjih par tjedana.
+  Prozor je kratak (zadano 60 dana), a kontrolni stupac kreće od stanja koje **aplikacija
+  računa** na dan prije prozora. ⚠ To otvarajuće stanje mora biti **označeno kao izračunato**
+  i nositi sidro na kojem počiva: ako razlika ne padne na nulu ni nakon češljanja prozora,
+  greška je **starija od prozora**, a bez te oznake se to ne vidi.
+- **Prozor kreće DAN NAKON `confirmed_on`.** Saldo su promjene **strogo nakon** sidra (§2.17);
+  redak datiran točno na dan sidra bi bio prikazan, ušao u kontrolnu formulu i razišao sheet
+  s pločicom za taj iznos.
+- **⚠ Planirani retci MORAJU ostati vidljivi.** Baza već drži buduće rate kao `Planiran`
+  (13 komada na 11.07.2026.). Sakrije li ih sheet, korisnik ih dopiše iz bankovne aplikacije i
+  **dobiješ ih dvaput**. Ovako ih potvrdi promjenom `Status`a, a kontrolni stupac ih istog
+  trena uračuna — saldo se pomakne prije nego išta uđe u bazu.
+- **⚠ NE dodjeljivati `session_start` automatski u importu.** Prazan pada na `09:00`, pa bi svi
+  retci istog dana pali u jednu aktivnost — ali automatska dodjela slobodne minute ubija
+  zaštitu koja već postoji: **kolizija je način na koji se hvata dvostruki uvoz istog filea.**
+  Vremena zato piše generator, iz pojasa `14:00+n` (povijesni uvoz koristi `09:00+n`).
+- **Redak predloška se preskače, započet pada.** Prazni retci nose prepisani `Area`, pa ih
+  parser inače vidi kao prave retke. Kriterij za „netaknut" ne gleda prepisane atribute nego
+  ono što upisuje čovjek: datum, opis ili **bilo koji broj**. Preskočeni se **broje** i javljaju
+  kao upozorenje — tiho progutan iznos je gore od poruke.
+- **Kontrolna formula je `SUMIFS` po datumu ≤ datum retka**, nikad „prethodni redak + uplata −
+  isplata": lančana se raspadne na prvom sortu, a korisnik sortira čim doda stariji datum.
+  I: **uvjeti se čitaju iz `dashboard` configa**, ne prepisuju u kod — stupac koji se ne slaže
+  s pločicom, a izgleda uvjerljivo, gori je od nikakvog.
+- **Export profil se primjenjuje PRIJE delta alata.** Profil dira kolone po položaju (širine,
+  skrivanje, grupe), a kontrolni stupac se dodaje zadnji — obrnutim redoslijedom bi ga profil
+  mogao sakriti.
 
 **Mjerenje / usklađenje**
 
@@ -155,6 +198,17 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `confirmed_on <= p_as_of` i zbraja promjene strogo nakon njega ⇒ `balance == amount`, Δ = 0
   po konstrukciji. **Prvo provjera, sidra poslije.** `make_saldo_anchors.py --report` to
   detektira i označi `SIDRO (nije provjera)` umjesto lažne kvačice.
+- **⚠ Pomoćni broj uz saldo mora nositi ISTE uvjete kao saldo** (S112). `split` („planirano")
+  je koristio samo `Status = Planiran`, bez `Izvor` uvjeta — pa je brojio kartične stavke **i**
+  planiranu skupnu naplatu koja ih plaća: `−2.521,38 (13)` umjesto `−2.089,86 (2)`.
+  Pločica koja kaže „stanje X, planirano Y" tvrdi da će Y pomaknuti X; bez istog filtra ne tvrdi.
+  ⚠ Popravak lomi drill: `split.filters[0]` postaje **zajednički** uvjet. Drill mora birati
+  uvjet koji bazni filtar **nema** — onaj koji split čini splitom.
+- **⚠ `Datum naplate` na kartičnim retcima može biti kriv, a saldo to ne otkriva** (S112).
+  12 MC kupovina (01–05.07.2026.) nosi `11.07.`, a banka ih je naplatila `11.08.` Košara
+  „naplaćeno 11.07." ima 73 retka i `2.231,02`; banka je tog dana skinula `1.244,74`. Saldo je
+  netaknut (kartične stavke nisu u njemu), ali svaka automatika „dospjelo → potvrdi" gleda
+  krivi datum. Kontrola: **zbroj košare po datumu naplate mora dati iznos skupne naplate.**
 - **Baza drži UTC, app prikazuje lokalno** (+2h ljeti). DB `07:00` = UI `09:00`. Bitno kad se
   traži slobodan `session_start` — kolizija se računa na razini minute.
 
@@ -255,6 +309,8 @@ src/lib/excelExport.ts             Activities Excel export, mergeSessionEvents()
 src/lib/excelImport.ts             Activities Excel import, collision handling, applyDeletes()
 src/lib/excelImportReport.ts       Izvještaj nakon uvoza — radni file, ne log
 src/lib/excelFingerprint.ts        row_hash (FNV-1a 64) — skip nedirnutih redaka
+src/lib/excelDatetime.ts           Kanonski oblik datum-atributa (baza ↔ app ↔ Excel ćelija)
+src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u banci piše"
 src/lib/structureExcel.ts          Structure export (Automations, Dashboard, DisableSavePlus)
 src/lib/structureImport.ts         Structure import — non-destructive, slug lookup
 src/lib/attributeRules.ts          set_attribute automatika (evaluateDateRule, same/next:N)
@@ -400,47 +456,59 @@ N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravil
 
 ---
 
-## Sljedeći koraci (2026-08-18)
+## Sljedeći koraci (2026-08-19)
 
-**✅ OBA LANCA SALDA SU ZATVORENA.** App reproducira **ispisana bankovna stanja u cent**:
+**✅ OBA LANCA SALDA SU ZATVORENA** (S110/S111). App reproducira **ispisana bankovna stanja u cent**:
+ZABA `2.546,55` @ 31.03.2025. i `3.403,74` @ 08.07.2026. · RF `461,82` @ 06.07.2026.
+(`RF_2026-06.pdf`). Time je zatvoren i `T-S107d-6` — RF OCR lanac je bio točan, greške su bile
+u **spajanju** Kokinog Excela s izvodima.
 
-| Račun | Datum | App | Izvor istine |
-| --- | --- | --- | --- |
-| Kokin tekući ZABA | 31.03.2025. | 2.546,55 | banka + Kokin red 1641 (S110) |
-| Kokin tekući ZABA | 08.07.2026. | 3.403,74 | Kokin broj, bez korekcije (S110) |
-| Sašin tekući RF | 06.07.2026. | **461,82** | ispisano na `RF_2026-06.pdf` (S111) |
+**Kokina delta se radi u TRANŠAMA, kroz alat koji će poslije koristiti Koka** (Sašina odluka
+S112: *„nije cilj samo uvesti deltu nego razviti najefikasniji način da je Koka rješava"*).
+Faza 0 i Faza 1 su gotove; ostalo je izvođenje.
 
-RF je usput zatvorio i **`T-S107d-6`**: OCR lanac izvoda daje `3.458,03 − 2.996,21 = 461,82`,
-Δ **0,00** kroz 196 transakcija i 18 mjeseci. Sumnja u RF OCR bila je neopravdana — greške su
-bile u **spajanju** Kokinog Excela s izvodima, ne u čitanju izvoda.
+**Odluke koje više nisu otvorene:**
+- **D-1: preskočiti** Kokine kartične retke iz razdoblja koje izvodi već pokrivaju
+  (207 od 208 Visa kupovina 01–06/2026 već postoji u bazi — donose opis, ne novac).
+- **D-2: „Koka sada, izvod potvrda"** — njeni retci ulaze, izvod odmah zatim provjerava.
+  ⚠ Provjera mora biti **mehanička** (sparivanje s tolerancijom + potvrda razlike): njeni se
+  iznosi razlikuju od bankinih na ~4 % redaka, a kartične stavke ne diraju saldo, pa takva
+  greška **nikad ne ispliva sama**.
+- **Granica je datum, ne vrsta retka.** Prije datuma piše pipeline, poslije samo ona.
 
-**⚠ Prije nastavka pustiti na TEST-u:** `sql/037` (ponovno, bez `Cash`) + `sql/038`.
-Bez toga pločica pokazuje `395,82` umjesto `461,82` i nema retka o svježini.
+### Tranše — svaka testira drugi mehanizam, svaka ima brojku iz Kokinog lanca
 
-1. **Kokina delta** (`Financije 2026-08-16.xlsx`) — **sljedeći veliki korak**.
-   - ZABA: +117 redaka (do 13.08.), RF: +323 (do 11.08.)
-   - ⚠ **Od tih 323 njih ~186 NIJE nova potrošnja** nego preformulacija Visa naplata koje baza
-     već ima iz PBZ izvoda. Koka je ukinula sheet `Za Sašu` i pojedinačne Visa retke preselila
-     u `sasa EU` s datumom naplate u kol. C i **datumom kupovine u kol. G**.
-   - ⚠ Njena restrukturacija je **provjerena i čista**: 911 redaka lanca, 0 puknuća, razina
-     identična starom fileu na **svih 376 zajedničkih datuma** (Δ 0,00).
-   - ⚠ Maknula je i **skupnu Visa naplatu** — generator je mora **sintetizirati** iz zbroja
-     svake skupine (provjera: mora dati iznos s RF izvoda). Ne mijenjati os salda.
-   - ⚠ Dedup **mora imati toleranciju na iznos** (v. zamke) — inače isti razred grešaka koji je
-     S111 čistio, samo dvadeset puta veći.
-2. **Faza 2 — brzi unos** (§2.9, dvije sitnice nad Shortcut sustavom): prefilana polja se ne
-   skupljaju (`AttributeChainForm.tsx:216–222`), shortcut dropdown je ravan popis
+| # | Sadržaj | Kontrolni broj |
+| --- | --- | --- |
+| **1** | RF banka: 7 novih redaka + ispravak `250,93 → 253,51` | **RF @ 04.08. = 1.716,55** |
+| **2** | RF Visa iz `PBZVIZA_2026-07`: 42 stavke + naplata `1.171,59` + `0,17` | **RF @ 11.08. = 799,12** |
+| **3** | ZABA banka: 110 novih + potvrda planirane naplate `1.244,74` + `845,12` i 5 spornih | **ZABA @ 09.08. = 14.722,84** |
+| **4** | MC iz `MC_2026-07`: 45 stavki (12 ih baza već ima) + naplata `1.332,52` | **ZABA @ 13.08. = 13.239,31** |
+
+⚠ **Skupne naplate se NE sintetiziraju** — `MC_2026-07.pdf` sadrži `1.332,52`, a
+`PBZVIZA_2026-07.pdf` `1.171,59`, oboje u cent jednako Kokinim grupama. Banka ih je ispisala.
+
+⚠ **Onih 5 spornih redaka** (16–17.06.2026., Σ `373,11`): `207,26`, `57,19` i `13,31` **nisu na
+`ZABA_2026-06.pdf`** — najvjerojatnije kolovoški računi s krivim mjesecom. Uvezeni s lipanjskim
+datumom padaju **prije ZABA sidra** (01.07.) i po pravilu „strogo nakon" tiho ispadaju iz salda.
+Tranša 4 ih rješava: ostane li `13.239,31` bili su duplikati, postane li `12.866,20` bili su stvarni.
+
+### Nakon tranši
+
+1. **Faza 3 — automatika na Import putu** („popuni ako je prazno"). Jedna rupa drži **tri**
+   featurea: `Datum naplate` na uvozu, pravila `Tip/Podtip`, širenje rata. `set_attribute` se
+   danas evaluira samo u Add Activity.
+2. **Faza 2 — brzi unos** (§2.9): prefilana polja se ne skupljaju
+   (`AttributeChainForm.tsx:216–222`), shortcut dropdown je ravan popis
    (`ProgressiveCategorySelector.tsx:711`). Male, i **direktno za Koku**.
-3. **Tip/Podtip automatika** — shortcutovi po trgovcu **prvo** (nula koda, koristi
-   `activity_presets`), tekstualno pravilo `opis → Tip/Podtip` tek ako popis postane nezgrapan,
-   AI u appu tek nakon toga.
-4. **Koka proba na TEST-u (mobitel) → odluka o cutoveru.** Prava vaga; ako padne, njen Excel
-   ostaje trajni ulaz i pipeline se automatizira umjesto gasi. ⚠ Prije toga vrijedi da Saša
-   **odglumi Koku 3 dana stvarnog unosa na mobitelu** i izmjeri frikciju — to pretvara
-   „bi li bila zadovoljna" u brojku.
+3. **Tip/Podtip automatika** — shortcutovi po trgovcu **prvo** (nula koda, `activity_presets`),
+   tekstualno pravilo `opis → Tip/Podtip` tek ako popis postane nezgrapan, AI tek nakon toga.
+4. **Koka proba na TEST-u (mobitel) → odluka o cutoveru.** ⚠ Prije toga Saša **odglumi Koku
+   3 dana stvarnog unosa** i izmjeri frikciju — to pretvara „bi li bila zadovoljna" u brojku.
 5. **Batch 2024, pa 2023** — svaki uz `Pitanja za Koku` vetting. ⚠ Sidro ih **vadi s kritičnog
    puta**; idu zbog analize i AI sloja, ne zbog salda.
-6. Ručni testovi: **T-S111-1…6** (novi), T-S110-4/-5, T-S107b-3..6, T-S107f-3, T-S107v-2/3/4/7
+6. Ručni testovi: **T-S112-3…6** (novi), T-S111-1/-3/-4/-5/-6, T-S110-4/-5, T-S107b-3..6,
+   T-S107f-3, T-S107v-2/3/4/7
 7. Stare Financije aree obrisati **na kraju** (backup!)
 8. Diary archaeology (non-blocking)
 

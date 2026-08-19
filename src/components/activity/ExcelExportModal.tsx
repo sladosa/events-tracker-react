@@ -9,7 +9,7 @@
  * - Pagination for large exports
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { saveAs } from 'file-saver';
 import ExcelJS from 'exceljs';
@@ -17,6 +17,9 @@ import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
 import { loadExportData, loadStructureNodes, loadSharedEmailsByArea, loadCategoriesForExport, resolveExportCategoryIds, countEventsForExport } from '@/lib/excelDataLoader';
 import { createEventsExcel, mergeSessionEvents } from '@/lib/excelExport';
+import { createDeltaExcel } from '@/lib/deltaSheet';
+import { useAreaDashboard } from '@/hooks/useAreaDashboard';
+import { listAnchors, fetchAnchoredBalance } from '@/lib/overviewApi';
 import { timestampSuffix, type FilterSheetInfo } from '@/lib/excelUtils';
 import type { ExportFilters } from '@/lib/excelTypes';
 import { readProfileFromWorkbook, readProfileNameFromWorkbook, readFilterFromWorkbook, sanitizeProfileName, type ExportProfiles, type ProfileFilterState } from '@/lib/exportProfile';
@@ -32,6 +35,16 @@ const DEFAULT_BATCH_SIZE = 10000;
 const MIN_BATCH = 2;
 const MAX_BATCH = 50000;
 const PREVIEW_LIMIT = 10;
+/** Koliko praznih redaka nudi delta sheet. ~40 = sest tjedana Kokinog tempa. */
+const DELTA_BLANK_ROWS = 40;
+/**
+ * Koliko dana unatrag delta sheet pokazuje.
+ * ⚠ Prozor NIJE isto sto i sidro. Sidro moze biti staro godinu i pol (RF: 02.01.2025),
+ *   pa bi "od sidra do danas" dalo 1.000+ redaka za usklađenje zadnjih par tjedana.
+ *   Prozor je kratak, a kontrolni stupac krece od stanja koje aplikacija racuna
+ *   na dan prije prozora.
+ */
+const DELTA_WINDOW_DAYS = 60;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -153,6 +166,8 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
 
   const [totalCount,  setTotalCount]  = useState<number | null>(null);
   const [batchSize,   setBatchSize]   = useState(DEFAULT_BATCH_SIZE);
+  const [deltaMode,   setDeltaMode]   = useState(false);
+  const [deltaDays,   setDeltaDays]   = useState(DELTA_WINDOW_DAYS);
   const [fileCount,   setFileCount]   = useState(1);
   const [currentFile, setCurrentFile] = useState(0);   // 0 = idle, >0 = generating file N
   const [loadingCount, setLoadingCount] = useState(true);
@@ -224,6 +239,19 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     }
   }, [batchSize, totalCount]);
 
+  // -- Delta sheet (Faza 1) --------------------------------------------
+  // Uvjeti salda ZIVE U CONFIGU Aree, ne ovdje - isti izvor iz kojeg ih cita RPC.
+  // Bez `balance_by_group` plocice Area nema pojam "stanje racuna" i ponuda se
+  // ne prikazuje uopce.
+  const { config: dashboardCfg } = useAreaDashboard(filter.areaId);
+  const balanceWidget = useMemo(
+    () => dashboardCfg?.widgets.find(w => w.type === 'balance_by_group') ?? null,
+    [dashboardCfg],
+  );
+  // Racun dolazi iz filtra atributa - drill s plocice ga upravo tako postavlja.
+  const deltaAccount = filter.attrFilter?.value?.trim() || '';
+  const deltaReady   = !!balanceWidget && !!deltaAccount;
+
   // ── Core download ─────────────────────────────────────────────────
   const doDownload = useCallback(async (fileIndex: number, previewMode: boolean) => {
     try {
@@ -267,6 +295,56 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         }
       }
 
+      // Delta sheet: prozor krece OD DANA NAKON sidra. Sidro je "potvrdjeno
+      // stanje na dan X", a saldo su promjene STROGO nakon njega (paragraf 2.17)
+      // - pa bi redak datiran tocno na X bio prikazan, usao u kontrolnu formulu
+      // i razisao sheet s plocicom za taj iznos.
+      let deltaAnchor:  { amount: number; confirmed_on: string } | null = null;
+      let deltaOpening: { amount: number; asOf: string } = { amount: 0, asOf: '' };
+      if (deltaMode && balanceWidget && !previewMode) {
+        if (!deltaAccount) throw new Error('Delta sheet: nije odabran racun (filtar atributa je prazan).');
+        if (!effectiveFilters.areaId) throw new Error('Delta sheet: nije odabrana Area.');
+
+        const today   = new Date().toISOString().slice(0, 10);
+        const anchors = (await listAnchors(effectiveFilters.areaId, balanceWidget.group_by))
+          .filter(a => a.group_value === deltaAccount && a.confirmed_on <= today)
+          // Isti izbor koji radi RPC: najnovije potvrdjeno, a kod istog datuma
+          // ono zadnje upisano (tako se tipfelerica ispravlja novim retkom).
+          .sort((a, b) => (a.confirmed_on === b.confirmed_on
+            ? String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''))
+            : b.confirmed_on.localeCompare(a.confirmed_on)));
+
+        deltaAnchor = anchors[0]
+          ? { amount: anchors[0].amount, confirmed_on: anchors[0].confirmed_on }
+          : null;
+
+        // Prozor: kasniji od (dan nakon sidra) i (danas - N dana).
+        const dayAfterAnchor = deltaAnchor
+          ? new Date(Date.UTC(...(deltaAnchor.confirmed_on.split('-').map(Number) as [number, number, number])) + 86400000)
+          : null;
+        const nDaysAgo = new Date(Date.now() - deltaDays * 86400000);
+        const startMs  = Math.max(dayAfterAnchor?.getTime() ?? 0, nDaysAgo.getTime());
+        const start    = new Date(startMs).toISOString().slice(0, 10);
+        const dayBefore = new Date(startMs - 86400000).toISOString().slice(0, 10);
+
+        // Otvarajuce stanje = ono sto aplikacija racuna na dan PRIJE prozora.
+        // Isti RPC koji hrani plocicu, pa se sheet i plocica ne mogu razici.
+        const openRows = await fetchAnchoredBalance({
+          areaId: effectiveFilters.areaId,
+          groupSlug: balanceWidget.group_by,
+          plusSlug: balanceWidget.plus ?? null,
+          minusSlug: balanceWidget.minus ?? null,
+          filters: balanceWidget.filters ?? [],
+          asOf: dayBefore,
+        });
+        deltaOpening = {
+          amount: openRows.find(r => r.group_value === deltaAccount)?.balance ?? 0,
+          asOf:   dayBefore,
+        };
+
+        effectiveFilters = { ...effectiveFilters, dateFrom: start, sortOrder: 'asc' };
+      }
+
       const limit = previewMode ? PREVIEW_LIMIT : batchSize;
       const offset = previewMode ? 0 : (fileIndex - 1) * batchSize;
 
@@ -308,6 +386,79 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         exportProfile: profileName,
       };
 
+      if (deltaMode && balanceWidget && !previewMode) {
+        const first = merged[0];
+        const cat   = first ? bundle.categoriesDict[first.category_id] : undefined;
+
+        // Prepisuje se SAMO ono sto je izvedivo iz configa: grupa (racun) i
+        // jednovrijednosni `in` uvjeti. `not_in` se ne da okrenuti u vrijednost
+        // ("nije Planiran" nije "Izvrsen"), pa ta polja ostaju prazna - a to je
+        // u redu: i RPC i Excel prazno tretiraju kao "nije Planiran".
+        const nameBySlug = new Map<string, string>();
+        for (const d of bundle.attrDefs) if (d.slug) nameBySlug.set(d.slug, d.name);
+
+        const prefill: Record<string, string | number | boolean> = {};
+        const groupName = nameBySlug.get(balanceWidget.group_by);
+        if (groupName) prefill[groupName] = deltaAccount;
+        for (const f of balanceWidget.filters ?? []) {
+          const n = nameBySlug.get(f.slug);
+          if (n && f.op === 'in' && f.values.length === 1) prefill[n] = f.values[0];
+        }
+
+        // U sheet idu SAMO retci koji micu saldo ovog racuna: uvjeti `in` iz
+        // configa (Izvor = Racun). `not_in` se NE primjenjuje - planirani retci
+        // moraju ostati vidljivi da ih korisnik POTVRDI umjesto da ih dopise
+        // ponovno; kontrolni stupac ih ionako ne broji dok su planirani.
+        const idsBySlug = new Map<string, Set<string>>();
+        for (const d of bundle.attrDefs) {
+          if (!d.slug) continue;
+          if (!idsBySlug.has(d.slug)) idsBySlug.set(d.slug, new Set());
+          idsBySlug.get(d.slug)!.add(d.id);
+        }
+        const passes = (ev: typeof merged[number], slug: string, values: string[]) => {
+          const ids = idsBySlug.get(slug);
+          if (!ids) return true;
+          return (ev.event_attributes ?? []).some(
+            a => ids.has(a.attribute_definition_id) && a.value_text != null && values.includes(a.value_text),
+          );
+        };
+        const deltaRows = merged.filter(ev =>
+          passes(ev, balanceWidget.group_by, [deltaAccount]) &&
+          (balanceWidget.filters ?? []).every(f => f.op !== 'in' || passes(ev, f.slug, f.values)),
+        );
+
+        const { buffer: deltaBuf, warnings } = await createDeltaExcel(
+          deltaRows, bundle.attrDefs, bundle.categoriesDict,
+          {
+            groupLabel:   deltaAccount,
+            opening:      deltaOpening,
+            anchor:       deltaAnchor,
+            plusSlug:     balanceWidget.plus  ?? '',
+            minusSlug:    balanceWidget.minus ?? '',
+            filters:      balanceWidget.filters ?? [],
+            blankRows:    DELTA_BLANK_ROWS,
+            prefill,
+            areaName:     cat?.area_name ?? '',
+            categoryPath: cat?.full_path ?? '',
+            userEmail:    user.email ?? '',
+          },
+          activeProfile,
+        );
+
+        const safeAccount = deltaAccount.replace(/[^A-Za-z0-9]+/g, '_').slice(0, 30);
+        saveAs(
+          new Blob([deltaBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+          `delta_${safeAccount}_${ts}.xlsx`,
+        );
+        if (warnings.length) warnings.forEach(w => toast.error(w, { duration: 8000 }));
+        else toast.success(
+          `Delta sheet: ${deltaRows.length} redaka od ${effectiveFilters.dateFrom} ` +
+          `(stanje ${deltaOpening.asOf} = ${deltaOpening.amount.toFixed(2)})`,
+          { duration: 6000 },
+        );
+        return;
+      }
+
       const buffer = await createEventsExcel(
         merged, bundle.attrDefs, bundle.categoriesDict,
         effectiveFilters.sortOrder ?? 'desc',
@@ -339,7 +490,8 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     } finally {
       setCurrentFile(0);
     }
-  }, [batchSize, fileCount, filters, filter.periodKey, filter.commentSearch, filter.attrFilter, selectedProfile, profiles]);
+  }, [batchSize, fileCount, filters, filter.periodKey, filter.commentSearch, filter.attrFilter,
+      selectedProfile, profiles, deltaMode, deltaDays, balanceWidget, deltaAccount]);
 
   const downloadFile = useCallback((fileIndex: number) => doDownload(fileIndex, false), [doDownload]);
   const downloadPreview = useCallback(() => doDownload(1, true), [doDownload]);
@@ -578,6 +730,49 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                   className="hidden"
                 />
               </div>
+            </div>
+          )}
+
+          {/* Delta sheet (Faza 1) */}
+          {balanceWidget && (
+            <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 space-y-1">
+              <label className="flex items-center gap-2 text-sm font-medium text-teal-900">
+                <input
+                  type="checkbox"
+                  checked={deltaMode}
+                  onChange={e => setDeltaMode(e.target.checked)}
+                  disabled={isGenerating || !deltaReady}
+                  className="rounded"
+                />
+                Delta sheet &mdash; uskla&#273;enje s bankom
+              </label>
+              {deltaReady ? (
+                <div className="space-y-1">
+                  <p className="text-xs text-teal-800">
+                    Ra&#269;un <strong>{deltaAccount}</strong> &middot; samo retci koji mi&#269;u saldo
+                    &middot; najstariji gore &middot; {DELTA_BLANK_ROWS} praznih redaka
+                    &middot; kolona <em>Stanje (kontrola)</em> i &#263;elija &bdquo;u banci pi&scaron;e&ldquo;.
+                  </p>
+                  <label className="flex items-center gap-2 text-xs text-teal-900">
+                    Prozor:
+                    <input
+                      type="number"
+                      min={7}
+                      max={3650}
+                      step={7}
+                      value={deltaDays}
+                      onChange={e => setDeltaDays(Math.max(7, Math.min(3650, Number(e.target.value))))}
+                      disabled={isGenerating}
+                      className="w-20 border border-teal-300 rounded px-2 py-1 text-xs"
+                    />
+                    dana unatrag (ili od sidra, &scaron;to je kra&#263;e)
+                  </label>
+                </div>
+              ) : (
+                <p className="text-xs text-teal-700">
+                  Prvo odaberi ra&#269;un &mdash; klikni saldo na Overview plo&#269;ici, pa se vrati na Export.
+                </p>
+              )}
             </div>
           )}
 

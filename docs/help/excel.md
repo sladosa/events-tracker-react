@@ -23,11 +23,26 @@
 - Col C: category path (bez area name, npr. `Domacinstvo > Automobili > Gorivo`)
 - Col G: user email
 - Col I+: atributi (ime u headeru)
+- Datumski atributi (npr. `Datum naplate`) su **prave datumske ćelije** (`7.1.2025`), s provjerom pri upisu — upiši datum, ne tekst
 
 ## Format strukture — ključne kolone
 - Col D: full path (sa area name, npr. `Fitness > Cardio > Running`)
 - Col E: level
 - Col F+: atributi
+
+## Delta sheet — usklađenje s bankom
+- Kvačica u Export modalu, vidljiva samo za Area koja ima Overview pločicu `Stanje po računu`
+- Prvo odaberi račun: klikni saldo na Overview pločici (to postavi filtar), pa otvori Export
+- Što sheet sadrži:
+  - samo retke koji **miču saldo** tog računa (`Izvor = Racun`), zadnjih 60 dana (prozor se može promijeniti)
+  - **planirane retke također** — njih se **potvrđuje** (promijeni `Status`), ne dopisuje ponovno; inače isti trošak uđe dvaput
+  - 40 praznih redaka s već upisanim `Area`, `Category_Path`, emailom, računom i vremenom
+  - kolonu `Stanje (kontrola)` — tekući saldo po istom pravilu kao pločica
+  - ćeliju „u banci piše" i „razlika": upiši stanje s ekrana banke, razlika mora biti 0,00 (zeleno)
+- Novi redak se dopisuje na dno; `session_start` je već upisan i **ne treba ga dirati**
+- Neiskorišteni prazni retci se pri uvozu preskaču (javi se koliko ih je); redak s iznosom ali bez datuma je **greška**, ne preskakanje
+- Nakon uvoza: otvori bankovnu aplikaciju i **potvrdi stanje** na pločici — sljedeći delta sheet tada kreće od potvrđenog broja, pa je kraći
+- Broj u „u banci piše" i u potvrdi mora doći **s ekrana banke ili s izvoda**, nikad iz same aplikacije — inače provjera potvrđuje samu sebe
 
 ## Dropdowni u exportu
 - **Suggest atributi** (text s opcijama) automatski dobivaju Excel Data Validation dropdown u exportanom xlsx-u

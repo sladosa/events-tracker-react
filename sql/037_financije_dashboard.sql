@@ -45,6 +45,17 @@
 -- total into Dospjelo/Uskoro/Kasnije needs a bound on `Datum naplate` (§2.13)
 -- and belongs to a later phase.
 --
+-- ⚠ `split` CARRIES THE SAME `Izvor` FILTER AS THE BALANCE (added 2026-08-19)
+--   It did not, and the two numbers therefore spoke about different money.
+--   Measured on TEST:
+--       split = Status Planiran only        →  −2.521,38  (13 rows)
+--       split = Izvor Racun + Planiran      →  −2.089,86  ( 2 rows)
+--   The 431,52 difference is planned CARD items, which will never leave the
+--   account on their own — they leave through the planned lump settlement of
+--   1.244,74, which is ALSO in that total. Same double count the balance filter
+--   exists to prevent, one number to the right. A tile that says "balance X,
+--   planned Y" must mean "Y will move X"; without the filter it did not.
+--
 -- Run in Supabase SQL Editor. Idempotent — re-running replaces the config.
 -- Paste the target area id in ONE place below.
 -- ============================================================
@@ -82,7 +93,8 @@ BEGIN
           'split', jsonb_build_object(
             'label', 'planirano',
             'filters', jsonb_build_array(
-              jsonb_build_object('slug', 'status', 'op', 'in', 'values', jsonb_build_array('Planiran'))
+              jsonb_build_object('slug', 'izvorplacanja', 'op', 'in', 'values', jsonb_build_array('Racun')),
+              jsonb_build_object('slug', 'status',        'op', 'in', 'values', jsonb_build_array('Planiran'))
             )
           )
         )

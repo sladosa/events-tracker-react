@@ -2011,3 +2011,152 @@ prepisanim putanjama, 16 relativnih linkova u `PENDING_TESTS`, i jedan link prod
 razinu (`../../` → `../../../`, jer su test fajlovi sišli jednu razinu dublje). Na kraju
 **programska provjera da se svih 37 fajlova i svaki njihov link razrješuje** — našla je jednu
 mrtvu (`UPUTE_izvodi.md`, koji je ostao na radnom stolu) i ona je popravljena.
+
+---
+
+# S112 — kako Koka rješava deltu · Faza 0 i Faza 1 (2026-08-19)
+
+**Polazište:** Kokin novi file (`Financije 2026-08-16.xlsx`) čeka uvoz. Saša je tražio
+**razgovor prije koda**, i to s izričitim ciljem: *„nije nam cilj samo uvesti deltu nego razviti
+najefikasniji način da Koka rješava deltu."* Sesija je zato pola mjerenje i dogovor, pola gradnja.
+
+### 1. Delta je izmjerena prije nego je itko išta predložio
+
+`Financije 2026-08-16.xlsx` protiv snapshota od 08.07. i protiv TEST baze:
+
+| Razred | ZABA (`koka EU`) | RF (`sasa EU`) |
+| --- | --- | --- |
+| novo, nakon zadnjeg eventa u bazi | 110 | 9 |
+| dodano *unutar* već uvezenog razdoblja | 6 | 2 |
+| kartične stavke koje baza **već ima** | ~46 (MC 11.07.) | **220** (Visa) |
+| kartične stavke kojih baza nema | 45 (MC 11.08.) | 42 (Visa 07.08.) |
+| planirano (bez naplate) | 11 | 22 |
+| izmjena postojećeg retka | 20× planirano→naplaćeno | 1× iznos |
+
+**Sparivanje Kokinih Visa redaka protiv baze (±3 dana, isti iznos): 207 od 208 kupovina
+01–06/2026 već postoji.** Njeni stari kartični retci ne donose novac nego **opise**.
+
+### 2. Glavni nalaz razgovora: delta nije datumski raspon nego skup razlika
+
+Datumski rez ne radi ni u jednom smjeru. Za Visu je granica baze **zadnji obrađeni izvod**, ne
+datum: 42 srpanjske kupovine imaju `event_date` *prije* zadnjeg eventa u bazi, a ipak nedostaju
+(PBZ izvod za srpanj nije bio obrađen), dok 220 starijih postoji.
+
+Drugi nalaz iste vrste: **„promijenila / dodala" nije podatak nego interpretacija.** Kokin file
+nema identitet retka, pa se promjena vidi kao *jedan nestali + jedan novi redak*
+(`Mirovina III 250,93 → 253,51` izgleda identično kao brisanje + dodavanje).
+
+⚠ I treći: **„prazan C ⇒ planirano" nije istina.** Od 85 njenih Visa redaka bez datuma naplate,
+**35 je uredno naplaćeno** (travanjska grupa, Σ `783,76`) — samo im nije upisala datum.
+Razlikuju se jedino po tome što imaju popunjeno `Stanje`, tj. leže *unutar* lanca.
+
+### 3. Izvodi su promijenili plan
+
+Dva nova PDF-a u `izvodi/` pokazala su se kao točno ono što je Koka prepisivala rukom:
+
+| Izvod | Sadrži | Odgovara |
+| --- | --- | --- |
+| `MC_2026-07.pdf` (obavijest 01.08., dospijeće 11.08.) | **1.332,52** | njenoj MC grupi od 11.08. u cent |
+| `PBZVIZA_2026-07.pdf` (dospijeće 12.08.) | **1.171,59** | njenoj Visa grupi od 07.08. u cent |
+
+⇒ **skupne naplate se ne moraju sintetizirati** — banka ih je ispisala, zajedno sa stavkama.
+
+**Usput nađena greška u bazi:** 12 MC kupovina (01–05.07.) nosi `Datum naplate = 11.07.`, a
+banka ih je naplatila **11.08.** Vidi se i zbirno: košara „naplaćeno 11.07." ima **73 retka i
+`2.231,02`**, a banka je tog dana skinula **`1.244,74`**. Saldo to ne dira (kartične stavke nisu
+u njemu), ali lomi svaku buduću automatiku „dospjelo → potvrdi".
+
+### 4. Onih 6 spornih lipanjskih redaka
+
+Koka je na **dno** filea (iza 13.08.) dopisala pet redaka datiranih 16–17.06., Σ `373,11`.
+Provjera protiv `ZABA_2026-06.pdf`: `207,26`, `57,19` i `13,31` **nisu na izvodu**; `75,24`,
+`222,62`, `20,11`, `49,04`, `62,10` jesu — i baza ih već ima, u cent.
+
+⚠ Najvjerojatnije kolovoški računi s krivo utipkanim mjesecom. Uvezeni s lipanjskim datumom
+pali bi **prije ZABA sidra** (01.07.) i po pravilu „strogo nakon" tiho ispali iz salda — `373,11`
+bi nestalo bez ijedne greške na ekranu.
+
+### 5. Odluke (Sašine)
+
+- **D-1: preskočiti** Kokine kartične retke iz razdoblja koje izvodi već pokrivaju.
+- **D-2: „Koka sada, izvod potvrda"** — njeni retci ulaze, izvod odmah zatim provjerava.
+  ⚠ Uz uvjet da je provjera **mehanička** (sparivanje s tolerancijom + potvrda razlike): u S111
+  se pokazalo da joj se iznos razlikuje od bankinog na ~4 % redaka, a kako kartične stavke ne
+  diraju saldo, takva greška **nikad ne ispliva sama**.
+- **Granica je datum, ne vrsta retka.** Prije datuma piše pipeline, poslije piše samo ona.
+  Granica po vrsti („kartice iz izvoda, tekući od Koke") traži prosudbu na svakom retku, zauvijek.
+
+### 6. Faza 0 — četiri sitnice, svaka gasi jedan razred tihe greške
+
+**0.1 Datum-atribut je sad pravi Excel datum** (`src/lib/excelDatetime.ts`).
+Export je pisao sirovo `2025-01-07T12:00:00+00:00`, import je datumsku ćeliju pretvarao u
+`toISOString()` (ponoć UTC). Kao stringovi se razlikuju, kao trenutak ne — pa je `computeRowDiff`
+**svaki dodirnut redak** prijavljivao kao promjenu `Datum naplate` i prepisivao ga.
+Kanonski oblik `YYYY-MM-DDTHH:mm` sad vrijedi na obje strane, uključujući otisak retka; bez toga
+bi D7 skip nedirnutih redaka tiho prestao raditi. Dodana i Data Validation tipa `date`.
+Provjereno roundtripom kroz stvarni `.xlsx`, uključujući oba DST prijelaza (16/16).
+
+**0.3 `planirano` je dobilo `Izvor` filtar** (`sql/037`). Split je koristio samo
+`Status = Planiran`, pa je brojio kartične stavke **i** planiranu skupnu naplatu koja ih plaća:
+`−2.521,38 (13)` umjesto `−2.089,86 (2)`. Razlika `431,52` je dvostruko brojanje.
+⚠ Ta izmjena je razbila drill na „planirano" (uzimao `split.filters[0]`, sad zajednički uvjet),
+pa drill sada bira **uvjet koji bazni filtar nema** — radi za bilo koju konfiguraciju.
+
+**0.2 i 0.4 su premješteni u alat, s razlogom.** Automatska dodjela `session_start` u importu
+ubila bi zaštitu koja već postoji: **kolizija je način na koji se hvata dvostruki uvoz istog
+filea.** Upozorenje na pred-sidreni redak traži da import poznaje `dashboard` config i sidra —
+u generatoru je besplatno.
+
+### 7. Faza 1 — delta sheet (`src/lib/deltaSheet.ts`)
+
+Nastaje **nad** običnim Activities exportom, pa se uvozi istim putem, s istim `row_hash` skipom
+i update-guardom. Dodaje tri stvari: prazne retke s prepisanim kolonama i **unaprijed upisanim
+vremenima** (`14:00+n`, pojas koji povijesni uvoz nije dirao), kolonu `Stanje (kontrola)`, i
+ćeliju „u banci piše" s razlikom koja **zeleni na nuli**.
+
+Uvjeti se **čitaju iz `dashboard` configa**, ne prepisuju u kod — isti izvor iz kojeg ih čita
+RPC. Uvjet koji se ne da prevesti u `SUMIFS` javlja se kao upozorenje umjesto da tiho ispadne.
+
+Formula je `SUMIFS` po datumu ≤ datum retka, **ne** „prethodni redak + uplata − isplata":
+lančana se raspadne na prvom sortu, a korisnik sortira čim doda redak sa starijim datumom.
+
+**Prva verzija je dala 1.010 redaka** — prozor je išao od sidra, a RF sidro je od 02.01.2025.
+Saša: *„trebao bi stavit sidro na neki bliski datum."* Odbijeno kao rješenje, prihvaćeno kao
+navika: alat koji traži blisko sidro traži baš ono što bi trebao proizvesti, a Kokin prvi put
+bit će uvijek slučaj sa starim sidrom. Umjesto toga **prozor od 60 dana** i **otvarajuće stanje
+koje aplikacija računa** na dan prije prozora (isti RPC koji hrani pločicu).
+
+⚠ Otvarajuće stanje **nije sidro** i tako je i označeno — bilješka na ćeliji kaže na kojem sidru
+počiva. Ako razlika na dnu ne padne na nulu ni nakon češljanja prozora, greška je **starija od
+prozora**. Bez toga bi izgledalo kao da je greška u zadnjih 60 dana.
+
+Rezultat: **RF 9 redaka umjesto 1.010**, ZABA 15. U sheet idu samo retci koji miču saldo
+(`Izvor = Racun`), **ali planirani ostaju vidljivi** — to je nalaz o ratama: baza već ima buduće
+rate kao `Planiran`, pa ako ih sheet sakrije, korisnik ih dopiše iz bankovne aplikacije i dobiju
+se dvaput. Ovako ih **potvrdi**, i kontrolni stupac ih istog trena uračuna.
+
+### 8. Tri popravka nakon Sašinog prvog pokušaja
+
+1. **Razlika `0,00` bojala se crveno.** Zbroj stotinjak `SUMIFS` članova nosi grešku binarnog
+   zapisa (~`1e-13`), pa ono što se ispisuje kao nula doslovno nije nula. `ROUND(…, 2)`.
+   ⚠ Brojka je pritom bila **točna** — sheet je reproducirao `712,75` do zadnje znamenke.
+2. **Export profil se nije primjenjivao** u delta modu (file je dolazio sa svim kolonama).
+   Sad prolazi isti put; ⚠ profil **prije** delta alata, jer profil dira kolone po položaju a
+   kontrolni stupac se dodaje zadnji — obrnuto bi ga profil mogao sakriti.
+3. **Predugačka oznaka** otvarajućeg stanja prelijevala se preko sažetaka; skraćena, podrijetlo
+   preseljeno u bilješku na ćeliji.
+
+### 9. Import: redak predloška
+
+40 praznih redaka nosi prepisani `Area`, pa ih je parser vidio kao prave retke i svaki prijavio
+kao „event_date is required". Sada se preskaču, ali **broje** i prikazuju kao upozorenje.
+⚠ Kriterij ne gleda prepisane atribute nego ono što upisuje čovjek: datum, opis ili **bilo koji
+broj** — redak s iznosom a bez datuma i dalje pada kao greška. Tiho progutan iznos je gore od poruke.
+
+### 10. Zatečeno usput
+
+- **Krivo RF sidro (`3.453,03`) više ne postoji** — obrisano između sesija. `T-S111-2` time nema
+  što provjeriti i briše se.
+- U cijeloj TEST bazi postoje **dva** `datetime` atributa (`Datum naplate`, `Due Date` u Demo),
+  pa je domet izmjene 0.1 točno onaj koji je ciljan.
+

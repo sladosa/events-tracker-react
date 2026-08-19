@@ -35,6 +35,7 @@ import { addStructureSheetsTo, type ExportStructureOptions } from './structureEx
 import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
 import { applyProfileToWorkbook, getProfileAttrOrder, type ExportProfile } from './exportProfile';
 import { computeRowFingerprint, ROW_HASH_HEADER } from './excelFingerprint';
+import { DATE_ATTR_NUMFMT, canonicalDatetime, datetimeCellValue } from './excelDatetime';
 
 // ─────────────────────────────────────────────
 // Constants
@@ -743,8 +744,13 @@ export async function addActivitiesSheetsTo(
       const value         = attrValues.get(attrDefId) ?? null;
       const meta          = attrMeta.get(attrDefId)!;
 
-      cell.value  = value;
+      // Datum-atribut ide kao PRAVA datumska ćelija (Faza 0.1) — inače korisnik
+      // u koloni vidi `2025-01-07T12:00:00+00:00` i ne može je provjeriti
+      // Data Validationom. Padne li parsiranje, ostaje sirova vrijednost.
+      const dateCell = meta.dataType === 'datetime' ? datetimeCellValue(value) : null;
+      cell.value  = dateCell ?? value;
       cell.border = THIN_BORDER;
+      if (dateCell) cell.numFmt = DATE_ATTR_NUMFMT;
 
       // Color: BLUE if attr's category is in event's hierarchy, ORANGE otherwise
       const attrCatId     = meta.categoryId;
@@ -773,7 +779,12 @@ export async function addActivitiesSheetsTo(
       const v = attrValues.get(attrDefId) ?? null;
       if (v == null) continue;
       if (typeof v === 'string' && v.trim() === '') continue;
-      hashAttrs[attrName] = v;
+      // ⚠ Datum se hašira u kanonskom obliku (`YYYY-MM-DDTHH:mm`) jer import iz
+      // datumske ćelije proizvodi baš njega. Da se ovdje hašira sirova vrijednost
+      // iz baze (`…T12:00:00+00:00`), otisak se nikad ne bi poklopio i svaki bi
+      // redak pao u DB diff — skip nedirnutih redaka (D7) bi tiho prestao raditi.
+      const meta = attrMeta.get(attrDefId);
+      hashAttrs[attrName] = meta?.dataType === 'datetime' ? (canonicalDatetime(v) ?? v) : v;
     }
     const hashCell = ws.getCell(row, rowHashColNum);
     hashCell.value = computeRowFingerprint({
@@ -828,6 +839,29 @@ export async function addActivitiesSheetsTo(
   for (let aidx = 0; aidx < attrColumns.length; aidx++) {
     const { attrDefId } = attrColumns[aidx];
     const meta          = attrMeta.get(attrDefId)!;
+
+    // Datum-kolona (Faza 0.1): provjera pri UPISU, ne pri uvozu. Bez nje se
+    // tipfeleric u datumu vidi tek u izvještaju nakon uvoza — a tad je već
+    // u bazi. Raspon je namjerno širok: rate sežu godinama unaprijed.
+    // ⚠ `promptTitle` ≤ 32 i `prompt` ≤ 255 znaka, inače Excel nudi „repair".
+    if (meta.dataType === 'datetime') {
+      for (let r = eventDataStart; r <= eventDataEnd; r++) {
+        ws.getCell(r, ATTR_COL_START + aidx).dataValidation = {
+          type: 'date',
+          operator: 'between',
+          allowBlank: true,
+          formulae: [new Date(Date.UTC(2000, 0, 1, 12)), new Date(Date.UTC(2040, 11, 31, 12))],
+          showInputMessage: true,
+          promptTitle: meta.name.slice(0, 32),
+          prompt: 'Datum, npr. 7.1.2025. Prazno je dopusteno.',
+          showErrorMessage: true,
+          errorTitle: 'Nije datum',
+          error: 'Upisite datum (npr. 7.1.2025), ne tekst.',
+        };
+      }
+      continue;
+    }
+
     if (meta.dependsOn) continue; // handled by addDependentDropdowns
     if (meta.suggestOptions.length === 0) continue;
 

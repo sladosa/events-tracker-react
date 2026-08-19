@@ -17,6 +17,7 @@ import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
 import { FIXED_COL_COUNT, DELETE_COL_HEADER, DELETE_MARKER } from './excelExport';
 import { computeRowFingerprint, ROW_HASH_HEADER } from './excelFingerprint';
+import { canonicalDatetime } from './excelDatetime';
 import { loadCategoriesForExport, loadAttrDefsForCategories } from './excelDataLoader';
 import { upsertParentEvent, type ParentAttrWrite } from './parentEventLoader';
 import { fetchAllPagedIn } from './supabasePaging';
@@ -227,6 +228,7 @@ function parseDataRows(
   rowHashCol:    number = -1,
   deleteCol:     number = -1,
   badDeleteOut?: BadDeleteValue[],
+  templateSkippedOut?: { count: number },
 ): ParsedImportRow[] {
   const colToAttr: Record<number, string> = {};
   for (const [letter, { attrName }] of Object.entries(mapping)) {
@@ -259,11 +261,30 @@ function parseDataRows(
       if (typeof val === 'number' || typeof val === 'boolean') {
         attributes[attrName] = val;
       } else if (val instanceof Date) {
-        attributes[attrName] = val.toISOString();
+        // Faza 0.1: datumska ćelija daje `YYYY-MM-DDT12:00` — isti oblik koji
+        // piše `set_attribute` automatika i koji export hašira. `toISOString()`
+        // je davao ponoć u UTC-u, pa je svaki dodirnut redak izgledao kao
+        // promjena atributa i prepisivao datum u drugi zapis istog dana.
+        attributes[attrName] = canonicalDatetime(val) ?? val.toISOString();
       } else {
         const s = cellStr(val as ExcelJS.CellValue);
         if (s !== '') attributes[attrName] = s;
       }
+    }
+
+      // ── Redak predloška (Faza 1) ──────────────────────────────────────────
+    // Delta sheet nudi prazne retke s VEĆ prepisanim Area/Category_Path/User i
+    // vremenom, pa ih `parseDataRows` inače vidi kao prave retke i svaki
+    // neiskorišteni prijavi kao "event_date is required".
+    //
+    // ⚠ Kriterij namjerno NE gleda prepisane atribute (Racun/Izvor/Status su
+    //   tekst i uvijek su tu), nego ono što upisuje ČOVJEK: datum, opis ili
+    //   BILO KOJI broj. Redak s iznosom a bez datuma tako i dalje pada kao
+    //   greška — tiho progutan iznos je gore od poruke.
+    if (!eventId && !eventDate && comment.trim() === ''
+        && !Object.values(attributes).some(v => typeof v === 'number')) {
+      if (templateSkippedOut) templateSkippedOut.count++;
+      return;
     }
 
     const rowHash = rowHashCol > 0 ? (cellStr(row.getCell(rowHashCol).value) || undefined) : undefined;
@@ -364,7 +385,8 @@ export async function parseExcelFile(
   const rowHashCol = findMarkerCol(ws, headerRow, ROW_HASH_HEADER);
   const deleteCol  = findMarkerCol(ws, headerRow, DELETE_COL_HEADER);
   const badDeletes: BadDeleteValue[] = [];
-  const allRows = parseDataRows(ws, mapping, headerRow, rowHashCol, deleteCol, badDeletes);
+  const templateSkipped = { count: 0 };
+  const allRows = parseDataRows(ws, mapping, headerRow, rowHashCol, deleteCol, badDeletes, templateSkipped);
 
   if (badDeletes.length > 0) {
     const msg =
@@ -378,6 +400,14 @@ export async function parseExcelFile(
 
   // Validate time ordering per row: created_at >= session_start
   const warnings: string[] = [];
+
+  // Prazni retci predloška se preskaču, ali se BROJE — nevidljiv skip bi značio
+  // da korisnik ne vidi je li redak koji je mislio ispuniti uopće stigao.
+  if (templateSkipped.count > 0) {
+    warnings.push(
+      `${templateSkipped.count} praznih redaka predloška preskočeno (bez datuma, opisa i iznosa).`,
+    );
+  }
   let validRows: ParsedImportRow[] = [];
 
   for (const r of allRows) {
@@ -1340,7 +1370,14 @@ function computeRowDiff(
         break;
       }
       case 'datetime': {
-        if (existingAttr.value_datetime !== String(importValue)) {
+        // ⚠ Baza vraća `2025-01-07T12:00:00+00:00`, aplikacija i Excel pišu
+        // `2025-01-07T12:00`. Kao stringovi se razlikuju, kao trenutak ne —
+        // sirova usporedba je zato svaki datumski atribut prijavljivala kao
+        // promjenu. Uspoređuje se kanonski oblik; vrijeme se NE gubi, pa
+        // stvarna promjena sata i dalje prolazi kao promjena.
+        const before = canonicalDatetime(existingAttr.value_datetime);
+        const after  = canonicalDatetime(importValue);
+        if (before !== after) {
           changes.push({ field: attrName, oldValue: existingAttrDisplay(existingAttr), newValue: String(importValue) });
         }
         break;
