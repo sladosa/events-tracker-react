@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 REM Run any script in the Financije folder using the shared venv.
 REM Usage: Financije\run.bat inventory_izvoda.py [args]
 REM Aktivni alati: inventory_izvoda, enrich_from_izvoda, apply_rules,
@@ -19,8 +20,11 @@ if "%~1"=="" (
     echo   npr.  run.bat inventory_izvoda.py --dry
     echo         run.bat enrich_from_izvoda.py
 ) else (
-    echo Running: %~1 %2 %3 %4
-    "%VENV_PYTHON%" "%FIN_DIR%%~1" %2 %3 %4
+    REM Svi argumenti, ne samo prva tri: %2 %3 %4 je TIHO rezao pete i dalje
+    REM (fill_from_izvod.py --visa ... --naplata ... ima ih pet).
+    for /f "tokens=1,* delims= " %%a in ("%*") do set ARGS=%%b
+    echo Running: %~1 !ARGS!
+    "%VENV_PYTHON%" "%FIN_DIR%%~1" !ARGS!
 )
 
 echo.
