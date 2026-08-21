@@ -168,6 +168,10 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   const [batchSize,   setBatchSize]   = useState(DEFAULT_BATCH_SIZE);
   const [deltaMode,   setDeltaMode]   = useState(false);
   const [deltaDays,   setDeltaDays]   = useState(DELTA_WINDOW_DAYS);
+  // Broj praznih redaka je postavka, ne konstanta: tranša s izvoda zna imati
+  // 110 redaka, a redak koji ne stane u pripremljene prazne pada IZVAN dosega
+  // kontrolnog stupca — kontrolna brojka bi tada bila uvjerljiva, a nepotpuna.
+  const [deltaBlanks, setDeltaBlanks] = useState(DELTA_BLANK_ROWS);
   const [fileCount,   setFileCount]   = useState(1);
   const [currentFile, setCurrentFile] = useState(0);   // 0 = idle, >0 = generating file N
   const [loadingCount, setLoadingCount] = useState(true);
@@ -436,7 +440,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             plusSlug:     balanceWidget.plus  ?? '',
             minusSlug:    balanceWidget.minus ?? '',
             filters:      balanceWidget.filters ?? [],
-            blankRows:    DELTA_BLANK_ROWS,
+            blankRows:    deltaBlanks,
             prefill,
             areaName:     cat?.area_name ?? '',
             categoryPath: cat?.full_path ?? '',
@@ -491,7 +495,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       setCurrentFile(0);
     }
   }, [batchSize, fileCount, filters, filter.periodKey, filter.commentSearch, filter.attrFilter,
-      selectedProfile, profiles, deltaMode, deltaDays, balanceWidget, deltaAccount]);
+      selectedProfile, profiles, deltaMode, deltaDays, deltaBlanks, balanceWidget, deltaAccount]);
 
   const downloadFile = useCallback((fileIndex: number) => doDownload(fileIndex, false), [doDownload]);
   const downloadPreview = useCallback(() => doDownload(1, true), [doDownload]);
@@ -750,7 +754,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                 <div className="space-y-1">
                   <p className="text-xs text-teal-800">
                     Ra&#269;un <strong>{deltaAccount}</strong> &middot; samo retci koji mi&#269;u saldo
-                    &middot; najstariji gore &middot; {DELTA_BLANK_ROWS} praznih redaka
+                    &middot; najstariji gore
                     &middot; kolona <em>Stanje (kontrola)</em> i &#263;elija &bdquo;u banci pi&scaron;e&ldquo;.
                   </p>
                   <label className="flex items-center gap-2 text-xs text-teal-900">
@@ -766,6 +770,20 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                       className="w-20 border border-teal-300 rounded px-2 py-1 text-xs"
                     />
                     dana unatrag (ili od sidra, &scaron;to je kra&#263;e)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-teal-900">
+                    Praznih redaka:
+                    <input
+                      type="number"
+                      min={0}
+                      max={500}
+                      step={10}
+                      value={deltaBlanks}
+                      onChange={e => setDeltaBlanks(Math.max(0, Math.min(500, Number(e.target.value))))}
+                      disabled={isGenerating}
+                      className="w-20 border border-teal-300 rounded px-2 py-1 text-xs"
+                    />
+                    za nove retke
                   </label>
                 </div>
               ) : (

@@ -42,6 +42,7 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 
 sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')   # sys.exit poruke idu ovuda
 sys.path.insert(0, str(Path(__file__).parent))
 
 AREA_COL, PATH_COL, DATE_COL, SESS_COL, USER_COL, COMMENT_COL = 2, 3, 4, 5, 7, 8
@@ -60,6 +61,19 @@ RF_RULES = [
     (re.compile(r'MIROVINSKO ?OSIGURAVAJUCE', re.I),'Prihodi',    'Saša',              'Mirovina II stup'),
     (re.compile(r'NAKNADA', re.I),                 'Domaćinstvo', 'Bankovni troškovi', 'Naknada'),
 ]
+# ZABA tekući račun. Isti princip kao RF_RULES: kratko, vidljivo, i sve što ne
+# pogodi ide u N/A (krivo-ali-valjano klasificiran redak `apply_rules.py` više
+# ne može popraviti, pa je N/A pošteniji od nagađanja).
+# ⚠ `Podizanje gotovog novca` je `Transfer | cash - bankomat` — taj redak JE u
+#   saldu (novac je otišao s računa), a gotovinski trošak koji slijedi NIJE
+#   (v. CLAUDE.md: Cash je izbačen iz filtra salda).
+ZABA_RULES = [
+    (re.compile(r'MASTERCARD KARTICOM', re.I),        'Transfer',    'izmedju racuna',    'Mastercard'),
+    (re.compile(r'Naknada za vođenje', re.I),         'Domaćinstvo', 'Bankovni troškovi', 'Naknada'),
+    (re.compile(r'Podizanje gotovog novca', re.I),    'Transfer',    'cash - bankomat',   'Bankomat'),
+    (re.compile(r'MIROVINSKOG PRIMANJA', re.I),       'Prihodi',     'Koka',              'Mirovina'),
+]
+
 NA = 'N/A'                 # legitimna vrijednost, ne blokira uvoz (S107q)
 DATE_TOL = 3               # dana tolerancije pri prepoznavanju istog retka
 
@@ -143,6 +157,19 @@ class Target:
         self.ws.cell(row, c).value = value
         return True
 
+    def accounts(self) -> set:
+        """Vrijednosti `Racun` koje list već nosi — i na postojećim retcima i na
+        prepisanima u praznima."""
+        c = self.find('Racun')
+        if c is None:
+            return set()
+        vals = set()
+        for r in self.real_rows + self.blank_rows:
+            v = str(self.ws.cell(r, c).value or '').strip()
+            if v:
+                vals.add(v)
+        return vals
+
     def existing_keys(self) -> set:
         """(datum, iznos) postojećih redaka — ključ za dedup protiv izvoda."""
         keys = set()
@@ -200,6 +227,41 @@ def rf_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
             'stanje': t.get('stanje_izvod'),
         })
     return out
+
+
+def zaba_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
+    """Retci tekućeg računa sa ZABA izvatka. Parser sam validira smjer i
+    potpunost protiv ISPISANIH salda (`_validate_zaba`) — ako format izvatka
+    ikad promijeni, javi se na stderr umjesto da tiho da manje redaka."""
+    from enrich_from_izvoda import parse_zaba_racun
+    out = []
+    for t in parse_zaba_racun(pdf):
+        d = _as_date(t['date'])
+        if (od and d < od) or (do and d > do):
+            continue
+        tip, podtip, kom = NA, NA, t['opis'][:60]
+        for rx, ti, po, km in ZABA_RULES:
+            if rx.search(t['opis']):
+                tip, podtip, kom = ti, po, km
+                break
+        out.append({
+            'date': d, 'smjer': t['smjer'], 'iznos': round(float(t['iznos']), 2),
+            'opis': t['opis'], 'izvor': 'Racun', 'tip': tip, 'podtip': podtip,
+            'komentar': kom, 'naplata': d, 'stanje': None,
+        })
+    return out
+
+
+def zaba_printed_balance(pdf: Path) -> tuple[float | None, date | None]:
+    """Ispisano `NOVO STANJE` i datum zadnje transakcije — kontrolni cilj koji
+    NIJE naš izračun. ⚠ Izvod se ne zatvara krajem mjeseca (S110), pa datum
+    dolazi iz zadnjeg retka, ne iz imena datoteke."""
+    from enrich_from_izvoda import _parse_zaba_all, _zaba_is_tekuci
+    txs, balances = _parse_zaba_all(pdf)
+    novo = next((b['novo'] for b in balances if _zaba_is_tekuci(b['account'])), None)
+    tekuci = [t for t in txs if _zaba_is_tekuci(t['account'])]
+    last = max((_as_date(t['date']) for t in tekuci), default=None)
+    return novo, last
 
 
 def visa_rows(pdf: Path, naplata: date, od: date | None, do: date | None) -> list[dict]:
@@ -326,16 +388,20 @@ def main() -> None:
     ap = argparse.ArgumentParser(description='Popuni app-ov Excel retcima s bankovnog izvoda.')
     ap.add_argument('target', type=Path, help='xlsx skinut iz appa (delta sheet ili export)')
     ap.add_argument('--rf',      type=Path, help='RF izvod (PDF, OCR)')
+    ap.add_argument('--zaba',    type=Path, help='ZABA izvadak tekućeg računa (PDF)')
     ap.add_argument('--visa',    type=Path, help='PBZ Visa račun (PDF)')
     ap.add_argument('--naplata', help='datum skupne naplate Vise, YYYY-MM-DD (s RF izvoda)')
     ap.add_argument('--od',      help='uzmi retke od datuma (YYYY-MM-DD)')
     ap.add_argument('--do',      help='uzmi retke do datuma (YYYY-MM-DD)')
-    ap.add_argument('--racun',   default='Sašin tekući RF', help='vrijednost atributa Racun')
+    ap.add_argument('--racun',   help='vrijednost atributa Racun (zadano po izvoru)')
     ap.add_argument('--dry',     action='store_true', help='samo ispiši što bi upisao')
     a = ap.parse_args()
 
-    if not a.rf and not a.visa:
-        sys.exit('✗ Zadaj barem jedan izvor: --rf ili --visa.')
+    if not a.rf and not a.visa and not a.zaba:
+        sys.exit('✗ Zadaj barem jedan izvor: --rf, --zaba ili --visa.')
+    if a.zaba and (a.rf or a.visa):
+        sys.exit('✗ ZABA i RF su različiti računi — jedan file, jedan račun.')
+    racun = a.racun or ('Kokin tekući ZABA' if a.zaba else 'Sašin tekući RF')
     if a.visa and not a.naplata:
         sys.exit('✗ --visa traži --naplata (dan kad je banka skinula skupnu naplatu; piše na RF izvodu).')
 
@@ -345,6 +411,18 @@ def main() -> None:
     tg = Target(a.target)
     print(f'Target: {a.target.name} — {len(tg.real_rows)} postojećih redaka, '
           f'{len(tg.blank_rows)} praznih redaka predloška')
+
+    # ⚠ Delta sheet je uvijek sheet JEDNOG računa, a dedup se radi protiv redaka
+    #   koji su na njemu. Izvod drugog računa u tom fileu prolazi bez ijedne
+    #   poruke: ništa se ne poklopi, sve izgleda kao „novo", i dobiješ tuđe
+    #   retke pod svojim računom — plus kontrolni stupac koji ih ne broji.
+    have = tg.accounts()
+    if len(have) == 1 and racun not in have:
+        print(f'✗ File je za račun {next(iter(have))!r}, a izvor traži {racun!r}.')
+        sys.exit('  Izvezi delta sheet za taj račun, ili zadaj --racun ako znaš što radiš.')
+    if len(have) > 1:
+        print(f'  ⚠ File nosi više računa ({", ".join(sorted(have))}) — dedup je '
+              f'zato slabiji; provjeri popis prije upisa.')
 
     rows: list[dict] = []
     if a.rf:
@@ -377,6 +455,19 @@ def main() -> None:
                   f'pod drugim datumom. Autoritet za datum je izvod, pa je popravak '
                   f'datuma u bazi (ne novi redak).')
         rows += rf
+    if a.zaba:
+        zb = zaba_rows(a.zaba, od, do)
+        keys = tg.existing_keys()
+        dup = [r for r in zb if (r['date'].isoformat(), r['iznos']) in keys]
+        zb  = [r for r in zb if (r['date'].isoformat(), r['iznos']) not in keys]
+        print(f'ZABA izvod: {len(zb)} novih, {len(dup)} već na listu (preskočeno)')
+        novo, last = zaba_printed_balance(a.zaba)
+        if novo is not None:
+            print(f'► Ispisano NOVO STANJE: {novo:.2f}'
+                  + (f' na {last} (zadnja transakcija na izvodu)' if last else ''))
+            print('  ⚠ Kontrolni stupac se s tim poklapa SAMO ako prozor sheeta seže '
+                  'do tog datuma i ako prije njega ne fali nijedan redak.')
+        rows += zb
     if a.visa:
         vs = visa_rows(a.visa, date.fromisoformat(a.naplata), od, do)
         s = round(sum(r['iznos'] for r in vs), 2)
@@ -409,7 +500,7 @@ def main() -> None:
         print('\n--dry: ništa nije zapisano.')
         return
 
-    used, app = write_rows(tg, rows, a.racun, a.dry)
+    used, app = write_rows(tg, rows, racun, a.dry)
     out = a.target.with_name(f'{a.target.stem}_filled.xlsx')
     tg.wb.save(out)
     print(f'\n✓ {used} praznih redaka popunjeno, {app} dopisano ispod')
