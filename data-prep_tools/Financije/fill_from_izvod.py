@@ -394,6 +394,9 @@ def main() -> None:
     ap.add_argument('--od',      help='uzmi retke od datuma (YYYY-MM-DD)')
     ap.add_argument('--do',      help='uzmi retke do datuma (YYYY-MM-DD)')
     ap.add_argument('--racun',   help='vrijednost atributa Racun (zadano po izvoru)')
+    ap.add_argument('--protiv',  type=Path,
+                    help='dodatni app-ov export protiv kojeg se radi dedup (retci koje '
+                         'target sheet ne pokazuje — npr. kartične stavke)')
     ap.add_argument('--dry',     action='store_true', help='samo ispiši što bi upisao')
     a = ap.parse_args()
 
@@ -412,6 +415,16 @@ def main() -> None:
     print(f'Target: {a.target.name} — {len(tg.real_rows)} postojećih redaka, '
           f'{len(tg.blank_rows)} praznih redaka predloška')
 
+    # ⚠ Dedup vidi samo ono što je NA listu. Delta sheet nosi isključivo retke
+    #   koji miču saldo, pa kartične stavke ondje ne postoje — a baza ih ima.
+    #   Bez druge reference kartični izvod ulazi drugi put, i to tiho: saldo se
+    #   ne mijenja, pa se greška ne pokaže ni na pločici ni u kontrolnom stupcu.
+    extra_keys: set = set()
+    if a.protiv:
+        ref = Target(a.protiv)
+        extra_keys = ref.existing_keys()
+        print(f'Dedup i protiv: {a.protiv.name} — {len(ref.real_rows)} redaka')
+
     # ⚠ Delta sheet je uvijek sheet JEDNOG računa, a dedup se radi protiv redaka
     #   koji su na njemu. Izvod drugog računa u tom fileu prolazi bez ijedne
     #   poruke: ništa se ne poklopi, sve izgleda kao „novo", i dobiješ tuđe
@@ -429,7 +442,7 @@ def main() -> None:
         rf = rf_rows(a.rf, od, do)
         # Dedup protiv redaka koji su već na listu: prozor delta sheeta pokazuje
         # što baza ima, pa se dvostruki uvoz vidi OVDJE, prije nego što nastane.
-        keys = tg.existing_keys()
+        keys = tg.existing_keys() | extra_keys
         # ⚠ Dedup po TOČNOM (datum, iznos) propušta isti redak zaveden pod
         #   susjednim datumom — a to nije rijetkost nego pravilo: Kokin file i
         #   izvod se za knjiženje znaju razići za dan (`Mirovina III stup`:
@@ -457,7 +470,7 @@ def main() -> None:
         rows += rf
     if a.zaba:
         zb = zaba_rows(a.zaba, od, do)
-        keys = tg.existing_keys()
+        keys = tg.existing_keys() | extra_keys
         dup = [r for r in zb if (r['date'].isoformat(), r['iznos']) in keys]
         zb  = [r for r in zb if (r['date'].isoformat(), r['iznos']) not in keys]
         print(f'ZABA izvod: {len(zb)} novih, {len(dup)} već na listu (preskočeno)')
@@ -473,6 +486,18 @@ def main() -> None:
         s = round(sum(r['iznos'] for r in vs), 2)
         print(f'Visa račun: {len(vs)} kupovina, Σ {s:.2f} — mora biti jednako '
               f'skupnoj naplati na RF izvodu, inače košara nije potpuna')
+        keys = tg.existing_keys() | extra_keys
+        dup = [r for r in vs if (r['date'].isoformat(), r['iznos']) in keys]
+        vs  = [r for r in vs if (r['date'].isoformat(), r['iznos']) not in keys]
+        if dup:
+            print(f'  {len(dup)} stavki već postoji (preskočeno):')
+            for r in dup:
+                print(f'   = {r["date"]} {r["iznos"]:>9.2f}  {r["opis"][:45]}')
+        if not a.protiv:
+            print('  ⚠ BEZ --protiv: delta sheet ne sadrži kartične retke, pa dedup '
+                  'nema što usporediti. Izvezi iz appa retke s Izvor=Visa za razdoblje '
+                  'izvoda i predaj ih kao --protiv, inače stavke koje baza već ima '
+                  'ulaze DRUGI PUT — a saldo to ne osjeti.')
         rows += vs
 
     if not rows:
