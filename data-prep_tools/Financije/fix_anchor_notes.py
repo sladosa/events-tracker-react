@@ -36,13 +36,22 @@ RE_OLD = re.compile(r'ispisano NOVO STANJE,\s*([^\s(]+)', re.I)
 # Sidra bez bilješke kojima podrijetlo ZNAMO iz sesijskih zapisa. Sve ostalo
 # ide u `nije navedeno` — ključ je (group_value, confirmed_on).
 KNOWN = {
-    ('Sašin tekući RF', '2026-08-11'): f'{STATEMENT} · RF_2026-07.pdf',
+    ('Sašin tekući RF',    '2026-08-11'): f'{STATEMENT} · RF_2026-07.pdf',
+    # Iznos je ispisan na izvodu (`NOVO STANJE 1.184,86`), ali izvod se zatvara
+    # 24.12., a sidro je datirano 31.12. Provjereno: siječanjski izvod otvara se
+    # na istoj brojci i prva transakcija mu je 04.01.2026. — između ta dva datuma
+    # nije bilo prometa, pa je iznos istinit i na 31.12. Bilješka to nosi da se
+    # razlika datuma ne mora ponovno istraživati.
+    ('Kokin tekući ZABA',  '2025-12-31'): f'{STATEMENT} · ZABA_2025-12.pdf '
+                                          f'(izvod zatvoren 24.12.; do 31.12. nema prometa)',
 }
 
 
 def target_note(row: dict) -> str | None:
     note = (row.get('note') or '').strip()
-    if note:
+    # `nije navedeno` se tretira kao prazno: kad se podrijetlo naknadno UTVRDI,
+    # mora ga se moći upisati. Inače bi prvi run trajno zaključao „ne zna se".
+    if note and note != UNKNOWN:
         m = RE_OLD.search(note)
         if m:
             return f'{STATEMENT} · {m.group(1)}'
