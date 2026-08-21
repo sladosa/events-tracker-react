@@ -23,10 +23,12 @@
 import ExcelJS from 'exceljs';
 import {
   addActivitiesSheetsTo,
+  buildAttrMeta,
   mergeSessionEvents,
   type RowAnnotations,
   type RowAnnotation,
 } from './excelExport';
+import { applyProfileToWorkbook, getProfileAttrOrder, type ExportProfile } from './exportProfile';
 import { loadEventsByIdsForExport } from './excelDataLoader';
 import { addFilterSheet, timestampSuffix, THIN_BORDER, HEADER_FONT } from './excelUtils';
 import type { FilterSheetInfo } from './excelUtils';
@@ -43,6 +45,16 @@ export interface ImportReportInput {
   /** Rows skipped as unchanged — reported as a number only */
   skipped:     number;
   warnings:    string[];
+  /**
+   * Column layout to reuse — read from the imported file itself, not from
+   * area settings. The report is the working file's continuation, so it has to
+   * look like the file the user was just editing: same column order, same
+   * groups collapsed, same widths. Without it the report opens fully expanded
+   * and the columns that matter sit off-screen behind the frozen panes.
+   */
+  exportProfile?: ExportProfile | null;
+  /** Profile name for the Filter sheet, when the imported file carried one. */
+  profileName?:   string | null;
 }
 
 export interface ImportReportFile {
@@ -74,6 +86,18 @@ export async function buildImportReport(input: ImportReportInput): Promise<Impor
   const bundle = await loadEventsByIdsForExport(userId, outcomes.map(o => o.eventId));
   const merged = mergeSessionEvents(bundle.events, bundle.categoriesDict);
 
+  // Column order comes first (it decides which attribute lands in which column),
+  // grouping and widths after the sheet exists — same order as createEventsExcel.
+  // ⚠ The report covers only the categories the import touched, so its attribute
+  //   set can be narrower than the profile's. applyProfileToWorkbook stops at the
+  //   sheet's real attribute columns; it must never reach row_hash / Delete? /
+  //   Result, which are what make this file re-importable.
+  let attrColumnOrder: number[] | undefined;
+  if (input.exportProfile) {
+    const { attrMeta, attrColumns } = buildAttrMeta(bundle.attrDefs, bundle.categoriesDict);
+    attrColumnOrder = getProfileAttrOrder(input.exportProfile, attrColumns, attrMeta);
+  }
+
   const ts = timestampSuffix();
 
   // Composed in one workbook rather than post-processing a written file: an
@@ -84,7 +108,10 @@ export async function buildImportReport(input: ImportReportInput): Promise<Impor
   wb.creator = 'Events Tracker';
   wb.created = new Date();
 
-  await addActivitiesSheetsTo(wb, merged, bundle.attrDefs, bundle.categoriesDict, 'desc', undefined, annotations);
+  await addActivitiesSheetsTo(wb, merged, bundle.attrDefs, bundle.categoriesDict, 'desc', attrColumnOrder, annotations);
+  if (input.exportProfile) {
+    applyProfileToWorkbook(wb, input.exportProfile, bundle.attrDefs, bundle.categoriesDict);
+  }
   // No Structure sheet: every category involved necessarily exists already.
 
   addSummarySheet(wb, input, merged.length);
@@ -98,6 +125,7 @@ export async function buildImportReport(input: ImportReportInput): Promise<Impor
     dateFrom:   null,
     dateTo:     null,
     sortOrder:  'desc',
+    exportProfile: input.profileName ?? undefined,
   };
   addFilterSheet(wb, filterInfo);
 

@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useCallback, useMemo } from 'react';
+import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { supabase } from '@/lib/supabaseClient';
 import {
@@ -22,6 +23,7 @@ import {
 import { importStructureExcel } from '@/lib/structureImport';
 import { loadCategoriesForExport, loadAttrDefsForCategories } from '@/lib/excelDataLoader';
 import { buildImportReport } from '@/lib/excelImportReport';
+import { readProfileFromWorkbook, readProfileNameFromWorkbook, type ExportProfile } from '@/lib/exportProfile';
 import type { CollisionInfo, UpdateAnalysis, DeleteAnalysis } from '@/lib/excelImport';
 
 interface ExcelImportModalProps {
@@ -319,13 +321,31 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       // Generated AFTER apply so those ids and hashes are the real, saved ones.
       setApplyingMessage('Preparing import report…');
       try {
+        // Layout comes from the file that was just imported, not from area
+        // settings: the report is that file's continuation, so it must open with
+        // the same columns collapsed and the same widths. A profile read here
+        // also costs nothing to keep in sync — there is no second copy to drift.
+        let profile: ExportProfile | null = null;
+        let profileName: string | null = null;
+        try {
+          const srcWb = new ExcelJS.Workbook();
+          await srcWb.xlsx.load(await selectedFile.arrayBuffer());
+          profile     = readProfileFromWorkbook(srcWb);
+          profileName = readProfileNameFromWorkbook(srcWb);
+        } catch {
+          // Unreadable layout is not a reason to lose the report — it just opens
+          // with default columns.
+        }
+
         const report = await buildImportReport({
-          userId:     user.id,
-          sourceFile: selectedFile.name,
-          outcomes:   importResult.outcomes,
-          removed:    importResult.removed,
-          skipped:    importResult.skipped,
-          warnings:   importResult.warnings,
+          userId:        user.id,
+          sourceFile:    selectedFile.name,
+          outcomes:      importResult.outcomes,
+          removed:       importResult.removed,
+          skipped:       importResult.skipped,
+          warnings:      importResult.warnings,
+          exportProfile: profile,
+          profileName,
         });
         if (report) {
           saveAs(

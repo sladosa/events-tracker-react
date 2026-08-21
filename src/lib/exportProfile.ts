@@ -11,7 +11,8 @@
  */
 
 import ExcelJS from 'exceljs';
-import { FIXED_COLUMNS, ATTR_COL_START } from './excelExport';
+import { FIXED_COLUMNS, ATTR_COL_START, DELETE_COL_HEADER } from './excelExport';
+import { ROW_HASH_HEADER } from './excelFingerprint';
 import type { ExportAttrDef, ExportCategoriesDict } from './excelTypes';
 
 // ─────────────────────────────────────────────
@@ -183,8 +184,16 @@ export function applyProfileToWorkbook(
   }
 
   // Apply to attribute columns — profile attr order = sheet column order
+  //
+  // ⚠ Poklapanje je POZICIJSKO, a list ne mora imati isto atributskih stupaca
+  //   kao profil: izvoz užeg skupa kategorija (import report nosi samo dodirnute)
+  //   daje kraći list. Bez granice bi petlja nastavila pisati `hidden` preko
+  //   `row_hash`, `Delete?` i izvještajnih stupaca desno od njih — a upravo su
+  //   to stupci koji se ne smiju sakriti (zastavica koju nitko ne nađe je
+  //   zastavica koju nitko ne može maknuti).
+  const attrColLimit = countAttrColumns(ws);
   const profileAttrCols = profile.columns.filter(c => c.key.startsWith('attr:'));
-  for (let idx = 0; idx < profileAttrCols.length; idx++) {
+  for (let idx = 0; idx < Math.min(profileAttrCols.length, attrColLimit); idx++) {
     const pc = profileAttrCols[idx];
     const colIdx = ATTR_COL_START + idx;
     const col = ws.getColumn(colIdx);
@@ -203,6 +212,28 @@ export function applyProfileToWorkbook(
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
+
+/**
+ * Koliko atributskih stupaca list stvarno ima — od `ATTR_COL_START` do prvog
+ * stupca koji više nije atribut (`row_hash` i sve desno od njega).
+ * Vraća 0 ako zaglavlje EVENT DATA nije nađeno; tada se profil na atribute ne
+ * primjenjuje, što je sigurnije od pogađanja.
+ */
+function countAttrColumns(ws: ExcelJS.Worksheet): number {
+  let headerRow = 0;
+  for (let r = 1; r <= ws.rowCount; r++) {
+    if (String(ws.getCell(r, 1).value ?? '').trim() === 'event_id') { headerRow = r; break; }
+  }
+  if (!headerRow) return 0;
+
+  let n = 0;
+  for (let c = ATTR_COL_START; c <= ws.columnCount; c++) {
+    const h = String(ws.getCell(headerRow, c).value ?? '').trim();
+    if (!h || h === ROW_HASH_HEADER || h === DELETE_COL_HEADER) break;
+    n++;
+  }
+  return n;
+}
 
 function colLetterToIndex(letter: string): number {
   let result = 0;

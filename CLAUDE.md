@@ -135,6 +135,13 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   grešku binarnog zapisa (~`1e-13`), pa je uvjetni format bojao **crveno nad savršeno usklađenim
   sheetom**. Svaka usporedba novca s nulom mora ići kroz `ROUND(…, 2)` — jedinicu u kojoj su i
   svi ulazi. Vrijedi za svaku buduću kontrolnu ćeliju, ne samo za ovu.
+- **Izvještaj o uvozu nosi layout filea koji je uvezen** (S113). Profil se čita iz **tog**
+  filea (`readProfileFromWorkbook`), ne iz `areas.settings` — izvještaj je nastavak radnog
+  filea, pa mora otvoriti iste grupe skupljene i iste širine. ⚠ Profil se na atribute
+  primjenjuje **pozicijski**, a izvještaj pokriva samo dodirnute kategorije ⇒ list može imati
+  **manje** atributskih stupaca od profila. Bez granice petlja piše `hidden` preko `row_hash`,
+  `Delete?` i `Result` — dakle sakrije baš ono što file čini ponovno uvozivim.
+  `applyProfileToWorkbook` zato staje na prvom stupcu koji nije atribut.
 - **Kolona izvan autofiltera se pri sortu raspari od retka.** Svaka nova kolona mora ući u
   `auto_filter.ref` (vrijedi i za app export i za Python alate).
 - **`export_profiles` još ne preživljava Structure roundtrip** (ključ `attr:Area||CatPath||AttrName`

@@ -877,3 +877,20 @@ uz Sašino odobrenje:
 
 `−200,14` na ZABA lancu 2025-08 → 2026-04: četiri retka bez opisa i bez bankovne protustavke.
 Puni nalaz, provjere i odluka: `SALDO_MODEL_NALAZI.md` §6.3.
+
+## S113 (2026-08-21) — tranša 1 potvrđena izvodom, `fill_from_izvod.py`
+
+- **Tranša 1 uvezena i potvrđena izvana.** `RF_2026-07.pdf` (OCR) sadrži svih 7 redaka u cent,
+  uključujući ispravak `250,93 → 253,51`. Ispisana stanja s izvoda poklapaju se s kontrolnim
+  stupcem delta sheeta redak po redak (`715,33 … 1.716,55`, pa `544,96 → 544,79 → 799,12`).
+- **`rf_ocr.py` zadržava ispisano stanje** (`stanje_izvod`). Dosad se koristilo za
+  chain-validaciju pa bacalo — a to je jedini broj u lancu koji nije izračunat iz naših
+  zapisa, dakle jedini legitiman izvor za sidro salda.
+- **Novo: `fill_from_izvod.py`** — puni app-ov Excel (delta sheet ili export) retcima s izvoda,
+  **po imenu zaglavlja**, pa raspored kolona (profil, skrivene kolone) ne igra ulogu.
+  Dedup protiv redaka koji su već na listu, s **tolerancijom na datum** (±3 dana).
+- **Nalazi tranše 2:** Visa naplata je `07.08.` (ne 11.08.), uz nju ide `0,17`, a `11.08.`
+  stiže `+254,33` (Mirovina III) — Kokina brojka `799,12` je točna, sastav nije bio.
+  Visa košara: **47 kupovina, Σ `1.171,59`** — u cent jednako naplati na RF izvodu.
+- **`Mirovina III stup` ima na izvodu `09.07.`, u bazi `10.07.`** — isti redak, dan razlike.
+  Alat ga prepoznaje i preskače; popravak je izmjena datuma u bazi, ne novi redak.

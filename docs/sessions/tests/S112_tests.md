@@ -8,12 +8,12 @@
 
 **Sidra u bazi na početku S112 — četiri** (`balance_anchors`):
 
-| `confirmed_on` | `group_value` | iznos |
-| --- | --- | --- |
-| `2025-01-01` | Kokin tekući ZABA | 3.054,41 |
-| `2025-12-31` | Kokin tekući ZABA | 1.184,86 |
-| `2026-07-01` | Kokin tekući ZABA | 2.255,64 |
-| `2025-01-02` | Sašin tekući RF | 3.458,03 |
+| `confirmed_on` | `group_value`     | iznos    |
+| -------------- | ----------------- | -------- |
+| `2025-01-01`   | Kokin tekući ZABA | 3.054,41 |
+| `2025-12-31`   | Kokin tekući ZABA | 1.184,86 |
+| `2026-07-01`   | Kokin tekući ZABA | 2.255,64 |
+| `2025-01-02`   | Sašin tekući RF   | 3.458,03 |
 
 ⚠ Krivo RF sidro (`3.453,03`) iz S111 **više ne postoji** — netko ga je obrisao između sesija.
 Time **`T-S111-2` nema što provjeriti** i briše se s popisa; mehanizam „ispravak = novi redak"
@@ -66,7 +66,7 @@ koja je u tom istom zbroju. Isti razred dvostrukog brojanja protiv kojeg je cije
 
 ---
 
-## T-S112-3 ⭐ Delta sheet — prozor, kontrolni stupac, zelena nula
+## T-S112-3 ⭐ Delta sheet — prozor, kontrolni stupac, zelena nula — ✅ PROŠAO 2026-08-21
 
 **Zašto:** ovo je alat kojim će Koka rješavati deltu. Sve ostalo u Fazi 1 služi njemu.
 
@@ -98,9 +98,14 @@ koja je u tom istom zbroju. Isti razred dvostrukog brojanja protiv kojeg je cije
      `SUMIFS`-a nosi ~`1e-13` pa nula nije stvarna nula).
 5. Upiši `700,00` → razlika `−12,75`, ćelija **crvena**.
 
+**Rezultat 2026-08-21:** 9 redaka, otvarajuće `931,98` s bilješkom o sidru, zadnji kontrolni
+`712,75`, razlika `0,00` **zelena**. ✅ (korak 5 nije zasebno provjeren.) Prozor je krenuo od
+`22.06.` a oznaka glasi `stanje 21.06.2026.` — test je pisan 19.08., prozor se pomiče s danas,
+istih 9 redaka jer između 20. i 25.06. nema RF prometa.
+
 ---
 
-## T-S112-4 ⭐ Uvoz ispunjenog delta sheeta (tranša 1)
+## T-S112-4 ⭐ Uvoz ispunjenog delta sheeta (tranša 1) — ✅ PROŠAO 2026-08-21
 
 **Zašto:** ovo je prvi pravi uvoz kroz novi mehanizam i istovremeno **tranša 1** delte.
 Ako prođe, ostatak delte je isti postupak ponovljen.
@@ -132,6 +137,12 @@ Ako prođe, ostatak delte je isti postupak ponovljen.
 5. Overview → `Date To` = **04.08.2026.** → `Sašin tekući RF` mora dati **`1.716,55`**.
 
 ⚠ **Kontrolna brojka dolazi iz Kokinog lanca**, dakle iz izvora neovisnog o aplikaciji.
+
+**Rezultat 2026-08-21:** `7 Created / 1 Updated / 8 Unchanged / 0 Deleted`, upozorenje
+„33 praznih redaka predloška preskočeno", Modify popis sadržavao **samo** `Uplata 250,93 → 253,51`
+(dakle `Datum naplate` se više ne javlja kao promjena — usput potvrda T-S112-1).
+Overview `Date To = 04.08.2026.` → `Sašin tekući RF` = **1.716,55 €**. ✅
+Prazan slučaj T-S112-5 time je također pokriven; ostaje provjeriti **započet** redak predloška.
 
 ---
 

@@ -310,6 +310,11 @@ def parse_rf_ocr(path: Path) -> list[dict]:
         st = t.pop('_stanje')
         t.pop('_y', None)
         t.pop('_page', None)
+        # Tekuće stanje ISPISANO na izvodu se zadržava: to je jedini podatak u
+        # cijelom lancu koji nije izračunat iz naših zapisa, pa je jedini
+        # legitiman izvor za sidro salda (OVERVIEW_TAB_SPEC §2.17). Dosad se
+        # koristio za chain-validaciju i bacao.
+        t['stanje_izvod'] = st
         if st is not None and exp is not None and abs(st - exp) > 0.01:
             if '[OCR?]' not in t['opis']:
                 t['opis'] += ' [OCR?]'
@@ -329,4 +334,6 @@ if __name__ == '__main__':
     sys.stdout.reconfigure(encoding='utf-8')
     p = Path(sys.argv[1])
     for t in parse_rf_ocr(p):
-        print(f'{t["date"]} {t["smjer"]:<7} {t["iznos"]:>10.2f}  {t["opis"][:80]}')
+        st = t.get('stanje_izvod')
+        st_s = f'{st:>10.2f}' if st is not None else '         ?'
+        print(f'{t["date"]} {t["smjer"]:<7} {t["iznos"]:>10.2f}  stanje {st_s}  {t["opis"][:60]}')
