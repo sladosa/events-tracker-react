@@ -235,6 +235,59 @@ def rf_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
     return out
 
 
+class KokaOpisi:
+    """Kokini opisi iz njene Excelice, spareni s retcima izvoda po (iznos, datum).
+
+    ⚠ PODJELA AUTORITETA (CLAUDE.md „Politika izvora"): izvod je autoritet za
+    IZNOS i DATUM, njen redak za OPIS. Izvod piše
+    `SUPER KONZUM P-3200 - RADNICKA CESTA 1 - ZAGREB`, ona piše `Konzum` — i to
+    je tekst koji ona prepoznaje u popisu. Strojno kracenje opisa je pogadanje;
+    njen tekst je podatak.
+
+    Sparuje se s tolerancijom na datum, jer se dan knjizenja i dan kupovine
+    razlikuju po nekoliko dana. Svaki njen redak se trosi najvise jednom, inace
+    bi dvije iste kupovine istog dana obje pokupile isti opis.
+    """
+
+    def __init__(self, path: Path, prije: int = 3, poslije: int = 45):
+        # Prozor je NESIMETRICAN: ona kupovinu upisuje na dan kupnje ILI na dan
+        # kad je karticni racun naplacen (vidjeno oboje u istom fileu), a nikad
+        # prije kupovine. Simetricna tolerancija od par dana zato ne uhvati nista
+        # za karticne retke.
+        self.prije, self.poslije = prije, poslije
+        self.by_amount: dict[float, list] = {}
+        wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+        for name in wb.sheetnames:
+            ws = wb[name]
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if len(row) < 6:
+                    continue
+                _, opis, d, upl, isp, _ = row[:6]
+                if not isinstance(d, datetime) or not opis:
+                    continue
+                iznos = upl if isinstance(upl, (int, float)) and upl else isp
+                if not isinstance(iznos, (int, float)) or not iznos:
+                    continue
+                self.by_amount.setdefault(round(float(iznos), 2), []).append(
+                    {'date': d.date(), 'opis': str(opis).strip(), 'used': False})
+        self.hits = 0
+        self.misses = 0
+
+    def find(self, d: date, iznos: float) -> str | None:
+        cands = [c for c in self.by_amount.get(round(iznos, 2), []) if not c['used']]
+        if not cands:
+            self.misses += 1
+            return None
+        best = min(cands, key=lambda c: abs((c['date'] - d).days))
+        delta = (best['date'] - d).days
+        if delta < -self.prije or delta > self.poslije:
+            self.misses += 1
+            return None
+        best['used'] = True
+        self.hits += 1
+        return best['opis']
+
+
 def short_opis(raw: str) -> str:
     """Kratko ime trgovca iz opisa izvoda — `leaf comment` čita čovjek u popisu.
 
@@ -259,7 +312,8 @@ def short_opis(raw: str) -> str:
     return t[:40] if t else raw[:40]
 
 
-def zaba_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
+def zaba_rows(pdf: Path, od: date | None, do: date | None,
+              koka: 'KokaOpisi | None' = None) -> list[dict]:
     """Retci tekućeg računa sa ZABA izvatka. Parser sam validira smjer i
     potpunost protiv ISPISANIH salda (`_validate_zaba`) — ako format izvatka
     ikad promijeni, javi se na stderr umjesto da tiho da manje redaka."""
@@ -294,7 +348,8 @@ def zaba_printed_balance(pdf: Path) -> tuple[float | None, date | None]:
     return novo, last
 
 
-def visa_rows(pdf: Path, naplata: date, od: date | None, do: date | None) -> list[dict]:
+def visa_rows(pdf: Path, naplata: date, od: date | None, do: date | None,
+              koka: 'KokaOpisi | None' = None) -> list[dict]:
     """Kartične stavke s PBZ Visa računa. Saldo NE diraju — plaća ih jedna
     skupna naplata, koja stiže s RF izvoda kao običan Racun redak."""
     from enrich_from_izvoda import parse_pbz_visa
@@ -306,10 +361,13 @@ def visa_rows(pdf: Path, naplata: date, od: date | None, do: date | None) -> lis
         if t['smjer'] != 'Isplata':
             continue                            # 'PRIMLJENA UPLATA' je protustavka naplate
         m = re.search(r'RATA\s*(\d+)\s*/\s*(\d+)', t['opis'])
+        kom_koka = koka.find(d, round(float(t['iznos']), 2)) if koka else None
+        kom_visa = kom_koka or short_opis(t['opis'])
         out.append({
             'date': d, 'smjer': 'Isplata', 'iznos': round(float(t['iznos']), 2),
             'opis': t['opis'], 'izvor': 'Visa', 'tip': NA, 'podtip': NA,
-            'komentar': short_opis(t['opis']),
+            'komentar': kom_visa,
+            'opis_izvor': 'koka' if kom_koka else 'izvod',
             'naplata': naplata,                 # dan kad je banka skinula skupnu naplatu
             'rata': (int(m.group(1)), int(m.group(2))) if m else None,
             'stanje': None,
@@ -438,6 +496,9 @@ def main() -> None:
     ap.add_argument('--od',      help='uzmi retke od datuma (YYYY-MM-DD)')
     ap.add_argument('--do',      help='uzmi retke do datuma (YYYY-MM-DD)')
     ap.add_argument('--racun',   help='vrijednost atributa Racun (zadano po izvoru)')
+    ap.add_argument('--koka',    type=Path,
+                    help='Kokina Excelica — iz nje se preuzimaju OPISI (iznos i datum '
+                         'ostaju s izvoda)')
     ap.add_argument('--protiv',  type=Path,
                     help='dodatni app-ov export protiv kojeg se radi dedup (retci koje '
                          'target sheet ne pokazuje — npr. kartične stavke)')
@@ -455,6 +516,7 @@ def main() -> None:
     od = date.fromisoformat(a.od) if a.od else None
     do = date.fromisoformat(a.do) if a.do else None
 
+    koka = KokaOpisi(a.koka) if a.koka else None
     tg = Target(a.target)
     print(f'Target: {a.target.name} — {len(tg.real_rows)} postojećih redaka, '
           f'{len(tg.blank_rows)} praznih redaka predloška')
@@ -514,7 +576,7 @@ def main() -> None:
                   f'datuma u bazi (ne novi redak).')
         rows += rf
     if a.zaba:
-        zb = zaba_rows(a.zaba, od, do)
+        zb = zaba_rows(a.zaba, od, do, koka)
         keys = tg.existing_keys() | extra_keys
         dup = [r for r in zb if (r['date'].isoformat(), r['iznos']) in keys]
         zb  = [r for r in zb if (r['date'].isoformat(), r['iznos']) not in keys]
@@ -527,7 +589,7 @@ def main() -> None:
                   'do tog datuma i ako prije njega ne fali nijedan redak.')
         rows += zb
     if a.visa:
-        vs = visa_rows(a.visa, date.fromisoformat(a.naplata), od, do)
+        vs = visa_rows(a.visa, date.fromisoformat(a.naplata), od, do, koka)
         s = round(sum(r['iznos'] for r in vs), 2)
         print(f'Visa račun: {len(vs)} kupovina, Σ {s:.2f} — mora biti jednako '
               f'skupnoj naplati na RF izvodu, inače košara nije potpuna')
@@ -552,10 +614,16 @@ def main() -> None:
     rows.sort(key=lambda r: (r['date'], r['iznos']))
     print(f'\nZa upis: {len(rows)} redaka')
     for r in rows:
-        flag = '' if r['tip'] != NA else '   ⚠ Tip=N/A'
+        flag = '' if r['tip'] != NA else '  ⚠ Tip=N/A'
+        if r.get('opis_izvor') == 'izvod':
+            flag += '  ⚠ nema Kokinog opisa'
         print(f'   + {r["date"]} {r["smjer"]:<7} {r["iznos"]:>9.2f}  '
               f'{r["tip"]}/{r["podtip"]:<16} {r["komentar"][:34]:<34}{flag}')
 
+    if koka:
+        print()
+        print(f'Kokini opisi: {koka.hits} spareno, {koka.misses} bez para '
+              f'(za te retke ostaje skraceni tekst izvoda).')
     na = sum(1 for r in rows if r['tip'] == NA)
     if na:
         print(f'\n⚠ {na} redaka ide s Tip=N/A — legitimno za uvoz, ali ih netko '
