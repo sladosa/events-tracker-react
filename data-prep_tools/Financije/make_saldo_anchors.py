@@ -243,7 +243,10 @@ def cmd_write(sp: Supa, series: list[dict], only: date | None) -> None:
         sp._call('balance_anchors', method='POST', body={
             'area_id': AREA_ID, 'group_slug': GROUP_SLUG, 'group_value': GROUP_VALUE,
             'amount': r['novo'], 'confirmed_on': r['close'].isoformat(),
-            'note': f"ispisano NOVO STANJE, {r['file']} (make_saldo_anchors.py)",
+            # Isti oblik koji piše i pločica (`BalanceByGroupTile`):
+            # `<kategorija> · <detalj>`, kategorija iz zatvorenog popisa.
+            # Bilješka se čita i uspoređuje, pa mora biti ista bez obzira tko ju piše.
+            'note': f"ispisano stanje s izvoda · {r['file']}",
             'created_by': owner,
         })
         print(f"  ✓ {r['close']} = {eur(r['novo'])}   ← {r['file']}")

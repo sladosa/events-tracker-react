@@ -55,6 +55,20 @@ import type { BalanceByGroupWidget, UUID } from '@/types/database';
 
 const T = THEME.overview;
 
+/**
+ * Odakle potvrđeno stanje dolazi. Zatvoren popis, jer je bilješka podatak koji
+ * se poslije **čita i uspoređuje**, a ne rečenica: pet varijanti istog izvora
+ * ne daju se ni grupirati ni prebrojati. Isti tekst piše i
+ * `make_saldo_anchors.py`, pa su sidra iz skripte i iz UI-ja istog oblika.
+ */
+export const ANCHOR_SOURCE_STATEMENT = 'ispisano stanje s izvoda';
+export const ANCHOR_SOURCE_UNKNOWN   = 'nije navedeno';
+const ANCHOR_SOURCES = [
+  'ekran bankovne aplikacije',
+  ANCHOR_SOURCE_STATEMENT,
+  'bankomat / ispis na papiru',
+] as const;
+
 const NO_VALUE = '(bez vrijednosti)';
 
 /**
@@ -103,6 +117,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
   // s ekrana banke ili izračunata. Prazno polje zato ne znači „bez bilješke"
   // nego zapisuje da izvor NIJE naveden — neistina je gora od izostanka.
   const [srcInput, setSrcInput] = useState<Record<string, string>>({});
+  const [srcDetail, setSrcDetail] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
   // ── A BALANCE CANNOT BE "AS OF" A FUTURE DATE ────────────────────────────
@@ -200,6 +215,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
     setSavingKey(groupValue);
     try {
       const src = (srcInput[groupValue] ?? '').trim();
+      const detail = (srcDetail[groupValue] ?? '').trim();
       await saveAnchor({
         areaId,
         groupSlug: widget.group_by,
@@ -207,11 +223,12 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
         amount,
         confirmedOn: confirmOn,
         note: src
-          ? `${src} (upisano u aplikaciji)`
-          : 'upisano u aplikaciji — izvor nije naveden',
+          ? (detail ? `${src} · ${detail}` : src)
+          : ANCHOR_SOURCE_UNKNOWN,
       });
       setBankInput(prev => ({ ...prev, [groupValue]: '' }));
       setSrcInput(prev => ({ ...prev, [groupValue]: '' }));
+      setSrcDetail(prev => ({ ...prev, [groupValue]: '' }));
       toast.success(
         `Potvrđeno na ${formatDateHr(confirmOn)}: ${groupValue} = ${formatAmount(amount, widget.unit)}`,
       );
@@ -390,19 +407,41 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                     )}
                   />
 
-                  <input
+                  {/* Odakle — zatvoren popis, ne slobodan tekst. Slobodan tekst
+                      daje pet zapisa za istu stvar, pa se poslije ne da ni
+                      grupirati ni prebrojati; a odgovor koji bilješka mora dati
+                      („je li broj došao izvana") ima konačan broj oblika.
+                      Detalj (ime izvoda) je dodatak, ne zamjena. */}
+                  <select
                     id={`src-${key}`}
-                    type="text"
                     value={srcInput[key] ?? ''}
                     onChange={e => setSrcInput(prev => ({ ...prev, [key]: e.target.value }))}
-                    placeholder="odakle (izvod, ekran banke…)"
-                    title="Odakle je broj — sprema se uz potvrdu. Bez toga se poslije ne vidi je li stanje s izvoda ili s ekrana."
+                    title="Odakle je broj — sprema se uz potvrdu."
                     className={cn(
-                      'w-52 px-2 py-1.5 border border-gray-300 rounded-lg text-sm',
+                      'px-2 py-1.5 border border-gray-300 rounded-lg text-sm bg-white',
                       'focus:ring-2 focus:border-transparent',
                       T.ring,
                     )}
-                  />
+                  >
+                    <option value="">odakle…</option>
+                    {ANCHOR_SOURCES.map(o => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+
+                  {srcInput[key] === ANCHOR_SOURCE_STATEMENT && (
+                    <input
+                      type="text"
+                      value={srcDetail[key] ?? ''}
+                      onChange={e => setSrcDetail(prev => ({ ...prev, [key]: e.target.value }))}
+                      placeholder="npr. RF_2026-07.pdf"
+                      className={cn(
+                        'w-40 px-2 py-1.5 border border-gray-300 rounded-lg text-sm',
+                        'focus:ring-2 focus:border-transparent',
+                        T.ring,
+                      )}
+                    />
+                  )}
 
                   {delta === null ? (
                     !row.anchored && (
