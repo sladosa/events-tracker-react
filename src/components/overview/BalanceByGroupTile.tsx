@@ -98,6 +98,11 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bankInput, setBankInput] = useState<Record<string, string>>({});
+  // Odakle broj dolazi. ⚠ Cijeli mehanizam počiva na tome da potvrđeno stanje
+  // dolazi IZVANA (§2.17), a iz same brojke se poslije ne vidi je li s izvoda,
+  // s ekrana banke ili izračunata. Prazno polje zato ne znači „bez bilješke"
+  // nego zapisuje da izvor NIJE naveden — neistina je gora od izostanka.
+  const [srcInput, setSrcInput] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
   // ── A BALANCE CANNOT BE "AS OF" A FUTURE DATE ────────────────────────────
@@ -194,14 +199,19 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
     }
     setSavingKey(groupValue);
     try {
+      const src = (srcInput[groupValue] ?? '').trim();
       await saveAnchor({
         areaId,
         groupSlug: widget.group_by,
         groupValue,
         amount,
         confirmedOn: confirmOn,
+        note: src
+          ? `${src} (upisano u aplikaciji)`
+          : 'upisano u aplikaciji — izvor nije naveden',
       });
       setBankInput(prev => ({ ...prev, [groupValue]: '' }));
+      setSrcInput(prev => ({ ...prev, [groupValue]: '' }));
       toast.success(
         `Potvrđeno na ${formatDateHr(confirmOn)}: ${groupValue} = ${formatAmount(amount, widget.unit)}`,
       );
@@ -375,6 +385,20 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                     placeholder="npr. 1.240,00"
                     className={cn(
                       'w-32 px-2 py-1.5 border border-gray-300 rounded-lg text-sm tabular-nums',
+                      'focus:ring-2 focus:border-transparent',
+                      T.ring,
+                    )}
+                  />
+
+                  <input
+                    id={`src-${key}`}
+                    type="text"
+                    value={srcInput[key] ?? ''}
+                    onChange={e => setSrcInput(prev => ({ ...prev, [key]: e.target.value }))}
+                    placeholder="odakle (izvod, ekran banke…)"
+                    title="Odakle je broj — sprema se uz potvrdu. Bez toga se poslije ne vidi je li stanje s izvoda ili s ekrana."
+                    className={cn(
+                      'w-52 px-2 py-1.5 border border-gray-300 rounded-lg text-sm',
                       'focus:ring-2 focus:border-transparent',
                       T.ring,
                     )}
