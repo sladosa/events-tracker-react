@@ -37,6 +37,12 @@ RE_OLD = re.compile(r'ispisano NOVO STANJE,\s*([^\s(]+)', re.I)
 # ide u `nije navedeno` — ključ je (group_value, confirmed_on).
 KNOWN = {
     ('Sašin tekući RF',    '2026-08-11'): f'{STATEMENT} · RF_2026-07.pdf',
+    # Nije `NOVO STANJE` nego TEKUĆE stanje ispisano uz redak od 02.01.2025.
+    # (izvod ide dalje, do 07.01.). Svejedno je vanjski, ispisani broj — i to je
+    # jedino što pravilo traži; sidro je namjerno datirano na početak uvezene
+    # povijesti, jer ondje mjeri reproducira li app tuđi lanac (S109).
+    ('Sašin tekući RF',    '2025-01-02'): f'{STATEMENT} · RF_2024-12.pdf '
+                                          f'(tekuće stanje na 02.01.2025.)',
     # Iznos je ispisan na izvodu (`NOVO STANJE 1.184,86`), ali izvod se zatvara
     # 24.12., a sidro je datirano 31.12. Provjereno: siječanjski izvod otvara se
     # na istoj brojci i prva transakcija mu je 04.01.2026. — između ta dva datuma
