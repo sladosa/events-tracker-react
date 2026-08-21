@@ -50,10 +50,15 @@ TIME_START_H = 14          # isti pojas koji piše deltaSheet.ts (DELTA_TIME_STA
 # Klasifikacija Racun-redaka po tekstu izvoda. Namjerno kratko i vidljivo:
 # krivo-ali-valjano klasificiran redak `apply_rules.py` više NE MOŽE popraviti
 # (preskače retke s valjanim parom), pa se svaki pogodak ispisuje u izvještaju.
+# Zadnji stupac je `leaf comment` — ime pod kojim redak VEĆ postoji u bazi.
+# Sirovi tekst izvoda (`RAIFFEISENDOBROVOLJNIMIROVINSKIFONDPETRINJSKA...`) je
+# točan ali nečitljiv, a lista se čita okom; original ostaje u `Izvod opis`.
 RF_RULES = [
-    (re.compile(r'PBZCARD|PBZ CARD', re.I),                 'Transfer',    'izmedju racuna'),
-    (re.compile(r'MIROVINSK|MIROVINSKO ?OSIGURANJE', re.I), 'Prihodi',     'Saša'),
-    (re.compile(r'NAKNADA', re.I),                          'Domaćinstvo', 'Bankovni troškovi'),
+    (re.compile(r'PBZCARD|PBZ CARD', re.I),        'Transfer',    'izmedju racuna',    'Visa'),
+    (re.compile(r'DOBROVOLJNIMIROVINSKI', re.I),   'Prihodi',     'Saša',              'Mirovina III stup'),
+    (re.compile(r'ZAVODZAMIROVINSKO', re.I),       'Prihodi',     'Saša',              'Mirovina I stup'),
+    (re.compile(r'MIROVINSKO ?OSIGURAVAJUCE', re.I),'Prihodi',    'Saša',              'Mirovina II stup'),
+    (re.compile(r'NAKNADA', re.I),                 'Domaćinstvo', 'Bankovni troškovi', 'Naknada'),
 ]
 NA = 'N/A'                 # legitimna vrijednost, ne blokira uvoz (S107q)
 DATE_TOL = 3               # dana tolerancije pri prepoznavanju istog retka
@@ -182,14 +187,15 @@ def rf_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
         d = _as_date(t['date'])
         if (od and d < od) or (do and d > do):
             continue
-        tip, podtip = NA, NA
-        for rx, ti, po in RF_RULES:
+        tip, podtip, kom = NA, NA, t['opis'][:60]
+        for rx, ti, po, km in RF_RULES:
             if rx.search(t['opis']):
-                tip, podtip = ti, po
+                tip, podtip, kom = ti, po, km
                 break
         out.append({
             'date': d, 'smjer': t['smjer'], 'iznos': round(float(t['iznos']), 2),
             'opis': t['opis'], 'izvor': 'Racun', 'tip': tip, 'podtip': podtip,
+            'komentar': kom,
             'naplata': d,                       # D1b: Izvor=Racun ⇒ naplata istog dana
             'stanje': t.get('stanje_izvod'),
         })
@@ -211,6 +217,7 @@ def visa_rows(pdf: Path, naplata: date, od: date | None, do: date | None) -> lis
         out.append({
             'date': d, 'smjer': 'Isplata', 'iznos': round(float(t['iznos']), 2),
             'opis': t['opis'], 'izvor': 'Visa', 'tip': NA, 'podtip': NA,
+            'komentar': t['opis'][:60],
             'naplata': naplata,                 # dan kad je banka skinula skupnu naplatu
             'rata': (int(m.group(1)), int(m.group(2))) if m else None,
             'stanje': None,
@@ -224,6 +231,11 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool) -> tuple[int
     area = tg.ws.cell(template, AREA_COL).value if template else None
     path = tg.ws.cell(template, PATH_COL).value if template else None
     mail = tg.ws.cell(template, USER_COL).value if template else None
+
+    # Format datuma se preuzima s postojećeg retka — app ga piše, alat ga ne izmišlja.
+    date_fmt = 'yyyy-mm-dd'
+    if tg.real_rows:
+        date_fmt = tg.ws.cell(tg.real_rows[0], DATE_COL).number_format or date_fmt
 
     used_blanks, appended = 0, 0
     next_free = max(tg.real_rows + tg.blank_rows) + 1 if (tg.real_rows or tg.blank_rows) else tg.header_row + 1
@@ -269,8 +281,14 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool) -> tuple[int
             tg.ws.cell(row, SESS_COL).value = free_time()
             tg.ws.cell(row, SESS_COL).number_format = '@'
 
-        tg.ws.cell(row, DATE_COL).value = r['date'].isoformat()
-        tg.ws.cell(row, COMMENT_COL).value = r['opis'][:60]
+        # ⚠ event_date MORA biti prava datumska ćelija, ne ISO tekst. Kontrolni
+        #   stupac uspoređuje `"<="&$D<red>` protiv datumskih ćelija; tekstualni
+        #   redak u tom rasponu ne zadovolji nijedan kriterij, pa se **ne broji**
+        #   — stupac ostane na prethodnoj brojci i izgleda kao da formula fali.
+        cd = tg.ws.cell(row, DATE_COL)
+        cd.value = datetime(r['date'].year, r['date'].month, r['date'].day)
+        cd.number_format = date_fmt
+        tg.ws.cell(row, COMMENT_COL).value = r['komentar']
         tg.put(row, 'Racun',  racun)
         tg.put(row, 'Izvor',  r['izvor'])       # ⚠ prazni retci nose 'Racun' — mora se prepisati
         tg.put(row, 'Smjer',  r['smjer'])
@@ -375,7 +393,7 @@ def main() -> None:
     for r in rows:
         flag = '' if r['tip'] != NA else '   ⚠ Tip=N/A'
         print(f'   + {r["date"]} {r["smjer"]:<7} {r["iznos"]:>9.2f}  '
-              f'{r["tip"]}/{r["podtip"]:<16} {r["opis"][:40]}{flag}')
+              f'{r["tip"]}/{r["podtip"]:<16} {r["komentar"][:34]:<34}{flag}')
 
     na = sum(1 for r in rows if r['tip'] == NA)
     if na:
