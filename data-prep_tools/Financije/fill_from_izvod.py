@@ -468,11 +468,16 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
             row = next_free
             next_free += 1
             appended += 1
-            tg.ws.cell(row, AREA_COL).value = area
-            tg.ws.cell(row, PATH_COL).value = path
-            tg.ws.cell(row, USER_COL).value = mail
             tg.ws.cell(row, SESS_COL).value = free_time()
             tg.ws.cell(row, SESS_COL).number_format = '@'
+
+        # ⚠ Area / Category_Path / User se popunjavaju UVIJEK kad fale — ne samo
+        #   na dopisanim retcima. Prazan prozor daje prazne retke predloška BEZ
+        #   Area, a redak bez Area parser preskoči **bez ijedne poruke**: uvoz
+        #   javi „0 New, 0 Modify" i file izgleda prazan iako je pun.
+        for col, val in ((AREA_COL, area), (PATH_COL, path), (USER_COL, mail)):
+            if not str(tg.ws.cell(row, col).value or '').strip():
+                tg.ws.cell(row, col).value = val
 
         # ⚠ event_date MORA biti prava datumska ćelija, ne ISO tekst. Kontrolni
         #   stupac uspoređuje `"<="&$D<red>` protiv datumskih ćelija; tekstualni
