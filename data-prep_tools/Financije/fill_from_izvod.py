@@ -383,6 +383,27 @@ def visa_rows(pdf: Path, naplata: date, od: date | None, do: date | None,
     return out
 
 
+def strip_comments(wb) -> list[str]:
+    """Makni Excel bilješke iz radne kopije i vrati njihov tekst.
+
+    ⚠ openpyxl sprema bilješku kao `xl/comments/comment1.xml` s APSOLUTNOM
+    putanjom u relacijama; app-ov citac (exceljs) ocekuje relativnu, ne nade
+    dio i pukne s `Cannot read properties of undefined (reading 'comments')`.
+    File se time ne da uvesti — a bilješka je informacija za covjeka, ne podatak.
+
+    Zato se izbacuje iz radne kopije, a tekst se ISPISE: original izvoza je i
+    dalje nosi, i podrijetlo otvarajuceg stanja ne smije nestati bez traga.
+    """
+    out = []
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.comment is not None:
+                    out.append(cell.comment.text)
+                    cell.comment = None
+    return out
+
+
 def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
                ref: 'Target | None' = None) -> tuple[int, int]:
     """Popuni prazne retke predloška; kad ih ponestane, dopiši nove ispod."""
@@ -648,6 +669,9 @@ def main() -> None:
 
     used, app = write_rows(tg, rows, racun, a.dry, ref)
     out = a.target.with_name(f'{a.target.stem}_filled.xlsx')
+    for note in strip_comments(tg.wb):
+        first = note.strip().splitlines()[0] if note.strip() else ''
+        print(f'  (bilješka maknuta radi uvoza — original je čuva: {first})')
     tg.wb.save(out)
     print(f'\n✓ {used} praznih redaka popunjeno, {app} dopisano ispod')
     print(f'✓ {out}')

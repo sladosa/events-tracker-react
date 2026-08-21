@@ -250,6 +250,12 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   ⇒ ubačeni redak mijenja ključeve svih redaka tog dana iza njega
 - **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** (preskače `source_key`eve koji POSTOJE
   u Reviewu) → registar `V3 preskočeno` mora se čitati
+- **openpyxl bilješka ruši uvoz u app** (S113). Kad openpyxl prepiše app-ov export,
+  komentar ćelije završi kao `xl/comments/comment1.xml` s **apsolutnom** putanjom u
+  relacijama; exceljs očekuje relativnu, ne nađe dio i padne s
+  `Cannot read properties of undefined (reading 'comments')` — dakle **cijeli file je
+  neuvoziv zbog jedne bilješke**. `fill_from_izvod.py` ih zato izbacuje iz radne kopije i
+  **ispiše tekst**: original izvoza ih čuva, a podrijetlo otvarajućeg stanja ne smije nestati bez traga.
 - **openpyxl čuva layout, ali gubi grafove/slike/pivote**
 - **Udio po komadima ≠ udio po iznosu** — kod transfera je razlika 42 % vs 91 % i vodi u
   suprotan zaključak. Neto zbroj isključenih redaka može podcijeniti problem — **mjeri bruto.**
