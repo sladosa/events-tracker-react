@@ -263,6 +263,14 @@ class KokaOpisi:
                 if len(row) < 6:
                     continue
                 _, opis, d, upl, isp, _ = row[:6]
+                # ⚠ Njene DVIJE kolone datuma. C (`Datum`) je dan kad novac
+                #   napusti račun; kad naplata još nije poznata — kartična
+                #   kupovina koja čeka mjesečni račun — C je PRAZAN, a dan
+                #   troška stoji u koloni G. Bez te rezerve alat ne vidi
+                #   nijedan redak koji još čeka naplatu, a to su upravo oni
+                #   najsvježiji.
+                if not isinstance(d, datetime) and len(row) > 6 and isinstance(row[6], datetime):
+                    d = row[6]
                 if not isinstance(d, datetime) or not opis:
                     continue
                 iznos = upl if isinstance(upl, (int, float)) and upl else isp
