@@ -69,12 +69,36 @@ def _as_date(v) -> date:
     return date.fromisoformat(str(v)[:10])
 
 
+def _load_tolerant(path: Path):
+    """openpyxl padne na nevaljanom `errorStyle="error"` koji je app-ov export
+    pisao do S113 (OOXML pozna samo `stop|warning|information`; Excel ga
+    progura, openpyxl ne). Fileovi skinuti prije popravka i dalje postoje, pa
+    ih alat popravlja u memoriji umjesto da traži novi export."""
+    try:
+        return openpyxl.load_workbook(path)
+    except Exception:
+        import io as _io
+        import zipfile
+        src = zipfile.ZipFile(path)
+        buf = _io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as out:
+            for item in src.infolist():
+                data = src.read(item.filename)
+                if item.filename.startswith('xl/worksheets/') and item.filename.endswith('.xml'):
+                    data = data.decode('utf-8').replace(
+                        'errorStyle="error"', 'errorStyle="stop"').encode('utf-8')
+                out.writestr(item, data)
+        buf.seek(0)
+        print('  (popravljen nevaljan errorStyle iz starijeg exporta)')
+        return openpyxl.load_workbook(buf)
+
+
 class Target:
     """App-ov Events list: gdje je zaglavlje, koje kolone postoje, gdje su prazni retci."""
 
     def __init__(self, path: Path):
         self.path = path
-        self.wb = openpyxl.load_workbook(path)
+        self.wb = _load_tolerant(path)
         self.ws = self.wb['Events'] if 'Events' in self.wb.sheetnames else self.wb.worksheets[0]
 
         self.header_row = 0

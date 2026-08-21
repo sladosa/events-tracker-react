@@ -903,7 +903,11 @@ export async function addActivitiesSheetsTo(
       promptTitle: 'Delete this record?',
       prompt: 'Pick DELETE to permanently remove this record when the file is imported. Leave empty to keep it.',
       showErrorMessage: true,
-      errorStyle: 'error',
+      // ⚠ OOXML pozna samo `stop | warning | information`. `'error'` Excel
+      //   progura, ali openpyxl na njemu PADNE — a to je alat kojim se ovi isti
+      //   fileovi pune iz izvoda (`fill_from_izvod.py`). Nevaljan atribut koji
+      //   jedan čitač oprašta nije bezopasan: ruši drugi kraj lanca.
+      errorStyle: 'stop',
       errorTitle: 'Only DELETE or empty',
       error: 'This column accepts only DELETE (from the dropdown) or an empty cell.',
     };
