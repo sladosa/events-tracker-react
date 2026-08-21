@@ -142,7 +142,13 @@ class Target:
         # retci predloška (nose prepisan Area/email/vrijeme, čekaju unos).
         self.real_rows, self.blank_rows = [], []
         for r in range(self.header_row + 1, self.ws.max_row + 1):
-            if not str(self.ws.cell(r, AREA_COL).value or '').strip():
+            has_area = bool(str(self.ws.cell(r, AREA_COL).value or '').strip())
+            has_time = bool(str(self.ws.cell(r, SESS_COL).value or '').strip())
+            # ⚠ Prazan redak predloška poznaje se i po samom vremenu: export
+            #   usklađenog računa (prazan prozor) zna ostaviti `Area` prazan, a
+            #   redak je i dalje predložak. Da ga alat ne vidi, tiho bi dopisivao
+            #   ispod umjesto da ga popuni.
+            if not has_area and not has_time:
                 continue
             (self.real_rows if self.ws.cell(r, DATE_COL).value else self.blank_rows).append(r)
 
@@ -287,12 +293,26 @@ def visa_rows(pdf: Path, naplata: date, od: date | None, do: date | None) -> lis
     return out
 
 
-def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool) -> tuple[int, int]:
+def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
+               ref: 'Target | None' = None) -> tuple[int, int]:
     """Popuni prazne retke predloška; kad ih ponestane, dopiši nove ispod."""
     template = tg.blank_rows[0] if tg.blank_rows else (tg.real_rows[-1] if tg.real_rows else None)
     area = tg.ws.cell(template, AREA_COL).value if template else None
     path = tg.ws.cell(template, PATH_COL).value if template else None
     mail = tg.ws.cell(template, USER_COL).value if template else None
+
+    # `Area` i `Category_Path` su jedina dva polja bez kojih uvoz redak ne vidi
+    # kao redak. Ako ih predložak nema (v. prazan prozor), posuđuju se iz
+    # referentnog exporta — ondje su pravi, jer dolaze iz istih zapisa.
+    if (not area or not path) and ref and ref.real_rows:
+        src = ref.real_rows[0]
+        area = area or ref.ws.cell(src, AREA_COL).value
+        path = path or ref.ws.cell(src, PATH_COL).value
+        mail = mail or ref.ws.cell(src, USER_COL).value
+        print(f'  (Area/Category_Path preuzeti iz reference: {area} > {path})')
+    if not area or not path:
+        print('✗ Predložak nema Area/Category_Path, a nema ni reference iz koje bi ih uzeo.')
+        sys.exit('  Izvezi delta sheet ponovno ili dodaj --protiv <app export>.')
 
     # Format datuma se preuzima s postojećeg retka — app ga piše, alat ga ne izmišlja.
     date_fmt = 'yyyy-mm-dd'
@@ -420,6 +440,7 @@ def main() -> None:
     #   Bez druge reference kartični izvod ulazi drugi put, i to tiho: saldo se
     #   ne mijenja, pa se greška ne pokaže ni na pločici ni u kontrolnom stupcu.
     extra_keys: set = set()
+    ref: Target | None = None
     if a.protiv:
         ref = Target(a.protiv)
         extra_keys = ref.existing_keys()
@@ -525,7 +546,7 @@ def main() -> None:
         print('\n--dry: ništa nije zapisano.')
         return
 
-    used, app = write_rows(tg, rows, racun, a.dry)
+    used, app = write_rows(tg, rows, racun, a.dry, ref)
     out = a.target.with_name(f'{a.target.stem}_filled.xlsx')
     tg.wb.save(out)
     print(f'\n✓ {used} praznih redaka popunjeno, {app} dopisano ispod')

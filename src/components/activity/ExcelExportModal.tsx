@@ -391,8 +391,14 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       };
 
       if (deltaMode && balanceWidget && !previewMode) {
+        // ⚠ Ne smije ovisiti SAMO o prvom retku: usklađen račun daje prazan
+        //   prozor (sve prije sidra), a tada prazni retci predloška ostanu bez
+        //   `Area` i `Category_Path`. Redak bez `Area` uvoz ne vidi kao redak —
+        //   dakle upravo kad je račun u najboljem stanju, predložak je neupotrebljiv.
+        //   Zato: prvi redak ako postoji, inače kategorija odabrana u filtru.
         const first = merged[0];
-        const cat   = first ? bundle.categoriesDict[first.category_id] : undefined;
+        const cat   = (first ? bundle.categoriesDict[first.category_id] : undefined)
+          ?? (filter.categoryId ? bundle.categoriesDict[filter.categoryId] : undefined);
 
         // Prepisuje se SAMO ono sto je izvedivo iz configa: grupa (racun) i
         // jednovrijednosni `in` uvjeti. `not_in` se ne da okrenuti u vrijednost
