@@ -2160,3 +2160,70 @@ broj** — redak s iznosom a bez datuma i dalje pada kao greška. Tiho progutan 
 - U cijeloj TEST bazi postoje **dva** `datetime` atributa (`Datum naplate`, `Due Date` u Demo),
   pa je domet izmjene 0.1 točno onaj koji je ciljan.
 
+---
+
+# S113 (2026-08-21) — tranše 1 i 2 zatvorene izvodom, `fill_from_izvod.py`
+
+Sesija je počela testom T-S112-3 i završila s **dva bankovna lanca potvrđena izvana** i alatom
+kojim se delta rješava bez prepisivanja rukom.
+
+### 1. Tranša 1 — uvezena i potvrđena
+
+7 redaka + ispravak `250,93 → 253,51` ušlo je kroz delta sheet (`7 New / 1 Modify / 8 Unchanged`,
+33 prazna retka preskočena). Overview je dao **1.716,55** na 04.08. — brojku iz Kokinog lanca.
+
+Zatim je `RF_2026-07.pdf` (OCR) potvrdio **svih 7 redaka u cent**, uključujući ispravak, a
+ispisana stanja izvoda poklopila su se s kontrolnim stupcem **redak po redak**
+(`715,33 … 1.716,55`). Time je D-2 („Koka sada, izvod potvrda") prvi put odrađen mehanički.
+
+### 2. Tranša 2 — sastav je bio drugačiji nego u planu
+
+Izvod je pokazao da Visa naplata `1.171,59` i naknada `0,17` padaju **07.08.** (ne 11.08.), te da
+11.08. stiže **+254,33** (Mirovina III) koje u planu nije bilo. Kokina brojka `799,12` je bila
+točna, sastav nije. Tri Racun retka uvezena, pločica dala **799,12** — jednako **ispisanom**
+`NOVO STANJE` s izvoda. Sidro postavljeno na 11.08. (**T-S112-6 ✅**), lanac skraćen s 207
+promjena na nulu.
+
+Zatim 45 Visa stavki (47 s računa, 2 već u bazi) — saldo netaknut, kako i mora biti.
+
+### 3. Novi alat: `fill_from_izvod.py`
+
+Puni app-ov Excel retcima s izvoda, **po imenu zaglavlja** (raspored kolona nebitan). Izvori:
+`--rf` (OCR), `--zaba`, `--visa`. Dedup protiv redaka na listu **i** protiv zasebne reference
+(`--protiv`), s **tolerancijom na datum**. Opisi se preuzimaju iz Kokine Excelice (`--koka`).
+
+Usput je alat otkrio četiri stvari koje bi inače prošle tiho:
+
+1. **Isti redak pod drugim datumom** — `Mirovina III stup` je na izvodu 09.07., u bazi 10.07.;
+   dedup po točnom `(datum, iznos)` bi ga uveo drugi put.
+2. **Kartični izvod bez `--protiv` duplicira** — delta sheet ne sadrži kartične retke, pa dedup
+   nema što usporediti, a saldo grešku ne osjeti.
+3. **Krivi račun u krivom sheetu** prolazio je bez poruke → dodana brana.
+4. **Prazan prozor** (usklađen račun) daje prazne retke bez `Area`.
+
+### 4. Bugovi nađeni i popravljeni
+
+| Što | Posljedica |
+| --- | --- |
+| `Date.UTC` mjesec 0-based | delta prozor kretao **mjesec prekasno**; retci tog mjeseca tiho ispadali |
+| `Area`/`Category_Path` iz prvog retka | usklađen račun ⇒ predložak bez `Area` ⇒ uvoz „0 New" nad punim fileom |
+| `errorStyle="error"` u Data Validation | nevaljan OOXML; Excel ga progura, **openpyxl padne** — app-ov export nije se dao otvoriti alatom |
+| openpyxl bilješka | apsolutna putanja u relacijama ⇒ exceljs padne, **cijeli file neuvoziv zbog jedne bilješke** |
+| profil pozicijski preko atributa | mogao sakriti `row_hash`/`Delete?`/`Result` u izvještaju |
+| `run.bat %2 %3 %4` | tiho rezao peti argument nadalje |
+
+### 5. Podrijetlo sidara
+
+Pločica je dobila izbornik **„odakle"** (zatvoren popis + detalj kad je izvod), a
+`make_saldo_anchors.py` piše isti oblik. Svih 5 sidara normalizirano; dva bez bilješke
+istražena iz izvoda: RF `3.458,03` je **tekuće stanje ispisano uz redak od 02.01.2025.**
+(`RF_2024-12.pdf`), ZABA `1.184,86` je `NOVO STANJE` iz `ZABA_2025-12.pdf` — izvod zatvoren
+24.12., a sidro datirano 31.12.; provjereno da između nema prometa, pa je iznos istinit i tada.
+
+### 6. Zatečeno usput
+
+- `ZABA_2026-07.pdf` (tekstualni): **POČETNO 2.255,64** — u cent jednako našem sidru od 01.07. —
+  38 transakcija, zadnja 30.07., **NOVO STANJE 13.815,33**. Tranša 3 ima vanjski kontrolni broj.
+- `PBZVIZA_2026-07.pdf`: **47 kupovina, Σ 1.171,59** — u cent jednako naplati na RF izvodu.
+- 11 kartičnih stavki **nema para** u Kokinom fileu (pitanje za nju, ne prepreka).
+

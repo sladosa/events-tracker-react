@@ -4,10 +4,10 @@
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
 **Zadnji update:** S113 (2026-08-21) — delta sheet (Faza 1), datum-atributi kao pravi Excel datum, `planirano` dobio `Izvor` filtar.
-**Prošlo 2026-08-21: T-S112-3, T-S112-4.** · 2026-08-19: T-S112-1, T-S112-2. · 2026-08-17: T-S110-1, -2, -3, -6, -7. · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
+**Prošlo 2026-08-21: T-S112-3, -4, -6; T-S113-1.** · 2026-08-19: T-S112-1, T-S112-2. · 2026-08-17: T-S110-1, -2, -3, -6, -7. · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
-**Otvoreno: T-S113-1, -2, -3 (NOVO); T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Otvoreno: T-S113-2, -3 (NOVO); T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
 **Detalji S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
 
 ---
@@ -32,7 +32,7 @@ Puni koraci: [S113_tests.md](tests/S113_tests.md).
 
 | Test | Što | Status |
 | --- | --- | --- |
-| T-S113-1 | ⭐ Izvještaj o uvozu nosi layout uvezenog filea; `row_hash`/`Delete?`/`Result` ostaju vidljivi | ⬜ |
+| T-S113-1 | ⭐ Izvještaj o uvozu nosi layout uvezenog filea; `row_hash`/`Delete?`/`Result` ostaju vidljivi | ✅ (2026-08-21) |
 | T-S113-2 | Sidro iz pločice ima `note` (i kad izvor nije upisan) | ⬜ |
 | T-S113-3 | `fill_from_izvod.py` na ZABA izvodu — tranša 3 (ZABA izvor još nije spojen) | ⬜ |
 

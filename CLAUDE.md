@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S112).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S113).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -121,6 +121,19 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   **FALSE** (`:1214`, isto u update-guardu `:1336`). `'DA'` tiho postane FALSE; `'NE'` ispadne
   točno **slučajno**, pa greška ne upada u oči;
   (d) email u kol. G mora biti račun koji **izvodi** import, inače je redak „tuđi" i preskočen.
+- **Redak bez `Area` nije redak — i to bez ijedne poruke** (S113). Parser prepoznaje redak po
+  popunjenoj koloni B; 45 ispravno popunjenih redaka bez nje dalo je uvoz „**0 New, 0 Modify**"
+  nad punim fileom. Svaki generator koji piše u app-ov Excel mora upisati `Area`,
+  `Category_Path` i **email** — ne oslanjati se na to da ih predložak već nosi.
+- **⚠ Export usklađenog računa daje prazne retke predloška BEZ `Area`** (S113, popravljeno).
+  Delta export je te vrijednosti čitao iz **prvog podatkovnog retka**, a usklađen račun ima
+  prazan prozor (sve je prije sidra). Dakle: što je račun uredniji, to je predložak
+  beskorisniji. Fallback je kategorija odabrana u filtru.
+- **⚠ `Date.UTC` uzima mjesec 0-based** (S113). Delta prozor je zbog toga kretao **mjesec dana
+  prekasno** (sidro 11.08. → „stanje 11.09.") i tiho izostavljao sve retke tog mjeseca —
+  usklađenje izgleda uredno jer ih sheet uopće ne pokaže. Vidjelo se tek kad je sidro svježe:
+  dok je pobjeđivalo „danas − N dana", greška se nije očitovala.
+
 - **Data Validation limiti:** `promptTitle` ≤32 znaka, `prompt` ≤255 — premašivanje daje
   neispravan OOXML i Excel nudi repair. Provjeri `string.length` prije proširivanja teksta.
 - **`datetime` atribut ima TRI oblika i svi moraju proći kroz `excelDatetime.ts`** (S112):
@@ -246,6 +259,15 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   razlikuju redak po redak a **slažu u zbroju** (oba daju `461,82` na 06.07.2026.) — višak na
   jednoj strani ima kompenzaciju na drugoj. Baza koja spoji oba izvora dobije **najgoru** od
   tri varijante: dvostruko brojanje ondje gdje se opisi razlikuju.
+- **Ako izvor s odgovorom već postoji, ne izmišljaj heuristiku** (S113). Umjesto strojnog
+  kraćenja opisa izvoda (`SUPER KONZUM P-3200 - RADNIČKA CESTA 1 - ZAGREB`) uzima se **Kokin
+  tekst** (`Konzum`) sparivanjem po `(iznos, datum)`. ⚠ Prozor sparivanja mora biti
+  **nesimetričan** (−3 / +45 dana): kartičnu kupovinu ona upisuje ili na dan kupnje ili na dan
+  naplate kartičnog računa — oboje postoji u istom fileu. Sa simetričnih ±3 dana: 0 od 47.
+- **Kokina Excelica ima DVIJE kolone datuma** (S113). `Datum` (C) je dan kad novac napusti
+  račun; dok naplata nije poznata, C je **prazan**, a dan troška stoji u koloni **G**.
+  Alat koji čita samo C ne vidi upravo najsvježije retke — one koje sljedeći kartični izvod
+  tek donosi. (To je u našem modelu `Status = Planiran` + prazan `Datum naplate`.)
 - **`source_key` nije stabilan** (`normalize_financije.py:202`, `seq_per_day` = redoslijed u fileu)
   ⇒ ubačeni redak mijenja ključeve svih redaka tog dana iza njega
 - **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** (preskače `source_key`eve koji POSTOJE

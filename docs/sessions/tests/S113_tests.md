@@ -10,7 +10,7 @@ s `RF_2026-07.pdf`. Sidro na 11.08. postavljeno kroz pločicu.
 
 ---
 
-## T-S113-1 ⭐ Izvještaj o uvozu otvara se s layoutom filea koji je uvezen
+## T-S113-1 ⭐ Izvještaj o uvozu otvara se s layoutom filea koji je uvezen — ✅ PROŠAO 2026-08-21
 
 **Zašto:** izvještaj je nastavak radnog filea. Dosad se otvarao s podrazumijevanim stupcima,
 pa su kolone koje trebaš bile iza zamrznutih okna i morao si ih tražiti.
@@ -26,6 +26,9 @@ pa su kolone koje trebaš bile iza zamrznutih okna i morao si ih tražiti.
    - **Očekivano:** `row_hash`, `Delete?`, `Result`, `Source row`, `Changed` su **vidljivi**.
    - **Pad:** sakriveni — profil je pozicijski prešao preko atributskih stupaca (izvještaj
      nosi samo dodirnute kategorije, pa ih može imati manje nego profil).
+
+**Rezultat 2026-08-21:** izvještaj uvoza 45 Visa stavki otvorio se sa skupljenim grupama i
+širinama iz `Financije1`, a `Result` / `Source row` / `Changed` vidljivi krajnje desno. ✅
 
 ---
 
