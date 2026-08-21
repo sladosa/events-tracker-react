@@ -220,7 +220,7 @@ def rf_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
         d = _as_date(t['date'])
         if (od and d < od) or (do and d > do):
             continue
-        tip, podtip, kom = NA, NA, t['opis'][:60]
+        tip, podtip, kom = NA, NA, short_opis(t['opis'])
         for rx, ti, po, km in RF_RULES:
             if rx.search(t['opis']):
                 tip, podtip, kom = ti, po, km
@@ -235,6 +235,30 @@ def rf_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
     return out
 
 
+def short_opis(raw: str) -> str:
+    """Kratko ime trgovca iz opisa izvoda — `leaf comment` čita čovjek u popisu.
+
+    Izvod piše `SUPER KONZUM P-3200 - RADNIČKA CESTA 1 - ZAGREB`; Koka piše
+    `Konzum`. Popis od 45 redaka s punim adresama je nečitljiv, a informacija
+    nije izgubljena: sirovi tekst ide u `Izvod opis` i ondje ostaje za
+    pretraživanje i pravila.
+
+    ⚠ Skraćuje se samo prikaz. Ništa se ne odbacuje i ništa se ne pogađa —
+    ako od opisa ne ostane ništa upotrebljivo, vraća se izvorni tekst.
+    """
+    t = re.sub(r'\[kartica:[^\]]*\]', '', raw)           # trag kartice ide u Izvod opis
+    t = re.sub(r'^RATA\s*\d+\s*/\s*\d+\s*-\s*', '', t.strip())
+    t = re.split(r'\s+-\s*', t)[0]                        # sve iza prve crtice je adresa
+    t = re.sub(r'(?<!\w)[A-ZČĆŠĐŽ]{1,3}[- ]?\d{2,5}(?!\w)', ' ', t)   # šifre poslovnica (P-3200, K018)
+    t = re.sub(r'\s+(ZAGREB|ZG)(?!\w)', ' ', t)               # grad se ponavlja na svakom retku
+    t = re.sub(r'[-\s]{2,}', ' ', t)                       # ostatak nakon izbacene sifre
+    t = re.sub(r'[\s,.-]+$', '', t).strip()
+    # Velika slova se NE diraju: „DM-DROGERIE MARKT“ je čitljivo, a „Dm-drogerie
+    # Markt“ je pogrešno na način koji izgleda namjerno. Kraćenje je jedini posao
+    # ove funkcije; ako od opisa ne ostane ništa, vraća se izvorni tekst.
+    return t[:40] if t else raw[:40]
+
+
 def zaba_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
     """Retci tekućeg računa sa ZABA izvatka. Parser sam validira smjer i
     potpunost protiv ISPISANIH salda (`_validate_zaba`) — ako format izvatka
@@ -245,7 +269,7 @@ def zaba_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
         d = _as_date(t['date'])
         if (od and d < od) or (do and d > do):
             continue
-        tip, podtip, kom = NA, NA, t['opis'][:60]
+        tip, podtip, kom = NA, NA, short_opis(t['opis'])
         for rx, ti, po, km in ZABA_RULES:
             if rx.search(t['opis']):
                 tip, podtip, kom = ti, po, km
@@ -285,7 +309,7 @@ def visa_rows(pdf: Path, naplata: date, od: date | None, do: date | None) -> lis
         out.append({
             'date': d, 'smjer': 'Isplata', 'iznos': round(float(t['iznos']), 2),
             'opis': t['opis'], 'izvor': 'Visa', 'tip': NA, 'podtip': NA,
-            'komentar': t['opis'][:60],
+            'komentar': short_opis(t['opis']),
             'naplata': naplata,                 # dan kad je banka skinula skupnu naplatu
             'rata': (int(m.group(1)), int(m.group(2))) if m else None,
             'stanje': None,

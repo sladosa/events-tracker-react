@@ -323,9 +323,15 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
           : null;
 
         // Prozor: kasniji od (dan nakon sidra) i (danas - N dana).
-        const dayAfterAnchor = deltaAnchor
-          ? new Date(Date.UTC(...(deltaAnchor.confirmed_on.split('-').map(Number) as [number, number, number])) + 86400000)
-          : null;
+        // ⚠ `Date.UTC` uzima mjesec 0-based. Bez `-1` je prozor kretao MJESEC
+        //   DANA prekasno: sidro 11.08. davalo je „stanje 11.09." i tiho
+        //   izostavljalo sve retke iz tog mjeseca — a usklađenje bez njih
+        //   izgleda uredno jer ih sheet uopće ne pokaže.
+        const dayAfterAnchor = (() => {
+          if (!deltaAnchor) return null;
+          const [y, m, d] = deltaAnchor.confirmed_on.split('-').map(Number);
+          return new Date(Date.UTC(y, m - 1, d) + 86400000);
+        })();
         const nDaysAgo = new Date(Date.now() - deltaDays * 86400000);
         const startMs  = Math.max(dayAfterAnchor?.getTime() ?? 0, nDaysAgo.getTime());
         const start    = new Date(startMs).toISOString().slice(0, 10);
