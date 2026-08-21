@@ -894,3 +894,19 @@ Puni nalaz, provjere i odluka: `SALDO_MODEL_NALAZI.md` §6.3.
   Visa košara: **47 kupovina, Σ `1.171,59`** — u cent jednako naplati na RF izvodu.
 - **`Mirovina III stup` ima na izvodu `09.07.`, u bazi `10.07.`** — isti redak, dan razlike.
   Alat ga prepoznaje i preskače; popravak je izmjena datuma u bazi, ne novi redak.
+
+**Nastavak S113 (isti dan):**
+
+- **Tranša 2 uvezena** — 3 Racun retka (07.08. `−1.171,59`, 07.08. `−0,17`, 11.08. `+254,33`) +
+  45 Visa kupovina. RF na 11.08. = **799,12**, jednako ispisanom stanju na `RF_2026-07.pdf`.
+  Sidro postavljeno na 11.08.
+- **`fill_from_izvod.py` dobio `--zaba`, `--protiv`, `--koka`.** Dedup ide protiv redaka na listu
+  **i** protiv zasebne reference; bez `--protiv` kartični izvod duplicira sve što je Koka već
+  upisala (delta sheet ne sadrži kartične retke, a saldo grešku ne osjeti).
+- **Opisi dolaze iz Kokine Excelice**, sparivanjem po `(iznos, datum)` s **nesimetričnim**
+  prozorom `−3 / +45` dana. Simetričnih ±3 dana: 0 od 47 spareno; ovako 36.
+- **Njene dvije kolone datuma:** `Datum` (C) = dan kad novac napusti račun; dok naplata nije
+  poznata, C je prazan i dan troška stoji u koloni **G** (22 takva retka na 16.08.).
+- **Za tranšu 3 spremno:** `ZABA_2026-07.pdf` → 37 novih redaka, ispisano `NOVO STANJE`
+  **13.815,33** na 30.07.
+

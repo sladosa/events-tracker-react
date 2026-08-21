@@ -73,3 +73,16 @@ Redovi koji DJELUJU kao override (kad se import-aju kao profil):
 Redovi koji su ČISTO informativni (NE čitaju se pri Import Profile): Export type, Exported at, Area, Category, Date From/To (osim kad je Period key = `custom`), Export profile naziv.
 
 Data Validation dropdown postoji na ćelijama Period key i Sort order; tooltip s formatom postoji na Date From/To i Attribute filter ćelijama.
+
+## Delta sheet — koliko praznih redaka
+
+U Export modalu, uz kvačicu **Delta sheet**, dva su polja: **Prozor** (koliko dana unatrag sheet
+pokazuje) i **Praznih redaka** (koliko praznih redaka pripremiti za nove unose).
+
+Prazne retke vrijedi povećati kad znaš da ih dolazi puno — redak koji ne stane u pripremljene
+prazne završi ispod njih i **kontrolni stupac ga ne broji**, pa bi brojka na dnu izgledala
+uvjerljivo a ne bi uključivala sve.
+
+⚠ Ako je račun usklađen do danas, prozor je prazan i sheet ima **samo** prazne retke. To nije
+greška nego znak da nema ničega neusklađenog.
+

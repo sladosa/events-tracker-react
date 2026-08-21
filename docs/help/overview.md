@@ -125,3 +125,14 @@ Structure Edit Mode popravlja referencu automatski; ručna izmjena u bazi ne.
 
 Gumb **Add Activity** i **⚡ Use** (Shortcut) rade i iz Overviewa, čim je odabrana leaf
 kategorija. Nakon spremanja vraćaš se na Overview i saldo je preračunat.
+
+## Odakle je stanje došlo
+
+Uz polje „u banci" stoji izbornik **odakle**: *ekran bankovne aplikacije*, *ispisano stanje s
+izvoda* (uz njega se može upisati i ime izvoda) ili *bankomat / ispis na papiru*.
+
+Taj podatak se sprema uz potvrdu. Nije formalnost: potvrđeno stanje smije doći **samo izvana**,
+nikad iz izračuna aplikacije — a mjesecima kasnije se iz same brojke ne vidi je li poštovano.
+Ako ne odabereš ništa, zapisuje se „nije navedeno" — dakle da izvor **nije** naveden, što nije
+isto što i da bilješke nema.
+
