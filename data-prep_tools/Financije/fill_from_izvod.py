@@ -281,14 +281,23 @@ class KokaOpisi:
         self.hits = 0
         self.misses = 0
 
-    def find(self, d: date, iznos: float) -> str | None:
+    def find(self, d: date, iznos: float,
+             prije: int | None = None, poslije: int | None = None) -> str | None:
+        """⚠ Prozor se smije stegnuti po izvoru. Zadani −3/+45 dana je za
+        KARTIČNE retke, gdje dan kupovine i dan naplate stvarno stoje mjesec i
+        pol razmaknuti. Na tekućem računu takva tolerancija nije velikodušna
+        nego opasna: `Cash 100,00` se ponavlja svakih par tjedana, pa bi prvi
+        bankomat pokupio opis nekog kasnijeg — i to tiho, jer se iznos i dalje
+        slaže. Ondje je njen datum bankin datum, pa prozor ide na 0/+1."""
+        prije = self.prije if prije is None else prije
+        poslije = self.poslije if poslije is None else poslije
         cands = [c for c in self.by_amount.get(round(iznos, 2), []) if not c['used']]
         if not cands:
             self.misses += 1
             return None
         best = min(cands, key=lambda c: abs((c['date'] - d).days))
         delta = (best['date'] - d).days
-        if delta < -self.prije or delta > self.poslije:
+        if delta < -prije or delta > poslije:
             self.misses += 1
             return None
         best['used'] = True
@@ -336,10 +345,19 @@ def zaba_rows(pdf: Path, od: date | None, do: date | None,
             if rx.search(t['opis']):
                 tip, podtip, kom = ti, po, km
                 break
+        # ⚠ Tekući račun je gori od kartice: banka svaki nalog opisuje istim
+        #   tekstom (`Kreditni transfer nacionalni u eurima on-line bankarstvo`),
+        #   pa strojno kraćenje ne razlikuje T-com od T-mobilea. Njen redak zna
+        #   koji je koji, i to je jedini izvor koji to zna — Tip/Podtip ostaju
+        #   s pravila, mijenja se samo tekst koji čovjek čita u popisu.
+        kom_koka = koka.find(d, round(float(t['iznos']), 2),
+                             prije=0, poslije=1) if koka else None
         out.append({
             'date': d, 'smjer': t['smjer'], 'iznos': round(float(t['iznos']), 2),
             'opis': t['opis'], 'izvor': 'Racun', 'tip': tip, 'podtip': podtip,
-            'komentar': kom, 'naplata': d, 'stanje': None,
+            'komentar': kom_koka or kom,
+            'opis_izvor': 'koka' if kom_koka else 'izvod',
+            'naplata': d, 'stanje': None,
         })
     return out
 
