@@ -3,12 +3,12 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S113 (2026-08-21) — delta sheet (Faza 1), datum-atributi kao pravi Excel datum, `planirano` dobio `Izvor` filtar.
-**Prošlo 2026-08-21: T-S112-3, -4, -6; T-S113-1.** · 2026-08-19: T-S112-1, T-S112-2. · 2026-08-17: T-S110-1, -2, -3, -6, -7. · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
+**Zadnji update:** S114 (2026-08-22) — tranša 3 (ZABA) zatvorena protiv ispisanog stanja, klasifikacija iz izbrojane povijesti.
+**Prošlo 2026-08-22: T-S113-3.** · 2026-08-21: T-S112-3, -4, -6; T-S113-1. · 2026-08-19: T-S112-1, T-S112-2. · 2026-08-17: T-S110-1, -2, -3, -6, -7. · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
-**Otvoreno: T-S113-2, -3 (NOVO); T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
+**Otvoreno: T-S114-1…5 (NOVO); T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Detalji S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
 
 ---
 
@@ -34,7 +34,19 @@ Puni koraci: [S113_tests.md](tests/S113_tests.md).
 | --- | --- | --- |
 | T-S113-1 | ⭐ Izvještaj o uvozu nosi layout uvezenog filea; `row_hash`/`Delete?`/`Result` ostaju vidljivi | ✅ (2026-08-21) |
 | T-S113-2 | Sidro iz pločice ima `note` (i kad izvor nije upisan) | ⬜ |
-| T-S113-3 | `fill_from_izvod.py` na ZABA izvodu — tranša 3 (ZABA izvor još nije spojen) | ⬜ |
+| T-S113-3 | `fill_from_izvod.py` na ZABA izvodu — tranša 3 | ✅ (2026-08-22, ZABA @ 30.07. = **13.815,33**) |
+
+## S114 — tranša 3 (ZABA) · klasifikacija iz povijesti
+
+Puni koraci: [S114_tests.md](tests/S114_tests.md).
+
+| Test | Što | Status |
+| --- | --- | --- |
+| T-S114-1 | ⭐ Sidro ZABA `30.07.2026. = 13.815,33`; sljedeći prozor kreće **31.07.** | ⬜ |
+| T-S114-2 | ⭐ Klasifikacija je u bazi: `T-mobile`, šest `0,70` kao **Parking**, `1.244,74` = `Izvrsen` + `Transfer` | ⬜ |
+| T-S114-3 | `--koka` na ZABA: **30 spareno, 8 bez para**; `0 spareno` = tiha regresija | ⬜ |
+| T-S114-4 | Brana taksonomije: krivi podtip pada **prije** otvaranja targeta | ⬜ |
+| T-S114-5 | Izvještaj o uvozu **nema** `DropdownData` (nalaz, čeka popravak) | ⬜ |
 
 **Brojke koje se ne smiju izgubiti** (sve mjerene):
 
@@ -42,7 +54,8 @@ Puni koraci: [S113_tests.md](tests/S113_tests.md).
 | --- | --- |
 | delta prozor 60 dana, retci koji miču saldo | RF **9**, ZABA **15** |
 | otvarajuće stanje 19.06.2026. | RF **931,98**, ZABA **1.978,09** |
-| kontrolne brojke tranši | RF 04.08. **1.716,55** · RF 11.08. **799,12** · ZABA 09.08. **14.722,84** |
+| kontrolne brojke tranši | RF 04.08. **1.716,55** · RF 11.08. **799,12** · **ZABA 30.07. `13.815,33` (ispisano, potvrđeno)** · ZABA 09.08. **14.722,84** (Kokin lanac, još nedohvaćen) |
+| tranša 3: izvod / već u bazi / novo | **38 / 7 / 31** · Kokini opisi **30 spareno, 8 bez para** |
 | Kokini Visa retci 01–06/2026 koji su već u bazi | **207 od 208** |
 
 ---

@@ -2227,3 +2227,126 @@ istražena iz izvoda: RF `3.458,03` je **tekuće stanje ispisano uz redak od 02.
 - `PBZVIZA_2026-07.pdf`: **47 kupovina, Σ 1.171,59** — u cent jednako naplati na RF izvodu.
 - 11 kartičnih stavki **nema para** u Kokinom fileu (pitanje za nju, ne prepreka).
 
+
+---
+
+# S114 — tranša 3 (ZABA) · klasifikacija iz povijesti, ne iz heuristike (2026-08-22)
+
+**Rezultat u jednoj rečenici:** ZABA lanac je zatvoren protiv **ispisanog** `NOVO STANJE`
+(`13.815,33` @ 30.07.2026.), a svih 28 novih redaka je klasificirano — bez ijednog pogađanja,
+protiv izbrojane povijesti i uz provjeru parova protiv `validation_rules`.
+
+## 1. Tranša 3 — brojka je izašla prije uvoza
+
+Delta sheet (prozor 60 dana, **150** praznih redaka umjesto zadanih 40), pa
+`fill_from_izvod.py --zaba`: **38 transakcija na izvodu, 7 već u bazi, 31 novih.**
+
+```
+ 2.255,64  otvarajuće stanje (app računa, 01.07.2026.)
+11.559,69  neto cijelog izvoda (uplate 14.110,47 − isplate 2.550,78)
+─────────
+13.815,33  = ispisano NOVO STANJE na ZABA_2026-07.pdf   ✔
+```
+
+Uvoz: **31 New / 1 Modify / 7 Unchanged**, 119 praznih redaka predloška preskočeno i **prijavljeno**.
+
+Onaj `1 Modify` je bit tranše: planirana MC naplata `1.244,74` (11.07.) postala je `Izvrsen`
+jer je izvod potvrđuje u cent. Dedup ju je ispravno preskočio kao već postojeći redak.
+
+## 2. Zamka koja je izašla iz same kontrolne formule
+
+Kontrolni stupac **ne broji `Planiran`** (`$U:$U,"<>Planiran"`). Dok je `1.244,74` stajao kao
+planiran, kontrola je davala **15.060,07** — točno `1.244,74` previše. Nije bug: to je isti
+mehanizam zbog kojeg planirani retci **moraju** ostati vidljivi u sheetu. Ali znači da
+usklađenje ima **obavezan ručni korak**: potvrdi u sheetu što je banka naplatila, pa tek onda
+čitaj kontrolni broj. Bez toga razlika izgleda kao greška u podacima, a nije.
+
+Isto vrijedi za ćeliju `razlika`: šuti dok `u banci piše` nije popunjen rukom — namjerno,
+jer bi inače provjera bila tautološka (§2.17).
+
+## 3. `--koka` je na ZABA izvodu bio mrtvo slovo
+
+`zaba_rows()` je primao `koka` i **nikad ga nije pozvao** — samo `visa_rows()` je zvao
+`koka.find()`. Ispis je pritom govorio `Kokini opisi: 0 spareno, 0 bez para`, što se čita kao
+„pokušano, ništa nije našlo", a zapravo znači „nije ni pokušano". **Brojač koji nula pokušaja
+prikazuje kao nula rezultata je gori od nikakvog brojača.**
+
+Posljedica bi bila 27 redaka s tekstom `Kreditni transfer nacionalni u eurima on-line
+bankarstvom` — istim za T-com, T-mobile, Holding, parking i posmrtnu pripomoć.
+
+Popravak: `koka.find()` i u `zaba_rows()`, ali s **uskim** prozorom.
+
+## 4. Prozor sparivanja mora ovisiti o izvoru
+
+Za kartice je prozor `−3 / +45` dana (ona kupovinu upisuje na dan kupnje **ili** na dan naplate
+kartičnog računa). Na tekućem računu ista tolerancija nije velikodušna nego opasna:
+`Cash 100,00` se ponavlja svakih par tjedana, pa bi prvi bankomat pokupio opis nekog kasnijeg —
+tiho, jer se iznos i dalje slaže. Ondje je njen datum bankin datum ⇒ **`0 / +1`**.
+
+`+1` nije kozmetika: `Zoran povrat 9,51` je na izvodu 17.07., kod nje 18.07.
+
+Rezultat: **30 od 38 spareno.** Provjerena su tri pogotka koja su izgledala kriva
+(`14.07. Parking 100,00`, `19.07. Zoran struja 290,00`, `30.07. Cash 100,00`) — sva tri su
+njeni stvarni retci: kod bankomatskih podizanja ona bilježi **na što** je gotovina otišla,
+a banka samo da je podignuta. `Tip` ostaje s pravila, mijenja se samo tekst za čovjeka.
+
+## 5. Nalaz koji bi inače prošao kao uredan podatak
+
+Preostalih 6 nesparenih redaka po `0,70` **nisu bankovni troškovi nego parking.**
+
+Ona vodi **jedan** redak `Parking 1,40` (13.07., 27.07., 30.07.), banka svaki naplaćuje kao
+**dva** naloga po `0,70`. Sparivanje po `(iznos, datum)` ih zato ne može naći — iznos se ne
+poklapa ni s čim. A njihov strojni tekst (`Kreditni transfer nacionalni…`) u povijesti vodi na
+`Domaćinstvo / Bankovni troškovi` (12×) — dakle u **krivi razred, i to uvjerljivo**.
+
+Ovo je nova varijanta S111 nalaza o skoro-duplikatima: ondje su se dva izvora razlikovala u
+**iznosu** istog događaja, ovdje u **broju redaka** za isti događaj. Zajedničko im je da ključ
+`(iznos, datum)` ne vidi ni jedno ni drugo.
+
+## 6. Klasifikacija: povijest kao autoritet, dropdown kao brana
+
+Umjesto pravila po tekstu izvoda, `Tip`/`Podtip` su izvučeni **prebrojavanjem kako je isti
+Kokin tekst klasificiran u 4.992 retka Reviewa**:
+
+| Kokin tekst | Tip / Podtip | Povijest |
+| --- | --- | --- |
+| Parking (11 redaka) | `Prijevoz / Taksi, Zet, Parking` | 118/118 |
+| T-com · T-mobile | `Informatika / Komunikacije_T-com` · `_T-mobile` | 40/41 · 41/42 |
+| Saša/Nataša Holding | `Kuća / Holding (smeće)` | 39/39 · 41/41 |
+| Nataša povrat / popvrat | `Transfer / Natasa` | 5/5 |
+| Zoran povrat | `Kuća / Povrat Zoran` | 41/41 |
+| Povrat poreza | `Porezi / porez/prirez/dohodak` | 4/5 |
+| PP Saša 7/60 · PP Koka 7/60 | `Zdravlje / PP (Posmrtna pripomoc)` | 10/10 |
+| HLK 07/26 | `Zdravlje / Lječnička komora_Koka` | 16/18 |
+| **Anja 84/96** | `Prihodi / Povrat Anja` | 41/41, **niz `81/96 → 82 → 83 → 84`** |
+| Anja povrat | `Transfer / Anja` | 19/19 za ne-ratne |
+| **MC naplata 1.244,74** | `Transfer / izmedju racuna` | 31/31, **niz 11.01.–11.06.2026.** |
+
+Tri retka povijest nije mogla riješiti i o njima je **odlučio čovjek**: `Nena` 7.000 + 5.000
+(povijest zna samo „Nena pričuva" od 7–75 €) i `Mall.hr povrat` 79,99 → **Sašina odluka:
+`Prihodi / Koka`**. Podtip `Prihodi / Nena` je razmotren i odbijen — taksonomija se zaključava
+prije importa, ime bi živjelo i u `validation_rules` i u `value_text` (razred S105d).
+
+**Brana:** novi alat `klasificiraj_transu.py` **provjerava svih 18 parova protiv `DropdownData`
+lista app-ovog exporta prije nego išta upiše** (17 Tipova, 65 podtipova). Podtip mimo
+`validation_rules` uvezao bi se kao običan tekst i ne bi javio grešku — vidio bi ga tek kad ga
+dropdown poslije odbije, a tada je već u bazi.
+
+Uvoz: **0 New / 28 Modify / 4 Unchanged** (ona 4 su bankomatski retci, već klasificirani pravilima).
+
+## 7. `845,12` — razriješeno, negativno
+
+Planirani redak od 11.07. koji je od S113 stajao kao „neobjašnjen": **nije na srpanjskom ZABA
+izvodu i nema ga nigdje u Kokinom fileu** (pretražena oba lista po iznosu, 0 pogodaka). Ostaje
+`Planiran` pa ne dira kontrolni broj. Pitanje za nju, ne prepreka.
+
+## 8. Zatečeno usput
+
+- **Izvještaj o uvozu nema `DropdownData` list** (`Events / HelpEvents / ImportReport / Filter`),
+  pa u njemu nema `Tip`/`Podtip` dropdowna. Za pipeline nebitno, **za Koku bitno**: izvještaj je
+  mišljen kao mjesto gdje se dorađuje uvezeno, a ondje bi tipkala slobodan tekst bez provjere.
+- **Delta export nudi 40 praznih redaka**, a tranša ih je trebala 110+. Redak koji ne stane pada
+  **izvan raspona kontrolnog stupca** — brojka bi bila uvjerljiva i nepotpuna. Polje postoji od
+  S113; ovo je prvi put da je zadana vrijednost bila premala.
+- **Dva retka u Kokinom fileu datirana su `2036-04-08`** (`Mirovina 1.323,64`, `Netdomena Igor
+  47,76`) — gotovo sigurno tipfeler za 2026. Isti razred kao S110 nalaz.

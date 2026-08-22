@@ -910,3 +910,28 @@ Puni nalaz, provjere i odluka: `SALDO_MODEL_NALAZI.md` §6.3.
 - **Za tranšu 3 spremno:** `ZABA_2026-07.pdf` → 37 novih redaka, ispisano `NOVO STANJE`
   **13.815,33** na 30.07.
 
+
+## S114 (2026-08-22) — tranša 3 (ZABA), klasifikacija iz izbrojane povijesti
+
+- **Tranša 3 zatvorena protiv ispisanog broja.** `ZABA_2026-07.pdf`: 38 tx, 7 već u bazi,
+  **31 novih**. `2.255,64 + 11.559,69 = 13.815,33` = ispisano `NOVO STANJE` @ 30.07.
+  Uvoz `31 New / 1 Modify / 7 Unchanged`; `1 Modify` = planirana MC naplata `1.244,74` → `Izvrsen`.
+- **⚠ Kontrolni stupac ne broji `Planiran`.** Dok naplata nije potvrđena u sheetu, kontrola je
+  davala `15.060,07` — točno `1.244,74` previše, i to je izgledalo kao greška u podacima.
+- **`--koka` je na ZABA izvodu bio mrtvo slovo** — `zaba_rows()` je primao `koka` i nikad ga
+  nije pozvao. Ispis je pritom govorio `0 spareno, 0 bez para`, dakle „nije pokušano" se čitalo
+  kao „pokušano bez pogotka". Spojeno; **30 od 38 spareno**.
+- **Prozor sparivanja ovisi o izvoru:** kartice `−3/+45`, tekući račun **`0/+1`**.
+  Široki prozor bi na tekućem dopustio da `Cash 100,00` pokupi opis kasnijeg podizanja.
+  `+1` je nužan: `Zoran povrat 9,51` je na izvodu 17.07., kod nje 18.07.
+- **Nalaz: ona agregira ondje gdje banka dijeli.** `Parking 1,40` (13., 27., 30.07.) = **dva**
+  bankina naloga po `0,70`. Ključ `(iznos, datum)` ih ne može naći, a njihov strojni tekst vodi
+  na `Domaćinstvo / Bankovni troškovi` (12× u povijesti) — krivi razred, i to uvjerljivo.
+- **Novo: `klasificiraj_transu.py`** — puni `Tip`/`Podtip` u app-ovom **izvještaju o uvozu**
+  (radni file s `row_hash`om, uvozi se natrag). Mapiranje je izvučeno prebrojavanjem Reviewa,
+  a **svih 18 parova se provjerava protiv `DropdownData` lista prije upisa**.
+  Uvoz: `0 New / 28 Modify / 4 Unchanged`.
+- **`845,12` razriješen negativno** — nije na srpanjskom ZABA izvodu i nema ga nigdje u Kokinom
+  fileu. Ostaje `Planiran` (ne dira kontrolni broj), pitanje za nju.
+- **Zatečeno:** dva njena retka datirana `2036-04-08` (`Mirovina 1.323,64`, `Netdomena Igor
+  47,76`) — tipfeler za 2026., isti razred kao S110 nalaz.

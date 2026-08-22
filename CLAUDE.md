@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S113).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S114).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -192,6 +192,16 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   parser inače vidi kao prave retke. Kriterij za „netaknut" ne gleda prepisane atribute nego
   ono što upisuje čovjek: datum, opis ili **bilo koji broj**. Preskočeni se **broje** i javljaju
   kao upozorenje — tiho progutan iznos je gore od poruke.
+- **⚠ Kontrolni stupac NE broji `Planiran` — usklađenje ima obavezan ručni korak** (S114).
+  Formula nosi `$U:$U,"<>Planiran"`. Dok je planirana MC naplata `1.244,74` stajala nepotvrđena,
+  kontrola je davala `15.060,07` umjesto `13.815,33` — **točno taj iznos previše**, i to je
+  izgledalo kao greška u podacima. Nije bug nego druga strana pravila „planirani retci ostaju
+  vidljivi": prvo u sheetu potvrdiš što je banka naplatila, pa tek onda čitaš kontrolni broj.
+  Isto vrijedi za ćeliju `razlika` — šuti dok `u banci piše` nije popunjen **rukom**, jer bi
+  inače provjera bila tautološka (§2.17).
+- **⚠ Zadanih 40 praznih redaka nije dosta za tranšu s izvoda** (S114). Redak koji ne stane u
+  pripremljene prazne pada **izvan raspona kontrolnog stupca** — brojka ostane uvjerljiva i
+  nepotpuna. Broj je polje u export modalu od S113; postavi ga prema broju redaka na izvodu.
 - **Kontrolna formula je `SUMIFS` po datumu ≤ datum retka**, nikad „prethodni redak + uplata −
   isplata": lančana se raspadne na prvom sortu, a korisnik sortira čim doda stariji datum.
   I: **uvjeti se čitaju iz `dashboard` configa**, ne prepisuju u kod — stupac koji se ne slaže
@@ -255,6 +265,28 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   poklapanjem. ⚠ Vrijedi i obrnuto: `ZABA 25.08.2025. „Anja 73/96"` ima uplatu 450,00 **i**
   isplatu 0,70 u istom eventu, i to **nije** greška nego vjeran spoj dvaju stvarnih redaka
   izvoda. Prije brisanja uvijek provjeri postoji li protustavka na izvodu.
+- **⚠ Prozor sparivanja s Kokinim opisima mora ovisiti o IZVORU** (S114). Kartični retci traže
+  nesimetričnih `−3 / +45` dana (upisuje ih na dan kupnje ili na dan naplate računa). Na
+  **tekućem računu** ista tolerancija nije velikodušna nego opasna: `Cash 100,00` se ponavlja
+  svakih par tjedana, pa bi prvi bankomat pokupio opis nekog kasnijeg — tiho, jer se iznos i
+  dalje slaže. Ondje je njen datum bankin datum ⇒ `0 / +1`. ⚠ `+1` nije kozmetika:
+  `Zoran povrat 9,51` je na izvodu 17.07., kod nje 18.07.
+- **⚠ Isti događaj, različit BROJ redaka — ključ `(iznos, datum)` to ne vidi** (S114). Ona vodi
+  jedan redak `Parking 1,40`, banka ga naplaćuje kao **dva** naloga po `0,70`. Nespareni retci
+  onda nose strojni tekst izvoda (`Kreditni transfer nacionalni…`), koji u povijesti vodi na
+  `Domaćinstvo / Bankovni troškovi` (12×) — dakle u **krivi razred, i to uvjerljivo**. Isti
+  razred kao S111 skoro-duplikati, samo se ondje razlikovao iznos, a ovdje broj redaka.
+- **⚠ Brojač koji nula pokušaja prikazuje kao nula rezultata** (S114). `zaba_rows()` je primao
+  `koka` i nikad ga nije pozvao, a ispis je govorio `Kokini opisi: 0 spareno, 0 bez para` —
+  što se čita kao „pokušano, ništa nije našlo". Svaki takav brojač mora razlikovati
+  „nije pokušano" od „pokušano bez pogotka".
+- **Klasificiraj iz IZBROJANE povijesti, ne iz teksta izvoda** (S114). `Tip`/`Podtip` se izvlače
+  prebrojavanjem kako je **isti Kokin tekst** klasificiran u 4.992 retka Reviewa (Parking 118/118,
+  T-com 40/41, Zoran povrat 41/41, MC naplata 31/31). Gdje povijest nije jednoglasna, odlučuje
+  čovjek — ne skripta. ⚠ **Par se prije upisa mora provjeriti protiv `DropdownData` lista
+  app-ovog exporta**: podtip mimo `validation_rules` uveze se kao običan tekst i **ne javi
+  grešku** — vidi se tek kad ga dropdown poslije odbije, a tada je već u bazi.
+  Alat: `klasificiraj_transu.py`.
 - **Autoritet za iznos je izvod, za opis i klasifikaciju Kokin redak.** Njen lanac i bankov se
   razlikuju redak po redak a **slažu u zbroju** (oba daju `461,82` na 06.07.2026.) — višak na
   jednoj strani ima kompenzaciju na drugoj. Baza koja spoji oba izvora dobije **najgoru** od
@@ -346,6 +378,7 @@ src/lib/excelImportReport.ts       Izvještaj nakon uvoza — radni file, ne log
 src/lib/excelFingerprint.ts        row_hash (FNV-1a 64) — skip nedirnutih redaka
 src/lib/excelDatetime.ts           Kanonski oblik datum-atributa (baza ↔ app ↔ Excel ćelija)
 src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u banci piše"
+                                   ⚠ kontrolni SUMIFS ne broji `Planiran`
 src/lib/structureExcel.ts          Structure export (Automations, Dashboard, DisableSavePlus)
 src/lib/structureImport.ts         Structure import — non-destructive, slug lookup
 src/lib/attributeRules.ts          set_attribute automatika (evaluateDateRule, same/next:N)
@@ -444,6 +477,10 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 - **E7-2/E7-3:** Toast „Access granted" izostaje u invite flowu — UX polish
 - **T-S107u-2** (bezopasno): `groupAttributes` uzima `Default` s **prvog** retka grupe ⇒
   `Status.default_value` se klacka `Izvrsen`↔`null`. Fix: ignorirati `Default` na retku s `DependsOn`.
+- **BUG-S114-REPORTDD:** izvještaj o uvozu **nema `DropdownData` list** (`Events / HelpEvents /
+  ImportReport / Filter`), pa u njemu `Tip`/`Podtip` nemaju padajući izbornik. Za pipeline
+  nebitno, **za Koku bitno**: izvještaj je mišljen kao mjesto gdje dorađuje uvezeno, a ondje bi
+  tipkala slobodan tekst bez ijedne provjere. Fix = nositi `DropdownData` kao i običan export.
 - **Bulk delete (checkbox) nije ograničen za grantee-a**
 - **„Import as mine" za write grantee unutar iste shared aree** nema smisla (pravi put je
   Leave Area ili re-import u novu vlastitu Areu) — flag, nije implementirano
@@ -485,7 +522,9 @@ Puni detalji: `ENRICH_PLAN.md`, `FINANCIJE_MIGRACIJA.md`, povijest u `DONE_HISTO
 importa i kroz skriptu** (`excelImport.ts` briše samo u `replace` grani kolizije — redak
 odsutan iz filea se ne obrađuje, pa event tiho preživi).
 
-**Otvoreno:** red 2115 (LJEKARNA OREBIC) → Medical_Sasa treba postati Medical_Koka;
+**Otvoreno:** `845,12` (planiran, 11.07.2026.) — nije ni na izvodu ni u Kokinom fileu ⇒ pitanje
+za nju · dva njena retka datirana `2036-04-08` (`Mirovina 1.323,64`, `Netdomena Igor 47,76`) —
+tipfeler za 2026. · red 2115 (LJEKARNA OREBIC) → Medical_Sasa treba postati Medical_Koka;
 N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravila
 (`paypal`, `spotify`, porez grupa, `leasing`, `bmove`, `keks pay`, `zagrebparking`).
 
@@ -517,7 +556,7 @@ Faza 0 i Faza 1 su gotove; ostalo je izvođenje.
 | --- | --- | --- |
 | **1** | RF banka: 7 novih redaka + ispravak `250,93 → 253,51` | **RF @ 04.08. = 1.716,55** |
 | **2** | RF Visa iz `PBZVIZA_2026-07`: 42 stavke + naplata `1.171,59` + `0,17` | **RF @ 11.08. = 799,12** |
-| **3** | ZABA banka: 110 novih + potvrda planirane naplate `1.244,74` + `845,12` i 5 spornih | **ZABA @ 09.08. = 14.722,84** |
+| ~~**3**~~ | ✅ **GOTOVO S114.** ZABA banka: 31 novi + potvrda `1.244,74`. Izvod nosi 38 tx, 7 ih je baza imala. `845,12` **nije na izvodu ni u Kokinom fileu** — ostaje `Planiran`, pitanje za nju. | ✅ **ZABA @ 30.07. = 13.815,33** (ispisano). ⚠ `14.722,84 @ 09.08.` traži još ~15 Kokinih redaka od 02.08. — izvod ih ne pokriva. |
 | **4** | MC iz `MC_2026-07`: 45 stavki (12 ih baza već ima) + naplata `1.332,52` | **ZABA @ 13.08. = 13.239,31** |
 
 ⚠ **Skupne naplate se NE sintetiziraju** — `MC_2026-07.pdf` sadrži `1.332,52`, a

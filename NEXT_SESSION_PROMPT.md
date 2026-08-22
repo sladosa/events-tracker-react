@@ -1,93 +1,132 @@
-# NEXT SESSION PROMPT — nakon S113 (tranše 1 i 2 zatvorene, tranša 3 je na redu)
+# NEXT SESSION PROMPT — nakon S114 (tranša 3 zatvorena; sljedeća sesija počinje razgovorom)
 
-**Pisan protiv commita `36bc6c1`** (+ commitovi zatvaranja sesije koji slijede odmah iza).
+**Pisan protiv commita `8d36000`** (+ commitovi zatvaranja sesije koji slijede odmah iza).
 Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest; `CLAUDE.md` je autoritet.
 
-**Stanje grana:** `test-branch` nosi S108–S113. `main` = PROD, nije diran ni danas.
+**Stanje grana:** `test-branch` nosi S108–S114. `main` = PROD, nije diran ni danas.
+
+> ⚠ **Saša je izričito zatražio da sljedeća sesija POČNE razgovorom**, ne kodom:
+> *„sljedeći session bi trebali porazgovarati još jednom o tome što smo ovdje naučili i što još
+> eventualno poboljšava proces Koki."* Prijedlozi za taj razgovor su u DIO 1 §3 i DIO 2 §4 —
+> ali ih iznesi **kao materijal za odluku**, ne kao plan koji je već donesen.
 
 ---
 
 # DIO 1 — Jednostavnim rječnikom (za Sašu)
 
-## Što je danas napravljeno
+## 1. Što je danas napravljeno
 
-**Oba računa su usklađena s bankom, i to protiv ispisanih brojeva s izvoda, ne protiv naših.**
+**ZABA račun je zatvoren protiv broja koji je banka ispisala.**
 
-- **RF na 11.08.2026. = `799,12 €`** — točno kako piše na `RF_2026-07.pdf`. Sidro je postavljeno,
-  pa se saldo više ne računa kroz 207 promjena unatrag nego kreće od te potvrde.
-- Uvezeno: 7 redaka tranše 1, 3 retka tranše 2, pa 45 Visa kupovina.
-- Izvod je usput potvrdio i tvoj ispravak `250,93 → 253,51` — banka piše `253,51`.
+Uvezena je tranša 3: 31 novi redak sa srpanjskog izvoda. Kontrolni stupac je na 30.07. dao
+**`13.815,33 €`** — točno onako kako piše `NOVO STANJE` na `ZABA_2026-07.pdf`. Nije naša brojka
+usporedena s našom brojkom, nego naša s bankinom.
 
-**Novi alat `fill_from_izvod.py`** puni Excel umjesto tebe. Ti izvezeš delta sheet iz appa,
-alat u njega upiše retke s bankovnog izvoda, ti pogledaš i uvezeš. Ne prepisuješ ništa rukom,
-a opisi dolaze **iz Kokine Excelice** (`Konzum`, `Parking`, `Ljekarna`) — ne iz strojnog teksta
-izvoda.
+Usput je potvrđena i planirana Mastercard naplata od `1.244,74` — izvod je pokazuje u cent, pa
+je iz `Planiran` prešla u `Izvrsen`.
 
-## Što je sljedeće — tranša 3 (ZABA)
+**I — svih 28 redaka je klasificirano, bez ijednog pogađanja.** `Tip` i `Podtip` nisu izmišljeni
+nego **prebrojani**: alat je pogledao kako je isti tvoj/Kokin tekst klasificiran u 4.992 retka
+povijesti. `Parking` 118 od 118 puta, `T-com` 40 od 41, MC naplata 31 od 31.
 
-Sve je spremno, treba ~15 minuta:
+## 2. Tri stvari koje su danas ispale, a lako su mogle proći tiho
 
-1. Overview → klikni saldo **`Kokin tekući ZABA`** → Activities → Export → **Delta sheet** →
-   spremi kao `data-prep_data\Financije\transa3.xlsx`
-2. ```
-   data-prep_tools\Financije\run.bat fill_from_izvod.py data-prep_data\Financije\transa3.xlsx --zaba data-prep_data\Financije\izvodi\ZABA_2026-07.pdf --koka "data-prep_data\Financije\Financije 2026-08-16.xlsx" --dry
-   ```
-3. Kad popis izgleda dobro, makni `--dry`, otvori `transa3_filled.xlsx`, uvezi.
+**Šest redaka po `0,70` nisu bankovni troškovi — to je parking.** Koka vodi *jedan* redak
+`Parking 1,40`, a banka svaki takav naplaćuje kao *dva* naloga po `0,70`. Da ih je klasificirao
+stroj po tekstu izvoda, sva tri para bi završila u `Domaćinstvo / Bankovni troškovi` — razred u
+kojem takav tekst inače i završava, 12 puta u povijesti. Bilo bi uredno i krivo.
 
-**Kontrolni broj: `13.815,33` na 30.07.2026.** — to je `NOVO STANJE` ispisano na izvodu.
-Ako izađe, ZABA lanac je zatvoren izvana i sidro ide na 30.07.
+**Alat je tvrdio da je pokušao spojiti Kokine opise, a nije.** Pisalo je `0 spareno, 0 bez para`,
+što zvuči kao „tražio sam i nisam našao". Zapravo funkcija koja to radi nikad nije bila pozvana
+za ZABA-u. Popravljeno — sada spoji **30 od 38** redaka, pa umjesto
+`Kreditni transfer nacionalni u eurima on-line bankarstvom` u popisu piše `T-com`, `T-mobile`,
+`Povrat poreza`, `Anja 84/96`.
 
-⚠ Ako **ne** izađe, razlika je u razdoblju **01.–08.07.** koje baza već ima od Koke — ondje su i
-onih 5 spornih lipanjskih redaka (Σ `373,11`) o kojima je pitanje za nju još otvoreno.
+**`845,12` je razriješen — negativno.** Taj planirani redak od 11.07. koji te mučio od prošle
+sesije **nije na izvodu i nema ga nigdje u Kokinoj Excelici.** Ni banka ni ona ga ne poznaju.
+Ostaje `Planiran` (ne kvari nijednu brojku) i ide na popis pitanja za nju.
 
-## Što još čeka tebe
+## 3. Za razgovor na početku sljedeće sesije
 
-- **11 kartičnih stavki nema para u Kokinom fileu** (popis je u `DONE_HISTORY` S113 §6 i ispisuje
-  ga alat). Ili ih nije zapisala, ili se iznos razlikuje — drugo bi bio isti razred greške koji
-  smo lovili u S111.
-- **`845,12`** — planirani redak u bazi bez komentara, i dalje neobjašnjen.
-- **Onih 5 spornih redaka od 16–17.06.** — pitanje za Koku.
+Ovo su kandidati, poredani po tome koliko **Koki** skidaju s ruku. Odluka je tvoja.
+
+| # | Što | Zašto sad |
+| --- | --- | --- |
+| **A** | **Izvještaj o uvozu nema dropdowne** za `Tip`/`Podtip` | On je mišljen kao mjesto gdje se dorađuje uvezeno. Danas bi ondje tipkala slobodan tekst bez ijedne provjere. Mali popravak, direktno njen. |
+| **B** | **Faza 3 — automatika na Import putu** („popuni ako je prazno") | Jedna rupa drži tri featurea: `Datum naplate` na uvozu, pravila `Tip/Podtip`, širenje rata. Najveći komad koda koji je ostao. |
+| **C** | **Tip/Podtip shortcutovi po trgovcu** | Nula koda — `activity_presets` već postoji. Pokriva ono što ona tipka svaki dan. |
+| **D** | **Brzi unos** (prefilana polja se ne skupljaju, ravan shortcut popis) | Male izmjene, ali ih osjeti pri svakom unosu. |
+| **E** | **Klasifikacija iz povijesti kao stalan alat**, ne jednokratna skripta | Danas je to `klasificiraj_transu.py` s ručno upisanom tablicom. Isti postupak (prebroji povijest → predloži → čovjek potvrdi) mogao bi raditi nad bilo kojom tranšom. |
+
+⚠ Prije nego se bilo što od ovoga gradi, vrijedi ono što je već dogovoreno u S112:
+**Saša odglumi Koku 3 dana stvarnog unosa i izmjeri frikciju.** To pretvara „bi li bila
+zadovoljna" u brojku, i vjerojatno prerasporedi gornju tablicu.
+
+## 4. Što još čeka tebe
+
+- **Sidro ZABA na 30.07. = `13.815,33`** — ako ga nisi postavio, to je prvi klik.
+  ⚠ Broj mora doći **s izvoda**, nikad iz pločice.
+- **Pitanja za Koku:** `845,12` (nepoznat i banci i njoj) · onih 5 spornih lipanjskih redaka
+  (Σ `373,11`) · 11 kartičnih stavki bez para iz S113 · dva njena retka datirana **2036**.
+- **Nena `7.000` + `5.000`** su danas upisani kao `Prihodi / Koka` po tvojoj odluci. Ako je to
+  zapravo prebacivanje između računa, reci — mijenja se u jednom uvozu.
 
 ---
 
 # DIO 2 — Tehnički (za Claudea)
 
-## Prvo pročitaj
+## 1. Prvo pročitaj
 
-`docs/sessions/DONE_HISTORY.md` **S113** · CLAUDE.md sekcije „Excel", „Delta sheet",
-„Python alati" (svaka je danas dobila nove zamke) · `docs/sessions/tests/S113_tests.md`.
+`docs/sessions/DONE_HISTORY.md` **S114** · CLAUDE.md sekcije „Delta sheet" i „Python alati"
+(obje su danas dobile nove zamke) · `docs/sessions/tests/S114_tests.md`.
 
-## Novo u S113
+## 2. Novo u S114
 
 | Što | Gdje |
 | --- | --- |
-| `fill_from_izvod.py` — puni app-ov Excel iz izvoda, po IMENU zaglavlja | `data-prep_tools/Financije/` |
-| `--rf` / `--zaba` / `--visa`, `--protiv` (dedup referenca), `--koka` (opisi) | isto |
-| OCR keš po md5 (`_arhiva/ocr_cache/`) — RF izvod se OCR-a jednom | isto |
-| `rf_ocr.py` zadržava ISPISANO stanje (`stanje_izvod`) | `rf_ocr.py` |
-| `fix_anchor_notes.py` — sve bilješke sidara na jedan oblik | `data-prep_tools/Financije/` |
-| izbornik „odakle" uz potvrdu stanja (nikad `NULL`) | `BalanceByGroupTile.tsx` |
-| broj praznih redaka u delta exportu je polje | `ExcelExportModal.tsx` |
-| izvještaj o uvozu nosi layout uvezenog filea | `excelImportReport.ts`, `exportProfile.ts` |
+| `koka.find()` i u `zaba_rows()`; prozor sparivanja je parametar (`prije`/`poslije`) | `fill_from_izvod.py` |
+| `klasificiraj_transu.py` — Tip/Podtip iz izbrojane povijesti, parovi provjereni protiv `DropdownData` | `data-prep_tools/Financije/` |
 
-## Popravljeni bugovi (svi „tihi")
+Nema promjena u `src/`. `npm run typecheck` prolazi.
 
-- `Date.UTC` mjesec 0-based ⇒ delta prozor mjesec prekasno
-- `Area`/`Category_Path` iz prvog retka ⇒ usklađen račun daje predložak bez `Area`
-- `errorStyle="error"` ⇒ openpyxl ne može otvoriti app-ov export
-- openpyxl bilješka ⇒ exceljs padne, file neuvoziv
-- profil pozicijski preko atributskih stupaca ⇒ mogao sakriti `Delete?`/`Result`
-- `run.bat` rezao argumente od petog nadalje
+## 3. Stanje podataka
 
-## Otvoreno / neverificirano
+- **ZABA:** lanac zatvoren protiv ispisanog `NOVO STANJE` `13.815,33` @ 30.07.2026.
+  ⚠ **Postoji li sidro na taj datum — NEVERIFICIRANO** (T-S114-1).
+- **RF:** sidro 11.08.2026. = `799,12`.
+- Kontrolna brojka `14.722,84 @ 09.08.` iz plana tranši **nije dohvaćena i neće biti ovim putem** —
+  izvod staje na 30.07., a za nju treba ~15 Kokinih redaka od 02.08. do 13.08.
+  (`Parking`, `Cash`, `Mirovina 1.261`, `HAK ×2`, `Netdomena`, `Ćorluka 156,99`).
+  To je čisti D-2 slučaj („Koka sada, izvod potvrda") i **nema vanjske potvrde dok ne stigne
+  kolovoški izvod** — pa se tako i mora označiti kad se uveze.
+- **Tranša 4 (MC iz `MC_2026-07`)** je jedina preostala iz originalne tablice. Ona rješava i
+  onih 5 spornih lipanjskih redaka: ostane li `13.239,31` bili su duplikati, postane li
+  `12.866,20` bili su stvarni.
 
-- **T-S113-2** (bilješka sidra iz UI-ja) i **T-S113-3** (tranša 3) ⬜.
-  ⚠ T-S113-3 je pisan dok `--zaba` još nije postojao — sada postoji, korak 2 se može ispraviti.
-- **T-S112-5** (započet redak predloška pada kao greška) ⬜ — prazan slučaj je pokriven.
-- **T-S111-1, -3, -4, -5, -6** i dalje ⬜.
-- **Kozmetika:** delta sheet nad praznim prozorom pokazuje `#N/A` u Max/Min/Summ ćelijama
-  (formule bez raspona). Ne dira uvoz — leže iznad zaglavlja.
+## 4. Materijal za razgovor (ne plan)
+
+Dvije stvari koje su se danas pokazale kao **obrazac**, ne kao pojedinačni nalaz — vrijedi ih
+iznijeti jer mijenjaju kako se gradi Faza 3:
+
+1. **Ključ `(iznos, datum)` ne vidi kad se dva izvora razilaze u *broju redaka*.**
+   S111 je našao razilaženje u **iznosu** (skoro-duplikati), S114 u **broju redaka**
+   (njen `Parking 1,40` = dva bankina `0,70`). Svaka buduća automatika koja sparuje njene retke
+   s izvodom mora računati na oboje — i mora **prijaviti nesparene**, jer su upravo oni skupina
+   u kojoj greška izgleda najurednije.
+
+2. **Povijest je bolji klasifikator od teksta izvoda, i mjerljivo je koliko.**
+   Prebrojavanje nad Reviewom dalo je 24 od 27 redaka jednoznačno (118/118, 41/41, 31/31...),
+   a tri koja nije moglo — dalo je **čovjeku**, s brojkama uz svaku opciju. To je predložak za
+   „Tip/Podtip automatiku" iz backloga: ne pravilo po tekstu, nego **prijedlog s dokazom**.
+   ⚠ I: brana protiv `DropdownData` mora ostati bez obzira na to tko predlaže — podtip mimo
+   `validation_rules` uveze se kao običan tekst i ne javi grešku.
+
+## 5. Otvoreno / neverificirano
+
+- **T-S114-1…5** ⬜ (novi). T-S114-1 je jedini koji nešto blokira.
+- **T-S113-2** (bilješka sidra iz UI-ja) ⬜ · **T-S112-5** ⬜ · **T-S111-1, -3, -4, -5, -6** ⬜.
+- **BUG-S114-REPORTDD** — izvještaj o uvozu nema `DropdownData` list.
+- **Kozmetika iz S113 stoji:** delta sheet nad praznim prozorom pokazuje `#N/A` u Max/Min/Summ.
 - **`sql/037` i `038` nisu na PROD-u** — Overview je i dalje TEST-only.
-- **Faza 3 (automatika na Import putu)** je i dalje sljedeći veliki komad koda. Kokina kolona G
-  je danas dala argument više: ona već vodi „trošak zabilježen, naplata nepoznata", što je u
-  našem modelu `Status = Planiran` + prazan `Datum naplate`.
+- **`transa3.xlsx` je namjerno ostavljen** u `data-prep_data/Financije/` — preduvjet je za
+  T-S114-3. Ostali izlazi tranši 1–2 arhivirani su u `_arhiva/izlazi/`.
