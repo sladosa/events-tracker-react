@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S114).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S115).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -211,6 +211,20 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   mogao sakriti.
 
 **Mjerenje / usklađenje**
+
+- **⚠ Sidro iz pločice nosi datum KOJI SE GLEDA, a broj može biti sa starijeg izvoda** (S115).
+  Potvrda se žigoše `effectiveAsOf`-om (dan koji je na filtru, stegnut na danas), a ne datumom
+  zatvaranja izvoda. Izmjereno: sidro `22.08.2026. = 13.815,33` s bilješkom
+  `ispisano stanje s izvoda · ZABA_2026-07.pdf` — a taj se izvod **zatvara 30.07.** App je oba
+  podatka imao **u istom retku** i nije ih usporedio. Posljedica po pravilu „strogo nakon":
+  sve datirano 31.07.–22.08. tiho ispada iz salda. Nije se vidjelo jer u tom prozoru trenutno
+  nema nijednog ZABA retka — ali sljedeći uvoz (kolovoz, MC naplata `1.332,52` @ 13.08.) pada
+  točno u njega. **Kad izvor nije ekran banke nego izvod, datum mora doći iz izvoda.**
+  ⚠ Obrnuto je ispravno: broj s **ekrana bankovne aplikacije** i jest očitanje za danas.
+- **⚠ Sidro se ispravlja SAMO novim retkom, a krivo ostaje** — i nema ga gdje vidjeti
+  (v. „Sidra se ne mogu vidjeti ni obrisati", backlog). `036` bira najnovije
+  `confirmed_on <= p_as_of` ⇒ novo sidro na **stariji** datum **ne poništava** ono krivo na
+  novijem. Drugi put u dvije sesije (S111: tipfeler `3.453,03`).
 
 - **⚠ Neto Δ krije bruto.** U S111 je ostatak od `−130,25` bio **neto od 2.609,78 bruto** —
   dvadeset puta. Sastojao se od `+1.239,68` viška uplata i `−1.370,01` viška isplata koji su
@@ -477,6 +491,11 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 - **E7-2/E7-3:** Toast „Access granted" izostaje u invite flowu — UX polish
 - **T-S107u-2** (bezopasno): `groupAttributes` uzima `Default` s **prvog** retka grupe ⇒
   `Status.default_value` se klacka `Izvrsen`↔`null`. Fix: ignorirati `Default` na retku s `DependsOn`.
+- **BUG-S115-ANCHORDATE:** potvrda iz pločice žigoše **dan koji se gleda**, pa broj s izvoda
+  dobije datum klika (izmjereno: `22.08. = 13.815,33` uz bilješku `ZABA_2026-07.pdf`, izvod
+  zatvoren 30.07.). Sve između pravog i upisanog datuma tiho ispada iz salda. Fix: kad je izvor
+  „ispisano stanje s izvoda", tražiti **datum zatvaranja izvoda**; uz to popis sidara + brisanje
+  (backlog), jer se krivo sidro danas ispravlja samo novim retkom i SQL-om.
 - **BUG-S114-REPORTDD:** izvještaj o uvozu **nema `DropdownData` list** (`Events / HelpEvents /
   ImportReport / Filter`), pa u njemu `Tip`/`Podtip` nemaju padajući izbornik. Za pipeline
   nebitno, **za Koku bitno**: izvještaj je mišljen kao mjesto gdje dorađuje uvezeno, a ondje bi
@@ -518,6 +537,20 @@ Puni detalji: `ENRICH_PLAN.md`, `FINANCIJE_MIGRACIJA.md`, povijest u `DONE_HISTO
 - **Taksonomiju zaključati PRIJE importa** — poslije ime živi i u `validation_rules` i u
   `value_text` svakog eventa (rizik S105d).
 
+**⚠ Redak koji izvor OBRIŠE nakon uvoza ostaje u bazi zauvijek** (S115). Uvoz obrađuje ono
+što u fileu **piše**, ne ono što je iz njega nestalo. Izmjereno: `845,12` (`Planiran`, ZABA,
+11.07.2026.) postojao je **samo** u snimci `Financije 2026.xlsx` od 08.07., i to kao redak
+**bez datuma i bez opisa** — ostatak, ne transakcija; u obje novije verzije njezinog filea ga
+nema. U bazi je preživio pet tjedana i bio jedina stavka na liniji „planirano" ZABA pločice,
+dakle **tvrdio je da će pomaknuti stanje**. Obrisan u S115. Vrijedi šire: usporedba stare i
+nove verzije izvornog filea je jedini način da se takvi nađu — uvoz ih po definiciji ne vidi.
+
+**⚠ Tipfeler u godini nije poziv da ga „popraviš i uvezeš"** (S115). Dva Kokina retka datirana
+`2036-04-08` (`Mirovina 1.323,64`, `Netdomena Igor 47,76`) **već postoje u bazi** kao
+`2026-04-08`, uredno klasificirani — ušli preko travanjskog izvoda. Ispravak godine + uvoz
+udvostručio bi ih, i to **tiho**: padaju prije ZABA sidra pa ne bi pomaknuli nijednu kontrolnu
+brojku. **Prije ispravka datuma uvijek provjeri postoji li redak već pod ispravnim datumom.**
+
 **Pravila mijenjanja redaka:** dodavanje je uvijek sigurno; **spajanje/brisanje samo prije
 importa i kroz skriptu** (`excelImport.ts` briše samo u `replace` grani kolizije — redak
 odsutan iz filea se ne obrađuje, pa event tiho preživi).
@@ -530,7 +563,7 @@ N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravil
 
 ---
 
-## Sljedeći koraci (2026-08-19)
+## Sljedeći koraci (2026-08-22, S115)
 
 **✅ OBA LANCA SALDA SU ZATVORENA** (S110/S111). App reproducira **ispisana bankovna stanja u cent**:
 ZABA `2.546,55` @ 31.03.2025. i `3.403,74` @ 08.07.2026. · RF `461,82` @ 06.07.2026.
@@ -556,8 +589,14 @@ Faza 0 i Faza 1 su gotove; ostalo je izvođenje.
 | --- | --- | --- |
 | **1** | RF banka: 7 novih redaka + ispravak `250,93 → 253,51` | **RF @ 04.08. = 1.716,55** |
 | **2** | RF Visa iz `PBZVIZA_2026-07`: 42 stavke + naplata `1.171,59` + `0,17` | **RF @ 11.08. = 799,12** |
-| ~~**3**~~ | ✅ **GOTOVO S114.** ZABA banka: 31 novi + potvrda `1.244,74`. Izvod nosi 38 tx, 7 ih je baza imala. `845,12` **nije na izvodu ni u Kokinom fileu** — ostaje `Planiran`, pitanje za nju. | ✅ **ZABA @ 30.07. = 13.815,33** (ispisano). ⚠ `14.722,84 @ 09.08.` traži još ~15 Kokinih redaka od 02.08. — izvod ih ne pokriva. |
+| ~~**3**~~ | ✅ **GOTOVO S114.** ZABA banka: 31 novi + potvrda `1.244,74`. Izvod nosi 38 tx, 7 ih je baza imala. `845,12` **obrisan u S115** (postojao samo u snimci od 08.07., bez datuma i opisa ⇒ ostatak, ne transakcija). | ✅ **ZABA @ 30.07. = 13.815,33** (ispisano). ⚠ `14.722,84 @ 09.08.` traži još ~15 Kokinih redaka od 02.08. — izvod ih ne pokriva. |
 | **4** | MC iz `MC_2026-07`: 45 stavki (12 ih baza već ima) + naplata `1.332,52` | **ZABA @ 13.08. = 13.239,31** |
+
+⚠ **Tranša 4 više NIJE preduvjet za PROD** (S115). Sidro prikazuje račun i bez ijednog eventa
+(`036`, T-S115-2) ⇒ Koka može upisati stanje sa svog ekrana banke i saldo je od tog trena točan.
+Kolovoz se uvozi **zbog zapisa**, ne zbog salda — a Kokin file je u međuvremenu otišao dalje:
+`Financije 2026-08-16.xlsx` ima **87 redaka nakon 30.07. na „koka EU" i 68 na „sasa EU"**,
+od kojih je u bazi **6**. Tranša 4 je time narasla iz „MC paket" u „MC paket + cijeli kolovoz".
 
 ⚠ **Skupne naplate se NE sintetiziraju** — `MC_2026-07.pdf` sadrži `1.332,52`, a
 `PBZVIZA_2026-07.pdf` `1.171,59`, oboje u cent jednako Kokinim grupama. Banka ih je ispisala.
@@ -566,6 +605,29 @@ Faza 0 i Faza 1 su gotove; ostalo je izvođenje.
 `ZABA_2026-06.pdf`** — najvjerojatnije kolovoški računi s krivim mjesecom. Uvezeni s lipanjskim
 datumom padaju **prije ZABA sidra** (01.07.) i po pravilu „strogo nakon" tiho ispadaju iz salda.
 Tranša 4 ih rješava: ostane li `13.239,31` bili su duplikati, postane li `12.866,20` bili su stvarni.
+
+### Plan za PROD (dogovoren S115) — bez žurbe
+
+Redoslijed je Sašin: **kolovoz u miru → kolone po Arei → testiranje → tek onda deploy na `main`.**
+Odbačena je varijanta „sve sutra ujutro prije nego Koka otputuje".
+
+1. Uvoz kolovoza iz **zadnje** verzije Kokinog filea (traži je od nje — ima još unosa).
+2. **Kolone po Arei** (v. Backlog) — `Datum | Smjer + iznos | Tip / Podtip | Opis | ⋮`.
+3. Testiranje na TEST-u, popravak sidra (BUG-S115-ANCHORDATE).
+4. **Merge `test-branch` → `main`** — ⚠ samo na Sašin izričit „idi".
+5. SQL `035`–`038` na PROD · `dashboard` config u njenu PROD Areu (⚠ **ne putuje** roundtripom)
+   · Structure import **pod njenim računom** (D6) · 2–3 stvarna retka da se račun pojavi.
+6. Saša testira na **njenom PROD računu lokalno**, pa joj javi da može s mobitela.
+7. **Ona upiše stanje sa svog ekrana banke → „u banci" → Potvrdi.** To je sidro, i datum je
+   tada ispravno današnji. Od tog trena: `saldo = njen broj + ono što ona upiše`.
+
+⚠ **Njoj u jednoj rečenici: kad počne upisivati u app, u Excelicu više ne.** Radi li oboje,
+sve dobijemo dvaput — a to se neće vidjeti dok se saldo ne raziđe.
+
+⚠ **Izvodi su samo PDF** — ni ZABA ni PBZ ne nude CSV/Excel (potvrdio Saša, S115). Ideja
+„app čita izvod" zato znači **pisanje novog čitača PDF-a**, i **imenovana je i odložena**:
+PDF-ove i dalje čita Sašin Python alat. Vrijednost te ideje nosi njezin drugi dio —
+**pravila u bazi + evaluacija na uvozu** (Faza 3), koji PDF uopće ne dira.
 
 ### Nakon tranši
 
@@ -622,6 +684,11 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   **„Potvrdi na <budući datum>"**, čime bi sidro po pravilu „strogo nakon" **presjeklo sve
   retke do tada**. `split` („planirano") dobiva **sirovi** `asOf`, jer je rata u 2027. upravo
   ono što taj broj broji. Dvije upite, dva pravila.
+- **Sidro prikazuje račun i BEZ ijednog eventa** (`036`, potvrđeno čitanjem koda u S115, uživo
+  još neprovjereno — T-S115-2). Popis grupa je `UNION` brojanih grupa **i** sidara:
+  *„potvrđeno 1.240,00 i ništa se nije dogodilo" je odgovor, nije odsutnost.* ⇒ **za novu bazu
+  povijest nije preduvjet**: dovoljno je da korisnik upiše stanje sa svog ekrana banke i saldo
+  je od tog trena točan. To je nosivi argument plana za PROD (v. `NEXT_SESSION_PROMPT.md`).
 - **Sidro unatrag je provjera, sidro na danas je pokrivač** (S109). Datirano na početak
   uvezene povijesti, sidro mjeri **reproducira li app tuđi lanac**; datirano na danas samo
   skriva rupu. `confirmed_on` je obična `date` — baza to već podržava, UI još ne.
@@ -662,6 +729,17 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 
 ## Backlog
 
+**Kolone Activities liste po Arei** (dogovoreno S115, gradi se u S116) — danas je popis
+generički za sve Aree (`Date, Time, Category, Events, comment`), a za Financije su `Time`,
+`Category` i `Events` prazan prostor. Konfiguracija ide u `areas.settings`, **slug-based**,
+kroz Structure roundtrip; Area bez nje zadrži današnji izgled. Kolone se opisuju **ulogama**,
+ne imenima iz domene — isti obrazac kao pločice (`group`/`plus`/`minus`):
+`date` · `pair` (plus+minus ⇒ **smjer + iznos u jednoj koloni**) · `attr:<slug>` · `comment` ·
+`actions`. Za Financije: `Datum | Smjer + iznos | Tip / Podtip | Opis | ⋮`, uski ekran u dva
+reda. **Tip i Podtip su JEDNA spojena kolona** (`Domaćinstvo / Hrana i ostalo`) — Sašina odluka.
+⚠ Rename sluga mora povući fixup reference, isto što `dashboardConfig.ts` radi za pločice.
+⚠ Ovo je jedina stavka s popisa A–E koju Koka vidi **svaki put**, ne samo pri unosu.
+
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
 (fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
@@ -669,8 +747,9 @@ rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashb
 **Sidra se ne mogu vidjeti ni obrisati iz aplikacije** (S109) — `listAnchors()` i
 `deleteAnchor()` postoje u `overviewApi.ts` i **nitko ih ne zove**; jedini put je SQL Editor.
 ⚠ Blokada je **otpala** (§2.18 — sidra ostaju zasebna tablica), pa se ovo sada smije graditi.
-Postalo je i konkretnije: u S111 je jedno sidro upisano s tipfelericom (3.453,03 umjesto
-3.458,03) i **ispravlja se samo novim retkom** — bez popisa u UI-ju korisnik ne vidi da uz
+⚠ **S115 je dao drugi slučaj u dvije sesije** (krivo datirano sidro, BUG-S115-ANCHORDATE) —
+dakle nije jednokratni promašaj nego izostanak koraka. Postalo je i konkretnije: u S111 je jedno
+sidro upisano s tipfelericom (3.453,03 umjesto 3.458,03) i **ispravlja se samo novim retkom** — bez popisa u UI-ju korisnik ne vidi da uz
 važeće sidro stoji i ono krivo.
 
 **Sidro upisano kroz UI nema podrijetlo** (S110) — `balance_anchors.note` postoji, skripta ga

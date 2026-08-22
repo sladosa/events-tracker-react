@@ -2350,3 +2350,110 @@ izvodu i nema ga nigdje u Kokinom fileu** (pretražena oba lista po iznosu, 0 po
   S113; ovo je prvi put da je zadana vrijednost bila premala.
 - **Dva retka u Kokinom fileu datirana su `2036-04-08`** (`Mirovina 1.323,64`, `Netdomena Igor
   47,76`) — gotovo sigurno tipfeler za 2026. Isti razred kao S110 nalaz.
+
+
+---
+
+# S115 — 2026-08-22 (druga sesija istog dana) · razgovor, mjerenje, plan za PROD
+
+**Bez koda.** Jedna promjena podataka (obrisan jedan event), tri razriješena otvorena pitanja,
+jedan novi bug i plan za PROD koji je usput **prepolovljen** jednim svojstvom koje već postoji.
+
+## 1. Sidro ZABA je krivo datirano — nađeno na slici, potvrđeno u bazi
+
+Saša je otvorio Overview i pločica je pisala **„od potvrde 22.08.2026."**. Ispis sidara iz baze:
+
+```
+2026-08-22  Kokin tekući ZABA  13.815,33  note='ispisano stanje s izvoda · ZABA_2026-07.pdf'
+```
+
+Iznos je ispravan i vanjski. Datum je od klika — a `ZABA_2026-07.pdf` se **zatvara 30.07.**
+App je oba podatka imao **u istom retku** i nije ih usporedio.
+
+Po pravilu „promjene **strogo nakon**" sve datirano 31.07.–22.08. time ispada iz salda.
+Provjereno: **danas ne gubi ništa** (u tom prozoru nema nijednog ZABA retka — svih 7 su RF).
+Ali sljedeći uvoz pada točno u njega: MC naplata `1.332,52` @ 13.08. i ~87 Kokinih kolovoških
+redaka. ⇒ **BUG-S115-ANCHORDATE**, popravak je prvi zadatak S116. `T-S114-1` je time
+**izmjeren i pao** — nije ostao neprovjeren.
+
+Drugi put u dvije sesije da krivo sidro traži SQL (S111: tipfeler `3.453,03`) ⇒ backlog stavka
+„popis sidara + brisanje u UI-ju" nije više teorijska.
+
+## 2. `845,12` — obrisan, s dokazom
+
+Pretraga triju verzija Kokinog filea po iznosu:
+
+| File | Nalaz |
+| --- | --- |
+| `Financije 2026.xlsx` (08.07.) | **postoji — bez datuma i bez opisa** |
+| `Financije 2026-07.xlsx` | nema |
+| `Financije 2026-08-16.xlsx` | nema |
+
+U bazi je stajao kao `Planiran`, `Tip = N/A`, bez `Datuma naplate` — dakle ostatak, ne
+transakcija. Bio je **jedina** stavka na liniji „planirano" ZABA pločice, pa je tvrdio da će
+pomaknuti stanje. Obrisan (7 atributa + event, DELETE provjeren po vraćenim retcima).
+
+**Razred, ne slučaj:** redak koji izvor obriše nakon uvoza **ostaje u bazi zauvijek** — uvoz
+vidi ono što piše, ne ono što je nestalo. Usporedba stare i nove verzije izvornog filea je
+jedini način da se takvi nađu.
+
+## 3. Retci iz 2036. — NE ispravljati i uvoziti
+
+Dva njena retka datirana `2036-04-08` izgledaju kao očit tipfeler za 2026. Provjera u bazi:
+
+```
+1.323,64 → 2026-04-08  Kokin tekući ZABA  Prihodi / Koka
+   47,76 → 2026-04-08  Kokin tekući ZABA  Informatika / Hosting domene (DPS, Igor)
+```
+
+**Već su unutra**, uredno klasificirani, ušli preko travanjskog izvoda. „Popravi godinu pa
+uvezi" bi ih udvostručio — i to tiho, jer padaju prije ZABA sidra pa ne bi pomaknuli nijednu
+kontrolnu brojku. Popravak ide **u njen file**, ne u bazu.
+
+## 4. Koliko je Kokin file otišao dalje od baze
+
+| | retci nakon 30.07. | u bazi |
+| --- | --- | --- |
+| „koka EU" (ZABA) | **87** | 0 |
+| „sasa EU" (RF) | **68** | 6 |
+
+Zadnji zapis po računu u bazi: ZABA **2026-07-30**, RF **2026-08-11**. MC naplata `1.332,52`
+**nije u bazi**. Dakle: **oba bankovna računa jesu usklađena protiv izvoda**, ali njen file je
+u međuvremenu narastao — „tranša 4" više nije MC paket nego MC paket + cijeli kolovoz.
+
+## 5. Svojstvo koje je prepolovilo plan za PROD
+
+Saša je pitao može li se na PROD staviti **sidro** da Koka vidi stanje koje prepoznaje.
+Čitanje `036` je pokazalo da je odgovor bolji nego što se činilo: popis grupa je `UNION`
+brojanih grupa **i sidara** — *„potvrđeno 1.240,00 i ništa se nije dogodilo je odgovor, nije
+odsutnost."*
+
+⇒ **Za novu bazu povijest nije preduvjet.** Koka upiše stanje sa svog ekrana banke i saldo je
+od tog trena točan; njeni kolovoški retci trebaju samo zbog **zapisa**. (Uživo neprovjereno —
+`T-S115-2`, i cijeli plan stoji na tome.)
+
+Cijena koju to nosi: **Overview postoji samo na `test-branch`**, pa PROD traži deploy.
+
+## 6. Odluke
+
+- **PROD bez žurbe.** Ne sutra ujutro pod pritiskom. Redoslijed: kolovoz u miru → kolone po
+  Arei → testiranje → deploy na `main` → Saša testira na **njenom PROD računu lokalno** → javi
+  joj da može s mobitela.
+- **Kolone Activities liste po Arei.** Za Financije `Datum | Smjer + iznos | Tip / Podtip |
+  Opis | ⋮`, uski ekran u dva reda. **Tip i Podtip jedna spojena kolona**
+  (`Domaćinstvo / Hrana i ostalo`) — Sašina odluka. Generičko ostaje Areama bez postave.
+- **Izvodi su samo PDF** — ZABA ni PBZ ne nude CSV/Excel. „App čita izvod" je zato **imenovano
+  i odloženo**; vrijednost nosi drugi dio te ideje — **pravila u bazi + evaluacija na uvozu**
+  (Faza 3), koji PDF uopće ne dira.
+- **Kolovoz:** uvozi se po D-2 („Koka sada, izvod potvrda"), uz oznaku da vanjske potvrde nema
+  dok ne stigne kolovoški izvod.
+
+## 7. Zatečeno usput
+
+- **`PENDING_TESTS.md` sam sebi proturječi:** kurirani redak „Otvoreno:" navodi jedan skup
+  testova, a ⬜ oznake u tijelu filea drugi (⬜ postoje i za S105, S107, S107c, S107d, S107i,
+  S107j, S107m, S107n, S107o, S107p, S107x, koje „Otvoreno" ne spominje). Zbog toga **ritual
+  arhiviranja nije izveden** — kriterij „svi testovi ✅" se ne može primijeniti mehanički dok
+  se to ne uskladi. Zadatak za S116.
+- Arhivirana dva generirana izvještaja o uvozu (`import_report_20260822_101209*.xlsx`) u
+  `_arhiva/izlazi/`. `.pre-*` backupa ima točno 3 ⇒ ništa se ne seli.

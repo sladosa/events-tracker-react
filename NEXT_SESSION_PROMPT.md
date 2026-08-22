@@ -1,75 +1,68 @@
-# NEXT SESSION PROMPT — nakon S114 (tranša 3 zatvorena; sljedeća sesija počinje razgovorom)
+# NEXT SESSION PROMPT — nakon S115 (dan je isplaniran unaprijed: kolovoz, kolone, pa deploy)
 
-**Pisan protiv commita `8d36000`** (+ commitovi zatvaranja sesije koji slijede odmah iza).
+**Pisan protiv commita `ee261ae`** (+ commit zatvaranja S115 koji slijedi odmah iza).
 Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest; `CLAUDE.md` je autoritet.
 
-**Stanje grana:** `test-branch` nosi S108–S114. `main` = PROD, nije diran ni danas.
+**Stanje grana:** `test-branch` nosi S108–S115. `main` = PROD, **nije diran od S107**.
 
-> ⚠ **Saša je izričito zatražio da sljedeća sesija POČNE razgovorom**, ne kodom:
-> *„sljedeći session bi trebali porazgovarati još jednom o tome što smo ovdje naučili i što još
-> eventualno poboljšava proces Koki."* Prijedlozi za taj razgovor su u DIO 1 §3 i DIO 2 §4 —
-> ali ih iznesi **kao materijal za odluku**, ne kao plan koji je već donesen.
+> S115 je bio razgovor i mjerenje, bez koda. **Sljedeća sesija ima dogovoren plan** (DIO 1 §2) —
+> ne treba je otvarati pitanjem „što ćemo danas".
 
 ---
 
 # DIO 1 — Jednostavnim rječnikom (za Sašu)
 
-## 1. Što je danas napravljeno
+## 1. Što je jučer riješeno
 
-**ZABA račun je zatvoren protiv broja koji je banka ispisala.**
+**`845,12` je obrisan, i sad znamo što je bio.** Postoji **samo** u tvojoj najstarijoj snimci
+Kokinog filea (08.07.), i to kao redak **bez datuma i bez opisa** — dakle zaostatak, ne
+transakcija. U bazi je bio `Tip = N/A`, bez datuma naplate. Pet tjedana je stajao kao jedina
+stavka „planirano" na ZABA pločici i tvrdio da će pomaknuti stanje. Nema ga više.
 
-Uvezena je tranša 3: 31 novi redak sa srpanjskog izvoda. Kontrolni stupac je na 30.07. dao
-**`13.815,33 €`** — točno onako kako piše `NOVO STANJE` na `ZABA_2026-07.pdf`. Nije naša brojka
-usporedena s našom brojkom, nego naša s bankinom.
+**Retci iz 2036. se NE smiju ispraviti i uvesti.** Provjerio sam: `1.323,64` i `47,76` **već su
+u bazi** kao 08.04.2026., uredno klasificirani — ušli su travanjskim izvodom. Da smo „popravili
+tipfeler i uvezli", dobio bi ih dvaput, i to **tiho** (padaju prije sidra pa ne bi pokvarili
+nijednu kontrolnu brojku). Popravak ide **u njen file**, reci joj.
 
-Usput je potvrđena i planirana Mastercard naplata od `1.244,74` — izvod je pokazuje u cent, pa
-je iz `Planiran` prešla u `Izvrsen`.
+**Sidro ZABA je krivo datirano.** Stoji na **22.08.** umjesto na **30.07.** Iznos je točan
+(`13.815,33`, s izvoda) — datum je od klika. Trenutno ne šteti ništa jer u tom prozoru nema
+ZABA redaka, ali **sljedeći uvoz pada točno u njega**. Popravak je prvi zadatak.
 
-**I — svih 28 redaka je klasificirano, bez ijednog pogađanja.** `Tip` i `Podtip` nisu izmišljeni
-nego **prebrojani**: alat je pogledao kako je isti tvoj/Kokin tekst klasificiran u 4.992 retka
-povijesti. `Parking` 118 od 118 puta, `T-com` 40 od 41, MC naplata 31 od 31.
+## 2. Plan za sljedeći dan — dogovoren, ovim redom
 
-## 2. Tri stvari koje su danas ispale, a lako su mogle proći tiho
+1. **Traži od Koke zadnju verziju filea** (ima još unosa poslije 16.08.).
+2. **Popravi sidro** — obriši ono od 22.08., provjeri da app sam dođe do `13.815,33` na 30.07.,
+   pa upiši sidro na 30.07.
+3. **Uvezi kolovoz** u miru. ⚠ Njen file je otišao dalje nego što smo mislili: **87 redaka
+   poslije 30.07.** na njenom računu, **68** na tvom; u bazi ih je **6**.
+4. **Napravi kolone po Arei** za Financije: `Datum | Smjer + iznos | Tip / Podtip | Opis | ⋮`.
+   Na uskom ekranu u dva reda. Ostale Aree ostaju kakve jesu.
+5. **Testiraj**, posloži stvari.
+6. **Tek onda deploy na `main`** — i to na tvoj izričit „idi".
+7. Ti se prijaviš na **njen PROD račun kod sebe lokalno**, provjeriš da sve radi, pa joj javiš
+   da može s mobitela.
 
-**Šest redaka po `0,70` nisu bankovni troškovi — to je parking.** Koka vodi *jedan* redak
-`Parking 1,40`, a banka svaki takav naplaćuje kao *dva* naloga po `0,70`. Da ih je klasificirao
-stroj po tekstu izvoda, sva tri para bi završila u `Domaćinstvo / Bankovni troškovi` — razred u
-kojem takav tekst inače i završava, 12 puta u povijesti. Bilo bi uredno i krivo.
+## 3. Ono što plan čini jednostavnijim nego što je izgledao
 
-**Alat je tvrdio da je pokušao spojiti Kokine opise, a nije.** Pisalo je `0 spareno, 0 bez para`,
-što zvuči kao „tražio sam i nisam našao". Zapravo funkcija koja to radi nikad nije bila pozvana
-za ZABA-u. Popravljeno — sada spoji **30 od 38** redaka, pa umjesto
-`Kreditni transfer nacionalni u eurima on-line bankarstvom` u popisu piše `T-com`, `T-mobile`,
-`Povrat poreza`, `Anja 84/96`.
+Pitao si može li se na PROD staviti sidro da Koka vidi stanje koje prepoznaje. **Može — i to
+znači da joj povijest uopće ne treba.** Provjerio sam u kodu: pločica prikazuje račun i kad
+iza njega nema **nijednog** zapisa, samo na temelju sidra.
 
-**`845,12` je razriješen — negativno.** Taj planirani redak od 11.07. koji te mučio od prošle
-sesije **nije na izvodu i nema ga nigdje u Kokinoj Excelici.** Ni banka ni ona ga ne poznaju.
-Ostaje `Planiran` (ne kvari nijednu brojku) i ide na popis pitanja za nju.
+Praktično: ona otvori bankovnu aplikaciju, prepiše stanje u polje „u banci", pritisne Potvrdi —
+i od tog trenutka je **saldo = njen broj + ono što ona upiše**. Prepoznat će ga odmah, jer ga je
+sama upisala.
 
-## 3. Za razgovor na početku sljedeće sesije
+⚠ To još **nije provjereno uživo** (T-S115-2). Ako padne, plan se mijenja iz temelja — zato je
+taj test među prvima.
 
-Ovo su kandidati, poredani po tome koliko **Koki** skidaju s ruku. Odluka je tvoja.
+## 4. Što ostaje na tebi
 
-| # | Što | Zašto sad |
-| --- | --- | --- |
-| **A** | **Izvještaj o uvozu nema dropdowne** za `Tip`/`Podtip` | On je mišljen kao mjesto gdje se dorađuje uvezeno. Danas bi ondje tipkala slobodan tekst bez ijedne provjere. Mali popravak, direktno njen. |
-| **B** | **Faza 3 — automatika na Import putu** („popuni ako je prazno") | Jedna rupa drži tri featurea: `Datum naplate` na uvozu, pravila `Tip/Podtip`, širenje rata. Najveći komad koda koji je ostao. |
-| **C** | **Tip/Podtip shortcutovi po trgovcu** | Nula koda — `activity_presets` već postoji. Pokriva ono što ona tipka svaki dan. |
-| **D** | **Brzi unos** (prefilana polja se ne skupljaju, ravan shortcut popis) | Male izmjene, ali ih osjeti pri svakom unosu. |
-| **E** | **Klasifikacija iz povijesti kao stalan alat**, ne jednokratna skripta | Danas je to `klasificiraj_transu.py` s ručno upisanom tablicom. Isti postupak (prebroji povijest → predloži → čovjek potvrdi) mogao bi raditi nad bilo kojom tranšom. |
-
-⚠ Prije nego se bilo što od ovoga gradi, vrijedi ono što je već dogovoreno u S112:
-**Saša odglumi Koku 3 dana stvarnog unosa i izmjeri frikciju.** To pretvara „bi li bila
-zadovoljna" u brojku, i vjerojatno prerasporedi gornju tablicu.
-
-## 4. Što još čeka tebe
-
-- **Sidro ZABA na 30.07. = `13.815,33`** — ako ga nisi postavio, to je prvi klik.
-  ⚠ Broj mora doći **s izvoda**, nikad iz pločice.
-- **Pitanja za Koku:** `845,12` (nepoznat i banci i njoj) · onih 5 spornih lipanjskih redaka
-  (Σ `373,11`) · 11 kartičnih stavki bez para iz S113 · dva njena retka datirana **2036**.
-- **Nena `7.000` + `5.000`** su danas upisani kao `Prihodi / Koka` po tvojoj odluci. Ako je to
-  zapravo prebacivanje između računa, reci — mijenja se u jednom uvozu.
+- **Zadnja verzija Kokinog filea.**
+- **Reci joj za retke iz 2036.** (`Mirovina 1.323,64`, `Netdomena Igor 47,76` — trebalo je 2026.).
+- **Onih 5 spornih lipanjskih redaka** (Σ `373,11`) i 11 kartičnih stavki bez para iz S113 —
+  i dalje pitanja za nju.
+- **Kad dođe dan prelaska: jedna rečenica njoj** — *„kad počneš upisivati u app, u Excelicu
+  više ne."* Radi li oboje, sve dobijemo dvaput, i to se neće vidjeti dok se saldo ne raziđe.
 
 ---
 
@@ -77,56 +70,48 @@ zadovoljna" u brojku, i vjerojatno prerasporedi gornju tablicu.
 
 ## 1. Prvo pročitaj
 
-`docs/sessions/DONE_HISTORY.md` **S114** · CLAUDE.md sekcije „Delta sheet" i „Python alati"
-(obje su danas dobile nove zamke) · `docs/sessions/tests/S114_tests.md`.
+`docs/sessions/DONE_HISTORY.md` **S115** · `CLAUDE.md` → „Sljedeći koraci" (§ Plan za PROD),
+„Mjerenje / usklađenje" (dvije nove zamke o sidru), Backlog → „Kolone Activities liste po Arei" ·
+`docs/sessions/tests/S115_tests.md`.
 
-## 2. Novo u S114
+## 2. Stanje — sve izmjereno u S115, ne procijenjeno
 
-| Što | Gdje |
+| Što | Vrijednost |
 | --- | --- |
-| `koka.find()` i u `zaba_rows()`; prozor sparivanja je parametar (`prije`/`poslije`) | `fill_from_izvod.py` |
-| `klasificiraj_transu.py` — Tip/Podtip iz izbrojane povijesti, parovi provjereni protiv `DropdownData` | `data-prep_tools/Financije/` |
+| sidara u TEST bazi | 6 · ZABA `22.08. = 13.815,33` **(krivi datum)** · RF `11.08. = 799,12` |
+| zadnji zapis u bazi | ZABA **2026-07-30** · RF **2026-08-11** |
+| Kokin file `Financije 2026-08-16.xlsx` nakon 30.07. | „koka EU" **87**, „sasa EU" **68**; u bazi **6** |
+| MC naplata `1.332,52` | **nije u bazi** |
+| travanj 2026. | **111 eventa** (referenca za T-S115-3) |
 
-Nema promjena u `src/`. `npm run typecheck` prolazi.
+Nema promjena u `src/`. Jedina promjena podataka: obrisan event `2831e332-ad4b-46c5-894d-f0da08c9d826`.
 
-## 3. Stanje podataka
+## 3. Redoslijed rada i zamke uz svaki korak
 
-- **ZABA:** lanac zatvoren protiv ispisanog `NOVO STANJE` `13.815,33` @ 30.07.2026.
-  ⚠ **Postoji li sidro na taj datum — NEVERIFICIRANO** (T-S114-1).
-- **RF:** sidro 11.08.2026. = `799,12`.
-- Kontrolna brojka `14.722,84 @ 09.08.` iz plana tranši **nije dohvaćena i neće biti ovim putem** —
-  izvod staje na 30.07., a za nju treba ~15 Kokinih redaka od 02.08. do 13.08.
-  (`Parking`, `Cash`, `Mirovina 1.261`, `HAK ×2`, `Netdomena`, `Ćorluka 156,99`).
-  To je čisti D-2 slučaj („Koka sada, izvod potvrda") i **nema vanjske potvrde dok ne stigne
-  kolovoški izvod** — pa se tako i mora označiti kad se uveze.
-- **Tranša 4 (MC iz `MC_2026-07`)** je jedina preostala iz originalne tablice. Ona rješava i
-  onih 5 spornih lipanjskih redaka: ostane li `13.239,31` bili su duplikati, postane li
-  `12.866,20` bili su stvarni.
+1. **Sidro** — ⚠ novo sidro na **stariji** datum **ne poništava** krivo na novijem (`036` bira
+   najnovije `confirmed_on <= as_of`). Krivo se mora **obrisati**, a to danas ide samo skriptom
+   ili SQL-om. Redoslijed je *provjera pa sidro*: prvo pusti app da iz sidra `01.07. = 2.255,64`
+   sam dođe do `13.815,33` na 30.07., **pa tek onda** upiši novo — inače je provjera tautološka.
+2. **Uvoz kolovoza** — D-2 („Koka sada, izvod potvrda"), uz **izričitu oznaku da vanjske potvrde
+   nema** dok ne stigne kolovoški izvod. ⚠ Retci iz 2036. ne smiju ući (T-S115-3).
+   ⚠ Delta export: zadanih 40 praznih redaka je premalo, treba 110+.
+3. **Kolone po Arei** — spec u Backlogu `CLAUDE.md`. Uloge, ne imena iz domene. Tip i Podtip su
+   **jedna spojena kolona**. Mora proći Structure roundtrip (Sašin princip „sve ide importom").
+4. **Deploy** — ⚠ **nikad bez izričitog Sašinog traženja.** Uz merge idu i `035`–`038` na PROD,
+   `dashboard` config u njenu Areu (**ne putuje** roundtripom), Structure import **pod njenim
+   računom** (D6: email u koloni G mora biti račun koji uvozi).
 
-## 4. Materijal za razgovor (ne plan)
+## 4. Otvoreno / neverificirano
 
-Dvije stvari koje su se danas pokazale kao **obrazac**, ne kao pojedinačni nalaz — vrijedi ih
-iznijeti jer mijenjaju kako se gradi Faza 3:
-
-1. **Ključ `(iznos, datum)` ne vidi kad se dva izvora razilaze u *broju redaka*.**
-   S111 je našao razilaženje u **iznosu** (skoro-duplikati), S114 u **broju redaka**
-   (njen `Parking 1,40` = dva bankina `0,70`). Svaka buduća automatika koja sparuje njene retke
-   s izvodom mora računati na oboje — i mora **prijaviti nesparene**, jer su upravo oni skupina
-   u kojoj greška izgleda najurednije.
-
-2. **Povijest je bolji klasifikator od teksta izvoda, i mjerljivo je koliko.**
-   Prebrojavanje nad Reviewom dalo je 24 od 27 redaka jednoznačno (118/118, 41/41, 31/31...),
-   a tri koja nije moglo — dalo je **čovjeku**, s brojkama uz svaku opciju. To je predložak za
-   „Tip/Podtip automatiku" iz backloga: ne pravilo po tekstu, nego **prijedlog s dokazom**.
-   ⚠ I: brana protiv `DropdownData` mora ostati bez obzira na to tko predlaže — podtip mimo
-   `validation_rules` uveze se kao običan tekst i ne javi grešku.
-
-## 5. Otvoreno / neverificirano
-
-- **T-S114-1…5** ⬜ (novi). T-S114-1 je jedini koji nešto blokira.
-- **T-S113-2** (bilješka sidra iz UI-ja) ⬜ · **T-S112-5** ⬜ · **T-S111-1, -3, -4, -5, -6** ⬜.
-- **BUG-S114-REPORTDD** — izvještaj o uvozu nema `DropdownData` list.
-- **Kozmetika iz S113 stoji:** delta sheet nad praznim prozorom pokazuje `#N/A` u Max/Min/Summ.
-- **`sql/037` i `038` nisu na PROD-u** — Overview je i dalje TEST-only.
-- **`transa3.xlsx` je namjerno ostavljen** u `data-prep_data/Financije/` — preduvjet je za
-  T-S114-3. Ostali izlazi tranši 1–2 arhivirani su u `_arhiva/izlazi/`.
+- **T-S115-2 nosi cijeli plan za PROD** — „sidro prikazuje račun i bez ijednog eventa" je
+  pročitano u `036`, **nije viđeno uživo**.
+- **BUG-S115-ANCHORDATE** — popravak nije napisan. Smjer: kad je izvor „ispisano stanje s
+  izvoda", tražiti **datum zatvaranja izvoda** umjesto da se žigoše dan koji se gleda. Uz to
+  popis sidara + brisanje u UI-ju (backlog, sad ima drugi dokazani slučaj).
+- **`PENDING_TESTS.md` sam sebi proturječi** — kurirani redak „Otvoreno:" i ⬜ oznake u tijelu
+  navode različite skupove. Zbog toga **ritual arhiviranja nije izveden** u S115: kriterij
+  „svi testovi ✅" se ne može primijeniti mehanički. Uskladiti, pa arhivirati.
+- **Izvodi su samo PDF** (potvrđeno) ⇒ „app čita izvod" je imenovano i **odloženo**; vrijednost
+  te ideje nosi Faza 3 (pravila u bazi + evaluacija na uvozu), koja PDF ne dira.
+- Kontrolna brojka `ZABA 09.08. = 14.722,84` iz Kokinog lanca i dalje nije dohvaćena — traži
+  njene kolovoške retke, kojih izvod ne pokriva.

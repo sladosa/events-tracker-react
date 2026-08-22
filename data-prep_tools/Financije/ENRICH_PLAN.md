@@ -935,3 +935,30 @@ Puni nalaz, provjere i odluka: `SALDO_MODEL_NALAZI.md` §6.3.
   fileu. Ostaje `Planiran` (ne dira kontrolni broj), pitanje za nju.
 - **Zatečeno:** dva njena retka datirana `2036-04-08` (`Mirovina 1.323,64`, `Netdomena Igor
   47,76`) — tipfeler za 2026., isti razred kao S110 nalaz.
+
+
+## S115 — 2026-08-22 (druga sesija) · mjerenje, bez alata
+
+Sesija bez koda; sve navedeno je **izmjereno**, ne procijenjeno (read-only skripte nad TEST
+bazom + `openpyxl` nad trima verzijama Kokinog filea).
+
+- **`845,12` OBRISAN — i to je ispravak prošlog zaključka.** S114 je rekao „nema ga u Kokinom
+  fileu ⇒ ostaje `Planiran`". Pretraga **svih triju verzija** pokazala je da postoji u najstarijoj
+  (`Financije 2026.xlsx`, 08.07.), i to kao redak **bez datuma i bez opisa** — ostatak, ne
+  transakcija. U bazi: `Tip = N/A`, bez `Datuma naplate`. Obrisan.
+  ⇒ **Razred:** redak koji izvor obriše nakon uvoza ostaje u bazi zauvijek. Uvoz obrađuje ono
+  što piše, ne ono što je nestalo. Jedini alat protiv toga je usporedba verzija izvornog filea.
+- **Retci iz 2036. NE idu kroz „popravi godinu pa uvezi".** `1.323,64` i `47,76` **već postoje**
+  u bazi kao `2026-04-08` (`Prihodi/Koka`, `Informatika/Hosting domene`), ušli travanjskim
+  izvodom. Ispravak + uvoz bi ih udvostručio, i to tiho — padaju prije ZABA sidra pa ne bi
+  pomaknuli nijednu kontrolnu brojku. Popravak ide **u njen file**.
+- **Razmak baze i njenog filea** (`Financije 2026-08-16.xlsx`, nakon 30.07.):
+  „koka EU" **87** redaka, „sasa EU" **68**; u bazi od toga **6**. Zadnji zapis: ZABA
+  `2026-07-30`, RF `2026-08-11`. MC naplata `1.332,52` **nije u bazi**.
+  ⇒ Tranša 4 je narasla iz „MC paket" u „MC paket + cijeli kolovoz".
+- **Sidro ZABA je krivo datirano** (`22.08.` umjesto `30.07.`, iznos točan) — BUG-S115-ANCHORDATE.
+  Alat `make_saldo_anchors.py` to radi ispravno (`confirmed_on` = close date izvoda); grešku
+  proizvodi **pločica u aplikaciji**, koja žigoše dan koji se gleda.
+- **Izvodi su samo PDF** — ZABA ni PBZ ne nude CSV/Excel (potvrdio Saša). Znači: čitanje izvoda
+  ostaje ovdje, u Pythonu; u aplikaciju seli ono poslije čitanja — **pravila u bazi i evaluacija
+  na uvozu** (Faza 3).

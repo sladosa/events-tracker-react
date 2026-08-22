@@ -1,14 +1,37 @@
-
-
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S114 (2026-08-22) — tranša 3 (ZABA) zatvorena protiv ispisanog stanja, klasifikacija iz izbrojane povijesti.
+**Zadnji update:** S115 (2026-08-22, druga sesija istog dana) — mjerenje stanja, razriješeni `845,12` i retci iz 2036., plan za PROD.
 **Prošlo 2026-08-22: T-S113-3.** · 2026-08-21: T-S112-3, -4, -6; T-S113-1. · 2026-08-19: T-S112-1, T-S112-2. · 2026-08-17: T-S110-1, -2, -3, -6, -7. · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
-**Otvoreno: T-S114-1…5 (NOVO); T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
+**⚠ T-S114-1 je IZMJEREN I PAO** (2026-08-22): sidro ZABA stoji na **22.08.**, ne na 30.07. Iznos je točan (`13.815,33`, s izvoda), datum je od klika. Popravak je prvi zadatak S116.
+**Otvoreno: T-S115-1…4 (NOVO); T-S114-1 (pao) …-5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Detalji S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
+
+---
+
+## S115 — mjerenje stanja · `845,12` · plan za PROD
+
+Puni koraci: [S115_tests.md](tests/S115_tests.md).
+
+| Test | Što | Status |
+| --- | --- | --- |
+| T-S115-1 | ⭐ ZABA pločica više nema liniju „planirano" (`845,12` obrisan) | ⬜ |
+| T-S115-2 | ⭐ **Sidro prikazuje račun i bez ijednog eventa** — na tome stoji cijeli plan za PROD | ⬜ |
+| T-S115-3 | Uvoz kolovoza ne donosi retke iz 2036. (travanj 2026. ostaje **111 eventa**) | ⬜ |
+| T-S115-4 | Kolone po Arei — generička Area netaknuta, postava preživi roundtrip (⚠ nakon implementacije) | ⬜ |
+
+**Brojke izmjerene u S115** (sve provjerene, ne procijenjene):
+
+| Što | Vrijednost |
+| --- | --- |
+| sidara u TEST bazi | **6** · ZABA najnovije `22.08. = 13.815,33` (⚠ krivi datum) · RF `11.08. = 799,12` |
+| zadnji zapis po računu u bazi | ZABA **2026-07-30** · RF **2026-08-11** |
+| Kokin file `Financije 2026-08-16.xlsx`, retci nakon 30.07. | „koka EU" **87** · „sasa EU" **68** — u bazi od toga **6** |
+| MC naplata `1.332,52` | **nije u bazi** |
+| `845,12` | postoji **samo** u `Financije 2026.xlsx`, bez datuma i bez opisa ⇒ obrisan |
+| retci iz 2036. | **već u bazi** kao `2026-04-08` (`Prihodi/Koka`, `Informatika/Hosting domene`) |
 
 ---
 
