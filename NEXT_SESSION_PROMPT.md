@@ -1,6 +1,6 @@
 # NEXT SESSION PROMPT — nakon S116 (kolone su gotove, kolovoz je pripremljen ali NIJE uvezen)
 
-**Pisan protiv commita `7f562a4`** (+ commit zatvaranja S116 koji slijedi odmah iza).
+**Pisan protiv commita `6f8e235`** (+ commit zatvaranja S116 koji slijedi odmah iza).
 Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest; `CLAUDE.md` je autoritet.
 
 **Stanje grana:** `test-branch` nosi S108–S116. `main` = PROD, **nije diran od S107**.
@@ -95,19 +95,23 @@ Dirani: `ActivitiesTable.tsx` (render po configu, uklj. skeleton), `useAreaDashb
 (§10, `ListColumns`), `StructureNodeEditPanel.tsx` (fixup), `StructureImportModal.tsx`,
 `types/database.ts`, `fill_from_izvod.py` (izvor `--iz-koke`).
 
-`npm run typecheck && npm run build` prolaze. **Ništa nije viđeno uživo** — T-S116-1…9 su svi ⬜.
+`npm run typecheck && npm run build` prolaze. **Ništa nije viđeno uživo** — T-S116-1…13 su svi ⬜.
+
+Dodatno dirano u drugom dijelu sesije: `BalanceByGroupTile.tsx` (datum iz izvora, povijest
+potvrda, brisanje), `overviewApi.ts` (guard), `docs/help/overview.md`.
 
 ## 4. Otvoreno / neverificirano
 
-- **T-S116-1…5 nisu viđeni u pregledniku.** Config je u bazi (`set_list_columns.py --write`),
+- **T-S116-1…5 i 10…13 nisu viđeni u pregledniku.** Config je u bazi (`set_list_columns.py --write`),
   kod je commitan, ali nitko nije otvorio Activities. Prvo to.
 - **T-S115-2 i dalje nosi plan za PROD** — „sidro prikazuje račun i bez ijednog eventa"
   pročitano u `036`, **nije viđeno uživo**.
-- **BUG-S115-ANCHORDATE: kod nije diran.** Konkretno sidro je popravljeno ručno, mehanizam
-  ponavlja grešku pri sljedećem upisu s izvoda.
-  ⚠ **Novo, neprovjereno:** RF sidro `11.08. = 799,12` nosi bilješku `RF_2026-07.pdf` —
-  isti obrazac. Treba parsirati close date tog izvoda i usporediti. Ako se ne zatvara
-  11.08., i to sidro je krivo datirano.
+- **✅ BUG-S115-ANCHORDATE popravljen** (commit `6f8e235`): datum potvrde dolazi iz izvora
+  (ekran ⇒ danas, papir ⇒ ručno), izvor je obavezan, rečenica o posljedici prije klika,
+  upozorenje o novijoj potvrdi, povijest + brisanje u pločici, guard protiv budućeg datuma.
+  **Neverificirano uživo: T-S116-10…13.**
+- **✅ RF sidro `11.08. = 799,12` je TOČNO** — `RF_2026-07.pdf` se zatvara 11.08.
+  (zadnja tx `Mirovina III stup 254,33`). Pitanje iz paralelne sesije je zatvoreno.
 - **`PENDING_TESTS.md` si i dalje proturječi** (kurirani „Otvoreno:" redak vs ⬜ oznake u
   tijelu). S116 je dodao svoj blok i osvježio „Otvoreno:", ali **stara neusklađenost stoji**
   i ritual arhiviranja opet nije izveden. Uskladiti, pa arhivirati.
