@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useFilter } from '@/context/FilterContext';
@@ -7,6 +7,8 @@ import { useActivities, formatTime, formatDate, type ActivityGroup } from '@/hoo
 import { useAreaDashboard } from '@/hooks/useAreaDashboard';
 import { useRunningBalance } from '@/hooks/useRunningBalance';
 import { formatAmount, formatDateHr } from '@/lib/amountFormat';
+import { resolveColumns, type ResolvedColumn } from '@/lib/listColumns';
+import { useListColumnValues, type RowValues } from '@/hooks/useListColumnValues';
 import type { UUID } from '@/types';
 
 // --------------------------------------------
@@ -134,7 +136,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
 
   // Running balance column (OVERVIEW_TAB_SPEC §2.12). Appears only when the list
   // is one account, newest-first — the hook decides and hides itself otherwise.
-  const { config: dashboardConfig } = useAreaDashboard(filter.areaId);
+  const { config: dashboardConfig, listColumns: listColumnsConfig } = useAreaDashboard(filter.areaId);
   const running = useRunningBalance({
     areaId: filter.areaId,
     config: dashboardConfig,
@@ -142,6 +144,22 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     attrFilter: filter.attrFilter,
     sortOrder: filter.sortOrder,
     dateTo: filter.dateTo,
+  });
+
+  // Columns for this Area (Backlog — kolone po Arei). No config = today's list.
+  // `user` and `balance` are dropped here rather than inside the row, so header
+  // and cells can never disagree about how many columns there are.
+  const columns = useMemo(() => {
+    const all = resolveColumns(listColumnsConfig);
+    return all.filter(c =>
+      (c.role !== 'user' || showUserColumn) &&
+      (c.role !== 'balance' || running.enabled));
+  }, [listColumnsConfig, showUserColumn, running.enabled]);
+
+  const colValues = useListColumnValues({
+    areaId: filter.areaId,
+    columns,
+    activities: displayedActivities,
   });
 
   // HLT fix: react to loading→false + activities present (ref.current is not reactive)
@@ -224,12 +242,23 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 hidden sm:table-header-group">
                 <tr>
                   <th className="px-3 py-3 w-8" />
-                  <th className="px-3 py-3 text-left font-medium text-gray-700 w-28 whitespace-nowrap">Date</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700 w-14 whitespace-nowrap">Time</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">Category</th>
-                  <th className="px-3 py-3 text-center font-medium text-gray-700 w-16">Events</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell">Comment</th>
-                  <th className="px-3 py-3 w-12 sticky right-0 bg-gray-50" />
+                  {/* Same headers the loaded table will show — a skeleton with
+                      different columns is a layout shift, which is the one
+                      thing a skeleton exists to prevent. */}
+                  {columns.map(c => (
+                    <th
+                      key={c.key}
+                      className={[
+                        'px-3 py-3 font-medium text-gray-700',
+                        c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
+                        c.width ?? '',
+                        c.desktopHide ?? '',
+                        c.role === 'actions' ? 'sticky right-0 bg-gray-50' : '',
+                      ].filter(Boolean).join(' ')}
+                    >
+                      {c.role === 'actions' ? '' : c.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -239,26 +268,22 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                     <td className="hidden sm:table-cell px-3 py-3 w-8">
                       <div className="w-4 h-4 bg-gray-200 rounded" />
                     </td>
-                    <td className="hidden sm:table-cell px-3 py-3">
-                      <div className="h-4 w-24 bg-gray-200 rounded" />
-                    </td>
-                    <td className="hidden sm:table-cell px-3 py-3">
-                      <div className="h-4 w-10 bg-gray-200 rounded" />
-                    </td>
-                    <td className="hidden sm:table-cell px-3 py-3">
-                      <div className="h-4 bg-gray-200 rounded" style={{ width: `${50 + (i * 13) % 35}%` }} />
-                    </td>
-                    <td className="hidden sm:table-cell px-3 py-3 text-center">
-                      <div className="h-5 w-6 bg-gray-200 rounded mx-auto" />
-                    </td>
-                    <td className="hidden sm:table-cell lg:table-cell px-3 py-3">
-                      <div className="h-4 bg-gray-100 rounded" style={{ width: `${30 + (i * 17) % 45}%` }} />
-                    </td>
-                    <td className="hidden sm:table-cell px-3 py-3 sticky right-0 bg-white">
-                      <div className="h-6 w-6 bg-gray-200 rounded ml-auto" />
-                    </td>
+                    {columns.map(c => (
+                      <td
+                        key={c.key}
+                        className={[
+                          'hidden sm:table-cell px-3 py-3',
+                          c.desktopHide ?? '',
+                          c.role === 'actions' ? 'sticky right-0 bg-white' : '',
+                        ].filter(Boolean).join(' ')}
+                      >
+                        {c.role === 'actions'
+                          ? <div className="h-6 w-6 bg-gray-200 rounded ml-auto" />
+                          : <div className="h-4 bg-gray-200 rounded" style={{ width: `${50 + ((i * 13) % 35)}%` }} />}
+                      </td>
+                    ))}
                     {/* Mobile row */}
-                    <td className="sm:hidden px-3 py-3" colSpan={6}>
+                    <td className="sm:hidden px-3 py-3" colSpan={columns.length}>
                       <div className="h-4 bg-gray-200 rounded mb-1.5" style={{ width: `${55 + (i * 11) % 30}%` }} />
                       <div className="h-3 bg-gray-100 rounded" style={{ width: `${35 + (i * 19) % 40}%` }} />
                     </td>
@@ -461,28 +486,29 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                   />
                 )}
               </th>
-              <th className="px-3 py-3 text-left font-medium text-gray-700 w-28 whitespace-nowrap">Date</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-700 w-14 whitespace-nowrap">Time</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-700 max-w-[180px]">Category</th>
-              <th className="px-3 py-3 text-center font-medium text-gray-700 w-16">Events</th>
-              {showUserColumn && (
-                <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell w-32">User</th>
-              )}
-              <th className="px-3 py-3 text-left font-medium text-gray-700 hidden lg:table-cell max-w-[140px]">Comment</th>
-              {running.enabled && (
+              {columns.map(c => (
                 <th
-                  className="px-3 py-3 text-right font-medium text-gray-700 w-28 whitespace-nowrap"
-                  title={
-                    `Izračunato stanje za "${running.groupValue}" nakon svakog retka.` +
-                    (running.anchorOn
-                      ? ` Računa se od potvrde ${formatDateHr(running.anchorOn)} — stariji retci nemaju definirano stanje.`
-                      : ' Nema potvrđenog stanja, pa se računa od početka podataka.')
-                  }
+                  key={c.key}
+                  className={[
+                    'px-3 py-3 font-medium text-gray-700',
+                    c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
+                    c.width ?? '',
+                    c.desktopHide ?? '',
+                    c.role === 'category' ? 'max-w-[180px]' : '',
+                    c.role === 'comment' ? 'max-w-[140px]' : '',
+                    c.role === 'date' || c.role === 'time' || c.role === 'balance' || c.role === 'pair' ? 'whitespace-nowrap' : '',
+                    c.role === 'actions' ? 'sticky right-0 bg-gray-50 z-[2]' : '',
+                  ].filter(Boolean).join(' ')}
+                  title={c.role === 'balance'
+                    ? `Izračunato stanje za "${running.groupValue}" nakon svakog retka.` +
+                      (running.anchorOn
+                        ? ` Računa se od potvrde ${formatDateHr(running.anchorOn)} — stariji retci nemaju definirano stanje.`
+                        : ' Nema potvrđenog stanja, pa se računa od početka podataka.')
+                    : undefined}
                 >
-                  Stanje
+                  {c.label}
                 </th>
-              )}
-              <th className="px-3 py-3 text-right font-medium text-gray-700 w-12 sticky right-0 bg-gray-50 z-[2]">Actions</th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -498,12 +524,13 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 onDelete={onDeleteActivity}
                 isHighlighted={group.sessionKey === highlightKey}
                 highlightRef={group.sessionKey === highlightKey ? highlightRowRef : undefined}
-                showUserColumn={showUserColumn}
                 currentUserId={currentUserId}
                 canSelect={!sharedContext}
                 isOrphan={orphanedPairKeys?.has(`${group.user_id}:${group.area_id}`) ?? false}
                 onManageOrphan={onManageOrphan}
                 showCategoryOnMobile={!filter.categoryId}
+                columns={columns}
+                values={colValues.byKey.get(group.sessionKey)}
               />
             ))}
           </tbody>
@@ -513,6 +540,47 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
 
     </div>
   );
+}
+
+// --------------------------------------------
+// Configured cells (Backlog — kolone po Arei)
+// --------------------------------------------
+
+/**
+ * `pair` — direction and amount in ONE column.
+ *
+ * Both sides can be non-empty on the same row and that is NOT an error: the
+ * ZABA row "Anja 73/96" (25.08.2025.) carries an uplata of 450,00 and an
+ * isplata of 0,70, a faithful join of two real statement lines (CLAUDE.md).
+ * A cell that showed only one of them would quietly hide half the transaction,
+ * so both are printed side by side.
+ *
+ * An absent amount renders as an em dash, never as `0`. For money, zero is a
+ * claim about the row; blank is the absence of one.
+ */
+function PairCell({ col, values }: { col: ResolvedColumn; values?: RowValues }) {
+  const plus = col.plus ? values?.num.get(col.plus) : undefined;
+  const minus = col.minus ? values?.num.get(col.minus) : undefined;
+  const hasPlus = plus != null && plus !== 0;
+  const hasMinus = minus != null && minus !== 0;
+
+  if (!hasPlus && !hasMinus) return <span className="text-gray-300">—</span>;
+
+  return (
+    <span className="tabular-nums whitespace-nowrap">
+      {hasPlus && <span className="text-emerald-700">+{formatAmount(plus!, col.unit)}</span>}
+      {hasPlus && hasMinus && <span className="text-gray-300 mx-1">·</span>}
+      {hasMinus && <span className="text-rose-700">−{formatAmount(minus!, col.unit)}</span>}
+    </span>
+  );
+}
+
+/** `attr` — one or more slugs joined into a single cell (e.g. `Tip / Podtip`). */
+function AttrCell({ col, values }: { col: ResolvedColumn; values?: RowValues }) {
+  const parts = (col.slugs ?? []).map(sl => values?.text.get(sl)).filter((v): v is string => !!v);
+  if (parts.length === 0) return <span className="text-gray-400 italic">—</span>;
+  const txt = parts.join(col.sep ?? ' / ');
+  return <span className="text-gray-700 truncate block" title={txt}>{txt}</span>;
 }
 
 // --------------------------------------------
@@ -528,7 +596,6 @@ interface ActivityRowProps {
   onDelete?: (sessionStart: string, categoryId: UUID) => Promise<void>;
   isHighlighted?: boolean;
   highlightRef?: React.RefObject<HTMLTableRowElement | null>;
-  showUserColumn?: boolean;
   currentUserId?: string;
   canSelect?: boolean;
   isOrphan?: boolean;
@@ -536,9 +603,13 @@ interface ActivityRowProps {
   showCategoryOnMobile?: boolean;
   /** §2.12 — undefined = column is off; { value: null } = defined but not applicable to this row. */
   runningBalance?: { value: number | null; unit?: string };
+  /** Resolved columns for this Area, already filtered to what is renderable. */
+  columns: ResolvedColumn[];
+  /** Attribute values for this row; undefined while the query is in flight. */
+  values?: RowValues;
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, showUserColumn, currentUserId, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, currentUserId, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance, columns, values }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -549,6 +620,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
 
   // Build path display (without area for brevity)
   const pathDisplay = group.category_path.slice(1).join(' > '); // Skip area name
+
 
   const handleMenuOpen = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -583,6 +655,116 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
     }
   };
 
+  const menuButton = (
+    <button
+      onClick={handleMenuOpen}
+      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+    >
+      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+      </svg>
+    </button>
+  );
+
+  /**
+   * One cell's content, by role. Written once and used by BOTH the desktop
+   * table and the narrow-screen two-line layout — the two can drift apart in
+   * how they look, but never in WHAT they show. `compact` is the narrow-screen
+   * variant of the same value, not a different value.
+   */
+  const cellContent = (c: ResolvedColumn, compact = false): React.ReactNode => {
+    switch (c.role) {
+      case 'date':
+        return (
+          <span className={compact ? 'font-medium text-gray-900 text-sm' : 'text-gray-900 text-sm'}>
+            {formatDate(group.event_date)}
+          </span>
+        );
+      case 'time':
+        return (
+          <span className={compact ? 'text-xs text-gray-400' : 'text-gray-700'}>
+            {formatTime(group.session_start)}
+          </span>
+        );
+      case 'category':
+        return compact ? (
+          <span className="text-indigo-500 truncate">
+            {group.area_icon ? `${group.area_icon} ${pathDisplay}` : pathDisplay}
+          </span>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            {group.area_icon && <span className="text-base flex-shrink-0">{group.area_icon}</span>}
+            <div className="text-gray-900 truncate text-sm" title={group.category_path.join(' > ')}>
+              {pathDisplay}
+            </div>
+          </div>
+        );
+      case 'events':
+        return (
+          <div className="flex items-center justify-center gap-1">
+            <span className="text-sm text-gray-700">{group.eventCount}</span>
+            {group.has_photos && <span title="Has photos" className="text-xs">📷</span>}
+          </div>
+        );
+      case 'user':
+        return compact ? (
+          <div
+            className={`w-5 h-5 rounded-full ${hashAvatarColor(group.user_id)} flex items-center justify-center flex-shrink-0 ${isOrphan ? 'ring-2 ring-amber-400' : ''}`}
+            title={group.user_display_name || group.user_id}
+          >
+            <span className="text-white text-[8px] font-bold">
+              {getInitials(group.user_display_name || group.user_id)}
+            </span>
+          </div>
+        ) : (
+          <UserAvatar
+            userId={group.user_id}
+            displayName={group.user_display_name || group.user_id}
+            isOwn={isOwnEvent}
+            isOrphan={isOrphan}
+          />
+        );
+      case 'pair':
+        return <PairCell col={c} values={values} />;
+      case 'attr':
+        return <AttrCell col={c} values={values} />;
+      case 'comment':
+        return (
+          <span className="text-gray-600 truncate block" title={firstEvent.comment || undefined}>
+            {firstEvent.comment || <span className="text-gray-400 italic">—</span>}
+          </span>
+        );
+      case 'balance':
+        // The parent already dropped this column when the hook is off, so
+        // `runningBalance` is present here; `value: null` still means the row
+        // has no defined balance (before the anchor, or it does not move it).
+        return runningBalance?.value == null ? (
+          <span
+            className="text-gray-300"
+            title="Ovaj redak ne miče stanje — ili je prije potvrđenog stanja, ili ne ulazi u saldo (npr. kartično plaćanje koje tereti račun tek skupnom naplatom)."
+          >
+            —
+          </span>
+        ) : (
+          <span className={`tabular-nums ${runningBalance.value < 0 ? 'text-rose-700' : 'text-gray-900'}`}>
+            {formatAmount(runningBalance.value, runningBalance.unit)}
+          </span>
+        );
+      case 'actions':
+        return menuButton;
+      default:
+        return null;
+    }
+  };
+
+  // Narrow screens render two lines instead of a table. `actions` stays in its
+  // own sticky cell on both, so it is excluded from either line.
+  const mobileLine = (which: 'line1' | 'line2') =>
+    columns.filter(c =>
+      c.mobile === which &&
+      c.role !== 'actions' &&
+      (c.role !== 'category' || showCategoryOnMobile));
+
   const highlightClass = isHighlighted
     ? 'bg-indigo-100 ring-2 ring-inset ring-indigo-400'
     : isSelected
@@ -608,134 +790,55 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
           )}
         </td>
 
-        {/* Date */}
-        <td className="px-3 py-2.5 whitespace-nowrap">
-          <span className="text-gray-900 text-sm">{formatDate(group.event_date)}</span>
-        </td>
-        
-        {/* Time */}
-        <td className="px-3 py-2.5">
-          <span className="text-gray-700">{formatTime(group.session_start)}</span>
-        </td>
-        
-        {/* Category Path */}
-        <td className="px-3 py-2.5 max-w-[180px]">
-          <div className="flex items-center gap-1.5">
-            {group.area_icon && (
-              <span className="text-base flex-shrink-0">{group.area_icon}</span>
-            )}
-            <div className="text-gray-900 truncate text-sm" title={group.category_path.join(' > ')}>
-              {pathDisplay}
-            </div>
-          </div>
-        </td>
-
-        {/* Events count + photo indicator */}
-        <td className="px-3 py-2.5 text-center">
-          <div className="flex items-center justify-center gap-1">
-            <span className="text-sm text-gray-700">{group.eventCount}</span>
-            {group.has_photos && (
-              <span title="Has photos" className="text-xs">📷</span>
-            )}
-          </div>
-        </td>
-        
-        {/* User - hidden on small/medium screens; only when showUserColumn */}
-        {showUserColumn && (
-          <td className="px-3 py-2.5 hidden lg:table-cell w-32">
-            <UserAvatar
-              userId={group.user_id}
-              displayName={group.user_display_name || group.user_id}
-              isOwn={isOwnEvent}
-              isOrphan={isOrphan}
-            />
-          </td>
-        )}
-
-        {/* Comment - hidden on small/medium screens */}
-        <td className="px-3 py-2.5 hidden lg:table-cell max-w-[140px]">
-          <span className="text-gray-600 truncate block" title={firstEvent.comment || undefined}>
-            {firstEvent.comment || (
-              <span className="text-gray-400 italic">—</span>
-            )}
-          </span>
-        </td>
-        
-        {/* Running balance (§2.12) — only rendered when the header is too */}
-        {runningBalance && (
-          <td className="px-3 py-2.5 text-right whitespace-nowrap tabular-nums">
-            {runningBalance.value === null ? (
-              <span
-                className="text-gray-300"
-                title="Ovaj redak ne miče stanje — ili je prije potvrđenog stanja, ili ne ulazi u saldo (npr. kartično plaćanje koje tereti račun tek skupnom naplatom)."
-              >
-                —
-              </span>
-            ) : (
-              <span className={runningBalance.value < 0 ? 'text-rose-700' : 'text-gray-900'}>
-                {formatAmount(runningBalance.value, runningBalance.unit)}
-              </span>
-            )}
-          </td>
-        )}
-
-        {/* Actions - sticky right so always visible on desktop */}
-        <td className="px-2 py-2.5 text-right sticky right-0 bg-white z-[1]">
-          <button
-            onClick={handleMenuOpen}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+        {columns.map(c => (
+          <td
+            key={c.key}
+            className={[
+              c.role === 'actions' ? 'px-2 py-2.5 sticky right-0 bg-white z-[1]' : 'px-3 py-2.5',
+              c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : '',
+              c.desktopHide ?? '',
+              c.role === 'category' ? 'max-w-[180px]' : '',
+              c.role === 'comment' ? 'max-w-[140px]' : '',
+              c.role === 'date' || c.role === 'time' || c.role === 'balance' || c.role === 'pair' ? 'whitespace-nowrap' : '',
+              c.role === 'attr' ? 'max-w-[200px]' : '',
+            ].filter(Boolean).join(' ')}
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-            </svg>
-          </button>
-        </td>
+            {cellContent(c)}
+          </td>
+        ))}
       </tr>
 
-      {/* Mobile card row — two-row compact layout, hidden on sm+ */}
+      {/* Narrow-screen row — two lines, driven by the same column config */}
       <tr className={`sm:hidden transition-colors ${highlightClass}`}>
-        {/* Main content — takes full remaining width, clips on overflow */}
         <td className="px-3 py-2 min-w-0" style={{ width: '100%' }}>
-          {/* Row 1: avatar · Date · time */}
           <div className="flex items-center gap-1.5 min-w-0">
-            {showUserColumn && (
-              <div
-                className={`w-5 h-5 rounded-full ${hashAvatarColor(group.user_id)} flex items-center justify-center flex-shrink-0 ${isOrphan ? 'ring-2 ring-amber-400' : ''}`}
-                title={group.user_display_name || group.user_id}
+            {mobileLine('line1').map(c => (
+              <span
+                key={c.key}
+                className={
+                  c.align === 'right'
+                    ? 'ml-auto flex-shrink-0 text-sm'   // amounts sit at the right edge
+                    : 'flex-shrink-0 min-w-0'
+                }
               >
-                <span className="text-white text-[8px] font-bold">{getInitials(group.user_display_name || group.user_id)}</span>
-              </div>
-            )}
-            <span className="font-medium text-gray-900 text-sm flex-shrink-0">{formatDate(group.event_date)}</span>
-            <span className="text-xs text-gray-400 ml-0.5 flex-shrink-0">{formatTime(group.session_start)}</span>
+                {cellContent(c, true)}
+              </span>
+            ))}
           </div>
-          {/* Row 2: category path and/or comment */}
-          {((showCategoryOnMobile && pathDisplay) || firstEvent.comment) && (
+          {mobileLine('line2').length > 0 && (
             <div className="mt-0.5 flex items-center gap-1 min-w-0 text-xs text-gray-500">
-              {showCategoryOnMobile && pathDisplay && (
-                <span className="text-indigo-500 truncate flex-shrink-0 max-w-[40%]">
-                  {group.area_icon ? `${group.area_icon} ${pathDisplay}` : pathDisplay}
+              {mobileLine('line2').map((c, i) => (
+                <span key={c.key} className="flex items-center gap-1 min-w-0">
+                  {i > 0 && <span className="text-gray-300 flex-shrink-0">·</span>}
+                  <span className="truncate min-w-0">{cellContent(c, true)}</span>
                 </span>
-              )}
-              {showCategoryOnMobile && pathDisplay && firstEvent.comment && (
-                <span className="text-gray-300 flex-shrink-0">·</span>
-              )}
-              {firstEvent.comment && (
-                <span className="truncate">{firstEvent.comment}</span>
-              )}
+              ))}
             </div>
           )}
         </td>
         {/* Sticky Actions — always visible on right edge */}
         <td className="py-2 pr-2 sticky right-0 bg-white z-[1] align-top">
-          <button
-            onClick={handleMenuOpen}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-            </svg>
-          </button>
+          {menuButton}
         </td>
       </tr>
 

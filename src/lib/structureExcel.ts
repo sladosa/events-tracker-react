@@ -792,6 +792,100 @@ function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
 }
 
 // ─────────────────────────────────────────────────────────────
+// ListColumns sheet (CLAUDE.md Backlog — kolone Activities liste po Arei)
+// ─────────────────────────────────────────────────────────────
+// `areas.settings.list_columns`, jedan red po koloni, redoslijed redaka = redoslijed
+// kolona. Sheet se UVIJEK piše: prazan je predložak za Areu koja još nema config.
+//
+// ⚠ ZAŠTO JE OVAJ SHEET UVJET, A NE DODATAK
+//   Config koji živi samo u bazi ne preživi selidbu Aree — `export_profiles` je
+//   upravo ta rupa i zato „From template" mora izostaviti profile (S108). Kolone
+//   se opisuju ULOGOM i SLUGOM, nikad imenom iz domene, pa nemaju ključ koji bi
+//   nosio ime Aree — i time nemaju ni tu rupu.
+//
+// Slugs format: "tip | podtip"  ('|' jer je ' / ' legitiman separator za prikaz)
+
+const LISTCOL_COLS = [
+  { header: 'Area',   width: 20 },
+  { header: 'Role',   width: 12 },
+  { header: 'Label',  width: 18 },
+  { header: 'Slugs',  width: 24 },
+  { header: 'Plus',   width: 12 },
+  { header: 'Minus',  width: 12 },
+  { header: 'Sep',    width: 8 },
+  { header: 'Unit',   width: 7 },
+  { header: 'Mobile', width: 9 },
+  { header: 'Width',  width: 9 },
+  { header: 'Align',  width: 8 },
+] as const;
+
+function writeListColumnsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
+  const ws = wb.addWorksheet('ListColumns');
+  ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+  for (let ci = 0; ci < LISTCOL_COLS.length; ci++) {
+    ws.getColumn(ci + 1).width = LISTCOL_COLS[ci].width;
+    const cell = ws.getCell(1, ci + 1);
+    cell.value = LISTCOL_COLS[ci].header;
+    cell.fill = makeFill(CLR.HEADER_BG);
+    cell.font = { name: 'Calibri', bold: true, size: 11, color: { argb: CLR.HEADER_FG } };
+    cell.border = THIN_BORDER;
+  }
+
+  let rowNum = 2;
+  for (const node of nodes) {
+    if (node.nodeType !== 'area') continue;
+    for (const c of node.area.settings?.list_columns?.columns ?? []) {
+      const vals: (string | number)[] = [
+        node.name, c.role, c.label ?? '', (c.slugs ?? []).join(' | '),
+        c.plus ?? '', c.minus ?? '', c.sep ?? '', c.unit ?? '',
+        c.mobile ?? '', c.width ?? '', c.align ?? '',
+      ];
+      for (let ci = 0; ci < LISTCOL_COLS.length; ci++) {
+        const cell = ws.getCell(rowNum, ci + 1);
+        cell.value = vals[ci] ?? '';
+        cell.fill = makeFill(CLR.BLUE);
+        cell.border = THIN_BORDER;
+      }
+      rowNum++;
+    }
+  }
+
+  const helpLines = [
+    'HELP — kolone Activities liste, po Arei. Jedan red = jedna kolona; REDOSLIJED REDAKA je redoslijed kolona.',
+    'Area bez ijednog reda ovdje zadrži zadanu listu (Date, Time, Category, Events, User, Comment, Stanje).',
+    '',
+    'Role — što kolona pokazuje. Uloge, ne imena iz domene: isti config radi u bilo kojoj Arei.',
+    '  date · time · category · events · user · comment · actions   — bez dodatnih polja',
+    '  pair    = smjer + iznos u JEDNOJ koloni. Traži Plus i/ili Minus (number slugovi).',
+    '  attr    = jedan ili više atributa spojenih u jednu ćeliju. Traži Slugs; spaja ih Sep.',
+    '  balance = izračunata kolona `Stanje` (§2.12). Pojavi se samo kad je lista filtrirana',
+    '            na JEDAN račun i sortirana najnovije-prvo — inače se sama sakrije.',
+    '',
+    'Slugs  = slugovi atributa odvojeni znakom "|"   (npr. "tip | podtip")',
+    'Sep    = što ide IZMEĐU vrijednosti u prikazu   (zadano " / ")',
+    'Unit   = sufiks na iznosu (npr. €). Vrijedi za pair i balance.',
+    'Mobile = line1 | line2 | hide — u koji red pada na uskom ekranu (< 640px). Zadano ovisi o Role.',
+    'Width  = Tailwind klasa širine (w-28, w-36…). Align = left | right | center.',
+    '',
+    '⚠ actions se UVIJEK renderira i UVIJEK zadnji, čak i ako ga ovdje nema — bez njega',
+    '  lista ostane bez ⋮ menija (nema Edit, View ni Delete) i nigdje ne piše zašto.',
+    '⚠ Slug koji u Arei ne postoji se PRESKAČE uz upozorenje u konzoli. Kolona bi inače',
+    '  bila prazna, a prazno zbog tipfelera izgleda isto kao prazno zbog nedostatka podatka.',
+    '',
+    'Import ZAMJENJUJE sve kolone svake Aree koja se pojavi u sheetu. Area koje nema u',
+    'sheetu ostaje netaknuta; sheet bez ijednog reda za Areu BRIŠE njen config (= povratak na zadano).',
+  ];
+  let hr = rowNum + 1;
+  for (const line of helpLines) {
+    const cell = ws.getCell(hr, 1);
+    cell.value = line;
+    cell.font = { italic: true, size: 9, color: { argb: 'FF888888' } };
+    hr++;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Events stub sheet (for Structure Export — no events included)
 // ─────────────────────────────────────────────────────────────
 function _addEventsStubSheet(wb: ExcelJS.Workbook): void {
@@ -872,6 +966,7 @@ export async function addStructureSheetsTo(
   const rows = buildAllRows(scoped, sharedWithByArea ?? {});
   writeStructureSheet(wb, rows, infoRow, conflictSlugs);
   writeAutomationsSheet(wb, scoped);
+  writeListColumnsSheet(wb, scoped);
   writeHelpStructureSheet(wb);
 }
 

@@ -149,6 +149,7 @@ export function StructureImportModal({
   const totalChanged = result
     ? totalCreated + result.updated.attributes + (result.updated.settings ?? 0)
       + (result.automations?.areasUpdated ?? 0)
+      + (result.listColumns?.areasUpdated ?? 0)
     : 0;
   const isDone = result !== null;
 
@@ -247,6 +248,12 @@ export function StructureImportModal({
                   )}
                   {(result.automations?.rulesSkipped ?? 0) > 0 && (
                     <ResultRow label="Automation rules skipped" value={result.automations.rulesSkipped} warn />
+                  )}
+                  {(result.listColumns?.columnsImported ?? 0) > 0 && (
+                    <ResultRow label="List columns"         value={result.listColumns.columnsImported} />
+                  )}
+                  {(result.listColumns?.columnsSkipped ?? 0) > 0 && (
+                    <ResultRow label="List columns skipped" value={result.listColumns.columnsSkipped} warn />
                   )}
                   <ResultRow label="Rows skipped"        value={result.skipped} warn={result.skipped > 0} />
                 </div>

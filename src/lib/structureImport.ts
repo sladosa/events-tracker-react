@@ -25,7 +25,9 @@
 import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
 import { isValidDateRule } from '@/lib/attributeRules';
-import type { AttributeRuleConfig, RataAutomationConfig } from '@/types/database';
+import type {
+  AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig,
+} from '@/types/database';
 
 // ─────────────────────────────────────────────────────────────
 // Public types
@@ -57,6 +59,12 @@ export interface ImportResult {
     areasUpdated: number;
     rulesImported: number;
     rulesSkipped: number; // invalid rows (unknown area/slug, bad DateMap syntax)
+  };
+  /** ListColumns sheet — Activities list layout per Area (Backlog) */
+  listColumns: {
+    areasUpdated: number;
+    columnsImported: number;
+    columnsSkipped: number; // unknown role, unknown slug, unknown area
   };
 }
 
@@ -399,6 +407,7 @@ export async function importStructureExcel(
     skipped:  0,
     conflicts: [],
     automations: { areasUpdated: 0, rulesImported: 0, rulesSkipped: 0 },
+    listColumns: { areasUpdated: 0, columnsImported: 0, columnsSkipped: 0 },
   };
 
   // ── 1. Read file ──────────────────────────────────────────
@@ -1083,6 +1092,151 @@ export async function importStructureExcel(
         } else {
           if (existingArea) existingArea.settings = newSettings;
           result.automations.areasUpdated++;
+        }
+      }
+    }
+  }
+
+  // ── 10. ListColumns sheet — Activities list layout per Area (Backlog) ──
+  // Jedan red = jedna kolona; redoslijed redaka je redoslijed kolona.
+  //
+  // ⚠ RAZLIKA PREMA §9. Automations su "odsutnost ne briše", jer stariji export
+  //   bez `rata` kolona ne smije pobrisati postojeću rata konfiguraciju. Ovdje
+  //   je obrnuto i namjerno: kolone su JEDAN uređeni popis, pa je jedini način
+  //   da čovjek makne kolonu — obrisati njen redak. "Odsutnost ne briše" bi
+  //   značilo da se kolona može dodati, ali nikad ukloniti.
+  //   Zaštita je na razini SHEETA, ne retka: nema sheeta ⇒ ništa se ne dira.
+  const lcWs = wb.worksheets.find(s => s.name.toLowerCase() === 'listcolumns');
+  if (lcWs) {
+    const headerVals: string[] = [];
+    lcWs.getRow(1).eachCell({ includeEmpty: true }, (cell, colNum) => {
+      headerVals[colNum - 1] = cellStr(cell).toLowerCase();
+    });
+    const lCol = (name: string) => headerVals.findIndex(v => v === name) + 1;
+
+    const colArea = lCol('area');
+    const colRole = lCol('role');
+
+    if (colArea > 0 && colRole > 0) {
+      const colLabel = lCol('label');
+      const colSlugs = lCol('slugs');
+      const colPlus = lCol('plus');
+      const colMinus = lCol('minus');
+      const colSep = lCol('sep');
+      const colUnit = lCol('unit');
+      const colMobile = lCol('mobile');
+      const colWidth = lCol('width');
+      const colAlign = lCol('align');
+
+      // Poznati slugovi po Arei — uključujući atribute stvorene u OVOM uvozu.
+      const slugsByArea = new Map<string, Set<string>>();
+      for (const rec of attrBySlugCat.values()) {
+        const areaId = rec.categoryId ? catById.get(rec.categoryId)?.areaId : undefined;
+        if (!areaId) continue;
+        let set = slugsByArea.get(areaId);
+        if (!set) { set = new Set(); slugsByArea.set(areaId, set); }
+        set.add(rec.slug);
+      }
+
+      const ROLES = new Set<ListColumnRole>([
+        'date', 'time', 'category', 'events', 'user', 'pair', 'attr',
+        'comment', 'balance', 'actions',
+      ]);
+      const MOBILE = new Set(['line1', 'line2', 'hide']);
+      const ALIGN = new Set(['left', 'right', 'center']);
+
+      const colsByArea = new Map<string, ListColumn[]>();
+      const seenAreas = new Set<string>();
+      const lastRow = lcWs.lastRow?.number ?? 1;
+
+      for (let r = 2; r <= lastRow; r++) {
+        const row = lcWs.getRow(r);
+        const get = (colNum: number): string => (colNum > 0 ? cellStr(row.getCell(colNum)) : '');
+
+        const roleRaw = get(colRole).toLowerCase();
+        if (!roleRaw) continue;                       // help / blank rows
+        const areaName = get(colArea);
+        const areaId = areaByName.get(areaName.toLowerCase());
+        if (!areaId) {
+          console.warn(`[ListColumns import] row ${r}: unknown area "${areaName}" — skipped`);
+          result.listColumns.columnsSkipped++;
+          continue;
+        }
+        seenAreas.add(areaId);
+
+        if (!ROLES.has(roleRaw as ListColumnRole)) {
+          console.warn(`[ListColumns import] row ${r}: unknown role "${roleRaw}" — skipped`);
+          result.listColumns.columnsSkipped++;
+          continue;
+        }
+        const role = roleRaw as ListColumnRole;
+
+        const areaSlugs = slugsByArea.get(areaId);
+        const slugs = get(colSlugs).split('|').map(x => x.trim()).filter(Boolean);
+        const plus = get(colPlus);
+        const minus = get(colMinus);
+
+        // Slug koji ne postoji daje praznu kolonu, a prazno zbog tipfelera
+        // izgleda točno kao prazno zbog nedostatka podatka. Zato se preskače.
+        const bad = [...slugs, plus, minus].filter(Boolean).find(sl => !areaSlugs?.has(sl));
+        if (bad) {
+          console.warn(`[ListColumns import] row ${r}: slug "${bad}" not found in area "${areaName}" — skipped`);
+          result.listColumns.columnsSkipped++;
+          continue;
+        }
+        if (role === 'attr' && slugs.length === 0) {
+          console.warn(`[ListColumns import] row ${r}: role "attr" needs Slugs — skipped`);
+          result.listColumns.columnsSkipped++;
+          continue;
+        }
+        if (role === 'pair' && !plus && !minus) {
+          console.warn(`[ListColumns import] row ${r}: role "pair" needs Plus and/or Minus — skipped`);
+          result.listColumns.columnsSkipped++;
+          continue;
+        }
+
+        const label = get(colLabel);
+        const sep = get(colSep);
+        const unit = get(colUnit);
+        const mobile = get(colMobile).toLowerCase();
+        const width = get(colWidth);
+        const align = get(colAlign).toLowerCase();
+
+        const col: ListColumn = { role };
+        if (label) col.label = label;
+        if (slugs.length) col.slugs = slugs;
+        if (plus) col.plus = plus;
+        if (minus) col.minus = minus;
+        if (sep) col.sep = sep;
+        if (unit) col.unit = unit;
+        if (MOBILE.has(mobile)) col.mobile = mobile as ListColumn['mobile'];
+        if (width) col.width = width;
+        if (ALIGN.has(align)) col.align = align as ListColumn['align'];
+
+        colsByArea.set(areaId, [...(colsByArea.get(areaId) ?? []), col]);
+        result.listColumns.columnsImported++;
+      }
+
+      for (const areaId of seenAreas) {
+        const columns = colsByArea.get(areaId) ?? [];
+        const existingArea = dbAreas?.find(a => a.id === areaId);
+        const existing = existingArea?.settings?.list_columns?.columns ?? [];
+        if (JSON.stringify(existing) === JSON.stringify(columns)) continue;
+
+        // Prazan popis = povratak na zadanu listu. Ključ se briše, ne piše prazan:
+        // `{ columns: [] }` i „nema configa" moraju izgledati isto i u bazi.
+        const newSettings = { ...(existingArea?.settings ?? {}) } as AreaSettings;
+        if (columns.length) newSettings.list_columns = { columns };
+        else delete newSettings.list_columns;
+
+        const { error } = await supabase.from('areas').update({ settings: newSettings }).eq('id', areaId);
+        if (error) {
+          console.error('[ListColumns import] failed to update area settings:', error);
+          result.listColumns.columnsSkipped += columns.length;
+          result.listColumns.columnsImported -= columns.length;
+        } else {
+          if (existingArea) existingArea.settings = newSettings;
+          result.listColumns.areasUpdated++;
         }
       }
     }

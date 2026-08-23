@@ -32,6 +32,7 @@ import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { fixupDashboardSlug } from '@/lib/dashboardConfig';
+import { fixupListColumnsSlug } from '@/lib/listColumns';
 
 // --------------------------------------------------------
 // Types
@@ -1139,10 +1140,17 @@ export function StructureNodeEditPanel({
               if (fixed > 0) {
                 toast.success(`Overview: ${fixed} reference${fixed === 1 ? '' : 's'} updated to "${newSlug}"`);
               }
+              // The Activities list columns reference slugs the same way, and
+              // fail more quietly than the tile does: the column simply goes
+              // blank, which is indistinguishable from "no data on these rows".
+              const fixedCols = await fixupListColumnsSlug(node.areaId, attr.originalSlug, newSlug);
+              if (fixedCols > 0) {
+                toast.success(`Kolone liste: ${fixedCols} reference${fixedCols === 1 ? '' : 's'} updated to "${newSlug}"`);
+              }
             } catch (e) {
               // Loud, not fatal: the attribute rename itself already succeeded.
-              console.error('dashboard slug fixup failed:', e);
-              toast.error(`Attribute renamed, but the Overview config still points at "${attr.originalSlug}" — fix it before using the tab.`, { duration: 8000 });
+              console.error('dashboard/list-column slug fixup failed:', e);
+              toast.error(`Attribute renamed, but the Overview or list-column config still points at "${attr.originalSlug}" — fix it before using the tab.`, { duration: 8000 });
             }
 
             for (const n of allNodes) {

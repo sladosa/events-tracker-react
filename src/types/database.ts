@@ -94,6 +94,70 @@ export interface DashboardConfig {
   widgets: DashboardWidget[];
 }
 
+// --------------------------------------------
+// Activities list columns (CLAUDE.md Backlog — "Kolone Activities liste po Arei")
+// --------------------------------------------
+// WHY THIS EXISTS
+//   The list is generic for every Area (`Date, Time, Category, Events, Comment`)
+//   because the model is. For an Area with an L1 leaf and everything in
+//   attributes — Financije — three of those five columns are blank space, and
+//   the two numbers the user actually came for live behind a click.
+//
+//   This is the SAME move the Overview tiles made (§2.15): the shape is generic,
+//   the meaning arrives as configuration. Columns are therefore described by
+//   ROLE, never by a name out of one domain — `pair` and `attr`, not `Iznos`
+//   and `Tip`. The test is unchanged: a new Area must cost zero lines of code.
+//
+//   Slug-based for the same reason the dashboard is: this travels through the
+//   Structure Excel into another database, where IDs mean nothing. A renamed
+//   slug must be fixed up in the same write as the rename (`listColumns.ts`),
+//   or the column silently goes blank — the S105d failure shape.
+//
+//   An Area with no config keeps today's list exactly as it is. Absence is not
+//   an empty table; it is the default.
+
+/** What a column shows. Widening this dictionary is a code change on purpose. */
+export type ListColumnRole =
+  | 'date'      // event_date
+  | 'time'      // session_start, HH:MM
+  | 'category'  // category path (+ area icon)
+  | 'events'    // event count in the session + photo marker
+  | 'user'      // collab avatar; renders only when the Area is shared
+  | 'pair'      // ONE column: direction + amount, from a plus and a minus slug
+  | 'attr'      // one or more attribute slugs, joined into one cell
+  | 'comment'   // the leaf event's comment
+  | 'balance'   // the computed `Stanje` column (§2.12); needs a dashboard widget
+  | 'actions';  // the ⋮ menu — always rendered, always last
+
+export interface ListColumn {
+  role: ListColumnRole;
+  /** Header text. Falls back to a per-role default. */
+  label?: string;
+  /** `pair`: numeric slug shown as money in. */
+  plus?: string;
+  /** `pair`: numeric slug shown as money out. */
+  minus?: string;
+  /** `attr`: attribute slugs, joined with `sep` into a single cell. */
+  slugs?: string[];
+  /** `attr`: separator between slug values. Default ` / `. */
+  sep?: string;
+  /** Suffix on amounts, e.g. `€`. `pair` and `balance` only. */
+  unit?: string;
+  /**
+   * Where the column goes on a narrow screen (< 640px), which renders as two
+   * lines rather than a table. Defaults per role; `hide` drops it entirely.
+   */
+  mobile?: 'line1' | 'line2' | 'hide';
+  /** Tailwind width class for the desktop table, e.g. `w-28`. */
+  width?: string;
+  /** Right-align the cell (numbers). Default true for `pair` and `balance`. */
+  align?: 'left' | 'right' | 'center';
+}
+
+export interface ListColumnsConfig {
+  columns: ListColumn[];
+}
+
 export interface AreaSettings {
   disable_save_plus?: boolean;
   comment_template?: string;
@@ -103,6 +167,8 @@ export interface AreaSettings {
   };
   export_profiles?: Record<string, unknown>;
   dashboard?: DashboardConfig;
+  /** Activities list columns for this Area (Backlog — kolone po Arei). */
+  list_columns?: ListColumnsConfig;
 }
 
 export interface CategorySettings {
