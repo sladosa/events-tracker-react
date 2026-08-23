@@ -24,9 +24,13 @@
 //   * whenever asOf is set, the tile SAYS "na dan …" — in the subtitle and on
 //     the "u banci" label. A past number rendered as the present one is the
 //     same class of error as rule 1.
-//   * "Potvrdi" then anchors ON that date, not today. Anchoring backwards is
-//     what turns the anchor from a cover into a check (§2.17), and it must be
-//     visible in the button before it is clicked, never a surprise after.
+//   * ⚠ SUPERSEDED IN S116. "Potvrdi" used to anchor on the date being LOOKED
+//     AT, which is where BUG-S115-ANCHORDATE came from: a balance copied off a
+//     statement that closed 30.07. got the date of the click. The date now
+//     comes from the declared SOURCE — screen ⇒ today, paper ⇒ typed off the
+//     paper — and the button always names it before it is pressed.
+//     Anchoring backwards is still what turns the anchor from a cover into a
+//     check (§2.17); it just has to be stated, not inferred from the filter.
 //   * …but only BACKWARDS (S111). `asOf` is clamped to today for the balance,
 //     because "All time" resolves dateTo to the newest event in the Area and
 //     future instalments push that into 2027. The split ("planirano") keeps the
@@ -36,10 +40,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
+  deleteAnchor,
   fetchAnchoredBalance,
   fetchGroupAgg,
+  listAnchors,
   saveAnchor,
   type AnchoredBalanceRow,
+  type BalanceAnchor,
   type GroupAggRow,
 } from '@/lib/overviewApi';
 import {
@@ -61,13 +68,47 @@ const T = THEME.overview;
  * ne daju se ni grupirati ni prebrojati. Isti tekst piše i
  * `make_saldo_anchors.py`, pa su sidra iz skripte i iz UI-ja istog oblika.
  */
+export const ANCHOR_SOURCE_SCREEN    = 'ekran bankovne aplikacije';
 export const ANCHOR_SOURCE_STATEMENT = 'ispisano stanje s izvoda';
+export const ANCHOR_SOURCE_SLIP      = 'bankomat / ispis na papiru';
+/**
+ * Više se NE upisuje. Od S116 je izvor obavezan, jer o njemu ovisi datum
+ * potvrde. Konstanta ostaje jer je stoji u starim retcima baze (i u onima koje
+ * je pisala skripta prije S113) — brisanje bi ih učinilo nečitkima.
+ */
 export const ANCHOR_SOURCE_UNKNOWN   = 'nije navedeno';
 const ANCHOR_SOURCES = [
-  'ekran bankovne aplikacije',
+  ANCHOR_SOURCE_SCREEN,
   ANCHOR_SOURCE_STATEMENT,
-  'bankomat / ispis na papiru',
+  ANCHOR_SOURCE_SLIP,
 ] as const;
+
+/**
+ * ── THE DATE MUST COME FROM THE SOURCE, NEVER FROM THE CLICK ────────────────
+ *
+ * BUG-S115-ANCHORDATE, twice in five sessions. The confirmation used to be
+ * stamped with the day being LOOKED AT, so a balance copied off a statement
+ * that closed on 30.07. got the date of the click, 22.08. Everything dated in
+ * between then falls out of the balance silently — the anchor rule is "changes
+ * STRICTLY AFTER the confirmation" (§2.17), so those rows count as already
+ * included in a number that never saw them.
+ *
+ * What makes it a design flaw and not a slip: the app held BOTH facts in the
+ * SAME ROW — `note: "…ZABA_2026-07.pdf"` next to `confirmed_on: 2026-08-22` —
+ * and never compared them. The source field (S113) records where the number
+ * came from; from S116 it also decides what its date is allowed to be.
+ *
+ * The rule fits in one sentence, which is why it can be taught to a user:
+ *
+ *     Broj s EKRANA → datum je danas.  Broj s PAPIRA → datum piše na papiru.
+ *
+ * A screen reading genuinely IS today's — that direction was never wrong. A
+ * printed one carries its own date, and no default the app could invent is
+ * better than reading it off the page.
+ */
+function dateComesFromSource(src: string): boolean {
+  return src === ANCHOR_SOURCE_STATEMENT || src === ANCHOR_SOURCE_SLIP;
+}
 
 const NO_VALUE = '(bez vrijednosti)';
 
@@ -118,7 +159,17 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
   // nego zapisuje da izvor NIJE naveden — neistina je gora od izostanka.
   const [srcInput, setSrcInput] = useState<Record<string, string>>({});
   const [srcDetail, setSrcDetail] = useState<Record<string, string>>({});
+  // Datum s papira. Namjerno BEZ zadane vrijednosti: svaki default koji bi app
+  // ponudio bio bi pogodak, a pogodak koji izgleda kao podatak je upravo ono
+  // što je proizvelo BUG-S115-ANCHORDATE.
+  const [srcDate, setSrcDate] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  // Sve potvrde ovog računa — nose dvije uloge: upozorenje „novija već postoji"
+  // (bez kojeg ispravak unatrag ne radi, a izgleda kao da radi) i popis ispod
+  // pločice, jedini put da se krivo sidro uopće VIDI iz aplikacije.
+  const [anchors, setAnchors] = useState<BalanceAnchor[]>([]);
+  const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // ── A BALANCE CANNOT BE "AS OF" A FUTURE DATE ────────────────────────────
   // "All time" resolves dateTo to the newest event in the Area, and with future
@@ -179,6 +230,16 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
       } else {
         setSplitRows([]);
       }
+
+      // Potvrde ovog računa. Ne ruši pločicu ako padne — saldo je i dalje točan,
+      // izgubi se samo povijest i upozorenje. Tiho prazno bi bilo gore od
+      // pogreške u konzoli, pa se greška ispisuje.
+      try {
+        setAnchors(await listAnchors(areaId, widget.group_by));
+      } catch (e) {
+        console.error('listAnchors:', e);
+        setAnchors([]);
+      }
     } catch (e) {
       // The RPC raises on an unknown slug on purpose (sql/035 §2). Showing the
       // message verbatim is the whole payoff: it names the slug that broke.
@@ -193,18 +254,38 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
 
   useEffect(() => { void load(); }, [load]);
 
+  /** Potvrde po vrijednosti grupe, najnovija prvo (`listAnchors` već sortira). */
+  const anchorsByGroup = useMemo(() => {
+    const m = new Map<string, BalanceAnchor[]>();
+    for (const a of anchors) {
+      const k = a.group_value ?? NO_VALUE;
+      m.set(k, [...(m.get(k) ?? []), a]);
+    }
+    return m;
+  }, [anchors]);
+
   const splitByGroup = useMemo(() => {
     const m = new Map<string, GroupAggRow>();
     for (const r of splitRows) m.set(r.group_value ?? NO_VALUE, r);
     return m;
   }, [splitRows]);
 
-  // A confirmation is stamped with the date being LOOKED AT, not the date of
-  // the click: with the filter on 31.03.2025 the number typed in is that day's
-  // printed balance, so today's date would be a lie about its own source.
-  // ⚠ Never the raw `asOf`: a future filter bound must not become a future
-  //   anchor. `effectiveAsOf` is the clamped, real day being looked at.
-  const confirmOn = effectiveAsOf;
+  /**
+   * The date this confirmation will carry — derived from the SOURCE, not the
+   * click (see `dateComesFromSource`). Returns null while a printed source has
+   * no date yet, which is what disables the button.
+   *
+   * ⚠ A screen reading is always TODAY, even when the filter is on a past day.
+   *   You cannot read last March off today's bank screen; offering to stamp it
+   *   with the filter date would invent provenance the user never claimed.
+   */
+  const confirmDateFor = (groupValue: string): string | null => {
+    const src = (srcInput[groupValue] ?? '').trim();
+    if (!src) return null;
+    if (!dateComesFromSource(src)) return today;
+    const d = (srcDate[groupValue] ?? '').trim();
+    return d || null;
+  };
 
   const confirm = async (groupValue: string, typed: string) => {
     const amount = parseAmountInput(typed);
@@ -212,9 +293,26 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
       toast.error('Upiši broj koji piše u bankovnoj aplikaciji');
       return;
     }
+    const src = (srcInput[groupValue] ?? '').trim();
+    if (!src) {
+      toast.error('Odaberi odakle je broj — o tome ovisi na koji datum ide potvrda');
+      return;
+    }
+    const confirmOn = confirmDateFor(groupValue);
+    if (!confirmOn) {
+      toast.error('Upiši datum koji piše na izvodu (dan zadnje transakcije)');
+      return;
+    }
+    // Potvrda u budućnosti bi po pravilu „strogo nakon" presjekla SVE retke do
+    // tog dana. Sprječava se ovdje jer je datum sada ručan, pa `effectiveAsOf`
+    // klamp više ne stoji između korisnika i baze.
+    if (confirmOn > today) {
+      toast.error('Datum potvrde ne može biti u budućnosti');
+      return;
+    }
+
     setSavingKey(groupValue);
     try {
-      const src = (srcInput[groupValue] ?? '').trim();
       const detail = (srcDetail[groupValue] ?? '').trim();
       await saveAnchor({
         areaId,
@@ -222,13 +320,12 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
         groupValue,
         amount,
         confirmedOn: confirmOn,
-        note: src
-          ? (detail ? `${src} · ${detail}` : src)
-          : ANCHOR_SOURCE_UNKNOWN,
+        note: detail ? `${src} · ${detail}` : src,
       });
       setBankInput(prev => ({ ...prev, [groupValue]: '' }));
       setSrcInput(prev => ({ ...prev, [groupValue]: '' }));
       setSrcDetail(prev => ({ ...prev, [groupValue]: '' }));
+      setSrcDate(prev => ({ ...prev, [groupValue]: '' }));
       toast.success(
         `Potvrđeno na ${formatDateHr(confirmOn)}: ${groupValue} = ${formatAmount(amount, widget.unit)}`,
       );
@@ -237,6 +334,19 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
       toast.error((e as { message?: string })?.message ?? 'Spremanje nije uspjelo');
     } finally {
       setSavingKey(null);
+    }
+  };
+
+  const removeAnchor = async (a: BalanceAnchor) => {
+    setDeletingId(a.id);
+    try {
+      await deleteAnchor(a.id);
+      toast.success(`Obrisana potvrda ${formatDateHr(a.confirmed_on)} = ${formatAmount(a.amount, widget.unit)}`);
+      await load();
+    } catch (e) {
+      toast.error((e as { message?: string })?.message ?? 'Brisanje nije uspjelo');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -296,6 +406,19 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
           // if the user asked "na dan 06.07.2026." and the last movement IS
           // 06.07.2026., nothing is stale — the answer is complete.
           const gap = row.last_on ? daysBetween(row.last_on, effectiveAsOf) : null;
+
+          // Odakle / kada — cijeli mehanizam potvrde visi o ovih par redaka.
+          const src = (srcInput[key] ?? '').trim();
+          const needsDate = src !== '' && dateComesFromSource(src);
+          const willConfirmOn = confirmDateFor(key);
+          const groupAnchors = anchorsByGroup.get(key) ?? [];
+          // ⚠ `036` bira NAJNOVIJU potvrdu s `confirmed_on <= as_of`. Nova
+          //   potvrda na STARIJI datum zato ne poništava kriva na novijem —
+          //   dogodilo se dvaput (S111 tipfeler, S115 krivi datum) i oba puta
+          //   je izgledalo kao da je ispravak prošao.
+          const shadowedBy = willConfirmOn
+            ? groupAnchors.find(a => a.confirmed_on > willConfirmOn)
+            : undefined;
 
           return (
             <div key={key} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
@@ -429,7 +552,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                     ))}
                   </select>
 
-                  {srcInput[key] === ANCHOR_SOURCE_STATEMENT && (
+                  {src === ANCHOR_SOURCE_STATEMENT && (
                     <input
                       type="text"
                       value={srcDetail[key] ?? ''}
@@ -438,6 +561,31 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                       className={cn(
                         'w-40 px-2 py-1.5 border border-gray-300 rounded-lg text-sm',
                         'focus:ring-2 focus:border-transparent',
+                        T.ring,
+                      )}
+                    />
+                  )}
+
+                  {/* ⚠ DATUM S PAPIRA — prazan, bez zadane vrijednosti.
+                      Ovo je popravak BUG-S115-ANCHORDATE: prije je potvrda
+                      nosila dan klika, pa je broj s izvoda zatvorenog 30.07.
+                      dobio datum 22.08. i sve između tiho ispalo iz salda.
+                      Bilo koji default koji bi app ponudio bio bi pogodak, a
+                      pogodak koji izgleda kao podatak je točno ono što se
+                      dogodilo. */}
+                  {needsDate && (
+                    <input
+                      type="date"
+                      value={srcDate[key] ?? ''}
+                      max={today}
+                      onChange={e => setSrcDate(prev => ({ ...prev, [key]: e.target.value }))}
+                      title={src === ANCHOR_SOURCE_STATEMENT
+                        ? 'Datum ZADNJE transakcije na izvodu — izvod se ne zatvara na kraju mjeseca.'
+                        : 'Datum koji piše na ispisu.'}
+                      className={cn(
+                        'px-2 py-1.5 border rounded-lg text-sm',
+                        'focus:ring-2 focus:border-transparent',
+                        (srcDate[key] ?? '') ? 'border-gray-300' : 'border-amber-400 bg-amber-50',
                         T.ring,
                       )}
                     />
@@ -470,24 +618,130 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                     <button
                       type="button"
                       onClick={() => void confirm(key, typed)}
-                      disabled={bank === null || savingKey === key}
+                      disabled={bank === null || !willConfirmOn || savingKey === key}
                       className={cn(
                         'ml-auto text-xs font-medium px-3 py-1.5 rounded-lg transition-colors',
                         'disabled:opacity-40 disabled:cursor-not-allowed',
                         T.btnConfirm,
                       )}
                       title={
-                        isPast
-                          ? `Spremi ovaj broj kao potvrđeno stanje na ${formatDateHr(effectiveAsOf)} — saldo se od tog dana računa od njega`
-                          : 'Spremi ovaj broj kao potvrđeno stanje — saldo se od danas računa od njega'
+                        !src
+                          ? 'Prvo odaberi odakle je broj — o tome ovisi na koji datum ide potvrda'
+                          : !willConfirmOn
+                            ? 'Upiši datum koji piše na papiru'
+                            : `Spremi kao potvrđeno stanje na ${formatDateHr(willConfirmOn)} — saldo se od tog dana računa od njega`
                       }
                     >
                       {savingKey === key
                         ? 'Spremam…'
-                        : isPast
-                          ? `Potvrdi na ${formatDateHr(effectiveAsOf)}`
+                        : willConfirmOn
+                          ? `Potvrdi na ${formatDateHr(willConfirmOn)}`
                           : 'Potvrdi'}
                     </button>
+                  )}
+                </div>
+              )}
+
+              {/* --- što će potvrda značiti, PRIJE nego se klikne --- */}
+              {widget.reconcile && canWrite && (
+                <div className="mt-2 space-y-1.5">
+                  {!src && bank !== null && (
+                    <p className="text-[11px] text-amber-700">
+                      Odaberi <strong>odakle</strong> je broj. O tome ovisi na koji datum ide
+                      potvrda — a datum je ono što odlučuje koje transakcije ulaze u saldo.
+                    </p>
+                  )}
+
+                  {needsDate && !willConfirmOn && (
+                    <p className="text-[11px] text-amber-700">
+                      Upiši <strong>datum koji piše na papiru</strong>
+                      {src === ANCHOR_SOURCE_STATEMENT
+                        ? ' — dan zadnje transakcije na izvodu. Izvod se ne zatvara na kraju mjeseca: srpanjski ZABA izvod završava 30.07., a prosinački zna završiti 24.12.'
+                        : '.'}
+                      {isPast && ` (Gledaš ${formatDateHr(effectiveAsOf)} — ako izvod nosi taj datum, upiši njega.)`}
+                    </p>
+                  )}
+
+                  {/* Pravilo „strogo nakon" (§2.17), izrečeno posljedicom a ne
+                      pravilom. Ovo je rečenica koja bi uhvatila BUG-S115: uz
+                      22.08. bi pisalo da se sve prije toga smatra uključenim,
+                      a to je bilo očito netočno za retke od 31.07. nadalje. */}
+                  {willConfirmOn && bank !== null && (
+                    <p className="text-[11px] text-gray-500 leading-snug">
+                      Saldo će se računati ovako: <strong>{formatAmount(bank, widget.unit)}</strong>{' '}
+                      plus sve što je datirano <strong>nakon {formatDateHr(willConfirmOn)}</strong>.
+                      Sve prije toga smatra se da je <strong>već uključeno</strong> u ovaj broj —
+                      pa ako datum promašiš, transakcije između tiho ispadnu iz salda.
+                    </p>
+                  )}
+
+                  {/* Ispravak unatrag koji ne ispravlja ništa — dvaput u pet
+                      sesija. Bez ove poruke izgleda kao da je prošao. */}
+                  {shadowedBy && (
+                    <p className="text-[11px] text-red-700 leading-snug">
+                      ⚠ Za ovaj račun već postoji potvrda na{' '}
+                      <strong>{formatDateHr(shadowedBy.confirmed_on)}</strong>{' '}
+                      ({formatAmount(shadowedBy.amount, widget.unit)}). Nova na{' '}
+                      {formatDateHr(willConfirmOn!)} je <strong>neće</strong> nadjačati — saldo i
+                      dalje kreće od novije. Ako je novija kriva, obriši je u „povijesti potvrda".
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* --- povijest potvrda: jedini put da se kriva potvrda VIDI --- */}
+              {widget.reconcile && groupAnchors.length > 0 && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(prev => ({ ...prev, [key]: !prev[key] }))}
+                    className="text-[11px] text-gray-400 hover:text-gray-600 underline decoration-dotted"
+                  >
+                    {showHistory[key] ? 'sakrij' : 'povijest potvrda'} ({groupAnchors.length})
+                  </button>
+
+                  {showHistory[key] && (
+                    <ul className="mt-1.5 space-y-1">
+                      {groupAnchors.map((a, i) => (
+                        <li
+                          key={a.id}
+                          className={cn(
+                            'flex items-baseline gap-2 text-[11px] rounded px-2 py-1',
+                            // `036` uzima najnoviju <= danas; popis je sortiran
+                            // silazno, pa je prva koja nije u budućnosti ta.
+                            i === groupAnchors.findIndex(x => x.confirmed_on <= today)
+                              ? 'bg-teal-50 text-gray-700'
+                              : 'text-gray-400',
+                          )}
+                        >
+                          <span className="shrink-0 w-4">
+                            {i === groupAnchors.findIndex(x => x.confirmed_on <= today) ? '▸' : ''}
+                          </span>
+                          <span className="tabular-nums shrink-0">{formatDateHr(a.confirmed_on)}</span>
+                          <span className="tabular-nums font-medium shrink-0">
+                            {formatAmount(a.amount, widget.unit)}
+                          </span>
+                          <span className="truncate" title={a.note ?? undefined}>
+                            {a.note ?? <em>bez podrijetla</em>}
+                          </span>
+                          {canWrite && (
+                            <button
+                              type="button"
+                              onClick={() => void removeAnchor(a)}
+                              disabled={deletingId === a.id}
+                              title="Obriši ovu potvrdu"
+                              className="ml-auto shrink-0 text-gray-300 hover:text-red-600 disabled:opacity-40 px-1"
+                            >
+                              {deletingId === a.id ? '…' : '✕'}
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                      <li className="text-[10px] text-gray-400 pt-0.5">
+                        ▸ = potvrda od koje saldo trenutno kreće. Starije su samo povijest;
+                        novija od nje uvijek pobjeđuje.
+                      </li>
+                    </ul>
                   )}
                 </div>
               )}
@@ -498,11 +752,19 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
 
       {/* Δ is a signal, not a verdict — say so once, under the tile. */}
       {widget.reconcile && rows.length > 0 && !error && (
-        <p className="text-[11px] text-gray-400 mt-3 leading-snug">
-          Δ znači da se aplikacija i banka razilaze — nešto fali, nešto je dvaput, ili je iznos kriv.
-          Nije greška izračuna. „Potvrdi" sprema ono što piše u banci: saldo se od tog dana računa od
-          te brojke naviše.
-        </p>
+        <div className="text-[11px] text-gray-400 mt-3 leading-snug space-y-1">
+          <p>
+            Δ znači da se aplikacija i banka razilaze — nešto fali, nešto je dvaput, ili je iznos
+            kriv. Nije greška izračuna.
+          </p>
+          <p>
+            <strong className="text-gray-500">Zašto je datum potvrde važan:</strong> saldo se računa
+            kao <em>potvrđeni broj + sve što je datirano poslije njega</em>. Sve prije toga smatra se
+            već uključenim. Zato datum mora biti onaj na kojem je broj stvarno očitan:
+            {' '}<em>ekran banke → danas</em>, <em>izvod → dan zadnje transakcije na izvodu</em>.
+            Promašen datum ne javlja grešku — transakcije između tiho ispadnu iz salda.
+          </p>
+        </div>
       )}
     </div>
   );

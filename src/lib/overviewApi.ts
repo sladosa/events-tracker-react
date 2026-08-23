@@ -167,6 +167,15 @@ export async function saveAnchor(a: {
   const userId = session.session?.user.id;
   if (!userId) throw new Error('Not signed in');
 
+  // ⚠ A confirmation dated in the future would, by the strictly-after rule
+  //   (§2.17), cut EVERY row up to that date out of the balance — and the tile
+  //   would still show a confident number. The tile blocks this too; the guard
+  //   sits here as well because it must hold for every caller, not just the
+  //   one that happens to have the check today.
+  if (a.confirmedOn > new Date().toISOString().slice(0, 10)) {
+    throw new Error('Datum potvrde ne može biti u budućnosti.');
+  }
+
   const { error } = await supabase.from('balance_anchors').insert({
     area_id: a.areaId,
     group_slug: a.groupSlug,

@@ -2542,3 +2542,52 @@ već nose sve zamke). Nalazi ugrađeni u kod:
 Brisanje sidra (`anchors.py --delete`), pogled na kolone, i sam uvoz kolovoza
 (export delta sheeta iz appa ≥ 60 praznih redaka → `--dry` → uvoz). Koraci i
 kontrolni brojevi: `docs/sessions/tests/S116_tests.md`, T-S116-6…8.
+
+## Nastavak S116 — kontrola nad datumom sidra (BUG-S115-ANCHORDATE popravljen)
+
+Saša je ispravio krivo sidro ručno u Supabase editoru (izmjena retka: `22.08.` → `30.07.`,
+bilješka dopunjena s „izvod zatvoren 30.07.") i postavio pravo pitanje: **što nas sprječava
+da to ponovimo?**
+
+Odgovor je bio neugodan: **u aplikaciji ništa.** Sve što je uhvatilo obje greške (S111, S115)
+bilo je izvan nje — Python `--report`, `anchors.py`, ručno mjerenje. Koka nema ništa od toga.
+
+⚠ Polje „odakle" **već je postojalo** od S113 — i baš je ono ostavilo dokaz: sidro je nosilo
+bilješku `ZABA_2026-07.pdf` **i** datum `22.08.` **u istom retku**, a app ih nikad nije
+usporedio. Rupa dakle nije bila nedostatak podatka nego to što se podatak nije koristio.
+
+### Popravak: datum se izvodi iz IZVORA, ne iz klika
+
+Pravilo stane u rečenicu, i zato se da naučiti korisnika:
+
+> **Broj s ekrana → datum je danas. Broj s papira → datum piše na papiru.**
+
+- `ekran bankovne aplikacije` ⇒ datum = danas, polja nema (ta strana nikad nije bila kriva —
+  broj s ekrana banke **i jest** očitanje za danas)
+- `izvod` / `ispis na papiru` ⇒ **prazno** polje, žuto obrubljeno, gumb ugašen dok se ne popuni
+- **izvor je postao obavezan** — bez njega app ne zna smije li upisati današnji dan
+- **nema zadanog datuma** za papirnate izvore: svaki default bio bi pogodak, a pogodak koji
+  izgleda kao podatak je točno ono što je grešku proizvelo
+
+### Tri kontrole uz to
+
+1. **Rečenica o posljedici prije klika:** *„saldo = 13.815,33 € plus sve datirano nakon
+   30.07.2026.; sve prije toga smatra se već uključenim."* Pravilo „strogo nakon" izrečeno
+   posljedicom, ne pravilom — uz `22.08.` bi tvrdila da su retci od 31.07. već uključeni,
+   što je bilo očito netočno. **To je rečenica koja bi bug uhvatila na licu mjesta.**
+2. **Upozorenje kad novija potvrda već postoji.** `036` bira najnoviju `confirmed_on <= as_of`,
+   pa ispravak na stariji datum ne poništava ništa — a izgleda kao da je prošao. Dvaput
+   ugrizlo (S111 tipfeler `3.453,03`, S115 krivi datum).
+3. **„povijest potvrda" + brisanje iz pločice.** `listAnchors()`/`deleteAnchor()` postoje od
+   S109 i **nitko ih nije zvao**; jedini put do krivog sidra bio je SQL Editor. Sada ▸ označava
+   potvrdu od koje saldo kreće, ostale su vidljivo mrtve.
+
+Uz to: guard protiv budućeg datuma u `saveAnchor()` (ne samo u pločici — mora vrijediti za
+svakog pozivatelja), i `docs/help/overview.md` prepisan s tablicom izvor→datum i opisom
+**što se dogodi ako datum promašiš** (ništa vidljivo — to je cijela poanta).
+
+### Usput provjereno
+
+**RF sidro `11.08. = 799,12` je TOČNO.** `RF_2026-07.pdf` se zatvara **11.08.** (zadnja
+transakcija `Mirovina III stup 254,33`) — isti obrazac kao ZABA, ali datum se poklapa.
+Time je zatvoreno pitanje otvoreno u paralelnoj sesiji.

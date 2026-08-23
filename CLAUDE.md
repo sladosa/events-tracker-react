@@ -243,6 +243,16 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   nema nijednog ZABA retka — ali sljedeći uvoz (kolovoz, MC naplata `1.332,52` @ 13.08.) pada
   točno u njega. **Kad izvor nije ekran banke nego izvod, datum mora doći iz izvoda.**
   ⚠ Obrnuto je ispravno: broj s **ekrana bankovne aplikacije** i jest očitanje za danas.
+- **⚠ Datum sidra dolazi iz IZVORA, nikad iz filtra ni iz klika** (S116, popravak
+  BUG-S115-ANCHORDATE). Pravilo stane u rečenicu i zato se da naučiti korisnika:
+  **broj s ekrana → datum je danas; broj s papira → datum piše na papiru.** Za papirnate
+  izvore app **ne nudi zadani datum** — svaki default bio bi pogodak, a pogodak koji izgleda
+  kao podatak je točno ono što je proizvelo grešku. ⚠ Izvor je zato **obavezan**: bez njega
+  app ne zna smije li upisati današnji dan.
+- **⚠ Pravilo „strogo nakon" se korisniku iskazuje POSLJEDICOM, ne pravilom** (S116). Pločica
+  prije klika ispiše *„saldo = X plus sve datirano nakon <datum>; sve prije toga smatra se već
+  uključenim"*. Ta bi rečenica uhvatila S115 na licu mjesta: uz 22.08. tvrdila bi da su retci
+  od 31.07. nadalje već uključeni, što je bilo očito netočno.
 - **⚠ Sidro se ispravlja SAMO novim retkom, a krivo ostaje** — i nema ga gdje vidjeti
   (v. „Sidra se ne mogu vidjeti ni obrisati", backlog). `036` bira najnovije
   `confirmed_on <= p_as_of` ⇒ novo sidro na **stariji** datum **ne poništava** ono krivo na
@@ -544,13 +554,15 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 - **E7-2/E7-3:** Toast „Access granted" izostaje u invite flowu — UX polish
 - **T-S107u-2** (bezopasno): `groupAttributes` uzima `Default` s **prvog** retka grupe ⇒
   `Status.default_value` se klacka `Izvrsen`↔`null`. Fix: ignorirati `Default` na retku s `DependsOn`.
-- **BUG-S115-ANCHORDATE** (mehanizam i dalje otvoren): potvrda iz pločice žigoše **dan koji
-  se gleda**, pa broj s izvoda dobije datum klika. ⚠ **Konkretan slučaj je zatvoren u S116**
-  (sidro premješteno s 22.08. na 30.07., prije toga netautološki provjereno da app iz sidra
-  01.07. sam dođe do `13.815,33`), ali **kod nije diran** — sljedeći upis s izvoda pravi istu
-  grešku. Fix: kad je izvor „ispisano stanje s izvoda", tražiti **datum zatvaranja izvoda**.
-  ⚠ Sumnjiv je i RF `11.08. = 799,12` s bilješkom `RF_2026-07.pdf` — **neprovjereno**
-  zatvara li se taj izvod na 11.08. ili ranije.
+- **~~BUG-S115-ANCHORDATE~~ — ✅ POPRAVLJENO S116.** Datum potvrde više se ne izvodi iz
+  filtra nego iz **izvora**: `ekran bankovne aplikacije` ⇒ danas (app upisuje sam),
+  `izvod`/`ispis` ⇒ **prazno polje koje korisnik popuni s papira**. Izvor je postao obavezan
+  (bez njega gumb ne radi), jer o njemu ovisi datum. Uz to: rečenica o posljedici prije klika,
+  upozorenje kad novija potvrda već postoji, popis potvrda s brisanjem, i guard protiv
+  budućeg datuma u `saveAnchor()`. **Neverificirano uživo: T-S116-10…13.**
+  ⚠ Popravljeno je i konkretno sidro (`22.08.` → `30.07.`, Sašin ručni ispravak u Supabase
+  editoru). RF `11.08. = 799,12` je **provjeren i točan** — `RF_2026-07.pdf` se zatvara
+  11.08. (zadnja tx `Mirovina III stup 254,33`).
 - **BUG-S114-REPORTDD:** izvještaj o uvozu **nema `DropdownData` list** (`Events / HelpEvents /
   ImportReport / Filter`), pa u njemu `Tip`/`Podtip` nemaju padajući izbornik. Za pipeline
   nebitno, **za Koku bitno**: izvještaj je mišljen kao mjesto gdje dorađuje uvezeno, a ondje bi
@@ -800,18 +812,19 @@ kolone (npr. `attr` s formatom broja) i dalje traži commit.
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
 (fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
 
-**Sidra se ne mogu vidjeti ni obrisati iz aplikacije** (S109) — `listAnchors()` i
-`deleteAnchor()` postoje u `overviewApi.ts` i **nitko ih ne zove**. ⚠ Od S116 postoji
-`data-prep_tools/Financije/anchors.py` (`--list`, `--delete <uuid>`), koji uz svako sidro
-označi **koje danas vrijedi** (`►`) — pa se mrtvo i pobjedničko razlikuju na prvi pogled.
-To je alat za Sašu, **ne rješenje za Koku**: ona nema Python. UI ostaje potreban.
+**~~Sidra se ne mogu vidjeti ni obrisati iz aplikacije~~ — ✅ IZVEDENO S116.** Pločica ima
+„povijest potvrda" (▸ označava onu od koje saldo kreće) i ✕ za brisanje; `listAnchors()` i
+`deleteAnchor()` se konačno zovu. Uz to postoji i `data-prep_tools/Financije/anchors.py`
+(`--list`, `--delete`) za rad izvan aplikacije. **Neverificirano uživo: T-S116-13.**
 ⚠ Blokada je **otpala** (§2.18 — sidra ostaju zasebna tablica), pa se ovo sada smije graditi.
 ⚠ **S115 je dao drugi slučaj u dvije sesije** (krivo datirano sidro, BUG-S115-ANCHORDATE) —
 dakle nije jednokratni promašaj nego izostanak koraka. Postalo je i konkretnije: u S111 je jedno
 sidro upisano s tipfelericom (3.453,03 umjesto 3.458,03) i **ispravlja se samo novim retkom** — bez popisa u UI-ju korisnik ne vidi da uz
 važeće sidro stoji i ono krivo.
 
-**Sidro upisano kroz UI nema podrijetlo** (S110) — `balance_anchors.note` postoji, skripta ga
+**~~Sidro upisano kroz UI nema podrijetlo~~ — ✅ ZATVORENO** (polje „odakle" u S113,
+**obavezno** od S116 jer o njemu ovisi datum potvrde). Ostatak ispod je povijest problema.
+Izvorni opis (S110) — `balance_anchors.note` postoji, skripta ga
 puni („ispisano NOVO STANJE, `ZABA_2024-12.pdf`"), a `saveAnchor()` iz pločice ga ostavlja
 `NULL`. Smeta baš zbog pravila oko kojeg je mehanizam građen — **stanje smije doći samo
 izvana** (§2.17) — jer se poslije iz baze ne vidi je li broj s izvoda, s ekrana banke ili

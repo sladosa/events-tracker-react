@@ -1,7 +1,7 @@
 # S116 — detaljni testovi
 
-**Sesija:** 2026-08-23 · kolone Activities liste po Arei · `--iz-koke` izvor · sidro
-**Commiti:** `3e0af00` (kolone), `7f562a4` (--iz-koke)
+**Sesija:** 2026-08-23 · kolone Activities liste po Arei · `--iz-koke` izvor · **popravak BUG-S115-ANCHORDATE**
+**Commiti:** `3e0af00` (kolone), `7f562a4` (--iz-koke), + commit s kontrolama sidra
 
 ---
 
@@ -113,10 +113,12 @@ nedostatka podatka — zato je ovo test, a ne pretpostavka.
 
 ## T-S116-6 ⭐ — Sidro ZABA na 30.07.
 
-**Ovo zatvara BUG-S115-ANCHORDATE za konkretan slučaj (ne i za mehanizam).**
+**Konkretan slučaj; mehanizam pokrivaju T-S116-10…13.**
+⚠ Saša je ispravio redak ručno u Supabase editoru (izmjena postojećeg retka, ne novo sidro),
+pa je provjera samo očitanje stanja.
 
-1. `python anchors.py` — provjeri da sidro `2026-08-22 = 13.815,33` **više ne postoji**
-   i da `►` stoji na `2026-07-30 = 13.815,33` s bilješkom koja spominje `ZABA_2026-07.pdf`.
+1. `python anchors.py` — `►` mora stajati na `2026-07-30 = 13.815,33` s bilješkom
+   `ispisano stanje s izvoda · ZABA_2026-07.pdf (izvod zatvoren 30.07.)`; sidra na `22.08.` nema.
 2. Otvori Overview za `Financije_all`, filter „All time”.
 
 **Očekivano:** pločica `Kokin tekući ZABA` pokazuje `13.815,33 €` uz kvačicu,
@@ -194,3 +196,94 @@ lanac `= 796.43`.
 
 **Pad:** alat piše retke ⇒ tuđi retci pod tvojim računom, plus kontrolni stupac
 koji ih ne broji. (Provjereno da radi u S116 — ovo je regresijski test.)
+
+---
+
+## T-S116-10 ⭐ — Datum potvrde dolazi iz izvora, ne iz klika
+
+**Ovo je popravak BUG-S115-ANCHORDATE. Prije S116 je gumb uvijek nudio dan koji gledaš.**
+
+**Preduvjet:** Overview za `Financije_all`, write pristup.
+
+1. U polje „u banci" upiši bilo koji broj. **Ne diraj „odakle".**
+
+**Očekivano:** gumb `Potvrdi` je **onemogućen**, a ispod stoji žuti tekst da treba
+odabrati odakle je broj.
+
+**Pad:** gumb aktivan ⇒ izvor nije obavezan, pa app opet mora pogađati datum.
+
+2. Odaberi **`ekran bankovne aplikacije`**.
+
+**Očekivano:** polja za datum **nema**, gumb piše `Potvrdi na <današnji datum>`.
+(Broj s ekrana banke i jest očitanje za danas — ta je strana uvijek bila točna.)
+
+3. Prebaci na **`ispisano stanje s izvoda`**.
+
+**Očekivano:** pojavi se **prazno** polje za datum, **žuto obrubljeno**; gumb se
+**ugasi** i piše samo `Potvrdi`. Ispod stoji objašnjenje da izvod ne završava na kraju
+mjeseca.
+
+**Pad A:** polje prefilano bilo kojim datumom ⇒ to je isti pogodak koji je proizveo bug.
+**Pad B:** gumb ostane aktivan ⇒ potvrda bi prošla bez datuma.
+
+4. Upiši `2026-07-30`.
+
+**Očekivano:** gumb piše `Potvrdi na 30.07.2026.`
+
+5. Pokušaj upisati datum u budućnosti (npr. `2027-01-01`).
+
+**Očekivano:** `input[type=date]` ima `max=danas`; ako ga zaobiđeš, `saveAnchor()`
+odbija s porukom „Datum potvrde ne može biti u budućnosti."
+
+---
+
+## T-S116-11 — Rečenica o posljedici prije klika
+
+1. Uz upisan broj i datum, pročitaj sivi tekst ispod reda.
+
+**Očekivano:** *„Saldo će se računati ovako: **13.815,33 €** plus sve što je datirano
+**nakon 30.07.2026.** Sve prije toga smatra se da je **već uključeno** u ovaj broj…"*
+
+**Zašto je to test, a ne kozmetika:** ta bi rečenica uz datum `22.08.` tvrdila da su
+retci od 31.07. nadalje već uključeni — što je bilo očito netočno. Rečenica je provjera.
+
+**Pad:** rečenica ne spominje datum ili ne spominje „prije toga" ⇒ ne prenosi pravilo
+„strogo nakon" i test nema vrijednosti.
+
+---
+
+## T-S116-12 ⭐ — Upozorenje kad novija potvrda već postoji
+
+**Ovo je trap koji je ugrizao dvaput (S111 tipfeler, S115 krivi datum).**
+
+1. Na računu koji ima potvrdu na noviji datum, pripremi potvrdu na **stariji** datum.
+
+**Očekivano:** crveni tekst — *„Za ovaj račun već postoji potvrda na <datum> (<iznos>).
+Nova na <stariji datum> je **neće** nadjačati…"*
+
+**Pad:** nema poruke ⇒ korisnik upiše ispravak koji ništa ne ispravlja, a izgleda kao da je
+prošao. `036` bira najnoviju potvrdu s `confirmed_on <= as_of`.
+
+---
+
+## T-S116-13 ⭐ — Povijest potvrda + brisanje iz aplikacije
+
+1. Ispod pločice klikni **„povijest potvrda (N)"**.
+
+**Očekivano:** popis svih potvrda tog računa, najnovija prvo. **▸** označava onu od koje
+saldo trenutno kreće (najnovija s datumom ≤ danas). Uz svaku stoji bilješka
+(`ispisano stanje s izvoda · ZABA_2026-07.pdf`) ili *bez podrijetla* za stare zapise.
+
+Za `Kokin tekući ZABA` očekuj **4**: `01.01.2025.`, `31.12.2025.`, `01.07.2026.`,
+**▸ `30.07.2026. = 13.815,33`**.
+
+2. Klikni ✕ na nekoj **test** potvrdi (⚠ ne na pravoj).
+
+**Očekivano:** toast s datumom i iznosom, pločica se osvježi, saldo se prilagodi.
+
+**Pad:** „obrisano" a redak ostane ⇒ RLS-blokiran DELETE „uspije" s 0 redaka;
+`deleteAnchor()` to hvata i baca grešku — ako ne baci, guard je pao.
+
+3. Kao **read-only grantee** otvori istu pločicu.
+
+**Očekivano:** popis se vidi, ✕ **nema**.

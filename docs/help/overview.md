@@ -64,14 +64,41 @@ saldo = potvrđeno stanje + sve promjene STROGO nakon dana potvrde
 Kako se potvrđuje: otvoriš bankovnu aplikaciju, prepišeš broj u polje **„u banci"**, klikneš
 **„Potvrdi"**. Od tog trenutka app zbraja samo ono što se dogodilo **poslije** tog dana.
 
-Tri stvari koje je korisno znati:
+### ⚠ Datum potvrde je najvažnije polje na cijeloj pločici
 
-- **Potvrda se datira na dan koji gledaš.** Bez datumskog filtra to je današnji dan i gumb
-  piše „Potvrdi". Ako je u filtru postavljen datum „do", gumb piše **„Potvrdi na 31.03.2025."**
-  i potvrda se sprema na **taj** dan. Zapis datiran **na sam dan potvrde ne ulazi** u saldo —
-  pravilo je "strogo nakon", bez iznimke. To sprječava da se isti iznos broji dvaput.
-- **Ispravak je nova potvrda**, ne izmjena stare. Čuva se povijest svih potvrda, pa se vidi
-  otkad se app i banka razilaze.
+Saldo je **potvrđeni broj plus sve što je datirano poslije njega**. Sve prije toga app smatra
+**već uključenim** u taj broj. Zato datum ne smije biti „kad sam kliknuo" nego **kad je broj
+stvarno očitan**:
+
+| Odakle je broj | Koji datum nosi |
+| --- | --- |
+| **ekran bankovne aplikacije** | **danas** — app ga upiše sam, ne može drukčije |
+| **izvod** | **dan zadnje transakcije na izvodu** — upisuješ ga ti |
+| **bankomat / ispis na papiru** | datum koji piše na ispisu — upisuješ ga ti |
+
+Zato app **ne nudi zadani datum** kad je broj s papira: svaki ponuđeni datum bio bi pogodak, a
+pogodak koji izgleda kao podatak je upravo ono što je jednom već prošlo nezapaženo.
+
+**Što se dogodi ako datum promašiš:** ništa. Nema poruke, nema crvenog. Saldo jednostavno
+prestane brojati transakcije između pravog i upisanog datuma, a broj i dalje izgleda uvjerljivo.
+Stvarni slučaj: broj je prepisan s izvoda zatvorenog **30.07.**, a potvrda je pala na **22.08.**
+— tri tjedna transakcija je tiho ispalo iz salda.
+
+⚠ **Izvod se ne zatvara na kraju mjeseca.** Srpanjski ZABA izvod završava 30.07., prosinački zna
+završiti 24.12. Uzmi datum **zadnjeg retka na izvodu**, ne kraj mjeseca.
+
+Prije nego klikneš, app ti ispiše rečenicu što će potvrda značiti — *„saldo će se računati kao
+13.815,33 € plus sve datirano nakon 30.07.2026."* Pročitaj je; ona je provjera.
+
+### Ostalo o potvrdama
+
+- Zapis datiran **na sam dan potvrde ne ulazi** u saldo — pravilo je „strogo nakon", bez
+  iznimke. To sprječava da se isti iznos broji dvaput.
+- **Ispravak je nova potvrda**, ne izmjena stare. ⚠ Ali: app uvijek kreće od **najnovije**
+  potvrde. Nova potvrda na **stariji** datum zato **ne poništava** onu krivu na novijem — app
+  te na to upozori crvenim tekstom, a krivu obrišeš u **„povijest potvrda"** ispod pločice.
+- **„povijest potvrda"** pokazuje sve potvrde tog računa; strelica ▸ označava onu **od koje
+  saldo trenutno kreće**. Ostale su samo zapis.
 - **Dok potvrde nema**, pločica zbraja cijelu povijest i to **izričito piše**
   („od početka podataka"). Nikad tiho.
 
@@ -90,6 +117,10 @@ potvrde. („od" i dalje reže popis zapisa ispod, samo ne pločicu.)
 Čemu služi: usporediti app sa starim izvodom ili s tuđom tablicom na točno određeni dan. Ako
 se brojevi razilaze, kolona **`Stanje`** u popisu zapisa pokazuje **na kojem retku** je razlika
 nastala — jedan broj kaže „nešto ne valja", kolona kaže „evo gdje".
+
+⚠ **Filtar ne određuje datum potvrde.** Prije je određivao, i to je bio izvor greške. Sada
+datum dolazi iz toga **odakle je broj**; ako gledaš prošli datum, app te samo podsjeti
+(*„gledaš 31.03.2025. — ako izvod nosi taj datum, upiši njega"*), ali upisuješ ga ti.
 
 ⚠ Broj uz **„planirano"** također poštuje taj datum, ali odgovor je polovičan: app pamti
 *trenutni* status zapisa, ne kad se promijenio. „Planirano na 31.03.2025." zato znači
@@ -131,8 +162,15 @@ kategorija. Nakon spremanja vraćaš se na Overview i saldo je preračunat.
 Uz polje „u banci" stoji izbornik **odakle**: *ekran bankovne aplikacije*, *ispisano stanje s
 izvoda* (uz njega se može upisati i ime izvoda) ili *bankomat / ispis na papiru*.
 
-Taj podatak se sprema uz potvrdu. Nije formalnost: potvrđeno stanje smije doći **samo izvana**,
-nikad iz izračuna aplikacije — a mjesecima kasnije se iz same brojke ne vidi je li poštovano.
-Ako ne odabereš ništa, zapisuje se „nije navedeno" — dakle da izvor **nije** naveden, što nije
-isto što i da bilješke nema.
+Taj podatak se sprema uz potvrdu i **obavezan je** — bez njega gumb „Potvrdi" ne radi.
+
+Dva razloga, oba praktična:
+
+1. Potvrđeno stanje smije doći **samo izvana**, nikad iz izračuna aplikacije. Mjesecima kasnije
+   se iz same brojke ne vidi je li to poštovano; iz bilješke se vidi.
+2. **Izvor određuje datum** (v. gore). Bez njega app ne zna smije li upisati današnji dan ili
+   te mora pitati.
+
+Stariji zapisi mogu nositi „nije navedeno" — to su potvrde upisane prije nego je polje postalo
+obavezno.
 
