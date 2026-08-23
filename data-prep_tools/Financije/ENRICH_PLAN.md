@@ -962,3 +962,55 @@ bazom + `openpyxl` nad trima verzijama Kokinog filea).
 - **Izvodi su samo PDF** — ZABA ni PBZ ne nude CSV/Excel (potvrdio Saša). Znači: čitanje izvoda
   ostaje ovdje, u Pythonu; u aplikaciju seli ono poslije čitanja — **pravila u bazi i evaluacija
   na uvozu** (Faza 3).
+
+## S116 (2026-08-23) — `--iz-koke`, alat za sidra, kolovoz izmjeren
+
+**Novi izvor: `fill_from_izvod.py --iz-koke`.** Za kolovoz izvoda nema do rujna, pa je po D-2
+Kokin file autoritet i za iznos i za datum — jedini put kad to vrijedi. Nije nov alat:
+`Target` i `write_rows` već nose sve zamke (prazni retci bez `Area`, autofilter, kolizije
+vremena, pravi bool), dodan je samo izvor.
+
+Zastavice: `--sheet`, `--tip-racuna` (vrijednost njene kolone A), `--klasificiraj`
+(Tip/Podtip iz `PO_OPISU`, dijeli se s `klasificiraj_transu.py`), `--osim` (brojevi redaka),
+`--lanac DATUM=IZNOS` (mehanička provjera D-2).
+
+**Izmjereno na `Financije 2026-08-23.xlsx`** (3.735 redaka):
+
+| | |
+| --- | --- |
+| nakon 30.07. | **175** · ZABA 17, RF 6, MC 80, Visa 72 |
+| stvarno novih za uvoz | ZABA **14**, RF **1** |
+| njen lanac ZABA 31.07.→13.08. | `13.815,33` → **`13.239,31`** = kontrolni broj tranše 4 |
+| njen lanac RF nakon 11.08. | `799,12` → **`796,43`** |
+
+**Nalazi ugrađeni u kod:**
+
+- **Lanac salda gleda SAMO kolonu C.** `C or G` dao je `12.983,69` umjesto `13.239,31` —
+  promašaj za točno zbroj nenaplaćenih kartičnih stavaka, koje kolona G datira danom troška.
+  Za `event_date` vrijedi obrnuto (D1b: dan kupovine ⇒ G).
+- **Njen model ≠ naš.** Ona tereti račun svakom kartičnom stavkom; banka skida jednu skupnu
+  naplatu. Zbroj se poklapa u cent (45 MC stavki 11.08. = `1.332,52` = iznos s `MC_2026-07.pdf`),
+  model ne. Zato `Izvor` određuje **kolona A** njenog sheeta.
+  ⚠ I zato je njen lanac **svjedok**: dva modela koja broje različito a daju isti broj
+  potvrđuju jedan drugoga; isti broj iz istog modela ne potvrđuje ništa.
+- **Redak 2564 (`07.08. Parking 1,60`) je tipfeler u mjesecu.** Tri neovisne potvrde:
+  `Parking` već u bazi na **07.07.**, njen `Stanje` stupac ga računa među srpanjskima
+  (`2.142,74`), i lanac **bez** njega daje točno `13.239,31`. ⇒ `--osim 2564`.
+- **Tipfeleri u godini nisu samo 2036.** Nađen i `2028-05-16` (`HLK 5/26`). Alat ih izdvaja
+  i ispisuje, nikad ne popravlja — ispravak ide u njen file (S115).
+- **103 njena retka nose datum kao TEKST** (`'11.05.23.'`, `'28.6.23.'`, `'29.2.2024.'`), svi
+  iz **2023.** Ne diraju kolovoz, ali batch 2023 bi ih progutao bez ijedne poruke.
+- **`--iz-koke` se ne kombinira s izvodom:** gdje se razilaze (~4 % redaka) nema pravila koje
+  bi presudilo, pa jedan prolaz nosi jedan autoritet.
+
+**Novi alati:**
+
+- `anchors.py` — popis sidara s oznakom `►` (koje danas vrijedi), `--delete`, `--add`.
+  Popunjava rupu iz Backloga na razini skripte; UI je u istoj sesiji dobio isto
+  („povijest potvrda" + ✕), pa je ovo sada alat za rad izvan aplikacije.
+- `set_list_columns.py` — prvi upis `settings.list_columns` (merge, ne overwrite).
+- `Tools/audit_tests.py` — usklađuje `PENDING_TESTS.md` s `docs/sessions/tests/`;
+  odgovara na „što je spremno za arhivu".
+
+**Uvoz NIJE izveden** — pripremljeno, kontrolni brojevi gore, koraci u
+`docs/sessions/tests/S116_tests.md` T-S116-7/-8. Ide u sljedeću sesiju.

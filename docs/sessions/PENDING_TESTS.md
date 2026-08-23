@@ -6,8 +6,35 @@
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
 **✅ T-S114-1 RIJEŠEN 2026-08-23 (S116):** sidro ZABA premješteno na **30.07.** (ručni ispravak retka u Supabase editoru), prije toga netautološki provjereno da app iz sidra 01.07. sam dođe do `13.815,33`. Mehanizam koji je grešku proizveo popravljen je u kodu — v. T-S116-10…13.
-**Otvoreno: T-S116-1…5, -7…9, -12; djelomično -10, -11, -14; T-S115-1, -3; T-S114-2…5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S116:** [S116_tests.md](tests/S116_tests.md) · **S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
+**Otvoreno: NE VODI SE OVDJE — vodi se u tablicama ispod (⬜).** Ovaj redak je do S116 bio ručno kuriran popis i **propuštao je 60 testova** koje tablice označavaju ⬜ (izmjereno `data-prep_tools/Tools/audit_tests.py`). Dva popisa koja se moraju slagati, a jedan se održava rukom — isti razred greške koji inače lovimo. Za stanje pokreni:
+
+```
+python data-prep_tools/Tools/audit_tests.py
+```
+
+Ispisuje po session fileu koliko je testova definirano, koliko ✅ / ⬜, i koje je fileove **spremno arhivirati** (svi ✅). ⚠ Prijavljuje i testove kojih u ovom fileu uopće nema — v. „Siročad" ispod.
+**Detalji S116:** [S116_tests.md](tests/S116_tests.md) · **S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
+
+---
+
+## ⚠ Siročad — 57 testova koje ovaj file ne spominje
+
+`S99`, `S100`, `S101`, `S102`, `S102b`, `S104` i dio `S105` imaju detaljne testove u
+`docs/sessions/tests/`, a **nijedan redak u ovom fileu**. Nastalo pri kuriranju: retci su
+maknuti, fajlovi nisu. Posljedica je da se za njih ne zna ni da su otvoreni ni da su
+zatvoreni — a arhiviranje ih zato ne može ni dotaknuti.
+
+**Odluka koja se čeka (Sašina):** jesu li ti testovi još relevantni?
+- ako jesu → vratiti im retke u tablice
+- ako nisu → session fileovi idu u `Claude-temp_R/test-sessions/archive/`, kao i zatvoreni
+
+Do tada stoje kao poznata rupa, ne kao previd.
+
+## Arhivirano u S116
+
+Prvi put da je korak izveden nakon tri preskočene sesije — kriterij „svi testovi ✅" nije se
+dao primijeniti dok se popisi nisu izmjerili. Otišlo je 7 fileova (svi ✅, nula otvorenih):
+`S107g`, `S107h`, `S107k`, `S107r`, `S107s`, `S107t`, `S107y`.
 
 ---
 

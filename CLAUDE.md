@@ -782,8 +782,13 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   zadovoljavaju uvjete pločice" i **nema polja za unos**. Testno sidro je zato upisano skriptom
   (`anchors.py --add`).
   ⇒ Točna formulacija je: **povijest nije preduvjet, ali JEDAN EVENT jest.** Plan za PROD to
-  već zaobilazi (korak 5: „2–3 stvarna retka da se račun pojavi"). Popravak koji taj korak
-  uklanja: ponuditi vrijednosti iz `racun.validation_rules.suggest` kao prazne retke s poljem
+  već zaobilazi (korak 5: „2–3 stvarna retka da se račun pojavi"), a to i nije zaobilaženje
+  nego normalan posao — ona ionako ima transakcije za upisati.
+  ⚠ **Sašina odluka (S116): NE gradi se.** Dva razloga: sidro bez ijednog eventa ionako malo
+  znači (vrijednost sidra dolazi od prometa **poslije** njega), a feature bi služio jednom
+  jedinom trenutku. **Uvjet pod kojim ipak ugrize:** otvori li se **novi bankovni račun**,
+  ne može se usidriti dok se na njemu ne zapiše prva transakcija. Rijetko, i rješava se samo.
+  Ako se ikad gradi: vrijednosti iz `racun.validation_rules.suggest` kao prazni retci s poljem
   za potvrdu — **dropdown, nikad slobodan tekst**, jer bi tipfeler stvorio fantomski račun
   koji pločica prikaže kao uredan.
 - **Sidro unatrag je provjera, sidro na danas je pokrivač** (S109). Datirano na početak
@@ -933,7 +938,11 @@ does not block build. Ignore it.
 1. **`docs/sessions/PENDING_TESTS.md`** — dodaj testove za sve novo; potvrđene označi ✅
 2. **`docs/sessions/tests/SXX_tests.md`** — detaljni koraci za SVAKI novi test
    (preduvjeti, numerirani koraci, očekivano vs. pad). Ažuriraj `Detalji testova:` link.
-3. **Arhiviranje (inače se ne dogodi):**
+3. **Arhiviranje (inače se ne dogodi):** ⚠ prvo `python data-prep_tools/Tools/audit_tests.py`
+   — ispisuje po session fileu koliko je testova ✅/⬜ i koji su **spremni za arhivu**.
+   Korak je bio preskočen **tri sesije zaredom** jer se kriterij „svi testovi ✅" nije dao
+   primijeniti dok su postojala dva popisa koja se ne slažu (kurirani redak je propuštao
+   60 testova). Sada se broji, ne procjenjuje.
    - session file čiji su **svi** testovi ✅ → `Claude-temp_R/test-sessions/archive/`
      (⚠ arhiviranje **izlazi iz gita** — arhiviran test je zatvoren, pa seli na radni stol)
      (⚠ **ne po starosti** — otvoreni testovi sežu unatrag više sesija)
