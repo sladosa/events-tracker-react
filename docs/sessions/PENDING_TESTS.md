@@ -1,13 +1,44 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S115 (2026-08-22, druga sesija istog dana) — mjerenje stanja, razriješeni `845,12` i retci iz 2036., plan za PROD.
+**Zadnji update:** S116 (2026-08-23) — kolone Activities liste po Arei, `--iz-koke` izvor, sidro ZABA ispravljeno.
 **Prošlo 2026-08-22: T-S113-3.** · 2026-08-21: T-S112-3, -4, -6; T-S113-1. · 2026-08-19: T-S112-1, T-S112-2. · 2026-08-17: T-S110-1, -2, -3, -6, -7. · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
 **⚠ T-S114-1 je IZMJEREN I PAO** (2026-08-22): sidro ZABA stoji na **22.08.**, ne na 30.07. Iznos je točan (`13.815,33`, s izvoda), datum je od klika. Popravak je prvi zadatak S116.
-**Otvoreno: T-S115-1…4 (NOVO); T-S114-1 (pao) …-5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
-**Detalji S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
+**Otvoreno: T-S116-1…9 (NOVO); T-S115-1…4; T-S114-1 (pao) …-5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Detalji S116:** [S116_tests.md](tests/S116_tests.md) · **S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
+
+---
+
+## S116 — kolone po Arei · `--iz-koke` · sidro
+
+Puni koraci: [S116_tests.md](tests/S116_tests.md).
+
+| Test | Što | Status |
+| --- | --- | --- |
+| T-S116-1 | ⭐ Financije lista: `Datum \| Iznos \| Tip / Podtip \| Opis \| Stanje`; prazan iznos je `—`, nikad `0,00`; redak s obje strane pokazuje obje | ⬜ |
+| T-S116-2 | Generička Area **netaknuta** — točno kao prije S116 | ⬜ |
+| T-S116-3 | Uski ekran: dva reda, iznos desno uz rub, `Stanje` skriven | ⬜ |
+| T-S116-4 | ⭐ **Roundtrip** — `ListColumns` sheet: izmjena `Label` preživi export→import; prazan popis vraća zadano | ⬜ |
+| T-S116-5 | Rename sluga `tip` povlači fixup kolona (prazna kolona zbog mrtve reference izgleda isto kao prazna zbog nedostatka podatka) | ⬜ |
+| T-S116-6 | ⭐ Sidro ZABA stoji na **30.07.**, ono s 22.08. obrisano | ⬜ |
+| T-S116-7 | ⭐ Uvoz kolovoza ZABA (14 redaka) → **`13.239,31` @ 13.08.** ⚠ traži i MC naplatu `1.332,52` s `MC_2026-07.pdf` | ⬜ |
+| T-S116-8 | Uvoz kolovoza RF (1 redak) → **`796,43`** | ⬜ |
+| T-S116-9 | Alat stane kad delta sheet nije za traženi račun (regresija) | ⬜ |
+
+**Brojke izmjerene u S116** (sve provjerene, ne procijenjene):
+
+| Što | Vrijednost |
+| --- | --- |
+| `ZABA_2026-07.pdf` | close **2026-07-30**, POČETNO `2.255,64`, **NOVO `13.815,33`** |
+| app iz sidra 01.07. na 30.07. | **`13.815,33`** (38 eventa) — Δ = 0, **netautološka provjera** |
+| Kokin file `2026-08-23.xlsx` | 3.735 redaka; **175** nakon 30.07. |
+| od toga dira saldo | ZABA **17**, RF **6** · kartice (MC 80 + Visa 72) su potovi |
+| stvarno novih za uvoz | ZABA **14** (bez retka 2564), RF **1** |
+| njen lanac ZABA 31.07.–13.08. | `13.815,33` → **`13.239,31`** ✓ kontrolni broj tranše 4 |
+| njen lanac RF nakon 11.08. | `799,12` → **`796,43`** |
+| retci s datumom kao TEKSTOM | **103**, svi iz 2023. (`'11.05.23.'`, `'28.6.23.'`, `'29.2.2024.'`) |
 
 ---
 
@@ -20,7 +51,7 @@ Puni koraci: [S115_tests.md](tests/S115_tests.md).
 | T-S115-1 | ⭐ ZABA pločica više nema liniju „planirano" (`845,12` obrisan) | ⬜ |
 | T-S115-2 | ⭐ **Sidro prikazuje račun i bez ijednog eventa** — na tome stoji cijeli plan za PROD | ⬜ |
 | T-S115-3 | Uvoz kolovoza ne donosi retke iz 2036. (travanj 2026. ostaje **111 eventa**) | ⬜ |
-| T-S115-4 | Kolone po Arei — generička Area netaknuta, postava preživi roundtrip (⚠ nakon implementacije) | ⬜ |
+| T-S115-4 | ~~Kolone po Arei~~ — **zamijenjen s T-S116-1…5** (implementirano u S116) | — |
 
 **Brojke izmjerene u S115** (sve provjerene, ne procijenjene):
 

@@ -2457,3 +2457,88 @@ Cijena koju to nosi: **Overview postoji samo na `test-branch`**, pa PROD traži 
   se to ne uskladi. Zadatak za S116.
 - Arhivirana dva generirana izvještaja o uvozu (`import_report_20260822_101209*.xlsx`) u
   `_arhiva/izlazi/`. `.pre-*` backupa ima točno 3 ⇒ ništa se ne seli.
+
+---
+
+# S116 — kolone po Arei · Kokin file kao izvor · sidro na pravi datum (2026-08-23)
+
+Sesija je imala dogovoren plan iz S115 i ~2–3 h. Sašin redoslijed: **1) kolone,
+2) kolovoz saldo-retci, 3) ostali kolovoški retci s `N/A` tipom.**
+
+## Sidro — provjera prije upisa, kako pravilo traži
+
+`ZABA_2026-07.pdf` **nije bio** u `Analizirani_izvodi/`, pa ga `make_saldo_anchors.py`
+nikad nije vidio. Parsiran izravno: **close 2026-07-30**, POČETNO `2.255,64`
+(lanac se poklapa sa sidrom od 01.07.), **NOVO `13.815,33`**.
+
+Netautološka provjera prije nego je išta upisano — app iz sidra `01.07. = 2.255,64`
+dolazi na **`13.815,33` na 30.07.** s 38 eventa, Δ = 0. Krivo sidro (22.08.) nije
+smetalo jer `036` bira najnovije `confirmed_on <= as_of`, a 22.08. > 30.07.
+
+⚠ **Brisanje sidra blokirao klasifikator** — ostalo Saši za pokrenuti. Napisan
+`anchors.py` (`--list` / `--delete <uuid>`): uz svako sidro označi **koje danas
+vrijedi** (`►`), pa se mrtvo i pobjedničko vide na prvi pogled. Popunjava rupu iz
+Backloga na razini skripte; UI i dalje treba (Koka nema Python).
+
+## Kolone Activities liste po Arei
+
+`areas.settings.list_columns`, slug-based, kroz Structure roundtrip (`ListColumns`
+sheet). Uloge, ne imena iz domene: `date · time · category · events · user · pair ·
+attr · comment · balance · actions`.
+
+Odluke koje su se pokazale nužne tek pri pisanju:
+
+- **`actions` se pinna na kraj i dodaje ako ga config nema.** Sticky ćelija usred
+  tablice pokriva susjede; config bez nje daje listu bez ⋮ menija i ni jedne poruke.
+- **`desktopHide` vrijedi samo za zadanu listu.** Area koja je kolone konfigurirala
+  tražila ih je sve — sužavanje je posao `mobile` uloge.
+- **`ListColumns` import BRIŠE ono čega nema**, za razliku od `Automations`. Kolone
+  su jedan uređeni popis, pa je brisanje retka jedini način da se kolona makne;
+  „odsutnost ne briše" značilo bi da se kolona može dodati ali nikad ukloniti.
+  Zaštita je na razini **sheeta**: nema sheeta ⇒ ništa se ne dira.
+- **`pair` pokazuje obje strane kad su obje popunjene** (ZABA `Anja 73/96`:
+  uplata 450,00 **i** isplata 0,70 u istom eventu — vjeran spoj dvaju redaka izvoda).
+- Prazan iznos je `—`, **nikad `0,00`** — za novac je nula tvrdnja o retku.
+
+Financije: `Datum | Iznos | Tip / Podtip | Opis | User | Stanje | ⋮`.
+Skeleton loading state također ide po configu — inače je učitavanje layout shift,
+a to je jedina stvar zbog koje skeleton postoji.
+
+## Kolovoz — izmjeren, pripremljen, neuvezen
+
+`Financije 2026-08-23.xlsx`: 3.735 redaka, **175 nakon 30.07.** Ključna raspodjela:
+**ZABA 17, RF 6** diraju saldo; **MC 80 + Visa 72** su potovi.
+
+| | |
+| --- | --- |
+| stvarno novih za uvoz | ZABA **14**, RF **1** |
+| njen lanac ZABA 31.07.→13.08. | `13.815,33` → **`13.239,31`** = kontrolni broj tranše 4 |
+| njen lanac RF nakon 11.08. | `799,12` → **`796,43`** |
+
+`fill_from_izvod.py` dobio izvor **`--iz-koke`** (ne nov alat — `Target` i `write_rows`
+već nose sve zamke). Nalazi ugrađeni u kod:
+
+- **Lanac salda gleda SAMO kolonu C.** `C or G` je dao `12.983,69` umjesto `13.239,31`
+  — promašaj za točno zbroj nenaplaćenih kartičnih stavaka, koje kolona G datira
+  danom troška. Za `event_date` vrijedi obrnuto (D1b: dan kupovine ⇒ G).
+- **Njen model ≠ naš model.** Ona tereti račun svakom kartičnom stavkom; banka skida
+  jednu skupnu naplatu. Zbroj se poklapa u cent (45 MC stavki 11.08. = `1.332,52` =
+  iznos s `MC_2026-07.pdf`), model ne. Zato `Izvor` određuje **kolona A** njenog sheeta.
+  ⚠ I zato je njen lanac **svjedok**: dva modela koja broje različito a daju isti broj
+  potvrđuju jedan drugoga; isti broj iz istog modela ne potvrđuje ništa.
+- **Redak 2564 (`07.08. Parking 1,60`) je tipfeler u mjesecu.** Tri neovisne potvrde:
+  `Parking` već postoji u bazi na **07.07.**, njen vlastiti stupac `Stanje` ga računa
+  među srpanjskima (`2.142,74`), i lanac **bez** njega daje točno `13.239,31`.
+  ⇒ `--osim 2564`. Odluka je čovjekova, ali broj retka ostaje u naredbi kao trag.
+- **Tipfeleri u godini nisu samo 2036.** Nađen i `2028-05-16` (`HLK 5/26`). Alat ih
+  **izdvaja i ispisuje**, nikad ne popravlja — ispravak ide u njen file (S115).
+- **103 njena retka nose datum kao TEKST** (`'11.05.23.'`, `'28.6.23.'`, `'29.2.2024.'`).
+  Svi iz **2023.**, dakle ne diraju kolovoz — ali batch 2023 bi ih progutao bez poruke.
+- **`--iz-koke` se ne kombinira s izvodom:** gdje se razilaze (~4 % redaka) nema pravila
+  koje bi presudilo, pa jedan prolaz nosi jedan autoritet.
+
+## Što je ostalo Saši
+
+Brisanje sidra (`anchors.py --delete`), pogled na kolone, i sam uvoz kolovoza
+(export delta sheeta iz appa ≥ 60 praznih redaka → `--dry` → uvoz). Koraci i
+kontrolni brojevi: `docs/sessions/tests/S116_tests.md`, T-S116-6…8.

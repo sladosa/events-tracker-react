@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S115).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S116).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -107,6 +107,28 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **Promjena sluga lomi reference.** `depends_on` (S105d), a od Faze 1 i `dashboard.widgets[]`.
   Fixup referenci mora ići uz svaki rename sluga.
 - **`set_attribute` se evaluira SAMO u Add Activity** — ne u Edit ni u Import.
+
+**Kolone Activities liste (`settings.list_columns`)**
+
+- **Area bez configa zadrži današnju listu.** Odsutnost je zadano, ne prazna tablica —
+  isti obrazac kao Overview tab (OQ-4). `DEFAULT_COLUMNS` je zato **pravi popis kolona**
+  u `listColumns.ts`, ne `if (!config)` grana razasuta po tablici.
+- **`actions` se uvijek renderira i uvijek zadnji**, i kad ga config nema. Config koji ga
+  zaboravi inače daje listu **bez ⋮ menija** — nema Edit, View ni Delete — i nigdje ne
+  piše zašto. Sticky ćelija usred tablice pokriva susjede, pa se i pomiče na kraj.
+- **Rename sluga mora povući `fixupListColumnsSlug`** u istom write-u kao rename (isto
+  što `dashboardConfig.ts` radi za pločice). Ovdje je pad **tiši** nego kod pločice:
+  RPC na nepoznat slug baci grešku, a kolona samo ostane prazna — a prazno zbog mrtve
+  reference izgleda **identično** kao prazno zbog nedostatka podatka.
+- **`pair` mora pokazati OBJE strane kad su obje popunjene.** ZABA `Anja 73/96`
+  (25.08.2025.) nosi uplatu `450,00` **i** isplatu `0,70` u istom eventu i to nije
+  greška nego vjeran spoj dvaju redaka izvoda. Ćelija koja pokaže jednu skriva pola
+  transakcije. ⚠ I: prazan iznos je `—`, **nikad `0,00`** — za novac je nula tvrdnja.
+- **`desktopHide` vrijedi samo za zadanu listu.** Area koja je konfigurirala kolone
+  tražila ih je sve; sužavanje je posao `mobile` uloge, ne skrivanja iza korisnikovih leđa.
+- **`ListColumns` import BRIŠE ono čega nema — namjerno, za razliku od `Automations`.**
+  Kolone su jedan uređeni popis, pa je brisanje retka jedini način da čovjek makne
+  kolonu. Zaštita je na razini **sheeta**: nema sheeta ⇒ ništa se ne dira.
 
 **Excel**
 
@@ -314,6 +336,33 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   račun; dok naplata nije poznata, C je **prazan**, a dan troška stoji u koloni **G**.
   Alat koji čita samo C ne vidi upravo najsvježije retke — one koje sljedeći kartični izvod
   tek donosi. (To je u našem modelu `Status = Planiran` + prazan `Datum naplate`.)
+- **⚠ Kokin lanac salda gleda SAMO kolonu C, nikad `C or G`** (S116). Kolona G je dan
+  troška i za još nenaplaćene kartične stavke **jedini** datum koji redak ima — ali te
+  stavke račun još nisu teretile. Uzeti ih znači brojati buduće naplate kao dogođene:
+  izmjereno `12.983,69` umjesto `13.239,31`, promašaj za točno njihov zbroj. Pravilo
+  vrijedi samo za **lanac salda**; za `event_date` je obrnuto (D1b: dan kupovine ⇒ G).
+- **⚠ Njen model tereti račun svakom kartičnom stavkom, naš jednom skupnom naplatom**
+  (S116). Zbroj se poklapa u cent (45 MC stavki 11.08. = `1.332,52` = iznos s
+  `MC_2026-07.pdf`), model ne. Uvezu li se njene kartične stavke s `Izvor = Racun`,
+  saldo se **dvostruko** umanji — jednom po stavci, jednom skupnom naplatom. `Izvor`
+  zato određuje **kolona A** njenog sheeta, a skupna naplata dolazi s izvoda.
+  ⚠ Zato je i njen lanac koristan kao **svjedok**: dva modela koja broje različito, a
+  daju isti broj, potvrđuju jedan drugoga. Isti broj iz istog modela ne potvrđuje ništa.
+- **⚠ Njeni datumi znaju biti tipfeler u GODINI, i ne samo 2036.** (S116). Osim dva
+  poznata retka iz `2036-04-08` postoji i `2028-05-16` (`HLK 5/26`). Alat ih **izdvaja
+  i ispisuje**, nikad ne popravlja — ispravak ide u **njen** file (v. S115: popravak +
+  uvoz udvostručuje redak tiho, jer pada prije sidra).
+- **⚠ 103 njena retka nose datum kao TEKST, ne kao datum** (S116): `'11.05.23.'`,
+  `'28.6.23.'`, `'29.2.2024.'` — neujednačeno, s točkom na kraju i dvoznamenkastom
+  godinom. Svi su iz **2023.**, dakle batch 2023 ih mora parsirati ručno; alat koji
+  prima samo `datetime` progutao bi ih **bez ijedne poruke**.
+- **⚠ Usporedba imena računa mora ići preko normalizacije dijakritika** (S116). Njena
+  kolona A piše `Kokin tekući` s kvačicama, a argument s komandne linije ih kroz
+  `run.bat` zna izgubiti; obična `==` usporedba tada nađe **nula** redaka i alat javi
+  „0 novih" — što se čita kao „nema što uvesti", a ne kao „nije ni uspoređeno"
+  (isti razred kao S114 brojač). ⚠ Normalizacija je **samo za usporedbu**: vrijednost
+  atributa `Racun` koja ide u bazu nosi dijakritike i mora se poklopiti u znak, inače
+  redak završi pod novim, četvrtim računom — a pločica to prikaže kao uredan račun.
 - **`source_key` nije stabilan** (`normalize_financije.py:202`, `seq_per_day` = redoslijed u fileu)
   ⇒ ubačeni redak mijenja ključeve svih redaka tog dana iza njega
 - **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** (preskače `source_key`eve koji POSTOJE
@@ -401,6 +450,10 @@ src/lib/theme.ts                   Theme colour tokens
 src/lib/overviewApi.ts             Overview read model — rpc_area_group_agg / _balance_anchored,
                                    CRUD sidara. Jedini `.rpc()` pozivi u aplikaciji.
 src/lib/dashboardConfig.ts         Fixup slug referenci u dashboard configu (S105d razred)
+src/lib/listColumns.ts             Kolone Activities liste po Arei — DEFAULT_COLUMNS,
+                                   resolveColumns(), fixupListColumnsSlug()
+src/hooks/useListColumnValues.ts   Vrijednosti atributa za vidljive retke — jedan upit,
+                                   ograničen na attribute_definition_id (ne skenira EAV)
 src/lib/amountFormat.ts            formatAmount / parseAmountInput (hr 1.234,56)
 src/hooks/useAreaDashboard.ts      Ima li Area `settings.dashboard` ⇒ postoji li Overview tab
 src/hooks/useRunningBalance.ts     Izračunata kolona `Stanje` u Activities listi (§2.12)
@@ -491,11 +544,13 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 - **E7-2/E7-3:** Toast „Access granted" izostaje u invite flowu — UX polish
 - **T-S107u-2** (bezopasno): `groupAttributes` uzima `Default` s **prvog** retka grupe ⇒
   `Status.default_value` se klacka `Izvrsen`↔`null`. Fix: ignorirati `Default` na retku s `DependsOn`.
-- **BUG-S115-ANCHORDATE:** potvrda iz pločice žigoše **dan koji se gleda**, pa broj s izvoda
-  dobije datum klika (izmjereno: `22.08. = 13.815,33` uz bilješku `ZABA_2026-07.pdf`, izvod
-  zatvoren 30.07.). Sve između pravog i upisanog datuma tiho ispada iz salda. Fix: kad je izvor
-  „ispisano stanje s izvoda", tražiti **datum zatvaranja izvoda**; uz to popis sidara + brisanje
-  (backlog), jer se krivo sidro danas ispravlja samo novim retkom i SQL-om.
+- **BUG-S115-ANCHORDATE** (mehanizam i dalje otvoren): potvrda iz pločice žigoše **dan koji
+  se gleda**, pa broj s izvoda dobije datum klika. ⚠ **Konkretan slučaj je zatvoren u S116**
+  (sidro premješteno s 22.08. na 30.07., prije toga netautološki provjereno da app iz sidra
+  01.07. sam dođe do `13.815,33`), ali **kod nije diran** — sljedeći upis s izvoda pravi istu
+  grešku. Fix: kad je izvor „ispisano stanje s izvoda", tražiti **datum zatvaranja izvoda**.
+  ⚠ Sumnjiv je i RF `11.08. = 799,12` s bilješkom `RF_2026-07.pdf` — **neprovjereno**
+  zatvara li se taj izvod na 11.08. ili ranije.
 - **BUG-S114-REPORTDD:** izvještaj o uvozu **nema `DropdownData` list** (`Events / HelpEvents /
   ImportReport / Filter`), pa u njemu `Tip`/`Podtip` nemaju padajući izbornik. Za pipeline
   nebitno, **za Koku bitno**: izvještaj je mišljen kao mjesto gdje dorađuje uvezeno, a ondje bi
@@ -563,7 +618,7 @@ N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravil
 
 ---
 
-## Sljedeći koraci (2026-08-22, S115)
+## Sljedeći koraci (2026-08-23, S116)
 
 **✅ OBA LANCA SALDA SU ZATVORENA** (S110/S111). App reproducira **ispisana bankovna stanja u cent**:
 ZABA `2.546,55` @ 31.03.2025. i `3.403,74` @ 08.07.2026. · RF `461,82` @ 06.07.2026.
@@ -590,7 +645,7 @@ Faza 0 i Faza 1 su gotove; ostalo je izvođenje.
 | **1** | RF banka: 7 novih redaka + ispravak `250,93 → 253,51` | **RF @ 04.08. = 1.716,55** |
 | **2** | RF Visa iz `PBZVIZA_2026-07`: 42 stavke + naplata `1.171,59` + `0,17` | **RF @ 11.08. = 799,12** |
 | ~~**3**~~ | ✅ **GOTOVO S114.** ZABA banka: 31 novi + potvrda `1.244,74`. Izvod nosi 38 tx, 7 ih je baza imala. `845,12` **obrisan u S115** (postojao samo u snimci od 08.07., bez datuma i opisa ⇒ ostatak, ne transakcija). | ✅ **ZABA @ 30.07. = 13.815,33** (ispisano). ⚠ `14.722,84 @ 09.08.` traži još ~15 Kokinih redaka od 02.08. — izvod ih ne pokriva. |
-| **4** | MC iz `MC_2026-07`: 45 stavki (12 ih baza već ima) + naplata `1.332,52` | **ZABA @ 13.08. = 13.239,31** |
+| **4** | MC iz `MC_2026-07`: 45 stavki (12 ih baza već ima) + naplata `1.332,52`, **plus cijeli kolovoz iz Kokinog filea**. S116 izmjerio i pripremio: ZABA **14** novih redaka (02.–13.08.), RF **1** (18.08.). Alat: `fill_from_izvod.py --iz-koke`. ⚠ Redak 2564 (`07.08. Parking 1,60`) je tipfeler u mjesecu — već u bazi kao 07.07. ⇒ `--osim 2564`. | **ZABA @ 13.08. = 13.239,31** (njen lanac to daje u cent, izmjereno S116) · **RF = 796,43** |
 
 ⚠ **Tranša 4 više NIJE preduvjet za PROD** (S115). Sidro prikazuje račun i bez ijednog eventa
 (`036`, T-S115-2) ⇒ Koka može upisati stanje sa svog ekrana banke i saldo je od tog trena točan.
@@ -611,9 +666,14 @@ Tranša 4 ih rješava: ostane li `13.239,31` bili su duplikati, postane li `12.8
 Redoslijed je Sašin: **kolovoz u miru → kolone po Arei → testiranje → tek onda deploy na `main`.**
 Odbačena je varijanta „sve sutra ujutro prije nego Koka otputuje".
 
-1. Uvoz kolovoza iz **zadnje** verzije Kokinog filea (traži je od nje — ima još unosa).
-2. **Kolone po Arei** (v. Backlog) — `Datum | Smjer + iznos | Tip / Podtip | Opis | ⋮`.
-3. Testiranje na TEST-u, popravak sidra (BUG-S115-ANCHORDATE).
+1. **Uvoz kolovoza** — pripremljen u S116 (`fill_from_izvod.py --iz-koke`, brojke u
+   `docs/sessions/tests/S116_tests.md` T-S116-7/-8). ⚠ Traži i skupnu MC naplatu
+   `1.332,52` s `MC_2026-07.pdf` — bez nje kontrolni broj ne izlazi.
+   ⚠ Kokin file se mijenja svakih par dana (`08-16` → `08-23` donio 20 novih redaka
+   nakon 30.07.); **prije uvoza ponovi `--dry` i provjeri da je i dalje 14**.
+2. ✅ **Kolone po Arei — izvedeno S116.** Ostaje ih vidjeti uživo (T-S116-1…5).
+3. Testiranje na TEST-u. ⚠ Sidro ZABA je **premješteno na 30.07. u S116**, ali
+   **kod nije popravljen** (BUG-S115-ANCHORDATE) — sljedeći upis s izvoda ponavlja grešku.
 4. **Merge `test-branch` → `main`** — ⚠ samo na Sašin izričit „idi".
 5. SQL `035`–`038` na PROD · `dashboard` config u njenu PROD Areu (⚠ **ne putuje** roundtripom)
    · Structure import **pod njenim računom** (D6) · 2–3 stvarna retka da se račun pojavi.
@@ -729,23 +789,22 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 
 ## Backlog
 
-**Kolone Activities liste po Arei** (dogovoreno S115, gradi se u S116) — danas je popis
-generički za sve Aree (`Date, Time, Category, Events, comment`), a za Financije su `Time`,
-`Category` i `Events` prazan prostor. Konfiguracija ide u `areas.settings`, **slug-based**,
-kroz Structure roundtrip; Area bez nje zadrži današnji izgled. Kolone se opisuju **ulogama**,
-ne imenima iz domene — isti obrazac kao pločice (`group`/`plus`/`minus`):
-`date` · `pair` (plus+minus ⇒ **smjer + iznos u jednoj koloni**) · `attr:<slug>` · `comment` ·
-`actions`. Za Financije: `Datum | Smjer + iznos | Tip / Podtip | Opis | ⋮`, uski ekran u dva
-reda. **Tip i Podtip su JEDNA spojena kolona** (`Domaćinstvo / Hrana i ostalo`) — Sašina odluka.
-⚠ Rename sluga mora povući fixup reference, isto što `dashboardConfig.ts` radi za pločice.
-⚠ Ovo je jedina stavka s popisa A–E koju Koka vidi **svaki put**, ne samo pri unosu.
+**~~Kolone Activities liste po Arei~~ — ✅ IZVEDENO S116.** `settings.list_columns`,
+slug-based, `ListColumns` sheet u Structure roundtripu, fixup na rename. Financije:
+`Datum | Iznos | Tip / Podtip | Opis | User | Stanje | ⋮`, uski ekran u dva reda.
+Pravila su promaknuta u „Critical rules". **Neverificirano uživo: T-S116-1…5.**
+⚠ Ostalo neizvedeno: rječnik uloga se širi **samo kodom** (namjerno), pa nova vrsta
+kolone (npr. `attr` s formatom broja) i dalje traži commit.
 
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
 (fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
 
 **Sidra se ne mogu vidjeti ni obrisati iz aplikacije** (S109) — `listAnchors()` i
-`deleteAnchor()` postoje u `overviewApi.ts` i **nitko ih ne zove**; jedini put je SQL Editor.
+`deleteAnchor()` postoje u `overviewApi.ts` i **nitko ih ne zove**. ⚠ Od S116 postoji
+`data-prep_tools/Financije/anchors.py` (`--list`, `--delete <uuid>`), koji uz svako sidro
+označi **koje danas vrijedi** (`►`) — pa se mrtvo i pobjedničko razlikuju na prvi pogled.
+To je alat za Sašu, **ne rješenje za Koku**: ona nema Python. UI ostaje potreban.
 ⚠ Blokada je **otpala** (§2.18 — sidra ostaju zasebna tablica), pa se ovo sada smije graditi.
 ⚠ **S115 je dao drugi slučaj u dvije sesije** (krivo datirano sidro, BUG-S115-ANCHORDATE) —
 dakle nije jednokratni promašaj nego izostanak koraka. Postalo je i konkretnije: u S111 je jedno

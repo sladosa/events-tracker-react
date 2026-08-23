@@ -1,68 +1,69 @@
-# NEXT SESSION PROMPT — nakon S115 (dan je isplaniran unaprijed: kolovoz, kolone, pa deploy)
+# NEXT SESSION PROMPT — nakon S116 (kolone su gotove, kolovoz je pripremljen ali NIJE uvezen)
 
-**Pisan protiv commita `ee261ae`** (+ commit zatvaranja S115 koji slijedi odmah iza).
+**Pisan protiv commita `7f562a4`** (+ commit zatvaranja S116 koji slijedi odmah iza).
 Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest; `CLAUDE.md` je autoritet.
 
-**Stanje grana:** `test-branch` nosi S108–S115. `main` = PROD, **nije diran od S107**.
-
-> S115 je bio razgovor i mjerenje, bez koda. **Sljedeća sesija ima dogovoren plan** (DIO 1 §2) —
-> ne treba je otvarati pitanjem „što ćemo danas".
+**Stanje grana:** `test-branch` nosi S108–S116. `main` = PROD, **nije diran od S107**.
 
 ---
 
 # DIO 1 — Jednostavnim rječnikom (za Sašu)
 
-## 1. Što je jučer riješeno
+## 1. Što je jučer napravljeno
 
-**`845,12` je obrisan, i sad znamo što je bio.** Postoji **samo** u tvojoj najstarijoj snimci
-Kokinog filea (08.07.), i to kao redak **bez datuma i bez opisa** — dakle zaostatak, ne
-transakcija. U bazi je bio `Tip = N/A`, bez datuma naplate. Pet tjedana je stajao kao jedina
-stavka „planirano" na ZABA pločici i tvrdio da će pomaknuti stanje. Nema ga više.
+**Kolone po Arei su gotove.** Financije lista sada pokazuje
+`Datum | Iznos | Tip / Podtip | Opis | User | Stanje | ⋮`, a na mobitelu dva reda
+(datum i iznos gore, tip/podtip i opis dolje). Ostale Aree izgledaju točno kao prije.
+Postava putuje Structure Excelom (`ListColumns` list), pa se može mijenjati bez mene.
 
-**Retci iz 2036. se NE smiju ispraviti i uvesti.** Provjerio sam: `1.323,64` i `47,76` **već su
-u bazi** kao 08.04.2026., uredno klasificirani — ušli su travanjskim izvodom. Da smo „popravili
-tipfeler i uvezli", dobio bi ih dvaput, i to **tiho** (padaju prije sidra pa ne bi pokvarili
-nijednu kontrolnu brojku). Popravak ide **u njen file**, reci joj.
+**Sidro je provjereno prije nego što je dirano.** Srpanjski ZABA izvod se zatvara
+**30.07.** i ispisuje `13.815,33`. App iz lipanjskog sidra sam dođe do te brojke, u cent —
+dakle lanac je čist, a sidro na 30.07. nije „provjera same sebe".
 
-**Sidro ZABA je krivo datirano.** Stoji na **22.08.** umjesto na **30.07.** Iznos je točan
-(`13.815,33`, s izvoda) — datum je od klika. Trenutno ne šteti ništa jer u tom prozoru nema
-ZABA redaka, ali **sljedeći uvoz pada točno u njega**. Popravak je prvi zadatak.
+**Kolovoz je izmjeren do kraja.** Njen file od 23.08. ima **175 redaka poslije 30.07.**,
+ali saldo dira samo **23** (ZABA 17, RF 6) — ostalo su kartične stavke, koje račun terete
+tek skupnom naplatom. Od tih 23, **stvarno novih je 15**: 14 na ZABA-i, 1 na RF-u.
 
-## 2. Plan za sljedeći dan — dogovoren, ovim redom
+**Njen lanac daje točno onu brojku koju smo očekivali.** `13.815,33` na 30.07. plus njeni
+retci do 13.08. = **`13.239,31`**. To je vrijedno jer ona broji **drukčije** od nas
+(svaka kartična stavka joj tereti račun, nama tereti tek skupna naplata) — a ispadne isto.
 
-1. **Traži od Koke zadnju verziju filea** (ima još unosa poslije 16.08.).
-2. **Popravi sidro** — obriši ono od 22.08., provjeri da app sam dođe do `13.815,33` na 30.07.,
-   pa upiši sidro na 30.07.
-3. **Uvezi kolovoz** u miru. ⚠ Njen file je otišao dalje nego što smo mislili: **87 redaka
-   poslije 30.07.** na njenom računu, **68** na tvom; u bazi ih je **6**.
-4. **Napravi kolone po Arei** za Financije: `Datum | Smjer + iznos | Tip / Podtip | Opis | ⋮`.
-   Na uskom ekranu u dva reda. Ostale Aree ostaju kakve jesu.
-5. **Testiraj**, posloži stvari.
-6. **Tek onda deploy na `main`** — i to na tvoj izričit „idi".
-7. Ti se prijaviš na **njen PROD račun kod sebe lokalno**, provjeriš da sve radi, pa joj javiš
-   da može s mobitela.
+## 2. Što čeka tebe, tim redom
 
-## 3. Ono što plan čini jednostavnijim nego što je izgledao
+1. **Obriši krivo sidro** — blokirao mi je to sigurnosni filter, jedna linija:
+   ```
+   cd C:\0_Sasa\events-tracker-react\data-prep_tools\Financije
+   python anchors.py --delete eef47ad7-3fce-41cc-ace4-1bd3791b2376
+   ```
+   Pa `python anchors.py` da vidiš popis. Strelica `►` pokazuje koje sidro **danas vrijedi**.
+   Zatim upiši ispravno: `python make_saldo_anchors.py --anchor 2026-07-30`
+   (⚠ prvo prebaci `ZABA_2026-07.pdf` u `izvodi\Analizirani_izvodi\`, inače ga alat ne vidi).
 
-Pitao si može li se na PROD staviti sidro da Koka vidi stanje koje prepoznaje. **Može — i to
-znači da joj povijest uopće ne treba.** Provjerio sam u kodu: pločica prikazuje račun i kad
-iza njega nema **nijednog** zapisa, samo na temelju sidra.
+2. **Pogledaj kolone** i reci što ne valja — redoslijed i širine se mijenjaju jednim retkom.
 
-Praktično: ona otvori bankovnu aplikaciju, prepiše stanje u polje „u banci", pritisne Potvrdi —
-i od tog trenutka je **saldo = njen broj + ono što ona upiše**. Prepoznat će ga odmah, jer ga je
-sama upisala.
+3. **Uvezi kolovoz.** Koraci i kontrolni brojevi su u `docs/sessions/tests/S116_tests.md`,
+   testovi T-S116-7 (ZABA, mora dati `13.239,31`) i T-S116-8 (RF, `796,43`).
+   ⚠ Delta sheet izvezi s **najmanje 60 praznih redaka** — zadanih 40 nije dosta.
+   ⚠ Prvo pusti `--dry` i provjeri da i dalje piše **14 novih**. Njen file se mijenja
+   svakih par dana; između `08-16` i `08-23` pojavilo se 20 novih redaka poslije 30.07.
 
-⚠ To još **nije provjereno uživo** (T-S115-2). Ako padne, plan se mijenja iz temelja — zato je
-taj test među prvima.
+## 3. Jedna stvar koju treba znati o kolovozu
 
-## 4. Što ostaje na tebi
+**Skupna MC naplata `1.332,52` NIJE među tih 14 redaka** i ne smije se izmisliti.
+Ona piše na `MC_2026-07.pdf` i uvozi se zasebno. Bez nje pločica na 13.08. **neće**
+dati `13.239,31` nego `14.571,83` — i to će izgledati kao greška u podacima, a bit će
+samo redak koji fali.
 
-- **Zadnja verzija Kokinog filea.**
-- **Reci joj za retke iz 2036.** (`Mirovina 1.323,64`, `Netdomena Igor 47,76` — trebalo je 2026.).
-- **Onih 5 spornih lipanjskih redaka** (Σ `373,11`) i 11 kartičnih stavki bez para iz S113 —
-  i dalje pitanja za nju.
-- **Kad dođe dan prelaska: jedna rečenica njoj** — *„kad počneš upisivati u app, u Excelicu
-  više ne."* Radi li oboje, sve dobijemo dvaput, i to se neće vidjeti dok se saldo ne raziđe.
+## 4. Što i dalje stoji na tebi
+
+- **Reci Koki za retke s krivom godinom** — osim poznatih `2036-04-08`
+  (`Mirovina 1.323,64`, `Netdomena Igor 47,76`) našao se i `2028-05-16` (`HLK 5/26`).
+  Ispravak ide **u njen file**, ne u naš uvoz.
+- **Redak `07.08. Parking 1,60`** je tipfeler u mjesecu — treba biti `07.07.` Provjereno
+  na tri načina; kod nas je isključen, ali kod nje je i dalje krivo.
+- **Onih 5 spornih lipanjskih redaka** (Σ `373,11`) i 11 kartičnih bez para iz S113.
+- **Kad dođe dan prelaska: jedna rečenica njoj** — *„kad počneš upisivati u app, u
+  Excelicu više ne."*
 
 ---
 
@@ -70,48 +71,45 @@ taj test među prvima.
 
 ## 1. Prvo pročitaj
 
-`docs/sessions/DONE_HISTORY.md` **S115** · `CLAUDE.md` → „Sljedeći koraci" (§ Plan za PROD),
-„Mjerenje / usklađenje" (dvije nove zamke o sidru), Backlog → „Kolone Activities liste po Arei" ·
-`docs/sessions/tests/S115_tests.md`.
+`docs/sessions/DONE_HISTORY.md` **S116** · `CLAUDE.md` → „Critical rules" (nova sekcija
+**Kolone Activities liste**, pet novih zamki pod „Python alati") · `docs/sessions/tests/S116_tests.md`.
 
-## 2. Stanje — sve izmjereno u S115, ne procijenjeno
+## 2. Što je izmjereno u S116 (ništa procijenjeno)
 
 | Što | Vrijednost |
 | --- | --- |
-| sidara u TEST bazi | 6 · ZABA `22.08. = 13.815,33` **(krivi datum)** · RF `11.08. = 799,12` |
-| zadnji zapis u bazi | ZABA **2026-07-30** · RF **2026-08-11** |
-| Kokin file `Financije 2026-08-16.xlsx` nakon 30.07. | „koka EU" **87**, „sasa EU" **68**; u bazi **6** |
-| MC naplata `1.332,52` | **nije u bazi** |
-| travanj 2026. | **111 eventa** (referenca za T-S115-3) |
+| `ZABA_2026-07.pdf` | close **2026-07-30** · POČETNO `2.255,64` · NOVO **`13.815,33`** |
+| app iz sidra 01.07. → 30.07. | **`13.815,33`** (38 eventa), Δ = 0 — netautološka provjera |
+| Kokin file `2026-08-23` | 3.735 redaka · **175** nakon 30.07. · saldo dira **23** |
+| novih za uvoz | ZABA **14**, RF **1** |
+| njen lanac ZABA → 13.08. | **`13.239,31`** ✓ · RF → **`796,43`** |
+| retci s tekstualnim datumom | **103**, svi 2023. |
+| sidara u TEST bazi | **6** (⚠ ZABA `22.08.` još nije obrisano — čeka Sašin `--delete`) |
 
-Nema promjena u `src/`. Jedina promjena podataka: obrisan event `2831e332-ad4b-46c5-894d-f0da08c9d826`.
+## 3. Stanje koda
 
-## 3. Redoslijed rada i zamke uz svaki korak
+Nove datoteke: `src/lib/listColumns.ts`, `src/hooks/useListColumnValues.ts`,
+`data-prep_tools/Financije/anchors.py`, `data-prep_tools/Financije/set_list_columns.py`.
+Dirani: `ActivitiesTable.tsx` (render po configu, uklj. skeleton), `useAreaDashboard.ts`
+(vraća i `listColumns` iz istog `settings` upita), `structureExcel.ts` + `structureImport.ts`
+(§10, `ListColumns`), `StructureNodeEditPanel.tsx` (fixup), `StructureImportModal.tsx`,
+`types/database.ts`, `fill_from_izvod.py` (izvor `--iz-koke`).
 
-1. **Sidro** — ⚠ novo sidro na **stariji** datum **ne poništava** krivo na novijem (`036` bira
-   najnovije `confirmed_on <= as_of`). Krivo se mora **obrisati**, a to danas ide samo skriptom
-   ili SQL-om. Redoslijed je *provjera pa sidro*: prvo pusti app da iz sidra `01.07. = 2.255,64`
-   sam dođe do `13.815,33` na 30.07., **pa tek onda** upiši novo — inače je provjera tautološka.
-2. **Uvoz kolovoza** — D-2 („Koka sada, izvod potvrda"), uz **izričitu oznaku da vanjske potvrde
-   nema** dok ne stigne kolovoški izvod. ⚠ Retci iz 2036. ne smiju ući (T-S115-3).
-   ⚠ Delta export: zadanih 40 praznih redaka je premalo, treba 110+.
-3. **Kolone po Arei** — spec u Backlogu `CLAUDE.md`. Uloge, ne imena iz domene. Tip i Podtip su
-   **jedna spojena kolona**. Mora proći Structure roundtrip (Sašin princip „sve ide importom").
-4. **Deploy** — ⚠ **nikad bez izričitog Sašinog traženja.** Uz merge idu i `035`–`038` na PROD,
-   `dashboard` config u njenu Areu (**ne putuje** roundtripom), Structure import **pod njenim
-   računom** (D6: email u koloni G mora biti račun koji uvozi).
+`npm run typecheck && npm run build` prolaze. **Ništa nije viđeno uživo** — T-S116-1…9 su svi ⬜.
 
 ## 4. Otvoreno / neverificirano
 
-- **T-S115-2 nosi cijeli plan za PROD** — „sidro prikazuje račun i bez ijednog eventa" je
+- **T-S116-1…5 nisu viđeni u pregledniku.** Config je u bazi (`set_list_columns.py --write`),
+  kod je commitan, ali nitko nije otvorio Activities. Prvo to.
+- **T-S115-2 i dalje nosi plan za PROD** — „sidro prikazuje račun i bez ijednog eventa"
   pročitano u `036`, **nije viđeno uživo**.
-- **BUG-S115-ANCHORDATE** — popravak nije napisan. Smjer: kad je izvor „ispisano stanje s
-  izvoda", tražiti **datum zatvaranja izvoda** umjesto da se žigoše dan koji se gleda. Uz to
-  popis sidara + brisanje u UI-ju (backlog, sad ima drugi dokazani slučaj).
-- **`PENDING_TESTS.md` sam sebi proturječi** — kurirani redak „Otvoreno:" i ⬜ oznake u tijelu
-  navode različite skupove. Zbog toga **ritual arhiviranja nije izveden** u S115: kriterij
-  „svi testovi ✅" se ne može primijeniti mehanički. Uskladiti, pa arhivirati.
-- **Izvodi su samo PDF** (potvrđeno) ⇒ „app čita izvod" je imenovano i **odloženo**; vrijednost
-  te ideje nosi Faza 3 (pravila u bazi + evaluacija na uvozu), koja PDF ne dira.
-- Kontrolna brojka `ZABA 09.08. = 14.722,84` iz Kokinog lanca i dalje nije dohvaćena — traži
-  njene kolovoške retke, kojih izvod ne pokriva.
+- **BUG-S115-ANCHORDATE: kod nije diran.** Konkretno sidro je popravljeno ručno, mehanizam
+  ponavlja grešku pri sljedećem upisu s izvoda.
+  ⚠ **Novo, neprovjereno:** RF sidro `11.08. = 799,12` nosi bilješku `RF_2026-07.pdf` —
+  isti obrazac. Treba parsirati close date tog izvoda i usporediti. Ako se ne zatvara
+  11.08., i to sidro je krivo datirano.
+- **`PENDING_TESTS.md` si i dalje proturječi** (kurirani „Otvoreno:" redak vs ⬜ oznake u
+  tijelu). S116 je dodao svoj blok i osvježio „Otvoreno:", ali **stara neusklađenost stoji**
+  i ritual arhiviranja opet nije izveden. Uskladiti, pa arhivirati.
+- **Tranša 4 je narasla:** MC paket + cijeli kolovoz. Rujanski izvod će ga provjeriti.
+- **Batch 2023 ima novu prepreku** — 103 retka s datumom kao tekstom, u tri različita formata.
