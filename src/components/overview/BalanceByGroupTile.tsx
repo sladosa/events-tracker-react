@@ -110,6 +110,49 @@ function dateComesFromSource(src: string): boolean {
   return src === ANCHOR_SOURCE_STATEMENT || src === ANCHOR_SOURCE_SLIP;
 }
 
+/**
+ * `2026-08-23` → `2026-08-22`. Anchored at NOON so no timezone or DST shift can
+ * move the day — the same trick `excelDatetime.ts` uses for date cells.
+ */
+function prevDayIso(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * ── A SCREEN READING ANCHORS ON YESTERDAY, NOT TODAY ────────────────────────
+ *
+ * The balance rule is `anchor + changes STRICTLY AFTER the confirmed day`, and
+ * `confirmed_on` is a DATE. That boundary can express "end of a day" exactly —
+ * and nothing else. A statement fits: it closes at the end of its close date,
+ * so everything dated that day is already inside the printed number.
+ *
+ * A bank screen read at 10:00 does not fit. The number covers today up to 10:00
+ * only, but a same-day anchor claims it covers all of today — so a payment at
+ * 15:00, recorded with today's date, is silently dropped from the balance and
+ * STAYS dropped until some later confirmation supersedes the anchor.
+ *
+ * The fix is to move the confirmation to a boundary the rule CAN express:
+ *
+ *     anchor(yesterday) = <what the screen shows> − <today's movement so far>
+ *
+ * Then today's rows are all "strictly after" and all count, and the balance
+ * comes back out as exactly the number that was read. The 15:00 payment lands
+ * in the balance the moment it is recorded.
+ *
+ * ⚠ EXACT ONLY WHILE TODAY'S MOVEMENT IS COMPLETE. A transaction the app does
+ *   not know about yet makes `S − R` wrong, and the error is FROZEN INTO AN
+ *   ANCHOR instead of surfacing as Δ — the §2.17 failure mode, localised to one
+ *   day. Mitigation is not a check the code can run: the arithmetic is printed
+ *   before saving, and the raw reading is kept in the note so the stored amount
+ *   stays traceable to something a human actually saw.
+ *
+ * ⚠ `R` MUST CARRY THE SAME FILTERS AS THE BALANCE (S112). Subtracting card
+ *   purchases the balance never counted would move the anchor by their sum.
+ */
+
+
 const NO_VALUE = '(bez vrijednosti)';
 
 /**
@@ -168,6 +211,12 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
   // (bez kojeg ispravak unatrag ne radi, a izgleda kao da radi) i popis ispod
   // pločice, jedini put da se krivo sidro uopće VIDI iz aplikacije.
   const [anchors, setAnchors] = useState<BalanceAnchor[]>([]);
+  /**
+   * Današnji promet po grupi (`plus − minus`), s ISTIM filtrima kao saldo.
+   * `null` = nije se dalo izračunati ⇒ potvrda s ekrana se ne smije spremiti,
+   * jer bi bez oduzimanja sidro na jučer dvostruko brojalo današnje retke.
+   */
+  const [todayMove, setTodayMove] = useState<Map<string, { sum: number; n: number }> | null>(null);
   const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -240,6 +289,33 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
         console.error('listAnchors:', e);
         setAnchors([]);
       }
+
+      // Današnji promet — treba samo pločici s potvrdom, i to samo za izvor
+      // „ekran". Jedan RPC poziv: `p_from` je isključiv, `p_as_of` uključiv,
+      // pa `(jučer, danas]` je točno današnji dan. Zbroj se radi u Postgresu,
+      // nikad u pregledniku.
+      if (widget.reconcile) {
+        try {
+          const agg = await fetchGroupAgg({
+            areaId,
+            groupSlug: widget.group_by,
+            plusSlug: widget.plus ?? null,
+            minusSlug: widget.minus ?? null,
+            filters: widget.filters ?? [],
+            from: prevDayIso(today),
+            asOf: today,
+          });
+          setTodayMove(new Map(agg.map(r => [
+            r.group_value ?? NO_VALUE,
+            { sum: r.plus_sum - r.minus_sum, n: r.n },
+          ])));
+        } catch (e) {
+          console.error('todayMove:', e);
+          setTodayMove(null);
+        }
+      } else {
+        setTodayMove(new Map());
+      }
     } catch (e) {
       // The RPC raises on an unknown slug on purpose (sql/035 §2). Showing the
       // message verbatim is the whole payoff: it names the slug that broke.
@@ -250,7 +326,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
     } finally {
       setLoading(false);
     }
-  }, [areaId, widget, asOf, effectiveAsOf]);
+  }, [areaId, widget, asOf, effectiveAsOf, today]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -282,9 +358,32 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
   const confirmDateFor = (groupValue: string): string | null => {
     const src = (srcInput[groupValue] ?? '').trim();
     if (!src) return null;
-    if (!dateComesFromSource(src)) return today;
+    // Ekran ⇒ jučer (v. blok uz `prevDayIso`): dan koji se još odvija nije
+    // granica koju „strogo nakon" može izraziti.
+    if (!dateComesFromSource(src)) return prevDayIso(today);
     const d = (srcDate[groupValue] ?? '').trim();
     return d || null;
+  };
+
+  /**
+   * Što će se stvarno spremiti, za izvor „ekran": iznos umanjen za današnji
+   * promet, i sve što treba ispisati prije klika. `null` kad se današnji promet
+   * nije dao izračunati — tada se NE smije spremiti.
+   */
+  const screenAnchorFor = (
+    groupValue: string,
+    reading: number,
+  ): { amount: number; move: number; n: number; on: string } | null => {
+    if (todayMove === null) return null;
+    const t = todayMove.get(groupValue) ?? { sum: 0, n: 0 };
+    return {
+      // ⚠ Zaokruženo na cent. Bez toga binarni zapis ostavlja rep od ~1e-13,
+      //   koji se poslije pojavi kao Δ od 0,00 koji nije nula (S112 zamka).
+      amount: Math.round((reading - t.sum) * 100) / 100,
+      move: t.sum,
+      n: t.n,
+      on: prevDayIso(today),
+    };
   };
 
   const confirm = async (groupValue: string, typed: string) => {
@@ -311,23 +410,46 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
       return;
     }
 
+    // Izvor „ekran": sprema se stanje na KRAJU jučerašnjeg dana, a ne broj s
+    // ekrana. Sirovo očitanje ide u bilješku — bez njega `amount` više nije broj
+    // koji je čovjek vidio, pa ga poslije nema s čim usporediti.
+    let storedAmount = amount;
+    let note = (srcDetail[groupValue] ?? '').trim()
+      ? `${src} · ${(srcDetail[groupValue] ?? '').trim()}`
+      : src;
+
+    if (!dateComesFromSource(src)) {
+      const calc = screenAnchorFor(groupValue, amount);
+      if (!calc) {
+        toast.error('Današnji promet se nije dao izračunati — osvježi pločicu i pokušaj ponovno');
+        return;
+      }
+      storedAmount = calc.amount;
+      note = `${src} · očitano ${formatAmount(amount, widget.unit)} na ${formatDateHr(today)}`
+        + (calc.move !== 0
+          ? `; oduzet promet toga dana ${formatSigned(calc.move, widget.unit)} (${calc.n} zapisa)`
+          : '; toga dana nije bilo zapisa');
+    }
+
     setSavingKey(groupValue);
     try {
-      const detail = (srcDetail[groupValue] ?? '').trim();
       await saveAnchor({
         areaId,
         groupSlug: widget.group_by,
         groupValue,
-        amount,
+        amount: storedAmount,
         confirmedOn: confirmOn,
-        note: detail ? `${src} · ${detail}` : src,
+        note,
       });
       setBankInput(prev => ({ ...prev, [groupValue]: '' }));
       setSrcInput(prev => ({ ...prev, [groupValue]: '' }));
       setSrcDetail(prev => ({ ...prev, [groupValue]: '' }));
       setSrcDate(prev => ({ ...prev, [groupValue]: '' }));
       toast.success(
-        `Potvrđeno na ${formatDateHr(confirmOn)}: ${groupValue} = ${formatAmount(amount, widget.unit)}`,
+        `Potvrđeno na ${formatDateHr(confirmOn)}: ${groupValue} = ${formatAmount(storedAmount, widget.unit)}`
+        + (storedAmount !== amount
+          ? ` (očitano ${formatAmount(amount, widget.unit)} danas)`
+          : ''),
       );
       await load();
     } catch (e) {
@@ -419,6 +541,10 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
           const shadowedBy = willConfirmOn
             ? groupAnchors.find(a => a.confirmed_on > willConfirmOn)
             : undefined;
+
+          // Izvor „ekran": što će se stvarno spremiti, i na koji dan.
+          const isScreen = src !== '' && !dateComesFromSource(src);
+          const screenCalc = isScreen && bank !== null ? screenAnchorFor(key, bank) : null;
 
           return (
             <div key={key} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
@@ -618,7 +744,10 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                     <button
                       type="button"
                       onClick={() => void confirm(key, typed)}
-                      disabled={bank === null || !willConfirmOn || savingKey === key}
+                      disabled={
+                        bank === null || !willConfirmOn || savingKey === key ||
+                        (isScreen && !screenCalc)
+                      }
                       className={cn(
                         'ml-auto text-xs font-medium px-3 py-1.5 rounded-lg transition-colors',
                         'disabled:opacity-40 disabled:cursor-not-allowed',
@@ -634,7 +763,12 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                     >
                       {savingKey === key
                         ? 'Spremam…'
-                        : willConfirmOn
+                        // Za papir gumb ponavlja UPISANI datum — to je provjera
+                        // onoga što je čovjek utipkao. Za ekran datum nije
+                        // njegov unos nego posljedica, pa ga objašnjava
+                        // rečenica ispod; „Potvrdi na jučer" bi na gumbu
+                        // izgledalo kao greška.
+                        : willConfirmOn && !isScreen
                           ? `Potvrdi na ${formatDateHr(willConfirmOn)}`
                           : 'Potvrdi'}
                     </button>
@@ -666,12 +800,72 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                       pravilom. Ovo je rečenica koja bi uhvatila BUG-S115: uz
                       22.08. bi pisalo da se sve prije toga smatra uključenim,
                       a to je bilo očito netočno za retke od 31.07. nadalje. */}
-                  {willConfirmOn && bank !== null && (
+                  {willConfirmOn && bank !== null && !isScreen && (
                     <p className="text-[11px] text-gray-500 leading-snug">
                       Saldo će se računati ovako: <strong>{formatAmount(bank, widget.unit)}</strong>{' '}
                       plus sve što je datirano <strong>nakon {formatDateHr(willConfirmOn)}</strong>.
                       Sve prije toga smatra se da je <strong>već uključeno</strong> u ovaj broj —
                       pa ako datum promašiš, transakcije između tiho ispadnu iz salda.
+                    </p>
+                  )}
+
+                  {/* ── EKRAN: računica se ispisuje PRIJE spremanja ──────────
+                      Mehanizam je točan samo dok app zna sve današnje
+                      transakcije. To nije nešto što kod može provjeriti, pa se
+                      pokazuje: broj zapisa i njihov zbroj. Ako brojka ne
+                      odgovara stvarnosti, vidi se ovdje, prije klika — a ne
+                      mjesecima kasnije, zamrznuta u sidru. */}
+                  {isScreen && bank !== null && screenCalc && (
+                    <div className="text-[11px] text-gray-500 leading-snug rounded-lg bg-gray-50 border border-gray-200 px-2 py-1.5">
+                      <p>
+                        Očitanje s ekrana vrijedi za <strong>ovaj trenutak</strong>, a potvrda zna
+                        samo za cijele dane. Zato se sprema kao stanje na{' '}
+                        <strong>kraju {formatDateHr(screenCalc.on)}</strong>, umanjeno za današnji
+                        promet — tako današnje transakcije <strong>ostaju</strong> u saldu:
+                      </p>
+                      {/* ⚠ Promet je NEGATIVAN kad se trošilo, pa bi doslovno
+                          „očitano − promet" ispalo „13.815,33 − −40,00".
+                          Predznak se zato okreće u prikazu: oduzimanje
+                          negativnog prometa JEST zbrajanje. */}
+                      <p className="mt-1 tabular-nums">
+                        {formatAmount(bank, widget.unit)}
+                        {' '}{screenCalc.move <= 0 ? '+' : '−'}{' '}
+                        <span className="font-medium">
+                          {formatAmount(Math.abs(screenCalc.move), widget.unit)}
+                        </span>
+                        {screenCalc.n > 0 && (
+                          <span className="text-gray-400"> ({screenCalc.n} danas)</span>
+                        )}
+                        {' = '}
+                        <strong>{formatAmount(screenCalc.amount, widget.unit)}</strong>
+                        {' '}na {formatDateHr(screenCalc.on)}
+                      </p>
+                      <p className="mt-1">
+                        {screenCalc.move === 0
+                          ? '⚠ App nema nijedan zapis datiran danas. Ako je danas bilo transakcija, prvo ih upiši — inače se razlika zamrzne u potvrdu i više se ne vidi.'
+                          : '⚠ Provjeri da app zna za SVE današnje transakcije. Ona koja fali ne javlja grešku — upiše se u potvrdu i tiho nestane.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* ⚠ Δ iznad uspoređuje saldo NA DAN IZ FILTRA s onim što je
+                      upisano. Broj s ekrana banke je današnji, pa uz prošli
+                      filtar te dvije stvari nisu usporedive — potvrda je i
+                      dalje ispravna, ali kvačica/Δ nisu. Ne blokira se: pravi
+                      odgovor je reći što broj znači, ne sakriti gumb. */}
+                  {isScreen && isPast && (
+                    <p className="text-[11px] text-amber-700 leading-snug">
+                      ⚠ Filtar je na {formatDateHr(effectiveAsOf)}, a broj s ekrana banke je
+                      <strong> današnji</strong>. Potvrda je ispravna, ali <strong>Δ iznad se
+                      odnosi na {formatDateHr(effectiveAsOf)}</strong> i s ovim brojem nije
+                      usporediv. Za usklađenje makni datumski filtar.
+                    </p>
+                  )}
+
+                  {isScreen && bank !== null && !screenCalc && (
+                    <p className="text-[11px] text-red-700">
+                      Današnji promet se nije dao izračunati, pa se potvrda s ekrana ne može
+                      spremiti. Osvježi pločicu (↻).
                     </p>
                   )}
 

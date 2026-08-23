@@ -249,6 +249,20 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   izvore app **ne nudi zadani datum** — svaki default bio bi pogodak, a pogodak koji izgleda
   kao podatak je točno ono što je proizvelo grešku. ⚠ Izvor je zato **obavezan**: bez njega
   app ne zna smije li upisati današnji dan.
+- **⚠ Očitanje s ekrana sidri se na JUČER, s oduzetim današnjim prometom** (S116, Sašin nalaz).
+  `confirmed_on` je `date`, pa pravilo „strogo nakon" može izraziti samo granicu **kraj dana**.
+  Izvod u to stane (zatvara se na kraju svog dana); očitanje s ekrana u 10:00 ne stane — sidro
+  na danas tvrdi da pokriva cijeli dan, pa transakcija u 15:00 **tiho ispada iz salda i ostaje
+  vani** dok je kasnije sidro ne nadjača. Rješenje pomiče potvrdu na granicu koju pravilo zna:
+  `sidro(jučer) = očitano − današnji promet`. Saldo tada izađe točno kao očitani broj, a
+  današnji retci se broje — uključujući one koji tek dolaze.
+  ⚠ Točno **samo dok je današnji promet potpun**: transakcija koju app ne zna zamrzne se u
+  sidro umjesto da ispliva kao Δ (§2.17 kvar, lokaliziran na jedan dan). Zato se računica
+  **ispisuje prije spremanja**, a sirovo očitanje ide u `note` — bez njega `amount` više nije
+  broj koji je čovjek vidio. Uputa korisniku: *prvo upiši današnje, pa pogledaj banku.*
+  ⚠ Današnji promet mora nositi **iste filtre kao saldo** (S112) — inače oduzme kartične
+  stavke koje saldo nikad nije brojao. Računa se u Postgresu (`rpc_area_group_agg` ima
+  `p_from`/`p_as_of`), pa **nije trebala nova migracija**.
 - **⚠ Pravilo „strogo nakon" se korisniku iskazuje POSLJEDICOM, ne pravilom** (S116). Pločica
   prije klika ispiše *„saldo = X plus sve datirano nakon <datum>; sve prije toga smatra se već
   uključenim"*. Ta bi rečenica uhvatila S115 na licu mjesta: uz 22.08. tvrdila bi da su retci

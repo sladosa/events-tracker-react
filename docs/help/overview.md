@@ -72,11 +72,31 @@ stvarno očitan**:
 
 | Odakle je broj | Koji datum nosi |
 | --- | --- |
-| **ekran bankovne aplikacije** | **danas** — app ga upiše sam, ne može drukčije |
+| **ekran bankovne aplikacije** | **jučer** — app ga izračuna sam (v. niže, „Zašto jučer") |
 | **izvod** | **dan zadnje transakcije na izvodu** — upisuješ ga ti |
 | **bankomat / ispis na papiru** | datum koji piše na ispisu — upisuješ ga ti |
 
-Zato app **ne nudi zadani datum** kad je broj s papira: svaki ponuđeni datum bio bi pogodak, a
+### Zašto se očitanje s ekrana sprema na *jučer*
+
+Potvrda zna samo za **cijele dane**, a broj s ekrana vrijedi za **trenutak**. Ako ga spremiš
+kao „stanje na kraju današnjeg dana", sve što se danas dogodi **poslije** nego si pogledao
+ispada iz salda — i ostaje vani.
+
+Zato app radi ovako: uzme broj koji si pročitao i **oduzme današnji promet** koji već zna, pa
+to spremi kao stanje na kraju jučerašnjeg dana:
+
+```
+13.815,33 (očitano)  +  40,00 (današnji trošak)  =  13.855,33  na 22.08.
+```
+
+Rezultat je isti broj koji si pročitao — samo se sada **današnje transakcije broje**, uključujući
+one koje tek dolaze. Vidjet ćeš tu računicu ispisanu prije nego klikneš.
+
+⚠ **Račun je točan samo ako app zna za sve današnje transakcije.** Ona koja fali ne javlja
+grešku — upiše se u potvrdu i tiho nestane. Zato: **prvo upiši što se danas dogodilo, pa onda
+pogledaj banku i potvrdi.** Tim redoslijedom je uvijek točno.
+
+Za papirnate izvore app **ne nudi zadani datum**: svaki ponuđeni datum bio bi pogodak, a
 pogodak koji izgleda kao podatak je upravo ono što je jednom već prošlo nezapaženo.
 
 **Što se dogodi ako datum promašiš:** ništa. Nema poruke, nema crvenog. Saldo jednostavno

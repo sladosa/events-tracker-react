@@ -2591,3 +2591,65 @@ svakog pozivatelja), i `docs/help/overview.md` prepisan s tablicom izvor→datum
 **RF sidro `11.08. = 799,12` je TOČNO.** `RF_2026-07.pdf` se zatvara **11.08.** (zadnja
 transakcija `Mirovina III stup 254,33`) — isti obrazac kao ZABA, ali datum se poklapa.
 Time je zatvoreno pitanje otvoreno u paralelnoj sesiji.
+
+## Nastavak S116 (2) — očitanje s ekrana sidri se na jučer
+
+Sašino pitanje: *„može li se desiti da potvrdiš stanje s ekrana s datumom danas, a onda tog
+dana bude još transakcija koje ispadnu iz salda?"*
+
+**Može, i tiho.** `sql/036:203` glasi `r.event_date > a.confirmed_on`, a `confirmed_on` je
+`date`. Potvrda u 10:00 → sidro na danas → plaćanje u 15:00 upisano s današnjim datumom
+**ne prolazi** uvjet i **ostaje vani** dok ga kasnije sidro ne nadjača.
+
+⚠ Nije isti kvar kao BUG-S115-ANCHORDATE: ondje je datum bio **kriv**, ovdje je **točan** a
+problem je **granularnost** — sidro zna dan, očitanje vrijedi za trenutak. I ne popravlja se
+prelaskom na `>=`: kava kupljena u 09:00 **jest** u broju očitanom u 10:00, pa bi je `>=`
+brojao dvaput.
+
+### Sašino rješenje (prihvaćeno, bolje od predložene detekcije)
+
+Pomakni potvrdu na granicu koju pravilo **zna** izraziti:
+
+```
+sidro(jučer) = očitano s ekrana − današnji promet
+```
+
+Saldo tada izađe točno kao očitani broj, a današnji retci se broje — uključujući one koji tek
+dolaze. Provjereno na sva tri slučaja:
+
+| | saldo | |
+| --- | --- | --- |
+| odmah po potvrdi | `(S − R) + R = S` | ✓ |
+| nakon transakcije u 15:00 | `S + 40` | ✓ **slučaj koji je bio slomljen** |
+| ujutro, `R = 0` | sidro `= S` na jučer | ✓ točno |
+
+Zadnji redak je argument koji je odlučio: mehanizam **poopćava jedini slučaj koji je oduvijek
+bio nedvosmisleno točan** (jutarnja potvrda prije ijedne transakcije). I izjednačava oba puta —
+izvod i ekran oboje sidre na „kraj dana kad je dan gotov", pa RPC ostaje **jedno pravilo bez
+iznimke**.
+
+⚠ **Bez SQL migracije.** `rpc_area_group_agg` već prima `p_from` (isključiv) i `p_as_of`
+(uključiv), pa je `(jučer, danas]` jedan poziv — zbroj u Postgresu, nikad u pregledniku.
+Time je otpao planirani `039` na PROD.
+
+### Uvjet, i tri stvari koje ga pretvaraju u provjeru
+
+Mehanizam je točan **dok je današnji promet potpun**. Transakcija koju app ne zna čini `S − R`
+krivim, i greška se **zamrzne u sidro** umjesto da ispliva kao Δ — §2.17 kvar, lokaliziran na
+jedan dan. To kod ne može provjeriti, pa se pokazuje:
+
+1. **računica prije spremanja:** `13.815,33 + 40,00 (1 danas) = 13.855,33 na 22.08.`
+   ⚠ Predznak se u prikazu okreće: promet je negativan pri trošenju, pa bi doslovno
+   „očitano − promet" ispalo `13.815,33 − −40,00`.
+2. **sirovo očitanje u bilješci** — `amount` više nije broj koji je čovjek vidio, pa bez toga
+   nema ga s čim usporediti za pola godine.
+3. **uputa umjesto koda:** *prvo upiši današnje, pa pogledaj banku i potvrdi.* Tim redoslijedom
+   je `R` potpun i mehanizam egzaktan.
+
+Također: promet se računa s **istim filtrima kao saldo** (S112 zamka doslovno), gumb je ugašen
+dok se promet ne izračuna (bez oduzimanja bi sidro dvostruko brojalo današnje retke), i uz
+prošli datumski filtar stoji upozorenje da Δ nije usporediv s današnjim očitanjem.
+
+**Granica koja ostaje, svjesno:** transakcija koja se dogodila **prije** očitanja a upisana je
+**poslije** potvrde broji se dvaput. Rješava je redoslijed, ne kod — i zato je zapisana kao
+test (T-S116-14 dio E), da se zna da je granica, a ne propust.

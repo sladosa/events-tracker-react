@@ -6,7 +6,7 @@
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
 **✅ T-S114-1 RIJEŠEN 2026-08-23 (S116):** sidro ZABA premješteno na **30.07.** (ručni ispravak retka u Supabase editoru), prije toga netautološki provjereno da app iz sidra 01.07. sam dođe do `13.815,33`. Mehanizam koji je grešku proizveo popravljen je u kodu — v. T-S116-10…13.
-**Otvoreno: T-S116-1…13 (NOVO); T-S115-1…4; T-S114-2…5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Otvoreno: T-S116-1…14 (NOVO); T-S115-1…4; T-S114-2…5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
 **Detalji S116:** [S116_tests.md](tests/S116_tests.md) · **S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
 
 ---
@@ -30,6 +30,7 @@ Puni koraci: [S116_tests.md](tests/S116_tests.md).
 | T-S116-11 | Rečenica o posljedici prije klika („saldo = X plus sve nakon <datum>") | ⬜ |
 | T-S116-12 | ⭐ Upozorenje kad **novija** potvrda već postoji (ispravak unatrag ne ispravlja ništa) | ⬜ |
 | T-S116-13 | ⭐ „povijest potvrda" + brisanje iz aplikacije; ▸ označava važeću; grantee nema ✕ | ⬜ |
+| T-S116-14 | ⭐⭐ **Očitanje s ekrana sidri se na JUČER** (očitano − današnji promet) ⇒ današnja transakcija ostaje u saldu. Dio B je jezgra. | ⬜ |
 
 **Brojke izmjerene u S116** (sve provjerene, ne procijenjene):
 

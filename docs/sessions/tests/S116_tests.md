@@ -214,8 +214,8 @@ odabrati odakle je broj.
 
 2. Odaberi **`ekran bankovne aplikacije`**.
 
-**Očekivano:** polja za datum **nema**, gumb piše `Potvrdi na <današnji datum>`.
-(Broj s ekrana banke i jest očitanje za danas — ta je strana uvijek bila točna.)
+**Očekivano:** polja za datum **nema**, gumb piše samo `Potvrdi`, a ispod se pojavi
+sivi okvir s računicom (v. T-S116-14).
 
 3. Prebaci na **`ispisano stanje s izvoda`**.
 
@@ -287,3 +287,76 @@ Za `Kokin tekući ZABA` očekuj **4**: `01.01.2025.`, `31.12.2025.`, `01.07.2026
 3. Kao **read-only grantee** otvori istu pločicu.
 
 **Očekivano:** popis se vidi, ✕ **nema**.
+
+
+---
+
+## T-S116-14 ⭐⭐ — Očitanje s ekrana sidri se na JUČER
+
+**Ovo je Sašin nalaz iz S116: sidro na *danas* baca današnje transakcije iz salda.**
+`confirmed_on` je `date`, pa „strogo nakon" zna samo granicu *kraj dana* — a očitanje
+s ekrana vrijedi za *trenutak*.
+
+**Preduvjet:** Area `Financije_all`, write pristup, filtar **bez** datuma („All time").
+
+### Dio A — računica se vidi prije klika
+
+1. Zapamti današnji datum i **jučerašnji**.
+2. Upiši broj u „u banci", odaberi `ekran bankovne aplikacije`.
+
+**Očekivano:** sivi okvir s tri stvari —
+(a) objašnjenje da očitanje vrijedi za trenutak a potvrda za cijele dane,
+(b) računica `<očitano> + <današnji promet> = <iznos> na <jučer>`,
+(c) upozorenje da app mora znati **sve** današnje transakcije.
+
+⚠ Predznak: ako je danas bilo **troška**, mora pisati `+` (oduzimanje negativnog prometa
+JEST zbrajanje). Ako piše `− −40,00`, prikaz je pao.
+
+**Pad:** računice nema ⇒ `todayMove` se nije učitao; gumb mora biti **ugašen** uz crvenu
+poruku „Osvježi pločicu", nikad aktivan.
+
+### Dio B — današnja transakcija ostaje u saldu (jezgra testa)
+
+3. Provjeri da danas **nema** zapisa na tom računu; potvrdi stanje s ekrana.
+
+**Očekivano:** pločica pokazuje **točno očitani broj**; sidro je na **jučer**.
+
+4. Dodaj novu aktivnost **s današnjim datumom**, iznos npr. `40,00` isplata,
+   `Izvor = Racun`, `Status = Izvrsen`, isti račun.
+5. Vrati se na Overview, osvježi (↻).
+
+**Očekivano:** saldo je **manji za 40,00**.
+
+**Pad — i to je cijeli razlog ovog testa:** saldo se **ne pomakne**. Znači da je sidro
+palo na *danas*, pa redak datiran danas ne prolazi uvjet „strogo nakon" i **nikad neće**.
+
+### Dio C — bilješka čuva sirovo očitanje
+
+6. Otvori „povijest potvrda".
+
+**Očekivano:** bilješka oblika
+`ekran bankovne aplikacije · očitano 13.815,33 na 23.08.; oduzet promet toga dana −40,00 (1 zapisa)`
+ili `…; toga dana nije bilo zapisa`.
+
+**Zašto je to test:** spremljeni `amount` više **nije** broj koji je čovjek vidio. Bez sirovog
+očitanja u bilješci sidro se za pola godine nema s čim usporediti — a §2.17 traži da potvrđeno
+stanje bude sljedivo do nečega izvana.
+
+### Dio D — prošli filtar
+
+7. Postavi datumski filtar „do" na neki prošli datum i odaberi `ekran bankovne aplikacije`.
+
+**Očekivano:** žuto upozorenje da je Δ iznad vezan za taj prošli datum i **nije usporediv** s
+današnjim očitanjem. Gumb **ostaje aktivan** — potvrda je i dalje ispravna, samo usporedba nije.
+
+**Pad:** nema upozorenja ⇒ kvačica „✓ slaže se" može se pojaviti nad dvama brojevima iz
+različitih dana.
+
+### Dio E — redoslijed koji jamči točnost
+
+8. Simuliraj krivi redoslijed: **potvrdi s ekrana**, pa tek onda upiši transakciju koja se
+   danas dogodila **prije** nego si pogledao banku.
+
+**Očekivano:** saldo se pomakne za taj iznos — a **ne bi trebao**, jer je već bio u očitanom
+broju. **To nije bug nego granica mehanizma** i zato uputa glasi: *prvo upiši današnje, pa
+pogledaj banku i potvrdi.* Test postoji da se granica zna, ne da se popravi.
