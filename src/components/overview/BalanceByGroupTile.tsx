@@ -958,9 +958,15 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
           <p>
             <strong className="text-gray-500">Zašto je datum potvrde važan:</strong> saldo se računa
             kao <em>potvrđeni broj + sve što je datirano poslije njega</em>. Sve prije toga smatra se
-            već uključenim. Zato datum mora biti onaj na kojem je broj stvarno očitan:
-            {' '}<em>ekran banke → danas</em>, <em>izvod → dan zadnje transakcije na izvodu</em>.
-            Promašen datum ne javlja grešku — transakcije između tiho ispadnu iz salda.
+            već uključenim, pa promašen datum ne javlja grešku — transakcije između tiho ispadnu
+            iz salda.
+          </p>
+          <p>
+            Zato datum ne biraš ti nego <strong className="text-gray-500">izvor</strong>:{' '}
+            <em>izvod → dan zadnje transakcije na izvodu</em> (upisuješ ga ti),{' '}
+            <em>ekran banke → app ga izračuna sam</em>. Očitanje s ekrana vrijedi za trenutak, a
+            potvrda zna samo za cijele dane, pa se sprema kao stanje na kraju <em>jučerašnjeg</em>
+            {' '}dana umanjeno za današnji promet — tako današnje transakcije ostaju u saldu.
           </p>
         </div>
       )}

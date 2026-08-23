@@ -107,14 +107,47 @@ def cmd_delete(sp: Supa, anchor_id: str) -> None:
     print(f'✓ Obrisano ({len(got)} redak).')
 
 
+def cmd_add(sp: Supa, group_value: str, amount: float, on: date, note: str) -> None:
+    """Upiši sidro ručno.
+
+    ⚠ POSTOJI PRVENSTVENO ZA TESTIRANJE PRAZNOG RAČUNA (T-S115-2). Za pravo
+    ispisano stanje s izvoda koristi `make_saldo_anchors.py --anchor`, koji broj
+    ČITA IZ PDF-a — ovdje ga upisuje čovjek, pa nema nikakve provjere protiv
+    vanjskog izvora. §2.17 traži da potvrđeno stanje dođe izvana; ovaj alat to
+    ne može zajamčiti, samo zapisati.
+    """
+    owner = sp.select_all(f'areas?id=eq.{AREA_ID}&select=user_id&order=id')[0]['user_id']
+    got = sp._call('balance_anchors', method='POST',
+                   body={'area_id': AREA_ID, 'group_slug': 'racun',
+                         'group_value': group_value, 'amount': amount,
+                         'confirmed_on': on.isoformat(), 'note': note,
+                         'created_by': owner},
+                   extra={'Prefer': 'return=representation'})
+    if not got:
+        sys.exit('✗ INSERT je vratio 0 redaka — sidro NIJE upisano.')
+    print(f'✓ Upisano: {on} {group_value} = {eur(amount)}\n  id: {got[0]["id"]}')
+
+
 def main() -> None:
-    ap = argparse.ArgumentParser(description='Popis i brisanje sidara salda.')
+    ap = argparse.ArgumentParser(description='Popis, upis i brisanje sidara salda.')
     ap.add_argument('--delete', metavar='UUID', help='obriši sidro po id-u')
+    ap.add_argument('--add', metavar='GROUP_VALUE',
+                    help='upiši sidro za tu vrijednost `racun` (traži --iznos i --na). '
+                         'Za pravo stanje s izvoda koristi make_saldo_anchors.py.')
+    ap.add_argument('--iznos', type=float, help='iznos sidra (uz --add)')
+    ap.add_argument('--na', metavar='YYYY-MM-DD', help='confirmed_on (uz --add)')
+    ap.add_argument('--biljeska', default='ručni upis (test)', help='note (uz --add)')
     ap.add_argument('--as-of', metavar='YYYY-MM-DD',
                     help='dan za koji se računa koje sidro vrijedi (zadano: danas)')
     args = ap.parse_args()
 
     sp = Supa(load_env(ENV_FILE))
+    if args.add:
+        if args.iznos is None or not args.na:
+            sys.exit('✗ --add traži --iznos i --na (YYYY-MM-DD).')
+        cmd_add(sp, args.add, args.iznos, datetime.fromisoformat(args.na).date(),
+                args.biljeska)
+        print()
     if args.delete:
         cmd_delete(sp, args.delete)
         print()
