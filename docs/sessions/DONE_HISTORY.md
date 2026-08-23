@@ -2657,3 +2657,28 @@ prošli datumski filtar stoji upozorenje da Δ nije usporediv s današnjim očit
 **Granica koja ostaje, svjesno:** transakcija koja se dogodila **prije** očitanja a upisana je
 **poslije** potvrde broji se dvaput. Rješava je redoslijed, ne kod — i zato je zapisana kao
 test (T-S116-14 dio E), da se zna da je granica, a ne propust.
+
+### Provjereno uživo (23.08., TEST baza)
+
+Prvi put da se išta iz S116 vidjelo u pregledniku. Prošlo: **T-S115-2**, **T-S116-6**,
+**T-S116-13**, **T-S116-14 A/B/C**.
+
+**T-S116-14 dio B je jezgra i prošao je.** Na `Sašin tekući RF`: potvrda s ekrana (`799,12`,
+bez ijednog zapisa toga dana) dala je sidro `22.08. = 799,12` i nepromijenjen saldo; zatim
+event **s današnjim datumom** (`Izvor = Racun`, `Isplata 40,00`) i pločica je pokazala
+**`759,12 €`** uz `1 promjena poslije · zadnji zapis 23.08.2026.`
+
+Pod starim ponašanjem (sidro na danas) ostalo bi `799,12` — i to bez ijedne poruke. To je
+razlika između mehanizma koji radi i mehanizma koji izgleda kao da radi.
+
+⚠ **Nalaz koji je došao tek iz izvođenja, ne iz čitanja koda:** T-S115-2 prolazi, ali sidro
+je moralo biti upisano **skriptom**. Prazna Area daje nula redaka, a polja `u banci` i
+`Potvrdi` žive unutar `rows.map(...)` ⇒ na PROD-u prvog dana Koka nema gdje upisati stanje.
+Ispravna formulacija: **povijest nije preduvjet, ali jedan event jest.**
+
+Neprovjereno ostaje: put „izvod" u potvrdi (prazno polje za datum, ugašen gumb, budući datum),
+rečenica o posljedici za papirnate izvore, T-S116-14 D/E, i cijeli blok kolona (T-S116-1…5).
+
+⚠ Sitnica koja je pojela nekoliko minuta i vrijedi zapamtiti: Python skripta za uređivanje
+ovih dokumenata pukla je na `„ekran"` unutar `"..."` literala — hrvatski navodnik se zatvara
+**ASCII** znakom `"`, koji prekine string. Tekstovi s hrvatskim navodnicima idu u `''' '''`.

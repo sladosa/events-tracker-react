@@ -6,12 +6,19 @@
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
 **✅ T-S114-1 RIJEŠEN 2026-08-23 (S116):** sidro ZABA premješteno na **30.07.** (ručni ispravak retka u Supabase editoru), prije toga netautološki provjereno da app iz sidra 01.07. sam dođe do `13.815,33`. Mehanizam koji je grešku proizveo popravljen je u kodu — v. T-S116-10…13.
-**Otvoreno: T-S116-1…5, -7…12, -14 (NOVO); T-S115-1, -3; T-S114-2…5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Otvoreno: T-S116-1…5, -7…9, -12; djelomično -10, -11, -14; T-S115-1, -3; T-S114-2…5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
 **Detalji S116:** [S116_tests.md](tests/S116_tests.md) · **S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
 
 ---
 
-**✅ Prošlo 23.08. (uživo, TEST baza): T-S115-2, T-S116-6, T-S116-13.**
+**✅ Prošlo 23.08. (uživo, TEST baza): T-S115-2, T-S116-6, T-S116-13, T-S116-14 A/B/C.**
+
+**T-S116-14 dio B — izmjereno, jezgra cijele sesije.** Na `Sašin tekući RF`: potvrda s ekrana
+(`799,12`, bez ijednog zapisa toga dana) ⇒ sidro `22.08. = 799,12`, saldo nepromijenjen. Zatim
+event **s današnjim datumom** (`Izvor = Racun`, `Isplata 40,00`) ⇒ pločica **`759,12 €`**,
+zaglavlje `od potvrde 22.08.2026. · 1 promjena poslije · zadnji zapis 23.08.2026.`
+Pod starim ponašanjem (sidro na danas) ostalo bi `799,12` — bez ijedne poruke.
+Bilješka sidra nosi sirovo očitanje (dio C ✓). Testni event i sidro `22.08.` obrisani nakon testa.
 Sidro `TEST prazan račun = 1.240,00` (nula eventa u bazi) prikazalo se kao redak pločice,
 pa obrisano s ✕ iz „povijest potvrda" — toast `Obrisana potvrda 22.08.2026. = 1.240,00 €`,
 pločica se vratila na dva računa, baza na 6 sidara.
@@ -41,11 +48,11 @@ Puni koraci: [S116_tests.md](tests/S116_tests.md).
 | T-S116-7 | ⭐ Uvoz kolovoza ZABA (14 redaka) → **`13.239,31` @ 13.08.** ⚠ traži i MC naplatu `1.332,52` s `MC_2026-07.pdf` | ⬜ |
 | T-S116-8 | Uvoz kolovoza RF (1 redak) → **`796,43`** | ⬜ |
 | T-S116-9 | Alat stane kad delta sheet nije za traženi račun (regresija) | ⬜ |
-| T-S116-10 | ⭐ **Datum potvrde iz IZVORA, ne iz klika** — papir ⇒ prazno polje, ekran ⇒ app računa (v. T-S116-14); bez izvora gumb ne radi | ⬜ |
-| T-S116-11 | Rečenica o posljedici prije klika („saldo = X plus sve nakon <datum>") | ⬜ |
+| T-S116-10 | ⭐ **Datum potvrde iz IZVORA, ne iz klika** | ⚠ **djelomično** 23.08. — put „ekran" viđen i radi; **put „izvod" (prazno polje za datum, ugašen gumb, budući datum) NIJE proban** |
+| T-S116-11 | Rečenica o posljedici prije klika | ⚠ **djelomično** — okvir s računicom za „ekran" viđen (`799,12 + 0,00 = 799,12 na 22.08.`); rečenica za **papirnate izvore** nije viđena |
 | T-S116-12 | ⭐ Upozorenje kad **novija** potvrda već postoji (ispravak unatrag ne ispravlja ništa) | ⬜ |
 | T-S116-13 | ⭐ „povijest potvrda" + brisanje iz aplikacije; ▸ označava važeću | ✅ 23.08. (⚠ **korak 3 — grantee bez ✕ — NIJE proban**) |
-| T-S116-14 | ⭐⭐ **Očitanje s ekrana sidri se na JUČER** (očitano − današnji promet) ⇒ današnja transakcija ostaje u saldu. Dio B je jezgra. | ⬜ |
+| T-S116-14 | ⭐⭐ **Očitanje s ekrana sidri se na JUČER** ⇒ današnja transakcija ostaje u saldu | ✅ **A, B, C** 23.08. · ⬜ D (prošli filtar), E (granica) |
 
 **Brojke izmjerene u S116** (sve provjerene, ne procijenjene):
 
