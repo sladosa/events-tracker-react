@@ -1,6 +1,6 @@
 # NEXT SESSION PROMPT — nakon S116 (kolone su gotove, kolovoz je pripremljen ali NIJE uvezen)
 
-**Pisan protiv commita `6f8e235`** (+ commit zatvaranja S116 koji slijedi odmah iza).
+**Pisan protiv commita `43a08c1`** (+ commit zatvaranja S116 koji slijedi odmah iza).
 Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest; `CLAUDE.md` je autoritet.
 
 **Stanje grana:** `test-branch` nosi S108–S116. `main` = PROD, **nije diran od S107**.
@@ -36,9 +36,12 @@ retci do 13.08. = **`13.239,31`**. To je vrijedno jer ona broji **drukčije** od
 
 2. **Pogledaj kolone** i reci što ne valja — redoslijed i širine se mijenjaju jednim retkom.
 
-3. **Pogledaj novi tok potvrde sidra** (T-S116-10…13). Sada moraš odabrati odakle je broj,
-   a ako je s izvoda, sam upisati datum zatvaranja — app ga više ne pogađa. Ispod pločice
-   je „povijest potvrda" s ✕ za brisanje, pa SQL Editor više ne treba.
+3. **Pogledaj novi tok potvrde sidra** (T-S116-10…14). Sada moraš odabrati odakle je broj;
+   ako je s izvoda, sam upisuješ datum zatvaranja. Ispod pločice je „povijest potvrda"
+   s ✕ za brisanje, pa SQL Editor više ne treba.
+   ⚠ **Očitanje s ekrana sada ide na JUČER**, s oduzetim današnjim prometom — inače bi
+   današnje transakcije ispale iz salda (tvoje pitanje, S116). App ispiše računicu prije
+   klika. **T-S116-14 dio B je najvažniji test cijele sesije.**
 
 4. **Uvezi kolovoz.** Koraci i kontrolni brojevi su u `docs/sessions/tests/S116_tests.md`,
    testovi T-S116-7 (ZABA, mora dati `13.239,31`) i T-S116-8 (RF, `796,43`).
@@ -95,17 +98,21 @@ Dirani: `ActivitiesTable.tsx` (render po configu, uklj. skeleton), `useAreaDashb
 (§10, `ListColumns`), `StructureNodeEditPanel.tsx` (fixup), `StructureImportModal.tsx`,
 `types/database.ts`, `fill_from_izvod.py` (izvor `--iz-koke`).
 
-`npm run typecheck && npm run build` prolaze. **Ništa nije viđeno uživo** — T-S116-1…13 su svi ⬜.
+`npm run typecheck && npm run build` prolaze. **Ništa nije viđeno uživo** — T-S116-1…14 su svi ⬜.
 
 Dodatno dirano u drugom dijelu sesije: `BalanceByGroupTile.tsx` (datum iz izvora, povijest
 potvrda, brisanje), `overviewApi.ts` (guard), `docs/help/overview.md`.
 
 ## 4. Otvoreno / neverificirano
 
-- **T-S116-1…5 i 10…13 nisu viđeni u pregledniku.** Config je u bazi (`set_list_columns.py --write`),
+- **T-S116-1…5 i 10…14 nisu viđeni u pregledniku.** Config je u bazi (`set_list_columns.py --write`),
   kod je commitan, ali nitko nije otvorio Activities. Prvo to.
 - **T-S115-2 i dalje nosi plan za PROD** — „sidro prikazuje račun i bez ijednog eventa"
   pročitano u `036`, **nije viđeno uživo**.
+- **✅ Očitanje s ekrana sidri se na jučer** (commit `43a08c1`) — `sidro = očitano − današnji
+  promet`. Bez SQL migracije (`rpc_area_group_agg` već ima `p_from`). Svjesna granica:
+  transakcija prije očitanja upisana **nakon** potvrde broji se dvaput; rješava je redoslijed
+  unosa („prvo upiši današnje, pa pogledaj banku"), ne kod. **Neverificirano: T-S116-14.**
 - **✅ BUG-S115-ANCHORDATE popravljen** (commit `6f8e235`): datum potvrde dolazi iz izvora
   (ekran ⇒ danas, papir ⇒ ručno), izvor je obavezan, rečenica o posljedici prije klika,
   upozorenje o novijoj potvrdi, povijest + brisanje u pločici, guard protiv budućeg datuma.
