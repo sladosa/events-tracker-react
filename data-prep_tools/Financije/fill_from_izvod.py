@@ -35,6 +35,7 @@ Rezultat: `<target>_filled.xlsx` pokraj originala + izvještaj na ekran.
 import argparse
 import re
 import sys
+import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 
@@ -401,6 +402,216 @@ def visa_rows(pdf: Path, naplata: date, od: date | None, do: date | None,
     return out
 
 
+# -----------------------------------------------------------------------------
+# IZVOR: Kokina Excelica (S116)
+# -----------------------------------------------------------------------------
+# WARN  ZASTO OVAJ IZVOR UOPCE POSTOJI, KAD JE IZVOD AUTORITET
+#   Za kolovoz 2026. izvoda NEMA i nece ga biti do rujna. Politika izvora
+#   („izvodi rjesavaju staro, Koka novo") to predvida, a D-2 je odluka:
+#   njeni retci ulaze sada, izvod ih poslije provjerava. Ovdje je zato njen
+#   file autoritet i za IZNOS i za DATUM - jedini put kad to vrijedi.
+#
+# WARN  PROVJERA MORA BITI MEHANICKA (D-2). Njeni se iznosi razlikuju od bankinih
+#   na ~4 % redaka, a karticne stavke ne diraju saldo => takva greska NIKAD ne
+#   ispliva sama. Alat zato ispise lanac koji njeni retci daju, da se poklapanje
+#   s kontrolnim brojem vidi PRIJE uvoza, a ne mjesecima poslije.
+#
+# WARN  NJEN MODEL NIJE NAS MODEL. Ona svaku karticnu stavku tereti tekucem racunu
+#   pojedinacno; banka skine JEDNU skupnu naplatu. Zbroj se poklapa u cent
+#   (45 MC stavki 11.08. = 1.332,52 = iznos s `MC_2026-07.pdf`), ali model se ne
+#   poklapa: kod nas su karticne stavke potovi (`Izvor = Mastercard`), a saldo
+#   mice samo skupna naplata (`Izvor = Racun`). Zato `Izvor` odreduje KOLONA A
+#   njenog sheeta, a skupna naplata se uzima s karticnog izvoda i NIKAD ne
+#   sintetizira (CLAUDE.md).
+
+KOKA_IZVOR = {
+    'kokin tekuci': 'Racun',
+    'sasin tekuci': 'Racun',
+    'mastercard':   'Mastercard',
+    'visa':         'Visa',
+}
+
+
+def _koka_norm(s: str) -> str:
+    """`Kokin tekuci` <- `Kokin tekuci` s dijakriticima.
+
+    WARN Usporedba imena racuna MORA ici preko ovoga. Njena kolona A pise
+    `Kokin tekuci`/`Sasin tekuci` s kvacicama, a argument s komandne linije ih
+    kroz `run.bat` zna izgubiti; obicna `==` usporedba bi tada nasla NULA redaka
+    i alat bi javio „0 novih" - sto se cita kao „nema sto uvesti", a ne kao
+    „nije ni usporedeno" (isti razred kao S114 brojac)."""
+    d = unicodedata.normalize('NFKD', s.strip().lower())
+    d = ''.join(ch for ch in d if not unicodedata.combining(ch))
+    return d.replace('đ', 'd')
+
+
+# `Konzum 5/12`, `Anja 73/96`, `LH 2/3` - rata N od M, na kraju opisa.
+RATA_RE = re.compile(r'\s(\d{1,3})/(\d{1,3})\s*$')
+
+
+def _koka_klasa(opis: str) -> tuple[str, str]:
+    """Tip/Podtip iz IZBROJANE povijesti Reviewa, nikad iz teksta izvoda (S114).
+
+    `PO_OPISU` je jedini izvor mapiranja i dijeli se s `klasificiraj_transu.py`
+    - dva popisa koji se raziduju bila bi gora od nijednog."""
+    from klasificiraj_transu import PO_OPISU
+    low = opis.strip().lower()
+    for prefiks, tip, podtip, _dokaz in PO_OPISU:
+        if low == prefiks or low.startswith(prefiks):
+            return tip, podtip
+    return NA, NA
+
+
+def koka_rows(path: Path, sheet: str, tip_racuna: str,
+              od: date | None, do: date | None,
+              klasificiraj: bool, osim: set[int] | None = None) -> list[dict]:
+    """Retci jednog racuna iz Kokine Excelice, u obliku koji `write_rows` pise."""
+    izvor = KOKA_IZVOR.get(_koka_norm(tip_racuna))
+    if izvor is None:
+        sys.exit('X Nepoznat tip racuna %r. Poznati: %s'
+                 % (tip_racuna, ', '.join(sorted(KOKA_IZVOR))))
+
+    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    if sheet not in wb.sheetnames:
+        sys.exit('X %s nema list %r. Ima: %s' % (path.name, sheet, wb.sheetnames))
+    ws = wb[sheet]
+
+    out: list[dict] = []
+    buducnost: list[tuple[int, date, float, str]] = []
+    preskoceni: list[int] = []
+    bez_datuma = 0
+    granica = date.today().year + 1
+    want = _koka_norm(tip_racuna)
+
+    for r, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if len(row) < 6 or not row[0]:
+            continue
+        if _koka_norm(str(row[0])) != want:
+            continue
+        # WARN Rucno iskljucen redak. Postoji jer se tipfeler u datumu ne smije
+        #   „popraviti i uvesti": `Parking 1,60` datiran 07.08. vec je u bazi kao
+        #   07.07. (i njen vlastiti stupac `Stanje` ga racuna medu srpanjskima).
+        #   Uvoz bi ga udvostrucio, a razlika od 1,60 se ne primijeti. Odluka je
+        #   covjekova, ali BROJ RETKA ostaje zapisan u naredbi - to je trag.
+        if osim and r in osim:
+            preskoceni.append(r)
+            continue
+
+        opis = str(row[1] or '').strip()
+        c_datum = row[2] if isinstance(row[2], datetime) else None      # dan naplate
+        g_datum = row[6] if len(row) > 6 and isinstance(row[6], datetime) else None
+        upl, isp = row[3], row[4]
+
+        iznos = upl if isinstance(upl, (int, float)) and upl else isp
+        if not isinstance(iznos, (int, float)) or not iznos:
+            continue
+        smjer = 'Uplata' if (isinstance(upl, (int, float)) and upl) else 'Isplata'
+
+        # D1b: event_date = DAN KUPOVINE uvijek. Na tekucem racunu to je isti dan
+        # kad novac ode (kolona C); na kartici je kolona G, a C je dan naplate.
+        kupovina = (g_datum or c_datum)
+        if kupovina is None:
+            bez_datuma += 1
+            continue
+        kupovina = kupovina.date()
+        naplata = c_datum.date() if c_datum else None
+
+        # WARN Tipfeler u godini nije poziv da ga popravis i uvezes (S115). Dva
+        #   njena retka datirana 2036-04-08 vec postoje u bazi kao 2026-04-08;
+        #   ispravak godine + uvoz udvostrucio bi ih, i to tiho - padaju prije
+        #   sidra pa ne micu nijednu kontrolnu brojku. Alat ih IZDVAJA, ne popravlja.
+        if kupovina.year > granica:
+            buducnost.append((r, kupovina, round(float(iznos), 2), opis))
+            continue
+
+        if od and kupovina < od:
+            continue
+        if do and kupovina > do:
+            continue
+
+        tip, podtip = _koka_klasa(opis) if klasificiraj else (NA, NA)
+
+        rec = {
+            'date':     kupovina,
+            'komentar': opis,
+            'opis':     '',              # `Izvod opis` - nema ga, redak nije s izvoda
+            'izvor':    izvor,
+            'smjer':    smjer,
+            'iznos':    round(float(iznos), 2),
+            'tip':      tip,
+            'podtip':   podtip,
+            'naplata':  naplata,
+            # Naplata poznata => novac je otisao. Prazna kolona C je upravo ono
+            # sto u nasem modelu znaci `Planiran` (S113).
+            'status':   'Izvrsen' if naplata else 'Planiran',
+            'red':      r,
+        }
+        m = RATA_RE.search(opis)
+        if m and int(m.group(1)) <= int(m.group(2)):
+            rec['rata'] = (int(m.group(1)), int(m.group(2)))
+        out.append(rec)
+
+    if buducnost:
+        print('\nWARN %d redaka s godinom > %d - NISU uzeti:' % (len(buducnost), granica))
+        for r, d, iz, op in buducnost:
+            print('   red %d: %s  %9.2f  %s' % (r, d, iz, op))
+        print('   Prije ispravka godine provjeri postoji li redak vec pod ispravnim')
+        print('   datumom - ispravak + uvoz bi ga udvostrucio tiho (S115).')
+    if bez_datuma:
+        print('  (%d redaka bez ijednog datuma preskoceno - ni C ni G)' % bez_datuma)
+    if preskoceni:
+        print('  (--osim: rucno iskljuceni redci %s)'
+              % ', '.join(str(x) for x in preskoceni))
+
+    return out
+
+
+def koka_lanac(path: Path, sheet: str, od: date, pocetno: float,
+               do: date | None = None, osim: set[int] | None = None) -> None:
+    """Ispisi lanac koji NJENI retci daju od zadanog stanja - mehanicka provjera D-2.
+
+    WARN Zbraja se SVE sto na tom listu stoji poslije `od`, ukljucujuci karticne
+    stavke koje kod nas ne micu saldo. Njen lanac je drugi model, i bas zato je
+    svjedok: ako se zavrsna brojka poklopi s kontrolnim brojem, oba modela kazu
+    isto iako broje razlicito."""
+    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    ws = wb[sheet]
+    saldo = pocetno
+    n = 0
+    for r, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if len(row) < 6 or not row[0]:
+            continue
+        if osim and r in osim:
+            continue
+        # WARN Lanac SALDA gleda samo kolonu C (dan kad novac napusti racun).
+        #   Kolona G je dan troska i za jos nenaplacene karticne stavke je jedini
+        #   datum koji redak ima - ali te stavke racun jos nisu teretile. Uzeti i
+        #   njih znaci brojati buduce naplate kao da su se dogodile, i lanac
+        #   promasi kontrolni broj za tocno njihov zbroj.
+        c = row[2] if isinstance(row[2], datetime) else None
+        eff = c
+        if eff is None or eff.date() <= od or eff.date().year > date.today().year + 1:
+            continue
+        # WARN Bez gornje granice lanac pokupi i njene BUDUCE retke: karticne
+        #   stavke koje jos cekaju naplatu nose datum kraja mjeseca u koloni G,
+        #   pa lanac zavrsi na brojci koja se ne poklapa ni s cim - a izgleda
+        #   kao da se model raziso.
+        if do and eff.date() > do:
+            continue
+        upl, isp = row[3], row[4]
+        if isinstance(upl, (int, float)) and upl:
+            saldo += float(upl)
+        elif isinstance(isp, (int, float)) and isp:
+            saldo -= float(isp)
+        else:
+            continue
+        n += 1
+    print('> Kokin lanac: %.2f @ %s + %d redaka%s (list %s) = %.2f'
+          % (pocetno, od, n, (' do %s' % do) if do else '', sheet, saldo))
+    print('  Usporedi s kontrolnim brojem transe PRIJE uvoza - poslije se razlika')
+    print('  na karticnim retcima ne vidi ni na plocici ni u kontrolnom stupcu.')
+
+
 def strip_comments(wb) -> list[str]:
     """Makni Excel bilješke iz radne kopije i vrati njihov tekst.
 
@@ -511,7 +722,11 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
         tg.put(row, 'Uplata'  if r['smjer'] == 'Uplata' else 'Isplata', r['iznos'])
         tg.put(row, 'Tip',    r['tip'])
         tg.put(row, 'Podtip', r['podtip'])
-        tg.put(row, 'Status', 'Izvrsen')        # retci s izvoda su se već dogodili
+        # Retci s izvoda su se vec dogodili. Kokini nose vlastiti status: prazna
+        # kolona C (naplata jos nepoznata) je upravo ono sto u nasem modelu znaci
+        # `Planiran` (S113) - a planirani retci MORAJU ostati vidljivi, inace ih
+        # korisnik dopise iz bankovne aplikacije i dobijemo ih dvaput.
+        tg.put(row, 'Status', r.get('status', 'Izvrsen'))
         tg.put(row, 'Izvod opis', r['opis'])
         cn = tg.find('Datum naplate')
         if cn:
@@ -551,17 +766,45 @@ def main() -> None:
     ap.add_argument('--koka',    type=Path,
                     help='Kokina Excelica — iz nje se preuzimaju OPISI (iznos i datum '
                          'ostaju s izvoda)')
+    ap.add_argument('--iz-koke', type=Path, dest='iz_koke',
+                    help='Kokina Excelica kao IZVOR redaka (iznos i datum su njeni). '
+                         'Za razdoblje koje izvod jos ne pokriva - v. D-2.')
+    ap.add_argument('--sheet',   default='koka EU',
+                    help='list u Kokinoj Excelici (zadano: "koka EU")')
+    ap.add_argument('--tip-racuna', dest='tip_racuna', default='Kokin tekuci',
+                    help='vrijednost njene kolone A: Kokin tekuci | Sasin tekuci | '
+                         'Mastercard | Visa')
+    ap.add_argument('--klasificiraj', action='store_true',
+                    help='popuni Tip/Podtip iz izbrojane povijesti (PO_OPISU); '
+                         'bez toga svi retci dobiju N/A - legitimno, ne blokira uvoz')
+    ap.add_argument('--osim', default='',
+                    help='brojevi redaka Kokinog lista koje NE uzimati, npr. "2564". '
+                         'Za redak za koji je provjereno da je vec u bazi pod drugim '
+                         'datumom - ispravak ide u NJEN file, ne u uvoz (S115).')
+    ap.add_argument('--lanac', metavar='DATUM=IZNOS',
+                    help='ispisi lanac njenog lista od tog stanja, npr. 2026-07-30=13815.33')
     ap.add_argument('--protiv',  type=Path,
                     help='dodatni app-ov export protiv kojeg se radi dedup (retci koje '
                          'target sheet ne pokazuje — npr. kartične stavke)')
     ap.add_argument('--dry',     action='store_true', help='samo ispiši što bi upisao')
     a = ap.parse_args()
 
-    if not a.rf and not a.visa and not a.zaba:
-        sys.exit('✗ Zadaj barem jedan izvor: --rf, --zaba ili --visa.')
+    if not a.rf and not a.visa and not a.zaba and not a.iz_koke:
+        sys.exit('X Zadaj barem jedan izvor: --rf, --zaba, --visa ili --iz-koke.')
     if a.zaba and (a.rf or a.visa):
-        sys.exit('✗ ZABA i RF su različiti računi — jedan file, jedan račun.')
-    racun = a.racun or ('Kokin tekući ZABA' if a.zaba else 'Sašin tekući RF')
+        sys.exit('X ZABA i RF su razliciti racuni - jedan file, jedan racun.')
+    if a.iz_koke and (a.rf or a.zaba or a.visa):
+        # Autoritet za iznos i datum ne moze biti i izvod i njen file u istom
+        # prolazu: gdje se razilaze (~4 % redaka) nema pravila koje bi presudilo.
+        sys.exit('X --iz-koke se ne kombinira s izvodom. Jedan prolaz, jedan autoritet.')
+    # WARN Normalizacija (`_koka_norm`) sluzi SAMO za usporedbu njene kolone A.
+    #   Vrijednost atributa `Racun` koja ide u bazu nosi dijakritike i mora se
+    #   poklopiti u znak - inace redak zavrsi pod novim, cetvrtim racunom, a
+    #   plocica to prikaze kao uredan racun sa svojim saldom.
+    racun = a.racun or (
+        ('Kokin tekući ZABA' if _koka_norm(a.tip_racuna).startswith('kokin')
+         else 'Sašin tekući RF') if a.iz_koke
+        else ('Kokin tekući ZABA' if a.zaba else 'Sašin tekući RF'))
     if a.visa and not a.naplata:
         sys.exit('✗ --visa traži --naplata (dan kad je banka skinula skupnu naplatu; piše na RF izvodu).')
 
@@ -658,6 +901,46 @@ def main() -> None:
                   'izvoda i predaj ih kao --protiv, inače stavke koje baza već ima '
                   'ulaze DRUGI PUT — a saldo to ne osjeti.')
         rows += vs
+
+    if a.iz_koke:
+        osim = {int(x) for x in a.osim.replace(';', ',').split(',') if x.strip()}
+        kr = koka_rows(a.iz_koke, a.sheet, a.tip_racuna, od, do, a.klasificiraj, osim)
+        keys = tg.existing_keys() | extra_keys
+        # WARN Dedup po (datum, iznos) NE hvata skoro-duplikate: kad dva izvora
+        #   opisuju isti dogadaj razlicitim iznosom (Koka 1.265,59, banka
+        #   1.285,59 - zamijenjena znamenka), kljuc se razlikuje i oba retka udu
+        #   (S111, 9 takvih na jednom racunu). Zato i tolerancija na datum, i
+        #   zato se `~` retci ISPISUJU umjesto da se tiho progutaju.
+        dup, near, new_rows = [], [], []
+        for r in kr:
+            k = (r['date'].isoformat(), r['iznos'])
+            if k in keys:
+                dup.append(r)
+                continue
+            hit = next((d for (d, am) in keys
+                        if am == r['iznos']
+                        and abs((date.fromisoformat(d) - r['date']).days) <= DATE_TOL), None)
+            (near.append((r, hit)) if hit else new_rows.append(r))
+        print('\nKokin file (%s / %s): %d novih, %d vec na listu, %d blizu postojecem'
+              % (a.iz_koke.name, a.tip_racuna, len(new_rows), len(dup), len(near)))
+        for r in dup:
+            print('   = %s %9.2f  %s' % (r['date'], r['iznos'], r['komentar'][:45]))
+        for r, hit in near:
+            print('   ~ %s %9.2f  %s' % (r['date'], r['iznos'], r['komentar'][:40]))
+            print('       WARN isti iznos vec postoji na %s - PRESKOCENO. Provjeri je li'
+                  % hit)
+            print('       to isti redak pod drugim datumom prije nego ga vratis rucno.')
+        for r in new_rows:
+            rata = ('  rata %d/%d' % r['rata']) if r.get('rata') else ''
+            print('   + red %-5d %s %-11s %9.2f  %-26s %s/%s%s'
+                  % (r['red'], r['date'], r['izvor'], r['iznos'],
+                     r['komentar'][:26], r['tip'], r['podtip'], rata))
+        rows += new_rows
+
+        if a.lanac:
+            d_txt, _, i_txt = a.lanac.partition('=')
+            koka_lanac(a.iz_koke, a.sheet, date.fromisoformat(d_txt), float(i_txt),
+                       do, osim)
 
     if not rows:
         print('Nema ničega za upisati.')
