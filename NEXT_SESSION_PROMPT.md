@@ -30,18 +30,17 @@ retci do 13.08. = **`13.239,31`**. To je vrijedno jer ona broji **drukčije** od
 
 ## 2. Što čeka tebe, tim redom
 
-1. **Obriši krivo sidro** — blokirao mi je to sigurnosni filter, jedna linija:
-   ```
-   cd C:\0_Sasa\events-tracker-react\data-prep_tools\Financije
-   python anchors.py --delete eef47ad7-3fce-41cc-ace4-1bd3791b2376
-   ```
-   Pa `python anchors.py` da vidiš popis. Strelica `►` pokazuje koje sidro **danas vrijedi**.
-   Zatim upiši ispravno: `python make_saldo_anchors.py --anchor 2026-07-30`
-   (⚠ prvo prebaci `ZABA_2026-07.pdf` u `izvodi\Analizirani_izvodi\`, inače ga alat ne vidi).
+1. ✅ **Sidro je riješeno** — ispravio si redak ručno u Supabase editoru
+   (`30.07. = 13.815,33`, bilješka nosi datum zatvaranja). Provjereno: `anchors.py`
+   pokazuje `►` na tom retku, a `22.08.` više ne postoji.
 
 2. **Pogledaj kolone** i reci što ne valja — redoslijed i širine se mijenjaju jednim retkom.
 
-3. **Uvezi kolovoz.** Koraci i kontrolni brojevi su u `docs/sessions/tests/S116_tests.md`,
+3. **Pogledaj novi tok potvrde sidra** (T-S116-10…13). Sada moraš odabrati odakle je broj,
+   a ako je s izvoda, sam upisati datum zatvaranja — app ga više ne pogađa. Ispod pločice
+   je „povijest potvrda" s ✕ za brisanje, pa SQL Editor više ne treba.
+
+4. **Uvezi kolovoz.** Koraci i kontrolni brojevi su u `docs/sessions/tests/S116_tests.md`,
    testovi T-S116-7 (ZABA, mora dati `13.239,31`) i T-S116-8 (RF, `796,43`).
    ⚠ Delta sheet izvezi s **najmanje 60 praznih redaka** — zadanih 40 nije dosta.
    ⚠ Prvo pusti `--dry` i provjeri da i dalje piše **14 novih**. Njen file se mijenja
@@ -84,7 +83,8 @@ samo redak koji fali.
 | novih za uvoz | ZABA **14**, RF **1** |
 | njen lanac ZABA → 13.08. | **`13.239,31`** ✓ · RF → **`796,43`** |
 | retci s tekstualnim datumom | **103**, svi 2023. |
-| sidara u TEST bazi | **6** (⚠ ZABA `22.08.` još nije obrisano — čeka Sašin `--delete`) |
+| sidara u TEST bazi | **6** · ZABA ► `30.07. = 13.815,33` (ispravljeno) · RF ► `11.08. = 799,12` (provjereno točno) |
+| `RF_2026-07.pdf` | close **2026-08-11** (zadnja tx `Mirovina III stup 254,33`) ⇒ RF sidro je čisto |
 
 ## 3. Stanje koda
 
