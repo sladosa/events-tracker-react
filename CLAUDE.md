@@ -772,11 +772,20 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   **„Potvrdi na <budući datum>"**, čime bi sidro po pravilu „strogo nakon" **presjeklo sve
   retke do tada**. `split` („planirano") dobiva **sirovi** `asOf`, jer je rata u 2027. upravo
   ono što taj broj broji. Dvije upite, dva pravila.
-- **Sidro prikazuje račun i BEZ ijednog eventa** (`036`, potvrđeno čitanjem koda u S115, uživo
-  još neprovjereno — T-S115-2). Popis grupa je `UNION` brojanih grupa **i** sidara:
-  *„potvrđeno 1.240,00 i ništa se nije dogodilo" je odgovor, nije odsutnost.* ⇒ **za novu bazu
-  povijest nije preduvjet**: dovoljno je da korisnik upiše stanje sa svog ekrana banke i saldo
-  je od tog trena točan. To je nosivi argument plana za PROD (v. `NEXT_SESSION_PROMPT.md`).
+- **Sidro prikazuje račun i BEZ ijednog eventa** — ✅ **izmjereno uživo 23.08.** (T-S115-2):
+  sidro na `TEST prazan račun` (nula eventa) dalo je redak `1.240,00 € · 0 promjena poslije`.
+  Popis grupa je `UNION` brojanih grupa **i** sidara: *„potvrđeno 1.240,00 i ništa se nije
+  dogodilo" je odgovor, nije odsutnost.*
+- **⚠ ALI PRVO SIDRO SE NE MOŽE UPISATI KROZ APLIKACIJU** (S116, otkriveno tek pri izvođenju
+  testa — čitanje `036` to nije moglo pokazati). `u banci` i `Potvrdi` renderiraju se **unutar**
+  `rows.map(...)`; prazna Area daje **nula redaka**, pa pločica pokaže „Nema zapisa koji
+  zadovoljavaju uvjete pločice" i **nema polja za unos**. Testno sidro je zato upisano skriptom
+  (`anchors.py --add`).
+  ⇒ Točna formulacija je: **povijest nije preduvjet, ali JEDAN EVENT jest.** Plan za PROD to
+  već zaobilazi (korak 5: „2–3 stvarna retka da se račun pojavi"). Popravak koji taj korak
+  uklanja: ponuditi vrijednosti iz `racun.validation_rules.suggest` kao prazne retke s poljem
+  za potvrdu — **dropdown, nikad slobodan tekst**, jer bi tipfeler stvorio fantomski račun
+  koji pločica prikaže kao uredan.
 - **Sidro unatrag je provjera, sidro na danas je pokrivač** (S109). Datirano na početak
   uvezene povijesti, sidro mjeri **reproducira li app tuđi lanac**; datirano na danas samo
   skriva rupu. `confirmed_on` je obična `date` — baza to već podržava, UI još ne.

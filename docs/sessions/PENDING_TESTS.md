@@ -6,10 +6,25 @@
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
 **✅ T-S114-1 RIJEŠEN 2026-08-23 (S116):** sidro ZABA premješteno na **30.07.** (ručni ispravak retka u Supabase editoru), prije toga netautološki provjereno da app iz sidra 01.07. sam dođe do `13.815,33`. Mehanizam koji je grešku proizveo popravljen je u kodu — v. T-S116-10…13.
-**Otvoreno: T-S116-1…14 (NOVO); T-S115-1…4; T-S114-2…5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
+**Otvoreno: T-S116-1…5, -7…12, -14 (NOVO); T-S115-1, -3; T-S114-2…5; T-S113-2; T-S112-5; T-S111-1, -3, -4, -5, -6; T-S110-4, -5; T-S108-4 koraci 4–5, T-S108-1b, T-S108-5…13; T-S107v-2…4 i 7, T-S107u-2 (backlog).**
 **Detalji S116:** [S116_tests.md](tests/S116_tests.md) · **S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107y:** [S107y_tests.md](tests/S107y_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
 
 ---
+
+**✅ Prošlo 23.08. (uživo, TEST baza): T-S115-2, T-S116-6, T-S116-13.**
+Sidro `TEST prazan račun = 1.240,00` (nula eventa u bazi) prikazalo se kao redak pločice,
+pa obrisano s ✕ iz „povijest potvrda" — toast `Obrisana potvrda 22.08.2026. = 1.240,00 €`,
+pločica se vratila na dva računa, baza na 6 sidara.
+
+⚠ **T-S115-2 prolazi, ali ne znači ono što je zapisano.** Sidro je upisano **skriptom**
+(`anchors.py --add`). Kroz UI ne bi išlo: `u banci` i `Potvrdi` renderiraju se **unutar**
+`rows.map(...)`, a prazna Area daje **nula redaka** ⇒ pločica pokaže „Nema zapisa koji
+zadovoljavaju uvjete pločice" i **nema polja za unos**. Dakle za Kokin PROD prvog dana:
+**povijest nije preduvjet, ali jedan event jest.** Plan za PROD to već zaobilazi
+(korak 5, „2–3 stvarna retka da se račun pojavi") — zaključak u `CLAUDE.md` je bio širi
+nego što stoji. **Otvoreno: ponuditi vrijednosti iz `racun.validation_rules.suggest` kao
+prazne retke s poljem za potvrdu** (dropdown, ne slobodan tekst — tipfeler bi inače
+stvorio fantomski račun). Sašina odluka, ~30 min.
 
 ## S116 — kolone po Arei · `--iz-koke` · sidro
 
@@ -22,14 +37,14 @@ Puni koraci: [S116_tests.md](tests/S116_tests.md).
 | T-S116-3 | Uski ekran: dva reda, iznos desno uz rub, `Stanje` skriven | ⬜ |
 | T-S116-4 | ⭐ **Roundtrip** — `ListColumns` sheet: izmjena `Label` preživi export→import; prazan popis vraća zadano | ⬜ |
 | T-S116-5 | Rename sluga `tip` povlači fixup kolona (prazna kolona zbog mrtve reference izgleda isto kao prazna zbog nedostatka podatka) | ⬜ |
-| T-S116-6 | ⭐ Sidro ZABA stoji na **30.07.**, ono s 22.08. obrisano | ⬜ |
+| T-S116-6 | ⭐ Sidro ZABA stoji na **30.07.**, ono s 22.08. obrisano | ✅ 23.08. |
 | T-S116-7 | ⭐ Uvoz kolovoza ZABA (14 redaka) → **`13.239,31` @ 13.08.** ⚠ traži i MC naplatu `1.332,52` s `MC_2026-07.pdf` | ⬜ |
 | T-S116-8 | Uvoz kolovoza RF (1 redak) → **`796,43`** | ⬜ |
 | T-S116-9 | Alat stane kad delta sheet nije za traženi račun (regresija) | ⬜ |
 | T-S116-10 | ⭐ **Datum potvrde iz IZVORA, ne iz klika** — papir ⇒ prazno polje, ekran ⇒ app računa (v. T-S116-14); bez izvora gumb ne radi | ⬜ |
 | T-S116-11 | Rečenica o posljedici prije klika („saldo = X plus sve nakon <datum>") | ⬜ |
 | T-S116-12 | ⭐ Upozorenje kad **novija** potvrda već postoji (ispravak unatrag ne ispravlja ništa) | ⬜ |
-| T-S116-13 | ⭐ „povijest potvrda" + brisanje iz aplikacije; ▸ označava važeću; grantee nema ✕ | ⬜ |
+| T-S116-13 | ⭐ „povijest potvrda" + brisanje iz aplikacije; ▸ označava važeću | ✅ 23.08. (⚠ **korak 3 — grantee bez ✕ — NIJE proban**) |
 | T-S116-14 | ⭐⭐ **Očitanje s ekrana sidri se na JUČER** (očitano − današnji promet) ⇒ današnja transakcija ostaje u saldu. Dio B je jezgra. | ⬜ |
 
 **Brojke izmjerene u S116** (sve provjerene, ne procijenjene):
@@ -54,7 +69,7 @@ Puni koraci: [S115_tests.md](tests/S115_tests.md).
 | Test | Što | Status |
 | --- | --- | --- |
 | T-S115-1 | ⭐ ZABA pločica više nema liniju „planirano" (`845,12` obrisan) | ⬜ |
-| T-S115-2 | ⭐ **Sidro prikazuje račun i bez ijednog eventa** — na tome stoji cijeli plan za PROD | ⬜ |
+| T-S115-2 | ⭐ **Sidro prikazuje račun i bez ijednog eventa** | ✅ 23.08. — ali v. ⚠ ispod |
 | T-S115-3 | Uvoz kolovoza ne donosi retke iz 2036. (travanj 2026. ostaje **111 eventa**) | ⬜ |
 | T-S115-4 | ~~Kolone po Arei~~ — **zamijenjen s T-S116-1…5** (implementirano u S116) | — |
 
