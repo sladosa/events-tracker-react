@@ -26,7 +26,7 @@ Puni koraci: [S116_tests.md](tests/S116_tests.md).
 | T-S116-7 | ⭐ Uvoz kolovoza ZABA (14 redaka) → **`13.239,31` @ 13.08.** ⚠ traži i MC naplatu `1.332,52` s `MC_2026-07.pdf` | ⬜ |
 | T-S116-8 | Uvoz kolovoza RF (1 redak) → **`796,43`** | ⬜ |
 | T-S116-9 | Alat stane kad delta sheet nije za traženi račun (regresija) | ⬜ |
-| T-S116-10 | ⭐ **Datum potvrde iz IZVORA, ne iz klika** — ekran ⇒ danas, papir ⇒ prazno polje; bez izvora gumb ne radi | ⬜ |
+| T-S116-10 | ⭐ **Datum potvrde iz IZVORA, ne iz klika** — papir ⇒ prazno polje, ekran ⇒ app računa (v. T-S116-14); bez izvora gumb ne radi | ⬜ |
 | T-S116-11 | Rečenica o posljedici prije klika („saldo = X plus sve nakon <datum>") | ⬜ |
 | T-S116-12 | ⭐ Upozorenje kad **novija** potvrda već postoji (ispravak unatrag ne ispravlja ništa) | ⬜ |
 | T-S116-13 | ⭐ „povijest potvrda" + brisanje iz aplikacije; ▸ označava važeću; grantee nema ✕ | ⬜ |

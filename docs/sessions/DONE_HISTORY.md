@@ -2562,6 +2562,10 @@ Pravilo stane u rečenicu, i zato se da naučiti korisnika:
 
 > **Broj s ekrana → datum je danas. Broj s papira → datum piše na papiru.**
 
+⚠ Prva polovica ove rečenice **preživjela je samo do idućeg pitanja u istoj sesiji** —
+v. „Nastavak S116 (2)": očitanje s ekrana ide na **jučer**, jer sidro na danas izbacuje
+današnje transakcije iz salda.
+
 - `ekran bankovne aplikacije` ⇒ datum = danas, polja nema (ta strana nikad nije bila kriva —
   broj s ekrana banke **i jest** očitanje za danas)
 - `izvod` / `ispis na papiru` ⇒ **prazno** polje, žuto obrubljeno, gumb ugašen dok se ne popuni

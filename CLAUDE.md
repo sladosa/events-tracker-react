@@ -245,7 +245,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ Obrnuto je ispravno: broj s **ekrana bankovne aplikacije** i jest očitanje za danas.
 - **⚠ Datum sidra dolazi iz IZVORA, nikad iz filtra ni iz klika** (S116, popravak
   BUG-S115-ANCHORDATE). Pravilo stane u rečenicu i zato se da naučiti korisnika:
-  **broj s ekrana → datum je danas; broj s papira → datum piše na papiru.** Za papirnate
+  **broj s papira → datum piše na papiru; broj s ekrana → app ga izračuna** (⚠ na **jučer**,
+  s oduzetim današnjim prometom — v. sljedeću zamku; sidro na danas izbacuje današnje retke
+  iz salda). Za papirnate
   izvore app **ne nudi zadani datum** — svaki default bio bi pogodak, a pogodak koji izgleda
   kao podatak je točno ono što je proizvelo grešku. ⚠ Izvor je zato **obavezan**: bez njega
   app ne zna smije li upisati današnji dan.

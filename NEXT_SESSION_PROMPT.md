@@ -114,7 +114,7 @@ potvrda, brisanje), `overviewApi.ts` (guard), `docs/help/overview.md`.
   transakcija prije očitanja upisana **nakon** potvrde broji se dvaput; rješava je redoslijed
   unosa („prvo upiši današnje, pa pogledaj banku"), ne kod. **Neverificirano: T-S116-14.**
 - **✅ BUG-S115-ANCHORDATE popravljen** (commit `6f8e235`): datum potvrde dolazi iz izvora
-  (ekran ⇒ danas, papir ⇒ ručno), izvor je obavezan, rečenica o posljedici prije klika,
+  (papir ⇒ ručno, ekran ⇒ izračunato na jučer), izvor je obavezan, rečenica o posljedici,
   upozorenje o novijoj potvrdi, povijest + brisanje u pločici, guard protiv budućeg datuma.
   **Neverificirano uživo: T-S116-10…13.**
 - **✅ RF sidro `11.08. = 799,12` je TOČNO** — `RF_2026-07.pdf` se zatvara 11.08.

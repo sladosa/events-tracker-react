@@ -100,7 +100,11 @@ const ANCHOR_SOURCES = [
  *
  * The rule fits in one sentence, which is why it can be taught to a user:
  *
- *     Broj s EKRANA → datum je danas.  Broj s PAPIRA → datum piše na papiru.
+ *     Broj s PAPIRA → datum piše na papiru.  Broj s EKRANA → app ga izračuna.
+ *
+ * ⚠ „App ga izračuna" je S116 ispravak Sašinog nalaza: očitanje s ekrana NE ide
+ *   na danas nego na JUČER, s oduzetim današnjim prometom — v. blok uz
+ *   `prevDayIso`. Sidro na danas bi današnje transakcije izbacilo iz salda.
  *
  * A screen reading genuinely IS today's — that direction was never wrong. A
  * printed one carries its own date, and no default the app could invent is
