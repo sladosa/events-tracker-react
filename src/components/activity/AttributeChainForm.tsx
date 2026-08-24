@@ -230,6 +230,18 @@ export function AttributeChainForm({
     return parseValidationRules(attr.validation_rules).hiddenInAdd;
   }, [showAllDefaults]);
 
+  /** Revealed only because "Show all" is on — i.e. what "Hide again" will take
+   *  away. Without marking these, the toggle is a leap: you see fields appear
+   *  but not which ones are about to vanish. */
+  const isRevealedOnly = useCallback((attr: AttributeDefinition): boolean => {
+    if (!showAllDefaults) return false;
+    if (parseValidationRules(attr.validation_rules).hiddenInAdd) return true;
+    if (attr.default_value == null || userEditedIds.has(attr.id)) return false;
+    const currentValue = values.get(attr.id);
+    const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
+    return currentStr === attr.default_value;
+  }, [showAllDefaults, userEditedIds, values]);
+
   /** Any reason this attribute is not on screen right now. */
   const isHidden = useCallback((attr: AttributeDefinition): boolean =>
     isDependencyHidden(attr) || isHiddenByDefault(attr) || isHiddenExplicitly(attr),
@@ -237,8 +249,13 @@ export function AttributeChainForm({
 
   // Count attributes currently hidden because they match their default value
   const hiddenByDefaultCount = useMemo(
-    () => allAttributes.filter(a => isHiddenByDefault(a) || isHiddenExplicitly(a)).length,
-    [allAttributes, isHiddenByDefault, isHiddenExplicitly]
+    // Dependency-hidden fields are excluded: "Show all" deliberately does not
+    // reveal them (a dropdown with no parent value has nothing to offer), so
+    // counting them would promise more than the button delivers — measured as
+    // "3 fields hidden" revealing two, `Stanje` being hidden BOTH ways.
+    () => allAttributes.filter(a =>
+      !isDependencyHidden(a) && (isHiddenByDefault(a) || isHiddenExplicitly(a))).length,
+    [allAttributes, isDependencyHidden, isHiddenByDefault, isHiddenExplicitly]
   );
 
   // Render attributes for a single category
@@ -305,7 +322,8 @@ export function AttributeChainForm({
 
     if (isHidden(attr)) return null;
 
-    return (
+    const revealed = isRevealedOnly(attr);
+    const input = (
       <AttributeInput
         key={attr.id}
         definition={attr}
@@ -316,6 +334,16 @@ export function AttributeChainForm({
         disabled={disabled}
         onNewOption={onNewOption}
       />
+    );
+
+    if (!revealed) return input;
+    return (
+      <div key={attr.id} className="relative pl-2 border-l-2 border-dashed border-gray-300">
+        <span className="absolute -top-0.5 right-0 text-[10px] text-gray-400 italic">
+          skriveno
+        </span>
+        {input}
+      </div>
     );
   };
 
@@ -424,7 +452,7 @@ export function AttributeChainForm({
           className="w-full text-left px-3 py-2 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg border border-dashed border-gray-200 transition-colors flex items-center gap-1.5"
         >
           <span>▴</span>
-          <span>Hide again</span>
+          <span>Hide again (polja označena <span className="italic">skriveno</span>)</span>
         </button>
       )}
     </div>
