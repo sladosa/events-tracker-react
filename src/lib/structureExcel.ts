@@ -302,6 +302,10 @@ function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[
   const defMap = rules.depends_on.default_map;
   const rows: DataRow[] = [];
 
+  // Each row's `Default` is that parent value's entry in `default_map`, which
+  // deliberately overwrites `base.defaultVal`. A depends_on attribute therefore
+  // has no attribute-level default in the sheet — and, since T-S107u-2, none in
+  // the database either. Two defaults would leave the form guessing.
   for (const [whenVal, opts] of Object.entries(optMap)) {
     rows.push({
       ...base,

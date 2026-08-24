@@ -332,7 +332,16 @@ function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
         isRequired:   row.isRequired,
         hiddenInAdd:  row.hiddenInAdd,
         valType:      row.valType,
-        defaultVal:   row.defaultVal,
+        // ⚠ T-S107u-2. On a DependsOn row the `Default` cell belongs to
+        //   `default_map` — it is the default FOR THAT PARENT VALUE, not for the
+        //   attribute. Taking it here made `Status.default_value` oscillate
+        //   between `Izvrsen` and null on every roundtrip: export never writes
+        //   an attribute-level default for a depends_on attribute (each row
+        //   overwrites it with its own map entry), and import then read the
+        //   first row's map entry back as the attribute default.
+        //   Was harmless while nothing read `default_value`; it stopped being
+        //   harmless in S117, when hide-at-default started to.
+        defaultVal:   row.dependsOn ? '' : row.defaultVal,
         valMax:       row.valMax,
         unit:         row.unit,
         description:  row.description,

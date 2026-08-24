@@ -599,8 +599,17 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 - **E8-2 Area select timeout:** grantee-write test padne na `selectOption` (element disabled) —
   moguće isti family kao BUG-S103-ANYATTR
 - **E7-2/E7-3:** Toast „Access granted" izostaje u invite flowu — UX polish
-- **T-S107u-2** (bezopasno): `groupAttributes` uzima `Default` s **prvog** retka grupe ⇒
-  `Status.default_value` se klacka `Izvrsen`↔`null`. Fix: ignorirati `Default` na retku s `DependsOn`.
+- **~~T-S107u-2~~ — ✅ POPRAVLJENO S117.** Oscilacija je bila **zatvoreni krug preko obje
+  strane**, ne samo uvozna greška: **export** za `depends_on` atribut svakim retkom prepiše
+  `defaultVal` vrijednošću iz `default_map`, pa se atributov vlastiti `default_value` **nikad
+  ne zapiše**; **import** je onda čitao `Default` s prvog takvog retka natrag **kao atributov**.
+  Otud `Izvrsen`↔`null`. Sada `defaultVal: row.dependsOn ? '' : row.defaultVal` — kod
+  `depends_on` atributa vlastitog defaulta nema, a po vrijednostima žive u `default_map`u
+  (dvoje bi bilo dvosmisleno: forma ne bi znala koje pobjeđuje).
+  ⚠ Bug je bio označen „bezopasno" jer `default_value` nitko nije čitao. **To je prestalo
+  vrijediti u S117**, kad ga je skrivanje-na-defaultu počelo čitati — `Status` bi počeo
+  nasumično nestajati iz forme. Zabilježeno kao obrazac: „bezopasno" vrijedi **dok** nitko ne
+  čita, i prestaje bez ijedne poruke.
 - **~~BUG-S115-ANCHORDATE~~ — ✅ POPRAVLJENO S116.** Datum potvrde više se ne izvodi iz
   filtra nego iz **izvora**: `ekran bankovne aplikacije` ⇒ danas (app upisuje sam),
   `izvod`/`ispis` ⇒ **prazno polje koje korisnik popuni s papira**. Izvor je postao obavezan
