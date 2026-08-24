@@ -860,6 +860,20 @@ odluka o koliziji `session_start`a pri unosu unatrag.
 ekrana** (Add pa odmah Edit), a Koka gleda banku svakih par dana ⇒ pogađa je na **svakom**
 retku. Ostale stavke Faze 2 štede sekunde, ova uklanja cijeli drugi ekran.
 
+**Preimenovanje `Financije_all` → `Financije` — ODGOĐENO, s okidačem** (Sašina odluka S117).
+Okidač **nije** „kad bude na PROD-u" nego **„kad prođe zadnji uvoz koji generira pipeline"**
+(batch 2024 i 2023 idu **nakon** cutovera, na PROD — rename odmah po cutoveru ugrizao bi isto
+kao rename danas). Razlog odgode: ime aree je **ključ** u svakom generiranom fileu (`Structure`
+`Category_Path`, `ListColumns`/`Automations` kol. A, Activities kol. `Area`), a redak s
+neprepoznatom areom se **preskoči bez poruke** — S113 „0 New, 0 Modify nad punim fileom".
+Mijenjati taj ključ dok alati rade je razmjena kozmetike za tihi gubitak redaka.
+⚠ **Kad dođe vrijeme, rename ide kroz UI, nikad kroz novi Structure import.** UI mijenja samo
+`name` i **slug ostaje** (`StructureNodeEditPanel.tsx:1049`) ⇒ `037`, `dashboard` i
+`list_columns` prežive jer su slug-based. Import bi izveo **novi** slug (`generateSlug(areaName)`,
+`structureImport.ts:548`) i `037` ne bi našao areu ⇒ nema Overview taba.
+⚠ Jedino što rename ionako ubija: `export_profiles` (ključ nosi ime aree,
+`exportProfile.ts:146`) — složiti ih nanovo, posao od par minuta.
+
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
 (fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
