@@ -240,7 +240,7 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `ispisano stanje s izvoda · ZABA_2026-07.pdf` — a taj se izvod **zatvara 30.07.** App je oba
   podatka imao **u istom retku** i nije ih usporedio. Posljedica po pravilu „strogo nakon":
   sve datirano 31.07.–22.08. tiho ispada iz salda. Nije se vidjelo jer u tom prozoru trenutno
-  nema nijednog ZABA retka — ali sljedeći uvoz (kolovoz, MC naplata `1.332,52` @ 13.08.) pada
+  nema nijednog ZABA retka — ali sljedeći uvoz (kolovoz, MC naplata `1.332,52` @ **11.08.**) pada
   točno u njega. **Kad izvor nije ekran banke nego izvod, datum mora doći iz izvoda.**
   ⚠ Obrnuto je ispravno: broj s **ekrana bankovne aplikacije** i jest očitanje za danas.
 - **⚠ Datum sidra dolazi iz IZVORA, nikad iz filtra ni iz klika** (S116, popravak
@@ -681,7 +681,14 @@ Kolovoz se uvozi **zbog zapisa**, ne zbog salda — a Kokin file je u međuvreme
 `Financije 2026-08-16.xlsx` ima **87 redaka nakon 30.07. na „koka EU" i 68 na „sasa EU"**,
 od kojih je u bazi **6**. Tranša 4 je time narasla iz „MC paket" u „MC paket + cijeli kolovoz".
 
-⚠ **Skupne naplate se NE sintetiziraju** — `MC_2026-07.pdf` sadrži `1.332,52`, a
+⚠ **Skupna naplata se NE sintetizira, a njen datum je DOSPIJEĆE s izvoda** (S117).
+`MC_2026-07.pdf` piše `Datum dospijeća: 11.08.2026.` i `UKUPNO (EUR): 1.332,52`. Isto potvrđuje
+povijest: skupna MC naplata pojavljuje se na **ZABA izvatku** kao `TROŠKOVI UČINJENI MASTERCARD
+KARTICOM`, uvijek **11. u mjesecu**, osam mjeseci zaredom (`Izvodi_transakcije.xlsx`). Dakle nije
+na MC izvodu nego na izvatku tekućeg — a dok `ZABA_2026-08.pdf` ne stigne, iznos i datum dolaze
+s MC izvoda. ⚠ **Opis mora ostati strojni tekst izvatka**, ne „Mastercard": svih 18 prijašnjih
+MC naplata ga nosi, pa bi varijanta razbila brojanje po opisu (`klasificiraj_transu.py`).
+⚠ Ostalo netaknuto: `PBZVIZA_2026-07.pdf` sadrži `1.171,59`, a
 `PBZVIZA_2026-07.pdf` `1.171,59`, oboje u cent jednako Kokinim grupama. Banka ih je ispisala.
 
 ⚠ **Onih 5 spornih redaka** (16–17.06.2026., Σ `373,11`): `207,26`, `57,19` i `13,31` **nisu na
@@ -837,6 +844,21 @@ slug-based, `ListColumns` sheet u Structure roundtripu, fixup na rename. Financi
 Pravila su promaknuta u „Critical rules". **Neverificirano uživo: T-S116-1…5.**
 ⚠ Ostalo neizvedeno: rječnik uloga se širi **samo kodom** (namjerno), pa nova vrsta
 kolone (npr. `attr` s formatom broja) i dalje traži commit.
+
+**⭐ Zaglavlje Add Activity po Arei** (Sašina ideja S117) — isti obrazac kao `list_columns`:
+uloge u configu, ne domena u kodu. **Financije nemaju smisla pokazivati štopericu** — ona je
+bila donekle korisna za treninge, i ondje ograničeno. **Koka je već jednom pitala zašto je tu**,
+i odgovor je bio „za sada je tako". Umjesto nje: nešto poput Edit Activity panela — **birač
+datuma s defaultom „danas"**.
+⚠ Nije samo prosljeđivanje propsa. `ActivityHeader` **već zna** crtati datum (crta ga čim dobije
+`dateTime` + `onDateTimeChange`; Edit ih šalje, Add ne). Prepreka je što `sessionStart`
+(`useSessionTimer.ts:25`) služi **dvjema ulogama odjednom**: zapisano vrijeme eventa **i**
+ishodište štoperice — pomak na prošli datum natjera štopericu da broji danima. Razdvojiti te
+dvije uloge je jezgra posla; uz to ide ponovna evaluacija `set_attribute` na promjenu datuma i
+odluka o koliziji `session_start`a pri unosu unatrag.
+⚠ **Zašto je ovo najvrjednija stavka Faze 2:** danas se unos za prošli dan radi kroz **dva
+ekrana** (Add pa odmah Edit), a Koka gleda banku svakih par dana ⇒ pogađa je na **svakom**
+retku. Ostale stavke Faze 2 štede sekunde, ova uklanja cijeli drugi ekran.
 
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
