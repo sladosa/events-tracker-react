@@ -2682,3 +2682,78 @@ rečenica o posljedici za papirnate izvore, T-S116-14 D/E, i cijeli blok kolona 
 ⚠ Sitnica koja je pojela nekoliko minuta i vrijedi zapamtiti: Python skripta za uređivanje
 ovih dokumenata pukla je na `„ekran"` unutar `"..."` literala — hrvatski navodnik se zatvara
 **ASCII** znakom `"`, koji prekine string. Tekstovi s hrvatskim navodnicima idu u `''' '''`.
+
+---
+
+## Done S117 (2026-08-24): kolone i sidro provjereni · kolovoz uvezen · unos prepravljen za Koku
+
+Sesija je počela pitanjem „što najbrže na PROD" i završila tako da je **kod prvi put cijeli
+viđen uživo**, kolovoz uvezen u cent, a tri stvari koje bi Koki svakodnevno smetale — maknute.
+
+### Testovi: sve prošlo
+
+`T-S116-1…5` (kolone po Arei), `-7/-8` (uvoz kolovoza), `-9` (guard), `-10/-11/-12` (put
+„izvod" kod sidra). Time je S116 zatvoren osim `T-S116-14 D/E` i grantee slučaja kod `-13`.
+
+### Pet popravaka, i nijedan nije bio planiran — svi su ispali iz testiranja
+
+1. **`Sep` nije preživljavao roundtrip.** Config je imao `' / '`, `cellStr` pri uvozu trima →
+   `'/'`. Trim je ispravan za svako drugo polje i baš zato je ovdje promašio: `Sep` je jedino
+   polje kojem je razmak podatak. **Sašino rješenje je bolje od obje moje varijante** — ne
+   zaobići trim nego birati vrijednost nad kojom trim nema što napraviti. Zadano je sada
+   tijesno `/`, pa je roundtrip idempotentan po konstrukciji.
+2. **`depends_on` fixup se poništavao unutar istog Save-a.** Petlja upisuje
+   `buildValidationRules` iz panelnog stanja za svaki atribut; fixup je pisao u bazu *unutar*
+   te petlje, pa je dolazak do ovisnog atributa vratio stari slug preko njega. ⚠ Preživljavanje
+   je ovisilo o `sort_order` — `Tip`(6) prije `Podtip`(7) = pad, obrnuto bi **prošlo test**.
+3. **Gumb je nudio potvrdu na budući datum.** Podatak je bio siguran (dva guarda), ali gumb je
+   pozivao na klik koji će odbiti. Sada je u `disabled`, s vidljivim objašnjenjem.
+4. **T-S107u-2** — oscilacija `Status.default_value`. Nalaz je bio veći od opisa: **zatvoreni
+   krug preko obje strane** (export gubi atributov default, import mu podmeće tuđi iz
+   `default_map`). ⚠ Tri sesije je nosio oznaku „bezopasno" — a bio je bezopasan samo **dok**
+   `default_value` nitko nije čitao. Isti dan kad ga je skrivanje-na-defaultu počelo čitati,
+   prestao je biti bezopasan.
+5. **Brojač skrivenih polja obećavao je više nego što otkrije** (`3 fields hidden` → dva).
+
+### Kolovoz: `13.239,31` i `796,43`, oba u cent
+
+ZABA: 14 Kokinih redaka + skupna MC naplata `1.332,52`. RF: jedan redak (`RF naknada 2,69`).
+
+**Potvrda vrijedi zato što dolazi iz dva različita modela**: njen lanac tereti račun svakom od
+59 kartičnih stavaka, naš s 15 redaka. Isti cent iz istog modela ne bi značio ništa.
+
+⚠ **Datum MC naplate je bio krivo zapisan** (`@ 13.08`). S papira: `MC_2026-07.pdf` →
+`Datum dospijeća: 11.08.2026.`, a povijest to potvrđuje — skupna MC naplata je **na ZABA
+izvatku**, uvijek 11. u mjesecu, osam mjeseci zaredom.
+
+⚠ **Pet redaka klasificirano ručno** (`Cash` ×4 → `Transfer / cash - bankomat`, `RF naknada` →
+`Domaćinstvo / Bankovni troškovi`, 6/6 u bazi). `--klasificiraj` ih nije uzeo jer broji iz
+**Review snimke od 10.07.**, ne iz baze — ne vidi ništa što je ušlo poslije.
+
+### Tri stvari koje bi je svakodnevno gnjavile
+
+**Zaglavlje Add Activity po Arei.** Sašina ideja, isti obrazac kao kolone. Jezgra nije bila
+prosljeđivanje propsa: `sessionStart` je nosio **dvije uloge** — ishodište štoperice i trenutak
+zapisa. Zato birač datuma nije mogao postojati. Sada su `sessionStart` i `eventAt`.
+Posljedica: unos za prošli dan traje **jedan ekran** umjesto dva.
+
+**`HiddenInAdd` po atributu.** Postojeće skrivanje-na-defaultu ne pomaže jer može sakriti samo
+polje koje **ima** vrijednost; smetaju ona čija je ispravna vrijednost **prazno**. Izmjereno:
+`default_value` postoji na **7 atributa u cijeloj bazi**, svi u `Fitness_Garmin` — mehanizam je
+u Financijama bio potpuno neaktivan, otud „nije nam baš pomogla".
+
+**Konvencija `~`** za nesiguran iznos, na **početku** opisa (lista reže dugačak tekst).
+
+### Ispravak koji vrijedi zapamtiti kao metodu
+
+Tvrdio sam da kartični redak treba `Status = Izvrsen`, brojeći povijest (Visa 855/855).
+**Krivo.** Config već ima `default_map` `Visa → Planiran`, i to je točno: onih 855 je `Izvrsen`
+jer su svi došli **s izvoda**, dakle već naplaćeni. `Status` je **trenutno stanje, ne povijest**
+— brojanje zatečenih vrijednosti ne govori kakvo stanje redak treba **na početku**. Za
+`Tip`/`Podtip` je brojanje pravi alat; za `Status` nije.
+
+### Odluke
+
+- **Preimenovanje aree odgođeno**, okidač je **zadnji pipeline uvoz** (ne „kad bude na PROD-u" —
+  batch 2024/2023 idu *nakon* cutovera). Rename tada ide **kroz UI**, jer slug preživi.
+- **Prvo sidro na praznoj Arei se ne gradi** (potvrđeno iz S116).

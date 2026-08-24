@@ -60,6 +60,26 @@ nego što stoji. **Otvoreno: ponuditi vrijednosti iz `racun.validation_rules.sug
 prazne retke s poljem za potvrdu** (dropdown, ne slobodan tekst — tipfeler bi inače
 stvorio fantomski račun). Sašina odluka, ~30 min.
 
+## S117 — unos prepravljen za Koku (2026-08-24)
+
+**Sve iz S116 provjereno istog dana** (`T-S116-1…5`, `-7/-8/-9`, `-10/-11/-12`). Otvoreno
+ostaje samo ovo:
+
+| test | opis | status |
+| --- | --- | --- |
+| T-S117-1 | ⭐ **Slobodna minuta pri unosu unatrag** — jedina grana novog koda koju testiranje nije okinulo (traži zauzetu minutu; uvezeni ZABA retci su na 14:00–14:13) | ⬜ |
+| T-S117-2 | Birač datuma u Healthu (`add_header.date`, štoperica **ostaje**) | ⬜ |
+| T-S117-3 | Konvencija `~` od kraja do kraja — upiši, nađi filtrom, **uredi isti redak**, popis prazan | ⬜ |
+| T-S117-4 | Grantee vidi isto zaglavlje i ista skrivena polja (config je per-Area) | ⬜ |
+
+**Detalji:** [S117_tests.md](tests/S117_tests.md)
+
+**✅ Prošlo 24.08. uživo:** kolone po Arei (`T-S116-1…5`), uvoz kolovoza
+(`13.239,31` + `796,43`), put „izvod" kod sidra (`-10/-11/-12`), guard krivog računa (`-9`),
+zaglavlje po Arei, `HiddenInAdd`, roundtrip `Structure` bez izmjena (`Attributes updated 0`).
+
+---
+
 ## S116 — kolone po Arei · `--iz-koke` · sidro
 
 Puni koraci: [S116_tests.md](tests/S116_tests.md).
