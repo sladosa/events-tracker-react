@@ -96,6 +96,10 @@ const COLS = [
   { key: 'description', header: 'Description',       width: 60, colColor: CLR.BLUE,   grouped: false, collapsed: false },
   { key: 'commentTpl', header: 'CommentTemplate',   width: 30, colColor: CLR.GREEN,  grouped: true,  collapsed: false },
   { key: 'disableSavePlus', header: 'DisableSavePlus', width: 16, colColor: CLR.GREEN, grouped: true, collapsed: false },
+  // Add Activity header (S117). Same shape as DisableSavePlus — Area-row
+  // booleans — so they ride the existing sheet instead of earning one.
+  { key: 'addTimer',    header: 'AddTimer',      width: 12, colColor: CLR.GREEN, grouped: true, collapsed: false },
+  { key: 'addDate',     header: 'AddDatePicker', width: 14, colColor: CLR.GREEN, grouped: true, collapsed: false },
 ] as const;
 
 const N_COLS = COLS.length; // 20
@@ -147,6 +151,8 @@ interface DataRow {
   description:  string;
   commentTpl:   string;
   disableSavePlus: string; // TRUE | FALSE | '' (Area rows only)
+  addTimer:     string;    // TRUE | FALSE | '' (Area rows only)
+  addDate:      string;    // TRUE | FALSE | '' (Area rows only)
   // Row meta (not written to cells)
   _isAreaRow:   boolean;
   _isLeafRow:   boolean;
@@ -216,6 +222,12 @@ function buildAreaRow(node: StructureNode, sharedWith: string): DataRow {
     description: node.description ?? '',
     commentTpl: node.area.settings?.comment_template ?? '',
     disableSavePlus: node.area.settings?.disable_save_plus ? 'TRUE' : 'FALSE',
+    // Written out only when the Area actually configured them; blank means
+    // "default", which is not the same statement as FALSE.
+    addTimer: node.area.settings?.add_header?.timer === undefined
+      ? '' : (node.area.settings.add_header.timer ? 'TRUE' : 'FALSE'),
+    addDate: node.area.settings?.add_header?.date === undefined
+      ? '' : (node.area.settings.add_header.date ? 'TRUE' : 'FALSE'),
     _isAreaRow: true, _isLeafRow: false, _isAttrRow: false,
   };
 }
@@ -234,6 +246,8 @@ function buildCategoryRow(node: StructureNode): DataRow {
     description: node.description ?? '',
     commentTpl: (node.isLeaf ? node.category?.settings?.comment_template : '') ?? '',
     disableSavePlus: '', // Area-level setting only
+    addTimer: '',
+    addDate: '',
     _isAreaRow: false, _isLeafRow: node.isLeaf, _isAttrRow: false,
   };
 }
@@ -259,6 +273,8 @@ function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[
     description: attr.description ?? '',
     commentTpl: '',
     disableSavePlus: '' as const,
+    addTimer: '' as const,
+    addDate: '' as const,
     _isAreaRow: false as const,
     _isLeafRow: false as const,
     _isAttrRow: true as const,
@@ -602,6 +618,8 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: 'R  Description',       value: 'Optional documentation notes.' },
     { kind: 'row', label: 'S  CommentTemplate',   value: 'Auto-comment template for Area or leaf Category.  Use {slug} to insert attribute values into event comment on Finish.  Leaf overrides Area.  Example: {napomena} ({tip})' },
     { kind: 'row', label: 'T  DisableSavePlus',    value: 'Area rows only.  TRUE hides the "Save +" button in Add Activity (one event per session — e.g. Financije, Health).  Blank = FALSE.  Column absent from the file = setting left unchanged.' },
+    { kind: 'row', label: 'U  AddTimer',         value: 'Area rows only.  FALSE hides the SESSION/LAP stopwatch in Add Activity.  Useful when entries are RECORDED after the fact (a transaction) rather than PERFORMED while the screen is open (a workout).  Blank = TRUE (the header as it is today).' },
+    { kind: 'row', label: 'V  AddDatePicker',    value: 'Area rows only.  TRUE adds a date picker to Add Activity, defaulting to today, so an entry for a past day needs one screen instead of two (Add then Edit).  Blank = FALSE.' },
     { kind: 'row', label: '', value: '' },
 
     { kind: 'section', text: 'Understanding DependsOn Rows' },

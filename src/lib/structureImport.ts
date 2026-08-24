@@ -91,6 +91,8 @@ interface ParsedRow {
   description:  string;
   commentTpl:   string;
   disableSavePlus: string;
+  addTimer:     string;
+  addDate:      string;
 }
 
 // Grouped attribute: combines multiple DependsOn rows
@@ -198,6 +200,8 @@ interface HeaderInfo {
   colDescription: number;
   colCommentTpl:  number;
   colDisableSavePlus: number;
+  colAddTimer: number;
+  colAddDate: number;
 }
 
 function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
@@ -245,6 +249,8 @@ function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
       colDescription:  findCol('description'),
       colCommentTpl:   findCol('commenttemplate'),
       colDisableSavePlus: findCol('disablesaveplus'),
+      colAddTimer: findCol('addtimer'),
+      colAddDate: findCol('adddatepicker'),
     };
   }
   return null;
@@ -289,6 +295,8 @@ function parseRows(ws: ExcelJS.Worksheet, h: HeaderInfo): ParsedRow[] {
       description:  get(h.colDescription),
       commentTpl:   get(h.colCommentTpl),
       disableSavePlus: get(h.colDisableSavePlus),
+      addTimer: get(h.colAddTimer),
+      addDate: get(h.colAddDate),
     });
   }
   return rows;
@@ -798,7 +806,9 @@ export async function importStructureExcel(
   // `DisableSavePlus` kolone ne smije je pobrisati (isti princip kao rata u §9).
   const hasCommentTplCol = header.colCommentTpl > 0;
   const hasSavePlusCol   = header.colDisableSavePlus > 0;
-  if (hasCommentTplCol || hasSavePlusCol) {
+  const hasAddTimerCol   = header.colAddTimer > 0;
+  const hasAddDateCol    = header.colAddDate > 0;
+  if (hasCommentTplCol || hasSavePlusCol || hasAddTimerCol || hasAddDateCol) {
     for (const row of parsedRows) {
       if (row.type !== 'Area' && row.type !== 'Category') continue;
       const xlTpl = row.commentTpl === '_' ? null : (row.commentTpl || null);
@@ -821,6 +831,32 @@ export async function importStructureExcel(
           const xlSavePlus = row.disableSavePlus.toUpperCase() === 'TRUE';
           if ((existingArea?.settings?.disable_save_plus ?? false) !== xlSavePlus) {
             newSettings.disable_save_plus = xlSavePlus || undefined;
+            dirty = true;
+          }
+        }
+
+        // Add Activity header (S117). An EMPTY cell means "no opinion" and is
+        // left alone; only TRUE/FALSE state something. That is why these are
+        // read as three states, not as a boolean like DisableSavePlus above —
+        // there, blank legitimately means FALSE.
+        if (hasAddTimerCol || hasAddDateCol) {
+          const tri = (raw: string): boolean | undefined => {
+            const v = raw.trim().toUpperCase();
+            return v === 'TRUE' ? true : v === 'FALSE' ? false : undefined;
+          };
+          const prev = existingArea?.settings?.add_header;
+          const next = { ...(prev ?? {}) };
+          if (hasAddTimerCol) {
+            const t = tri(row.addTimer);
+            if (t === undefined) delete next.timer; else next.timer = t;
+          }
+          if (hasAddDateCol) {
+            const d = tri(row.addDate);
+            if (d === undefined) delete next.date; else next.date = d;
+          }
+          const cleaned = Object.keys(next).length > 0 ? next : undefined;
+          if (JSON.stringify(prev ?? null) !== JSON.stringify(cleaned ?? null)) {
+            newSettings.add_header = cleaned;
             dirty = true;
           }
         }

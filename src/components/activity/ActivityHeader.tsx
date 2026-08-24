@@ -28,6 +28,16 @@ function formatDateYMD(date: Date): string {
   return `${y}/${m}/${d}`;
 }
 
+/** `YYYY-MM-DD` for `<input type="date">`, in LOCAL time.
+ *  `toISOString()` would answer in UTC, so an evening entry east of Greenwich
+ *  shows tomorrow's day in the picker while the row is stored as today. */
+function toDateInputValue(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 /** Format time as HH:MM */
 function formatTimeHM(date: Date): string {
   return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
@@ -71,6 +81,9 @@ interface ActivityHeaderProps {
   // Edit mode: editable date/time
   dateTime?: Date;
   onDateTimeChange?: (date: Date) => void;
+  /** Add mode: show the SESSION/LAP stopwatch. Default true — an Area that has
+   *  said nothing keeps today's header. */
+  showTimer?: boolean;
   totalDuration?: number;
 
   /** Navigate to View Details mode (Edit mode only) */
@@ -105,6 +118,7 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
       lapElapsed = 0,
       dateTime,
       onDateTimeChange,
+      showTimer = true,
       totalDuration,
       onCancel,
       onSave,
@@ -145,19 +159,52 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
         {/* Row 2: Timers (Add) or Date/Duration (Edit) */}
         <div className="px-4 py-2 bg-black/10">
           {isAddMode ? (
+            /* Two independent slots, both optional. The stopwatch measures the
+               screen being open; the date says which day the entry belongs to.
+               They were one thing until S117, which is why a back-dated entry
+               needed a second screen (Add, then immediately Edit). */
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <span className="text-white/70 text-xs">SESSION</span>
-                <span className="font-mono text-xl font-bold text-white">
-                  {formatTimer(sessionElapsed)}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-amber-200/70 text-xs">LAP</span>
-                <span className="font-mono text-lg font-semibold text-amber-200">
-                  {formatTimer(lapElapsed)}
-                </span>
-              </div>
+              {showTimer && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/70 text-xs">SESSION</span>
+                    <span className="font-mono text-xl font-bold text-white">
+                      {formatTimer(sessionElapsed)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-200/70 text-xs">LAP</span>
+                    <span className="font-mono text-lg font-semibold text-amber-200">
+                      {formatTimer(lapElapsed)}
+                    </span>
+                  </div>
+                </>
+              )}
+              {dateTime && onDateTimeChange && (
+                /* Date only — no time input. The minute is bookkeeping the app
+                   owes itself (one activity per category per minute), never a
+                   decision to hand the person entering a receipt. */
+                <div className="flex items-center gap-2">
+                  <span className="text-white/70 text-xs">📅</span>
+                  <span className="text-white font-medium text-sm tabular-nums">
+                    {formatDateYMD(dateTime)}
+                  </span>
+                  <input
+                    type="date"
+                    lang="sv"
+                    value={toDateInputValue(dateTime)}
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      const [year, month, day] = e.target.value.split('-').map(Number);
+                      const next = new Date(dateTime);
+                      next.setFullYear(year, month - 1, day);
+                      onDateTimeChange(next);
+                    }}
+                    className="bg-white/20 text-white border-0 rounded px-1 py-1 text-sm focus:ring-2 focus:ring-white/50 opacity-60 hover:opacity-100 focus:opacity-100 cursor-pointer"
+                    title="Dan na koji se zapis odnosi"
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-between">

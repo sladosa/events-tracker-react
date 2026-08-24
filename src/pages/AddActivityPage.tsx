@@ -227,6 +227,53 @@ async function persistPendingOptions(
 // Main Component
 // ============================================
 
+/** `event_date` for a moment, in LOCAL time.
+ *
+ *  ⚠ This used to be `toISOString().split('T')[0]`, i.e. the UTC day. With the
+ *  date picker (S117) that is no longer merely subtle but wrong: the picker
+ *  shows a local day, so a UTC-derived `event_date` could store the day BEFORE
+ *  the one the person selected. The stored `session_start` stays UTC as always. */
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** First free minute at or after `desired`, for this user + category + day.
+ *
+ *  One query, then a scan in memory — the day's rows for a single category are
+ *  few. Gives up after an hour of candidates rather than looping: a category
+ *  with sixty entries in one hour is a different problem, and a silent infinite
+ *  retry would hide it. */
+async function findFreeSessionStart(
+  userId: string, categoryId: string, desired: Date, eventDate: string,
+): Promise<string> {
+  const dayStart = new Date(`${eventDate}T00:00:00`);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  const { data } = await supabase
+    .from('events')
+    .select('session_start')
+    .eq('user_id', userId)
+    .eq('category_id', categoryId)
+    .gte('session_start', dayStart.toISOString())
+    .lt('session_start', dayEnd.toISOString());
+
+  // Compare as instants, not as strings: the DB answers "+00:00" while JS
+  // produces ".000Z" for the very same moment (CLAUDE.md, session_start format).
+  const taken = new Set((data ?? []).map(r => new Date(r.session_start as string).getTime()));
+
+  const candidate = new Date(desired);
+  candidate.setSeconds(0, 0);
+  for (let i = 0; i < 60; i++) {
+    if (!taken.has(candidate.getTime())) return candidate.toISOString();
+    candidate.setMinutes(candidate.getMinutes() + 1);
+  }
+  return candidate.toISOString();
+}
+
 export function AddActivityPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -357,6 +404,24 @@ export function AddActivityPage() {
     resetLap,
     endSession,
   } = useSessionTimer();
+
+  // ────────────────────────────────────────────────────────────
+  // TWO ROLES, TWO VARIABLES (S117)
+  //   `sessionStart` is when this SCREEN opened — it drives the stopwatch and
+  //   must never move, or SESSION/LAP start counting in days.
+  //   `eventAt` is the moment the entry BELONGS TO — what gets written to
+  //   `event_date` / `session_start`. It starts as `sessionStart` and only
+  //   moves if the Area's header offers a date picker.
+  //   Until S117 these were one variable, which is exactly why a back-dated
+  //   entry needed a second screen: save now, then immediately Edit the date.
+  // ────────────────────────────────────────────────────────────
+  const [eventAt, setEventAt] = useState<Date>(sessionStart);
+
+  /** Header config for this Area. Absence = today's header, same rule as
+   *  `list_columns`: a missing config is the default, not an empty one. */
+  const addHeader = selectedArea?.settings?.add_header;
+  const showTimer = addHeader?.timer !== false;
+  const showDatePicker = addHeader?.date === true;
   
   // ============================================
   // Check for Draft on Mount
@@ -472,13 +537,13 @@ export function AddActivityPage() {
       areaId,
       categoryId,
       categoryPath,
-      sessionStart,
+      eventAt,
       pendingEvents,
       attrs,
       eventNote,
       currentPhotos
     );
-  }, [areaId, categoryId, categoryPath, sessionStart, pendingEvents, attributeValues, eventNote, currentPhotos, isInitialized]);
+  }, [areaId, categoryId, categoryPath, eventAt, pendingEvents, attributeValues, eventNote, currentPhotos, isInitialized]);
   
   // Setup auto-save when initialized
   useEffect(() => {
@@ -675,7 +740,7 @@ export function AddActivityPage() {
       const computed = computeSetAttributeValue(
         rule,
         mapVal == null ? null : String(mapVal),
-        sessionStart,
+        eventAt,
       );
       if (computed === null) continue; // map vrijednost bez pravila → ne diraj
 
@@ -692,7 +757,7 @@ export function AddActivityPage() {
         return next;
       });
     }
-  }, [attributeValues, selectedArea, allAttrDefs, sessionStart]);
+  }, [attributeValues, selectedArea, allAttrDefs, eventAt]);
 
   const resolveEventNote = useCallback((
     userNote: string,
@@ -975,9 +1040,27 @@ export function AddActivityPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       
-      const eventDate = sessionStart.toISOString().split('T')[0];
-      const sessionStartIso = sessionStart.toISOString();
-      
+      const eventDate = toLocalDateStr(eventAt);
+
+      // ⚠ BACK-DATED ENTRIES NEED A FREE MINUTE (S117)
+      //   `useActivities` groups by user + category + session_start, so two
+      //   entries sharing a minute become ONE row in the list. Entering "now"
+      //   practically never collides; entering a past day does, because the
+      //   clock time comes along unchanged and yesterday already has rows at
+      //   that minute.
+      //   ⚠ This is NOT the rule CLAUDE.md forbids. There, auto-assigning a
+      //   minute during IMPORT would destroy the collision that catches the
+      //   same file being imported twice. Here a person is typing one entry,
+      //   and two genuine transactions on one day must both be allowed.
+      //   P2 is preserved: the whole session moves together, so every leaf
+      //   event of this save still shares one `session_start`.
+      const sessionStartIso = await findFreeSessionStart(
+        user.id, categoryId!, eventAt, eventDate,
+      );
+      if (sessionStartIso !== eventAt.toISOString()) {
+        log(`session_start taken — moved to ${sessionStartIso}`);
+      }
+
       log(`Writing ${eventsToSave.length} leaf events to database`);
 
       // ============================================================
@@ -1141,7 +1224,7 @@ export function AddActivityPage() {
         const lastEvent = eventsToSave[eventsToSave.length - 1];
         const info = detectRata(lastEvent.attributes, allDefs, rataConfig);
         if (info) {
-          info.chargeDates = generateRataChargeDates(sessionStart, info.count, info.dateMapValue, rataConfig);
+          info.chargeDates = generateRataChargeDates(eventAt, info.count, info.dateMapValue, rataConfig);
           // Use event note as comment; fall back to comment_attr_slug attr value if note is empty
           let rataComment = lastEvent.note ?? null;
           if (!rataComment && rataConfig.comment_attr_slug) {
@@ -1580,6 +1663,9 @@ export function AddActivityPage() {
         onSave={handleFinish}
         onSaveContinue={handleSaveContinue}
         disableSavePlus={disableSavePlus}
+        showTimer={showTimer}
+        dateTime={showDatePicker ? eventAt : undefined}
+        onDateTimeChange={showDatePicker ? setEventAt : undefined}
         canSave={canFinish}
         saving={saving}
         pendingEventCount={pendingEvents.length}

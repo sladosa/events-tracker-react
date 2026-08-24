@@ -169,6 +169,22 @@ export interface AreaSettings {
   dashboard?: DashboardConfig;
   /** Activities list columns for this Area (Backlog — kolone po Arei). */
   list_columns?: ListColumnsConfig;
+  /** Add Activity header for this Area. Absent = today's behaviour, exactly as
+   *  with `list_columns`: the default is a real default, not an empty object. */
+  add_header?: AddHeaderConfig;
+}
+
+/** What the Add Activity header shows.
+ *
+ *  Roles, not domain — the same shape has to make sense for any Area. The
+ *  stopwatch earns its place while an activity is being PERFORMED (a workout);
+ *  it makes none for something being RECORDED after the fact (a transaction
+ *  from three days ago), where the useful control is the date instead. */
+export interface AddHeaderConfig {
+  /** SESSION / LAP stopwatch. Default true. */
+  timer?: boolean;
+  /** Date picker, defaulting to today. Default false. */
+  date?: boolean;
 }
 
 export interface CategorySettings {
