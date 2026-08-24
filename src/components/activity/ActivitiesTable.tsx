@@ -579,7 +579,9 @@ function PairCell({ col, values }: { col: ResolvedColumn; values?: RowValues }) 
 function AttrCell({ col, values }: { col: ResolvedColumn; values?: RowValues }) {
   const parts = (col.slugs ?? []).map(sl => values?.text.get(sl)).filter((v): v is string => !!v);
   if (parts.length === 0) return <span className="text-gray-400 italic">—</span>;
-  const txt = parts.join(col.sep ?? ' / ');
+  // Default is tight on purpose: `Sep` survives the Structure roundtrip only
+  // if trimming cannot change it (structureImport trims every config cell).
+  const txt = parts.join(col.sep ?? '/');
   return <span className="text-gray-700 truncate block" title={txt}>{txt}</span>;
 }
 

@@ -192,6 +192,18 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
   };
 }
 
+/** The slug that will actually be written.
+ *
+ *  ⚠ Normalise ONLY when the user really changed it. Unconditional normalising
+ *  silently stripped dashes from legacy slugs ("strength-type" → "strengthtype")
+ *  on every panel Save — a plain category rename included — while the reference
+ *  fixup was skipped, because from the panel's point of view nothing changed
+ *  (S105c). Falls back to the original when normalising leaves nothing. */
+function normalizeSlug(slug: string, originalSlug: string): string {
+  if (slug === originalSlug) return originalSlug;
+  return slug.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || originalSlug;
+}
+
 /** Reconstruct validation_rules jsonb from edit state */
 function buildValidationRules(
   state: AttrEditState,
@@ -1082,7 +1094,27 @@ export function StructureNodeEditPanel({
       }
 
       // 2. Update existing + INSERT new attribute definitions
-      for (const attr of attrStates) {
+      //
+      // ⚠ RENAMES ARE RESOLVED BEFORE THE LOOP, NOT INSIDE IT (S116).
+      //   The loop writes `buildValidationRules(attr)` for EVERY attribute of
+      //   this node, built from panel state. A depends_on fixup applied inside
+      //   the loop was therefore undone a few rows later, as soon as the loop
+      //   reached the dependent attribute and wrote the old slug back over it.
+      //   Whether it survived came down to `sort_order` — Tip(6) before
+      //   Podtip(7) broke, the reverse would have passed. Carrying the new slug
+      //   into panel state up front means the loop writes it correctly the
+      //   first time, and there is nothing left to clobber.
+      const renames = attrStates
+        .filter(a => !a.isNew && a.slug !== a.originalSlug)
+        .map(a => ({ from: a.originalSlug, to: normalizeSlug(a.slug, a.originalSlug) }))
+        .filter(r => r.from !== r.to);
+
+      const writeStates = renames.length === 0 ? attrStates : attrStates.map(a => {
+        const r = renames.find(r => r.from === a.dependsOnSlug);
+        return r ? { ...a, dependsOnSlug: r.to } : a;
+      });
+
+      for (const attr of writeStates) {
         const newRules = buildValidationRules(attr);
 
         if (attr.isNew) {
@@ -1104,14 +1136,8 @@ export function StructureNodeEditPanel({
             });
           if (error) throw error;
         } else {
-          // KRITIČNO: slug se normalizira SAMO ako ga je korisnik stvarno mijenjao.
-          // Bezuvjetna normalizacija je tiho brisala crtice iz legacy slugova
-          // ("strength-type" → "strengthtype") pri svakom Save-u panela (i običan
-          // rename kategorije!), a fixup referenci se preskakao jer korisnik slug
-          // nije dirao → depends_on ostane pokazivati na nepostojeći slug (S105c bug).
-          const newSlug = attr.slug !== attr.originalSlug
-            ? (attr.slug.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || attr.originalSlug)
-            : attr.originalSlug;
+          // Same rule as `renames` above — see normalizeSlug for the S105c trap.
+          const newSlug = normalizeSlug(attr.slug, attr.originalSlug);
           const slugChanged = newSlug !== attr.originalSlug;
           const { error } = await supabase
             .from('attribute_definitions')
@@ -1153,9 +1179,13 @@ export function StructureNodeEditPanel({
               toast.error(`Attribute renamed, but the Overview or list-column config still points at "${attr.originalSlug}" — fix it before using the tab.`, { duration: 8000 });
             }
 
+            // Only OTHER nodes: this node's dependents are written by the loop
+            // above, from `writeStates`, which already carries the new slug.
+            // Patching them here would spread the STALE snapshot in `allNodes`
+            // back over whatever else the user edited in the same save.
             for (const n of allNodes) {
               for (const ad of n.attributeDefinitions) {
-                if (ad.id === attr.id) continue;
+                if (attrStates.some(a => a.id === ad.id)) continue;
                 const parsed = parseValidationRules(ad.validation_rules);
                 if (parsed.dependsOn?.attributeSlug === attr.originalSlug) {
                   const updatedRules = {

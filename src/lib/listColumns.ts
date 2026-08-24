@@ -90,7 +90,7 @@ export function resolveColumns(config: ListColumnsConfig | null | undefined): Re
     seen.set(c.role, n);
     return {
       ...c,
-      label: c.label ?? (c.role === 'attr' ? (c.slugs ?? []).join(c.sep ?? ' / ') : d.label),
+      label: c.label ?? (c.role === 'attr' ? (c.slugs ?? []).join(c.sep ?? '/') : d.label),
       align: c.align ?? d.align,
       mobile: c.mobile ?? d.mobile,
       width: c.width ?? d.width,

@@ -64,22 +64,22 @@ stvorio fantomski račun). Sašina odluka, ~30 min.
 
 Puni koraci: [S116_tests.md](tests/S116_tests.md).
 
-| Test | Što | Status |
-| --- | --- | --- |
-| T-S116-1 | ⭐ Financije lista: `Datum \| Iznos \| Tip / Podtip \| Opis \| Stanje`; prazan iznos je `—`, nikad `0,00`; redak s obje strane pokazuje obje | ⬜ |
-| T-S116-2 | Generička Area **netaknuta** — točno kao prije S116 | ⬜ |
-| T-S116-3 | Uski ekran: dva reda, iznos desno uz rub, `Stanje` skriven | ⬜ |
-| T-S116-4 | ⭐ **Roundtrip** — `ListColumns` sheet: izmjena `Label` preživi export→import; prazan popis vraća zadano | ⬜ |
-| T-S116-5 | Rename sluga `tip` povlači fixup kolona (prazna kolona zbog mrtve reference izgleda isto kao prazna zbog nedostatka podatka) | ⬜ |
-| T-S116-6 | ⭐ Sidro ZABA stoji na **30.07.**, ono s 22.08. obrisano | ✅ 23.08. |
-| T-S116-7 | ⭐ Uvoz kolovoza ZABA (14 redaka) → **`13.239,31` @ 13.08.** ⚠ traži i MC naplatu `1.332,52` s `MC_2026-07.pdf` | ⬜ |
-| T-S116-8 | Uvoz kolovoza RF (1 redak) → **`796,43`** | ⬜ |
-| T-S116-9 | Alat stane kad delta sheet nije za traženi račun (regresija) | ⬜ |
-| T-S116-10 | ⭐ **Datum potvrde iz IZVORA, ne iz klika** | ⚠ **djelomično** 23.08. — put „ekran" viđen i radi; **put „izvod" (prazno polje za datum, ugašen gumb, budući datum) NIJE proban** |
-| T-S116-11 | Rečenica o posljedici prije klika | ⚠ **djelomično** — okvir s računicom za „ekran" viđen (`799,12 + 0,00 = 799,12 na 22.08.`); rečenica za **papirnate izvore** nije viđena |
-| T-S116-12 | ⭐ Upozorenje kad **novija** potvrda već postoji (ispravak unatrag ne ispravlja ništa) | ⬜ |
-| T-S116-13 | ⭐ „povijest potvrda" + brisanje iz aplikacije; ▸ označava važeću | ✅ 23.08. (⚠ **korak 3 — grantee bez ✕ — NIJE proban**) |
-| T-S116-14 | ⭐⭐ **Očitanje s ekrana sidri se na JUČER** ⇒ današnja transakcija ostaje u saldu | ✅ **A, B, C** 23.08. · ⬜ D (prošli filtar), E (granica) |
+| Test      | Što                                                                                                                                         | Status                                                                                                                                   |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| T-S116-1  | ⭐ Financije lista: `Datum \| Iznos \| Tip / Podtip \| Opis \| Stanje`; prazan iznos je `—`, nikad `0,00`; redak s obje strane pokazuje obje | ✅ 24.08. — sva 4 uvjeta `Stanje` kolone pokazana (pojava s filtrom po računu, hod, predznaci, rez na sidru)                                                                                                                                        |
+| T-S116-2  | Generička Area **netaknuta** — točno kao prije S116                                                                                         | ✅ 24.08. — Health_Sasa: `DEFAULT_COLUMNS` doslovno, `balance` skriven jer nema `dashboard`                                                                                                                                        |
+| T-S116-3  | Uski ekran: dva reda, iznos desno uz rub, `Stanje` skriven                                                                                  | ✅ 24.08.                                                                                                                                        |
+| T-S116-4  | ⭐ **Roundtrip** — `ListColumns` sheet: izmjena `Label` preživi export→import; prazan popis vraća zadano                                     | ✅ 24.08. — oba smjera; usput nalaz: `Sep` nije preživio trim (popravljeno)                                                                                                                                        |
+| T-S116-5  | Rename sluga `tip` povlači fixup kolona (prazna kolona zbog mrtve reference izgleda isto kao prazna zbog nedostatka podatka)                | ✅ 24.08. — **pao iz prve**: `depends_on` fixup je bio prepisan istim Save-om (popravljeno), kolone su prošle                                                                                                                                        |
+| T-S116-6  | ⭐ Sidro ZABA stoji na **30.07.**, ono s 22.08. obrisano                                                                                     | ✅ 23.08.                                                                                                                                 |
+| T-S116-7  | ⭐ Uvoz kolovoza ZABA (14 redaka) → **`13.239,31` @ 13.08.** ⚠ traži i MC naplatu `1.332,52` s `MC_2026-07.pdf`                              | ⬜                                                                                                                                        |
+| T-S116-8  | Uvoz kolovoza RF (1 redak) → **`796,43`**                                                                                                   | ⬜                                                                                                                                        |
+| T-S116-9  | Alat stane kad delta sheet nije za traženi račun (regresija)                                                                                | ⬜                                                                                                                                        |
+| T-S116-10 | ⭐ **Datum potvrde iz IZVORA, ne iz klika**                                                                                                  | ⚠ **djelomično** 23.08. — put „ekran" viđen i radi; **put „izvod" (prazno polje za datum, ugašen gumb, budući datum) NIJE proban**       |
+| T-S116-11 | Rečenica o posljedici prije klika                                                                                                           | ⚠ **djelomično** — okvir s računicom za „ekran" viđen (`799,12 + 0,00 = 799,12 na 22.08.`); rečenica za **papirnate izvore** nije viđena |
+| T-S116-12 | ⭐ Upozorenje kad **novija** potvrda već postoji (ispravak unatrag ne ispravlja ništa)                                                       | ⬜                                                                                                                                        |
+| T-S116-13 | ⭐ „povijest potvrda" + brisanje iz aplikacije; ▸ označava važeću                                                                            | ✅ 23.08. (⚠ **korak 3 — grantee bez ✕ — NIJE proban**)                                                                                   |
+| T-S116-14 | ⭐⭐ **Očitanje s ekrana sidri se na JUČER** ⇒ današnja transakcija ostaje u saldu                                                            | ✅ **A, B, C** 23.08. · ⬜ D (prošli filtar), E (granica)                                                                                  |
 
 **Brojke izmjerene u S116** (sve provjerene, ne procijenjene):
 

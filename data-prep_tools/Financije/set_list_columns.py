@@ -39,8 +39,8 @@ COLUMNS = [
     # Tip i Podtip su JEDNA kolona — dvije bi na uskom ekranu pojele Opis.
     {'role': 'pair', 'label': 'Iznos', 'plus': 'uplata', 'minus': 'isplata',
      'unit': '€', 'width': 'w-36', 'mobile': 'line1'},
-    {'role': 'attr', 'label': 'Tip / Podtip', 'slugs': ['tip', 'podtip'],
-     'sep': ' / ', 'mobile': 'line2'},
+    {'role': 'attr', 'label': 'Tip/Podtip', 'slugs': ['tip', 'podtip'],
+     'sep': '/', 'mobile': 'line2'},
     {'role': 'comment', 'label': 'Opis', 'mobile': 'line2'},
     {'role': 'user', 'mobile': 'line1'},
     {'role': 'balance', 'label': 'Stanje', 'unit': '€', 'width': 'w-28', 'mobile': 'hide'},
