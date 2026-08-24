@@ -77,6 +77,10 @@ interface AttrEditState {
   // true for newly added attrs not yet persisted (INSERT on Save)
   isNew?:     boolean;
   isRequired?: boolean; // only used for new attrs; maps to is_required column
+  /** Keep the field out of the Add/Edit form (S117). Lives in
+   *  `validation_rules.hidden_in_add` — no migration, and it sits beside
+   *  the other per-attribute config the app already reads from there. */
+  hiddenInAdd: boolean;
 }
 
 interface NewAttrFormState {
@@ -189,6 +193,7 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
     dependsOnMap,
     originalRules: attr.validation_rules,
     defaultValue: attr.default_value ?? '',
+    hiddenInAdd: parsed.hiddenInAdd,
   };
 }
 
@@ -206,6 +211,16 @@ function normalizeSlug(slug: string, originalSlug: string): string {
 
 /** Reconstruct validation_rules jsonb from edit state */
 function buildValidationRules(
+  state: AttrEditState,
+): Record<string, unknown> {
+  const rules = buildTypeRules(state);
+  // Orthogonal to validation, so it is attached after the type branches rather
+  // than repeated inside each of them.
+  if (state.hiddenInAdd) rules.hidden_in_add = true;
+  return rules;
+}
+
+function buildTypeRules(
   state: AttrEditState,
 ): Record<string, unknown> {
   if (state.validationType === 'depends_on') {
@@ -517,6 +532,7 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
       defaultValue:  newForm.defaultValue.trim(),
       isNew:         true,
       isRequired:    newForm.required,
+      hiddenInAdd:   false,
     };
     onChange([...attrs, newAttrState]);
     setNewForm({ name: '', dataType: 'text', unit: '', required: false, defaultValue: '' });
@@ -749,6 +765,38 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
               )}
             </div>
           )}
+
+          {/* Hide in Add/Edit form. Sits next to Default deliberately: the two
+              are the only ways to get a field off the screen, and they answer
+              different cases — Default hides a field that HAS a value, this one
+              hides a field whose correct value is empty. */}
+          <div className="mb-3">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={attr.hiddenInAdd}
+                onChange={e => update(i, { hiddenInAdd: e.target.checked })}
+                className="mt-0.5"
+              />
+              <span className="text-xs text-gray-600">
+                <span className="font-medium">Sakrij u Add/Edit formi</span>
+                <span className="block text-gray-400">
+                  Polje se ne prikazuje pri unosu. „Show all" ga i dalje otkrije —
+                  ovo je urednost, ne zaključavanje.
+                </span>
+              </span>
+            </label>
+            {attr.hiddenInAdd
+              && attrs.some((o: AttrEditState) => o.id !== attr.id && o.dependsOnSlug === attr.slug) && (
+              /* The risk runs the other way round from what it looks like: what
+                 breaks is hiding a PARENT, because its dependants then have no
+                 way to be given a value. */
+              <p className="mt-1 text-xs text-amber-600">
+                ⚠ O ovom atributu ovisi drugi dropdown. Skriven, njegova vrijednost se pri
+                unosu više ne može postaviti, pa ovisno polje ostaje prazno („Select … first").
+              </p>
+            )}
+          </div>
 
           {/* Slug — editable (safe: events link by UUID, not slug) */}
           {!attr.isNew && (

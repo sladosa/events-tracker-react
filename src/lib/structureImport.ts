@@ -81,6 +81,7 @@ interface ParsedRow {
   slug:         string;
   attrType:     string;
   isRequired:   boolean;
+  hiddenInAdd:  boolean;
   valType:      string; // 'suggest' | 'none'
   defaultVal:   string;
   valMax:       string;
@@ -102,6 +103,7 @@ interface AttrGroup {
   slug:         string;
   attrType:     string;
   isRequired:   boolean;
+  hiddenInAdd:  boolean;
   valType:      string;
   defaultVal:   string;
   valMax:       string;
@@ -199,6 +201,7 @@ interface HeaderInfo {
   colWhenValue:   number;
   colDescription: number;
   colCommentTpl:  number;
+  colHiddenInAdd: number;
   colDisableSavePlus: number;
   colAddTimer: number;
   colAddDate: number;
@@ -248,6 +251,7 @@ function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
       colWhenValue:    findCol('whenvalue'),
       colDescription:  findCol('description'),
       colCommentTpl:   findCol('commenttemplate'),
+      colHiddenInAdd: findCol('hiddeninadd'),
       colDisableSavePlus: findCol('disablesaveplus'),
       colAddTimer: findCol('addtimer'),
       colAddDate: findCol('adddatepicker'),
@@ -285,6 +289,7 @@ function parseRows(ws: ExcelJS.Worksheet, h: HeaderInfo): ParsedRow[] {
       slug:         get(h.colSlug),
       attrType:     get(h.colAttrType) || 'text',
       isRequired:   get(h.colIsRequired).toUpperCase() === 'TRUE',
+      hiddenInAdd:  get(h.colHiddenInAdd).toUpperCase() === 'TRUE',
       valType:      get(h.colValType) || 'none',
       defaultVal:   get(h.colDefault),
       valMax:       get(h.colValMax),
@@ -325,6 +330,7 @@ function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
         slug:         row.slug,
         attrType:     row.attrType,
         isRequired:   row.isRequired,
+        hiddenInAdd:  row.hiddenInAdd,
         valType:      row.valType,
         defaultVal:   row.defaultVal,
         valMax:       row.valMax,
@@ -366,6 +372,15 @@ function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
 // ─────────────────────────────────────────────────────────────
 
 function buildValidationRules(
+  group: AttrGroup,
+): Record<string, unknown> {
+  const rules = buildTypeRules(group);
+  // Orthogonal to validation: attached after, so it survives every branch above.
+  if (group.hiddenInAdd) rules.hidden_in_add = true;
+  return rules;
+}
+
+function buildTypeRules(
   group: AttrGroup,
 ): Record<string, unknown> {
   if (group.dependsOn) {

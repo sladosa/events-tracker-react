@@ -221,10 +221,24 @@ export function AttributeChainForm({
     return currentStr === attr.default_value;
   }, [showAllDefaults, userEditedIds, requiredParentSlugs, values, normalizeSlug]);
 
+  // Explicitly hidden for this Area (S117). Independent of hide-at-default,
+  // which needs a value to compare against and so cannot touch a field whose
+  // correct state is empty. "Show all" reveals these too — the flag is
+  // tidiness, not a lock, and a stranded depends_on parent must stay reachable.
+  const isHiddenExplicitly = useCallback((attr: AttributeDefinition): boolean => {
+    if (showAllDefaults) return false;
+    return parseValidationRules(attr.validation_rules).hiddenInAdd;
+  }, [showAllDefaults]);
+
+  /** Any reason this attribute is not on screen right now. */
+  const isHidden = useCallback((attr: AttributeDefinition): boolean =>
+    isDependencyHidden(attr) || isHiddenByDefault(attr) || isHiddenExplicitly(attr),
+  [isDependencyHidden, isHiddenByDefault, isHiddenExplicitly]);
+
   // Count attributes currently hidden because they match their default value
   const hiddenByDefaultCount = useMemo(
-    () => allAttributes.filter(isHiddenByDefault).length,
-    [allAttributes, isHiddenByDefault]
+    () => allAttributes.filter(a => isHiddenByDefault(a) || isHiddenExplicitly(a)).length,
+    [allAttributes, isHiddenByDefault, isHiddenExplicitly]
   );
 
   // Render attributes for a single category
@@ -239,10 +253,10 @@ export function AttributeChainForm({
 
     // All attributes hidden (defaults / dependency) → say so instead of rendering
     // an empty box that looks like the category "won't open"
-    if (attributes.every(a => isDependencyHidden(a) || isHiddenByDefault(a))) {
+    if (attributes.every(isHidden)) {
       return (
         <p className="text-sm text-gray-400 italic">
-          All fields hidden (at default values) — use "Show all" below
+          All fields hidden — use "Show all" below
         </p>
       );
     }
@@ -289,7 +303,7 @@ export function AttributeChainForm({
         ?? null;
     }
 
-    if (isDependencyHidden(attr) || isHiddenByDefault(attr)) return null;
+    if (isHidden(attr)) return null;
 
     return (
       <AttributeInput
@@ -398,7 +412,7 @@ export function AttributeChainForm({
         >
           <span className="text-gray-400">▸</span>
           <span>
-            {hiddenByDefaultCount} {hiddenByDefaultCount === 1 ? 'field' : 'fields'} hidden (at default)
+            {hiddenByDefaultCount} {hiddenByDefaultCount === 1 ? 'field' : 'fields'} hidden
           </span>
           <span className="ml-auto text-blue-500 font-medium">Show all</span>
         </button>
@@ -410,7 +424,7 @@ export function AttributeChainForm({
           className="w-full text-left px-3 py-2 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg border border-dashed border-gray-200 transition-colors flex items-center gap-1.5"
         >
           <span>▴</span>
-          <span>Hide fields at default</span>
+          <span>Hide again</span>
         </button>
       )}
     </div>

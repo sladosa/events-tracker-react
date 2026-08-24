@@ -37,6 +37,7 @@
 import ExcelJS from 'exceljs';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
+import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import {
   timestampSuffix,
   formatTimestampSuffix,
@@ -86,6 +87,9 @@ const COLS = [
   { key: 'slug',        header: 'Slug',              width: 18, colColor: CLR.PINK,   grouped: true,  collapsed: true  },
   { key: 'attrType',    header: 'AttrType',          width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
   { key: 'isRequired',  header: 'IsRequired',        width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
+  // S117 — per attribute, any level (P1). Hide-at-default cannot express
+  // "correct value is empty", which is exactly the clutter worth removing.
+  { key: 'hiddenInAdd', header: 'HiddenInAdd',       width: 12, colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
   { key: 'valType',     header: 'Val.Type',          width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
   { key: 'defaultVal',  header: 'Default',           width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
   { key: 'valMax',      header: 'Val.Max (no)',       width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
@@ -141,6 +145,7 @@ interface DataRow {
   slug:         string;
   attrType:     string;
   isRequired:   string; // TRUE | FALSE | ''
+  hiddenInAdd:  string; // TRUE | FALSE | '' (attribute rows only)
   valType:      string; // suggest | none | ''
   defaultVal:   string;
   valMax:       string;
@@ -216,7 +221,7 @@ function buildAreaRow(node: StructureNode, sharedWith: string): DataRow {
     sharedWith,
     categoryPath: node.name,
     sort: node.sortOrder,
-    attrName: '', slug: '', attrType: '', isRequired: '',
+    attrName: '', slug: '', attrType: '', isRequired: '', hiddenInAdd: '',
     valType: '', defaultVal: '', valMax: '', unit: '',
     textOptions: '', dependsOn: '', whenValue: '',
     description: node.description ?? '',
@@ -240,7 +245,7 @@ function buildCategoryRow(node: StructureNode): DataRow {
     sharedWith: '',
     categoryPath: node.fullPath,
     sort: node.sortOrder,
-    attrName: '', slug: '', attrType: '', isRequired: '',
+    attrName: '', slug: '', attrType: '', isRequired: '', hiddenInAdd: '',
     valType: '', defaultVal: '', valMax: '', unit: '',
     textOptions: '', dependsOn: '', whenValue: '',
     description: node.description ?? '',
@@ -266,6 +271,7 @@ function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[
     slug: attr.slug,
     attrType: attr.data_type,
     isRequired: attr.is_required ? 'TRUE' : 'FALSE',
+    hiddenInAdd: parseValidationRules(attr.validation_rules).hiddenInAdd ? 'TRUE' : 'FALSE',
     valType: getValType(attr),
     defaultVal: attr.default_value ?? '',
     valMax: rules?.max != null ? String(rules.max) : '',
@@ -615,6 +621,7 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: 'O  TextOptions/Val.Min', value: 'For suggest: pipe-separated options e.g. "Low|Medium|High".  For number: minimum value.' },
     { kind: 'row', label: 'P  DependsOn',         value: 'Slug of the parent attribute that controls this dropdown.  Must be in the same category.' },
     { kind: 'row', label: 'Q  WhenValue',         value: 'Value of parent attribute for this row\'s options.  Use "*" as fallback for unlisted parent values.' },
+    { kind: 'row', label: 'J2 HiddenInAdd',       value: 'Attribute rows only.  TRUE keeps the field out of the Add/Edit form; "Show all" still reveals it.  Use for fields whose correct value is EMPTY (a statement-only field, a deprecated attribute) — those are the ones a Default cannot hide.  Blank = FALSE.' },
     { kind: 'row', label: 'R  Description',       value: 'Optional documentation notes.' },
     { kind: 'row', label: 'S  CommentTemplate',   value: 'Auto-comment template for Area or leaf Category.  Use {slug} to insert attribute values into event comment on Finish.  Leaf overrides Area.  Example: {napomena} ({tip})' },
     { kind: 'row', label: 'T  DisableSavePlus',    value: 'Area rows only.  TRUE hides the "Save +" button in Add Activity (one event per session — e.g. Financije, Health).  Blank = FALSE.  Column absent from the file = setting left unchanged.' },

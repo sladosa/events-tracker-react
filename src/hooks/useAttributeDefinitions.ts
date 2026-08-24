@@ -83,6 +83,14 @@ export interface ParsedAttributeOptions {
     optionsMap: Record<string, string[]>;
     defaultMap?: Record<string, string>;
   };
+  /** Keep this field out of the Add/Edit form for this Area (S117).
+   *
+   *  Distinct from hide-at-default, which can only hide a field that HAS a
+   *  sensible value. The fields that actually clutter the form are the ones
+   *  whose correct value is EMPTY — `Izvod opis` outside a statement import,
+   *  a deprecated attribute kept for history. No default can express that.
+   *  "Show all" still reveals them: hidden is tidiness, not a lock. */
+  hiddenInAdd: boolean;
 }
 
 export function parseValidationRules(
@@ -92,6 +100,7 @@ export function parseValidationRules(
     type: 'none',
     options: [],
     allowOther: true,
+    hiddenInAdd: false,
   };
 
   if (!validationRules) return result;
@@ -110,6 +119,10 @@ export function parseValidationRules(
   } else {
     return result;
   }
+
+  // Read before any of the type branches below, and before their early
+  // returns — this flag is orthogonal to how the field validates.
+  result.hiddenInAdd = rules.hidden_in_add === true;
 
   // Check for type field (from V3 export)
   if ('type' in rules) {
