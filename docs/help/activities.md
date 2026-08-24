@@ -7,6 +7,27 @@
 4. Ispuni atribute, klikni Save
 5. Gumb "💾 Save as Shortcut" ispod atributa sprema trenutne vrijednosti kao shortcut default — vidi sekciju **Shortcuts** niže
 
+**Zaglavlje Add Activity ovisi o Arei:**
+- Zadano zaglavlje pokazuje štopericu `SESSION` / `LAP` — korisna je dok se aktivnost
+  *izvodi* dok je ekran otvoren (trening).
+- Area može umjesto toga tražiti **birač datuma** (zadano: današnji dan). To ima smisla
+  kad se zapis *bilježi naknadno* — transakcija od prije tri dana. Tada unos za prošli
+  dan traje **jedan** ekran; prije je trebalo spremiti pa odmah urediti datum.
+- Postavlja se u Structure Excelu, na retku Aree: kolone `AddTimer` i `AddDatePicker`.
+- Promjena datuma **povlači automatike** koje ovise o njemu (npr. `Datum naplate`),
+  osim ako si to polje već upisao rukom — ručni unos se ne pregazi.
+
+**Ako ne znaš točan iznos — upiši približno i označi tildom:**
+- Stavi `~` na **početak** opisa: `~ gorivo, Ina Heinzlova`. Na početku je zato što
+  lista reže dugačak opis, pa bi tilda na kraju nestala baš tamo gdje je trebaš vidjeti.
+- Ispravi iznos kad vidiš bankovnu ili kartičnu aplikaciju, pa makni tildu.
+- **Ne upisuj isti trošak drugi put** kad vidiš izvod — **uredi postojeći redak**.
+  Novi redak s ispravnim iznosom ne bi se prepoznao kao isti trošak (iznosi se
+  razlikuju), pa bi ostala dva.
+- Kako naći sve takve retke odjednom: **Filter panel → `Filter by` = `Comment` →
+  upiši `~`**. Lista pokaže samo retke s tildom, uz chip `comment: "~" ×`. Tilda je
+  običan znak u pretrazi, ne poseban.
+
 **Vidljivost polja u formi:**
 - Polja čija vrijednost odgovara `default_value` automatski se skrivaju pri otvaranju.
   Broj skrivenih polja prikazan je na dnu forme ("N fields hidden (at default)").
@@ -57,6 +78,9 @@ kupovine na rate. Prikazuje iznos po rati i **datume naplate** svake rate.
 - "Reset cat." resetira samo kategoriju, area ostaje
 - **Filter by** dropdown: odaberi "Comment" za pretragu komentara, specifični atribut za pretragu po vrijednosti atributa, ili **"In any attribute"** za pretragu po tekstu u svim atributima odjednom
 - **Comment contains** — pretražuje `comment` polje leaf eventa (case-insensitive, server-side); chip "xyz ×" u tablici kad je aktivan
+- **Pretraga po `~` (nepotvrđeni iznosi)** — upiši `~` u Comment pretragu da dobiješ sve
+  retke kojima iznos još nije potvrđen (v. **Dodavanje aktivnosti**). Radi kao i svaka
+  druga pretraga — tilda nije poseban znak.
 - **Attribute filter** — odaberi atribut, pa za suggest atribute odaberi opciju iz dropdowna; za text/number upiši tekst za pretragu (partial match)
 - **"In any attribute"** — traži tekst u svim atributima odjednom (npr. upiši "EUR" da nađeš sve evente gdje bilo koji atribut sadrži "EUR")
 

@@ -130,6 +130,37 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   Kolone su jedan uređeni popis, pa je brisanje retka jedini način da čovjek makne
   kolonu. Zaštita je na razini **sheeta**: nema sheeta ⇒ ništa se ne dira.
 
+**Unos u aplikaciji**
+
+- **Zaglavlje Add Activity je po Arei** (`areas.settings.add_header`, S117). Odsutnost =
+  današnje zaglavlje, isto pravilo kao `list_columns`. Financije: `{timer: false, date: true}`.
+  ⚠ `sessionStart` je do S117 nosio **dvije uloge** — ishodište štoperice i trenutak zapisa;
+  zato birač datuma nije mogao postojati. Sada su `sessionStart` (nepomičan) i `eventAt`
+  (promjenjiv). Tko ih ikad opet spoji, vraća „unos za jučer traži dva ekrana".
+- **`event_date` se računa LOKALNO** (`toLocalDateStr`), ne iz `toISOString()`. S biračem
+  datuma UTC dan bi navečer spremio **dan prije** onoga koji je čovjek odabrao.
+- **Unos unatrag traži slobodnu minutu.** `useActivities` grupira po
+  user+kategorija+`session_start` ⇒ dva zapisa iste minute su **jedan redak liste**. „Sada"
+  se praktički ne sudara, prošli dan da (uvezeni kolovoz sjedi na 14:00–14:13).
+  ⚠ **Ovo NIJE iznimka od zabrane automatske minute** — ona vrijedi za **import**, gdje je
+  kolizija način na koji se hvata dvostruki uvoz istog filea. Ovdje čovjek tipka jedan redak,
+  a dvije stvarne transakcije istog dana moraju proći. P2 ostaje: pomiče se **cijela sesija**.
+- **`Status` kartičnog retka je `Izvrsen`, ne `Planiran`.** Izmjereno: Visa **855/855**
+  `Izvrsen`, Racun 689/689, Mastercard 754 uz 11 `Planiran` (to su rate). Kupovina se
+  **dogodila**; `Planiran` znači „nije se dogodilo" i pločica se na to značenje oslanja.
+  Saldo se ionako ne miče — kartični redak je pot, račun tereti tek skupna naplata.
+  ⚠ Posljedica koju treba znati prije nego je netko primijeti: između kupovine i izvoda
+  **nadolazeća naplata nigdje ne postoji** (`Racun/Planiran` = 0 redaka), pa saldo pokazuje
+  „koliko imam", ne „koliko će ostati".
+- **Nesiguran iznos: `~` na POČETKU opisa** (`~ gorivo, Ina Heinzlova`). Na početku jer
+  lista reže dugačak opis. Nalazi se kroz `Filter by = Comment`, upit `~` (tilda nije
+  poseban znak u `ilike`). ⚠ Ispravak ide **Editom postojećeg retka**, nikad novim retkom:
+  dedup je `(datum, iznos)`, pa bi `55,00` i `54,35` ostala **dva** retka — isti razred kao
+  9 skoro-duplikata iz S111.
+- **`Datum naplate` se ne upisuje rukom** — `set_attribute` ga računa iz `Izvor`a
+  (`Racun`/`Cash` = isti dan, `Visa` = `next:3`, `Mastercard` = `next:11`). Ručni unos
+  `userOwned` guard više ne dira, pa ga ne diraj bez razloga.
+
 **Excel**
 
 - **`Category_Path` format:** Activities Events kol. C = **bez area name**
