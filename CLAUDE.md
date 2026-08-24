@@ -623,6 +623,17 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   ImportReport / Filter`), pa u njemu `Tip`/`Podtip` nemaju padajući izbornik. Za pipeline
   nebitno, **za Koku bitno**: izvještaj je mišljen kao mjesto gdje dorađuje uvezeno, a ondje bi
   tipkala slobodan tekst bez ijedne provjere. Fix = nositi `DropdownData` kao i običan export.
+- **BUG-S117-RULESHAPE:** panel i import **ne pišu isti oblik** `validation_rules` za
+  `depends_on` atribut. Panel: `{type, suggest: [...], allow_other: true, depends_on}`;
+  import: `{type, depends_on}`. Zato svaki Structure import nakon spremanja panela prijavi
+  **9 „attributes updated"** koji nisu promjena nego poravnanje oblika (izmjereno S117).
+  Bezopasno za ponašanje (`allow_other` je ionako zadano `true`, `suggest` je prazan), ali
+  **šum koji skriva pravu promjenu** — a taj brojač je jedini signal da je import nešto dirnuo.
+  ⚠ **Ozbiljniji dio: fallback lista se GUBI.** Panelovo polje „Default options (when no
+  WhenValue matches)" piše u top-level `suggest`, a **export ga uopće ne nosi** ⇒ prvi
+  roundtrip ga izbriše. Trenutno neopasno jer je u cijeloj bazi **0 od 12** `depends_on`
+  atributa ima nepraznu listu — dakle rupa čeka prvog korisnika, ne ruši ništa danas.
+  Fix: kolona za fallback opcije + isti graditelj pravila na obje strane.
 - **Bulk delete (checkbox) nije ograničen za grantee-a**
 - **„Import as mine" za write grantee unutar iste shared aree** nema smisla (pravi put je
   Leave Area ili re-import u novu vlastitu Areu) — flag, nije implementirano
