@@ -537,6 +537,11 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
           const src = (srcInput[key] ?? '').trim();
           const needsDate = src !== '' && dateComesFromSource(src);
           const willConfirmOn = confirmDateFor(key);
+          // `max` on the date input only constrains the picker — Chrome lets a
+          // year be typed straight past it. `confirm()` and `saveAnchor()` both
+          // refuse a future date, so nothing bad can be stored; this only stops
+          // the button from confidently offering a click it will then reject.
+          const dateInFuture = !!willConfirmOn && willConfirmOn > today;
           const groupAnchors = anchorsByGroup.get(key) ?? [];
           // ⚠ `036` bira NAJNOVIJU potvrdu s `confirmed_on <= as_of`. Nova
           //   potvrda na STARIJI datum zato ne poništava kriva na novijem —
@@ -749,8 +754,8 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                       type="button"
                       onClick={() => void confirm(key, typed)}
                       disabled={
-                        bank === null || !willConfirmOn || savingKey === key ||
-                        (isScreen && !screenCalc)
+                        bank === null || !willConfirmOn || dateInFuture ||
+                        savingKey === key || (isScreen && !screenCalc)
                       }
                       className={cn(
                         'ml-auto text-xs font-medium px-3 py-1.5 rounded-lg transition-colors',
@@ -762,6 +767,8 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                           ? 'Prvo odaberi odakle je broj — o tome ovisi na koji datum ide potvrda'
                           : !willConfirmOn
                             ? 'Upiši datum koji piše na papiru'
+                            : dateInFuture
+                              ? 'Datum je u budućnosti — potvrda može nositi samo dan koji je već prošao'
                             : `Spremi kao potvrđeno stanje na ${formatDateHr(willConfirmOn)} — saldo se od tog dana računa od njega`
                       }
                     >
@@ -797,6 +804,16 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                         ? ' — dan zadnje transakcije na izvodu. Izvod se ne zatvara na kraju mjeseca: srpanjski ZABA izvod završava 30.07., a prosinački zna završiti 24.12.'
                         : '.'}
                       {isPast && ` (Gledaš ${formatDateHr(effectiveAsOf)} — ako izvod nosi taj datum, upiši njega.)`}
+                    </p>
+                  )}
+
+                  {/* Rečeno vidljivo, ne samo kao `title` na ugašenom gumbu:
+                      ugašen gumb bez objašnjenja izgleda kao kvar. */}
+                  {dateInFuture && (
+                    <p className="text-[11px] text-rose-700">
+                      Datum je <strong>u budućnosti</strong>. Potvrda nosi stanje koje je
+                      netko stvarno vidio, pa može biti datirana samo danom koji je prošao —
+                      inače bi po pravilu „strogo nakon" presjekla sve retke do tog dana.
                     </p>
                   )}
 
