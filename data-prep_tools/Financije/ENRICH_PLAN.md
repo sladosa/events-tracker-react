@@ -1014,3 +1014,56 @@ Zastavice: `--sheet`, `--tip-racuna` (vrijednost njene kolone A), `--klasificira
 
 **Uvoz NIJE izveden** — pripremljeno, kontrolni brojevi gore, koraci u
 `docs/sessions/tests/S116_tests.md` T-S116-7/-8. Ide u sljedeću sesiju.
+
+## S117 (2026-08-24) — kolovoz uvezen, oba kontrolna broja pogođena
+
+**Tranša 4 je izvedena.** ZABA `13.239,31` @ 13.08. i RF `796,43` — oba u cent.
+
+**Zašto ta potvrda nešto znači:** brojevi dolaze iz **dva različita modela**. Kokin lanac
+tereti račun **svakom** kartičnom stavkom (59 redaka od sidra do 13.08.), naš ga tereti
+**jednom skupnom naplatom** (14 bankovnih redaka + 1). Isti cent iz istog modela ne bi
+potvrdio ništa.
+
+### Kako je izvedeno
+
+```
+python fill_from_izvod.py "<delta sheet>.xlsx" \
+  --iz-koke "Financije 2026-08-23.xlsx" --sheet "koka EU" \
+  --tip-racuna "Kokin tekuci" --od 2026-07-31 --do 2026-08-13 \
+  --osim 2564 --klasificiraj --lanac 2026-07-30=13815.33
+```
+
+`--dry` je dao točno `14 novih, 0 vec na listu, 0 blizu postojecem` — dakle njen se file
+nije promijenio od mjerenja u S116. RF: `--sheet "sasa EU" --tip-racuna "Sasin tekuci"
+--racun "Sašin tekući RF" --od 2026-08-12 --lanac 2026-08-11=799.12` → **1 novi**.
+
+⚠ **Delta sheet izvezen s 80 praznih redaka**, ne 40. Redak koji ne stane pada izvan raspona
+kontrolnog stupca i brojka ostane uvjerljiva i nepotpuna (S114).
+
+### ⚠ Nalaz: `--klasificiraj` ne vidi ništa što je u bazu ušlo poslije 10.07.
+
+Pet redaka je moralo biti klasificirano **ručno**, iako povijest baze daje jednoglasan odgovor:
+
+| redak | dodijeljeno | dokaz u bazi |
+| --- | --- | --- |
+| `Cash` ×4 (04./09./11./13.08.) | `Transfer / cash - bankomat` | postojeći redak 30.07. istog oblika |
+| `RF naknada 2,69` (18.08.) | `Domaćinstvo / Bankovni troškovi` | **6/6** |
+
+Uzrok: klasifikator broji iz **Review workbooka** (snimka od **2026-07-08**), ne iz baze.
+Sve što je uvezeno poslije toga za njega ne postoji. Za buduću Kokinu upotrebu to je glavni
+kandidat za popravak — inače će joj svaki novi trgovac trajno ostajati `N/A`.
+
+### ⚠ Skupna MC naplata — datum je bio krivo zapisan
+
+`CLAUDE.md` je nosio `@ 13.08`; **s papira je `11.08.`** — `MC_2026-07.pdf` piše
+`Datum dospijeća: 11.08.2026.` i `UKUPNO (EUR): 1.332,52`.
+
+Povijest to potvrđuje neovisno: skupna MC naplata **nije na MC izvodu nego na ZABA izvatku**,
+kao `TROŠKOVI UČINJENI MASTERCARD KARTICOM`, **uvijek 11. u mjesecu** — osam mjeseci zaredom
+(`Izvodi_transakcije.xlsx`). Dok `ZABA_2026-08.pdf` ne stigne, iznos i datum dolaze s MC izvoda.
+
+⚠ **Opis mora ostati strojni tekst izvatka**, ne „Mastercard": svih 18 prijašnjih naplata ga
+nosi, pa bi varijanta razbila brojanje po opisu.
+
+⚠ Naplata je upisana **ručno kroz Add Activity + Edit**, jer Add tada nije mogao zadati datum
+unatrag. Od S117 može (birač datuma u zaglavlju), pa sljedeći put nije potrebno.
