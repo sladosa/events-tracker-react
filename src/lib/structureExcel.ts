@@ -833,6 +833,7 @@ function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
 //   nosio ime Aree — i time nemaju ni tu rupu.
 //
 // Slugs format: "tip | podtip"  ('|' jer je ' / ' legitiman separator za prikaz)
+// Map format:   "Kokin tekući ZABA = ZABA | Sašin tekući RF = RF"  (isti '|')
 
 const LISTCOL_COLS = [
   { header: 'Area',   width: 20 },
@@ -846,7 +847,14 @@ const LISTCOL_COLS = [
   { header: 'Mobile', width: 9 },
   { header: 'Width',  width: 9 },
   { header: 'Align',  width: 8 },
+  { header: 'Map',    width: 34 },
 ] as const;
+
+/** `{ 'Kokin tekući ZABA': 'ZABA' }` -> `Kokin tekući ZABA = ZABA | ...` */
+function serializeColMap(map: Record<string, string> | undefined): string {
+  if (!map) return '';
+  return Object.entries(map).map(([k, v]) => `${k} = ${v}`).join(' | ');
+}
 
 function writeListColumnsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
   const ws = wb.addWorksheet('ListColumns');
@@ -868,7 +876,7 @@ function writeListColumnsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
       const vals: (string | number)[] = [
         node.name, c.role, c.label ?? '', (c.slugs ?? []).join(' | '),
         c.plus ?? '', c.minus ?? '', c.sep ?? '', c.unit ?? '',
-        c.mobile ?? '', c.width ?? '', c.align ?? '',
+        c.mobile ?? '', c.width ?? '', c.align ?? '', serializeColMap(c.map),
       ];
       for (let ci = 0; ci < LISTCOL_COLS.length; ci++) {
         const cell = ws.getCell(rowNum, ci + 1);
@@ -897,6 +905,9 @@ function writeListColumnsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
     'Unit   = sufiks na iznosu (npr. €). Vrijedi za pair i balance.',
     'Mobile = line1 | line2 | hide — u koji red pada na uskom ekranu (< 640px). Zadano ovisi o Role.',
     'Width  = Tailwind klasa širine (w-28, w-36…). Align = left | right | center.',
+    'Map    = kratki prikaz po vrijednosti, za role attr:  "Kokin tekući ZABA = ZABA | Sašin tekući RF = RF"',
+    '         Vrijednost koje ovdje nema prikaže se CIJELA — nikad pogođena kratica.',
+    '         Za uski ekran: puno ime računa pojede prostor koji treba iznosu.',
     '',
     '⚠ actions se UVIJEK renderira i UVIJEK zadnji, čak i ako ga ovdje nema — bez njega',
     '  lista ostane bez ⋮ menija (nema Edit, View ni Delete) i nigdje ne piše zašto.',

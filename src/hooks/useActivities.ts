@@ -412,3 +412,28 @@ export function formatDate(dateStr: string): string {
   const weekday = date.toLocaleDateString('hr-HR', { weekday: 'short' });
   return `${y}/${m}/${d} ${weekday}`;
 }
+
+/**
+ * Narrow-screen date: `25.08. ut`, or `25.08.25. po` when the row is NOT from
+ * the current year.
+ *
+ * WHY THE YEAR COMES AND GOES
+ *   Measured (S119): the long form costs ~50 px of a ~270 px line, and that line
+ *   also has to hold the amount — which is the whole reason this format exists.
+ *   Dropping the year outright was the cheaper option and the wrong one: the
+ *   list reaches back to 2025, and a row that shows only day and month CLAIMS
+ *   to be from this year. Silence about the year is a statement about the year.
+ *
+ * The weekday keeps the locale as its source — the first two letters of the
+ * locale's short name (`utorak` -> `uto` -> `ut`), never a hardcoded table.
+ */
+export function formatDateCompact(dateStr: string, now: Date = new Date()): string {
+  const date = new Date(dateStr + 'T00:00:00');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const wd = date.toLocaleDateString('hr-HR', { weekday: 'short' }).slice(0, 2);
+  const yr = date.getFullYear() === now.getFullYear()
+    ? ''
+    : `${String(date.getFullYear()).slice(-2)}.`;
+  return `${d}.${m}.${yr} ${wd}`;
+}

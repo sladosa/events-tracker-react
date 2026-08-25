@@ -1187,6 +1187,7 @@ export async function importStructureExcel(
       const colMobile = lCol('mobile');
       const colWidth = lCol('width');
       const colAlign = lCol('align');
+      const colMap = lCol('map');
 
       // Poznati slugovi po Arei — uključujući atribute stvorene u OVOM uvozu.
       const slugsByArea = new Map<string, Set<string>>();
@@ -1255,6 +1256,17 @@ export async function importStructureExcel(
           continue;
         }
 
+        // `Vrijednost = kratica | Vrijednost2 = kratica2`. Dijeli se na PRVOM
+        // '=' — ime računa smije sadržavati bilo što osim '|'.
+        const map: Record<string, string> = {};
+        for (const part of get(colMap).split('|')) {
+          const eq = part.indexOf('=');
+          if (eq < 0) continue;
+          const k = part.slice(0, eq).trim();
+          const v = part.slice(eq + 1).trim();
+          if (k && v) map[k] = v;
+        }
+
         const label = get(colLabel);
         const sep = get(colSep);
         const unit = get(colUnit);
@@ -1272,6 +1284,7 @@ export async function importStructureExcel(
         if (MOBILE.has(mobile)) col.mobile = mobile as ListColumn['mobile'];
         if (width) col.width = width;
         if (ALIGN.has(align)) col.align = align as ListColumn['align'];
+        if (Object.keys(map).length) col.map = map;
 
         colsByArea.set(areaId, [...(colsByArea.get(areaId) ?? []), col]);
         result.listColumns.columnsImported++;

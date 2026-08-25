@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useFilter } from '@/context/FilterContext';
 import { supabase } from '@/lib/supabaseClient';
-import { useActivities, formatTime, formatDate, type ActivityGroup } from '@/hooks/useActivities';
+import { useActivities, formatTime, formatDate, formatDateCompact, type ActivityGroup } from '@/hooks/useActivities';
 import { useAreaDashboard } from '@/hooks/useAreaDashboard';
 import { useRunningBalance } from '@/hooks/useRunningBalance';
 import { formatAmount, formatDateHr } from '@/lib/amountFormat';
@@ -558,13 +558,27 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
  * An absent amount renders as an em dash, never as `0`. For money, zero is a
  * claim about the row; blank is the absence of one.
  */
-function PairCell({ col, values }: { col: ResolvedColumn; values?: RowValues }) {
+function PairCell({ col, values, stack }: { col: ResolvedColumn; values?: RowValues; stack?: boolean }) {
   const plus = col.plus ? values?.num.get(col.plus) : undefined;
   const minus = col.minus ? values?.num.get(col.minus) : undefined;
   const hasPlus = plus != null && plus !== 0;
   const hasMinus = minus != null && minus !== 0;
 
   if (!hasPlus && !hasMinus) return <span className="text-gray-300">—</span>;
+
+  // Both sides filled is a real row, not an error — ZABA `Anja 73/96` carries an
+  // inbound 450,00 and an outbound 0,70 in one event. Side by side it is the
+  // widest thing on a narrow line (measured: 145 px, the row's whole budget at
+  // 320 px), so on narrow screens it stacks. Stacking, never dropping one side:
+  // a cell that shows one half hides half the transaction.
+  if (stack && hasPlus && hasMinus) {
+    return (
+      <span className="tabular-nums whitespace-nowrap inline-flex flex-col items-end leading-tight">
+        <span className="text-emerald-700">+{formatAmount(plus!, col.unit)}</span>
+        <span className="text-rose-700">−{formatAmount(minus!, col.unit)}</span>
+      </span>
+    );
+  }
 
   return (
     <span className="tabular-nums whitespace-nowrap">
@@ -575,13 +589,25 @@ function PairCell({ col, values }: { col: ResolvedColumn; values?: RowValues }) 
   );
 }
 
+/** Where a cell is being rendered. The narrow screen has TWO lines and they
+ *  are not the same place: line 1 carries the date and the amount, line 2 wraps. */
+type CellVariant = 'desktop' | 'line1' | 'line2';
+
 /** `attr` — one or more slugs joined into a single cell (e.g. `Tip / Podtip`). */
-function AttrCell({ col, values }: { col: ResolvedColumn; values?: RowValues }) {
-  const parts = (col.slugs ?? []).map(sl => values?.text.get(sl)).filter((v): v is string => !!v);
+function AttrCell({ col, values, plain }: { col: ResolvedColumn; values?: RowValues; plain?: boolean }) {
+  const parts = (col.slugs ?? [])
+    .map(sl => values?.text.get(sl))
+    .filter((v): v is string => !!v)
+    // `map` shortens a value for display (`Kokin tekući ZABA` -> `ZABA`). A value
+    // that is not in the dictionary keeps its full text — see the type comment.
+    .map(v => col.map?.[v] ?? v);
   if (parts.length === 0) return <span className="text-gray-400 italic">—</span>;
   // Default is tight on purpose: `Sep` survives the Structure roundtrip only
   // if trimming cannot change it (structureImport trims every config cell).
   const txt = parts.join(col.sep ?? '/');
+  // `plain` = the narrow-screen line, which wraps. `truncate` would put
+  // `white-space: nowrap` back and take the wrapping with it.
+  if (plain) return <span title={txt}>{txt}</span>;
   return <span className="text-gray-700 truncate block" title={txt}>{txt}</span>;
 }
 
@@ -674,12 +700,13 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
    * how they look, but never in WHAT they show. `compact` is the narrow-screen
    * variant of the same value, not a different value.
    */
-  const cellContent = (c: ResolvedColumn, compact = false): React.ReactNode => {
+  const cellContent = (c: ResolvedColumn, variant: CellVariant = 'desktop'): React.ReactNode => {
+    const compact = variant !== 'desktop';
     switch (c.role) {
       case 'date':
         return (
           <span className={compact ? 'font-medium text-gray-900 text-sm' : 'text-gray-900 text-sm'}>
-            {formatDate(group.event_date)}
+            {compact ? formatDateCompact(group.event_date) : formatDate(group.event_date)}
           </span>
         );
       case 'time':
@@ -690,7 +717,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
         );
       case 'category':
         return compact ? (
-          <span className="text-indigo-500 truncate">
+          <span className="text-indigo-500">
             {group.area_icon ? `${group.area_icon} ${pathDisplay}` : pathDisplay}
           </span>
         ) : (
@@ -727,11 +754,20 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
           />
         );
       case 'pair':
-        return <PairCell col={c} values={values} />;
+        return <PairCell col={c} values={values} stack={compact} />;
       case 'attr':
-        return <AttrCell col={c} values={values} />;
+        // On `line1` the attribute is a marker beside the date — the account a
+        // row belongs to — so it is set small and grey, the same weight as
+        // line 2. On `line1` the amount owns the emphasis.
+        return variant === 'line1'
+          ? <span className="text-xs text-gray-500"><AttrCell col={c} values={values} plain /></span>
+          : <AttrCell col={c} values={values} plain={compact} />;
       case 'comment':
-        return (
+        return compact ? (
+          <span title={firstEvent.comment || undefined}>
+            {firstEvent.comment || <span className="text-gray-400 italic">—</span>}
+          </span>
+        ) : (
           <span className="text-gray-600 truncate block" title={firstEvent.comment || undefined}>
             {firstEvent.comment || <span className="text-gray-400 italic">—</span>}
           </span>
@@ -812,7 +848,19 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
 
       {/* Narrow-screen row — two lines, driven by the same column config */}
       <tr className={`sm:hidden transition-colors ${highlightClass}`}>
-        <td className="px-3 py-2 min-w-0" style={{ width: '100%' }}>
+        {/*
+          `w-full max-w-0` is the whole fix for S119, and it is not cosmetic.
+          Measured at 360 px: this cell used to make the table 490 px wide, so
+          the row scrolled sideways and the AMOUNT — the thing the row exists
+          for — sat 132 px off-screen. Cause: an auto-layout table grows to its
+          content's min-content width, and `truncate` sets `white-space: nowrap`,
+          so the "truncated" text was never truncated; it stretched the table
+          instead. The desktop cells never showed it because they carry
+          `max-w-[140px]`/`max-w-[180px]`; this one carried nothing.
+          `max-w-0` puts the cell's width back under the table's control, and
+          then wrapping/clipping inside it finally applies.
+        */}
+        <td className="px-3 py-2 min-w-0 w-full max-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
             {mobileLine('line1').map(c => (
               <span
@@ -823,18 +871,27 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
                     : 'flex-shrink-0 min-w-0'
                 }
               >
-                {cellContent(c, true)}
+                {cellContent(c, 'line1')}
               </span>
             ))}
           </div>
+          {/*
+            Line 2 WRAPS (up to two lines) instead of truncating. Sideways
+            scrolling used to be the only way to read the end of a description
+            on a phone; capping the width above would have taken that away and
+            given back an ellipsis. Wrapping gives the whole text with no
+            gesture at all — and `line-clamp-2` still bounds the row height.
+          */}
           {mobileLine('line2').length > 0 && (
-            <div className="mt-0.5 flex items-center gap-1 min-w-0 text-xs text-gray-500">
-              {mobileLine('line2').map((c, i) => (
-                <span key={c.key} className="flex items-center gap-1 min-w-0">
-                  {i > 0 && <span className="text-gray-300 flex-shrink-0">·</span>}
-                  <span className="truncate min-w-0">{cellContent(c, true)}</span>
-                </span>
-              ))}
+            <div className="mt-0.5 min-w-0 text-xs text-gray-500">
+              <span className="line-clamp-2">
+                {mobileLine('line2').map((c, i) => (
+                  <span key={c.key}>
+                    {i > 0 && <span className="text-gray-300"> · </span>}
+                    {cellContent(c, 'line2')}
+                  </span>
+                ))}
+              </span>
             </div>
           )}
         </td>

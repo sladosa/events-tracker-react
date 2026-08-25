@@ -1,7 +1,7 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S118 (2026-08-25) — Koka na PROD-u; ranije: S116 (2026-08-23) — kolone Activities liste po Arei, `--iz-koke` izvor, sidro ZABA ispravljeno.
+**Zadnji update:** S119 (2026-08-25) — uska lista: iznos bez scrolanja, kratica racuna, prelom opisa; ranije: S118 (2026-08-25) — Koka na PROD-u; ranije: S116 (2026-08-23) — kolone Activities liste po Arei, `--iz-koke` izvor, sidro ZABA ispravljeno.
 **Prošlo 2026-08-22: T-S113-3.** · 2026-08-21: T-S112-3, -4, -6; T-S113-1. · 2026-08-19: T-S112-1, T-S112-2. · 2026-08-17: T-S110-1, -2, -3, -6, -7. · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
@@ -13,7 +13,7 @@ python data-prep_tools/Tools/audit_tests.py
 ```
 
 Ispisuje po session fileu koliko je testova definirano, koliko ✅ / ⬜, i koje je fileove **spremno arhivirati** (svi ✅). ⚠ Prijavljuje i testove kojih u ovom fileu uopće nema — v. „Siročad" ispod.
-**Detalji S116:** [S116_tests.md](tests/S116_tests.md) · **S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
+**Detalji S119:** [S119_tests.md](tests/S119_tests.md) · **S116:** [S116_tests.md](tests/S116_tests.md) · **S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
 
 ---
 
@@ -59,6 +59,29 @@ zadovoljavaju uvjete pločice" i **nema polja za unos**. Dakle za Kokin PROD prv
 nego što stoji. **Otvoreno: ponuditi vrijednosti iz `racun.validation_rules.suggest` kao
 prazne retke s poljem za potvrdu** (dropdown, ne slobodan tekst — tipfeler bi inače
 stvorio fantomski račun). Sašina odluka, ~30 min.
+
+## S119 — uska lista: iznos prije ⋮ (2026-08-25)
+
+**Uzrok i popravak su izmjereni, ne procijenjeni** (Playwright, prava aplikacija, 393 px):
+tablica je bila **709 px u 367 px prostora**, pa je iznos stajao 342 px izvan ekrana; poslije
+popravka **367 / 367, bez scrolla**. Snimke: `Claude-temp_R/S119_lista_prije.png` i
+`…_poslije.png`.
+
+Neprovjereno uzivo ostaje ono sto TEST racun ne moze prikazati — `Financije_all` je pod
+drugim korisnikom, pa kratica racuna i dvostrani iznos nisu vidjeni u pravoj listi, samo
+izmjereni u harnessu s istim klasama:
+
+| test | opis | status |
+| --- | --- | --- |
+| T-S119-1 | ⭐ **Iznos vidljiv bez scrolanja** na Kokinom iPhoneu i na Androidu — lista `Financije_all`, redak s dugackim opisom | ⬜ |
+| T-S119-2 | ⭐ **Kratica racuna** (`ZABA` / `RF`) sitnim sivim slovima u gornjem redu, izmedu datuma i iznosa | ⬜ |
+| T-S119-3 | **Dvostrani iznos** (`Anja 73/96`, 25.08.2025.) — obje strane vidljive, slozene u dva reda; nijedna ne nestaje | ⬜ |
+| T-S119-4 | **Opis se prelama u dva reda** i zavrsava s „…" tek ako ne stane ni u dva; vodoravnog scrolanja nema | ⬜ |
+| T-S119-5 | **Kratki datum**: `25.08. ut` za ovu godinu, `25.08.25. po` za lanjski redak (godina se pojavi sama) | ⬜ |
+| T-S119-6 | ⭐ **Excel roundtrip za `Map`**: Structure export nosi kolonu `Map`, import je vrati — kratice prezive krug | ⬜ |
+| T-S119-7 | Desktop lista **nepromijenjena** (dug datum, kolone jedna do druge, `Stanje` vidljivo) | ⬜ |
+
+**Detalji:** [S119_tests.md](tests/S119_tests.md)
 
 ## S118 — Koka na PROD-u (2026-08-25)
 

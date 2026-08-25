@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S118).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S119).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -167,6 +167,29 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **`ListColumns` import BRIŠE ono čega nema — namjerno, za razliku od `Automations`.**
   Kolone su jedan uređeni popis, pa je brisanje retka jedini način da čovjek makne
   kolonu. Zaštita je na razini **sheeta**: nema sheeta ⇒ ništa se ne dira.
+- **⚠ Ćelija u tablici bez gornje granice širine RASTEŽE TABLICU, a `truncate` je ne**
+  **skraćuje** (S119). `truncate` nosi `white-space: nowrap`, a tablica s `table-layout:
+  auto` naraste do **min-content** širine sadržaja — pa se tekst nikad ne skrati nego
+  odgurne sve desno od sebe izvan ekrana. Izmjereno na 393 px: mobilni redak je davao
+  tablicu od **709 px u 367 px prostora**, i **iznos** je stajao 342 px van vidljivog.
+  Desktop ćelije to nikad nisu pokazale jer nose `max-w-[140px]`/`max-w-[180px]`; mobilna
+  nije nosila ništa. Lijek je `w-full max-w-0` na ćeliji — tek tada prelom i skraćivanje
+  unutar nje uopće rade. **Vrijedi za svaku buduću ćeliju s tekstom promjenjive duljine.**
+- **Uska lista ima dvije linije i one nisu isto mjesto.** `line1` nosi datum, kraticu
+  računa i **iznos** (desno poravnato ide uz sam rub, prije sticky ⋮); `line2` se
+  **prelama** do dva reda. Zato `cellContent` prima `'desktop' | 'line1' | 'line2'`, ne
+  boolean: `truncate` na `line2` bi vratio `nowrap` i s njim cijeli gornji kvar.
+  ⚠ Vodoravno scrolanje je bilo **jedini** način da se pročita kraj opisa na mobitelu —
+  ukine li ga se, mora ga nešto zamijeniti. Zamjena je prelom, ne `…`.
+- **`map` na `attr` koloni je rječnik kratica po VRIJEDNOSTI** (`Kokin tekući ZABA` →
+  `ZABA`). Vrijednost koje u rječniku nema prikazuje se **cijela** — preimenovan račun
+  time izgleda neskraćeno (**vidljivo**), nikad kao krivi račun (**nevidljivo**). Zato
+  rječnik, a ne pravilo tipa „zadnja riječ imena". Ide kroz roundtrip: kolona `Map`
+  u `ListColumns` sheetu, oblik `Vrijednost = kratica | Vrijednost2 = kratica2`.
+- **Kratki datum na uskom ekranu nosi godinu SAMO kad redak nije iz tekuće godine**
+  (`25.08. ut` / `25.08.25. po`). Puni datum je koštao ~50 px od ~270 px koliko linija ima,
+  a na istoj liniji mora stati iznos. Izbaciti godinu posve bilo bi jeftinije i pogrešno:
+  popis seže u prošlu godinu, a redak bez godine **tvrdi** da je iz ove.
 
 **Unos u aplikaciji**
 
@@ -547,6 +570,7 @@ src/lib/overviewApi.ts             Overview read model — rpc_area_group_agg / 
 src/lib/dashboardConfig.ts         Fixup slug referenci u dashboard configu (S105d razred)
 src/lib/listColumns.ts             Kolone Activities liste po Arei — DEFAULT_COLUMNS,
                                    resolveColumns(), fixupListColumnsSlug()
+                                   ⚠ mobilni redak: v. „Kolone Activities liste" (S119)
 src/hooks/useListColumnValues.ts   Vrijednosti atributa za vidljive retke — jedan upit,
                                    ograničen na attribute_definition_id (ne skenira EAV)
 src/lib/amountFormat.ts            formatAmount / parseAmountInput (hr 1.234,56)

@@ -2900,3 +2900,79 @@ Obrisano **kroz UI** s „Download Backup & Delete" (file se skine prije brisanj
 - **Filtar s dva uvjeta** — Sašin nalaz iz stvarnog rada: „ZABA **i** samo uplate" se ne da
   složiti. Dosad zapisano kao nedostatak *drilla*; sada je jasno da fali i u običnom filtru.
   Odluka: ne sada.
+
+---
+
+## Done S119 (2026-08-25): uska lista — iznos prije ⋮
+
+**Povod:** Sašin nalaz s Androida (kao write grantee u `Financije_all`): da bi vidio iznos,
+listu je morao **vući ustranu**. Kokin iPhone je uži. Uz to: želja da se u gornjem redu vidi
+i **koji je račun**, kraticom (`ZABA` / `RF`), sitnim fontom kao druga linija.
+
+### Prvo mjerenje, pa tek onda popravak
+
+Prva dijagnoza (ćelija bez granice širine) bila je **točna u mehanizmu, a neprovjerena** —
+i prvi harness ju je **opovrgnuo**: nije bilo scrolla. Uzrok promašaja: mjeren je krivi
+element. Kad jedan smjer ima `overflow: auto`, drugi prestaje biti `visible`, pa je pravi
+horizontalni scroller bio **unutarnji** `div.overflow-y-auto`, a ne `div.overflow-x-auto`
+iznad njega. Nakon toga se sve poklopilo.
+
+**Izmjereno u pravoj aplikaciji** (Playwright, TEST račun, viewport 393 px, 18 redaka):
+
+| | prije | poslije |
+| --- | --- | --- |
+| širina tablice | **709 px** | **367 px** |
+| raspoloživo | 367 px | 367 px |
+| iznos | **342 px izvan ekrana** | vidljiv, uz desni rub |
+
+Snimke: `Claude-temp_R/S119_lista_prije.png`, `…_poslije.png`.
+
+**Uzrok:** `truncate` nosi `white-space: nowrap`, a tablica s `table-layout: auto` naraste do
+**min-content** širine sadržaja. „Skraćeni" tekst se dakle nikad nije skratio nego je
+**rastegnuo tablicu**, a sve desno od njega (iznos, avatar) otišlo je izvan ekrana. Desktop
+ćelije to nikad nisu pokazale jer nose `max-w-[140px]`/`max-w-[180px]`; mobilna nije nosila
+ništa. Promaknuto u „Critical rules" kao pravilo za **svaku** buduću ćeliju s tekstom
+promjenjive duljine.
+
+### Što je napravljeno
+
+- **`w-full max-w-0` na mobilnoj ćeliji** — tek s gornjom granicom prelom i skraćivanje
+  unutar ćelije uopće rade.
+- **Druga linija se prelama** (`line-clamp-2`) umjesto da se skraćuje. Razlog: vodoravno
+  scrolanje je dosad bilo **jedini** način da se pročita kraj opisa na mobitelu. Ukinuti ga
+  i ponuditi `…` bila bi zamjena jednog gubitka drugim; prelom daje cijeli tekst bez ijedne
+  geste. Sašin izbor između tri ponuđene varijante.
+- **`cellContent` prima `'desktop' | 'line1' | 'line2'`**, ne više boolean — dvije mobilne
+  linije nisu isto mjesto, i `truncate` na drugoj bi vratio `nowrap` i s njim cijeli kvar.
+- **Kratica računa u gornjem redu** — nova `map` na `attr` koloni, rječnik po **vrijednosti**
+  (`Kokin tekući ZABA` → `ZABA`). Odbačena je jeftinija varijanta „zadnja riječ imena":
+  vrijednost bez kratice sada se prikaže **cijela** (vidljivo „nema kratice"), dok bi
+  pravilo pogađalo i moglo prikazati **krivi račun** — nevidljivo.
+- **Kratki datum na uskom ekranu** — `25.08. ut`, dvoslovni dan (prva dva znaka lokalnog
+  imena, ne tablica u kodu). **Godina se pojavi sama** kad redak nije iz tekuće godine
+  (`25.08.25. po`): popis seže u 2025., a redak bez godine *tvrdi* da je iz ove.
+- **Dvostrani iznos se na uskom ekranu slaže u dva reda** — obje strane ostaju vidljive.
+  Izmjereno: `+450,00 € · −0,70 €` u jednom retku traži ~145 px, a na 320 px linija ima
+  ~270 px ukupno; složeno u dva reda stane, a pravilo „`pair` pokazuje obje strane" ostaje.
+- **Roundtrip:** kolona `Map` u `ListColumns` sheetu (`Vrijednost = kratica | …`), export i
+  import, plus red u HELP bloku sheeta.
+- **`set_list_columns.py`**: kolona `Račun` s rječnikom, `--env test|prod` i `--area`
+  (dosad hardkodiran TEST id — otvoreno iz S118 handoffa), te ispis koje vrijednosti u bazi
+  **nemaju** kraticu (kratica za nepostojeću vrijednost je mrtvo slovo koje izgleda živo).
+
+### Izmjereno usput (i vrijedi šire)
+
+- **Harness s istim Tailwind klasama nije dokaz dok se ne poklopi sa stvarnošću.** Prvi je
+  pokazao „bez scrolla" i time skoro poslao popravak u krivom smjeru. Tek replika koja je
+  uključila i **ugniježđene** ćelije reproducirala je 490 px, a prava aplikacija 709 px.
+- **Backslash sekvence (`\n`) se gube pri prolasku kroz shell** — isti razred kao backtickovi
+  iz S118 i `git commit -m` iz S117. Rješenje: patch skripta u file, pa `python file.py`.
+- TEST račun (`owner@test.com`) **ne vidi** `Financije_all` — ta je Area pod drugim
+  korisnikom. Zato su kratica računa i dvostrani iznos izmjereni u harnessu, a **uživo
+  ostaju neprovjereni** (T-S119-2, -3).
+
+### Otvoreno nakon S119
+
+- **PROD nema kolonu `Račun`** i nema ovaj kod — treba deploy pa `set_list_columns.py --env prod`
+  (ili `ListColumns` sheet). T-S119-8.
+- **BUG-S118-PREVIEWMODE** i dalje otvoren; deploy koji ovo nosi je prilika da ide s njim.

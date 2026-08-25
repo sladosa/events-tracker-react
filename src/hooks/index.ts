@@ -36,7 +36,7 @@ export {
 export { useDateBounds, getDatePresets, formatDateDisplay } from './useDateBounds';
 
 // Activities hooks
-export { useActivities, formatTime, formatDate } from './useActivities';
+export { useActivities, formatTime, formatDate, formatDateCompact } from './useActivities';
 export type { ActivityEvent, ActivityGroup } from './useActivities';
 
 // Constants - moved to lib/constants.ts, re-export for backwards compatibility

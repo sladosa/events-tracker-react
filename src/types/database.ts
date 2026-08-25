@@ -141,6 +141,15 @@ export interface ListColumn {
   slugs?: string[];
   /** `attr`: separator between slug values. Default ` / `. */
   sep?: string;
+  /**
+   * `attr`: short display form per value, e.g. `Kokin tekući ZABA` -> `ZABA`.
+   *
+   * A value with no entry falls back to ITSELF, never to a guess. That is the
+   * whole reason this is a dictionary and not a rule like "last word": when an
+   * account is renamed the column shows the full name — visibly unabbreviated,
+   * which reads as "nobody taught me this one", not as a wrong account.
+   */
+  map?: Record<string, string>;
   /** Suffix on amounts, e.g. `€`. `pair` and `balance` only. */
   unit?: string;
   /**
