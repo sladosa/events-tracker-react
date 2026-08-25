@@ -35,9 +35,11 @@ kratica bi mogla pokazati krivi račun i to se **ne bi** vidjelo.
 
 ## 2. Što stoji na tebi
 
-1. **Odluka o deployu.** Koka ovo neće vidjeti dok `main` ne ode na Netlify. Ja to ne radim
-   bez tvoje riječi. Kad kažeš, u isti deploy ide i **BUG-S118-PREVIEWMODE** (jedan argument,
-   čekao je baš da migracija prođe).
+1. **Deploy je ODGOĐEN — Sašina odluka 25.08.** Ide na `main` tek kad se skupi još koji
+   ispravak, okvirno **sutra**. Do tada Koka na PROD-u ima staru listu, i to je u redu:
+   ništa od S119 nije hitno, a jedan Netlify build za više ispravaka je jeftiniji od tri.
+   **U taj paket ide i BUG-S118-PREVIEWMODE** (jedan argument, čekao je da migracija prođe)
+   te sve što se popravi sutra.
 2. **Provjera na telefonu** nakon deploya — 7 kratkih testova, `T-S119-1…7`, detalji u
    `docs/sessions/tests/S119_tests.md`. Najvažnija su prva tri: iznos bez scrolanja, kratica
    računa, i redak `Anja 73/96` (25.08.2025.) gdje moraju ostati **obje** strane iznosa.
@@ -105,10 +107,14 @@ Details). Ako ti to smeta kod jako dugih opisa, reci — ima alternativa.
 
 ## 4. Prvo što bih uzeo sljedeći put
 
-1. **Deploy** (kad Saša kaže) + **BUG-S118-PREVIEWMODE** u istom paketu.
-2. **Faza 3 — `set_attribute` na Import putu** („popuni ako je prazno"). Jedna rupa drži tri
+⚠ **Ne deployati samoinicijativno.** Deploy je odgođen do „još koji ispravak" (Sašina odluka
+25.08.) — dakle prvo popravci, deploy na kraju i **samo na izričit zahtjev**.
+
+1. **BUG-S118-PREVIEWMODE** — jedan argument, ide u isti paket kao S119.
+2. **BUG-S119-FILTERBACK** — prvo izmjeriti gdje se `attrFilter` gubi, pa popravljati.
+3. **Faza 3 — `set_attribute` na Import putu** („popuni ako je prazno"). Jedna rupa drži tri
    featurea; s Kokom koja radi kroz app i roundtrip, sad je najpraktičnija.
-3. **Faza 2 — brzi unos** (skupljanje prefilanih polja, shortcut dropdown).
+4. **Faza 2 — brzi unos** (skupljanje prefilanih polja, shortcut dropdown).
 
 ⚠ I dalje vrijedi: **batch 2024 i 2023 idu na PROD**, i to je okidač za preimenovanje
 `Financije_all` → `Financije` (rename **kroz UI**, nikad importom — v. CLAUDE.md backlog).
