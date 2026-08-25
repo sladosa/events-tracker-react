@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S117).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S118).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -97,6 +97,44 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **`useActivities` grupira po `user_id_category_id_session_start`** ⇒ isti dan + ista kategorija
   = **jedan redak liste**. Za Areu s L1 leafom (Financije) to znači da svaka transakcija mora
   imati različit `session_start`.
+
+**PROD ≠ TEST — ponašanje baze se provjerava pokusom, ne čitanjem koda (S118)**
+
+- **⚠ PROD je imao trigger koji GAZI slug na INSERT-u; TEST ga uopće nema.**
+  `generate_slug_from_name()` (triggeri `set_area_slug`, `set_category_slug`,
+  `set_attribute_slug`) nosio je uvjet `IF TG_OP = 'INSERT' OR NEW.slug IS NULL OR …`,
+  dakle na svakom INSERT-u zamijeni proslijeđeni slug s `slugify(name)` — i to s
+  **crticom**, dok app proizvodi **podvlaku** (`makeAttrSlug`). Komentar iznad uvjeta
+  tvrdio je suprotno („ONLY on INSERT **or if slug is empty**"), pa se čitanjem koda
+  nije dalo vidjeti.
+  Izmjereno pri prvom uvozu Structure na PROD: Excel nosi `izvorplacanja`,
+  `datum_naplate`, `brojrata`, `rata_br`, `izvod_opis` — baza spremi `izvor`,
+  `datum-naplate`, `broj-rata`, `rata-br`, `izvod-opis`.
+  ⚠ **Imena ostanu točna**, pa struktura izgleda uredno uvezena, a `automations`,
+  `Status.depends_on`, `dashboard` i `list_columns` pokazuju u prazno — dakle
+  `set_attribute` i dropdown lanac su mrtvi bez ijedne poruke.
+  Popravljeno: `040` (poravnanje slugova) + `042` (uvjet je sada samo „popuni ako ga nema").
+  ⚠ Trigger **ne dira UPDATE** — zato popravak UPDATE-om drži, a rename ne regenerira slug.
+  ⚠ **Pouka koja vrijedi šire od sluga:** dvije baze nisu ista baza. Ponašanje se
+  utvrđuje pokusom (upiši → pročitaj → obriši), ne pretpostavkom da je shema ista.
+
+**Uvoz — tri načina da „uspije" a ne napravi što misliš (S118)**
+
+- **⚠ Stari keširani bundle tiho osakati Structure import.** Prvi uvoz na PROD prošao je
+  sa `Areas 1 / Categories 1 / Attributes 15` i izgledao potpuno — a **nije upisao**
+  `comment_template`, `add_header`, `list_columns`, `hidden_in_add` ni drugo automation
+  pravilo. Netlify je imao aktualan build; preglednik je vrtio stari. Vidjelo se **samo**
+  po tome što modal nije imao retke `Settings updated` i `List columns` — brojači koji u
+  novijoj verziji postoje. **Hard refresh (Ctrl+Shift+R) je dio postupka**, ne higijena.
+- **⚠ „Import as mine" pokaže `0 New / 0 Modify`, a uvoz ipak radi** (BUG-S118-PREVIEWMODE,
+  v. Open bugs). Ne odustaj na temelju preview brojki.
+- **⚠ `et_activity_draft` nije vezan uz korisnika** (`src/types/activity.ts:226`). Jedan
+  ključ po pregledniku ⇒ nedovršen nacrt napravljen pod jednim računom iskoči kao
+  „Resume Previous Session?" pod **drugim**, i nudi kategoriju iz tuđe aree. Bezopasno
+  dok se klikne Discard, zbunjujuće kad se ne zna odakle.
+- **Delete Area kroz UI radi kad su SVI zapisi tvoji.** Pravilo nije „UI nikad ne uspije"
+  nego: padne kad postoje retci koje RLS skriva (tuđi ili osirotjeli). Kokina stara
+  `Financije` (357 eventa, svi njeni) obrisana je kroz UI čisto, s backupom prije brisanja.
 
 **Model / atributi**
 
@@ -623,6 +661,15 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   ImportReport / Filter`), pa u njemu `Tip`/`Podtip` nemaju padajući izbornik. Za pipeline
   nebitno, **za Koku bitno**: izvještaj je mišljen kao mjesto gdje dorađuje uvezeno, a ondje bi
   tipkala slobodan tekst bez ijedne provjere. Fix = nositi `DropdownData` kao i običan export.
+- **BUG-S118-PREVIEWMODE:** preview uvoza Activities **ignorira odabir „Import as mine"**.
+  `ExcelImportModal.tsx:106` zove `parseExcelFile(file, userEmail)` **bez** `foreignMode`,
+  pa preview uvijek računa po `skip` — kod tuđeg filea pokaže **`0 New / 0 Modify`** baš
+  u trenutku kad korisnik odlučuje hoće li uvoziti. Apply putanja
+  (`excelImport.ts:1864`) prosljeđuje `foreignMode` i uvoz **radi**.
+  ⚠ Gore od krive brojke: preview je taj koji računa **provjeru kolizija**, a ona je nad
+  praznim skupom, pa za „Import as mine" **otpada zaštita od dvostrukog uvoza istog filea**.
+  Izmjereno S118 na 3×1000 redaka (uvoz prošao, preview lagao sva tri puta).
+  Fix je jedan argument; nije napravljen jer bi tražio deploy usred migracije.
 - **BUG-S117-RULESHAPE:** panel i import **ne pišu isti oblik** `validation_rules` za
   `depends_on` atribut. Panel: `{type, suggest: [...], allow_other: true, depends_on}`;
   import: `{type, depends_on}`. Zato svaki Structure import nakon spremanja panela prijavi
@@ -747,28 +794,33 @@ MC naplata ga nosi, pa bi varijanta razbila brojanje po opisu (`klasificiraj_tra
 datumom padaju **prije ZABA sidra** (01.07.) i po pravilu „strogo nakon" tiho ispadaju iz salda.
 Tranša 4 ih rješava: ostane li `13.239,31` bili su duplikati, postane li `12.866,20` bili su stvarni.
 
-### Plan za PROD (dogovoren S115) — bez žurbe
+### PROD — ✅ IZVEDENO 2026-08-25 (S118)
 
-Redoslijed je Sašin: **kolovoz u miru → kolone po Arei → testiranje → tek onda deploy na `main`.**
-Odbačena je varijanta „sve sutra ujutro prije nego Koka otputuje".
+**Koka radi na PROD-u.** Area `Financije_all` (`de8662e6-54f7-4ded-ab42-a786e7456067`,
+slug `financije-all`) pod **njenim** računom (`dubravka.pavic-sladoljev@dps-perceptum.com`,
+`eeb78414`), Saša je **write grantee**. Puštene migracije: `035`, `036`, `038` (RPC + sidra),
+`039` (čišćenje siročadi), `040` (poravnanje slugova), `041` (dashboard config),
+`042` (slug trigger). Kod je na `main` od 24.08. (S108–S117), Netlify deployao.
 
-1. **Uvoz kolovoza** — pripremljen u S116 (`fill_from_izvod.py --iz-koke`, brojke u
-   `docs/sessions/tests/S116_tests.md` T-S116-7/-8). ⚠ Traži i skupnu MC naplatu
-   `1.332,52` s `MC_2026-07.pdf` — bez nje kontrolni broj ne izlazi.
-   ⚠ Kokin file se mijenja svakih par dana (`08-16` → `08-23` donio 20 novih redaka
-   nakon 30.07.); **prije uvoza ponovi `--dry` i provjeri da je i dalje 14**.
-2. ✅ **Kolone po Arei — izvedeno S116.** Ostaje ih vidjeti uživo (T-S116-1…5).
-3. Testiranje na TEST-u. ⚠ Sidro ZABA je **premješteno na 30.07. u S116**, ali
-   **kod nije popravljen** (BUG-S115-ANCHORDATE) — sljedeći upis s izvoda ponavlja grešku.
-4. **Merge `test-branch` → `main`** — ⚠ samo na Sašin izričit „idi".
-5. SQL `035`–`038` na PROD · `dashboard` config u njenu PROD Areu (⚠ **ne putuje** roundtripom)
-   · Structure import **pod njenim računom** (D6) · 2–3 stvarna retka da se račun pojavi.
-6. Saša testira na **njenom PROD računu lokalno**, pa joj javi da može s mobitela.
-7. **Ona upiše stanje sa svog ekrana banke → „u banci" → Potvrdi.** To je sidro, i datum je
-   tada ispravno današnji. Od tog trena: `saldo = njen broj + ono što ona upiše`.
+**Podaci: 2.312 eventa** (`2025-01-01 … 2026-08-25`), preseljeni **Excel roundtripom iz TEST-a**
+— tri filea po 1000 redaka, „Import as mine". Nije korišten pipeline: TEST nosi sve ispravke
+iz S110–S117 kojih u Review workbooku nema, pa bi regeneriranje bilo korak unatrag.
 
-⚠ **Njoj u jednoj rečenici: kad počne upisivati u app, u Excelicu više ne.** Radi li oboje,
-sve dobijemo dvaput — a to se neće vidjeti dok se saldo ne raziđe.
+**Provjereno mjerenjem, ne dojmom:**
+- `uplata`/`isplata` po računu **identične TEST-u u cent** (478/478 i 209/209 redaka)
+- sidra s izvoda: ZABA `13.815,33 @ 30.07.` · RF `799,12 @ 11.08.`
+- ⇒ pločica daje **`13.239,31`** (ZABA) i **`796,43`** (RF) — isti brojevi kao TEST,
+  kroz drugu bazu, drugog vlasnika i „Import as mine"
+
+**Stare aree:** Kokina `Financije` (357 eventa) **obrisana** — prije brisanja izmjereno da
+svih 357 ima pokriće u novoj arei (199 ih je samo drukčije datirano zbog D1b; jedini prividni
+manjak, `7,63` vs `7,83` „Chromos - Konzum" 29.06., bio je skoro-duplikat razreda S111).
+Sašina `Financije_old` (2.774 eventa, `2023-01-01 … 2025-12-27`) **ostaje** — jedina kopija
+2023./2024. na PROD-u dok ti batchevi ne prođu pipeline. Share prema Koki maknut.
+
+**Ostalo za nju:** upisati svoje sidro s ekrana banke kad krene (nije nužno — sidra s izvoda
+već drže saldo) i jedna rečenica: **kad počne upisivati u app, u Excelicu više ne.**
+Radi li oboje, sve dobijemo dvaput — a to se neće vidjeti dok se saldo ne raziđe.
 
 ⚠ **Izvodi su samo PDF** — ni ZABA ni PBZ ne nude CSV/Excel (potvrdio Saša, S115). Ideja
 „app čita izvod" zato znači **pisanje novog čitača PDF-a**, i **imenovana je i odložena**:
@@ -911,6 +963,16 @@ odluka o koliziji `session_start`a pri unosu unatrag.
 ekrana** (Add pa odmah Edit), a Koka gleda banku svakih par dana ⇒ pogađa je na **svakom**
 retku. Ostale stavke Faze 2 štede sekunde, ova uklanja cijeli drugi ekran.
 
+**⚠ `Financije_all` i `financije-all` su DVA POLJA, ne dvije verzije istog imena** (S118).
+Podvlaka je **ime aree** — ono što čovjek utipka i što stoji u Excel koloni `Area` i u `Category_Path`.
+Crtica je **slug**, i **nikad se ne tipka**: app ga izvede iz imena (`generateSlug`, `_` → `-`,
+`structureImport.ts:149`), a `037` i `dashboard`/`list_columns` reference traže baš `financije-all`.
+Posljedica koja se ne vidi: nazove li se area na PROD-u ikako drukčije, slug ispadne drugi,
+`037` ne nađe areu ⇒ **nema Overview taba**, i nigdje ne piše zašto. Izmjereno na TEST-u:
+`name='Financije_all'`, `slug='financije-all'`. U repou nema nijednog pojavljivanja krivog
+oblika (`Financije-all` 0×, `financije_all` 0×) — dakle nije tipfeler koji se čisti, nego
+razlika koju treba znati pri **stvaranju aree na PROD-u**.
+
 **Preimenovanje `Financije_all` → `Financije` — ODGOĐENO, s okidačem** (Sašina odluka S117).
 Okidač **nije** „kad bude na PROD-u" nego **„kad prođe zadnji uvoz koji generira pipeline"**
 (batch 2024 i 2023 idu **nakon** cutovera, na PROD — rename odmah po cutoveru ugrizao bi isto
@@ -959,6 +1021,9 @@ tamo je datum naplate vezan uz ciklus banke, ne uz dan kupovine.
 **Drill s dva uvjeta** — `FilterContext` nosi jedan `attrFilter`, a uvjet pločice ima dva
 (`Izvor` + `Status`), pa drill znači „pokaži mi ovaj račun", ne „točno ove retke".
 Predviđeno u OVERVIEW_TAB_SPEC §2.16 kao test; ispalo da filtru fali mogućnost.
+⚠ **Nije samo drill** (Sašin nalaz S118, iz stvarnog rada u appu): isto fali u **običnom
+filtru** — „ZABA **i** samo uplate" (`Racun` + `Smjer`) korisnik ne može složiti. Time to
+prestaje biti polish pločice i postaje svakodnevna potreba. Sašina odluka: **ne sada.**
 
 **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC; ista investicija kao Faza 1.
 

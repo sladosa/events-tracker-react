@@ -2757,3 +2757,146 @@ jer su svi došli **s izvoda**, dakle već naplaćeni. `Status` je **trenutno st
 - **Preimenovanje aree odgođeno**, okidač je **zadnji pipeline uvoz** (ne „kad bude na PROD-u" —
   batch 2024/2023 idu *nakon* cutovera). Rename tada ide **kroz UI**, jer slug preživi.
 - **Prvo sidro na praznoj Arei se ne gradi** (potvrđeno iz S116).
+
+---
+
+# S118 — 2026-08-25 · Koka na PROD-u
+
+Sesija je počela pitanjem „što dalje" i završila tako da **Koka radi na PROD-u s 2.312 eventa
+i saldom koji se poklapa s bankom u cent**. Usput su izašla tri kvara koja se **ne vide iz koda**
+— sva tri se očituju tako da nešto „uspije" i ne napravi ono što piše.
+
+## 1. Prvo mjerenje: `main` je već bio deployan
+
+Handoff je tvrdio „`main` nije diran od S107". `git log origin/main` kaže drugo: fast-forward na
+`71b3418` **24.08. u 16:36**, dakle S108–S117 su na PROD-u od jučer. Sašina slutnja („čini mi se
+da smo možda već pushali") bila je točna. Ispravljeno u `NEXT_SESSION_PROMPT.md`.
+
+**PROD baza je pritom bila prazna od svega novog:** ni `balance_anchors`, ni `rpc_area_group_agg`,
+ni `rpc_area_balance_anchored`. Deploy je bio **inertan** — Overview tab postoji samo uz
+`settings.dashboard`, a nijedna PROD area ga nije imala. Ništa nije puklo jer se ništa nije zvalo.
+
+## 2. Čišćenje prije useljenja
+
+Inventura je našla: tipfeler-račun (`dubravla.…`, prazan — Saša ga obrisao), osirotjeli
+`data_shares` prema obrisanoj arei, i tri mrtve `share_invites`. Riješeno kroz **`039`**, pisan
+generički (uvjet, ne popis id-eva) pa je idempotentan. Jedina zaštita koju vrijedi zapamtiti:
+brisanje pozivnica bez računa gleda **samo `accepted`** — neprihvaćena pozivnica na email bez
+računa je normalna i čeka registraciju.
+
+Uz to je maknut share `Financije_old → Koka`: kad dobije `Financije_all`, tri slična imena u
+dropdownu su poziv na krivi unos, a krivi unos ne javlja ništa.
+
+## 3. Migracija koja je „uspjela" i izgubila pola posla
+
+`035`/`036`/`038` prošle, Structure import prošao (`Areas 1 / Categories 1 / Attributes 15`).
+Mehanička usporedba TEST↔PROD pokazala je da **ništa od toga nije istina do kraja**:
+
+| | TEST | PROD |
+| --- | --- | --- |
+| slugovi 5 atributa | `izvorplacanja`, `datum_naplate`, `brojrata`, `rata_br`, `izvod_opis` | `izvor`, `datum-naplate`, `broj-rata`, `rata-br`, `izvod-opis` |
+| `hidden_in_add` (3×) | ✓ | nema |
+| `comment_template` / `add_header` / `list_columns` | ✓ | `null` |
+| `automations` | `attribute_rules` + `rata` | samo `attribute_rules` |
+
+⚠ **Najgori dio nije ono čega nema nego ono što je ostalo i pokazuje u prazno:** preživjeli
+`attribute_rules` referencira `izvorplacanja`/`datum_naplate`, a `Status.depends_on` isto —
+slugove kojih na PROD-u nema. `set_attribute` i Status dropdown bili su **mrtvi, a u bazi
+izgledali konfigurirano.**
+
+### Uzrok A: PROD ima trigger koji gazi slug, TEST ga nema
+
+Ni file ni build nisu bili krivi — export je nosio ispravne slugove, a deployani bundle je imao
+sve S116/S117 markere (provjereno `curl`-om nad `index-*.js`). Uzrok se našao **pokusom**:
+upiši atribut sa slugom → pročitaj → obriši.
+
+```
+PROD:  poslano 'zz_test_slug'  ->  spremljeno 'zz-test-slug'    x
+TEST:  poslano 'zz_test_slug'  ->  spremljeno 'zz_test_slug'    v
+```
+
+Šest pokusa pokazalo je da trigger **ne popunjava nego bezuvjetno prepisuje**; preživi samo slug
+koji je slučajno već jednak `slugify(name)`. Dva dodatna pokusa: trigger je **INSERT-only** i
+rename **ne** regenerira slug — zato je popravak UPDATE-om trajan.
+
+Funkcija `generate_slug_from_name()` nosila je komentar *„Generate slug ONLY on INSERT or if slug
+is empty"* i uvjet `IF TG_OP = 'INSERT' OR NEW.slug IS NULL OR NEW.slug = ''`. **Komentar opisuje
+namjeru, uvjet radi drugo** — čitanjem koda se to ne vidi, jer komentar zvuči kao zaštita.
+
+Popravljeno: **`040`** (poravnanje 5 slugova prema TEST-u/Excelu, prije ponovnog uvoza — obrnutim
+redoslijedom bi uvoz stvorio pet novih atributa uz pet krivih) i **`042`** (iz uvjeta ispada
+`TG_OP = 'INSERT'`). Regex u `042` nije prepisan s odsječenog ekrana nego **izmjeren** trima
+pokusima (`'ZZ  Test--Slug!!'` daje `'zz-test-slug'`).
+
+⚠ Funkcija je zajednička za `set_area_slug`, `set_category_slug`, `set_attribute_slug`. Areama se
+nikad nije očitovala samo zato što app i trigger slučajno daju isti oblik
+(`Financije_all` → `financije-all`).
+
+### Uzrok B: preglednik je vrtio stari bundle
+
+Ostatak (config, `hidden_in_add`, drugo automation pravilo) vratio se **ponovnim uvozom istog
+filea nakon hard refresha**: `Attributes updated 3 · Settings updated 1 · Automation rules 2 ·
+List columns 7`. Dokaz nije bio zaključivanje nego **sam modal**: prvi uvoz nije imao retke
+`Settings updated` i `List columns` — brojače koji u novijoj verziji postoje.
+
+Poslije toga usporedba daje: 15/15 atributa identično, `add_header` ✓ `automations` ✓
+`comment_template` ✓ `list_columns` ✓; razlikuju se samo `dashboard` (ide kroz `041`) i
+`export_profiles` (zna se da ne putuje).
+
+## 4. Podaci: Sašin prijedlog je pobijedio moj plan
+
+Plan je bio „minimum sad, povijest kasnije" i uvoz kolovoza kroz `fill_from_izvod.py`. Saša je
+pitao **zašto ne izvesti Activities s TEST-a i uvesti na PROD**. Provjera je pokazala da app oba
+potencijalna blokera već rješava sam:
+
+- TEST `event_id`-evi ne postoje na PROD-u ⇒ `smartReclassify` ih pretvara u CREATE
+- kolona G nosi Sašin email ⇒ „Import as mine" forsira INSERT i postavlja nju za vlasnicu
+
+Time je otpao cijeli korak s pipelineom — i to je **bolje**, jer TEST nosi ispravke iz S110–S117
+kojih u Review workbooku nema. Uvezeno u tri filea po 1000 redaka, brojano nakon svakog
+(1001 → 2001 → 2312).
+
+⚠ **BUG-S118-PREVIEWMODE** otkriven usput: preview je sva tri puta pokazao `0 New / 0 Modify`
+jer `ExcelImportModal.tsx:106` zove `parseExcelFile` **bez** `foreignMode`. Apply putanja ga
+prosljeđuje i uvoz radi. Gore od krive brojke: preview računa i **provjeru kolizija**, pa za
+„Import as mine" otpada zaštita od dvostrukog uvoza istog filea. Zato se brojalo poslije svakog.
+
+## 5. Potvrda koja nešto znači
+
+```
+uplata/isplata po računu, @ 13.08.:   TEST == PROD u cent   (478/478, 209/209)
+sidra s izvoda:  ZABA 13.815,33 @ 30.07.   ·   RF 799,12 @ 11.08.
+pločica:         ZABA 13.239,31            ·   RF 796,43
+```
+
+Isti brojevi kao TEST — kroz drugu bazu, drugog vlasnika i „Import as mine". Sidra su upisana
+**kroz UI**, putem „izvod" s ručno utipkanim datumom, čime je S116 popravak prvi put izveden
+na PROD-u.
+
+## 6. Stara area: prividan manjak koji nije bio manjak
+
+Prije brisanja Kokine stare `Financije` izmjereno je nosi li išta čega u novoj nema.
+Od 357 iznosa, **200 nema par po `(datum, smjer, iznos)`** — ali 199 ih ima **isti iznos unutar
+±45 dana**, što je D1b: stara area datira kartičnu kupovinu na **dan naplate** (11. u mjesecu),
+nova na **dan kupovine**.
+
+Preostao je jedan: `29.06. RF Visa 7,63 „Chromos - Konzum"`. Traženje s tolerancijom našlo je
+`29.06. RF Visa 7,83 „Konzum"` — isti dan, račun, kartica i trgovac, razlika **0,20**. Dakle
+skoro-duplikat razreda S111, a ne gubitak; točan je `7,83` (autoritet za iznos je izvod).
+
+Obrisano **kroz UI** s „Download Backup & Delete" (file se skine prije brisanja), i prošlo je
+čisto — nula ostataka. ⚠ Time je precizirano staro pravilo: UI brisanje ne pada uvijek, nego
+**kad postoje retci koje RLS skriva**; ovdje su svi bili njeni.
+
+`Financije_old` (2.774 eventa, 2023–2025) **ostaje** — jedina kopija 2023./2024. na PROD-u.
+
+## 7. Sitno, ali zapisano
+
+- **`et_activity_draft` nije vezan uz korisnika** — „Resume Previous Session?" od prije 3 tjedna
+  iskočio je pod njenim računom, s kategorijom iz stare aree. Discard rješava; ključ je po
+  pregledniku, ne po korisniku.
+- **`Financije_all` vs `financije-all` nisu dvije verzije imena nego dva polja** — ime se tipka,
+  slug app izvodi. U repou nema nijednog krivog oblika; zabuna je bila stvarna, greška nije.
+- **Filtar s dva uvjeta** — Sašin nalaz iz stvarnog rada: „ZABA **i** samo uplate" se ne da
+  složiti. Dosad zapisano kao nedostatak *drilla*; sada je jasno da fali i u običnom filtru.
+  Odluka: ne sada.

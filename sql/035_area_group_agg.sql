@@ -84,8 +84,18 @@ AS $$
     WHERE a.id = p_area_id
       AND (
         a.user_id = auth.uid()
-        -- template user: its Areas are readable by everyone (see areas_select)
-        OR a.user_id = 'be785f09-b7c6-497f-b351-363d224c93c8'::uuid
+        -- Template user: its Areas are readable by everyone (see areas_select).
+        -- ⚠ THE ID IS NOT THE SAME IN BOTH DATABASES — do not hardcode it here.
+        --   TEST be785f09-…  ·  PROD d6ab00dd-…  (measured 2026-08-25, S118)
+        -- 009_sharing.sql and 010_template_seed.sql DO hardcode it, and on PROD
+        -- they were run with the id swapped by hand. That works exactly once:
+        -- the next file that copies the literal gets a dead id, and a dead id
+        -- here fails OPEN in the quiet direction — the gate simply never matches
+        -- the template user, so nothing raises and nothing is denied loudly.
+        -- The email is the stable identity across both DBs (verified in profiles),
+        -- so resolve it instead of pasting a uuid.
+        OR a.user_id = (SELECT p.id FROM public.profiles p
+                        WHERE p.email = 'sasasladoljev59+template@gmail.com')
         OR EXISTS (
           SELECT 1 FROM public.data_shares ds
           WHERE ds.target_id  = a.id

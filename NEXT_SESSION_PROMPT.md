@@ -1,13 +1,14 @@
-# NEXT SESSION PROMPT — nakon S117 (sve provjereno, kolovoz uvezen, čeka se „idi" za merge)
+# NEXT SESSION PROMPT — nakon S118 (Koka je na PROD-u)
 
-**Pisan protiv commita `f9448b9`** (+ commit zatvaranja S117 koji slijedi odmah iza).
+**Pisan protiv commita `3cef973`** (+ commit zatvaranja S118 koji slijedi odmah iza).
 Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest; `CLAUDE.md` je autoritet.
 
-**Stanje grana:** `test-branch` nosi S108–S117. `main` = PROD, **nije diran od S107**.
+**Stanje grana:** `main` nosi S108–S117 (pushano 24.08.), `test-branch` je jedan
+dokumentacijski commit ispred. **U S118 nije mijenjan nijedan `.ts`/`.tsx` file** — sav
+posao je bio SQL (`039`–`042`), podaci i dokumentacija. Deploy zato nije potreban.
 
-> S117 je bio dan izvođenja, ne planiranja. Kod je prvi put **cijeli viđen uživo**, kolovoz
-> je uvezen u cent, a pet stvari popravljeno — **nijedna nije bila planirana, sve su ispale
-> iz testiranja.**
+> S118 nije bio dan pisanja koda nego dan **useljenja**. Tri kvara koja su izašla imaju
+> zajedničko svojstvo: svaki od njih **javi uspjeh** i ne napravi ono što piše.
 
 ---
 
@@ -15,31 +16,27 @@ Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest;
 
 ## 1. Što je gotovo
 
-**Kolovoz je u bazi.** ZABA `13.239,31` na 13.08., RF `796,43`. Oba u cent, i to je prava
-potvrda jer dolazi iz **dva različita modela**: Kokin lanac tereti račun svakom kartičnom
-stavkom (59 redaka), naš s 15. Isti broj iz istog modela ne bi značio ništa.
+**Koka radi na PROD-u.** Njena area `Financije_all` ima **2.312 eventa** (2025-01-01 do
+danas), saldo `ZABA 13.239,31` i `RF 796,43` — isti brojevi kao na TEST-u, u cent.
 
-**Sve provjere prošle.** Kolone po Arei, sidro s izvoda, guard, roundtrip. Ništa neviđeno
-nije ostalo — što je bio uvjet za merge.
+Povijest nije išla kroz pipeline nego **Excel roundtripom s TEST-a** (tvoja ideja, i bila je
+bolja od mog plana — TEST nosi sve ispravke iz S110–S117 kojih u Review workbooku nema).
 
-**Tri stvari koje bi Koku svakodnevno gnjavile su maknute:**
-- unos za prošli dan više ne traži dva ekrana (birač datuma u zaglavlju, bez štoperice)
-- `Valuta`, `Izvod opis` i `Stanje` više nisu u formi (7 polja umjesto 15)
-- dogovorena je oznaka `~` za „ne znam točan iznos", s pretragom kroz Comment filtar
+Stara `Financije` je obrisana, ali tek nakon što je izmjereno da **ne nosi ništa novo**.
+`Financije_old` ostaje dok 2023./2024. ne prođu pipeline — to je jedina kopija tih godina.
 
 ## 2. Što slijedi
 
-**Merge `test-branch` → `main`, pa PROD.** Čeka **samo tvoj izričit „idi"**. Redoslijed
-je u `CLAUDE.md` („Plan za PROD"), a bitno je da se ne preskoči:
+**Ništa hitno.** Sve što je ostalo je provjera uživo, a ne posao:
 
-1. SQL `035`–`038` na PROD
-2. Structure import **pod Kokinim računom** (D6) — stvara areu, kategorije, dropdowne
-3. `set_list_columns.py --write` i `add_header` config protiv `.env.prod.local`
-   ⚠ oba vuku hardkodiran `AREA_ID` iz `verify_rpc_vs_model` — treba im novi id
-   ⚠ `037` traži slug `financije-all`; ako se PROD area drukčije nazove, ne nađe je
-4. Uvoz kolovoza istim fileom
-5. **Ti odglumiš Koku na svom laptopu** — Add od nule, dropdowni, sidro, saldo
-6. Ona upiše stanje s ekrana banke → Potvrdi → javiš joj
+- **Ona neka radi par dana** i javi što joj smeta
+- Kad prvi put upiše stanje s ekrana banke → to je **T-S118-3**, jedini put kroz sidro koji
+  na PROD-u nikad nije izveden
+- Shortcutove treba složiti iznova (stari su otišli sa starom areom — bili su vezani na
+  njene stare atribute i nisu se dali preseliti)
+
+**Jedna rečenica njoj:** *kad počneš upisivati u app, u Excelicu više ne.* Radi li oboje,
+sve dobijemo dvaput, a to se neće vidjeti dok se saldo ne raziđe.
 
 ## 3. Što stoji na tebi
 
@@ -47,9 +44,8 @@ je u `CLAUDE.md` („Plan za PROD"), a bitno je da se ne preskoči:
   `Netdomena Igor 47,76`) i `2028-05-16` (`HLK 5/26`). Ispravak ide **u njen file**.
 - **Redak `07.08. Parking 1,60`** je tipfeler u mjesecu (treba `07.07.`) — kod nas isključen,
   kod nje i dalje krivo.
-- **Onih 5 spornih lipanjskih redaka** (Σ `373,11`) — kolovoz ih nije razriješio.
+- **Onih 5 spornih lipanjskih redaka** (Σ `373,11`) — i dalje neriješeno.
 - **Odluka o siročadi:** 57 testova iz `S99`–`S104` bez retka u `PENDING_TESTS.md`.
-- **Jedna rečenica njoj kad dođe dan:** *„kad počneš upisivati u app, u Excelicu više ne."*
 
 ---
 
@@ -57,49 +53,55 @@ je u `CLAUDE.md` („Plan za PROD"), a bitno je da se ne preskoči:
 
 ## 1. Prvo pročitaj
 
-`docs/sessions/DONE_HISTORY.md` **S117** · `CLAUDE.md` → nova sekcija **„Unos u aplikaciji"**
-u Critical rules · `docs/sessions/tests/S117_tests.md`.
+`docs/sessions/DONE_HISTORY.md` **S118** · `CLAUDE.md` → nove sekcije **„PROD ≠ TEST"** i
+**„Uvoz — tri načina da uspije a ne napravi što misliš"** · `docs/sessions/tests/S118_tests.md`.
 
-## 2. Otvoreno (4 testa, nijedan ne blokira merge)
+## 2. PROD — činjenice koje trebaš prije nego išta diraš
 
-| test | zašto stoji |
+| | |
 | --- | --- |
-| **T-S117-1** ⭐ | **Jedina grana novog koda koju testiranje nije okinulo** — slobodna minuta pri unosu unatrag. Traži namješten uvjet (zauzeta minuta; uvezeni ZABA retci su na 14:00–14:13). |
-| T-S117-2 | Birač datuma u Healthu — config upisan 24.08., nije viđen |
-| T-S117-3 | Konvencija `~` puni ciklus (upiši → nađi → **uredi isti redak** → popis prazan) |
-| T-S117-4 | Grantee slučaj za `add_header` / `HiddenInAdd` |
+| area | `Financije_all`, id `de8662e6-54f7-4ded-ab42-a786e7456067`, slug `financije-all` |
+| vlasnica | Koka — `dubravka.pavic-sladoljev@dps-perceptum.com` (`eeb78414`) |
+| Saša | **write grantee** na toj arei |
+| migracije | `035`, `036`, `038`, `039`, `040`, `041`, `042` — sve puštene |
+| eventi | 2.312 (`2025-01-01 … 2026-08-25`) |
+| sidra | ZABA `13.815,33 @ 30.07.` · RF `799,12 @ 11.08.` (oba s izvoda) |
+| stare aree | Kokina `Financije` **obrisana**; Sašina `Financije_old` (2.774, 2023–2025) **ostaje** |
 
-## 3. Novo u kodu
+⚠ **Alati i dalje nose hardkodiran TEST `AREA_ID`** (`verify_rpc_vs_model.py:57`).
+Za PROD treba proslijediti gornji id — nijedan alat to još ne prima kao argument.
 
-`AddHeaderConfig` (`areas.settings.add_header`) · `validation_rules.hidden_in_add` ·
-`sessionStart` **razdvojen** od `eventAt` u `AddActivityPage` · `normalizeSlug()` izvučen ·
-`findFreeSessionStart()` · Structure kolone `AddTimer`, `AddDatePicker`, `HiddenInAdd`.
+## 3. Tri kvara iz S118 (dva popravljena, jedan nije)
 
-⚠ **Ako ikad netko opet spoji `sessionStart` i `eventAt`, vraća se „unos za jučer traži dva
-ekrana".** To je bila jezgra cijele izmjene, a izgleda kao bezopasno pojednostavljenje.
+**✅ Slug trigger** (`042`) — `generate_slug_from_name()` je na INSERT-u gazio proslijeđeni
+slug. TEST taj trigger uopće nema. Sada „popuni ako ga nema". Slugovi poravnati u `040`.
+⚠ **Nije viđeno kroz aplikaciju** (T-S118-1) — provjereno je `service_role` putem.
 
-## 4. Nova zamka koju vrijedi znati
+**✅ Stari keširani bundle** — nije bug nego postupak: **hard refresh prije Structure importa**.
+Prvi uvoz je izgubio `comment_template`, `add_header`, `list_columns`, `hidden_in_add` i drugo
+automation pravilo, a javio uspjeh.
 
-**BUG-S117-RULESHAPE** (zapisan u Open bugs): panel i import pišu **različit oblik**
-`validation_rules` za `depends_on` atribut. Posljedica: prvi import nakon spremanja panela
-javi **9 „attributes updated"** koji nisu promjena nego poravnanje. Bezopasno za ponašanje,
-ali **šum koji skriva pravu promjenu** — a taj brojač je jedini signal da je import nešto dirnuo.
-Ozbiljniji dio: panelova fallback lista se **ne izvozi**, pa je prvi roundtrip briše
-(danas neopasno — 0 od 12 `depends_on` atributa je ima).
+**❌ BUG-S118-PREVIEWMODE** — `ExcelImportModal.tsx:106` zove `parseExcelFile` bez
+`foreignMode`, pa „Import as mine" u previewu pokaže `0 New / 0 Modify`. Apply radi.
+Fix je jedan argument. **Nije napravljen** jer bi tražio deploy usred migracije —
+sad ga nema što blokirati.
+⚠ Uz krivu brojku otpada i **provjera kolizija** (računa se u previewu), dakle za taj put
+nema zaštite od dvostrukog uvoza istog filea.
 
-## 5. Metodološki ispravak iz S117, vrijedi ga ne ponoviti
+## 4. Prvo što bih uzeo sljedeći put
 
-Tvrdio sam da kartični redak treba `Status = Izvrsen`, brojeći povijest (Visa **855/855**).
-Bilo je krivo: config već ima `default_map` `Visa → Planiran`, i to je točno — onih 855 je
-`Izvrsen` jer su **svi došli s izvoda**, dakle već naplaćeni.
+1. **BUG-S118-PREVIEWMODE** — jedan argument, jedini otvoreni kvar iz S118
+2. **Faza 3 — `set_attribute` na Import putu** („popuni ako je prazno"). Jedna rupa drži tri
+   featurea; sad je i praktičnija nego prije, jer Koka radi kroz app i roundtrip.
+3. **Faza 2 — brzi unos** (skupljanje prefilanih polja, shortcut dropdown)
 
-**`Status` je trenutno stanje, ne povijest.** Brojanje zatečenih vrijednosti ne govori kakvo
-stanje redak treba **na početku**. Za `Tip`/`Podtip` je brojanje pravi alat; za `Status` nije.
+⚠ **Batch 2024 i 2023** sada idu **na PROD**, ne na TEST — i to je okidač za preimenovanje
+`Financije_all` → `Financije` (v. CLAUDE.md backlog: rename **kroz UI**, nikad importom).
 
-## 6. Sitnice koje su pojele vrijeme
+## 5. Sitnice koje su pojele vrijeme
 
-- `git commit -m "…"` s **backtickovima** u poruci: bash ih izvrši i pojede tekst
-  (`Stanje: command not found`). Poruke idu kroz `-F -` heredoc.
-- Hrvatski navodnici `„…"` unutar Python `"…"` literala prekinu string — koristi `'''…'''`.
-- `Supa._call` prima `body=` kao **dict**, ne bytes; `select_all` odbija upit bez `order=`
-  (ugrađena S108 zaštita).
+- **Backtickovi u `python -c "…"` kroz Bash** — bash ih izvrši i pojede sadržaj. Isti razred
+  kao `git commit -m` iz S117. Rješenje: napiši sadržaj u file pa ga učitaj, ili heredoc.
+- `event_attributes?event_id=in.(…)` s 2.300 id-eva **probije duljinu URL-a** (ne max-rows).
+  Serije po ~60 id-eva.
+- `attribute_definitions` nema `display_order` nego **`sort_order`**.

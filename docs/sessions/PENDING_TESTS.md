@@ -1,7 +1,7 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S116 (2026-08-23) — kolone Activities liste po Arei, `--iz-koke` izvor, sidro ZABA ispravljeno.
+**Zadnji update:** S118 (2026-08-25) — Koka na PROD-u; ranije: S116 (2026-08-23) — kolone Activities liste po Arei, `--iz-koke` izvor, sidro ZABA ispravljeno.
 **Prošlo 2026-08-22: T-S113-3.** · 2026-08-21: T-S112-3, -4, -6; T-S113-1. · 2026-08-19: T-S112-1, T-S112-2. · 2026-08-17: T-S110-1, -2, -3, -6, -7. · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
 **Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
 **⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
@@ -59,6 +59,24 @@ zadovoljavaju uvjete pločice" i **nema polja za unos**. Dakle za Kokin PROD prv
 nego što stoji. **Otvoreno: ponuditi vrijednosti iz `racun.validation_rules.suggest` kao
 prazne retke s poljem za potvrdu** (dropdown, ne slobodan tekst — tipfeler bi inače
 stvorio fantomski račun). Sašina odluka, ~30 min.
+
+## S118 — Koka na PROD-u (2026-08-25)
+
+**Sve iz migracije potvrđeno mjerenjem u sesiji** (2.312 eventa, zbrojevi identični TEST-u u
+cent, pločica `13.239,31` / `796,43`, stara area obrisana bez ostataka). Otvoreno ostaje samo
+ono što se nije dalo izvesti sa Sašinog laptopa ili je provjereno kroz `service_role`, dakle
+mimo aplikacije:
+
+| test | opis | status |
+| --- | --- | --- |
+| T-S118-1 | ⭐ `042`: nov atribut **kroz aplikaciju** zadrži slug s podvlakom (dosad provjereno samo kroz PostgREST, mimo app puta) | ⬜ |
+| T-S118-2 | Structure roundtrip na PROD-u ne pomiče ništa (`Attributes updated 0`) | ⬜ |
+| T-S118-3 | ⭐ Kokino sidro s **ekrana banke** — put koji na PROD-u nikad nije izveden (računica: jučer = očitano − današnji promet) | ⬜ |
+| T-S118-4 | Saša kao **write grantee**: unos + upis i brisanje sidra u njenoj arei | ⬜ |
+| T-S118-5 | Shortcutovi ponovno složeni u novoj arei; `set_attribute` i dalje računa `Datum naplate` | ⬜ |
+| T-S118-6 | Ona radi **s mobitela** — uska lista, birač datuma, pločica | ⬜ |
+
+**Detalji:** [S118_tests.md](tests/S118_tests.md)
 
 ## S117 — unos prepravljen za Koku (2026-08-24)
 
