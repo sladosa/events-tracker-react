@@ -694,6 +694,18 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   praznim skupom, pa za „Import as mine" **otpada zaštita od dvostrukog uvoza istog filea**.
   Izmjereno S118 na 3×1000 redaka (uvoz prošao, preview lagao sva tri puta).
   Fix je jedan argument; nije napravljen jer bi tražio deploy usred migracije.
+- **BUG-S119-FILTERBACK (Sašin nalaz, NEPROVJEREN):** drill s Overview pločice postavi
+  `attrFilter` (npr. `Racun`), ali nakon **View Details pa natrag** lista se vrati na **sve
+  račune**. Korisnik je otvorio jedan redak da ga pogleda i izgubio kontekst u koji se vraća.
+  ⚠ Nije stanje konteksta: `/app/*` dijeli **jedan** `FilterProvider` (`App.tsx:110`), a
+  `/view/:sessionStart` je unutar njega — dakle `filter.attrFilter` bi trebao preživjeti.
+  Sumnja pada na **remount filter panela** pri povratku na `AppHome` i njegov init
+  (`ProgressiveCategorySelector` zove `clearAttrFilter()` na više mjesta, `:212`/`:218`).
+  **Isti razred kao S111** (`DateRangeFilter`: auto-init je prepisivao korisnikov raspon čim
+  se komponenta odmontira) — a taj se bug tada činio „povremenim", a bio je determinističan.
+  ⇒ Prvo **izmjeriti** kad se točno `attrFilter` gubi (drill → View → natrag, s logom u
+  `setFilter`), pa tek onda popravljati. Vrijedi provjeriti i vraća li se **kategorija** i
+  raspon datuma, ne samo `attrFilter`.
 - **BUG-S117-RULESHAPE:** panel i import **ne pišu isti oblik** `validation_rules` za
   `depends_on` atribut. Panel: `{type, suggest: [...], allow_other: true, depends_on}`;
   import: `{type, depends_on}`. Zato svaki Structure import nakon spremanja panela prijavi
@@ -1010,6 +1022,18 @@ Mijenjati taj ključ dok alati rade je razmjena kozmetike za tihi gubitak redaka
 `structureImport.ts:548`) i `037` ne bi našao areu ⇒ nema Overview taba.
 ⚠ Jedino što rename ionako ubija: `export_profiles` (ključ nosi ime aree,
 `exportProfile.ts:146`) — složiti ih nanovo, posao od par minuta.
+
+**⭐ Shortcuts po Arei — toggle u Filter panelu** (Sašina ideja S119, gruba skica).
+Popis shortcutova raste i **preduga lista nema smisla** — a većina ih pripada jednoj Arei.
+Zamisao: **toggle u Filter panelu** koji popis suzi na shortcutove **odabrane Aree**;
+isključen toggle pokazuje one koji su napravljeni **s isključenim togglom** (dakle
+„globalne"). Shortcut napravljen unutar **Add Activity** po prirodi pripada Arei — ondje se
+Area zna, pa se veže bez pitanja.
+⚠ Prije koda razjasniti dvoje: (a) `activity_presets` već nosi `area_id` (v. `filter_state`)
+— treba provjeriti je li **uvijek** popunjen, jer stari zapisi možda nisu; (b) što znači
+„globalan" shortcut kad se Area filtar promijeni — nestaje li iz popisa ili ostaje.
+⚠ **Preset je per-user i ID-based** (nikad ne putuje) — v. „Preset ≠ widget" u sažetku
+Overview odluka. Ovo je čisto UI sužavanje popisa, ne nov oblik zapisa.
 
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**

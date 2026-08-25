@@ -45,7 +45,25 @@ kratica bi mogla pokazati krivi račun i to se **ne bi** vidjelo.
 4. Ono iz S118 što i dalje stoji: reći Koki za retke s krivom godinom (`2036-04-08`,
    `2028-05-16`), `07.08. Parking 1,60`, i 5 spornih lipanjskih redaka (Σ `373,11`).
 
-## 3. Što bi mogao primijetiti
+## 3. Dvije nove stvari koje si prijavio (zapisane, nedirane)
+
+Oboje je zapisano u `CLAUDE.md` i čeka sljedeću sesiju — ovdje ukratko:
+
+**a) Filter se gubi pri povratku iz View Details.** Uđeš u tablicu s Overview pločice
+(filtriran je `Racun`), otvoriš jedan redak da ga pogledaš, vratiš se — i lista pokazuje
+**sve račune**. Konfuzno je jer si samo htio pogledati redak, a izgubio si pogled u koji se
+vraćaš. Zapisano kao **BUG-S119-FILTERBACK**, **neprovjereno**: sve `/app/*` rute dijele
+jedan filter, pa se stanje ne bi *trebalo* gubiti — najvjerojatnije ga briše ponovno
+učitavanje filter panela. Isti razred kao onaj raspon datuma iz S111 koji se „povremeno
+resetirao", a resetirao se zapravo uvijek. **Prvo mjerenje, pa popravak.**
+
+**b) Shortcuts — toggle po Arei.** Popis je predugačak da bi bio koristan. Ideja: toggle u
+Filter panelu koji pokaže samo shortcutove **odabrane Aree**; isključen toggle ostavlja one
+napravljene s isključenim togglom. Oni iz Add Activity po prirodi pripadaju Arei.
+Zapisano u backlog uz dva pitanja koja treba razriješiti prije koda (nose li stari
+shortcutovi uvijek `area_id`, i što „globalan" znači kad se Area promijeni).
+
+## 4. Što bi mogao primijetiti
 
 Vodoravno povlačenje liste **više ne postoji**. Dosad si tako čitao kraj dugačkog opisa; sada
 se opis prelama u dva reda, a ako ni to ne stane, kraj dobije `…` (puni tekst je u ⋮ → View
