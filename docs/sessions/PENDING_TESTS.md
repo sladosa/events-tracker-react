@@ -23,6 +23,31 @@
 ⚠ Tri su zatvorena **djelomično** i to piše uz redak: `T-S111-4` (korak s Excel exportom nije
 izvršen), `T-S111-6` (zaštita blizanca se više ne da izazvati), `T-S107b-4` (help blok).
 
+### ✅ Prošlo uživo na PROD-u 2026-08-26 (Sašin Android, nakon deploya `main@ad0c6e1`)
+
+| test | dokaz |
+| --- | --- |
+| **T-S119-1** ⭐ | iznos vidljiv uz desni rub, bez ijednog pomicanja ustranu |
+| **T-S119-2** ⭐ | `RF` / `ZABA` sitno i sivo između datuma i iznosa |
+| **T-S120-1** ⭐ | drill → View Details → natrag: čip `Sašin tekući RF ×` **ostao**, lista i dalje filtrirana |
+| **T-S107v-7** | ekran `Couldn't load this activity · 57014` s gumbom **Try again** — i retry je uspio. Test je tražio točno to („kad se opet dogodi") |
+| — | plava oznaka retka vidljiva pri povratku iz View Detailsa |
+
+**⚠ Nalaz koji je iz toga ispao — popravljen isti dan (commit `742c83a`, čeka sljedeći deploy):**
+na sporoj vezi lista je pokazivala `—` ondje gdje idu iznos i račun. To **nije bio prazan
+podatak nego upit u letu**. Za novac `—` je **tvrdnja** („ovaj redak nema iznos"), pa je lista
+sekundu-dvije to tvrdila o svakom retku. `useListColumnValues` je razliku već znao
+(`:38` — *„a missing key means not loaded yet, not empty"*), ali `loaded` nikad nije stigao do
+ćelija. Sada dok upit traje stoji blijedi placeholder.
+
+**⚠ Sporost i `57014` — izmjereno što NIJE uzrok** (2026-08-26):
+PROD servisnim ključem `0,14–0,30 s` · **grantee na 3.715 eventa** (TEST, isti odnos kao Saša
+kod Koke) `0,09–0,41 s` · atributni filtar u oba režima `0,3–0,7 s`. Dakle ni podaci, ni
+RLS-grantee, ni filtar. Ostaje **S105 obrazac** — free-tier PROD se povremeno guši (isti kod
+greške, ista tablica, „čas 0,2 s čas timeout"), što potvrđuje i to da je `Try again` odmah
+upalio. **Nije potvrđeno kao zaključak.** Ako se ponovi: zabilježi **sat i minutu** i ekran.
+Pravi potez ostaje **Postgres upgrade na PROD-u** (`Settings → Infrastructure`, otvoreno od S105).
+
 ### Novo u S120 — traži telefon ili tvoj račun
 
 Detalji: [S120_tests.md](tests/S120_tests.md)
@@ -519,7 +544,7 @@ brisanje prošlo. `sql/033_delete_area_cascade.sql` (novo) — generički SQL ca
 | T-S107v-4 | **Saša:** `sql/033_delete_area_cascade.sql` — SECTION 2a roster (tko ima zapise + `role`) i 2b **jesu li policyji iz `020_orphan_rls.sql` na TEST-u** (određuje je li UI fix moguć) | ⬜ |
 | T-S107v-5 | **Saša:** Delete modal na `Financije_2` — sivi panel s **Owner:** i **popisom po korisniku** s brojem zapisa | ✅ (Owner: sladosa, 774 sve njegovo — **i to je oborilo prvu dijagnozu**) |
 | T-S107v-6 | **Saša:** ⭐ **pravi uzrok** — obriši `Financije_2`: mora **proći do kraja** | ✅ (obrisane i `Financije_2` i `Financije`) |
-| T-S107v-7 | **Saša (PROD, kad se opet dogodi):** View nakon Finish — ako ne otvori, ekran sad kaže **„Couldn't load this activity"** + tekst greške + **Try again**. **Pošalji tu poruku** — ona je dijagnoza koju dosad nismo imali. Ako piše „Activity not found", uzrok je drukčiji (zapisa stvarno nema) | ⬜ |
+| T-S107v-7 | **Saša (PROD, kad se opet dogodi):** View nakon Finish — ako ne otvori, ekran sad kaže **„Couldn't load this activity"** + tekst greške + **Try again**. **Pošalji tu poruku** — ona je dijagnoza koju dosad nismo imali. Ako piše „Activity not found", uzrok je drukčiji (zapisa stvarno nema) | ✅ **2026-08-26 uživo na PROD-u** — ekran se pojavio (`57014`), `Try again` učitao aktivnost|
 | Regresija | E2, E3, E4 (3), E5 (5), E6 (3), E14 (2), S104_delete_bug, S107_row_hash (2) — **20/20 PASS** prije mergea na main | ✅ (jedan flake T-S107-2 u prvom prolazu, ne reproducira se u 2 ponovna pokretanja) |
 
 ### ⚠ PRAVI UZROK (nađen T-S107v-5): PostgREST `max-rows = 1000`
