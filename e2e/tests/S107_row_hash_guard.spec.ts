@@ -28,7 +28,11 @@ import { selectFilterPath, SEED } from '../fixtures/filter';
 const SUPABASE_URL      = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY!;
 
-const GUARD_COMMENT  = 'T-S107 guard edit';
+// ⚠ Unique per run. A fixed string made this test fail against its own residue:
+// a leftover event from an earlier run already carried `T-S107 guard edit`, so
+// writing it again was not a change, no guard appeared, and the failure looked
+// like a broken feature. Measured 2026-08-26 on the TEST database.
+const GUARD_COMMENT  = `T-S107 guard edit ${Date.now()}`;
 const COPIED_COMMENT = 'T-S107 copied row';
 
 /** REST headers carrying the logged-in session, or null if not signed in. */
