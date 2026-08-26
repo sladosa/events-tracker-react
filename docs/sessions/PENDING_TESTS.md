@@ -30,8 +30,22 @@ izvršen), `T-S111-6` (zaštita blizanca se više ne da izazvati), `T-S107b-4` (
 | **T-S119-1** ⭐ | iznos vidljiv uz desni rub, bez ijednog pomicanja ustranu |
 | **T-S119-2** ⭐ | `RF` / `ZABA` sitno i sivo između datuma i iznosa |
 | **T-S120-1** ⭐ | drill → View Details → natrag: čip `Sašin tekući RF ×` **ostao**, lista i dalje filtrirana |
+| **T-S119-3** | `Anja 73/96` (25.08.2025.): `+450,00 €` **i** `−0,70 €`, složeni jedan ispod drugog |
+| **T-S119-4** | `neka dostava - rucnici i toster` prelomljeno u dva reda, bez vodoravnog scrolanja |
+| **T-S119-5** | `25.08.25. po` (lanjski, s godinom) vs `26.08. sr` (ovogodišnji, bez nje) |
+| **T-S120-2** | `N/A  KEKS PAY` — jedan `N/A`, ne `N/A/N/A` |
+| **T-S108-12** | Overview na telefonu: polje „u banci" **prima unos**, čip i brojevi na ekranu, ništa ne ispada |
 | **T-S107v-7** | ekran `Couldn't load this activity · 57014` s gumbom **Try again** — i retry je uspio. Test je tražio točno to („kad se opet dogodi") |
 | — | plava oznaka retka vidljiva pri povratku iz View Detailsa |
+
+**Time je prolaz na telefonu gotov: 8 od 8 što ovisi o Saši.** Ostaje `T-S118-6` (Kokin prolaz),
+`T-S119-7` (desktop), `T-S120-3`/`-4` (Excel uvoz, desktop).
+
+⚠ **Usput potvrđeno da lanac salda drži.** PROD pločica 26.08.: ZABA `13.231,31 €`,
+RF `796,43 €`. TEST je isti dan davao `13.239,31` — razlika je **točno 8,00 €**, Sašin redak
+`26.08. ZABA −8,00 dnevna karta C5`. I RF pokazuje **1 promjenu** poslije sidra od 11.08. iako
+je na listi šest RF redaka nakon tog datuma: samo `18.08. RF naknada −2,69` ima `Izvor = Racun`,
+ostalo su Visa kupovine koje račun terete tek skupnom naplatom. Model radi kako je zamišljen.
 
 **⚠ Nalaz koji je iz toga ispao — popravljen isti dan (commit `742c83a`, čeka sljedeći deploy):**
 na sporoj vezi lista je pokazivala `—` ondje gdje idu iznos i račun. To **nije bio prazan
@@ -54,8 +68,8 @@ Detalji: [S120_tests.md](tests/S120_tests.md)
 
 | # | test | status |
 | --- | --- | --- |
-| T-S120-1 | ⭐ **Filtar preživi View Details na telefonu** (E2E to pokriva na desktopu) | ⬜ |
-| T-S120-2 | `N/A` se pojavljuje **jednom**, ne `N/A/N/A` | ⬜ |
+| T-S120-1 | ⭐ **Filtar preživi View Details na telefonu** (E2E to pokriva na desktopu) | ✅ **26.08. uživo** — drill → View Details → natrag: čip `Sašin tekući RF ×` ostao, lista i dalje filtrirana|
+| T-S120-2 | `N/A` se pojavljuje **jednom**, ne `N/A/N/A` | ✅ **26.08. uživo** — `N/A  KEKS PAY`, jedan `N/A`|
 | T-S120-3 | „Import as mine" prijavi **kolizije** (prije: `0 New / 0 Modify` nad praznim skupom) | ⬜ |
 | T-S120-4 | Uvoz u areu s istim imenom kategorije — **prije batcha 2024** | ⬜ |
 
@@ -184,11 +198,11 @@ izmjereni u harnessu s istim klasama:
 
 | test | opis | status |
 | --- | --- | --- |
-| T-S119-1 | ⭐ **Iznos vidljiv bez scrolanja** na Kokinom iPhoneu i na Androidu — lista `Financije_all`, redak s dugackim opisom | ⬜ |
-| T-S119-2 | ⭐ **Kratica racuna** (`ZABA` / `RF`) sitnim sivim slovima u gornjem redu, izmedu datuma i iznosa | ⬜ |
-| T-S119-3 | **Dvostrani iznos** (`Anja 73/96`, 25.08.2025.) — obje strane vidljive, slozene u dva reda; nijedna ne nestaje | ⬜ |
-| T-S119-4 | **Opis se prelama u dva reda** i zavrsava s „…" tek ako ne stane ni u dva; vodoravnog scrolanja nema | ⬜ |
-| T-S119-5 | **Kratki datum**: `25.08. ut` za ovu godinu, `25.08.25. po` za lanjski redak (godina se pojavi sama) | ⬜ |
+| T-S119-1 | ⭐ **Iznos vidljiv bez scrolanja** na Kokinom iPhoneu i na Androidu — lista `Financije_all`, redak s dugackim opisom | ✅ **26.08. uživo na PROD-u (Android)** — iznos uz desni rub, bez pomicanja ustranu|
+| T-S119-2 | ⭐ **Kratica racuna** (`ZABA` / `RF`) sitnim sivim slovima u gornjem redu, izmedu datuma i iznosa | ✅ **26.08. uživo** — `RF` / `ZABA` sitno i sivo između datuma i iznosa|
+| T-S119-3 | **Dvostrani iznos** (`Anja 73/96`, 25.08.2025.) — obje strane vidljive, slozene u dva reda; nijedna ne nestaje | ✅ **26.08. uživo** — `Anja 73/96` (25.08.2025.): `+450,00 €` i `−0,70 €` složeni jedan ispod drugog, obje strane vidljive|
+| T-S119-4 | **Opis se prelama u dva reda** i zavrsava s „…" tek ako ne stane ni u dva; vodoravnog scrolanja nema | ✅ **26.08. uživo** — `neka dostava - rucnici i toster` prelomljeno u dva reda, bez vodoravnog scrolanja|
+| T-S119-5 | **Kratki datum**: `25.08. ut` za ovu godinu, `25.08.25. po` za lanjski redak (godina se pojavi sama) | ✅ **26.08. uživo** — `25.08.25. po` (lanjski, s godinom) vs `26.08. sr` (ovogodišnji, bez nje)|
 | T-S119-6 | ⭐ **Excel roundtrip za `Map`**: Structure export nosi kolonu `Map`, import je vrati — kratice prezive krug | ✅ **S120 (automatiziran)** — `e2e/tests/S119_list_columns_map.spec.ts`: export nosi `Map` → import ga zadrži → **brisanje ćelije ga ukloni**|
 | T-S119-7 | Desktop lista **nepromijenjena** (dug datum, kolone jedna do druge, `Stanje` vidljivo) | ⬜ |
 
@@ -436,7 +450,7 @@ ZABA `−22.943,71`.
 | T-S108-9 | Paginacija bez stabilnog sorta — Delete Area / Import Delete? nad >1000 atributa (regresija, nedeterministički) | ⬜ |
 | T-S108-10 | „From template" nosi `settings` bez `export_profiles` i bez sidara | ⬜ |
 | T-S108-11 | Read grantee vidi pločicu, nema „Potvrdi"; write grantee ima | ⬜ |
-| T-S108-12 | Mobitel — polje „u banci" i čip vidljivi i upotrebljivi | ⬜ |
+| T-S108-12 | Mobitel — polje „u banci" i čip vidljivi i upotrebljivi | ✅ **26.08. uživo na PROD-u (Android)** — polje „u banci" prima unos, čip i brojevi na ekranu, ništa ne ispada|
 | T-S108-13 | Help zna za Overview — chipovi na tabu, odgovori o Δ i o sidru | ⬜ |
 
 **Sljedeće nakon prolaza:** Faza 2 (brzi unos — §2.9, dvije sitnice nad postojećim
