@@ -99,6 +99,8 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   // How long the returned-to row stays marked, measured from the moment it is
   // rendered. Bump this one number if it still reads as too quick.
   const HIGHLIGHT_MS = 5000;
+  // Hard ceiling from the moment the key arrives, whatever happens to the list.
+  const HIGHLIGHT_CEILING_MS = 60_000;
 
   // Highlight key from navigation state (after returning from Edit/View)
   const [highlightKey, setHighlightKey] = useState<string | null>(
@@ -179,6 +181,17 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     const timer = setTimeout(() => setHighlightKey(null), HIGHLIGHT_MS);
     return () => clearTimeout(timer);
   }, [highlightKey, loading, hasHighlightRow]);
+
+  // Safety net: the effect above only fires once the row is ON the current page,
+  // so a row that is filtered out or sits on a later page would leave the key set
+  // for the life of the component. Nothing is visible while no row matches — but
+  // load more, or widen the filter, and it would light up minutes later, with no
+  // idea why. The old code could not do that: it always cleared after 5s.
+  useEffect(() => {
+    if (!highlightKey) return;
+    const timer = setTimeout(() => setHighlightKey(null), HIGHLIGHT_CEILING_MS);
+    return () => clearTimeout(timer);
+  }, [highlightKey]);
 
   useEffect(() => {
     if (!highlightKey || loading || !hasHighlightRow) return;
