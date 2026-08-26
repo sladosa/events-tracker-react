@@ -23,6 +23,26 @@
 ⚠ Tri su zatvorena **djelomično** i to piše uz redak: `T-S111-4` (korak s Excel exportom nije
 izvršen), `T-S111-6` (zaštita blizanca se više ne da izazvati), `T-S107b-4` (help blok).
 
+### Novo u S120 — traži telefon ili tvoj račun
+
+Detalji: [S120_tests.md](tests/S120_tests.md)
+
+| # | test | status |
+| --- | --- | --- |
+| T-S120-1 | ⭐ **Filtar preživi View Details na telefonu** (E2E to pokriva na desktopu) | ⬜ |
+| T-S120-2 | `N/A` se pojavljuje **jednom**, ne `N/A/N/A` | ⬜ |
+| T-S120-3 | „Import as mine" prijavi **kolizije** (prije: `0 New / 0 Modify` nad praznim skupom) | ⬜ |
+| T-S120-4 | Uvoz u areu s istim imenom kategorije — **prije batcha 2024** | ⬜ |
+
+**Automatizirano u S120, ne traži ništa:** `E16-1`, `E17-1`, `T-S119-6`, `T-S100-1`.
+Svaki je provjeren **i u drugom smjeru** (namjerno pokvaren kod ⇒ test padne).
+
+### Arhivirano u S120
+
+`S107m` i `S107u` (audit ih je sam prijavio) + `S102b` (9/9 ✅) i `S104` (3/3 ✅), koje audit
+nije vidio jer ih ovaj file nikad nije spominjao. Otišli u `Claude-temp_R/test-sessions/archive/`.
+⏸ `S99`, `S101`, `S105` — **nadiđeni po analizi, čekaju izričitu potvrdu** (v. tablicu siročadi).
+
 ### Ostalo otvoreno — po tome TKO ga može zatvoriti
 
 Ovo je jedini popis koji treba gledati kad se pita „što još".
@@ -50,9 +70,20 @@ Ranije je stajalo „jesu li relevantni?" bez podloge. Sada podloga postoji:
 | `S105` (8) | 2 ✅ / 6 ⬜ | **arhiva, nadiđeno**: PROD okolina tog incidenta ne postoji; popravci su na PROD-u 7 tjedana |
 | `S100` (7), `S102` (12) | 5 ✅ | **zadržati i upisati u tablice** — Export Profile, `default_map`, Filter sheet su i dalje u upotrebi |
 
-⭐ **`T-S100-1` nije povijest nego živ rizik.** „Import ne matcha krivu kategoriju kad dvije aree
-imaju isti path" — na PROD-u `Financije_all` i `Financije_old` **obje** imaju `Transakcija`, a
-pred nama su batch 2024 i 2023. Vrijedi ga automatizirati **prije** tih uvoza.
+⭐ **`T-S100-1` — ✅ ZATVOREN U S120, automatiziran** (`e2e/tests/S100_same_path_two_areas.spec.ts`).
+Nije bio povijest: na PROD-u `Financije_all` i `Financije_old` **obje** imaju `Transakcija`, a
+pred nama su batch 2024 i 2023. Razrješavanje je ispravno — redak ide u areu koju imenuje
+kolona `Area`.
+
+⚠ **Dvije pouke iz pisanja tog testa, obje šire od njega:**
+
+1. **Prva verzija je bila bacanje novčića.** Uvozila je jedan file, u areu A, i **prošla je i s
+   namjerno pokvarenim razrješavanjem** — jer uz ključ bez imena aree jedan od blizanaca ionako
+   pobijedi rječnik, i slučajno je to bila A. Test mora uvoziti u **oba** blizanca: razrješavanje
+   po samoj putanji tada ne može zadovoljiti obje strane.
+2. **Ovlast nije ondje gdje izgleda.** `catByPath` (5 mjesta) se koristi za validaciju i kolizije;
+   o tome **gdje redak stvarno završi** odlučuje `getHierarchyLevels`. Lomljenje `catByPath`-a nije
+   promijenilo ishod — tek lomljenje `getHierarchyLevels` pošalje redak u krivu areu.
 
 ---
 

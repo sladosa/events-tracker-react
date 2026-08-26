@@ -196,3 +196,6 @@ supabase/.temp*
 
 # Deno
 deno.lock
+
+# Playwright artefakti (root runner) — cure u git na svaki run
+/test-results/

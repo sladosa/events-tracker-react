@@ -1,14 +1,13 @@
-# NEXT SESSION PROMPT — nakon S119 (uska lista popravljena, čeka deploy)
+# NEXT SESSION PROMPT — nakon S120 (sve spremno, čeka se odluka o deployu)
 
-**Pisan protiv commita `5d0af14`** (+ commit zatvaranja S119 koji slijedi odmah iza).
+**Pisan protiv commita `3ed210c`** (+ commit zatvaranja S120 koji slijedi odmah iza).
 Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest; `CLAUDE.md` je autoritet.
 
-**Stanje grana:** `main` nosi S108–S117 (pushano 24.08.). `test-branch` je ispred za S118
-(dokumentacija + SQL) i S119 (**prve promjene koda nakon migracije**).
-⚠ **Deploy nije napravljen** — Koka na PROD-u još ima staru listu.
+**Stanje grana:** `main` nosi S108–S117 (pushano 24.08.). `test-branch` je ispred za S118, S119 i S120.
+⚠ **Deploy i dalje nije napravljen** — Koka na PROD-u ima staru listu.
 
-> S119 je bio dan mjerenja. Prva dijagnoza bila je točna u mehanizmu i **opovrgnuta** prvim
-> pokusom, jer je mjeren krivi element. Popravak je krenuo tek kad se broj poklopio sa slikom.
+> S120 je bio dan lova na krive tragove. Četiri puta sam imenovao uzrok, i **tri puta me mjerenje
+> opovrglo.** Sve što je u dokumentaciji zapisano kao „izmjereno" prošlo je kroz pokus.
 
 ---
 
@@ -16,60 +15,39 @@ Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest;
 
 ## 1. Što je gotovo
 
-**Lista na mobitelu više ne bježi ustranu.** Iznos stoji uz desni rub, odmah lijevo od ⋮.
+**Četiri popravka, sva mala, sva provjerena:**
 
-Izmjereno u pravoj aplikaciji (ne na oko): tablica je bila **709 px u 367 px prostora** —
-iznos je stajao 342 px izvan ekrana. Sada je **367 / 367**. Snimke prije/poslije su u
-`Claude-temp_R/S119_lista_prije.png` i `…_poslije.png`.
+- **Filtar se više ne gubi** kad iz liste odeš u View Details pa se vratiš. Uzrok nije bio ondje
+  gdje je S119 sumnjao — bio je u `AppHome`, u efektu koji se okidao i pri otvaranju ekrana.
+- **`N/A` se piše jednom**, ne `N/A/N/A`. Redak kojem je Tip poznat a Podtip `N/A` pokazuje samo Tip.
+- **Uvoz tuđeg filea („Import as mine") sada prijavljuje kolizije.** Prije nije prijavljivao
+  nijednu — dakle nije bilo zaštite od dvostrukog uvoza istog filea. To je bilo ozbiljnije od
+  krivih brojki koje si vidio.
+- **Plava oznaka retka** pri povratku iz View Activities traje punih 5 sekundi. Prije je
+  odbrojavanje kretalo dok se lista još učitavala, pa je od tih 5 s ostajalo ono što pretekne.
+  Ako ti i sad bude prekratko — trajanje je jedna konstanta (`HIGHLIGHT_MS`), reci broj.
 
-Uz to, sve po tvom izboru:
-
-- **kratica računa** u gornjem redu (`ZABA`, `RF`), sitno i sivo kao druga linija
-- **opis se prelama u dva reda** umjesto da bježi ustranu
-- **kratki datum** `25.08. ut`; **godina se pojavi sama** kod lanjskih redaka (`25.08.25. po`)
-- **dvostrani iznos** (`Anja 73/96`) složi se u dva reda — obje strane ostaju vidljive
-
-Kratice žive u konfiguraciji, ne u kodu, i prolaze kroz Excel (`ListColumns` → kolona `Map`).
-Račun koji nema kraticu prikaže se **punim imenom** — namjerno: to se vidi, a pogođena
-kratica bi mogla pokazati krivi račun i to se **ne bi** vidjelo.
+**Testovi:** zatvoreno 22 (78 → 56 otvorenih), četiri nova automatska testa, pet fileova
+arhivirano. Detalji: `docs/sessions/PENDING_TESTS.md`, sekcija „S120".
 
 ## 2. Što stoji na tebi
 
-1. **Deploy je ODGOĐEN — Sašina odluka 25.08.** Ide na `main` tek kad se skupi još koji
-   ispravak, okvirno **sutra**. Do tada Koka na PROD-u ima staru listu, i to je u redu:
-   ništa od S119 nije hitno, a jedan Netlify build za više ispravaka je jeftiniji od tri.
-   **U taj paket ide i BUG-S118-PREVIEWMODE** (jedan argument, čekao je da migracija prođe)
-   te sve što se popravi sutra.
-2. **Provjera na telefonu** nakon deploya — 7 kratkih testova, `T-S119-1…7`, detalji u
-   `docs/sessions/tests/S119_tests.md`. Najvažnija su prva tri: iznos bez scrolanja, kratica
-   računa, i redak `Anja 73/96` (25.08.2025.) gdje moraju ostati **obje** strane iznosa.
-3. **Nakon deploya upisati kolonu `Račun` na PROD** — TEST je upisan, PROD nije.
-4. Ono iz S118 što i dalje stoji: reći Koki za retke s krivom godinom (`2036-04-08`,
-   `2028-05-16`), `07.08. Parking 1,60`, i 5 spornih lipanjskih redaka (Σ `373,11`).
+1. **ODLUKA O DEPLOYU.** Sve je spremno i ništa se više ne čeka. Kad kažeš, ide na `main`.
+2. **Odmah nakon deploya:** hard refresh (**Ctrl+Shift+R**) — stari keširani bundle je u S118
+   tiho osakatio uvoz i to se vidjelo tek po brojačima koji su falili.
+3. **Pa upisati kolonu `Račun` na PROD:** `set_list_columns.py --env prod --area … --write`.
+   ⚠ Tek **poslije** deploya — stari bundle ne zna za kratice, pa bi Koka do tada vidjela
+   `Kokin tekući ZABA` u cijelosti.
+4. **Prolaz na telefonu** — 12 testova odjednom (T-S119-1…5, -7, T-S118-6, T-S108-12,
+   T-S120-1…4). Detalji: `docs/sessions/tests/S120_tests.md` i `S119_tests.md`.
+5. Ono iz S118 što stoji: reći Koki za retke s krivom godinom (`2036-04-08`, `2028-05-16`),
+   `07.08. Parking 1,60`, i 5 spornih lipanjskih redaka (Σ `373,11`).
 
-## 3. Dvije nove stvari koje si prijavio (zapisane, nedirane)
+## 3. Što NE treba istraživati (izmjereno u S120)
 
-Oboje je zapisano u `CLAUDE.md` i čeka sljedeću sesiju — ovdje ukratko:
-
-**a) Filter se gubi pri povratku iz View Details.** Uđeš u tablicu s Overview pločice
-(filtriran je `Racun`), otvoriš jedan redak da ga pogledaš, vratiš se — i lista pokazuje
-**sve račune**. Konfuzno je jer si samo htio pogledati redak, a izgubio si pogled u koji se
-vraćaš. Zapisano kao **BUG-S119-FILTERBACK**, **neprovjereno**: sve `/app/*` rute dijele
-jedan filter, pa se stanje ne bi *trebalo* gubiti — najvjerojatnije ga briše ponovno
-učitavanje filter panela. Isti razred kao onaj raspon datuma iz S111 koji se „povremeno
-resetirao", a resetirao se zapravo uvijek. **Prvo mjerenje, pa popravak.**
-
-**b) Shortcuts — toggle po Arei.** Popis je predugačak da bi bio koristan. Ideja: toggle u
-Filter panelu koji pokaže samo shortcutove **odabrane Aree**; isključen toggle ostavlja one
-napravljene s isključenim togglom. Oni iz Add Activity po prirodi pripadaju Arei.
-Zapisano u backlog uz dva pitanja koja treba razriješiti prije koda (nose li stari
-shortcutovi uvijek `area_id`, i što „globalan" znači kad se Area promijeni).
-
-## 4. Što bi mogao primijetiti
-
-Vodoravno povlačenje liste **više ne postoji**. Dosad si tako čitao kraj dugačkog opisa; sada
-se opis prelama u dva reda, a ako ni to ne stane, kraj dobije `…` (puni tekst je u ⋮ → View
-Details). Ako ti to smeta kod jako dugih opisa, reci — ima alternativa.
+- **Atributni filtar nije spor.** Indeks postoji od S97. TEST 0,38–0,73 s, PROD 0,31–0,52 s.
+  Ono što je izgledalo kao njegov timeout bili su paralelni testni workeri.
+- **Uvoz ne griješi areu** kad dvije aree imaju kategoriju istog imena. Provjereno pokusom.
 
 ---
 
@@ -77,44 +55,38 @@ Details). Ako ti to smeta kod jako dugih opisa, reci — ima alternativa.
 
 ## 1. Prvo pročitaj
 
-`docs/sessions/DONE_HISTORY.md` **S119** · `CLAUDE.md` → prošireni blok
-**„Kolone Activities liste"** (tri nova pravila) · `docs/sessions/tests/S119_tests.md`.
+`docs/sessions/DONE_HISTORY.md` **S120** · `CLAUDE.md` → nova sekcija **„Izmjereno i nije
+problem"** i prošireni blokovi **„UI (React)"** i **„E2E (Playwright)"**.
 
 ## 2. Što je dirano
 
 | file | što |
 | --- | --- |
-| `ActivitiesTable.tsx` | `w-full max-w-0` na mobilnoj ćeliji · `line-clamp-2` na liniji 2 · `cellContent(c, 'desktop'\|'line1'\|'line2')` · `PairCell stack` · `AttrCell map/plain` |
-| `useActivities.ts` | nov `formatDateCompact()` — `formatDate` **netaknut** (desktop) |
-| `types/database.ts` | `ListColumn.map?: Record<string,string>` |
-| `structureExcel.ts` / `structureImport.ts` | kolona `Map` u `ListColumns` sheetu (+ HELP redak) |
-| `set_list_columns.py` | kolona `Račun` + `RACUN_MAP` · `--env test\|prod` · `--area` · ispis vrijednosti bez kratice |
+| `AppHome.tsx` | BUG-S119-FILTERBACK — usporedba s **prethodnom** Areom/kategorijom umjesto vjere da se efekt okida samo na promjenu |
+| `ActivitiesTable.tsx` | `AttrCell` izbacuje ponovljenu vrijednost · odbrojavanje highlighta kreće kad je redak na ekranu (`HIGHLIGHT_MS`) |
+| `ExcelImportModal.tsx` | `analyzeFile(file, mode)` — ponovna analiza nakon izbora „Import as mine" |
+| `excelImport.ts` | `getHierarchyLevels` izostavlja **dvosmislenu** golu putanju |
+| `playwright.config.ts` | `workers: 1` + `globalSetup` |
+| `e2e/setup/global-setup.ts` | **nov** — vraća seed Areu na seed stanje prije svakog runa |
+| 4 nova spec filea | v. „Testovi" u DONE_HISTORY |
 
-`npm run typecheck && npm run build` prolaze. TEST baza je **upisana** (`--write`), PROD nije.
+`npm run typecheck && npm run build` prolaze.
 
-## 3. Zamke iz ove sesije (šire od nje)
+## 3. Stanje E2E-a
 
-- **Kad jedan smjer ima `overflow: auto`, drugi prestaje biti `visible`.** Pravi horizontalni
-  scroller bio je **unutarnji** `div.overflow-y-auto`, ne `div.overflow-x-auto` iznad njega —
-  zato je prvo mjerenje reklo „nema scrolla" nad listom koja očito scrolla.
-- **Harness nije dokaz dok se ne poklopi sa stvarnošću.** Pojednostavljena replika dala je
-  „bez scrolla"; puna je dala 490 px; prava aplikacija 709 px. Mjeri u aplikaciji kad god je
-  moguće — `git stash` daje pošten prije/poslije nad istim podacima.
-- **Backslash sekvence se gube kroz shell** (`\n` u patch skripti postane pravi novi red).
-  Isti razred kao backtickovi (S118) i `git commit -m` (S117). Piši patch u file pa ga izvrši.
-- **TEST račun `owner@test.com` ne vidi `Financije_all`** (druga vlasnica) i njegova
-  `Financije` area je prazna — svaka provjera koja treba te podatke ide ručno, s telefona.
+Pojedinačno **sve zeleno**. U batchu **9/10 s rotirajućim padom** — pod opterećenjem neki spec
+prekorači `waitFor`/timeout. Nije ostatak (to je riješio `global-setup`) i nije regresija.
+Ako smeta: dizati timeoute ili pokretati po fileu.
 
 ## 4. Prvo što bih uzeo sljedeći put
 
-⚠ **Ne deployati samoinicijativno.** Deploy je odgođen do „još koji ispravak" (Sašina odluka
-25.08.) — dakle prvo popravci, deploy na kraju i **samo na izričit zahtjev**.
+⚠ **Ne deployati samoinicijativno.**
 
-1. **BUG-S118-PREVIEWMODE** — jedan argument, ide u isti paket kao S119.
-2. **BUG-S119-FILTERBACK** — prvo izmjeriti gdje se `attrFilter` gubi, pa popravljati.
-3. **Faza 3 — `set_attribute` na Import putu** („popuni ako je prazno"). Jedna rupa drži tri
-   featurea; s Kokom koja radi kroz app i roundtrip, sad je najpraktičnija.
-4. **Faza 2 — brzi unos** (skupljanje prefilanih polja, shortcut dropdown).
+1. **Ako deploy prođe:** kolona `Račun` na PROD + prolaz na telefonu.
+2. **T-S100-4 prije batcha 2024** — provjera na pravim podacima da uvoz ne pogađa `Financije_old`.
+3. **Faza 3 — `set_attribute` na Import putu.** Jedna rupa drži tri featurea.
+4. **Faza 2 — brzi unos.**
+5. **`T-S107-3/-4/-5`, `T-S107b-5/-6`, `T-S110-5`** — proširenja postojećih specova, ~20 linija po komadu.
 
 ⚠ I dalje vrijedi: **batch 2024 i 2023 idu na PROD**, i to je okidač za preimenovanje
-`Financije_all` → `Financije` (rename **kroz UI**, nikad importom — v. CLAUDE.md backlog).
+`Financije_all` → `Financije` (rename **kroz UI**, nikad importom).

@@ -96,6 +96,10 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   // Read-only grantee cannot write events — Import writes new events, so hide the entry points
   const isReadOnlyGrantee = sharedContext?.permission === 'read';
 
+  // How long the returned-to row stays marked, measured from the moment it is
+  // rendered. Bump this one number if it still reads as too quick.
+  const HIGHLIGHT_MS = 5000;
+
   // Highlight key from navigation state (after returning from Edit/View)
   const [highlightKey, setHighlightKey] = useState<string | null>(
     (location.state as { highlightKey?: string } | null)?.highlightKey ?? null
@@ -103,12 +107,6 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   const highlightRowRef = useRef<HTMLTableRowElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-clear highlight after 3s, scroll to row when activities load
-  useEffect(() => {
-    if (!highlightKey) return;
-    const timer = setTimeout(() => setHighlightKey(null), 5000);
-    return () => clearTimeout(timer);
-  }, [highlightKey]);
 
   const { 
     activities, 
@@ -166,6 +164,21 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   const hasHighlightRow = highlightKey
     ? displayedActivities.some(g => g.sessionKey === highlightKey)
     : false;
+
+  // Auto-clear the highlight — but only once the row is actually ON SCREEN.
+  //
+  // ⚠ The countdown used to start the moment `highlightKey` arrived from
+  //   navigation state, which is BEFORE the list has fetched anything. The
+  //   5 seconds were therefore spent mostly on the loading state, and what the
+  //   user saw was whatever was left after the rows rendered — sometimes almost
+  //   nothing. Reported as "the blue mark is too short"; the duration was never
+  //   the problem, the starting point was. Gating on the same condition the
+  //   scroll effect uses makes the 5 seconds five seconds OF VISIBILITY.
+  useEffect(() => {
+    if (!highlightKey || loading || !hasHighlightRow) return;
+    const timer = setTimeout(() => setHighlightKey(null), HIGHLIGHT_MS);
+    return () => clearTimeout(timer);
+  }, [highlightKey, loading, hasHighlightRow]);
 
   useEffect(() => {
     if (!highlightKey || loading || !hasHighlightRow) return;

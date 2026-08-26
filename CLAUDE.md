@@ -7,7 +7,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S119).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S120).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -509,6 +509,15 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 
 **UI (React)**
 
+- **⚠ Efekt s dependency arrayem OKIDA SE I PRI MONTIRANJU** (S119 → popravljeno S120).
+  `useEffect(..., [a, b])` ne znači „kad se `a` ili `b` promijene" nego „na mount **i** kad se
+  promijene". `AppHome` se odmontira na svakom odlasku u `/app/view/:sessionStart`, pa je
+  njegov „resetiraj filtar kad se promijeni Area/kategorija" brisao `attrFilter` **pri svakom
+  povratku** iz View Detailsa. Izmjereno: odlazak s `MjeraRacun = ZABA-MJERA`, povratak na
+  `Filter by = Comment` bez ijednog polja. **Drugi put isti razred u dvije sesije** (S111:
+  `DateRangeFilter` auto-init). Lijek: usporedi s **prethodnom** vrijednošću u `useRef`, prvi
+  prolaz samo zapamti. Čuva ga `e2e/tests/e16-filter-persistence.spec.ts`.
+
 - **⚠ Uvjetno renderirana komponenta gubi lokalno stanje pri svakom skrivanju** (S111).
   `DateRangeFilter` je bio montiran samo uz `activeTab === 'activities'`; svaki prolaz kroz
   Overview ga je odmontirao, resetirao njegov `userModified` flag i pustio auto-init iz
@@ -520,6 +529,27 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   `BalanceByGroupTile` glasi `row.last_on || row.n === 0`: neistina je gora od izostanka.
 
 **E2E (Playwright)**
+
+- **⚠ `fullyParallel: false` NE čini run sekvencijalnim** (S120). Drži redoslijed samo
+  *unutar* jednog spec filea; **fileovi i dalje idu u zasebne workere**, a Playwright uzima
+  otprilike pola jezgri. Šest specova nad **istom seed Areom i istom bazom** dalo je
+  **9 od 10 padova** — `selectOption` timeouti, `Cardio` skriven, `canceling statement due to
+  statement timeout` — a svaki od njih prolazi kad se pusti sam. Popravljeno s `workers: 1`.
+  ⚠ Taj `statement timeout` je isti onaj koji je izgledao kao da ga proizvodi atributni
+  filtar — v. „Atributni filtar nije spor" niže. Dva dana bi se moglo potrošiti na krivi trag.
+- **⚠ Spec koji obriše svoj leaf ostavlja P2 PARENTE** (S120). Siročići se nakupljaju kroz
+  runove, uđu u sljedeći **export** i sudare se s uvozom — a to se **ne pokaže kao ostatak**
+  nego kao pokvaren feature: `T-S107-2` je upisao komentar koji je već bio ondje (nema
+  promjene ⇒ nema guarda), `T-S107w-1` je udario u koliziju (Apply se ne pojavi ⇒ izvještaj
+  se ne preuzme). Oboje je lovljeno kao bug prije nego je uzrok izmjeren.
+  Lijek: `e2e/setup/global-setup.ts` vraća seed Areu na seed stanje prije **svakog** runa.
+- **Fiksan literal u testu se sudari s vlastitim ostatkom.** `T-S107-2` je upisivao stalni
+  komentar; kad ga je raniji run već ostavio u bazi, upis nije bio promjena. Svaki marker
+  koji test upisuje mora biti **jedinstven po runu** (`${Date.now()}`).
+- **Test koji nikad ne pada ne čuva ništa** (S120). Prva verzija `T-S100-1` prošla je i s
+  **namjerno pokvarenim** razrješavanjem aree, jer uz ključ bez imena aree jedan blizanac
+  ionako pobijedi rječnik — i slučajno je to bio očekivani. Svaki nov test se provjerava
+  **i u drugom smjeru**: pokvari kod, test mora pasti, pa vrati kod.
 
 - **Testovi koji dijele komentar + `session_start`:** ostatak prekinutog pokušaja ne daje grešku
   nego **koliziju** → Apply postane „All skipped" i izgleda kao pad featurea. Cleanup po prefiksu.
@@ -651,6 +681,26 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 
 ---
 
+## Izmjereno i **nije** problem — ne trošiti vrijeme ponovno
+
+- **Atributni filtar nije spor** (S120). `ILIKE '%x%'` na `event_attributes.value_text` je
+  **indeksiran** — `sql/028_value_text_trigram_index.sql` (GIN, `pg_trgm`, još iz S97).
+  Izmjereno istim oblikom upita koji app šalje: TEST (74.125 atributa) `0,38–0,73 s`,
+  PROD (68.692) `0,31–0,52 s`; kao prijavljen korisnik s aktivnim RLS-om `0,37–0,66 s`.
+  ⚠ `canceling statement due to statement timeout` koji je to naizgled potvrđivao dolazio je
+  od **paralelnih Playwright workera** (v. „E2E"), ne od upita.
+  Ostaje istinito samo ovo: RLS politika `event_attr_select` ima jeftinu granu
+  (`auth.uid() = user_id`) i skupu (join na `data_shares`) — dakle **vlasnik** je jeftin, a
+  **grantee** nije. Na PROD-u je Koka vlasnik, a Saša grantee.
+- **Razrješavanje kategorije pri uvozu je ispravno** (S120, `T-S100-1`). Redak ide u areu koju
+  imenuje kolona `Area`, i kad druga area ima kategoriju istog imena — a to je na PROD-u živ
+  slučaj (`Financije_all` i `Financije_old` obje imaju `Transakcija`).
+  ⚠ **Ovlast nije ondje gdje izgleda:** `catByPath` (5 mjesta) služi validaciji i kolizijama;
+  o tome **gdje redak stvarno završi** odlučuje `getHierarchyLevels`. Lomljenje `catByPath`-a
+  ishod ne promijeni — tek lomljenje `getHierarchyLevels` pošalje redak u krivu areu.
+  Zaostala grana „gola putanja bez imena aree" sada **izostavlja dvosmislenu** putanju, pa
+  redak padne glasno (`Invalid category path`) umjesto da završi negdje uvjerljivo.
+
 ## Open bugs
 
 - **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
@@ -685,7 +735,13 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   ImportReport / Filter`), pa u njemu `Tip`/`Podtip` nemaju padajući izbornik. Za pipeline
   nebitno, **za Koku bitno**: izvještaj je mišljen kao mjesto gdje dorađuje uvezeno, a ondje bi
   tipkala slobodan tekst bez ijedne provjere. Fix = nositi `DropdownData` kao i običan export.
-- **BUG-S118-PREVIEWMODE:** preview uvoza Activities **ignorira odabir „Import as mine"**.
+- **~~BUG-S118-PREVIEWMODE~~ — ✅ POPRAVLJENO S120.** Modal parsira file **prije** nego pita
+  što s tuđim retcima, pa prvi prolaz može samo pretpostaviti `skip`. Popravak nije bio „jedan
+  argument" kako je ovdje pisalo nego **ponovna analiza s odabranim načinom** prije prikaza
+  previewa (`analyzeFile(file, mode)`). Izmjereno prije/poslije na fileu s tuđim emailom:
+  prije — **nijedna** kolizija, dakle Apply bi ubacio duplikate bez poruke; poslije — **2 od 2**
+  retka prijavljena, `⏭ All skipped`. Čuva `e2e/tests/e17-import-foreign-preview.spec.ts`.
+  Stari opis:
   `ExcelImportModal.tsx:106` zove `parseExcelFile(file, userEmail)` **bez** `foreignMode`,
   pa preview uvijek računa po `skip` — kod tuđeg filea pokaže **`0 New / 0 Modify`** baš
   u trenutku kad korisnik odlučuje hoće li uvoziti. Apply putanja
@@ -694,7 +750,9 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   praznim skupom, pa za „Import as mine" **otpada zaštita od dvostrukog uvoza istog filea**.
   Izmjereno S118 na 3×1000 redaka (uvoz prošao, preview lagao sva tri puta).
   Fix je jedan argument; nije napravljen jer bi tražio deploy usred migracije.
-- **BUG-S119-FILTERBACK (Sašin nalaz, NEPROVJEREN):** drill s Overview pločice postavi
+- **~~BUG-S119-FILTERBACK~~ — ✅ POPRAVLJENO S120.** Sumnja na `ProgressiveCategorySelector`
+  bila je **kriva**: krivac je `AppHome`ov reset-efekt, koji se okida i pri montiranju
+  (v. „UI (React)"). Izmjereno logom u `setFilter`, ne zaključivanjem. Stari opis: drill s Overview pločice postavi
   `attrFilter` (npr. `Racun`), ali nakon **View Details pa natrag** lista se vrati na **sve
   račune**. Korisnik je otvorio jedan redak da ga pogleda i izgubio kontekst u koji se vraća.
   ⚠ Nije stanje konteksta: `/app/*` dijeli **jedan** `FilterProvider` (`App.tsx:110`), a

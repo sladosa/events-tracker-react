@@ -32,7 +32,10 @@ const ATTR   = 'd1000000-0000-0000-0000-0000000000aa';
 const VALUE  = 'd1000000-0000-0000-0000-0000000000bb';
 
 // Seeding + two page loads + the date-range settle do not fit the 30s default.
-test.setTimeout(60_000);
+// ⚠ 60s was not enough either: alone it finishes in ~20s, but in a batch the dev
+//   server and the shared TEST database are busy and it ran past the limit. The
+//   other import specs sit at 120–180s for the same reason.
+test.setTimeout(120_000);
 
 test('E16-1: attrFilter, area and category survive View Details', async ({ page }) => {
   // Seed one text attribute with a value, through RLS as the owner.

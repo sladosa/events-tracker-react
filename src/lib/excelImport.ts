@@ -697,9 +697,29 @@ function getHierarchyLevels(
   areaName?:      string,
 ): Array<{ partialPath: string; categoryId: string }> {
   const pathToId: Record<string, string> = {};
+  // ⚠ A bare path is NOT unique. `Financije_all` and `Financije_old` both carry
+  //   `Transakcija`, so a path-only key silently resolves to whichever Area came
+  //   last out of the dictionary — a coin toss that lands rows in the wrong Area
+  //   while the import reports a perfectly healthy count (BUG-S99-IMPORT, and the
+  //   same class as S113's "0 New over a full file": convincing number, wrong
+  //   content). Measured with T-S100-1: dropping the area from the key sends the
+  //   twin's rows into the other Area with no message anywhere.
+  //
+  //   Every caller passes `row.area` today, and the parser does not treat a row
+  //   without `Area` as a row at all (S113) — so this branch is unreachable. It
+  //   is kept honest rather than removed: if a bare path is AMBIGUOUS it is left
+  //   out entirely, and the row then fails loudly with "Invalid category path"
+  //   instead of landing somewhere plausible.
+  const bareSeen = new Set<string>();
   for (const [id, info] of Object.entries(categoriesDict)) {
     pathToId[`${info.area_name}||${info.full_path}`] = id;
-    if (!areaName) pathToId[info.full_path] = id;
+    if (areaName) continue;
+    if (bareSeen.has(info.full_path)) {
+      delete pathToId[info.full_path];   // second Area with this path ⇒ ambiguous
+      continue;
+    }
+    bareSeen.add(info.full_path);
+    pathToId[info.full_path] = id;
   }
 
   const parts = categoryPath.split(' > ').map(p => p.trim());

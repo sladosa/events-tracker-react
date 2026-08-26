@@ -2903,6 +2903,89 @@ Obrisano **kroz UI** s „Download Backup & Delete" (file se skine prije brisanj
 
 ---
 
+## Done S120 (2026-08-26): tri popravka pred deploy, 22 zatvorena testa, i dan lova na krive tragove
+
+**Kako je dan izgledao:** četiri puta sam imenovao uzrok, i **tri puta me mjerenje opovrglo.**
+To je zapravo glavni rezultat sesije — sve što je danas zapisano kao „izmjereno" prošlo je
+kroz pokus, a ne kroz zaključivanje.
+
+### Popravci koda (četiri)
+
+1. **BUG-S119-FILTERBACK.** `AppHome`ov efekt „resetiraj filtar kad se promijeni
+   Area/kategorija" okidao se **i pri montiranju**, a `AppHome` se odmontira na svakom odlasku
+   u `/app/view/`. Dakle povratak iz View Detailsa = izbrisan `attrFilter`, svaki put.
+   Izmjereno logom u `setFilter` prije popravka: odlazak s `MjeraRacun = ZABA-MJERA`, povratak
+   na `Filter by = Comment` bez ijednog polja. ⚠ Sumnja iz S119 (`ProgressiveCategorySelector`,
+   `clearAttrFilter()` na `:212`/`:218`) bila je **kriva** — ti pozivi su u shortcut handleru.
+2. **`N/A/N/A` → `N/A`.** `AttrCell` izbacuje ponovljenu vrijednost. Namjerno nije pravilo o
+   „N/A": kolona ne zna što njene vrijednosti znače. ⚠ Skrivanje vrijednosti kroz rječnik
+   `map` **ne bi preživjelo roundtrip** — import odbacuje unos s praznom vrijednošću
+   (`structureImport.ts`, `if (k && v)`).
+3. **BUG-S118-PREVIEWMODE.** Nije bio „jedan argument" kako je stajalo u CLAUDE.md nego
+   ponovna analiza s odabranim načinom (`analyzeFile(file, mode)`), jer se izbor događa **poslije**
+   parsiranja. Izmjereno na fileu s tuđim emailom: prije — **nijedna** kolizija (Apply bi ubacio
+   duplikate bez poruke); poslije — **2 od 2** retka prijavljena.
+4. **Plava oznaka retka pri povratku iz View Activities** (Sašin nalaz). Odbrojavanje od 5 s
+   kretalo je **čim `highlightKey` stigne iz navigacije**, dakle prije nego lista išta dohvati —
+   pa se trošilo na učitavanje. Sada kreće tek kad je redak na ekranu (`!loading &&
+   hasHighlightRow`). ⚠ Trajanje nikad nije bilo problem; početna točka jest.
+
+Uz to **jedno otvrdnuće**: zaostala grana „gola putanja bez imena aree" u `getHierarchyLevels`
+sada izostavlja **dvosmislenu** putanju, pa redak padne glasno (`Invalid category path`)
+umjesto da završi u krivoj arei. Danas nedostižna (parser redak bez `Area` ne smatra retkom),
+ali to je točno linija koja bi retke tiho selila.
+
+### Četiri nova E2E testa, svaki provjeren i u drugom smjeru
+
+`e16-filter-persistence` · `e17-import-foreign-preview` · `S119_list_columns_map` (T-S119-6) ·
+`S100_same_path_two_areas` (T-S100-1). Za svaki sam **namjerno pokvario kod**, vidio test pasti,
+pa vratio kod.
+
+⚠ **`T-S100-1` je u prvoj verziji bio bezvrijedan.** Uvozio je u jednu areu i **prošao je i s
+pokvarenim razrješavanjem** — uz ključ bez imena aree jedan blizanac ionako pobijedi rječnik, i
+slučajno je to bio očekivani. Sad uvozi u **oba**. Usput se pokazalo da **ovlast nije ondje gdje
+izgleda**: `catByPath` (5 mjesta) služi validaciji i kolizijama, a o tome gdje redak završi
+odlučuje `getHierarchyLevels`.
+
+### 22 zatvorena testa (78 → 56 otvorenih)
+
+Deset izmjereno bez ijednog ručnog koraka (`T-S111-3/-4/-6`, `T-S114-1/-2/-3/-4`, `T-S110-4`,
+`T-S107d-1`, `T-S115-1`), jedan automatiziran, dva pokrivena postojećim automatima, četiri su
+bila papirologija (zaglavlje ih je zvalo zatvorenima, tablica nije znala), pet arhivirano.
+Tri su zatvorena **djelomično** i to piše uz redak — inače bi ✅ lagao.
+
+**Arhivirano:** `S107m`, `S107u`, `S102b`, `S104`, `S99`. `S101` i `S105` ostaju (Sašina odluka).
+
+### Dvije greške u testnoj infrastrukturi — obje su se predstavljale kao bugovi
+
+1. **`fullyParallel: false` ne čini run sekvencijalnim.** Drži redoslijed samo *unutar* filea;
+   fileovi idu u zasebne workere. Šest specova nad istom seed Areom = **9 od 10 padova**, a svaki
+   prolazi sam. ⚠ Tu spada i `canceling statement due to statement timeout` koji sam pola dana
+   pripisivao atributnom filtru. Popravljeno s `workers: 1`.
+2. **Specovi brišu leaf, ali ostavljaju P2 parente.** Siročići se nakupljaju, uđu u sljedeći
+   export i sudare se s uvozom — pa `T-S107-2` upiše komentar koji je već ondje (nema promjene ⇒
+   nema guarda), a `T-S107w-1` udari u koliziju (Apply se ne pojavi ⇒ izvještaj se ne preuzme).
+   Popravljeno s `e2e/setup/global-setup.ts`.
+
+Ostaje neriješeno: batch daje **9/10 s rotirajućim padom** — pod opterećenjem neki spec
+prekorači `waitFor`. Nije ostatak i nije regresija; svaki prolazi sam.
+
+### Izmjereno i **nije** problem
+
+- **Atributni filtar nije spor.** `ILIKE '%x%'` je indeksiran još od S97
+  (`sql/028_value_text_trigram_index.sql`, GIN + `pg_trgm`). TEST (74.125 atributa) `0,38–0,73 s`,
+  PROD (68.692) `0,31–0,52 s`, s aktivnim RLS-om `0,37–0,66 s`. Predložio sam popravak koji već
+  postoji — mjerenje ga je uhvatilo prije nego što je napisan ijedan redak koda.
+- **Razrješavanje kategorije pri uvozu je ispravno**, i za dvije aree s istim pathom.
+
+### Higijena
+
+`test-results/` maknut iz gita (curio na svaki run). Fitness u TEST bazi vraćen na seed stanje
+(10 ostataka, backup u `data-prep_data/_test_fitness_residue_backup.json`). Očišćeni ostaci
+komentara `T-S107 guard edit`, a taj marker sada nosi timestamp.
+
+---
+
 ## Done S119 (2026-08-25): uska lista — iznos prije ⋮
 
 **Povod:** Sašin nalaz s Androida (kao write grantee u `Financije_all`): da bi vidio iznos,
