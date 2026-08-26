@@ -4,6 +4,7 @@ Personal activity tracking web app (fitness, habits, diary) built on an EAV data
 with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supabase backend.
 
 **Stack:** React 19 + TypeScript 5.9 + Vite 7 + Tailwind CSS 3 + Supabase + Netlify
+**PROD:** <https://events-tracker-react.netlify.app> (Netlify deploya **samo** `main`)
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
