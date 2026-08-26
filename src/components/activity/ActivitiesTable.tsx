@@ -557,6 +557,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 showCategoryOnMobile={!filter.categoryId}
                 columns={columns}
                 values={colValues.byKey.get(group.sessionKey)}
+                valuesLoaded={colValues.loaded}
               />
             ))}
           </tbody>
@@ -584,13 +585,29 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
  * An absent amount renders as an em dash, never as `0`. For money, zero is a
  * claim about the row; blank is the absence of one.
  */
-function PairCell({ col, values, stack }: { col: ResolvedColumn; values?: RowValues; stack?: boolean }) {
+/** Placeholder for a cell whose values are still in flight.
+ *
+ *  ⚠ Without it, a loading cell renders `—` — the same thing an EMPTY cell
+ *  renders. For money that is not a cosmetic difference: `—` is an assertion
+ *  ("this row has no amount"), and for the second or two the query takes, the
+ *  list quietly asserts it about every row. Seen on a phone against PROD on
+ *  2026-08-26: a whole screen of rows with `—` where amounts belong.
+ *  `useListColumnValues` already knew — "a missing key means not loaded yet,
+ *  not empty" — the flag just never reached the cells. */
+function LoadingCell({ w = 'w-10' }: { w?: string }) {
+  return <span className={`inline-block h-3 ${w} rounded bg-gray-200 animate-pulse align-middle`} />;
+}
+
+function PairCell({ col, values, stack, loaded }: { col: ResolvedColumn; values?: RowValues; stack?: boolean; loaded?: boolean }) {
   const plus = col.plus ? values?.num.get(col.plus) : undefined;
   const minus = col.minus ? values?.num.get(col.minus) : undefined;
   const hasPlus = plus != null && plus !== 0;
   const hasMinus = minus != null && minus !== 0;
 
-  if (!hasPlus && !hasMinus) return <span className="text-gray-300">—</span>;
+  if (!hasPlus && !hasMinus) {
+    if (!loaded) return <LoadingCell w="w-14" />;
+    return <span className="text-gray-300">—</span>;
+  }
 
   // Both sides filled is a real row, not an error — ZABA `Anja 73/96` carries an
   // inbound 450,00 and an outbound 0,70 in one event. Side by side it is the
@@ -620,7 +637,7 @@ function PairCell({ col, values, stack }: { col: ResolvedColumn; values?: RowVal
 type CellVariant = 'desktop' | 'line1' | 'line2';
 
 /** `attr` — one or more slugs joined into a single cell (e.g. `Tip / Podtip`). */
-function AttrCell({ col, values, plain }: { col: ResolvedColumn; values?: RowValues; plain?: boolean }) {
+function AttrCell({ col, values, plain, loaded }: { col: ResolvedColumn; values?: RowValues; plain?: boolean; loaded?: boolean }) {
   const parts = (col.slugs ?? [])
     .map(sl => values?.text.get(sl))
     .filter((v): v is string => !!v)
@@ -634,7 +651,10 @@ function AttrCell({ col, values, plain }: { col: ResolvedColumn; values?: RowVal
     // (Hiding a value outright would be the `map` dictionary's job, but import
     // drops entries with an empty value — `structureImport.ts` `if (k && v)`.)
     .filter((v, i, all) => all.indexOf(v) === i);
-  if (parts.length === 0) return <span className="text-gray-400 italic">—</span>;
+  if (parts.length === 0) {
+    if (!loaded) return <LoadingCell />;
+    return <span className="text-gray-400 italic">—</span>;
+  }
   // Default is tight on purpose: `Sep` survives the Structure roundtrip only
   // if trimming cannot change it (structureImport trims every config cell).
   const txt = parts.join(col.sep ?? '/');
@@ -668,9 +688,12 @@ interface ActivityRowProps {
   columns: ResolvedColumn[];
   /** Attribute values for this row; undefined while the query is in flight. */
   values?: RowValues;
+  /** Has the values query finished? Without it a loading cell and an empty cell
+   *  are the same `—`, and for money that is a claim, not a wait. */
+  valuesLoaded?: boolean;
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, currentUserId, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance, columns, values }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, currentUserId, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance, columns, values, valuesLoaded }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -787,14 +810,14 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
           />
         );
       case 'pair':
-        return <PairCell col={c} values={values} stack={compact} />;
+        return <PairCell col={c} values={values} stack={compact} loaded={valuesLoaded} />;
       case 'attr':
         // On `line1` the attribute is a marker beside the date — the account a
         // row belongs to — so it is set small and grey, the same weight as
         // line 2. On `line1` the amount owns the emphasis.
         return variant === 'line1'
-          ? <span className="text-xs text-gray-500"><AttrCell col={c} values={values} plain /></span>
-          : <AttrCell col={c} values={values} plain={compact} />;
+          ? <span className="text-xs text-gray-500"><AttrCell col={c} values={values} plain loaded={valuesLoaded} /></span>
+          : <AttrCell col={c} values={values} plain={compact} loaded={valuesLoaded} />;
       case 'comment':
         return compact ? (
           <span title={firstEvent.comment || undefined}>
