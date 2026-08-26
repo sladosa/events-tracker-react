@@ -76,7 +76,16 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── File selection ──
-  const handleFile = useCallback(async (file: File) => {
+  //
+  // BUG-S118-PREVIEWMODE. The file is parsed BEFORE the user is asked what to do
+  // with foreign rows, so the first pass can only assume `skip`. On a file
+  // exported by someone else that leaves nothing to import: the preview showed
+  // `0 New / 0 Modify` at the exact moment the user was deciding, and — the part
+  // that actually bites — the collision check ran over an empty set, so
+  // "Import as mine" had NO protection against importing the same file twice.
+  // Measured S118 on 3x1000 rows: the import worked, the preview lied all three
+  // times. Cure: analyse again with the chosen mode before showing the preview.
+  const analyzeFile = useCallback(async (file: File, mode: 'skip' | 'import_as_mine') => {
     if (!file.name.match(/\.xlsx?$/i)) {
       setErrors(['Please select an Excel file (.xlsx)']);
       return;
@@ -103,7 +112,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       const userEmail = user.email ?? undefined;
       setCurrentUserEmail(userEmail);
 
-      const parsed = await parseExcelFile(file, userEmail);
+      const parsed = await parseExcelFile(file, userEmail, mode);
 
       if (parsed.errors.length > 0) {
         setErrors(parsed.errors);
@@ -169,7 +178,8 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
         return;
       }
 
-      if (parsed.foreignRowCount > 0) {
+      // Only the first pass asks. The second one already carries the answer.
+      if (parsed.foreignRowCount > 0 && mode === 'skip') {
         setImportState('confirm-users');
         return;
       }
@@ -180,6 +190,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       setImportState('error');
     }
   }, []);
+
+  const handleFile = useCallback(
+    (file: File) => analyzeFile(file, 'skip'),
+    [analyzeFile],
+  );
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -582,7 +597,17 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   Cancel
                 </button>
                 <button
-                  onClick={() => setImportState('ready')}
+                  onClick={() => {
+                    // `skip` is what the first pass already measured, so its
+                    // preview and collision list stand. `import_as_mine` changes
+                    // which rows exist — re-analyse, or the user confirms an
+                    // import against numbers computed for a different answer.
+                    if (foreignMode === 'import_as_mine' && selectedFile) {
+                      void analyzeFile(selectedFile, 'import_as_mine');
+                    } else {
+                      setImportState('ready');
+                    }
+                  }}
                   className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   Continue

@@ -600,7 +600,14 @@ function AttrCell({ col, values, plain }: { col: ResolvedColumn; values?: RowVal
     .filter((v): v is string => !!v)
     // `map` shortens a value for display (`Kokin tekući ZABA` -> `ZABA`). A value
     // that is not in the dictionary keeps its full text — see the type comment.
-    .map(v => col.map?.[v] ?? v);
+    .map(v => col.map?.[v] ?? v)
+    // The same value twice says nothing the once does not: `Tip/Podtip` on an
+    // unclassified row read `N/A/N/A` and ate half of the narrow line. Repeats
+    // are dropped, not `N/A` specifically — the column has no idea what its
+    // values mean, and a rule about one value would be domain knowledge in code.
+    // (Hiding a value outright would be the `map` dictionary's job, but import
+    // drops entries with an empty value — `structureImport.ts` `if (k && v)`.)
+    .filter((v, i, all) => all.indexOf(v) === i);
   if (parts.length === 0) return <span className="text-gray-400 italic">—</span>;
   // Default is tight on purpose: `Sep` survives the Structure roundtrip only
   // if trimming cannot change it (structureImport trims every config cell).

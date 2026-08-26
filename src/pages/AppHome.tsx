@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
@@ -213,11 +213,31 @@ function AppContent() {
 
   // Reset filter attr dropdown when area or category changes
   // (skip when a shortcut just restored its filter_state)
+  //
+  // BUG-S119-FILTERBACK. An effect with a dependency array still runs ON MOUNT,
+  // and AppHome unmounts on every trip to /app/view/:sessionStart. So a filter
+  // set by an Overview drill (or by hand) was cleared the moment the user came
+  // back from View Details — deterministic, though it reads as flaky. The same
+  // class as S111 (DateRangeFilter auto-init overwriting the user's range).
+  // Measured before the fix: leave with `MjeraRacun = ZABA-MJERA`, return to
+  // `Filter by = Comment` and no filter at all.
+  //
+  // Cure: compare against the PREVIOUS area/category instead of trusting that
+  // the effect only runs on change. First run records, it never resets.
+  const prevAreaCatRef = useRef<string | undefined>(undefined);
   useEffect(() => {
+    const key = `${filter.areaId ?? ''}|${filter.categoryId ?? ''}`;
+    const changed = prevAreaCatRef.current !== undefined && prevAreaCatRef.current !== key;
+    prevAreaCatRef.current = key;
+
+    // The flag is consumed whenever it is set, change or not: a shortcut that
+    // lands on the area you are already in would otherwise leave it standing
+    // and swallow the NEXT genuine reset.
     if (skipNextFilterReset.current) {
       skipNextFilterReset.current = false;
       return;
     }
+    if (!changed) return;
     setSelectedFilterAttr('comment');
     clearAttrFilter();
   // eslint-disable-next-line react-hooks/exhaustive-deps
