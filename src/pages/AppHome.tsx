@@ -135,6 +135,7 @@ function AppContent() {
     setAttrFilter,
     clearAttrFilter,
     skipNextFilterReset,
+    areaContextError,
   } = useFilter();
 
   // Attribute filter UI state — which field is selected in the "Filter by" dropdown
@@ -258,8 +259,17 @@ function AppContent() {
   }, [filterAttrDefs, filter.attrFilter]);
 
   // Overview tab — exists only for Areas that carry a dashboard config (OQ-4)
-  const { config: dashboardConfig, loaded: dashboardLoaded } = useAreaDashboard(filter.areaId);
+  const {
+    config: dashboardConfig,
+    loaded: dashboardLoaded,
+    error: dashboardError,
+    reload: reloadDashboard,
+  } = useAreaDashboard(filter.areaId);
   const hasOverview = dashboardLoaded && !!dashboardConfig;
+  /** Area config could not be READ — not "this Area has none" (BUG-S121-AREACTX).
+   *  Both loaders are surfaced through one notice: they read the same row, so in
+   *  practice they fail together, and two bars saying the same thing is noise. */
+  const areaConfigUnavailable = (dashboardError || areaContextError) && !!filter.areaId;
 
   // Switching to an Area without a dashboard must not leave the user staring at
   // a tab that no longer exists.
@@ -673,6 +683,35 @@ function AppContent() {
             Activities tab: Add Activity button
             Structure tab:  View switcher + Export stub + Edit Mode stub
             ======================================== */}
+        {/* ⚠ Reading the Area config failed. Without this bar the app silently
+            becomes a DIFFERENT app — no Overview tab, default columns instead of
+            amounts, `Save +` back in an Area that switched it off — and the only
+            cure is a reload the user has no reason to suspect. Saša hit exactly
+            that on PROD 28.08.2026; the data was intact the whole time. */}
+        {areaConfigUnavailable && (
+          <div className="mb-3 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <span aria-hidden="true">⚠</span>
+            <div className="flex-1">
+              <span>
+                Nisam uspio učitati postavke ove Aree, pa lista možda ne pokazuje sve kolone
+                i Overview može nedostajati. <strong>Podaci su netaknuti.</strong>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                reloadDashboard();
+                // Re-runs FilterContext's area/share resolve — it already listens
+                // for this, so the retry needs no new plumbing.
+                window.dispatchEvent(new CustomEvent('shares-changed'));
+              }}
+              className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-1 font-medium text-amber-900 hover:bg-amber-100"
+            >
+              Pokušaj ponovno
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
           {/* Tabs */}
           <div className="flex bg-white rounded-lg p-1 shadow-sm border border-gray-100">

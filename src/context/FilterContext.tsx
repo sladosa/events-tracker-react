@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo, u
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID, BreadcrumbItem, Category, Area } from '@/types';
 import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
+import { withRetryQuery } from '@/lib/retry';
 import type { PeriodKey } from '@/hooks/useDateBounds';
 
 // --------------------------------------------
@@ -136,6 +137,8 @@ export interface FilterContextType {
 
   // Full area object for the currently selected area (null if no area selected)
   selectedArea: Area | null;
+  /** Reading the Area context failed; `selectedArea` is absent, not empty. */
+  areaContextError: boolean;
   // True when the selected area has disable_save_plus: true in its settings
   disableSavePlus: boolean;
 
@@ -197,6 +200,12 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   const [filterOrphans, setFilterOrphans] = useState(false);
 
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
+  /** The Area context (settings + share) could not be read. NOT the same as
+   *  "this Area has no settings" — v. BUG-S121-AREACTX. */
+  const [areaContextError, setAreaContextError] = useState(false);
+  /** Area whose context is currently in state, so a failed read can tell stale
+   *  data apart from wrong data. */
+  const loadedAreaIdRef = useRef<string | null>(null);
   
   // === Restore tracking ===
   const [isRestored, setIsRestored] = useState(false);
@@ -348,13 +357,19 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
       }
 
       // Fetch shared context and area data in parallel
+      const areaId = filter.areaId;
       const [ctx, areaResult] = await Promise.all([
-        fetchSharedContext(filter.areaId, user?.id ?? null),
-        supabase.from('areas').select('*').eq('id', filter.areaId).single(),
+        fetchSharedContext(areaId, user?.id ?? null),
+        withRetryQuery(
+          () => supabase.from('areas').select('*').eq('id', areaId).single(),
+          { onRetry: (n, e) => console.warn(`FilterContext area load: retry ${n}`, e) },
+        ),
       ]);
       if (cancelled) return;
 
       setSelectedArea((areaResult.data as Area) ?? null);
+      setAreaContextError(false);
+      loadedAreaIdRef.current = areaId;
 
       if (ctx) {
         // Grantee — has shared context, no need to check owner shares
@@ -377,7 +392,26 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
         }
       }
     };
-    resolve();
+    // ⚠ `resolve()` USED TO BE FIRE-AND-FORGET (BUG-S121-AREACTX). Any rejection
+    //   inside it went nowhere: `setSelectedArea` and `setSharedContext` simply
+    //   never ran, so both stayed `null` and the effect would not re-run until
+    //   the Area changed — which, while working in one Area, it never does.
+    //   Measured on PROD 28.08.2026: the "Write access" banner vanished and,
+    //   worse, `disableSavePlus` reads `selectedArea?.settings?… === true`, so a
+    //   null area silently brought `Save +` BACK to Financije, where it is
+    //   deliberately off. The app did not merely look different, it behaved
+    //   differently, and only F5 fixed it.
+    resolve().catch(e => {
+      if (cancelled) return;
+      console.error('FilterContext: failed to resolve area context', e);
+      // Keep what we already hold if it belongs to THIS Area — stale-but-right
+      // beats empty. For a different Area we have nothing honest to show.
+      if (loadedAreaIdRef.current !== filter.areaId) {
+        setSelectedArea(null);
+        setSharedContext(null);
+      }
+      setAreaContextError(true);
+    });
     return () => { cancelled = true; };
   }, [filter.areaId, sharesVersion]);
 
@@ -757,6 +791,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     areaHasActiveShares,
     // Selected area
     selectedArea,
+    areaContextError,
     disableSavePlus: selectedArea?.settings?.disable_save_plus === true,
     // Orphan filter
     filterOrphans,
@@ -773,7 +808,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     periodLabel, setPeriodKey, setDateRange, setSearchQuery, setCommentSearch,
     clearCommentSearch, setAttrFilter, clearAttrFilter, setSortOrder,
     saveToStorage, clearStorage, sharedContext, areaHasActiveShares,
-    selectedArea, filterOrphans, skipNextFilterReset, hasActiveFilter, isFiltered,
+    selectedArea, areaContextError, filterOrphans, skipNextFilterReset, hasActiveFilter, isFiltered,
   ]);
 
   return (
