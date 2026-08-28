@@ -21,14 +21,12 @@
  *   test first writes one through Save+, the path that genuinely works, and only
  *   then checks that Finish clears it and nothing puts it back.
  *
- *   ⚠ It deliberately does NOT rely on the auto-save interval to write phase A's
- *   draft. Measured 28.08.2026: that interval NEVER fires during entry. The
- *   effect arming it re-runs on every render (the inline `onError` makes
- *   `saveDraft` a new function each time), and the session stopwatch re-renders
- *   once a second, so the 15 s countdown restarts before it can elapse. It
- *   finally survives only when `endSession()` stops the stopwatch — i.e. at
- *   Finish — which is why the one and only tick in its whole life landed after
- *   the draft had just been cleared. See BUG-S121-AUTOSAVE.
+ *   ⚠ Phase A uses Save+ rather than waiting for the auto-save interval ON
+ *   PURPOSE: it must hold even if the interval's timing changes. Auto-save
+ *   itself was separately broken and is now fixed (BUG-S121-AUTOSAVE) — it
+ *   never fired during entry, because the effect arming it re-ran on every
+ *   render and restarted the countdown. That is why its one and only tick in a
+ *   whole session landed after Finish, on the draft just cleared.
  *
  * VERIFIED IN BOTH DIRECTIONS (measured, not reasoned): with the fix reverted,
  * the draft reappears 15 s after Finish (385 B, one `[AutoSave] Draft saved`);
@@ -41,9 +39,10 @@ import { selectFilterPath, SEED } from '../fixtures/filter';
 const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
 const DRAFT_KEY = 'et_activity_draft';
 
-/** AUTO_SAVE_INTERVAL is 15 s (src/types/activity.ts). Wait past one full tick
- *  with margin: measured, the resurrecting write landed at t+15 s after Finish. */
-const PAST_ONE_TICK_MS = 19_000;
+/** Wait past several auto-save ticks (AUTO_SAVE_INTERVAL is 5 s). Generous on
+ *  purpose: the point is that NO tick ever writes after Finish, and the margin
+ *  must survive someone tuning the interval later. */
+const PAST_ONE_TICK_MS = 16_000;
 
 // One ~19 s wait plus login, navigation and two saves.
 test.setTimeout(120_000);

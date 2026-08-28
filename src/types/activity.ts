@@ -225,7 +225,15 @@ export interface EditorActions {
 
 export const STORAGE_KEY = 'et_activity_draft';
 export const STORAGE_VERSION = 1;
-export const AUTO_SAVE_INTERVAL = 15000; // 15 seconds
+/** Auto-save cadence for the Add Activity draft.
+ *
+ *  ⚠ This writes to localStorage ONLY — no network, no database. The cost is a
+ *  JSON.stringify plus a local write; a photo-less draft measured 385 B. That
+ *  is why 5 s is affordable where 15 s was chosen defensively, and why the
+ *  interval skips the write entirely when nothing changed (see
+ *  useLocalStorageSync) — otherwise a draft carrying a 5 MB base64 photo would
+ *  be re-serialised every tick for nothing. */
+export const AUTO_SAVE_INTERVAL = 5000; // 5 seconds
 
 export const MAX_PHOTOS_SIZE_BYTES = 5 * 1024 * 1024; // 5MB per event
 export const MAX_PHOTO_DIMENSION = 1200; // pixels (longest side)

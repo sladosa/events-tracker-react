@@ -310,7 +310,15 @@ export function AddActivityPage() {
     setupAutoSave,
     stopAutoSave,
   } = useLocalStorageSync({
-    onError: (err) => setError(err.message),
+    // ⚠ MORA BITI STABILAN (BUG-S121-AUTOSAVE). Dok je ovdje stajala inline
+    //   lambda, dobivala je nov identitet na svakom renderu ⇒ `saveDraft` i
+    //   `setupAutoSave` također ⇒ efekt koji naoružava auto-save re-runao se na
+    //   svakom renderu i rušio interval prije nego istekne. Izmjereno 28.08.2026.:
+    //   „Stopping / Setting up auto-save" jednom u sekundi (štoperica renderira
+    //   svake sekunde, i kad je `add_header.timer` sakriva), pa nacrt tijekom
+    //   unosa NIKAD nije bio zapisan. Jedini tik u životu tog intervala padao je
+    //   nakon Finisha — kad `endSession()` zaustavi štopericu i renderi prestanu.
+    onError: useCallback((err: Error) => setError(err.message), []),
   });
   
   // Shared area context — guard za read-only pristup
@@ -553,18 +561,27 @@ export function AddActivityPage() {
     );
   }, [areaId, categoryId, categoryPath, eventAt, pendingEvents, attributeValues, eventNote, currentPhotos, isInitialized]);
   
-  // Setup auto-save when initialized
+  // ⚠ `getDraftData` se mijenja pri SVAKOJ izmjeni forme. Da je u dependency
+  //   arrayu efekta ispod, svaki tipkani znak bi srušio i ponovno postavio
+  //   interval — dakle odbrojavanje bi se resetiralo i pri brzom unosu nikad ne
+  //   bi isteklo. Zato ide u ref, a efekt se veže samo na identitet sesije.
+  const draftGetterRef = useRef(getDraftData);
+  useEffect(() => {
+    draftGetterRef.current = getDraftData;
+  }, [getDraftData]);
+
+  // Setup auto-save when initialized — ARMS ONCE PER SESSION, v. BUG-S121-AUTOSAVE
   useEffect(() => {
     if (isInitialized && areaId && categoryId) {
       log('Setting up auto-save');
-      setupAutoSave(getDraftData);
-      
+      setupAutoSave(() => draftGetterRef.current());
+
       return () => {
         log('Stopping auto-save');
         stopAutoSave();
       };
     }
-  }, [isInitialized, areaId, categoryId, setupAutoSave, stopAutoSave, getDraftData, log]);
+  }, [isInitialized, areaId, categoryId, setupAutoSave, stopAutoSave, log]);
   
   // ============================================
   // Category Chain & Attributes

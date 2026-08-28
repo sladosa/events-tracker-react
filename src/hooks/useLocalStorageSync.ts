@@ -201,6 +201,10 @@ export function useLocalStorageSync(
   const { enabled = true, onError } = options;
   const autoSaveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const getDraftDataRef = useRef<(() => ActivityDraft | null) | null>(null);
+  /** Content of the last draft the interval wrote, so an unchanged form costs
+   *  nothing. Reset whenever the draft is cleared — a new session must write
+   *  its first tick even if it happens to look identical to the previous one. */
+  const lastSavedContentRef = useRef<string | null>(null);
   
   // Cleanup on unmount
   useEffect(() => {
@@ -317,6 +321,7 @@ export function useLocalStorageSync(
       autoSaveIntervalRef.current = null;
     }
     getDraftDataRef.current = null;
+    lastSavedContentRef.current = null;
   };
 
   // Clear draft from storage
@@ -362,8 +367,25 @@ export function useLocalStorageSync(
     // Setup new interval
     autoSaveIntervalRef.current = setInterval(() => {
       const draftData = getDraftDataRef.current?.();
-      if (draftData) {
-        saveDraft(draftData);
+      if (!draftData) return;
+
+      // ⚠ Skip the write when nothing actually changed. `saveDraft` stamps
+      //   `updatedAt` before serialising, so the stored string differs on every
+      //   tick even for an untouched form — comparing the CONTENT is the only
+      //   way to tell. Without this, a draft carrying a 5 MB base64 photo would
+      //   be re-serialised and rewritten every 5 s while the user just reads
+      //   the screen. It also keeps `updatedAt` honest: the resume dialog shows
+      //   the draft's age, and a bare interval would keep resetting it to "just
+      //   now" for a session nobody has touched in ten minutes.
+      const content = JSON.stringify({
+        c: draftData.categoryId,
+        p: draftData.pendingEvents,
+        f: draftData.currentForm,
+      });
+      if (content === lastSavedContentRef.current) return;
+
+      if (saveDraft(draftData)) {
+        lastSavedContentRef.current = content;
         console.log('[AutoSave] Draft saved at', new Date().toISOString());
       }
     }, AUTO_SAVE_INTERVAL);
