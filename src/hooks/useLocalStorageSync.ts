@@ -308,15 +308,45 @@ export function useLocalStorageSync(
     }
   }, [enabled, onError]);
   
+  // Zaustavi auto-save interval. Obična funkcija nad refovima (ne useCallback):
+  // refovi su stabilni, pa nema ni zastarjelog closurea ni ovisnosti o tome koji
+  // je useCallback definiran prije kojega.
+  const haltAutoSave = (): void => {
+    if (autoSaveIntervalRef.current) {
+      clearInterval(autoSaveIntervalRef.current);
+      autoSaveIntervalRef.current = null;
+    }
+    getDraftDataRef.current = null;
+  };
+
   // Clear draft from storage
+  //
+  // ⚠ BRISANJE NACRTA MORA UGASITI I AUTO-SAVE — inače ga sljedeći tik vrati.
+  //   Nađeno na PROD-u 28.08.2026.: `finish()` je zvao clearDraft() ali ne i
+  //   stopAutoSave(), pa je interval 15 s kasnije ponovno upisao nacrt s
+  //   vrijednostima upravo spremljenog eventa. Sljedeći Add Activity je ponudio
+  //   „Resume Previous Session?", korisnik je odabrao Resume → **duplikat**
+  //   (2,70 € zapisan dvaput, session_start 09:51 i 09:53).
+  //   Okidač nije bio rijedak: efekt koji drži auto-save ima `getDraftData` u
+  //   dependency arrayu, pa SVAKA izmjena forme restarta 15-sekundno
+  //   odbrojavanje ⇒ tik padne poslije Finisha kad god se Finish pritisne
+  //   unutar 15 s od zadnjeg upisa — dakle pri normalnom brzom unosu.
+  //   Zato gašenje živi OVDJE, a ne na pozivnim mjestima: `clearDraft()` se zove
+  //   s 5 mjesta i šesto se ne bi imalo čega sjetiti. Nemoguće je obrisati nacrt
+  //   a ostaviti naoružan stroj koji ga vraća.
+  //   ⚠ Pozivi koji nakon brisanja NASTAVLJAJU na istoj stranici (Discard,
+  //   neuspjelo učitavanje nacrta) rade `setIsInitialized(true)`, što efekt u
+  //   AddActivityPage ponovno pokrene i auto-save uredno naoruža.
   const clearDraft = useCallback((): void => {
+    haltAutoSave();
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (e) {
       console.error('Failed to clear draft:', e);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  
+
   // Setup auto-save interval
   const setupAutoSave = useCallback((getDraftData: () => ActivityDraft | null): void => {
     if (!enabled) return;
@@ -341,11 +371,8 @@ export function useLocalStorageSync(
   
   // Stop auto-save
   const stopAutoSave = useCallback((): void => {
-    if (autoSaveIntervalRef.current) {
-      clearInterval(autoSaveIntervalRef.current);
-      autoSaveIntervalRef.current = null;
-    }
-    getDraftDataRef.current = null;
+    haltAutoSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   return {

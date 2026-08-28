@@ -328,6 +328,13 @@ export function AddActivityPage() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [savedSessionStart, setSavedSessionStart] = useState<string | null>(null);
+  // Sesija je spremljena i gotova ⇒ nema više nacrta za spašavanje.
+  // Pojas uz tregere za duplikat s 28.08.2026. (v. clearDraft u
+  // useLocalStorageSync): i da neki zalutali tik prođe, `getDraftData()` mu
+  // vrati null pa nema što zapisati. Jednosmjerno je — oba izlaza iz
+  // FinishSuccessDialoga (Edit, Go to Home) napuštaju stranicu, dakle nema
+  // legitimnog nastavka unosa koji bi ovo zaključalo.
+  const sessionFinishedRef = useRef(false);
   const [draftSummary, setDraftSummary] = useState<DraftSummary | null>(null);
 
   // Save as Shortcut (S88)
@@ -521,6 +528,7 @@ export function AddActivityPage() {
   // ============================================
   
   const getDraftData = useCallback((): ActivityDraft | null => {
+    if (sessionFinishedRef.current) return null;
     if (!areaId || !categoryId || !isInitialized) return null;
     
     // Convert attributeValues Map to proper format
@@ -1211,6 +1219,7 @@ export function AddActivityPage() {
         await persistPendingOptions(pendingOptionAdds, allDefs);
         setPendingOptionAdds([]);
       }
+      sessionFinishedRef.current = true;
       clearDraft();
       endSession();
 
