@@ -7,8 +7,15 @@ razlicite skupove. Ovo to prebrojava umjesto da procjenjuje.
 """
 import io
 import re
+import sys
 from pathlib import Path
 from collections import defaultdict
+
+# ⚠ Windows konzola je cp1252 i ✅/⬜ je ruse s UnicodeEncodeError prije nego
+#   ispise ijedan redak — alat je zato izgledao pokvaren, a samo nije mogao
+#   ispisati. Ritual ga trazi svaku sesiju, pa mora raditi bez chcp 65001.
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 TESTS = Path('docs/sessions/tests')
 PENDING = Path('docs/sessions/PENDING_TESTS.md')

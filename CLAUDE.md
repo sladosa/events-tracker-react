@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S120).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S121).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -54,6 +54,7 @@ podaci hrane i AI sloj.
 | `docs/COLLAB_PLAN_v2.md`                  | Collab implementation plan (v2) — faze 0–11, decisions                           |
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas, Add Area „From template"                   |
 | `docs/AUTOMATION_SPEC.md`                 | Post-Finish automatika — rata modal, comment template, `set_attribute`           |
+| `docs/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
 | `docs/Analytics_tab.md`                   | **Cross-Area** analitika — `periods`, Series, AnalyticsDef Excel. Čeka drugu gustu Areu. ⚠ §3 („bucketiranje client-side") je opovrgnut u OVERVIEW_TAB_SPEC §2.2 |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
@@ -510,6 +511,53 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 
 **UI (React)**
 
+- **⚠ NEUSPJELO ČITANJE NIJE „NEMA NIČEGA" — i to je danas tri puta zaredom bio isti bug**
+  (S121). Pravilo je već stajalo uz RPC (`last_on`), ali se krši svugdje gdje loader ima
+  granu za grešku. Izmjereno na PROD-u: **jedno** palo čitanje `areas` ugasilo je Overview
+  tab, kratice računa, iznose **i** „Write access" baner — i to **trajno**, jer nijedan od
+  dva loadera ne ponavlja, a oba se re-runaju tek kad se promijeni Area. F5 je sve vratio;
+  podaci su cijelo vrijeme bili netaknuti (`settings` sa svih 6 ključeva, share aktivan,
+  upit 0,18–0,27 s).
+  ⚠ **Gore od nestalog taba:** `disableSavePlus` čita `selectedArea?.settings?…`, pa je
+  `null` area vratila **`Save +`** u Financije gdje je namjerno ugašen — app se nije samo
+  drukčije prikazivao nego i **drukčije ponašao**, bez ijedne poruke.
+  Lijek u tri koraka: `withRetry` (`src/lib/retry.ts`), zadrži već učitano **za istu Areu**
+  (za drugu čisti — tuđe kolone su gore od nikakvih), i **reci naglas** trakom.
+  ⚠ **`supabase` NE odbija promise na neuspjeh** — vraća `{ data, error }`. `try/catch` oko
+  `await supabase.from(...)` zato ne hvata ništa; to je razlog zašto su ovi kvarovi bili
+  nevidljivi. `withRetry` uzima `isFailure` predikat baš zbog toga.
+
+- **⚠ `async` funkcija pozvana bez `await`/`.catch()` guta svoju grešku u tišini** (S121).
+  `FilterContext.resolve()` je bio fire-and-forget: padne li bilo koji `await` unutra,
+  `setState` se nikad ne pozove i stanje ostane na početnoj vrijednosti — što se čita kao
+  legitiman odgovor. Svaki `resolve()`/`doRestore()` obrazac mora imati `.catch()`.
+
+- **⚠ Inline lambda u opcijama hooka ubija svaki `setInterval` u tom hooku** (S121,
+  BUG-S121-AUTOSAVE). `useLocalStorageSync({ onError: (err) => … })` — nov identitet na
+  svakom renderu ⇒ `saveDraft` i `setupAutoSave` novi ⇒ efekt koji ih drži re-runa se na
+  svakom renderu i **ruši interval prije nego istekne**. Štoperica renderira jednom u
+  sekundi (i kad je `add_header.timer: false` sakriva — `useSessionTimer` tiktače svejedno),
+  pa auto-save **nikad nije opalio tijekom unosa**. Izmjereno: `Stopping / Setting up
+  auto-save` jednom u sekundi, 30 puta u 30 s.
+  ⚠ **Jedini tik u životu tog intervala padao je POSLIJE Finisha** — jer `endSession()`
+  zaustavi štopericu, renderi prestanu, i zadnji postavljeni interval konačno preživi do
+  kraja. Dakle jedino što je auto-save ikad napravio bilo je da **vrati nacrt koji je
+  `clearDraft()` upravo obrisao** ⇒ „Resume Previous Session?" ⇒ **duplikat** (2,70 €
+  dvaput, `session_start` 09:51 i 09:53).
+  Lijek: `onError` u `useCallback`, `getDraftData` u ref (inače svaki tipkani znak resetira
+  odbrojavanje), interval se naoruža **jednom po sesiji**.
+
+- **⚠ Brisanje stanja mora ugasiti i stroj koji ga vraća — invarijanta, ne disciplina**
+  (S121). `clearDraft()` se zove s **5 mjesta**; da je gašenje auto-savea ostalo na pozivnim
+  mjestima, šesto bi ga zaboravilo. Zato `clearDraft()` sam zove `haltAutoSave()`.
+
+- **⚠ Auto-save piše u `localStorage`, NE u bazu.** Nula mrežnog troška; nacrt bez
+  fotografije je **383 B**. Zato je 5 s jeftinije nego što zvuči — ali upis se **preskače
+  kad se sadržaj nije promijenio**, inače bi nacrt s 5 MB base64 fotografije bio iznova
+  serijaliziran svakih 5 s, a `updatedAt` bi se resetirao pa bi dijalog tvrdio „just now"
+  za sesiju koju nitko ne dira.
+
+
 - **⚠ Efekt s dependency arrayem OKIDA SE I PRI MONTIRANJU** (S119 → popravljeno S120).
   `useEffect(..., [a, b])` ne znači „kad se `a` ili `b` promijene" nego „na mount **i** kad se
   promijene". `AppHome` se odmontira na svakom odlasku u `/app/view/:sessionStart`, pa je
@@ -544,6 +592,11 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   promjene ⇒ nema guarda), `T-S107w-1` je udario u koliziju (Apply se ne pojavi ⇒ izvještaj
   se ne preuzme). Oboje je lovljeno kao bug prije nego je uzrok izmjeren.
   Lijek: `e2e/setup/global-setup.ts` vraća seed Areu na seed stanje prije **svakog** runa.
+- **⚠ `e16-filter-persistence` je FLAKY i to NIJE zatvoreno** (S121). Pada kao čist timeout
+  od 120 s, **i na kodu bez izmjena iz S121** (1/3 bez, 2/3 s — uzorak premalen da se
+  razlikuje, pa se ni ne tvrdi da je jedno gore od drugog). Dok je flaky, S120 popravak
+  „filtar preživi View Details“ **nije čuvan**. ⚠ Ne zatvarati kao „flaky pa nema veze“ —
+  to je obrazac koji je u S120 sakrio statement timeout od paralelnih workera.
 - **Fiksan literal u testu se sudari s vlastitim ostatkom.** `T-S107-2` je upisivao stalni
   komentar; kad ga je raniji run već ostavio u bazi, upis nije bio promjena. Svaki marker
   koji test upisuje mora biti **jedinstven po runu** (`${Date.now()}`).
@@ -776,6 +829,22 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   roundtrip ga izbriše. Trenutno neopasno jer je u cijeloj bazi **0 od 12** `depends_on`
   atributa ima nepraznu listu — dakle rupa čeka prvog korisnika, ne ruši ništa danas.
   Fix: kolona za fallback opcije + isti graditelj pravila na obje strane.
+- **~~BUG-S121-DRAFTDUP~~ — ✅ POPRAVLJENO S121.** `finish()` je zvao `clearDraft()` ali ne i
+  `stopAutoSave()`, pa je nacrt uskrsnuo i sljedeći unos postao **duplikat**. Sada
+  `clearDraft()` sam gaši auto-save (invarijanta, ne disciplina) + `sessionFinishedRef`.
+  Čuva `e2e/tests/S121_draft_after_finish.spec.ts`. **Neverificirano uživo: T-S121-3/-4.**
+- **~~BUG-S121-AUTOSAVE~~ — ✅ POPRAVLJENO S121.** Auto-save se naoružavao iznova na svakom
+  renderu pa **nikad nije opalio tijekom unosa** — v. „UI (React)“. Posljedica koja se nije
+  vidjela: Koka nije imala nikakvu zaštitu od gubitka unosa (jedini upis nacrta bio je
+  `Save +`, a Financije ga imaju ugašen). Sada interval 5 s, naoružan jednom po sesiji, uz
+  preskočan upis kad se sadržaj nije promijenio.
+- **~~BUG-S121-AREACTX~~ — ✅ POPRAVLJENO S121.** Palo čitanje `areas` gašilo je Overview tab,
+  kolone i „Write access“ baner **trajno, do reloada** — v. „UI (React)“. Sada `withRetry`,
+  zadržavanje već učitanog za istu Areu, i **amber traka s „Pokušaj ponovno“**.
+  Čuva `e2e/tests/S121_area_context_failure.spec.ts` (3 slučaja).
+  ⚠ Retry **skriva uzrok, ne liječi ga**: na PROD-u je to vjerojatno S105 obrazac
+  (free-tier se guši). Pravi potez ostaje **Postgres upgrade**, otvoren od S105.
+- **`e16-filter-persistence` je flaky** — v. „E2E“. Otvoreno, T-S121-6.
 - **Bulk delete (checkbox) nije ograničen za grantee-a**
 - **„Import as mine" za write grantee unutar iste shared aree** nema smisla (pravi put je
   Leave Area ili re-import u novu vlastitu Areu) — flag, nije implementirano
@@ -959,6 +1028,19 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   nijednog `Cash` retka) ⇒ provjera 17/30 nije ugrožena. Odbačena alternativa: `Gotovina`
   kao pravi račun s vlastitim saldom — traži drugi redak uz svako podizanje i disciplinu
   bilježenja svakog gotovinskog troška; preskupo za 1 redak na 2.220 (Sašina odluka).
+- **⚠ IZMJERENO (S121): gotovina je 99 % neevidentirana, i to je SVJESNA odluka.**
+  **57 podizanja / 9.894,00 €** naspram **2 gotovinska troška / 86,00 €**. Saldo je zbog toga
+  savršeno točan (podizanje ga miče, trošak ne), ali **razrez po Tipu još ne postoji** —
+  `settings.dashboard` ima jedan jedini widget. Kad se gradi, mora nositi vlastiti redak
+  **`gotovina, nerazvrstano` = Σ(`Transfer/cash - bankomat`) − Σ(`Izvor = Cash`)**, inače
+  prešuti ~9.800 € i podcijeni potrošnju. Sašina odluka: **ne bilježiti svaku sitnicu** —
+  selektivno bilježenje je sigurno jer `Izvor = Cash` retci **nikad ne ulaze u saldo**, pa
+  nepotpunost ne može pokvariti Kokinu kontrolu računa. Cijena je da parcijalnost mora biti
+  **vidljiva**, ne skrivena.
+  ⚠ Time je poseban račun `Gotovina` **definitivno odbačen**, i to s razlogom a ne odgodom:
+  izmjereno je da `Transfer / izmedju racuna` **NIJE dvostruki zapis** (75 redaka, jedan po
+  transakciji, druga strana izvan modela) ⇒ `Gotovina` ne bi mogla reciklirati postojeću
+  strojariju, a računica „nerazvrstano“ daje istu dijagnostiku besplatno.
 - **Zrcalno pravilo, dvije osi:** `Transfer` **ulazi u saldo, izlazi iz razreza** po Tipu;
   gotovinski trošak **izlazi iz salda, ulazi u razrez**. Isti princip — svaki euro točno
   jednom u svakom pogledu. Isto vrijedi za gotovinu dobivenu izvana (`Izvor = Cash`,

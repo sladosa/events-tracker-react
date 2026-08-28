@@ -2903,6 +2903,148 @@ Obrisano **kroz UI** s „Download Backup & Delete" (file se skine prije brisanj
 
 ---
 
+## Done S121 (2026-08-28): dva Sašina nalaza, oba veća nego što su izgledala
+
+> Sesija je počela kao razgovor o gotovini, a završila s tri popravljena buga, jednim
+> specom i deployem na PROD. Zajedničko im je jedno pravilo: **neuspjelo čitanje nije
+> „nema ničega"** — prekršeno je danas na **tri** neovisna mjesta.
+
+## 1. Zatečeno stanje: handoff je lagao o deployu
+
+`NEXT_SESSION_PROMPT.md` je tvrdio „deploy i dalje nije napravljen", a `main` je bio na
+`ad0c6e1` od 26.08. i Saša je nakon toga odradio prolaz na telefonu. Ispravno stanje je bilo
+u `PENDING_TESTS.md`. Usput izmjereno na PROD-u: **2.317 eventa** (5 Sašinih s telefona, svih
+5 potpuna i `set_attribute` je odradio svih 5 ispravno), pločica ZABA `13.231,31 €` / RF
+`796,43 €`, `list_columns` s kraticama već upisan. **Koka nije upisala nijedan event** — samo
+je gledala.
+
+## 2. Gotovina: mehanizam objašnjen, i izmjeren
+
+Sašino pitanje „što upisujem kad dižem na bankomatu" otvorilo je mjerenje:
+
+| | broj | iznos |
+| --- | --- | --- |
+| podizanja (`Transfer / cash - bankomat`) | 57 | **9.894,00 €** |
+| gotovinski troškovi (`Izvor = Cash`) | 2 | **86,00 €** |
+
+Dakle **99 % podignute gotovine nema analitički trag** — a saldo je svejedno točan, jer ga
+miče podizanje, ne trošak. Prekidač je **`Izvor`**, ne `Racun`.
+
+Sašina odluka: **ne bilježiti svaku sitnicu.** To je sigurno jer `Izvor = Cash` retci nikad ne
+ulaze u saldo, pa parcijalnost ne može pokvariti Kokinu kontrolu računa. Cijena: razrez po
+Tipu (koji **još ne postoji** — dashboard ima jedan widget) mora nositi redak
+`gotovina, nerazvrstano`, inače prešuti ~9.800 €.
+
+⚠ Time je `Gotovina` kao poseban račun **definitivno odbačen**, s novim argumentom:
+izmjereno je da `Transfer / izmedju racuna` **nije dvostruki zapis** (75 redaka, jedan po
+transakciji), pa `Gotovina` ne bi mogla reciklirati postojeću strojariju.
+
+Usput nađena i dva stvarno krivo označena podizanja (`2025-11-12 · 150,00`,
+`2026-07-04 · 100,00`, oba pod `izmedju racuna`) — saldo im je točan, kriva je etiketa.
+I 38 `Bmove … CASH HR00` redaka **provjereno pa odbačeno** kao lažni pogodak: to je naziv
+naloga prijevoznika, `Prijevoz` im je ispravan.
+
+## 3. Duplikat od 2,70 € — i ono što je iza njega ispalo
+
+Saša je prijavio da mu je isti redak zapisan dvaput. Baza je dala točan trag: `09:53:08` i
+`09:53:42`, **različit `session_start`** ⇒ dvije sesije, ne dvostruki insert.
+
+Uzrok: `finish()` je zvao `clearDraft()` ali **ne** `stopAutoSave()`. Nacrt uskrsne, sljedeći
+Add Activity ponudi „Resume Previous Session?", Resume + Finish upiše isti redak drugi put.
+
+**Ali E2E test je otkrio nešto veće.** Phase A („nacrt se piše dok traje unos") **pala je i na
+originalnom kodu**. Dijagnostika je pokazala zašto:
+
+```
+12:32:48  Stopping auto-save / Setting up auto-save
+12:32:49  Stopping auto-save / Setting up auto-save     ← jednom u sekundi, 30 puta
+```
+
+`onError` je bio **inline lambda** ⇒ nov identitet na svakom renderu ⇒ efekt koji drži
+auto-save re-runa se na svakom renderu ⇒ interval se ruši prije nego istekne. Štoperica
+renderira svake sekunde (i kad je `add_header.timer` sakriva). Dakle:
+
+> **Auto-save nikad nije radio. Jedini tik u životu tog intervala padao je POSLIJE Finisha** —
+> kad `endSession()` zaustavi štopericu i renderi prestanu. Jedino što je ikad napravio bio
+> je duplikat.
+
+Posljedica koja se nije vidjela: **Koka nije imala nikakvu zaštitu od gubitka unosa** (jedini
+stvarni upis nacrta bio je `Save +`, a Financije ga imaju ugašen).
+
+Popravljeno: `clearDraft()` sam gasi auto-save (invarijanta, ne disciplina — zove se s 5
+mjesta), `sessionFinishedRef`, `onError` u `useCallback`, `getDraftData` u ref, interval
+naoružan **jednom po sesiji**, 15 s → **5 s** uz preskočen upis kad se sadržaj nije promijenio.
+
+Izmjereno poslije: naoružanja **1** (bilo 1/s), 1 upis na t+5s, **0** upisa u 26 s mirovanja,
+ništa poslije Finisha.
+
+## 4. Nestali Overview tab — treći put isto pravilo
+
+Saša je usred sesije javio da mu je nestao Overview tab i svi iznosi. Baza je bila
+**netaknuta**: `settings` sa svih 6 ključeva, share aktivan, upit `0,18–0,27 s`.
+
+Dva neovisna loadera, isti kvar:
+
+- `useAreaDashboard` — grana za grešku **aktivno postavlja `config = null`**
+- `FilterContext.resolve` — `async` **bez `catch`**; odbijeni promise nije nigdje išao
+
+Nijedan ne ponavlja, oba se re-runaju tek kad se promijeni Area ⇒ **jedan blip drži do
+reloada**. F5 je potvrdio dijagnozu.
+
+⚠ Gore od nestalog taba: `disableSavePlus` čita `selectedArea?.settings?…`, pa je `null` area
+vratila **`Save +`** u Financije. App se nije samo drukčije prikazivao nego i drukčije ponašao.
+
+Popravljeno: `src/lib/retry.ts` (`withRetry`, 3 pokušaja, backoff), zadržavanje već učitanog
+**za istu Areu**, i **amber traka** s „Pokušaj ponovno" koja izričito kaže *„Podaci su
+netaknuti"*.
+
+⚠ **`supabase` ne odbija promise na neuspjeh** — vraća `{ data, error }`, pa `try/catch` oko
+upita ne hvata ništa. To je razlog zašto su ovi kvarovi bili nevidljivi.
+
+## 5. Testovi koji su zamalo bili lažni — dvaput
+
+- `T-S121-1` phase A je isprva čekao auto-save, koji nije radio ⇒ mjerio bi ništa. Sada piše
+  nacrt kroz `Save +`.
+- `T-S121-2` je prvo tvrdio „nema trake" — **prolazi i na pokvarenom kodu**, jer trake ondje
+  nema. Pa je brojao upite (`>2`) — **ne razlikuje**, jer `useAreaDashboard` živi u tri
+  komponente pa i bez retryja ima 4 upita. Tek treća verzija mjeri **ishod**: Overview tab
+  mora preživjeti prolazni 503. I prozor obaranja je morao krenuti od **prvog presretnutog
+  upita**, jer je odabir Aree trajao dulje od prozora pa se isprva nije obarao nijedan upit.
+
+Sva tri slučaja provjerena obrnuto: s vraćenim kodom padaju.
+
+## 6. Pravila razvrstavanja — izmjereno pa specificirano
+
+Sašina bojazan („pravila ovise o redoslijedu, to je opasno") izmjerena nad 71 pravilom i
+4.992 retka Reviewa:
+
+| | |
+| --- | --- |
+| pogođenih redaka | 1.633 |
+| **redoslijed odlučuje** | **79 (4,8 %)** |
+| pravila se stvarno ne slažu | 71 |
+
+⚠ Prva mjera je dala 13,3 % jer nije primijenila `Iznos min/max` — mehanizam koji većinu
+preklapanja razdvaja. Zapisano da se ne ponovi.
+
+**Veći nalaz od redoslijeda:** 10 pravila ima ključ ≤5 znakova i traži goli podniz. `REG`
+pogađa `regres`, `taxi 1717 registracija` i `MACGREGOR` u **21 retku**. Redoslijed se barem
+vidi; krivi podniz ne ostavlja trag.
+
+`docs/RULES_ENGINE_SPEC.md` napisan **prije koda**, u dva sloja. Jezgra: **konflikt se
+prijavljuje, ne rješava položajem** — skupe se sva pravila, slažu li se u ishodu primijeni,
+ne slažu li se redak ide u `Za odluku`.
+
+## 7. Deploy i ritual
+
+`main` `ad0c6e1 → 4097af1` (5 commita), grane poravnate. `audit_tests.py` je usput
+popravljen — pucao je na Windows konzoli (`UnicodeEncodeError` na ✅) pa je izgledao pokvaren,
+a samo nije mogao ispisati. `S107w_tests.md` arhiviran (11/11 ✅).
+`docs/help/activities.md` dobio sekciju o nedovršenom unosu — „Resume Previous Session?" će
+se od sada redovito pojavljivati, a prije praktički nikad nije.
+
+---
+
 ## Done S120 (2026-08-26): tri popravka pred deploy, 22 zatvorena testa, i dan lova na krive tragove
 
 **Kako je dan izgledao:** četiri puta sam imenovao uzrok, i **tri puta me mjerenje opovrglo.**

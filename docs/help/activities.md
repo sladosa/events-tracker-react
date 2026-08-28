@@ -62,6 +62,31 @@ kupovine na rate. Prikazuje iznos po rati i **datume naplate** svake rate.
 - Za pregled "koliko me čeka kojeg datuma" koristi export sortiran po `Datum naplate`, ne po
   datumu aktivnosti.
 
+## Nedovršeni unos ("Resume Previous Session?")
+
+Dok unosiš aktivnost, app svakih nekoliko sekundi sprema **nacrt** — lokalno u tvom
+pregledniku, ne u bazu. Nacrt nije zapis: u bazi se ništa ne pojavi dok ne pritisneš
+**Finish**.
+
+Ako Add Activity napustiš bez `Finish` i bez `✕` — zatvoriš tab, ugasi ti se preglednik,
+pritisneš strelicu natrag — nacrt ostane. Sljedeći put kad otvoriš Add Activity dobiješ
+pitanje **"Resume Previous Session?"** s dva izbora:
+
+- **Resume Session** — vrati polja onako kako si ih ostavio/la. Zapis i dalje nastaje tek
+  na `Finish`.
+- **Discard** — baci nacrt i kreni od praznog.
+
+**Kad ga očekivati, a kad ne:**
+
+| što si napravio/la | nacrt |
+| --- | --- |
+| `Finish` | obrisan — sljedeći unos kreće čist |
+| `✕` (Cancel) | obrisan |
+| zatvoren tab / strelica natrag | **ostaje** → ponudit će Resume |
+
+⚠ Ako ti se Resume ponudi **odmah nakon uspješnog `Finish`a**, to nije normalno — javi.
+Takav nacrt bi, potvrđen, upisao **isti zapis drugi put**.
+
 ## Uređivanje aktivnosti
 - ⋮ menu → Edit (ili ikona olovke na redu)
 - Mijenja atribute za tu sesiju

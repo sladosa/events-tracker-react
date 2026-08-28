@@ -1,7 +1,50 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S120 (2026-08-26) — 17 redaka zatvoreno, popis otvorenog ispod.
+**Zadnji update:** S121 (2026-08-28) — dva nova automata, tri nova ručna testa.
+
+---
+
+## S121 — dva Sašina nalaza s PROD-a, oba veća nego što su izgledala (2026-08-28)
+
+Detalji: [S121_tests.md](tests/S121_tests.md)
+
+### Automatizirano, ne traži ništa (2 filea, 4 slučaja)
+
+| test | čuva | provjereno obrnuto |
+| --- | --- | --- |
+| `T-S121-1` | Finish ne ostavlja nacrt ⇒ **nema duplikata** | ✅ bez popravka nacrt se vrati na t+15 s |
+| `T-S121-2` | palo čitanje postavki Aree se **prijavljuje** | ✅ sva tri slučaja padaju bez popravka |
+
+⚠ **Oba su zamalo bila lažna i to je zapisano u samim specovima.** `T-S121-1` je isprva
+čekao da auto-save napiše nacrt — a auto-save **nikad nije radio**, pa bi test mjerio ništa;
+sada nacrt piše kroz `Save +`. `T-S121-2` je prvo tvrdio „nema trake" (prolazi i na
+pokvarenom kodu — trake ondje nema), pa brojao upite (`>2`, ne razlikuje jer
+`useAreaDashboard` živi u tri komponente), pa tek onda mjerio **ishod**: Overview tab mora
+preživjeti prolazni 503.
+
+### Novo — traži tebe, na PROD-u nakon deploya
+
+| # | test | status |
+| --- | --- | --- |
+| T-S121-3 | ⭐ **Add → Finish → odmah Add: nema „Resume Previous Session?"** | ⬜ |
+| T-S121-4 | nacrt čuva nedovršen unos (zatvori tab → Resume vrati polja); Cancel ga briše | ⬜ |
+| T-S121-5 | traka „Nisam uspio učitati postavke ove Aree" (Offline → promjena Aree) — **opcionalno**, automat pokriva | ⬜ |
+
+### Otvoreno za Claudea
+
+| # | što | status |
+| --- | --- | --- |
+| T-S121-6 | **`e16-filter-persistence` je flaky** — pada i bez izmjena iz S121 (1/3 bez, 2/3 s). Dok je flaky, S120 popravak nije čuvan. | ⬜ |
+| T-S121-7 | razrez po Tipu mora nositi redak `gotovina, nerazvrstano` (izmjereno: 9.894 € podignuto vs 86 € zabilježeno) | ⬜ zahtjev, ne test |
+
+### Arhivirano u S121
+
+`S107w_tests.md` (11/11 ✅, audit ga sam prijavio) → `Claude-temp_R/test-sessions/archive/`.
+
+⚠ `audit_tests.py` je **pucao** na Windows konzoli (`UnicodeEncodeError` na ✅ prije prvog
+retka) — izgledao je pokvaren, a samo nije mogao ispisati. Popravljen; ritual ga traži svaku
+sesiju pa mora raditi bez `chcp 65001`.
 
 ---
 
