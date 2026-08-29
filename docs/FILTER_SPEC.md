@@ -166,14 +166,47 @@ Zato:
 
 ---
 
-## 5. Shortcutovi po Arei (Sašina točka 4 — po njemu najvažnija)
+## 5. Shortcutovi po Arei — **faza 1, ide odmah** (✅ odluka, Saša S122)
 
-- **Toggle u Filter panelu** suzi popis na shortcutove odabrane Aree. Isključen toggle
-  pokazuje one bez Aree (`area_id IS NULL`) — dakle „globalne".
+**Toggle ima dva stanja i ona nisu „filtrirano / nefiltrirano" nego dvije namjene**
+(Sašina formulacija): **uključen** = „radim u ovoj Arei, pokaži mi njene";
+**isključen** = *„najvažnijih nekoliko iz raznih area — da me prebaci brzo."*
+Dakle isključen toggle **nije** popis svega, nego **kratka lista za skakanje**.
+
+- **Uključen:** svi shortcutovi odabrane Aree (popis jedne Aree je ionako kratak).
+- **Isključen:** **najviše N** (predloženo **15**, konstanta na jednom mjestu) kroz sve Aree,
+  poredani po učestalosti. ⚠ Ondje **ime Aree ide kao sufiks** (`Gym Z2 · Fitness`) — u toj
+  je listi Area upravo ono što razlikuje stavke; u listi jedne Aree bila bi šum.
 - **Shortcut napravljen u Add Activity uvijek dobiva Areu** (ondje se zna).
 - **Stari zapisi s `NULL` Areom ostaju globalni** — bez migracije, bez pogađanja.
 - ⚠ **Preset je per-user i ID-based** (nikad ne putuje Excelom, v. „Preset ≠ widget").
-  Ovo je čisto sužavanje popisa, ne nov oblik zapisa.
+  Ovo je sužavanje popisa, ne nov oblik zapisa.
+
+**Sort već postoji i ne treba ga graditi:** `usage_count desc, last_used desc`
+([useActivityPresets.ts:38](../src/hooks/useActivityPresets.ts#L38)). Nedostaju samo
+**granica** (danas se renderira koliko ih ima) i **grupiranje po Arei** — dropdown je ravan
+`<option>` popis ([ProgressiveCategorySelector.tsx:711](../src/components/filter/ProgressiveCategorySelector.tsx#L711)).
+
+### ⚠ Granica po učestalosti su jednosmjerna vrata
+
+Zamka koja se ne vidi dok ne ugrize: **što ispadne ispod 15. mjesta više se ne nudi ⇒ ne
+koristi se ⇒ `usage_count` mu ne raste ⇒ ne može se vratiti.** Rangiranje po učestalosti
+samo sebe pojačava. Granica je zato dopuštena **samo uz izlaz** iz nje.
+
+**Sašino pitanje — „imati i sort po najmanje popularnim, da se čovjek podsjeti?"
+Preporuka: ne.** Tri razloga:
+
+1. **Obrće cilj.** Povod je da na malom ekranu gore bude ono što najviše treba; način koji
+   na vrh stavlja **najmanje** korišteno radi suprotno.
+2. **Rješava problem otkrivanja novom kontrolom koju treba otkriti.** Prekidač za koji se
+   mora znati da postoji nije lijek za „ne znam kako se tamo ulazi".
+3. **Rijedak shortcut je češće kandidat za brisanje nego za podsjećanje** — a briše se ondje
+   gdje se vidi cijeli popis.
+
+**Umjesto toga: zadnja stavka skraćene liste je `Svi shortcutovi…`** — otvara **cijeli**
+popis, grupiran po Arei, abecedno. Deterministično, uvijek na istom mjestu, jedna kontrola
+umjesto dvije, i **razbija jednosmjerna vrata** iz prethodnog odlomka.
+⚠ Bez te stavke granica se **ne smije** uvesti.
 
 **Sašina ideja o parenju s Export profilom:** kad se definira profil exporta, ponuditi i
 shortcut **istog imena**. ⚠ Prije nego se to gradi: `export_profiles` je per-Area config u
@@ -250,10 +283,19 @@ je stajao dva dana.
 
 ---
 
-## 10. Otvoreno za Sašu
+## 10. Odgovoreno (Saša, S122) — i što je ostalo
 
-1. **AND/OR:** je li „AND između uvjeta, OR unutar jednog atributa" (§2) dovoljno, ili
-   postoji stvaran primjer koji traži zagrade?
-2. **Koliko uvjeta** je realno — 2, ili proizvoljan broj? (Utječe na UI, ne na RPC.)
-3. **Faza 1 odmah?** Shortcutovi po Arei su odvojivi i najbrže vidljivi Koki.
-4. **`NOT`** (§2) — postoji li potreba, ili se izostavlja bez rasprave?
+| # | pitanje | odgovor |
+| --- | --- | --- |
+| 1 | AND između uvjeta, OR unutar atributa? | ✅ dovoljno, **uz ogradu**: provjeriti na stvarnom korištenju (§2) |
+| 2 | koliko uvjeta? | ✅ **proizvoljno**, kroz `+ dodatni uvjet` |
+| 3 | faza 1 odmah? | ✅ **da** — shortcutovi po Arei, semantika toggla u §5 |
+| 4 | `NOT`? | ✅ **ne** — „egzotičniji upiti se rade u Excelu" (§2) |
+
+**Ostalo otvoreno:**
+
+- **N u granici popisa** (predloženo 15) — broj se bira tek kad se izbroji koliko ih Saša i
+  Koka stvarno imaju; dotad je konstanta na jednom mjestu.
+- **Sort po najmanje popularnim** — preporuka je **ne** (§5), zamijenjeno stavkom
+  `Svi shortcutovi…`. Čeka Sašinu potvrdu.
+- **UI čipova (§4)** se ne betonira dok se ne isproba na stvarnom unosu (ograda iz #1).
