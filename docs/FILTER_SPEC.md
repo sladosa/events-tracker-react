@@ -166,7 +166,15 @@ Zato:
 
 ---
 
-## 5. Shortcutovi po Arei — **faza 1, ide odmah** (✅ odluka, Saša S122)
+## 5. Shortcutovi po Arei — **✅ IZVEDENO S122** (faza 1)
+
+**Izvedeno:** kvačica „samo ova Area" uz `⚡ Shortcuts` (stanje se pamti po pregledniku,
+`et_shortcuts_area_only`), `<optgroup>` po Arei u punom popisu, i sufiks `23× · 12.06.`
+u svakom retku. **Bez granice po broju** — v. odluku niže.
+**Nije izvedeno:** „skraćena lista za skakanje" (koliko ih pokazati kad je kvačica
+isključena) — čeka stvarne brojke, v. §9.
+
+---
 
 **Toggle ima dva stanja i ona nisu „filtrirano / nefiltrirano" nego dvije namjene**
 (Sašina formulacija): **uključen** = „radim u ovoj Arei, pokaži mi njene";
@@ -300,7 +308,8 @@ je stajao dva dana.
 | faza | sadržaj | zašto tim redom |
 | --- | --- | --- |
 | **0** | izbrojati refetch kaskadu (§6a), popraviti uzrok | najjeftinije, i čisti teren |
-| **1** | shortcutovi po Arei (§5) | nula nove strojarije, **odmah** koristi Koki na mobitelu |
+| **1** | ~~shortcutovi po Arei (§5)~~ **✅ S122** | nula nove strojarije, odmah koristi na mobitelu |
+| **1b** | „skraćena lista za skakanje" — koliko ih kad je kvačica isključena | ⚠ **tek kad se izbroje** stvarni shortcutovi. Prijedlog: mjera nije brojka nego **Area** — 1–2 najkorištenija **po Arei**, pa se samo skalira i nema izmišljene konstante |
 | **2** | RPC s N uvjeta (§3) + model (§2), UI ostaje jedan uvjet | rizik je u bazi, pa se odvaja od UI-ja |
 | **3** | UI s čipovima (§4), drill s dva uvjeta, prefill iz Add Activity | tek kad ispod radi |
 | **4** | brojevi i datumi (§1.3) | najviše novih operatora, najmanje hitno |
@@ -320,8 +329,10 @@ je stajao dva dana.
 
 **Ostalo otvoreno:**
 
-- **N u granici popisa** (predloženo 15) — broj se bira tek kad se izbroji koliko ih Saša i
-  Koka stvarno imaju; dotad je konstanta na jednom mjestu.
+- ~~**N u granici popisa**~~ — ✅ **odluka (Saša, S122): bez granice dok nema stvarnog uvida.**
+  *„Nema smisla uvoditi granice bez stvarnog uvida; kad ih je previše ne valja, ali koliko ih
+  za promjenu Aree ima smisla ostaje neka manja mjera."* ⇒ faza 1 je izvedena **bez granice**,
+  a mjera za skraćenu listu (faza 1b) se bira nad brojkama.
 - ~~**Sort po najmanje popularnim**~~ — ✅ riješeno: `Svi shortcutovi…` sa **sortom po
   učestalosti i brojkom u retku** (§5). Prozorska brojka („zadnja 2 mjeseca") **nije
   moguća** bez nove tablice; umjesto nje `usage_count` + `last_used`.

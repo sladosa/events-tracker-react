@@ -29,6 +29,7 @@ uopće ne može napisati — a to je točno bio S121 bug.
 | --- | --- | --- |
 | T-S122-2 | ⭐ otvori Add → čekaj 10 s → back → opet Add: **nema** dijaloga | ⬜ |
 | T-S122-3 | isto, ali utipkaj nešto prije backa: dijalog **mora** iskočiti i Resume vratiti polja | ⬜ |
+| T-S122-4 | ⭐ **shortcutovi po Arei** — kvačica „samo ova Area", `<optgroup>` u punom popisu, sufiks `23× · 12.06.` | ⬜ |
 
 ---
 

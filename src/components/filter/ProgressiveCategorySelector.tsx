@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
-import type { Category, UUID } from '@/types/database';
+import type { ActivityPreset, Category, UUID } from '@/types/database';
 import { useFilter } from '@/context/FilterContext';
 import { useAreas } from '@/hooks/useAreas';
 import { useActivityPresets } from '@/hooks/useActivityPresets';
@@ -74,6 +74,24 @@ export function ProgressiveCategorySelector({
   
   // Shortcuts
   const { presets, loading: presetsLoading, createPreset, deletePreset, incrementUsage } = useActivityPresets();
+  // ⚡ SHORTCUTOVI PO AREI (S122, faza 1 iz FILTER_SPEC §5)
+  //   Izmjereno na Sašinom telefonu 29.08.2026.: u `Financije_all` dropdown nudi
+  //   `Strength`, `Outdoor`, `Gym Z2`, `Sasa_MedVisit` — nijedan iz te Aree, a
+  //   zauzimaju cijeli ekran (native select je na mobitelu punoekranski popis).
+  //   Kvačica ima DVIJE NAMJENE, ne dva filtra: uključena = „radim u ovoj Arei";
+  //   isključena = skakanje kroz aree.
+  //   ⚠ Bez granice po broju — granica po učestalosti su jednosmjerna vrata (što
+  //   ispadne ispod nje se ne nudi ⇒ ne koristi se ⇒ ne može se vratiti), a koliko
+  //   ih je premalo/previše se ne zna dok se ne izbroje (Sašina odluka S122).
+  const [areaOnlyShortcuts, setAreaOnlyShortcuts] = useState<boolean>(() => {
+    try { return localStorage.getItem('et_shortcuts_area_only') !== 'false'; }
+    catch { return true; }
+  });
+  const toggleAreaOnly = useCallback((next: boolean) => {
+    setAreaOnlyShortcuts(next);
+    try { localStorage.setItem('et_shortcuts_area_only', String(next)); } catch { /* private mode */ }
+  }, []);
+
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
   const [savingPreset, setSavingPreset] = useState(false);
@@ -337,6 +355,48 @@ export function ProgressiveCategorySelector({
       setBrokenShortcutId(null);
     }
   }, [selectedShortcutId, presets, deletePreset, setSelectedShortcutId]);
+
+  // Popis za dropdown. Sort ostaje onaj iz `useActivityPresets` (usage_count desc,
+  // last_used desc) — jedan poredak, i u suženom i u punom popisu.
+  // ⚠ Odabrani shortcut ostaje u popisu i kad ispadne iz filtra, inače `<select>`
+  //   pokaže prazno polje nad shortcutom koji je i dalje aktivan.
+  const visiblePresets = useMemo<ActivityPreset[]>(() => {
+    if (!areaOnlyShortcuts || !filter.areaId) return presets;
+    return presets.filter(p => p.area_id === filter.areaId || p.id === selectedShortcutId);
+  }, [presets, areaOnlyShortcuts, filter.areaId, selectedShortcutId]);
+
+  /** Aree grupirane za `<optgroup>` — samo u punom popisu; u suženom je Area poznata.
+   *  Redoslijed grupa slijedi redoslijed prvog (dakle najkorištenijeg) shortcuta u njoj. */
+  const groupedPresets = useMemo<Array<{ label: string; items: ActivityPreset[] }>>(() => {
+    const byArea = new Map<string, { label: string; items: ActivityPreset[] }>();
+    for (const p of visiblePresets) {
+      const key = p.area_id ?? '__none__';
+      if (!byArea.has(key)) {
+        byArea.set(key, {
+          label: p.area_id
+            ? (areas.find(a => a.id === p.area_id)?.name ?? 'Nepoznata Area')
+            : 'Bez Aree',
+          items: [],
+        });
+      }
+      byArea.get(key)!.items.push(p);
+    }
+    return Array.from(byArea.values());
+  }, [visiblePresets, areas, presets]);
+
+  /** `23× · 12.06.` — brojka je za odluku o BRISANJU, ne za ukras (FILTER_SPEC §5).
+   *  ⚠ Prozorska brojka („zadnja 2 mjeseca") ne postoji: baza drži kumulativni
+   *  `usage_count` i jedan `last_used`, povijesti korištenja nema. Za brisanje je
+   *  `last_used` ionako jači signal — „nije korišten od ožujka". */
+  const presetSuffix = useCallback((p: ActivityPreset): string => {
+    const parts: string[] = [];
+    if (p.usage_count > 0) parts.push(`${p.usage_count}×`);
+    if (p.last_used) {
+      const d = new Date(p.last_used);
+      parts.push(`${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.`);
+    }
+    return parts.length > 0 ? ` · ${parts.join(' · ')}` : '';
+  }, []);
 
   // Can save: has area or category selected (non-leaf shortcuts useful for reports/exports)
   const canSaveShortcut = !!(filter.categoryId || filter.areaId);
@@ -698,9 +758,22 @@ export function ProgressiveCategorySelector({
       <div className="flex items-end gap-2 mb-3">
         {/* Shortcuts Dropdown */}
         <div className="flex-1 min-w-0 max-w-xs">
-          <label className="block text-xs font-medium text-gray-500 mb-1">
-            ⚡ Shortcuts
-          </label>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <label className="block text-xs font-medium text-gray-500">
+              ⚡ Shortcuts
+            </label>
+            {filter.areaId && (
+              <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer select-none whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={areaOnlyShortcuts}
+                  onChange={(e) => toggleAreaOnly(e.target.checked)}
+                  className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                samo ova Area
+              </label>
+            )}
+          </div>
           <select
             value={selectedShortcutId || ''}
             onChange={(e) => handleShortcutSelect(e.target.value)}
@@ -708,11 +781,29 @@ export function ProgressiveCategorySelector({
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100"
           >
             <option value="">Select shortcut...</option>
-            {presets.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.name}
+            {/* ⚠ Prazan suženi popis se KAŽE naglas. Tiho pokazati sve iz drugih area
+                bilo bi „neuspjelo sužavanje = nema sužavanja" — isti razred kao
+                „neuspjelo čitanje nije nema ničega" (CLAUDE.md, S121). */}
+            {visiblePresets.length === 0 && (
+              <option value="" disabled>
+                — nema shortcutova u ovoj Arei (isključi kvačicu za ostale) —
               </option>
-            ))}
+            )}
+            {areaOnlyShortcuts && filter.areaId
+              ? visiblePresets.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.name}{presetSuffix(preset)}
+                  </option>
+                ))
+              : groupedPresets.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.items.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.name}{presetSuffix(preset)}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
           </select>
         </div>
 

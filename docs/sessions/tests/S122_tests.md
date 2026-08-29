@@ -69,3 +69,38 @@ kako su ostavljena.
 
 ⚠ Ne preskakati zbog toga što izgleda kao ponavljanje `T-S121-4`: ondje se mjerio auto-save,
 ovdje guard nad njim.
+
+
+---
+
+## T-S122-4 — shortcutovi po Arei (faza 1 iz `FILTER_SPEC` §5)
+
+**Zašto:** izmjereno na tvom telefonu 29.08. — u `Financije_all > Transakcija` dropdown je
+nudio `Strength`, `Outdoor`, `Gym Z2`, `Sasa_MedVisit`, dakle **nijedan iz te Aree**, a
+zauzimali su cijeli ekran (native select je na mobitelu punoekranski popis).
+
+**Preduvjet:** deploy na PROD (ili TEST build), **Ctrl+Shift+R**.
+
+1. Filter panel → odaberi Areu `Financije_all`
+2. Uz `⚡ Shortcuts` stoji kvačica **„samo ova Area"** — uključena
+3. Otvori dropdown
+
+**Očekivano:** samo shortcutovi te Aree. Ako ih nema nijedan, piše
+`— nema shortcutova u ovoj Arei (isključi kvačicu za ostale) —` (**ne** tiho pokaže tuđe).
+**Pad:** vide se shortcutovi drugih area, ili je popis prazan bez ijedne poruke.
+
+4. **Isključi** kvačicu
+
+**Očekivano:** popis pokazuje sve, **grupirane po Arei** (naslovi grupa u dropdownu),
+a svaki redak nosi sufiks tipa `Gym Z2 · 23× · 12.06.` (broj korištenja i zadnje korištenje).
+**Pad:** nema grupa, ili nema brojke.
+
+5. Promijeni Areu na neku drugu, pa se vrati — kvačica mora ostati kakva je bila
+   (pamti se po pregledniku)
+6. Odaberi shortcut iz **druge** Aree, pa uključi kvačicu
+
+**Očekivano:** odabrani shortcut **ostaje vidljiv** u popisu iako nije iz te Aree — inače bi
+polje izgledalo prazno nad shortcutom koji je i dalje aktivan.
+
+⚠ Ovo **nije** granica popisa („pokaži samo 15 najkorištenijih") — ona je svjesno
+izostavljena dok se ne izbroje stvarni shortcutovi (`FILTER_SPEC` §9, faza 1b).
