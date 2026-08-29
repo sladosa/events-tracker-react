@@ -389,8 +389,10 @@ export function ProgressiveCategorySelector({
    *  `usage_count` i jedan `last_used`, povijesti korištenja nema. Za brisanje je
    *  `last_used` ionako jači signal — „nije korišten od ožujka". */
   const presetSuffix = useCallback((p: ActivityPreset): string => {
-    const parts: string[] = [];
-    if (p.usage_count > 0) parts.push(`${p.usage_count}×`);
+    // ⚠ `0×` se ispisuje, ne izostavlja (Sašin nalaz S122: pitao je znači li prazno
+    //   „nikad korišten" ili „nema podatka" — a to je pitanje samo po sebi odgovor).
+    //   `0×` nosi isti oblik kao `5×`, pa se stupac čita ujednačeno i bez novog rječnika.
+    const parts: string[] = [`${p.usage_count}×`];
     if (p.last_used) {
       const d = new Date(p.last_used);
       parts.push(`${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.`);

@@ -215,6 +215,11 @@ Preporuka: ne.** Tri razloga:
 popis. Deterministično, uvijek na istom mjestu, jedna kontrola umjesto dvije, i **razbija
 jednosmjerna vrata** iz prethodnog odlomka. ⚠ Bez te stavke granica se **ne smije** uvesti.
 
+⚠ **Ta stavka pripada granici, ne popisu — pa danas NE POSTOJI i ne treba** (Sašin nalaz
+S122: *„sada ih je malo pa nema smisla"*). Dok granice nema, cijeli popis je jedna kvačica
+daleko, i drugi put do istog mjesta bio bi samo još jedna kontrola. `Svi shortcutovi…`
+ulazi **istim commitom kao granica**, nikad prije njega.
+
 ### Cijeli popis: isti sort, ali sa **brojkom** (Sašin dodatak, S122)
 
 Sašin prigovor na abecedu: *„inače korisnik ne može lako naći nepopularni kojeg eventualno
