@@ -99,8 +99,28 @@ test('E16-1: attrFilter, area and category survive View Details', async ({ page 
     };
 
     // ⋮ → View Details, then back
-    await page.locator('td.sticky button').first().click();
-    await page.getByText(/view details/i).first().click();
+    //
+    // ⚠ THE ⋮ MENU CAN BE THROWN AWAY THE INSTANT IT OPENS (S122)
+    //   This was the whole of E16's flakiness (T-S121-6) — it never was a filter
+    //   reset. Measured from the trace of a failing run: after the area/attribute
+    //   change the list re-queries itself SIX times in ~500 ms
+    //   (`events?select=…` at 16664, 16735, 16832, 16909, 17022, 17098 ms), and
+    //   the ⋮ click landed at 16712 — right inside that burst. The click itself
+    //   succeeded; the row then remounted and took the freshly opened menu with
+    //   it, so "View details" never appeared and the test sat out its full 120 s.
+    //   The screenshot of the failure shows the filter perfectly intact, which is
+    //   why "flaky E16" never meant "the fix regressed".
+    //   Retrying the open is the honest fix: the menu really can be discarded, so
+    //   the test asks for it until it sticks instead of assuming one click is
+    //   enough. Fix stays in the spec — the app behaves correctly (CLAUDE.md:
+    //   selector problem ⇒ spec only).
+    const menuBtn = page.locator('td.sticky button').first();
+    const viewDetails = page.getByText(/view details/i).first();
+    await expect(async () => {
+      await menuBtn.click();
+      await expect(viewDetails).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
+    await viewDetails.click();
     await page.waitForURL(/\/app\/view\//);
     await page.goBack();
     await page.waitForURL(/\/app($|\?)/);
