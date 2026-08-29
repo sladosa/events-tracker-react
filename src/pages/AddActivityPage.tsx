@@ -343,6 +343,22 @@ export function AddActivityPage() {
   // FinishSuccessDialoga (Edit, Go to Home) napuštaju stranicu, dakle nema
   // legitimnog nastavka unosa koji bi ovo zaključalo.
   const sessionFinishedRef = useRef(false);
+
+  // ⚠ NACRT SE PIŠE TEK KAD U NJEMU IMA NEČEGA ŠTO JE ČOVJEK DODAO (S122)
+  //   Auto-save od S121 stvarno radi, pa je isplivalo ono što je dotad bilo
+  //   nevidljivo: forma se pri otvaranju SAMA napuni defaultima (`default_value`,
+  //   preset, `default_map` — Valuta, Status, Izvor…), a prvi tik intervala piše
+  //   bezuvjetno (`lastSavedContentRef` kreće od null). Dakle otvoriš Add, odeš
+  //   back gumbom nakon 5 s, i sljedeći Add ponudi „Resume Previous Session?"
+  //   nad nacrtom u kojem nema nijednog tvojeg znaka. Izmjereno na PROD-u
+  //   29.08.2026. — dijalog se pojavi nad praznim ekranom, `Events: 0`.
+  //   Zašto ref, a ne izračun iz stanja: `canSave` je za takvu formu **već
+  //   `true`** (defaulti nose `touched: true`), pa se „ima li sadržaja" iz
+  //   stanja ne da pošteno pročitati. Pitanje nije „ima li vrijednosti" nego
+  //   „je li ih čovjek dirao", a to zna samo handler kroz koji je prošao.
+  //   ⚠ Ne postavljati ga u efektima koji pune defaulte ni u `set_attribute`
+  //   automatici — oni su upravo ono od čega se ograđujemo.
+  const userTouchedRef = useRef(false);
   const [draftSummary, setDraftSummary] = useState<DraftSummary | null>(null);
 
   // Save as Shortcut (S88)
@@ -503,6 +519,9 @@ export function AddActivityPage() {
     setCurrentPhotos(draft.currentForm.photos);
     
     log(`Draft restored: ${restoredEvents.length} events`);
+    // Vraćen nacrt je već nečiji rad ⇒ auto-save ga smije nastaviti pisati i
+    // ako korisnik nakon Resumea ne dirne nijedno polje.
+    userTouchedRef.current = true;
     setShowResumeDialog(false);
     setIsInitialized(true);
   }, [loadDraft, clearDraft, navCategoryId, navigate, log]);
@@ -518,6 +537,9 @@ export function AddActivityPage() {
   
   const handleConfirmDiscard = useCallback(() => {
     log('Discarding draft...');
+    // Odbačen nacrt ⇒ i zastavica ide na nulu, inače bi auto-save odmah počeo
+    // pisati novi nacrt nad formom koju korisnik nije ni dotaknuo.
+    userTouchedRef.current = false;
     clearDraft();
     setShowDiscardDialog(false);
     
@@ -538,6 +560,9 @@ export function AddActivityPage() {
   const getDraftData = useCallback((): ActivityDraft | null => {
     if (sessionFinishedRef.current) return null;
     if (!areaId || !categoryId || !isInitialized) return null;
+    // Ništa što je čovjek dodao ⇒ nema nacrta (v. userTouchedRef). Spremljeni
+    // pending eventi su sami po sebi njegov rad, pa prolaze i bez zastavice.
+    if (!userTouchedRef.current && pendingEvents.length === 0) return null;
     
     // Convert attributeValues Map to proper format
     const attrs = new Map<string, AttributeValue>();
@@ -669,6 +694,7 @@ export function AddActivityPage() {
   // ============================================
   
   const handleAttributeChange = useCallback((definitionId: string, value: string | number | boolean | null) => {
+    userTouchedRef.current = true;
     setAttributeValues(prev => {
       const next = new Map(prev);
       next.set(definitionId, {
@@ -708,7 +734,19 @@ export function AddActivityPage() {
   // ============================================
   
   const handlePhotosChange = useCallback((photos: PendingPhoto[]) => {
+    userTouchedRef.current = true;
     setCurrentPhotos(photos);
+  }, []);
+
+  const handleNoteChange = useCallback((note: string) => {
+    userTouchedRef.current = true;
+    setEventNote(note);
+  }, []);
+
+  /** Promjena datuma je namjera, ne default — nacrt je od tog trena vrijedan. */
+  const handleEventAtChange = useCallback((next: Date) => {
+    userTouchedRef.current = true;
+    setEventAt(next);
   }, []);
   
   // ============================================
@@ -972,6 +1010,7 @@ export function AddActivityPage() {
     resetLap();
     
     // Immediate save to localStorage
+    userTouchedRef.current = true;
     const draft = getDraftData();
     if (draft) {
       draft.pendingEvents.push({
@@ -1691,7 +1730,7 @@ export function AddActivityPage() {
         disableSavePlus={disableSavePlus}
         showTimer={showTimer}
         dateTime={showDatePicker ? eventAt : undefined}
-        onDateTimeChange={showDatePicker ? setEventAt : undefined}
+        onDateTimeChange={showDatePicker ? handleEventAtChange : undefined}
         canSave={canFinish}
         saving={saving}
         pendingEventCount={pendingEvents.length}
@@ -1779,7 +1818,7 @@ export function AddActivityPage() {
               <input
                 type="text"
                 value={eventNote}
-                onChange={(e) => setEventNote(e.target.value)}
+                onChange={(e) => handleNoteChange(e.target.value)}
                 disabled={saving}
                 placeholder="e.g., Felt strong today"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"

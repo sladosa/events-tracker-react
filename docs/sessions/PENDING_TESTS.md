@@ -1,7 +1,34 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S121 (2026-08-28) — dva nova automata, tri nova ručna testa.
+**Zadnji update:** S122 (2026-08-29) — T-S121-3/-4 potvrđeni na PROD-u; nov automat protiv fantomskog nacrta.
+
+---
+
+## S122 — fantomski nacrt: dijalog nad formom u koju nitko nije tipkao (2026-08-29)
+
+Detalji: [S122_tests.md](tests/S122_tests.md)
+
+**Nalaz je Sašin, iz T-S121-3.** Kad je auto-save u S121 konačno proradio, počeo je pisati
+nacrt i za forme koje nitko nije dotaknuo — Add se sam napuni defaultima, a prvi tik piše
+bezuvjetno. Repro (izmjeren na PROD-u 29.08.): otvori Add → **6 s** → back gumb → sljedeći
+Add nudi „Resume Previous Session?" nad nacrtom bez ijednog tvog znaka.
+
+### Automatizirano
+
+| test | čuva | provjereno obrnuto |
+| --- | --- | --- |
+| `T-S122-1` (2 slučaja) | netaknut Add ekran **ne** ostavlja nacrt; utipkan znak ga **ostavlja** | ✅ s izvađenim guardom prvi slučaj pada |
+
+⚠ Drugi slučaj postoji da prvi ne bude prazan: „nema dijaloga" prolazi i kad se nacrt
+uopće ne može napisati — a to je točno bio S121 bug.
+
+### Novo — traži tebe, **tek nakon deploya na PROD**
+
+| # | test | status |
+| --- | --- | --- |
+| T-S122-2 | ⭐ otvori Add → čekaj 10 s → back → opet Add: **nema** dijaloga | ⬜ |
+| T-S122-3 | isto, ali utipkaj nešto prije backa: dijalog **mora** iskočiti i Resume vratiti polja | ⬜ |
 
 ---
 
@@ -27,8 +54,8 @@ preživjeti prolazni 503.
 
 | # | test | status |
 | --- | --- | --- |
-| T-S121-3 | ⭐ **Add → Finish → odmah Add: nema „Resume Previous Session?"** | ⬜ |
-| T-S121-4 | nacrt čuva nedovršen unos (zatvori tab → Resume vrati polja); Cancel ga briše | ⬜ |
+| T-S121-3 | ⭐ **Add → Finish → odmah Add: nema „Resume Previous Session?"** | ✅ PROD 29.08. — oba prolaza, i brzi i s 30 s čekanja na success dijalogu |
+| T-S121-4 | nacrt čuva nedovršen unos (zatvori tab → Resume vrati polja); Cancel ga briše | ✅ PROD 29.08. — Resume vratio polja. ⚠ korak 5 (Cancel briše nacrt) nije vrtjen zasebno |
 | T-S121-5 | traka „Nisam uspio učitati postavke ove Aree" (Offline → promjena Aree) — **opcionalno**, automat pokriva | ⬜ |
 
 ### Otvoreno za Claudea
