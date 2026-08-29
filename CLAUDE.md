@@ -54,6 +54,7 @@ podaci hrane i AI sloj.
 | `docs/COLLAB_PLAN_v2.md`                  | Collab implementation plan (v2) — faze 0–11, decisions                           |
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas, Add Area „From template"                   |
 | `docs/AUTOMATION_SPEC.md`                 | Post-Finish automatika — rata modal, comment template, `set_attribute`           |
+| `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
 | `docs/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
 | `docs/Analytics_tab.md`                   | **Cross-Area** analitika — `periods`, Series, AnalyticsDef Excel. Čeka drugu gustu Areu. ⚠ §3 („bucketiranje client-side") je opovrgnut u OVERVIEW_TAB_SPEC §2.2 |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
@@ -592,11 +593,18 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   promjene ⇒ nema guarda), `T-S107w-1` je udario u koliziju (Apply se ne pojavi ⇒ izvještaj
   se ne preuzme). Oboje je lovljeno kao bug prije nego je uzrok izmjeren.
   Lijek: `e2e/setup/global-setup.ts` vraća seed Areu na seed stanje prije **svakog** runa.
-- **⚠ `e16-filter-persistence` je FLAKY i to NIJE zatvoreno** (S121). Pada kao čist timeout
-  od 120 s, **i na kodu bez izmjena iz S121** (1/3 bez, 2/3 s — uzorak premalen da se
-  razlikuje, pa se ni ne tvrdi da je jedno gore od drugog). Dok je flaky, S120 popravak
-  „filtar preživi View Details“ **nije čuvan**. ⚠ Ne zatvarati kao „flaky pa nema veze“ —
-  to je obrazac koji je u S120 sakrio statement timeout od paralelnih workera.
+- **⚠ „Test je flaky" je opis, ne dijagnoza — `e16` je padao na sasvim drugom mjestu**
+  (S122, zatvara T-S121-6). Dva runa: 1 prolaz (34 s), 1 pad (**čist timeout od 120 s**).
+  Trace pokazuje da je visio na kliku **„View details"**, a klik na **⋮ je uredno prošao
+  1,9 s prije toga**; screenshot pada ima filtar **netaknut**. Dakle ono što test čuva
+  (S120 popravak „filtar preživi View Details") **nikad nije puklo** — a cijelu je sesiju
+  stajalo zapisano da nije čuvano.
+  Uzrok: promjena aree/atributa pokrene **šest** upita liste u ~500 ms (`events?select=…`
+  na 16664, 16735, 16832, 16909, 17022, 17098 ms), ⋮ klik je pao na **16712** — usred
+  toga; redak se remounta i odnese tek otvoren izbornik. Lijek u specu (`expect(...)
+  .toPass()` oko otvaranja izbornika), jer **app se ponaša ispravno**. Poslije: 4/4,
+  24–29 s. ⚠ Pouka koja vrijedi za svaki idući flaky test: **prvo pročitaj trace i vidi
+  na kojem je pozivu stao** — „flaky" je bio razlog da se dva puta ne pogleda.
 - **Fiksan literal u testu se sudari s vlastitim ostatkom.** `T-S107-2` je upisivao stalni
   komentar; kad ga je raniji run već ostavio u bazi, upis nije bio promjena. Svaki marker
   koji test upisuje mora biti **jedinstven po runu** (`${Date.now()}`).
@@ -844,7 +852,8 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   Čuva `e2e/tests/S121_area_context_failure.spec.ts` (3 slučaja).
   ⚠ Retry **skriva uzrok, ne liječi ga**: na PROD-u je to vjerojatno S105 obrazac
   (free-tier se guši). Pravi potez ostaje **Postgres upgrade**, otvoren od S105.
-- **`e16-filter-persistence` je flaky** — v. „E2E“. Otvoreno, T-S121-6.
+- **~~`e16-filter-persistence` je flaky~~ — ✅ ZATVORENO S122.** Nije bio filter reset nego
+  ⋮ izbornik koji remount liste odnese čim se otvori — v. „E2E“. Popravak je u specu.
 - **Bulk delete (checkbox) nije ograničen za grantee-a**
 - **„Import as mine" za write grantee unutar iste shared aree** nema smisla (pravi put je
   Leave Area ili re-import u novu vlastitu Areu) — flag, nije implementirano
@@ -1206,6 +1215,14 @@ Oba popravka u S110 tražila su ručnu izmjenu. D1b kaže `Izvor ∈ {Racun, Cas
 = `event_date` (ovdje `Cash` **ostaje** — D1b je o datumu naplate, ne o saldu; v. S111),
 pa bi se za te retke moglo pomicati automatski. ⚠ Za kartice **ne smije** —
 tamo je datum naplate vezan uz ciklus banke, ne uz dan kupovine.
+
+**Lista se preupita ŠEST puta na jednu promjenu filtra** (izmjereno S122 iz Playwright
+tracea: `events?select=…` na 16664, 16735, 16832, 16909, 17022, 17098 ms nakon promjene
+aree). Dvije posljedice: čist trošak — a na PROD-u je Saša **grantee**, dakle skupa RLS
+grana (v. „Izmjereno i nije problem") — i **osvježavanje zatvara otvoren ⋮ izbornik**, što
+korisnik vidi kao „meni mi se sam zatvorio". Drugo je posljedica prvog, pa se mjeri zajedno.
+⚠ Nije hipoteza nego mjerenje, ali **uzrok kaskade nije utvrđen** — prije popravka izbrojati
+tko sve okida refetch (`useDateBounds` settle, `areas-changed`, promjena `attrFilter`).
 
 **Drill s dva uvjeta** — `FilterContext` nosi jedan `attrFilter`, a uvjet pločice ima dva
 (`Izvor` + `Status`), pa drill znači „pokaži mi ovaj račun", ne „točno ove retke".
