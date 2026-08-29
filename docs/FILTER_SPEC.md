@@ -204,9 +204,35 @@ Preporuka: ne.** Tri razloga:
    gdje se vidi cijeli popis.
 
 **Umjesto toga: zadnja stavka skraćene liste je `Svi shortcutovi…`** — otvara **cijeli**
-popis, grupiran po Arei, abecedno. Deterministično, uvijek na istom mjestu, jedna kontrola
-umjesto dvije, i **razbija jednosmjerna vrata** iz prethodnog odlomka.
-⚠ Bez te stavke granica se **ne smije** uvesti.
+popis. Deterministično, uvijek na istom mjestu, jedna kontrola umjesto dvije, i **razbija
+jednosmjerna vrata** iz prethodnog odlomka. ⚠ Bez te stavke granica se **ne smije** uvesti.
+
+### Cijeli popis: isti sort, ali sa **brojkom** (Sašin dodatak, S122)
+
+Sašin prigovor na abecedu: *„inače korisnik ne može lako naći nepopularni kojeg eventualno
+treba izbrisati."* Točno — cijeli popis služi **dvjema** stvarama: naći rijetko korišten
+da se **skoči** na njega, i naći ga da se **obriše**. Abeceda služi prvoj, ne drugoj.
+
+**Odluka: cijeli popis zadržava sort po učestalosti** (isti kao skraćena lista — jedan
+mentalni model, nema drugog poretka za naučiti), a **svaki redak nosi brojku**. Kandidati
+za brisanje se tada sami skupe na dnu, s najstarijim datumom.
+
+⚠ **„Broj korištenja u zadnja 2 mjeseca" se danas NE MOŽE izračunati.**
+`activity_presets` drži `usage_count` (kumulativno, od početka) i `last_used`
+(jedan timestamp) — **povijesti korištenja nema** i nema tablice koja bi je vodila.
+Prozorska brojka tražila bi nov log zapis pri svakom korištenju, dakle novu tablicu i pisanje
+u bazu na svaki klik.
+
+**Predloženo bez nove strojarije:** `Gym Z2 · Fitness · 23× · 12.06.`
+— kumulativni broj i zadnje korištenje. Za odluku o brisanju je **`last_used` ionako jači
+signal** od prozorske brojke: „nije korišten od ožujka" je razlog za brisanje, a „0 puta u
+2 mjeseca" je ista tvrdnja s manje podataka.
+⚠ Ako se ikad pokaže da to nije dosta, prozorska brojka je **zaseban posao** (tablica
+`preset_usage_log` + čišćenje), ne varijanta ovoga.
+
+**Brisanje ne treba novo mjesto:** 🗑️ pored dropdowna već briše odabrani shortcut, uz
+potvrdu ([ProgressiveCategorySelector.tsx:332](../src/components/filter/ProgressiveCategorySelector.tsx#L332))
+⇒ „nađi u cijelom popisu → 🗑️" radi bez ijedne nove kontrole.
 
 **Sašina ideja o parenju s Export profilom:** kad se definira profil exporta, ponuditi i
 shortcut **istog imena**. ⚠ Prije nego se to gradi: `export_profiles` je per-Area config u
@@ -296,6 +322,7 @@ je stajao dva dana.
 
 - **N u granici popisa** (predloženo 15) — broj se bira tek kad se izbroji koliko ih Saša i
   Koka stvarno imaju; dotad je konstanta na jednom mjestu.
-- **Sort po najmanje popularnim** — preporuka je **ne** (§5), zamijenjeno stavkom
-  `Svi shortcutovi…`. Čeka Sašinu potvrdu.
+- ~~**Sort po najmanje popularnim**~~ — ✅ riješeno: `Svi shortcutovi…` sa **sortom po
+  učestalosti i brojkom u retku** (§5). Prozorska brojka („zadnja 2 mjeseca") **nije
+  moguća** bez nove tablice; umjesto nje `usage_count` + `last_used`.
 - **UI čipova (§4)** se ne betonira dok se ne isproba na stvarnom unosu (ograda iz #1).
