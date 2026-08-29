@@ -94,12 +94,24 @@ interface FilterCondition {
 }
 ```
 
-**Odluka o logici — AND između uvjeta, OR unutar uvjeta.**
+**Odluka o logici — AND između uvjeta, OR unutar uvjeta. ✅ POTVRĐENO (Saša, S122).**
+Uz njegovu ogradu koja se ne smije izgubiti: *„moramo vidjeti kako će to u korištenju
+zapravo izgledati"* — dakle model je prihvaćen, **UI još nije**, i §4 se provjerava na
+stvarnom unosu prije nego se zabetonira.
 „ZABA i uplate" je AND (dva uvjeta). „Visa ili Mastercard" je OR, ali unutar
 **istog** atributa ⇒ `one_of`. Time se pokrivaju oba stvarna primjera **bez logičkog
 stabla** (zagrade, ugniježđeni AND/OR). Stablo je moguće poslije; UI za njega nije.
 
-⚠ **Bez `NOT` u prvoj verziji.** „Sve osim ZABA" zvuči jednostavno, a nad EAV-om znači
+**Broj uvjeta: proizvoljan. ✅ ODLUKA (Saša, S122).** UI nosi `+ dodatni uvjet`, ne fiksna
+dva polja. Za RPC je svejedno (petlja po uvjetima); za UI znači da popis uvjeta mora biti
+**popis**, ne dva imenovana retka — i da svaki čip nosi vlastiti ✕.
+
+⚠ **Bez `NOT`. ✅ ODLUKA (Saša, S122):** *„uvijek se u Excelu mogu raditi egzotičniji
+upiti."* To je šire pravilo nego jedna funkcija i vrijedi ga zapisati kao takvo:
+**app pokriva svakodnevno filtriranje, Excel pokriva egzotiku.** Svaka buduća molba za
+operator prolazi kroz to sito — ako se traži jednom mjesečno, nije za app.
+
+Izvorno obrazloženje zašto je `NOT` k tome i tehnički neugodan: „Sve osim ZABA" zvuči jednostavno, a nad EAV-om znači
 „eventi kojima taj atribut **nema** tu vrijednost **ili ga uopće nema**" — dvije različite
 tvrdnje koje korisnik ne razlikuje, a rezultat se razlikuje za sve retke bez atributa.
 Uzima se tek kad postoji stvarna potreba, i tada s izričitim izborom.
