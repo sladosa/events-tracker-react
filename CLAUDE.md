@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S121).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S122).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -224,6 +224,18 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **`Datum naplate` se ne upisuje rukom** — `set_attribute` ga računa iz `Izvor`a
   (`Racun`/`Cash` = isti dan, `Visa` = `next:3`, `Mastercard` = `next:11`). Ručni unos
   `userOwned` guard više ne dira, pa ga ne diraj bez razloga.
+
+**Collab — što grantee NE može**
+
+- **⚠ Grantee ne može spremiti Export/Import profil, ni s `write` dozvolom** (S122). Dva
+  nezavisna zida: app ga zaustavi prije upisa (`ExcelExportModal.tsx:557`, uvjet je
+  `if (sharedContext)` — dakle **svaki** grantee, ne samo read), a i da ne zaustavi, RLS na
+  `areas` dopušta UPDATE **samo vlasniku** (`009_sharing.sql`: „INSERT/UPDATE/DELETE unchanged
+  (only owner writes)"). Profili žive u `areas.settings`, zajedno s `automations`, `dashboard`
+  i `list_columns` — dakle write-grantee koji bi ih smio pisati mijenjao bi **cijelu Areu
+  vlasniku**. Ponašanje je zato ispravno; **poruka nije**: piše „(read-only access)" i
+  write-grantee-u, što je neistina o njegovim pravima.
+  ⚠ Isto vrijedi za svaku buduću per-Area konfiguraciju: **`areas.settings` je vlasnikov**.
 
 **Excel**
 
@@ -528,6 +540,18 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   `await supabase.from(...)` zato ne hvata ništa; to je razlog zašto su ovi kvarovi bili
   nevidljivi. `withRetry` uzima `isFailure` predikat baš zbog toga.
 
+- **⚠ AUTOMATSKI POPUNJENA FORMA NIJE KORISNIKOV SADRŽAJ** (S122). Add Activity se pri
+  otvaranju sam napuni defaultima (`default_value`, preset, `default_map`), a auto-save je od
+  S121 stvarno počeo raditi ⇒ nacrt se pisao i za forme koje nitko nije dotaknuo. Otvori Add
+  → 6 s → back gumb → sljedeći Add nudi **„Resume Previous Session?"** nad nacrtom bez
+  ijednog korisnikovog znaka (izmjereno na PROD-u, `Events: 0`). Šteta nije u podacima nego u
+  **značenju dijaloga**: poruka koja treba značiti „tvoj nedovršen unos je preživio" počne
+  iskakati kad ništa nije uneseno, a upozorenje koje laže korisnik nauči otklikati bez čitanja.
+  ⚠ Guard **ne smije** biti izračun iz stanja: `canSave` je za netaknutu formu **već `true`**
+  (defaulti nose `touched: true`). Pitanje nije „ima li vrijednosti" nego „**je li ih čovjek
+  dirao**" — a to zna samo handler kroz koji je promjena prošla (`userTouchedRef`,
+  `AddActivityPage.tsx:565`). Zastavicu diže atribut/komentar/fotografija/datum/`Save +`/Resume;
+  **ne diže je** nijedan efekt koji puni defaulte ni `set_attribute`.
 - **⚠ `async` funkcija pozvana bez `await`/`.catch()` guta svoju grešku u tišini** (S121).
   `FilterContext.resolve()` je bio fire-and-forget: padne li bilo koji `await` unutra,
   `setState` se nikad ne pozove i stanje ostane na početnoj vrijednosti — što se čita kao
@@ -737,6 +761,9 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   prioritet nad `attr.default_value`) + spremljeno filter stanje (`filter_state`)
 - **AI Help:** Haiku FAB, 3 taba, dinamički load `docs/help/*.md` (8 tema, uklj. `overview`), context chips po `pageHint`
 - **Template sustav:** template user, „From template" flow (nosi `settings` bez `export_profiles`), Demo Area na PROD
+- **Shortcutovi po Arei (S122):** kvačica „samo ova Area" uz `⚡ Shortcuts` (stanje po
+  pregledniku, `et_shortcuts_area_only`), `<optgroup>` po Arei u punom popisu, sufiks
+  `0× · 25.06.` (`usage_count` + `last_used`). **Bez granice po broju** — v. „Backlog".
 - **Overview (S108):** tab po Arei, postoji **samo** uz `settings.dashboard` (OQ-4). Pločica
   `balance_by_group` sa sidrom i `✓/Δ` čipom, drill u Activities, izračunata kolona `Stanje`.
   Agregacija ide u Postgres (`rpc_area_group_agg`, `rpc_area_balance_anchored`) — nikad u preglednik.
@@ -1173,7 +1200,15 @@ Mijenjati taj ključ dok alati rade je razmjena kozmetike za tihi gubitak redaka
 ⚠ Jedino što rename ionako ubija: `export_profiles` (ključ nosi ime aree,
 `exportProfile.ts:146`) — složiti ih nanovo, posao od par minuta.
 
-**⭐ Shortcuts po Arei — toggle u Filter panelu** (Sašina ideja S119, gruba skica).
+**~~⭐ Shortcuts po Arei — toggle u Filter panelu~~ — ✅ IZVEDENO S122** (Sašina ideja S119).
+Kvačica „samo ova Area", `<optgroup>` po Arei, sufiks `0× · 25.06.` Provjereno usput:
+`activity_presets.area_id` **se puni** pri spremanju (bila je otvorena sumnja), pa migracija
+nije trebala. **Nije izvedeno i čeka brojke:** granica popisa („pokaži samo N") i s njom
+stavka `Svi shortcutovi…`. Sašina odluka: *„nema smisla uvoditi granice bez stvarnog uvida"*
+⇒ mjera se bira nad stvarnim brojem shortcutova, a prijedlog je da to ne bude broj nego
+**Area** (1–2 najkorištenija po Arei). ⚠ Granica i `Svi shortcutovi…` idu **istim commitom**
+— granica bez izlaza iz nje su jednosmjerna vrata (v. `FILTER_SPEC.md` §5).
+Izvorna skica:
 Popis shortcutova raste i **preduga lista nema smisla** — a većina ih pripada jednoj Arei.
 Zamisao: **toggle u Filter panelu** koji popis suzi na shortcutove **odabrane Aree**;
 isključen toggle pokazuje one koji su napravljeni **s isključenim togglom** (dakle

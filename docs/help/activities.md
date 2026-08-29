@@ -113,6 +113,15 @@ Takav nacrt bi, potvrđen, upisao **isti zapis drugi put**.
 Shortcut pamti Area + Category, a po želji i predefinirane vrijednosti atributa — koristan
 za ponavljajuće unose (npr. ista vrsta transakcije, isti trening).
 
+**Popis je po Arei** (kvačica „samo ova Area" uz `⚡ Shortcuts`):
+- **Uključena** (zadano): dropdown pokazuje samo shortcutove odabrane Aree. Ako ih ta Area
+  nema nijedan, to i piše — ne pokazuje tiho tuđe.
+- **Isključena:** svi shortcutovi, **grupirani po Arei**.
+- Stanje kvačice pamti se po pregledniku (ne po korisniku).
+- Svaki redak nosi **broj korištenja i zadnje korištenje** — npr. `Gym Z2 · 23× · 12.06.`,
+  a `0×` znači „napravljen, još nikad korišten". Broji se **odabir u dropdownu**, ne pritisak
+  na „⚡ Use". Brojka je tu da se rijetko korišten shortcut može naći i obrisati (🗑️).
+
 **Spremanje iz Filter bara** (💾 ikona pored Shortcuts dropdowna):
 - Pamti Area + Category (ili samo Area za area-level shortcut) + filter state (period, sort, comment/attr filter)
 - Može se spremiti i za non-leaf kategoriju — korisno za izvješća/exporte koji uključuju cijelu granu

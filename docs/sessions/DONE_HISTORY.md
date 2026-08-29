@@ -2903,6 +2903,118 @@ Obrisano **kroz UI** s „Download Backup & Delete" (file se skine prije brisanj
 
 ---
 
+## Done S122 (2026-08-29): potvrda popravaka, jedan fantom, jedan krivi trag i spec za filtar
+
+> Sesija je počela Sašinom provjerom jučerašnjih popravaka, a završila s dvije stvari koje
+> nitko nije planirao: **fantomski nacrt** (posljedica toga što auto-save konačno radi) i
+> otkriće da „flaky test" **nikad nije padao ondje gdje je pisalo**. Uz to je filtar dobio
+> prvi spec i prvu fazu na PROD-u.
+
+## 1. T-S121-3 i T-S121-4 potvrđeni na PROD-u
+
+Saša je odradio oba prolaza T-S121-3 (brzi i s 30 s čekanja na success dijalogu) — nema
+„Resume Previous Session?" nakon Finisha. T-S121-4: nacrt **stvarno čuva** nedovršen unos
+i Resume vraća polja. Time je zatvoren duplikat s 28.08.
+
+⚠ Jedno opažanje ostalo je **neponovljeno**: „traži da se pričeka pol minute prije ponovnog
+Add Activity". U kodu nema nijedne poruke o čekanju ni konstante od 30 s (auto-save je 5 s,
+`findFreeSessionStart` pomiče minutu **tiho**). Nije zatvoreno kao „nije bilo", nego kao
+**neponovljeno** — ako iskoči, traži se screenshot.
+
+## 2. Fantomski nacrt — cijena toga što auto-save radi
+
+Saša je usput prijavio da mu je „Resume Previous Session?" iskočio nakon Delete aktivnosti,
+što nije očekivao. Delete nije imao veze; mehanizam je bio ovaj:
+
+- Add Activity se pri otvaranju **sam napuni defaultima** (`default_value`, preset, `default_map`)
+- prvi tik auto-savea piše **bezuvjetno** (`lastSavedContentRef` kreće od `null`)
+- nacrt briše **samo** Finish, ✕ i Discard — **back gumb ne**
+
+⇒ otvori Add, čekaj 6 s, back, opet Add → dijalog nad nacrtom **bez ijednog tvog znaka**.
+Reproducirano na PROD-u na Sašin zahtjev, pa tek onda popravljano.
+
+**Šteta nije u podacima nego u značenju dijaloga:** poruka koja treba značiti „tvoj nedovršen
+unos je preživio" počela je iskakati kad ništa nije uneseno — a upozorenje koje laže korisnik
+nauči otklikati bez čitanja, i to baš na dan kad govori istinu.
+
+**Popravak:** `userTouchedRef` — nacrt se piše tek kad je čovjek nešto dirao. ⚠ Guard **ne
+može** biti izračun iz stanja: `canSave` je za netaknutu formu **već `true`**, jer defaulti
+nose `touched: true`. Zastavicu dižu atribut, komentar, fotografija, datum, `Save +` i Resume;
+**ne dižu je** efekti koji pune defaulte ni `set_attribute`. Discard je spušta.
+
+Čuva `e2e/tests/S122_no_phantom_draft.spec.ts` — dva slučaja, jer bi „nema dijaloga" prolazilo
+i kad se nacrt uopće ne bi mogao napisati (upravo bug iz S121). Provjereno u drugom smjeru:
+bez guarda prvi slučaj **pada**.
+
+## 3. `e16` — „flaky" je bio razlog da se dva puta ne pogleda
+
+Otvoreni T-S121-6 tvrdio je da je test flaky ⇒ S120 popravak „filtar preživi View Details"
+nije čuvan. Reproducirano odmah (1 prolaz 34 s, 1 pad 131 s), pa **pročitan trace**:
+
+- test je visio na kliku **„View details"**, a klik na **⋮ je uredno prošao 1,9 s prije**
+- screenshot pada pokazuje filtar **netaknut** (`MjeraRacun = ZABA-MJERA`, redak na mjestu)
+- uzrok: nakon promjene aree/atributa lista se preupita **šest puta u ~500 ms**
+  (`events?select=…` na 16664, 16735, 16832, 16909, 17022, 17098 ms), a ⋮ klik je pao na
+  **16712** — redak se remounta i odnese tek otvoren izbornik
+
+⇒ **ono što test čuva nikad nije puklo.** Popravak je u specu (`expect(...).toPass()` oko
+otvaranja izbornika), jer se app ponaša ispravno. Prije: 1/2. Poslije: **4/4**, 24–29 s.
+
+Nusprodukt: **šest upita na jednu promjenu filtra** je zapisano u backlog kao mjerenje —
+uz izričitu ogradu da **uzrok kaskade nije utvrđen** i da se prvo broji tko okida refetch.
+
+## 4. `FILTER_SPEC.md` — pet natuknica sabrano u jedan prijedlog
+
+Sašino pitanje („bi li se filtar mogao nadograditi") pokazalo je da je tema bila razbijena na
+pet backlog natuknica koje se nikad ne sretnu. Spec ih sabire, a jezgra je nalaz koji mijenja
+procjenu posla:
+
+**Drugi uvjet se ne da dodati proširenjem današnjeg upita.** Filtar vozi **jedan `!inner`
+join** na `event_attributes`, pa oba uvjeta padnu na **isti spojeni redak** —
+`attribute_definition_id` ne može biti i `Racun` i `Smjer` ⇒ rezultat bi bio **uvijek prazan**.
+Dva atributa traže dva `EXISTS` podupita, što PostgREST ne izražava ⇒ **RPC**. Isti RPC
+zatvara i `BUG-S103-ANYATTR`.
+
+**Sašine odluke:** AND između uvjeta / OR unutar atributa (uz ogradu da UI još nije potvrđen) ·
+**proizvoljan** broj uvjeta (`+ dodatni uvjet`) · **bez `NOT`** — *„egzotičniji upiti se rade u
+Excelu"*, što je zapisano kao **trajno pravilo**, ne kao izgovor za jednu funkciju · faza 1 odmah.
+
+## 5. Faza 1 — shortcutovi po Arei (na PROD-u)
+
+Povod je Sašin screenshot s telefona: u `Financije_all` dropdown nudi `Strength`, `Outdoor`,
+`Gym Z2`, `Sasa_MedVisit` — **nijedan iz te Aree**, a zauzimaju cijeli ekran.
+
+Izvedeno: kvačica **„samo ova Area"** (pamti se po pregledniku), `<optgroup>` po Arei u punom
+popisu, sufiks **`0× · 25.06.`**. Provjereno usput: `activity_presets.area_id` **se puni** pri
+spremanju (bila je otvorena sumnja iz S119) ⇒ migracija nije trebala.
+
+**Bez granice po broju** — Sašina odluka: *„nema smisla uvoditi granice bez stvarnog uvida."*
+Uz to je zapisana zamka: **granica po učestalosti su jednosmjerna vrata** (što ispadne ispod
+nje se ne nudi ⇒ ne koristi se ⇒ `usage_count` ne raste ⇒ ne može se vratiti), pa granica i
+stavka `Svi shortcutovi…` idu **istim commitom**, nikad odvojeno.
+
+Dvije sitnice iz razgovora: **`0×` je Sašin prijedlog** i bolji od moje riječi „nekorišten"
+(isti oblik kao `5×`, kraće, bez novog rječnika); prazan sufiks je prije toga značio „nikad
+korišten", ali je **izgledao isto kao da podatka nema** — a to je pitao, što je samo po sebi
+bio odgovor.
+
+## 6. Odgovoreno: grantee ne može spremiti Export profil
+
+Sašino pitanje. Odgovor je **ne**, i to iza **dva nezavisna zida**: app zaustavlja prije upisa
+(`ExcelExportModal.tsx:557`, uvjet je `if (sharedContext)` — dakle **svaki** grantee, i write),
+a RLS na `areas` dopušta UPDATE **samo vlasniku**. Ponašanje je obranjivo (`areas.settings`
+nosi `automations`, `dashboard`, `list_columns` — write-grantee bi mijenjao Areu vlasniku),
+ali **poruka nije**: piše „(read-only access)" i write-grantee-u.
+
+## Deploy
+
+Na `main` po Sašinom izričitom traženju: guard protiv fantomskog nacrta + shortcutovi po Arei.
+`main` i `test-branch` na `5533420`.
+
+**Neverificirano uživo:** T-S122-2, -3, -4 (svi traže PROD, -4 traži mobitel).
+
+---
+
 ## Done S121 (2026-08-28): dva Sašina nalaza, oba veća nego što su izgledala
 
 > Sesija je počela kao razgovor o gotovini, a završila s tri popravljena buga, jednim

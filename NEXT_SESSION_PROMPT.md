@@ -1,127 +1,97 @@
-# NEXT SESSION PROMPT — nakon S121 (deployano na PROD, čeka se provjera na telefonu)
+# Next session — handoff
 
-**Pisan protiv commita `4097af1`** (+ commit zatvaranja S121 koji slijedi odmah iza).
-Ako `git log --oneline -1` pokazuje nešto puno novije, čitaj ovo kao povijest; `CLAUDE.md` je autoritet.
-
-**Stanje grana:** `main` i `test-branch` su **na istom commitu** (`4097af1`). Deploy je izveden
-28.08. — `git diff main test-branch` je prazan.
-
-> S121 je počeo kao razgovor o gotovini. Završio je s tri popravljena buga, i sva tri su bila
-> **isti prekršaj istog pravila**: *neuspjelo čitanje nije „nema ničega"*.
+**Pisano protiv commita `5533420`** (`main` = `test-branch` = `5533420`, S122, 2026-08-29).
+Ako `git log` pokazuje nešto novije, čitaj ovo kao **povijest**, ne kao stanje.
+Trajna pravila su u `CLAUDE.md` — ovdje je samo ono što je **u letu**.
 
 ---
 
-# DIO 1 — Jednostavnim rječnikom (za Sašu)
+# DIO 1 — netehnički (za Sašu)
 
-## 1. Što je gotovo i već je na PROD-u
+## Što je jučer/danas otišlo na PROD
 
-**Tri popravka, sva izmjerena, sva provjerena i u obrnutom smjeru:**
+Dvije stvari, obje vidljive:
 
-- **Duplikat se više ne događa.** Onaj tvoj 2,70 € zapisan dvaput nije bio slučajnost —
-  Finish je brisao nacrt, a auto-save ga je 15 s kasnije vraćao. Sljedeći unos je onda
-  ponudio „Resume Previous Session?" i upisao isti redak drugi put.
-- **Auto-save konačno radi.** Ispalo je da **nikad nije radio** — jedino što je ikad napravio
-  bio je gornji duplikat. To znači i da **Koka dosad nije imala nikakvu zaštitu od gubitka
-  unosa.** Sada ima: nacrt se sprema svakih 5 sekundi, lokalno u pregledniku.
-- **Nestali Overview tab i iznosi.** Kad app ne uspije pročitati postavke Aree, sada
-  **pokušava ponovno**, a ako ne uspije — javi to trakom koja izričito kaže *„Podaci su
-  netaknuti"*. Prije se aplikacija samo tiho pretvorila u drugu aplikaciju.
+1. **Nema više „Resume Previous Session?" nad praznim ekranom.** Nacrt se sad piše tek kad
+   si stvarno nešto utipkao. Zaštita od gubitka unosa ostaje potpuna.
+2. **Shortcutovi su po Arei.** Uz `⚡ Shortcuts` stoji kvačica **„samo ova Area"**
+   (uključena zadano). Isključiš li je, vidiš sve, **grupirano po Arei**. Svaki redak nosi
+   `0× · 25.06.` — koliko puta je korišten i kad zadnji put.
 
-**Napisano prije koda:** `docs/RULES_ENGINE_SPEC.md` — kako će izgledati pravila razvrstavanja
-kad ih preselimo iz Excela u bazu.
+⚠ **Koka će promjenu dropdowna vidjeti bez najave.** Za nju je poboljšanje (u `Financije_all`
+više neće vidjeti tuđe shortcutove), ali je to ekran koji koristi svaki dan.
 
-## 2. Što stoji na tebi
+## Što čeka tebe
 
-1. **Prolaz na PROD-u, ~5 minuta** — `T-S121-3` i `T-S121-4`. Detalji:
-   `docs/sessions/tests/S121_tests.md`.
-   - ⚠ **Ctrl+Shift+R prije svega** (stari bundle je u S118 tiho osakatio uvoz).
-   - Upiši redak → Finish → **pričekaj pola minute** → odmah Add Activity.
-     **Ne smije** iskočiti „Resume Previous Session?".
-   - Pa: Add Activity, popuni 3–4 polja, **zatvori tab**, vrati se → **smije** iskočiti, i
-     Resume mora vratiti polja. To je zaštita koja radi, ne kvar.
-2. **Očekuj „Resume Previous Session?" češće nego prije.** Pojavit će se kad god napustiš
-   Add Activity bez `Finish` i bez `✕`. To je novo i namjerno.
-3. **Koka.** Kad se vrati: ona je gledala, ali **nije upisala nijedan event**. `T-S118-6`
-   (njen prolaz s mobitela) je i dalje otvoren i jedina je stvar koja stvarno blokira cutover.
-4. Iz S118 još stoji: reći joj za retke s krivom godinom (`2036-04-08`, `2028-05-16`),
-   `07.08. Parking 1,60`, i 5 spornih lipanjskih redaka (Σ `373,11`).
+**Tri testa, sva tri na PROD-u** (detalji: `docs/sessions/tests/S122_tests.md`).
+**Prvo Ctrl+Shift+R** — stari keširani bundle je u S118 tiho osakatio uvoz.
 
-## 3. Odluke koje si donio u S121 (da se ne otvaraju ponovno)
-
-- **Gotovinu ne bilježiš svaku.** Izmjereno: 57 podizanja / **9.894 €** naspram 2 troška /
-  **86 €**. Sigurno je, jer gotovinski trošak **nikad ne ulazi u saldo**. Ali kad se bude
-  gradio razrez po Tipu, mora imati redak **„gotovina, nerazvrstano"** — inače prešuti ~9.800 €.
-- **Poseban račun `Gotovina` — odbačen definitivno.** Ne zbog cijene nego zato što je
-  izmjereno da postojeći `Transfer / izmedju racuna` nije dvostruki zapis, pa ne bi imao što
-  reciklirati.
-- **Pravila: konflikt se prijavljuje, ne rješava redoslijedom.** ⚠ Posljedica koju treba
-  prihvatiti: prvi run će razvrstati **manje** redaka nego danas (~71 ide tebi na odluku).
-
-## 4. Što NE treba istraživati
-
-Sve iz S120 („atributni filtar nije spor", „uvoz ne griješi areu") i dodatno: **baza nije bila
-kriva** ni za jedan od tri S121 buga — `settings`, share i brzina upita provjereni su svaki put.
-
----
-
-# DIO 2 — Tehnički (za Claudea)
-
-## 1. Prvo pročitaj
-
-`docs/sessions/DONE_HISTORY.md` **S121** · `CLAUDE.md` → prošireni blok **„UI (React)"**
-(pet novih pravila) i **„E2E"** · `docs/RULES_ENGINE_SPEC.md`.
-
-## 2. Što je dirano
-
-| file | što |
+| test | u jednoj rečenici |
 | --- | --- |
-| `src/lib/retry.ts` | **nov** — `withRetry` / `withRetryQuery`. ⚠ uzima `isFailure` predikat jer `supabase` **ne odbija promise** na neuspjeh |
-| `src/hooks/useLocalStorageSync.ts` | `clearDraft()` sam gasi auto-save; preskočen upis kad se sadržaj nije promijenio |
-| `src/pages/AddActivityPage.tsx` | `onError` u `useCallback`, `getDraftData` u ref, `sessionFinishedRef` |
-| `src/types/activity.ts` | `AUTO_SAVE_INTERVAL` 15 s → 5 s |
-| `src/hooks/useAreaDashboard.ts` | retry + `error` stanje; ne nulira config na grešci za istu Areu |
-| `src/context/FilterContext.tsx` | `try/catch` oko `resolve()`, retry, `areaContextError` |
-| `src/pages/AppHome.tsx` | amber traka + „Pokušaj ponovno" |
-| `docs/help/activities.md` | nova sekcija o nedovršenom unosu |
-| `data-prep_tools/Tools/audit_tests.py` | popravljen `UnicodeEncodeError` na Windows konzoli |
-| 2 nova spec filea | `S121_draft_after_finish`, `S121_area_context_failure` |
+| **T-S122-2** | otvori Add, **ništa** ne tipkaj, 10 s, back → sljedeći Add **nema** dijaloga |
+| **T-S122-3** | isto, ali **utipkaj** nešto prije backa → dijalog **mora** iskočiti i Resume vratiti polja |
+| **T-S122-4** | ⭐ shortcutovi **na mobitelu** — kvačica, grupe, `0× · 25.06.` |
 
-`npm run typecheck && npm run build` prolaze.
+T-S122-3 nije formalnost: on jedini hvata da guard nije pretjerao i pojeo pravu zaštitu.
 
-## 3. Stanje E2E-a
+## Jedna brojka koja nam treba za sljedeći korak
 
-⚠ **`e16-filter-persistence` je flaky** — timeout od 120 s, pada **i bez izmjena iz S121**
-(1/3 bez, 2/3 s; uzorak premalen da se tvrdi da je pogoršan). Dok je flaky, S120 popravak
-„filtar preživi View Details" **nije čuvan**. `T-S121-6`.
-⚠ `e13-add-between` također pada, isto i bez izmjena — postojeći kvar, nije regresija.
+**Koliko shortcutova ukupno imaš?** Isključi kvačicu i pogledaj popis. O tome ovisi treba li
+skraćena lista uopće granicu — a ako treba, prijedlog je da mjera ne bude broj nego **Area**
+(1–2 najkorištenija po Arei, pa se samo skalira).
 
-## 4. Prvo što bih uzeo sljedeći put
+## Otvoreno prema tebi, nije hitno
 
-⚠ **Ne deployati samoinicijativno.** `main` == `test-branch`; sve novo ide na `test-branch`.
+- **Ono „pričekaj pol minute"** koje si spomenuo — nije reproducirano i u kodu nema nijedne
+  takve poruke. Ako iskoči, uslikaj.
+- **Financije, tranša 4** stoji od S116 (MC paket + cijeli kolovoz iz Kokinog filea). Nije na
+  kritičnom putu — sidra drže saldo — ali je najveći komad koji je ostao.
+- **Koka: kad počne upisivati u app, u Excelicu više ne.** Radi li oboje, sve dobijemo dvaput,
+  a vidjet ćemo tek kad se saldo raziđe.
 
-1. **`e16` flake** (`T-S121-6`) — nije kozmetika: to je jedini čuvar S120 popravka.
-2. **Faza 1 rules engine** — tablica `rules` + `Rules` sheet + roundtrip, **bez ijednog
-   potrošača**. Provjerljivo isti dan, i otključava sve ostalo.
-3. **`help_notes` po Arei** — Sašin zahtjev iz S121: proza koju Haiku može čitati (npr.
-   objašnjenje o gotovini). ⚠ Kontekst Aree se **danas gubi**: klijent šalje `areaId`
-   ([HelpPanel.tsx:164](src/components/help/HelpPanel.tsx#L164)), a funkcija čita `areaName`
-   ([help.ts:118](netlify/functions/help.ts#L118)) — polje koje nitko ne šalje. To je
-   preduvjet za bilo što.
-4. **Faza 3 — `set_attribute` na Import putu.** Jedna rupa drži tri featurea.
-5. **Faza 2 — brzi unos.** ⚠ Saša još nije odgovorio što mu je bilo naporno pri unosu onih 5
-   redaka s telefona — **pitati prije nego se išta gradi**. Moja slutnja je `Tip`/`Podtip`
-   (18 opcija u prvom dropdownu, a četiri od pet puta je bilo `Domaćinstvo`), pa bi
-   shortcutovi po trgovcu (`activity_presets`, nula koda) bili prvi potez.
+---
 
-⚠ I dalje vrijedi: **batch 2024 i 2023 idu na PROD**, i to je okidač za preimenovanje
-`Financije_all` → `Financije` (rename **kroz UI**, nikad importom).
+# DIO 2 — tehnički (za Claudea)
 
-## 5. Otvoreno, imenovano, nezatvoreno
+## Stanje grana
 
-- **`e16` flake** (T-S121-6) · **`e13-add-between`** pada
-- **Postgres upgrade na PROD-u** — otvoren od S105. Retry iz S121 **skriva** taj uzrok, ne
-  liječi ga; free-tier će se i dalje gušiti.
-- **Razrez po Tipu ne postoji** — `settings.dashboard` ima jedan widget. Kad se gradi:
-  redak `gotovina, nerazvrstano` (T-S121-7).
-- **`dashboard` i `export_profiles` ne prolaze Excel roundtrip** — dvije poznate rupe u
-  „sve ide importom". `help_notes` i `rules` **ne smiju** postati treća i četvrta.
+`main` i `test-branch` oba na **`5533420`**. Netlify je deployao `main` 29.08.
+Nema nespojenih grana koje nešto čekaju.
+
+## Što je S122 napravio
+
+| commit | što |
+| --- | --- |
+| `fd849b4` | guard protiv fantomskog nacrta (`userTouchedRef`) + `S122_no_phantom_draft.spec.ts` |
+| `b7acc3a` | `e16` popravljen u specu (⋮ izbornik, `toPass`) — **T-S121-6 zatvoren** |
+| `8d2f3d3`…`e40f5b9` | `docs/FILTER_SPEC.md` + Sašine odluke |
+| `f4b7ce5` | shortcutovi po Arei (faza 1) |
+| `5533420` | `0×` umjesto praznog sufiksa |
+
+## Prvo sljedeće (prijedlog reda)
+
+1. **Rezultati T-S122-2/-3/-4** — ako padnu, imaju prednost pred svime.
+2. **`FILTER_SPEC` faza 0** — izbrojati refetch kaskadu. Izmjereno: **šest** `events?select=…`
+   u ~500 ms na jednu promjenu filtra. ⚠ **Uzrok nije utvrđen** — kandidati su `useDateBounds`
+   settle, `areas-changed` i promjena `attrFilter`. **Prvo brojati, pa popravljati.**
+   To je i uzrok „⋮ izbornik se sam zatvori".
+3. **Faza 1b** (skraćena lista) — tek kad Saša javi broj shortcutova.
+4. **Faza 2** (RPC s N uvjeta) — najveći komad, i jedini koji dira bazu.
+
+## Zamke koje su danas potvrđene, a lako se zaborave
+
+- **Auto-popunjena forma nije korisnikov sadržaj.** `canSave` je `true` i za formu koju nitko
+  nije dotaknuo, jer defaulti nose `touched: true`. Svaki budući guard tipa „ima li sadržaja"
+  mora pitati **je li čovjek dirao**, ne **ima li vrijednosti**.
+- **„Flaky test" je opis, ne dijagnoza.** `e16` je cijelu sesiju stajao zapisan kao „S120
+  popravak nije čuvan", a padao je na sasvim drugom mjestu. **Prvo pročitaj trace.**
+- **`areas.settings` je vlasnikov.** Grantee ne može spremiti Export profil ni s `write`
+  dozvolom — app ga zaustavi, a i RLS bi. Vrijedi za svaku buduću per-Area konfiguraciju.
+
+## Sitno, zabilježeno, nepopravljeno
+
+- Poruka „(read-only access)" prikazuje se i **write** grantee-u pri spremanju Export profila
+  (`ExcelExportModal.tsx:557`) — neistina o njegovim pravima, jedna rečenica popravka.
+- `audit_tests.py`: **0 fileova spremno za arhivu**, 37 testova koje `PENDING_TESTS` ne
+  spominje, 62 testa označena ⬜ u tablici a ne navedena u „Otvoreno". Nije nastalo danas i
+  nije dirano — ali raste.
