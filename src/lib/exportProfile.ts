@@ -311,3 +311,38 @@ export function sanitizeProfileName(name: string): string {
     .replace(/\s+/g, '_')
     .substring(0, 40);
 }
+
+/**
+ * Which account (balance-widget group value) should the delta sheet be built for?
+ *
+ * ⚠ Mora doci ODANDE ODAKLE I EVENTI. Profil sa svojim filtrom atributa suzi
+ *   izvezene evente na jedan racun; uzme li delta sheet racun iz *zivog* filtra,
+ *   gradi se za drugi. Presjek je tada prazan, a file svejedno izadje s tocnim
+ *   sidrom, prefillom i kontrolnim stupcem — dakle izgleda kao uskladjen racun,
+ *   a nije ni pogledao prave retke. (Izmjereno 31.08.2026.: profil `RF`, panel
+ *   `Kokin tekuci ZABA` ⇒ 79 RF eventa u upitu, 0 redaka u sheetu, bez poruke.)
+ *
+ * `groupBy` je slug, kao i kljuc u `attrFilterRaw`, pa se usporeduju kao stringovi
+ * — nikakav lookup po attrDefs nije potreban.
+ *
+ * @param attrFilterRaw  profilov `Attribute filter` ('_' = namjerno obrisan), ili undefined
+ * @param groupBy        `balanceWidget.group_by` (slug, npr. `racun`)
+ * @param liveValue      vrijednost filtra atributa iz panela (fallback)
+ * @returns account name, ili '' kad se ne da pouzdano odrediti (⇒ ponuda se ne prikazuje)
+ */
+export function deriveDeltaAccount(
+  attrFilterRaw: string | undefined,
+  groupBy: string | undefined,
+  liveValue: string | undefined,
+): string {
+  if (attrFilterRaw && groupBy) {
+    // '_' = profil je namjerno obrisao filtar atributa ⇒ racuna nema.
+    if (attrFilterRaw === '_') return '';
+    const m = attrFilterRaw.match(/^([^:]+):\s*[=~](.+)$/);
+    // Profil filtrira po DRUGOM atributu ⇒ racun je nepoznat. Radije nista nego
+    // racun iz zivog filtra, koji se s izvezenim retcima ne poklapa.
+    if (!m || m[1].trim() !== groupBy) return '';
+    return m[2].trim();
+  }
+  return liveValue?.trim() || '';
+}

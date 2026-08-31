@@ -22,7 +22,7 @@ import { useAreaDashboard } from '@/hooks/useAreaDashboard';
 import { listAnchors, fetchAnchoredBalance } from '@/lib/overviewApi';
 import { timestampSuffix, type FilterSheetInfo } from '@/lib/excelUtils';
 import type { ExportFilters } from '@/lib/excelTypes';
-import { readProfileFromWorkbook, readProfileNameFromWorkbook, readFilterFromWorkbook, sanitizeProfileName, type ExportProfiles, type ProfileFilterState } from '@/lib/exportProfile';
+import { readProfileFromWorkbook, readProfileNameFromWorkbook, readFilterFromWorkbook, sanitizeProfileName, deriveDeltaAccount, type ExportProfiles, type ProfileFilterState } from '@/lib/exportProfile';
 import { resolvePeriodKey, type PeriodKey } from '@/hooks/useDateBounds';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
 import type { ExportAttrDef } from '@/lib/excelTypes';
@@ -253,7 +253,16 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     [dashboardCfg],
   );
   // Racun dolazi iz filtra atributa - drill s plocice ga upravo tako postavlja.
-  const deltaAccount = filter.attrFilter?.value?.trim() || '';
+  // ⚠ Kad je odabran profil s vlastitim filtrom atributa, racun mora doci odande
+  //   odakle i eventi — v. `deriveDeltaAccount` za razlog i za izmjereni slucaj.
+  const deltaAccount = useMemo(
+    () => deriveDeltaAccount(
+      selectedProfile ? profiles[selectedProfile]?.filterState?.attrFilterRaw : undefined,
+      balanceWidget?.group_by,
+      filter.attrFilter?.value,
+    ),
+    [selectedProfile, profiles, balanceWidget, filter.attrFilter],
+  );
   const deltaReady   = !!balanceWidget && !!deltaAccount;
 
   // ── Core download ─────────────────────────────────────────────────
@@ -466,7 +475,18 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
           new Blob([deltaBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
           `delta_${safeAccount}_${ts}.xlsx`,
         );
-        if (warnings.length) warnings.forEach(w => toast.error(w, { duration: 8000 }));
+        // ⚠ Prazan delta sheet i savrseno uskladjen racun izgledaju IDENTICNO —
+        //   oboje daju sidro, kontrolni stupac i same prazne retke. Prazan prozor
+        //   je legitiman (S113: zato prazni retci nose `Area`), pa se ne prekida
+        //   nego kaze naglas; sutnja bi ta dva slucaja ostavila nerazluciva.
+        const allWarnings = deltaRows.length === 0
+          ? [
+              `Delta sheet za „${deltaAccount}": nijedan redak u prozoru od ${effectiveFilters.dateFrom}. ` +
+              `Ili je racun vec uskladjen, ili filtar (profil/panel) pokazuje na drugi racun.`,
+              ...warnings,
+            ]
+          : warnings;
+        if (allWarnings.length) allWarnings.forEach(w => toast.error(w, { duration: 8000 }));
         else toast.success(
           `Delta sheet: ${deltaRows.length} redaka od ${effectiveFilters.dateFrom} ` +
           `(stanje ${deltaOpening.asOf} = ${deltaOpening.amount.toFixed(2)})`,
