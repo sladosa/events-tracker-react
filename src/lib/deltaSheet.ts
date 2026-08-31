@@ -65,6 +65,17 @@ export interface DeltaSheetOptions {
   blankRows:    number;
   /** Vrijednosti koje se prepisuju u prazne retke: naziv atributa → vrijednost. */
   prefill:      Record<string, string | number | boolean>;
+  /**
+   * Koliko je redaka u GLAVNOM bloku (retci koji micu saldo). Sluzi da se kraj
+   * bloka zna tocno, umjesto da se pogada skeniranjem kolone B — event bez
+   * `area_name` bi tada tiho odrezao blok na krivom mjestu.
+   */
+  mainCount:    number;
+  /**
+   * Koliko je redaka u sekciji „planirano" (pisanoj ispod praznih redaka).
+   * 0 = sekcije nema.
+   */
+  plannedCount: number;
   /** Kolone B/C/G praznih redaka. */
   areaName:     string;
   categoryPath: string;
@@ -81,7 +92,7 @@ interface SheetLayout {
 }
 
 /** Pročitaj raspored lista koji je složio `addActivitiesSheetsTo`. */
-function readLayout(ws: ExcelJS.Worksheet): SheetLayout {
+function readLayout(ws: ExcelJS.Worksheet, mainCount: number): SheetLayout {
   let headerRow = 0;
   const summaryRows: number[] = [];
 
@@ -102,12 +113,11 @@ function readLayout(ws: ExcelJS.Worksheet): SheetLayout {
     if (v) { colByHeader.set(v, c); lastCol = c; }
   }
 
-  // Zadnji podatkovni redak = zadnji s popunjenom kolonom B (Area) — isti kriterij
-  // koji import koristi za „ovo je redak" (`parseDataRows`).
-  let dataEnd = headerRow;
-  for (let r = headerRow + 1; r <= ws.rowCount; r++) {
-    if (String(ws.getCell(r, 2).value ?? '').trim()) dataEnd = r;
-  }
+  // Kraj GLAVNOG bloka. ⚠ Ne skenira se kolona B: sekcija „planirano" je pisana
+  // ispod praznine, pa bi „zadnji redak s popunjenim B" pokazao na NJU i prazni
+  // retci bi se upisali preko nje. Broj redaka je poznat pozivatelju, pa se
+  // racuna, ne pogada.
+  const dataEnd = mainCount > 0 ? headerRow + mainCount : headerRow;
 
   return { headerRow, dataStart: headerRow + 1, dataEnd, lastCol, summaryRows, colByHeader };
 }
@@ -163,7 +173,7 @@ export function addDeltaHelpersTo(
   opts: DeltaSheetOptions,
 ): string[] {
   const warnings: string[] = [];
-  const layout = readLayout(ws);
+  const layout = readLayout(ws, opts.mainCount);
   const attrNameBySlug = new Map<string, string>();
   for (const d of attrDefs) if (d.slug) attrNameBySlug.set(d.slug, d.name);
 
@@ -323,6 +333,97 @@ export function addDeltaHelpersTo(
     });
   }
 
+  // ── 3b. Sekcija „planirano" ─────────────────────────────────────────────
+  // Retci koje je pisac vec upisao ISPOD praznine (v. `trailing` u
+  // addActivitiesSheetsTo). Ovdje im se doda samo naslov i vlastita kontrola.
+  //
+  // ⚠ ZASTO ODVOJENA SEKCIJA, A NE MEDU OSTALIMA
+  //   Planirane kartcne stavke su cesto STARIJE od prozora (rate s naplatom
+  //   11.07. uz sidro 30.07.), pa u glavnom bloku ne bi bile ni prikazane —
+  //   a bas njih treba potvrditi.
+  //
+  // ⚠ KONTROLNI STUPAC IH NE POKRIVA, I TO JE ISPRAVNO
+  //   Kartcna stavka ne tereti racun; tereti ga tek skupna naplata. Zato su
+  //   izvan raspona `dataStart..blankTo` i njihova celija ostaje PRAZNA —
+  //   `0,00` bi ondje tvrdio da je stanje nula.
+  if (opts.plannedCount > 0) {
+    const sepRow      = blankTo + 1;                 // prazan redak = granica
+    const plannedFrom = blankTo + 2;
+    const plannedTo   = plannedFrom + opts.plannedCount - 1;
+
+    // Naslov ide u kolonu H (komentar). Kolona B ostaje PRAZNA, pa import ovaj
+    // redak uopce ne vidi kao redak.
+    const title = ws.getCell(sepRow, FIXED_COL_COUNT);
+    title.value = `PLANIRANO — ne mice saldo. Potvrdi promjenom "${attrNameBySlug.get('status') ?? 'Status'}" u Izvrsen, ali TEK kad se kosara slozi s izvodom (v. dno).`;
+    title.font  = { bold: true, italic: true };
+
+    // ── Kontrola kosare: zbroj sekcije vs iznos skupne naplate s izvoda ──
+    // ⚠ Bez ove celije bi „potvrdi" bila potvrda PO DATUMU, a izmjereno je da
+    //   datum naplate na kartcnim retcima zna biti kriv (S112): kosara za
+    //   11.07.2026. nosi 2.234,02, a banka je tog dana skinula 1.244,74.
+    //   Potvrditi po dospijecu znaci upisati tvrdnju koju mjerenje opovrgava.
+    const sumRow  = plannedTo + 2;
+    const bankRow = sumRow + 1;
+    const diffRow = sumRow + 2;
+    const mLtr    = colLetter(minusCol);
+
+    ws.getCell(sumRow, labelCol).value = 'Σ planirano (gore) ->';
+    ws.getCell(sumRow, labelCol).alignment = { horizontal: 'right' };
+    const sumCell = ws.getCell(sumRow, ctrlCol);
+    sumCell.value  = { formula: `ROUND(SUM($${mLtr}$${plannedFrom}:$${mLtr}$${plannedTo}),2)` };
+    sumCell.numFmt = '#,##0.00';
+    sumCell.note   = 'Zbroj planiranih redaka iz sekcije iznad. Usporedi ga s iznosom '
+      + 'SKUPNE NAPLATE s izvoda za taj datum. Ne slazu li se, kriv je Datum naplate na '
+      + 'nekim retcima -- ne potvrdjuj ih dok se to ne razrijesi: dospjeli datum nije '
+      + 'dokaz da je banka naplatila.';
+
+    ws.getCell(bankRow, labelCol).value = 'naplaceno s izvoda ->';
+    ws.getCell(bankRow, labelCol).alignment = { horizontal: 'right' };
+    const bank2 = ws.getCell(bankRow, ctrlCol);
+    bank2.value  = null;
+    bank2.numFmt = '#,##0.00';
+    bank2.border = {
+      top:    { style: 'medium' }, left:  { style: 'medium' },
+      bottom: { style: 'medium' }, right: { style: 'medium' },
+    };
+
+    ws.getCell(diffRow, labelCol).value = 'razlika ->';
+    ws.getCell(diffRow, labelCol).alignment = { horizontal: 'right' };
+    const diff2 = ws.getCell(diffRow, ctrlCol);
+    // Suti dok „naplaceno" nije popunjeno rukom — inace bi provjera bila
+    // tautoloska (isti obrazac kao „u banci pise" gore).
+    diff2.value  = { formula: `IF(${ctrlLtr}${bankRow}="","",ROUND(${ctrlLtr}${bankRow}-${ctrlLtr}${sumRow},2))` };
+    diff2.numFmt = '#,##0.00';
+    diff2.font   = { bold: true };
+    ws.addConditionalFormatting({
+      ref: `${ctrlLtr}${diffRow}`,
+      rules: [
+        { type: 'cellIs', operator: 'equal', priority: 1, formulae: ['0'],
+          style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFC6EFCE' } } } },
+        { type: 'expression', priority: 2,
+          formulae: [`AND(${ctrlLtr}${diffRow}<>"",${ctrlLtr}${diffRow}<>0)`],
+          style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFC7CE' } } } },
+      ],
+    });
+  }
+
+  // ── 3c. Sazeci se ogranicavaju na glavni blok + prazne retke ────────────
+  // ⚠ `addActivitiesSheetsTo` racuna Max/Min/Summ dinamicki, do ZADNJEG retka s
+  //   popunjenom kolonom B na cijelom listu. Sa sekcijom „planirano" to vise nije
+  //   glavni blok, pa bi Σ tiho pocela ukljucivati i kartcne stavke — broj bi se
+  //   promijenio, a nigdje ne bi pisalo zasto. Ovdje se raspon fiksira.
+  if (opts.plannedCount > 0 && layout.summaryRows.length >= 3) {
+    const [maxR, minR, sumR] = layout.summaryRows.slice(-3);
+    for (const [r, fn] of [[maxR, 4], [minR, 5], [sumR, 9]] as [number, number][]) {
+      for (let c = FIXED_COL_COUNT + 1; c <= layout.lastCol; c++) {
+        const cell = ws.getCell(r, c);
+        if (!cell.value || typeof cell.value !== 'object' || !('formula' in cell.value)) continue;
+        const l = colLetter(c);
+        cell.value = { formula: `SUBTOTAL(${fn},${l}${layout.dataStart}:${l}${blankTo})` };
+      }
+    }
+  }
+
   // ── 4. Raspored ─────────────────────────────────────────────────────────
   ws.getColumn(ctrlCol).width = 15;
 
@@ -341,8 +442,15 @@ export async function createDeltaExcel(
   events:         ExportEvent[],
   attrDefs:       ExportAttrDef[],
   categoriesDict: ExportCategoriesDict,
-  opts:           DeltaSheetOptions,
+  opts:           Omit<DeltaSheetOptions, 'mainCount' | 'plannedCount'>,
   exportProfile?: ExportProfile | null,
+  /**
+   * Planirani retci ovog racuna koje glavni blok NE pokriva (tipicno kartcni:
+   * ne micu saldo, pa ih prozor ne prikazuje — a bas njih treba potvrditi).
+   * ⚠ Ne smiju se preklapati s `events`, inace isti `event_id` stoji dvaput u
+   *   istom fileu i uvoz obradi redak dvaput.
+   */
+  plannedRows:    ExportEvent[] = [],
 ): Promise<{ buffer: ArrayBuffer; warnings: string[] }> {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Events Tracker';
@@ -358,7 +466,13 @@ export async function createDeltaExcel(
 
   // 'asc' — najstariji gore, najnoviji tik iznad praznih redaka: novi redak se
   // dopisuje ondje gdje je i u banci, na dnu.
-  await addActivitiesSheetsTo(wb, events, attrDefs, categoriesDict, 'asc', attrColumnOrder);
+  // Praznina mora primiti sve prazne retke + jedan redak granice, inace bi ih
+  // `addDeltaHelpersTo` upisao PREKO sekcije „planirano".
+  const gapRows = opts.blankRows + 1;
+  await addActivitiesSheetsTo(
+    wb, events, attrDefs, categoriesDict, 'asc', attrColumnOrder, undefined,
+    plannedRows.length > 0 ? { events: plannedRows, gapRows } : undefined,
+  );
 
   // ⚠ REDOSLIJED: profil PRIJE delta alata. Profil dira kolone po položaju
   //   (širine, skrivanje, grupe), a kontrolni stupac se dodaje kao zadnji —
@@ -368,6 +482,8 @@ export async function createDeltaExcel(
   const ws = wb.getWorksheet('Events');
   if (!ws) throw new Error('Delta sheet: nema lista Events.');
 
-  const warnings = addDeltaHelpersTo(ws, attrDefs, opts);
+  const warnings = addDeltaHelpersTo(ws, attrDefs, {
+    ...opts, mainCount: events.length, plannedCount: plannedRows.length,
+  });
   return { buffer: (await wb.xlsx.writeBuffer()) as ArrayBuffer, warnings };
 }

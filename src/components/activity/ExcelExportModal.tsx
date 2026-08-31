@@ -452,6 +452,36 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
           (balanceWidget.filters ?? []).every(f => f.op !== 'in' || passes(ev, f.slug, f.values)),
         );
 
+        // ── Sekcija „planirano" ─────────────────────────────────────────
+        // ⚠ Ovi retci su IZVAN prozora: kartcna stavka ne mice saldo, pa je
+        //   prozor (sidro+1 .. danas) uopce ne pokriva — a rate s naplatom
+        //   11.07. uz sidro 30.07. su bas one koje treba potvrditi. Zato zaseban
+        //   upit, bez datumske granice.
+        //   Filtar je `Status = Planiran` (a ne racun), jer planiranih ima
+        //   dvadesetak u cijeloj Arei, a redaka racuna 1.246 — racun se onda
+        //   suzi u memoriji. `not_in` uvjet plocice je izvor istine o tome sto
+        //   znaci „planirano": to je upravo ono sto saldo iskljucuje.
+        const notInFilters = (balanceWidget.filters ?? []).filter(f => f.op === 'not_in');
+        let plannedRows: typeof merged = [];
+        if (notInFilters.length > 0) {
+          const statusDef = bundle.attrDefs.find(d => d.slug === notInFilters[0].slug);
+          if (statusDef) {
+            const plannedBundle = await loadExportData(user.id, {
+              ...effectiveFilters,
+              dateFrom: null,
+              dateTo: null,
+              commentSearch: '',
+              attrFilter: { attrDefId: statusDef.id, value: notInFilters[0].values[0], isExact: true },
+            });
+            const deltaIds = new Set(deltaRows.map(e => e.id));
+            plannedRows = mergeSessionEvents(plannedBundle.events, plannedBundle.categoriesDict).filter(ev =>
+              !deltaIds.has(ev.id) &&
+              passes(ev, balanceWidget.group_by, [deltaAccount]) &&
+              notInFilters.every(f => passes(ev, f.slug, f.values)),
+            );
+          }
+        }
+
         const { buffer: deltaBuf, warnings } = await createDeltaExcel(
           deltaRows, bundle.attrDefs, bundle.categoriesDict,
           {
@@ -468,6 +498,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             userEmail:    user.email ?? '',
           },
           activeProfile,
+          plannedRows,
         );
 
         const safeAccount = deltaAccount.replace(/[^A-Za-z0-9]+/g, '_').slice(0, 30);

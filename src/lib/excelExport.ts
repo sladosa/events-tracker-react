@@ -446,6 +446,14 @@ export async function addActivitiesSheetsTo(
   sortOrder: 'asc' | 'desc' = 'desc',
   attrColumnOrder?: number[],
   annotations?: RowAnnotations,
+  /**
+   * Drugi blok redaka, odvojen prazninom i pisan ISTIM pisacem (dakle s ispravnim
+   * `row_hash`om, bojama i dropdownima). Delta sheet time dobiva sekciju „planirano"
+   * ispod praznih redaka, a da se logika pisanja retka nigdje ne duplicira.
+   * ⚠ Praznina mora biti >= broja praznih redaka koje delta alat poslije upisuje,
+   *   inace bi ih upisao PREKO ovog bloka.
+   */
+  trailing?: { events: ExportEvent[]; gapRows: number },
 ): Promise<void> {
 
   const built = buildAttrMeta(attrDefs, categoriesDict);
@@ -634,7 +642,7 @@ export async function addActivitiesSheetsTo(
   //   1. event_date  – direction controlled by sortOrder (newest ↓ default)
   //   2. session_start – same direction
   //   3. created_at – always ASC (leaf events within a session in chronological order)
-  const sortedEvents = [...events].sort((a, b) => {
+  const byDateThenSession = (a: ExportEvent, b: ExportEvent) => {
     const dateCmp = a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0;
     if (dateCmp !== 0) return sortOrder === 'asc' ? dateCmp : -dateCmp;
 
@@ -652,9 +660,22 @@ export async function addActivitiesSheetsTo(
     if (!a.created_at) return 1;
     if (!b.created_at) return -1;
     return a.created_at.localeCompare(b.created_at);
-  });
+  };
 
-  for (const event of sortedEvents) {
+  // Dva bloka se sortiraju ZASEBNO — inace bi se `trailing` retci uvukli medju
+  // glavne po datumu, a upravo ih se zeli drzati odvojeno (planirane kartcne
+  // stavke su starije od prozora, pa bi inace ili nestale ili se rasule).
+  const sortedEvents = [...events].sort(byDateThenSession);
+  const trailingSorted = trailing ? [...trailing.events].sort(byDateThenSession) : [];
+  const mainCount = sortedEvents.length;
+  const allRows = [...sortedEvents, ...trailingSorted];
+
+  let writtenIdx = 0;
+  for (const event of allRows) {
+    // Praznina izmedju blokova: `readLayout` u deltaSheet.ts po njoj prepoznaje
+    // gdje glavni blok zavrsava, a import prazan redak ne vidi kao redak (kol. B).
+    if (trailing && writtenIdx === mainCount) row += trailing.gapRows;
+    writtenIdx++;
     const catInfo = categoriesDict[event.category_id] ?? {};
 
     // Build relevant attr ids for this event (walk up hierarchy)
