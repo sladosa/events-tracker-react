@@ -3313,3 +3313,57 @@ promjenjive duljine.
 - **PROD nema kolonu `Račun`** i nema ovaj kod — treba deploy pa `set_list_columns.py --env prod`
   (ili `ListColumns` sheet). T-S119-8.
 - **BUG-S118-PREVIEWMODE** i dalje otvoren; deploy koji ovo nosi je prilika da ide s njim.
+
+---
+
+## Done S123 (2026-08-31): Kokin roundtrip, ispravci tuđih redaka, `Datum naplate`
+
+Sesija je krenula kao priprema Koke za rad na laptopu, a otvorila pet stvari.
+Sve je na `test-branch`; **PROD ostaje na `5533420`**.
+
+### Izmjereno na početku (stanje, ne pretpostavka)
+- `Financije_all`: **2.323 eventa** (2.312 Kokinih + **11 Sašinih** od 25.08.)
+- share: Koka vlasnica, Saša **write** grantee
+- `areas.settings`: 6 ključeva, **bez `export_profiles`** — profil je Saša složio
+  tijekom sesije, pod njenim računom (grantee ga ne smije spremiti)
+- saldo se reproducira u cent: ZABA **13.231,31**, RF **796,43** — isti brojevi
+  kao S118, dakle baza je pod kontrolom i **tranša 4 to ne dira** (skupna MC
+  naplata 1.332,52 već je u bazi; fale samo pojedinačne kartične stavke)
+
+### PayPal — Sašino pitanje, odgovoreno mjerenjem
+Presjek svih 2.323 retka: **Visa → Sašin tekući RF** (866, 0 na ZABA),
+**Mastercard → Kokin ZABA** (766, 0 na RF), bez iznimke.
+Svih **18** PayPal transakcija (01/2025–06/2026) sjedi na **Mastercardu**.
+Na Visi **nijedna** — i to je bankin strojni tekst, ne naša klasifikacija.
+⇒ Redak `Bajs 1.depozit` je ispravno ostao `Kokin ZABA / Mastercard`; Sašina
+namjeravana izmjena na RF/Visa bila bi kriva.
+
+### Popravci
+| commit | što |
+| --- | --- |
+| `57ff33a` | **BUG-S123-DELTAACCT** — delta sheet uzimao račun iz živog filtra, evente iz profila ⇒ presjek prazan, file s točnim sidrom i **0 redaka**. `deriveDeltaAccount()` + upozorenje na praznu sekciju. 11 testova. |
+| `afad07d` | sekcija **„planirano"** u delta sheetu (ispod praznih redaka, vlastita kontrola košare). 13 testova nad stvarno generiranim workbookom. |
+| `9c295d0` | Export modal zadano bira **prvi profil Aree** |
+| `8afb268` | profil smije sakriti **`row_hash`** (`Delete?` nikad) + bilješka na zaglavlju |
+| `6ee241e` | **`sql/043`** — vlasnica Aree smije ISPRAVITI grantee-jev redak (ne obrisati) |
+| `de2f811` | E2E `S123_owner_edits_grantee_row.spec.ts` — 2 slučaja |
+| `1c7af7b` | `kosara_naplate.py` — razdvaja slučajeve krivog `Datum naplate` |
+
+### `043` — provjereno pokusom, ne čitanjem
+Pušteno na TEST, pa izmjereno pod pravim JWT-ovima (A vlasnica, B grantee):
+ispravak mijenja **točno 1** redak, autorstvo ostaje, `edited_by` zapisan,
+prepisivanje autorstva na trećega **odbijeno triggerom**, grantee-jev pokušaj
+mijenja **0 redaka**. ⚠ Vlasnica **smije** obrisati tuđi redak na razini baze —
+zatvoreno je samo u UI-ju.
+
+### `Datum naplate` — otvoreno
+Košara 11.07. (MC): **73 retka / 2.231,02** vs banka **1.244,74**. Alat razlaže
+na 40 OK · **21 rata** (pravilo ne vrijedi) · 12 krivo datiranih.
+⚠ Ni nakon ispravka se ne zatvara — ostatak traži `MC_2026-06.pdf`.
+⚠ Usput ispravljena vlastita prva dijagnoza: rate nose datum iz **plana otplate**,
+pa bi ih pravilo redom proglasilo krivima.
+
+### Nezatvoreno
+- **BUG-S123-EDITMARK** — oznaka ✎ se ne prikazuje u E2E; uzrok neutvrđen,
+  sljedeći korak je mjeriti mrežni odgovor, ne mijenjati locator
+- obrnuti smjer za `043` nije proveden (DDL se iz alata ne izvršava)

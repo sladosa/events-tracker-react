@@ -1,7 +1,66 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S122 (2026-08-29) — T-S121-3/-4 potvrđeni na PROD-u; nov automat protiv fantomskog nacrta.
+**Zadnji update:** S123 (2026-08-31) — vlasnica smije ispraviti grantee-jev redak; delta sheet dobio račun iz profila i sekciju „planirano".
+
+---
+
+## S123 — Kokin roundtrip, ispravci tuđih redaka, i `Datum naplate` (2026-08-31)
+
+Detalji: [S123_tests.md](tests/S123_tests.md)
+
+⚠ **Sve je na `test-branch`. PROD je na `5533420`** — Koka od ovoga još ništa ne vidi.
+⚠ **Redoslijed puštanja nije stvar ukusa:** prvo `sql/043` na PROD, **pa tek onda**
+merge na `main`. Obrnuto znači da UI otvori Edit, a RLS ga odbije — i to tiho
+(`UPDATE` „uspije" s 0 redaka), a kod atributa nakon uspješnog `DELETE`.
+
+### Automatizirano
+
+| test | čuva | provjereno obrnuto |
+| --- | --- | --- |
+| `T-S123-1/-2` | vlasnica ima Edit a nema Delete; ispravak čuva autorstvo i **atribut preživi** | ⛔ ne može — DDL se odavde ne izvršava |
+| `deltaAccount.test.mjs` (11) | delta sheet uzima račun iz profila, ne iz panela | ✅ bez popravka pada 6/11 |
+| `deltaSheetLayout.test.mjs` (18) | raspored sekcije „planirano" + `row_hash` u profilu | ✅ manja praznina ⇒ padaju 3 tvrdnje |
+
+### Novo — traži tebe, **tek nakon `043` + deploya**
+
+| # | test | status |
+| --- | --- | --- |
+| T-S123-3 | ⭐ oznaka ✎ „netko drugi je ispravio redak" — **jedino što nije automatizirano** | ⬜ |
+| T-S123-4 | vlasnica nema Delete na tuđem retku (na svom ga ima) | ⬜ |
+| T-S123-5 | ⭐ delta sheet uzima račun iz **profila**, ne iz panela | ⬜ |
+| T-S123-6 | prazan delta sheet se **javlja**, izvoz se ne prekida | ⬜ |
+| T-S123-7 | ⭐ sekcija „planirano": granica, prazan kontrolni stupac, uvoz nakon promjene `Status` | ⬜ |
+| T-S123-8 | Export profil se bira sam; bilješka na `row_hash`; profil ga smije sakriti | ⬜ |
+
+### ⚠ Blokira deploy — nije test nego posao
+
+| # | što | status |
+| --- | --- | --- |
+| **T-S123-9** | **`Datum naplate` raščistiti prije nego sekcija „planirano" ode Koki** — inače joj prva stvar bude razlika od 986,28 koju ne može zatvoriti | ⬜ |
+
+Alat: `python data-prep_tools/Financije/kosara_naplate.py --naplata 2026-07-11 --banka 1244.74`
+File: `data-prep_data/Financije/kosara_20260711_mastercard.xlsx` (app format lijevo, dijagnostika desno)
+
+Izmjereno 31.08. — košara **73 retka / 2.231,02** vs banka **1.244,74**:
+
+| dijagnoza | redaka | Σ |
+| --- | --- | --- |
+| OK | 40 | 946,48 |
+| **RATA** — pravilo ne vrijedi | 21 | 832,86 |
+| KRIVI MJESEC ⇒ 11.08. | 11 | 431,10 |
+| KRIVI MJESEC ⇒ 11.06. | 1 | 20,58 |
+
+⚠ Ni nakon micanja krivo datiranih se **ne zatvara** (946,48 + 832,86 = 1.779,34).
+Ostatak traži **`MC_2026-06.pdf`** — pravilo je iscrpljeno.
+⚠ **Tranša 4 se ne uvozi prije ovoga** — dedup po `(datum, iznos)` bi krivo
+datirane preskočio, pa bi i košara 11.08. ispala kraća točno za njih.
+
+### Zatvoreno u S123
+
+- `BUG-S123-DELTAACCT` — delta sheet je uzimao račun iz živog filtra
+- „vlasnica ne može ispraviti Sašin redak" — `sql/043` + UI (samo Edit)
+- Export profil: zadani odabir + `row_hash` smije u profil (`Delete?` nikad)
 
 ---
 

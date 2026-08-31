@@ -44,3 +44,18 @@ Granteejev ⋮ menu na area banneru → "Leave this area" → "Leave without dat
 Efekt: data_shares se briše, eventi ostaju u owner-ovim kategorijama kao "orphan eventi".
 
 **Owner vidi:** amber banner u Activities tabu — vidi sekciju "Orphan eventi" u Activities helpu.
+
+## Vlasnik Aree smije ispraviti tuđi redak (ne obrisati)
+Kad grantee upiše zapis u tuđu Areu, **vlasnik Aree ga smije ispraviti** — u ⋮ meniju
+tog retka stoji **„Edit (tuđi zapis)"**. Grantee to ne može: tuđi redak i dalje otvara
+zaključani ekran „Tuđi zapis".
+
+- **Autorstvo se ne mijenja.** U koloni `User` i dalje piše onaj tko je zapis unio —
+  vlasnik ga ispravlja, ne preuzima.
+- **Autor vidi da je redak dirnut:** uz `⋮` se pojavi **✎**, a hover pokaže tko je
+  mijenjao i kad.
+- **Brisanje tuđeg retka nije moguće kroz aplikaciju.** Ispravak detalja je ono što
+  treba; brisanje nema povratka.
+- ⚠ **Excel nije put za ispravak tuđeg retka.** „Import as mine" ne mijenja postojeći
+  zapis nego **stvara novi** — dobiješ dva zapisa za istu transakciju. Tuđi redak se
+  ispravlja kroz aplikaciju.

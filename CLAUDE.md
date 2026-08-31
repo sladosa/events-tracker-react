@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S122).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S123).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -237,6 +237,30 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   write-grantee-u, što je neistina o njegovim pravima.
   ⚠ Isto vrijedi za svaku buduću per-Area konfiguraciju: **`areas.settings` je vlasnikov**.
 
+**Collab — vlasnik Aree (S123)**
+
+- **⚠ „Import as mine" NIJE način da se ispravi tuđi redak.** `excelImport.ts:443`
+  postavlja `event_id: null` ⇒ **forsira INSERT s novim ID-em**. Original ostaje,
+  kopija se doda — i to **tiho**: kolizija se provjerava po `(user_id, kategorija,
+  session_start)`, a `user_id` je drugi. Saldo zbraja atribute **bez obzira na
+  vlasnika**, pa duplikat s `Izvor = Racun` uđe u stanje **dvaput**.
+- **Vlasnica Aree smije ISPRAVITI grantee-jev redak, ali ne obrisati** (`sql/043`).
+  Autorstvo (`user_id`) ostaje autoru; `edited_by` bilježi tko je ispravljao.
+  ⚠ **Brisanje je zatvoreno SAMO u UI-ju** — RLS `events_delete_by_area_owner`
+  iz `020` i dalje dopušta (služi čišćenju siročadi), izmjereno pokusom.
+  Točna formulacija je „nema gumb", ne „baza brani".
+- **⚠ Edit tok BRIŠE pa PONOVNO UPISUJE sve atribute retka**
+  (`EditActivityPage.tsx:940–966`). Zato `043` mora dirati **tri** politike, ne
+  jednu: bez INSERT grane na `event_attributes` `DELETE` prođe a `INSERT` padne
+  ⇒ redak ostane **bez ijednog atributa**, a ekran pokaže uspjeh.
+  Atributi se pišu pod **autorom eventa**, ne pod onim tko ispravlja — inače bi
+  delete+reinsert prebacio i one vrijednosti koje nitko nije dirao.
+- **⚠ `WITH CHECK` vidi samo NOVI redak**, pa u njemu nema načina reći „autorstvo
+  se nije promijenilo". Zato trigger `guard_event_author` — invarijanta, ne
+  disciplina. Za `service_role` je `auth.uid()` NULL ⇒ migracije i dalje prolaze.
+- **⚠ RLS-blokiran write „uspije" s 200 i praznim rezultatom.** Svaka provjera
+  ovlasti mjeri **broj promijenjenih redaka**, nikad HTTP status.
+
 **Excel**
 
 - **`Category_Path` format:** Activities Events kol. C = **bez area name**
@@ -286,6 +310,20 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `applyProfileToWorkbook` zato staje na prvom stupcu koji nije atribut.
 - **Kolona izvan autofiltera se pri sortu raspari od retka.** Svaka nova kolona mora ući u
   `auto_filter.ref` (vrijedi i za app export i za Python alate).
+- **Profil nosi 8 fiksnih + N atributskih kolona — `Delete?` NIKAD.** `row_hash`
+  smije u profil (S123), `Delete?` ne: on je **okidač brisanja**, a zastavica koju
+  nitko ne vidi je zastavica koju nitko ne može ni maknuti. Sakriven stupac se i
+  dalje sortira s retkom (unutar je autofiltera), pa se otisak ne raspari.
+  ⚠ Skrivanje kolone **rukom u fileu** ne ulazi u profil ako profil za tu kolonu
+  nema ključ — živi samo u tom fileu, i idući izvoz je vrati.
+- **Export modal zadano bira PRVI profil Aree** (S123). Bez profila izvoz izađe u
+  punoj širini, pa zaboravljen klik ne daje grešku nego **neuredan file**.
+  ⚠ Posljedica: `Preview (10 rows)` sada primjenjuje kolone profila — za izradu
+  **novog** profila prvo odaberi „No profile (all columns)".
+- **⚠ Ponovno spremanje profila iz exporta VRAĆA filtar računa u profil.** `Filter`
+  list zapisuje **efektivni** filtar atributa; nema li ga profil, ondje završi onaj
+  **iz panela**. Prije `Import Profile` isprazni ćeliju `Attribute filter`.
+  Prazna ćelija = „naslijedi panel"; `_` = „izričito bez filtra". Nisu isto.
 - **`export_profiles` još ne preživljava Structure roundtrip** (ključ `attr:Area||CatPath||AttrName`
   ne preživi rename aree/atributa) — jedina preostala rupa u „sve ide importom".
 - **„From template" kopira `areas.settings` OSIM `export_profiles`** (popravljeno S108).
@@ -335,6 +373,24 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   isplata": lančana se raspadne na prvom sortu, a korisnik sortira čim doda stariji datum.
   I: **uvjeti se čitaju iz `dashboard` configa**, ne prepisuju u kod — stupac koji se ne slaže
   s pločicom, a izgleda uvjerljivo, gori je od nikakvog.
+- **⚠ Račun delta sheeta mora doći ODANDE ODAKLE I EVENTI** (S123,
+  BUG-S123-DELTAACCT). Čitao se iz **živog filtra u panelu**, a eventi iz profila;
+  kad se ne poklope, presjek je prazan — a file svejedno izađe s **točnim** sidrom,
+  prefillom i kontrolnim stupcem. **Prazan delta sheet i savršeno usklađen račun
+  izgledaju identično.** Izmjereno na PROD-u: profil `RF` + panel `Kokin tekući
+  ZABA` ⇒ 79 RF eventa u upitu, **0 redaka** u sheetu, gumb „Download Excel (RF)",
+  file `delta_Kokin_teku_i_ZABA_*.xlsx`, bez ijedne poruke.
+  Lijek: `deriveDeltaAccount()` + upozorenje kad je sekcija prazna.
+- **Sekcija „planirano" ide ISPOD praznih redaka** (S123), odvojena praznim
+  retkom. Piše je **isti pisač redaka** (`trailing` u `addActivitiesSheetsTo`), pa
+  nosi ispravan `row_hash` i dropdowne — logika retka se nigdje ne duplicira.
+  ⚠ Praznina mora biti `blankRows + 1`, inače prazni retci **pregaze sekciju**.
+  ⚠ Kontrolni stupac je ne pokriva i ćelija ostaje **prazna** — `0,00` bi ondje
+  tvrdio da je stanje nula. ⚠ Sažeci `Max/Min/Summ` se u delta putu **ograničavaju**
+  na glavni blok: računaju se do zadnjeg retka s popunjenom kolonom B na cijelom
+  listu, pa bi sekcija tiho ušla u njih.
+- **⚠ Sekcija nosi VLASTITU kontrolu košare** (`Σ planirano` / `naplaćeno s izvoda`
+  / `razlika`). Bez nje je „potvrdi" potvrda **po datumu**, a datum zna biti kriv.
 - **Export profil se primjenjuje PRIJE delta alata.** Profil dira kolone po položaju (širine,
   skrivanje, grupe), a kontrolni stupac se dodaje zadnji — obrnutim redoslijedom bi ga profil
   mogao sakriti.
@@ -496,6 +552,17 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   (isti razred kao S114 brojač). ⚠ Normalizacija je **samo za usporedbu**: vrijednost
   atributa `Racun` koja ide u bazu nosi dijakritike i mora se poklopiti u znak, inače
   redak završi pod novim, četvrtim računom — a pločica to prikaže kao uredan račun.
+- **⚠ UVOZ NE POPRAVLJA KRIVO DATIRANE RETKE — dedup ih preskoči** (S123). Alat
+  izbacuje iz generiranog filea sve što u bazi već postoji po `(datum, iznos)`, a
+  kupovina s krivim `Datum naplate` ima **isti** `event_date` i iznos. Zato
+  „uvezi tranšu pa popravi datume" ne radi: krivi datum preživi, a **i ciljna
+  košara ispadne kraća točno za te retke** — dobiješ dvije neusklađene umjesto
+  jedne. **Prvo ispravak, pa uvoz.**
+- **⚠ RATA NIJE KUPOVINA i pravilo naplate se na nju ne smije primijeniti** (S123).
+  Sve rate jedne kupovine dijele `event_date` = dan kupnje, a razlikuje ih plan
+  otplate. Pravilo „MC = 11. sljedećeg mjeseca" proglasilo bi **21 vjerojatno
+  ispravan redak** krivim i poslalo čovjeka da ih „popravi". `kosara_naplate.py`
+  ih zato izdvaja u vlastitu dijagnozu umjesto da ih ocijeni.
 - **`source_key` nije stabilan** (`normalize_financije.py:202`, `seq_per_day` = redoslijed u fileu)
   ⇒ ubačeni redak mijenja ključeve svih redaka tog dana iza njega
 - **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** (preskače `source_key`eve koji POSTOJE
@@ -674,7 +741,8 @@ src/lib/excelImport.ts             Activities Excel import, collision handling, 
 src/lib/excelImportReport.ts       Izvještaj nakon uvoza — radni file, ne log
 src/lib/excelFingerprint.ts        row_hash (FNV-1a 64) — skip nedirnutih redaka
 src/lib/excelDatetime.ts           Kanonski oblik datum-atributa (baza ↔ app ↔ Excel ćelija)
-src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u banci piše"
+src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u banci piše",
+                                   sekcija "planirano" + kontrola košare (S123)
                                    ⚠ kontrolni SUMIFS ne broji `Planiran`
 src/lib/structureExcel.ts          Structure export (Automations, Dashboard, DisableSavePlus)
 src/lib/structureImport.ts         Structure import — non-destructive, slug lookup
@@ -792,6 +860,15 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 
 ## Open bugs
 
+- **~~BUG-S123-DELTAACCT~~ — ✅ POPRAVLJENO S123.** Delta sheet je uzimao račun iz
+  **živog filtra**, a evente iz profila; presjek prazan ⇒ file s točnim sidrom i
+  nula redaka. Sada `deriveDeltaAccount()` (`exportProfile.ts`) + upozorenje na
+  praznu sekciju. Čuva `src/lib/__tests__/deltaAccount.test.mjs` (11 slučajeva).
+- **BUG-S123-EDITMARK:** oznaka ✎ „netko drugi je ispravio ovaj redak" **se ne
+  prikazuje** u E2E okruženju. Isključeno mjerenjem: stale bundle (dev server
+  servira aktualan kod) i neupisan `edited_by` (T-S123-2 prolazi). Uzrok
+  neutvrđen. ⚠ **Sljedeći korak je izmjeriti mrežni odgovor** (`page.on('response')`)
+  — sadrži li payload `edited_by` — a ne mijenjati locator. Do tada ručni test.
 - **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
   StrictMode artefakt, nizak rizik
 - **BUG-S103-ANYATTR:** „In any attribute" filter (`ATTR_FILTER_ANY`) timeouta za grantee-e —
@@ -993,6 +1070,26 @@ MC naplata ga nosi, pa bi varijanta razbila brojanje po opisu (`klasificiraj_tra
 `ZABA_2026-06.pdf`** — najvjerojatnije kolovoški računi s krivim mjesecom. Uvezeni s lipanjskim
 datumom padaju **prije ZABA sidra** (01.07.) i po pravilu „strogo nakon" tiho ispadaju iz salda.
 Tranša 4 ih rješava: ostane li `13.239,31` bili su duplikati, postane li `12.866,20` bili su stvarni.
+
+### ⚠ `Datum naplate` — otvoreno, blokira sekciju „planirano" (S123)
+
+Košara `naplata 11.07.2026` ∧ `Izvor = Mastercard`: **73 retka / 2.231,02** naspram
+**1.244,74** koliko je banka skinula. Razloženo alatom
+`data-prep_tools/Financije/kosara_naplate.py`:
+
+| dijagnoza | redaka | Σ |
+| --- | --- | --- |
+| OK (slaže se s pravilom) | 40 | 946,48 |
+| **RATA** — pravilo ne vrijedi | 21 | 832,86 |
+| KRIVI MJESEC ⇒ izvod 11.08. | 11 | 431,10 |
+| KRIVI MJESEC ⇒ izvod 11.06. | 1 | 20,58 |
+
+⚠ **Ni nakon micanja krivo datiranih se ne zatvara** (946,48 + 832,86 = 1.779,34).
+Ostatak može razriješiti samo **`MC_2026-06.pdf`** — pravilo je iscrpljeno.
+⚠ Košara za **11.08.** ima **0 redaka** naspram naplate 1.332,52 (tranša 4 nije uvezena),
+pa se ni ta strana ne da provjeriti.
+⚠ Skupna MC naplata od **11.07. ima prazan `comment`**, dok ostalih 18 nosi strojni
+tekst `TROŠKOVI UČINJENI MASTERCARD` — jedan prazan redak izmiče brojanju po opisu.
 
 ### PROD — ✅ IZVEDENO 2026-08-25 (S118)
 

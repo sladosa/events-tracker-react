@@ -43,6 +43,21 @@
 - Neiskorišteni prazni retci se pri uvozu preskaču (javi se koliko ih je); redak s iznosom ali bez datuma je **greška**, ne preskakanje
 - Nakon uvoza: otvori bankovnu aplikaciju i **potvrdi stanje** na pločici — sljedeći delta sheet tada kreće od potvrđenog broja, pa je kraći
 - Broj u „u banci piše" i u potvrdi mora doći **s ekrana banke ili s izvoda**, nikad iz same aplikacije — inače provjera potvrđuje samu sebe
+- **Račun uzima onaj koji traži odabrani Export profil**; nema li ga profil, uzima se filtar iz panela. Ako se profil i panel ne slažu, ponuda delta sheeta se ne prikazuje — umjesto da izađe sheet s točnim sidrom i nula redaka
+- **Prazan delta sheet se javlja porukom** — prazan prozor i savršeno usklađen račun izgledaju isto, pa se ne prešućuje
+
+## Sekcija „planirano" u delta sheetu
+- **Ispod praznih redaka**, odvojena jednim praznim retkom, s naslovom `PLANIRANO — ne miče saldo`
+- Sadrži planirane retke tog računa koje **prozor ne pokriva** — tipično kartične stavke i rate, koje saldo ne miču pa u glavnom bloku ne bi ni bile prikazane
+- Kolona `Stanje (kontrola)` je na njima **prazna** — kartična stavka ne tereti račun, tereti ga tek skupna naplata
+- Potvrda ide **promjenom `Status`a u `Izvrsen`** pa uvozom; nedirnuti retci se preskaču
+- ⚠ Na dnu sekcije su `Σ planirano`, `naplaćeno s izvoda` (upisuješ rukom) i `razlika`. **Potvrdi tek kad se to slaže** — dospjeli datum nije dokaz da je banka naplatila, a `Datum naplate` na kartičnim retcima zna biti kriv
+
+## Export profil
+- Modal **sam odabere prvi profil** te Aree — bez profila izvoz izađe u punoj širini
+- Za izradu **novog** profila prvo odaberi „No profile (all columns)", pa `Preview (10 rows)`
+- Profil pamti raspored kolona, širine, grupe, period i sort. **`row_hash` smije sakriti**, `Delete?` nikad — to je okidač brisanja, a zastavica koju nitko ne vidi je zastavica koju nitko ne može ni maknuti
+- ⚠ `Filter` list zapisuje **efektivni** filtar atributa. Spremaš li profil iz exporta, prvo **isprazni ćeliju `Attribute filter`** — inače se u profil vrati račun iz panela. Prazna ćelija znači „naslijedi panel"; `_` znači „izričito bez filtra"
 
 ## Dropdowni u exportu
 - **Suggest atributi** (text s opcijama) automatski dobivaju Excel Data Validation dropdown u exportanom xlsx-u

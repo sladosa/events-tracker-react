@@ -1067,3 +1067,55 @@ nosi, pa bi varijanta razbila brojanje po opisu.
 
 ⚠ Naplata je upisana **ručno kroz Add Activity + Edit**, jer Add tada nije mogao zadati datum
 unatrag. Od S117 može (birač datuma u zaglavlju), pa sljedeći put nije potrebno.
+
+---
+
+## S123 (2026-08-31) — `kosara_naplate.py`: razdvajanje krivog `Datum naplate`
+
+Nov alat: `data-prep_tools/Financije/kosara_naplate.py`. Čita **bazu** (ne Review
+workbook), dijagnosticira svaki kartični redak protiv pravila naplate i piše izlaz
+u **app import formatu** (LEGEND + EVENT DATA s `event_id`), pa ispravak ide natrag
+kroz uvoz.
+
+```
+python kosara_naplate.py --naplata 2026-07-11 --banka 1244.74
+python kosara_naplate.py --naplata 2026-07-11 --predlozi     # upiše prijedlog
+python kosara_naplate.py --mjesec 2026-08 --izvor Visa
+```
+
+**Izmjereno na PROD-u** — košara `11.07.2026` ∧ `Izvor = Mastercard`, 73 retka,
+Σ **2.231,02** naspram naplate **1.244,74**:
+
+| dijagnoza | redaka | Σ |
+| --- | --- | --- |
+| OK (slaže se s pravilom) | 40 | 946,48 |
+| **RATA** — pravilo ne vrijedi | 21 | 832,86 |
+| KRIVI MJESEC ⇒ izvod 11.08. | 11 | 431,10 |
+| KRIVI MJESEC ⇒ izvod 11.06. | 1 | 20,58 |
+
+⚠ **Ni nakon micanja krivo datiranih se ne zatvara** (946,48 + 832,86 = 1.779,34).
+Ostatak može razriješiti samo `MC_2026-06.pdf` — pravilo je iscrpljeno.
+
+### Odluke ugrađene u alat
+
+- **⚠ RATA NIJE KUPOVINA.** Sve rate jedne kupovine dijele `event_date` = dan
+  kupnje, a razlikuje ih plan otplate. Pravilo „MC = 11. sljedećeg mjeseca" bi
+  proglasilo **21 vjerojatno ispravan redak** krivim i poslalo čovjeka da ih
+  „popravi". Dijagnoza se za njih izričito odbija.
+- **U atributnoj koloni `Datum naplate` stoji POSTOJEĆA vrijednost**, ne prijedlog
+  ⇒ slučajan uvoz filea ne mijenja ništa. Prijedlog je u dijagnostičkim kolonama;
+  `--predlozi` ga upiše (rate su isključene dijagnozom).
+- **Kokin par se traži preko OBJE njene datumske kolone** (C i G) — C je prazan
+  dok naplata nije poznata. Nađeno **46/73**. Prazno se izvještava kao
+  „nije nađeno", nikad kao „ne postoji".
+- **Njeni datumi kao TEKST** (`11.05.23.`, `28.6.23.`) se parsiraju ručno — alat
+  koji prima samo `datetime` progutao bi 103 retka bez poruke.
+- Svaki REST upit **stranicira s `order=id`** (max-rows 1000 reže bez greške).
+
+### ⚠ Redoslijed za tranšu 4
+
+**Prvo ispravak datuma, pa uvoz.** Pipeline dedupira po `(datum, iznos)`, a krivo
+datirane srpanjske kupovine već postoje s istim `event_date` i iznosom ⇒ alat ih
+izbaci iz generiranog filea, krivi `Datum naplate` preživi, a **i košara 11.08.
+ispadne kraća točno za njih**. Obrnutim redoslijedom dobiješ dvije neusklađene
+košare umjesto jedne.

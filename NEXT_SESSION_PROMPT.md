@@ -1,53 +1,81 @@
 # Next session — handoff
 
-**Pisano protiv commita `5533420`** (`main` = `test-branch` = `5533420`, S122, 2026-08-29).
-Ako `git log` pokazuje nešto novije, čitaj ovo kao **povijest**, ne kao stanje.
-Trajna pravila su u `CLAUDE.md` — ovdje je samo ono što je **u letu**.
+**Pisano protiv commita `1c7af7b`** (`test-branch` = S123, 2026-08-31; `main` je i
+dalje na `5533420`). Ako `git log` pokazuje nešto novije, čitaj ovo kao **povijest**,
+ne kao stanje. Trajna pravila su u `CLAUDE.md` — ovdje je samo ono što je **u letu**.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Što je jučer/danas otišlo na PROD
+## Najvažnija rečenica
 
-Dvije stvari, obje vidljive:
+**Ništa od jučerašnjeg posla još nije kod Koke.** PROD je na starom kodu, i to je
+namjerno — jedan dio (sekcija „planirano") bi joj kao prvu stvar pokazao razliku
+od **986,28 €** koju nitko ne može zatvoriti.
 
-1. **Nema više „Resume Previous Session?" nad praznim ekranom.** Nacrt se sad piše tek kad
-   si stvarno nešto utipkao. Zaštita od gubitka unosa ostaje potpuna.
-2. **Shortcutovi su po Arei.** Uz `⚡ Shortcuts` stoji kvačica **„samo ova Area"**
-   (uključena zadano). Isključiš li je, vidiš sve, **grupirano po Arei**. Svaki redak nosi
-   `0× · 25.06.` — koliko puta je korišten i kad zadnji put.
+## Što je napravljeno
 
-⚠ **Koka će promjenu dropdowna vidjeti bez najave.** Za nju je poboljšanje (u `Financije_all`
-više neće vidjeti tuđe shortcutove), ali je to ekran koji koristi svaki dan.
+**Za Kokin roundtrip:**
+- Export modal sada **sam odabere profil** — ne mora se sjetiti kliknuti
+- `row_hash` se **smije sakriti** kroz profil (`Delete?` nikad — to je okidač
+  brisanja), a njegovo zaglavlje ima bilješku koja objašnjava čemu služi
+- **delta sheet je uzimao krivi račun** kad je profil govorio jedno a panel drugo:
+  izlazio je file s točnim sidrom i **nula redaka**, što izgleda kao savršeno
+  usklađen račun. Popravljeno.
+- **sekcija „planirano"** u delta sheetu (tvoja ideja): ispod praznih redaka,
+  odvojena praznim retkom, s vlastitom kontrolom `Σ planirano / naplaćeno s izvoda
+  / razlika`. Potvrda promjenom `Status`a se uvozi natrag.
+
+**Za rad udvoje:**
+- **Koka sada smije ispraviti tvoj redak** (`sql/043`). Autorstvo ostaje tvoje, a
+  uz redak stoji oznaka **✎** s njenim imenom i vremenom. **Brisati ga ne može.**
 
 ## Što čeka tebe
 
-**Tri testa, sva tri na PROD-u** (detalji: `docs/sessions/tests/S122_tests.md`).
-**Prvo Ctrl+Shift+R** — stari keširani bundle je u S118 tiho osakatio uvoz.
+**Redoslijed nije stvar ukusa:**
 
-| test | u jednoj rečenici |
-| --- | --- |
-| **T-S122-2** | otvori Add, **ništa** ne tipkaj, 10 s, back → sljedeći Add **nema** dijaloga |
-| **T-S122-3** | isto, ali **utipkaj** nešto prije backa → dijalog **mora** iskočiti i Resume vratiti polja |
-| **T-S122-4** | ⭐ shortcutovi **na mobitelu** — kvačica, grupe, `0× · 25.06.` |
+1. `sql/043` na PROD (SQL editor, kao na TEST-u)
+2. **tek onda** merge `test-branch` → `main`
+3. Ctrl+Shift+R
 
-T-S122-3 nije formalnost: on jedini hvata da guard nije pretjerao i pojeo pravu zaštitu.
+Obrnuto (deploy bez migracije) znači da UI otvori Edit, Koka spremi, a baza je
+odbije — tiho, i to nakon što je obrisala atribute retka.
 
-## Jedna brojka koja nam treba za sljedeći korak
+⚠ **Ali prije koraka 2 stoji `Datum naplate`** — v. dolje.
 
-**Koliko shortcutova ukupno imaš?** Isključi kvačicu i pogledaj popis. O tome ovisi treba li
-skraćena lista uopće granicu — a ako treba, prijedlog je da mjera ne bude broj nego **Area**
-(1–2 najkorištenija po Arei, pa se samo skalira).
+Testovi nakon deploya: **T-S123-3…-8** (`docs/sessions/tests/S123_tests.md`).
+Od njih je najvažniji **T-S123-7** (sekcija „planirano" nad stvarnim podacima).
+
+## `Datum naplate` — što točno treba
+
+File te čeka: **`data-prep_data/Financije/kosara_20260711_mastercard.xlsx`**
+(lijevo app format, desno dijagnostika + gdje redak stoji u Kokinoj Excelici).
+
+Košara 11.07. nosi **73 retka / 2.231,02**, banka je skinula **1.244,74**:
+
+| dijagnoza | redaka | Σ | što s tim |
+| --- | --- | --- | --- |
+| OK | 40 | 946,48 | ništa |
+| **RATA** | 21 | 832,86 | traži plan otplate, ne izvod |
+| krivi mjesec ⇒ 11.08. | 11 | 431,10 | `--predlozi` → pregled → uvoz |
+| krivi mjesec ⇒ 11.06. | 1 | 20,58 | isto |
+
+⚠ **Ni nakon ispravka se ne zatvara** (946,48 + 832,86 = 1.779,34). Ostatak može
+razriješiti samo **`MC_2026-06.pdf`**. Daš li mi njegov ukupni iznos i broj stavki,
+mogu odmah izmjeriti koje retke izvod ne pokriva.
+
+⚠ **Tranša 4 se ne uvozi prije ovoga.** Pipeline dedupira po `(datum, iznos)`, pa
+bi krivo datirane preskočio — krivi datum preživi, a i košara 11.08. ispadne kraća
+točno za njih.
 
 ## Otvoreno prema tebi, nije hitno
 
-- **Ono „pričekaj pol minute"** koje si spomenuo — nije reproducirano i u kodu nema nijedne
-  takve poruke. Ako iskoči, uslikaj.
-- **Financije, tranša 4** stoji od S116 (MC paket + cijeli kolovoz iz Kokinog filea). Nije na
-  kritičnom putu — sidra drže saldo — ali je najveći komad koji je ostao.
-- **Koka: kad počne upisivati u app, u Excelicu više ne.** Radi li oboje, sve dobijemo dvaput,
-  a vidjet ćemo tek kad se saldo raziđe.
+- **Koka: kad počne upisivati u app, u Excelicu više ne.** Radi li oboje, sve
+  dobijemo dvaput, a vidjet ćemo tek kad se saldo raziđe.
+- Tvojih 11 redaka od 25.08. nose tvoj email u koloni `User` — kad Koka radi
+  roundtrip, oni su za njen račun „tuđi" i **preskaču se**. Njen ispravak tvog
+  retka ide kroz UI, ne kroz Excel.
 
 ---
 
@@ -55,43 +83,63 @@ skraćena lista uopće granicu — a ako treba, prijedlog je da mjera ne bude br
 
 ## Stanje grana
 
-`main` i `test-branch` oba na **`5533420`**. Netlify je deployao `main` 29.08.
-Nema nespojenih grana koje nešto čekaju.
+`test-branch` = **`1c7af7b`**, sedam commitova ispred `main` (`5533420`).
+Netlify deploya samo `main` — dakle **ništa od S123 nije na PROD-u**.
 
-## Što je S122 napravio
+⚠ **`sql/043` nije pušten na PROD.** Na TEST-u jest, i izmjeren je pokusom.
+
+## Što je S123 napravio
 
 | commit | što |
 | --- | --- |
-| `fd849b4` | guard protiv fantomskog nacrta (`userTouchedRef`) + `S122_no_phantom_draft.spec.ts` |
-| `b7acc3a` | `e16` popravljen u specu (⋮ izbornik, `toPass`) — **T-S121-6 zatvoren** |
-| `8d2f3d3`…`e40f5b9` | `docs/FILTER_SPEC.md` + Sašine odluke |
-| `f4b7ce5` | shortcutovi po Arei (faza 1) |
-| `5533420` | `0×` umjesto praznog sufiksa |
+| `57ff33a` | BUG-S123-DELTAACCT — `deriveDeltaAccount()` + upozorenje na praznu sekciju (11 testova) |
+| `afad07d` | sekcija „planirano" u delta sheetu (13 testova) |
+| `9c295d0` | Export modal zadano bira prvi profil |
+| `8afb268` | `row_hash` smije u profil, `Delete?` nikad + bilješka (5 testova) |
+| `6ee241e` | `sql/043` + UI: vlasnica smije ispraviti grantee-jev redak |
+| `de2f811` | E2E `S123_owner_edits_grantee_row.spec.ts` (2 slučaja) |
+| `1c7af7b` | `kosara_naplate.py` |
 
 ## Prvo sljedeće (prijedlog reda)
 
-1. **Rezultati T-S122-2/-3/-4** — ako padnu, imaju prednost pred svime.
-2. **`FILTER_SPEC` faza 0** — izbrojati refetch kaskadu. Izmjereno: **šest** `events?select=…`
-   u ~500 ms na jednu promjenu filtra. ⚠ **Uzrok nije utvrđen** — kandidati su `useDateBounds`
-   settle, `areas-changed` i promjena `attrFilter`. **Prvo brojati, pa popravljati.**
-   To je i uzrok „⋮ izbornik se sam zatvori".
-3. **Faza 1b** (skraćena lista) — tek kad Saša javi broj shortcutova.
-4. **Faza 2** (RPC s N uvjeta) — najveći komad, i jedini koji dira bazu.
+1. **`MC_2026-06.pdf`** — bez njega se `Datum naplate` ne da zatvoriti, a on
+   blokira deploy sekcije „planirano".
+2. **BUG-S123-EDITMARK** — oznaka ✎ se ne prikazuje u E2E. ⚠ **Izmjeri mrežni
+   odgovor** (`page.on('response')` na `events?select=…`) — sadrži li payload
+   `edited_by`. Isključeno je: stale bundle (dev server servira aktualan kod) i
+   neupisan `edited_by` (T-S123-2 prolazi). **Ne mijenjaj locator opet.**
+3. **Rezultati T-S123-3…-8** nakon deploya.
+4. `FILTER_SPEC` faza 0 — izbrojati refetch kaskadu (šest `events?select=…` u
+   ~500 ms). I dalje neizmjereno tko je okida.
 
-## Zamke koje su danas potvrđene, a lako se zaborave
+## Zamke potvrđene danas
 
-- **Auto-popunjena forma nije korisnikov sadržaj.** `canSave` je `true` i za formu koju nitko
-  nije dotaknuo, jer defaulti nose `touched: true`. Svaki budući guard tipa „ima li sadržaja"
-  mora pitati **je li čovjek dirao**, ne **ima li vrijednosti**.
-- **„Flaky test" je opis, ne dijagnoza.** `e16` je cijelu sesiju stajao zapisan kao „S120
-  popravak nije čuvan", a padao je na sasvim drugom mjestu. **Prvo pročitaj trace.**
-- **`areas.settings` je vlasnikov.** Grantee ne može spremiti Export profil ni s `write`
-  dozvolom — app ga zaustavi, a i RLS bi. Vrijedi za svaku buduću per-Area konfiguraciju.
+- **„Import as mine" ne mijenja redak nego forsira INSERT s novim ID-em** —
+  duplikat, i to tih (kolizija gleda `user_id`, saldo ne).
+- **Edit tok briše pa ponovno upisuje SVE atribute retka** — zato `043` dira tri
+  politike. Bez INSERT grane redak ostane bez ijednog atributa, a ekran pokaže
+  uspjeh.
+- **RLS-blokiran write „uspije" s 200 i praznim rezultatom** — mjeri broj
+  promijenjenih redaka, nikad status.
+- **Rata nije kupovina** — pravilo naplate se na nju ne smije primijeniti.
+- **Uvoz ne popravlja krivo datirane retke** — dedup ih preskoči. Prvo ispravak.
+- **Ponovno spremanje profila iz exporta vraća filtar računa u profil** (`Filter`
+  list zapisuje efektivni filtar). Isprazni ćeliju prije `Import Profile`.
 
 ## Sitno, zabilježeno, nepopravljeno
 
-- Poruka „(read-only access)" prikazuje se i **write** grantee-u pri spremanju Export profila
-  (`ExcelExportModal.tsx:557`) — neistina o njegovim pravima, jedna rečenica popravka.
-- `audit_tests.py`: **0 fileova spremno za arhivu**, 37 testova koje `PENDING_TESTS` ne
-  spominje, 62 testa označena ⬜ u tablici a ne navedena u „Otvoreno". Nije nastalo danas i
-  nije dirano — ali raste.
+- Skupna MC naplata **11.07.2026. ima prazan `comment`**, dok ostalih 18 nosi
+  `TROŠKOVI UČINJENI MASTERCARD` — izmiče brojanju po opisu
+  (`klasificiraj_transu.py`). Jedan `UPDATE`.
+- Poruka „(read-only access)" i dalje se prikazuje **write** grantee-u pri
+  spremanju Export profila (`ExcelExportModal.tsx:557`).
+- `audit_tests.py`: 0 fileova za arhivu, 37 testova koje `PENDING_TESTS` ne
+  spominje, 62 označena ⬜ a ne navedena u „Otvoreno". Nije nastalo danas, raste.
+- ⚠ **`src/lib/__tests__/structureExcel.test.mjs` je SKRAĆEN i ne parsira se**
+  (`SyntaxError: Unexpected end of input`, red 517 — `const row = buildRowsForNode`
+  i ništa iza). Nađeno usput 31.08.; file je takav od commita `75ef760` (S17),
+  dakle **taj test odavno ne čuva ništa i nitko to nije primijetio** jer se ne
+  pokreće u CI-ju. Gore od „testa koji nikad ne pada": ovaj se ne može ni izvršiti.
+  Uz to radi s **inline kopijama** logike, pa i popravljen odmah počinje lutati od
+  koda — vrijedi ga prepisati kao `deltaAccount.test.mjs` (esbuild transform,
+  uvozi pravu funkciju).
