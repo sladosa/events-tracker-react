@@ -625,6 +625,17 @@ export async function addActivitiesSheetsTo(
     cell.border    = THIN_BORDER;
     cell.alignment = { horizontal: 'left', vertical: 'middle' };
   }
+
+  // ⚠ Kolona koju korisnik vidi a ne razumije izgleda kao greska u izvozu, i
+  //   prvo sto pomisli je da je smije obrisati — a bez `row_hash`a uvoz gubi
+  //   skip nedirnutih redaka (D7) i svaki redak pada u DB diff. Objasnjenje ide
+  //   u biljesku zaglavlja: nade se kad zatreba, a ne trosi mjesto u tablici.
+  const rowHashHeaderCol = FIXED_DISPLAY_HEADERS.length + attrHeaderStrings.length + 1;
+  ws.getCell(row, rowHashHeaderCol).note =
+    'Otisak retka kakav je bio pri izvozu. Sluzi uvozu da prepozna sto si '
+    + 'promijenio: redak s nepromijenjenim otiskom preskace, pa se povijest ne '
+    + 'prepisuje bez potrebe. Ne mijenjaj ga i ne brisi kolonu. Smije se sakriti '
+    + '(Export profil), samo ne izbrisati.';
   row++;
 
   const eventDataStart = row;

@@ -10,7 +10,11 @@ import ExcelJS from 'exceljs';
 const out = join(process.cwd(), 'node_modules', '.cache', 'deltaSheet.bundle.mjs');
 mkdirSync(join(process.cwd(),'node_modules','.cache'), { recursive: true });
 await build({
-  entryPoints: ['src/lib/deltaSheet.ts'], bundle: true, format: 'esm', platform: 'node',
+  stdin: {
+    contents: "export * from './src/lib/deltaSheet'; export * from './src/lib/exportProfile';",
+    resolveDir: process.cwd(), loader: 'ts', sourcefile: 'entry.ts',
+  },
+  bundle: true, format: 'esm', platform: 'node',
   outfile: out, external: ['exceljs'], alias: { '@': './src' }, logLevel: 'error',
   // deltaSheet transitivno povuce supabaseClient; test ga ne zove, ali modul se
   // izvrsi pri importu — pa mu treba samo da se ne srusi na praznom env-u.
@@ -20,7 +24,7 @@ await build({
     'import.meta.env.VITE_APP_ENV': '"test"',
   },
 });
-const { createDeltaExcel } = await import(pathToFileURL(out).href);
+const { createDeltaExcel, readProfileFromWorkbook, applyProfileToWorkbook } = await import(pathToFileURL(out).href);
 
 const CAT = 'cat1';
 const catsDict = { [CAT]: { area_name: 'Financije_all', full_path: 'Financije_all > Transakcija', category_id: CAT } };
@@ -106,6 +110,32 @@ console.log('Regresija — bez planiranih redaka layout mora ostati kakav je bio
   ok('glavni blok + prazni retci nepromijenjeni',
      txt(ws,hdr+1,1)==='m1' && txt(ws,blankTo,2)==='Financije_all' && txt(ws,blankTo,ctrl)==='f()');
   ok('autofilter i dalje staje na praznima', String(ws.autoFilter).endsWith(String(blankTo)));
+}
+
+console.log('');
+console.log('row_hash: profil ga smije sakriti, Delete? nikad:');
+{
+  const { ws, hdr } = await buildSheet([]);
+  const colOf = (n) => { for (let c=1;c<=ws.columnCount;c++) if (String(ws.getCell(hdr,c).value??'').trim()===n) return c; return 0; };
+  const hCol = colOf('row_hash'), dCol = colOf('Delete?');
+  ok('zaglavlje row_hash nosi objasnjenje (biljeska)',
+     !!ws.getCell(hdr, hCol).note && String(JSON.stringify(ws.getCell(hdr,hCol).note)).includes('Otisak retka'));
+
+  // Korisnik sakrije row_hash i Delete? rukom, pa iz tog filea napravi profil.
+  ws.getColumn(hCol).hidden = true;
+  ws.getColumn(dCol).hidden = true;
+  const prof = readProfileFromWorkbook(ws.workbook);
+  const hKey = prof.columns.find(c => c.key === 'row_hash');
+  ok('profil je zapamtio row_hash kao skriven', !!hKey && hKey.hidden === true);
+  // ⚠ Ovo je pravilo, ne detalj: `Delete?` je okidac brisanja i mora ostati vidljiv.
+  ok('profil NIJE zapamtio Delete?', !prof.columns.some(c => String(c.key).includes('Delete')));
+
+  // Primjena na svjez list: row_hash se skriva, Delete? ostaje vidljiv.
+  const fresh = await buildSheet([]);
+  applyProfileToWorkbook(fresh.ws.workbook, prof, [], {});
+  const fCol = (n) => { for (let c=1;c<=fresh.ws.columnCount;c++) if (String(fresh.ws.getCell(fresh.hdr,c).value??'').trim()===n) return c; return 0; };
+  ok('primjena profila SAKRIVA row_hash', fresh.ws.getColumn(fCol('row_hash')).hidden === true);
+  ok('primjena profila OSTAVLJA Delete? vidljiv', !fresh.ws.getColumn(fCol('Delete?')).hidden);
 }
 
 rmSync(out, { force: true });

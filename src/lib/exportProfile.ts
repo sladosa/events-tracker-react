@@ -110,6 +110,23 @@ export function readProfileFromWorkbook(wb: ExcelJS.Workbook): ExportProfile | n
     });
   }
 
+  // ⚠ `row_hash` SMIJE u profil, `Delete?` NIKAD.
+  //   Razlika nije kozmeticka: `Delete?` je okidac brisanja — zastavica koju
+  //   nitko ne vidi je zastavica koju nitko ne moze ni maknuti, pa mora ostati
+  //   vidljiva. `row_hash` se samo cita; korisniku ne znaci nista i uredno ga je
+  //   sakriti. (Sakriven stupac se i dalje sortira s retkom jer je unutar
+  //   autofiltera, pa se otisak ne moze raspariti od svog retka.)
+  const hashCol = findColByHeader(ws, ROW_HASH_HEADER);
+  if (hashCol > 0) {
+    const col = ws.getColumn(hashCol);
+    columns.push({
+      key: ROW_HASH_HEADER,
+      outlineLevel: col.outlineLevel ?? 0,
+      hidden: col.hidden ?? false,
+      width: col.width ?? undefined,
+    });
+  }
+
   return {
     columns,
     createdAt: new Date().toISOString().split('T')[0],
@@ -202,6 +219,19 @@ export function applyProfileToWorkbook(
     if (pc.width) col.width = pc.width;
   }
 
+  // `row_hash` — jedini stupac desno od atributa koji profil smije dirati.
+  // `Delete?` se namjerno preskace (v. komentar u readProfileFromWorkbook).
+  const hashPc = profile.columns.find(c => c.key === ROW_HASH_HEADER);
+  if (hashPc) {
+    const hashCol = findColByHeader(ws, ROW_HASH_HEADER);
+    if (hashCol > 0) {
+      const col = ws.getColumn(hashCol);
+      col.outlineLevel = hashPc.outlineLevel;
+      col.hidden = hashPc.hidden;
+      if (hashPc.width) col.width = hashPc.width;
+    }
+  }
+
   // Set max outline level for column grouping
   const maxLevel = Math.max(0, ...profile.columns.map(c => c.outlineLevel));
   if (maxLevel > 0) {
@@ -233,6 +263,19 @@ function countAttrColumns(ws: ExcelJS.Worksheet): number {
     n++;
   }
   return n;
+}
+
+/** Indeks stupca EVENT DATA zaglavlja po tekstu; 0 ako ga nema. */
+function findColByHeader(ws: ExcelJS.Worksheet, header: string): number {
+  let headerRow = 0;
+  for (let r = 1; r <= ws.rowCount; r++) {
+    if (String(ws.getCell(r, 1).value ?? '').trim() === 'event_id') { headerRow = r; break; }
+  }
+  if (!headerRow) return 0;
+  for (let c = ATTR_COL_START; c <= ws.columnCount; c++) {
+    if (String(ws.getCell(headerRow, c).value ?? '').trim() === header) return c;
+  }
+  return 0;
 }
 
 function colLetterToIndex(letter: string): number {
