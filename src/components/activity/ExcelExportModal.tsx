@@ -193,13 +193,28 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     attrFilter: filter.attrFilter,
   };
 
+  // Za koju je Areu profil vec automatski odabran — da se izbor ne namece
+  // ponovno nakon sto ga korisnik svjesno makne na „No profile".
+  const autoPickedForArea = useRef<string | null | undefined>(undefined);
+
   // Load profiles from area.settings on mount
   useEffect(() => {
-    if (!selectedArea?.settings?.export_profiles) {
-      setProfiles({});
-      return;
+    const loaded = (selectedArea?.settings?.export_profiles ?? {}) as ExportProfiles;
+    setProfiles(loaded);
+
+    // ⚠ Prvi profil se bira SAM, i to je namjerno. Bez profila izvoz izade u
+    //   punoj sirini (svih 12 skrivenih kolona se pokaze) — dakle zaboravljen
+    //   klik ne daje gresku nego neuredan file, i to bas onaj koji korisnik
+    //   nije htio. Zadano stanje zato nije „bez profila" nego prvi profil Aree.
+    //   ⚠ Bira se JEDNOM po Arei: makne li ga korisnik na „No profile", efekt se
+    //     ne ponavlja (ovisi o `selectedArea`), pa mu se izbor ne prepisuje.
+    //   ⚠ Uz to cisti zastarjeli izbor: profili su per-Area, pa bi ime iz druge
+    //     Aree ostalo u dropdownu i pokazivalo profil koji ondje ne postoji.
+    const areaId = selectedArea?.id ?? null;
+    if (autoPickedForArea.current !== areaId) {
+      autoPickedForArea.current = areaId;
+      setSelectedProfile(Object.keys(loaded)[0] ?? '');
     }
-    setProfiles(selectedArea.settings.export_profiles as ExportProfiles);
   }, [selectedArea]);
 
   // Load total count on mount
