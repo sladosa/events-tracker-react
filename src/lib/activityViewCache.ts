@@ -47,6 +47,8 @@ interface DbEvent {
   comment: string | null;
   created_at: string;
   edited_at: string;
+  /** Tko je zadnji spremio izmjenu (043). Zanimljiv samo kad != user_id. */
+  edited_by: string | null;
   user_id: string;
 }
 
@@ -244,7 +246,7 @@ async function _fetchActivityData(
     if (noSession) {
       const { data, error } = await supabase
         .from('events')
-        .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id')
+        .select('id, category_id, event_date, session_start, comment, created_at, edited_at, edited_by, user_id')
         .eq('id', sessionStart);
       if (error) throw error;
       if (!data || data.length === 0) return null;
@@ -252,7 +254,7 @@ async function _fetchActivityData(
     } else {
       let query = supabase
         .from('events')
-        .select('id, category_id, event_date, session_start, comment, created_at, edited_at, user_id')
+        .select('id, category_id, event_date, session_start, comment, created_at, edited_at, edited_by, user_id')
         .eq('session_start', sessionStart);
       if (categoryIdParam) query = query.eq('category_id', categoryIdParam);
       if (ownerIdParam) query = query.eq('user_id', ownerIdParam);

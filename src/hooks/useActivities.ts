@@ -15,6 +15,8 @@ export interface ActivityEvent {
   comment: string | null;
   created_at: string;
   edited_at: string;
+  /** Tko je zadnji spremio izmjenu (043). Zanimljiv samo kad != user_id. */
+  edited_by: string | null;
   user_id: string;
   // Joined data
   category_name: string;
@@ -39,6 +41,11 @@ export interface ActivityGroup {
   has_photos: boolean;       // 1.4.3: true if any event in this group has attachments
   user_id: string;           // Owner of this session
   user_display_name: string; // display_name ili email iz profiles
+  /**
+   * Tudji ispravak ovog retka (043): vlasnica Aree je ispravila grantee-jev
+   * zapis. `null` kad nitko drugi nije dirao — vlastite izmjene se ne javljaju.
+   */
+  edited_by_other: { name: string; at: string } | null;
   user_email: string;        // raw email (za Re-invite pre-fill)
 }
 
@@ -86,6 +93,8 @@ interface EventRow {
   comment: string | null;
   created_at: string;
   edited_at: string;
+  /** Tko je zadnji spremio izmjenu (043). Zanimljiv samo kad != user_id. */
+  edited_by: string | null;
   user_id: string;
 }
 
@@ -152,7 +161,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       };
 
       // Build query — shared filter helper applies WHERE clause
-      const baseSelectCols = 'id, category_id, event_date, session_start, comment, created_at, edited_at, user_id';
+      const baseSelectCols = 'id, category_id, event_date, session_start, comment, created_at, edited_at, edited_by, user_id';
       const joinSuffix = attrFilterJoinClause(attrFilter, true);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let query: any = supabase
@@ -261,6 +270,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
             user_id: event.user_id,
             user_display_name: '',
             user_email: '',
+            edited_by_other: null,
           };
           groupMap.set(sessionKey, group);
         }
@@ -291,7 +301,17 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       }
 
       // Batch fetch display names + emails for unique user_ids
-      const uniqueUserIds = [...new Set(Array.from(groupMap.values()).map(g => g.user_id))];
+      // ⚠ Ukljucuje i `edited_by` (043): redak koji je ispravila vlasnica Aree
+      //   mora moci reci TKO ga je ispravio, a taj se ne mora pojaviti ni u
+      //   jednom `group.user_id` — vlasnica sama nema nijedan svoj redak u
+      //   filtru, pa bi bez ovoga oznaka pokazivala goli uuid.
+      const editorIds = Array.from(groupMap.values())
+        .flatMap(g => g.events.map(e => e.edited_by))
+        .filter((id): id is string => !!id);
+      const uniqueUserIds = [...new Set([
+        ...Array.from(groupMap.values()).map(g => g.user_id),
+        ...editorIds,
+      ])];
       if (uniqueUserIds.length > 0) {
         const { data: profileRows } = await supabase
           .from('profiles')
@@ -309,6 +329,17 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         for (const group of groupMap.values()) {
           group.user_display_name = displayMap.get(group.user_id) ?? group.user_id;
           group.user_email = emailMap.get(group.user_id) ?? '';
+          // Ispravak TUDJEG retka (043). Vlastite izmjene se ne javljaju —
+          // obavijest o necemu sto si sam napravio je samo sum.
+          const foreignEdit = group.events.find(
+            e => e.edited_by && e.edited_by !== group.user_id,
+          );
+          group.edited_by_other = foreignEdit
+            ? {
+                name: displayMap.get(foreignEdit.edited_by!) ?? foreignEdit.edited_by!,
+                at:   foreignEdit.edited_at,
+              }
+            : null;
         }
       }
 

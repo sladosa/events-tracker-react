@@ -164,6 +164,11 @@ export function EditActivityPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isOwnEvent, setIsOwnEvent] = useState(true);
+  /**
+   * Autor retka. Ostaje nepromijenjen i kad ga ispravlja vlasnica Aree (043) —
+   * inace bi `User` kolona tvrdila da je ona upisala ono sto nije.
+   */
+  const [eventOwnerId, setEventOwnerId] = useState<string | null>(null);
   const [ownerDisplayName, setOwnerDisplayName] = useState<string | null>(null);
   const [currentUserLabel, setCurrentUserLabel] = useState<string | null>(null);
 
@@ -276,6 +281,7 @@ export function EditActivityPage() {
       // Provjeri je li event korisnikov vlastiti
       const ownEvent = leafEvents[0].user_id === user.id;
       setIsOwnEvent(ownEvent);
+      setEventOwnerId(leafEvents[0].user_id);
 
       // Fetch logged-in user's profile for area ownership display
       const { data: myProfile } = await supabase
@@ -929,6 +935,8 @@ export function EditActivityPage() {
             session_start: newSessionStart,
             comment: event.note,
             edited_at: new Date().toISOString(),
+            // 043: bez ovoga je ispravak vlasnice NEVIDLJIV autoru retka.
+            edited_by: user.id,
             // P2: created_at se ažurira zajedno s pomakom datuma/vremena
             created_at: event.createdAt.toISOString(),
           })
@@ -957,7 +965,11 @@ export function EditActivityPage() {
             
             return {
               event_id: event.dbId,
-              user_id: user.id,
+              // ⚠ Autor eventa, NE onaj tko ispravlja. Ovaj tok brise pa ponovno
+              //   upisuje SVE atribute retka, pa bi `user.id` prebacio na
+              //   ispravljaca i one koje nitko nije dirao. RLS (043) upravo to
+              //   i trazi: vlasnik Aree smije umetnuti samo pod autorom eventa.
+              user_id: eventOwnerId ?? user.id,
               attribute_definition_id: attr.definitionId,
               [valueColumn]: attr.value,
             };
@@ -1324,7 +1336,11 @@ export function EditActivityPage() {
   // Render - Non-own event (shared area, read-only)
   // ============================================
 
-  if (!isOwnEvent) {
+  // 043: tudji redak smije ispraviti VLASNICA Aree (`sharedContext === null`
+  // znaci da gledamo vlastitu Areu). Grantee i dalje ne moze — njemu ostaje
+  // zakljucani ekran ispod.
+  const canEditForeign = sharedContext === null;
+  if (!isOwnEvent && !canEditForeign) {
     // Area owner: logged-in user (owner view) or sharedContext owner (grantee view)
     const areaOwnerLabel = sharedContext
       ? (sharedContext.ownerDisplayName || sharedContext.ownerEmail || 'Owner')
@@ -1380,6 +1396,21 @@ export function EditActivityPage() {
   
   return (
     <div className="min-h-screen bg-gray-50 pb-4">
+      {/* 043: ispravak TUDJEG retka. Traka mora reci i da autorstvo ostaje i da
+          ce autor vidjeti tko je mijenjao — inace vlasnica ne zna sto radi, a
+          tiha izmjena tudjeg zapisa je gore od nemogucnosti da se ispravi. */}
+      {!isOwnEvent && (
+        <div className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-medium text-amber-900">
+            Ispravljaš tuđi zapis{ownerDisplayName ? ` — unio/la ga je ${ownerDisplayName}` : ''}.
+          </p>
+          <p className="text-xs text-amber-800 mt-1">
+            Zapis ostaje pod njegovim imenom, a uz njega će stajati oznaka da si ga ti izmijenila.
+            Brisanje tuđeg zapisa nije moguće.
+          </p>
+        </div>
+      )}
+
       {/* Cancel Confirmation Dialog */}
       <CancelDialog
         open={showCancelDialog}

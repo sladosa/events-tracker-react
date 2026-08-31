@@ -551,6 +551,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 isHighlighted={group.sessionKey === highlightKey}
                 highlightRef={group.sessionKey === highlightKey ? highlightRowRef : undefined}
                 currentUserId={currentUserId}
+                canEditForeign={sharedContext === null}
                 canSelect={!sharedContext}
                 isOrphan={orphanedPairKeys?.has(`${group.user_id}:${group.area_id}`) ?? false}
                 onManageOrphan={onManageOrphan}
@@ -678,6 +679,11 @@ interface ActivityRowProps {
   isHighlighted?: boolean;
   highlightRef?: React.RefObject<HTMLTableRowElement | null>;
   currentUserId?: string;
+  /**
+   * Smije li ovaj korisnik ispraviti TUDJI redak. True za vlasnika Aree (043).
+   * ⚠ Vrijedi samo za Edit — brisanje tudjeg retka ostaje zatvoreno.
+   */
+  canEditForeign?: boolean;
   canSelect?: boolean;
   isOrphan?: boolean;
   onManageOrphan?: () => void;
@@ -693,7 +699,7 @@ interface ActivityRowProps {
   valuesLoaded?: boolean;
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, currentUserId, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance, columns, values, valuesLoaded }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, currentUserId, canEditForeign = false, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance, columns, values, valuesLoaded }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -738,6 +744,21 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
       setShowMenu(false);
     }
   };
+
+  /**
+   * Oznaka „netko drugi je ispravio ovaj redak" (043).
+   * ⚠ Stoji UZ `⋮`, dakle na oba rasporeda (desktop i uski) i uvijek vidljiva —
+   *   ide u sticky celiju, pa je vodoravni scroll ne odnese. Bez nje je ispravak
+   *   vlasnice Aree potpuno nevidljiv autoru retka.
+   */
+  const editedMark = group.edited_by_other ? (
+    <span
+      title={`Izmijenio/la: ${group.edited_by_other.name} · ${new Date(group.edited_by_other.at).toLocaleString('hr-HR')}`}
+      className="text-amber-600 text-xs leading-none cursor-help"
+    >
+      ✎
+    </span>
+  ) : null;
 
   const menuButton = (
     <button
@@ -953,7 +974,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
         </td>
         {/* Sticky Actions — always visible on right edge */}
         <td className="py-2 pr-2 sticky right-0 bg-white z-[1] align-top">
-          {menuButton}
+          <div className="flex items-center gap-1">{editedMark}{menuButton}</div>
         </td>
       </tr>
 
@@ -994,18 +1015,21 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
                 </button>
               </>
             )}
-            {/* D4: Edit + Delete samo za vlastite evente */}
+            {/* D4 + 043: Edit smije i vlasnik Aree (Koka mora moci ispraviti
+                Sasin redak), Delete NE — brisanje tudjeg retka nema povratka. */}
+            {(isOwnEvent || canEditForeign) && (
+              <button
+                onClick={() => {
+                  onEdit?.(group.session_start, group.category_id, firstEvent.id);
+                  setShowMenu(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+              >
+                {isOwnEvent ? '✏️ Edit' : '✏️ Edit (tuđi zapis)'}
+              </button>
+            )}
             {isOwnEvent && (
               <>
-                <button
-                  onClick={() => {
-                    onEdit?.(group.session_start, group.category_id, firstEvent.id);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  ✏️ Edit
-                </button>
                 <hr className="my-1 border-gray-100" />
                 {!showDeleteConfirm ? (
                   <button
