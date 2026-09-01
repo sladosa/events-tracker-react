@@ -88,6 +88,7 @@ from datetime import date, datetime, timedelta
 from itertools import combinations
 from pathlib import Path
 
+from openpyxl.styles import Font, PatternFill
 import openpyxl
 import pdfplumber
 
@@ -483,11 +484,335 @@ def ispravci(iz, pairs):
                 promjene.append(('Status', 'Planiran', 'Izvrsen'))
         elif a.get('Status') == 'Planiran':
             promjene.append(('Status', 'Planiran', 'Izvrsen'))
-        if ev_date(r) != s['datum']:
+        # ⚠ RATI SE `event_date` NE DIRA, ni "poslije". Pravilo je da sve rate
+        #   jedne kupovine dijele `event_date` = DAN KUPNJE (CLAUDE.md), a datum
+        #   na izvodu je dan TERECENJA (29.07.) — dakle izvod tu nije autoritet
+        #   za `event_date` nego samo za `Datum naplate`. Bez ove iznimke se
+        #   9 rata pojavi u popisu "za poslije" kao da je posao koji ceka.
+        if ev_date(r) != s['datum'] and a.get('Rate?') is not True:
             promjene.append(('event_date', r['event_date'], s['datum'].isoformat()))
         if promjene:
             out.append((s, r, promjene))
     return out
+
+
+# -- review file -------------------------------------------------------------
+ATTR_ORDER = ['Racun', 'Izvor', 'Smjer', 'Uplata', 'Isplata', 'Tip', 'Podtip',
+              'Izvod opis', 'Rate?', 'Broj rata', 'Rata br', 'Datum naplate',
+              'Status', 'Stanje', 'Valuta']
+DIAG = ['Sekcija', 'Sto mijenjamo', 'Bilo je', 'Dokaz s izvoda', 'Kokin redak']
+HDR_FILL = PatternFill('solid', fgColor='FF4472C4')
+DIAG_FILL = PatternFill('solid', fgColor='FFFFF2CC')
+DEL_FILL = PatternFill('solid', fgColor='FFFFC7CE')
+OK_FILL = PatternFill('solid', fgColor='FFC6EFCE')
+BOLD_W = Font(bold=True, color='FFFFFFFF')
+
+# ⚠ `event_date` se u ovom fileu NE MIJENJA, iako ga izvod ponegdje demantira.
+#   Uvoz ga zna promijeniti (`excelImport.ts:1326`), ali time pomice i
+#   `session_start`, a `useActivities` grupira po (user, kategorija,
+#   session_start) => dva retka iste minute postaju JEDAN redak liste.
+#   Vrijednost tih pomaka je mala (na MC retcima ne diraju saldo), a rizik i
+#   uocljivost nisu. Prijedlozi se ispisuju u `Pregled` kao "za poslije".
+SKIP_FIELDS = {'event_date'}
+
+
+def build_rows(rezultati):
+    """Sto ide u importabilni list. Vraca (redci, pomaci_datuma, pitanja, uvoz).
+
+    ⚠ Brise se SAMO `LH 1/3` — njegova bankina cetiri retka su vec u bazi.
+      `LH 2/3` se NE brise sada: bankini redci za njega dolaze tek transom 4,
+      pa bi brisanje ostavilo rupu od 126,66 do tada. Brisanje i uvoz idu
+      jednim potezom ili nikako.
+    """
+    redci, pomaci, pitanja, uvoz, odgodjeni = [], [], [], [], []
+    vidjeni = set()
+    for iz, u, isp in rezultati:
+        for s, r, ch in isp:
+            polja = [(f, o, n) for f, o, n in ch if f not in SKIP_FIELDS]
+            for f, o, n in ch:
+                if f in SKIP_FIELDS:
+                    pomaci.append((r, f, o, n, s))
+            if polja and r['id'] not in vidjeni:
+                vidjeni.add(r['id'])
+                redci.append({'r': r, 'ch': polja, 's': s, 'akcija': 'ispravak'})
+        for r, combo in u['slozeni']:
+            # Kokin spojeni redak: brise se samo ako su bankini vec u bazi.
+            bankini_u_bazi = all(
+                any(net(x['attrs']) == c['iznos']
+                    and x['attrs'].get('Izvod opis')
+                    and norm(x['attrs']['Izvod opis']) == norm(c['opis'])
+                    for x in u['mc'])
+                for c in combo)
+            if r['id'] in vidjeni:
+                continue
+            if not bankini_u_bazi:
+                # Duplikat U NASTAJANJU: Kokin spojeni redak je zasad JEDINI
+                # zapis tog troska, bankini dolaze tek transom. Brisati ga sada
+                # znaci ostaviti rupu; brisanje i uvoz idu jednim potezom.
+                odgodjeni.append((r, combo))
+                vidjeni.add(r['id'])
+                continue
+            vidjeni.add(r['id'])
+            redci.append({'r': r, 'ch': [], 's': None, 'akcija': 'brisanje',
+                          'combo': combo})
+            # i obogacivanje bankinih redaka ratom s Kokinog
+            a = r['attrs']
+            if a.get('Rate?') is not True:
+                continue
+            for c in combo:
+                if not re.search(r'\bRATA\b', c['opis'], re.I):
+                    continue
+                for x in u['mc']:
+                    xa = x['attrs']
+                    if (net(xa) == c['iznos'] and xa.get('Izvod opis')
+                            and norm(xa['Izvod opis']) == norm(c['opis'])
+                            and x['id'] not in vidjeni):
+                        vidjeni.add(x['id'])
+                        redci.append({'r': x, 's': c, 'akcija': 'dopuna',
+                                      # ⚠ OPIS SE NE DIRA. Prepisati bankin
+                                      # `LUFTHAN...447 RATA 1/3` Kokinim
+                                      # `LH 1/3` dalo bi DVA IDENTICNA retka
+                                      # istog dana i istog iznosa — a to u
+                                      # listi izgleda kao duplikat, dakle
+                                      # tocno ono sto ovim ciscenjem micemo.
+                                      # Bankin tekst je jedinstven (447/448) i
+                                      # vec sam kaze "RATA 1/3".
+                                      'ch': [('Rate?', '—', 'True'),
+                                             ('Broj rata', '—', a.get('Broj rata')),
+                                             ('Rata br', '—', a.get('Rata br'))],
+                                      'iz_retka': r})
+                        break
+        pitanja += [(iz, r) for r in u['visak']]
+        uvoz += [(iz, s) for s in u['izvod_bez_para']]
+
+    # ⚠ Visak jednog izvoda cesto je posao SLJEDECEG. MC_2026-06 prijavi 23
+    #   retka kao "banka ih nema" — a 21 od njih MC_2026-07 preuzme kao ispravak
+    #   i 2 kao duplikat. Kad bi se visak prenio sirov, Koka bi dobila 30 pitanja
+    #   umjesto 7, i to bas ona na koja vec imamo odgovor. Zato se filtrira tek
+    #   kad su SVI izvodi obradjeni, i to protiv svega sto je file dirnuo.
+    rijeseni = {x['r']['id'] for x in redci}
+    rijeseni |= {r['id'] for r, _, _, _, _ in pomaci}
+    rijeseni |= {r['id'] for r, _ in odgodjeni}
+    vid = set()
+    cisto = []
+    for iz, r in pitanja:
+        if r['id'] in rijeseni or r['id'] in vid:
+            continue
+        vid.add(r['id'])
+        cisto.append((iz, r))
+    return redci, pomaci, cisto, uvoz, odgodjeni
+
+
+def write_file(out, rezultati, koka, emails):
+    redci, pomaci, pitanja, uvoz, odgodjeni = build_rows(rezultati)
+    wb = openpyxl.Workbook()
+
+    # ---- Events (jedini list koji se uvozi) --------------------------------
+    ws = wb.active
+    ws.title = 'Events'
+    ws.cell(1, 1, 'ATTRIBUTE LEGEND:').font = Font(bold=True)
+    for i, h in enumerate(['Col', 'Area', 'Category_Path', 'Attribute', 'Type', 'Unit'], 1):
+        c = ws.cell(2, i, h)
+        c.font, c.fill = BOLD_W, HDR_FILL
+    tipovi = {'Uplata': 'number', 'Isplata': 'number', 'Rate?': 'boolean',
+              'Broj rata': 'number', 'Rata br': 'number',
+              'Datum naplate': 'datetime', 'Stanje': 'number'}
+    for i, name in enumerate(ATTR_ORDER):
+        ws.cell(3 + i, 1, openpyxl.utils.get_column_letter(9 + i))
+        ws.cell(3 + i, 2, 'Financije_all')
+        ws.cell(3 + i, 3, 'Transakcija')   # ⚠ BEZ imena aree (Activities format)
+        ws.cell(3 + i, 4, name)
+        ws.cell(3 + i, 5, tipovi.get(name, 'text'))
+
+    r0 = 3 + len(ATTR_ORDER) + 1
+    ws.cell(r0, 1, 'EVENT DATA:').font = Font(bold=True)
+    hdr = (['event_id', 'Area', 'Category_Path', 'event_date', 'session_start',
+            'created_at', 'User', 'comment'] + ATTR_ORDER + ['Delete?'] + DIAG)
+    for i, h in enumerate(hdr, 1):
+        c = ws.cell(r0 + 1, i, h)
+        c.font = BOLD_W
+        c.fill = HDR_FILL if i <= 9 + len(ATTR_ORDER) else PatternFill('solid', fgColor='FFBF8F00')
+
+    for j, item in enumerate(redci):
+        rr, r, a = r0 + 2 + j, item['r'], item['r']['attrs']
+        nove = {f: n for f, _, n in item['ch']}
+        ws.cell(rr, 1, r['id'])                      # UUID => UPDATE, ne INSERT
+        ws.cell(rr, 2, 'Financije_all')
+        ws.cell(rr, 3, 'Transakcija')
+        ws.cell(rr, 4, r['event_date'])
+        ws.cell(rr, 5, (r['session_start'] or '')[11:16]).number_format = '@'
+        ws.cell(rr, 7, emails.get(r['user_id'], ''))  # ⚠ bez emaila redak je „tudji"
+        ws.cell(rr, 8, nove.get('comment', r['comment'] or ''))
+        for i, name in enumerate(ATTR_ORDER):
+            v = nove[name] if name in nove else a.get(name)
+            cell = ws.cell(rr, 9 + i)
+            if name == 'Rate?':
+                cell.value = True if v in (True, 'True', 'true') else (False if v is not None else None)
+            elif name == 'Datum naplate':
+                d = str(v)[:10] if v else ''
+                # ⚠ prava datumska celija, usidrena u PODNE — v. excelDatetime.ts
+                cell.value = datetime.strptime(d, '%Y-%m-%d').replace(hour=12) if d else None
+                cell.number_format = 'dd.mm.yyyy'
+            else:
+                cell.value = v
+            if name in nove:
+                cell.fill = OK_FILL
+        base = 9 + len(ATTR_ORDER)
+        if item['akcija'] == 'brisanje':
+            ws.cell(rr, base, 'DELETE').fill = DEL_FILL
+        ws.cell(rr, base + 1, {'ispravak': 'ISPRAVAK', 'brisanje': 'BRISANJE',
+                               'dopuna': 'DOPUNA'}[item['akcija']])
+        if item['akcija'] == 'brisanje':
+            ws.cell(rr, base + 2, 'cijeli redak — duplikat')
+            ws.cell(rr, base + 3, format(net(a), '.2f') + ' = '
+                    + ' + '.join(format(c['iznos'], '.2f') for c in item['combo']))
+            ws.cell(rr, base + 4, ' | '.join(c['opis'] for c in item['combo']))
+        else:
+            ws.cell(rr, base + 2, ', '.join(f for f, _, _ in item['ch']))
+            ws.cell(rr, base + 3, ' | '.join(str(o) for _, o, _ in item['ch']))
+            ws.cell(rr, base + 4, (item['s']['opis'] + '  '
+                                   + item['s']['datum'].strftime('%d.%m.%Y'))
+                    if item['s'] else '')
+        k = koka_par(koka, ev_date(r), net(a))
+        ws.cell(rr, base + 5, (k[0][0] + ' r.' + str(k[0][1]) + '  "' + k[0][2][:30] + '"')
+                if k else '')
+        for cc in range(base + 1, base + 1 + len(DIAG)):
+            if ws.cell(rr, cc).fill.fgColor.rgb in (None, '00000000'):
+                ws.cell(rr, cc).fill = DIAG_FILL
+
+    for i, w in enumerate([38, 13, 13, 12, 11, 10, 30, 30], 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+    for i in range(9, len(hdr) + 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 17
+    ws.freeze_panes = ws.cell(r0 + 2, 1)
+    # ⚠ Kolona izvan autofiltera se pri prvom sortu raspari od svog retka.
+    ws.auto_filter.ref = ('A' + str(r0 + 1) + ':'
+                          + openpyxl.utils.get_column_letter(len(hdr))
+                          + str(r0 + 1 + len(redci)))
+
+    # ---- Pitanja (samo za citanje) -----------------------------------------
+    wq = wb.create_sheet('Pitanja')
+    wq['A1'] = 'Pitanja za Koku — retci koje banka nema ni na jednom izvodu'
+    wq['A1'].font = Font(bold=True, size=12)
+    for i, t in enumerate([
+            '', 'Ovi retci su u bazi, ali ih nijedan bankovni izvod ne potvrdjuje.',
+            'Nije nuzno greska — mozda je iznos ili datum malo drukciji pa se ne',
+            'poklope. Ali svaki od njih treba jedno "da, to je bilo" ili ispravak.',
+            '', 'Prazan komentar znaci da redak nema opis — nije se izgubio, nikad ga',
+            'nije ni imao.', ''], start=2):
+        wq.cell(i, 1, t)
+    hq = ['datum', 'opis', 'iznos', 'Status', 'racun', 'Tip / Podtip',
+          'izvod koji ga je trazio', 'Kokin redak', 'event_id']
+    for i, h in enumerate(hq, 1):
+        c = wq.cell(10, i, h)
+        c.font, c.fill = BOLD_W, HDR_FILL
+    for j, (iz, r) in enumerate(sorted(pitanja, key=lambda x: x[1]['event_date'])):
+        a = r['attrs']
+        k = koka_par(koka, ev_date(r), net(a))
+        wq.append([]) if False else None
+        vals = [r['event_date'], r['comment'] or '(bez opisa)', net(a),
+                a.get('Status'), a.get('Racun'),
+                (str(a.get('Tip') or '—') + ' / ' + str(a.get('Podtip') or '—')),
+                'dospijece ' + iz['dospijece'].strftime('%d.%m.%Y'),
+                (k[0][0] + ' r.' + str(k[0][1])) if k else '—', r['id']]
+        for i, v in enumerate(vals, 1):
+            wq.cell(11 + j, i, v)
+    for i, w in enumerate([12, 30, 10, 11, 22, 30, 24, 18, 38], 1):
+        wq.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+    # ---- Za uvoz (najava transe, NE uvozi se ovim fileom) -------------------
+    wu = wb.create_sheet('Sto tek dolazi')
+    wu['A1'] = 'Retci s izvoda kojih u bazi jos nema — NE uvoze se ovim fileom'
+    wu['A1'].font = Font(bold=True, size=12)
+    for i, t in enumerate([
+            '', 'Ovo je najava, ne zadatak. Ti retci ulaze zasebnim uvozom (transa),',
+            'kad se ovaj krug ispravaka slegne. Ovdje su da se vidi da nista nije',
+            'zaboravljeno i da se brojka slaze s papirom.', ''], start=2):
+        wu.cell(i, 1, t)
+    for i, h in enumerate(['datum', 'opis s izvoda', 'iznos', 'izvod', 'Kokin redak'], 1):
+        c = wu.cell(8, i, h)
+        c.font, c.fill = BOLD_W, HDR_FILL
+    for j, (iz, s) in enumerate(sorted(uvoz, key=lambda x: x[1]['datum'])):
+        k = koka_par(koka, s['datum'], s['iznos'])
+        for i, v in enumerate([s['datum'], s['opis'], s['iznos'],
+                               iz['dospijece'].strftime('%d.%m.%Y'),
+                               (k[0][0] + ' r.' + str(k[0][1]) + '  "' + k[0][2][:24] + '"')
+                               if k else '—'], 1):
+            c = wu.cell(9 + j, i, v)
+            if i == 1:
+                c.number_format = 'dd.mm.yyyy'
+    for i, w in enumerate([12, 40, 10, 12, 34], 1):
+        wu.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+    # ---- Pregled (prvi list, ono sto se cita prvo) --------------------------
+    wp = wb.create_sheet('Pregled', 0)
+    wp['A1'] = 'Uskladjenje s bankovnim izvodima — Mastercard 2026.'
+    wp['A1'].font = Font(bold=True, size=14)
+    row = 3
+    wp.cell(row, 1, 'Svaki izvod je usporedjen redak po redak s bazom.').font = Font(bold=True)
+    row += 2
+    for i, h in enumerate(['izvod', 'dospijece', 'redaka', 'ukupno s papira',
+                           'slaze se?'], 1):
+        c = wp.cell(row, i, h)
+        c.font, c.fill = BOLD_W, HDR_FILL
+    row += 1
+    for iz, u, _ in rezultati:
+        s_p = sum(x['iznos'] for x, _, _ in u['pairs'])
+        s_u = sum(x['iznos'] for x in u['izvod_bez_para'])
+        ok = abs(s_p + s_u - iz['total']) < 0.005
+        wp.cell(row, 1, iz['ime'])
+        wp.cell(row, 2, iz['dospijece'].strftime('%d.%m.%Y'))
+        wp.cell(row, 3, len(iz['rows']))
+        wp.cell(row, 4, iz['total']).number_format = '#,##0.00'
+        c = wp.cell(row, 5, 'DA, u cent' if ok else 'NE — provjeriti')
+        c.fill = OK_FILL if ok else DEL_FILL
+        row += 1
+    row += 1
+    for t in ['Sto ovaj file predlaze:',
+              '   list `Events`  — ' + str(sum(1 for x in redci if x['akcija'] == 'ispravak'))
+              + ' ispravaka, ' + str(sum(1 for x in redci if x['akcija'] == 'dopuna'))
+              + ' dopuna, ' + str(sum(1 for x in redci if x['akcija'] == 'brisanje'))
+              + ' brisanja  >> TO SE UVOZI',
+              '   list `Pitanja` — ' + str(len(pitanja)) + ' redaka za tebe, nista se ne uvozi',
+              '   list `Sto tek dolazi` — ' + str(len(uvoz)) + ' redaka, najava sljedeceg uvoza',
+              '',
+              'Kako uvesti: Activities -> Import -> odaberi ovaj file -> pregledaj -> Apply.',
+              'Zeleno obojene celije su ono sto se mijenja. Sve ostalo je vec u bazi',
+              'i uvoz ga ne dira.',
+              '',
+              'Najcesci ispravak je `Datum naplate` — dan kad banka stvarno tereti racun.',
+              'Kod Mastercarda je to 11. u mjesecu nakon kupovine, a kod dijela redaka je',
+              'bio upisan dan kupovine. Zbog toga se "kosarica" za 11.07. nije zatvarala:',
+              'imala je 2.231,02, a banka je skinula 1.244,74.',
+              '',
+              'BRISANJA (2 retka): tvoj `LH 1/3` 63,33 banka vodi kao DVA retka —',
+              'LUFTHANSA rata 62,01 + naknada za obrocnu otplatu 1,32. Oba su vec u bazi,',
+              'pa je tvoj treci zapis isti trosak po drugi put. Brojka je ista (62,01 + 1,32',
+              '= 63,33), ali razdvojeno naknada banke ide pod bankovne troskove, a ne pod',
+              'putovanja. Broj rate (1/3) se prije brisanja prepisuje na bankin redak.',
+              ] + ([] if not odgodjeni else [
+              '',
+              'ODGODJENO (' + str(len(odgodjeni)) + ' redaka): isti slucaj kao brisanja gore, ali',
+              'bankini redci za njih jos nisu u bazi — dolaze sljedecim uvozom. Brisemo ih',
+              'tek tada, jednim potezom, da ne ostane rupa. Popis:']
+              + ['   ' + r['event_date'] + '  ' + str(r['comment'])[:24].ljust(26)
+                 + format(net(r['attrs']), '8.2f') + '  = '
+                 + ' + '.join(format(c['iznos'], '.2f') for c in combo)
+                 for r, combo in odgodjeni]) + ([''] if not pomaci else [
+              '',
+              'NIJE u ovom fileu (za poslije): ' + str(len(pomaci)) + ' redaka ima datum koji se',
+              'od izvoda razlikuje za koji dan. Nismo ih dirali jer pomak datuma pomice i',
+              'vrijeme zapisa, pa se dva retka istog dana znaju stopiti u jedan. Popis:']
+              + ['   ' + r['event_date'] + '  ' + str(r['comment'])[:26].ljust(28)
+                 + format(net(r['attrs']), '8.2f') + '   izvod kaze ' + str(n)
+                 for r, f, o, n, s in pomaci]):
+        wp.cell(row, 1, t)
+        row += 1
+    wp.column_dimensions['A'].width = 78
+    for col, w in (('B', 13), ('C', 9), ('D', 17), ('E', 16)):
+        wp.column_dimensions[col].width = w
+    wb.save(out)
+    return redci, pomaci, pitanja, uvoz, odgodjeni
 
 
 # -- ispis -------------------------------------------------------------------
@@ -601,29 +926,52 @@ def report(iz, u, isp, koka, path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--izvod', required=True)
+    ap.add_argument('--izvod', action='append', required=True,
+                    help='moze se ponoviti; s --file svi idu u jedan workbook')
     ap.add_argument('--koka', default=str(KOKA_DEFAULT))
     ap.add_argument('--env', default='prod', choices=['prod', 'test'])
     ap.add_argument('--izvor', default='Mastercard')
     ap.add_argument('--tol', type=int, default=5,
                     help='tolerancija u danima oko prozora izvoda')
-    ap.add_argument('--dry', action='store_true',
-                    help='samo ispis (zasad je to jedini nacin rada)')
+    ap.add_argument('--dry', action='store_true', help='samo ispis na ekran')
+    ap.add_argument('--file', help='napisi review workbook za Koku')
     args = ap.parse_args()
 
-    path = Path(args.izvod)
-    if not path.exists():
-        sys.exit('Nema ' + str(path))
-    if not path.name.upper().startswith('MC_'):
-        sys.exit('Zasad samo MC izvodi (' + path.name + '). Visa/ZABA imaju drugi format.')
+    paths = [Path(p) for p in args.izvod]
+    for p in paths:
+        if not p.exists():
+            sys.exit('Nema ' + str(p))
+        if not p.name.upper().startswith('MC_'):
+            sys.exit('Zasad samo MC izvodi (' + p.name + '). Visa/ZABA imaju drugi format.')
 
-    iz = parse_mc(path)
     url, key = load_env(args.env)
     db = load_db(url, key)
     koka = index_koka(Path(args.koka))
-    u = uskladi(iz, db, args.izvor, args.tol)
-    isp = ispravci(iz, u['pairs'])
-    report(iz, u, isp, koka, path)
+
+    rezultati = []
+    for p in sorted(paths, key=lambda x: x.name):
+        iz = parse_mc(p)
+        iz['ime'] = p.name
+        u = uskladi(iz, db, args.izvor, args.tol)
+        isp = ispravci(iz, u['pairs'])
+        rezultati.append((iz, u, isp))
+        if args.dry or not args.file:
+            report(iz, u, isp, koka, p)
+
+    if not args.file:
+        return
+    emails = {p['id']: p['email']
+              for p in rest(url, key, 'profiles?select=id,email&limit=200')}
+    out = Path(args.file)
+    redci, pomaci, pitanja, uvoz, odgodjeni = write_file(out, rezultati, koka, emails)
+    n = lambda k: sum(1 for x in redci if x['akcija'] == k)  # noqa: E731
+    print('\nNapisano: ' + str(out))
+    print('  Events          ' + str(len(redci)).rjust(3) + ' redaka  ('
+          + str(n('ispravak')) + ' ispravak, ' + str(n('dopuna')) + ' dopuna, '
+          + str(n('brisanje')) + ' brisanje)')
+    print('  Pitanja         ' + str(len(pitanja)).rjust(3) + ' redaka')
+    print('  Sto tek dolazi  ' + str(len(uvoz)).rjust(3) + ' redaka')
+    print('  (izostavljeno)  ' + str(len(pomaci)).rjust(3) + ' pomaka `event_date` — v. Pregled')
 
 
 if __name__ == '__main__':
