@@ -603,6 +603,19 @@ def build_rows(rezultati):
     return redci, pomaci, cisto, uvoz, odgodjeni
 
 
+def tekst(ws, r, c, v):
+    """⚠ openpyxl string koji pocinje s `=` sprema kao FORMULU, a Excel je onda
+    ne moze parsirati i nudi "repair" — file se ne otvori. Ulovljeno na
+    `Pregled!A31`: objasnjenje se prelomilo tako da je redak poceo s
+    `= 63,33), ali razdvojeno...`. Isto vrijedi za `+`, `-` i `@`.
+    Svaka pripovjedna celija ide kroz ovo, ne kroz `ws.cell(r, c, v)`."""
+    cell = ws.cell(r, c)
+    cell.value = v
+    if isinstance(v, str) and v[:1] in ('=', '+', '-', '@'):
+        cell.data_type = 's'
+    return cell
+
+
 def write_file(out, rezultati, koka, emails):
     redci, pomaci, pitanja, uvoz, odgodjeni = build_rows(rezultati)
     wb = openpyxl.Workbook()
@@ -700,7 +713,7 @@ def write_file(out, rezultati, koka, emails):
             'poklope. Ali svaki od njih treba jedno "da, to je bilo" ili ispravak.',
             '', 'Prazan komentar znaci da redak nema opis — nije se izgubio, nikad ga',
             'nije ni imao.', ''], start=2):
-        wq.cell(i, 1, t)
+        tekst(wq, i, 1, t)
     hq = ['datum', 'opis', 'iznos', 'Status', 'racun', 'Tip / Podtip',
           'izvod koji ga je trazio', 'Kokin redak', 'event_id']
     for i, h in enumerate(hq, 1):
@@ -728,7 +741,7 @@ def write_file(out, rezultati, koka, emails):
             '', 'Ovo je najava, ne zadatak. Ti retci ulaze zasebnim uvozom (transa),',
             'kad se ovaj krug ispravaka slegne. Ovdje su da se vidi da nista nije',
             'zaboravljeno i da se brojka slaze s papirom.', ''], start=2):
-        wu.cell(i, 1, t)
+        tekst(wu, i, 1, t)
     for i, h in enumerate(['datum', 'opis s izvoda', 'iznos', 'izvod', 'Kokin redak'], 1):
         c = wu.cell(8, i, h)
         c.font, c.fill = BOLD_W, HDR_FILL
@@ -787,9 +800,10 @@ def write_file(out, rezultati, koka, emails):
               '',
               'BRISANJA (2 retka): tvoj `LH 1/3` 63,33 banka vodi kao DVA retka —',
               'LUFTHANSA rata 62,01 + naknada za obrocnu otplatu 1,32. Oba su vec u bazi,',
-              'pa je tvoj treci zapis isti trosak po drugi put. Brojka je ista (62,01 + 1,32',
-              '= 63,33), ali razdvojeno naknada banke ide pod bankovne troskove, a ne pod',
-              'putovanja. Broj rate (1/3) se prije brisanja prepisuje na bankin redak.',
+              'pa je tvoj treci zapis isti trosak po drugi put. Zbroj je isti',
+              '(62,01 plus 1,32 daje 63,33), ali razdvojeno naknada banke ide pod',
+              'bankovne troskove, a ne pod putovanja. Broj rate (1/3) se prije',
+              'brisanja prepisuje na bankin redak.',
               ] + ([] if not odgodjeni else [
               '',
               'ODGODJENO (' + str(len(odgodjeni)) + ' redaka): isti slucaj kao brisanja gore, ali',
@@ -806,7 +820,7 @@ def write_file(out, rezultati, koka, emails):
               + ['   ' + r['event_date'] + '  ' + str(r['comment'])[:26].ljust(28)
                  + format(net(r['attrs']), '8.2f') + '   izvod kaze ' + str(n)
                  for r, f, o, n, s in pomaci]):
-        wp.cell(row, 1, t)
+        tekst(wp, row, 1, t)
         row += 1
     wp.column_dimensions['A'].width = 78
     for col, w in (('B', 13), ('C', 9), ('D', 17), ('E', 16)):
