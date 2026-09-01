@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S123).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S124).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -478,6 +478,15 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 
 - **`run.bat` guši zarez u argumentima** — jedan substring po pozivu (`--reparse A,B,C` → samo A)
 - **openpyxl `cell(r,c,None)` NE briše** — mora `.value = None`
+- **⚠ openpyxl string koji počinje s `=` sprema kao FORMULU** (S124). Excel je ne može
+  parsirati i file se **ne otvori** — nudi „repair" i tiho izbaci taj sadržaj
+  (`Removed Records: Formula from /xl/worksheets/sheet1.xml`). Ulovljeno na pripovjednoj
+  ćeliji `Pregled!A31`: objašnjenje se prelomilo tako da je redak počeo s
+  `= 63,33), ali razdvojeno…`. Vrijedi i za `+`, `-`, `@` — dakle i `-100` kao vrijednost,
+  i crtica na početku retka. **Kvar se ne vidi pri pisanju nego tek kad korisnik otvori
+  file**, a tada je već kod njega. Svaka ćelija sa slobodnim tekstom mora ići kroz helper
+  koji forsira `data_type = 's'` (`uskladi_izvod.tekst()`); prelamanje rečenice popravi
+  jedan slučaj i pusti sljedeći.
 - **Ime skripte ne smije biti ime stdlib modula** — `inspect.py` je srušio openpyxl
   (`partially initialized module`, jer `numpy` radi `import inspect`)
 - **`apply_rules.py` preskače redak s VALJANIM parom** ⇒ pravilo ne može popraviti
@@ -741,6 +750,10 @@ src/lib/excelImport.ts             Activities Excel import, collision handling, 
 src/lib/excelImportReport.ts       Izvještaj nakon uvoza — radni file, ne log
 src/lib/excelFingerprint.ts        row_hash (FNV-1a 64) — skip nedirnutih redaka
 src/lib/excelDatetime.ts           Kanonski oblik datum-atributa (baza ↔ app ↔ Excel ćelija)
+data-prep_tools/Financije/uskladi_izvod.py
+                                   Jedan izvod ↔ baza ↔ Kokin file. Četiri sekcije po
+                                   tome TKO ODLUČUJE + `--file` review workbook za Koku.
+                                   Zamjenjuje `kosara_naplate.py` za `Datum naplate`.
 src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u banci piše",
                                    sekcija "planirano" + kontrola košare (S123)
                                    ⚠ kontrolni SUMIFS ne broji `Planiran`
@@ -1071,25 +1084,90 @@ MC naplata ga nosi, pa bi varijanta razbila brojanje po opisu (`klasificiraj_tra
 datumom padaju **prije ZABA sidra** (01.07.) i po pravilu „strogo nakon" tiho ispadaju iz salda.
 Tranša 4 ih rješava: ostane li `13.239,31` bili su duplikati, postane li `12.866,20` bili su stvarni.
 
-### ⚠ `Datum naplate` — otvoreno, blokira sekciju „planirano" (S123)
+### ~~`Datum naplate` — otvoreno~~ — ✅ ZATVORENO S124, izvodom
 
-Košara `naplata 11.07.2026` ∧ `Izvor = Mastercard`: **73 retka / 2.231,02** naspram
-**1.244,74** koliko je banka skinula. Razloženo alatom
-`data-prep_tools/Financije/kosara_naplate.py`:
+**`MC_2026-06.pdf` je cijelo vrijeme bio u `izvodi/Analizirani_izvodi/`.** S123 je zaključio
+„pravilo je iscrpljeno, ostatak može razriješiti samo `MC_2026-06.pdf`" — **ne provjerivši
+je li već tu.** Pouka šira od ovog slučaja: prije nego proglasiš da nekog izvora nema,
+pogledaj podmape; `Analizirani_izvodi/` drži svih 30 MC i 31 Visa izvoda.
 
-| dijagnoza | redaka | Σ |
-| --- | --- | --- |
-| OK (slaže se s pravilom) | 40 | 946,48 |
-| **RATA** — pravilo ne vrijedi | 21 | 832,86 |
-| KRIVI MJESEC ⇒ izvod 11.08. | 11 | 431,10 |
-| KRIVI MJESEC ⇒ izvod 11.06. | 1 | 20,58 |
+S papirom u ruci raspodjela iz S123 (40 OK / 21 RATA / 11+1 KRIVI MJESEC) **nije bila
+točna** — bila je najbolje što se dalo bez izvoda. Stvarno stanje košare 11.07.:
 
-⚠ **Ni nakon micanja krivo datiranih se ne zatvara** (946,48 + 832,86 = 1.779,34).
-Ostatak može razriješiti samo **`MC_2026-06.pdf`** — pravilo je iscrpljeno.
-⚠ Košara za **11.08.** ima **0 redaka** naspram naplate 1.332,52 (tranša 4 nije uvezena),
-pa se ni ta strana ne da provjeriti.
+| | redaka | Σ | dokaz |
+| --- | ---: | ---: | --- |
+| na izvodu 11.07. | **48** | **1.244,74** | 48/48, nula redaka izvoda bez para |
+| duplikat (`LH 1/3` ×2) | 2 | 126,66 | isti trošak dvaput |
+| pripada izvodu 11.08. | 23 | 859,62 | `MC_2026-07.pdf` |
+
+**Cijela MC povijest 2026. zatvara se u cent na svih 7 izvoda.** Alat:
+`data-prep_tools/Financije/uskladi_izvod.py` (v. „Ključni alati"). `kosara_naplate.py` je
+time umirovljen za ovu svrhu.
+
 ⚠ Skupna MC naplata od **11.07. ima prazan `comment`**, dok ostalih 18 nosi strojni
 tekst `TROŠKOVI UČINJENI MASTERCARD` — jedan prazan redak izmiče brojanju po opisu.
+Jedino što je ovdje ostalo otvoreno.
+
+### `Izvod opis` JE oznaka „potvrđeno izvodom" (S124)
+
+Izmjereno: za MC retke je `Izvod opis` **doslovno prepisan** tekst izvoda
+(`PAYPAL *TEMU`, `KONZUM P-3200 RATA 4/12`). Popunjenost: **Visa 96 %, Racun 92 %,
+Mastercard 91 %**; po mjesecima kupovine MC 04/2026 36:3, 05 31:2, 06 47:5, **07 0 od 22**
+— nula jer taj izvod nije bio obrađen. Dakle oznaka je pouzdana i **nitko je nije čitao**.
+
+**Tri stanja, ne dva:** prazan = Kokina nepotvrđena tvrdnja (iznos/datum/oblik privremeni) ·
+popunjen = banka potvrdila · **prazan a razdoblje pokriveno izvodom = pitanje** (ili duplikat,
+ili banka za taj trošak ne zna).
+
+⚠ **`Izvod opis` NIJE jedinstven kroz vrijeme** — `ZAGREBPARKING.HR APP 3 · 26,60` postoji u
+više mjeseci. Sidro kaže *koji trgovac*, ne *koje pojavljivanje*; sparivanje bez prozora
+spoji lipanjski redak izvoda s retkom iz **rujna 2025.**
+⚠ **Potvrđen redak pripada točno jednom izvodu** — bez tog uvjeta sljedeći izvod „ispravlja"
+ono što je prethodni potvrdio. Ali uvjet **sakrije** potvrđen redak s krivim dospijećem
+(izmjereno: `Kokin Temu` 20,72 nosi `Izvod opis`, a `Datum naplate` = dan kupnje), pa uz njega
+mora ići uski drugi prolaz: **isti opis + isti iznos + ≤ 2 dana**.
+⚠ **Rata se veže BROJEM RATE, ne datumom.** Koka je datira na dospijeće (11.07.), banka na dan
+terećenja (29.07.) — 18 dana. S tolerancijom od 5 dana svih 11 rata ispadne kao „za uvoz",
+i uvoz ih **udvostruči**.
+⚠ **Zbroj sam po sebi nije dokaz.** Subset-sum bez ograničenja „nađe" da je `LH 2/3` 63,33 =
+PEVEX + TEMU + KONZUM preko 27 dana. Razdvojeni bankini redci su **istog dana**.
+
+### Pravilo 1:N — banka ima N redaka za Kokin jedan (S124)
+
+> **Bankini redci su KOSTUR** (iznos, datum, klasifikacija, potvrda), **Kokin DOPUNJAVA**
+> (opis, `Rate?`/`Broj rata`/`Rata br`) i zatim nestaje. **Nikad ne ostaju oba.**
+
+To je postojeće pravilo („iznos ← izvod, opis ← Koka") prošireno s *vrijednosti* na *broj
+redaka*. Konkretno: `LH 1/3` 63,33 kod nje = `LUFTHAN…447 RATA 1/3` 62,01 + `NAKNADA ZA
+OBROČNU OTPLATU` 1,32 kod banke. Spojeno, **naknada banke se vodi kao putovanje** — svaki
+mjesec, tiho.
+⚠ **Smjer je kontraintuitivan i mjerenje ga je okrenulo:** Kokin redak je **prazniji**
+(`Tip = N/A`, bez `Podtip`, bez `Izvod opis`, datum 2 dana kriv), bankin nosi
+`Putovanja / Karte, osiguranje` + potvrdu + točan datum. Zadržati njen znači zadržati lošiji.
+⚠ **Ciljni oblik već postoji u podacima:** ostalih 8 rata od 28.06. su **jedan** redak s
+njenim opisom + bankinim iznosom + klasifikacijom + `Izvod opis` + ratom. Pipeline taj spoj
+radi za 1:1 i pada samo na 1:N.
+⚠ **Brisanje i uvoz idu jednim potezom ili nikako.** `LH 2/3` se ne briše dok bankini redci
+ne uđu tranšom — inače ostane rupa od 126,66.
+⚠ **Dopuna ne prepisuje opis.** Bankin `LUFTHAN…447 RATA 1/3` zamijenjen Kokinim `LH 1/3`
+dao bi **dva identična retka** istog dana i iznosa — dakle nešto što u listi izgleda kao
+duplikat, točno ono što se čisti.
+
+⚠ **`Status` se ne mijenja po pravilu nego kao POSLJEDICA POTVRDE.** Odbačeni automat je bio
+„dospjelo ⇒ izvršeno"; ovdje dokaz nije dospijeće nego izvod. Zato `Planiran → Izvrsen` samo
+na retku kojem se **istovremeno** upisuje `Izvod opis` s tog izvoda. Redak koji se ne može
+ožigosati ne dira se.
+
+⚠ **Višak jednog izvoda je često posao SLJEDEĆEG.** MC_2026-06 prijavi 23 retka kao „banka ih
+nema", a MC_2026-07 preuzme 21 kao ispravak i 2 kao duplikat. Filtrira se tek kad su **svi**
+izvodi obrađeni — inače Koka dobije 30 pitanja umjesto 7, i to baš ona na koja već imamo
+odgovor.
+
+⚠ **`event_date` se ne poravnava s izvodom.** Uvoz ga zna promijeniti
+(`excelImport.ts:1326`), ali time pomiče i `session_start`, a `useActivities` grupira po
+njemu ⇒ dva retka iste minute postaju **jedan redak liste**. Na MC retcima pomak ionako ne
+dira saldo. **Ratama se ne dira ni kasnije:** rate dijele dan **kupnje**, izvod nosi dan
+**terećenja** — ondje izvod nije autoritet za `event_date`, samo za `Datum naplate`.
 
 ### PROD — ✅ IZVEDENO 2026-08-25 (S118)
 

@@ -1,145 +1,124 @@
-# Next session — handoff
+# Sljedeća sesija — handoff
 
-**Pisano protiv commita `1c7af7b`** (`test-branch` = S123, 2026-08-31; `main` je i
-dalje na `5533420`). Ako `git log` pokazuje nešto novije, čitaj ovo kao **povijest**,
-ne kao stanje. Trajna pravila su u `CLAUDE.md` — ovdje je samo ono što je **u letu**.
+**Pisano protiv commita:** `S124: openpyxl je pripovjednu recenicu spremio kao FORMULU`
+(grana `test-branch`). Ako `git log` pokazuje novije commitove, čitaj ovo kao **povijest**,
+a ne kao stanje — CLAUDE.md je autoritet.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Najvažnija rečenica
+## Što je gotovo
 
-**Ništa od jučerašnjeg posla još nije kod Koke.** PROD je na starom kodu, i to je
-namjerno — jedan dio (sekcija „planirano") bi joj kao prvu stvar pokazao razliku
-od **986,28 €** koju nitko ne može zatvoriti.
+**Pitanje `Datum naplate` je zatvoreno, i to papirom.** `MC_2026-06.pdf` je cijelo vrijeme
+bio u `izvodi/Analizirani_izvodi/` — prošla sesija je zaključila da ga treba, ne provjerivši
+podmapu. S njim se košara 11.07. razlaže potpuno: **48 redaka = 1.244,74 u cent**, 2
+duplikata, 23 s krivim datumom naplate.
 
-## Što je napravljeno
+**Cijela Mastercard povijest 2026. zatvara se u cent — svih sedam izvoda.** To je najjača
+brojka koju sustav dosad ima: ne „zbroj ispadne blizu" nego *svaki redak papira je objašnjen*.
 
-**Za Kokin roundtrip:**
-- Export modal sada **sam odabere profil** — ne mora se sjetiti kliknuti
-- `row_hash` se **smije sakriti** kroz profil (`Delete?` nikad — to je okidač
-  brisanja), a njegovo zaglavlje ima bilješku koja objašnjava čemu služi
-- **delta sheet je uzimao krivi račun** kad je profil govorio jedno a panel drugo:
-  izlazio je file s točnim sidrom i **nula redaka**, što izgleda kao savršeno
-  usklađen račun. Popravljeno.
-- **sekcija „planirano"** u delta sheetu (tvoja ideja): ispod praznih redaka,
-  odvojena praznim retkom, s vlastitom kontrolom `Σ planirano / naplaćeno s izvoda
-  / razlika`. Potvrda promjenom `Status`a se uvozi natrag.
+**Nov alat `uskladi_izvod.py`** radi to mjesečno i dijeli nalaz po tome **tko odlučuje** —
+što je mehanički naš posao, a što je stvarno pitanje za Koku. Od 73 „pitanja" koliko ih je
+imao stari file, ostalo ih je **sedam**.
 
-**Za rad udvoje:**
-- **Koka sada smije ispraviti tvoj redak** (`sql/043`). Autorstvo ostaje tvoje, a
-  uz redak stoji oznaka **✎** s njenim imenom i vremenom. **Brisati ga ne može.**
+## Što te čeka — po redu
 
-## Što čeka tebe
+**1. Pogledaj `data-prep_data/Financije/uskladjenje_MC_2026.xlsx`.**
+List `Pregled` prvo: sedam izvoda, sedam zelenih „DA, u cent". Ispod piše što file predlaže
+i — jednako važno — što **namjerno ne dira** (3 pomaka datuma, 2 odgođena brisanja).
 
-**Redoslijed nije stvar ukusa:**
+**2. Ako ti tekst za Koku zvuči kako treba, ide njoj.** Ona uvozi list `Events`
+(Activities → Import → Apply). To je **korak 3** plana i prvi put da ona sama nešto mijenja
+u bazi. Očekivano: 29 Modify, 0 New, 2 obrisana.
+⚠ Backup prije toga. ⚠ Ako preview pokaže **New** umjesto Modify — neka ne primijeni.
 
-1. `sql/043` na PROD (SQL editor, kao na TEST-u)
-2. **tek onda** merge `test-branch` → `main`
-3. Ctrl+Shift+R
+**3. Sedam pitanja za nju** su na listu `Pitanja`. Šest od sedam nema **nikakav** opis, pa
+je pravo pitanje vjerojatno „odakle retci bez opisa", ne samo „je li ovo bilo".
 
-Obrnuto (deploy bez migracije) znači da UI otvori Edit, Koka spremi, a baza je
-odbije — tiho, i to nakon što je obrisala atribute retka.
+**4. `043` prije nego Koka preuzme unos** — ali gated na `BUG-S123-EDITMARK`.
+⚠ Provjereno: `043` je **samo na TEST-u**. I ne rješava tvoj problem — daje prava
+**vlasnici nad grantee-jevim** retkom, a tebi treba obrnuto. **Kad ona preuzme unos, ti joj
+retke ne možeš ispraviti kroz app**, ostaju ti skripte.
 
-⚠ **Ali prije koraka 2 stoji `Datum naplate`** — v. dolje.
+**5. Merge na main tek nakon toga.** `test-branch` je **13 commitova ispred**; u tome je i
+njen alat (delta sheet `BUG-S123-DELTAACCT`, sekcija „planirano", zadani export profil).
+Ona to danas nema.
 
-Testovi nakon deploya: **T-S123-3…-8** (`docs/sessions/tests/S123_tests.md`).
-Od njih je najvažniji **T-S123-7** (sekcija „planirano" nad stvarnim podacima).
+## Što ostaje otvoreno prema njoj
 
-## `Datum naplate` — što točno treba
+- Onih 7 redaka
+- Prazan `comment` na skupnoj MC naplati 11.07. (ostalih 18 nosi strojni tekst izvoda)
+- Rečenica koju joj još nitko nije rekao: **kad počne upisivati u app, u Excelicu više ne.**
 
-File te čeka: **`data-prep_data/Financije/kosara_20260711_mastercard.xlsx`**
-(lijevo app format, desno dijagnostika + gdje redak stoji u Kokinoj Excelici).
+## O „odricanju od Excelice" — dvije odluke, ne jedna
 
-Košara 11.07. nosi **73 retka / 2.231,02**, banka je skinula **1.244,74**:
-
-| dijagnoza | redaka | Σ | što s tim |
-| --- | --- | --- | --- |
-| OK | 40 | 946,48 | ništa |
-| **RATA** | 21 | 832,86 | traži plan otplate, ne izvod |
-| krivi mjesec ⇒ 11.08. | 11 | 431,10 | `--predlozi` → pregled → uvoz |
-| krivi mjesec ⇒ 11.06. | 1 | 20,58 | isto |
-
-⚠ **Ni nakon ispravka se ne zatvara** (946,48 + 832,86 = 1.779,34). Ostatak može
-razriješiti samo **`MC_2026-06.pdf`**. Daš li mi njegov ukupni iznos i broj stavki,
-mogu odmah izmjeriti koje retke izvod ne pokriva.
-
-⚠ **Tranša 4 se ne uvozi prije ovoga.** Pipeline dedupira po `(datum, iznos)`, pa
-bi krivo datirane preskočio — krivi datum preživi, a i košara 11.08. ispadne kraća
-točno za njih.
-
-## Otvoreno prema tebi, nije hitno
-
-- **Koka: kad počne upisivati u app, u Excelicu više ne.** Radi li oboje, sve
-  dobijemo dvaput, a vidjet ćemo tek kad se saldo raziđe.
-- Tvojih 11 redaka od 25.08. nose tvoj email u koloni `User` — kad Koka radi
-  roundtrip, oni su za njen račun „tuđi" i **preskaču se**. Njen ispravak tvog
-  retka ide kroz UI, ne kroz Excel.
+**(a) Prestati voditi oboje** je blizu: treba povjerenje, mjesečna rutina uz izvod, `043`
+i S122–S124 kod na PROD-u.
+**(b) Umiroviti file** je daleko, i blokada nije radni tok nego **arhiv**: njen file ima
+**2.765 redaka od 2023.**, a `Financije_all` ima 2.323 eventa i kreće **2025-01-01**. Njene
+2023. i 2024. u toj Arei ne postoje. Realno: prestaje upisivati, file ostaje kao arhiv dok
+batch 2024/2023 ne uđu.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Stanje grana
+## Grane i migracije
 
-`test-branch` = **`1c7af7b`**, sedam commitova ispred `main` (`5533420`).
-Netlify deploya samo `main` — dakle **ništa od S123 nije na PROD-u**.
+- `test-branch` **13 commitova ispred `main`** (S122–S124). `main` je na S117 kodu.
+- **`043` je samo na TEST-u** — izmjereno: `events.edited_by` na PROD-u vraća 400.
+  PROD ima 035–042.
+- Ništa se ne pusti na PROD bez izričitog traženja (Netlify troši kredite).
 
-⚠ **`sql/043` nije pušten na PROD.** Na TEST-u jest, i izmjeren je pokusom.
+## Nov alat: `data-prep_tools/Financije/uskladi_izvod.py`
 
-## Što je S123 napravio
+```
+python uskladi_izvod.py --izvod <MC_*.pdf> [--izvod ...] --dry
+python uskladi_izvod.py --izvod ... --file <out.xlsx>     # review workbook
+```
 
-| commit | što |
+Zasad **samo MC** izvodi. Visa/ZABA imaju drugi format — parser staje s porukom.
+Guard: parsirani zbroj se uspoređuje s ispisanim `UKUPNO (EUR)` i alat **stane** ako se ne
+poklopi (parser koji pročita 47 od 48 redaka daje uvjerljiv i nepotpun nalaz).
+
+Sve zamke sparivanja su u docstringu i u CLAUDE.md („`Izvod opis` JE oznaka…", „Pravilo 1:N").
+**Ne mijenjaj sparivanje bez ponovnog mjerenja nad svih 7 izvoda** — svaki od pet uvjeta je
+tamo jer je bez njega proizveden konkretan krivi ispravak.
+
+## Stanje podataka (PROD, izmjereno S124)
+
+| | |
 | --- | --- |
-| `57ff33a` | BUG-S123-DELTAACCT — `deriveDeltaAccount()` + upozorenje na praznu sekciju (11 testova) |
-| `afad07d` | sekcija „planirano" u delta sheetu (13 testova) |
-| `9c295d0` | Export modal zadano bira prvi profil |
-| `8afb268` | `row_hash` smije u profil, `Delete?` nikad + bilješka (5 testova) |
-| `6ee241e` | `sql/043` + UI: vlasnica smije ispraviti grantee-jev redak |
-| `de2f811` | E2E `S123_owner_edits_grantee_row.spec.ts` (2 slučaja) |
-| `1c7af7b` | `kosara_naplate.py` |
+| MC 2026, svih 7 izvoda | zatvara se u cent |
+| za ispravak | 25 (u review fileu) |
+| dopuna (rata na bankine LUFTHAN retke) | 2 |
+| brisanje (`LH 1/3`) | 2 |
+| odgođeno brisanje (`LH 2/3`) | 2 — čeka tranšu 4 |
+| za uvoz (tranša 4, `MC_2026-07`) | 26 / 599,56 |
+| pitanja za Koku | 7 |
 
-## Prvo sljedeće (prijedlog reda)
+## Neverificirano
 
-1. **`MC_2026-06.pdf`** — bez njega se `Datum naplate` ne da zatvoriti, a on
-   blokira deploy sekcije „planirano".
-2. **BUG-S123-EDITMARK** — oznaka ✎ se ne prikazuje u E2E. ⚠ **Izmjeri mrežni
-   odgovor** (`page.on('response')` na `events?select=…`) — sadrži li payload
-   `edited_by`. Isključeno je: stale bundle (dev server servira aktualan kod) i
-   neupisan `edited_by` (T-S123-2 prolazi). **Ne mijenjaj locator opet.**
-3. **Rezultati T-S123-3…-8** nakon deploya.
-4. `FILTER_SPEC` faza 0 — izbrojati refetch kaskadu (šest `events?select=…` u
-   ~500 ms). I dalje neizmjereno tko je okida.
+- **T-S124-1…8** (v. `docs/sessions/tests/S124_tests.md`). Najvažniji je **T-S124-3**
+  (Koka uvozi) i **T-S124-8** (`Status` prešao samo uz `Izvod opis`).
+- Review file **nije prošao kroz stvarni uvoz** — `event_id`-evi su PROD-ovi pa se ne da
+  probati na TEST-u. Zaštita je preview prije Apply.
+- Sve iz S123 što je ondje bilo neverificirano i dalje je.
 
-## Zamke potvrđene danas
+## Sljedeći koraci (nastavak plana iz S124)
 
-- **„Import as mine" ne mijenja redak nego forsira INSERT s novim ID-em** —
-  duplikat, i to tih (kolizija gleda `user_id`, saldo ne).
-- **Edit tok briše pa ponovno upisuje SVE atribute retka** — zato `043` dira tri
-  politike. Bez INSERT grane redak ostane bez ijednog atributa, a ekran pokaže
-  uspjeh.
-- **RLS-blokiran write „uspije" s 200 i praznim rezultatom** — mjeri broj
-  promijenjenih redaka, nikad status.
-- **Rata nije kupovina** — pravilo naplate se na nju ne smije primijeniti.
-- **Uvoz ne popravlja krivo datirane retke** — dedup ih preskoči. Prvo ispravak.
-- **Ponovno spremanje profila iz exporta vraća filtar računa u profil** (`Filter`
-  list zapisuje efektivni filtar). Isprazni ćeliju prije `Import Profile`.
+3. Koka uvozi review file ⇒ prvi krug povjerenja
+4. `BUG-S123-EDITMARK` izmjeriti (`page.on('response')` — sadrži li payload `edited_by`;
+   **ne** mijenjati locator) → `043` na PROD → **tek onda** merge na main
+   ⚠ redoslijed: **migracija prije koda**, inače vlasnica dobije gumb Edit koji RLS
+   zaustavi, a blokiran write vrati 200 s nula redaka
+5. Tranša 4 (26 redaka) — **s brisanjem `LH 2/3` u istom potezu**
+6. Batch 2024, pa 2023 ⇒ tek to otvara umirovljenje Excelice
 
-## Sitno, zabilježeno, nepopravljeno
+## Ideje koje su se pojavile, nisu izvedene
 
-- Skupna MC naplata **11.07.2026. ima prazan `comment`**, dok ostalih 18 nosi
-  `TROŠKOVI UČINJENI MASTERCARD` — izmiče brojanju po opisu
-  (`klasificiraj_transu.py`). Jedan `UPDATE`.
-- Poruka „(read-only access)" i dalje se prikazuje **write** grantee-u pri
-  spremanju Export profila (`ExcelExportModal.tsx:557`).
-- `audit_tests.py`: 0 fileova za arhivu, 37 testova koje `PENDING_TESTS` ne
-  spominje, 62 označena ⬜ a ne navedena u „Otvoreno". Nije nastalo danas, raste.
-- ⚠ **`src/lib/__tests__/structureExcel.test.mjs` je SKRAĆEN i ne parsira se**
-  (`SyntaxError: Unexpected end of input`, red 517 — `const row = buildRowsForNode`
-  i ništa iza). Nađeno usput 31.08.; file je takav od commita `75ef760` (S17),
-  dakle **taj test odavno ne čuva ništa i nitko to nije primijetio** jer se ne
-  pokreće u CI-ju. Gore od „testa koji nikad ne pada": ovaj se ne može ni izvršiti.
-  Uz to radi s **inline kopijama** logike, pa i popravljen odmah počinje lutati od
-  koda — vrijedi ga prepisati kao `deltaAccount.test.mjs` (esbuild transform,
-  uvozi pravu funkciju).
+- **Isti alat za Visa i ZABA.** MC parser je 40 redaka; logika sparivanja je zajednička.
+  ZABA je zanimljiviji jer ondje retci **diraju saldo**, pa greška ima veću cijenu.
+- **Rupa u značenju „write access":** grantee s pravom pisanja ne može ispraviti tuđi redak
+  u arei u koju smije pisati. Imenovano, nije riješeno.

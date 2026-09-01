@@ -1,7 +1,49 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S123 (2026-08-31) — vlasnica smije ispraviti grantee-jev redak; delta sheet dobio račun iz profila i sekciju „planirano".
+**Zadnji update:** S124 (2026-09-01) — `uskladi_izvod.py`; cijela MC 2026. zatvorena u cent; review file za Koku.
+
+---
+
+## S124 — usklađenje s izvodima i prvi file koji Koka uvozi (2026-09-01)
+
+Detalji: [S124_tests.md](tests/S124_tests.md)
+
+⚠ **Sve je na `test-branch`.** Review file je generiran alatom i strukturno provjeren,
+ali **nije prošao kroz stvarni uvoz** — `event_id`-evi su PROD-ovi pa se ne da probati
+na TEST-u. Zaštita je preview prije Apply.
+
+### Automatizirano
+
+| test | čuva | provjereno obrnuto |
+| --- | --- | --- |
+| — | ništa; alat je offline i provjerava se ishodom nad 7 izvoda | ⛔ |
+
+⚠ Alat nosi **vlastiti guard**: parsirani zbroj izvoda se uspoređuje s ispisanim
+`UKUPNO (EUR)` i staje ako se ne poklopi. Kontrola nalaza je `spareno + za uvoz = izvod`,
+i trenutno prolazi **7 od 7** izvoda.
+
+### ⚠ Traži Koku — glavni tok
+
+| # | test | status |
+| --- | --- | --- |
+| T-S124-1 | file se otvara **bez** Excelovog „repair” dijaloga | ⬜ |
+| T-S124-2 | `Pregled`: sedam izvoda, sedam zelenih „DA, u cent” | ⬜ |
+| **T-S124-3** | ⭐ **Koka uvozi `Events`** — 29 Modify, 0 New, 2 obrisana, nula kolizija | ⬜ |
+| T-S124-4 | saldo `Kokin tekući ZABA` **nepromijenjen** (MC retci ga ne diraju) | ⬜ |
+| T-S124-5 | košara 11.07. pala na 48 / 1.244,74; „za ispravak” 0 | ⬜ |
+| T-S124-6 | 7 redaka s lista `Pitanja` — što su i odakle retci bez opisa | ⬜ |
+
+### Novo — traži tebe
+
+| # | test | status |
+| --- | --- | --- |
+| T-S124-7 | 1:N pravilo: `LH 1/3` nestali, LUFTHAN retci nose ratu, opis im **ostaje** bankin | ⬜ |
+| **T-S124-8** | ⭐ **nijedan redak nije prešao u `Izvrsen` bez `Izvod opis`** | ⬜ |
+
+⚠ T-S124-8 je najvažniji pad ove sesije ako padne: značio bi da je `Status` promijenjen
+kao zaključak iz **dospijeća**, a ne kao posljedica **potvrde izvodom** — točno pravilo
+koje je odbačeno.
 
 ---
 
@@ -37,7 +79,7 @@ merge na `main`. Obrnuto znači da UI otvori Edit, a RLS ga odbije — i to tiho
 
 | # | što | status |
 | --- | --- | --- |
-| **T-S123-9** | **`Datum naplate` raščistiti prije nego sekcija „planirano" ode Koki** — inače joj prva stvar bude razlika od 986,28 koju ne može zatvoriti | ⬜ |
+| **T-S123-9** | ~~`Datum naplate` raščistiti prije nego sekcija „planirano" ode Koki~~ — **✅ ZATVORENO S124**: `MC_2026-06.pdf` je cijelo vrijeme bio u `izvodi/Analizirani_izvodi/`. Košara se razlaže na 48 (= 1.244,74 u cent) + 2 duplikata + 23 kriva datuma, a cijela MC 2026. zatvara se u cent na svih 7 izvoda. Alat: `uskladi_izvod.py` | ✅ |
 
 Alat: `python data-prep_tools/Financije/kosara_naplate.py --naplata 2026-07-11 --banka 1244.74`
 File: `data-prep_data/Financije/kosara_20260711_mastercard.xlsx` (app format lijevo, dijagnostika desno)

@@ -3367,3 +3367,70 @@ pa bi ih pravilo redom proglasilo krivima.
 - **BUG-S123-EDITMARK** — oznaka ✎ se ne prikazuje u E2E; uzrok neutvrđen,
   sljedeći korak je mjeriti mrežni odgovor, ne mijenjati locator
 - obrnuti smjer za `043` nije proveden (DDL se iz alata ne izvršava)
+
+---
+
+## Done S124 (2026-09-01): izvod je odgovorio na sve, i alat koji to radi mjesečno
+
+Sesija je krenula od `kosara_20260711_mastercard.xlsx` (S123) otvorenog usporedno s
+Kokinom `Financije 2026-08-23.xlsx` — Sašino pitanje je bilo „što možemo riješiti sami,
+a što čeka Koku ili izvode".
+
+### Nalaz koji je preokrenuo sesiju
+**`MC_2026-06.pdf` je cijelo vrijeme bio u `izvodi/Analizirani_izvodi/`.** S123 je
+zaključio „pravilo je iscrpljeno, ostatak može razriješiti samo `MC_2026-06.pdf`" i
+nije provjerio podmapu. Ondje je svih 30 MC i 31 Visa izvoda.
+
+S papirom u ruci košara 11.07. (73 retka / 2.231,02) razlaže se potpuno:
+48 redaka = **1.244,74 u cent** (48/48, nula redaka izvoda bez para) · 2 duplikata
+(`LH 1/3`) · 23 s krivim `Datum naplate` (859,62 — pripadaju izvodu 11.08.).
+Druga strana isto: `MC_2026-07` = 21 u bazi (732,96) + 26 za uvoz (599,56) = **1.332,52**.
+
+Raspodjela iz S123 (40 OK / 21 RATA / 11+1 KRIVI MJESEC) **nije bila točna** — bila je
+najbolje što se dalo bez izvoda. 8 od 21 „RATA" jest na tom izvodu, 11 rata nije.
+
+### `Izvod opis` je oznaka „potvrđeno izvodom" — i nitko je nije čitao
+Izmjereno: doslovno prepisan tekst izvoda, popunjen na Visa 96 % / Racun 92 % / MC 91 %,
+a za 07/2026 **0 od 22** jer taj izvod nije bio obrađen. Time postoje **tri** stanja:
+nepotvrđen · potvrđen · **nepotvrđen u razdoblju koje izvod pokriva = pitanje**.
+
+### `uskladi_izvod.py` (nov alat, 3 commita)
+Jedan izvod ↔ baza ↔ Kokin file, četiri sekcije po tome **tko odlučuje**. Zamjenjuje
+`kosara_naplate.py` za `Datum naplate`. Pušten nad cijelom MC 2026.: **svih sedam izvoda
+se zatvara u cent** (kontrola je `spareno + za uvoz = ukupno s papira`).
+
+Pet grešaka uhvaćenih i popravljenih tijekom izrade, sve zapisane u kodu i u CLAUDE.md:
+1. `Izvod opis` nije jedinstven kroz vrijeme — lipanjski redak izvoda sparen s retkom iz
+   **rujna 2025.**, uz prijedlog pomaka `event_date` devet mjeseci
+2. potvrđen redak pripada točno jednom izvodu — inače sljedeći izvod „ispravlja" prethodni
+3. …ali taj uvjet **sakrije** potvrđen redak s krivim dospijećem (`Kokin Temu` 20,72) ⇒
+   ispadne kao „za uvoz", a uvoz bi ga udvostručio. Uski drugi prolaz (≤ 2 dana)
+4. rata se veže **brojem rate**, ne datumom (Koka datira na dospijeće, banka na terećenje
+   — 18 dana) ⇒ inače svih 11 rata ispadne kao „za uvoz"
+5. subset-sum bez ograničenja „našao" da je `LH 2/3` = PEVEX + TEMU + KONZUM preko 27 dana
+
+### Pravilo 1:N — Sašina ideja, ispravljena mjerenjem
+Saša je predložio zadržati Kokin spojeni redak, popraviti mu iznos i dodati bankinu
+naknadu. Mjerenje je okrenulo smjer: **njen redak je prazniji** (`Tip = N/A`, bez
+`Podtip`, bez `Izvod opis`, datum 2 dana kriv), bankin nosi klasifikaciju i potvrdu.
+Pravilo je zato „bankini redci su kostur, Kokin dopunjava pa nestaje" — i ciljni oblik
+**već postoji** u podacima (ostalih 8 rata od 28.06.).
+
+### Review file za Koku (korak 2)
+`data-prep_data/Financije/uskladjenje_MC_2026.xlsx` — `Pregled` (7 izvoda, sve zeleno) ·
+`Events` (**jedini importabilni list**, 25 ispravaka + 2 dopune + 2 brisanja) ·
+`Pitanja` (7 redaka za nju) · `Što tek dolazi` (26, najava tranše).
+Prijedlozi idu **u** atributne kolone (obrnuto od `kosara_naplate.py`, jer je ovdje uvoz
+zadnji korak pregleda, ne nesreća). Odgođeno i izostavljeno je **ispisano**, ne prešućeno.
+
+### openpyxl je rečenicu spremio kao formulu
+`Pregled!A31` je počinjao s `= 63,33), ali razdvojeno…` — prelom rečenice. Excel nije
+otvorio file nego ponudio repair. Popravljeno dvostruko: prelom + `tekst()` helper koji
+forsira `data_type = 's'`. **Kvar se vidi tek kad korisnik otvori file.**
+
+### Ostalo otvoreno
+- 7 pitanja za Koku (6 bez ikakvog opisa; `2025-02-27` je vjerojatno tipfeler u godini)
+- prazan `comment` na skupnoj MC naplati 11.07.
+- `043` je **samo na TEST-u** (`events.edited_by` na PROD-u ne postoji) — i ne pomaže
+  Saši: daje prava **vlasnici nad grantee-jevim** retkom, a treba mu obrnuto
+- review file **nije prošao kroz stvarni uvoz** (event_id-evi su PROD-ovi)
