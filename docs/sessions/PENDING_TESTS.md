@@ -1,49 +1,49 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S124 (2026-09-01) — `uskladi_izvod.py`; cijela MC 2026. zatvorena u cent; review file za Koku.
+**Zadnji update:** S124 (2026-09-01) — MC 2026. zatvorena u cent; ispravci, 9 brisanja i tranša od 26 redaka upisani na PROD.
 
 ---
 
-## S124 — usklađenje s izvodima i prvi file koji Koka uvozi (2026-09-01)
+## S124 — usklađenje s izvodima, ispravci i tranša na PROD-u (2026-09-01)
 
 Detalji: [S124_tests.md](tests/S124_tests.md)
 
-⚠ **Sve je na `test-branch`.** Review file je generiran alatom i strukturno provjeren,
-ali **nije prošao kroz stvarni uvoz** — `event_id`-evi su PROD-ovi pa se ne da probati
-na TEST-u. Zaštita je preview prije Apply.
+⚠ **Sve je već primijenjeno na PROD skriptama**, ne Excel importom — Sašina odluka:
+Koku ne opterećivati batchom u kojem nijedan redak ne traži njenu odluku. Testovi zato
+provjeravaju **ishod na PROD-u**, ne postupak uvoza.
 
-### Automatizirano
+### Provjereno strojno (ne traži nikoga)
 
-| test | čuva | provjereno obrnuto |
-| --- | --- | --- |
-| — | ništa; alat je offline i provjerava se ishodom nad 7 izvoda | ⛔ |
+| kontrola | rezultat |
+| --- | --- |
+| svih 7 MC izvoda: `spareno + za uvoz = ukupno s papira` | ✅ u cent |
+| košara 11.07. | ✅ 48 redaka · 1.244,74 = banka |
+| košara 11.08. | ✅ 47 redaka · 1.332,52 = banka |
+| `uvoz 0 · duplikat 0 · pitanja 0` na svih 7 | ✅ |
+| `Racun` redci nepromijenjeni (saldo netaknut) | ✅ 479/210 |
 
-⚠ Alat nosi **vlastiti guard**: parsirani zbroj izvoda se uspoređuje s ispisanim
-`UKUPNO (EUR)` i staje ako se ne poklopi. Kontrola nalaza je `spareno + za uvoz = izvod`,
-i trenutno prolazi **7 od 7** izvoda.
-
-### ⚠ Traži Koku — glavni tok
-
-| # | test | status |
-| --- | --- | --- |
-| T-S124-1 | file se otvara **bez** Excelovog „repair” dijaloga | ⬜ |
-| T-S124-2 | `Pregled`: sedam izvoda, sedam zelenih „DA, u cent” | ⬜ |
-| **T-S124-3** | ⭐ **Koka uvozi `Events`** — 29 Modify, 0 New, 2 obrisana, nula kolizija | ⬜ |
-| T-S124-4 | saldo `Kokin tekući ZABA` **nepromijenjen** (MC retci ga ne diraju) | ⬜ |
-| T-S124-5 | košara 11.07. pala na 48 / 1.244,74; „za ispravak” 0 | ⬜ |
-| T-S124-6 | 7 redaka s lista `Pitanja` — što su i odakle retci bez opisa | ⬜ |
-
-### Novo — traži tebe
+### Traži tebe — pogledom u aplikaciji
 
 | # | test | status |
 | --- | --- | --- |
-| T-S124-7 | 1:N pravilo: `LH 1/3` nestali, LUFTHAN retci nose ratu, opis im **ostaje** bankin | ⬜ |
-| **T-S124-8** | ⭐ **nijedan redak nije prešao u `Izvrsen` bez `Izvod opis`** | ⬜ |
+| T-S124-1 | Overview: saldo `Kokin tekući ZABA` **isti kao prije** (sve dirnuto je MC) | ⬜ |
+| T-S124-2 | 28.06.: nema `LH 1/3`; `LUFTHAN…447/448` nose `Rate? DA · 1/3`, opis im **ostaje bankin** | ⬜ |
+| T-S124-3 | 11.07.: nema `LH 2/3`; 29.07. postoje `LUFTHAN… RATA 2/3` 62,01 ×2 + `NAKNADA` 1,32 ×2 | ⬜ |
+| **T-S124-4** | ⭐ **nijedan redak nije prešao u `Izvrsen` bez `Izvod opis`** | ⬜ |
+| T-S124-5 | novi Podtip `Wellness` je u dropdownu pod `Zabava` (Add Activity) | ⬜ |
+| T-S124-6 | 26 novih redaka 10.–31.07. imaju Kokine opise (`Parking`, `Ina`, `Bazen`…), ne strojni tekst | ⬜ |
+| T-S124-7 | `TERME JEZERCICA-POOL BAR` 9,80 je `Domaćinstvo / Kave/jelo vani`, **ne** Wellness | ⬜ |
 
-⚠ T-S124-8 je najvažniji pad ove sesije ako padne: značio bi da je `Status` promijenjen
-kao zaključak iz **dospijeća**, a ne kao posljedica **potvrde izvodom** — točno pravilo
-koje je odbačeno.
+⚠ **T-S124-4 je najvažniji pad ako padne:** značio bi da je `Status` promijenjen kao
+zaključak iz **dospijeća**, a ne kao posljedica **potvrde izvodom** — pravilo koje je
+izričito odbačeno.
+
+### ⚠ Nije testirano i ostaje otvoreno
+
+- **Excel import put nije provjeren ovim batchom** (išao je skriptom). Da alat i app govore
+  isti jezik i dalje treba dokazati — na TEST-u ili na Kokinom prvom vlastitom mjesecu.
+- 3 preostala `event_date` pomaka namjerno nisu dirana (pomicanje miče i `session_start`).
 
 ---
 

@@ -3434,3 +3434,39 @@ forsira `data_type = 's'`. **Kvar se vidi tek kad korisnik otvori file.**
 - `043` je **samo na TEST-u** (`events.edited_by` na PROD-u ne postoji) — i ne pomaže
   Saši: daje prava **vlasnici nad grantee-jevim** retkom, a treba mu obrnuto
 - review file **nije prošao kroz stvarni uvoz** (event_id-evi su PROD-ovi)
+
+### S124, drugi dio: PROD usklađen, tranša uvezena, rječnik izmjeren
+
+Sesija se nastavila iz `kosara_20260711_mastercard.xlsx` u konkretne upise na PROD.
+
+**Sedam „pitanja za Koku" pokazalo se kao sedam duplikata.** Pet ih je nađeno sparivanjem
+(tipfeler u godini, tri promašaja od 10 centi, jedan krivi datum). Zadnja dva razriješio je
+**Sašin potez, ne alat**: zbroji sve njene MC retke s `Datum = 11.06.` i usporedi s izvodom
+⇒ `1.768,00 = 1.768,00` uz 31 njen redak naspram 30 bankinih, i razlika je bila
+`34,08 + 0,90 = KEKS PAY 34,98`. Obrnuti 1:N smjer koji detektor nije imao.
+
+⚠ Usput sam **pogriješio** i to je vrijedno zapisati: `34,08` sam pripisao Sašinoj Visa
+kupovini `IGO MAT 34,17` jer se iznos poklopio na 9 centi. Nije imalo veze. Sparivanje po
+blizini iznosa bez druge potvrde vodi u krivo.
+
+**Upisano na PROD** (`primijeni_uskladu.py`): 25 ispravaka (`Datum naplate`, `Izvod opis`,
+9× `Status: Planiran → Izvrsen`), 3 dopune rate, 9 brisanja. ⚠ **Dry run je uhvatio grešku
+koja bi ostavila rupu od 126,66** — provjera „jesu li bankini redci već u bazi" gledala je
+**iznos**, pa je `LH 2/3` (62,01 + 1,32) prošao jer u bazi postoje ti iznosi, ali kao
+**lipanjske** rate 1/3. **Treći put u sesiji isti razred greške** (sparivanje samo po iznosu).
+
+**Tranša uvezena** (`uvezi_transu.py`): 26 redaka s `MC_2026-07`, uz brisanje `LH 2/3` u
+istom potezu. Rječnik `Izvod opis → Tip/Podtip` iz brojane povijesti dao je **20 od 26**;
+6 ručnih odluka, svaka postaje presedan. Guard je proradio — prvi run je **stao** na 3
+retka, i sva tri su bila *pravilo koje fali*, ne *podatak koji fali*.
+
+**Nov Podtip `Wellness`** pod `Zabava` (Sašina odluka) + 7 postojećih `N/A` klasificirano.
+⚠ `TERME JEZERCICA-POOL BAR` izuzet u `Kave/jelo vani` — ista trgovina, drugi trošak.
+
+**Stanje na kraju:** 2.338 eventa · košara 11.07. **48 / 1.244,74** · košara 11.08.
+**47 / 1.332,52** · obje u cent · svih 7 MC izvoda `uvoz 0 · duplikat 0 · pitanja 0` ·
+saldo netaknut (479/210 `Racun` redaka).
+
+**Odbijeno svjesno:** `043` i push na main na kraju sesije — `043` je gated na
+`BUG-S123-EDITMARK` po vlastitom obrazloženju, a deploy bez prostora za provjeru je
+točno ono što se ne radi.

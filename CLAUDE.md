@@ -754,6 +754,13 @@ data-prep_tools/Financije/uskladi_izvod.py
                                    Jedan izvod ↔ baza ↔ Kokin file. Četiri sekcije po
                                    tome TKO ODLUČUJE + `--file` review workbook za Koku.
                                    Zamjenjuje `kosara_naplate.py` za `Datum naplate`.
+data-prep_tools/Financije/primijeni_uskladu.py
+                                   Upisuje nalaz na PROD (ispravci + dopune + brisanja),
+                                   jednim potezom, s backupom i brojanjem redaka.
+data-prep_tools/Financije/uvezi_transu.py
+                                   Uvozi retke s izvoda kojih baza nema. Rječnik
+                                   `Izvod opis → Tip/Podtip` iz brojane povijesti;
+                                   STANE na retku bez jednoglasnog presedana.
 src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u banci piše",
                                    sekcija "planirano" + kontrola košare (S123)
                                    ⚠ kontrolni SUMIFS ne broji `Planiran`
@@ -1131,6 +1138,67 @@ terećenja (29.07.) — 18 dana. S tolerancijom od 5 dana svih 11 rata ispadne k
 i uvoz ih **udvostruči**.
 ⚠ **Zbroj sam po sebi nije dokaz.** Subset-sum bez ograničenja „nađe" da je `LH 2/3` 63,33 =
 PEVEX + TEMU + KONZUM preko 27 dana. Razdvojeni bankini redci su **istog dana**.
+
+### ⚠ 1:N ide u OBA smjera, i obrnuti je opasniji (S124)
+
+Detektor je tražio „**jedan** redak baze = **N** redaka izvoda" (`LH 1/3`). Postoji i
+obrnuto: **N redaka baze = jedan redak izvoda.** Izmjereno: Kokin `34,08` + `0,90` = bankin
+`KEKS PAY 34,98` (12.05.2026.). Sparivanje redak-po-redak to **ne može naći** — oba njena
+retka izgledaju kao „banka ih nema", i tako su dva mjeseca stajala kao pitanja za nju.
+
+⚠ **Zbroj cijele košare je jači signal od sparivanja po retku** — ne ovisi o tome pogađaju
+li se parovi ispravno. Sašin potez koji je to razriješio: zbroji **sve** njene MC retke s
+`Datum = 11.06.` i usporedi s izvodom. Dalo je `1.768,00 = 1.768,00` uz **31 njena retka
+naspram 30 bankinih**, i razlika je bila točno taj jedan spoj. **To bi trebalo biti prvo
+što alat ispiše**, prije bilo kakvog sparivanja.
+
+### Rječnik `Izvod opis → Tip/Podtip` — brojanjem, ne rukom (S124)
+
+Ključ je **normaliziran na trgovca**; vrijednost se bira **prebrojavanjem potvrđene
+povijesti**. Izmjereno nad 26 redaka tranše: **20 iz povijesti, 6 ručnih odluka** — a svaka
+od tih 6 postaje presedan. Baza ima **694 ključa**, od toga 679 jednoglasnih.
+
+- **⚠ Režu se samo sufiksi KOJI SADRŽE ZNAMENKE.** Sufiks je broj transakcije
+  (`SPOTIFY P44015227F` / `SPOTIFY P450E8139E` = isti Spotify), ali bez tog uvjeta
+  `PAYPAL *DISNEYPLUS` postane `paypal` i **svi PayPal trgovci se sliju u jedan ključ**.
+  Bez normalizacije 14/26 ima presedan, s njom 17/26.
+- **⚠ `[kartica: SAŠA]` je anotacija pipelinea, ne ime trgovca.** Baza drži
+  `GOOGLE*YOUTUBE [kartica: SAŠA]`, izvod samo `GOOGLE*YOUTUBE` — bez rezanja **15
+  presedana na istih 9,55 ispadne kao „nema presedana"**. ⚠ Ali nositelj kartice **ostaje
+  upotrebljiv kao zasebna dimenzija**: `AUDIBLE` je 10:9 `Koka`:`Sasa`, a kartica to riješi.
+- **⚠ Dvojben trgovac ⇒ druga razina po IZNOSU**, uz jednoglasnost i **≥ 3 presedana**
+  (jedan presedan po iznosu je slučajnost). `APPLE.COM/BILL` je po trgovcu 26/29 — ispod
+  praga; ali `2,99` je **17/17** `Cloud backup`.
+- **⚠ Posrednik nije trgovac.** `KEKS PAY` ima **8 različitih Tipova** (Parking, Sport,
+  Hardver, Pokloni, Domaćinstvo…) jer je aplikacija za plaćanje — `Izvod opis` ne govori
+  što je kupljeno. Isto `PAYPAL *`, `KUPOVINA…`. Ondje rječnik **ne smije ni pokušati**.
+- **Ključ koji nije jednoglasan (< 90 %) se NE POGAĐA — alat STANE.** Prvi run tranše je
+  stao na 3 retka, i sva tri su bila *pravilo koje fali*, ne *podatak koji fali*.
+- **⚠ Kokin opis je jači od statistike.** `APPLE.COM/BILL 9,99` je 5:3 i ostaje dvojben;
+  njen redak kaže „HBOMax" i time je riješen. Isti princip kao „ako izvor s odgovorom
+  već postoji, ne izmišljaj heuristiku".
+- **⚠ Pretraga po ključnoj riječi prekomjerno hvata.** `spa` je uhvatio
+  `KUPOVINAFS *DesignSpa fsprg.` (FastSpring — **softverska pretplata**) i
+  `JU AQUATIKA CAFFE BAR` (kafić); `parking` je uhvatio `Prihodi / Povrat Anja` jer se
+  riječ pojavljuje u strojnom tekstu naloga. Pravilo mora gađati **trgovca**, ne riječ.
+- **⚠ Ista trgovina, drugi trošak.** `TERME JEZERCICA-VODENI` je `Zabava / Wellness`, a
+  `TERME JEZERCICA-POOL BAR` je `Domaćinstvo / Kave/jelo vani`. Ključ po trgovcu bi ih
+  slio.
+
+**Gdje taksonomija živi:** isključivo `attribute_definitions.validation_rules` za `Podtip`,
+u `depends_on.options_map.<Tip>`. **U kodu aplikacije nema nijedne hardkodirane vrijednosti**
+(provjereno grepom po `src/` i `netlify/`) — dropdown, `DropdownData` list i Structure export
+sve čitaju odatle. `sync_taxonomy.py` služi starom Review workbooku i ne dira se.
+⚠ **Dodavanje vrijednosti je sigurno, preimenovanje nije** — ime poslije živi i u
+`validation_rules` i u `value_text` svakog eventa.
+
+### ⚠ Visa NEMA fiksan dan naplate (S124)
+
+CLAUDE.md-ovo pravilo `Visa = next:3` (`set_attribute`) **se ne slaže s podacima**.
+Izmjerena raspodjela `Datum naplate` na 855 Visa redaka: **5. (383×)**, 4. (231×), 6. (109×),
+7. (82×), 11. (49×), 3. (11×). Posljedica: kontrola po košari, koja pretpostavlja fiksno
+dospijeće, **ne vidi 855 Visa redaka** — ne padaju ni u jednu košaru. MC je čist (4 retka).
+Traži zaseban prolaz s PBZVISA izvodima; ne popravljati napamet.
 
 ### Pravilo 1:N — banka ima N redaka za Kokin jedan (S124)
 

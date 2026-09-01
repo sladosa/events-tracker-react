@@ -1,142 +1,128 @@
 # S124 — detaljni testovi (2026-09-01)
 
-Tema sesije: usklađenje baze s bankovnim izvodima (`uskladi_izvod.py`) i prvi
-Excel file koji **Koka sama uvozi**.
+Tema: usklađenje `Financije_all` s bankovnim izvodima, ispravci i tranša — **sve
+primijenjeno skriptama pod `service_role`**, ne Excel importom.
 
-**Preduvjeti za sve testove**
-- PROD, Area `Financije_all`, Koka prijavljena svojim računom
-  (`dubravka.pavic-sladoljev@dps-perceptum.com`) — ona je vlasnica retka i jedina
-  ga kroz app može mijenjati (Saša je grantee; `043` je samo na TEST-u)
-- file `data-prep_data/Financije/uskladjenje_MC_2026.xlsx`
-- ⚠ **Backup prije T-S124-3.** Uvoz mijenja 27 i briše 2 retka.
+**Zašto skriptom:** Sašina odluka — nijedan od 25 ispravaka ne traži Kokinu odluku,
+svaki je dokazan izvodom. Njen prvi uvoz neka bude njezin mjesec, kad ima razlog.
+Posljedica koju treba znati: **Excel import put ovim batchom NIJE provjeren.**
 
----
-
-## T-S124-1 — file se otvara bez popravka
-
-1. Otvori `uskladjenje_MC_2026.xlsx` dvoklikom u Excelu.
-
-**Očekivano:** file se otvori normalno.
-
-**Pad:** dijalog „Excel was able to open the file by repairing or removing the
-unreadable content" i u logu `Removed Records: Formula from /xl/worksheets/sheetN.xml`.
-
-⚠ Ako padne — **ne spremaj popravljenu verziju**, izgubila je sadržaj te ćelije.
-Uzrok je uvijek isti razred: openpyxl string koji počinje s `=`, `+`, `-` ili `@`
-sprema se kao formula. Popravlja se u `uskladi_izvod.tekst()`, ne u Excelu.
+**Preduvjeti:** PROD, Area `Financije_all`. Većinu se vidi i Sašinim grantee pristupom.
 
 ---
 
-## T-S124-2 — kontrolna tablica
+## Strojne kontrole (već prošle, ovdje za ponovno pokretanje)
 
-1. List `Pregled`, tablica na vrhu.
+```
+cd data-prep_tools/Financije
+python uskladi_izvod.py --izvod ../../data-prep_data/Financije/izvodi/MC_2026-07.pdf --dry
+```
 
-**Očekivano:** sedam redaka (`MC_2026-01` … `MC_2026-07`), stupac „slaže se?"
-sedam puta **zeleno „DA, u cent"**.
+Očekivano na svih 7 izvoda: `KONTROLA … == izvod, u cent`, i
+`uvoz 0 · duplikat 0 · PITANJA 0`. Preostala 3 `ispravak` su `event_date` pomaci koje
+namjerno ne diramo.
 
-**Pad:** bilo koje crveno „NE — provjeriti". Tada **ništa ispod ne vrijedi** i uvoz
-se ne radi — znači da se zbroj sparenog i onog za uvoz ne poklapa s papirom.
-
----
-
-## T-S124-3 — Koka uvozi list `Events`  ⚠ glavni test
-
-1. App → Activities → Area `Financije_all`.
-2. Import → odaberi `uskladjenje_MC_2026.xlsx`.
-3. **Stani na previewu i pročitaj brojke prije Apply.**
-
-**Očekivano na previewu:**
-- **29 Modify, 0 New**
-- 2 retka označena za brisanje (`Delete?` = `DELETE`)
-- **nula kolizija**
-
-4. Apply.
-
-**Očekivano poslije:** poruka o 29 izmijenjenih i 2 obrisana retka.
-
-**Pad A — preview pokazuje `New` umjesto `Modify`:** `event_id` nije pročitan i uvoz
-bi napravio **duplikate**. **Ne primjenjuj.** Prijavi s brojkama.
-
-**Pad B — „All skipped" ili kolizije:** netko je u međuvremenu dirao te retke, ili
-email u koloni `User` ne odgovara računu koji uvozi.
-
-**Pad C — prođe, ali 0 obrisanih:** `Delete?` kolona nije prepoznata.
-
-⚠ Ovo je prvi uvoz koji Koka radi sama. Ako nešto zapne — **ne popravljaj u Excelu**,
-nego javi; file se regenerira alatom.
+⚠ Ako `KONTROLA` ikad pokaže `!=`, **ništa ispod u tom ispisu ne vrijedi** — to znači da
+se zbroj sparenog i onog za uvoz ne poklapa s papirom.
 
 ---
 
-## T-S124-4 — saldo se NIJE pomaknuo
+## T-S124-1 — saldo se nije pomaknuo
 
-1. Overview tab, pločica `Kokin tekući ZABA`.
+1. Overview tab → pločica `Kokin tekući ZABA`.
 
-**Očekivano:** isti iznos kao prije uvoza.
+**Očekivano:** isti iznos kao prije 01.09.2026.
 
-**Zašto:** svi dirnuti retci su `Izvor = Mastercard`, a saldo miče **samo**
-`Izvor = Racun`. Pomakne li se saldo, promijenjeno je nešto što nije trebalo.
+**Zašto:** svih 35 dirnutih redaka je `Izvor = Mastercard`, a saldo miče **samo**
+`Izvor = Racun`. Pomakne li se, promijenjeno je nešto što nije trebalo.
 
 ---
 
-## T-S124-5 — košara se zatvorila
+## T-S124-2 — 1:N pravilo, lipanjske rate
 
-1. Ponovo pusti alat:
-   `python uskladi_izvod.py --izvod ...MC_2026-06.pdf --izvod ...MC_2026-07.pdf --dry`
+1. Activities → filtriraj 28.06.2026.
 
 **Očekivano:**
-- `MC_2026-06`: košara **48 redaka / 1.244,74** (prije: 73 / 2.231,02),
-  sekcija „za ispravak" **0**, „duplikat" **0**
-- `MC_2026-07`: košara narasla na 21 redak, „za ispravak" **0**
+- **nema** retka `LH 1/3` (bila su dva, oba obrisana kao duplikat)
+- `LUFTHAN2202242474447 RATA 1/3` i `…448 RATA 1/3`, 62,01 svaki, sada nose
+  `Rate? = DA · Broj rata 3 · Rata br 1`
+- opis im je **i dalje bankin**, nije zamijenjen s `LH 1/3`
+- dva retka `NAKNADA ZA OBROČNU OTPLATU` po 1,32, `Domaćinstvo / Bankovni troškovi`
 
-**Pad:** ostane li „za ispravak" > 0, uvoz nije primijenio sve — usporedi koja polja.
-
----
-
-## T-S124-6 — sedam pitanja za Koku
-
-List `Pitanja`. Za svaki redak treba jedno „da, to je bilo" ili ispravak:
-
-| datum | iznos | Kokin redak |
-| --- | ---: | --- |
-| 2025-02-27 | 10,94 | koka EU r.2396 — ⚠ vjerojatno tipfeler u **godini** |
-| 2026-02-05 | 16,29 | koka EU r.2339 |
-| 2026-02-28 | 17,19 | koka EU r.2370 — `Konzum 4/6`, rata koju banka nema |
-| 2026-04-01 | 20,01 | koka EU r.2453 |
-| 2026-05-12 | 34,08 | koka EU r.2521 |
-| 2026-05-28 | 0,90 | koka EU r.2533 |
-| 2026-06-11 | 51,24 | koka EU r.2513 |
-
-⚠ Šest od sedam nema **nikakav** opis — vjerojatno isti uzrok. Pitanje za nju nije
-samo „je li bilo" nego i „znaš li odakle retci bez opisa".
+**Pad:** postanu li oba `LH 1/3`, dopuna je prepisala opis — to daje **dva identična
+retka** istog dana i iznosa, dakle nešto što izgleda kao duplikat.
 
 ---
 
-## T-S124-7 — 1:N pravilo je provedeno
+## T-S124-3 — 1:N pravilo, srpanjske rate
 
-1. Activities, filtriraj na 28.06.2026.
+1. Filtriraj 11.07. i 29.07.2026.
 
-**Očekivano:**
-- **nema** retka `LH 1/3` (bila su dva, oba obrisana)
-- `LUFTHAN2202242474447 RATA 1/3` i `…448 RATA 1/3` postoje, **62,01** svaki,
-  i sada nose `Rate? = DA`, `Broj rata = 3`, `Rata br = 1`
-- opis im je **i dalje bankin** (`LUFTHAN…`), nije zamijenjen s `LH 1/3`
-- dva retka `NAKNADA ZA OBROČNU OTPLATU PO RATI` po 1,32, `Domaćinstvo / Bankovni troškovi`
+**Očekivano:** na 11.07. **nema** `LH 2/3`; na 29.07. postoje `LUFTHAN… RATA 2/3` 62,01 ×2
+i `NAKNADA` 1,32 ×2, s `Rate? = DA · 2/3`.
 
-**Pad:** ostane li ijedan `LH 1/3`, brisanje nije prošlo. Postanu li oba LUFTHAN retka
-`LH 1/3`, dopuna je prepisala opis — to je bug, jer daje dva identična retka.
+**Zašto zajedno:** brisanje i uvoz išli su **jednim potezom**. Odvojeno bi prvo brisanje
+dalo rupu od 126,66, a prvo uvoz duplikat.
 
 ---
 
-## T-S124-8 — `Status` je prešao samo uz žig
+## T-S124-4 — ⭐ `Status` je prešao samo uz žig
 
 1. Filtriraj `Izvor = Mastercard`, `Datum naplate = 11.08.2026`.
 
 **Očekivano:** 9 rata (`Konzum`, `Keindl`, `Allianz`) su `Izvrsen` i **svaka nosi
 `Izvod opis`**.
 
-**Pad — i to je najvažniji pad u ovoj sesiji:** postoji redak koji je prešao u
-`Izvrsen` **bez** `Izvod opis`. To znači da je `Status` promijenjen kao zaključak iz
-dospijeća, a ne kao posljedica potvrde izvodom — točno pravilo koje je odbačeno.
+**Pad — najvažniji u ovoj sesiji:** postoji redak koji je prešao u `Izvrsen` **bez**
+`Izvod opis`. To bi značilo da je `Status` promijenjen kao zaključak iz **dospijeća**, a
+ne kao posljedica **potvrde izvodom** — pravilo koje je izričito odbačeno.
 
-⚠ `LH 2/3` (2 retka, 63,33) **ostaju `Planiran` i ostaju u bazi** — namjerno. Brišu se
-tek kad tranša 4 donese bankine razdvojene retke, jednim potezom.
+---
+
+## T-S124-5 — nov Podtip `Wellness`
+
+1. Add Activity → `Financije_all` → `Tip = Zabava` → otvori `Podtip`.
+
+**Očekivano:** `Wellness` je u popisu, odmah iza `Kino/Kazalište/Muzeji`.
+
+2. Provjeri i 6 klasificiranih redaka: `AQUAPARK ADAMOVEC` (59,00 i 48,00),
+   `AQUAE VIVAE` 34,00, `TERME TUHELJ` (42,60 i 54,00), `TERME JEZERCICA` 40,00 —
+   svi `Zabava / Wellness`.
+
+⚠ Taksonomija živi **samo** u `validation_rules`; u kodu aplikacije nema hardkodiranih
+vrijednosti. Ako se `Wellness` ne pojavi, problem je u bazi, ne u buildu.
+
+---
+
+## T-S124-6 — 26 novih redaka nose Kokine opise
+
+1. Filtriraj 10.07.–31.07.2026, `Izvor = Mastercard`.
+
+**Očekivano:** 26 redaka s čitljivim opisima (`Parking`, `Ina`, `The meat`, `Youtube`,
+`HBOMax`, `Prime`, `Getaldus`, `Disney`, `Bazen`…), **ne** strojni tekst izvoda.
+
+**Zašto:** izvod je autoritet za iznos i datum, **Kokin file za značenje**. Iznimka su
+`LUFTHAN` i `NAKNADA` retci — njih ona vodi spojeno pa nemaju par.
+
+3. Svi imaju popunjen `Tip`/`Podtip`; nijedan nije `N/A`.
+
+---
+
+## T-S124-7 — ista trgovina, drugi trošak
+
+1. Nađi `TERME JEZERCICA-POOL BAR` 9,80 (31.07.2025).
+
+**Očekivano:** `Domaćinstvo / Kave/jelo vani`, **ne** `Zabava / Wellness`.
+
+**Zašto je test:** ključ po trgovcu bi ga pokupio kao wellness. Piće u termama je piće.
+Ovo čuva pravilo da rječnik ne smije biti samo po imenu trgovca.
+
+---
+
+## Otvoreno, nije test nego posao
+
+- **Excel import put nije provjeren.** Treba ga dokazati na TEST-u ili na Kokinom prvom
+  vlastitom mjesecu — inače ne znamo govore li alat i app isti jezik.
+- 3 `event_date` pomaka namjerno nisu dirana (pomicanje mijenja i `session_start`, a
+  `useActivities` grupira po njemu).
+- 185 MC redaka s `Tip = N/A` — rječnik ih može dohvatiti, nije pušteno.
