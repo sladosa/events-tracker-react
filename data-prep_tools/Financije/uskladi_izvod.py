@@ -364,6 +364,29 @@ def uskladi(iz, db, izvor, tol):
             st_left.remove(s)
             db_left.remove(best[1])
 
+    # 2b. POTVRDJEN REDAK S KRIVIM `Datum naplate`. Filtar kandidata gore stiti
+    #     od sparivanja preko izvoda, ali time sakrije i redak koji je potvrdjen
+    #     a nosi krivo dospijece — takav ispadne kao "za uvoz", a uvoz bi ga
+    #     UDVOSTRUCIO. Izmjereno: `Kokin Temu` 20,72 (14.01.2026.) nosi
+    #     `Izvod opis = PAYPAL *TEMU`, ali `Datum naplate = 2026-01-14` umjesto
+    #     11.02. — dakle dan kupnje, pravilo za `Racun` na kartici.
+    #     ⚠ Prag su 2 dana, ne tolerancija: na 30 dana bi se vratio bas onaj
+    #       lazni par (`TV zabava` 26.06. <-> `PRIME VIDEO` 26.07.) zbog kojeg
+    #       filtar i postoji. Isti opis + isti iznos + isti dan je ista
+    #       transakcija; isti opis mjesec dana kasnije je sljedeca pretplata.
+    zabranjeni = [r for r in mc if lo <= ev_date(r) <= hi
+                  and r['attrs'].get('Izvod opis')
+                  and str(r['attrs'].get('Datum naplate') or '')[:10] != dosp]
+    for s in list(st_left):
+        for r in zabranjeni:
+            a = r['attrs']
+            if (norm(a['Izvod opis']) == norm(s['opis']) and net(a) == s['iznos']
+                    and abs((ev_date(r) - s['datum']).days) <= 2):
+                pairs.append((s, r, 'potvrdjen, krivo dospijece'))
+                st_left.remove(s)
+                zabranjeni.remove(r)
+                break
+
     spareni_db = {id(r) for _, r, _ in pairs}
     visak = [r for r in kosara if id(r) not in spareni_db]
 
