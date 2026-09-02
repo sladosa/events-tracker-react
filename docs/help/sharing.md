@@ -56,6 +56,10 @@ zaključani ekran „Tuđi zapis".
   mijenjao i kad.
 - **Brisanje tuđeg retka nije moguće kroz aplikaciju.** Ispravak detalja je ono što
   treba; brisanje nema povratka.
-- ⚠ **Excel nije put za ispravak tuđeg retka.** „Import as mine" ne mijenja postojeći
-  zapis nego **stvara novi** — dobiješ dva zapisa za istu transakciju. Tuđi redak se
-  ispravlja kroz aplikaciju.
+- **Excel put radi isto**, i to je često praktičnije: pri uvozu fajla s tuđim retcima
+  odaberi **„Ispravi kao vlasnik Aree"**. Mijenja postojeći zapis, bez kopija;
+  autorstvo ostaje autoru, ✎ se pojavi kao i kod ispravka kroz aplikaciju.
+- ⚠ **„Import as mine" NIJE ispravak.** Ne mijenja postojeći zapis nego **stvara
+  novi** — dobiješ dva zapisa za istu transakciju. Za ispravak služi treća opcija.
+- ⚠ Ni kroz Excel se tuđi redak **ne može obrisati**: oznaka `DELETE` na tuđem retku
+  se prijavi i zanemari, a redak zadrži sve svoje podatke.

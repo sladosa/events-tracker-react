@@ -3470,3 +3470,78 @@ saldo netaknut (479/210 `Racun` redaka).
 **Odbijeno svjesno:** `043` i push na main na kraju sesije — `043` je gated na
 `BUG-S123-EDITMARK` po vlastitom obrazloženju, a deploy bez prostora za provjeru je
 točno ono što se ne radi.
+
+---
+
+## Done S125 (2026-09-02): 15 eura, `043` na PROD, i tri tiha kvara
+
+Sesija je krenula od jednog pitanja — *„banka kaže 1.920,34, app 1.935,34, gdje je
+15 €"* — i završila s Excel putem kojim vlasnica Aree ispravlja grantee-jev redak.
+
+**Razlika je bila jedan redak s krivim `Izvor`om.** RF saldo se od sidra
+`799,12 @ 11.08.` gradi iz **pet** kretanja, pa je prozor bio trivijalno pretraživ.
+`rest. Kvatrić 15,00` stajao je kao `Visa / Planiran` — plaćen KEKS Payem, koji
+tekući tereti odmah. Presedan je bio jednoznačan: KEKS Pay na RF-u je `Racun` 3/3,
+na ZABA-i `Mastercard` 55/55 (njen KEKS visi na kartici). Uz to se pokazalo da
+`Status.depends_on` **sam zadaje** `Visa`/`Mastercard` → `Planiran`, dakle onih
+„855/855 Visa = Izvrsen" iz S112 su povijesni retci koje su izvodi odavno potvrdili,
+ne konvencija za nove unose.
+
+**`043` pušten na PROD**, pa merge `test-branch` → `main` (S118–S124 kod). Redoslijed
+je bio obavezan: novi kod selekta `edited_by` u **svakom** upitu liste, pa bi deploy
+prije migracije srušio Kokinu listu u cijelosti — i to vjerojatno kao *praznu listu*,
+ne kao grešku. Deploy potvrđen **grepom po samom bundleu** (`edited_by` 14×,
+`Edit (tuđi zapis)` 1×), ne hashem: Netlify je izgradio drugo ime JS chunka nego
+lokalni build, dok se CSS poklopio u znak.
+
+**BUG-S123-EDITMARK zatvoren, i nije bio ono što je pisalo.** Tri sesije vođen kao
+„E2E okolina". Zapravo redak renderiraju **dva mjesta**, a oznaku ✎ imalo je samo
+ono za uski ekran; Playwright vrti 1280 px ⇒ test je cijelo vrijeme govorio istinu.
+Otkriveno tek kad je Saša pogledao oba ekrana. Na krivi trag je odveo komentar iznad
+`editedMark` koji je tvrdio „na oba rasporeda" — isti razred kao PROD slug trigger iz
+S118.
+
+**Sekcija delta sheeta postala je CIJELA KOŠARA.** Stvarni podaci su otkrili rupu
+koju spec nije predvidio: `gorivo 55,00` je bio `Izvrsen` bez potvrde izvodom, pa je
+ispadao iz **obje** strane — iz glavnog bloka jer je kartičan, iz sekcije jer nije
+planiran. Kontrola bi pokazala razliku od točno 55,00 koju ništa ne objašnjava, a
+redak **nije bio ni u fileu** pa se nije dao ispraviti uvozom. Prag je „danas", ne
+sidro (sa sidrom bi ZABA vratila 47 već zatvorenih redaka). Uz to: `Σ` je postala
+**neto** — ZABA košara 11.08. nosi povrat od 3,00, a banka tereti neto.
+
+**Stupac `Provjeri`** (Sašina ideja) kaže *što* s retkom nije u redu, kao formula nad
+`TODAY()` da poruka nestane čim se redak popravi. ⚠ Sašina formulacija za drugi
+slučaj bila je „datum je prošao — promijeni u Izvrsen"; to je doslovno odbačeni
+automat izrečen kao savjet, pa poruka upućuje na **dokaz** (`potvrdi TEK s izvoda`).
+Objašnjenja su prebačena s bilješki na **Data Validation input message** — bilješka
+kod desnog ruba izlazi izvan ekrana i pri skrolanju se odreže.
+
+**Tri tiha kvara, sva tri nađena Sašinim pitanjima, ne planom:**
+
+1. **`excelDataLoader` je šest mjeseci gutao greške.** Devet od jedanaest upita
+   odbacivalo je `error` destrukturiranjem; jedan pali upit na
+   `attribute_definitions` dao je izvoz **bez ijedne atributske kolone**. Gore od
+   tablice: `passes()` vraća `true` kad za slug nema definicije, pa su i **odabir
+   redaka** bili krivi. Popravljeno s `withRetryQuery` + `must()`, ali samo ondje
+   gdje šutnja kvari podatke — dva upita za dropdown emailova ostavljena namjerno.
+2. **Brisanje tuđeg retka bi prošlo pola puta.** `fix_as_owner` je prvi put doveo
+   tuđi redak do `toDelete`; ondje se atributi brišu **bez** filtra po korisniku, a
+   event **s** njim ⇒ redak bi ostao bez ijednog atributa, a prisutan. Nađeno
+   Sašinim pitanjem *„radi li kao UI — edit da, delete ne?"*, prije nego je taj put
+   itko pokrenuo.
+3. **Pravilo o vlasništvu živi na tri mjesta.** Popravljen je apply, a
+   `smartReclassify` i `analyzeUpdates` su ostali s filtrom — posljedica nije bila
+   poruka o pravima nego „event_id više ne odgovara bazi ⇒ **bit će uvezen kao
+   NOV**", dakle obećan duplikat. Izdvojeno u `canUpdateExisting()`.
+
+**Izmjereno uživo, na PROD-u, oba puta:** UI ispravak (Koka nad Sašinim `rest.
+Kvatrić`) i Excel ispravak (`Studio Nataši`) — 10 → 10 redaka bez duplikata, jedan
+promijenjen, autorstvo ostalo autoru, `edited_by` Kokin, 8/8 atributa pod Sašom,
+`Σ košare` nepromijenjena.
+
+**Sašina odluka koja je oblikovala pola sesije:** *Excel roundtrip je Koki važniji od
+UI puta jer je na njega naučila od svoje Excelice; bez toga neće prijeći na
+aplikaciju.* Zato `fix_as_owner` nije polish nego preduvjet cutovera.
+
+**Odbijeno svjesno:** merge na `main` nakon `c156057` — Saša je htio prvo isprobati
+na `test-branch`u. PROD zato ima migracije `043` i `044`, ali ne i kod od S125.

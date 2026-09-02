@@ -10,8 +10,33 @@
 1. Klikni "Import"
 2. Odaberi .xlsx fajl (isti format kao export)
 3. Ako fajl sadrži kategorije koje ne postoje → modal nudi kreiranje strukture
-4. Ako fajl sadrži tuđe evente (User email kolona) → odaberi Skip ili "Import as mine"
+4. Ako fajl sadrži tuđe evente (User email kolona) → odaberi jedan od tri načina
 5. Pregled: identični eventi = sivi (skipped), izmijenjeni = žuti (update), novi = zeleni
+
+### Tuđi retci — tri načina
+- **Skip** (zadano, sigurno): tuđi retci se preskaču
+- **Import as mine**: dodaje **kopije** pod tvojim imenom; originali ostaju u bazi
+- **Ispravi kao vlasnik Aree**: mijenja **postojeći** redak, bez kopija. Autorstvo
+  ostaje autoru, a bilježi se tko je ispravljao (u listi se pojavi ✎ uz redak).
+  Dostupno samo vlasniku Aree u kojoj ti retci žive.
+
+Brisanje tuđeg retka nije moguće ni jednim od ovih načina — oznaka `DELETE` na
+tuđem retku se prijavi i zanemari. Vlasnik Aree smije ispraviti, ne obrisati.
+
+## Delta sheet — usklađenje s bankom
+Uz Export postoji kvačica **Delta sheet**. Traži da je u filtru odabran jedan račun
+(ili se odabere klikom na saldo na Overview pločici).
+
+Fajl sadrži:
+- retke tog računa koji miču saldo u prozoru, s kolonom `Stanje (kontrola)`
+- prazne retke za nove zapise
+- **sekciju KOSARA** ispod njih: kartične retke čije dospijeće još nije prošlo,
+  s vlastitim zbrojem koji se uspoređuje sa skupnom naplatom s izvoda
+- stupac **`Provjeri`** uz sekciju: kaže što s retkom nije u redu (npr. označen kao
+  izvršen, a dospijeva tek za nekoliko dana). Poruka nestaje čim se redak popravi.
+
+⚠ Redak se potvrđuje (`Planiran` → `Izvrsen`) **tek kad se zbroj košare složi s
+izvodom** — dospjeli datum sam po sebi nije dokaz da je banka naplatila.
 
 ## Import (Structure)
 - Import na Structure tabu učitava strukturni sheet

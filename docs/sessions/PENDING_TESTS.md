@@ -1,7 +1,53 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S124 (2026-09-01) — MC 2026. zatvorena u cent; ispravci, 9 brisanja i tranša od 26 redaka upisani na PROD.
+**Zadnji update:** S125 (2026-09-02) — `043` na PROD-u, BUG-S123-EDITMARK zatvoren, košara u delta sheetu, Excel ispravak tuđeg retka.
+
+---
+
+## S125 — `043` na PROD-u, košara, i Excel put za tuđi redak (2026-09-02)
+
+Detalji: [S125_tests.md](tests/S125_tests.md)
+
+⚠ **Kod je na `test-branch`; `main` je i dalje na `bb13153` (S124).** Na PROD-u su
+samo migracije `043` i `044`. Sve niže radi **lokalno protiv PROD baze** — Koka na
+`events-tracker-react.netlify.app` još ništa od ovoga ne vidi.
+
+### Provjereno strojno (ne traži nikoga)
+
+| kontrola | rezultat |
+| --- | --- |
+| razlika od 15 € razriješena (`Izvor` Visa → Racun na `rest. Kvatrić`) | ✅ pločica = banka, **1.920,34** |
+| `043` na PROD-u — `events.edited_by` odgovara | ✅ (prije `400 column does not exist`) |
+| UI: Koka ispravlja Sašin redak | ✅ autorstvo ostalo · `edited_by` upisan · 8/8 atributa pod autorom |
+| **Excel: Koka ispravlja Sašin redak** | ✅ 10 → 10 redaka (bez duplikata) · 1 promijenjen · atributi pod Sašom |
+| `Σ košare 03.09.` prije/poslije oba uvoza | ✅ 205,36 nepromijenjena |
+| unit testovi | ✅ 31 + 21 + 11 |
+| E2E `T-S123-3` (✎ na oba rasporeda) | ✅ 34 s, pada na pokvarenom kodu |
+
+### Traži tebe — pogledom u aplikaciji
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S125-1** | ⭐ ✎ na tuđem retku, **desktop** širina (ovo je bio BUG-S123-EDITMARK) | ⬜ |
+| T-S125-2 | ista oznaka na uskom ekranu | ⬜ |
+| **T-S125-3** | ⭐ sekcija `KOSARA` nosi i već potvrđene retke; `Σ` = 205,36; sažeci je ne broje | ⬜ |
+| T-S125-4 | stupac `Provjeri` — naslov u retku-razdjelniku, objašnjenje kao input message, poruka nestaje na ispravak | ⬜ |
+| **T-S125-5** | ⭐ Excel: vlasnik Aree ispravlja tuđi redak — 1 Modify, **bez** „imported as NEW" | ⬜ |
+| **T-S125-6** | ⭐ Excel: `DELETE` na tuđem retku se **odbija**, atributi ostaju | ⬜ |
+| T-S125-7 | grantee ne dobiva ponudu „Ispravi kao vlasnik" | ⬜ |
+| T-S125-8 | ugašena kvačica Delta sheeta kaže zašto i što učiniti | ⬜ |
+| T-S125-9 | brojač događaja u delta načinu ne tvrdi puni izvoz | ⬜ |
+| T-S125-10 | izvoz koji ne može učitati podatke **pada s porukom**, ne izlazi prazan | ⬜ |
+
+⚠ **T-S125-6 je najvažniji pad ako padne:** bez zaštite bi tuđi redak označen za
+brisanje ostao **bez ijednog atributa, a prisutan** — uništen, a naizgled netaknut.
+
+### ⚠ Otvoreno
+
+- **Nijedan od ovih testova nije prošao kroz deployani PROD kod** — `main` čeka merge.
+- `T-S125-5/-6` su nad **stvarnim RLS-om** provjereni samo za ispravak; grana brisanja
+  je pokrivena unit testom, ne živim RLS-om.
 
 ---
 

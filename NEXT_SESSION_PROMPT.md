@@ -1,8 +1,8 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `S124: uvezi_transu.py -- 26 redaka s MC_2026-07 upisano`
-(grana `test-branch`). Ako `git log` pokazuje novije, čitaj ovo kao **povijest** —
-CLAUDE.md je autoritet.
+**Pisano protiv commita:** `S125: preview i reklasifikacija su tudji redak jos uvijek zvali NEPOSTOJECIM`
+(`00fd87b`, grana `test-branch`). Ako `git log` pokazuje novije, čitaj ovo kao
+**povijest** — CLAUDE.md je autoritet.
 
 ---
 
@@ -10,38 +10,43 @@ CLAUDE.md je autoritet.
 
 ## Gdje smo
 
-**Cijela Mastercard 2026. je u bazi i zatvara se u cent — svih sedam izvoda.** Obje strane
-stoje: baza zna da je 1.332,52 otišlo s računa **i** zna svih 47 kupovina koje to čine.
+Krenulo je od „gdje je 15 €", završilo s **Excel putem kojim Koka ispravlja tvoj
+redak**. To više nije polish nego preduvjet cutovera — sam si rekao: bez roundtripa
+ne prelazi na aplikaciju.
 
 | | |
 | --- | --- |
-| eventa u `Financije_all` | **2.338** |
-| košara 11.07. | **48 redaka · 1.244,74** = banka |
-| košara 11.08. | **47 redaka · 1.332,52** = banka |
-| svih 7 MC izvoda | `uvoz 0 · duplikat 0 · pitanja 0` |
-| **pitanja za Koku** | **nula** |
-
-Sedam „pitanja" ispalo je sedam duplikata. Saldo se nije pomaknuo ni za cent — sve dirnuto
-je `Izvor = Mastercard`.
+| razlika od 15 € | ✅ riješena — KEKS Pay je bio zaveden kao `Visa` |
+| RF saldo | **1.920,34** = banka, bez novog sidra |
+| `043` na PROD-u | ✅ pušten, radi kroz UI **i** kroz Excel |
+| BUG-S123-EDITMARK | ✅ zatvoren — ✎ nije crtao **desktop** raspored |
+| tiha kvara nađena | **3**, sva tri iz tvojih pitanja |
 
 ## Što čeka tebe
 
-**1. Koki je ostalo jedno pitanje, i nije o podacima.** Rečenica koju joj još nitko nije
-rekao: **kad počne upisivati u app, u Excelicu više ne.** Radi li oboje, sve dobijemo
-dvaput, a to se neće vidjeti dok se saldo ne raziđe.
+**1. Vrati `Studio Nataši` na `Planiran`.** Ostao je `Izvrsen` iz testa, a nema
+pokrića na izvodu — točno ono što smo ujutro proglasili greškom. Izvoz → promjena →
+Import kao „Ispravi kao vlasnik Aree". Usput se provjeri da put radi u oba smjera.
 
-**2. `043` + merge na main** — svjesno odgođeno na kraju S124. `043` je gated na
-`BUG-S123-EDITMARK`; migracijino vlastito obrazloženje kaže da nevidljiva izmjena tuđeg
-retka nije prihvatljiva. Redoslijed kad dođe vrijeme: **migracija prije koda.**
+**2. Deploy na `main` — svjesno odgođen.** PROD ima migracije `043` i `044`, ali kod
+od `c156057` nadalje nije gore. Koka zato **još ne vidi** ni ✎ na desktopu, ni
+košaru, ni „Ispravi kao vlasnik Aree". Reci kad želiš.
 
-**3. Odluka o opsegu:** Visa i ZABA istim postupkom? MC je gotov, ali Visa je **855 redaka**
-i zanimljivija — nema fiksan dan naplate, pa kontrola po košari ondje ne radi.
+**3. Deset testova čeka pogled** — `T-S125-1…10`. Nisu neizvedeni nego neprovjereni:
+mjerenja nad bazom su prošla, ali ih nitko nije potvrdio u aplikaciji.
+
+**4. Rečenica koju Koki još nitko nije rekao** (stoji od S124): *kad počne upisivati
+u app, u Excelicu više ne.* Radi li oboje, sve dobivamo dvaput.
 
 ## Što se pokazalo vrijednim, za ubuduće
 
-Tvoj potez „zbroji cijeli mjesec i usporedi s izvodom" razriješio je ono što moje sparivanje
-redak-po-redak nije moglo. **Zbroj košare je jači signal od parova** — ide u alat kao prvo
-što ispiše.
+**Tri tiha kvara nađena su tvojim pitanjima, nijedan planom.** „Radi li kao UI — edit
+da, delete ne?" spriječilo je brisanje koje bi retku pojelo sve atribute a ostavilo
+ga u bazi. „Hoće li uvoz raditi kroz 40 praznih redaka?" natjeralo je mjerenje umjesto
+pretpostavke. „Ovo je zbunjujuće" otkrilo je da bi Apply napravio duplikat.
+
+**Pogledati isto na dva ekrana** riješilo je bug koji je tri sesije imao krivu
+dijagnozu. Uski ekran je pokazivao ✎, široki nije.
 
 ---
 
@@ -49,64 +54,66 @@ redak-po-redak nije moglo. **Zbroj košare je jači signal od parova** — ide u
 
 ## Stanje
 
-- `test-branch` **15 commitova ispred `main`**. `main` je na S117 kodu.
-- **`043` samo na TEST-u** (`events.edited_by` na PROD-u vraća 400). PROD ima 035–042.
-- S124 nije dirao kod aplikacije — sve je `data-prep_tools/` + docs.
-- Backupi: `_arhiva/backup_usklada_*.json`, `_arhiva/backup_transa_*.json`,
-  `_arhiva/izlazi/uskladjenje_MC_2026_primijenjeno_20260901.xlsx`
+- `test-branch` **8 commitova ispred `main`** (`c156057` … `00fd87b`).
+  `main` = `bb13153` (S124), deployan.
+- **PROD ima `043` i `044`.** `044` dodaje `split.due_slug = datum_naplate` u
+  `areas.settings.dashboard` — bez njega je delta sekcija kakva je bila.
+- Saša je testirao **lokalno protiv PROD baze** (dev server na `.env.prod.local`).
+- Snimke košare 03.09. za usporedbu: scratchpad `prije.json`, `poslije.json`,
+  `poslije2.json` (nisu u repou).
 
-## Alati (svi na `test-branch`)
+## Što je S125 napravio
 
 ```
-uskladi_izvod.py      izvod ↔ baza ↔ Kokin file; --dry ispis, --file review workbook
-primijeni_uskladu.py  upisuje nalaz (ispravci + dopune + brisanja) jednim potezom
-uvezi_transu.py       uvozi retke kojih baza nema; rječnik Izvod opis → Tip/Podtip
+c156057  ✎ na desktop raspored — BUG-S123-EDITMARK zatvoren
+e31c53b  delta sekcija = cijela košara (`split.due_slug`, sql/044) + neto Σ
+73dbc25  grana "dospijeće otvoreno" iz već učitanih redaka (izvoz je bio stao)
+020b29b  stupac `Provjeri`
+a69346c  ugašena kvačica delta sheeta objašnjava sebe
+90d1a24  brojač događaja u delta načinu ne tvrdi puni izvoz
+db3e7c3  excelDataLoader: izvoz pada s porukom umjesto da izađe kraći
+1be6952  uvoz: `fix_as_owner` — vlasnik Aree ispravlja tuđi redak
+edae267  tuđi redak se NE briše (dva zida) + `importForeignRows.test.mjs`
+6db489c  test da uvoz doseže sekciju ispod 40 praznih redaka
+00fd87b  preview i reklasifikacija — `canUpdateExisting()`
 ```
 
-⚠ Sva tri imaju dry run i **mjere broj promijenjenih redaka, ne HTTP status.**
-⚠ `uskladi_izvod.py` radi **samo MC**; Visa/ZABA imaju drugi format i parser staje.
+## Testovi
 
-## ⭐ IZOŠTRENJA ALATA — prvo na redu
+| file | slučajeva |
+| --- | --- |
+| `src/lib/__tests__/deltaSheetLayout.test.mjs` | 31 |
+| `src/lib/__tests__/importForeignRows.test.mjs` | 21 (nov) |
+| `src/lib/__tests__/deltaAccount.test.mjs` | 11 |
+| `e2e/tests/S123_owner_edits_grantee_row.spec.ts` | 3 (`T-S123-3` nov, mijenja viewport) |
 
-Šest stavki, svaka iz konkretnog promašaja ove sesije:
+⚠ `importForeignRows` gradi **pravi .xlsx** i parsira ga — pokriva sva tri
+`foreignMode`a i delta file s praznim retcima. Ne dira bazu.
 
-1. **Obrnuti 1:N smjer** — `N` redaka baze = **jedan** redak izvoda (`34,08 + 0,90 =
-   KEKS PAY 34,98`). Detektor danas gleda samo suprotan smjer.
-2. **Zbroj košare kao prvo što se ispiše**, prije sparivanja — ne ovisi o pogađanju parova.
-3. **Populacija po `Izvod opis`, ne po košari.** Danas sekcija 5 gleda `Datum naplate ==
-   dospijeće`, pa 4 MC retka s dospijećem koje ne postoji **uopće ne uđu u vidno polje**
-   (i 855 Visa redaka).
-4. **Tražiti po SVIM izvodima**, ne po jednoj kartici. `Izvodi_transakcije.xlsx` ima 3.595
-   parsiranih redaka (MC 1.092 · Visa 1.539 · RF 264 · ZABA 700).
-5. **Provjera „isti dan, ±0,10"** — tri od sedam pitanja bila su točno to.
-6. **Ključ trgovca + rezanje `[kartica: X]`** — danas žive samo u `uvezi_transu.py`,
-   a pripadaju i `uskladi_izvod.py`.
-7. **Prag „sitno, ne pitamo"** (< ~2 €, bez para igdje) — inače se 0,90 vraća svaki mjesec.
+## Otvoreno / sljedeće
 
-## Zatim
-
+- **Merge na `main`** kad Saša kaže. ⚠ `044` je već na PROD-u i stari kod ga
+  ignorira, pa nema redoslijednog rizika kao kod `043`.
+- **`T-S125-6` nije provjeren nad živim RLS-om** — grana brisanja tuđeg retka
+  pokrivena je samo unit testom.
+- **Preostali gutači grešaka:** dva upita u `loadSharedEmailsByArea`
+  (`excelDataLoader.ts:611,620`), namjerno ostavljena. Ako se ikad pokaže da prazan
+  popis emailova nekome smeta, ondje treba **upozorenje**, ne bacanje.
+- **Padajući izbornik računa uz ugašenu kvačicu delta sheeta** — Saši ponuđeno,
+  nije tražio. Uklonio bi odlazak u Filter panel.
+- **Visa nema fiksan dan naplate** (S124 nalaz, i dalje otvoreno): 855 redaka ne pada
+  ni u jednu košaru. Sada je to vidljivije jer sekcija radi po dospijeću.
 - **185 MC redaka s `Tip = N/A`** — rječnik postoji i može se pustiti preko njih.
-  ⚠ Ne pisati automatski gdje ključ nije jednoglasan; posrednici (`KEKS PAY`, `PAYPAL`)
-  se ne smiju ni pokušati.
-- **Visa** (855 redaka, PBZVISA izvodi) pa **ZABA** — ondje retci **diraju saldo**, pa
-  greška ima veću cijenu.
-- **`043` + main**, gated na `BUG-S123-EDITMARK` (sljedeći korak je izmjeriti mrežni
-  odgovor s `page.on('response')`, **ne** mijenjati locator).
-- **Koka prvi put sama uvozi** — treba joj mjesec za koji ima razlog. Time se testira i da
-  alat i app govore isti jezik, što ovaj batch **nije** provjerio (išao je skriptom).
-
-## Neverificirano
-
-- **T-S124-1…8** (`docs/sessions/tests/S124_tests.md`) — ⚠ dio ih je zastario: T-S124-3
-  je pretpostavljao da Koka uvozi `Events` list, a to je odrađeno skriptom. Treba ih
-  prepisati u „provjeri ishod na PROD-u".
-- Review file je regeneriran i sada pokazuje **0 ispravaka / 0 pitanja** — to je i njegova
-  kontrola.
 
 ## Zamke potvrđene ovom sesijom (detalji u CLAUDE.md)
 
-- **Sparivanje samo po iznosu je promašilo tri puta u jednoj sesiji.** `Izvod opis` nije
-  jedinstven kroz vrijeme; `LH 2/3` je „prošao" jer iznosi 62,01/1,32 postoje kao lipanjske
-  rate; `34,08` sam pripisao `IGO MAT 34,17` na temelju 9 centi razlike. **Iznos treba
-  drugu potvrdu — datum, tekst, ili broj rate.**
-- **openpyxl string koji počinje s `=` sprema se kao formula** i Excel ne otvori file.
+- **Redak liste renderiraju DVA mjesta** — popravi li se jedno, kvar se vidi samo na
+  jednoj širini. Komentar je tvrdio „oba", kod je radio jedno.
+- **Isto pravilo na tri mjesta se raziđe** — apply/reklasifikacija/preview. Posljedica
+  nije poruka o pravima nego obećan **duplikat**.
+- **Brisanje mora prvo provjeriti što smije obrisati**, pa tek onda brisati — inače
+  redak izgubi atribute a preživi.
+- **`const { data } = await supabase…` je landmina** — palo čitanje se čita kao „nema
+  ničega". Šest mjeseci u izvoznom putu.
+- **Bilješka u Excelu kod desnog ruba nije čitljiva** — Data Validation input message,
+  uz limite 32/255 i pad natrag na bilješku.

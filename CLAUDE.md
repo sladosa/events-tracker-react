@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S124).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S125).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -261,8 +261,60 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **⚠ RLS-blokiran write „uspije" s 200 i praznim rezultatom.** Svaka provjera
   ovlasti mjeri **broj promijenjenih redaka**, nikad HTTP status.
 
+**Collab — Excel put za tuđi redak (S125)**
+
+- **Excel roundtrip je Koki VAŽNIJI od UI puta** (Sašina odluka) — na njega je
+  naviknuta iz svoje Excelice, i bez njega ne prelazi na aplikaciju. Zato uvoz od
+  S125 ima treći način uz `skip` / `import_as_mine`: **`fix_as_owner`**, koji
+  **zadržava `event_id`** ⇒ UPDATE na mjestu, autorstvo ostaje autoru, `edited_by`
+  bilježi ispravljača. Baza je to dopuštala od `043`; blokada je bila u klijentu.
+- **⚠ Nije rubni slučaj nego glavni tok delta sheeta.** Izmjereno na košari 03.09.:
+  **7 od 10 redaka su Sašini**. Bez ovoga Kokin mjesečni krug ne bi vidio većinu
+  košare — i to **tiho**, retci se preskaču bez poruke.
+- **⚠ ISTO PRAVILO ŽIVI NA TRI MJESTA i već je jednom odlutalo.** Apply
+  (`importEventsFromExcel`), reklasifikacija (`smartReclassify`) i preview
+  (`analyzeUpdates`) svi odlučuju smije li se postojeći redak ažurirati. U S125 je
+  popravljen samo apply, pa su druga dva ostala s `.eq('user_id', userId)` —
+  **posljedica nije bila poruka o pravima nego „event_id više ne odgovara bazi ⇒
+  bit će uvezen kao NOV", dakle obećan DUPLIKAT.** Pravilo je zato izdvojeno u
+  **`canUpdateExisting()`**; svaka kopija tog uvjeta je prilika da se raziđe.
+  ⚠ Vlasništvo se provjerava **u kodu**, ne filtrom u upitu — filtar tuđi redak
+  prikazuje kao nepostojeći. RLS ostaje druga brana.
+- **⚠ BRISANJE TUĐEG RETKA BI PROŠLO POLA PUTA.** `applyDeletes` briše
+  `event_attributes` **bez** filtra po korisniku (RLS iz `020` to vlasniku Aree
+  dopušta), a `events` **s** filtrom ⇒ redak bi ostao **bez ijednog atributa, a
+  prisutan** — uništen, a naizgled netaknut. Zatvoreno na **dva** mjesta jer je
+  jedno disciplina a drugo invarijanta: parser tuđi redak nikad ne stavlja u
+  `toDelete` (i to **javi**), a `applyDeletes` prije brisanja ičega provjeri **što
+  se uopće smije obrisati**. Drugo štiti i svaki budući put do te funkcije.
+- **Tuđi redak BEZ `event_id` se ne ispravlja nego prijavljuje** — to nije ispravak
+  nego nov zapis pod tuđim imenom.
+- **Ponuda se prikazuje samo vlasniku** svih Area u kojima ti retci žive
+  (`foreignAreas` iz parsera + provjera nad `areas`). Ponuda koja ne može uspjeti
+  gora je od izostanka.
+
 **Excel**
 
+- **⚠ IZVOZ KOJI NE MOŽE UČITATI PODATKE MORA PASTI, NE IZAĆI KRAĆI** (S125).
+  `excelDataLoader.ts` je od `5b45f40` (28.02.2026.) u **devet od jedanaest** upita
+  odbacivao `error` destrukturiranjem (`const { data } = await supabase…`). Kako
+  `supabase` **ne odbacuje promise** nego vraća `{ data, error }`, palo čitanje daje
+  `data: null`, a pozivatelj to čita kao „nema ničega". Izmjereno na PROD-u: jedan
+  pali upit na `attribute_definitions` dao je file **bez ijedne atributske kolone** —
+  izašao je, izgledao uredno, a jedina naznaka bio je toast *„Kontrolni stupac
+  preskočen: ne nalazim kolone za uplatu/isplatu"*, koji zvuči kao problem delta
+  sheeta.
+  ⚠ **Posljedica je gora od tablice:** `passes()` u `ExcelExportModal` vraća `true`
+  kad za slug nema definicije, pa su bez atributa u delta blok ušli i kartični retci
+  — dakle i **odabir redaka** je bio kriv, ne samo prikaz.
+  Popravljeno: `withRetryQuery` + `must()` koji **baci s porukom što se nije
+  učitalo**, na upitima čija tiha praznina kvari file (areas, categories,
+  attribute_definitions, event_attributes, roditeljski eventi, profiles/emailovi).
+  ⚠ Dva upita u `loadSharedEmailsByArea` su **namjerno** ostavljena — hrane popis
+  emailova za dropdown, ne same retke; ondje bi bacanje srušilo izvoz zbog nebitnog
+  popisa. **Glasan pad ide samo gdje šutnja kvari podatke.**
+  ⚠ Email u kol. G je u toj skupini s razlogom: bez njega uvoz **tog** filea preskoči
+  svaki redak kao „tuđi".
 - **`Category_Path` format:** Activities Events kol. C = **bez area name**
   (`Domacinstvo > Automobili > Gorivo`); Structure sheet kol. D = **sa area name**.
   `ExportCategoryInfo.full_path` nikad ne uključuje area name; `StructureNode.fullPath` da.
@@ -394,6 +446,45 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **Export profil se primjenjuje PRIJE delta alata.** Profil dira kolone po položaju (širine,
   skrivanje, grupe), a kontrolni stupac se dodaje zadnji — obrnutim redoslijedom bi ga profil
   mogao sakriti.
+- **⚠ Sekcija je CIJELA KOŠARA, ne samo `Status = Planiran`** (S125). Redak koji je
+  netko prebacio u `Izvrsen` **bez potvrde izvodom** ispadao je iz **obje** strane:
+  iz glavnog bloka jer je kartičan pa ne miče saldo, iz sekcije jer nije planiran.
+  Izmjereno na PROD-u: košara 03.09. ima 10 redaka / 205,36, a sekcija je pokazivala
+  9 / 150,36 — kontrola bi pokazala razliku od **točno 55,00** koju na listu ništa ne
+  objašnjava. Gore od krive brojke: **redak nije bio ni u fileu**, pa se nije dao
+  ispraviti ni uvozom — a roundtrip je jedini put kojim Koka ispravlja retke.
+  Sada u sekciju ide i sve čije **dospijeće još nije prošlo**, bez obzira na `Status`.
+  ⚠ **Prag je „danas", ne sidro** — sa sidrom bi ZABA vratila **47 već potvrđenih**
+  redaka košare 11.08. (izmjereno); sekcija koja svaki mjesec ponovi zatvorenu košaru
+  je šum, a šum se prestane čitati.
+  ⚠ Slug dospijeća dolazi **iz configa** (`split.due_slug`, migracija `044`), ne iz
+  koda — `datum_naplate` je pojam Financija, ne aplikacije. Bez ključa je ponašanje
+  doslovno prijašnje, pa migracija i kod ne moraju ići zajedno.
+- **⚠ `Σ` sekcije je NETO** (minus − plus). Izmjereno na ZABA košari 11.08.: 49
+  redaka, isplate `2.868,04`, **povrat `3,00`** — banka tereti neto, pa bi bruto
+  zbroj izmislio razliku prema izvodu.
+- **Stupac `Provjeri` kaže ŠTO s retkom nije u redu** (S125): `Izvrsen` a dospijeće
+  u budućnosti ⇒ *„dospijeva tek …, nije moglo biti naplaćeno"*; `Planiran` a
+  dospijeće prošlo ⇒ *„dospjelo …, potvrdi TEK s izvoda"*.
+  ⚠ **Drugi slučaj NE SMIJE glasiti „promijeni u Izvrsen"**, iako se tako prirodno
+  formulira — to je doslovno odbačeni automat („dospjelo ⇒ izvršeno") izrečen kao
+  savjet, i naučio bi korisnika da potvrđuje po datumu. Uputa ide na **dokaz**, ne
+  na potez. Čuva test u `deltaSheetLayout`.
+  ⚠ Napomena je **formula nad `TODAY()`**, ne upisan tekst — promijeni li korisnik
+  `Status`, nestaje istog trena. Upozorenje koje i dalje prigovara popravljenom
+  retku prestane se čitati.
+  ⚠ Naslov stupca stoji u **retku-razdjelniku**, ne u zaglavlju lista: vrijedi samo
+  za sekciju, a zaglavlje je desetke redaka iznad, uz `Stanje (kontrola)` koje se
+  odnosi na glavni blok.
+- **⚠ Objašnjenja uz ćelije idu kao Data Validation „input message", ne kao `.note`**
+  (S125). Bilješka se otvara **desno** od ćelije: kod desnog ruba lista izlazi izvan
+  ekrana, a kad je list skrolan, odreže joj se dno — objašnjenje koje se ne može
+  pročitati jednako je onome kojeg nema. Helper `explain()` nosi oba Excel limita
+  (`promptTitle ≤ 32`, `prompt ≤ 255`) i **pada natrag na bilješku** ako tekst ne
+  stane; premašaj daje neispravan OOXML, Excel ponudi „repair" i pritom **izbaci
+  sadržaj**. ⚠ Input message **nema crveni trokut**, dakle ne najavljuje sam sebe —
+  ide samo na ćelije koje su već naslov nečega, nikad kao jedini nositelj nužne
+  informacije (sidro od 355 znakova zato ostaje bilješka).
 
 **Mjerenje / usklađenje**
 
@@ -600,6 +691,16 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 
 **UI (React)**
 
+- **⚠ REDAK LISTE RENDERIRAJU DVA MJESTA, I LAKO SE POPRAVI SAMO JEDNO** (S125).
+  `ActivitiesTable` crta desktop redak kroz `cellContent('actions')`
+  (`tr.hidden.sm:table-row`) i uski redak kroz vlastitu sticky ćeliju
+  (`tr.sm:hidden`). Oznaka ✎ dodana je samo u drugo — pa se **vidjela na mobitelu,
+  a ne na desktopu**, i to je tri sesije vođeno kao „E2E okolina" (Playwright vrti
+  1280 px). Nalaz je cijelo vrijeme bio točan; tražilo se na krivom mjestu.
+  ⚠ **Komentar je odveo na krivi trag:** tvrdio je „stoji na oba rasporeda" dok je
+  kod radio jedan. Isti razred kao PROD slug trigger (S118) — komentar koji opisuje
+  **namjeru** čita se kao opis koda. Svaka nova ćelija retka mora se provjeriti na
+  **obje širine**, i test to mora mjeriti mijenjanjem viewporta.
 - **⚠ NEUSPJELO ČITANJE NIJE „NEMA NIČEGA" — i to je danas tri puta zaredom bio isti bug**
   (S121). Pravilo je već stajalo uz RPC (`last_on`), ali se krši svugdje gdje loader ima
   granu za grešku. Izmjereno na PROD-u: **jedno** palo čitanje `areas` ugasilo je Overview
@@ -884,11 +985,16 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   **živog filtra**, a evente iz profila; presjek prazan ⇒ file s točnim sidrom i
   nula redaka. Sada `deriveDeltaAccount()` (`exportProfile.ts`) + upozorenje na
   praznu sekciju. Čuva `src/lib/__tests__/deltaAccount.test.mjs` (11 slučajeva).
-- **BUG-S123-EDITMARK:** oznaka ✎ „netko drugi je ispravio ovaj redak" **se ne
-  prikazuje** u E2E okruženju. Isključeno mjerenjem: stale bundle (dev server
-  servira aktualan kod) i neupisan `edited_by` (T-S123-2 prolazi). Uzrok
-  neutvrđen. ⚠ **Sljedeći korak je izmjeriti mrežni odgovor** (`page.on('response')`)
-  — sadrži li payload `edited_by` — a ne mijenjati locator. Do tada ručni test.
+- **~~BUG-S123-EDITMARK~~ — ✅ POPRAVLJENO S125.** Oznaka ✎ nije se prikazivala
+  jer redak renderiraju **dva različita mjesta**, a oznaku je imalo samo jedno:
+  `cellContent('actions')` (desktop, `tr.hidden.sm:table-row`) vraćao je goli
+  `menuButton`, dok ju je sticky ćelija uskog retka (`tr.sm:hidden`) crtala.
+  Playwright vrti 1280 px ⇒ **test je cijelo vrijeme govorio istinu**, a tražilo
+  se na krivom mjestu (mrežni odgovor, locator, stale bundle). Otkriveno tek kad
+  je Saša pogledao **oba ekrana** na PROD-u: uski je pokazivao ✎, široki ne.
+  ⚠ Na krivi trag je odveo komentar iznad `editedMark` koji je tvrdio „na oba
+  rasporeda" dok je kod radio jedan — isti razred kao PROD slug trigger (S118).
+  Čuva `T-S123-3` u `S123_owner_edits_grantee_row.spec.ts` (mijenja viewport).
 - **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
   StrictMode artefakt, nizak rizik
 - **BUG-S103-ANYATTR:** „In any attribute" filter (`ATTR_FILTER_ANY`) timeouta za grantee-e —
