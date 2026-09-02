@@ -870,8 +870,13 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
 
           {/* Delta sheet (Faza 1) */}
           {balanceWidget && (
-            <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 space-y-1">
-              <label className="flex items-center gap-2 text-sm font-medium text-teal-900">
+            <div className={`rounded-lg border p-3 space-y-1 ${deltaReady
+              ? 'border-teal-200 bg-teal-50'
+              : 'border-gray-200 bg-gray-50'}`}>
+              <label
+                className={`flex items-center gap-2 text-sm font-medium ${deltaReady ? 'text-teal-900' : 'text-teal-900/45'}`}
+                title={deltaReady ? undefined : 'Nije odabrana nijedna grupa pločice — v. objašnjenje ispod.'}
+              >
                 <input
                   type="checkbox"
                   checked={deltaMode}
@@ -918,9 +923,32 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                   </label>
                 </div>
               ) : (
-                <p className="text-xs text-teal-700">
-                  Prvo odaberi ra&#269;un &mdash; klikni saldo na Overview plo&#269;ici, pa se vrati na Export.
-                </p>
+                /* Ugasena kvacica bez objasnjenja je isti kvar kao tiha greska:
+                   korisnik vidi da nesto ne ide, a ne zna ni zasto ni sto dalje.
+                   Izmjereno na Sasi 2026-09-02: stara poruka je bila `text-xs`
+                   teal na teal ispod ugasene kvacice -- nije ju ni vidio -- a
+                   uputa ("klikni saldo na Overview plocici") mu je bila i kriva:
+                   njegov najblizi put je filtar u panelu.
+                   /!\ Grupa se imenuje NASLOVOM PLOCICE iz configa, nikad rijecju
+                   "racun" u kodu -- druga Area grupira po necem drugom. */
+                <div className="text-xs text-teal-900 space-y-1.5">
+                  <p>
+                    <strong>Za&scaron;to je uga&scaron;eno:</strong> delta sheet uskla&#273;uje s bankom{' '}
+                    <strong>jednu</strong> grupu plo&#269;ice &bdquo;{balanceWidget.title}&ldquo;,
+                    a trenutno nije odabrana nijedna &mdash; pa sheet ne zna koje stanje uskla&#273;uje&scaron;.
+                  </p>
+                  <p>
+                    <strong>&Scaron;to u&#269;initi:</strong> u <em>Filter</em> panelu iznad postavi filtar
+                    atributa na jednu vrijednost (za Financije: jedan ra&#269;un), <em>ili</em> na tabu{' '}
+                    <em>Overview</em> klikni saldo te grupe. Oboje postavlja isti filtar, pa se vrati ovamo.
+                  </p>
+                  {selectedProfile && (
+                    <p className="text-teal-700">
+                      Profil &bdquo;{selectedProfile}&ldquo; nema vlastiti filtar atributa, pa se grupa
+                      uzima iz panela.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}
