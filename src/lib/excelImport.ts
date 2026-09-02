@@ -603,6 +603,29 @@ export async function parseExcelFile(
            foreignRowCount, foreignEmailsSummary, foreignAreas: [...foreignAreaSet], untouchedCount };
 }
 
+
+/**
+ * Smije li se POSTOJECI redak azurirati ovim uvozom?
+ *
+ * /!\ ISTO PRAVILO NA TRI MJESTA, pa zivi u jednoj funkciji: apply put
+ *   (`importEventsFromExcel`), reklasifikacija (`smartReclassify`) i preview
+ *   (`analyzeUpdates`). U S125 je popravljen samo apply, a druga dva su ostala
+ *   s filtrom `user_id` -- posljedica NIJE bila poruka o pravima nego
+ *   "event_id vise ne odgovara bazi => bit ce uvezen kao NOV", dakle obecan
+ *   DUPLIKAT. Tri kopije istog uvjeta su tri prilike da se raziđu.
+ *
+ * `fix_as_owner` je jedini nacin koji priznaje tudje autorstvo. RLS je i dalje
+ * druga brana: sto korisnik ne smije vidjeti, upit mu uopce ne vrati.
+ */
+export function canUpdateExisting(
+  existingUserId: string | undefined,
+  row:            { _fixForeign?: boolean },
+  userId:         string,
+): boolean {
+  if (existingUserId === userId) return true;
+  return row._fixForeign === true;
+}
+
 // ─────────────────────────────────────────────
 // Smart reclassify (port of Python V2.4.6)
 // ─────────────────────────────────────────────
@@ -621,20 +644,27 @@ async function smartReclassify(
   const eventIds = toUpdate.map(r => r.event_id!).filter(Boolean);
 
   // Chunk to avoid URL length limits in PostgREST (large exports have thousands of IDs)
+  // /!\ VLASNISTVO SE PROVJERAVA U KODU, NE FILTROM U UPITU.
+  //   S `.eq('user_id', userId)` tudji redak izgleda kao da NE POSTOJI, pa ga
+  //   ova funkcija pretvori u `event_id: null` -- dakle u INSERT. Vlasnica Aree
+  //   koja ispravlja grantee-jev redak time ne bi dobila ispravak nego
+  //   DUPLIKAT, a poruka bi glasila "event_id vise ne odgovara bazi", sto je
+  //   neistina o pravima, ne o postojanju. Izmjereno 2026-09-02, na prvom
+  //   pokusaju ispravka tudjeg retka.
+  //   RLS i dalje stiti: sto korisnik ne smije vidjeti, upit mu ne vrati.
   const RECLASSIFY_CHUNK = 200;
-  const allExisting: Array<{ id: string; category_id: string }> = [];
+  const allExisting: Array<{ id: string; category_id: string; user_id: string }> = [];
   for (let i = 0; i < eventIds.length; i += RECLASSIFY_CHUNK) {
     const chunk = eventIds.slice(i, i + RECLASSIFY_CHUNK);
     const { data } = await supabase
       .from('events')
-      .select('id, category_id')
-      .in('id', chunk)
-      .eq('user_id', userId);
-    if (data) allExisting.push(...(data as { id: string; category_id: string }[]));
+      .select('id, category_id, user_id')
+      .in('id', chunk);
+    if (data) allExisting.push(...(data as { id: string; category_id: string; user_id: string }[]));
   }
 
-  const existingMap = new Map<string, string>(
-    allExisting.map(e => [e.id, e.category_id])
+  const existingMap = new Map<string, { catId: string; userId: string }>(
+    allExisting.map(e => [e.id, { catId: e.category_id, userId: e.user_id }])
   );
 
   const validUpdates:        ParsedImportRow[] = [];
@@ -645,13 +675,16 @@ async function smartReclassify(
   for (const row of toUpdate) {
     const eid = row.event_id!;
 
-    if (!existingMap.has(eid)) {
+    const found = existingMap.get(eid);
+    // Tudji redak je "nadjen" samo u `fix_as_owner` nacinu; inace se ponasa
+    // tocno kao dosad -- nije nadjen, pa ide u CREATE.
+    if (!found || !canUpdateExisting(found.userId, row, userId)) {
       reclassifiedCreates.push({ ...row, event_id: null });
       notFound.push(eid.slice(0, 8) + '...');
       continue;
     }
 
-    const existingCatId  = existingMap.get(eid)!;
+    const existingCatId  = found.catId;
     const expectedCatId  = catByPath[`${row.area}||${row.category_path}`] ?? null;
 
     if (existingCatId !== expectedCatId) {
@@ -1175,7 +1208,7 @@ export async function applyImportChanges(
       // /!\ Vlasnik Aree ispravlja TUDJI redak (043): tada se ne smije filtrirati
       //   po `user_id` -- s tim filtrom redak se uopce ne nadje, a poruka bi
       //   glasila "not found", sto je neistina o pravima, ne o postojanju.
-      const fixForeign = row._fixForeign === true;
+      const fixForeign = row._fixForeign === true;   // v. `canUpdateExisting`
       let q = supabase
         .from('events')
         .select('id, user_id, category_id, event_date, session_start, comment, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
@@ -1510,7 +1543,7 @@ export async function analyzeUpdates(
   const catByPath: Record<string, string> = {};
   for (const [id, info] of Object.entries(categoriesDict)) catByPath[`${info.area_name}||${info.full_path}`] = id;
 
-  type ExistingRow = ExistingLeafEvent & { id: string; category_id: string };
+  type ExistingRow = ExistingLeafEvent & { id: string; category_id: string; user_id: string };
 
   // Batch fetch existing events (same fields as the apply path's per-row fetch)
   const eventIds = toUpdate.map(r => r.event_id!).filter(Boolean);
@@ -1518,11 +1551,13 @@ export async function analyzeUpdates(
   const existingById = new Map<string, ExistingRow>();
   for (let i = 0; i < eventIds.length; i += CHUNK) {
     const chunk = eventIds.slice(i, i + CHUNK);
+    // /!\ Isti razlog kao u `smartReclassify`: filtar po `user_id` bi tudji
+    //   redak prikazao kao nepostojeci, pa bi preview OBECAO duplikat ("bit ce
+    //   uvezen kao NOV") -- i to bas u trenutku odluke.
     const { data, error } = await supabase
       .from('events')
-      .select('id, category_id, event_date, session_start, comment, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
-      .in('id', chunk)
-      .eq('user_id', userId);
+      .select('id, user_id, category_id, event_date, session_start, comment, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
+      .in('id', chunk);
     if (error) throw new Error(`Update analysis failed: ${error.message}`);
     for (const e of (data ?? []) as ExistingRow[]) existingById.set(e.id, e);
   }
@@ -1534,6 +1569,9 @@ export async function analyzeUpdates(
   for (const row of toUpdate) {
     const existing = existingById.get(row.event_id!);
     if (!existing) { invalidIdCount++; continue; }
+    if (!canUpdateExisting((existing as { user_id?: string }).user_id, row, userId)) {
+      invalidIdCount++; continue;
+    }
 
     const expectedCatId = catByPath[`${row.area}||${row.category_path}`] ?? null;
     if (existing.category_id !== expectedCatId) { invalidIdCount++; continue; }

@@ -37,7 +37,7 @@ await build({
     }),
   },
 });
-const { createEventsExcel, createDeltaExcel, parseExcelFile, DELETE_MARKER } = await import(pathToFileURL(out).href);
+const { createEventsExcel, createDeltaExcel, parseExcelFile, DELETE_MARKER, canUpdateExisting } = await import(pathToFileURL(out).href);
 
 const CAT = 'cat1';
 const AREA = 'Financije_all';
@@ -167,6 +167,22 @@ console.log('DELTA file — sekcija je ISPOD 40 praznih redaka; stigne li uvoz d
   ok('40 praznih redaka ne postaje 40 gresaka', p.errors.length === 0, `got ${JSON.stringify(p.errors)}`);
   ok('preskoceni prazni retci se BROJE i javljaju',
      p.warnings.some(w => /praznih redaka predloška preskočeno/i.test(w)), `got ${JSON.stringify(p.warnings)}`);
+}
+
+console.log('');
+console.log('canUpdateExisting — pravilo koje je vec jednom odlutalo na tri mjesta:');
+{
+  const ME = 'u-me', OTHER = 'u-other';
+  ok('vlastiti redak: uvijek', canUpdateExisting(ME, {}, ME));
+  ok('tudji redak bez fix_as_owner: NE', !canUpdateExisting(OTHER, {}, ME));
+  // /!\ Kad ovo vrati false, posljedica NIJE poruka o pravima nego
+  //     "event_id vise ne odgovara bazi => uvest ce se kao NOV" -- dakle
+  //     obecan DUPLIKAT, i to u trenutku odluke.
+  ok('tudji redak uz fix_as_owner: DA', canUpdateExisting(OTHER, { _fixForeign: true }, ME));
+  ok('nepostojeci redak: NE', !canUpdateExisting(undefined, {}, ME));
+  ok('nepostojeci redak ni uz fix_as_owner ne postaje postojeci',
+     canUpdateExisting(undefined, { _fixForeign: true }, ME) === true,
+     'ovdje je odluka svjesna: postojanje provjerava POZIVATELJ (found?), ovaj uvjet samo autorstvo');
 }
 
 console.log('');
