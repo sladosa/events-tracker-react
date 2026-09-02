@@ -783,11 +783,32 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
               ⚠️ No events found matching current filters.
             </div>
           ) : totalCount !== null && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">
-              <span className="font-semibold">{totalCount.toLocaleString()} event{totalCount !== 1 ? 's' : ''}</span>
-              {' '}will be exported
-              {fileCount > 1 && <span className="font-semibold"> → {fileCount} files</span>}
-            </div>
+            /* /!\ U delta nacinu se puni izvoz UOPCE NE DOGODI: `doDownload`
+               spremi delta file i vrati se. Brojka odavde zato ondje NIJE broj
+               redaka u fileu nego broj dogadjaja koje filtar obuhvaca -- razlika
+               je red velicine (2.342 naspram nekoliko desetaka). Sasin nalaz
+               2026-09-02. Tocan broj se javlja toastom po generiranju, jer se
+               prije ucitavanja ne zna. */
+            deltaMode && deltaReady ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900 space-y-1">
+                <p>
+                  <strong>Delta sheet</strong> &mdash; ne izvozi svih{' '}
+                  {totalCount.toLocaleString()} doga&#273;aja.
+                </p>
+                <p className="text-xs">
+                  Izlazi <strong>jedan file</strong>: retci grupe &bdquo;{deltaAccount}&ldquo; koji
+                  mi&#269;u saldo u prozoru ({deltaDays} dana unatrag ili od sidra, &scaron;to je
+                  kra&#263;e), sekcija ko&scaron;are i {deltaBlanks} praznih redaka.
+                  To&#269;an broj redaka javlja se nakon generiranja.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">
+                <span className="font-semibold">{totalCount.toLocaleString()} event{totalCount !== 1 ? 's' : ''}</span>
+                {' '}will be exported
+                {fileCount > 1 && <span className="font-semibold"> → {fileCount} files</span>}
+              </div>
+            )
           )}
 
           {/* Export Profile section */}
