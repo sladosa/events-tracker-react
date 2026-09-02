@@ -27,6 +27,7 @@ import type {
   LegendMapping,
   ParsedImportRow,
   ParseResult,
+  ForeignMode,
   ValidationResult,
   ApplyResult,
   ImportOutcome,
@@ -326,13 +327,13 @@ function parseDataRows(
 export async function parseExcelFile(
   file: File,
   currentUserEmail?: string,
-  foreignMode: 'skip' | 'import_as_mine' = 'skip',
+  foreignMode: ForeignMode = 'skip',
 ): Promise<ParseResult> {
   const arrayBuffer = await file.arrayBuffer();
   const wb          = new ExcelJS.Workbook();
   await wb.xlsx.load(arrayBuffer);
 
-  const emptyForeign = { foreignRowCount: 0, foreignEmailsSummary: {} as Record<string, number>, untouchedCount: 0 };
+  const emptyForeign = { foreignRowCount: 0, foreignEmailsSummary: {} as Record<string, number>, foreignAreas: [] as string[], untouchedCount: 0 };
   const emptyLists   = { toCreate: [], toUpdate: [], toDelete: [] };
 
   // Try Events sheet by name (unified format), fall back to first worksheet
@@ -432,6 +433,7 @@ export async function parseExcelFile(
   let foreignRowCount = 0;
   const foreignEmailsSummary: Record<string, number> = {};
 
+  const foreignAreaSet = new Set<string>();
   if (currentUserEmail) {
     const ownRows: ParsedImportRow[] = [];
     for (const r of validRows) {
@@ -440,9 +442,25 @@ export async function parseExcelFile(
         // Foreign row — belongs to a different user
         foreignRowCount++;
         foreignEmailsSummary[rowEmail] = (foreignEmailsSummary[rowEmail] ?? 0) + 1;
+        if (r.area) foreignAreaSet.add(r.area);
         if (foreignMode === 'import_as_mine') {
           // Force INSERT with new ID — user_id will be set to currentUserId in apply
           ownRows.push({ ...r, event_id: null });
+        } else if (foreignMode === 'fix_as_owner') {
+          // /!\ ISPRAVAK NA MJESTU: `event_id` se ZADRZAVA (za razliku od
+          //   `import_as_mine`, koji ga nulira i time forsira INSERT ⇒ duplikat).
+          //   Autorstvo ostaje autoru; `edited_by` biljezi tko je ispravljao.
+          //   Radi samo vlasniku Aree -- RLS iz 043; apply mjeri broj
+          //   promijenjenih redaka, pa odbijeni write ne prolazi kao uspjeh.
+          if (r.event_id) {
+            ownRows.push({ ...r, _fixForeign: true });
+          } else {
+            // Tudji redak BEZ `event_id` nije ispravak nego nov zapis pod tudjim
+            // imenom -- to `fix_as_owner` ne radi, i sutnja bi ovdje bila kriva.
+            warnings.push(
+              `Red ${r._source_row}: tuđi redak bez event_id se ne može ispraviti — `
+              + `nema što ažurirati. Preskočen.`);
+          }
         }
         // else 'skip': exclude from processing
       } else {
@@ -570,7 +588,8 @@ export async function parseExcelFile(
     toUpdate.push(r);
   }
 
-  return { toCreate, toUpdate, toDelete, warnings, errors: [], legendMapping: mapping, foreignRowCount, foreignEmailsSummary, untouchedCount };
+  return { toCreate, toUpdate, toDelete, warnings, errors: [], legendMapping: mapping,
+           foreignRowCount, foreignEmailsSummary, foreignAreas: [...foreignAreaSet], untouchedCount };
 }
 
 // ─────────────────────────────────────────────
@@ -1142,18 +1161,26 @@ export async function applyImportChanges(
     try {
       const eventId = row.event_id!;
 
-      // Fetch existing leaf event (with full fields for diff check)
-      const { data: existing } = await supabase
+      // /!\ Vlasnik Aree ispravlja TUDJI redak (043): tada se ne smije filtrirati
+      //   po `user_id` -- s tim filtrom redak se uopce ne nadje, a poruka bi
+      //   glasila "not found", sto je neistina o pravima, ne o postojanju.
+      const fixForeign = row._fixForeign === true;
+      let q = supabase
         .from('events')
-        .select('id, category_id, event_date, session_start, comment, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
-        .eq('id', eventId)
-        .eq('user_id', userId)
-        .single();
+        .select('id, user_id, category_id, event_date, session_start, comment, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
+        .eq('id', eventId);
+      if (!fixForeign) q = q.eq('user_id', userId);
+      const { data: existing, error: existingErr } = await q.single();
 
-      if (!existing) {
-        errors.push(`Row ${row._source_row}: Event ${eventId} not found`);
+      if (existingErr || !existing) {
+        errors.push(`Row ${row._source_row}: Event ${eventId} not found`
+          + (existingErr ? ` (${existingErr.message})` : ''));
         continue;
       }
+      // Atributi se pisu pod AUTOROM eventa, nikad pod onim tko ispravlja --
+      // inace bi delete+reinsert prebacio i vrijednosti koje nitko nije dirao,
+      // a RLS INSERT grana iz 043 to izricito trazi (`e.user_id = ea.user_id`).
+      const authorId = (existing as { user_id: string }).user_id ?? userId;
 
       // Diff check: if nothing changed, skip (don't update, count as skipped).
       // The field list doubles as the report's "Changed" column (S107w).
@@ -1176,7 +1203,10 @@ export async function applyImportChanges(
       }
 
       // Update leaf event core fields
-      await supabase
+      // /!\ `.select('id')` i provjera broja redaka NISU kozmetika: RLS-blokiran
+      //   write vraca 200 s praznim rezultatom, pa bi odbijeni ispravak prosao
+      //   kao uspjeh i redak bi ostao neispravljen bez ijedne poruke.
+      let upd = supabase
         .from('events')
         .update({
           event_date:    row.event_date,
@@ -1184,9 +1214,19 @@ export async function applyImportChanges(
           comment:       row.comment || null,
           created_at:    createdISO,
           edited_at:     new Date().toISOString(),
+          // Tko je zadnji spremio. Kad se razlikuje od autora, lista to pokaze
+          // oznakom ✎ -- isti signal koji daje Edit u UI-ju.
+          edited_by:     userId,
         })
-        .eq('id', eventId)
-        .eq('user_id', userId);
+        .eq('id', eventId);
+      if (!fixForeign) upd = upd.eq('user_id', userId);
+      const { data: updRows, error: updErr } = await upd.select('id');
+      if (updErr || !updRows || updRows.length === 0) {
+        errors.push(`Row ${row._source_row}: ispravak nije prihvacen`
+          + (fixForeign ? ' (tudji redak — jesi li vlasnik ove Aree?)' : '')
+          + (updErr ? ` – ${updErr.message}` : ''));
+        continue;
+      }
 
       // Update leaf atribute (samo atributi leaf kategorije)
       const existingAttrs = new Map<string, string>(
@@ -1205,13 +1245,14 @@ export async function applyImportChanges(
         const isClear = value === '_'; // sentinel: explicit clear of existing value
         if (!isClear && (value == null || value === '')) continue; // P3: prazna ne prepisuje
 
-        const attrData = buildAttrData(eventId, userId, def, value); // returns all-null for '_'
+        const attrData = buildAttrData(eventId, authorId, def, value); // returns all-null for '_'
         if (existingAttrs.has(def.id)) {
-          await supabase
+          let au = supabase
             .from('event_attributes')
             .update(attrData)
-            .eq('id', existingAttrs.get(def.id)!)
-            .eq('user_id', userId);
+            .eq('id', existingAttrs.get(def.id)!);
+          if (!fixForeign) au = au.eq('user_id', userId);
+          await au;
         } else if (!isClear) {
           attrsToInsert.push(attrData);
         }
@@ -1875,7 +1916,7 @@ export async function importEventsFromExcel(
   file:               File,
   overwriteDecisions: Map<string, 'replace' | 'add' | 'skip'> = new Map(),
   currentUserEmail?:  string,
-  foreignMode:        'skip' | 'import_as_mine' = 'skip',
+  foreignMode:        ForeignMode = 'skip',
   onProgress?:        (done: number, total: number) => void,
 ): Promise<ImportResult> {
   const empty = { created: 0, updated: 0, skipped: 0, deleted: 0, outcomes: [] as ImportOutcome[], removed: [] as DeletePreview[] };

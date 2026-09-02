@@ -20,6 +20,7 @@ import {
   analyzeUpdates,
   analyzeDeletes,
 } from '@/lib/excelImport';
+import type { ForeignMode } from '@/lib/excelTypes';
 import { importStructureExcel } from '@/lib/structureImport';
 import { loadCategoriesForExport, loadAttrDefsForCategories } from '@/lib/excelDataLoader';
 import { buildImportReport } from '@/lib/excelImportReport';
@@ -55,7 +56,14 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const [applyingMessage,  setApplyingMessage]  = useState('Importing events…');
   const [foreignRowCount,  setForeignRowCount]  = useState(0);
   const [foreignEmailsSummary, setForeignEmailsSummary] = useState<Record<string, number>>({});
-  const [foreignMode,      setForeignMode]      = useState<'skip' | 'import_as_mine'>('skip');
+  const [foreignMode,      setForeignMode]      = useState<ForeignMode>('skip');
+  /**
+   * Smije li ovaj korisnik ispravljati tudje retke -- tj. je li vlasnik SVIH
+   * Area u kojima ti retci zive (RLS iz 043 dopusta samo vlasniku).
+   * /!\ Ponuda koja ne moze uspjeti gora je od izostanka: RLS-blokiran write
+   *   vraca 200 s praznim rezultatom, pa bi izgledalo kao da je proslo.
+   */
+  const [canFixForeign,    setCanFixForeign]    = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | undefined>(undefined);
   // Q4 (S104, Fable): progress za veće importe (npr. Diary 7000+ redaka) — bez ovoga
   // UI izgleda "frozen" jer applying nema drugog povratnog signala osim spinnera.
@@ -85,7 +93,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   // "Import as mine" had NO protection against importing the same file twice.
   // Measured S118 on 3x1000 rows: the import worked, the preview lied all three
   // times. Cure: analyse again with the chosen mode before showing the preview.
-  const analyzeFile = useCallback(async (file: File, mode: 'skip' | 'import_as_mine') => {
+  const analyzeFile = useCallback(async (file: File, mode: ForeignMode) => {
     if (!file.name.match(/\.xlsx?$/i)) {
       setErrors(['Please select an Excel file (.xlsx)']);
       return;
@@ -129,6 +137,17 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       setPreview(previewData);
       setForeignRowCount(parsed.foreignRowCount);
       setForeignEmailsSummary(parsed.foreignEmailsSummary);
+
+      // Vlasnistvo se PROVJERAVA, ne pretpostavlja: ponuda „ispravi kao vlasnik"
+      // se prikazuje samo ako korisnik doista posjeduje sve te Aree.
+      if (parsed.foreignAreas.length > 0) {
+        const { data: owned } = await supabase
+          .from('areas').select('name').eq('user_id', user.id).in('name', parsed.foreignAreas);
+        const ownedNames = new Set((owned ?? []).map(a => a.name as string));
+        setCanFixForeign(parsed.foreignAreas.every(a => ownedNames.has(a)));
+      } else {
+        setCanFixForeign(false);
+      }
 
       // Always load categories (needed for collision check and missing-category check)
       setImportState('checking');
@@ -587,6 +606,37 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                     ⚠ Originals remain in the database — delete them manually if needed.
                   </p>
                 )}
+                {/* 043: vlasnik Aree smije ISPRAVITI tudji redak, ali ne obrisati.
+                    Excel put je Koki vazniji od UI-ja jer je na njega naviknuta
+                    iz svoje Excelice -- bez njega mjesecni krug s izvodom ne radi
+                    (izmjereno: 7 od 10 redaka kosare su tudji). */}
+                <label className={`flex items-start gap-2 ${canFixForeign ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                  <input
+                    type="radio"
+                    name="foreignMode"
+                    value="fix_as_owner"
+                    disabled={!canFixForeign}
+                    checked={foreignMode === 'fix_as_owner'}
+                    onChange={() => setForeignMode('fix_as_owner')}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Ispravi kao vlasnik Aree</span>
+                    <p className="text-xs text-gray-400">
+                      Mijenja POSTOJEĆI redak; autorstvo ostaje autoru, a bilježi se tko je ispravljao.
+                    </p>
+                    {!canFixForeign && (
+                      <p className="text-xs text-gray-400">
+                        Nedostupno — nisi vlasnik Aree u kojoj ti retci žive.
+                      </p>
+                    )}
+                  </div>
+                </label>
+                {foreignMode === 'fix_as_owner' && (
+                  <p className="text-xs text-teal-800 bg-teal-50 border border-teal-200 rounded p-2">
+                    Bez duplikata: mijenja se original. Brisanje tuđih redaka i dalje nije moguće.
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-3">
@@ -602,8 +652,8 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                     // preview and collision list stand. `import_as_mine` changes
                     // which rows exist — re-analyse, or the user confirms an
                     // import against numbers computed for a different answer.
-                    if (foreignMode === 'import_as_mine' && selectedFile) {
-                      void analyzeFile(selectedFile, 'import_as_mine');
+                    if (foreignMode !== 'skip' && selectedFile) {
+                      void analyzeFile(selectedFile, foreignMode);
                     } else {
                       setImportState('ready');
                     }

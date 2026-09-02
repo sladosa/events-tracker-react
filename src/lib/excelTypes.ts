@@ -61,6 +61,17 @@ export interface ExportEvent {
 /** Mapping from Excel column letter → (area, category_path, attr_name) */
 export type LegendMapping = Record<string, { area: string; categoryPath: string; attrName: string }>;
 
+/**
+ * Sto s retkom koji u koloni G nosi TUDJI email.
+ *   skip           -- preskoci (zadano, sigurno)
+ *   import_as_mine -- ubaci kao NOV redak pod svojim imenom (INSERT, duplikat
+ *                     ako original ostaje -- v. excelImport.ts:443)
+ *   fix_as_owner   -- ISPRAVI original na mjestu; autorstvo ostaje autoru.
+ *                     Radi samo vlasniku Aree (RLS iz 043) i samo za retke koji
+ *                     vec postoje (imaju `event_id`).
+ */
+export type ForeignMode = 'skip' | 'import_as_mine' | 'fix_as_owner';
+
 export interface ParsedImportRow {
   event_id:       string | null;   // null → CREATE, filled → UPDATE
   area:           string;
@@ -74,6 +85,12 @@ export interface ParsedImportRow {
   _row_email?:    string;          // col G value (User/email), undefined if blank
   _row_hash?:     string;          // row_hash col value (fingerprint written at export), undefined if absent
   _delete?:       boolean;         // Delete? col held the DELETE marker (S107w)
+  /**
+   * Redak pripada DRUGOM korisniku, a uvozi ga vlasnik Aree (`fix_as_owner`).
+   * Update tada ide pod AUTOROVIM `user_id`om, a `edited_by` biljezi tko je
+   * ispravljao -- isto sto radi Edit u UI-ju od 043.
+   */
+  _fixForeign?:   boolean;
 }
 
 export interface ParseResult {
@@ -86,6 +103,11 @@ export interface ParseResult {
   legendMapping: LegendMapping;
   foreignRowCount:      number;
   foreignEmailsSummary: Record<string, number>;
+  /**
+   * Imena Area u kojima tudji retci zive. Modal time zna smije li ponuditi
+   * „ispravi kao vlasnik" -- ponuda koja ne moze uspjeti gora je od izostanka.
+   */
+  foreignAreas:         string[];
   /** S107 D7: UPDATE rows whose row_hash matched (not touched in Excel) — excluded from toUpdate, skipped without any DB call */
   untouchedCount: number;
 }
