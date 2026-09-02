@@ -747,8 +747,11 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
 
   /**
    * Oznaka „netko drugi je ispravio ovaj redak" (043).
-   * ⚠ Stoji UZ `⋮`, dakle na oba rasporeda (desktop i uski) i uvijek vidljiva —
-   *   ide u sticky celiju, pa je vodoravni scroll ne odnese. Bez nje je ispravak
+   * ⚠ Mora stajati UZ `⋮` na OBA rasporeda, a njih renderiraju DVA razlicita
+   *   mjesta: `cellContent('actions')` za desktop i sticky celija uskog retka.
+   *   Do S125 ju je imalo samo drugo — komentar je tvrdio oba, kod radio jedan,
+   *   pa se citanjem nije dalo vidjeti (isti razred kao PROD slug trigger, S118).
+   *   Ide u sticky celiju da je vodoravni scroll ne odnese. Bez nje je ispravak
    *   vlasnice Aree potpuno nevidljiv autoru retka.
    */
   const editedMark = group.edited_by_other ? (
@@ -866,7 +869,11 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
           </span>
         );
       case 'actions':
-        return menuButton;
+        // ⚠ Ista slozenica kao u uskom rasporedu (v. `editedMark`). Dok je ovdje
+        //   stajao samo `menuButton`, oznaka se vidjela ISKLJUCIVO na uskom
+        //   ekranu — a E2E vrti desktop sirinu, pa je BUG-S123-EDITMARK cijelo
+        //   vrijeme bio tocan nalaz koji se trazio na krivom mjestu.
+        return <div className="flex items-center gap-1">{editedMark}{menuButton}</div>;
       default:
         return null;
     }

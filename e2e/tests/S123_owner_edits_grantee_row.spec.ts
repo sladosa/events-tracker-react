@@ -168,21 +168,46 @@ test('T-S123-2: ispravak se sprema, autorstvo ostaje, atribut prezivi', async ({
   expect(attrs?.[0].user_id).toBe(USERB_ID);
 });
 
-/*
- * T-S123-3 (oznaka ✎ „netko drugi je ispravio ovaj redak") NIJE automatiziran.
+/**
+ * T-S123-3: oznaka ✎ stoji uz ⋮ na OBA rasporeda.
  *
- * Pokusano i odustalo 2026-08-31 nakon nekoliko runova: redak se u listi nadje
- * (isti locator koji T-S123-1 koristi za ⋮), ali `span[title*="Izmijenio"]` ne.
- * Sto je PROVJERENO i sto nije, da se sljedeci put ne krece ispocetka:
- *   · dev server servira aktualan kod — `curl` na /src/... vraca i "Izmijenio"
- *     i "edited_by_other", dakle NIJE stale bundle;
- *   · `edited_by` se u bazi doista upise — T-S123-2 to tvrdi i prolazi;
- *   · artefakti pada pokazuju listu u SKELETON stanju (prazne celije), pa je
- *     dio runova mjerio trenutak u kojem redak nema sadrzaj — ali ni ponavljanje
- *     cijele tvrdnje kroz `toPass` 90 s nije pomoglo.
- * Nije utvrdjeno zasto `group.edited_by_other` ostaje null na ekranu. Sljedeci
- * korak je mjerenje mrezenog odgovora (`page.on('response')`) — sadrzi li payload
- * `edited_by` — a ne jos jedan pokusaj drugacijeg locatora.
+ * ZASTO NA OBA, I ZASTO JE TO CIJELI TEST
+ *   Redak renderiraju dva razlicita mjesta: `cellContent('actions')` za desktop
+ *   (`tr.hidden.sm:table-row`) i sticky celija uskog retka (`tr.sm:hidden`).
+ *   Do S125 je oznaku imalo samo drugo — a Playwright vrti 1280 px, dakle
+ *   desktop. Zato je BUG-S123-EDITMARK izgledao kao da se ✎ "ne prikazuje" i
+ *   kao da je krivnja do E2E okoline; bio je tocan nalaz o kodu, samo se
+ *   trazio na krivom mjestu (mrezni odgovor, locator, stale bundle).
+ *   Potvrdjeno rucno na PROD-u 2026-09-02: uski ekran je oznaku pokazivao,
+ *   siroki ne, uz uredno upisan `edited_by`.
  *
- * Do tada se oznaka provjerava RUCNO (v. docs/sessions/PENDING_TESTS.md).
+ * NEOVISAN O T-S123-2 namjerno: `edited_by` se ovdje upisuje sam, pa test mjeri
+ * PRIKAZ, ne lanac dvaju testova. (Da ovisi, pad T-S123-2 bi ga oborio i
+ * odveo na krivi trag po drugi put.)
  */
+test('T-S123-3: oznaka ✎ se vidi i na desktopu i na uskom ekranu', async ({ page }) => {
+  // Vlasnica smije UPDATE tudjeg retka — to je bas ono sto 043 otvara, pa ovaj
+  // upis usput mjeri i RLS: bez 043 ostane 0 promijenjenih redaka.
+  const owner = await asOwner();
+  const { data: upd, error } = await owner.from('events')
+    .update({ edited_by: OWNER_ID }).eq('id', eventId).select('id');
+  if (error) throw new Error(`edited_by update: ${error.message}`);
+  // ⚠ RLS-blokiran write "uspije" s 200 i praznim rezultatom — mjeri se broj
+  //   redaka, nikad HTTP status.
+  expect(upd?.length).toBe(1);
+
+  await loginAsOwner(page);
+  await gotoStrength(page);
+
+  const mark = page.locator('tr').filter({ hasText: MARKER })
+    .locator('span[title*="Izmijenio"]:visible');
+
+  // Desktop (uski redak je ovdje `sm:hidden`, dakle jedini vidljivi ✎ je onaj
+  // iz `cellContent('actions')` — tocno grana koja je nedostajala).
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(mark.first()).toBeVisible({ timeout: 30_000 });
+
+  // Uski (sada je obrnuto: desktop redak je `hidden`).
+  await page.setViewportSize({ width: 390, height: 840 });
+  await expect(mark.first()).toBeVisible({ timeout: 30_000 });
+});
