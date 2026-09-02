@@ -501,6 +501,17 @@ export async function parseExcelFile(
       const seenIds = new Set<string>();
 
       for (const r of flagged) {
+        // /!\ ISPRAVAK DA, BRISANJE NE -- ista granica koju UI povlaci od 043.
+        //   Bez ove grane bi tudji redak oznacen za brisanje prosao POLA puta:
+        //   `event_attributes` se brisu BEZ filtra po korisniku (RLS iz 020 to
+        //   vlasniku Aree dopusta), a sam event ne (filtar `user_id`). Redak bi
+        //   ostao u bazi BEZ IJEDNOG ATRIBUTA -- dakle unisten, a prisutan.
+        if (r._fixForeign) {
+          warnings.push(
+            `Red ${r._source_row}: tuđi redak se ne može obrisati — vlasnik Aree ga `
+            + `smije ISPRAVITI, ali ne i obrisati. Oznaka ${DELETE_MARKER} je zanemarena.`);
+          continue;
+        }
         if (!r.event_id) {
           // A new row (no event_id) marked DELETE: nothing exists to delete, and
           // the row must certainly not be created either.
@@ -1823,6 +1834,28 @@ export async function applyDeletes(
 
   /** Delete an event set: storage files, attachments, attributes, then the events. */
   const deleteEvents = async (ids: string[]): Promise<number> => {
+    if (ids.length === 0) return 0;
+
+    // /!\ PRVO PROVJERI STO SE UOPCE SMIJE OBRISATI, PA TEK ONDA BRISI.
+    //   Atributi se brisu bez filtra po korisniku (RLS iz 020 to vlasniku Aree
+    //   dopusta), a sam event s filtrom `user_id`. Redoslijed bez ove provjere
+    //   tudji redak ostavi BEZ IJEDNOG ATRIBUTA, a prisutnog -- unisten, a
+    //   naizgled netaknut. Invarijanta ovdje, ne disciplina na pozivnom mjestu:
+    //   `toDelete` je samo jedan od putova do ove funkcije.
+    const { data: mine, error: mineErr } = await supabase
+      .from('events').select('id').in('id', ids).eq('user_id', userId);
+    if (mineErr) {
+      errors.push(`Ne mogu provjeriti vlasnistvo prije brisanja: ${mineErr.message}`);
+      return 0;
+    }
+    const deletable = new Set((mine ?? []).map(e => e.id as string));
+    const refused   = ids.filter(id => !deletable.has(id));
+    if (refused.length > 0) {
+      warnings.push(
+        `${refused.length} redaka nije obrisano jer nisu tvoji — vlasnik Aree ih smije `
+        + `ispraviti, ali ne i obrisati. Njihovi atributi su netaknuti.`);
+    }
+    ids = ids.filter(id => deletable.has(id));
     if (ids.length === 0) return 0;
 
     // Storage files behind the attachments (paged — a truncated read leaves orphan files)

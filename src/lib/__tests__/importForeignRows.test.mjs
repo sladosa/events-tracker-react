@@ -1,0 +1,118 @@
+/**
+ * S125 — vlasnik Aree ISPRAVLJA tudji redak uvozom, ali ga NE BRISE.
+ *
+ * ZASTO OVAJ TEST POSTOJI
+ *   `fix_as_owner` je otvorio put kojim tudji redak prvi put dolazi do
+ *   `toUpdate` I do `toDelete`. Drugo je opasno: `applyDeletes` brise
+ *   `event_attributes` BEZ filtra po korisniku (RLS iz 020 to vlasniku Aree
+ *   dopusta), a sam event S filtrom -- pa bi tudji redak oznacen za brisanje
+ *   ostao u bazi BEZ IJEDNOG ATRIBUTA. Unisten, a prisutan.
+ *
+ *   Nadjeno Sasinim pitanjem "radi li kao UI -- edit da, delete ne?", prije
+ *   nego je itko taj put pokrenuo.
+ */
+import { build } from 'esbuild';
+import { pathToFileURL } from 'node:url';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import ExcelJS from 'exceljs';
+
+const out = join(process.cwd(), 'node_modules', '.cache', 'importForeign.bundle.mjs');
+mkdirSync(join(process.cwd(), 'node_modules', '.cache'), { recursive: true });
+await build({
+  stdin: {
+    contents: "export * from './src/lib/excelImport'; export * from './src/lib/excelExport';",
+    resolveDir: process.cwd(), loader: 'ts', sourcefile: 'entry.ts',
+  },
+  bundle: true, format: 'esm', platform: 'node',
+  outfile: out, external: ['exceljs'], alias: { '@': './src' }, logLevel: 'error',
+  // excelImport transitivno povuce supabaseClient i template config; test ih ne
+  // zove, ali se moduli izvrse pri importu — treba im samo da ne puknu.
+  define: {
+    'import.meta.env': JSON.stringify({
+      VITE_SUPABASE_URL: 'http://localhost:54321',
+      VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+      VITE_TEMPLATE_USER_ID: '00000000-0000-0000-0000-000000000000',
+      VITE_APP_ENV: 'test',
+    }),
+  },
+});
+const { createEventsExcel, parseExcelFile, DELETE_MARKER } = await import(pathToFileURL(out).href);
+
+const CAT = 'cat1';
+const AREA = 'Financije_all';
+const catsDict = { [CAT]: { area_name: AREA, full_path: `${AREA} > Transakcija`, category_id: CAT } };
+const defs = [
+  { id: 'a1', category_id: CAT, name: 'Status', slug: 'status', data_type: 'text', sort_order: 1, validation_rules: null },
+];
+const GRANTEE = 'grantee@x.com';
+const OWNER   = 'owner@x.com';
+
+const mk = (id, comment) => ({
+  id, category_id: CAT, event_date: '2026-08-24', session_start: '2026-08-24T09:00:00Z',
+  created_at: '2026-08-24T09:00:01Z', user_email: GRANTEE, user_id: 'u-grantee', comment,
+  event_attributes: [{ attribute_definition_id: 'a1', value_text: 'Izvrsen' }],
+});
+
+/** Napravi export, pa u njemu promijeni celije — inace row_hash pogodi i redak
+ *  se preskoci kao "netaknut", pa test ne bi mjerio nista. */
+async function buildFile({ markDelete = false } = {}) {
+  const buf = await createEventsExcel([mk('e1', 'redak jedan'), mk('e2', 'redak dva')], defs, catsDict, 'asc');
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buf);
+  const ws = wb.getWorksheet('Events');
+  let hdr = 0;
+  for (let r = 1; r <= ws.rowCount; r++) if (String(ws.getCell(r, 1).value ?? '').trim() === 'event_id') { hdr = r; break; }
+  const colOf = (n) => { for (let c = 1; c <= ws.columnCount; c++) if (String(ws.getCell(hdr, c).value ?? '').trim() === n) return c; return 0; };
+  const commentCol = colOf('leaf comment');
+  ws.getCell(hdr + 1, commentCol).value = 'redak jedan — ISPRAVLJEN';
+  if (markDelete) ws.getCell(hdr + 2, colOf('Delete?')).value = DELETE_MARKER;
+  const outBuf = await wb.xlsx.writeBuffer();
+  return new File([outBuf], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+let pass = 0, fail = 0;
+const ok = (name, cond, extra = '') => { if (cond) { pass++; console.log(`  PASS  ${name}`); }
+  else { fail++; console.log(`  FAIL  ${name}${extra ? ' | ' + extra : ''}`); } };
+
+console.log('');
+console.log('skip (zadano) — tudji retci se ne diraju:');
+{
+  const p = await parseExcelFile(await buildFile(), OWNER, 'skip');
+  ok('nijedan redak ne ide u update', p.toUpdate.length === 0, `got ${p.toUpdate.length}`);
+  ok('tudji retci su prebrojani', p.foreignRowCount === 2, `got ${p.foreignRowCount}`);
+  ok('Area tudjih redaka je prijavljena', p.foreignAreas.includes(AREA), `got ${JSON.stringify(p.foreignAreas)}`);
+}
+
+console.log('');
+console.log('import_as_mine — kopija, ne ispravak (zato original ostaje):');
+{
+  const p = await parseExcelFile(await buildFile(), OWNER, 'import_as_mine');
+  ok('redak ide u CREATE, ne u UPDATE', p.toCreate.length > 0 && p.toUpdate.length === 0);
+  ok('event_id je ponisten (forsiran INSERT)', p.toCreate.every(r => r.event_id === null));
+}
+
+console.log('');
+console.log('fix_as_owner — ispravak NA MJESTU:');
+{
+  const p = await parseExcelFile(await buildFile(), OWNER, 'fix_as_owner');
+  ok('ispravljeni redak ide u UPDATE', p.toUpdate.length === 1, `got ${p.toUpdate.length}`);
+  ok('event_id je ZADRZAN (nema duplikata)', p.toUpdate[0]?.event_id === 'e1', `got ${p.toUpdate[0]?.event_id}`);
+  ok('redak je oznacen kao tudji ispravak', p.toUpdate[0]?._fixForeign === true);
+  ok('nista se ne stvara kao nov redak', p.toCreate.length === 0, `got ${p.toCreate.length}`);
+}
+
+console.log('');
+console.log('fix_as_owner + Delete? — granica koju UI povlaci od 043:');
+{
+  const p = await parseExcelFile(await buildFile({ markDelete: true }), OWNER, 'fix_as_owner');
+  // /!\ Kad bi tudji redak usao u `toDelete`, `applyDeletes` bi mu obrisao
+  //     atribute (RLS iz 020 to vlasniku dopusta) a event bi prezivio.
+  ok('tudji redak NE ulazi u brisanje', p.toDelete.length === 0, `got ${p.toDelete.length}`);
+  ok('odbijanje se JAVLJA, ne prešuti',
+     p.warnings.some(w => /ne može obrisati/i.test(w)), `got ${JSON.stringify(p.warnings)}`);
+}
+
+console.log('');
+console.log(`${pass} passed, ${fail} failed`);
+if (fail > 0) process.exit(1);
