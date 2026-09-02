@@ -559,7 +559,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             minusSlug:    balanceWidget.minus ?? '',
             filters:      balanceWidget.filters ?? [],
             blankRows:    deltaBlanks,
-            basket:       !!dueSlug,
+            dueSlug,
             prefill,
             areaName:     cat?.area_name ?? '',
             categoryPath: cat?.full_path ?? '',

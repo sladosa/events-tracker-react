@@ -34,13 +34,15 @@ const defs = [
   { id: 'a3', category_id: CAT, name: 'Uplata', slug: 'uplata',         data_type: 'number', sort_order: 3, validation_rules: null },
   { id: 'a4', category_id: CAT, name: 'Isplata',slug: 'isplata',        data_type: 'number', sort_order: 4, validation_rules: null },
   { id: 'a5', category_id: CAT, name: 'Status', slug: 'status',         data_type: 'text',   sort_order: 5, validation_rules: null },
+  { id: 'a6', category_id: CAT, name: 'Datum naplate', slug: 'datum_naplate', data_type: 'datetime', sort_order: 6, validation_rules: null },
 ];
-const mk = (id, date, racun, izvor, isplata, status) => ({
+const mk = (id, date, racun, izvor, isplata, status, due) => ({
   id, category_id: CAT, event_date: date, session_start: `${date}T09:00:00Z`,
   created_at: `${date}T09:00:01Z`, user_email: 'k@x.com', user_id: 'u1', comment: `redak ${id}`,
   event_attributes: [
     { attribute_definition_id: 'a1', value_text: racun }, { attribute_definition_id: 'a2', value_text: izvor },
     { attribute_definition_id: 'a4', value_number: isplata }, { attribute_definition_id: 'a5', value_text: status },
+    ...(due ? [{ attribute_definition_id: 'a6', value_datetime: due }] : []),
   ],
 });
 const main = [mk('m1','2026-08-02','ZABA','Racun',3.2,'Izvrsen'), mk('m2','2026-08-03','ZABA','Racun',1.6,'Izvrsen'),
@@ -108,9 +110,9 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
   // Bit kosare: jedan redak je jos `Planiran`, drugi je vec `Izvrsen`. Prije
   // S125 je drugi ispadao iz sekcije I iz glavnog bloka, pa ga file nije imao —
   // a bas se on nije dao ispraviti uvozom (izmjereno: gorivo 55,00, PROD).
-  const basket = [mk('b1','2026-09-01','ZABA','Mastercard',100,'Planiran'),
-                  mk('b2','2026-09-02','ZABA','Mastercard',55,'Izvrsen')];
-  const { ws, hdr, ctrl } = await buildSheet(basket, { basket: true });
+  const basket = [mk('b1','2026-09-01','ZABA','Mastercard',100,'Planiran','2027-01-11T12:00:00Z'),
+                  mk('b2','2026-09-02','ZABA','Mastercard',55,'Izvrsen','2027-01-11T12:00:00Z')];
+  const { ws, hdr, ctrl } = await buildSheet(basket, { dueSlug: 'datum_naplate' });
   const sep = hdr + main.length + BLANKS + 1, pFrom = sep + 1;
   // Tekst se mijenja jer se mijenja i posao: u kosari nisu svi retci planirani,
   // pa uputa ne smije glasiti "potvrdi svaki redak" nego "slozi zbroj".
@@ -121,6 +123,15 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
   const f = String(raw(ws,pFrom+2+1,ctrl)?.formula ?? '');
   ok('Σ kosare je NETO (oduzima kolonu uplata)', f.includes('-SUM('), `got ${f}`);
   ok('Σ kosare i dalje ROUND-a na 2 decimale', f.startsWith('ROUND('), `got ${f}`);
+
+  // Stupac `Provjeri` — FORMULA, da napomena nestane cim korisnik popravi redak.
+  const hintCol = ctrl + 1;
+  ok('stupac Provjeri postoji uz kontrolni', txt(ws,hdr,hintCol)==='Provjeri', `got ${txt(ws,hdr,hintCol)}`);
+  const h = String(raw(ws,pFrom+1,hintCol)?.formula ?? '');
+  ok('napomena je formula nad TODAY(), ne upisan tekst', h.includes('TODAY()'), `got ${h}`);
+  // /!\ Odbaceni automat "dospjelo => izvrseno" ne smije se vratiti kao savjet.
+  ok('napomena NE savjetuje promjenu u Izvrsen', !/promijeni/i.test(h), `got ${h}`);
+  ok('napomena upucuje na izvod', h.includes('s izvoda'), `got ${h}`);
 }
 
 console.log('');

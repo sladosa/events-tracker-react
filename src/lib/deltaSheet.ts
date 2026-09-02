@@ -77,11 +77,13 @@ export interface DeltaSheetOptions {
    */
   plannedCount: number;
   /**
-   * Sekcija pokazuje CIJELU kosaru (svaki redak cije dospijece jos nije
-   * proslo), ne samo one sa `Status = Planiran`. Mijenja samo TEKST i
-   * naslov -- odabir redaka radi pozivatelj (ExcelExportModal).
+   * Slug datumskog atributa dospijeca (`split.due_slug` iz configa).
+   * Kad ga ima, sekcija je CIJELA KOSARA -- i retci koje je netko vec
+   * prebacio u izvrseno -- pa dobiva drugaciji naslov i stupac `Provjeri`.
+   * Odabir redaka radi pozivatelj (ExcelExportModal); ovdje sluzi samo za
+   * pronalazak kolone i tekst.
    */
-  basket?:      boolean;
+  dueSlug?:     string;
   /** Kolone B/C/G praznih redaka. */
   areaName:     string;
   categoryPath: string;
@@ -360,7 +362,7 @@ export function addDeltaHelpersTo(
     // Naslov ide u kolonu H (komentar). Kolona B ostaje PRAZNA, pa import ovaj
     // redak uopce ne vidi kao redak.
     const title = ws.getCell(sepRow, FIXED_COL_COUNT);
-    title.value = opts.basket
+    title.value = opts.dueSlug
       // Kosara: unutra su i retci koje je netko vec prebacio u izvrseno. Zato
       // tekst NE trazi promjenu Statusa na svakom retku, nego slaganje ZBROJA.
       ? `KOSARA -- kartcni retci cije dospijece jos nije proslo. Ne micu saldo. `
@@ -379,7 +381,55 @@ export function addDeltaHelpersTo(
     const diffRow = sumRow + 2;
     const mLtr    = colLetter(minusCol);
 
-    ws.getCell(sumRow, labelCol).value = opts.basket ? 'Σ košara (gore) ->' : 'Σ planirano (gore) ->';
+    // -- Stupac `Provjeri`: sto s ovim retkom nije u redu ------------------
+    // /!\ FORMULA, ne upisan tekst. Kad korisnik u Excelu promijeni `Status`,
+    //   napomena mora nestati istog trena -- inace sheet i dalje prigovara
+    //   retku koji je upravo popravljen, a upozorenje koje lazе se prestane
+    //   citati.
+    //
+    // /!\ DRUGI SLUCAJ NE SMIJE GLASITI "promijeni u Izvrsen".
+    //   Automat "dospjelo => izvrseno" je ODBACEN (dospjeli datum nije dokaz da
+    //   je banka naplatila), pa ni savjet ne smije tako glasiti -- naucio bi
+    //   korisnika da potvrdjuje po datumu. Zato upucuje na DOKAZ, ne na potez.
+    const notIn    = opts.filters.find(f => f.op === 'not_in' && f.values.length > 0);
+    const statusNm = notIn ? attrNameBySlug.get(notIn.slug) : undefined;
+    const dueNm    = opts.dueSlug ? attrNameBySlug.get(opts.dueSlug) : undefined;
+    const statusCol = statusNm ? findAttrCol(layout, statusNm) : null;
+    const dueColIdx = dueNm    ? findAttrCol(layout, dueNm)    : null;
+
+    if (opts.dueSlug && notIn && statusCol && dueColIdx) {
+      const hintCol = ctrlCol + 1;
+      const sLtr = colLetter(statusCol);
+      const uLtr = colLetter(dueColIdx);
+      const planned = notIn.values[0];
+
+      const hdr = ws.getCell(layout.headerRow, hintCol);
+      hdr.value = 'Provjeri';
+      hdr.font  = { bold: true };
+      hdr.note  = 'Popunjava se samo u sekciji košare. Napomena nestaje čim redak '
+        + 'postane u redu — mijenja se sama, ne treba je brisati.';
+      ws.getColumn(hintCol).width = 46;
+
+      for (let r = plannedFrom; r <= plannedTo; r++) {
+        const cell = ws.getCell(r, hintCol);
+        cell.value = {
+          formula:
+            `IF($${sLtr}${r}="","",` +
+            `IF(AND($${sLtr}${r}<>"${planned}",$${uLtr}${r}>TODAY()),` +
+              `"dospijeva tek "&TEXT($${uLtr}${r},"d.m.yyyy.")&" — nije moglo biti naplaćeno",` +
+            `IF(AND($${sLtr}${r}="${planned}",$${uLtr}${r}<TODAY()),` +
+              `"dospjelo "&TEXT($${uLtr}${r},"d.m.yyyy.")&" — potvrdi TEK s izvoda","")))`,
+        };
+        cell.font      = { color: { argb: 'FFB45309' }, italic: true };
+        cell.alignment = { wrapText: true, vertical: 'top' };
+      }
+    } else if (opts.dueSlug) {
+      // Tiho izostajanje bi bilo gore od poruke: stupac koji nekad ima smisla, a
+      // nekad ga nema, korisnik cita kao "sve je u redu".
+      warnings.push('Stupac „Provjeri" preskočen: ne nalazim kolonu za status ili dospijeće.');
+    }
+
+    ws.getCell(sumRow, labelCol).value = opts.dueSlug ? 'Σ košara (gore) ->' : 'Σ planirano (gore) ->';
     ws.getCell(sumRow, labelCol).alignment = { horizontal: 'right' };
     const sumCell = ws.getCell(sumRow, ctrlCol);
     // /!\ NETO, ne samo zbroj isplata: povrat zna sjediti u istoj kosari.
