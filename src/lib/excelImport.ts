@@ -680,7 +680,19 @@ export async function warnStaleUntouched(
   parsed: { untouchedRows: ParsedImportRow[]; exportedAt: string | null; warnings: string[] },
 ): Promise<number> {
   const ids = parsed.untouchedRows.map(r => r.event_id!).filter(Boolean);
-  if (!parsed.exportedAt || ids.length === 0) return 0;
+  if (ids.length === 0) return 0;
+  // /!\ „Ne mogu provjeriti" NIJE „sve je u redu". File bez `Filter` lista nema
+  //   `Exported at`, pa se ne zna je li zastario — a to je stanje koje se tiho
+  //   dogodilo (delta izvoz je do S125 pisao samo `Events` i `HelpEvents`).
+  //   Tiho vracanje bi vratilo tocno onu nevidljivost koju ova funkcija uklanja.
+  if (!parsed.exportedAt) {
+    parsed.warnings.push(
+      `${ids.length} ${ids.length === 1 ? 'redak se preskače' : 'redaka se preskače'} `
+      + `jer im se otisak poklapa s fileom. File nema podatak kad je izvezen, pa NE MOGU `
+      + `provjeriti je li u međuvremenu koji od njih promijenjen u aplikaciji. Ako si `
+      + `redak mijenjao pa vraćao na staru vrijednost, izvezi ponovno.`);
+    return 0;
+  }
 
   const stale: string[] = [];
   const CHUNK = 200;

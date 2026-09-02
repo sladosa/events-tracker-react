@@ -35,6 +35,7 @@ import ExcelJS from 'exceljs';
 import type { ExportEvent, ExportAttrDef, ExportCategoriesDict } from './excelTypes';
 import type { WidgetFilter } from '@/types/database';
 import { addActivitiesSheetsTo, buildAttrMeta, colLetter, FIXED_COL_COUNT } from './excelExport';
+import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
 import { applyProfileToWorkbook, getProfileAttrOrder, type ExportProfile } from './exportProfile';
 
 /** Prvi slobodni pojas vremena za ručno dodane retke (povijesni uvoz koristi 09:00+n). */
@@ -553,6 +554,14 @@ export async function createDeltaExcel(
    *   istom fileu i uvoz obradi redak dvaput.
    */
   plannedRows:    ExportEvent[] = [],
+  /**
+   * Podrijetlo filea (`Filter` list). /!\ NIJE kozmetika: iz njega uvoz cita
+   * `Exported at` i time zna je li file ZASTARIO — je li koji redak u bazi
+   * promijenjen nakon izvoza. Bez tog lista provjera se tiho preskoci, i to bas
+   * na fileu koji se koristi svaki mjesec (izmjereno 2026-09-02: delta file je
+   * imao samo `Events` i `HelpEvents`).
+   */
+  filterInfo?:    FilterSheetInfo,
 ): Promise<{ buffer: ArrayBuffer; warnings: string[] }> {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Events Tracker';
@@ -580,6 +589,8 @@ export async function createDeltaExcel(
   //   (širine, skrivanje, grupe), a kontrolni stupac se dodaje kao zadnji —
   //   obrnuto bi ga profil mogao sakriti ili mu prepisati širinu.
   if (exportProfile) applyProfileToWorkbook(wb, exportProfile, attrDefs, categoriesDict);
+
+  if (filterInfo) addFilterSheet(wb, filterInfo);
 
   const ws = wb.getWorksheet('Events');
   if (!ws) throw new Error('Delta sheet: nema lista Events.');

@@ -148,6 +148,27 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
 }
 
 console.log('');
+console.log('Delta file nosi `Filter` list — bez njega uvoz ne zna je li file zastario:');
+{
+  const { buffer } = await createDeltaExcel(main, defs, catsDict, {
+    groupLabel: 'ZABA', opening: { amount: 1, asOf: '2026-07-30' }, anchor: null,
+    plusSlug: 'uplata', minusSlug: 'isplata', filters: [],
+    blankRows: 2, prefill: {}, areaName: 'Financije_all',
+    categoryPath: 'Financije_all > Transakcija', userEmail: 'k@x.com',
+  }, null, [], { exportType: 'Activities delta', exportedAt: '20260902_150257' });
+  const wb2 = new ExcelJS.Workbook();
+  await wb2.xlsx.load(buffer);
+  const f = wb2.getWorksheet('Filter');
+  ok('delta file ima `Filter` list', !!f);
+  // /!\ Bez ovoga se provjera zastarjelosti tiho preskace -- i to bas na fileu
+  //     koji se koristi svaki mjesec (izmjereno 2026-09-02).
+  let vidjeno = '';
+  if (f) for (let r = 1; r <= f.rowCount; r++)
+    if (String(f.getCell(r,1).value ?? '').trim() === 'Exported at') vidjeno = String(f.getCell(r,2).value ?? '');
+  ok('`Exported at` je upisan', vidjeno === '2026-09-02 15:02:57', `got ${vidjeno}`);
+}
+
+console.log('');
 console.log('Regresija — bez planiranih redaka layout mora ostati kakav je bio:');
 {
   const { ws, hdr, ctrl } = await buildSheet([]);

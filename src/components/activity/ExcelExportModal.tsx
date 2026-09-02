@@ -567,6 +567,9 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
           },
           activeProfile,
           plannedRows,
+          // Delta file mora nositi `Filter` list kao i obican izvoz — bez njega
+          // uvoz ne zna kad je izvezen, pa ne moze javiti da je file zastario.
+          { ...filterInfo, exportType: `Activities delta — ${deltaAccount}` },
         );
 
         const safeAccount = deltaAccount.replace(/[^A-Za-z0-9]+/g, '_').slice(0, 30);
