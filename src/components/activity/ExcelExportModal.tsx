@@ -494,22 +494,25 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         const dueSlug = balanceWidget.split?.due_slug;
         let plannedRows: typeof merged = [];
         if (notInFilters.length > 0) {
-          // U kosara-nacinu se po Statusu vise ne moze suziti upit, pa ide po
-          // racunu. Skuplje je -- izmjereno na PROD-u: RF 1.081, ZABA 1.261
-          // redaka -- ali se vrti samo kad je delta sheet cekiran.
-          const queryDef = dueSlug
-            ? bundle.attrDefs.find(d => d.slug === balanceWidget.group_by)
-            : bundle.attrDefs.find(d => d.slug === notInFilters[0].slug);
-          const queryVal = dueSlug ? deltaAccount : notInFilters[0].values[0];
-          if (queryDef) {
+          const statusDef = bundle.attrDefs.find(d => d.slug === notInFilters[0].slug);
+          if (statusDef) {
+            // Grana `Planiran`: jeftin upit, jer planiranih ima dvadesetak u
+            // cijeloj Arei. Bez datumske granice — rate su starije od prozora.
             const plannedBundle = await loadExportData(user.id, {
               ...effectiveFilters,
               dateFrom: null,
               dateTo: null,
               commentSearch: '',
-              attrFilter: { attrDefId: queryDef.id, value: queryVal, isExact: true },
+              attrFilter: { attrDefId: statusDef.id, value: notInFilters[0].values[0], isExact: true },
             });
-            const deltaIds = new Set(deltaRows.map(e => e.id));
+            // /!\ Grana "dospijece jos otvoreno" ide iz VEC UCITANOG `merged`,
+            //   ne iz novog upita. Prvi pokusaj je za nju vukao cijeli racun
+            //   (RF 1.081, ZABA 1.261 redaka) i izvoz je vidljivo stao — posao
+            //   se udvostrucio za saku redaka. `merged` je ionako u memoriji.
+            //   Cijena: redak s otvorenim dospijecem koji je IZVAN datumskog
+            //   filtra izvoza, a nije `Planiran`, nece uci. Usko, i vidljivo:
+            //   takav redak je kupovina stara koliko i filtar, a kartcna
+            //   kupovina dospijeva unutar mjesec-dva.
             const dueIds = dueSlug ? idsBySlug.get(dueSlug) : undefined;
             // /!\ Lokalni datum, ne `toISOString()`: navecer bi UTC dao SUTRA,
             //   pa bi kosara koja dospijeva danas ispala iz sekcije.
@@ -527,12 +530,22 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             const movesBalance = (ev: typeof merged[number]) =>
               (balanceWidget.filters ?? []).every(f =>
                 f.op === 'in' ? passes(ev, f.slug, f.values) : !passes(ev, f.slug, f.values));
-            plannedRows = mergeSessionEvents(plannedBundle.events, plannedBundle.categoriesDict).filter(ev =>
-              !deltaIds.has(ev.id) &&
-              passes(ev, balanceWidget.group_by, [deltaAccount]) &&
-              !movesBalance(ev) &&
-              (notInFilters.every(f => passes(ev, f.slug, f.values)) || dueStillOpen(ev)),
-            );
+
+            const deltaIds = new Set(deltaRows.map(e => e.id));
+            const seen = new Set<string>();
+            plannedRows = [
+              ...mergeSessionEvents(plannedBundle.events, plannedBundle.categoriesDict),
+              ...(dueSlug ? merged : []),
+            ].filter(ev => {
+              if (seen.has(ev.id)) return false;          // dva izvora, jedan redak
+              const take =
+                !deltaIds.has(ev.id) &&
+                passes(ev, balanceWidget.group_by, [deltaAccount]) &&
+                !movesBalance(ev) &&
+                (notInFilters.every(f => passes(ev, f.slug, f.values)) || dueStillOpen(ev));
+              if (take) seen.add(ev.id);
+              return take;
+            });
           }
         }
 
