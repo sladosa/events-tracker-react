@@ -220,7 +220,37 @@ export function addDeltaHelpersTo(
     }
   }
 
-  // ── 2. Kontrolni stupac ─────────────────────────────────────────────────
+  /**
+ * Objasnjenje uz celiju, kao Data Validation "input message" umjesto biljeske.
+ *
+ * /!\ ZASTO NE `.note` (Sasin nalaz 2026-09-02)
+ *   Biljeska se otvara DESNO od celije, pa kod desnog ruba lista izlazi izvan
+ *   ekrana; a kad je list skrolan, odreze joj se dno. Objasnjenje koje se ne
+ *   moze procitati je isto sto i objasnjenje kojeg nema. Input message se
+ *   pozicionira uz celiju i uvijek stane cijeli.
+ *
+ * /!\ EXCEL LIMITI: promptTitle <= 32, prompt <= 255 znakova. Premasaj daje
+ *   neispravan OOXML -- Excel ponudi "repair" i pritom izbaci sadrzaj, dakle
+ *   kvar je gori od izostale poruke. Predugacak tekst zato PADA NATRAG na
+ *   biljesku umjesto da srusi file.
+ *
+ * /!\ Nema crvenog trokuta, dakle ne najavljuje sam sebe. Ide samo na celije
+ *   koje su vec naslov necega -- korisnik ih klikne kad ga zanima -- nikad kao
+ *   jedini nositelj informacije bez koje se ne moze.
+ */
+function explain(cell: ExcelJS.Cell, title: string, text: string): void {
+  if (title.length <= 32 && text.length <= 255) {
+    cell.dataValidation = {
+      type: 'custom', formulae: ['TRUE'], allowBlank: true,
+      showInputMessage: true, showErrorMessage: false,
+      promptTitle: title, prompt: text,
+    };
+  } else {
+    cell.note = text;
+  }
+}
+
+// ── 2. Kontrolni stupac ─────────────────────────────────────────────────
   const ctrlCol = layout.lastCol + 1;
   const ctrlLtr = colLetter(ctrlCol);
 
@@ -403,11 +433,16 @@ export function addDeltaHelpersTo(
       const uLtr = colLetter(dueColIdx);
       const planned = notIn.values[0];
 
-      const hdr = ws.getCell(layout.headerRow, hintCol);
+      // /!\ Naslov ide u REDAK-RAZDJELNIK, ne u zaglavlje lista (Sasina
+      //   primjedba): stupac vrijedi samo za sekciju, a zaglavlje je desetke
+      //   redaka iznad, uz `Stanje (kontrola)` koje se odnosi na glavni blok.
+      //   Ovako naslov stoji tocno iznad redaka na koje se odnosi.
+      const hdr = ws.getCell(sepRow, hintCol);
       hdr.value = 'Provjeri';
       hdr.font  = { bold: true };
-      hdr.note  = 'Popunjava se samo u sekciji košare. Napomena nestaje čim redak '
-        + 'postane u redu — mijenja se sama, ne treba je brisati.';
+      explain(hdr, 'Provjeri',
+        'Popunjava se samo u sekciji košare. Napomena nestaje čim redak postane '
+        + 'u redu — mijenja se sama, ne treba je brisati.');
       ws.getColumn(hintCol).width = 46;
 
       for (let r = plannedFrom; r <= plannedTo; r++) {
@@ -439,10 +474,10 @@ export function addDeltaHelpersTo(
     const pLtr     = colLetter(plusCol);
     sumCell.value  = { formula: `ROUND(SUM($${mLtr}$${plannedFrom}:$${mLtr}$${plannedTo})-SUM($${pLtr}$${plannedFrom}:$${pLtr}$${plannedTo}),2)` };
     sumCell.numFmt = '#,##0.00';
-    sumCell.note   = 'Zbroj planiranih redaka iz sekcije iznad. Usporedi ga s iznosom '
-      + 'SKUPNE NAPLATE s izvoda za taj datum. Ne slazu li se, kriv je Datum naplate na '
-      + 'nekim retcima -- ne potvrdjuj ih dok se to ne razrijesi: dospjeli datum nije '
-      + 'dokaz da je banka naplatila.';
+    explain(sumCell, 'Σ košare',
+      'Usporedi sa SKUPNOM NAPLATOM s izvoda za taj datum. Ne slažu li se, kriv je '
+      + 'datum naplate na nekim retcima — ne potvrđuj ih dok se to ne razriješi: '
+      + 'dospjeli datum nije dokaz da je banka naplatila.');
 
     ws.getCell(bankRow, labelCol).value = 'naplaceno s izvoda ->';
     ws.getCell(bankRow, labelCol).alignment = { horizontal: 'right' };

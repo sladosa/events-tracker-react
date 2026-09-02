@@ -126,7 +126,20 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
 
   // Stupac `Provjeri` — FORMULA, da napomena nestane cim korisnik popravi redak.
   const hintCol = ctrl + 1;
-  ok('stupac Provjeri postoji uz kontrolni', txt(ws,hdr,hintCol)==='Provjeri', `got ${txt(ws,hdr,hintCol)}`);
+  // Naslov stoji u retku-razdjelniku, tocno iznad redaka na koje se odnosi —
+  // ne u zaglavlju lista desetke redaka iznad.
+  ok('naslov Provjeri je u retku-razdjelniku', txt(ws,sep,hintCol)==='Provjeri', `got ${txt(ws,sep,hintCol)}`);
+  ok('naslov Provjeri NIJE u zaglavlju lista', txt(ws,hdr,hintCol)!=='Provjeri');
+  // /!\ Objasnjenje ide kao Data Validation input message, ne kao biljeska:
+  //     biljeska kod desnog ruba izlazi izvan ekrana i pri skrolanju se odreze.
+  const dv = ws.getCell(sep,hintCol).dataValidation;
+  ok('objasnjenje je input message, ne biljeska', !!dv?.showInputMessage && !ws.getCell(sep,hintCol).note);
+  // /!\ Prekoracenje limita daje neispravan OOXML i Excel nudi "repair" —
+  //     tada se gubi sadrzaj, ne samo poruka. Zato granice cuva test.
+  ok('promptTitle <= 32 znaka', (dv?.promptTitle ?? '').length <= 32, `got ${(dv?.promptTitle ?? '').length}`);
+  ok('prompt <= 255 znakova', (dv?.prompt ?? '').length <= 255, `got ${(dv?.prompt ?? '').length}`);
+  const sumDv = ws.getCell(pFrom+2+1, ctrl).dataValidation;
+  ok('Σ košare: prompt <= 255 znakova', (sumDv?.prompt ?? '').length <= 255, `got ${(sumDv?.prompt ?? '').length}`);
   const h = String(raw(ws,pFrom+1,hintCol)?.formula ?? '');
   ok('napomena je formula nad TODAY(), ne upisan tekst', h.includes('TODAY()'), `got ${h}`);
   // /!\ Odbaceni automat "dospjelo => izvrseno" ne smije se vratiti kao savjet.
