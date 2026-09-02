@@ -35,7 +35,11 @@ košaru, ni „Ispravi kao vlasnik Aree". Reci kad želiš.
 **3. Deset testova čeka pogled** — `T-S125-1…10`. Nisu neizvedeni nego neprovjereni:
 mjerenja nad bazom su prošla, ali ih nitko nije potvrdio u aplikaciji.
 
-**4. Rečenica koju Koki još nitko nije rekao** (stoji od S124): *kad počne upisivati
+**4. ⭐ Pročitaj `docs/KOKA_PRVI_MJESEC.md`** — što je riješeno, što nije, i
+redoslijed po **riziku za njeno povjerenje**, ne po tehničkoj težini. Ondje je i
+razrađen plan „sumnjiv redak ide u izvještaj o uvozu" (tvoja ideja).
+
+**5. Rečenica koju Koki još nitko nije rekao** (stoji od S124): *kad počne upisivati
 u app, u Excelicu više ne.* Radi li oboje, sve dobivamo dvaput.
 
 ## Što se pokazalo vrijednim, za ubuduće
@@ -92,6 +96,15 @@ edae267  tuđi redak se NE briše (dva zida) + `importForeignRows.test.mjs`
 
 ## Otvoreno / sljedeće
 
+- ⭐ **P1: sumnjiv redak u izvještaj o uvozu.** Razrada u `docs/KOKA_PRVI_MJESEC.md`.
+  Ukratko: `warnStaleUntouched` već zna koji su retci preskočeni a u bazi promijenjeni;
+  treba ih dodati u `outcomes` s novim ishodom (`Preskočen — promijenjen nakon izvoza`).
+  Izvještaj je **svjež izvoz**, pa ti retci u njemu nose aktualne vrijednosti i
+  aktualan `row_hash` ⇒ ona ih ispravi i uveze natrag bez ikakvog trika.
+  ⚠ Preduvjet: `BUG-S114-REPORTDD` (izvještaj nema `DropdownData`) — ako izvještaj
+  postaje mjesto na kojem ispravlja, mora imati dropdowne.
+  ⚠ Ručni izlaz koji VEĆ radi, a nitko ga ne zna: **obriši ćeliju `row_hash`** —
+  prazan otisak znači „nije netaknut", pa redak ide u usporedbu s bazom.
 - **Merge na `main`** kad Saša kaže. ⚠ `044` je već na PROD-u i stari kod ga
   ignorira, pa nema redoslijednog rizika kao kod `043`.
 - **`T-S125-6` nije provjeren nad živim RLS-om** — grana brisanja tuđeg retka
