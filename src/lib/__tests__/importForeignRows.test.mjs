@@ -21,7 +21,7 @@ const out = join(process.cwd(), 'node_modules', '.cache', 'importForeign.bundle.
 mkdirSync(join(process.cwd(), 'node_modules', '.cache'), { recursive: true });
 await build({
   stdin: {
-    contents: "export * from './src/lib/excelImport'; export * from './src/lib/excelExport';",
+    contents: "export * from './src/lib/excelImport'; export * from './src/lib/excelExport'; export { createDeltaExcel } from './src/lib/deltaSheet';",
     resolveDir: process.cwd(), loader: 'ts', sourcefile: 'entry.ts',
   },
   bundle: true, format: 'esm', platform: 'node',
@@ -37,21 +37,23 @@ await build({
     }),
   },
 });
-const { createEventsExcel, parseExcelFile, DELETE_MARKER } = await import(pathToFileURL(out).href);
+const { createEventsExcel, createDeltaExcel, parseExcelFile, DELETE_MARKER } = await import(pathToFileURL(out).href);
 
 const CAT = 'cat1';
 const AREA = 'Financije_all';
 const catsDict = { [CAT]: { area_name: AREA, full_path: `${AREA} > Transakcija`, category_id: CAT } };
 const defs = [
   { id: 'a1', category_id: CAT, name: 'Status', slug: 'status', data_type: 'text', sort_order: 1, validation_rules: null },
+  { id: 'a2', category_id: CAT, name: 'Uplata', slug: 'uplata', data_type: 'number', sort_order: 2, validation_rules: null },
+  { id: 'a3', category_id: CAT, name: 'Isplata', slug: 'isplata', data_type: 'number', sort_order: 3, validation_rules: null },
 ];
 const GRANTEE = 'grantee@x.com';
 const OWNER   = 'owner@x.com';
 
-const mk = (id, comment) => ({
+const mk = (id, comment, status = 'Izvrsen') => ({
   id, category_id: CAT, event_date: '2026-08-24', session_start: '2026-08-24T09:00:00Z',
   created_at: '2026-08-24T09:00:01Z', user_email: GRANTEE, user_id: 'u-grantee', comment,
-  event_attributes: [{ attribute_definition_id: 'a1', value_text: 'Izvrsen' }],
+  event_attributes: [{ attribute_definition_id: 'a1', value_text: status }],
 });
 
 /** Napravi export, pa u njemu promijeni celije — inace row_hash pogodi i redak
@@ -111,6 +113,60 @@ console.log('fix_as_owner + Delete? — granica koju UI povlaci od 043:');
   ok('tudji redak NE ulazi u brisanje', p.toDelete.length === 0, `got ${p.toDelete.length}`);
   ok('odbijanje se JAVLJA, ne prešuti',
      p.warnings.some(w => /ne može obrisati/i.test(w)), `got ${JSON.stringify(p.warnings)}`);
+}
+
+console.log('');
+console.log('DELTA file — sekcija je ISPOD 40 praznih redaka; stigne li uvoz do nje?');
+{
+  // /!\ Ovo nije kozmeticko pitanje: sekcija kosare je JEDINO mjesto na kojem
+  //     Koka potvrdjuje kartcne retke nakon izvoda. Kad je uvoz ne bi citao,
+  //     mjesecni krug ne bi radio -- i to tiho, jer retci nisu "odbijeni" nego
+  //     nikad procitani.
+  const BLANKS = 40;
+  const planned = [mk('p1', 'kosara redak', 'Planiran'), mk('p2', 'kosara drugi', 'Planiran')];
+  const { buffer } = await createDeltaExcel(
+    [mk('m1', 'glavni blok')], defs, catsDict,
+    {
+      groupLabel: 'RF', opening: { amount: 799.12, asOf: '2026-08-11' },
+      anchor: { amount: 799.12, confirmed_on: '2026-08-11' },
+      plusSlug: 'uplata', minusSlug: 'isplata',
+      filters: [{ op: 'in', slug: 'izvorplacanja', values: ['Racun'] },
+                { op: 'not_in', slug: 'status', values: ['Planiran'] }],
+      blankRows: BLANKS, prefill: { Status: 'Planiran' },
+      areaName: AREA, categoryPath: `${AREA} > Transakcija`, userEmail: GRANTEE,
+    },
+    null, planned,
+  );
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer);
+  const ws = wb.getWorksheet('Events');
+  let hdr = 0;
+  for (let r = 1; r <= ws.rowCount; r++) if (String(ws.getCell(r, 1).value ?? '').trim() === 'event_id') { hdr = r; break; }
+  const colOf = (n) => { for (let c = 1; c <= ws.columnCount; c++) if (String(ws.getCell(hdr, c).value ?? '').trim() === n) return c; return 0; };
+  // Sekcija pocinje iza glavnog bloka + praznih + retka-razdjelnika.
+  const sectionFrom = hdr + 1 + 1 + BLANKS + 1;
+  const statusCol = colOf('Status (Transakcija)') || colOf('Status');
+  ok('sekcija je doista ispod praznih redaka',
+     String(ws.getCell(sectionFrom, 1).value ?? '') === 'p1', `got ${ws.getCell(sectionFrom, 1).value}`);
+  // Ono sto Koka radi nakon izvoda: potvrdi redak. /!\ Mora biti STVARNA
+  // promjena -- upise li se ista vrijednost, `row_hash` se poklopi i redak se
+  // (ispravno) preskoci kao netaknut. Prvi pokusaj ovog testa je pao bas na
+  // tome, i to je bila greska testa, ne koda.
+  ws.getCell(sectionFrom, statusCol).value = 'Izvrsen';
+
+  const f = new File([await wb.xlsx.writeBuffer()], 'delta.xlsx',
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const p = await parseExcelFile(f, OWNER, 'fix_as_owner');
+
+  ok('redak iz sekcije JE procitan i ide u UPDATE',
+     p.toUpdate.some(r => r.event_id === 'p1'), `toUpdate=${JSON.stringify(p.toUpdate.map(r => r.event_id))}`);
+  ok('nedirnuti redak sekcije se preskace (row_hash)',
+     !p.toUpdate.some(r => r.event_id === 'p2'));
+  // Prazni retci predloska nose prepisani Area, pa ih parser vidi -- ali ih
+  // mora prepoznati kao netaknute, a ne prijaviti kao greske.
+  ok('40 praznih redaka ne postaje 40 gresaka', p.errors.length === 0, `got ${JSON.stringify(p.errors)}`);
+  ok('preskoceni prazni retci se BROJE i javljaju',
+     p.warnings.some(w => /praznih redaka predloška preskočeno/i.test(w)), `got ${JSON.stringify(p.warnings)}`);
 }
 
 console.log('');
