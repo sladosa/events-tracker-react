@@ -10,6 +10,7 @@ import type { Area, Category, AttributeDefinition } from '@/types/database';
 import type { StructureNode } from '@/types/structure';
 import { applyEventFilters, attrFilterJoinClause } from '@/lib/eventQueryBuilder';
 import { fetchAllPagedIn } from '@/lib/supabasePaging';
+import { withRetryQuery } from '@/lib/retry';
 import type {
   ExportCategoriesDict,
   ExportCategoryInfo,
@@ -18,23 +19,44 @@ import type {
   ExportFilters,
 } from './excelTypes';
 
+
+/**
+ * /!\ IZVOZ NE SMIJE TIHO USPJETI S MANJE PODATAKA.
+ *
+ * `supabase` NE odbacuje promise na neuspjeh -- vraca `{ data, error }`. Devet
+ * od jedanaest upita u ovom fileu je `error` odbacivalo destrukturiranjem, pa
+ * je palo citanje davalo `data: null`, a pozivatelj bi ga procitao kao "nema
+ * nicega". Izmjereno na PROD-u 2026-09-02: jedan pali upit na
+ * `attribute_definitions` dao je izvoz BEZ IJEDNE ATRIBUTSKE KOLONE -- file je
+ * izasao, izgledao uredno, a jedina naznaka bio je toast o kontrolnom stupcu
+ * koji zvuci kao problem delte.
+ *
+ * Zato: retry (kvar je najcesce prolazan) pa BACI. Izvoz koji padne s porukom
+ * je popravljiv; izvoz koji tiho izostavi pola podataka nije -- a taj se file
+ * poslije i uvozi natrag.
+ */
+function must<T>(res: { data: T | null; error: unknown }, sto: string): T {
+  if (res.error) throw new Error(`Izvoz prekinut - ne mogu ucitati ${sto}: ${(res.error as { message?: string }).message ?? res.error}`);
+  return (res.data ?? []) as T;
+}
+
 // ─────────────────────────────────────────────
 // Categories
 // ─────────────────────────────────────────────
 
 export async function loadCategoriesForExport(_userId: string): Promise<ExportCategoriesDict> {
-  const { data: areas } = await supabase
+  const areas = must(await withRetryQuery(() => supabase
     .from('areas')
     .select('id, name, sort_order')
-    .order('sort_order');
+    .order('sort_order')), 'popis podrucja');
 
   const areasMap = new Map<string, string>((areas ?? []).map(a => [a.id, a.name]));
 
-  const { data: cats } = await supabase
+  const cats = must(await withRetryQuery(() => supabase
     .from('categories')
     .select('id, name, parent_category_id, area_id, level, sort_order')
     .order('level')
-    .order('sort_order');
+    .order('sort_order')), 'popis kategorija');
 
   if (!cats || cats.length === 0) return {};
 
@@ -121,10 +143,11 @@ export async function loadAttrDefsForCategories(
   // Include parent categories so we get inherited attributes
   const allCatIds = getCategoryIdsWithParents(categoriesDict, categoryIds);
 
-  const { data: attrs } = await supabase
+  // /!\ Bas je ovaj upit 2026-09-02 pao i dao izvoz bez atributskih kolona.
+  const attrs = must(await withRetryQuery(() => supabase
     .from('attribute_definitions')
     .select('id, category_id, name, slug, data_type, unit, is_required, default_value, validation_rules, sort_order, description')
-    .in('category_id', allCatIds);
+    .in('category_id', allCatIds)), 'definicije atributa');
 
   if (!attrs || attrs.length === 0) return [];
 
@@ -189,11 +212,15 @@ async function loadAttrsForEvents(eventIds: string[]): Promise<Map<string, RawAt
   const map = new Map<string, RawAttr[]>();
   for (let i = 0; i < eventIds.length; i += ATTR_CHUNK_SIZE) {
     const chunk = eventIds.slice(i, i + ATTR_CHUNK_SIZE);
-    const { data } = await supabase
+    // /!\ Tiha praznina bi ovdje dala retke BEZ IJEDNE vrijednosti atributa --
+    //   kolone bi postojale, celije bi bile prazne, i to bi izgledalo kao
+    //   podatak kojeg nema umjesto kao citanje koje nije uspjelo.
+    const data = must(await withRetryQuery(() => supabase
       .from('event_attributes')
       .select('id, event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean')
       .in('event_id', chunk)
-      .limit(chunk.length * 50); // override Supabase default 1000-row limit (chunk×50 ≥ any real attr/event ratio)
+      // override Supabase default 1000-row limit (chunk×50 ≥ any real attr/event ratio)
+      .limit(chunk.length * 50)), 'vrijednosti atributa');
     for (const a of (data ?? []) as RawAttr[]) {
       const list = map.get(a.event_id) ?? [];
       list.push(a);
@@ -263,10 +290,11 @@ export async function loadEventsForExport(
   const userIds = [...new Set(rawEvents.map(e => e.user_id as string).filter(Boolean))];
   let emailMap = new Map<string, string>();
   if (userIds.length > 0) {
-    const { data: profiles } = await supabase
+    // /!\ Bez emaila u kol. G uvoz TOG filea preskoci svaki redak kao "tudji".
+    const profiles = must(await withRetryQuery(() => supabase
       .from('profiles')
       .select('id, email')
-      .in('id', userIds);
+      .in('id', userIds)), 'emailove korisnika');
     emailMap = new Map((profiles ?? []).map(p => [p.id as string, p.email as string]));
   }
 
@@ -477,12 +505,14 @@ async function mergeParentAttrsIntoEvents(
         const dateTo   = eventDates[eventDates.length - 1];
 
         // Fetch parent events WITHOUT nested attrs (avoids large JOIN)
-        const { data: parentEventsRaw } = await supabase
+        // Bez ovih redaka izvoz izadje bez P2 roditeljskih atributa -- opet
+        // tiho i opet uvjerljivo.
+        const parentEventsRaw = must(await withRetryQuery(() => supabase
           .from('events')
           .select('id, user_id, category_id, session_start, chain_key')
           .in('category_id', [...parentCatIds])
           .gte('event_date', dateFrom)
-          .lte('event_date', dateTo);
+          .lte('event_date', dateTo)), 'roditeljske dogadjaje');
 
         // Load parent event_attributes separately in chunks
         const parentIds = (parentEventsRaw ?? []).map((pe: Record<string, unknown>) => pe.id as string);
@@ -551,7 +581,8 @@ export async function loadEventsByIdsForExport(
   const userIds = [...new Set(rows.map(e => e.user_id as string).filter(Boolean))];
   let emailMap = new Map<string, string>();
   if (userIds.length > 0) {
-    const { data: profiles } = await supabase.from('profiles').select('id, email').in('id', userIds);
+    const profiles = must(await withRetryQuery(() =>
+      supabase.from('profiles').select('id, email').in('id', userIds)), 'emailove korisnika');
     emailMap = new Map((profiles ?? []).map(p => [p.id as string, p.email as string]));
   }
 
