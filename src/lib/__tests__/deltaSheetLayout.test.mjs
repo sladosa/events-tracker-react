@@ -48,7 +48,7 @@ const main = [mk('m1','2026-08-02','ZABA','Racun',3.2,'Izvrsen'), mk('m2','2026-
 const planned = [mk('p1','2026-07-11','ZABA','Mastercard',137.78,'Planiran'), mk('p2','2026-07-11','ZABA','Mastercard',63.33,'Planiran')];
 const BLANKS = 5;
 
-async function buildSheet(planned) {
+async function buildSheet(planned, extra = {}) {
   const { buffer, warnings } = await createDeltaExcel(main, defs, catsDict, {
     groupLabel: 'ZABA', opening: { amount: 13815.33, asOf: '2026-07-30' },
     anchor: { amount: 13815.33, confirmed_on: '2026-07-30' },
@@ -56,6 +56,7 @@ async function buildSheet(planned) {
     filters: [{ op:'in', slug:'izvorplacanja', values:['Racun'] }, { op:'not_in', slug:'status', values:['Planiran'] }],
     blankRows: BLANKS, prefill: { Racun: 'ZABA', Izvor: 'Racun' },
     areaName: 'Financije_all', categoryPath: 'Financije_all > Transakcija', userEmail: 'k@x.com',
+    ...extra,
   }, null, planned);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
@@ -99,6 +100,27 @@ console.log('Sa sekcijom "planirano" (3 glavna + 5 praznih + 2 planirana):');
      txt(ws,pFrom+2+1,ctrl)==='f()' && raw(ws,pFrom+2+2,ctrl)==null && txt(ws,pFrom+2+3,ctrl)==='f()');
   ok('autofilter staje na praznim retcima, ne obuhvaca sekciju',
      String(ws.autoFilter).endsWith(String(blankTo)), `got ${ws.autoFilter}`);
+}
+
+console.log('');
+console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene retke:');
+{
+  // Bit kosare: jedan redak je jos `Planiran`, drugi je vec `Izvrsen`. Prije
+  // S125 je drugi ispadao iz sekcije I iz glavnog bloka, pa ga file nije imao —
+  // a bas se on nije dao ispraviti uvozom (izmjereno: gorivo 55,00, PROD).
+  const basket = [mk('b1','2026-09-01','ZABA','Mastercard',100,'Planiran'),
+                  mk('b2','2026-09-02','ZABA','Mastercard',55,'Izvrsen')];
+  const { ws, hdr, ctrl } = await buildSheet(basket, { basket: true });
+  const sep = hdr + main.length + BLANKS + 1, pFrom = sep + 1;
+  // Tekst se mijenja jer se mijenja i posao: u kosari nisu svi retci planirani,
+  // pa uputa ne smije glasiti "potvrdi svaki redak" nego "slozi zbroj".
+  ok('naslov je KOSARA, ne PLANIRANO', String(txt(ws,sep,8)).startsWith('KOSARA'));
+  ok('vec potvrdjen redak JE u sekciji', txt(ws,pFrom+1,1)==='b2', `got ${txt(ws,pFrom+1,1)}`);
+  // /!\ Neto: povrat u istoj kosari inace naduva zbroj i izmisli razliku
+  //     prema izvodu. Izmjereno na ZABA kosari 11.08. (povrat 3,00).
+  const f = String(raw(ws,pFrom+2+1,ctrl)?.formula ?? '');
+  ok('Σ kosare je NETO (oduzima kolonu uplata)', f.includes('-SUM('), `got ${f}`);
+  ok('Σ kosare i dalje ROUND-a na 2 decimale', f.startsWith('ROUND('), `got ${f}`);
 }
 
 console.log('');

@@ -467,32 +467,71 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
           (balanceWidget.filters ?? []).every(f => f.op !== 'in' || passes(ev, f.slug, f.values)),
         );
 
-        // ── Sekcija „planirano" ─────────────────────────────────────────
-        // ⚠ Ovi retci su IZVAN prozora: kartcna stavka ne mice saldo, pa je
-        //   prozor (sidro+1 .. danas) uopce ne pokriva — a rate s naplatom
+        // -- Sekcija "planirano" / cijela KOSARA ------------------------
+        // /!\ Ovi retci su IZVAN prozora: kartcna stavka ne mice saldo, pa je
+        //   prozor (sidro+1 .. danas) uopce ne pokriva -- a rate s naplatom
         //   11.07. uz sidro 30.07. su bas one koje treba potvrditi. Zato zaseban
         //   upit, bez datumske granice.
-        //   Filtar je `Status = Planiran` (a ne racun), jer planiranih ima
-        //   dvadesetak u cijeloj Arei, a redaka racuna 1.246 — racun se onda
-        //   suzi u memoriji. `not_in` uvjet plocice je izvor istine o tome sto
-        //   znaci „planirano": to je upravo ono sto saldo iskljucuje.
+        //
+        // /!\ ZASTO NE SAMO `Status = Planiran` (izmjereno na PROD-u 2026-09-02)
+        //   Kosara koja dolazi 03.09. imala je 10 redaka / 205,36. Devet ih je
+        //   `Planiran`, a jedan (gorivo 55,00) je rucno prebacen u `Izvrsen` bez
+        //   ijedne potvrde s izvoda. Taj je ispadao iz OBJE strane: iz glavnog
+        //   bloka jer je kartcni pa ne mice saldo, iz sekcije jer nije
+        //   `Planiran`. Kontrola kosare bi pokazala razliku od tocno 55,00 koju
+        //   na listu nista ne objasnjava -- a redak nije bio ni u fileu, pa se
+        //   nije dao ispraviti ni uvozom.
+        //   Zato u sekciju ide i sve cije DOSPIJECE jos nije proslo, bez obzira
+        //   na `Status`.
+        //
+        // /!\ PRAG JE "DANAS", NE SIDRO. Sidro bi za ZABA-u vratilo 47 vec
+        //   potvrdjenih redaka kosare 11.08. (izmjereno) -- sekcija koja svaki
+        //   mjesec ponovi zatvorenu kosaru je sum, a sum se prestane citati.
+        //
+        // /!\ `due_slug` dolazi IZ CONFIGA (OVERVIEW_TAB_SPEC 2.15: rjecnik u
+        //   kodu, semantika Aree u configu). Bez njega je ponasanje danasnje.
         const notInFilters = (balanceWidget.filters ?? []).filter(f => f.op === 'not_in');
+        const dueSlug = balanceWidget.split?.due_slug;
         let plannedRows: typeof merged = [];
         if (notInFilters.length > 0) {
-          const statusDef = bundle.attrDefs.find(d => d.slug === notInFilters[0].slug);
-          if (statusDef) {
+          // U kosara-nacinu se po Statusu vise ne moze suziti upit, pa ide po
+          // racunu. Skuplje je -- izmjereno na PROD-u: RF 1.081, ZABA 1.261
+          // redaka -- ali se vrti samo kad je delta sheet cekiran.
+          const queryDef = dueSlug
+            ? bundle.attrDefs.find(d => d.slug === balanceWidget.group_by)
+            : bundle.attrDefs.find(d => d.slug === notInFilters[0].slug);
+          const queryVal = dueSlug ? deltaAccount : notInFilters[0].values[0];
+          if (queryDef) {
             const plannedBundle = await loadExportData(user.id, {
               ...effectiveFilters,
               dateFrom: null,
               dateTo: null,
               commentSearch: '',
-              attrFilter: { attrDefId: statusDef.id, value: notInFilters[0].values[0], isExact: true },
+              attrFilter: { attrDefId: queryDef.id, value: queryVal, isExact: true },
             });
             const deltaIds = new Set(deltaRows.map(e => e.id));
+            const dueIds = dueSlug ? idsBySlug.get(dueSlug) : undefined;
+            // /!\ Lokalni datum, ne `toISOString()`: navecer bi UTC dao SUTRA,
+            //   pa bi kosara koja dospijeva danas ispala iz sekcije.
+            const now = new Date();
+            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const dueStillOpen = (ev: typeof merged[number]) =>
+              !!dueIds && (ev.event_attributes ?? []).some(
+                a => dueIds.has(a.attribute_definition_id) &&
+                     a.value_datetime != null &&
+                     String(a.value_datetime).slice(0, 10) >= today,
+              );
+            // "Mice saldo" = svi `in` uvjeti prolaze I nijedan `not_in` ne
+            // prolazi. Takav redak je posao GLAVNOG bloka; u sekciju ne smije
+            // ni kad ga prozor ne pokriva, inace isti novac stoji dvaput.
+            const movesBalance = (ev: typeof merged[number]) =>
+              (balanceWidget.filters ?? []).every(f =>
+                f.op === 'in' ? passes(ev, f.slug, f.values) : !passes(ev, f.slug, f.values));
             plannedRows = mergeSessionEvents(plannedBundle.events, plannedBundle.categoriesDict).filter(ev =>
               !deltaIds.has(ev.id) &&
               passes(ev, balanceWidget.group_by, [deltaAccount]) &&
-              notInFilters.every(f => passes(ev, f.slug, f.values)),
+              !movesBalance(ev) &&
+              (notInFilters.every(f => passes(ev, f.slug, f.values)) || dueStillOpen(ev)),
             );
           }
         }
@@ -507,6 +546,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             minusSlug:    balanceWidget.minus ?? '',
             filters:      balanceWidget.filters ?? [],
             blankRows:    deltaBlanks,
+            basket:       !!dueSlug,
             prefill,
             areaName:     cat?.area_name ?? '',
             categoryPath: cat?.full_path ?? '',

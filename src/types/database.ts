@@ -78,8 +78,14 @@ export interface BalanceByGroupWidget {
   minus?: string;
   /** What counts as "already happened" — for Financije this is the §2.10 rule. */
   filters?: WidgetFilter[];
-  /** A second, separate number beside the balance (e.g. Status = Planiran). */
-  split?: { label: string; filters: WidgetFilter[] };
+  /**
+   * A second, separate number beside the balance (e.g. Status = Planiran).
+   * `due_slug` (opcionalan) imenuje datumski atribut dospijeca. Kad ga ima,
+   * sekcija delta sheeta pokazuje CIJELU kosaru -- ukljucujuci retke koje je
+   * netko vec prebacio u izvrseno bez potvrde s izvoda. Bez njega se ponasanje
+   * ne mijenja, pa Area koja ga nema dobiva tocno danasnju sekciju.
+   */
+  split?: { label: string; filters: WidgetFilter[]; due_slug?: string };
   /** Show the "u banci" field, the ✓/Δ chip, and let the user write an anchor. */
   reconcile?: boolean;
   /** Suffix appended to every amount, e.g. `€`. */

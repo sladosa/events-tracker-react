@@ -76,6 +76,12 @@ export interface DeltaSheetOptions {
    * 0 = sekcije nema.
    */
   plannedCount: number;
+  /**
+   * Sekcija pokazuje CIJELU kosaru (svaki redak cije dospijece jos nije
+   * proslo), ne samo one sa `Status = Planiran`. Mijenja samo TEKST i
+   * naslov -- odabir redaka radi pozivatelj (ExcelExportModal).
+   */
+  basket?:      boolean;
   /** Kolone B/C/G praznih redaka. */
   areaName:     string;
   categoryPath: string;
@@ -354,7 +360,13 @@ export function addDeltaHelpersTo(
     // Naslov ide u kolonu H (komentar). Kolona B ostaje PRAZNA, pa import ovaj
     // redak uopce ne vidi kao redak.
     const title = ws.getCell(sepRow, FIXED_COL_COUNT);
-    title.value = `PLANIRANO — ne mice saldo. Potvrdi promjenom "${attrNameBySlug.get('status') ?? 'Status'}" u Izvrsen, ali TEK kad se kosara slozi s izvodom (v. dno).`;
+    title.value = opts.basket
+      // Kosara: unutra su i retci koje je netko vec prebacio u izvrseno. Zato
+      // tekst NE trazi promjenu Statusa na svakom retku, nego slaganje ZBROJA.
+      ? `KOSARA -- kartcni retci cije dospijece jos nije proslo. Ne micu saldo. `
+        + `Prvo slozi zbroj s izvodom (v. dno), pa tek onda potvrdi retke `
+        + `promjenom "${attrNameBySlug.get('status') ?? 'Status'}" u Izvrsen.`
+      : `PLANIRANO — ne mice saldo. Potvrdi promjenom "${attrNameBySlug.get('status') ?? 'Status'}" u Izvrsen, ali TEK kad se kosara slozi s izvodom (v. dno).`;
     title.font  = { bold: true, italic: true };
 
     // ── Kontrola kosare: zbroj sekcije vs iznos skupne naplate s izvoda ──
@@ -367,10 +379,15 @@ export function addDeltaHelpersTo(
     const diffRow = sumRow + 2;
     const mLtr    = colLetter(minusCol);
 
-    ws.getCell(sumRow, labelCol).value = 'Σ planirano (gore) ->';
+    ws.getCell(sumRow, labelCol).value = opts.basket ? 'Σ košara (gore) ->' : 'Σ planirano (gore) ->';
     ws.getCell(sumRow, labelCol).alignment = { horizontal: 'right' };
     const sumCell = ws.getCell(sumRow, ctrlCol);
-    sumCell.value  = { formula: `ROUND(SUM($${mLtr}$${plannedFrom}:$${mLtr}$${plannedTo}),2)` };
+    // /!\ NETO, ne samo zbroj isplata: povrat zna sjediti u istoj kosari.
+    //   Izmjereno na ZABA kosari 11.08.: 49 redaka, isplate 2.868,04, a
+    //   jedan povrat od 3,00 -- banka tereti neto. Zbroj bez njega bi
+    //   tvrdio razliku prema izvodu koje nema.
+    const pLtr     = colLetter(plusCol);
+    sumCell.value  = { formula: `ROUND(SUM($${mLtr}$${plannedFrom}:$${mLtr}$${plannedTo})-SUM($${pLtr}$${plannedFrom}:$${pLtr}$${plannedTo}),2)` };
     sumCell.numFmt = '#,##0.00';
     sumCell.note   = 'Zbroj planiranih redaka iz sekcije iznad. Usporedi ga s iznosom '
       + 'SKUPNE NAPLATE s izvoda za taj datum. Ne slazu li se, kriv je Datum naplate na '
