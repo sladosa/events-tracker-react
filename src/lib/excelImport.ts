@@ -333,7 +333,9 @@ export async function parseExcelFile(
   const wb          = new ExcelJS.Workbook();
   await wb.xlsx.load(arrayBuffer);
 
-  const emptyForeign = { foreignRowCount: 0, foreignEmailsSummary: {} as Record<string, number>, foreignAreas: [] as string[], untouchedCount: 0 };
+  const emptyForeign = { foreignRowCount: 0, foreignEmailsSummary: {} as Record<string, number>,
+    foreignAreas: [] as string[], untouchedCount: 0,
+    untouchedRows: [] as ParsedImportRow[], exportedAt: null as string | null };
   const emptyLists   = { toCreate: [], toUpdate: [], toDelete: [] };
 
   // Try Events sheet by name (unified format), fall back to first worksheet
@@ -588,19 +590,24 @@ export async function parseExcelFile(
   // No DB read, no write; also guarantees a stale export can never revert changes
   // made in the app after the export. Only rows WITH event_id qualify (CREATE rows
   // must never be skipped by hash).
-  let untouchedCount = 0;
+  const untouchedRows: ParsedImportRow[] = [];
   const toUpdate: ParsedImportRow[] = [];
   for (const r of validRows) {
     if (!r.event_id) continue;
     if (matchesRowHash(r)) {
-      untouchedCount++;
+      untouchedRows.push(r);
       continue;
     }
     toUpdate.push(r);
   }
 
+  // Kad je file izvezen. Sluzi samo za upozorenje o zastarjelom fileu
+  // (`warnStaleUntouched`), nikad za odluku sto se upisuje.
+  const exportedAt = readExportedAt(wb);
+
   return { toCreate, toUpdate, toDelete, warnings, errors: [], legendMapping: mapping,
-           foreignRowCount, foreignEmailsSummary, foreignAreas: [...foreignAreaSet], untouchedCount };
+           foreignRowCount, foreignEmailsSummary, foreignAreas: [...foreignAreaSet],
+           untouchedCount: untouchedRows.length, untouchedRows, exportedAt };
 }
 
 
@@ -624,6 +631,88 @@ export function canUpdateExisting(
 ): boolean {
   if (existingUserId === userId) return true;
   return row._fixForeign === true;
+}
+
+
+/**
+ * Kad je file izvezen, iz `Filter` lista, kao ISO instant.
+ *
+ * /!\ Ondje stoji LOKALNO vrijeme -- `timestampSuffix()` gradi ga iz `getHours()`.
+ *   `edited_at` u bazi je UTC. Ljeti je razlika 2 h, i to bas u smjeru koji bi
+ *   progutao najsvjezije izmjene: tekstualna usporedba bi izvoz u 15:02 lokalno
+ *   citala kao 15:02 UTC, pa bi izmjena u 13:05 UTC (= 15:05 lokalno, dakle POSLIJE
+ *   izvoza) ispala kao "prije". Zato `new Date('...T...')` bez `Z` -- JS to parsira
+ *   kao lokalno vrijeme i daje tocan trenutak.
+ */
+function readExportedAt(wb: ExcelJS.Workbook): string | null {
+  const ws = wb.getWorksheet('Filter');
+  if (!ws) return null;
+  for (let r = 1; r <= Math.min(ws.rowCount, 30); r++) {
+    if (String(ws.getCell(r, 1).value ?? '').trim() !== 'Exported at') continue;
+    const raw = String(ws.getCell(r, 2).value ?? '').trim();     // "2026-09-02 15:02:57"
+    const m = raw.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})$/);
+    if (!m) return null;
+    const d = new Date(`${m[1]}T${m[2]}`);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  return null;
+}
+
+/**
+ * Upozori kad je file ZASTARIO: redak koji uvoz preskace po otisku, a u bazi je
+ * promijenjen NAKON izvoza ovog filea.
+ *
+ * /!\ NE MIJENJA STO SE UPISUJE, i to je namjerno.
+ *   Preskok po otisku jamci da zastarjeli izvoz ne moze vratiti unatrag ono sto je
+ *   netko u medjuvremenu promijenio u aplikaciji -- zastita koja je s `fix_as_owner`
+ *   postala vrjednija, jer vlasnik Aree sada pise i po tudjim retcima.
+ *   Iz filea se DVA slucaja ne daju razlikovati:
+ *     · redak nisi dirao, a netko ga je promijenio u appu  -> preskok je ISPRAVAN
+ *     · redak si vratio na izvornu vrijednost              -> preskok gubi namjeru
+ *   Oba daju isti otisak. Zato se ne pogadja nego KAZE NAGLAS -- korisnik zna koju
+ *   je od dvije stvari radio, kod ne zna.
+ *
+ * Izmjereno 2026-09-02: `Studio Natasi` vracen na `Planiran` u fileu iz kojeg je
+ * prethodni uvoz vec primijenjen -- otisak se poklopio, redak preskocen, baza
+ * ostala na `Izvrsen`, a preview je rekao `0 Modify`. Nijedna poruka.
+ */
+export async function warnStaleUntouched(
+  parsed: { untouchedRows: ParsedImportRow[]; exportedAt: string | null; warnings: string[] },
+): Promise<number> {
+  const ids = parsed.untouchedRows.map(r => r.event_id!).filter(Boolean);
+  if (!parsed.exportedAt || ids.length === 0) return 0;
+
+  const stale: string[] = [];
+  const CHUNK = 200;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const { data, error } = await supabase
+      .from('events')
+      .select('id')
+      .in('id', ids.slice(i, i + CHUNK))
+      .gt('edited_at', parsed.exportedAt);
+    // Tiho preskakanje bi ovdje vratilo tocno onu nevidljivost koju ova funkcija
+    // uklanja, pa se neuspjeh provjere JAVLJA kao takav.
+    if (error) {
+      parsed.warnings.push(
+        `Ne mogu provjeriti je li file zastario (${error.message}). Ako si redak `
+        + `mijenjao pa vraćao, izvezi ponovno prije uvoza.`);
+      return 0;
+    }
+    for (const e of (data ?? []) as { id: string }[]) stale.push(e.id);
+  }
+  if (stale.length === 0) return 0;
+
+  const staleSet = new Set(stale);
+  const named = parsed.untouchedRows
+    .filter(r => staleSet.has(r.event_id!))
+    .slice(0, 5)
+    .map(r => `${r.event_date} ${(r.comment || '').slice(0, 28)}`);
+  parsed.warnings.push(
+    `⚠ File je zastario: ${stale.length} ${stale.length === 1 ? 'redak je' : 'redaka je'} `
+    + `u bazi promijenjen nakon što je ovaj file izvezen. Uvoz ih PRESKAČE — tako `
+    + `zastarjeli file ne može vratiti unatrag tuđu izmjenu. Želiš li ih mijenjati, `
+    + `izvezi ponovno. (${named.join(' · ')}${stale.length > named.length ? ' …' : ''})`);
+  return stale.length;
 }
 
 // ─────────────────────────────────────────────
@@ -1994,6 +2083,9 @@ export async function importEventsFromExcel(
 
   // Step 1: Parse file
   const parsed = await parseExcelFile(file, currentUserEmail, foreignMode);
+  // Isti poziv stoji i u `ExcelImportModal` nakon njegovog parsanja -- preview i
+  // apply moraju vidjeti isto upozorenje, inace se odluka donosi bez njega.
+  await warnStaleUntouched(parsed);
   if (parsed.errors.length > 0) {
     return { ...empty, errors: parsed.errors, warnings: parsed.warnings };
   }

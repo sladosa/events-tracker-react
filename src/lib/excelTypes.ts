@@ -110,6 +110,20 @@ export interface ParseResult {
   foreignAreas:         string[];
   /** S107 D7: UPDATE rows whose row_hash matched (not touched in Excel) — excluded from toUpdate, skipped without any DB call */
   untouchedCount: number;
+  /**
+   * Ti isti retci, ali cijeli. Trebaju jer preskok NIJE uvijek bezopasan: ako je
+   * redak u bazi promijenjen NAKON izvoza ovog filea, preskok je i dalje ispravan
+   * (stiti tudju izmjenu od vracanja unatrag), ali korisnik mora znati da se
+   * dogodio -- inace mu vlastiti ispravak nestane bez poruke.
+   */
+  untouchedRows:  ParsedImportRow[];
+  /**
+   * Kad je file izvezen, kao ISO instant. Cita se iz `Filter` lista.
+   * ⚠ Ondje stoji LOKALNO vrijeme (`timestampSuffix` koristi `getHours`), a
+   *   `edited_at` u bazi je UTC -- razlika je ljeti 2 h, i to bas u smjeru koji
+   *   bi progutao svjeze izmjene. Zato se pretvara, ne usporeduje kao tekst.
+   */
+  exportedAt:     string | null;
 }
 
 export interface ValidationResult {

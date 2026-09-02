@@ -186,5 +186,37 @@ console.log('canUpdateExisting — pravilo koje je vec jednom odlutalo na tri mj
 }
 
 console.log('');
+console.log('Vrijeme izvoza iz `Filter` lista — lokalno u fileu, UTC u bazi:');
+{
+  // /!\ `timestampSuffix()` gradi vrijeme iz `getHours()`, dakle LOKALNO, a
+  //     `edited_at` u bazi je UTC. Citanje kao tekst bi ljeti promasilo 2 sata, i
+  //     to u smjeru koji guta NAJSVJEZIJE izmjene -- tocno one koje treba uhvatiti.
+  const buf = await createEventsExcel([mk('e1', 'redak')], defs, catsDict, 'asc',
+    undefined, { exportType: 'Test', exportedAt: '20260902_150257' });
+  const f = new File([buf], 'x.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const p = await parseExcelFile(f, GRANTEE, 'skip');
+  const ocekivano = new Date('2026-09-02T15:02:57').toISOString();
+  ok('exportedAt je ISO instant, ne prepisan tekst', p.exportedAt === ocekivano,
+     `got ${p.exportedAt}, ocekivano ${ocekivano}`);
+  ok('nije naivno protumacen kao UTC',
+     p.exportedAt !== '2026-09-02T15:02:57.000Z' || new Date().getTimezoneOffset() === 0,
+     `got ${p.exportedAt}`);
+}
+
+console.log('');
+console.log('Netaknuti retci se VRACAJU cijeli, ne samo brojkom:');
+{
+  // Bez njih se ne moze reci KOJI je redak preskocen, pa upozorenje o zastarjelom
+  // fileu ne bi moglo imenovati nijedan redak.
+  const buf = await createEventsExcel([mk('e1', 'netaknut'), mk('e2', 'netaknut2')], defs, catsDict, 'asc');
+  const f = new File([buf], 'y.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const p = await parseExcelFile(f, GRANTEE, 'skip');
+  ok('untouchedCount i untouchedRows se slazu',
+     p.untouchedCount === p.untouchedRows.length, `${p.untouchedCount} vs ${p.untouchedRows.length}`);
+  ok('bez Filter lista exportedAt je null (provjera se preskace, ne pogadja)',
+     p.exportedAt === null, `got ${p.exportedAt}`);
+}
+
+console.log('');
 console.log(`${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

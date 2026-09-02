@@ -17,6 +17,7 @@ import {
   checkImportCollisions,
   checkMissingCategories,
   parseExcelFile,
+  warnStaleUntouched,
   analyzeUpdates,
   analyzeDeletes,
 } from '@/lib/excelImport';
@@ -121,6 +122,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       setCurrentUserEmail(userEmail);
 
       const parsed = await parseExcelFile(file, userEmail, mode);
+      // Zastarjeli file: retke koje uvoz preskace po otisku, a u bazi su se u
+      // medjuvremenu promijenili, treba PRIJAVITI -- preskok ostaje (stiti tudju
+      // izmjenu), ali prestaje biti nijem. Isti poziv je i u apply putu.
+      await warnStaleUntouched(parsed);
 
       if (parsed.errors.length > 0) {
         setErrors(parsed.errors);
