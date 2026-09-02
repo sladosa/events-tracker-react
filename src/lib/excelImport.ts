@@ -722,8 +722,10 @@ export async function warnStaleUntouched(
   parsed.warnings.push(
     `⚠ File je zastario: ${stale.length} ${stale.length === 1 ? 'redak je' : 'redaka je'} `
     + `u bazi promijenjen nakon što je ovaj file izvezen. Uvoz ih PRESKAČE — tako `
-    + `zastarjeli file ne može vratiti unatrag tuđu izmjenu. Želiš li ih mijenjati, `
-    + `izvezi ponovno. (${named.join(' · ')}${stale.length > named.length ? ' …' : ''})`);
+    + `zastarjeli file ne može vratiti unatrag tuđu izmjenu. `
+    + `Želiš li ipak primijeniti svoju vrijednost: izbriši ćeliju row_hash u tom retku `
+    + `pa uvezi ponovno (ili izvezi svjež file). `
+    + `(${named.join(' · ')}${stale.length > named.length ? ' …' : ''})`);
   return stale.length;
 }
 

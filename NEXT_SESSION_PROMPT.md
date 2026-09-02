@@ -1,7 +1,7 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `S125: preview i reklasifikacija su tudji redak jos uvijek zvali NEPOSTOJECIM`
-(`00fd87b`, grana `test-branch`). Ako `git log` pokazuje novije, čitaj ovo kao
+**Pisano protiv commita:** `S125: docs/KOKA_PRVI_MJESEC.md` (`9e23141`, grana
+`test-branch`). Ako `git log` pokazuje novije, čitaj ovo kao
 **povijest** — CLAUDE.md je autoritet.
 
 ---
@@ -32,14 +32,19 @@ Import kao „Ispravi kao vlasnik Aree". Usput se provjeri da put radi u oba smj
 od `c156057` nadalje nije gore. Koka zato **još ne vidi** ni ✎ na desktopu, ni
 košaru, ni „Ispravi kao vlasnik Aree". Reci kad želiš.
 
-**3. Deset testova čeka pogled** — `T-S125-1…10`. Nisu neizvedeni nego neprovjereni:
+**3. ⚠ Nije provjereno da upozorenje o zastarjelom fileu uopće radi.** Prvi pokušaj
+nije javio ništa — delta file nije imao `Filter` list, pa provjera nije mogla krenuti.
+Popravljeno (`20fa1e6`), ali za potvrdu treba **svjež izvoz**: stari fileovi taj list
+nemaju, pa na njima iskače druga poruka („ne mogu provjeriti").
+
+**4. Deset testova čeka pogled** — `T-S125-1…10`. Nisu neizvedeni nego neprovjereni:
 mjerenja nad bazom su prošla, ali ih nitko nije potvrdio u aplikaciji.
 
-**4. ⭐ Pročitaj `docs/KOKA_PRVI_MJESEC.md`** — što je riješeno, što nije, i
+**5. ⭐ Pročitaj `docs/KOKA_PRVI_MJESEC.md`** — što je riješeno, što nije, i
 redoslijed po **riziku za njeno povjerenje**, ne po tehničkoj težini. Ondje je i
 razrađen plan „sumnjiv redak ide u izvještaj o uvozu" (tvoja ideja).
 
-**5. Rečenica koju Koki još nitko nije rekao** (stoji od S124): *kad počne upisivati
+**6. Rečenica koju Koki još nitko nije rekao** (stoji od S124): *kad počne upisivati
 u app, u Excelicu više ne.* Radi li oboje, sve dobivamo dvaput.
 
 ## Što se pokazalo vrijednim, za ubuduće
@@ -58,7 +63,7 @@ dijagnozu. Uski ekran je pokazivao ✎, široki nije.
 
 ## Stanje
 
-- `test-branch` **8 commitova ispred `main`** (`c156057` … `00fd87b`).
+- `test-branch` **12 commitova ispred `main`** (`c156057` … `9e23141`).
   `main` = `bb13153` (S124), deployan.
 - **PROD ima `043` i `044`.** `044` dodaje `split.due_slug = datum_naplate` u
   `areas.settings.dashboard` — bez njega je delta sekcija kakva je bila.
@@ -80,14 +85,17 @@ db3e7c3  excelDataLoader: izvoz pada s porukom umjesto da izađe kraći
 edae267  tuđi redak se NE briše (dva zida) + `importForeignRows.test.mjs`
 6db489c  test da uvoz doseže sekciju ispod 40 praznih redaka
 00fd87b  preview i reklasifikacija — `canUpdateExisting()`
+31b4a7d  preskok po otisku prestaje biti nijem kad je file zastario
+20fa1e6  delta file dobiva `Filter` list (bez njega provjera ne može ni krenuti)
+9e23141  docs/KOKA_PRVI_MJESEC.md
 ```
 
 ## Testovi
 
 | file | slučajeva |
 | --- | --- |
-| `src/lib/__tests__/deltaSheetLayout.test.mjs` | 31 |
-| `src/lib/__tests__/importForeignRows.test.mjs` | 21 (nov) |
+| `src/lib/__tests__/deltaSheetLayout.test.mjs` | 33 |
+| `src/lib/__tests__/importForeignRows.test.mjs` | 25 (nov) |
 | `src/lib/__tests__/deltaAccount.test.mjs` | 11 |
 | `e2e/tests/S123_owner_edits_grantee_row.spec.ts` | 3 (`T-S123-3` nov, mijenja viewport) |
 
