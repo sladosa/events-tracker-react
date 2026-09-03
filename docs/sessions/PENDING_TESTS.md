@@ -1,7 +1,52 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S125 (2026-09-02) — `043` na PROD-u, BUG-S123-EDITMARK zatvoren, košara u delta sheetu, Excel ispravak tuđeg retka.
+**Zadnji update:** S126 (2026-09-03) — `043` na PROD-u, BUG-S123-EDITMARK zatvoren, košara u delta sheetu, Excel ispravak tuđeg retka.
+
+---
+
+## S126 — ZABA kolovoz usklađena s bankom, `Tip/Podtip` iz izbrojane povijesti (2026-09-03)
+
+Detalji: [S126_tests.md](tests/S126_tests.md)
+
+⚠ **Kod je i dalje na `test-branch`; `main` je na `bb13153` (S124).** Sve niže radi
+**lokalno protiv PROD baze**. Koka na `events-tracker-react.netlify.app` još ne
+vidi ni novi raspored delta sheeta, ni `--mc` rezultat, ni ✎ na desktopu.
+
+### Provjereno strojno (ne traži nikoga)
+
+| kontrola | rezultat |
+| --- | --- |
+| ⭐ **saldo `Kokin tekući ZABA`** | ✅ **12.784,36 €** = ispisano `NOVO STANJE` s `ZABA_2026-08.pdf`, u cent |
+| lanac izvoda (`POČETNO` 13.815,33 = naše sidro 30.07.) | ✅ između dva izvoda ne fali ništa |
+| uvoz | ✅ 75 novih / 16 izmjena / 1 nepromijenjen — točno kako je preview najavio |
+| `Izvod opis` na ZABA retcima od 31.07. | ✅ 46 / 46 |
+| izmjene su dirnule samo `Izvod opis` | ✅ izvještaj: svih 16 nosi `Changed: Izvod opis` |
+| košara 11.09. | ✅ 46 redaka / 1.048,72, raspon `Σ` pokriva sve |
+| `deltaSheetLayout.test.mjs` | ✅ 36 / 36 (bila 33) |
+| typecheck + build | ✅ |
+
+### Traži tebe — pogledom u aplikaciji / Excelu
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S126-1** | ⭐ novi raspored delta sheeta — kontrola IZNAD sekcije | ⬜ |
+| T-S126-2 | `Provjeri` nosi stil zaglavlja | ⬜ |
+| **T-S126-3** | ⭐ kontrola košare: `naplaceno = 1.068,70` ⇒ `razlika = 19,98` | ⬜ |
+| T-S126-4 | skraćen `Izvod opis`; redak **naknade** ostaje cijel | ⬜ |
+| **T-S126-5** | ⭐ prijedlozi iz povijesti točni (Holding: `12045603` ≠ `03879097`) | ⬜ |
+| T-S126-6 | komentar koji NIJE upisan (2× `22,90`, `28,06`) | ⬜ |
+| T-S126-7 | 33 retka s `Tip = N/A` — sidro čeka njih | ⬜ |
+| T-S126-8 | sumarni retci ne prekidaju uvoz (potvrđeno danas, ostaje pogled) | ⬜ |
+
+### ⚠ Otvoreno
+
+- **Sidro `12.784,36 @ 26.08.2026.` NIJE upisano — namjerno** (Sašina odluka).
+  Delta prozor kreće `max(dan nakon sidra, danas − N)`, pa bi sidro na 26.08.
+  **zaključalo** kolovoz i onih 33 `N/A` redaka ne bi se moglo dohvatiti delta
+  sheetom. Upisuje se **čim razvrstavanje sjedne**.
+- Dva MC retka (`9,99` ×2) nisu uvezena — vjerojatno isti trošak pod krivim
+  datumom. **Prvo ispravak datuma u bazi, pa uvoz** (razred S115).
 
 ---
 
@@ -33,7 +78,7 @@ samo migracije `043` i `044`. Sve niže radi **lokalno protiv PROD baze** — Ko
 | T-S125-2 | ista oznaka na uskom ekranu | ⬜ |
 | **T-S125-3** | ⭐ sekcija `KOSARA` nosi i već potvrđene retke; `Σ` = 205,36; sažeci je ne broje | ⬜ |
 | T-S125-4 | stupac `Provjeri` — naslov u retku-razdjelniku, objašnjenje kao input message, poruka nestaje na ispravak | ⬜ |
-| **T-S125-5** | ⭐ Excel: vlasnik Aree ispravlja tuđi redak — 1 Modify, **bez** „imported as NEW" | ⬜ |
+| **T-S125-5** | ⭐ Excel: vlasnik Aree ispravlja tuđi redak — 1 Modify, **bez** „imported as NEW" | ✅ S126 |
 | **T-S125-6** | ⭐ Excel: `DELETE` na tuđem retku se **odbija**, atributi ostaju | ⬜ |
 | T-S125-7 | grantee ne dobiva ponudu „Ispravi kao vlasnik" | ⬜ |
 | T-S125-8 | ugašena kvačica Delta sheeta kaže zašto i što učiniti | ⬜ |

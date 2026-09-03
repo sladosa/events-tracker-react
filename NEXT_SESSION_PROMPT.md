@@ -1,7 +1,7 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `S125: docs/KOKA_PRVI_MJESEC.md` (`9e23141`, grana
-`test-branch`). Ako `git log` pokazuje novije, čitaj ovo kao
+**Pisano protiv commita:** `S126: Tip/Podtip iz IZBROJANE povijesti racuna`
+(`6e536c5`, grana `test-branch`). Ako `git log` pokazuje novije, čitaj ovo kao
 **povijest** — CLAUDE.md je autoritet.
 
 ---
@@ -10,52 +10,63 @@
 
 ## Gdje smo
 
-Krenulo je od „gdje je 15 €", završilo s **Excel putem kojim Koka ispravlja tvoj
-redak**. To više nije polish nego preduvjet cutovera — sam si rekao: bez roundtripa
-ne prelazi na aplikaciju.
+Krenulo je od „Koka je poslala kolovoške izvode", završilo s **računom koji se
+slaže s bankom u cent**.
 
 | | |
 | --- | --- |
-| razlika od 15 € | ✅ riješena — KEKS Pay je bio zaveden kao `Visa` |
-| RF saldo | **1.920,34** = banka, bez novog sidra |
-| `043` na PROD-u | ✅ pušten, radi kroz UI **i** kroz Excel |
-| BUG-S123-EDITMARK | ✅ zatvoren — ✎ nije crtao **desktop** raspored |
-| tiha kvara nađena | **3**, sva tri iz tvojih pitanja |
+| `Kokin tekući ZABA` | ✅ **12.784,36 €** = ispisano stanje s `ZABA_2026-08.pdf` |
+| uvoz | 75 novih / 16 izmjena / 1 nepromijenjen — točno kako je preview najavio |
+| `Izvod opis` (oznaka „potvrđeno izvodom") | 46 / 46 na kolovoškim ZABA retcima |
+| MC košara 11.09. | 46 redaka / 1.048,72 |
+| `T-S125-5` (Excel put za tuđi redak) | ✅ **prvi put potvrđen uživo** |
+
+**Kokina Excelica je prestala biti izvor istine za kolovoz** — baza ima 46 redaka
+koje ona nema, i svaki nosi potvrdu s izvoda.
 
 ## Što čeka tebe
 
-**1. Vrati `Studio Nataši` na `Planiran`.** Ostao je `Izvrsen` iz testa, a nema
-pokrića na izvodu — točno ono što smo ujutro proglasili greškom. Izvoz → promjena →
-Import kao „Ispravi kao vlasnik Aree". Usput se provjeri da put radi u oba smjera.
+**1. ⭐ Razvrstaj 33 retka s `Tip = N/A`** (od 30.07. nadalje). Osam ZABA retka se
+**samo imenuje** u `Izvod opis`: E.ON ×2, HRT, TELEMACH ×2, NP vodovod, KTD Bilan,
+NUV. Ostatak je MC. Kad ih jednom razvrstaš, idući mjesec ih rječnik pogađa sam —
+svaka tvoja odluka postaje presedan.
 
-**2. Deploy na `main` — svjesno odgođen.** PROD ima migracije `043` i `044`, ali kod
-od `c156057` nadalje nije gore. Koka zato **još ne vidi** ni ✎ na desktopu, ni
-košaru, ni „Ispravi kao vlasnik Aree". Reci kad želiš.
+**2. Tek POSLIJE toga upiši sidro** `12.784,36` @ **26.08.2026.**, izvor *ispisano
+stanje s izvoda*, `ZABA_2026-08.pdf`.
+⚠ Ne prije. Delta prozor kreće `max(dan nakon sidra, danas − N)`, pa bi sidro
+**zaključalo kolovoz** i onih 33 retka ne bi se moglo dohvatiti delta sheetom.
+⚠ Odgoda je sigurna samo jer razvrstavanje ne dira iznose. Promijeni li se ijedan
+**iznos ili datum** u kolovozu prije nego sidro sjedne, to prođe bez ijedne kontrole.
 
-**3. ⚠ Nije provjereno da upozorenje o zastarjelom fileu uopće radi.** Prvi pokušaj
-nije javio ništa — delta file nije imao `Filter` list, pa provjera nije mogla krenuti.
-Popravljeno (`20fa1e6`), ali za potvrdu treba **svjež izvoz**: stari fileovi taj list
-nemaju, pa na njima iskače druga poruka („ne mogu provjeriti").
+**3. Dva MC retka po `9,99`** (`PAYPAL *AC WALKFT` 10.08., `APPLE.COM/BILL` 17.08.)
+nisu uvezena — isti iznos već postoji u bazi 13 odnosno 20 dana ranije.
+**Prvo ispravak datuma u bazi, pa uvoz**; obrnuto udvostručuje tiho (razred S115).
+Dok se ne razriješe, kontrola košare pokazuje `razlika = 19,98` — točno oni.
 
-**4. Deset testova čeka pogled** — `T-S125-1…10`. Nisu neizvedeni nego neprovjereni:
-mjerenja nad bazom su prošla, ali ih nitko nije potvrdio u aplikaciji.
+**4. Deploy na `main` — i dalje odgođen, sad je to glavna kočnica.** `main` je na
+`bb13153` (S124), **15 commitova iza**. Koka na svom laptopu **ne vidi ništa** od
+S125 ni S126: ni ✎ na desktopu, ni košaru, ni „Ispravi kao vlasnik Aree", ni novi
+raspored delta sheeta. Sve što je danas dokazano radi **samo lokalno**.
 
-**5. ⭐ Pročitaj `docs/KOKA_PRVI_MJESEC.md`** — što je riješeno, što nije, i
-redoslijed po **riziku za njeno povjerenje**, ne po tehničkoj težini. Ondje je i
-razrađen plan „sumnjiv redak ide u izvještaj o uvozu" (tvoja ideja).
+**5. Osam novih testova čeka pogled** — `T-S126-1…8`. Mjerenja su prošla, ali ih
+nitko nije potvrdio u aplikaciji.
 
 **6. Rečenica koju Koki još nitko nije rekao** (stoji od S124): *kad počne upisivati
-u app, u Excelicu više ne.* Radi li oboje, sve dobivamo dvaput.
+u app, u Excelicu više ne.* Sad je hitnija nego prije — vratila se Excelici.
 
 ## Što se pokazalo vrijednim, za ubuduće
 
-**Tri tiha kvara nađena su tvojim pitanjima, nijedan planom.** „Radi li kao UI — edit
-da, delete ne?" spriječilo je brisanje koje bi retku pojelo sve atribute a ostavilo
-ga u bazi. „Hoće li uvoz raditi kroz 40 praznih redaka?" natjeralo je mjerenje umjesto
-pretpostavke. „Ovo je zbunjujuće" otkrilo je da bi Apply napravio duplikat.
+**Jedan skraćen ispis stajao je osamnaest sesija.** Vjerovali smo da ZABA izvadak
+nema po čemu spariti retke jer „svaki nalog počinje istim tekstom". Prefiks ima 66
+znakova, ispis je rezao na 60. Primatelj je cijelo vrijeme stajao iza njega.
 
-**Pogledati isto na dva ekrana** riješilo je bug koji je tri sesije imao krivu
-dijagnozu. Uski ekran je pokazivao ✎, široki nije.
+**Tvoja tri prijedloga danas su svi bili točni**, i svaki je otvorio nešto:
+žigosanje postojećih redaka (bez njega ne postoji stanje „pitanje"), skraćivanje
+opisa (otkrilo da pravilo `Naknada za ` prekomjerno hvata), i selidba kontrole
+iznad sekcije (bez nje MC retci ne bi imali kamo).
+
+**Pitanje „može li to prekinuti uvoz" bilo je pravo pitanje.** Odgovor je ne, ali
+tek nakon što se pogledalo u parser — i sad to drži test umjesto pretpostavke.
 
 ---
 
@@ -63,78 +74,60 @@ dijagnozu. Uski ekran je pokazivao ✎, široki nije.
 
 ## Stanje
 
-- `test-branch` **12 commitova ispred `main`** (`c156057` … `9e23141`).
+- `test-branch` je **15 commitova ispred `main`** (`c156057` … `6e536c5`).
   `main` = `bb13153` (S124), deployan.
-- **PROD ima `043` i `044`.** `044` dodaje `split.due_slug = datum_naplate` u
-  `areas.settings.dashboard` — bez njega je delta sekcija kakva je bila.
-- Saša je testirao **lokalno protiv PROD baze** (dev server na `.env.prod.local`).
-- Snimke košare 03.09. za usporedbu: scratchpad `prije.json`, `poslije.json`,
-  `poslije2.json` (nisu u repou).
+- **PROD ima migracije `043` i `044`.** Nove migracije nisu potrebne za S126.
+- Saša radi **lokalno protiv PROD baze** (`.env.prod.local`), pod **Kokinim**
+  (owner) računom.
+- Radni artefakti sesije: `Claude-temp_R/s126/` (nisu u gitu).
 
-## Što je S125 napravio
+## Što je S126 napravio
 
 ```
-c156057  ✎ na desktop raspored — BUG-S123-EDITMARK zatvoren
-e31c53b  delta sekcija = cijela košara (`split.due_slug`, sql/044) + neto Σ
-73dbc25  grana "dospijeće otvoreno" iz već učitanih redaka (izvoz je bio stao)
-020b29b  stupac `Provjeri`
-a69346c  ugašena kvačica delta sheeta objašnjava sebe
-90d1a24  brojač događaja u delta načinu ne tvrdi puni izvoz
-db3e7c3  excelDataLoader: izvoz pada s porukom umjesto da izađe kraći
-1be6952  uvoz: `fix_as_owner` — vlasnik Aree ispravlja tuđi redak
-edae267  tuđi redak se NE briše (dva zida) + `importForeignRows.test.mjs`
-6db489c  test da uvoz doseže sekciju ispod 40 praznih redaka
-00fd87b  preview i reklasifikacija — `canUpdateExisting()`
-31b4a7d  preskok po otisku prestaje biti nijem kad je file zastario
-20fa1e6  delta file dobiva `Filter` list (bez njega provjera ne može ni krenuti)
-9e23141  docs/KOKA_PRVI_MJESEC.md
+c90343a  kontrola kosare seli IZNAD sekcije (gapRows +1 -> +4); `Provjeri`
+         dobiva stil zaglavlja; testovi 33 -> 36
+6e536c5  presedani.py (nov) + fill_from_izvod: --presedan / --zigosi / --mc,
+         1:N prepoznavanje, skracivanje `Izvod opis`
 ```
 
-## Testovi
+## Alat — kako se pokreće
 
-| file | slučajeva |
-| --- | --- |
-| `src/lib/__tests__/deltaSheetLayout.test.mjs` | 33 |
-| `src/lib/__tests__/importForeignRows.test.mjs` | 25 (nov) |
-| `src/lib/__tests__/deltaAccount.test.mjs` | 11 |
-| `e2e/tests/S123_owner_edits_grantee_row.spec.ts` | 3 (`T-S123-3` nov, mijenja viewport) |
+```powershell
+cd C:\0_Sasa\events-tracker-react\data-prep_tools\Financije
+..\Tools\venv\Scripts\python.exe fill_from_izvod.py "<delta>.xlsx" --zaba "..\..\data-prep_data\Financije\izvodi\ZABA_2026-08.pdf" --od 2026-07-31 --mc "..\..\data-prep_data\Financije\izvodi\MC_2026-08.pdf" --koka "..\..\data-prep_data\Financije\Financije 2026-08-23.xlsx" --presedan prod --zigosi
+```
 
-⚠ `importForeignRows` gradi **pravi .xlsx** i parsira ga — pokriva sva tri
-`foreignMode`a i delta file s praznim retcima. Ne dira bazu.
+⚠ **Jedna linija.** `^` je cmd.exe, ne PowerShell; `run.bat` traži `.\` i ima
+`pause` na kraju. Zaobilazi se pozivom venv pythona izravno.
 
 ## Otvoreno / sljedeće
 
-- ⭐ **P1: sumnjiv redak u izvještaj o uvozu.** Razrada u `docs/KOKA_PRVI_MJESEC.md`.
-  Ukratko: `warnStaleUntouched` već zna koji su retci preskočeni a u bazi promijenjeni;
-  treba ih dodati u `outcomes` s novim ishodom (`Preskočen — promijenjen nakon izvoza`).
-  Izvještaj je **svjež izvoz**, pa ti retci u njemu nose aktualne vrijednosti i
-  aktualan `row_hash` ⇒ ona ih ispravi i uveze natrag bez ikakvog trika.
-  ⚠ Preduvjet: `BUG-S114-REPORTDD` (izvještaj nema `DropdownData`) — ako izvještaj
-  postaje mjesto na kojem ispravlja, mora imati dropdowne.
-  ⚠ Ručni izlaz koji VEĆ radi, a nitko ga ne zna: **obriši ćeliju `row_hash`** —
-  prazan otisak znači „nije netaknut", pa redak ide u usporedbu s bazom.
-- **Merge na `main`** kad Saša kaže. ⚠ `044` je već na PROD-u i stari kod ga
-  ignorira, pa nema redoslijednog rizika kao kod `043`.
-- **`T-S125-6` nije provjeren nad živim RLS-om** — grana brisanja tuđeg retka
-  pokrivena je samo unit testom.
+- ⭐ **Merge na `main`** je sad najveća pojedinačna stavka. Nema redoslijednog
+  rizika: `043` i `044` su već gore, a stari kod ih ignorira.
+- **33 retka `N/A`** — v. DIO 1.
+- **`presedani.py` je prototip za `docs/RULES_ENGINE_SPEC.md` / Fazu 3.** Rječnik
+  danas živi u Python alatu i radi **na izvozu**; spec traži pravila **u bazi uz
+  Areu** i evaluaciju **na uvozu**. Brojke za spec sad postoje: tri ključa, pragovi
+  ≥ 90 % / ≥ 3 (≥ 2 za oštri), `N/A` ne glasa, sirovi tekst nije oznaka.
+  ⚠ Preduvjet za „sumnjiv redak ide u izvještaj o uvozu": `BUG-S114-REPORTDD`
+  (izvještaj nema `DropdownData`).
+- **`uskladi_izvod.py` pukne na Windows konzoli** pri ispisu `⚠` (cp1252,
+  `UnicodeEncodeError` u `report()`). Izvještaj se prekine na pola. Jedan redak
+  (`sys.stdout.reconfigure(encoding='utf-8')`), nije napravljen.
+- **`Visa nema fiksan dan naplate`** (S124) — i dalje otvoreno, 855 redaka ne pada
+  ni u jednu košaru.
 - **Preostali gutači grešaka:** dva upita u `loadSharedEmailsByArea`
-  (`excelDataLoader.ts:611,620`), namjerno ostavljena. Ako se ikad pokaže da prazan
-  popis emailova nekome smeta, ondje treba **upozorenje**, ne bacanje.
-- **Padajući izbornik računa uz ugašenu kvačicu delta sheeta** — Saši ponuđeno,
-  nije tražio. Uklonio bi odlazak u Filter panel.
-- **Visa nema fiksan dan naplate** (S124 nalaz, i dalje otvoreno): 855 redaka ne pada
-  ni u jednu košaru. Sada je to vidljivije jer sekcija radi po dospijeću.
-- **185 MC redaka s `Tip = N/A`** — rječnik postoji i može se pustiti preko njih.
+  (`excelDataLoader.ts:611,620`), namjerno ostavljena.
 
 ## Zamke potvrđene ovom sesijom (detalji u CLAUDE.md)
 
-- **Redak liste renderiraju DVA mjesta** — popravi li se jedno, kvar se vidi samo na
-  jednoj širini. Komentar je tvrdio „oba", kod je radio jedno.
-- **Isto pravilo na tri mjesta se raziđe** — apply/reklasifikacija/preview. Posljedica
-  nije poruka o pravima nego obećan **duplikat**.
-- **Brisanje mora prvo provjeriti što smije obrisati**, pa tek onda brisati — inače
-  redak izgubi atribute a preživi.
-- **`const { data } = await supabase…` je landmina** — palo čitanje se čita kao „nema
-  ničega". Šest mjeseci u izvoznom putu.
-- **Bilješka u Excelu kod desnog ruba nije čitljiva** — Data Validation input message,
-  uz limite 32/255 i pad natrag na bilješku.
+- **Skraćen ispis je hipoteza, ne podatak** — prije nego proglasiš da podatka nema,
+  ispiši ga bez rezanja.
+- **Sidro tvrdo zaključava početak delta prozora** (`max(dan nakon sidra, danas−N)`)
+  — sidro na kraj tek usklađenog mjeseca izbacuje te retke iz svakog budućeg sheeta.
+- **Ključ po iznosu mora nositi predznak**; **`N/A` ne glasa protiv klasifikacije**;
+  **sirovi tekst izvoda nije oznaka** nego neobrađen ostatak.
+- **Pravilo po ključnoj riječi mora se usidriti na položaj** kad je riječ dvoznačna
+  (`Naknada za ` na početku = bankina naknada, iza prefiksa = tuđe davanje).
+- **Kontrolni stupac ne izuzima `Delete?`** — split 1:N daje uvjerljivo krivu
+  kontrolnu brojku baš tijekom pregleda.

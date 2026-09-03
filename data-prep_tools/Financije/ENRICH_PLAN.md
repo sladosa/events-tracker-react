@@ -1119,3 +1119,79 @@ datirane srpanjske kupovine već postoje s istim `event_date` i iznosom ⇒ alat
 izbaci iz generiranog filea, krivi `Datum naplate` preživi, a **i košara 11.08.
 ispadne kraća točno za njih**. Obrnutim redoslijedom dobiješ dvije neusklađene
 košare umjesto jedne.
+
+---
+
+## S126 (2026-09-03) — ZABA kolovoz, i rječnik iz brojanja
+
+**Prolaz:** `ZABA_2026-08.pdf` + `MC_2026-08.pdf` → delta sheet → uvoz u PROD.
+Ishod: `Kokin tekući ZABA` = **12.784,36** = ispisano `NOVO STANJE`, u cent.
+75 novih / 16 izmjena / 1 nepromijenjen.
+
+### ⚠ Nalaz koji poništava raniji zaključak
+
+Vrijedilo je da **ZABA izvadak nema sidro za sparivanje** jer svaki nalog počinje
+istim tekstom. To je bila **greška mjerenja, ne podatak**: uvod
+`Kreditni transfer nacionalni u eurima on-line bankarstvom` ima **66 znakova**, a
+dijagnostički ispis je rezao na **60**. Primatelj stoji iza njega, na svakom retku:
+
+```
+… (m-zaba) HT d.d. - UPLATNI RAČUN T-MOBILE POSTPAID HR01 29308057000-999-8
+… (m-zaba) ZAGREBAČKI HOLDING D.O.O. HR28… HR01 12045603-232393173-7
+```
+
+Pokrivenost `Izvod opis` na ZABA `Racun` retcima u bazi: **443 / 479 (92 %)** —
+dakle materijal za rječnik je postojao cijelo vrijeme i nitko ga nije čitao.
+
+### `presedani.py` — tri ključa, mjereno
+
+| ključ | jednoglasnih (31 nepoznat redak) |
+| --- | ---: |
+| iznos (s predznakom) | 6 |
+| **primatelj + poziv na broj** | **19** |
+
+Pogodio je baš one koje pravilo nije znalo: `T-mobile 207,26` (13/13),
+`Nataša Holding 57,19` (19/19), `Bulatova plin 13,31` (11/11) — a to su **onih
+troje spornih** iz S117 („kolovoški računi s krivim mjesecom"). Kolovoški jesu; u
+bazi ih pod lipanjskim datumom nije bilo, pa duplikata nema.
+
+Pragovi: ≥ 90 % jednoglasnosti, ≥ 3 presedana (≥ 2 za ključ s pozivom na broj).
+Što nije jednoglasno ostaje `N/A` — **ne pogađa se**.
+
+### Četiri stvari koje su pale pa su popravljene mjerenjem
+
+- **`7,43` uplata bila je presedan za `7,43` isplatu** ⇒ ključ po iznosu nosi
+  predznak. Iznos bez smjera nije ključ nego podudarnost.
+- **Jedan `N/A` iz prošlosti poništavao je sedam odluka** (`HLK` 7/8 = 0,875) ⇒
+  `N/A` nije konkurentska klasifikacija nego izostanak odluke, i ne glasa.
+- **Sirovi tekst izvoda kao „komentar" obarao je jednoglasnost prave oznake**
+  (`Parking` 11× uz dva takva ostatka) ⇒ broje se samo kratke oznake (≤ 30 znakova).
+- **`Naknada za ` pokupilo je `Naknada za uređenje voda`** (vodnogospodarsko
+  davanje, ne bankovni trošak) ⇒ pravilo usidreno na **početak** retka. Bankine
+  vlastite naknade svoj redak počinju tim tekstom; tuđe ga nose iza prefiksa naloga.
+
+### Poziv na broj je razlikovni dio
+
+`ZAGREBAČKI HOLDING` se pojavljuje s tri različita poziva: `12045603` = Sašin stan,
+`03879097` = Natašin, `07140118` = treći. Ključ bez poziva slio bi ih i svakom
+ponudio komentar onog češćeg — **uvjerljivo krivo ime stana**. Komentar se zato
+piše samo kad je i on jednoglasan; inače se prijavi kao izbor
+(isto za `PP Saša` / `PP Koka`, dva retka po 22,90 istog dana).
+
+### 1:N na tekućem računu
+
+Kokin `Parking 3,20 @ 02.08.` = bankina dva naloga po `1,60`; `2,40 @ 04.08.` =
+`0,80 + 1,60`. Alat to sada prepozna i te retke izvoda **ne upisuje**; spojeni
+redak dobiva **oba** teksta izvoda spojena s ` + `.
+⚠ Odbačena varijanta „uvezi 4 + označi 2 za brisanje": **kontrolni stupac ne
+izuzima `Delete?`**, pa bi tijekom pregleda pokazivao 5,60 previše — a to je
+brojka koju čovjek gleda prije Applyja.
+
+### Ostalo za idući put
+
+- **33 retka s `Tip = N/A`** od 30.07. Osam ZABA se samo imenuje (E.ON ×2, HRT,
+  TELEMACH ×2, NP vodovod, KTD Bilan, NUV).
+- **Dva MC retka po `9,99`** nisu uvezena — isti iznos u bazi 13 odnosno 20 dana
+  ranije. **Prvo ispravak datuma, pa uvoz** (razred S115).
+- **Sidro `12.784,36 @ 26.08.` čeka** dok se `N/A` ne razvrstaju: delta prozor
+  kreće `max(dan nakon sidra, danas − N)`, pa bi sidro zaključalo kolovoz.

@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S125).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S126).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -444,6 +444,35 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   listu, pa bi sekcija tiho ušla u njih.
 - **⚠ Sekcija nosi VLASTITU kontrolu košare** (`Σ planirano` / `naplaćeno s izvoda`
   / `razlika`). Bez nje je „potvrdi" potvrda **po datumu**, a datum zna biti kriv.
+- **⚠ SIDRO TVRDO ZAKLJUČAVA POČETAK PROZORA** (S126). `ExcelExportModal` računa
+  `startMs = max(dan nakon sidra, danas − N dana)` i to postaje `dateFrom` — dakle
+  raspon upisan u panel **ne može** dosegnuti ispred sidra. Posljedica koja se ne
+  vidi dok ne zatreba: postaviš li sidro na kraj mjeseca koji je tek usklađen, retci
+  tog mjeseca **ispadaju iz svakog budućeg delta sheeta**, pa se više ne mogu ni
+  razvrstati ni ispraviti tim putem. Zato: **sidro ide tek kad je prozor gotov**.
+  ⚠ Odgoda je sigurna samo jer je razvrstavanje (`Tip`/`Podtip`) neutralno za saldo;
+  promjena **iznosa ili datuma** u nezasidrenom prozoru prolazi bez ijedne kontrole.
+- **Kontrola košare ide IZNAD sekcije** (S126). Sekcija je zadnji blok i **raste**
+  (alat joj dopisuje retke s kartičnog izvoda), pa bi se kontrola ispod nje pri
+  svakom dopisivanju morala pomicati zajedno s rasponom svoje formule.
+  ⚠ Raspored živi na **dva mjesta**: `gapRows = blankRows + 4` (`createDeltaExcel`)
+  i pomaci u `addDeltaHelpersTo`. Raziđu li se, kontrola se upiše **preko prvih
+  redaka sekcije**. Čuva `deltaSheetLayout.test.mjs`.
+- **⚠ Kartični redak NE SMIJE u prazne retke glavnog bloka** (S126). Prije je smio
+  („kontrolni stupac ih ionako ne broji"), i to je bilo točno **dok sekcija nije
+  imala vlastitu kontrolu**. Sada ima: `Σ košara` pokriva samo retke sekcije, pa bi
+  kartični redak u praznom retku ispao iz **oba** zbroja. Izmjereno: uz `--zaba` (30)
+  i `--mc` (45) na 40 praznih redaka, 10 MC stavki palo bi upravo tako.
+- **⚠ Kontrolni stupac NE izuzima retke označene `Delete?`** (S126). Formula nosi
+  samo `$J="Racun"` i `$U<>"Planiran"`. Zato „uvezi N bankinih + označi spojeni za
+  brisanje" daje kontrolni broj **previsok za taj iznos tijekom pregleda**, a točan
+  tek **poslije** uvoza — dakle baš u trenutku kad se brojka provjerava prije Applyja.
+  Za razriješen 1:N spoj je zato jeftinije **zadržati spojeni redak** i ožigosati ga
+  svim tekstovima izvoda koje pokriva.
+- **⚠ Sumarni retci sjede u koloni `Delete?`** i bezopasni su **samo** zato što
+  parser prvo gleda kolonu B (`Area`) i redak bez nje uopće ne obrađuje. Otkad
+  kontrola stoji **između** praznih redaka i sekcije, iza nje ima pravih redaka —
+  pa je to invarijanta koju drži test, ne disciplina.
 - **Export profil se primjenjuje PRIJE delta alata.** Profil dira kolone po položaju (širine,
   skrivanje, grupe), a kontrolni stupac se dodaje zadnji — obrnutim redoslijedom bi ga profil
   mogao sakriti.
@@ -486,6 +515,60 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   sadržaj**. ⚠ Input message **nema crveni trokut**, dakle ne najavljuje sam sebe —
   ide samo na ćelije koje su već naslov nečega, nikad kao jedini nositelj nužne
   informacije (sidro od 355 znakova zato ostaje bilješka).
+
+**Rječnik `Izvod opis` → `Tip`/`Podtip` (`presedani.py`, S126)**
+
+- **⚠ SKRAĆEN ISPIS JE HIPOTEZA, NE PODATAK.** Osamnaest sesija je vrijedilo da ZABA
+  izvadak nema sidro za sparivanje jer „svaki nalog počinje istim tekstom". Uvod
+  `Kreditni transfer nacionalni u eurima on-line bankarstvom` ima **66 znakova**, a
+  dijagnostički ispis je rezao na **60** — primatelj stoji **iza** njega, na svakom
+  retku (`… HT d.d. - UPLATNI RAČUN T-MOBILE POSTPAID HR01 29308057000-999-8`).
+  Zaključak se držao dok se nije ispisao **cijeli** redak. Vrijedi šire od ovog
+  alata: prije nego proglasiš da podatka nema, ispiši ga bez rezanja.
+- **Tri ključa, od najoštrijeg prema najslabijem:** ime primatelja **+ poziv na
+  broj** → samo ime → **iznos s predznakom**. Izmjereno na `ZABA_2026-08.pdf`
+  (31 nepoznat redak, povijest 443): iznos daje 6 jednoglasnih, primatelj **19** —
+  i to baš one koje nismo znali (T-mobile 207,26 13/13, Nataša Holding 57,19 19/19,
+  Bulatova plin 13,31 11/11).
+- **⚠ Poziv na broj je RAZLIKOVNI dio, ne ukras.** Tri kolovoška retka nose istog
+  primatelja `ZAGREBAČKI HOLDING` a različite pozive: `12045603` je Sašin stan,
+  `03879097` Natašin. Ključ bez poziva slio bi ih i svakom ponudio komentar onog
+  češćeg — dakle **uvjerljivo krivo ime stana**.
+- **⚠ Ključ po iznosu mora nositi PREDZNAK.** Bez njega je uplata od `7,43` presedan
+  za isplatu od `7,43` — izmjereno 19.08.2026., redak je dobio `Bankovni troškovi`
+  s uplatne strane. Iznos je već slab ključ; iznos bez smjera nije ključ nego
+  podudarnost.
+- **⚠ `N/A` u povijesti NIJE konkurentska klasifikacija nego izostanak odluke**, pa
+  ne smije glasati protiv. Izmjereno na `HLK`: 7 redaka `Zdravlje / Liječnička
+  komora` i 1 `N/A` daju 7/8 = 0,875 i padaju ispod praga — dakle **jedan
+  neklasificiran redak poništi sedam odluka**.
+- **⚠ Dio povijesnih komentara je SIROVI TEKST IZVODA, ne oznaka**
+  (`Bmove d.o.o. CASH HR00 00056571 Parking - ZAGREB - e286w-…`). Svaki je
+  jedinstven, pa brojanjem obara jednoglasnost prave oznake: parking je `Parking`
+  11× uz dva takva ostatka, i komentar zbog njih **nije bio predložen** — a
+  alternativa mu je bila 60 znakova strojnog teksta. Broje se samo kratke oznake.
+- **Par se smije predložiti i kad komentar nije jednoglasan — komentar se tada NE
+  PIŠE nego prijavi kao izbor.** `PP Saša` i `PP Koka` dijele `Tip/Podtip` 12/12, a
+  21.08. stoje **dva** retka po 22,90 (vjerojatno jedan svakome). Isto `ZAGREBAČKI
+  HOLDING` s tri stana.
+- **⚠ Broj rate se ne izmišlja.** Presedan `Anja 84/96` je prošlomjesečni; broj se
+  **reže** iz presedana i vraća samo ako ga tekst izvoda stvarno nosi.
+  ⚠ Regex mora imati granice oko znamenki — bez njih `režije voda za 07/2026` daje
+  „ratu 07/202", što izgleda kao podatak.
+- **⚠ Sidro pravila na POČETAK retka kad je riječ dvoznačna** (proširenje S124
+  pravila „pretraga po ključnoj riječi prekomjerno hvata"). `Naknada za ` je uz
+  bankinu naknadu pokupilo i `… (m-zaba) Naknada za uređenje voda - SPLIT … NUV -
+  1. rata za 2026.` — vodnogospodarsko davanje, ne bankovni trošak. **Bankine
+  vlastite naknade svoj redak POČINJU tim tekstom; tuđe ga nose iza prefiksa
+  naloga.** Razlika je u položaju, pa je i pravilo takvo.
+- **`Izvod opis` se skraćuje za uvod, `(m-zaba)` ostaje** (S126). Sigurno je za
+  sparivanje jer `kljuc_izvoda` isti uvod ionako skida prije nego napravi ključ —
+  stari (dugi) i novi (kratki) zapisi se i dalje poklapaju.
+- **Žigosanje postojećih redaka (`--zigosi`) ide SAMO na točan par** (datum + iznos
+  + smjer). Tolerancija na datum bi ovdje bila opasna nevidljivo: `Cash 100,00` se
+  ponavlja svakih par tjedana (S114), pa bi prvi bankomat pokupio potvrdu nekog
+  kasnijeg — iznos se i dalje slaže. **Popunjena ćelija se ne dira**: postojeća
+  potvrda je dokaz nekog drugog izvoda.
 
 **Mjerenje / usklađenje**
 
@@ -859,6 +942,11 @@ data-prep_tools/Financije/uskladi_izvod.py
 data-prep_tools/Financije/primijeni_uskladu.py
                                    Upisuje nalaz na PROD (ispravci + dopune + brisanja),
                                    jednim potezom, s backupom i brojanjem redaka.
+data-prep_tools/Financije/presedani.py
+                                   `Tip`/`Podtip` brojanjem povijesti RACUNA.
+                                   Tri kljuca: primatelj+poziv > primatelj > iznos
+                                   (s predznakom). Ne pogadja — sto nije
+                                   jednoglasno ostaje `N/A`.
 data-prep_tools/Financije/uvezi_transu.py
                                    Uvozi retke s izvoda kojih baza nema. Rječnik
                                    `Izvod opis → Tip/Podtip` iz brojane povijesti;
@@ -1193,8 +1281,12 @@ MC naplata ga nosi, pa bi varijanta razbila brojanje po opisu (`klasificiraj_tra
 ⚠ Ostalo netaknuto: `PBZVIZA_2026-07.pdf` sadrži `1.171,59`, a
 `PBZVIZA_2026-07.pdf` `1.171,59`, oboje u cent jednako Kokinim grupama. Banka ih je ispisala.
 
-⚠ **Onih 5 spornih redaka** (16–17.06.2026., Σ `373,11`): `207,26`, `57,19` i `13,31` **nisu na
-`ZABA_2026-06.pdf`** — najvjerojatnije kolovoški računi s krivim mjesecom. Uvezeni s lipanjskim
+✅ **Onih 5 spornih redaka — RIJEŠENO S126, izvodom.** `207,26`, `57,19` i `13,31` doista
+jesu kolovoški, i to `T-mobile`, `Nataša Holding` i `Bulatova plin` — svi stoje na
+`ZABA_2026-08.pdf` (16.–17.08.). U bazi ih pod lipanjskim datumom **nije bilo** (provjereno
+po svim računima), pa duplikata nema; uvezeni su s ispravnim datumom. Stari opis:
+`207,26`, `57,19` i `13,31` **nisu na `ZABA_2026-06.pdf`** — najvjerojatnije kolovoški
+računi s krivim mjesecom. Uvezeni s lipanjskim
 datumom padaju **prije ZABA sidra** (01.07.) i po pravilu „strogo nakon" tiho ispadaju iz salda.
 Tranša 4 ih rješava: ostane li `13.239,31` bili su duplikati, postane li `12.866,20` bili su stvarni.
 

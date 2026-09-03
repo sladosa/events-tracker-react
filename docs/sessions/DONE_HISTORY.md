@@ -3545,3 +3545,83 @@ aplikaciju.* Zato `fix_as_owner` nije polish nego preduvjet cutovera.
 
 **Odbijeno svjesno:** merge na `main` nakon `c156057` — Saša je htio prvo isprobati
 na `test-branch`u. PROD zato ima migracije `043` i `044`, ali ne i kod od S125.
+
+---
+
+## Done S126: ZABA kolovoz usklađena s bankom, `Tip/Podtip` iz izbrojane povijesti (2026-09-03)
+
+**Polazište:** Koka je poslala `ZABA_2026-08.pdf` i `MC_2026-08.pdf`, a u
+međuvremenu se **vratila svojoj Excelici** — što je točno ono što cutover treba
+spriječiti. Cilj sesije: uskladiti `Kokin tekući ZABA` s bankom.
+
+### Nalaz stanja
+
+Sidro `13.815,33 @ 30.07.` i izvod se slažu u cent (`POČETNO` na izvodu = naše
+sidro), dakle između dva izvoda ništa nije puklo. App je davao **13.231,31**,
+banka **12.784,36** — razlika **446,95** = 30 redaka koje baza nema.
+
+⚠ **I njena Excelica staje na 13.08.** Nije upisivala dvaput nego je **prestala na
+obje strane**; druga polovica kolovoza nije postojala nigdje osim na papiru.
+
+### Greška u mjerenju koja je stajala osamnaest sesija
+
+Prvi ispis nepoznatih redaka rezao je opis na **60 znakova**, a ZABA prefiks
+(`Kreditni transfer nacionalni u eurima on-line bankarstvom`) ima **66**. Zaključak
+„tekući račun nema sidro za sparivanje, tekst je uvijek isti" bio je posljedica
+**rezanja**, ne podatka — primatelj stoji iza prefiksa, na svakom retku. Ispis bez
+rezanja pretvorio je „13 pitanja za Koku" u **8**, i to takvih koje se same imenuju.
+
+### `presedani.py` — rječnik iz brojanja, ne iz pravila
+
+Tri ključa: **primatelj + poziv na broj** → samo primatelj → **iznos s predznakom**.
+Izmjereno (31 nepoznat redak, povijest 443): iznos daje 6 jednoglasnih, primatelj
+**19**. Pragovi: ≥ 90 % jednoglasnosti, ≥ 3 presedana (≥ 2 za oštri ključ); što nije
+jednoglasno ostaje `N/A` i **ne pogađa se**.
+
+Četiri stvari koje su tijekom gradnje pale pa su popravljene mjerenjem:
+`7,43` uplata je bila presedan za `7,43` isplatu (ključ dobio predznak) · jedan
+`N/A` iz prošlosti poništavao je sedam odluka (`N/A` više ne glasa) · sirovi tekst
+izvoda kao „komentar" obarao je jednoglasnost prave oznake (broje se samo kratke
+oznake) · `Naknada za ` pokupilo je `Naknada za uređenje voda` (pravilo usidreno na
+početak retka).
+
+### Delta sheet — novi raspored (Sašin prijedlog)
+
+Kontrola košare (`Σ` / `naplaceno s izvoda` / `razlika`) preseljena je **iznad**
+sekcije. Razlog nije kozmetika: sekcija je zadnji blok i **raste**, pa bi se
+kontrola ispod nje pri svakom dopisivanju morala pomicati zajedno s rasponom svoje
+formule. `Provjeri` dobio stil zaglavlja. `gapRows` `+1` → `+4`.
+
+Usput popravljeno prije nego se dogodilo: kartični retci više **ne idu** u prazne
+retke glavnog bloka — ondje bi ispali iz **oba** zbroja (uz `--zaba` 30 + `--mc` 45
+na 40 praznih, 10 MC stavki palo bi upravo tako).
+
+### Alat: `--zigosi`, `--mc`, 1:N
+
+- **`--zigosi`** upisuje `Izvod opis` na retke koje baza već ima, a izvod ih
+  potvrđuje — bez toga ne postoji treće stanje („prazan a razdoblje pokriveno =
+  pitanje") i svaki idući izvod pita ono na što je ovaj odgovorio. 16 redaka.
+- **`--mc`** dopisuje kartične retke u sekciju košare i **proširuje raspon `Σ`**.
+- **1:N** (Kokin `Parking 3,20` = bankina dva po `1,60`) alat sad prepozna sam i te
+  retke ne upisuje. Spojeni redak dobiva **oba** teksta izvoda spojena s ` + ` —
+  „opis od prvog" bi tvrdio da redak odgovara jednom nalogu, a odgovara dvama.
+  ⚠ Odbačena je varijanta „uvezi 4 + označi 2 za brisanje": kontrolni stupac **ne
+  izuzima** `Delete?`, pa bi tijekom pregleda pokazivao 5,60 previše.
+
+### Ishod, izmjeren na PROD-u
+
+```
+uvoz                     75 novih / 16 izmjena / 1 nepromijenjen
+saldo Kokin tekući ZABA  12.784,36 €  = ispisano NOVO STANJE, u cent
+Izvod opis               46 / 46
+košara 11.09.            46 redaka / 1.048,72
+```
+
+**`T-S125-5` potvrđen uživo** — `dnevna karta C5` (Sašin redak) ispravljen kroz
+„Ispravi kao vlasnik Aree": autor ostao Sašin, `edited_by` Kokin. Dosad pokriveno
+samo unit testom.
+
+⚠ **Sidro `12.784,36 @ 26.08.` NIJE upisano, namjerno.** Delta prozor kreće
+`max(dan nakon sidra, danas − N)`, pa bi sidro zaključalo kolovoz i onih 33 retka s
+`Tip = N/A` ne bi se moglo dohvatiti delta sheetom. Upisuje se čim razvrstavanje
+sjedne; odgoda je sigurna jer je razvrstavanje neutralno za saldo.
