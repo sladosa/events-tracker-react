@@ -143,11 +143,20 @@ console.log('DELTA file — sekcija je ISPOD 40 praznih redaka; stigne li uvoz d
   let hdr = 0;
   for (let r = 1; r <= ws.rowCount; r++) if (String(ws.getCell(r, 1).value ?? '').trim() === 'event_id') { hdr = r; break; }
   const colOf = (n) => { for (let c = 1; c <= ws.columnCount; c++) if (String(ws.getCell(hdr, c).value ?? '').trim() === n) return c; return 0; };
-  // Sekcija pocinje iza glavnog bloka + praznih + retka-razdjelnika.
-  const sectionFrom = hdr + 1 + 1 + BLANKS + 1;
+  // /!\ Sekcija se TRAZI, ne racuna. Prva verzija je pisala
+  //     `hdr + 1 + 1 + BLANKS + 1`, a S126 je izmedju praznih redaka i sekcije
+  //     ubacio tri retka kontrole kosare -- pa je test pao na krivom mjestu i
+  //     izgledao kao regresija uvoza, iako se ponasanje nije promijenilo.
+  //     Layout je vec na dva mjesta u kodu (`gapRows` i `addDeltaHelpersTo`);
+  //     treca kopija u testu jamci da ce se jednom razici.
+  let sectionFrom = 0;
+  for (let r = hdr + 1; r <= ws.rowCount; r++) {
+    if (String(ws.getCell(r, 1).value ?? '').trim() === 'p1') { sectionFrom = r; break; }
+  }
+  ok('sekcija je ISPOD praznih redaka, ne medju njima',
+     sectionFrom > hdr + 1 + BLANKS, `sectionFrom=${sectionFrom}, blankTo=${hdr + 1 + BLANKS}`);
   const statusCol = colOf('Status (Transakcija)') || colOf('Status');
-  ok('sekcija je doista ispod praznih redaka',
-     String(ws.getCell(sectionFrom, 1).value ?? '') === 'p1', `got ${ws.getCell(sectionFrom, 1).value}`);
+  ok('sekcija je doista pronadjena', sectionFrom > 0, `got ${sectionFrom}`);
   // Ono sto Koka radi nakon izvoda: potvrdi redak. /!\ Mora biti STVARNA
   // promjena -- upise li se ista vrijednost, `row_hash` se poklopi i redak se
   // (ispravno) preskoci kao netaknut. Prvi pokusaj ovog testa je pao bas na
