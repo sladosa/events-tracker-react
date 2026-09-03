@@ -1,7 +1,7 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `S126: Tip/Podtip iz IZBROJANE povijesti racuna`
-(`6e536c5`, grana `test-branch`). Ako `git log` pokazuje novije, čitaj ovo kao
+**Pisano protiv commita:** `S126: test sekcije TRAZI redak umjesto da mu racuna
+polozaj` (`b4aeecb`, i `test-branch` i **`main`**). Ako `git log` pokazuje novije, čitaj ovo kao
 **povijest** — CLAUDE.md je autoritet.
 
 ---
@@ -43,10 +43,14 @@ nisu uvezena — isti iznos već postoji u bazi 13 odnosno 20 dana ranije.
 **Prvo ispravak datuma u bazi, pa uvoz**; obrnuto udvostručuje tiho (razred S115).
 Dok se ne razriješe, kontrola košare pokazuje `razlika = 19,98` — točno oni.
 
-**4. Deploy na `main` — i dalje odgođen, sad je to glavna kočnica.** `main` je na
-`bb13153` (S124), **15 commitova iza**. Koka na svom laptopu **ne vidi ništa** od
-S125 ni S126: ni ✎ na desktopu, ni košaru, ni „Ispravi kao vlasnik Aree", ni novi
-raspored delta sheeta. Sve što je danas dokazano radi **samo lokalno**.
+**4. ✅ Deploy na `main` je NAPRAVLJEN** (03.09., `b4aeecb`). Koka od sada vidi
+S125 i S126: ✎ na desktopu, sekciju košare i stupac `Provjeri`, „Ispravi kao
+vlasnik Aree" u uvozu, novi raspored delta sheeta, i izvoz koji **padne s porukom**
+umjesto da tiho izađe kraći.
+⚠ **Hard refresh je dio postupka**, ne higijena (S118): stari keširani bundle tiho
+osakati uvoz. Na mobitelu — zatvori i ponovno otvori aplikaciju.
+⚠ Saldo `12.784,36` je bio točan **i prije** deploya — podatak je podatak. Deploy
+je donio featuree, ne brojku.
 
 **5. Osam novih testova čeka pogled** — `T-S126-1…8`. Mjerenja su prošla, ali ih
 nitko nije potvrdio u aplikaciji.
@@ -74,8 +78,8 @@ tek nakon što se pogledalo u parser — i sad to drži test umjesto pretpostavk
 
 ## Stanje
 
-- `test-branch` je **15 commitova ispred `main`** (`c156057` … `6e536c5`).
-  `main` = `bb13153` (S124), deployan.
+- `test-branch` i `main` su **na istom commitu** (`b4aeecb`). Netlify je deployao
+  S125 + S126 (22 commita, `c156057` … `b4aeecb`) 03.09.
 - **PROD ima migracije `043` i `044`.** Nove migracije nisu potrebne za S126.
 - Saša radi **lokalno protiv PROD baze** (`.env.prod.local`), pod **Kokinim**
   (owner) računom.
@@ -88,7 +92,16 @@ c90343a  kontrola kosare seli IZNAD sekcije (gapRows +1 -> +4); `Provjeri`
          dobiva stil zaglavlja; testovi 33 -> 36
 6e536c5  presedani.py (nov) + fill_from_izvod: --presedan / --zigosi / --mc,
          1:N prepoznavanje, skracivanje `Izvod opis`
+5530125  zatvaranje sesije (testovi, povijest, CLAUDE.md, handoff, ENRICH_PLAN)
+bddc766  help: kontrola kosare je IZNAD sekcije
+b4aeecb  test sekcije TRAZI redak umjesto da mu racuna polozaj
 ```
+
+⚠ **`importForeignRows` je pao 2/25 prije deploya, i to je bio TEST a ne kod.**
+Racunao je polozaj sekcije (`hdr + 1 + 1 + BLANKS + 1`), a S126 je izmedju
+praznih redaka i sekcije ubacio tri retka kontrole. Popravljeno tako da sekciju
+**trazi po sadrzaju** — 26/26. Pouka: layout je vec na dva mjesta u kodu; treca
+kopija u testu jamci da ce se jednom raziici.
 
 ## Alat — kako se pokreće
 
@@ -102,8 +115,8 @@ cd C:\0_Sasa\events-tracker-react\data-prep_tools\Financije
 
 ## Otvoreno / sljedeće
 
-- ⭐ **Merge na `main`** je sad najveća pojedinačna stavka. Nema redoslijednog
-  rizika: `043` i `044` su već gore, a stari kod ih ignorira.
+- ✅ **Merge na `main` napravljen** 03.09. (`b4aeecb`), sync-back odrađen.
+  Migracije nisu trebale — `043` i `044` su već bile gore.
 - **33 retka `N/A`** — v. DIO 1.
 - **`presedani.py` je prototip za `docs/RULES_ENGINE_SPEC.md` / Fazu 3.** Rječnik
   danas živi u Python alatu i radi **na izvozu**; spec traži pravila **u bazi uz

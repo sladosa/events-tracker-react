@@ -9,9 +9,10 @@
 
 Detalji: [S126_tests.md](tests/S126_tests.md)
 
-⚠ **Kod je i dalje na `test-branch`; `main` je na `bb13153` (S124).** Sve niže radi
-**lokalno protiv PROD baze**. Koka na `events-tracker-react.netlify.app` još ne
-vidi ni novi raspored delta sheeta, ni `--mc` rezultat, ni ✎ na desktopu.
+✅ **Deployano na `main` 03.09.2026.** (`b4aeecb`, 22 commita: S125 + S126).
+Koka na `events-tracker-react.netlify.app` od sada vidi sve niže opisano.
+⚠ **Hard refresh je dio postupka** (S118) — na mobitelu zatvori i ponovno otvori
+aplikaciju, inače vrti stari bundle.
 
 ### Provjereno strojno (ne traži nikoga)
 
@@ -24,6 +25,7 @@ vidi ni novi raspored delta sheeta, ni `--mc` rezultat, ni ✎ na desktopu.
 | izmjene su dirnule samo `Izvod opis` | ✅ izvještaj: svih 16 nosi `Changed: Izvod opis` |
 | košara 11.09. | ✅ 46 redaka / 1.048,72, raspon `Σ` pokriva sve |
 | `deltaSheetLayout.test.mjs` | ✅ 36 / 36 (bila 33) |
+| `importForeignRows.test.mjs` | ✅ 26 / 26 — pao 2 prije deploya, **greška testa** (računao položaj sekcije), ne koda |
 | typecheck + build | ✅ |
 
 ### Traži tebe — pogledom u aplikaciji / Excelu
