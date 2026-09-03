@@ -72,11 +72,12 @@ izvodom** — dospjeli datum sam po sebi nije dokaz da je banka naplatila.
 - **Prazan delta sheet se javlja porukom** — prazan prozor i savršeno usklađen račun izgledaju isto, pa se ne prešućuje
 
 ## Sekcija „planirano" u delta sheetu
-- **Ispod praznih redaka**, odvojena jednim praznim retkom, s naslovom `PLANIRANO — ne miče saldo`
+- **Ispod praznih redaka i ispod kontrole**, s naslovom `PLANIRANO — ne miče saldo` (odnosno `KOSARA …` kad Area ima postavljeno dospijeće). Sekcija je **zadnji blok na listu**
 - Sadrži planirane retke tog računa koje **prozor ne pokriva** — tipično kartične stavke i rate, koje saldo ne miču pa u glavnom bloku ne bi ni bile prikazane
 - Kolona `Stanje (kontrola)` je na njima **prazna** — kartična stavka ne tereti račun, tereti ga tek skupna naplata
 - Potvrda ide **promjenom `Status`a u `Izvrsen`** pa uvozom; nedirnuti retci se preskaču
-- ⚠ Na dnu sekcije su `Σ planirano`, `naplaćeno s izvoda` (upisuješ rukom) i `razlika`. **Potvrdi tek kad se to slaže** — dospjeli datum nije dokaz da je banka naplatila, a `Datum naplate` na kartičnim retcima zna biti kriv
+- ⚠ **Iznad** sekcije, odmah ispod praznih redaka, stoje `Σ košara (dolje)`, `naplaćeno s izvoda` (upisuješ rukom) i `razlika`. **Potvrdi tek kad se to slaže** — dospjeli datum nije dokaz da je banka naplatila, a `Datum naplate` na kartičnim retcima zna biti kriv
+- Kontrola je iznad, a ne ispod, jer sekcija **raste**: kad joj se dopišu retci s kartičnog izvoda, blok se širi prema dolje a kontrola ostaje na istom mjestu
 
 ## Export profil
 - Modal **sam odabere prvi profil** te Aree — bez profila izvoz izađe u punoj širini
