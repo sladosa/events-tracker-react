@@ -70,12 +70,28 @@ RF_RULES = [
 #   (v. CLAUDE.md: Cash je izbačen iz filtra salda).
 ZABA_RULES = [
     (re.compile(r'MASTERCARD KARTICOM', re.I),        'Transfer',    'izmedju racuna',    'Mastercard'),
-    (re.compile(r'Naknada za vođenje', re.I),         'Domaćinstvo', 'Bankovni troškovi', 'Naknada'),
+    # ⚠ SIDRO NA POCETAK REDAKA JE NUZNO, i to je izmjereno a ne pretpostavljeno.
+    #   Bilo je `Naknada za vođenje`; kolovoz 2026. donio je i `Naknada za
+    #   kreditni transfer` (3 retka po 0,35), pa je pravilo prosireno na
+    #   `Naknada za `. Time je odmah pokupilo i `... (m-zaba) Naknada za
+    #   uređenje voda - SPLIT ... NUV - 1. rata za 2026.` (7,43) — a to NIJE
+    #   bankovna naknada nego vodnogospodarska davanja, dakle trosak kucanstva.
+    #   Bankine vlastite naknade svoj redak POCINJU tim tekstom; tudje ga nose
+    #   iza prefiksa naloga. Razlika je u polozaju, pa je i pravilo takvo.
+    #   (CLAUDE.md „Pretraga po kljucnoj rijeci prekomjerno hvata".)
+    (re.compile(r'^Naknada za ', re.I),               'Domaćinstvo', 'Bankovni troškovi', 'Naknada'),
     (re.compile(r'Podizanje gotovog novca', re.I),    'Transfer',    'cash - bankomat',   'Bankomat'),
     (re.compile(r'MIROVINSKOG PRIMANJA', re.I),       'Prihodi',     'Koka',              'Mirovina'),
+    # Imenovani uplatitelji: tekst izvoda ih nosi doslovno, a povijest je
+    # jednoglasna (Zoran 20/20, Anja 17/17). Jači ključ od iznosa — iznos im se
+    # mijenja svaki mjesec, ime ne.
+    (re.compile(r'UPLATA ZORAN SLADOLJEV', re.I),     'Kuća',        'Povrat Zoran',      'Zoran povrat'),
+    (re.compile(r'UPLATA ANJA CRNKOVI', re.I),        'Prihodi',     'Povrat Anja',       'Anja'),
 ]
 
 NA = 'N/A'                 # legitimna vrijednost, ne blokira uvoz (S107q)
+# Granice oko znamenki: bez njih `rezije voda za 07/2026` daje „ratu 07/202".
+_RATA_IZ_IZVODA = re.compile(r'(?<!\d)(\d{1,3})\s*/\s*(\d{1,3})(?!\d)')
 DATE_TOL = 3               # dana tolerancije pri prepoznavanju istog retka
 
 
@@ -228,7 +244,10 @@ def rf_rows(pdf: Path, od: date | None, do: date | None) -> list[dict]:
                 break
         out.append({
             'date': d, 'smjer': t['smjer'], 'iznos': round(float(t['iznos']), 2),
-            'opis': t['opis'], 'izvor': 'Racun', 'tip': tip, 'podtip': podtip,
+            # `opis` je ono sto ide u `Izvod opis`; `opis_puni` ostaje sirov jer
+            # se po njemu jos sparuje i klasificira unutar ovog prolaza.
+            'opis': skrati_opis(t['opis']), 'opis_puni': t['opis'],
+            'izvor': 'Racun', 'tip': tip, 'podtip': podtip,
             'komentar': kom,
             'naplata': d,                       # D1b: Izvor=Racun ⇒ naplata istog dana
             'stanje': t.get('stanje_izvod'),
@@ -330,6 +349,25 @@ def short_opis(raw: str) -> str:
     return t[:40] if t else raw[:40]
 
 
+# Uvod koji ZABA lijepi na SVAKI nalog. 66 znakova bez ijedne informacije —
+# a `Izvod opis` je stupac koji covjek cita u tablici i u kojem trazi trgovca.
+# ⚠ Sidro na POCETAK je bitno: redak bankine vlastite naknade glasi
+#   `Naknada za kreditni transfer nacionalni u eurima on-line bankarstvom
+#   (m-zaba) M160...` — ondje ta rijec nije uvod nego SADRZAJ, pa se ne dira.
+# ⚠ `(m-zaba)` OSTAJE: to je kanal naloga, jedina informacija u uvodu.
+# ⚠ Skracivanje je sigurno za sparivanje: `presedani.kljuc_izvoda` isti uvod
+#   ionako skida prije nego napravi kljuc, pa se stari (dugi) i novi (kratki)
+#   zapisi i dalje poklapaju. Bez toga bi svaki uvoz od danas prestao nalaziti
+#   presedane u vlastitoj povijesti.
+_UVOD = re.compile(r'^Kreditni transfer nacionalni u eurima on-?line bankarstvom\s*', re.I)
+
+
+def skrati_opis(s: str) -> str:
+    """`Kreditni transfer ... bankarstvom (m-zaba) Bmove d.o.o. ...`
+    -> `(m-zaba) Bmove d.o.o. ...`"""
+    return _UVOD.sub('', str(s or '')).strip()
+
+
 def zaba_rows(pdf: Path, od: date | None, do: date | None,
               koka: 'KokaOpisi | None' = None) -> list[dict]:
     """Retci tekućeg računa sa ZABA izvatka. Parser sam validira smjer i
@@ -345,6 +383,13 @@ def zaba_rows(pdf: Path, od: date | None, do: date | None,
         for rx, ti, po, km in ZABA_RULES:
             if rx.search(t['opis']):
                 tip, podtip, kom = ti, po, km
+                # Rata je jedino sto se u fiksnu oznaku smije dopisati, i to
+                # SAMO ako je izvod stvarno nosi: `ANJA CRNKOVIC 85/96` -> `Anja
+                # 85/96`. Prepisan broj rate iz presedana bio bi pogodak
+                # (proslomjesecni), pa dolazi iskljucivo iz teksta izvoda.
+                m = _RATA_IZ_IZVODA.search(t['opis'])
+                if m and not _RATA_IZ_IZVODA.search(kom):
+                    kom = '%s %s/%s' % (kom, m.group(1), m.group(2))
                 break
         # ⚠ Tekući račun je gori od kartice: banka svaki nalog opisuje istim
         #   tekstom (`Kreditni transfer nacionalni u eurima on-line bankarstvo`),
@@ -355,7 +400,10 @@ def zaba_rows(pdf: Path, od: date | None, do: date | None,
                              prije=0, poslije=1) if koka else None
         out.append({
             'date': d, 'smjer': t['smjer'], 'iznos': round(float(t['iznos']), 2),
-            'opis': t['opis'], 'izvor': 'Racun', 'tip': tip, 'podtip': podtip,
+            # `opis` je ono sto ide u `Izvod opis`; `opis_puni` ostaje sirov jer
+            # se po njemu jos sparuje i klasificira unutar ovog prolaza.
+            'opis': skrati_opis(t['opis']), 'opis_puni': t['opis'],
+            'izvor': 'Racun', 'tip': tip, 'podtip': podtip,
             'komentar': kom_koka or kom,
             'opis_izvor': 'koka' if kom_koka else 'izvod',
             'naplata': d, 'stanje': None,
@@ -633,6 +681,182 @@ def strip_comments(wb) -> list[str]:
     return out
 
 
+def objasni_spojene(tg: 'Target', kandidati: list[dict], svi_izvod: list[dict]) -> list[dict]:
+    """Kokin JEDAN redak = N redaka izvoda (razred S114/S124).
+
+    ⚠ Dedup po (datum, iznos) ovo NE MOZE vidjeti: kljuc se razlikuje, pa oba
+      retka izvoda prodju kao „novo" i iznos ude DRUGI PUT. Izmjereno na
+      `ZABA_2026-08.pdf`: njen `Parking 3,20 @ 02.08.` su bankina dva naloga po
+      1,60, a `Parking 2,40 @ 04.08.` su 0,80 + 1,60 — cetiri retka, 5,60 €,
+      koja bi usla uz vec postojeca dva.
+
+    Alat NE SPAJA i ne brise nista — samo prepozna da je iznos vec pokriven i
+    izostavi te retke iz upisa, pa to ISPISE. Odluka o tome zadrzava li se njen
+    spojeni redak ili se zamjenjuje bankinima je covjekova (v. CLAUDE.md
+    „Bankini redci su KOSTUR").
+    """
+    from itertools import combinations
+    kljucevi_izvoda = {(r['date'].isoformat(), r['iznos']) for r in svi_izvod}
+    cu, ci = tg.find('Uplata'), tg.find('Isplata')
+
+    neobjasnjeni = []
+    for red in tg.real_rows:
+        d = tg.ws.cell(red, DATE_COL).value
+        d = d.date() if isinstance(d, datetime) else d
+        for c, smjer in ((cu, 'Uplata'), (ci, 'Isplata')):
+            if c is None:
+                continue
+            v = tg.ws.cell(red, c).value
+            if not isinstance(v, (int, float)) or not v:
+                continue
+            kljuc = (str(d)[:10], round(float(v), 2))
+            if kljuc not in kljucevi_izvoda:
+                neobjasnjeni.append({'red': red, 'datum': kljuc[0], 'iznos': kljuc[1],
+                                     'smjer': smjer,
+                                     'opis': tg.ws.cell(red, COMMENT_COL).value})
+
+    preostali, spojevi = list(kandidati), []
+    for nb in neobjasnjeni:
+        isti_dan = [r for r in preostali
+                    if r['date'].isoformat() == nb['datum'] and r['smjer'] == nb['smjer']]
+        spoj = None
+        for k in (2, 3):
+            for combo in combinations(isti_dan, k):
+                if abs(sum(x['iznos'] for x in combo) - nb['iznos']) < 0.005:
+                    spoj = combo
+                    break
+            if spoj:
+                break
+        if not spoj:
+            continue
+        for x in spoj:
+            preostali.remove(x)
+        spojevi.append((nb['red'], list(spoj)))
+        print('   ⊃ %s %9.2f  "%s" (r%d) je vec zbroj %s — tih %d redaka izvoda '
+              'NE upisujem'
+              % (nb['datum'], nb['iznos'], str(nb['opis'])[:26], nb['red'],
+                 ' + '.join('%.2f' % x['iznos'] for x in spoj), len(spoj)))
+        print('       (jedan njen redak = N bankinih; zamjena njenog bankinima je '
+              'zaseban potez, ne uvoz)')
+    return preostali, spojevi
+
+
+def zigosi_postojece(tg: 'Target', svi_izvod: list[dict], spojevi: list,
+                     mail_vlasnika: str = '', izvor: str = 'Racun') -> tuple[int, list]:
+    """Upisi `Izvod opis` na retke koje baza VEC IMA, a izvod ih potvrdjuje.
+
+    ⚠ `Izvod opis` je de facto oznaka POTVRDJENO IZVODOM (S124) — jedini nacin
+      da se poslije razlikuju tri stanja: prazan = Kokina nepotvrdjena tvrdnja ·
+      popunjen = banka potvrdila · prazan a razdoblje pokriveno izvodom =
+      PITANJE. Bez zigosanja trece stanje ne postoji, pa svaki iduci izvod
+      ponovno pita ono na sto je ovaj vec odgovorio.
+
+    ⚠ Zigose se SAMO tocan par (datum + iznos + smjer). Tolerancija na datum bi
+      ovdje bila opasna na nacin koji se ne vidi: `Cash 100,00` se ponavlja
+      svakih par tjedana (S114), pa bi prvi bankomat pokupio potvrdu nekog
+      kasnijeg — iznos se i dalje slaze, i nista ne bi javilo gresku.
+
+    ⚠ Prazna celija se popunjava, popunjena se NE DIRA. Postojeca potvrda je
+      dokaz nekog drugog izvoda; prepisati je znacilo bi premjestiti redak u
+      pogresan izvod (S124: „potvrdjen redak pripada tocno jednom izvodu").
+
+    ⚠ Spojeni redak (jedan njen = N bankinih) dobiva OBA teksta spojena s ` + `.
+      Uzeti „opis od prvog" bilo bi tise i krace, ali bi tvrdilo da redak
+      odgovara jednom nalogu — a on odgovara dvama. Polu-istina u stupcu koji
+      sluzi kao dokaz gora je od duljeg teksta.
+    """
+    c_izvod = tg.find('Izvod opis')
+    if c_izvod is None:
+        print('  (list nema kolonu `Izvod opis` — zigosanje preskoceno)')
+        return 0, []
+    cu, ci, c_izvor = tg.find('Uplata'), tg.find('Isplata'), tg.find('Izvor')
+
+    slobodni = [dict(r, uzet=False) for r in svi_izvod]
+    spoj_po_retku = {}
+    for red, combo in spojevi:
+        spoj_po_retku[red] = combo
+        for x in combo:
+            for k in slobodni:
+                if (not k['uzet'] and k['date'] == x['date']
+                        and abs(k['iznos'] - x['iznos']) < 0.005):
+                    k['uzet'] = True
+                    break
+
+    n, tudji, bez_para = 0, [], []
+    for red in tg.real_rows:
+        if str(tg.ws.cell(red, c_izvod).value or '').strip():
+            continue
+        # ⚠ Delta sheet od S123 nosi ISPOD praznih redaka i sekciju kosare —
+        #   karticne retke koji saldo ne micu. Njih ZABA izvadak ne moze
+        #   potvrditi ni u principu, pa bi ih prijavio kao „nema para" i
+        #   proizveo pitanje ondje gdje pitanja nema.
+        if c_izvor and str(tg.ws.cell(red, c_izvor).value or '').strip() != izvor:
+            continue
+        d = tg.ws.cell(red, DATE_COL).value
+        d = d.date() if isinstance(d, datetime) else d
+        u = tg.ws.cell(red, cu).value if cu else None
+        i = tg.ws.cell(red, ci).value if ci else None
+        iznos = float(u or i or 0)
+        smjer = 'Uplata' if (u or 0) else 'Isplata'
+        if not iznos:
+            continue
+
+        if red in spoj_po_retku:
+            tekst = ' + '.join(x['opis'] for x in spoj_po_retku[red])
+        else:
+            par = next((k for k in slobodni if not k['uzet']
+                        and k['date'] == d and k['smjer'] == smjer
+                        and abs(k['iznos'] - iznos) < 0.005), None)
+            if not par:
+                bez_para.append((red, d, iznos))
+                continue
+            par['uzet'] = True
+            tekst = par['opis']
+        tg.ws.cell(red, c_izvod).value = tekst
+        n += 1
+        mail = str(tg.ws.cell(red, USER_COL).value or '').strip()
+        if mail_vlasnika and mail and mail != mail_vlasnika:
+            tudji.append((red, mail))
+
+    print('Zigosanje: %d postojecih redaka dobilo `Izvod opis` '
+          '(potvrda ovim izvodom)' % n)
+    for red, d, iznos in bez_para:
+        print('   ? r%-3d %s %9.2f — izvod nema tocan par, celija ostaje prazna'
+              % (red, d, iznos))
+    if bez_para:
+        print('       (prazna celija u razdoblju koje izvod POKRIVA je pitanje, '
+              'ne greska: ili duplikat, ili banka za taj trosak ne zna)')
+    return n, tudji
+
+
+def prosiri_kosaru(tg: 'Target', novi_kraj: int) -> bool:
+    """Kontrola kosare (`Σ kosara`) ima FIKSAN raspon iz trenutka izvoza. Dopise
+    li alat retke ispod sekcije, oni u zbroj ne udu — a kontrola tada pokazuje
+    uvjerljiv broj koji ne pokriva sve retke, sto je gore od nikakvog.
+
+    ⚠ Od S126 kontrola stoji IZNAD sekcije, pa se sekcija smije siriti prema
+      dolje bez pomicanja icega. Ovdje se zato mijenja samo kraj raspona.
+    """
+    lbl = tg.last_col - 1                       # kolona oznaka (`Delete?`)
+    for r in range(tg.header_row, tg.ws.max_row + 1):
+        if not str(tg.ws.cell(r, lbl).value or '').strip().startswith('Σ'):
+            continue
+        c = tg.ws.cell(r, tg.last_col)
+        f = str(c.value or '')
+        if not f.startswith('='):
+            continue
+        novi = re.sub(r'(\$[A-Z]+\$\d+:\$[A-Z]+\$)\d+',
+                      lambda m: m.group(1) + str(novi_kraj), f)
+        if novi != f:
+            c.value = novi
+            print('  Σ kosare prosirena do retka %d' % novi_kraj)
+            return True
+    print('  ⚠ List nema kontrolu kosare (`Σ kosara`) — dopisani karticni retci '
+          'nisu ni u jednom zbroju. Izvezi delta sheet iz Aree koja ima '
+          '`split.due_slug`, inace kosaru nema s cim usporediti.')
+    return False
+
+
 def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
                ref: 'Target | None' = None) -> tuple[int, int]:
     """Popuni prazne retke predloška; kad ih ponestane, dopiši nove ispod."""
@@ -660,7 +884,13 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
         date_fmt = tg.ws.cell(tg.real_rows[0], DATE_COL).number_format or date_fmt
 
     used_blanks, appended = 0, 0
-    next_free = max(tg.real_rows + tg.blank_rows) + 1 if (tg.real_rows or tg.blank_rows) else tg.header_row + 1
+    # WARN Od S123 delta sheet ima ISPOD praznih redaka jos i sekciju kosare s
+    #   vlastitim kontrolnim retcima (Suma planirano / naplaceno s izvoda /
+    #   razlika). Ti retci nemaju `Area`, pa ih `Target` ne vidi ni kao prave ni
+    #   kao prazne — brojanje „max(real+blank)+1" bi zato dopisivalo TOCNO preko
+    #   njih. Dopisuje se ispod SVEGA na listu.
+    next_free = max(list(tg.real_rows) + list(tg.blank_rows)
+                    + [tg.ws.max_row, tg.header_row]) + 1
 
     # ⚠ Vrijeme dopisanog retka mora biti slobodno na CIJELOM listu, ne samo
     #   „iza broja praznih". Prazni retci koje je popunila prethodna tranša su
@@ -689,8 +919,21 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
     #   dao bi kontrolni broj koji izgleda uvjerljivo, a ne uključuje sve.
     rows = sorted(rows, key=lambda r: (r['izvor'] != 'Racun', r['date'], r['iznos']))
 
+    # ⚠ KARTICNI REDAK NE SMIJE U PRAZNE RETKE GLAVNOG BLOKA (S126).
+    #   Prije je smio („kontrolni stupac ih ionako ne broji"), i to je bilo
+    #   tocno dok sekcija nije imala VLASTITU kontrolu. Sada ima: `Σ kosara`
+    #   pokriva samo retke sekcije, pa bi kartcni redak u praznom retku ispao
+    #   iz OBA zbroja — iz kontrolnog stupca jer nije `Racun`, i iz kosare jer
+    #   nije u njezinu rasponu. Izmjereno: uz --zaba (30) i --mc (45) na 40
+    #   praznih redaka, 10 MC stavki palo bi upravo tako, i kontrola kosare bi
+    #   pokazala uvjerljiv broj manji za njihov zbroj.
+    saldo_rows = [r for r in rows if r['izvor'] == 'Racun']
+    if len(saldo_rows) < len(rows) and len(saldo_rows) < len(tg.blank_rows):
+        print('  (kartcni retci se dopisuju ISPOD sekcije, ne u prazne retke — '
+              'inace ne bi usli u `Σ kosara`)')
+
     for i, r in enumerate(rows):
-        if i < len(tg.blank_rows):
+        if r['izvor'] == 'Racun' and i < len(tg.blank_rows):
             row = tg.blank_rows[i]
             used_blanks += 1
         else:
@@ -737,6 +980,9 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
             tg.put(row, 'Broj rata', r['rata'][1])
             tg.put(row, 'Rata br',   r['rata'][0])
 
+    if appended:
+        prosiri_kosaru(tg, next_free - 1)
+
     spilled_racun = [r for i, r in enumerate(rows)
                      if i >= len(tg.blank_rows) and r['izvor'] == 'Racun']
     if spilled_racun:
@@ -759,6 +1005,14 @@ def main() -> None:
     ap.add_argument('--rf',      type=Path, help='RF izvod (PDF, OCR)')
     ap.add_argument('--zaba',    type=Path, help='ZABA izvadak tekućeg računa (PDF)')
     ap.add_argument('--visa',    type=Path, help='PBZ Visa račun (PDF)')
+    ap.add_argument('--mc',      type=Path,
+                    help='Mastercard izvod (PDF) — retci idu u sekciju KOSARA, '
+                         'ispod nje, i ulaze u `Σ kosara`. Trazi --presedan '
+                         '(dedup ide protiv baze, ne protiv lista).')
+    ap.add_argument('--mc-izvor', dest='mc_izvor', default='Mastercard',
+                    help='vrijednost atributa Izvor za --mc retke')
+    ap.add_argument('--mc-tol', dest='mc_tol', type=int, default=5,
+                    help='tolerancija u danima oko prozora MC izvoda')
     ap.add_argument('--naplata', help='datum skupne naplate Vise, YYYY-MM-DD (s RF izvoda)')
     ap.add_argument('--od',      help='uzmi retke od datuma (YYYY-MM-DD)')
     ap.add_argument('--do',      help='uzmi retke do datuma (YYYY-MM-DD)')
@@ -786,11 +1040,18 @@ def main() -> None:
     ap.add_argument('--protiv',  type=Path,
                     help='dodatni app-ov export protiv kojeg se radi dedup (retci koje '
                          'target sheet ne pokazuje — npr. kartične stavke)')
+    ap.add_argument('--zigosi', action='store_true',
+                    help='upisi `Izvod opis` i na retke koje baza vec ima, a ovaj '
+                         'izvod ih potvrdjuje (mijenja postojece retke -> uvoz ih '
+                         'javi kao Modify)')
+    ap.add_argument('--presedan', choices=['prod', 'test'],
+                    help='predloži Tip/Podtip brojanjem povijesti TOG računa u bazi '
+                         '(v. presedani.py); bez njega neprepoznati redak ostaje N/A')
     ap.add_argument('--dry',     action='store_true', help='samo ispiši što bi upisao')
     a = ap.parse_args()
 
-    if not a.rf and not a.visa and not a.zaba and not a.iz_koke:
-        sys.exit('X Zadaj barem jedan izvor: --rf, --zaba, --visa ili --iz-koke.')
+    if not a.rf and not a.visa and not a.zaba and not a.iz_koke and not a.mc:
+        sys.exit('X Zadaj barem jedan izvor: --rf, --zaba, --visa, --mc ili --iz-koke.')
     if a.zaba and (a.rf or a.visa):
         sys.exit('X ZABA i RF su razliciti racuni - jedan file, jedan racun.')
     if a.iz_koke and (a.rf or a.zaba or a.visa):
@@ -804,7 +1065,10 @@ def main() -> None:
     racun = a.racun or (
         ('Kokin tekući ZABA' if _koka_norm(a.tip_racuna).startswith('kokin')
          else 'Sašin tekući RF') if a.iz_koke
-        else ('Kokin tekući ZABA' if a.zaba else 'Sašin tekući RF'))
+        # `--mc` ide na isti racun kao `--zaba`: Mastercard tereti Kokin tekuci
+        # jednom skupnom naplatom, pa karticni redak nosi TAJ racun i
+        # `Izvor = Mastercard`. (Visa je Sasina i tereti RF — otud podjela.)
+        else ('Kokin tekući ZABA' if (a.zaba or a.mc) else 'Sašin tekući RF'))
     if a.visa and not a.naplata:
         sys.exit('✗ --visa traži --naplata (dan kad je banka skinula skupnu naplatu; piše na RF izvodu).')
 
@@ -871,11 +1135,22 @@ def main() -> None:
                   f'datuma u bazi (ne novi redak).')
         rows += rf
     if a.zaba:
-        zb = zaba_rows(a.zaba, od, do, koka)
+        svi_zb = zaba_rows(a.zaba, od, do, koka)
         keys = tg.existing_keys() | extra_keys
-        dup = [r for r in zb if (r['date'].isoformat(), r['iznos']) in keys]
-        zb  = [r for r in zb if (r['date'].isoformat(), r['iznos']) not in keys]
-        print(f'ZABA izvod: {len(zb)} novih, {len(dup)} već na listu (preskočeno)')
+        dup = [r for r in svi_zb if (r['date'].isoformat(), r['iznos']) in keys]
+        zb  = [r for r in svi_zb if (r['date'].isoformat(), r['iznos']) not in keys]
+        prije_1n = len(zb)
+        zb, spojevi = objasni_spojene(tg, zb, svi_zb)
+        if a.zigosi:
+            _mail = str(tg.ws.cell(tg.blank_rows[0], USER_COL).value or '').strip()                 if tg.blank_rows else ''
+            _n, _tudji = zigosi_postojece(tg, svi_zb, spojevi, _mail, 'Racun')
+            for red, mail in _tudji:
+                print('   WARN r%d je redak korisnika %s — uvoz ga smije ispraviti '
+                      'samo kroz „Ispravi kao vlasnik Aree" (S125). Bez tog izbora '
+                      'se preskace, i to bez poruke o pravima.' % (red, mail))
+        spojeno = prije_1n - len(zb)
+        print(f'ZABA izvod: {len(zb)} novih, {len(dup)} već na listu (preskočeno)'
+              + (f', {spojeno} pokriveno spojenim retkom' if spojeno else ''))
         novo, last = zaba_printed_balance(a.zaba)
         if novo is not None:
             print(f'► Ispisano NOVO STANJE: {novo:.2f}'
@@ -901,6 +1176,52 @@ def main() -> None:
                   'izvoda i predaj ih kao --protiv, inače stavke koje baza već ima '
                   'ulaze DRUGI PUT — a saldo to ne osjeti.')
         rows += vs
+
+    if a.mc:
+        # ⚠ Dedup ide protiv BAZE, ne protiv lista: delta sheet nosi samo one
+        #   karticne retke koji su u kosari (dospijece jos nije proslo), a baza
+        #   ih ima jos. Bez toga bi svaka vec uvezena stavka usla drugi put —
+        #   i to tiho, jer karticni redak saldo ne dira pa se greska ne pokaze
+        #   ni na plocici ni u kontrolnom stupcu.
+        if not a.presedan:
+            sys.exit('X --mc trazi --presedan prod|test (dedup se radi protiv baze).')
+        from uskladi_izvod import (load_db as _mld, load_env as _mle, parse_mc,
+                                   uskladi as _uskladi)
+        _u, _k = _mle(a.presedan)
+        izm = parse_mc(a.mc)
+        us = _uskladi(izm, _mld(_u, _k), a.mc_izvor, a.mc_tol)
+        # `daleki` = redak izvoda bez para U PROZORU, ali isti trosak postoji u
+        # bazi izvan njega. Uvoz bi ga UDVOSTRUCIO, a dedup po (datum, iznos) ga
+        # ne vidi jer je datum upravo ono sto je krivo (razred S115).
+        sumnjivi = [x for x in us['izvod_bez_para'] if x['ref'] in us['daleki']]
+        novi = [x for x in us['izvod_bez_para'] if x['ref'] not in us['daleki']]
+        print('MC izvod %s: dospijece %s, %d redaka / %.2f'
+              % (a.mc.name, izm['dospijece'], len(izm['rows']),
+                 sum(x['iznos'] for x in izm['rows'])))
+        print('  %d za uvoz, %d vec u bazi, %d SUMNJIVIH (ne uvozim)'
+              % (len(novi), len(izm['rows']) - len(us['izvod_bez_para']), len(sumnjivi)))
+        for x in sumnjivi:
+            bliski = ', '.join('%s (%d d)' % (r['event_date'], dd)
+                               for r, dd in us['daleki'][x['ref']][:3])
+            print('   ? %s %9.2f  %-34s — isti iznos vec u bazi: %s'
+                  % (x['datum'], x['iznos'], x['opis'][:34], bliski))
+        if sumnjivi:
+            print('       (ne uvozim ih: vjerojatno isti trosak pod krivim datumom. '
+                  'Prvo ispravak datuma u bazi, pa uvoz — obrnuto udvostrucuje.)')
+        for x in novi:
+            m = re.search(r'RATA\s+(\d+)\s*/\s*(\d+)', x['opis'], re.I)
+            kom = (koka.find(x['datum'], x['iznos']) if koka else None) or short_opis(x['opis'])
+            rows.append({
+                'date': x['datum'], 'smjer': 'Isplata', 'iznos': x['iznos'],
+                'opis': x['opis'], 'opis_puni': x['opis'],
+                'izvor': a.mc_izvor, 'tip': NA, 'podtip': NA,
+                'komentar': kom, 'opis_izvor': 'koka' if koka and kom != short_opis(x['opis']) else 'izvod',
+                # ⚠ `Planiran` jer dospijece JOS NIJE PROSLO. Status prelazi u
+                #   Izvrsen tek kad se kosara slozi sa skupnom naplatom na
+                #   izvatku tekuceg — nikad kao zakljucak iz dospijeca.
+                'naplata': izm['dospijece'], 'status': 'Planiran', 'stanje': None,
+                'rata': (int(m.group(1)), int(m.group(2))) if m else None,
+            })
 
     if a.iz_koke:
         osim = {int(x) for x in a.osim.replace(';', ',').split(',') if x.strip()}
@@ -945,6 +1266,54 @@ def main() -> None:
     if not rows:
         print('Nema ničega za upisati.')
         return
+
+    if a.presedan:
+        from presedani import Presedani
+        from uskladi_izvod import load_db as _load_db, load_env as _load_env
+        _url, _key = _load_env(a.presedan)
+        # WARN Povijest je ono STARIJE od prozora koji uskladujemo. Bez te
+        #   granice bi se prozor klasificirao sam sobom — to nije presedan nego
+        #   jeka vlastitog uvoza.
+        _prije = min(r['date'] for r in rows).isoformat()
+        _svi = [d for d in _load_db(_url, _key)
+                if str(d['attrs'].get('Racun')) == racun]
+        _po_izvoru: dict = {}
+        _pogodaka, _dvojbeni = 0, []
+        for r in rows:
+            if r['tip'] != NA:
+                continue
+            izv = r['izvor']
+            if izv not in _po_izvoru:
+                _po_izvoru[izv] = Presedani(
+                    [d for d in _svi if str(d['attrs'].get('Izvor')) == izv],
+                    prije=_prije)
+            hit = _po_izvoru[izv].nadji(r['iznos'], r.get('opis_puni') or r['opis'],
+                                        r['smjer'])
+            if not hit:
+                continue
+            r['tip'], r['podtip'] = hit['tip'], hit['podtip']
+            r['presedan'] = hit['dokaz']
+            # WARN Kokin opis se NE prepisuje presedanom — ona je autoritet za
+            #   znacenje (CLAUDE.md „Politika izvora"). Prepisuje se samo
+            #   strojni tekst izvoda, koji ionako ne kaze nista.
+            if hit['comment'] and r.get('opis_izvor') != 'koka':
+                r['komentar'] = hit['comment']
+            if hit['alternative']:
+                _dvojbeni.append((r, hit['alternative']))
+            _pogodaka += 1
+        print()
+        print('Presedani (%s, povijest racuna %r prije %s): %d od %d redaka '
+              'klasificirano brojanjem'
+              % (a.presedan, racun, _prije, _pogodaka, len(rows)))
+        for r in rows:
+            if r.get('presedan'):
+                print('   > %s %9.2f  %-26s %-24s (%s)'
+                      % (r['date'], r['iznos'], (r['tip'] + '/' + r['podtip'])[:26],
+                         r['komentar'][:24], r['presedan']))
+        for r, alt in _dvojbeni:
+            print('   WARN %s %9.2f  par je jednoglasan, ALI komentar nije: %s'
+                  % (r['date'], r['iznos'], ', '.join(alt)))
+            print('        komentar zato NIJE upisan — odaberi ga rukom u fileu.')
 
     rows.sort(key=lambda r: (r['date'], r['iznos']))
     print(f'\nZa upis: {len(rows)} redaka')
