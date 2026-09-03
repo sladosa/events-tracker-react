@@ -34,7 +34,8 @@
 import ExcelJS from 'exceljs';
 import type { ExportEvent, ExportAttrDef, ExportCategoriesDict } from './excelTypes';
 import type { WidgetFilter } from '@/types/database';
-import { addActivitiesSheetsTo, buildAttrMeta, colLetter, FIXED_COL_COUNT } from './excelExport';
+import { addActivitiesSheetsTo, buildAttrMeta, colLetter, FIXED_COL_COUNT,
+         HEADER_FILL, HEADER_FONT } from './excelExport';
 import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
 import { applyProfileToWorkbook, getProfileAttrOrder, type ExportProfile } from './exportProfile';
 
@@ -386,8 +387,23 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
   //   izvan raspona `dataStart..blankTo` i njihova celija ostaje PRAZNA —
   //   `0,00` bi ondje tvrdio da je stanje nula.
   if (opts.plannedCount > 0) {
-    const sepRow      = blankTo + 1;                 // prazan redak = granica
-    const plannedFrom = blankTo + 2;
+    // /!\ RASPORED: kontrola kosare ide IZNAD sekcije, ne ispod nje.
+    //   Sekcija je ZADNJI blok na listu i RASTE — alat joj dopisuje retke s
+    //   karticnog izvoda (MC kosara zna imati 47 stavki). Kontrola ispod nje
+    //   morala bi se pri svakom dopisivanju pomicati, a s njom i raspon
+    //   njezine formule; iznad nje stoji na miru, a blok se siri u prazno pod
+    //   sobom. Uz to je slika za korisnika potpuna: prazni retci, pa kontrola,
+    //   pa sekcija.
+    //
+    // ⚠ `gapRows` u `createDeltaExcel` mora biti `blankRows + 4`, ne `+ 1`:
+    //   tri retka kontrole plus redak-razdjelnik. Ta dva broja su na DVA
+    //   mjesta (pisac redaka i ovo ukrasavanje) i moraju se mijenjati zajedno
+    //   — razidu li se, kontrola se upise PREKO prvih redaka sekcije.
+    const sumRow      = blankTo + 1;
+    const bankRow     = blankTo + 2;
+    const diffRow     = blankTo + 3;
+    const sepRow      = blankTo + 4;                 // redak-razdjelnik
+    const plannedFrom = blankTo + 5;
     const plannedTo   = plannedFrom + opts.plannedCount - 1;
 
     // Naslov ide u kolonu H (komentar). Kolona B ostaje PRAZNA, pa import ovaj
@@ -397,9 +413,9 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
       // Kosara: unutra su i retci koje je netko vec prebacio u izvrseno. Zato
       // tekst NE trazi promjenu Statusa na svakom retku, nego slaganje ZBROJA.
       ? `KOSARA -- kartcni retci cije dospijece jos nije proslo. Ne micu saldo. `
-        + `Prvo slozi zbroj s izvodom (v. dno), pa tek onda potvrdi retke `
+        + `Prvo slozi zbroj s izvodom (v. gore), pa tek onda potvrdi retke `
         + `promjenom "${attrNameBySlug.get('status') ?? 'Status'}" u Izvrsen.`
-      : `PLANIRANO — ne mice saldo. Potvrdi promjenom "${attrNameBySlug.get('status') ?? 'Status'}" u Izvrsen, ali TEK kad se kosara slozi s izvodom (v. dno).`;
+      : `PLANIRANO — ne mice saldo. Potvrdi promjenom "${attrNameBySlug.get('status') ?? 'Status'}" u Izvrsen, ali TEK kad se kosara slozi s izvodom (v. gore).`;
     title.font  = { bold: true, italic: true };
 
     // ── Kontrola kosare: zbroj sekcije vs iznos skupne naplate s izvoda ──
@@ -407,9 +423,6 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     //   datum naplate na kartcnim retcima zna biti kriv (S112): kosara za
     //   11.07.2026. nosi 2.234,02, a banka je tog dana skinula 1.244,74.
     //   Potvrditi po dospijecu znaci upisati tvrdnju koju mjerenje opovrgava.
-    const sumRow  = plannedTo + 2;
-    const bankRow = sumRow + 1;
-    const diffRow = sumRow + 2;
     const mLtr    = colLetter(minusCol);
 
     // -- Stupac `Provjeri`: sto s ovim retkom nije u redu ------------------
@@ -439,8 +452,10 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
       //   redaka iznad, uz `Stanje (kontrola)` koje se odnosi na glavni blok.
       //   Ovako naslov stoji tocno iznad redaka na koje se odnosi.
       const hdr = ws.getCell(sepRow, hintCol);
-      hdr.value = 'Provjeri';
-      hdr.font  = { bold: true };
+      hdr.value     = 'Provjeri';
+      hdr.fill      = HEADER_FILL;      // isti stil kao zaglavlje lista: stupac
+      hdr.font      = HEADER_FONT;      // jest zaglavlje, samo svoje sekcije
+      hdr.alignment = { horizontal: 'center' };
       explain(hdr, 'Provjeri',
         'Popunjava se samo u sekciji košare. Napomena nestaje čim redak postane '
         + 'u redu — mijenja se sama, ne treba je brisati.');
@@ -465,7 +480,7 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
       warnings.push('Stupac „Provjeri" preskočen: ne nalazim kolonu za status ili dospijeće.');
     }
 
-    ws.getCell(sumRow, labelCol).value = opts.dueSlug ? 'Σ košara (gore) ->' : 'Σ planirano (gore) ->';
+    ws.getCell(sumRow, labelCol).value = opts.dueSlug ? 'Σ košara (dolje) ->' : 'Σ planirano (dolje) ->';
     ws.getCell(sumRow, labelCol).alignment = { horizontal: 'right' };
     const sumCell = ws.getCell(sumRow, ctrlCol);
     // /!\ NETO, ne samo zbroj isplata: povrat zna sjediti u istoj kosari.
@@ -577,9 +592,10 @@ export async function createDeltaExcel(
 
   // 'asc' — najstariji gore, najnoviji tik iznad praznih redaka: novi redak se
   // dopisuje ondje gdje je i u banci, na dnu.
-  // Praznina mora primiti sve prazne retke + jedan redak granice, inace bi ih
-  // `addDeltaHelpersTo` upisao PREKO sekcije „planirano".
-  const gapRows = opts.blankRows + 1;
+  // ⚠ +4, ne +1: prazni retci, pa TRI retka kontrole kosare, pa redak-razdjelnik.
+  //   Broj mora odgovarati rasporedu u `addDeltaHelpersTo` (v. tamo) — razidu li
+  //   se, kontrola se upise preko prvih redaka sekcije.
+  const gapRows = opts.blankRows + 4;
   await addActivitiesSheetsTo(
     wb, events, attrDefs, categoriesDict, 'asc', attrColumnOrder, undefined,
     plannedRows.length > 0 ? { events: plannedRows, gapRows } : undefined,

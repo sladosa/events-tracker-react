@@ -81,8 +81,11 @@ console.log('Sa sekcijom "planirano" (3 glavna + 5 praznih + 2 planirana):');
   const { ws, hdr, ctrl, hash } = await buildSheet(planned);
   const mainEnd = hdr + main.length;            // 3 glavna retka
   const blankTo = mainEnd + BLANKS;
-  const sep     = blankTo + 1;
-  const pFrom   = blankTo + 2;
+  // Kontrola kosare stoji IZNAD sekcije (S126): prazni retci -> Σ / naplaceno /
+  // razlika -> redak-razdjelnik -> sekcija. Sekcija je zadnji blok i raste.
+  const sumRow  = blankTo + 1;
+  const sep     = blankTo + 4;
+  const pFrom   = blankTo + 5;
 
   ok('glavni blok je na svom mjestu', txt(ws,hdr+1,1)==='m1' && txt(ws,mainEnd,1)==='m3');
   ok('prazni retci ne gaze sekciju (Area prepisan, event_id prazan)',
@@ -99,7 +102,16 @@ console.log('Sa sekcijom "planirano" (3 glavna + 5 praznih + 2 planirana):');
   ok('kontrolni stupac postoji na glavnom bloku i praznima',
      txt(ws,hdr+1,ctrl)==='f()' && txt(ws,blankTo,ctrl)==='f()');
   ok('kosara: Σ i razlika su formule, "naplaceno" je prazno za rucni unos',
-     txt(ws,pFrom+2+1,ctrl)==='f()' && raw(ws,pFrom+2+2,ctrl)==null && txt(ws,pFrom+2+3,ctrl)==='f()');
+     txt(ws,sumRow,ctrl)==='f()' && raw(ws,sumRow+1,ctrl)==null && txt(ws,sumRow+2,ctrl)==='f()');
+  // /!\ Oznake kontrole sjede u koloni `Delete?`. Bezopasne su SAMO zato sto
+  //   parser prvo provjerava kolonu B (Area) i redak bez nje uopce ne gleda —
+  //   inace bi tri oznake bile tri greske „samo DELETE ili prazno".
+  //   Otkad kontrola stoji IZMEDU praznih redaka i sekcije, iza nje ima jos
+  //   pravih redaka, pa ovo mora ostati invarijanta a ne disciplina.
+  ok('retci kontrole imaju praznu kolonu B (uvoz ih ne vidi kao retke)',
+     txt(ws,sumRow,2)==='' && txt(ws,sumRow+1,2)==='' && txt(ws,sumRow+2,2)==='');
+  ok('sekcija je i dalje dosezljiva ispod kontrole',
+     txt(ws,pFrom,2)==='Financije_all', `got ${txt(ws,pFrom,2)}`);
   ok('autofilter staje na praznim retcima, ne obuhvaca sekciju',
      String(ws.autoFilter).endsWith(String(blankTo)), `got ${ws.autoFilter}`);
 }
@@ -113,14 +125,15 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
   const basket = [mk('b1','2026-09-01','ZABA','Mastercard',100,'Planiran','2027-01-11T12:00:00Z'),
                   mk('b2','2026-09-02','ZABA','Mastercard',55,'Izvrsen','2027-01-11T12:00:00Z')];
   const { ws, hdr, ctrl } = await buildSheet(basket, { dueSlug: 'datum_naplate' });
-  const sep = hdr + main.length + BLANKS + 1, pFrom = sep + 1;
+  const blankTo2 = hdr + main.length + BLANKS;
+  const sumRow = blankTo2 + 1, sep = blankTo2 + 4, pFrom = blankTo2 + 5;
   // Tekst se mijenja jer se mijenja i posao: u kosari nisu svi retci planirani,
   // pa uputa ne smije glasiti "potvrdi svaki redak" nego "slozi zbroj".
   ok('naslov je KOSARA, ne PLANIRANO', String(txt(ws,sep,8)).startsWith('KOSARA'));
   ok('vec potvrdjen redak JE u sekciji', txt(ws,pFrom+1,1)==='b2', `got ${txt(ws,pFrom+1,1)}`);
   // /!\ Neto: povrat u istoj kosari inace naduva zbroj i izmisli razliku
   //     prema izvodu. Izmjereno na ZABA kosari 11.08. (povrat 3,00).
-  const f = String(raw(ws,pFrom+2+1,ctrl)?.formula ?? '');
+  const f = String(raw(ws,sumRow,ctrl)?.formula ?? '');
   ok('Σ kosare je NETO (oduzima kolonu uplata)', f.includes('-SUM('), `got ${f}`);
   ok('Σ kosare i dalje ROUND-a na 2 decimale', f.startsWith('ROUND('), `got ${f}`);
 
@@ -129,6 +142,11 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
   // Naslov stoji u retku-razdjelniku, tocno iznad redaka na koje se odnosi —
   // ne u zaglavlju lista desetke redaka iznad.
   ok('naslov Provjeri je u retku-razdjelniku', txt(ws,sep,hintCol)==='Provjeri', `got ${txt(ws,sep,hintCol)}`);
+  // Stupac jest zaglavlje — samo svoje sekcije, ne cijelog lista. Zato isti stil.
+  ok('naslov Provjeri je stiliziran kao zaglavlje',
+     ws.getCell(sep,hintCol).fill?.fgColor?.argb === 'FF4472C4'
+     && ws.getCell(sep,hintCol).font?.bold === true,
+     `got ${JSON.stringify(ws.getCell(sep,hintCol).fill)}`);
   ok('naslov Provjeri NIJE u zaglavlju lista', txt(ws,hdr,hintCol)!=='Provjeri');
   // /!\ Objasnjenje ide kao Data Validation input message, ne kao biljeska:
   //     biljeska kod desnog ruba izlazi izvan ekrana i pri skrolanju se odreze.
@@ -138,7 +156,7 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
   //     tada se gubi sadrzaj, ne samo poruka. Zato granice cuva test.
   ok('promptTitle <= 32 znaka', (dv?.promptTitle ?? '').length <= 32, `got ${(dv?.promptTitle ?? '').length}`);
   ok('prompt <= 255 znakova', (dv?.prompt ?? '').length <= 255, `got ${(dv?.prompt ?? '').length}`);
-  const sumDv = ws.getCell(pFrom+2+1, ctrl).dataValidation;
+  const sumDv = ws.getCell(sumRow, ctrl).dataValidation;
   ok('Σ košare: prompt <= 255 znakova', (sumDv?.prompt ?? '').length <= 255, `got ${(sumDv?.prompt ?? '').length}`);
   const h = String(raw(ws,pFrom+1,hintCol)?.formula ?? '');
   ok('napomena je formula nad TODAY(), ne upisan tekst', h.includes('TODAY()'), `got ${h}`);
