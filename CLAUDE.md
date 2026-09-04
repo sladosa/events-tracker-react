@@ -987,6 +987,11 @@ data-prep_tools/Financije/presedani.py
                                    Tri kljuca: primatelj+poziv > primatelj > iznos
                                    (s predznakom). Ne pogadja — sto nije
                                    jednoglasno ostaje `N/A`.
+data-prep_tools/Financije/pregled_stanja.py
+                                   Jedan file koji odgovara "je li stanje tocno":
+                                   Pregled (svi izvodi + sidra) · Sporno (redak po
+                                   redak, banka vs baza, autofilter) · 2023.
+                                   ⚠ Kokina Excelica se NE oznacava — v. zaglavlje.
 data-prep_tools/Financije/promet_check.py
                                    Promet po izvodu, app vs banka. Ne prolazi kroz
                                    sidro ⇒ jedini instrument za ZASIDREN mjesec,
