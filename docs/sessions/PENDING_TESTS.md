@@ -34,9 +34,17 @@ Detalji: [S127_tests.md](tests/S127_tests.md)
 | **T-S127-4** | ⭐ nov shortcut ne nosi `Datum naplate` ni `Status` | ⬜ |
 | T-S127-5 | Kokin postojeći preset `Isplata` izliječen bez diranja baze | ⬜ |
 | T-S127-6 | zapis od 04.09. ispravljen na `04.09.` (Sašin ručni ispravak) | ✅ |
+| T-S127-7 | ⚠ **mjerenje:** ima li nacrt (`Resume`) istu bolest | ⬜ |
+| T-S127-8 | ⚠ **mjerenje:** Edit ne evaluira `set_attribute` — `Status` se pomakne, `Datum naplate` ne | ⬜ |
 
 ### ⚠ Otvoreno
 
+- **Testirati se može na TEST bazi** — `Financije_all` (`98dd91f3`) ondje ima
+  **identičnu** `attribute_rules` konfiguraciju. `npm run dev` / `dev:test` →
+  TEST; `dev:prod` → PROD. Samo T-S127-5 traži PROD, i to čitanjem.
+- **Regresijski rizik je izmjeren:** od 6 PROD preseta **samo** Kokin `Isplata`
+  uopće nosi `default_attributes`; ostalih pet imaju `null` i promjena ih ne
+  može dotaknuti.
 - **Auto-odabir shortcuta bez korisnikova klika** — jedna slučajna snimka postane
   trajno pravilo za sve unose u toj kategoriji, i to nevidljivo (`usage_count`
   kaže „nikad korišten"). Nije popravljeno; treba odluka.

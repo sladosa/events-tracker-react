@@ -113,3 +113,41 @@ mjesec je ostao listopad.
 **Očekivano:** `04.09.2026.` (isti dan, jer je `Izvor = Racun`).
 
 **Pad:** `04.10.2026.` — ispravak nije napravljen.
+
+---
+
+## T-S127-7 Nacrt (`Resume`) — ista bolest, druga vrata?
+
+Mjerenje, ne popravak. Nacrt ne pamti je li `Datum naplate` upisao čovjek ili
+pravilo, pa se popravak ne smije napraviti napamet.
+
+1. Add Activity → `Racun` = `Kokin tekući ZABA`, `Izvor` = **`Mastercard`**,
+   upiši iznos. `Datum naplate` = 11. sljedećeg mjeseca.
+2. Pričekaj ~6 s (auto-save piše svakih 5 s), pa **back gumbom** izađi.
+3. Vrati se u **Add Activity** → prihvati **`Resume Previous Session?`**.
+4. Promijeni `Izvor` na **`Racun`**.
+
+**Što mjerimo:** pomakne li se `Datum naplate` na današnji dan (kao u T-S127-2),
+ili ostane listopadski.
+
+⚠ **Ostane li listopadski, to NIJE nužno bug** — možda je čovjek taj datum
+upisao rukom, a nacrt tu razliku ne pamti. Zabilježi rezultat; odluka o popravku
+(nositi `autoFilledValues` u nacrtu) dolazi poslije mjerenja.
+
+---
+
+## T-S127-8 Edit ne evaluira pravila — koliko to smeta?
+
+`set_attribute` se evaluira SAMO u Add Activity (CLAUDE.md). Ovo test **potvrđuje
+zapisano ponašanje**, ne traži kvar — pitanje je isplati li se mijenjati.
+
+1. Otvori bilo koji postojeći redak s `Izvor = Racun` → **Edit**.
+2. Promijeni `Izvor` na **`Mastercard`**.
+3. Pogledaj `Datum naplate` i `Status`.
+
+**Očekivano (današnje ponašanje):** `Datum naplate` ostaje **nepromijenjen**;
+`Status` se **promijeni** na `Planiran` (to radi `default_map`, koji u Editu
+radi, za razliku od `set_attribute`).
+
+⚠ Baš je ta nesimetrija zamka: jedno polje se poslušno pomakne, drugo šuti — pa
+izgleda kao da su se pomaknula oba. Tako je 04.09. nastao `04.10.`
