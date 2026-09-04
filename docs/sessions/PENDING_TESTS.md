@@ -24,6 +24,9 @@ Detalji: [S127_tests.md](tests/S127_tests.md)
 | test pada kad se kod pokvari (oba smjera) | ✅ 8/13 i 7/13 uz dva namjerna kvara |
 | ⭐ **T-S127-1 potvrđen uživo** (Sašine slike 1 i 2) | ✅ prazno po otvaranju → `04/09/2026 12:00` uz `Izvor = Racun` |
 | slika 3 potvrdila predviđenu nesimetriju Edita | ✅ `Status → Planiran`, `Datum naplate` nepomičan ⇒ popravljeno |
+| ⭐ **T-S127-8 potvrđen uživo** — Edit, `Racun → Mastercard` | ✅ `Datum naplate → 11/10/2026`, `Status → Planiran` |
+| ⭐ **T-S127-4 potvrđen uživo** — shortcut, `Mastercard → Racun` | ✅ datum se vrati na današnji |
+| **retci koje bi slučajna izmjena `Izvora` raz-potvrdila** | ⚠ **2.300** s popunjenim `Izvod opis`; `Izvrsen` 2.363, `Planiran` 56 |
 | typecheck + build | ✅ |
 
 ### Traži tebe — pogledom u aplikaciji
@@ -33,11 +36,11 @@ Detalji: [S127_tests.md](tests/S127_tests.md)
 | **T-S127-1** | ⭐ `Datum naplate` prazan dok `Izvor` nije odabran, pa **današnji** | ✅ |
 | T-S127-2 | Mastercard i dalje daje 11. sljedećeg mjeseca, i vraća se natrag | ⬜ |
 | T-S127-3 | ručni unos `Datum naplate` se i dalje poštuje | ⬜ |
-| **T-S127-4** | ⭐ shortcut nosi `Izvor`, a datum se **računa pri svakoj upotrebi** | ⬜ |
+| **T-S127-4** | ⭐ shortcut nosi `Izvor`, a datum se **računa pri svakoj upotrebi** | ✅ |
 | T-S127-5 | Kokin postojeći preset `Isplata` izliječen bez diranja baze | ⬜ |
 | T-S127-6 | zapis od 04.09. ispravljen na `04.09.` (Sašin ručni ispravak) | ✅ |
 | T-S127-7 | ⚠ **mjerenje:** ima li nacrt (`Resume`) istu bolest | ⬜ |
-| **T-S127-8** | ⭐ **Edit sada evaluira `set_attribute`** — promjena `Izvora` miče `Datum naplate` | ⬜ |
+| **T-S127-8** | ⭐ **Edit sada evaluira `set_attribute`** — promjena `Izvora` miče `Datum naplate` | ✅ (koraci 3–4 još nisu prikazani) |
 | **T-S127-9** | ⚠ otvaranje retka ne smije ništa promijeniti (855 Visa redaka) | ⬜ |
 | T-S127-10 | promjena **datuma** u Editu i dalje ne miče `Datum naplate` (svjesno) | ⬜ |
 
@@ -49,6 +52,17 @@ Detalji: [S127_tests.md](tests/S127_tests.md)
 - **Regresijski rizik je izmjeren:** od 6 PROD preseta **samo** Kokin `Isplata`
   uopće nosi `default_attributes`; ostalih pet imaju `null` i promjena ih ne
   može dotaknuti.
+- **⚠ `Status` se u Editu i dalje mijenja PRAVILOM, ne dokazom** (Sašin nalaz,
+  04.09.). `depends_on.default_map` radi u Editu od ranije — S127 ga nije dirao —
+  ali sada je posljedica veća jer se istim potezom miče i `Datum naplate`.
+  Izmjereno na PROD-u: **2.300 redaka nosi `Izvod opis`**, dakle potvrdu s
+  izvoda. Promjena `Izvora` na takvom retku okrene `Status` u `Planiran` iako
+  `Izvod opis` i dalje tvrdi da je banka naplatila — dva polja koja se
+  proturječe, i ništa to ne javi. Obrnuti smjer je gori: kartični redak
+  prebačen na `Racun` dobije `Izvrsen`, dakle tvrdnju **da se dogodilo**, a to
+  je točno onaj automat koji je odbačen („dospjelo ⇒ izvršeno").
+  ⚠ **Nije popravljeno — traži Sašinu odluku**, jer isti mehanizam u Add Activityju
+  radi ono što treba (T-S127-4).
 - **Auto-odabir shortcuta bez korisnikova klika** — jedna slučajna snimka postane
   trajno pravilo za sve unose u toj kategoriji, i to nevidljivo (`usage_count`
   kaže „nikad korišten"). Nije popravljeno; treba odluka.
