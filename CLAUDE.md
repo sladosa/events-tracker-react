@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S126).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S127).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).

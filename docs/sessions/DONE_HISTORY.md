@@ -3625,3 +3625,122 @@ samo unit testom.
 `max(dan nakon sidra, danas − N)`, pa bi sidro zaključalo kolovoz i onih 33 retka s
 `Tip = N/A` ne bi se moglo dohvatiti delta sheetom. Upisuje se čim razvrstavanje
 sjedne; odgoda je sigurna jer je razvrstavanje neutralno za saldo.
+
+---
+
+## S127 — izvedene vrijednosti, gusta sidra, i priprema povijesti (2026-09-04)
+
+Krenulo je od Kokinog mobitela („`Datum naplate` ne reagira na `Izvor`"), a
+završilo s pripremljenim uvozom cijele 2023. i 2024.
+
+### BUG-S127-PRESETFREEZE — shortcut je zamrzavao IZVEDENE vrijednosti
+
+Preset `Isplata` (spremljen 02.09. uz `Izvor = Mastercard`) nosio je
+`datum_naplate = 2026-10-11` kao **doslovnu vrijednost**. `set_attribute` čuva
+ručni unos tako da preskoči target koji već ima vrijednost koju samo nije
+upisalo (`userOwned`) — a preset izgleda točno tako. Zato `Izvor = Racun`, koji
+traži isti dan, nije imao **nikakav** učinak i nije javio ništa.
+
+Preset se pritom **bira sam** čim se poklopi kategorija
+(`ProgressiveCategorySelector.tsx:411-416`); `usage_count` je bio **0**, pa je u
+podacima izgledalo kao da ga nitko nikad nije koristio. Jedna slučajna snimka
+tiho je upravljala svakim unosom u Transakciju.
+
+Zatvoreno na **oba** kraja (`collectRuleManagedIds`): izvedeni atributi ne ulaze
+u snimku, i ne primjenjuju se iz starih snimki — pa popravak liječi i presete
+koji već postoje, **bez pisanja po bazi**.
+
+### Edit sada evaluira `set_attribute` — ali samo na čovjekov potez
+
+Sašin nalaz: promjena `Izvora` u Editu pomakne `Status` (to radi `default_map`),
+a `Datum naplate` šuti. Nesimetrija je zamka — izgleda kao da su se pomaknula
+oba. Tako je i nastao redak s `Izvor = Racun` i datumom naplate u listopadu.
+
+⚠ **Okidač je change handler, ne efekt nad stanjem.** Računanje pri *otvaranju*
+retka prepisalo bi stvarne datume s izvoda: Visa nema fiksan dan naplate
+(izmjereno na 855 redaka — 5. **383×**, 4. 231×, 6. 109×, 7. 82×), pa bi `next:3`
+proglasio krivom većinu njih, i to svakome tko redak samo otvori i spremi.
+
+### `Status` se u Editu mijenja PRAVILOM, ne dokazom — otvoreno
+
+Izmjereno: **2.300 redaka** nosi `Izvod opis`, dakle potvrdu s izvoda. Promjena
+`Izvora` na takvom retku okrene `Status` u `Planiran` dok potvrda i dalje stoji.
+Obrnuti smjer je gori — kartični redak prebačen na `Racun` dobije `Izvrsen`,
+tvrdnju **da se dogodilo**. Nije popravljeno: isti mehanizam u Add Activityju
+radi ono što treba. Preporuka je da potvrda pobijedi pravilo.
+
+### Sidra: 2 → 17 na PROD-u
+
+`make_saldo_anchors.py` je dobio `ET_TARGET` (varijabla okoline, **ne** `--prod`
+u argv — te konstante dijeli šest alata) i `--until` za rasponski upis.
+
+`--report` je **lokalizirao** poznati `−200,14`, i to bez ijednog upisanog sidra:
+`2025-08 −46,74` · `2025-10 −150,00` · `2025-07 +0,80` · `2026-03 −2,80` ·
+`2026-04 −1,40`. A `2025-02 −49,00` i `2025-03 +49,00` se **poništavaju** ⇒ to
+nije redak koji fali nego datum s krive strane zatvaranja izvoda.
+**PROD i TEST imaju identičan `Δpromet` u svakom mjesecu koji izvod pokriva.**
+
+Upisano samo **2024.** (13 sidara). 2025./2026. namjerno izostavljeni: sidro na
+close datumu čini `--report` ondje tautološkim, pa bi zatvorilo oči baš na onih
+pet mjeseci. Pravilo koje iz toga slijedi: **popravi → `Δpromet` = 0 → tek onda
+sidro.**
+
+### Kokina ishodišna stanja — provjerena, ne pretpostavljena
+
+Nađena među izbačenim `Smjer = PROVJERI` retcima: ZABA `1.845,45`, RF
+`12.712,28` na 01.01.2023.
+
+- **RF potvrđuje ishodište**: kroz **2 godine i 158k prometa** zatvara na
+  **−11,49** prema `RF_2024-12.pdf`.
+- **ZABA promašuje za `+15.752,07`, ali ne zbog ishodišta**: 528 MC kupovina
+  (17.264,41) nema pokriće u skupnim naplatama — ona ima **jednu jedinu**,
+  `926,52` @ 11.12.2023. Kartična rupa objašnjava **98,3 %**; stvarni
+  neobjašnjeni ostatak 2023. je **`273,81`**.
+- ⭐ **Njen model je bio ispravan**: ta jedna naplata je **točno studeni**
+  (`926,52`), na 11. u sljedećem mjesecu. Pravilo je znala, samo nije upisivala.
+- Ne može se rekonstruirati (MC izvodi počinju 2024-01) i **ne smije se
+  sintetizirati**: zbroj njenih kartičnih redaka zatvorio bi lanac **po
+  konstrukciji** i uništio jedinu provjeru tih redaka.
+
+⚠ Sidra su upisana na **2022-12-31**, ne 01.01.2023. Dokaz je u podacima: na
+01.01. uz njen marker stoji **stvarna RF transakcija `79,63`**, koju bi pravilo
+„strogo nakon" inače izbacilo.
+
+### Priprema uvoza 2023. + 2024.
+
+`Financije_old` je **izmjeren i odbačen** kao izvor: `Izvor` prazan na **svih
+2.774** retka (a to je jedino polje o kojem saldo ovisi), `Podtip` prazan, 6 od
+10 `Tip` vrijednosti izvan taksonomije. Uvezen bi bio nevidljiv pločici, tiho.
+
+Review workbook je spreman: ključna polja popunjena na svih 4.993 retka.
+
+| god | redaka | bez potvrde | `N/A` | **bez ijednog traga** |
+| --- | ---: | ---: | ---: | ---: |
+| 2022 | 30 | 100 % | 30 | **30** |
+| 2023 | 1.135 | 92 % | 587 | **576** |
+| 2024 | 1.606 | 15 % | 476 | **151** |
+
+⚠ **2023. nije problem klasifikacije nego problem informacije.** 576 redaka nema
+ni `Izvod opis` ni `Napomenu` — ostaje datum, iznos i račun. Takav redak ne može
+razvrstati ni rječnik, ni AI, ni Koka. Sašina odluka: uvesti nerazvrstano.
+
+Nađen i **batch iz 2022.** (30 redaka) koji plan nigdje ne spominje.
+
+**Generirano i provjereno** (`import_2023H1/H2`, `import_2024H1/H2`, ukupno
+**2.738** redaka): pet tihih rupa iz CLAUDE.md ✓, imena i tipovi atributa protiv
+**žive** baze ✓ (nov `make_structure_guard.py` — dotadašnji guard se gradio iz
+snapshota od 08.07.2026., dakle jamčio slaganje s prošlošću), svih 2.738 redaka
+protiv `validation_rules` ✓ (nijedna vrijednost izvan pravila).
+
+**Popravljeno usput:** `event_date` se piše u **podne**, ne u ponoć.
+`normalizeDateCell` čita `Date` lokalnim getterima a exceljs serial pretvara
+čistim UTC-om — ćelija na ponoć ispravna je **samo iz pozitivnog offseta**; iz
+zone UTC−X svih 2.738 redaka tiho sklizne dan unazad. Batchevi 2025./2026. su
+prošli samo zato što je uvoz bio iz CET-a.
+
+### 2024. provjerena PRIJE uvoza
+
+Protiv 12 izvoda: **9 od 12 mjeseci zatvara u cent.** Odstupaju `2024-03 +10,00`,
+`2024-07 −17,28`, `2024-10 −236,04` (zbroj `−243,32`). To je **predviđanje** —
+nakon uvoza izvještaj mora pokazati točno te tri brojke i nule drugdje; bilo što
+drugo znači da uvoz nije prošao kako treba.

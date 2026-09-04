@@ -1,8 +1,8 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `S126: test sekcije TRAZI redak umjesto da mu racuna
-polozaj` (`b4aeecb`, i `test-branch` i **`main`**). Ako `git log` pokazuje novije, čitaj ovo kao
-**povijest** — CLAUDE.md je autoritet.
+**Pisano protiv commita:** `S127: ishodisna sidra 2022-12-31 upisana na TEST i PROD`
+(`b5b3293`, **samo `test-branch`** — `main` je i dalje na `3e9acf6`). Ako `git log`
+pokazuje novije, čitaj ovo kao **povijest** — CLAUDE.md je autoritet.
 
 ---
 
@@ -10,67 +10,79 @@ polozaj` (`b4aeecb`, i `test-branch` i **`main`**). Ako `git log` pokazuje novij
 
 ## Gdje smo
 
-Krenulo je od „Koka je poslala kolovoške izvode", završilo s **računom koji se
-slaže s bankom u cent**.
+Krenulo je od Kokinog mobitela (`Datum naplate` nije reagirao na `Izvor`), a
+završilo s **pripremljenim uvozom cijele 2023. i 2024.**
 
 | | |
 | --- | --- |
-| `Kokin tekući ZABA` | ✅ **12.784,36 €** = ispisano stanje s `ZABA_2026-08.pdf` |
-| uvoz | 75 novih / 16 izmjena / 1 nepromijenjen — točno kako je preview najavio |
-| `Izvod opis` (oznaka „potvrđeno izvodom") | 46 / 46 na kolovoškim ZABA retcima |
-| MC košara 11.09. | 46 redaka / 1.048,72 |
-| `T-S125-5` (Excel put za tuđi redak) | ✅ **prvi put potvrđen uživo** |
+| BUG-S127-PRESETFREEZE | ✅ popravljen — shortcut više ne zamrzava izvedene vrijednosti |
+| Edit evaluira `set_attribute` | ✅ novo, ali **samo kad ti promijeniš `Izvor`** |
+| sidra na PROD-u | **2 → 17** (cijela 2024. + dva ishodišna) |
+| `−200,14` | ✅ **lokaliziran na pet mjeseci** |
+| fileovi za uvoz 2023.+2024. | ✅ **2.738 redaka, sve provjere prošle** |
 
-**Kokina Excelica je prestala biti izvor istine za kolovoz** — baza ima 46 redaka
-koje ona nema, i svaki nosi potvrdu s izvoda.
+## Što čeka tebe — po redu
 
-## Što čeka tebe
+**1. ⭐ UVOZ. Ovo je jedini korak koji ja ne mogu napraviti.**
 
-**1. ⭐ Razvrstaj 33 retka s `Tip = N/A`** (od 30.07. nadalje). Osam ZABA retka se
-**samo imenuje** u `Izvod opis`: E.ON ×2, HRT, TELEMACH ×2, NP vodovod, KTD Bilan,
-NUV. Ostatak je MC. Kad ih jednom razvrstaš, idući mjesec ih rječnik pogađa sam —
-svaka tvoja odluka postaje presedan.
+Prijavi se **kao Koka** (email u koloni G je njezin — uvezeš li pod svojim
+računom, svih 2.738 redaka je „tuđe" i preskočeno). **Hard refresh** prije prvog
+filea. Onda redom, i **provjeri preview prije Applyja**:
 
-**2. Tek POSLIJE toga upiši sidro** `12.784,36` @ **26.08.2026.**, izvor *ispisano
-stanje s izvoda*, `ZABA_2026-08.pdf`.
-⚠ Ne prije. Delta prozor kreće `max(dan nakon sidra, danas − N)`, pa bi sidro
-**zaključalo kolovoz** i onih 33 retka ne bi se moglo dohvatiti delta sheetom.
-⚠ Odgoda je sigurna samo jer razvrstavanje ne dira iznose. Promijeni li se ijedan
-**iznos ili datum** u kolovozu prije nego sidro sjedne, to prođe bez ijedne kontrole.
+| file | mora pisati |
+| --- | --- |
+| `import_2024H1.xlsx` | **800 New**, 0 Modify |
+| `import_2024H2.xlsx` | **805 New**, 0 Modify |
+| `import_2023H1.xlsx` | **575 New**, 0 Modify |
+| `import_2023H2.xlsx` | **558 New**, 0 Modify |
 
-**3. Dva MC retka po `9,99`** (`PAYPAL *AC WALKFT` 10.08., `APPLE.COM/BILL` 17.08.)
-nisu uvezena — isti iznos već postoji u bazi 13 odnosno 20 dana ranije.
-**Prvo ispravak datuma u bazi, pa uvoz**; obrnuto udvostručuje tiho (razred S115).
-Dok se ne razriješe, kontrola košare pokazuje `razlika = 19,98` — točno oni.
+Svi su u `data-prep_data/Financije/`. ⚠ Bilo koji „Modify" ili manji broj —
+**stani i javi**, ne klikaj Apply.
 
-**4. ✅ Deploy na `main` je NAPRAVLJEN** (03.09., `b4aeecb`). Koka od sada vidi
-S125 i S126: ✎ na desktopu, sekciju košare i stupac `Provjeri`, „Ispravi kao
-vlasnik Aree" u uvozu, novi raspored delta sheeta, i izvoz koji **padne s porukom**
-umjesto da tiho izađe kraći.
-⚠ **Hard refresh je dio postupka**, ne higijena (S118): stari keširani bundle tiho
-osakati uvoz. Na mobitelu — zatvori i ponovno otvori aplikaciju.
-⚠ Saldo `12.784,36` je bio točan **i prije** deploya — podatak je podatak. Deploy
-je donio featuree, ne brojku.
+**2. Provjeri predviđanje.** Nakon 2024. pokreni:
+`ET_TARGET=prod ..\Tools\venv\Scripts\python.exe make_saldo_anchors.py --report`
 
-**5. Osam novih testova čeka pogled** — `T-S126-1…8`. Mjerenja su prošla, ali ih
-nitko nije potvrdio u aplikaciji.
+Mora pokazati **točno** ovo i nule drugdje:
+`2024-03 +10,00` · `2024-07 −17,28` · `2024-10 −236,04`
+Bilo što drugo znači da uvoz nije prošao kako treba, ne da su podaci lošiji.
 
-**6. Rečenica koju Koki još nitko nije rekao** (stoji od S124): *kad počne upisivati
-u app, u Excelicu više ne.* Sad je hitnija nego prije — vratila se Excelici.
+⚠ Za 2023. **već znamo da neće zatvoriti**, i to za ~16.000 — Koki nedostaje 11
+skupnih MC naplata (ima samo jednu, `926,52`). Nije greška uvoza; sidro
+`844,83 @ 01.01.2024.` to izolira pa 2024. ostaje čista.
 
-## Što se pokazalo vrijednim, za ubuduće
+**3. Pet mjeseci koji se razilaze s bankom** — `2025-08 −46,74`, `2025-10
+−150,00`, `2025-07 +0,80`, `2026-03 −2,80`, `2026-04 −1,40`. Alat je
+`uskladi_izvod.py` nad tim izvodima. Predlažem redom 2025-10 (najveći i
+najčišći), pa 2025-08.
+⚠ `2025-02 −49,00` i `2025-03 +49,00` se **poništavaju** — to je jedan redak s
+krive strane zatvaranja izvoda, dakle popravak **datuma**, ništa se ne dodaje.
 
-**Jedan skraćen ispis stajao je osamnaest sesija.** Vjerovali smo da ZABA izvadak
-nema po čemu spariti retke jer „svaki nalog počinje istim tekstom". Prefiks ima 66
-znakova, ispis je rezao na 60. Primatelj je cijelo vrijeme stajao iza njega.
+**4. Sidra za 2025./2026. tek nakon toga.** Pravilo koje je ova sesija iznjedrila:
+**popravi → razlika je nula → tek onda sidro.** Sidro je pečat na usklađen mjesec,
+ne alat za usklađivanje.
 
-**Tvoja tri prijedloga danas su svi bili točni**, i svaki je otvorio nešto:
-žigosanje postojećih redaka (bez njega ne postoji stanje „pitanje"), skraćivanje
-opisa (otkrilo da pravilo `Naknada za ` prekomjerno hvata), i selidba kontrole
-iznad sekcije (bez nje MC retci ne bi imali kamo).
+**5. Deploy na `main` nije napravljen.** Dok ne bude, Koka i dalje ima staro
+ponašanje (`Datum naplate` se zna zamrznuti). Testovi `T-S127-1/-4/-6/-8` su
+potvrđeni uživo; **`T-S127-9` još nije, a najvažniji je** — provjerava da
+otvaranje retka u Editu ne mijenja ništa (štiti 855 Visa redaka).
 
-**Pitanje „može li to prekinuti uvoz" bilo je pravo pitanje.** Odgovor je ne, ali
-tek nakon što se pogledalo u parser — i sad to drži test umjesto pretpostavke.
+**6. Odluka koja čeka:** `Status` se u Editu mijenja **pravilom, ne dokazom**.
+2.300 redaka nosi potvrdu s izvoda; promjena `Izvora` na takvom retku okrene
+`Status` u `Planiran` iako potvrda stoji. Tri opcije su u `PENDING_TESTS.md`;
+preporuka je da **potvrda pobijedi pravilo**.
+
+## Što se pokazalo vrijednim
+
+**Njen model je bio ispravan cijelo vrijeme.** Jedina skupna MC naplata koju ima
+za 2023. (`926,52` @ 11.12.) je **točno studeni**, na 11. u sljedećem mjesecu.
+Nije pogriješila pravilo — samo nije upisivala ostale.
+
+**Ishodišna sidra su se dala provjeriti.** RF-ovo `12.712,28` kroz dvije godine i
+158k prometa zatvara na **−11,49**. Nije se moralo vjerovati na riječ.
+
+**Pitanje „kako se njeno stanje slaže s izvodima" bilo je pravo pitanje** — bez
+njega bi 2023. ušla kao neobjašnjen manjak od 15.752 umjesto kao poznata rupa od
+11 naplata s ostatkom od 273,81.
 
 ---
 
@@ -78,69 +90,33 @@ tek nakon što se pogledalo u parser — i sad to drži test umjesto pretpostavk
 
 ## Stanje
 
-- `test-branch` i `main` su **na istom commitu** (`b4aeecb`). Netlify je deployao
-  S125 + S126 (22 commita, `c156057` … `b4aeecb`) 03.09.
-- **PROD ima migracije `043` i `044`.** Nove migracije nisu potrebne za S126.
-- Saša radi **lokalno protiv PROD baze** (`.env.prod.local`), pod **Kokinim**
-  (owner) računom.
-- Radni artefakti sesije: `Claude-temp_R/s126/` (nisu u gitu).
+- `test-branch` je **8 commita ispred `main`** (`3e9acf6` … `b5b3293`).
+  **Deploy nije napravljen** — Netlify deploya samo `main`.
+- **PROD i TEST su dobili sidra ovom sesijom** (upis, ne kod): PROD 17
+  (15 ZABA + 2 RF), TEST 18. Migracije nisu trebale.
+- TEST i dalje **nema `044`** (`split.due_slug`) — bitno samo za delta sheet.
+- PROD je **ispred TEST-a** po podacima (2.419 vs 2.311 eventa prije uvoza).
 
-## Što je S126 napravio
+## Novo u alatima
 
 ```
-c90343a  kontrola kosare seli IZNAD sekcije (gapRows +1 -> +4); `Provjeri`
-         dobiva stil zaglavlja; testovi 33 -> 36
-6e536c5  presedani.py (nov) + fill_from_izvod: --presedan / --zigosi / --mc,
-         1:N prepoznavanje, skracivanje `Izvod opis`
-5530125  zatvaranje sesije (testovi, povijest, CLAUDE.md, handoff, ENRICH_PLAN)
-bddc766  help: kontrola kosare je IZNAD sekcije
-b4aeecb  test sekcije TRAZI redak umjesto da mu racuna polozaj
+ET_TARGET=test|prod         varijabla okoline, dijeli je SEST alata koji uvoze
+                            AREA_ID/ENV_FILE iz verify_rpc_vs_model.py
+make_saldo_anchors.py       + --until DATE (rasponski upis, uz check_chain)
+                            + target_banner() u zaglavlju oba ispisa
+make_structure_guard.py     NOV — structure guard iz ZIVE baze, ne iz Reviewa
+make_financije_import.py    event_date se pise u PODNE (bio ponoc)
 ```
 
-⚠ **`importForeignRows` je pao 2/25 prije deploya, i to je bio TEST a ne kod.**
-Racunao je polozaj sekcije (`hdr + 1 + 1 + BLANKS + 1`), a S126 je izmedju
-praznih redaka i sekcije ubacio tri retka kontrole. Popravljeno tako da sekciju
-**trazi po sadrzaju** — 26/26. Pouka: layout je vec na dva mjesta u kodu; treca
-kopija u testu jamci da ce se jednom raziici.
+## Otvoreno
 
-## Alat — kako se pokreće
-
-```powershell
-cd C:\0_Sasa\events-tracker-react\data-prep_tools\Financije
-..\Tools\venv\Scripts\python.exe fill_from_izvod.py "<delta>.xlsx" --zaba "..\..\data-prep_data\Financije\izvodi\ZABA_2026-08.pdf" --od 2026-07-31 --mc "..\..\data-prep_data\Financije\izvodi\MC_2026-08.pdf" --koka "..\..\data-prep_data\Financije\Financije 2026-08-23.xlsx" --presedan prod --zigosi
-```
-
-⚠ **Jedna linija.** `^` je cmd.exe, ne PowerShell; `run.bat` traži `.\` i ima
-`pause` na kraju. Zaobilazi se pozivom venv pythona izravno.
-
-## Otvoreno / sljedeće
-
-- ✅ **Merge na `main` napravljen** 03.09. (`b4aeecb`), sync-back odrađen.
-  Migracije nisu trebale — `043` i `044` su već bile gore.
-- **33 retka `N/A`** — v. DIO 1.
-- **`presedani.py` je prototip za `docs/RULES_ENGINE_SPEC.md` / Fazu 3.** Rječnik
-  danas živi u Python alatu i radi **na izvozu**; spec traži pravila **u bazi uz
-  Areu** i evaluaciju **na uvozu**. Brojke za spec sad postoje: tri ključa, pragovi
-  ≥ 90 % / ≥ 3 (≥ 2 za oštri), `N/A` ne glasa, sirovi tekst nije oznaka.
-  ⚠ Preduvjet za „sumnjiv redak ide u izvještaj o uvozu": `BUG-S114-REPORTDD`
-  (izvještaj nema `DropdownData`).
-- **`uskladi_izvod.py` pukne na Windows konzoli** pri ispisu `⚠` (cp1252,
-  `UnicodeEncodeError` u `report()`). Izvještaj se prekine na pola. Jedan redak
-  (`sys.stdout.reconfigure(encoding='utf-8')`), nije napravljen.
-- **`Visa nema fiksan dan naplate`** (S124) — i dalje otvoreno, 855 redaka ne pada
-  ni u jednu košaru.
-- **Preostali gutači grešaka:** dva upita u `loadSharedEmailsByArea`
-  (`excelDataLoader.ts:611,620`), namjerno ostavljena.
-
-## Zamke potvrđene ovom sesijom (detalji u CLAUDE.md)
-
-- **Skraćen ispis je hipoteza, ne podatak** — prije nego proglasiš da podatka nema,
-  ispiši ga bez rezanja.
-- **Sidro tvrdo zaključava početak delta prozora** (`max(dan nakon sidra, danas−N)`)
-  — sidro na kraj tek usklađenog mjeseca izbacuje te retke iz svakog budućeg sheeta.
-- **Ključ po iznosu mora nositi predznak**; **`N/A` ne glasa protiv klasifikacije**;
-  **sirovi tekst izvoda nije oznaka** nego neobrađen ostatak.
-- **Pravilo po ključnoj riječi mora se usidriti na položaj** kad je riječ dvoznačna
-  (`Naknada za ` na početku = bankina naknada, iza prefiksa = tuđe davanje).
-- **Kontrolni stupac ne izuzima `Delete?`** — split 1:N daje uvjerljivo krivu
-  kontrolnu brojku baš tijekom pregleda.
+- **`Status` u Editu** (v. DIO 1, t. 6) — traži odluku, ne kod.
+- **Nacrt (`Resume`) ima ista vrata kao preset** — `T-S127-7` je **mjerenje**, ne
+  popravak: nacrt ne pamti je li datum upisao čovjek ili pravilo, pa se ne smije
+  popravljati napamet.
+- **Promjena datuma u Editu ne miče `Datum naplate`** (`T-S127-10`) — poznata
+  rupa, svjesno nedirnuta; nosi isti rizik kao `T-S127-9`.
+- **Migracijski ledger ne postoji.** Nigdje nije zapisano koja je migracija gdje
+  puštena, pa se stanje mora *pipkati* (postoji li stupac, postoji li ključ).
+  Isti razred kao S118. Mala tablica `schema_migrations` + provjera zatvorila bi to.
+- **2022. batch (30 redaka)** — nije uvezen i plan ga nigdje ne spominje.
