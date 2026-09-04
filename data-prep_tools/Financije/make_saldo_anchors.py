@@ -222,8 +222,11 @@ def cmd_report(sp: Supa, series: list[dict]) -> None:
     print('mjesec koji treba otvoriti — pa kolona `Stanje` u Activities listi kaže na kojem retku.')
 
 
-def cmd_write(sp: Supa, series: list[dict], only: date | None) -> None:
-    targets = [r for r in series if only is None or r['close'] == only]
+def cmd_write(sp: Supa, series: list[dict], only: date | None,
+              until: date | None = None) -> None:
+    targets = [r for r in series
+               if (only is None or r['close'] == only)
+               and (until is None or r['close'] <= until)]
     if only is not None and not targets:
         print(f'✗ Nijedan izvod se ne zatvara na {only}. Dostupni close datumi:')
         for r in series:
@@ -270,6 +273,17 @@ def main() -> None:
         if check_chain(series):
             sys.exit('✗ Lanac izvoda je prekinut — ne upisujem sidra dok se to ne razriješi.')
         cmd_write(Supa(load_env(ENV_FILE)), series, None)
+    elif '--until' in args:
+        k = args.index('--until')
+        if k + 1 >= len(args):
+            sys.exit('✗ --until traži datum: --until 2025-01-01')
+        # ⚠ `check_chain` i ovdje, isto kao `--load-all`: prekinut lanac znači
+        #   da je jedan izvod nedostupan, pa bi sidra oko rupe bila upisana
+        #   kao da rupe nema — a to je pokrivač, ne provjera.
+        if check_chain(series):
+            sys.exit('✗ Lanac izvoda je prekinut — ne upisujem sidra dok se to ne razriješi.')
+        cmd_write(Supa(load_env(ENV_FILE)), series, None,
+                  until=datetime.fromisoformat(args[k + 1]).date())
     elif '--anchor' in args:
         i = args.index('--anchor')
         if i + 1 >= len(args):

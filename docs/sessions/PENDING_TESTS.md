@@ -27,6 +27,12 @@ Detalji: [S127_tests.md](tests/S127_tests.md)
 | ⭐ **T-S127-8 potvrđen uživo** — Edit, `Racun → Mastercard` | ✅ `Datum naplate → 11/10/2026`, `Status → Planiran` |
 | ⭐ **T-S127-4 potvrđen uživo** — shortcut, `Mastercard → Racun` | ✅ datum se vrati na današnji |
 | **retci koje bi slučajna izmjena `Izvora` raz-potvrdila** | ⚠ **2.300** s popunjenim `Izvod opis`; `Izvrsen` 2.363, `Planiran` 56 |
+| **31 ZABA izvod, `check_chain`** | ✅ **neprekinut** 2024-01-01 → 2026-07-01 |
+| ⭐ **`−200,14` LOKALIZIRAN na mjesece** | ✅ 2025-08 `−46,74` · 2025-10 `−150,00` · 2025-07 `+0,80` · 2026-03 `−2,80` · 2026-04 `−1,40` |
+| 2025-02 `−49,00` / 2025-03 `+49,00` | ✅ poništavaju se ⇒ **datum s krive strane zatvaranja izvoda**, ne redak koji fali |
+| PROD vs TEST po mjesecima | ✅ **`Δpromet` identičan u svakom mjesecu koji izvod pokriva** |
+| **sidra 2024. upisana** | ✅ TEST 12 (1 već postojalo) · PROD 13 |
+| tekući saldo nakon upisa | ✅ `12.772,86` (= `12.784,36` − današnjih `11,50`), sidro i dalje 30.07.2026. |
 | typecheck + build | ✅ |
 
 ### Traži tebe — pogledom u aplikaciji
