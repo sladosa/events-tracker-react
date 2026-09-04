@@ -57,7 +57,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from enrich_from_izvoda import _parse_zaba_all, _zaba_is_tekuci
-from verify_rpc_vs_model import (AREA_ID, ENV_FILE, FILTERS_IZVRSENO, Supa,
+from verify_rpc_vs_model import (AREA_ID, ENV_FILE, FILTERS_IZVRSENO, Supa, target_banner,
                                  eur, load_env)
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -140,7 +140,7 @@ def area_owner(sp: Supa) -> str:
 
 # ---------------------------------------------------------------- naredbe --
 def cmd_saldi(series: list[dict]) -> None:
-    print(f'\nISPISANA BANKOVNA STANJA — {GROUP_VALUE} ({len(series)} izvoda)')
+    print(f'\nISPISANA BANKOVNA STANJA — {GROUP_VALUE} ({len(series)} izvoda)   {target_banner()}')
     print(SEP)
     print(f"{'izvod':<9} {'close':<12} {'POČETNO':>12} {'NOVO':>12} {'promet':>12}")
     print(SEP)
@@ -164,7 +164,7 @@ def cmd_report(sp: Supa, series: list[dict]) -> None:
       Δpromet — razlika MJESEČNOG prometa (app vs banka). Ne ovisi o nakupljenom
                pomaku ⇒ ovo je kolona koja kaže KOJI MJESEC ne štima."""
     anchors = db_anchors(sp)
-    print(f'\nAPP vs BANKA — {GROUP_VALUE}')
+    print(f'\nAPP vs BANKA — {GROUP_VALUE}   {target_banner()}')
     print(f'sidara u bazi: {len(anchors)}'
           + (''.join(f"\n  · {a['confirmed_on']} = {eur(float(a['amount']))}" for a in anchors)
              if anchors else ' (saldo se računa od početka podataka)'))

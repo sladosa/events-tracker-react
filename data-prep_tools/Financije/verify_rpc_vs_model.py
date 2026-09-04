@@ -39,6 +39,7 @@ se pokreće lokalno, nikad iz preglednika.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import urllib.error
@@ -52,9 +53,39 @@ from verify_saldo_model import IZVOR_IZVRSENO, load_review, pick_file
 sys.stdout.reconfigure(encoding='utf-8')
 
 REPO = Path(r"C:\0_Sasa\events-tracker-react")
-ENV_FILE = REPO / '.env.local'
 
-AREA_ID = '98dd91f3-de77-4619-9d08-d1ade604640a'      # Financije_all (TEST)
+# ── CILJNA BAZA (S127) ──────────────────────────────────────────────────────
+# TEST je zadano jer je pogreška ondje bezopasna; PROD se bira IZRIČITO:
+#
+#     ET_TARGET=prod  python <alat>.py ...
+#
+# ⚠ Zašto varijabla okoline, a ne `--prod` u argv: OVE KONSTANTE DIJELI ŠEST
+#   ALATA (anchors, make_saldo_anchors, fix_anchor_notes, fix_rf_duplikati,
+#   fix_rf_ostatak, set_list_columns). Da svaki sam parsira zastavicu, imali
+#   bismo šest načina da se pogodi kriva baza — a alat koji piše u krivu bazu
+#   ne javlja grešku nego USPIJE.
+# ⚠ Nepoznata vrijednost PADA umjesto da tiho padne na TEST: tipfeler
+#   `ET_TARGET=prd` inače bi izgledao kao uspješan rad nad produkcijom.
+_TARGET = os.environ.get('ET_TARGET', 'test').strip().lower()
+if _TARGET not in ('test', 'prod'):
+    sys.exit(f"✗ ET_TARGET='{_TARGET}' — dopušteno je samo 'test' ili 'prod'.")
+
+IS_PROD  = _TARGET == 'prod'
+ENV_FILE = REPO / ('.env.prod.local' if IS_PROD else '.env.local')
+
+AREA_ID = ('de8662e6-54f7-4ded-ab42-a786e7456067' if IS_PROD   # Financije_all (PROD)
+           else '98dd91f3-de77-4619-9d08-d1ade604640a')        # Financije_all (TEST)
+
+
+def target_banner() -> str:
+    """Jedan redak koji kaže NAD ČIME je ispis nastao.
+
+    ⚠ Ispis bez toga je neupotrebljiv čim postoje dvije baze s istim imenima
+      area: PROD i TEST se razlikuju u broju eventa (izmjereno 04.09.2026.:
+      2.419 vs 2.311), pa se ista tablica ondje čita kao „nešto se pokvarilo".
+    """
+    return f"[{'PROD' if IS_PROD else 'TEST'}]  area {AREA_ID[:8]}  ·  {ENV_FILE.name}"
+
 GROUP_SLUG, PLUS_SLUG, MINUS_SLUG = 'racun', 'uplata', 'isplata'
 
 # §2.10 + §2.13: izvršeno = novac se već pomaknuo. Dva uvjeta, ne jedan —
