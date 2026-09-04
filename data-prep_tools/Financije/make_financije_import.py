@@ -355,7 +355,17 @@ def write_xlsx(rows: list[dict], out_path: Path, attr_names: list[str],
         ws.cell(r, 1, row["event_id"])
         ws.cell(r, 2, row["Area"])
         ws.cell(r, 3, row["Category_Path"])
-        c4 = ws.cell(r, 4, row["event_date"])
+        # ⚠ PODNE, ne ponoc (S127). `excelImport.normalizeDateCell` cita Date
+        #   LOKALNIM getterima (`getFullYear/getMonth/getDate`), a exceljs serial
+        #   pretvara u Date CISTIM UTC-om. Celija na ponoc je zato ispravna samo
+        #   dok je uvoznik u pozitivnom offsetu: iz zone UTC-X svih 2.738 redaka
+        #   tiho sklizne DAN UNAZAD. Podne daje 12 h margine u obje zone — isto
+        #   pravilo koje `Datum naplate` vec postuje (`...T12:00`).
+        #   Batchevi 2025./2026. su prosli s ponoci samo zato sto je uvoz bio iz CET-a.
+        c4 = ws.cell(r, 4, dt.datetime.combine(row["event_date"].date()
+                                               if hasattr(row["event_date"], "date")
+                                               else row["event_date"],
+                                               dt.time(12, 0)))
         c4.number_format = "yyyy-mm-dd"
         ws.cell(r, 5, row["session_start"])   # TEKST, v. rupa #1
         ws.cell(r, 6, row["created_at"])
