@@ -20,22 +20,26 @@ Detalji: [S127_tests.md](tests/S127_tests.md)
 | PROD pravilo je ispravno (`Racun → same`) | ✅ `areas.settings.automations` |
 | `2026-10-04` ne odgovara nijednom pravilu | ✅ ⇒ ručni unos iz Edita, dan popravljen a mjesec ostao |
 | zapis `7a84bcd1` nakon Kokinog Edita (07:42) | ✅ `datum_naplate = 2026-09-04`, slaže se s `Izvor = Racun` |
-| `ruleManagedAttrs.test.mjs` | ✅ 13 / 13 |
+| `ruleManagedAttrs.test.mjs` | ✅ 22 / 22 (bila 13 — dodana evaluacija pravila, jezgra koju sad dijele Add i Edit) |
 | test pada kad se kod pokvari (oba smjera) | ✅ 8/13 i 7/13 uz dva namjerna kvara |
+| ⭐ **T-S127-1 potvrđen uživo** (Sašine slike 1 i 2) | ✅ prazno po otvaranju → `04/09/2026 12:00` uz `Izvor = Racun` |
+| slika 3 potvrdila predviđenu nesimetriju Edita | ✅ `Status → Planiran`, `Datum naplate` nepomičan ⇒ popravljeno |
 | typecheck + build | ✅ |
 
 ### Traži tebe — pogledom u aplikaciji
 
 | # | test | status |
 | --- | --- | --- |
-| **T-S127-1** | ⭐ `Datum naplate` prazan dok `Izvor` nije odabran, pa **današnji** | ⬜ |
+| **T-S127-1** | ⭐ `Datum naplate` prazan dok `Izvor` nije odabran, pa **današnji** | ✅ |
 | T-S127-2 | Mastercard i dalje daje 11. sljedećeg mjeseca, i vraća se natrag | ⬜ |
 | T-S127-3 | ručni unos `Datum naplate` se i dalje poštuje | ⬜ |
-| **T-S127-4** | ⭐ nov shortcut ne nosi `Datum naplate` ni `Status` | ⬜ |
+| **T-S127-4** | ⭐ shortcut nosi `Izvor`, a datum se **računa pri svakoj upotrebi** | ⬜ |
 | T-S127-5 | Kokin postojeći preset `Isplata` izliječen bez diranja baze | ⬜ |
 | T-S127-6 | zapis od 04.09. ispravljen na `04.09.` (Sašin ručni ispravak) | ✅ |
 | T-S127-7 | ⚠ **mjerenje:** ima li nacrt (`Resume`) istu bolest | ⬜ |
-| T-S127-8 | ⚠ **mjerenje:** Edit ne evaluira `set_attribute` — `Status` se pomakne, `Datum naplate` ne | ⬜ |
+| **T-S127-8** | ⭐ **Edit sada evaluira `set_attribute`** — promjena `Izvora` miče `Datum naplate` | ⬜ |
+| **T-S127-9** | ⚠ otvaranje retka ne smije ništa promijeniti (855 Visa redaka) | ⬜ |
+| T-S127-10 | promjena **datuma** u Editu i dalje ne miče `Datum naplate` (svjesno) | ⬜ |
 
 ### ⚠ Otvoreno
 

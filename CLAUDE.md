@@ -148,7 +148,17 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **`parentEventLoader.ts`** je jedini shared servis za parent event logiku — nikad duplicirati
 - **Promjena sluga lomi reference.** `depends_on` (S105d), a od Faze 1 i `dashboard.widgets[]`.
   Fixup referenci mora ići uz svaki rename sluga.
-- **`set_attribute` se evaluira SAMO u Add Activity** — ne u Edit ni u Import.
+- **`set_attribute` se evaluira u Add Activity i (od S127) u Edit — ne u Import.**
+  ⚠ **U Editu okidač NIJE stanje forme nego čovjekov potez** nad map atributom.
+  Razlika nije kozmetička: računanje na *otvaranju* retka tiho bi prepisalo
+  stvarne datume s izvoda — Visa **nema fiksan dan naplate** (izmjereno na 855
+  redaka: 5. 383×, 4. 231×, 6. 109×, 7. 82×, 11. 49×, 3. 11×), pa bi `next:3`
+  proglasio krivom **većinu** njih, i to svakome tko redak samo otvori i spremi.
+  Add smije računati i na učitavanju **samo zato** što je ondje target zajamčeno
+  prazan (v. „SHORTCUT NE SMIJE NOSITI IZVEDENU VRIJEDNOST").
+  ⚠ `null` iz `computeSetAttributeValue` znači **„ne diraj target"**, nikad
+  „isprazni ga" — prazan `Izvor` ne smije obrisati datum koji je došao s izvoda.
+  ⚠ Još **ne** prati promjenu *datuma* u Editu (delta-shift) — v. Backlog.
 - **⚠ SHORTCUT NE SMIJE NOSITI IZVEDENU VRIJEDNOST** (S127). `activity_presets.
   default_attributes` sprema doslovne vrijednosti; za izvedeni atribut to je
   zamrznut **rezultat jednog trenutka**, i gori je od praznog polja — jer poslije

@@ -29,7 +29,7 @@ const { code } = await transform(src, { loader: 'ts', format: 'esm' });
 const dir = mkdtempSync(join(tmpdir(), 'rmattr-'));
 const out = join(dir, 'attributeRules.mjs');
 writeFileSync(out, code);
-const { collectRuleManagedIds } = await import(pathToFileURL(out).href);
+const { collectRuleManagedIds, computeSetAttributeValue, findDefBySlug } = await import(pathToFileURL(out).href);
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -122,6 +122,34 @@ check('atribut koji je i target i ima default_map broji se kao `computed`, ne dv
       AUTOMATIONS, getDefaultMap);
     return both.computed.has('id-datum') && !both.mapped.has('id-datum') && both.all.size === 1;
   })());
+
+// ---------------------------------------------------------------------------
+// 4. Jezgra koju od S127 koriste DVA toka (Add efekt + Edit change handler).
+//    Dok je citao samo Add, greska u njoj bila je jedna greska; sada su dvije.
+// ---------------------------------------------------------------------------
+console.log('');
+console.log('4. Evaluacija pravila — ista za Add i Edit');
+const RULE = AUTOMATIONS.attribute_rules[0];
+const BASE = new Date(2026, 8, 4, 10, 7); // 04.09.2026. 10:07, lokalno
+
+const ev = v => computeSetAttributeValue(RULE, v, BASE);
+check('Racun ⇒ isti dan', ev('Racun') === '2026-09-04T12:00', String(ev('Racun')));
+check('Cash ⇒ isti dan', ev('Cash') === '2026-09-04T12:00', String(ev('Cash')));
+check('Mastercard ⇒ 11. sljedeceg mjeseca', ev('Mastercard') === '2026-10-11T12:00', String(ev('Mastercard')));
+check('Visa ⇒ 3. sljedeceg mjeseca', ev('Visa') === '2026-10-03T12:00', String(ev('Visa')));
+// ⚠ `null` znaci „ne diraj target", NE „isprazni ga": prazniti bi brisalo datum
+//    koji je mozda dosao s izvoda (Visa nema fiksan dan naplate — 855 redaka).
+check('prazan Izvor ⇒ null (ne diraj target)', ev('') === null && ev(null) === null);
+check('nepoznata vrijednost ⇒ null', ev('PayPal') === null);
+// Prijelaz godine — `next:11` iz prosinca mora dati SIJECANJ iduce godine.
+check('prosinac + next:11 ⇒ sijecanj iduce godine',
+  computeSetAttributeValue(RULE, 'Mastercard', new Date(2026, 11, 28)) === '2027-01-11T12:00',
+  String(computeSetAttributeValue(RULE, 'Mastercard', new Date(2026, 11, 28))));
+// Edit handler bira pravilo tako da usporedi promijenjeni atribut s `map_slug`.
+check('map_slug pogadja `izvorplacanja`, ne `racun`',
+  findDefBySlug(DEFS, RULE.map_slug).id === 'id-izvor');
+check('target_slug pogadja `datum_naplate`',
+  findDefBySlug(DEFS, RULE.target_slug).id === 'id-datum');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

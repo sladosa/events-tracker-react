@@ -71,11 +71,19 @@ Popravak ne smije početi gaziti ono što je čovjek upisao.
 5. Odaberi `Izvor` = **`Racun`**.
 
 **Očekivano:**
-- korak 4: vrate se `Racun`, `Tip`, `Podtip` — a `Datum naplate` je **prazan**
-  i `Status` je **prazan**.
-- korak 5: `Datum naplate` = **danas**, `Status` = `Izvrsen`.
+- korak 4: vrate se `Racun`, `Izvor = Mastercard`, `Tip`, `Podtip` — i pravilo
+  **okine na učitavanju**: `Datum naplate` = **11. sljedećeg mjeseca računat od
+  DANAS**, `Status` = `Planiran`.
+- korak 5: `Datum naplate` skoči na **današnji dan**, `Status` na `Izvrsen`.
 
-**Pad:** shortcut vrati listopadski datum ili `Planiran`.
+**Pad:** `Datum naplate` pokazuje 11. u mjesecu koji slijedi **danu kad je
+shortcut spremljen**, a ne današnjem danu. To znači da je datum došao iz snimke
+umjesto iz pravila — dakle stara greška.
+
+⚠ Ovo je test **Sašine točke A**: shortcut smije nositi `Izvor` (to je odluka
+čovjeka), a `Datum naplate` se iz njega **izračuna pri svakoj upotrebi**. Razlika
+se najjasnije vidi ako shortcut spremiš krajem mjeseca a upotrijebiš ga idući —
+tada snimka i pravilo daju **različit** mjesec.
 
 ⚠ Poslije obriši `TEST-S127` (⚡ Shortcuts → ✕), da ne ostane u popisu.
 
@@ -136,18 +144,60 @@ upisao rukom, a nacrt tu razliku ne pamti. Zabilježi rezultat; odluka o popravk
 
 ---
 
-## T-S127-8 Edit ne evaluira pravila — koliko to smeta?
+## T-S127-8 ⭐ Edit sada evaluira `set_attribute` (slika 3)
 
-`set_attribute` se evaluira SAMO u Add Activity (CLAUDE.md). Ovo test **potvrđuje
-zapisano ponašanje**, ne traži kvar — pitanje je isplati li se mijenjati.
+Do S127 je Edit izvodio samo `depends_on.default_map`, a `set_attribute` nikako.
+Nesimetrija je bila zamka: `Status` se poslušno pomakne, `Datum naplate` šuti —
+pa izgleda kao da su se pomaknula oba. Tako je 04.09.2026. nastao redak s
+`Izvor = Racun` i datumom naplate u listopadu.
 
-1. Otvori bilo koji postojeći redak s `Izvor = Racun` → **Edit**.
+1. Otvori postojeći redak s `Izvor = Racun` → **Edit**.
 2. Promijeni `Izvor` na **`Mastercard`**.
-3. Pogledaj `Datum naplate` i `Status`.
+3. Promijeni `Izvor` natrag na **`Racun`**.
+4. Promijeni `Izvor` na prazno (ako se ponudi) ili promijeni **`Racun`** (račun),
+   čime se `Izvor` očisti.
 
-**Očekivano (današnje ponašanje):** `Datum naplate` ostaje **nepromijenjen**;
-`Status` se **promijeni** na `Planiran` (to radi `default_map`, koji u Editu
-radi, za razliku od `set_attribute`).
+**Očekivano:**
+- korak 2: `Datum naplate` = **11. sljedećeg mjeseca**, `Status` = `Planiran`.
+  (Prije S127: datum se **nije mijenjao** — to je slika 3.)
+- korak 3: `Datum naplate` = **datum tog retka**, `Status` = `Izvrsen`.
+- korak 4: `Datum naplate` **ostaje** na zadnjoj vrijednosti — ne prazni se.
 
-⚠ Baš je ta nesimetrija zamka: jedno polje se poslušno pomakne, drugo šuti — pa
-izgleda kao da su se pomaknula oba. Tako je 04.09. nastao `04.10.`
+**Pad:** datum se ne miče (popravak nije stigao), ili se u koraku 4 **isprazni**.
+
+---
+
+## T-S127-9 ⚠ Otvaranje retka ne smije NIŠTA promijeniti
+
+Ovo je zaštita, ne feature — i važnija je od T-S127-8.
+
+1. Nađi kartični redak čiji `Datum naplate` **ne slijedi pravilo** — npr. bilo
+   koji Visa redak (izmjereno: Visa se naplaćuje 5., 4., 6., 7., 11. i 3. u
+   mjesecu, dakle `next:3` vrijedi za manjinu).
+2. Zapamti mu `Datum naplate`.
+3. Otvori ga u **Editu**, **ne diraj ništa**, i spremi (`Save → View`).
+4. Provjeri `Datum naplate`.
+
+**Očekivano:** **nepromijenjen.**
+
+**Pad:** datum se pomaknuo na `next:3`. To bi značilo da se pravilo evaluira pri
+**otvaranju** umjesto pri promjeni — i tihо bi prepisalo stvarne datume s izvoda
+na 855 Visa redaka. Ovo je razlog zašto okidač mora biti čovjekov potez.
+
+---
+
+## T-S127-10 Promjena DATUMA u Editu i dalje ne miče `Datum naplate`
+
+Poznata rupa (CLAUDE.md, „delta-shift"), **nije** dirana u S127. Test postoji da
+se zna da je svjesna, a ne previd.
+
+1. Edit bilo kojeg retka s `Izvor = Racun` (`Datum naplate` = datum retka).
+2. Promijeni **datum aktivnosti** u zaglavlju na neki drugi dan.
+3. Pogledaj `Datum naplate`.
+
+**Očekivano (današnje ponašanje):** `Datum naplate` **ostaje star**, iako bi po
+pravilu `Racun → same` trebao pratiti novi datum.
+
+⚠ Ako ovo počne smetati u radu, popravak je mali (`handleDateTimeChange` zove
+istu derivaciju), ali nosi isti rizik kao T-S127-9 — pa mora ići uz odluku, ne
+usput.

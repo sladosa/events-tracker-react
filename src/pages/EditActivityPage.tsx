@@ -23,6 +23,9 @@ import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttrib
 import { loadParentAttrs, buildParentChainIds, findParentEventByChain, upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
 import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
 import { useFilter } from '@/context/FilterContext';
+import { computeSetAttributeValue, findDefBySlug } from '@/lib/attributeRules';
+import { withRetryQuery } from '@/lib/retry';
+import type { AttributeRuleConfig, AreaSettings } from '@/types/database';
 
 import { ActivityHeader } from '@/components/activity/ActivityHeader';
 import { AttributeChainForm } from '@/components/activity/AttributeChainForm';
@@ -179,6 +182,8 @@ export function EditActivityPage() {
   // ============================================
   
   const [categoryId, setCategoryId] = useState<UUID | null>(null);
+  /** `set_attribute` pravila Aree. Edit ih do S127 uopce nije citao — v. efekt nize. */
+  const [attributeRules, setAttributeRules] = useState<AttributeRuleConfig[]>([]);
   const [categoryPath, setCategoryPath] = useState<string[]>([]);
   const [sessionDateTime, setSessionDateTime] = useState<Date>(new Date());
   const [originalDateTime, setOriginalDateTime] = useState<Date>(new Date());
@@ -565,7 +570,8 @@ export function EditActivityPage() {
   // Form Handlers
   // ============================================
   
-  const handleAttributeChange = useCallback((definitionId: string, value: string | number | boolean | null) => {
+  /** Upisi jednu vrijednost (flat mapa + leaf/parent rutiranje). Bez pravila. */
+  const applyAttributeValue = useCallback((definitionId: string, value: string | number | boolean | null) => {
     // Uvijek update flat attributeValues map (UI prikaz)
     setAttributeValues(prev => {
       const next = new Map(prev);
@@ -615,7 +621,84 @@ export function EditActivityPage() {
       });
     }
   }, [selectedEventIndex, categoryId, attributesByCategory]);
+
+  const allAttrDefs = useMemo(
+    () => Array.from(attributesByCategory.values()).flat(),
+    [attributesByCategory],
+  );
+
+  /** Korisnik je promijenio polje. Uz upis ide i ono sto se iz njega IZVODI.
+   *
+   *  Do S127 je Edit izvodio samo `depends_on.default_map` (to radi
+   *  `AttributeChainForm`), a `set_attribute` nije nikako. Nesimetrija je bila
+   *  zamka: promjena `Izvora` poslusno pomakne `Status`, a `Datum naplate`
+   *  suti — pa izgleda kao da su se pomaknula oba. Tako je 04.09.2026. nastao
+   *  redak s `Izvor = Racun` i datumom naplate u listopadu.
+   *
+   *  ⚠ Okidac je iskljucivo COVJEKOV POTEZ nad map atributom. Nikakvo
+   *  racunanje na loadu — v. komentar uz ucitavanje pravila. */
+  const handleAttributeChange = useCallback((definitionId: string, value: string | number | boolean | null) => {
+    applyAttributeValue(definitionId, value);
+    if (attributeRules.length === 0) return;
+
+    const changed = allAttrDefs.find(d => d.id === definitionId);
+    if (!changed) return;
+
+    for (const rule of attributeRules) {
+      if (rule.action !== 'set_attribute') continue;
+      if (findDefBySlug(allAttrDefs, rule.map_slug)?.id !== changed.id) continue;
+      const target = findDefBySlug(allAttrDefs, rule.target_slug);
+      if (!target) continue;
+      const computed = computeSetAttributeValue(
+        rule,
+        value == null || value === '' ? null : String(value),
+        sessionDateTime,
+      );
+      // `null` = ta vrijednost nema pravila (npr. `Izvor` ocisen). Ne diraj
+      // target: prazniti ga znaci brisati podatak koji je mozda s izvoda.
+      if (computed !== null) applyAttributeValue(target.id, computed);
+    }
+  }, [applyAttributeValue, attributeRules, allAttrDefs, sessionDateTime]);
   
+  // ============================================
+  // `set_attribute` pravila Aree (S127)
+  // ============================================
+  // ⚠ Pravila se ovdje evaluiraju SAMO kad korisnik promijeni map atribut
+  //   (`Izvor`), NIKAD pri otvaranju retka. Razlika nije kozmeticka: Visa nema
+  //   fiksan dan naplate (izmjereno na 855 redaka — 5. 383x, 4. 231x, 6. 109x,
+  //   7. 82x), pa bi racunanje na loadu tiho prepisalo stvarne datume s izvoda
+  //   svakome tko redak samo otvori i spremi. Zato okidac mora biti covjekov
+  //   potez, ne stanje forme.
+  useEffect(() => {
+    if (!categoryId) { setAttributeRules([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const catMap = await getCategoryMap();
+        let cur: UUID | null = categoryId;
+        let areaId: UUID | null = null;
+        for (let i = 0; cur && i < 15; i++) {
+          const cat = catMap.get(cur);
+          if (!cat) break;
+          if (cat.area_id) areaId = cat.area_id;
+          cur = cat.parent_category_id;
+        }
+        if (!areaId) return;
+        const { data } = await withRetryQuery(() => supabase
+          .from('areas').select('settings').eq('id', areaId).single());
+        if (cancelled) return;
+        const rules = (data?.settings as AreaSettings | null)?.automations?.attribute_rules;
+        setAttributeRules(rules ?? []);
+      } catch (e) {
+        // Neuspjelo citanje NIJE „nema pravila" (S121) — ali ovdje je posljedica
+        // samo izostanak automatike, pa se ne gasi ekran: javi u log i pusti
+        // korisnika da datum upise rukom, tocno kao prije S127.
+        if (!cancelled) console.error('[set_attribute] rules unavailable:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [categoryId]);
+
   const handleAttributeTouch = useCallback((definitionId: string) => {
     setAttributeValues(prev => {
       const existing = prev.get(definitionId);
