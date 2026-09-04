@@ -1,7 +1,50 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S127 (2026-09-04) — BUG-S127-PRESETFREEZE: shortcut je zamrzavao izvedene vrijednosti i time gasio `set_attribute` pravilo.
+**Zadnji update:** S128 (2026-09-04) — uvoz 2023.+2024. na PROD, provjera koja ne prolazi kroz sidro, dva dokazana popravka (⚠ neprimijenjena).
+
+---
+
+## S128 — uvoz povijesti, provjera bez sidra, dokazani popravci (2026-09-04)
+
+Detalji: [S128_tests.md](tests/S128_tests.md)
+
+⚠ **Sesija je stala na jednom koraku.** `fix_parking_i_multisport.py --apply`
+nije pokrenut (blokirao ga auto-mode klasifikator). Dry run je prošao čisto.
+**T-S128-1 je prvi korak sljedeće sesije.**
+
+### Provjereno strojno (ne traži nikoga)
+
+| kontrola | rezultat |
+| --- | --- |
+| ⭐ **uvoz 2023.+2024. sjeo** | ✅ 2023: **1.133** (575+558) · 2024: **1.605** (800+805) = 2.738, nijedan preskočen |
+| vlasništvo redaka | ✅ **5.146 od 5.157** pod Kokinim računom (11 Sašinih je zateklo) |
+| prethodnih redaka u tim godinama | ✅ **0** ⇒ nema duplikata |
+| ⚠ **`--report` NE MOŽE provjeriti 2024.** | ⚠ sva sidra stoje na close datumima ⇒ `SIDRO (nije provjera)` na svih 12 mjeseci |
+| ⭐ **predviđanje S127 potvrđeno** (`promet_check.py`) | ✅ `2024-03 +10,00` · `2024-07 −17,28` · `2024-10 −236,04`, **nule drugdje**, u cent |
+| 2024. ukupno | ✅ **9/12 mjeseci u cent** |
+| cijeli raspon 2024-01 → 2026-06 | ✅ **20 u cent, 10 odstupanja** |
+| ⭐ **2023. razlika objašnjena** | ✅ `15.752,07` = 11 nedostajućih skupnih MC naplata; njena prva je `926,52 @ 11.12.2023.` |
+| 2023. nije popravljiva radom | ⚠ nema ZABA izvoda prije `2023-12` ⇒ nedostaje **izvor**, ne trud |
+| ⭐ **svih 10 spornih mjeseci svedeno na retke** | ✅ 1–3 retka po mjesecu, **svaki zbroj daje točno Δ** |
+| parking 1:N dokazan izvodom | ✅ banka `2×0,70` na 05.03., 21.03., 11.04.; baza `2×0,70 + 1,40` ⇒ višak `4,20` |
+| multisport 49,00 dokazan izvodom | ✅ banka ima `IziPay Anja 49,00` **03.02.** i **02.03.**; naš ožujski datiran `24.02.` |
+| kolizija `session_start` na 02.03.2025. | ✅ **nema ijednog eventa** tog dana |
+| dry run popravka | ✅ sve invarijante stoje, 4 eventa / 36 atributa u backupu |
+| pregledni workbook | ✅ 30 izvoda, 10 spornih, 27 redaka u listu `Sporno` |
+
+### Traži tebe
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S128-1** | ⭐ **primjena popravaka** (`--apply`) — prvi korak sesije | ⬜ |
+| **T-S128-2** | ⭐ Δ pada na `0,00` u 2025-02, 2025-03, 2026-03, 2026-04 | ⬜ |
+| T-S128-3 | parking `1,40` nestao iz **liste**, ne samo iz brojke | ⬜ |
+| T-S128-4 | pomaknuti redak nosi i `Datum naplate` (02.03.2025.) | ⬜ |
+| T-S128-5 | pregledni workbook se otvara bez „repair" | ⬜ |
+| **T-S128-6** | ⚠ **T-S127-9 prije merge-a na `main`** — jedina brana | ⬜ |
+
+**Otvoreno:** T-S128-1, T-S128-2, T-S128-3, T-S128-4, T-S128-5, T-S128-6
 
 ---
 

@@ -1195,3 +1195,53 @@ brojka koju čovjek gleda prije Applyja.
   ranije. **Prvo ispravak datuma, pa uvoz** (razred S115).
 - **Sidro `12.784,36 @ 26.08.` čeka** dok se `N/A` ne razvrstaju: delta prozor
   kreće `max(dan nakon sidra, danas − N)`, pa bi sidro zaključalo kolovoz.
+
+---
+
+## S128 (2026-09-04) — uvoz povijesti, provjera bez sidra
+
+**Uvezeno na PROD:** 2023. (1.133) + 2024. (1.605) = **2.738 redaka**, ručno
+kroz app pod Kokinim računom. Preview je na svakom fileu pokazao `0 Modify`, i
+brojke u bazi poslije odgovaraju zbrojevima filea u komad. Prethodnih redaka u
+tim godinama nije bilo ⇒ nula duplikata.
+
+**⚠ Nov alat, i razlog zašto:** `promet_check.py`. `make_saldo_anchors.py
+--report` mjeri saldo, a saldo prolazi kroz sidro — sidro NA close datumu daje
+Δ = 0 **po konstrukciji**. S127 je sva 2024. sidra upisao **prije** uvoza, pa je
+`--report` nakon uvoza zašutio na svih 12 mjeseci. `promet_check.py` mjeri
+promet u prozoru `(prev_close, close]` preko `rpc_area_group_agg` s
+`p_from`/`p_as_of`; ta RPC za sidra ne zna.
+
+Rezultat: predviđanje S127 potvrđeno **u cent** (`2024-03 +10,00`,
+`2024-07 −17,28`, `2024-10 −236,04`, nule drugdje). Cijeli raspon: **20 mjeseci
+u cent, 10 odstupanja.**
+
+**2023. razlika `15.752,07` — nije greška pipelinea.** Kokin model tereti račun
+svakom kartičnom stavkom, naš jednom skupnom naplatom s izvoda. Prvu skupnu MC
+naplatu ona ima tek `11.12.2023.` (926,52); za siječanj–studeni tog retka nema
+ni kod nje ni na izvodu (prvi ZABA izvod je `2023-12`). **Nedostaje izvor, ne
+trud.**
+
+**Svih 10 spornih mjeseci svedeno na 1–3 retka**, sparivanjem baze i izvoda po
+`(iznos, datum ±3)`; svaki zbroj daje **točno Δ** tog mjeseca. Nov alat
+`pregled_stanja.py` to ispisuje kao workbook (`Pregled` / `Sporno` / `2023`).
+
+⚠ **Kokina Excelica se ne označava.** Ideja je bila oznake + autofilter u
+`Financije 2026-08-16.xlsx`; mjerenje je pokazalo da ondje **nema što označiti**
+(njen lanac zatvara), a polovica spornog materijala — skupne naplate, razdvojeni
+parking — u njenom fileu **uopće ne postoji**.
+
+**Dva popravka dokazana izvodom, ⚠ NEPRIMIJENJENA**
+(`fix_parking_i_multisport.py`, dry run čist, `--apply` blokiran):
+- parking 1:N na `05.03.`, `21.03.`, `11.04.2026.` — banka `2×0,70`, baza
+  `2×0,70 + 1,40` ⇒ višak `4,20`
+- `IziPay Anja 49,00` datiran `24.02.2025.` umjesto `02.03.2025.` — par
+  `−49 / +49` koji se poništava
+
+### Ostalo za idući put
+
+- **Tri retka** nakon popravka: `2025-10 −150,00`, `2025-08 −46,74`,
+  `2025-07 +0,80`. Alat `uskladi_izvod.py`, redom od 2025-10.
+- Tri odstupanja iz 2024. su **zapečaćena sidrima** ⇒ ne diraju saldo.
+- **Sidra za 2025./2026. tek kad razlika padne na nulu** — sidro je pečat, ne
+  alat za usklađivanje.

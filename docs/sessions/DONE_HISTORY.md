@@ -3744,3 +3744,104 @@ Protiv 12 izvoda: **9 od 12 mjeseci zatvara u cent.** Odstupaju `2024-03 +10,00`
 `2024-07 −17,28`, `2024-10 −236,04` (zbroj `−243,32`). To je **predviđanje** —
 nakon uvoza izvještaj mora pokazati točno te tri brojke i nule drugdje; bilo što
 drugo znači da uvoz nije prošao kako treba.
+
+---
+
+## S128 — povijest je u bazi, a provjera je morala zaobići sidro (2026-09-04)
+
+Saša se prijavio kao Koka i uvezao četiri filea koje je S127 pripremio. Sesija
+je onda otkrila da alat kojim se to trebalo provjeriti **više ne može ništa
+reći**, i završila s dijagnozom svih spornih mjeseci — svedenom na pojedinačne
+retke.
+
+### Uvoz — 2.738 redaka, u komad
+
+`800 / 805 / 575 / 558`, svaki file `0 Modify`. Izmjereno u bazi poslije:
+**2023: 1.133**, **2024: 1.605** — točno zbrojevi filea. U tim godinama prije
+uvoza nije bilo **nijednog** retka, pa duplikata nema. Od 5.157 eventa u Arei
+**5.146** je pod Kokinim računom.
+
+### ⚠ `--report` je zašutio točno kad je trebao progovoriti
+
+Handoff je tražio da nakon uvoza `make_saldo_anchors.py --report` pokaže
+`2024-03 +10,00`, `2024-07 −17,28`, `2024-10 −236,04`. Pokazao je **`0.00` i
+`SIDRO (nije provjera)` na svih 12 mjeseci 2024.**
+
+Uzrok je zamka 2 iz zaglavlja **tog istog alata**: `036` bira najnovije sidro
+`confirmed_on <= p_as_of`, pa sidro NA close datumu daje `balance == amount` i
+Δ = 0 po konstrukciji. S127 je sva 2024. sidra upisao **prije** uvoza — dakle
+pravilo „prvo provjera, sidra poslije" prekršeno je od strane sesije koja ga je
+citirala.
+
+Lijek nije bio brisati sidra nego mjeriti nešto što kroz njih ne prolazi:
+**`promet_check.py`** računa promet u prozoru `(prev_close, close]` preko
+`rpc_area_group_agg` s `p_from`/`p_as_of`. Ta RPC za sidra ne zna.
+
+Rezultat: **`+10,00 / −17,28 / −236,04`, nule drugdje — u cent kako je S127
+predvidio.** Na cijelom rasponu 2024-01 → 2026-06: **20 mjeseci u cent, 10
+odstupanja.**
+
+### 2023. — Kokin model je ispravan, naš samo drukčije broji
+
+Sašino pitanje bilo je pravo: *„Koka je imala formulu koja je zatvarala točno
+stanje, kako to da imamo problema?"*
+
+Izmjereno: njen model **tereti račun svakom kartičnom stavkom**, naš **jednom
+skupnom naplatom** s izvoda. Oba daju isti saldo — ako obje strane imaju svoje
+retke. Prvu skupnu MC naplatu ona ima tek `11.12.2023.` (926,52); za siječanj–
+studeni tog retka nema **nigdje**, jer ZABA izvoda prije `2023-12` nemamo.
+Njenih 528 kartičnih troškova 2023. (`17.264,41`) u našem modelu su potovi.
+
+Razlika: **`15.752,07`**, protiv ishodišnog sidra `1.845,45 @ 2022-12-31` i
+`844,83 @ 2024-01-01`. **Nije popravljiva radom — nedostaje izvor.** I ne curi
+dalje: 2024. iznad tog sidra zatvara 9/12 u cent.
+
+### Svih 10 spornih mjeseci — svedeno na retke
+
+Sparivanje baze i izvoda po `(iznos, datum ±3)` dalo je **1–3 retka po
+mjesecu, i svaki zbroj daje točno Δ**:
+
+| mjesec | Δ | nalaz |
+| --- | ---: | --- |
+| 2024-03 | +10,00 | banka `−30,00`, baza `−20,00 I životno` |
+| 2024-07 | −17,28 | `−3,17` + `−14,11`, banka ih nema |
+| 2024-10 | −236,04 | `Allianz Lacetti`, banka ga 04.10. nema |
+| 2025-02 / -03 | −49 / +49 | jedan redak s krive strane zatvaranja |
+| 2025-07 | +0,80 | banka ima `−0,80` @ 07.07., baza nema |
+| 2025-08 | −46,74 | `−45,94` + `−0,80` viška |
+| 2025-10 | −150,00 | redak `12.10.` bez opisa, banka ga nema |
+| 2026-03 / -04 | −2,80 / −1,40 | parking 1:N |
+
+### Dva popravka dokazana izvodom (⚠ NEPRIMIJENJENA)
+
+**Parking 1:N** — `ZABA_2026-03/-04` pokazuju **2×0,70** na 05.03., 21.03. i
+11.04.; baza ima `2×0,70` **i** Kokin `1,40`. Višak `4,20` = `2,80 + 1,40`, u
+cent. Briše se **njezin** redak: bankini su kostur.
+
+**Multisport 49,00** — banka ima `IziPay Anja 49,00` mjesečno, `03.02.` i
+`02.03.2025.` Baza ima oba, ali je ožujski datiran `24.02.` ⇒ pada u veljački
+prozor. Otud par `−49 / +49` koji se poništava. Mijenja se **datum**, ne dodaje
+se i ne briše ništa. Provjereno da na `02.03.2025.` nema nijednog eventa, dakle
+ni kolizije `session_start`a.
+
+`fix_parking_i_multisport.py` prije upisa **ponovo izvede invarijantu** iz PDF-a
+i iz žive baze i stane ako ne stoji — ID nije dokaz. Dry run prošao čisto;
+**`--apply` je blokirao auto-mode klasifikator**, pa je to prvi korak S129.
+
+### Pregledni workbook — Sašina ideja, ali ne na njenoj Excelici
+
+Prijedlog je bio označiti sidra i sporno u `Financije 2026-08-16.xlsx`, s
+autofilterom. Mjerenje je pokazalo zašto to ne radi: **u njenom fileu nema što
+označiti** — zatvara. Polovica spornog materijala (skupne naplate, razdvojeni
+parking) ondje **uopće ne postoji**, pa bi oznake sjele na ispravne retke, a
+gdje redak fali ne bi bilo ničega.
+
+`pregled_stanja.py` zato generira svoj file: **Pregled** (30 izvoda, sidra,
+status), **Sporno** (redak po redak, banka vs baza, autofilter, 27 redaka) i
+**2023** (objašnjenje s brojkama). Njena datoteka ostaje netaknuta.
+
+### Deploy
+
+Na `main` nije pushano. Današnji commiti ne diraju aplikaciju; ono što čeka je
+**S127 kod** (4 app filea), a jedina brana je **T-S127-9** — otvaranje retka u
+Editu ne smije ništa promijeniti (855 Visa redaka).
