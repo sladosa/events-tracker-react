@@ -38,6 +38,9 @@ Detalji: [S127_tests.md](tests/S127_tests.md)
 | njen MC model je ISPRAVAN | ✅ jedina naplata koju ima (`926,52` @ 11.12.2023.) je **točno studeni** (`926,52`), na 11. — dakle mehanizam je znala, samo nije upisivala |
 | MC izvodi prije 2024-01 | ❌ **ne postoje** ⇒ 11 naplata se ne može rekonstruirati |
 | datum ishodišnog sidra | ⚠ mora biti **2022-12-31**, ne 01.01.2023.: na 01.01. postoji stvarna RF transakcija `79,63` koju bi „strogo nakon" inače izbacilo |
+| **ishodišna sidra UPISANA** (TEST + PROD) | ✅ `2022-12-31`: ZABA `1.845,45`, RF `12.712,28`; `note` izričito „NIJE s izvoda" |
+| PROD sidra ukupno | ✅ **17** (15 ZABA + 2 RF); tekući saldo **netaknut** (`12.772,86` / `1.920,34`, ► i dalje 30.07. / 11.08.2026.) |
+| **fileovi za uvoz spremni** | ✅ `import_2023H1/H2`, `import_2024H1/H2` — 2.738 redaka, provjereni protiv pet tihih rupa |
 | typecheck + build | ✅ |
 
 ### Traži tebe — pogledom u aplikaciji
