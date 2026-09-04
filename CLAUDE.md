@@ -657,6 +657,17 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `confirmed_on <= p_as_of` i zbraja promjene strogo nakon njega ⇒ `balance == amount`, Δ = 0
   po konstrukciji. **Prvo provjera, sidra poslije.** `make_saldo_anchors.py --report` to
   detektira i označi `SIDRO (nije provjera)` umjesto lažne kvačice.
+- **⚠ ZASIDREN MJESEC SE PROVJERAVA PROMETOM, NE SALDOM** (S128). Gornja zamka nije
+  teorijska: S127 je sva 2024. sidra upisao **prije** uvoza 2024., pa je `--report`
+  nakon uvoza za svih 12 mjeseci ispisao `0.00 / SIDRO (nije provjera)` — dakle
+  predviđanje se nije imalo čime provjeriti. Instrument je `promet_check.py`: mjeri
+  promet u prozoru `(prev_close, close]` preko `rpc_area_group_agg` s
+  `p_from`/`p_as_of`, a ta RPC za sidra **ne zna**. Izmjereno na PROD-u 04.09.2026.:
+  2024. daje `+10,00 / −17,28 / −236,04` i nule drugdje — **u cent kako je S127
+  predvidio**, dok je `--report` na istim podacima šutio.
+  ⚠ Pouka šira od alata: **sidro je pečat na usklađen mjesec, ne alat za usklađivanje.**
+  Upisano prije provjere, ono provjeru ne pokvari nego je **učini nemogućom** — i to
+  bez ijedne greške, jer izlaz izgleda uredno.
 - **⚠ Pomoćni broj uz saldo mora nositi ISTE uvjete kao saldo** (S112). `split` („planirano")
   je koristio samo `Status = Planiran`, bez `Izvor` uvjeta — pa je brojio kartične stavke **i**
   planiranu skupnu naplatu koja ih plaća: `−2.521,38 (13)` umjesto `−2.089,86 (2)`.
@@ -976,6 +987,10 @@ data-prep_tools/Financije/presedani.py
                                    Tri kljuca: primatelj+poziv > primatelj > iznos
                                    (s predznakom). Ne pogadja — sto nije
                                    jednoglasno ostaje `N/A`.
+data-prep_tools/Financije/promet_check.py
+                                   Promet po izvodu, app vs banka. Ne prolazi kroz
+                                   sidro ⇒ jedini instrument za ZASIDREN mjesec,
+                                   gdje `--report` po konstrukciji daje nulu.
 data-prep_tools/Financije/uvezi_transu.py
                                    Uvozi retke s izvoda kojih baza nema. Rječnik
                                    `Izvod opis → Tip/Podtip` iz brojane povijesti;
