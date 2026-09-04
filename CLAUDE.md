@@ -149,6 +149,25 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **Promjena sluga lomi reference.** `depends_on` (S105d), a od Faze 1 i `dashboard.widgets[]`.
   Fixup referenci mora ići uz svaki rename sluga.
 - **`set_attribute` se evaluira SAMO u Add Activity** — ne u Edit ni u Import.
+- **⚠ SHORTCUT NE SMIJE NOSITI IZVEDENU VRIJEDNOST** (S127). `activity_presets.
+  default_attributes` sprema doslovne vrijednosti; za izvedeni atribut to je
+  zamrznut **rezultat jednog trenutka**, i gori je od praznog polja — jer poslije
+  **gasi pravilo koje bi ga ispravilo**. `set_attribute` čuva ručni unos tako da
+  preskoči target koji već ima vrijednost koju samo nije upisalo (`userOwned`), a
+  preset izgleda točno tako. Izmjereno na PROD-u 04.09.2026.: preset `Isplata`
+  (spremljen 02.09. uz `Izvor = Mastercard`) nosio je `datum_naplate =
+  2026-10-11`, pa je `Izvor = Racun` — koji traži isti dan — ostao **bez ijednog
+  učinka i bez poruke**. Zatvoreno na oba kraja (`collectRuleManagedIds`):
+  izvedeni atributi ne ulaze u snimku, i ne primjenjuju se iz starih snimki —
+  pa popravak liječi i presete koji već postoje, bez pisanja po bazi.
+  ⚠ Dvije vrste se **ne liječe isto**: target `set_attribute` pravila ne smije
+  zasjeniti ni preset ni `default_value` (pravilo je jedini izvor), dok kod
+  `depends_on.default_map` atributa `default_value` ostaje legitiman dok roditelj
+  nema vrijednost.
+  ⚠ **Preset se bira SAM** čim se poklopi `category_id`
+  (`ProgressiveCategorySelector.tsx:411-416`) — nitko ga ne mora kliknuti, i
+  `usage_count` ostaje **0**, pa u podacima izgleda kao da se nikad nije koristio.
+  Zato je jedna slučajna snimka tiho upravljala **svakim** unosom u tu kategoriju.
 
 **Kolone Activities liste (`settings.list_columns`)**
 

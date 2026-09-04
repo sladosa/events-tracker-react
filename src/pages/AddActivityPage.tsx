@@ -40,7 +40,7 @@ import {
 } from '@/components/activity/ConfirmDialog';
 
 import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
-import { computeSetAttributeValue, findDefBySlug, formatForDatetimeInput } from '@/lib/attributeRules';
+import { computeSetAttributeValue, collectRuleManagedIds, findDefBySlug, formatForDatetimeInput } from '@/lib/attributeRules';
 import { detectRata, generateRataChargeDates, rataSessionStarts, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
 import { resolveCommentTemplate, evaluateCommentTemplate } from '@/lib/commentTemplate';
 import type { RataAutomationConfig } from '@/types/database';
@@ -641,6 +641,20 @@ export function AddActivityPage() {
     return presets.find(p => p.id === selectedShortcutId)?.default_attributes || null;
   }, [selectedShortcutId, presets]);
 
+  const allAttrDefs = useMemo(() => {
+    const defs: AttributeDefinition[] = [];
+    for (const [, catAttrs] of attributesByCategory) defs.push(...catAttrs);
+    return defs;
+  }, [attributesByCategory]);
+
+  // Atributi koje forma IZVODI — ne smiju se ni snimiti u shortcut ni iz njega
+  // vratiti kao doslovna vrijednost (v. `collectRuleManagedIds`).
+  const ruleManaged = useMemo(() => collectRuleManagedIds(
+    allAttrDefs,
+    selectedArea?.settings?.automations,
+    def => parseValidationRules(def.validation_rules).dependsOn?.defaultMap,
+  ), [allAttrDefs, selectedArea]);
+
   // Apply preset default_attributes / default_value when attributes first load (e.g. Valuta → EUR)
   // Only sets values not already in the map so draft restores are not overwritten
   // Second pass: default_map overrides (e.g. Izvor plaćanja=Visa → Status=Planiran)
@@ -654,7 +668,12 @@ export function AddActivityPage() {
         for (const attr of attrs) {
           allAttrs.push({ attr });
           if (prev.has(attr.id)) continue;
-          const presetValue = selectedPresetDefaults?.[attr.id];
+          // `set_attribute` target: pravilo je jedini izvor. Zasije li ga bilo
+          // tko drugi, pravilo ga poslije preskoci kao rucni unos.
+          if (ruleManaged.computed.has(attr.id)) continue;
+          const presetValue = ruleManaged.all.has(attr.id)
+            ? undefined
+            : selectedPresetDefaults?.[attr.id];
           if (presetValue !== undefined && presetValue !== null) {
             next.set(attr.id, { definitionId: attr.id, value: presetValue, touched: true });
             changed = true;
@@ -664,10 +683,10 @@ export function AddActivityPage() {
           }
         }
       }
-      // Second pass: apply default_map when parent was pre-filled (preset or default)
+      // Second pass: apply default_map when parent was pre-filled (preset or default).
+      // Preset ovdje nema sto reci: svaki atribut koji prodje `defaultMap` uvjet
+      // ispod je po definiciji `ruleManaged.mapped`, dakle iz snimke izostavljen.
       for (const { attr } of allAttrs) {
-        const presetValue = selectedPresetDefaults?.[attr.id];
-        if (presetValue !== undefined && presetValue !== null) continue;
         const parsed = parseValidationRules(attr.validation_rules);
         if (!parsed.dependsOn?.defaultMap) continue;
         const depSlug = parsed.dependsOn!.attributeSlug;
@@ -687,7 +706,7 @@ export function AddActivityPage() {
       }
       return changed ? next : prev;
     });
-  }, [attributesByCategory, selectedPresetDefaults]);
+  }, [attributesByCategory, selectedPresetDefaults, ruleManaged]);
 
   // ============================================
   // Form Handlers
@@ -766,12 +785,6 @@ export function AddActivityPage() {
     return categoryChain[0]?.name || categoryPath[categoryPath.length - 1] || 'Unknown';
   }, [categoryChain, categoryPath]);
 
-  const allAttrDefs = useMemo(() => {
-    const defs: AttributeDefinition[] = [];
-    for (const [, catAttrs] of attributesByCategory) defs.push(...catAttrs);
-    return defs;
-  }, [attributesByCategory]);
-
   // ============================================
   // set_attribute automatika (Faza 2b) — live prefill
   // ============================================
@@ -844,8 +857,12 @@ export function AddActivityPage() {
   const handleSaveAsShortcutClick = useCallback(() => {
     if (!categoryId) return;
 
+    // Izvedene vrijednosti se NE snimaju. Shortcut nosi ono sto je covjek
+    // odlucio; `Datum naplate` i `Status` iz njega ponovno izracuna pravilo, i
+    // to za dan kad se shortcut koristi — a ne za dan kad je spremljen.
     const defaults: PresetDefaultAttributes = {};
     for (const [definitionId, lv] of attributeValues) {
+      if (ruleManaged.all.has(definitionId)) continue;
       if (lv.touched && lv.value !== null && lv.value !== '') {
         defaults[definitionId] = lv.value;
       }
@@ -864,7 +881,7 @@ export function AddActivityPage() {
       setShortcutName(leafCategoryName);
       setShowShortcutNameModal(true);
     }
-  }, [categoryId, attributeValues, presets, leafCategoryName]);
+  }, [categoryId, attributeValues, presets, leafCategoryName, ruleManaged]);
 
   const handleUpdateExistingShortcut = useCallback(async () => {
     if (!existingPresetForCategory) return;

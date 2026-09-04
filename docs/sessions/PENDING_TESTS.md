@@ -1,7 +1,49 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S126 (2026-09-03) — `043` na PROD-u, BUG-S123-EDITMARK zatvoren, košara u delta sheetu, Excel ispravak tuđeg retka.
+**Zadnji update:** S127 (2026-09-04) — BUG-S127-PRESETFREEZE: shortcut je zamrzavao izvedene vrijednosti i time gasio `set_attribute` pravilo.
+
+---
+
+## S127 — shortcut je zamrzavao izvedene vrijednosti (2026-09-04)
+
+Detalji: [S127_tests.md](tests/S127_tests.md)
+
+⚠ **NIJE deployano na `main`.** Dok ne bude, Koka i dalje vidi staro ponašanje.
+
+### Provjereno strojno (ne traži nikoga)
+
+| kontrola | rezultat |
+| --- | --- |
+| uzrok izmjeren na PROD-u, ne pretpostavljen | ✅ preset `Isplata` (`ae04685d`, 02.09.) nosi `datum_naplate = 2026-10-11T12:00` |
+| preset se bira SAM (`usage_count = 0`) | ✅ `ProgressiveCategorySelector.tsx:411-416` |
+| PROD pravilo je ispravno (`Racun → same`) | ✅ `areas.settings.automations` |
+| `2026-10-04` ne odgovara nijednom pravilu | ✅ ⇒ ručni unos iz Edita, dan popravljen a mjesec ostao |
+| zapis `7a84bcd1` nakon Kokinog Edita (07:42) | ✅ `datum_naplate = 2026-09-04`, slaže se s `Izvor = Racun` |
+| `ruleManagedAttrs.test.mjs` | ✅ 13 / 13 |
+| test pada kad se kod pokvari (oba smjera) | ✅ 8/13 i 7/13 uz dva namjerna kvara |
+| typecheck + build | ✅ |
+
+### Traži tebe — pogledom u aplikaciji
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S127-1** | ⭐ `Datum naplate` prazan dok `Izvor` nije odabran, pa **današnji** | ⬜ |
+| T-S127-2 | Mastercard i dalje daje 11. sljedećeg mjeseca, i vraća se natrag | ⬜ |
+| T-S127-3 | ručni unos `Datum naplate` se i dalje poštuje | ⬜ |
+| **T-S127-4** | ⭐ nov shortcut ne nosi `Datum naplate` ni `Status` | ⬜ |
+| T-S127-5 | Kokin postojeći preset `Isplata` izliječen bez diranja baze | ⬜ |
+| T-S127-6 | zapis od 04.09. ispravljen na `04.09.` (Sašin ručni ispravak) | ✅ |
+
+### ⚠ Otvoreno
+
+- **Auto-odabir shortcuta bez korisnikova klika** — jedna slučajna snimka postane
+  trajno pravilo za sve unose u toj kategoriji, i to nevidljivo (`usage_count`
+  kaže „nikad korišten"). Nije popravljeno; treba odluka.
+- **`userOwned` i dalje ne razlikuje „čovjek je upisao" od „nešto je popunilo".**
+  Zatvorena su oba ulaza koja su danas postojala (preset i `default_value` na
+  targetu), ali sam kriterij ostaje izračun iz stanja — isti razred kao S122
+  (`userTouchedRef`).
 
 ---
 

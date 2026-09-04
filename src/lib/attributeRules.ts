@@ -85,3 +85,63 @@ export function findDefBySlug(
   return defs.find(d => d.slug === slug)
     ?? defs.find(d => slugKey(d.slug) === slugKey(slug));
 }
+
+// ============================================
+// Izvedeni atributi — što forma RAČUNA, a ne čita od čovjeka
+// ============================================
+// Snimka shortcuta (`activity_presets.default_attributes`) sprema doslovne
+// vrijednosti. Za izvedeni atribut to je zamrznut REZULTAT jednog trenutka, a
+// ne unos — i gori je od nepostojećeg, jer poslije blokira pravilo koje bi ga
+// ispravilo: `set_attribute` čuva ručni unos tako da preskoči target koji već
+// ima vrijednost koju samo nije upisalo (`userOwned`), a preset izgleda točno
+// tako. Izmjereno na PROD-u 04.09.2026.: preset `Isplata` (spremljen 02.09. uz
+// `Izvor = Mastercard`) nosio je `datum_naplate = 2026-10-11`, pa je `Izvor =
+// Racun` — koji traži isti dan — ostao bez ijednog učinka i bez poruke.
+//
+// Dvije vrste, i NE liječe se isto:
+//   `computed` — target `set_attribute` pravila. Pravilo je JEDINI izvor, pa ga
+//                ne smije zasjeniti ni preset ni `default_value`.
+//   `mapped`   — atribut s `depends_on.default_map` (npr. Status iz Izvora).
+//                Puni se iz roditelja — pri učitavanju defaulta i pri svakoj
+//                promjeni roditelja — pa preset ne smije zamrznuti vrijednost,
+//                ali `default_value` ostaje legitiman dok roditelj nema vrijednost.
+
+export interface RuleManagedIds {
+  /** `set_attribute` targets — ni preset ni `default_value` ih ne smiju sijati. */
+  computed: Set<string>;
+  /** `depends_on.default_map` targets — preset ih ne smije zamrznuti. */
+  mapped: Set<string>;
+  /** Unija — ovo shortcut snimka izostavlja. */
+  all: Set<string>;
+}
+
+/**
+ * Which attribute ids does the Add form derive on its own?
+ *
+ * `getDefaultMap` is passed in rather than parsed here: `validation_rules` has
+ * three historical shapes and exactly one parser (`parseValidationRules`) —
+ * a second reader would be a second thing to keep in sync.
+ */
+export function collectRuleManagedIds(
+  defs: AttributeDefinition[],
+  automations: { attribute_rules?: AttributeRuleConfig[] } | undefined,
+  getDefaultMap: (def: AttributeDefinition) => Record<string, string> | undefined,
+): RuleManagedIds {
+  const computed = new Set<string>();
+  const mapped = new Set<string>();
+
+  for (const rule of automations?.attribute_rules ?? []) {
+    if (rule.action !== 'set_attribute') continue;
+    const target = findDefBySlug(defs, rule.target_slug);
+    if (target) computed.add(target.id);
+  }
+
+  for (const def of defs) {
+    if (computed.has(def.id)) continue;
+    const map = getDefaultMap(def);
+    // Prazna mapa nije mapa — atribut bez ijednog para ništa ne izvodi.
+    if (map && Object.keys(map).length > 0) mapped.add(def.id);
+  }
+
+  return { computed, mapped, all: new Set([...computed, ...mapped]) };
+}
