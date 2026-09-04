@@ -33,6 +33,11 @@ Detalji: [S127_tests.md](tests/S127_tests.md)
 | PROD vs TEST po mjesecima | ✅ **`Δpromet` identičan u svakom mjesecu koji izvod pokriva** |
 | **sidra 2024. upisana** | ✅ TEST 12 (1 već postojalo) · PROD 13 |
 | tekući saldo nakon upisa | ✅ `12.772,86` (= `12.784,36` − današnjih `11,50`), sidro i dalje 30.07.2026. |
+| ⭐ **Kokina ishodišna stanja PROVJERENA** | ✅ RF `12.712,28` @ 01.01.2023. ⇒ kroz **2 godine i 158k prometa** zatvara na **−11,49** prema `RF_2024-12` |
+| ZABA ishodište `1.845,45` | ✅ manjak od `15.752,07` je **98,3 %** objašnjen s **11 nedostajućih skupnih MC naplata** (`16.025,88`); stvarni neobjašnjeni ostatak 2023. je **`273,81`** |
+| njen MC model je ISPRAVAN | ✅ jedina naplata koju ima (`926,52` @ 11.12.2023.) je **točno studeni** (`926,52`), na 11. — dakle mehanizam je znala, samo nije upisivala |
+| MC izvodi prije 2024-01 | ❌ **ne postoje** ⇒ 11 naplata se ne može rekonstruirati |
+| datum ishodišnog sidra | ⚠ mora biti **2022-12-31**, ne 01.01.2023.: na 01.01. postoji stvarna RF transakcija `79,63` koju bi „strogo nakon" inače izbacilo |
 | typecheck + build | ✅ |
 
 ### Traži tebe — pogledom u aplikaciji
