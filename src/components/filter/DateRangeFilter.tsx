@@ -18,8 +18,18 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   const [localFrom, setLocalFrom] = useState<string>('');
   const [localTo, setLocalTo]     = useState<string>('');
 
-  // Track whether user has manually edited dates (bypasses bounds auto-init)
-  const [userModified, setUserModified] = useState(false);
+  // ⚠ „Je li covjek birao raspon" MORA zivjeti u kontekstu, ne ovdje.
+  //   Dok je bio lokalni `useState`, svaki unmount ga je vratio na `false` i
+  //   ponovo naoruzao auto-init ⇒ povratak je raspon bacio na „All time". Dva
+  //   ziva puta do unmounta: Structure tab (`AppHome.tsx`, uvjet
+  //   `activeTab !== 'structure'`) i View Details (cijeli `AppHome` se odmontira).
+  //   S120 je taj razred zatvorio za `attrFilter`, a datumski raspon je ostao
+  //   vani — otud dojam „povremeno se resetira".
+  //   `periodKey` je vec u kontekstu i odrzava ga SVAKI setter (handleFromChange,
+  //   handleToChange, handlePreset, handleAllTime, shortcut restore), pa je
+  //   podatak vec postojao — samo se nije koristio kao brana.
+  //   ⇒ `all-time` znaci „covjek nije birao"; sve ostalo znaci da jest.
+  const userModified = filter.periodKey !== 'all-time';
 
   // Presets (stable — getDatePresets() is pure, called once per render is fine)
   const presets = getDatePresets();
@@ -34,6 +44,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       setPeriodKey('all-time');
     }
   }, [bounds.minDate, bounds.maxDate, loading, userModified, setDateRange, setPeriodLabel, setPeriodKey]);
+  // (`userModified` je izveden iz `filter.periodKey`, dakle iz konteksta — zato
+  //  prezivi unmount i ne treba mu vlastiti dep.)
 
   // ── Sync when filter resets externally (e.g. after import) ─────────────────
   useEffect(() => {
@@ -43,7 +55,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     } else if (filter.dateFrom === null && filter.dateTo === null) {
       setLocalFrom('');
       setLocalTo('');
-      setUserModified(false);
+      // `periodKey` ostaje na cemu jest; prazan raspon ionako pusta auto-init
+      // kroz uvjet iznad cim se granice ucitaju.
       refresh();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,7 +65,6 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   // ── Manual date input handlers ─────────────────────────────────────────────
   const handleFromChange = (value: string) => {
     setLocalFrom(value);
-    setUserModified(true);
     if (value && localTo) {
       setDateRange(value, localTo);
       setPeriodLabel('Custom');
@@ -62,7 +74,6 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
 
   const handleToChange = (value: string) => {
     setLocalTo(value);
-    setUserModified(true);
     if (localFrom && value) {
       setDateRange(localFrom, value);
       setPeriodLabel('Custom');
@@ -82,7 +93,6 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     setLocalFrom(from);
     setLocalTo(to);
     setDateRange(from, to);
-    setUserModified(true);
     setPeriodLabel(preset.label);
     setPeriodKey(preset.key);
   };
@@ -93,7 +103,6 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       setLocalFrom(bounds.minDate);
       setLocalTo(bounds.maxDate);
       setDateRange(bounds.minDate, bounds.maxDate);
-      setUserModified(false);
       setPeriodLabel('All time');
       setPeriodKey('all-time');
     }

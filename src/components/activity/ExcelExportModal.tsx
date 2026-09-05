@@ -181,6 +181,13 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   const [profiles, setProfiles]           = useState<ExportProfiles>({});
   const [selectedProfile, setSelectedProfile] = useState<string>('');
   const [importing, setImporting]         = useState(false);
+  // ⚠ JEDAN prekidac za sva tri override-a koja mijenjaju SKUP REDAKA
+  //   (`periodKey`, `commentSearch`, `attrFilterRaw`). Sort je namjerno unutra,
+  //   a ne zaseban: sort nikad ne mijenja koji su retci u fileu, samo njihov
+  //   redoslijed — prekidac cije krivo stanje nema posljedicu uci covjeka da
+  //   prekidace ne cita, pa onda ni ovaj, koji je posljedicu.
+  //   Zadano UKLJUCEN = dosadasnje ponasanje ⇒ Kokin mjesecni file se ne mijenja.
+  const [useProfileFilters, setUseProfileFilters] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filters: ExportFilters = {
@@ -228,9 +235,27 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
+        // ⚠ Brojka mora opisati FILE KOJI IZLAZI, ne panel. Dok se racunala iz
+        //   `filters`, profil s `last-3-months` rezao je izvoz na tri mjeseca a
+        //   modal je i dalje tvrdio „5.154 events will be exported" — dakle isti
+        //   kvar kao u kutiji s datumima, samo jedan red nize. Ovdje se smije
+        //   razrijesiti i `attrDefs` (efekt je ionako async), pa brojka koristi
+        //   TOCNO iste filtre kao `doDownload`.
+        const pfs = selectedProfile && useProfileFilters
+          ? profiles[selectedProfile]?.filterState ?? null
+          : null;
+        let countFilters = filters;
+        if (pfs) {
+          const raw  = pfs.attrFilterRaw;
+          const defs = raw && raw !== '_'
+            ? await resolveAttrDefsForSlug(user.id, filters.areaId, filters.categoryId)
+            : undefined;
+          countFilters = applyProfileFilterOverrides(filters, pfs, defs).filters;
+        }
+
         const categoriesDict = await loadCategoriesForExport(user.id);
-        const categoryIds    = await resolveExportCategoryIds(user.id, filters, categoriesDict);
-        const total          = await countEventsForExport(user.id, filters, categoryIds);
+        const categoryIds    = await resolveExportCategoryIds(user.id, countFilters, categoriesDict);
+        const total          = await countEventsForExport(user.id, countFilters, categoryIds);
 
         if (!cancelled) {
           setTotalCount(total);
@@ -248,8 +273,12 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     })();
 
     return () => { cancelled = true; };
+  // ⚠ `commentSearch` i `attrFilter` su i dosad falili u ovom popisu — promjena
+  //   filtra komentara ostavljala je STARU brojku, koja izgleda kao odgovor.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter.areaId, filter.categoryId, filter.dateFrom, filter.dateTo, filter.sortOrder]);
+  }, [filter.areaId, filter.categoryId, filter.dateFrom, filter.dateTo, filter.sortOrder,
+      filter.commentSearch, filter.attrFilter,
+      selectedProfile, useProfileFilters, profiles]);
 
   // Recompute file count when batch size changes
   useEffect(() => {
@@ -270,15 +299,49 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   // Racun dolazi iz filtra atributa - drill s plocice ga upravo tako postavlja.
   // ⚠ Kad je odabran profil s vlastitim filtrom atributa, racun mora doci odande
   //   odakle i eventi — v. `deriveDeltaAccount` za razlog i za izmjereni slucaj.
+  //   ⚠ Mora pratiti `useProfileFilters`: otkvacen prekidac znaci da eventi
+  //     dolaze iz panela, pa i racun mora odande. Inace su eventi iz panela a
+  //     racun iz profila ⇒ presjek prazan, a delta sheet izade s TOCNIM sidrom
+  //     i NULA redaka, bez ijedne poruke — doslovno BUG-S123-DELTAACCT.
   const deltaAccount = useMemo(
     () => deriveDeltaAccount(
-      selectedProfile ? profiles[selectedProfile]?.filterState?.attrFilterRaw : undefined,
+      selectedProfile && useProfileFilters
+        ? profiles[selectedProfile]?.filterState?.attrFilterRaw
+        : undefined,
       balanceWidget?.group_by,
       filter.attrFilter?.value,
     ),
-    [selectedProfile, profiles, balanceWidget, filter.attrFilter],
+    [selectedProfile, useProfileFilters, profiles, balanceWidget, filter.attrFilter],
   );
   const deltaReady   = !!balanceWidget && !!deltaAccount;
+
+  // ⚠ Kutija „Active filters" mora pokazati raspon koji ce STVARNO izaci u file.
+  //   Dok je pokazivala `filter.dateFrom`, tvrdila je da vrijedi panelov raspon
+  //   a profil ga je tiho pregazio — dvije linije koje si proturjece i nijedna
+  //   ne kaze tko pobjeduje. Isti razred kao BUG-S123-DELTAACCT: file izade
+  //   uredan, s krivim retcima, bez ijedne poruke.
+  //   ⚠ Racuna se BEZ `attrDefs` (nemamo ih sinkrono), pa `attrFilter` odavde
+  //     nije mjerodavan — zato se i ne prikazuje. Datumi, sort i komentar su.
+  const eff = useMemo(() => {
+    const base: ExportFilters = {
+      areaId: filter.areaId, categoryId: filter.categoryId,
+      dateFrom: filter.dateFrom, dateTo: filter.dateTo,
+      sortOrder: filter.sortOrder, commentSearch: filter.commentSearch,
+      attrFilter: filter.attrFilter,
+    };
+    const pfs = selectedProfile && useProfileFilters
+      ? profiles[selectedProfile]?.filterState ?? null
+      : null;
+    if (!pfs) return { f: base, label: null as string | null, overridden: false };
+    const o = applyProfileFilterOverrides(base, pfs);
+    return {
+      f: o.filters,
+      label: o.overrideLabel,
+      overridden: o.filters.dateFrom !== base.dateFrom || o.filters.dateTo !== base.dateTo,
+    };
+  }, [selectedProfile, useProfileFilters, profiles,
+      filter.areaId, filter.categoryId, filter.dateFrom, filter.dateTo,
+      filter.sortOrder, filter.commentSearch, filter.attrFilter]);
 
   // ── Core download ─────────────────────────────────────────────────
   const doDownload = useCallback(async (fileIndex: number, previewMode: boolean) => {
@@ -298,7 +361,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       let effectiveCommentSearch = filter.commentSearch;
       let effectiveAttrFilter = filter.attrFilter;
 
-      if (activeProfile?.filterState && !previewMode) {
+      if (activeProfile?.filterState && useProfileFilters && !previewMode) {
         // Resolve attrDefs BEFORE building overrides — parseAttrFilterRaw needs
         // them to look up a slug-based filter (e.g. "racun: =Sašin tekući RF").
         // Without attrDefs, slug lookups silently fail and the live filter's
@@ -768,11 +831,17 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
           {/* Filters summary */}
           <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 space-y-1">
             <p className="font-medium text-gray-800 mb-1">Active filters:</p>
-            <p>📅 Date: {filter.dateFrom ?? '(all)'} → {filter.dateTo ?? '(all)'}</p>
+            <p>📅 Date: {eff.f.dateFrom ?? '(all)'} → {eff.f.dateTo ?? '(all)'}</p>
+            {eff.overridden && (
+              <p className="text-blue-700">
+                ↳ iz profila „{selectedProfile}" · raspon iz panela
+                ({filter.dateFrom ?? '(all)'} → {filter.dateTo ?? '(all)'}) se <b>ne primjenjuje</b>
+              </p>
+            )}
             {filter.areaId && <p>📁 Area filter active</p>}
             {filter.categoryId && <p>🏷️ Category filter active</p>}
-            <p>🔃 Sort: {filter.sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}</p>
-            {filter.commentSearch && <p>💬 Comment: "{filter.commentSearch}"</p>}
+            <p>🔃 Sort: {eff.f.sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}</p>
+            {eff.f.commentSearch && <p>💬 Comment: "{eff.f.commentSearch}"</p>}
           </div>
 
           {/* Count info */}
@@ -851,16 +920,34 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                     {hiddenCount} column{hiddenCount !== 1 ? 's' : ''} hidden · column order from profile
                   </p>
                   {activeProfile.filterState && (
-                    <p className="text-xs text-blue-600">
-                      📋 Profile includes filter overrides: {(() => {
-                        const parts: string[] = [];
-                        if (activeProfile.filterState.periodKey) parts.push(`Period: ${activeProfile.filterState.periodKey}`);
-                        if (activeProfile.filterState.sortOrder) parts.push(`Sort: ${activeProfile.filterState.sortOrder === 'asc' ? 'Oldest' : 'Newest'}`);
-                        if (activeProfile.filterState.commentSearch) parts.push(`Comment: "${activeProfile.filterState.commentSearch}"`);
-                        if (activeProfile.filterState.attrFilterRaw) parts.push('Attr filter');
-                        return parts.join(', ');
-                      })()}
-                    </p>
+                    <>
+                      <label className="flex items-start gap-2 text-xs text-blue-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={useProfileFilters}
+                          onChange={e => setUseProfileFilters(e.target.checked)}
+                          disabled={isGenerating || importing}
+                          className="mt-0.5 shrink-0"
+                        />
+                        <span>
+                          📋 Koristi filtre iz profila
+                          {(() => {
+                            const pfs = activeProfile.filterState;
+                            const parts: string[] = [];
+                            if (pfs.periodKey) parts.push(`Period: ${pfs.periodKey}`);
+                            if (pfs.sortOrder) parts.push(`Sort: ${pfs.sortOrder === 'asc' ? 'Oldest' : 'Newest'}`);
+                            if (pfs.commentSearch) parts.push(`Comment: "${pfs.commentSearch}"`);
+                            if (pfs.attrFilterRaw) parts.push('Attr filter');
+                            return parts.length ? <span className="text-blue-500"> ({parts.join(' · ')})</span> : null;
+                          })()}
+                        </span>
+                      </label>
+                      {!useProfileFilters && (
+                        <p className="text-xs text-gray-500 pl-6">
+                          ↳ vrijedi sve iz panela — raspon, sort i filtri
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               )}
