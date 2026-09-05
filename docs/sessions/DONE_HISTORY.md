@@ -3845,3 +3845,115 @@ status), **Sporno** (redak po redak, banka vs baza, autofilter, 27 redaka) i
 Na `main` nije pushano. Današnji commiti ne diraju aplikaciju; ono što čeka je
 **S127 kod** (4 app filea), a jedina brana je **T-S127-9** — otvaranje retka u
 Editu ne smije ništa promijeniti (855 Visa redaka).
+
+---
+
+## S129 — pet popravaka na PROD-u, ZABA zatvara do kolovoza, i jedna tvrdnja koja je devet sesija bila netočna (2026-09-05)
+
+Sesija je imala dva toka koja se nisu miješala: **sređivanje podataka** u
+`Financije_all` i **popravci procedura i koda**. Oba su krenula od toga da je
+prethodna sesija stala na jednom neizvršenom `--apply`.
+
+### A. Podaci
+
+**Popravak iz S128 primijenjen.** `fix_parking_i_multisport.py --apply` — 3
+brisanja (Kokini `Parking 1,40` koje je banka naplatila kao dva naloga po 0,70)
++ 1 pomak datuma (`Anja 49,00` s krive strane zatvaranja izvoda). Nakon toga
+`2025-02`, `2025-03`, `2026-03` i `2026-04` pali su na **0,00**.
+
+Provjereno i **u listi**, ne samo u brojci: sva tri parking datuma imaju po dva
+retka od `0,70` i nijedan `1,40`, svi klasificirani i **potvrđeni izvodom**.
+
+**Podizanje 150,00 — duplikat s krivim mjesecom.** `2025-10` je odstupao za
+točno `−150,00`. Dokaz je bio trostruk i nijedan dio sam nije bio dovoljan:
+
+| izvor | što ima |
+| --- | --- |
+| banka (ZABA 2025-09/10/11) | **jedno** podizanje 150,00, i to **12.11.** |
+| Kokin file (`koka EU!2137`) | **jedan** redak 150,00, i to **12.10.**, bez opisa |
+| baza | **oba** |
+
+Isti dan u mjesecu, mjesec dana razlike ⇒ tipfeler u **mjesecu** (razred S116,
+redak 2564). Obrisan Kokin — gol (`Tip = N/A`, bez komentara, bez `Izvod opis`),
+dok bankin nosi opis, klasifikaciju i potvrdu. **Δ(2025-10) → 0,00.**
+
+⚠ Pomak datuma umjesto brisanja bio bi kriv: dao bi **dva identična retka** istog
+dana i iznosa.
+
+**ZABA 2026-07 i 2026-08.** Koka je poslala kolovoški izvod. Ispalo je da problem
+nije bio uvoz nego **mapa**: `izvodi/Analizirani_izvodi/` nije arhiva nego jedini
+folder koji alati glob-aju, a oba izvoda su stajala u korijenu — pa je
+`promet_check` godinama prestajao na 2026-06. Premješteni; oba **zatvaraju u
+cent** (38 i 46 redaka), dakle **uvoza nema**.
+
+Uz to neovisna potvrda: app na `26.08.2026.` daje **`12.784,36`**, identično
+ispisanom stanju na `ZABA_2026-08.pdf`.
+
+**Stanje na kraju sesije:** cijeli raspon `2024-01 → 2026-08` ima još **dva**
+odstupanja — `2025-07 +0,80` i `2025-08 −46,74`.
+
+### B. Kod
+
+**Export modal je tvrdio dvije neistine.** Profil `Kokin_format` nosi
+`{"periodKey": "last-3-months"}` i **prepisivao** je raspon iz panela, dok je
+kutija „Active filters" pokazivala **panelov** raspon. Brojka je bila gora:
+`5.154 events will be exported` za file koji ih ima **387**.
+
+Popravljeno oboje + jedan prekidač „Koristi filtre iz profila" (zadano uključen,
+resetira se pri svakom otvaranju). **Jedan, ne dva** — sort nikad ne mijenja koji
+su retci u fileu, a prekidač bez posljedice uči čovjeka da prekidače ne čita.
+Prekidač je proveden i kroz `deriveDeltaAccount`, inače bi delta sheet izašao s
+točnim sidrom i nula redaka (BUG-S123-DELTAACCT, ovaj put ugrađen namjerno).
+
+**Raspon datuma se sam resetirao na „All time".** `DateRangeFilter.userModified`
+bio je lokalni `useState`, a čuvao je stanje iz `FilterContext`; svaki unmount ga
+je vratio na `false`. Dva živa puta: **Structure tab** i **View Details**. S120 je
+taj razred zatvorio za `attrFilter`, raspon je ostao vani — otud dojam
+„povremeno". Sada izveden iz `filter.periodKey`.
+
+**Excel Import/Export na uskom ekranu** preselio iz filter panela (koji se
+zatvara) u red s tabovima, uz `+` — isti raspored koji Structure već ima.
+
+### C. T-S127-9 — i pouka o testiranju pravila
+
+Prvi pokušaj **nije bio dokaz**: odabran je Visa redak čiji je `Datum naplate`
+bio `3.` u mjesecu, dakle **točno ono što `next:3` izračuna**. Izmjereno: od
+**1.619** Visa redaka samo ih je **11** takvih.
+
+Ponovljeno na retku koji se od pravila razlikuje 4 dana (`27.07.2026. ZOO 15,00`,
+naplata `07.08.`) — datum je **ostao**. Pravilo se okida na čovjekovom potezu.
+
+Pouka je promaknuta u CLAUDE.md: **redak na kojem se testira automatika mora se
+razlikovati od onoga što ta automatika proizvodi.**
+
+### D. Tvrdnja koja je devet sesija bila netočna
+
+CLAUDE.md je od S126 tvrdio da je skraćivanje `Izvod opis`a sigurno „jer
+`kljuc_izvoda` isti uvod ionako skida". **Ne skida:**
+
+    dugi    Kreditni transfer … (m-zaba) POSMRTNA …  →  ('posmrtna pripomoc', '1147')
+    kratki  (m-zaba) POSMRTNA …                      →  ('m zaba posmrtna',   '1147')
+
+Posljedica: **14** povijesnih PP redaka nije bilo presedan za 2 kolovoška, i alat
+je javio „nema presedana" ondje gdje povijest ima odgovor. Gore od toga, oblik
+`(mobilne aplikacije)` stari regex nije hvatao **ni s uvodom**, pa je **22
+nepovezana primatelja** dobilo isti ključ `kreditni transfer nac`.
+
+Popravljeno; **59 redaka** dobiva pravog primatelja.
+
+### E. Parkirano
+
+`oznaci_iz_presedana.py` — zamjena sirovog teksta izvoda u `Opis`u oznakom iz
+brojane povijesti. Dry run čist (**45 od 71**, ostalih 26 se ne pogađa jer nisu
+jednoglasni). **Saša parkirao** jer mu predložene oznake nisu bile očite;
+`--apply` nije pušten. Alat i popravak ključa ostaju.
+
+Nusprodukt mjerenja: ključ **mora** biti primatelj + poziv na broj. Po
+`Tip`/`Podtip` vodeća oznaka parking skupine ima **36 %** (isti Podtip nosi i
+`Prevoz`, 45×), po primatelju **96 %**.
+
+### Deploy
+
+Merge na `main` **nije izveden** — auto-mode klasifikator blokira push na `main`,
+kao i upise na PROD. T-S127-9 je prošao, dakle brana je pala; naredbe su u
+`NEXT_SESSION_PROMPT.md`. `main` zaostaje za **7 app fileova** (S127 + S129).

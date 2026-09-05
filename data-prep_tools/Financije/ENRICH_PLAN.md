@@ -1245,3 +1245,67 @@ parking — u njenom fileu **uopće ne postoji**.
 - Tri odstupanja iz 2024. su **zapečaćena sidrima** ⇒ ne diraju saldo.
 - **Sidra za 2025./2026. tek kad razlika padne na nulu** — sidro je pečat, ne
   alat za usklađivanje.
+
+---
+
+## S129 (2026-09-05) — popravci primijenjeni, ZABA zatvara do kolovoza
+
+**Popravci iz S128 pušteni** (`fix_parking_i_multisport.py --apply`): 3 brisanja
++ 1 pomak datuma ⇒ `2025-02`, `2025-03`, `2026-03`, `2026-04` pali na **0,00**.
+Provjereno i u listi aplikacije, ne samo u brojci.
+
+**Podizanje `150,00` — duplikat s krivim mjesecom** (`fix_podizanje_150.py`).
+Banka ima **jedno** podizanje (12.11.2025.), Kokin file **jedan** redak
+(12.10.2025., bez opisa), baza je imala **oba**. Obrisan Kokin — gol (`Tip = N/A`,
+bez komentara, bez `Izvod opis`). **Δ(2025-10) → 0,00.**
+⚠ Pomak datuma umjesto brisanja dao bi dva identična retka istog dana i iznosa.
+
+**ZABA 2026-07 i 2026-08 zatvaraju u cent** (38 i 46 redaka), **uvoza nema**.
+⚠ Problem nije bio uvoz nego **mapa**: `izvodi/Analizirani_izvodi/` nije arhiva
+nego jedini folder koji alati glob-aju (`make_saldo_anchors.py:65`,
+`pregled_stanja.py:61`), a oba izvoda su stajala u korijenu — pa je
+`promet_check` prestajao na 2026-06.
+
+**App reproducira ispisano kolovoško stanje u cent:** `12.784,36 @ 26.08.2026.`
+
+### Stanje na kraju S129
+
+Cijeli raspon `2024-01 → 2026-08` ima još **dva** odstupanja:
+
+| mjesec | Δ | što je |
+| --- | ---: | --- |
+| 2025-08 | −46,74 | `−45,94` (Zagrebački holding) + `−0,80` |
+| 2025-07 | +0,80 | banka ima `−0,80` @ 07.07., baza nema |
+
+⚠ `uskladi_izvod.py` prima **samo MC izvode** — S128 ga je krivo preporučio za
+ZABA mjesece. Za ZABA-u se ide izravno na podatke (`_parse_zaba_all` vs `load_db`).
+
+### `presedani.py` — ključ nije preživljavao skraćen `Izvod opis`
+
+Tvrdnja iz S126 („`kljuc_izvoda` isti uvod ionako skida") bila je **netočna**:
+
+    dugi    Kreditni transfer … (m-zaba) POSMRTNA …  →  ('posmrtna pripomoc', '1147')
+    kratki  (m-zaba) POSMRTNA …                      →  ('m zaba posmrtna',   '1147')
+
+14 povijesnih PP redaka nije bilo presedan za 2 kolovoška. Uz to `(mobilne
+aplikacije)` nije hvatan **ni s uvodom**, pa je 22 nepovezana primatelja dobilo
+isti ključ `kreditni transfer nac`. Popravljeno; **59 redaka** dobiva pravog
+primatelja.
+
+### ⏸ Parkirano — oznake iz presedana
+
+`oznaci_iz_presedana.py`: 71 redak nosi sirovi tekst izvoda u `Opis`u (39 parking).
+Prag ≥ 90 % jednoglasnosti i ≥ 3 presedana ⇒ **45 od 71**; ostalih 26 se ne pogađa.
+Dry run čist, **`--apply` nije pušten** (Sašina odluka).
+
+⚠ Ključ **mora** biti primatelj + poziv na broj: po `Tip`/`Podtip` vodeća oznaka
+parking skupine ima **36 %** (isti Podtip nosi i `Prevoz`, 45×), po primatelju
+**96 %**. `ZAGREBAČKI HOLDING` ima tri poziva na broj (tri stana) — ključ bez
+poziva svakom bi ponudio ime onog češćeg.
+
+### Sljedeće
+
+1. Sidro `make_saldo_anchors.py --anchor 2026-08-26`, pa delta sheet (prozor od
+   27.08. umjesto od 31.07.).
+2. `MC_2026-08.pdf` — stigao 02.09., netaknut.
+3. Zadnja dva mjeseca (2025-07, 2025-08).

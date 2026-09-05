@@ -1,61 +1,49 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S129 (2026-09-05) — popravci primijenjeni na PROD, prekidač za filtre profila, raspon datuma preživljava unmount.
+**Zadnji update:** S129 (2026-09-05) — 5 popravaka na PROD-u, ZABA zatvara do kolovoza, prekidač filtara profila, raspon datuma preživljava unmount.
 
 ---
 
-## S129 — filtri profila pod prekidačem, raspon datuma preživljava unmount (2026-09-05)
+## S129 — podaci Financije_all + prekidač filtara, raspon datuma, ključ primatelja (2026-09-05)
 
-### Provjereno strojno
+Detalji: [S129_tests.md](tests/S129_tests.md)
 
-| kontrola | rezultat |
-| --- | --- |
-| ⭐ **popravak na PROD-u** (`--apply`) | ✅ 3 brisanja + 1 pomak, `obrisanih redaka ostalo 0` |
-| ⭐ **Δ pada na nulu** | ✅ `2025-02`, `2025-03`, `2026-03`, `2026-04` sve `0,00` |
-| raspon 2025-01 → 2026-06 | ✅ **15 u cent, 3 odstupanja** (2025-07 `+0,80` · 2025-08 `−46,74` · 2025-10 `−150,00`) |
-| pregledni workbook | ✅ `pregled_stanja_20260905_1629.xlsx` — 6 spornih, 18 redaka u `Sporno` (bilo 10 / 27) |
-| `typecheck` + `build` | ✅ oba prolaze |
-
-### Potvrdio Saša uživo (05.09.2026.)
+### A. Podaci — `Financije_all` (PROD)
 
 | # | test | status |
 | --- | --- | --- |
-| **T-S129-1** | prekidač „Koristi filtre iz profila" mijenja prikazani raspon (`2026-06-05 → 2026-09-05` ↔ panel) | ✅ |
-| **T-S129-2** | ⭐ brojka retka prati prekidač — **387** zakvačeno, **5.154** otkvačeno | ✅ |
-| **T-S129-3** | `Custom` raspon preživi **Structure tab pa natrag** | ✅ |
-| **T-S129-4** | `Custom` raspon preživi **View details pa natrag** | ✅ |
+| **T-S129-A1** | popravak parkinga + multisporta (`--apply`) | ✅ 3 brisanja + 1 pomak, `ostalo 0` |
+| **T-S129-A2** | ⭐ Δ pada na `0,00` u 2025-02, 2025-03, 2026-03, 2026-04 | ✅ sva četiri |
+| **T-S129-A3** | parking `1,40` nestao iz **liste** | ✅ sva tri datuma po 2×`0,70` |
+| **T-S129-A4** | ⭐ podizanje `150,00` — duplikat obrisan, Δ(2025-10) na nulu | ✅ dokaz iz banke + Kokinog filea + baze |
+| **T-S129-A5** | ZABA 2026-07 i 2026-08 zatvaraju u cent, **uvoza nema** | ✅ 38 i 46 redaka |
+| **T-S129-A6** | ⭐ app reproducira ispisano stanje `12.784,36 @ 26.08.` | ✅ u cent |
+| **T-S129-A7** | sidro `2026-08-26 = 12.784,36` | ⬜ |
+| **T-S129-A8** | delta sheet nakon sidra — prozor od 27.08., 2 retka | ⬜ |
+| **T-S129-A9** | preostala dva mjeseca (2025-07 `+0,80`, 2025-08 `−46,74`) | ⬜ |
+| **T-S129-A10** | `MC_2026-08.pdf` — netaknut, prvi korak je `--dry` | ⬜ |
+
+### B. Procedure i kod
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S129-1** | prekidač „Koristi filtre iz profila" mijenja prikazani raspon | ✅ |
+| **T-S129-2** | ⭐ brojka retka prati prekidač — **387** / **5.154** | ✅ |
+| **T-S129-3** | `Custom` raspon preživi **Structure tab** | ✅ |
+| **T-S129-4** | `Custom` raspon preživi **View details** | ✅ |
 | **T-S129-5** | `All Time` iz dropdowna i dalje radi | ✅ |
-| **T-S129-9** | Excel Import/Export uz `+` na uskom ekranu, uz listu na širokom — **nigdje oba** | ✅ |
+| **T-S129-9** | Excel Import/Export uz `+` na uskom, uz listu na širokom — **nigdje oba** | ✅ |
+| **T-S129-B1** | ⭐ T-S127-9 — pravilo se ne okida na otvaranju (uz ispravak metode) | ✅ |
+| **T-S129-B2** | ⭐ ključ primatelja ne preživljava skraćen `Izvod opis` — popravljeno | ✅ 59 redaka |
+| **T-S129-6** | export s otkvačenim prekidačem stvarno sadrži traženi raspon | ⬜ |
+| **T-S129-7** | delta sheet s otkvačenim prekidačem nije prazan | ⬜ |
+| **T-S129-8** | shortcut s `periodKey` se više ne prepisuje | ⬜ |
+| **T-S129-B3** | ⏸ **PARKIRANO** — oznake iz presedana (45/71, `--apply` nije pušten) | ⏸ |
+| **T-S129-B4** | merge na `main` + provjera na PROD-u uz hard refresh | ⬜ |
 
-### Traži tebe
-
-| # | test | status |
-| --- | --- | --- |
-| T-S129-6 | export s **otkvačenim** prekidačem stvarno sadrži ožujak/travanj 2026. (ne samo brojku) | ⬜ |
-| T-S129-7 | delta sheet s otkvačenim prekidačem uzima račun **iz panela** i nije prazan | ⬜ |
-| T-S129-8 | shortcut s `periodKey` vraća raspon koji auto-init više ne prepisuje (vjerojatno usput popravljeno) | ⬜ |
-| T-S128-3 | parking `1,40` nestao iz **liste** | ✅ sva tri datuma po 2×`0,70`, nijedan `1,40` |
-| T-S128-4 | pomaknuti redak `Anja 49,00` stoji na **02.03.2025.**, `Datum naplate` isti dan | ⬜ |
-| **T-S128-6** | ⚠ **T-S127-9 prije merge-a na `main`** | ✅ 05.09.2026. — v. niže |
-
-**Otvoreno:** T-S129-6, T-S129-7, T-S129-8, T-S128-4, T-S128-5
-
-### T-S127-9 — potvrđen 05.09.2026., uz ispravak metode
-
-⚠ **Prvi pokušaj nije bio dokaz.** Odabran je Visa redak `28.08.2026.` s
-`Datum naplate = 03.09.2026.` — a to je **točno ono što `next:3` izračuna**,
-pa se pogrešno okidanje pravila ne bi vidjelo. Izmjereno: od **1.619** Visa
-redaka samo ih je **11** naplaćeno 3. u mjesecu (5. → 719, 4. → 400, 6. → 176,
-7. → 137, 12. → 63, 8. → 62, 11. → 50, **3. → 11**, 13. → 1).
-
-Ponovljeno na retku `27.07.2026. · ZOO · 15,00 € · naplata 07.08.2026.`
-(razlika od pravila 4 dana). Nakon Edita i `Save → View` datum je **ostao
-07.08.2026.** ⇒ pravilo se okida na čovjekovom potezu, ne na otvaranju.
-
-**Pouka za buduće testove pravila:** redak na kojem se testira mora se
-**razlikovati** od onoga što pravilo proizvodi, inače test prolazi i kad je
-kod pokvaren.
+**Otvoreno:** T-S129-A7, T-S129-A8, T-S129-A9, T-S129-A10, T-S129-6, T-S129-7,
+T-S129-8, T-S129-B4, T-S128-4, T-S128-5
 
 ---
 

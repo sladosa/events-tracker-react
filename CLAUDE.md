@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S128).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S129).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -590,9 +590,32 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   1. rata za 2026.` — vodnogospodarsko davanje, ne bankovni trošak. **Bankine
   vlastite naknade svoj redak POČINJU tim tekstom; tuđe ga nose iza prefiksa
   naloga.** Razlika je u položaju, pa je i pravilo takvo.
-- **`Izvod opis` se skraćuje za uvod, `(m-zaba)` ostaje** (S126). Sigurno je za
-  sparivanje jer `kljuc_izvoda` isti uvod ionako skida prije nego napravi ključ —
-  stari (dugi) i novi (kratki) zapisi se i dalje poklapaju.
+- **⚠ `Izvod opis` se skraćuje za uvod, `(m-zaba)` ostaje** (S126) — a tvrdnja da je
+  to **sigurno za sparivanje** bila je **NETOČNA i stajala je ovdje devet sesija**
+  (ispravljeno S129). `_PREFIX` je tražio **cijeli** uvod, pa bez njega ne uhvati
+  ništa i `(m-zaba)` postane **dio imena primatelja**:
+
+      dugi    Kreditni transfer … (m-zaba) POSMRTNA …  →  ('posmrtna pripomoc', '1147')
+      kratki  (m-zaba) POSMRTNA …                      →  ('m zaba posmrtna',   '1147')
+
+  Izmjereno na PROD-u: **14** povijesnih PP redaka nije bilo presedan za 2 kolovoška,
+  pa je alat javio **„nema presedana"** ondje gdje povijest ima odgovor — razred S114
+  („brojač koji nula pokušaja prikazuje kao nula rezultata").
+  ⚠ Gore od toga: oblik `(mobilne aplikacije)` stari regex nije hvatao **ni s uvodom**,
+  pa je **22 nepovezana primatelja** dobilo isti ključ `kreditni transfer nac`. Prag
+  jednoglasnosti je sprječavao krive prijedloge, ali su pravi presedani bili
+  **nedohvatljivi**. Popravak: uvod je neobavezan, zagrada s kanalom se skida i sama.
+  Izmjereno: **59 redaka** dobiva pravog primatelja.
+  ⚠ **Pouka šira od regexa:** tvrdnja „X i Y se poklapaju" nije dokazana time što je
+  napisana. Ovdje je devet sesija stajala kao pravilo, a razlika se vidi u **dva retka
+  ispisa**.
+- **⚠ Ključ za oznaku je PRIMATELJ + POZIV NA BROJ, nikad `Tip`/`Podtip`** (S129).
+  Izmjereno: po `Tip`/`Podtip` vodeća oznaka parking skupine ima **36 %** — jer isti
+  Podtip nosi i `Prevoz` (45×); po primatelju **96 %**. Označavanje po `Tip`/`Podtip`
+  nazvalo bi 45 redaka krivo. Isti razlog vrijedi obrnuto: `ZAGREBAČKI HOLDING` ima
+  **tri** poziva na broj (tri stana), pa bi ključ bez poziva svakom ponudio ime onog
+  češćeg — dakle uvjerljivo krivo ime stana.
+  Alat: `oznaci_iz_presedana.py` (prag ≥ 90 % i ≥ 3 presedana; 45 od 71 retka).
 - **Žigosanje postojećih redaka (`--zigosi`) ide SAMO na točan par** (datum + iznos
   + smjer). Tolerancija na datum bi ovdje bila opasna nevidljivo: `Cash 100,00` se
   ponavlja svakih par tjedana (S114), pa bi prvi bankomat pokupio potvrdu nekog
@@ -679,6 +702,23 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   „naplaćeno 11.07." ima 73 retka i `2.231,02`; banka je tog dana skinula `1.244,74`. Saldo je
   netaknut (kartične stavke nisu u njemu), ali svaka automatika „dospjelo → potvrdi" gleda
   krivi datum. Kontrola: **zbroj košare po datumu naplate mora dati iznos skupne naplate.**
+- **⚠ `izvodi/Analizirani_izvodi/` NIJE arhiva — to je mapa koju alati čitaju** (S129).
+  `make_saldo_anchors.py:65` i `pregled_stanja.py:61` glob-aju **samo** nju, pa izvod
+  koji stoji u `izvodi/` korijenu za `promet_check`, `pregled_stanja` i sidra
+  **ne postoji**. Ime navodi na krivo: premještanje ondje znači **„stavi u igru"**,
+  ne „skloni". Izmjereno: `ZABA_2026-07` i `-08` su mjesecima bili vani, pa je
+  `promet_check` prestajao na 2026-06 — a oba zatvaraju **u cent** (38 i 46 redaka).
+  ⚠ Dio alata gađa **korijen** (`uvezi_transu.py`, `uskladi_izvod.py` preko `--izvod`),
+  pa premještanje nije posve neutralno — provjeri koji alat čita odakle prije selidbe.
+- **⚠ `rpc_area_balance_anchored` bez `p_plus_slug`/`p_minus_slug` vraća NULE** (S129).
+  Oba imaju `DEFAULT NULL` (`036`), pa izostavljen argument daje `plus_sum = 0`,
+  `minus_sum = 0` i `balance = anchor_amount` — dakle **saldo jednak sidru**, uz uredan
+  `n` koji izgleda kao da je nešto brojano. To se čita kao „ništa se nije dogodilo
+  poslije sidra", a zapravo znači „nisam ni pitao". Ispravan poziv je u
+  `make_saldo_anchors.app_balance()`.
+- **⚠ `uskladi_izvod.py` prima SAMO MC izvode** (`Zasad samo MC izvodi… Visa/ZABA imaju
+  drugi format`). Handoff iz S128 ga je preporučio za ZABA mjesece — za ZABA-u se ide
+  izravno na podatke (usporedba `_parse_zaba_all` protiv `load_db`), kao u S129.
 - **Baza drži UTC, app prikazuje lokalno** (+2h ljeti). DB `07:00` = UI `09:00`. Bitno kad se
   traži slobodan `session_start` — kolizija se računa na razini minute.
 
@@ -841,6 +881,42 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   `await supabase.from(...)` zato ne hvata ništa; to je razlog zašto su ovi kvarovi bili
   nevidljivi. `withRetry` uzima `isFailure` predikat baš zbog toga.
 
+- **⚠ ZASTAVICA KOJA ŠTITI STANJE IZ KONTEKSTA MORA ŽIVJETI U KONTEKSTU** (S129).
+  `DateRangeFilter.userModified` je bio lokalni `useState`, a čuvao je
+  `filter.dateFrom/dateTo` iz `FilterContext`. Svaki unmount ga je vratio na `false`,
+  ponovo naoružao bounds auto-init i bacio raspon na **„All time"**. Dva živa puta:
+  **Structure tab** (`AppHome`: `activeTab !== 'structure'`) i **View Details**
+  (cijeli `AppHome` se odmontira). S120 je taj razred zatvorio za `attrFilter`, a
+  datumski raspon je ostao vani — pa je izgledalo „povremeno", a ovisilo je o tome
+  je li čovjek usput svratio na Structure.
+  Lijek nije još jedan `hidden` uvjet nego **izvođenje iz konteksta**:
+  `const userModified = filter.periodKey !== 'all-time'` — `periodKey` je već ondje i
+  održava ga **svaki** setter. ⚠ Usput je time vjerojatno popravljeno i to što je
+  auto-init smio prepisati raspon koji je **shortcut** upravo vratio (`handleShortcutSelect`
+  zove `setDateRange` iz konteksta, što lokalnu zastavicu nije dizalo) — neprovjereno.
+- **⚠ BROJKA I SAŽETAK MORAJU OPISIVATI FILE KOJI IZLAZI, NE PANEL** (S129).
+  `ExcelExportModal` je u kutiji „Active filters" pokazivao `filter.dateFrom`, a
+  profil s `periodKey` je taj raspon **prepisivao** (`applyProfileFilterOverrides`) —
+  dakle dvije linije koje si proturječe i nijedna ne kaže tko pobjeđuje. Isti razred
+  kao BUG-S123-DELTAACCT: file izađe uredan, s krivim retcima, bez ijedne poruke.
+  Isto je vrijedilo za **brojku**: `5.154 events will be exported` za file koji ih ima
+  **387** (izmjereno s profilom `Kokin_format`, `last-3-months`).
+  Sada oboje ide kroz efektivne filtre; brojač usput dobiva `commentSearch` i
+  `attrFilter` u dep listu, koji su ondje **falili** — promjena filtra komentara
+  ostavljala je **staru brojku**, koja izgleda kao odgovor.
+  ⚠ Prekidač „Koristi filtre iz profila" je **JEDAN, ne dva**: sort nikad ne mijenja
+  *koji* su retci u fileu, samo njihov redoslijed — a prekidač čije krivo stanje nema
+  posljedicu uči čovjeka da prekidače ne čita, pa onda ni onaj koji je ima. Zadano je
+  **uključen** (dosadašnje ponašanje) i **resetira se pri svakom otvaranju modala**,
+  da otkvačeno stanje ne može ostati ležati i tiho ugristi sljedeći mjesec.
+  ⚠ Prekidač **mora biti proveden i kroz `deriveDeltaAccount`** — inače eventi dolaze
+  iz panela a račun iz profila, presjek je prazan, i delta sheet izađe s **točnim
+  sidrom i nula redaka**.
+- **⚠ Ista radnja na dvije širine živi na DVA mjesta** (S129). Activities Excel
+  Import/Export: uski ekran ih crta u redu s tabovima (`sm:hidden`, `AppHome`), široki
+  uz listu (`hidden sm:flex`, `ActivitiesTable`). Tko makne jedan uvjet mora maknuti i
+  drugi — inače se gumbi **udvostruče ili nestanu**. Isti razred kao „redak liste
+  renderiraju dva mjesta" (S125).
 - **⚠ AUTOMATSKI POPUNJENA FORMA NIJE KORISNIKOV SADRŽAJ** (S122). Add Activity se pri
   otvaranju sam napuni defaultima (`default_value`, preset, `default_map`), a auto-save je od
   S121 stvarno počeo raditi ⇒ nacrt se pisao i za forme koje nitko nije dotaknuo. Otvori Add
@@ -996,6 +1072,14 @@ data-prep_tools/Financije/promet_check.py
                                    Promet po izvodu, app vs banka. Ne prolazi kroz
                                    sidro ⇒ jedini instrument za ZASIDREN mjesec,
                                    gdje `--report` po konstrukciji daje nulu.
+data-prep_tools/Financije/oznaci_iz_presedana.py
+                                   Sirovi tekst izvoda u `Opis`u -> oznaka iz
+                                   BROJANE povijesti. Kljuc = primatelj + poziv
+                                   na broj (nikad Tip/Podtip). Prag >=90% i >=3.
+                                   ⚠ 45/71 redaka, `--apply` NIJE pusten (S129).
+data-prep_tools/Financije/fix_podizanje_150.py
+                                   Jednokratno: duplikat podizanja 150,00 s
+                                   krivim mjesecom. Primijenjeno S129.
 data-prep_tools/Financije/uvezi_transu.py
                                    Uvozi retke s izvoda kojih baza nema. Rječnik
                                    `Izvod opis → Tip/Podtip` iz brojane povijesti;
@@ -1871,6 +1955,24 @@ does not block build. Ignore it.
    git checkout test-branch && git merge main --no-edit && git push origin test-branch
    ```
    Bez sync-backa `test-branch` zaostaje za `main`.
+
+### ⚠ Test pravila mora se razlikovati od onoga što pravilo proizvodi (S129)
+
+T-S127-9 („otvaranje retka ne smije ništa promijeniti") prvi je put pušten na Visa
+retku `28.08.2026.` čiji je `Datum naplate` bio `03.09.2026.` — a to je **točno ono
+što `next:3` izračuna**. Da se pravilo pogrešno okinulo na otvaranju, vrijednost bi
+ostala **ista**, i test bi prošao nad pokvarenim kodom.
+
+Izmjereno: od **1.619** Visa redaka samo ih je **11** naplaćeno 3. u mjesecu
+(5. → 719, 4. → 400, 6. → 176, 7. → 137, 12. → 63, 8. → 62, 11. → 50, **3. → 11**).
+Dakle vjerojatnost da se slučajnim odabirom pogodi neupotrebljiv redak je mala, ali
+je **upravo to što se dogodilo**.
+
+Ponovljeno na retku koji se od pravila razlikuje **4 dana** — prošlo.
+
+**Pravilo:** kad se testira automatika, redak se bira tako da se **razlikuje** od
+njezinog rezultata. Inače test ne mjeri ništa, a izgleda kao da mjeri.
+Isti razred kao „Test koji nikad ne pada ne čuva ništa" (S120).
 
 ### Test result reporting (next session)
 Korisnik kaže npr. „T-S24-1 OK, T-S24-3 fail" → Claude ažurira PENDING_TESTS.md i istražuje
