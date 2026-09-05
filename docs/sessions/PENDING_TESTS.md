@@ -26,6 +26,7 @@
 | **T-S129-3** | `Custom` raspon preživi **Structure tab pa natrag** | ✅ |
 | **T-S129-4** | `Custom` raspon preživi **View details pa natrag** | ✅ |
 | **T-S129-5** | `All Time` iz dropdowna i dalje radi | ✅ |
+| **T-S129-9** | Excel Import/Export uz `+` na uskom ekranu, uz listu na širokom — **nigdje oba** | ✅ |
 
 ### Traži tebe
 

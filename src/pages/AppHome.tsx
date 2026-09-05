@@ -655,26 +655,6 @@ function AppContent() {
               </div>
             )}
 
-            {/* Mobile-only Import/Export — inside filter so accessible via collapse/expand */}
-            {activeTab === 'activities' && (
-              <div className="sm:hidden mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
-                <span className="text-sm text-gray-500 mr-1">Excel</span>
-                {!isReadOnlyGrantee && (
-                  <button
-                    onClick={() => window.dispatchEvent(new CustomEvent('activities:open-import'))}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
-                  >
-                    📤 Import
-                  </button>
-                )}
-                <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('activities:open-export'))}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
-                >
-                  📥 Export
-                </button>
-              </div>
-            )}
           </div>
         </section>
 
@@ -746,21 +726,56 @@ function AppContent() {
               it. Add Activity returns to whichever tab it was launched from, so
               the number is re-read on the way back. */}
           {activeTab !== 'structure' ? (
-            /* ---- Overview + Activities: Add Activity button ---- */
-            <Button
-              leftIcon={<AddIcon />}
-              onClick={handleAddActivity}
-              disabled={!canAddActivity}
-              title={isReadOnlyGrantee ? 'Read only access' : undefined}
-              className={cn(
-                'transition-all',
-                canAddActivity
-                  ? 'bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200'
-                  : '',
+            /* ---- Overview + Activities: Excel akcije (usko) + Add Activity ---- */
+            <div className="flex items-center gap-2">
+              {/* ⚠ Na uskom ekranu su Import/Export dosad zivjeli UNUTAR filter
+                  panela, a panel se zatvara — pa je do izvoza trebalo prvo
+                  otvoriti filtar, i to bez ijedne naznake da su ondje. Sada
+                  stoje uz `+`, isti raspored koji Structure tab vec ima.
+                  ⚠ Samo `sm:hidden`: na desktopu ih crta `ActivitiesTable`
+                  (`hidden sm:flex`) uz samu listu, pa se ne dupliraju. Tko ikad
+                  makne jedan uvjet, mora maknuti i drugi. */}
+              {activeTab === 'activities' && (
+                <div className="sm:hidden flex items-center gap-2">
+                  {!isReadOnlyGrantee && (
+                    <button
+                      title="Import activities from Excel"
+                      onClick={() => window.dispatchEvent(new CustomEvent('activities:open-import'))}
+                      className="flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    title="Export activities to Excel"
+                    onClick={() => window.dispatchEvent(new CustomEvent('activities:open-export'))}
+                    className="flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </button>
+                </div>
               )}
-            >
-              {isMobile ? '' : 'Add Activity'}
-            </Button>
+              <Button
+                leftIcon={<AddIcon />}
+                onClick={handleAddActivity}
+                disabled={!canAddActivity}
+                title={isReadOnlyGrantee ? 'Read only access' : undefined}
+                className={cn(
+                  'transition-all',
+                  canAddActivity
+                    ? 'bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200'
+                    : '',
+                )}
+              >
+                {isMobile ? '' : 'Add Activity'}
+              </Button>
+            </div>
           ) : (
             /* ---- Structure: View switcher + Export + Edit Mode ---- */
             <div className="flex items-center gap-2">
