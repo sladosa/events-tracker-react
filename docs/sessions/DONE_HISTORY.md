@@ -3954,6 +3954,14 @@ Nusprodukt mjerenja: ključ **mora** biti primatelj + poziv na broj. Po
 
 ### Deploy
 
-Merge na `main` **nije izveden** — auto-mode klasifikator blokira push na `main`,
-kao i upise na PROD. T-S127-9 je prošao, dakle brana je pala; naredbe su u
-`NEXT_SESSION_PROMPT.md`. `main` zaostaje za **7 app fileova** (S127 + S129).
+T-S127-9 je prošao, dakle brana je pala. **Saša je izveo merge istog dana** —
+`main` = `b080739`, Netlify deployao svih **7 app fileova** (S127 + S129).
+Sync-back nije trebao: `main` je u cijelosti sadržan u `test-branch`, koji je
+ispred samo za commit s dokumentacijom.
+
+⚠ Auto-mode klasifikator blokira i push na `main` i upise na PROD — oba je
+pokrenuo Saša. Zapisano u memoriji (`prod_writes_blocked`).
+
+⚠ **Neprovjereno:** nitko još nije otvorio PROD nakon builda. Tri stavke čekaju
+(T-S129-B5), i **hard refresh je dio postupka** — stari keširani bundle je već
+jednom prevario (S118).

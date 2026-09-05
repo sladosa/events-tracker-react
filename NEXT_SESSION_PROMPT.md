@@ -1,8 +1,10 @@
 # Sljedeća sesija — handoff
 
 **Pisano protiv commita:** `S129: T-S127-9 potvrdjen -- uz ispravak metode testiranja`
-(`b080739`, **samo `test-branch`** — `main` je i dalje na `3e9acf6`). Ako `git log`
-pokazuje novije, čitaj ovo kao **povijest** — CLAUDE.md je autoritet.
+(`b080739`). ⚠ **`main` je 05.09.2026. podignut na `b080739`** — dakle sve app
+promjene S127+S129 su na PRODU. `test-branch` je ispred za `84f5edc`
+(dokumentacija, ne dira aplikaciju). Ako `git log` pokazuje novije, čitaj ovo kao
+**povijest** — CLAUDE.md je autoritet.
 
 ---
 
@@ -113,10 +115,12 @@ sekciju **MIJENJAM** (po retku: stari `Opis` → `Izvod opis` → novi `Opis`).
 
 ## Stanje grana
 
-- `test-branch` = `b080739`, pushano, radno stablo čisto.
-- `main` = `3e9acf6`, zaostaje **7 app fileova**: `ExcelExportModal.tsx`,
-  `DateRangeFilter.tsx`, `AppHome.tsx` (S129) + `attributeRules.ts`,
-  `AddActivityPage.tsx`, `EditActivityPage.tsx`, `ruleManagedAttrs.test.mjs` (S127).
+- `main` = `b080739` — **podignut 05.09.2026.**, Netlify deployao. Nosi sve app
+  promjene S127 (`attributeRules.ts`, `AddActivityPage.tsx`, `EditActivityPage.tsx`,
+  `ruleManagedAttrs.test.mjs`) i S129 (`ExcelExportModal.tsx`, `DateRangeFilter.tsx`,
+  `AppHome.tsx`).
+- `test-branch` = `84f5edc`, ispred `main`a za **jedan commit** — samo
+  dokumentacija (CLAUDE.md, session fileovi, ENRICH_PLAN). Ne traži deploy.
 - ⚠ **Auto-mode klasifikator blokira i push na `main` i upise na PROD.** Oba
   pokreće Saša. Ne pokušavati zaobići — dry run + backup + naredba njemu.
 

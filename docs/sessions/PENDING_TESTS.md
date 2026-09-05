@@ -40,10 +40,11 @@ Detalji: [S129_tests.md](tests/S129_tests.md)
 | **T-S129-7** | delta sheet s otkvačenim prekidačem nije prazan | ⬜ |
 | **T-S129-8** | shortcut s `periodKey` se više ne prepisuje | ⬜ |
 | **T-S129-B3** | ⏸ **PARKIRANO** — oznake iz presedana (45/71, `--apply` nije pušten) | ⏸ |
-| **T-S129-B4** | merge na `main` + provjera na PROD-u uz hard refresh | ⬜ |
+| **T-S129-B4** | merge na `main` | ✅ 05.09.2026., `main` = `b080739` |
+| **T-S129-B5** | provjera na **PROD URL-u** uz hard refresh (3 stavke) | ⬜ |
 
 **Otvoreno:** T-S129-A7, T-S129-A8, T-S129-A9, T-S129-A10, T-S129-6, T-S129-7,
-T-S129-8, T-S129-B4, T-S128-4, T-S128-5
+T-S129-8, T-S129-B5, T-S128-4, T-S128-5
 
 ---
 
