@@ -35,11 +35,27 @@
 | T-S129-6 | export s **otkvačenim** prekidačem stvarno sadrži ožujak/travanj 2026. (ne samo brojku) | ⬜ |
 | T-S129-7 | delta sheet s otkvačenim prekidačem uzima račun **iz panela** i nije prazan | ⬜ |
 | T-S129-8 | shortcut s `periodKey` vraća raspon koji auto-init više ne prepisuje (vjerojatno usput popravljeno) | ⬜ |
-| T-S128-3 | parking `1,40` nestao iz **liste** na 05.03., 21.03.2026. i 11.04.2026. | ⬜ |
+| T-S128-3 | parking `1,40` nestao iz **liste** | ✅ sva tri datuma po 2×`0,70`, nijedan `1,40` |
 | T-S128-4 | pomaknuti redak `Anja 49,00` stoji na **02.03.2025.**, `Datum naplate` isti dan | ⬜ |
-| **T-S128-6** | ⚠ **T-S127-9 prije merge-a na `main`** — jedina brana | ⬜ |
+| **T-S128-6** | ⚠ **T-S127-9 prije merge-a na `main`** | ✅ 05.09.2026. — v. niže |
 
-**Otvoreno:** T-S129-6, T-S129-7, T-S129-8, T-S128-3, T-S128-4, T-S128-5, T-S128-6
+**Otvoreno:** T-S129-6, T-S129-7, T-S129-8, T-S128-4, T-S128-5
+
+### T-S127-9 — potvrđen 05.09.2026., uz ispravak metode
+
+⚠ **Prvi pokušaj nije bio dokaz.** Odabran je Visa redak `28.08.2026.` s
+`Datum naplate = 03.09.2026.` — a to je **točno ono što `next:3` izračuna**,
+pa se pogrešno okidanje pravila ne bi vidjelo. Izmjereno: od **1.619** Visa
+redaka samo ih je **11** naplaćeno 3. u mjesecu (5. → 719, 4. → 400, 6. → 176,
+7. → 137, 12. → 63, 8. → 62, 11. → 50, **3. → 11**, 13. → 1).
+
+Ponovljeno na retku `27.07.2026. · ZOO · 15,00 € · naplata 07.08.2026.`
+(razlika od pravila 4 dana). Nakon Edita i `Save → View` datum je **ostao
+07.08.2026.** ⇒ pravilo se okida na čovjekovom potezu, ne na otvaranju.
+
+**Pouka za buduće testove pravila:** redak na kojem se testira mora se
+**razlikovati** od onoga što pravilo proizvodi, inače test prolazi i kad je
+kod pokvaren.
 
 ---
 
@@ -81,7 +97,7 @@ Detalji: [S128_tests.md](tests/S128_tests.md)
 | T-S128-3 | parking `1,40` nestao iz **liste**, ne samo iz brojke | ⬜ |
 | T-S128-4 | pomaknuti redak nosi i `Datum naplate` (02.03.2025.) | ⬜ |
 | T-S128-5 | pregledni workbook se otvara bez „repair" | ⬜ |
-| **T-S128-6** | ⚠ **T-S127-9 prije merge-a na `main`** — jedina brana | ⬜ |
+| **T-S128-6** | ⚠ **T-S127-9 prije merge-a na `main`** | ✅ 05.09.2026. — v. niže |
 
 **Otvoreno:** T-S128-3, T-S128-4, T-S128-5, T-S128-6
 
