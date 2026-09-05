@@ -68,8 +68,21 @@ MIN_PO_POZIVU = 2          # ime + poziv na broj je ostar kljuc; dva su pravilo
 MIN_UDIO = 0.9
 MAX_OZNAKA = 30            # duze od toga nije oznaka nego prepisan tekst izvoda
 
+# /!\ UVOD JE NEOBAVEZAN, A OZNAKA KANALA SAMOSTALNA. `Izvod opis` se od S126
+#     sprema SKRACEN (`(m-zaba) POSMRTNA PRIPOMOC ...`), a CLAUDE.md je tvrdio
+#     da je to sigurno „jer `kljuc_izvoda` isti uvod ionako skida". Izmjereno
+#     05.09.2026. na PROD-u: NE SKIDA. Bez uvoda regex ne uhvati nista, pa
+#     `(m-zaba)` postane DIO IMENA primatelja:
+#         dugi   -> ('posmrtna pripomoc', '1147')
+#         kratki -> ('m zaba posmrtna',   '1147')
+#     ⇒ 14 povijesnih PP redaka nije bilo presedan za 2 kolovoska, i alat je
+#       javio „nema presedana" ondje gdje povijest ima odgovor — razred „brojac
+#       koji nula pokusaja prikazuje kao nula rezultata" (S114).
+#     Zato je uvod `(?:...)?`, a zagrada s kanalom se skida i sama. Uz `m-zaba`
+#     ide i `mobilne aplikacije`, koji stari regex nije hvatao ni s uvodom.
 _PREFIX = re.compile(
-    r'^kreditni transfer nacionalni u eurima on-?line bankarstvom\s*\(m-zaba\)\s*', re.I)
+    r'^(?:kreditni transfer nac(?:ionalni)?\.? u eurima on-?line bankarstvom\s*)?'
+    r'(?:\((?:m-zaba|mobilne aplikacije)\)\s*)?(?:-\s*)?', re.I)
 _IBAN = re.compile(r'\bhr\d{2}[0-9a-z]{6,}\b', re.I)
 _POZIV = re.compile(r'\bHR\d{2}\s+([0-9][0-9\-]{4,})', re.I)
 _KOD = re.compile(r'\b(COST|OTHR|GASB|NOWS|OTLC|SEPA)\b', re.I)
