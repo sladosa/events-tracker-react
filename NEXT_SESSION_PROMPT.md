@@ -43,26 +43,16 @@ Dvije odvojene stvari: **podaci** i **kod**.
 - **Excel Import/Export na mobitelu** preselio iz filtra (koji se zatvara) u red
   s tabovima, uz zeleni `+`.
 
-## ⭐ Prvo što treba napraviti — dvije stvari
+## ⭐ Prvo što treba napraviti
 
-### 1. Push na `main` (troši Netlify kredite)
+### 1. ✅ Push na `main` — ODRAĐENO 05.09.2026.
 
-T-S127-9 je **prošao**, dakle brana je pala. Ja to ne mogu pokrenuti.
+`main` = `b080739`, Netlify deployao. Sync-back nije trebao — `main` je u
+cijelosti sadržan u `test-branch`u.
 
-```powershell
-cd c:\0_Sasa\events-tracker-react
-git checkout main
-git merge test-branch --no-edit
-git push origin main
-git checkout test-branch
-git merge main --no-edit
-git push origin test-branch
-```
-
-Zadnja tri retka su **sync-back** — bez njih `test-branch` zaostaje.
-
-Nakon Netlify builda provjeri na **PROD URL-u** i s **hard refreshom**
-(`Ctrl+Shift+R` — stari keširani bundle je već jednom prevario, S118):
+⚠ **Ostala je provjera na PRODU** (T-S129-B5): build je otišao, ali nitko ga još
+nije otvorio. Na **PROD URL-u** i s **hard refreshom** (`Ctrl+Shift+R` — stari
+keširani bundle je već jednom prevario, S118):
 - `27.07.2026. ZOO 15,00` u Editu → `Datum naplate` mora ostati `07.08.2026.`
 - export modal ima prekidač i brojka mu se mijenja kad ga klikneš
 - `Custom` raspon preživi odlazak na Structure
@@ -160,7 +150,7 @@ ovdje je razlika bila u dva retka ispisa a stajala je devet sesija.
 
 ## Otvoreno / neverificirano
 
-- **T-S129-A7…A10, T-S129-6/-7/-8, T-S129-B3 (parkirano), T-S129-B4** —
+- **T-S129-A7…A10, T-S129-6/-7/-8, T-S129-B3 (parkirano), T-S129-B5** —
   v. `docs/sessions/tests/S129_tests.md`.
 - Stariji ⬜ testovi: T-S128-4/-5, T-S127-2/-3/-5/-7/-10, plus raniji.
 - `audit_tests.py`: **0 sesija za arhivu**; 40 testova koje PENDING ne spominje i
