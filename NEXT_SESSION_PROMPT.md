@@ -1,103 +1,125 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `S129: T-S127-9 potvrdjen -- uz ispravak metode testiranja`
-(`b080739`). ⚠ **`main` je 05.09.2026. podignut na `b080739`** — dakle sve app
-promjene S127+S129 su na PRODU. `test-branch` je ispred za `84f5edc`
-(dokumentacija, ne dira aplikaciju). Ako `git log` pokazuje novije, čitaj ovo kao
-**povijest** — CLAUDE.md je autoritet.
+**Pisano protiv commita:** `S130: popis MC izvoda se nalazi sam + brisanje 1:N trazi
+RAZLICITE retke` (`0318314`). `main` = `b080739`, **nedirano ovom sesijom**.
+Ako `git log` pokazuje novije, čitaj ovo kao **povijest** — CLAUDE.md je autoritet.
+
+⚠ **PROD podaci su nedirani.** Sve u S130 je bio dry run. Nijedan `--apply` nije pušten.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Što je danas napravljeno
+## ⭐ Kako napraviti upis podataka
 
-Dvije odvojene stvari: **podaci** i **kod**.
+Plan je: Koka gleda svoje bankovne aplikacije, ti upisuješ dok joj je sjećanje svježe.
+Aplikacija se koristi **samo za izvoz (Delta) i uvoz** — radi se u Excelu.
 
-### Podaci — `Financije_all` na PROD-u
+### Prije nego sjednete
 
-| | |
-| --- | --- |
-| popravak parkinga + multisporta | ✅ 3 brisanja + 1 pomak datuma |
-| podizanje `150,00` (duplikat, krivi mjesec) | ✅ obrisano |
-| četiri mjeseca pala na nulu | ✅ 2025-02, 2025-03, 2026-03, 2026-04 |
-| `2025-10` pao na nulu | ✅ |
-| ZABA 2026-07 i 2026-08 | ✅ **zatvaraju u cent, uvoza nema** |
-| app vs ispisano stanje 26.08. | ✅ **12.784,36 = 12.784,36** |
-
-**Ostala su dva mjeseca u cijeloj povijesti od 2024. naovamo:**
-
-| mjesec | Δ | što je |
-| --- | ---: | --- |
-| 2025-08 | −46,74 | `−45,94` (Zagrebački holding) + `−0,80` |
-| 2025-07 | +0,80 | banka ima `−0,80` @ 07.07., baza nema |
-
-### Kod
-
-- **Export više ne laže.** Profil `Kokin_format` je tiho prepisivao tvoj raspon
-  datuma, a modal je i dalje pokazivao **tvoj**. Brojka je pisala `5.154` za file
-  koji ima `387`. Sada oboje pokazuje ono što stvarno izlazi, plus **prekidač**
-  „Koristi filtre iz profila" kojim to isključiš.
-- **Raspon datuma se više ne resetira sam.** Odlazak na Structure ili u View
-  Details bacao ga je na „All time".
-- **Excel Import/Export na mobitelu** preselio iz filtra (koji se zatvara) u red
-  s tabovima, uz zeleni `+`.
-
-## ⭐ Prvo što treba napraviti
-
-### 1. ✅ Push na `main` — ODRAĐENO 05.09.2026.
-
-`main` = `b080739`, Netlify deployao. Sync-back nije trebao — `main` je u
-cijelosti sadržan u `test-branch`u.
-
-⚠ **Ostala je provjera na PRODU** (T-S129-B5): build je otišao, ali nitko ga još
-nije otvorio. Na **PROD URL-u** i s **hard refreshom** (`Ctrl+Shift+R` — stari
-keširani bundle je već jednom prevario, S118):
-- `27.07.2026. ZOO 15,00` u Editu → `Datum naplate` mora ostati `07.08.2026.`
-- export modal ima prekidač i brojka mu se mijenja kad ga klikneš
-- `Custom` raspon preživi odlazak na Structure
-
-### 2. Sidro za kolovoz, pa Delta
+**1. Pokreni aplikaciju na PROD podacima.**
 
 ```powershell
-cd c:\0_Sasa\events-tracker-react\data-prep_tools\Financije
+cd c:\0_Sasa\events-tracker-react
+git pull                # test-branch, 0318314
+npm run dev:prod
+```
+
+⚠ **`npm run dev` (bez `:prod`) je TEST baza.** Razlika se ne vidi na prvi pogled —
+obje baze imaju Areu sličnog imena. TEST se prepoznaje po areama `S100 A 8a37c3`,
+`S121 ctx w0`, `Alpha`; PROD po `Financije_all`, `Financije_old`, `Kupiti`.
+
+**2. Logiraj se kao Koka**, ne kao ti. Tako su retci njeni, pa ih njen idući roundtrip
+vidi kao svoje (nema `fix_as_owner`), a i profil `Kokin_format` može spremiti samo
+vlasnica.
+⚠ Pri prebacivanju računa u istom pregledniku može iskočiti *„Resume Previous
+Session?"* s nacrtom s tvog računa — klikni **Discard**.
+
+**3. Upiši sidro za kolovoz** (bez njega delta prozor kreće od 31.07. i nosi 48 već
+usklađenih redaka umjesto par):
+
+```powershell
+cd data-prep_tools\Financije
 $env:ET_TARGET="prod"
 ..\Tools\venv\Scripts\python.exe make_saldo_anchors.py --anchor 2026-08-26
 ```
 
-Upisuje `12.784,36 @ 26.08.2026.` — broj **čita iz PDF-a**, ne s tvoje tipkovnice.
+Upisuje `12.784,36 @ 26.08.2026.`, broj čita iz PDF-a. Provjereno unaprijed: kolovoz
+zatvara **u cent**, a app na taj dan daje točno taj broj.
+⚠ Nepovratno u smislu prozora — nakon toga nijedna buduća Delta ne doseže prije 27.08.
 
-Zatim u aplikaciji: filter na `Kokin tekući ZABA` → Export → **Delta sheet**.
+**4. NE puštaj `--apply` za `MC_2026-08` prije Delte.** Objašnjenje niže („Nalaz koji
+je okrenuo preporuku"). Stariji izvodi smiju.
 
-**Zašto tim redom:** bez sidra delta prozor kreće od **31.07.** i nosi 48 već
-usklađenih kolovoških redaka; sa sidrom kreće od **27.08.** i nosi 2.
+### Sam upis
 
-⚠ `$env:ET_TARGET="prod"` ostaje postavljen do kraja tog terminala.
-⚠ Nakon sidra nijedan budući delta sheet ne može doseći prije 27.08. Sigurno je
-jer kolovoz zatvara u cent, ali je nepovratno.
+1. Filter → račun (`Kokin tekući ZABA`) → **Export → Delta sheet**.
+   ⚠ Postavi **broj praznih redaka** prema tome koliko transakcija očekujete — redak
+   koji ne stane pada izvan raspona kontrolnog stupca, a brojka ostane uvjerljiva i
+   nepotpuna.
+2. U Excelu upisujte u **prazne retke** ispod povijesti. Dobivate:
+   - `Tip` — dropdown, 18 vrijednosti
+   - `Podtip` — dropdown vezan na **vlastiti** `Tip` retka ✅ *(ovo je popravljeno u S130)*
+   - `Datum naplate` — provjera datuma
+   - `Comment` — **slobodan tekst**, bez prijedloga (parkirano, v. DIO 2)
+3. Kontrolni stupac desno pokazuje stanje po retku. ⚠ **Ne broji `Planiran`** — prvo u
+   sheetu potvrdi što je banka naplatila, pa tek onda čitaj brojku.
+4. Uvoz natrag kroz aplikaciju (Excel Import).
+   ⚠ **Hard refresh (Ctrl+Shift+R) prije uvoza** — stari keširani bundle je već jednom
+   tiho osakatio uvoz (S118).
 
-## Što još čeka, po redu
+### Što provjeriti prvi put (i javiti)
 
-1. **`MC_2026-08.pdf`** — stigao 02.09., netaknut. Kartični izvod **ne dira
-   saldo**; daje potvrdu po retku, točan `Datum naplate` i retke kojih baza nema.
-   Prvi korak je samo čitanje: `uskladi_izvod.py --izvod ...MC_2026-08.pdf --dry`.
-2. **Zadnja dva mjeseca** (2025-07, 2025-08). ⚠ `uskladi_izvod.py` prima **samo
-   MC** izvode — za ZABA-u se ide izravno na podatke, kao kod podizanja od 150.
-3. **Odluka koja visi od S127:** `Status` se u Editu mijenja **pravilom, a ne
-   dokazom**. 2.300 redaka nosi potvrdu s izvoda, a promjena `Izvora` ih
-   raz-potvrdi. Preporuka je i dalje **potvrda pobjeđuje pravilo**.
-4. **Faza 3** — automatika na Import putu. Jedna rupa drži tri featurea.
-5. **Ti odglumiš Koku 3 dana** stvarnog unosa pa mjerimo frikciju.
+- **T-S130-1:** u praznom retku odaberi `Tip = Domacinstvo`, pa otvori `Podtip`.
+  Mora nuditi **Domacinstvo** podtipove. Ako nudi neke druge — popravak nije stigao.
+  ⚠ Biraj `Tip` **različit** od onoga na zadnjem povijesnom retku, inače test ne mjeri
+  ništa.
+
+## Nalaz koji je okrenuo preporuku
+
+Na tvoje pitanje *„zar nije dobro imati ispravke u PROD-u prije Delte?"* — odgovor je
+**podijeljen**, i utvrdilo se mjerenjem:
+
+| što | prije Delte? |
+| --- | --- |
+| **21 ispravak + 2 brisanja** sa starijih izvoda (2024./2025.) | **da**, slobodno |
+| **46 ispravaka** iz `MC_2026-08` | **ne** |
+
+Košara koju Delta prikazuje **jest točno tih 46 redaka** (svi dospijevaju `11.09.`,
+svi `Mastercard`, svi `Planiran`, Σ `1.048,72`). Stupac `Provjeri` pali kad je
+`Status <> Planiran` **a** dospijeće u budućnosti. Dakle:
+
+- **bez** `--apply` → stupac **prazan** za svih 46
+- **s** `--apply` → **svih 46** dobiva *„dospijeva tek 11.09.2026."*
+
+46 narančastih upozorenja na retcima na kojima ništa nije u redu.
+
+⚠ Ispod toga je **odluka koju treba donijeti, ali ne danas**: što `Status` znači za
+kartični redak u **otvorenoj** košari. Tvoja dva pravila se ovdje razilaze — „kartični
+redak je `Izvrsen`, kupovina se dogodila" (izmjereno Visa 855/855) protiv delta toka
+gdje je `Status` prekidač potvrde.
+
+## Što još čeka
+
+1. **Stariji izvodi** — 21 ispravak (13 redaka dobiva `Izvod opis`, 5 ispravlja
+   `Datum naplate`) + 2 brisanja. Sve `Mastercard`, sve prije sidra ⇒ ne diraju saldo.
+   Naredba je u DIO 2.
+2. **`MC_2026-08` (46)** — kad ZABA rujanski izvod pokaže skupnu naplatu `1.068,70`.
+3. **Dva nova retka, `19,98`** — `PAYPAL *AC WALKFT 9,99` (10.08.) i `APPLE.COM/BILL
+   9,99` (17.08.). `--apply` ih **ne uvozi** (radi samo ispravke/dopune/brisanja), a
+   kartični redak ne smije u prazne retke Delte ⇒ traže zaseban uvoz.
+4. **Pet mjeseci koji se razilaze:** `2024-03 +10,00`, `2024-07 −17,28`,
+   `2024-10 −236,04`, `2025-07 +0,80`, `2025-08 −46,74`.
+5. **T-S129-B5** — provjera S127/S129 na PROD URL-u uz hard refresh. Nije odrađeno.
+6. **Faza 3** — automatika na Import putu. Jedna rupa drži tri featurea.
 
 ## Parkirano (tvoja odluka, ne zaboravljeno)
 
-**Oznake iz presedana** — 71 redak nosi u `Opis`u sirovi tekst izvoda umjesto
-oznake tipa `Parking`. Alat `oznaci_iz_presedana.py` predlaže oznaku iz brojane
-povijesti za **45** njih; ostalih 26 se ne pogađa. Dry run je čist, **ništa nije
-upisano** — parkirao si jer ti prijedlozi nisu bili očiti.
-
-Ako se vratiš na to: pusti `oznaci_iz_presedana.py` bez argumenata i pročitaj
-sekciju **MIJENJAM** (po retku: stari `Opis` → `Izvod opis` → novi `Opis`).
+- **Prijedlog `comment`a iz povijesti** — izmjereno, ne radi se. Brojke su u CLAUDE.md
+  backlogu da se ne ponavljaju. Ukratko: ključ `Podtip` sam, zadnjih 12 mjeseci,
+  **top-5 = 93,4 %**; iznos ne doda ništa; top-1 je 57,6 % ⇒ ponuda, nikad upis.
+- **Oznake iz presedana** — 71 redak nosi sirovi tekst izvoda u `Opis`u,
+  `oznaci_iz_presedana.py` predlaže oznaku za 45. Dry run čist, `--apply` nije pušten.
 
 ---
 
@@ -105,53 +127,65 @@ sekciju **MIJENJAM** (po retku: stari `Opis` → `Izvod opis` → novi `Opis`).
 
 ## Stanje grana
 
-- `main` = `b080739` — **podignut 05.09.2026.**, Netlify deployao. Nosi sve app
-  promjene S127 (`attributeRules.ts`, `AddActivityPage.tsx`, `EditActivityPage.tsx`,
-  `ruleManagedAttrs.test.mjs`) i S129 (`ExcelExportModal.tsx`, `DateRangeFilter.tsx`,
-  `AppHome.tsx`).
-- `test-branch` = `84f5edc`, ispred `main`a za **jedan commit** — samo
-  dokumentacija (CLAUDE.md, session fileovi, ENRICH_PLAN). Ne traži deploy.
-- ⚠ **Auto-mode klasifikator blokira i push na `main` i upise na PROD.** Oba
-  pokreće Saša. Ne pokušavati zaobići — dry run + backup + naredba njemu.
+- `test-branch` = `0318314`. Nosi S130: `excelExport.ts`, `deltaSheet.ts`,
+  `deltaBlankRowDropdowns.test.mjs`, `primijeni_uskladu.py`, docs.
+- `main` = `b080739`, **nedirano**. Deploy **nije potreban** za rad — `npm run dev:prod`
+  daje popravljeni kod nad PROD podacima. Deploy treba tek kad Koka radi sama.
+- ⚠ Auto-mode blokira i push na `main` i upise na PROD. Oba pokreće Saša.
 
-## Novi/promijenjeni alati (S129)
+## Naredbe koje čekaju Sašu
+
+```powershell
+cd c:\0_Sasa\events-tracker-react\data-prep_tools\Financije
+$env:ET_TARGET="prod"
+
+# 1. sidro za kolovoz
+..\Tools\venv\Scripts\python.exe make_saldo_anchors.py --anchor 2026-08-26
+
+# 2. stariji izvodi (21 ispravak + 2 brisanja) -- BEZ MC_2026-08
+#    Popis se sada nalazi sam, pa treba nabrojati sve OSIM kolovoza,
+#    ili pustiti zadano pa prihvatiti i 46 kolovoskih (v. nalaz gore).
+
+# 3. kolovoz -- TEK nakon Delte / rujanskog ZABA izvoda
+..\Tools\venv\Scripts\python.exe primijeni_uskladu.py --izvod ..\..\data-prep_data\Financije\izvodi\MC_2026-08.pdf --apply
+```
+
+⚠ **Otvoreno u alatu:** `primijeni_uskladu.py` nema način da *isključi* jedan izvod iz
+zadanog prolaza. Za korak 2 treba ili 31× `--izvod`, ili nova zastavica
+(`--osim MC_2026-08.pdf`). To je posao od par minuta i **nije napravljen**.
+
+## Promjene u S130
 
 | file | što |
 | --- | --- |
-| `fix_podizanje_150.py` | jednokratno, **primijenjeno** |
-| `oznaci_iz_presedana.py` | ⏸ dry run čist, **`--apply` NIJE pušten** |
-| `presedani.py` | `_PREFIX` popravljen — v. niže |
+| `src/lib/excelExport.ts` | novi param `dvBlankRows`; `dvEnd` \u2192 validacija pokriva prazne retke predloška |
+| `src/lib/deltaSheet.ts` | maknuto kopiranje `dataValidation` s povijesnog retka; prosljeđuje `opts.blankRows` |
+| `src/lib/__tests__/deltaBlankRowDropdowns.test.mjs` | **nov**, 8 provjera, protuprovjera pada 4/8 |
+| `data-prep_tools/Financije/primijeni_uskladu.py` | `--izvod` / `--s124`; popis izvoda se nalazi sam (glob); brisanje 1:N traži različite retke |
 
 ## Izmjereno u ovoj sesiji (ne ponavljati)
 
-- **`izvodi/Analizirani_izvodi/` je mapa koju alati čitaju, ne arhiva.**
-  `make_saldo_anchors.py:65`, `pregled_stanja.py:61`. `ZABA_2026-07/-08` su bili
-  u korijenu ⇒ `promet_check` je prestajao na 2026-06.
-- **`rpc_area_balance_anchored` bez `p_plus_slug`/`p_minus_slug` vraća nule** i
-  `balance = anchor_amount`, uz uredan `n`. Ispravan poziv:
-  `make_saldo_anchors.app_balance()`.
-- **`uskladi_izvod.py` prima samo MC izvode** — S128 handoff ga je krivo
-  preporučio za ZABA mjesece.
-- **Visa dan naplate:** 5. → 719, 4. → 400, 6. → 176, 7. → 137, 12. → 63,
-  8. → 62, 11. → 50, **3. → 11**, 13. → 1 (od 1.619 redaka).
-- **PROD sidra:** ZABA aktivno `2026-07-30 = 13.815,33`; RF `2026-08-11 = 799,12`.
-  Rupa u sidrima 2025-01-01 → 2026-07-30 je **namjerna** (sidro tek kad mjesec
-  zatvori).
-- **`Kokin_format` profil:** `{"periodKey": "last-3-months", "sortOrder": "asc"}`,
-  23 kolone, bez `attrFilterRaw`.
-- **71 redak nosi sirovi tekst izvoda u `Opis`u**, od toga 39 parking.
-
-## Ispravljena tvrdnja iz CLAUDE.md-a
-
-`kljuc_izvoda` **nije** skidao uvod kad ga nema. Nova zamka je zapisana u
-CLAUDE.md („Rječnik `Izvod opis` → `Tip`/`Podtip`"). Ako naiđeš na sličnu tvrdnju
-oblika „X i Y se poklapaju jer alat Z to ionako radi" — **ispiši oba i usporedi**,
-ovdje je razlika bila u dva retka ispisa a stajala je devet sesija.
+- **`npm run dev` = TEST** (`.env.local` → `xtnbhmoj…`), **`dev:prod` = PROD**
+  (`.env.prod.local` → `zdojdazos…`). Utvrđeno čitanjem sadržaja obje baze.
+  ⚠ Ista zamka je ugrizla i u ovoj sesiji: saldo bez `ET_TARGET=prod` dao je
+  `13.239,31` umjesto `12.784,36`.
+- **PROD `attribute_definitions`:** 6 `depends_on` atributa (`Izvor`←`Racun`,
+  `Uplata`/`Isplata`/`Rate?`/`Stanje`←`Smjer`, `Podtip`←`Tip` s 19 tipova / 66 podtipova,
+  `Broj rata`/`Rata br`←`Rate?`, `Status`←`Izvor`). Lomilo je samo `Podtip`.
+- **Postojeća INDIRECT DV formula je 424 znaka** i radi u Excelu — dokumentirani limit
+  od 255 ovdje ne grize. Dva roditelja bi bila **829**, neprovjereno.
+- **`Kokin_format` profil:** `comment` je **vidljiv** (width 30, outlineLevel 0), kao i
+  `Tip` i `Podtip`.
+- **Košara `MC_2026-08`:** 46 redaka / `1.048,72`, svi `Planiran`, svi dospijevaju
+  `2026-09-11`, svi `Mastercard`.
+- **`izvodi/` korijen sadrži samo `MC_2026-08.pdf`**; `Analizirani_izvodi/` ima 33 ZABA,
+  32 MC, 32 PBZVISA (+1 `PBZVIZA`, nekonzistentno ime), 23 RF.
 
 ## Otvoreno / neverificirano
 
-- **T-S129-A7…A10, T-S129-6/-7/-8, T-S129-B3 (parkirano), T-S129-B5** —
-  v. `docs/sessions/tests/S129_tests.md`.
-- Stariji ⬜ testovi: T-S128-4/-5, T-S127-2/-3/-5/-7/-10, plus raniji.
-- `audit_tests.py`: **0 sesija za arhivu**; 40 testova koje PENDING ne spominje i
-  99 ⬜ koje „Otvoreno:" ne navodi — poznata neusklađenost, nije dirana danas.
+- **T-S130-1, -2, -6, -7, -8, -9, -10** — v. `docs/sessions/tests/S130_tests.md`.
+- Stariji ⬜: T-S129-A7/-A8/-A9, T-S129-6/-7/-8, T-S129-B5, T-S128-4/-5.
+- `audit_tests.py`: **0 sesija za arhivu**; 40 testova koje PENDING ne spominje i 102 ⬜
+  koje „Otvoreno:" ne navodi — poznata neusklađenost, nije dirana.
+- ⚠ `src/lib/__tests__/structureExcel.test.mjs` pada s `SyntaxError` — **zatečeno**,
+  file je okrnjen, zadnji put diran u S17 (`75ef760`).

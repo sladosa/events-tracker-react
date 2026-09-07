@@ -1,9 +1,43 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S129 (2026-09-05) — 5 popravaka na PROD-u, ZABA zatvara do kolovoza, prekidač filtara profila, raspon datuma preživljava unmount.
+**Zadnji update:** S130 (2026-09-07) — dropdowni na praznim retcima delta sheeta popravljeni, `MC_2026-08` uskladjen (dry), `--apply` ceka Sasu.
 
 ---
+
+## S130 — dropdowni na praznim retcima delta sheeta + priprema PROD podataka (2026-09-07)
+
+Detalji: [S130_tests.md](tests/S130_tests.md)
+
+### A. Kod — delta sheet
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S130-1** | ⭐ `Podtip` na praznom retku nudi podtipove **vlastitog** `Tipa` | ⬜ |
+| **T-S130-2** | prazan glavni blok (`mainCount = 0`) i dalje ima dropdowne | ⬜ |
+| **T-S130-3** | ⭐ `deltaBlankRowDropdowns.test.mjs` | ✅ 8/8, protuprovjera pada 4/8 |
+| **T-S130-4** | ostali lib testovi + typecheck + build | ✅ 36/11/26/22, cisto |
+
+### B. Podaci — PROD
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S130-5** | ⭐ `MC_2026-08.pdf` dry run zatvara u cent (`1.068,70`) | ✅ 46 spareno, 2 za uvoz, 0 pitanja |
+| **T-S130-6** | `--apply` za kolovoz — 46 ispravaka | ⬜ ⚠ prvo T-S130-9 |
+| **T-S130-7** | `--apply` za starije izvode — 21 ispravak + 2 brisanja | ⬜ |
+| **T-S130-8** | sidro `2026-08-26 = 12.784,36` | ⬜ (preuzima T-S129-A7) |
+
+### C. Nalaz koji ceka odluku
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S130-9** | ⭐ `--apply` za kolovoz puni kosaru sa **46** upozorenja `Provjeri` | ⬜ **odluka o modelu** |
+| **T-S130-10** | kontrola kosare pokazuje razliku `19,98` (dva neuvezena retka) | ⬜ |
+| **T-S130-11** | ⏸ **PARKIRANO** — prijedlog `comment`a iz povijesti (izmjereno) | ⏸ |
+
+**Otvoreno:** T-S130-1, T-S130-2, T-S130-6, T-S130-7, T-S130-8, T-S130-9, T-S130-10,
+T-S129-A7, T-S129-A8, T-S129-A9, T-S129-6, T-S129-7, T-S129-8, T-S129-B5,
+T-S128-4, T-S128-5
 
 ## S129 — podaci Financije_all + prekidač filtara, raspon datuma, ključ primatelja (2026-09-05)
 
@@ -22,7 +56,7 @@ Detalji: [S129_tests.md](tests/S129_tests.md)
 | **T-S129-A7** | sidro `2026-08-26 = 12.784,36` | ⬜ |
 | **T-S129-A8** | delta sheet nakon sidra — prozor od 27.08., 2 retka | ⬜ |
 | **T-S129-A9** | preostala dva mjeseca (2025-07 `+0,80`, 2025-08 `−46,74`) | ⬜ |
-| **T-S129-A10** | `MC_2026-08.pdf` — netaknut, prvi korak je `--dry` | ⬜ |
+| **T-S129-A10** | `MC_2026-08.pdf` — netaknut, prvi korak je `--dry` | ✅ S130, zatvara u cent |
 
 ### B. Procedure i kod
 
@@ -43,7 +77,7 @@ Detalji: [S129_tests.md](tests/S129_tests.md)
 | **T-S129-B4** | merge na `main` | ✅ 05.09.2026., `main` = `b080739` |
 | **T-S129-B5** | provjera na **PROD URL-u** uz hard refresh (3 stavke) | ⬜ |
 
-**Otvoreno:** T-S129-A7, T-S129-A8, T-S129-A9, T-S129-A10, T-S129-6, T-S129-7,
+**Otvoreno:** T-S129-A7, T-S129-A8, T-S129-A9, T-S129-6, T-S129-7,
 T-S129-8, T-S129-B5, T-S128-4, T-S128-5
 
 ---

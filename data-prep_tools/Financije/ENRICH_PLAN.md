@@ -1309,3 +1309,79 @@ poziva svakom bi ponudio ime onog češćeg.
    27.08. umjesto od 31.07.).
 2. `MC_2026-08.pdf` — stigao 02.09., netaknut.
 3. Zadnja dva mjeseca (2025-07, 2025-08).
+
+---
+
+## S130 (2026-09-07) — `MC_2026-08` uskladjen (dry), i alat koji je bio mrtav
+
+### `MC_2026-08.pdf` — zatvara u cent
+
+| | |
+| --- | --- |
+| izvod | 48 redaka · **1.068,70** · kupovine 30.07.–29.08. · dospijeće **11.09.** |
+| spareno s bazom | **46** (`1.048,72`), od toga 45 preko `Izvod opis` |
+| za uvoz | **2** (`19,98`) |
+| duplikata / pitanja za Koku | **0 / 0** |
+
+Sve 46 traži isti ispravak: `Status: Planiran → Izvrsen` (jedan uz to dobiva
+`Izvod opis`). `Datum naplate` je već točan na svih 46 — alat ga ne dira.
+
+Nova dva su oba `9,99` i oba su **druga naplata istog trgovca istog dana**
+(`PAYPAL *AC WALKFT` uz `34,99`, `APPLE.COM/BILL` uz `2,99`), s vlastitim
+referencama — dakle nisu duplikati.
+
+⚠ U izvodu su i **tri** naknade `NAKNADA ZA OBROČNU OTPLATU PO RATI` po `1,32` — rate
+i naknade su trećina izvoda (17 redaka / `515,96`). I dva retka `KONZUM P-1000
+RATA 2/6`, `30,18` i `30,38`: razlika `0,20` izgleda kao skoro-duplikat razreda S111,
+ali su **različite reference** ⇒ dva odvojena plana otplate, baza ima oba.
+
+### `primijeni_uskladu.py` je bio mrtav
+
+Hardkodiran popis izvoda završavao je na `MC_2026-07.pdf` **u korijenu**; taj je u S129
+prešao u `Analizirani_izvodi/`, pa je skripta padala na `FileNotFoundError` **prije
+ijedne provjere**. Ništa to nije javilo dok je nitko nije pokrenuo.
+
+Popravljeno u dva koraka: prvo `--izvod` (ručno), pa — jer je i to bio ručni popis koji
+bi pukao pri sljedećoj selidbi — **glob preko obje lokacije** s dedupom po imenu.
+Zadano sada nalazi **32** izvoda umjesto 7, i javlja **67** ispravaka umjesto 46.
+
+⚠ Dakle **2024. i 2025. nikad nisu bili u zadanom prolazu.** Ostatak od 21 ispravka:
+13 redaka dobiva `Izvod opis` (potvrda s izvoda), 5 ispravlja `Datum naplate`.
+
+⚠ Zaoštrena i provjera prije 1:N brisanja: `all(any(…))` je dopuštao da **isti** redak
+baze zadovolji dvije komponente (`1,60 + 1,60` prošlo bi i s jednim retkom od `1,60`).
+Sada svaka komponenta traži svoj redak; **ishod nepromijenjen** (67/2).
+
+Oba brisanja provjerena: `2025-03-20 3,20` = `KEKS PAY 1,60`×2, `2025-06-03 3,20` =
+`1,60 + 0,80 + 0,80`, sve komponente **istog dana** kao agregat, a agregati goli
+(`opis = None`, `Izvod opis = None`, `Tip = N/A`).
+
+### ⚠ Zašto uskladjenje NE ide neposredno prije Delte
+
+Košara koju Delta prikazuje **jest točno tih 46 redaka**. Stupac `Provjeri` pali kad je
+`Status <> Planiran` **a** dospijeće u budućnosti — a to je normalno stanje otvorene
+kartične košare. Dok su `Planiran`, stupac je prazan; nakon `--apply` pali **svih 46**.
+
+Zato: **stariji izvodi sada, kolovoz tek kad ZABA rujanski izvod pokaže `1.068,70`.**
+
+⚠ I: `--apply` **ne uvozi**, pa ona dva retka (`19,98`) ostaju vani. Kontrola košare će
+pokazati Σ `1.048,72` protiv `1.068,70` = razlika **`19,98`** — točno ta dva. Razlika je
+čitljiva **samo dok je košara nedirnuta**.
+
+### Prijedlog `comment`a iz povijesti — izmjereno, parkirano
+
+Ključ `Podtip` sam (`Izvor = Racun`, zadnjih 12 mj): **top-5 = 93,4 %**, najduža lista
+14 stavki. `Podtip` + iznos: 93,3 % ali pokriva 193 umjesto 335 redaka ⇒ **iznos ne doda
+ništa**. `Tip`+`Podtip` identičan `Podtip`u samom. Top-1 je 57,6 % ⇒ **ponuda, nikad
+upis**. Cijela povijest umjesto 12 mjeseci ruši top-5 na 81,4 %.
+
+Sašina odluka: za sada ništa. Brojke su u CLAUDE.md backlogu.
+
+### Sljedeće
+
+1. Sidro `make_saldo_anchors.py --anchor 2026-08-26`, pa delta sheet.
+2. Stariji izvodi (`21 + 2`) — treba način da se `MC_2026-08` izuzme iz zadanog prolaza
+   (`--osim`), **nije napravljeno**.
+3. `MC_2026-08` (46) tek nakon rujanskog ZABA izvoda.
+4. Dva nova retka (`19,98`) — zaseban uvoz, ne kroz Deltu.
+5. Zadnja dva mjeseca (2025-07 `+0,80`, 2025-08 `−46,74`).

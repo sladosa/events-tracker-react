@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S129).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S130).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -519,6 +519,24 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   predloska za kopiranje uopće nema ⇒ predložak je ostajao **bez ijednog dropdowna**.
   Sada dropdowne piše **pisač retka** (`addActivitiesSheetsTo`, parametar `dvBlankRows`),
   svakom retku sa **svojom** adresom. Čuva `deltaBlankRowDropdowns.test.mjs`.
+- **⚠ `Provjeri` PRIJAVLJUJE NORMALNO STANJE OTVORENE KOŠARE** (S130, neodlučeno).
+  Formula glasi `Status <> "Planiran" AND dospijeće > TODAY()` ⇒
+  *„dospijeva tek … — nije moglo biti naplaćeno"*. Za kartični redak u **otvorenoj**
+  košari to je **normalno stanje**: kupovina se dogodila (`Izvrsen`), a skupna naplata
+  tek dolazi. Izmjereno na `MC_2026-08`: košara je **46 redaka**, svih 46 dospijeva
+  `11.09.2026.`, svih 46 `Izvor = Mastercard`. Dok su `Planiran`, stupac je **prazan**;
+  primijeni li se usklađenje izvoda (`Planiran → Izvrsen`), pali **svih 46**.
+  ⚠ **Ovdje se dva zapisana pravila razilaze i to nije riješeno:**
+  „`Status` kartičnog retka je `Izvrsen`, kupovina se dogodila" (izmjereno Visa 855/855)
+  protiv delta toka gdje je `Status` **prekidač potvrde** („potvrdi promjenom `Status`a").
+  Slažu se za **zatvorene** košare (dospijeće u prošlosti), sudaraju samo za otvorenu.
+  ⚠ Praktična posljedica dok se ne odluči: **ne primjenjuj usklađenje kartičnog izvoda
+  neposredno prije izvoza Delte** — dobiješ desetke narančastih upozorenja na retcima na
+  kojima ništa nije u redu, a *upozorenje koje laže korisnik nauči otklikati bez čitanja*.
+  ⚠ I: `primijeni_uskladu.py` **ne uvozi** — radi samo ispravke, dopune i brisanja. Retci
+  kojih baza nema ostaju vani, pa kontrola košare pokaže razliku (izmjereno: Σ `1.048,72`
+  protiv `1.068,70` s izvoda = **`19,98`**, točno dva neuvezena retka). Ta je razlika
+  čitljiva **samo dok je košara nedirnuta**.
 - **Export profil se primjenjuje PRIJE delta alata.** Profil dira kolone po položaju (širine,
   skrivanje, grupe), a kontrolni stupac se dodaje zadnji — obrnutim redoslijedom bi ga profil
   mogao sakriti.
@@ -844,8 +862,25 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   otplate. Pravilo „MC = 11. sljedećeg mjeseca" proglasilo bi **21 vjerojatno
   ispravan redak** krivim i poslalo čovjeka da ih „popravi". `kosara_naplate.py`
   ih zato izdvaja u vlastitu dijagnozu umjesto da ih ocijeni.
+- **⚠ ALAT KOJI NABRAJA PUTANJE RUČNO UMRE PRI PRVOJ SELIDBI FILEA** (S130).
+  `primijeni_uskladu.py` je nosio hardkodiran popis izvoda koji je završavao na
+  `MC_2026-07.pdf` **u korijenu** `izvodi/`; kad je taj u S129 prešao u
+  `Analizirani_izvodi/`, skripta je padala na `FileNotFoundError` **prije ijedne
+  provjere** — dakle bila je mrtva, a to ništa nije javilo dok je nitko nije pokrenuo.
+  Popis se sada **nalazi sam** (glob preko obje lokacije, dedup po imenu).
+  ⚠ Time se vidjelo i da je stari ručni popis pokrivao samo `2026-01..07` — dakle
+  **2024. i 2025. nikad nisu bili u zadanom prolazu**, a to se iz koda čitalo kao
+  „obrađeno je sve". Zadano sada nađe **32** izvoda i **67** ispravaka umjesto 46.
+  ⚠ Vrijedi za svaki alat u `data-prep_tools/`: **mapa je izvor popisa, ne konstanta.**
 - **`source_key` nije stabilan** (`normalize_financije.py:202`, `seq_per_day` = redoslijed u fileu)
   ⇒ ubačeni redak mijenja ključeve svih redaka tog dana iza njega
+- **⚠ BRISANJE PO KOMBINACIJI TRAŽI DA SVAKA KOMPONENTA IMA SVOJ REDAK** (S130).
+  Provjera prije 1:N brisanja glasila je `all(any(…))`, pa je **isti** redak baze mogao
+  zadovoljiti **dvije** komponente: kombinacija `1,60 + 1,60` prošla bi i da u bazi
+  postoji **jedan** redak od `1,60` ⇒ agregat obrisan, a `1,60` ostaje nepokriveno.
+  Izmjereno da danas takvih slučajeva **nema** (oba brisanja imaju različite retke), pa
+  popravak **ne mijenja ishod** — zatvara rupu prije nego se otvori, jer je brisanje
+  nepovratno. Isti oblik provjere vrijedi svugdje gdje se skup uspoređuje sa zbrojem.
 - **Brisanje retka lomi idempotenciju `merge_pbzvisa.py`** (preskače `source_key`eve koji POSTOJE
   u Reviewu) → registar `V3 preskočeno` mora se čitati
 - **openpyxl bilješka ruši uvoz u app** (S113). Kad openpyxl prepiše app-ov export,

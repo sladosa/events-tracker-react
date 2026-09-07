@@ -3848,6 +3848,155 @@ Editu ne smije ništa promijeniti (855 Visa redaka).
 
 ---
 
+## S130 — dropdown koji je izgledao ispravno, i jedan popravak koji bi Deltu napunio upozorenjima (2026-09-07)
+
+Povod je bilo Sašino pitanje uoči Kokinog upisa: **„nisam siguran da li imamo
+Tip/Podtip dropdowne u Delta Excel exportu"**. Odgovor je ispao „imamo, ali jedan
+od njih laže".
+
+### A. Prazni retci delta sheeta
+
+`Tip` je radio. `Podtip` je **izgledao** kao da radi.
+
+Prazni retci predloška su jedino mjesto gdje čovjek upisuje, pa i jedino gdje mu
+dropdown treba. `addDeltaHelpersTo` ih je popunjavao tako da **prepiše**
+`dataValidation` zadnjeg povijesnog retka. Za statičan popis to prolazi, ali
+`Podtip` je `depends_on` i formula mu nosi **apsolutnu** adresu roditelja:
+
+```
+INDIRECT("Dep_tip_"&SUBSTITUTE(N18,...))
+```
+
+Izmjereno prije popravka — pet praznih redaka, **svih pet gleda `N18`**:
+
+```
+row 19  -> INDIRECT gleda celiju: N18   <== PRAZAN redak
+row 20  -> INDIRECT gleda celiju: N18
+```
+
+Dakle Koka upiše `Tip = Domacinstvo`, a `Podtip` joj nudi podtipove onoga što stoji
+na zadnjem povijesnom retku. **Gore od izostanka dropdowna:** izgleda ispravno, nudi
+krivu listu, a podtip mimo `validation_rules` uveze se kao običan tekst **bez greške**.
+
+Drugi slučaj: uz **prazan glavni blok** (račun usklađen do sidra) predloška za
+kopiranje uopće nema ⇒ predložak je ostajao **bez ijednog** dropdowna.
+
+Popravak: dropdowne piše **pisač retka** (`addActivitiesSheetsTo`, novi parametar
+`dvBlankRows`), svakom retku sa svojom adresom; kopiranje maknuto.
+
+⚠ Na PROD-u je **šest** `depends_on` atributa, ali stvarno je lomilo **samo `Podtip`**:
+`Izvor` i `Status` ovise o `Racun`/`Izvor`, a prazni retci nose **prefill** s istim
+vrijednostima kao povijest — zamrznuta lista im je **slučajno** bila točna. Slučajnost,
+ne ispravnost.
+
+Test `deltaBlankRowDropdowns.test.mjs` (8 provjera). Protuprovjera nad namjerno
+vraćenim starim kodom pada **4/8** — dakle čuva nešto.
+
+### B. `MC_2026-08.pdf` i alat koji je bio mrtav
+
+Izvod je od 02.09. stajao netaknut. Dry run zatvara **u cent**: 48 redaka /
+`1.068,70`, spareno **46** (`1.048,72`), za uvoz **2** (`19,98`), duplikata **0**,
+**pitanja za Koku 0**.
+
+`primijeni_uskladu.py` se pritom pokazao **mrtvim**: S124 jednokratni alat s
+hardkodiranim popisom koji je završavao na `MC_2026-07.pdf` **u korijenu** — a taj je
+u S129 prešao u `Analizirani_izvodi/`, pa je skripta padala na `FileNotFoundError`
+**prije ijedne provjere**. Generaliziran: prima `--izvod`, a potrošeni S124 blok
+(7 duplikata + prijenos rate) ide samo uz `--s124`.
+
+Prvi popravak je i dalje nosio ručnu putanju, pa bi se isti kvar ponovio čim se
+`MC_2026-08` premjesti. Zato **glob preko obje lokacije**, dedup po imenu. Time se
+vidjelo da je stara lista pokrivala samo `2026-01..07` — **2024. i 2025. nikad nisu
+bili u zadanom prolazu**. Zadano sada nalazi **32** izvoda i javlja `67` ispravaka.
+
+⚠ Uz to zaoštrena provjera prije brisanja 1:N. `all(any(...))` je dopuštao da **isti**
+redak baze zadovolji dvije komponente — kombinacija `1,60 + 1,60` prošla bi i da u
+bazi postoji **jedan** redak od `1,60`, pa bi se agregat obrisao a `1,60` ostalo
+nepokriveno. Sada svaka komponenta traži svoj redak. **Ishod nepromijenjen** (67/2);
+rupa zatvorena prije nego se otvori, jer je brisanje nepovratno.
+
+Oba brisanja provjerena i ispravna: komponente su `KEKS PAY 1,60`×2 odnosno
+`1,60 + 0,80 + 0,80`, sve datirane **isti dan** kao agregat, a agregati nose
+`opis = None`, `Izvod opis = None`, `Tip = N/A` — potpis Kokinog nepotvrđenog
+zbirnog retka koji po pravilu 1:N nestaje.
+
+⚠ Usput jedna **vlastita greška, ispravljena mjerenjem**: prvo je zaključeno da
+brisanja ne treba pustiti naslijepo, na temelju ispisa koji je pokazivao travanjski
+datum. To je bila greška u **probi** (uzimala prvi redak iz cijele baze umjesto iz
+prozora izvoda), ne u alatu.
+
+### C. Nalaz koji je okrenuo preporuku
+
+Na Sašino pitanje *„zar nije to dobro imati u PROD bazi prije Delte?"* odgovor je
+ispao **podijeljen**, i to se dalo utvrditi samo mjerenjem.
+
+Košara koju Delta prikazuje **jest točno tih 46 redaka**: `dospijeće > danas`, svih 46
+`2026-09-11`, svih 46 `Izvor = Mastercard`, svih 46 `Status = Planiran`, Σ `1.048,72`.
+
+`Provjeri` stupac glasi `Status <> "Planiran" AND dospijeće > TODAY()`:
+
+| | `Provjeri` |
+| --- | --- |
+| **bez** `--apply` | prazno za svih 46 |
+| **s** `--apply` (46 → `Izvrsen`) | **svih 46** pali *„dospijeva tek 11.09.2026."* |
+
+Dakle primjena **prije** Delte napunila bi košaru sa 46 narančastih upozorenja na
+retcima na kojima ništa nije u redu — kvar koji je već zapisan kao pravilo
+(*upozorenje koje laže korisnik nauči otklikati bez čitanja*).
+
+Preporuka zato: **stariji 21 + 2 brisanja sada** (2024./2025., `Izvor = Mastercard`,
+prije sidra ⇒ ne diraju ni saldo ni delta prozor), a **46 kolovoških ostaviti
+`Planiran`** dok ZABA rujanski izvod ne pokaže skupnu naplatu od `1.068,70`.
+
+⚠ Ispod toga leži **neodlučeno pitanje modela**: što `Status` znači za kartični redak
+u **otvorenoj** košari. „Kartični redak je `Izvrsen`, kupovina se dogodila" (izmjereno
+Visa 855/855) protiv delta toka gdje je `Status` prekidač potvrde. Slažu se za
+zatvorene košare, sudaraju samo za otvorenu.
+
+### D. Prijedlog `comment`a iz povijesti — izmjereno, parkirano
+
+Sašina ideja: u delta sheetu ponuditi uobičajen opis iz `Tip`/`Podtip` i iznosa, jer
+Koka čita bankovnu aplikaciju a Saša tipka — dakle `Izvod opis` (primatelja) **nema**.
+
+Izmjereno nad PROD-om (5.153 retka), i nalaz je okrenuo očekivanje:
+
+| ključ (`Izvor = Racun`, zadnjih 12 mj) | pokriva | top-1 | top-3 | top-5 |
+| --- | ---: | ---: | ---: | ---: |
+| `Podtip` | 335 | 57,6 % | 88,7 % | **93,4 %** |
+| `Podtip` + iznos | 193 | 76,7 % | 90,7 % | 93,3 % |
+| `Tip`+`Podtip` | 335 | 57,6 % | 88,7 % | 93,4 % |
+
+**Iznos ne doda ništa** a suzi pokrivenost — a upravo je on ono što se u Excelu ne da
+vezati na dropdown. `Tip`+`Podtip` je **identičan** `Podtip`u samom, pa bi ključ bio
+jedna ćelija i formula bi ostala na **424** znaka (koliko ima i postojeći `Podtip`
+dropdown) umjesto **829**.
+
+Prozor je bitniji od ključa: cijela povijest ruši top-5 s 93,4 % na 81,4 %, a najdužu
+listu diže s 14 na 41 stavku.
+
+**Sašina odluka: za sada ništa.** Brojke su u CLAUDE.md backlogu.
+
+### E. Ispravljena bilješka u memoriji
+
+`npm run dev` gađa **TEST** bazu (`.env.local` → `xtnbhmoj…`), ne PROD kako je
+stajalo; PROD traži `npm run dev:prod` (`.env.prod.local` → `zdojdazos…`). Izmjereno
+**čitanjem sadržaja obje baze** service keyem: TEST nosi `S100 A 8a37c3`, `S121 ctx w0`,
+`Alpha` i dvostruke `Fitness`/`Health` (E2E artefakti), PROD nosi `Financije_all`,
+`Financije_old`, `Kupiti`.
+
+⚠ Ista zamka je u istoj sesiji **i ugrizla**: saldo očitan bez `ET_TARGET=prod` dao je
+`13.239,31` umjesto stvarnih `12.784,36` — TEST brojka koja izgleda kao PROD odgovor.
+
+### Stanje na kraju
+
+- `test-branch` = `0318314`; `main` = `b080739`, **nedirano**.
+- PROD podaci **nedirani** — sve je dry run, `--apply` čeka Sašu.
+- Aktivno ZABA sidro i dalje `2026-07-30 = 13.815,33`; sidro `26.08.` nije upisano.
+- Pet mjeseci se i dalje razilazi: `2024-03 +10,00`, `2024-07 −17,28`,
+  `2024-10 −236,04`, `2025-07 +0,80`, `2025-08 −46,74`.
+
+---
+
 ## S129 — pet popravaka na PROD-u, ZABA zatvara do kolovoza, i jedna tvrdnja koja je devet sesija bila netočna (2026-09-05)
 
 Sesija je imala dva toka koja se nisu miješala: **sređivanje podataka** u
