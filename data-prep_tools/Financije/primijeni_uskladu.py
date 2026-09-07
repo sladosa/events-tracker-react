@@ -65,11 +65,24 @@ from uskladi_izvod import (CAT_PROD, ev_date, ispravci, load_db, load_env,  # no
 ROOT = Path(__file__).resolve().parents[2]
 IZVODI = ROOT / 'data-prep_data' / 'Financije' / 'izvodi'
 # Zatecena povijest -- koristi se samo kad `--izvod` nije dan.
-# /!\ `Analizirani_izvodi/` NIJE arhiva nego mapa koju alati citaju (S129);
-#     `MC_2026-08` jos stoji u korijenu, pa se navodi zasebno.
-MC_DEFAULT = [IZVODI / 'Analizirani_izvodi' / ('MC_2026-0' + str(m) + '.pdf')
-              for m in range(1, 8)]
-MC_DEFAULT.append(IZVODI / 'MC_2026-08.pdf')
+#
+# /!\ NE NABRAJATI PUTANJE RUCNO (S130). Prijasnja verzija je imala popis u kojem
+#     je `MC_2026-07.pdf` stajao u korijenu; kad je u S129 presao u
+#     `Analizirani_izvodi/`, skripta je padala na `FileNotFoundError` PRIJE ijedne
+#     provjere -- dakle alat je bio mrtav, a da to nista nije javilo.
+#     Isto bi se ponovilo cim `MC_2026-08.pdf` bude premjesten. Zato GLOB preko
+#     obje lokacije: `Analizirani_izvodi/` nije arhiva nego mapa koju alati citaju,
+#     ali novi izvod neko vrijeme stoji u korijenu.
+#     Dedup po IMENU -- isti izvod na obje lokacije bi se inace obradio dvaput.
+def _mc_izvodi() -> list[Path]:
+    nadjeno: dict[str, Path] = {}
+    for d in (IZVODI / 'Analizirani_izvodi', IZVODI):
+        for p in sorted(d.glob('MC_*.pdf')):
+            nadjeno.setdefault(p.name, p)
+    return [nadjeno[k] for k in sorted(nadjeno)]
+
+
+MC_DEFAULT = _mc_izvodi()
 
 # Duplikati nadjeni S124. Svaki ima u bazi PAR potvrdjen izvodom; ovo su Kokine
 # verzije bez `Izvod opis`. Nisu izracunati nego IZMJERENI -- zato popis, ne
@@ -127,7 +140,13 @@ def main():
 
     print('=' * 100)
     print('PRIMJENA USKLADE NA PROD' + ('   [DRY RUN]' if DRY else '   [APPLY]'))
-    print('izvodi: ' + ', '.join(p.name for p in MC))
+    if len(MC) <= 4:
+        print('izvodi: ' + ', '.join(p.name for p in MC))
+    else:
+        # /!\ Zadano je SVE sto se nadje (32 izvoda), a ne sedam koliko je nosila
+        #     stara rucna lista. Zato se ispisuje raspon -- da se ne previdi da
+        #     run bez `--izvod` ceslja i 2024./2025.
+        print('izvodi: ' + str(len(MC)) + ' komada, ' + MC[0].name + ' .. ' + MC[-1].name)
     if args.s124:
         print('⚠ ukljucen POTROSENI jednokratni blok iz S124')
     print('=' * 100)
@@ -154,9 +173,25 @@ def main():
             #   jer u bazi POSTOJE 62,01 i 1,32, ali su to lipanjske rate
             #   **1/3**. Dry run je pokazao 11 brisanja umjesto 9; primjena bi
             #   ostavila rupu od 126,66 do transe 4.
-            bankini_tu = all(any(x['attrs'].get('Izvod opis') == c['opis']
-                                 and net(x['attrs']) == c['iznos']
-                                 for x in u['mc']) for c in combo)
+            # /!\ SVAKA komponenta mora imati SVOJ redak (S130). Prijasnji
+            #     `all(any(...))` je dopustao da ISTI redak baze zadovolji dvije
+            #     komponente -- npr. kombinacija 1,60 + 1,60 prosla bi i da u bazi
+            #     postoji samo JEDAN redak od 1,60. Agregat bi se tada obrisao, a
+            #     s njim bi nestalo 1,60 koje nista ne pokriva.
+            #     Izmjereno: danas takvih slucajeva NEMA (oba brisanja imaju
+            #     razlicite retke), dakle ovo ne mijenja ishod -- zatvara rupu
+            #     prije nego se otvori, jer je brisanje nepovratno.
+            iskoristeno: set[str] = set()
+            bankini_tu = True
+            for c in combo:
+                par = next((x for x in u['mc']
+                            if x['attrs'].get('Izvod opis') == c['opis']
+                            and net(x['attrs']) == c['iznos']
+                            and x['id'] not in iskoristeno), None)
+                if par is None:
+                    bankini_tu = False
+                    break
+                iskoristeno.add(par['id'])
             if not bankini_tu:
                 continue                      # `LH 2/3` -- ceka transu 4
             a = r['attrs']
