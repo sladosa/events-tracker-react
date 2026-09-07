@@ -1115,6 +1115,14 @@ data-prep_tools/Financije/presedani.py
                                    Tri kljuca: primatelj+poziv > primatelj > iznos
                                    (s predznakom). Ne pogadja — sto nije
                                    jednoglasno ostaje `N/A`.
+data-prep_tools/Financije/rate_alat.py
+                                   Rate: prolaz A (higijena oznaka) + prolaz B
+                                   (generiranje preostalih). Autoritet je
+                                   `Izvod opis`, NIKAD komentar. Ne pise u bazu
+                                   nego proizvodi xlsx za uvoz.
+                                   /!\ `Izvod opis` ima DVA oblika: `X RATA n/N`
+                                   (MC) i `RATA n/N-X` (Visa) -- zato prolaz A
+                                   hvata 85 redaka, ne 43.
 data-prep_tools/Financije/pregled_stanja.py
                                    Jedan file koji odgovara "je li stanje tocno":
                                    Pregled (svi izvodi + sidra) · Sporno (redak po
