@@ -31,12 +31,27 @@ STO RADI (tri skupine, sve u jednom potezu)
     Svaki upis i svako brisanje mjeri BROJ vracenih redaka, nikad HTTP status.
     Neslaganje = odmah `sys.exit`, prije nego sljedeci korak zatekne pola posla.
 
+⚠ KOJI SE IZVODI PRIMJENJUJU (S130)
+    Do S130 je popis izvoda bio HARDKODIRAN i zavrsavao na `MC_2026-07.pdf` u
+    korijenu `izvodi/` -- a taj je u S129 presao u `Analizirani_izvodi/`, pa je
+    skripta padala na `FileNotFoundError` prije ijedne provjere. Sada popis
+    dolazi kroz `--izvod` (moze se ponoviti); bez njega se uzima zatecena
+    povijest, prosirena za `MC_2026-08`.
+
+⚠ S124 JEDNOKRATNI BLOK JE POTROSEN
+    `DUPLIKATI` (7 redaka) i `PRENESI` su IZMJERENI u S124 i tada primijenjeni.
+    Ostaju zapisani kao racun o promjeni, ali se vise NE izvode -- ukljucuju se
+    samo s `--s124`. Bez toga bi svaki sljedeci run pao na provjeri
+    „za brisanje trazim retke kojih nema" (sto je ispravno, ali onemogucuje
+    primjenu novog izvoda).
+
 Pokretanje:
-    python primijeni_uskladu.py            # dry run, nista se ne pise
-    python primijeni_uskladu.py --apply
+    python primijeni_uskladu.py --izvod ../../data-prep_data/Financije/izvodi/MC_2026-08.pdf
+    python primijeni_uskladu.py --izvod ...MC_2026-08.pdf --apply
 """
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import urllib.request
@@ -49,8 +64,12 @@ from uskladi_izvod import (CAT_PROD, ev_date, ispravci, load_db, load_env,  # no
 
 ROOT = Path(__file__).resolve().parents[2]
 IZVODI = ROOT / 'data-prep_data' / 'Financije' / 'izvodi'
-MC = [IZVODI / 'Analizirani_izvodi' / ('MC_2026-0' + str(m) + '.pdf') for m in range(1, 7)]
-MC.append(IZVODI / 'MC_2026-07.pdf')
+# Zatecena povijest -- koristi se samo kad `--izvod` nije dan.
+# /!\ `Analizirani_izvodi/` NIJE arhiva nego mapa koju alati citaju (S129);
+#     `MC_2026-08` jos stoji u korijenu, pa se navodi zasebno.
+MC_DEFAULT = [IZVODI / 'Analizirani_izvodi' / ('MC_2026-0' + str(m) + '.pdf')
+              for m in range(1, 8)]
+MC_DEFAULT.append(IZVODI / 'MC_2026-08.pdf')
 
 # Duplikati nadjeni S124. Svaki ima u bazi PAR potvrdjen izvodom; ovo su Kokine
 # verzije bez `Izvod opis`. Nisu izracunati nego IZMJERENI -- zato popis, ne
@@ -77,10 +96,26 @@ PRENESI = ('01d08676-ea2b-4f2b-90cb-9a5a43d6f776',
            {'Rate?': True, 'Broj rata': 6, 'Rata br': 4},
            '2026-02-26 Konzum 17,09')
 
-DRY = '--apply' not in sys.argv
+def parse_args():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--izvod', action='append',
+                    help='MC izvod; moze se ponoviti. Bez njega: zatecena povijest.')
+    ap.add_argument('--apply', action='store_true', help='bez toga je dry run')
+    ap.add_argument('--s124', action='store_true',
+                    help='ukljuci POTROSENI jednokratni blok iz S124 (duplikati + prijenos)')
+    return ap.parse_args()
 
 
 def main():
+    args = parse_args()
+    DRY = not args.apply
+    MC = [Path(x) for x in args.izvod] if args.izvod else list(MC_DEFAULT)
+    for p in MC:
+        if not p.exists():
+            sys.exit('Nema ' + str(p))
+        if not p.name.upper().startswith('MC_'):
+            sys.exit('Zasad samo MC izvodi (' + p.name + ').')
+
     url, key = load_env('prod')
     H = {'apikey': key, 'Authorization': 'Bearer ' + key,
          'Content-Type': 'application/json', 'Prefer': 'return=representation'}
@@ -92,6 +127,9 @@ def main():
 
     print('=' * 100)
     print('PRIMJENA USKLADE NA PROD' + ('   [DRY RUN]' if DRY else '   [APPLY]'))
+    print('izvodi: ' + ', '.join(p.name for p in MC))
+    if args.s124:
+        print('⚠ ukljucen POTROSENI jednokratni blok iz S124')
     print('=' * 100)
 
     db = load_db(url, key)
@@ -136,13 +174,19 @@ def main():
                             break
             brisanja.append((r['id'], 'LH 1:N  ' + str(r['comment']) + '  '
                              + format(net(a), '.2f')))
-    for lbl, eid, par in DUPLIKATI:
-        brisanja.append((eid, 'duplikat  ' + lbl + '   ' + par))
+    prijenos = [(PRENESI[0], PRENESI[1], PRENESI[2])] if args.s124 else []
+    if args.s124:
+        for lbl, eid, par in DUPLIKATI:
+            brisanja.append((eid, 'duplikat  ' + lbl + '   ' + par))
 
     print('ispravci : ' + str(len(ispravci_svi)) + ' redaka')
     print('dopune   : ' + str(len(dopune)) + ' redaka')
     print('brisanja : ' + str(len(brisanja)) + ' redaka')
-    print('prijenos : 1 redak (' + PRENESI[2] + ')')
+    print('prijenos : ' + str(len(prijenos)) + ' redaka')
+    if not (ispravci_svi or dopune or brisanja or prijenos):
+        print('')
+        print('Nema sto primijeniti -- izvodi su vec uskladjeni.')
+        return
 
     nedostaju = [e for e, _ in brisanja if e not in by_id]
     if nedostaju:
@@ -150,7 +194,7 @@ def main():
 
     # -- backup -------------------------------------------------------------
     dirnuti = sorted(set(list(ispravci_svi) + [e for e, _ in brisanja]
-                         + [e for e, _, _ in dopune] + [PRENESI[0]]))
+                         + [e for e, _, _ in dopune] + [e for e, _, _ in prijenos]))
     inl = '(' + ','.join(dirnuti) + ')'
     bak_ev = req('GET', 'events?id=in.' + inl + '&select=*')
     bak_at = req('GET', 'event_attributes?event_id=in.' + inl + '&select=*')
@@ -195,7 +239,7 @@ def main():
     # -- 2. dopune + prijenos ------------------------------------------------
     print('\n' + '-' * 100)
     print('2 · DOPUNE (rata s Kokinog retka na bankin, prije brisanja)')
-    for eid, polja, opis in dopune + [(PRENESI[0], PRENESI[1], PRENESI[2])]:
+    for eid, polja, opis in dopune + prijenos:
         print('   ' + opis[:44].ljust(46)
               + ', '.join(k + '=' + str(v) for k, v in polja.items()))
         for k, v in polja.items():
@@ -223,8 +267,9 @@ def main():
     if DRY:
         print('DRY RUN gotov -- nista nije promijenjeno. Za primjenu: --apply')
         return
-    ost = req('GET', 'events?id=in.(' + ','.join(e for e, _ in brisanja) + ')&select=id')
-    print('provjera: obrisanih redaka je ostalo ' + str(len(ost)) + ' (mora biti 0)')
+    if brisanja:
+        ost = req('GET', 'events?id=in.(' + ','.join(e for e, _ in brisanja) + ')&select=id')
+        print('provjera: obrisanih redaka je ostalo ' + str(len(ost)) + ' (mora biti 0)')
     print('gotovo. Pusti `uskladi_izvod.py` ponovo -- ispravci i pitanja moraju pasti na 0.')
 
 

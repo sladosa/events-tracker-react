@@ -193,7 +193,6 @@ export function addDeltaHelpersTo(
   const blankTo    = layout.dataEnd + opts.blankRows;
 
   // ── 1. Prazni retci ─────────────────────────────────────────────────────
-  const templateRow = layout.dataEnd;         // s njega se preuzima validacija
   for (let i = 0; i < opts.blankRows; i++) {
     const r = blankFrom + i;
 
@@ -212,14 +211,17 @@ export function addDeltaHelpersTo(
       if (col) ws.getCell(r, col).value = value;
     }
 
-    // Dropdowni i provjera datuma vrijede i za nove retke — inače ih korisnik
-    // ima točno ondje gdje mu ne trebaju (na povijesti) i nema ondje gdje piše.
-    if (templateRow > layout.headerRow) {
-      for (let c = 1; c <= layout.lastCol; c++) {
-        const dv = ws.getCell(templateRow, c).dataValidation;
-        if (dv) ws.getCell(r, c).dataValidation = dv;
-      }
-    }
+    // ⚠ OVDJE SE VALIDACIJA VIŠE NE KOPIRA S POVIJESNOG RETKA (S130).
+    //   Dropdowni i provjera datuma vrijede i za nove retke — inače ih korisnik
+    //   ima točno ondje gdje mu ne trebaju (na povijesti) i nema ondje gdje piše.
+    //   Ali kopija je bila tiho pogrešna: `Podtip` je `depends_on`, a njegova
+    //   formula nosi APSOLUTNU adresu roditeljske ćelije
+    //   (`INDIRECT("Dep_tip_"&SUBSTITUTE(N18,…))`), pa je svaki prazan redak
+    //   nudio podtipove `Tipa` sa **zadnjeg povijesnog retka**. Izmjereno: pet
+    //   praznih redaka, svih pet gleda `N18`.
+    //   Sada ih piše `addActivitiesSheetsTo` (`dvBlankRows`), svaki sa svojom
+    //   adresom — i onda kad glavni blok nema nijedan redak, gdje predloška za
+    //   kopiranje uopće nema.
   }
 
   /**
@@ -599,6 +601,9 @@ export async function createDeltaExcel(
   await addActivitiesSheetsTo(
     wb, events, attrDefs, categoriesDict, 'asc', attrColumnOrder, undefined,
     plannedRows.length > 0 ? { events: plannedRows, gapRows } : undefined,
+    // Prazni retci predloska dobivaju dropdowne od PISACA retka, s ispravnom
+    // adresom roditelja u svakom retku. v. `dvEnd` u excelExport.ts.
+    opts.blankRows,
   );
 
   // ⚠ REDOSLIJED: profil PRIJE delta alata. Profil dira kolone po položaju

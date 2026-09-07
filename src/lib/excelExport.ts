@@ -454,6 +454,13 @@ export async function addActivitiesSheetsTo(
    *   inace bi ih upisao PREKO ovog bloka.
    */
   trailing?: { events: ExportEvent[]; gapRows: number },
+  /**
+   * Koliko praznih redaka predloska dolazi ODMAH ISPOD glavnog bloka (delta
+   * sheet ih upisuje naknadno). Sluzi SAMO validaciji: dropdowni i provjera
+   * datuma moraju vrijediti i ondje, jer je to jedino mjesto gdje covjek pise.
+   * v. `dvEnd` nize.
+   */
+  dvBlankRows?: number,
 ): Promise<void> {
 
   const built = buildAttrMeta(attrDefs, categoriesDict);
@@ -865,6 +872,31 @@ export async function addActivitiesSheetsTo(
 
   const eventDataEnd = row - 1;
 
+  /**
+   * Do kuda sezu DROPDOWNI (ne i podaci). Prazni retci predloska koje delta
+   * sheet ostavlja ispod glavnog bloka su jedino mjesto gdje covjek UPISUJE —
+   * dakle jedino mjesto gdje mu dropdown stvarno treba.
+   *
+   * /!\ ZASTO SE VALIDACIJA NE SMIJE KOPIRATI S POVIJESNOG RETKA (S130)
+   *   Do sada su ih `addDeltaHelpersTo` popunjavao tako da prepise
+   *   `dataValidation` zadnjeg povijesnog retka. Za statican popis (`Tip`) to
+   *   prolazi, ali `Podtip` je `depends_on` i njegova formula nosi APSOLUTNU
+   *   adresu roditeljske celije: `INDIRECT("Dep_tip_"&SUBSTITUTE(N18,...))`.
+   *   Kopija je zato svakom praznom retku nudila podtipove onog `Tipa` koji
+   *   stoji na ZADNJEM POVIJESNOM retku, bez obzira sto covjek upise u svoj.
+   *   Izmjereno: 5 praznih redaka, svih 5 gleda `N18`.
+   *   Gore je od izostanka dropdowna — izgleda ispravno, a nudi krivu listu, i
+   *   podtip mimo `validation_rules` uveze se kao obican tekst BEZ GRESKE.
+   *
+   * /!\ Pokriva i slucaj `mainCount = 0` (racun usklaen do sidra, prozor
+   *   prazan): tada retka s kojeg bi se kopiralo uopce nema, pa je predlozak
+   *   ostajao bez ijednog dropdowna.
+   */
+  const dvEnd = Math.max(
+    eventDataEnd,
+    eventDataStart + mainCount + (dvBlankRows ?? 0) - 1,
+  );
+
   // ──────────────────────────────────────────
   // Data Validation (suggest dropdowns — static, non-dependent)
   // ──────────────────────────────────────────
@@ -877,7 +909,7 @@ export async function addActivitiesSheetsTo(
     // u bazi. Raspon je namjerno širok: rate sežu godinama unaprijed.
     // ⚠ `promptTitle` ≤ 32 i `prompt` ≤ 255 znaka, inače Excel nudi „repair".
     if (meta.dataType === 'datetime') {
-      for (let r = eventDataStart; r <= eventDataEnd; r++) {
+      for (let r = eventDataStart; r <= dvEnd; r++) {
         ws.getCell(r, ATTR_COL_START + aidx).dataValidation = {
           type: 'date',
           operator: 'between',
@@ -902,7 +934,7 @@ export async function addActivitiesSheetsTo(
 
     // Excel inline list limit is 255 chars; use it when possible
     if (formulae.length <= 255) {
-      for (let r = eventDataStart; r <= eventDataEnd; r++) {
+      for (let r = eventDataStart; r <= dvEnd; r++) {
         ws.getCell(r, colNum).dataValidation = {
           type: 'list',
           allowBlank: true,
@@ -917,7 +949,7 @@ export async function addActivitiesSheetsTo(
   }
 
   // Dependent dropdowns (INDIRECT + hidden DropdownData sheet)
-  addDependentDropdowns(wb, ws, attrMeta, attrColumns, eventDataStart, eventDataEnd);
+  addDependentDropdowns(wb, ws, attrMeta, attrColumns, eventDataStart, dvEnd);
 
   // ──────────────────────────────────────────
   // Delete? column: dropdown + red row highlight  (S107w)
@@ -926,7 +958,7 @@ export async function addActivitiesSheetsTo(
   // showErrorMessage rejects anything else at typing time; import rejects it too,
   // for values that arrive by paste or from a hand-made file.
   // ⚠ Excel limits: promptTitle ≤32 chars, prompt ≤255, same for error fields.
-  for (let r = eventDataStart; r <= eventDataEnd; r++) {
+  for (let r = eventDataStart; r <= dvEnd; r++) {
     ws.getCell(r, deleteColNum).dataValidation = {
       type: 'list',
       allowBlank: true,

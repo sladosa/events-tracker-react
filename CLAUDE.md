@@ -502,6 +502,23 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   parser prvo gleda kolonu B (`Area`) i redak bez nje uopće ne obrađuje. Otkad
   kontrola stoji **između** praznih redaka i sekcije, iza nje ima pravih redaka —
   pa je to invarijanta koju drži test, ne disciplina.
+- **⚠ VALIDACIJA PRAZNIH REDAKA SE NE SMIJE KOPIRATI S POVIJESNOG RETKA** (S130).
+  Prazni retci predložka su **jedino mjesto gdje čovjek upisuje**, pa su i jedino mjesto
+  gdje dropdown stvarno treba. `addDeltaHelpersTo` ih je popunjavao prepisivanjem
+  `dataValidation` zadnjeg povijesnog retka. Za statican popis (`Tip`) to prolazi, ali
+  **`depends_on` atribut nosi APSOLUTNU adresu roditeljske ćelije**:
+  `INDIRECT("Dep_tip_"&SUBSTITUTE(N18,…))`. Kopija je zato svakom praznom retku nudila
+  podtipove `Tipa` sa **zadnjeg povijesnog retka**. Izmjereno: pet praznih redaka, svih
+  pet gleda `N18`. **Gore od izostanka dropdowna** — izgleda ispravno, nudi krivu listu,
+  a podtip mimo `validation_rules` uveze se kao običan tekst **bez greske**.
+  ⚠ Na PROD-u ima **šest** `depends_on` atributa, ali samo `Podtip` je stvarno lomilo:
+  `Izvor` i `Status` ovise o `Racun`/`Izvor`, a prazni retci nose **prefill** s istim
+  vrijednostima kao povijest, pa im je zamrznuta lista slučajno bila točna. Slučajnost,
+  ne ispravnost — prvi delta sheet nad Areom bez prefilla bi je razbio.
+  ⚠ Kopiranje je padalo i drugdje: uz **prazan glavni blok** (račun usklađen do sidra)
+  predloska za kopiranje uopće nema ⇒ predložak je ostajao **bez ijednog dropdowna**.
+  Sada dropdowne piše **pisač retka** (`addActivitiesSheetsTo`, parametar `dvBlankRows`),
+  svakom retku sa **svojom** adresom. Čuva `deltaBlankRowDropdowns.test.mjs`.
 - **Export profil se primjenjuje PRIJE delta alata.** Profil dira kolone po položaju (širine,
   skrivanje, grupe), a kontrolni stupac se dodaje zadnji — obrnutim redoslijedom bi ga profil
   mogao sakriti.
