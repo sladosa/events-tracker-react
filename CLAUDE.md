@@ -1812,6 +1812,36 @@ Area zna, pa se veže bez pitanja.
 ⚠ **Preset je per-user i ID-based** (nikad ne putuje) — v. „Preset ≠ widget" u sažetku
 Overview odluka. Ovo je čisto UI sužavanje popisa, ne nov oblik zapisa.
 
+**⭐ Prijedlog `comment`a iz povijesti — IZMJERENO, parkirano (S130, Sašina odluka).**
+Ideja: u delta sheetu ponuditi uobičajen opis na temelju `Tip`/`Podtip` i iznosa, jer
+Koka čita bankovnu aplikaciju a Saša tipka — dakle `Izvod opis` (primatelja) **nema**.
+Ne treba ponovno mjeriti; brojke su nad PROD-om, 5.153 retka:
+
+| ključ (Izvor=Racun, zadnjih 12 mj) | pokriva | top-1 | top-3 | top-5 | top-10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `Podtip` | 335 | 57,6 % | 88,7 % | **93,4 %** | 98,5 % |
+| `Podtip` + iznos | 193 | 76,7 % | 90,7 % | 93,3 % | 98,4 % |
+| `Tip`+`Podtip` | 335 | 57,6 % | 88,7 % | 93,4 % | 98,5 % |
+
+- **Iznos ne doda ništa**, a suzi pokrivenost s 335 na 193 retka — i upravo je on ono
+  što se u Excelu ne da vezati na dropdown. Otpada i težak dio.
+- **`Tip`+`Podtip` je identičan `Podtip`u sam** (samo 4 Podtipa žive pod dva Tipa, i
+  spajanje im je korisno: `gorivo`/`registracija`/`popravci` pod dva auta). Znači ključ
+  ostaje **jedna ćelija**, dakle ista INDIRECT formula od **424 znaka** kao postojeći
+  `Podtip` dropdown — dva roditelja bi tražila **829**, a to je neprovjereno.
+- **Prozor je bitniji od ključa:** cijela povijest umjesto 12 mjeseci ruši top-5 s
+  93,4 % na 81,4 %, a najdužu listu diže s 14 na 41 stavku.
+- **Ponuda, nikad upis:** top-1 je 57,6 % ⇒ automatski upis griješi dvije od pet.
+  Isto pravilo koje već stoji uz `presedani.py`.
+- ⚠ **Ne proturječi S129 pravilu** „ključ za oznaku je primatelj + poziv na broj, nikad
+  Tip/Podtip". Ondje se oznaka **upisuje** na retke koji primatelja **imaju**; ovdje
+  primatelja nema uopće, i ništa se ne upisuje nego nudi.
+- Gdje ne pomaže: `PP (Posmrtna pripomoc)` ima 14 redaka i 14 različitih opisa, jer nose
+  brojač (`PP Saša 6/60`). Tražilo bi rezanje broja iz presedana, kao za rate.
+- Konkretna dobit ako se ikad napravi: `izmedju racuna` nudi
+  `TROŠKOVI UČINJENI MASTERCARD KARTICOM` (11×) — pravilo „opis skupne MC naplate mora
+  ostati strojni tekst izvatka" danas živi samo u dokumentaciji.
+
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
 (fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
