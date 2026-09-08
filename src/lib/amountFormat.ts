@@ -26,12 +26,16 @@ export function formatSigned(value: number, unit?: string): string {
 }
 
 /**
- * Parse what a person typed into the "u banci" field.
+ * Parse what a person typed into a money-shaped field — the "u banci" box on
+ * the balance tile, and every `number` attribute in Add/Edit (S131).
  * Accepts both `1.234,56` (hr) and `1234.56` (keyboard habit), and returns null
  * for anything it cannot read — the caller must not save a guess.
  */
 export function parseAmountInput(raw: string): number | null {
-  const s = raw.trim().replace(/\s/g, '').replace(/€/g, '');
+  // U+2212 je minus koji proizvode `formatSigned` i `hr-HR` formatiranje —
+  // dakle ono što korisnik zalijepi iz liste ili vidi u polju za broj.
+  // Bez ove zamjene `Number()` vrati NaN i vrijednost ispadne neispravna.
+  const s = raw.trim().replace(/\s/g, '').replace(/€/g, '').replace(/−/g, '-');
   if (!s) return null;
 
   // Decide which character is the decimal separator by which one comes last.

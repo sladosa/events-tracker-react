@@ -1385,3 +1385,68 @@ Sašina odluka: za sada ništa. Brojke su u CLAUDE.md backlogu.
 3. `MC_2026-08` (46) tek nakon rujanskog ZABA izvoda.
 4. Dva nova retka (`19,98`) — zaseban uvoz, ne kroz Deltu.
 5. Zadnja dva mjeseca (2025-07 `+0,80`, 2025-08 `−46,74`).
+
+---
+
+## S131 (2026-09-08) — RF zatvoren u cent, i alat koji je padao usred ispisa
+
+### `RF_2026-08.pdf` (Kokina dostava) — jedan redak objašnjava sve
+
+Prvi RF izvod obrađen otkad je sidro bilo `799,12 @ 11.08.` OCR (`rf_ocr.py`, 3 stranice)
+pročitao je **8 od 9** transakcija; chain-validacija je sama prijavila da fali redak od
+`2,69` prije 25.08. ⚠ **Taj redak ne fali u bazi** — postoji kao `18.08. RF naknada`, dakle
+promašio ga je OCR, ne unos.
+
+Usporedba protiv baze (`Izvor = Racun`, 25.08.–07.09.):
+
+| | Σ uplata | Σ isplata |
+| --- | ---: | ---: |
+| izvod | 1.200,41 | 1.306,05 |
+| baza | 1.200,58 | 1.305,88 |
+
+Razlika je **na obje strane točno `0,17`** ⇒ jedan redak s krivim predznakom:
+`07.09. Visa naknada 0,17` bio je **uplata**, izvod ga vodi kao isplatu
+(`Naknada F4.5.3.1.2.1. Kreditni transfer`). Saldo je to potvrdio neovisno o zbrajanju
+redaka: app `691,13`, izvod `690,79`, **Δ `+0,34` = 2 × 0,17** — dvostruko jer krivi
+predznak jednom doda a jednom ne oduzme.
+
+Nakon Sašinog ispravka (kroz aplikaciju, ne skriptom): **`690,79`, u cent.**
+Uz to: `Bankovna naknada 11,00` pomaknuta sa 07.09. na **04.09.** (izvod), zajedno s
+`Datum naplate` — ⚠ delta-shift u Editu **ne dira** datumske atribute.
+
+**Sidro `690,79 @ 07.09.`** upisano, izvor `izvod`, bilješka imenuje `RF_2026-08.pdf`.
+Redoslijed je bio **provjera pa sidro**; obrnuto bi `balance == amount` bilo istinito po
+konstrukciji i ne bi značilo ništa.
+
+### `MC_2026-08` — sadržajno gotov, upis čeka
+
+Dry run (`uskladi_izvod.py`): **48/48 spareno**, `1.068,70` u cent, **0** za uvoz, **0**
+duplikata, **0** pitanja za Koku. Od S130 su ušla ona dva retka i razlika `19,98` je
+nestala. Ostaje **48 ispravaka** (47× `Status: Planiran → Izvrsen`, 1× `Izvod opis`), koje
+`primijeni_uskladu.py --apply` upisuje uz automatski backup (48 eventa, 431 atribut).
+
+⚠ **Nalaz o trenutku:** košara dospijeva **11.09.**, a `Provjeri` u delta sheetu pali se na
+`Status ≠ Planiran AND dospijeće > TODAY()`. Primjena prije toga daje ~46 lažnih upozorenja;
+od 11.09. nestaju sama. Otvoreno pitanje iz S130 (T-S130-9) ne traži odluku nego tri dana.
+
+### Popravljen alat
+
+**`uskladi_izvod.py` je padao usred ispisa** — `UnicodeEncodeError` na prvom `Č`, jer jedini
+u ovoj mapi nije imao `sys.stdout.reconfigure(encoding='utf-8')` (dvadesetak drugih ga ima,
+`run.bat` ga ne postavlja). ⚠ Pad je dolazio **poslije** popisa ispravaka a **prije**
+sekcije `PITANJA` i kontrolnih zbrojeva — dakle točno na dijelu zbog kojeg se pokreće.
+
+### Izmjereno usput
+
+`Izvod opis` pokrivenost: `Sašin tekući RF` **1.839 / 2.282 (81 %)**, `Kokin tekući ZABA`
+**1.922 / 2.885 (67 %)**. Od 25.08. je **17** RF redaka bez njega, ali **dio njih ni ne
+pripada RF izvatku** — kartične kupovine (`Izvor = Visa`) potvrđuje PBZVISA izvod. Nijedan
+alat ga za RF ne puni (`uskladi_izvod.py` je MC-only, RF je drugi format i ide kroz OCR).
+Zapisano u CLAUDE.md Backlogu na Sašin izričit zahtjev.
+
+### Sljedeće
+
+1. `MC_2026-08 --apply` **od 11.09.**, pa provjera da je `2 · ZA ISPRAVAK` prazna.
+2. Tek tada `MC_2026-08.pdf` i `RF_2026-08.pdf` u `Analizirani_izvodi/`
+   (⚠ to je „stavi u igru", ne arhiva).
+3. `Izvod opis` za RF — prvo razdvojiti retke po `Izvor`u, pa tek onda alat.

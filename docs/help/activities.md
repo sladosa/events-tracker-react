@@ -7,6 +7,12 @@
 4. Ispuni atribute, klikni Save
 5. Gumb "💾 Save as Shortcut" ispod atributa sprema trenutne vrijednosti kao shortcut default — vidi sekciju **Shortcuts** niže
 
+**Brojevi se pišu sa zarezom** (`1389,52`); točka je također prihvaćena. Ne može li se
+upisano pročitati kao broj, polje pocrveni i javi da će se spremiti kao prazno — nikad tiho.
+
+**Crvena zvjezdica** uz naziv znači obavezno polje — Finish neće proći dok nije ispunjeno,
+a poruka imenuje koje polje nedostaje.
+
 **Zaglavlje Add Activity ovisi o Arei:**
 - Zadano zaglavlje pokazuje štopericu `SESSION` / `LAP` — korisna je dok se aktivnost
   *izvodi* dok je ekran otvoren (trening).
@@ -28,7 +34,9 @@
   upiši `~`**. Lista pokaže samo retke s tildom, uz chip `comment: "~" ×`. Tilda je
   običan znak u pretrazi, ne poseban.
 
-**Vidljivost polja u formi:**
+**Vidljivost polja u formi.** Polje može nedostajati iz **tri** razloga, a `"Show all"`
+otkriva **samo prva dva**:
+
 - Polja čija vrijednost odgovara `default_value` automatski se skrivaju pri otvaranju.
   Broj skrivenih polja prikazan je na dnu forme ("N fields hidden (at default)").
   Klik "Show all" otkriva sva polja; klik "Hide fields at default" ih sakriva nazad.
@@ -37,9 +45,16 @@
   `Strength_type` za `exercise_name`) nikad se ne skriva — inače dependent dropdown "visi u zraku".
 - Ako su SVI atributi neke kategorije skriveni (npr. shortcut je sve prefillao na default),
   otvorena kategorija prikazuje poruku "All fields hidden (at default values)" umjesto praznine.
+- ⚠ **Prazan `default_value` nije default.** Prazno polje bez postavljene vrijednosti se
+  **ne** skriva — skrivanje-na-defaultu može sakriti samo polje koje *ima* vrijednost.
+  Za skrivanje praznog polja postoji sljedeća točka.
+- **Izričito skriveno za tu Areu** (`HiddenInAdd`) — za polja **čija je ispravna vrijednost
+  prazna**, npr. `Izvod opis`, koji se popuni tek kad stigne bankovni izvod. I njega otkriva
+  `"Show all"` — urednost, ne zaključavanje. Ne može se kombinirati s obaveznim poljem.
 - Polja s `depends_on` prikazuju se samo kad drugi atribut ("parent") ima određenu vrijednost
   (npr. `Broj rata` se pojavi tek kad označiš `Na rate?`).
-- Oba pravila vrijede i u Edit Activity.
+  ⚠ **Ovo `"Show all"` NE otkriva** — jedini način je ispuniti roditelja.
+- Sva pravila vrijede i u Edit Activity.
 
 ## Automatike nakon Finish
 

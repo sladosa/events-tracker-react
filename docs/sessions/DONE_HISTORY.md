@@ -3848,6 +3848,139 @@ Editu ne smije ništa promijeniti (855 Visa redaka).
 
 ---
 
+## S131 — jedno prazno polje, i tri načina da polje nestane sa ekrana (2026-09-08)
+
+Povod je bio Kokin redak s mirovinom: upisala je `+1.389,52`, ali **bez `Izvor`a**, pa
+stanje računa nije mrdnulo. Iz toga su ispala dva Sašina pitanja — obavezna polja i
+decimalni zarez — a iz njih pet nalaza od kojih tri nitko nije tražio.
+
+### `is_required` je postojao svugdje osim ondje gdje radi
+
+Kolona `IsRequired` u Structure Excelu, crvena zvjezdica u formi, polje u bazi — i
+**nijedan od tri puta nije bio spojen**: Excel UPDATE grana ga nije imala ni u dirty
+checku ni u `update()`, panel ga je pisao **samo na INSERT**, a spremanje ga nije
+provjeravalo. Sašin plan („upišem `TRUE` u kolonu J i uvezem") bio bi prijavljen kao
+*„ništa se nije promijenilo"* — obećanje bez pokrića, i to bez poruke.
+
+⚠ **Mjerenje je promijenilo plan.** Očekivao sam hrpu starih redaka koje bi obavezno polje
+zaključalo, pa sam bio spreman predložiti kompromis („Add blokira, Edit samo upozorava").
+Izmjereno na PROD-u: `Racun` **5164/5164**, `Izvor` **5163/5164**, `bez iznosa` **0** —
+jedini prazan `Izvor` u cijeloj bazi je **Kokin redak zbog kojeg razgovaramo**. Kompromis
+je otpao; pravilo je strogo u oba toka.
+
+Iznos je ostao **neobavezan**, i to s razlogom: `Uplata` 509 / `Isplata` 4657, dakle
+`is_required` po polju ne može izraziti „barem jedno od dva". Prazan iznos je uz to
+**vidljiv** u listi (`—`), a prazan `Izvor` nije — `Izvor` nije kolona, a `Stanje` se u
+nefiltriranoj listi ne renderira. Popravlja se ono što se ne vidi.
+
+### Zarez — i bug koji je test našao prije korisnika
+
+`<input type="number">` prepušta decimalni separator **lokalizaciji preglednika**, pa se
+isti build drukčije ponaša na dva uređaja; kad preglednik odbije znak, `e.target.value` je
+`''`, što je kod mapirao u `null` ⇒ **iznos tiho nestane**.
+
+Automatski test (`amountInput.test.mjs`, 28 slučajeva) uhvatio je ono što se rukom ne bi
+primijetilo: `hr-HR` formatira minus kao **U+2212**, koji `Number()` ne prima i koji se ne
+tipka — svaki negativan broj bio bi prikazan kao neispravan. Protuprovjera nad starim
+ponašanjem pada 2/28.
+
+### Sašin nalaz: „prvi upis ne uzme decimalu, ponovljeni da"
+
+Ispalo je **starije i šire** od zareza. `renderAttribute` je birao između **dva različita
+elementa** — goli `AttributeInput` ili `<div>` oko njega — a React na promjeni *tipa*
+elementa odmontira podstablo, uništi `<input>` DOM čvor i **odnese fokus**. Prekidač
+(`revealed`) se prevrće na **prvi utipkani znak**, dakle usred tipkanja: prvi znak sruši
+polje, ostatak ode u prazno. Drugi pokušaj radi jer je atribut već u `userEditedIds` — zato
+je izgledalo nasumično. ⚠ Pogađa **svaki** tip atributa, ne samo brojeve.
+
+### `'' == null` je `false`, i time je S117 odluka tiho poništena
+
+Zašto je to polje uopće bilo skriveno: `default_value` je bio **prazan string**, a uvjet je
+glasio `== null`. Prazno polje je time ispadalo „na svom defaultu" ⇒ skriveno — dakle
+skrivanje-na-defaultu radilo je posao zbog kojeg je `hidden_in_add` **u S117 uopće
+izmišljen**.
+
+Provjera koja to potvrđuje brojkom: S117 je izmjerio *„`default_value` postoji na **7**
+atributa, svi u `Fitness_Garmin`"*, a danas u Fitnessu ima **točno 7** atributa sa stvarnim
+defaultom. Onih 14 s `''` u toj brojci nije bilo — analiza ih nije brojala kao default, kod
+jest. Izmjereno i da se mehanizmi u podacima **nigdje ne preklapaju**: svih 14 `''` je u
+`Fitness`, sva 3 `hidden_in_add` u `Financije_all`. Popravak je zato dirnuo samo Sašinu
+Areu; Kokina je netaknuta. Uvjet je živio na **tri** mjesta.
+
+### Obavezno + skriveno — Sašino pitanje, i zašto upozorenje NE ide u Add Activity
+
+Kombinacija je **proturječna**, ne nezgodna. Zatvorena na tri razine: panel je ne da
+složiti (kvačice se međusobno gase, ali **nikad ona koja je sama uključena** — inače se par
+koji dođe Excelom ne bi dao popraviti), forma je razrješava u korist obaveznog, a uvoz je
+**prijavi i sam preuzme** anotirani file.
+
+Odbačeno je upozorenje u Add Activityju: to je Kokina svakodnevna ploha, ona kontradikciju
+nije napravila i ne može je popraviti, a upozorenje bi iskakalo na **svakom** unosu — isti
+obrazac koji je već dvaput ugrizao (`Provjeri` sa 46 lažnih, S130; „Resume Previous
+Session?" nad praznom formom, S122).
+
+Sašina ideja da se anotirani izvoz preuzme **sam** poklopila se s postojećim stilom kuće —
+Activities uvoz to već radi. Ime: **`structure_REVIEW_NEEDED_*`**, ne `ERRORS`; ništa nije
+palo, a `structure_export_*_conflict` već znači ozbiljniji slučaj (retci koji **nisu** ušli).
+Jedan file za oba razloga, ne dva gotovo identična lista. ⚠ Usput popravljeno i to da bi
+ćelija A6 **unutar** filea pisala `Import conflict:` i kad sudara nema — bilo bi nedosljedno
+popraviti ime a ostaviti natpis.
+
+⚠ Kolone J i K su `collapsed`, dakle **skrivene u zadanom izvozu** — obojena ćelija u
+skrivenoj koloni je oznaka koju nitko ne vidi, pa je otkrivanje kolone dio oznake.
+
+### Help — tri razloga koja nigdje nisu stajala
+
+Na Sašin zahtjev („stvari postaju dosta suptilne"). Nigdje nije bilo napisano da polje može
+nedostajati iz **tri** razloga i da **„Show all" otkriva samo dva** — treći (`depends_on`
+roditelj bez vrijednosti) ne otkriva nikako. To je točno ono što korisnik prijavi kao bug.
+`attributes.md` (nova sekcija + Required + unos broja), `activities.md` (postojeća sekcija
+dopunjena, bez druge kopije), `structure.md` (kolone J/K, pravilo OR, zabrana kombinacije).
+
+### Podaci — PROD
+
+**`MC_2026-08` NIJE gotov.** Sadržajno jest: 48/48 spareno, `1.068,70` u cent, **0** za uvoz,
+**0** pitanja za Koku (od S130 su ušla ona dva retka i razlika `19,98` je nestala). Ali 48
+ispravaka (`Status: Planiran → Izvrsen`) čeka `--apply`, pa premještanje u
+`Analizirani_izvodi/` još nije istina. ⚠ Nalaz o **trenutku**: košara dospijeva 11.09., a
+formula `Provjeri` glasi `Status ≠ Planiran AND dospijeće > TODAY()` — dakle otvoreno
+pitanje iz S130 (T-S130-9) ne traži odluku nego **tri dana**.
+
+**`RF_2026-08` (Kokina dostava) pročitan i zatvoren u cent.** OCR je pročitao 8 od 9
+transakcija. Usporedba protiv baze dala je razliku od **točno `0,17` na obje strane** —
+jedan redak (`Visa naknada`, 07.09.) bio je upisan kao **uplata**, a banka ga vodi kao
+isplatu. Saldo je to potvrdio neovisno: app `691,13`, izvod `690,79`, Δ **`+0,34` = 2 × 0,17**
+(jednom jer plus ne pripada, jednom jer minus fali). Nakon Sašinog ispravka: **`690,79`, u
+cent.** Uz to `Bankovna naknada 11,00` pomaknuta sa 07.09. na **04.09.** (s `Datum naplate`
+uz nju — delta-shift datumske atribute ne dira). ⚠ Redak `2,69` **ne fali** — OCR ga je
+promašio, u bazi postoji (18.08.).
+
+**Sidro `RF 690,79 @ 07.09.`** upisao Saša, izvor `izvod`, bilješka imenuje `RF_2026-08.pdf`.
+Redoslijed je bio ispravan — **provjera pa sidro**; obrnuto bi nula izgledala jednako
+uvjerljivo i ne bi značila ništa.
+
+### Dva alata, dva nalaza
+
+**`uskladi_izvod.py` je padao usred ispisa** — `UnicodeEncodeError` na prvom `Č`, jer jedini
+u toj mapi nije imao `sys.stdout.reconfigure(encoding='utf-8')`. Pad je dolazio **poslije**
+popisa ispravaka a **prije** sekcije `PITANJA` i kontrolnih zbrojeva, dakle točno na dijelu
+zbog kojeg se pokreće.
+
+**`structureExcel.test.mjs` je odrezan u gitu još od S17** (`75ef760`) — završava usred
+zadnjeg testa, bez sekcija 8 i 9 koje mu zaglavlje obećava i bez sažetka. Nikad nije prošao
+nijedan run, a `structureExcel.ts` je od tada mijenjan mnogo puta. **Nije popravljeno** —
+odluka (dopuniti ili obrisati) je Sašina.
+
+### Deploy
+
+**Na `main` nije pushano.** Izmjereno zašto ne: obavezna polja su **neaktivna** dok se ne
+označi nijedan atribut, promjene vidljivosti **ne diraju `Financije_all`** (nema nijedan
+atribut s defaultom ni s `''`), pa bi push isporučio uspavan kod i potrošio build. Okidač je
+**prolazak blokova B, C i D** (T-S131-6…19) — sve se testira na TEST-u, bez deploya. ⚠ Ako
+se ispostavi da Koki zarez **stvarno guta iznose** na mobitelu, push ide odmah.
+
+---
+
 ## S130 — dropdown koji je izgledao ispravno, i jedan popravak koji bi Deltu napunio upozorenjima (2026-09-07)
 
 Povod je bilo Sašino pitanje uoči Kokinog upisa: **„nisam siguran da li imamo

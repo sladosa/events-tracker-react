@@ -12,7 +12,7 @@ import { THEME } from '@/lib/theme';
 import { importStructureExcel, type ImportResult } from '@/lib/structureImport';
 import {
   exportStructureExcel,
-  structureConflictFilename,
+  structureReviewFilename,
 } from '@/lib/structureExcel';
 import type { StructureNode } from '@/types/structure';
 
@@ -79,6 +79,9 @@ export function StructureImportModal({
   const [result, setResult] = useState<ImportResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [conflictDownloading, setConflictDownloading] = useState(false);
+  /** Ime anotiranog filea koji se preuzeo sam — prikazuje se u modalu, jer
+   *  preuzimanje koje korisnik nije trazio mora reci STO je stiglo. */
+  const [reviewFile, setReviewFile] = useState<string | null>(null);
 
   // ── File selection ───────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +108,9 @@ export function StructureImportModal({
       // preskakao: podaci u bazi novi, `nodes` u appu stari, Edit panel bi
       // pri Save-u vratio staru snimku settingsa natrag u bazu.
       onImported(); // trigger refetch in parent
+      // ⚠ Tek nakon `onImported()` — anotirani izvoz mora prikazati stanje
+      //   POSLIJE uvoza, inace bi oznacio ono sto je upravo prestalo vrijediti.
+      await downloadReviewFile(res);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Import failed');
     } finally {
@@ -112,30 +118,46 @@ export function StructureImportModal({
     }
   };
 
-  // ── Conflict Excel download ──────────────────────────────
-  const handleConflictExcel = async () => {
-    if (!result?.conflicts.length) return;
+  // ── Anotirani izvoz ──────────────────────────────────────
+  // JEDAN file za oba razloga. Dva bi znacila da uvoz s oboje ponudi dva
+  // gotovo identicna lista, a citatelj mora pogoditi koji je koji.
+  //
+  // Preuzima se SAM, i to samo kad ima sto pogledati. Presedan je Activities
+  // uvoz (`excelImportReport.ts`), gdje izvjestaj ide nakon svakog uvoza kao
+  // RADNI file, ne log — ovdje je uvjetan jer je nalaz rijedak, a file koji
+  // svaki put stigne nikome ne treba i utopi onaj koji treba.
+  //
+  // ⚠ Boja se u izvozu izvodi IZ PODATAKA (`rowNeedsReview`), ne iz ovog
+  //   rezultata — pa proturjecne zastavice ostanu oznacene i u svakom
+  //   sljedecem obicnom izvozu, dok se ne poprave. `conflictSlugs` je drukciji
+  //   slucaj: preskocen redak postoji samo u ovom uvozu i nigdje drugdje.
+  const downloadReviewFile = async (res: ImportResult) => {
+    const nConf = res.conflicts.length;
+    const nFlag = res.reviewFlags.length;
+    if (nConf === 0 && nFlag === 0) return;
+
     setConflictDownloading(true);
     try {
       const nodes = await getNodes();
-      const conflictSlugs = new Set(result.conflicts.map(c => c.slug));
+      const parts: string[] = [];
+      if (nConf) parts.push(`${nConf} row${nConf !== 1 ? 's' : ''} skipped (slug in another path, col G)`);
+      if (nFlag) parts.push(`${nFlag} attribute${nFlag !== 1 ? 's' : ''} Required+Hidden (cols J/K)`);
       const buffer = await exportStructureExcel(
         nodes,
         {},
-        {
-          type: 'conflict',
-          description: `Import conflict: ${result.conflicts.length} row${result.conflicts.length !== 1 ? 's' : ''} skipped — see highlighted cells in col G`,
-        },
-        conflictSlugs,
+        { type: nConf ? 'conflict' : 'review', description: parts.join(' · ') },
+        nConf ? new Set(res.conflicts.map(c => c.slug)) : undefined,
       );
+      const name = structureReviewFilename();
       saveAs(
         new Blob([buffer], {
           type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         }),
-        structureConflictFilename(),
+        name,
       );
+      setReviewFile(name);
     } catch (err) {
-      console.error('Conflict Excel failed:', err);
+      console.error('Review export failed:', err);
     } finally {
       setConflictDownloading(false);
     }
@@ -143,6 +165,7 @@ export function StructureImportModal({
 
   // ── Derived state ────────────────────────────────────────
   const hasConflicts = (result?.conflicts.length ?? 0) > 0;
+  const hasReviewFlags = (result?.reviewFlags.length ?? 0) > 0;
   const totalCreated = result
     ? result.created.areas + result.created.categories + result.created.attributes
     : 0;
@@ -260,16 +283,46 @@ export function StructureImportModal({
               </div>
 
               {/* Success message */}
-              {totalChanged > 0 && !hasConflicts && (
+              {totalChanged > 0 && !hasConflicts && !hasReviewFlags && (
                 <div className="rounded-lg px-4 py-3 bg-green-50 border border-green-200 text-green-800 text-sm">
                   ✓ Import completed successfully.
                 </div>
               )}
 
               {/* No-op message */}
-              {totalChanged === 0 && !hasConflicts && (
+              {totalChanged === 0 && !hasConflicts && !hasReviewFlags && (
                 <div className="rounded-lg px-4 py-3 bg-gray-50 border border-gray-200 text-gray-600 text-sm">
                   Nothing to import — all data already exists in the database.
+                </div>
+              )}
+
+              {/* Required + HiddenInAdd — upisano, ali proturjecno */}
+              {hasReviewFlags && (
+                <div className="rounded-lg border border-amber-200 overflow-hidden">
+                  <div className="bg-amber-50 px-4 py-2 flex items-center gap-2 text-amber-800">
+                    <WarningIcon />
+                    <span className="text-sm font-medium">
+                      {result.reviewFlags.length} attribute{result.reviewFlags.length !== 1 ? 's' : ''} both Required and Hidden
+                    </span>
+                  </div>
+                  <div className="px-4 py-3 text-xs text-gray-600 space-y-2">
+                    {/* Prvo sto se procita mora biti „nista nije palo" — inace
+                        se narancasti okvir cita kao neuspjeh uvoza. */}
+                    <p>
+                      <span className="font-medium text-gray-700">Imported as written.</span>{' '}
+                      The two flags contradict each other: hidden means the field&apos;s correct
+                      value is empty, required means it may not be. The entry form resolves it in
+                      favour of Required and <span className="font-medium">shows the field</span>,
+                      so nothing is broken — but the config says two opposite things.
+                    </p>
+                    {result.reviewFlags.map((f, i) => (
+                      <div key={i} className="bg-gray-50 rounded p-2 space-y-0.5">
+                        <p><span className="font-medium">{f.attrName}</span> <span className="text-gray-400">(slug: {f.slug})</span></p>
+                        <p className="text-gray-500">{f.categoryPath}</p>
+                      </div>
+                    ))}
+                    <p>Clear one of the two — in the Structure panel, or in cols J/K of the file below.</p>
+                  </div>
                 </div>
               )}
 
@@ -292,22 +345,32 @@ export function StructureImportModal({
                       </div>
                     ))}
                   </div>
-                  <div className="px-4 pb-3">
-                    <button
-                      onClick={handleConflictExcel}
-                      disabled={conflictDownloading}
-                      className={cn(
-                        'w-full py-2 rounded-lg text-sm font-medium transition-colors',
-                        conflictDownloading ? 'opacity-50 cursor-not-allowed' : '',
-                        'bg-amber-500 hover:bg-amber-600 text-white',
-                      )}
-                    >
-                      {conflictDownloading ? 'Generating…' : '↓ Download Conflict Report'}
-                    </button>
-                    <p className="text-xs text-gray-400 mt-1.5 text-center">
-                      Conflicted slugs are highlighted in col G. Fix and re-import.
+                </div>
+              )}
+
+              {/* Anotirani file — preuzet sam. Preuzimanje koje korisnik nije
+                  trazio mora reci sto je stiglo i kako se zove, inace je to
+                  samo jos jedan file u Downloads mapi. */}
+              {(hasConflicts || hasReviewFlags) && (
+                <div className="rounded-lg px-4 py-3 bg-gray-50 border border-gray-200 text-xs text-gray-600">
+                  {conflictDownloading ? (
+                    <p>Generating annotated export…</p>
+                  ) : reviewFile ? (
+                    <p>
+                      ↓ Downloaded <span className="font-mono text-gray-800">{reviewFile}</span> — the
+                      cells that need attention are highlighted and their columns forced visible.
+                      Fix there and re-import, or fix in the Structure panel.
                     </p>
-                  </div>
+                  ) : (
+                    <p className="text-amber-700">The annotated export could not be generated.</p>
+                  )}
+                  <button
+                    onClick={() => result && downloadReviewFile(result)}
+                    disabled={conflictDownloading}
+                    className="mt-2 text-blue-600 hover:text-blue-700 underline disabled:opacity-50"
+                  >
+                    Download again
+                  </button>
                 </div>
               )}
             </div>

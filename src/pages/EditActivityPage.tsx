@@ -33,6 +33,7 @@ import { PhotoGallery } from '@/components/activity/PhotoGallery';
 import { CancelDialog } from '@/components/activity/ConfirmDialog';
 
 import type { UUID, AttributeDefinition } from '@/types';
+import { missingRequired, requiredMessage } from '@/lib/requiredAttributes';
 import type {
   PendingEvent,
   PendingPhoto,
@@ -918,7 +919,39 @@ export function EditActivityPage() {
   
   const handleSave = async () => {
     if (!canSave || !categoryId) return;
-    
+
+    // ── Obavezna polja ───────────────────────────────────────────
+    // Provjerava se SVAKI aktivan događaj posebno, a ne prikazana forma:
+    // jedan redak liste zna nositi više događaja (tabovi), a spremaju se svi.
+    // Roditeljski atributi (P1) su zajednički za cijelu sesiju, pa se gledaju
+    // jednom, protiv `parentAttrValues`.
+    {
+      const leafDefs = attributesByCategory.get(categoryId) || [];
+      const parentDefs: AttributeDefinition[] = [];
+      for (const [catId, defs] of attributesByCategory) {
+        if (catId !== categoryId) parentDefs.push(...defs);
+      }
+
+      const missingParent = missingRequired(parentDefs, id => parentAttrValues.get(id)?.value);
+      if (missingParent.length > 0) {
+        toast.error(requiredMessage(missingParent));
+        return;
+      }
+
+      for (let i = 0; i < activeEvents.length; i++) {
+        const ev = activeEvents[i];
+        const byId = new Map(ev.attributes.map(a => [a.definitionId, a.value]));
+        const missing = missingRequired(leafDefs, id => byId.get(id));
+        if (missing.length > 0) {
+          toast.error(requiredMessage(
+            missing,
+            activeEvents.length > 1 ? `Event #${i + 1}` : undefined,
+          ));
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     setError(null);
     

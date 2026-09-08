@@ -1,7 +1,84 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S130 (2026-09-07) — dropdowni na praznim retcima delta sheeta popravljeni, `MC_2026-08` uskladjen (dry), `--apply` ceka Sasu.
+**Zadnji update:** S131 (2026-09-08) — decimalni zarez, `is_required` ozivljen na svim putevima, tri razloga skrivanja polja razdvojena; RF zatvoren u cent (`690,79`).
+
+---
+
+## S131 — decimalni zarez + obavezna polja (2026-09-08)
+
+Detalji: [S131_tests.md](tests/S131_tests.md)
+
+⚠ **Gdje se testira:** kod nije na `main`, pa PROD aplikacija (Kokina) jos vrti
+stari bundle — kvacica `Required` upisana na PROD ondje nece ni blokirati ni
+pokazati zvjezdicu. B i D radi na TEST-u; PROD kvacicu na `Racun`/`Izvor`
+postavi tek **nakon** deploya.
+
+### A. Decimalni zarez u polju za broj
+
+| #            | test                                                     | status                           |
+| ------------ | -------------------------------------------------------- | -------------------------------- |
+| **T-S131-1** | ⭐ `amountInput.test.mjs`                                 | ✅ 28/28, protuprovjera pada 2/28 |
+| **T-S131-2** | ⭐ Add: `1.234,56` se spremi tocan (ne `1,23`, ne prazno) | ✅ |
+| **T-S131-3** | ⭐ Edit: iznos preživi otvaranje + Save nedirnut          | ✅ |
+| **T-S131-4** | neprepoznat unos pocrveni, ne nestane tiho               | ✅ |
+| **T-S131-5** | broj bez decimala ne dobiva `,00` (druga Area)           | ✅ 150 / 2,8 / 2,835 |
+| **T-S131-25** | ⭐ NALAZ+FIX: prvi znak u praznom „skriveno" polju rusio polje (gubitak fokusa, SVI tipovi atributa) | ⬜ |
+| **T-S131-26** | ⭐ NALAZ+FIX: prazan `default_value` vise ne skriva polje (S117 podjela vracena) | ⬜ |
+| **T-S131-27** | Help pokriva sva tri razloga skrivanja + Required | ⬜ |
+
+### B. Obavezna polja — upis
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-6** | ⭐ UI kvacica se STVARNO sprema (provjera kroz Add, ne kroz panel) | ⬜ |
+| **T-S131-7** | ⭐ Excel kol. J ⇒ `attributes updated`, ne „nothing changed" | ⬜ |
+| **T-S131-8** | ⭐ `TRUE` na NE-prvom retku atributa (pravilo OR) | ⬜ |
+| **T-S131-9** | `FALSE` na svim retcima iskljuci obavezno | ⬜ |
+| **T-S131-10** | izvoz nosi `TRUE` nakon kvacice (roundtrip zatvoren) | ⬜ |
+
+### C. Provjera pri spremanju
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-11** | Add Finish blokiran + poruka imenuje polje | ✅ ⚠ poruka je otad kraca — jos jedan pogled |
+| **T-S131-12** | ⭐ Edit blokiran kad se obavezno polje OBRIŠE | ⬜ |
+| **T-S131-13** | Edit starog retka koji ima sve — sprema se (regresija) | ⬜ |
+| **T-S131-14** | `Save +` takodjer blokira (Area bez `disable_save_plus`) | ⬜ |
+| **T-S131-15** | ⭐ Excel uvoz aktivnosti NE provjerava obavezna polja | ⬜ |
+| **T-S131-16** | obavezan boolean: netaknut blokira, `false` prolazi | ⬜ |
+
+### D. Obavezno + skriveno
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-17** | panel ne da složiti kombinaciju (kvacice se iskljucuju) | ⬜ |
+| **T-S131-18** | ⭐ kombinacija iz Excela: forma svejedno prikaze polje | ⬜ |
+| **T-S131-19** | obavezno dijete neobaveznog roditelja — upozorenje | ⬜ |
+| **T-S131-22** | ⭐ uvoz JAVI kontradikciju + sam preuzme `structure_REVIEW_NEEDED_*` | ⬜ |
+| **T-S131-23** | oznaka prezivi u OBICNOM izvozu i sama nestane kad se popravi | ⬜ |
+| **T-S131-24** | sudar putanja i dalje radi — jedan file, oba razloga | ⬜ |
+
+### E. Regresija i nalazi
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-20** | ⭐ `requiredAttributes.test.mjs` + typecheck + build | ✅ 18/18, protuprovjera pada 3/18 |
+| **T-S131-21** | ⚠ NALAZ: `structureExcel.test.mjs` odrezan u gitu od **S17** | ⬜ **odluka: dopuniti ili obrisati** |
+
+### F. Podaci — PROD (mjereno 08.09.2026, samo citanje)
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-28** | ⭐ `MC_2026-08` NIJE gotov — 48 ispravaka ceka `--apply` (47× Status, 1× Izvod opis) | ⬜ **Sasa pokrece** |
+| **T-S131-29** | ⭐ RF: jedna greska (`0,17` upisan kao uplata) objasnjava Δ `+0,34` u cent | ✅ RF 690,79 = izvod, u cent |
+| **T-S131-30** | RF `Bankovna naknada 11,00` datiran 07.09., izvod kaze **04.09.** | ✅ pomaknut na 04.09., `Datum naplate` uz njega |
+| **T-S131-31** | ✅ redak `2,69` NE fali — postoji u bazi (18.08.), OCR ga je promasio | ✅ |
+| **T-S131-32** | ✅ `uskladi_izvod.py` vise ne pada na hrvatskom znaku (`stdout.reconfigure`) | ✅ |
+| **T-S131-33** | ✅ sidro `RF 690,79 @ 07.09.` (izvor `izvod`, nota imenuje `RF_2026-08.pdf`) | ✅ redoslijed: provjera pa sidro |
+| **T-S131-34** | ⚠ BUG-S131-VIEWSTALE — View „Activity not found" nakon Edita koji pomakne `session_start`; F5 rijesi | ⬜ **neponovljen** |
+
+**Otvoreno (S131):** T-S131-6 … T-S131-10, T-S131-12 … T-S131-19, T-S131-21 … T-S131-27, T-S131-28, T-S131-34
 
 ---
 

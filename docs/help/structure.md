@@ -21,6 +21,26 @@ Za suggest atribute mora točno odgovarati jednoj od opcija (case-sensitive).
 Polja na defaultu se skrivaju u formi (hide-if-default) — korisnik klika "Show all" ako ih želi urediti.
 Iznimka: polje o kojem ovisi vidljivo `depends_on` polje nikad se ne skriva (S107f).
 Za brisanje `default_value` via Excel Structure importa: upiši `_` u Default kolonu — import postavlja null (prazno).
+⚠ **Prazan default nije default.** Polje bez postavljene vrijednosti se **ne** skriva — hide-if-default
+može sakriti samo polje koje *ima* vrijednost. Za skrivanje praznog polja postoji `HiddenInAdd`.
+
+**`IsRequired` (kol. J) — obavezno polje:**
+Add i Edit ne daju spremiti dok polje nije ispunjeno (`false` i `0` **jesu** odgovori; netaknut
+checkbox nije). **Ne vrijedi za Excel uvoz aktivnosti** — povijesni retci i `N/A` moraju i dalje
+prolaziti, pa je to pravilo forme, a ne baze; postojeći retci se ne diraju.
+- Atribut u Structure sheetu ima **više redaka** (po jedan za svaki `WhenValue`). `IsRequired` je
+  **zastavica**, pa `TRUE` na **bilo kojem** retku atributa čini polje obaveznim — za razliku od
+  ostalih atributskih polja, gdje vrijedi prvi redak.
+- Obavezno dijete traži i **obaveznog roditelja**: ostane li `depends_on` roditelj prazan, dijete se
+  u formi uopće ne prikaže, a obavezno je — panel na to upozorava.
+
+**`HiddenInAdd` (kol. K) — polje skriveno pri unosu:**
+Za atribute čija je **ispravna vrijednost prazna** (npr. `Izvod opis`, koji se popuni tek s izvoda).
+"Show all" ga i dalje otkrije — urednost, ne zaključavanje.
+⚠ **`IsRequired` i `HiddenInAdd` ne mogu biti oboje `TRUE`** — tvrde suprotno o istom polju. Panel
+kombinaciju ne da složiti; dođe li Excel uvozom, uvoz je prijavi i **sam preuzme označeni file**
+(`structure_REVIEW_NEEDED_*`, žute ćelije u J/K), a forma polje svejedno prikaže — obavezno pobjeđuje,
+da se unos ne može zaključati.
 
 **`depends_on` — uvjetna vidljivost:**
 Atribut se prikazuje u formi samo kad drugi atribut ("parent") ima određenu vrijednost.

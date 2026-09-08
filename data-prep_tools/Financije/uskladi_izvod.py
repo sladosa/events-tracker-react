@@ -81,6 +81,13 @@ import argparse
 import json
 import re
 import sys
+
+# Windows konzola je cp1252, a opisi s izvoda nose hrvatske znakove. Bez ovoga
+# alat PADNE usred ispisa (`UnicodeEncodeError` na prvom `Č`) — i to POSLIJE
+# nabrajanja ispravaka a PRIJE sekcije `PITANJA` i kontrolnih zbrojeva, dakle
+# tocno na dijelu zbog kojeg se pokrece. Dvadesetak drugih alata u ovoj mapi
+# ovu liniju vec ima; `uskladi_izvod.py` je bio jedini bez nje.
+sys.stdout.reconfigure(encoding='utf-8')
 import unicodedata
 import urllib.request
 from collections import defaultdict

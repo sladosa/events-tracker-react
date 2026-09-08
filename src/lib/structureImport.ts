@@ -41,6 +41,12 @@ export interface ConflictRow {
   importedPath: string; // path from Excel
 }
 
+export interface ReviewFlagRow {
+  attrName:     string;
+  slug:         string;
+  categoryPath: string;
+}
+
 export interface ImportResult {
   created: {
     areas: number;
@@ -54,6 +60,14 @@ export interface ImportResult {
   };
   skipped: number;
   conflicts: ConflictRow[];
+  /**
+   * Atributi upisani s PROTURJECNIM zastavicama: `IsRequired` i `HiddenInAdd`
+   * oboje `TRUE`. Nije greska — redak je upisan i forma radi (prikaze polje
+   * unatoc `hidden_in_add`) — nego konfiguracija koja tvrdi dvoje suprotno.
+   * Panel takvu kombinaciju od S131 ne da sloziti, pa je Excel jedini put
+   * kojim moze nastati; zato se javlja bas ovdje, u trenutku kad nastane.
+   */
+  reviewFlags: ReviewFlagRow[];
   /** Automations sheet (set_attribute rules) — Faza 2b */
   automations: {
     areasUpdated: number;
@@ -353,6 +367,17 @@ function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
 
     const group = map.get(key)!;
 
+    // ⚠ `IsRequired` je ZASTAVICA, pa se preko redaka istog atributa spaja s
+    // OR, a ne „prvi redak pobjeđuje" kao ostala atributska polja. Izvoz upiše
+    // istu vrijednost u svaki redak atributa (`Izvor` ih ima tri, po jedan za
+    // svaku vrijednost `Racun`a), pa se redci razilaze samo kad je čovjek
+    // uredio jedan. Tada je `TRUE` na bilo kojem retku izrečena namjera, a
+    // „prvi pobjeđuje" bi je tiho progutao i polje ne bi bilo obavezno —
+    // dakle točno kvar koji se ovim popravkom zatvara. Obrnuti promašaj
+    // (očistiš jedan od tri, polje ostane obavezno) vidi se čim netko pokuša
+    // spremiti. Vidljivo krivo je bolje od tiho zanemarenog.
+    group.isRequired = group.isRequired || row.isRequired;
+
     if (row.dependsOn) {
       // DependsOn row — build options_map + defaultMap
       if (!group.dependsOn) {
@@ -438,6 +463,7 @@ export async function importStructureExcel(
     updated:  { attributes: 0, settings: 0 },
     skipped:  0,
     conflicts: [],
+    reviewFlags: [],
     automations: { areasUpdated: 0, rulesImported: 0, rulesSkipped: 0 },
     listColumns: { areasUpdated: 0, columnsImported: 0, columnsSkipped: 0 },
   };
@@ -475,7 +501,7 @@ export async function importStructureExcel(
         .select('id, area_id, parent_category_id, name, slug, level, sort_order, path, settings'),
       supabase
         .from('attribute_definitions')
-        .select('id, category_id, name, slug, unit, description, sort_order, validation_rules, default_value'),
+        .select('id, category_id, name, slug, unit, description, sort_order, validation_rules, default_value, is_required'),
     ]);
 
   if (!dbAreas || !dbCats || !dbAttrs) {
@@ -541,6 +567,7 @@ export async function importStructureExcel(
     defaultValue: string | null;
     sortOrder: number;
     validationRules: Record<string, unknown>;
+    isRequired: boolean;
   }
   const attrBySlugCat = new Map<string, AttrRecord>(); // key: `${slug}||${categoryId}`
   // attrKey: `${categoryId}/${name.lower}` → id (for slug-less lookup)
@@ -559,6 +586,7 @@ export async function importStructureExcel(
       defaultValue:    (a as { default_value?: string | null }).default_value ?? null,
       sortOrder:       a.sort_order,
       validationRules: (a.validation_rules as Record<string, unknown>) ?? {},
+      isRequired:      (a as { is_required?: boolean }).is_required ?? false,
     };
     attrBySlugCat.set(key, rec);
     attrById.set(a.id, rec);
@@ -714,6 +742,14 @@ export async function importStructureExcel(
       continue;
     }
 
+    if (group.isRequired && group.hiddenInAdd) {
+      result.reviewFlags.push({
+        attrName:     group.attrName,
+        slug:         group.slug || makeAttrSlug(group.attrName),
+        categoryPath: group.categoryPath,
+      });
+    }
+
     const validationRules = buildValidationRules(group);
 
     // Per-category lookup: slug is unique within a category, NOT globally.
@@ -763,6 +799,7 @@ export async function importStructureExcel(
             defaultValue:    group.defaultVal || null,
             sortOrder:       group.sort,
             validationRules: validationRules,
+            isRequired:      group.isRequired,
           };
           attrBySlugCat.set(slugCatKey, newRec);
           attrByKey.set(`${categoryId}/${group.attrName.toLowerCase()}`, '');
@@ -782,8 +819,13 @@ export async function importStructureExcel(
     const defaultDiff = (existing.defaultValue ?? '') !== importDefault;
     const sortDiff    = existing.sortOrder    !== group.sort;
     const rulesDiff   = normalizeJson(existing.validationRules) !== normalizeJson(newRules);
+    // ⚠ `IsRequired` mora biti I u dirty checku I u UPDATE-u. Bio je ni u
+    // jednom (S131): kolona J je postojala u exportu, uvoz ju je parsirao, i
+    // redak čija je JEDINA promjena bila `FALSE → TRUE` ispadao je „ništa se
+    // nije promijenilo" — dakle obećanje bez pokrića, i to bez poruke.
+    const reqDiff     = existing.isRequired   !== group.isRequired;
 
-    const isDirty = nameDiff || unitDiff || descDiff || defaultDiff || sortDiff || rulesDiff;
+    const isDirty = nameDiff || unitDiff || descDiff || defaultDiff || sortDiff || rulesDiff || reqDiff;
 
     // DEBUG — remove after S21 testing
     if (isDirty) {
@@ -792,6 +834,7 @@ export async function importStructureExcel(
         unitDiff,   dbUnit:  existing.unit,        xlUnit:  group.unit        || null,
         descDiff,   dbDesc:  existing.description, xlDesc:  group.description || null,
         sortDiff,   dbSort:  existing.sortOrder,   xlSort:  group.sort,
+        reqDiff,    dbReq:   existing.isRequired,   xlReq:   group.isRequired,
         rulesDiff,  dbRules: normalizeJson(existing.validationRules),
                     xlRules: normalizeJson(newRules),
       });
@@ -813,6 +856,7 @@ export async function importStructureExcel(
         default_value:    group.defaultVal === '_' ? null : (group.defaultVal || null),
         sort_order:       group.sort,
         validation_rules: newRules,
+        is_required:      group.isRequired,
         updated_at:       new Date().toISOString(),
       })
       .eq('id', existing.id);

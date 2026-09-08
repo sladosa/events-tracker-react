@@ -41,6 +41,7 @@ import {
 
 import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
 import { computeSetAttributeValue, collectRuleManagedIds, findDefBySlug, formatForDatetimeInput } from '@/lib/attributeRules';
+import { missingRequired, requiredMessage } from '@/lib/requiredAttributes';
 import { detectRata, generateRataChargeDates, rataSessionStarts, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
 import { resolveCommentTemplate, evaluateCommentTemplate } from '@/lib/commentTemplate';
 import type { RataAutomationConfig } from '@/types/database';
@@ -946,9 +947,23 @@ export function AddActivityPage() {
   // Save + Continue (Add to pending)
   // ============================================
 
+  /** Obavezna polja koja trenutna forma nema ispunjena, u redoslijedu forme.
+   *  Gleda cijeli lanac (P1 — i roditeljske razine smiju imati atribute). */
+  const missingRequiredNow = useCallback(() => {
+    return missingRequired(allAttrDefs, id => attributeValues.get(id)?.value);
+  }, [allAttrDefs, attributeValues]);
+
   const handleSaveContinue = useCallback(() => {
     if (!canSave || !categoryId) return;
-    
+
+    // ⚠ Provjera ide i ovdje, ne samo na Finishu: `Save +` sprema događaj u red,
+    // pa bi bez nje nepotpun redak prošao i Finish ga više ne bi ni pogledao.
+    const missing = missingRequiredNow();
+    if (missing.length > 0) {
+      toast.error(requiredMessage(missing));
+      return;
+    }
+
     log('Save + Continue clicked');
     
     // Auto-fill duration if available
@@ -1050,7 +1065,7 @@ export function AddActivityPage() {
       });
       saveDraft(draft);
     }
-  }, [canSave, categoryId, attributeValues, attributesByCategory, eventNote, currentPhotos, lapElapsed, resetLap, getDraftData, saveDraft, log]);
+  }, [canSave, categoryId, attributeValues, attributesByCategory, eventNote, currentPhotos, lapElapsed, resetLap, getDraftData, saveDraft, log, missingRequiredNow]);
 
   // ============================================
   // Finish (Batch Write to DB)
@@ -1058,7 +1073,17 @@ export function AddActivityPage() {
 
   const handleFinish = async () => {
     if (!canFinish || !categoryId) return;
-    
+
+    // Samo za trenutnu formu — događaji koji su već u redu prošli su istu
+    // provjeru u `handleSaveContinue`.
+    if (canSave) {
+      const missing = missingRequiredNow();
+      if (missing.length > 0) {
+        toast.error(requiredMessage(missing));
+        return;
+      }
+    }
+
     log('Finish clicked');
     setSaving(true);
     setError(null);

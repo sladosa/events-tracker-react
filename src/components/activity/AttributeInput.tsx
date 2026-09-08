@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { AttributeDefinition, DataType } from '@/types';
 import { parseValidationRules, getOptionsForDependency } from '@/hooks/useAttributeDefinitions';
+import { parseAmountInput } from '@/lib/amountFormat';
 
 interface AttributeInputProps {
   definition: AttributeDefinition;
@@ -98,24 +99,13 @@ export function AttributeInput({
     // Number
     if (dataType === 'number') {
       return (
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            value={typeof value === 'boolean' ? '' : (value ?? '')}
-            onChange={(e) => {
-              const num = e.target.value === '' ? null : parseFloat(e.target.value);
-              handleChange(num);
-            }}
-            disabled={disabled}
-            placeholder={definition.default_value || ''}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-          />
-          {definition.unit && (
-            <span className="text-sm text-gray-500 min-w-[3rem]">
-              {definition.unit}
-            </span>
-          )}
-        </div>
+        <NumberInput
+          value={typeof value === 'number' ? value : null}
+          unit={definition.unit}
+          disabled={disabled}
+          placeholder={definition.default_value || ''}
+          onChange={handleChange}
+        />
       );
     }
 
@@ -253,6 +243,105 @@ export function AttributeInput({
       
       {renderInput()}
 
+    </div>
+  );
+}
+
+// ============================================================
+// NumberInput — decimalni ZAREZ, i unos koji ne nestaje u tišini
+// ============================================================
+// ZAŠTO NE <input type="number">
+//   Njegov decimalni separator bira LOKALIZACIJA PREGLEDNIKA, ne aplikacija —
+//   pa se isti build drukčije ponaša na Kokinom mobitelu i na en-US desktopu.
+//   Gore od nedosljednosti: kad preglednik odbije utipkani znak, `e.target.value`
+//   je `''`, a stari kod je to mapirao u `null`. Iznos utipkan kao `1389,52`
+//   mogao je tiho postati prazan, bez ijedne poruke. Isti razred kao sve ostalo
+//   ovdje — zato je neprepoznat unos sada VIDLJIV (crveno), a ne prazan.
+//
+// ŠTO POLJE PRIKAZUJE
+//   Točno spremljenu vrijednost, samo sa zarezom. Bez grupiranja tisućica (u
+//   polju za unos ih moraš brisati da bi pretipkao), bez zaokruživanja i bez
+//   dopunjenih nula. Zaokruživanje u prikazu prije ili kasnije zaokruži i pri
+//   spremanju, a `7,123` je legitimna vrijednost za nešto što nije novac.
+//   Formatiranje novca (2 decimale) živi ondje gdje se za novac ZNA — u ulogama
+//   kolona liste (`amount`/`pair`/`balance`), ne u generičkom polju za broj.
+// ============================================================
+
+/** Broj → tekst kakav se upisuje: zarez, bez tisućica, bez ijedne izmišljene
+ *  ili odrezane znamenke (`maximumFractionDigits: 20` da prikaz nikad ne laže). */
+function toRaw(n: number | null): string {
+  if (n == null) return '';
+  // ⚠ `hr-HR` piše minus kao U+2212 (−), a to nije znak koji se tipka na
+  //   tipkovnici. U polju za UNOS mora stajati obični `-`, inače korisnik
+  //   uređuje vrijednost koju ne može ponovno utipkati.
+  return n
+    .toLocaleString('hr-HR', { useGrouping: false, maximumFractionDigits: 20 })
+    .replace(/−/g, '-');
+}
+
+function NumberInput({
+  value, unit, disabled, placeholder, onChange,
+}: {
+  value: number | null;
+  unit?: string | null;
+  disabled?: boolean;
+  placeholder?: string;
+  onChange: (v: number | null) => void;
+}) {
+  const [raw, setRaw] = useState(() => toRaw(value));
+  // Zadnja vrijednost koju je OVO polje poslalo van. Bez nje bi sinkronizacija
+  // pojela zarez u trenutku kad se utipka: `1389,` se već parsira u 1389, pa bi
+  // se polje samo prepisalo u `1389` i korisnik ne bi mogao utipkati decimale.
+  const emitted = useRef<number | null>(value);
+
+  // Sinkroniziraj SAMO kad vrijednost dođe izvana — učitavanje retka u Editu,
+  // preset, `set_attribute`.
+  useEffect(() => {
+    if (value !== emitted.current) {
+      emitted.current = value;
+      setRaw(toRaw(value));
+    }
+  }, [value]);
+
+  // `-` ili `,` sami po sebi nisu greška nego pola utipkanog broja — crveni
+  // rub koji bljesne na svakom negativnom iznosu nauči se ignorirati.
+  const trimmed = raw.trim();
+  const transitional = /^-?[.,]?$/.test(trimmed);
+  const invalid = trimmed !== '' && !transitional && parseAmountInput(raw) === null;
+
+  const handle = (text: string) => {
+    setRaw(text);
+    const parsed = text.trim() === '' ? null : parseAmountInput(text);
+    emitted.current = parsed;
+    onChange(parsed);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={raw}
+          onChange={(e) => handle(e.target.value)}
+          disabled={disabled}
+          placeholder={placeholder || ''}
+          aria-invalid={invalid || undefined}
+          className={`flex-1 px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
+            invalid
+              ? 'border-red-400 focus:ring-red-500 focus:border-red-500 text-red-700'
+              : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+          }`}
+        />
+        {unit && (
+          <span className="text-sm text-gray-500 min-w-[3rem]">{unit}</span>
+        )}
+      </div>
+      {invalid && (
+        <p className="mt-1 text-xs text-red-600">
+          Ne mogu pročitati broj — polje se sprema kao prazno. Npr. 1389,52
+        </p>
+      )}
     </div>
   );
 }

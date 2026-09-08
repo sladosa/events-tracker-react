@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S130).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S131).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -142,6 +142,26 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 
 **Model / atributi**
 
+- **`is_required` je pravilo FORME, nikad baze ni uvoza** (oživljeno S131 — dotad je bilo
+  **mrtvo**: kolona u Structure Excelu, crvena zvjezdica u formi i polje u bazi postojali su,
+  a nitko ga nije provjeravao ni upisivao na UPDATE putu; Excel je promjenu samo `IsRequired`
+  prijavljivao kao *„ništa se nije promijenilo"*). Provjera živi u
+  `src/lib/requiredAttributes.ts` i zovu je **tri** mjesta (Add `Save +`, Add Finish,
+  Edit Save) — svaka kopija uvjeta je prilika da se raziđe.
+  ⚠ **`false` i `0` su ODGOVORI, ne izostanak** — naivni `if (value)` bi obavezan boolean
+  dao spremiti samo s „da", a obavezan broj nikad s nulom.
+  ⚠ **Ne primjenjuje se na Excel uvoz aktivnosti** — povijesni batchevi i `N/A` moraju proći.
+  ⚠ **`IsRequired` je ZASTAVICA:** atribut ima više redaka u Structure sheetu (po jedan po
+  `WhenValue`), pa `TRUE` na **bilo kojem** čini polje obaveznim — za razliku od ostalih
+  atributskih polja, gdje vrijedi prvi redak. „Prvi pobjeđuje" bi `TRUE` na drugom retku
+  tiho progutao, dakle točno kvar koji se popravkom zatvara.
+  ⚠ **`is_required` + `hidden_in_add` je PROTURJEČJE**, ne nezgodna kombinacija: skriveno
+  znači „ispravna vrijednost je prazna", obavezno „ne smije biti". Panel je ne da složiti
+  (svaka kvačica gasi drugu, ali **nikad dok je sama uključena** — inače se par koji dođe
+  Excelom ne bi dao popraviti); forma je razrješava **u korist obaveznog** (polje se prikaže),
+  a uvoz je **prijavi i sam preuzme** `structure_REVIEW_NEEDED_*` s obojanim ćelijama J/K.
+  ⚠ Jedina kombinacija koja **još** može ostaviti obavezno polje izvan ekrana: obavezno
+  dijete **neobaveznog** `depends_on` roditelja — takvo polje ne otkriva ni „Show all".
 - **`chain_key`** je sistemsko polje (UUID), nikad se ne prikazuje; `comment` je samo korisnički tekst
 - **`touched: true`** mora biti postavljen pri učitavanju atributa iz baze u Edit toku —
   inače ih `handleSave()` preskoči
@@ -917,6 +937,38 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   kod radio jedan. Isti razred kao PROD slug trigger (S118) — komentar koji opisuje
   **namjeru** čita se kao opis koda. Svaka nova ćelija retka mora se provjeriti na
   **obje širine**, i test to mora mjeriti mijenjanjem viewporta.
+- **⚠ UVJETNI OMOTAČ OKO POLJA GUBI FOKUS USRED TIPKANJA** (S131). `renderAttribute` je
+  birao **između dva različita elementa** — goli `AttributeInput` ili `<div>` oko njega
+  (`revealed ? <div>{input}</div> : input`). React na promjeni **tipa** elementa na istom
+  mjestu odmontira podstablo i montira novo, pa se `<input>` DOM čvor **uništi i stvori
+  nanovo**, a s njim ode **fokus**. `revealed` se prevrće na **prvi utipkani znak**
+  (`userEditedIds` dobije atribut, i vrijednost prestane biti jednaka defaultu) — dakle
+  točno usred tipkanja. Izmjereno na PROD-u: u „Show all" upišeš `2,8` u prazan
+  `aerobic_effect`, ostane **`2`**; drugi pokušaj radi jer je atribut već u `userEditedIds`.
+  Zato je izgledalo nasumično. ⚠ **Nije bug polja za broj** — pogađa **svaki** tip atributa;
+  na broju se vidi kao izgubljena decimala, na tekstu kao skraćena riječ, i korisnik to
+  pripiše svojim prstima. Lijek: omotač se **uvijek** renderira, mijenjaju se samo klase,
+  a oznaka ide kao `{revealed && …}` da slot djeteta ostane stabilan.
+- **⚠ PRAZAN STRING NIJE DEFAULT — `'' == null` je `false`** (S131). Uvjet
+  `attr.default_value == null` propuštao je svako prazno polje s `default_value = ''` i
+  proglašavao ga „na svom defaultu" (`'' === ''`) ⇒ **skriveno**. Time je skrivanje-na-defaultu
+  radilo posao zbog kojeg je `hidden_in_add` uopće izmišljen, i tiho poništavalo podjelu
+  odlučenu u **S117**: *hide-at-default* skriva polje koje **ima** vrijednost jednaku
+  defaultu, *`hidden_in_add`* polje čija je **ispravna vrijednost prazna**. Izmjereno na
+  PROD-u: **14** atributa s `''`, **svi u `Fitness`**, nijedan s `hidden_in_add`; sva **3**
+  `hidden_in_add` su u `Financije_all`. Mehanizmi se u podacima nigdje ne preklapaju —
+  preklapao ih je samo taj uvjet. ⚠ Uvjet živi na **tri** mjesta (`isHiddenByDefault`,
+  `isRevealedOnly`, `requiredParentSlugs`) i mijenja se **zajedno**.
+- **⚠ `<input type="number">` PREPUŠTA DECIMALNI SEPARATOR PREGLEDNIKU** (S131), pa se isti
+  build drukčije ponaša na dva uređaja. Gore od nedosljednosti: kad preglednik odbije znak,
+  `e.target.value` je `''`, a kod je to mapirao u `null` ⇒ **iznos tiho nestane**. Polje je
+  sada `type="text"` + `inputMode="decimal"` + `parseAmountInput` (prima `1.234,56` i
+  `1234.56`), a neprepoznat unos **pocrveni**. ⚠ `hr-HR` formatiranje daje minus **U+2212**
+  (`−`), koji `Number()` ne prima i koji se ne tipka — prikaz mora vratiti obični `-`, a
+  parser primiti oba (`formatSigned` isto koristi U+2212, pa se vrijednost zna zalijepiti
+  iz liste). ⚠ Polje za unos **ne formatira** (bez tisućica, bez dopune nula, bez
+  zaokruživanja): zaokruživanje u prikazu prije ili kasnije zaokruži i pri spremanju.
+  Novac na 2 decimale živi u **ulogama kolona liste**, ne u polju.
 - **⚠ NEUSPJELO ČITANJE NIJE „NEMA NIČEGA" — i to je danas tri puta zaredom bio isti bug**
   (S121). Pravilo je već stajalo uz RPC (`last_on`), ali se krši svugdje gdje loader ima
   granu za grešku. Izmjereno na PROD-u: **jedno** palo čitanje `areas` ugasilo je Overview
@@ -1277,6 +1329,15 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   ⚠ Na krivi trag je odveo komentar iznad `editedMark` koji je tvrdio „na oba
   rasporeda" dok je kod radio jedan — isti razred kao PROD slug trigger (S118).
   Čuva `T-S123-3` u `S123_owner_edits_grantee_row.spec.ts` (mijenja viewport).
+- **BUG-S131-VIEWSTALE — ⚠ NEPONOVLJEN, ne popravljati napamet.** Nakon Edita koji
+  **pomakne `session_start`** (promjena datuma retka), View na tom retku javi „Activity not
+  found"; **F5 ga riješi**. Izmjereno da su podaci ispravni: `event_date 2026-09-04`,
+  `session_start 2026-09-04T07:52:00+00:00`, bez kolizije sa susjednim minutama.
+  Hipoteza: `AppHome` prosljeđuje snimak liste kroz `navigate(..., { state })`
+  (`AppHome.tsx:1154`), a `ViewDetailsPage.currentIndex` traži grupu po `session_start`
+  (`:422`) — snimak od prije edita više ne sadrži novi ključ. ⚠ **Hipoteza nije dokazana**
+  i nije se dala ponoviti; prvo reproducirati, pa popravljati. Redak koji **postoji** a app
+  tvrdi da ga nema je gori od greške koja se vidi.
 - **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
   StrictMode artefakt, nizak rizik
 - **BUG-S103-ANYATTR:** „In any attribute" filter (`ATTR_FILTER_ANY`) timeouta za grantee-e —
@@ -1884,6 +1945,17 @@ Ne treba ponovno mjeriti; brojke su nad PROD-om, 5.153 retka:
 - Konkretna dobit ako se ikad napravi: `izmedju racuna` nudi
   `TROŠKOVI UČINJENI MASTERCARD KARTICOM` (11×) — pravilo „opis skupne MC naplate mora
   ostati strojni tekst izvatka" danas živi samo u dokumentaciji.
+
+**⭐ `Izvod opis` za RF retke — nijedan alat ga danas ne puni** (Sašin izričit zahtjev
+S131: „pazi da ne zaboravimo"). `uskladi_izvod.py` radi **samo MC** izvode; RF je drugi
+format i ide kroz OCR (`rf_ocr.py`), pa RF retci ostaju bez oznake „banka je ovo potvrdila".
+Izmjereno na PROD-u 08.09.2026.: `Sašin tekući RF` **1.839 / 2.282 (81 %)**,
+`Kokin tekući ZABA` **1.922 / 2.885 (67 %)**; od 25.08. je **17** RF redaka bez njega.
+⚠ Dio tih 17 **i ne pripada** RF izvatku — kartične kupovine (`Izvor = Visa`) potvrđuje
+PBZVISA izvod, ne izvadak tekućeg. Dakle prije alata treba **razdvojiti po `Izvor`u**, inače
+se traži potvrda ondje gdje je po definiciji nema.
+⚠ Saldo je i bez toga točan (`RF 690,79 @ 07.09.` u cent) — vrijednost je u **budućem
+sparivanju**, ne u kontroli. Ide kad se RF put ionako bude dirao.
 
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**

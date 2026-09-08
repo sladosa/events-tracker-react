@@ -201,7 +201,10 @@ export function AttributeChainForm({
       if (!parsed.dependsOn || isDependencyHidden(attr)) continue;
       const currentValue = values.get(attr.id);
       const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
-      const hiddenByDefault = attr.default_value != null
+      // ⚠ TRECE mjesto s istim uvjetom (S131) — `!!attr.default_value`, ne
+      //   `!= null`. Ovdje bi razilazenje bilo najtise: polje bi se skrivalo po
+      //   jednom pravilu, a njegov roditelj se drzao vidljivim po drugom.
+      const hiddenByDefault = !!attr.default_value
         && !userEditedIds.has(attr.id)
         && currentStr === attr.default_value;
       if (!hiddenByDefault) required.add(normalizeSlug(parsed.dependsOn.attributeSlug));
@@ -214,7 +217,18 @@ export function AttributeChainForm({
   // visible fields are exempt. Note: `touched` is not used here — pre-fill sets
   // touched:true for save logic, but that must not prevent hiding.
   const isHiddenByDefault = useCallback((attr: AttributeDefinition): boolean => {
-    if (showAllDefaults || attr.default_value == null || userEditedIds.has(attr.id)) return false;
+    // ⚠ `!attr.default_value`, ne `== null` (S131). Prazan string NIJE default
+    //   nego njegov izostanak, a `'' == null` je u JS-u `false` — pa je uvjet
+    //   propustao svako prazno polje s `default_value = ''` i proglasavao ga
+    //   „na svom defaultu" (`'' === ''`). Time je skrivanje-na-defaultu radilo
+    //   posao zbog kojeg je `hidden_in_add` uopce izmisljen, i tiho ponistavalo
+    //   podjelu odlucenu u S117:
+    //     hide-at-default  → polje koje IMA vrijednost jednaku defaultu
+    //     hidden_in_add    → polje cija je ISPRAVNA vrijednost prazna
+    //   Izmjereno na PROD-u 08.09.: 14 atributa s `''`, svi u `Fitness`; nijedan
+    //   od njih nema `hidden_in_add`, a sva tri `hidden_in_add` su u Financijama.
+    //   Dakle mehanizmi se nigdje ne preklapaju — preklapao ih je samo ovaj uvjet.
+    if (showAllDefaults || !attr.default_value || userEditedIds.has(attr.id)) return false;
     if (requiredParentSlugs.has(normalizeSlug(attr.slug))) return false;
     const currentValue = values.get(attr.id);
     const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
@@ -227,6 +241,13 @@ export function AttributeChainForm({
   // tidiness, not a lock, and a stranded depends_on parent must stay reachable.
   const isHiddenExplicitly = useCallback((attr: AttributeDefinition): boolean => {
     if (showAllDefaults) return false;
+    // ⚠ Obavezno polje se NE skriva, ma što `hidden_in_add` govorio. Dvije
+    //   zastavice tvrde suprotno o istom polju — „mora se ispuniti" i „točna
+    //   mu je vrijednost prazna" — pa je kombinacija besmislena, a ne samo
+    //   nezgodna. Panel je od S131 ne da složiti; ovo hvata ono što dođe
+    //   Excel uvozom, gdje panela nema. Invarijanta, ne disciplina: bez nje
+    //   bi korisnik dobio poruku o polju kojeg na ekranu nema.
+    if (attr.is_required) return false;
     return parseValidationRules(attr.validation_rules).hiddenInAdd;
   }, [showAllDefaults]);
 
@@ -236,7 +257,9 @@ export function AttributeChainForm({
   const isRevealedOnly = useCallback((attr: AttributeDefinition): boolean => {
     if (!showAllDefaults) return false;
     if (parseValidationRules(attr.validation_rules).hiddenInAdd) return true;
-    if (attr.default_value == null || userEditedIds.has(attr.id)) return false;
+    // Isti uvjet kao u `isHiddenByDefault` — mijenjaju se ZAJEDNO. Raziđu li se,
+    // polje bude skriveno po jednom pravilu a oznaceno po drugom.
+    if (!attr.default_value || userEditedIds.has(attr.id)) return false;
     const currentValue = values.get(attr.id);
     const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
     return currentStr === attr.default_value;
@@ -336,12 +359,34 @@ export function AttributeChainForm({
       />
     );
 
-    if (!revealed) return input;
+    // ⚠ OMOTAC SE UVIJEK RENDERIRA, i kad nema sto oznaciti (S131).
+    //   Prije je `revealed` biralo IZMEDJU dva razlicita elementa — goli
+    //   `AttributeInput` ili `<div>` oko njega. React na promjeni TIPA elementa
+    //   na istom mjestu odmontira cijelo podstablo i montira novo, pa se `<input>`
+    //   DOM cvor UNISTI I STVORI NANOVO — a s njim se gubi FOKUS.
+    //
+    //   `revealed` se prevrce na PRVI utipkani znak (`userEditedIds` dobije
+    //   atribut, a i vrijednost prestane biti jednaka defaultu), dakle tocno
+    //   usred tipkanja. Posljedica koju je Sasa izmjerio 08.09.: u „Show all"
+    //   modu upises `2,8` u prazno polje, a ostane `2` — prvi znak srusi polje,
+    //   ostatak tipkanja ode u prazno. Drugi pokusaj radi, jer atribut je vec
+    //   u `userEditedIds` pa se nista ne prevrce. Zato je izgledalo nasumicno.
+    //
+    //   ⚠ Nije bug polja za broj — pogadja SVAKI tip atributa (tekst jednako),
+    //   samo se na broju vidi kao izgubljena decimala umjesto kao skraceni tekst.
+    //
+    //   `{revealed && ...}` drzi stabilan slot djeteta: `false` zauzme mjesto,
+    //   pa `input` ostaje na istom indeksu i nikad se ne remonta.
     return (
-      <div key={attr.id} className="relative pl-2 border-l-2 border-dashed border-gray-300">
-        <span className="absolute -top-0.5 right-0 text-[10px] text-gray-400 italic">
-          skriveno
-        </span>
+      <div
+        key={attr.id}
+        className={revealed ? 'relative pl-2 border-l-2 border-dashed border-gray-300' : undefined}
+      >
+        {revealed && (
+          <span className="absolute -top-0.5 right-0 text-[10px] text-gray-400 italic">
+            skriveno
+          </span>
+        )}
         {input}
       </div>
     );

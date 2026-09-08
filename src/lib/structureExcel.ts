@@ -64,8 +64,11 @@ const CLR = {
   BACKUP_BG:   'FFFCE4D6', // soft orange — backup
   CONFLICT_BG: 'FFFFFF99', // soft yellow — conflict
 
-  // Conflict: highlight slug cells
-  SLUG_CONFLICT: 'FFFFFF00', // bright yellow on conflicted slug cell
+  // Conflict: highlight slug cells. ⚠ Namjerno JEDNA boja za „ovdje nesto ne
+  // valja" kroz cijeli list — i za preskocen redak (kol. G) i za proturjecne
+  // zastavice (kol. J/K). Druga boja bi znacila da citatelj mora nauciti dvije,
+  // a `CLR.YELLOW` je vec zauzet za „kljucni identifikator" (CategoryPath/Sort).
+  SLUG_CONFLICT: 'FFFFFF00', // bright yellow on a cell that needs review
 } as const;
 
 // ─────────────────────────────────────────────────────────────
@@ -164,6 +167,17 @@ interface DataRow {
   _isAttrRow:   boolean;
 }
 
+/**
+ * ⚠ „Obavezno" i „skriveno" tvrde suprotno o istom polju: `hidden_in_add` znaci
+ * da je tocna vrijednost polja prazna, `is_required` da ne smije biti. Panel od
+ * S131 kombinaciju ne da sloziti, ali Excel je i dalje moze donijeti — a ondje
+ * panela nema. Forma je razrjesava u korist „obavezno" (polje se prikaze), pa
+ * nista nije slomljeno; kriva je samo konfiguracija, i to tiho. Zato oznaka.
+ */
+export function rowNeedsReview(r: DataRow): boolean {
+  return r._isAttrRow && r.isRequired === 'TRUE' && r.hiddenInAdd === 'TRUE';
+}
+
 export interface ExportStructureOptions {
   filterAreaId?: string | null;
   filterCategoryId?: string | null;
@@ -172,7 +186,14 @@ export interface ExportStructureOptions {
 }
 
 export interface InfoRowOptions {
-  type: 'export' | 'backup' | 'conflict';
+  /**
+   * ⚠ `conflict` i `review` NISU isto, i to je razlika koju file mora nositi
+   * i unutra, ne samo u imenu. `conflict` = retci koji NISU usli (podataka u
+   * bazi nema). `review` = sve je upisano i app radi, ali konfiguracija tvrdi
+   * dvoje suprotno. Stoji li na oba `Import conflict:`, teza rijec se potrosi
+   * na lakSi slucaj i izgubi ostricu kad zatreba.
+   */
+  type: 'export' | 'backup' | 'conflict' | 'review';
   /** Human-readable description written to cell C6 */
   description?: string;
 }
@@ -383,6 +404,15 @@ function writeStructureSheet(
     slugCol.hidden = false;
   }
 
+  // ⚠ Isto za `IsRequired`/`HiddenInAdd`: obje su `collapsed: true`, dakle
+  //   SKRIVENE u zadanom izvozu. Obojena celija u skrivenoj koloni je oznaka
+  //   koju nitko nikad ne vidi — otkrivanje kolone je dio oznake, ne dodatak.
+  const reviewRows = rows.filter(rowNeedsReview);
+  if (reviewRows.length > 0) {
+    ws.getColumn(colNum('isRequired')).hidden = false;
+    ws.getColumn(colNum('hiddenInAdd')).hidden = false;
+  }
+
   // ── Rows 1–5: Legend (collapsed by default) ─────────────────
   const legendItems: [string, string][] = [
     [CLR.HEADER_BG, '🎨  COLOR CODING (4 Colors)'],
@@ -420,11 +450,13 @@ function writeStructureSheet(
   const infoBg  = !infoRow                      ? CLR.INFO_BG
                 : infoRow.type === 'backup'      ? CLR.BACKUP_BG
                 : infoRow.type === 'conflict'    ? CLR.CONFLICT_BG
+                : infoRow.type === 'review'      ? CLR.CONFLICT_BG
                 : CLR.INFO_BG;
 
   const infoLabel = !infoRow                    ? 'Export'
                   : infoRow.type === 'backup'   ? 'Backup before:'
                   : infoRow.type === 'conflict' ? 'Import conflict:'
+                  : infoRow.type === 'review'   ? 'Review needed:'
                   : 'Export';
 
   const setInfo = (colIdx: number, val: string, bold = false) => {
@@ -480,12 +512,31 @@ function writeStructureSheet(
     const isArea = data._isAreaRow;
     const isLeaf = data._isLeafRow;
     const isAttr = data._isAttrRow;
+    const needsReview = rowNeedsReview(data);
     const fontBase: Partial<ExcelJS.Font> = {
       name: 'Calibri',
       size: isArea ? 12 : 11,
       bold: isArea || isLeaf,
       italic: isAttr,
     };
+
+    // ⚠ Objasnjenje ide kao Data Validation „input message", NE kao `.note`
+    //   (pravilo iz S125): biljeska se otvara desno od celije, pa kod desnog
+    //   ruba lista izlazi izvan ekrana, a skrolan list joj odreze dno.
+    //   Popis `TRUE/FALSE` se mora PONOVITI — per-celijski DV gazi onaj sa
+    //   raspona kolone, pa bi bez njega dropdown na toj celiji nestao.
+    //   Excel limiti: promptTitle <= 32, prompt <= 255 (premasaj = „repair").
+    if (needsReview) {
+      ws.getCell(rowNum, colNum('isRequired')).dataValidation = {
+        type: 'list', allowBlank: true, formulae: ['"TRUE,FALSE"'],
+        showInputMessage: true,
+        promptTitle: 'Required + Hidden — check',           // 25 / 32
+        prompt:
+          'This attribute is both Required and HiddenInAdd. The two contradict: '
+          + 'hidden means its correct value is empty, required means it may not be. '
+          + 'The entry form shows the field anyway. Clear one of the two.',  // 200 / 255
+      };
+    }
 
     for (let ci = 0; ci < COLS.length; ci++) {
       const spec = COLS[ci];
@@ -513,6 +564,11 @@ function writeStructureSheet(
         if (slugVal && conflictSlugs!.has(slugVal)) {
           fillArgb = CLR.SLUG_CONFLICT;
         }
+      }
+
+      // Proturjecne zastavice — obje celije, jer se citaju zajedno.
+      if (needsReview && (ci === colNum('isRequired') - 1 || ci === colNum('hiddenInAdd') - 1)) {
+        fillArgb = CLR.SLUG_CONFLICT;
       }
 
       cell.fill = makeFill(fillArgb);
@@ -617,7 +673,7 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: 'G  AttrName',          value: 'Attribute display name.' },
     { kind: 'row', label: 'H  Slug',              value: 'Internal stable identifier.  Used for import matching and DependsOn references.  Never changes after creation.' },
     { kind: 'row', label: 'I  AttrType',          value: 'Data type: number | text | datetime | boolean | link | image' },
-    { kind: 'row', label: 'J  IsRequired',        value: 'TRUE / FALSE' },
+    { kind: 'row', label: 'J  IsRequired',        value: 'TRUE / FALSE — Add/Edit will not save while the field is empty. Excel import is NOT affected.' },
     { kind: 'row', label: 'K  Val.Type',          value: 'suggest = dropdown with options.  none = free text.' },
     { kind: 'row', label: 'L  Default',           value: 'Default value shown when creating a new event.' },
     { kind: 'row', label: 'M  Val.Max (no)',      value: 'Maximum allowed value (number attributes only).' },
@@ -644,6 +700,7 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: 'exercise_name | strength_type  | *         | (empty → free text for other parent values)', value: '' },
     { kind: 'row', label: '', value: '' },
     { kind: 'row', label: '', value: 'All rows for the same attribute share the same SortOrder, AttrType, Unit, IsRequired.' },
+    { kind: 'row', label: '', value: 'IsRequired is a flag: TRUE on ANY row of an attribute makes it required (the others win first-row-wins).' },
     { kind: 'row', label: '', value: '' },
 
     { kind: 'section', text: 'Import Rules (Non-Destructive)' },
@@ -652,6 +709,7 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: 'Empty Slug (new row)',   value: '→ Creates new attribute.  DB assigns slug automatically from AttrName.' },
     { kind: 'row', label: 'Slug found, same path',  value: '→ Updates name, unit, description, suggest options (safe operations).' },
     { kind: 'row', label: 'Slug found, diff path',  value: '→ SKIPPED.  Cell highlighted yellow in conflict report (col G).' },
+    { kind: 'row', label: 'Required + HiddenInAdd', value: 'Contradiction — imported as written, but the entry form shows the field anyway. Cells J/K highlighted yellow, columns forced visible. Clear one of the two.' },
     { kind: 'row', label: 'New CategoryPath',        value: '→ Creates Area and/or Category if they don\'t exist.' },
     { kind: 'row', label: '', value: '' },
     { kind: 'row', label: '', value: 'To edit or delete existing structure, use Edit Mode in the Structure tab UI.' },
@@ -1059,4 +1117,16 @@ export function structureBackupFilename(): string {
 /** Filename for an import conflict report. */
 export function structureConflictFilename(): string {
   return `structure_export_${timestampSuffix()}_conflict.xlsx`;
+}
+
+/**
+ * Ime anotiranog izvoza koji se preuzme SAM nakon uvoza s nalazom.
+ *
+ * ⚠ Ne `ERRORS`: nista nije palo — retci su upisani i forma radi. Ime koje
+ * obecava kvar kojeg nema potrosi rijec koja ce trebati kad kvar stvarno bude
+ * (`_conflict` = retci koji NISU usli). `REVIEW_NEEDED` vice jednako glasno u
+ * mapi punoj `structure_export_*`, a govori istinu o tezini.
+ */
+export function structureReviewFilename(): string {
+  return `structure_REVIEW_NEEDED_${timestampSuffix()}.xlsx`;
 }

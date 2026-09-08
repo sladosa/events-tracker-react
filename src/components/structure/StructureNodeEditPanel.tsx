@@ -76,7 +76,9 @@ interface AttrEditState {
   defaultValue: string;
   // true for newly added attrs not yet persisted (INSERT on Save)
   isNew?:     boolean;
-  isRequired?: boolean; // only used for new attrs; maps to is_required column
+  /** `attribute_definitions.is_required`. Pravilo FORME (Add/Edit ga traži
+   *  prije spremanja), nikad ograničenje baze ni uvoza. */
+  isRequired: boolean;
   /** Keep the field out of the Add/Edit form (S117). Lives in
    *  `validation_rules.hidden_in_add` — no migration, and it sits beside
    *  the other per-attribute config the app already reads from there. */
@@ -193,6 +195,7 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
     dependsOnMap,
     originalRules: attr.validation_rules,
     defaultValue: attr.default_value ?? '',
+    isRequired: attr.is_required ?? false,
     hiddenInAdd: parsed.hiddenInAdd,
   };
 }
@@ -766,24 +769,83 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
             </div>
           )}
 
+          {/* Required. Sits beside "Hide" because the two answer opposite
+              questions about the same field — must it be filled, and must it be
+              seen at all — and therefore CANNOT both be true. "Hidden" means
+              the field's correct value is empty; "required" means it may not
+              be. Each checkbox is disabled while the other is on, but never
+              while it is itself on, so a contradictory pair that arrived by
+              Excel import can still be repaired here. */}
+          <div className="mb-3">
+            <label className={`flex items-start gap-2 ${!attr.isRequired && attr.hiddenInAdd ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={attr.isRequired}
+                disabled={!attr.isRequired && attr.hiddenInAdd}
+                onChange={e => update(i, { isRequired: e.target.checked })}
+                className="mt-0.5"
+              />
+              <span className="text-xs text-gray-600">
+                <span className="font-medium">Required field</span>
+                <span className="block text-gray-400">
+                  Add and Edit refuse to save until it is filled. Does NOT apply to
+                  Excel import — historical rows and "N/A" must keep going through.
+                </span>
+                {!attr.isRequired && attr.hiddenInAdd && (
+                  <span className="block text-gray-400 italic">
+                    Unavailable while the field is hidden — the two contradict each other.
+                  </span>
+                )}
+              </span>
+            </label>
+            {attr.isRequired && attr.hiddenInAdd && (
+              /* Only reachable from an Excel import. The form resolves it in
+                 favour of Required, so nothing is locked — but the config says
+                 two opposite things and should be cleaned up. */
+              <p className="mt-1 text-xs text-amber-600">
+                ⚠ Required and hidden at the same time (came from an Excel import).
+                The entry form shows the field anyway; clear one of the two.
+              </p>
+            )}
+            {attr.isRequired && attr.dependsOnSlug
+              && !attrs.some((o: AttrEditState) => o.slug === attr.dependsOnSlug && o.isRequired) && (
+              /* The one combination that can still strand a required field:
+                 a field hidden because its PARENT has no value is not revealed
+                 by "Show all" either. The cure is to require the parent too,
+                 not to relax the requirement here. */
+              <p className="mt-1 text-xs text-amber-600">
+                ⚠ This field depends on "{attr.dependsOnSlug}", which is not required.
+                If the parent is left empty the field never appears during entry — yet it
+                is required, so the form cannot be saved. Mark the parent required as well.
+              </p>
+            )}
+          </div>
+
           {/* Hide in Add/Edit form. Sits next to Default deliberately: the two
               are the only ways to get a field off the screen, and they answer
               different cases — Default hides a field that HAS a value, this one
               hides a field whose correct value is empty. */}
           <div className="mb-3">
-            <label className="flex items-start gap-2 cursor-pointer">
+            <label className={`flex items-start gap-2 ${!attr.hiddenInAdd && attr.isRequired ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 checked={attr.hiddenInAdd}
+                disabled={!attr.hiddenInAdd && attr.isRequired}
                 onChange={e => update(i, { hiddenInAdd: e.target.checked })}
                 className="mt-0.5"
               />
               <span className="text-xs text-gray-600">
-                <span className="font-medium">Sakrij u Add/Edit formi</span>
+                <span className="font-medium">Hide in Add/Edit form</span>
                 <span className="block text-gray-400">
-                  Polje se ne prikazuje pri unosu. „Show all" ga i dalje otkrije —
-                  ovo je urednost, ne zaključavanje.
+                  The field is not shown during entry. "Show all" still reveals it —
+                  this is tidiness, not a lock.
                 </span>
+                {!attr.hiddenInAdd && attr.isRequired && (
+                  <span className="block text-gray-400 italic">
+                    Unavailable while the field is required — a field that must be filled
+                    cannot be one whose correct value is empty.
+                  </span>
+                )}
               </span>
             </label>
             {attr.hiddenInAdd
@@ -792,8 +854,8 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
                  breaks is hiding a PARENT, because its dependants then have no
                  way to be given a value. */
               <p className="mt-1 text-xs text-amber-600">
-                ⚠ O ovom atributu ovisi drugi dropdown. Skriven, njegova vrijednost se pri
-                unosu više ne može postaviti, pa ovisno polje ostaje prazno („Select … first").
+                ⚠ Another dropdown depends on this attribute. Hidden, its value can no longer
+                be set during entry, so the dependent field stays empty ("Select … first").
               </p>
             )}
           </div>
@@ -1196,6 +1258,7 @@ export function StructureNodeEditPanel({
               description:      attr.description.trim() || null,
               sort_order:       attr.sortOrder,
               validation_rules: newRules,
+              is_required:      attr.isRequired,
               default_value:    attr.defaultValue.trim() || null,
               user_id:          user.id,
               updated_at:       new Date().toISOString(),
