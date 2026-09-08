@@ -1,6 +1,6 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `S131: zatvaranje sesije` (bit će HEAD `test-branch`a).
+**Pisano protiv commita:** `5d63416` (`S131: decimalni zarez + is_required ozivljen`).
 `main` = `b080739`, **nedirano**. Ako `git log` pokazuje novije, čitaj ovo kao
 povijest — CLAUDE.md je autoritet.
 
