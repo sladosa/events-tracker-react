@@ -103,6 +103,39 @@ export function useCategoryChain(leafCategoryId: UUID | null): UseCategoryChainR
     await fetchChain(true);
   }, [fetchChain, leafCategoryId]);
 
+  /**
+   * ⚠ KEŠ MORA SLUŠATI ONOGA TKO GA ČINI ZASTARJELIM — inače je invalidacija
+   *   samo komentar (S132).
+   *
+   *   `refetch` gore postoji od početka i nosi napomenu „called after Structure
+   *   edits". Nitko ga nikad nije zvao: oba pozivatelja (`AddActivityPage:616`,
+   *   `EditActivityPage:558`) destrukturiraju samo `chain`/`loading`/`error`.
+   *   Dakle snimka lanca — a s njom i `settings.comment_template` leafa, koji
+   *   `resolveEventNote` čita na Finishu — živjela je do zatvaranja kartice.
+   *
+   * ⚠ `sessionStorage` PREŽIVI F5. Gasi se tek zatvaranjem taba, pa je kvar
+   *   izgledao neuklonjiv: izmjereno na PROD-u 09.09.2026. — auto-comment
+   *   template obrisan i u `areas.settings` i u `categories.settings`
+   *   (potvrđeno Structure exportom I s oba Edit panela), a Finish ga je i
+   *   dalje upisivao u `comment`. Osvježavanje stranice nije pomagalo, pa je
+   *   izgledalo kao da baza laže.
+   *
+   * ⚠ Listener stoji U HOOKU, ne u pozivateljima: tako vrijedi za oba
+   *   postojeća i za svakog budućeg — invarijanta, ne disciplina (isti razlog
+   *   zbog kojeg `clearDraft()` sam gasi auto-save, S121). `areas-changed`
+   *   dispatchaju i Structure panel (`StructureNodeEditPanel:1323`) i Structure
+   *   import (`AppHome.onImported`), dakle oba puta kojima se `settings` mijenja.
+   *
+   * ⚠ `refetch` mora ostati stabilan (`useCallback` nad `leafCategoryId`) —
+   *   nov identitet na svakom renderu ponovno bi vezao listener pri svakom
+   *   renderu, razred BUG-S121-AUTOSAVE.
+   */
+  useEffect(() => {
+    const onAreasChanged = () => { void refetch(); };
+    window.addEventListener('areas-changed', onAreasChanged);
+    return () => window.removeEventListener('areas-changed', onAreasChanged);
+  }, [refetch]);
+
   return { chain, loading, error, refetch };
 }
 

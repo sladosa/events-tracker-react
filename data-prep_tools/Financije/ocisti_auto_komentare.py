@@ -24,7 +24,14 @@ time postaje neupotrebljiv, a buduci "prijedlog komentara iz povijesti"
 Ne trazi se "sadrzi kosu crtu" nego se za SVAKI redak iznova izracuna sto bi
 template nad NJEGOVIM atributima proizveo, i brise se samo ako je `comment`
 tome jednak ZNAK U ZNAK. Rucno napisan opis se tako ne moze pogoditi ni
-slucajno — a redak koji je covjek dopunio ("Konzum, akcija") ostaje.
+slucajno — a redak koji je covjek dopunio ("Konzum, akcija") ostaje. Skripta
+uvijek ISPISE uzorak rucnih komentara koje ne dira, da se to vidi a ne vjeruje.
+
+/!\ JEDAN RUB: redak kojem je auto-komentar upisan pa je POSLIJE reklasificiran
+  (`Domacinstvo` u komentaru, `Razno` u atributu) rekonstrukciji vise ne
+  odgovara, pa bi ostao zauvijek. Takvi se prepoznaju po OBLIKU nad rjecnikom
+  vrijednosti koje u Arei stvarno postoje, i po zadanom se SAMO PRIJAVLJUJU —
+  `--i-stare` ih ukljucuje u brisanje.
 
 Evaluacija doslovno prati `src/lib/commentTemplate.ts`:
   - `{slug}` bez vrijednosti daje prazan string (pa je i `ZABA/Domacinstvo/`
@@ -47,6 +54,7 @@ Pokretanje:
     python ocisti_auto_komentare.py                  # dry run nad PROD-om
     python ocisti_auto_komentare.py --env test       # isto nad TEST bazom
     python ocisti_auto_komentare.py --apply          # pise (pokrece Sasa)
+    python ocisti_auto_komentare.py --i-stare        # + reklasificirani auto-oblik
     python ocisti_auto_komentare.py --restore backup_autocomment_*.json --apply
 """
 from __future__ import annotations
@@ -102,6 +110,35 @@ def evaluate(template, by_slug):
     if seen['ph'] > 0 and seen['filled'] == 0:
         return None
     return out.strip() or None
+
+
+def build_shape_re(template, vocab):
+    """Regex koji hvata komentar OBLIKA templatea, ali s BILO KOJOM kombinacijom
+    vrijednosti koje u ovoj Arei stvarno postoje.
+
+    Sluzi jednom jedinom slucaju: redak kojem je auto-komentar upisan, pa je
+    POSLIJE reklasificiran. Rekonstrukcija tada vise ne odgovara (`Domacinstvo`
+    u komentaru, `Razno` u atributu), pa bi takav zapis ostao zauvijek — a
+    strojni je koliko i ostali.
+
+    /!\\ Alternacija ide OD NAJDUZE VRIJEDNOSTI: `N/A` sadrzi separator `/`, pa
+      bi naivni `split('/')` takav komentar razbio na krivom mjestu. Zato se
+      uspoređuje s poznatim vrijednostima, ne reze po znaku.
+
+    /!\\ Prazan ogranak (`|`) je nuzan jer `evaluate` za praznu vrijednost pise
+      prazan string — `RF/Domacinstvo/` je legitiman ishod templatea.
+    """
+    out = []
+    for p in re.split(r'(\{\w+\})', template):
+        m = re.fullmatch(r'\{(\w+)\}', p)
+        if not m:
+            out.append(re.escape(p))
+            continue
+        vals = sorted(vocab.get(m.group(1), set()), key=len, reverse=True)
+        if not vals:
+            return None
+        out.append('(?:' + '|'.join(re.escape(v) for v in vals) + '|)')
+    return re.compile('^' + ''.join(out) + '$')
 
 
 def load(url, key, cat_id):
@@ -163,6 +200,7 @@ def main():
     argv = sys.argv[1:]
     apply_ = '--apply' in argv
     svejedno = '--svejedno' in argv
+    i_stare = '--i-stare' in argv
     which = 'prod'
     if '--env' in argv and argv[argv.index('--env') + 1].lower() in ('test', 'testing'):
         which = 'test'
@@ -235,7 +273,17 @@ def main():
     print('   ' + str(len(events)) + ' eventa, ' + str(len(have)) + ' atributa; '
           + 'slugovi iz templatea nadjeni: ' + ', '.join(slugs))
 
-    hits, near, human, prazni = [], [], 0, 0
+    # Rjecnik stvarno postojecih vrijednosti po slugu — sluzi samo prepoznavanju
+    # reklasificiranih redaka (v. `build_shape_re`).
+    vocab = defaultdict(set)
+    for e in events:
+        for s in slugs:
+            v = e['attrs'].get(s)
+            if v not in (None, ''):
+                vocab[s].add(js_str(v))
+    shape = build_shape_re(TEMPLATE, vocab)
+
+    hits, near, stari, human, prazni = [], [], [], [], 0
     for e in events:
         c = e.get('comment')
         if c is None or c.strip() == '':
@@ -246,12 +294,16 @@ def main():
             hits.append(e)
         elif gen is not None and ' '.join(c.split()) == ' '.join(gen.split()):
             near.append((e, gen))          # razlikuje se SAMO u prazninama
+        elif shape is not None and shape.match(c):
+            stari.append((e, gen))         # oblik templatea, ali druga klasifikacija
         else:
-            human += 1
+            human.append(e)
 
-    print('\n   ' + str(len(hits)).rjust(5) + '  auto-komentar (znak u znak)  <- brise se')
-    print('   ' + str(len(near)).rjust(5) + '  razlika samo u prazninama    <- NE brise se')
-    print('   ' + str(human).rjust(5) + '  rucno napisano               <- ostaje')
+    print('\n   ' + str(len(hits)).rjust(5) + '  auto-komentar, rekonstruiran  <- BRISE SE')
+    print('   ' + str(len(stari)).rjust(5) + '  auto-oblik, reklasificiran    <- '
+          + ('BRISE SE (--i-stare)' if i_stare else 'samo prijava'))
+    print('   ' + str(len(near)).rjust(5) + '  razlika samo u prazninama     <- ostaje')
+    print('   ' + str(len(human)).rjust(5) + '  rucno napisano                <- OSTAJE')
     print('   ' + str(prazni).rjust(5) + '  vec prazno')
 
     if near:
@@ -260,6 +312,23 @@ def main():
         for e, gen in near[:5]:
             print('       ' + e['event_date'] + '  ' + repr(e['comment'])
                   + '  vs  ' + repr(gen))
+
+    if stari:
+        print('\n   /!\\ Komentar ima OBLIK templatea, ali ne odgovara danasnjoj')
+        print('       klasifikaciji retka — dakle upisan pa reklasificiran.')
+        print('       Strojan je koliko i ostali; ukljuci ih s `--i-stare`.')
+        for e, gen in stari[:8]:
+            print('       ' + e['event_date'] + '  ' + repr(e['comment'])
+                  + '\n           danas bi bilo  ' + repr(gen))
+
+    # Dokaz da rucni opisi prezivljavaju — gleda se, ne vjeruje na rijec.
+    if human:
+        print('\n   RUCNO NAPISANI koje skripta NE DIRA (uzorak):')
+        for e in sorted(human, key=lambda x: x['event_date'], reverse=True)[:8]:
+            print('       ' + e['event_date'] + '  ' + e['comment'][:70])
+
+    if i_stare:
+        hits = hits + [e for e, _ in stari]
 
     if not hits:
         print('\nNema sto brisati.')
