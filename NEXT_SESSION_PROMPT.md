@@ -1,8 +1,8 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `5d63416` (`S131: decimalni zarez + is_required ozivljen`).
-`main` = `b080739`, **nedirano**. Ako `git log` pokazuje novije, čitaj ovo kao
-povijest — CLAUDE.md je autoritet.
+**Pisano protiv commita:** `ff35846` (`S132: load_env/rest u _db.py`).
+`main` = `44ea1b9` (podignut u S132, Netlify deployao). Ako `git log` pokazuje
+novije, čitaj ovo kao povijest — CLAUDE.md je autoritet.
 
 ---
 
@@ -10,78 +10,42 @@ povijest — CLAUDE.md je autoritet.
 
 ## Što je danas napravljeno
 
-Povod je bio Kokin redak s mirovinom (`+1.389,52` bez `Izvor`a, pa stanje nije mrdnulo).
-Iz toga su ispala dva pitanja i pet nalaza.
-
 | | stanje |
 | --- | --- |
-| Decimalni **zarez** u poljima za broj (Add + Edit) | ✅ testirao Saša |
-| **Obavezna polja** (`Required`) — cijeli mehanizam oživljen | ⬜ **netestirano** |
-| „Obavezno + skriveno" — nemoguća kombinacija + prijava pri uvozu | ⬜ **netestirano** |
-| Prazna polja se više ne skrivaju bez razloga | ⬜ **netestirano** |
-| Help — tri razloga zašto polje nestane s ekrana | ⬜ **netestirano** |
-| RF izvod usklađen, sidro `690,79 @ 07.09.` | ✅ |
+| `main` podignut na S130+S131 (delta dropdowni, decimalni zarez, `Required`) | ✅ deployano |
+| Auto-comment (`Event Note`) — pravilo maknuto iz baze | ✅ ti, kroz UI |
+| 11 redundantnih komentara obrisano s PROD-a | ✅ `11/11`, backup postoji |
+| ⭐ Uzrok zašto se upisivao i **poslije** brisanja — nađen i popravljen | ✅ kod na `test-branch` |
+| `no events yet` na Structure tabu — nađeno, **nije popravljeno** | ⬜ |
 
-## Što čeka tvoju akciju
+## Ono što je zapravo bila poanta dana
 
-**1. `MC_2026-08` — `--apply`, ali tek od 11.09.**
+Auto-comment se nastavio upisivati iako je pravilo bilo obrisano iz baze. Dvije
+moje hipoteze bile su krive; **tvoje mjerenje ih je oborilo** — nov export s
+praznim ćelijama i oba prazna Edit panela.
 
-Sve je provjereno: 48/48 spareno, `1.068,70` u cent, **0** za uvoz, **0** pitanja za Koku.
-Čeka samo upis 48 ispravaka (`Status: Planiran → Izvrsen`).
+Pravi uzrok: aplikacija drži snimku kategorije (zajedno s pravilom) u pregledniku,
+i ta snimka **preživi F5**. Gasi se tek zatvaranjem kartice. Zato je izgledalo kao
+da baza laže.
 
-```
-Financije\run.bat primijeni_uskladu.py --izvod ..\..\data-prep_data\Financije\izvodi\MC_2026-08.pdf
-Financije\run.bat primijeni_uskladu.py --izvod ..\..\data-prep_data\Financije\izvodi\MC_2026-08.pdf --apply
-```
+⚠ **Jedna stvar te još čeka:** popravak je na `test-branch`, **nije na PROD-u**.
+Dok se ne deploya, tebi i Koki i dalje treba **zatvaranje kartice** (ne F5) nakon
+svake promjene strukture. Ako se to ne napravi, novi unosi opet dobiju auto-komentar.
 
-⚠ **Pričekaj 11.09.** Košara dospijeva tog dana, a upozorenje `Provjeri` u delta sheetu
-pali se na `Status ≠ Planiran AND dospijeće > TODAY()`. Primijeniš li prije, dobiješ ~46
-narančastih upozorenja na retcima na kojima ništa nije u redu. Od 11.09. nestaju sama —
-otvoreno pitanje iz S130 ne traži odluku nego tri dana.
+## Što tebe čeka
 
-Poslije `--apply`: dry run mora pokazati **praznu** sekciju `2 · ZA ISPRAVAK`, pa se onda
-`MC_2026-08.pdf` **i** `RF_2026-08.pdf` premještaju u `Analizirani_izvodi/`.
-⚠ To nije arhiviranje nego „stavi u igru" — alati čitaju **samo** tu mapu.
+1. **Reci Koki da zatvori karticu aplikacije** (ne samo osvježi). Jednokratno.
+2. **Odluči hoćeš li deployati S132 na `main`.** Nisi tražio push i nisam ga
+   napravio. Dobitak je da nestane ono „zatvori karticu" pravilo.
+3. **Pusti `--restore` barem u dry runu** (T-S132-7). Backup od 11 redaka postoji,
+   ali nikad nije isproban — a backup bez provjerenog restorea nije backup.
+4. **Koka na svom laptopu** — ništa je ne sprječava. Vlasnica je Aree, pa svi
+   grantee zidovi otpadaju. Treba joj **desktop Excel** (ne Online/Sheets —
+   padajući izbornici idu preko `INDIRECT` i skrivenog lista).
 
-**2. Testiranje — blokovi B, C, D** (`docs/sessions/tests/S131_tests.md`)
+## Što treba od Koke
 
-27 testova, 7 gotovih. Redoslijed je u dokumentu i **nije** po sekcijama — T-S131-7 mjeri
-prelazak `FALSE → TRUE`, pa mora ići dok još ništa nije obavezno.
-
-Tri koja stvarno mogu pasti:
-- **T-S131-8** — `TRUE` na **drugom ili trećem** retku `Izvor`a, ne prvom.
-- **T-S131-12** — u Editu obavezno polje **obriši** (svi postojeći retci ga imaju).
-- **T-S131-26** — provjeri i da `intensity` **ostaje** skriven; bez toga test ne mjeri ništa.
-
-**3. Odluka: `structureExcel.test.mjs`**
-
-Odrezan u gitu još od **S17** — nikad nije prošao nijedan run, a file koji testira mijenjan
-je mnogo puta. Dopuniti (pisati sekcije 8 i 9 nanovo) ili obrisati? Test koji se ne pokreće
-lažno tvrdi da je nešto pokriveno.
-
-**4. Odluka: obavezan boolean** (T-S131-16)
-
-Da bi se odgovorilo „ne", checkbox treba **dva klika** (`Not set` → da → ne). Semantički je
-točno (`false` je odgovor), ali je nezgrapno. Reci dojam nakon testa.
-
-## Push na `main` — čeka, i zna se zašto
-
-Izmjereno da push **sada ne donosi ništa upotrebljivo**: obavezna polja su neaktivna dok se
-ne označe kvačice, a promjene vidljivosti **ne diraju `Financije_all`** (ta Area nema
-nijedan atribut s defaultom ni s praznim stringom — svi su u `Fitness`).
-
-**Okidač:** kad prođu B, C i D. Tada isti build donese i zarez i mogućnost da odmah uključiš
-obavezne `Racun`/`Izvor`.
-
-⚠ **Što bi odluku okrenulo odmah:** ako Koki zarez **stvarno guta iznose** na mobitelu.
-Nemam dokaz da guta — `type="number"` na hrvatskoj lokalizaciji zarez najčešće prihvaća.
-Vrijedi je pitati.
-
-## Za Koku
-
-Ništa. Nije potrebno nijedno pitanje — `MC_2026-08` je dao **0 pitanja za Koku**, a RF je
-zatvoren mjerenjem. Kad se obavezna polja uključe, primijetit će samo crvenu zvjezdicu uz
-`Racun` i `Izvor` i to da Finish traži `Izvor` prije spremanja.
+Ništa novo. Samo ono jednokratno zatvaranje kartice.
 
 ---
 
@@ -89,50 +53,55 @@ zatvoren mjerenjem. Kad se obavezna polja uključe, primijetit će samo crvenu z
 
 ## Stanje grana
 
-`test-branch` = commit ove sesije. `main` = `b080739`, **nedirano** od S127 koda nadalje.
-Necommitano: ništa (sve je u završnom commitu).
+- `main` = `44ea1b9` — S130 + S131. Netlify deployao 09.09.
+- `test-branch` = `ff35846` — tri commita ispred: `0d275a2` (popravak keša + test),
+  `ff35846` (`_db.py`), `b7beb22` (`ocisti_auto_komentare.py`).
+- Sync-back nije potreban; `main` je u cijelosti sadržan u `test-branch`.
 
-## Što je promijenjeno u kodu
+## Novo u kodu
 
-| file | što |
-| --- | --- |
-| `src/components/activity/AttributeInput.tsx` | `NumberInput` — zarez, `inputMode="decimal"`, vidljiv neispravan unos |
-| `src/lib/amountFormat.ts` | `parseAmountInput` prima U+2212 |
-| `src/lib/requiredAttributes.ts` | **nov** — jedno pravilo za tri poziva |
-| `src/pages/AddActivityPage.tsx` | provjera na `Save +` i na Finish |
-| `src/pages/EditActivityPage.tsx` | provjera po **svakom** aktivnom eventu + parent atributi |
-| `src/components/activity/AttributeChainForm.tsx` | stabilan omotač (fokus), `!attr.default_value` na **tri** mjesta, `is_required` pobjeđuje `hidden_in_add` |
-| `src/components/structure/StructureNodeEditPanel.tsx` | `Required field` toggle, međusobno isključivanje, engleski natpisi |
-| `src/lib/structureImport.ts` | `is_required` u dirty checku i UPDATE-u, OR preko redaka, `reviewFlags` |
-| `src/lib/structureExcel.ts` | `rowNeedsReview`, boja + DV poruka, `type: 'review'`, `structureReviewFilename()` |
-| `src/components/structure/StructureImportModal.tsx` | prijava + **automatsko** preuzimanje jednog anotiranog filea |
-| `data-prep_tools/Financije/uskladi_izvod.py` | `sys.stdout.reconfigure` — padao na `Č` |
+- **`useCategoryChain` sluša `areas-changed`** (`src/hooks/useCategoryChain.ts:133`).
+  Listener je **u hooku**, ne u pozivateljima — invarijanta. Puna zamka je u
+  CLAUDE.md („Keš mora slušati onoga tko ga čini zastarjelim").
+- **`src/hooks/__tests__/categoryChainCache.test.mjs`** — vrti **pravi kod hooka**
+  nad minimalnim React shimom (projekt nema unit runner za hookove; samo Playwright).
+  ⚠ Ako budeš pisao još hook testova, ovaj shim je predložak — `useState`/`useCallback`/
+  `useEffect` s deps usporedbom, `window` preko `EventTarget`, `sessionStorage` preko Mape.
+  Provjeren u oba smjera: bez listenera pada 2 od 7.
 
-Novi testovi: `amountInput.test.mjs` (28/28, protuprovjera 2), `requiredAttributes.test.mjs`
-(18/18, protuprovjera 3).
+## Novo u alatima
 
-## Otvoreno / neprovjereno
+- **`data-prep_tools/Financije/_db.py`** — `load_env` + pagirani `rest`, **preseljeni**
+  iz `uskladi_izvod.py`. Taj ih re-exporta, pa svih devet pozivatelja radi dalje.
+- **`ocisti_auto_komentare.py`** — kriterij je rekonstrukcija po retku. Staje dok je
+  template živ na **bilo kojoj** razini.
 
-- **BUG-S131-VIEWSTALE — neponovljen.** View je javio „Activity not found" nakon Edita koji
-  je pomaknuo `session_start`; **F5 riješio**, poslije se nije dalo ponoviti. Podaci su bili
-  ispravni (provjereno u bazi). Hipoteza (snimak liste kroz `navigate(..., { state })`)
-  **nije dokazana** — prvo reproducirati, pa popravljati.
-- **`Izvod opis` za RF retke** — nijedan alat ga ne puni (`uskladi_izvod.py` je MC-only).
-  Izmjereno: RF **81 %** (1.839/2.282), ZABA **67 %** (1.922/2.885); od 25.08. **17** RF
-  redaka bez njega. ⚠ Dio tih 17 ni ne pripada RF izvatku — kartične kupovine potvrđuje
-  PBZVISA izvod. Prije alata treba **razdvojiti po `Izvor`u**. Sašin izričit zahtjev da se
-  ne zaboravi; zapisano i u CLAUDE.md Backlogu.
-- **T-S131-21** — `structureExcel.test.mjs` odrezan od S17, odluka čeka.
-- Neverificirano uživo: T-S131-6…19, 22…27 (20 od 27).
+## Otvoreno
 
-## Metodičke bilješke koje su danas nešto promijenile
+- **T-S132-2/-3** (jezgra popravka, uživo) **nisu izvedeni.** ⚠ Moraju se raditi
+  **u istoj kartici** — zatvaranje kartice ionako briše `sessionStorage`, pa bi test
+  prošao i nad pokvarenim kodom (razred S129).
+- **T-S132-7** `--restore` netestiran.
+- **BUG-S132-EVENTCOUNT** — `useStructureData.ts:80-82` čita `events` bez `.range()`
+  i bez `.order()`. Prije popravka **izmjeriti** zašto ispada baš `0` (Network →
+  duljina odgovora; točno `1000` potvrđuje rez). Ispravak preko `fetchAllPaged` vuče
+  2.300+ redaka na svako otvaranje taba ⇒ vjerojatno je bolji RPC s `GROUP BY`.
+- **`--i-stare` grana nije se izvršila nad stvarnim podacima** — na PROD-u je nula
+  reklasificiranih. Regex je provjeren jedinično (uklj. `N/A` sa separatorom).
 
-- **Mjerenje je promijenilo plan, ne samo potvrdilo ga.** Bio sam spreman predložiti
-  kompromis za Edit; nalaz `Izvor 5163/5164` ga je učinio nepotrebnim.
-- **Automatski test je našao bug koji ručni ne bi** (U+2212 minus) — prije nego je stigao
-  do korisnika.
-- **Sašin nalaz je bio stariji i širi od teme** („prvi upis ne uzme decimalu" ⇒ gubitak
-  fokusa na svakom tipu atributa).
-- **S117 odluka je bila tiho poništena jednim `== null`.** Potvrda nije došla iz koda nego
-  iz brojke: S117 je izbrojao 7 atributa s defaultom, danas ih Fitness ima točno 7 —
-  onih 14 s praznim stringom analiza nikad nije brojala kao default.
+## Pouke koje vrijede šire od ovog buga
+
+- **Okolinu provjeri u korisnikovoj ljusci, ne u svojoj.** Tvrdio sam da skripta
+  radi golim `python`om jer se u Bash alatu `python` razrješava u drugi interpreter
+  nego u Sašinom PowerShellu. Njemu je pala na `pdfplumber`.
+- **Odsutnost retka u izvještaju je podatak.** `Settings updated` se renderira samo
+  kad je `> 0`; njegov izostanak je jedini pouzdan signal da uvoz nije dirnuo
+  `comment_template`. Suprotno tome, `List columns 8` broji **parsirane retke**, ne
+  promjene.
+- **Prije nego proglasiš uzrok, provjeri govori li ijedan sloj istinu.** Baza, export
+  i oba panela slagali su se; jedini koji je odstupao bio je preglednik.
+
+## Nepromijenjeno od S131
+
+Financije pipeline, sidra, delta sheet, tranše — ništa od toga danas nije dirano.
+Za to stanje vrijedi CLAUDE.md i `DONE_HISTORY` S129–S131.

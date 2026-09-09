@@ -1,7 +1,47 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S131 (2026-09-08) — decimalni zarez, `is_required` ozivljen na svim putevima, tri razloga skrivanja polja razdvojena; RF zatvoren u cent (`690,79`).
+**Zadnji update:** S132 (2026-09-09) — auto-comment se upisivao i nakon brisanja pravila iz baze (`sessionStorage` kes lanca kategorija); 11 redundantnih komentara obrisano s PROD-a.
+
+---
+
+## S132 — kes lanca kategorija + ciscenje auto-komentara (2026-09-09)
+
+Detalji: [S132_tests.md](tests/S132_tests.md)
+
+⚠ **Gdje se testira:** popravak hooka je na `test-branch`, **nije na `main`**.
+Sasa je izricito rekao da main push nije nuzan. Dok se ne deploya, PROD
+aplikacija i dalje drzi zastarjeli lanac do zatvaranja kartice.
+
+### A. Keš lanca kategorija (`useCategoryChain`)
+
+| #            | test                                                                    | status |
+| ------------ | ----------------------------------------------------------------------- | ------ |
+| **T-S132-1** | ⭐ `categoryChainCache.test.mjs`                                         | ✅ 7/7, protuprovjera pada 2/7 |
+| **T-S132-2** | ⭐ Structure panel Save odmah probije keš (ISTA kartica, bez F5)         | ⬜ |
+| **T-S132-3** | Structure import probije keš (modal mora javiti `Settings updated`)     | ⬜ |
+| **T-S132-4** | F5 NIJE dovoljan — dokumentira uzrok                                    | ✅ izmjereno na PROD-u |
+
+### B. Čišćenje auto-komentara (`ocisti_auto_komentare.py`)
+
+| #            | test                                                            | status |
+| ------------ | ---------------------------------------------------------------- | ------ |
+| **T-S132-5** | dry run — razvrstavanje + uzorak RUČNIH koje ne dira             | ✅ 11 / 0 / 0 / 767 |
+| **T-S132-6** | ⭐ `--apply`                                                      | ✅ 11 / 11 |
+| **T-S132-7** | ⭐ `--restore` vraća točno obrisano                               | ⬜ **backup bez provjerenog restorea nije backup** |
+| **T-S132-8** | `--i-stare` (reklasificirani auto-oblik)                         | ⬜ nema uzorka na PROD-u |
+
+### C. Selidba `load_env`/`rest` u `_db.py`
+
+| #            | test                                                       | status |
+| ------------ | ----------------------------------------------------------- | ------ |
+| **T-S132-9** | skripta radi golim `python`om + alati preko `uskladi_izvod` | ✅ (1) i učitavanje svih 9 · ⬜ (2) stvarno pokretanje |
+
+### D. Nalaz koji NIJE popravljen
+
+| #             | test                                                  | status |
+| ------------- | ------------------------------------------------------- | ------ |
+| **T-S132-10** | ⭐ `no events yet` na leafu s 2.300+ eventa (nepaginiran upit) | ⬜ NALAZ, popravak nije napravljen |
 
 ---
 

@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S131).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S132).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -937,6 +937,31 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   kod radio jedan. Isti razred kao PROD slug trigger (S118) — komentar koji opisuje
   **namjeru** čita se kao opis koda. Svaka nova ćelija retka mora se provjeriti na
   **obje širine**, i test to mora mjeriti mijenjanjem viewporta.
+- **⚠ KEŠ MORA SLUŠATI ONOGA TKO GA ČINI ZASTARJELIM — inače je invalidacija samo**
+  **komentar** (S132). `useCategoryChain` sprema **cijeli lanac, uključujući `settings`**,
+  u `sessionStorage` bez TTL-a, a `resolveEventNote` odande čita `comment_template`.
+  `refetch` je postojao od početka i nosio napomenu „called after Structure edits" —
+  a **nitko ga nikad nije zvao**: oba pozivatelja (`AddActivityPage:616`,
+  `EditActivityPage:558`) destrukturiraju samo `chain`/`loading`/`error`. Signal je
+  sve vrijeme postojao: `areas-changed` dispatchaju i Structure panel i Structure import.
+  ⚠ **`sessionStorage` PREŽIVI F5** — gasi se tek zatvaranjem kartice. Zato je kvar
+  izgledao neuklonjiv: izmjereno na PROD-u 09.09.2026., template obrisan i u
+  `areas.settings` i u `categories.settings` (potvrđeno Structure exportom **i** s oba
+  Edit panela), a Finish ga je i dalje upisivao. Dvije hipoteze prije toga („uvoz nije
+  prošao", „template je na leafu") bile su krive; opovrgnulo ih je **mjerenje**, ne
+  razmišljanje — presudan je bio placeholder `e.g. {napomena} ({tip})` umjesto
+  `Inherited: …`, koji dokazuje da ni Area nema template.
+  Lijek: listener **u hooku**, ne u pozivateljima — invarijanta, ne disciplina.
+  Čuva `src/hooks/__tests__/categoryChainCache.test.mjs` (vrti pravi kod hooka nad
+  React shimom; bez listenera pada 2 od 7).
+- **⚠ BROJAČ KOJI BROJI PARSIRANE RETKE PRIKAZUJE POSAO KOJI SE NIJE DOGODIO** (S132).
+  `List columns 8` u Structure import modalu znači „sheet je imao 8 redaka", ne „8 se
+  promijenilo": `columnsImported++` ide **prije** usporedbe, a `JSON.stringify` jednakost
+  i `continue` tek poslije (`structureImport.ts:1333` pa `:1340`). Obrnuto od S114 zamke
+  („nula pokušaja prikazana kao nula rezultata") — ovdje nula promjena izgleda kao osam.
+  ⚠ Suprotno tome, **`Settings updated` se renderira SAMO kad je > 0**
+  (`StructureImportModal.tsx:266`) — njegova **odsutnost je podatak**: settings se nisu
+  promijenili. To je jedini pouzdan signal je li uvoz dirnuo `comment_template`.
 - **⚠ UVJETNI OMOTAČ OKO POLJA GUBI FOKUS USRED TIPKANJA** (S131). `renderAttribute` je
   birao **između dva različita elementa** — goli `AttributeInput` ili `<div>` oko njega
   (`revealed ? <div>{input}</div> : input`). React na promjeni **tipa** elementa na istom
@@ -1162,6 +1187,16 @@ data-prep_tools/Financije/uskladi_izvod.py
 data-prep_tools/Financije/primijeni_uskladu.py
                                    Upisuje nalaz na PROD (ispravci + dopune + brisanja),
                                    jednim potezom, s backupom i brojanjem redaka.
+data-prep_tools/Financije/_db.py   `load_env` + pagirani `rest`. Izdvojeno iz
+                                   `uskladi_izvod` (koji uvozi pdfplumber) da alat
+                                   koji prica SAMO s bazom ne vuce PDF citac.
+                                   /!\ PRESELJENO, ne kopirano — `uskladi_izvod`
+                                   re-exporta, pravilo o paginaciji ostaje jedno.
+data-prep_tools/Financije/ocisti_auto_komentare.py
+                                   Brise `comment` koji je napisao `comment_template`.
+                                   Kriterij je REKONSTRUKCIJA po retku, ne uzorak —
+                                   rucni opis se ne moze pogoditi. Staje dok je
+                                   template ziv (na OBJE razine). Backup + `--restore`.
 data-prep_tools/Financije/presedani.py
                                    `Tip`/`Podtip` brojanjem povijesti RACUNA.
                                    Tri kljuca: primatelj+poziv > primatelj > iznos
@@ -1338,6 +1373,18 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   (`:422`) — snimak od prije edita više ne sadrži novi ključ. ⚠ **Hipoteza nije dokazana**
   i nije se dala ponoviti; prvo reproducirati, pa popravljati. Redak koji **postoji** a app
   tvrdi da ga nema je gori od greške koja se vidi.
+- **BUG-S132-EVENTCOUNT — ⚠ NALAZ, nije popravljen.** Structure tab pokazuje
+  `no events yet` na leafu s 2.300+ eventa. `useStructureData.ts:80-82` čita
+  `events` **bez `.range()` i bez `.order()`** — dakle krši oba pravila o paginaciji
+  odjednom, pa je broj odrezan na 1000 i nepouzdan. Zašto ispada baš `0` nije
+  izmjereno (DevTools → Network → duljina odgovora `events?select=category_id`;
+  točno `1000` potvrđuje rez).
+  ⚠ **Delete je zaštićen** — `StructureDeleteModal:240` radi vlastiti
+  `count: 'exact', head: true`, što rez ne dira. **Add Child nije**
+  (`StructureAddChildPanel:123` čita snimku) ⇒ lažna nula otključava dodavanje
+  djeteta leafu koji ima evente, a to je zabrana koju je S24 namjerno postavio.
+  Ispravak: `fetchAllPaged` (uz obavezan `.order('id')`) vuče 2.300+ redaka na
+  svako otvaranje taba — vjerojatno je bolji RPC s `GROUP BY`.
 - **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
   StrictMode artefakt, nizak rizik
 - **BUG-S103-ANYATTR:** „In any attribute" filter (`ATTR_FILTER_ANY`) timeouta za grantee-e —

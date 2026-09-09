@@ -1450,3 +1450,29 @@ Zapisano u CLAUDE.md Backlogu na Sašin izričit zahtjev.
 2. Tek tada `MC_2026-08.pdf` i `RF_2026-08.pdf` u `Analizirani_izvodi/`
    (⚠ to je „stavi u igru", ne arhiva).
 3. `Izvod opis` za RF — prvo razdvojiti retke po `Izvor`u, pa tek onda alat.
+
+
+---
+
+## S132 (2026-09-09) — ciscenje auto-komentara + `_db.py`
+
+**Novi alat: `ocisti_auto_komentare.py`.** Brise `comment` koji je napisao
+`comment_template`, a ne covjek. Kriterij je **rekonstrukcija po retku** (sto bi
+template proizveo nad NJEGOVIM atributima), ne pretraga po uzorku — pa se rucni
+opis ne moze pogoditi ni slucajno.
+
+Izmjereno na PROD-u: **11** auto-komentara (svi Kokini, svi 2026-09 — dakle otkad
+unosi u appu), 767 vec praznih, **0** rubnih slucajeva. `--apply` dao 11/11,
+backup `backup_autocomment_prod_20260909_115637.json`.
+
+/!\ `--i-stare` pokriva redak kojem je auto-komentar upisan pa je POSLIJE
+reklasificiran — rekonstrukcija mu vise ne odgovara, pa bi ostao zauvijek. Po
+zadanom se **samo prijavljuje**. Alternacija u regexu ide od najduze vrijednosti
+jer `N/A` sadrzi separator `/`.
+
+**`_db.py`.** `load_env` i `rest` izdvojeni iz `uskladi_izvod.py`, koji na vrhu
+radi `import pdfplumber`. Alat koji prica samo s PostgREST-om padao je na
+`ModuleNotFoundError` cim se pokrene golim `python`om umjesto kroz `run.bat`.
+/!\ Funkcije su PRESELJENE, ne kopirane; `uskladi_izvod` ih re-exporta, pa svih
+devet pozivatelja radi bez promjene. Kopija bi znacila dvije verzije pravila o
+paginaciji (S108).

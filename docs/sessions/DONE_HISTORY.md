@@ -4247,3 +4247,96 @@ pokrenuo Saša. Zapisano u memoriji (`prod_writes_blocked`).
 ⚠ **Neprovjereno:** nitko još nije otvorio PROD nakon builda. Tri stavke čekaju
 (T-S129-B5), i **hard refresh je dio postupka** — stari keširani bundle je već
 jednom prevario (S118).
+
+---
+
+## S132 — keš koji laže o bazi (2026-09-09)
+
+Sesija je počela kao dva mala pitanja (ukloni auto-komentar, može li Koka na svoj
+laptop), a završila nalazom da je invalidacija keša osamnaest mjeseci postojala
+**samo kao komentar**.
+
+### A. Deploy
+
+`main` podignut `b080739 → 44ea1b9` na Sašin izričit zahtjev — S130 (dropdowni na
+praznim retcima delta sheeta) i S131 (decimalni zarez, `is_required`). Typecheck i
+build prošli prije mergea. Sync-back nije trebao: grane su bile identične.
+
+### B. Koka na svom laptopu — odgovor
+
+Ništa načelno ne stoji na putu: **ona je vlasnica Aree**, pa grantee zidovi
+(profili, `areas.settings`) na nju ne djeluju, a email u koloni G njenog exporta je
+njezin. Jedino što je stajalo na putu bio je zaostali `main` — otud deploy pod A.
+Ostaje: mora biti **desktop Excel** (dependent dropdowni idu preko `INDIRECT` +
+skrivenog `DropdownData` lista).
+
+### C. ⭐ Auto-comment se upisivao i nakon što je pravilo obrisano
+
+Tri kruga dijagnoze, i prva dva su bila kriva:
+
+1. *„Uvoz nije prošao"* — `Settings updated` nije bio u rezultatu, a renderira se
+   samo kad je `> 0`. Točan zaključak, kriv uzrok.
+2. *„Template je na leafu, a ispraznio si Areu"* — `resolveCommentTemplate` bira
+   leaf pa Areu, pa je hipoteza bila razumna. Saša ju je opovrgnuo **mjerenjem**:
+   nov export ima obje ćelije prazne, oba Edit panela prazna, i — presudno —
+   placeholder na leafu piše `e.g. {napomena} ({tip})`, a ne `Inherited: …`, što
+   se ispisuje čim Area ima template. Dakle baza je bila čista na obje razine.
+
+Pravi uzrok: **`useCategoryChain` sprema cijeli lanac, uključujući `settings`, u
+`sessionStorage` bez TTL-a**, a `resolveEventNote` template čita odande.
+
+⚠ `refetch` je postojao od početka, s napomenom *„called after Structure edits"* —
+i **nitko ga nikad nije zvao**: oba pozivatelja (`AddActivityPage:616`,
+`EditActivityPage:558`) destrukturiraju samo `chain`/`loading`/`error`. Signal je
+usput sve vrijeme postojao: `areas-changed` dispatchaju i Structure panel i
+Structure import.
+
+⚠ **`sessionStorage` preživi F5.** Gasi se tek zatvaranjem kartice — zato je kvar
+izgledao neuklonjiv i zato je ispalo da „baza laže".
+
+Popravak: listener **u hooku**, ne u pozivateljima. Test vrti pravi kod hooka nad
+minimalnim React shimom (nema unit runnera za hookove u projektu), pa mjeri
+ponašanje a ne izvor; provjeren u oba smjera — bez listenera pada 2 od 7.
+
+### D. Čišćenje redundantnih komentara
+
+`ocisti_auto_komentare.py`. Kriterij je **rekonstrukcija, ne pretraga po uzorku**:
+za svaki redak se iznova izračuna što bi template proizveo nad **njegovim**
+atributima, i briše se samo ako je `comment` tome jednak znak u znak.
+
+Izmjereno na PROD-u: **11** auto-komentara (svi Kokini, svi 2026-09 — dakle otkad
+unosi u appu), 767 već praznih, **0** rubnih slučajeva. Ručni opisi (`rucak s
+Jelenom…`, `Konzum breskve i snacks`) uredno ostali vani. `--apply` dao **11/11**,
+backup `backup_autocomment_prod_20260909_115637.json`.
+
+⚠ Dodan `--i-stare` za redak kojem je auto-komentar upisan pa je **poslije
+reklasificiran** — rekonstrukcija mu više ne odgovara, pa bi ostao zauvijek.
+Prepoznaje se po obliku nad rječnikom postojećih vrijednosti, i **po zadanom se
+samo prijavljuje**. ⚠ Alternacija ide od najduže vrijednosti jer `N/A` sadrži
+separator `/` — naivni `split('/')` bi takav komentar razbio na krivom mjestu.
+
+### E. `_db.py` — alat za bazu ne vuče PDF čitač
+
+Skripta je padala na `ModuleNotFoundError: No module named 'pdfplumber'` čim se
+pokrene golim `python`om. Uzrok nije bio paket koji fali nego to što skripta koja
+priča **samo** s PostgREST-om uvozi `uskladi_izvod`, a taj na vrhu radi
+`import pdfplumber` — zbog dvije funkcije od kojih nijedna ne otvara PDF.
+
+⚠ Funkcije **preseljene, ne kopirane**; `uskladi_izvod` ih re-exporta, pa svih
+devet pozivatelja radi bez promjene. Kopija bi značila dvije verzije pravila o
+paginaciji, a baš to je pravilo koje se ne smije razići (S108).
+
+⚠ Usput: tvrdnja *„radi i bez `run.bat`"* bila je **kriva**, i to zato što se u
+Claudeovom shellu `python` razrješava u drugi interpreter nego u Sašinom
+PowerShellu. Okolinu treba provjeriti u **korisnikovoj** ljusci, ne u svojoj.
+
+### F. Nalazi koji nisu popravljeni
+
+- **`no events yet` na leafu s 2.300+ eventa** — `useStructureData.ts:80-82` čita
+  `events` bez `.range()` i bez `.order()`. `StructureDeleteModal` je zaštićen
+  (vlastiti `count: 'exact'`), `StructureAddChildPanel` nije.
+- **`List columns N` broji parsirane retke, ne promjene** — brojač pokazuje posao
+  koji se možda nije dogodio; usporedba i `continue` dolaze tek poslije.
+- **9 „attributes updated" na svakom uvozu** — potvrđen BUG-S117-RULESHAPE.
+  Kod ostavlja `console.log('[Import dirty]', …)` za svaki, pa se to više ne mora
+  nagađati.
