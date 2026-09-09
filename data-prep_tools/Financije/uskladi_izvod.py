@@ -105,37 +105,10 @@ KOKA_DEFAULT = ROOT / 'data-prep_data' / 'Financije' / 'Financije 2026-08-23.xls
 
 
 # -- DB ----------------------------------------------------------------------
-def load_env(which):
-    fn = '.env.prod.local' if which == 'prod' else '.env.testing'
-    path = ROOT / fn
-    if not path.exists():
-        sys.exit('Nema ' + fn + ' — bez njega alat ne moze citati bazu.')
-    env = {}
-    for line in path.read_text(encoding='utf-8').splitlines():
-        if '=' in line and not line.strip().startswith('#'):
-            k, v = line.split('=', 1)
-            env[k.strip()] = v.strip().strip('"').strip("'")
-    url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL')
-    key = env.get('SUPABASE_SERVICE_ROLE_KEY') or env.get('VITE_SUPABASE_ANON_KEY')
-    if not url or not key:
-        sys.exit(fn + ' nema SUPABASE_URL / kljuc.')
-    return url, key
-
-
-def rest(url, key, path):
-    """PostgREST reze na 1000 redaka BEZ GRESKE, a paginacija bez `order` je
-    tiho pogresna — stranice se preklope i istovremeno preskoce (S108)."""
-    out, off = [], 0
-    while True:
-        req = urllib.request.Request(
-            url + '/rest/v1/' + path + '&order=id',
-            headers={'apikey': key, 'Authorization': 'Bearer ' + key,
-                     'Range': str(off) + '-' + str(off + 999)})
-        rows = json.load(urllib.request.urlopen(req))
-        out += rows
-        off += len(rows)
-        if len(rows) < 1000:
-            return out
+# `load_env` i `rest` zive u `_db.py` — alat koji prica samo s bazom ne smije
+# vuci `pdfplumber` (S132). Re-export: postojeci `from uskladi_izvod import
+# load_env, rest` i dalje radi.
+from _db import load_env, rest  # noqa: F401,E402
 
 
 def load_db(url, key):

@@ -69,7 +69,7 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from uskladi_izvod import load_env, rest  # noqa: E402
+from _db import load_env, rest  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 ARHIVA = ROOT / 'data-prep_data' / 'Financije' / '_arhiva'
