@@ -1,8 +1,9 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `9853dcb` (`S134: search_path na SECURITY DEFINER funkcijama`).
-`main` je **iza** — na njemu je još S133. Ako `git log` pokazuje novije, čitaj
-ovo kao povijest; CLAUDE.md je autoritet.
+**Pisano protiv commita:** `6c9964f` (`S134: zamka o e.target === e.currentTarget`).
+`main` = `5d58c05`. **Dva commita čekaju na `test-branch`** — popravak modala
+i njegova dokumentacija. Ako `git log` pokazuje novije, čitaj ovo kao povijest;
+CLAUDE.md je autoritet.
 
 ---
 
@@ -16,9 +17,11 @@ ovo kao povijest; CLAUDE.md je autoritet.
 | Shema obje baze u gitu (`pg_dump`) | ✅ |
 | Vlasništvo strukture poravnato na PROD-u (`sql/045`) | ✅ pušteno |
 | Kod: `user_id` se više ne prepisuje | ✅ commitan, **nije deployan** |
-| Čišćenje RLS-a (`046`–`051`) | ✅ **samo na TEST-u** |
-| Otvorena rupa u pravima — nađena i zatvorena | ✅ na TEST-u |
-| UI: Save više ne može tiho ne učiniti ništa | ✅ commitan, **nije deployan** |
+| Čišćenje RLS-a (`046`–`051`) | ✅ **pušteno i na PROD-u**, 107→76 politika |
+| Otvorena rupa u pravima — nađena i zatvorena | ✅ **na PROD-u**; stranac ne smije ništa |
+| UI: Save više ne može tiho ne učiniti ništa | ✅ deployano |
+| Koka radi normalno · grantee vidi zabranu · unos radi | ✅ T-S134-12/-13/-14 |
+| Selekcija teksta zatvarala modal i gubila izmjene | ✅ popravljeno, **ČEKA DEPLOY** |
 
 ## Ono što je zapravo bila poanta dana
 
@@ -93,8 +96,10 @@ recimo kad želiš (2).
 
 ## Otvoreno
 
-- **T-S134-11/-12/-13/-14** — PROD migracije i provjere. Ništa od toga nije
-  pušteno.
+- **T-S134-11/-12/-13/-14 ✅ ZATVORENI.** Migracije su na PROD-u, sonda
+  potvrdila 8 promjena (sve zatvaranja), Koka radi normalno, grantee vidi
+  zabranu umjesto tišine, unos mu i dalje radi.
+- **T-S134-20/-21** — popravak modala uživo. Čeka deploy.
 - **T-S134-16** — cijeli E2E nakon RLS promjena. **Nije pokrenut** jer je na
   :5173 stajao `dev:prod`; guard bi ga zaustavio. TEST baza već ima nove
   politike, pa E2E sada mjeri stvarno stanje.
