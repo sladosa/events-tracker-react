@@ -16,7 +16,7 @@ ovo kao povijest; CLAUDE.md je autoritet.
 | Shema obje baze u gitu (`pg_dump`) | ✅ |
 | Vlasništvo strukture poravnato na PROD-u (`sql/045`) | ✅ pušteno |
 | Kod: `user_id` se više ne prepisuje | ✅ commitan, **nije deployan** |
-| Čišćenje RLS-a (`046`–`050`) | ✅ **samo na TEST-u** |
+| Čišćenje RLS-a (`046`–`051`) | ✅ **samo na TEST-u** |
 | Otvorena rupa u pravima — nađena i zatvorena | ✅ na TEST-u |
 | UI: Save više ne može tiho ne učiniti ništa | ✅ commitan, **nije deployan** |
 
@@ -41,7 +41,7 @@ mjere: jedan vadi stvarnu shemu u git, drugi ispisuje **što tko stvarno smije**
    ```
    Tools\run.bat Tools\backup_db.py --env prod          ← svježa snimka
    Tools\run.bat Tools\rls_probe.py --env prod          ← spremi izlaz
-      046 → 047 → 048 → 049 → 050   (Supabase SQL editor)
+      046 → 047 → 048 → 049 → 050 → 051   (Supabase SQL editor)
    Tools\run.bat Tools\rls_probe.py --env prod          ← usporedi
    Tools\run.bat Tools\dump_schema.py --env prod        ← shema natrag u git
    ```
@@ -76,7 +76,7 @@ recimo kad želiš (2).
 
 - `test-branch` = `336a2e7`, pet commitova iznad `main`.
 - `main` = S133. **Netlify nije deployao ništa iz S134.**
-- Migracije: **PROD ima samo `045`**. TEST ima `045`–`050`.
+- Migracije: **PROD ima samo `045`**. TEST ima `045`–`051`.
   ⇒ **TEST i PROD sada imaju različite RLS politike** — to je privremeno i
   namjerno, ali svaki zaključak o pravima mora reći na koju bazu se odnosi.
 

@@ -164,3 +164,25 @@ mora stati s porukom; (2) ugasi ga i pusti opet → mora normalno krenuti.
 **Pad:** spec koji piše strukturu pod nevlasnikom sada legitimno pada —
 provjeri je li to test koji treba prilagoditi ili stvarna regresija.
 ⚠ TEST baza **već ima** nove politike, pa ovo mjeri stvarno stanje.
+
+---
+
+## G. Higijena — `search_path` na SECURITY DEFINER funkcijama
+
+### T-S134-17 ✅ `sql/051` na TEST-u
+**Izmjereno:** PROD ima **9** SECURITY DEFINER funkcija bez `SET search_path`,
+TEST samo **2** — ostalih 6 na TEST-u **uopće ne postoji**. Prva verzija
+migracije nabrajala ih je po imenu i pala je na TEST-u
+(`function … does not exist`); prepisana da popis vadi iz `pg_proc`.
+Nakon puštanja: sve funkcije obje baze imaju `search_path`. Sonda nakon toga
+nepromijenjena ⇒ ništa nije puklo.
+
+⚠ **Nije rupa nego higijena.** Izmjereno da `authenticated` i `anon` **nemaju**
+CREATE ni na shemi ni na bazi, pa podmetanje nije izvedivo. Zatvara se put
+prije nego postane prohodan.
+
+### T-S134-18 ⬜ `sql/051` na PROD-u
+**Očekivano:** `ukupno popravljeno: 9`, pa svi `bez_search_patha = f`.
+⚠ `handle_new_user` i `handle_pending_invites` su triggeri na **registraciji** —
+provjerava ih tek sljedeća stvarna registracija. Do tada stoji da su
+promijenjene, ne da su provjerene.

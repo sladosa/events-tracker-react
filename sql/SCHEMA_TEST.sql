@@ -2,7 +2,7 @@
 -- SCHEMA_TEST.sql -- SNIMKA STVARNE SHEME, generirano alatom
 -- ============================================================
 -- Generirao: data-prep_tools/Tools/dump_schema.py --env test
--- Vrijeme:   2026-09-10T14:53:29+02:00
+-- Vrijeme:   2026-09-10T15:11:47+02:00
 --
 -- ⚠ OVO SE NE PUSTA I NE UREĐUJE RUKOM. Ovo je ono sto u bazi
 --   STVARNO STOJI, ne ono sto smo mislili da smo pustili. Promjene
@@ -18,7 +18,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict EgxFtQnKO8hhA9ewzjqFHfDq9cLIJIb0Bh8O0GwPeJDdZq2m8fhKUWFfprJNpKb
+\restrict OaqJRojH0YypfpxxyOOiWzGaqKaHfpYhdCLGIibjDSuA6v4ngv0lV3SojHFE5kX
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -452,6 +452,7 @@ $$;
 
 CREATE FUNCTION public.handle_new_user() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
     AS $$
 
 BEGIN
@@ -475,6 +476,7 @@ $$;
 
 CREATE FUNCTION public.handle_pending_invites() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
     AS $$
 
 BEGIN
@@ -2177,5 +2179,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON T
 -- PostgreSQL database dump complete
 --
 
-\unrestrict EgxFtQnKO8hhA9ewzjqFHfDq9cLIJIb0Bh8O0GwPeJDdZq2m8fhKUWFfprJNpKb
+\unrestrict OaqJRojH0YypfpxxyOOiWzGaqKaHfpYhdCLGIibjDSuA6v4ngv0lV3SojHFE5kX
 
