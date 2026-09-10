@@ -4250,6 +4250,106 @@ jednom prevario (S118).
 
 ---
 
+## S133 — popravak koji nije popravljao, i brojka koja je bila brava (2026-09-10)
+
+Sesija je krenula kao provjera jučerašnjeg popravka i završila tako da ga je
+**oborila i napisala ispočetka**. Uz to je zatvoren nalaz koji je S132 ostavio
+otvorenim.
+
+### 1. S132 popravak keša nije radio ništa u stvarnom toku
+
+T-S132-2 je izveden na PROD-u i **pao**. Redoslijed je bio: postavi
+`comment_template` na leafu → otvori Add Activity → vrati se i **isprazni**
+template → Add → Finish. Očekivano prazan `Event Note`; dobiven stari tekst.
+
+⚠ Usput je jedna moja uputa bila kriva i odvela na krivi zaključak: Add Activity
+forma **nikad ne prikazuje template** (placeholder `e.g., Felt strong today` je
+hardkodiran), pa prazno polje ondje nije dokaz ničega. Template se primjenjuje
+tek na Finishu.
+
+Uzrok, nađen čitanjem koda i potvrđen mjerenjem: `useCategoryChain` je vezao
+listener **u hooku**, a hook živi samo na `/app/add` i `/app/edit/:s`. **Svaki**
+dispatcher `areas-changed` je u `AppHome` (`/app/`). U trenutku Savea hook ne
+postoji.
+
+⚠ Razred je bio zapisan u kodu **prije nego smo u njega upali**: `AppHome:507`
+nosi komentar *„Filter Content — always mounted so areas-changed listener stays
+active"*, a `categoryCache.ts:78` radi module-level registraciju od početka.
+
+Dokaz je bio dvosmjeran i mjeren na istoj PROD Arei:
+
+| | jutros (S132 kod) | poslije (`a0bb1a2`) |
+| --- | --- | --- |
+| template **u** bazi → Finish | `comment = null` ❌ | `TEST132 Domaćinstvo/Hrana i ostalo` ✅ |
+| template **maknut** → Finish | pisao stari tekst ❌ | prazan ✅ |
+
+Lijek: `clearChainCache()` na razini **modula**, na `areas-changed` i
+`structure-deleted`. Listener u hooku ostaje, ali s izričito označenom drugom
+ulogom — osvježi React state dok je Add/Edit otvoren; on nije brana.
+
+⚠ Test je morao **odmontirati hook prije dispatcha**. S132 verzija je dispatchala
+dok je montiran, pa je prolazila nad kodom koji u aplikaciji ne radi ništa.
+Sada 12 testova, protuprovjera pada 4.
+
+### 2. BUG-S132-EVENTCOUNT — brojka je bila brava
+
+Structure tab je pisao `no events yet` na leafu s **5.173** eventa. Mjerenje:
+
+```
+events?select=category_id  (točno kako app šalje)  →  1000 redaka
+stvarno (Content-Range)                            →  12.199
+```
+
+⚠ Nije kozmetika: `node.eventCount` je brava koja od S24 brani dodavanje djeteta
+leafu s eventima. Lažna nula je otključava. `StructureDeleteModal` je bio pošteđen
+jer već radi vlastiti `count: 'exact'` — **isti obrazac koji je ovdje falio**.
+
+⚠ **Procjenu cijene sam prvo dao krivu.** Rekao sam „sat vremena + migracija",
+jer to predlaže komentar u samom kodu (*„should be replaced with a DB function"*),
+umjesto da izmjerim alternativu. Sašin prigovor je to otvorio. Izmjereno: 39
+kategorija × 127 ms, **usporedno 0,46 s**, zbroj točan u redak. Dakle 15 minuta i
+bez migracije. RPC s `GROUP BY` ostaje za kad kategorije narastu na stotine;
+PostgREST agregati nisu opcija (`PGRST123`).
+
+### 3. Prva verzija E2E testa nije čuvala ništa
+
+Tvrdila je da leaf s eventima nema značku `no events yet`. Prošla je — pa je
+prošla **i s vraćenim pokvarenim upitom**. Razlog: na TEST-u `Garmin_data` ima
+3.624 od ukupno 3.727 eventa, pa je odrezanih 1000 redaka ionako gotovo sve
+njeno; brojka ispadne ~1000 i značka izostane. Na PROD-u je prozor slučajno pao
+drugdje i dao nulu — oslonac na značku čuvao bi **tu slučajnost**.
+
+Uhvatila je to **samo protuprovjera**. Test sada uspoređuje **ispisan broj** iz
+`CategoryDetailPanel` s onim što baza vrati.
+
+### 4. E2E je otišao na PROD
+
+Playwright ima `reuseExistingServer: true` i `baseURL: localhost:5173`, a ondje je
+stajao Sašin `npm run dev:prod`. Test je stao na login ekranu (TEST token na PROD
+bazi), ali **spec koji se uspije prijaviti radio bi stvarne izmjene na PROD-u**, a
+u izlazu Playwrighta nigdje ne piše na koju bazu gađa. Zabilježeno kao zamka;
+konfiguracija nije mijenjana.
+
+### 5. Razgovor o zaštiti podataka — otvoreno
+
+Sašin prijedlog je bio Excel export kao backup. Dvije primjedbe: ne pokriva
+`balance_anchors`, `activity_presets`, `data_shares`, `event_attachments` ni
+`dashboard`; i **uvoz nije restore** — non-destruktivan je, radi po P3, a
+„Import as mine" forsira nove ID-eve. Dogovoreno da o tome krene sljedeća sesija,
+uz otvoreno pitanje **ima li PROD projekt uopće automatske backupe** (free tier).
+
+### Izmijenjeno
+
+- `src/hooks/useCategoryChain.ts` — `clearChainCache()` module-level
+- `src/hooks/__tests__/categoryChainCache.test.mjs` — 12 testova, jezgra odmontira hook
+- `src/hooks/useStructureData.ts` — count po kategoriji, `withRetry` pa throw
+- `e2e/tests/S133_structure_event_count.spec.ts` — novi guard
+
+⚠ **`main` je podignut na kraju sesije** (S132 + S133), na Sašin izričit zahtjev.
+Nema SQL migracija; kod aplikacije dirnut u točno dva hooka, oba na putanji čitanja.
+
+---
+
 ## S132 — keš koji laže o bazi (2026-09-09)
 
 Sesija je počela kao dva mala pitanja (ukloni auto-komentar, može li Koka na svoj

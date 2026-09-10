@@ -1,7 +1,41 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S132 (2026-09-09) — auto-comment se upisivao i nakon brisanja pravila iz baze (`sessionStorage` kes lanca kategorija); 11 redundantnih komentara obrisano s PROD-a.
+**Zadnji update:** S133 (2026-09-10) — S132 popravak kesa NIJE radio u stvarnom toku (listener u hooku, a hook je odmontiran kad signal dodje); popravljen module-level. Uz to zatvoren BUG-S132-EVENTCOUNT (brojanje eventa u pregledniku, PostgREST rez na 1000).
+
+---
+
+## S133 — module-level invalidacija kesa + brojanje eventa (2026-09-10)
+
+Detalji: [S133_tests.md](tests/S133_tests.md)
+
+⚠ **Gdje se testira:** oba popravka su isla na `main` na kraju S133. Prije toga
+su bila samo na `test-branch`, pa se PROD ponasao po starom.
+
+### A. Kes lanca kategorija — module-level listener
+
+| #            | test                                                                       | status |
+| ------------ | -------------------------------------------------------------------------- | ------ |
+| **T-S133-1** | ⭐ `categoryChainCache.test.mjs` — jezgra ODMONTIRA hook prije dispatcha    | ✅ 12/12, protuprovjera pada 4/12 |
+| **T-S133-2** | ⭐ PROD, template POSTAVLJEN → Finish upise komentar (bez F5, ista kartica) | ✅ izmjereno 10.09. (`TEST132 Domacinstvo/Hrana i ostalo`) |
+| **T-S133-3** | ⭐ PROD, template MAKNUT → Finish ostavi `Event Note` prazan                | ✅ izmjereno 10.09. |
+| **T-S133-4** | Structure **import** (ne panel) probije kes — modal mora javiti `Settings updated` | ⬜ |
+| **T-S133-5** | Rename/premjestanje kategorije pa Add u istoj kartici → P2 parent eventi po NOVOJ hijerarhiji | ⬜ **nije provjereno, a `categoryChain.map(c => c.id)` hrani parent evente** |
+
+### B. Broj eventa na Structure tabu (BUG-S132-EVENTCOUNT)
+
+| #            | test                                                                    | status |
+| ------------ | ------------------------------------------------------------------------ | ------ |
+| **T-S133-6** | ⭐ E2E `S133_structure_event_count.spec.ts` — panel pise STVARAN broj    | ✅ prolazi; protuprovjera (vracen stari upit) pada |
+| **T-S133-7** | ⭐ PROD: `Financije_all > Transakcija` mora pisati **5.173 events**, ne `no events yet` | ⬜ **nakon deploya** |
+| **T-S133-8** | S24 brava: Edit Mode → `+ Add Leaf` na toj kategoriji mora biti BLOKIRAN | ⬜ **nakon deploya** — to je razlog zbog kojeg se popravljalo |
+| **T-S133-9** | Structure tab se i dalje otvara bez osjetnog cekanja (39 count upita usporedno) | ⬜ izmjereno 0,46 s na TEST-u, **na PROD-u kao grantee neizmjereno** |
+
+### C. Nalaz koji NIJE popravljen
+
+| #             | test                                                                | status |
+| ------------- | -------------------------------------------------------------------- | ------ |
+| **T-S133-10** | ⚠ E2E s `reuseExistingServer: true` preuzme dev server koji vec stoji na 5173 — 10.09. je to bio `dev:prod`, pa je Playwright s TEST tokenom udario u PROD | ⬜ ZAMKA, nije rijeseno u konfiguraciji |
 
 ---
 
@@ -9,16 +43,16 @@
 
 Detalji: [S132_tests.md](tests/S132_tests.md)
 
-⚠ **Gdje se testira:** popravak hooka je na `test-branch`, **nije na `main`**.
-Sasa je izricito rekao da main push nije nuzan. Dok se ne deploya, PROD
-aplikacija i dalje drzi zastarjeli lanac do zatvaranja kartice.
+⚠ **Nadopunjeno u S133:** popravak iz ove sesije **nije radio u stvarnom toku**
+— listener je bio u hooku, a hook je odmontiran u trenutku kad signal dodje.
+Za ispravnu verziju v. S133 sekciju iznad.
 
 ### A. Keš lanca kategorija (`useCategoryChain`)
 
 | #            | test                                                                    | status |
 | ------------ | ----------------------------------------------------------------------- | ------ |
 | **T-S132-1** | ⭐ `categoryChainCache.test.mjs`                                         | ✅ 7/7, protuprovjera pada 2/7 |
-| **T-S132-2** | ⭐ Structure panel Save odmah probije keš (ISTA kartica, bez F5)         | ⬜ |
+| **T-S132-2** | ⭐ Structure panel Save odmah probije keš (ISTA kartica, bez F5)         | ❌ **PAO 10.09. na PROD-u** — otkrio da popravak ne radi u stvarnom toku; v. T-S133-2/-3 |
 | **T-S132-3** | Structure import probije keš (modal mora javiti `Settings updated`)     | ⬜ |
 | **T-S132-4** | F5 NIJE dovoljan — dokumentira uzrok                                    | ✅ izmjereno na PROD-u |
 
@@ -41,7 +75,7 @@ aplikacija i dalje drzi zastarjeli lanac do zatvaranja kartice.
 
 | #             | test                                                  | status |
 | ------------- | ------------------------------------------------------- | ------ |
-| **T-S132-10** | ⭐ `no events yet` na leafu s 2.300+ eventa (nepaginiran upit) | ⬜ NALAZ, popravak nije napravljen |
+| **T-S132-10** | ⭐ `no events yet` na leafu s 2.300+ eventa (nepaginiran upit) | ✅ **POPRAVLJENO S133** — v. T-S133-6…9. Izmjereno: 1000 od 12.199 (PROD), kategorija ima **5.173** |
 
 ---
 

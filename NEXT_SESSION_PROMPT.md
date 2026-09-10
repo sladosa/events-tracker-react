@@ -1,8 +1,8 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `ff35846` (`S132: load_env/rest u _db.py`).
-`main` = `44ea1b9` (podignut u S132, Netlify deployao). Ako `git log` pokazuje
-novije, čitaj ovo kao povijest — CLAUDE.md je autoritet.
+**Pisano protiv commita:** `7009fa2` (`S133: broj eventa na Structure tabu`).
+`main` je u S133 podignut na isto stanje. Ako `git log` pokazuje novije, čitaj
+ovo kao povijest — CLAUDE.md je autoritet.
 
 ---
 
@@ -12,40 +12,41 @@ novije, čitaj ovo kao povijest — CLAUDE.md je autoritet.
 
 | | stanje |
 | --- | --- |
-| `main` podignut na S130+S131 (delta dropdowni, decimalni zarez, `Required`) | ✅ deployano |
-| Auto-comment (`Event Note`) — pravilo maknuto iz baze | ✅ ti, kroz UI |
-| 11 redundantnih komentara obrisano s PROD-a | ✅ `11/11`, backup postoji |
-| ⭐ Uzrok zašto se upisivao i **poslije** brisanja — nađen i popravljen | ✅ kod na `test-branch` |
-| `no events yet` na Structure tabu — nađeno, **nije popravljeno** | ⬜ |
+| Jučerašnji popravak auto-komentara — **provjeren i pao** | ✅ dobro da smo provjerili |
+| Pravi popravak (keš se briše bez obzira gdje si u appu) | ✅ potvrđen na PROD-u, u oba smjera |
+| `no events yet` na kategoriji s 5.173 eventa | ✅ popravljeno |
+| Deploy na PROD (S132 + S133) | ✅ |
+| Zaštita podataka / backup | ⬜ **tema za sljedeći put** |
 
 ## Ono što je zapravo bila poanta dana
 
-Auto-comment se nastavio upisivati iako je pravilo bilo obrisano iz baze. Dvije
-moje hipoteze bile su krive; **tvoje mjerenje ih je oborilo** — nov export s
-praznim ćelijama i oba prazna Edit panela.
+Jučerašnji popravak **nije radio**. Izgledao je ispravno, imao je test koji
+prolazi, i bio bi otišao na PROD kao gotov posao. Pao je čim smo ga stvarno
+isprobali u aplikaciji.
 
-Pravi uzrok: aplikacija drži snimku kategorije (zajedno s pravilom) u pregledniku,
-i ta snimka **preživi F5**. Gasi se tek zatvaranjem kartice. Zato je izgledalo kao
-da baza laže.
+Isto se ponovilo s testom koji sam napisao danas: prošao je, pa sam namjerno
+vratio pokvareni kod — i **opet je prošao**. Dakle nije čuvao ništa. To se vidi
+samo tako da se pokvari kod i provjeri pada li test.
 
-⚠ **Jedna stvar te još čeka:** popravak je na `test-branch`, **nije na PROD-u**.
-Dok se ne deploya, tebi i Koki i dalje treba **zatvaranje kartice** (ne F5) nakon
-svake promjene strukture. Ako se to ne napravi, novi unosi opet dobiju auto-komentar.
+Dvaput u jednom danu, ista pouka: **ono što izgleda gotovo nije gotovo dok se ne
+pokuša srušiti.**
 
 ## Što tebe čeka
 
-1. **Reci Koki da zatvori karticu aplikacije** (ne samo osvježi). Jednokratno.
-2. **Odluči hoćeš li deployati S132 na `main`.** Nisi tražio push i nisam ga
-   napravio. Dobitak je da nestane ono „zatvori karticu" pravilo.
-3. **Pusti `--restore` barem u dry runu** (T-S132-7). Backup od 11 redaka postoji,
-   ali nikad nije isproban — a backup bez provjerenog restorea nije backup.
-4. **Koka na svom laptopu** — ništa je ne sprječava. Vlasnica je Aree, pa svi
-   grantee zidovi otpadaju. Treba joj **desktop Excel** (ne Online/Sheets —
-   padajući izbornici idu preko `INDIRECT` i skrivenog lista).
+1. **Ctrl+Shift+R** na PROD-u nakon što Netlify završi. Nije higijena nego dio
+   postupka — stari keširani bundle je već jednom tiho osakatio uvoz.
+2. **Jednom zatvori karticu** aplikacije, ti i Koka. Posljednji put: nakon toga
+   pravilo „zatvori karticu nakon svake izmjene Structurea" **više ne vrijedi**.
+3. **Provjeri Structure tab** — `Financije_all > Transakcija` mora pisati
+   `5173 events`, ne `no events yet` (T-S133-7).
+4. **Provjeri bravu** (T-S133-8): Edit Mode → ⋮ na toj kategoriji → `+ Add Leaf`
+   mora biti **blokiran**. To je razlog zbog kojeg se popravljalo.
+5. ⭐ **Pogledaj u Supabase dashboardu ima li PROD projekt automatske backupe.**
+   To je prvo pitanje sljedeće sesije, i na njega samo ti možeš odgovoriti.
 
 ## Što treba od Koke
 
-Ništa novo. Samo ono jednokratno zatvaranje kartice.
+Ništa. Samo ono jednokratno zatvaranje kartice.
 
 ---
 
@@ -53,55 +54,56 @@ Ništa novo. Samo ono jednokratno zatvaranje kartice.
 
 ## Stanje grana
 
-- `main` = `44ea1b9` — S130 + S131. Netlify deployao 09.09.
-- `test-branch` = `ff35846` — tri commita ispred: `0d275a2` (popravak keša + test),
-  `ff35846` (`_db.py`), `b7beb22` (`ocisti_auto_komentare.py`).
-- Sync-back nije potreban; `main` je u cijelosti sadržan u `test-branch`.
+- `main` = `test-branch` = `7009fa2` (+ merge commit). Netlify deployao S132+S133.
+- Nema SQL migracija u tom rasponu. Kod aplikacije dirnut u **dva** hooka.
 
 ## Novo u kodu
 
-- **`useCategoryChain` sluša `areas-changed`** (`src/hooks/useCategoryChain.ts:133`).
-  Listener je **u hooku**, ne u pozivateljima — invarijanta. Puna zamka je u
-  CLAUDE.md („Keš mora slušati onoga tko ga čini zastarjelim").
-- **`src/hooks/__tests__/categoryChainCache.test.mjs`** — vrti **pravi kod hooka**
-  nad minimalnim React shimom (projekt nema unit runner za hookove; samo Playwright).
-  ⚠ Ako budeš pisao još hook testova, ovaj shim je predložak — `useState`/`useCallback`/
-  `useEffect` s deps usporedbom, `window` preko `EventTarget`, `sessionStorage` preko Mape.
-  Provjeren u oba smjera: bez listenera pada 2 od 7.
-
-## Novo u alatima
-
-- **`data-prep_tools/Financije/_db.py`** — `load_env` + pagirani `rest`, **preseljeni**
-  iz `uskladi_izvod.py`. Taj ih re-exporta, pa svih devet pozivatelja radi dalje.
-- **`ocisti_auto_komentare.py`** — kriterij je rekonstrukcija po retku. Staje dok je
-  template živ na **bilo kojoj** razini.
+- **`clearChainCache()` je MODULE-LEVEL** (`useCategoryChain.ts`), na
+  `areas-changed` i `structure-deleted`. Listener u hooku ostaje, ali samo
+  osvježava React state dok je Add/Edit otvoren — **on nije brana**.
+  ⚠ Ovisi o tome da rute nisu lazy-loadane (`App.tsx:12-13`). Uvede li se code
+  splitting, `clearChainCache` mora u modul koji se učitava bezuvjetno.
+- **`useStructureData` više ne broji u pregledniku** — `count: 'exact', head: true`
+  po kategoriji, usporedno, `withRetry` pa throw.
 
 ## Otvoreno
 
-- **T-S132-2/-3** (jezgra popravka, uživo) **nisu izvedeni.** ⚠ Moraju se raditi
-  **u istoj kartici** — zatvaranje kartice ionako briše `sessionStorage`, pa bi test
-  prošao i nad pokvarenim kodom (razred S129).
-- **T-S132-7** `--restore` netestiran.
-- **BUG-S132-EVENTCOUNT** — `useStructureData.ts:80-82` čita `events` bez `.range()`
-  i bez `.order()`. Prije popravka **izmjeriti** zašto ispada baš `0` (Network →
-  duljina odgovora; točno `1000` potvrđuje rez). Ispravak preko `fetchAllPaged` vuče
-  2.300+ redaka na svako otvaranje taba ⇒ vjerojatno je bolji RPC s `GROUP BY`.
-- **`--i-stare` grana nije se izvršila nad stvarnim podacima** — na PROD-u je nula
-  reklasificiranih. Regex je provjeren jedinično (uklj. `N/A` sa separatorom).
+- **T-S133-4** Structure **import** (ne panel) probije keš — neprovjereno.
+- **T-S133-5** ⭐ **rename/premještanje pa Add u istoj kartici.** Keš ne hrani samo
+  `comment_template`: `categoryChain.map(c => c.id)` gradi **P2 parent evente**
+  (`AddActivityPage.tsx:1178`). Stara snimka upisala bi roditelje po **staroj**
+  hijerarhiji. Nije provjereno ni prije ni poslije popravka.
+- **T-S133-7/-8/-9** uživo na PROD-u nakon deploya.
+- **T-S133-9** brzina Structure taba **kao grantee** — 0,46 s je izmjereno na
+  TEST-u kao vlasnik; PROD grantee ide kroz skupu RLS granu (join na `data_shares`).
+- **T-S133-10** E2E s `reuseExistingServer: true` može preuzeti `dev:prod` na 5173.
+  Prijedlog: provjera u `global-setup` da posluženi build nosi `VITE_SUPABASE_URL`
+  iz `.env.testing`, inače stani s greškom. **Nije izvedeno.**
+- **T-S132-7** `--restore` i dalje netestiran. Backup od 11 komentara postoji.
 
-## Pouke koje vrijede šire od ovog buga
+## ⭐ Prva tema sljedeće sesije: zaštita podataka
 
-- **Okolinu provjeri u korisnikovoj ljusci, ne u svojoj.** Tvrdio sam da skripta
-  radi golim `python`om jer se u Bash alatu `python` razrješava u drugi interpreter
-  nego u Sašinom PowerShellu. Njemu je pala na `pdfplumber`.
-- **Odsutnost retka u izvještaju je podatak.** `Settings updated` se renderira samo
-  kad je `> 0`; njegov izostanak je jedini pouzdan signal da uvoz nije dirnuo
-  `comment_template`. Suprotno tome, `List columns 8` broji **parsirane retke**, ne
-  promjene.
-- **Prije nego proglasiš uzrok, provjeri govori li ijedan sloj istinu.** Baza, export
-  i oba panela slagali su se; jedini koji je odstupao bio je preglednik.
+Sašin prijedlog je bio **Excel export All Time po Areama kao backup**. Nije
+dovoljno, iz dva razloga:
 
-## Nepromijenjeno od S131
+1. **Ne pokriva sve** — izvan njega su `balance_anchors` (sidra namjerno nikad ne
+   putuju), `activity_presets`, `data_shares`, `event_attachments` i `dashboard`
+   config; `export_profiles` ne preživi rename.
+2. **Uvoz nije restore** — non-destruktivan je i radi po P3, pa ne može obrisati
+   redak koji ne bi smio postojati; „Import as mine" forsira **nove ID-eve**
+   (S123), dakle vraćanje bi proizvelo duplikate s drugim autorstvom.
+
+Predloženo (nije napravljeno): **dump svih tablica u JSON preko REST-a** sa
+service ključem, nad `_db.py` koji već postoji. Čisto čitanje, ~20 redaka, ID-evi
+i autorstvo očuvani. Za 12.199 eventa i ~69k atributa to je nekoliko desetaka MB.
+
+⚠ Prije toga treba znati **ima li PROD projekt uopće automatske backupe** — free
+tier ih povijesno nema, a instanca se od S105 zna gušiti pod opterećenjem. Ako ih
+nema, jedina kopija PROD podataka danas je nijedna, i to je veći problem od svega
+što smo danas popravljali.
+
+## Nepromijenjeno od S132
 
 Financije pipeline, sidra, delta sheet, tranše — ništa od toga danas nije dirano.
-Za to stanje vrijedi CLAUDE.md i `DONE_HISTORY` S129–S131.
+Za to stanje vrijedi CLAUDE.md i `DONE_HISTORY` S129–S132.

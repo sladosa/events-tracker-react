@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S132).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S133).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -951,9 +951,55 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   prošao", „template je na leafu") bile su krive; opovrgnulo ih je **mjerenje**, ne
   razmišljanje — presudan je bio placeholder `e.g. {napomena} ({tip})` umjesto
   `Inherited: …`, koji dokazuje da ni Area nema template.
-  Lijek: listener **u hooku**, ne u pozivateljima — invarijanta, ne disciplina.
+  ⚠ **PRVI LIJEK JE BIO POGREŠAN, i to se vidjelo tek mjerenjem** (S133). S132 je
+  listener stavio **u hook** i nazvao ga invarijantom. Nije: `useCategoryChain` je
+  montiran samo na `/app/add` i `/app/edit/:s`, a **svaki** dispatcher `areas-changed`
+  živi u `AppHome` (`/app/`) — Structure panel, StructureTableView, Excel modali.
+  U trenutku kad signal ode, hook **ne postoji**, pa listener nije ni vezan.
+  Izmjereno na PROD-u 10.09.2026.: template upisan u `categories.settings`
+  (`TEST132 {tip}/{podtip}`, potvrđeno REST-om), a Finish napravio event s
+  `comment = null`.
+  ⚠ Razred je bio **zapisan u kodu prije nego smo u njega upali**: `AppHome:507`
+  nosi komentar „Filter Content — always mounted so areas-changed listener stays
+  active", a `categoryCache.ts:78` radi module-level registraciju od početka.
+  **Pravilo: listener koji čuva keš ide na razinu MODULA, nikad u hook** —
+  `clearChainCache()` briše sve `chain_v1_*` ključeve na `areas-changed` i
+  `structure-deleted`. Listener u hooku ostaje, ali samo da osvježi `chain` u
+  React stateu dok je Add/Edit otvoren; on nije brana.
+  ⚠ **Ključevi se PRVO skupe pa brišu.** `removeItem` usred petlje po indeksu
+  pomakne preostale za jedno mjesto ⇒ preskoči se svaki drugi, bez ijedne greške
+  (razred „paginacija bez `.order()`", S108).
+  ⚠ Popravak **ovisi o tome da rute nisu lazy-loadane** (`App.tsx:12-13` su statički
+  importi). Uvede li se ikad code splitting — a `vendor-plotly` je 4,9 MB, pa je to
+  živa stavka u backlogu — `clearChainCache` mora u modul koji se učitava bezuvjetno.
+  ⚠ Keš ne hrani samo `comment_template`: `categoryChain.map(c => c.id)` gradi **P2
+  parent evente** (`AddActivityPage.tsx:1178`), pa bi stara snimka nakon renamea ili
+  premještanja upisala roditelje po **staroj** hijerarhiji.
   Čuva `src/hooks/__tests__/categoryChainCache.test.mjs` (vrti pravi kod hooka nad
-  React shimom; bez listenera pada 2 od 7).
+  React shimom; 12 testova, bez module-level listenera pada 4).
+  ⚠ **Test MORA odmontirati hook prije dispatcha** — S132 verzija je dispatchala dok
+  je hook montiran, pa je prolazila nad kodom koji u aplikaciji ne radi ništa.
+- **⚠ ONO ŠTO PREGLEDNIK PREBROJI OGRANIČENO JE NA 1000 REDAKA — I TO JE BRAVA,**
+  **NE BROJKA** (S133). `useStructureData` je vukao `events?select=category_id` bez
+  `.range()` i bez `.order()` pa brojao u JS-u; PostgREST reže na 1000 **bez greške**.
+  Izmjereno 10.09.2026.: PROD **1000 od 12.199**, TEST **1000 od 3.727** — dakle
+  brojka je računata nad 8–27 % podataka i ispisana kao da je cijela.
+  ⚠ Posljedica nije kozmetička: `node.eventCount` je **brava**
+  (`StructureAddChildPanel:123` ne da dodati dijete leafu koji ima evente, S24).
+  Lažna nula je otključava, bez ijedne poruke. `StructureDeleteModal` je bio pošteđen
+  jer već radi vlastiti `count: 'exact'` — **isti obrazac koji je ovdje falio**.
+  Lijek: jedan `count: 'exact', head: true` po kategoriji, **usporedno**. Izmjereno
+  s aktivnim RLS-om: 39 kategorija, 127 ms po upitu — serijski 4,95 s, **usporedno
+  0,46 s**, zbroj točan u redak.
+  ⚠ Neuspjelo brojanje se **ne čita kao nula** (`withRetry` pa throw) — tiha nula je
+  upravo ono što otključava bravu.
+  ⚠ RPC s `GROUP BY` je odbačen **zasad, ne zauvijek**: dok su kategorije u desecima
+  ovo je jeftinije jer nema migracije; narastu li na stotine, RPC. PostgREST agregati
+  (`id.count()`) **nisu opcija** — projekt ih odbija s `PGRST123`.
+  ⚠ **Prva verzija testa nije čuvala ništa**, i uhvatila ju je samo protuprovjera:
+  tvrdila je da leaf s eventima nema značku `no events yet`, a na TEST-u ta kategorija
+  ima 3.624 od 3.727 eventa ⇒ odrezanih 1000 redaka je ionako gotovo sve njeno, značka
+  izostane i nad pokvarenim kodom. Mjeri se **ispisan broj**, ne značka.
 - **⚠ BROJAČ KOJI BROJI PARSIRANE RETKE PRIKAZUJE POSAO KOJI SE NIJE DOGODIO** (S132).
   `List columns 8` u Structure import modalu znači „sheet je imao 8 redaka", ne „8 se
   promijenilo": `columnsImported++` ide **prije** usporedbe, a `JSON.stringify` jednakost
@@ -1110,6 +1156,20 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 
 **E2E (Playwright)**
 
+- **⚠ E2E PREUZME DEV SERVER KOJI VEĆ STOJI NA 5173 — I TO MOŽE BITI PROD** (S133).
+  `playwright.config.ts` ima `reuseExistingServer: true` i `baseURL: localhost:5173`.
+  Vrti li se ondje `npm run dev:prod`, Playwright **ne podiže svoj TEST server nego
+  preuzme PROD**, ubrizga TEST sesijski token i krene. Izmjereno 10.09.2026.: server
+  na :5173 servirao je `zdojdazosfoajwnuafgx` (PROD), a `.env.testing` pokazuje na
+  `xtnbhmojmffjelsqejpw` (TEST).
+  ⚠ Tog puta je stalo na login ekranu — ali **spec koji se uspije prijaviti radio bi
+  stvarne izmjene na PROD-u**, a u izlazu Playwrighta **nigdje ne piše na koju bazu
+  gađa**. Jedini znak je banner u samoj aplikaciji, koji nitko ne čita u CI izlazu.
+  ⚠ Gore: `global-setup.ts` ima **vlastitog** klijenta iz `.env.testing`, pa čisti
+  TEST i kad preglednik gleda PROD — dvije polovice runa gledaju **različite baze**.
+  Zasad se rješava disciplinom (**ugasi `dev:prod` prije E2E**); pravi lijek je
+  provjera u `global-setup` da posluženi build nosi `VITE_SUPABASE_URL` iz
+  `.env.testing`, inače stani s greškom.
 - **⚠ `fullyParallel: false` NE čini run sekvencijalnim** (S120). Drži redoslijed samo
   *unutar* jednog spec filea; **fileovi i dalje idu u zasebne workere**, a Playwright uzima
   otprilike pola jezgri. Šest specova nad **istom seed Areom i istom bazom** dalo je
@@ -1373,18 +1433,13 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   (`:422`) — snimak od prije edita više ne sadrži novi ključ. ⚠ **Hipoteza nije dokazana**
   i nije se dala ponoviti; prvo reproducirati, pa popravljati. Redak koji **postoji** a app
   tvrdi da ga nema je gori od greške koja se vidi.
-- **BUG-S132-EVENTCOUNT — ⚠ NALAZ, nije popravljen.** Structure tab pokazuje
-  `no events yet` na leafu s 2.300+ eventa. `useStructureData.ts:80-82` čita
-  `events` **bez `.range()` i bez `.order()`** — dakle krši oba pravila o paginaciji
-  odjednom, pa je broj odrezan na 1000 i nepouzdan. Zašto ispada baš `0` nije
-  izmjereno (DevTools → Network → duljina odgovora `events?select=category_id`;
-  točno `1000` potvrđuje rez).
-  ⚠ **Delete je zaštićen** — `StructureDeleteModal:240` radi vlastiti
-  `count: 'exact', head: true`, što rez ne dira. **Add Child nije**
-  (`StructureAddChildPanel:123` čita snimku) ⇒ lažna nula otključava dodavanje
-  djeteta leafu koji ima evente, a to je zabrana koju je S24 namjerno postavio.
-  Ispravak: `fetchAllPaged` (uz obavezan `.order('id')`) vuče 2.300+ redaka na
-  svako otvaranje taba — vjerojatno je bolji RPC s `GROUP BY`.
+- **~~BUG-S132-EVENTCOUNT~~ — ✅ POPRAVLJENO S133.** Structure tab je brojao evente
+  u pregledniku nad odrezanih 1000 redaka (izmjereno: PROD 1000 od 12.199), pa je
+  leaf s **5.173** eventa pisao `no events yet` — i time otključavao S24 zabranu
+  dodavanja djeteta. Sada baza broji: `count: 'exact', head: true` po kategoriji,
+  usporedno. Puna zamka je u „UI (React)"; čuva
+  `e2e/tests/S133_structure_event_count.spec.ts` (protuprovjera pada).
+  **Neverificirano uživo: T-S133-7/-8/-9.**
 - **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
   StrictMode artefakt, nizak rizik
 - **BUG-S103-ANYATTR:** „In any attribute" filter (`ATTR_FILTER_ANY`) timeouta za grantee-e —
