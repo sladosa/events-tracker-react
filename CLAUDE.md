@@ -122,6 +122,31 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **Pouka koja vrijedi šire od sluga:** dvije baze nisu ista baza. Ponašanje se
   utvrđuje pokusom (upiši → pročitaj → obriši), ne pretpostavkom da je shema ista.
 
+**⚠ Prava se ne čitaju iz komentara u migraciji — ni iz nje same (S133)**
+
+- **`categories_update` glasi `user_id = auth.uid()`, dakle gleda vlasnika RETKA**
+  **KATEGORIJE, ne vlasnika Aree.** Izmjereno na PROD-u 10.09.2026.: Saša je
+  **write grantee** na `Financije_all`, a ipak je spremio `comment_template` na
+  leaf `Transakcija` — jer taj redak nosi `categories.user_id = 768a6056` (njegov),
+  dok `areas.user_id = eeb78414` (Kokin). To je **jedina** area na PROD-u gdje se
+  vlasnik kategorije razilazi od vlasnika Aree; vjerojatno od prvog Structure
+  uvoza (S118). Dakle **nije sustavna rupa u collabu** — drugi grantee to ne bi
+  mogao — nego jedan neusklađen redak, i to na Kokinoj glavnoj Arei.
+  ⚠ **Otvoreno i NEIZMJERENO: može li Koka, vlasnica Aree, uopće pisati po toj**
+  **kategoriji?** Po istoj politici ne bi mogla, jer redak nije njen. Provjerava
+  se pokusom (promijeni opis → pogledaj mijenja li se `updated_at`), nikad
+  ekranom: RLS-blokiran write „uspije" s 200 i praznim rezultatom.
+- **⚠ Komentar u migraciji opisuje što TA migracija mijenja, ne konačno stanje.**
+  `009_sharing.sql` nosi redak „INSERT/UPDATE/DELETE unchanged (only owner
+  writes)" i pročitan je kao tvrdnja o pravima. Nije: kaže samo da ih *ta*
+  migracija nije dirala, a bazna politika gleda `categories.user_id`. Isti razred
+  kao PROD slug trigger (S118) — **ponašanje baze se utvrđuje pokusom.**
+- **⚠ `comment_template` BEZ placeholdera upisuje se doslovno.** Guard
+  `placeholderCount > 0 && filledCount === 0` (`commentTemplate.ts:42`) pali samo
+  kad template *ima* `{...}`; `Test` prolazi kroz njega i završi kao `comment`
+  svakog novog retka bez korisnikova opisa. Izmjereno istog dana: prozor od 2,5
+  min, nula pogođenih redaka — ali samo zato što u njemu nitko nije unosio.
+
 **Uvoz — tri načina da „uspije" a ne napravi što misliš (S118)**
 
 - **⚠ Stari keširani bundle tiho osakati Structure import.** Prvi uvoz na PROD prošao je

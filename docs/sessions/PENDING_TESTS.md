@@ -35,6 +35,7 @@ su bila samo na `test-branch`, pa se PROD ponasao po starom.
 
 | #             | test                                                                | status |
 | ------------- | -------------------------------------------------------------------- | ------ |
+| **T-S133-11** | ⭐ **Može li KOKA pisati po `Financije_all > Transakcija`?** Structure → Edit → promijeni opis → Save, pa provjeri mijenja li se `updated_at` u bazi (ekran NIJE dokaz) | ⬜ **neizmjereno, a ona je vlasnica Aree** |
 | **T-S133-10** | ⚠ E2E s `reuseExistingServer: true` preuzme dev server koji vec stoji na 5173 — 10.09. je to bio `dev:prod`, pa je Playwright s TEST tokenom udario u PROD | ⬜ ZAMKA, nije rijeseno u konfiguraciji |
 
 ---

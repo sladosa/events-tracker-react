@@ -43,6 +43,10 @@ pokuša srušiti.**
    mora biti **blokiran**. To je razlog zbog kojeg se popravljalo.
 5. ⭐ **Pogledaj u Supabase dashboardu ima li PROD projekt automatske backupe.**
    To je prvo pitanje sljedeće sesije, i na njega samo ti možeš odgovoriti.
+6. ⭐ **Neka Koka proba promijeniti opis kategorije** `Financije_all > Transakcija`
+   (Structure → Edit → Save). Ne treba ništa zaključivati s ekrana — samo javi je
+   li probala, pa provjerim u bazi je li se išta stvarno promijenilo. Razlog je
+   dolje u DIO 2.
 
 ## Što treba od Koke
 
@@ -81,6 +85,20 @@ Ništa. Samo ono jednokratno zatvaranje kartice.
   Prijedlog: provjera u `global-setup` da posluženi build nosi `VITE_SUPABASE_URL`
   iz `.env.testing`, inače stani s greškom. **Nije izvedeno.**
 - **T-S132-7** `--restore` i dalje netestiran. Backup od 11 komentara postoji.
+- **T-S133-11** ⭐ **Vlasništvo nad kategorijom `Financije_all > Transakcija`.**
+  Izmjereno 10.09. na PROD-u: Saša je **write grantee** na toj Arei, a ipak je
+  spremio `comment_template` na leaf — jer politika `categories_update` glasi
+  `user_id = auth.uid()` i gleda **vlasnika retka kategorije**, ne Aree. Taj redak
+  nosi `categories.user_id = 768a6056` (Saša), dok `areas.user_id = eeb78414`
+  (Koka). Jedina takva neusklađenost na PROD-u.
+  ⚠ **Neizmjereno i važnije:** po istoj politici **Koka vjerojatno ne može pisati
+  po vlastitoj kategoriji.** Prvo pokus, tek onda popravak. Ako se potvrdi, lijek
+  je `UPDATE categories SET user_id = <Koka> WHERE id = ...` — pisanje po PROD-u,
+  dakle preko Saše i s backupom (v. tema ispod, sad je konkretnija).
+  ⚠ Usput izmjereno: `comment_template` **bez placeholdera** upisuje se doslovno
+  (guard pali samo kad template ima `{...}`), pa je `Test` 2,5 minute bio živo
+  pravilo nad Kokinom Areom. Nula pogođenih redaka — samo zato što u tom prozoru
+  nitko nije unosio.
 
 ## ⭐ Prva tema sljedeće sesije: zaštita podataka
 
