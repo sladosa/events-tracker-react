@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S133).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S134).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -57,6 +57,7 @@ podaci hrane i AI sloj.
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
 | `docs/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
 | `docs/Analytics_tab.md`                   | **Cross-Area** analitika — `periods`, Series, AnalyticsDef Excel. Čeka drugu gustu Areu. ⚠ §3 („bucketiranje client-side") je opovrgnut u OVERVIEW_TAB_SPEC §2.2 |
+| `docs/RLS_INVENTORY.md`                   | **Prava — tko što smije.** Namjera; `sql/SCHEMA_PROD.sql` je stvarnost, `rls_probe.py` mjeri razliku |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist            |
@@ -122,6 +123,46 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **Pouka koja vrijedi šire od sluga:** dvije baze nisu ista baza. Ponašanje se
   utvrđuje pokusom (upiši → pročitaj → obriši), ne pretpostavkom da je shema ista.
 
+**Backup, shema i RLS (S134)**
+
+- **Supabase free NEMA automatske backupe.** Do S134 jedina kopija PROD podataka bila je
+  **nijedna**. `Tools\run.bat Tools\backup_db.py --env prod` — 12 tablica + auth popis +
+  Storage; izmjereno **107.772 retka, 6,79 MB gzip, 53 s**. Ide u `data-prep_data/_backup/`,
+  koji `backup_to_external.bat` već nosi na `D:` ⇒ nula novih navika.
+  ⚠ **Backup napravljen anon ključem bio bi PRAZAN i izgledao uredan** — zato alat staje ako
+  ključ nije `service`. Nije teorija: `_db.load_env('test')` pada na anon, i TEST je u prvom
+  mjerenju izgledao kao baza s 0 eventa (stvarno 12.363).
+  ⚠ **RESTORE JOŠ NE POSTOJI.** Do tada je ovo kopija, ne provjeren povratak.
+- **Shema obje baze je u gitu:** `sql/SCHEMA_PROD.sql`, `sql/SCHEMA_TEST.sql`, generira
+  `Tools\run.bat Tools\dump_schema.py --env <env>` (`--diff` uspoređuje bazu s gitom).
+  **Na pitanje „što politika kaže" odgovara `git diff`, ne pamćenje.**
+  ⚠ Veza ide preko **Session poolera** (PROD `aws-1-eu-west-1`, TEST `aws-0-eu-west-1`, port
+  **5432**): `db.<ref>.supabase.co` ima samo AAAA zapis a stroj nema IPv6 izlaz. Pooler host
+  se **ne da pogoditi** — nađen je time što pooler na krivu regiju kaže „tenant not found",
+  a na točnu traži lozinku. Connection string je `SUPABASE_DB_URL` u `.env.*.local`.
+  ⚠ DB lozinka se **nigdje drugdje ne koristi** (app i Netlify funkcije idu preko PostgREST-a),
+  pa je njen reset bezopasan.
+- **⚠ PROD 107 politika / 8 triggera, TEST 50 / 2.** Triggeri kojih na TEST-u **nema**:
+  `maintain_paths`, `prevent_category_deletion`, sva tri slug triggera, `data_shares_updated_at`.
+  ⇒ **„Provjereno na TEST-u" ne znači „vrijedi za PROD"** ni za RLS ni za triggere.
+- **⚠ RLS POLITIKE SU PERMISSIVE ⇒ OR-AJU SE ⇒ NAJŠIRA UVIJEK POBJEĐUJE.** Na jednoj
+  operaciji ih je stajalo 3–5 iz tri generacije. **Zabrana se postiže BRISANJEM, nikad
+  dodavanjem** — migracija koja „doda strožu politiku" ne mijenja ništa, a izgleda kao
+  gotov posao. Zato `047`–`050` brišu **sve** politike tablice (dinamički, jer PROD i TEST
+  nemaju ista imena) pa stvore po jednu za svaku operaciju.
+- **⚠ Kriterij za strukturu je VLASNIŠTVO AREE, nikad `categories.user_id`.** Taj se stupac
+  do S134 prepisivao pri svakom spremanju panela, pa je govorio „tko je zadnji spremio" a
+  politike su ga čitale kao „čije je". Vlasništvo Aree se spremanjem ne mijenja.
+- **Prava se MJERE, ne čitaju:** `Tools\run.bat Tools\rls_probe.py --env <env>` glumi svaku
+  ulogu, svaka proba u vlastitoj transakciji koja završava `ROLLBACK`-om. **Migracija koja
+  dira RLS bez tog ispisa s obje strane je nagađanje.**
+  ⚠ Čita se pažljivo: **RLS-blokiran UPDATE/DELETE ne baca grešku nego pogodi 0 redaka**, a
+  FK/trigger greška znači da je RLS **propustio**.
+- **⚠ `Prefer: return=representation` MASKIRA OTVOREN INSERT.** Postgres tada traži i SELECT
+  pravo na novi redak, pa politika koja INSERT propušta izgleda kao da ga brani. Tako je
+  otvorena rupa („bilo tko može pisati u tuđu Areu") devet mjeseci izgledala zatvoreno —
+  supabase-js šalje baš taj header. **INSERT se mjeri bez `RETURNING`.**
+
 **⚠ WRITE-GRANTEE MOŽE MIJENJATI STRUKTURU TUĐE AREE (S133) — Sašina odluka: NE SMIJE**
 
 - **Izmjereno na PROD-u 10.09.2026., u tri koraka i svaki put provjereno u bazi:**
@@ -146,17 +187,25 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   svako spremanje prebaci vlasništvo na onoga tko je kliknuo Save. Izmjereno:
   vlasništvo je danas dvaput promijenilo stranu. Posljedica: `categories.user_id`
   ne govori tko je nešto napravio nego **tko je zadnji spremio**.
-- **⚠ Tri puta do istog pisanja, a gašenje je samo na jednom:**
-  `CategoryDetailPanel` (Edit gumb, prati samo `isEditMode`, **nema provjeru
-  vlasništva**), Edit Mode u `StructureTableView`, i **`StructureImportModal` —
-  koji nema nijednu provjeru prava**. Uvoz Structure Excela je puna zamjena za
-  panel.
 - **Sašina odluka (S133): vlasnik Aree je vlasnik strukture cijelog lanca.**
-  Grantee ne smije uređivati strukturu ni s jednog od ta tri puta; treba li Saša
-  mijenjati strukturu `Financije_all`, radi to **pod Kokinim računom**.
-  ⚠ **Skrivanje gumba NIJE brana** — vrijedi isto pravilo koje već stoji uz
-  brisanje tuđeg retka: „nema gumb" nije „baza brani". Popravak mora dirati **i**
-  RLS **i** UI, inače ostaje otvoren kroz uvoz i kroz izravni REST.
+  Grantee ne smije uređivati strukturu; treba li Saša mijenjati strukturu
+  `Financije_all`, radi to **pod Kokinim računom**.
+  ⚠ **Skrivanje gumba NIJE brana** — „nema gumb" nije „baza brani". Popravak
+  mora dirati **i** RLS **i** UI.
+- **✅ NAPRAVLJENO S134, ali PROD ČEKA.** `sql/045` poravnao vlasništvo (izmjereno:
+  `Transakcija` + svih 15 atributa prešli s Saše na Koku, slugovi netaknuti);
+  `047`–`050` čiste politike; `assertWrote()` u panelu pretvara tihi neuspjeh u
+  poruku; `canEdit` gasi Edit gumb u View panelu. **Pušteno i izmjereno na TEST-u
+  (45 proba, promijenjene točno 4 — sve zatvaranje rupe). Na PROD-u još nije.**
+- **⚠ ISPRAVAK zapisanog o tri puta do pisanja** (S134). Stajalo je da
+  `StructureImportModal` „nema nijednu provjeru prava" i da je „puna zamjena za
+  panel". **Izmjereno da nije točno:** `structureImport.ts:498` čita `areas` s
+  `.eq('user_id', userId)`, dakle vidi **samo vlastite** Aree. Uvoz Structure
+  filea tuđe Aree zato ne mijenja nju nego **tiho stvara duplikat Aree istog
+  imena** pod uvoznikom. Manje opasno nego što je pisalo, ali i dalje zbunjujuće
+  — popravak (stani i javi umjesto duplikata) **nije napravljen**, jer mijenja
+  ponašanje uvoza, a Excel roundtrip je Koki glavni put.
+  Preostala dva puta (`CategoryDetailPanel`, Edit Mode) su zatvorena.
 - **⚠ `comment_template` BEZ placeholdera upisuje se doslovno.** Guard
   `placeholderCount > 0 && filledCount === 0` (`commentTemplate.ts:42`) pali samo
   kad template *ima* `{...}`; `Test` prolazi kroz njega i postaje `comment` svakog
@@ -318,15 +367,22 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 
 **Collab — što grantee NE može**
 
-- **⚠ Grantee ne može spremiti Export/Import profil, ni s `write` dozvolom** (S122). Dva
-  nezavisna zida: app ga zaustavi prije upisa (`ExcelExportModal.tsx:557`, uvjet je
-  `if (sharedContext)` — dakle **svaki** grantee, ne samo read), a i da ne zaustavi, RLS na
-  `areas` dopušta UPDATE **samo vlasniku** (`009_sharing.sql`: „INSERT/UPDATE/DELETE unchanged
-  (only owner writes)"). Profili žive u `areas.settings`, zajedno s `automations`, `dashboard`
-  i `list_columns` — dakle write-grantee koji bi ih smio pisati mijenjao bi **cijelu Areu
-  vlasniku**. Ponašanje je zato ispravno; **poruka nije**: piše „(read-only access)" i
-  write-grantee-u, što je neistina o njegovim pravima.
-  ⚠ Isto vrijedi za svaku buduću per-Area konfiguraciju: **`areas.settings` je vlasnikov**.
+- **⚠ Grantee ne može spremiti Export/Import profil, ni s `write` dozvolom** (S122). Zid je
+  **JEDAN, ne dva**: app ga zaustavi prije upisa (`ExcelExportModal.tsx:557`, uvjet je
+  `if (sharedContext)` — dakle **svaki** grantee, ne samo read). Profili žive u
+  `areas.settings`, zajedno s `automations`, `dashboard` i `list_columns` — dakle
+  write-grantee koji bi ih smio pisati mijenjao bi **cijelu Areu vlasniku**. Ponašanje je
+  zato ispravno; **poruka nije**: piše „(read-only access)" i write-grantee-u, što je
+  neistina o njegovim pravima.
+  ⚠ **DRUGI ZID NIJE POSTOJAO, a ovdje je devet sesija pisalo da postoji** (ispravljeno
+  S134). Tvrdnja „RLS na `areas` dopušta UPDATE **samo vlasniku** (`009_sharing.sql`:
+  *INSERT/UPDATE/DELETE unchanged (only owner writes)*)" bila je **prepisan komentar iz
+  migracije**, ne stanje baze. Stvarna politika PROD-a (`areas_update_policy`) nosi granu
+  `permission = 'write'`; izmjereno `rls_probe.py`: *write grantee → `areas UPDATE settings`
+  → **DA, 1 redak***. Dakle disciplina se vodila kao invarijanta — isti razred kao PROD slug
+  trigger (S118). Zatvoreno tek migracijom `sql/047`.
+  ⚠ Isto vrijedi za svaku buduću per-Area konfiguraciju: **`areas.settings` je vlasnikov**
+  (Sašina odluka, S134 — v. `docs/RLS_INVENTORY.md`).
 
 **Collab — vlasnik Aree (S123)**
 
@@ -1208,9 +1264,14 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   gađa**. Jedini znak je banner u samoj aplikaciji, koji nitko ne čita u CI izlazu.
   ⚠ Gore: `global-setup.ts` ima **vlastitog** klijenta iz `.env.testing`, pa čisti
   TEST i kad preglednik gleda PROD — dvije polovice runa gledaju **različite baze**.
-  Zasad se rješava disciplinom (**ugasi `dev:prod` prije E2E**); pravi lijek je
-  provjera u `global-setup` da posluženi build nosi `VITE_SUPABASE_URL` iz
-  `.env.testing`, inače stani s greškom.
+  ✅ **ZATVORENO S134** (`assertServedBuildIsTest`): `global-setup` dohvati modul koji
+  nosi Supabase klijent (`/src/lib/supabaseClient.ts`) i pročita **koji projekt Vite
+  ondje inlinea** — dakle mjeri što će preglednik **stvarno** dobiti, ne što config
+  tvrdi. Server koji **ne odgovara nije greška** (Playwright tada diže svoj); staje
+  samo na odgovor s krivim projektom.
+  ⚠ Provjereno nad živim serverom: 10.09. je na :5173 stajao `vite --mode prod` i
+  guard je bacio. **Disciplina više nije jedina brana, ali `dev:prod` i dalje ugasi**
+  — inače E2E jednostavno neće krenuti.
 - **⚠ `fullyParallel: false` NE čini run sekvencijalnim** (S120). Drži redoslijed samo
   *unutar* jednog spec filea; **fileovi i dalje idu u zasebne workere**, a Playwright uzima
   otprilike pola jezgri. Šest specova nad **istom seed Areom i istom bazom** dalo je
@@ -1272,6 +1333,19 @@ Preview all at `/app/debug` → Theme Preview tab.
 ## Key files
 
 ```
+data-prep_tools/Tools/backup_db.py Snimka CIJELE baze (12 tablica + auth popis +
+                                   Storage) preko PostgREST-a, service kljucem.
+                                   /!\ STAJE ako kljuc nije service -- anon bi
+                                   dao PRAZAN backup koji izgleda uredan.
+                                   `--verify` provjeri staru snimku po sha256.
+                                   /!\ NE pokriva shemu; restore jos ne postoji.
+data-prep_tools/Tools/dump_schema.py
+                                   `pg_dump --schema-only` -> `sql/SCHEMA_*.sql`.
+                                   Ide preko Session poolera (IPv6 problem).
+                                   `--diff` = slaze li se baza s gitom.
+data-prep_tools/Tools/rls_probe.py Sto RLS STVARNO dopusta, po ulozi. Svaka proba
+                                   u vlastitoj transakciji s ROLLBACK-om.
+                                   Mjera PRIJE i POSLIJE svake RLS migracije.
 src/lib/parentEventLoader.ts       Shared: buildParentChainIds(), loadParentAttrs(),
                                    findParentEventByChain(), upsertParentEvent()
 src/lib/categoryCache.ts           Module-level keš categories + area imena (TTL 5 min)

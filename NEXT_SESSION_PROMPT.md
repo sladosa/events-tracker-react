@@ -1,8 +1,8 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `7009fa2` (`S133: broj eventa na Structure tabu`).
-`main` je u S133 podignut na isto stanje. Ako `git log` pokazuje novije, čitaj
-ovo kao povijest — CLAUDE.md je autoritet.
+**Pisano protiv commita:** `336a2e7` (`S134: UI prati RLS`).
+`main` je **iza** — na njemu je još S133. Ako `git log` pokazuje novije, čitaj
+ovo kao povijest; CLAUDE.md je autoritet.
 
 ---
 
@@ -12,53 +12,61 @@ ovo kao povijest — CLAUDE.md je autoritet.
 
 | | stanje |
 | --- | --- |
-| Jučerašnji popravak auto-komentara — **provjeren i pao** | ✅ dobro da smo provjerili |
-| Pravi popravak (keš se briše bez obzira gdje si u appu) | ✅ potvrđen na PROD-u, u oba smjera |
-| `no events yet` na kategoriji s 5.173 eventa | ✅ popravljeno |
-| Deploy na PROD (S132 + S133) | ✅ |
-| Zaštita podataka / backup | ⬜ **tema za sljedeći put** |
+| Backup baze — **prva kopija PROD-a uopće** | ✅ radi, 53 s |
+| Shema obje baze u gitu (`pg_dump`) | ✅ |
+| Vlasništvo strukture poravnato na PROD-u (`sql/045`) | ✅ pušteno |
+| Kod: `user_id` se više ne prepisuje | ✅ commitan, **nije deployan** |
+| Čišćenje RLS-a (`046`–`050`) | ✅ **samo na TEST-u** |
+| Otvorena rupa u pravima — nađena i zatvorena | ✅ na TEST-u |
+| UI: Save više ne može tiho ne učiniti ništa | ✅ commitan, **nije deployan** |
 
 ## Ono što je zapravo bila poanta dana
 
-Jučerašnji popravak **nije radio**. Izgledao je ispravno, imao je test koji
-prolazi, i bio bi otišao na PROD kao gotov posao. Pao je čim smo ga stvarno
-isprobali u aplikaciji.
+Krenuli smo od backupa i našli nešto veće: **bilo koji prijavljen korisnik mogao
+je pisati u tuđu Areu.** Ne grantee — bilo tko s računom.
 
-Isto se ponovilo s testom koji sam napisao danas: prošao je, pa sam namjerno
-vratio pokvareni kod — i **opet je prošao**. Dakle nije čuvao ništa. To se vidi
-samo tako da se pokvari kod i provjeri pada li test.
+Izgledalo je zatvoreno devet mjeseci, i to iz razloga koji je vrijedan pamćenja:
+aplikacija šalje zahtjev koji uz upis traži i da mu se redak vrati natrag. To
+vraćanje politika je odbijala, pa je odgovor bio „zabranjeno" — a sam upis je
+prolazio. Promijeniš jednu postavku u zahtjevu i redak uđe.
 
-Dvaput u jednom danu, ista pouka: **ono što izgleda gotovo nije gotovo dok se ne
-pokuša srušiti.**
+Uz to su se **tri zapisane tvrdnje** o pravima pokazale netočnima. Sve tri su
+nastale čitanjem koda umjesto mjerenja baze. Zato sada postoje dva alata koja
+mjere: jedan vadi stvarnu shemu u git, drugi ispisuje **što tko stvarno smije**.
 
-## Što tebe čeka
+## Što tebe čeka — redoslijedom
 
-1. **Ctrl+Shift+R** na PROD-u nakon što Netlify završi. Nije higijena nego dio
-   postupka — stari keširani bundle je već jednom tiho osakatio uvoz.
-2. **Jednom zatvori karticu** aplikacije, ti i Koka. Posljednji put: nakon toga
-   pravilo „zatvori karticu nakon svake izmjene Structurea" **više ne vrijedi**.
-3. **Provjeri Structure tab** — `Financije_all > Transakcija` mora pisati
-   `5173 events`, ne `no events yet` (T-S133-7).
-4. **Provjeri bravu** (T-S133-8): Edit Mode → ⋮ na toj kategoriji → `+ Add Leaf`
-   mora biti **blokiran**. To je razlog zbog kojeg se popravljalo.
-5. ⭐ **Pogledaj u Supabase dashboardu ima li PROD projekt automatske backupe.**
-   To je prvo pitanje sljedeće sesije, i na njega samo ti možeš odgovoriti.
-6. ⭐ **Pusti ovaj upit u Supabase SQL editoru** (samo čita) i pošalji rezultat —
-   bez njega ne znamo što PROD zapravo dopušta:
-
-   ```sql
-   select polname, polcmd,
-          pg_get_expr(polqual, polrelid)      as using_expr,
-          pg_get_expr(polwithcheck, polrelid) as check_expr
-   from pg_policy
-   where polrelid in ('public.categories'::regclass,
-                      'public.areas'::regclass,
-                      'public.attribute_definitions'::regclass);
+1. ⭐⭐ **Pusti migracije na PROD**, sa sondom prije i poslije. Točan redoslijed
+   je u `docs/sessions/tests/S134_tests.md` (T-S134-11). Ukratko:
    ```
+   Tools\run.bat Tools\backup_db.py --env prod          ← svježa snimka
+   Tools\run.bat Tools\rls_probe.py --env prod          ← spremi izlaz
+      046 → 047 → 048 → 049 → 050   (Supabase SQL editor)
+   Tools\run.bat Tools\rls_probe.py --env prod          ← usporedi
+   Tools\run.bat Tools\dump_schema.py --env prod        ← shema natrag u git
+   ```
+2. ⭐⭐ **Provjeri da Koka i dalje može raditi** (T-S134-12). To je najvažniji
+   test cijele sesije. Ako bilo što tiho ne radi — politike se vraćaju iz
+   `sql/SCHEMA_PROD.sql`.
+3. **Deploy koda** kad kažeš. Bez njega `sql/045` stoji na milost prvog
+   spremanja Structurea — stari bundle i dalje prepisuje vlasništvo.
+4. **Ne diraj Structure na PROD-u** dok deploy ne prođe (isti razlog).
+5. **Ugasi `npm run dev:prod`** prije E2E. Sada te guard zaustavi umjesto da
+   testovi odu na produkciju, ali E2E onda neće ni krenuti.
 
 ## Što treba od Koke
 
-Ništa. Samo ono jednokratno zatvaranje kartice.
+Ništa. Ako primijeti da nešto u Structure tabu ne radi nakon migracija — to je
+odmah važno i vraća se.
+
+## Jedno pitanje koje je ostalo otvoreno
+
+Rekao si da bi za financijske podatke možda trebalo **posebno odobrenje za
+brisanje**. Predložio sam da to ne bude zabrana nego: (1) backup — sada postoji,
+(2) **potvrda s iznosom kod grupnog brisanja** (*„obrisat ćeš 47 redaka, ukupno
+−3.204,18 €"*), (3) trag brisanja ako zatreba. Prava linija nije „financijski vs
+ostali" nego **„jedan potez vs pedeset"**. Zapisano u `docs/RLS_INVENTORY.md`;
+recimo kad želiš (2).
 
 ---
 
@@ -66,91 +74,53 @@ Ništa. Samo ono jednokratno zatvaranje kartice.
 
 ## Stanje grana
 
-- `main` = `test-branch` = `7009fa2` (+ merge commit). Netlify deployao S132+S133.
-- Nema SQL migracija u tom rasponu. Kod aplikacije dirnut u **dva** hooka.
+- `test-branch` = `336a2e7`, pet commitova iznad `main`.
+- `main` = S133. **Netlify nije deployao ništa iz S134.**
+- Migracije: **PROD ima samo `045`**. TEST ima `045`–`050`.
+  ⇒ **TEST i PROD sada imaju različite RLS politike** — to je privremeno i
+  namjerno, ali svaki zaključak o pravima mora reći na koju bazu se odnosi.
 
-## Novo u kodu
+## Novi alati (`data-prep_tools/Tools/`)
 
-- **`clearChainCache()` je MODULE-LEVEL** (`useCategoryChain.ts`), na
-  `areas-changed` i `structure-deleted`. Listener u hooku ostaje, ali samo
-  osvježava React state dok je Add/Edit otvoren — **on nije brana**.
-  ⚠ Ovisi o tome da rute nisu lazy-loadane (`App.tsx:12-13`). Uvede li se code
-  splitting, `clearChainCache` mora u modul koji se učitava bezuvjetno.
-- **`useStructureData` više ne broji u pregledniku** — `count: 'exact', head: true`
-  po kategoriji, usporedno, `withRetry` pa throw.
+| alat | čemu |
+| --- | --- |
+| `backup_db.py` | snimka cijele baze; `--verify` provjeri staru po sha256 |
+| `dump_schema.py` | `pg_dump --schema-only` → `sql/SCHEMA_*.sql`; `--diff` |
+| `rls_probe.py` | što RLS **stvarno** dopušta po ulozi, sve u `ROLLBACK`-u |
+
+`SUPABASE_DB_URL` je u `.env.prod.local` i `.env.local` (Session pooler, port
+5432). Veza ne može ići direktno — samo IPv6.
 
 ## Otvoreno
 
-- **T-S133-4** Structure **import** (ne panel) probije keš — neprovjereno.
-- **T-S133-5** ⭐ **rename/premještanje pa Add u istoj kartici.** Keš ne hrani samo
-  `comment_template`: `categoryChain.map(c => c.id)` gradi **P2 parent evente**
-  (`AddActivityPage.tsx:1178`). Stara snimka upisala bi roditelje po **staroj**
-  hijerarhiji. Nije provjereno ni prije ni poslije popravka.
-- **T-S133-7/-8/-9** uživo na PROD-u nakon deploya.
-- **T-S133-9** brzina Structure taba **kao grantee** — 0,46 s je izmjereno na
-  TEST-u kao vlasnik; PROD grantee ide kroz skupu RLS granu (join na `data_shares`).
-- **T-S133-10** E2E s `reuseExistingServer: true` može preuzeti `dev:prod` na 5173.
-  Prijedlog: provjera u `global-setup` da posluženi build nosi `VITE_SUPABASE_URL`
-  iz `.env.testing`, inače stani s greškom. **Nije izvedeno.**
-- **T-S132-7** `--restore` i dalje netestiran. Backup od 11 komentara postoji.
-- ⭐⭐ **ODLUČENO (S133): vlasnik Aree je vlasnik strukture cijelog lanca.**
-  Write-grantee **ne smije** uređivati strukturu. Treba li Saša mijenjati strukturu
-  `Financije_all`, radi to **pod Kokinim računom**.
-  Izmjereno da danas **može** — tri spremanja, svako provjereno u bazi (v. CLAUDE.md).
-  Posao ima **tri dijela i nijedan nije napravljen**:
-  1. **RLS** — prvi korak je **pročitati stvarnu politiku** (`pg_policy`, upit je u
-     DIO 1 točka 6). Tek onda migracija. Politika nije u repou.
-  2. **UI, tri puta do istog pisanja:** `CategoryDetailPanel` (Edit gumb — nema
-     **nijednu** provjeru vlasništva, prati samo `isEditMode`), Edit Mode u
-     `StructureTableView`, i **`StructureImportModal` — koji nema nijednu provjeru
-     prava**, dakle Structure uvoz je puna zamjena za panel.
-     ⚠ Skrivanje gumba nije brana; bez RLS-a ostaje otvoreno kroz uvoz i REST.
-  3. **`StructureNodeEditPanel:1175` prestaje prepisivati `user_id`** — šalje
-     `user_id: user.id` na svakom spremanju iako komentar kaže da je to samo za
-     retke **bez** vlasnika. Danas je vlasništvo dvaput promijenilo stranu.
-     Jednoredni popravak, točan neovisno o odluci o pravima.
-  ⚠ Posljedica odluke koju treba znati: **i Structure uvoz** za tu Areu ide pod
-  Kokinim računom.
+- **T-S134-11/-12/-13/-14** — PROD migracije i provjere. Ništa od toga nije
+  pušteno.
+- **T-S134-16** — cijeli E2E nakon RLS promjena. **Nije pokrenut** jer je na
+  :5173 stajao `dev:prod`; guard bi ga zaustavio. TEST baza već ima nove
+  politike, pa E2E sada mjeri stvarno stanje.
+  ⚠ Spec koji piše strukturu pod nevlasnikom sada **legitimno** pada — treba
+  razlikovati to od regresije.
+- **`event_attributes` INSERT ostaje otvoren.** Namjerno nije dirano u `050`:
+  S123 traži da se atributi pišu pod **autorom eventa**, pa uvjet ne može biti
+  isti kao za `events`, a pogrešno sužavanje ostavlja redak **bez ijednog
+  atributa** uz poruku o uspjehu (Edit tok briše pa ponovno upisuje sve). Traži
+  pokus nad Edit tokom, ne samo nad politikom.
+- **`events` SELECT/UPDATE/DELETE nisu čišćeni** — ondje živi `043`/S123/S125
+  logika (vlasnik smije ispraviti tuđi redak ali ne obrisati; `guard_event_author`).
+  Zaseban posao.
+- **Structure uvoz u tuđu Areu stvara duplikat Aree**, tiho. Popravak nije
+  napravljen jer mijenja ponašanje uvoza, a Excel roundtrip je Koki glavni put.
+- **RESTORE NE POSTOJI.** Backup je kopija, ne provjeren povratak. Bio je
+  dogovoren za „idući put" — to je sada.
+  ⚠ Prije pisanja: restore u istu bazu traži `--wipe` granu (najopasnija
+  operacija u sustavu), a PROD→TEST klon traži mapiranje `user_id`-eva ili dump
+  `auth.users`. Dump nosi `project_ref` baš zato da restore odbije upisati u
+  krivi projekt.
+- **`user_owns_area` je dobio `SET search_path`** u `046`. Ostale `app_*`
+  funkcije to već imaju; vrijedi provjeriti ima li još SECURITY DEFINER funkcija
+  bez njega (`SCHEMA_PROD.sql` ih sada sve pokazuje).
 
-- **~~T-S133-11~~** — ✅ IZMJERENO 10.09. Stara formulacija (dolje) polazila je od
-  krive pretpostavke da je problem jedan neusklađen `categories.user_id`.
-  **Vlasništvo nad kategorijom `Financije_all > Transakcija`.**
-  Izmjereno 10.09. na PROD-u: Saša je **write grantee** na toj Arei, a ipak je
-  spremio `comment_template` na leaf — jer politika `categories_update` glasi
-  `user_id = auth.uid()` i gleda **vlasnika retka kategorije**, ne Aree. Taj redak
-  nosi `categories.user_id = 768a6056` (Saša), dok `areas.user_id = eeb78414`
-  (Koka). Jedina takva neusklađenost na PROD-u.
-  ⚠ **Neizmjereno i važnije:** po istoj politici **Koka vjerojatno ne može pisati
-  po vlastitoj kategoriji.** Prvo pokus, tek onda popravak. Ako se potvrdi, lijek
-  je `UPDATE categories SET user_id = <Koka> WHERE id = ...` — pisanje po PROD-u,
-  dakle preko Saše i s backupom (v. tema ispod, sad je konkretnija).
-  ⚠ Usput izmjereno: `comment_template` **bez placeholdera** upisuje se doslovno
-  (guard pali samo kad template ima `{...}`), pa je `Test` 2,5 minute bio živo
-  pravilo nad Kokinom Areom. Nula pogođenih redaka — samo zato što u tom prozoru
-  nitko nije unosio.
+## Nepromijenjeno od S133
 
-## ⭐ Prva tema sljedeće sesije: zaštita podataka
-
-Sašin prijedlog je bio **Excel export All Time po Areama kao backup**. Nije
-dovoljno, iz dva razloga:
-
-1. **Ne pokriva sve** — izvan njega su `balance_anchors` (sidra namjerno nikad ne
-   putuju), `activity_presets`, `data_shares`, `event_attachments` i `dashboard`
-   config; `export_profiles` ne preživi rename.
-2. **Uvoz nije restore** — non-destruktivan je i radi po P3, pa ne može obrisati
-   redak koji ne bi smio postojati; „Import as mine" forsira **nove ID-eve**
-   (S123), dakle vraćanje bi proizvelo duplikate s drugim autorstvom.
-
-Predloženo (nije napravljeno): **dump svih tablica u JSON preko REST-a** sa
-service ključem, nad `_db.py` koji već postoji. Čisto čitanje, ~20 redaka, ID-evi
-i autorstvo očuvani. Za 12.199 eventa i ~69k atributa to je nekoliko desetaka MB.
-
-⚠ Prije toga treba znati **ima li PROD projekt uopće automatske backupe** — free
-tier ih povijesno nema, a instanca se od S105 zna gušiti pod opterećenjem. Ako ih
-nema, jedina kopija PROD podataka danas je nijedna, i to je veći problem od svega
-što smo danas popravljali.
-
-## Nepromijenjeno od S132
-
-Financije pipeline, sidra, delta sheet, tranše — ništa od toga danas nije dirano.
-Za to stanje vrijedi CLAUDE.md i `DONE_HISTORY` S129–S132.
+Financije pipeline, sidra, delta sheet, tranše, Overview — ništa od toga danas
+nije dirano. Vrijedi CLAUDE.md i `DONE_HISTORY` S129–S133.

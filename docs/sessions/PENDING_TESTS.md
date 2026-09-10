@@ -1,9 +1,52 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S133 (2026-09-10) — S132 popravak kesa NIJE radio u stvarnom toku (listener u hooku, a hook je odmontiran kad signal dodje); popravljen module-level. Uz to zatvoren BUG-S132-EVENTCOUNT (brojanje eventa u pregledniku, PostgREST rez na 1000).
+**Zadnji update:** S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
 
 ---
+
+## S134 — backup, shema u gitu, ciscenje RLS-a (2026-09-10)
+
+Detalji: [S134_tests.md](tests/S134_tests.md)
+
+⚠ **Migracije `046`–`050` puštene su SAMO na TEST-u.** Na PROD-u je pušten samo
+`sql/045`. Kod je na `test-branch` i **nije deployan**.
+
+### A. Backup i shema
+
+| #             | test                                                                    | status |
+| ------------- | ----------------------------------------------------------------------- | ------ |
+| **T-S134-1**  | `backup_db.py --env prod` — puna snimka                                 | ✅ 107.772 retka, 6,79 MB, 53 s + 46 fotografija |
+| **T-S134-2**  | `--verify` hvata pokvarenu snimku (protuprovjera)                       | ✅ redak manje i promijenjen iznos → oba uhvaćena |
+| **T-S134-3**  | Guard staje kad ključ nije service                                      | ✅ 3 krive varijante staju, 2 ispravne prolaze |
+| **T-S134-4**  | Backup završi na vanjskom disku (`backup_to_external.bat`)              | ⬜ |
+| **T-S134-5**  | `dump_schema.py` obje baze                                              | ✅ PROD 107 politika / 8 triggera, TEST 50 / 2 |
+| **T-S134-6**  | `--diff` nakon PROD migracija pokaže samo očekivano                     | ⬜ |
+
+### B. Vlasništvo strukture
+
+| #             | test                                                                    | status |
+| ------------- | ----------------------------------------------------------------------- | ------ |
+| **T-S134-7**  | `sql/045` na PROD-u — vlasništvo poravnato, slugovi netaknuti           | ✅ izmjereno |
+| **T-S134-8**  | ⭐ Spremanje strukture više ne prepisuje `user_id`                       | ⬜ traži deploy |
+
+### C. RLS
+
+| #             | test                                                                    | status |
+| ------------- | ----------------------------------------------------------------------- | ------ |
+| **T-S134-9**  | Sonda prije/poslije na TEST-u                                           | ✅ 45 proba, promijenjene točno 4 |
+| **T-S134-10** | Rupa je bila stvarna (psql + REST 201 + sonda)                          | ✅ dokazano, redak počišćen |
+| **T-S134-11** | ⭐⭐ Migracije `046`–`050` na PROD-u, sa sondom s obje strane            | ⬜ **Sašin potez** |
+| **T-S134-12** | ⭐⭐ **Koka i dalje može raditi** nakon migracija                        | ⬜ **najvažniji** |
+| **T-S134-13** | Saša kao grantee: Edit siv + poruka umjesto tišine                      | ⬜ |
+| **T-S134-14** | Unos podataka (Add Activity) granteeu i dalje radi                      | ⬜ |
+
+### D. E2E
+
+| #             | test                                                                    | status |
+| ------------- | ----------------------------------------------------------------------- | ------ |
+| **T-S134-15** | Guard staje kad na :5173 stoji `dev:prod`                               | ⬜ logika provjerena, pravi run ne |
+| **T-S134-16** | ⭐ Cijeli E2E prolazi nakon RLS migracija                                | ⬜ |
 
 ## S133 — module-level invalidacija kesa + brojanje eventa (2026-09-10)
 

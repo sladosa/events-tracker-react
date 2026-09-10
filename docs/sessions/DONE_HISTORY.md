@@ -4440,3 +4440,143 @@ PowerShellu. Okolinu treba provjeriti u **korisnikovoj** ljusci, ne u svojoj.
 - **9 „attributes updated" na svakom uvozu** — potvrđen BUG-S117-RULESHAPE.
   Kod ostavlja `console.log('[Import dirty]', …)` za svaki, pa se to više ne mora
   nagađati.
+
+---
+
+# S134 — backup baze, shema u gitu, čišćenje RLS-a (2026-09-10)
+
+Sesija je počela pitanjem o backupu, a završila zatvaranjem otvorene rupe u
+pravima za koju nitko nije znao da postoji.
+
+## 1. Backup — od nula kopija do dnevne snimke
+
+Supabase free plan nema automatske backupe (Sašina slika iz dashboarda). Do ovog
+dana **jedina kopija PROD podataka bila je — nijedna.**
+
+`data-prep_tools/Tools/backup_db.py`: 12 tablica + popis auth korisnika (bez
+lozinki) + fileovi iz Storagea. Izmjereno na PROD-u: **107.772 retka, 6,79 MB
+gzip, 53 s**, plus 46 fotografija (5,59 MB). Ide u `data-prep_data/_backup/`,
+koji `backup_to_external.bat` **već** nosi na `D:` — dakle nula novih navika.
+
+Četiri zaštite, svaka provjerena **u oba smjera**:
+1. **Ključ mora biti service.** Nije teorija: prvo mjerenje TEST-a dalo je
+   `events: 0` jer `_db.load_env('test')` pada na anon ključ (TEST service ključ
+   živi u `.env.local`, ne u `.env.testing`). Backup napravljen tako bio bi
+   **prazan i izgledao uredan** — najgori mogući kvar ovog alata.
+2. Broj redaka se provjerava prije i poslije (PostgREST reže na 1000 bez greške).
+3. Paginacija ide kroz `_db.rest` — pravilo o `order=id` ostaje na jednom mjestu.
+4. Zapisani file se pročita natrag; `--verify` provjeri i staru snimku po sha256.
+
+**Backup se isplatio isti sat.** Iz snimke je, bez ijednog novog upita,
+pročitano vlasništvo cijelog PROD-a i nađeno da je `Financije_all` jedini
+neusklađen: kategorija `Transakcija` (5.173 eventa, od kojih 5.161 Kokinih) i
+**svih 15 atributa** vodili su se kao Sašini, jer je on zadnji spremao strukturu.
+
+## 2. `user_id` se prestaje prepisivati (`7be1e02` + `sql/045`)
+
+`StructureNodeEditPanel` je slao `user_id: <onaj tko sprema>` na **svakom**
+spremanju — area, kategorija i svaki atribut (atributi se pri spremanju panela
+upisuju ponovo i kad se na njima ništa nije promijenilo). Komentar iznad je
+tvrdio da je to samo za retke bez vlasnika; uvjeta nije bilo.
+
+`sql/045` poravnao je zatečeno, općenitim uvjetom umjesto popisa ID-eva.
+Izmjereno nakon puštanja: 15/15 atributa Kokini, **slugovi netaknuti** — usput
+potvrda da `042` trigger doista ne dira UPDATE, što se dotad pretpostavljalo.
+
+⚠ **Redoslijed je bio obrnut od planiranog.** Da je prvo išla RLS zabrana, a
+`categories.user_id` ostao Sašin, po politici oblika `user_id = auth.uid()` ni
+Koka ne bi mogla uređivati vlastitu strukturu — dakle **nitko**, i to bez ijedne
+poruke.
+
+⚠ Supabase SQL editor prikazuje rezultat **prvog** SELECT-a, pa je izgledalo kao
+da UPDATE nije prošao. Razriješeno mjerenjem baze, ne čitanjem ekrana.
+
+## 3. Shema obje baze u gitu (`f374851`)
+
+`pg_dump` i `psql` 17 već su bili na stroju. Prepreka je bila veza:
+`db.<ref>.supabase.co` ima **samo AAAA** zapis, a stroj **nema IPv6 izlaz** —
+dakle direktna veza je isključena. Pooler host se ne da pogoditi (PROD
+`aws-1-eu-west-1`, TEST `aws-0-eu-west-1`); nađeni su time što pooler na krivu
+regiju kaže *„tenant not found"*, a na točnu traži lozinku.
+
+`sql/SCHEMA_PROD.sql` i `sql/SCHEMA_TEST.sql` + `dump_schema.py` (`--diff`
+uspoređuje bazu s gitom). **Odsad na pitanje „što politika kaže" odgovara
+`git diff`, ne pamćenje.** Čim su oba filea postojala, vidjelo se:
+
+```
+              PROD   TEST
+politika       107     50
+triggera         8      2
+```
+
+Triggeri kojih na TEST-u **nema**: `maintain_paths`, `prevent_category_deletion`,
+sva tri slug triggera, `data_shares_updated_at`.
+
+## 4. Otvorena rupa — izmjerena, ne pretpostavljena
+
+**Bilo koji prijavljen korisnik mogao je ubaciti kategoriju, atribut ili event u
+bilo čiju Areu.** Uvjet je glasio `user_id = auth.uid()` — provjeravao je *tko
+potpisuje redak*, a ne *čija je Area* u koju ga stavlja.
+
+Tri nezavisna dokaza: `INSERT 0 1` u psql-u pod tuđim korisnikom; **`HTTP 201`**
+preko REST-a (redak počišćen); `rls_probe` → `stranac → INSERT → DA`.
+
+⚠ **Zašto je izgledalo zatvoreno:** supabase-js šalje
+`Prefer: return=representation`, pa Postgres traži i SELECT pravo na novi redak
+— i *to* politika odbija (403). Obrana je bila **slučajna posljedica jednog
+headera**; s `return=minimal` prolazi. Isti razred kao „nema gumb ≠ baza brani",
+samo jedan sloj niže: ovdje je i baza izgledala kao da brani.
+
+Signup je na PROD-u otvoren (uz potvrdu emaila), pa nije bilo samo teorijski.
+
+## 5. Čišćenje RLS-a (`a56cbdc`)
+
+PROD je imao 3–5 politika po operaciji, iz tri generacije. **Sve permissive ⇒
+OR-aju se ⇒ najšira uvijek pobjeđuje.** Zato se zabrana postiže **brisanjem**,
+nikad dodavanjem — migracija koja „doda strožu politiku" ne bi promijenila
+ništa, a izgledala bi kao gotov posao.
+
+`046` helperi · `047` areas · `048` categories · `049` attribute_definitions ·
+`050` events INSERT. Svaka briše **sve** politike tablice (dinamički, jer PROD i
+TEST nemaju ista imena) pa stvara po jednu za svaku operaciju.
+
+⚠ Kriterij je **vlasništvo Aree**, ne `categories.user_id` — taj stupac je
+upravo bio dokazano nestabilan.
+⚠ `050` dira **isključivo INSERT** na `events`; SELECT/UPDATE/DELETE nose logiku
+iz `043`/S123/S125 i čiste se zasebno.
+
+**Dokazano na TEST-u:** 45 proba, promijenjene **točno 4** — sve zatvaranje rupe.
+Stanje poslije poklapa se s `docs/RLS_INVENTORY.md` red po red.
+**Na PROD-u još nije pušteno.**
+
+## 6. UI prati RLS (`336a2e7`)
+
+Bez toga bi grantee kliknuo Save, dobio „Saved!" i zatvorio panel — a u bazi se
+ne bi promijenilo ništa, jer **RLS-blokiran UPDATE vraća 200 i prazan rezultat**.
+`assertWrote()` mjeri broj promijenjenih redaka; `canEdit` gasi Edit gumb u View
+panelu (⋮ meni je tuđe Aree već razlikovao).
+
+⚠ **Ispravak zapisanog:** CLAUDE.md je tvrdio da `StructureImportModal` „nema
+nijednu provjeru prava". Izmjereno da nije točno — uvoz čita `areas` s
+`.eq('user_id', userId)`, pa u tuđu Areu ne piše nego **tiho stvara duplikat**
+Aree istog imena. Popravak nije napravljen (mijenja ponašanje uvoza, a Excel
+roundtrip je Koki glavni put).
+
+## 7. E2E više ne može potajno gađati PROD
+
+Izmjereno usput: na `:5173` je stajao `vite --mode prod` i servirao PROD projekt.
+Uz `reuseExistingServer: true` Playwright bi ga **preuzeo** i vrtio testove
+protiv produkcije, dok bi `global-setup` svojim klijentom čistio TEST. Guard
+(`assertServedBuildIsTest`) čita koji projekt Vite inlinea u posluženi modul —
+dakle mjeri što će preglednik **stvarno** dobiti. Zatvara T-S133-10.
+
+## Tri tvrdnje koje su se pokazale netočnima
+
+1. *„RLS na `areas` dopušta UPDATE samo vlasniku"* — prepisan komentar iz
+   migracije; stvarna politika ima granu `permission = 'write'`. **Devet sesija.**
+2. *„`StructureImportModal` nema nijednu provjeru prava"* — ima, drugu nego što
+   se mislilo.
+3. *„TEST_setup.sql opisuje TEST"* — ne opisuje; ni TEST politike nisu bile ono
+   što u repou piše.
+
+Sve tri su bile **čitanje koda umjesto mjerenja baze**. Treći put u tri sesije.
