@@ -36,10 +36,10 @@ Detalji: [S134_tests.md](tests/S134_tests.md)
 | ------------- | ----------------------------------------------------------------------- | ------ |
 | **T-S134-9**  | Sonda prije/poslije na TEST-u                                           | ✅ 45 proba, promijenjene točno 4 |
 | **T-S134-10** | Rupa je bila stvarna (psql + REST 201 + sonda)                          | ✅ dokazano, redak počišćen |
-| **T-S134-11** | ⭐⭐ Migracije `046`–`050` na PROD-u, sa sondom s obje strane            | ⬜ **Sašin potez** |
-| **T-S134-12** | ⭐⭐ **Koka i dalje može raditi** nakon migracija                        | ⬜ **najvažniji** |
-| **T-S134-13** | Saša kao grantee: Edit siv + poruka umjesto tišine                      | ⬜ |
-| **T-S134-14** | Unos podataka (Add Activity) granteeu i dalje radi                      | ⬜ |
+| **T-S134-11** | ⭐⭐ Migracije `046`–`051` na PROD-u, sa sondom s obje strane            | ✅ 45 proba, 8 promjena, sve zatvaranja; 107→76 politika |
+| **T-S134-12** | ⭐⭐ **Koka i dalje može raditi** nakon migracija                        | ✅ Edit kategorije + Edit atributa + Save, promjena vidljiva |
+| **T-S134-13** | Saša kao grantee: Edit siv + poruka umjesto tišine                      | ✅ Edit i Delete vidljivi ali neaktivni |
+| **T-S134-14** | Unos podataka (Add Activity) granteeu i dalje radi                      | ✅ dodao event i mogao ga obrisati |
 
 ### D. E2E
 
@@ -47,6 +47,14 @@ Detalji: [S134_tests.md](tests/S134_tests.md)
 | ------------- | ----------------------------------------------------------------------- | ------ |
 | **T-S134-15** | Guard staje kad na :5173 stoji `dev:prod`                               | ⬜ logika provjerena, pravi run ne |
 | **T-S134-16** | ⭐ Cijeli E2E prolazi nakon RLS migracija                                | ⬜ |
+
+### E. Modali — selekcija teksta
+
+| #             | test                                                                    | status |
+| ------------- | ----------------------------------------------------------------------- | ------ |
+| **T-S134-19** | `backdropClose.test.mjs` — 6 slučajeva, protuprovjera pada 3/6           | ✅ |
+| **T-S134-20** | ⭐ Uživo: u Edit panelu povuci selekciju iz polja **izvan** panela — modal ostaje otvoren, izmjene sačuvane | ⬜ traži deploy |
+| **T-S134-21** | Klik na zatamnjenu pozadinu i dalje zatvara modal                        | ⬜ traži deploy |
 
 ## S133 — module-level invalidacija kesa + brojanje eventa (2026-09-10)
 

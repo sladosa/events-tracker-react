@@ -1105,6 +1105,25 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   ⚠ Suprotno tome, **`Settings updated` se renderira SAMO kad je > 0**
   (`StructureImportModal.tsx:266`) — njegova **odsutnost je podatak**: settings se nisu
   promijenili. To je jedini pouzdan signal je li uvoz dirnuo `comment_template`.
+- **⚠ `e.target === e.currentTarget` NA `onClick` NIJE „kliknuto je na pozadinu"** (S134).
+  `click` se okida na najbližem **zajedničkom pretku** elemenata na kojima su se
+  dogodili `mousedown` i `mouseup`. Povuče li korisnik selekciju iz polja unutar
+  modala i otpusti miš izvan njega, taj predak je **upravo pozadina** — pa se
+  modal zatvori, s nespremljenim izmjenama. Prijavljeno kao *„kad brzo nešto
+  selektiram, izleti mi iz Edit ekrana bez izmjena"*; zvuči kao nespretnost, a
+  **gubitak je rada**. Obrazac je bio prepisan u **14** modala.
+  Lijek je `useBackdropClose` — pamti gdje je pritisak počeo **i** gdje je
+  završio; zatvara samo ako su oba bila na pozadini.
+  ⚠ `mouseup` se prati **zasebno** iako se čini suvišnim uz `click`: iz
+  `click.target` se ne vidi je li miš otpušten na pozadini ili u panelu, jer je
+  on već zajednički predak. Bez toga pritisak na pozadini s otpuštanjem u panelu
+  i dalje zatvara — **uhvaćeno testom, ne razmišljanjem**.
+  ⚠ Lijek **nije** `stopPropagation` na sadržaju — to lomi klikove koji
+  legitimno moraju doći do pozadine.
+  ⚠ `CategoryChainRow` zove hook **na vrhu komponente**, ne u JSX-u: ondje je
+  modal renderiran uvjetno, pa bi to bio **uvjetan poziv hooka** ⇒ *„Rendered
+  fewer hooks than expected"* i srušen render, i to tek pri prvom otvaranju.
+  Čuva `src/hooks/__tests__/backdropClose.test.mjs` (protuprovjera pada 3/6).
 - **⚠ UVJETNI OMOTAČ OKO POLJA GUBI FOKUS USRED TIPKANJA** (S131). `renderAttribute` je
   birao **između dva različita elementa** — goli `AttributeInput` ili `<div>` oko njega
   (`revealed ? <div>{input}</div> : input`). React na promjeni **tipa** elementa na istom
