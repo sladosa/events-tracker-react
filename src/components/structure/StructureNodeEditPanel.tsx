@@ -1161,10 +1161,21 @@ export function StructureNodeEditPanel({
       if (!user) throw new Error('Not authenticated');
 
       // 1. Update area or category
-      // NOTE: user_id included in payload (not in WHERE) so rows imported from
-      // Streamlit with null user_id get ownership claimed on first save.
-      // RLS allows update when auth.uid() matches the row's user_id OR when
-      // the row has no user_id yet (template/import data).
+      //
+      // ⚠ user_id se salje SAMO kad redak jos nema vlasnika. Prijasnji komentar
+      // ovdje je tvrdio upravo to ("rows imported from Streamlit with null
+      // user_id get ownership claimed on first save"), ali uvjeta nije bilo —
+      // pa je svako spremanje prebacivalo vlasnistvo na onoga tko je kliknuo
+      // Save. Izmjereno na PROD-u 10.09.2026.: `Financije_all > Transakcija`
+      // (5.173 eventa, od kojih 5.161 Kokinih) i svih 15 njezinih atributa
+      // vodili su se kao Sasini, jer je Sasa zadnji spremao strukturu.
+      // Posljedica sira od jednog retka: `categories.user_id` prestaje govoriti
+      // tko je nesto napravio i pocinje govoriti tko je zadnji spremio — a to
+      // je stupac na koji se oslanja RLS.
+      //
+      // Isti komentar je tvrdio i sto RLS dopusta. Ne citaj prava iz komentara
+      // (S133): stvarna politika PROD-a nije u repou i utvrdjuje se pokusom.
+      const ownedBy = (uid: string | null | undefined) => (uid ? {} : { user_id: user.id });
       if (node.nodeType === 'area') {
         const { error } = await supabase
           .from('areas')
@@ -1172,7 +1183,7 @@ export function StructureNodeEditPanel({
             name: name.trim(),
             description: description.trim() || null,
             sort_order: sortOrder,
-            user_id: user.id,
+            ...ownedBy(node.area.user_id),
             updated_at: new Date().toISOString(),
             settings: {
               ...(node.area.settings ?? {}),
@@ -1187,7 +1198,7 @@ export function StructureNodeEditPanel({
             name: name.trim(),
             description: description.trim() || null,
             sort_order: sortOrder,
-            user_id: user.id,
+            ...ownedBy(node.category?.user_id),
             updated_at: new Date().toISOString(),
         };
         if (node.isLeaf) {
@@ -1260,7 +1271,11 @@ export function StructureNodeEditPanel({
               validation_rules: newRules,
               is_required:      attr.isRequired,
               default_value:    attr.defaultValue.trim() || null,
-              user_id:          user.id,
+              // Isto pravilo kao za areu/kategoriju gore: postojeci vlasnik se
+              // ne dira. Bas je ova grana prebacila svih 15 atributa Kokine
+              // `Transakcije` na Sasu — atribut se pri svakom spremanju panela
+              // upisuje ponovo, i kad se na njemu nista nije promijenilo.
+              ...ownedBy(node.attributeDefinitions.find(a => a.id === attr.id)?.user_id),
               updated_at:       new Date().toISOString(),
             })
             .eq('id', attr.id);
