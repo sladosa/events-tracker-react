@@ -33,6 +33,12 @@ globalThis.sessionStorage = {
   getItem: k => (store.has(k) ? store.get(k) : null),
   setItem: (k, v) => store.set(k, String(v)),
   removeItem: k => store.delete(k),
+  // `length`/`key(i)` su dio Storage API-ja i `clearChainCache` hoda po njima.
+  // Map cuva redoslijed umetanja, pa se indeksi pri brisanju pomicu tocno kao
+  // u pravom `sessionStorage`u -- dakle i zamka "svaki drugi kljuc se preskoci"
+  // je ovdje vjerno reproducirana.
+  get length() { return store.size; },
+  key: i => [...store.keys()][i] ?? null,
 };
 
 let listenerAdds = 0;
@@ -126,6 +132,18 @@ async function render() {
   return settled.chain.length ? settled : out;
 }
 
+/**
+ * Odlazak s `/app/add` na `/app/` (Structure tab). React odmontira podstablo,
+ * pa se cleanup svakog efekta izvrsi i hookovo stanje nestane.
+ */
+function unmount() {
+  for (const slot of slots) {
+    if (slot && typeof slot.cleanup === 'function') slot.cleanup();
+  }
+  slots.length = 0;
+  idx = 0;
+}
+
 let pass = 0, fail = 0;
 const eq = (name, got, want) => {
   const g = JSON.stringify(got), w = JSON.stringify(want);
@@ -149,19 +167,62 @@ r = await render();
 eq('bez `areas-changed` keš ostaje star', tpl(r), '{racun}/{tip}/{podtip}');
 eq('...i baza se NIJE ponovo čitala', dbReads, 1);
 
-// 4 · ⭐ jezgra popravka: signal mora probiti keš
+// 4 - listener U HOOKU osvjezi prikazano stanje dok je Add/Edit OTVOREN.
+//     Korisno, ali NIJE jezgra popravka -- v. 6.
 const addsBefore = listenerAdds;
 window.dispatchEvent(new Event('areas-changed'));
 await tick(); await tick();
 r = await render();
-eq('`areas-changed` probija keš — template je nestao', tpl(r), null);
-eq('...i to jednim novim čitanjem baze', dbReads, 2);
+eq('dispatch dok je hook MONTIRAN osvjezi lanac', tpl(r), null);
+eq('...i to jednim novim citanjem baze', dbReads, 2);
 
-// 5 · listener se ne smije re-registrirati na svakom renderu
-//     (`refetch` mora ostati stabilan — razred BUG-S121-AUTOSAVE)
+// 5 - listener se ne smije re-registrirati na svakom renderu
+//     (`refetch` mora ostati stabilan -- razred BUG-S121-AUTOSAVE)
 await render();
 await render();
-eq('listener se ne veže iznova pri re-renderu', listenerAdds, addsBefore);
+eq('listener se ne veze iznova pri re-renderu', listenerAdds, addsBefore);
+
+// ---------------------------------------------------------------------------
+// 6 - JEZGRA: signal dolazi dok je hook ODMONTIRAN. To je jedini tok koji u
+//     aplikaciji postoji: `useCategoryChain` zivi samo na `/app/add` i
+//     `/app/edit/:s`, a svaki dispatcher `areas-changed` je u `AppHome`
+//     (`/app/`) -- Structure panel, StructureTableView, Excel modali.
+//
+//     Izmjereno na PROD-u 10.09.2026.: template upisan u `categories.settings`
+//     (potvrdjeno REST-om), a Finish napravio event s `comment = null`. Prva
+//     verzija popravka (S132) imala je samo listener u hooku, pa ovdje nije
+//     radila nista -- a test je prolazio jer je dispatchao dok je hook montiran.
+// ---------------------------------------------------------------------------
+serverRows[0].settings = { comment_template: 'NOVI {tip}' };
+unmount();
+window.dispatchEvent(new Event('areas-changed'));
+await tick();
+r = await render();
+eq('signal dok je hook ODMONTIRAN ipak probija kes', tpl(r), 'NOVI {tip}');
+eq('...i to jednim novim citanjem baze', dbReads, 3);
+
+// 7 - brisu se SVI `chain_v1_*` kljucevi, ne svaki drugi. `removeItem` usred
+//     petlje po indeksu pomakne preostale za jedno mjesto => pola ih prezivi,
+//     i to bez ijedne greske (razred S108: paginacija bez `.order()`).
+//     Mjeri se SAM brisac, pa hook mora biti odmontiran: montiran bi kroz
+//     `refetch` legitimno vratio svoj kljuc odmah nakon brisanja, i test bi
+//     prijavio kvar ondje gdje ga nema.
+unmount();
+store.set('chain_v1_x1', '[]');
+store.set('chain_v1_x2', '[]');
+store.set('chain_v1_x3', '[]');
+store.set('et_activity_draft', 'ne diraj me');
+window.dispatchEvent(new Event('areas-changed'));
+await tick();
+eq('nijedna snimka lanca ne prezivi', [...store.keys()].filter(k => k.startsWith('chain_v1_')), []);
+eq('...a tudji kljucevi ostaju netaknuti', store.get('et_activity_draft'), 'ne diraj me');
+
+// 8 - `structure-deleted` (Structure Delete modal) mora ciniti isto
+unmount();
+store.set('chain_v1_y1', '[]');
+window.dispatchEvent(new Event('structure-deleted'));
+await tick();
+eq('`structure-deleted` takodjer brise kes', [...store.keys()].filter(k => k.startsWith('chain_v1_')), []);
 
 console.log(`\n${fail === 0 ? `All ${pass} tests passed.` : `${fail} FAILED, ${pass} passed.`}`);
 process.exit(fail === 0 ? 0 : 1);

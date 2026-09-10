@@ -31,6 +31,43 @@ function writeChainCache(categoryId: string, chain: Category[]) {
 }
 
 /**
+ * Obriši SVE snimke lanca. Zove se na `areas-changed` / `structure-deleted`.
+ *
+ * ⚠ MODULE-LEVEL, ne u hooku — i to je jedina stvar koja ovdje radi posao (S132b).
+ *   `useCategoryChain` je montiran samo na `/app/add` i `/app/edit/:s`, a SVI
+ *   dispatcheri `areas-changed` žive u `AppHome` (`/app/`): Structure panel,
+ *   StructureTableView, Excel import/export modali. Dakle u trenutku kad signal
+ *   ode, hook NE POSTOJI — listener u njemu nije ni vezan.
+ *   Izmjereno na PROD-u 10.09.2026.: template upisan u `categories.settings`
+ *   (`TEST132 {tip}/{podtip}`, potvrđeno REST-om), a Finish je napravio event s
+ *   `comment = null` — snimka lanca je bila starija od Savea.
+ *   Isti obrazac koji `categoryCache.ts` koristi od početka; `AppHome:507` nosi
+ *   komentar „always mounted so areas-changed listener stays active", dakle
+ *   razred je bio zapisan u kodu prije nego smo u njega upali.
+ *
+ * ⚠ Ključevi se PRVO skupe pa onda brišu. `removeItem` usred petlje po indeksu
+ *   pomiče preostale ključeve za jedno mjesto ⇒ svaki drugi se preskoči, i to
+ *   bez ijedne greške (razred „paginacija bez `.order()`", S108).
+ */
+export function clearChainCache(): void {
+  try {
+    const doomed: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith(CHAIN_CACHE_PREFIX)) doomed.push(k);
+    }
+    for (const k of doomed) sessionStorage.removeItem(k);
+  } catch {
+    // Storage disabled ili blokiran — nema što obrisati
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('areas-changed', clearChainCache);
+  window.addEventListener('structure-deleted', clearChainCache);
+}
+
+/**
  * Dohvaća lanac kategorija od leaf do root.
  * Vraća array gdje je prvi element leaf kategorija, a zadnji root.
  * Rezultat se cachira u sessionStorage — sljedeći Add Activity iste kategorije je trenutan.
@@ -107,24 +144,24 @@ export function useCategoryChain(leafCategoryId: UUID | null): UseCategoryChainR
    * ⚠ KEŠ MORA SLUŠATI ONOGA TKO GA ČINI ZASTARJELIM — inače je invalidacija
    *   samo komentar (S132).
    *
-   *   `refetch` gore postoji od početka i nosi napomenu „called after Structure
-   *   edits". Nitko ga nikad nije zvao: oba pozivatelja (`AddActivityPage:616`,
-   *   `EditActivityPage:558`) destrukturiraju samo `chain`/`loading`/`error`.
-   *   Dakle snimka lanca — a s njom i `settings.comment_template` leafa, koji
-   *   `resolveEventNote` čita na Finishu — živjela je do zatvaranja kartice.
+   *   `refetch` je od početka nosio napomenu „called after Structure edits", a
+   *   nijedan od dva pozivatelja (`AddActivityPage:616`, `EditActivityPage:558`)
+   *   ga ni ne destrukturira. Snimka lanca — a s njom i `settings.comment_template`
+   *   leafa, koji `resolveEventNote` čita na Finishu — živjela je do zatvaranja
+   *   kartice.
    *
    * ⚠ `sessionStorage` PREŽIVI F5. Gasi se tek zatvaranjem taba, pa je kvar
-   *   izgledao neuklonjiv: izmjereno na PROD-u 09.09.2026. — auto-comment
-   *   template obrisan i u `areas.settings` i u `categories.settings`
-   *   (potvrđeno Structure exportom I s oba Edit panela), a Finish ga je i
-   *   dalje upisivao u `comment`. Osvježavanje stranice nije pomagalo, pa je
-   *   izgledalo kao da baza laže.
+   *   izgledao neuklonjiv i ispalo je da „baza laže".
    *
-   * ⚠ Listener stoji U HOOKU, ne u pozivateljima: tako vrijedi za oba
-   *   postojeća i za svakog budućeg — invarijanta, ne disciplina (isti razlog
-   *   zbog kojeg `clearDraft()` sam gasi auto-save, S121). `areas-changed`
-   *   dispatchaju i Structure panel (`StructureNodeEditPanel:1323`) i Structure
-   *   import (`AppHome.onImported`), dakle oba puta kojima se `settings` mijenja.
+   * ⚠ OVAJ listener NIJE invarijanta — samo osvježi `chain` u React stateu ako
+   *   se struktura promijeni dok je Add/Edit OTVOREN. Keš briše module-level
+   *   `clearChainCache()` gore, jer je hook u trenutku signala redovito
+   *   odmontiran (v. tamošnji komentar). Prva verzija popravka (S132) imala je
+   *   samo ovaj listener i zato nije radila ništa u stvarnom toku.
+   *
+   * ⚠ Zato test MORA odmontirati hook prije dispatcha. Verzija koja dispatcha
+   *   dok je hook montiran prolazi nad kodom koji u aplikaciji ne radi —
+   *   razred „test koji nikad ne pada ne čuva ništa" (S120), samo obrnut.
    *
    * ⚠ `refetch` mora ostati stabilan (`useCallback` nad `leafCategoryId`) —
    *   nov identitet na svakom renderu ponovno bi vezao listener pri svakom
