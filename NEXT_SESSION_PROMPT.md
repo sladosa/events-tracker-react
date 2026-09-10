@@ -43,10 +43,18 @@ pokuša srušiti.**
    mora biti **blokiran**. To je razlog zbog kojeg se popravljalo.
 5. ⭐ **Pogledaj u Supabase dashboardu ima li PROD projekt automatske backupe.**
    To je prvo pitanje sljedeće sesije, i na njega samo ti možeš odgovoriti.
-6. ⭐ **Neka Koka proba promijeniti opis kategorije** `Financije_all > Transakcija`
-   (Structure → Edit → Save). Ne treba ništa zaključivati s ekrana — samo javi je
-   li probala, pa provjerim u bazi je li se išta stvarno promijenilo. Razlog je
-   dolje u DIO 2.
+6. ⭐ **Pusti ovaj upit u Supabase SQL editoru** (samo čita) i pošalji rezultat —
+   bez njega ne znamo što PROD zapravo dopušta:
+
+   ```sql
+   select polname, polcmd,
+          pg_get_expr(polqual, polrelid)      as using_expr,
+          pg_get_expr(polwithcheck, polrelid) as check_expr
+   from pg_policy
+   where polrelid in ('public.categories'::regclass,
+                      'public.areas'::regclass,
+                      'public.attribute_definitions'::regclass);
+   ```
 
 ## Što treba od Koke
 
@@ -85,7 +93,28 @@ Ništa. Samo ono jednokratno zatvaranje kartice.
   Prijedlog: provjera u `global-setup` da posluženi build nosi `VITE_SUPABASE_URL`
   iz `.env.testing`, inače stani s greškom. **Nije izvedeno.**
 - **T-S132-7** `--restore` i dalje netestiran. Backup od 11 komentara postoji.
-- **T-S133-11** ⭐ **Vlasništvo nad kategorijom `Financije_all > Transakcija`.**
+- ⭐⭐ **ODLUČENO (S133): vlasnik Aree je vlasnik strukture cijelog lanca.**
+  Write-grantee **ne smije** uređivati strukturu. Treba li Saša mijenjati strukturu
+  `Financije_all`, radi to **pod Kokinim računom**.
+  Izmjereno da danas **može** — tri spremanja, svako provjereno u bazi (v. CLAUDE.md).
+  Posao ima **tri dijela i nijedan nije napravljen**:
+  1. **RLS** — prvi korak je **pročitati stvarnu politiku** (`pg_policy`, upit je u
+     DIO 1 točka 6). Tek onda migracija. Politika nije u repou.
+  2. **UI, tri puta do istog pisanja:** `CategoryDetailPanel` (Edit gumb — nema
+     **nijednu** provjeru vlasništva, prati samo `isEditMode`), Edit Mode u
+     `StructureTableView`, i **`StructureImportModal` — koji nema nijednu provjeru
+     prava**, dakle Structure uvoz je puna zamjena za panel.
+     ⚠ Skrivanje gumba nije brana; bez RLS-a ostaje otvoreno kroz uvoz i REST.
+  3. **`StructureNodeEditPanel:1175` prestaje prepisivati `user_id`** — šalje
+     `user_id: user.id` na svakom spremanju iako komentar kaže da je to samo za
+     retke **bez** vlasnika. Danas je vlasništvo dvaput promijenilo stranu.
+     Jednoredni popravak, točan neovisno o odluci o pravima.
+  ⚠ Posljedica odluke koju treba znati: **i Structure uvoz** za tu Areu ide pod
+  Kokinim računom.
+
+- **~~T-S133-11~~** — ✅ IZMJERENO 10.09. Stara formulacija (dolje) polazila je od
+  krive pretpostavke da je problem jedan neusklađen `categories.user_id`.
+  **Vlasništvo nad kategorijom `Financije_all > Transakcija`.**
   Izmjereno 10.09. na PROD-u: Saša je **write grantee** na toj Arei, a ipak je
   spremio `comment_template` na leaf — jer politika `categories_update` glasi
   `user_id = auth.uid()` i gleda **vlasnika retka kategorije**, ne Aree. Taj redak

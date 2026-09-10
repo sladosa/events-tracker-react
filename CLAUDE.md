@@ -122,30 +122,46 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **Pouka koja vrijedi šire od sluga:** dvije baze nisu ista baza. Ponašanje se
   utvrđuje pokusom (upiši → pročitaj → obriši), ne pretpostavkom da je shema ista.
 
-**⚠ Prava se ne čitaju iz komentara u migraciji — ni iz nje same (S133)**
+**⚠ WRITE-GRANTEE MOŽE MIJENJATI STRUKTURU TUĐE AREE (S133) — Sašina odluka: NE SMIJE**
 
-- **`categories_update` glasi `user_id = auth.uid()`, dakle gleda vlasnika RETKA**
-  **KATEGORIJE, ne vlasnika Aree.** Izmjereno na PROD-u 10.09.2026.: Saša je
-  **write grantee** na `Financije_all`, a ipak je spremio `comment_template` na
-  leaf `Transakcija` — jer taj redak nosi `categories.user_id = 768a6056` (njegov),
-  dok `areas.user_id = eeb78414` (Kokin). To je **jedina** area na PROD-u gdje se
-  vlasnik kategorije razilazi od vlasnika Aree; vjerojatno od prvog Structure
-  uvoza (S118). Dakle **nije sustavna rupa u collabu** — drugi grantee to ne bi
-  mogao — nego jedan neusklađen redak, i to na Kokinoj glavnoj Arei.
-  ⚠ **Otvoreno i NEIZMJERENO: može li Koka, vlasnica Aree, uopće pisati po toj**
-  **kategoriji?** Po istoj politici ne bi mogla, jer redak nije njen. Provjerava
-  se pokusom (promijeni opis → pogledaj mijenja li se `updated_at`), nikad
-  ekranom: RLS-blokiran write „uspije" s 200 i praznim rezultatom.
-- **⚠ Komentar u migraciji opisuje što TA migracija mijenja, ne konačno stanje.**
-  `009_sharing.sql` nosi redak „INSERT/UPDATE/DELETE unchanged (only owner
-  writes)" i pročitan je kao tvrdnja o pravima. Nije: kaže samo da ih *ta*
-  migracija nije dirala, a bazna politika gleda `categories.user_id`. Isti razred
-  kao PROD slug trigger (S118) — **ponašanje baze se utvrđuje pokusom.**
+- **Izmjereno na PROD-u 10.09.2026., u tri koraka i svaki put provjereno u bazi:**
+  Saša (write grantee na `Financije_all`) spremio `comment_template` na leaf
+  `Transakcija` ✅ · Koka (vlasnica Aree) spremila `description` ✅ · Saša ponovo
+  spremio `description` nad retkom koji je tada bio **njen** ✅. Dakle politika
+  propušta write-grantee-a **bez obzira na `categories.user_id`**.
+- **⚠ Politika koja to dopušta NIJE U REPOU.** `TEST_setup.sql` ima
+  `categories_update … USING (user_id = auth.uid())`, ali to je TEST; PROD-ova
+  nigdje nije zapisana. Isti razred kao PROD slug trigger (S118): **shema PROD-a
+  nije u cijelosti u gitu**, pa se prava utvrđuju pokusom, nikad čitanjem.
+  ⚠ Prvi korak svakog popravka je **pročitati stvarnu politiku** (`pg_policy` nad
+  `public.categories` u Supabase SQL editoru), ne pretpostaviti je iz migracija.
+- **⚠ Nesimetrija je oštrica:** `areas.settings` je **vlasnikov** (RLS + app
+  zaustavlja grantee-a), a `categories.settings` je **otvoren write-grantee-u**.
+  `comment_template` živi na **obje** razine, a `resolveCommentTemplate` bira
+  **leaf** prije Aree ⇒ zaštita „`areas.settings` je vlasnikov" je **zaobilazna**
+  jedan nivo niže. To nije bila odluka nego zatečenost.
+- **⚠ `user_id` se PREPISUJE NA SVAKOM SPREMANJU strukture.**
+  `StructureNodeEditPanel:1175` šalje `user_id: user.id` u payloadu; komentar iznad
+  kaže da je to zato da se preuzmu retci **bez** vlasnika, ali uvjeta nema — pa
+  svako spremanje prebaci vlasništvo na onoga tko je kliknuo Save. Izmjereno:
+  vlasništvo je danas dvaput promijenilo stranu. Posljedica: `categories.user_id`
+  ne govori tko je nešto napravio nego **tko je zadnji spremio**.
+- **⚠ Tri puta do istog pisanja, a gašenje je samo na jednom:**
+  `CategoryDetailPanel` (Edit gumb, prati samo `isEditMode`, **nema provjeru
+  vlasništva**), Edit Mode u `StructureTableView`, i **`StructureImportModal` —
+  koji nema nijednu provjeru prava**. Uvoz Structure Excela je puna zamjena za
+  panel.
+- **Sašina odluka (S133): vlasnik Aree je vlasnik strukture cijelog lanca.**
+  Grantee ne smije uređivati strukturu ni s jednog od ta tri puta; treba li Saša
+  mijenjati strukturu `Financije_all`, radi to **pod Kokinim računom**.
+  ⚠ **Skrivanje gumba NIJE brana** — vrijedi isto pravilo koje već stoji uz
+  brisanje tuđeg retka: „nema gumb" nije „baza brani". Popravak mora dirati **i**
+  RLS **i** UI, inače ostaje otvoren kroz uvoz i kroz izravni REST.
 - **⚠ `comment_template` BEZ placeholdera upisuje se doslovno.** Guard
   `placeholderCount > 0 && filledCount === 0` (`commentTemplate.ts:42`) pali samo
-  kad template *ima* `{...}`; `Test` prolazi kroz njega i završi kao `comment`
-  svakog novog retka bez korisnikova opisa. Izmjereno istog dana: prozor od 2,5
-  min, nula pogođenih redaka — ali samo zato što u njemu nitko nije unosio.
+  kad template *ima* `{...}`; `Test` prolazi kroz njega i postaje `comment` svakog
+  novog retka bez korisnikova opisa. Izmjereno: prozor od 2,5 min, nula pogođenih
+  redaka — ali samo zato što u njemu nitko nije unosio.
 
 **Uvoz — tri načina da „uspije" a ne napravi što misliš (S118)**
 

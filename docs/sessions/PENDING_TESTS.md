@@ -35,7 +35,11 @@ su bila samo na `test-branch`, pa se PROD ponasao po starom.
 
 | #             | test                                                                | status |
 | ------------- | -------------------------------------------------------------------- | ------ |
-| **T-S133-11** | ⭐ **Može li KOKA pisati po `Financije_all > Transakcija`?** Structure → Edit → promijeni opis → Save, pa provjeri mijenja li se `updated_at` u bazi (ekran NIJE dokaz) | ⬜ **neizmjereno, a ona je vlasnica Aree** |
+| **T-S133-11** | ⭐ Tko smije pisati po `Financije_all > Transakcija` — grantee, vlasnica, ili oboje | ✅ **IZMJERENO 10.09.: OBOJE.** 3 spremanja, svako provjereno u bazi. Odlučeno da grantee **ne smije** |
+| **T-S133-12** | ⭐ Pročitaj STVARNU politiku na PROD-u (`pg_policy` nad `categories`/`areas`/`attribute_definitions`) — nije u repou | ⬜ **prvi korak popravka** |
+| **T-S133-13** | Nakon popravka: grantee **nema** Edit u View details, **nema** Edit Mode, **ne može** Structure import | ⬜ |
+| **T-S133-14** | Nakon popravka: grantee-jev write preko REST-a **pada** (skrivanje gumba nije brana) | ⬜ |
+| **T-S133-15** | `StructureNodeEditPanel` prestaje prepisivati `user_id` na spremanju — vlasništvo se ne prebacuje | ⬜ |
 | **T-S133-10** | ⚠ E2E s `reuseExistingServer: true` preuzme dev server koji vec stoji na 5173 — 10.09. je to bio `dev:prod`, pa je Playwright s TEST tokenom udario u PROD | ⬜ ZAMKA, nije rijeseno u konfiguraciji |
 
 ---
