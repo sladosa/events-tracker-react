@@ -1176,8 +1176,26 @@ export function StructureNodeEditPanel({
       // Isti komentar je tvrdio i sto RLS dopusta. Ne citaj prava iz komentara
       // (S133): stvarna politika PROD-a nije u repou i utvrdjuje se pokusom.
       const ownedBy = (uid: string | null | undefined) => (uid ? {} : { user_id: user.id });
+
+      // ⚠ RLS-BLOKIRAN WRITE "USPIJE" S 200 I PRAZNIM REZULTATOM. Bez ove
+      //   provjere korisnik bez prava dobije "Saved!" i zatvori panel, a u bazi
+      //   se nije promijenilo ništa. Tišina je gora od zabrane: zabranu vidiš,
+      //   tihi neuspjeh otkriješ tek kad se netko zapita zašto je stara
+      //   vrijednost natrag. Zato se ovlast mjeri BROJEM PROMIJENJENIH REDAKA,
+      //   nikad HTTP statusom.
+      //   Postalo je živo od `sql/047`–`049`: struktura je vlasnikova, pa
+      //   write-grantee ovdje prolazi kroz `.update()` bez greške i bez učinka.
+      const assertWrote = (rows: unknown[] | null) => {
+        if (!rows || rows.length === 0) {
+          throw new Error(
+            'Nemaš pravo mijenjati strukturu ove Aree — ona pripada njezinu ' +
+            'vlasniku. Ništa nije spremljeno.'
+          );
+        }
+      };
+
       if (node.nodeType === 'area') {
-        const { error } = await supabase
+        const { data: updatedArea, error } = await supabase
           .from('areas')
           .update({
             name: name.trim(),
@@ -1191,8 +1209,10 @@ export function StructureNodeEditPanel({
               comment_template: commentTemplate.trim() || undefined,
             },
           })
-          .eq('id', node.id);
+          .eq('id', node.id)
+          .select('id');
         if (error) throw error;
+        assertWrote(updatedArea);
       } else {
         const catUpdate: Record<string, unknown> = {
             name: name.trim(),
@@ -1207,11 +1227,13 @@ export function StructureNodeEditPanel({
             comment_template: commentTemplate.trim() || undefined,
           };
         }
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from('categories')
           .update(catUpdate)
-          .eq('id', node.id);
+          .eq('id', node.id)
+          .select('id');
         if (error) throw error;
+        assertWrote(updated);
       }
 
       // 2. Update existing + INSERT new attribute definitions

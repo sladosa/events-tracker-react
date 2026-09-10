@@ -568,6 +568,10 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onL
           onEdit={(n) => openEdit(n)}
           onDelete={isEditMode ? setDeleteNode : undefined}
           isEditMode={isEditMode}
+          // Isti kriterij koji od `sql/047`–`049` primjenjuje i RLS: struktura
+          // pripada vlasniku Aree. ⋮ meni to već razlikuje (grana `!isOwnedArea`),
+          // a View panel je bio drugi put do istog pisanja i nije provjeravao ništa.
+          canEdit={activeNode.area.user_id === userId}
         />
       )}
 

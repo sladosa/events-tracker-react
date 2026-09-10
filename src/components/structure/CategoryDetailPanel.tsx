@@ -51,6 +51,15 @@ interface CategoryDetailPanelProps {
   onDelete?: (node: StructureNode) => void;
   /** Whether Edit Mode is active — controls Delete button state */
   isEditMode?: boolean;
+  /**
+   * Je li Area ovog čvora tvoja. Struktura pripada vlasniku Aree cijelim
+   * lancem (odluka S133), a od `sql/047`–`049` to drži i RLS.
+   *
+   * ⚠ Obavezan prop namjerno: da se novi pozivatelj mora izjasniti. S
+   *   `= true` defaultom zaborav bi značio otvoreno — a gumb koji vodi u
+   *   panel gdje Save ne radi ništa gori je od gumba kojeg nema.
+   */
+  canEdit: boolean;
 }
 
 // --------------------------------------------------------
@@ -328,6 +337,7 @@ export function CategoryDetailPanel({
   onEdit,
   onDelete,
   isEditMode = false,
+  canEdit,
 }: CategoryDetailPanelProps) {
   const t = THEME.structure;
 
@@ -431,9 +441,17 @@ export function CategoryDetailPanel({
             <div className="w-px h-5 bg-gray-200 mx-1 flex-shrink-0" />
 
             <button
-              onClick={() => onEdit(node)}
-              title="Edit this node"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors"
+              onClick={() => { if (canEdit) onEdit(node); }}
+              disabled={!canEdit}
+              title={canEdit
+                ? 'Edit this node'
+                : 'Struktura pripada vlasniku ove Aree — nije ju moguće mijenjati odavde'}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                canEdit
+                  ? 'text-amber-700 hover:bg-amber-50'
+                  : 'text-amber-300 cursor-not-allowed',
+              )}
             >
               <EditIcon />
               <span>Edit</span>
@@ -441,12 +459,14 @@ export function CategoryDetailPanel({
 
             {/* Delete — active in Edit Mode, visually disabled outside */}
             <button
-              onClick={() => { if (isEditMode && onDelete) onDelete(node); }}
-              disabled={!isEditMode}
-              title={isEditMode ? 'Delete this node' : 'Enable Edit Mode to delete'}
+              onClick={() => { if (isEditMode && canEdit && onDelete) onDelete(node); }}
+              disabled={!isEditMode || !canEdit}
+              title={!canEdit
+                ? 'Struktura pripada vlasniku ove Aree'
+                : isEditMode ? 'Delete this node' : 'Enable Edit Mode to delete'}
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                isEditMode
+                isEditMode && canEdit
                   ? 'text-red-600 hover:bg-red-50 cursor-pointer'
                   : 'text-red-300 cursor-not-allowed',
               )}
