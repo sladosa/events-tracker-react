@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { withRetry } from '@/lib/retry';
 import type { Area, Category, AttributeDefinition } from '@/types/database';
 import type { StructureNode, EventCountRow } from '@/types/structure';
 
@@ -71,24 +72,51 @@ export function useStructureData(): UseStructureDataReturn {
       const attrDefs = (attrsRaw || []) as AttributeDefinition[];
 
       // --------------------------------------------------------
-      // 4. Fetch event counts per category
-      //    We can't use GROUP BY directly in supabase-js, so we
-      //    fetch all leaf events and count in JS. For large data
-      //    sets this should be replaced with a DB function, but
-      //    for the expected scale (personal data) this is fine.
+      // 4. Broj eventa po kategoriji — BAZA broji, ne preglednik
+      //
+      // ⚠ BUG-S132-EVENTCOUNT. Do S133 je ovdje stajao `select('category_id')`
+      //   bez `.range()` i bez `.order()`, pa su se eventi vukli u preglednik
+      //   i brojali u JS-u. PostgREST reze na 1000 redaka BEZ GRESKE:
+      //   izmjereno na PROD-u 10.09.2026. — upit je vratio tocno **1000** od
+      //   **12.199** redaka, dakle app je racunao nad 8 % podataka.
+      //
+      // ⚠ Posljedica NIJE kozmeticka. Ta brojka je BRAVA: `StructureAddChildPanel`
+      //   ne da dodati dijete leafu koji ima evente (S24). Odrezano brojanje je
+      //   za `Financije_all > Transakcija` (5.173 eventa) davalo `no events yet`
+      //   ⇒ brava se otvarala, bez ijedne poruke. `StructureDeleteModal` je bio
+      //   posteden jer vec radi vlastiti `count: 'exact'` — isti obrazac koji je
+      //   ovdje falio.
+      //
+      // ⚠ Neuspjelo brojanje se NE SMIJE procitati kao nula — to je tocno kvar
+      //   koji se ovdje zatvara (razred BUG-S121-AREACTX). Zato `withRetry` pa
+      //   throw: glasan pad je bolji od tihe nule koja otkljuca bravu.
+      //
+      // ⚠ Jedan upit po kategoriji, USPOREDNO. Izmjereno 10.09.2026. kao prijavljen
+      //   korisnik, dakle s aktivnim RLS-om: TEST, 39 kategorija, 127 ms po upitu —
+      //   serijski 4,95 s, usporedno **0,46 s**. Zbroj je bio tocan u redak
+      //   (3.727), dok je stari upit ondje vracao 1000. Dok su kategorije u
+      //   DESECIMA to je jeftinije od RPC-a jer nema migracije; narastu li na
+      //   stotine, tada dolazi na red funkcija u bazi s `GROUP BY`.
+      //   PostgREST agregati (`id.count()`) NISU opcija — projekt ih odbija
+      //   s `PGRST123` (`Use of aggregate functions is not allowed`).
       // --------------------------------------------------------
-      const { data: eventCountsRaw, error: countsErr } = await supabase
-        .from('events')
-        .select('category_id');
+      const counted = await Promise.all(categories.map(async cat => {
+        const { count, error: cntErr } = await withRetry(
+          () => supabase
+            .from('events')
+            .select('id', { count: 'exact', head: true })
+            .eq('category_id', cat.id),
+          r => !!r.error || r.count == null,
+        );
+        if (cntErr || count == null) {
+          throw cntErr instanceof Error
+            ? cntErr
+            : new Error(`Ne mogu prebrojati evente za kategoriju ${cat.name}`);
+        }
+        return [cat.id, count] as const;
+      }));
 
-      if (countsErr) throw countsErr;
-
-      // Build categoryId → count map
-      const eventCountMap = new Map<string, number>();
-      for (const row of (eventCountsRaw || []) as { category_id: string | null }[]) {
-        if (!row.category_id) continue;
-        eventCountMap.set(row.category_id, (eventCountMap.get(row.category_id) ?? 0) + 1);
-      }
+      const eventCountMap = new Map<string, number>(counted);
 
       // --------------------------------------------------------
       // 5. Build lookup maps
