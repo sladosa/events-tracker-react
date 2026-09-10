@@ -25,10 +25,58 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env.testing') });
 const FITNESS   = 'a1000000-0000-0000-0000-000000000001';
 const SEED_DATE = '2026-01-01';   // the only date seed.sql writes
 
+/**
+ * Refuse to run against anything but TEST.
+ *
+ * `playwright.config.ts` has `reuseExistingServer: true` and a fixed
+ * `baseURL: localhost:5173`. If a dev server is already sitting there — and
+ * `npm run dev:prod` sits on the very same port — Playwright does NOT start its
+ * own; it adopts that one and runs the whole suite against PRODUCTION, while
+ * this file happily resets the TEST database with its own client. Two halves of
+ * the run looking at two different databases, and nothing in Playwright's output
+ * says which one the browser saw.
+ *
+ * Measured 2026-09-10 (S134): port 5173 was serving `zdojdazosfoajwnuafgx`
+ * (PROD) while `.env.testing` pointed at `xtnbhmojmffjelsqejpw` (TEST). That run
+ * would have stopped at the login screen — but a spec that DOES log in would
+ * have written to production.
+ *
+ * The check is a single request for the module that carries the client, because
+ * Vite inlines `import.meta.env` into what it serves — so this measures what the
+ * browser will actually get, not what a config file claims.
+ *
+ * ⚠ A server that does not answer is NOT a failure: Playwright starts its own
+ *   afterwards. Only an answer naming the wrong project stops the run.
+ */
+async function assertServedBuildIsTest(expectedUrl: string): Promise<void> {
+  const probe = 'http://localhost:5173/src/lib/supabaseClient.ts';
+  let body: string;
+  try {
+    const res = await fetch(probe, { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return;
+    body = await res.text();
+  } catch {
+    return;                       // nitko ne slusa -> Playwright ce dici svoj
+  }
+  const served = body.match(/https:\/\/[a-z0-9]+\.supabase\.co/)?.[0];
+  if (!served) return;            // ne moze se procitati -> ne izmisljaj nalaz
+  if (served !== expectedUrl) {
+    throw new Error(
+      `\n\n  E2E STOP: dev server na :5173 servira ${served},\n` +
+      `  a .env.testing ocekuje ${expectedUrl}.\n\n` +
+      `  Playwright bi ga preuzeo (reuseExistingServer) i vrtio testove protiv\n` +
+      `  te baze, dok bi global-setup cistio TEST.\n\n` +
+      `  Ugasi taj server (vjerojatno "npm run dev:prod") pa pokreni E2E ponovo.\n`
+    );
+  }
+}
+
 export default async function globalSetup(): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !key) return;
+
+  await assertServedBuildIsTest(url);
 
   const sb = createClient(url, key, { auth: { persistSession: false } });
   const { error } = await sb.auth.signInWithPassword({

@@ -2,7 +2,7 @@
 -- SCHEMA_TEST.sql -- SNIMKA STVARNE SHEME, generirano alatom
 -- ============================================================
 -- Generirao: data-prep_tools/Tools/dump_schema.py --env test
--- Vrijeme:   2026-09-10T14:14:15+02:00
+-- Vrijeme:   2026-09-10T14:53:29+02:00
 --
 -- ⚠ OVO SE NE PUSTA I NE UREĐUJE RUKOM. Ovo je ono sto u bazi
 --   STVARNO STOJI, ne ono sto smo mislili da smo pustili. Promjene
@@ -18,7 +18,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 5cTisRBLOlkPEvreelhADYMSn0MDi1DksjSCJZrVCAda9ZZqzKnfxjRCXBwEOgc
+\restrict EgxFtQnKO8hhA9ewzjqFHfDq9cLIJIb0Bh8O0GwPeJDdZq2m8fhKUWFfprJNpKb
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -688,6 +688,40 @@ $$;
 --
 
 COMMENT ON FUNCTION public.rpc_area_group_agg(p_area_id uuid, p_group_slug text, p_plus_slug text, p_minus_slug text, p_filters jsonb, p_from date, p_as_of date) IS 'Overview: sum plus/minus per group value for one Area. Checks area access itself (SECURITY DEFINER).';
+
+
+--
+-- Name: user_owns_area(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_owns_area(area_uuid uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.areas a
+    WHERE a.id = area_uuid
+      AND a.user_id = auth.uid()
+  );
+$$;
+
+
+--
+-- Name: user_owns_category_area(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_owns_category_area(cat_uuid uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.categories c
+    JOIN public.areas a ON a.id = c.area_id
+    WHERE c.id = cat_uuid
+      AND a.user_id = auth.uid()
+  );
+$$;
 
 
 SET default_tablespace = '';
@@ -1384,47 +1418,44 @@ CREATE POLICY areas_insert ON public.areas FOR INSERT WITH CHECK ((user_id = aut
 -- Name: areas areas_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY areas_select ON public.areas FOR SELECT USING (((auth.uid() = user_id) OR (user_id = 'be785f09-b7c6-497f-b351-363d224c93c8'::uuid) OR (id IN ( SELECT data_shares.target_id
-   FROM public.data_shares
-  WHERE ((data_shares.grantee_id = auth.uid()) AND (data_shares.share_type = 'area'::text))))));
+CREATE POLICY areas_select ON public.areas FOR SELECT USING (public.app_can_read_area(id));
 
 
 --
 -- Name: areas areas_update; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY areas_update ON public.areas FOR UPDATE USING ((user_id = auth.uid()));
+CREATE POLICY areas_update ON public.areas FOR UPDATE USING ((user_id = auth.uid())) WITH CHECK ((user_id = auth.uid()));
 
 
 --
 -- Name: attribute_definitions attr_def_delete; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY attr_def_delete ON public.attribute_definitions FOR DELETE USING ((user_id = auth.uid()));
+CREATE POLICY attr_def_delete ON public.attribute_definitions FOR DELETE USING (public.user_owns_category_area(category_id));
 
 
 --
 -- Name: attribute_definitions attr_def_insert; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY attr_def_insert ON public.attribute_definitions FOR INSERT WITH CHECK ((user_id = auth.uid()));
+CREATE POLICY attr_def_insert ON public.attribute_definitions FOR INSERT WITH CHECK (public.user_owns_category_area(category_id));
 
 
 --
 -- Name: attribute_definitions attr_def_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY attr_def_select ON public.attribute_definitions FOR SELECT USING (((auth.uid() = user_id) OR (user_id = 'be785f09-b7c6-497f-b351-363d224c93c8'::uuid) OR (category_id IN ( SELECT c.id
-   FROM (public.categories c
-     JOIN public.data_shares ds ON ((c.area_id = ds.target_id)))
-  WHERE ((ds.grantee_id = auth.uid()) AND (ds.share_type = 'area'::text))))));
+CREATE POLICY attr_def_select ON public.attribute_definitions FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.categories c
+  WHERE ((c.id = attribute_definitions.category_id) AND public.app_can_read_area(c.area_id)))));
 
 
 --
 -- Name: attribute_definitions attr_def_update; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY attr_def_update ON public.attribute_definitions FOR UPDATE USING ((user_id = auth.uid()));
+CREATE POLICY attr_def_update ON public.attribute_definitions FOR UPDATE USING (public.user_owns_category_area(category_id)) WITH CHECK (public.user_owns_category_area(category_id));
 
 
 --
@@ -1472,32 +1503,28 @@ ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 -- Name: categories categories_delete; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY categories_delete ON public.categories FOR DELETE USING ((user_id = auth.uid()));
+CREATE POLICY categories_delete ON public.categories FOR DELETE USING (public.user_owns_area(area_id));
 
 
 --
 -- Name: categories categories_insert; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY categories_insert ON public.categories FOR INSERT WITH CHECK ((user_id = auth.uid()));
+CREATE POLICY categories_insert ON public.categories FOR INSERT WITH CHECK (public.user_owns_area(area_id));
 
 
 --
 -- Name: categories categories_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY categories_select ON public.categories FOR SELECT USING (((area_id IN ( SELECT areas.id
-   FROM public.areas
-  WHERE ((areas.user_id = auth.uid()) OR (areas.user_id = 'be785f09-b7c6-497f-b351-363d224c93c8'::uuid)))) OR (area_id IN ( SELECT data_shares.target_id
-   FROM public.data_shares
-  WHERE ((data_shares.grantee_id = auth.uid()) AND (data_shares.share_type = 'area'::text))))));
+CREATE POLICY categories_select ON public.categories FOR SELECT USING (public.app_can_read_area(area_id));
 
 
 --
 -- Name: categories categories_update; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY categories_update ON public.categories FOR UPDATE USING ((user_id = auth.uid()));
+CREATE POLICY categories_update ON public.categories FOR UPDATE USING (public.user_owns_area(area_id)) WITH CHECK (public.user_owns_area(area_id));
 
 
 --
@@ -1689,7 +1716,9 @@ CREATE POLICY events_delete_by_area_owner ON public.events FOR DELETE USING (((a
 -- Name: events events_insert; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY events_insert ON public.events FOR INSERT WITH CHECK ((user_id = auth.uid()));
+CREATE POLICY events_insert ON public.events FOR INSERT WITH CHECK (((user_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM public.categories c
+  WHERE ((c.id = events.category_id) AND public.app_can_write_area(c.area_id))))));
 
 
 --
@@ -1941,6 +1970,24 @@ GRANT ALL ON FUNCTION public.rpc_area_group_agg(p_area_id uuid, p_group_slug tex
 
 
 --
+-- Name: FUNCTION user_owns_area(area_uuid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.user_owns_area(area_uuid uuid) TO anon;
+GRANT ALL ON FUNCTION public.user_owns_area(area_uuid uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.user_owns_area(area_uuid uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION user_owns_category_area(cat_uuid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.user_owns_category_area(cat_uuid uuid) TO anon;
+GRANT ALL ON FUNCTION public.user_owns_category_area(cat_uuid uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.user_owns_category_area(cat_uuid uuid) TO service_role;
+
+
+--
 -- Name: TABLE activity_presets; Type: ACL; Schema: public; Owner: -
 --
 
@@ -2130,5 +2177,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON T
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 5cTisRBLOlkPEvreelhADYMSn0MDi1DksjSCJZrVCAda9ZZqzKnfxjRCXBwEOgc
+\unrestrict EgxFtQnKO8hhA9ewzjqFHfDq9cLIJIb0Bh8O0GwPeJDdZq2m8fhKUWFfprJNpKb
 
