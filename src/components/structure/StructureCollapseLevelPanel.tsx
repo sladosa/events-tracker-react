@@ -26,6 +26,7 @@
 // ============================================================
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabaseClient';
 import type { StructureNode } from '@/types/structure';
@@ -440,7 +441,7 @@ export function StructureCollapseLevelPanel({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget && !collapsing) onClose(); }}
+      {...useBackdropClose(onClose, !collapsing)}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
 

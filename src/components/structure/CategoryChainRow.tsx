@@ -11,6 +11,7 @@
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/cn';
@@ -309,6 +310,13 @@ export function CategoryChainRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 });
   const [showRequestModal, setShowRequestModal] = useState(false);
+  // ⚠ Hook se zove OVDJE, ne u JSX-u dolje. Modal je renderiran uvjetno
+  //   (`showRequestModal && sharedContext && (…)`), pa bi poziv unutar njega
+  //   bio uvjetan poziv hooka — React tada baci „Rendered fewer hooks than
+  //   expected" i sruši render, i to tek kad se modal prvi put otvori.
+  //   Ostalih trinaest modala su vlastite komponente s bezuvjetnim returnom,
+  //   pa ondje isti obrazac u JSX-u nije problem.
+  const requestModalBackdrop = useBackdropClose(() => setShowRequestModal(false));
   const buttonRef = useRef<HTMLButtonElement>(null);
   const t = THEME.structure;
 
@@ -494,7 +502,7 @@ export function CategoryChainRow({
       {showRequestModal && sharedContext && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-          onClick={e => { if (e.target === e.currentTarget) setShowRequestModal(false); }}
+          {...requestModalBackdrop}
         >
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
             <h3 className="text-base font-semibold text-gray-900 mb-2">Request write access</h3>

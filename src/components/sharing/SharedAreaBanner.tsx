@@ -11,6 +11,7 @@
 // ============================================================
 
 import { useState, useEffect } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { toast } from 'react-hot-toast';
 import { useFilter } from '@/context/FilterContext';
 import { fetchAreaGrantees, type GranteeSummary } from '@/hooks/useDataShares';
@@ -165,7 +166,7 @@ function ReadGranteeInfoModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      {...useBackdropClose(onClose)}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5">
         <div className="flex items-center justify-between mb-3">
@@ -291,7 +292,7 @@ function WriteGranteeInfoModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      {...useBackdropClose(onClose)}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5">
         <div className="flex items-center justify-between mb-3">

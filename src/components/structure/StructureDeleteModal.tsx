@@ -27,6 +27,7 @@
 // ============================================================
 
 import { useState, useCallback, useEffect } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { saveAs } from 'file-saver';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
@@ -503,7 +504,7 @@ export function StructureDeleteModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget && !deleting) onClose(); }}
+      {...useBackdropClose(onClose, !deleting)}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
 

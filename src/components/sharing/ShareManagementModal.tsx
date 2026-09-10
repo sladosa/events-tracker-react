@@ -16,6 +16,7 @@
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabaseClient';
@@ -272,7 +273,7 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      {...useBackdropClose(onClose)}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
 

@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { cn } from '@/lib/cn';
 import {
   countGranteeEventsInArea,
@@ -117,7 +118,7 @@ export function LeaveAreaModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget && canClose) onClose(); }}
+      {...useBackdropClose(onClose, canClose)}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
 

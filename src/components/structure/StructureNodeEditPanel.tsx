@@ -23,6 +23,7 @@
 // ============================================================
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 import type { ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'react-hot-toast';
@@ -1376,7 +1377,7 @@ export function StructureNodeEditPanel({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      {...useBackdropClose(onClose)}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
 
