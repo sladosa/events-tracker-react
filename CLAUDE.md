@@ -192,11 +192,20 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `Financije_all`, radi to **pod Kokinim računom**.
   ⚠ **Skrivanje gumba NIJE brana** — „nema gumb" nije „baza brani". Popravak
   mora dirati **i** RLS **i** UI.
-- **✅ NAPRAVLJENO S134, ali PROD ČEKA.** `sql/045` poravnao vlasništvo (izmjereno:
+- **✅ ZATVORENO S134, i na PROD-u.** `sql/045` poravnao vlasništvo (izmjereno:
   `Transakcija` + svih 15 atributa prešli s Saše na Koku, slugovi netaknuti);
-  `047`–`050` čiste politike; `assertWrote()` u panelu pretvara tihi neuspjeh u
-  poruku; `canEdit` gasi Edit gumb u View panelu. **Pušteno i izmjereno na TEST-u
-  (45 proba, promijenjene točno 4 — sve zatvaranje rupe). Na PROD-u još nije.**
+  `046`–`051` očistile politike (**107 → 76**); `assertWrote()` u panelu
+  pretvara tihi neuspjeh u poruku; `canEdit` gasi Edit gumb u View panelu.
+  Sonda na PROD-u: 45 proba, **8 promjena, sve zatvaranja** ⇒ *write grantee*
+  smije samo čitati (+ svoje evente), *stranac* **ništa**.
+  Potvrđeno uživo: Koka uređuje strukturu normalno (T-S134-12), grantee vidi
+  **sivi** Edit umjesto tišine (T-S134-13), unos mu i dalje radi (T-S134-14).
+  ⚠ Svjesno ostaje otvoreno: **write-grantee smije `events UPDATE` tuđeg retka**
+  (`050` dira samo INSERT). Izmjereno na 40 ispravljenih eventa da se taj smjer
+  ne koristi (Koka → Sašini 4×, obrnuto 0×), pa bi zabrana bila besplatna — ali
+  `events` UPDATE je baš mjesto gdje pogrešno sužavanje ostavlja redak **bez
+  ijednog atributa** uz poruku o uspjehu (Edit tok briše pa ponovno upisuje sve).
+  Ide kao zaseban zahvat, s pokusom nad Edit tokom.
 - **⚠ ISPRAVAK zapisanog o tri puta do pisanja** (S134). Stajalo je da
   `StructureImportModal` „nema nijednu provjeru prava" i da je „puna zamjena za
   panel". **Izmjereno da nije točno:** `structureImport.ts:498` čita `areas` s

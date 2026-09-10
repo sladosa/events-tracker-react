@@ -3,8 +3,8 @@
 **Datum:** 2026-09-10
 **Grana:** `test-branch` (commitovi `513a1cc`, `7be1e02`, `f374851`, `a56cbdc`, `336a2e7`)
 
-> ⚠ **Migracije `046`–`050` puštene su SAMO na TEST-u.** Na PROD-u je pušten samo
-> `sql/045` (poravnanje vlasništva). Kod je na `test-branch` i **nije deployan**.
+> ✅ **Migracije `046`–`051` puštene su i na PROD-u** (107 → 76 politika). Uz
+> njih `sql/045`. Kod je deployan, osim popravka modala (`c1c6c86`), koji čeka.
 
 ---
 

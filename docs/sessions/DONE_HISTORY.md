@@ -4547,7 +4547,11 @@ iz `043`/S123/S125 i čiste se zasebno.
 
 **Dokazano na TEST-u:** 45 proba, promijenjene **točno 4** — sve zatvaranje rupe.
 Stanje poslije poklapa se s `docs/RLS_INVENTORY.md` red po red.
-**Na PROD-u još nije pušteno.**
+
+**Zatim pušteno i na PROD-u** (isti dan): **107 → 76 politika**, sonda pokazala
+**8 promjena, sve zatvaranja**, i `git diff` sheme potvrdio da su dirane samo te
+četiri tablice. Stranac sada ne smije ništa. Potvrđeno uživo da Koka radi
+normalno, da grantee vidi **sivi** Edit umjesto tišine, i da mu unos i dalje radi.
 
 ## 6. UI prati RLS (`336a2e7`)
 
@@ -4580,3 +4584,36 @@ dakle mjeri što će preglednik **stvarno** dobiti. Zatvara T-S133-10.
    što u repou piše.
 
 Sve tri su bile **čitanje koda umjesto mjerenja baze**. Treći put u tri sesije.
+
+## 8. Bug koji je isplivao iz provjere — i bio veći nego što je zvučao
+
+Pri provjeri pod Kokinim računom Saša je prijavio: *„kad u Edit prozoru nešto
+brzo selektiram, izleti mi iz Edit ekrana bez izmjena; moram brisati karakter
+po karakter."* Zvuči kao nespretnost sučelja; bio je **gubitak rada**, i to na
+**14 modala**, ne samo Edit panelu.
+
+Svi su zatvarali ovako:
+
+```
+onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+```
+
+Izgleda kao „kliknuto je na pozadinu". Nije: `click` se okida na najbližem
+**zajedničkom pretku** elemenata na kojima su se dogodili `mousedown` i
+`mouseup`. Povuče li se selekcija iz polja unutar panela i miš otpusti izvan
+njega, taj predak je **upravo pozadina** — uvjet je istinit, panel se zatvara.
+
+Lijek je `useBackdropClose` na **jednom** mjestu: pamti gdje je pritisak počeo
+**i** gdje je završio.
+
+⚠ Prva verzija hooka je bila **nedovoljna, i to je uhvatio test, ne razmišljanje**
+— pratila je samo `mousedown`, pa je pritisak na pozadini s otpuštanjem u panelu
+i dalje zatvarao modal. Iz `click.target` se to ne vidi jer je on već zajednički
+predak; trebalo je pratiti i `mouseup`.
+
+⚠ `CategoryChainRow` renderira svoj modal **uvjetno**, pa bi ondje poziv hooka u
+JSX-u bio uvjetan poziv hooka ⇒ *„Rendered fewer hooks than expected"* i srušen
+render, i to tek pri prvom otvaranju. Ondje se hook zove na vrhu komponente.
+
+Protuprovjera: nad starim obrascem test pada **3/6**, uključujući baš prijavljeni
+slučaj. **Popravak čeka deploy** (Sašina odluka — dan je bio dug).
