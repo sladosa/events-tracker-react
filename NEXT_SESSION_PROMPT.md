@@ -1,6 +1,6 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `336a2e7` (`S134: UI prati RLS`).
+**Pisano protiv commita:** `9853dcb` (`S134: search_path na SECURITY DEFINER funkcijama`).
 `main` je **iza** — na njemu je još S133. Ako `git log` pokazuje novije, čitaj
 ovo kao povijest; CLAUDE.md je autoritet.
 
@@ -74,7 +74,7 @@ recimo kad želiš (2).
 
 ## Stanje grana
 
-- `test-branch` = `336a2e7`, pet commitova iznad `main`.
+- `test-branch` = `9853dcb`, sedam commitova iznad `main`.
 - `main` = S133. **Netlify nije deployao ništa iz S134.**
 - Migracije: **PROD ima samo `045`**. TEST ima `045`–`051`.
   ⇒ **TEST i PROD sada imaju različite RLS politike** — to je privremeno i
@@ -116,9 +116,12 @@ recimo kad želiš (2).
   operacija u sustavu), a PROD→TEST klon traži mapiranje `user_id`-eva ili dump
   `auth.users`. Dump nosi `project_ref` baš zato da restore odbije upisati u
   krivi projekt.
-- **`user_owns_area` je dobio `SET search_path`** u `046`. Ostale `app_*`
-  funkcije to već imaju; vrijedi provjeriti ima li još SECURITY DEFINER funkcija
-  bez njega (`SCHEMA_PROD.sql` ih sada sve pokazuje).
+- **`sql/051` čeka PROD.** Izmjereno: PROD ima **9** SECURITY DEFINER funkcija
+  bez `search_path`, TEST samo 2 (ostalih 6 ondje ne postoji). Nije rupa —
+  `authenticated` i `anon` nemaju CREATE ni na shemi ni na bazi, pa nemaju gdje
+  podmetnuti; zatvara se put prije nego postane prohodan.
+  ⚠ `handle_new_user` i `handle_pending_invites` su triggeri na **registraciji**
+  i provjerava ih tek sljedeća stvarna registracija.
 
 ## Nepromijenjeno od S133
 
