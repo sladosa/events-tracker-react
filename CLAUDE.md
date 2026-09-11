@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S134).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S135).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -158,6 +158,28 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   dira RLS bez tog ispisa s obje strane je nagađanje.**
   ⚠ Čita se pažljivo: **RLS-blokiran UPDATE/DELETE ne baca grešku nego pogodi 0 redaka**, a
   FK/trigger greška znači da je RLS **propustio**.
+- **⚠ ISTI `RETURNING` ČINI I LEGITIMAN INSERT „ZABRANJENIM" — obrnuti privid istog
+  uzroka** (S135, migracija `052`). `047` je postavio
+  `areas_select USING (app_can_read_area(id))`, a taj helper redak **traži u tablici**
+  (`SELECT 1 FROM areas WHERE id = …`). Uz `RETURNING` Postgres traži SELECT pravo na
+  **novi** redak — kojeg u snimci naredbe još nema — pa `EXISTS` padne i cijeli INSERT
+  se poništi uz `42501 new row violates row-level security policy`. Poruka **laže**:
+  `areas_insert` ga je propustio, zabranjeno je bilo **čitanje natrag**.
+  ⚠ **Politika nad tablicom X ne smije tražiti redak X-a u tablici X.** Uvjet mora
+  gledati **stupce samog retka** (`user_id = auth.uid()`). `categories` i
+  `attribute_definitions` su pošteđene jer gledaju **roditelja**, koji već postoji;
+  `areas_select` je bila jedina samoreferentna.
+  ⚠ **Produkcija nije bila pokvarena — izmjereno, ne pretpostavljeno:** sva četiri
+  mjesta koja stvaraju Areu zovu `.insert()` **bez** `.select()`, a `postgrest-js
+  2.93.0` uz `insert()` šalje samo `count=`/`missing=default`. `return=representation`
+  dolazi tek s `.select()`. Mina je bila postavljena, nitko nije stao.
+  ⚠ **Sonda to nije mogla uhvatiti jer `areas INSERT` u njoj nije postojao.**
+  Instrument kojim se dokazivala ispravnost `047` bio je slijep točno ondje gdje je
+  `047` pogriješio; našla su ga tri E2E speca (`S100`, `S107b`, `S119`). Sonda sada nosi
+  **dvije** INSERT probe na `areas` — sa i bez `RETURNING` — jer **jedna ne može
+  razlikovati ta dva privida**. I oznaka više ne glasi „RLS odbio (WITH CHECK)" nego
+  samo „RLS odbio": uz `RETURNING` odbija **SELECT** politika, a imenovanje krive
+  politike šalje na krivi trag.
 - **⚠ `Prefer: return=representation` MASKIRA OTVOREN INSERT.** Postgres tada traži i SELECT
   pravo na novi redak, pa politika koja INSERT propušta izgleda kao da ga brani. Tako je
   otvorena rupa („bilo tko može pisati u tuđu Areu") devet mjeseci izgledala zatvoreno —
@@ -2201,6 +2223,28 @@ PBZVISA izvod, ne izvadak tekućeg. Dakle prije alata treba **razdvojiti po `Izv
 se traži potvrda ondje gdje je po definiciji nema.
 ⚠ Saldo je i bez toga točan (`RF 690,79 @ 07.09.` u cent) — vrijednost je u **budućem
 sparivanju**, ne u kontroli. Ide kad se RF put ionako bude dirao.
+
+**⭐ Zatvaranje modala ne smije tiho baciti rad** (Sašin nalaz S135, uz T-S134-21).
+S134 je maknuo **slučajni okidač** (selekcija koja završi izvan panela), ali ne i
+**posljedicu**: namjeran klik na pozadinu i dalje odbacuje nespremljene izmjene **bez
+pitanja**. Izmjereno: `StructureNodeEditPanel` uopće ne zna je li „prljav" — nema
+`isDirty`, `hasChanges` ni `confirm`, a `useBackdropClose` prima `enabled` koji mu
+**nitko ne šalje**.
+Zamisao: zastavicu diže **handler kroz koji je promjena prošla**, pa
+`useBackdropClose(onClose, !touched)`. Obrazac već postoji u ovoj bazi koda —
+`userTouchedRef` (S122): pitanje nije *„ima li vrijednosti"* nego *„je li ih čovjek
+dirao"*, a izračun iz stanja to ne može reći jer defaulti nose `touched: true`.
+⚠ **„Prljav pa se tiho ne zatvara" je GORE od zatvaranja** — korisnik klikne, ništa se
+ne dogodi, i nigdje ne piše zašto; isti razred kao tihi neuspjeh Savea koji je `assertWrote()`
+zatvorio u S134. Dakle pitanje (`Discard changes?`), nikad šutnja.
+⚠ Natpis je **engleski** — Structure Edit je konfiguracijska ploha; hrvatski je za Kokine
+plohe unosa i Help.
+⚠ Uvjet ide **po panelu, ne u hook.** Hook koristi **13** modala, a nemaju svi rad koji se
+može izgubiti (`CategoryDetailPanel` je samo pregled). Guranje uvjeta u hook pretvorilo bi
+jednu invarijantu u trinaest iznimki.
+⚠ Usput zapaženo: `StructureNodeEditPanel:548` ima **drugi** overlay (`z-[60]`, ugniježđeni
+dijalog) koji hook **ne** koristi ⇒ ne zatvara se klikom na pozadinu **uopće**. Nije kvar
+(ništa se ne gubi), ali je nedosljednost koju treba odlučiti zajedno s ovim.
 
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**

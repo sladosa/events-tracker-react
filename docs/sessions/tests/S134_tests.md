@@ -186,3 +186,64 @@ prije nego postane prohodan.
 ⚠ `handle_new_user` i `handle_pending_invites` su triggeri na **registraciji** —
 provjerava ih tek sljedeća stvarna registracija. Do tada stoji da su
 promijenjene, ne da su provjerene.
+
+---
+
+## H. Modali — selekcija teksta zatvarala panel
+
+⚠ Ovi su testovi do S135 postojali **samo u `PENDING_TESTS.md`**, bez koraka.
+Ritual (korak 2) traži detalje za **svaki** nov test; propust je ispravljen
+naknadno, pa ovdje stoji i zašto svaki od njih postoji.
+
+### T-S134-19 ✅ `backdropClose.test.mjs`
+**Izmjereno:** 6 slučajeva prolazi; protuprovjera (vraćen stari obrazac
+`e.target === e.currentTarget`) pada **3/6**. Dakle test mjeri baš ono zbog
+čega je pisan.
+
+### T-S134-20 ✅ Selekcija teksta ne zatvara panel (uživo, 11.09.2026.)
+
+**Gdje:** Structure → Edit Mode → ⋮ na kategoriji → `Edit`
+(`StructureNodeEditPanel` — panel s najviše polja; ondje je gubitak rada najskuplji).
+
+1. Promijeni nešto u panelu (npr. dopiši znak u `Description`) — mora
+   postojati **nespremljena** izmjena, jer se testira gubitak rada, ne samo zatvaranje.
+2. Pritisni lijevi gumb **unutar** tog polja i drži.
+3. Povuci miša **izvan panela**, na zatamnjenu pozadinu.
+4. Pusti gumb ondje.
+
+**Očekivano:** panel ostaje otvoren, izmjena je i dalje u polju.
+**Pad:** panel se zatvori — stanje prije popravka („kad brzo nešto selektiram,
+izleti mi iz Edit ekrana bez izmjena").
+
+**Izmjereno 11.09.:** `Garmin_data`, `Description = testiram` selektiran
+povlačenjem izvan panela — panel otvoren, tekst na mjestu. ✅
+
+### T-S134-21 ✅ Granica s druge strane — namjerno zatvaranje i dalje radi
+
+**Zašto postoji:** bez njega bi T-S134-20 prolazio i nad panelom koji se
+**nikad** ne zatvara, a to je isto kvar — samo drugi. („Test koji nikad ne pada
+ne čuva ništa", S120.)
+
+⚠ Pozadina je zatamnjeni sloj **oko** panela (`fixed inset-0 … p-4 bg-black/40`),
+ne prazan prostor **unutar** panela. Uz uzak prozor to je traka od ~16 px —
+raširi prozor prije testa.
+
+1. **Pritisni i pusti** na zatamnjenoj pozadini, bez pomicanja miša.
+   **Očekivano:** panel se zatvori.
+2. **Pritisni na pozadini → povuci u panel → pusti ondje.**
+   **Očekivano:** panel **ostaje otvoren**.
+
+⚠ Drugi smjer nije kozmetika: `click.target` je **zajednički predak**, pa se iz
+njega ne vidi je li miš otpušten u panelu. Bez zasebnog praćenja `mouseup`-a taj
+potez i dalje zatvara modal — uhvaćeno testom, ne razmišljanjem.
+
+**Izmjereno 11.09.:** oba smjera ✅
+
+### ⚠ Što ovi testovi NE pokrivaju (Sašin nalaz, 11.09.)
+
+Popravak je maknuo **slučajni okidač**, ne **posljedicu**: namjeran klik na
+pozadinu i dalje baca nespremljene izmjene **bez pitanja**. Izmjereno da panel
+uopće ne zna je li „prljav" — nema `isDirty`, `hasChanges` ni `confirm`, a
+`useBackdropClose` prima `enabled` koji mu nitko ne šalje.
+⇒ Zasebna stavka u Backlogu CLAUDE.md-a („Zatvaranje modala ne smije tiho
+baciti rad").

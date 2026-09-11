@@ -129,6 +129,19 @@ def probes(sc):
     e = sc['event_owner']['id'] if sc['event_owner'] else None
     out = [
         ('areas', 'SELECT', "SELECT count(*) FROM public.areas WHERE id='%s'" % a),
+        # ⚠ DVIJE INSERT probe namjerno: razlika medju njima JE dijagnoza.
+        #   `INSERT ... RETURNING` trazi i SELECT pravo na NOVI redak, pa
+        #   politika koja redak trazi U TABLICI (`app_can_read_area(id)`) obori
+        #   cijeli upis -- i to porukom koja tvrdi da INSERT nije dopusten.
+        #   Tako je `047` mjesec dana izgledao ispravno (S135, migracija `052`).
+        #   Obrnuti privid istog uzroka je zapisan u S134: `return=representation`
+        #   MASKIRA otvoren INSERT. Jedna proba ne moze razlikovati ta dva stanja.
+        ('areas', 'INSERT svoju',
+         "INSERT INTO public.areas (name,slug,sort_order,user_id) "
+         "VALUES ('ZZZ_PROBE','zzz-probe-%s',999,auth.uid())" % a[:8]),
+        ('areas', 'INSERT +RETURNING',
+         "INSERT INTO public.areas (name,slug,sort_order,user_id) "
+         "VALUES ('ZZZ_PROBE2','zzz-probe2-%s',999,auth.uid()) RETURNING id" % a[:8]),
         ('areas', 'UPDATE settings',
          "UPDATE public.areas SET settings = coalesce(settings,'{}'::jsonb) WHERE id='%s'" % a),
         ('areas', 'DELETE', "DELETE FROM public.areas WHERE id='%s'" % a),
@@ -197,7 +210,10 @@ def read_result(chunk):
     if err:
         msg = err.group(1).strip()
         if 'row-level security' in msg:
-            return 'NE', 'RLS odbio (WITH CHECK)'
+            # ⚠ NE pise se vise „(WITH CHECK)": uz `RETURNING` istu poruku
+            #   proizvede SELECT politika nad NOVIM retkom, a ne WITH CHECK
+            #   (S135). Tvrdnja koja imenuje krivu politiku salje na krivi trag.
+            return 'NE', 'RLS odbio'
         return 'DA*', 'proslo RLS, palo na: ' + msg[:58]
     m = re.search(r'\b(INSERT 0|UPDATE|DELETE)\s+(\d+)', chunk)
     if m:

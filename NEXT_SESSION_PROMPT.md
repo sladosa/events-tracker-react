@@ -1,8 +1,7 @@
 # Sljedeća sesija — handoff
 
-**Pisano protiv commita:** `6c9964f` (`S134: zamka o e.target === e.currentTarget`).
-`main` = `5d58c05`. **Dva commita čekaju na `test-branch`** — popravak modala
-i njegova dokumentacija. Ako `git log` pokazuje novije, čitaj ovo kao povijest;
+**Pisano protiv commita:** `1274929` + nespremljene izmjene S135 (idu istim commitom).
+`main` = `5d58c05`. Ako `git log` pokazuje novije, čitaj ovo kao povijest;
 CLAUDE.md je autoritet.
 
 ---
@@ -11,124 +10,114 @@ CLAUDE.md je autoritet.
 
 ## Što je danas napravljeno
 
+Odluka s početka dana — **ne deployati, nego prvo testirati** — pokazala se
+ispravnom iz razloga koji se tada nije mogao znati: puni E2E je otkrio kvar u
+jučerašnjoj migraciji.
+
 | | stanje |
 | --- | --- |
-| Backup baze — **prva kopija PROD-a uopće** | ✅ radi, 53 s |
-| Shema obje baze u gitu (`pg_dump`) | ✅ |
-| Vlasništvo strukture poravnato na PROD-u (`sql/045`) | ✅ pušteno |
-| Kod: `user_id` se više ne prepisuje | ✅ commitan, **nije deployan** |
-| Čišćenje RLS-a (`046`–`051`) | ✅ **pušteno i na PROD-u**, 107→76 politika |
-| Otvorena rupa u pravima — nađena i zatvorena | ✅ **na PROD-u**; stranac ne smije ništa |
-| UI: Save više ne može tiho ne učiniti ništa | ✅ deployano |
-| Koka radi normalno · grantee vidi zabranu · unos radi | ✅ T-S134-12/-13/-14 |
-| Selekcija teksta zatvarala modal i gubila izmjene | ✅ popravljeno, **ČEKA DEPLOY** |
+| Popravak modala provjeren uživo (selekcija ne gubi rad) | ✅ oba smjera |
+| Guard stvarno zaustavlja E2E kad na :5173 stoji PROD | ✅ pravim runom |
+| Structure tab na PROD-u piše stvaran broj eventa | ✅ `5173 events` |
+| Structure se otvara brzo i kao grantee | ✅ ispod 3 s |
+| **Kvar u `sql/047` nađen i popravljen** | ✅ `052`, **samo na TEST-u** |
+| Četiri testa vraćena u život tim popravkom | ✅ |
+| 22 „pada" u E2E razvrstano | ✅ pola je bila lažna uzbuna |
 
 ## Ono što je zapravo bila poanta dana
 
-Krenuli smo od backupa i našli nešto veće: **bilo koji prijavljen korisnik mogao
-je pisati u tuđu Areu.** Ne grantee — bilo tko s računom.
+Jučerašnja migracija `047` postavila je pravilo: *„smiješ vidjeti Areu ako je
+**nađeš u tablici** i piše da je tvoja."* Zvuči točno, ali dok se redak tek
+upisuje, njega u tablici **još nema** — pa ga pravilo ne nađe.
 
-Izgledalo je zatvoreno devet mjeseci, i to iz razloga koji je vrijedan pamćenja:
-aplikacija šalje zahtjev koji uz upis traži i da mu se redak vrati natrag. To
-vraćanje politika je odbijala, pa je odgovor bio „zabranjeno" — a sam upis je
-prolazio. Promijeniš jednu postavku u zahtjevu i redak uđe.
+Smeta samo kad se traži *„upiši ovo **i vrati mi natrag** što si upisao"*. Tada
+baza mora odmah pročitati novi redak, ne smije, i **poništi cijeli upis** uz
+poruku *„nemaš pravo upisati"*. To je neistina: upis si smio, čitanje natrag nisi.
 
-Uz to su se **tri zapisane tvrdnje** o pravima pokazale netočnima. Sve tri su
-nastale čitanjem koda umjesto mjerenja baze. Zato sada postoje dva alata koja
-mjere: jedan vadi stvarnu shemu u git, drugi ispisuje **što tko stvarno smije**.
+⚠ **Produkcija nije bila pokvarena** — provjereno da aplikacija nigdje ne traži
+Areu natrag kad je stvara. Mina je bila postavljena, nitko nije stao na nju.
+
+I jedna stvar koja se ponavlja: **instrument kojim smo jučer dokazali da je `047`
+ispravan bio je slijep točno ondje gdje je `047` pogriješio** — sonda nije imala
+`areas INSERT`. Kvar su našla tri E2E testa. Sonda je sada dopunjena.
 
 ## Što tebe čeka — redoslijedom
 
-1. ⭐⭐ **Pusti migracije na PROD**, sa sondom prije i poslije. Točan redoslijed
-   je u `docs/sessions/tests/S134_tests.md` (T-S134-11). Ukratko:
-   ```
-   Tools\run.bat Tools\backup_db.py --env prod          ← svježa snimka
-   Tools\run.bat Tools\rls_probe.py --env prod          ← spremi izlaz
-      046 → 047 → 048 → 049 → 050 → 051   (Supabase SQL editor)
-   Tools\run.bat Tools\rls_probe.py --env prod          ← usporedi
-   Tools\run.bat Tools\dump_schema.py --env prod        ← shema natrag u git
-   ```
-2. ⭐⭐ **Provjeri da Koka i dalje može raditi** (T-S134-12). To je najvažniji
-   test cijele sesije. Ako bilo što tiho ne radi — politike se vraćaju iz
-   `sql/SCHEMA_PROD.sql`.
-3. **Deploy koda** kad kažeš. Bez njega `sql/045` stoji na milost prvog
-   spremanja Structurea — stari bundle i dalje prepisuje vlasništvo.
-4. **Ne diraj Structure na PROD-u** dok deploy ne prođe (isti razlog).
-5. **Ugasi `npm run dev:prod`** prije E2E. Sada te guard zaustavi umjesto da
-   testovi odu na produkciju, ali E2E onda neće ni krenuti.
+1. **`sql/052` na PROD**, sa sondom prije i poslije (koraci u
+   `docs/sessions/tests/S135_tests.md`, T-S135-5). **Ne gori** — produkcija radi;
+   ovo je zatvaranje mine.
+2. **Deploy koda** kad kažeš. Čeka samo popravak modala (`c1c6c86`), i sad ima
+   podlogu: provjeren je uživo, a E2E ne pokazuje regresiju S134 koda.
+3. **T-S133-8 treba ponoviti kao vlasnik.** Ono što si danas vidio (Edit siv,
+   ⋮ bez `Add Leaf`) je S134 zabrana za grantee-a, koja te zaustavila **prije**
+   nego si došao do brave koja se testira. Prošlo bi i da je ta brava otvorena.
+4. **Dvije odluke koje čekaju jednu tvoju rečenicu** (v. DIO 2): arhiva starih
+   testova i sudbina ~13 „Excel pregled" testova.
 
 ## Što treba od Koke
 
-Ništa. Ako primijeti da nešto u Structure tabu ne radi nakon migracija — to je
-odmah važno i vraća se.
-
-## Jedno pitanje koje je ostalo otvoreno
-
-Rekao si da bi za financijske podatke možda trebalo **posebno odobrenje za
-brisanje**. Predložio sam da to ne bude zabrana nego: (1) backup — sada postoji,
-(2) **potvrda s iznosom kod grupnog brisanja** (*„obrisat ćeš 47 redaka, ukupno
-−3.204,18 €"*), (3) trag brisanja ako zatreba. Prava linija nije „financijski vs
-ostali" nego **„jedan potez vs pedeset"**. Zapisano u `docs/RLS_INVENTORY.md`;
-recimo kad želiš (2).
+Ništa.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Stanje grana
+## Stanje grana i migracija
 
-- `test-branch` = `9853dcb`, sedam commitova iznad `main`.
-- `main` = S133. **Netlify nije deployao ništa iz S134.**
-- Migracije: **PROD ima samo `045`**. TEST ima `045`–`051`.
-  ⇒ **TEST i PROD sada imaju različite RLS politike** — to je privremeno i
-  namjerno, ali svaki zaključak o pravima mora reći na koju bazu se odnosi.
+- `test-branch` = S135 commit; `main` = `5d58c05` (sve osim popravka modala).
+- **`sql/052` je pušten SAMO na TEST-u.** PROD i dalje ima `047` verziju
+  `areas_select` ⇒ ondje `INSERT … RETURNING` nad `areas` još pada.
+- ⇒ TEST i PROD opet imaju različit RLS. Svaki zaključak o pravima mora reći na
+  koju bazu se odnosi.
 
-## Novi alati (`data-prep_tools/Tools/`)
+## Otvoreno — po redu vrijednosti
 
-| alat | čemu |
-| --- | --- |
-| `backup_db.py` | snimka cijele baze; `--verify` provjeri staru po sha256 |
-| `dump_schema.py` | `pg_dump --schema-only` → `sql/SCHEMA_*.sql`; `--diff` |
-| `rls_probe.py` | što RLS **stvarno** dopušta po ulozi, sve u `ROLLBACK`-u |
+- **⭐ ⋮ meni na Structure tabu gubi stavke.** `e7`, `e13` i `e15` padaju na
+  **istom mjestu**: stavka unutar izbornika (`Manage Access` ×2, `Add Between`).
+  Meni se dokazano otvori (`button "Actions" [active]`), pa stavka nestane.
+  `CategoryChainRow:343` zatvara meni na **svaki** `scroll`, `capture: true`.
+  `e7-1` jednom prošao, jednom pao ⇒ ovisi o trenutku.
+  ⚠ Hipoteza (asinkrone S133 značke s brojem eventa mijenjaju sadržaj redaka ⇒
+  pomak ⇒ scroll) **NIJE izmjerena**. Prvo trace, pa popravak — toga dana su dvije
+  hipoteze već pale.
+  ⚠ Ako se potvrdi, nije test nego korisnički kvar: klikneš ⋮ i meni se sam zatvori.
+- **E7-2 / E7-3** — otprije poznati otvoreni bugovi (izostaje toast u invite flowu).
+- **T-S135-11: zašto suite ruši sam sebe.** `workers: 1` je od S120, dakle nije
+  paralelizam. Deset specova pada **samo** u punom runu, s ekranom koji tvrdi
+  `No activities found` uz ispravan filtar — `BUG-S121-AREACTX` razred. Ako je uzrok
+  gušenje TEST baze kroz 20 min, pravo pitanje je **Postgres upgrade** (otvoren od
+  S105), a ne testovi.
+- **Zatvaranje modala baca rad bez pitanja** — nova Backlog stavka u CLAUDE.md.
+  Panel ne zna je li „prljav"; `useBackdropClose` prima `enabled` koji mu nitko ne
+  šalje. Natpis `Discard changes?` (konfiguracijska ploha ⇒ engleski).
+- **Dvije odluke koje čekaju Sašu:**
+  (a) arhiva `S101` i `S105` — analizirani kao nadiđeni još u S120; `S99` je
+  **već** u arhivi iako ga PENDING vodi kao otvoren pitanje;
+  (b) ~13 „Excel pregled" testova iz `S107*`. Podjela je pripremljena: ~9 su
+  **vizualni pregled redaka u zamrznutom fileu** (Review workbook zadnji put dirnut
+  17.08., osam dana prije nego je PROD pušten) ⇒ arhiva; ~4 su **alati koji će se
+  opet pokretati** za batch 2024/2023 (`T-S107j-1`, `T-S107d-4`, `T-S107c-2`,
+  `T-S107i-6`) ⇒ zadržati.
+- **`event_attributes` INSERT, `events` SELECT/UPDATE/DELETE** — i dalje nedirnuti
+  (iz S134, s razlogom).
+- **RESTORE NE POSTOJI.** Backup je kopija, ne provjeren povratak.
 
-`SUPABASE_DB_URL` je u `.env.prod.local` i `.env.local` (Session pooler, port
-5432). Veza ne može ići direktno — samo IPv6.
+## Higijena okoline — novo, i vrijedi zapamtiti
 
-## Otvoreno
+Na `:5173` je danas zatečen `vite --mode prod` **od jučer 11:39**, siroče
+zatvorenog terminala; uz njega i `playwright test-server` od 14:13. Oba ugašena.
+⇒ Prije E2E vrijedi provjeriti **što stoji na portovima**, jer zamka zapisana kao
+„ugasi `dev:prod`" pretpostavlja da znaš da si ga pokrenuo.
 
-- **T-S134-11/-12/-13/-14 ✅ ZATVORENI.** Migracije su na PROD-u, sonda
-  potvrdila 8 promjena (sve zatvaranja), Koka radi normalno, grantee vidi
-  zabranu umjesto tišine, unos mu i dalje radi.
-- **T-S134-20/-21** — popravak modala uživo. Čeka deploy.
-- **T-S134-16** — cijeli E2E nakon RLS promjena. **Nije pokrenut** jer je na
-  :5173 stajao `dev:prod`; guard bi ga zaustavio. TEST baza već ima nove
-  politike, pa E2E sada mjeri stvarno stanje.
-  ⚠ Spec koji piše strukturu pod nevlasnikom sada **legitimno** pada — treba
-  razlikovati to od regresije.
-- **`event_attributes` INSERT ostaje otvoren.** Namjerno nije dirano u `050`:
-  S123 traži da se atributi pišu pod **autorom eventa**, pa uvjet ne može biti
-  isti kao za `events`, a pogrešno sužavanje ostavlja redak **bez ijednog
-  atributa** uz poruku o uspjehu (Edit tok briše pa ponovno upisuje sve). Traži
-  pokus nad Edit tokom, ne samo nad politikom.
-- **`events` SELECT/UPDATE/DELETE nisu čišćeni** — ondje živi `043`/S123/S125
-  logika (vlasnik smije ispraviti tuđi redak ali ne obrisati; `guard_event_author`).
-  Zaseban posao.
-- **Structure uvoz u tuđu Areu stvara duplikat Aree**, tiho. Popravak nije
-  napravljen jer mijenja ponašanje uvoza, a Excel roundtrip je Koki glavni put.
-- **RESTORE NE POSTOJI.** Backup je kopija, ne provjeren povratak. Bio je
-  dogovoren za „idući put" — to je sada.
-  ⚠ Prije pisanja: restore u istu bazu traži `--wipe` granu (najopasnija
-  operacija u sustavu), a PROD→TEST klon traži mapiranje `user_id`-eva ili dump
-  `auth.users`. Dump nosi `project_ref` baš zato da restore odbije upisati u
-  krivi projekt.
-- **`sql/051` čeka PROD.** Izmjereno: PROD ima **9** SECURITY DEFINER funkcija
-  bez `search_path`, TEST samo 2 (ostalih 6 ondje ne postoji). Nije rupa —
-  `authenticated` i `anon` nemaju CREATE ni na shemi ni na bazi, pa nemaju gdje
-  podmetnuti; zatvara se put prije nego postane prohodan.
-  ⚠ `handle_new_user` i `handle_pending_invites` su triggeri na **registraciji**
-  i provjerava ih tek sljedeća stvarna registracija.
+## Tri promašaja u mjerenju (moja, ne testova)
 
-## Nepromijenjeno od S133
+- `exit code 0` iz `npx playwright test | tail` je kod **`tail`-a**.
+- Playwright **briše `test-results/` na svakom pokretanju** ⇒ petlja po specovima
+  pojede artefakte svih osim zadnjeg; treba kopirati nakon svakog runa.
+- Sažetak nosi ANSI znakove ⇒ `grep '^ *[0-9]+ passed'` ne hvata ništa i ispiše
+  „bez rezultata", što se čita kao pad.
+
+## Nepromijenjeno
 
 Financije pipeline, sidra, delta sheet, tranše, Overview — ništa od toga danas
-nije dirano. Vrijedi CLAUDE.md i `DONE_HISTORY` S129–S133.
+nije dirano. Vrijedi CLAUDE.md i `DONE_HISTORY` S129–S134.

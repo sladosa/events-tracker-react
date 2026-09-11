@@ -1,7 +1,37 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
+**Zadnji update:** S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
+
+---
+
+## S135 — E2E triaza + `areas_select` samoreferentna politika (2026-09-11)
+
+Detalji: [S135_tests.md](tests/S135_tests.md)
+
+⚠ **`sql/052` je pusten SAMO na TEST-u.** PROD i dalje ima `047` verziju
+politike — dakle `INSERT ... RETURNING` nad `areas` ondje jos pada.
+
+### A. Kvar i popravak
+
+| #            | test                                                                       | status |
+| ------------ | -------------------------------------------------------------------------- | ------ |
+| **T-S135-1** | Sonda PRIJE na TEST-u: `areas INSERT svoju` DA, `INSERT +RETURNING` **NE**  | ✅ izmjereno — asimetrija vidljiva u dva susjedna retka |
+| **T-S135-2** | `sql/052` na TEST-u: `app_can_read_area(id)` → `user_id = auth.uid() OR …`  | ✅ |
+| **T-S135-3** | Sonda POSLIJE: jedina promjena je `INSERT +RETURNING` NE → DA               | ✅ stranac i dalje ne vidi tudju Areu; grantee i dalje bez UPDATE/DELETE |
+| **T-S135-4** | ⭐ Tri speca koja su kvar nasla sada prolaze (`S100`, `S107b`, `S119`)      | ✅ 1+2+1 passed |
+| **T-S135-5** | ⭐⭐ `sql/052` na PROD-u, sa sondom s obje strane                           | ⬜ **Sasa pokrece** |
+| **T-S135-6** | Rucna protuprovjera u SQL editoru (2 INSERT-a, razlika samo `RETURNING`)    | ⬜ opcionalno — v. podnozje `052` |
+| **T-S135-7** | „Add Area" u aplikaciji i dalje radi (nije se pokvarilo popravkom)          | ⬜ |
+
+### B. E2E triaza — 22 pada u punom runu
+
+| #             | test                                                                      | status |
+| ------------- | ------------------------------------------------------------------------- | ------ |
+| **T-S135-8**  | ⭐ Puni E2E nakon RLS migracija (preuzima T-S134-16)                       | ⚠ 46 proslo / 22 palo / 3 nisu krenula, 19,9 min |
+| **T-S135-9**  | ⭐ Pojedinacni run svakog palog speca — razdvaja kvar od artefakta runa    | ✅ 10 specova prolazi SAMO ⇒ artefakt; 6 padalo i samo |
+| **T-S135-10** | ⭐ **NALAZ: `e13`, `e15` i `e7` padaju na ISTOM mjestu** — stavka unutar ⋮ izbornika na Structure tabu (`Manage Access` ×2, `Add Between`). Meni se dokazano otvori (`button "Actions" [active]`), pa stavka nestane. `CategoryChainRow:343` zatvara meni na **svaki** `scroll`, s `capture: true`. `e7-1` jednom prosao jednom pao ⇒ ovisi o trenutku. ⚠ Hipoteza da to izazivaju asinkrone S133 znacke s brojem eventa **NIJE izmjerena** — trazi trace | ⬜ |
+| **T-S135-11** | ⚠ Zasto suite rusi sam sebe (hipoteza: gusenje TEST baze kroz 20 min)     | ⬜ **neistrazeno** |
 
 ---
 
@@ -45,7 +75,7 @@ Detalji: [S134_tests.md](tests/S134_tests.md)
 
 | #             | test                                                                    | status |
 | ------------- | ----------------------------------------------------------------------- | ------ |
-| **T-S134-15** | Guard staje kad na :5173 stoji `dev:prod`                               | ⬜ logika provjerena, pravi run ne |
+| **T-S134-15** | Guard staje kad na :5173 stoji `dev:prod`                               | ✅ **pravi run 11.09.** — siroce od 10.09. 11:39 (`vite --mode prod`, PID 8604) preuzeto bi bilo; guard stao prije preglednika. Usput izmjereno da Nodeov `fetch` dosegne listener koji sluša **samo na `[::1]`** — da nije, `catch { return }` bi tiho propustio |
 | **T-S134-16** | ⭐ Cijeli E2E prolazi nakon RLS migracija                                | ⬜ |
 
 ### E. Modali — selekcija teksta
@@ -53,8 +83,8 @@ Detalji: [S134_tests.md](tests/S134_tests.md)
 | #             | test                                                                    | status |
 | ------------- | ----------------------------------------------------------------------- | ------ |
 | **T-S134-19** | `backdropClose.test.mjs` — 6 slučajeva, protuprovjera pada 3/6           | ✅ |
-| **T-S134-20** | ⭐ Uživo: u Edit panelu povuci selekciju iz polja **izvan** panela — modal ostaje otvoren, izmjene sačuvane | ⬜ traži deploy |
-| **T-S134-21** | Klik na zatamnjenu pozadinu i dalje zatvara modal                        | ⬜ traži deploy |
+| **T-S134-20** | ⭐ Uživo: u Edit panelu povuci selekciju iz polja **izvan** panela — modal ostaje otvoren, izmjene sačuvane | ✅ **11.09.** (lokalno, TEST) — `Garmin_data`, `Description` selektiran povlačenjem van panela; panel otvoren, tekst na mjestu |
+| **T-S134-21** | Klik na zatamnjenu pozadinu i dalje zatvara modal + obrnuti smjer (pritisak na pozadini, otpuštanje u panelu ⇒ ostaje otvoren) | ✅ **11.09.** oba smjera |
 
 ## S133 — module-level invalidacija kesa + brojanje eventa (2026-09-10)
 
@@ -78,9 +108,9 @@ su bila samo na `test-branch`, pa se PROD ponasao po starom.
 | #            | test                                                                    | status |
 | ------------ | ------------------------------------------------------------------------ | ------ |
 | **T-S133-6** | ⭐ E2E `S133_structure_event_count.spec.ts` — panel pise STVARAN broj    | ✅ prolazi; protuprovjera (vracen stari upit) pada |
-| **T-S133-7** | ⭐ PROD: `Financije_all > Transakcija` mora pisati **5.173 events**, ne `no events yet` | ⬜ **nakon deploya** |
-| **T-S133-8** | S24 brava: Edit Mode → `+ Add Leaf` na toj kategoriji mora biti BLOKIRAN | ⬜ **nakon deploya** — to je razlog zbog kojeg se popravljalo |
-| **T-S133-9** | Structure tab se i dalje otvara bez osjetnog cekanja (39 count upita usporedno) | ⬜ izmjereno 0,46 s na TEST-u, **na PROD-u kao grantee neizmjereno** |
+| **T-S133-7** | ⭐ PROD: `Financije_all > Transakcija` mora pisati **5.173 events**, ne `no events yet` | ✅ **11.09.** — znacka pise `5173 events`, tocno predvidjeni broj |
+| **T-S133-8** | S24 brava: Edit Mode → `+ Add Leaf` na toj kategoriji mora biti BLOKIRAN | ⬜ ⚠ **11.09. POKUSAN I NE VRIJEDI** — Sasa je na PROD-u **grantee**, pa ga je zaustavila S134 zabrana (Edit/Delete sivi, ⋮ nudi samo View details / Owner / Copy owner email) **prije** nego je dosao do `+ Add Leaf`. Prosao bi i da je S24 brava posve otvorena ⇒ ne mjeri nista. **Izvesti kao VLASNIK** — na TEST-u nad vlastitom Areom s eventima, ili pod Kokinim racunom |
+| **T-S133-9** | Structure tab se i dalje otvara bez osjetnog cekanja (39 count upita usporedno) | ✅ **11.09. na PROD-u, kao grantee** — s ucitanom aplikacijom Structure se otvori **ispod 3 s**. ⚠ Prvi dojam („sporo prvi put") razlucen je jednim klikom: sporo je samo **prije** nego se aplikacija ucita ⇒ to je **hladan bundle** (`vendor-plotly` ~4,9 MB, Backlog), **ne** brojanje. RPC s `GROUP BY` zato **ne treba** |
 
 ### C. Nalaz koji NIJE popravljen
 

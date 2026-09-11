@@ -4617,3 +4617,180 @@ render, i to tek pri prvom otvaranju. Ondje se hook zove na vrhu komponente.
 
 Protuprovjera: nad starim obrascem test pada **3/6**, uključujući baš prijavljeni
 slučaj. **Popravak čeka deploy** (Sašina odluka — dan je bio dug).
+
+---
+
+# S135 — testiranje umjesto deploya, i kvar koji je iz toga ispao (2026-09-11)
+
+Dan je počeo Sašinom odlukom: **ne deployati** (previše Netlify buildova zaredom),
+nego **prvo testirati** — *„možda ulovimo neki popravak prije deploya."* Ulovili smo
+kvar u migraciji od jučer.
+
+## 0. Tri stvari koje je handoff krivo tvrdio
+
+- *„Kod: `user_id` se više ne prepisuje — commitan, **nije deployan**"* — **netočno.**
+  `origin/main` = `5d58c05`, a u njemu su i `7be1e02` i `336a2e7`. Netlify ih je
+  izgradio. Nedeployan je bio **samo** popravak modala (`c1c6c86`).
+- `T-S133-7/-8/-9` nosili su *„nakon deploya"* — a `7009fa2` je na `main`u od kraja
+  S133, dakle na PROD-u. Testirali su se odmah.
+- `T-S134-8` *„traži deploy"* — isto, brana je već bila gore.
+
+⚠ Pouka: **oznaka „čeka deploy" zastarijeva tiho.** Provjerava se s `git branch
+--contains`, ne pamćenjem.
+
+## 1. Siroče koje je čekalo cijeli dan
+
+Na `:5173` je stajao `vite --mode prod` (PID 8604) **od 10.09. u 11:39** — preživio
+zatvoren terminal. Saša ga nije vidio i ponudio se da ga *upali*.
+
+To je bolja verzija zamke nego što je zapisana u CLAUDE.md: opasnost nije „zaboravio
+sam da sam maloprije pokrenuo `dev:prod`" nego **server kojeg nitko ne vidi**.
+Disciplina protiv toga ne pomaže.
+
+**T-S134-15 zatvoren pravim runom, ne logikom.** Guard je stao prije nego se otvorio
+ijedan preglednik. Usput je odgovorio i na neizmjereno pitanje: taj server sluša
+**samo na `[::1]`**, a Nodeov `fetch` ga je dosegnuo — da nije, `catch { return }` bi
+ga tiho propustio.
+
+## 2. Puni E2E: 46 / 22 / 3
+
+⚠ **`exit code 0` nije značio ništa** — run je išao kroz `| tail`, pa je to kod
+`tail`-a. Prvi od tri promašaja u mjerenju toga dana.
+
+Padova je bilo 22. **Brojka nije bila podatak o S134**: puni suite nije pušten od
+**S120**, a otad su S121, S122, S129, S131 i S133 mijenjali filtar, polje za iznos,
+keš lanca i brojanje na Structureu.
+
+## 3. Dvije hipoteze, obje opovrgnute mjerenjem
+
+**(a) „RLS migracije su slomile specove."** Sonda pokazuje točno S134 namjeru; REST
+kao prijavljen test-korisnik vidi 16 area, 39 kategorija, 3.727 eventa; seed Area je
+**njegova**, seed podaci na mjestu.
+
+**(b) „`S100` pada preko vlastitog smeća iz starih runova."** U bazi doista stoje
+`S100 A/B` ×4 od 26.08. — ali spec aree imenuje nasumično, pa se sudariti ne može.
+
+## 4. Triaža: pola padova nije bilo kvar
+
+Svaki pali spec pušten **sam**:
+
+| prolaze sami (artefakt runa) | padaju i sami |
+| --- | --- |
+| e3, e6, e10, e11, e12, e14, S107, S121, S122, S123 | e7, e13, e15, S100, S107b, S119 |
+
+Deset specova prolazi kad ih se pusti same. U suiteu su padali s ekranom koji tvrdi
+`No activities found` uz ispravnu Areu i „All Time" — dakle **palo čitanje koje
+izgleda kao prazna lista**, `BUG-S121-AREACTX` razred.
+
+⚠ Druga dva promašaja u mjerenju: Playwright **briše `test-results/` na svakom
+pokretanju** (petlja pojela artefakte svih osim zadnjeg), a sažetak nosi ANSI
+kontrolne znakove pa `grep` sa sidrom ne hvata ništa — i ispiše „bez rezultata", što
+se čita kao pad.
+
+## 5. Kvar: `areas_select` je tražila sam sebe
+
+`S100`, `S107b` i `S119` padali su s doslovnom porukom `42501 new row violates
+row-level security policy for table "areas"`. Izmjereno REST-om, dvije naredbe koje
+se razlikuju **samo** u zaglavlju:
+
+```
+INSERT s return=representation : 403  42501
+INSERT bez RETURNING           : 201  OK
+```
+
+**Sam INSERT je bio dopušten.** Padalo je **čitanje novog retka** koje `RETURNING`
+traži. `047` je postavio `areas_select USING (app_can_read_area(id))`, a taj helper
+radi `SELECT 1 FROM areas WHERE id = …` — dakle **traži redak u tablici**. Uz
+`STABLE` + `SECURITY DEFINER` gleda snimku od početka naredbe, u kojoj retka koji se
+tek umeće nema.
+
+⚠ **Ista mehanika, dva suprotna privida.** S134: `return=representation` maskira
+otvoren INSERT (rupa izgleda zatvoreno). S135: isti `RETURNING` čini legitiman INSERT
+zabranjenim (pravo izgleda kao zabrana).
+
+⚠ `categories` i `attribute_definitions` su pošteđene jer gledaju **roditelja**, koji
+postoji. `areas_select` je bila jedina samoreferentna.
+
+⚠ **Produkcija nije bila pokvarena, i to je izmjereno a ne pretpostavljeno:** sva
+četiri mjesta koja stvaraju Areu zovu `.insert()` **bez** `.select()`, a u
+`postgrest-js 2.93.0` `insert()` šalje samo `count=`/`missing=default`. Provjereno u
+izvoru biblioteke — jer baš je tvrdnja „supabase-js šalje taj header" ono što je u
+S134 zapisano.
+
+## 6. Instrument je bio slijep točno ondje gdje je migracija pogriješila
+
+`rls_probe.py` je imao `areas` SELECT / UPDATE / DELETE — **INSERT nije**. Zato je
+`047` prošao kroz S134 kao ispravan. Kvar su našla tri E2E speca, ne sonda.
+
+Sonda sada nosi **dvije** INSERT probe na `areas`, sa i bez `RETURNING`, jer **jedna
+ne može razlikovati ta dva privida**. I oznaka više ne glasi `RLS odbio (WITH CHECK)`
+nego samo `RLS odbio` — uz `RETURNING` odbija **SELECT** politika, a imenovanje krive
+politike šalje na krivi trag.
+
+## 7. `sql/052` — popravak i dokaz
+
+```sql
+USING (user_id = auth.uid() OR public.app_can_read_area(id))
+```
+
+Redak koji se upisuje svoj `user_id` **nosi sa sobom**, pa ga ne treba tražiti u
+tablici. Helper se **ne prepisuje** u politiku (njegov komentar traži sinkronizaciju;
+dvije kopije uvjeta su prilika da se raziđu — razred `canUpdateExisting()`, S125).
+Prava se ne šire: `user_id = auth.uid()` je ionako prva grana **unutar** helpera.
+
+Izmjereno na TEST-u:
+
+| | prije | poslije |
+| --- | --- | --- |
+| `areas INSERT svoju` | DA | DA |
+| `areas INSERT +RETURNING` | **NE** | **DA** |
+| sve ostalo, sve tri uloge | — | znak po znak isto |
+
+`S100` ✅ · `S107b` ✅✅ · `S119` ✅ — dokaz sa strane s koje je kvar i došao.
+
+## 8. Modal popravak provjeren uživo
+
+**T-S134-20** ✅ — `Garmin_data`, selekcija `Description` povučena izvan panela: panel
+otvoren, tekst na mjestu. **T-S134-21** ✅ oba smjera (klik na pozadini zatvara;
+pritisak na pozadini s otpuštanjem u panelu **ne** zatvara).
+
+⚠ **Sašino pitanje koje je otvorilo pravu temu:** *„zašto to hoćemo, nije pitao dal da
+napravi Save?"* Popravak je maknuo **slučajni okidač**, ne **posljedicu** — namjeran
+klik na pozadinu i dalje baca nespremljene izmjene bez pitanja. Izmjereno: panel
+uopće ne zna je li „prljav" (`isDirty`/`hasChanges`/`confirm` — ničega), a
+`useBackdropClose` prima `enabled` koji mu **nitko ne šalje**. Zavedeno u Backlog kao
+imenovana stavka, s natpisom `Discard changes?` (konfiguracijska ploha ⇒ engleski).
+
+⚠ Detaljni koraci za T-S134-19/-20/-21 **nisu postojali** — bili su samo u PENDING-u.
+Ritual (korak 2) traži detalje za svaki nov test; naknadno upisani u `S134_tests.md`.
+
+## 9. Nalaz koji ostaje otvoren
+
+`e7`, `e13` i `e15` padaju na **istom mjestu**: stavka unutar ⋮ izbornika na Structure
+tabu (`Manage Access` ×2, `Add Between`). Meni se dokazano **otvori**
+(`button "Actions" [active]`), pa stavka nestane prije klika. `CategoryChainRow:343`
+zatvara meni na **svaki** `scroll`, s `capture: true`; `e7-1` je jednom prošao a
+jednom pao ⇒ ovisi o trenutku.
+
+⚠ Nameće se hipoteza da to izazivaju asinkrone S133 značke s brojem eventa (stižu
+nakon rendera, mijenjaju sadržaj redaka), **ali nije izmjerena** — a toga dana su dvije
+hipoteze već pale. Traži trace.
+
+⚠ Ako se potvrdi, to nije samo test: korisnik klikne ⋮ na Structure tabu i **meni mu
+se sam zatvori** — isto što je u S122 već zapisano za Activities listu.
+
+## 10. PROD provjere
+
+`T-S133-7` ✅ — značka piše **`5173 events`**, točno predviđeni broj, ondje gdje je
+prije stajalo `no events yet`.
+
+`T-S133-9` ✅ — Structure se otvara ispod tri sekunde, **kao grantee**, dakle 39
+usporednih `count` upita drži i na skupoj RLS grani. Prvi dojam („sporo prvi put")
+razlučen je jednim klikom: sporo je samo **prije** nego se aplikacija učita ⇒ hladan
+bundle (`vendor-plotly`), ne brojanje. RPC s `GROUP BY` **ne treba**.
+
+⚠ **`T-S133-8` pokušan i ne vrijedi.** Saša je na PROD-u grantee, pa ga je S134
+zabrana zaustavila **prije** nego je došao do `+ Add Leaf` — a test provjerava
+**S24** bravu (leaf s eventima ne smije dobiti dijete). Prošao bi i da je ta brava
+posve otvorena. Razred „test koji ne mjeri ono što misli" (S120, S129); izvodi se kao
+**vlasnik**.
