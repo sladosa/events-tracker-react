@@ -320,32 +320,55 @@ export function CategoryChainRow({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const t = THEME.structure;
 
-  // Calculate menu position with flip-up if near bottom of viewport
-  const handleMenuOpen = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const right = Math.max(window.innerWidth - rect.right, 4);
+  // Calculate menu position with flip-up if near bottom of viewport.
+  // ⚠ Izdvojeno iz `handleMenuOpen` jer isti račun treba i dok je meni OTVOREN
+  //   (v. efekt ispod) — meni je `position: fixed`, dakle nosi koordinate
+  //   viewporta izračunate u jednom trenutku, a one zastare čim se išta pomakne.
+  const placeMenu = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const right = Math.max(window.innerWidth - rect.right, 4);
 
-      if (spaceBelow < MENU_HEIGHT + 8) {
-        // Not enough space below — open above the button
-        setMenuPos({ bottom: window.innerHeight - rect.top + 4, right });
-      } else {
-        // Default: open below the button
-        setMenuPos({ top: rect.bottom + 4, right });
-      }
+    if (spaceBelow < MENU_HEIGHT + 8) {
+      // Not enough space below — open above the button
+      setMenuPos({ bottom: window.innerHeight - rect.top + 4, right });
+    } else {
+      // Default: open below the button
+      setMenuPos({ top: rect.bottom + 4, right });
     }
-    setMenuOpen(v => !v);
   }, []);
 
-  // Close menu on scroll (menu is fixed so it would drift otherwise)
+  const handleMenuOpen = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    placeMenu();
+    setMenuOpen(v => !v);
+  }, [placeMenu]);
+
+  // ⚠ NA SCROLL SE MENI PREMJEŠTA, NE ZATVARA (S136).
+  //   Prije je ovdje stajalo `const close = () => setMenuOpen(false)` uz
+  //   `capture: true`. Obrazloženje („meni je fixed pa bi inače odlutao") bilo
+  //   je točno, ali lijek prestrog: **`capture` na `window` hvata `scroll` iz
+  //   SVAKOG ugniježđenog spremnika**, ne samo iz stranice — pa je meni nestajao
+  //   na pomak koji s njim nema veze. Dovoljno je da se ispod njega išta
+  //   pomakne (npr. asinkrone značke s brojem eventa iz S133 promijene visinu
+  //   redaka, ili preglednik doskrola stavku u vidno polje) i stavka se izmakne
+  //   ispod prsta — korisnik to vidi kao „meni mi se sam zatvorio".
+  //   Tri E2E speca (`e7`, `e13`, `e15`) padala su točno tako: meni se dokazano
+  //   otvori (`button "Actions" [active]`), pa stavka unutar njega nestane.
+  //   ⚠ Premještanje uklanja RAZRED, pa više nije važno **tko** je scrollao —
+  //   a to je bilo jedino otvoreno pitanje u toj dijagnozi (hipoteza o značkama
+  //   nikad nije izmjerena). Drift, zbog kojeg je zatvaranje i uvedeno, ovako
+  //   ne može nastati: pozicija se preračunava iz žive pozicije gumba.
   useEffect(() => {
     if (!menuOpen) return;
-    const close = () => setMenuOpen(false);
-    window.addEventListener('scroll', close, true);
-    return () => window.removeEventListener('scroll', close, true);
-  }, [menuOpen]);
+    window.addEventListener('scroll', placeMenu, true);
+    window.addEventListener('resize', placeMenu);
+    return () => {
+      window.removeEventListener('scroll', placeMenu, true);
+      window.removeEventListener('resize', placeMenu);
+    };
+  }, [menuOpen, placeMenu]);
 
   return (
     <div

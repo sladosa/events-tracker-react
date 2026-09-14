@@ -741,8 +741,18 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         setError('Select an Area before importing a profile');
         return;
       }
+      // ⚠ Uvjet je `sharedContext`, dakle SVAKI grantee — i write. To je
+      //   ispravno: profili žive u `areas.settings`, zajedno s `automations`,
+      //   `dashboard` i `list_columns`, pa bi ih grantee mijenjao **cijeloj
+      //   Arei, vlasniku**. Zid je jedan i namjeran (`areas.settings` je
+      //   vlasnikov — Sašina odluka, S134).
+      //   ⚠ Ono što NIJE bilo ispravno je tekst: pisao je „(read-only access)"
+      //   i write-grantee-u, dakle **neistina o njegovim pravima** — a on
+      //   svugdje drugdje u toj Arei smije pisati. Poruka koja krivo imenuje
+      //   razlog šalje na krivi trag (isti razred kao S135 `42501`, gdje je
+      //   baza prijavila zabranjen upis umjesto zabranjenog čitanja).
       if (sharedContext) {
-        setError("You don't have permission to save export profiles in this area (read-only access). Use the UI filters, or filter the full Excel locally after downloading.");
+        setError("Export profiles are stored in the Area's settings, which only the Area owner can change — this applies to write access too. Use the UI filters, or filter the full Excel locally after downloading.");
         return;
       }
 
@@ -776,7 +786,9 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   // ── Delete profile ────────────────────────────────────────────────
   const handleDeleteProfile = useCallback(async () => {
     if (!selectedProfile || !filter.areaId) return;
-    if (sharedContext) { toast.error("Read-only access — cannot delete profiles"); return; }
+    // ⚠ Isti razlog kao kod spremanja: profili su u `areas.settings`, dakle
+    //   vlasnikovi. Ne „read-only" — i write grantee ovdje ne smije.
+    if (sharedContext) { toast.error('Only the Area owner can delete export profiles'); return; }
     if (!window.confirm(`Delete profile "${selectedProfile}"?`)) return;
 
     const newProfiles = { ...profiles };
