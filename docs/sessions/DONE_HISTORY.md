@@ -4923,3 +4923,72 @@ sekciji, pa ga je zapalio moj vlastiti pokazivački tekst koji taj znak sadrži.
 bez retka u PENDING-u — dakle nije se znalo ni da je otvoren ni da je zatvoren. Izmjereno iz
 `sql/SCHEMA_PROD.sql`: **svaka** `SECURITY DEFINER` funkcija nosi
 `SET search_path TO 'public', 'pg_temp'` ⇒ `051` **jest** na PROD-u.
+
+### S136, drugi dio dana — deploy, osam potvrđenih testova, restore, i Faza 3 koja je otpala
+
+**Deploy na `main` izveden** (`e3f8968`). ⚠ Prvi pokušaj je pukao jer su naredbe u
+CLAUDE.md-u bile pisane bash-stilom (`&&`), a Sašin terminal je **PowerShell 5.1**
+koji ga nema. Ništa se nije izvršilo (parser odbije cijelu liniju), pa nema
+polovičnog stanja — ali zapis je bio kriv za njegovu ljusku i ispravljen je.
+⚠ Merge je morao pustiti Saša: auto-mode klasifikator Claudeu blokira `main`.
+
+**Osam testova zatvoreno, svaki izmjeren:** `T-S135-5` · `T-S136-1` · `T-S136-2` ·
+`T-S135-7` · `T-S131-25` · `T-S131-26` · `T-S134-8` · `T-S136-3` · `T-S134-6` ·
+`T-S132-7`.
+
+⚠ **Dva su na prvi pokušaj dala TOČAN ISHOD IZ KRIVOG RAZLOGA**, i oba je spasilo
+isto pitanje — *„bi li ovo prošlo i da je kod pokvaren?"*:
+
+- `T-S134-8` je pokušan na PROD-u, gdje je Saša **grantee** — zabrana bi ga
+  zaustavila prije Savea. Izveden na TEST-u kao vlasnik, uz **podmetnuto tuđe
+  vlasništvo** (ne `NULL`, da se ne može raspravljati je li kod „posvojio redak bez
+  vlasnika"). Rezultat: upis sletio, `user_id` nedirnut.
+- `T-S136-3`: prazna forma gasi `Finish` preko `canSave`, koji o `is_required` ne
+  zna ništa — provjera živi **unutar** `if (canSave)` pa se nad praznom formom nikad
+  ne izvrši. Razlikovni korak: popuniti bilo koje **drugo** polje. Tek tada toast
+  `Obavezna polja: Racun, Izvor.`
+
+**Tri popravka nastala iz Sašinih nalaza uživo:**
+
+- ⋮ meni se na scroll **premješta** umjesto da nestane (`capture: true` na `window`
+  hvata scroll iz svakog ugniježđenog spremnika). Protuprovjera: bez popravka
+  `e13-1` pada, s njim prolazi.
+- Shortcutovi su se prikazivali **dvaput**, jednom pod „Nepoznata Area". ⚠ Izmjereno
+  da **nije podatak**: 7 presetova, nula duplikata, nula mrtvih `area_id`, a brojke u
+  dupliciranim grupama **starije od baze** ⇒ otisak ranijeg rendera. Uzrok:
+  `<optgroup key={group.label}>` + „Nepoznata Area" izgovarana dok `areas` još stiže.
+- Skrivena polja se **imenuju** umjesto da se broje, i ime otvara samo to polje.
+  Sašino pitanje koje je to pokrenulo: *„što ako hoću mijenjati default vrijednost —
+  moram Show all a ni ne znam što je unutra"*. ⚠ Brojka je nastala iz spajanja dvaju
+  razloga: *na defaultu* ima vrijednost koja je cijeli odgovor, `hidden_in_add` nema
+  što pokazati. Spojiš li ih, moraš ispustiti vrijednosti — i ostane ti brojka.
+
+**⭐ RESTORE POSTOJI I DOKAZAN JE.** `Tools/restore_db.py`. Do danas je PROD imao
+kopiju i nijedan dokaz da se iz nje vraća.
+⚠ Sašin nalaz pri dizajnu oblikovao je alat: opasnost nije „prepisati starim
+podacima" nego **brisanje svega nastalog poslije snimke**. Zato dry run kao zadano,
+`--mode fill` koji upisuje samo retke kojih nema (ne može dirati novije **po
+konstrukciji**), i `--mode exact` uz utipkano `OBRISI`.
+Dokaz 1: obrisano 55 redaka na TEST-u, vraćeno, **`sha256` po tablici se poklopio**
+— dakle sadržaj identičan, ne samo „retci su se vratili".
+Dokaz 2 (protuprovjera): nad retkom novijim od snimke `fill` javlja `OBRISATI 0`,
+`exact` `OBRISATI 1 <<< BRISE`.
+⚠ Neizvedeno: restore na PROD-u nije pokrenut nijednom (PROD 8 triggera, TEST 2).
+
+**⛔ Faza 3 je otpala — mjerenjem, ne procjenom.** Backlog je tvrdio da „jedna rupa
+drži tri featurea". Izmjereno na PROD-u: **`Datum naplate` ima 0 praznih redaka od
+5.192** (Python alati ga već pune) ⇒ automatika na uvozu danas ne bi napravila
+ništa. `Tip = N/A` ima 1.582 (30,5 %), ali **93 % je povijest** (2026. → samo 108),
+a povijest se razvrstava jednokratno postojećim alatima. Puni nalaz, pet odluka
+prije koda i okidač za ponovno otvaranje: `docs/FAZA3_IMPORT_AUTOMATIKA.md`.
+⚠ Usput izmjereno da bi `Visa = next:3` na uvozu proizveo **uvjerljivo krive**
+datume (855 redaka, Visa nema fiksan dan naplate) — i to tiho, jer saldo kartične
+retke ne broji.
+
+**Sheme obje baze osvježene**, i `--diff` prestao lagati: `scrub()` sada normalizira
+nasumični `\restrict` token koji pg_dump piše pri svakom dumpu, pa je prava razlika
+(`areas_select`) dotad stajala između dvije lažne. ⚠ Usput nađeno da je
+`SCHEMA_TEST.sql` bio **zastario od S135**.
+
+**Popis testova:** 156 → **21 otvorenih**; `docs/sessions/tests/` 42 filea → **17**;
+`S132` arhiviran jer su mu svi testovi ✅.

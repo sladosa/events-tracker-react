@@ -182,46 +182,6 @@ su bila samo na `test-branch`, pa se PROD ponasao po starom.
 
 ---
 
-## S132 — kes lanca kategorija + ciscenje auto-komentara (2026-09-09)
-
-Detalji: [S132_tests.md](tests/S132_tests.md)
-
-⚠ **Nadopunjeno u S133:** popravak iz ove sesije **nije radio u stvarnom toku**
-— listener je bio u hooku, a hook je odmontiran u trenutku kad signal dodje.
-Za ispravnu verziju v. S133 sekciju iznad.
-
-### A. Keš lanca kategorija (`useCategoryChain`)
-
-| #            | test                                                                    | status |
-| ------------ | ----------------------------------------------------------------------- | ------ |
-| **T-S132-1** | ⭐ `categoryChainCache.test.mjs`                                         | ✅ 7/7, protuprovjera pada 2/7 |
-| **T-S132-2** | ⭐ Structure panel Save odmah probije keš (ISTA kartica, bez F5)         | ❌ **PAO 10.09. na PROD-u** — otkrio da popravak ne radi u stvarnom toku; v. T-S133-2/-3 |
-| **T-S132-3** | Structure import probije keš (modal mora javiti `Settings updated`)     | ✅ S136 — duplikat `T-S133-4` |
-| **T-S132-4** | F5 NIJE dovoljan — dokumentira uzrok                                    | ✅ izmjereno na PROD-u |
-
-### B. Čišćenje auto-komentara (`ocisti_auto_komentare.py`)
-
-| #            | test                                                            | status |
-| ------------ | ---------------------------------------------------------------- | ------ |
-| **T-S132-5** | dry run — razvrstavanje + uzorak RUČNIH koje ne dira             | ✅ 11 / 0 / 0 / 767 |
-| **T-S132-6** | ⭐ `--apply`                                                      | ✅ 11 / 11 |
-| **T-S132-7** | ⭐ `--restore` vraća točno obrisano                               | ✅ **14.09. TEST** — obrisano **55 redaka** (5 `balance_anchors` + 50 `event_attributes`), vraćeno `--mode fill`, **`sha256` po tablici se poklopio s manifestom**. Protuprovjera: nad retkom novijim od snimke `fill` javlja `OBRISATI 0`, `exact` `OBRISATI 1 <<< BRISE` ⇒ `fill` ne može pojesti novije. Alat: `Tools/restore_db.py` |
-| **T-S132-8** | `--i-stare` (reklasificirani auto-oblik)                         | ✅ S136 — nadiđeno upotrebom |
-
-### C. Selidba `load_env`/`rest` u `_db.py`
-
-| #            | test                                                       | status |
-| ------------ | ----------------------------------------------------------- | ------ |
-| **T-S132-9** | skripta radi golim `python`om + alati preko `uskladi_izvod` | ✅ S136 — nadiđeno upotrebom |
-
-### D. Nalaz koji NIJE popravljen
-
-| #             | test                                                  | status |
-| ------------- | ------------------------------------------------------- | ------ |
-| **T-S132-10** | ⭐ `no events yet` na leafu s 2.300+ eventa (nepaginiran upit) | ✅ **POPRAVLJENO S133** — v. T-S133-6…9. Izmjereno: 1000 od 12.199 (PROD), kategorija ima **5.173** |
-
----
-
 ## S131 — decimalni zarez + obavezna polja (2026-09-08)
 
 Detalji: [S131_tests.md](tests/S131_tests.md)

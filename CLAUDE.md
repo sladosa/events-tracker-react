@@ -56,6 +56,7 @@ podaci hrane i AI sloj.
 | `docs/AUTOMATION_SPEC.md`                 | Post-Finish automatika — rata modal, comment template, `set_attribute`           |
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
 | `docs/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
+| `docs/FAZA3_IMPORT_AUTOMATIKA.md`         | **⛔ Prije nego kreneš graditi Fazu 3** — izmjereno da meta ne postoji (`Datum naplate` 0 praznih od 5.192); okidač za ponovno otvaranje i pet odluka prije koda |
 | `docs/Analytics_tab.md`                   | **Cross-Area** analitika — `periods`, Series, AnalyticsDef Excel. Čeka drugu gustu Areu. ⚠ §3 („bucketiranje client-side") je opovrgnut u OVERVIEW_TAB_SPEC §2.2 |
 | `docs/RLS_INVENTORY.md`                   | **Prava — tko što smije.** Namjera; `sql/SCHEMA_PROD.sql` je stvarnost, `rls_probe.py` mjeri razliku |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
@@ -2037,9 +2038,21 @@ PDF-ove i dalje čita Sašin Python alat. Vrijednost te ideje nosi njezin drugi 
 
 ### Nakon tranši
 
-1. **Faza 3 — automatika na Import putu** („popuni ako je prazno"). Jedna rupa drži **tri**
-   featurea: `Datum naplate` na uvozu, pravila `Tip/Podtip`, širenje rata. `set_attribute` se
-   danas evaluira samo u Add Activity.
+1. **~~Faza 3 — automatika na Import putu~~ — ⛔ ODGOĐENA, IZMJERENO (S136).**
+   Puni nalaz i plan: **`docs/FAZA3_IMPORT_AUTOMATIKA.md`**. Stajalo je da „jedna rupa
+   drži tri featurea"; mjerenje na PROD-u to ruši:
+   - **`Datum naplate`: 0 praznih redaka od 5.192** — Python alati ga već pune, pa
+     automatika na uvozu **danas ne bi napravila ništa**.
+   - **`Tip = N/A`: 1.582 (30,5 %), ali 93 % je povijest** (2023 → 585, 2024 → 476,
+     2025 → 413, **2026 → 108**). Povijest se razvrstava **jednokratno** postojećim
+     alatima, ne motorom koji radi pri svakom uvozu.
+   ⚠ **Okidač za ponovno otvaranje:** kad Koka preuzme roundtrip pa njeni novi retci
+   počnu dolaziti bez tih polja (prva brojka prestane biti 0), ili kad `N/A` u
+   **tekućoj** godini prijeđe ~100 mjesečno. Do tada bi to bio kod koji čeka podatke.
+   ⚠ Ako se ikad gradi: **`Visa = next:3` se NE smije primijeniti naslijepo** —
+   izmjereno na 855 redaka da Visa nema fiksan dan naplate (5. → 383×, 4. → 231×,
+   3. → **11×**), pa bi uvoz proizveo uvjerljivo krive datume, i to tiho.
+   ⚠ Vrjednija meta istog razreda: **1.431 redak (27,6 %) bez `Izvod opis`**.
 2. **Faza 2 — brzi unos** (§2.9): prefilana polja se ne skupljaju
    (`AttributeChainForm.tsx:216–222`), shortcut dropdown je ravan popis
    (`ProgressiveCategorySelector.tsx:711`). Male, i **direktno za Koku**.
