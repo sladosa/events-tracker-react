@@ -2,7 +2,7 @@
 -- SCHEMA_PROD.sql -- SNIMKA STVARNE SHEME, generirano alatom
 -- ============================================================
 -- Generirao: data-prep_tools/Tools/dump_schema.py --env prod
--- Vrijeme:   2026-09-10T17:31:54+02:00
+-- Vrijeme:   2026-09-14T15:56:20+02:00
 --
 -- ⚠ OVO SE NE PUSTA I NE UREĐUJE RUKOM. Ovo je ono sto u bazi
 --   STVARNO STOJI, ne ono sto smo mislili da smo pustili. Promjene
@@ -18,7 +18,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict iLFyAu4PQ0SpNvfN6VZX2TypOeRCCur58vsYdzLW6u0Wn6Qr5KnN5LkCc9TFYbS
+\restrict SCHEMA_DUMP_PLACEHOLDER
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -2945,7 +2945,7 @@ CREATE POLICY areas_insert ON public.areas FOR INSERT WITH CHECK ((user_id = aut
 -- Name: areas areas_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY areas_select ON public.areas FOR SELECT USING (public.app_can_read_area(id));
+CREATE POLICY areas_select ON public.areas FOR SELECT USING (((user_id = auth.uid()) OR public.app_can_read_area(id)));
 
 
 --
@@ -3863,5 +3863,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON T
 -- PostgreSQL database dump complete
 --
 
-\unrestrict iLFyAu4PQ0SpNvfN6VZX2TypOeRCCur58vsYdzLW6u0Wn6Qr5KnN5LkCc9TFYbS
+\unrestrict SCHEMA_DUMP_PLACEHOLDER
 

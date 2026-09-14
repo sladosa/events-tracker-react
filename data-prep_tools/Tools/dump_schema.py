@@ -83,8 +83,20 @@ def db_url(which):
 
 def scrub(text):
     """Iz zaglavlja dumpa makni sve sto lici na connection string s lozinkom.
-    Izlaz ide u git; lozinka ne."""
-    return re.sub(r'(postgresql://[^:\s]+:)[^@\s]+(@)', r'\1********\2', text)
+    Izlaz ide u git; lozinka ne.
+
+    /!\\ I NASUMICNI `\\restrict` TOKEN (S136). pg_dump 17 na pocetak i kraj pise
+      `\\restrict <slucajni-niz>` / `\\unrestrict <isti-niz>`, a niz je nov pri
+      SVAKOM dumpu. Bez normalizacije `--diff` uvijek prijavi dva hunka koja s
+      shemom nemaju veze -- izmjereno 14.09.: jedina STVARNA razlika bila je
+      `areas_select` (dakle `052`), a oko nje dva lazna. Sum u instrumentu je
+      skuplji nego sto izgleda: prava se razlika trazi medju lazima, pa se
+      `--diff` prestane citati. Token se zamjenjuje FIKSNIM nizom (a ne brise)
+      da par `restrict`/`unrestrict` ostane uparen.
+    """
+    text = re.sub(r'(postgresql://[^:\s]+:)[^@\s]+(@)', r'\1********\2', text)
+    return re.sub(r'^(\\(?:un)?restrict)\s+\S+$', r'\1 SCHEMA_DUMP_PLACEHOLDER',
+                  text, flags=re.M)
 
 
 def dump(which, out_path):

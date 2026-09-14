@@ -98,7 +98,7 @@ Detalji: [S134_tests.md](tests/S134_tests.md)
 | **T-S134-3**  | Guard staje kad ključ nije service                                      | ✅ 3 krive varijante staju, 2 ispravne prolaze |
 | **T-S134-4**  | Backup završi na vanjskom disku (`backup_to_external.bat`)              | ⬜ |
 | **T-S134-5**  | `dump_schema.py` obje baze                                              | ✅ PROD 107 politika / 8 triggera, TEST 50 / 2 |
-| **T-S134-6**  | `--diff` nakon PROD migracija pokaže samo očekivano                     | ⬜ |
+| **T-S134-6**  | `--diff` nakon PROD migracija pokaže samo očekivano                     | ✅ **14.09.** — `--diff` na PROD-u pokazao **točno jednu** stvarnu razliku: `areas_select` (= `052`). Sheme obje baze osvježene ⇒ `--diff` sada čist na oba. ⚠ Usput: **`SCHEMA_TEST.sql` je bio zastario od S135** (052 pušten na TEST, shema nikad ponovno dumpana) |
 
 ### B. Vlasništvo strukture
 
