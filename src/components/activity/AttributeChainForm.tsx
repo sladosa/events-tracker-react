@@ -269,13 +269,21 @@ export function AttributeChainForm({
     if (revealedIds.has(attr.id)) return true;
     if (!showAllDefaults) return false;
     if (parseValidationRules(attr.validation_rules).hiddenInAdd) return true;
+    // ⚠ Izuzeti roditelj NIJE „otkriven samo zbog Show all" (S136). `Strength_type`
+    //   na defaultu ostaje vidljiv jer o njemu ovisi `exercise_name`
+    //   (`requiredParentSlugs`) — pa mu oznaka *skriveno* obećava da će ga
+    //   „Hide again" odnijeti, a neće. Izmjereno na Sašinim slikama: uz Show all
+    //   nosio je oznaku, bez njega je vidljiv i neoznačen.
+    //   `isHiddenByDefault` taj izuzetak provjerava; ovdje je falio — dva uvjeta
+    //   koja se moraju mijenjati ZAJEDNO (isto pravilo kao S131).
+    if (requiredParentSlugs.has(normalizeSlug(attr.slug))) return false;
     // Isti uvjet kao u `isHiddenByDefault` — mijenjaju se ZAJEDNO. Raziđu li se,
     // polje bude skriveno po jednom pravilu a oznaceno po drugom.
     if (!attr.default_value || userEditedIds.has(attr.id)) return false;
     const currentValue = values.get(attr.id);
     const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
     return currentStr === attr.default_value;
-  }, [showAllDefaults, userEditedIds, revealedIds, values]);
+  }, [showAllDefaults, userEditedIds, revealedIds, requiredParentSlugs, normalizeSlug, values]);
 
   /** Any reason this attribute is not on screen right now. */
   const isHidden = useCallback((attr: AttributeDefinition): boolean =>
