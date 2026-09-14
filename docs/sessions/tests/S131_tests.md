@@ -547,3 +547,82 @@ run** — a `structureExcel.ts` je od tada mijenjan mnogo puta.
 **Nije popravljeno** — nadopuna nije dio ove sesije. Odluka je Sašina:
 dopuniti (napisati sekcije 8 i 9 nanovo) ili obrisati (test koji se ne pokreće
 lažno tvrdi da je nešto pokriveno).
+
+---
+
+## T-S131-25 ⭐ Prvi znak u praznom „skrivenom" polju rušio polje
+
+⚠ **Koraci su dopisani u S136** — test je u S131 bio upisan u `PENDING_TESTS.md`
+kao „NALAZ+FIX", ali detalji nikad nisu napisani. Saša ih je zatražio pri izvođenju.
+
+**Što čuva:** `renderAttribute` je birao **između dva različita elementa** —
+goli `AttributeInput` ili `<div>` oko njega (`revealed ? <div>{input}</div> : input`).
+React na promjeni **tipa** elementa odmontira podstablo i montira novo, pa se
+`<input>` DOM čvor uništi i stvori nanovo — **a s njim ode fokus**. `revealed` se
+prevrće na **prvi utipkani znak**, dakle točno usred tipkanja.
+
+⚠ **Nije bug polja za broj** — pogađa **svaki** tip; na broju se vidi kao izgubljena
+decimala, na tekstu kao skraćena riječ, i korisnik to pripiše svojim prstima.
+⚠ Drugi pokušaj u istom polju **radi** (atribut je već u `userEditedIds`), zato je
+izgledalo nasumično. **Mjeri se prvi znak.**
+
+### Koraci
+
+1. Add Activity u Arei koja ima `hidden_in_add` polja → klikni **„Show all"**
+2. Nađi polje koje je **prazno** i označeno *skriveno*
+3. Upiši više znakova, npr. `TEST,TEST` (tekst) ili `2,8` (broj)
+4. **Expected:** ostane cijeli unos
+5. **Pad:** ostane samo **prvi znak** (`T`, odnosno `2`)
+
+⚠ **Izbor polja se MJERI, ne pogađa.** Na PROD-u je 14 atributa koji su prije bili
+skriveni imalo `default_value = ''` — a njih upravo `T-S131-26` vraća u vidljivo,
+pa **nisu** kandidati. Numeričkih skrivenih polja ima devet, ali **osam ih je
+`depends_on`**, a takva „Show all" **ne otkriva**. Jedini numerički kandidat,
+`Financije_all > Transakcija > Stanje`, nosi **oba** mehanizma
+(`hidden_in_add` + `depends_on` s praznim `options_map`) ⇒ u formi je
+**nedohvatljiv**. Zato ide na tekstu.
+
+**✅ Izvedeno 14.09.2026. na PROD-u:** `Financije_all > Transakcija > Izvod opis`
+(prazan, `hidden_in_add`, otkriven „Show all"-om) — upisano `TEST,TEST`, ostalo
+cijelo. Bez Finisha; nacrt odbačen.
+
+---
+
+## T-S131-26 ⭐ Prazan `default_value` više ne skriva polje
+
+**Što čuva:** uvjet `attr.default_value == null` propuštao je svako polje s
+`default_value = ''` i proglašavao ga „na svom defaultu" (`'' === ''`) ⇒ **skriveno**.
+Time je *hide-at-default* obavljao posao zbog kojeg `hidden_in_add` uopće postoji, i
+tiho poništavao podjelu odlučenu u **S117**:
+
+| mehanizam | znači |
+| --- | --- |
+| *hide-at-default* | polje **ima** vrijednost jednaku defaultu ⇒ nema što odlučiti |
+| `hidden_in_add` | ispravna vrijednost je **prazna** |
+
+⚠ Uvjet živi na **tri** mjesta (`isHiddenByDefault`, `isRevealedOnly`,
+`requiredParentSlugs`) i mijenja se **zajedno**.
+
+### Koraci
+
+1. Add Activity → **`Fitness > Activity > Gym > Strength`**
+2. Gledaj formu **prije** nego dotakneš „Show all"
+3. **Expected:** `duration`, `kcal`, `hr_avg`, `hr_max`, `aerobic_effect`,
+   `anaerobic_effect`, `training_load`, `mood`, `comment`, `Wormup_notes` su
+   **odmah vidljivi**, bez oznake *skriveno*
+4. **Pad:** skriveni su ⇒ vratio se stari uvjet
+
+⚠ **Obrnuti smjer je dio testa, ne kozmetika.** `Strength_type` ima
+`default_value = 'Core'` i vrijednost `Core`, dakle **legitimno** je skriven
+(*hide-at-default*). Ako i on iskoči, popravak je pregrub i ubio je mehanizam koji
+treba raditi.
+
+⚠ **Preset ne smije sudjelovati.** Sva tri Fitness leafa imaju shortcut koji se bira
+**sam** (`ProgressiveCategorySelector:411-416`), a preset koji bi popunio ta polja
+učinio bi ih vidljivima iz **drugog razloga** — test bi prošao i nad pokvarenim
+kodom. Izmjereno 14.09.: sva tri preseta imaju **prazan** `default_attributes`, pa
+smetnje nema. **Provjeri to ponovno ako se presetima ikad doda vrijednost.**
+
+**✅ Izvedeno 14.09.2026. na PROD-u:** svih 10 polja vidljivo (`11 attrs / 10 empty`
+u zaglavlju sekcije `Activity`), a `Strength_type` ostao skriven (`1 field hidden`) —
+dakle oba smjera u jednom ekranu.

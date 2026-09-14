@@ -14,8 +14,28 @@ Detalji: [S136_tests.md](tests/S136_tests.md)
 | #            | test                                                                      | status |
 | ------------ | ------------------------------------------------------------------------- | ------ |
 | **T-S136-1** | ⭐ ⋮ meni se na scroll **premješta**, ne zatvara                          | ✅ E2E u oba smjera (bez popravka `e13-1` pada na `addBetweenBtn`, s njim prolazi; `e15` 3 pada → 1; `e7-1` prolazi) + ručno na TEST-u |
-| **T-S136-2** | Poruke o export profilima ne kažu „read-only" **write**-grantee-u (2 mjesta) | ⬜ traži deploy — provjeriti kao grantee |
+| **T-S136-2** | Poruke o export profilima ne kažu „read-only" **write**-grantee-u (2 mjesta) | ✅ **14.09. PROD** — točan tekst, uključujući „this applies to write access too". ⚠ Poruka se crta ~200 redaka JSX-a niže od gumba ⇒ izvan vidljivog dijela skrolanog modala (v. `T-S136-7`) |
 | **T-S136-3** | ⭐ Smoke za `is_required` — **sažima `T-S131-6..24`**: obavezno polje prazno ⇒ Save blokiran; Excel uvoz aktivnosti svejedno prolazi | ⬜ |
+
+### C. Nalazi s PROD-a nakon deploya (Sašini)
+
+| #            | test                                                                      | status |
+| ------------ | ------------------------------------------------------------------------- | ------ |
+| **T-S136-6** | ⭐ Shortcutovi su se prikazivali **dvaput**, jednom pod „Nepoznata Area"    | ✅ uzrok izmjeren i popravljen (`d0976c4`) · ⬜ **provjera na PROD-u traži deploy** |
+| **T-S136-7** | ⚠ **NALAZ:** poruka o greški u Export modalu crta se ~200 redaka JSX-a niže od gumba koji ju izaziva ⇒ izvan vidljivog dijela skrolanog modala. Izgleda kao „ništa se nije dogodilo" | ⬜ **nije popravljeno** — traži premještanje banner-a uz sekciju, ne samo tekst |
+| **T-S136-8** | `sharedContext` dodan u dep listu oba profila (`ExcelExportModal`)        | ✅ u kodu · ⬜ provjera traži deploy |
+
+⚠ **`T-S136-6` nije bio podatak.** Sonda nad PROD-om: **7** presetova, **nula**
+duplikata, **nula** mrtvih `area_id`. Brojke u dupliciranim grupama bile su
+**starije od baze** (`139×` na ekranu, `140` u bazi) ⇒ otisak ranijeg rendera.
+Uzrok: `<optgroup key={group.label}>` (promjena labela = zamjena elementa, a
+nativni popup crta iz DOM-a zatečenog pri **otvaranju**) + „Nepoznata Area"
+izgovarana **dok `areas` još stiže**, što je tvrdnja o podatku kojeg nema.
+
+⚠ **`T-S136-8` nije kozmetika:** guard koji brani grantee-u pisanje u
+`areas.settings` čita `sharedContext`, a promašen guard **ne daje grešku** —
+RLS-blokiran UPDATE vraća 200 i nula redaka, pa bi app javio „Profile saved".
+Ovdje `assertWrote()` (S134) **još nije primijenjen**.
 
 ### B. Instrument
 
@@ -48,7 +68,7 @@ politike — dakle `INSERT ... RETURNING` nad `areas` ondje jos pada.
 | **T-S135-4** | ⭐ Tri speca koja su kvar nasla sada prolaze (`S100`, `S107b`, `S119`)      | ✅ 1+2+1 passed |
 | **T-S135-5** | ⭐⭐ `sql/052` na PROD-u, sa sondom s obje strane                           | ✅ S136 — pušteno na PROD; politika pročitana iz `pg_policy`, poklapa se s migracijom |
 | **T-S135-6** | Rucna protuprovjera u SQL editoru (2 INSERT-a, razlika samo `RETURNING`)    | ✅ S136 — nepotrebno; `T-S135-5` je izmjerio isto na PROD-u |
-| **T-S135-7** | „Add Area" u aplikaciji i dalje radi (nije se pokvarilo popravkom)          | ⬜ |
+| **T-S135-7** | „Add Area" u aplikaciji i dalje radi (nije se pokvarilo popravkom)          | ✅ **14.09. PROD** — Area dodana i obrisana |
 
 ### B. E2E triaza — 22 pada u punom runu
 
@@ -219,8 +239,8 @@ postavi tek **nakon** deploya.
 | **T-S131-3** | ⭐ Edit: iznos preživi otvaranje + Save nedirnut          | ✅ |
 | **T-S131-4** | neprepoznat unos pocrveni, ne nestane tiho               | ✅ |
 | **T-S131-5** | broj bez decimala ne dobiva `,00` (druga Area)           | ✅ 150 / 2,8 / 2,835 |
-| **T-S131-25** | ⭐ NALAZ+FIX: prvi znak u praznom „skriveno" polju rusio polje (gubitak fokusa, SVI tipovi atributa) | ⬜ |
-| **T-S131-26** | ⭐ NALAZ+FIX: prazan `default_value` vise ne skriva polje (S117 podjela vracena) | ⬜ |
+| **T-S131-25** | ⭐ NALAZ+FIX: prvi znak u praznom „skriveno" polju rusio polje (gubitak fokusa, SVI tipovi atributa) | ✅ **14.09. PROD** — `Izvod opis` (prazan, `hidden_in_add`, otkriven „Show all"): `TEST,TEST` ostao cijel. Pod starim kodom bi ostalo `T` |
+| **T-S131-26** | ⭐ NALAZ+FIX: prazan `default_value` vise ne skriva polje (S117 podjela vracena) | ✅ **14.09. PROD** — svih 10 `Fitness > Activity` polja vidljivo BEZ „Show all". ⭐ I obrnuti smjer: `Strength_type = Core` (hide-at-default) je OSTAO skriven ⇒ popravak nije pregrub |
 | **T-S131-27** | Help pokriva sva tri razloga skrivanja + Required | ✅ S136 — nadiđeno upotrebom |
 
 ### B. Obavezna polja — upis

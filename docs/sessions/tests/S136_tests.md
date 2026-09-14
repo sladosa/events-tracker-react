@@ -134,3 +134,86 @@ Listovi: Events | DropdownData [veryHidden] | HelpEvents
 ⚠ **Ograničenje mjerenja:** sonda gađa **pisač lista**, ne puni `buildImportReport`
 (on ide u bazu). Put do baze na dropdowne ne utječe, a `Result` kolona dokazuje da je
 riječ o obliku izvještaja — ali file otvoren u Excelu bi to potvrdio bez ograde.
+
+---
+
+## T-S136-6 ⭐ Shortcutovi se prikazivali dvaput, jednom pod „Nepoznata Area"
+
+**Prijavio Saša s PROD-a 14.09.2026.** U `Shortcuts` dropdownu isti shortcutovi
+stoje **dva puta**: jednom u grupi „Nepoznata Area", jednom pod pravim imenom Aree.
+Klik na oba vodi na isto mjesto.
+
+### ⚠ Prvo je izmjereno da NIJE podatak
+
+Sonda nad PROD-om (read-only, service ključ):
+
+```
+activity_presets : 7 redaka
+mrtav area_id    : 0
+area_id = NULL   : 0
+istih imena      : 0
+```
+
+Svaki preset se razrješava u postojeću Areu. **A brojke u dupliciranim grupama bile
+su starije od baze** — `Strength 139× · 11.09.` na ekranu prema `140 · 14.09.` u
+bazi, `Financije 6× · 12.09.` prema `9 · 14.09.` ⇒ ono što se vidi je **otisak
+ranijeg rendera**, ne drugi redak.
+
+### Uzrok — dvoje u istom `<select>`u
+
+1. `<optgroup key={group.label}>` — key je bio **label**. Label se mijenja čim
+   `areas` stigne, a promjena keya je za React **drugi element**: stari se odmontira,
+   novi montira. Dok je nativni `<select>` **otvoren**, preglednik popup crta iz
+   DOM-a zatečenog pri otvaranju ⇒ vide se obje generacije.
+2. „Nepoznata Area" se izgovaralo i **dok `areas` još nije učitan** — tvrdnja o
+   podatku kojeg nema. Isti razred kao „neuspjelo čitanje nije nema ničega" (S121).
+
+### Koraci (traži deploy)
+
+1. Filter panel → otvori `Shortcuts` dropdown **odmah** nakon učitavanja stranice
+   (dok `areas` još stiže — dakle bez čekanja)
+2. **Expected:** svaka grupa se pojavi **jednom**; dok `areas` traje label je
+   `Učitavanje…`, poslije pravo ime Aree
+3. **Pad:** grupe se dupliciraju, ili piše „Nepoznata Area" nad Areom koja postoji
+
+⚠ Ponovljivost ovisi o brzini mreže — kvar se vidi kad se dropdown otvori **prije**
+nego `areas` dođe. Na brzoj vezi treba throttle (DevTools → Network → Slow 3G).
+
+---
+
+## T-S136-7 ⚠ NALAZ: poruka o greški u Export modalu je izvan vidljivog dijela
+
+**Nije popravljeno.** Gumb „Import Profile" je u sekciji *Export Profile*
+(~redak 898 JSX-a), a error banner se crta **tek na ~1105** — ispod „Records per
+file". U skrolanom modalu poruka padne izvan ekrana, pa radnja izgleda kao da
+**nije napravila ništa**.
+
+Izmjereno 14.09.: Saša je prijavio *„na OK nestane izbornik ali profil nije dodan
+i nema poruka o tome"*. Poruka je bila ondje — trebalo je skrolati do dna.
+
+⚠ Razred je „tihi neuspjeh", isti zbog kojeg je u S134 uveden `assertWrote()`:
+**povratna informacija koju nitko ne vidi jednaka je onoj koje nema.**
+
+**Popravak (predložen, nije izveden):** banner uz sekciju koja ga izazove, ili
+scroll-to-error. ⚠ Ne rješava se toastom — poruka je dugačka i objašnjava pravilo,
+a toast nestane prije nego se pročita.
+
+---
+
+## T-S136-8 `sharedContext` u dep listi oba profila
+
+`handleImportProfile` (`:784`) i `handleDeleteProfile` (`:816`) čitaju
+`sharedContext` u guardu, a nisu ga imali u dependency arrayu ⇒ callback nosi
+vrijednost iz rendera u kojem su se zadnji put mijenjale **ostale** ovisnosti.
+
+⚠ **Promašen guard ovdje ne daje grešku:** RLS-blokiran UPDATE nad `areas` vraća
+**200 i nula redaka**, pa bi app javio „Profile saved" nad upisom kojeg nema
+(CLAUDE.md: „RLS-blokiran write uspije s 200 i praznim rezultatom").
+
+1. Kao **write grantee** otvori Export modal **prije** nego se share razriješi
+   (odmah nakon učitavanja), pa pokušaj spremiti profil
+2. **Expected:** poruka o vlasniku Aree; profila nema ni nakon reopena modala
+3. **Pad:** toast „Profile saved", a profil nakon reopena **nije** ondje
+
+⚠ **Ostaje neizvedeno:** `assertWrote()` na tom UPDATE-u. Dep lista sprječava da
+guard promaši, ali ne štiti od bilo kojeg drugog puta do istog upisa.
