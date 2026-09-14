@@ -781,7 +781,12 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     } finally {
       setImporting(false);
     }
-  }, [filter.areaId, profiles, selectedArea]);
+    // ⚠ `sharedContext` MORA biti u dep listi (S136). Guard iznad ga čita, a bez
+    //   njega callback nosi vrijednost iz rendera u kojem su se zadnji put mijenjale
+    //   ostale ovisnosti — dakle moguće `null` otprije nego se share razriješio.
+    //   Guard koji promaši ovdje ne daje grešku: RLS-blokiran UPDATE vraća **200 i
+    //   nula redaka**, pa bi app javio „Profile saved" nad upisom kojeg nema.
+  }, [filter.areaId, profiles, selectedArea, sharedContext]);
 
   // ── Delete profile ────────────────────────────────────────────────
   const handleDeleteProfile = useCallback(async () => {
@@ -813,7 +818,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     setSelectedProfile('');
     toast.success('Profile deleted');
     window.dispatchEvent(new CustomEvent('areas-changed'));
-  }, [selectedProfile, filter.areaId, profiles, selectedArea]);
+  }, [selectedProfile, filter.areaId, profiles, selectedArea, sharedContext]);
 
   const isGenerating = currentFile > 0;
   const noData       = totalCount !== null && totalCount === 0;

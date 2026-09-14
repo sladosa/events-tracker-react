@@ -367,14 +367,21 @@ export function ProgressiveCategorySelector({
 
   /** Aree grupirane za `<optgroup>` — samo u punom popisu; u suženom je Area poznata.
    *  Redoslijed grupa slijedi redoslijed prvog (dakle najkorištenijeg) shortcuta u njoj. */
-  const groupedPresets = useMemo<Array<{ label: string; items: ActivityPreset[] }>>(() => {
-    const byArea = new Map<string, { label: string; items: ActivityPreset[] }>();
+  const groupedPresets = useMemo<Array<{ key: string; label: string; items: ActivityPreset[] }>>(() => {
+    const byArea = new Map<string, { key: string; label: string; items: ActivityPreset[] }>();
     for (const p of visiblePresets) {
       const key = p.area_id ?? '__none__';
       if (!byArea.has(key)) {
+        // ⚠ „Nepoznata Area" je TVRDNJA O PODATKU, pa se ne smije izreći dok podatka
+        //   nema (S136). Dok `areas` još stiže, `find` ne nađe ništa i stari kod je
+        //   svaku grupu proglasio nepoznatom — a istina je bila „ne znam još".
+        //   Isti razred kao „neuspjelo čitanje nije nema ničega" (S121), na koji se
+        //   poziva i komentar uz prazan popis nekoliko redaka niže.
         byArea.set(key, {
+          key,
           label: p.area_id
-            ? (areas.find(a => a.id === p.area_id)?.name ?? 'Nepoznata Area')
+            ? (areas.find(a => a.id === p.area_id)?.name
+                ?? (areasLoading ? 'Učitavanje…' : 'Nepoznata Area'))
             : 'Bez Aree',
           items: [],
         });
@@ -382,7 +389,7 @@ export function ProgressiveCategorySelector({
       byArea.get(key)!.items.push(p);
     }
     return Array.from(byArea.values());
-  }, [visiblePresets, areas, presets]);
+  }, [visiblePresets, areas, areasLoading, presets]);
 
   /** `23× · 12.06.` — brojka je za odluku o BRISANJU, ne za ukras (FILTER_SPEC §5).
    *  ⚠ Prozorska brojka („zadnja 2 mjeseca") ne postoji: baza drži kumulativni
@@ -797,8 +804,18 @@ export function ProgressiveCategorySelector({
                     {preset.name}{presetSuffix(preset)}
                   </option>
                 ))
+              // ⚠ KEY JE `area_id`, NIKAD LABEL (S136, Sašin nalaz s PROD-a).
+              //   Label se mijenja čim `areas` stigne (`Učitavanje…` → `Fitness`), a
+              //   promjena keya je za React **drugi element**: stari se odmontira, novi
+              //   montira. Dok je nativni `<select>` OTVOREN, preglednik popup crta iz
+              //   DOM-a zatečenog pri otvaranju, pa su se vidjele **obje** generacije —
+              //   isti shortcutovi dvaput, jednom pod „Nepoznata Area".
+              //   ⚠ Izmjereno da to NIJE podatak: sonda nad PROD-om našla je **7**
+              //   presetova, **nula** duplikata i **nula** mrtvih `area_id`; a brojke u
+              //   dupliciranim grupama bile su **starije od baze** (`139×` na ekranu,
+              //   `140` u bazi) — dakle otisak ranijeg rendera, ne drugi redak.
               : groupedPresets.map((group) => (
-                  <optgroup key={group.label} label={group.label}>
+                  <optgroup key={group.key} label={group.label}>
                     {group.items.map((preset) => (
                       <option key={preset.id} value={preset.id}>
                         {preset.name}{presetSuffix(preset)}
