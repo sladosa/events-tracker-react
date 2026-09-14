@@ -65,6 +65,11 @@ export function AttributeChainForm({
 
   // Whether to show attributes that are currently at their default value
   const [showAllDefaults, setShowAllDefaults] = useState(false);
+  /** Pojedinačno otkrivena polja — klik na IME u sažetoj liniji (S136).
+   *  ⚠ Postoji zato što je „Show all" sve-ili-ništa: da promijeniš jednu
+   *  vrijednost koja sjedi na defaultu, morao si otvoriti i polja čija je
+   *  ispravna vrijednost prazna, pa ih zatvoriti natrag. */
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
 
   // Tracks which attributes the user has explicitly changed this session.
   // Separate from `touched` (which is used for save logic) — pre-filled defaults
@@ -206,11 +211,12 @@ export function AttributeChainForm({
       //   jednom pravilu, a njegov roditelj se drzao vidljivim po drugom.
       const hiddenByDefault = !!attr.default_value
         && !userEditedIds.has(attr.id)
+        && !revealedIds.has(attr.id)
         && currentStr === attr.default_value;
       if (!hiddenByDefault) required.add(normalizeSlug(parsed.dependsOn.attributeSlug));
     }
     return required;
-  }, [showAllDefaults, allAttributes, values, userEditedIds, isDependencyHidden, normalizeSlug]);
+  }, [showAllDefaults, allAttributes, values, userEditedIds, revealedIds, isDependencyHidden, normalizeSlug]);
 
   // Attribute is hidden because it sits at its default value and the user hasn't
   // explicitly changed it this session. "Show all" overrides; depends_on parents of
@@ -229,18 +235,19 @@ export function AttributeChainForm({
     //   od njih nema `hidden_in_add`, a sva tri `hidden_in_add` su u Financijama.
     //   Dakle mehanizmi se nigdje ne preklapaju — preklapao ih je samo ovaj uvjet.
     if (showAllDefaults || !attr.default_value || userEditedIds.has(attr.id)) return false;
+    if (revealedIds.has(attr.id)) return false;
     if (requiredParentSlugs.has(normalizeSlug(attr.slug))) return false;
     const currentValue = values.get(attr.id);
     const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
     return currentStr === attr.default_value;
-  }, [showAllDefaults, userEditedIds, requiredParentSlugs, values, normalizeSlug]);
+  }, [showAllDefaults, userEditedIds, revealedIds, requiredParentSlugs, values, normalizeSlug]);
 
   // Explicitly hidden for this Area (S117). Independent of hide-at-default,
   // which needs a value to compare against and so cannot touch a field whose
   // correct state is empty. "Show all" reveals these too — the flag is
   // tidiness, not a lock, and a stranded depends_on parent must stay reachable.
   const isHiddenExplicitly = useCallback((attr: AttributeDefinition): boolean => {
-    if (showAllDefaults) return false;
+    if (showAllDefaults || revealedIds.has(attr.id)) return false;
     // ⚠ Obavezno polje se NE skriva, ma što `hidden_in_add` govorio. Dvije
     //   zastavice tvrde suprotno o istom polju — „mora se ispuniti" i „točna
     //   mu je vrijednost prazna" — pa je kombinacija besmislena, a ne samo
@@ -249,12 +256,17 @@ export function AttributeChainForm({
     //   bi korisnik dobio poruku o polju kojeg na ekranu nema.
     if (attr.is_required) return false;
     return parseValidationRules(attr.validation_rules).hiddenInAdd;
-  }, [showAllDefaults]);
+  }, [showAllDefaults, revealedIds]);
 
   /** Revealed only because "Show all" is on — i.e. what "Hide again" will take
    *  away. Without marking these, the toggle is a leap: you see fields appear
    *  but not which ones are about to vanish. */
   const isRevealedOnly = useCallback((attr: AttributeDefinition): boolean => {
+    // ⚠ Pojedinačno otkriveno polje nosi ISTU oznaku (S136): ono je i dalje
+    //   polje koje normalno nije na ekranu, pa bi bez oznake izgledalo kao da
+    //   je oduvijek bilo ondje — a onda „Hide again" odnese nešto što korisnik
+    //   ne očekuje da će nestati.
+    if (revealedIds.has(attr.id)) return true;
     if (!showAllDefaults) return false;
     if (parseValidationRules(attr.validation_rules).hiddenInAdd) return true;
     // Isti uvjet kao u `isHiddenByDefault` — mijenjaju se ZAJEDNO. Raziđu li se,
@@ -263,23 +275,44 @@ export function AttributeChainForm({
     const currentValue = values.get(attr.id);
     const currentStr = currentValue?.value != null ? String(currentValue.value) : '';
     return currentStr === attr.default_value;
-  }, [showAllDefaults, userEditedIds, values]);
+  }, [showAllDefaults, userEditedIds, revealedIds, values]);
 
   /** Any reason this attribute is not on screen right now. */
   const isHidden = useCallback((attr: AttributeDefinition): boolean =>
     isDependencyHidden(attr) || isHiddenByDefault(attr) || isHiddenExplicitly(attr),
   [isDependencyHidden, isHiddenByDefault, isHiddenExplicitly]);
 
-  // Count attributes currently hidden because they match their default value
-  const hiddenByDefaultCount = useMemo(
-    // Dependency-hidden fields are excluded: "Show all" deliberately does not
-    // reveal them (a dropdown with no parent value has nothing to offer), so
-    // counting them would promise more than the button delivers — measured as
-    // "3 fields hidden" revealing two, `Stanje` being hidden BOTH ways.
-    () => allAttributes.filter(a =>
-      !isDependencyHidden(a) && (isHiddenByDefault(a) || isHiddenExplicitly(a))).length,
+  /** Skrivena polja, razvrstana po RAZLOGU i IMENOVANA (S136, Sašin nalaz).
+   *
+   *  ⚠ Prije je ovdje stajao **brojač** („1 field hidden"), koji je zbrajao dva
+   *  razloga u jedan broj. Sašino pitanje ga je srušilo: *„što ako hoću otvoriti i
+   *  mijenjati default vrijednost — moram Show all a ni ne znam što je unutra"*.
+   *  Brojka je nastala baš iz tog spajanja, jer dva razloga nose različitu
+   *  količinu informacije:
+   *    - **na defaultu** — polje IMA vrijednost, i ta je vrijednost cijeli
+   *      odgovor; kratka je po definiciji (default je kratak), pa stane u liniju
+   *    - **prazna po pravilu** (`hidden_in_add`) — nema što pokazati, vrijedi
+   *      samo ime
+   *  Spojiš li ih, moraš ispustiti vrijednosti — i ostane ti brojka.
+   *
+   *  ⚠ `depends_on`-skrivena polja se i dalje IZOSTAVLJAJU. „Show all" ih
+   *  namjerno ne otkriva (dropdown bez roditeljske vrijednosti nema što ponuditi),
+   *  pa bi ih nabrajanje obećalo — izmjereno kao „3 fields hidden" koje otkrije
+   *  dva, uz `Stanje` skriveno na OBA načina.
+   */
+  const hiddenAtDefault = useMemo(
+    () => allAttributes.filter(a => !isDependencyHidden(a) && isHiddenByDefault(a)),
+    [allAttributes, isDependencyHidden, isHiddenByDefault]
+  );
+  const hiddenExplicit = useMemo(
+    () => allAttributes.filter(a => !isDependencyHidden(a) && !isHiddenByDefault(a) && isHiddenExplicitly(a)),
     [allAttributes, isDependencyHidden, isHiddenByDefault, isHiddenExplicitly]
   );
+  const hiddenByDefaultCount = hiddenAtDefault.length + hiddenExplicit.length;
+
+  const revealOne = useCallback((id: string) => {
+    setRevealedIds(prev => new Set(prev).add(id));
+  }, []);
 
   // Render attributes for a single category
   const renderCategoryAttributes = (category: Category, isLeaf: boolean) => {
@@ -478,22 +511,62 @@ export function AttributeChainForm({
 
       {/* Toggle for attributes hidden because they match their default value */}
       {!showAllDefaults && hiddenByDefaultCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setShowAllDefaults(true)}
-          className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg border border-dashed border-gray-200 transition-colors flex items-center gap-1.5"
-        >
-          <span className="text-gray-400">▸</span>
-          <span>
-            {hiddenByDefaultCount} {hiddenByDefaultCount === 1 ? 'field' : 'fields'} hidden
-          </span>
-          <span className="ml-auto text-blue-500 font-medium">Show all</span>
-        </button>
+        <div className="px-3 py-2 rounded-lg border border-dashed border-gray-200 space-y-1">
+          {hiddenAtDefault.length > 0 && (
+            <div className="flex items-start gap-1.5 text-xs text-gray-500">
+              <span className="text-gray-400 leading-5">▸</span>
+              <span className="leading-5 shrink-0">na defaultu</span>
+              <span className="flex flex-wrap gap-x-1.5 gap-y-1">
+                {hiddenAtDefault.map(a => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => revealOne(a.id)}
+                    title="Otvori samo ovo polje"
+                    className="px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                  >
+                    {a.name} = {a.default_value}
+                  </button>
+                ))}
+              </span>
+            </div>
+          )}
+          {hiddenExplicit.length > 0 && (
+            <div className="flex items-start gap-1.5 text-xs text-gray-500">
+              <span className="text-gray-400 leading-5">▸</span>
+              <span className="leading-5 shrink-0">prazna po pravilu</span>
+              <span className="flex flex-wrap gap-x-1.5 gap-y-1">
+                {hiddenExplicit.map(a => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => revealOne(a.id)}
+                    title="Otvori samo ovo polje"
+                    className="px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                  >
+                    {a.name}
+                  </button>
+                ))}
+              </span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowAllDefaults(true)}
+            className="w-full text-right text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
+          >
+            Show all
+          </button>
+        </div>
       )}
-      {showAllDefaults && (
+      {/* ⚠ Uvjet nosi i `revealedIds.size` (S136): otkriješ li polja pojedinačno,
+          gornji blok nestane (nema više skrivenih) — a s njim bi nestao i jedini
+          put natrag. Polje bi ostalo otvoreno do kraja sesije, bez ičega što kaže
+          kako ga vratiti. */}
+      {(showAllDefaults || revealedIds.size > 0) && (
         <button
           type="button"
-          onClick={() => setShowAllDefaults(false)}
+          onClick={() => { setShowAllDefaults(false); setRevealedIds(new Set()); }}
           className="w-full text-left px-3 py-2 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg border border-dashed border-gray-200 transition-colors flex items-center gap-1.5"
         >
           <span>▴</span>

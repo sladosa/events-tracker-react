@@ -23,6 +23,7 @@ Detalji: [S136_tests.md](tests/S136_tests.md)
 | ------------ | ------------------------------------------------------------------------- | ------ |
 | **T-S136-6** | ⭐ Shortcutovi su se prikazivali **dvaput**, jednom pod „Nepoznata Area"    | ✅ uzrok izmjeren i popravljen (`d0976c4`) · ⬜ **provjera na PROD-u traži deploy** |
 | **T-S136-7** | ⚠ **NALAZ:** poruka o greški u Export modalu crta se ~200 redaka JSX-a niže od gumba koji ju izaziva ⇒ izvan vidljivog dijela skrolanog modala. Izgleda kao „ništa se nije dogodilo" | ⬜ **nije popravljeno** — traži premještanje banner-a uz sekciju, ne samo tekst |
+| **T-S136-9** | ⭐ Sažeta linija skrivenih polja **imenuje** ih umjesto da ih broji, i ime je klikabilno (otkrij samo to polje) | ⬜ traži deploy |
 | **T-S136-8** | `sharedContext` dodan u dep listu oba profila (`ExcelExportModal`)        | ✅ u kodu · ⬜ provjera traži deploy |
 
 ⚠ **`T-S136-6` nije bio podatak.** Sonda nad PROD-om: **7** presetova, **nula**

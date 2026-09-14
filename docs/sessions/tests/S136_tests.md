@@ -217,3 +217,52 @@ vrijednost iz rendera u kojem su se zadnji put mijenjale **ostale** ovisnosti.
 
 ⚠ **Ostaje neizvedeno:** `assertWrote()` na tom UPDATE-u. Dep lista sprječava da
 guard promaši, ali ne štiti od bilo kojeg drugog puta do istog upisa.
+
+---
+
+## T-S136-9 ⭐ Skrivena polja se IMENUJU, i ime je klikabilno
+
+**Sašino pitanje koje je ovo pokrenulo (14.09.):** *„što ako hoću otvoriti i
+mijenjati default vrijednost — moram Show all a ni ne znam što je unutra"*.
+
+Mehanizme smo razdvojili u **modelu** (S117 pa S131), ali ne u **UI-ju**: sažeta
+linija je bila puki brojač (`1 field hidden`) koji zbraja dva razloga u jedan broj.
+Brojka je nastala baš iz tog spajanja — dva razloga nose različitu količinu
+informacije:
+
+| razlog | što se može pokazati |
+| --- | --- |
+| *na defaultu* | polje **ima** vrijednost i ta je vrijednost cijeli odgovor; kratka je po definiciji |
+| `hidden_in_add` | **ništa** — vrijednost je prazna jer tako treba biti; vrijedi samo ime |
+
+### Koraci
+
+1. Add Activity → `Fitness > Activity > Gym > Strength`
+2. **Expected:** ispod atributa stoji `▸ na defaultu  [Strength_type = Core]`, a ne
+   `1 field hidden`
+3. Add Activity → `Financije_all > Transakcija`
+4. **Expected:** `▸ prazna po pravilu  [Valuta] [Izvod opis]`
+5. Klikni **ime** (`Strength_type = Core`)
+6. **Expected:** otvori se **samo to** polje, s oznakom *skriveno*; ostala ostaju
+   skrivena; pojavi se `Hide again`
+7. Klikni `Hide again`
+8. **Expected:** polje se vrati u sažetu liniju
+
+### Što se NE smije dogoditi
+
+- ⚠ Linija **ne smije** nabrajati `depends_on`-skrivena polja — „Show all" ih ne
+  otkriva, pa bi ih imenovanje obećalo. Kontrola: u `Financije_all` se u liniji ne
+  smije pojaviti `Stanje` (skriveno na **oba** načina), ni `Podtip`/`Status`
+  (čekaju roditelja).
+- ⚠ `Hide again` se mora pojaviti **i** kad su polja otkrivena samo pojedinačno.
+  Inače gornji blok nestane (nema više skrivenih), a s njim i jedini put natrag —
+  polje bi ostalo otvoreno do kraja sesije bez ičega što kaže kako ga vratiti.
+- ⚠ Pojedinačno otkriveno polje nosi oznaku *skriveno* kao i ono iz „Show all".
+  Bez nje izgleda kao da je oduvijek bilo na ekranu, pa `Hide again` odnese nešto
+  što korisnik ne očekuje da će nestati.
+
+### Odbačeno
+
+**Dva odvojena „Show all" prekidača** (jedan po razlogu) — Sašina odluka: linija s
+imenom već rješava otkrivost, a svaki dodatni prekidač je nova stvar koju treba
+naučiti. Dodaje se tek ako se pokaže da smeta.
