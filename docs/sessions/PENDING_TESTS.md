@@ -104,6 +104,16 @@ Detalji: [S134_tests.md](tests/S134_tests.md)
 | **T-S134-15** | Guard staje kad na :5173 stoji `dev:prod`                               | ✅ **pravi run 11.09.** — siroce od 10.09. 11:39 (`vite --mode prod`, PID 8604) preuzeto bi bilo; guard stao prije preglednika. Usput izmjereno da Nodeov `fetch` dosegne listener koji sluša **samo na `[::1]`** — da nije, `catch { return }` bi tiho propustio |
 | **T-S134-16** | ⭐ Cijeli E2E prolazi nakon RLS migracija                                | ✅ S136 — zamijenio ga `T-S135-8` (izmjereno 46/22/3) |
 
+### F. `sql/051` — `search_path` na SECURITY DEFINER funkcijama
+
+⚠ Ova dva testa su do S136 postojala **samo** u `S134_tests.md`, bez ijednog retka ovdje —
+dakle nije se znalo ni da su otvoreni ni da su zatvoreni. Našla ih je triaža iz S136.
+
+| #             | test                                                                    | status |
+| ------------- | ----------------------------------------------------------------------- | ------ |
+| **T-S134-17** | `sql/051` na TEST-u                                                     | ✅ |
+| **T-S134-18** | `sql/051` na PROD-u                                                     | ✅ S136 — izmjereno iz `sql/SCHEMA_PROD.sql`: **svaka** `SECURITY DEFINER` funkcija nosi `SET search_path TO 'public', 'pg_temp'` (isto na TEST-u). Shema u gitu je autoritet, ne pamćenje |
+
 ### E. Modali — selekcija teksta
 
 | #             | test                                                                    | status |
@@ -609,18 +619,28 @@ Ispisuje po session fileu koliko je testova definirano, koliko ✅ / ⬜, i koje
 
 ---
 
-## ⚠ Siročad — 57 testova koje ovaj file ne spominje
+## ✅ Siročad — riješeno u S136
 
-`S99`, `S100`, `S101`, `S102`, `S102b`, `S104` i dio `S105` imaju detaljne testove u
-`docs/sessions/tests/`, a **nijedan redak u ovom fileu**. Nastalo pri kuriranju: retci su
-maknuti, fajlovi nisu. Posljedica je da se za njih ne zna ni da su otvoreni ni da su
-zatvoreni — a arhiviranje ih zato ne može ni dotaknuti.
+`S99`, `S100`, `S101`, `S102`, `S102b`, `S104` i dio `S105` imali su detaljne testove u
+`docs/sessions/tests/`, a **nijedan redak u ovom fileu** — nastalo pri kuriranju: retci su
+maknuti, fajlovi nisu. Zato se za njih nije znalo ni da su otvoreni ni da su zatvoreni, a
+arhiviranje ih nije moglo dotaknuti. Stajalo je kao poznata rupa od S116.
 
-**Odluka koja se čeka (Sašina):** jesu li ti testovi još relevantni?
-- ako jesu → vratiti im retke u tablice
-- ako nisu → session fileovi idu u `Claude-temp_R/test-sessions/archive/`, kao i zatvoreni
+**Sašina odluka (14.09.2026.): nisu više relevantni ⇒ arhivirani.** Dokaz po fileu, da se
+odluka ne čita kao „staro je":
 
-Do tada stoje kao poznata rupa, ne kao previd.
+| file | zašto |
+| --- | --- |
+| `S100` | `T-S100-1` čuva E2E spec (`S100_same_path_two_areas.spec.ts`); izmjereno u S120 |
+| `S101` | izmjereno nadiđen: `Tip` danas ima **18** opcija (Kokina taksonomija, S107r), a test provjerava popis od **14** koji više ne postoji |
+| `S102` | testovi su označeni ✅ **u samom session fileu** |
+| `S105` | PROD okolina tog incidenta ne postoji; popravci su na PROD-u od 07/2026 |
+
+`S99`, `S102b` i `S104` bili su **već** u arhivi.
+
+⚠ **Pouka koja ostaje:** rupa je nastala time što su se **dva popisa** održavala ručno i
+razišla. Zato se od S136 retci **ne brišu** iz tablica nego dobivaju ✅ **s razlogom** —
+redak bez oznake je gori od otvorenog retka, jer se o njemu ne može donijeti nijedna odluka.
 
 ## Arhivirano u S116
 
@@ -1104,12 +1124,3 @@ napisan i spreman, ali NE pokretati dok Smjer nije pouzdan (dry-run uhvatio gre�
 
 ---
 
-## S105 — preostali manualni (starije, još nepotvrđeno)
-
-| ID       | Test                                                                                                                                     | Status |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| T-S105-6 | S105c retest: Edit otvara sve atribute i u 1. pokušaju; ako upit padne → error ekran s retry (ne prazan form)                            | ✅ S136 — stari pipeline; podaci zamrznuti, PROD pušten roundtripom |
-| T-S105-7 | Suggest depends_on radi opet: Edit/Add Strength → exercise_name dropdown aktivan (wormup → ergometar...); Financije → Broj rata dropdown | ✅ S136 — stari pipeline; podaci zamrznuti, PROD pušten roundtripom |
-| T-S105-8 | Rename kategorije (Structure Edit → Save) NE mijenja slugove atributa; depends_on i dalje radi nakon rename                              | ✅ S136 — stari pipeline; podaci zamrznuti, PROD pušten roundtripom |
-
----
