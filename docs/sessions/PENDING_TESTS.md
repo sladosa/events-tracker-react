@@ -15,7 +15,7 @@ Detalji: [S136_tests.md](tests/S136_tests.md)
 | ------------ | ------------------------------------------------------------------------- | ------ |
 | **T-S136-1** | ⭐ ⋮ meni se na scroll **premješta**, ne zatvara                          | ✅ E2E u oba smjera (bez popravka `e13-1` pada na `addBetweenBtn`, s njim prolazi; `e15` 3 pada → 1; `e7-1` prolazi) + ručno na TEST-u |
 | **T-S136-2** | Poruke o export profilima ne kažu „read-only" **write**-grantee-u (2 mjesta) | ✅ **14.09. PROD** — točan tekst, uključujući „this applies to write access too". ⚠ Poruka se crta ~200 redaka JSX-a niže od gumba ⇒ izvan vidljivog dijela skrolanog modala (v. `T-S136-7`) |
-| **T-S136-3** | ⭐ Smoke za `is_required` — **sažima `T-S131-6..24`**: obavezno polje prazno ⇒ Save blokiran; Excel uvoz aktivnosti svejedno prolazi | ⬜ |
+| **T-S136-3** | ⭐ Smoke za `is_required` — **sažima `T-S131-6..24`**: obavezno polje prazno ⇒ Save blokiran; Excel uvoz aktivnosti svejedno prolazi | ✅ **14.09. PROD** — `Racun` prazan + `Smjer`/`Isplata` popunjeni ⇒ Finish klikabilan, toast `Obavezna polja: Racun, Izvor.`, redak NIJE spremljen. ⚠ Prvi pokušaj (prazna forma, ugašen Finish) je `canSave`, NE `is_required` — guard se nije ni pozvao. ⚠ Grana `false`/`0` **neizvediva na PROD-u**: nema nijednog obaveznog `boolean`/`number` (2 obavezna od 110, oba `text`). ⚠ Excel-uvoz polovica **nije izvedena** |
 
 ### C. Nalazi s PROD-a nakon deploya (Sašini)
 

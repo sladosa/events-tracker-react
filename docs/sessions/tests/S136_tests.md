@@ -266,3 +266,68 @@ informacije:
 **Dva odvojena „Show all" prekidača** (jedan po razlogu) — Sašina odluka: linija s
 imenom već rješava otkrivost, a svaki dodatni prekidač je nova stvar koju treba
 naučiti. Dodaje se tek ako se pokaže da smeta.
+
+---
+
+## T-S136-3 ✅ Smoke za `is_required` — i zamka koja ga je zamalo obesmislila
+
+### ⚠ PRVI POKUŠAJ NIJE MJERIO NIŠTA
+
+Prazna forma → `Finish` je **ugašen** → izgleda kao da obavezna polja rade.
+**Ne rade — to je drugi mehanizam:**
+
+```js
+// AddActivityPage.tsx:780
+const canSave = categoryId && (hasTouchedAttributes || eventNote || photos.length)
+```
+
+`canSave` o `is_required` ne zna ništa; gasi Finish jer u formi **nema ničega**.
+Provjera obaveznih polja živi tek u kliku, i to **unutar** `if (canSave)`:
+
+```js
+// :1079
+if (canSave) {
+  const missing = missingRequiredNow();
+  if (missing.length > 0) { toast.error(requiredMessage(missing)); return; }
+}
+```
+
+Dok je forma prazna, taj se `if` **nikad ne izvrši**. Da smo stali ondje, upisali
+bismo „prošlo" za provjeru koja se nije dogodila — razred „test koji ne mjeri ono
+što misli" (S120, S129).
+
+### Koraci koji stvarno mjere
+
+1. Add Activity → `Financije_all > Transakcija`
+2. `Racun` ostavi **prazan** (`Select Racun…`)
+3. Popuni **bilo što drugo** — `Smjer = Isplata`, iznos `1` — da `canSave` postane
+   `true` i Finish se upali
+4. Klikni **Finish**
+
+- **Prolaz:** crveni toast koji **imenuje** polja; redak **nije** spremljen
+- **Pad:** redak se spremi
+
+**✅ Izmjereno 14.09.2026. na PROD-u:** toast `Obavezna polja: Racun, Izvor.`,
+redak nije spremljen.
+
+### Što ova provjera NE pokriva
+
+- ⚠ **Grana `false`/`0` je neizvediva na PROD-u.** Obaveznih atributa ima **2 od
+  110**, oba `text` (`Racun` — suggest, `Izvor` — `depends_on(racun)`). Pravilo
+  *„`false` i `0` su ODGOVORI, ne izostanak"* čuva se dakle u kodu, ali **nijedan
+  podatak ga ne poziva**. Aktivira se tek kad netko označi obaveznim atribut tipa
+  **broj ili boolean** — i tada tiho, jer naivni `if (value)` odbija oboje.
+  **To je uvjet, ne test.** Tko ikad postavi takvu zastavicu, neka prvo pusti ovaj
+  test s tim atributom.
+- ⚠ **Polovica „Excel uvoz NE provjerava obavezna polja" nije izvedena.** Ona štiti
+  povijesne batcheve i `N/A`; pad bi se vidio kao odbijeni retci pri uvozu.
+
+### Zapaženo usput
+
+Toast imenuje i **`Izvor`**, koji je u tom trenutku onemogućen
+(`Select racun first…`, `depends_on: racun`). Nije greška — jest obavezan — ali
+poruka time traži polje koje korisnik **još ne može** ispuniti. Ovdje je bezopasno
+jer se rješava samo čim se upiše `Racun`. ⚠ Prestaje biti bezopasno ako se ikad
+pojavi obavezno dijete **neobaveznog** roditelja: tada poruka traži polje do kojeg
+nema puta (v. CLAUDE.md, „jedina kombinacija koja još može ostaviti obavezno polje
+izvan ekrana").
