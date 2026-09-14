@@ -247,3 +247,69 @@ uopće ne zna je li „prljav" — nema `isDirty`, `hasChanges` ni `confirm`, a
 `useBackdropClose` prima `enabled` koji mu nitko ne šalje.
 ⇒ Zasebna stavka u Backlogu CLAUDE.md-a („Zatvaranje modala ne smije tiho
 baciti rad").
+
+---
+
+## T-S134-8 ✅ Spremanje strukture više ne prepisuje `user_id` — kako je izvedeno
+
+⚠ **Koraci su zapisani tek u S136**, pri izvođenju. Dotad je test postojao samo kao
+redak u `PENDING_TESTS.md`, a pokušaj izvođenja na PROD-u ne bi ništa mjerio:
+Saša je ondje **grantee**, pa ga S134 zabrana zaustavi **prije** Savea — isti razred
+kao `T-S133-8` u S135 („test koji ne mjeri ono što misli").
+
+### ⚠ Izbor retka je pola testa
+
+`user_id` se mora **razlikovati** od računa koji sprema. Spremiš li redak koji je
+**već tvoj**, `user_id` ostaje tvoj i s popravkom i bez njega ⇒ test prolazi nad
+pokvarenim kodom (pravilo iz S129).
+
+Izmjereno 14.09. na TEST-u: **nijedna** kategorija nema `user_id` različit od
+vlasnika Aree ⇒ uvjet se mora **napraviti**.
+
+⚠ Podmeće se **tuđi** `user_id`, ne `NULL`. Uz `NULL` bi se moglo raspravljati je li
+stari kod „posvojio redak bez vlasnika" — što je i tvrdio komentar iznad njega. Uz
+tuđi id nema rasprave: prebacivanje je otimanje.
+
+### Koraci (TEST, Supabase SQL editor + `npm run dev`)
+
+1. Nađi kategoriju u Arei koju **posjeduješ**, izvan `Fitness` (nju E2E
+   `global-setup` resetira prije svakog runa). Izvedeno na
+   `Health_Sasa > Daily_metrics > Garmin_data`
+   (`23c88fab-83b5-4181-b9b9-c5e272c0e007`).
+2. ```sql
+   update categories set user_id = '<DRUGI_USER>' where id = '<KATEGORIJA>'
+   returning id, name, user_id;
+   ```
+3. `npm run dev` → prijava kao **vlasnik Aree** → Structure → Edit Mode → taj čvor →
+   promijeni `description` → **Save**
+4. ```sql
+   select id, name, user_id from categories where id = '<KATEGORIJA>';
+   ```
+5. **Vrati** `user_id` na izvorni (⚠ inače na TEST-u ostaje redak koji tvrdi da je
+   tuđi — točno vrsta zatečenosti koju S134 čisti).
+
+### Expected / Pad
+
+- **Prolaz:** `user_id` **nepromijenjen**, a opis **vidljivo promijenjen**
+- **Pad:** `user_id` postao onaj tko je kliknuo Save
+
+⚠ **Obje polovice se mjere.** Da je Save samo tiho pao, `user_id` bi također ostao
+nepromijenjen — i test bi prošao nad pokvarenim kodom. Zato dokaz da je upis sletio
+(`Saved successfully` **plus** nov opis vidljiv u listi) nije kozmetika nego druga
+polovica testa.
+
+### Izmjereno 14.09.2026. (TEST)
+
+`Garmin_data` podmetnut `userb@test.com` (`93b96e77…`), Saša (vlasnik
+`Health_Sasa`) spremio opis `TEST`:
+
+- `Saved successfully`, opis vidljiv u Structure listi ⇒ **upis je sletio**
+- `user_id` i dalje `93b96e77…` ⇒ **vlasništvo nedirnuto**
+
+Pod starim kodom bi postao `b2d151c3…` (Saša), jer je panel slao `user_id: user.id`
+u svakom payloadu.
+
+⚠ **Usput potvrđeno:** app je pustio uređivanje retka koji „pripada" userb-u —
+kriterij je **vlasništvo Aree**, ne `categories.user_id`. Točno kako je S134
+zamišljen, i razlog zašto `categories.user_id` više nije mjerilo ničega osim
+autorstva.

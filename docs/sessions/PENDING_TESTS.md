@@ -105,7 +105,7 @@ Detalji: [S134_tests.md](tests/S134_tests.md)
 | #             | test                                                                    | status |
 | ------------- | ----------------------------------------------------------------------- | ------ |
 | **T-S134-7**  | `sql/045` na PROD-u — vlasništvo poravnato, slugovi netaknuti           | ✅ izmjereno |
-| **T-S134-8**  | ⭐ Spremanje strukture više ne prepisuje `user_id`                       | ⬜ traži deploy |
+| **T-S134-8**  | ⭐ Spremanje strukture više ne prepisuje `user_id`                       | ✅ **14.09. TEST** — `Garmin_data` podmetnut userb-u, Saša (vlasnik Aree) spremio opis: upis sletio (`Saved successfully` + `TEST` vidljiv u listi), `user_id` **ostao** `93b96e77…`. Obje polovice izmjerene ⇒ nije mogao proći tihim neuspjehom |
 
 ### C. RLS
 
