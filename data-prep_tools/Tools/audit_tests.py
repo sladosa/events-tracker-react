@@ -20,7 +20,11 @@ if hasattr(sys.stdout, 'reconfigure'):
 TESTS = Path('docs/sessions/tests')
 PENDING = Path('docs/sessions/PENDING_TESTS.md')
 
-ID = re.compile(r'T-S[0-9]+[a-z]?-[0-9]+')
+# ⚠ Sufiks zna biti `A7`/`B5`, ne samo broj (S129 ih ima 15). Dok je regex tražio
+#   samo znamenke, alat ih NIJE VIDIO — i S129 je prijavljivao kao „sve ✅, za arhivu"
+#   dok su unutra stajala 4 otvorena testa. Instrument slijep točno ondje gdje se
+#   donosi odluka o arhiviranju (isti razred kao sonda bez `areas INSERT`, S135).
+ID = re.compile(r'T-S[0-9]+[a-z]?-[A-Z]?[0-9]+')
 
 # --- testovi definirani po session fileu ---
 defined = {}
