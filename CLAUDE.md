@@ -132,7 +132,23 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **Backup napravljen anon ključem bio bi PRAZAN i izgledao uredan** — zato alat staje ako
   ključ nije `service`. Nije teorija: `_db.load_env('test')` pada na anon, i TEST je u prvom
   mjerenju izgledao kao baza s 0 eventa (stvarno 12.363).
-  ⚠ **RESTORE JOŠ NE POSTOJI.** Do tada je ovo kopija, ne provjeren povratak.
+- **✅ RESTORE POSTOJI I DOKAZAN JE (S136).** `Tools\run.bat Tools\restore_db.py`.
+  Izmjereno na TEST-u: obrisano **55 redaka** (5 `balance_anchors` + 50
+  `event_attributes`), vraćeno, i **`sha256` po tablici se poklopio s manifestom** —
+  dakle ne „retci su se vratili" nego „sadržaj je identičan".
+  ⚠ **Opasnost restorea nije „prepisati starim podacima" nego BRISANJE SVEGA
+  NASTALOG POSLIJE SNIMKE** (Sašin nalaz). Zato je to riješeno **oblikom alata**, ne
+  upozorenjem: zadano je **dry run**; `--mode fill` (zadano) upisuje **samo retke
+  kojih nema** i **po konstrukciji** ne može dirati novije; `--mode exact` (insert +
+  update + **delete**) traži utipkano `OBRISI`. Izmjereno da se razlikuju: nad
+  retkom novijim od snimke `fill` javlja `OBRISATI 0`, `exact` `OBRISATI 1 <<< BRISE`.
+  ⚠ **`fill` namjerno NE daje poklapanje `sha256`** kad baza ima novije retke — to
+  nije pad. Poruka to mora reći, inače sljedeći čovjek posegne za `exact`.
+  ⚠ Insert ide po `table_order` (roditelji prvi), **DELETE obrnutim redom** (djeca
+  prva) — inače FK.
+  ⚠ **`auth.users` se NE vraća** (u manifestu je samo popis) ⇒ redak čijeg korisnika
+  više nema padne na FK. Storage ide svojim putem. Triggeri mogu promijeniti ono što
+  se upisuje (PROD ih ima 8, TEST 2) — zato se poslije vraćanja **mjeri**.
 - **Shema obje baze je u gitu:** `sql/SCHEMA_PROD.sql`, `sql/SCHEMA_TEST.sql`, generira
   `Tools\run.bat Tools\dump_schema.py --env <env>` (`--diff` uspoređuje bazu s gitom).
   **Na pitanje „što politika kaže" odgovara `git diff`, ne pamćenje.**
@@ -1401,7 +1417,18 @@ data-prep_tools/Tools/backup_db.py Snimka CIJELE baze (12 tablica + auth popis +
                                    /!\ STAJE ako kljuc nije service -- anon bi
                                    dao PRAZAN backup koji izgleda uredan.
                                    `--verify` provjeri staru snimku po sha256.
-                                   /!\ NE pokriva shemu; restore jos ne postoji.
+                                   /!\ NE pokriva shemu (v. `dump_schema.py`).
+data-prep_tools/Tools/restore_db.py
+                                   Vracanje snimke. ZADANO JE DRY RUN.
+                                   `--mode fill` (zadano) upisuje samo retke
+                                   kojih nema => ne moze unistiti novije PO
+                                   KONSTRUKCIJI. `--mode exact` brise visak i
+                                   trazi utipkano `OBRISI`.
+                                   /!\ `project_ref` iz manifesta mora odgovarati
+                                   ciljanoj bazi; PROD trazi `--yes-i-mean-prod`
+                                   i sam uzme svjez backup prije vracanja.
+                                   Poslije mjeri `sha256` po tablici -- dokaz,
+                                   ne nada. Dokazan na TEST-u (S136).
 data-prep_tools/Tools/dump_schema.py
                                    `pg_dump --schema-only` -> `sql/SCHEMA_*.sql`.
                                    Ide preko Session poolera (IPv6 problem).

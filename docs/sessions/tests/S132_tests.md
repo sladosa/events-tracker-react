@@ -183,3 +183,67 @@ broju eventa.
 leafu koji ima evente (zabrana iz S24).
 
 **Status:** ⬜ NALAZ, popravak nije napravljen (v. „Open bugs" u CLAUDE.md)
+
+---
+
+## T-S132-7 ✅ `restore` postoji i DOKAZAN je (izvedeno u S136)
+
+Do S136 je stajalo *„RESTORE NE POSTOJI — backup je kopija, ne provjeren povratak"*.
+Alat: `data-prep_tools/Tools/restore_db.py`.
+
+### ⚠ Opasnost nije ona koja se prva pomisli
+
+Sašin nalaz pri dizajnu: restore pokrenut mjesecima kasnije **ne bi samo prepisao —
+obrisao bi svaki redak nastao poslije snimke**. Razlika između „izgubio sam izmjenu"
+i „izgubio sam četiri dana rada". Zato je riješeno **oblikom alata**, ne upozorenjem:
+
+| način | radi | može uništiti novije |
+| --- | --- | --- |
+| dry run (**zadano**) | samo ispiše | ne |
+| `--mode fill` (**zadano uz `--apply`**) | upisuje **samo retke kojih nema** | **ne, po konstrukciji** |
+| `--mode exact` | insert + update + **delete** | da — traži utipkano `OBRISI` |
+
+### Dokaz 1 — vraćanje je bajt-identično
+
+1. Svježa snimka TEST-a (`backup_db.py --env test`)
+2. Obrisano **55 redaka**: 5 `balance_anchors` + 50 `event_attributes`
+3. Dry run prijavio **točno** `55` za dodati, `0` za obrisati
+4. `--apply` (fill)
+
+```
+  [OK] event_attributes        74125 redaka — sha256 se poklapa
+  [OK] balance_anchors            20 redaka — sha256 se poklapa
+```
+
+⚠ **Mjeri se `sha256`, ne broj redaka.** „Retci su se vratili" ne znači „sadržaj je
+isti" — a upravo to backup mora jamčiti.
+
+### Dokaz 2 — `fill` ne može pojesti novije (protuprovjera)
+
+Ubačen redak u `balance_anchors` koji **u snimci ne postoji**, pa oba načina u dry runu:
+
+```
+fill    balance_anchors  20  21   DODATI 0  promij. 0  OBRISATI 0
+exact   balance_anchors  20  21   DODATI 0  promij. 0  OBRISATI 1  <<< BRISE
+```
+
+Bez te protuprovjere test ne bi razlikovao „sigurno po konstrukciji" od „slučajno
+nije bilo ničega novog" (pravilo iz S120/S129).
+
+### Zapamtiti
+
+- ⚠ **`fill` namjerno NE daje poklapanje `sha256`** kad baza ima novije retke. To
+  **nije pad**, i alat to mora reći — inače sljedeći čovjek posegne za `exact`,
+  točno onim što se izbjegava.
+- ⚠ Insert po `table_order` (roditelji prvi), **DELETE obrnutim redom** (djeca prva).
+- ⚠ `project_ref` iz manifesta mora odgovarati ciljanoj bazi — snimka vraćena u krivi
+  projekt tiho prepisuje autorstvo.
+- ⚠ **`auth.users` se ne vraća**; redak čijeg korisnika više nema padne na FK.
+  Storage ide svojim putem. Triggeri mogu promijeniti ono što se upisuje (PROD 8,
+  TEST 2) — zato se poslije **mjeri**.
+
+### Neizvedeno
+
+**Restore na PROD-u nije pokrenut niti jednom** — alat ga podržava (`--yes-i-mean-prod`
++ sam uzima svjež backup prije vraćanja), ali dokaz postoji samo za TEST. Razlika
+između baza (8 triggera prema 2) znači da PROD put nije dokazan time što TEST radi.

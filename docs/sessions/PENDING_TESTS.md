@@ -205,7 +205,7 @@ Za ispravnu verziju v. S133 sekciju iznad.
 | ------------ | ---------------------------------------------------------------- | ------ |
 | **T-S132-5** | dry run — razvrstavanje + uzorak RUČNIH koje ne dira             | ✅ 11 / 0 / 0 / 767 |
 | **T-S132-6** | ⭐ `--apply`                                                      | ✅ 11 / 11 |
-| **T-S132-7** | ⭐ `--restore` vraća točno obrisano                               | ⬜ **backup bez provjerenog restorea nije backup** |
+| **T-S132-7** | ⭐ `--restore` vraća točno obrisano                               | ✅ **14.09. TEST** — obrisano **55 redaka** (5 `balance_anchors` + 50 `event_attributes`), vraćeno `--mode fill`, **`sha256` po tablici se poklopio s manifestom**. Protuprovjera: nad retkom novijim od snimke `fill` javlja `OBRISATI 0`, `exact` `OBRISATI 1 <<< BRISE` ⇒ `fill` ne može pojesti novije. Alat: `Tools/restore_db.py` |
 | **T-S132-8** | `--i-stare` (reklasificirani auto-oblik)                         | ✅ S136 — nadiđeno upotrebom |
 
 ### C. Selidba `load_env`/`rest` u `_db.py`
