@@ -4794,3 +4794,132 @@ zabrana zaustavila **prije** nego je došao do `+ Add Leaf` — a test provjerav
 **S24** bravu (leaf s eventima ne smije dobiti dijete). Prošao bi i da je ta brava
 posve otvorena. Razred „test koji ne mjeri ono što misli" (S120, S129); izvodi se kao
 **vlasnik**.
+
+---
+
+## S134 — backup koji nije postojao, i rupa koja je devet mjeseci izgledala zatvoreno (2026-09-10)
+
+⚠ **Zapisano naknadno, u S136.** Korak 5 rituala („kronologija sesije") preskočen je za
+S134 **i** S135 — dvije sesije zaredom — dok je zaglavlje `CLAUDE.md`-a tvrdilo `S1–S135`.
+Ovaj i sljedeći odjeljak rekonstruirani su iz commitova, `CLAUDE.md`-a i `S13x_tests.md`;
+nose **ono što je tada izmjereno**, ne naknadni dojam. Detalji su u `CLAUDE.md` (sekcije
+„Backup, shema i RLS" i „WRITE-GRANTEE…"), ovdje samo redoslijed i pouke.
+
+**Što je napravljeno**
+
+- **Prva kopija PROD baze uopće** (`Tools/backup_db.py`): 12 tablica + auth popis + Storage,
+  izmjereno **107.772 retka, 6,79 MB gzip, 53 s**. Do tog dana jedina kopija PROD podataka
+  bila je **nijedna** — Supabase free nema automatske backupe.
+- **Shema obje baze u git** (`dump_schema.py` → `sql/SCHEMA_PROD.sql`, `SCHEMA_TEST.sql`).
+  Time je „što politika kaže" prestalo biti pitanje za pamćenje i postalo `git diff`.
+- **Čišćenje RLS-a** (`045`–`051`), na TEST-u pa na PROD-u: **107 politika → 76**.
+- `assertWrote()` u Structure panelu — tihi neuspjeh spremanja postao poruka.
+- Popravak modala: selekcija teksta koja završi izvan panela više ne zatvara modal
+  (`useBackdropClose`, 13 modala, 6 testova s protuprovjerom koja pada 3/6).
+
+**Tri pouke koje su preživjele u `CLAUDE.md`**
+
+1. **Backup napravljen anon ključem bio bi PRAZAN i izgledao uredan.** Alat zato staje ako
+   ključ nije `service`. Nije teorija: TEST je u prvom mjerenju izgledao kao baza s 0 eventa
+   (stvarno 12.363).
+2. **RLS politike su PERMISSIVE ⇒ OR-aju se ⇒ najšira uvijek pobjeđuje.** Zabrana se postiže
+   **brisanjem**, nikad dodavanjem — migracija koja „doda strožu politiku" ne mijenja ništa,
+   a izgleda kao gotov posao.
+3. **`Prefer: return=representation` maskira otvoren INSERT.** Zato je rupa „bilo tko
+   prijavljen može pisati u tuđu Areu" devet mjeseci izgledala zatvoreno. INSERT se mjeri
+   **bez** `RETURNING`.
+
+⚠ **Ispravljena je i vlastita zapisana tvrdnja:** devet sesija je stajalo da „RLS na `areas`
+dopušta UPDATE samo vlasniku" — a to je bio **prepisan komentar iz migracije `009`**, ne
+stanje baze. Sonda je izmjerila suprotno. Isti razred kao PROD slug trigger (S118).
+
+---
+
+## S135 — politika koja je tražila sama sebe, i poruka koja laže (2026-09-11)
+
+⚠ Zapisano naknadno, u S136 — v. napomenu uz S134.
+
+**Odluka s početka dana — ne deployati nego prvo testirati — pokazala se ispravnom iz
+razloga koji se tada nije mogao znati:** puni E2E je otkrio kvar u jučerašnjoj migraciji.
+
+`sql/047` je postavio `areas_select USING (app_can_read_area(id))`, a taj helper redak
+**traži u tablici**. Dok se redak tek upisuje, njega ondje još nema — pa uz `RETURNING`
+Postgres traži SELECT pravo na **novi** redak, ne dobije ga, i **poništi cijeli INSERT** uz
+`42501 new row violates row-level security policy`. **Poruka laže:** upis je bio dopušten,
+zabranjeno je bilo **čitanje natrag**. Popravak: `sql/052`.
+
+- ⚠ **Produkcija nije bila pokvarena — izmjereno, ne pretpostavljeno:** sva četiri mjesta
+  koja stvaraju Areu zovu `.insert()` **bez** `.select()`, a `postgrest-js` uz `insert()`
+  ne šalje `return=representation`. Mina je bila postavljena, nitko nije stao.
+- ⚠ **Instrument kojim je `047` proglašen ispravnim bio je slijep točno ondje gdje je `047`
+  pogriješio** — sonda nije imala `areas INSERT`. Kvar su našla **tri E2E speca**. Sonda sada
+  nosi **dvije** INSERT probe, sa i bez `RETURNING`, jer jedna ne može razlikovati ta dva
+  privida.
+- **E2E triaža:** 46 prošlo / 22 palo / 3 nisu krenula. Pojedinačno: **deset specova prolazi
+  kad ih se pusti same** ⇒ artefakt punog runa, ne kvar. Šest je padalo i samo.
+- ⚠ Tri promašaja u **mjerenju**, ne u testovima: `exit code 0` iz `npx playwright test | tail`
+  je kod `tail`-a · Playwright briše `test-results/` na svakom pokretanju · sažetak nosi ANSI
+  znakove pa ga `grep` ne hvata.
+
+---
+
+## S136 — meni koji je bježao, i popis testova koji je rastao osam mjeseci (2026-09-14)
+
+Saša se vratio nakon nekoliko dana: „gdje smo i što je najvažnije?"
+
+**1. `sql/052` na PROD** (Saša pustio). Ispis `pg_policy` poklopio se s migracijom u znak:
+`USING (user_id = auth.uid() OR app_can_read_area(id))`, `polcmd = r`. TEST i PROD poravnati.
+
+**2. Pregled prije deploya — da build ne ode „bez veze".** Deploy je do tada nosio **jednu**
+promjenu ponašanja (popravak modala iz S134). Pregledan je backlog i uzeta dva zahvata s
+najboljim omjerom:
+
+- **⋮ meni se na scroll PREMJEŠTA umjesto da nestane.** `CategoryChainRow` ga je zatvarao na
+  svaki `scroll` uz `capture: true` — a `capture` na `window` hvata scroll iz **svakog**
+  ugniježđenog spremnika. Izmjereno u **oba smjera**: bez popravka `e13-1` pada na
+  `addBetweenBtn`, s popravkom prolazi; `e15` s 3 pada na 1; `e7-1` prolazi. Preostala tri
+  pada su `getByText` na tekstu i nijedan nije meni (`E7-2/-3` su otprije poznat bug,
+  `E13-2` traži „move up" koje u aplikaciji ne postoji, `E15-3` tekst izvan istog prikaza).
+  Ručno potvrdio Saša: meni prati redak — **jedino što E2E strukturno ne vidi**, jer
+  Playwright scrolla programski i nikad ne provjerava *gdje* meni stoji.
+- **Poruke o export profilima prestale lagati.** Obje (spremanje i brisanje) tvrdile su
+  „read-only access" i **write**-grantee-u. Ponašanje je ispravno i ostaje — profili su u
+  `areas.settings`, koji je vlasnikov — ali razlog je bio krivo imenovan. Isti razred kao
+  S135 `42501`.
+- **`BUG-S114-REPORTDD` zatvoren bez ijedne linije koda**, sondom: izvještaj o uvozu **ima**
+  `DropdownData`, `Tip` `type=list`, `Podtip` `INDIRECT(…)`. Refaktor ga je zatvorio odavno,
+  bug je ostao otvoren — a „otvoren bug" troši pažnju svake iduće sesije.
+
+**3. Triaža `PENDING_TESTS.md` (Sašin poticaj: „ima puno stavki koje zapravo nisu relevantne").**
+
+| | prije | poslije |
+| --- | ---: | ---: |
+| otvorenih testova | **156** | **25** |
+| redaka u fileu | 1695 | 1116 |
+| session fileova | 42 | **18** |
+| siročadi (test bez retka) | 44 | 10 |
+
+Zatvaralo se po **pet kriterija s dokazom** (izmjereno danas · čuva automatski test · izvela
+novija sesija · alat/podaci ne postoje · **nadiđeno upotrebom**), a `T-S131-6..24` je
+**sažeto**, ne zatvoreno: `is_required` blokira Kokin Save i nije provjeren nijednom, pa
+četrnaest koraka postaje jedan smoke (`T-S136-3`).
+
+⚠ **Retci se ne brišu nego dobivaju ✅ + razlog.** Brisanje ih pretvara u „bez oznake u
+PENDING", a o takvom se retku ne može donijeti **nijedna** odluka — tako su `S99`–`S105`
+stajali kao „poznata rupa" od S116. Sašina odluka istog dana: nisu relevantni ⇒ arhivirani,
+sa zapisanim dokazom po fileu.
+
+**⭐ Nalaz vrjedniji od same triaže:** `audit_tests.py` nije vidio ID-eve oblika `T-S129-A7` —
+regex je iza crtice tražio samo znamenke. Alat je S129 prijavljivao kao „10 definiranih,
+svi ✅, spremno za arhivu" dok su unutra stajala **4 otvorena testa**; stvarno ih je **24**.
+Sesija s otvorenim poslom otišla bi u arhivu, i to tiho.
+
+⚠ **Spasio je guard, ne pažnja** — skripta odbija maknuti sekciju u kojoj postoji ijedan ⬜ i
+stala je baš na S129. Isti razred kao S135 sonda bez `areas INSERT`: **instrument slijep
+točno ondje gdje se donosi odluka.** I prvi guard je bio prelabav — tražio je ⬜ bilo gdje u
+sekciji, pa ga je zapalio moj vlastiti pokazivački tekst koji taj znak sadrži.
+
+**Usput zatvoreno:** `T-S134-18` (`sql/051` na PROD-u) postojao je samo u `S134_tests.md`,
+bez retka u PENDING-u — dakle nije se znalo ni da je otvoren ni da je zatvoren. Izmjereno iz
+`sql/SCHEMA_PROD.sql`: **svaka** `SECURITY DEFINER` funkcija nosi
+`SET search_path TO 'public', 'pg_temp'` ⇒ `051` **jest** na PROD-u.

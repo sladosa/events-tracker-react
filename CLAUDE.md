@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S135).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S136).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -1300,6 +1300,19 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 - **Nedostajuće polje iz RPC-a ne smije se čitati kao „nema ničega".** Kad `038` nije pušten,
   `last_on` je `undefined` ⇒ `null` — isto kao „ništa poslije sidra". Zato uvjet u
   `BalanceByGroupTile` glasi `row.last_on || row.n === 0`: neistina je gora od izostanka.
+- **⚠ `scroll` LISTENER S `capture: true` NA `window` HVATA SVAKI UGNIJEŽĐENI SPREMNIK**
+  (S136). `CategoryChainRow` je ⋮ meni zatvarao na svaki `scroll`, uz obrazloženje „meni je
+  `fixed` pa bi inače odlutao" — točno, ali lijek prestrog: `capture` propušta i scroll koji
+  s menijem nema veze (pomak sadržaja ispod njega, preglednikov `scrollIntoView`, inercija
+  trackpada), pa je stavka nestajala **ispod prsta**. Korisnik to vidi kao „meni mi se sam
+  zatvorio"; tri E2E speca (`e7`, `e13`, `e15`) padala su točno tako — meni se dokazano
+  otvori (`button "Actions" [active]`), pa stavka **unutar** njega nestane.
+  ⚠ Lijek je **premjestiti, ne zatvoriti**: pozicija se preračuna iz žive
+  `getBoundingClientRect()` gumba. Time se uklanja **razred**, pa više nije važno *tko* je
+  scrollao — a to je bilo jedino otvoreno pitanje u dijagnozi (hipoteza o asinkronim S133
+  značkama nikad nije izmjerena). Drift zbog kojeg je zatvaranje uvedeno tada ne može nastati.
+  ⚠ **Vrijedi za svaki budući `fixed` element usidren uz redak** (portal meniji, tooltipovi):
+  usidrenje traži **praćenje**, a zatvaranje je krinka za to da se ne prati.
 
 **E2E (Playwright)**
 
@@ -1633,10 +1646,15 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   ⚠ Popravljeno je i konkretno sidro (`22.08.` → `30.07.`, Sašin ručni ispravak u Supabase
   editoru). RF `11.08. = 799,12` je **provjeren i točan** — `RF_2026-07.pdf` se zatvara
   11.08. (zadnja tx `Mirovina III stup 254,33`).
-- **BUG-S114-REPORTDD:** izvještaj o uvozu **nema `DropdownData` list** (`Events / HelpEvents /
-  ImportReport / Filter`), pa u njemu `Tip`/`Podtip` nemaju padajući izbornik. Za pipeline
-  nebitno, **za Koku bitno**: izvještaj je mišljen kao mjesto gdje dorađuje uvezeno, a ondje bi
-  tipkala slobodan tekst bez ijedne provjere. Fix = nositi `DropdownData` kao i običan export.
+- **~~BUG-S114-REPORTDD~~ — ✅ ZATVOREN S136, bez ijedne linije koda.** Tvrdio je da izvještaj
+  o uvozu nema `DropdownData`, pa `Tip`/`Podtip` u njemu nemaju izbornik. Izmjereno sondom nad
+  `addActivitiesSheetsTo` (funkcija koju `buildImportReport` zove **bezuvjetno**): list
+  `DropdownData [veryHidden]` postoji, `Tip` nosi `type=list`, `Podtip` `INDIRECT(…)`, a
+  kolona `Result` dokazuje da je riječ o obliku izvještaja. Nalaz je bio točan kad je pisan;
+  zatvorio ga je refaktor koji izvještaj gradi **jednim** workbookom umjesto post-processingom
+  (v. komentar u `excelImportReport.ts:105`), a bug je ostao otvoren.
+  ⚠ **Pouka:** bug zatvoren usput ostaje otvoren dokle god ga netko ne izmjeri — a „otvoren
+  bug" se čita kao poznat kvar i troši pažnju svake iduće sesije.
 - **~~BUG-S118-PREVIEWMODE~~ — ✅ POPRAVLJENO S120.** Modal parsira file **prije** nego pita
   što s tuđim retcima, pa prvi prolaz može samo pretpostaviti `skip`. Popravak nije bio „jedan
   argument" kako je ovdje pisalo nego **ponovna analiza s odabranim načinom** prije prikaza
@@ -2365,6 +2383,22 @@ does not block build. Ignore it.
    - session file čiji su **svi** testovi ✅ → `Claude-temp_R/test-sessions/archive/`
      (⚠ arhiviranje **izlazi iz gita** — arhiviran test je zatvoren, pa seli na radni stol)
      (⚠ **ne po starosti** — otvoreni testovi sežu unatrag više sesija)
+   - **⚠ RETCI SE NE BRIŠU IZ TABLICA, NEGO DOBIVAJU ✅ + RAZLOG** (S136). Brisanje ih
+     pretvara u „bez oznake u PENDING", a o takvom se retku ne može donijeti **nijedna**
+     odluka — ni zatvoriti ga ni otvoriti. Tako su `S99`–`S105` stajali kao „poznata rupa"
+     od S116 do S136. Razlog se upisuje u ćeliju statusa (`✅ S136 — nadiđeno upotrebom`,
+     `✅ S136 — čuva automatski test`, …), pa se odluka poslije ne čita kao „staro je".
+   - **Pet kriterija za zatvaranje** (S136, svaki traži dokaz): izmjereno u ovoj sesiji ·
+     čuva ga automatski test · izvela ga novija sesija · alat/podaci više ne postoje ·
+     **nadiđeno upotrebom** (feature je na PROD-u i ponašanje je otad izmjereno drugim
+     putem). ⚠ Šesta mogućnost nije zatvaranje nego **sažimanje**: 14 ručnih koraka se
+     neće izvesti nikad, dva hoće (`T-S131-6..24` → `T-S136-3`).
+   - **⚠ `audit_tests.py` je do S136 bio SLIJEP za sufikse `-A7`/`-B5`** — regex je iza
+     crtice tražio samo znamenke, pa **15 testova iz S129 nije vidio** i sesiju je
+     prijavljivao kao *„svi ✅, spremno za arhivu"* dok su unutra stajala **4 otvorena**.
+     Popravljeno, ali pouka je šira: **skripta koja miče sekcije mora odbiti maknuti onu
+     u kojoj postoji ijedan ⬜** — guard je uhvatio ono što alat nije. ⚠ I guard mora
+     gledati **samo tablične retke** (`|`), inače ga zapali ⬜ u običnom tekstu.
    - `.pre-*` backupi stariji od zadnja 3 → `data-prep_data/Financije/_arhiva/backup/`
    - generirani izlazi (import/structure/export xlsx) → `_arhiva/izlazi/`
 4. **`CLAUDE.md`** — nova zamka ide u „Critical rules"/„Zamke". **Ne dopisuj sesijski
@@ -2400,12 +2434,22 @@ does not block build. Ignore it.
 10. **Commit + push `test-branch`** (nema Netlify deploya, nema troška):
    `git push origin test-branch`
 11. **Samo kad korisnik IZRIČITO zatraži PROD deploy** — Netlify build troši kredite,
-   NIKAD ne pushati/mergati na main samoinicijativno:
+   NIKAD ne pushati/mergati na main samoinicijativno.
+   ⚠ **Merge pušta Saša** — auto-mode klasifikator Claudeu blokira `main` (izmjereno S136),
+   pa se naredbe **daju njemu**, ne pokušavaju same.
+   ⚠ **Njegova ljuska je Windows PowerShell 5.1, koji NEMA `&&`** — zalijepljen bash oblik
+   daje `The token '&&' is not a valid statement separator in this version` i **ništa se ne
+   izvrši** (parser odbije cijelu liniju, pa bar nema polovičnog stanja). Ovdje je dotad
+   stajao bash oblik i u S136 je poslan doslovno — zato ovaj zapis:
+   ```powershell
+   git checkout main
+   if ($?) { git merge test-branch --no-edit }
+   if ($?) { git push origin main }
+   git checkout test-branch
+   if ($?) { git merge main --no-edit }
+   if ($?) { git push origin test-branch }
    ```
-   git checkout main && git merge test-branch --no-edit && git push origin main
-   git checkout test-branch && git merge main --no-edit && git push origin test-branch
-   ```
-   Bez sync-backa `test-branch` zaostaje za `main`.
+   Bez sync-backa (zadnja tri retka) `test-branch` zaostaje za `main`.
 
 ### ⚠ Test pravila mora se razlikovati od onoga što pravilo proizvodi (S129)
 
