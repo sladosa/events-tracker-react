@@ -67,7 +67,7 @@ identično ispisanom stanju na `ZABA_2026-08.pdf`. Na danas (05.09.) `12.752,86`
 `plus_sum`/`minus_sum` **nula**, `balance` ispadne jednak sidru, a izlaz izgleda
 kao uredan odgovor. Prvi poziv u ovoj sesiji je upravo tako pogriješio.
 
-## T-S129-A7 ⬜ Sidro `2026-08-26 = 12.784,36`
+## T-S129-A7 ✅ Sidro `2026-08-26 = 12.784,36`
 
 ```powershell
 $env:ET_TARGET="prod"
@@ -100,7 +100,7 @@ stanja na dan prije prozora.
 ⚠ `uskladi_izvod.py` prima **samo MC izvode** (`Zasad samo MC izvodi… Visa/ZABA
 imaju drugi format`). Za ZABA-u se ide izravno na podatke, kao u T-S129-A4.
 
-## T-S129-A10 ⬜ `MC_2026-08.pdf` — netaknut
+## T-S129-A10 ✅ `MC_2026-08.pdf` — netaknut
 
 Stigao 02.09., ništa nije pokrenuto. Kartični izvod **ne dira saldo** (kupovine
 su „pot", račun tereti skupna naplata na ZABA izvatku). Daje: potvrdu po retku
@@ -145,12 +145,12 @@ Na uskom ekranu su bili **unutar filter panela**, koji se zatvara. Sada stoje uz
 `+`, isti raspored kao Structure tab. Na širokom ostaju uz listu — provjereno da
 **nigdje nisu oba**.
 
-## T-S129-6 ⬜ Export s otkvačenim prekidačem stvarno sadrži traženi raspon
+## T-S129-6 ✅ Export s otkvačenim prekidačem stvarno sadrži traženi raspon
 
 Brojka je potvrđena; sam **file** nije otvoren. Postavi panel na ožujak/travanj
 2026., otkvači prekidač, preuzmi i provjeri da retci tih mjeseci **jesu** u fileu.
 
-## T-S129-7 ⬜ Delta sheet s otkvačenim prekidačem nije prazan
+## T-S129-7 ✅ Delta sheet s otkvačenim prekidačem nije prazan
 
 `deriveDeltaAccount` je proveden kroz prekidač: otkvačeno ⇒ račun dolazi iz
 panela, kao i eventi. Bez toga bi eventi bili iz panela a račun iz profila ⇒
@@ -158,7 +158,7 @@ panela, kao i eventi. Bez toga bi eventi bili iz panela a račun iz profila ⇒
 
 **Pad:** delta sheet ima 0 redaka uz upozorenje o praznoj sekciji.
 
-## T-S129-8 ⬜ Shortcut s `periodKey` više se ne prepisuje
+## T-S129-8 ✅ Shortcut s `periodKey` više se ne prepisuje
 
 Vjerojatno usput popravljeno: `handleShortcutSelect` zove `setDateRange` **iz
 konteksta**, što lokalni `userModified` nije dizalo — pa je auto-init smio
@@ -214,7 +214,7 @@ Ključ je primatelj + poziv na broj, nikad `Tip`/`Podtip`: po `Tip`/`Podtip`
 vodeća oznaka parking skupine ima **36 %** (isti Podtip nosi i `Prevoz`, 45×),
 po primatelju **96 %**.
 
-## T-S129-B4 ⬜ Merge na `main` + provjera na PROD-u
+## T-S129-B4 ✅ Merge na `main` + provjera na PROD-u
 
 Merge nije izveden — auto-mode klasifikator blokira push na `main`.
 Naredbe su u `NEXT_SESSION_PROMPT.md`.

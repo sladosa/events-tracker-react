@@ -31,7 +31,7 @@ Review = `Financije_review_20260710_1448.xlsx` (4968 redaka). Commiti: 87c13d6 �
 5. `suggest_candidates.py --year 2026` opet → lista kraća (klasificirani nestali).
 **Očekivano:** svaki krug smanjuje 2026 text-N/A; dropdowni rade; harvest ne duplicira postojeća pravila.
 
-## T-S107j-2 — Nematchano_v3 pregled ⬜
+## T-S107j-2 — Nematchano_v3 pregled ✅
 1. Otvori `Nematchano_v3` (57 peach Izvod redaka + green Review kandidati, recent-first, F2 split).
 2. Potvrdi mehaniku: peach = odluka, green = kontekst. Obriši par očitih dup grupa (npr. YOUTUBE↔Youtube)
    → provjeri da Review NIJE promijenjen (broj redaka Review isti).
@@ -47,7 +47,7 @@ PBZ Visa / Konsolidacija).
 **Očekivano:** male razlike (±49, 0.70, 1.60, 8.40) = timing/sitni parkinzi (negligible); velike = pravi
 reconcile s Kokom.
 
-## T-S107j-4 — Napomena backfill kontrola ⬜
+## T-S107j-4 — Napomena backfill kontrola ✅
 1. Review: filtriraj rane 2024 kartične retke → Napomena sada popunjena (merchant iz Izvoda).
 2. Provjeri da ne-prazne (Kokine originalne) Napomene NISU promijenjene (P3).
 **Očekivano:** 1870 popunjeno; pre-2024 no-text ostaje prazno.

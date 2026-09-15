@@ -67,7 +67,7 @@ dirnut. Ostali redci su izravno uspoređeni s jutrošnjim ispisom.
 Sva tri stvaraju Areu preko REST-a s `Prefer: return=representation` i padala su s
 doslovnim `42501`. To je dokaz s one strane s koje je kvar i došao.
 
-### T-S135-5 ⬜ `sql/052` na PROD-u — **Saša pokreće**
+### T-S135-5 ✅ `sql/052` na PROD-u — **Saša pokreće**
 
 ```
 Tools\run.bat Tools\rls_probe.py --env prod        ← spremi izlaz
@@ -79,12 +79,12 @@ Tools\run.bat Tools\dump_schema.py --env prod      ← shema natrag u git
 **Očekivano:** jedina razlika je `areas INSERT +RETURNING` **NE → DA**, za sve tri
 uloge. Bilo koji drugi pomak znači da je dirnuto nešto što nije trebalo.
 
-### T-S135-6 ⬜ Ručna protuprovjera (opcionalno)
+### T-S135-6 ✅ Ručna protuprovjera (opcionalno)
 
 Dvije naredbe koje se razlikuju **samo** u `RETURNING`, sve u `ROLLBACK`-u —
 puni tekst je u podnožju `sql/052_rls_areas_select_own_row.sql`.
 
-### T-S135-7 ⬜ „Add Area" u aplikaciji i dalje radi
+### T-S135-7 ✅ „Add Area" u aplikaciji i dalje radi
 
 **Zašto test postoji:** `052` dira politiku čitanja, a Add Area je put koji je jedini
 stvarno pogođen da je aplikacija slala `RETURNING`. Nije slala — ali popravak se
@@ -133,7 +133,7 @@ smeća iz starih runova — spec aree imenuje nasumično, pa se ne može sudarit
 - Sažetak Playwrighta nosi ANSI kontrolne znakove, pa `grep '^ *[0-9]+ passed'` ne
   hvata ništa i ispadne „bez rezultata" — što se čita kao pad.
 
-### T-S135-10 ⬜ Ostaje otvoreno
+### T-S135-10 ✅ Ostaje otvoreno
 
 `e13-add-between` (1) · `e15-revoke-with-events` (3) · `e7-2`/`e7-3` (otprije poznati
 otvoreni bugovi — izostaje toast u invite flowu). `e7-1` je u drugom prolazu **prošao**

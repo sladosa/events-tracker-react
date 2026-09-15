@@ -167,6 +167,30 @@ for title, bucket in (('PENDING nema redak za', unknown),
         for name, ids in sorted(bucket.items()):
             print('  %-22s %s' % (name, ', '.join(ids)))
 
+# --- naslov u detaljnom fileu vs redak u PENDING-u ---
+# /!\ Naslovi se u praksi NE azuriraju kad test prodje: pri uvodjenju ove
+#     provjere 13 ih se razilazilo. Nije kozmetika -- Sasa cita BAS detaljni
+#     file kad izvodi test, pa mu `[ ]` iznad prosloga testa kaze da posao
+#     jos stoji. PENDING je autoritet; naslov je kopija koja odluta.
+HEAD = re.compile(r'^#{1,3} .*?(' + ID.pattern + ')')
+drift = []
+for f in sorted(TESTS.glob('S*_tests.md')):
+    for line in io.open(f, encoding='utf-8'):
+        m = HEAD.match(line)
+        if not m:
+            continue
+        want = status.get(m.group(1))
+        if want is None:
+            continue
+        got = 'open' if '⬜' in line else ('done' if '✅' in line else None)
+        if got and want in ('done', 'open') and got != want:
+            drift.append((m.group(1), f.name, want, got))
+if drift:
+    print()
+    print('NASLOV SE NE SLAZE S PENDING-om (%d):' % len(drift))
+    for i, fn, want, got in drift:
+        print('  %-13s %-22s PENDING=%-5s naslov=%s' % (i, fn, want, got))
+
 # --- proturjecnost: kurirani redak vs tablice ---
 open_in_tables = {i for i, st in status.items() if st == 'open'}
 only_curated = sorted(curated - open_in_tables)

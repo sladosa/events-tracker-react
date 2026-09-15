@@ -33,7 +33,7 @@ u istom retku. Prije su bili nevidljivi.
 | **T-S137-3** | ⭐ CLAUDE.md dobio **generiran** indeks + razdvojeno pravilo od plana     | ✅ izmjereno: `330 ⚠ redaka u HEAD, 0 izgubljenih`; `Critical rules` i `Zamke` bajt-identične; indeks 18/18 brojeva točan |
 | **T-S137-4** | ⭐ MC košara 11.09. — `--apply` + kontrola                                 | ✅ **15.09. PROD** — `69 ispravaka / 2 brisanja`, pa ponovni `uskladi_izvod`: `48 POTVRĐENO / 0 ZA ISPRAVAK`. `promet_check` **nepromijenjen** `27/5` ⇒ MC ne dira tekući |
 | **T-S137-5** | ⭐ `Tip`/`Podtip` za 15 neklasificiranih redaka košare                     | ✅ **15.09. PROD** — `upisano polja: 30 · provjera nakon čitanja: SVE SE SLAZE`; ponovni dry run daje **0 za promjenu** (idempotentno) |
-| **T-S137-6** | `skriveno ✕` sakriva **samo to polje**; polje otkriveno preko „Show all" ostaje običan natpis | ⬜ **traži provjeru u `dev:prod`** — `typecheck` + `build` prolaze |
+| **T-S137-6** | `skriveno ✕` sakriva **samo to polje**; polje otkriveno preko „Show all" ostaje običan natpis | ✅ **15.09. PROD** (`dev:prod`) -- s **dva** otvorena polja klik na `Izvod opis` sakrio **samo njega**, `Valuta` ostala; polja iz Show all nose natpis **bez** ✕ |
 
 ⚠ **`dev:prod` je nov kod nad PROD bazom** ⇒ `T-S136-6/-8/-9` **ne čekaju deploy**.
 Tri testa zatvorena bez ijednog Netlify builda.
@@ -150,7 +150,7 @@ Detalji: [S134_tests.md](tests/S134_tests.md)
 | **T-S134-1**  | `backup_db.py --env prod` — puna snimka                                 | ✅ 107.772 retka, 6,79 MB, 53 s + 46 fotografija |
 | **T-S134-2**  | `--verify` hvata pokvarenu snimku (protuprovjera)                       | ✅ redak manje i promijenjen iznos → oba uhvaćena |
 | **T-S134-3**  | Guard staje kad ključ nije service                                      | ✅ 3 krive varijante staju, 2 ispravne prolaze |
-| **T-S134-4**  | Backup završi na vanjskom disku (`backup_to_external.bat`)              | ⬜ |
+| **T-S134-4**  | Backup završi na vanjskom disku (`backup_to_external.bat`)              | ✅ **15.09.** — Saša pokrenuo nakon oba PROD upisa. ⚠ Usput izmjereno da je D: bio star **5 dana** i to se nigdje ne vidi |
 | **T-S134-5**  | `dump_schema.py` obje baze                                              | ✅ PROD 107 politika / 8 triggera, TEST 50 / 2 |
 | **T-S134-6**  | `--diff` nakon PROD migracija pokaže samo očekivano                     | ✅ **14.09.** — `--diff` na PROD-u pokazao **točno jednu** stvarnu razliku: `areas_select` (= `052`). Sheme obje baze osvježene ⇒ `--diff` sada čist na oba. ⚠ Usput: **`SCHEMA_TEST.sql` je bio zastario od S135** (052 pušten na TEST, shema nikad ponovno dumpana) |
 
@@ -301,7 +301,7 @@ postavi tek **nakon** deploya.
 
 | # | test | status |
 | --- | --- | --- |
-| **T-S131-28** | ⭐ `MC_2026-08` NIJE gotov — 48 ispravaka ceka `--apply` (47× Status, 1× Izvod opis) | ⬜ **Sasa pokrece** |
+| **T-S131-28** | ⭐ `MC_2026-08` NIJE gotov — 48 ispravaka ceka `--apply` (47× Status, 1× Izvod opis) | ✅ **15.09. PROD** — pušteno; kontrola `48 POTVRĐENO / 0 ZA ISPRAVAK` (v. `T-S137-4`) |
 | **T-S131-29** | ⭐ RF: jedna greska (`0,17` upisan kao uplata) objasnjava Δ `+0,34` u cent | ✅ RF 690,79 = izvod, u cent |
 | **T-S131-30** | RF `Bankovna naknada 11,00` datiran 07.09., izvod kaze **04.09.** | ✅ pomaknut na 04.09., `Datum naplate` uz njega |
 | **T-S131-31** | ✅ redak `2,69` NE fali — postoji u bazi (18.08.), OCR ga je promasio | ✅ |
@@ -331,9 +331,9 @@ Detalji: [S130_tests.md](tests/S130_tests.md)
 | # | test | status |
 | --- | --- | --- |
 | **T-S130-5** | ⭐ `MC_2026-08.pdf` dry run zatvara u cent (`1.068,70`) | ✅ 46 spareno, 2 za uvoz, 0 pitanja |
-| **T-S130-6** | `--apply` za kolovoz — 46 ispravaka | ⬜ ⚠ prvo T-S130-9 |
-| **T-S130-7** | `--apply` za starije izvode — 21 ispravak + 2 brisanja | ⬜ |
-| **T-S130-8** | sidro `2026-08-26 = 12.784,36` | ⬜ (preuzima T-S129-A7) |
+| **T-S130-6** | `--apply` za kolovoz — 46 ispravaka | ✅ **15.09. PROD** — obuhvaćeno istim prolazom (`69 ispravaka` = 48 MC_2026-08 + 21 stariji). ⚠ Uvjet „prvo T-S130-9" je **otpao sam**: košara je dospjela 11.09., pa formula `Provjeri` šuti |
+| **T-S130-7** | `--apply` za starije izvode — 21 ispravak + 2 brisanja | ✅ **15.09. PROD** — **u brojku**: `69 − 48 = 21` ispravak i točno **2 brisanja** (`LH 1:N`, 3,20 ×2) |
+| **T-S130-8** | sidro `2026-08-26 = 12.784,36` | ~ **nadiđeno**: PROD od 06.09. ima **novije** sidro (`12.772,86`, ekran banke), a `036` bira najnovije `confirmed_on <= as_of` ⇒ starije ne mijenja ništa. Kolovoz je ionako provjeren prometom (`promet_check` 2026-08 u cent) |
 
 ### C. Nalaz koji ceka odluku
 

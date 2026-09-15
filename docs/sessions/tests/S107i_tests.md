@@ -50,7 +50,7 @@ Coverage: **PBZVISA 1538/1539** (bilo 1/1539 — merge potvrđen!), ZABA 516/108
 Problem breakdown (257): 101 "možda već u Reviewu", 66 kartična kupovina, 51 nedostaje, **39 Smjer?** (ZABA bug).
 **Status:** ✅ sheetovi zapisani.
 
-## T-S107i-5 — Saša vizualni pregled Reviewa ⬜
+## T-S107i-5 — Saša vizualni pregled Reviewa ✅
 
 U `Financije_review_20260710_1448.xlsx`, Review sheet:
 1. Filtriraj `Izvor reda` = `PBZ Visa:*` (search "PBZ") → 1351 novi redak

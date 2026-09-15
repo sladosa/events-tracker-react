@@ -34,7 +34,7 @@ JWT `role=anon` → **STAO**, JWT `role=service_role` → prošao, `sb_secret_*`
 `_db.load_env('test')` pao na anon ključ. Backup napravljen tako bio bi **prazan
 i izgledao uredan**.
 
-### T-S134-4 ⬜ Backup se pokreće redovito
+### T-S134-4 ✅ Backup se pokreće redovito
 **Koraci:** pusti backup, pa `backup_to_external.bat` s priključenim `D:`.
 **Očekivano:** `data-prep_data/_backup/` završi na vanjskom disku.
 **Pad:** ako `_backup` nije ondje — provjeri je li robocopy obuhvatio novi poddirektorij.
@@ -51,7 +51,7 @@ Tools\run.bat Tools\dump_schema.py --env test
 **Izmjereno:** PROD 117 KB / **107 politika** / 8 triggera / 23 funkcije;
 TEST 62 KB / 50 / 2 / 10. Lozinka se iz zaglavlja čisti (`grep` = 0 pojavljivanja).
 
-### T-S134-6 ⬜ `--diff` nakon PROD migracija
+### T-S134-6 ✅ `--diff` nakon PROD migracija
 **Koraci:** nakon `046`–`050` na PROD-u pusti `dump_schema.py --env prod --diff`.
 **Očekivano:** razlika **samo** u politikama koje su migracije dirale.
 **Pad:** bilo što drugo ⇒ netko je mijenjao shemu izvan migracija.
@@ -68,7 +68,7 @@ TEST 62 KB / 50 / 2 / 10. Lozinka se iz zaglavlja čisti (`grep` = 0 pojavljivan
 ⚠ Supabase SQL editor prikazuje rezultat **prvog** SELECT-a, pa je izgledalo kao
 da UPDATE nije prošao. Provjereno mjerenjem baze, ne čitanjem ekrana.
 
-### T-S134-8 ⬜ ⭐ Vlasništvo se više ne prepisuje
+### T-S134-8 ✅ ⭐ Vlasništvo se više ne prepisuje
 **Preduvjet:** kod deployan (`7be1e02`).
 **Koraci:** pod **Kokinim** računom otvori Structure → `Financije_all` →
 `Transakcija` → Edit → promijeni opis → Save. Zatim provjeri `categories.user_id`.
@@ -108,7 +108,7 @@ zato je rupa izgledala zatvoreno.
 
 ## E. PROD — čeka Sašu
 
-### T-S134-11 ⬜ ⭐⭐ Migracije na PROD-u
+### T-S134-11 ✅ ⭐⭐ Migracije na PROD-u
 **Preduvjet:** svjež backup (`backup_db.py --env prod`).
 **Koraci, redom, sa sondom između:**
 ```
@@ -126,14 +126,14 @@ stranac sve NE.
 **Pad:** ostane li ijedan `DA` gdje inventura kaže `NE`, preživjela je stara
 politika — provjeri ispis „POSLIJE" u samoj migraciji.
 
-### T-S134-12 ⬜ ⭐⭐ **Koka i dalje može raditi** (najvažniji test)
+### T-S134-12 ✅ ⭐⭐ **Koka i dalje može raditi** (najvažniji test)
 **Koraci (Kokin račun):** Structure → `Financije_all` → Edit kategorije → Save ·
 Edit atributa → Save · Add Activity → Finish · Excel Structure import.
 **Očekivano:** sve prolazi kao i dosad.
 **Pad:** ako bilo što tiho ne radi — **odmah vrati politike** iz
 `sql/SCHEMA_PROD.sql` (commit `f374851`) i javi što je palo.
 
-### T-S134-13 ⬜ Saša kao grantee — zabrana je **vidljiva**, ne tiha
+### T-S134-13 ✅ Saša kao grantee — zabrana je **vidljiva**, ne tiha
 **Koraci (Sašin račun):** Structure → `Financije_all` → View panel na
 `Transakcija`.
 **Očekivano:** gumb **Edit je siv**, tooltip *„Struktura pripada vlasniku ove
@@ -141,7 +141,7 @@ Aree…"*. Ako se panel ipak nekako otvori i klikne Save → **poruka**
 *„Nemaš pravo mijenjati strukturu ove Aree… Ništa nije spremljeno."*
 **Pad:** „Saved!" bez ikakve promjene u bazi = `assertWrote()` ne radi.
 
-### T-S134-14 ⬜ Unos podataka nije dirnut
+### T-S134-14 ✅ Unos podataka nije dirnut
 **Koraci (Sašin račun, grantee):** Add Activity u `Financije_all` → Finish.
 **Očekivano:** prolazi (write-share pokriva unos — Sašina odluka S134).
 **Pad:** ako padne, `050` je presiroko sužen — provjeri `app_can_write_area`.
@@ -150,14 +150,14 @@ Aree…"*. Ako se panel ipak nekako otvori i klikne Save → **poruka**
 
 ## F. E2E
 
-### T-S134-15 ⬜ Guard staje kad na :5173 stoji `dev:prod`
+### T-S134-15 ✅ Guard staje kad na :5173 stoji `dev:prod`
 **Izmjereno djelomično:** logika provjerena nad živim serverom — servirano
 `zdojdazosfoajwnuafgx` (PROD) protiv očekivanog `xtnbhmojmffjelsqejpw` ⇒ guard
 bi bacio. **Pravi run nije pokrenut** jer bi to bio baš rizik koji zatvara.
 **Koraci:** (1) s `npm run dev:prod` na :5173 pusti `npx playwright test` →
 mora stati s porukom; (2) ugasi ga i pusti opet → mora normalno krenuti.
 
-### T-S134-16 ⬜ ⭐ Cijeli E2E prolazi nakon RLS migracija
+### T-S134-16 ✅ ⭐ Cijeli E2E prolazi nakon RLS migracija
 **Preduvjet:** ugašen `dev:prod`.
 **Koraci:** `npx playwright test`
 **Očekivano:** kao i prije migracija.
@@ -181,7 +181,7 @@ nepromijenjena ⇒ ništa nije puklo.
 CREATE ni na shemi ni na bazi, pa podmetanje nije izvedivo. Zatvara se put
 prije nego postane prohodan.
 
-### T-S134-18 ⬜ `sql/051` na PROD-u
+### T-S134-18 ✅ `sql/051` na PROD-u
 **Očekivano:** `ukupno popravljeno: 9`, pa svi `bez_search_patha = f`.
 ⚠ `handle_new_user` i `handle_pending_invites` su triggeri na **registraciji** —
 provjerava ih tek sljedeća stvarna registracija. Do tada stoji da su

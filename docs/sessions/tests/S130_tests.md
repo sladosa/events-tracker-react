@@ -82,7 +82,7 @@ uskladi_izvod.py --izvod ...izvodi/MC_2026-08.pdf --env prod --dry
 
 Zatvara i T-S129-A10.
 
-### T-S130-6 ⬜ `--apply` za kolovoz — 46 ispravaka
+### T-S130-6 ✅ `--apply` za kolovoz — 46 ispravaka
 
 ```
 primijeni_uskladu.py --izvod ...izvodi/MC_2026-08.pdf --apply
@@ -92,7 +92,7 @@ primijeni_uskladu.py --izvod ...izvodi/MC_2026-08.pdf --apply
 nijedan upis ne vrati 0 redaka.
 ⚠ **Vidi T-S130-9 prije nego ovo pustiš** — mijenja što Delta pokazuje.
 
-### T-S130-7 ⬜ `--apply` za starije izvode — 21 ispravak + 2 brisanja
+### T-S130-7 ✅ `--apply` za starije izvode — 21 ispravak + 2 brisanja
 
 Zadani prolaz (bez `--izvod`) hvata **32** izvoda i nalazi `67` ispravaka. Od toga je
 46 kolovoških; ostatak je **21** (13 redaka dobiva `Izvod opis`, 5 ispravlja

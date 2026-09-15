@@ -154,7 +154,7 @@ isti iznos). Dokaz je **broj transakcije na izvodu**, ne sličnost opisa — v. 
 
 ---
 
-## T-S137-6 ⬜ `skriveno ✕` sakriva samo to polje
+## T-S137-6 ✅ `skriveno ✕` sakriva samo to polje
 
 Sašin nalaz: polje otkriveno klikom na ime **nije se dalo zatvoriti** — „Hide again" je
 na dnu forme i **sve-ili-ništa**.
@@ -168,3 +168,13 @@ Ono nije u `revealedIds`, pa bi mu „sakrij" bio **tihi no-op** — klikneš, n
 dogodi, nigdje ne piše zašto. Ondje je kontrola „Hide again".
 
 **Pad:** `✕` se pojavi i na poljima iz „Show all", ili klik na njega ne napravi ništa.
+
+**Izvedeno 15.09.2026. na PROD-u** (`dev:prod`, `Financije_all > Transakcija`):
+otvorena **dva** polja (`Izvod opis` + `Valuta`), klik na oznaku `Izvod opis`a sakrio
+**samo njega** -- `Valuta` ostala otvorena. Polja otkrivena preko Show all nose natpis
+**bez** ✕. Oba dijela prosla.
+
+/!\ **Dva polja, ne jedno -- inace test ne bi mogao pasti.** Stari Hide again je
+sve-ili-nista, pa bi s jednim otvorenim poljem klik izgledao ispravno i pod starim
+ponasanjem. Isto pravilo kao S129 (`T-S127-9`): redak se bira tako da se RAZLIKUJE
+od ocekivanog rezultata.

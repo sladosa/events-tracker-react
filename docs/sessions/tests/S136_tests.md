@@ -44,7 +44,7 @@ Playwright scrolla **programski** i nikad ne provjerava **gdje** meni stoji.
 
 ---
 
-## T-S136-2 ⬜ Poruke o export profilima ne lažu write-grantee-u
+## T-S136-2 ✅ Poruke o export profilima ne lažu write-grantee-u
 
 **Što čuva:** obje poruke (spremanje i brisanje profila) tvrdile su
 *„read-only access"* i **write**-grantee-u. Ponašanje je ispravno i ostaje —
@@ -67,7 +67,7 @@ odnosno neobrisan. Mijenja se samo tekst.
 
 ---
 
-## T-S136-3 ⬜ ⭐ Smoke za `is_required` (sažima `T-S131-6..24`)
+## T-S136-3 ✅ ⭐ Smoke za `is_required` (sažima `T-S131-6..24`)
 
 **Zašto sažeto:** `is_required` je oživljen u S131 i **živ je na PROD-u** — blokira
 Kokin Save — a nije provjeren nijednom. Za njega je stajalo **14 ručnih testova**;
