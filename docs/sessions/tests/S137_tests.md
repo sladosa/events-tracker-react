@@ -233,3 +233,44 @@ kandidata.
 **Provjereno:** uz `Financije` (12x) + `AI_rucak` (0x) auto-odabir radi i bira cesceg.
 **Neprovjereno:** grana *izjednaceno* -- Kokin slucaj je obrisan, pa bi trazila dva nova
 preseta s `0x` na istoj kategoriji.
+
+---
+
+## T-S137-9 ✅⬜ `cutoff:B:D` — granica ciklusa i dan naplate nisu isti dan
+
+**Povod:** Visa ima **tri** datuma, i nijedan `next:N` ne može pogoditi oba koja trebaju.
+
+| transakcija | pripada izvodu | tereti se | `next:3` | `next:5` |
+| --- | --- | --- | --- | --- |
+| 20.05. | zatvara 03.06. | ~05.06. | 03.07. ✘ dan | **05.06.** ✔ |
+| 04.06. | zatvara 02.07. | ~05.07. | **03.07.** ✔ mjesec | 05.06. ✘ **mjesec** |
+
+**Izmjereno na PROD-u (S137), ne pretpostavljeno:**
+zatvaranje **2.–3.** (zadnja transakcija na 14 izvoda) · terećenje **4.–7.**
+(36 od 41 skupne naplate na RF računu; 5. → 18×, 4. → 9×) · dospijeće **11.**
+(32/32 izvoda, pomak kad padne na vikend).
+
+⚠ Mastercardu se **sva tri poklapaju na 11.**, pa mu `next:11` i dalje odgovara —
+pravilo se komplicira **samo** za Visu, i to je cijena koju Visin ciklus stvarno ima.
+
+**Automat:** `src/lib/__tests__/dateRuleCutoff.test.mjs` — **20/20**.
+
+**Protuprovjereno u oba smjera** (test koji ne može pasti ne čuva ništa):
+
+| namjerni kvar | pada |
+| --- | ---: |
+| `>` → `>=` na granici (dan granice u krivi ciklus) | 1 |
+| maknut drugi korak (`D < B`) | 2 |
+| vraćeno | 0 |
+
+⚠ **Rupa nađena u vlastitoj logici PRIJE testa:** uz `D < B` (kartica koja se zatvara 25.
+a tereti 5.) prva je verzija stavljala naplatu **prije** zatvaranja izvoda. Definicija je
+sada *„prva pojava `D` **nakon** granice"*.
+
+⚠ **Dan granice pripada TEKUĆEM ciklusu** (`>`, ne `>=`) — izvod se tog dana još zatvara.
+Izmjereno: zadnja transakcija pada baš na 2.–3.
+
+**Neizvedeno namjerno:** vrijednost na PROD-u (`Visa: next:3 → cutoff:3:5`).
+⚠ Uvoz odbija nepoznat token (`structureImport.ts` → `isValidDateRule`, `rulesSkipped++`
+uz samo `console.warn`), pa **deploy mora prethoditi** pojavi `cutoff:3:5` u ijednom Excelu.
+Inače Structure uvoz preskoči pravilo, a to se vidi tek kad datum prestane biti izračunat.

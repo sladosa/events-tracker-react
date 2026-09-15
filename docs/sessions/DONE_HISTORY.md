@@ -5045,3 +5045,63 @@ dvije karte, dokaz je **broj transakcije na izvodu**. `dev:prod` je zatvorio
 `T-S136-2/-6/-8/-9` **bez ijednog deploya** (nov kod nad PROD bazom).
 
 **Popis testova:** 21 → **11 otvorenih**; `docs/sessions/tests/` 17 fileova → **13**.
+
+### S137 nastavak — izvođenje testova, i alat koji je uhvatio samog sebe
+
+**Sašin prijedlog: prolaziti otvorene testove umjesto čitati ih.** Obrazloženje je bilo
+*„tu bi se vidjelo i to da možda nije potreban"* — i to se pokazalo točnim prije nego je
+prvi test krenuo: **pet redaka je bilo otvoreno, a posao gotov istoga dana** (`T-S134-4`,
+`T-S131-28`, `T-S130-6`, `T-S130-7`; `T-S130-8` nadiđen novijim sidrom). `69 − 48 = 21`
+ispravak i točno **2 brisanja** — u brojku kako je `T-S130-7` predviđao.
+
+**Tri kvara koje čitanje nije moglo naći:**
+
+- **`T-S136-7` potvrđen** — `setError` na r.755, render na r.1110, dakle 355 redaka JSX-a
+  niže; klik s vrha modala ostavljao je crvenu traku **odrezanu na dnu**. Lijek `errorRef`
+  + `scrollIntoView(nearest)` — **dovlačenje**, ne premještanje (ista kutija nosi i greške
+  generiranja, koje pripadaju uz `Download`). Provjereno na punoj **i polovičnoj** visini
+  prozora, jer je Koka na mobitelu.
+- **`T-S108-1b` korak 5 pao** — uz `All Categories` gumb siv **bez ijednog objašnjenja**:
+  hint se prikazivao po `filter.categoryId`, gumb se gasi po `isLeafCategory`, a
+  `All Categories` postavlja `categoryId` na `null`. Dva uvjeta o istoj stvari koja se
+  ne poklapaju.
+- ⚠ **Auto-odabir preseta bio je nedeterminističan.** Koka je imala **dva** preseta na
+  istom leafu, oba `0×` i `last_used = NULL` ⇒ izjednačeno, a Postgres bez jedinstvenog
+  ključa ne jamči redoslijed. Koji joj preset tiho puni formu moglo se mijenjati između
+  učitavanja: jednom `Racun = Kokin tekući ZABA`, drugi put `Sašin tekući RF` uz
+  `Isplata = 11`. Razred „paginacija bez `.order()`" (S108).
+  ⚠ **Prva verzija popravka bila je prestroga** — odbijala je svaki slučaj s više od
+  jednog preseta, pa bi Saši ugasila auto-odabir čim napravi drugi shortcut. Uvjet sada
+  gleda **izjednačenje**, ne broj kandidata. *Lijek ne smije koštati više od kvara.*
+
+**Opovrgnuto mjerenjem:** „`⚡ Use` ne prefila" — shortcut `Financije` ima prazan
+`default_attributes`; Kokini presetovi nisu vidljivi jer su **per-user**. Sašin
+*„zato jer nisam Koka"* bio je točan prije nego je mjerenje stiglo.
+
+**Viza — tri datuma, i `next:N` ne može pogoditi oba.** Izmjereno: zatvaranje izvoda
+**2.–3.** (Kokina teorija, potvrđena), terećenje RF-a **4.–7.** (36 od 41 naplate),
+dospijeće **11.** (32/32). `next:3` pogađa mjesec a promašuje dan, `next:5` obrnuto.
+⚠ Usput ispravljene **dvije moje krive tvrdnje**: da Visa traži OCR (zamjena s RF-om —
+PBZVISA daje 49/49 redaka čitljivo) i da bi `next:7` bio bolji (**povučeno**).
+Rješenje je nov oblik **`cutoff:B:D`** — rječnik je na jednom mjestu, pa `structureImport`
+dobiva proširenje besplatno, a Excel serializer propušta token bez promjene.
+Dokumentirano kao **postupak, ne token**: izmjeri B i D, pa odaberi.
+⚠ Vrijednost na PROD-u **nije mijenjana** — uvoz odbija nepoznat token, pa deploy mora
+prethoditi.
+
+**Instrument opet bio slijep, dvaput.** Prvo za **šest oblika ID-a** (`T-S107k-A`,
+`T-S108-1b`, `E8-2`, `E15-full`…) — i `T-S108-1b` je bio **otvoren test koji se nije
+brojao**, pa bi S108 otišao u arhivu s poslom unutra. Zatim za **razliku između PENDING-a
+i naslova u detaljnom fileu**: **27 naslova** je govorilo drugo nego tablica, a Saša
+detaljni file čita **baš dok izvodi test**. Oboje popravljeno i **mjereno**, pa ne može
+tiho odlutati. ⚠ Nova provjera je istoga dana uhvatila **mene** pri upisu `T-S137-9`.
+
+**Usput zatvoren `T-S131-21`:** `structureExcel.test.mjs` bio je od **S17** odrezan usred
+zadnjeg testa, pa je Node odbijao cijeli file i **37 tvrdnji se nije izvršavalo**.
+Dovršen, ne obrisan. ⚠ `npm run typecheck` to ne vidi — `.mjs` nije u `tsconfig`u.
+*Test koji se ne pokreće izgleda isto kao test koji prolazi.*
+
+**Arhiviran `S136`** (svi testovi ✅). ⚠ `git mv` u ignorirani direktorij **ne izbacuje iz
+gita** — traži `git rm --cached`, i to prije premještanja, inače `-f`.
+
+**Popis testova:** 23 → **17 otvorenih**; `docs/sessions/tests/` 13 fileova → **12**.

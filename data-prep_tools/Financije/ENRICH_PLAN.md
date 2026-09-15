@@ -1476,3 +1476,45 @@ radi `import pdfplumber`. Alat koji prica samo s PostgREST-om padao je na
 /!\ Funkcije su PRESELJENE, ne kopirane; `uskladi_izvod` ih re-exporta, pa svih
 devet pozivatelja radi bez promjene. Kopija bi znacila dvije verzije pravila o
 paginaciji (S108).
+
+## S137 (2026-09-15) — MC košara zatvorena, Visa razriješena mjerenjem
+
+**Upisano na PROD** (Saša pokrenuo, oba alata s dry runom + backupom):
+- `primijeni_uskladu.py --apply` — **69 ispravaka, 2 brisanja** (`LH 1:N`, 3,20 ×2).
+  Kontrola: ponovni `uskladi_izvod.py` daje `48 POTVRĐENO / 0 ZA ISPRAVAK`, a
+  `promet_check` **nepromijenjen `27/5`** ⇒ MC ne dira tekući račun.
+- `fix_tip_podtip_S137.py --apply` — **15 redaka** dobilo `Tip`/`Podtip`
+  (13 iz brojane povijesti, 3 Sašine odluke). `30 polja · SVE SE SLAZE`.
+  ⚠ `AUDIBLE` razriješen **iznosnim pojasom**: po trgovcu 51:13 (ispod praga), kartica
+  ne pomaže (svih 64 su MC), ali Kokini su `2,55–8,99` a Sašini `13,57–18,65`.
+  ⚠ `PAYPAL *BANDIFY BANDIF` **namjerno ostao `N/A`** — pitanje za Koku.
+- `obrisi_test_shortcute_S137.py --apply` — dva Kokina test-preseta obrisana.
+
+**Viza — tri datuma, izmjereno, ne pretpostavljeno:**
+
+| pojam | dan | izvor |
+| --- | --- | --- |
+| zatvaranje izvoda | **2.–3.** | zadnja transakcija na 14 izvoda |
+| terećenje RF računa | **4.–7.** | 36 od 41 skupne naplate (5. → 18×, 4. → 9×) |
+| dospijeće | **11.** | `Dospijeće plaćanja`, 32/32 izvoda (pomak za vikend) |
+
+⚠ **Dvije ranije tvrdnje ispravljene:** (a) *„Visa traži OCR"* — **netočno**, zamjena s RF-om;
+`PBZVIZA_2026-07.pdf` daje **49 od 49** transakcijskih redaka čitljivo, `(cid:` je 6 % redaka
+i samo u zaglavlju. (b) *„`next:7` bi bio bliže istini"* — **povučeno**: `next:3` je točan kao
+**dan zatvaranja** (Kokina teorija, potvrđena), a `next:5` bi promašio **mjesec** za
+transakcije između 3. i 5.
+
+⚠ **Pravi kvar: stupac `Datum naplate` nosi DVA značenja.** Od **1.629** Visa redaka samo
+**22** su na 3. — dakle retci iz aplikacije nose *zatvaranje*, uvezeni nose *terećenje*.
+Zato se Visa ne grupira u košaru. Riješeno novim oblikom `cutoff:3:5` (v. `AUTOMATION_SPEC.md`),
+ali **vrijednost na PROD-u nije mijenjana** — uvoz odbija nepoznat token, pa deploy mora
+prethoditi.
+
+⚠ **Imena izvoda nisu ujednačena: 31× `PBZVISA_`, 1× `PBZVIZA_`** (`2026-07`, najnoviji).
+Glob mora biti `PBZVI[SZ]A_*` ili se file preimenuje — inače alat tiho preskoči jedan.
+
+⚠ **`MC_2026-08.pdf` i `RF_2026-08.pdf` premješteni** iz `izvodi/` u `Analizirani_izvodi/`.
+`pregled_stanja` i `make_saldo_anchors` glob-aju **samo** nju, pa im kolovoz dotad nije postojao.
+
+⚠ **`uvezi_transu.py:57` je mrtav** — hardkodiran `izvodi/MC_2026-07.pdf`, a taj je u
+`Analizirani_izvodi/` od S129. Padne na `FileNotFoundError` prije ijedne provjere. Nije popravljeno.
