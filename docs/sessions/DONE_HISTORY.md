@@ -5105,3 +5105,82 @@ Dovršen, ne obrisan. ⚠ `npm run typecheck` to ne vidi — `.mjs` nije u `tsco
 gita** — traži `git rm --cached`, i to prije premještanja, inače `-f`.
 
 **Popis testova:** 23 → **17 otvorenih**; `docs/sessions/tests/` 13 fileova → **12**.
+
+## S138 — deploy, `cutoff:3:5` na PROD, i pravilo promijenjeno samo napola (2026-09-15)
+
+**Deploy je pušten** (Saša, PowerShell oblik iz CLAUDE.md-a) — `main` i `test-branch` su
+izjednačeni. Provjera nije bila „Netlify je javio ok" nego **čitanje živog bundlea**:
+`index-zSPJZpMY.js` sadrži `cutoff:(\d{1,2}):(\d{1,2})$/`. Isti postupak zatvorio je i
+pitanje gađa li lokalni `dev:prod` pravu bazu — retci na ekranu (`Konzum 1/6`, `Allianz 5/10`,
+`Keindl 8/12`) **doslovno su isti** koje je REST vratio s PROD-a.
+
+**`cutoff:3:5` je na PROD-u, i put do njega nije bio onaj očekivani.** `attribute_rules`
+živi u `areas.settings`, a `sql/047` drži `areas_update USING (user_id = auth.uid())` ⇒
+**samo vlasnik**. Saša je grantee; njegov bi Structure uvoz **tiho stvorio duplikat Aree**
+(`structureImport.ts:498` filtrira Aree po `user_id`), a pravilo bi ostalo `next:3`.
+Saša se prebacio na Kokin račun i uvoz je prošao. ⚠ **Modal nije dokaz** — `Automation rules 2`
+piše i kad se ništa ne promijeni, jer se `rulesImported` povećava **prije** usporedbe
+(`structureImport.ts:1176`); isti razred kao `List columns` (S132). Dokaz je čitanje
+`areas.settings`, i ono je pokazalo `"Visa": "cutoff:3:5"` uz netaknut `Mastercard` i svih
+pet ostalih ključeva (`dashboard`, `list_columns`, `export_profiles`, `add_header`,
+`disable_save_plus`).
+
+**⚠ Promjena je bila POLOVIČNA, i to se vidjelo tek u ispisu configa.** `Datum naplate`
+pune **dva** rječnika: `attribute_rules[].date_map` prima pravila (`same`/`next:N`/`cutoff:B:D`),
+a `rata.date_map` prima **goli broj dana** — `generateRataChargeDates` (`rataAutomation.ts:77`)
+tvrdo radi „N-ti dan sljedećeg mjeseca" i token bi tiho pao na zadanih `15`
+(`config.date_map[v] ?? 15`). Dakle obična Visa kupovina išla bi na 5., a **rata i dalje na 3.**
+Izmjereno istog dana: MC rate **285/285** na 11. (oba rječnika se slažu), Visa rate **225**
+s danima 5. → 99, 4. → 56, 6. → 25, 7. → 15 — to su **stvarna terećenja s izvoda** — i
+**3 retka na 3.**, sva tri nastala **tog dana kroz rata modal**. Dakle jedini proizvođač tog
+datuma je aplikacija, a proizvela ga je u prozoru od par sati. Zatvoreno **konfiguracijom,
+bez deploya**: `rata.date_map.Visa = 5` (modus stvarnih terećenja, 99/225), drugim uvozom.
+⚠ Ostaje rub koji ni to ne rješava: rata uvijek kreće od **sljedećeg** mjeseca, pa kupovina
+1.–3. u mjesecu dobije prvu ratu mjesec prekasno — jednako sa `3` i sa `5`. U Backlogu.
+
+**MC naplata — odgovor je bio u podacima, ne u dokumentaciji.** Saša je pitao što ide u
+`Tip`/`Podtip` za skupnu MC naplatu; Help nije znao, a pravilo nigdje nije bilo zapisano —
+živjelo je kao komentar u `consolidate_review.py` i kao **32/32 jednoglasnih redaka** u bazi:
+`Transfer` / `izmedju racuna`, `Izvor = Racun`, `Status = Izvrsen`, `Smjer = Isplata`,
+comment = strojni tekst `TROŠKOVI UČINJENI MASTERCARD KARTICOM`.
+⚠ Usput nađeno da **Kokin ručni redak od 11.09. (`1.068,70`) nije takav** — `Izvor`, `Status`
+i iznos su točni (zato se saldo slaže u cent), ali `Tip = N/A`, bez `Podtip`a i bez comment-a.
+I da **11.07. (`1.244,74`)** ima ispravan par ali **nema comment** — zbog čega je u popisu po
+strojnom tekstu izgledalo da srpanj fali. Nijedan mjesec ne fali; 34 mjeseca, 34 retka.
+
+**`N/A` je izmjeren, i rječnik je skoro iscrpljen.** 1.566 od 5.216 redaka (30 %), po godinama
+2023 → 585, 2024 → 476, 2025 → 411, **2026 → 94** — dakle povijesni dug, ne tekući tok.
+Pušten postojeći rječnik (`kljuc()` iz `uvezi_transu.py`, 1.147 ključeva) preko svih:
+
+    a) nema `Izvod opis`                              760  (48,5 %)
+    b1) jednoglasno >=90 % i >=3  -> automatski         65  ( 4,2 %)
+    b3) 1-2 presedana -> ponudi, ne upisuj             131  ( 8,4 %)
+    b2) presedani se ne slazu                           31  ( 2,0 %)
+    c)  trgovac BEZ presedana                          466  (29,8 %)
+    d)  posrednik                                      113  ( 7,2 %)
+
+⚠ **Onih 466 ima 395 različitih trgovaca** — 1,2 retka po trgovcu, nijedan s ≥10 redaka.
+Dakle „odluči jednom, zatvori mnogo" **ovdje ne radi**: 395 odluka zatvara 466 redaka.
+To je rep, ne rječnik, i automatizacija mu ima lošiji omjer nego ručni prolaz.
+
+**⚠ Zapisano pravilo o PayPalu je pregrubo.** CLAUDE.md kaže da je PayPal posrednik i da
+*„rječnik ne smije ni pokušati"*. Mjerenje to ne potvrđuje: PayPal ima **8 ključeva / 139
+redaka, 7/8 jednoglasnih** (`paypal *temu` 120 → `Razno/Temu`), `KUPOVINA…` **8/8**, a
+stvarno neproziran je **`KEKS PAY`: 1 ključ, 19 redaka, 10/19**. Razlika nije u tome *tko je
+posrednik* nego **nosi li niz ime trgovca iza prefiksa**. Praktična korist je ipak mala —
+46 PayPal `N/A` redaka ima 35 različitih trgovaca, presedan postoji za 2. **Nije ispravljeno
+u CLAUDE.md-u** — čeka odluku, jer mijenja pravilo koje danas nikoga ne žulja.
+
+**CLAUDE.md:** upisana zamka „dva rječnika, samo jedan razumije tokene" (Critical rules) i
+backlog stavka „`rata` ne razumije `cutoff:B:D`". Indeks regeneriran, 2.512 → 2.552 retka.
+
+**⚠ Ritual je uhvatio nesuglasje koje čitanje ne bi.** `audit_tests.py` javlja `S131_tests.md`
+kao **spremno za arhivu** (27/27 ✅), ali `PENDING_TESTS.md` u sekciji S131 ima **otvoren**
+`T-S131-34` (`BUG-S131-VIEWSTALE`). Alat odluku o arhiviranju donosi **iz detaljnog filea**,
+a otvorenost može živjeti **u PENDING-u** — dakle sesija bi otišla u arhivu s otvorenim
+testom unutra. Isti razred kao S137 (ondje je alat bio slijep za oblike ID-a, ovdje gleda
+krivi izvor). **S131 NIJE arhiviran.**
+
+**Otvoreno na kraju:** deploy ✅, config ✅, ali **ništa od toga nije provjereno upotrebom** —
+`T-S138-1` i `T-S138-2` čekaju jedan Visa unos. Uz njih tri podatkovna zadatka (`T-S138-3/-4/-5`).
+

@@ -1,7 +1,37 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S137 (2026-09-15) - triaza: `S119`-`S123` arhivirani (17 -> 12 otvorenih session fileova), `audit_tests.py` prestao biti slijep za cetiri od pet oblika ID-a i za tri od pet oznaka statusa; PROD potvrdio kolonu `Racun`. Ranije: S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
+**Zadnji update:** S138 (2026-09-15) - deploy na `main` pusten; `cutoff:3:5` i `rata.date_map.Visa=5` primijenjeni na PROD-u kroz Structure uvoz (pod Kokinim racunom -- `areas.settings` je vlasnikov). Nadjeno da `Datum naplate` ima DVA rjecnika i da samo jedan razumije tokene. Ranije: S137 (2026-09-15) - triaza: `S119`-`S123` arhivirani (17 -> 12 otvorenih session fileova), `audit_tests.py` prestao biti slijep za cetiri od pet oblika ID-a i za tri od pet oznaka statusa; PROD potvrdio kolonu `Racun`. Ranije: S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
+
+---
+
+## S138 — deploy, `cutoff:3:5` na PROD, i pravilo koje je bilo promijenjeno samo napola (2026-09-15)
+
+⚠ **`Datum naplate` ima DVA rječnika, a samo jedan razumije tokene.**
+`automations.attribute_rules[].date_map` prima pravila (`same`/`next:N`/`cutoff:B:D`),
+`automations.rata.date_map` prima **goli broj dana**. Promjena Vise na `cutoff:3:5` bila je
+zato **polovična**: obična kupovina išla bi na 05., a rata i dalje na 03. Izmjereno na PROD-u
+isti dan: MC rate **285/285** na 11. (slažu se), Visa rate **225** s danima 5.→99 / 4.→56 /
+6.→25 / 7.→15 (stvarna terećenja s izvoda) i **3 retka na 3.** — sva tri nastala **tog dana**
+kroz rata modal. Zatvoreno konfiguracijom: `rata.date_map.Visa = 5`. Puna zamka u CLAUDE.md.
+
+⚠ **Uvoz je morao ići pod Kokinim računom.** `attribute_rules` živi u `areas.settings`, a
+`sql/047` drži `areas_update USING (user_id = auth.uid())` ⇒ samo vlasnik. Saša je grantee;
+njegov bi uvoz **tiho stvorio duplikat Aree** (`structureImport.ts:498` filtrira po `user_id`).
+
+⚠ **Modal ne dokazuje da je pravilo promijenjeno.** `Automation rules 2` piše i kad se ništa
+nije promijenilo — `rulesImported` se povećava **prije** usporedbe (`structureImport.ts:1176`),
+isti razred kao `List columns` (S132). Dokaz je čitanje `areas.settings`, ne brojka.
+
+| #            | test                                                                 | status |
+| ------------ | -------------------------------------------------------------------- | ------ |
+| **T-S138-1** | ⭐ `cutoff:3:5` živ u aplikaciji: nova Visa kupovina danas ⇒ `Datum naplate` = **05.10.2026.** (ne `03.10.`) | ⬜ |
+| **T-S138-2** | ⭐ `rata.date_map.Visa = 5` živ: Visa kupovina s `Rate? = 3` ⇒ **05.10. / 05.11. / 05.12.** | ⬜ |
+| T-S138-3     | MC naplata `11.09.` `1.068,70` ispravljena: `Transfer`/`izmedju racuna` + comment `TROŠKOVI UČINJENI MASTERCARD KARTICOM` | ⬜ (zadatak) |
+| T-S138-4     | MC naplata `11.07.` `1.244,74` dobila comment (Tip/Podtip su već točni) | ⬜ (zadatak) |
+| T-S138-5     | Tri `Konzum dostava` rate od 15.09. prebačene s `03.` na `05.` (10./11./12. mj.) | ⬜ (zadatak) |
+
+**Detalji testova:** [tests/S138_tests.md](tests/S138_tests.md)
 
 ---
 
@@ -36,7 +66,7 @@ u istom retku. Prije su bili nevidljivi.
 | **T-S137-6** | `skriveno ✕` sakriva **samo to polje**; polje otkriveno preko „Show all" ostaje običan natpis | ✅ **15.09. PROD** (`dev:prod`) -- s **dva** otvorena polja klik na `Izvod opis` sakrio **samo njega**, `Valuta` ostala; polja iz Show all nose natpis **bez** ✕ |
 | **T-S137-7** | ⭐ Preset ne zamrzava izvedenu vrijednost: `Datum naplate` se racuna, ne pamti | ✅ **15.09. PROD** -- snimka `AI_rucak` ima **6** vrijednosti, `Datum naplate` i `Status` **nisu u njoj**; uz `Visa` izracunat `03.10.`, a promjenom `Izvor -> Racun` **skocio na `15.09.`** |
 | **T-S137-8** | Auto-odabir preseta samo kad pobjednik **nije nerijesen** | ✅ djelomicno: uz `Financije` (12x) + `AI_rucak` (0x) auto-odabir **i dalje radi** (bira cesceg), pa je `AI_rucak` trebalo izabrati rucno. ⬜ grana **izjednaceno** (dva preseta `0x` + `last_used NULL`) neprovjerena -- Kokin slucaj je obrisan |
-| **T-S137-9** | ⭐ Nov oblik pravila `cutoff:B:D` (granica ciklusa + dan naplate) | ✅ `dateRuleCutoff.test.mjs` **20/20**, protuprovjereno: `>` → `>=` pada 1, bez drugog koraka pada 2. ⬜ **vrijednost na PROD-u (`Visa: next:3 → cutoff:3:5`) tek NAKON deploya** |
+| **T-S137-9** | ⭐ Nov oblik pravila `cutoff:B:D` (granica ciklusa + dan naplate) | ✅ `dateRuleCutoff.test.mjs` **20/20**, protuprovjereno. ✅ S138 -- vrijednost na PROD-u promijenjena (`Visa: cutoff:3:5`), potvrdjeno citanjem `areas.settings`. ⬜ provjera upotrebom → **T-S138-1** |
 
 ⚠ **`dev:prod` je nov kod nad PROD bazom** ⇒ `T-S136-6/-8/-9` **ne čekaju deploy**.
 Tri testa zatvorena bez ijednog Netlify builda.

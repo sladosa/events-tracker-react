@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S137).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S138).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 76 | [Key docs (read before touching related code)](#key-docs-read-before-touching-related-code) |  |
 | 106 | [Three core principles — NEVER violate](#three-core-principles--never-violate) | X |
 | 118 | [Critical rules](#critical-rules) | X |
-| 1013 | [Zamke (data pipeline / AI / E2E)](#zamke-data-pipeline--ai--e2e) | X |
-| 1481 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
-| 1496 | [Key files](#key-files) |  |
-| 1615 | [Structure tab — component map](#structure-tab--component-map) |  |
-| 1634 | [Data model (simplified)](#data-model-simplified) |  |
-| 1655 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
-| 1680 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
-| 1700 | [Open bugs](#open-bugs) | ~ |
-| 1832 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
-| 2020 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
-| 2116 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
-| 2123 | [Backlog](#backlog) | ~ |
-| 2382 | [TypeScript known issue](#typescript-known-issue) |  |
-| 2389 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+| 1037 | [Zamke (data pipeline / AI / E2E)](#zamke-data-pipeline--ai--e2e) | X |
+| 1505 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
+| 1520 | [Key files](#key-files) |  |
+| 1639 | [Structure tab — component map](#structure-tab--component-map) |  |
+| 1658 | [Data model (simplified)](#data-model-simplified) |  |
+| 1679 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
+| 1704 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
+| 1724 | [Open bugs](#open-bugs) | ~ |
+| 1856 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
+| 2044 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
+| 2140 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
+| 2147 | [Backlog](#backlog) | ~ |
+| 2421 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2428 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
 
-_Ukupno 2512 redaka, 18 sekcija._
+_Ukupno 2551 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -362,6 +362,30 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ `null` iz `computeSetAttributeValue` znači **„ne diraj target"**, nikad
   „isprazni ga" — prazan `Izvor` ne smije obrisati datum koji je došao s izvoda.
   ⚠ Još **ne** prati promjenu *datuma* u Editu (delta-shift) — v. Backlog.
+- **⚠ `Datum naplate` IMA DVA RJEČNIKA, A SAMO JEDAN RAZUMIJE TOKENE** (S138).
+  `automations.attribute_rules[].date_map` prima **pravila** (`same` / `next:N` /
+  `cutoff:B:D`), a `automations.rata.date_map` prima **goli broj dana** —
+  `generateRataChargeDates` (`rataAutomation.ts:77`) tvrdo radi „N-ti dan svakog
+  sljedećeg mjeseca". Dakle promjena pravila kartice je **polovična** dok se ne
+  dira i drugi rječnik, a iz configa se to ne vidi: oba stoje pod `automations`,
+  oba imaju ključ `Visa`, i oba pune **isti** atribut (`charge_date_slug` =
+  `target_slug` = `datum_naplate`).
+  ⚠ **Token u rata rječniku ne javlja grešku** nego padne na zadanih `15`
+  (`config.date_map[v] ?? 15`) ⇒ `cutoff:3:5` ondje daje datum koji nema veze ni
+  sa starim ni s novim pravilom. U rata redak ide **broj**, nikad token.
+  Izmjereno na PROD-u 15.09.2026., odmah nakon prelaska Vise na `cutoff:3:5`:
+  MC rate **285/285** na 11. (oba rječnika se slažu), Visa rate **225** s danima
+  5. → 99, 4. → 56, 6. → 25, 7. → 15 — to su **stvarna terećenja s izvoda** — i
+  **3 retka na 3.**, sva tri nastala **istog dana kroz rata modal**. Dakle jedini
+  proizvođač tog datuma je aplikacija, a proizvela ga je u prozoru od par sati.
+  Zatvoreno **konfiguracijom, bez deploya**: `rata.date_map.Visa = 5` (modus
+  stvarnih terećenja, 99/225), istim Structure uvozom kojim je išao i `cutoff`.
+  ⚠ Ostaje rub koji ni to ne rješava: rata **uvijek kreće od sljedećeg mjeseca**,
+  pa kupovina 1.–3. u mjesecu dobije prvu ratu mjesec prekasno — jednako sa `3` i
+  sa `5`, dakle promjena strogo poboljšava. Pravi popravak traži kod, v. Backlog.
+  ⚠ **Pouka šira od rata modala:** „promijenili smo pravilo" je tvrdnja o **jednom**
+  mjestu. Prije nego se proglasi gotovim, prebroji **tko sve puni taj atribut** —
+  ovdje je drugi punilac bio dva retka niže u istom Excel sheetu.
 - **⚠ SHORTCUT NE SMIJE NOSITI IZVEDENU VRIJEDNOST** (S127). `activity_presets.
   default_attributes` sprema doslovne vrijednosti; za izvedeni atribut to je
   zamrznut **rezultat jednog trenutka**, i gori je od praznog polja — jer poslije
@@ -2325,6 +2349,21 @@ izvana** (§2.17) — jer se poslije iz baze ne vidi je li broj s izvoda, s ekra
 izračunat. Fix: malo polje „odakle" uz „u banci", ili barem automatski `note`.
 ⚠ Više se **ne odgađa** (§2.18 zatvorio `Stanja`). Rješenje je sada malo polje „odakle" uz
 „u banci" — istu ulogu koju je trebao imati atribut `Izvor podatka`, bez selidbe u evente.
+
+**⭐ `rata` ne razumije `cutoff:B:D` — prva rata zna pasti mjesec prekasno** (S138).
+`generateRataChargeDates` (`rataAutomation.ts:77`) prima **broj dana** i uvijek kreće od
+**sljedećeg** mjeseca (`d.setMonth(d.getMonth() + i)`, `i` kreće od 1). Za kupovinu
+1.–3. u mjesecu to je mjesec previše: Visa kupovina 02.10. pripada izvodu koji se
+zatvara **03.10.** i tereti se **05.10.**, a rata modal joj daje prvu ratu `05.11.`
+⚠ Rub je **neovisan o danu** — jednako griješi sa `3` i sa `5`, pa ga popravak iz S138
+(`rata.date_map.Visa = 5`) nije ni mogao zatvoriti; on je samo poravnao **dan**.
+⚠ Fix je da rata koristi **isti** `evaluateDateRule` kao `set_attribute` (prva rata =
+rezultat pravila nad datumom kupnje, svaka sljedeća +1 mjesec), a `rata.date_map` primi
+iste tokene. Time nestaje i zamka „dva rječnika, samo jedan razumije tokene".
+⚠ Traži **deploy prije** nego token uđe u ijedan Excel — nepoznat token rata parser
+tiho pretvori u zadanih `15` (isto pravilo kao za `cutoff` u S137e, samo tiše: ondje
+uvoz barem `console.warn`a).
+Veličina: **225 Visa rata** u bazi; pogođen je samo prozor 1.–3. u mjesecu.
 
 **`Datum naplate` ne prati promjenu datuma u Editu** (S110) — delta-shift
 (`EditActivityPage.handleDateTimeChange`) pomiče samo *vremena eventa*, ne i datumske atribute.
