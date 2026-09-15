@@ -7,8 +7,21 @@
  * sva specifičnost (slugovi, mape) je podatak po Arei.
  *
  * Vokabular date_map vrijednosti (mali i fiksni — NE izrazi/DSL):
- *   'same'    → target = session date
- *   'next:N'  → N-ti dan sljedećeg mjeseca od session date
+ *   'same'        → target = session date
+ *   'next:N'      → N-ti dan sljedećeg mjeseca od session date
+ *   'cutoff:B:D'  → prva pojava dana D na ili nakon sljedećeg dana B
+ *
+ * KOJE PRAVILO ZA KOJU KARTICU — kartica ima TRI datuma i lako se zamijene:
+ *     zatvaranje izvoda (B)  →  terećenje računa (D)  →  dospijeće
+ * `Datum naplate` znači TEREĆENJE. Za novu karticu se oba IZMJERE, ne pogađaju:
+ *     D je u SLJEDEĆEM mjesecu od B  →  next:D        (Mastercard: next:11)
+ *     D je u ISTOM mjesecu kao B     →  cutoff:B:D    (Visa: cutoff:3:5)
+ *
+ * ⚠ Zašto Visa nije `next:5`: transakcija 04.06. pripada izvodu koji se zatvara
+ *   02.07. i tereti se ~05.07.; `next:5` bi je stavila na 05.06. — mjesec prerano.
+ *   `next:3` bi pogodio mjesec, ali upisao 3., a tada novac još nije otišao.
+ *   Izmjereno na PROD-u (S137): zatvaranje 2.–3., terećenje 4.–7. (36 od 41
+ *   naplate), dospijeće 11. (32/32 izvoda). Mastercardu se sva tri poklapaju.
  */
 
 import type { AttributeDefinition } from '@/types';
@@ -17,14 +30,18 @@ import type { AttributeRuleConfig } from '@/types/database';
 export type { AttributeRuleConfig };
 
 const RE_NEXT = /^next:(\d{1,2})$/;
+const RE_CUTOFF = /^cutoff:(\d{1,2}):(\d{1,2})$/;
 
-/** Valid rule string? ('same' | 'next:N', 1 ≤ N ≤ 31) */
+const inMonth = (n: number) => n >= 1 && n <= 31;
+
+/** Valid rule string? ('same' | 'next:N' | 'cutoff:B:D', dani 1–31) */
 export function isValidDateRule(rule: string): boolean {
   if (rule === 'same') return true;
+  const c = RE_CUTOFF.exec(rule);
+  if (c) return inMonth(parseInt(c[1], 10)) && inMonth(parseInt(c[2], 10));
   const m = RE_NEXT.exec(rule);
   if (!m) return false;
-  const day = parseInt(m[1], 10);
-  return day >= 1 && day <= 31;
+  return inMonth(parseInt(m[1], 10));
 }
 
 /**
@@ -38,6 +55,33 @@ export function evaluateDateRule(rule: string, base: Date): Date | null {
     d.setHours(12, 0, 0, 0);
     return d;
   }
+
+  // 'cutoff:B:D' — dva koraka, jer granica ciklusa i dan naplate NISU isti dan.
+  //   1. nađi sljedeću pojavu dana B (granica: na dan B izvod se još zatvara,
+  //      pa transakcija OD TOG DANA pripada sljedećem ciklusu — zato `> B`)
+  //   2. uzmi dan D u mjesecu te granice
+  // ⚠ `base` na sam dan B ide u TEKUĆI ciklus (izvod se zatvara na kraju tog
+  //   dana), pa je usporedba `>` a ne `>=`. Izmjereno: zadnja transakcija na
+  //   izvodu pada baš na 2.–3., dakle dan granice je još „unutra".
+  const c = RE_CUTOFF.exec(rule);
+  if (c) {
+    const b = parseInt(c[1], 10);
+    const dd = parseInt(c[2], 10);
+    if (!inMonth(b) || !inMonth(dd)) return null;
+    const d = new Date(base);
+    d.setHours(12, 0, 0, 0);
+    // 1. mjesec granice: dan > B ⇒ granica je tek sljedeći mjesec
+    const afterBoundary = d.getDate() > b;
+    d.setDate(1);                       // month-overflow guard, kao kod 'next:N'
+    if (afterBoundary) d.setMonth(d.getMonth() + 1);
+    // 2. dan D u tom mjesecu; ako D nije NAKON granice, ide mjesec dalje
+    //    ⚠ pokriva i karticu koja se zatvara kasno a tereti rano (B=25, D=5):
+    //      bez ovoga bi naplata ispala PRIJE zatvaranja izvoda.
+    if (dd <= b) d.setMonth(d.getMonth() + 1);
+    d.setDate(dd);
+    return d;
+  }
+
   const m = RE_NEXT.exec(rule);
   if (!m) return null;
   const day = parseInt(m[1], 10);

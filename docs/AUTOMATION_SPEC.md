@@ -120,6 +120,48 @@ Korisnik ga nikad ne tipka. Mehanizam je generičan — treći user s trećom ka
 **Vokabular vrijednosti u `date_map`** (mali, fiksni — NE izrazi/DSL; širi se po potrebi):
 - `same` — target = event_date (session date)
 - `next:N` — N-ti dan sljedećeg mjeseca od event_date (month-overflow guard kao u `generateRataDates`)
+- `cutoff:B:D` — prva pojava dana `D` **nakon** sljedećeg dana `B` (S137)
+
+### Koje pravilo za koju karticu
+
+⚠ **Kartica ima TRI datuma i lako se zamijene:**
+
+```
+zatvaranje izvoda (B)   →   terećenje računa (D)   →   dospijeće
+```
+
+`Datum naplate` znači **TEREĆENJE** — dan kad novac stvarno ode s računa.
+Za novu karticu se oba **izmjere, ne pogađaju**:
+
+| | izmjeri | |
+|---|---|---|
+| **B** | dan **zadnje transakcije** na izvodu | zatvaranje ciklusa |
+| **D** | dan kad **skupna naplata** pogodi tekući račun | terećenje |
+
+Pa se bira:
+
+| uvjet | pravilo | primjer |
+|---|---|---|
+| `D` je u **sljedećem** mjesecu od `B` | `next:D` | Mastercard `next:11` |
+| `D` je u **istom** mjesecu kao `B` | `cutoff:B:D` | Visa `cutoff:3:5` |
+
+⚠ **Zašto Visa nije `next:5` ni `next:3`.** Transakcija 04.06. pripada izvodu koji se zatvara
+02.07. i tereti se ~05.07. `next:5` bi je stavio na **05.06.** — mjesec prerano. `next:3` pogađa
+mjesec, ali upiše **3.**, kad novac još nije otišao. Jedini `next:N` ne može oboje jer granica
+ciklusa i dan naplate **nisu isti dan**.
+
+⚠ **Izmjereno na PROD-u (S137), ne pretpostavljeno:**
+zatvaranje **2.–3.** (zadnja transakcija na 14 izvoda) · terećenje **4.–7.** (36 od 41 skupne
+naplate na RF računu; 5. → 18×, 4. → 9×) · dospijeće **11.** (32/32 izvoda, pomak za vikend).
+Mastercardu se sva tri poklapaju na **11.**, pa mu `next:11` i dalje odgovara.
+
+⚠ **Dan granice pripada TEKUĆEM ciklusu** (`>`, ne `>=`): izvod se na dan `B` još zatvara.
+Čuva `src/lib/__tests__/dateRuleCutoff.test.mjs` (20 tvrdnji; protuprovjerom `>` → `>=` pada 1,
+bez drugog koraka pada 2).
+
+⚠ **Uvoz odbija nepoznat token** (`structureImport.ts` → `isValidDateRule`, `rulesSkipped++` uz
+`console.warn`). Dakle **deploy koda mora prethoditi** pojavi novog oblika u ijednom Excelu —
+inače Structure uvoz preskoči pravilo, a to se vidi tek kad datum prestane biti izračunat.
 
 **Semantika:**
 - **Add Activity — live prefill:** čim korisnik odabere vrijednost `map_slug` atributa (ili promijeni

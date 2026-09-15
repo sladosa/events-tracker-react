@@ -84,7 +84,17 @@ Kolona `Action` određuje vrstu pravila:
 
 - **`set_attribute`** — auto-popunjavanje datumskog atributa iz vrijednosti drugog atributa.
   `TargetAttr` = polje koje se puni, `MapAttr` = polje koje bira pravilo,
-  `DateMap` = `vrijednost=same` ili `vrijednost=next:N` (N-ti dan sljedećeg mjeseca).
+  `DateMap` = `vrijednost=pravilo`, gdje je pravilo jedno od:
+  `same` (datum sesije) · `next:N` (N-ti dan **sljedećeg** mjeseca) ·
+  `cutoff:B:D` (prva pojava dana **D** nakon sljedećeg dana **B**).
+
+  **Dodaješ novu karticu?** Kartica ima **tri** datuma i lako se zamijene:
+  *zatvaranje izvoda* → *terećenje računa* → *dospijeće*. `Datum naplate` znači
+  **terećenje** — dan kad novac stvarno ode s računa. Izmjeri dvoje umjesto da pogađaš:
+  **B** = dan zadnje transakcije na izvodu, **D** = dan kad skupna naplata pogodi tekući račun.
+  Ako je **D** u sljedećem mjesecu od **B** → `next:D` (Mastercard: `next:11`);
+  ako je u istom mjesecu → `cutoff:B:D` (Visa: `cutoff:3:5`).
+  Puna razrada s izmjerenim brojkama je u `docs/AUTOMATION_SPEC.md`.
 - **`rata`** — Post-Finish modal koji kupovinu razdijeli na rate; najviše jedno po arei.
   `TriggerAttr` (checkbox koji pali modal), `CountAttr`, `AmountAttr`, `IndexAttr` (redni broj
   rate), `TargetAttr` (kamo ide datum naplate), `DateMap` = `vrijednost=DAN` (broj 1–31),

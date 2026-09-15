@@ -36,6 +36,7 @@ u istom retku. Prije su bili nevidljivi.
 | **T-S137-6** | `skriveno ✕` sakriva **samo to polje**; polje otkriveno preko „Show all" ostaje običan natpis | ✅ **15.09. PROD** (`dev:prod`) -- s **dva** otvorena polja klik na `Izvod opis` sakrio **samo njega**, `Valuta` ostala; polja iz Show all nose natpis **bez** ✕ |
 | **T-S137-7** | ⭐ Preset ne zamrzava izvedenu vrijednost: `Datum naplate` se racuna, ne pamti | ✅ **15.09. PROD** -- snimka `AI_rucak` ima **6** vrijednosti, `Datum naplate` i `Status` **nisu u njoj**; uz `Visa` izracunat `03.10.`, a promjenom `Izvor -> Racun` **skocio na `15.09.`** |
 | **T-S137-8** | Auto-odabir preseta samo kad pobjednik **nije nerijesen** | ✅ djelomicno: uz `Financije` (12x) + `AI_rucak` (0x) auto-odabir **i dalje radi** (bira cesceg), pa je `AI_rucak` trebalo izabrati rucno. ⬜ grana **izjednaceno** (dva preseta `0x` + `last_used NULL`) neprovjerena -- Kokin slucaj je obrisan |
+| **T-S137-9** | ⭐ Nov oblik pravila `cutoff:B:D` (granica ciklusa + dan naplate) | ✅ `dateRuleCutoff.test.mjs` **20/20**, protuprovjereno: `>` → `>=` pada 1, bez drugog koraka pada 2. ⬜ **vrijednost na PROD-u (`Visa: next:3 → cutoff:3:5`) tek NAKON deploya** |
 
 ⚠ **`dev:prod` je nov kod nad PROD bazom** ⇒ `T-S136-6/-8/-9` **ne čekaju deploy**.
 Tri testa zatvorena bez ijednog Netlify builda.
@@ -58,56 +59,8 @@ kao „sidra se ne mogu vidjeti iz aplikacije" (S116). Pokrenut nakon oba današ
 
 ---
 
-## S136 — ⋮ meni, poruke o pravima, i triaža PENDING-a (2026-09-14)
 
-Detalji: [S136_tests.md](tests/S136_tests.md)
-
-### A. Popravci
-
-| #            | test                                                                      | status |
-| ------------ | ------------------------------------------------------------------------- | ------ |
-| **T-S136-1** | ⭐ ⋮ meni se na scroll **premješta**, ne zatvara                          | ✅ E2E u oba smjera (bez popravka `e13-1` pada na `addBetweenBtn`, s njim prolazi; `e15` 3 pada → 1; `e7-1` prolazi) + ručno na TEST-u |
-| **T-S136-2** | Poruke o export profilima ne kažu „read-only" **write**-grantee-u (2 mjesta) | ✅ **14.09. + 15.09. PROD** — točan tekst, uključujući „this applies to write access too". ⚠ Poruka se crta ~200 redaka JSX-a niže od gumba ⇒ izvan vidljivog dijela skrolanog modala (v. `T-S136-7`) |
-| **T-S136-3** | ⭐ Smoke za `is_required` — **sažima `T-S131-6..24`**: obavezno polje prazno ⇒ Save blokiran; Excel uvoz aktivnosti svejedno prolazi | ✅ **14.09. PROD** — `Racun` prazan + `Smjer`/`Isplata` popunjeni ⇒ Finish klikabilan, toast `Obavezna polja: Racun, Izvor.`, redak NIJE spremljen. ⚠ Prvi pokušaj (prazna forma, ugašen Finish) je `canSave`, NE `is_required` — guard se nije ni pozvao. ⚠ Grana `false`/`0` **neizvediva na PROD-u**: nema nijednog obaveznog `boolean`/`number` (2 obavezna od 110, oba `text`). ⚠ Excel-uvoz polovica **nije izvedena** |
-
-### C. Nalazi s PROD-a nakon deploya (Sašini)
-
-| #            | test                                                                      | status |
-| ------------ | ------------------------------------------------------------------------- | ------ |
-| **T-S136-6** | ⭐ Shortcutovi su se prikazivali **dvaput**, jednom pod „Nepoznata Area"    | ✅ **15.09. PROD** kroz `dev:prod` — svaki shortcut jednom, `<optgroup>` po Arei, bez „Nepoznata Area" |
-| **T-S136-7** | ⚠ **NALAZ:** poruka o greški u Export modalu crta se ~200 redaka JSX-a niže od gumba koji ju izaziva ⇒ izvan vidljivog dijela skrolanog modala. Izgleda kao „ništa se nije dogodilo" | ✅ **POTVRDEN 15.09. PROD** -- klik na `Import Profile` s vrha modala ostavlja crvenu traku **odrezanu na dnu**; treba skrolati da se procita. ⚠ Na nizem prozoru ne bi se vidjela ni traka. **Popravljeno**: `errorRef` + `scrollIntoView(block: nearest)`; ✅ provjereno 15.09. na **punoj i polovicnoj** visini prozora |
-| **T-S136-9** | ⭐ Sažeta linija skrivenih polja **imenuje** ih umjesto da ih broji, i ime je klikabilno (otkrij samo to polje) | ✅ **15.09. PROD** kroz `dev:prod` — `Izvod opis`, `Valuta`. ⚠ Saša: nakon otvaranja **nije se dalo zatvoriti** ⇒ `T-S137-6` |
-| **T-S136-8** | `sharedContext` dodan u dep listu oba profila (`ExcelExportModal`)        | ✅ **15.09. PROD** — spremanje profila kao write-grantee odbijeno uz **točnu** poruku (v. `T-S136-2`) |
-
-⚠ **`T-S136-6` nije bio podatak.** Sonda nad PROD-om: **7** presetova, **nula**
-duplikata, **nula** mrtvih `area_id`. Brojke u dupliciranim grupama bile su
-**starije od baze** (`139×` na ekranu, `140` u bazi) ⇒ otisak ranijeg rendera.
-Uzrok: `<optgroup key={group.label}>` (promjena labela = zamjena elementa, a
-nativni popup crta iz DOM-a zatečenog pri **otvaranju**) + „Nepoznata Area"
-izgovarana **dok `areas` još stiže**, što je tvrdnja o podatku kojeg nema.
-
-⚠ **`T-S136-8` nije kozmetika:** guard koji brani grantee-u pisanje u
-`areas.settings` čita `sharedContext`, a promašen guard **ne daje grešku** —
-RLS-blokiran UPDATE vraća 200 i nula redaka, pa bi app javio „Profile saved".
-Ovdje `assertWrote()` (S134) **još nije primijenjen**.
-
-### B. Instrument
-
-| #            | test                                                                      | status |
-| ------------ | ------------------------------------------------------------------------- | ------ |
-| `E13-1` | E2E: ⋮ meni prezivi scroll u Structure tablici | ~ dokaz unutar `T-S136-1` (bez popravka pada na `addBetweenBtn`) |
-| `E7-1` | E2E: ⋮ meni u Share toku | ~ dokaz unutar `T-S136-1` (prolazi) |
-| **T-S136-4** | ⭐ **NALAZ+FIX:** `audit_tests.py` nije vidio ID-eve oblika `T-S129-A7`    | ✅ izmjereno: S129 `10 → 24` definiranih, od toga 4 otvorena koja alat nije prijavljivao |
-| **T-S136-5** | Izvještaj o uvozu **ima** `DropdownData` (zatvara `T-S114-5`)             | ✅ sonda nad `addActivitiesSheetsTo` |
-| **T-S114-5** | izvještaj o uvozu nema `DropdownData` ⇒ `Tip`/`Podtip` bez izbornika | ✅ S136 — **izmjereno da nije točno**: sonda nad `addActivitiesSheetsTo` našla `DropdownData [veryHidden]`. Nalaz je bio točan kad je pisan; zatvorio ga je refaktor, a bug je ostao otvoren (v. `T-S136-5`) |
-
-⚠ **T-S136-4 je razlog zašto triaža nije prošla „glatko" — i to je dobro.** Alat je
-S129 prijavljivao kao *„svi ✅, spremno za arhivu"* dok su unutra stajala **4 otvorena
-testa**, jer mu regex nije hvatao slovni sufiks. Da guard („ne miči sekciju u kojoj
-postoji ijedan ⬜") nije postojao, sesija bi otišla u arhivu s otvorenim poslom —
-i to **tiho**. Isti razred kao sonda bez `areas INSERT` (S135): instrument slijep
-točno ondje gdje se donosi odluka.
-
+**Arhivirano u S137:** `S136` (svi testovi ✅) → `Claude-temp_R/test-sessions/archive/`. Zadnji je pao `T-S136-7`, potvrđen i popravljen 15.09. Narativ je u `DONE_HISTORY.md`.
 ## S135 — E2E triaza + `areas_select` samoreferentna politika (2026-09-11)
 
 Detalji: [S135_tests.md](tests/S135_tests.md)
@@ -297,7 +250,7 @@ postavi tek **nakon** deploya.
 | # | test | status |
 | --- | --- | --- |
 | **T-S131-20** | ⭐ `requiredAttributes.test.mjs` + typecheck + build | ✅ 18/18, protuprovjera pada 3/18 |
-| **T-S131-21** | ⚠ NALAZ: `structureExcel.test.mjs` odrezan u gitu od **S17** | ⬜ **odluka: dopuniti ili obrisati** |
+| **T-S131-21** | ⚠ NALAZ: `structureExcel.test.mjs` odrezan u gitu od **S17** | ✅ **S137 -- dovrsen, ne obrisan**. Bio odrezan usred zadnjeg testa (`const row = buildRowsForNode` bez ostatka), pa je Node odbijao CIJELI file (`SyntaxError`) i **37 tvrdnji se nije izvrsavalo**. ⚠ `npm run typecheck` to ne vidi -- `.mjs` nije u tsconfigu. Sada 37/37 prolazi |
 
 ### F. Podaci — PROD (mjereno 08.09.2026, samo citanje)
 

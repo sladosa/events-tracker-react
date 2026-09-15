@@ -514,4 +514,12 @@ test('Category description is preserved', () => {
 });
 
 test('null description becomes empty string', () => {
-  const row = buildRowsForNode
+  const row = buildRowsForNode({ ...NODE_LEAF_CARDIO, description: null })[0];
+  eq(row.description, '');
+});
+
+/* /!\ File je od S17 bio ODREZAN BAS OVDJE (`const row = buildRowsForNode` bez
+   ostatka), pa ga je Node odbijao s `SyntaxError: Unexpected end of input` --
+   dakle svih 37 tvrdnji iznad NIJE se izvrsavalo, a `npm run typecheck` to ne
+   vidi jer .mjs testovi nisu u tsconfigu. Dovrseno u S137 (`T-S131-21`).
+   /!\ Test koji se ne pokrece izgleda isto kao test koji prolazi. */
