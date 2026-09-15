@@ -93,6 +93,8 @@ Ovdje `assertWrote()` (S134) **još nije primijenjen**.
 
 | #            | test                                                                      | status |
 | ------------ | ------------------------------------------------------------------------- | ------ |
+| `E13-1` | E2E: ⋮ meni prezivi scroll u Structure tablici | ~ dokaz unutar `T-S136-1` (bez popravka pada na `addBetweenBtn`) |
+| `E7-1` | E2E: ⋮ meni u Share toku | ~ dokaz unutar `T-S136-1` (prolazi) |
 | **T-S136-4** | ⭐ **NALAZ+FIX:** `audit_tests.py` nije vidio ID-eve oblika `T-S129-A7`    | ✅ izmjereno: S129 `10 → 24` definiranih, od toga 4 otvorena koja alat nije prijavljivao |
 | **T-S136-5** | Izvještaj o uvozu **ima** `DropdownData` (zatvara `T-S114-5`)             | ✅ sonda nad `addActivitiesSheetsTo` |
 | **T-S114-5** | izvještaj o uvozu nema `DropdownData` ⇒ `Tip`/`Podtip` bez izbornika | ✅ S136 — **izmjereno da nije točno**: sonda nad `addActivitiesSheetsTo` našla `DropdownData [veryHidden]`. Nalaz je bio točan kad je pisan; zatvorio ga je refaktor, a bug je ostao otvoren (v. `T-S136-5`) |

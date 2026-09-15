@@ -23,7 +23,17 @@ PENDING = Path('docs/sessions/PENDING_TESTS.md')
 #   samo znamenke, alat ih NIJE VIDIO — i S129 je prijavljivao kao „sve ✅, za arhivu"
 #   dok su unutra stajala 4 otvorena testa. Instrument slijep točno ondje gdje se
 #   donosi odluka o arhiviranju (isti razred kao sonda bez `areas INSERT`, S135).
-ID = re.compile(r'T-S[0-9]+[a-z]?-[A-Z]?[0-9]+')
+# /!\ Do S137b regex je trazio `T-S<broj>-<broj>` i time bio slijep za SEST
+#     oblika koji u PENDING-u stvarno postoje. Posljedica nije bila kozmeticka:
+#     `T-S108-1b` je otvoren, a S108 je izgledao kao da mu fali samo `T-S108-9`
+#     -- dakle sesija bi otisla u arhivu s otvorenim testom unutra, tiho.
+#         T-S107k-A    slovni sufiks
+#         T-S107r-A...F  raspon slova (jedan redak, vise testova)
+#         T-S108-1b    broj + slovo
+#         E8-2 / E15-full / E7-2/3   E2E oznake, bez `T-S` prefiksa
+#     /!\ Grana MORA traziti sufiks: gola `E[0-9]+` hvata `E2` iz rijeci
+#         `E2E`, koje je u ovom fileu na desetke mjesta.
+ID = re.compile(r'T-S[0-9]+[a-z]?-[A-Za-z0-9]+|E[0-9]+-[A-Za-z0-9]+')
 
 # ⚠ ID u prvoj celiji dolazi u PET oblika, i alat je do S137 vidio samo prvi:
 #       T-S119-3   **T-S119-1** ⭐   `T-S121-1`   `T-S122-1` (2 slučaja)   `T-S123-1/-2`
@@ -46,7 +56,11 @@ def ids_in_cell(raw):
     #     Inace `T-S123-1/-2` ostavi golu `2`, celija ispadne "proza" i oba ID-a
     #     se izgube - dakle popravak spojenog oblika ponisti sam sebe.
     rest = re.sub(r'/\s*-?[A-Z]?[0-9]+\b', '', cell)
-    rest = re.sub(r'T-S[0-9]+[a-z]?-[A-Z]?[0-9]+|[/\s,-]', '', rest)
+    # /!\ Uzorak se NE prepisuje ovdje -- koristi se `ID.pattern`. Dok je bio
+    #     zakucan, prosirenje gornjeg regexa nije vrijedilo i za provjeru
+    #     cistoce, pa je `T-S108-1b` ostavljao golo `b` i ispadao „proza".
+    #     Dva uvjeta koja se moraju mijenjati ZAJEDNO.
+    rest = re.sub(ID.pattern + r'|[/\s,-]', '', rest)
     if rest:
         return []
     return list(dict.fromkeys(found + ['%s-%s' % (prefix, f) for f in frags]))
