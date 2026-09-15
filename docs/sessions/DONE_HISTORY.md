@@ -4992,3 +4992,56 @@ nasumični `\restrict` token koji pg_dump piše pri svakom dumpu, pa je prava ra
 
 **Popis testova:** 156 → **21 otvorenih**; `docs/sessions/tests/` 42 filea → **17**;
 `S132` arhiviran jer su mu svi testovi ✅.
+
+---
+
+## S137 — triaža PENDING-a, CLAUDE.md navigacija, MC košara 11.09. (2026-09-15)
+
+**Instrument je lagao, i to na mjestu odluke.** Triaža testova je počela kao knjiženje
+(„fali 10 redaka") a završila kao popravak alata: **8 od 10 „nedostajućih" redaka je
+postojalo** — `audit_tests.py` ih nije vidio. ID u prvoj ćeliji dolazi u **pet** oblika
+(gol · `` `backticks` `` · `**bold** ⭐` · `` `X` (2 slučaja) `` · `` `X-1/-2` ``), a
+alat je poznavao **jedan**. Rječnik statusa ima **pet** vrijednosti (`✅ ⬜ ~superseded
+→X ⏸parkirano`), alat je poznavao **dvije**. Najgore: redak bez ijedne oznake **nije
+blokirao arhiviranje** (uvjet je bio `open == 0`) ⇒ sesija se mogla arhivirati s
+neodlučenim testom unutra, tiho. Sada `unclear` blokira **i imenuje se**.
+⚠ Protuprovjera je uhvatila regresiju u samom popravku: podrška za spojeni
+`T-S123-1/-2` poništavala je samu sebe (provjera „ID ili proza" radila je nad tekstom
+iz kojeg fragment još nije maknut ⇒ ostajala gola `2`).
+
+**Arhivirano `S119`–`S123`** (17 → 12 otvorenih session fileova). `T-S119-8` zatvoren
+**čitanjem PROD-a**: kolona `Račun` je ondje, s kraticama RF/ZABA, upisana negdje
+između S119 i danas — posao zatvoren usput koji je 18 sesija stajao kao otvoren.
+⚠ `git mv` u arhivu **nije izveo ritual**: fileovi su ostali praćeni (`.gitignore` ne
+vrijedi za već praćeno). Trebao je `git rm --cached`.
+
+**CLAUDE.md: indeks + razdvajanje pravila od plana.** Prijedlog „izmakni 324 retka
+plana" je pri mjerenju pao — unutra je **39 `⚠` pravila**. Razdvojeno mehanički, uz
+dokaz: **330 `⚠` redaka u `HEAD`, 0 izgubljenih**, `Critical rules` i `Zamke`
+bajt-identične. Plan seli u `docs/FINANCIJE_STATUS.md` (176 r.), **četiri odlomka ručno
+spašena** jer nemaju kopiju nigdje drugdje. Indeks je **generiran**
+(`claude_index.py`), a prva mu je verzija lagala o brojevima redaka.
+
+**MC košara 11.09. zatvorena na PROD-u.** `primijeni_uskladu --apply` (69 ispravaka,
+2 brisanja), pa kontrola: `48 POTVRĐENO / 0 ZA ISPRAVAK` i `promet_check` **nepromijenjen
+`27/5`**. Odluka koja je blokirala (`T-S130-9`, 46 lažnih `Provjeri`) **riješila se
+vremenom, ne odlukom**: košara je zatvorena pa formula šuti.
+Zatim `Tip`/`Podtip` za **15** neklasificiranih redaka (`fix_tip_podtip_S137.py`),
+13 iz brojane povijesti, 3 Sašine odluke; `AUDIBLE` razriješen **iznosnim pojasom**
+jer trgovac (51:13) i kartica (64/64 MC) ne razlikuju.
+
+**Tri nalaza s PROD-a:**
+- ⚠ **Pločica precjenjuje saldo za `1.068,70`** — skupna MC naplata od 11.09. nije u
+  bazi jer `ZABA_2026-09.pdf` nije stigao. **Račun točan, podatak nepotpun.**
+- ⚠ **2 retka bez `Status`a došla su uvozom** (`session_start = 07:00`, `created_at`
+  +1 s). `depends_on.default_map` ne radi na Import putu, kao ni `set_attribute` ⇒
+  **pomiče okidač Faze 3**, koja je mjerila `Datum naplate` — polje koje **pune Python
+  alati u fileu**, pa je mjerila alat, ne app.
+- ⚠ **Vanjski backup bio star 5 dana** i to se nigdje ne vidi; otkriveno samo zato što
+  je Saša pitao gdje je backup.
+
+**Usput:** `LUFTHAN…447` / `…448` izgledaju kao duplikat (isti dan, isti iznos) a nisu —
+dvije karte, dokaz je **broj transakcije na izvodu**. `dev:prod` je zatvorio
+`T-S136-2/-6/-8/-9` **bez ijednog deploya** (nov kod nad PROD bazom).
+
+**Popis testova:** 21 → **11 otvorenih**; `docs/sessions/tests/` 17 fileova → **13**.

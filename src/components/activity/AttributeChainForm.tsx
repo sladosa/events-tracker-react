@@ -322,6 +322,23 @@ export function AttributeChainForm({
     setRevealedIds(prev => new Set(prev).add(id));
   }, []);
 
+  /**
+   * Suprotno od `revealOne` — ali SAMO za polje otkriveno pojedinačno.
+   *
+   * ⚠ Polje otkriveno preko „Show all" NIJE u `revealedIds`, pa bi mu
+   *   „sakrij" bio **tihi no-op**: korisnik klikne, ništa se ne dogodi, i
+   *   nigdje ne piše zašto. Zato je oznaka klikabilna samo kad klik ima
+   *   učinka; inače ostaje običan natpis, a kontrola je „Hide again".
+   *   (Isti razred kao S134 `assertWrote()`: tiho neuspjelo > glasno odbijeno.)
+   */
+  const hideOne = useCallback((id: string) => {
+    setRevealedIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
   // Render attributes for a single category
   const renderCategoryAttributes = (category: Category, isLeaf: boolean) => {
     const attributes = attributesByCategory.get(category.id) || [];
@@ -387,6 +404,8 @@ export function AttributeChainForm({
     if (isHidden(attr)) return null;
 
     const revealed = isRevealedOnly(attr);
+    // Klik na oznaku smije sakriti samo ono što je klik i otkrio.
+    const canHide = revealedIds.has(attr.id);
     const input = (
       <AttributeInput
         key={attr.id}
@@ -423,11 +442,20 @@ export function AttributeChainForm({
         key={attr.id}
         className={revealed ? 'relative pl-2 border-l-2 border-dashed border-gray-300' : undefined}
       >
-        {revealed && (
+        {revealed && (canHide ? (
+          <button
+            type="button"
+            onClick={() => hideOne(attr.id)}
+            title="Sakrij ovo polje"
+            className="absolute -top-0.5 right-0 text-[10px] text-gray-400 italic hover:text-gray-600 hover:not-italic"
+          >
+            skriveno ✕
+          </button>
+        ) : (
           <span className="absolute -top-0.5 right-0 text-[10px] text-gray-400 italic">
             skriveno
           </span>
-        )}
+        ))}
         {input}
       </div>
     );

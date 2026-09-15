@@ -1,7 +1,58 @@
 # PENDING TESTS
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
+**Zadnji update:** S137 (2026-09-15) - triaza: `S119`-`S123` arhivirani (17 -> 12 otvorenih session fileova), `audit_tests.py` prestao biti slijep za cetiri od pet oblika ID-a i za tri od pet oznaka statusa; PROD potvrdio kolonu `Racun`. Ranije: S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
+
+---
+
+## S137 — triaža: pet sesija zatvoreno, i instrument koji ih nije vidio (2026-09-15)
+
+**Arhivirano** (svi testovi zatvoreni, `Claude-temp_R/test-sessions/archive/`):
+`S119`, `S120`, `S121`, `S122`, `S123`. Otvorenih session fileova: **17 → 12**.
+
+⚠ **Osam od deset „nedostajućih" redaka NIJE nedostajalo — `audit_tests.py` ih nije vidio.**
+ID u prvoj ćeliji dolazi u pet oblika, a alat je poznavao jedan (`T-S119-3`):
+`` `T-S121-1` `` (backticks), `**T-S119-1** ⭐` (ukras), `` `T-S122-1` (2 slučaja) ``
+(sufiks), `` `T-S123-1/-2` `` (spojeni). Sva četiri su ispadala iz brojanja, pa je file
+izgledao nedovršen a odluka je **bila donesena**. Isti razred kao sufiks `A7` (S136) i
+sonda bez `areas INSERT` (S135): **instrument slijep točno ondje gdje se donosi odluka.**
+
+⚠ **Rječnik oznaka ima PET vrijednosti, ne dvije.** `~ superseded`, `→ T-Sxxx` i `⏸ PARKIRANO`
+su **donesene odluke**, a alat ih je čitao kao „bez oznake". Gore: redak bez ijedne oznake
+nije blokirao arhiviranje (`open == 0` je bilo dovoljno) ⇒ **sesija se mogla arhivirati s
+neodlučenim testom unutra, i to tiho.** Sada `unclear` blokira i **imenuje se**.
+
+⚠ **Brojka otvorenih je PORASLA s 20 na 22 i to je ispravno** — retci oblika
+`✅ u kodu · ⬜ provjera traži deploy` sada se čitaju kao **otvoreni**, jer ⬜ pobjeđuje ✅
+u istom retku. Prije su bili nevidljivi.
+
+| #            | test                                                                      | status |
+| ------------ | ------------------------------------------------------------------------- | ------ |
+| **T-S137-1** | ⭐ `audit_tests.py` vidi svih pet oblika ID-a + rječnik od pet oznaka; `unclear` blokira arhivu i imenuje se | ✅ izmjereno: `bez retka 10 → 0`, `bez oznake 6 → 0`, za arhivu `0 → 5` |
+| **T-S137-2** | PROD **ima** kolonu `Račun` (zatvara `T-S119-8`)                          | ✅ **15.09. PROD** — `set_list_columns.py --env prod --show`: `role: attr`, `label: Račun`, `map` RF/ZABA |
+| **T-S137-3** | ⭐ CLAUDE.md dobio **generiran** indeks + razdvojeno pravilo od plana     | ✅ izmjereno: `330 ⚠ redaka u HEAD, 0 izgubljenih`; `Critical rules` i `Zamke` bajt-identične; indeks 18/18 brojeva točan |
+| **T-S137-4** | ⭐ MC košara 11.09. — `--apply` + kontrola                                 | ✅ **15.09. PROD** — `69 ispravaka / 2 brisanja`, pa ponovni `uskladi_izvod`: `48 POTVRĐENO / 0 ZA ISPRAVAK`. `promet_check` **nepromijenjen** `27/5` ⇒ MC ne dira tekući |
+| **T-S137-5** | ⭐ `Tip`/`Podtip` za 15 neklasificiranih redaka košare                     | ✅ **15.09. PROD** — `upisano polja: 30 · provjera nakon čitanja: SVE SE SLAZE`; ponovni dry run daje **0 za promjenu** (idempotentno) |
+| **T-S137-6** | `skriveno ✕` sakriva **samo to polje**; polje otkriveno preko „Show all" ostaje običan natpis | ⬜ **traži provjeru u `dev:prod`** — `typecheck` + `build` prolaze |
+
+⚠ **`dev:prod` je nov kod nad PROD bazom** ⇒ `T-S136-6/-8/-9` **ne čekaju deploy**.
+Tri testa zatvorena bez ijednog Netlify builda.
+
+⚠ **NALAZ: pločica precjenjuje saldo za `1.068,70`** — skupna MC naplata od 11.09. nije
+u bazi jer `ZABA_2026-09.pdf` nije stigao. **Račun je točan, podatak nije potpun** —
+v. „Critical rules". Zatvorit će ga rujanski izvadak; **ne dopisivati ručno**.
+
+⚠ **NALAZ: 2 retka bez `Status`a došla su uvozom**, ne UI-jem (`session_start = 07:00`,
+`created_at` +1 s). `depends_on.default_map` ne radi na Import putu — isto kao
+`set_attribute`. **Pomiče okidač Faze 3**, koja je mjerila `Datum naplate` (0 praznih),
+a to polje **pune Python alati u fileu**. Saša ispravio ručno.
+
+⚠ **NALAZ: vanjski backup bio star 5 dana** (`D:\...ackup.log` 10.09. 13:25) i to se
+**nigdje ne vidi** — otkriveno samo zato što je Saša pitao gdje je backup. Isti razred
+kao „sidra se ne mogu vidjeti iz aplikacije" (S116). Pokrenut nakon oba današnja upisa.
+
+⚠ **`PAYPAL *BANDIFY BANDIF` (19,95, 07.08.) namjerno ostaje `N/A`** — nema presedana,
+**pitanje za Koku**. Pogođen `Tip` u podacima izgleda identično izmjerenom.
 
 ---
 
@@ -14,17 +65,17 @@ Detalji: [S136_tests.md](tests/S136_tests.md)
 | #            | test                                                                      | status |
 | ------------ | ------------------------------------------------------------------------- | ------ |
 | **T-S136-1** | ⭐ ⋮ meni se na scroll **premješta**, ne zatvara                          | ✅ E2E u oba smjera (bez popravka `e13-1` pada na `addBetweenBtn`, s njim prolazi; `e15` 3 pada → 1; `e7-1` prolazi) + ručno na TEST-u |
-| **T-S136-2** | Poruke o export profilima ne kažu „read-only" **write**-grantee-u (2 mjesta) | ✅ **14.09. PROD** — točan tekst, uključujući „this applies to write access too". ⚠ Poruka se crta ~200 redaka JSX-a niže od gumba ⇒ izvan vidljivog dijela skrolanog modala (v. `T-S136-7`) |
+| **T-S136-2** | Poruke o export profilima ne kažu „read-only" **write**-grantee-u (2 mjesta) | ✅ **14.09. + 15.09. PROD** — točan tekst, uključujući „this applies to write access too". ⚠ Poruka se crta ~200 redaka JSX-a niže od gumba ⇒ izvan vidljivog dijela skrolanog modala (v. `T-S136-7`) |
 | **T-S136-3** | ⭐ Smoke za `is_required` — **sažima `T-S131-6..24`**: obavezno polje prazno ⇒ Save blokiran; Excel uvoz aktivnosti svejedno prolazi | ✅ **14.09. PROD** — `Racun` prazan + `Smjer`/`Isplata` popunjeni ⇒ Finish klikabilan, toast `Obavezna polja: Racun, Izvor.`, redak NIJE spremljen. ⚠ Prvi pokušaj (prazna forma, ugašen Finish) je `canSave`, NE `is_required` — guard se nije ni pozvao. ⚠ Grana `false`/`0` **neizvediva na PROD-u**: nema nijednog obaveznog `boolean`/`number` (2 obavezna od 110, oba `text`). ⚠ Excel-uvoz polovica **nije izvedena** |
 
 ### C. Nalazi s PROD-a nakon deploya (Sašini)
 
 | #            | test                                                                      | status |
 | ------------ | ------------------------------------------------------------------------- | ------ |
-| **T-S136-6** | ⭐ Shortcutovi su se prikazivali **dvaput**, jednom pod „Nepoznata Area"    | ✅ uzrok izmjeren i popravljen (`d0976c4`) · ⬜ **provjera na PROD-u traži deploy** |
+| **T-S136-6** | ⭐ Shortcutovi su se prikazivali **dvaput**, jednom pod „Nepoznata Area"    | ✅ **15.09. PROD** kroz `dev:prod` — svaki shortcut jednom, `<optgroup>` po Arei, bez „Nepoznata Area" |
 | **T-S136-7** | ⚠ **NALAZ:** poruka o greški u Export modalu crta se ~200 redaka JSX-a niže od gumba koji ju izaziva ⇒ izvan vidljivog dijela skrolanog modala. Izgleda kao „ništa se nije dogodilo" | ⬜ **nije popravljeno** — traži premještanje banner-a uz sekciju, ne samo tekst |
-| **T-S136-9** | ⭐ Sažeta linija skrivenih polja **imenuje** ih umjesto da ih broji, i ime je klikabilno (otkrij samo to polje) | ⬜ traži deploy |
-| **T-S136-8** | `sharedContext` dodan u dep listu oba profila (`ExcelExportModal`)        | ✅ u kodu · ⬜ provjera traži deploy |
+| **T-S136-9** | ⭐ Sažeta linija skrivenih polja **imenuje** ih umjesto da ih broji, i ime je klikabilno (otkrij samo to polje) | ✅ **15.09. PROD** kroz `dev:prod` — `Izvod opis`, `Valuta`. ⚠ Saša: nakon otvaranja **nije se dalo zatvoriti** ⇒ `T-S137-6` |
+| **T-S136-8** | `sharedContext` dodan u dep listu oba profila (`ExcelExportModal`)        | ✅ **15.09. PROD** — spremanje profila kao write-grantee odbijeno uz **točnu** poruku (v. `T-S136-2`) |
 
 ⚠ **`T-S136-6` nije bio podatak.** Sonda nad PROD-om: **7** presetova, **nula**
 duplikata, **nula** mrtvih `area_id`. Brojke u dupliciranim grupama bile su
@@ -44,6 +95,7 @@ Ovdje `assertWrote()` (S134) **još nije primijenjen**.
 | ------------ | ------------------------------------------------------------------------- | ------ |
 | **T-S136-4** | ⭐ **NALAZ+FIX:** `audit_tests.py` nije vidio ID-eve oblika `T-S129-A7`    | ✅ izmjereno: S129 `10 → 24` definiranih, od toga 4 otvorena koja alat nije prijavljivao |
 | **T-S136-5** | Izvještaj o uvozu **ima** `DropdownData` (zatvara `T-S114-5`)             | ✅ sonda nad `addActivitiesSheetsTo` |
+| **T-S114-5** | izvještaj o uvozu nema `DropdownData` ⇒ `Tip`/`Podtip` bez izbornika | ✅ S136 — **izmjereno da nije točno**: sonda nad `addActivitiesSheetsTo` našla `DropdownData [veryHidden]`. Nalaz je bio točan kad je pisan; zatvorio ga je refaktor, a bug je ostao otvoren (v. `T-S136-5`) |
 
 ⚠ **T-S136-4 je razlog zašto triaža nije prošla „glatko" — i to je dobro.** Alat je
 S129 prijavljivao kao *„svi ✅, spremno za arhivu"* dok su unutra stajala **4 otvorena
@@ -75,7 +127,7 @@ politike — dakle `INSERT ... RETURNING` nad `areas` ondje jos pada.
 
 | #             | test                                                                      | status |
 | ------------- | ------------------------------------------------------------------------- | ------ |
-| **T-S135-8**  | ⭐ Puni E2E nakon RLS migracija (preuzima T-S134-16)                       | ⚠ 46 proslo / 22 palo / 3 nisu krenula, 19,9 min |
+| **T-S135-8**  | ⭐ Puni E2E nakon RLS migracija (preuzima T-S134-16)                       | ✅ **izmjereno** 46 proslo / 22 palo / 3 nisu krenula, 19,9 min — uzrok padova ide u `T-S135-11` |
 | **T-S135-9**  | ⭐ Pojedinacni run svakog palog speca — razdvaja kvar od artefakta runa    | ✅ 10 specova prolazi SAMO ⇒ artefakt; 6 padalo i samo |
 | **T-S135-10** | ⭐ **NALAZ: `e13`, `e15` i `e7` padaju na ISTOM mjestu** — stavka unutar ⋮ izbornika na Structure tabu (`Manage Access` ×2, `Add Between`). Meni se dokazano otvori (`button "Actions" [active]`), pa stavka nestane. `CategoryChainRow:343` zatvara meni na **svaki** `scroll`, s `capture: true`. `e7-1` jednom prosao jednom pao ⇒ ovisi o trenutku. ⚠ Hipoteza da to izazivaju asinkrone S133 znacke s brojem eventa **NIJE izmjerena** — trazi trace | ✅ S136 — popravljeno; protuprovjera: bez popravka `e13-1` pada, s njim prolazi |
 | **T-S135-11** | ⚠ Zasto suite rusi sam sebe (hipoteza: gusenje TEST baze kroz 20 min)     | ⬜ **neistrazeno** |
@@ -321,6 +373,7 @@ Detalji: [S129_tests.md](tests/S129_tests.md)
 | **T-S129-5** | `All Time` iz dropdowna i dalje radi | ✅ |
 | **T-S129-9** | Excel Import/Export uz `+` na uskom, uz listu na širokom — **nigdje oba** | ✅ |
 | **T-S129-B1** | ⭐ T-S127-9 — pravilo se ne okida na otvaranju (uz ispravak metode) | ✅ |
+| **T-S127-9** | pravilo `set_attribute` se ne okida na otvaranju retka | ✅ S129 — **izveden kao `T-S129-B1`**, uz ispravak metode (prvi pokušaj je pao na retku čiji se datum poklapao s rezultatom pravila ⇒ nije mjerio ništa) |
 | **T-S129-B2** | ⭐ ključ primatelja ne preživljava skraćen `Izvod opis` — popravljeno | ✅ 59 redaka |
 | **T-S129-6** | export s otkvačenim prekidačem stvarno sadrži traženi raspon | ✅ S136 — nadiđeno upotrebom |
 | **T-S129-7** | delta sheet s otkvačenim prekidačem nije prazan | ✅ S136 — nadiđeno upotrebom |
@@ -346,7 +399,8 @@ merge na `main`. Obrnuto znači da UI otvori Edit, a RLS ga odbije — i to tiho
 
 | test | čuva | provjereno obrnuto |
 | --- | --- | --- |
-| `T-S123-1/-2` | vlasnica ima Edit a nema Delete; ispravak čuva autorstvo i **atribut preživi** | ⛔ ne može — DDL se odavde ne izvršava |
+| `T-S123-1/-2` | vlasnica ima Edit a nema Delete; ispravak čuva autorstvo i **atribut preživi** | ✅ automat prolazi · ⛔ protuprovjera ne može — DDL se odavde ne izvršava |
+| `T-S123-10` | `Datum naplate` — 1:N spoj razriješen izvodom | ✅ S123 — **provjereno pokusom**, zapisano u `S123_tests.md` kao „ne treba ponavljati" |
 | `deltaAccount.test.mjs` (11) | delta sheet uzima račun iz profila, ne iz panela | ✅ bez popravka pada 6/11 |
 | `deltaSheetLayout.test.mjs` (18) | raspored sekcije „planirano" + `row_hash` u profilu | ✅ manja praznina ⇒ padaju 3 tvrdnje |
 
@@ -530,6 +584,7 @@ Detalji: [S120_tests.md](tests/S120_tests.md)
 | T-S120-2 | `N/A` se pojavljuje **jednom**, ne `N/A/N/A` | ✅ **26.08. uživo** — `N/A  KEKS PAY`, jedan `N/A`|
 | T-S120-3 | „Import as mine" prijavi **kolizije** (prije: `0 New / 0 Modify` nad praznim skupom) | ✅ S136 — nadiđeno upotrebom |
 | T-S120-4 | Uvoz u areu s istim imenom kategorije — **prije batcha 2024** | ✅ S136 — nadiđeno upotrebom |
+| T-S100-1 | ⭐ Redak ide u areu koju imenuje kolona `Area`, ne u blizanca s istim pathom | ✅ S120 — **čuva automatski test** `e2e/tests/S100_same_path_two_areas.spec.ts` (provjeren i u drugom smjeru). Redak je dosad živio samo u prozi, pa ga audit nije vidio |
 
 **Automatizirano u S120, ne traži ništa:** `E16-1`, `E17-1`, `T-S119-6`, `T-S100-1`.
 Svaki je provjeren **i u drugom smjeru** (namjerno pokvaren kod ⇒ test padne).
@@ -673,6 +728,7 @@ izmjereni u harnessu s istim klasama:
 | T-S119-5 | **Kratki datum**: `25.08. ut` za ovu godinu, `25.08.25. po` za lanjski redak (godina se pojavi sama) | ✅ **26.08. uživo** — `25.08.25. po` (lanjski, s godinom) vs `26.08. sr` (ovogodišnji, bez nje)|
 | T-S119-6 | ⭐ **Excel roundtrip za `Map`**: Structure export nosi kolonu `Map`, import je vrati — kratice prezive krug | ✅ **S120 (automatiziran)** — `e2e/tests/S119_list_columns_map.spec.ts`: export nosi `Map` → import ga zadrži → **brisanje ćelije ga ukloni**|
 | T-S119-7 | Desktop lista **nepromijenjena** (dug datum, kolone jedna do druge, `Stanje` vidljivo) | ✅ S136 — nadiđeno upotrebom |
+| T-S119-8 | PROD nema kolonu `Račun` (bila upisana samo na TEST-u) | ✅ S137 — **izmjereno na PROD-u**: `list_columns` nosi `role: attr`, `label: Račun`, `slugs: [racun]` i `map` (`Sašin tekući RF → RF`, `Kokin tekući ZABA → ZABA`). Upisano usput, negdje između S119 i danas |
 
 **Detalji:** [S119_tests.md](tests/S119_tests.md)
 

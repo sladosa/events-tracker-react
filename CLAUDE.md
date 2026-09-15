@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S136).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S137).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -16,6 +16,39 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 > **radni stol → `Claude-temp_R/`** (ignorirano u cijelosti, bez negacija i bez `-f`).
 > Ovdje ostaje samo ono što mijenja buduće odluke. Zamke iz starih sesija su
 > promaknute u „Critical rules" i „Zamke" — ne traži ih u povijesti.
+
+<!-- INDEX:BEGIN -->
+
+## Sadrzaj
+
+> Generirano: `python data-prep_tools/Tools/claude_index.py --write`.
+> **X** = stit od regresije, svaki redak placen izmjerenim kvarom -- ne skracivati.
+> **~** = kvarljivo (stanje/plan) -- prije nego vjerujes, provjeri datum u naslovu.
+
+| r. | sekcija | |
+| ---: | --- | :---: |
+| 55 | [Strategic Position (2026-08-15)](#strategic-position-2026-08-15) |  |
+| 76 | [Key docs (read before touching related code)](#key-docs-read-before-touching-related-code) |  |
+| 106 | [Three core principles — NEVER violate](#three-core-principles--never-violate) | X |
+| 118 | [Critical rules](#critical-rules) | X |
+| 1013 | [Zamke (data pipeline / AI / E2E)](#zamke-data-pipeline--ai--e2e) | X |
+| 1481 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
+| 1496 | [Key files](#key-files) |  |
+| 1615 | [Structure tab — component map](#structure-tab--component-map) |  |
+| 1634 | [Data model (simplified)](#data-model-simplified) |  |
+| 1655 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
+| 1680 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
+| 1700 | [Open bugs](#open-bugs) | ~ |
+| 1832 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
+| 2020 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
+| 2116 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
+| 2123 | [Backlog](#backlog) | ~ |
+| 2331 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2338 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+
+_Ukupno 2461 redaka, 18 sekcija._
+
+<!-- INDEX:END -->
 
 ---
 
@@ -57,6 +90,7 @@ podaci hrane i AI sloj.
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
 | `docs/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
 | `docs/FAZA3_IMPORT_AUTOMATIKA.md`         | **⛔ Prije nego kreneš graditi Fazu 3** — izmjereno da meta ne postoji (`Datum naplate` 0 praznih od 5.192); okidač za ponovno otvaranje i pet odluka prije koda |
+| `docs/FINANCIJE_STATUS.md`                 | **Stanje migracije Financija** — tranše, PROD povijest, „Nakon tranši". ⚠ **Kvarljivo**: provjeri datum prije nego povjeruješ brojci; pravila su ostala u CLAUDE.md-u |
 | `docs/Analytics_tab.md`                   | **Cross-Area** analitika — `periods`, Series, AnalyticsDef Excel. Čeka drugu gustu Areu. ⚠ §3 („bucketiranje client-side") je opovrgnut u OVERVIEW_TAB_SPEC §2.2 |
 | `docs/RLS_INVENTORY.md`                   | **Prava — tko što smije.** Namjera; `sql/SCHEMA_PROD.sql` je stvarnost, `rls_probe.py` mjeri razliku |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
@@ -278,6 +312,17 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   nego: padne kad postoje retci koje RLS skriva (tuđi ili osirotjeli). Kokina stara
   `Financije` (357 eventa, svi njeni) obrisana je kroz UI čisto, s backupom prije brisanja.
 
+**⚠ PYTHON ALAT BEZ `ET_TARGET` GAĐA **TEST**, A BROJKA IZGLEDA UVJERLJIVO** (S137)
+
+- `_db.load_env` pada na `.env.testing` kad `ET_TARGET` nije postavljen, pa alat uredno
+  odradi posao **nad krivom bazom**. Izmjereno isti dan, isti `promet_check.py`:
+  **TEST `✓ 12 / ✗ 20`**, **PROD `✓ 27 / ✗ 5`** — dvije priče o zdravlju istih podataka.
+  Jedina razlika u ispisu je zagrada u zaglavlju (`[TEST] area 98dd91f3 · .env.local`).
+  ⚠ **Zaglavlje se čita PRIJE brojke, ne poslije.** U S137 je TEST ispis zamalo otišao
+  Saši kao stanje PROD-a — a 2024. je ondje prazna, pa je izgledalo kao da je uvoz pao.
+  Ispravno: `$env:ET_TARGET = 'prod'` (PowerShell) ili `ET_TARGET=prod` (bash).
+  ⚠ Isti razred kao `dev` vs `dev:prod` za aplikaciju — banner je jedini dokaz.
+
 **Model / atributi**
 
 - **`is_required` je pravilo FORME, nikad baze ni uvoza** (oživljeno S131 — dotad je bilo
@@ -336,6 +381,20 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   (`ProgressiveCategorySelector.tsx:411-416`) — nitko ga ne mora kliknuti, i
   `usage_count` ostaje **0**, pa u podacima izgleda kao da se nikad nije koristio.
   Zato je jedna slučajna snimka tiho upravljala **svakim** unosom u tu kategoriju.
+
+**⚠ `depends_on.default_map` NE RADI NA IMPORT PUTU — kao ni `set_attribute`** (S137)
+
+- Pravilo „`set_attribute` se evaluira u Add i Edit, ne u Import" vrijedi i za
+  `default_map`: **oboje su mehanizmi forme.** Izmjereno na PROD-u 15.09.2026.:
+  **2 retka od 5.198** nemaju `Status`, oba `Izvor = Mastercard` — a
+  `Status.depends_on.default_map` ima `Mastercard → Planiran`. Config je ispravan;
+  put je bio krivi.
+  ⚠ **Prepoznaje se po `session_start = 07:00`** (import fallback 09:00 lokalno, 676
+  redaka u Arei) i `created_at` **+1 sekunda**; UI redak istog dana ima `+1 minutu` i
+  uredan `Status`.
+  ⚠ **Ovo pomiče okidač Faze 3.** `docs/FAZA3_IMPORT_AUTOMATIKA.md` ju je odgodio jer
+  `Datum naplate` ima **0 praznih od 5.192** — ali to polje **pune Python alati u fileu**,
+  pa mjeri alat, ne app. `Status` nitko ne puni ⇒ **2**. Brojka više nije nula.
 
 **Kolone Activities liste (`settings.list_columns`)**
 
@@ -412,6 +471,18 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **`Datum naplate` se ne upisuje rukom** — `set_attribute` ga računa iz `Izvor`a
   (`Racun`/`Cash` = isti dan, `Visa` = `next:3`, `Mastercard` = `next:11`). Ručni unos
   `userOwned` guard više ne dira, pa ga ne diraj bez razloga.
+
+**⚠ PLOČICA PRECJENJUJE SALDO IZMEĐU NAPLATE I IZVATKA** (S137)
+
+- Skupna MC naplata dolazi **s ZABA izvatka**, a ne sintetizira se. Dok izvadak ne stigne,
+  naplata koja se **već dogodila** nigdje ne postoji. Izmjereno 15.09.2026.: pločica
+  `13.962,38` (sidro `12.772,86` @ 06.09. + `1.389,52` − `200,00`), a naplate od
+  **11.09. `1.068,70`** nema ⇒ banka pokazuje ~`12.893,68`.
+  ⚠ **Račun pločice je točan, podatak nije potpun** — to su dvije različite dijagnoze i
+  brkanje vodi na krivi trag (traženje greške u RPC-u umjesto retka koji fali).
+  ⚠ **Ne dopisuj je ručno.** Povijest pokazuje da dolazi 11. u mjesecu, uvijek sa
+  strojnim tekstom `TROŠKOVI UČINJENI MASTERCARD KARTICOM`; ručna verzija razbija
+  brojanje po opisu.
 
 **Collab — što grantee NE može**
 
@@ -821,6 +892,18 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ponavlja svakih par tjedana (S114), pa bi prvi bankomat pokupio potvrdu nekog
   kasnijeg — iznos se i dalje slaže. **Popunjena ćelija se ne dira**: postojeća
   potvrda je dokaz nekog drugog izvoda.
+
+**⚠ SLIČAN `Izvod opis` NIJE DUPLIKAT — provjerava se BROJEM TRANSAKCIJE** (S137)
+
+- `LUFTHAN2202242474447 RATA 3/3` i `…448 RATA 3/3`, isti dan, **isti iznos 62,00**,
+  izgledaju kao dvostruki upis. Nisu: to su **dvije karte**, svaka sa svojim planom
+  otplate — par se ponavlja kroz tri mjeseca (`1/3` 28.06., `2/3` 29.07., `3/3` 29.08.),
+  i izvod ih nosi pod **različitim brojevima** (`B08026241143682**1**` / `…682**3**`),
+  svaki sa **svojom** naknadom od `1,32`.
+- **Dokaz nije sličnost opisa nego kontrola košare:** `uskladi_izvod.py` javlja
+  `48 redaka / 1.068,70 == izvod, u cent`. Brisanje jednog dalo bi 47 redaka i manjak
+  od točno `62,00` — dakle kvar koji se vidi tek sljedeći mjesec.
+  ⚠ Pravilo: **prije brisanja „duplikata" traži redak IZVODA, ne redak baze.**
 
 **Mjerenje / usklađenje**
 
@@ -1746,19 +1829,10 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 
 ---
 
-## Financije migracija — trenutno stanje
+## Financije — pravila domene (izvodi, rječnik, 1:N)
 
-**Cilj:** Kokina Excelica (`Financije 2026.xlsm`) → Area `Financije_all` u bazi, pa cutover.
-Puni detalji: `ENRICH_PLAN.md`, `FINANCIJE_MIGRACIJA.md`, povijest u `DONE_HISTORY.md`.
-
-**Podaci**
-
-- **Review workbook:** `data-prep_data/Financije/Financije_review_20260710_1448.xlsx` —
-  4.992 podatkovna retka, snapshot Kokinog filea od **2026-07-08**
-- **Taksonomija:** Kokina (S107r) — **18 Tipova**, 65 parova. Živi u `Structure` sheetu od
-  `Financije_all`; kopija u Reviewu je zastarjeli duplikat.
-- **U TEST bazi:** batch 2026 (747) + batch 2025 (1473) = **2220 eventa**
-- **Ostaje uvesti:** Kokina delta (od 2026-07-08, ~147 tx/mj), pa 2024, pa 2023
+> Plan, tranše i povijest migracije su u **`docs/FINANCIJE_STATUS.md`** (kvarljivo).
+> Ovdje ostaje samo ono što vrijedi **bez obzira na to dokle je migracija došla**.
 
 **Ključne odluke**
 
@@ -1795,49 +1869,18 @@ brojku. **Prije ispravka datuma uvijek provjeri postoji li redak već pod isprav
 importa i kroz skriptu** (`excelImport.ts` briše samo u `replace` grani kolizije — redak
 odsutan iz filea se ne obrađuje, pa event tiho preživi).
 
-**Otvoreno:** `845,12` (planiran, 11.07.2026.) — nije ni na izvodu ni u Kokinom fileu ⇒ pitanje
-za nju · dva njena retka datirana `2036-04-08` (`Mirovina 1.323,64`, `Netdomena Igor 47,76`) —
-tipfeler za 2026. · red 2115 (LJEKARNA OREBIC) → Medical_Sasa treba postati Medical_Koka;
-N/A petlja (`suggest_candidates.py`) za 2024/2023; preostali kandidati za pravila
-(`paypal`, `spotify`, porez grupa, `leasing`, `bmove`, `keks pay`, `zagrebparking`).
 
----
+### Spašeno iz plana (S137) — četiri pravila bez kopije igdje drugdje
 
-## Sljedeći koraci (2026-08-23, S116)
+⚠ Pri izmicanju plana u `FINANCIJE_STATUS.md` ova su četiri odlomka bila **unutar**
+plana, a grep je pokazao da ih **nema nigdje drugdje** — dakle bulk move bi ih tiho
+odnio. Zato se razdvajanje radilo s dokazom (39 `⚠` redaka prije, 0 izgubljenih),
+ne procjenom.
 
-**✅ OBA LANCA SALDA SU ZATVORENA** (S110/S111). App reproducira **ispisana bankovna stanja u cent**:
-ZABA `2.546,55` @ 31.03.2025. i `3.403,74` @ 08.07.2026. · RF `461,82` @ 06.07.2026.
-(`RF_2026-06.pdf`). Time je zatvoren i `T-S107d-6` — RF OCR lanac je bio točan, greške su bile
-u **spajanju** Kokinog Excela s izvodima.
-
-**Kokina delta se radi u TRANŠAMA, kroz alat koji će poslije koristiti Koka** (Sašina odluka
-S112: *„nije cilj samo uvesti deltu nego razviti najefikasniji način da je Koka rješava"*).
-Faza 0 i Faza 1 su gotove; ostalo je izvođenje.
-
-**Odluke koje više nisu otvorene:**
-- **D-1: preskočiti** Kokine kartične retke iz razdoblja koje izvodi već pokrivaju
-  (207 od 208 Visa kupovina 01–06/2026 već postoji u bazi — donose opis, ne novac).
-- **D-2: „Koka sada, izvod potvrda"** — njeni retci ulaze, izvod odmah zatim provjerava.
   ⚠ Provjera mora biti **mehanička** (sparivanje s tolerancijom + potvrda razlike): njeni se
   iznosi razlikuju od bankinih na ~4 % redaka, a kartične stavke ne diraju saldo, pa takva
   greška **nikad ne ispliva sama**.
 - **Granica je datum, ne vrsta retka.** Prije datuma piše pipeline, poslije samo ona.
-
-### Tranše — svaka testira drugi mehanizam, svaka ima brojku iz Kokinog lanca
-
-| # | Sadržaj | Kontrolni broj |
-| --- | --- | --- |
-| **1** | RF banka: 7 novih redaka + ispravak `250,93 → 253,51` | **RF @ 04.08. = 1.716,55** |
-| **2** | RF Visa iz `PBZVIZA_2026-07`: 42 stavke + naplata `1.171,59` + `0,17` | **RF @ 11.08. = 799,12** |
-| ~~**3**~~ | ✅ **GOTOVO S114.** ZABA banka: 31 novi + potvrda `1.244,74`. Izvod nosi 38 tx, 7 ih je baza imala. `845,12` **obrisan u S115** (postojao samo u snimci od 08.07., bez datuma i opisa ⇒ ostatak, ne transakcija). | ✅ **ZABA @ 30.07. = 13.815,33** (ispisano). ⚠ `14.722,84 @ 09.08.` traži još ~15 Kokinih redaka od 02.08. — izvod ih ne pokriva. |
-| **4** | MC iz `MC_2026-07`: 45 stavki (12 ih baza već ima) + naplata `1.332,52`, **plus cijeli kolovoz iz Kokinog filea**. S116 izmjerio i pripremio: ZABA **14** novih redaka (02.–13.08.), RF **1** (18.08.). Alat: `fill_from_izvod.py --iz-koke`. ⚠ Redak 2564 (`07.08. Parking 1,60`) je tipfeler u mjesecu — već u bazi kao 07.07. ⇒ `--osim 2564`. | **ZABA @ 13.08. = 13.239,31** (njen lanac to daje u cent, izmjereno S116) · **RF = 796,43** |
-
-⚠ **Tranša 4 više NIJE preduvjet za PROD** (S115). Sidro prikazuje račun i bez ijednog eventa
-(`036`, T-S115-2) ⇒ Koka može upisati stanje sa svog ekrana banke i saldo je od tog trena točan.
-Kolovoz se uvozi **zbog zapisa**, ne zbog salda — a Kokin file je u međuvremenu otišao dalje:
-`Financije 2026-08-16.xlsx` ima **87 redaka nakon 30.07. na „koka EU" i 68 na „sasa EU"**,
-od kojih je u bazi **6**. Tranša 4 je time narasla iz „MC paket" u „MC paket + cijeli kolovoz".
-
 ⚠ **Skupna naplata se NE sintetizira, a njen datum je DOSPIJEĆE s izvoda** (S117).
 `MC_2026-07.pdf` piše `Datum dospijeća: 11.08.2026.` i `UKUPNO (EUR): 1.332,52`. Isto potvrđuje
 povijest: skupna MC naplata pojavljuje se na **ZABA izvatku** kao `TROŠKOVI UČINJENI MASTERCARD
@@ -1845,41 +1888,12 @@ KARTICOM`, uvijek **11. u mjesecu**, osam mjeseci zaredom (`Izvodi_transakcije.x
 na MC izvodu nego na izvatku tekućeg — a dok `ZABA_2026-08.pdf` ne stigne, iznos i datum dolaze
 s MC izvoda. ⚠ **Opis mora ostati strojni tekst izvatka**, ne „Mastercard": svih 18 prijašnjih
 MC naplata ga nosi, pa bi varijanta razbila brojanje po opisu (`klasificiraj_transu.py`).
-⚠ Ostalo netaknuto: `PBZVIZA_2026-07.pdf` sadrži `1.171,59`, a
-`PBZVIZA_2026-07.pdf` `1.171,59`, oboje u cent jednako Kokinim grupama. Banka ih je ispisala.
-
-✅ **Onih 5 spornih redaka — RIJEŠENO S126, izvodom.** `207,26`, `57,19` i `13,31` doista
-jesu kolovoški, i to `T-mobile`, `Nataša Holding` i `Bulatova plin` — svi stoje na
-`ZABA_2026-08.pdf` (16.–17.08.). U bazi ih pod lipanjskim datumom **nije bilo** (provjereno
-po svim računima), pa duplikata nema; uvezeni su s ispravnim datumom. Stari opis:
-`207,26`, `57,19` i `13,31` **nisu na `ZABA_2026-06.pdf`** — najvjerojatnije kolovoški
-računi s krivim mjesecom. Uvezeni s lipanjskim
-datumom padaju **prije ZABA sidra** (01.07.) i po pravilu „strogo nakon" tiho ispadaju iz salda.
-Tranša 4 ih rješava: ostane li `13.239,31` bili su duplikati, postane li `12.866,20` bili su stvarni.
-
-### ~~`Datum naplate` — otvoreno~~ — ✅ ZATVORENO S124, izvodom
-
-**`MC_2026-06.pdf` je cijelo vrijeme bio u `izvodi/Analizirani_izvodi/`.** S123 je zaključio
-„pravilo je iscrpljeno, ostatak može razriješiti samo `MC_2026-06.pdf`" — **ne provjerivši
-je li već tu.** Pouka šira od ovog slučaja: prije nego proglasiš da nekog izvora nema,
-pogledaj podmape; `Analizirani_izvodi/` drži svih 30 MC i 31 Visa izvoda.
-
-S papirom u ruci raspodjela iz S123 (40 OK / 21 RATA / 11+1 KRIVI MJESEC) **nije bila
-točna** — bila je najbolje što se dalo bez izvoda. Stvarno stanje košare 11.07.:
-
-| | redaka | Σ | dokaz |
-| --- | ---: | ---: | --- |
-| na izvodu 11.07. | **48** | **1.244,74** | 48/48, nula redaka izvoda bez para |
-| duplikat (`LH 1/3` ×2) | 2 | 126,66 | isti trošak dvaput |
-| pripada izvodu 11.08. | 23 | 859,62 | `MC_2026-07.pdf` |
-
-**Cijela MC povijest 2026. zatvara se u cent na svih 7 izvoda.** Alat:
-`data-prep_tools/Financije/uskladi_izvod.py` (v. „Ključni alati"). `kosara_naplate.py` je
-time umirovljen za ovu svrhu.
-
-⚠ Skupna MC naplata od **11.07. ima prazan `comment`**, dok ostalih 18 nosi strojni
-tekst `TROŠKOVI UČINJENI MASTERCARD` — jedan prazan redak izmiče brojanju po opisu.
-Jedino što je ovdje ostalo otvoreno.
+s MC izvoda. ⚠ **Opis mora ostati strojni tekst izvatka**, ne „Mastercard": svih 18 prijašnjih
+MC naplata ga nosi, pa bi varijanta razbila brojanje po opisu (`klasificiraj_transu.py`).
+⚠ **Izvodi su samo PDF** — ni ZABA ni PBZ ne nude CSV/Excel (potvrdio Saša, S115). Ideja
+„app čita izvod" zato znači **pisanje novog čitača PDF-a**, i **imenovana je i odložena**:
+PDF-ove i dalje čita Sašin Python alat. Vrijednost te ideje nosi njezin drugi dio —
+**pravila u bazi + evaluacija na uvozu** (Faza 3), koji PDF uopće ne dira.
 
 ### `Izvod opis` JE oznaka „potvrđeno izvodom" (S124)
 
@@ -2002,73 +2016,6 @@ odgovor.
 njemu ⇒ dva retka iste minute postaju **jedan redak liste**. Na MC retcima pomak ionako ne
 dira saldo. **Ratama se ne dira ni kasnije:** rate dijele dan **kupnje**, izvod nosi dan
 **terećenja** — ondje izvod nije autoritet za `event_date`, samo za `Datum naplate`.
-
-### PROD — ✅ IZVEDENO 2026-08-25 (S118)
-
-**Koka radi na PROD-u.** Area `Financije_all` (`de8662e6-54f7-4ded-ab42-a786e7456067`,
-slug `financije-all`) pod **njenim** računom (`dubravka.pavic-sladoljev@dps-perceptum.com`,
-`eeb78414`), Saša je **write grantee**. Puštene migracije: `035`, `036`, `038` (RPC + sidra),
-`039` (čišćenje siročadi), `040` (poravnanje slugova), `041` (dashboard config),
-`042` (slug trigger). Kod je na `main` od 24.08. (S108–S117), Netlify deployao.
-
-**Podaci: 2.312 eventa** (`2025-01-01 … 2026-08-25`), preseljeni **Excel roundtripom iz TEST-a**
-— tri filea po 1000 redaka, „Import as mine". Nije korišten pipeline: TEST nosi sve ispravke
-iz S110–S117 kojih u Review workbooku nema, pa bi regeneriranje bilo korak unatrag.
-
-**Provjereno mjerenjem, ne dojmom:**
-- `uplata`/`isplata` po računu **identične TEST-u u cent** (478/478 i 209/209 redaka)
-- sidra s izvoda: ZABA `13.815,33 @ 30.07.` · RF `799,12 @ 11.08.`
-- ⇒ pločica daje **`13.239,31`** (ZABA) i **`796,43`** (RF) — isti brojevi kao TEST,
-  kroz drugu bazu, drugog vlasnika i „Import as mine"
-
-**Stare aree:** Kokina `Financije` (357 eventa) **obrisana** — prije brisanja izmjereno da
-svih 357 ima pokriće u novoj arei (199 ih je samo drukčije datirano zbog D1b; jedini prividni
-manjak, `7,63` vs `7,83` „Chromos - Konzum" 29.06., bio je skoro-duplikat razreda S111).
-Sašina `Financije_old` (2.774 eventa, `2023-01-01 … 2025-12-27`) **ostaje** — jedina kopija
-2023./2024. na PROD-u dok ti batchevi ne prođu pipeline. Share prema Koki maknut.
-
-**Ostalo za nju:** upisati svoje sidro s ekrana banke kad krene (nije nužno — sidra s izvoda
-već drže saldo) i jedna rečenica: **kad počne upisivati u app, u Excelicu više ne.**
-Radi li oboje, sve dobijemo dvaput — a to se neće vidjeti dok se saldo ne raziđe.
-
-⚠ **Izvodi su samo PDF** — ni ZABA ni PBZ ne nude CSV/Excel (potvrdio Saša, S115). Ideja
-„app čita izvod" zato znači **pisanje novog čitača PDF-a**, i **imenovana je i odložena**:
-PDF-ove i dalje čita Sašin Python alat. Vrijednost te ideje nosi njezin drugi dio —
-**pravila u bazi + evaluacija na uvozu** (Faza 3), koji PDF uopće ne dira.
-
-### Nakon tranši
-
-1. **~~Faza 3 — automatika na Import putu~~ — ⛔ ODGOĐENA, IZMJERENO (S136).**
-   Puni nalaz i plan: **`docs/FAZA3_IMPORT_AUTOMATIKA.md`**. Stajalo je da „jedna rupa
-   drži tri featurea"; mjerenje na PROD-u to ruši:
-   - **`Datum naplate`: 0 praznih redaka od 5.192** — Python alati ga već pune, pa
-     automatika na uvozu **danas ne bi napravila ništa**.
-   - **`Tip = N/A`: 1.582 (30,5 %), ali 93 % je povijest** (2023 → 585, 2024 → 476,
-     2025 → 413, **2026 → 108**). Povijest se razvrstava **jednokratno** postojećim
-     alatima, ne motorom koji radi pri svakom uvozu.
-   ⚠ **Okidač za ponovno otvaranje:** kad Koka preuzme roundtrip pa njeni novi retci
-   počnu dolaziti bez tih polja (prva brojka prestane biti 0), ili kad `N/A` u
-   **tekućoj** godini prijeđe ~100 mjesečno. Do tada bi to bio kod koji čeka podatke.
-   ⚠ Ako se ikad gradi: **`Visa = next:3` se NE smije primijeniti naslijepo** —
-   izmjereno na 855 redaka da Visa nema fiksan dan naplate (5. → 383×, 4. → 231×,
-   3. → **11×**), pa bi uvoz proizveo uvjerljivo krive datume, i to tiho.
-   ⚠ Vrjednija meta istog razreda: **1.431 redak (27,6 %) bez `Izvod opis`**.
-2. **Faza 2 — brzi unos** (§2.9): prefilana polja se ne skupljaju
-   (`AttributeChainForm.tsx:216–222`), shortcut dropdown je ravan popis
-   (`ProgressiveCategorySelector.tsx:711`). Male, i **direktno za Koku**.
-3. **Tip/Podtip automatika** — shortcutovi po trgovcu **prvo** (nula koda, `activity_presets`),
-   tekstualno pravilo `opis → Tip/Podtip` tek ako popis postane nezgrapan, AI tek nakon toga.
-4. **Koka proba na TEST-u (mobitel) → odluka o cutoveru.** ⚠ Prije toga Saša **odglumi Koku
-   3 dana stvarnog unosa** i izmjeri frikciju — to pretvara „bi li bila zadovoljna" u brojku.
-5. **Batch 2024, pa 2023** — svaki uz `Pitanja za Koku` vetting. ⚠ Sidro ih **vadi s kritičnog
-   puta**; idu zbog analize i AI sloja, ne zbog salda.
-6. Ručni testovi: **T-S112-3…6** (novi), T-S111-1/-3/-4/-5/-6, T-S110-4/-5, T-S107b-3..6,
-   T-S107f-3, T-S107v-2/3/4/7
-7. Stare Financije aree obrisati **na kraju** (backup!)
-8. Diary archaeology (non-blocking)
-
-**Preostali poznati Δ, oba svjesno ostavljena:**
-`−200,14` na ZABA lancu 2025-08 → 2026-04 (`SALDO_MODEL_NALAZI.md` §6.3) · RF nema više ništa.
 
 ## Overview tab / analitika — sažetak odluka
 

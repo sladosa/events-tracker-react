@@ -9,7 +9,6 @@ import io
 import re
 import sys
 from pathlib import Path
-from collections import defaultdict
 
 # ⚠ Windows konzola je cp1252 i ✅/⬜ je ruse s UnicodeEncodeError prije nego
 #   ispise ijedan redak — alat je zato izgledao pokvaren, a samo nije mogao
@@ -26,37 +25,83 @@ PENDING = Path('docs/sessions/PENDING_TESTS.md')
 #   donosi odluka o arhiviranju (isti razred kao sonda bez `areas INSERT`, S135).
 ID = re.compile(r'T-S[0-9]+[a-z]?-[A-Z]?[0-9]+')
 
+# ⚠ ID u prvoj celiji dolazi u PET oblika, i alat je do S137 vidio samo prvi:
+#       T-S119-3   **T-S119-1** ⭐   `T-S121-1`   `T-S122-1` (2 slučaja)   `T-S123-1/-2`
+#   Ostala cetiri su ispadala iz brojanja ⇒ file je izgledao kao da mu fali
+#   redak, a redak je bio ondje. Isti razred kao `A7` sufiks (S136): instrument
+#   slijep tocno ondje gdje se donosi odluka.
+DECOR = re.compile(r'[*~`⭐⚠]|\([^)]*\)')
+
+
+def ids_in_cell(raw):
+    """ID-evi iz prve celije, ukljucujuci spojeni oblik `T-S123-1/-2`."""
+    cell = DECOR.sub('', raw).strip()
+    found = ID.findall(cell)
+    if not found:
+        return []
+    # spojeni oblik: prefiks zadnjeg punog ID-a + fragmenti `/-2`, `/2`
+    prefix = found[-1].rsplit('-', 1)[0]
+    frags = re.findall(r'/\s*-?([A-Z]?[0-9]+)\b', cell)
+    # /!\ Provjera cistoce ide nad ostatkom IZ KOJEG SU FRAGMENTI VEC MAKNUTI.
+    #     Inace `T-S123-1/-2` ostavi golu `2`, celija ispadne "proza" i oba ID-a
+    #     se izgube - dakle popravak spojenog oblika ponisti sam sebe.
+    rest = re.sub(r'/\s*-?[A-Z]?[0-9]+\b', '', cell)
+    rest = re.sub(r'T-S[0-9]+[a-z]?-[A-Z]?[0-9]+|[/\s,-]', '', rest)
+    if rest:
+        return []
+    return list(dict.fromkeys(found + ['%s-%s' % (prefix, f) for f in frags]))
+
+
+def status_of(row_text, last, heading):
+    """Otvoreno pobjedjuje zatvoreno U ISTOM RETKU: `✅ u kodu . ⬜ trazi deploy`
+    je OTVOREN, ne pola-pola.
+
+    Rjecnik ima PET oznaka, ne dvije - i tri su se do S137 citale kao
+    "bez oznake", pa je file izgledao nedovrsen a odluka je bila donesena:
+        ✅  gotovo        ⬜  otvoreno
+        ~ / ->   nadidjeno drugim testom (kriterij ritual-a: 'izvela ga novija sesija')
+        ⏸        parkirano odlukom (nije otvoren posao)
+    Kad redak ne nosi nista, oznaku nasljedjuje od naslova sekcije - tablica
+    "✅ Proslo uzivo na PROD-u" nosi je u naslovu, ne u retcima.
+    """
+    if last.startswith('~') or last.startswith(chr(0x2192)) or chr(0x21B3) in last:
+        return 'superseded'
+    if chr(0x23F8) in last:
+        return 'parked'
+    for text in (row_text, heading):
+        if chr(0x2B1C) in text:
+            return 'open'
+        if chr(0x2705) in text:
+            return 'done'
+    return 'unclear'
+
+
 # --- testovi definirani po session fileu ---
 defined = {}
 for f in sorted(TESTS.glob('S*_tests.md')):
     txt = io.open(f, encoding='utf-8').read()
-    ids = set()
-    for m in ID.finditer(txt):
-        ids.add(m.group(0))
-    defined[f.name] = ids
+    defined[f.name] = set(ID.findall(txt))
 
 # --- status iz PENDING_TESTS: gledaju se SAMO tablicni retci ---
 pend = io.open(PENDING, encoding='utf-8').read()
 status = {}
+heading = ''
 for line in pend.splitlines():
+    if line.startswith('#'):
+        heading = line
+        continue
     if not line.startswith('|'):
         continue
     cells = [c.strip() for c in line.strip('|').split('|')]
     if len(cells) < 2:
         continue
-    m = ID.fullmatch(cells[0].replace('*', '').replace('~', '').strip())
-    if not m:
+    row_ids = ids_in_cell(cells[0])
+    if not row_ids:
         continue
-    last = cells[-1]
-    if '✅' in last:
-        st = 'done'
-    elif '⬜' in last:
-        st = 'open'
-    elif last.strip() in ('—', '-', ''):
-        st = 'dropped'
-    else:
-        st = 'other:' + last[:30]
-    status[m.group(0)] = st
+    last = cells[-1].strip()
+    st = 'dropped' if last in ('—', '-', '') else status_of(line, last, heading)
+    for i in row_ids:
+        status[i] = st
 
 # --- kurirani redak „Otvoreno:" ---
 curated = set()
@@ -66,39 +111,53 @@ for line in pend.splitlines():
         break
 
 print('=' * 78)
-print('%-22s %5s %5s %5s %5s  %s' % ('session file', 'def', '✅', '⬜', 'n/a', 'arhivirati?'))
+print('%-22s %5s %5s %5s %5s %5s  %s'
+      % ('session file', 'def', '✅', '⬜', 'n/a', '?', 'arhivirati?'))
 print('=' * 78)
-archivable, blocked, unknown_total = [], [], 0
-for name, ids in defined.items():
+archivable, unknown, unclear = [], {}, {}
+for name, ids in sorted(defined.items()):
     if not ids:
         continue
-    done = sum(1 for i in ids if status.get(i) == 'done')
+    done = sum(1 for i in ids if status.get(i) in ('done', 'superseded', 'parked'))
     open_ = sum(1 for i in ids if status.get(i) == 'open')
-    na = sum(1 for i in ids if i not in status)
-    unknown_total += na
-    verdict = ''
-    if open_ == 0 and na == 0:
-        verdict = 'DA'
-        archivable.append(name)
-    elif na:
-        verdict = '? %d bez oznake u PENDING' % na
-        blocked.append(name)
+    na = sorted(i for i in ids if i not in status)
+    unc = sorted(i for i in ids if status.get(i) == 'unclear')
+    if na:
+        unknown[name] = na
+    if unc:
+        unclear[name] = unc
+    if open_ == 0 and not na and not unc:
+        verdict, _ = 'DA', archivable.append(name)
     else:
-        verdict = 'ne (%d otvorenih)' % open_
-        blocked.append(name)
-    print('%-22s %5d %5d %5d %5d  %s' % (name, len(ids), done, open_, na, verdict))
+        bits = []
+        if open_:
+            bits.append('%d otvorenih' % open_)
+        if na:
+            bits.append('%d bez retka' % len(na))
+        if unc:
+            bits.append('%d bez oznake' % len(unc))
+        verdict = 'ne (%s)' % ', '.join(bits)
+    print('%-22s %5d %5d %5d %5d %5d  %s'
+          % (name, len(ids), done, open_, len(na), len(unc), verdict))
 
 print('=' * 78)
 print('Za arhivu (%d): %s' % (len(archivable), ', '.join(archivable) or '—'))
-print('Testova koje PENDING uopce ne spominje: %d' % unknown_total)
+
+# ⚠ IMENUJ, NE BROJI. Dok je alat ispisivao samo „10 bez oznake", triaza se
+#   morala raditi rucnim skriptom — a brojka se cita kao „negdje nesto fali".
+for title, bucket in (('PENDING nema redak za', unknown),
+                      ('redak postoji, ali bez ✅/⬜', unclear)):
+    if bucket:
+        print()
+        print('%s (%d):' % (title, sum(len(v) for v in bucket.values())))
+        for name, ids in sorted(bucket.items()):
+            print('  %-22s %s' % (name, ', '.join(ids)))
 
 # --- proturjecnost: kurirani redak vs tablice ---
 open_in_tables = {i for i, st in status.items() if st == 'open'}
-only_curated = curated - open_in_tables
-only_tables = open_in_tables - curated
+only_curated = sorted(curated - open_in_tables)
+only_tables = sorted(open_in_tables - curated)
 print()
 print('PROTURJECNOST u PENDING_TESTS.md')
-print('  „Otvoreno:" navodi, a tablica ne kaze ⬜ : %d  %s'
-      % (len(only_curated), sorted(only_curated)[:12]))
-print('  tablica kaze ⬜, a „Otvoreno:" ne navodi : %d  %s'
-      % (len(only_tables), sorted(only_tables)[:12]))
+print('  „Otvoreno:" navodi, a tablica ne kaze ⬜ : %d  %s' % (len(only_curated), only_curated[:12]))
+print('  tablica kaze ⬜, a „Otvoreno:" ne navodi : %d  %s' % (len(only_tables), only_tables[:12]))
