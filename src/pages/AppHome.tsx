@@ -873,9 +873,18 @@ function AppContent() {
           )}
         </div>
 
-        {/* Leaf category hint — wherever Add Activity is offered, so a disabled
-            button always has its reason next to it. Not shown for read grantee. */}
-        {activeTab !== 'structure' && !isLeafCategory && filter.categoryId && !isReadOnlyGrantee && (
+        {/* Leaf category hint -- gdje god se nudi Add Activity, da ugasen gumb
+            uvijek ima razlog uz sebe. Ne prikazuje se read grantee-u.
+
+            /!\ Uvjet je do S137 trazio `filter.categoryId`, a „All Categories"
+                ga postavlja na `null` (`ProgressiveCategorySelector:583`) -- pa je
+                bas u tom stanju gumb bio SIV BEZ IJEDNOG OBJASNJENJA. Izmjereno
+                na PROD-u 15.09.2026. (`T-S108-1b`, korak 5): `+` ugasen, hint
+                nigdje. Uvjet za gumb je `isLeafCategory && !isReadOnlyGrantee`,
+                pa i hint mora gledati ISTO -- dva uvjeta koja se mijenjaju ZAJEDNO.
+            /!\ `filter.areaId` ostaje jer bez odabrane Aree gumb nije ni ponudjen,
+                pa bi hint ondje bio sum na praznom ekranu. */}
+        {activeTab !== 'structure' && !isLeafCategory && filter.areaId && !isReadOnlyGrantee && (
           <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
             ⚠️ Select a leaf category (no subcategories) to add an activity
           </div>

@@ -176,6 +176,18 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   const [currentFile, setCurrentFile] = useState(0);   // 0 = idle, >0 = generating file N
   const [loadingCount, setLoadingCount] = useState(true);
   const [error,       setError]       = useState('');
+  // /!\ Poruku o gresci NITKO NE VIDI ako ostane ispod ruba modala (S137).
+  //     `setError` zive na ~r.755 (spremanje profila), a render na ~r.1110 --
+  //     355 redaka JSX-a nize, na dnu dugackog modala. Izmjereno na PROD-u:
+  //     klik na `Import Profile` s vrha ostavlja crvenu traku ODREZANU na dnu,
+  //     pa izgleda kao da se nista nije dogodilo. Na nizem prozoru (laptop,
+  //     mobitel) ne vidi se ni traka.
+  //     Lijek je dovuci je u vidno polje, ne premjestiti je: ista kutija nosi
+  //     i greske generiranja, koje pripadaju uz gumb Download.
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [error]);
 
   // Export Profile state
   const [profiles, setProfiles]           = useState<ExportProfiles>({});
@@ -1108,7 +1120,10 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
 
           {/* Error */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+            <div
+              ref={errorRef}
+              className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700"
+            >
               {error}
             </div>
           )}

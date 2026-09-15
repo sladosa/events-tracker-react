@@ -43,10 +43,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2020 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
 | 2116 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
 | 2123 | [Backlog](#backlog) | ~ |
-| 2331 | [TypeScript known issue](#typescript-known-issue) |  |
-| 2338 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+| 2382 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2389 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
 
-_Ukupno 2461 redaka, 18 sekcija._
+_Ukupno 2512 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2250,6 +2250,57 @@ jednu invarijantu u trinaest iznimki.
 ⚠ Usput zapaženo: `StructureNodeEditPanel:548` ima **drugi** overlay (`z-[60]`, ugniježđeni
 dijalog) koji hook **ne** koristi ⇒ ne zatvara se klikom na pozadinu **uopće**. Nije kvar
 (ništa se ne gubi), ali je nedosljednost koju treba odlučiti zajedno s ovim.
+
+**⭐ PBZVISA prolaz — `Datum naplate` za Visu nema ispravljača** (S137, Sašina odluka:
+placeholder je u redu, ali mu fali drugi dio). `uskladi_izvod.py:939` prima **samo MC**
+(`Zasad samo MC izvodi`), pa za **1.629** Visa redaka nitko ne čita izvod i ne ispravlja datum.
+
+⚠ **Parsiranje PBZVISA-e NIJE prepreka** — izmjereno: `PBZVIZA_2026-07.pdf` daje **49 od 49**
+transakcijskih redaka čitljivo, `(cid:` smetnja je 11 od 180 redaka (6 %) i samo u zaglavlju.
+Ranija pretpostavka „Visa traži OCR" bila je **zamjena s RF-om** (tekući račun), ne s PBZVISA-om.
+
+⚠ **Prepreka je što izvod daje KRIVI DATUM.** Izmjereno na svih **32** Visa izvoda:
+`Dospijeće plaćanja` je **11.** sljedećeg mjeseca (20× točno 11., a 12./13./14. kad 11. padne
+na vikend). Ali stvarno terećenje RF-a je **6.–7.**:
+
+| izvod | dospijeće | stvarno terećen RF |
+| --- | --- | --- |
+| `PBZVISA_2026-06` | 13.07. | **06.07.** `1.495,78` |
+| `PBZVIZA_2026-07` | 12.08. | **07.08.** `1.171,59` |
+| — | — | **07.09.** `1.218,38` |
+
+`Datum naplate` po definiciji znači *dan kad banka stvarno skine iznos*, dakle **6.–7.** — što se
+poklapa s raspodjelom u bazi (5. → 719, 4. → 400, 6. → 176, 7. → 137), a **ne** s dospijećem.
+
+⚠ **Zato alat mora čitati DVA izvora**, i to je jedina prava razlika prema MC alatu:
+PBZVISA za stavke i rate, **RF izvod** za dan i iznos stvarne naplate. Mastercardu to ne treba
+jer su mu ta dva datuma **ista** (`11.08. 1.332,52 TROŠKOVI UČINJENI MASTERCARD` na ZABA izvatku).
+
+⚠ **`next:3` NIJE loše pogađanje naplate — to je dan ZATVARANJA izvoda, i točan je.**
+Kokina teorija (*„3. se formira račun"*) potvrđena mjerenjem zadnje transakcije po izvodu:
+**2. → 6×, 3. → 4×, 31. → 3×, 1. → 1×**. Dakle odgovara na *kojem izvodu trošak pripada*.
+⚠ **Zato ga NE mijenjati u `next:7`** (prijedlog iz prvog nacrta ove stavke, **povučen**):
+izgubilo bi grupiranje po izvodu, a ne bi dobilo točan datum jer terećenje varira 6.–7.
+
+⚠ **Pravi kvar: stupac nosi DVA ZNAČENJA.** Od **1.629** Visa redaka samo **22** imaju
+`Datum naplate` na 3. — dakle retci koje je napravila **aplikacija** nose *dan zatvaranja*,
+a **uvezeni** nose *dan terećenja* (4.–7.). Isti stupac, dva pojma — i zato „kontrola po
+košari ne vidi Visa retke": ne grupiraju se jer nisu mjereni istim ravnalom.
+Za MC se pitanje ne postavlja jer mu se sva tri datuma poklapaju na **11.**
+
+⚠ **Odluka koja fali prije ijedne linije koda** (Sašina): znači li `Datum naplate` za karticu
+**(a)** kojem izvodu trošak pripada (zatvaranje, `next:3`, grupiranje radi), ili
+**(b)** kad je novac stvarno otišao (terećenje 6.–7., dolazi s **RF** izvoda).
+Dok to nije odlučeno, **nijedan alat se ne dira** — svaka promjena pogoršava jednu stranu.
+
+⚠ **Imena fileova nisu ujednačena: 31× `PBZVISA_`, 1× `PBZVIZA_`** (`2026-07`, i to je najnoviji,
+onaj koji CLAUDE.md spominje po imenu). Alat koji glob-a jedno ime **preskace drugi, tiho** —
+isti razred kao `Analizirani_izvodi/` selidba (S129). Glob mora biti `PBZVI[SZ]A_*`, ili se file
+preimenuje.
+
+⚠ Oblik rate se razlikuje i to je **već zapisano** u `rate_alat.py`: MC `X RATA n/N`,
+Visa `RATA n/N-X`. Ostale razlike su formatske: dvoznamenkasta godina (`05.06.26.`),
+referencija je 10 znamenki (ne `B0802…`), opis nosi **adresu** (`SPAR - MARTIĆEVA 13 - ZAGREB`).
 
 **Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**

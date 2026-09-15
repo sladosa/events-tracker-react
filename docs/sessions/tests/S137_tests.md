@@ -178,3 +178,58 @@ otvorena **dva** polja (`Izvod opis` + `Valuta`), klik na oznaku `Izvod opis`a s
 sve-ili-nista, pa bi s jednim otvorenim poljem klik izgledao ispravno i pod starim
 ponasanjem. Isto pravilo kao S129 (`T-S127-9`): redak se bira tako da se RAZLIKUJE
 od ocekivanog rezultata.
+
+---
+
+## T-S137-7 ✅ Preset ne zamrzava izvedenu vrijednost
+
+**Snimka** (`AI_rucak`, izmjereno u bazi prije testa):
+
+```
+6 vrijednosti: Racun, Izvor=Visa, Smjer, Isplata=10, Tip, Podtip
+Datum naplate  NIJE u snimci
+Status         NIJE u snimci
+```
+
+Dijalog „Save as Shortcut" je to i **rekao naglas**: *„Saves Area + Category and 6 attribute
+value(s)"*, iako je popunjeno bilo **8** polja. To je `ruleManaged.all` na djelu
+(`AddActivityPage:866`).
+
+**Izvedeno 15.09.2026. na PROD-u** (`dev:prod`):
+
+| korak | rezultat |
+| --- | --- |
+| primijeni `AI_rucak` | 6 polja prefilano |
+| `Datum naplate` uz `Izvor = Visa` | **`03.10.2026.`** (izracunato, `next:3`) |
+| **`Izvor` -> `Racun`** | **`15.09.2026.`** -- skocio na danas |
+
+⚠ **Zadnji redak je cijeli test.** Da je preset zamrznuo datum, promjena izvora **ne bi
+napravila nista** -- `userOwned` guard bi tu vrijednost smatrao rucnim unosom i preskocio je.
+To je tocno bug iz S127, izmjeren na PROD-u 04.09.
+
+⚠ **Prvi redak sam ne dokazuje nista**: zamrznuta i izracunata vrijednost bile bi
+**iste** (`03.10.`), jer je preset tako i snimljen. Razlikuje ih tek promjena izvora --
+isto pravilo kao S129 (`T-S127-9`): redak se bira tako da se RAZLIKUJE od rezultata pravila.
+
+**Pad:** `Datum naplate` ostane `03.10.` nakon promjene izvora.
+
+---
+
+## T-S137-8 ✅⬜ Auto-odabir preseta samo kad pobjednik nije nerijesen
+
+**Povod** (izmjereno na PROD-u 15.09.): Koka je imala **dva** preseta na leafu `Transakcija`,
+oba `0x` i `last_used = NULL`. Auto-odabir je bio `.find()` -- prvi u nizu sortiranom po
+`usage_count desc, last_used desc`. Uz izjednacenje Postgres ne jamci redoslijed, pa se
+**koji joj preset tiho puni formu moglo mijenjati izmedu ucitavanja**: jednom
+`Racun = Kokin tekuci ZABA`, drugi put `Racun = Sasin tekuci RF` uz `Isplata = 11`.
+Isti razred kao paginacija bez stabilnog `.order()` (S108).
+
+⚠ **Prva verzija popravka je bila prestroga** i to je pokazao tek Sasin `AI_rucak`:
+odbijala je svaki slucaj s vise od jednog preseta, pa bi mu ugasila auto-odabir cim napravi
+drugi shortcut na istoj kategoriji -- iako je ondje pobjednik jasan (`12x` naspram `0x`).
+**Lijek ne smije kostati vise od kvara.** Uvjet sada gleda **izjednacenje na vrhu**, ne broj
+kandidata.
+
+**Provjereno:** uz `Financije` (12x) + `AI_rucak` (0x) auto-odabir radi i bira cesceg.
+**Neprovjereno:** grana *izjednaceno* -- Kokin slucaj je obrisan, pa bi trazila dva nova
+preseta s `0x` na istoj kategoriji.

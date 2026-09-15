@@ -416,10 +416,32 @@ export function ProgressiveCategorySelector({
 
   // Auto-select shortcut when filter matches a preset but selectedShortcutId is null
   // (e.g. after browser restart when sessionStorage is cleared but filter is restored)
+  //
+  // /!\ NE kad je pobjednik NERIJESEN (S137). Prije je stajalo `.find()`, dakle prvi
+  //     u nizu sortiranom po `usage_count desc, last_used desc`. Izmjereno na PROD-u:
+  //     Koka je imala DVA preseta na leafu `Transakcija`, oba `0x` i `last_used = NULL`
+  //     => izjednaceni, a Postgres bez jedinstvenog kljuca ne jamci redoslijed. Koji
+  //     ce joj preset tiho napuniti formu moglo se mijenjati izmedu ucitavanja: jednom
+  //     `Racun = Kokin tekuci ZABA`, drugi put `Racun = Sasin tekuci RF` uz `Isplata = 11`.
+  //     Isti razred kao paginacija bez stabilnog `.order()` (S108).
+  //
+  // /!\ Uvjet gleda IZJEDNACENJE, ne broj kandidata. Prva verzija je odbijala svaki
+  //     slucaj s vise od jednog preseta -- i time bi Sasi ugasila auto-odabir cim
+  //     napravi drugi shortcut na istoj kategoriji, iako je ondje pobjednik jasan
+  //     (`Financije` 12x naspram novog 0x). Lijek ne smije kostati vise od kvara.
+  //
+  //     Dvoznacnost se NE rjesava redoslijedom nego se ne dira -- covjek bira. Isto
+  //     pravilo koje `RULES_ENGINE_SPEC` propisuje za pravila razvrstavanja: konflikt
+  //     se prijavljuje, ne odlucuje redoslijedom.
   useEffect(() => {
     if (selectedShortcutId || !filter.categoryId || presetsLoading || !presets.length) return;
-    const match = presets.find(p => p.category_id === filter.categoryId);
-    if (match) setSelectedShortcutId(match.id);
+    const matches = presets.filter(p => p.category_id === filter.categoryId);
+    if (!matches.length) return;
+    const [first, second] = matches;
+    const tied = second
+      && (first.usage_count ?? 0) === (second.usage_count ?? 0)
+      && (first.last_used ?? null) === (second.last_used ?? null);
+    if (!tied) setSelectedShortcutId(first.id);
   }, [presets, presetsLoading, filter.categoryId, selectedShortcutId, setSelectedShortcutId]);
 
   // --------------------------------------------

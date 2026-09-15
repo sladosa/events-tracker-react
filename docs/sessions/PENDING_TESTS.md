@@ -34,6 +34,8 @@ u istom retku. Prije su bili nevidljivi.
 | **T-S137-4** | ⭐ MC košara 11.09. — `--apply` + kontrola                                 | ✅ **15.09. PROD** — `69 ispravaka / 2 brisanja`, pa ponovni `uskladi_izvod`: `48 POTVRĐENO / 0 ZA ISPRAVAK`. `promet_check` **nepromijenjen** `27/5` ⇒ MC ne dira tekući |
 | **T-S137-5** | ⭐ `Tip`/`Podtip` za 15 neklasificiranih redaka košare                     | ✅ **15.09. PROD** — `upisano polja: 30 · provjera nakon čitanja: SVE SE SLAZE`; ponovni dry run daje **0 za promjenu** (idempotentno) |
 | **T-S137-6** | `skriveno ✕` sakriva **samo to polje**; polje otkriveno preko „Show all" ostaje običan natpis | ✅ **15.09. PROD** (`dev:prod`) -- s **dva** otvorena polja klik na `Izvod opis` sakrio **samo njega**, `Valuta` ostala; polja iz Show all nose natpis **bez** ✕ |
+| **T-S137-7** | ⭐ Preset ne zamrzava izvedenu vrijednost: `Datum naplate` se racuna, ne pamti | ✅ **15.09. PROD** -- snimka `AI_rucak` ima **6** vrijednosti, `Datum naplate` i `Status` **nisu u njoj**; uz `Visa` izracunat `03.10.`, a promjenom `Izvor -> Racun` **skocio na `15.09.`** |
+| **T-S137-8** | Auto-odabir preseta samo kad pobjednik **nije nerijesen** | ✅ djelomicno: uz `Financije` (12x) + `AI_rucak` (0x) auto-odabir **i dalje radi** (bira cesceg), pa je `AI_rucak` trebalo izabrati rucno. ⬜ grana **izjednaceno** (dva preseta `0x` + `last_used NULL`) neprovjerena -- Kokin slucaj je obrisan |
 
 ⚠ **`dev:prod` je nov kod nad PROD bazom** ⇒ `T-S136-6/-8/-9` **ne čekaju deploy**.
 Tri testa zatvorena bez ijednog Netlify builda.
@@ -73,7 +75,7 @@ Detalji: [S136_tests.md](tests/S136_tests.md)
 | #            | test                                                                      | status |
 | ------------ | ------------------------------------------------------------------------- | ------ |
 | **T-S136-6** | ⭐ Shortcutovi su se prikazivali **dvaput**, jednom pod „Nepoznata Area"    | ✅ **15.09. PROD** kroz `dev:prod` — svaki shortcut jednom, `<optgroup>` po Arei, bez „Nepoznata Area" |
-| **T-S136-7** | ⚠ **NALAZ:** poruka o greški u Export modalu crta se ~200 redaka JSX-a niže od gumba koji ju izaziva ⇒ izvan vidljivog dijela skrolanog modala. Izgleda kao „ništa se nije dogodilo" | ⬜ **nije popravljeno** — traži premještanje banner-a uz sekciju, ne samo tekst |
+| **T-S136-7** | ⚠ **NALAZ:** poruka o greški u Export modalu crta se ~200 redaka JSX-a niže od gumba koji ju izaziva ⇒ izvan vidljivog dijela skrolanog modala. Izgleda kao „ništa se nije dogodilo" | ✅ **POTVRDEN 15.09. PROD** -- klik na `Import Profile` s vrha modala ostavlja crvenu traku **odrezanu na dnu**; treba skrolati da se procita. ⚠ Na nizem prozoru ne bi se vidjela ni traka. **Popravljeno**: `errorRef` + `scrollIntoView(block: nearest)`; ✅ provjereno 15.09. na **punoj i polovicnoj** visini prozora |
 | **T-S136-9** | ⭐ Sažeta linija skrivenih polja **imenuje** ih umjesto da ih broji, i ime je klikabilno (otkrij samo to polje) | ✅ **15.09. PROD** kroz `dev:prod` — `Izvod opis`, `Valuta`. ⚠ Saša: nakon otvaranja **nije se dalo zatvoriti** ⇒ `T-S137-6` |
 | **T-S136-8** | `sharedContext` dodan u dep listu oba profila (`ExcelExportModal`)        | ✅ **15.09. PROD** — spremanje profila kao write-grantee odbijeno uz **točnu** poruku (v. `T-S136-2`) |
 
@@ -803,7 +805,7 @@ ZABA `−22.943,71`.
 | P-1…P-6 | `verify_rpc_vs_model.py`: B vs C 0,00, A vs B 0,00, sidro 0,00, D1b 634/634 | ✅ (programski) |
 | P-7…P-12 | `rpc_area_balance_anchored` end-to-end: sidro zbraja, granica **stvarno** isključiva (1 redak na granici), grupa bez prometa se i dalje prikazuje, poziv bez prava 401, nepoznat slug 400 s imenom | ✅ (programski) |
 | T-S108-1 | ⭐ Overview tab postoji samo uz `dashboard` config (OQ-4), redoslijed Overview → Activities → Structure | ✅ (2026-08-15) |
-| T-S108-1b | Add Activity + “⚡ Use” rade i iz Overviewa; povratak nakon spremanja ide na Overview; leaf hint uz sivi gumb | ⬜ |
+| T-S108-1b | Add Activity + “⚡ Use” rade i iz Overviewa; povratak nakon spremanja ide na Overview; leaf hint uz sivi gumb | ✅ **15.09. PROD** koraci 2/3/4 (`+` aktivan na Overviewu, `Use` vodi u Add, Finish vraca na Overview). ⚠ **Korak 5 PAO i popravljen**: uz `All Categories` gumb je siv **bez hinta** -- uvjet je trazio `filter.categoryId`, a to je ondje `null`. Sada gleda `filter.areaId`, isto kao gumb. ⬜ provjera u `dev:prod` |
 | T-S108-2 | ⭐ Pločica — ZABA 150,80 €, RF −1.978,32 €, „od početka podataka" | ✅ (2026-08-15) |
 | T-S108-3 | „planirano" — ZABA −2.521,38 € (13) | ✅ (2026-08-15) |
 | T-S108-4 | ⭐ Sidro: Δ čip ✅; **„Potvrdi" ✅ (2026-08-16)** — sidro 3.000 spremljeno, podnaslov prešao na „od potvrde 16.08.2026. · 3.000,00 € · 0 promjena poslije". Koraci **4–5 (transakcija poslije / prije sidra) još neisprobani** | 🟡 3/5 |
