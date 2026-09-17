@@ -121,6 +121,32 @@ redak-po-redak trazila **ponovljene** pune runove s obje strane, ne jedan par.
 runom, pa se usporedjuju **brojke** punih runova i obitelji padova, ne popis test-po-test.
 Tko zeli redak-po-redak, mora pustiti oba puna runa iznova.
 
+## Nedovrseno: navigacija CLAUDE.md-a u Obsidianu (S139, Sasa: „sredit cemo sljedeci put")
+
+Tri od pet stavki su zatvorene; ostaju **dvije**, obje s pripremljenim testom.
+
+**(a) Skok na sekciju baci te u Edit mode.** Izmjereno: `.obsidian/app.json` **nema** kljuc
+`defaultViewMode`, dakle vrijedi Obsidianova zadana vrijednost (*Editing*). Klik na link je
+navigacija, a navigacija otvara metu u **zadanom** nacinu prikaza -- zato rucno skrolanje gore
+ostaje u Reading viewu, a klik ne.
+=> Rjesenje je **postavka, ne file**: Settings -> Editor -> „Default view for new tabs" ->
+   `Reading view`. /!\ Vrijedi za SVE njegove biljeske => **njegova odluka**, ne nasa izmjena.
+
+**(b) Dva retka indeksa se prikazuju kao VANJSKI link** (ikona strelice): `S112+: Intelligence
+layer` i `Financije — pravila domene (izvodi, rjecnik, 1:N)`. To su **jedina dva** naslova s
+**dvotockom** u tekstu -- Obsidian `S112+:` i `1:N` cita kao URL shemu.
+=> Test je vec napisan: **`Claude-temp_R/ANCHOR_TEST3.md`** (7 varijanti, Reading view).
+   Kad se zna koja radi, popravak je jedan izraz u `claude_index.py`.
+
+/!\ **Sto je vec dokazano i ne treba ponovo mjeriti:**
+- Sidro je **ime naslova**, ne GitHub slug. Ugao-zagrade `(<#Ime Naslova>)` rade -- potvrdjeno
+  slikom da se u Reading viewu prikazuje **svih 18** linkova ispravno. **Ne prepisivati ih**
+  na kodirani oblik „za svaki slucaj": to bi bio popravak necega sto nije pokvareno.
+- Povratni link `[^ Sadrzaj](#Sadrzaj)` ide **bez** ugao-zagrada -- meta je jednorjecna.
+- Ciscenje povratnih linkova ide **po obliku** (`BACKLINK_RE`), ne po doslovnom stringu.
+- `CLAUDE.md` nakon svakog `--write` pokazuje `M` u gitu uz **prazan** `git diff` -- to je
+  normalizacija prijeloma redaka (`autocrlf`), ne izmjena. Nije kvar.
+
 ## Otvorena pitanja
 
 **`PENDING_TESTS.md` je narastao na 1.159 redaka i 34 sekcije, a otvorenih testova ima 24.**
