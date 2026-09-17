@@ -1,5 +1,13 @@
 # PENDING TESTS
 
+> **Arhivirani session fileovi izlaze iz gita** (ritual, korak 3): sele u
+> `Claude-temp_R/test-sessions/archive/`, koji je gitignoriran. Linkovi na njih zato
+> pokazuju izvan repoa i rade samo lokalno.
+> 
+> /!\ Do S139 arhiviranje **nije diralo linkove**, pa ih je 21 od 30 pokazivao u prazno
+> (`tests/S111_tests.md` i dalje, svi postojeci u arhivi). Mrtav link se cita kao
+> „tog dokaza vise nema", a dokaz je cijelo vrijeme bio na disku.
+
 **Branch:** `test-branch` (dev) / `main` (PROD)
 **Zadnji update:** S138 (2026-09-15) - deploy na `main` pusten; `cutoff:3:5` i `rata.date_map.Visa=5` primijenjeni na PROD-u kroz Structure uvoz (pod Kokinim racunom -- `areas.settings` je vlasnikov). Nadjeno da `Datum naplate` ima DVA rjecnika i da samo jedan razumije tokene. Ranije: S137 (2026-09-15) - triaza: `S119`-`S123` arhivirani (17 -> 12 otvorenih session fileova), `audit_tests.py` prestao biti slijep za cetiri od pet oblika ID-a i za tri od pet oznaka statusa; PROD potvrdio kolonu `Racun`. Ranije: S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
 
@@ -223,7 +231,7 @@ su bila samo na `test-branch`, pa se PROD ponasao po starom.
 
 ## S131 — decimalni zarez + obavezna polja (2026-09-08)
 
-Detalji: [S131_tests.md](tests/S131_tests.md)
+Detalji: [S131_tests.md](../../Claude-temp_R/test-sessions/archive/S131_tests.md)
 
 ⚠ **Gdje se testira:** kod nije na `main`, pa PROD aplikacija (Kokina) jos vrti
 stari bundle — kvacica `Required` upisana na PROD ondje nece ni blokirati ni
@@ -375,7 +383,7 @@ Detalji: [S129_tests.md](tests/S129_tests.md)
 
 ## S123 — Kokin roundtrip, ispravci tuđih redaka, i `Datum naplate` (2026-08-31)
 
-Detalji: [S123_tests.md](tests/S123_tests.md)
+Detalji: [S123_tests.md](../../Claude-temp_R/test-sessions/archive/S123_tests.md)
 
 ⚠ **Sve je na `test-branch`. PROD je na `5533420`** — Koka od ovoga još ništa ne vidi.
 ⚠ **Redoslijed puštanja nije stvar ukusa:** prvo `sql/043` na PROD, **pa tek onda**
@@ -435,7 +443,7 @@ datirane preskočio, pa bi i košara 11.08. ispala kraća točno za njih.
 
 ## S122 — fantomski nacrt: dijalog nad formom u koju nitko nije tipkao (2026-08-29)
 
-Detalji: [S122_tests.md](tests/S122_tests.md)
+Detalji: [S122_tests.md](../../Claude-temp_R/test-sessions/archive/S122_tests.md)
 
 **Nalaz je Sašin, iz T-S121-3.** Kad je auto-save u S121 konačno proradio, počeo je pisati
 nacrt i za forme koje nitko nije dotaknuo — Add se sam napuni defaultima, a prvi tik piše
@@ -463,7 +471,7 @@ uopće ne može napisati — a to je točno bio S121 bug.
 
 ## S121 — dva Sašina nalaza s PROD-a, oba veća nego što su izgledala (2026-08-28)
 
-Detalji: [S121_tests.md](tests/S121_tests.md)
+Detalji: [S121_tests.md](../../Claude-temp_R/test-sessions/archive/S121_tests.md)
 
 ### Automatizirano, ne traži ništa (2 filea, 4 slučaja)
 
@@ -563,7 +571,7 @@ Pravi potez ostaje **Postgres upgrade na PROD-u** (`Settings → Infrastructure`
 
 ### Novo u S120 — traži telefon ili tvoj račun
 
-Detalji: [S120_tests.md](tests/S120_tests.md)
+Detalji: [S120_tests.md](../../Claude-temp_R/test-sessions/archive/S120_tests.md)
 
 | # | test | status |
 | --- | --- | --- |
@@ -638,7 +646,7 @@ python data-prep_tools/Tools/audit_tests.py
 ```
 
 Ispisuje po session fileu koliko je testova definirano, koliko ✅ / ⬜, i koje je fileove **spremno arhivirati** (svi ✅). ⚠ Prijavljuje i testove kojih u ovom fileu uopće nema — v. „Siročad" ispod.
-**Detalji S119:** [S119_tests.md](tests/S119_tests.md) · **S116:** [S116_tests.md](tests/S116_tests.md) · **S115:** [S115_tests.md](tests/S115_tests.md) · **S114:** [S114_tests.md](tests/S114_tests.md) · **S113:** [S113_tests.md](tests/S113_tests.md) · **S112:** [S112_tests.md](tests/S112_tests.md) · **S111:** [S111_tests.md](tests/S111_tests.md) · **S110:** [S110_tests.md](tests/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107x:** [S107x_tests.md](tests/S107x_tests.md) · **S107w:** [S107w_tests.md](tests/S107w_tests.md) · **S107v:** [S107v_tests.md](tests/S107v_tests.md) · **S107u:** [S107u_tests.md](tests/S107u_tests.md)
+**Detalji S119:** [S119_tests.md](../../Claude-temp_R/test-sessions/archive/S119_tests.md) · **S116:** [S116_tests.md](../../Claude-temp_R/test-sessions/archive/S116_tests.md) · **S115:** [S115_tests.md](../../Claude-temp_R/test-sessions/archive/S115_tests.md) · **S114:** [S114_tests.md](../../Claude-temp_R/test-sessions/archive/S114_tests.md) · **S113:** [S113_tests.md](../../Claude-temp_R/test-sessions/archive/S113_tests.md) · **S112:** [S112_tests.md](../../Claude-temp_R/test-sessions/archive/S112_tests.md) · **S111:** [S111_tests.md](../../Claude-temp_R/test-sessions/archive/S111_tests.md) · **S110:** [S110_tests.md](../../Claude-temp_R/test-sessions/archive/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107x:** [S107x_tests.md](../../Claude-temp_R/test-sessions/archive/S107x_tests.md) · **S107w:** [S107w_tests.md](../../Claude-temp_R/test-sessions/archive/S107w_tests.md) · **S107v:** [S107v_tests.md](../../Claude-temp_R/test-sessions/archive/S107v_tests.md) · **S107u:** [S107u_tests.md](../../Claude-temp_R/test-sessions/archive/S107u_tests.md)
 
 ---
 
@@ -717,11 +725,11 @@ izmjereni u harnessu s istim klasama:
 | T-S119-7 | Desktop lista **nepromijenjena** (dug datum, kolone jedna do druge, `Stanje` vidljivo) | ✅ S136 — nadiđeno upotrebom |
 | T-S119-8 | PROD nema kolonu `Račun` (bila upisana samo na TEST-u) | ✅ S137 — **izmjereno na PROD-u**: `list_columns` nosi `role: attr`, `label: Račun`, `slugs: [racun]` i `map` (`Sašin tekući RF → RF`, `Kokin tekući ZABA → ZABA`). Upisano usput, negdje između S119 i danas |
 
-**Detalji:** [S119_tests.md](tests/S119_tests.md)
+**Detalji:** [S119_tests.md](../../Claude-temp_R/test-sessions/archive/S119_tests.md)
 
 ## S116 — kolone po Arei · `--iz-koke` · sidro
 
-Puni koraci: [S116_tests.md](tests/S116_tests.md).
+Puni koraci: [S116_tests.md](../../Claude-temp_R/test-sessions/archive/S116_tests.md).
 
 | Test      | Što                                                                                                                                         | Status                                                                                                                                   |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1002,7 +1010,7 @@ Nevaljanih parova **171 → 0**. Potrošeno na API ~$4,4. Puni kontekst: `NEXT_S
 
 **Riješeno u S107n:** `--run` mode napisan i izvršen (1593 prijedloga).
 **Još otvoreno:** `source_key` fix i `sql/0NN_staging_financije.sql` nisu napravljeni.
-**Detalji testova:** [S107k_tests.md](tests/S107k_tests.md) (novi) + [S107j_tests.md](tests/S107j_tests.md) + [S107i_tests.md](tests/S107i_tests.md) + [S107h_tests.md](tests/S107h_tests.md) + [S107g_tests.md](tests/S107g_tests.md) + [S107f_tests.md](tests/S107f_tests.md)
+**Detalji testova:** [S107k_tests.md](../../Claude-temp_R/test-sessions/archive/S107k_tests.md) (novi) + [S107j_tests.md](tests/S107j_tests.md) + [S107i_tests.md](tests/S107i_tests.md) + [S107h_tests.md](../../Claude-temp_R/test-sessions/archive/S107h_tests.md) + [S107g_tests.md](../../Claude-temp_R/test-sessions/archive/S107g_tests.md) + [S107f_tests.md](../../Claude-temp_R/test-sessions/archive/S107f_tests.md)
 **Upute za izvode (i za Koku):** [UPUTE_izvodi.md](../../Claude-temp_R/UPUTE_izvodi.md) — kako skinuti/spremiti/obraditi bankovne izvode
 
 ---

@@ -119,9 +119,13 @@ for line in pend.splitlines():
 
 # --- kurirani redak „Otvoreno:" ---
 curated = set()
+curated_retired = False
 for line in pend.splitlines():
     if line.startswith('**Otvoreno:'):
-        curated = set(ID.findall(line))
+        if 'NE VODI SE OVDJE' in line:
+            curated_retired = True
+        else:
+            curated = set(ID.findall(line))
         break
 
 print('=' * 78)
@@ -196,6 +200,17 @@ open_in_tables = {i for i, st in status.items() if st == 'open'}
 only_curated = sorted(curated - open_in_tables)
 only_tables = sorted(open_in_tables - curated)
 print()
-print('PROTURJECNOST u PENDING_TESTS.md')
-print('  „Otvoreno:" navodi, a tablica ne kaze ⬜ : %d  %s' % (len(only_curated), only_curated[:12]))
-print('  tablica kaze ⬜, a „Otvoreno:" ne navodi : %d  %s' % (len(only_tables), only_tables[:12]))
+if curated_retired:
+    # /!\\ Kurirani popis je UKINUT u S116 (redak glasi 'NE VODI SE OVDJE') jer se
+    #     rucno odrzavao i razilazio s tablicama. Do S139 je alat taj marker citao
+    #     kao PRAZAN popis, pa je SVAKI otvoren redak prijavljivao kao proturjecnost:
+    #     izmjereno 22 od 22, dakle brojka je bila artefakt provjere, a ne stanje
+    #     dokumenta. Audit od 2026-09-16 ju je preuzeo kao nalaz o dokumentu.
+    # /!\\ Upozorenje koje uvijek pali covjek nauci preskakati -- pa onda ne vidi
+    #     ni ono pravo. Zato se ovdje SUTI, ne ispisuje nula.
+    print('Kurirani popis Otvoreno: ukinut je u S116 -- tablice su jedini izvor.')
+    print('Provjera proturjecnosti se preskace: nema s cim usporediti.')
+else:
+    print('PROTURJECNOST u PENDING_TESTS.md')
+    print('  „Otvoreno:" navodi, a tablica ne kaze ⬜ : %d  %s' % (len(only_curated), only_curated[:12]))
+    print('  tablica kaze ⬜, a „Otvoreno:" ne navodi : %d  %s' % (len(only_tables), only_tables[:12]))
