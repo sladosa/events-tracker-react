@@ -4,6 +4,12 @@
 **Autor:** Claude Fable 5 (nastavak Fable review-a 2026-07-03, sekcija "Što nije u ovom dokumentu")
 **Status:** PRIJEDLOG — čeka odluke (vidi Open Questions na dnu)
 
+> /!\ **§3 je OPOVRGNUT** (`docs/OVERVIEW_TAB_SPEC.md` §2.2, potvrdjeno u CLAUDE.md).
+> Bucketiranje **ne ide client-side** nego u Postgres (`rpc_area_group_agg`) — pregledniku se
+> ne salju sirovi eventi. Ostatak dokumenta i dalje vrijedi kao prijedlog.
+> Napomena dopisana u S139: dotad je to stajalo samo u CLAUDE.md-u, pa je svatko tko otvori
+> ovaj file morao **znati da drugdje provjeri** je li jos vrijedi.
+
 Cilj dokumenta: dizajn **Period** entiteta (vremenski raspon koji opisuje projekt, putovanje,
 životnu fazu) koji se korelira s eventima iz različitih Area, te **cross-area kombiniranje**
 lanaca kategorija i atributa (UI + Excel format). Oboje se sastaje u novom **Analytics tabu**.
