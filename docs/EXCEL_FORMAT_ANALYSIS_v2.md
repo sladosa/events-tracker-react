@@ -6,6 +6,36 @@
 **Purpose:** Detailed comparison of Streamlit (v5) and React structure Excel formats,
 with final format decisions and implementation record.
 
+
+> ## /!\ STATUS: POVIJESNI ZAPIS ODLUKE, NE OPIS TRENUTNOG FORMATA (provjereno S139)
+>
+> Izmjereno 17.09.2026. protiv `src/lib/structureExcel.ts`, koji ovaj dokument i sam zove
+> „source of truth" (§4.1). **Tablica u §4.1 vise ne opisuje format:**
+>
+> | | doc (§4.1) | kod danas |
+> | --- | ---: | ---: |
+> | broj kolona | 17 (A–Q) | **23 (A–W)** |
+> | ime lista | `HierarchicalView` | **`Structure`** (preimenovan S26) |
+> | broj listova | „single sheet" (§3.5) | **5**: Structure, HelpStructure, Automations, ListColumns, Events |
+>
+> /!\ **Opasnije od broja: SVAKO SLOVO od D nadalje je pomaknuto.** Sest kolona je
+> dodano poslije (`SharedWith`, `HiddenInAdd`, `CommentTemplate`, `DisableSavePlus`,
+> `AddTimer`, `AddDatePicker`), pa se 20 od 23 imena vise ne poklapa sa slovom iz tablice:
+> doc kaze `D = CategoryPath`, a danas je `D = SharedWith`. Tko po ovoj tablici napise alat,
+> pise u **krive kolone** — i to bez greske, jer uvoz kolone trazi po IMENU, pa krivo
+> imenovanu jednostavno ne nadje.
+>
+> **Aplikacija NIJE u kvaru:** `structureExcel.ts` slova racuna (`colLetter`), ne hardkodira
+> ih — provjereno na Area formuli (`:549`). Zastario je dokument, ne kod.
+>
+> **Sto je i dalje vrijedno u ovom dokumentu:** §1–§3 (Streamlit v5 usporedba i ODLUKE koje
+> su iz nje proizasle) — to je povijest koja objasnjava *zasto* je format ovakav, i ona ne
+> zastarijeva. §4.1 citaj kao „stanje na S20", nikad kao referencu. §5 i §7 su planovi koji
+> su odavno izvedeni (`structureImport.ts` postoji i radi).
+>
+> ⇒ **Za trenutni popis kolona postoji tocno jedno mjesto: `COLS` u `src/lib/structureExcel.ts`.**
+> Ovdje se namjerno NE prepisuje: dvije kopije istog popisa su vec dvaput odlutale.
+
 ---
 
 ## 1. Streamlit Format (v5 — `enhanced_structure_exporter.py`)

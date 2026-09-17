@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 106 | [Three core principles — NEVER violate](#three-core-principles--never-violate) | X |
 | 118 | [Critical rules](#critical-rules) | X |
 | 1039 | [Zamke (data pipeline / AI / E2E)](#zamke-data-pipeline--ai--e2e) | X |
-| 1533 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
-| 1548 | [Key files](#key-files) |  |
-| 1667 | [Structure tab — component map](#structure-tab--component-map) |  |
-| 1686 | [Data model (simplified)](#data-model-simplified) |  |
-| 1707 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
-| 1732 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
-| 1752 | [Open bugs](#open-bugs) | ~ |
-| 1822 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
-| 2010 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
-| 2106 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
-| 2113 | [Backlog](#backlog) | ~ |
-| 2396 | [TypeScript known issue](#typescript-known-issue) |  |
-| 2403 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+| 1549 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
+| 1564 | [Key files](#key-files) |  |
+| 1683 | [Structure tab — component map](#structure-tab--component-map) |  |
+| 1702 | [Data model (simplified)](#data-model-simplified) |  |
+| 1723 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
+| 1748 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
+| 1768 | [Open bugs](#open-bugs) | ~ |
+| 1838 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
+| 2026 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
+| 2122 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
+| 2129 | [Backlog](#backlog) | ~ |
+| 2423 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2430 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
 
-_Ukupno 2526 redaka, 18 sekcija._
+_Ukupno 2553 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -81,7 +81,7 @@ podaci hrane i AI sloj.
 | `docs/OVERVIEW_TAB_SPEC.md`               | **Overview tab / analitika** — model pločice, RPC, sidro salda, gdje živi konfiguracija |
 | `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` | **⚠ PROČITATI prije Faze 1** — dokaz modela salda nad 4.996 redaka, 3 zamke u mjerenju |
 | `docs/STRUCTURE_TAB_SPEC_FOR_DEV_v1.1.md` | Structure tab work                                                               |
-| `docs/EXCEL_FORMAT_ANALYSIS_v2.md`        | Excel export/import work (⚠ audit ga zove zastarjelim — provjeri prije oslanjanja) |
+| `docs/EXCEL_FORMAT_ANALYSIS_v2.md`        | Excel export/import work — **⚠ POVIJESNI ZAPIS, ne referenca** (izmjereno S139: doc 17 kolona A–Q, kod 23 A–W, i svako slovo od D nadalje je pomaknuto). Popis kolona ima **samo** `COLS` u `src/lib/structureExcel.ts` |
 | `sql/SQL_schema_V5_commented.sql`         | DB schema reference                                                              |
 | `docs/Code_Guidelines_React_v6.md`        | Code conventions                                                                 |
 | `docs/COLLAB_PLAN_v2.md`                  | Collab implementation plan (v2) — faze 0–11, decisions                           |
@@ -1461,6 +1461,22 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   „Otvoreno:" ukinut je u S116, a alat je marker citao kao **prazan popis**, pa je svaki
   otvoren redak prijavljivao kao razilazenje. Audit ga je preuzeo kao nalaz o dokumentu.
   /!\ Upozorenje koje uvijek pali covjek nauci preskakati — pa onda ne vidi ni ono pravo.
+- **/!\ NACELO „KOLONA KOJE NEMA NE DIRA SVOJU POSTAVKU" NE DOSEZE U `validation_rules`**
+  (S139). `structureImport.ts:874-879` to nacelo provodi za Area postavke — `hasSavePlusCol`,
+  `hasAddTimerCol`, `hasAddDateCol`, `hasCommentTplCol` — i **radi**. Ali `hidden_in_add` ne
+  zivi u vlastitoj postavci nego **unutar `validation_rules`**, a taj se na UPDATE-u prepisuje
+  **u cijelosti** (`:858`). Dakle Structure file bez kolone `HiddenInAdd` daje `newRules` bez
+  tog kljuca ⇒ `rulesDiff` je `true` ⇒ UPDATE opali ⇒ **zastavica se tiho obrise**.
+  Izmjereno po konstrukciji, ne pretpostavljeno: `findCol` vraca `0`, `get(0)` vraca `''`,
+  `'' === 'TRUE'` je `false`, a `buildValidationRules` kljuc tada uopce ne doda (`:413`).
+  ⚠ **Bilo je dohvatljivo:** `make_financije_all_structure.py` je imao popis od 19 kolona uz
+  komentar „redoslijed kao u app exportu" — a kod ih ima 23. Sva **tri** `hidden_in_add`
+  atributa u bazi su bas u `Financije_all`, dakle u Arei koju taj alat generira.
+  Zatvoreno u alatu (kolona dodana, S139); **uvoz nije diran** — v. Backlog.
+  ⚠ Suprotno vrijedi za `DisableSavePlus`: ondje prazno **legitimno znaci FALSE**, pa bi
+  dodavanje kolone bez tocne vrijednosti ugasilo zabranu `Save +`. Izostanak je ondje
+  ispravan, a prisutnost opasna — dakle „popis kolona mora biti potpun" je **kriva** pouka.
+  Tocna je: **za svaku kolonu provjeri sto uvoz radi kad je NEMA.**
 - **Sto je od ovoga BRANA, a ne izvjestaj:** `npm run check` = `typecheck` + `test:unit` +
   `lint:ratchet`; CI ih vrti **i na `test-branch`** (do S139 se okidao samo na `main`, dakle
   tek kad kod vec ide na PROD). Ratchet gadja **samo dva** `react-hooks` pravila — gate koji
@@ -2355,6 +2371,17 @@ Predviđeno u OVERVIEW_TAB_SPEC §2.16 kao test; ispalo da filtru fali mogućnos
 ⚠ **Nije samo drill** (Sašin nalaz S118, iz stvarnog rada u appu): isto fali u **običnom
 filtru** — „ZABA **i** samo uplate" (`Racun` + `Smjer`) korisnik ne može složiti. Time to
 prestaje biti polish pločice i postaje svakodnevna potreba. Sašina odluka: **ne sada.**
+
+**⭐ `hidden_in_add` se tiho brise kad Structure file nema kolonu `HiddenInAdd`** (S139).
+Popravljen je **alat** (`make_financije_all_structure.py` sada emitira kolonu), ali **uvoz je
+ostao kakav jest**: svaki drugi file bez te kolone — stariji export, rucno skracen file, tudi
+alat — i dalje brise zastavicu, i to bez ijedne poruke.
+⚠ Pravi popravak je u `structureImport.ts`: `hidden_in_add` mora slijediti **isto nacelo** koje
+Area postavke vec imaju (`hasSavePlusCol` i dr.) — nema kolone ⇒ zadrzi postojecu vrijednost.
+Traži da se u `buildValidationRules` proslijedi „je li kolona postojala", jer se danas ne
+razlikuje *„pise FALSE"* od *„kolone nema"*.
+⚠ **Ne popravljati napamet:** mijenja semantiku uvoza za svaki file, pa ide uz test i uz
+Sasinu potvrdu. Danas pogađa **3 atributa**, sva tri u `Financije_all`.
 
 **Postgres upgrade — otvoren od S105, i retry ga samo SKRIVA** (spaseno iz `BUG-S121-AREACTX`,
 S139). Palo citanje `areas` na PROD-u je vjerojatno S105 obrazac: free-tier se gusi. `withRetry`

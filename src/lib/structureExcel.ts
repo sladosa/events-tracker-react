@@ -3,14 +3,16 @@
 // ============================================================
 //
 // v2 vs v1:
-//   • Single sheet "Structure" (was: "HierarchicalView" pre-S26)
-//   • 20 fixed columns A–T (no dynamic DependsOnWhen_* columns)
+//   • Glavni list "Structure" (bio "HierarchicalView" do S26). NIJE vise jedini list —
+//     workbook nosi i HelpStructure, Automations, ListColumns, Events (v. "Unified workbook").
+//   • 23 fixed columns A–W (no dynamic DependsOnWhen_* columns)
+//     /!\ Broj raste; ne prepisuj ga rucno na dva mjesta. Mjeri `COLS.length`.
 //   • Multi-row DependsOn: one row per WhenValue (Streamlit style)
 //   • Rows 1–5: color legend (row-grouped, default collapsed)
 //   • Row 6: always-visible info/backup row
 //   • Row 7: header row
 //   • Row 8+: data rows
-//   • Freeze pane at G8 (cols A–F + rows 1–7 frozen)
+//   • Freeze pane at H8 (cols A–G + rows 1–7 frozen; `xSplit: 7`)
 //   • Column-based editability coloring (Pink/Yellow/Blue/Green)
 //   • Column groups per spec (some collapsed, some open by default)
 //   • Excel data validations on Type, AttrType, IsRequired, Val.Type
@@ -109,7 +111,8 @@ const COLS = [
   { key: 'addDate',     header: 'AddDatePicker', width: 14, colColor: CLR.GREEN, grouped: true, collapsed: false },
 ] as const;
 
-const N_COLS = COLS.length; // 20
+const N_COLS = COLS.length; // 23 (S139) — /!\ komentar je zaostajao za nizom;
+                            // vrijednost je uvijek `COLS.length`, komentar samo podsjetnik.
 
 // Column letter helpers (0-based index: A=0, B=1, ...)
 function colLetter(idx: number): string {

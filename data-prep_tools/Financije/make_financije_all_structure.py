@@ -171,10 +171,21 @@ AUTOMATION_ROWS = [
     },
 ]
 
-# Kolone Structure sheeta — redoslijed kao u app exportu
+# Kolone Structure sheeta - redoslijed kao u app exportu.
+# /!\ NEPOTPUN JE NAMJERNO, i razlika izmedju "smije faliti" i "ne smije" NIJE
+#     stvar ukusa nego toga kako uvoz tretira odsutnu kolonu:
+#       - DisableSavePlus / AddTimer / AddDatePicker  -> SMIJU faliti.
+#         `structureImport.ts:874-879` ih cuva (`hasSavePlusCol` i dr.): kolone
+#         koje nema u fileu ne dira svoju postavku. Dodati DisableSavePlus BEZ
+#         tocne vrijednosti bilo bi GORE nego ga izostaviti -- ondje prazno
+#         legitimno znaci FALSE, pa bi uvoz ugasio zabranu `Save +`.
+#       - HiddenInAdd -> NE SMIJE faliti (dodan S139). On zivi UNUTAR
+#         `validation_rules`, a taj se na UPDATE-u prepisuje u cijelosti
+#         (`structureImport.ts:858`), pa ga odsutnost kolone TIHO BRISE.
+#         Sva tri `hidden_in_add` atributa u bazi su bas u `Financije_all`.
 COLUMNS = [
     "Type", "IsLeaf", "Area", "SharedWith", "CategoryPath", "Sort",
-    "AttrName", "Slug", "AttrType", "IsRequired", "Val.Type", "Default",
+    "AttrName", "Slug", "AttrType", "IsRequired", "HiddenInAdd", "Val.Type", "Default",
     "Val.Max (no)", "Unit", "TextOptions/Val.Min", "DependsOn", "WhenValue",
     "Description", "CommentTemplate",
 ]
