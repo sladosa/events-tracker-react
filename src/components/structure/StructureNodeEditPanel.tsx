@@ -1370,7 +1370,10 @@ export function StructureNodeEditPanel({
     } finally {
       setSaving(false);
     }
-  }, [name, description, sortOrder, disableSavePlus, commentTemplate, attrStates, node, onSaved]);
+  // /!\ `allNodes` je prop koji save put cita (gradnja putanje/aree). Bez njega bi
+  //     callback mogao spremati prema ZASTARJELOM stablu — a ovdje je ishod upis u bazu,
+  //     ne prikaz. Dodavanje je bezopasno: handler se zove klikom, ne iz efekta.
+  }, [name, description, sortOrder, disableSavePlus, commentTemplate, attrStates, node, onSaved, allNodes]);
 
   const nodeTypeLabel = node.nodeType === 'area' ? 'Area' : node.isLeaf ? 'Leaf' : `L${node.level}`;
 

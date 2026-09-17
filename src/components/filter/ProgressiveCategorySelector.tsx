@@ -310,7 +310,11 @@ export function ProgressiveCategorySelector({
     } finally {
       setIsLoading(false);
     }
-  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectAreaAndCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange, resetCategory, setPeriodLabel, setPeriodKey, setSortOrder, setCommentSearch, clearCommentSearch, setAttrFilter, clearAttrFilter]);
+  }, [presets, buildFullPath, loadChildCategories, loadL1AndL2Categories, selectAreaAndCategory, setIsLeafCategory, setSelectedShortcutId, setSelectionChain, setDropdownOptions, updatePathDisplay, incrementUsage, areas, onLeafSelected, setDateRange, resetCategory, setPeriodLabel, setPeriodKey, setSortOrder, setCommentSearch, clearCommentSearch, setAttrFilter, clearAttrFilter,
+      // /!\ `skipNextFilterReset` je `useRef` iz `FilterContext` (`:217`), dakle STABILAN
+      //     identitet — dodavanje ne mijenja kad se callback stvara. Lint ga trazi jer iz
+      //     destrukturiranja ne vidi da je ref. Navesti ga je jeftinije nego ga suzbiti.
+      skipNextFilterReset]);
 
   const handleSavePreset = useCallback(async () => {
     const trimmedName = newPresetName.trim();
@@ -389,7 +393,10 @@ export function ProgressiveCategorySelector({
       byArea.get(key)!.items.push(p);
     }
     return Array.from(byArea.values());
-  }, [visiblePresets, areas, areasLoading, presets]);
+  // /!\ `presets` je izbacen (S139): `visiblePresets` je i sam `useMemo` NAD njim
+  //     (`:363`), pa se ovaj memo ionako preracuna kad se `presets` promijeni. Suvisan
+  //     dep nije bezopasan — sugerira ovisnost koje nema i skriva pravu.
+  }, [visiblePresets, areas, areasLoading]);
 
   /** `23× · 12.06.` — brojka je za odluku o BRISANJU, ne za ukras (FILTER_SPEC §5).
    *  ⚠ Prozorska brojka („zadnja 2 mjeseca") ne postoji: baza drži kumulativni

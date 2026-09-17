@@ -447,7 +447,14 @@ export function StructureDeleteModal({
       setError(classifyDeleteError(err, nodeLabel));
       setDeleting(false);
     }
-  }, [cascadeDelete, node.id, nodeLabel, onDeleted]);
+  // /!\ `node` (ne `node.id`) i `subtreeIds`: oba se citaju u tijelu — `subtreeIds` i
+  //     `node.nodeType` idu u `structure-deleted` payload, a backup grana cita jos
+  //     `node.name`/`node.areaId`/`node.area?.name`. Ponasanje se NE mijenja: `subtreeIds`
+  //     je obican `const` (r. 214), dakle nov niz svaki render, pa se `cascadeDelete` —
+  //     koji ga vec ima u depovima — ionako stvara iznova, a s njim i ovaj callback.
+  //     Dodano u S139 da lista prestane lagati: da netko sutra memoizira `subtreeIds`,
+  //     stara lista bi tiho zamrznula payload BRISANJA.
+  }, [cascadeDelete, node, nodeLabel, onDeleted, subtreeIds]);
 
   /** BLOCKED path — skip backup, delete directly (user already has backup or doesn't need one). */
   const handleDeleteWithoutBackup = useCallback(async () => {
@@ -466,7 +473,14 @@ export function StructureDeleteModal({
       setDeleting(false);
       setPhase('idle');
     }
-  }, [cascadeDelete, node.id, nodeLabel, onDeleted]);
+  // /!\ `node` (ne `node.id`) i `subtreeIds`: oba se citaju u tijelu — `subtreeIds` i
+  //     `node.nodeType` idu u `structure-deleted` payload, a backup grana cita jos
+  //     `node.name`/`node.areaId`/`node.area?.name`. Ponasanje se NE mijenja: `subtreeIds`
+  //     je obican `const` (r. 214), dakle nov niz svaki render, pa se `cascadeDelete` —
+  //     koji ga vec ima u depovima — ionako stvara iznova, a s njim i ovaj callback.
+  //     Dodano u S139 da lista prestane lagati: da netko sutra memoizira `subtreeIds`,
+  //     stara lista bi tiho zamrznula payload BRISANJA.
+  }, [cascadeDelete, node, nodeLabel, onDeleted, subtreeIds]);
 
   /** BLOCKED path — backup first, then full cascade delete including events. */
   const handleDeleteWithBackup = useCallback(async () => {
@@ -497,7 +511,14 @@ export function StructureDeleteModal({
       setDeleting(false);
       setPhase('idle');
     }
-  }, [cascadeDelete, node.id, nodeLabel, onDeleted]);
+  // /!\ `node` (ne `node.id`) i `subtreeIds`: oba se citaju u tijelu — `subtreeIds` i
+  //     `node.nodeType` idu u `structure-deleted` payload, a backup grana cita jos
+  //     `node.name`/`node.areaId`/`node.area?.name`. Ponasanje se NE mijenja: `subtreeIds`
+  //     je obican `const` (r. 214), dakle nov niz svaki render, pa se `cascadeDelete` —
+  //     koji ga vec ima u depovima — ionako stvara iznova, a s njim i ovaj callback.
+  //     Dodano u S139 da lista prestane lagati: da netko sutra memoizira `subtreeIds`,
+  //     stara lista bi tiho zamrznula payload BRISANJA.
+  }, [cascadeDelete, node, nodeLabel, onDeleted, subtreeIds]);
 
   const headerBg = isBlocked ? 'bg-amber-600' : 'bg-red-600';
 

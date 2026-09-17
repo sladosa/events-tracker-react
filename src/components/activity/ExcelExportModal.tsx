@@ -202,7 +202,11 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   const [useProfileFilters, setUseProfileFilters] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filters: ExportFilters = {
+  // /!\ `useMemo` (S139): kao goli literal ovo je bio nov objekt svaki render, pa se
+  //     `doDownload` stvarao iznova stalno. To je sakrivalo nepotpunu dep listu — callback
+  //     nikad nije zastario JER se obnavljao, ne jer je popis bio tocan. Popis je sada
+  //     potpun (v. `doDownload`), pa je memoizacija sigurna i ucinak je stvaran.
+  const filters: ExportFilters = useMemo(() => ({
     areaId:     filter.areaId,
     categoryId: filter.categoryId,
     dateFrom:   filter.dateFrom,
@@ -210,7 +214,8 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     sortOrder:  filter.sortOrder,
     commentSearch: filter.commentSearch,
     attrFilter: filter.attrFilter,
-  };
+  }), [filter.areaId, filter.categoryId, filter.dateFrom, filter.dateTo, filter.sortOrder,
+       filter.commentSearch, filter.attrFilter]);
 
   // Za koju je Areu profil vec automatski odabran — da se izbor ne namece
   // ponovno nakon sto ga korisnik svjesno makne na „No profile".
@@ -703,7 +708,13 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     } finally {
       setCurrentFile(0);
     }
+  // /!\ `useProfileFilters` MORA biti ovdje: `:376` je grana koja odlucuje uzimaju li se
+  //     filtri iz profila ili iz panela — dakle KOJI RETCI idu u file. Danas ne zastarijeva
+  //     samo zato sto je `filters` (`:205`) objektni literal, pa se callback ionako stvara
+  //     iznova svaki render. Memoizira li ga netko sutra, izvoz bi tiho uzeo STARO stanje
+  //     prekidaca — tocno kvar zbog kojeg je S129 pisao „brojka mora opisati FILE, ne panel".
   }, [batchSize, fileCount, filters, filter.periodKey, filter.commentSearch, filter.attrFilter,
+      filter.categoryId, useProfileFilters,
       selectedProfile, profiles, deltaMode, deltaDays, deltaBlanks, balanceWidget, deltaAccount]);
 
   const downloadFile = useCallback((fileIndex: number) => doDownload(fileIndex, false), [doDownload]);
