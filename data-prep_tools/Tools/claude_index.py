@@ -30,6 +30,33 @@ ROLE = {
 }
 MARK = {'stit': 'X', 'kvarljivo': '~'}
 
+# Povratni link ispod svakog `## ` naslova. Isti oblik sidra kao u indeksu
+# (v. komentar u `build`): `<#Ime Naslova>`, jer Obsidian ne zna za GitHub slug.
+BACKLINK = '[↑ Sadrzaj](<#Sadrzaj>)'
+
+
+def add_backlinks(lines):
+    """Ubaci povratni link ispod svakog `## ` naslova. IDEMPOTENTNO.
+
+    /!\ Prvo se makne stari, pa doda novi -- inace svaki `--write` doda jos
+        jedan redak i file naraste za 18 redaka po pokretanju. Brisanje ide
+        usporedbom CIJELOG retka, ne `startswith`, da se ne pojede tekst koji
+        slucajno pocinje istim linkom.
+    /!\ Zove se PRIJE racunanja brojeva redaka: ubacivanje pomice sve ispod
+        sebe, pa bi obrnut redoslijed dao indeks koji laze -- isti razred kao
+        dvoprolazni izracun offseta nize.
+    /!\ `## Sadrzaj` ovdje NE postoji: indeks je vec izrezan iz body-ja, pa
+        sekcija sadrzaja ne moze dobiti link na samu sebe.
+    """
+    stripped = [l for l in lines if l.strip() != BACKLINK]
+    out = []
+    for line in stripped:
+        out.append(line)
+        if line.startswith('## '):
+            out.append(BACKLINK)
+    return out
+
+
 
 def role_of(title):
     for key, val in ROLE.items():
@@ -77,7 +104,7 @@ def build(lines, offset=0):
 
 src = io.open(PATH, encoding='utf-8').read()
 body = re.sub(re.escape(BEGIN) + r'.*?' + re.escape(END) + r'\n*', '', src, flags=re.S)
-lines = body.splitlines()
+lines = add_backlinks(body.splitlines())
 # indeks ide iza uvodnog bloka, prije prvog `---`
 cut = next(i for i, l in enumerate(lines) if l.strip() == '---')
 # /!\ Dva prolaza: brojevi redaka moraju opisivati file KOJI IZLAZI, a indeks
