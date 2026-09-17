@@ -283,7 +283,10 @@ export function AddActivityPage() {
   const locationState = location.state as LocationState | null;
   const navAreaId = locationState?.areaId ?? null;
   const navCategoryId = locationState?.categoryId ?? null;
-  const navCategoryPath = locationState?.categoryPath ?? [];
+  // /!\ `useMemo` (S139): `?? []` je stvarao NOV niz svaki render kad navigacijskog
+  //     stanja nema, pa je svaki callback koji ga ima u depovima bio nov na svakom
+  //     renderu. Vrijednost se ne mijenja — samo joj je identitet lutao.
+  const navCategoryPath = useMemo(() => locationState?.categoryPath ?? [], [locationState?.categoryPath]);
   
   // Debug mode
   const [showDebug, setShowDebug] = useState(() => {
@@ -1065,7 +1068,13 @@ export function AddActivityPage() {
       });
       saveDraft(draft);
     }
-  }, [canSave, categoryId, attributeValues, attributesByCategory, eventNote, currentPhotos, lapElapsed, resetLap, getDraftData, saveDraft, log, missingRequiredNow]);
+  // /!\ `resolveEventNote` MORA biti ovdje: cita se u tijelu i sam ovisi o
+  //     `[categoryChain, selectedArea, allAttrDefs]`. Lanac se moze promijeniti BEZ
+  //     promjene `categoryId` — stigne asinkrono, a od S133 ga i `clearChainCache()`
+  //     osvjezava — pa bi ovaj handler zadrzao STARI `comment_template`. To je isti
+  //     simptom koji je S133 zatvorio na razini kesa; ovo je drugi put do njega.
+  //     Dodavanje je bezopasno: ovo je klik handler, ne efekt.
+  }, [canSave, categoryId, attributeValues, attributesByCategory, eventNote, currentPhotos, lapElapsed, resetLap, getDraftData, saveDraft, log, missingRequiredNow, resolveEventNote]);
 
   // ============================================
   // Finish (Batch Write to DB)
@@ -1473,7 +1482,8 @@ export function AddActivityPage() {
 
     setShowRataModal(false);
     navigate('/app');
-  }, [pendingRataInfo, pendingRataConfig, pendingRataAttrs, pendingRataOriginalEventIds, categoryId, attributesByCategory, navigate]);
+  // /!\ `pendingRataBase` se cita u tijelu; klik handler, pa je dodavanje bezopasno.
+  }, [pendingRataInfo, pendingRataConfig, pendingRataAttrs, pendingRataOriginalEventIds, pendingRataBase, categoryId, attributesByCategory, navigate]);
 
   // ============================================
   // Success Dialog Handlers

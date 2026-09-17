@@ -219,7 +219,10 @@ export function PhotoGallery({
         fileInputRef.current.value = '';
       }
     }
-  }, [photos, onPhotosChange]);
+  // /!\ `captureMode` se cita na `:194` (zrcaljenje prednje kamere). Bez njega bi
+  //     promjena propa ostavila handler na STAROJ vrijednosti — fotografija bi se obradila
+  //     po prethodnom nacinu. Handler, ne efekt, pa je dodavanje bezopasno.
+  }, [photos, onPhotosChange, captureMode]);
   
   // Handle photo removal
   const handleRemovePhoto = useCallback((photoId: string) => {

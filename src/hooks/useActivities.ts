@@ -382,6 +382,14 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       setLoading(false);
       setLoadingMore(false);
     }
+  // /!\ NE DODAVATI `attrFilter` KAO OBJEKT, iako ga lint trazi. Iz konteksta dolazi
+  //     kao nov objekt, pa bi callback — a s njim i refetch — isao cesce nego treba; to
+  //     bi pogorsalo vec zabiljezeno „lista se preupita SEST puta na jednu promjenu
+  //     filtra" (Backlog). Tri polja SU iscrpna: `AttrFilterState` ima tocno `attrDefId`,
+  //     `value` i `isExact` (`FilterContext.tsx:22`).
+  // /!\ Doda li mu netko cetvrto polje, OVU listu treba prosiriti rucno — lint to vise
+  //     nece prijaviti jer je ovdje suzbijen.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, pageSize, offset]);
 
   // Initial fetch and refetch on filter changes
