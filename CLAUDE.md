@@ -38,15 +38,15 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 1702 | [Data model (simplified)](#data-model-simplified) |  |
 | 1723 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
 | 1748 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
-| 1768 | [Open bugs](#open-bugs) | ~ |
-| 1838 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
-| 2026 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
-| 2122 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
-| 2129 | [Backlog](#backlog) | ~ |
-| 2423 | [TypeScript known issue](#typescript-known-issue) |  |
-| 2430 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+| 1787 | [Open bugs](#open-bugs) | ~ |
+| 1857 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
+| 2045 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
+| 2141 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
+| 2148 | [Backlog](#backlog) | ~ |
+| 2442 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2449 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
 
-_Ukupno 2553 redaka, 18 sekcija._
+_Ukupno 2572 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1764,6 +1764,25 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   ishod ne promijeni — tek lomljenje `getHierarchyLevels` pošalje redak u krivu areu.
   Zaostala grana „gola putanja bez imena aree" sada **izostavlja dvosmislenu** putanju, pa
   redak padne glasno (`Invalid category path`) umjesto da završi negdje uvjerljivo.
+
+- **„87 Python alata, sigurno su neki mrtvi" — NIJE TOCNO, izmjereno S139.** Audit od
+  2026-09-16 je predlozio „kandidate za umirovljenje" i sam ju preskocio kao preskupu.
+  Izvedena je i **isplata je gotovo nula**: od 87 pracenih alata **2** nitko ne spominje,
+  a jedan od ta dva je `fix_*` jednokratna skripta, kojoj je to **normalno stanje**.
+  Dakle stvarni kandidat je **jedan** (`garmin_daily_metrics_to_xlsx.py`), i on visi o
+  otvorenoj Backlog stavci (Garmin/Sleep).
+  ⚠ **Zasto je pitanje bilo krivo postavljeno:** `18` od 87 alata su `fix_*.py` jednokratne
+  skripte, koje CLAUDE.md sam propisuje kao obrazac („zato postoje one-off skripte"). One su
+  **zapis sto je ucinjeno nad podacima**, ne alat koji ceka iduci poziv — a za financijski
+  skup podataka je brisanje tog zapisa tocno pogresan potez. Jos 7 ih je u `Obsolete/`.
+  ⚠ **I nema jeftine mjere za „ne koristi se":** git zna kad je file zadnji put MIJENJAN, ne
+  kad je POKRENUT — a alat koji radi i ne treba izmjene izgleda **identicno** mrtvome.
+  Probana su tri mehanicka detektora; **dva su dala same lazne pozitive**: „mrtva hardkodirana
+  putanja" (12 pogodaka — svih 12 krivo, alati putanju sastavljaju iz segmenata preko
+  `ROOT / ... / ...`) i „hardkodirano ime filea kojeg nema" (11 pogodaka — vecinom IZLAZNI
+  fileovi koje alat tek stvara). Prosao je samo „nitko ga ne spominje", i dao 2.
+  ⇒ Ako se ikad ponovo otvori, jedino sto vrijedi mjeriti je **referenciranost**, i odgovor
+  je vec ovdje.
 
 ## Open bugs
 
