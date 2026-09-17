@@ -95,6 +95,7 @@ export function ShareManagementModal({ areaId, areaName, onClose, initialInviteE
   }, [areaId, listShares, listInvites]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async-u-stanje: dohvat share-ova; stanje stize iz mreze, ne iz propsa
     refresh();
   }, [refresh]);
 

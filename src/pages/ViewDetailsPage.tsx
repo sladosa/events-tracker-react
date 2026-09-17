@@ -168,6 +168,7 @@ function ReadOnlyAttributeChain({
   // Update when chain changes (e.g. loading)
   useEffect(() => {
     if (categoryChain.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async-u-stanje: lanac kategorija stize asinkrono
       setExpandedCategories(prev => {
         const next = new Set(prev);
         next.add(categoryChain[0].id);
@@ -318,13 +319,6 @@ export function ViewDetailsPage() {
   const [categoryChain, setCategoryChain] = useState<{ id: string; name: string }[]>([]);
   const [attributesByCategory, setAttributesByCategory] = useState<Map<string, { id: string; name: string; data_type: string; unit: string | null; description: string | null }[]>>(new Map());
 
-  useEffect(() => {
-    if (!sessionStart) {
-      navigate('/app', { replace: true });
-      return;
-    }
-    loadActivityData();
-  }, [sessionStart, categoryIdParam, noSession, ownerIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadActivityData = async () => {
     if (!sessionStart) return;
@@ -371,6 +365,24 @@ export function ViewDetailsPage() {
     setAttributesByCategory(cached.attributesByCategory);
     setIsLoading(false);
   };
+
+  // /!\ Efekt stoji ISPOD `loadActivityData`, ne iznad (premjesteno S139). Iznad je
+  //     citao funkciju prije njezine deklaracije -- radilo je (efekti se vrte nakon
+  //     rendera), ali `react-hooks/immutability` to s pravom prijavljuje: efekt drzi
+  //     funkciju iz TOG rendera i ne osvjezava se kad se ona promijeni.
+  // /!\ Nalaz je bio NEVIDLJIV do S139: skrivala ga je `eslint-disable` direktiva za
+  //     DRUGO pravilo (`exhaustive-deps`) -- plugin preskoci cijeli efekt koji nosi
+  //     disable za bilo koje `react-hooks` pravilo.
+  // /!\ `loadActivityData` se NE smije dodati u dep listu: nije memoiziran, pa bi se
+  //     efekt vrtio na svakom renderu. Zato disable ostaje -- ali sada zbog jednog razloga.
+  useEffect(() => {
+    if (!sessionStart) {
+      navigate('/app', { replace: true });
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async-u-stanje: dohvat retka; `setIsLoading(true)` je pocetak ucitavanja, ne izvedeno stanje
+    loadActivityData();
+  }, [sessionStart, categoryIdParam, noSession, ownerIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build attribute values map for current event
   const currentEvent = viewEvents[selectedEventIndex];

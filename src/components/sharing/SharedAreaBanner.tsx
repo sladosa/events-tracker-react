@@ -475,6 +475,7 @@ export function SharedAreaBanner({ tab, onManageAccess }: SharedAreaBannerProps)
   // For owner view: fetch grantees when area changes or shares are modified
   useEffect(() => {
     if (sharedContext || !filter.areaId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async-u-stanje: guard + dohvat grantee-a po Arei
       setOwnerGrantees([]);
       return;
     }

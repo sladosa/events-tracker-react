@@ -299,6 +299,7 @@ function NumberInput({
   useEffect(() => {
     if (value !== emitted.current) {
       emitted.current = value;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- kontrolirani-sync: guard `emitted.current` postoji bas zato; v. S131 (izgubljena decimala)
       setRaw(toRaw(value));
     }
   }, [value]);

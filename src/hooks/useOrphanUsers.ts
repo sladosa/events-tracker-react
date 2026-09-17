@@ -58,6 +58,7 @@ export function useOrphanUsers(
 
   useEffect(() => {
     if (!currentUserId || activities.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async-u-stanje: guard prije async detekcije
       setDetection({ pairKeys: new Set(), emailMap: new Map() });
       return;
     }

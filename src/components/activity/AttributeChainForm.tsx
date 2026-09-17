@@ -79,6 +79,7 @@ export function AttributeChainForm({
   // Reset both states when user selects a different category
   const chainKey = useMemo(() => categoryChain.map(c => c.id).join(','), [categoryChain]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset-na-promjenu-ulaza: kategorija se promijenila => stanje forme se mora ocistiti; nema ga sto izvesti iz rendera
     setShowAllDefaults(false);
     setUserEditedIds(new Set());
   }, [chainKey]);
@@ -87,6 +88,7 @@ export function AttributeChainForm({
   // Per-category preference overrides the default (leaf open, parents closed).
   useEffect(() => {
     if (categoryChain.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- citanje-okoline: `localStorage` se ne smije citati tijekom rendera
       setExpandedCategories(() => {
         const next = new Set<string>();
         for (const cat of categoryChain) {

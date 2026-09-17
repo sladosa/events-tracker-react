@@ -673,6 +673,7 @@ export function SimplePhotoUpload({
   useEffect(() => {
     if (value) {
       const url = URL.createObjectURL(value);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- objectURL: `createObjectURL` TRAZI cleanup => efekt je jedino ispravno mjesto
       setPreview(url);
       return () => URL.revokeObjectURL(url);
     } else {

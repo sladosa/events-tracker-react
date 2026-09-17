@@ -31,6 +31,7 @@ export default function AuthPage() {
     if (err === 'access_denied' && (desc.includes('expired') || desc.includes('invalid'))) {
       const owner = sessionStorage.getItem('invite_owner_email') ?? ''
       sessionStorage.removeItem('invite_owner_email')
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- citanje-okoline: cita `window.location.hash`; uz to radi `history.replaceState`, koji NE smije u render
       setExpiredInviteOwner(owner || 'the person who invited you')
       window.history.replaceState(null, '', window.location.pathname)
     }
@@ -43,6 +44,7 @@ export default function AuthPage() {
     if (params.get('type') !== 'invite') return
 
     window.history.replaceState(null, '', window.location.pathname)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- citanje-okoline: isto: hash + `replaceState` invite linka
     setActiveTab('set-password')
 
     const accessToken = params.get('access_token')

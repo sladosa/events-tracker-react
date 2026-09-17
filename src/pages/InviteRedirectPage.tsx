@@ -7,6 +7,7 @@ export function InviteRedirectPage() {
   const [ownerEmail, setOwnerEmail] = useState<string>('');
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- citanje-okoline: cita `useParams` + radi `fetch` na mountu
     if (!id) { setError('Invalid invite link.'); return; }
 
     const fnBase = import.meta.env.VITE_HELP_API_URL

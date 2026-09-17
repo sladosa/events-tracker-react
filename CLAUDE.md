@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 106 | [Three core principles — NEVER violate](#three-core-principles--never-violate) | X |
 | 118 | [Critical rules](#critical-rules) | X |
 | 1039 | [Zamke (data pipeline / AI / E2E)](#zamke-data-pipeline--ai--e2e) | X |
-| 1549 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
-| 1564 | [Key files](#key-files) |  |
-| 1683 | [Structure tab — component map](#structure-tab--component-map) |  |
-| 1702 | [Data model (simplified)](#data-model-simplified) |  |
-| 1723 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
-| 1748 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
-| 1787 | [Open bugs](#open-bugs) | ~ |
-| 1857 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
-| 2045 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
-| 2141 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
-| 2148 | [Backlog](#backlog) | ~ |
-| 2453 | [TypeScript known issue](#typescript-known-issue) |  |
-| 2460 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+| 1569 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
+| 1584 | [Key files](#key-files) |  |
+| 1703 | [Structure tab — component map](#structure-tab--component-map) |  |
+| 1722 | [Data model (simplified)](#data-model-simplified) |  |
+| 1743 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
+| 1768 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
+| 1807 | [Open bugs](#open-bugs) | ~ |
+| 1877 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
+| 2065 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
+| 2161 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
+| 2168 | [Backlog](#backlog) | ~ |
+| 2473 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2480 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
 
-_Ukupno 2583 redaka, 18 sekcija._
+_Ukupno 2603 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1477,6 +1477,26 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   dodavanje kolone bez tocne vrijednosti ugasilo zabranu `Save +`. Izostanak je ondje
   ispravan, a prisutnost opasna — dakle „popis kolona mora biti potpun" je **kriva** pouka.
   Tocna je: **za svaku kolonu provjeri sto uvoz radi kad je NEMA.**
+- **`react-hooks` ratchet je od S139 na NULI ⇒ svaki nov nalaz ruši CI.** Do tada je bio
+  „ne smije rasti"; sada je „ne smije postojati". Baseline: `.lint-baseline.json`.
+  ⚠ **Od 26 nalaza nijedan nije bio kvar koji se vidi** — 12 `exhaustive-deps` je
+  popravljeno (nijedan nije zastarijevao, ali svaki je bio **mina** koju aktivira prva
+  memoizacija), a 14 `set-state-in-effect`/`immutability` su **legitimni obrasci** i nose
+  `eslint-disable` s imenom obrasca. Pet obrazaca, da se ne prepričavaju uz svaki redak:
+  | obrazac | zašto efekt | primjer |
+  | --- | --- | --- |
+  | `objectURL` | `createObjectURL` **traži** cleanup | `PhotoUpload`, `PhotoGallery` |
+  | `async-u-stanje` | podatak stiže iz mreže, ne iz propsa | `ShareManagementModal`, `ViewDetailsPage` |
+  | `citanje-okoline` | `window`/`localStorage`/`hash` se ne smiju čitati u renderu | `AuthPage`, `PhotoUpload` |
+  | `reset-na-promjenu-ulaza` | promjena kategorije mora očistiti formu | `AttributeChainForm` |
+  | `kontrolirani-sync` | vrijednost dolazi izvana, guard je `useRef` | `AttributeInput` (S131) |
+  ⚠ **`disable` je tvrdnja „pregledao sam ovo"**, pa uz njega ide i brana koja javi kad
+  tvrdnja prestane vrijediti: `reportUnusedDisableDirectives: "error"`.
+  ⚠ **Jedan `disable` NIJE „obrazac" nego zabrana popravka:** `useActivities.ts` dep lista
+  **ne smije** dobiti `attrFilter` kao objekt (lint ga traži) — iz konteksta dolazi kao nov
+  objekt ⇒ refetch češće nego treba. Tri polja su iscrpna; doda li `AttrFilterState` četvrto,
+  listu treba proširiti **ručno**, jer lint ondje više ne gleda.
+
 - **Sto je od ovoga BRANA, a ne izvjestaj:** `npm run check` = `typecheck` + `test:unit` +
   `lint:ratchet`; CI ih vrti **i na `test-branch`** (do S139 se okidao samo na `main`, dakle
   tek kad kod vec ide na PROD). Ratchet gadja **samo dva** `react-hooks` pravila — gate koji
