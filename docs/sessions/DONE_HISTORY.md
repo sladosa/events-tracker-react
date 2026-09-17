@@ -5186,6 +5186,96 @@ krivi izvor). **S131 NIJE arhiviran.**
 
 ---
 
+## S139 — alati koji mjere nešto drugo nego što tvrde (2026-09-17)
+
+**Povod:** Saša je dan prije pokrenuo audit projekta (`docs/audits/AUDIT_2026-09-16.md`) i
+tražio da ga zajedno pročitamo. Sesija je krenula kao razgovor o nalazima, a završila kao
+**provjera instrumenata kojima su ti nalazi izmjereni**.
+
+### Nalaz koji se ponovio četiri puta
+
+1. **ESLint je lintao `Claude-temp_R/OLD/`** — cijele stare kopije projekta. ESLint 9 ne čita
+   `.gitignore`, a config je ignorirao samo `dist`. Od 189 problema **142 (75 %)** dolazilo je
+   odande. Audit je zato 76 `react-hooks` nalaza pripisao živom kodu (živih **25**), a
+   `DateRangeFilter.tsx` — file iz S111 incidenta — po toj je brojci izgledao najgori s 8,
+   dok ih u njemu danas **nema nijedan**.
+2. **`structureExcel.test.mjs` nije mogao pasti.** Brojao je padove u `failed` i nikad ga nije
+   pročitao — ispisivao ❌, izlazio s **exit 0**. Dokazano sabotažom jedne tvrdnje.
+3. **`audit_tests.py` je prijavljivao 22 proturječnosti kojih nema** — kurirani popis
+   „Otvoreno:" ukinut je u S116, a alat je marker čitao kao **prazan popis**.
+4. **Moja dva detektora „mrtvih alata" dala su 100 % lažnih pozitiva.** „Mrtva hardkodirana
+   putanja" — 12 pogodaka, svih 12 krivo (alati putanju sastavljaju iz segmenata);
+   „hardkodirano ime filea kojeg nema" — 11 pogodaka, većinom **izlazni** fileovi, a jedan je
+   bio print string koji sam sâm napisao minutama prije. Samo protuprovjera ih je razlikovala
+   od nalaza.
+
+### Što je napravljeno
+
+**Korak 0 — mreža prije zahvata.** `scripts/run-unit-tests.mjs` (vrti sve `src/**/*.test.mjs`,
+i „ispis pada + exit 0" prijavljuje kao **POKVAREN TEST**) · `scripts/lint-ratchet.mjs` +
+`.lint-baseline.json` (pada i kad brojka **naraste** i kad **padne** — druga strana tjera da se
+baseline stegne) · `npm run check` = `typecheck` + `test:unit` + `lint:ratchet` · CI preimenovan
+u `Checks` i **okida se i na `test-branch`** (dotad samo na `main`, dakle tek kad kod već ide
+na PROD). Prije ovoga se **11 guard testova nije vrtjelo nigdje**.
+
+**Korak 1 — dokumentacija.** 21 mrtav link u `PENDING_TESTS.md` preusmjeren na arhivu (mrtav
+link se čita kao „tog dokaza više nema", a dokaz je cijelo vrijeme bio na disku) ·
+`EXCEL_FORMAT_ANALYSIS_v2.md` provjeren i **označen kao povijesni zapis**, ne referenca (doc
+ima 17 kolona A–Q, kod 23 A–W, i svako slovo od D nadalje je pomaknuto) · `CLAUDE.md` očišćen:
+Open bugs 132 → 70 redaka, zatvoreni unosi u `DONE_HISTORY` uz jedan redak po unosu, Backlog
+dobio zaglavlje koje razvrstava 8 parkiranih / 1 koji čeka odluku / 5 koji više nisu posao /
+**15 stvarno otvorenih**.
+
+**Korak 2 — `react-hooks` 26 → 0.** Dvanaest nepotpunih dep lista popravljeno; **nijedna nije
+zastarijevala danas**, ali svaka je bila mina koju aktivira prva memoizacija. Jedna je bila
+stvaran latentan bug: `useActivities` nije pratio `attrFilter?.isExact`, koji mijenja upit
+(`eventQueryBuilder.ts:109`). Četrnaest mjesta su legitimni obrasci i nose `eslint-disable` s
+**imenom obrasca** (pet obrazaca, tablica u CLAUDE.md-u), a uz njih i brana koja javi kad
+tvrdnja prestane vrijediti — `reportUnusedDisableDirectives: 'error'`.
+⚠ **Jedan `disable` je zabrana popravka, ne obrazac:** `useActivities` dep lista **ne smije**
+dobiti `attrFilter` kao objekt iako ga lint traži.
+
+**Usput:** `formatDuration` je imao **byte-identičan duplikat** u `ViewDetailsPage.tsx`;
+izdvojen u `src/lib/timeFormat.ts`.
+
+### Sašina intervencija koja je promijenila plan
+
+Na pitanje „zašto misliš da B treba održavati?" povukao sam tvrdnju da `eslint-disable` s
+obrazloženjem nosi trošak održavanja. Ne nosi — njegov je trošak **tiha zastarjelost**, a ona
+je **mjerljiva** (`reportUnusedDisableDirectives`). To je preokrenulo preporuku s A na B i
+promijenilo oblik cijelog Koraka 2.
+
+### Dvije vlastite greške, ispravljene mjerenjem
+
+- **„87 Python alata, sigurno su neki mrtvi"** — izmjereno: od 87 praćenih **2** nitko ne
+  spominje, a jedan od ta dva je `fix_*` jednokratna skripta kojoj je to normalno stanje.
+  Stvarni kandidat je **jedan**. Pitanje je bilo krivo postavljeno: 18 alata su `fix_*`
+  skripte koje su **zapis što je učinjeno nad podacima**, ne alat koji čeka poziv.
+- **E7-2/E7-3 zatvoreni kao „nije bug"** — točno za fantomski toast `Access granted`, ali
+  prošireno na cijeli unos. Usporedba dviju verzija istog speca: `fd07840` pada **2**
+  (E7-2 + E7-3), HEAD pada **1** (E7-3). Dakle E7-3 nije regresija, a E7-2 je popravljen.
+  Unos je vraćen u Open bugs, a komentar u specu koji je tvrdio suprotno prepisan.
+
+### Nova zamka o samom mjerenju
+
+**Ponovljen pojedinačni E2E run mjeri bazu koju je prethodni run promijenio.** `global-setup`
+vraća seed stanje **na početku runa**, ne između specova. Izmjereno: `e5-structure` pada
+**1/5** u punom runu, a **5/5** nakon tri uzastopna `e7-share` runa (koji pozivaju i opozivaju
+pristup). Smjer je suprotan od poznatog artefakta „spec sam prolazi, u paketu pada" — pa je
+„pustit ću ga samog da vidim je li stvaran" potez koji može **proizvesti** pad koji
+dijagnosticira.
+⚠ Usporedba s prijašnjim commitom ide kroz `git worktree`, i put mu mora biti **ASCII**: u
+putu koji sadrži `Saša` Vite ne razriješi `/src/main.tsx` i svaki test padne iz krivog razloga.
+
+### Brojke
+
+`npx eslint .` **189 → 0**. `react-hooks` **26 → 0**, baseline je sada **tvrda nula**.
+CLAUDE.md 2551 → 2635 redaka (Open bugs kraći, zamke duže). Dvanaest commita na `test-branch`,
+oba CI runa zelena s dokazano izvršenim novim koracima. **`main` nije diran.**
+
+---
+
+
 ## Done S139: zatvoreni bugovi izmaknuti iz CLAUDE.md-a
 
 Dvanaest unosa iz § Open bugs bilo je precrtano i oznaceno kao popravljeno, a i dalje je

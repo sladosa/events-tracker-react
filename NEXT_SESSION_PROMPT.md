@@ -1,106 +1,122 @@
-# Sljedeća sesija — handoff
+# Sljedeca sesija - handoff
 
-**Pisano protiv commita:** `4e223f2` + izmjene zatvaranja S138 (idu istim commitom).
-**`main` = `test-branch`** — deploy je pušten u S138 i grane su izjednačene.
-Ako `git log` pokazuje novije, čitaj ovo kao povijest; CLAUDE.md je autoritet.
-
----
-
-# DIO 1 — netehnički (za Sašu)
-
-## Što je gotovo
-
-**Deploy je prošao i provjeren je čitanjem, ne vjerovanjem.** U živom PROD bundleu stoji nov
-oblik pravila. Grane su izjednačene, Koka vidi sve popravke iz zadnjih nekoliko sesija.
-
-**Visa pravilo je na PROD-u** (`cutoff:3:5`) — i **ispravljeno je dvaput**, jer je prva
-promjena bila polovična. Ispalo je da `Datum naplate` pune **dva** mehanizma: obična kupovina
-i „kupovina na rate". Drugi nije razumio novo pravilo, pa bi rate i dalje išle na 3. Sada oba
-idu na 5.
-
-**Odgovor na tvoje pitanje o MC naplati:** `Tip = Transfer`, `Podtip = izmedju racuna`,
-comment = `TROŠKOVI UČINJENI MASTERCARD KARTICOM` (doslovno, strojni tekst s izvatka).
-Tako je u **32 od 32** prethodna mjeseca.
-
-**`N/A` je prebrojan** — 1.566 redaka, ali **48 % ih nema `Izvod opis`** pa se rječnik nema
-za što uhvatiti, a preostali su rep: 466 redaka na **395 različitih trgovaca**. Zaključak je
-neugodan ali jasan: **alat tu više nema poluge**, to je ručni posao ili se ostavlja kao `N/A`.
-
-## Što traži tebe
-
-1. **Jedan Visa unos, da se vidi radi li pravilo.** Nova Visa kupovina ⇒ `Datum naplate`
-   mora biti **05.10.2026.** (ne `03.10.`). I jedna na 3 rate ⇒ **05.10. / 05.11. / 05.12.**
-   Config je potvrđen u bazi, ali **nitko ga još nije isprobao u aplikaciji**.
-   (`T-S138-1`, `T-S138-2`)
-2. **Tri sitna ispravka u podacima** — MC naplata 11.09. nema `Tip`/`Podtip`/comment,
-   11.07. nema comment, i tri `Konzum dostava` rate od 15.09. nose `03.` umjesto `05.`
-   Ništa od toga ne miče saldo. (`T-S138-3/-4/-5`)
-3. **Odluka o `N/A` repu** — vrijedi li uopće razvrstavati 2023. (585 redaka), ili `N/A`
-   ostaje. To je pitanje vrijednosti, ne tehnike.
-4. **Audit projekta još nije napravljen** (`docs/audits/` ne postoji). Prijedlog stoji u
-   `Claude-temp_R/mozes li mi napraviti audit projekt.txt`. Moja preporuka je i dalje:
-   prvo točke 4) i 5), pa tek onda ostalo — i u **vlastitoj** sesiji.
-
-## Što NE treba raditi
-
-- **Ne upisuj MC naplatu za listopad ručno** dok ne stigne ZABA izvadak. Rujanska je
-  upisana ručno i zato joj fali klasifikacija.
-- **Ne mijenjaj `rata.date_map` u token** (`cutoff:3:5`) — rata parser prima **broj**, a
-  nepoznatu vrijednost tiho pretvori u `15`.
-- **Ne arhiviraj `S131`** dok se `T-S131-34` ne riješi — v. niže, alat tu laže.
+**Pisano protiv commita:** `1e22746` + izmjene zatvaranja S139 (idu istim commitom).
+**`main` NIJE diran u S139** - sve stoji na `test-branch`. Deploy nije trazen ni pusten.
+Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
 
 ---
 
-# DIO 2 — tehnički (za Claudea)
+# DIO 1 - netehnicki (za Sasu)
+
+## Sto je gotovo
+
+**Napravljene su brane, ne izvjestaji.** Do danas je `npm run typecheck` bila jedina
+automatska provjera, i vrtjela se **samo kad kod vec ide na PROD**. Sada postoji
+`npm run check` (tri provjere), i GitHub ih vrti **i na `test-branch`** - dakle prije
+nego bilo sto krene prema Koki.
+
+**Nasli smo cetiri alata koji su mjerili nesto drugo nego sto tvrde.** To je bio glavni
+nalaz dana, i vazniji je od bilo kojeg popravljenog retka:
+
+- **ESLint je pregledavao stare kopije projekta** iz `Claude-temp_R/OLD/`. Od 189
+  prijavljenih problema **142 (75 %)** dolazilo je odande. Zato je jucerasnji audit
+  pokazao krivu sliku: pripisao je 76 nalaza zivom kodu, a zivih je bilo **25**.
+- **Jedan test nije mogao pasti.** `structureExcel.test.mjs` je ispisivao kriz i
+  zavrsavao kao da je sve u redu. Dokazano namjernim kvarenjem jedne tvrdnje.
+- **`audit_tests.py` je prijavljivao 22 proturjecnosti kojih nema** - protiv popisa
+  ukinutog jos u S116.
+- **Dva moja vlastita detektora** „mrtvih alata" dala su **100 % laznih pogodaka**.
+
+**Zivi kod je sada na nuli.** `react-hooks` nalaza: 26 -> 0. Od toga 12 popravaka
+(nepotpuni popisi ovisnosti - nijedan nije kvario nesto danas, ali svaki je bio mina) i
+14 mjesta gdje je obrazac legitiman pa nosi objasnjenje i ime obrasca.
+
+**Ispravio sam vlastitu gresku iz ove sesije.** Jutros sam test E7 zatvorio kao „nije
+bug". To je bilo tocno za jedan dio (poruka koja nikad nije postojala), ali E7-3 i dalje
+pada. Izmjereno je da pada **i u verziji od prije sesije**, dakle nije nista pokvareno -
+ali unos je vracen kao otvoren, jer se uzrok ne zna.
+
+## Sto trazi tebe
+
+1. **`git push origin test-branch`** ako zadnji commit jos nije gore.
+2. **Tri rucne provjere u appu** (T-S139-8, -9, -10 u `PENDING_TESTS.md`) - otvaranje
+   retka u View + Prev/Next, jedan Excel izvoz s profilom i bez njega, i provjera da
+   `hidden_in_add` prezivi Structure roundtrip na PROD-u.
+3. **Odluka o `PENDING_TESTS.md`** - v. „Otvorena pitanja" nize. Jedno pitanje, dvije
+   minute.
+4. **Deploy na `main` NIJE napravljen i ne treba biti** dok ti ne kazes.
+
+## Sto NE treba raditi
+
+- **Ne vjeruj auditu od 16.09.** za brojke o `react-hooks` nalazima - mjerio je stare
+  kopije. Ispravak je upisan na vrh samog audit fajla.
+- **Ne popravljaj E7-3 napamet.** Prva hipoteza (izgubljena tocka sinkronizacije) je
+  izmjerena i **opovrgnuta**.
+- **Ne zatvaraj ostale E2E padove kao „poznati artefakt suitea"** na temelju stare
+  brojke iz `T-S135-8` - ona je od prije popravka u S136.
+
+---
+
+# DIO 2 - tehnicki (za Claudea)
 
 ## Novo u ovoj sesiji
 
-| | |
+| sto | gdje |
 | --- | --- |
-| PROD config | `attribute_rules.date_map.Visa = cutoff:3:5` **i** `rata.date_map.Visa = 5`; oba potvrđena čitanjem `areas.settings` |
-| CLAUDE.md | nova zamka „dva rječnika, samo jedan razumije tokene" (Critical rules) + backlog stavka „`rata` ne razumije `cutoff:B:D`"; indeks regeneriran (2.552 r.) |
-| mjerenja | MC naplata 32/32 · `N/A` 1.566 razvrstan u 6 razreda · PayPal 7/8 jednoglasnih nasuprot `KEKS PAY` 10/19 |
+| `npm run check` = typecheck + test:unit + lint:ratchet | `package.json` |
+| Ratchet nad 3 `react-hooks` pravila, **baseline je 0** | `scripts/lint-ratchet.mjs`, `.lint-baseline.json` |
+| Pokretac unit testova + guard „ispisuje pad, izlazi 0" | `scripts/run-unit-tests.mjs` |
+| CI se okida i na `test-branch`, + dva nova koraka | `.github/workflows/typecheck.yml` (`name: Checks`) |
+| `globalIgnores` za `Claude-temp_R`, `test-results` | `eslint.config.js` |
+| `reportUnusedDisableDirectives: 'error'` | `eslint.config.js` - brana nad `eslint-disable` tvrdnjama |
+| `formatTimer` / `formatDuration` izdvojeni | `src/lib/timeFormat.ts` (bio byte-identican duplikat) |
+| Kolona `HiddenInAdd` u generatoru | `data-prep_tools/Financije/make_financije_all_structure.py` |
+| `curated_retired` detekcija | `data-prep_tools/Tools/audit_tests.py` |
 
 ## Otvoreno, po prioritetu
 
-1. **`T-S138-1` / `T-S138-2`** — provjera upotrebom. Config je točan, ponašanje neprovjereno.
-   ⚠ Redak za test mora se **razlikovati** od rezultata pravila (S129): ne testiraj na
-   kupovini 1.–3. u mjesecu, ondje se `next:3` i `cutoff:3:5` poklapaju u mjesecu.
-2. **⚠ `audit_tests.py` odluku o arhiviranju donosi iz DETALJNOG filea, a otvorenost može
-   živjeti u PENDING-u.** `S131_tests.md` je 27/27 ✅ i alat javlja „DA", ali `PENDING_TESTS`
-   ima otvoren `T-S131-34`. Isti razred kao S137 (ondje slijep za oblike ID-a, ovdje gleda
-   krivi izvor). Popravak: arhiva se odbija ako **ijedan** izvor kaže ⬜.
-3. **`rata` ne razumije `cutoff:B:D`** — Backlog. Traži `evaluateDateRule` u
-   `generateRataChargeDates` i **deploy prije** nego token uđe u ijedan Excel.
-4. **PayPal pravilo u CLAUDE.md je pregrubo** (izmjereno: PayPal 7/8 jednoglasnih,
-   `KUPOVINA…` 8/8, `KEKS PAY` 10/19). Razlika je **nosi li niz ime trgovca iza prefiksa**.
-   Nije ispravljeno — čeka odluku, jer danas nikoga ne žulja.
-5. **Pet ZABA mjeseci** (`2024-03 +10,00`, `2024-07 −17,28`, `2024-10 −236,04`,
-   `2025-07 +0,80`, `2025-08 −46,74`). ⚠ `uskladi_izvod.py` prima **samo MC**.
-6. **Krug 2 testova** (`dev:test`, destruktivni): `T-S133-5`, `T-S133-8`, `E15-full`.
-7. **Pet pipeline stavki** (`T-S107c-2`, `-d-4`, `-i-6`, `-j-1`, `T-S108-9`) — zadaci, ne
-   testovi; čekaju Sašinu odluku jesu li još živi.
+1. **E7-3** - `Revoke` ne otvori `confirm revoke`. Nije regresija (izmjereno). Uzrok
+   neutvrdjen. **Krece se od punog runa**, ne od ciljanog ponavljanja - v. zamku nize.
+2. **`hidden_in_add` se tiho brise na uvozu** kad Structure file nema kolonu. Popravljen
+   je **alat**, ne uvoz. Pravi popravak je u `structureImport.ts` i mijenja semantiku
+   uvoza za svaki file => trazi test i Sasinu potvrdu. Backlog.
+3. **`ViewDetailsPage` immutability** - zatvoreno (efekt premjesten ispod deklaracije),
+   ali je usput isplivao `set-state-in-effect` koji je dotad bio **nevidljiv** jer ga je
+   skrivao mrtav `eslint-disable` za drugo pravilo.
+4. **Ostali E2E padovi** - v. „Stanje E2E" nize.
 
 ## Zamke koje su danas ugrizle
 
-- **`areas.settings` je vlasnikov, a uvoz to ne javi.** Grantee-jev Structure uvoz **tiho
-  stvori duplikat Aree** (`structureImport.ts:498`). Rješenje je bilo prebaciti se na
-  vlasnikov račun, ne popravljati kod.
-- **Brojač u uvoznom modalu broji parsirane retke, ne promjene** (`structureImport.ts:1176`,
-  prije usporedbe) ⇒ `Automation rules 2` piše i kad se ništa nije dogodilo. Dokaz je baza.
-- **Promjena pravila je tvrdnja o JEDNOM mjestu.** Prije nego je proglasiš gotovom,
-  prebroji **tko sve puni taj atribut** — drugi punilac je bio dva retka niže u istom sheetu.
-- **Deploy se provjerava čitanjem bundlea**, ne porukom Netlifyja: `curl` na `/assets/index-*.js`
-  pa `grep` za nov token.
+- **Alat koji sam bira sto ce citati mora se pitati STO JE PROCITAO**, ne samo koliko je
+  nasao. Vrijedi za lint, grep, brojanje redaka - repo drzi stare kopije pored zivog koda.
+- **Mrtav `eslint-disable` nije kozmetika nego slijepa mrlja** - plugin preskoci **cijeli**
+  efekt koji nosi disable za bilo koje `react-hooks` pravilo.
+- **Ponovljen pojedinacni E2E run mjeri bazu koju je prethodni run promijenio.**
+  `global-setup` cisti **na pocetku runa**, ne izmedju specova. Izmjereno: `e5-structure`
+  pada 1/5 u punom runu, **5/5** nakon tri `e7-share` runa.
+- **Usporedba s prijasnjim commitom ide kroz `git worktree`**, ne kroz `checkout` -
+  radni direktorij ostaje netaknut. /!\ Put worktreeja mora biti **ASCII**: u putu koji
+  sadrzi `Sasa` (s kvacicom) Vite ne razrijesi `/src/main.tsx` i **svaki** test padne iz
+  krivog razloga. Prvi pokusaj je danas pao upravo tako.
+- **Heredoc u bashu jede backslash**, a `.replace()` u Pythonu ne pogadja CRLF fileove -
+  za izmjene CLAUDE.md-a i specova koristi **line-based** zamjenu.
 
-## Stanje brojki (PROD, izmjereno 15.09.2026.)
+## Stanje E2E
 
-```
-eventi (Transakcija)  5.216
-N/A                   1.566   (2023: 585 · 2024: 476 · 2025: 411 · 2026: 94)
-MC naplata            34 mjeseca, 32 s comment-om, 2 bez
-Visa rate             225     dani 5.→99 4.→56 6.→25 7.→15 · 3.→3 (sve tri od 15.09.)
-Mastercard rate       285     svih 285 na 11.
-sidra                 ZABA 12.772,86 @ 06.09.  ·  RF 690,79 @ 07.09.
-otvorenih testova     22      (17 iz S137 + 5 novih S138)
-```
+Puni run nad **HEAD** (prije ciljanih ponavljanja): **60 proslo / 11 palo**, 22,7 min.
+Nijedan spec koji cuva dirane dijelove nije pao (S121, S122, S123, S133).
+Puni run nad **`fd07840`** (prije sesije), kroz `git worktree`: **BASELINE_RESULT**
+
+/!\ Ogranicenje usporedbe: HTML report mog punog runa je **prepisan** kasnijim ciljanim
+runom, pa se usporedjuju **brojke** punih runova i obitelji padova, ne popis test-po-test.
+Tko zeli redak-po-redak, mora pustiti oba puna runa iznova.
+
+## Otvorena pitanja
+
+**`PENDING_TESTS.md` je narastao na 1.159 redaka i 34 sekcije, a otvorenih testova ima 24.**
+**18 sekcija je 100 % zelenih** i zauzimaju **539 redaka (47 %)**. Ritual arhivira detaljni
+`docs/sessions/tests/SXX_tests.md` kad su svi testovi ✅, ali **nitko nikad ne arhivira
+odgovarajucu sekciju u PENDING** - pa dokument raste zauvijek i „sto jos treba" se ne vidi.
+Prijedlog: zelene sekcije u `DONE_HISTORY.md`, u PENDING ostaje 14 sekcija s 24 otvorena testa.
+/!\ Ovo **nije** krsenje pravila „retci se ne brisu, nego dobivaju ✅ + razlog" (S136) -
+retci prezive, samo u drugom fileu. Ali **jest** promjena oblika rituala => ceka Sasinu rijec.

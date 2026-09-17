@@ -9,9 +9,47 @@
 > „tog dokaza vise nema", a dokaz je cijelo vrijeme bio na disku.
 
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S138 (2026-09-15) - deploy na `main` pusten; `cutoff:3:5` i `rata.date_map.Visa=5` primijenjeni na PROD-u kroz Structure uvoz (pod Kokinim racunom -- `areas.settings` je vlasnikov). Nadjeno da `Datum naplate` ima DVA rjecnika i da samo jedan razumije tokene. Ranije: S137 (2026-09-15) - triaza: `S119`-`S123` arhivirani (17 -> 12 otvorenih session fileova), `audit_tests.py` prestao biti slijep za cetiri od pet oblika ID-a i za tri od pet oznaka statusa; PROD potvrdio kolonu `Racun`. Ranije: S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
+**Zadnji update:** S139 (2026-09-17) - alati koji mjere nesto drugo nego sto tvrde: ESLint je linta o `Claude-temp_R/OLD/` pa je 75% nalaza dolazilo iz starih kopija; `structureExcel.test.mjs` je ispisivao pad i izlazio s exit 0; `audit_tests.py` je prijavljivao 22 proturjecnosti kojih nema. `react-hooks` 189 -> 0 problema, ratchet postao tvrda brana, CI se sada okida i na `test-branch`. Ranije: S138 (2026-09-15) - deploy na `main` pusten; `cutoff:3:5` i `rata.date_map.Visa=5` primijenjeni na PROD-u kroz Structure uvoz (pod Kokinim racunom -- `areas.settings` je vlasnikov). Nadjeno da `Datum naplate` ima DVA rjecnika i da samo jedan razumije tokene. Ranije: S137 (2026-09-15) - triaza: `S119`-`S123` arhivirani (17 -> 12 otvorenih session fileova), `audit_tests.py` prestao biti slijep za cetiri od pet oblika ID-a i za tri od pet oznaka statusa; PROD potvrdio kolonu `Racun`. Ranije: S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
 
 ---
+
+## S139 — alati koji mjere nešto drugo nego što tvrde (2026-09-17)
+
+⚠ **Četiri puta isti razred, i jedan od njih je bio moj vlastiti instrument.**
+ESLint je lintao `Claude-temp_R/OLD/` (142 od 189 problema = 75 % iz starih kopija; audit je
+76 `react-hooks` nalaza pripisao živom kodu, živih je bilo **25**) · `structureExcel.test.mjs`
+je ispisivao ❌ i izlazio s **exit 0** · `audit_tests.py` je prijavljivao **22** proturječnosti
+protiv popisa ukinutog u S116 · moja **dva** detektora „mrtvih alata" dala su **100 % lažnih
+pozitiva**. Puna zamka je u CLAUDE.md § „Alati koji mjere nesto drugo nego sto mislis".
+
+**Detalji testova:** `../../Claude-temp_R/test-sessions/archive/` (arhiva) · ovdje su samo statusi.
+
+| ID        | Test                                                                                                      | Status |
+| --------- | --------------------------------------------------------------------------------------------------------- | ------ |
+| T-S139-1  | `npx eslint .` nad **živim** kodom = **0 problema** (bilo 189, od toga 142 iz `Claude-temp_R/OLD/`)       | ✅ S139 — izmjereno |
+| T-S139-2  | `npm run check` = `typecheck` + `test:unit` + `lint:ratchet`, sve tri prolaze                              | ✅ S139 — izmjereno |
+| T-S139-3  | CI (`Checks`) se okida **i na `test-branch`**, i koraci `Unit guards` + `Lint ratchet` stvarno izvrše      | ✅ S139 — dva zelena runa, workflow file pročitan iz samog runa |
+| T-S139-4  | Ratchet **pada i kad brojka padne** (zastarjela baseline), ne samo kad naraste                             | ✅ S139 — po konstrukciji + `--update` |
+| T-S139-5  | `run-unit-tests.mjs` prijavljuje „ispisuje pad, a izlazi s exit 0" kao **POKVAREN**                        | ✅ S139 — dokazano sabotažom jedne tvrdnje |
+| T-S139-6  | `structureExcel.test.mjs` sada **može pasti** (sažetak + `process.exit(failed ? 1 : 0)`)                   | ✅ S139 — sabotaža daje exit 1 |
+| T-S139-7  | 12 nepotpunih dep lista popravljeno; nijedna nije zastarijevala **danas**, sve su bile mine                | ✅ S139 — E2E specovi S121/S122/S123/S133 prolaze |
+| T-S139-8  | `ViewDetailsPage`: efekt premješten **ispod** deklaracije `loadActivityData`                               | ⬜ **potvrdi ručno** — otvori redak, Prev/Next, pa Edit pa natrag na View |
+| T-S139-9  | `ExcelExportModal`: izvoz i dalje poštuje `filter.categoryId` i profil (dep lista dopunjena)               | ⬜ **potvrdi ručno** — izvezi s profilom i bez njega, usporedi broj redaka |
+| T-S139-10 | `hidden_in_add` preživi Structure roundtrip iz `make_financije_all_structure.py` (kolona `HiddenInAdd`)    | ⬜ **potvrdi na PROD-u** — 3 atributa, svi u `Financije_all`; ⚠ uvoz **nije** popravljen (v. Backlog) |
+| T-S139-11 | `audit_tests.py` više ne prijavljuje 22 fantomske proturječnosti (`curated_retired`)                       | ✅ S139 — izmjereno |
+| T-S139-12 | E7-3 uzrok — klik na `Revoke` ne otvori `confirm revoke`                                                   | ⬜ **otvoreno** — nije regresija S139 (v. E7-3 niže i CLAUDE.md Open bugs) |
+| T-S139-13 | Usporedba punog E2E runa `fd07840` vs `HEAD` — je li ijedan pad **nastao** u S139                          | ⬜ **BASELINE_RESULT** |
+
+⚠ **Otvoreno pitanje o samom ovom dokumentu** (S139, nije izvedeno): 18 od 34 sekcije su
+**100 % zelene** i zauzimaju **539 od 1159 redaka (47 %)**. Ritual arhivira
+`docs/sessions/tests/SXX_tests.md` kad su svi testovi ✅, ali **nitko nikad ne arhivira
+odgovarajuću sekciju ovdje** — pa PENDING raste zauvijek i „što još treba" se ne vidi.
+Prijedlog: zelene sekcije u `DONE_HISTORY.md`, ovdje ostaje 14 sekcija s 24 otvorena testa.
+⚠ To **nije** kršenje pravila „retci se ne brišu" (S136) — retci prežive, samo u drugom fileu
+— ali **jest** promjena oblika rituala, pa čeka Sašinu odluku.
+
+---
+
 
 ## S138 — deploy, `cutoff:3:5` na PROD, i pravilo koje je bilo promijenjeno samo napola (2026-09-15)
 
@@ -1152,7 +1190,8 @@ napisan i spreman, ali NE pokretati dok Smjer nije pouzdan (dry-run uhvatio gre�
 | E10-2    | Owner revokes access via Share modal                                           | ✅                                                      |
 | E10-3    | After revoke — grantee no longer sees Fitness area                             | ✅                                                      |
 | E15-full | Revoke with events: dialog + Take your data banner                             | ⬜ (pending smoke test)                                 |
-| E7-2/3   | Share Management: invite existing user → "Access granted" toast appears        | ⚠️ (Toast missing — UX polish backlog)                 |
+| E7-2    | Share Management: invite existing user → poziv prolazi bez fantomskog toasta          | ✅ **S139 (izmjereno)** — toast `Access granted` NIKAD nije postojao (`handleInvite` otvara messageBox); uklanjanjem tvrdnje spec prolazi |
+| E7-3    | Revoke access → korisnik nestaje s popisa `Active access`                                | ⬜ **PADA, uzrok neutvrđen.** Klik na `Revoke` ne otvori `confirm revoke`. Izmjereno S139: verzija speca od **prije** sesije pada 2 (E7-2+E7-3), poslije pada 1 (E7-3) ⇒ **nije regresija**. V. CLAUDE.md Open bugs |
 
 ---
 
