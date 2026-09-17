@@ -30,9 +30,20 @@ ROLE = {
 }
 MARK = {'stit': 'X', 'kvarljivo': '~'}
 
-# Povratni link ispod svakog `## ` naslova. Isti oblik sidra kao u indeksu
-# (v. komentar u `build`): `<#Ime Naslova>`, jer Obsidian ne zna za GitHub slug.
-BACKLINK = '[↑ Sadrzaj](<#Sadrzaj>)'
+# Povratni link ispod svakog `## ` naslova.
+# /!\ BEZ ugao-zagrada, za razliku od linkova u indeksu. One su ondje nuzne jer
+#     naslovi imaju RAZMAKE; meta povratka je `## Sadrzaj` -- jedna rijec, pa je
+#     `(#Sadrzaj)` obican link koji renderira svaki parser. Ugao-zagrade su ovdje
+#     bile suvisna sintaksa, a suvisna sintaksa je mjesto gdje se renderiranje
+#     razilazi (Obsidian Live Preview ih nije prikazivao kao link, Reading jest).
+BACKLINK = '[↑ Sadrzaj](#Sadrzaj)'
+# /!\ CISCENJE IDE PO OBLIKU, NE PO DOSLOVNOM STRINGU -- i to je placeno (S139).
+#     Prva verzija je brisala retke jednake `BACKLINK`u. Cim se `BACKLINK`
+#     promijenio (maknute ugao-zagrade), stari retci se vise nisu poklapali:
+#     nisu obrisani, a novi su dodani => file je narastao za 18 redaka i imao
+#     DVA povratna linka ispod svakog naslova. Cuvar koji prepoznaje samo
+#     danasnji oblik ne stiti od sutrasnje promjene tog oblika.
+BACKLINK_RE = re.compile(r'^\[↑ Sadrzaj\]\(<?#Sadrzaj>?\)$')
 
 
 def add_backlinks(lines):
@@ -48,7 +59,7 @@ def add_backlinks(lines):
     /!\ `## Sadrzaj` ovdje NE postoji: indeks je vec izrezan iz body-ja, pa
         sekcija sadrzaja ne moze dobiti link na samu sebe.
     """
-    stripped = [l for l in lines if l.strip() != BACKLINK]
+    stripped = [l for l in lines if not BACKLINK_RE.match(l.strip())]
     out = []
     for line in stripped:
         out.append(line)

@@ -53,7 +53,7 @@ _Ukupno 2653 redaka, 18 sekcija._
 ---
 
 ## Strategic Position (2026-08-15)
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 **Misija:** Personal structured memory/decision system nad povijesnim podacima. Pretvoriti
 nestrukturirani Excel (Financije, Zdravlje, Diary) u upitne, analizirane podatke. Kasnije:
@@ -75,7 +75,7 @@ podaci hrane i AI sloj.
 ---
 
 ## Key docs (read before touching related code)
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 | Doc                                        | When to read                                                                     |
 | ------------------------------------------ | -------------------------------------------------------------------------------- |
@@ -106,7 +106,7 @@ podaci hrane i AI sloj.
 ---
 
 ## Three core principles — NEVER violate
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 **P1** — All category levels (not just leaf) can have attribute definitions.
 
@@ -119,7 +119,7 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 ---
 
 ## Critical rules
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 **Baza / upiti**
 
@@ -1041,7 +1041,7 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 ---
 
 ## Zamke (data pipeline / AI / E2E)
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 **Python alati (`data-prep_tools/`)**
 
@@ -1588,7 +1588,7 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 ---
 
 ## Theme colours (src/lib/theme.ts)
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 | Context | Colour | Token |
 |---------|--------|-------|
@@ -1604,7 +1604,7 @@ Preview all at `/app/debug` → Theme Preview tab.
 ---
 
 ## Key files
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 ```
 data-prep_tools/Tools/backup_db.py Snimka CIJELE baze (12 tablica + auth popis +
@@ -1724,7 +1724,7 @@ src/hooks/useAttributeDefinitions.ts  Loads attr defs + parseValidationRules()
 ---
 
 ## Structure tab — component map
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 ```
 AppHome (Structure tab)
@@ -1744,7 +1744,7 @@ AppHome (Structure tab)
 ---
 
 ## Data model (simplified)
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 ```
 areas → categories (hierarchical, parent_category_id, level 1-10)
@@ -1766,7 +1766,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 ---
 
 ## Što aplikacija zna raditi
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 - **Activities:** Add / Edit / View, Excel Import+Export s detekcijom kolizija, `row_hash` skip
   nedirnutih redaka + update-guard (D7), `Delete?` kolona + delete-guard, izvještaj nakon uvoza
@@ -1792,7 +1792,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 ---
 
 ## Izmjereno i **nije** problem — ne trošiti vrijeme ponovno
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 - **Atributni filtar nije spor** (S120). `ILIKE '%x%'` na `event_attributes.value_text` je
   **indeksiran** — `sql/028_value_text_trigram_index.sql` (GIN, `pg_trgm`, još iz S97).
@@ -1832,7 +1832,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   je vec ovdje.
 
 ## Open bugs
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 > **Dva pravila o samom ovom popisu** — izvedena iz zatvorenih unosa pri ciscenju u S139,
 > jer bi se seljenjem punog teksta izgubila:
@@ -1919,7 +1919,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 - **~~e16-filter-persistence~~** — zatvoreno S122: „flaky" nije bio filter reset nego remount liste koji odnese otvoren ⋮ izbornik.
 
 ## Financije — pravila domene (izvodi, rječnik, 1:N)
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 > Plan, tranše i povijest migracije su u **`docs/FINANCIJE_STATUS.md`** (kvarljivo).
 > Ovdje ostaje samo ono što vrijedi **bez obzira na to dokle je migracija došla**.
@@ -2108,7 +2108,7 @@ dira saldo. **Ratama se ne dira ni kasnije:** rate dijele dan **kupnje**, izvod 
 **terećenja** — ondje izvod nije autoritet za `event_date`, samo za `Datum naplate`.
 
 ## Overview tab / analitika — sažetak odluka
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zaboraviti:
 
@@ -2205,7 +2205,7 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
 ---
 
 ## S112+: Intelligence layer
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza 3 prođe.
 (Broj pomican četiri puta — S108, S109, S110, S111 su zauzeli mjesto.)
@@ -2213,7 +2213,7 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 ---
 
 ## Backlog
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 > **Cime se od ovoga sljedeca sesija treba baviti** (S139). Popis mijesa tri stanja, pa je
 > trecina njega posao koji **ne treba nikakvu akciju** — a svaka sesija ju je dosad citala
@@ -2519,7 +2519,7 @@ sa `schedule = "@weekly"` (orphaned share_invites, stari accepted invites, stari
 ---
 
 ## TypeScript known issue
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 `TS2688: Cannot find type definition file for 'vite/client'` — pre-existing, harmless,
 does not block build. Ignore it.
@@ -2527,7 +2527,7 @@ does not block build. Ignore it.
 ---
 
 ## Session workflow (VSCode / Claude Code)
-[↑ Sadrzaj](<#Sadrzaj>)
+[↑ Sadrzaj](#Sadrzaj)
 
 ### Start of session
 1. Claude reads this file automatically
