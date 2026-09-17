@@ -44,7 +44,19 @@ def build(lines, offset=0):
         if not line.startswith('## '):
             continue
         title = line[3:].strip()
-        anchor = re.sub(r'[^\w\s-]', '', title.lower()).strip().replace(' ', '-')
+        # /!\ SIDRO JE IME NASLOVA, NE GitHub SLUG -- i to je mjereno (S139).
+        #     CLAUDE.md se cita u Obsidianu (`.obsidian/` je u korijenu), a on
+        #     fragment iza `#` razrjesava kao IME NASLOVA. Neosjetljiv je na
+        #     velika/mala slova, ali crtice NE pretvara u razmake -- pa je od 18
+        #     sekcija radila tocno jedna (`Backlog`), jer je jedina jednorjecna.
+        #     Izmjereno klikanjem svih varijanti: rade `(<#Tocan Naslov>)`,
+        #     postotno kodiran oblik i wikilink; GitHub slug ne radi.
+        #     Biran je ugao-zagrada oblik: standardni CommonMark (za razliku od
+        #     wikilinka, koji na GitHubu ispadne kao goli tekst) i citljiv u
+        #     sirovom fileu, sto je vazno jer Claude ovo cita sirovo.
+        #     /!\ CIJENA: na GitHubu sidra vise ne skacu. Stupac s BROJEM RETKA
+        #     radi svugdje i zato ostaje -- on je, a ne link, jamstvo navigacije.
+        anchor = title.replace('**', '')
         rows.append((i + offset, title, anchor, role_of(title)))
     total = len(lines) + offset
     out = [BEGIN,
@@ -58,7 +70,7 @@ def build(lines, offset=0):
            '| r. | sekcija | |',
            '| ---: | --- | :---: |']
     for i, title, anchor, role in rows:
-        out.append('| %d | [%s](#%s) | %s |' % (i, title, anchor, MARK.get(role, '')))
+        out.append('| %d | [%s](<#%s>) | %s |' % (i, title, anchor, MARK.get(role, '')))
     out += ['', '_Ukupno %d redaka, %d sekcija._' % (total, len(rows)), '', END]
     return '\n'.join(out)
 
