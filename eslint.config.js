@@ -6,7 +6,13 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // /!\ `Claude-temp_R/` drzi CIJELE stare kopije projekta (radni stol, gitignoriran).
+  //     ESLint 9 NE cita `.gitignore`, pa ih je do S139 lintao kao da su izvor:
+  //     od 189 prijavljenih problema 142 (75%) dolazilo je odande. Posljedica nije
+  //     bila sum nego KRIVA DIJAGNOZA -- audit je 76 `react-hooks` nalaza pripisao
+  //     zivom kodu, a ziv je 25; `DateRangeFilter.tsx` je izgledao kao najgori file,
+  //     a u njemu ih danas nema nijedan.
+  globalIgnores(['dist', 'Claude-temp_R', 'test-results', 'e2e/test-results']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

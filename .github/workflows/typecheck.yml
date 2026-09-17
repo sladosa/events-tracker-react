@@ -1,17 +1,20 @@
-# TypeScript Build Check
-# Pokreće tsc na svakom pushu da uhvati greške PRIJE Netlify deploya.
-# Ako ovo prođe ✅, Netlify build će sigurno proći.
+# Provjere prije PROD-a
+# ======================
+# Pokrece se na svakom pushu na `main` I na `test-branch`.
+# /!\ Do S139 je okidac bio SAMO `main` -- dakle ono sto se razvija na
+#     `test-branch`-u nije provjeravalo nista, a gate je palio tek kad kod
+#     vec ide na PROD. Provjera koja stigne prekasno nije brana nego izvjestaj.
 
-name: TypeScript Check
+name: Checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, test-branch]
   pull_request:
     branches: [main]
 
 jobs:
-  typecheck:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +28,16 @@ jobs:
 
       - name: TypeScript check
         run: npm run typecheck
+
+      # 11 guard testova koje do S139 nije pokretalo NISTA -- ni npm ni CI.
+      - name: Unit guards
+        run: npm run test:unit
+
+      # Ratchet na dva `react-hooks` pravila (ona koja su ovdje vec proizvela
+      # incidente: S111, S119/S120, S121, S129, S133). Ne blokira postojecih 25,
+      # blokira NOVE. Baseline: `.lint-baseline.json`.
+      - name: Lint ratchet (react-hooks)
+        run: npm run lint:ratchet
 
       - name: Full build (same as Netlify)
         run: npm run build

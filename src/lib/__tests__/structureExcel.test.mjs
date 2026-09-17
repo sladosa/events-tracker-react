@@ -523,3 +523,12 @@ test('null description becomes empty string', () => {
    dakle svih 37 tvrdnji iznad NIJE se izvrsavalo, a `npm run typecheck` to ne
    vidi jer .mjs testovi nisu u tsconfigu. Dovrseno u S137 (`T-S131-21`).
    /!\ Test koji se ne pokrece izgleda isto kao test koji prolazi. */
+
+/* /!\ SUMARNI REDAK + EXIT KOD -- bez njih je `failed` brojac koji nitko ne cita,
+   pa file ispise ❌ i zavrsi s exit 0. Izmjereno S139 sabotazom jedne tvrdnje:
+   exit je ostao 0. Zaglavlje ovog filea (redak 10) taj sazetak obecava od pocetka
+   -- otpao je s istim S17 rezanjem koje je odrezalo tvrdnje (v. biljesku iznad);
+   S137 je vratio tvrdnje, ali ne i nacin da se njihov pad vidi.
+   /!\ Test koji ne moze pasti ne cuva nista (pravilo iz S120). */
+console.log(failed ? `\n${failed} FAILED, ${passed} passed.` : `\nAll ${passed} tests passed.`);
+process.exit(failed ? 1 : 0);
