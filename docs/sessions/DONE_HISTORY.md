@@ -5323,3 +5323,28 @@ Dakle tvrdnja je zaostala iz starijeg dizajna, a pad testa je citan kao kvar apl
 Po vlastitom pravilu rituala („Selektor problem — test pada, app radi ispravno -> fix samo u
 spec fajlu, ne dokumentira se kao bug") unos je **maknut** iz § Open bugs, a dvije zastarjele
 tvrdnje su uklonjene iz speca uz biljesku zasto.
+
+
+#### ~~Sidro upisano kroz UI nema podrijetlo~~ (iz Backloga, S139)
+
+**~~Sidro upisano kroz UI nema podrijetlo~~ — ✅ ZATVORENO** (polje „odakle" u S113,
+**obavezno** od S116 jer o njemu ovisi datum potvrde). Ostatak ispod je povijest problema.
+Izvorni opis (S110) — `balance_anchors.note` postoji, skripta ga
+puni („ispisano NOVO STANJE, `ZABA_2024-12.pdf`"), a `saveAnchor()` iz pločice ga ostavlja
+`NULL`. Smeta baš zbog pravila oko kojeg je mehanizam građen — **stanje smije doći samo
+izvana** (§2.17) — jer se poslije iz baze ne vidi je li broj s izvoda, s ekrana banke ili
+izračunat. Fix: malo polje „odakle" uz „u banci", ili barem automatski `note`.
+⚠ Više se **ne odgađa** (§2.18 zatvorio `Stanja`). Rješenje je sada malo polje „odakle" uz
+„u banci" — istu ulogu koju je trebao imati atribut `Izvor podatka`, bez selidbe u evente.
+
+#### ~~Sidra se ne mogu vidjeti ni obrisati iz aplikacije~~ (iz Backloga, S139)
+
+**~~Sidra se ne mogu vidjeti ni obrisati iz aplikacije~~ — ✅ IZVEDENO S116.** Pločica ima
+„povijest potvrda" (▸ označava onu od koje saldo kreće) i ✕ za brisanje; `listAnchors()` i
+`deleteAnchor()` se konačno zovu. Uz to postoji i `data-prep_tools/Financije/anchors.py`
+(`--list`, `--delete`) za rad izvan aplikacije. **Neverificirano uživo: T-S116-13.**
+⚠ Blokada je **otpala** (§2.18 — sidra ostaju zasebna tablica), pa se ovo sada smije graditi.
+⚠ **S115 je dao drugi slučaj u dvije sesije** (krivo datirano sidro, BUG-S115-ANCHORDATE) —
+dakle nije jednokratni promašaj nego izostanak koraka. Postalo je i konkretnije: u S111 je jedno
+sidro upisano s tipfelericom (3.453,03 umjesto 3.458,03) i **ispravlja se samo novim retkom** — bez popisa u UI-ju korisnik ne vidi da uz
+važeće sidro stoji i ono krivo.

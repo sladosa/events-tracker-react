@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 106 | [Three core principles — NEVER violate](#three-core-principles--never-violate) | X |
 | 118 | [Critical rules](#critical-rules) | X |
 | 1039 | [Zamke (data pipeline / AI / E2E)](#zamke-data-pipeline--ai--e2e) | X |
-| 1507 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
-| 1522 | [Key files](#key-files) |  |
-| 1641 | [Structure tab — component map](#structure-tab--component-map) |  |
-| 1660 | [Data model (simplified)](#data-model-simplified) |  |
-| 1681 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
-| 1706 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
-| 1726 | [Open bugs](#open-bugs) | ~ |
-| 1796 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
-| 1984 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
-| 2080 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
-| 2087 | [Backlog](#backlog) | ~ |
-| 2367 | [TypeScript known issue](#typescript-known-issue) |  |
-| 2374 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+| 1533 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
+| 1548 | [Key files](#key-files) |  |
+| 1667 | [Structure tab — component map](#structure-tab--component-map) |  |
+| 1686 | [Data model (simplified)](#data-model-simplified) |  |
+| 1707 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
+| 1732 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
+| 1752 | [Open bugs](#open-bugs) | ~ |
+| 1822 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
+| 2010 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
+| 2106 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
+| 2113 | [Backlog](#backlog) | ~ |
+| 2396 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2403 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
 
-_Ukupno 2497 redaka, 18 sekcija._
+_Ukupno 2526 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1440,6 +1440,32 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   ⚠ **Vrijedi za svaki budući `fixed` element usidren uz redak** (portal meniji, tooltipovi):
   usidrenje traži **praćenje**, a zatvaranje je krinka za to da se ne prati.
 
+**Alati koji mjere nesto drugo nego sto mislis (S139)**
+
+- **/!\ ESLINT JE LINTAO `Claude-temp_R/OLD/` — CIJELE STARE KOPIJE PROJEKTA.** ESLint 9
+  **ne cita `.gitignore`**, a config je ignorirao samo `dist`. Od 189 prijavljenih problema
+  **142 (75 %) dolazilo je odande**. Posljedica nije bio sum nego **kriva dijagnoza**: audit od
+  16.09.2026. je 76 `react-hooks` nalaza pripisao zivom kodu (zivih je **25**), a
+  `DateRangeFilter.tsx` — file iz S111 incidenta — po toj je brojci izgledao najgori (8),
+  dok ih u njemu danas **nema nijedan**. Zatvoreno u `eslint.config.js` (`globalIgnores`).
+  /!\ Pravilo sire od ESLinta: **alat koji sam bira sto ce citati mora se pitati STO JE
+  PROCITAO**, ne samo koliko je nasao. Repo koji drzi stare kopije pored zivog koda je zamka
+  za svaki takav alat (grep, lint, brojanje redaka).
+- **/!\ TEST KOJI NE MOZE PASTI IZGLEDA ISTO KAO TEST KOJI PROLAZI.**
+  `structureExcel.test.mjs` je brojao padove u `failed` i **nikad ga nije procitao** — pa je
+  ispisivao kriz i zavrsavao s `exit 0`. Izmjereno sabotazom jedne tvrdnje: exit ostao **0**.
+  Zaglavlje filea sazetak obecava od pocetka; otpao je s istim S17 rezanjem koje je odrezalo
+  tvrdnje, a S137 je vratio tvrdnje ali ne i nacin da se pad vidi.
+  ⇒ `scripts/run-unit-tests.mjs` zato „ispis pada + exit 0" prijavljuje kao **POKVAREN TEST**.
+- **/!\ `audit_tests.py` je prijavljivao 22 proturjecnosti kojih NEMA.** Kurirani popis
+  „Otvoreno:" ukinut je u S116, a alat je marker citao kao **prazan popis**, pa je svaki
+  otvoren redak prijavljivao kao razilazenje. Audit ga je preuzeo kao nalaz o dokumentu.
+  /!\ Upozorenje koje uvijek pali covjek nauci preskakati — pa onda ne vidi ni ono pravo.
+- **Sto je od ovoga BRANA, a ne izvjestaj:** `npm run check` = `typecheck` + `test:unit` +
+  `lint:ratchet`; CI ih vrti **i na `test-branch`** (do S139 se okidao samo na `main`, dakle
+  tek kad kod vec ide na PROD). Ratchet gadja **samo dva** `react-hooks` pravila — gate koji
+  obuhvaca i kozmetiku nauci covjeka da ga zaobilazi. Baseline: `.lint-baseline.json`.
+
 **E2E (Playwright)**
 
 - **⚠ E2E PREUZME DEV SERVER KOJI VEĆ STOJI NA 5173 — I TO MOŽE BITI PROD** (S133).
@@ -2086,6 +2112,22 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 
 ## Backlog
 
+> **Cime se od ovoga sljedeca sesija treba baviti** (S139). Popis mijesa tri stanja, pa je
+> trecina njega posao koji **ne treba nikakvu akciju** — a svaka sesija ju je dosad citala
+> da bi zakljucila to isto. Ovdje su imena, ne premjesteni tekst: unosi ostaju gdje jesu.
+>
+> **Parkirano / ceka vanjski okidac — preskoci (8):** Preimenovanje `Financije_all` ·
+> Prijedlog `comment`a iz povijesti · Drill s dva uvjeta · Netlify scheduled maintenance ·
+> Garmin/Sleep · `trening.xlsm` · Plotly bundle · Split-workbook
+>
+> **Ceka Sasinu ODLUKU prije ijedne linije koda (1):** PBZVISA prolaz — znaci li
+> `Datum naplate` za karticu *kojem izvodu pripada* ili *kad je novac otisao*.
+>
+> **Vise nije posao (5):** cetiri ~~precrtana~~ izvedena unosa (ostaju zbog ostatka koji je
+> jos otvoren i zbog pretrage) + `Stanje post-processing` (otpada, S109).
+>
+> **Otvoreno — ovo je stvarni popis (15):** sve ostalo.
+
 **~~Kolone Activities liste po Arei~~ — ✅ IZVEDENO S116.** `settings.list_columns`,
 slug-based, `ListColumns` sheet u Structure roundtripu, fixup na rename. Financije:
 `Datum | Iznos | Tip / Podtip | Opis | User | Stanje | ⋮`, uski ekran u dva reda.
@@ -2270,25 +2312,12 @@ referencija je 10 znamenki (ne `B0802…`), opis nosi **adresu** (`SPAR - MARTI�
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
 (fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
 
-**~~Sidra se ne mogu vidjeti ni obrisati iz aplikacije~~ — ✅ IZVEDENO S116.** Pločica ima
-„povijest potvrda" (▸ označava onu od koje saldo kreće) i ✕ za brisanje; `listAnchors()` i
-`deleteAnchor()` se konačno zovu. Uz to postoji i `data-prep_tools/Financije/anchors.py`
-(`--list`, `--delete`) za rad izvan aplikacije. **Neverificirano uživo: T-S116-13.**
-⚠ Blokada je **otpala** (§2.18 — sidra ostaju zasebna tablica), pa se ovo sada smije graditi.
-⚠ **S115 je dao drugi slučaj u dvije sesije** (krivo datirano sidro, BUG-S115-ANCHORDATE) —
-dakle nije jednokratni promašaj nego izostanak koraka. Postalo je i konkretnije: u S111 je jedno
-sidro upisano s tipfelericom (3.453,03 umjesto 3.458,03) i **ispravlja se samo novim retkom** — bez popisa u UI-ju korisnik ne vidi da uz
-važeće sidro stoji i ono krivo.
+**~~Sidra se ne mogu vidjeti ni obrisati iz aplikacije~~** — IZVEDENO S116: pločica ima
+„povijest potvrda" + ✕; uz to `data-prep_tools/Financije/anchors.py` (`--list`, `--delete`).
+**Neverificirano uživo: T-S116-13.** Povijest: `DONE_HISTORY.md`.
 
-**~~Sidro upisano kroz UI nema podrijetlo~~ — ✅ ZATVORENO** (polje „odakle" u S113,
-**obavezno** od S116 jer o njemu ovisi datum potvrde). Ostatak ispod je povijest problema.
-Izvorni opis (S110) — `balance_anchors.note` postoji, skripta ga
-puni („ispisano NOVO STANJE, `ZABA_2024-12.pdf`"), a `saveAnchor()` iz pločice ga ostavlja
-`NULL`. Smeta baš zbog pravila oko kojeg je mehanizam građen — **stanje smije doći samo
-izvana** (§2.17) — jer se poslije iz baze ne vidi je li broj s izvoda, s ekrana banke ili
-izračunat. Fix: malo polje „odakle" uz „u banci", ili barem automatski `note`.
-⚠ Više se **ne odgađa** (§2.18 zatvorio `Stanja`). Rješenje je sada malo polje „odakle" uz
-„u banci" — istu ulogu koju je trebao imati atribut `Izvor podatka`, bez selidbe u evente.
+**~~Sidro upisano kroz UI nema podrijetlo~~** — ZATVORENO: polje „odakle" (S113), **obavezno**
+od S116 jer o njemu ovisi datum potvrde. Povijest problema: `DONE_HISTORY.md`.
 
 **⭐ `rata` ne razumije `cutoff:B:D` — prva rata zna pasti mjesec prekasno** (S138).
 `generateRataChargeDates` (`rataAutomation.ts:77`) prima **broj dana** i uvijek kreće od
