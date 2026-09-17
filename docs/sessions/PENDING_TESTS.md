@@ -38,7 +38,7 @@ pozitiva**. Puna zamka je u CLAUDE.md § „Alati koji mjere nesto drugo nego st
 | T-S139-10 | `hidden_in_add` preživi Structure roundtrip iz `make_financije_all_structure.py` (kolona `HiddenInAdd`)    | ⬜ **potvrdi na PROD-u** — 3 atributa, svi u `Financije_all`; ⚠ uvoz **nije** popravljen (v. Backlog) |
 | T-S139-11 | `audit_tests.py` više ne prijavljuje 22 fantomske proturječnosti (`curated_retired`)                       | ✅ S139 — izmjereno |
 | T-S139-12 | E7-3 uzrok — klik na `Revoke` ne otvori `confirm revoke`                                                   | ⬜ **otvoreno** — nije regresija S139 (v. E7-3 niže i CLAUDE.md Open bugs) |
-| T-S139-13 | Usporedba punog E2E runa `fd07840` vs `HEAD` — je li ijedan pad **nastao** u S139                          | ⬜ **BASELINE_RESULT** |
+| T-S139-13 | Usporedba punog E2E runa `fd07840` vs `HEAD` — je li ijedan pad **nastao** u S139                          | ✅ S139 — `fd07840` **59/12**, HEAD **60/11** ⇒ S139 nije dodao nijedan pad. ⚠ Skupovi NISU identicni (baseline pada E5-5, HEAD u e5 nije pao nijedan) i HEAD report je prepisan ⇒ usporedba je po **brojci**, ne test-po-test |
 
 ⚠ **Otvoreno pitanje o samom ovom dokumentu** (S139, nije izvedeno): 18 od 34 sekcije su
 **100 % zelene** i zauzimaju **539 od 1159 redaka (47 %)**. Ritual arhivira

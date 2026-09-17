@@ -105,7 +105,17 @@ ali unos je vracen kao otvoren, jer se uzrok ne zna.
 
 Puni run nad **HEAD** (prije ciljanih ponavljanja): **60 proslo / 11 palo**, 22,7 min.
 Nijedan spec koji cuva dirane dijelove nije pao (S121, S122, S123, S133).
-Puni run nad **`fd07840`** (prije sesije), kroz `git worktree`: **BASELINE_RESULT**
+Puni run nad **`fd07840`** (prije sesije), kroz `git worktree`: **59 proslo / 12 palo**, 20,3 min. Dakle baseline pada **jedan vise** od HEAD-a.
+Padovi: E5-5, E7-2, E7-3, E9-3, E10-2, E11-4, E12-2, E12-4, E13-2, E14-1, E15, T-S104-1.
+
+/!\ **Sto ovo dokazuje, a sto ne.** Dokazuje da S139 nije dodao nijedan pad -- ukupno
+ih je **manje** nego prije sesije. Ne dokazuje da su skupovi identicni: HEAD run je u
+e5 imao **nula** padova, a baseline pada `E5-5` => skupovi se razlikuju u barem dva
+clana u oba smjera, pa negdje postoji pad koji baseline nema. Koji -- ne zna se, jer
+je HTML report HEAD runa prepisan kasnijim ciljanim runom.
+/!\ I sam taj razlaz je podatak: suite **nije determinisitcan izmedju runova** (isti
+e5 daje 0, 1 ili 5 padova ovisno o tome sto je islo prije njega). Zato bi i usporedba
+redak-po-redak trazila **ponovljene** pune runove s obje strane, ne jedan par.
 
 /!\ Ogranicenje usporedbe: HTML report mog punog runa je **prepisan** kasnijim ciljanim
 runom, pa se usporedjuju **brojke** punih runova i obitelji padova, ne popis test-po-test.
