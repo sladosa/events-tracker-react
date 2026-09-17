@@ -231,12 +231,16 @@ async function _buildCategoryChain(leafCatId: UUID): Promise<{
   return { chain, path, attributesByCategory };
 }
 
+// /!\ `try/catch` ispod je no-op i lint je u pravu -- drzi se jer je JEDINO mjesto
+//     gdje ta odluka pise: greska se PROSLIJEDI, a `null` je rezerviran za stvarno odsutne
+//     podatke. Bez toga „citanje palo" i „nema retka" izgledaju isto (razred iz S121).
 async function _fetchActivityData(
   sessionStart: string,    // decoded (or event UUID for noSession)
   categoryIdParam: string | null,
   noSession: boolean,
   ownerIdParam: string | null,
 ): Promise<CachedActivityData | null> {
+  // eslint-disable-next-line no-useless-catch
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;

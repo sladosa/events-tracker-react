@@ -135,7 +135,7 @@ export function useCategoryChain(leafCategoryId: UUID | null): UseCategoryChainR
   // Explicit refetch bypasses cache (called after Structure edits)
   const refetch = useCallback(async () => {
     if (leafCategoryId) {
-      try { sessionStorage.removeItem(CHAIN_CACHE_PREFIX + leafCategoryId); } catch {}
+      try { sessionStorage.removeItem(CHAIN_CACHE_PREFIX + leafCategoryId); } catch { /* storage nedostupan: private window, blokiran site data */ }
     }
     await fetchChain(true);
   }, [fetchChain, leafCategoryId]);

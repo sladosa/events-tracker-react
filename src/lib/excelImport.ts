@@ -116,7 +116,7 @@ function parseLegend(ws: ExcelJS.Worksheet): { mapping: LegendMapping; legendEnd
     const colCell = cellStr(row.getCell(1).value);
     if (!colCell) return;   // blank col → skip this row
 
-    let letter = colCell.toUpperCase().replace(/^COL\s*/, '').trim();
+    const letter = colCell.toUpperCase().replace(/^COL\s*/, '').trim();
     if (!letter) return;
 
     // Stop if col A is not a valid Excel column letter (1-3 capital letters A-Z).
@@ -923,8 +923,8 @@ export async function applyImportChanges(
   onProgress?:         (done: number, total: number) => void,
 ): Promise<ApplyResult> {
   // Local mutable copies so BUG-F fix can reclassify rows
-  let toCreate = _toCreate; // eslint-disable-line prefer-const
-  let toUpdate = _toUpdate; // eslint-disable-line prefer-const
+  let toCreate = _toCreate;
+  let toUpdate = _toUpdate;
 
   let created  = 0;
   let updated  = 0;

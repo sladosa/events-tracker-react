@@ -25,5 +25,25 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Podvlaka je u ovoj bazi koda VEC signal za „namjerno neiskoristeno"
+      // (`_userId`, `_attrDefs`, `_setRenderError`). Do S139 ESLint to nije znao,
+      // pa je 7 takvih prijavljivao kao mrtav kod.
+      // /!\ „Popravak" brisanjem bio bi GORI od nalaza: `_userId` i `_attrDefs` su
+      //     PARAMETRI, pa bi brisanje mijenjalo potpise funkcija zbog lint poruke.
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
+    },
+  },
+  {
+    // Context fileovi POSTOJE da izvezu par Provider + hook (`FilterProvider` +
+    // `useFilter`, `HelpProvider` + `useHelp`) -- to je standardni React idiom.
+    // Pravilo ondje trazi da se hook izdvoji u zaseban file; dobitak je samo brzi
+    // HMR u devu, cijena je razbijanje idioma. Gasi se za te fileove, ne globalno.
+    files: ['src/context/**/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
   },
 ])

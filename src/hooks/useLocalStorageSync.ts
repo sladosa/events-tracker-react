@@ -349,7 +349,6 @@ export function useLocalStorageSync(
     } catch (e) {
       console.error('Failed to clear draft:', e);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Setup auto-save interval
@@ -394,7 +393,6 @@ export function useLocalStorageSync(
   // Stop auto-save
   const stopAutoSave = useCallback((): void => {
     haltAutoSave();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   return {

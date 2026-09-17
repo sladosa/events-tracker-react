@@ -22,7 +22,15 @@ import { ESLint } from 'eslint';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BASELINE = join(ROOT, '.lint-baseline.json');
-const WATCHED = ['react-hooks/set-state-in-effect', 'react-hooks/exhaustive-deps'];
+// /!\ `immutability` dodan u S139: bio je SKRIVEN iza `eslint-disable-next-line`
+//     za DRUGO pravilo (`exhaustive-deps`) -- plugin preskoci cijeli efekt koji nosi
+//     disable za bilo koje `react-hooks` pravilo. Kad je mrtva direktiva maknuta,
+//     nalaz je ispilio. Mrtva suzbijanja zato nisu kozmetika nego slijepa mrlja.
+const WATCHED = [
+  'react-hooks/set-state-in-effect',
+  'react-hooks/exhaustive-deps',
+  'react-hooks/immutability',
+];
 const update = process.argv.includes('--update');
 
 const eslint = new ESLint({ cwd: ROOT });

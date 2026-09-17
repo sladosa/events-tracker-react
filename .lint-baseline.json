@@ -1,4 +1,5 @@
 {
   "react-hooks/set-state-in-effect": 13,
-  "react-hooks/exhaustive-deps": 12
+  "react-hooks/exhaustive-deps": 12,
+  "react-hooks/immutability": 1
 }

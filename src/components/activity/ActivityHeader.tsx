@@ -15,6 +15,7 @@ import { forwardRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { EditorMode } from '@/types/activity';
 import { messages } from '@/types/activity';
+import { formatTimer, formatDuration } from '../../lib/timeFormat';
 
 // ============================================
 // Helpers
@@ -47,24 +48,6 @@ function formatTimeHM(date: Date): string {
 // Timer / Duration formatting
 // ============================================
 
-function formatTimer(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) {
-    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  }
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
 
 // ============================================
 // Types
@@ -404,9 +387,3 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
     );
   }
 );
-
-// ============================================
-// Export timer formatting for use elsewhere
-// ============================================
-
-export { formatTimer, formatDuration };

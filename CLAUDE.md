@@ -43,10 +43,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2045 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
 | 2141 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
 | 2148 | [Backlog](#backlog) | ~ |
-| 2442 | [TypeScript known issue](#typescript-known-issue) |  |
-| 2449 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+| 2453 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2460 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
 
-_Ukupno 2572 redaka, 18 sekcija._
+_Ukupno 2583 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2401,6 +2401,17 @@ Traži da se u `buildValidationRules` proslijedi „je li kolona postojala", jer
 razlikuje *„pise FALSE"* od *„kolone nema"*.
 ⚠ **Ne popravljati napamet:** mijenja semantiku uvoza za svaki file, pa ide uz test i uz
 Sasinu potvrdu. Danas pogađa **3 atributa**, sva tri u `Financije_all`.
+
+**⭐ `ViewDetailsPage`: efekt zove `loadActivityData` PRIJE nego je deklariran** (S139,
+`react-hooks/immutability`, `:334`). Radi danas — efekti se vrte nakon rendera, pa je `const`
+do tada dodijeljen — ali efekt drzi **staru** funkciju i ne osvjezava se kad se ona promijeni.
+Isti razred kao S119/S120, i u istom fileu.
+⚠ **Ne popravljati naivno:** dodavanje u dep listu ponovo bi pokretalo efekt na SVAKOM renderu
+(funkcija se stvara iznova), sto je klasicna zamjena jednog kvara drugim. Trazi `useCallback`
+ili premjestanje deklaracije, i E2E protuprovjeru (`e4-view-activity`).
+⚠ **Bio je NEVIDLJIV do S139:** skrivao ga je `eslint-disable-next-line` za **drugo** pravilo
+(`exhaustive-deps`) — plugin preskoci cijeli efekt koji nosi disable za bilo koje `react-hooks`
+pravilo. Mrtva suzbijanja zato nisu kozmetika nego **slijepa mrlja**.
 
 **Postgres upgrade — otvoren od S105, i retry ga samo SKRIVA** (spaseno iz `BUG-S121-AREACTX`,
 S139). Palo citanje `areas` na PROD-u je vjerojatno S105 obrazac: free-tier se gusi. `withRetry`

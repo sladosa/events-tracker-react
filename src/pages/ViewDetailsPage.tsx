@@ -30,6 +30,7 @@ import {
 } from '@/lib/activityViewCache';
 
 import type { UUID } from '@/types';
+import { formatDuration } from '../lib/timeFormat';
 
 // ============================================
 // Helpers
@@ -44,15 +45,6 @@ function formatDateYMD(date: Date): string {
 
 function formatTimeHM(date: Date): string {
   return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
 }
 
 // ============================================
@@ -332,7 +324,6 @@ export function ViewDetailsPage() {
       return;
     }
     loadActivityData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionStart, categoryIdParam, noSession, ownerIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadActivityData = async () => {

@@ -226,8 +226,8 @@ export function ProgressiveCategorySelector({
       }
       setPeriodKey(pk);
       setSortOrder(fs.sortOrder ?? 'desc');
-      fs.commentSearch ? setCommentSearch(fs.commentSearch) : clearCommentSearch();
-      fs.attrFilter ? setAttrFilter(fs.attrFilter) : clearAttrFilter();
+      if (fs.commentSearch) setCommentSearch(fs.commentSearch); else clearCommentSearch();
+      if (fs.attrFilter) setAttrFilter(fs.attrFilter); else clearAttrFilter();
     } else {
       setDateRange(null, null);
       setPeriodKey('all-time');

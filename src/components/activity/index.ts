@@ -5,7 +5,10 @@ export { AttributeChainForm } from './AttributeChainForm';
 export { PhotoUpload } from './PhotoUpload';
 export { PhotoGallery, SimplePhotoUpload } from './PhotoGallery';
 export { SessionHeader } from './SessionHeader';
-export { ActivityHeader, formatTimer, formatDuration } from './ActivityHeader';
+export { ActivityHeader } from './ActivityHeader';
+// /!\ formatTimer/formatDuration NISU vise u komponenti (S139): izvoz ne-komponente
+//     iz fajla s komponentom gasi Vite Fast Refresh za taj fajl.
+export { formatTimer, formatDuration } from '../../lib/timeFormat';
 export { SessionLog } from './SessionLog';
 export { ActivitiesTable } from './ActivitiesTable';
 export { 
