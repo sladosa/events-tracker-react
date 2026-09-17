@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 106 | [Three core principles — NEVER violate](#three-core-principles--never-violate) | X |
 | 118 | [Critical rules](#critical-rules) | X |
 | 1039 | [Zamke (data pipeline / AI / E2E)](#zamke-data-pipeline--ai--e2e) | X |
-| 1569 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
-| 1584 | [Key files](#key-files) |  |
-| 1703 | [Structure tab — component map](#structure-tab--component-map) |  |
-| 1722 | [Data model (simplified)](#data-model-simplified) |  |
-| 1743 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
-| 1768 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
-| 1807 | [Open bugs](#open-bugs) | ~ |
-| 1877 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
-| 2065 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
-| 2161 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
-| 2168 | [Backlog](#backlog) | ~ |
-| 2473 | [TypeScript known issue](#typescript-known-issue) |  |
-| 2480 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+| 1585 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
+| 1600 | [Key files](#key-files) |  |
+| 1719 | [Structure tab — component map](#structure-tab--component-map) |  |
+| 1738 | [Data model (simplified)](#data-model-simplified) |  |
+| 1759 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
+| 1784 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
+| 1823 | [Open bugs](#open-bugs) | ~ |
+| 1909 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
+| 2097 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
+| 2193 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
+| 2200 | [Backlog](#backlog) | ~ |
+| 2505 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2512 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
 
-_Ukupno 2603 redaka, 18 sekcija._
+_Ukupno 2635 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1523,6 +1523,22 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   ⚠ Provjereno nad živim serverom: 10.09. je na :5173 stajao `vite --mode prod` i
   guard je bacio. **Disciplina više nije jedina brana, ali `dev:prod` i dalje ugasi**
   — inače E2E jednostavno neće krenuti.
+- **⚠ PONOVLJEN POJEDINACNI RUN MJERI BAZU KOJU JE PRETHODNI RUN PROMIJENIO** (S139).
+  `global-setup.ts` vraca seed stanje **na pocetku runa**, nikad izmedju specova — pa
+  ciljano ponavljanje jednog speca radi dijagnoze krece od stanja koje je ostavio
+  prethodni. Izmjereno istog dana: u punom runu (71 test) `e5-structure` pada **1 od 5**
+  (E5-3); nakon tri uzastopna `e7-share` runa — a on poziva i opoziva pristup — isti
+  `e5-structure` pao je **5 od 5**.
+  ⚠ Smjer je suprotan od poznatog artefakta: dosad je vrijedilo „spec sam prolazi, u
+  paketu pada". Ovdje spec **u paketu prolazi, a sam pada** — dakle „pustit cu ga samog
+  da vidim je li stvaran" je potez koji moze **proizvesti** pad koji dijagnosticira.
+  ⇒ Usporedba dvije verzije koda radi se **punim runom nad svakom**, ili barem runom koji
+  krece cist. Za usporedbu s prijasnjim commitom posluzi `git worktree` (kod se mijenja
+  bez diranja radnog direktorija) — ⚠ put worktreeja mora biti **ASCII**: u putu s
+  `Saša` Vite ne razrijesi `/src/main.tsx` i **svaki** test padne iz krivog razloga.
+  ⚠ Vjerojatno je isto ono sto stoji otvoreno kao `T-S135-11` („zasto suite rusi sam
+  sebe", hipoteza gusenja TEST baze) — ali to **nije izmjereno**, pa ostaje hipoteza.
+
 - **⚠ `fullyParallel: false` NE čini run sekvencijalnim** (S120). Drži redoslijed samo
   *unutar* jednog spec filea; **fileovi i dalje idu u zasebne workere**, a Playwright uzima
   otprilike pola jezgri. Šest specova nad **istom seed Areom i istom bazom** dalo je
@@ -1832,6 +1848,22 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 - **BUG-S103-ANYATTR:** „In any attribute" filter (`ATTR_FILTER_ANY`) timeouta za grantee-e —
   `ILIKE` nije leakproof pa Postgres evaluira RLS EXISTS nad cijelom `event_attributes`.
   Privremeno: amber notice u UI. **Pravi fix = SECURITY DEFINER RPC — isti sloj kao Faza 1.**
+
+- **E7-3 Revoke access — PADA, uzrok NEUTVRDJEN, i NIJE regresija S139.** Klik na `Revoke`
+  ne otvori dijalog `confirm revoke`; modal se zatvori. Izmjereno S139 usporedbom dviju
+  verzija **istog** speca nad **istim** kodom aree:
+
+      git show fd07840:e2e/tests/e7-share.spec.ts  (prije sesije)  -> 1 prosao, 2 pala (E7-2, E7-3)
+      e2e/tests/e7-share.spec.ts                   (poslije)       -> 2 prosla, 1 pao  (E7-3)
+
+  Dakle E7-3 je padao **i prije** ijedne izmjene, a uklanjanje fantomske tvrdnje o toastu
+  `Access granted` je **popravilo E7-2**.
+  /!\ Prva dijagnoza je bila kriva i zapisana kao nalaz: „E7-3 je poceo padati jer je
+  tvrdnja o toastu usput sluzila kao tocka sinkronizacije". Dodano je izricito cekanje na
+  gumb `Revoke` — **i E7-3 je svejedno pao**. Cekanje je zadrzano (klik na gumb koji jos
+  ne postoji je utrka, ne provjera), ali **ono nije lijek** i komentar u specu to sada kaze.
+  /!\ **Dijagnoza mora krenuti od PUNOG runa, ne od ciljanog ponavljanja** — v. zamku
+  „ponovljeni pojedinacni run mjeri bazu koju je prethodni run promijenio" (§ E2E).
 
 - **E8-2 Area select timeout:** grantee-write test padne na `selectOption` (element disabled) —
   moguće isti family kao BUG-S103-ANYATTR

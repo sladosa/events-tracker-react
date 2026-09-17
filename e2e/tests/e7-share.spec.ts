@@ -95,8 +95,22 @@ test.describe('E7 — Share Management', () => {
     //     vec odbacuje. Vodila se kao bug E7-2/E7-3, tj. kao izostanak poruke.
     //     Izmjereno S139: stringa nema u `src/`, i uspjesan put nema nijedan toast.
 
+    // /!\ ISPRAVAK VLASTITE TVRDNJE (S139). Ovdje je najprije stajalo da je E7-3
+    //     "poceo padati" zbog maknute tvrdnje o toastu, koja je usput sluzila kao
+    //     tocka sinkronizacije. To je bila HIPOTEZA napisana kao nalaz, i mjerenje
+    //     ju je opovrglo: pustena je verzija speca od PRIJE sesije
+    //     (`git show fd07840:e2e/tests/e7-share.spec.ts`) i ona pada DVA testa
+    //     (E7-2 i E7-3), dok ova pada JEDAN (E7-3).
+    //     => E7-3 je padao i prije ikakve izmjene -- nije regresija; a uklanjanje
+    //        fantomske tvrdnje je E7-2 popravilo.
+    //     Cekanje ispod OSTAJE, ali kao ono sto jest: klik na gumb koji jos ne
+    //     postoji nije provjera nego utrka. Ono NE popravlja E7-3 i ne smije se
+    //     tako citati -- uzrok E7-3 je i dalje neutvrdjen (v. CLAUDE.md Open bugs).
+    const revokeBtn = page.getByRole('button', { name: /revoke/i }).first();
+    await expect(revokeBtn).toBeVisible({ timeout: 8_000 });
+
     // Now revoke
-    await page.getByRole('button', { name: /revoke/i }).first().click();
+    await revokeBtn.click();
 
     // Revoke confirmation dialog appears — confirm it
     await expect(page.getByRole('button', { name: /confirm revoke/i })).toBeVisible({ timeout: 8_000 });
