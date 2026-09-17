@@ -388,7 +388,17 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   useEffect(() => {
     if (skip) return; // BUG-S45-1: skip fetch when caller already has the list
     fetchActivities(false);
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, skip]); // eslint-disable-line react-hooks/exhaustive-deps
+  // /!\ `isExact` MORA biti ovdje: mijenja sam upit (`eventQueryBuilder.ts:109`,
+  //     tocno poklapanje vs `ILIKE`). Do S139 ga lista nije imala, pa promjena samo tog
+  //     polja nije okidala refetch -- lista bi ostala na rezultatima PRETHODNOG nacina.
+  //     Danas nije zivo (`isExact` je cista funkcija atributa: suggest => true, inace
+  //     false), ali JEST dohvatljivo preko vracenog shortcuta cijem je atributu
+  //     u medjuvremenu dodan `suggest`.
+  // /!\ `attrFilter` se NE smije dodati kao objekt (sto lint trazi): nov identitet
+  //     na svakom renderu => refetch na svakom renderu. Tri polja SU iscrpna --
+  //     `AttrFilterState` ih ima tocno toliko (`FilterContext.tsx:22`).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, skip]);
 
   const loadMore = useCallback(async () => {
     if (!loadingMore && hasMore) {

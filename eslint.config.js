@@ -6,6 +6,16 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
+  {
+    // /!\ MRTVA `eslint-disable` DIREKTIVA NIJE SUM NEGO SLIJEPA MRLJA.
+    //     ESLint 9 ih po defaultu prijavljuje kao `warn`, a upozorenja ovdje nitko
+    //     nije citao 7 mjeseci: u S139 su nadjene 5, i jedna je skrivala PRAVI nalaz
+    //     (`react-hooks/immutability` u `ViewDetailsPage`) -- jer plugin preskoci
+    //     cijeli efekt koji nosi disable za BILO KOJE `react-hooks` pravilo.
+    //     Od S139 `disable` s obrazlozenjem je legitiman alat (v. § Zamke), pa mora
+    //     postojati i brana koja javi kad obrazlozenje vise ne opisuje stvarnost.
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+  },
   // /!\ `Claude-temp_R/` drzi CIJELE stare kopije projekta (radni stol, gitignoriran).
   //     ESLint 9 NE cita `.gitignore`, pa ih je do S139 lintao kao da su izvor:
   //     od 189 prijavljenih problema 142 (75%) dolazilo je odande. Posljedica nije
