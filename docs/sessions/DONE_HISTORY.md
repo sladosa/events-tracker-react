@@ -5184,3 +5184,142 @@ krivi izvor). **S131 NIJE arhiviran.**
 **Otvoreno na kraju:** deploy ✅, config ✅, ali **ništa od toga nije provjereno upotrebom** —
 `T-S138-1` i `T-S138-2` čekaju jedan Visa unos. Uz njih tri podatkovna zadatka (`T-S138-3/-4/-5`).
 
+---
+
+## Done S139: zatvoreni bugovi izmaknuti iz CLAUDE.md-a
+
+Dvanaest unosa iz § Open bugs bilo je precrtano i oznaceno kao popravljeno, a i dalje je
+zauzimalo 96 od 132 retka sekcije koja se cita **prije** svakog posla. U CLAUDE.md-u je od
+svakog ostao jedan redak (ID + sto je bilo + gdje pravilo zivi); puni tekst je ovdje.
+
+/!\ Prije seljenja je provjereno nosi li koji unos pravilo kojeg **nema drugdje** — isti
+postupak kao „Spaseno iz plana" (S137), gdje bi bulk move tiho odnio cetiri pravila.
+Nadjena su tri i sva tri su zadrzana u CLAUDE.md-u:
+
+1. **„bezopasno" vrijedi dok nitko ne cita** (iz `T-S107u-2`) -> pravilo na vrhu § Open bugs
+2. **bug zatvoren usput ostaje otvoren dok ga netko ne izmjeri** (iz `BUG-S114-REPORTDD`)
+   -> pravilo na vrhu § Open bugs
+3. **Postgres upgrade, otvoren od S105** (iz `BUG-S121-AREACTX`) -> § Backlog, jer to nije
+   povijest nego otvorena stavka; retry ondje **skriva uzrok, ne lijeci ga**.
+
+Uz njih je izbacen i unos **E7-2/E7-3** — nije bug (v. nize), pa nije ni presao ovamo kao
+popravak nego kao ispravak tvrdnje.
+
+### Puni tekst preseljenih unosa
+
+- **~~BUG-S123-DELTAACCT~~ — ✅ POPRAVLJENO S123.** Delta sheet je uzimao račun iz
+  **živog filtra**, a evente iz profila; presjek prazan ⇒ file s točnim sidrom i
+  nula redaka. Sada `deriveDeltaAccount()` (`exportProfile.ts`) + upozorenje na
+  praznu sekciju. Čuva `src/lib/__tests__/deltaAccount.test.mjs` (11 slučajeva).
+- **~~BUG-S123-EDITMARK~~ — ✅ POPRAVLJENO S125.** Oznaka ✎ nije se prikazivala
+  jer redak renderiraju **dva različita mjesta**, a oznaku je imalo samo jedno:
+  `cellContent('actions')` (desktop, `tr.hidden.sm:table-row`) vraćao je goli
+  `menuButton`, dok ju je sticky ćelija uskog retka (`tr.sm:hidden`) crtala.
+  Playwright vrti 1280 px ⇒ **test je cijelo vrijeme govorio istinu**, a tražilo
+  se na krivom mjestu (mrežni odgovor, locator, stale bundle). Otkriveno tek kad
+  je Saša pogledao **oba ekrana** na PROD-u: uski je pokazivao ✎, široki ne.
+  ⚠ Na krivi trag je odveo komentar iznad `editedMark` koji je tvrdio „na oba
+  rasporeda" dok je kod radio jedan — isti razred kao PROD slug trigger (S118).
+  Čuva `T-S123-3` u `S123_owner_edits_grantee_row.spec.ts` (mijenja viewport).
+- **~~BUG-S132-EVENTCOUNT~~ — ✅ POPRAVLJENO S133.** Structure tab je brojao evente
+  u pregledniku nad odrezanih 1000 redaka (izmjereno: PROD 1000 od 12.199), pa je
+  leaf s **5.173** eventa pisao `no events yet` — i time otključavao S24 zabranu
+  dodavanja djeteta. Sada baza broji: `count: 'exact', head: true` po kategoriji,
+  usporedno. Puna zamka je u „UI (React)"; čuva
+  `e2e/tests/S133_structure_event_count.spec.ts` (protuprovjera pada).
+  **Neverificirano uživo: T-S133-7/-8/-9.**
+- **~~T-S107u-2~~ — ✅ POPRAVLJENO S117.** Oscilacija je bila **zatvoreni krug preko obje
+  strane**, ne samo uvozna greška: **export** za `depends_on` atribut svakim retkom prepiše
+  `defaultVal` vrijednošću iz `default_map`, pa se atributov vlastiti `default_value` **nikad
+  ne zapiše**; **import** je onda čitao `Default` s prvog takvog retka natrag **kao atributov**.
+  Otud `Izvrsen`↔`null`. Sada `defaultVal: row.dependsOn ? '' : row.defaultVal` — kod
+  `depends_on` atributa vlastitog defaulta nema, a po vrijednostima žive u `default_map`u
+  (dvoje bi bilo dvosmisleno: forma ne bi znala koje pobjeđuje).
+  ⚠ Bug je bio označen „bezopasno" jer `default_value` nitko nije čitao. **To je prestalo
+  vrijediti u S117**, kad ga je skrivanje-na-defaultu počelo čitati — `Status` bi počeo
+  nasumično nestajati iz forme. Zabilježeno kao obrazac: „bezopasno" vrijedi **dok** nitko ne
+  čita, i prestaje bez ijedne poruke.
+- **~~BUG-S115-ANCHORDATE~~ — ✅ POPRAVLJENO S116.** Datum potvrde više se ne izvodi iz
+  filtra nego iz **izvora**: `ekran bankovne aplikacije` ⇒ danas (app upisuje sam),
+  `izvod`/`ispis` ⇒ **prazno polje koje korisnik popuni s papira**. Izvor je postao obavezan
+  (bez njega gumb ne radi), jer o njemu ovisi datum. Uz to: rečenica o posljedici prije klika,
+  upozorenje kad novija potvrda već postoji, popis potvrda s brisanjem, i guard protiv
+  budućeg datuma u `saveAnchor()`. **Neverificirano uživo: T-S116-10…13.**
+  ⚠ Popravljeno je i konkretno sidro (`22.08.` → `30.07.`, Sašin ručni ispravak u Supabase
+  editoru). RF `11.08. = 799,12` je **provjeren i točan** — `RF_2026-07.pdf` se zatvara
+  11.08. (zadnja tx `Mirovina III stup 254,33`).
+- **~~BUG-S114-REPORTDD~~ — ✅ ZATVOREN S136, bez ijedne linije koda.** Tvrdio je da izvještaj
+  o uvozu nema `DropdownData`, pa `Tip`/`Podtip` u njemu nemaju izbornik. Izmjereno sondom nad
+  `addActivitiesSheetsTo` (funkcija koju `buildImportReport` zove **bezuvjetno**): list
+  `DropdownData [veryHidden]` postoji, `Tip` nosi `type=list`, `Podtip` `INDIRECT(…)`, a
+  kolona `Result` dokazuje da je riječ o obliku izvještaja. Nalaz je bio točan kad je pisan;
+  zatvorio ga je refaktor koji izvještaj gradi **jednim** workbookom umjesto post-processingom
+  (v. komentar u `excelImportReport.ts:105`), a bug je ostao otvoren.
+  ⚠ **Pouka:** bug zatvoren usput ostaje otvoren dokle god ga netko ne izmjeri — a „otvoren
+  bug" se čita kao poznat kvar i troši pažnju svake iduće sesije.
+- **~~BUG-S118-PREVIEWMODE~~ — ✅ POPRAVLJENO S120.** Modal parsira file **prije** nego pita
+  što s tuđim retcima, pa prvi prolaz može samo pretpostaviti `skip`. Popravak nije bio „jedan
+  argument" kako je ovdje pisalo nego **ponovna analiza s odabranim načinom** prije prikaza
+  previewa (`analyzeFile(file, mode)`). Izmjereno prije/poslije na fileu s tuđim emailom:
+  prije — **nijedna** kolizija, dakle Apply bi ubacio duplikate bez poruke; poslije — **2 od 2**
+  retka prijavljena, `⏭ All skipped`. Čuva `e2e/tests/e17-import-foreign-preview.spec.ts`.
+  Stari opis:
+  `ExcelImportModal.tsx:106` zove `parseExcelFile(file, userEmail)` **bez** `foreignMode`,
+  pa preview uvijek računa po `skip` — kod tuđeg filea pokaže **`0 New / 0 Modify`** baš
+  u trenutku kad korisnik odlučuje hoće li uvoziti. Apply putanja
+  (`excelImport.ts:1864`) prosljeđuje `foreignMode` i uvoz **radi**.
+  ⚠ Gore od krive brojke: preview je taj koji računa **provjeru kolizija**, a ona je nad
+  praznim skupom, pa za „Import as mine" **otpada zaštita od dvostrukog uvoza istog filea**.
+  Izmjereno S118 na 3×1000 redaka (uvoz prošao, preview lagao sva tri puta).
+  Fix je jedan argument; nije napravljen jer bi tražio deploy usred migracije.
+- **~~BUG-S119-FILTERBACK~~ — ✅ POPRAVLJENO S120.** Sumnja na `ProgressiveCategorySelector`
+  bila je **kriva**: krivac je `AppHome`ov reset-efekt, koji se okida i pri montiranju
+  (v. „UI (React)"). Izmjereno logom u `setFilter`, ne zaključivanjem. Stari opis: drill s Overview pločice postavi
+  `attrFilter` (npr. `Racun`), ali nakon **View Details pa natrag** lista se vrati na **sve
+  račune**. Korisnik je otvorio jedan redak da ga pogleda i izgubio kontekst u koji se vraća.
+  ⚠ Nije stanje konteksta: `/app/*` dijeli **jedan** `FilterProvider` (`App.tsx:110`), a
+  `/view/:sessionStart` je unutar njega — dakle `filter.attrFilter` bi trebao preživjeti.
+  Sumnja pada na **remount filter panela** pri povratku na `AppHome` i njegov init
+  (`ProgressiveCategorySelector` zove `clearAttrFilter()` na više mjesta, `:212`/`:218`).
+  **Isti razred kao S111** (`DateRangeFilter`: auto-init je prepisivao korisnikov raspon čim
+  se komponenta odmontira) — a taj se bug tada činio „povremenim", a bio je determinističan.
+  ⇒ Prvo **izmjeriti** kad se točno `attrFilter` gubi (drill → View → natrag, s logom u
+  `setFilter`), pa tek onda popravljati. Vrijedi provjeriti i vraća li se **kategorija** i
+  raspon datuma, ne samo `attrFilter`.
+- **~~BUG-S121-DRAFTDUP~~ — ✅ POPRAVLJENO S121.** `finish()` je zvao `clearDraft()` ali ne i
+  `stopAutoSave()`, pa je nacrt uskrsnuo i sljedeći unos postao **duplikat**. Sada
+  `clearDraft()` sam gaši auto-save (invarijanta, ne disciplina) + `sessionFinishedRef`.
+  Čuva `e2e/tests/S121_draft_after_finish.spec.ts`. **Neverificirano uživo: T-S121-3/-4.**
+- **~~BUG-S121-AUTOSAVE~~ — ✅ POPRAVLJENO S121.** Auto-save se naoružavao iznova na svakom
+  renderu pa **nikad nije opalio tijekom unosa** — v. „UI (React)“. Posljedica koja se nije
+  vidjela: Koka nije imala nikakvu zaštitu od gubitka unosa (jedini upis nacrta bio je
+  `Save +`, a Financije ga imaju ugašen). Sada interval 5 s, naoružan jednom po sesiji, uz
+  preskočan upis kad se sadržaj nije promijenio.
+- **~~BUG-S121-AREACTX~~ — ✅ POPRAVLJENO S121.** Palo čitanje `areas` gašilo je Overview tab,
+  kolone i „Write access“ baner **trajno, do reloada** — v. „UI (React)“. Sada `withRetry`,
+  zadržavanje već učitanog za istu Areu, i **amber traka s „Pokušaj ponovno“**.
+  Čuva `e2e/tests/S121_area_context_failure.spec.ts` (3 slučaja).
+  ⚠ Retry **skriva uzrok, ne liječi ga**: na PROD-u je to vjerojatno S105 obrazac
+  (free-tier se guši). Pravi potez ostaje **Postgres upgrade**, otvoren od S105.
+- **~~`e16-filter-persistence` je flaky~~ — ✅ ZATVORENO S122.** Nije bio filter reset nego
+  ⋮ izbornik koji remount liste odnese čim se otvori — v. „E2E“. Popravak je u specu.
+- **E7-2/E7-3:** Toast „Access granted" izostaje u invite flowu — UX polish
+
+
+### `E7-2/E7-3` nije bug — tvrdnja u testu, ne izostanak u aplikaciji (S139)
+
+Vodilo se kao *„Toast ‚Access granted‘ izostaje u invite flowu — UX polish"*, od S73-ere.
+Audit od 2026-09-16 ga je ostavio kao **hipotezu, neprovjereno** (grep ne nalazi string
+u `src/`, ali nije istrazeno je li poruka preimenovana).
+
+Izmjereno: `handleInvite` na uspjesnom putu **ne zove nijedan toast**
+(`ShareManagementModal.tsx:122-140`) — otvara `messageBox` s tekstom pozivnice za kopiranje.
+To je namjeran dizajn, a ne izostanak poruke: korisnik taj tekst treba **poslati** pozvanome.
+
+/!\ Spec je to **vec znao**: `e7-share.spec.ts:62-64` pise „Email invitation modal appears —
+dismiss it to proceed", pa dva retka nize i dalje trazi toast iz dizajna PRIJE messageBoxa.
+Dakle tvrdnja je zaostala iz starijeg dizajna, a pad testa je citan kao kvar aplikacije.
+
+Po vlastitom pravilu rituala („Selektor problem — test pada, app radi ispravno -> fix samo u
+spec fajlu, ne dokumentira se kao bug") unos je **maknut** iz § Open bugs, a dvije zastarjele
+tvrdnje su uklonjene iz speca uz biljesku zasto.

@@ -64,11 +64,15 @@ test.describe('E7 — Share Management', () => {
     await expect(page.getByRole('button', { name: /dismiss/i })).toBeVisible({ timeout: 8_000 });
     await page.getByRole('button', { name: /dismiss/i }).click();
 
-    // Toast: "Access granted to ..."
-    await expect(page.getByText(/access granted/i)).toBeVisible({ timeout: 8_000 });
+    // /!\ NE ocekuj toast Access granted -- nikad nije ni postojao na ovom putu.
+    //     `handleInvite` na uspjehu ne zove `toast.success` nego otvara messageBox s
+    //     tekstom pozivnice za kopiranje (ShareManagementModal.tsx:122-140). Tvrdnja je
+    //     ostala iz dizajna PRIJE messageBoxa -- isti spec dva retka iznad taj messageBox
+    //     vec odbacuje. Vodila se kao bug E7-2/E7-3, tj. kao izostanak poruke.
+    //     Izmjereno S139: stringa nema u `src/`, i uspjesan put nema nijedan toast.
 
     // userb@test.com now listed in Active access
-    // Use exact:true to avoid strict mode conflict with toast "Access granted to userb@test.com"
+    // Use exact:true to avoid strict mode conflict with other occurrences of the same address
     await expect(
       page.getByText(process.env.PLAYWRIGHT_TEST_EMAIL_B!, { exact: true }),
     ).toBeVisible({ timeout: 8_000 });
@@ -84,7 +88,12 @@ test.describe('E7 — Share Management', () => {
     await expect(page.getByRole('button', { name: /dismiss/i })).toBeVisible({ timeout: 8_000 });
     await page.getByRole('button', { name: /dismiss/i }).click();
 
-    await expect(page.getByText(/access granted/i)).toBeVisible({ timeout: 8_000 });
+    // /!\ NE ocekuj toast Access granted -- nikad nije ni postojao na ovom putu.
+    //     `handleInvite` na uspjehu ne zove `toast.success` nego otvara messageBox s
+    //     tekstom pozivnice za kopiranje (ShareManagementModal.tsx:122-140). Tvrdnja je
+    //     ostala iz dizajna PRIJE messageBoxa -- isti spec dva retka iznad taj messageBox
+    //     vec odbacuje. Vodila se kao bug E7-2/E7-3, tj. kao izostanak poruke.
+    //     Izmjereno S139: stringa nema u `src/`, i uspjesan put nema nijedan toast.
 
     // Now revoke
     await page.getByRole('button', { name: /revoke/i }).first().click();

@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 76 | [Key docs (read before touching related code)](#key-docs-read-before-touching-related-code) |  |
 | 106 | [Three core principles — NEVER violate](#three-core-principles--never-violate) | X |
 | 118 | [Critical rules](#critical-rules) | X |
-| 1037 | [Zamke (data pipeline / AI / E2E)](#zamke-data-pipeline--ai--e2e) | X |
-| 1505 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
-| 1520 | [Key files](#key-files) |  |
-| 1639 | [Structure tab — component map](#structure-tab--component-map) |  |
-| 1658 | [Data model (simplified)](#data-model-simplified) |  |
-| 1679 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
-| 1704 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
-| 1724 | [Open bugs](#open-bugs) | ~ |
-| 1856 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
-| 2044 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
-| 2140 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
-| 2147 | [Backlog](#backlog) | ~ |
-| 2421 | [TypeScript known issue](#typescript-known-issue) |  |
-| 2428 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
+| 1039 | [Zamke (data pipeline / AI / E2E)](#zamke-data-pipeline--ai--e2e) | X |
+| 1507 | [Theme colours (src/lib/theme.ts)](#theme-colours-srclibthemets) |  |
+| 1522 | [Key files](#key-files) |  |
+| 1641 | [Structure tab — component map](#structure-tab--component-map) |  |
+| 1660 | [Data model (simplified)](#data-model-simplified) |  |
+| 1681 | [Što aplikacija zna raditi](#što-aplikacija-zna-raditi) |  |
+| 1706 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](#izmjereno-i-nije-problem--ne-trošiti-vrijeme-ponovno) | X |
+| 1726 | [Open bugs](#open-bugs) | ~ |
+| 1796 | [Financije — pravila domene (izvodi, rječnik, 1:N)](#financije--pravila-domene-izvodi-rječnik-1n) |  |
+| 1984 | [Overview tab / analitika — sažetak odluka](#overview-tab--analitika--sažetak-odluka) |  |
+| 2080 | [S112+: Intelligence layer](#s112-intelligence-layer) | ~ |
+| 2087 | [Backlog](#backlog) | ~ |
+| 2367 | [TypeScript known issue](#typescript-known-issue) |  |
+| 2374 | [Session workflow (VSCode / Claude Code)](#session-workflow-vscode--claude-code) |  |
 
-_Ukupno 2551 redaka, 18 sekcija._
+_Ukupno 2497 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -302,8 +302,10 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   pravilo. Netlify je imao aktualan build; preglednik je vrtio stari. Vidjelo se **samo**
   po tome što modal nije imao retke `Settings updated` i `List columns` — brojači koji u
   novijoj verziji postoje. **Hard refresh (Ctrl+Shift+R) je dio postupka**, ne higijena.
-- **⚠ „Import as mine" pokaže `0 New / 0 Modify`, a uvoz ipak radi** (BUG-S118-PREVIEWMODE,
-  v. Open bugs). Ne odustaj na temelju preview brojki.
+- **~~„Import as mine" pokaze `0 New / 0 Modify`, a uvoz ipak radi~~ — POPRAVLJENO S120**
+  (BUG-S118-PREVIEWMODE). Stajalo je ovdje kao **ziv** kvar jos cetiri sesije nakon popravka,
+  i govorilo „ne odustaj na temelju preview brojki" — sto je od S120 neistina.
+  ponovo analizira s odabranim nacinom; cuva `e2e/tests/e17-import-foreign-preview.spec.ts`.
 - **⚠ `et_activity_draft` nije vezan uz korisnika** (`src/types/activity.ts:226`). Jedan
   ključ po pregledniku ⇒ nedovršen nacrt napravljen pod jednim računom iskoči kao
   „Resume Previous Session?" pod **drugim**, i nudi kategoriju iz tuđe aree. Bezopasno
@@ -1723,20 +1725,16 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 
 ## Open bugs
 
-- **~~BUG-S123-DELTAACCT~~ — ✅ POPRAVLJENO S123.** Delta sheet je uzimao račun iz
-  **živog filtra**, a evente iz profila; presjek prazan ⇒ file s točnim sidrom i
-  nula redaka. Sada `deriveDeltaAccount()` (`exportProfile.ts`) + upozorenje na
-  praznu sekciju. Čuva `src/lib/__tests__/deltaAccount.test.mjs` (11 slučajeva).
-- **~~BUG-S123-EDITMARK~~ — ✅ POPRAVLJENO S125.** Oznaka ✎ nije se prikazivala
-  jer redak renderiraju **dva različita mjesta**, a oznaku je imalo samo jedno:
-  `cellContent('actions')` (desktop, `tr.hidden.sm:table-row`) vraćao je goli
-  `menuButton`, dok ju je sticky ćelija uskog retka (`tr.sm:hidden`) crtala.
-  Playwright vrti 1280 px ⇒ **test je cijelo vrijeme govorio istinu**, a tražilo
-  se na krivom mjestu (mrežni odgovor, locator, stale bundle). Otkriveno tek kad
-  je Saša pogledao **oba ekrana** na PROD-u: uski je pokazivao ✎, široki ne.
-  ⚠ Na krivi trag je odveo komentar iznad `editedMark` koji je tvrdio „na oba
-  rasporeda" dok je kod radio jedan — isti razred kao PROD slug trigger (S118).
-  Čuva `T-S123-3` u `S123_owner_edits_grantee_row.spec.ts` (mijenja viewport).
+> **Dva pravila o samom ovom popisu** — izvedena iz zatvorenih unosa pri ciscenju u S139,
+> jer bi se seljenjem punog teksta izgubila:
+>
+> - **/!\ „bezopasno" vrijedi DOK nitko ne cita, i prestaje bez ijedne poruke.**
+>   `T-S107u-2` je bio oznacen bezopasnim jer `default_value` nitko nije citao — a u S117 ga je
+>   skrivanje-na-defaultu pocelo citati i `Status` bi poceo nasumicno nestajati iz forme.
+> - **/!\ Bug zatvoren usput ostaje otvoren dok ga netko ne IZMJERI.** `BUG-S114-REPORTDD`
+>   je zatvorio refaktor u nekoj ranijoj sesiji, a unos je stajao jos dugo — a „otvoren bug"
+>   se cita kao poznat kvar i trosi paznju svake iduce sesije.
+
 - **BUG-S131-VIEWSTALE — ⚠ NEPONOVLJEN, ne popravljati napamet.** Nakon Edita koji
   **pomakne `session_start`** (promjena datuma retka), View na tom retku javi „Activity not
   found"; **F5 ga riješi**. Izmjereno da su podaci ispravni: `event_date 2026-09-04`,
@@ -1746,79 +1744,17 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   (`:422`) — snimak od prije edita više ne sadrži novi ključ. ⚠ **Hipoteza nije dokazana**
   i nije se dala ponoviti; prvo reproducirati, pa popravljati. Redak koji **postoji** a app
   tvrdi da ga nema je gori od greške koja se vidi.
-- **~~BUG-S132-EVENTCOUNT~~ — ✅ POPRAVLJENO S133.** Structure tab je brojao evente
-  u pregledniku nad odrezanih 1000 redaka (izmjereno: PROD 1000 od 12.199), pa je
-  leaf s **5.173** eventa pisao `no events yet` — i time otključavao S24 zabranu
-  dodavanja djeteta. Sada baza broji: `count: 'exact', head: true` po kategoriji,
-  usporedno. Puna zamka je u „UI (React)"; čuva
-  `e2e/tests/S133_structure_event_count.spec.ts` (protuprovjera pada).
-  **Neverificirano uživo: T-S133-7/-8/-9.**
+
 - **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
   StrictMode artefakt, nizak rizik
+
 - **BUG-S103-ANYATTR:** „In any attribute" filter (`ATTR_FILTER_ANY`) timeouta za grantee-e —
   `ILIKE` nije leakproof pa Postgres evaluira RLS EXISTS nad cijelom `event_attributes`.
   Privremeno: amber notice u UI. **Pravi fix = SECURITY DEFINER RPC — isti sloj kao Faza 1.**
+
 - **E8-2 Area select timeout:** grantee-write test padne na `selectOption` (element disabled) —
   moguće isti family kao BUG-S103-ANYATTR
-- **E7-2/E7-3:** Toast „Access granted" izostaje u invite flowu — UX polish
-- **~~T-S107u-2~~ — ✅ POPRAVLJENO S117.** Oscilacija je bila **zatvoreni krug preko obje
-  strane**, ne samo uvozna greška: **export** za `depends_on` atribut svakim retkom prepiše
-  `defaultVal` vrijednošću iz `default_map`, pa se atributov vlastiti `default_value` **nikad
-  ne zapiše**; **import** je onda čitao `Default` s prvog takvog retka natrag **kao atributov**.
-  Otud `Izvrsen`↔`null`. Sada `defaultVal: row.dependsOn ? '' : row.defaultVal` — kod
-  `depends_on` atributa vlastitog defaulta nema, a po vrijednostima žive u `default_map`u
-  (dvoje bi bilo dvosmisleno: forma ne bi znala koje pobjeđuje).
-  ⚠ Bug je bio označen „bezopasno" jer `default_value` nitko nije čitao. **To je prestalo
-  vrijediti u S117**, kad ga je skrivanje-na-defaultu počelo čitati — `Status` bi počeo
-  nasumično nestajati iz forme. Zabilježeno kao obrazac: „bezopasno" vrijedi **dok** nitko ne
-  čita, i prestaje bez ijedne poruke.
-- **~~BUG-S115-ANCHORDATE~~ — ✅ POPRAVLJENO S116.** Datum potvrde više se ne izvodi iz
-  filtra nego iz **izvora**: `ekran bankovne aplikacije` ⇒ danas (app upisuje sam),
-  `izvod`/`ispis` ⇒ **prazno polje koje korisnik popuni s papira**. Izvor je postao obavezan
-  (bez njega gumb ne radi), jer o njemu ovisi datum. Uz to: rečenica o posljedici prije klika,
-  upozorenje kad novija potvrda već postoji, popis potvrda s brisanjem, i guard protiv
-  budućeg datuma u `saveAnchor()`. **Neverificirano uživo: T-S116-10…13.**
-  ⚠ Popravljeno je i konkretno sidro (`22.08.` → `30.07.`, Sašin ručni ispravak u Supabase
-  editoru). RF `11.08. = 799,12` je **provjeren i točan** — `RF_2026-07.pdf` se zatvara
-  11.08. (zadnja tx `Mirovina III stup 254,33`).
-- **~~BUG-S114-REPORTDD~~ — ✅ ZATVOREN S136, bez ijedne linije koda.** Tvrdio je da izvještaj
-  o uvozu nema `DropdownData`, pa `Tip`/`Podtip` u njemu nemaju izbornik. Izmjereno sondom nad
-  `addActivitiesSheetsTo` (funkcija koju `buildImportReport` zove **bezuvjetno**): list
-  `DropdownData [veryHidden]` postoji, `Tip` nosi `type=list`, `Podtip` `INDIRECT(…)`, a
-  kolona `Result` dokazuje da je riječ o obliku izvještaja. Nalaz je bio točan kad je pisan;
-  zatvorio ga je refaktor koji izvještaj gradi **jednim** workbookom umjesto post-processingom
-  (v. komentar u `excelImportReport.ts:105`), a bug je ostao otvoren.
-  ⚠ **Pouka:** bug zatvoren usput ostaje otvoren dokle god ga netko ne izmjeri — a „otvoren
-  bug" se čita kao poznat kvar i troši pažnju svake iduće sesije.
-- **~~BUG-S118-PREVIEWMODE~~ — ✅ POPRAVLJENO S120.** Modal parsira file **prije** nego pita
-  što s tuđim retcima, pa prvi prolaz može samo pretpostaviti `skip`. Popravak nije bio „jedan
-  argument" kako je ovdje pisalo nego **ponovna analiza s odabranim načinom** prije prikaza
-  previewa (`analyzeFile(file, mode)`). Izmjereno prije/poslije na fileu s tuđim emailom:
-  prije — **nijedna** kolizija, dakle Apply bi ubacio duplikate bez poruke; poslije — **2 od 2**
-  retka prijavljena, `⏭ All skipped`. Čuva `e2e/tests/e17-import-foreign-preview.spec.ts`.
-  Stari opis:
-  `ExcelImportModal.tsx:106` zove `parseExcelFile(file, userEmail)` **bez** `foreignMode`,
-  pa preview uvijek računa po `skip` — kod tuđeg filea pokaže **`0 New / 0 Modify`** baš
-  u trenutku kad korisnik odlučuje hoće li uvoziti. Apply putanja
-  (`excelImport.ts:1864`) prosljeđuje `foreignMode` i uvoz **radi**.
-  ⚠ Gore od krive brojke: preview je taj koji računa **provjeru kolizija**, a ona je nad
-  praznim skupom, pa za „Import as mine" **otpada zaštita od dvostrukog uvoza istog filea**.
-  Izmjereno S118 na 3×1000 redaka (uvoz prošao, preview lagao sva tri puta).
-  Fix je jedan argument; nije napravljen jer bi tražio deploy usred migracije.
-- **~~BUG-S119-FILTERBACK~~ — ✅ POPRAVLJENO S120.** Sumnja na `ProgressiveCategorySelector`
-  bila je **kriva**: krivac je `AppHome`ov reset-efekt, koji se okida i pri montiranju
-  (v. „UI (React)"). Izmjereno logom u `setFilter`, ne zaključivanjem. Stari opis: drill s Overview pločice postavi
-  `attrFilter` (npr. `Racun`), ali nakon **View Details pa natrag** lista se vrati na **sve
-  račune**. Korisnik je otvorio jedan redak da ga pogleda i izgubio kontekst u koji se vraća.
-  ⚠ Nije stanje konteksta: `/app/*` dijeli **jedan** `FilterProvider` (`App.tsx:110`), a
-  `/view/:sessionStart` je unutar njega — dakle `filter.attrFilter` bi trebao preživjeti.
-  Sumnja pada na **remount filter panela** pri povratku na `AppHome` i njegov init
-  (`ProgressiveCategorySelector` zove `clearAttrFilter()` na više mjesta, `:212`/`:218`).
-  **Isti razred kao S111** (`DateRangeFilter`: auto-init je prepisivao korisnikov raspon čim
-  se komponenta odmontira) — a taj se bug tada činio „povremenim", a bio je determinističan.
-  ⇒ Prvo **izmjeriti** kad se točno `attrFilter` gubi (drill → View → natrag, s logom u
-  `setFilter`), pa tek onda popravljati. Vrijedi provjeriti i vraća li se **kategorija** i
-  raspon datuma, ne samo `attrFilter`.
+
 - **BUG-S117-RULESHAPE:** panel i import **ne pišu isti oblik** `validation_rules` za
   `depends_on` atribut. Panel: `{type, suggest: [...], allow_other: true, depends_on}`;
   import: `{type, depends_on}`. Zato svaki Structure import nakon spremanja panela prijavi
@@ -1830,28 +1766,32 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   roundtrip ga izbriše. Trenutno neopasno jer je u cijeloj bazi **0 od 12** `depends_on`
   atributa ima nepraznu listu — dakle rupa čeka prvog korisnika, ne ruši ništa danas.
   Fix: kolona za fallback opcije + isti graditelj pravila na obje strane.
-- **~~BUG-S121-DRAFTDUP~~ — ✅ POPRAVLJENO S121.** `finish()` je zvao `clearDraft()` ali ne i
-  `stopAutoSave()`, pa je nacrt uskrsnuo i sljedeći unos postao **duplikat**. Sada
-  `clearDraft()` sam gaši auto-save (invarijanta, ne disciplina) + `sessionFinishedRef`.
-  Čuva `e2e/tests/S121_draft_after_finish.spec.ts`. **Neverificirano uživo: T-S121-3/-4.**
-- **~~BUG-S121-AUTOSAVE~~ — ✅ POPRAVLJENO S121.** Auto-save se naoružavao iznova na svakom
-  renderu pa **nikad nije opalio tijekom unosa** — v. „UI (React)“. Posljedica koja se nije
-  vidjela: Koka nije imala nikakvu zaštitu od gubitka unosa (jedini upis nacrta bio je
-  `Save +`, a Financije ga imaju ugašen). Sada interval 5 s, naoružan jednom po sesiji, uz
-  preskočan upis kad se sadržaj nije promijenio.
-- **~~BUG-S121-AREACTX~~ — ✅ POPRAVLJENO S121.** Palo čitanje `areas` gašilo je Overview tab,
-  kolone i „Write access“ baner **trajno, do reloada** — v. „UI (React)“. Sada `withRetry`,
-  zadržavanje već učitanog za istu Areu, i **amber traka s „Pokušaj ponovno“**.
-  Čuva `e2e/tests/S121_area_context_failure.spec.ts` (3 slučaja).
-  ⚠ Retry **skriva uzrok, ne liječi ga**: na PROD-u je to vjerojatno S105 obrazac
-  (free-tier se guši). Pravi potez ostaje **Postgres upgrade**, otvoren od S105.
-- **~~`e16-filter-persistence` je flaky~~ — ✅ ZATVORENO S122.** Nije bio filter reset nego
-  ⋮ izbornik koji remount liste odnese čim se otvori — v. „E2E“. Popravak je u specu.
+
 - **Bulk delete (checkbox) nije ograničen za grantee-a**
+
 - **„Import as mine" za write grantee unutar iste shared aree** nema smisla (pravi put je
   Leave Area ili re-import u novu vlastitu Areu) — flag, nije implementirano
 
 ---
+
+### Zatvoreno — puni tekst je u `docs/sessions/DONE_HISTORY.md` (preseljeno S139)
+
+> Ostaje jedan redak po unosu da pretraga po ID-u i dalje nesto nadje. Prije seljenja je
+> provjereno nosi li koji od njih pravilo kojeg nema drugdje: tri su ga nosila i sva tri su
+> zadrzana (dva gore, `Postgres upgrade` u Backlogu). Isti postupak kao „Spaseno iz plana" (S137).
+
+- **~~BUG-S123-DELTAACCT~~** — zatvoreno S123: racun delta sheeta dolazio iz filtra a eventi iz profila => prazan sheet s tocnim sidrom. Pravilo: § Delta sheet.
+- **~~BUG-S123-EDITMARK~~** — zatvoreno S125: oznaka ✎ crtana samo na uskom retku. Pravilo: „redak liste renderiraju dva mjesta", § UI (React).
+- **~~BUG-S132-EVENTCOUNT~~** — zatvoreno S133: Structure tab brojao evente u pregledniku nad odrezanih 1000 redaka. Pravilo: § UI (React).
+- **~~T-S107u-2~~** — zatvoreno S117: `depends_on` default oscilirao kroz export/import. Pouka je iznad, u pravilima o popisu.
+- **~~BUG-S115-ANCHORDATE~~** — zatvoreno S116: datum sidra izvodio se iz filtra umjesto iz izvora. Pravilo: § Mjerenje / usklađenje.
+- **~~BUG-S114-REPORTDD~~** — zatvoreno S136: izvjestaj o uvozu tobože bez `DropdownData`; zatvorio ga refaktor, potvrdilo mjerenje.
+- **~~BUG-S118-PREVIEWMODE~~** — zatvoreno S120: preview racunao po `skip` i gutao provjeru kolizija. Cuva `e2e/tests/e17-import-foreign-preview.spec.ts`.
+- **~~BUG-S119-FILTERBACK~~** — zatvoreno S120: `attrFilter` se gubio pri povratku iz View Details. Pravilo: § UI (React); cuva `e16`.
+- **~~BUG-S121-DRAFTDUP~~** — zatvoreno S121: nacrt uskrsnuo nakon Finisha => duplikat. Cuva `S121_draft_after_finish.spec.ts`.
+- **~~BUG-S121-AUTOSAVE~~** — zatvoreno S121: auto-save se naoruzavao iznova na svakom renderu, pa nikad nije opalio tijekom unosa.
+- **~~BUG-S121-AREACTX~~** — zatvoreno S121: palo citanje `areas` trajno gasilo Overview tab i kolone. Cuva `S121_area_context_failure.spec.ts`.
+- **~~e16-filter-persistence~~** — zatvoreno S122: „flaky" nije bio filter reset nego remount liste koji odnese otvoren ⋮ izbornik.
 
 ## Financije — pravila domene (izvodi, rječnik, 1:N)
 
@@ -2386,6 +2326,12 @@ Predviđeno u OVERVIEW_TAB_SPEC §2.16 kao test; ispalo da filtru fali mogućnos
 ⚠ **Nije samo drill** (Sašin nalaz S118, iz stvarnog rada u appu): isto fali u **običnom
 filtru** — „ZABA **i** samo uplate" (`Racun` + `Smjer`) korisnik ne može složiti. Time to
 prestaje biti polish pločice i postaje svakodnevna potreba. Sašina odluka: **ne sada.**
+
+**Postgres upgrade — otvoren od S105, i retry ga samo SKRIVA** (spaseno iz `BUG-S121-AREACTX`,
+S139). Palo citanje `areas` na PROD-u je vjerojatno S105 obrazac: free-tier se gusi. `withRetry`
+iz S121 je posljedicu ucinio prezivljivom (tab se vise ne gasi trajno), ali uzrok stoji.
+/!\ Zato ga retry cini **manje vidljivim, ne manje prisutnim** — a mjera da se i dalje
+dogadja je broj retryja, koji danas nitko ne broji.
 
 **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC; ista investicija kao Faza 1.
 
