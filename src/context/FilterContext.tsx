@@ -3,13 +3,20 @@ import { supabase } from '@/lib/supabaseClient';
 import type { UUID, BreadcrumbItem, Category, Area } from '@/types';
 import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
 import { withRetryQuery } from '@/lib/retry';
+import { dbScopedKey } from '@/lib/storageKey';
 import type { PeriodKey } from '@/hooks/useDateBounds';
 
 // --------------------------------------------
 // Constants
 // --------------------------------------------
 
-const FILTER_STORAGE_KEY = 'events-tracker-filter-state';
+// /!\ Kljuc MORA nositi oznaku baze — v. `src/lib/storageKey.ts` (S140).
+//     Goli kljuc dijelili su `npm run dev` (TEST) i `dev:prod` (PROD), pa je PROD-ov
+//     `areaId` zavrsavao u TEST sesiji: `Unknown > Transakcija`, prazna lista i traka
+//     „Nisam uspio ucitati postavke ove Aree" nad bazom koja je bila posve zdrava.
+//     Ime kategorije se svejedno vidjelo, jer dolazi iz spremljenog `selectionChain`-a
+//     a ne iz baze — zato je simptom izgledao kao kvar citanja, ne kao stara snimka.
+const FILTER_STORAGE_KEY = dbScopedKey('events-tracker-filter-state');
 // localStorage = persists across browser sessions (user sees last-used area on next open)
 const filterStorage = localStorage;
 

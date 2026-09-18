@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 108 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 121 | [Critical rules](<#Critical rules>) | X |
 | 1043 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1617 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1633 | [Key files](<#Key files>) |  |
-| 1753 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1773 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1795 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1821 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1861 | [Open bugs](<#Open bugs>) | ~ |
-| 1958 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2147 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2244 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2252 | [Backlog](<#Backlog>) | ~ |
-| 2564 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2572 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1640 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1656 | [Key files](<#Key files>) |  |
+| 1776 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1796 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1818 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1844 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1884 | [Open bugs](<#Open bugs>) | ~ |
+| 1981 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2170 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2267 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2275 | [Backlog](<#Backlog>) | ~ |
+| 2598 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2606 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2707 redaka, 18 sekcija._
+_Ukupno 2741 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1248,6 +1248,29 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   React shimom; 12 testova, bez module-level listenera pada 4).
   ⚠ **Test MORA odmontirati hook prije dispatcha** — S132 verzija je dispatchala dok
   je hook montiran, pa je prolazila nad kodom koji u aplikaciji ne radi ništa.
+- **⚠ KLJUČ U `localStorage` BEZ OZNAKE BAZE SPAJA TEST I PROD — I APLIKACIJA IZGLEDA
+  POKVARENO** (S140, Sašin nalaz). `FilterContext` je pamtio filtar pod golim ključem
+  `events-tracker-filter-state`, a u njemu stoje **`areaId` i cijeli `selectionChain`**
+  (objekti kategorija, **s imenima**). Ključ nije nosio ref projekta, pa su `npm run dev`
+  (TEST) i `dev:prod` (PROD) dijelili **isti zapis**.
+  Izmjereno 18.09.2026.: nakon rada na PROD-u, TEST je pokazivao `Unknown > Transakcija`,
+  **praznu listu** i traku „Nisam uspio učitati postavke ove Aree” — a „Pokušaj ponovno”
+  nije pomagao, jer PROD-ov `areaId` na TEST-u **nikad neće postojati**
+  (PROD `Transakcija` = `986a4612…`, TEST = `cde31231…`).
+  ⚠ **Ime kategorije se vidjelo IAKO tog retka nema**, jer dolazi iz spremljenog
+  `selectionChain`-a, ne iz baze. Zato simptom izgleda kao **kvar čitanja**, a ne kao stara
+  snimka — i zato je dijagnoza tri puta krenula prema bazi. Baza je bila zdrava: `areas`
+  16 redaka, **0 padova u 8 pokušaja**, 0,22–0,91 s.
+  ⚠ **Traka o grešci je ovdje LAGALA**: `withRetry` iz S121 ispravno javlja da čitanje nije
+  uspjelo, ali uzrok nije mreža nego **id koji ne postoji**. Poruka koja upućuje na
+  ponavljanje, a ponavljanje ne može pomoći, šalje na krivi trag.
+  Zatvoreno **sprječavanjem**: `dbScopedKey()` (`src/lib/storageKey.ts`) lijepi ref projekta
+  na ključ i **jednom obriše stari, neograničen ključ** — inače bi zauvijek ležao u
+  pregledniku i čekao sljedeću zabunu.
+  ⚠ **`et_activity_draft` je ISTI RAZRED i namjerno NIJE diran** — dva E2E speca ga tvrdo
+  kodiraju (`S121_draft_after_finish`, `S122_no_phantom_draft`). V. Backlog.
+  ⚠ Ostali ključevi su pregledani i bezopasni: `ui:collapsedAreas` (stari id samo ne radi
+  ništa), `attrExpanded:<catId>` (već nosi id), `et_shortcuts_area_only` (boolean).
 - **⚠ ONO ŠTO PREGLEDNIK PREBROJI OGRANIČENO JE NA 1000 REDAKA — I TO JE BRAVA,**
   **NE BROJKA** (S133). `useStructureData` je vukao `events?select=category_id` bez
   `.range()` i bez `.order()` pa brojao u JS-u; PostgREST reže na 1000 **bez greške**.
@@ -2262,6 +2285,17 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 > kosta zadatak.
 
 ### Otvoreno — ovo je posao
+
+**⭐ `et_activity_draft` nosi isti razred kao filtar — ključ bez oznake baze** (S140).
+`FilterContext` je zatvoren `dbScopedKey()`-em, ali nacrt Add Activityja i dalje stoji pod
+golim ključem, a drži `categoryId` i vrijednosti atributa. Posljedica je zapisana još u S118:
+nacrt napravljen pod jednim računom iskoči kao „Resume Previous Session?” pod **drugim**, i
+nudi kategoriju iz tuđe aree. Sada se zna da isto vrijedi **između TEST-a i PROD-a**.
+⚠ **Nije popravljeno odmah zato što dva E2E speca tvrdo kodiraju taj string**
+(`S121_draft_after_finish.spec.ts:40`, `S122_no_phantom_draft.spec.ts:28`) — popravak ih mora
+dirati u istom commitu, inače padnu i izgledaju kao regresija featurea.
+⚠ Manje je opasan od filtra (Discard ga riješi, i ne prikazuje praznu listu kao kvar), pa je
+svjesno odgođen, ne zaboravljen.
 
 **⭐ Zaglavlje Add Activity po Arei** (Sašina ideja S117) — isti obrazac kao `list_columns`:
 uloge u configu, ne domena u kodu. **Financije nemaju smisla pokazivati štopericu** — ona je
