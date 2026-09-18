@@ -169,7 +169,7 @@ politike — dakle `INSERT ... RETURNING` nad `areas` ondje jos pada.
 
 ## S134 — backup, shema u gitu, ciscenje RLS-a (2026-09-10)
 
-Detalji: [S134_tests.md](tests/S134_tests.md)
+Detalji: [S134_tests.md](../../Claude-temp_R/test-sessions/archive/S134_tests.md) (arhivirano S140)
 
 ⚠ **Migracije `046`–`050` puštene su SAMO na TEST-u.** Na PROD-u je pušten samo
 `sql/045`. Kod je na `test-branch` i **nije deployan**.

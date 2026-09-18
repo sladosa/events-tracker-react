@@ -91,10 +91,27 @@ def status_of(row_text, last, heading):
 
 
 # --- testovi definirani po session fileu ---
+# /!\ FILE "DEFINIRA" SAMO ID-eve SVOG BROJA SESIJE -- izmjereno S140.
+#     `ID.findall(txt)` kupi i UNAKRSNE REFERENCE iz proze, pa je tudji
+#     otvoren test blokirao arhiviranje filea koji je zavrsen. Konkretno:
+#     `S134_tests.md` u recenici spominje `T-S133-8` ("kao T-S133-8 u S135"),
+#     i alat je zbog toga presudio "ne (1 otvorenih)" iako je sva 21 njegova
+#     testa ✅. Izmjereno na 12 fileova: 4 nose tudje ID-eve, a `S137_tests.md`
+#     ih ima 8 od 17 -- dakle manje od pola pripisanog posla bilo je njegovo.
+#     Posljedica nije bila kozmeticka: to je razlog zasto je korak arhiviranja
+#     "preskocen tri sesije zaredom" -- alat je tvrdio da nema sto arhivirati.
+#     /!\ Tudji ID-evi se NE GUTAJU nego ispisuju zasebno: alat koji tiho
+#     odbaci dio ulaza je isti razred greske koji se ovdje popravlja.
 defined = {}
+crossrefs = {}
 for f in sorted(TESTS.glob('S*_tests.md')):
     txt = io.open(f, encoding='utf-8').read()
-    defined[f.name] = set(ID.findall(txt))
+    own_prefix = 'T-%s-' % f.name.split('_')[0]
+    found = set(ID.findall(txt))
+    defined[f.name] = set(i for i in found if i.startswith(own_prefix))
+    foreign = sorted(i for i in found if not i.startswith(own_prefix))
+    if foreign:
+        crossrefs[f.name] = foreign
 
 # --- status iz PENDING_TESTS: gledaju se SAMO tablicni retci ---
 pend = io.open(PENDING, encoding='utf-8').read()
@@ -160,6 +177,12 @@ for name, ids in sorted(defined.items()):
 
 print('=' * 78)
 print('Za arhivu (%d): %s' % (len(archivable), ', '.join(archivable) or '—'))
+
+if crossrefs:
+    print()
+    print('Unakrsne reference (spomenute u prozi, NE ulaze u presudu):')
+    for name, ids in sorted(crossrefs.items()):
+        print('  %-22s %s' % (name, ', '.join(ids)))
 
 # ⚠ IMENUJ, NE BROJI. Dok je alat ispisivao samo „10 bez oznake", triaza se
 #   morala raditi rucnim skriptom — a brojka se cita kao „negdje nesto fali".
