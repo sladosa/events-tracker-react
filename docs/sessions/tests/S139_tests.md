@@ -41,6 +41,20 @@ izričito kaže *ništa ne mijenjaj*.
 
 ---
 
+**✅ REZULTAT (S140, Saša):** svi koraci prošli. Prev/Next je stvarno mijenjao zapis
+(`2026-07-15` → `2027-04-30`), Edit→natrag je sačuvao `Napomena` i `Event Note`
+(`4 attrs / 2 empty` s obje strane, dakle datum nije dirnut), a druga Area
+(`Financije_all > Transakcija`) se učitala s 15 atributa.
+
+⚠ **Što je ovaj test zapravo mjerio — i što nije.** Promjena je bila Čist premještaj, pa je
+ponasanje po konstrukciji isto. Jedino što se moglo pokvariti je **dep lista**
+(`[sessionStart, categoryIdParam, noSession, ownerIdParam]`), jer efekt nije pomaknut nego
+obrisan pa ponovo napisan — to pokrivaju koraci 3 i 5.
+⚠ **NE pokriva sam lint prigovor** (efekt drži funkciju iz tog rendera): `loadActivityData`
+namjerno nije u dep listi jer nije memoiziran, pa je to zatvoreno `eslint-disable`-om, ne
+testom. Po pravilu iz S120 („test koji nikad ne pada ne čuva ništa”) ovaj je **uzak** — da se
+piše nanovo, sveo bi se na korak 5.
+
 ## T-S139-9 — `ExcelExportModal`: izvoz uzima SADAŠNJE stanje, ne staro
 
 **Što je promijenjeno:** `filters` je memoiziran (`useMemo`), a `doDownload` je u dep listu
