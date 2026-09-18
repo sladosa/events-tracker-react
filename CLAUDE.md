@@ -40,13 +40,13 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 1844 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
 | 1884 | [Open bugs](<#Open bugs>) | ~ |
 | 1981 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2170 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2267 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2275 | [Backlog](<#Backlog>) | ~ |
-| 2611 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2619 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 2174 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2271 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2279 | [Backlog](<#Backlog>) | ~ |
+| 2638 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2646 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2754 redaka, 18 sekcija._
+_Ukupno 2781 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2126,9 +2126,13 @@ sve čitaju odatle. `sync_taxonomy.py` služi starom Review workbooku i ne dira 
 
 CLAUDE.md-ovo pravilo `Visa = next:3` (`set_attribute`) **se ne slaže s podacima**.
 Izmjerena raspodjela `Datum naplate` na 855 Visa redaka: **5. (383×)**, 4. (231×), 6. (109×),
-7. (82×), 11. (49×), 3. (11×). Posljedica: kontrola po košari, koja pretpostavlja fiksno
-dospijeće, **ne vidi 855 Visa redaka** — ne padaju ni u jednu košaru. MC je čist (4 retka).
-Traži zaseban prolaz s PBZVISA izvodima; ne popravljati napamet.
+7. (82×), 11. (49×), 3. (11×). Traži zaseban prolaz s PBZVISA izvodima; ne popravljati napamet.
+
+⚠ **ISPRAVAK S141: „ne padaju ni u jednu košaru“ je bilo NETOČNO, i stajalo je ovdje 17
+sesija.** Razbacanost je artefakt gledanja **po danu umjesto po ciklusu**: grupirano po
+mjesecu naplate, **35 od 37 ciklusa ima točno jedan dan** (1.639 redaka, PROD). Dakle Visa
+se grupira uredno — krivo je bilo **ravnalo**, ne podaci. Značenje stupca odlučeno je u S141,
+v. Backlog „PBZVISA prolaz“.
 
 ### Pravilo 1:N — banka ima N redaka za Kokin jedan (S124)
 
@@ -2437,11 +2441,9 @@ sekciju „Feature inventory" u `docs/help/*.md`, **dosta detaljno** (korisnikov
 
 **Health `health_lab_review.py` cleanup** — razdvajanje Medical Visit bilješki iz Lab Results komentara.
 
-### Čeka Sašinu odluku prije ijedne linije koda
-
-**⭐ PBZVISA prolaz — `Datum naplate` za Visu nema ispravljača** (S137, Sašina odluka:
-placeholder je u redu, ali mu fali drugi dio). `uskladi_izvod.py:939` prima **samo MC**
-(`Zasad samo MC izvodi`), pa za **1.629** Visa redaka nitko ne čita izvod i ne ispravlja datum.
+**⭐ PBZVISA prolaz — `Datum naplate` za Visu nema ispravljača** (S137; značenje stupca
+odlučeno S141, v. dolje). `uskladi_izvod.py:939` prima **samo MC** (`Zasad samo MC izvodi`),
+pa za **1.639** Visa redaka (PROD, S141) nitko ne čita izvod i ne ispravlja datum.
 
 ⚠ **Parsiranje PBZVISA-e NIJE prepreka** — izmjereno: `PBZVIZA_2026-07.pdf` daje **49 od 49**
 transakcijskih redaka čitljivo, `(cid:` smetnja je 11 od 180 redaka (6 %) i samo u zaglavlju.
@@ -2470,16 +2472,35 @@ Kokina teorija (*„3. se formira račun"*) potvrđena mjerenjem zadnje transakc
 ⚠ **Zato ga NE mijenjati u `next:7`** (prijedlog iz prvog nacrta ove stavke, **povučen**):
 izgubilo bi grupiranje po izvodu, a ne bi dobilo točan datum jer terećenje varira 6.–7.
 
-⚠ **Pravi kvar: stupac nosi DVA ZNAČENJA.** Od **1.629** Visa redaka samo **22** imaju
-`Datum naplate` na 3. — dakle retci koje je napravila **aplikacija** nose *dan zatvaranja*,
-a **uvezeni** nose *dan terećenja* (4.–7.). Isti stupac, dva pojma — i zato „kontrola po
-košari ne vidi Visa retke": ne grupiraju se jer nisu mjereni istim ravnalom.
+⚠ **Stupac je nosio DVA ZNAČENJA, ali razmjer je 40× manji nego što je ovdje pisalo**
+(ispravljeno S141). Stajalo je da se Visa retci „ne grupiraju jer nisu mjereni istim
+ravnalom“ — **grupiraju se**: **1.616 od 1.639** uredno sjeda u svoj ciklus, a ne sjeda
+**23** retka koje je napravila aplikacija kao `next:3`.
+⚠ **Posljedica je živa i danas**, izmjereno na PROD-u: otvorena košara `2026-10`
+razlomljena je na **3.×13 + 5.×5** — ta dva dana su **dvije generacije configa**
+(`next:3` prije S138, `cutoff:3:5` poslije). Zatvoreni ciklusi su netaknuti.
 Za MC se pitanje ne postavlja jer mu se sva tri datuma poklapaju na **11.**
+(izmjereno S141: **1.802 od 1.806** retka).
 
-⚠ **Odluka koja fali prije ijedne linije koda** (Sašina): znači li `Datum naplate` za karticu
-**(a)** kojem izvodu trošak pripada (zatvaranje, `next:3`, grupiranje radi), ili
-**(b)** kad je novac stvarno otišao (terećenje 6.–7., dolazi s **RF** izvoda).
-Dok to nije odlučeno, **nijedan alat se ne dira** — svaka promjena pogoršava jednu stranu.
+✅ **ODLUČENO (S141, Saša): značenje je (b) — dan kad je novac stvarno otišao.**
+*„Dok se ne zna, pretpostavljamo; kad stigne izvod, editiramo na točno.“* Pretpostavka nije
+druga vrsta podatka nego **isti podatak u privremenom stanju** — zato app smije i dalje
+upisivati `cutoff:3:5`; treba mu **ispravljač**, ne drugo pravilo. Odbijena (a) bi tražila
+prepisivanje **1.616** redaka i time nepovratno izbrisala jedini zapis stvarnog dana
+terećenja po ciklusu — dakle zamjenu **izmjerenog** izvedenim.
+
+⚠ **Ispravak je operacija nad KOŠAROM, ne nad retkom.** Izmjereno (PROD, S141): **35 od 37**
+ciklusa ima točno **jedan** dan — potpis izmjerene veličine, jer bi pravilo svaki mjesec dalo
+isti dan, a banka ga pomiče (2024-07 → 4., 2024-08 → 12., 2026-08 → 7.). Kad se dan sazna,
+ispravlja se **cijeli ciklus odjednom**, i to ima ugrađenu kontrolu: **Σ košare po
+ispravljenom danu mora dati iznos terećenja s RF-a** (isto pravilo kao MC, i isti razred kao
+„zbroj košare je jači signal od sparivanja po retku“, S124).
+
+⚠ **Redak koji već nosi `Izvod opis` SVEJEDNO dobiva ispravljen datum**, i to **nije**
+kršenje pravila „potvrđen redak pripada točno jednom izvodu“: ta dva podatka dolaze s
+**različitih** izvoda — PBZVISA kazuje *koje stavke, koji iznosi, koja rata*, RF izvadak
+*kojeg dana i koliko je stvarno skinuto*. Svaki izvod potvrđuje **drugo polje**, pa se ne
+prepisuju. Pravilo je štitilo od dva izvoda nad **istim** poljem; ovdje ih nema.
 
 ⚠ **Imena fileova nisu ujednačena: 31× `PBZVISA_`, 1× `PBZVIZA_`** (`2026-07`, i to je najnoviji,
 onaj koji CLAUDE.md spominje po imenu). Alat koji glob-a jedno ime **preskace drugi, tiho** —
@@ -2489,6 +2510,12 @@ preimenuje.
 ⚠ Oblik rate se razlikuje i to je **već zapisano** u `rate_alat.py`: MC `X RATA n/N`,
 Visa `RATA n/N-X`. Ostale razlike su formatske: dvoznamenkasta godina (`05.06.26.`),
 referencija je 10 znamenki (ne `B0802…`), opis nosi **adresu** (`SPAR - MARTIĆEVA 13 - ZAGREB`).
+
+### Čeka Sašinu odluku prije ijedne linije koda
+
+> **Prazno je PODATAK, ne propust** (S141): trenutno ništa ne čeka Sašinu odluku, pa se
+> nijedna stavka ne smije parkirati ovdje „dok se ne odluči“. Zadnji stanar je bio
+> **PBZVISA prolaz** — odlučen u S141 i premješten u „Otvoreno“.
 
 ### Parkirano i izvedeno — ne traži akciju
 
