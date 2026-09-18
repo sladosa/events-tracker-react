@@ -25,28 +25,28 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 > **X** = stit od regresije, svaki redak placen izmjerenim kvarom -- ne skracivati.
 > **~** = kvarljivo (stanje/plan) -- prije nego vjerujes, provjeri datum u naslovu.
 
-|   r. | sekcija                                                                                                               |     |
-| ---: | --------------------------------------------------------------------------------------------------------------------- | :-: |
-|   55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>)                                                 |     |
-|   77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>)                       |     |
-|  108 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>)                                     |  X  |
-|  121 | [Critical rules](<#Critical rules>)                                                                                   |  X  |
-| 1043 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>)                                               |  X  |
-| 1607 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>)                                               |     |
-| 1623 | [Key files](<#Key files>)                                                                                             |     |
-| 1743 | [Structure tab — component map](<#Structure tab — component map>)                                                     |     |
-| 1763 | [Data model (simplified)](<#Data model (simplified)>)                                                                 |     |
-| 1785 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>)                                                             |     |
-| 1811 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) |  X  |
-| 1851 | [Open bugs](<#Open bugs>)                                                                                             |  ~  |
-| 1948 | [Financije — pravila domene (izvodi, rječnik, 1:N)](<#Financije — pravila domene (izvodi, rječnik, 1:N)>)             |     |
-| 2137 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>)                             |     |
-| 2234 | [S112+: Intelligence layer](<#S112+: Intelligence layer>)                                                             |  ~  |
-| 2242 | [Backlog](<#Backlog>)                                                                                                 |  ~  |
-| 2548 | [TypeScript known issue](<#TypeScript known issue>)                                                                   |     |
-| 2556 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>)                                 |     |
+| r. | sekcija | |
+| ---: | --- | :---: |
+| 55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>) |  |
+| 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
+| 108 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 121 | [Critical rules](<#Critical rules>) | X |
+| 1043 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1617 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1633 | [Key files](<#Key files>) |  |
+| 1753 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1773 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1795 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1821 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1861 | [Open bugs](<#Open bugs>) | ~ |
+| 1958 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2147 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2244 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2252 | [Backlog](<#Backlog>) | ~ |
+| 2558 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2566 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2680 redaka, 18 sekcija._
+_Ukupno 2690 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1045,6 +1045,16 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 
 **Python alati (`data-prep_tools/`)**
 
+- **/!\ BASH HEREDOC JEDE BACKSLASH, i `py_compile` to ne uhvati ako ga nema komu** (S140).
+  Python kod pisan kroz `python - <<'EOF'` izgubi `\n` unutar stringa -- postane **stvaran**
+  prijelom retka, pa `sys.stderr.write('\n...')` padne na `SyntaxError: unterminated string
+  literal`. Ugrizlo **dvaput u istoj sesiji**, iako je zapisano u handoffu -- zato je sada
+  ovdje. Isto vrijedi za `\\` u regexu i za Windows putanje.
+  /!\ **Prepoznaje se po tome sto assert padne na stringu koji ocito postoji u fileu** -- jer
+  ne trazis ono sto mislis. Drugi oblik: CRLF. File s `\r\n` ne poklapa se s obrascem koji
+  ima `\n`, pa `old in s` vrati `False` nad tekstom koji vidis vlastitim ocima.
+  => Za izmjene fileova koristi **line-based** zamjenu (`readlines()` + indeks) i patch pisi u
+  **zaseban .py file**, ne kroz heredoc. Prijelom iz `chr(10)`, backslash iz `chr(92)`.
 - **`run.bat` guši zarez u argumentima** — jedan substring po pozivu (`--reparse A,B,C` → samo A)
 - **openpyxl `cell(r,c,None)` NE briše** — mora `.value = None`
 - **⚠ openpyxl string koji počinje s `=` sprema kao FORMULU** (S124). Excel je ne može
@@ -1945,7 +1955,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 - **~~BUG-S121-AREACTX~~** — zatvoreno S121: palo citanje `areas` trajno gasilo Overview tab i kolone. Cuva `S121_area_context_failure.spec.ts`.
 - **~~e16-filter-persistence~~** — zatvoreno S122: „flaky" nije bio filter reset nego remount liste koji odnese otvoren ⋮ izbornik.
 
-## Financije — pravila domene (izvodi, rječnik, 1:N)
+## Financije — pravila domene (izvodi, rječnik, 1-N)
 [↑ Sadrzaj](#Sadrzaj)
 
 > Plan, tranše i povijest migracije su u **`docs/FINANCIJE_STATUS.md`** (kvarljivo).
@@ -2231,7 +2241,7 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
 
 ---
 
-## S112+: Intelligence layer
+## S112+ Intelligence layer
 [↑ Sadrzaj](#Sadrzaj)
 
 Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza 3 prođe.

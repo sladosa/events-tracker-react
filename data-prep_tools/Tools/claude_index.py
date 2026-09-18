@@ -77,6 +77,7 @@ def role_of(title):
 
 
 def build(lines, offset=0):
+    problems = []
     rows = []
     for i, line in enumerate(lines, 1):
         if not line.startswith('## '):
@@ -87,14 +88,32 @@ def build(lines, offset=0):
         #     fragment iza `#` razrjesava kao IME NASLOVA. Neosjetljiv je na
         #     velika/mala slova, ali crtice NE pretvara u razmake -- pa je od 18
         #     sekcija radila tocno jedna (`Backlog`), jer je jedina jednorjecna.
-        #     Izmjereno klikanjem svih varijanti: rade `(<#Tocan Naslov>)`,
-        #     postotno kodiran oblik i wikilink; GitHub slug ne radi.
+        #     Izmjereno klikanjem svih varijanti: rade `(<#Tocan Naslov>)` i
+        #     wikilink; GitHub slug ne radi.
+        #     /!\ ISPRAVAK (S140): ovdje je stajalo da radi i "postotno kodiran
+        #     oblik". NE RADI -- i gore od toga, POKVARI link koji inace radi.
+        #     Izmjereno nad naslovom s plusom bez dvotocke: `(<#S112+ bez
+        #     dvotocke>)` skace, `(<#S112%2B bez dvotocke>)` NE. Obsidian sam
+        #     kodira `%` u `%25` (toast javlja `#S112%252B:...`), dakle dvostruko
+        #     kodiranje. Sidro se NIKAD ne kodira postotno.
         #     Biran je ugao-zagrada oblik: standardni CommonMark (za razliku od
         #     wikilinka, koji na GitHubu ispadne kao goli tekst) i citljiv u
         #     sirovom fileu, sto je vazno jer Claude ovo cita sirovo.
         #     /!\ CIJENA: na GitHubu sidra vise ne skacu. Stupac s BROJEM RETKA
         #     radi svugdje i zato ostaje -- on je, a ne link, jamstvo navigacije.
         anchor = title.replace('**', '')
+        # /!\ DVOTOCKA U NASLOVU LOMI SIDRO -- izmjereno S140, klikanjem.
+        #     `#S112+: Intelligence layer` i `#Financije ... (1:N)` oba su davala
+        #     "Cannot open location", a u indeksu ikonu VANJSKOG linka (Obsidian
+        #     naslov s dvotockom cita kao URL shemu).
+        #     /!\ `+` NIJE kriv, iako tako izgleda: naslov s plusom BEZ dvotocke
+        #     skace uredno. Hipoteza "plus je kodirani razmak" bila je uvjerljiva
+        #     i mjerenje ju je oborilo -- zato guard gada `:`, ne `+`.
+        #     Kodiranje nije izlaz (v. komentar iznad), pa je jedini lijek naslov
+        #     BEZ dvotocke. Ovo je brana, ne savjet: tiho generiran mrtav link
+        #     izgleda identicno zivom.
+        if ':' in anchor:
+            problems.append((i + offset, title))
         rows.append((i + offset, title, anchor, role_of(title)))
     total = len(lines) + offset
     out = [BEGIN,
@@ -110,6 +129,13 @@ def build(lines, offset=0):
     for i, title, anchor, role in rows:
         out.append('| %d | [%s](<#%s>) | %s |' % (i, title, anchor, MARK.get(role, '')))
     out += ['', '_Ukupno %d redaka, %d sekcija._' % (total, len(rows)), '', END]
+    if problems and offset:
+        nl = chr(10)
+        bs = chr(92)
+        sys.stderr.write(nl + '/!' + bs + ' NASLOV S DVOTOCKOM -- sidro nece skakati u Obsidianu:' + nl)
+        for n, t in problems:
+            sys.stderr.write('    redak %d: %s' % (n, t) + nl)
+        sys.stderr.write('    Lijek: makni `:` iz naslova. Kodiranje NE pomaze.' + nl + nl)
     return '\n'.join(out)
 
 
