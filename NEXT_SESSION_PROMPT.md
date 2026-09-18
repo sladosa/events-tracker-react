@@ -1,7 +1,7 @@
 # Sljedeca sesija - handoff
 
-**Pisano protiv commita:** `1e22746` + izmjene zatvaranja S139 (idu istim commitom).
-**`main` NIJE diran u S139** - sve stoji na `test-branch`. Deploy nije trazen ni pusten.
+**Pisano protiv commita:** `0eac59a` + izmjene zatvaranja S140 (idu istim commitom).
+**`main` NIJE diran u S140** - sve stoji na `test-branch`. Deploy nije trazen ni pusten.
 Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
 
 ---
@@ -10,50 +10,54 @@ Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
 
 ## Sto je gotovo
 
-**Napravljene su brane, ne izvjestaji.** Do danas je `npm run typecheck` bila jedina
-automatska provjera, i vrtjela se **samo kad kod vec ide na PROD**. Sada postoji
-`npm run check` (tri provjere), i GitHub ih vrti **i na `test-branch`** - dakle prije
-nego bilo sto krene prema Koki.
+**Dan je prosao na instrumentima, ne na featureima** - i to se isplatilo vise nego sto zvuci.
+U `src/` je promijenjeno **24 retka** (jedan novi file), a otkljucane su tri stvari koje su
+mjesecima tiho blokirale posao.
 
-**Nasli smo cetiri alata koji su mjerili nesto drugo nego sto tvrde.** To je bio glavni
-nalaz dana, i vazniji je od bilo kojeg popravljenog retka:
+**Dva E2E pada koja su se vodila kao nepoznata imala su jedan uzrok, i nije bio u aplikaciji.**
+`E7-3` i `E10-2` su ocekivali dijalog `Confirm revoke` koji se pojavljuje **samo kad korisnik
+kojem se opoziva pristup ima svoje zapise u toj Arei**. U testu ih nema, pa se opoziv izvrsi
+odmah - sto je ispravno ponasanje. Obje tvrdnje dodao je **isti** commit iz S106, zajedno s
+trecom (fantomskim toastom) koju je S139 vec maknuo.
 
-- **ESLint je pregledavao stare kopije projekta** iz `Claude-temp_R/OLD/`. Od 189
-  prijavljenih problema **142 (75 %)** dolazilo je odande. Zato je jucerasnji audit
-  pokazao krivu sliku: pripisao je 76 nalaza zivom kodu, a zivih je bilo **25**.
-- **Jedan test nije mogao pasti.** `structureExcel.test.mjs` je ispisivao kriz i
-  zavrsavao kao da je sve u redu. Dokazano namjernim kvarenjem jedne tvrdnje.
-- **`audit_tests.py` je prijavljivao 22 proturjecnosti kojih nema** - protiv popisa
-  ukinutog jos u S116.
-- **Dva moja vlastita detektora** „mrtvih alata" dala su **100 % laznih pogodaka**.
+**Alat je tri sesije tvrdio da nema sto arhivirati.** `audit_tests.py` je fileu pripisivao
+svaki test-ID koji se u njemu **spominje** - ukljucujuci recenice tipa „kao T-S133-8 u S135".
+Zbog jednog takvog spomena file s **21 od 21 zavrsenog testa** nije se smio arhivirati.
 
-**Zivi kod je sada na nuli.** `react-hooks` nalaza: 26 -> 0. Od toga 12 popravaka
-(nepotpuni popisi ovisnosti - nijedan nije kvario nesto danas, ali svaki je bio mina) i
-14 mjesta gdje je obrazac legitiman pa nosi objasnjenje i ime obrasca.
+**`PENDING_TESTS.md` je prepolovljen: 1.198 -> 628 redaka.** Polovica dokumenta bio je
+zatvoren posao. Sada se „sto jos treba" vidi bez skrolanja. **Backlog** je dobio tri
+podnaslova, pa je dovoljno procitati **prvi**.
 
-**Ispravio sam vlastitu gresku iz ove sesije.** Jutros sam test E7 zatvorio kao „nije
-bug". To je bilo tocno za jedan dio (poruka koja nikad nije postojala), ali E7-3 i dalje
-pada. Izmjereno je da pada **i u verziji od prije sesije**, dakle nije nista pokvareno -
-ali unos je vracen kao otvoren, jer se uzrok ne zna.
+**Obsidian navigacija je zatvorena, i bila su dva kvara, ne jedan.** Prvi: rijec u
+siljastim zagradama (`<datum>`) Markdown cita kao HTML oznaku, pa se sve iza nje prestane
+oblikovati - to je bilo ono „poremetilo se izmedju Critical rules i 1043". Drugi: **dvotocka**
+u naslovu lomi skok. ⚠ **Tvoja slutnja da je kriv `+` pokazala se netocnom** - izmjereno je
+da naslov s plusom bez dvotocke radi uredno.
+
+**Nasao si i kvar koji je izgledao kao pokvarena aplikacija.** Filtar se pamtio pod jednim
+kljucem za **obje** baze, pa je TEST nasljedjivao PROD-ov odabir i prikazivao `Unknown`,
+praznu listu i poruku o gresci nad bazom koja je bila posve zdrava. Zatvoreno tako da se
+**vise ne moze dogoditi**, ne uputom.
 
 ## Sto trazi tebe
 
-1. **`git push origin test-branch`** ako zadnji commit jos nije gore.
-2. **Tri rucne provjere u appu** (T-S139-8, -9, -10 u `PENDING_TESTS.md`) - otvaranje
-   retka u View + Prev/Next, jedan Excel izvoz s profilom i bez njega, i provjera da
-   `hidden_in_add` prezivi Structure roundtrip na PROD-u.
-3. **Odluka o `PENDING_TESTS.md`** - v. „Otvorena pitanja" nize. Jedno pitanje, dvije
-   minute.
-4. **Deploy na `main` NIJE napravljen i ne treba biti** dok ti ne kazes.
+1. **`git push origin test-branch`** - ceka vise commita.
+2. **T-S140-7** (2 min): `dev:prod` -> odaberi Areu -> ugasi -> `npm run dev` -> TEST **ne
+   smije** naslijediti taj odabir. Pa natrag na `dev:prod` - ondje mora stajati tvoj PROD
+   odabir. ⚠ **Jednokratni reset filtra je ocekivan**, nije kvar.
+3. **T-S140-8** (~20 min, moze bez tebe): `npx playwright test`. ⚠ **Prvo ugasi `dev:prod`
+   na portu 5173** - inace guard zaustavi run (i dobro je da zaustavi).
+4. **T-S139-10 dio B** - samo kad budes kod **Kokinog** racuna. Koraci 4-5 (generiranje
+   filea) mozes i sam, oni ne diraju bazu.
+5. **Deploy na `main` NIJE napravljen i ne treba biti** dok ne kazes.
 
 ## Sto NE treba raditi
 
-- **Ne vjeruj auditu od 16.09.** za brojke o `react-hooks` nalazima - mjerio je stare
-  kopije. Ispravak je upisan na vrh samog audit fajla.
-- **Ne popravljaj E7-3 napamet.** Prva hipoteza (izgubljena tocka sinkronizacije) je
-  izmjerena i **opovrgnuta**.
-- **Ne zatvaraj ostale E2E padove kao „poznati artefakt suitea"** na temelju stare
-  brojke iz `T-S135-8` - ona je od prije popravka u S136.
+- **Ne popravljaj `E7-2`** - on pada iz drugog razloga (mreza prema TEST bazi), izmjereno.
+- **Ne dodavaj evente u `e7`/`e10`** da bi se dijalog pojavio - taj put vec cuva `e15`.
+- **Ne kodiraj sidra postotno** (`%2B`, `%3A`) - mjereno je da to **kvari** link koji radi.
+- **Ne uvozi Structure file `Financije_all` pod svojim racunom** - dobio bi drugi
+  `Financije_all` pod sobom, i izgledalo bi uspjesno.
 
 ---
 
@@ -63,96 +67,54 @@ ali unos je vracen kao otvoren, jer se uzrok ne zna.
 
 | sto | gdje |
 | --- | --- |
-| `npm run check` = typecheck + test:unit + lint:ratchet | `package.json` |
-| Ratchet nad 3 `react-hooks` pravila, **baseline je 0** | `scripts/lint-ratchet.mjs`, `.lint-baseline.json` |
-| Pokretac unit testova + guard „ispisuje pad, izlazi 0" | `scripts/run-unit-tests.mjs` |
-| CI se okida i na `test-branch`, + dva nova koraka | `.github/workflows/typecheck.yml` (`name: Checks`) |
-| `globalIgnores` za `Claude-temp_R`, `test-results` | `eslint.config.js` |
-| `reportUnusedDisableDirectives: 'error'` | `eslint.config.js` - brana nad `eslint-disable` tvrdnjama |
-| `formatTimer` / `formatDuration` izdvojeni | `src/lib/timeFormat.ts` (bio byte-identican duplikat) |
-| Kolona `HiddenInAdd` u generatoru | `data-prep_tools/Financije/make_financije_all_structure.py` |
-| `curated_retired` detekcija | `data-prep_tools/Tools/audit_tests.py` |
+| `dbScopedKey()` - kljuc `localStorage`-a vezan uz project ref | `src/lib/storageKey.ts` (jedina promjena u `src/`) |
+| Guard: `## ` naslov s dvotockom -> stderr | `data-prep_tools/Tools/claude_index.py` |
+| Atribucija ID-eva po prefiksu sesije + ispis unakrsnih referenci | `data-prep_tools/Tools/audit_tests.py` |
+| `S139_tests.md` (ritual korak 2 bio preskoČen u S139) + `S140_tests.md` | `docs/sessions/tests/` |
+| 20 zatvorenih sekcija preseljeno iz PENDING-a | `docs/sessions/DONE_HISTORY.md` |
+| Test sidara (11 varijanti) | `Claude-temp_R/_probes/ANCHOR_obsidian_sidra.md` |
 
 ## Otvoreno, po prioritetu
 
-1. **E7-3** - `Revoke` ne otvori `confirm revoke`. Nije regresija (izmjereno). Uzrok
-   neutvrdjen. **Krece se od punog runa**, ne od ciljanog ponavljanja - v. zamku nize.
-2. **`hidden_in_add` se tiho brise na uvozu** kad Structure file nema kolonu. Popravljen
-   je **alat**, ne uvoz. Pravi popravak je u `structureImport.ts` i mijenja semantiku
-   uvoza za svaki file => trazi test i Sasinu potvrdu. Backlog.
-3. **`ViewDetailsPage` immutability** - zatvoreno (efekt premjesten ispod deklaracije),
-   ali je usput isplivao `set-state-in-effect` koji je dotad bio **nevidljiv** jer ga je
-   skrivao mrtav `eslint-disable` za drugo pravilo.
-4. **Ostali E2E padovi** - v. „Stanje E2E" nize.
+1. **T-S140-8** - puni E2E nije pusten (na 5173 je stajao `dev:prod`). Ocekivano ~62/9
+   prema baseline-u 60/11 iz S139.
+2. **T-S139-10 dio B** - uvoz pod Kokinim racunom. Dio A i generator su **izmjereni**.
+3. **`hiddenInAdd` se cita samo iz PRVOG retka atributa**, a `isRequired` iz svih
+   (`structureImport.ts:347` protiv `:379`). S131 je to popravio za susjednu zastavicu i
+   propustio ovu. `Stanje` ima bas dva retka. **Ne popravljati napamet** - mijenja semantiku
+   uvoza; Backlog.
+4. **`et_activity_draft`** - isti razred kao filtar, kljuc bez oznake baze. Nije diran jer ga
+   dva E2E speca tvrdo kodiraju; Backlog.
+5. **E7-2 / T-S135-11** - uzrok nedovrsenih zahtjeva **nije utvrden**.
 
 ## Zamke koje su danas ugrizle
 
-- **Alat koji sam bira sto ce citati mora se pitati STO JE PROCITAO**, ne samo koliko je
-  nasao. Vrijedi za lint, grep, brojanje redaka - repo drzi stare kopije pored zivog koda.
-- **Mrtav `eslint-disable` nije kozmetika nego slijepa mrlja** - plugin preskoci **cijeli**
-  efekt koji nosi disable za bilo koje `react-hooks` pravilo.
-- **Ponovljen pojedinacni E2E run mjeri bazu koju je prethodni run promijenio.**
-  `global-setup` cisti **na pocetku runa**, ne izmedju specova. Izmjereno: `e5-structure`
-  pada 1/5 u punom runu, **5/5** nakon tri `e7-share` runa.
-- **Usporedba s prijasnjim commitom ide kroz `git worktree`**, ne kroz `checkout` -
-  radni direktorij ostaje netaknut. /!\ Put worktreeja mora biti **ASCII**: u putu koji
-  sadrzi `Sasa` (s kvacicom) Vite ne razrijesi `/src/main.tsx` i **svaki** test padne iz
-  krivog razloga. Prvi pokusaj je danas pao upravo tako.
-- **Heredoc u bashu jede backslash**, a `.replace()` u Pythonu ne pogadja CRLF fileove -
-  za izmjene CLAUDE.md-a i specova koristi **line-based** zamjenu.
+- **Bash heredoc jede backslash** - ugrizlo **dvaput u istoj sesiji** iako je stajalo u
+  proslom handoffu. Zato je sada u CLAUDE.md § Zamke. Za izmjene fileova: **line-based**
+  zamjena + patch u **zasebnom `.py` fileu**, prijelom iz `chr(10)`, backslash iz `chr(92)`.
+- **`⬜` u tekstu statusa cini redak OTVORENIM.** Citiranje tog znaka u obrazlozenju
+  (`audit ga vidi: 4 ✅, 1 ⬜`) obori vlastiti redak na „otvoren". Piši rijecima.
+- **Python `print` na Windows konzoli pada na dijakriticima** (`cp1252`) - ispis ide u file
+  pa `cat`, ili `sys.stdout.reconfigure(encoding='utf-8', errors='replace')`.
+- **`_db.load_env('test')` pada na anon kljuc** - vidi samo template aree i izgleda kao
+  prazna baza. Za pravo stanje TEST-a: `SUPABASE_SERVICE_ROLE_KEY` iz `.env.local`.
 
-## Stanje E2E
+## Sto je izmjereno, da se ne mjeri ponovo
 
-Puni run nad **HEAD** (prije ciljanih ponavljanja): **60 proslo / 11 palo**, 22,7 min.
-Nijedan spec koji cuva dirane dijelove nije pao (S121, S122, S123, S133).
-Puni run nad **`fd07840`** (prije sesije), kroz `git worktree`: **59 proslo / 12 palo**, 20,3 min. Dakle baseline pada **jedan vise** od HEAD-a.
-Padovi: E5-5, E7-2, E7-3, E9-3, E10-2, E11-4, E12-2, E12-4, E13-2, E14-1, E15, T-S104-1.
+- **TEST baza je zdrava**: `areas` 16 redaka kao prijavljen korisnik, **0 padova u 8
+  pokusaja**, 0,22-0,91 s.
+- **PROD `hidden_in_add`**: tocno **3** atributa - `Stanje`, `Valuta`, `Izvod opis`, svi na
+  `Transakcija` u `Financije_all`. U Structure exportu daju **4** retka (`Stanje` ima dva,
+  jer `depends_on` daje redak po `WhenValue`).
+- **`Financije_all` je Kokina Area**, Sasa je `write` grantee (`data_shares`, PROD).
+- **Generator propusta `HiddenInAdd`** - izmjereno sintetickim roundtripom, ukljucujuci oba
+  `Stanje` retka.
+- **Sidra**: radi `(<#Tocan Naslov>)` i wikilink; **postotno kodiranje NE radi** i kvari
+  ono sto inace radi.
 
-/!\ **Sto ovo dokazuje, a sto ne.** Dokazuje da S139 nije dodao nijedan pad -- ukupno
-ih je **manje** nego prije sesije. Ne dokazuje da su skupovi identicni: HEAD run je u
-e5 imao **nula** padova, a baseline pada `E5-5` => skupovi se razlikuju u barem dva
-clana u oba smjera, pa negdje postoji pad koji baseline nema. Koji -- ne zna se, jer
-je HTML report HEAD runa prepisan kasnijim ciljanim runom.
-/!\ I sam taj razlaz je podatak: suite **nije determinisitcan izmedju runova** (isti
-e5 daje 0, 1 ili 5 padova ovisno o tome sto je islo prije njega). Zato bi i usporedba
-redak-po-redak trazila **ponovljene** pune runove s obje strane, ne jedan par.
+## Napomena o E2E
 
-/!\ Ogranicenje usporedbe: HTML report mog punog runa je **prepisan** kasnijim ciljanim
-runom, pa se usporedjuju **brojke** punih runova i obitelji padova, ne popis test-po-test.
-Tko zeli redak-po-redak, mora pustiti oba puna runa iznova.
-
-## Nedovrseno: navigacija CLAUDE.md-a u Obsidianu (S139, Sasa: „sredit cemo sljedeci put")
-
-Tri od pet stavki su zatvorene; ostaju **dvije**, obje s pripremljenim testom.
-
-**(a) Skok na sekciju baci te u Edit mode.** Izmjereno: `.obsidian/app.json` **nema** kljuc
-`defaultViewMode`, dakle vrijedi Obsidianova zadana vrijednost (*Editing*). Klik na link je
-navigacija, a navigacija otvara metu u **zadanom** nacinu prikaza -- zato rucno skrolanje gore
-ostaje u Reading viewu, a klik ne.
-=> Rjesenje je **postavka, ne file**: Settings -> Editor -> „Default view for new tabs" ->
-   `Reading view`. /!\ Vrijedi za SVE njegove biljeske => **njegova odluka**, ne nasa izmjena.
-
-**(b) Dva retka indeksa se prikazuju kao VANJSKI link** (ikona strelice): `S112+: Intelligence
-layer` i `Financije — pravila domene (izvodi, rjecnik, 1:N)`. To su **jedina dva** naslova s
-**dvotockom** u tekstu -- Obsidian `S112+:` i `1:N` cita kao URL shemu.
-=> Test je vec napisan: **`Claude-temp_R/ANCHOR_TEST3.md`** (7 varijanti, Reading view).
-   Kad se zna koja radi, popravak je jedan izraz u `claude_index.py`.
-
-/!\ **Sto je vec dokazano i ne treba ponovo mjeriti:**
-- Sidro je **ime naslova**, ne GitHub slug. Ugao-zagrade `(<#Ime Naslova>)` rade -- potvrdjeno
-  slikom da se u Reading viewu prikazuje **svih 18** linkova ispravno. **Ne prepisivati ih**
-  na kodirani oblik „za svaki slucaj": to bi bio popravak necega sto nije pokvareno.
-- Povratni link `[^ Sadrzaj](#Sadrzaj)` ide **bez** ugao-zagrada -- meta je jednorjecna.
-- Ciscenje povratnih linkova ide **po obliku** (`BACKLINK_RE`), ne po doslovnom stringu.
-- `CLAUDE.md` nakon svakog `--write` pokazuje `M` u gitu uz **prazan** `git diff` -- to je
-  normalizacija prijeloma redaka (`autocrlf`), ne izmjena. Nije kvar.
-
-## Otvorena pitanja
-
-**`PENDING_TESTS.md` je narastao na 1.159 redaka i 34 sekcije, a otvorenih testova ima 24.**
-**18 sekcija je 100 % zelenih** i zauzimaju **539 redaka (47 %)**. Ritual arhivira detaljni
-`docs/sessions/tests/SXX_tests.md` kad su svi testovi ✅, ali **nitko nikad ne arhivira
-odgovarajucu sekciju u PENDING** - pa dokument raste zauvijek i „sto jos treba" se ne vidi.
-Prijedlog: zelene sekcije u `DONE_HISTORY.md`, u PENDING ostaje 14 sekcija s 24 otvorena testa.
-/!\ Ovo **nije** krsenje pravila „retci se ne brisu, nego dobivaju ✅ + razlog" (S136) -
-retci prezive, samo u drugom fileu. Ali **jest** promjena oblika rituala => ceka Sasinu rijec.
+`npx playwright test` traje ~20-23 min. ⚠ Suite **nije determinisitcan izmedju runova** -
+isti spec zna dati 0, 1 ili 5 padova ovisno o tome sto je islo prije njega. Prije nego se pad
+pripise specu ili appu, **prebroji nedovrsene zahtjeve u traceu** (`0-trace.network`,
+`status: -1`).

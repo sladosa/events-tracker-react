@@ -5438,6 +5438,94 @@ izračunat. Fix: malo polje „odakle" uz „u banci", ili barem automatski `not
 dakle nije jednokratni promašaj nego izostanak koraka. Postalo je i konkretnije: u S111 je jedno
 sidro upisano s tipfelericom (3.453,03 umjesto 3.458,03) i **ispravlja se samo novim retkom** — bez popisa u UI-ju korisnik ne vidi da uz
 važeće sidro stoji i ono krivo.
+## S140 — instrumenti koji su blokirali posao, i dva pada s jednim uzrokom (2026-09-18)
+
+**Sesija bez feature koda.** Jedina promjena u `src/` je `dbScopedKey()` (24 retka). Sve
+ostalo su alati i dokumenti — ali su **tri od njih blokirala posao**, a dva E2E pada koja su
+se vodila kao nepoznata imala su **jedan** uzrok, i on nije bio u aplikaciji.
+
+### E7-3 i E10-2 — tvrdnja napisana iz dizajna, a ne izmjerena
+
+`Confirm revoke` renderira se samo unutar `{revokeTarget && …}` (`ShareManagementModal:300`),
+a `revokeTarget` se postavlja **isključivo** kad `eventIds.length > 0` (`:199`). Grantee bez
+ijednog eventa ide ravno na `doSimpleRevoke` — opoziv se izvrši **bez pitanja**. Seed daje sve
+evente vlasniku; `userb` je ondje samo profil.
+
+Potvrda je došla **iz samog repoa, s druge strane**: `e15-revoke-with-events.spec.ts` prije
+istog očekivanja sam stvori **6 eventa** za userb, i zove se doslovno *„…when grantee has
+events"*.
+
+⚠ Isti uzrok rušio je i **E10-2**, gdje je uz očekivanje stajao komentar *„(since grantee has
+events in the area)"* — neistina, jer njegov `beforeAll` radi samo `supabaseUpsert` nad
+`data_shares`. Obje tvrdnje dodao je **isti** commit `4413280` (S106), zajedno s fantomskim
+toastom koji je S139 već maknuo. Dakle jedan commit, **tri** tvrdnje iz dizajna, čišćene u tri
+navrata — jer se svaka lovila zasebno.
+
+Protuprovjera po S120 pravilu: sabotiran `doSimpleRevoke` ruši **točno ta dva** testa.
+
+### `T-S135-11` više nije hipoteza
+
+E7-2 je pao u oba pojedinačna runa i **nije** isti kvar. Trace: GET
+`profiles?email=eq.userb@test.com` ima `status: -1, time: -1` — nikad nije dobio odgovor. Od
+**347 zahtjeva 24 nikad nisu završila**, 20 ih izdano 8+ s prije kraja testa, po sedam
+endpointa. Uzrok **nije utvrđen**; kandidati su gušenje free-tiera, connection pool i
+**HTTP/1.1 head-of-line blocking** uz 39 usporednih `HEAD` upita iz S133.
+
+### Obsidian navigacija — dva kvara, ne jedan
+
+1. **Goli `<datum>` je za Markdown HTML tag** koji se nikad ne zatvara (redak 972, i
+   `<budući datum>` na 2181). Sve iza njega prestaje se parsirati. Granica se poklapala u
+   redak s onim što je Saša prijavio. Isključeno mjerenjem: ograde uravnotežene, naslovi
+   bajt-identični.
+2. **Dvotočka u naslovu lomi sidro, a `+` je nevin.** Izmjereno klikanjem **11 varijanti**:
+   naslov s `+` bez `:` skače; s `:` ne; **`%2B` kodiranje kvari link koji inače radi**
+   (Obsidian sam kodira `%` u `%25`). Lijek je naslov bez dvotočke, ne kodiranje.
+   `claude_index.py` je dobio guard koji to javlja.
+
+⚠ Moja vodeća hipoteza (da je `+` krivac) bila je **oborena mjerenjem** — `Meta C` u testu je
+postojala baš zato.
+
+### `audit_tests.py` je tri sesije tvrdio da nema što arhivirati
+
+`ID.findall(txt)` kupi i **unakrsne reference iz proze**. `S134_tests.md` u rečenici spominje
+`T-S133-8`, pa je alat presudio *„ne (1 otvorenih)"* iako je sva 21 njegova testa ✅.
+Izmjereno na 12 fileova: **4 nose tuđe ID-eve**, `S137_tests.md` ih ima **8 od 17**.
+Popravljeno; tuđi ID-evi se **ispisuju zasebno**, ne gutaju.
+
+### `PENDING_TESTS.md` 1.198 → 628, backlog dobio strukturu
+
+20 zatvorenih sekcija (588 redaka) preseljeno ovamo. ⚠ **Kriterij nije bio „sekcija je
+zelena"** — izmjereno kao nesigurno: `T-S134-16` živi pod sekcijom **S135**, dakle retci
+migriraju između sekcija. Selidba je imala tri brane koje bi je zaustavile.
+
+Backlog: tri podnaslova umjesto trijažnog odlomka koji je svaka sesija čitala da bi došla do
+istog zaključka. Unosi presloženi, **nijedan znak nije promijenjen**.
+
+### `dbScopedKey()` — jedina promjena u `src/`
+
+Sašin nalaz: nakon rada na PROD-u, TEST je pokazivao `Unknown > Transakcija`, praznu listu i
+traku o grešci, a „Pokušaj ponovno" nije pomagao. Uzrok: `FilterContext` je pamtio filtar pod
+**golim** ključem, a u njemu stoje `areaId` i cijeli `selectionChain`.
+
+⚠ **Ime kategorije se vidjelo iako tog retka nema**, jer dolazi iz spremljenog lanca a ne iz
+baze — zato je simptom izgledao kao kvar čitanja i dijagnoza je tri puta krenula prema bazi.
+Baza je bila zdrava: `areas` 16 redaka, **0 padova u 8 pokušaja**.
+
+### Ručne potvrde
+
+`T-S139-8` ✅ (uz zapisano **zašto je slab test**), `T-S139-9` ✅ — brojka i file se poklapaju
+**u redak** (390/390 i 5.230/5.230), i prekidač je proveden i kroz `sortOrder`.
+`T-S139-10` **dio A** ✅ — export nosi `TRUE` na **4 retka = 3 atributa** (`Stanje` ima dva jer
+`depends_on` daje redak po `WhenValue`); generator propušta kolonu, izmjereno sintetičkim
+roundtripom.
+
+⚠ Usput nađena mina: `isRequired` se preko redaka spaja s **OR**, a `hiddenInAdd` se čita
+**samo iz prvog retka** — S131 je to popravio za susjednu zastavicu i propustio ovu. Danas ne
+grize; u Backlogu.
+
+
+---
+
 
 ---
 

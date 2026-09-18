@@ -1518,3 +1518,38 @@ Glob mora biti `PBZVI[SZ]A_*` ili se file preimenuje — inače alat tiho presko
 
 ⚠ **`uvezi_transu.py:57` je mrtav** — hardkodiran `izvodi/MC_2026-07.pdf`, a taj je u
 `Analizirani_izvodi/` od S129. Padne na `FileNotFoundError` prije ijedne provjere. Nije popravljeno.
+
+## S140 (2026-09-18) — alat koji je tri sesije tvrdio da nema što arhivirati
+
+⚠ **Financije podaci nisu dirani.** Sesija je bila o instrumentima; ovdje stoji samo ono
+što se tiče `data-prep_tools/`.
+
+**`Tools/audit_tests.py`** — `ID.findall(txt)` je kupio i **unakrsne reference iz proze**, pa
+je fileu pripisivao testove koje samo spominje. `S134_tests.md` u jednoj rečenici spominje
+`T-S133-8` („kao T-S133-8 u S135"), i alat je zbog toga presudio *„ne (1 otvorenih)"* iako je
+sva **21** njegova testa ✅.
+Izmjereno na 12 fileova: **4 nose tuđe ID-eve**, `S137_tests.md` ih ima **8 od 17** — dakle
+manje od pola pripisanog posla bilo je njegovo. Presuda se mijenja za dva filea: S134
+(`ne` → **`DA`**) i S137 (3 → 2 otvorena).
+⚠ Tuđi ID-evi se **ne gutaju** nego ispisuju zasebno (`Unakrsne reference`) — alat koji tiho
+odbaci dio ulaza je isti razred greške koji se ovdje popravlja.
+
+**`Tools/claude_index.py`** — guard koji javlja svaki `## ` naslov s **dvotockom**, jer
+Obsidian takav fragment ne razriješi. ⚠ Ispravljena i tvrdnja **u samom alatu**: stajalo je
+da radi i „postotno kodiran oblik". **Ne radi**, i k tome **kvari** link koji inače radi
+(Obsidian sam kodira `%` u `%25`). Protuprovjera: 0 upozorenja nad ispravnim fileom, točno 1
+kad se dvotočka vrati.
+
+**`make_financije_all_structure.py`** — nije mijenjan, ali je **izmjeren**: `read_base()` gradi
+rječnik ključan po zaglavlju, `write_xlsx()` piše `row.get(name)` ⇒ kolona `HiddenInAdd`
+dodana u S139 **stvarno propušta vrijednost** iz base exporta. Sintetički roundtrip s
+`Stanje` u **dva** retka vraća `TRUE` na oba.
+⚠ Na PROD-u `hidden_in_add` nose točno **3** atributa (`Stanje`, `Valuta`, `Izvod opis`), a u
+Structure exportu daju **4** retka — `Stanje` ima `depends_on` na `smjer` s dva ključa
+(`*`, `SKRIVENO`), a sheet daje redak po `WhenValue`.
+
+**Zamka koja je ugrizla dvaput u istoj sesiji:** bash heredoc jede backslash, pa `\n` u
+Python stringu postane stvaran prijelom (`SyntaxError: unterminated string literal`).
+Za izmjene fileova: **line-based** zamjena, patch u **zasebnom `.py` fileu**, prijelom iz
+`chr(10)` i backslash iz `chr(92)`.
+
