@@ -43,10 +43,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2174 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
 | 2271 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
 | 2279 | [Backlog](<#Backlog>) | ~ |
-| 2638 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2646 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 2659 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2667 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2781 redaka, 18 sekcija._
+_Ukupno 2802 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2387,6 +2387,27 @@ Oba popravka u S110 tražila su ručnu izmjenu. D1b kaže `Izvor ∈ {Racun, Cas
 = `event_date` (ovdje `Cash` **ostaje** — D1b je o datumu naplate, ne o saldu; v. S111),
 pa bi se za te retke moglo pomicati automatski. ⚠ Za kartice **ne smije** —
 tamo je datum naplate vezan uz ciklus banke, ne uz dan kupovine.
+
+**⭐ STRUCTURE FAN-OUT: 39 ZAHTJEVA PO POZIVU, A JEDNA INSTANCA NIKAD NE ČITA REZULTAT**
+(izmjereno S141). `useStructureData()` broji evente **jednim `count: 'exact'` upitom po
+kategoriji, usporedno** (S133, i to je bio ispravan izbor). Ali hook se zove na **tri**
+mjesta, a svaki poziv je **zasebna instanca s vlastitim efektom i vlastitim fan-outom**:
+`AppHome.tsx:122`, `StructureTableView.tsx:113`, `StructureSunburstView.tsx:186`.
+⚠ **`AppHome` destrukturira samo `refetch`** (za Export gumb) — riječ `nodes` se u tom
+fileu pojavljuje **0×**. Efekt se svejedno vrti na mountu ⇒ **39 upita čiji rezultat nitko
+nikad ne pročita**, i to na **svakom** mountu `AppHome`-a — dakle i pri svakom povratku iz
+View Detailsa (koji ga odmontira, S129).
+⚠ **Izmjereno iz Playwright traceova** (S141, puni run): u jednom testu **39 + 39** zahtjeva
+u sekundi razmaka, odgovoreno **11 od 78**; kroz 17 palih testova **2.601** fan-out zahtjev,
+pojedini test **330** (`e15`) i **276** (`e11`) — dakle **6–8 punih fan-outa po toku**.
+⚠ **Što se NE tvrdi:** da je to uzrok tih padova. U E10-2 je fan-out opalio **poslije**
+isteka tvrdnje, a **7 od 17** padova nema **nijedan** zahtjev bez odgovora — dakle šutnja
+mreže ne objašnjava sve. Ovo je **trošak koji stoji sam za sebe**, i tek **prvo mjerenje**
+trećeg kandidata iz T-S135-11 (HTTP/1.1 drži 6 veza po hostu; 78 usporednih zahtjeva je red).
+⚠ Popravak je jeftin ali **nije jednoredan**: hook treba način da se montira **bez
+automatskog dohvata** (`AppHome` treba samo `refetch`), ili modul-level keš kao
+`categoryCache`. Prije koda izmjeriti **koliko poziva ostane** — v. susjednu stavku o
+šest upita liste, jer je vjerojatno isti uzrok (remount, ne pravi refetch).
 
 **Lista se preupita ŠEST puta na jednu promjenu filtra** (izmjereno S122 iz Playwright
 tracea: `events?select=…` na 16664, 16735, 16832, 16909, 17022, 17098 ms nakon promjene
