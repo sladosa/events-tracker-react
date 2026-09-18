@@ -43,10 +43,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2170 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
 | 2267 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
 | 2275 | [Backlog](<#Backlog>) | ~ |
-| 2598 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2606 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 2611 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2619 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2741 redaka, 18 sekcija._
+_Ukupno 2754 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2285,6 +2285,19 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 > kosta zadatak.
 
 ### Otvoreno — ovo je posao
+
+**⭐ `HiddenInAdd` se čita samo iz PRVOG retka atributa, a `IsRequired` iz svih** (S140).
+Nesimetrija u `structureImport.ts`: `group.isRequired = group.isRequired || row.isRequired`
+(`:379`) protiv `hiddenInAdd` koji se postavlja samo pri stvaranju grupe (`:347`).
+⚠ S131 je tu istu stvar popravio za `IsRequired` uz izričito obrazloženje — *„prvi
+pobjeđuje” bi `TRUE` na drugom retku tiho progutao* — i **propustio ovu zastavicu**.
+⚠ **Danas ne grize**, i to je izmjereno: i app export i
+`make_financije_all_structure.py` pišu istu vrijednost u **svaki** redak atributa. Ali
+`Stanje` (`Financije_all`) ima **dva** retka jer `depends_on` daje redak po `WhenValue`, pa
+čovjek koji ručno uredi drugi redak dobiva tiho zanemarenu namjeru.
+⚠ Popravak je jedan redak (`group.hiddenInAdd = group.hiddenInAdd || row.hiddenInAdd`), ali
+**mijenja semantiku uvoza za svaki file**, pa ide uz test i uz Sašinu potvrdu — isto pravilo
+koje već stoji uz susjednu stavku o `hidden_in_add` na uvozu.
 
 **⭐ `et_activity_draft` nosi isti razred kao filtar — ključ bez oznake baze** (S140).
 `FilterContext` je zatvoren `dbScopedKey()`-em, ali nacrt Add Activityja i dalje stoji pod

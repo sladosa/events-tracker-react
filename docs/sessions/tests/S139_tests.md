@@ -169,6 +169,33 @@ kolone ili s praznom vrijednošću.
 ⚠ **Uvoz i dalje NIJE popravljen** — bilo koji **drugi** Structure file bez kolone
 `HiddenInAdd` (stariji export, ručno skraćen file, tuđi alat) i dalje briše zastavicu bez
 ijedne poruke. To je otvorena stavka u Backlogu i ovaj test je **ne** zatvara.
+**✅ DIO A (S140, Saša, PROD export):** kolona `HiddenInAdd` postoji i nosi `TRUE`, ali na
+**ČETIRI** retka, ne tri — i to je **točno**:
+
+| atribut | `depends_on` | `WhenValue` ključeva | redaka u exportu |
+| --- | --- | ---: | ---: |
+| `Stanje` | `smjer` | 2 (`*`, `SKRIVENO`) | **2** |
+| `Valuta` | — | — | 1 |
+| `Izvod opis` | — | — | 1 |
+
+⚠ To je već zapisano pravilo: *atribut ima više redaka u Structure sheetu, po jedan po
+`WhenValue`*. Dakle 4 retka = 3 atributa, i export se slaže s bazom u znak.
+
+**✅ GENERATOR — izmjereno, ne procijenjeno.** `read_base()` gradi rječnik ključan po
+zaglavlju, a `write_xlsx()` piše `row.get(name)` za svaku kolonu iz `COLUMNS` ⇒ vrijednost
+se veze iz base exporta. Sintetički roundtrip (lažni base s `Stanje` u **dva** retka) daje
+`Izvod opis TRUE · Stanje TRUE · Stanje TRUE · Valuta TRUE · Tip prazno` — poklapa se.
+
+⚠ **ISPRAVAK ranije upute:** koraci 4–5 (generiranje i provjera filea) **ne traže Kokin
+račun** — generator ne dira bazu. Kokin račun traže tek koraci 6–7 (sam uvoz).
+
+⚠ **Nađeno usput — mina koja danas ne grize** (ide u Backlog): `isRequired` se preko
+redaka istog atributa spaja s **OR** (`structureImport.ts:379`, popravljeno u S131 uz
+obrazloženje), a **`hiddenInAdd` se čita samo iz PRVOG retka** (`:347`). `Stanje` ima dva
+retka, pa bi čovjek koji upiše `TRUE` na **drugi** dobio tiho zanemarenu namjeru — točno
+kvar koji je S131 zatvorio za susjednu zastavicu i propustio za ovu. Danas ne grize jer
+izvoz i generator pišu istu vrijednost u **svaki** redak atributa.
+
 
 ---
 
