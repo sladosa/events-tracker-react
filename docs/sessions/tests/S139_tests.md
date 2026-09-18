@@ -90,6 +90,23 @@ sprječava.
 
 ⚠ Brojka i file moraju govoriti isto. Razilaženje to dvoje je **BUG-S129 razred** („brojka
 mora opisivati file koji izlazi, ne panel") i prijavljuje se čak i ako su oba filea uredna.
+**✅ REZULTAT (S140, Saša, PROD):** prošao, i jače nego što je test tražio — brojka i file
+se poklapaju **u redak**, u oba smjera.
+
+| | prekidač | brojka u modalu | zadnji redak | podatkovnih redaka |
+| --- | --- | ---: | ---: | ---: |
+| file 1 | **uključen** (profil `Kokin_format`) | 390 | 413 | 413−23 = **390** |
+| file 2 | **isključen** (panel) | 5.230 | 5253 | 5253−23 = **5.230** |
+
+⚠ **Prekidač je proveden i kroz `sortOrder`, ne samo kroz raspon** — profil nosi
+`Sort: Oldest` i file 1 ide uzlazno (15.09. → 18.09.), panel nosi `Newest first` i file 2
+završava na `2023-01-01`. Da je raspon bio proveden a sort ne, vidjelo bi se ovdje.
+⚠ Raspon se poklapa i sadržajno: file 1 drži samo zadnja tri mjeseca, file 2 seže do
+`2023-01-01` — točno kako piše u *Active filters*.
+⚠ Usput potvrđeno da S123 popravak radi: `Delta sheet` je bio ugašen **s objasšnjenjem**
+(„nije odabrana nijedna grupa… profil nema vlastiti filtar atributa, pa se grupa uzima iz
+panela”). Prazan delta sheet s točnim sidrom bio je tihi kvar; sada je glasan.
+
 
 ---
 
