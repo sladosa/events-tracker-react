@@ -25,26 +25,26 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 > **X** = stit od regresije, svaki redak placen izmjerenim kvarom -- ne skracivati.
 > **~** = kvarljivo (stanje/plan) -- prije nego vjerujes, provjeri datum u naslovu.
 
-| r. | sekcija | |
-| ---: | --- | :---: |
-| 55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>) |  |
-| 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 108 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 121 | [Critical rules](<#Critical rules>) | X |
-| 1043 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1607 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1623 | [Key files](<#Key files>) |  |
-| 1743 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1763 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1785 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1811 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1851 | [Open bugs](<#Open bugs>) | ~ |
-| 1948 | [Financije — pravila domene (izvodi, rječnik, 1:N)](<#Financije — pravila domene (izvodi, rječnik, 1:N)>) |  |
-| 2137 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2234 | [S112+: Intelligence layer](<#S112+: Intelligence layer>) | ~ |
-| 2242 | [Backlog](<#Backlog>) | ~ |
-| 2548 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2556 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+|   r. | sekcija                                                                                                               |     |
+| ---: | --------------------------------------------------------------------------------------------------------------------- | :-: |
+|   55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>)                                                 |     |
+|   77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>)                       |     |
+|  108 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>)                                     |  X  |
+|  121 | [Critical rules](<#Critical rules>)                                                                                   |  X  |
+| 1043 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>)                                               |  X  |
+| 1607 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>)                                               |     |
+| 1623 | [Key files](<#Key files>)                                                                                             |     |
+| 1743 | [Structure tab — component map](<#Structure tab — component map>)                                                     |     |
+| 1763 | [Data model (simplified)](<#Data model (simplified)>)                                                                 |     |
+| 1785 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>)                                                             |     |
+| 1811 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) |  X  |
+| 1851 | [Open bugs](<#Open bugs>)                                                                                             |  ~  |
+| 1948 | [Financije — pravila domene (izvodi, rječnik, 1:N)](<#Financije — pravila domene (izvodi, rječnik, 1:N)>)             |     |
+| 2137 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>)                             |     |
+| 2234 | [S112+: Intelligence layer](<#S112+: Intelligence layer>)                                                             |  ~  |
+| 2242 | [Backlog](<#Backlog>)                                                                                                 |  ~  |
+| 2548 | [TypeScript known issue](<#TypeScript known issue>)                                                                   |     |
+| 2556 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>)                                 |     |
 
 _Ukupno 2680 redaka, 18 sekcija._
 
@@ -969,7 +969,7 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   stavke koje saldo nikad nije brojao. Računa se u Postgresu (`rpc_area_group_agg` ima
   `p_from`/`p_as_of`), pa **nije trebala nova migracija**.
 - **⚠ Pravilo „strogo nakon" se korisniku iskazuje POSLJEDICOM, ne pravilom** (S116). Pločica
-  prije klika ispiše *„saldo = X plus sve datirano nakon <datum>; sve prije toga smatra se već
+  prije klika ispiše *„saldo = X plus sve datirano nakon `<datum>`; sve prije toga smatra se već
   uključenim"*. Ta bi rečenica uhvatila S115 na licu mjesta: uz 22.08. tvrdila bi da su retci
   od 31.07. nadalje već uključeni, što je bilo očito netočno.
 - **⚠ Sidro se ispravlja SAMO novim retkom, a krivo ostaje** — i nema ga gdje vidjeti
@@ -2178,7 +2178,7 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
 - **⚠ `asOf` se steže na danas — ali samo za saldo** (S111). „All time" razrješava `dateTo` na
   najnoviji event u Arei, a s budućim ratama to je `2027`. Nestegnuto: zaglavlje tvrdi očitanje
   u budućnosti, razmak svježine se broji protiv nepostojećeg dana, i — najgore — gumb nudi
-  **„Potvrdi na <budući datum>"**, čime bi sidro po pravilu „strogo nakon" **presjeklo sve
+  **„Potvrdi na `<budući datum>`"**, čime bi sidro po pravilu „strogo nakon" **presjeklo sve
   retke do tada**. `split` („planirano") dobiva **sirovi** `asOf`, jer je rata u 2027. upravo
   ono što taj broj broji. Dvije upite, dva pravila.
 - **Sidro prikazuje račun i BEZ ijednog eventa** — ✅ **izmjereno uživo 23.08.** (T-S115-2):
