@@ -95,26 +95,30 @@ test.describe('E7 — Share Management', () => {
     //     vec odbacuje. Vodila se kao bug E7-2/E7-3, tj. kao izostanak poruke.
     //     Izmjereno S139: stringa nema u `src/`, i uspjesan put nema nijedan toast.
 
-    // /!\ ISPRAVAK VLASTITE TVRDNJE (S139). Ovdje je najprije stajalo da je E7-3
-    //     "poceo padati" zbog maknute tvrdnje o toastu, koja je usput sluzila kao
-    //     tocka sinkronizacije. To je bila HIPOTEZA napisana kao nalaz, i mjerenje
-    //     ju je opovrglo: pustena je verzija speca od PRIJE sesije
-    //     (`git show fd07840:e2e/tests/e7-share.spec.ts`) i ona pada DVA testa
-    //     (E7-2 i E7-3), dok ova pada JEDAN (E7-3).
-    //     => E7-3 je padao i prije ikakve izmjene -- nije regresija; a uklanjanje
-    //        fantomske tvrdnje je E7-2 popravilo.
-    //     Cekanje ispod OSTAJE, ali kao ono sto jest: klik na gumb koji jos ne
-    //     postoji nije provjera nego utrka. Ono NE popravlja E7-3 i ne smije se
-    //     tako citati -- uzrok E7-3 je i dalje neutvrdjen (v. CLAUDE.md Open bugs).
+    // /!\ Cekanje na `Revoke` OSTAJE, ali kao ono sto jest: klik na gumb koji jos ne
+    //     postoji je utrka, ne provjera. Ono nije lijek za E7-3 -- lijek je nize.
+    //     Povijest: S139 je zapisao da je E7-3 "poceo padati" zbog maknute tvrdnje o
+    //     toastu koja je usput sluzila kao tocka sinkronizacije. To je bila HIPOTEZA
+    //     napisana kao nalaz i mjerenje ju je opovrglo (verzija od prije S139 pada
+    //     E7-2 i E7-3). Pravi uzrok je nadjen tek u S140 -- v. blok ispod klika.
     const revokeBtn = page.getByRole('button', { name: /revoke/i }).first();
     await expect(revokeBtn).toBeVisible({ timeout: 8_000 });
 
     // Now revoke
     await revokeBtn.click();
 
-    // Revoke confirmation dialog appears — confirm it
-    await expect(page.getByRole('button', { name: /confirm revoke/i })).toBeVisible({ timeout: 8_000 });
-    await page.getByRole('button', { name: /confirm revoke/i }).click();
+    // /!\ NEMA dijaloga `Confirm revoke` -- i to je ISPRAVNO ponasanje aplikacije.
+    //     Taj se gumb renderira samo unutar `{revokeTarget && (...)}` (ShareManagementModal
+    //     :300), a `revokeTarget` se postavlja iskljucivo unutar `if (eventIds.length > 0)`
+    //     (:199). Grantee bez ijednog eventa u Arei ide ravno na `doSimpleRevoke` -- opoziv
+    //     se izvrsi odmah, bez pitanja. Seed daje SVE evente vlasniku (`seed.sql:73-96`);
+    //     `userb` je ondje samo profil.
+    //     Tvrdnja o dijalogu dosla je s commitom `4413280` (S106) koji je u isti mah dodao
+    //     i fantomski toast `Access granted` -- S139 je maknuo toast, a dijalog je ostao.
+    //     Izmjereno S140: `element(s) not found`, dva uzastopna runa, deterministicki.
+    //     Put S EVENTIMA cuva `e15-revoke-with-events.spec.ts`, koji prije istog ocekivanja
+    //     sam stvori 6 eventa za userb (:69-114). Ovdje se zato NE smije dodavati -- E7-3
+    //     mjeri jednostavan opoziv, kako mu i ime kaze.
 
     // Toast: "Access revoked for ..."
     await expect(page.getByText(/revoked/i)).toBeVisible({ timeout: 8_000 });

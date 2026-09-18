@@ -37,7 +37,7 @@ pozitiva**. Puna zamka je u CLAUDE.md § „Alati koji mjere nesto drugo nego st
 | T-S139-9  | `ExcelExportModal`: izvoz i dalje poštuje `filter.categoryId` i profil (dep lista dopunjena)               | ⬜ **potvrdi ručno** — izvezi s profilom i bez njega, usporedi broj redaka |
 | T-S139-10 | `hidden_in_add` preživi Structure roundtrip iz `make_financije_all_structure.py` (kolona `HiddenInAdd`)    | ⬜ **potvrdi na PROD-u** — 3 atributa, svi u `Financije_all`; ⚠ uvoz **nije** popravljen (v. Backlog) |
 | T-S139-11 | `audit_tests.py` više ne prijavljuje 22 fantomske proturječnosti (`curated_retired`)                       | ✅ S139 — izmjereno |
-| T-S139-12 | E7-3 uzrok — klik na `Revoke` ne otvori `confirm revoke`                                                   | ⬜ **otvoreno** — nije regresija S139 (v. E7-3 niže i CLAUDE.md Open bugs) |
+| T-S139-12 | E7-3 uzrok — klik na `Revoke` ne otvori `confirm revoke` | ✅ S140 — **nije bug appa**: gumb postoji samo kad grantee ima evente (`ShareManagementModal:199,:300`); tvrdnja u specu dosla iz `4413280` (S106). Isti uzrok i za **E10-2**. Protuprovjera: sabotiran `doSimpleRevoke` ruši točno ta dva |
 | T-S139-13 | Usporedba punog E2E runa `fd07840` vs `HEAD` — je li ijedan pad **nastao** u S139                          | ✅ S139 — `fd07840` **59/12**, HEAD **60/11** ⇒ S139 nije dodao nijedan pad. ⚠ Skupovi NISU identicni (baseline pada E5-5, HEAD u e5 nije pao nijedan) i HEAD report je prepisan ⇒ usporedba je po **brojci**, ne test-po-test |
 
 ⚠ **Otvoreno pitanje o samom ovom dokumentu** (S139, nije izvedeno): 18 od 34 sekcije su
@@ -1191,7 +1191,7 @@ napisan i spreman, ali NE pokretati dok Smjer nije pouzdan (dry-run uhvatio gre�
 | E10-3    | After revoke — grantee no longer sees Fitness area                             | ✅                                                      |
 | E15-full | Revoke with events: dialog + Take your data banner                             | ⬜ (pending smoke test)                                 |
 | E7-2    | Share Management: invite existing user → poziv prolazi bez fantomskog toasta          | ✅ **S139 (izmjereno)** — toast `Access granted` NIKAD nije postojao (`handleInvite` otvara messageBox); uklanjanjem tvrdnje spec prolazi |
-| E7-3    | Revoke access → korisnik nestaje s popisa `Active access`                                | ⬜ **PADA, uzrok neutvrđen.** Klik na `Revoke` ne otvori `confirm revoke`. Izmjereno S139: verzija speca od **prije** sesije pada 2 (E7-2+E7-3), poslije pada 1 (E7-3) ⇒ **nije regresija**. V. CLAUDE.md Open bugs |
+| E7-3 | Revoke access → user removed from Active access list | ✅ S140 — zatvoreno; `confirm revoke` je bila tvrdnja napisana iz dizajna, app radi ispravno. Popravak u specu (`e7`+`e10`), put s eventima čuva `e15` |
 
 ---
 

@@ -67,10 +67,14 @@ test.describe('E10 — Revoke access', () => {
 
     await page.getByRole('button', { name: /revoke/i }).first().click();
 
-    // Revoke confirmation dialog appears (since grantee has events in the area)
-    // Choose default "Revoke only" option and confirm
-    await expect(page.getByRole('button', { name: /confirm revoke/i })).toBeVisible({ timeout: 8_000 });
-    await page.getByRole('button', { name: /confirm revoke/i }).click();
+    // /!\ Dijaloga `Confirm revoke` OVDJE NEMA, i to je ispravno.
+    //     Ovdje je stajao komentar "(since grantee has events in the area)" -- neistina:
+    //     `beforeAll` radi samo `supabaseUpsert` nad `data_shares` i ne stvara nijedan
+    //     event za userb. Gumb se renderira samo uz `revokeTarget`, koji se postavlja
+    //     iskljucivo kad `eventIds.length > 0` (ShareManagementModal:199, :300) => grantee
+    //     bez eventa ide ravno na `doSimpleRevoke`.
+    //     Isto podrijetlo kao u E7-3: commit `4413280` (S106) dodao je tvrdnju u OBA speca.
+    //     Put s eventima cuva `e15-revoke-with-events.spec.ts`.
 
     // Toast should appear after confirmation
     await expect(page.getByText(/revoked/i)).toBeVisible({ timeout: 8_000 });

@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 108 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 121 | [Critical rules](<#Critical rules>) | X |
 | 1043 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1590 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1606 | [Key files](<#Key files>) |  |
-| 1726 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1746 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1768 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1794 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1834 | [Open bugs](<#Open bugs>) | ~ |
-| 1921 | [Financije — pravila domene (izvodi, rječnik, 1:N)](<#Financije — pravila domene (izvodi, rječnik, 1:N)>) |  |
-| 2110 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2207 | [S112+: Intelligence layer](<#S112+: Intelligence layer>) | ~ |
-| 2215 | [Backlog](<#Backlog>) | ~ |
-| 2521 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2529 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1607 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1623 | [Key files](<#Key files>) |  |
+| 1743 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1763 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1785 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1811 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1851 | [Open bugs](<#Open bugs>) | ~ |
+| 1948 | [Financije — pravila domene (izvodi, rječnik, 1:N)](<#Financije — pravila domene (izvodi, rječnik, 1:N)>) |  |
+| 2137 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2234 | [S112+: Intelligence layer](<#S112+: Intelligence layer>) | ~ |
+| 2242 | [Backlog](<#Backlog>) | ~ |
+| 2548 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2556 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2653 redaka, 18 sekcija._
+_Ukupno 2680 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1541,8 +1541,25 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   krece cist. Za usporedbu s prijasnjim commitom posluzi `git worktree` (kod se mijenja
   bez diranja radnog direktorija) — ⚠ put worktreeja mora biti **ASCII**: u putu s
   `Saša` Vite ne razrijesi `/src/main.tsx` i **svaki** test padne iz krivog razloga.
-  ⚠ Vjerojatno je isto ono sto stoji otvoreno kao `T-S135-11` („zasto suite rusi sam
-  sebe", hipoteza gusenja TEST baze) — ali to **nije izmjereno**, pa ostaje hipoteza.
+- **⚠ ZAHTJEVI KOJI NIKAD NE DOBIJU ODGOVOR — `T-S135-11` VISE NIJE HIPOTEZA** (S140).
+  Dotad je „suite rusi sam sebe" bilo objasnjeno **pretpostavkom** gusenja TEST baze.
+  Izmjereno iz Playwright tracea (`trace.zip` → `0-trace.network`), jedan run `e7-share`:
+  **347 zahtjeva, 24 sa `status: -1` i `time: -1`** — dakle bez ijednog odgovora. Dvadeset
+  ih je izdano **8+ sekundi prije kraja testa**, pa nisu artefakt zatvaranja stranice.
+  Nisu vezani uz jedan endpoint: `events`, `categories`, `areas`, `activity_presets`,
+  `share_invites`, `data_shares`, `profiles`.
+  ⚠ **Kako se to vidi u aplikaciji:** `E7-2` je pao jer `createShare` **nije se vratio** —
+  GET `profiles?email=eq.userb@test.com` ostao je u letu, pa je `setIsInviting(false)` nikad
+  izvrsen i gumb je u snapshotu `"…" [disabled]`. **Snapshot pokazuje zamrznut gumb, ne
+  gresku** — a zamrznut gumb se cita kao „app ne radi", dok je zapravo mreza sutjela.
+  ⚠ **Uzrok i dalje NIJE utvrdjen** i ne smije se proglasiti: kandidati su gusenje free-tier
+  baze, connection pool, i **HTTP/1.1 head-of-line blocking** (trace kaze `httpVersion:
+  HTTP/1.1`, preglednik drzi 6 veza po hostu, a `useStructureData` od S133 salje **39
+  usporednih** `HEAD` upita). Treci kandidat je nov i dotad neimenovan.
+  ⚠ **Posljedica za svaku dijagnozu E2E pada:** prije nego se pad pripise specu ili appu,
+  **prebroji nedovrsene zahtjeve u traceu**. Isti spec je u S139 (puni run) prosao, a u S140
+  pao u dva uzastopna pojedinacna runa — bez ijedne izmjene koda. To nije proturjecje nego
+  mjera da ishod ovisi o **vremenu**, ne o specu.
 
 - **⚠ `fullyParallel: false` NE čini run sekvencijalnim** (S120). Drži redoslijed samo
   *unutar* jednog spec filea; **fileovi i dalje idu u zasebne workere**, a Playwright uzima
@@ -1861,21 +1878,31 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   `ILIKE` nije leakproof pa Postgres evaluira RLS EXISTS nad cijelom `event_attributes`.
   Privremeno: amber notice u UI. **Pravi fix = SECURITY DEFINER RPC — isti sloj kao Faza 1.**
 
-- **E7-3 Revoke access — PADA, uzrok NEUTVRDJEN, i NIJE regresija S139.** Klik na `Revoke`
-  ne otvori dijalog `confirm revoke`; modal se zatvori. Izmjereno S139 usporedbom dviju
-  verzija **istog** speca nad **istim** kodom aree:
-
-      git show fd07840:e2e/tests/e7-share.spec.ts  (prije sesije)  -> 1 prosao, 2 pala (E7-2, E7-3)
-      e2e/tests/e7-share.spec.ts                   (poslije)       -> 2 prosla, 1 pao  (E7-3)
-
-  Dakle E7-3 je padao **i prije** ijedne izmjene, a uklanjanje fantomske tvrdnje o toastu
-  `Access granted` je **popravilo E7-2**.
-  /!\ Prva dijagnoza je bila kriva i zapisana kao nalaz: „E7-3 je poceo padati jer je
-  tvrdnja o toastu usput sluzila kao tocka sinkronizacije". Dodano je izricito cekanje na
-  gumb `Revoke` — **i E7-3 je svejedno pao**. Cekanje je zadrzano (klik na gumb koji jos
-  ne postoji je utrka, ne provjera), ali **ono nije lijek** i komentar u specu to sada kaze.
-  /!\ **Dijagnoza mora krenuti od PUNOG runa, ne od ciljanog ponavljanja** — v. zamku
-  „ponovljeni pojedinacni run mjeri bazu koju je prethodni run promijenio" (§ E2E).
+- **~~E7-3 / E10-2 `confirm revoke`~~ — ZATVORENO S140: bila je TVRDNJA NAPISANA IZ
+  DIZAJNA, a app je cijelo vrijeme radio ispravno.** Gumb `Confirm revoke` renderira se
+  samo unutar `{revokeTarget && …}` (`ShareManagementModal:300`), a `revokeTarget` se
+  postavlja **iskljucivo** unutar `if (eventIds.length > 0)` (`:199`) ⇒ grantee **bez
+  ijednog eventa** u Arei ide ravno na `doSimpleRevoke` i opoziv se izvrsi **bez pitanja**.
+  Seed daje sve evente vlasniku (`seed.sql:73-96`); `userb` je ondje samo profil.
+  ⚠ **Potvrda je dosla iz samog repoa, s druge strane:** `e15-revoke-with-events.spec.ts`
+  prije **istog** ocekivanja sam stvori **6 eventa** za userb (`:69-114`), i zove se
+  doslovno *„Revoke shows event-count dialog when grantee has events"*. Ista app, isti
+  gumb — razlika je samo ima li grantee evente.
+  ⚠ **Jedan uzrok, DVA pada koja su se vodila kao nepoznata.** `e10-revoke.spec.ts` je uz
+  isto ocekivanje nosio komentar *„(since grantee has events in the area)"* — neistinu:
+  njegov `beforeAll` radi samo `supabaseUpsert` nad `data_shares`. Obje tvrdnje dodao je
+  **isti** commit `4413280` (S106), zajedno s fantomskim toastom `Access granted` kojeg je
+  S139 vec maknuo. Dakle jedan commit je ostavio **tri** tvrdnje napisane iz dizajna, a
+  ciscene su u tri navrata — jer se svaka lovila zasebno, kao vlastiti kvar.
+  ⚠ **Pouka sira od ovog speca:** komentar u testu koji **obrazlaze** ocekivanje
+  (*„since grantee has events"*) treba citati kao **tvrdnju koju treba provjeriti**, ne kao
+  opis stanja — isti razred kao PROD slug trigger (S118) i `BUG-S123-EDITMARK` (S125), gdje
+  je komentar opisivao namjeru a kod radio drugo.
+  ⚠ **Popravak je u specu, nikad u appu** (pravilo iz § Session workflow). Put **s**
+  eventima ostaje pokriven `e15`-om, pa se u E7-3/E10-2 **ne smije** dodavati stvaranje
+  eventa — ta dva mjere *jednostavan* opoziv, kako im i ime kaze.
+  Protuprovjera po S120 pravilu: uz sabotiran `doSimpleRevoke` (maknuti `toast` + `refresh`)
+  padaju **tocno ta dva** testa; s ispravnim kodom prolazi svih 6 (E7-1..3, E10-1..3).
 
 - **E8-2 Area select timeout:** grantee-write test padne na `selectOption` (element disabled) —
   moguće isti family kao BUG-S103-ANYATTR
