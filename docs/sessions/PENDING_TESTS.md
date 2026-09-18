@@ -27,7 +27,7 @@ je ispisivao ❌ i izlazio s **exit 0** · `audit_tests.py` je prijavljivao **22
 protiv popisa ukinutog u S116 · moja **dva** detektora „mrtvih alata" dala su **100 % lažnih
 pozitiva**. Puna zamka je u CLAUDE.md § „Alati koji mjere nesto drugo nego sto mislis".
 
-**Detalji testova:** `../../Claude-temp_R/test-sessions/archive/` (arhiva) · ovdje su samo statusi.
+**Detalji testova:** [tests/S139_tests.md](tests/S139_tests.md) — napisan tek u S140 (ritual korak 2 je u S139 preskocen; Sasa primijetio da u  nema nicega)
 
 | ID        | Test                                                                                                      | Status |
 | --------- | --------------------------------------------------------------------------------------------------------- | ------ |
