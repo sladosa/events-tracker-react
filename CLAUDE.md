@@ -46,7 +46,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2558 | [TypeScript known issue](<#TypeScript known issue>) |  |
 | 2566 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2690 redaka, 18 sekcija._
+_Ukupno 2701 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2596,6 +2596,17 @@ does not block build. Ignore it.
    Korak je bio preskočen **tri sesije zaredom** jer se kriterij „svi testovi ✅" nije dao
    primijeniti dok su postojala dva popisa koja se ne slažu (kurirani redak je propuštao
    60 testova). Sada se broji, ne procjenjuje.
+   - **⚠ SEKCIJA U `PENDING_TESTS.md` SELI ZAJEDNO S DETALJNIM FILEOM** (S140). Do tada se
+     arhivirao samo `tests/SXX_tests.md`, a sekcija je ostajala — pa je PENDING narastao na
+     **35 sekcija / 1.183 retka, od cega polovica zatvorena**, i „sto jos treba" se nije
+     vidjelo. Sekcije bez ijednog ⬜ idu u `DONE_HISTORY.md` **u cijelosti** (retci prezive,
+     pravilo S136 ostaje na snazi); oba filea su u `docs/sessions/` pa relativni linkovi
+     prezive selidbu nedirnuti.
+     ⚠ **Kriterij NIJE „sekcija je zelena"** — izmjereno da je to nesigurno: `T-S134-16` zivi
+     pod sekcijom **S135**, dakle retci migriraju izmedju sekcija. Seli se samo sekcija koja
+     (a) nema nijedan ⬜ **i** (b) ne drzi **jedini** redak za test cijem session fileu jos
+     ima zivih testova. Bez (b) `audit_tests.py` javi „PENDING nema redak za" ⇒ zamijenio bi
+     se jedan sum drugim.
    - session file čiji su **svi** testovi ✅ → `Claude-temp_R/test-sessions/archive/`
      (⚠ arhiviranje **izlazi iz gita** — arhiviran test je zatvoren, pa seli na radni stol)
      (⚠ **ne po starosti** — otvoreni testovi sežu unatrag više sesija)
