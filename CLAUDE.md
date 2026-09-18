@@ -43,10 +43,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2147 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
 | 2244 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
 | 2252 | [Backlog](<#Backlog>) | ~ |
-| 2558 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2566 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 2564 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2572 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2701 redaka, 18 sekcija._
+_Ukupno 2707 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2252,28 +2252,16 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 ## Backlog
 [↑ Sadrzaj](#Sadrzaj)
 
-> **Cime se od ovoga sljedeca sesija treba baviti** (S139). Popis mijesa tri stanja, pa je
-> trecina njega posao koji **ne treba nikakvu akciju** — a svaka sesija ju je dosad citala
-> da bi zakljucila to isto. Ovdje su imena, ne premjesteni tekst: unosi ostaju gdje jesu.
+> **Struktura NOSI trijazu, umjesto da je opisuje** (S140). Do tada je ovdje stajao odlomak
+> koji je nabrajao sto je parkirano a sto otvoreno — pa je svaka sesija citala svih 306
+> redaka da bi dosla do istog zakljucka. Sada je dovoljno procitati **prvi** podnaslov.
 >
-> **Parkirano / ceka vanjski okidac — preskoci (8):** Preimenovanje `Financije_all` ·
-> Prijedlog `comment`a iz povijesti · Drill s dva uvjeta · Netlify scheduled maintenance ·
-> Garmin/Sleep · `trening.xlsm` · Plotly bundle · Split-workbook
->
-> **Ceka Sasinu ODLUKU prije ijedne linije koda (1):** PBZVISA prolaz — znaci li
-> `Datum naplate` za karticu *kojem izvodu pripada* ili *kad je novac otisao*.
->
-> **Vise nije posao (5):** cetiri ~~precrtana~~ izvedena unosa (ostaju zbog ostatka koji je
-> jos otvoren i zbog pretrage) + `Stanje post-processing` (otpada, S109).
->
-> **Otvoreno — ovo je stvarni popis (15):** sve ostalo.
+> /!\ Unosi su preslozeni, **nijedan znak u njima nije promijenjen**. Svrstavanje je
+> procjena i smije se ispraviti; zato je pravilo bilo **u korist vidljivosti** — sto je bilo
+> dvojbeno islo je u „Otvoreno". Krivo prikazan zadatak kosta jedan pogled, krivo sakriven
+> kosta zadatak.
 
-**~~Kolone Activities liste po Arei~~ — ✅ IZVEDENO S116.** `settings.list_columns`,
-slug-based, `ListColumns` sheet u Structure roundtripu, fixup na rename. Financije:
-`Datum | Iznos | Tip / Podtip | Opis | User | Stanje | ⋮`, uski ekran u dva reda.
-Pravila su promaknuta u „Critical rules". **Neverificirano uživo: T-S116-1…5.**
-⚠ Ostalo neizvedeno: rječnik uloga se širi **samo kodom** (namjerno), pa nova vrsta
-kolone (npr. `attr` s formatom broja) i dalje traži commit.
+### Otvoreno — ovo je posao
 
 **⭐ Zaglavlje Add Activity po Arei** (Sašina ideja S117) — isti obrazac kao `list_columns`:
 uloge u configu, ne domena u kodu. **Financije nemaju smisla pokazivati štopericu** — ona je
@@ -2289,80 +2277,6 @@ odluka o koliziji `session_start`a pri unosu unatrag.
 ⚠ **Zašto je ovo najvrjednija stavka Faze 2:** danas se unos za prošli dan radi kroz **dva
 ekrana** (Add pa odmah Edit), a Koka gleda banku svakih par dana ⇒ pogađa je na **svakom**
 retku. Ostale stavke Faze 2 štede sekunde, ova uklanja cijeli drugi ekran.
-
-**⚠ `Financije_all` i `financije-all` su DVA POLJA, ne dvije verzije istog imena** (S118).
-Podvlaka je **ime aree** — ono što čovjek utipka i što stoji u Excel koloni `Area` i u `Category_Path`.
-Crtica je **slug**, i **nikad se ne tipka**: app ga izvede iz imena (`generateSlug`, `_` → `-`,
-`structureImport.ts:149`), a `037` i `dashboard`/`list_columns` reference traže baš `financije-all`.
-Posljedica koja se ne vidi: nazove li se area na PROD-u ikako drukčije, slug ispadne drugi,
-`037` ne nađe areu ⇒ **nema Overview taba**, i nigdje ne piše zašto. Izmjereno na TEST-u:
-`name='Financije_all'`, `slug='financije-all'`. U repou nema nijednog pojavljivanja krivog
-oblika (`Financije-all` 0×, `financije_all` 0×) — dakle nije tipfeler koji se čisti, nego
-razlika koju treba znati pri **stvaranju aree na PROD-u**.
-
-**Preimenovanje `Financije_all` → `Financije` — ODGOĐENO, s okidačem** (Sašina odluka S117).
-Okidač **nije** „kad bude na PROD-u" nego **„kad prođe zadnji uvoz koji generira pipeline"**
-(batch 2024 i 2023 idu **nakon** cutovera, na PROD — rename odmah po cutoveru ugrizao bi isto
-kao rename danas). Razlog odgode: ime aree je **ključ** u svakom generiranom fileu (`Structure`
-`Category_Path`, `ListColumns`/`Automations` kol. A, Activities kol. `Area`), a redak s
-neprepoznatom areom se **preskoči bez poruke** — S113 „0 New, 0 Modify nad punim fileom".
-Mijenjati taj ključ dok alati rade je razmjena kozmetike za tihi gubitak redaka.
-⚠ **Kad dođe vrijeme, rename ide kroz UI, nikad kroz novi Structure import.** UI mijenja samo
-`name` i **slug ostaje** (`StructureNodeEditPanel.tsx:1049`) ⇒ `037`, `dashboard` i
-`list_columns` prežive jer su slug-based. Import bi izveo **novi** slug (`generateSlug(areaName)`,
-`structureImport.ts:548`) i `037` ne bi našao areu ⇒ nema Overview taba.
-⚠ Jedino što rename ionako ubija: `export_profiles` (ključ nosi ime aree,
-`exportProfile.ts:146`) — složiti ih nanovo, posao od par minuta.
-
-**~~⭐ Shortcuts po Arei — toggle u Filter panelu~~ — ✅ IZVEDENO S122** (Sašina ideja S119).
-Kvačica „samo ova Area", `<optgroup>` po Arei, sufiks `0× · 25.06.` Provjereno usput:
-`activity_presets.area_id` **se puni** pri spremanju (bila je otvorena sumnja), pa migracija
-nije trebala. **Nije izvedeno i čeka brojke:** granica popisa („pokaži samo N") i s njom
-stavka `Svi shortcutovi…`. Sašina odluka: *„nema smisla uvoditi granice bez stvarnog uvida"*
-⇒ mjera se bira nad stvarnim brojem shortcutova, a prijedlog je da to ne bude broj nego
-**Area** (1–2 najkorištenija po Arei). ⚠ Granica i `Svi shortcutovi…` idu **istim commitom**
-— granica bez izlaza iz nje su jednosmjerna vrata (v. `FILTER_SPEC.md` §5).
-Izvorna skica:
-Popis shortcutova raste i **preduga lista nema smisla** — a većina ih pripada jednoj Arei.
-Zamisao: **toggle u Filter panelu** koji popis suzi na shortcutove **odabrane Aree**;
-isključen toggle pokazuje one koji su napravljeni **s isključenim togglom** (dakle
-„globalne"). Shortcut napravljen unutar **Add Activity** po prirodi pripada Arei — ondje se
-Area zna, pa se veže bez pitanja.
-⚠ Prije koda razjasniti dvoje: (a) `activity_presets` već nosi `area_id` (v. `filter_state`)
-— treba provjeriti je li **uvijek** popunjen, jer stari zapisi možda nisu; (b) što znači
-„globalan" shortcut kad se Area filtar promijeni — nestaje li iz popisa ili ostaje.
-⚠ **Preset je per-user i ID-based** (nikad ne putuje) — v. „Preset ≠ widget" u sažetku
-Overview odluka. Ovo je čisto UI sužavanje popisa, ne nov oblik zapisa.
-
-**⭐ Prijedlog `comment`a iz povijesti — IZMJERENO, parkirano (S130, Sašina odluka).**
-Ideja: u delta sheetu ponuditi uobičajen opis na temelju `Tip`/`Podtip` i iznosa, jer
-Koka čita bankovnu aplikaciju a Saša tipka — dakle `Izvod opis` (primatelja) **nema**.
-Ne treba ponovno mjeriti; brojke su nad PROD-om, 5.153 retka:
-
-| ključ (Izvor=Racun, zadnjih 12 mj) | pokriva | top-1 | top-3 | top-5 | top-10 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `Podtip` | 335 | 57,6 % | 88,7 % | **93,4 %** | 98,5 % |
-| `Podtip` + iznos | 193 | 76,7 % | 90,7 % | 93,3 % | 98,4 % |
-| `Tip`+`Podtip` | 335 | 57,6 % | 88,7 % | 93,4 % | 98,5 % |
-
-- **Iznos ne doda ništa**, a suzi pokrivenost s 335 na 193 retka — i upravo je on ono
-  što se u Excelu ne da vezati na dropdown. Otpada i težak dio.
-- **`Tip`+`Podtip` je identičan `Podtip`u sam** (samo 4 Podtipa žive pod dva Tipa, i
-  spajanje im je korisno: `gorivo`/`registracija`/`popravci` pod dva auta). Znači ključ
-  ostaje **jedna ćelija**, dakle ista INDIRECT formula od **424 znaka** kao postojeći
-  `Podtip` dropdown — dva roditelja bi tražila **829**, a to je neprovjereno.
-- **Prozor je bitniji od ključa:** cijela povijest umjesto 12 mjeseci ruši top-5 s
-  93,4 % na 81,4 %, a najdužu listu diže s 14 na 41 stavku.
-- **Ponuda, nikad upis:** top-1 je 57,6 % ⇒ automatski upis griješi dvije od pet.
-  Isto pravilo koje već stoji uz `presedani.py`.
-- ⚠ **Ne proturječi S129 pravilu** „ključ za oznaku je primatelj + poziv na broj, nikad
-  Tip/Podtip". Ondje se oznaka **upisuje** na retke koji primatelja **imaju**; ovdje
-  primatelja nema uopće, i ništa se ne upisuje nego nudi.
-- Gdje ne pomaže: `PP (Posmrtna pripomoc)` ima 14 redaka i 14 različitih opisa, jer nose
-  brojač (`PP Saša 6/60`). Tražilo bi rezanje broja iz presedana, kao za rate.
-- Konkretna dobit ako se ikad napravi: `izmedju racuna` nudi
-  `TROŠKOVI UČINJENI MASTERCARD KARTICOM` (11×) — pravilo „opis skupne MC naplate mora
-  ostati strojni tekst izvatka" danas živi samo u dokumentaciji.
 
 **⭐ `Izvod opis` za RF retke — nijedan alat ga danas ne puni** (Sašin izričit zahtjev
 S131: „pazi da ne zaboravimo"). `uskladi_izvod.py` radi **samo MC** izvode; RF je drugi
@@ -2396,6 +2310,87 @@ jednu invarijantu u trinaest iznimki.
 ⚠ Usput zapaženo: `StructureNodeEditPanel:548` ima **drugi** overlay (`z-[60]`, ugniježđeni
 dijalog) koji hook **ne** koristi ⇒ ne zatvara se klikom na pozadinu **uopće**. Nije kvar
 (ništa se ne gubi), ali je nedosljednost koju treba odlučiti zajedno s ovim.
+
+**Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
+rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
+(fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
+
+**⭐ `rata` ne razumije `cutoff:B:D` — prva rata zna pasti mjesec prekasno** (S138).
+`generateRataChargeDates` (`rataAutomation.ts:77`) prima **broj dana** i uvijek kreće od
+**sljedećeg** mjeseca (`d.setMonth(d.getMonth() + i)`, `i` kreće od 1). Za kupovinu
+1.–3. u mjesecu to je mjesec previše: Visa kupovina 02.10. pripada izvodu koji se
+zatvara **03.10.** i tereti se **05.10.**, a rata modal joj daje prvu ratu `05.11.`
+⚠ Rub je **neovisan o danu** — jednako griješi sa `3` i sa `5`, pa ga popravak iz S138
+(`rata.date_map.Visa = 5`) nije ni mogao zatvoriti; on je samo poravnao **dan**.
+⚠ Fix je da rata koristi **isti** `evaluateDateRule` kao `set_attribute` (prva rata =
+rezultat pravila nad datumom kupnje, svaka sljedeća +1 mjesec), a `rata.date_map` primi
+iste tokene. Time nestaje i zamka „dva rječnika, samo jedan razumije tokene".
+⚠ Traži **deploy prije** nego token uđe u ijedan Excel — nepoznat token rata parser
+tiho pretvori u zadanih `15` (isto pravilo kao za `cutoff` u S137e, samo tiše: ondje
+uvoz barem `console.warn`a).
+Veličina: **225 Visa rata** u bazi; pogođen je samo prozor 1.–3. u mjesecu.
+
+**`Datum naplate` ne prati promjenu datuma u Editu** (S110) — delta-shift
+(`EditActivityPage.handleDateTimeChange`) pomiče samo *vremena eventa*, ne i datumske atribute.
+Oba popravka u S110 tražila su ručnu izmjenu. D1b kaže `Izvor ∈ {Racun, Cash}` ⇒ `Datum naplate`
+= `event_date` (ovdje `Cash` **ostaje** — D1b je o datumu naplate, ne o saldu; v. S111),
+pa bi se za te retke moglo pomicati automatski. ⚠ Za kartice **ne smije** —
+tamo je datum naplate vezan uz ciklus banke, ne uz dan kupovine.
+
+**Lista se preupita ŠEST puta na jednu promjenu filtra** (izmjereno S122 iz Playwright
+tracea: `events?select=…` na 16664, 16735, 16832, 16909, 17022, 17098 ms nakon promjene
+aree). Dvije posljedice: čist trošak — a na PROD-u je Saša **grantee**, dakle skupa RLS
+grana (v. „Izmjereno i nije problem") — i **osvježavanje zatvara otvoren ⋮ izbornik**, što
+korisnik vidi kao „meni mi se sam zatvorio". Drugo je posljedica prvog, pa se mjeri zajedno.
+⚠ Nije hipoteza nego mjerenje, ali **uzrok kaskade nije utvrđen** — prije popravka izbrojati
+tko sve okida refetch (`useDateBounds` settle, `areas-changed`, promjena `attrFilter`).
+
+**⭐ `hidden_in_add` se tiho brise kad Structure file nema kolonu `HiddenInAdd`** (S139).
+Popravljen je **alat** (`make_financije_all_structure.py` sada emitira kolonu), ali **uvoz je
+ostao kakav jest**: svaki drugi file bez te kolone — stariji export, rucno skracen file, tudi
+alat — i dalje brise zastavicu, i to bez ijedne poruke.
+⚠ Pravi popravak je u `structureImport.ts`: `hidden_in_add` mora slijediti **isto nacelo** koje
+Area postavke vec imaju (`hasSavePlusCol` i dr.) — nema kolone ⇒ zadrzi postojecu vrijednost.
+Traži da se u `buildValidationRules` proslijedi „je li kolona postojala", jer se danas ne
+razlikuje *„pise FALSE"* od *„kolone nema"*.
+⚠ **Ne popravljati napamet:** mijenja semantiku uvoza za svaki file, pa ide uz test i uz
+Sasinu potvrdu. Danas pogađa **3 atributa**, sva tri u `Financije_all`.
+
+**⭐ `ViewDetailsPage`: efekt zove `loadActivityData` PRIJE nego je deklariran** (S139,
+`react-hooks/immutability`, `:334`). Radi danas — efekti se vrte nakon rendera, pa je `const`
+do tada dodijeljen — ali efekt drzi **staru** funkciju i ne osvjezava se kad se ona promijeni.
+Isti razred kao S119/S120, i u istom fileu.
+⚠ **Ne popravljati naivno:** dodavanje u dep listu ponovo bi pokretalo efekt na SVAKOM renderu
+(funkcija se stvara iznova), sto je klasicna zamjena jednog kvara drugim. Trazi `useCallback`
+ili premjestanje deklaracije, i E2E protuprovjeru (`e4-view-activity`).
+⚠ **Bio je NEVIDLJIV do S139:** skrivao ga je `eslint-disable-next-line` za **drugo** pravilo
+(`exhaustive-deps`) — plugin preskoci cijeli efekt koji nosi disable za bilo koje `react-hooks`
+pravilo. Mrtva suzbijanja zato nisu kozmetika nego **slijepa mrlja**.
+
+**Postgres upgrade — otvoren od S105, i retry ga samo SKRIVA** (spaseno iz `BUG-S121-AREACTX`,
+S139). Palo citanje `areas` na PROD-u je vjerojatno S105 obrazac: free-tier se gusi. `withRetry`
+iz S121 je posljedicu ucinio prezivljivom (tab se vise ne gasi trajno), ali uzrok stoji.
+/!\ Zato ga retry cini **manje vidljivim, ne manje prisutnim** — a mjera da se i dalje
+dogadja je broj retryja, koji danas nitko ne broji.
+
+**BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC; ista investicija kao Faza 1.
+
+**FilterContext koraci 2+3** (Fable I.4) — tipizirani event bus (`appEvents.ts`),
+eventualno split FilterProvider/SharingProvider.
+
+**Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`,
+koristiti `value_number`/`value_boolean`/`value_datetime` s odgovarajućim operatorima.
+
+**Structure Edit UX cleanup** (`StructureNodeEditPanel.tsx`, bez DB promjena):
+collapsible attribute kartice (persist u localStorage) · `suggest` direktno u „New attribute"
+formi · lakše dodavanje opcija u depends_on mapping · help docs update.
+
+**⭐ Help „What can I do here?" chip** — standing chip po `pageHint` kontekstu; zahtijeva
+sekciju „Feature inventory" u `docs/help/*.md`, **dosta detaljno** (korisnikov izričit zahtjev).
+
+**Health `health_lab_review.py` cleanup** — razdvajanje Medical Visit bilješki iz Lab Results komentara.
+
+### Čeka Sašinu odluku prije ijedne linije koda
 
 **⭐ PBZVISA prolaz — `Datum naplate` za Visu nema ispravljača** (S137, Sašina odluka:
 placeholder je u redu, ali mu fali drugi dio). `uskladi_izvod.py:939` prima **samo MC**
@@ -2448,46 +2443,64 @@ preimenuje.
 Visa `RATA n/N-X`. Ostale razlike su formatske: dvoznamenkasta godina (`05.06.26.`),
 referencija je 10 znamenki (ne `B0802…`), opis nosi **adresu** (`SPAR - MARTIĆEVA 13 - ZAGREB`).
 
-**Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
-rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
-(fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
+### Parkirano i izvedeno — ne traži akciju
 
-**~~Sidra se ne mogu vidjeti ni obrisati iz aplikacije~~** — IZVEDENO S116: pločica ima
-„povijest potvrda" + ✕; uz to `data-prep_tools/Financije/anchors.py` (`--list`, `--delete`).
-**Neverificirano uživo: T-S116-13.** Povijest: `DONE_HISTORY.md`.
+> Ceka vanjski okidac, ili je vec izvedeno pa ostaje samo zbog ostatka koji je jos otvoren
+> i zbog pretrage po imenu. **Preskoci pri planiranju sesije.**
 
-**~~Sidro upisano kroz UI nema podrijetlo~~** — ZATVORENO: polje „odakle" (S113), **obavezno**
-od S116 jer o njemu ovisi datum potvrde. Povijest problema: `DONE_HISTORY.md`.
+**⚠ `Financije_all` i `financije-all` su DVA POLJA, ne dvije verzije istog imena** (S118).
+Podvlaka je **ime aree** — ono što čovjek utipka i što stoji u Excel koloni `Area` i u `Category_Path`.
+Crtica je **slug**, i **nikad se ne tipka**: app ga izvede iz imena (`generateSlug`, `_` → `-`,
+`structureImport.ts:149`), a `037` i `dashboard`/`list_columns` reference traže baš `financije-all`.
+Posljedica koja se ne vidi: nazove li se area na PROD-u ikako drukčije, slug ispadne drugi,
+`037` ne nađe areu ⇒ **nema Overview taba**, i nigdje ne piše zašto. Izmjereno na TEST-u:
+`name='Financije_all'`, `slug='financije-all'`. U repou nema nijednog pojavljivanja krivog
+oblika (`Financije-all` 0×, `financije_all` 0×) — dakle nije tipfeler koji se čisti, nego
+razlika koju treba znati pri **stvaranju aree na PROD-u**.
 
-**⭐ `rata` ne razumije `cutoff:B:D` — prva rata zna pasti mjesec prekasno** (S138).
-`generateRataChargeDates` (`rataAutomation.ts:77`) prima **broj dana** i uvijek kreće od
-**sljedećeg** mjeseca (`d.setMonth(d.getMonth() + i)`, `i` kreće od 1). Za kupovinu
-1.–3. u mjesecu to je mjesec previše: Visa kupovina 02.10. pripada izvodu koji se
-zatvara **03.10.** i tereti se **05.10.**, a rata modal joj daje prvu ratu `05.11.`
-⚠ Rub je **neovisan o danu** — jednako griješi sa `3` i sa `5`, pa ga popravak iz S138
-(`rata.date_map.Visa = 5`) nije ni mogao zatvoriti; on je samo poravnao **dan**.
-⚠ Fix je da rata koristi **isti** `evaluateDateRule` kao `set_attribute` (prva rata =
-rezultat pravila nad datumom kupnje, svaka sljedeća +1 mjesec), a `rata.date_map` primi
-iste tokene. Time nestaje i zamka „dva rječnika, samo jedan razumije tokene".
-⚠ Traži **deploy prije** nego token uđe u ijedan Excel — nepoznat token rata parser
-tiho pretvori u zadanih `15` (isto pravilo kao za `cutoff` u S137e, samo tiše: ondje
-uvoz barem `console.warn`a).
-Veličina: **225 Visa rata** u bazi; pogođen je samo prozor 1.–3. u mjesecu.
+**Preimenovanje `Financije_all` → `Financije` — ODGOĐENO, s okidačem** (Sašina odluka S117).
+Okidač **nije** „kad bude na PROD-u" nego **„kad prođe zadnji uvoz koji generira pipeline"**
+(batch 2024 i 2023 idu **nakon** cutovera, na PROD — rename odmah po cutoveru ugrizao bi isto
+kao rename danas). Razlog odgode: ime aree je **ključ** u svakom generiranom fileu (`Structure`
+`Category_Path`, `ListColumns`/`Automations` kol. A, Activities kol. `Area`), a redak s
+neprepoznatom areom se **preskoči bez poruke** — S113 „0 New, 0 Modify nad punim fileom".
+Mijenjati taj ključ dok alati rade je razmjena kozmetike za tihi gubitak redaka.
+⚠ **Kad dođe vrijeme, rename ide kroz UI, nikad kroz novi Structure import.** UI mijenja samo
+`name` i **slug ostaje** (`StructureNodeEditPanel.tsx:1049`) ⇒ `037`, `dashboard` i
+`list_columns` prežive jer su slug-based. Import bi izveo **novi** slug (`generateSlug(areaName)`,
+`structureImport.ts:548`) i `037` ne bi našao areu ⇒ nema Overview taba.
+⚠ Jedino što rename ionako ubija: `export_profiles` (ključ nosi ime aree,
+`exportProfile.ts:146`) — složiti ih nanovo, posao od par minuta.
 
-**`Datum naplate` ne prati promjenu datuma u Editu** (S110) — delta-shift
-(`EditActivityPage.handleDateTimeChange`) pomiče samo *vremena eventa*, ne i datumske atribute.
-Oba popravka u S110 tražila su ručnu izmjenu. D1b kaže `Izvor ∈ {Racun, Cash}` ⇒ `Datum naplate`
-= `event_date` (ovdje `Cash` **ostaje** — D1b je o datumu naplate, ne o saldu; v. S111),
-pa bi se za te retke moglo pomicati automatski. ⚠ Za kartice **ne smije** —
-tamo je datum naplate vezan uz ciklus banke, ne uz dan kupovine.
+**⭐ Prijedlog `comment`a iz povijesti — IZMJERENO, parkirano (S130, Sašina odluka).**
+Ideja: u delta sheetu ponuditi uobičajen opis na temelju `Tip`/`Podtip` i iznosa, jer
+Koka čita bankovnu aplikaciju a Saša tipka — dakle `Izvod opis` (primatelja) **nema**.
+Ne treba ponovno mjeriti; brojke su nad PROD-om, 5.153 retka:
 
-**Lista se preupita ŠEST puta na jednu promjenu filtra** (izmjereno S122 iz Playwright
-tracea: `events?select=…` na 16664, 16735, 16832, 16909, 17022, 17098 ms nakon promjene
-aree). Dvije posljedice: čist trošak — a na PROD-u je Saša **grantee**, dakle skupa RLS
-grana (v. „Izmjereno i nije problem") — i **osvježavanje zatvara otvoren ⋮ izbornik**, što
-korisnik vidi kao „meni mi se sam zatvorio". Drugo je posljedica prvog, pa se mjeri zajedno.
-⚠ Nije hipoteza nego mjerenje, ali **uzrok kaskade nije utvrđen** — prije popravka izbrojati
-tko sve okida refetch (`useDateBounds` settle, `areas-changed`, promjena `attrFilter`).
+| ključ (Izvor=Racun, zadnjih 12 mj) | pokriva | top-1 | top-3 | top-5 | top-10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `Podtip` | 335 | 57,6 % | 88,7 % | **93,4 %** | 98,5 % |
+| `Podtip` + iznos | 193 | 76,7 % | 90,7 % | 93,3 % | 98,4 % |
+| `Tip`+`Podtip` | 335 | 57,6 % | 88,7 % | 93,4 % | 98,5 % |
+
+- **Iznos ne doda ništa**, a suzi pokrivenost s 335 na 193 retka — i upravo je on ono
+  što se u Excelu ne da vezati na dropdown. Otpada i težak dio.
+- **`Tip`+`Podtip` je identičan `Podtip`u sam** (samo 4 Podtipa žive pod dva Tipa, i
+  spajanje im je korisno: `gorivo`/`registracija`/`popravci` pod dva auta). Znači ključ
+  ostaje **jedna ćelija**, dakle ista INDIRECT formula od **424 znaka** kao postojeći
+  `Podtip` dropdown — dva roditelja bi tražila **829**, a to je neprovjereno.
+- **Prozor je bitniji od ključa:** cijela povijest umjesto 12 mjeseci ruši top-5 s
+  93,4 % na 81,4 %, a najdužu listu diže s 14 na 41 stavku.
+- **Ponuda, nikad upis:** top-1 je 57,6 % ⇒ automatski upis griješi dvije od pet.
+  Isto pravilo koje već stoji uz `presedani.py`.
+- ⚠ **Ne proturječi S129 pravilu** „ključ za oznaku je primatelj + poziv na broj, nikad
+  Tip/Podtip". Ondje se oznaka **upisuje** na retke koji primatelja **imaju**; ovdje
+  primatelja nema uopće, i ništa se ne upisuje nego nudi.
+- Gdje ne pomaže: `PP (Posmrtna pripomoc)` ima 14 redaka i 14 različitih opisa, jer nose
+  brojač (`PP Saša 6/60`). Tražilo bi rezanje broja iz presedana, kao za rate.
+- Konkretna dobit ako se ikad napravi: `izmedju racuna` nudi
+  `TROŠKOVI UČINJENI MASTERCARD KARTICOM` (11×) — pravilo „opis skupne MC naplate mora
+  ostati strojni tekst izvatka" danas živi samo u dokumentaciji.
 
 **Drill s dva uvjeta** — `FilterContext` nosi jedan `attrFilter`, a uvjet pločice ima dva
 (`Izvor` + `Status`), pa drill znači „pokaži mi ovaj račun", ne „točno ove retke".
@@ -2496,64 +2509,57 @@ Predviđeno u OVERVIEW_TAB_SPEC §2.16 kao test; ispalo da filtru fali mogućnos
 filtru** — „ZABA **i** samo uplate" (`Racun` + `Smjer`) korisnik ne može složiti. Time to
 prestaje biti polish pločice i postaje svakodnevna potreba. Sašina odluka: **ne sada.**
 
-**⭐ `hidden_in_add` se tiho brise kad Structure file nema kolonu `HiddenInAdd`** (S139).
-Popravljen je **alat** (`make_financije_all_structure.py` sada emitira kolonu), ali **uvoz je
-ostao kakav jest**: svaki drugi file bez te kolone — stariji export, rucno skracen file, tudi
-alat — i dalje brise zastavicu, i to bez ijedne poruke.
-⚠ Pravi popravak je u `structureImport.ts`: `hidden_in_add` mora slijediti **isto nacelo** koje
-Area postavke vec imaju (`hasSavePlusCol` i dr.) — nema kolone ⇒ zadrzi postojecu vrijednost.
-Traži da se u `buildValidationRules` proslijedi „je li kolona postojala", jer se danas ne
-razlikuje *„pise FALSE"* od *„kolone nema"*.
-⚠ **Ne popravljati napamet:** mijenja semantiku uvoza za svaki file, pa ide uz test i uz
-Sasinu potvrdu. Danas pogađa **3 atributa**, sva tri u `Financije_all`.
+**Netlify scheduled maintenance** — kad se skupi 2–3 zadatka: `netlify/functions/maintenance.ts`
+sa `schedule = "@weekly"` (orphaned share_invites, stari accepted invites, stari help_log).
 
-**⭐ `ViewDetailsPage`: efekt zove `loadActivityData` PRIJE nego je deklariran** (S139,
-`react-hooks/immutability`, `:334`). Radi danas — efekti se vrte nakon rendera, pa je `const`
-do tada dodijeljen — ali efekt drzi **staru** funkciju i ne osvjezava se kad se ona promijeni.
-Isti razred kao S119/S120, i u istom fileu.
-⚠ **Ne popravljati naivno:** dodavanje u dep listu ponovo bi pokretalo efekt na SVAKOM renderu
-(funkcija se stvara iznova), sto je klasicna zamjena jednog kvara drugim. Trazi `useCallback`
-ili premjestanje deklaracije, i E2E protuprovjeru (`e4-view-activity`).
-⚠ **Bio je NEVIDLJIV do S139:** skrivao ga je `eslint-disable-next-line` za **drugo** pravilo
-(`exhaustive-deps`) — plugin preskoci cijeli efekt koji nosi disable za bilo koje `react-hooks`
-pravilo. Mrtva suzbijanja zato nisu kozmetika nego **slijepa mrlja**.
+**Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi.
 
-**Postgres upgrade — otvoren od S105, i retry ga samo SKRIVA** (spaseno iz `BUG-S121-AREACTX`,
-S139). Palo citanje `areas` na PROD-u je vjerojatno S105 obrazac: free-tier se gusi. `withRetry`
-iz S121 je posljedicu ucinio prezivljivom (tab se vise ne gasi trajno), ali uzrok stoji.
-/!\ Zato ga retry cini **manje vidljivim, ne manje prisutnim** — a mjera da se i dalje
-dogadja je broj retryja, koji danas nitko ne broji.
+**Historijska migracija** `trening.xlsm` — bez vremenskog pritiska.
 
-**BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC; ista investicija kao Faza 1.
+**Plotly bundle** ~4.9MB — prihvatljivo dok performanse nisu problem.
 
-**FilterContext koraci 2+3** (Fable I.4) — tipizirani event bus (`appEvents.ts`),
-eventualno split FilterProvider/SharingProvider.
+**Split-workbook** (Pravila + Neklasificirano u zaseban file nad app exportom) — kad Saša poželi.
 
-**Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`,
-koristiti `value_number`/`value_boolean`/`value_datetime` s odgovarajućim operatorima.
+---
 
-**Structure Edit UX cleanup** (`StructureNodeEditPanel.tsx`, bez DB promjena):
-collapsible attribute kartice (persist u localStorage) · `suggest` direktno u „New attribute"
-formi · lakše dodavanje opcija u depends_on mapping · help docs update.
+**~~Kolone Activities liste po Arei~~ — ✅ IZVEDENO S116.** `settings.list_columns`,
+slug-based, `ListColumns` sheet u Structure roundtripu, fixup na rename. Financije:
+`Datum | Iznos | Tip / Podtip | Opis | User | Stanje | ⋮`, uski ekran u dva reda.
+Pravila su promaknuta u „Critical rules". **Neverificirano uživo: T-S116-1…5.**
+⚠ Ostalo neizvedeno: rječnik uloga se širi **samo kodom** (namjerno), pa nova vrsta
+kolone (npr. `attr` s formatom broja) i dalje traži commit.
 
-**⭐ Help „What can I do here?" chip** — standing chip po `pageHint` kontekstu; zahtijeva
-sekciju „Feature inventory" u `docs/help/*.md`, **dosta detaljno** (korisnikov izričit zahtjev).
+**~~⭐ Shortcuts po Arei — toggle u Filter panelu~~ — ✅ IZVEDENO S122** (Sašina ideja S119).
+Kvačica „samo ova Area", `<optgroup>` po Arei, sufiks `0× · 25.06.` Provjereno usput:
+`activity_presets.area_id` **se puni** pri spremanju (bila je otvorena sumnja), pa migracija
+nije trebala. **Nije izvedeno i čeka brojke:** granica popisa („pokaži samo N") i s njom
+stavka `Svi shortcutovi…`. Sašina odluka: *„nema smisla uvoditi granice bez stvarnog uvida"*
+⇒ mjera se bira nad stvarnim brojem shortcutova, a prijedlog je da to ne bude broj nego
+**Area** (1–2 najkorištenija po Arei). ⚠ Granica i `Svi shortcutovi…` idu **istim commitom**
+— granica bez izlaza iz nje su jednosmjerna vrata (v. `FILTER_SPEC.md` §5).
+Izvorna skica:
+Popis shortcutova raste i **preduga lista nema smisla** — a većina ih pripada jednoj Arei.
+Zamisao: **toggle u Filter panelu** koji popis suzi na shortcutove **odabrane Aree**;
+isključen toggle pokazuje one koji su napravljeni **s isključenim togglom** (dakle
+„globalne"). Shortcut napravljen unutar **Add Activity** po prirodi pripada Arei — ondje se
+Area zna, pa se veže bez pitanja.
+⚠ Prije koda razjasniti dvoje: (a) `activity_presets` već nosi `area_id` (v. `filter_state`)
+— treba provjeriti je li **uvijek** popunjen, jer stari zapisi možda nisu; (b) što znači
+„globalan" shortcut kad se Area filtar promijeni — nestaje li iz popisa ili ostaje.
+⚠ **Preset je per-user i ID-based** (nikad ne putuje) — v. „Preset ≠ widget" u sažetku
+Overview odluka. Ovo je čisto UI sužavanje popisa, ne nov oblik zapisa.
+
+**~~Sidra se ne mogu vidjeti ni obrisati iz aplikacije~~** — IZVEDENO S116: pločica ima
+„povijest potvrda" + ✕; uz to `data-prep_tools/Financije/anchors.py` (`--list`, `--delete`).
+**Neverificirano uživo: T-S116-13.** Povijest: `DONE_HISTORY.md`.
+
+**~~Sidro upisano kroz UI nema podrijetlo~~** — ZATVORENO: polje „odakle" (S113), **obavezno**
+od S116 jer o njemu ovisi datum potvrde. Povijest problema: `DONE_HISTORY.md`.
 
 **Stanje post-processing** — **otpada** (potvrđeno S109). `make_financije_import.py` prestaje
 pisati atribut `Stanje` na Transakciju; vrijednost seli u zasebnu kategoriju `Stanja`.
 ⚠ **Postojećih 2220 zapisa se NE dira** — Kokin per-redak lanac je jedini **neovisni svjedok**
 protiv kojeg se app-ov izračun može provjeriti. Prestani pisati, nemoj brisati.
-
-**Netlify scheduled maintenance** — kad se skupi 2–3 zadatka: `netlify/functions/maintenance.ts`
-sa `schedule = "@weekly"` (orphaned share_invites, stari accepted invites, stari help_log).
-
-**Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi.
-**Historijska migracija** `trening.xlsm` — bez vremenskog pritiska.
-**Health `health_lab_review.py` cleanup** — razdvajanje Medical Visit bilješki iz Lab Results komentara.
-**Plotly bundle** ~4.9MB — prihvatljivo dok performanse nisu problem.
-**Split-workbook** (Pravila + Neklasificirano u zaseban file nad app exportom) — kad Saša poželi.
-
----
 
 ## TypeScript known issue
 [↑ Sadrzaj](#Sadrzaj)
