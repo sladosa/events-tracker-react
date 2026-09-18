@@ -5522,6 +5522,84 @@ roundtripom.
 ⚠ Usput nađena mina: `isRequired` se preko redaka spaja s **OR**, a `hiddenInAdd` se čita
 **samo iz prvog retka** — S131 je to popravio za susjednu zastavicu i propustio ovu. Danas ne
 grize; u Backlogu.
+## S141 — tri tvrdnje oborene mjerenjem, i sve tri su bile moje (2026-09-18)
+
+Detalji: [S141_tests.md](tests/S141_tests.md)
+
+⚠ **Sesija bez ijedne izmjene u `src/`.** Sav rad je otišao u mjerenje i u dvije odluke koje
+su dotad blokirale posao.
+
+### Potvrđeno
+
+- **T-S140-7** — `dbScopedKey` drži: TEST nije naslijedio PROD-ov `Health_Sasa > Medical`
+  nego je pokazao **svoj** `Financije_all`, a povratak na `dev:prod` vratio PROD-ov odabir
+  netaknut. ⚠ Ishod je **jači** nego što je test tražio: očekivanje je dopuštalo i prazan
+  filtar, a prazan ne bi razlikovao „ključ je odvojen" od „ključ je obrisan".
+
+### `Datum naplate` za karticu — odlučeno, i jedna tvrdnja iz CLAUDE.md-a je pala
+
+Stajalo je **sedamnaest sesija** da se Visa retci *„ne grupiraju jer nisu mjereni istim
+ravnalom"* i da kontrola po košari ne vidi 855 redaka. **Grupiraju se**: mjereno po
+**ciklusu** umjesto po danu, **35 od 37** ciklusa ima točno jedan dan, a 1.616 od 1.639
+redaka uredno sjeda u svoj. Ne sjeda **23** retka koje je napravila aplikacija (`next:3`).
+Razbacanost je bila **krivo ravnalo, ne krivi podaci**.
+
+Sašina odluka: značenje je **(b) dan kad je novac stvarno otišao** — *„dok se ne zna,
+pretpostavljamo; kad stigne izvod, editiramo na točno"*. App se time **ne mijenja**
+(`cutoff:3:5` je dobar privremeni pogodak), treba mu **ispravljač**. Odbijena (a) bi tražila
+prepisivanje 1.616 redaka i izbrisala jedini zapis stvarnog dana terećenja po ciklusu.
+
+⚠ Usput izmjereno da je posljedica živa: otvorena košara `2026-10` razlomljena je na
+**3.×13 + 5.×5** — dvije generacije configa u istoj košari.
+
+### `DELTA_WINDOW_SPEC` — Sašin prijedlog, i moja pogreška u njemu
+
+Sašin prijedlog: delta sheet da kreće od **predzadnjeg** sidra, jer kartično plaćanje
+ostavlja glavni blok prazan (izmjereno: RF **2** retka koja miču saldo, ZABA prozor skraćen
+sa traženih 60 dana na **12**, uz 47 redaka koji nestanu bez poruke).
+
+Prvi nacrt spec-a to je poopćio u **„prozor od N dana"** — i **Saša je to oborio jednim
+pitanjem**: *„ako odemo 60 dana natrag, imamo problema sa stanjem tog dana?"* Izmjereno:
+„danas − 60" pada na 20.07.2026., a najbliže sidro prije toga je na ZABA-i **01.01.2025.**
+i na RF-u **31.12.2022.** ⇒ otvarajuće stanje bi bilo sidro **plus 565 odnosno 1.297 dana
+izračuna**. Njegova verzija daje **13.815,33** i **799,12** — potvrđene brojeve, bez ijednog
+dijela izračuna.
+
+⇒ **Dani su kriva mjerna jedinica; prozor uvijek kreće dan poslije nekog sidra.**
+Pogreška je ostavljena zapisana u §1.2 spec-a jer je poučna: *„poopći pa će biti robusnije"*
+ovdje je značilo izgubiti jedino svojstvo zbog kojeg brojka išta vrijedi.
+
+Na Sašin strah od korumpiranja prošlosti odgovoreno je činjenicom: **prošlost je već pisiva**
+(običan izvoz s rasponom + uvoz, i Edit u UI-ju), pa delta sheet ne otvara nova vrata. Zato
+tri sloja umjesto zabrane, a treći je **proširenje postojećeg `row_hash` update-guarda** koji
+već zaključava Apply.
+
+### E2E — T-S140-8 djelomično, i nalaz veći od njega
+
+Pun run: **54 prošlo / 17 palo** (baseline S139: 60/11). **E7-3 ✅** prolazi i u punom runu.
+**E10-2 ❌**, ali mjereno iz tracea **ne na dijalogu opoziva** nego prije njega —
+`structure-row-…` se nikad ne pojavi. Deset od sedamnaest padova su Structure tab ⇒ jedan
+obrazac, ne sedamnaest kvarova.
+
+Iz traceova: **2.601** fan-out zahtjev kroz 17 padova, pojedini test **330**; u E10-2
+**39 + 39** u sekundi razmaka uz **11 odgovorenih od 78**. Uzrok nije u testu:
+`useStructureData()` zove se na **tri** mjesta i svaki poziv je zasebna instanca s vlastitim
+fan-outom, a **`AppHome` destrukturira samo `refetch`** — riječ `nodes` u tom fileu se
+pojavljuje **0×**, dakle 39 upita čiji rezultat nitko ne pročita, na svakom mountu.
+
+⚠ **Nije proglašeno uzrokom padova**: fan-out je u E10-2 opalio *poslije* isteka tvrdnje, a
+7 od 17 padova nema nijedan zahtjev bez odgovora.
+
+### Usput
+
+- Sekcija „Čeka Sašinu odluku" u Backlogu je **prazna**, i to je zapisano kao podatak —
+  zadnji stanar (PBZVISA prolaz) odlučen je i premješten u „Otvoreno".
+- `audit_tests.py` uhvatio je da sam T-S140-8 označio tako da izgleda zatvoren dok E10-2 i
+  dalje pada; vraćen je na otvoren, inače bi se S140 arhivirao prerano.
+
+
+---
+
 
 
 ---

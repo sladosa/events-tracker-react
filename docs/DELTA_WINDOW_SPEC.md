@@ -172,6 +172,26 @@ Danas autofilter ide `to: { column: ctrlCol }`
 ⚠ **Ne ide u `export_profiles`** — dodaje ga delta alat **nakon** primjene profila (postojeće
 pravilo), isti položaj koji već ima `Stanje (kontrola)`.
 
+### 4.5 Prazni retci za unos dobivaju **blag** format
+
+Sašin zahtjev (S141): *„ovi redovi za unos bi trebali biti nekako blago formatirani (sada nemaju poseban format)“*.
+
+Prazni retci predloška su **jedino mjesto gdje čovjek upisuje**, a danas izgledaju isto kao
+povijest. Prijedlog: vrlo svijetla podloga + tanki obrub, dovoljno da se blok vidi na prvi
+pogled, premalo da se natječe s crvenim uvjetnim formatom kontrolne ćelije.
+
+⚠ **Ton mora biti različit od sivog** kojim se označavaju **potvrđeni** retci (§5, sloj 1)
+— dva sloja značenja na istoj plohi: *„ovdje pišeš“* i *„ovo je već potvrđeno, ne diraj“*.
+Ako se stope, jače upozorenje gubi snagu, a to je ono koje štiti prošlost.
+
+⚠ **Format ostaje i nakon što se redak popuni** — i to je **korisno, ne propust**: obojeni
+retci su točno oni koji će ući kao **NOVI** zapisi. Time file sam pokazuje što će uvoz dodati,
+a što samo ispraviti. Vrijedi provjeriti s Kokom nakon prvog kruga — ako joj to smeta, boja
+se skida uvjetnim formatom čim datum prestane biti prazan.
+
+⚠ Boja se piše **nakon** profila (profil dira kolone po položaju) i **ne smije** dirati
+`dataValidation` koji ti retci već nose (`dvBlankRows`, S130).
+
 ### 4.4 Kontrolna točka u zaglavlju — po jednom sidru u prozoru
 
 ```
@@ -284,7 +304,10 @@ Faza 1 sama rješava Sašin problem. Faze 2–3 ga čine vidljivim, faza 4 sigur
 
 ### Ostalo otvoreno
 
-- **Prag upozorenja za širinu prozora** (§4.1): koliko redaka je „previše"? Danas bi `K = 2`
-  na ZABA-i dalo ~625 dana. Prijedlog: upozorenje preko **200 redaka**, bez zabrane.
-- **Sivi ton na potvrđenim retcima** (§5, sloj 1) — je li to dovoljno „jako uočljivo" ili
-  ide i boja pozadine cijele kolone.
+4. **Prag upozorenja za širinu prozora** — **200 redaka**, upozorenje bez zabrane (Saša, S141).
+5. **Sivi ton na potvrđenim retcima** — **dovoljan zasad** (Saša, S141); pojačava se tek ako
+   se pokaže da se previdi.
+6. **Blag format praznih redaka** (§4.5) — tražen, ton neodređen; bira se uz fazu 2, jer mora
+   stajati **pored** sivog a ne s njim.
+
+Ništa više ne čeka odluku — faza 1 se može kodirati.

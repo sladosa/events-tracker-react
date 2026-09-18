@@ -1,7 +1,8 @@
 # Sljedeca sesija - handoff
 
-**Pisano protiv commita:** `0eac59a` + izmjene zatvaranja S140 (idu istim commitom).
-**`main` NIJE diran u S140** - sve stoji na `test-branch`. Deploy nije trazen ni pusten.
+**Pisano protiv commita:** `cc886fe` + izmjene zatvaranja S141 (idu istim commitom).
+**`main` NIJE diran u S141** - sve stoji na `test-branch`. Deploy nije trazen ni pusten.
+**U `src/` nije promijenjen nijedan redak.**
 Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
 
 ---
@@ -10,54 +11,52 @@ Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
 
 ## Sto je gotovo
 
-**Dan je prosao na instrumentima, ne na featureima** - i to se isplatilo vise nego sto zvuci.
-U `src/` je promijenjeno **24 retka** (jedan novi file), a otkljucane su tri stvari koje su
-mjesecima tiho blokirale posao.
+**Dan je prosao na mjerenju, i tri stvari koje su bile zapisane kao istina pokazale su se
+netocnima.** Sve tri su bile moje tvrdnje, ne tvoje.
 
-**Dva E2E pada koja su se vodila kao nepoznata imala su jedan uzrok, i nije bio u aplikaciji.**
-`E7-3` i `E10-2` su ocekivali dijalog `Confirm revoke` koji se pojavljuje **samo kad korisnik
-kojem se opoziva pristup ima svoje zapise u toj Arei**. U testu ih nema, pa se opoziv izvrsi
-odmah - sto je ispravno ponasanje. Obje tvrdnje dodao je **isti** commit iz S106, zajedno s
-trecom (fantomskim toastom) koju je S139 vec maknuo.
+**`Datum naplate` za kartice - odluceno, i uz put je pala jedna tvrdnja stara 17 sesija.**
+U CLAUDE.md-u je stajalo da se Visa retci „ne grupiraju" i da ih kontrola po kosari ne vidi.
+Grupiraju se: gledano po **ciklusu** umjesto po danu, **35 od 37** ciklusa ima tocno jedan
+dan, a **1.616 od 1.639** redaka uredno sjeda u svoj. Ne sjeda **23** retka koje je napravila
+aplikacija. Dakle problem je bio ~40x manji nego sto je pisalo, i bio je u **ravnalu**, ne u
+podacima.
+Tvoja odluka je zapisana kao pravilo: **stupac znaci dan kad je novac stvarno otisao**; dok se
+ne zna, app upisuje pretpostavku, a izvod je ispravlja. App se time ne mijenja - treba mu
+ispravljac.
 
-**Alat je tri sesije tvrdio da nema sto arhivirati.** `audit_tests.py` je fileu pripisivao
-svaki test-ID koji se u njemu **spominje** - ukljucujuci recenice tipa „kao T-S133-8 u S135".
-Zbog jednog takvog spomena file s **21 od 21 zavrsenog testa** nije se smio arhivirati.
+**Tvoj prijedlog za delta sheet je usvojen, i tvoje pitanje je oborilo moju verziju.**
+Predlozio si „jedno sidro ranije". Ja sam to poopcio u „prozor od N dana" - a ti si pitao
+imamo li problema sa stanjem tog dana. Imamo: „danas - 60" pada na 20.07.2026., a najblize
+sidro **prije** toga je na ZABA-i **01.01.2025.**, na RF-u **31.12.2022.** Otvarajuce stanje
+bilo bi sidro **plus 565 odnosno 1.297 dana izracuna**. Tvoja verzija daje **13.815,33** i
+**799,12** - potvrdjene brojeve, bez ijednog dijela izracuna.
+⇒ Spec je `docs/DELTA_WINDOW_SPEC.md`, i **nista vise ne ceka tvoju odluku** - faza 1 se moze
+kodirati.
 
-**`PENDING_TESTS.md` je prepolovljen: 1.198 -> 628 redaka.** Polovica dokumenta bio je
-zatvoren posao. Sada se „sto jos treba" vidi bez skrolanja. **Backlog** je dobio tri
-podnaslova, pa je dovoljno procitati **prvi**.
+**E2E je pusten (22 min): 54 proslo / 17 palo**, baseline je bio 60/11. **E7-3 prolazi** i u
+punom runu, dakle popravak iz S140 drzi. **E10-2 pada, ali ne ondje gdje smo mislili** - ne na
+dijalogu opoziva nego prije njega, jer se Structure redak nikad ne pojavi.
 
-**Obsidian navigacija je zatvorena, i bila su dva kvara, ne jedan.** Prvi: rijec u
-siljastim zagradama (`<datum>`) Markdown cita kao HTML oznaku, pa se sve iza nje prestane
-oblikovati - to je bilo ono „poremetilo se izmedju Critical rules i 1043". Drugi: **dvotocka**
-u naslovu lomi skok. ⚠ **Tvoja slutnja da je kriv `+` pokazala se netocnom** - izmjereno je
-da naslov s plusom bez dvotocke radi uredno.
-
-**Nasao si i kvar koji je izgledao kao pokvarena aplikacija.** Filtar se pamtio pod jednim
-kljucem za **obje** baze, pa je TEST nasljedjivao PROD-ov odabir i prikazivao `Unknown`,
-praznu listu i poruku o gresci nad bazom koja je bila posve zdrava. Zatvoreno tako da se
-**vise ne moze dogoditi**, ne uputom.
+**Nadjen je trosak koji stoji sam za sebe:** Structure tab broji evente s jednim upitom po
+kategoriji (39 upita), a to se u jednom toku dogodi **6-8 puta**. Jedan od tih poziva dolazi
+iz ekrana koji rezultat **nikad ne procita**.
 
 ## Sto trazi tebe
 
-1. **`git push origin test-branch`** - ceka vise commita.
-2. **T-S140-7** (2 min): `dev:prod` -> odaberi Areu -> ugasi -> `npm run dev` -> TEST **ne
-   smije** naslijediti taj odabir. Pa natrag na `dev:prod` - ondje mora stajati tvoj PROD
-   odabir. ⚠ **Jednokratni reset filtra je ocekivan**, nije kvar.
-3. **T-S140-8** (~20 min, moze bez tebe): `npx playwright test`. ⚠ **Prvo ugasi `dev:prod`
-   na portu 5173** - inace guard zaustavi run (i dobro je da zaustavi).
-4. **T-S139-10 dio B** - samo kad budes kod **Kokinog** racuna. Koraci 4-5 (generiranje
-   filea) mozes i sam, oni ne diraju bazu.
-5. **Deploy na `main` NIJE napravljen i ne treba biti** dok ne kazes.
+1. **Nista za push** - `test-branch` je pushan na kraju S141 (7 commita). `main` netaknut.
+2. **Nista drugo.** Nijedan test ne ceka tvoju ruku; T-S141-4 ceka **kod**, ne tebe.
+3. Kad budes kod **Kokinog** racuna: **T-S139-10 dio B** (uvoz Structure filea) - jedini
+   preostali rucni korak iz ranijih sesija.
+4. **Deploy na `main` NIJE napravljen i ne treba biti** dok ne kazes.
 
 ## Sto NE treba raditi
 
-- **Ne popravljaj `E7-2`** - on pada iz drugog razloga (mreza prema TEST bazi), izmjereno.
-- **Ne dodavaj evente u `e7`/`e10`** da bi se dijalog pojavio - taj put vec cuva `e15`.
-- **Ne kodiraj sidra postotno** (`%2B`, `%3A`) - mjereno je da to **kvari** link koji radi.
-- **Ne uvozi Structure file `Financije_all` pod svojim racunom** - dobio bi drugi
-  `Financije_all` pod sobom, i izgledalo bi uspjesno.
+- **Ne popravljaj E10-2 u specu** - pada prije mjesta koje spec testira; uzrok je drugdje.
+- **Ne proglasavaj Structure fan-out uzrokom E2E padova** - izmjereno je da 7 od 17 padova
+  nema **nijedan** zahtjev bez odgovora.
+- **Ne diraj `next:3` / `cutoff:3:5`** - `cutoff:3:5` je dobar privremeni pogodak i ostaje
+  dok ispravljac ne postoji.
+- **Ne uvozi Structure file `Financije_all` pod svojim racunom.**
 
 ---
 
@@ -67,54 +66,57 @@ praznu listu i poruku o gresci nad bazom koja je bila posve zdrava. Zatvoreno ta
 
 | sto | gdje |
 | --- | --- |
-| `dbScopedKey()` - kljuc `localStorage`-a vezan uz project ref | `src/lib/storageKey.ts` (jedina promjena u `src/`) |
-| Guard: `## ` naslov s dvotockom -> stderr | `data-prep_tools/Tools/claude_index.py` |
-| Atribucija ID-eva po prefiksu sesije + ispis unakrsnih referenci | `data-prep_tools/Tools/audit_tests.py` |
-| `S139_tests.md` (ritual korak 2 bio preskoČen u S139) + `S140_tests.md` | `docs/sessions/tests/` |
-| 20 zatvorenih sekcija preseljeno iz PENDING-a | `docs/sessions/DONE_HISTORY.md` |
-| Test sidara (11 varijanti) | `Claude-temp_R/_probes/ANCHOR_obsidian_sidra.md` |
+| `DELTA_WINDOW_SPEC` - prozor se mjeri sidrima, ne danima | `docs/DELTA_WINDOW_SPEC.md` (nov) |
+| Odluka o znacenju `Datum naplate` + ispravak tvrdnje o kosari | `CLAUDE.md` § Financije, § Backlog |
+| Nalaz o Structure fan-outu | `CLAUDE.md` § Backlog, `T-S141-1` |
+| Skripte mjerenja (read-only, PROD) | `Claude-temp_R/_probes/*.py` (izvan gita) |
+| Log punog E2E runa | `Claude-temp_R/_probes/S141_e2e_full_run.log` |
 
 ## Otvoreno, po prioritetu
 
-1. **T-S140-8** - puni E2E nije pusten (na 5173 je stajao `dev:prod`). Ocekivano ~62/9
-   prema baseline-u 60/11 iz S139.
-2. **T-S139-10 dio B** - uvoz pod Kokinim racunom. Dio A i generator su **izmjereni**.
-3. **`hiddenInAdd` se cita samo iz PRVOG retka atributa**, a `isRequired` iz svih
-   (`structureImport.ts:347` protiv `:379`). S131 je to popravio za susjednu zastavicu i
-   propustio ovu. `Stanje` ima bas dva retka. **Ne popravljati napamet** - mijenja semantiku
-   uvoza; Backlog.
-4. **`et_activity_draft`** - isti razred kao filtar, kljuc bez oznake baze. Nije diran jer ga
-   dva E2E speca tvrdo kodiraju; Backlog.
-5. **E7-2 / T-S135-11** - uzrok nedovrsenih zahtjeva **nije utvrden**.
+1. **`DELTA_WINDOW_SPEC` faza 1** - `K` (sidara unatrag) umjesto `N` dana. Mice se
+   `dayAfterAnchor` iz `Math.max` (`ExcelExportModal.tsx:440`) i bira se **K-to** sidro.
+   ⚠ `fetchAnchoredBalance` se **ne mijenja** - RPC sam bira sidro po `asOf`, pa je tocan za
+   bilo koji pocetak prozora. Provjera: otvarajuce stanje mora izaci **jednako iznosu sidra u
+   cent** (ZABA `13.815,33`). Test je `T-S141-4`.
+2. **Structure fan-out** - `AppHome:122` treba `refetch` bez automatskog dohvata, ili
+   modul-level kes kao `categoryCache`. ⚠ Prije koda prebrojati **koliko poziva ostane**;
+   vjerojatno isti uzrok kao „lista se preupita sest puta".
+3. **PBZVISA ispravljac** - sada ima definirano znacenje stupca, pa se moze graditi. Cita
+   **dva** izvora: PBZVISA za stavke/rate, **RF izvod** za dan i iznos stvarne naplate.
+   ⚠ Glob mora biti `PBZVI[SZ]A_*` (31x `PBZVISA_`, 1x `PBZVIZA_`).
+4. **T-S139-10 dio B** - uvoz pod Kokinim racunom.
+5. **E10-2 / E7-2** - uzrok nedovrsenih zahtjeva i dalje **nije utvrden**.
 
 ## Zamke koje su danas ugrizle
 
-- **Bash heredoc jede backslash** - ugrizlo **dvaput u istoj sesiji** iako je stajalo u
-  proslom handoffu. Zato je sada u CLAUDE.md § Zamke. Za izmjene fileova: **line-based**
-  zamjena + patch u **zasebnom `.py` fileu**, prijelom iz `chr(10)`, backslash iz `chr(92)`.
-- **`⬜` u tekstu statusa cini redak OTVORENIM.** Citiranje tog znaka u obrazlozenju
-  (`audit ga vidi: 4 ✅, 1 ⬜`) obori vlastiti redak na „otvoren". Piši rijecima.
-- **Python `print` na Windows konzoli pada na dijakriticima** (`cp1252`) - ispis ide u file
-  pa `cat`, ili `sys.stdout.reconfigure(encoding='utf-8', errors='replace')`.
-- **`_db.load_env('test')` pada na anon kljuc** - vidi samo template aree i izgleda kao
-  prazna baza. Za pravo stanje TEST-a: `SUPABASE_SERVICE_ROLE_KEY` iz `.env.local`.
+- **Backtick u dvostrukim navodnicima u bashu je command substitution** - ``audit_tests.py``
+  u `python -c "..."` je **nestao iz filea**, a skripta je javila `OK`. Isti razred kao
+  heredoc/backslash iz S140. ⇒ Patch pisi u **zaseban `.py` file**, backtick iz `chr(96)`.
+- **Prvi obrazac zamjene nije nasao blok jer je u tekstu stajao obican `"` umjesto `“`** -
+  assert je pao glasno i to je bilo ispravno ponasanje, ali trazi da se tekst prvo ispise
+  kroz `ascii()`.
+- **`print` na Windows konzoli pada na dijakriticima** (`cp1252`) -
+  `sys.stdout.reconfigure(encoding='utf-8', errors='replace')` na vrhu svake skripte.
+- **`npx playwright test > log; echo EXIT=$?`** daje exit kod **echa**, ne Playwrighta -
+  „completed (exit code 0)" ondje ne znaci da su testovi prosli.
 
 ## Sto je izmjereno, da se ne mjeri ponovo
 
-- **TEST baza je zdrava**: `areas` 16 redaka kao prijavljen korisnik, **0 padova u 8
-  pokusaja**, 0,22-0,91 s.
-- **PROD `hidden_in_add`**: tocno **3** atributa - `Stanje`, `Valuta`, `Izvod opis`, svi na
-  `Transakcija` u `Financije_all`. U Structure exportu daju **4** retka (`Stanje` ima dva,
-  jer `depends_on` daje redak po `WhenValue`).
-- **`Financije_all` je Kokina Area**, Sasa je `write` grantee (`data_shares`, PROD).
-- **Generator propusta `HiddenInAdd`** - izmjereno sintetickim roundtripom, ukljucujuci oba
-  `Stanje` retka.
-- **Sidra**: radi `(<#Tocan Naslov>)` i wikilink; **postotno kodiranje NE radi** i kvari
-  ono sto inace radi.
+- **Visa `Datum naplate`**: 1.639 redaka, **35/37** ciklusa ima jedan dan; **23** retka su
+  `next:3` iz aplikacije; otvorena kosara `2026-10` je **3.x13 + 5.x5** (dvije generacije
+  configa). Zivi config: `Visa: cutoff:3:5`, `rata.date_map.Visa: 5`.
+- **Mastercard**: **1.802 od 1.806** na 11. ⇒ za MC se pitanje znacenja ne postavlja.
+- **Sidra**: ZABA **16** (zadnje 06.09. `12.772,86`, predzadnje 30.07. `13.815,33`, rupa
+  **575 dana** prema 01.01.2025.); RF **3** (07.09. `690,79`, 11.08. `799,12`, pa
+  31.12.2022.). Biljeske sidara su **41-90 znakova**.
+- **Delta prozor danas**: ZABA 12 dana / 18 `Racun` iza sidra (od trazenih 60); RF **2**
+  retka koja micu saldo (18 od 20 su Visa i odlaze u sekciju).
+- **E2E**: 54/17; 2.601 fan-out zahtjev kroz 17 padova; E10-2 trace 39+39, **11 od 78**
+  odgovoreno; **10 od 17** padova ima zahtjeve bez odgovora, **7 nema nijedan**.
 
-## Napomena o E2E
+## Napomena o ritualu
 
-`npx playwright test` traje ~20-23 min. ⚠ Suite **nije determinisitcan izmedju runova** -
-isti spec zna dati 0, 1 ili 5 padova ovisno o tome sto je islo prije njega. Prije nego se pad
-pripise specu ili appu, **prebroji nedovrsene zahtjeve u traceu** (`0-trace.network`,
-`status: -1`).
+`audit_tests.py` je uhvatio da sam `T-S140-8` oznacio tako da izgleda zatvoren dok E10-2 jos
+pada - vracen je na otvoren, inace bi se `S140_tests.md` arhivirao prerano. **Brana radi, ali
+samo ako se audit pokrene.** Trenutno nema nista za arhivu.

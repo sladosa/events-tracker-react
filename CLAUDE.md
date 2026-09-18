@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S140).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S141).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 109 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 122 | [Critical rules](<#Critical rules>) | X |
 | 1044 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1641 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1657 | [Key files](<#Key files>) |  |
-| 1777 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1797 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1819 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1845 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1885 | [Open bugs](<#Open bugs>) | ~ |
-| 1982 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2175 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2272 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2280 | [Backlog](<#Backlog>) | ~ |
-| 2693 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2701 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1657 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1673 | [Key files](<#Key files>) |  |
+| 1793 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1813 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1835 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1861 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1901 | [Open bugs](<#Open bugs>) | ~ |
+| 1998 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2191 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2288 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2296 | [Backlog](<#Backlog>) | ~ |
+| 2709 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2717 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2836 redaka, 18 sekcija._
+_Ukupno 2852 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1056,6 +1056,22 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   ima `\n`, pa `old in s` vrati `False` nad tekstom koji vidis vlastitim ocima.
   => Za izmjene fileova koristi **line-based** zamjenu (`readlines()` + indeks) i patch pisi u
   **zaseban .py file**, ne kroz heredoc. Prijelom iz `chr(10)`, backslash iz `chr(92)`.
+- **/!\ I BACKTICK U DVOSTRUKIM NAVODNICIMA JE COMMAND SUBSTITUTION** (S141, isti razred).
+  `python -c "..."` s `audit_tests.py` unutra **upisao je prazninu** umjesto imena
+  alata, i skripta je javila `OK`. Dakle nije pad nego **tiha rupa u tekstu koji se upravo
+  pise kao trajni zapis**. Bash je pokusao pokrenuti `audit_tests.py` i javio `command not
+  found` u *stderr*, ali izlaz skripte je i dalje bio `OK` — dakle uspjeh i greska stoje
+  jedno uz drugo, i lako je procitati samo prvo.
+  ⇒ Markdown s backtickovima **nikad** ne pisi kroz bash string. Patch u zaseban `.py`,
+  backtick iz `chr(96)`.
+  /!\ **Ugrizlo DVAPUT u pet minuta, i drugi put MINUTU NAKON ŠTO JE PRAVILO ZAPISANO**
+  — prvi put je odnijelo ime alata iz memorije, drugi put imena specova iz `PENDING_TESTS.md`.
+  Oba puta je skripta javila `OK`, a bash je `command not found` stavio u **stderr iznad
+  toga**. ⇒ Pouka nije „pazi“ nego **ne piši markdown kroz bash string, nikad**: pisanje
+  pravila o zamci ne štiti od zamke.
+  /!\ I obrnuto: `.py` patch pisan kroz Write **ne smije nositi `\uXXXX` u tekstu koji ide u
+  **markdown** — ondje to nije escape nego doslovnih šest znakova. Ugrizlo isti dan, u
+  handoffu.
 - **`run.bat` guši zarez u argumentima** — jedan substring po pozivu (`--reparse A,B,C` → samo A)
 - **openpyxl `cell(r,c,None)` NE briše** — mora `.value = None`
 - **⚠ openpyxl string koji počinje s `=` sprema kao FORMULU** (S124). Excel je ne može
