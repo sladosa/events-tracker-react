@@ -29,24 +29,24 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | ---: | --- | :---: |
 | 55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>) |  |
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 108 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 121 | [Critical rules](<#Critical rules>) | X |
-| 1043 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1640 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1656 | [Key files](<#Key files>) |  |
-| 1776 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1796 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1818 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1844 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1884 | [Open bugs](<#Open bugs>) | ~ |
-| 1981 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2174 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2271 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2279 | [Backlog](<#Backlog>) | ~ |
-| 2659 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2667 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 109 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 122 | [Critical rules](<#Critical rules>) | X |
+| 1044 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1641 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1657 | [Key files](<#Key files>) |  |
+| 1777 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1797 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1819 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1845 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1885 | [Open bugs](<#Open bugs>) | ~ |
+| 1982 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2175 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2272 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2280 | [Backlog](<#Backlog>) | ~ |
+| 2680 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2688 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2802 redaka, 18 sekcija._
+_Ukupno 2823 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -90,6 +90,7 @@ podaci hrane i AI sloj.
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas, Add Area „From template"                   |
 | `docs/AUTOMATION_SPEC.md`                 | Post-Finish automatika — rata modal, comment template, `set_attribute`           |
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
+| `docs/DELTA_WINDOW_SPEC.md`               | **Delta prozor — sidro prestaje biti rez** (prijedlog prije koda, S141) — sidro kao **oznaka + kontrolna točka** umjesto poda; zatvara zamku iz S126 („retci ispadaju iz svakog budućeg delta sheeta“) mehanizmom umjesto disciplinom |
 | `docs/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
 | `docs/FAZA3_IMPORT_AUTOMATIKA.md`         | **⛔ Prije nego kreneš graditi Fazu 3** — izmjereno da meta ne postoji (`Datum naplate` 0 praznih od 5.192); okidač za ponovno otvaranje i pet odluka prije koda |
 | `docs/FINANCIJE_STATUS.md`                 | **Stanje migracije Financija** — tranše, PROD povijest, „Nakon tranši". ⚠ **Kvarljivo**: provjeri datum prije nego povjeruješ brojci; pravila su ostala u CLAUDE.md-u |
@@ -2461,6 +2462,26 @@ formi · lakše dodavanje opcija u depends_on mapping · help docs update.
 sekciju „Feature inventory" u `docs/help/*.md`, **dosta detaljno** (korisnikov izričit zahtjev).
 
 **Health `health_lab_review.py` cleanup** — razdvajanje Medical Visit bilješki iz Lab Results komentara.
+
+**⭐ Delta prozor: sidro prestaje biti rez** (Sašin prijedlog S141, usvojen — spec je
+`docs/DELTA_WINDOW_SPEC.md`). Danas `startMs = max(dan nakon sidra, danas − N)`, pa sidro
+**tvrdo reže prozor**: izmjereno na PROD-u da panel traži 60 dana a ZABA file nosi **12**,
+i **47 `Racun` redaka nestane bez poruke**; na RF-u glavni blok ostaje na **2** retka jer
+18 od 20 su Visa i odlaze u sekciju. S126 je to **već zapisao kao zamku** i držao
+disciplinom („sidro ide tek kad je prozor gotov“).
+⚠ **Posao je manji nego što izgleda:** otvarajuće stanje već dolazi iz
+`fetchAnchoredBalance({ asOf: dayBefore })`, a taj RPC **sam** bira sidro po datumu ⇒
+točan je za **bilo koji** početak prozora. Miče se jedan `Math.max`, ne gradi se nov račun.
+⚠ **Ne „predzadnje sidro“ nego „sidro prije početka prozora“** — ZABA ima **16** sidara,
+pa bi predzadnje, čim se počnu upisivati češće, vratilo isti problem.
+⚠ **Kolona, ne razdjelni redak**: korisnik sortira čim doda stariji datum, pa razdjelni
+redak usred bloka odluta — vrijednost u koloni putuje s retkom. Mora ući u `auto_filter.ref`.
+⚠ **Kontrolna točka je uvjet, ne ukras:** čim se u sheetu nađu retci **već unutar**
+potvrđenog stanja, promjena iznosa ili `Delete?` na njima razilazi sidro sa stvarnošću
+**a danas to ne bi uhvatilo ništa**. Zato ide blok `sidro · sheet računa · razlika` po
+svakom sidru u prozoru (`ROUND(…,2)`, S112). Faza 1 rješava Sašin problem, ostale ga
+čine sigurnim.
+⚠ Tri pitanja čekaju njega prije koda — v. §9 spec-a.
 
 **⭐ PBZVISA prolaz — `Datum naplate` za Visu nema ispravljača** (S137; značenje stupca
 odlučeno S141, v. dolje). `uskladi_izvod.py:939` prima **samo MC** (`Zasad samo MC izvodi`),
