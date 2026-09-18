@@ -104,7 +104,7 @@ prije i poslije; nestao je samo stari trijažni odlomak, koji je struktura učin
 
 ---
 
-## T-S140-7 — ⬜ `dbScopedKey`: filtar više ne curi između TEST-a i PROD-a
+## T-S140-7 — ✅ `dbScopedKey`: filtar više ne curi između TEST-a i PROD-a
 
 **Što je bilo:** `FilterContext` je pamtio filtar pod golim ključem
 `events-tracker-filter-state`, a u njemu stoje `areaId` i cijeli `selectionChain` (objekti
@@ -137,6 +137,18 @@ neograničen ključ — inače bi zauvijek ležao u pregledniku i čekao sljede�
 
 ⚠ **`et_activity_draft` je isti razred i NIJE popravljen** (Backlog). Ako iskoči „Resume
 Previous Session?" s tuđom kategorijom, to je **ta** stavka, ne pad ovog testa.
+
+**Izmjereno (S141), i jače nego što je test tražio.** Očekivanje je dopuštalo i **prazan** filtar
+na TEST-u; dobiven je **zadnji TEST-ov** (`Financije_all > All Categories`, uz baner `TEST DATABASE — xtnbhmojmffjelsqejpw`), dok je PROD držao `Health_Sasa > Medical`. Dakle **oba** zapisa
+postoje istovremeno — prazan filtar ne bi razlikovao „ključ je odvojen“ od „ključ je obrisan“.
+
+| korak | baza | breadcrumb |
+| --- | --- | --- |
+| 1 | PROD | `Health_Sasa > Medical` |
+| 2–3 | TEST | `Financije_all > All Categories` — bez `Unknown`, bez trake o grešci |
+| 4 | PROD | `Health_Sasa > Medical`, netaknut |
+
+**Status:** ✅ S141.
 
 ---
 
