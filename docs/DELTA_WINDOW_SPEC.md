@@ -6,29 +6,58 @@ treba, pa se kodira.
 
 **Povod:** Sašin prijedlog — *„dešava se da nema redova iza zadnjeg sidra (jer se dosta radi
 kartično pa je sve u budućnosti), to je dosta neugodno korisniku (Koki, koja je navikla da
-vidi zadnje unose u svojoj originalnoj Excelici)"*.
+vidi zadnje unose u svojoj originalnoj Excelici)"*. Prijedlog: krenuti od **predzadnjeg**
+sidra, a zadnje označiti tekstom u koloni desno.
 
-Prijedlog je bio „izbacimo redove ne od zadnjeg nego od **predzadnjeg** sidra". Ovaj spec
-ga usvaja, ali ga poopćava u **„sidro prije početka prozora"** (§4.1) i dodaje mu kontrolu
-koja ga čini samodostatnim (§4.4).
+⚠ **Prvi nacrt ovog spec-a to je poopćio u „prozor od `N` dana" i TO JE BILO POGREŠNO.**
+Opovrgnuto mjerenjem u §1.2; Sašina formulacija je zadržana i **ona je pravilo**. Zapisano
+jer je pogreška poučna: „poopći pa će biti robusnije" ovdje je značilo *izgubi jedino
+svojstvo zbog kojeg brojka nešto vrijedi*.
 
 ---
 
 ## 1. Izmjereno (PROD, 18.09.2026., read-only)
+
+### 1.1 Premisa stoji, i oštrija je od opisa
 
 | račun | zadnje sidro | redaka iza njega | od toga miče saldo | između zadnja dva sidra | razmak |
 | --- | --- | ---: | ---: | ---: | ---: |
 | Kokin tekući ZABA | 06.09. `12.772,86` | 50 | **18** (`Racun`) | 101 (47 `Racun`) | 38 dana |
 | Sašin tekući RF | 07.09. `690,79` | 20 | **2** (`Racun`) | 22 (9 `Racun`) | 27 dana |
 
-**Premisa stoji, i oštrija je od opisa.** Na RF-u je od 20 redaka iza sidra **18 Visa**, a
-oni s dospijećem u budućnosti odlaze u sekciju „planirano" (S125) — pa glavni blok ostaje na
-**dva** retka. Sheet izgleda prazan jer **jest** prazan.
+Na RF-u je od 20 redaka iza sidra **18 Visa**, a oni s dospijećem u budućnosti odlaze u
+sekciju „planirano" (S125) — pa glavni blok ostaje na **dva** retka. Sheet izgleda prazan
+jer **jest** prazan.
 
-⚠ **A na ZABA-i problem nije „prazno" nego „tiho skraćeno".** Zadano `N` je 60 dana; sidro od
-06.09. reže prozor na **12**. Dakle panel je tražio 60 dana, a file nosi 12 — i **47 `Racun`
-redaka nestane bez ijedne poruke**. To je isti razred kao BUG-S123-DELTAACCT: file izađe
-uredan, s krivim opsegom, i ništa ne kaže.
+⚠ Na ZABA-i problem nije „prazno" nego **tiho skraćeno**: zadano `N` je 60 dana, a sidro od
+06.09. reže prozor na **12** — dakle **47 `Racun` redaka nestane bez ijedne poruke**. Isti
+razred kao BUG-S123-DELTAACCT: file izađe uredan, s krivim opsegom, i ništa ne kaže.
+
+### 1.2 ⚠ Zašto „N dana" NE valja — i zašto sidra jesu prava jedinica
+
+Sašino pitanje bilo je *„ako odemo 60 dana natrag, imamo li problema sa stanjem tog dana?"*
+Izmjereno: **da, i to veliki.** „Danas − 60" pada na **20.07.2026.**, a najbliže sidro
+**prije** tog datuma je:
+
+| račun | najbliže sidro prije 20.07. | otvarajuće stanje bilo bi |
+| --- | --- | --- |
+| ZABA | **01.01.2025.** (rupa od 575 dana među sidrima) | sidro **+ 565 dana izračuna** |
+| RF | **31.12.2022.** (*„Sašin zapis, NIJE s izvoda"*) | sidro **+ 1.297 dana izračuna** |
+
+Nasuprot tome, **„jedno sidro ranije"** daje:
+
+| račun | prozor | otvarajuće stanje |
+| --- | ---: | --- |
+| ZABA | **50 dana** | **13.815,33** — potvrđeno, `ZABA_2026-07.pdf` |
+| RF | **38 dana** | **799,12** — potvrđeno, `RF_2026-07.pdf` |
+
+⇒ **Pravilo: prozor uvijek kreće DAN POSLIJE nekog sidra, nikad na proizvoljan datum.**
+Time je otvarajuće stanje **potvrđen broj, bez ijednog dijela izračuna** — a to je jedino
+svojstvo zbog kojeg cijeli kontrolni stupac išta vrijedi. Prozor od `N` dana bi ga tiho
+zamijenio nagađanjem dugim godinu i pol.
+
+⚠ I duljina prozora ispadne slična onome što je `N` htio (50 i 38 naspram 60), samo bez
+te cijene.
 
 ---
 
@@ -43,36 +72,30 @@ const nDaysAgo = new Date(Date.now() - deltaDays * 86400000);
 const startMs  = Math.max(dayAfterAnchor?.getTime() ?? 0, nDaysAgo.getTime());
 ```
 
-`dayAfterAnchor` dolazi iz **najnovijeg** sidra `confirmed_on <= today` (`anchors[0]`).
-Dakle sidro je **tvrd pod**: raspon upisan u panel ne može doseći ispred njega.
+`dayAfterAnchor` dolazi iz **najnovijeg** sidra `confirmed_on <= today` (`anchors[0]`), pa je
+sidro **tvrd pod**: raspon iz panela ne može doseći ispred njega.
 
-### 2.2 Otvarajuće stanje — **ovdje je ključ, i on već radi ono što treba**
+### 2.2 Otvarajuće stanje
 
-[`ExcelExportModal.tsx:446-460`](../src/components/activity/ExcelExportModal.tsx#L446):
+[`ExcelExportModal.tsx:446-460`](../src/components/activity/ExcelExportModal.tsx#L446) zove
+`fetchAnchoredBalance({ …, asOf: dayBefore })` — **isti RPC koji hrani pločicu**
+(`rpc_area_balance_anchored`), a on sam bira najnovije sidro `confirmed_on <= asOf` i
+pribraja promjene **strogo nakon** njega.
 
-```ts
-const openRows = await fetchAnchoredBalance({ …, asOf: dayBefore });
-deltaOpening   = { amount: …, asOf: dayBefore };
-```
-
-To je **isti RPC koji hrani pločicu** (`rpc_area_balance_anchored`), a on **sam** bira
-najnovije sidro `confirmed_on <= asOf` i pribraja promjene **strogo nakon** njega.
-
-⇒ **Otvarajuće stanje je već točno za bilo koji početak prozora.** Pomakne li se prozor
-unatrag, `dayBefore` je raniji, RPC odabere ranije sidro i vrati ispravan iznos —
-**bez ijedne izmjene u toj funkciji.** Zato je ovaj posao manji nego što izgleda: ne gradi
-se nov račun, nego se miče jedan `Math.max`.
+⇒ Kad prozor kreće **dan poslije sidra**, `dayBefore` je **točno dan sidra**, pa RPC vrati
+**sam iznos sidra** i ništa više. Funkcija se **ne mijenja**; mijenja se samo koje sidro
+bira pozivatelj.
 
 ### 2.3 Kontrolni stupac
 
-[`deltaSheet.ts:287-300`](../src/lib/deltaSheet.ts#L287) — po retku:
+[`deltaSheet.ts:287-300`](../src/lib/deltaSheet.ts#L287), po retku:
 
 ```
 IF(datum="", "", opening + SUMIFS(uplate, datum<=ovaj) - SUMIFS(isplate, datum<=ovaj))
 ```
 
-`SUMIFS` po datumu, **nikad lančano** („prethodni redak + uplata − isplata") — jer se lanac
-raspadne na prvom sortu, a korisnik sortira čim doda stariji datum.
+`SUMIFS` po datumu, **nikad lančano** — lanac se raspadne na prvom sortu, a korisnik
+sortira čim doda stariji datum.
 
 ---
 
@@ -85,155 +108,183 @@ Pravilo iz S126 (`CLAUDE.md` § Delta sheet) glasi doslovno:
 > **ispadaju iz svakog budućeg delta sheeta**, pa se više ne mogu ni razvrstati ni
 > ispraviti tim putem. Zato: **sidro ide tek kad je prozor gotov**.
 
-Dakle **S126 je ovo već zapisao kao zamku**, a lijek je bio **disciplina** („sidro ide tek
-kad je prozor gotov"). Sašin prijedlog tu disciplinu zamjenjuje **mehanizmom** — što je
-njegovo vlastito pravilo (*spriječiti > izmjeriti > sakriti*).
+Dakle **S126 je ovo već zapisao kao zamku**, a lijek je bila **disciplina**. Ovaj prijedlog
+je zamjenjuje **mehanizmom** (*spriječiti > izmjeriti > sakriti*).
 
-⚠ Pod je imao pravi razlog: spriječiti **dvostruko brojanje**. Retci ≤ datum sidra već su
-**unutar** potvrđenog iznosa, pa bi njihov ulazak u kontrolnu formulu razišao sheet s
-pločicom. Ali to sprječava **otvarajuće stanje** (§2.2), ne pod — pod je bio drugi pojas
-preko istog remena.
+⚠ Pod je imao pravi razlog — spriječiti **dvostruko brojanje** retka koji je već unutar
+potvrđenog iznosa. Ali to sprječava **otvarajuće stanje** (§2.2), ne pod: pod je bio drugi
+pojas preko istog remena.
 
 ---
 
 ## 4. Prijedlog
 
-### 4.1 Prozor određuje `N` dana, sidro ga više ne reže
+### 4.1 Prozor se mjeri **sidrima**, ne danima
 
-```ts
-const startMs = nDaysAgo.getTime();          // `dayAfterAnchor` ispada iz Math.max
+```
+početak prozora = dan POSLIJE K-tog sidra unatrag        (zadano K = 1)
+K = 0  ⇒ današnje ponašanje (dan poslije zadnjeg sidra)
+K = 1  ⇒ Sašin prijedlog: prozor obuhvaća zadnje sidro
 ```
 
-Sidro koje hrani otvarajuće stanje bira se **samo po datumu prozora**, a to RPC već radi
-(§2.2). Sidra koja padnu **unutar** prozora prestaju biti rez i postaju **oznaka** (§4.3)
-i **kontrolna točka** (§4.4).
+Polje „N dana" u panelu zamjenjuje **„koliko sidara unatrag"**. Razlog nije pojednostavljenje
+nego to da **svaka** dopuštena vrijednost daje otvarajuće stanje koje je potvrđen broj
+(§1.2). Dani to svojstvo ne mogu dati ni slučajno.
 
-⚠ **Zašto ne „predzadnje sidro"** (izvorni prijedlog): predzadnje je krhko. ZABA već ima
-**16** sidara; čim se počnu upisivati češće, predzadnje bude 5 dana unatrag i problem se
-vrati. „Sidro prije početka prozora" drži u oba smjera — i kad su sidra rijetka i kad su
-gusta. Sašin prijedlog je poseban slučaj ovoga (kad predzadnje slučajno padne unutar `N`).
-
-⚠ **Nula sidara se ne mijenja:** danas je `dayAfterAnchor` tada `null` pa je `startMs`
-već `nDaysAgo`. Ponašanje ostaje doslovno isto.
+⚠ **Rupe među sidrima su velike i moraju se pokazati PRIJE izvoza.** ZABA ima rupu od
+**575 dana** (01.01.2025. → 30.07.2026.), RF od **1.319**. Dakle `K = 2` danas na ZABA-i
+ne daje „malo širi prozor" nego **~625 dana i tisuće redaka**. Panel zato uz izbor mora
+ispisati **stvarni raspon i broj redaka** („od 31.07.2026., 151 redak"), i upozoriti preko
+praga. Brojka koja iznenadi korisnika tek kad otvori file je ista greška koju ovaj spec
+zatvara.
 
 ### 4.2 Pravilo „dan nakon sidra" ostaje — ali se seli na **otvarajuće** sidro
 
-Danas ga provodi `dayAfterAnchor`; nakon promjene ga provodi RPC („promjene **strogo
-nakon**"). Za sidra **unutar** prozora vrijedi **obrnuto**: redak datiran **točno na dan**
-takvog sidra **mora ući**, jer je sidro obuhvaća (ono pokriva sve `<=` svog dana).
+Danas ga provodi `dayAfterAnchor` nad zadnjim sidrom; nakon promjene ga provodi nad
+**K-tim**. Za sidra koja padnu **unutar** prozora vrijedi **obrnuto**: redak datiran
+**točno na dan** takvog sidra **mora ući**, jer ga to sidro obuhvaća (pokriva sve `<=` svog
+dana).
 
-⚠ To je isto pravilo primijenjeno na dva različita sidra, s **različitim ishodom** — i zato
-traži vlastiti test. Ovo je najvjerojatnije mjesto na kojem će se pogriješiti.
+⚠ Isto pravilo, dva sidra, **suprotan ishod** — i zato traži vlastiti test. Ovo je
+najvjerojatnije mjesto na kojem će se pogriješiti.
 
-### 4.3 Nova kolona: **stanje potvrde po retku**
-
-Vrijednost po retku, odmah desno od `Stanje (kontrola)`:
+### 4.3 Nova kolona desno od `Stanje (kontrola)`: stanje potvrde po retku
 
 | redak | kolona |
 | --- | --- |
-| datum ≤ nekom sidru u prozoru | `potvrđeno 06.09.` |
+| datum ≤ sidru unutar prozora | `potvrđeno 30.07. · ZABA_2026-07.pdf` |
 | datum nakon zadnjeg sidra | prazno |
 
-⚠ **Kolona, a ne razdjelni redak** — i razlog je zapisan: korisnik **sortira čim doda
-stariji datum**, pa bi razdjelni redak usred bloka odlutao od svog mjesta. Vrijednost u
-koloni putuje s retkom kroz svaki sort. (Zato i sekcija „planirano" stoji **na kraju**, iza
-praznih redaka — ondje sort ne doseže.)
+⚠ **Zašto ne puna rečenica po retku** (Sašin zahtjev je bio *„ono što inače pišemo"*):
+izmjereno da bilješke sidara imaju **41–90 znakova** (*„ispisano stanje s izvoda ·
+ZABA_2026-07.pdf"*, a ona s ekrana bankovne aplikacije **90**). Ponovljena na ~100 redaka
+to je stupac koji se ne da čitati. **Puna rečenica ide jednom, u zaglavlje** (§4.4); u
+koloni stoji njezin kratki oblik — datum + izvor, dakle ono po čemu se sidro prepoznaje.
+
+⚠ **Kolona, a ne razdjelni redak** — korisnik **sortira čim doda stariji datum**, pa bi
+razdjelni redak usred bloka odlutao od svog mjesta. Vrijednost u koloni putuje s retkom.
+(Zato i sekcija „planirano" stoji **na kraju**, iza praznih redaka — ondje sort ne doseže.)
 
 ⚠ **Mora ući u `auto_filter.ref`** — stupac izvan autofiltera se pri sortu raspari od retka.
-Danas autofilter ide `to: { column: ctrlCol }` ([`deltaSheet.ts:552`](../src/lib/deltaSheet.ts#L552)),
-pa se granica pomiče na novi stupac.
+Danas autofilter ide `to: { column: ctrlCol }`
+([`deltaSheet.ts:552`](../src/lib/deltaSheet.ts#L552)), pa se granica pomiče.
 
-⚠ **Ne ide u `export_profiles`.** Kolonu dodaje delta alat **nakon** što je profil
-primijenjen (postojeće pravilo: *profil se primjenjuje PRIJE delta alata*) — isti položaj
-koji već ima `Stanje (kontrola)`.
+⚠ **Ne ide u `export_profiles`** — dodaje ga delta alat **nakon** primjene profila (postojeće
+pravilo), isti položaj koji već ima `Stanje (kontrola)`.
 
-### 4.4 Kontrolna točka u zaglavlju — ovo je dio koji feature čini samodostatnim
-
-Za **svako** sidro unutar prozora, blok uz postojeće `u banci piše` / `razlika`:
+### 4.4 Kontrolna točka u zaglavlju — po jednom sidru u prozoru
 
 ```
-sidro 06.09.2026.   potvrđeno:  12.772,86     (ispisano stanje s izvoda · ZABA_2026-08.pdf)
-                    sheet računa: =opening + SUMIFS(…, datum<=06.09.)
-                    razlika:      =ROUND(potvrđeno - sheet, 2)
+sidro 30.07.2026.   potvrđeno:    13.815,33   (ispisano stanje s izvoda · ZABA_2026-07.pdf)
+                    sheet računa: =opening + SUMIFS(…, datum<=30.07.)
+                    razlika:      =ROUND(potvrđeno − sheet, 2)
 ```
 
-⚠ **Zašto u zaglavlju, a ne u koloni:** kontrolna točka pripada **datumu**, ne retku — a na
-taj datum možda **nema nijednog retka**. Ćelija u zaglavlju je i sort-imuna, i to je već
-uhodan obrazac ovog sheeta.
+⚠ **Zašto u zaglavlju, a ne u koloni:** provjera pripada **datumu**, a na taj datum možda
+**nema nijednog retka** — pa nema nosača. Ćelija u zaglavlju je uz to sort-imuna, i to je
+već uhodan obrazac ovog sheeta (`u banci piše` / `razlika`).
 
-⚠ **`ROUND(…, 2)` je obavezan**: razlika `banka − Σ` nosi grešku binarnog zapisa (~`1e-13`),
-pa je usporedba s nulom bez zaokruživanja bojala crveno savršeno usklađen sheet (S112).
-
-**Čemu to služi:** čim se u sheetu nađu retci **već unutar potvrđenog stanja**, otvara se
-rizik da im Koka promijeni iznos ili ih označi za brisanje — a time sidro prestaje
-odgovarati stvarnosti i **danas to ne bi uhvatilo ništa**. Kontrolna točka to hvata istog
-trena: razlika prestane biti nula.
-
-⇒ Time sidro iz **reza** postaje **provjera**, i sheet prvi put sam provjerava razdoblje koje
-je već zaključano. Danas to radi samo `promet_check.py` — dakle izvan Kokinog dohvata.
+⚠ **`ROUND(…, 2)` je obavezan**: razlika nosi grešku binarnog zapisa (~`1e-13`), pa je
+usporedba s nulom bez zaokruživanja bojala crveno savršeno usklađen sheet (S112).
 
 ---
 
-## 5. Što se **ne** mijenja
+## 5. Zaštita prošlosti — Sašina bojazan, i što je stvarno izloženo
 
-- Sekcija „planirano" (cijela košara, prag je „danas", vlastita kontrola) — netaknuta.
+Sašino pitanje: *„smije, ali treba jako uočljivo upozorenje… malo me strah mogućnosti
+korumpiranja vrijednosti u prošlosti."*
+
+⚠ **Prvo činjenica koja mijenja veličinu straha: prošlost je VEĆ pisiva.** Obični Activities
+izvoz s rasponom datuma nosi stare retke, a uvoz ih ažurira; isto Edit Activity u UI-ju.
+Delta sheet **ne otvara nova vrata** — on te retke stavlja u file **čija je svrha uređivanje**.
+Dakle rizik je **nehotična** izmjena, ne nova mogućnost.
+
+Zato tri sloja, od najjeftinijeg prema najjačem:
+
+| sloj | što radi | kada uhvati |
+| --- | --- | --- |
+| **1. kolona + sivi ton** (§4.3) | kaže „ovaj redak je već potvrđen" | prije nego korisnik upiše |
+| **2. kontrolna točka** (§4.4) | razlika prestane biti `0,00` | u sheetu, prije uvoza |
+| **3. update-guard na uvozu** | **Apply zaključan dok se ne potvrdi** | pri uvozu, s točnim znanjem |
+
+⚠ **Sloj 3 nije nov mehanizam nego proširenje postojećeg.** `row_hash` update-guard već
+zaključava Apply dok korisnik ne potvrdi izmjenu dodirnutog retka (D7; čuva ga
+`T-S107-2`). Dodaje mu se **jedan uvjet**: „a taj redak je unutar potvrđenog stanja" ⇒
+poruka imenuje sidro koje se time dovodi u pitanje. To je prava brana, za razliku od boje
+u sheetu.
+
+⚠ **Zaključavanje takvih redaka (odbijanje uvoza) je odbačeno** — lomilo bi *„sve ide
+importom"* i uzelo Koki jedini put kojim ispravlja retke. Ispravak prošlosti mora **ostati
+moguć**; mora samo prestati biti **tih**.
+
+---
+
+## 6. Što se **ne** mijenja
+
+- Sekcija „planirano" (cijela košara, prag „danas", vlastita kontrola) — netaknuta.
 - Prazni retci predloška i njihovi dropdowni (`dvBlankRows`, S130) — netaknuti.
 - Kontrolni stupac i dalje **ne broji `Planiran`** ⇒ obavezan ručni korak potvrde ostaje.
 - `deriveDeltaAccount()` i prekidač „koristi filtre iz profila" — netaknuti.
-- **Uvoz ne poskupljuje**: veći prozor ne znači više pisanja, jer `row_hash` preskače
-  nedirnute retke (D7). Cijena je **duži file**, ne duži uvoz.
+- **Uvoz ne poskupljuje**: `row_hash` preskače nedirnute retke (D7). Cijena je **duži file**,
+  ne duži uvoz.
 
 ---
 
-## 6. Rizici, i čime se svaki zatvara
+## 7. Rizici, i čime se svaki zatvara
 
 | rizik | zatvara |
 | --- | --- |
 | dvostruko brojanje retka koji je već u sidru | otvarajuće stanje iz RPC-a (§2.2) — nepromijenjeno |
-| Koka ispravi iznos na **potvrđenom** retku | kontrolna točka (§4.4) prestane davati nulu |
-| Koka označi `Delete?` na potvrđenom retku | isto |
+| otvarajuće stanje postane nagađanje | prozor kreće **dan poslije sidra** (§4.1) |
+| `K = 2` otvori prozor od 625 dana | panel ispisuje stvarni raspon + broj redaka prije izvoza (§4.1) |
+| Koka ispravi iznos na potvrđenom retku | tri sloja iz §5 |
 | ne vidi se koji su retci „zaključani" | kolona (§4.3) |
 | stupac se pri sortu raspari | ulazak u `auto_filter.ref` (§4.3) |
 | redak **na dan** sidra unutar prozora ispadne | test iz §4.2 |
-| file naraste | ZABA 60 dana ≈ **151** redak umjesto 50 — mjeriti, ali bezopasno |
 
 ---
 
-## 7. Mjerenje (bez ovoga se ne kreće)
+## 8. Mjerenje (bez ovoga se ne kreće)
 
-**Prije:** za oba računa zabilježiti broj redaka u glavnom bloku i početak prozora
-(danas: ZABA 12 dana / 18 `Racun`, RF 11 dana / 2 `Racun`).
+**Prije:** ZABA prozor 12 dana / 18 `Racun`; RF 11 dana / 2 `Racun`.
 
-**Poslije:** isti izvoz mora dati prozor od punih `N` dana, a **kontrolna točka na zadnjem
-sidru mora dati razliku `0,00`** — to je dokaz da se pomak prozora nije razišao s pločicom.
+**Poslije, uz `K = 1`:** ZABA prozor **50 dana** s otvarajućim stanjem **točno `13.815,33`**;
+RF **38 dana** / **`799,12`**. Otvarajuće stanje mora biti **jednako iznosu sidra u cent** —
+to je dokaz da prozor kreće točno dan poslije njega.
 
-⚠ **Test se radi na računu gdje se razlikuje od trivijalnog.** RF ima samo **3** sidra;
-ZABA **16** — pa ZABA nosi slučaj „više sidara unutar jednog prozora", koji je jedini
-zanimljiv. (Pravilo iz S129: *kad se testira automatika, redak se bira tako da se razlikuje
-od njezinog rezultata.*)
+**Kontrolna točka na zadnjem sidru mora dati razliku `0,00`** — dokaz da se pomak prozora
+nije razišao s pločicom.
 
----
-
-## 8. Faze
-
-1. **Prozor + otvarajuće stanje** — makni `dayAfterAnchor` iz `Math.max`; potvrdi da
-   kontrolna točka na sidru daje `0,00`. Bez nove kolone, bez novog teksta.
-2. **Kolona „potvrđeno"** + ulazak u autofilter.
-3. **Kontrolne točke u zaglavlju**, jedna po sidru unutar prozora.
-4. **Napomena uz otvarajuće stanje** — mora reći iz **kojeg** sidra dolazi (postojeće
-   pravilo: *otvarajuće stanje mora biti označeno kao izračunato i nositi sidro na kojem
-   počiva*), jer se to sidro sada mijenja ovisno o `N`.
-
-Faza 1 sama po sebi rješava Sašin problem. Ostale tri su ono što ga čini sigurnim.
+⚠ **Test ide na ZABA-i, ne na RF-u.** RF ima 3 sidra, ZABA **16** — dakle samo ZABA nosi
+slučaj „više sidara unutar jednog prozora", koji je jedini zanimljiv. (Pravilo iz S129: *kad
+se testira automatika, slučaj se bira tako da se razlikuje od njezinog rezultata.*)
 
 ---
 
-## 9. Otvoreno — traži Sašinu riječ prije koda
+## 9. Faze
 
-1. **Koliko dana zadano?** Danas `N = 60`, ali je sidro to rezalo pa se nikad nije osjetilo.
-   Nakon promjene `60` znači stvarnih 60 dana. Ostaje 60 ili se spušta?
-2. **Smije li se potvrđeni redak uopće mijenjati kroz delta sheet?** Ovaj spec kaže: smije,
-   ali se **vidi** (kolona) i **prijavljuje** (kontrolna točka). Alternativa — zaključati ih
-   — tražila bi da uvoz odbija takav redak, što je veći zahvat i lomi „sve ide importom".
-3. **Tekst u koloni**: `potvrđeno 06.09.` ili nešto kraće (`✓ 06.09.`)? Kolona je uska, a
-   Koka je čita svaki mjesec.
+1. **Prozor po sidru** (`K`, zadano 1) + panel ispisuje stvarni raspon. Otvarajuće stanje
+   mora izaći jednako iznosu sidra.
+2. **Kolona „potvrđeno"** + ulazak u autofilter + sivi ton.
+3. **Kontrolne točke u zaglavlju**, po jedna za svako sidro u prozoru.
+4. **Update-guard na uvozu** (§5, sloj 3) — jedini korak koji dira `excelImport.ts`.
+
+Faza 1 sama rješava Sašin problem. Faze 2–3 ga čine vidljivim, faza 4 sigurnim.
+
+---
+
+## 10. Odgovoreno (Saša, S141)
+
+1. **Koliko unatrag** — ne danima nego **sidrima**, zadano **jedno ranije**. Izvorni
+   prijedlog „N dana" je opovrgnut mjerenjem (§1.2).
+2. **Smije li se potvrđeni redak mijenjati** — **smije, ali glasno**: tri sloja iz §5.
+   Odbijanje uvoza je odbačeno jer lomi *„sve ide importom"*.
+3. **Tekst u koloni** — kratki oblik (`potvrđeno 30.07. · ZABA_2026-07.pdf`), puna bilješka
+   jednom u zaglavlju; razlog je duljina bilješki, izmjereno 41–90 znakova (§4.3).
+
+### Ostalo otvoreno
+
+- **Prag upozorenja za širinu prozora** (§4.1): koliko redaka je „previše"? Danas bi `K = 2`
+  na ZABA-i dalo ~625 dana. Prijedlog: upozorenje preko **200 redaka**, bez zabrane.
+- **Sivi ton na potvrđenim retcima** (§5, sloj 1) — je li to dovoljno „jako uočljivo" ili
+  ide i boja pozadine cijele kolone.

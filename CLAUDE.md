@@ -43,10 +43,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2175 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
 | 2272 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
 | 2280 | [Backlog](<#Backlog>) | ~ |
-| 2680 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2688 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 2693 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2701 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2823 redaka, 18 sekcija._
+_Ukupno 2836 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2472,8 +2472,17 @@ disciplinom („sidro ide tek kad je prozor gotov“).
 ⚠ **Posao je manji nego što izgleda:** otvarajuće stanje već dolazi iz
 `fetchAnchoredBalance({ asOf: dayBefore })`, a taj RPC **sam** bira sidro po datumu ⇒
 točan je za **bilo koji** početak prozora. Miče se jedan `Math.max`, ne gradi se nov račun.
-⚠ **Ne „predzadnje sidro“ nego „sidro prije početka prozora“** — ZABA ima **16** sidara,
-pa bi predzadnje, čim se počnu upisivati češće, vratilo isti problem.
+⚠ **PROZOR SE MJERI SIDRIMA, NE DANIMA — i prvi nacrt spec-a je tu pogriješio.**
+Poopćio sam Sašino „jedno sidro ranije“ u „prozor od `N` dana“; **mjerenje ga je oborilo**.
+„Danas − 60“ pada na 20.07.2026., a najbliže sidro **prije** toga je na ZABA-i
+**01.01.2025.** i na RF-u **31.12.2022.** ⇒ otvarajuće stanje bilo bi sidro **+ 565**
+odnosno **+ 1.297 dana izračuna**. Sašina verzija daje **13.815,33** i **799,12** —
+**potvrđene brojeve, bez ijednog dijela izračuna** — uz prozor od 50 i 38 dana.
+⇒ Pravilo: **prozor uvijek kreće DAN POSLIJE nekog sidra**, nikad na proizvoljan datum;
+polje „N dana“ postaje „koliko sidara unatrag“ (zadano 1).
+⚠ **Rupe medju sidrima su velike**: ZABA **575 dana**, RF **1.319** ⇒ `K = 2` nije „malo
+širi prozor“ nego ~625 dana. Panel mora ispisati **stvarni raspon i broj redaka** prije
+izvoza.
 ⚠ **Kolona, ne razdjelni redak**: korisnik sortira čim doda stariji datum, pa razdjelni
 redak usred bloka odluta — vrijednost u koloni putuje s retkom. Mora ući u `auto_filter.ref`.
 ⚠ **Kontrolna točka je uvjet, ne ukras:** čim se u sheetu nađu retci **već unutar**
@@ -2481,7 +2490,11 @@ potvrđenog stanja, promjena iznosa ili `Delete?` na njima razilazi sidro sa stv
 **a danas to ne bi uhvatilo ništa**. Zato ide blok `sidro · sheet računa · razlika` po
 svakom sidru u prozoru (`ROUND(…,2)`, S112). Faza 1 rješava Sašin problem, ostale ga
 čine sigurnim.
-⚠ Tri pitanja čekaju njega prije koda — v. §9 spec-a.
+⚠ **Prošlost je VEĆ pisiva** (obični izvoz s rasponom + uvoz, i Edit u UI-ju) — delta
+sheet ne otvara nova vrata nego te retke stavlja u file čija je svrha uređivanje. Zato
+tri sloja: kolona, kontrolna točka, i **update-guard na uvozu** (proširenje postojeceg
+`row_hash` guarda koji već zaključava Apply). Odbijanje uvoza je **odbačeno** — lomi
+„sve ide importom“. Sašina tri pitanja su odgovorena, v. §10 spec-a.
 
 **⭐ PBZVISA prolaz — `Datum naplate` za Visu nema ispravljača** (S137; značenje stupca
 odlučeno S141, v. dolje). `uskladi_izvod.py:939` prima **samo MC** (`Zasad samo MC izvodi`),
