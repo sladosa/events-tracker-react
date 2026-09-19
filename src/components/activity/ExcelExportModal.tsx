@@ -23,6 +23,7 @@ import { listAnchors, fetchAnchoredBalance } from '@/lib/overviewApi';
 import { timestampSuffix, type FilterSheetInfo } from '@/lib/excelUtils';
 import type { ExportFilters } from '@/lib/excelTypes';
 import { readProfileFromWorkbook, readProfileNameFromWorkbook, readFilterFromWorkbook, sanitizeProfileName, deriveDeltaAccount, type ExportProfiles, type ProfileFilterState } from '@/lib/exportProfile';
+import { pickDeltaWindow, type DeltaWindowAnchor } from '@/lib/deltaWindow';
 import { resolvePeriodKey, type PeriodKey } from '@/hooks/useDateBounds';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
 import type { ExportAttrDef } from '@/lib/excelTypes';
@@ -38,15 +39,37 @@ const PREVIEW_LIMIT = 10;
 /** Koliko praznih redaka nudi delta sheet. ~40 = sest tjedana Kokinog tempa. */
 const DELTA_BLANK_ROWS = 40;
 /**
- * Koliko dana unatrag delta sheet pokazuje.
- * ⚠ Prozor NIJE isto sto i sidro. Sidro moze biti staro godinu i pol (RF: 02.01.2025),
- *   pa bi "od sidra do danas" dalo 1.000+ redaka za usklađenje zadnjih par tjedana.
- *   Prozor je kratak, a kontrolni stupac krece od stanja koje aplikacija racuna
- *   na dan prije prozora.
+ * Koliko dana unatrag delta sheet pokazuje kad racun NEMA nijedno sidro.
+ * ⚠ Ovo je od S142 samo FALLBACK, ne vise glavno pravilo: prozor se mjeri
+ *   SIDRIMA (v. `deltaWindow.ts` i `docs/DELTA_WINDOW_SPEC.md` §4.1). Dani ostaju
+ *   jer racun bez ijednog sidra nema od cega krenuti, a „od pocetka vremena" bi
+ *   izvezlo cijelu povijest.
  */
 const DELTA_WINDOW_DAYS = 60;
 
+/**
+ * Koliko SIDARA unatrag prozor seze. 0 = dan poslije zadnjeg sidra (ponasanje do
+ * S142), 1 = prozor obuhvaca zadnje sidro — Sasin prijedlog, i zadano.
+ * ⚠ Zadano 1 jer je 0 proizvodilo prazne sheetove: karticni retci idu u sekciju
+ *   „planirano", pa je RF glavni blok ostajao na DVA retka, a ZABA se tiho
+ *   skracivala s trazenih 60 dana na 12 (izmjereno na PROD-u 18.09.2026.).
+ */
+const DELTA_ANCHORS_BACK = 1;
+
+/**
+ * Iznad koliko redaka u prozoru panel upozorava (Sasina odluka, S141).
+ * ⚠ Upozorenje BEZ zabrane — siroki prozor je legitiman kad se cesljaju stari
+ *   mjeseci; nepoznat je ono sto skodi.
+ */
+const DELTA_ROWS_WARN = 200;
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** `YYYY-MM-DD` -> `DD.MM.YYYY.` — panel cita covjek, kao i sheet. */
+function hrDate(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return `${d}.${m}.${y}.`;
+}
 
 function parseAttrFilterRaw(
   raw: string,
@@ -167,7 +190,16 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   const [totalCount,  setTotalCount]  = useState<number | null>(null);
   const [batchSize,   setBatchSize]   = useState(DEFAULT_BATCH_SIZE);
   const [deltaMode,   setDeltaMode]   = useState(false);
-  const [deltaDays,   setDeltaDays]   = useState(DELTA_WINDOW_DAYS);
+  // Prozor se mjeri sidrima, ne danima — v. `DELTA_ANCHORS_BACK`.
+  const [deltaBack,   setDeltaBack]   = useState(DELTA_ANCHORS_BACK);
+  // Sidra racuna, ucitana ZA PANEL: bez njih panel ne moze reci odakle prozor
+  // stvarno krece, a brojka koja iznenadi korisnika tek kad otvori file je
+  // upravo greska koju faza 1 zatvara (SPEC §4.1).
+  // ⚠ `null` = jos se ucitava; prazan niz = racun nema sidara.
+  const [deltaAnchors,    setDeltaAnchors]    = useState<DeltaWindowAnchor[] | null>(null);
+  const [deltaAnchorsErr, setDeltaAnchorsErr] = useState('');
+  // Koliko dogadjaja pada u prozor — gornja granica, v. `deltaRowsInWindow`.
+  const [deltaCount,  setDeltaCount]  = useState<number | null>(null);
   // Broj praznih redaka je postavka, ne konstanta: tranša s izvoda zna imati
   // 110 redaka, a redak koji ne stane u pripremljene prazne pada IZVAN dosega
   // kontrolnog stupca — kontrolna brojka bi tada bila uvjerljiva, a nepotpuna.
@@ -241,6 +273,72 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     }
   }, [selectedArea]);
 
+  // -- Delta sheet (Faza 1) --------------------------------------------
+  // Uvjeti salda ZIVE U CONFIGU Aree, ne ovdje - isti izvor iz kojeg ih cita RPC.
+  // Bez `balance_by_group` plocice Area nema pojam "stanje racuna" i ponuda se
+  // ne prikazuje uopce.
+  const { config: dashboardCfg } = useAreaDashboard(filter.areaId);
+  const balanceWidget = useMemo(
+    () => dashboardCfg?.widgets.find(w => w.type === 'balance_by_group') ?? null,
+    [dashboardCfg],
+  );
+  // Racun dolazi iz filtra atributa - drill s plocice ga upravo tako postavlja.
+  // ⚠ Kad je odabran profil s vlastitim filtrom atributa, racun mora doci odande
+  //   odakle i eventi — v. `deriveDeltaAccount` za razlog i za izmjereni slucaj.
+  //   ⚠ Mora pratiti `useProfileFilters`: otkvacen prekidac znaci da eventi
+  //     dolaze iz panela, pa i racun mora odande. Inace su eventi iz panela a
+  //     racun iz profila ⇒ presjek prazan, a delta sheet izade s TOCNIM sidrom
+  //     i NULA redaka, bez ijedne poruke — doslovno BUG-S123-DELTAACCT.
+  const deltaAccount = useMemo(
+    () => deriveDeltaAccount(
+      selectedProfile && useProfileFilters
+        ? profiles[selectedProfile]?.filterState?.attrFilterRaw
+        : undefined,
+      balanceWidget?.group_by,
+      filter.attrFilter?.value,
+    ),
+    [selectedProfile, useProfileFilters, profiles, balanceWidget, filter.attrFilter],
+  );
+  const deltaReady   = !!balanceWidget && !!deltaAccount;
+
+  // Sidra za PANEL. Izvoz ih dohvaca zasebno i svjeze (v. `doDownload`) — ovdje
+  // sluze samo tome da se raspon vidi PRIJE klika na Download.
+  // ⚠ Palo citanje se NE cita kao „nema sidara" (S121): prazna lista i neuspjeh
+  //   daju isti prozor (fallback na dane), a to su dvije posve razlicite tvrdnje.
+  //   Zato zasebna poruka i `deltaAnchors` ostaje `null`.
+  useEffect(() => {
+    if (!deltaMode || !deltaReady || !filter.areaId || !balanceWidget) {
+      setDeltaAnchors(null);
+      setDeltaAnchorsErr('');
+      return;
+    }
+    let cancelled = false;
+    setDeltaAnchorsErr('');
+    (async () => {
+      try {
+        const rows = await listAnchors(filter.areaId!, balanceWidget.group_by);
+        if (!cancelled) setDeltaAnchors(rows);
+      } catch (err) {
+        if (!cancelled) {
+          setDeltaAnchors(null);
+          setDeltaAnchorsErr(err instanceof Error ? err.message : String(err));
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [deltaMode, deltaReady, filter.areaId, balanceWidget]);
+
+  // ⚠ ISTA funkcija koju zove izvoz. Dvije kopije uvjeta bi znacile da panel
+  //   obeca jedan raspon a file donese drugi — razred `canUpdateExisting()` (S125).
+  const deltaWindow = useMemo(() => {
+    if (!deltaAccount || deltaAnchors === null) return null;
+    return pickDeltaWindow(
+      deltaAnchors, deltaAccount,
+      new Date().toISOString().slice(0, 10),
+      deltaBack, DELTA_WINDOW_DAYS,
+    );
+  }, [deltaAnchors, deltaAccount, deltaBack]);
+
   // Load total count on mount
   useEffect(() => {
     let cancelled = false;
@@ -278,6 +376,23 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
           setTotalCount(total);
           setFileCount(Math.max(1, Math.ceil(total / batchSize)));
         }
+
+        // Koliko dogadjaja pada u DELTA PROZOR. Racuna se ovdje, a ne u zasebnom
+        // efektu, jer bi ondje trebalo ponoviti razrjesavanje profila iznad — a
+        // dvije kopije tog uvjeta znace da se brojke jednom raziđu.
+        // ⚠ Ovo je GORNJA GRANICA, ne broj redaka glavnog bloka: sheet jos odbacuje
+        //   retke koji ne micu saldo (uvjeti plocice se primjenjuju u klijentu, pri
+        //   generiranju). Izmjereno na PROD-u: ZABA 50 dogadjaja ⇒ 18 u glavnom
+        //   bloku. Zato panel mora reci „do N", nikad „N redaka" — brojka koja
+        //   obeca vise nego file donese je isti kvar koji je S129 vec zatvorio.
+        if (deltaMode && deltaWindow) {
+          const inWindow = await countEventsForExport(
+            user.id, { ...countFilters, dateFrom: deltaWindow.start }, categoryIds,
+          );
+          if (!cancelled) setDeltaCount(inWindow);
+        } else if (!cancelled) {
+          setDeltaCount(null);
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message
           : (typeof err === 'object' && err !== null && 'message' in err)
@@ -292,10 +407,14 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     return () => { cancelled = true; };
   // ⚠ `commentSearch` i `attrFilter` su i dosad falili u ovom popisu — promjena
   //   filtra komentara ostavljala je STARU brojku, koja izgleda kao odgovor.
+  // ⚠ `deltaMode` i `deltaWindow` su ovdje jer efekt od S142 broji i retke u
+  //   prozoru: bez njih bi promjena K ostavila staru brojku — isti kvar, samo
+  //   jedno polje nize. `deltaWindow` je memoiziran, pa ne okida svaki render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter.areaId, filter.categoryId, filter.dateFrom, filter.dateTo, filter.sortOrder,
       filter.commentSearch, filter.attrFilter,
-      selectedProfile, useProfileFilters, profiles]);
+      selectedProfile, useProfileFilters, profiles,
+      deltaMode, deltaWindow]);
 
   // Recompute file count when batch size changes
   useEffect(() => {
@@ -303,34 +422,6 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       setFileCount(Math.max(1, Math.ceil(totalCount / batchSize)));
     }
   }, [batchSize, totalCount]);
-
-  // -- Delta sheet (Faza 1) --------------------------------------------
-  // Uvjeti salda ZIVE U CONFIGU Aree, ne ovdje - isti izvor iz kojeg ih cita RPC.
-  // Bez `balance_by_group` plocice Area nema pojam "stanje racuna" i ponuda se
-  // ne prikazuje uopce.
-  const { config: dashboardCfg } = useAreaDashboard(filter.areaId);
-  const balanceWidget = useMemo(
-    () => dashboardCfg?.widgets.find(w => w.type === 'balance_by_group') ?? null,
-    [dashboardCfg],
-  );
-  // Racun dolazi iz filtra atributa - drill s plocice ga upravo tako postavlja.
-  // ⚠ Kad je odabran profil s vlastitim filtrom atributa, racun mora doci odande
-  //   odakle i eventi — v. `deriveDeltaAccount` za razlog i za izmjereni slucaj.
-  //   ⚠ Mora pratiti `useProfileFilters`: otkvacen prekidac znaci da eventi
-  //     dolaze iz panela, pa i racun mora odande. Inace su eventi iz panela a
-  //     racun iz profila ⇒ presjek prazan, a delta sheet izade s TOCNIM sidrom
-  //     i NULA redaka, bez ijedne poruke — doslovno BUG-S123-DELTAACCT.
-  const deltaAccount = useMemo(
-    () => deriveDeltaAccount(
-      selectedProfile && useProfileFilters
-        ? profiles[selectedProfile]?.filterState?.attrFilterRaw
-        : undefined,
-      balanceWidget?.group_by,
-      filter.attrFilter?.value,
-    ),
-    [selectedProfile, useProfileFilters, profiles, balanceWidget, filter.attrFilter],
-  );
-  const deltaReady   = !!balanceWidget && !!deltaAccount;
 
   // ⚠ Kutija „Active filters" mora pokazati raspon koji ce STVARNO izaci u file.
   //   Dok je pokazivala `filter.dateFrom`, tvrdila je da vrijedi panelov raspon
@@ -403,10 +494,15 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         }
       }
 
-      // Delta sheet: prozor krece OD DANA NAKON sidra. Sidro je "potvrdjeno
-      // stanje na dan X", a saldo su promjene STROGO nakon njega (paragraf 2.17)
-      // - pa bi redak datiran tocno na X bio prikazan, usao u kontrolnu formulu
-      // i razisao sheet s plocicom za taj iznos.
+      // Delta sheet: prozor krece OD DANA NAKON sidra — od S142 ne nuzno zadnjeg
+      // nego K-tog unatrag (`deltaBack`, zadano 1). Sidro je "potvrdjeno stanje
+      // na dan X", a saldo su promjene STROGO nakon njega (paragraf 2.17) - pa bi
+      // redak datiran tocno na X bio prikazan, usao u kontrolnu formulu i razisao
+      // sheet s plocicom za taj iznos.
+      // ⚠ Sidro VISE NIJE POD prozora (SPEC §3): do S142 je `Math.max` branio
+      //   rasponu da dosegne ispred zadnjeg sidra, pa je zasidren mjesec ispadao
+      //   iz svakog buduceg delta sheeta. Dvostruko brojanje sprjecava OTVARAJUCE
+      //   STANJE (nize), ne pod — pod je bio drugi pojas preko istog remena.
       let deltaAnchor:  { amount: number; confirmed_on: string } | null = null;
       let deltaOpening: { amount: number; asOf: string } = { amount: 0, asOf: '' };
       if (deltaMode && balanceWidget && !previewMode) {
@@ -414,35 +510,27 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         if (!effectiveFilters.areaId) throw new Error('Delta sheet: nije odabrana Area.');
 
         const today   = new Date().toISOString().slice(0, 10);
-        const anchors = (await listAnchors(effectiveFilters.areaId, balanceWidget.group_by))
-          .filter(a => a.group_value === deltaAccount && a.confirmed_on <= today)
-          // Isti izbor koji radi RPC: najnovije potvrdjeno, a kod istog datuma
-          // ono zadnje upisano (tako se tipfelerica ispravlja novim retkom).
-          .sort((a, b) => (a.confirmed_on === b.confirmed_on
-            ? String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''))
-            : b.confirmed_on.localeCompare(a.confirmed_on)));
+        // ⚠ Sidra se dohvacaju SVJEZE, iako ih panel vec ima u stateu: modal zna
+        //   stajati otvoren dok netko drugi upise potvrdu. Sto se NE smije
+        //   udvostruciti je PRAVILO izbora — zato ista `pickDeltaWindow`.
+        const anchors = await listAnchors(effectiveFilters.areaId, balanceWidget.group_by);
+        const win = pickDeltaWindow(anchors, deltaAccount, today, deltaBack, DELTA_WINDOW_DAYS);
 
-        deltaAnchor = anchors[0]
-          ? { amount: anchors[0].amount, confirmed_on: anchors[0].confirmed_on }
+        deltaAnchor = win.anchor
+          ? { amount: win.anchor.amount, confirmed_on: win.anchor.confirmed_on }
           : null;
 
-        // Prozor: kasniji od (dan nakon sidra) i (danas - N dana).
-        // ⚠ `Date.UTC` uzima mjesec 0-based. Bez `-1` je prozor kretao MJESEC
-        //   DANA prekasno: sidro 11.08. davalo je „stanje 11.09." i tiho
-        //   izostavljalo sve retke iz tog mjeseca — a usklađenje bez njih
-        //   izgleda uredno jer ih sheet uopće ne pokaže.
-        const dayAfterAnchor = (() => {
-          if (!deltaAnchor) return null;
-          const [y, m, d] = deltaAnchor.confirmed_on.split('-').map(Number);
-          return new Date(Date.UTC(y, m - 1, d) + 86400000);
-        })();
-        const nDaysAgo = new Date(Date.now() - deltaDays * 86400000);
-        const startMs  = Math.max(dayAfterAnchor?.getTime() ?? 0, nDaysAgo.getTime());
-        const start    = new Date(startMs).toISOString().slice(0, 10);
-        const dayBefore = new Date(startMs - 86400000).toISOString().slice(0, 10);
+        const start     = win.start;
+        const dayBefore = win.dayBefore;
 
         // Otvarajuce stanje = ono sto aplikacija racuna na dan PRIJE prozora.
         // Isti RPC koji hrani plocicu, pa se sheet i plocica ne mogu razici.
+        // ⚠ Kad prozor krece dan poslije sidra, `dayBefore` je TOCNO dan sidra ⇒
+        //   RPC vrati SAM IZNOS SIDRA, bez ijednog dijela izracuna. To je cijela
+        //   poanta faze 1 i ujedno njezina provjera: otvarajuce stanje mora izaci
+        //   jednako iznosu sidra U CENT (ZABA 13.815,33, T-S141-4).
+        //   Funkcija se NE mijenja — RPC sam bira sidro po `asOf`, pa je tocan za
+        //   bilo koji pocetak prozora.
         const openRows = await fetchAnchoredBalance({
           areaId: effectiveFilters.areaId,
           groupSlug: balanceWidget.group_by,
@@ -715,7 +803,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   //     prekidaca — tocno kvar zbog kojeg je S129 pisao „brojka mora opisati FILE, ne panel".
   }, [batchSize, fileCount, filters, filter.periodKey, filter.commentSearch, filter.attrFilter,
       filter.categoryId, useProfileFilters,
-      selectedProfile, profiles, deltaMode, deltaDays, deltaBlanks, balanceWidget, deltaAccount]);
+      selectedProfile, profiles, deltaMode, deltaBack, deltaBlanks, balanceWidget, deltaAccount]);
 
   const downloadFile = useCallback((fileIndex: number) => doDownload(fileIndex, false), [doDownload]);
   const downloadPreview = useCallback(() => doDownload(1, true), [doDownload]);
@@ -909,8 +997,9 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                 </p>
                 <p className="text-xs">
                   Izlazi <strong>jedan file</strong>: retci grupe &bdquo;{deltaAccount}&ldquo; koji
-                  mi&#269;u saldo u prozoru ({deltaDays} dana unatrag ili od sidra, &scaron;to je
-                  kra&#263;e), sekcija ko&scaron;are i {deltaBlanks} praznih redaka.
+                  mi&#269;u saldo u prozoru{deltaWindow && (
+                    <> <strong>od {hrDate(deltaWindow.start)}</strong> ({deltaWindow.spanDays} dana)</>
+                  )}, sekcija ko&scaron;are i {deltaBlanks} praznih redaka.
                   To&#269;an broj redaka javlja se nakon generiranja.
                 </p>
               </div>
@@ -1044,20 +1133,73 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
                     &middot; najstariji gore
                     &middot; kolona <em>Stanje (kontrola)</em> i &#263;elija &bdquo;u banci pi&scaron;e&ldquo;.
                   </p>
+                  {/* Prozor se mjeri SIDRIMA, ne danima (SPEC §4.1): svaka dopustena
+                      vrijednost tako daje otvarajuce stanje koje je POTVRDJEN broj.
+                      Dani to ne mogu dati ni slucajno — „danas − 60" na ZABA-i pada u
+                      rupu od 575 dana medju sidrima. */}
                   <label className="flex items-center gap-2 text-xs text-teal-900">
                     Prozor:
                     <input
                       type="number"
-                      min={7}
-                      max={3650}
-                      step={7}
-                      value={deltaDays}
-                      onChange={e => setDeltaDays(Math.max(7, Math.min(3650, Number(e.target.value))))}
+                      min={0}
+                      max={20}
+                      step={1}
+                      value={deltaBack}
+                      onChange={e => setDeltaBack(Math.max(0, Math.min(20, Number(e.target.value))))}
                       disabled={isGenerating}
                       className="w-20 border border-teal-300 rounded px-2 py-1 text-xs"
                     />
-                    dana unatrag (ili od sidra, &scaron;to je kra&#263;e)
+                    sidara unatrag <span className="text-teal-700">(0 = samo iza zadnje potvrde)</span>
                   </label>
+                  {/* ⚠ Stvarni raspon MORA se vidjeti prije izvoza. Rupe medju sidrima su
+                      velike (ZABA 575 dana, RF 1.319), pa „jedno sidro vise" zna znaciti
+                      dvije godine — a brojka koja iznenadi korisnika tek kad otvori file
+                      je ista greska koju faza 1 zatvara. */}
+                  {deltaAnchorsErr ? (
+                    <p className="text-xs text-red-700">
+                      Ne mogu u&#269;itati potvrde stanja ({deltaAnchorsErr}) &mdash; raspon
+                      prozora se ne mo&#382;e prikazati prije izvoza.
+                    </p>
+                  ) : deltaWindow === null ? (
+                    <p className="text-xs text-teal-700">u&#269;itavam potvrde stanja&hellip;</p>
+                  ) : (
+                    <div className="text-xs text-teal-900 space-y-0.5">
+                      {deltaWindow.fromAnchor && deltaWindow.anchor ? (
+                        <p>
+                          Od <strong>{hrDate(deltaWindow.start)}</strong> ({deltaWindow.spanDays} dana)
+                          &middot; po&#269;iva na potvrdi <strong>{hrDate(deltaWindow.anchor.confirmed_on)}</strong>
+                          {' '}= <strong>{deltaWindow.anchor.amount.toLocaleString('hr-HR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                          {deltaWindow.anchorsInWindow.length > 0 && (
+                            <> &middot; u prozoru {deltaWindow.anchorsInWindow.length === 1
+                              ? 'je još jedna potvrda'
+                              : `su još ${deltaWindow.anchorsInWindow.length} potvrde`}</>
+                          )}
+                        </p>
+                      ) : (
+                        <p className="text-amber-800">
+                          Ra&#269;un <strong>nema nijednu potvrdu stanja</strong> &mdash; prozor je
+                          zadnjih {deltaWindow.spanDays} dana, a otvaraju&#263;e stanje je
+                          izra&#269;unato, ne potvr&#273;eno.
+                        </p>
+                      )}
+                      {deltaWindow.clamped && (
+                        <p className="text-amber-800">
+                          Ra&#269;un ima samo {deltaWindow.anchorsAvailable}{' '}
+                          {deltaWindow.anchorsAvailable === 1 ? 'potvrdu' : 'potvrda'} &mdash;
+                          prozor kre&#263;e od najstarije.
+                        </p>
+                      )}
+                      {deltaCount !== null && (
+                        <p className={deltaCount > DELTA_ROWS_WARN ? 'text-amber-800 font-medium' : ''}>
+                          U prozoru je do <strong>{deltaCount.toLocaleString()}</strong> doga&#273;aja
+                          {deltaCount > DELTA_ROWS_WARN && ' — file će biti velik'}
+                          {' '}<span className="text-teal-700">
+                            (u glavni blok idu samo oni koji mi&#269;u saldo)
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <label className="flex items-center gap-2 text-xs text-teal-900">
                     Praznih redaka:
                     <input

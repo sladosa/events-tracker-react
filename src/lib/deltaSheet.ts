@@ -320,14 +320,29 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     const openCell = ws.getCell(openRow, ctrlCol);
     openCell.value  = opts.opening.amount;
     openCell.numFmt = '#,##0.00';
-    // Podrijetlo ide u bilješku: brojka je IZRAČUNATA, sidro je potvrđeno.
-    // Ako razlika na dnu ne padne na nulu ni nakon češljanja prozora, greška je
-    // starija od prozora — a to se vidi samo ako se zna odakle stupac kreće.
+    // Podrijetlo ide u bilješku, i ono ima DVA oblika koja se ne smiju stopiti:
+    //
+    //   ⚠ Otkad prozor kreće dan poslije sidra (S142, faza 1), otvarajuće stanje
+    //     je najčešće SAM IZNOS SIDRA — potvrđen broj, bez ijednog dijela izračuna.
+    //     Bilješka koja bi i tada govorila „izračunato… plus sve promjene" tvrdila
+    //     bi suprotno od onoga zbog čega je prozor pomaknut, a upravo je ta razlika
+    //     jedini razlog da kontrolni stupac išta vrijedi.
+    //
+    //   Kad prozor NE kreće na dan sidra (K=0 uz starije sidro, ili račun bez
+    //   sidra), brojka jest izračunata i to mora ostati napisano: ako razlika na
+    //   dnu ne padne na nulu ni nakon češljanja prozora, greška je starija od
+    //   prozora — a to se vidi samo ako se zna odakle stupac kreće.
+    const openingIsAnchor = !!opts.anchor && opts.opening.asOf === opts.anchor.confirmed_on;
     openCell.note = opts.anchor
-      ? `Izračunato iz aplikacije na ${hr(opts.opening.asOf)}.\n`
-        + `Počiva na sidru ${hr(opts.anchor.confirmed_on)} = ${opts.anchor.amount.toFixed(2)}, `
-        + `plus sve promjene do ${hr(opts.opening.asOf)}.\n`
-        + `Ako razlika ne padne na nulu, greška može biti i starija od ovog prozora.`
+      ? openingIsAnchor
+        ? `Potvrđeno stanje na ${hr(opts.anchor.confirmed_on)} = ${opts.anchor.amount.toFixed(2)}.\n`
+          + `Nije izračunato — prozor kreće dan poslije te potvrde, pa je ovo broj `
+          + `koji je potvrđen izvana.\n`
+          + `Ako razlika na dnu ne padne na nulu, greška je unutar ovog prozora.`
+        : `Izračunato iz aplikacije na ${hr(opts.opening.asOf)}.\n`
+          + `Počiva na sidru ${hr(opts.anchor.confirmed_on)} = ${opts.anchor.amount.toFixed(2)}, `
+          + `plus sve promjene do ${hr(opts.opening.asOf)}.\n`
+          + `Ako razlika ne padne na nulu, greška može biti i starija od ovog prozora.`
       : `Izračunato iz aplikacije na ${hr(opts.opening.asOf)}. Račun nema sidro — `
         + `nijedno stanje nije potvrđeno izvana.`;
 

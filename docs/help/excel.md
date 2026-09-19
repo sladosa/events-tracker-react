@@ -59,7 +59,7 @@ izvodom** — dospjeli datum sam po sebi nije dokaz da je banka naplatila.
 - Kvačica u Export modalu, vidljiva samo za Area koja ima Overview pločicu `Stanje po računu`
 - Prvo odaberi račun: klikni saldo na Overview pločici (to postavi filtar), pa otvori Export
 - Što sheet sadrži:
-  - samo retke koji **miču saldo** tog računa (`Izvor = Racun`), zadnjih 60 dana (prozor se može promijeniti)
+  - samo retke koji **miču saldo** tog računa (`Izvor = Racun`) u **prozoru koji kreće dan poslije neke potvrde stanja** — zadano dan poslije **predzadnje**, pa sheet obuhvaća i zadnju potvrdu
   - **planirane retke također** — njih se **potvrđuje** (promijeni `Status`), ne dopisuje ponovno; inače isti trošak uđe dvaput
   - 40 praznih redaka s već upisanim `Area`, `Category_Path`, emailom, računom i vremenom
   - kolonu `Stanje (kontrola)` — tekući saldo po istom pravilu kao pločica
@@ -117,13 +117,24 @@ Data Validation dropdown postoji na ćelijama Period key i Sort order; tooltip s
 
 ## Delta sheet — koliko praznih redaka
 
-U Export modalu, uz kvačicu **Delta sheet**, dva su polja: **Prozor** (koliko dana unatrag sheet
-pokazuje) i **Praznih redaka** (koliko praznih redaka pripremiti za nove unose).
+U Export modalu, uz kvačicu **Delta sheet**, dva su polja: **Prozor** (koliko **potvrda stanja**
+unatrag sheet obuhvaća) i **Praznih redaka** (koliko praznih redaka pripremiti za nove unose).
+
+Prozor se mjeri **potvrdama, ne danima**, i uvijek kreće **dan poslije** jedne od njih. Razlog je
+da otvarajuće stanje sheeta tada bude **broj koji je potvrđen izvana**, a ne izračun — a na tome
+počiva cijeli stupac `Stanje (kontrola)`. Zadano je **1** (prozor obuhvaća zadnju potvrdu);
+**0** znači „samo ono što je iza zadnje potvrde“.
+
+Panel uz polje ispisuje **stvarni raspon** — od kojeg datuma, koliko dana, i na kojoj potvrdi
+prozor počiva. To vrijedi pročitati prije izvoza: razmaci među potvrdama znaju biti veliki, pa
+„jedna potvrda više“ ponekad znači i **više od godine dana** i vrlo velik file.
 
 Prazne retke vrijedi povećati kad znaš da ih dolazi puno — redak koji ne stane u pripremljene
 prazne završi ispod njih i **kontrolni stupac ga ne broji**, pa bi brojka na dnu izgledala
 uvjerljivo a ne bi uključivala sve.
 
-⚠ Ako je račun usklađen do danas, prozor je prazan i sheet ima **samo** prazne retke. To nije
-greška nego znak da nema ničega neusklađenog.
+⚠ Ako je račun usklađen do danas, prozor može biti prazan i sheet ima **samo** prazne retke. To
+nije greška nego znak da nema ničega neusklađenog. Uz zadani prozor (1 potvrda unatrag) to je
+rjeđe nego prije — sheet tada pokazuje i ono što je zadnja potvrda već obuhvatila, pa se vidi
+što je u nju ušlo.
 
