@@ -42,6 +42,17 @@ import { applyProfileToWorkbook, getProfileAttrOrder, type ExportProfile } from 
 /** Prvi slobodni pojas vremena za ručno dodane retke (povijesni uvoz koristi 09:00+n). */
 export const DELTA_TIME_START_H = 14;
 
+/**
+ * Blag ton praznih redaka: „ovdje pišeš“.
+ * /!\ Mora se razlikovati od SIVOG tona potvrđenih redaka (§2b) -- to su dva
+ *   različita sloja značenja na istoj plohi, i stapanje bi oslabilo ono koje
+ *   štiti prošlost. Zato topao ton nasuprot neutralnom sivom.
+ */
+const BLANK_ROW_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } };
+
+/** Ton retka koji je VEĆ unutar potvrđenog stanja: „ovo ne diraj“. */
+const CONFIRMED_ROW_BG = 'FFEDEDED';
+
 export interface DeltaSheetOptions {
   /** Ime računa/grupe koju sheet usklađuje. */
   groupLabel:   string;
@@ -58,6 +69,20 @@ export interface DeltaSheetOptions {
   opening:      { amount: number; asOf: string };
   /** Sidro na kojem to stanje počiva — samo za ispis, formula ga ne koristi. */
   anchor:       { amount: number; confirmed_on: string } | null;
+  /**
+   * Sidra koja padaju UNUTAR prozora (novija od onog na kojem prozor počiva).
+   * Otkad prozor može obuhvatiti i već potvrđeno razdoblje (S142, faza 1), file
+   * nosi retke koji su **unutar potvrđenog stanja** — a promjena iznosa na takvom
+   * retku razilazi sidro sa stvarnošću, i to bez ijednog traga.
+   *
+   * ⚠ Ovo je prvi od tri sloja zaštite (SPEC §5): kolona + sivi ton kažu „ovaj
+   *   redak je već potvrđen" PRIJE nego korisnik upiše. Drugi sloj je kontrolna
+   *   točka (faza 3), treći update-guard na uvozu (faza 4) — tek on je brana.
+   *   Boja nije brana i ne smije se tako zvati.
+   *
+   * Prazan niz = u prozoru nema nijedne potvrde ⇒ kolone nema (nema što reći).
+   */
+  anchorsInWindow?: { confirmed_on: string; amount: number; note: string | null }[];
   /** Slugovi iz `dashboard` widgeta. */
   plusSlug:     string;
   minusSlug:    string;
@@ -138,6 +163,32 @@ function hr(iso: string): string {
   return `${d}.${m}.${y}.`;
 }
 
+/** `YYYY-MM-DD` -> `DD.MM.` — kolona je uska, a godina se vidi u susjednom datumu. */
+function hrShort(iso: string): string {
+  const [, m, d] = iso.split('-');
+  return `${d}.${m}.`;
+}
+
+/**
+ * Bilješka sidra -> kratki oblik za kolonu potvrde.
+ *
+ * ⚠ PUNA BILJEŠKA NE IDE PO RETKU. Izmjereno na PROD-u (16 sidara ZABA + 3 RF):
+ *   bilješke su 41–90 znakova (*„ispisano stanje s izvoda · ZABA_2026-07.pdf"*,
+ *   a ona s ekrana bankovne aplikacije punih 90). Ponovljeno na ~100 redaka to je
+ *   stupac koji se ne da čitati. Puna rečenica ide JEDNOM, u bilješku zaglavlja.
+ *
+ * Bilješka ima oblik `izvor · detalj`. Kratki oblik je **detalj** kad je kratak
+ * (dakle ime izvoda — ono po čemu se potvrda prepoznaje), inače **izvor**.
+ */
+function shortAnchorLabel(note: string | null): string {
+  const raw = (note ?? '').trim();
+  if (!raw) return 'bez podrijetla';
+  const parts = raw.split(' · ');
+  if (parts.length >= 2 && parts[1].length <= 28) return parts[1].trim();
+  const head = parts[0].trim();
+  return head.length <= 32 ? head : `${head.slice(0, 31)}…`;
+}
+
 /** Kolona atributa se u zaglavlju zove `Ime (Kategorija)`. */
 function findAttrCol(layout: SheetLayout, attrName: string): number | null {
   for (const [header, col] of layout.colByHeader) {
@@ -190,6 +241,9 @@ export function addDeltaHelpersTo(
   const dateCol    = 4;                       // D = event_date
   const sessionCol = 5;                       // E = session_start
   const blankFrom  = layout.dataEnd + 1;
+  // Blag ton ide do zadnje PODATKOVNE kolone. `Stanje (kontrola)` i `Potvrda`
+  // su alatni stupci -- u njih se ne upisuje, pa ih oznaka „ovdje pišeš“ ne tice.
+  const blankFillTo = layout.lastCol;
   const blankTo    = layout.dataEnd + opts.blankRows;
 
   // ── 1. Prazni retci ─────────────────────────────────────────────────────
@@ -209,6 +263,20 @@ export function addDeltaHelpersTo(
     for (const [attrName, value] of Object.entries(opts.prefill)) {
       const col = findAttrCol(layout, attrName);
       if (col) ws.getCell(r, col).value = value;
+    }
+
+    // Blag format: prazni retci su JEDINO mjesto gdje čovjek upisuje, a dotad su
+    // izgledali isto kao povijest (Sašin zahtjev, S141).
+    // ⚠ TON MORA BITI RAZLIČIT OD SIVOG kojim su označeni potvrđeni retci (§2b):
+    //   dva sloja značenja na istoj plohi — „ovdje pišeš" i „ovo je već potvrđeno,
+    //   ne diraj". Stope li se, jače upozorenje gubi snagu, a ono štiti prošlost.
+    // ⚠ Format OSTAJE i nakon što se redak popuni, i to je korisno: obojeni retci
+    //   su točno oni koji će ući kao NOVI zapisi, pa file sam pokazuje što će uvoz
+    //   dodati a što samo ispraviti.
+    // ⚠ Boja ide na ćelije, a `dataValidation` tih redaka se NE dira (`dvBlankRows`,
+    //   S130) — dropdowni su ondje jedino što te retke čini upotrebljivima.
+    for (let c = 1; c <= blankFillTo; c++) {
+      ws.getCell(r, c).fill = BLANK_ROW_FILL;
     }
 
     // ⚠ OVDJE SE VALIDACIJA VIŠE NE KOPIRA S POVIJESNOG RETKA (S130).
@@ -299,6 +367,80 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     };
     cell.numFmt    = '#,##0.00';
     cell.alignment = { horizontal: 'right' };
+  }
+
+  // ── 2b. Kolona „Potvrda" — koji je redak već unutar potvrđenog stanja ───
+  //
+  // ⚠ ZAŠTO KOLONA, A NE RAZDJELNI REDAK (SPEC §4.3): korisnik sortira čim doda
+  //   stariji datum, pa bi razdjelni redak usred bloka odlutao od svog mjesta.
+  //   Vrijednost u koloni putuje s retkom. (Zato i sekcija „planirano" stoji na
+  //   kraju, iza praznih redaka — ondje sort ne doseže.)
+  //
+  // ⚠ FORMULA, ne upisan tekst — isto pravilo kao stupac `Provjeri`. Promijeni li
+  //   korisnik datum retka, oznaka se mora promijeniti istog trena; oznaka koja i
+  //   dalje tvrdi „potvrđeno" za redak koji je upravo izmaknut iz potvrđenog
+  //   razdoblja gora je od izostanka.
+  //
+  // ⚠ IDE I NA PRAZNE RETKE, i to nije propust nego glavna korist: upiše li
+  //   korisnik u prazan redak datum unutar potvrđenog razdoblja, oznaka iskoči
+  //   sama. To je jedini trenutak u kojem se takav unos može uhvatiti prije uvoza.
+  const anchorsIn = (opts.anchorsInWindow ?? [])
+    .slice()
+    .sort((a, b) => a.confirmed_on.localeCompare(b.confirmed_on));   // najranije prvo
+  const confCol = ctrlCol + 1;
+  const confLtr = colLetter(confCol);
+
+  if (anchorsIn.length > 0) {
+    const confHdr = ws.getCell(layout.headerRow, confCol);
+    confHdr.value = 'Potvrda';
+    confHdr.fill  = HEADER_FILL;
+    confHdr.font  = HEADER_FONT;
+    // Puna bilješka ide JEDNOM, ovdje — u koloni stoji samo njezin kratki oblik.
+    explain(confHdr, 'Potvrda stanja',
+      'Redak s oznakom je već unutar potvrđenog stanja: taj je iznos ušao u '
+      + 'potvrdu i saldo na njega više ne čeka. Ispravak je i dalje moguć, ali '
+      + 'razilazi potvrdu sa stvarnošću — provjeri je li stvarno pogrešan.');
+    ws.getColumn(confCol).width = 30;
+
+    // Od NAJRANIJEG sidra prema najnovijem: redak pripada prvoj potvrdi koja ga
+    // obuhvaća (sidro pokriva sve `<=` svog dana), ne posljednjoj.
+    const branch = (i: number): string => {
+      if (i >= anchorsIn.length) return '""';
+      const a = anchorsIn[i];
+      const [y, m, d] = a.confirmed_on.split('-').map(Number);
+      const label = `potvrđeno ${hrShort(a.confirmed_on)} · ${shortAnchorLabel(a.note)}`
+        .replace(/"/g, '""');
+      return `IF($${dLtr}{R}<=DATE(${y},${m},${d}),"${label}",${branch(i + 1)})`;
+    };
+    const tpl = `IF($${dLtr}{R}="","",${branch(0)})`;
+
+    for (let r = layout.dataStart; r <= blankTo; r++) {
+      const cell = ws.getCell(r, confCol);
+      cell.value     = { formula: tpl.replace(/\{R\}/g, String(r)) };
+      cell.font      = { color: { argb: 'FF6B7280' }, italic: true };
+      cell.alignment = { vertical: 'top' };
+    }
+
+    // Sivi ton preko cijelog retka: „ovo je već potvrđeno, ne diraj".
+    // ⚠ UVJETNI format, ne statički fill — podatkovni retci već nose svoje boje
+    //   (ružičasto za metapodatke, plavo za uređivo), a CF ih nadjačava SAMO dok
+    //   uvjet vrijedi. Statički fill bi zamrznuo stanje od trenutka izvoza.
+    // ⚠ Ton mora ostati SVIJETAO i različit od tona praznih redaka: dva sloja
+    //   značenja na istoj plohi („ovdje pišeš" i „ovo ne diraj"). Stope li se,
+    //   jače upozorenje gubi snagu — a to je ono koje štiti prošlost.
+    const newest = anchorsIn[anchorsIn.length - 1].confirmed_on;
+    const [ny, nm, nd] = newest.split('-').map(Number);
+    ws.addConditionalFormatting({
+      ref: `A${layout.dataStart}:${confLtr}${blankTo}`,
+      rules: [
+        {
+          type: 'expression',
+          priority: 5,
+          formulae: [`AND($${dLtr}${layout.dataStart}<>"",$${dLtr}${layout.dataStart}<=DATE(${ny},${nm},${nd}))`],
+          style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: CONFIRMED_ROW_BG } } },
+        },
+      ],
+    });
   }
 
   // ── 3. „U banci piše" + razlika ─────────────────────────────────────────
@@ -459,7 +601,10 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     const dueColIdx = dueNm    ? findAttrCol(layout, dueNm)    : null;
 
     if (opts.dueSlug && notIn && statusCol && dueColIdx) {
-      const hintCol = ctrlCol + 1;
+      // /!\ +2, ne +1: `ctrlCol + 1` je od S142 kolona `Potvrda` (glavni blok).
+      //   Isti stupac s dva zaglavlja -- jedno u retku zaglavlja, drugo u
+      //   razdjelniku sekcije -- citao bi se kao jedan stupac s dva znacenja.
+      const hintCol = ctrlCol + 2;
       const sLtr = colLetter(statusCol);
       const uLtr = colLetter(dueColIdx);
       const planned = notIn.values[0];
@@ -566,7 +711,7 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
   //   sortu raspari od retka (isto pravilo zbog kojeg su tu row_hash i Delete?).
   ws.autoFilter = {
     from: { row: layout.headerRow, column: 1 },
-    to:   { row: blankTo,          column: ctrlCol },
+    to:   { row: blankTo,          column: anchorsIn.length > 0 ? confCol : ctrlCol },
   };
 
   return warnings;

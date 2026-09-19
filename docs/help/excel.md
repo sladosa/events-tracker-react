@@ -63,6 +63,8 @@ izvodom** — dospjeli datum sam po sebi nije dokaz da je banka naplatila.
   - **planirane retke također** — njih se **potvrđuje** (promijeni `Status`), ne dopisuje ponovno; inače isti trošak uđe dvaput
   - 40 praznih redaka s već upisanim `Area`, `Category_Path`, emailom, računom i vremenom
   - kolonu `Stanje (kontrola)` — tekući saldo po istom pravilu kao pločica
+  - kolonu **`Potvrda`** — stoji na retku koji je **već unutar potvrđenog stanja** (`potvrđeno 06.09. · ZABA_2026-07.pdf`); takav je redak i **sivo osjenčan**. Ispravak je i dalje moguć, ali razilazi potvrdu sa stvarnošću — provjeri je li redak stvarno pogrešan prije nego ga diraš
+  - **prazni retci za unos su u toplom (žućkastom) tonu** — to je mjesto gdje se piše; ton ostaje i nakon što ih popuniš, pa se vidi što će ući kao **novi** zapis a što je samo ispravak postojećeg
   - ćeliju „u banci piše" i „razlika": upiši stanje s ekrana banke, razlika mora biti 0,00 (zeleno)
 - Novi redak se dopisuje na dno; `session_start` je već upisan i **ne treba ga dirati**
 - Neiskorišteni prazni retci se pri uvozu preskaču (javi se koliko ih je); redak s iznosom ali bez datuma je **greška**, ne preskakanje

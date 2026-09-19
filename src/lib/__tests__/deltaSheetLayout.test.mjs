@@ -68,6 +68,10 @@ async function buildSheet(planned, extra = {}) {
   const colOf = (n) => { for (let c=1;c<=ws.columnCount;c++) if (String(ws.getCell(hdr,c).value??'').trim()===n) return c; return 0; };
   return { ws, hdr, ctrl: colOf('Stanje (kontrola)'), hash: colOf('row_hash'), warnings };
 }
+const colNum = (s) => {
+  const m = String(s).split(':').pop().match(/[A-Z]+/);
+  return m ? m[0].split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0) : 0;
+};
 const raw = (ws,r,c) => ws.getCell(r,c).value;
 const txt = (ws,r,c) => { const v = raw(ws,r,c); return v==null ? '' : (typeof v==='object' && 'formula' in v ? 'f()' : String(v)); };
 
@@ -138,7 +142,14 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
   ok('Σ kosare i dalje ROUND-a na 2 decimale', f.startsWith('ROUND('), `got ${f}`);
 
   // Stupac `Provjeri` — FORMULA, da napomena nestane cim korisnik popravi redak.
-  const hintCol = ctrl + 1;
+  // /!\ Kolona se TRAZI PO NASLOVU, ne racuna kao `ctrl + 1` (S142). Kad je
+  //   `Potvrda` sjela izmedju, hardkodiran pomak je pao -- a pao bi jednako i da
+  //   je stupac stvarno nestao, pa test nije razlikovao „pomaknuto" od
+  //   „pokvareno". Trazenje po naslovu cuva SVE ostale tvrdnje (razdjelnik,
+  //   stil, formula) i prezivi legitiman pomak.
+  let hintCol = 0;
+  for (let c = ctrl; c <= ctrl + 4; c++) if (txt(ws, sep, c) === 'Provjeri') { hintCol = c; break; }
+  ok('stupac Provjeri postoji desno od kontrolnog', hintCol > ctrl, `got ${hintCol}`);
   // Naslov stoji u retku-razdjelniku, tocno iznad redaka na koje se odnosi —
   // ne u zaglavlju lista desetke redaka iznad.
   ok('naslov Provjeri je u retku-razdjelniku', txt(ws,sep,hintCol)==='Provjeri', `got ${txt(ws,sep,hintCol)}`);
@@ -221,6 +232,72 @@ console.log('row_hash: profil ga smije sakriti, Delete? nikad:');
   const fCol = (n) => { for (let c=1;c<=fresh.ws.columnCount;c++) if (String(fresh.ws.getCell(fresh.hdr,c).value??'').trim()===n) return c; return 0; };
   ok('primjena profila SAKRIVA row_hash', fresh.ws.getColumn(fCol('row_hash')).hidden === true);
   ok('primjena profila OSTAVLJA Delete? vidljiv', !fresh.ws.getColumn(fCol('Delete?')).hidden);
+}
+
+// ── Kolona „Potvrda" (S142, faza 2) ───────────────────────────────────────
+// Prozor od S142 moze obuhvatiti i VEC POTVRDJENO razdoblje, pa file nosi retke
+// koji su unutar potvrdjenog stanja. Kolona + sivi ton su prvi od tri sloja
+// zastite (SPEC §5): kazu „ovaj redak je vec potvrdjen" PRIJE nego korisnik upise.
+// /!\ Boja NIJE brana -- brana je update-guard na uvozu (faza 4). Ovdje se mjeri
+//     samo da oznaka postoji, da je tocna i da prezivi sort.
+console.log('');
+console.log('Kolona „Potvrda" -- sidro UNUTAR prozora (glavni blok 02.-04.08.):');
+{
+  // Sidro 03.08. => m1 (02.08.) i m2 (03.08.) su potvrdjeni, m3 (04.08.) nije.
+  const { ws, hdr, ctrl } = await buildSheet([], {
+    anchorsInWindow: [{ confirmed_on: '2026-08-03', amount: 13900.00,
+                        note: 'ispisano stanje s izvoda · ZABA_2026-07.pdf' }],
+  });
+  const colOf = (n) => { for (let c=1;c<=ws.columnCount;c++) if (String(ws.getCell(hdr,c).value??'').trim()===n) return c; return 0; };
+  const conf = colOf('Potvrda');
+  const blankTo = hdr + main.length + BLANKS;
+
+  ok('kolona Potvrda postoji, desno od kontrolnog', conf === ctrl + 1, `got ${conf} vs ctrl ${ctrl}`);
+
+  // /!\ FORMULA, ne upisan tekst -- isto pravilo kao stupac `Provjeri`. Promijeni
+  //     li korisnik datum retka, oznaka mora nestati istog trena; oznaka koja i
+  //     dalje tvrdi „potvrdjeno" za redak izmaknut iz potvrdjenog razdoblja gora
+  //     je od izostanka.
+  const f1 = String(raw(ws, hdr+1, conf)?.formula ?? '');
+  ok('oznaka je FORMULA, ne upisan tekst', f1.startsWith('IF('), `got ${f1.slice(0,40)}`);
+  ok('formula gleda datum retka i dan sidra',
+     f1.includes('DATE(2026,8,3)') && f1.includes('$D'), `got ${f1.slice(0,80)}`);
+
+  // /!\ KRATKI oblik, ne puna biljeska. Izmjereno na PROD-u: biljeske su 41-90
+  //     znakova; ponovljene na ~100 redaka daju stupac koji se ne da citati.
+  ok('tekst je KRATKI oblik (ime izvoda), ne puna biljeska',
+     f1.includes('ZABA_2026-07.pdf') && !f1.includes('ispisano stanje s izvoda'), `got ${f1}`);
+  ok('tekst nosi dan potvrde', f1.includes('03.08.'), `got ${f1}`);
+
+  // /!\ IDE I NA PRAZNE RETKE, i to je glavna korist: upise li korisnik u prazan
+  //     redak datum unutar potvrdjenog razdoblja, oznaka iskoci sama. To je jedini
+  //     trenutak u kojem se takav unos moze uhvatiti prije uvoza.
+  const fBlank = String(raw(ws, blankTo, conf)?.formula ?? '');
+  ok('formula stoji i na praznim retcima', fBlank.startsWith('IF('), `got ${fBlank.slice(0,40)}`);
+  ok('prazan datum daje praznu oznaku (ne „potvrdjeno")', fBlank.includes('="","",'), `got ${fBlank.slice(0,40)}`);
+
+  // /!\ Stupac izvan autofiltera se pri sortu RASPARI od retka -- isto pravilo
+  //     zbog kojeg su unutra row_hash i Delete?. Korisnik sortira cim doda
+  //     stariji datum, pa ovo nije rubni slucaj nego glavni tok.
+  ok('kolona Potvrda je UNUTAR autofiltera', colNum(ws.autoFilter) >= conf,
+     `got ${ws.autoFilter} -> ${colNum(ws.autoFilter)}, conf ${conf}`);
+
+  // /!\ Prazni retci nose BLAG ton („ovdje pises"), koji se mora razlikovati od
+  //     sivog tona potvrdjenih redaka („ovo ne diraj"). Stope li se, jace
+  //     upozorenje gubi snagu -- a ono stiti proslost.
+  const blankFill = ws.getCell(hdr + main.length + 1, 2).fill?.fgColor?.argb;
+  ok('prazni retci imaju blag ton', blankFill === 'FFFFFBEB', `got ${blankFill}`);
+  ok('blag ton NIJE isti kao sivi ton potvrdjenih', blankFill !== 'FFEDEDED');
+}
+
+console.log('');
+console.log('Bez sidra u prozoru -- kolone nema (nema sto reci):');
+{
+  const { ws, hdr, ctrl } = await buildSheet([]);
+  const colOf = (n) => { for (let c=1;c<=ws.columnCount;c++) if (String(ws.getCell(hdr,c).value??'').trim()===n) return c; return 0; };
+  ok('kolone Potvrda NEMA kad prozor krece iza zadnje potvrde', colOf('Potvrda') === 0);
+  ok('autofilter tada staje na kontrolnom stupcu', colNum(ws.autoFilter) === ctrl,
+     `got ${ws.autoFilter} -> ${colNum(ws.autoFilter)}, ctrl ${ctrl}`);
 }
 
 rmSync(out, { force: true });

@@ -505,6 +505,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
       //   STANJE (nize), ne pod — pod je bio drugi pojas preko istog remena.
       let deltaAnchor:  { amount: number; confirmed_on: string } | null = null;
       let deltaOpening: { amount: number; asOf: string } = { amount: 0, asOf: '' };
+      let deltaAnchorsInWindow: { confirmed_on: string; amount: number; note: string | null }[] = [];
       if (deltaMode && balanceWidget && !previewMode) {
         if (!deltaAccount) throw new Error('Delta sheet: nije odabran racun (filtar atributa je prazan).');
         if (!effectiveFilters.areaId) throw new Error('Delta sheet: nije odabrana Area.');
@@ -519,6 +520,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         deltaAnchor = win.anchor
           ? { amount: win.anchor.amount, confirmed_on: win.anchor.confirmed_on }
           : null;
+        deltaAnchorsInWindow = win.anchorsInWindow;
 
         const start     = win.start;
         const dayBefore = win.dayBefore;
@@ -723,6 +725,9 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             groupLabel:   deltaAccount,
             opening:      deltaOpening,
             anchor:       deltaAnchor,
+            // Sidra UNUTAR prozora ⇒ kolona `Potvrda` + sivi ton (SPEC §4.3, §5).
+            // Prazno kad prozor krece iza zadnje potvrde — tada nema sto reci.
+            anchorsInWindow: deltaAnchorsInWindow,
             plusSlug:     balanceWidget.plus  ?? '',
             minusSlug:    balanceWidget.minus ?? '',
             filters:      balanceWidget.filters ?? [],

@@ -1,6 +1,7 @@
 # DELTA_WINDOW_SPEC — sidro prestaje biti rez, postaje oznaka
 
-**Status:** prijedlog prije koda (S141, 2026-09-18). Ništa od ovoga nije implementirano.
+**Status:** **faze 1 i 2 su IZVEDENE (S142, 2026-09-19)**, faze 3 i 4 nisu — §9 nosi što je gdje.
+Izvorno pisan kao prijedlog prije koda (S141, 2026-09-18).
 **Isti obrazac kao `FILTER_SPEC.md` i `RULES_ENGINE_SPEC.md`:** Saša čita, reže što ne
 treba, pa se kodira.
 
@@ -283,13 +284,37 @@ se testira automatika, slučaj se bira tako da se razlikuje od njezinog rezultat
 
 ## 9. Faze
 
-1. **Prozor po sidru** (`K`, zadano 1) + panel ispisuje stvarni raspon. Otvarajuće stanje
-   mora izaći jednako iznosu sidra.
-2. **Kolona „potvrđeno"** + ulazak u autofilter + sivi ton.
-3. **Kontrolne točke u zaglavlju**, po jedna za svako sidro u prozoru.
-4. **Update-guard na uvozu** (§5, sloj 3) — jedini korak koji dira `excelImport.ts`.
+1. ✅ **Prozor po sidru** (`K`, zadano 1) + panel ispisuje stvarni raspon — **S142**.
+   `src/lib/deltaWindow.ts` (`pickDeltaWindow`) — čista funkcija izvan modala, jer isti
+   izbor treba **panel** (da ispiše raspon) i **izvoz** (da ga napravi); dvije kopije uvjeta
+   su prilika da panel obeća jedan raspon a file donese drugi.
+   ⚠ **Pretpostavka iz §2.2 je POKUSOM POTVRĐENA, ne pročitana iz koda**
+   (`_probes/faza1_otvarajuce_stanje.py`, PROD, read-only): `rpc_area_balance_anchored` s
+   `as_of` = dan sidra vraća **sam iznos sidra uz `n = 0`**, za oba računa i za K = 0/1/2 —
+   ZABA `13.815,33`, RF `799,12`, u cent. Šest provjera, šest prolaza.
+   ⚠ Rubovi koje spec nije imenovao, odlučeni pri izvedbi: račun **bez ijednog sidra** pada
+   na 60 dana (nikad „od početka vremena“), a `K` veći od broja sidara se **clampa** na
+   najstarije — i panel oboje kaže naglas.
+2. ✅ **Kolona „Potvrda“** + ulazak u autofilter + sivi ton — **S142**.
+   ⚠ Kolona je **formula**, ne upisan tekst (isto pravilo kao `Provjeri`): promijeni li
+   korisnik datum retka, oznaka nestaje istog trena.
+   ⚠ Formula ide **i na prazne retke**, i to je glavna korist: upiše li korisnik u prazan
+   redak datum unutar potvrđenog razdoblja, oznaka iskoči sama — jedini trenutak u kojem
+   se takav unos može uhvatiti **prije** uvoza.
+   ⚠ Sivi ton je **uvjetni format**, ne statički fill: podatkovni retci već nose svoje boje
+   (ružičasto/plavo), a CF ih nadjačava samo dok uvjet vrijedi — statički bi zamrznuo stanje
+   od trenutka izvoza.
+   ⚠ Uz to su prazni retci dobili **blag topao ton** (§4.5): `FFFFFBEB` nasuprot sivom
+   `FFEDEDED`, dakle dva sloja značenja koja se ne stapaju.
+   Čuva `deltaSheetLayout.test.mjs` — 49 tvrdnji, protuprovjereno s 5 sabotaža.
+3. ⏳ **Kontrolne točke u zaglavlju**, po jedna za svako sidro u prozoru.
+4. ⏳ **Update-guard na uvozu** (§5, sloj 3) — jedini korak koji dira `excelImport.ts`.
 
 Faza 1 sama rješava Sašin problem. Faze 2–3 ga čine vidljivim, faza 4 sigurnim.
+
+⚠ **Dok faza 4 ne postoji, zaštita je OZNAKA, ne brana.** Kolona i ton kažu „ovaj je redak
+već potvrđen“, ali uvoz i dalje prihvaća izmjenu bez pitanja. To je svjesno stanje, ne propust —
+ali mora biti zapisano dok traje.
 
 ---
 
