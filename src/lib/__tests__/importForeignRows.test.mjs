@@ -129,6 +129,14 @@ console.log('DELTA file — sekcija je ISPOD 40 praznih redaka; stigne li uvoz d
     {
       groupLabel: 'RF', opening: { amount: 799.12, asOf: '2026-08-11' },
       anchor: { amount: 799.12, confirmed_on: '2026-08-11' },
+      // /!\ Kolona `Potvrda` (S142, faza 2) stoji DESNO od kontrolnog stupca i
+      //     nije ni fiksna kolona ni atribut. Ovdje je namjerno ukljucena da
+      //     CIJELA ova sekcija testova trci nad fileom koji je nosi: nova kolona
+      //     u exportu ne smije pomaknuti nijednu koju uvoz trazi, ni proizvesti
+      //     redak koji parser vidi kao podatak. Bez ovoga bi se to otkrilo tek
+      //     kad Koka uveze mjesecni file -- dakle na podacima.
+      anchorsInWindow: [{ confirmed_on: '2026-09-06', amount: 690.79,
+                          note: 'ispisano stanje s izvoda · RF_2026-08.pdf' }],
       plusSlug: 'uplata', minusSlug: 'isplata',
       filters: [{ op: 'in', slug: 'izvorplacanja', values: ['Racun'] },
                 { op: 'not_in', slug: 'status', values: ['Planiran'] }],
@@ -157,6 +165,8 @@ console.log('DELTA file — sekcija je ISPOD 40 praznih redaka; stigne li uvoz d
      sectionFrom > hdr + 1 + BLANKS, `sectionFrom=${sectionFrom}, blankTo=${hdr + 1 + BLANKS}`);
   const statusCol = colOf('Status (Transakcija)') || colOf('Status');
   ok('sekcija je doista pronadjena', sectionFrom > 0, `got ${sectionFrom}`);
+  ok('file doista NOSI kolonu Potvrda (inace ovaj test ne mjeri nista)',
+     colOf('Potvrda') > 0, `got ${colOf('Potvrda')}`);
   // Ono sto Koka radi nakon izvoda: potvrdi redak. /!\ Mora biti STVARNA
   // promjena -- upise li se ista vrijednost, `row_hash` se poklopi i redak se
   // (ispravno) preskoci kao netaknut. Prvi pokusaj ovog testa je pao bas na

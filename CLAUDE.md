@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S141).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S142).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -740,14 +740,52 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   listu, pa bi sekcija tiho ušla u njih.
 - **⚠ Sekcija nosi VLASTITU kontrolu košare** (`Σ planirano` / `naplaćeno s izvoda`
   / `razlika`). Bez nje je „potvrdi" potvrda **po datumu**, a datum zna biti kriv.
-- **⚠ SIDRO TVRDO ZAKLJUČAVA POČETAK PROZORA** (S126). `ExcelExportModal` računa
-  `startMs = max(dan nakon sidra, danas − N dana)` i to postaje `dateFrom` — dakle
-  raspon upisan u panel **ne može** dosegnuti ispred sidra. Posljedica koja se ne
-  vidi dok ne zatreba: postaviš li sidro na kraj mjeseca koji je tek usklađen, retci
-  tog mjeseca **ispadaju iz svakog budućeg delta sheeta**, pa se više ne mogu ni
-  razvrstati ni ispraviti tim putem. Zato: **sidro ide tek kad je prozor gotov**.
-  ⚠ Odgoda je sigurna samo jer je razvrstavanje (`Tip`/`Podtip`) neutralno za saldo;
-  promjena **iznosa ili datuma** u nezasidrenom prozoru prolazi bez ijedne kontrole.
+- **✅ ~~SIDRO TVRDO ZAKLJUČAVA POČETAK PROZORA~~ — UKINUTO U S142, i to je bila zamka** 
+  **koja se liječila disciplinom.** Do S142 je `ExcelExportModal` računao
+  `startMs = max(dan nakon sidra, danas − N dana)`, pa raspon upisan u panel
+  **nije mogao** doseći ispred sidra. Posljedica se nije vidjela dok ne zatreba: sidro na
+  kraj tek usklađenog mjeseca izbacivalo je retke tog mjeseca **iz svakog budućeg delta
+  sheeta**. Lijek je bio pravilo *„sidro ide tek kad je prozor gotov"*.
+  **Izmjereno prije ukidanja** (PROD, 18.09.2026.): panel traži 60 dana, ZABA file nosi
+  **12**, i **47 `Racun` redaka nestane bez ijedne poruke**; na RF-u glavni blok ostaje
+  na **2** retka (18 od 20 su Visa i odlaze u sekciju).
+  **Sada:** prozor kreće dan poslije **K-tog** sidra unatrag (`deltaBack`, zadano **1**),
+  `src/lib/deltaWindow.ts`. Dani ostaju samo kao **fallback za račun bez ijednog sidra**.
+  ⚠ **Pod je imao pravi razlog — ali pogrešan mehanizam.** Dvostruko brojanje retka koji
+  je već u sidru sprječava **otvarajuće stanje**, ne pod: `fetchAnchoredBalance` sam bira
+  sidro po `asOf`, pa je točan za **bilo koji** početak prozora. Pod je bio drugi pojas
+  preko istog remena.
+  ⚠ **Prozor se mjeri SIDRIMA, a ne danima, i to nije pojednostavljenje nego uvjet:** samo
+  tako je otvarajuće stanje **potvrđen broj bez ijednog dijela izračuna**. *„Danas − 60"* pada
+  u rupu među sidrima — ZABA ih ima od **575 dana**, RF od **1.319** ⇒ otvarajuće stanje bi
+  bilo sidro **+ 565** odnosno **+ 1.297 dana izračuna**. Moj prvi nacrt spec-a je upravo to
+  predlagao i **pao je na mjerenju**; Sašina formulacija (*„jedno sidro ranije"*) je pravilo.
+  ⚠ **Izmjereno na PROD-u da RPC to doista radi** (`_probes/faza1_otvarajuce_stanje.py`):
+  s `as_of` = dan sidra vraća **sam iznos sidra uz `n = 0`**, 6 provjera / 6 prolaza
+  (ZABA `13.815,33`, RF `799,12`). Pročitano iz koda nije isto što i izmjereno (S118).
+  ⚠ **Rubovi:** račun **bez sidra** pada na 60 dana (nikad *„od početka vremena"*), a `K` veći
+  od broja sidara se **clampa** na najstarije — panel oboje kaže naglas, jer rupa od 625 dana
+  koja iznenadi tek pri otvaranju filea je ista greška koju ovo zatvara.
+- **⚠ KOLONA `Potvrda` JE OZNAKA, NE BRANA** (S142, faza 2). Otkad prozor može obuhvatiti
+  već potvrđeno razdoblje, file nosi retke **unutar potvrđenog stanja** — a promjena iznosa na
+  takvom retku razilazi sidro sa stvarnošću **bez traga**. Kolona (`potvrđeno 06.09. ·
+  ZABA_2026-07.pdf`) + **sivi ton** to kažu prije nego čovjek upiše.
+  ⚠ **Uvoz i dalje prihvaća takvu izmjenu bez pitanja** — prava brana je update-guard na uvozu
+  (faza 4, nije rađena). Dok je nema, boja se **ne smije** čitati kao zaštita.
+  ⚠ **FORMULA, ne upisan tekst** — isto pravilo kao stupac `Provjeri`: promijeni li korisnik
+  datum retka, oznaka nestaje istog trena. Oznaka koja i dalje tvrdi *„potvrđeno"* za redak
+  izmaknut iz potvrđenog razdoblja gora je od izostanka.
+  ⚠ **Ide i na PRAZNE retke, i to je glavna korist:** upiše li korisnik u prazan redak datum
+  unutar potvrđenog razdoblja, oznaka iskoči sama — jedini trenutak u kojem se takav unos hvata
+  **prije** uvoza.
+  ⚠ **Sivi ton je UVJETNI format, ne statički fill:** podatkovni retci već nose svoje boje
+  (ružičasto/plavo), a CF ih nadživljava samo dok uvjet vrijedi; statički bi zamrznuo stanje od
+  trenutka izvoza. Prazni retci nose **topao** ton (`FFFFFBEB`) nasuprot sivom (`FFEDEDED`) —
+  dva sloja značenja (*„ovdje pišeš"* i *„ovo ne diraj"*) koja se **ne smiju stopiti**, inače
+  jače upozorenje gubi snagu.
+  ⚠ Kolona mora ući u `auto_filter.ref` (korisnik sortira čim doda stariji datum), a
+  `Provjeri` se zato pomaknuo na `ctrlCol + 2`: isti stupac s dva zaglavlja čitao bi se
+  kao jedan stupac s dva značenja.
 - **Kontrola košare ide IZNAD sekcije** (S126). Sekcija je zadnji blok i **raste**
   (alat joj dopisuje retke s kartičnog izvoda), pa bi se kontrola ispod nje pri
   svakom dopisivanju morala pomicati zajedno s rasponom svoje formule.
@@ -1557,6 +1595,16 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   tek kad kod vec ide na PROD). Ratchet gadja **samo dva** `react-hooks` pravila — gate koji
   obuhvaca i kozmetiku nauci covjeka da ga zaobilazi. Baseline: `.lint-baseline.json`.
 
+- **/!\ TEST KOJI HARDKODIRA POLOŽAJ NE RAZLIKUJE „POMAKNUTO" OD „POKVARENO"** (S142).
+  `deltaSheetLayout` je stupac `Provjeri` tražio na `ctrl + 1`. Kad je do njega sjela
+  nova kolona, test je pao — ali bi pao **jednako** i da je stupac stvarno nestao. Sada se
+  kolona **traži po naslovu**, čime su sve ostale tvrdnje (razdjelnik, stil, formula) očuvane
+  a legitiman pomak preživljava. Isti razred kao „Selektor problem" u E2E ritualu.
+- **/!\ `ws.autoFilter` SE UPISUJE KAO OBJEKT, A ČITA KAO STRING** (S142). Kod postavlja
+  `{ from: {row,column}, to: {row,column} }`, ali nakon `wb.xlsx.load()` exceljs vraća
+  ref u obliku `"A14:R30"`. Tvrdnja pisana prema **upisanom** obliku daje `undefined` i
+  čita se kao pad featurea, a riječ je o obliku zapisa.
+
 **E2E (Playwright)**
 
 - **⚠ E2E PREUZME DEV SERVER KOJI VEĆ STOJI NA 5173 — I TO MOŽE BITI PROD** (S133).
@@ -1758,6 +1806,12 @@ data-prep_tools/Financije/uvezi_transu.py
                                    Uvozi retke s izvoda kojih baza nema. Rječnik
                                    `Izvod opis → Tip/Podtip` iz brojane povijesti;
                                    STANE na retku bez jednoglasnog presedana.
+src/lib/deltaWindow.ts             Delta prozor: koje sidro otvara prozor (`pickDeltaWindow`).
+                                   Cista funkcija IZVAN modala jer isti izbor treba panel
+                                   (ispis raspona) i izvoz (sam file) -- dvije kopije uvjeta
+                                   znace da panel obeca jedan raspon a file donese drugi.
+                                   /!\ Prozor se mjeri SIDRIMA, ne danima; dani su fallback
+                                   samo za racun bez ijednog sidra.
 src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u banci piše",
                                    sekcija "planirano" + kontrola košare (S123)
                                    ⚠ kontrolni SUMIFS ne broji `Planiran`
@@ -2479,38 +2533,24 @@ sekciju „Feature inventory" u `docs/help/*.md`, **dosta detaljno** (korisnikov
 
 **Health `health_lab_review.py` cleanup** — razdvajanje Medical Visit bilješki iz Lab Results komentara.
 
-**⭐ Delta prozor: sidro prestaje biti rez** (Sašin prijedlog S141, usvojen — spec je
-`docs/DELTA_WINDOW_SPEC.md`). Danas `startMs = max(dan nakon sidra, danas − N)`, pa sidro
-**tvrdo reže prozor**: izmjereno na PROD-u da panel traži 60 dana a ZABA file nosi **12**,
-i **47 `Racun` redaka nestane bez poruke**; na RF-u glavni blok ostaje na **2** retka jer
-18 od 20 su Visa i odlaze u sekciju. S126 je to **već zapisao kao zamku** i držao
-disciplinom („sidro ide tek kad je prozor gotov“).
-⚠ **Posao je manji nego što izgleda:** otvarajuće stanje već dolazi iz
-`fetchAnchoredBalance({ asOf: dayBefore })`, a taj RPC **sam** bira sidro po datumu ⇒
-točan je za **bilo koji** početak prozora. Miče se jedan `Math.max`, ne gradi se nov račun.
-⚠ **PROZOR SE MJERI SIDRIMA, NE DANIMA — i prvi nacrt spec-a je tu pogriješio.**
-Poopćio sam Sašino „jedno sidro ranije“ u „prozor od `N` dana“; **mjerenje ga je oborilo**.
-„Danas − 60“ pada na 20.07.2026., a najbliže sidro **prije** toga je na ZABA-i
-**01.01.2025.** i na RF-u **31.12.2022.** ⇒ otvarajuće stanje bilo bi sidro **+ 565**
-odnosno **+ 1.297 dana izračuna**. Sašina verzija daje **13.815,33** i **799,12** —
-**potvrđene brojeve, bez ijednog dijela izračuna** — uz prozor od 50 i 38 dana.
-⇒ Pravilo: **prozor uvijek kreće DAN POSLIJE nekog sidra**, nikad na proizvoljan datum;
-polje „N dana“ postaje „koliko sidara unatrag“ (zadano 1).
-⚠ **Rupe medju sidrima su velike**: ZABA **575 dana**, RF **1.319** ⇒ `K = 2` nije „malo
-širi prozor“ nego ~625 dana. Panel mora ispisati **stvarni raspon i broj redaka** prije
-izvoza.
-⚠ **Kolona, ne razdjelni redak**: korisnik sortira čim doda stariji datum, pa razdjelni
-redak usred bloka odluta — vrijednost u koloni putuje s retkom. Mora ući u `auto_filter.ref`.
-⚠ **Kontrolna točka je uvjet, ne ukras:** čim se u sheetu nađu retci **već unutar**
-potvrđenog stanja, promjena iznosa ili `Delete?` na njima razilazi sidro sa stvarnošću
-**a danas to ne bi uhvatilo ništa**. Zato ide blok `sidro · sheet računa · razlika` po
-svakom sidru u prozoru (`ROUND(…,2)`, S112). Faza 1 rješava Sašin problem, ostale ga
-čine sigurnim.
-⚠ **Prošlost je VEĆ pisiva** (obični izvoz s rasponom + uvoz, i Edit u UI-ju) — delta
-sheet ne otvara nova vrata nego te retke stavlja u file čija je svrha uređivanje. Zato
-tri sloja: kolona, kontrolna točka, i **update-guard na uvozu** (proširenje postojeceg
-`row_hash` guarda koji već zaključava Apply). Odbijanje uvoza je **odbačeno** — lomi
-„sve ide importom“. Sašina tri pitanja su odgovorena, v. §10 spec-a.
+**✅ ~~Delta prozor: sidro prestaje biti rez~~ — FAZE 1 i 2 IZVEDENE S142; faze 3 i 4 ostaju.**
+Spec je `docs/DELTA_WINDOW_SPEC.md` (§9 nosi što je gdje). Pravilo je promaknuto u
+„Critical rules" § Delta sheet — ondje piše i **zašto** je stari pod pao.
+
+⚠ **Što je izvedeno:** prozor se mjeri sidrima (`deltaBack`, zadano 1, `deltaWindow.ts`);
+panel ispisuje stvarni raspon, sidro na kojem počiva i broj događaja (prag **200**);
+kolona `Potvrda` + sivi ton na retcima unutar potvrđenog stanja; prazni retci topao ton.
+Izmjereno na PROD-u da otvarajuće stanje izlazi **jednako iznosu sidra u cent** (6/6, `n = 0`).
+
+⚠ **Što OSTAJE, i znači da zaštita još nije potpuna:**
+- **faza 3** — kontrolne točke u zaglavlju, po jedna za svako sidro u prozoru
+  (`sidro · sheet računa · razlika`, `ROUND(…,2)` obavezan — S112).
+- **faza 4** — **update-guard na uvozu**, jedina prava brana: proširenje postojećeg
+  `row_hash` guarda jednim uvjetom (*„a taj je redak unutar potvrđenog stanja"*), uz poruku
+  koja **imenuje sidro** koje se time dovodi u pitanje. Dira `excelImport.ts`.
+
+⚠ **Dok faze 4 nema, uvoz prihvaća izmjenu potvrđenog retka bez pitanja** — kolona i ton to
+samo **kažu**. Ako se pokaže da je premalo, red je faza 4, **ne jača boja**.
 
 **⭐ PBZVISA prolaz — `Datum naplate` za Visu nema ispravljača** (S137; značenje stupca
 odlučeno S141, v. dolje). `uskladi_izvod.py:939` prima **samo MC** (`Zasad samo MC izvodi`),

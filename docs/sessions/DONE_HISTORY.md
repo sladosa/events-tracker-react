@@ -5522,6 +5522,87 @@ roundtripom.
 ⚠ Usput nađena mina: `isRequired` se preko redaka spaja s **OR**, a `hiddenInAdd` se čita
 **samo iz prvog retka** — S131 je to popravio za susjednu zastavicu i propustio ovu. Danas ne
 grize; u Backlogu.
+## S142 — sidro prestaje biti rez, postaje oznaka (2026-09-19)
+
+**`DELTA_WINDOW_SPEC` faze 1 i 2.** Sesija je zatvorila zamku koju je S126 zapisao i
+lijecio **disciplinom** (*„sidro ide tek kad je prozor gotov"*) — sada to radi mehanizam.
+
+### Faza 1 — prozor se mjeri SIDRIMA, ne danima
+
+Do sada: `startMs = max(dan nakon sidra, danas − N)`, pa sidro **tvrdo reze prozor**.
+Izmjereno na PROD-u: panel trazi 60 dana, ZABA file nosi **12**, i **47 `Racun` redaka
+nestane bez ijedne poruke**; RF glavni blok ostaje na **2** retka.
+
+Sada: prozor krece dan poslije **K-tog** sidra unatrag (`deltaBack`, zadano **1**).
+
+- **`src/lib/deltaWindow.ts`** (nov) — `pickDeltaWindow`, cista funkcija **izvan modala**:
+  isti izbor treba **panel** (da ispise raspon prije izvoza) i **izvoz** (da ga napravi).
+  Dvije kopije uvjeta znace da panel obeca jedan raspon a file donese drugi — razred
+  `canUpdateExisting()` (S125).
+- Panel ispisuje **stvarni raspon**, sidro na kojem pociva, broj potvrda u prozoru i broj
+  dogadjaja (prag **200**, upozorenje bez zabrane — Sasina odluka S141).
+- Rubovi koje spec nije imenovao: racun **bez sidra** pada na 60 dana (nikad „od pocetka
+  vremena"), `K` veci od broja sidara se **clampa** na najstarije — panel oboje kaze.
+- `deltaSheet.ts`: biljeska uz otvarajuce stanje razlikuje **POTVRDJENO** od **IZRACUNATO**.
+  Bez toga bi file tvrdio *„izracunato… plus sve promjene"* za broj koji je potvrdjen i nema
+  nijedne promjene — dakle suprotno od onoga zbog cega je prozor pomaknut.
+
+**Izmjereno na PROD-u, ne pretpostavljeno** (`_probes/faza1_otvarajuce_stanje.py`, read-only):
+`rpc_area_balance_anchored` s `as_of` = dan sidra vraca **sam iznos sidra uz `n = 0`**, za oba
+racuna i za K = 0/1/2. ZABA `13.815,33`, RF `799,12` — u cent. Sest provjera, sest prolaza.
+⚠ `n = 0` je ono sto pokus zapravo dokazuje: nula zapisa poslije sidra znaci da se nista nije
+**zbrajalo**. Procitano iz koda nije isto sto i izmjereno (S118).
+
+### Faza 2 — kolona `Potvrda` + sivi ton
+
+Faza 1 je prozoru dopustila da obuhvati **vec potvrdjeno** razdoblje, pa file od nje nosi retke
+unutar potvrdjenog stanja — a promjena iznosa na takvom retku razilazi sidro sa stvarnoscu bez
+traga. Prvi od tri sloja zastite (SPEC §5): **oznaka prije nego covjek upise**.
+
+- Kolona `Potvrda` desno od `Stanje (kontrola)`: `potvrdjeno 06.09. · ZABA_2026-07.pdf`.
+  **FORMULA**, ne upisan tekst — isto pravilo kao `Provjeri`: promijeni li korisnik datum
+  retka, oznaka nestaje istog trena.
+- Formula ide **i na prazne retke**, i to je glavna korist: upise li korisnik u prazan redak
+  datum unutar potvrdjenog razdoblja, oznaka iskoci sama — **jedini** trenutak u kojem se takav
+  unos hvata prije uvoza.
+- **Kratki oblik** biljeske, ne puna: izmjereno da su biljeske sidara **41–90 znakova**
+  (16 ZABA + 3 RF), pa bi ponovljene na ~100 redaka dale stupac koji se ne da citati.
+- Sivi ton (`FFEDEDED`) je **UVJETNI format**, ne staticki fill: podatkovni retci vec nose svoje
+  boje, a CF ih nadzivljava samo dok uvjet vrijedi. Prazni retci dobili **topao** ton
+  (`FFFFFBEB`, Sasin zahtjev S141) — dva sloja znacenja koja se ne smiju stopiti.
+- Kolona ulazi u `auto_filter.ref`; `Provjeri` pomaknut na `ctrlCol + 2`.
+
+⚠ **ZASTITA JE OZNAKA, NE BRANA.** Uvoz i dalje prihvaca izmjenu potvrdjenog retka bez pitanja —
+prava brana je update-guard na uvozu (**faza 4**, nije radjena). Zapisano na tri mjesta da se
+boja ne pocne citati kao zastita.
+
+### Testovi i protuprovjere
+
+| file | tvrdnji | sabotaza |
+| --- | ---: | ---: |
+| `deltaWindow.test.mjs` (nov) | 25 | **3** |
+| `deltaSheetLayout.test.mjs` | 37 → **49** | **5** |
+| `importForeignRows.test.mjs` | 27 | — (delta file sada **nosi** kolonu) |
+
+⚠ **Rizik za uvoz zatvoren mjerenjem, ne pretpostavkom:** nova kolona nije ni fiksna ni atribut,
+pa je postojeci import test prebacen na delta file **koji je nosi** — sekcija se cita, 40 praznih
+redaka ne postaje 40 gresaka, `row_hash` skip radi.
+
+### Dvije zamke nadjene usput
+
+- **Test koji hardkodira POLOZAJ ne razlikuje „pomaknuto" od „pokvareno".** Tvrdnja o
+  `Provjeri` bila je vezana na `ctrl + 1` i pala na **legitiman** pomak — pala bi jednako i da
+  je stupac nestao. Sada se kolona **trazi po naslovu**.
+- **`ws.autoFilter` se upisuje kao objekt, a cita kao string** (`"A14:R30"`) nakon
+  `wb.xlsx.load()`. Tvrdnja pisana prema upisanom obliku daje `undefined` i cita se kao pad
+  featurea, a rijec je o obliku zapisa.
+- ⚠ I: prva verzija `deltaWindow` testa tvrdila je **626 dana** za K = 2 i **pala** — brojka
+  pisana rukom protiv koda koji racuna. Tocno je **625**. Test je prvo uhvatio *autora*.
+
+**Commiti:** `af81266` (faza 1), `920af09` (faza 2). `main` netaknut.
+
+---
+
 ## S141 — tri tvrdnje oborene mjerenjem, i sve tri su bile moje (2026-09-18)
 
 Detalji: [S141_tests.md](tests/S141_tests.md)
