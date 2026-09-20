@@ -461,6 +461,19 @@ export async function addActivitiesSheetsTo(
    * v. `dvEnd` nize.
    */
   dvBlankRows?: number,
+  /**
+   * Koliko dodatnih PRAZNIH redaka rezervirati u zaglavlju, iznad bloka
+   * `Max/Min/Summ`. Delta sheet ondje poslije upisuje kontrolne tocke — po
+   * jednu za svako sidro u prozoru (S143, faza 3).
+   *
+   * /!\ REZERVIRA PISAC REDAKA, ne ukrasivac. `addDeltaHelpersTo` ne moze
+   *   umetnuti redak: `spliceRows` bi pomaknuo sve ispod, a polozaji glavnog
+   *   bloka i sekcije su do tada vec izracunati iz `mainCount`/`blankRows`.
+   *   Zato broj mora doci ovamo, a zna ga samo pozivatelj.
+   * /!\ Jedan redak (za poruku o pomijesanom rasporedu) se rezervira UVIJEK,
+   *   i bez ovog parametra — v. nize.
+   */
+  extraHeaderRows?: number,
 ): Promise<void> {
 
   const built = buildAttrMeta(attrDefs, categoriesDict);
@@ -584,6 +597,10 @@ export async function addActivitiesSheetsTo(
   //   joj treba prazan red preko kojeg ce se preliti. Uz brojke bi je odrezao
   //   prvi popunjeni susjed.
   row++;
+
+  // Retci rezervirani za kontrolne tocke sidara (delta sheet, faza 3). U
+  // obicnom izvozu ih nema.
+  row += Math.max(0, extraHeaderRows ?? 0);
 
   // ──────────────────────────────────────────
   // Max / Min / Sum summary rows

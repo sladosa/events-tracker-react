@@ -1,6 +1,6 @@
 # DELTA_WINDOW_SPEC — sidro prestaje biti rez, postaje oznaka
 
-**Status:** **faze 1 i 2 su IZVEDENE (S142, 2026-09-19)**, faze 3 i 4 nisu — §9 nosi što je gdje.
+**Status:** **faze 1–3 su IZVEDENE** (1 i 2 u S142 2026-09-19, 3 u S143 2026-09-20); faza 4 nije — §9 nosi što je gdje.
 Izvorno pisan kao prijedlog prije koda (S141, 2026-09-18).
 **Isti obrazac kao `FILTER_SPEC.md` i `RULES_ENGINE_SPEC.md`:** Saša čita, reže što ne
 treba, pa se kodira.
@@ -307,7 +307,18 @@ se testira automatika, slučaj se bira tako da se razlikuje od njezinog rezultat
    ⚠ Uz to su prazni retci dobili **blag topao ton** (§4.5): `FFFFFBEB` nasuprot sivom
    `FFEDEDED`, dakle dva sloja značenja koja se ne stapaju.
    Čuva `deltaSheetLayout.test.mjs` — 49 tvrdnji, protuprovjereno s 5 sabotaža.
-3. ⏳ **Kontrolne točke u zaglavlju**, po jedna za svako sidro u prozoru.
+3. ✅ **Kontrolne točke u zaglavlju**, po jedna za svako sidro u prozoru — **S143**.
+   ⚠ **Izvedeno kao JEDAN BROJ po sidru, ne tri retka iz skice §4.4.** Pitanje je jedno —
+   *„reproducira li sheet ovu potvrdu?"* — a odgovor je razlika; potvrđeni iznos stoji u
+   natpisu, pa se sheetov izračun dobije oduzimanjem. Tri retka po sidru dala bi na dva
+   sidra šest redaka zaglavlja, a zaglavlje ovog lista Koka čita.
+   ⚠ **Retke rezervira PISAC** (`addActivitiesSheetsTo`, parametar `extraHeaderRows`), ne
+   ukrašivač: `addDeltaHelpersTo` ne može umetnuti redak jer su položaji glavnog bloka i
+   sekcije do tada već izračunati. Bez rezervacije blok sklizne gore i piše **preko praznog
+   retka koji odvaja `ATTRIBUTE LEGEND`** — a legenda je uvozu izvor mapiranja stupaca.
+   ⚠ To je uhvaćeno tek **apsolutnom** tvrdnjom: relativna („poruka je točno iznad prve
+   točke") preživjela je sabotažu, jer u skliznutom rasporedu i dalje vrijedi.
+   Čuva `deltaSheetLayout.test.mjs` — 95 tvrdnji, protuprovjereno s 4 sabotaže za ovu fazu.
 4. ⏳ **Update-guard na uvozu** (§5, sloj 3) — jedini korak koji dira `excelImport.ts`.
 
 Faza 1 sama rješava Sašin problem. Faze 2–3 ga čine vidljivim, faza 4 sigurnim.

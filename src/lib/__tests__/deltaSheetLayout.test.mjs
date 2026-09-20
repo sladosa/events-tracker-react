@@ -371,6 +371,99 @@ console.log('Bez sidra u prozoru -- kolone nema (nema sto reci):');
 }
 
 console.log('');
+console.log('Kontrolne tocke sidara u zaglavlju -- faza 3 (S143):');
+{
+  // /!\ ZASTO POSTOJE: do faze 3 je redak upisan u POTVRDJENO razdoblje
+  //   proizvodio samo OZNAKU. Saldo se na njega ne pomakne — retci prije sidra
+  //   u njega ne ulaze („strogo nakon") — pa nijedan broj nije odavao da je
+  //   netko dirnuo potvrdjeno. Sasin nalaz uz T-S142-4.
+  const dva = [
+    { confirmed_on: '2026-08-03', amount: 13900.00, note: 'ispisano stanje s izvoda · ZABA_2026-07.pdf' },
+    { confirmed_on: '2026-08-04', amount: 13850.50, note: 'ekran bankovne aplikacije' },
+  ];
+  const { ws, hdr, ctrl } = await buildSheet(planned, { anchorsInWindow: dva });
+
+  // Sazeci su `Max/Min/Summ`; kontrolne tocke su tocno iznad njih, a iznad njih
+  // redak poruke. /!\ Redoslijed je bio mina: dok se `msgRow` racunao kao
+  //   `summaryRows[0] - 1`, poruka bi sjela PREKO zadnje kontrolne tocke cim
+  //   prozor ima ijedno sidro.
+  let firstSummary = 0;
+  for (let r = 1; r < hdr; r++) {
+    if (String(ws.getCell(r, 8).value ?? '').startsWith('Max (if relevant)')) { firstSummary = r; break; }
+  }
+  ok('nasao sam blok sazetaka', firstSummary > 0, `got ${firstSummary}`);
+
+  const labC = ctrl - 1;
+  const r1 = firstSummary - 2, r2 = firstSummary - 1;
+  const lab = (r) => String(ws.getCell(r, labC).value ?? '');
+  ok('po jedna kontrolna tocka za svako sidro, tik iznad sazetaka',
+     lab(r1).startsWith('kontrola sidra') && lab(r2).startsWith('kontrola sidra'),
+     `r1 "${lab(r1)}" r2 "${lab(r2)}"`);
+  // Najranije sidro prvo — isti redoslijed kojim `Potvrda` dodjeljuje oznake.
+  ok('poredane od NAJRANIJEG sidra prema najnovijem',
+     lab(r1).includes('03.08.2026.') && lab(r2).includes('04.08.2026.'),
+     `r1 "${lab(r1)}" r2 "${lab(r2)}"`);
+  ok('natpis nosi i POTVRDJENI iznos (sheetov izracun se dobije oduzimanjem)',
+     lab(r1).includes('13900.00') && lab(r2).includes('13850.50'), `got "${lab(r1)}"`);
+
+  const f1 = String(raw(ws, r1, ctrl)?.formula ?? '');
+  ok('kontrolna tocka je FORMULA, ne upisan broj', f1.startsWith('ROUND('), `got ${f1.slice(0,30)}`);
+  // /!\ ROUND NIJE KOZMETIKA: razlika nosi gresku binarnog zapisa (~1e-13), pa
+  //   je usporedba s nulom bez zaokruzivanja bojala crveno savrseno usklađen
+  //   sheet (S112).
+  ok('zaokruzuje na lipu (inace crveno nad usklađenim sheetom)', f1.endsWith(',2)'), `got ${f1.slice(-8)}`);
+  ok('oduzima potvrdjeni iznos od onoga sto sheet racuna', f1.includes('ROUND(13900-('), `got ${f1.slice(0,30)}`);
+  ok('gleda SAMO do dana sidra', f1.includes('"<="&DATE(2026,8,3)'), `got ${f1.slice(0,120)}`);
+  ok('nosi iste uvjete kao plocica', f1.includes('"Racun"') && f1.includes('"<>Planiran"'));
+  // /!\ Rasponi do `calcTo`, isto kao kontrolni stupac — inace bi kontrolna
+  //   tocka bila jedina brojka na listu koja se raziđe nakon sorta.
+  const sep = findSep(ws);
+  const calcTo = sep + planned.length;
+  const ends = [...f1.matchAll(/\$[A-Z]+\$\d+:\$[A-Z]+\$(\d+)/g)].map(m => Number(m[1]));
+  ok('rasponi sezu do kraja sekcije, kao i kontrolni stupac',
+     ends.length > 0 && ends.every(e => e === calcTo), `got ${JSON.stringify(ends)}, calcTo ${calcTo}`);
+
+  // Isti jezik boja kao `razlika`: zeleno na nuli se vidi bez citanja broja.
+  const cfs = (ws.conditionalFormattings ?? []).filter(c => String(c.ref) === `${String.fromCharCode(64 + ctrl)}${r1}`);
+  ok('ima zeleno/crveno kao i `razlika`', cfs.length === 1 && (cfs[0].rules ?? []).length === 2,
+     `got ${JSON.stringify(cfs.map(c => c.ref))}`);
+
+  // /!\ Poruka o pomijesanom rasporedu mora ostati IZNAD njih, u svom retku.
+  let msgR = 0;
+  for (let r = 1; r < hdr; r++) {
+    for (let c = 1; c <= ws.columnCount; c++) {
+      if (String(raw(ws, r, c)?.formula ?? '').includes('POMIJE')) msgR = r;
+    }
+  }
+  ok('poruka je IZNAD kontrolnih tocaka, ne preko njih', msgR > 0 && msgR === r1 - 1,
+     `msg ${msgR}, prva tocka ${r1}`);
+
+  // /!\ OVA TVRDNJA POSTOJI ZATO STO JE GORNJA PREZIVJELA SABOTAZU. Relativna
+  //   provjera („poruka je tocno iznad prve tocke") je zadovoljena i kad pisac
+  //   UOPCE NE REZERVIRA retke — tada cijeli blok samo sklizne gore i pise
+  //   preko praznog retka koji odvaja ATTRIBUTE LEGEND, pa i preko same
+  //   legende. Treba apsolutno sidro: redak iznad poruke mora biti onaj POSVE
+  //   prazan, jer legenda je uvozu izvor mapiranja stupaca.
+  ok('iznad poruke je i dalje POSVE prazan redak (retci su doista rezervirani)',
+     rowIsEmpty(ws, msgR - 1), `redak ${msgR - 1} nije prazan`);
+  ok('a iznad njega je legenda (blok nije skliznuo)',
+     !rowIsEmpty(ws, msgR - 2), `redak ${msgR - 2} je prazan`);
+}
+
+console.log('');
+console.log('Bez sidra u prozoru nema ni kontrolnih tocaka:');
+{
+  const { ws, hdr } = await buildSheet(planned);
+  let n = 0;
+  for (let r = 1; r < hdr; r++) {
+    for (let c = 1; c <= ws.columnCount; c++) {
+      if (String(ws.getCell(r, c).value ?? '').startsWith('kontrola sidra')) n++;
+    }
+  }
+  ok('nema kontrolnih tocaka kad prozor krece iza zadnje potvrde', n === 0, `got ${n}`);
+}
+
+console.log('');
 console.log('Potvrda + Provjeri na ISTOM listu -- prelijevanje se ne smije sudariti (S143):');
 {
   // /!\ OVAJ BLOK POSTOJI ZATO STO TVRDNJA INACE NE MOZE PASTI. Prvo sam je

@@ -503,6 +503,76 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     });
   }
 
+  // ── 2c. Kontrolne točke — po jedna za svako sidro u prozoru (faza 3) ────
+  //
+  // ⚠ ZAŠTO POSTOJE: do faze 3 je redak upisan u potvrđeno razdoblje proizvodio
+  //   samo OZNAKU. Saldo se na njega ne pomakne — retci prije sidra u njega ne
+  //   ulaze (§2.17 „strogo nakon") — pa nijedan broj nije odavao da je netko
+  //   dirnuo potvrđeno. Sašin nalaz uz T-S142-4: *„to bi trebalo izazvati veće
+  //   poremećaje od same oznake"*. Ovo je taj poremećaj, izražen brojem.
+  //
+  // ⚠ ZAŠTO U ZAGLAVLJU, A NE U KOLONI (SPEC §4.4): provjera pripada DATUMU, a
+  //   na taj datum možda nema nijednog retka — pa nema nosača. Ćelija u
+  //   zaglavlju je uz to sort-imuna, i to je već uhodan obrazac ovog lista
+  //   (`u banci piše` / `razlika`).
+  //
+  // ⚠ JEDAN BROJ PO SIDRU, ne tri retka kao u skici spec-a. Pitanje je jedno —
+  //   *„reproducira li sheet ovu potvrdu?"* — a odgovor je razlika. Iznos
+  //   potvrde stoji u natpisu, pa se ono što je sheet izračunao dobije
+  //   oduzimanjem. Tri retka po sidru bi na dva sidra dala šest redaka
+  //   zaglavlja, a zaglavlje ovog lista Koka čita.
+  //
+  // ⚠ `ROUND(…, 2)` NIJE KOZMETIKA: razlika nosi grešku binarnog zapisa
+  //   (~1e-13), pa je usporedba s nulom bez zaokruživanja bojala crveno
+  //   savršeno usklađen sheet (S112).
+  //
+  // ⚠ Rasponi idu do `calcTo`, isto kao kontrolni stupac — inače bi kontrolna
+  //   točka bila jedina brojka na listu koja se raziđe nakon sorta.
+  if (anchorsIn.length > 0 && layout.summaryRows.length > 0) {
+    const firstCtrlRow = layout.summaryRows[0] - anchorsIn.length;
+    const labelC = ctrlCol - 1;
+
+    anchorsIn.forEach((a, i) => {
+      const r = firstCtrlRow + i;
+      const [ay, am, ad] = a.confirmed_on.split('-').map(Number);
+      const upTo = `DATE(${ay},${am},${ad})`;
+
+      const lab = ws.getCell(r, labelC);
+      lab.value     = `kontrola sidra ${hr(a.confirmed_on)} (potvrđeno ${a.amount.toFixed(2)}) ->`;
+      lab.alignment = { horizontal: 'right' };
+      lab.font      = { italic: true, color: { argb: 'FF666666' } };
+
+      const cell = ws.getCell(r, ctrlCol);
+      cell.value = {
+        formula:
+          `ROUND(${a.amount}-(${openingAmount}` +
+          `+SUMIFS(${sumRange(plusCol)},${dateRange},"<="&${upTo}${crit.join('')})` +
+          `-SUMIFS(${sumRange(minusCol)},${dateRange},"<="&${upTo}${crit.join('')})),2)`,
+      };
+      cell.numFmt    = '#,##0.00';
+      cell.font      = { bold: true };
+      cell.alignment = { horizontal: 'right' };
+
+      explain(cell, 'Kontrola sidra',
+        'Sheet mora reproducirati ovu potvrdu. Ako nije 0,00, unutar potvrđenog '
+        + 'razdoblja je nešto promijenjeno — ili sidro ne odgovara stvarnosti. '
+        + 'Novi izvoz to NE popravlja: provjeri retke do tog datuma.');
+
+      // Isti jezik boja kao `razlika`: zeleno na nuli, crveno inače. Usklađeno
+      // se tako vidi bez čitanja broja.
+      ws.addConditionalFormatting({
+        ref: `${ctrlLtr}${r}`,
+        rules: [
+          { type: 'cellIs', operator: 'equal', priority: 1, formulae: ['0'],
+            style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFC6EFCE' } } } },
+          { type: 'expression', priority: 2,
+            formulae: [`AND(${ctrlLtr}${r}<>"",${ctrlLtr}${r}<>0)`],
+            style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFC7CE' } } } },
+        ],
+      });
+    });
+  }
+
   // ── 3. „U banci piše" + razlika ─────────────────────────────────────────
   // Ide u redove sažetka IZNAD zaglavlja, pa se ne dira ni jedan podatkovni
   // redak i import ovo nikad ne vidi.
@@ -629,7 +699,13 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     //   ⚠ Redak je rezerviran u `excelExport` (iznad `Max/Min/Summ`) BAS ZATO
     //     da se ne mora pisati u prazan redak koji odvaja ATTRIBUTE LEGEND —
     //     taj mora ostati prazan, jer je legenda uvozu izvor mapiranja stupaca.
-    const msgRow = layout.summaryRows.length > 0 ? layout.summaryRows[0] - 1 : openRow;
+    // ⚠ `- anchorsIn.length - 1`: iznad `Max/Min/Summ` pisac je rezervirao JEDAN
+    //   redak za ovu poruku i JOS PO JEDAN za svaku kontrolnu tocku (faza 3).
+    //   Racunati `summaryRows[0] - 1` znacilo bi pisati preko zadnje kontrolne
+    //   tocke cim prozor ima ijedno sidro.
+    const msgRow = layout.summaryRows.length > 0
+      ? layout.summaryRows[0] - anchorsIn.length - 1
+      : openRow;
     if (inF && inCol) {
       const iLtr = colLetter(inCol);
       const mixCell = ws.getCell(msgRow, ctrlCol + 1);
@@ -894,6 +970,9 @@ export async function createDeltaExcel(
     // Prazni retci predloska dobivaju dropdowne od PISACA retka, s ispravnom
     // adresom roditelja u svakom retku. v. `dvEnd` u excelExport.ts.
     opts.blankRows,
+    // Po jedan redak zaglavlja za svako sidro u prozoru — kontrolne tocke
+    // (faza 3). Rezervira ih pisac jer se poslije ne moze umetnuti redak.
+    (opts.anchorsInWindow ?? []).length,
   );
 
   // ⚠ REDOSLIJED: profil PRIJE delta alata. Profil dira kolone po položaju
