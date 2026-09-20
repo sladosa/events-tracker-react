@@ -289,6 +289,24 @@ console.log('Kolona „Potvrda" -- sidro UNUTAR prozora (glavni blok 02.-04.08.)
   ok('prazni retci imaju blag ton', blankFill === 'FFFFFBEB', `got ${blankFill}`);
   ok('blag ton NIJE isti kao sivi ton potvrdjenih', blankFill !== 'FFEDEDED');
 
+  // /!\ SIVI TON POTVRDJENIH REDAKA NIJE IMAO NIJEDNU TVRDNJU (nadjeno S143).
+  //     Mjerilo se samo da se KREMASTI razlikuje od sive konstante -- dakle
+  //     razlika dvaju tonova, a ne to da je sivi uopce nanesen. Obrisi ga i
+  //     test bi i dalje prolazio, a nestao bi jedan od tri sloja zastite.
+  // /!\ MORA BITI UVJETNI FORMAT, ne staticki fill: podatkovni retci vec nose
+  //     svoje boje, a CF ih nadjacava SAMO dok uvjet vrijedi. Staticki bi
+  //     zamrznuo stanje od trenutka izvoza -- pa bi redak izmaknut iz
+  //     potvrdjenog razdoblja ostao siv i dalje tvrdio „ne diraj".
+  const cfs = ws.conditionalFormattings ?? [];
+  const sivi = cfs.flatMap(c => (c.rules ?? []).map(r => ({ ref: c.ref, r })))
+                  .filter(x => JSON.stringify(x.r.style?.fill ?? {}).includes('FFEDEDED'));
+  ok('sivi ton potvrdjenih redaka POSTOJI', sivi.length === 1, `got ${sivi.length} pravila`);
+  ok('sivi ton je UVJETNI format (type expression), ne staticki fill',
+     sivi[0]?.r?.type === 'expression', `got ${sivi[0]?.r?.type}`);
+  ok('uvjet gleda datum retka i dan NAJNOVIJEG sidra u prozoru',
+     String(sivi[0]?.r?.formulae?.[0] ?? '').includes('DATE(2026,8,3)'),
+     `got ${sivi[0]?.r?.formulae?.[0]}`);
+
   // /!\ SOLID FILL PREKRIVA EXCELOVE GRIDLINE-OVE (S143). Zato je blok praznih
   //     redaka izgledao kao jedna ploha, a ne kao retci s celijama -- dakle
   //     format koji ih je trebao istaknuti kao mjesto za unos oduzeo im je
