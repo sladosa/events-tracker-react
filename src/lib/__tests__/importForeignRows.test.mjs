@@ -280,5 +280,45 @@ console.log('created_at PRIJE session_start vise NIJE upozorenje (S143):');
 }
 
 console.log('');
+console.log('Stari file (zaglavlje ODMAH ispod naslova) se i dalje uvozi (S143):');
+{
+  // /!\ ZASTO OVAJ TEST POSTOJI: S143 je izmedu naslova `EVENT DATA:` i
+  //   zaglavlja umetnuo prazan redak (omeduje tekucu regiju, pa sort iz vrpce
+  //   vise ne guta sazetke). Parser je dotad racunao `titleRow + 1` i time bi
+  //   pokazao na prazan redak, a PRAVO zaglavlje citao kao prvi podatkovni
+  //   redak — uvoz bi ponudio upis retka ciji je `event_id` doslovno
+  //   "event_id". Sada se trazi skeniranjem, pa moraju proci OBA oblika.
+  //   ⚠ Stari oblik nije teorija: svaki file izvezen prije danas ga ima, a
+  //     Koka radi s fileovima koji joj lezakuju danima.
+  const buf = await createEventsExcel([mk('e1', 'netaknut')], defs, catsDict, 'asc');
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buf);
+  const ws = wb.getWorksheet('Events');
+  let title = 0;
+  for (let r = 1; r <= ws.rowCount; r++) {
+    if (String(ws.getCell(r, 1).value ?? '').includes('EVENT DATA')) { title = r; break; }
+  }
+  const empty = (r) => {
+    for (let c = 1; c <= ws.columnCount; c++) {
+      const v = ws.getCell(r, c).value;
+      if (v !== null && v !== undefined && String(v) !== '') return false;
+    }
+    return true;
+  };
+  ok('nov izvoz ima PRAZAN redak izmedju naslova i zaglavlja', title > 0 && empty(title + 1),
+     `title ${title}`);
+
+  ws.spliceRows(title + 1, 1);            // <- oblik filea izvezenog PRIJE S143
+  const old = new File([await wb.xlsx.writeBuffer()], 'stari.xlsx',
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const p = await parseExcelFile(old, GRANTEE, 'skip');
+  ok('stari oblik se i dalje parsira (zaglavlje nadjeno skeniranjem)',
+     p.errors.length === 0, `got ${JSON.stringify(p.errors)}`);
+  ok('i ne cita zaglavlje kao podatkovni redak',
+     p.toCreate.length === 0 && p.toUpdate.length === 0 && p.untouchedCount === 1,
+     `create ${p.toCreate.length}, update ${p.toUpdate.length}, untouched ${p.untouchedCount}`);
+}
+
+console.log('');
 console.log(`${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

@@ -613,9 +613,17 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     const inF   = opts.filters.find(f => f.op === 'in' && f.values.length === 1);
     const inNm  = inF ? attrNameBySlug.get(inF.slug) : undefined;
     const inCol = inNm ? findAttrCol(layout, inNm) : null;
+    // /!\ VLASTITI REDAK IZNAD SAZETAKA, I DESNO PORAVNANJE (Sasin prijedlog).
+    //   Poruka je duga. U retku `stanje ->` bi je prvi popunjeni susjed odrezao,
+    //   a lijevo poravnana bjezi desno s ekrana. Desno poravnata u praznom
+    //   retku prelijeva se ULIJEVO preko praznine i cita se cijela.
+    //   ⚠ Redak je rezerviran u `excelExport` (iznad `Max/Min/Summ`) BAS ZATO
+    //     da se ne mora pisati u prazan redak koji odvaja ATTRIBUTE LEGEND —
+    //     taj mora ostati prazan, jer je legenda uvozu izvor mapiranja stupaca.
+    const msgRow = layout.summaryRows.length > 0 ? layout.summaryRows[0] - 1 : openRow;
     if (inF && inCol) {
       const iLtr = colLetter(inCol);
-      const mixCell = ws.getCell(openRow, ctrlCol + 1);
+      const mixCell = ws.getCell(msgRow, ctrlCol + 1);
       mixCell.value = {
         formula:
           `IF(COUNTIFS($${dLtr}$${layout.dataStart}:$${dLtr}$${blankTo},"<>",`
@@ -625,7 +633,8 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
           + `Ako si kartični redak upisao u prazan redak, premjesti ga u sekciju dolje.",`
           + `"")`,
       };
-      mixCell.font = { bold: true, color: { argb: 'FFC00000' } };
+      mixCell.font      = { bold: true, color: { argb: 'FFC00000' } };
+      mixCell.alignment = { horizontal: 'right' };
     }
   }
 

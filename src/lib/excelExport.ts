@@ -571,6 +571,18 @@ export async function addActivitiesSheetsTo(
   // ──────────────────────────────────────────
   // Empty row between sections
   // ──────────────────────────────────────────
+  // ⚠ OVAJ REDAK MORA OSTATI POSVE PRAZAN (S143). On odvaja ATTRIBUTE LEGEND
+  //   od svega ispod, a legenda je uvozu IZVOR MAPIRANJA STUPACA. Upise li mu
+  //   itko ista, tekuca regija spoji legendu sa sazecima i sort iz vrpce je
+  //   moze prevrnuti — a tada uvoz cita krive stupce, bez ijedne poruke.
+  //   Zato poruka o pomijesanom rasporedu ide u REDAK ISPOD (v. nize), ne ovamo.
+  row++;
+
+  // Redak rezerviran za poruke o stanju lista (delta sheet ondje pise
+  // upozorenje o pomijesanom rasporedu). U obicnom izvozu ostaje prazan.
+  // ⚠ Vlastiti redak, a ne ugurana celija uz `stanje ->`: poruka je duga, pa
+  //   joj treba prazan red preko kojeg ce se preliti. Uz brojke bi je odrezao
+  //   prvi popunjeni susjed.
   row++;
 
   // ──────────────────────────────────────────
@@ -599,9 +611,28 @@ export async function addActivitiesSheetsTo(
   // ──────────────────────────────────────────
   // SECTION 2: EVENT DATA
   // ──────────────────────────────────────────
+  // /!\ POSVE PRAZAN REDAK ISPOD NASLOVA — OMEDUJE TEKUCU REGIJU (S143).
+  //   Excelov sort iz vrpce (i `Ctrl+A`) ne gleda `autoFilter` nego TEKUCU
+  //   REGIJU, a nju omeduje samo redak bez ijedne popunjene celije. Naslov
+  //   `EVENT DATA:` stoji u koloni A neposredno iznad zaglavlja, pa je —
+  //   jedna jedina celija — spajao SAZETKE (`Max/Min/Summ`, a u delta fileu i
+  //   `stanje` / `u banci pise` / `razlika`) s podacima. Sort je time gutao
+  //   upravo ono cime se rezultat mjeri.
+  //   Izmjereno na PROD fileu 20.09.2026.: nakon sorta je zaglavlje zavrsilo u
+  //   retku 19, a kontrolni blok se razasuo medu retke.
+  //   ⚠ Isti razred kao jaz ISPOD praznih redaka (v. `gapRow` u `deltaSheet`):
+  //     jedan popunjen redak u jazu ponisti cijelu zastitu, bez ijedne poruke.
+  //   ⚠ Redak je bezopasan za uvoz: parser trazi zaglavlje skeniranjem kolone A
+  //     za `event_id`, ne po fiksnom pomaku.
+  //   ⚠ ISPOD naslova, a ne iznad njega, i to nije svejedno: regija koja POCINJE
+  //     naslovom `EVENT DATA:` (jedna celija u koloni A) navela bi Excel da
+  //     NJEGA proglasi zaglavljem — pa bi PRAVO zaglavlje sortirao kao podatak i
+  //     ono bi zavrsilo usred redaka. Ovako regija pocinje samim zaglavljem, pa
+  //     se sort iz vrpce ponasa isto kao sort iz strelice filtra.
   ws.getCell(row, 1).value = 'EVENT DATA:';
   ws.getCell(row, 1).font  = TITLE_FONT;
   row++;
+  row++;   // <- namjerno prazan; v. gore
 
   // Header row
   const eventHeaderRow = row;

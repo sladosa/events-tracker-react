@@ -387,6 +387,22 @@ console.log('Sort ne smije moci progutati sekciju (S143):');
   ok('a prazni retci su i dalje neposredno uz glavni blok (jaz nije narastao)',
      !rowIsEmpty(ws, blankTo), `redak ${blankTo} je prazan`);
 
+  // /!\ ISTI JAZ POSTOJI I IZNAD ZAGLAVLJA, i ondje je steta veca: naslov
+  //   `EVENT DATA:` (jedna celija u koloni A) spajao je SAZETKE — a u delta
+  //   fileu i `stanje` / `u banci pise` / `razlika` — s podacima, pa je sort
+  //   gutao upravo ono cime se rezultat mjeri. Izmjereno na PROD fileu
+  //   20.09.2026.: zaglavlje je zavrsilo u retku 19.
+  // /!\ Prazan redak je ISPOD naslova, ne iznad: regija koja POCINJE naslovom
+  //   navela bi Excel da njega proglasi zaglavljem i pravo zaglavlje sortira
+  //   kao podatak.
+  ok('iznad zaglavlja stoji POSVE prazan redak', rowIsEmpty(ws, hdr - 1),
+     `redak ${hdr - 1} nije prazan`);
+  ok('a naslov EVENT DATA je iznad njega (regija pocinje zaglavljem)',
+     String(ws.getCell(hdr - 2, 1).value ?? '').includes('EVENT DATA'),
+     `got ${ws.getCell(hdr - 2, 1).value}`);
+  ok('sazeci su time IZVAN regije podataka',
+     !rowIsEmpty(ws, hdr - 3), `redak ${hdr - 3} je prazan`);
+
   // ── (b) rasponi racunanja ne ovise o redoslijedu ──────────────────────
   // /!\ Fiksni raspon `..blankTo` pretpostavlja da su bas ti retci glavni blok.
   //   Sort tu pretpostavku obori, a formula nastavi racunati — pa brojka
@@ -425,14 +441,33 @@ console.log('Sort ne smije moci progutati sekciju (S143):');
   //   cijelog lista i sortira, razasut ce sekciju), pa mora barem ne proci
   //   tiho. I poruka nosi RJESENJE — upozorenje bez izlaza se nauci
   //   otklikati jednako brzo kao i ono koje laze.
-  let mixF = '';
+  let mixF = '', mixR = 0, mixC = 0;
   for (let r = 1; r < hdr; r++) {
     for (let c = 1; c <= ws.columnCount; c++) {
       const f = String(raw(ws, r, c)?.formula ?? '');
-      if (f.includes('POMIJE')) mixF = f;
+      if (f.includes('POMIJE')) { mixF = f; mixR = r; mixC = c; }
     }
   }
   ok('postoji detektor pomijesanog rasporeda', mixF !== '', 'nema ga');
+
+  // /!\ Poruka je duga; uz brojke bi je odrezao prvi popunjeni susjed, a lijevo
+  //   poravnana bjezi desno s ekrana. Zato VLASTITI redak + DESNO poravnanje:
+  //   tada se prelijeva ulijevo preko praznine i cita se cijela (Sasin
+  //   prijedlog nakon sto ju je vidio odrezanu).
+  let inRow = 0;
+  for (let c = 1; c <= ws.columnCount; c++) {
+    const v = ws.getCell(mixR, c).value;
+    if (v !== null && v !== undefined && String(v) !== '') inRow++;
+  }
+  ok('poruka ima VLASTITI redak (nista drugo u njemu)', inRow === 1, `got ${inRow} celija`);
+  ok('poravnata je DESNO, pa se prelijeva ulijevo',
+     ws.getCell(mixR, mixC).alignment?.horizontal === 'right',
+     `got ${JSON.stringify(ws.getCell(mixR, mixC).alignment)}`);
+  // /!\ Redak IZNAD nje mora ostati posve prazan: on odvaja ATTRIBUTE LEGEND,
+  //   a legenda je uvozu izvor mapiranja stupaca. Upise li se u njega, sort iz
+  //   vrpce moze prevrnuti legendu i uvoz procita krive stupce.
+  ok('iznad poruke je i dalje POSVE prazan redak (legenda ostaje odvojena)',
+     rowIsEmpty(ws, mixR - 1), `redak ${mixR - 1} nije prazan`);
   ok('detektor je FORMULA, pa nestaje sam kad se list poslozi',
      mixF.startsWith('IF(COUNTIFS('), `got ${mixF.slice(0, 40)}`);
   ok('poruka nosi RJESENJE, ne samo dijagnozu',

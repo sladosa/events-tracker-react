@@ -155,7 +155,26 @@ function findEventDataSection(ws: ExcelJS.Worksheet, afterRow: number): { titleR
     return { titleRow: -1, headerRow: -1, error: 'Could not find EVENT DATA section. Invalid file format.' };
   }
 
-  return { titleRow, headerRow: titleRow + 1, error: '' };
+  // ⚠ ZAGLAVLJE SE TRAZI PO SADRZAJU, NE PO POMAKU OD NASLOVA (S143).
+  //   Do tada je vrijedilo `titleRow + 1`. Cim je izmedu naslova i zaglavlja
+  //   umetnut prazan redak (da omedi tekucu regiju i tako zaustavi sort iz
+  //   vrpce), taj bi pomak pokazao na PRAZAN redak, a pravo zaglavlje bi se
+  //   citalo kao PRVI PODATKOVNI REDAK — dakle uvoz bi ponudio da upise redak
+  //   ciji je `event_id` doslovno "event_id". Uhvatio test, ne razmisljanje.
+  //   Skeniranje radi i za stare fileove (ondje je zaglavlje odmah ispod
+  //   naslova), pa se fileovi izvezeni prije ove promjene i dalje uvoze.
+  //   ⚠ Granica od 5 redaka je namjerna: veci razmak znaci da file nije ono
+  //     sto mislimo, i bolje je pasti s porukom nego pogoditi redak.
+  for (let r = titleRow + 1; r <= titleRow + 5; r++) {
+    if (cellStr(ws.getRow(r).getCell(1).value).trim() === 'event_id') {
+      return { titleRow, headerRow: r, error: '' };
+    }
+  }
+
+  return {
+    titleRow, headerRow: -1,
+    error: 'Ne nalazim redak zaglavlja (kolona A = "event_id") ispod naslova EVENT DATA.',
+  };
 }
 
 // ─────────────────────────────────────────────
