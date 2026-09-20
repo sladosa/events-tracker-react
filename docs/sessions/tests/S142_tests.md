@@ -50,7 +50,7 @@ vrijedi kako je zapisano, `n` bi bio veći, a iznos bi se razišao.
 
 ---
 
-## T-S142-1 — ⬜ Faza 1 uživo: prozor kreće dan poslije predzadnje potvrde
+## T-S142-1 — ✅ S143 — Faza 1 uživo: prozor kreće dan poslije predzadnje potvrde
 
 **Preduvjet:** `npm run dev:prod` (⚠ provjeri banner — TEST nema ova sidra).
 
@@ -79,7 +79,7 @@ upravo je tih ~47 redaka ono što je dosad **tiho nestajalo**.
 
 ---
 
-## T-S142-2 — ⬜ Kolona `Potvrda` i sivi ton u stvarnom fileu
+## T-S142-2 — ✅ S143 — Kolona `Potvrda` i sivi ton u stvarnom fileu
 
 U fileu iz T-S142-1:
 
@@ -95,7 +95,7 @@ oznaka koja nosi **punu** bilješku od 90 znakova umjesto kratkog oblika.
 
 ---
 
-## T-S142-3 — ⬜ Oznaka je živa, ne zamrznuta
+## T-S142-3 — ✅ S143 — Oznaka je živa, ne zamrznuta
 
 Ovo mjeri ono zbog čega je kolona **formula**, a ne upisan tekst.
 
@@ -111,7 +111,7 @@ razdoblja — a upozorenje koje laže korisnik nauči otklikati bez čitanja.
 
 ---
 
-## T-S142-4 — ⬜ Prazni retci: topao ton i oznaka na unos u prošlost
+## T-S142-4 — ✅ S143 — Prazni retci: topao ton i oznaka na unos u prošlost
 
 1. Prazni retci za unos moraju biti u **toplom (žućkastom)** tonu — vidljivo različitom od
    **sivog** kojim su označeni potvrđeni retci.
@@ -126,7 +126,7 @@ unos u već potvrđeno razdoblje može uhvatiti **prije** uvoza.
 
 ---
 
-## T-S142-5 — ⬜ Sort ne rasparuje kolonu
+## T-S142-5 — ✅ S143 — Sort ne rasparuje kolonu
 
 1. U fileu klikni autofilter na koloni **`Datum`** → sortiraj **silazno**.
 
@@ -137,7 +137,7 @@ unos u već potvrđeno razdoblje može uhvatiti **prije** uvoza.
 
 ---
 
-## T-S142-6 — ⬜ Rupe među sidrima: panel upozori PRIJE izvoza
+## T-S142-6 — ✅ S143 — Rupe među sidrima: panel upozori PRIJE izvoza
 
 1. U Export modalu postavi **Prozor = 2**.
 
@@ -153,7 +153,7 @@ označenu kao **„do N"**; preko **200** brojka pocrveni uz *„file će biti v
 
 ---
 
-## T-S142-7 — ⬜ ⚠ Roundtrip na PROD-u: uvoz delta filea s novom kolonom
+## T-S142-7 — ✅ S143 — ⚠ Roundtrip na PROD-u: uvoz delta filea s novom kolonom
 
 **Ovo je jedini test koji PIŠE u bazu** — Sašina ruka, ne moja.
 

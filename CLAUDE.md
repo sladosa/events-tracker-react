@@ -786,6 +786,51 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ Kolona mora ući u `auto_filter.ref` (korisnik sortira čim doda stariji datum), a
   `Provjeri` se zato pomaknuo na `ctrlCol + 2`: isti stupac s dva zaglavlja čitao bi se
   kao jedan stupac s dva značenja.
+- **⚠ EXCELOV SORT IZ VRPCE NE GLEDA `autoFilter` NEGO TEKUĆU REGIJU** (S143, Sašin nalaz).
+  `Data → A↓Z` i `Ctrl+A` uzimaju **current region**, a nju omeđuje **samo redak bez ijedne
+  popunjene ćelije** — `auto_filter.ref` na to ne utječe. Na delta listu takvog retka nije
+  bilo **nijednog**: kontrolu košare je od praznih redaka dijelio samo njezin vlastiti blok,
+  a sažetke od podataka **jedna jedina ćelija** — naslov `EVENT DATA:` u koloni A. Posljedica
+  izmjerena na PROD fileu 20.09.2026.: sort je povukao kartične retke **usred glavnog bloka**,
+  a sume košare i razdjelnik razasuo među podatke; drugim sortom je **zaglavlje završilo u
+  retku 19**, dakle nestali su `stanje` / `u banci piše` / `razlika` — baš ono čime se
+  rezultat mjeri.
+  Zatvoreno u **tri sloja**: (a) posve prazan redak ispod praznih redaka **i** između naslova
+  i zaglavlja (`gapRows = blankRows + 5`); (b) `SUMIFS` rasponi sežu do kraja sekcije
+  (`calcTo`) pa brojke ne ovise o redoslijedu; (c) detektor u zaglavlju koji pali kad se u
+  glavnom bloku nađe redak koji ne miče saldo.
+  ⚠ **Prazan redak ide ISPOD naslova `EVENT DATA:`, nikad iznad** — regija koja *počinje*
+  naslovom navela bi Excel da **njega** proglasi zaglavljem i pravo zaglavlje sortira kao
+  podatak.
+  ⚠ **Jedan popunjen znak u jazu poništava cijelu zaštitu, bez ijedne poruke.** Zato to
+  čuvaju tvrdnje (`deltaSheetLayout`), ne komentari.
+  ⚠ **Uvoz je zaglavlje tražio kao `titleRow + 1`** i s novim praznim retkom bi pravo
+  zaglavlje pročitao kao **prvi podatkovni redak** (ponudio bi upis retka čiji je `event_id`
+  doslovno `event_id`). Sada skenira kolonu A za `event_id`; skeniranje prolazi i za fileove
+  izvezene ranije. **Svaki budući pomak u zaglavlju lista mora provjeriti parser.**
+  ⚠ **Zabrana sorta (`ws.protect`) je ODBIJENA**, iako bi zatvorila sva tri načina: gasi
+  `+`/`−` gumbe **grupiranih stupaca**, a grupe su srce `Kokin_format` profila.
+  ⚠ **Ostaje neprevenirano:** ručno označen dio stupaca + Sort bez *„Expand"* rasapare stupce
+  od redaka. Brana je **pregled prije uvoza** (nabraja svaku promjenu), ne file.
+
+- **⚠ SOLID FILL PREKRIVA EXCELOVE GRIDLINE-OVE** (S143). Blok obojen `pattern: 'solid'`
+  izgleda kao jedna ploha, ne kao retci s ćelijama — pa je format kojim su prazni retci
+  istaknuti kao **jedino mjesto gdje čovjek upisuje** njima oduzeo raster koji taj unos čini
+  čitljivim. Vrijedi za svaku buduću obojenu zonu: **boja traži i okvir.**
+  ⚠ Okvir je **struktura**, ton je **značenje** — zato svijetlosivi (`FFCCCCCC`), a ne treća
+  topla nijansa; kremasti („ovdje pišeš") i sivi („ne diraj") moraju ostati jedina dva sloja.
+
+- **⚠ UPOZORENJE BEZ IZLAZA SE NAUČI OTKLIKATI** jednako brzo kao i ono koje laže (Sašino
+  pravilo, S143). Poruka mora reći **što se dogodilo i što sad** — detektor pomiješanog
+  rasporeda zato nosi *„novi izvoz će srediti"*, a ne samo dijagnozu.
+  ⚠ I obrnuto, isti dan izmjereno dvaput: **provjera koja se ne može učiniti ispravnom miče
+  se, ne preformulira.** Uvozna provjera `created_at >= session_start` uspoređivala je sate s
+  **različitih dana** (file nosi samo doba dana), a hvatala je mehanizam samog appa
+  (`findFreeSessionStart` traži slobodnu minutu) — 10 od 8.009 redaka, ali **8 od tih 10 u
+  jednom delta prozoru**. Poruka joj je uz to tvrdila *„Row will still be imported"* za retke
+  koji se **preskaču** (8 od 8). Isto je maknut `totalCount` iz žutog okvira izvoza: *„ne
+  izvozi svih 268"* za file koji nosi **1.388**.
+
 - **Kontrola košare ide IZNAD sekcije** (S126). Sekcija je zadnji blok i **raste**
   (alat joj dopisuje retke s kartičnog izvoda), pa bi se kontrola ispod nje pri
   svakom dopisivanju morala pomicati zajedno s rasponom svoje formule.

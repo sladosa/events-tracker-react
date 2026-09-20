@@ -18,6 +18,41 @@
 
 ---
 
+## S143 — sort je mogao progutati sve, i dva upozorenja su lagala (2026-09-20)
+
+⚠ **Sesija bez plana — svaki zahvat je proizasao iz Sasinog mjerenja uzivo.** Sortirao je
+delta file i karticni retci su zavrsili usred glavnog bloka; drugo mjerenje je pokazalo da
+isto vrijedi **iznad** zaglavlja, gdje sort guta bas ono cime se rezultat mjeri.
+
+⚠ **Izmjereno: Excelov ribbon sort i `Ctrl+A` ne gledaju `autoFilter` nego TEKUCU REGIJU**,
+a nju omeduje samo redak **bez ijedne** popunjene celije — takvog na listu nije bilo.
+
+**Detalji testova:** [tests/S143_tests.md](tests/S143_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S143-1 | Okvir praznih redaka (`solid fill` guta gridline-ove) | ✅ S143 uzivo + test (3 sabotaze) |
+| T-S143-2 | Uvoz vise ne prijavljuje `created_at < session_start` | ✅ S143 uzivo + test. Izmjereno: 10/8.009 redaka, ali **8 od 10 u jednom prozoru**; poruka je lagala za **8 od 8** |
+| T-S143-3 | Izvoz vise ne tvrdi „ne izvozi svih N dogadjaja" | ✅ S143 uzivo — na `Prozor = 2` filtar 268, prozor **1.388** |
+| T-S143-4 | ⭐ Sort vrpcom / `Ctrl+A` vise ne doseze sekciju (Test A) | ✅ S143 uzivo — odabir `A25:AB100`, sazeci i kosara izvan; `razlika 0,00`, bez upozorenja |
+| T-S143-5 | ⭐ Nasilni sort preko sekcije (Test B) | ✅ S143 uzivo — `razlika` ostala **0,00**, crveno upozorenje osvanulo, **sazeci ostali na mjestu**. `Σ kosara` pao s 973,96 na 1.024,96 (ocekivano) |
+| T-S143-6 | ⭐ **Stari file** (zaglavlje odmah ispod naslova) se i dalje uvozi | ⬜ ⚠ uvezi file izvezen **prije 20.09.2026.** Citanje je pokriveno automatski (3 tvrdnje nad fileom kojem je prazan redak uklonjen), ali uzivo nije probano — a Koki takvi fileovi lezakuju danima |
+| T-S143-7 | `Potvrda` suzena na 12; `Provjeri` u vidljivom polju | ✅ S143 uzivo + test (2 sabotaze) |
+| T-S143-8 | Sivi ton potvrdjenih redaka **postoji** i **uvjetni** je | ✅ S143 — dotad ga **nijedna tvrdnja nije mjerila**; sada 3 tvrdnje + 2 sabotaze |
+| T-S143-9 | `razlika` bez `LOOKUP` — zbroj cijelog prozora, neovisan o redoslijedu | ✅ S143 test |
+| T-S143-10 | Detektor pomijesanog rasporeda: formula, nosi rjesenje, gleda samo glavni blok | ✅ S143 test (2 sabotaze) |
+
+⚠ **Sto NIJE zatvoreno, a tice se iste teme:** redak upisan u potvrdjeno razdoblje i dalje
+proizvodi **samo oznaku**, ne broj. Sasin nalaz uz T-S142-4. To je **faza 3**
+(`DELTA_WINDOW_SPEC`), i ona je sljedeci posao.
+
+⚠ **Ostaje i dalje neprevenirano:** rucno oznacen dio stupaca + Sort bez „Expand" rasapare
+stupce od redaka. Nijedna promjena filea to ne sprjecava; brana je **pregled prije uvoza**,
+koji nabraja svaku promjenu. Zabrana sorta (`ws.protect`) je **odbijena** — gasi `+`/`-`
+gumbe grupiranih stupaca, a grupe su srce `Kokin_format` profila.
+
+---
+
 ## S142 — sidro prestaje biti rez, postaje oznaka (2026-09-19)
 
 ⚠ **Prva sesija koja dira delta prozor otkad je S126 zamku lijecio disciplinom**
@@ -33,10 +68,10 @@ redak vec potvrden"*, ali uvoz ga i dalje prihvaca bez pitanja — to je **faza 
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S142-1 | ⭐ Faza 1 uzivo: panel kaze `Od 31.07.2026. … pociva na potvrdi 30.07. = 13.815,33`; file nosi otvarajuce stanje **`13.815,33` u cent** i biljesku *„Nije izracunato"* | ✅ **S143 (uzivo, PROD)** — zatvoreno na oba prozora. `Prozor = 1`: panel `Od 31.07.2026. (51 dana) · pociva na potvrdi 30.07.2026. = 13.815,33`, file `stanje 30.07.2026. -> 13.815,33`. `Prozor = 0`: **14 dana** (12 izmjereno 18.09. + 2), otvarajuce stanje `12.772,86` = **doslovno iznos sidra**, glavni blok **retci 24-41 = 18**, sto se poklapa s plocicinih *„18 promjena poslije"*. ⭐ **Tri neovisna puta daju isti broj:** `12.772,86 + 1.439,52 - 1.928,06 = 12.284,32` = zadnji kontrolni redak = **plocica u appu** ⇒ Excelov `SUMIFS` i Postgresov RPC se slazu u cent. Usput vidjeno uzivo i ono sto je dotad cuvao samo jedinicni test: uz `Prozor = 0` **kolone `Potvrda` uopce nema** (prozor krece iza zadnje potvrde) |
-| T-S142-2 | Kolona `Potvrda`: retci do 06.09. nose kratku oznaku i **sivi ton**, poslije nje prazno | ⚠ **✅ oznaka S143 (uzivo, tezi slucaj od trazenog)**: na `Prozor = 2` file nosi **dva** sidra — do 30.07. `potvrdjeno 30.07. · ZABA_2026-07.pdf`, od 02.08. `potvrdjeno 06.09. · ekran bankovne aplikacije`, od 07.09. **prazno**. Redak datiran tocno na dan sidra nosi oznaku (granica je „strogo nakon"). ⬜ Ostaje **jedan pogled na sivi ton u Excelu** — da je CF upisan sada cuva test (S143, 3 tvrdnje + 2 sabotaze), ali da ga Excel i **prikaze** nije gledano |
-| T-S142-3 | ⭐ Oznaka je **ziva**: promjena datuma retka je gasi istog trena, povratak je vraca | ⬜ ⚠ ovo mjeri zasto je kolona FORMULA a ne upisan tekst |
-| T-S142-4 | ⭐ Prazan redak + datum u proslost ⇒ oznaka iskoci sama; topao ton razlicit od sivog | ⬜ ⚠ jedini trenutak u kojem se unos u potvrdeno razdoblje hvata PRIJE uvoza |
-| T-S142-5 | Sort po datumu: oznaka putuje sa svojim retkom (kolona je u `auto_filter.ref`) | ⬜ |
+| T-S142-2 | Kolona `Potvrda`: retci do 06.09. nose kratku oznaku i **sivi ton**, poslije nje prazno | ✅ **S143 (uzivo, tezi slucaj od trazenog)** — na `Prozor = 2` file nosi **dva** sidra: do 30.07. `potvrdjeno 30.07. · ZABA_2026-07.pdf`, od 02.08. `potvrdjeno 06.09. · ekran bankovne aplikacije`, od 07.09. **prazno**. Redak datiran tocno na dan sidra nosi oznaku (granica je „strogo nakon"). Sivi ton potvrdjen; da je CF upisan sada cuvaju **3 tvrdnje + 2 sabotaze** (dotad ga nijedna nije mjerila) |
+| T-S142-3 | ⭐ Oznaka je **ziva**: promjena datuma retka je gasi istog trena, povratak je vraca | ✅ **S143 (uzivo, PROD)** |
+| T-S142-4 | ⭐ Prazan redak + datum u proslost ⇒ oznaka iskoci sama; topao ton razlicit od sivog | ✅ **S143 (uzivo, PROD)** — upisan `2026-08-20` u prazan redak, oznaka iskocila sama. ⚠ Sasin nalaz uz test: oznaka je **sve sto se tada dogodi** — broj koji bi pokazao razilazenje sa sidrom je **faza 3**, i nje jos nema |
+| T-S142-5 | Sort po datumu: oznaka putuje sa svojim retkom (kolona je u `auto_filter.ref`) | ✅ **S143 (uzivo, PROD)** — putuje. ⚠ Isti potez je otkrio da sort moze progutati **cijelu sekciju i sazetke** — v. sekciju S143 |
 | T-S142-6 | Rupe medu sidrima: Prozor = 2 ⇒ panel ispise ~**625 dana** i brojku PRIJE izvoza; Prozor = 9 na RF-u ⇒ *„ima samo 3 potvrde"* | ✅ **S143 (uzivo, PROD)** — oba ruba. `Prozor = 2` na ZABA-i ⇒ **627 dana**, `pociva na potvrdi 01.01.2025. = 3.054,41`, *„u prozoru su jos 2 potvrde"*, prag opalio na **1.388**, izvoz prosao. **Clamp**: `Prozor = 9` na RF-u ⇒ *„Racun ima samo 3 potvrde — prozor krece od najstarije"*, sidro `31.12.2022. = 12.712,28`, start `01.01.2023.`, **1.359 dana** (1.096 za 2023-25 + 263 za 2026., u dan), 2.305 dogadjaja uz crveno upozorenje. ⚠ Brojka i poruka dolaze **prije** izvoza, sto je i svrha — file od 1.359 dana nije ni preuzet |
 | T-S142-7 | ⚠ **Pise u bazu (Sasa):** uvoz delta filea s novom kolonom ⇒ **1 Modify**, bez poruke o nepoznatoj koloni | ✅ **S143 (uzivo, PROD)** — `0 created / 3 updated / 99 unchanged`, **nijedne** poruke o nepoznatoj koloni. Tri izmjene su bile Sasine (izmjereno prije uvoza: nijedan od tri retka nije dirnut u bazi nakon izvoza ⇒ file je bio noviji, nista se nije vratilo unatrag) |
 | T-S142-8 | Izbor prozora: K, clamp, fallback bez sidra, sort sidara | ✅ S142 — `deltaWindow.test.mjs`, **25 tvrdnji**, protuprovjereno s 3 sabotaze |

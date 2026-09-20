@@ -5522,6 +5522,119 @@ roundtripom.
 ⚠ Usput nađena mina: `isRequired` se preko redaka spaja s **OR**, a `hiddenInAdd` se čita
 **samo iz prvog retka** — S131 je to popravio za susjednu zastavicu i propustio ovu. Danas ne
 grize; u Backlogu.
+## S143 — sort je mogao progutati sve, i dva upozorenja su lagala (2026-09-20)
+
+**Sesija bez plana: svaki zahvat je proizasao iz Sasinog mjerenja uzivo na PROD-u.**
+Zatvoreni su S142 testovi (svih sedam), a usput su nadjena tri kvara koja nitko nije trazio.
+
+### 1. Okvir praznih redaka — `solid fill` guta gridline-ove
+
+Sasin zahtjev: prazni retci imaju zuckast ton ali izgledaju kao jedna ploha. Uzrok je
+mehanicki — `pattern: 'solid'` **prekriva Excelove gridline-ove**, pa je format koji te
+retke istice kao mjesto za unos istima oduzeo raster. Povijesni retci ga imaju
+(`THIN_BORDER`), prazni su bili jedini dio lista bez granica.
+Rijeseno svijetlosivim okvirom (`FFCCCCCC`) u **istom rasponu kao ton**.
+⇒ **Okvir je struktura, ton je znacenje** — nije uvedena treca topla nijansa, jer kremasti
+(„ovdje pises") i sivi („ne diraj") moraju ostati jedina dva sloja.
+
+### 2. Dva upozorenja koja su lagala — maknuta, ne preformulirana
+
+**Uvoz:** provjera `created_at >= session_start`. Izmjereno da se **ne moze uciniti
+ispravnom**: file nosi `session_start` kao `HH:MM` i `created_at` kao `HH:mm:ss`, dakle samo
+doba dana, a dva sata s razlicitih dana nisu poredivi. Unos unatrag (biracem datuma iz S117,
+napravljenim bas za Financije) prijavljivao bi savrseno ispravan redak.
+A ono sto je hvatala je **mehanizam samog appa**: `findFreeSessionStart` trazi slobodnu
+minutu jer `useActivities` grupira po `session_start`u; rata modal isto pomice svaku ratu.
+Izmjereno na PROD-u: **10 od 8.009** redaka (0,1 %), ali **8 od tih 10 u jednom delta
+prozoru** — dakle svaki buduci uvoz nosi saku njih.
+I poruka je lagala: petlja je isla po SVIM parsiranim retcima, **prije** `row_hash`
+klasifikacije, pa je nepromijenjenima tvrdila *„Row will still be imported"*. Izmjereno:
+**8 od 8** prijavljenih bilo je medju 99 nepromijenjenih.
+
+**Izvoz:** zuti okvir je pisao *„ne izvozi svih N dogadjaja"* uz `totalCount` (broj koji hvata
+**filtar**). Tocno dok je prozor bio stegnut sidrom; otkad se mjeri sidrima (S142) prozor ga
+moze prerasti — izmjereno na `Prozor = 2`: filtar **268**, prozor **627 dana i do 1.388**.
+Recenica je tvrdila **suprotno od istine**, o fileu koji tek treba izaci.
+
+### 3. Rupa nadjena usput: sivi ton nije imao nijednu tvrdnju
+
+Test je mjerio da se KREMASTI ton **razlikuje** od sive konstante, a ne da je sivi uopce
+nanesen. Obrisi ga i test bi i dalje prolazio — dakle jedan od tri sloja zastite proslosti
+(SPEC §5) nije imao branu. Nadjeno pri provjeri T-S142-2, jer se sa slike ne da razaznati
+je li ton ondje.
+
+### 4. ⭐ Sort je mogao progutati sekciju — a onda se pokazalo i sazetke
+
+Sasa je sortirao i karticni retci su zavrsili **usred glavnog bloka**, a sume kosare i
+razdjelnik razasuti medju podatke. Izmjereno zasto: **Excelov ribbon sort i `Ctrl+A` ne
+gledaju `autoFilter`** (koji ispravno zavrsava na zadnjem praznom retku) **nego TEKUCU
+REGIJU**, a nju omeduje samo redak bez ijedne popunjene celije — i takvog retka na listu
+nije bilo nijednog. Kontrola kosare je sjedila odmah ispod praznih redaka i premoscivala jaz.
+
+Odgovor u **tri sloja**, po Sasinom trazenju da upozorenje nosi i rjesenje:
+
+- **(a) Sprijeci** — jedan posve prazan redak (`gapRows` 4 → 5, na oba mjesta).
+- **(b) Ucini bezopasnim** — `SUMIFS` rasponi seze do kraja sekcije (`calcTo`), pa rezultat
+  ne ovisi o redoslijedu. Sto se broji odlucuju **uvjeti plocice**, ne blok u kojem je redak
+  ispisan — isto pravilo po kojem broji RPC iza plocice, pa se ne mogu razici.
+  Usput popravljena `razlika`: trazila je „zadnju nepraznu celiju", a to je „zadnji redak NA
+  LISTU" — isto sto i „najkasniji datum" samo dok je list sortiran.
+- **(c) Reci naglas** — detektor u zaglavlju pali kad se u glavnom bloku nadje redak koji ne
+  mice saldo, i **nosi rjesenje** (*„novi izvoz ce srediti"*), jer se upozorenje bez izlaza
+  nauci otklikati jednako brzo kao i ono koje laze. Hvata i zapisanu gresku iz S126:
+  karticni redak upisan u prazan redak glavnog bloka.
+
+**Odbijena zabrana sorta** (`ws.protect` sa `sort: false`): zatvorila bi sva tri nacina, ali
+gasi `+`/`-` gumbe **grupiranih stupaca**, a grupe su srce `Kokin_format` profila. Trampa bi
+bila losija od problema.
+
+**Pa je Sasino sljedece mjerenje pokazalo da isto vrijedi IZNAD zaglavlja:** nakon sorta je
+zaglavlje zavrsilo u **retku 19**, jer naslov `EVENT DATA:` — jedna celija u koloni A —
+spaja sazetke (`Max/Min/Summ` + `stanje` / `u banci pise` / `razlika`) s podacima. Dakle sort
+je gutao **upravo ono cime se rezultat mjeri**. Prazan redak je zato umetnut **izmedju
+naslova i zaglavlja**, ne iznad naslova: regija koja POCINJE naslovom navela bi Excel da
+njega proglasi zaglavljem i **pravo zaglavlje sortira kao podatak**.
+
+⚠ **I to je odmah ugrizlo na mjestu koje nisam predvidio:** uvoz je zaglavlje trazio kao
+`titleRow + 1`, pa bi sada pokazao na prazan redak, a pravo zaglavlje citao kao prvi
+podatkovni redak — ponudio bi upis retka ciji je `event_id` doslovno `"event_id"`.
+**Uhvatio test, ne razmisljanje**: moj komentar je tvrdio da parser skenira, a nije. Sada
+skenira (do 5 redaka ispod naslova), pa prolaze **oba oblika** — fileovi izvezeni prije
+danas imaju zaglavlje odmah ispod naslova, a Koki takvi lezakuju danima.
+
+### 5. Sirina kolone `Potvrda`
+
+Sasin prijedlog: siroka `Potvrda` odguruje `Provjeri` izvan ekrana, a tekst oznake se ionako
+prelijeva udesno preko praznih celija. Suzena s 30 na **12**.
+⚠ Sigurno **samo** zato sto se ta dva stupca nikad ne pune u istom retku (`Potvrda` na glavni
+blok i prazne retke, `Provjeri` samo na sekciju) — to je sada tvrdnja, ne biljeska.
+⚠ Prva verzija te tvrdnje **nije mogla pasti**: stavljena je uz ostale `Potvrda` provjere, a
+ondje se sheet gradi bez sekcije pa kolone `Provjeri` nema i sudar je nemoguc po
+konstrukciji. Razred iz S120; premjestena u vlastiti blok s **obje** kolone.
+
+### Zatvoreni S142 testovi (svi uzivo na PROD-u)
+
+| | |
+| --- | --- |
+| T-S142-1 | oba prozora; ⭐ **tri neovisna puta daju isti broj u cent**: `12.772,86 + 1.439,52 − 1.928,06 = 12.284,32` = zadnji kontrolni redak = **plocica u appu**. Usput vidjeno da uz `Prozor = 0` kolone `Potvrda` uopce nema |
+| T-S142-2 | oznaka + sivi ton; na `Prozor = 2` **dva** sidra, svako oznacava svoj dio, iza zadnjeg prazno |
+| T-S142-3 | oznaka je ziva — promjena datuma je gasi |
+| T-S142-4 | prazan redak + datum unatrag ⇒ oznaka iskoci sama |
+| T-S142-5 | sort ⇒ oznaka putuje sa svojim retkom |
+| T-S142-6 | `Prozor = 2` ⇒ 627 dana; **clamp** na RF-u: *„ima samo 3 potvrde"*, 1.359 dana (u dan), 2.305 dogadjaja uz upozorenje — sve **prije** izvoza |
+| T-S142-7 | uvoz filea s novom kolonom: `0 / 3 / 99`, bez poruke o nepoznatoj koloni |
+
+⚠ Prije tog uvoza je **izmjereno** da nijedan od tri retka nije dirnut u bazi nakon izvoza
+(`edited_at` najnoviji 19.09. 14:34, izvoz 17:32) — dakle file je bio noviji i jucerasnji
+uvoz nije vratio nista unatrag. To je jedina prava opasnost uvoza starog filea.
+
+### Brojke sesije
+
+`deltaSheetLayout` 49 → **80** tvrdnji, `importForeignRows` 27 → **33**.
+**Trinaest sabotaza** kroz sesiju; svaka promjena protuprovjerena prije commita.
+Sedam commitova na `test-branch`; `main` netaknut, deploy nije trazen.
+
+
 ## S142 — sidro prestaje biti rez, postaje oznaka (2026-09-19)
 
 **`DELTA_WINDOW_SPEC` faze 1 i 2.** Sesija je zatvorila zamku koju je S126 zapisao i
