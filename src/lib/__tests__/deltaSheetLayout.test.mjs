@@ -303,6 +303,9 @@ console.log('Kolona „Potvrda" -- sidro UNUTAR prozora (glavni blok 02.-04.08.)
   ok('kolona Potvrda je UNUTAR autofiltera', colNum(ws.autoFilter) >= conf,
      `got ${ws.autoFilter} -> ${colNum(ws.autoFilter)}, conf ${conf}`);
 
+  ok('Potvrda je uska (tekst se prelijeva, ne siri stupac)',
+     ws.getColumn(conf).width <= 14, `got ${ws.getColumn(conf).width}`);
+
   // /!\ Prazni retci nose BLAG ton („ovdje pises"), koji se mora razlikovati od
   //     sivog tona potvrdjenih redaka („ovo ne diraj"). Stope li se, jace
   //     upozorenje gubi snagu -- a ono stiti proslost.
@@ -365,6 +368,43 @@ console.log('Bez sidra u prozoru -- kolone nema (nema sto reci):');
   ok('kolone Potvrda NEMA kad prozor krece iza zadnje potvrde', colOf('Potvrda') === 0);
   ok('autofilter tada staje na kontrolnom stupcu', colNum(ws.autoFilter) === ctrl,
      `got ${ws.autoFilter} -> ${colNum(ws.autoFilter)}, ctrl ${ctrl}`);
+}
+
+console.log('');
+console.log('Potvrda + Provjeri na ISTOM listu -- prelijevanje se ne smije sudariti (S143):');
+{
+  // /!\ OVAJ BLOK POSTOJI ZATO STO TVRDNJA INACE NE MOZE PASTI. Prvo sam je
+  //   stavio uz ostale `Potvrda` tvrdnje — ali ondje se sheet gradi BEZ
+  //   sekcije, pa kolone `Provjeri` nema i sudar je nemoguc po konstrukciji.
+  //   Test koji ne moze pasti ne cuva nista (S120).
+  const kos = [mk('k1','2026-09-01','ZABA','Mastercard',100,'Planiran','2027-01-11T12:00:00Z'),
+               mk('k2','2026-09-02','ZABA','Mastercard',55,'Izvrsen','2027-01-11T12:00:00Z')];
+  const { ws, hdr, ctrl } = await buildSheet(kos, {
+    dueSlug: 'datum_naplate',
+    anchorsInWindow: [{ confirmed_on: '2026-08-03', amount: 13900.00,
+                        note: 'ispisano stanje s izvoda · ZABA_2026-07.pdf' }],
+  });
+  const colOf = (n) => { for (let c=1;c<=ws.columnCount;c++) if (String(ws.getCell(hdr,c).value??'').trim()===n) return c; return 0; };
+  const conf = colOf('Potvrda');
+  ok('oba stupca postoje na istom listu', conf === ctrl + 1 && conf > 0, `conf ${conf}, ctrl ${ctrl}`);
+
+  // /!\ `Potvrda` je namjerno USKA (Sasin prijedlog): tekst se prelijeva udesno
+  //   preko praznih celija, a sirok stupac odguruje `Provjeri` izvan ekrana.
+  //   Prelijevanje je sigurno SAMO dok se ta dva stupca ne pune u istom retku —
+  //   `Potvrda` ide na glavni blok i prazne retke, `Provjeri` samo na sekciju.
+  //   Prestane li to vrijediti, tekst se reze, i to tiho.
+  const has = (v) => v != null && String(v) !== '';
+  let sudar = 0, potvrda = 0, provjeri = 0;
+  for (let r = hdr + 1; r <= ws.rowCount; r++) {
+    const a = raw(ws, r, conf), b = raw(ws, r, conf + 1);
+    if (has(a)) potvrda++;
+    if (has(b)) provjeri++;
+    if (has(a) && has(b)) sudar++;
+  }
+  ok('ima redaka s Potvrdom', potvrda > 0, `got ${potvrda}`);
+  ok('ima redaka s Provjeri (inace tvrdnja ne moze pasti)', provjeri > 0, `got ${provjeri}`);
+  ok('ali NIJEDAN redak nema oboje (prelijevanje je sigurno)', sudar === 0,
+     `${sudar} redaka ima oboje`);
 }
 
 console.log('');

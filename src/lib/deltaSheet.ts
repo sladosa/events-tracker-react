@@ -451,7 +451,16 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
       'Redak s oznakom je već unutar potvrđenog stanja: taj je iznos ušao u '
       + 'potvrdu i saldo na njega više ne čeka. Ispravak je i dalje moguć, ali '
       + 'razilazi potvrdu sa stvarnošću — provjeri je li stvarno pogrešan.');
-    ws.getColumn(confCol).width = 30;
+    // /!\ NAMJERNO USKA (Sasin prijedlog, S143). Tekst oznake je dug
+    //   (`potvrdjeno 06.09. · ZABA_2026-07.pdf`), ali se PRELIJEVA UDESNO preko
+    //   praznih celija, pa mu sirina stupca ne treba — a sirok stupac odguruje
+    //   `Provjeri` izvan ekrana.
+    //   ⚠ Prelijevanje je sigurno jer se `Potvrda` i `Provjeri` NIKAD ne pune u
+    //     istom retku: `Potvrda` ide na glavni blok i prazne retke
+    //     (`dataStart..blankTo`), `Provjeri` samo na retke sekcije. Prestane li
+    //     to vrijediti, tekst ce se rezati — zato to cuva tvrdnja u testu, a ne
+    //     samo ova biljeska.
+    ws.getColumn(confCol).width = 12;
 
     // Od NAJRANIJEG sidra prema najnovijem: redak pripada prvoj potvrdi koja ga
     // obuhvaća (sidro pokriva sve `<=` svog dana), ne posljednjoj.
