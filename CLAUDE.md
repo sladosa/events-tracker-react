@@ -786,6 +786,53 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ Kolona mora ući u `auto_filter.ref` (korisnik sortira čim doda stariji datum), a
   `Provjeri` se zato pomaknuo na `ctrlCol + 2`: isti stupac s dva zaglavlja čitao bi se
   kao jedan stupac s dva značenja.
+- **⚠ KONTROLNA TOČKA PO SIDRU: IZMJENA PRIJE SIDRA NE MIČE SALDO** (S143, faza 3). Saldo su
+  promjene **strogo nakon** sidra, pa redak upisan ili izmijenjen **prije** njega ne pomakne
+  nijednu brojku — ni pločicu, ni kontrolni stupac na dnu. Zato delta sheet u zaglavlju nosi
+  po jedan redak za svako sidro u prozoru: `ROUND(potvrđeno − (otvarajuće + Σ do dana sidra), 2)`,
+  zeleno na nuli.
+  ⚠ **Na prvom pokretanju našla je stvarnu grešku**, i to onu koju ništa drugo nije pokazivalo:
+  ZABA između 02.01.2025. i 30.07.2026. ne reproducira potvrdu — **45,94**. `promet_check` ju
+  je sveo na `2025-07 (+0,80)` i `2025-08 (−46,74)`, a usporedba s izvodom na **jedan fantomski
+  redak** `17.08.2025. −45,94` kojeg banka nema (parsiranje oba izvoda se poklapa s **ispisanim**
+  bankinim zbrojevima u cent). ⇒ **Ista razlika na više sidara znači da je greška starija od
+  najranijeg od njih.**
+  ⚠ **Retke zaglavlja rezervira PISAC** (`addActivitiesSheetsTo`, `extraHeaderRows`), ne
+  ukrašivač: `addDeltaHelpersTo` ne može umetnuti redak jer su položaji glavnog bloka i sekcije
+  do tada izračunati. Bez rezervacije blok sklizne gore i piše **preko praznog retka koji
+  odvaja `ATTRIBUTE LEGEND`**.
+  ⚠ **Relativna tvrdnja to ne hvata.** „Poruka je točno iznad prve točke" vrijedi i u
+  skliznutom rasporedu; treba **apsolutno** sidro (taj redak mora biti posve prazan).
+
+- **⚠ „JE LI REDAK VEĆ POTVRĐEN" PITAJU DVA MJESTA — pravilo je zato JEDNO** (S143, faza 4).
+  `src/lib/confirmedPeriod.ts` (`findCoveringAnchor`) hrani i kolonu `Potvrda` u sheetu i
+  update-guard na uvozu. Raziđu li se, sheet bi redak označio a uvoz ga pustio — i to
+  **nevidljivo**, jer izmjena retka prije sidra ne miče saldo.
+  ⚠ Granica je **`>=`** (sidro potvrđuje stanje **na kraju** svog dana), potvrda je **najranija**
+  koja redak obuhvaća (ne najnovija — ona bi za svaki stari redak imenovala isto sidro), i
+  vezana je uz **račun** (`group_value`); lažna oznaka na tuđem računu nauči korisnika da guard
+  preskače.
+  ⚠ Usporedba je **stringovna**: `new Date('2026-01-01')` je UTC ponoć, pa bi u zoni iza UTC-a
+  granica preskočila dan.
+  ⚠ **Guard NE ODBIJA uvoz** — odbijanje lomi „sve ide importom", a ispravak potvrđenog retka
+  je legitiman (isti dan nađen jedan takav). Traži **vlastitu kvačicu**, ne proširenje
+  postojeće: *„jesi li vidio što se mijenja"* i *„znaš li da dovodiš u pitanje potvrdu"* nisu
+  isto pitanje, a spojena bi drugo progutalo jer se prvo klikće svaki put.
+  ⚠ Račun i datum se čitaju iz **postojećeg retka u bazi**, ne iz Excela: pitanje je je li
+  potvrđeno ono što već stoji.
+  ⚠ Neuspjelo čitanje sidara se **ne čita kao „nema sidara"** — guard tada šuti.
+
+- **⚠ `FILTERS_IZVRSENO` JE NOSIO FILTAR OD PRIJE S111** (S143). `verify_rpc_vs_model.py` je
+  držao `Izvor ∈ {Racun, Cash}` iako je `Cash` izbačen iz salda u **S111** — a taj popis uvoze
+  `promet_check.py`, `make_saldo_anchors.py` i `pregled_stanja.py`, dakle **instrumenti kojima
+  se provjerava točnost pločice**. Izmjereno: alat je davao `12.274,32`, pločica `12.284,32`.
+  ⚠ **`promet_check` ispis se nije mijenjao** i to nije bio dokaz da je sve u redu: jedini
+  `Cash` redak s `racun = ZABA` prije zadnjeg izvoda pada **27.08.**, a zadnji obrađeni prozor
+  staje **26.08.** Mina je ležala namještena.
+  ⚠ Pravilo: **popis filtara u alatu mora biti isti kao `settings.dashboard` widget** — to je
+  jedini razlog zbog kojeg alat i pločica mogu dati isti broj.
+
+
 - **⚠ EXCELOV SORT IZ VRPCE NE GLEDA `autoFilter` NEGO TEKUĆU REGIJU** (S143, Sašin nalaz).
   `Data → A↓Z` i `Ctrl+A` uzimaju **current region**, a nju omeđuje **samo redak bez ijedne
   popunjene ćelije** — `auto_filter.ref` na to ne utječe. Na delta listu takvog retka nije
@@ -2009,6 +2056,24 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > - **/!\ Bug zatvoren usput ostaje otvoren dok ga netko ne IZMJERI.** `BUG-S114-REPORTDD`
 >   je zatvorio refaktor u nekoj ranijoj sesiji, a unos je stajao jos dugo — a „otvoren bug"
 >   se cita kao poznat kvar i trosi paznju svake iduce sesije.
+
+- **⚠ OTVORENO-S143-4594 — fantomski redak u povijesti ZABA, ISPRAVAK NIJE NAPRAVLJEN.**
+  Kontrolna točka (faza 3) prijavljuje da ZABA između 02.01.2025. i 30.07.2026. **ne
+  reproducira potvrdu**: fali `45,94`. Svedeno na tri konkretna retka:
+  | redak | zahvat |
+  | --- | --- |
+  | `17.08.2025. · −45,94 · bez opisa`, `Izvor = Racun` | **obrisati** — fantom |
+  | blizanac istog dana i **iste minute**, bez `Izvor`a, komentar `ZABA` | odlučiti |
+  | `−0,80` na `07.08.2025.` | pomaknuti na **`07.07.2025.`** (tipfeler u mjesecu) |
+  ⚠ Dokazi izmjereni prije prijedloga: parsiranje `ZABA_2025-07` i `-08` poklapa se s
+  **ispisanim** bankinim zbrojevima i `NOVO STANJE` u cent ⇒ banka doista nema takav redak;
+  `promet_check` 2025-09 = `0,00` ⇒ nije prebačen u sljedeći mjesec; redak nema `Izvod opis`
+  (nikad potvrđen izvodom) i nosi `Stanje = 2.267,56` ⇒ iz povijesnog uvoza Kokine Excelice.
+  ⚠ **Zašto ga nitko nije vidio:** oba blizanca dijele `session_start 07:02`, a `useActivities`
+  grupira po njemu ⇒ u aplikaciji su **jedan redak**.
+  ⚠ Ispravak **ne mijenja današnju pločicu** (`12.284,32`) — svi su retci prije sidra 30.07.2026.
+  Skripta nije napisana; ide dry run pa `--apply` koji pokreće Saša (v. `T-S143-14`).
+
 
 - **BUG-S131-VIEWSTALE — ⚠ NEPONOVLJEN, ne popravljati napamet.** Nakon Edita koji
   **pomakne `session_start`** (promjena datuma retka), View na tom retku javi „Activity not

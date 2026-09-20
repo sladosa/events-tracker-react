@@ -1,7 +1,7 @@
 # Sljedeca sesija - handoff
 
-**Pisano protiv commita:** `920af09` + izmjene zatvaranja S142 (idu istim commitom).
-**`main` NIJE diran u S142** - sve stoji na `test-branch`. Deploy nije trazen ni pusten.
+**Pisano protiv commita:** `5129f9c` + izmjene zatvaranja S143 (idu istim commitom).
+**`main` NIJE diran u S143** - sve stoji na `test-branch`. Deploy nije trazen ni pusten.
 Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
 
 ---
@@ -10,51 +10,55 @@ Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
 
 ## Sto je gotovo
 
-**Delta prozor vise ne staje na sidru.** Dosad je sidro bilo **tvrd pod**: trazio si 60 dana,
-a file je nosio **12** - i **47 ZABA redaka** je nestajalo bez ijedne poruke. Sada prozor
-krece dan poslije **predzadnje** potvrde, kako si predlozio. Polje u panelu vise ne pita
-"koliko dana" nego **"koliko potvrda unatrag"**, zadano 1.
+**`DELTA_WINDOW_SPEC` je cijeli izveden** - sve cetiri faze. Zastita proslosti vise nije samo
+boja: sheet **kaze** (oznaka i ton), **mjeri** (kontrolna tocka po sidru) i uvoz **trazi
+pristanak** (druga kvacica koja imenuje sidro).
 
-Zasto bas sidra a ne dani: samo tako je otvarajuce stanje **broj koji je potvrden izvana**, a ne
-izracun. Provjerio sam to na PROD-u umjesto da procitam iz koda - **sest provjera, sest
-prolaza, u cent** (ZABA `13.815,33`, RF `799,12`), i uz **nula** zapisa koji bi se zbrajali.
+**Sort te vise ne moze iznenaditi.** Ono sto si nasao - da sort povuce karticne retke u glavni
+blok, a drugi put i sazetke - zatvoreno je u tri sloja: prazan redak zaustavlja sort iz vrpce,
+brojke su neovisne o redoslijedu, a pomijesan raspored **sam se prijavi** crvenom porukom koja
+kaze i **sto uciniti** ("novi izvoz ce srediti").
 
-**Retci koji su vec unutar potvrdjenog stanja sada se vide.** Dobili su kolonu `Potvrda`
-(`potvrdjeno 06.09. · ZABA_2026-07.pdf`) i **sivi ton**. Prazni retci za unos dobili su
-**topao zuckast ton** - ono sto si trazio.
+**Dva upozorenja koja su lagala su maknuta**, ne preformulirana: ono o `created_at` pri uvozu
+(hvatalo je mehanizam samog appa) i "ne izvozi svih N dogadjaja" pri izvozu (tvrdilo suprotno
+od istine otkad se prozor mjeri sidrima).
 
-Dvije stvari koje vrijedi znati o toj oznaci:
-- **Ziva je.** Promijenis li datum retka, oznaka nestaje istog trena. Nije upisan tekst.
-- **Stoji i na praznim retcima.** Upises li u prazan redak datum u proslost, oznaka iskoci
-  sama - to je **jedini** trenutak u kojem se takav unos moze uhvatiti prije uvoza.
+**Help je dopunjen** s tri teme koje ti i Koka stvarno trebate: kontrolne tocke, kako sigurno
+sortirati, i sto znaci uvoz retka koji je vec potvrdjen.
 
-**Poslao sam ti primjerak filea u razgovoru** (`PRIMJER_delta_ZABA.xlsx`, izmisljeni retci).
-Vrijedi ga otvoriti prije nego trosis vrijeme na provjeru uzivo.
+## /!\ Nalaz koji ceka tvoju odluku
 
-## /!\ Sto NIJE gotovo, a tice se tvoje bojazni
+**Faza 3 je na prvom pokretanju nasla stvarnu rupu u povijesti.** ZABA podaci izmedu
+02.01.2025. i 30.07.2026. **ne reproduciraju potvrdu** - fali **45,94**.
 
-Rekao si da te **strah korumpiranja vrijednosti u proslosti**. Ono sto je sada napravljeno to
-**kaze**, ali ne **brani**: uvoz i dalje prihvaca izmjenu potvrdjenog retka bez pitanja.
+Svedeno je na tri retka, sa svim dokazima izmjerenim:
 
-Prava brana je **faza 4** (update-guard na uvozu) i nije radjena. Dok je nema, boja se ne smije
-citati kao zastita. Ako ti to smeta, faza 4 je sljedeci red - **ne jaca boja**.
+| redak | sto s njim |
+| --- | --- |
+| `17.08.2025. · -45,94 · bez opisa` | **obrisati** - banka ga nema ni u jednom izvodu |
+| blizanac iste minute, bez `Izvor`a | odluciti (ne dira saldo, ali je skriveni duplikat) |
+| `-0,80` na `07.08.2025.` | pomaknuti na **`07.07.2025.`** - tipfeler u mjesecu |
 
-Do tada postoji i izlaz bez koda: postavi **Prozor = 0** i ponasanje je tocno kao prije.
+**Skripta jos nije napisana.** Ide dry run pa `--apply` koji pokreces ti.
+/!\ Ispravak **ne mijenja danasnje stanje** (`12.284,32`) - svi su retci prije sidra 30.07.2026.
+Mijenja se samo to da povijest pocne reproducirati potvrde.
+
+/!\ Zasto to nitko nije vidio: oba blizanca su u **istoj minuti**, a aplikacija retke te minute
+prikazuje kao **jedan**.
 
 ## Sto trazi tebe
 
-1. **Nista za push** - `test-branch` je pushan. `main` netaknut.
-2. **Sedam testova ceka provjeru** (`T-S142-1` do `-7`), detalji u
-   `docs/sessions/tests/S142_tests.md`. Najvazniji je **T-S142-1**: panel mora pisati
-   `Od 31.07.2026. … pociva na potvrdi 30.07.2026. = 13.815,33`, a file nositi taj iznos u cent.
-   ⚠ Samo **T-S142-7** pise u bazu (uvoz); ostalih sest su citanje i gledanje filea.
-3. **Deploy na `main` NIJE napravljen i ne treba biti** dok ne kazes.
-4. Kad budes kod **Kokinog** racuna: **T-S139-10 dio B** (uvoz Structure filea) - jos stoji.
+1. **Nista za push** - `test-branch` je pushan, `main` netaknut.
+2. **Cetiri testa cekaju** (`T-S143-12, -13, -14, -16`), detalji u
+   `docs/sessions/tests/S143_tests.md`. Najvazniji je **T-S143-12**: uvezi file s izmjenom
+   retka **prije 30.07.2026.** i provjeri da Apply trazi **dvije** kvacice.
+3. **Odluka o ona tri retka** (gore) - reci i pisem skriptu.
+4. Ostalo od prije: **T-S139-10 dio B** (uvoz Structure filea) kad budes kod Kokinog racuna.
 
 ## Sto NE treba raditi
 
-- **Ne citaj sivi ton kao zastitu** - v. gore.
-- **Ne popravljaj E10-2 u specu** - pada prije mjesta koje spec testira (stoji iz S141).
+- **Ne sortiraj delta file iz vrpce s rucno oznacenim rasponom** - strelica u zaglavlju je
+  siguran put. Ako ipak zalutas, crvena poruka ce ti reci.
 - **Ne diraj `next:3` / `cutoff:3:5`** - ostaje dok PBZVISA ispravljac ne postoji.
 
 ---
@@ -65,55 +69,57 @@ Do tada postoji i izlaz bez koda: postavi **Prozor = 0** i ponasanje je tocno ka
 
 | sto | gdje |
 | --- | --- |
-| `pickDeltaWindow` - izbor prozora, cista funkcija | `src/lib/deltaWindow.ts` (nov) |
-| Kolona `Potvrda`, tonovi, biljeska potvrdjeno/izracunato | `src/lib/deltaSheet.ts` |
-| Polje "sidara unatrag", ispis raspona, prag 200 | `src/components/activity/ExcelExportModal.tsx` |
-| 25 tvrdnji + 3 sabotaze | `src/lib/__tests__/deltaWindow.test.mjs` (nov) |
-| 37 -> 49 tvrdnji + 5 sabotaza | `src/lib/__tests__/deltaSheetLayout.test.mjs` |
-| Uvoz sada trci nad fileom KOJI NOSI novu kolonu | `src/lib/__tests__/importForeignRows.test.mjs` |
-| Dokaz na PROD-u (read-only) | `Claude-temp_R/_probes/faza1_otvarajuce_stanje.py` |
-| Generator primjerka + citac | `Claude-temp_R/_probes/demo_delta.mjs`, `check_demo2.mjs` |
+| Okvir praznih redaka (`solid fill` guta gridline-ove) | `src/lib/deltaSheet.ts` |
+| Prazan redak ISPOD praznih redaka i IZMEDU naslova i zaglavlja | `deltaSheet.ts`, `excelExport.ts` |
+| `calcTo` - `SUMIFS` rasponi neovisni o redoslijedu; `razlika` bez `LOOKUP` | `deltaSheet.ts` |
+| Detektor pomijesanog rasporeda (formula, nosi rjesenje) | `deltaSheet.ts` |
+| Kontrolne tocke po sidru + `extraHeaderRows` | `deltaSheet.ts`, `excelExport.ts` |
+| Pravilo "je li redak potvrdjen" - **cista funkcija** | `src/lib/confirmedPeriod.ts` (nov) |
+| Update-guard: `confirmedBy`/`confirmedCount` + druga kvacica | `excelImport.ts`, `ExcelImportModal.tsx` |
+| Uvoz trazi zaglavlje **skeniranjem**, ne pomakom od naslova | `excelImport.ts` |
+| `created_at >= session_start` provjera **maknuta** | `excelImport.ts` |
+| `FILTERS_IZVRSENO` bez `Cash` | `data-prep_tools/Financije/verify_rpc_vs_model.py` |
+| 49 -> 95 tvrdnji | `deltaSheetLayout.test.mjs` |
+| 27 -> 33 tvrdnji | `importForeignRows.test.mjs` |
+| 16 tvrdnji / 3 sabotaze | `confirmedPeriod.test.mjs` (nov) |
+| Sonde (read-only, PROD) | `Claude-temp_R/_probes/s143_*.py`, `s143_autofilter.mjs` |
 
 ## Otvoreno, po prioritetu
 
-1. **`DELTA_WINDOW_SPEC` faza 4 - update-guard na uvozu.** Jedina **prava** brana; sve
-   ostalo je oznaka. Prosirenje postojeceg `row_hash` guarda **jednim** uvjetom (*„a taj je
-   redak unutar potvrdjenog stanja"*), uz poruku koja **imenuje sidro**. Dira `excelImport.ts`.
-   ⚠ Odbijanje uvoza je **odbaceno** (lomi „sve ide importom") - guard trazi potvrdu, ne brani.
-2. **Faza 3 - kontrolne tocke u zaglavlju**, po jedna za svako sidro u prozoru
-   (`sidro · sheet racuna · razlika`). ⚠ `ROUND(…,2)` obavezan (S112).
-   ⚠ `anchorsInWindow` vec stize do `deltaSheet` - podatak je tu, treba ga samo ispisati.
-3. **Structure fan-out** - `AppHome:122` treba `refetch` bez automatskog dohvata (39 upita
-   cijim rezultatom se nitko ne koristi). ⚠ Prije koda prebrojati koliko poziva ostane.
-4. **PBZVISA ispravljac** - cita **dva** izvora (PBZVISA za stavke/rate, **RF izvod** za dan i
-   iznos stvarne naplate). ⚠ Glob mora biti `PBZVI[SZ]A_*` (31x `PBZVISA_`, 1x `PBZVIZA_`).
-5. **E10-2 / E7-2** - uzrok nedovrsenih zahtjeva i dalje **nije utvrden** (stoji iz S141).
+1. **`OTVORENO-S143-4594`** - skripta za tri ispravka (v. DIO 1). Dry run + `--apply` koji
+   pokrece Sasa. Poslije: `promet_check` 2025-07/-08 -> `0,00`, kontrolne tocke -> `0,00`.
+2. **PBZVISA ispravljac** - cita **dva** izvora (PBZVISA za stavke, **RF izvod** za dan i iznos
+   stvarne naplate). Glob mora biti `PBZVI[SZ]A_*`.
+3. **Zaglavlje Add Activity po Arei** - unos za jucer i dalje trazi dva ekrana.
+4. **Structure fan-out** - `AppHome:122` treba `refetch` bez automatskog dohvata.
+5. **E10-2 / E7-2** - uzrok nedovrsenih zahtjeva i dalje nije utvrden.
 
 ## Zamke koje su danas ugrizle
 
-- **Test koji hardkodira POLOZAJ kolone ne razlikuje „pomaknuto" od „pokvareno".**
-  `deltaSheetLayout` je `Provjeri` trazio na `ctrl + 1`; kad je do njega sjela nova kolona,
-  pao je - ali bi pao jednako i da je stupac nestao. Sada se trazi **po naslovu**.
-- **`ws.autoFilter` se upisuje kao objekt `{from,to}`, a cita kao string `"A14:R30"`** nakon
-  `wb.xlsx.load()`. Tvrdnja pisana prema upisanom obliku daje `undefined`.
-- **Obrazac za zamjenu nije nadjen jer je u tekstu stajao obican `"` umjesto `“`** - ista
-  zamka kao u S141. ⇒ tekst se prvo ispise kroz `ascii()`, pa onda mijenja.
-- **Efekt koji cita `const` deklariran nize u komponenti** je `react-hooks/immutability`, a
-  ratchet je na **nuli**. Rijeseno **premjestanjem bloka**, ne `disable`-om.
+- **Excelov sort iz vrpce i `Ctrl+A` gledaju TEKUCU REGIJU, ne `autoFilter`** - omeduje je samo
+  redak bez ijedne popunjene celije. Dva jaza su bila lazna: kontrola kosare ispod, i naslov
+  `EVENT DATA:` (jedna celija!) iznad.
+- **Relativna tvrdnja ne hvata skliznuti raspored** - treba apsolutno sidro.
+- **Test koji ne moze pasti**: tvrdnja o sudaru `Potvrda`/`Provjeri` bila je stavljena na sheet
+  BEZ sekcije, gdje je sudar nemoguc po konstrukciji.
+- **Moja sonda je optuzila ispravan kod** - `FILTERS_IZVRSENO` je nosio filtar od prije S111.
+  Prije nego se nalaz pripise kodu, provjeri mjeri li alat istim ravnalom kao app.
+- **`sed -i` na fileu s dijakritikom pokvari bajt** - za izmjene koda koristi python s
+  eksplicitnim `encoding='utf-8'`.
 
 ## Sto je izmjereno, da se ne mjeri ponovo
 
-- **Otvarajuce stanje**: `rpc_area_balance_anchored` s `as_of` = dan sidra vraca **sam iznos
-  sidra uz `n = 0`**, oba racuna, K = 0/1/2. Sest provjera, sest prolaza, u cent.
-- **Sidra**: ZABA **16** (06.09. `12.772,86` · 30.07. `13.815,33` · 01.01.2025. `3.054,41`),
-  RF **3** (07.09. `690,79` · 11.08. `799,12` · 31.12.2022. `12.712,28`).
-- **Prozori**: ZABA K=0 **12 dana** / K=1 **51** / K=2 **625**; RF K=0 **12** / K=1 **39**.
-- **Biljeske sidara**: 41-90 znakova; 13 od 16 su `ispisano stanje s izvoda · ZABA_*.pdf`.
-- **Uvoz**: parser cita delta file s novom kolonom normalno (sekcija, prazni retci, `row_hash`).
+- **Kontrolna tocka**: `Prozor = 1` -> `0,00`; `Prozor = 2` -> `45,94` na obje tocke, potvrdjeno
+  sirovim izracunom iz baze (`3.054,41 + 10.714,98 = 13.769,39` protiv sidra `13.815,33`).
+- **Parsiranje `ZABA_2025-07` i `-08`** se poklapa s ispisanim bankinim zbrojevima i
+  `NOVO STANJE` u cent -> banka nema redak od 45,94.
+- **Gotovinski troskovi** (`Izvor = Cash`): tri retka ukupno, `-66,00` (20.05.2026.),
+  `-20,00` (27.08.2026.), `-10,00` (08.09.2026.); samo zadnja dva imaju `racun = ZABA`.
+- **Sort Test A**: `Ctrl+A` daje `A25:AB100` - sazeci i kosara izvan.
+- **Sort Test B**: nasilni sort -> `razlika` ostaje `0,00`, upozorenje osvane, sazeci ostaju.
 
 ## Napomena o ritualu
 
-`audit_tests.py` je uhvatio da naslov `T-S141-4` u `S142_tests.md` kaze **done** dok PENDING
-kaze **open** - pravilo je da **⬜ pobjedjuje ✅**, pa je naslov ispravljen. **Brana radi, ali
-samo ako se audit pokrene.** Trenutno nema nista za arhivu (15 session fileova, svi s barem
-jednim otvorenim testom).
+`audit_tests.py` javlja **S142 spreman za arhivu** (10/10 ✅). Arhiviranje nije napravljeno -
+sekcija u PENDING seli **zajedno** s `tests/S142_tests.md` u `DONE_HISTORY.md` odnosno
+`Claude-temp_R/test-sessions/archive/`.

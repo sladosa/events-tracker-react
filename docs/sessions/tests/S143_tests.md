@@ -112,3 +112,114 @@ i čita se cijeli. `Provjeri` (u sekciji) više nije odgurnut izvan ekrana.
 | uvoz bez `created_at` upozorenja; stari oblik filea | `importForeignRows.test.mjs` (+1 sabotaža kroz `git stash`) |
 
 **Ukupno:** `deltaSheetLayout` 49 → **80** tvrdnji, `importForeignRows` 27 → **33**.
+
+---
+
+# Drugi dio sesije — faze 3 i 4, i ono što su otkrile
+
+## T-S143-11 — ⬜ ⭐ Kontrolna točka po sidru (faza 3)
+
+**Zašto:** do faze 3 je redak upisan u potvrđeno razdoblje proizvodio **samo oznaku**. Saldo
+se na njega ne miče (retci prije sidra u njega ne ulaze), pa nijedan broj nije odavao da je
+potvrđeno dirnuto. Sašin nalaz uz T-S142-4.
+
+**✅ Izvedeno uživo (20.09.):** `Prozor = 1` → jedna točka, `0,00` zeleno. `Prozor = 2` → dvije
+točke, obje `45,94` crveno.
+
+**⬜ Ostaje nakon ispravka podataka (T-S143-14):** obje točke moraju pasti na **`0,00`**.
+
+⚠ Test se **ne smije** izvesti na računu bez sidra u prozoru — ondje kontrolnih točaka po
+definiciji nema (pokriveno automatski).
+
+---
+
+## T-S143-12 — ⬜ ⭐ Update-guard na uvozu (faza 4)
+
+**Preduvjet:** ZABA, bilo koji izvoz čiji prozor doseže **prije 30.07.2026.** (`Prozor = 2`).
+
+**Koraci:**
+1. U nekom retku datiranom **prije 30.07.2026.** promijeni komentar.
+2. Uvezi taj file.
+
+**Očekivano:**
+- uz taj redak **siva oznaka** `potvrđeno 30.07.2026. · 13815.33`
+- ispod liste **druga kvačica**: *„⚠ 1 redak je unutar POTVRĐENOG stanja"*
+- **Apply je zaključan** dok se ne kvačira; tooltip to kaže
+- prva kvačica (*„I reviewed the list"*) **ne otključava** sama
+
+**Pad:** Apply prolazi s jednom kvačicom ⇒ dva pitanja su se stopila u jedno.
+
+⚠ **Piše u bazu** — radi to na retku koji ionako treba ispraviti, ili poslije vrati Editom.
+
+---
+
+## T-S143-13 — ⬜ Guard šuti gdje nema što reći
+
+Uvezi file za račun/Areu **bez sidara** (npr. neka Area bez `dashboard` widgeta).
+**Očekivano:** nijedna siva oznaka, nijedna druga kvačica — ponašanje doslovno kao prije faze 4.
+⚠ Isto mora vrijediti ako čitanje sidara padne: guard tada **šuti**, ne tvrdi „ništa nije
+potvrđeno".
+
+---
+
+## T-S143-15 — ✅ `FILTERS_IZVRSENO` više ne nosi `Cash`
+
+**Izmjereno 20.09.** `rpc_area_balance_anchored` na danas:
+
+| | ZABA |
+| --- | --- |
+| ispravno (`Racun`) | **12.284,32** = pločica u appu |
+| stari filtar (`Racun`+`Cash`) | 12.274,32 |
+
+Razlika je `2026-09-08 · ručak s Jelenom · −10,00 · Izvor = Cash`.
+
+⚠ `promet_check` ispis se **nije** promijenio (27 ✓ / 5 ✗) i to **nije** dokaz da popravak nije
+trebao: jedini `Cash` redak s `racun = ZABA` prije zadnjeg izvoda pada 27.08., a zadnji
+obrađeni prozor staje na 26.08. Mina je ležala namještena.
+
+---
+
+## T-S143-14 — ⬜ ⚠ **Piše u bazu (Saša):** tri ispravka koje je faza 3 otkrila
+
+Skripta još **nije napisana** — dry run pa `--apply` koji pokreće Saša.
+
+| # | redak | zahvat |
+| --- | --- | --- |
+| 1 | `17.08.2025. · −45,94 · bez opisa`, `Izvor = Racun` | **obrisati** — fantom, banka ga nema |
+| 2 | blizanac istog dana/minute, bez `Izvor`a, komentar `ZABA` | odluka: vjerojatno i njega |
+| 3 | `−0,80` na `07.08.2025.` | pomaknuti na **`07.07.2025.`** (tipfeler u mjesecu) |
+
+**Dokaz prije zahvata (izmjereno):**
+- parsiranje `ZABA_2025-07` i `-08` se poklapa s **ispisanim** bankinim zbrojevima i
+  `NOVO STANJE` izlazi u cent ⇒ banka doista nema redak od 45,94
+- `promet_check` 2025-09 = `0,00` ⇒ nije ni prebačen u sljedeći mjesec
+- redak nema `Izvod opis` ⇒ nikad nije potvrđen izvodom
+- nosi `Stanje = 2.267,56` ⇒ dolazi iz povijesnog uvoza Kokine Excelice
+
+**Očekivano poslije:** `promet_check` 2025-07 i 2025-08 → `0,00`; kontrolne točke na
+`Prozor = 2` → `0,00`; **pločica se NE mijenja** (`12.284,32`), jer su svi ti retci prije
+sidra 30.07.2026.
+
+⚠ Oba su blizanca u **istoj minuti**, pa ih aplikacija prikazuje kao **jedan redak**
+(`useActivities` grupira po `session_start`) — zato ih nitko nije primijetio.
+
+---
+
+## T-S143-16 — ⬜ Help
+
+U Help → Excel moraju postojati tri nove teme: **kontrolne točke potvrda**, **kako sigurno
+sortirati**, **uvoz retka koji je već potvrđen**. Provjeri da ih AI nalazi (pitaj npr.
+*„što znači POMIJEŠAN RASPORED"*).
+
+---
+
+## Automatski pokriveno (drugi dio)
+
+| što | gdje |
+| --- | --- |
+| kontrolne točke: po jedna po sidru, redoslijed, `ROUND`, raspon, CF, mjesto poruke | `deltaSheetLayout.test.mjs` (+4 sabotaže) |
+| retci zaglavlja su doista **rezervirani** (apsolutno sidro, ne relativno) | isto |
+| pravilo „je li redak potvrđen": najranija potvrda, granica `>=`, po računu, bez vremenskih zona | `confirmedPeriod.test.mjs` — **16 tvrdnji, 3 sabotaže** |
+
+**Ukupno nakon cijele sesije:** `deltaSheetLayout` 49 → **95**, `importForeignRows` 27 → **33**,
+nov `confirmedPeriod` **16**.

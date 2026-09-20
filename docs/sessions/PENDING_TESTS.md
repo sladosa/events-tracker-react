@@ -27,6 +27,13 @@ isto vrijedi **iznad** zaglavlja, gdje sort guta bas ono cime se rezultat mjeri.
 ⚠ **Izmjereno: Excelov ribbon sort i `Ctrl+A` ne gledaju `autoFilter` nego TEKUCU REGIJU**,
 a nju omeduje samo redak **bez ijedne** popunjene celije — takvog na listu nije bilo.
 
+⚠ **Drugi dio sesije: `DELTA_WINDOW_SPEC` je zavrsen — faze 3 i 4.** Kontrolna tocka po sidru
+pretvara oznaku u BROJ, a uvoz prvi put TRAZI PRISTANAK za izmjenu potvrdjenog retka.
+
+⚠ **Faza 3 je na prvom pokretanju nasla stvarnu gresku u povijesti:** ZABA podaci izmedu
+02.01.2025. i 30.07.2026. ne reproduciraju potvrdu — fali **45,94**. Svedeno na **jedan
+fantomski redak** (17.08.2025.), kojeg banka nema ni u jednom izvodu. Ispravak ceka (T-S143-14).
+
 **Detalji testova:** [tests/S143_tests.md](tests/S143_tests.md)
 
 | ID | Test | Status |
@@ -41,6 +48,12 @@ a nju omeduje samo redak **bez ijedne** popunjene celije — takvog na listu nij
 | T-S143-8 | Sivi ton potvrdjenih redaka **postoji** i **uvjetni** je | ✅ S143 — dotad ga **nijedna tvrdnja nije mjerila**; sada 3 tvrdnje + 2 sabotaze |
 | T-S143-9 | `razlika` bez `LOOKUP` — zbroj cijelog prozora, neovisan o redoslijedu | ✅ S143 test |
 | T-S143-10 | Detektor pomijesanog rasporeda: formula, nosi rjesenje, gleda samo glavni blok | ✅ S143 test (2 sabotaze) |
+| T-S143-11 | ⭐ **Faza 3** — kontrolna tocka po sidru u zaglavlju | ⚠ **✅ djelomicno S143 (uzivo)**: `Prozor = 1` → `0,00` zeleno; `Prozor = 2` → dvije tocke, obje **45,94** crveno. ⬜ Nakon ispravka podataka (T-S143-14) obje moraju pasti na `0,00`. Automatski: 12 tvrdnji + 4 sabotaze |
+| T-S143-12 | ⭐ **Faza 4** — update-guard na uvozu: siva oznaka s imenom sidra + **druga** kvacica, Apply zakljucan | ⬜ ⚠ **pise u bazu**. Prva kvacica NE smije otkljucati sama. Pravilo pokriveno automatski (`confirmedPeriod`, 16 tvrdnji / 3 sabotaze), ali UI nije |
+| T-S143-13 | Guard **suti** gdje nema sto reci (Area bez sidara, ili palo citanje) | ⬜ ponasanje mora biti doslovno kao prije faze 4 |
+| T-S143-14 | ⭐ ⚠ **Pise u bazu (Sasa):** tri ispravka koje je faza 3 otkrila | ⬜ **skripta jos nije napisana** — fantom `-45,94` (17.08.2025.), njegov blizanac, i `-0,80` s krivim mjesecom. Dokazi izmjereni, v. detalje |
+| T-S143-15 | `FILTERS_IZVRSENO` vise ne nosi `Cash` | ✅ S143 — alat sada daje **12.284,32**, tocno plocicu (stari filtar 12.274,32) |
+| T-S143-16 | Help: tri nove teme u Excel (kontrolne tocke, siguran sort, uvoz potvrdjenog retka) | ⬜ provjeri da ih AI nalazi |
 
 ⚠ **Sto NIJE zatvoreno, a tice se iste teme:** redak upisan u potvrdjeno razdoblje i dalje
 proizvodi **samo oznaku**, ne broj. Sasin nalaz uz T-S142-4. To je **faza 3**

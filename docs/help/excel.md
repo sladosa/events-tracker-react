@@ -140,3 +140,55 @@ nije greška nego znak da nema ničega neusklađenog. Uz zadani prozor (1 potvrd
 rjeđe nego prije — sheet tada pokazuje i ono što je zadnja potvrda već obuhvatila, pa se vidi
 što je u nju ušlo.
 
+## Delta sheet — kontrolne točke potvrda (u zaglavlju)
+
+Iznad `Max/Min/Summ` stoji po jedan redak za **svaku potvrdu koju prozor obuhvaća**:
+
+    kontrola sidra 30.07.2026. (potvrđeno 13.815,33) ->      0,00
+    kontrola sidra 06.09.2026. (potvrđeno 12.772,86) ->      0,00
+
+Svaka odgovara na jedno pitanje: **reproducira li sheet tu potvrdu?** Zeleno `0,00` znači da
+se podaci i potvrda slažu do dana potvrde.
+
+⚠ Nije li `0,00`, unutar potvrđenog razdoblja nešto je promijenjeno — **ili potvrda ne
+odgovara stvarnosti**. Iznos ti kaže za koliko. Novi izvoz to **ne popravlja**; treba pogledati
+retke do tog datuma.
+
+⚠ Zašto je to korisno: redak datiran **prije** potvrde **ne miče saldo** (saldo su promjene
+strogo nakon potvrde). Bez ove brojke pogrešan stari redak nigdje se ne bi vidio.
+
+Pokaže li se ista razlika na **više** potvrda, greška je starija od najranije od njih.
+
+## Delta sheet — kako sigurno sortirati
+
+Sortiraj **strelicom u zaglavlju kolone** (`event_date` → Sort Oldest to Newest). Tako Excel
+sortira točno onaj raspon koji sheet očekuje.
+
+⚠ Sort iz vrpce (`Data → A↓Z`) uzima „tekuću regiju", a ne raspon sheeta. Sheet je zato složen
+tako da mu prazni redovi omeđuju regiju — ali ako **sam označiš** raspon koji prelazi preko
+sekcije košare, sort će ih izmiješati.
+
+Dogodi li se to, osvanut će **crveno upozorenje** iznad `Max/Min/Summ`:
+
+> ⚠ POMIJEŠAN RASPORED — u glavnom bloku ima redaka koji ne miču saldo. Najčešće je sort
+> zahvatio i sekciju košare: novi izvoz će srediti.
+
+Tada: **brojke salda su i dalje točne** (računaju se po uvjetima, ne po položaju retka), ali
+`Σ košara` više ne vrijedi. Najjednostavnije je izvesti file nanovo — ništa se ne gubi, jer
+delta file je radna kopija, a zapis je u aplikaciji.
+
+⚠ Isto upozorenje pali i kad **kartični redak** upišeš u prazan redak glavnog bloka. Kartične
+stavke idu u sekciju košare, dolje.
+
+## Uvoz — redak koji je već potvrđen
+
+Uvoz zasebno upozorava kad mijenjaš redak koji je **već ušao u potvrdu stanja**. Uz takav redak
+stoji siva oznaka s danom i iznosom te potvrde, a Apply traži **drugu kvačicu**:
+
+> ⚠ N redaka je unutar POTVRĐENOG stanja
+
+⚠ Zašto posebno: takva izmjena **ne miče saldo** (retci prije potvrde u njega ne ulaze), pa ne
+ostavlja nikakav trag — za razliku od svih ostalih izmjena, koje se odmah vide na pločici.
+
+Ispravak je i dalje dopušten: potvrđen redak zna biti kriv. Uvoz samo traži da to izrekneš,
+umjesto da prođe nehotice (krivi sort, drag-fill).

@@ -5628,11 +5628,62 @@ konstrukciji. Razred iz S120; premjestena u vlastiti blok s **obje** kolone.
 (`edited_at` najnoviji 19.09. 14:34, izvoz 17:32) — dakle file je bio noviji i jucerasnji
 uvoz nije vratio nista unatrag. To je jedina prava opasnost uvoza starog filea.
 
+### 6. Faza 3 — kontrolna tocka po sidru pretvara oznaku u BROJ
+
+Sasin nalaz uz T-S142-4: *„to bi trebalo izazvati vece poremecaje od same oznake."* Tocno —
+redak upisan prije sidra **ne mice saldo** (promjene su strogo NAKON sidra), pa ni jedan broj
+nije odavao da je potvrdjeno dirnuto.
+
+Po jedno sidro u prozoru = jedan redak zaglavlja:
+`kontrola sidra 30.07.2026. (potvrdjeno 13.815,33) -> 0,00`, zeleno na nuli.
+
+⚠ **Izvedeno kao JEDAN broj po sidru, ne tri retka iz skice §4.4.** Pitanje je jedno, potvrdjeni
+iznos stoji u natpisu; tri retka x dva sidra = sest redaka zaglavlja, a to zaglavlje Koka cita.
+⚠ **Retke rezervira PISAC** (`extraHeaderRows`), jer se poslije ne moze umetnuti redak.
+⚠ **Prva verzija testa nije uhvatila sabotazu „pisac ne rezervira retke"**: relativna tvrdnja
+(„poruka je tocno iznad prve tocke") vrijedi i u skliznutom rasporedu. Trebalo je apsolutno
+sidro — redak iznad poruke mora biti onaj posve prazan.
+
+### 7. Faza 3 je na PRVOM pokretanju nasla stvarnu gresku
+
+`Prozor = 1` dao je `0,00`, `Prozor = 2` **45,94 na obje tocke**. Sasa: *„nesto nije bas ok."*
+
+Redoslijed mjerenja (i jedan preokret usput):
+1. Moja prva sonda tvrdila je da sheet grijesi za 20,00 — **kriva je bila sonda**. Sirov
+   izracun iz baze dao je tocno ono sto sheet pokazuje.
+2. Krivac: `verify_rpc_vs_model.FILTERS_IZVRSENO` nosio je `['Racun', 'Cash']`, dakle filtar
+   **od prije S111**. Uvoze ga `promet_check`, `make_saldo_anchors`, `pregled_stanja` — bas
+   instrumenti kojima se provjerava tocnost. Izmjereno: alat `12.274,32`, plocica `12.284,32`.
+   ⚠ `promet_check` ispis se nije mijenjao, i to **nije** bio dokaz ispravnosti: jedini `Cash`
+   redak s `racun = ZABA` prije zadnjeg izvoda pada 27.08., a zadnji prozor staje 26.08.
+3. S ispravnim filtrom: `promet_check` svodi 45,94 na `2025-07 (+0,80)` i `2025-08 (-46,74)`.
+4. Usporedba s izvodima (parsiranje se poklapa s **ispisanim** bankinim zbrojevima u cent):
+   **fantomski redak `17.08.2025. -45,94`, bez opisa, bez `Izvod opis`, `Stanje = 2.267,56`** —
+   dakle iz povijesnog uvoza Kokine Excelice, a banka ga nema.
+   ⚠ Ima **blizanca** iste minute bez `Izvor`a ⇒ aplikacija ih prikazuje kao JEDAN redak
+   (`useActivities` grupira po `session_start`), pa ih nitko nije primijetio.
+   ⚠ Drugi ostatak je `-0,80` s krivim **mjesecom** (app 07.08., banka 07.07.); treci
+   (`Anja 73/96`) nije greska nego dokumentirani spoj dvaju bankinih redaka.
+   **Ispravak nije napravljen** — v. `OTVORENO-S143-4594`.
+
+### 8. Faza 4 — update-guard na uvozu, jedina PRAVA brana
+
+Redak unutar potvrdjenog stanja dosad je prolazio bez pitanja. Sada uvoz uz njega pise sivu
+oznaku koja **imenuje sidro** i trazi **vlastitu kvacicu**.
+
+⚠ **Ne odbija uvoz** — lomi „sve ide importom", a ispravak potvrdjenog retka je legitiman
+(isti dan nadjen jedan takav).
+⚠ **Vlastita kvacica, ne prosirenje postojece:** „jesi li vidio sto se mijenja" i „znas li da
+dovodis u pitanje potvrdu" nisu isto pitanje; spojena bi drugo progutalo.
+⚠ Pravilo je izdvojeno u `confirmedPeriod.ts` jer ga postavljaju DVA mjesta (kolona `Potvrda`
+i guard) — razidju li se, sheet oznaci a uvoz pusti, i to nevidljivo.
+
 ### Brojke sesije
 
-`deltaSheetLayout` 49 → **80** tvrdnji, `importForeignRows` 27 → **33**.
-**Trinaest sabotaza** kroz sesiju; svaka promjena protuprovjerena prije commita.
-Sedam commitova na `test-branch`; `main` netaknut, deploy nije trazen.
+`deltaSheetLayout` 49 → **95** tvrdnji, `importForeignRows` 27 → **33**, nov
+`confirmedPeriod` **16**. **Dvadeset sabotaza** kroz sesiju; svaka promjena protuprovjerena
+prije commita. `DELTA_WINDOW_SPEC` je time **cijeli izveden** (sve cetiri faze).
+Jedanaest commitova na `test-branch`; `main` netaknut, deploy nije trazen.
 
 
 ## S142 — sidro prestaje biti rez, postaje oznaka (2026-09-19)
