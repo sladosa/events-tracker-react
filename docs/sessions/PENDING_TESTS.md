@@ -32,13 +32,13 @@ redak vec potvrden"*, ali uvoz ga i dalje prihvaca bez pitanja — to je **faza 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S142-1 | ⭐ Faza 1 uzivo: panel kaze `Od 31.07.2026. … pociva na potvrdi 30.07. = 13.815,33`; file nosi otvarajuce stanje **`13.815,33` u cent** i biljesku *„Nije izracunato"* | ⬜ ⚠ usporedi i s Prozor = 0 (12 dana / 18 redaka) — razlika su retci koji su dosad nestajali |
-| T-S142-2 | Kolona `Potvrda`: retci do 06.09. nose kratku oznaku i **sivi ton**, poslije nje prazno | ⬜ |
+| T-S142-1 | ⭐ Faza 1 uzivo: panel kaze `Od 31.07.2026. … pociva na potvrdi 30.07. = 13.815,33`; file nosi otvarajuce stanje **`13.815,33` u cent** i biljesku *„Nije izracunato"* | ⚠ **✅ djelomicno S143 (uzivo, PROD)**: panel je ispisao `Od 31.07.2026. (51 dana) · pociva na potvrdi 30.07.2026. = 13.815,33`, a file nosi `stanje 30.07.2026. -> 13.815,33` u cent. ⬜ Ostaje usporedba s **Prozor = 0** (12 dana) — razlika su retci koji su dosad nestajali |
+| T-S142-2 | Kolona `Potvrda`: retci do 06.09. nose kratku oznaku i **sivi ton**, poslije nje prazno | ⚠ **✅ oznaka S143 (uzivo, tezi slucaj od trazenog)**: na `Prozor = 2` file nosi **dva** sidra — do 30.07. `potvrdjeno 30.07. · ZABA_2026-07.pdf`, od 02.08. `potvrdjeno 06.09. · ekran bankovne aplikacije`, od 07.09. **prazno**. Redak datiran tocno na dan sidra nosi oznaku (granica je „strogo nakon"). ⬜ Ostaje **jedan pogled na sivi ton u Excelu** — da je CF upisan sada cuva test (S143, 3 tvrdnje + 2 sabotaze), ali da ga Excel i **prikaze** nije gledano |
 | T-S142-3 | ⭐ Oznaka je **ziva**: promjena datuma retka je gasi istog trena, povratak je vraca | ⬜ ⚠ ovo mjeri zasto je kolona FORMULA a ne upisan tekst |
 | T-S142-4 | ⭐ Prazan redak + datum u proslost ⇒ oznaka iskoci sama; topao ton razlicit od sivog | ⬜ ⚠ jedini trenutak u kojem se unos u potvrdeno razdoblje hvata PRIJE uvoza |
 | T-S142-5 | Sort po datumu: oznaka putuje sa svojim retkom (kolona je u `auto_filter.ref`) | ⬜ |
-| T-S142-6 | Rupe medu sidrima: Prozor = 2 ⇒ panel ispise ~**625 dana** i brojku PRIJE izvoza; Prozor = 9 na RF-u ⇒ *„ima samo 3 potvrde"* | ⬜ |
-| T-S142-7 | ⚠ **Pise u bazu (Sasa):** uvoz delta filea s novom kolonom ⇒ **1 Modify**, bez poruke o nepoznatoj koloni | ⬜ ⚠ citanje je vec pokriveno automatski (`importForeignRows`, 27 tvrdnji nad fileom koji nosi kolonu) |
+| T-S142-6 | Rupe medu sidrima: Prozor = 2 ⇒ panel ispise ~**625 dana** i brojku PRIJE izvoza; Prozor = 9 na RF-u ⇒ *„ima samo 3 potvrde"* | ⚠ **✅ djelomicno S143 (uzivo, PROD)**: `Prozor = 2` ⇒ **627 dana** (625 izmjereno 18.09. + 2 dana), `pociva na potvrdi 01.01.2025. = 3.054,41`, *„u prozoru su jos 2 potvrde"*, prag opalio na **1.388**. Izvoz prosao. ⬜ Ostaje **clamp**: Prozor = 9 na RF-u |
+| T-S142-7 | ⚠ **Pise u bazu (Sasa):** uvoz delta filea s novom kolonom ⇒ **1 Modify**, bez poruke o nepoznatoj koloni | ✅ **S143 (uzivo, PROD)** — `0 created / 3 updated / 99 unchanged`, **nijedne** poruke o nepoznatoj koloni. Tri izmjene su bile Sasine (izmjereno prije uvoza: nijedan od tri retka nije dirnut u bazi nakon izvoza ⇒ file je bio noviji, nista se nije vratilo unatrag) |
 | T-S142-8 | Izbor prozora: K, clamp, fallback bez sidra, sort sidara | ✅ S142 — `deltaWindow.test.mjs`, **25 tvrdnji**, protuprovjereno s 3 sabotaze |
 | T-S142-9 | Kolona, tonovi, autofilter, kratki oblik biljeske | ✅ S142 — `deltaSheetLayout.test.mjs` **37 → 49** tvrdnji, protuprovjereno s 5 sabotaza |
 | T-S142-10 | Otvarajuce stanje = iznos sidra **u cent**, uz `n = 0` | ✅ S142 — PROD proba, **6 provjera / 6 prolaza**, oba racuna i K = 0/1/2 |
