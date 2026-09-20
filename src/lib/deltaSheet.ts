@@ -266,6 +266,31 @@ export function addDeltaHelpersTo(
   const blankFillTo = layout.lastCol;
   const blankTo    = layout.dataEnd + opts.blankRows;
 
+  /**
+   * Dokle sezu RASPONI RAČUNANJA (`SUMIFS`) — do zadnjeg retka sekcije, ne do
+   * zadnjeg retka glavnog bloka.
+   *
+   * /!\ ZAŠTO ŠIRE NEGO ŠTO BLOK SEŽE (S143, Sašin nalaz)
+   *   Fiksni raspon `dataStart..blankTo` pretpostavlja da su baš TI retci glavni
+   *   blok. Sort koji pomiješa list tu pretpostavku obori, a formula toga nema
+   *   kako biti svjesna — pa nastavi računati, i **brojka ostane uvjerljiva a
+   *   bude kriva**. To je jedina šteta od sorta koju novi izvoz ne popravlja
+   *   prije nego je čovjek pročita.
+   *
+   * /!\ ŠIRENJE NIŠTA NE UBACUJE U ZBROJ. Što se broji odlučuju **uvjeti
+   *   pločice** (`Izvor = Racun`, `Status <> Planiran`), ne to u kojem je bloku
+   *   redak ispisan — a to je isto pravilo po kojem broji i RPC iza pločice.
+   *   Retci sekcije su kartični i uvjet ih izbacuje; prazni retci nemaju iznos;
+   *   retci kontrole i razdjelnik nemaju ni datum ni `Izvor`.
+   *   ⇒ Dok je list uredan, širi raspon daje **isti broj**; kad je pomiješan,
+   *     daje **točan** umjesto krivog.
+   *
+   * /!\ SVI RASPONI JEDNOG `SUMIFS`-a MORAJU BITI ISTE VELIČINE — proširi li se
+   *   `sum_range` a ne i raspon uvjeta, Excel vrati `#VALUE!`. Zato jedna
+   *   vrijednost, `calcTo`, hrani sve.
+   */
+  const calcTo = opts.plannedCount > 0 ? blankTo + 5 + opts.plannedCount : blankTo;
+
   // ── 1. Prazni retci ─────────────────────────────────────────────────────
   for (let i = 0; i < opts.blankRows; i++) {
     const r = blankFrom + i;
@@ -364,16 +389,16 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
 
   const crit: string[] = [];
   for (const f of opts.filters) {
-    const c = filterToCriteria(f, layout, attrNameBySlug, layout.dataStart, blankTo);
+    const c = filterToCriteria(f, layout, attrNameBySlug, layout.dataStart, calcTo);
     if (c) crit.push(`,${c.range},${c.criterion}`);
     else   warnings.push(`Uvjet "${f.slug} ${f.op} ${f.values.join('/')}" nije ušao u kontrolni stupac — brojka će se razlikovati od pločice.`);
   }
 
   const dLtr = colLetter(dateCol);
-  const dateRange = `$${dLtr}$${layout.dataStart}:$${dLtr}$${blankTo}`;
+  const dateRange = `$${dLtr}$${layout.dataStart}:$${dLtr}$${calcTo}`;
   const sumRange = (col: number) => {
     const l = colLetter(col);
-    return `$${l}$${layout.dataStart}:$${l}$${blankTo}`;
+    return `$${l}$${layout.dataStart}:$${l}$${calcTo}`;
   };
   const openingAmount = opts.opening.amount;
 
@@ -534,11 +559,18 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     //   `0,00` doslovno nije nula — uvjetni format je zato bojao crveno nad
     //   savršeno usklađenim sheetom. Zaokruži se na lipu, tj. na jedinicu u
     //   kojoj su i svi ulazi.
+    // /!\ VISE NE `LOOKUP(2,1/(…<>""))` — „zadnja neprazna celija" znaci „zadnji
+    //   redak NA LISTU", a to je isto sto i „najkasniji datum" samo dok je list
+    //   sortiran. Pomijesa li ga sort, ta bi formula usporedila banku sa stanjem
+    //   nekog nasumicnog retka i dala uvjerljivu, krivu razliku (S143).
+    //   Zbroj cijelog prozora ne ovisi o redoslijedu, a na urednom listu daje
+    //   isti broj — dakle strogo bolje.
+    const totalOf = (col: number) =>
+      crit.length > 0 ? `SUMIFS(${sumRange(col)}${crit.join('')})` : `SUM(${sumRange(col)})`;
     diffCell.value = {
       formula:
         `IF(${ctrlLtr}${bankRow}="","",` +
-        `ROUND(${ctrlLtr}${bankRow}-LOOKUP(2,1/($${ctrlLtr}$${layout.dataStart}:$${ctrlLtr}$${blankTo}<>""),` +
-        `$${ctrlLtr}$${layout.dataStart}:$${ctrlLtr}$${blankTo}),2))`,
+        `ROUND(${ctrlLtr}${bankRow}-(${openingAmount}+${totalOf(plusCol)}-${totalOf(minusCol)}),2))`,
     };
     diffCell.numFmt = '#,##0.00';
     diffCell.font   = { bold: true };
@@ -556,6 +588,45 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
           style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFC7CE' } } } },
       ],
     });
+
+    // ── 3a. List sam prijavi da je pomiješan ───────────────────────────────
+    //
+    // /!\ SPRIJECITI SE NE DA U CIJELOSTI, PA MORA BAREM NE PROCI TIHO.
+    //   Prazan redak (v. `gapRow`) zaustavlja sort vrpcom, a `calcTo` cini
+    //   brojke neovisnima o redoslijedu — ali tko namjerno oznaci raspon preko
+    //   cijelog lista i sortira, i dalje moze razasuti sekciju. Nijedna
+    //   promjena filea to ne sprjecava. Zato ovdje stoji detektor: ne brani,
+    //   nego KAZE da se dogodilo i STO SAD (Sasin zahtjev, S143).
+    //
+    // /!\ UPOZORENJE BEZ IZLAZA SE NAUCI OTKLIKATI jednako brzo kao i ono koje
+    //   laze. Tekst zato nosi rjesenje, ne samo dijagnozu.
+    //
+    // /!\ FORMULA, ne upisan tekst — kao `Provjeri` i `Potvrda`. Cim se list
+    //   posloži (ili se redak makne), poruka nestaje sama.
+    //
+    // Kriterij: u glavnom bloku nema sto traziti redak koji NE MICE saldo.
+    //   ⚠ Uz `Izvor` se trazi i popunjen DATUM, inace bi prazni retci predloska
+    //     palili upozorenje na svakom svjezem fileu (`"<>"` u COUNTIFS-u hvata
+    //     i praznu celiju).
+    //   ⚠ Hvata i drugu, zapisanu gresku: karticni redak upisan u prazan redak
+    //     glavnog bloka (S126). Zato tekst imenuje oba uzroka.
+    const inF   = opts.filters.find(f => f.op === 'in' && f.values.length === 1);
+    const inNm  = inF ? attrNameBySlug.get(inF.slug) : undefined;
+    const inCol = inNm ? findAttrCol(layout, inNm) : null;
+    if (inF && inCol) {
+      const iLtr = colLetter(inCol);
+      const mixCell = ws.getCell(openRow, ctrlCol + 1);
+      mixCell.value = {
+        formula:
+          `IF(COUNTIFS($${dLtr}$${layout.dataStart}:$${dLtr}$${blankTo},"<>",`
+          + `$${iLtr}$${layout.dataStart}:$${iLtr}$${blankTo},"<>${inF.values[0]}")>0,`
+          + `"⚠ POMIJEŠAN RASPORED — u glavnom bloku ima redaka koji ne miču saldo. `
+          + `Najčešće je sort zahvatio i sekciju košare: novi izvoz će srediti. `
+          + `Ako si kartični redak upisao u prazan redak, premjesti ga u sekciju dolje.",`
+          + `"")`,
+      };
+      mixCell.font = { bold: true, color: { argb: 'FFC00000' } };
+    }
   }
 
   // ── 3b. Sekcija „planirano" ─────────────────────────────────────────────
@@ -580,15 +651,28 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     //   sobom. Uz to je slika za korisnika potpuna: prazni retci, pa kontrola,
     //   pa sekcija.
     //
-    // ⚠ `gapRows` u `createDeltaExcel` mora biti `blankRows + 4`, ne `+ 1`:
-    //   tri retka kontrole plus redak-razdjelnik. Ta dva broja su na DVA
-    //   mjesta (pisac redaka i ovo ukrasavanje) i moraju se mijenjati zajedno
-    //   — razidu li se, kontrola se upise PREKO prvih redaka sekcije.
-    const sumRow      = blankTo + 1;
-    const bankRow     = blankTo + 2;
-    const diffRow     = blankTo + 3;
-    const sepRow      = blankTo + 4;                 // redak-razdjelnik
-    const plannedFrom = blankTo + 5;
+    // ⚠ `gapRows` u `createDeltaExcel` mora biti `blankRows + 5`, ne `+ 1`:
+    //   PRAZAN redak, tri retka kontrole, pa redak-razdjelnik. Ta dva broja su
+    //   na DVA mjesta (pisac redaka i ovo ukrasavanje) i moraju se mijenjati
+    //   zajedno — razidu li se, kontrola se upise PREKO prvih redaka sekcije.
+    //
+    // ⚠ ZASTO JE PRVI REDAK NAMJERNO POSVE PRAZAN (S143, Sasin nalaz)
+    //   Excelov ribbon sort (Data -> A↓Z) ne gleda `autoFilter` nego TEKUCU
+    //   REGIJU, a regiju omeduje samo redak u kojem NEMA NIJEDNE popunjene
+    //   celije. Dok je kontrola kosare sjedila odmah ispod praznih redaka,
+    //   premoscivala je jaz — pa je regija tekla kroz sekciju i sort je
+    //   povukao kartcne retke usred glavnog bloka, a sume kosare i razdjelnik
+    //   razasuo medu podatke. Izmjereno na PROD fileu 20.09.2026.
+    //   ⚠ Ovaj redak zato mora ostati prazan U SVAKOJ KOLONI. Upise li mu
+    //     itko ista — makar razmak ili obrub s vrijednoscu — jaz se opet
+    //     premosti i zastita nestaje bez ijedne poruke. Cuva ga test.
+    const gapRow      = blankTo + 1;                 // NAMJERNO PRAZAN
+    const sumRow      = blankTo + 2;
+    const bankRow     = blankTo + 3;
+    const diffRow     = blankTo + 4;
+    const sepRow      = blankTo + 5;                 // redak-razdjelnik
+    const plannedFrom = blankTo + 6;
+    void gapRow;
     const plannedTo   = plannedFrom + opts.plannedCount - 1;
 
     // Naslov ide u kolonu H (komentar). Kolona B ostaje PRAZNA, pa import ovaj
@@ -780,10 +864,12 @@ export async function createDeltaExcel(
 
   // 'asc' — najstariji gore, najnoviji tik iznad praznih redaka: novi redak se
   // dopisuje ondje gdje je i u banci, na dnu.
-  // ⚠ +4, ne +1: prazni retci, pa TRI retka kontrole kosare, pa redak-razdjelnik.
-  //   Broj mora odgovarati rasporedu u `addDeltaHelpersTo` (v. tamo) — razidu li
-  //   se, kontrola se upise preko prvih redaka sekcije.
-  const gapRows = opts.blankRows + 4;
+  // ⚠ +5, ne +1: prazni retci, pa JEDAN POSVE PRAZAN redak (omeduje tekucu
+  //   regiju, inace ribbon sort proguta sekciju — S143), pa TRI retka kontrole
+  //   kosare, pa redak-razdjelnik. Broj mora odgovarati rasporedu u
+  //   `addDeltaHelpersTo` (v. tamo) — razidu li se, kontrola se upise preko
+  //   prvih redaka sekcije.
+  const gapRows = opts.blankRows + 5;
   await addActivitiesSheetsTo(
     wb, events, attrDefs, categoriesDict, 'asc', attrColumnOrder, undefined,
     plannedRows.length > 0 ? { events: plannedRows, gapRows } : undefined,

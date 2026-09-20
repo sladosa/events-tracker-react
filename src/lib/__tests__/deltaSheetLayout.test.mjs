@@ -73,6 +73,22 @@ const colNum = (s) => {
   return m ? m[0].split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0) : 0;
 };
 const raw = (ws,r,c) => ws.getCell(r,c).value;
+/** Redak-razdjelnik sekcije, nadjen po NASLOVU (kolona H) — ne po razmaku. */
+const findSep = (ws) => {
+  for (let r = 1; r <= ws.rowCount; r++) {
+    const v = String(ws.getCell(r, 8).value ?? '');
+    if (v.startsWith('KOSARA') || v.startsWith('PLANIRANO')) return r;
+  }
+  return 0;
+};
+/** Je li redak posve prazan u SVAKOJ koloni (tako Excel omeduje tekucu regiju). */
+const rowIsEmpty = (ws, r) => {
+  for (let c = 1; c <= ws.columnCount; c++) {
+    const v = ws.getCell(r, c).value;
+    if (v !== null && v !== undefined && String(v) !== '') return false;
+  }
+  return true;
+};
 const txt = (ws,r,c) => { const v = raw(ws,r,c); return v==null ? '' : (typeof v==='object' && 'formula' in v ? 'f()' : String(v)); };
 
 let pass=0, fail=0;
@@ -85,11 +101,16 @@ console.log('Sa sekcijom "planirano" (3 glavna + 5 praznih + 2 planirana):');
   const { ws, hdr, ctrl, hash } = await buildSheet(planned);
   const mainEnd = hdr + main.length;            // 3 glavna retka
   const blankTo = mainEnd + BLANKS;
-  // Kontrola kosare stoji IZNAD sekcije (S126): prazni retci -> Σ / naplaceno /
-  // razlika -> redak-razdjelnik -> sekcija. Sekcija je zadnji blok i raste.
-  const sumRow  = blankTo + 1;
-  const sep     = blankTo + 4;
-  const pFrom   = blankTo + 5;
+  // Kontrola kosare stoji IZNAD sekcije (S126): prazni retci -> PRAZAN redak ->
+  // Σ / naplaceno / razlika -> redak-razdjelnik -> sekcija. Sekcija je zadnji
+  // blok i raste.
+  // /!\ SEKCIJA SE TRAZI PO NASLOVU, ne po razmaku od `blankTo` (pravilo iz
+  //   S142). Test koji hardkodira polozaj ne razlikuje „pomaknuto" od
+  //   „pokvareno" — a upravo je pomaknuto u S143, kad je izmedu bloka i
+  //   kontrole ubacen prazan redak.
+  const sep     = findSep(ws);
+  const sumRow  = sep - 3;      // tri retka kontrole tik iznad razdjelnika
+  const pFrom   = sep + 1;
 
   ok('glavni blok je na svom mjestu', txt(ws,hdr+1,1)==='m1' && txt(ws,mainEnd,1)==='m3');
   ok('prazni retci ne gaze sekciju (Area prepisan, event_id prazan)',
@@ -130,7 +151,7 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
                   mk('b2','2026-09-02','ZABA','Mastercard',55,'Izvrsen','2027-01-11T12:00:00Z')];
   const { ws, hdr, ctrl } = await buildSheet(basket, { dueSlug: 'datum_naplate' });
   const blankTo2 = hdr + main.length + BLANKS;
-  const sumRow = blankTo2 + 1, sep = blankTo2 + 4, pFrom = blankTo2 + 5;
+  const sep = findSep(ws), sumRow = sep - 3, pFrom = sep + 1;
   // Tekst se mijenja jer se mijenja i posao: u kosari nisu svi retci planirani,
   // pa uputa ne smije glasiti "potvrdi svaki redak" nego "slozi zbroj".
   ok('naslov je KOSARA, ne PLANIRANO', String(txt(ws,sep,8)).startsWith('KOSARA'));
@@ -344,6 +365,84 @@ console.log('Bez sidra u prozoru -- kolone nema (nema sto reci):');
   ok('kolone Potvrda NEMA kad prozor krece iza zadnje potvrde', colOf('Potvrda') === 0);
   ok('autofilter tada staje na kontrolnom stupcu', colNum(ws.autoFilter) === ctrl,
      `got ${ws.autoFilter} -> ${colNum(ws.autoFilter)}, ctrl ${ctrl}`);
+}
+
+console.log('');
+console.log('Sort ne smije moci progutati sekciju (S143):');
+{
+  const { ws, hdr, ctrl } = await buildSheet(planned);
+  const blankTo = hdr + main.length + BLANKS;
+  const sep     = findSep(ws);
+  const calcTo  = sep + planned.length;   // zadnji redak sekcije
+
+  // ── (a) prazan redak omeduje tekucu regiju ────────────────────────────
+  // /!\ Excelov ribbon sort ne gleda `autoFilter` nego TEKUCU REGIJU, a nju
+  //   omeduje samo redak bez ijedne popunjene celije. Dok ga nije bilo,
+  //   kontrola kosare je premoscivala jaz i sort je povukao sekciju u glavni
+  //   blok (izmjereno na PROD fileu 20.09.2026.).
+  ok('izmedju praznih redaka i kontrole stoji POSVE prazan redak',
+     rowIsEmpty(ws, blankTo + 1), `redak ${blankTo + 1} nije prazan`);
+  ok('kontrola kosare pocinje tek iza njega', sep - 3 === blankTo + 2,
+     `sep ${sep}, blankTo ${blankTo}`);
+  ok('a prazni retci su i dalje neposredno uz glavni blok (jaz nije narastao)',
+     !rowIsEmpty(ws, blankTo), `redak ${blankTo} je prazan`);
+
+  // ── (b) rasponi racunanja ne ovise o redoslijedu ──────────────────────
+  // /!\ Fiksni raspon `..blankTo` pretpostavlja da su bas ti retci glavni blok.
+  //   Sort tu pretpostavku obori, a formula nastavi racunati — pa brojka
+  //   ostane uvjerljiva a bude kriva. Sirenje do kraja sekcije nista ne
+  //   ubacuje u zbroj (uvjeti plocice izbacuju karticne retke), ali cini
+  //   rezultat neovisnim o tome gdje je koji redak zavrsio.
+  const ctrlF = String(raw(ws, hdr + 1, ctrl)?.formula ?? '');
+  const ends  = [...ctrlF.matchAll(/\$[A-Z]+\$\d+:\$[A-Z]+\$(\d+)/g)].map(m => Number(m[1]));
+  ok('kontrolni stupac ima raspone', ends.length >= 3, `got ${ends.length}`);
+  ok('SVI rasponi sezu do kraja sekcije, ne do kraja glavnog bloka',
+     ends.length > 0 && ends.every(e => e === calcTo), `got ${JSON.stringify(ends)}, calcTo ${calcTo}`);
+  // /!\ SUMIFS trazi da svi rasponi budu ISTE velicine — raziden raspon daje
+  //   `#VALUE!`, dakle tvrdnja iznad nije kozmetika nego uvjet ispravnosti.
+  ok('rasponi su medusobno jednaki (inace #VALUE!)', new Set(ends).size === 1);
+
+  // razlika: „zadnja neprazna celija" znaci „zadnji redak NA LISTU", a to je
+  // isto sto i „najkasniji datum" samo dok je list sortiran.
+  const diffF = String(raw(ws, sep - 1, ctrl)?.formula ?? '');
+  const sumRowF = String(raw(ws, sep - 3, ctrl)?.formula ?? '');
+  void sumRowF;
+  const topDiff = (() => {
+    for (let r = 1; r < hdr; r++) {
+      const f = String(raw(ws, r, ctrl)?.formula ?? '');
+      if (f.includes('ROUND(')) return f;
+    }
+    return '';
+  })();
+  ok('razlika vise ne trazi „zadnju nepraznu celiju" (LOOKUP)',
+     topDiff !== '' && !topDiff.includes('LOOKUP'), `got ${topDiff.slice(0, 80)}`);
+  ok('razlika racuna zbroj cijelog prozora, i dalje kroz ROUND',
+     topDiff.includes('ROUND(') && /SUMIFS|SUM\(/.test(topDiff), `got ${topDiff.slice(0, 80)}`);
+  void diffF;
+
+  // ── (c) list sam prijavi da je pomijesan ──────────────────────────────
+  // /!\ Sprijeciti se ne da u cijelosti (tko namjerno oznaci raspon preko
+  //   cijelog lista i sortira, razasut ce sekciju), pa mora barem ne proci
+  //   tiho. I poruka nosi RJESENJE — upozorenje bez izlaza se nauci
+  //   otklikati jednako brzo kao i ono koje laze.
+  let mixF = '';
+  for (let r = 1; r < hdr; r++) {
+    for (let c = 1; c <= ws.columnCount; c++) {
+      const f = String(raw(ws, r, c)?.formula ?? '');
+      if (f.includes('POMIJE')) mixF = f;
+    }
+  }
+  ok('postoji detektor pomijesanog rasporeda', mixF !== '', 'nema ga');
+  ok('detektor je FORMULA, pa nestaje sam kad se list poslozi',
+     mixF.startsWith('IF(COUNTIFS('), `got ${mixF.slice(0, 40)}`);
+  ok('poruka nosi RJESENJE, ne samo dijagnozu',
+     mixF.includes('novi izvoz'), `got ${mixF.slice(0, 200)}`);
+  // /!\ Mjeri GLAVNI BLOK, ne cijeli list: raspon do `calcTo` bi ukljucio samu
+  //   sekciju i detektor bi palio uvijek.
+  const mixEnds = [...mixF.matchAll(/\$[A-Z]+\$\d+:\$[A-Z]+\$(\d+)/g)].map(m => Number(m[1]));
+  ok('detektor gleda samo glavni blok (do zadnjeg praznog retka)',
+     mixEnds.length > 0 && mixEnds.every(e => e === blankTo),
+     `got ${JSON.stringify(mixEnds)}, blankTo ${blankTo}`);
 }
 
 rmSync(out, { force: true });
