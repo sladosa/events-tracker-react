@@ -91,7 +91,19 @@ GROUP_SLUG, PLUS_SLUG, MINUS_SLUG = 'racun', 'uplata', 'isplata'
 # §2.10 + §2.13: izvršeno = novac se već pomaknuo. Dva uvjeta, ne jedan —
 # zato p_filters prima LISTU (odstupanje od skice §2.4, obrazloženo u 035).
 FILTERS_IZVRSENO = [
-    {'slug': 'izvorplacanja', 'op': 'in',     'values': ['Racun', 'Cash']},
+    # /!\ `Cash` JE IZBACEN IZ SALDA U S111, a ovdje je ostao do S143.
+    #   Gotovinski trosak je vec oduzet PODIZANJEM (`Transfer | cash - bankomat`
+    #   nosi `Izvor = Racun`), pa bi ga `Izvor = Cash` brojio drugi put.
+    #   Posljedica nije bila siroka, ali je bila tiha: alat je mjerio drugim
+    #   ravnalom nego plocica, a bas se njime provjerava tocnost plocice.
+    #   Izmjereno 2026-09-20: u cijeloj Arei 2 takva retka (-66,00 20.05.2026.
+    #   i -20,00 27.08.2026.), od kojih samo drugi ima `racun = Kokin tekuci
+    #   ZABA` -- pa je razilazenje iznosilo tocno 20,00 na svaki prozor koji ga
+    #   obuhvaca. `promet_check` ga nije pokazivao samo zato sto pada IZA
+    #   zadnjeg obradjenog izvoda (2026-08-26).
+    #   /!\ Ovaj popis mora ostati ISTI kao `settings.dashboard` widget filtri
+    #     -- to je jedini razlog zbog kojeg alat i plocica mogu dati isti broj.
+    {'slug': 'izvorplacanja', 'op': 'in',     'values': ['Racun']},
     {'slug': 'status',        'op': 'not_in', 'values': ['Planiran']},
 ]
 
