@@ -989,16 +989,29 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             </div>
           ) : totalCount !== null && (
             /* /!\ U delta nacinu se puni izvoz UOPCE NE DOGODI: `doDownload`
-               spremi delta file i vrati se. Brojka odavde zato ondje NIJE broj
-               redaka u fileu nego broj dogadjaja koje filtar obuhvaca -- razlika
-               je red velicine (2.342 naspram nekoliko desetaka). Sasin nalaz
-               2026-09-02. Tocan broj se javlja toastom po generiranju, jer se
-               prije ucitavanja ne zna. */
+               spremi delta file i vrati se. `totalCount` je zato ondje broj
+               dogadjaja koje FILTAR obuhvaca, nikad broj redaka u fileu --
+               Sasin nalaz 2026-09-02. Tocan broj se javlja toastom po
+               generiranju, jer se prije ucitavanja ne zna.
+
+               /!\ ZATO SE `totalCount` OVDJE VISE NE ISPISUJE (S143). Dotad je
+                 pisalo „ne izvozi svih N dogadjaja", sto je bilo tocno dok je
+                 prozor bio stegnut sidrom i danima -- file je uvijek bio
+                 PODSKUP filtra. Otkad se prozor mjeri sidrima (S142, faza 1),
+                 moze ga daleko prerasti: izmjereno 20.09.2026. na `Prozor = 2`
+                 -- filtar 268 dogadjaja, prozor 627 dana i do 1.388 dogadjaja.
+                 Recenica je dakle tvrdila SUPROTNO od istine, i to o fileu koji
+                 tek treba izaci. Isti razred kao S129: brojka i sazetak moraju
+                 opisivati FILE KOJI IZLAZI, ne panel.
+                 Broj dogadjaja u prozoru ionako stoji nize (`deltaCount`), uz
+                 prag koji upozorava da ce file biti velik -- dakle jedina
+                 brojka koja je ovdje istinita vec je prikazana, i to na svom
+                 mjestu. */
             deltaMode && deltaReady ? (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900 space-y-1">
                 <p>
-                  <strong>Delta sheet</strong> &mdash; ne izvozi svih{' '}
-                  {totalCount.toLocaleString()} doga&#273;aja.
+                  <strong>Delta sheet</strong> &mdash; ne izvozi filtrirani popis nego{' '}
+                  <strong>prozor uskla&#273;enja</strong>, koji zna biti i &scaron;iri od raspona u filtru.
                 </p>
                 <p className="text-xs">
                   Izlazi <strong>jedan file</strong>: retci grupe &bdquo;{deltaAccount}&ldquo; koji

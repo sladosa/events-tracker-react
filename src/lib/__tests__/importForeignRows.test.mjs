@@ -237,5 +237,48 @@ console.log('Netaknuti retci se VRACAJU cijeli, ne samo brojkom:');
 }
 
 console.log('');
+console.log('created_at PRIJE session_start vise NIJE upozorenje (S143):');
+{
+  // /!\ ZASTO OVAJ TEST POSTOJI: provjera `created_at >= session_start` je
+  //     maknuta, i ovo je brana da se ne vrati. File nosi SAMO doba dana
+  //     (`session_start` HH:MM, `created_at` HH:mm:ss), pa usporedba nije mogla
+  //     biti ispravna; a ono sto je hvatala je mehanizam samog appa --
+  //     `findFreeSessionStart` trazi SLOBODNU MINUTU, pa pri brzom unosu minuta
+  //     odmakne ispred spremanja. Izmjereno na PROD-u: 8 od 8 prijavljenih
+  //     redaka bilo je medju NEPROMIJENJENIMA, a poruka im je tvrdila
+  //     "Row will still be imported".
+  //
+  //     Oblik je doslovno prepisan s PROD-a (15.09.2026.): ss 16:02 / created
+  //     16:01:42, pet redaka zaredom.
+  const brzi = [
+    { ...mk('e1', 'brzi unos 1'), user_email: OWNER, user_id: 'u-owner',
+      session_start: '2026-08-24T14:02:00Z', created_at: '2026-08-24T14:01:42Z' },
+    { ...mk('e2', 'brzi unos 2'), user_email: OWNER, user_id: 'u-owner',
+      session_start: '2026-08-24T14:03:00Z', created_at: '2026-08-24T14:02:21Z' },
+  ];
+  const buf = await createEventsExcel(brzi, defs, catsDict, 'asc');
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buf);
+  const ws = wb.getWorksheet('Events');
+  let hdr = 0;
+  for (let r = 1; r <= ws.rowCount; r++) if (String(ws.getCell(r, 1).value ?? '').trim() === 'event_id') { hdr = r; break; }
+  const colOf = (n) => { for (let c = 1; c <= ws.columnCount; c++) if (String(ws.getCell(hdr, c).value ?? '').trim() === n) return c; return 0; };
+
+  // /!\ Prvi redak se DIRA, drugi ne -- stara provjera je palila na oba, i bas
+  //     je drugi bio onaj o kojem je lagala.
+  ws.getCell(hdr + 1, colOf('leaf comment')).value = 'brzi unos 1 — ISPRAVLJEN';
+  const outBuf = await wb.xlsx.writeBuffer();
+  const f = new File([outBuf], 'brzi.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+  const p = await parseExcelFile(f, OWNER, 'skip');
+  const sumnjive = p.warnings.filter(w => /created_at|session_start/i.test(w));
+  ok('nema upozorenja o created_at / session_start', sumnjive.length === 0,
+     `got ${JSON.stringify(sumnjive)}`);
+  ok('dirnut redak svejedno ide u UPDATE', p.toUpdate.length === 1, `got ${p.toUpdate.length}`);
+  ok('nedirnut redak je i dalje preskocen kao netaknut', p.untouchedCount === 1,
+     `got ${p.untouchedCount}`);
+}
+
+console.log('');
 console.log(`${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

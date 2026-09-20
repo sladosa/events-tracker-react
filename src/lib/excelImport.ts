@@ -10,7 +10,9 @@
  *   - If legend col letters don't match headers → REJECT with instructions
  *   - Smart reclassify: invalid event_ids → CREATE instead of silent failure
  *   - Multi-level create: one Excel row → parent + child events
- *   - Validation: created_at >= session_start (per row)
+ *   - /!\ NEMA provjere `created_at >= session_start` (maknuta S143) — file nosi
+ *     samo doba dana, pa je usporedba bila neispravna, a hvatala je mehanizam
+ *     slobodne minute. Razlog u cijelosti stoji uz mjesto gdje je stajala.
  */
 
 import ExcelJS from 'exceljs';
@@ -401,7 +403,6 @@ export async function parseExcelFile(
     return { ...emptyLists, warnings: [], errors: [msg], legendMapping: mapping, ...emptyForeign };
   }
 
-  // Validate time ordering per row: created_at >= session_start
   const warnings: string[] = [];
 
   // Prazni retci predloška se preskaču, ali se BROJE — nevidljiv skip bi značio
@@ -413,21 +414,36 @@ export async function parseExcelFile(
   }
   let validRows: ParsedImportRow[] = [];
 
+  // ⚠ OVDJE JE STAJALA PROVJERA `created_at >= session_start`. MAKNUTA JE (S143,
+  //   Sašina odluka), i to je odluka koja se ne smije vratiti bez čitanja ovoga.
+  //
+  //   ⚠ NIJE SE MOGLA UČINITI ISPRAVNOM. File nosi `session_start` kao `HH:MM` i
+  //     `created_at` kao `HH:mm:ss` — dakle SAMO DOBA DANA, bez datuma nastanka
+  //     (excelExport, zaglavlje kolona). Usporedba je zato bila „koliko je sati",
+  //     a dva sata s različitih dana nisu poredivi. Unos unatrag (birač datuma,
+  //     S117) daje `session_start` na prošli datum uz `created_at` od danas ⇒
+  //     savršeno ispravan redak bio bi prijavljen. To bi raslo, jer je taj birač
+  //     napravljen baš za Financije.
+  //
+  //   ⚠ A ONO ŠTO JE HVATALA JE MEHANIZAM SAMOG APPA. `findFreeSessionStart`
+  //     (AddActivityPage) traži SLOBODNU MINUTU jer `useActivities` grupira po
+  //     `session_start`u; rata modal isto tako pomiče svaku ratu za +1 min. Pri
+  //     brzom unosu (`Save +`) minuta odmakne ispred stvarnog spremanja, pa je
+  //     `created_at < session_start` NORMALNO STANJE, ne sumnja.
+  //     Izmjereno na PROD-u: 10 od 8.009 redaka (0,1 %) — ali 8 od tih 10 u
+  //     jednom jedinom delta prozoru, dakle svaki budući uvoz nosi šaku njih.
+  //
+  //   ⚠ I poruka je lagala: petlja je išla po SVIM parsiranim retcima, prije
+  //     `row_hash` klasifikacije, pa je za nepromijenjene retke tvrdila „Row will
+  //     still be imported" — a oni se preskaču. Izmjereno 20.09.2026.: 8 od 8
+  //     prijavljenih redaka bilo je među 99 nepromijenjenih.
+  //     Upozorenje koje laže korisnik nauči otklikati bez čitanja, a s njim i ono
+  //     pravo — zato je maknuto, a ne preformulirano.
+  //
+  //   Ako ikad zatreba: jedino što se DA reći iz filea je „korisnik je promijenio
+  //   vrijeme retka u odnosu na bazu". To je druga provjera i traži usporedbu s
+  //   postojećim eventom, ne s `created_at`om.
   for (const r of allRows) {
-    if (r.created_at && r.session_start) {
-      const ss = parseTimeStr(r.session_start);
-      const ca = parseTimeStr(r.created_at);
-      if (ss && ca) {
-        const ssSeconds = ss.h * 3600 + ss.m * 60 + ss.s;
-        const caSeconds = ca.h * 3600 + ca.m * 60 + ca.s;
-        if (caSeconds < ssSeconds) {
-          warnings.push(
-            `Row ${r._source_row}: created_at (${r.created_at}) is before session_start (${r.session_start}). ` +
-            `Row will still be imported but please review.`
-          );
-        }
-      }
-    }
     validRows.push(r);
   }
 
