@@ -27,6 +27,10 @@ import { loadCategoriesForExport, loadAttrDefsForCategories } from '@/lib/excelD
 import { buildImportReport } from '@/lib/excelImportReport';
 import { readProfileFromWorkbook, readProfileNameFromWorkbook, type ExportProfile } from '@/lib/exportProfile';
 import type { CollisionInfo, UpdateAnalysis, DeleteAnalysis } from '@/lib/excelImport';
+import { listAnchors } from '@/lib/overviewApi';
+import { hrDate } from '@/lib/confirmedPeriod';
+import { useFilter } from '@/context/FilterContext';
+import { useAreaDashboard } from '@/hooks/useAreaDashboard';
 
 interface ExcelImportModalProps {
   onClose:   () => void;
@@ -45,6 +49,15 @@ interface ParsePreview {
 }
 
 export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportModalProps) {
+  // Faza 4: guard mora znati KOJA su stanja potvrdjena, a to je per-Area i
+  // per-racun (`balance_anchors`). Widget daje slug po kojem su sidra spremljena.
+  const { filter } = useFilter();
+  const { config: dashboardCfg } = useAreaDashboard(filter.areaId);
+  const balanceWidget = useMemo(
+    () => dashboardCfg?.widgets.find(w => w.type === 'balance_by_group') ?? null,
+    [dashboardCfg],
+  );
+
   const [importState,   setImportState]   = useState<ImportState>('idle');
   const [selectedFile,  setSelectedFile]  = useState<File | null>(null);
   const [preview,       setPreview]       = useState<ParsePreview | null>(null);
@@ -74,6 +87,8 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   // a lista promjena (staro→novo) je vidljiva iznad njega.
   const [updateAnalysis,      setUpdateAnalysis]      = useState<UpdateAnalysis | null>(null);
   const [updatesAcknowledged, setUpdatesAcknowledged] = useState(false);
+  // Faza 4: retci UNUTAR potvrdjenog stanja traze VLASTITU potvrdu — v. §5 sloj 3.
+  const [confirmedAcknowledged, setConfirmedAcknowledged] = useState(true);
   // S107w delete-guard: deletion is irreversible, so it gets its OWN list and its
   // own checkbox — ticking "yes, modify" must never also mean "yes, destroy".
   const [deleteAnalysis,      setDeleteAnalysis]      = useState<DeleteAnalysis | null>(null);
@@ -162,12 +177,27 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       // S107 D7 update-guard: dry-run diff UPDATE redova (koje promjene bi Apply napravio)
       if (parsed.toUpdate.length > 0) {
         const attrDefs = await loadAttrDefsForCategories(user.id, Object.keys(categoriesDict), categoriesDict);
-        const analysis = await analyzeUpdates(user.id, parsed.toUpdate, categoriesDict, attrDefs);
+        // Faza 4: sidra Aree, da guard moze reci KOJU potvrdu izmjena dovodi u
+        // pitanje. /!\ Neuspjelo citanje se NE cita kao „nema sidara" — tada
+        //   guard samo suti, a to je isto ponasanje kao prije faze 4; lazna
+        //   tvrdnja „nista nije potvrdjeno" bila bi gora od izostanka.
+        let confirmedIn: { groupSlug: string; anchors: Awaited<ReturnType<typeof listAnchors>> } | null = null;
+        const gSlug = balanceWidget?.group_by ?? null;
+        if (gSlug && filter.areaId) {
+          try {
+            confirmedIn = { groupSlug: gSlug, anchors: await listAnchors(filter.areaId, gSlug) };
+          } catch {
+            confirmedIn = null;
+          }
+        }
+        const analysis = await analyzeUpdates(user.id, parsed.toUpdate, categoriesDict, attrDefs, confirmedIn);
         setUpdateAnalysis(analysis);
         setUpdatesAcknowledged(analysis.updates.length === 0);
+        setConfirmedAcknowledged(analysis.confirmedCount === 0);
       } else {
         setUpdateAnalysis(null);
         setUpdatesAcknowledged(true);
+        setConfirmedAcknowledged(true);
       }
 
       // S107w delete-guard: what the Delete? column would remove, before anything happens
@@ -297,7 +327,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const updateGuardActive = updateAnalysis !== null && updateAnalysis.updates.length > 0;
   const deleteCount       = deleteAnalysis?.deletes.length ?? 0;
   const deleteGuardActive = deleteCount > 0;
-  const applyBlocked      = (updateGuardActive && !updatesAcknowledged) || (deleteGuardActive && !deletesAcknowledged);
+  const confirmedGuardActive = (updateAnalysis?.confirmedCount ?? 0) > 0;
+  const applyBlocked      = (updateGuardActive && !updatesAcknowledged)
+                          || (deleteGuardActive && !deletesAcknowledged)
+                          || (confirmedGuardActive && !confirmedAcknowledged);
 
   // ── Korak 7: Create missing categories from Structure sheet, then continue ──
   const handleCreateStructure = async () => {
@@ -792,6 +825,14 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                           <span className="text-gray-400 mx-1">·</span>
                           <span className="text-gray-600">{u.categoryPath}</span>
                           <span className="text-gray-500 ml-1.5 text-[11px]">(Excel row {u.sourceRow})</span>
+                          {u.confirmedBy && (
+                            <span
+                              className="ml-1.5 inline-block text-[10px] font-semibold text-gray-700 bg-gray-200 border border-gray-400 rounded px-1 py-[1px]"
+                              title="Ovaj je iznos vec usao u potvrdeno stanje. Izmjena razilazi potvrdu sa stvarnoscu, a saldo se NECE pomaknuti — pa se to nigdje drugdje ne vidi."
+                            >
+                              potvr&#273;eno {hrDate(u.confirmedBy.confirmedOn)} &middot; {u.confirmedBy.amount.toFixed(2)}
+                            </span>
+                          )}
                         </div>
                         <ul className="mt-1 space-y-0.5">
                           {u.changes.map((c, i) => (
@@ -819,6 +860,38 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                       I reviewed the list — permanently modify {updateAnalysis.updates.length} existing event{updateAnalysis.updates.length !== 1 ? 's' : ''}.
                     </span>
                   </label>
+
+                  {/* /!\ FAZA 4 (DELTA_WINDOW_SPEC §5, sloj 3) — jedina PRAVA brana.
+                      Kolona `Potvrda` i sivi ton u delta sheetu samo KAZU da je redak
+                      potvrden; ovdje se prvi put i trazi pristanak.
+                      /!\ NE ODBIJA UVOZ. Odbijanje lomi nacelo „sve ide importom" —
+                        ispravak potvrdenog retka je legitiman (redak zna biti kriv).
+                        Guard trazi da se to izrekne, ne brani.
+                      /!\ VLASTITA kvacica, ne prosirenje postojece: ova dva pitanja
+                        nisu isto. Prvo je „jesi li vidio sto se mijenja", drugo
+                        „znas li da time dovodis u pitanje potvrdeno stanje" — spojena
+                        bi drugo pitanje progutalo, jer se prvo klikce svaki put. */}
+                  {(updateAnalysis.confirmedCount ?? 0) > 0 && (
+                    <label className="flex items-start gap-2 cursor-pointer bg-gray-100 border-2 border-gray-500 rounded-lg p-2.5">
+                      <input
+                        type="checkbox"
+                        checked={confirmedAcknowledged}
+                        onChange={e => setConfirmedAcknowledged(e.target.checked)}
+                        className="mt-0.5"
+                        data-testid="confirmed-guard-ack"
+                      />
+                      <span className="text-xs text-gray-800">
+                        <span className="font-semibold">
+                          &#9888; {updateAnalysis.confirmedCount} {updateAnalysis.confirmedCount === 1 ? 'redak je' : 'redaka je'} unutar POTVR&#272;ENOG stanja
+                        </span>
+                        <span className="block mt-0.5 text-gray-700">
+                          Ti su iznosi ve&#263; u&scaron;li u potvrdu (oznaka uz redak ka&#382;e koju).
+                          Izmjena razilazi potvrdu sa stvarno&scaron;&#263;u, a <strong>saldo se ne&#263;e pomaknuti</strong> —
+                          pa se to nigdje drugdje ne&#263;e vidjeti. Potvrdi samo ako doista ispravlja&scaron; gre&scaron;ku.
+                        </span>
+                      </span>
+                    </label>
+                  )}
                 </div>
               )}
               {updateAnalysis && updateAnalysis.invalidIdCount > 0 && (
@@ -974,7 +1047,9 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                     applyBlocked
                       ? (deleteGuardActive && !deletesAcknowledged
                           ? 'Review the deletion list and tick its checkbox first'
-                          : 'Review the modification list and tick the checkbox first')
+                          : confirmedGuardActive && !confirmedAcknowledged
+                            ? 'Neki retci su unutar potvrdenog stanja — potvrdi i tu kvacicu'
+                            : 'Review the modification list and tick the checkbox first')
                       : undefined
                   }
                   className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

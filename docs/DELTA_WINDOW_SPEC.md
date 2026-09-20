@@ -1,6 +1,6 @@
 # DELTA_WINDOW_SPEC — sidro prestaje biti rez, postaje oznaka
 
-**Status:** **faze 1–3 su IZVEDENE** (1 i 2 u S142 2026-09-19, 3 u S143 2026-09-20); faza 4 nije — §9 nosi što je gdje.
+**Status:** **sve četiri faze su IZVEDENE** (1–2 u S142 2026-09-19, 3–4 u S143 2026-09-20) — §9 nosi što je gdje.
 Izvorno pisan kao prijedlog prije koda (S141, 2026-09-18).
 **Isti obrazac kao `FILTER_SPEC.md` i `RULES_ENGINE_SPEC.md`:** Saša čita, reže što ne
 treba, pa se kodira.
@@ -319,13 +319,27 @@ se testira automatika, slučaj se bira tako da se razlikuje od njezinog rezultat
    ⚠ To je uhvaćeno tek **apsolutnom** tvrdnjom: relativna („poruka je točno iznad prve
    točke") preživjela je sabotažu, jer u skliznutom rasporedu i dalje vrijedi.
    Čuva `deltaSheetLayout.test.mjs` — 95 tvrdnji, protuprovjereno s 4 sabotaže za ovu fazu.
-4. ⏳ **Update-guard na uvozu** (§5, sloj 3) — jedini korak koji dira `excelImport.ts`.
+4. ✅ **Update-guard na uvozu** (§5, sloj 3) — **S143**. Jedina PRAVA brana; sve prije
+   nje samo označava.
+   ⚠ **Ne odbija uvoz** — ispravak potvrđenog retka je legitiman (redak zna biti kriv, i
+   upravo je jedan takav nađen isti dan). Guard traži da se to **izrekne**.
+   ⚠ **VLASTITA kvačica, ne proširenje postojeće.** Dva su pitanja različita: *„jesi li
+   vidio što se mijenja"* i *„znaš li da time dovodiš u pitanje potvrđeno stanje"*. Spojena
+   bi drugo progutalo, jer se prvo klikće svaki put.
+   ⚠ **Račun i datum se čitaju iz POSTOJEĆEG retka u bazi**, ne iz Excela: pitanje je je li
+   potvrđeno ono što već stoji, ne kamo ga korisnik želi premjestiti.
+   ⚠ Pravilo je izdvojeno u `src/lib/confirmedPeriod.ts` jer ga postavljaju **dva** mjesta
+   (kolona `Potvrda` kroz Excel formulu i ovaj guard); raziđu li se, sheet bi redak označio
+   a uvoz ga pustio — nevidljivo, jer izmjena retka prije sidra **ne miče saldo**.
+   ⚠ Neuspjelo čitanje sidara **ne čita se kao „nema sidara"**: guard tada šuti (ponašanje
+   kao prije faze 4), umjesto da tvrdi da ništa nije potvrđeno.
+   Čuva `confirmedPeriod.test.mjs` — 16 tvrdnji, protuprovjereno s 3 sabotaže.
 
 Faza 1 sama rješava Sašin problem. Faze 2–3 ga čine vidljivim, faza 4 sigurnim.
 
-⚠ **Dok faza 4 ne postoji, zaštita je OZNAKA, ne brana.** Kolona i ton kažu „ovaj je redak
-već potvrđen“, ali uvoz i dalje prihvaća izmjenu bez pitanja. To je svjesno stanje, ne propust —
-ali mora biti zapisano dok traje.
+✅ **Zaštita više nije samo oznaka.** Kolona i ton kažu, kontrolna točka mjeri, a uvoz traži
+pristanak — i imenuje sidro koje se dovodi u pitanje. Ostaje istinito da guard **ne brani**:
+ispravak potvrđenog retka prolazi, ali ne više nehotice.
 
 ---
 

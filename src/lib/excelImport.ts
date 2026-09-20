@@ -16,6 +16,7 @@
  */
 
 import ExcelJS from 'exceljs';
+import { findCoveringAnchor, type AnchorLike, type ConfirmedMark } from '@/lib/confirmedPeriod';
 import { supabase } from '@/lib/supabaseClient';
 import { FIXED_COL_COUNT, DELETE_COL_HEADER, DELETE_MARKER } from './excelExport';
 import { computeRowFingerprint, ROW_HASH_HEADER } from './excelFingerprint';
@@ -1651,6 +1652,15 @@ export interface UpdatePreview {
   /** Existing DB event_date — old-record warnings key off this */
   existingEventDate: string;
   changes:           UpdateFieldChange[];
+  /**
+   * Redak je VEĆ unutar potvrđenog stanja (`DELTA_WINDOW_SPEC` §5, sloj 3).
+   * `null` = nije, ili se račun retka nije dao utvrditi.
+   *
+   * ⚠ Ovo je jedina RAZLIKA koju izmjena takvog retka proizvede: saldo se ne
+   *   pomakne (retci prije sidra u njega ne ulaze), pa bez ovoga promjena
+   *   prolazi bez ijednog traga.
+   */
+  confirmedBy?:      ConfirmedMark | null;
 }
 
 export interface UpdateAnalysis {
@@ -1660,6 +1670,11 @@ export interface UpdateAnalysis {
   unchangedCount: number;
   /** event_id not found / category mismatch — smartReclassify turns these into CREATE at apply */
   invalidIdCount: number;
+  /**
+   * Koliko od `updates` dira redak unutar potvrđenog stanja (faza 4).
+   * 0 kad Area nema sidra ili kad guard nije bio pozvan s njima.
+   */
+  confirmedCount: number;
 }
 
 /**
@@ -1672,8 +1687,27 @@ export async function analyzeUpdates(
   toUpdate:       ParsedImportRow[],
   categoriesDict: ExportCategoriesDict,
   attrDefs:       ExportAttrDef[],
+  /**
+   * Potvrđena stanja Aree (faza 4). Izostavljeno ⇒ guard šuti, ponašanje je
+   * doslovno prijašnje — Area bez `dashboard` widgeta nema ni pojam računa,
+   * pa nema o čemu tvrditi.
+   * ⚠ `groupSlug` mora biti ISTI po kojem su sidra spremljena
+   *   (`balance_anchors.group_slug`), inače se `group_value` neće poklopiti ni
+   *   s jednim retkom i guard bi tiho pokazivao nulu.
+   */
+  confirmed?:     { groupSlug: string; anchors: readonly AnchorLike[] } | null,
 ): Promise<UpdateAnalysis> {
-  if (toUpdate.length === 0) return { updates: [], unchangedCount: 0, invalidIdCount: 0 };
+  if (toUpdate.length === 0) {
+    return { updates: [], unchangedCount: 0, invalidIdCount: 0, confirmedCount: 0 };
+  }
+
+  // Definicije atributa koje nose račun — slug je jedan, ali definicija ima po
+  // jedna PO KATEGORIJI, pa je ovo skup, ne jedna vrijednost.
+  const groupDefIds = new Set<string>(
+    confirmed
+      ? attrDefs.filter(d => d.slug === confirmed.groupSlug).map(d => d.id)
+      : [],
+  );
 
   const attrByCatName = new Map<string, ExportAttrDef>();
   for (const def of attrDefs) attrByCatName.set(`${def.category_id}||${def.name}`, def);
@@ -1703,6 +1737,7 @@ export async function analyzeUpdates(
   const updates: UpdatePreview[] = [];
   let unchangedCount = 0;
   let invalidIdCount = 0;
+  let confirmedCount = 0;
 
   for (const row of toUpdate) {
     const existing = existingById.get(row.event_id!);
@@ -1717,6 +1752,19 @@ export async function analyzeUpdates(
     const changes = computeRowDiff(existing, row, attrByCatName, existing.category_id);
     if (changes.length === 0) { unchangedCount++; continue; }
 
+    // ⚠ Račun se čita iz POSTOJEĆEG retka u bazi, ne iz Excela: pitanje je
+    //   „je li ovo što već stoji potvrđeno", a ne „kamo ga korisnik želi
+    //   premjestiti". Isto vrijedi za datum — zato `existing.event_date`.
+    let confirmedBy: ConfirmedMark | null = null;
+    if (confirmed && groupDefIds.size > 0) {
+      let gv: string | null = null;
+      for (const ea of existing.event_attributes) {
+        if (groupDefIds.has(ea.attribute_definition_id) && ea.value_text) { gv = ea.value_text; break; }
+      }
+      confirmedBy = findCoveringAnchor(confirmed.anchors, gv, existing.event_date);
+      if (confirmedBy) confirmedCount++;
+    }
+
     const ssParsed = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
     updates.push({
       eventId:           row.event_id!,
@@ -1726,10 +1774,11 @@ export async function analyzeUpdates(
       categoryPath:      row.category_path,
       existingEventDate: existing.event_date,
       changes,
+      confirmedBy,
     });
   }
 
-  return { updates, unchangedCount, invalidIdCount };
+  return { updates, unchangedCount, invalidIdCount, confirmedCount };
 }
 
 // ─────────────────────────────────────────────
