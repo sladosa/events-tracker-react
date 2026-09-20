@@ -288,6 +288,34 @@ console.log('Kolona „Potvrda" -- sidro UNUTAR prozora (glavni blok 02.-04.08.)
   const blankFill = ws.getCell(hdr + main.length + 1, 2).fill?.fgColor?.argb;
   ok('prazni retci imaju blag ton', blankFill === 'FFFFFBEB', `got ${blankFill}`);
   ok('blag ton NIJE isti kao sivi ton potvrdjenih', blankFill !== 'FFEDEDED');
+
+  // /!\ SOLID FILL PREKRIVA EXCELOVE GRIDLINE-OVE (S143). Zato je blok praznih
+  //     redaka izgledao kao jedna ploha, a ne kao retci s celijama -- dakle
+  //     format koji ih je trebao istaknuti kao mjesto za unos oduzeo im je
+  //     raster koji taj unos cini citljivim. Povijesni retci ga imaju.
+  const bRow  = hdr + main.length + 1;
+  const bCell = ws.getCell(bRow, 2);
+  ok('prazni retci imaju okvir', bCell.border?.top?.style === 'thin' && bCell.border?.left?.style === 'thin',
+     `got ${JSON.stringify(bCell.border)}`);
+  ok('okvir je LAGAN (svijetlosiv), ne isti crni raster kao povijest',
+     bCell.border?.top?.color?.argb === 'FFCCCCCC', `got ${bCell.border?.top?.color?.argb}`);
+
+  // /!\ Okvir mora seci TOCNO DOKLE I TON: raster koji stane ranije tvrdi da tu
+  //     prestaje mjesto za unos, a ne prestaje. Alatni stupci ostaju izvan oboje.
+  const lastData = ctrl - 1;
+  ok('okvir seze do zadnje podatkovne kolone, kao i ton',
+     ws.getCell(bRow, lastData).border?.top?.style === 'thin' &&
+     ws.getCell(bRow, lastData).fill?.fgColor?.argb === 'FFFFFBEB',
+     `got border ${JSON.stringify(ws.getCell(bRow, lastData).border)}`);
+  ok('alatni stupac (kontrola) nema ni ton ni okvir -- u njega se ne pise',
+     !ws.getCell(bRow, ctrl).border?.top &&
+     ws.getCell(bRow, ctrl).fill?.fgColor?.argb !== 'FFFFFBEB');
+
+  // /!\ Okvir je format PRAZNIH redaka, ne cijelog lista: povijesni redak nosi
+  //     svoj (crni) raster iz `excelExport`, i ne smije ga dobiti ovaj.
+  ok('povijesni redak NE dobiva svijetli okvir praznih redaka',
+     ws.getCell(hdr + 1, 2).border?.top?.color?.argb !== 'FFCCCCCC',
+     `got ${ws.getCell(hdr + 1, 2).border?.top?.color?.argb}`);
 }
 
 console.log('');

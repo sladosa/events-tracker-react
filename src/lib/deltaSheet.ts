@@ -50,6 +50,26 @@ export const DELTA_TIME_START_H = 14;
  */
 const BLANK_ROW_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } };
 
+/**
+ * Raster praznih redaka (Sašin zahtjev, S143).
+ *
+ * /!\ SOLID FILL PREKRIVA EXCELOVE GRIDLINE-OVE. Zato je blok praznih redaka
+ *   izgledao kao jedna ploha, a ne kao deset redaka s ćelijama -- dakle format
+ *   koji ih je trebao istaknuti kao mjesto za unos oduzeo im je raster koji taj
+ *   unos čini čitljivim. Povijesni retci ga imaju (`THIN_BORDER`, excelExport),
+ *   pa su prazni retci bili jedini dio lista bez granica -- i to baš onaj u koji
+ *   se piše.
+ * /!\ OKVIR JE STRUKTURA, TON JE ZNAČENJE: boja je namjerno NEUTRALNO siva, ne
+ *   treća topla nijansa. Kremasti („ovdje pišeš") i sivi („ne diraj") moraju
+ *   ostati jedina dva sloja značenja; treća bi ih razvodnila.
+ */
+const BLANK_ROW_BORDER: Partial<ExcelJS.Borders> = {
+  top:    { style: 'thin', color: { argb: 'FFCCCCCC' } },
+  bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+  left:   { style: 'thin', color: { argb: 'FFCCCCCC' } },
+  right:  { style: 'thin', color: { argb: 'FFCCCCCC' } },
+};
+
 /** Ton retka koji je VEĆ unutar potvrđenog stanja: „ovo ne diraj“. */
 const CONFIRMED_ROW_BG = 'FFEDEDED';
 
@@ -275,8 +295,14 @@ export function addDeltaHelpersTo(
     //   dodati a što samo ispraviti.
     // ⚠ Boja ide na ćelije, a `dataValidation` tih redaka se NE dira (`dvBlankRows`,
     //   S130) — dropdowni su ondje jedino što te retke čini upotrebljivima.
+    // ⚠ Okvir ide U ISTOM RASPONU kao ton (v. `BLANK_ROW_BORDER`): raster koji
+    //   staje prije ruba tona rekao bi da tu prestaje mjesto za unos, a ne
+    //   prestaje. Alatni stupci (`Stanje (kontrola)`, `Potvrda`) ostaju izvan
+    //   oboje -- u njih se ne piše.
     for (let c = 1; c <= blankFillTo; c++) {
-      ws.getCell(r, c).fill = BLANK_ROW_FILL;
+      const cell = ws.getCell(r, c);
+      cell.fill   = BLANK_ROW_FILL;
+      cell.border = BLANK_ROW_BORDER;
     }
 
     // ⚠ OVDJE SE VALIDACIJA VIŠE NE KOPIRA S POVIJESNOG RETKA (S130).
