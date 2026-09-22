@@ -5,7 +5,20 @@ export type { RataAutomationConfig };
 
 export interface RataInfo {
   count: number;
+  /** Zaokruzeni iznos JEDNE rate — samo za naslov modala. */
   amountPerRata: number;
+  /**
+   * Iznos SVAKE rate, 1..count. Zbroj je **tocno** `totalAmount`.
+   *
+   * ⚠ BUG-S145-RATASPLIT: prije je svaka rata dobivala isti
+   *   `amountPerRata`, pa je zbroj bio manji od ukupnog kad dijeljenje
+   *   nije tocno. Izmjereno na PROD-u 22.09.2026.: `117,32 / 6` dalo je
+   *   6 x `19,55` = `117,30`, manjak `0,02`, dok komentar svakog retka
+   *   i dalje pise `19.55 od 117.32`. Saldo to ne otkriva (karticni retci
+   *   ga ne micu) — vidjelo bi se tek kad stigne izvod, kao razlika
+   *   izmedju Σ kosare i iznosa terecenja, dakle kao greska u SPARIVANJU.
+   */
+  amounts: number[];
   totalAmount: number;
   dateMapValue: string;
   /**
@@ -24,6 +37,31 @@ interface RataAttrInput {
 }
 
 const TRUTHY_VALUES = new Set(['true', 'da', 'yes', '1', 'ja']);
+
+/**
+ * Razdijeli iznos na `count` rata tako da im je zbroj **tocno** `total`.
+ *
+ * Ostatak zaokruzivanja nosi PRVA rata — isto kao banka: izmjereno na
+ * 62 plana s >=3 rate, **23** ih ima prvu ratu razlicitu od ostalih
+ * (`rate_alat.py`). Dakle poklapamo se s izvorom umjesto da od njega
+ * odstupamo, a kontrola kosare (Σ == iznos terecenja) ostaje upotrebljiva.
+ *
+ * ⚠ Racuna se u LIPAMA (cijeli brojevi). Zbrajanje decimalnih brojeva
+ *   nosi gresku binarnog zapisa (~1e-13), a novac se usporeduje s nulom
+ *   — isti razlog zbog kojeg kontrolne celije u Excelu idu kroz ROUND
+ *   (S112).
+ * ⚠ `Math.trunc`, ne `Math.floor`: kod negativnog iznosa (povrat) floor
+ *   vuce od nule pa bi ostatak promijenio predznak.
+ */
+export function splitRataAmounts(total: number, count: number): number[] {
+  if (!Number.isFinite(total) || !Number.isInteger(count) || count < 1) return [];
+  const cents = Math.round(total * 100);
+  const per = Math.trunc(cents / count);
+  const rest = cents - per * count;
+  const out: number[] = [];
+  for (let i = 0; i < count; i++) out.push((i === 0 ? per + rest : per) / 100);
+  return out;
+}
 
 export function detectRata(
   attrs: RataAttrInput[],
@@ -53,6 +91,7 @@ export function detectRata(
   if (!amountAttr || isNaN(totalAmount) || totalAmount === 0) return null;
 
   const amountPerRata = Math.round((totalAmount / count) * 100) / 100;
+  const amounts = splitRataAmounts(totalAmount, count);
 
   let dateMapValue = '';
   if (dateMapDef) {
@@ -60,7 +99,8 @@ export function detectRata(
     dateMapValue = String(dmAttr?.value ?? '');
   }
 
-  return { count, amountPerRata, totalAmount, dateMapValue, chargeDates: [], originalComment: null };
+  return { count, amountPerRata, amounts, totalAmount, dateMapValue,
+           chargeDates: [], originalComment: null };
 }
 
 /**

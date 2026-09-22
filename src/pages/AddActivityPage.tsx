@@ -1394,7 +1394,12 @@ export function AddActivityPage() {
 
       for (let i = 0; i < pendingRataInfo.chargeDates.length; i++) {
         const chargeDate = pendingRataInfo.chargeDates[i];
-        const comment = buildRataComment(i + 1, pendingRataInfo.count, pendingRataInfo.originalComment, pendingRataInfo.amountPerRata, pendingRataInfo.totalAmount);
+        // ⚠ Iznos PO RATI, ne prosjek: prva rata nosi ostatak zaokruzivanja
+        //   (BUG-S145-RATASPLIT). Komentar mora nositi isti broj koji je
+        //   upisan u atribut, inace redak sam sebi proturjeci.
+        const rataAmount = pendingRataInfo.amounts[i] ?? pendingRataInfo.amountPerRata;
+        const comment = buildRataComment(i + 1, pendingRataInfo.count,
+          pendingRataInfo.originalComment, rataAmount, pendingRataInfo.totalAmount);
 
         const { data: newEvent, error: evErr } = await supabase
           .from('events')
@@ -1423,7 +1428,7 @@ export function AddActivityPage() {
         // već auto-popunjen set_attribute pravilom (za prvu ratu točno), pa ga
         // za rate 2..N treba pregaziti.
         const forced = new Map<string, string | number>();
-        forced.set(pendingRataConfig.amount_slug, pendingRataInfo.amountPerRata);
+        forced.set(pendingRataConfig.amount_slug, rataAmount);
         for (const [slug, val] of Object.entries(pendingRataConfig.override_attrs ?? {})) {
           forced.set(slug, val);
         }

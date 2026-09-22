@@ -44,7 +44,16 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [listColumns, setListColumns] = useState<ListColumnsConfig | null>(null);
   const [areaName, setAreaName] = useState('');
-  const [loaded, setLoaded] = useState(false);
+  /**
+   * Za KOJI je `areaId` odgovor poznat. `undefined` = jos nismo ucitali nista.
+   *
+   * ⚠ Ovo je bio obican `boolean` i to je bio BUG-S145-OVERVIEWTAB: zastavica
+   *   je prezivjela promjenu `areaId`-a, pa je u renderu u kojem je Area vec
+   *   poznata a ucitavanje jos nije krenulo glasila `true` uz `config = null`.
+   *   Potrosac to procita kao „ova Area nema dashboard“. Zato se `loaded`
+   *   sada IZVODI u renderu (v. dolje) i ne moze zaostati za ulazom.
+   */
+  const [loadedFor, setLoadedFor] = useState<UUID | null | undefined>(undefined);
   const [error, setError] = useState(false);
   const [tick, setTick] = useState(0);
   /** Area whose config is currently in state, so a failed read can tell stale
@@ -63,11 +72,12 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
       setAreaName('');
       setError(false);
       loadedAreaIdRef.current = null;
-      setLoaded(true);
+      setLoadedFor(null);
       return;
     }
 
-    setLoaded(false);
+    // `loaded` je izveden iz `loadedFor !== areaId`, pa je za novu Areu vec
+    // `false` — bez ijednog dodatnog rendera i bez prozora u kojem laze.
     (async () => {
       try {
         const { data } = await withRetryQuery(
@@ -99,7 +109,7 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
         }
         setError(true);
       } finally {
-        if (!cancelled) setLoaded(true);
+        if (!cancelled) setLoadedFor(areaId);
       }
     })();
 
@@ -112,6 +122,9 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
     window.addEventListener('areas-changed', reload);
     return () => window.removeEventListener('areas-changed', reload);
   }, [reload]);
+
+  /** Izvedeno, ne pohranjeno: odgovor vrijedi samo za Areu koja je TRAZENA. */
+  const loaded = loadedFor === areaId;
 
   return { config, listColumns, loaded, areaName, error, reload };
 }

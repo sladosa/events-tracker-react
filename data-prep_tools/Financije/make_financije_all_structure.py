@@ -139,7 +139,13 @@ NEW_ATTRS = [
 # (AddActivityPage.tsx:698), pa Kokina biljeska uvijek pobjeduje.
 COMMENT_TEMPLATE = "{racun}/{tip}/{podtip}"
 
-# Automations — set_attribute za `Datum naplate` po Izvoru.
+# Automations — FALLBACK, i to samo za Areu koja jos ne postoji.
+#
+# /!\ NE MIJENJAJ OVE VRIJEDNOSTI DA BI PROMIJENIO KONFIGURACIJU (S145).
+#     Ako Area postoji, pravila se citaju iz `--base` exporta
+#     (`read_base_automations`) jer je baza stvarnost, a ovaj popis je
+#     sjecanje od dana kad je alat pisan. Konfiguracija se mijenja u
+#     aplikaciji ili Structure uvozom, nikad ovdje.
 # next:11 = Kokino pravilo za Mastercard; next:3 = PBZ/Visa s RF racuna
 # (isti brojevi kao postojeci `automations.rata.date_map` {RF:3, ZABA:11}).
 AUTOMATION_ROWS = [
@@ -245,6 +251,48 @@ def read_base(path: str) -> list[dict]:
         rows.append({h: cell_str(r[i]) for h, i in idx.items()})
     wb.close()
     return rows
+
+
+def read_base_automations(path: str) -> list:
+    """Cita `Automations` sheet BASE-a -> lista pravila (dict po koloni).
+
+    /!\ OVO JE JEDINI ISPRAVAN IZVOR, a ne `AUTOMATION_ROWS` (S145).
+        Uvoz `Automations` sheeta ZAMJENJUJE automatike Aree koja se u njemu
+        pojavi. Dok su pravila bila ukucana u ovom fileu, svaki generirani
+        file vracao je konfiguraciju na dan kad je alat pisan: izmjereno
+        22.09.2026. -- baza je nosila `Visa=cutoff:3:5` i rata `Visa=5`
+        (promijenjeno u S138), a generator `Visa=next:3` i rata `Visa=3`.
+        Uvoz bi oboje tiho ponistio, a vidjelo bi se tek za mjesec dana kao
+        krivi `Datum naplate` na novim Visa kupovinama.
+
+    /!\ App export uz pravila pise i HELP retke u koloni A. Redak se zato
+        prepoznaje po popunjenom `Action`, ne po popunjenom `Area`.
+    """
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    if "Automations" not in wb.sheetnames:
+        wb.close()
+        return []
+    ws = wb["Automations"]
+
+    hr = None
+    for r in range(1, 6):
+        vals = [cell_str(c.value) for c in ws[r]]
+        if "Area" in vals and "Action" in vals:
+            hr, hdr = r, vals
+            break
+    if hr is None:
+        wb.close()
+        sys.exit(f"BASE ima sheet Automations, ali bez zaglavlja: {path}")
+
+    idx = {h: i for i, h in enumerate(hdr) if h}
+    out = []
+    for r in ws.iter_rows(min_row=hr + 1, values_only=True):
+        act = cell_str(r[idx["Action"]]) if "Action" in idx else ""
+        if act not in ("set_attribute", "rata"):
+            continue
+        out.append({h: cell_str(r[i]) for h, i in idx.items()})
+    wb.close()
+    return out
 
 
 def read_taxonomy(path: str) -> "dict[str, list[str]]":
@@ -401,7 +449,7 @@ FILL_ATTR = PatternFill("solid", fgColor="FFE6F2FF")
 FILL_DEP = PatternFill("solid", fgColor="FFE2EFDA")
 
 
-def write_xlsx(rows: list[dict], out_path: str) -> None:
+def write_xlsx(rows: list[dict], out_path: str, autom: list) -> None:
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Structure"
@@ -453,10 +501,10 @@ def write_xlsx(rows: list[dict], out_path: str) -> None:
         cell = wa.cell(1, c, name)
         cell.fill = FILL_HDR
         cell.font = Font(bold=True, color="FFFFFFFF")
-    for i, rule in enumerate(AUTOMATION_ROWS, start=2):
+    for i, rule in enumerate(autom, start=2):
         for c, name in enumerate(acols, start=1):
             wa.cell(i, c, rule.get(name, ""))
-    note = len(AUTOMATION_ROWS) + 3
+    note = len(autom) + 3
     for i, line in enumerate((
         "Import ZAMJENJUJE navedene automatike svake Aree koja se pojavi u sheetu.",
         "set_attribute DateMap: 'vrijednost=same' ili 'vrijednost=next:N' (N = 1..31).",
@@ -477,7 +525,8 @@ def write_xlsx(rows: list[dict], out_path: str) -> None:
 # ─────────────────────────────────────────────────────────────
 
 
-def report(rows: list[dict], taks: "dict[str, list[str]]") -> None:
+def report(rows: list[dict], taks: "dict[str, list[str]]", autom: list,
+           autom_src: str) -> None:
     attrs = [r for r in rows if r["Type"] == "Attribute"]
     names = []
     for r in attrs:
@@ -508,8 +557,8 @@ def report(rows: list[dict], taks: "dict[str, list[str]]") -> None:
     print()
     for old, (new, slug) in RENAME.items():
         print(f"  preimenovano  : {old} -> {new} (slug '{slug}')")
-    print(f"  automations   : {len(AUTOMATION_ROWS)} pravilo/a")
-    for a in AUTOMATION_ROWS:
+    print(f"  automations   : {len(autom)} pravilo/a  ({autom_src})")
+    for a in autom:
         if a["Action"] == "rata":
             print(f"                  rata: trigger={a['TriggerAttr']} count={a['CountAttr']} "
                   f"amount={a['AmountAttr']} index={a['IndexAttr']}")
@@ -542,7 +591,28 @@ def main() -> None:
     taks = read_taxonomy(review_path)
     rows = build_rows(base, taks)
 
-    report(rows, taks)
+    # Automations: stvarnost iz BASE-a, ukucani popis samo ako ga ondje nema.
+    autom = read_base_automations(base_path)
+    if autom:
+        autom_src = "iz BASE exporta"
+        for a in autom:
+            for b in AUTOMATION_ROWS:
+                if a.get("Action") != b.get("Action"):
+                    continue
+                if cell_str(a.get("DateMap")) != cell_str(b.get("DateMap")):
+                    print()
+                    print(f"  /!\\ DateMap se razlikuje od ukucanog popisa "
+                          f"({a.get('Action')}):")
+                    print(f"       BASE (ide u file) : {a.get('DateMap')}")
+                    print(f"       ukuc. u alatu     : {b.get('DateMap')}")
+    else:
+        autom_src = "UKUCANO U ALATU"
+        autom = AUTOMATION_ROWS
+        print()
+        print("  /!\\ BASE nema sheet Automations — u file idu UKUCANA pravila.")
+        print("      Ako Area vec postoji, uvoz ce joj PREPISATI automatike.")
+
+    report(rows, taks, autom, autom_src)
 
     if args.dry:
         print()
@@ -551,7 +621,7 @@ def main() -> None:
 
     out = args.out or os.path.join(
         DATA, f"Financije_all_structure_{dt.datetime.now():%Y%m%d_%H%M%S}.xlsx")
-    write_xlsx(rows, out)
+    write_xlsx(rows, out, autom)
     print()
     print(f"  ZAPISANO: {out}")
 

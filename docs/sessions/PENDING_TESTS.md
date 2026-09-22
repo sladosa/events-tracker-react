@@ -18,6 +18,24 @@
 
 ---
 
+## S145 — testiranje hrpe A, a tri od cetiri popravka nisu bila na popisu (2026-09-22)
+
+⚠ **Sest testova hrpe A su svi prosli, ali su usput ispala cetiri kvara.** Jedan je
+gasio Kokin Overview tab pri svakom povratku, jedan bi uvozom vratio konfiguraciju iz
+S138 unatrag, jedan gubi lipe pri dijeljenju rata, a cetvrti se nije dao reproducirati.
+⚠ **Dva testa iz hrpe A nisu mjerila nista iz prvog pokusaja** (T-S133-5) — v. tamosnji redak.
+
+**Detalji testova:** [tests/S145_tests.md](tests/S145_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| **T-S145-1** | Overview tab prezivi povratak — F5, View details, Finish | ⚠ **F5 ✅ izmjeren 22.09.**; View details i Finish ⬜ |
+| **T-S145-2** | Rata s ostatkom: `100 / 3` — modal `33.34 / 33.33 / 33.33` + žuta napomena, isti broj u atributu i u komentaru retka | ⬜ ⚠ automatski dio je pokriven (`src/lib/__tests__/rataAmounts.test.mjs`, 21 tvrdnja; sabotaža implementacije ruši 11) |
+| T-S145-3 | (praćenje) Boolean u Edit formi piše `Not set` nad retkom koji u bazi ima `true` | ⬜ **nije reproduciran** — ako se ponovi, **prvo** hard refresh; četiri hipoteze su već oborene (izmjereno: do kvačice stiže pravi boolean) |
+| T-S145-4 | Generator ne vraća `Automations` unatrag | ✅ **izmjereno 22.09. prije uvoza**: file je nosio `Visa=next:3` i rata `Visa=3` (stanje od prije S138), popravljeno pa potvrđeno uvozom — nova Visa kupovina nosi `05.10.2026.` |
+
+---
+
 ## S141 — tri tvrdnje oborene mjerenjem, i sve tri su bile moje (2026-09-18)
 
 ⚠ **Sesija bez ijedne izmjene u `src/`.** Tri stvari su zapisane kao istina pa oborene brojkom:
@@ -57,74 +75,6 @@ uzrok, i on nije bio u aplikaciji.
 | T-S140-7 | `dbScopedKey`: filtar više ne curi između TEST-a i PROD-a | ✅ S141 — TEST **nije** naslijedio PROD-ov `Health_Sasa > Medical` nego pokazao **svoj** `Financije_all`; povratak na `dev:prod` vratio `Health_Sasa > Medical` netaknut. Bez `Unknown`, bez trake o grešci |
 | T-S140-8 | Puni E2E nakon popravka `e7`/`e10` — E7-3 i E10-2 zeleni i u **punom** runu | ⬜ **DJELOMIČNO — ostaje otvoren.** **E7-3 ✅ S141** prolazi i u punom runu (popravak drži). **E10-2 ❌** pada, ali **na drugom mjestu**: `structure-row-…` se nikad ne pojavi, pa dijalog opoziva nije ni dosegnut ⇒ v. T-S141-1. Ukupno **54/17** protiv baseline-a 60/11 |
 | T-S140-9 | `S139_tests.md` napisan (ritual korak 2 bio preskočen u S139) | ✅ S140 — audit ga vidi (5 definiranih, 4 zatvorena, 1 otvoren) |
-
----
-
-## S139 — alati koji mjere nešto drugo nego što tvrde (2026-09-17)
-
-⚠ **Četiri puta isti razred, i jedan od njih je bio moj vlastiti instrument.**
-ESLint je lintao `Claude-temp_R/OLD/` (142 od 189 problema = 75 % iz starih kopija; audit je
-76 `react-hooks` nalaza pripisao živom kodu, živih je bilo **25**) · `structureExcel.test.mjs`
-je ispisivao ❌ i izlazio s **exit 0** · `audit_tests.py` je prijavljivao **22** proturječnosti
-protiv popisa ukinutog u S116 · moja **dva** detektora „mrtvih alata" dala su **100 % lažnih
-pozitiva**. Puna zamka je u CLAUDE.md § „Alati koji mjere nesto drugo nego sto mislis".
-
-**Detalji testova:** [tests/S139_tests.md](tests/S139_tests.md) — napisan tek u S140 (ritual korak 2 je u S139 preskocen; Sasa primijetio da u  nema nicega)
-
-| ID        | Test                                                                                                      | Status |
-| --------- | --------------------------------------------------------------------------------------------------------- | ------ |
-| T-S139-1  | `npx eslint .` nad **živim** kodom = **0 problema** (bilo 189, od toga 142 iz `Claude-temp_R/OLD/`)       | ✅ S139 — izmjereno |
-| T-S139-2  | `npm run check` = `typecheck` + `test:unit` + `lint:ratchet`, sve tri prolaze                              | ✅ S139 — izmjereno |
-| T-S139-3  | CI (`Checks`) se okida **i na `test-branch`**, i koraci `Unit guards` + `Lint ratchet` stvarno izvrše      | ✅ S139 — dva zelena runa, workflow file pročitan iz samog runa |
-| T-S139-4  | Ratchet **pada i kad brojka padne** (zastarjela baseline), ne samo kad naraste                             | ✅ S139 — po konstrukciji + `--update` |
-| T-S139-5  | `run-unit-tests.mjs` prijavljuje „ispisuje pad, a izlazi s exit 0" kao **POKVAREN**                        | ✅ S139 — dokazano sabotažom jedne tvrdnje |
-| T-S139-6  | `structureExcel.test.mjs` sada **može pasti** (sažetak + `process.exit(failed ? 1 : 0)`)                   | ✅ S139 — sabotaža daje exit 1 |
-| T-S139-7  | 12 nepotpunih dep lista popravljeno; nijedna nije zastarijevala **danas**, sve su bile mine                | ✅ S139 — E2E specovi S121/S122/S123/S133 prolaze |
-| T-S139-8  | `ViewDetailsPage`: efekt premješten **ispod** deklaracije `loadActivityData` | ✅ S140 — Saša potvrdio: View se učita, Prev/Next mijenja zapis (2026-07-15 → 2027-04-30), Edit→natrag čuva podatke, druga Area (`Financije_all > Transakcija`) se učita. ⚠ **Slab test po prirodi** — mogao je pasti samo na dep listi; sam lint prigovor (efekt drži staru funkciju) NIJE pokriven, jer `loadActivityData` namjerno nije u dep listi |
-| T-S139-9  | `ExcelExportModal`: izvoz uzima SADAŠNJE stanje prekidača, ne staro | ✅ S140 — izmjereno na PROD-u, unutar **jednog** otvaranja modala: prekidač ON → **390**, OFF → **5.230**. Fileovi se poklapaju **u redak** (413−23=390, 5253−23=5230) ⇒ nema razilaženja razreda BUG-S129. Prekidač proveden i kroz `sortOrder` (profil Oldest / panel Newest), ne samo kroz raspon |
-| T-S139-10 | `hidden_in_add` preživi Structure roundtrip (kolona `HiddenInAdd`) | ⚠ **dio A ✅ S140**, dio B ⬜ — export nosi `TRUE` na **4 retka = 3 atributa** (`Stanje` ima dva jer `depends_on` daje redak po `WhenValue`); generator propušta kolonu, **izmjereno** sintetičkim roundtripom. Ostaje samo **uvoz pod Kokinim računom** |
-| T-S139-11 | `audit_tests.py` više ne prijavljuje 22 fantomske proturječnosti (`curated_retired`)                       | ✅ S139 — izmjereno |
-| T-S139-12 | E7-3 uzrok — klik na `Revoke` ne otvori `confirm revoke` | ✅ S140 — **nije bug appa**: gumb postoji samo kad grantee ima evente (`ShareManagementModal:199,:300`); tvrdnja u specu dosla iz `4413280` (S106). Isti uzrok i za **E10-2**. Protuprovjera: sabotiran `doSimpleRevoke` ruši točno ta dva |
-| T-S139-13 | Usporedba punog E2E runa `fd07840` vs `HEAD` — je li ijedan pad **nastao** u S139                          | ✅ S139 — `fd07840` **59/12**, HEAD **60/11** ⇒ S139 nije dodao nijedan pad. ⚠ Skupovi NISU identicni (baseline pada E5-5, HEAD u e5 nije pao nijedan) i HEAD report je prepisan ⇒ usporedba je po **brojci**, ne test-po-test |
-
-⚠ **Otvoreno pitanje o samom ovom dokumentu** (S139, nije izvedeno): 18 od 34 sekcije su
-**100 % zelene** i zauzimaju **539 od 1159 redaka (47 %)**. Ritual arhivira
-`docs/sessions/tests/SXX_tests.md` kad su svi testovi ✅, ali **nitko nikad ne arhivira
-odgovarajuću sekciju ovdje** — pa PENDING raste zauvijek i „što još treba" se ne vidi.
-Prijedlog: zelene sekcije u `DONE_HISTORY.md`, ovdje ostaje 14 sekcija s 24 otvorena testa.
-⚠ To **nije** kršenje pravila „retci se ne brišu" (S136) — retci prežive, samo u drugom fileu
-— ali **jest** promjena oblika rituala, pa čeka Sašinu odluku.
-
----
-
-
-## S138 — deploy, `cutoff:3:5` na PROD, i pravilo koje je bilo promijenjeno samo napola (2026-09-15)
-
-⚠ **`Datum naplate` ima DVA rječnika, a samo jedan razumije tokene.**
-`automations.attribute_rules[].date_map` prima pravila (`same`/`next:N`/`cutoff:B:D`),
-`automations.rata.date_map` prima **goli broj dana**. Promjena Vise na `cutoff:3:5` bila je
-zato **polovična**: obična kupovina išla bi na 05., a rata i dalje na 03. Izmjereno na PROD-u
-isti dan: MC rate **285/285** na 11. (slažu se), Visa rate **225** s danima 5.→99 / 4.→56 /
-6.→25 / 7.→15 (stvarna terećenja s izvoda) i **3 retka na 3.** — sva tri nastala **tog dana**
-kroz rata modal. Zatvoreno konfiguracijom: `rata.date_map.Visa = 5`. Puna zamka u CLAUDE.md.
-
-⚠ **Uvoz je morao ići pod Kokinim računom.** `attribute_rules` živi u `areas.settings`, a
-`sql/047` drži `areas_update USING (user_id = auth.uid())` ⇒ samo vlasnik. Saša je grantee;
-njegov bi uvoz **tiho stvorio duplikat Aree** (`structureImport.ts:498` filtrira po `user_id`).
-
-⚠ **Modal ne dokazuje da je pravilo promijenjeno.** `Automation rules 2` piše i kad se ništa
-nije promijenilo — `rulesImported` se povećava **prije** usporedbe (`structureImport.ts:1176`),
-isti razred kao `List columns` (S132). Dokaz je čitanje `areas.settings`, ne brojka.
-
-| #            | test                                                                 | status |
-| ------------ | -------------------------------------------------------------------- | ------ |
-| **T-S138-1** | ⭐ `cutoff:3:5` ziv u aplikaciji: nova Visa kupovina danas ⇒ `Datum naplate` = **05.10.2026.** (ne `03.10.`) | ✅ **S144 — izmjereno na PROD-u**: sve **4** Visa kupovine nastale nakon promjene configa (16.–19.09.2026.) nose `2026-10-05`. ⚠ Tri retka od **15.09.** nose `03.10.` jer su nastali **prije** promjene — to je T-S138-5, ne pad ovog testa |
-| **T-S138-2** | ⭐ `rata.date_map.Visa = 5` živ: Visa kupovina s `Rate? = 3` ⇒ **05.10. / 05.11. / 05.12.** | ⬜ |
-| T-S138-3 | MC naplata `11.09.` `1.068,70` ispravljena: `Transfer`/`izmedju racuna` + comment `TROŠKOVI UČINJENI MASTERCARD KARTICOM` | ✅ **S144 — izmjereno na PROD-u**: `Tip = Transfer`, `Podtip = izmedju racuna`, `comment = TROŠKOVI UČINJENI MASTERCARD KARTICOM` |
-| T-S138-4 | MC naplata `11.07.` `1.244,74` dobila comment (Tip/Podtip su vec tocni) | ✅ **S144 — izmjereno na PROD-u**: comment upisan, `Tip = Transfer`, `Podtip = izmedju racuna` |
-| T-S138-5     | Tri `Konzum dostava` rate od 15.09. prebačene s `03.` na `05.` (10./11./12. mj.) | ⬜ (zadatak) |
-
-**Detalji testova:** [tests/S138_tests.md](tests/S138_tests.md)
 
 ---
 
@@ -229,45 +179,6 @@ politike — dakle `INSERT ... RETURNING` nad `areas` ondje jos pada.
 > samo sekcije koje (a) nemaju nijedan ⬜ i (b) ne drze **jedini** redak za test cijem
 > session fileu jos ima zivih testova. Bez uvjeta (b) bi `audit_tests.py` za takav test
 > javio „PENDING nema redak za" — dakle zamijenili bismo jedan sum drugim.
-
----
-
-## S133 — module-level invalidacija kesa + brojanje eventa (2026-09-10)
-
-Detalji: [S133_tests.md](tests/S133_tests.md)
-
-⚠ **Gdje se testira:** oba popravka su isla na `main` na kraju S133. Prije toga
-su bila samo na `test-branch`, pa se PROD ponasao po starom.
-
-### A. Kes lanca kategorija — module-level listener
-
-| #            | test                                                                       | status |
-| ------------ | -------------------------------------------------------------------------- | ------ |
-| **T-S133-1** | ⭐ `categoryChainCache.test.mjs` — jezgra ODMONTIRA hook prije dispatcha    | ✅ 12/12, protuprovjera pada 4/12 |
-| **T-S133-2** | ⭐ PROD, template POSTAVLJEN → Finish upise komentar (bez F5, ista kartica) | ✅ izmjereno 10.09. (`TEST132 Domacinstvo/Hrana i ostalo`) |
-| **T-S133-3** | ⭐ PROD, template MAKNUT → Finish ostavi `Event Note` prazan                | ✅ izmjereno 10.09. |
-| **T-S133-4** | Structure **import** (ne panel) probije kes — modal mora javiti `Settings updated` | ✅ S136 — čuva `categoryChainCache.test.mjs` (12 testova) |
-| **T-S133-5** | Rename/premjestanje kategorije pa Add u istoj kartici → P2 parent eventi po NOVOJ hijerarhiji | ⬜ **nije provjereno, a `categoryChain.map(c => c.id)` hrani parent evente** |
-
-### B. Broj eventa na Structure tabu (BUG-S132-EVENTCOUNT)
-
-| #            | test                                                                    | status |
-| ------------ | ------------------------------------------------------------------------ | ------ |
-| **T-S133-6** | ⭐ E2E `S133_structure_event_count.spec.ts` — panel pise STVARAN broj    | ✅ prolazi; protuprovjera (vracen stari upit) pada |
-| **T-S133-7** | ⭐ PROD: `Financije_all > Transakcija` mora pisati **5.173 events**, ne `no events yet` | ✅ **11.09.** — znacka pise `5173 events`, tocno predvidjeni broj |
-| **T-S133-8** | S24 brava: Edit Mode → `+ Add Leaf` na toj kategoriji mora biti BLOKIRAN | ⬜ ⚠ **11.09. POKUSAN I NE VRIJEDI** — Sasa je na PROD-u **grantee**, pa ga je zaustavila S134 zabrana (Edit/Delete sivi, ⋮ nudi samo View details / Owner / Copy owner email) **prije** nego je dosao do `+ Add Leaf`. Prosao bi i da je S24 brava posve otvorena ⇒ ne mjeri nista. **Izvesti kao VLASNIK** — na TEST-u nad vlastitom Areom s eventima, ili pod Kokinim racunom |
-| **T-S133-9** | Structure tab se i dalje otvara bez osjetnog cekanja (39 count upita usporedno) | ✅ **11.09. na PROD-u, kao grantee** — s ucitanom aplikacijom Structure se otvori **ispod 3 s**. ⚠ Prvi dojam („sporo prvi put") razlucen je jednim klikom: sporo je samo **prije** nego se aplikacija ucita ⇒ to je **hladan bundle** (`vendor-plotly` ~4,9 MB, Backlog), **ne** brojanje. RPC s `GROUP BY` zato **ne treba** |
-
-### C. Nalaz koji NIJE popravljen
-
-| #             | test                                                                | status |
-| ------------- | -------------------------------------------------------------------- | ------ |
-| **T-S133-11** | ⭐ Tko smije pisati po `Financije_all > Transakcija` — grantee, vlasnica, ili oboje | ✅ **IZMJERENO 10.09.: OBOJE.** 3 spremanja, svako provjereno u bazi. Odlučeno da grantee **ne smije** |
-| **T-S133-12** | ⭐ Pročitaj STVARNU politiku na PROD-u (`pg_policy` nad `categories`/`areas`/`attribute_definitions`) — nije u repou | ✅ S136 — izveo ga i izmjerio S134/S135 |
-| **T-S133-13** | Nakon popravka: grantee **nema** Edit u View details, **nema** Edit Mode, **ne može** Structure import | ✅ S136 — izveo ga i izmjerio S134/S135 |
-| **T-S133-14** | Nakon popravka: grantee-jev write preko REST-a **pada** (skrivanje gumba nije brana) | ✅ S136 — izveo ga i izmjerio S134/S135 |
-| **T-S133-15** | `StructureNodeEditPanel` prestaje prepisivati `user_id` na spremanju — vlasništvo se ne prebacuje | ✅ S136 — izveo ga i izmjerio S134/S135 |
-| **T-S133-10** | ⚠ E2E s `reuseExistingServer: true` preuzme dev server koji vec stoji na 5173 — 10.09. je to bio `dev:prod`, pa je Playwright s TEST tokenom udario u PROD | ✅ S136 — zatvoreno S134 (`assertServedBuildIsTest`) |
 
 ---
 
@@ -532,7 +443,7 @@ ZABA `−22.943,71`.
 | P-1…P-6 | `verify_rpc_vs_model.py`: B vs C 0,00, A vs B 0,00, sidro 0,00, D1b 634/634 | ✅ (programski) |
 | P-7…P-12 | `rpc_area_balance_anchored` end-to-end: sidro zbraja, granica **stvarno** isključiva (1 redak na granici), grupa bez prometa se i dalje prikazuje, poziv bez prava 401, nepoznat slug 400 s imenom | ✅ (programski) |
 | T-S108-1 | ⭐ Overview tab postoji samo uz `dashboard` config (OQ-4), redoslijed Overview → Activities → Structure | ✅ (2026-08-15) |
-| T-S108-1b | Add Activity + “⚡ Use” rade i iz Overviewa; povratak nakon spremanja ide na Overview; leaf hint uz sivi gumb | ✅ **15.09. PROD** koraci 2/3/4 (`+` aktivan na Overviewu, `Use` vodi u Add, Finish vraca na Overview). ⚠ **Korak 5 PAO i popravljen**: uz `All Categories` gumb je siv **bez hinta** -- uvjet je trazio `filter.categoryId`, a to je ondje `null`. Sada gleda `filter.areaId`, isto kao gumb. ⬜ provjera u `dev:prod` |
+| T-S108-1b | Add Activity + “⚡ Use” rade i iz Overviewa; povratak nakon spremanja ide na Overview; leaf hint uz sivi gumb | ✅ koraci 2/3 (15.09. + 22.09. PROD). ⚠ **Korak 4 PAO 22.09. (S145)** — `Go to Home` je vraćao na **Activities**. Uzrok nije bio u Add toku nego `BUG-S145-OVERVIEWTAB`: zastavica `loaded` je prezivjela promjenu `areaId`-a. Popravljeno (`useAreaDashboard` izvodi `loaded` u renderu + `AppHome` traži poznatu Areu), izmjereno istim potezom `Overview` + `F5`. ⚠ 15.09. je ovaj korak bio označen ✅ — nije utvrđeno je li tada bio promašaj u očitanju ili je kvar ovisan o vremenu. ⬜ **Ostaje korak 5**: uz `All Categories` gumb siv **i žuti hint** (provjera u `dev:prod`) |
 | T-S108-2 | ⭐ Pločica — ZABA 150,80 €, RF −1.978,32 €, „od početka podataka" | ✅ (2026-08-15) |
 | T-S108-3 | „planirano" — ZABA −2.521,38 € (13) | ✅ (2026-08-15) |
 | T-S108-4 | ⭐ Sidro: Δ čip ✅; **„Potvrdi" ✅ (2026-08-16)** — sidro 3.000 spremljeno, podnaslov prešao na „od potvrde 16.08.2026. · 3.000,00 € · 0 promjena poslije". Koraci **4–5 (transakcija poslije / prije sidra) još neisprobani** | 🟡 3/5 |

@@ -273,11 +273,23 @@ function AppContent() {
 
   // Switching to an Area without a dashboard must not leave the user staring at
   // a tab that no longer exists.
+  //
+  // ⚠ ALI „još ne znam“ NIJE „nema ga“ (BUG-S145-OVERVIEWTAB, isti razred kao
+  //   BUG-S121-AREACTX). Na svakom svježem mountu `AppHome`-a `filter.areaId` je
+  //   još `null` — `FilterContext` se obnavlja u efektu — a `useAreaDashboard(null)`
+  //   postavi `loaded = true` uz `config = null`, dakle javi ODGOVOR na pitanje koje
+  //   još nije postavljeno. Bez uvjeta `filter.areaId` je ovaj efekt korisnika koji
+  //   STOJI na Overviewu vraćao na Activities pri svakom F5, povratku iz `View
+  //   details` i povratku nakon Finisha — i usput to ZAPISAO u `ui:activeTab`, pa
+  //   izbor nije bio preskočen nego obrisan.
+  //   Izmjereno na PROD-u 22.09.2026.: Overview + F5 ⇒ Activities.
+  // ⚠ `dashboardError` je ovdje iz istog razloga: palo čitanje nije odgovor.
   useEffect(() => {
-    if (activeTab === 'overview' && dashboardLoaded && !dashboardConfig) {
+    if (activeTab === 'overview' && filter.areaId && dashboardLoaded
+        && !dashboardError && !dashboardConfig) {
       setActiveTab('activities');
     }
-  }, [activeTab, dashboardLoaded, dashboardConfig]);
+  }, [activeTab, filter.areaId, dashboardLoaded, dashboardError, dashboardConfig]);
 
   // Sync active tab into HelpContext so chips match the visible tab
   const { setPageHint } = useHelp();

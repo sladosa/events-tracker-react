@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S144).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S145).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -404,6 +404,17 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **Pouka šira od rata modala:** „promijenili smo pravilo" je tvrdnja o **jednom**
   mjestu. Prije nego se proglasi gotovim, prebroji **tko sve puni taj atribut** —
   ovdje je drugi punilac bio dva retka niže u istom Excel sheetu.
+- **⚠ ZBROJ RATA MORA DATI UKUPAN IZNOS — ostatak zaokruživanja nosi PRVA rata**
+  (S145). `detectRata` je svakoj rati davao isti `Math.round((total/count)*100)/100`,
+  pa je `117,32 / 6` dalo 6 × `19,55` = **`117,30`**, uz komentar koji je i dalje
+  tvrdio `19.55 od 117.32`. Izmjereno na Kokinom planu unesenom 22.09.2026.
+  ⚠ **Saldo to ne otkriva** (kartični retci ga ne miču) — ispliva tek kad stigne izvod,
+  kao razlika između Σ košare i iznosa terećenja, dakle kao greška u **sparivanju**.
+  ⚠ **Prva, ne zadnja rata** — tako radi banka: od 62 plana s ≥3 rate njih **23** ima
+  prvu ratu različitu od ostalih (`rate_alat.py`). Poklapamo se s izvorom.
+  ⚠ Računa se **u lipama** (`splitRataAmounts`): zbrajanje decimala nosi grešku
+  binarnog zapisa, a novac se uspoređuje s nulom (isti razlog kao `ROUND` u Excelu, S112).
+  ⚠ Isti broj mora ići **u atribut i u komentar** retka, inace redak sam sebi proturječi.
 - **⚠ SHORTCUT NE SMIJE NOSITI IZVEDENU VRIJEDNOST** (S127). `activity_presets.
   default_attributes` sprema doslovne vrijednosti; za izvedeni atribut to je
   zamrznut **rezultat jednog trenutka**, i gori je od praznog polja — jer poslije
@@ -1317,6 +1328,29 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   otplate. Pravilo „MC = 11. sljedećeg mjeseca" proglasilo bi **21 vjerojatno
   ispravan redak** krivim i poslalo čovjeka da ih „popravi". `kosara_naplate.py`
   ih zato izdvaja u vlastitu dijagnozu umjesto da ih ocijeni.
+- **⚠ ALAT KOJI KONFIGURACIJU DRŽI UKUCANU VRAĆA JE UNATRAG PRI SVAKOM UVOZU** (S145).
+  `make_financije_all_structure.py` je `Automations` sheet pisao iz `AUTOMATION_ROWS`
+  u vlastitom kodu, a **uvoz tog sheeta ZAMJENJUJE** automatike svake Aree koja se u
+  njemu pojavi. Izmjereno 22.09.2026. na svježem exportu s PROD-a: baza nosi
+  `Visa=cutoff:3:5` i `rata.date_map.Visa = 5` (oboje promijenjeno u **S138**), a alat
+  je proizveo `Visa=next:3` i `rata Visa=3` — dakle uvoz bi **poništio oba popravka**.
+  ⚠ **Kvar bi se vidio tek za mjesec dana**, kao krivi `Datum naplate` na novim Visa
+  kupovinama. Modal uvoza broji **retke**, ne značenja: `Automations 2` izgleda jednako
+  za pravilo koje se nije promijenilo i za ono koje je upravo vraćeno godinu unatrag.
+  ⚠ **Ovo je TREĆE mjesto s istim pravilom**, i najtiše: S138 je zatvorio zamku *„dva
+  rječnika, a samo jedan razumije tokene“* (`attribute_rules` vs `rata`) — oba su bar
+  u bazi. Ovaj treći živi u `.py` fileu, pa ga Structure export ne pokazuje.
+  Zatvoreno: `read_base_automations()` čita pravila **iz `--base` exporta**; ukucani
+  popis je još samo fallback za Areu koja **ne postoji**, i alat tada to kaže naglas.
+  Kad se BASE i ukucano raziđu, ispiše **oba** retka — jer *„izgleda isto“* je bio
+  jedini razlog zbog kojeg je mina ležala neprimijećena.
+  ⚠ Pravilo šire od ovog alata: **generirani file mora opisivati STANJE, ne sjećanje
+  autora alata.** Za svaku vrijednost koju alat upisuje pitaj *„tko je vlasnik ovog
+  podatka“* — ako je to baza, alat ga **prenosi**, nikad ne proizvodi.
+  ⚠ Suprotno vrijedi za kolone kojih u generiranom fileu **nema**
+  (`DisableSavePlus`, `AddTimer`, `AddDatePicker`): ondje uvoz odsutnost čita kao
+  *„ne diraj“*, pa je izostanak **ispravan** — v. pravilo iz S139.
+
 - **⚠ ALAT KOJI NABRAJA PUTANJE RUČNO UMRE PRI PRVOJ SELIDBI FILEA** (S130).
   `primijeni_uskladu.py` je nosio hardkodiran popis izvoda koji je završavao na
   `MC_2026-07.pdf` **u korijenu** `izvodi/`; kad je taj u S129 prešao u
@@ -1361,6 +1395,28 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 - **heredoc patch tiho promaši a `py_compile` prođe** ⇒ provjeri grepom, ne pretpostavkom
 
 **UI (React)**
+
+- **⚠ ZASTAVICA `loaded` KOJA NE KAŽE **ZA ŠTO** JE UČITANO PREZIVI PROMJENU ULAZA —
+  i u tom prozoru tvrdi nešto o **prošlom** ulazu** (S145, BUG-S145-OVERVIEWTAB).
+  `useAreaDashboard` je za `areaId = null` radio `setLoaded(true)` uz `config = null`,
+  dakle javljao **odgovor na pitanje koje još nije postavljeno**. Na svakom svježem
+  mountu `AppHome`-a (`F5`, povratak iz `View details`, `Go to Home` nakon Finisha)
+  `filter.areaId` je kratko `null` jer se `FilterContext` obnavlja **u efektu** — pa je
+  zastita `activeTab === 'overview' && loaded && !config ⇒ activities` opalila, i
+  još to **zapisala u `ui:activeTab`**: izbor Overviewa nije bio preskočen nego
+  **obrisan**. Izmjereno na PROD-u 22.09.2026.: Overview + `F5` ⇒ Activities, svaki put.
+  ⚠ **PRVI POPRAVAK JE BIO NEDOSTATAN I TO SE VIDJELO TEK MJERENJEM.** Dodavanje
+  uvjeta `filter.areaId` u potrošača izgleda dostatno, ali ne pokriva render u kojem je
+  Area **već poznata** a zastavica je **još zaliha iz prethodnog ulaza**: efekt hooka
+  je registriran prije efekta potrošača, pa `setLoaded(false)` stigne tek u **sljedeći**
+  commit. Saša je oba puta mjerio istim potezom (`Overview` + `F5`) — bez toga bi
+  prvi popravak prošao kao gotov posao.
+  ⇒ Lijek nije još jedan uvjet nego **izvođenje u renderu**: hook pamti **za koji**
+  ulaz je odgovor poznat (`loadedFor`), a `loaded = loadedFor === areaId`. Prozor u
+  kojem zastavica laže tada **ne može nastati**, umjesto da se zatvara.
+  ⚠ Vrijedi za **svaki** hook s parametrom: `loaded`/`ready`/`done` je tvrdnja o
+  **ulazu**, ne o hooku. Isti razred kao `BUG-S121-AREACTX` (*neuspjelo čitanje nije
+  „nema ničega“*) — ovdje je treće stanje **„još ne znam“**, i jednako je opasno.
 
 - **⚠ GUARD KOJI ŽIVI U `useCallback`-u DIJELI SUDBINU NJEGOVE DEP LISTE — faza 4 je bila MRTVA
   OD PRVOG DANA** (S144). `analyzeFile` u `ExcelImportModal` nosi `useCallback(..., [])` još od
@@ -2095,6 +2151,31 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 >   je zatvorio refaktor u nekoj ranijoj sesiji, a unos je stajao jos dugo — a „otvoren bug"
 >   se cita kao poznat kvar i trosi paznju svake iduce sesije.
 
+- **BUG-S145-BOOLEDIT — ⚠ NIJE REPRODUCIRAN. Pojava viđena dvaput, pa nestala; ulaz je
+  izmjeren i ISPRAVAN je.** Boolean atribut (`Rate?`) prikazao se u **Edit** formi kao
+  prazna kvačica s natpisom `Not set`, iako je u bazi `true`. Viđeno 22.09.2026. na dva
+  retka — Sašine `Konzum dostava` rate i **Kokinoj rati 6/6 koju nitko nije uređivao**
+  (u **View** je ista pisala `Rate? = Yes`).
+  ⚠ **Izmjereno privremenim ispisom u `AttributeChainForm`** (uklonjen nakon mjerenja):
+  `u mapi: true | typeof: boolean | value: true | kljuceva u mapi: 11` — dakle do kvačice
+  stiže **pravi boolean `true`**, pod ispravnim `definitionId`, a broj ključeva se poklapa
+  s brojem popunjenih atributa retka u bazi. Isti redak je istog dana, nakon toga,
+  prikazao **`Yes`** s označenom kvačicom.
+  ⚠ **Četiri hipoteze su OBORENE, i to štedi vrijeme sljedeći put:** nije string umjesto
+  boolean, nije izgubljen ključ u mapi, nije duplikat definicije (baza ima **jedan**
+  `rate`, tipa `boolean`), i nije lokalno stanje u `AttributeInput` (komponenta je posve
+  kontrolirana). Učitavanje mapira `value_boolean` ispravno (`EditActivityPage.tsx:378`).
+  ⚠ **Podaci nikad nisu bili ugroženi:** Edit save briše pa ponovno upisuje sve atribute
+  retka, a `rate` je nakon **tri** takva spremanja i dalje `true` — dakle forma je i tada
+  držala ne-null vrijednost.
+  ⇒ **Ako se ponovi, PRVI potez je hard refresh** (Ctrl+Shift+R), ne debugiranje:
+  obje pojave su bile u **istoj kartici** koja je dugo stajala otvorena, a stari keširani
+  bundle je već jednom tiho osakatio feature (S118). Tek ako preživi refresh, vraćaj
+  ispis u `renderAttribute` — recept je gore.
+  ⚠ Rizik ako se vrati nije prikaz nego **sljedeći klik**: drugi klik na tu kvačicu
+  postavlja `false`, a `Rate? = No` povlači čišćenje ovisnih polja ⇒ `Broj rata` i
+  `Rata br` odu s njim, na retku koji je bio ispravan.
+
 - **BUG-S131-VIEWSTALE — ⚠ NEPONOVLJEN, ne popravljati napamet.** Nakon Edita koji
   **pomakne `session_start`** (promjena datuma retka), View na tom retku javi „Activity not
   found"; **F5 ga riješi**. Izmjereno da su podaci ispravni: `event_date 2026-09-04`,
@@ -2167,6 +2248,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > zadrzana (dva gore, `Postgres upgrade` u Backlogu). Isti postupak kao „Spaseno iz plana" (S137).
 
 - **~~OTVORENO-S143-4594~~** — zatvoreno S144: fantom `−45,94` (17.08.2025.) obrisan, `−0,80` pomaknut s 07.08. na 07.07.2025., oboje kroz Excel roundtrip. Obje kontrolne točke ZABA (30.07.2026. i 06.09.2026.) sada `0,00`. „Blizanac" iz opisa bio je redak `Financije_old` — v. pravilo o upitu bez filtra po Arei.
+- **~~BUG-S145-RATASPLIT~~** — zatvoreno S145: rata modal je svakoj rati davao isti zaokruženi iznos, pa je zbroj bio manji od ukupnog (`117,32 / 6` ⇒ `117,30`). Ostatak sada nosi **prva** rata, kao kod banke. Pravilo: § Critical rules; čuva `src/lib/__tests__/rataAmounts.test.mjs` (21 tvrdnja, sabotaža ruši 11).
 - **~~BUG-S123-DELTAACCT~~** — zatvoreno S123: racun delta sheeta dolazio iz filtra a eventi iz profila => prazan sheet s tocnim sidrom. Pravilo: § Delta sheet.
 - **~~BUG-S123-EDITMARK~~** — zatvoreno S125: oznaka ✎ crtana samo na uskom retku. Pravilo: „redak liste renderiraju dva mjesta", § UI (React).
 - **~~BUG-S132-EVENTCOUNT~~** — zatvoreno S133: Structure tab brojao evente u pregledniku nad odrezanih 1000 redaka. Pravilo: § UI (React).

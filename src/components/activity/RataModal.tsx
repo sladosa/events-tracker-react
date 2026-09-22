@@ -35,6 +35,13 @@ export function RataModal({ isOpen, rataInfo, onConfirm, onSkip }: Props) {
             <strong className="text-gray-800">{rataInfo.amountPerRata.toFixed(2)}</strong>
             {' '}({rataInfo.totalAmount.toFixed(2)} / {rataInfo.count})
           </p>
+          {rataInfo.amounts.length > 1
+            && rataInfo.amounts[0] !== rataInfo.amounts[1] && (
+            <p className="text-xs text-amber-600 mb-1">
+              Prva rata nosi ostatak zaokruživanja — zbroj je točno{' '}
+              {rataInfo.totalAmount.toFixed(2)}.
+            </p>
+          )}
           <p className="text-xs text-gray-400 mb-4">
             Sve rate ostaju na danu kupnje — razlikuje ih datum naplate.
           </p>
@@ -49,7 +56,7 @@ export function RataModal({ isOpen, rataInfo, onConfirm, onSkip }: Props) {
                 <span className="text-blue-400 font-mono text-xs">naplata</span>
                 <span className="text-gray-700 font-medium tabular-nums">{formatDate(date)}</span>
                 <span className="ml-auto font-semibold text-gray-800 tabular-nums">
-                  {rataInfo.amountPerRata.toFixed(2)}
+                  {(rataInfo.amounts[i] ?? rataInfo.amountPerRata).toFixed(2)}
                 </span>
               </div>
             ))}
