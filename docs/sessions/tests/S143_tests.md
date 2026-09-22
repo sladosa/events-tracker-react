@@ -133,7 +133,7 @@ definiciji nema (pokriveno automatski).
 
 ---
 
-## T-S143-12 — ⬜ ⭐ Update-guard na uvozu (faza 4)
+## T-S143-12 — ✅ ⭐ Update-guard na uvozu (faza 4)
 
 **Preduvjet:** ZABA, bilo koji izvoz čiji prozor doseže **prije 30.07.2026.** (`Prozor = 2`).
 
@@ -148,6 +148,13 @@ definiciji nema (pokriveno automatski).
 - prva kvačica (*„I reviewed the list"*) **ne otključava** sama
 
 **Pad:** Apply prolazi s jednom kvačicom ⇒ dva pitanja su se stopila u jedno.
+
+**Rezultat (S144):** ⚠ prvi prolaz je **pao** — nije bilo ni oznake ni druge kvacice, a
+DevTools je pokazao **`0 / 32`** zahtjeva na `balance_anchors`, dakle guard se nije ni
+pokusao izvrsiti. Uzrok: `analyzeFile` je `useCallback` s **praznom dep listom**, pa je
+`balanceWidget` zauvijek ostao snimka prvog rendera (`null`). Popravljeno u istoj sesiji;
+ponovljeno na **istom stvarnom retku** i proslo: oznaka `potvrdjeno 30.07.2026. · 13815.33`,
+treca kvacica, Apply zakljucan dok sve tri nisu kvacirane.
 
 ⚠ **Piše u bazu** — radi to na retku koji ionako treba ispraviti, ili poslije vrati Editom.
 

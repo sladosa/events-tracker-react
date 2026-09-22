@@ -243,7 +243,17 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       setErrors([`Parse error: ${String(err)}`]);
       setImportState('error');
     }
-  }, []);
+  // /!\ FAZA 4 JE BILA MRTVA DOK JE OVA LISTA BILA PRAZNA (nadjeno S144).
+  //   balanceWidget?.group_by i filter.areaId citaju se UNUTAR ove funkcije, a
+  //   dashboardCfg je na prvom renderu nuzno null (cita se async iz baze). S
+  //   praznom listom ta snimka ostane zauvijek null => gSlug je uvijek null,
+  //   grana se nikad ne izvrsi, i guard ne opali NIKOME NI U JEDNOJ Arei — bez
+  //   ijedne poruke i bez ijednog zahtjeva prema balance_anchors. Izmjereno na
+  //   PROD-u: 32 zahtjeva pri odabiru filea, nijedan na balance_anchors.
+  //   /!\ Obje su primitivi, a analyzeFile ne ulazi ni u jedan useEffect (koristi
+  //   ga samo handleFile), pa promjena identiteta ne pokrece nista u petlji —
+  //   zamka iz S121 (interval koji se rusi na svakom renderu) ovdje ne vrijedi.
+  }, [balanceWidget?.group_by, filter.areaId]);
 
   const handleFile = useCallback(
     (file: File) => analyzeFile(file, 'skip'),

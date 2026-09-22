@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 109 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 122 | [Critical rules](<#Critical rules>) | X |
-| 1044 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1657 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1673 | [Key files](<#Key files>) |  |
-| 1793 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1813 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1835 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1861 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1901 | [Open bugs](<#Open bugs>) | ~ |
-| 1998 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2191 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2288 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2296 | [Backlog](<#Backlog>) | ~ |
-| 2709 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2717 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1193 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1835 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1851 | [Key files](<#Key files>) |  |
+| 1977 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1997 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2019 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2045 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2085 | [Open bugs](<#Open bugs>) | ~ |
+| 2183 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2376 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2473 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2481 | [Backlog](<#Backlog>) | ~ |
+| 2880 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2888 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2852 redaka, 18 sekcija._
+_Ukupno 3023 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -123,6 +123,17 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 [↑ Sadrzaj](#Sadrzaj)
 
 **Baza / upiti**
+
+- **⚠ UPIT BEZ FILTRA PO AREI LAŽE NA PROD-u — `Financije_all` i `Financije_old` obje imaju
+  kategoriju `Transakcija`** (S144). Dijagnostički upit po `event_date` bez `categories.area_id`
+  vraća retke **obje** Aree, pa uz svaku transakciju izgleda da postoji „blizanac iste minute bez
+  `Izvor`a". Iz toga su u jednoj sesiji izvedene **dvije** krive tvrdnje — prvo *„blizanca nema"*,
+  zatim *„to je P2 roditelj"* — a bio je redak **druge Aree**.
+  ⚠ Izmjereno: svih **5.237** `Transakcija` eventa u `Financije_all` **ima** `izvorplacanja` ⇒
+  ondje blizanaca nema nijednog. Prepoznaju se po komentaru s prefiksom računa
+  (`ZABA: Saša multisport`) — to je generacija Kokine Excelice i živi u `Financije_old`.
+  ⚠ **Nijedna kontrolna brojka to ne otkriva**, jer je widget vezan uz Areu — pa saldo te retke
+  nikad nije brojao. Provjera je zato uvijek `categories.area_id=eq.<area>`, i `!inner`.
 
 - **PostgREST `max-rows = 1000` reže BEZ GREŠKE.** Svaki `select` koji mora vratiti *sve* retke
   mora paginirati — `src/lib/supabasePaging.ts` (`fetchAllPaged`/`fetchAllPagedIn`).
@@ -1068,6 +1079,14 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 
 **Mjerenje / usklađenje**
 
+- **⚠ `p_from` u `rpc_area_group_agg` je ISKLJUČIV** (S144). Isto pravilo kao sidro („promjene
+  **strogo nakon**"), ali se ime čita kao „od ovog dana". Provjera kontrolne točke sa `p_from` =
+  **dan nakon** sidra ispusti sve retke tog dana. Izmjereno na ZABA prozoru
+  01.01.2025.–30.07.2026.: `p_from = 2025-01-02` daje razliku `−49,00` (ispao `Saša multisport`
+  od 02.01.), `p_from = 2025-01-01` daje **`0,00`**.
+  ⇒ U provjeru ide **datum sidra**, ne dan poslije. Pomak za jedan dan prikaže zdrav mjesec kao
+  pokvaren, a brojka izgleda jednako uvjerljivo kao točna.
+
 - **⚠ Sidro iz pločice nosi datum KOJI SE GLEDA, a broj može biti sa starijeg izvoda** (S115).
   Potvrda se žigoše `effectiveAsOf`-om (dan koji je na filtru, stegnut na danas), a ne datumom
   zatvaranja izvoda. Izmjereno: sidro `22.08.2026. = 13.815,33` s bilješkom
@@ -1342,6 +1361,25 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 - **heredoc patch tiho promaši a `py_compile` prođe** ⇒ provjeri grepom, ne pretpostavkom
 
 **UI (React)**
+
+- **⚠ GUARD KOJI ŽIVI U `useCallback`-u DIJELI SUDBINU NJEGOVE DEP LISTE — faza 4 je bila MRTVA
+  OD PRVOG DANA** (S144). `analyzeFile` u `ExcelImportModal` nosi `useCallback(..., [])` još od
+  S118, a faza 4 (S143) je **unutar** njega dodala čitanje `balanceWidget?.group_by` i
+  `filter.areaId`. Funkcija se stvara na **prvom** renderu, gdje je `dashboardCfg` **nužno**
+  `null` (čita se async iz baze) ⇒ `gSlug` ostaje zauvijek `null`, grana se nikad ne izvrši, i
+  update-guard ne opali **nikome, ni u jednoj Arei, nijednom**.
+  ⚠ **Nije race i nije keš**, pa se ne da „ponoviti povremeno" — mrtav je 100 % vremena. Tri
+  hipoteze prije toga (stari bundle, RLS na `balance_anchors`, sidra koja ne pokrivaju redak)
+  bile su krive i **sve tri je oborilo mjerenje**, ne razmišljanje.
+  ⚠ **Mjeri se ODSUTNOŠĆU ZAHTJEVA:** DevTools → Network, filtar `balance_anchors` ⇒ `0 / 32`
+  zahtjeva pri odabiru filea. Time se „nije ni pokušao" razdvaja od „pokušao pa dobio prazno" —
+  dvije dijagnoze koje u UI-ju izgledaju **identično** (oznake nema ni u jednom slučaju).
+  ⚠ **Brana je postojala, bila u pravu, i nitko je nije pokrenuo.** `npm run check` javlja
+  `GORE react-hooks/exhaustive-deps 0 -> 1` i imenuje točno taj file i te dvije varijable.
+  Ratchet je u S139 spušten na nulu **baš za ovaj razred** („mina koju aktivira prva
+  memoizacija") — mina je opalila četiri sesije kasnije.
+  ⇒ Pravilo: **nova ovisnost u postojećoj memoiziranoj funkciji znači da je dep lista dio
+  zahvata**, a `npm run check` dio commita — ne kozmetika na kraju sesije.
 
 - **⚠ REDAK LISTE RENDERIRAJU DVA MJESTA, I LAKO SE POPRAVI SAMO JEDNO** (S125).
   `ActivitiesTable` crta desktop redak kroz `cellContent('actions')`
@@ -2057,24 +2095,6 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 >   je zatvorio refaktor u nekoj ranijoj sesiji, a unos je stajao jos dugo — a „otvoren bug"
 >   se cita kao poznat kvar i trosi paznju svake iduce sesije.
 
-- **⚠ OTVORENO-S143-4594 — fantomski redak u povijesti ZABA, ISPRAVAK NIJE NAPRAVLJEN.**
-  Kontrolna točka (faza 3) prijavljuje da ZABA između 02.01.2025. i 30.07.2026. **ne
-  reproducira potvrdu**: fali `45,94`. Svedeno na tri konkretna retka:
-  | redak | zahvat |
-  | --- | --- |
-  | `17.08.2025. · −45,94 · bez opisa`, `Izvor = Racun` | **obrisati** — fantom |
-  | blizanac istog dana i **iste minute**, bez `Izvor`a, komentar `ZABA` | odlučiti |
-  | `−0,80` na `07.08.2025.` | pomaknuti na **`07.07.2025.`** (tipfeler u mjesecu) |
-  ⚠ Dokazi izmjereni prije prijedloga: parsiranje `ZABA_2025-07` i `-08` poklapa se s
-  **ispisanim** bankinim zbrojevima i `NOVO STANJE` u cent ⇒ banka doista nema takav redak;
-  `promet_check` 2025-09 = `0,00` ⇒ nije prebačen u sljedeći mjesec; redak nema `Izvod opis`
-  (nikad potvrđen izvodom) i nosi `Stanje = 2.267,56` ⇒ iz povijesnog uvoza Kokine Excelice.
-  ⚠ **Zašto ga nitko nije vidio:** oba blizanca dijele `session_start 07:02`, a `useActivities`
-  grupira po njemu ⇒ u aplikaciji su **jedan redak**.
-  ⚠ Ispravak **ne mijenja današnju pločicu** (`12.284,32`) — svi su retci prije sidra 30.07.2026.
-  Skripta nije napisana; ide dry run pa `--apply` koji pokreće Saša (v. `T-S143-14`).
-
-
 - **BUG-S131-VIEWSTALE — ⚠ NEPONOVLJEN, ne popravljati napamet.** Nakon Edita koji
   **pomakne `session_start`** (promjena datuma retka), View na tom retku javi „Activity not
   found"; **F5 ga riješi**. Izmjereno da su podaci ispravni: `event_date 2026-09-04`,
@@ -2146,6 +2166,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > provjereno nosi li koji od njih pravilo kojeg nema drugdje: tri su ga nosila i sva tri su
 > zadrzana (dva gore, `Postgres upgrade` u Backlogu). Isti postupak kao „Spaseno iz plana" (S137).
 
+- **~~OTVORENO-S143-4594~~** — zatvoreno S144: fantom `−45,94` (17.08.2025.) obrisan, `−0,80` pomaknut s 07.08. na 07.07.2025., oboje kroz Excel roundtrip. Obje kontrolne točke ZABA (30.07.2026. i 06.09.2026.) sada `0,00`. „Blizanac" iz opisa bio je redak `Financije_old` — v. pravilo o upitu bez filtra po Arei.
 - **~~BUG-S123-DELTAACCT~~** — zatvoreno S123: racun delta sheeta dolazio iz filtra a eventi iz profila => prazan sheet s tocnim sidrom. Pravilo: § Delta sheet.
 - **~~BUG-S123-EDITMARK~~** — zatvoreno S125: oznaka ✎ crtana samo na uskom retku. Pravilo: „redak liste renderiraju dva mjesta", § UI (React).
 - **~~BUG-S132-EVENTCOUNT~~** — zatvoreno S133: Structure tab brojao evente u pregledniku nad odrezanih 1000 redaka. Pravilo: § UI (React).
