@@ -236,7 +236,7 @@ preseta s `0x` na istoj kategoriji.
 
 ---
 
-## T-S137-9 ✅⬜ `cutoff:B:D` — granica ciklusa i dan naplate nisu isti dan
+## T-S137-9 ✅✅ `cutoff:B:D` — granica ciklusa i dan naplate nisu isti dan
 
 **Povod:** Visa ima **tri** datuma, i nijedan `next:N` ne može pogoditi oba koja trebaju.
 

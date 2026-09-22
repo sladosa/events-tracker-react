@@ -7,7 +7,7 @@
 
 ---
 
-## T-S138-1 ⬜ `cutoff:3:5` je živ — obična Visa kupovina
+## T-S138-1 ✅ `cutoff:3:5` je živ — obična Visa kupovina
 
 **Preduvjet:** deploy na `main` pušten (✅ S138, `cutoff` potvrđen u PROD bundleu
 `index-zSPJZpMY.js`); `areas.settings` nosi `"Visa": "cutoff:3:5"` (✅ potvrđeno čitanjem).
@@ -52,7 +52,7 @@ svaki `Status = Planiran`, `Rata br` 1..3, isti `event_date` (dan kupnje),
 
 ---
 
-## T-S138-3 ⬜ (zadatak) MC naplata 11.09. — nedostaje klasifikacija
+## T-S138-3 ✅ (zadatak) MC naplata 11.09. — nedostaje klasifikacija
 
 Izmjereno: redak `2026-09-11 14:32`, `Isplata 1.068,70`, `Izvor = Racun`, `Status = Izvrsen`,
 `Racun = Kokin tekući ZABA` — **ali `Tip = N/A`, bez `Podtip`a i bez `comment`a.**
@@ -73,7 +73,7 @@ Ispravno je, izmjereno na **32/32** prethodnih mjeseci:
 
 ---
 
-## T-S138-4 ⬜ (zadatak) MC naplata 11.07. — nedostaje samo comment
+## T-S138-4 ✅ (zadatak) MC naplata 11.07. — nedostaje samo comment
 
 Redak `2026-07-11 07:00`, `1.244,74`, već je `Transfer` / `izmedju racuna` / `Izvor = Racun`,
 ali bez `comment`a i bez `Izvod opis`a. Dopuni comment kao u T-S138-3.

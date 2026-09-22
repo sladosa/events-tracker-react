@@ -4250,6 +4250,47 @@ jednom prevario (S118).
 
 ---
 
+### Testovi — preseljeno iz PENDING_TESTS.md (S144), sekcija zatvorena
+
+Detalji: [S129_tests.md](../../Claude-temp_R/test-sessions/archive/S129_tests.md)
+
+### A. Podaci — `Financije_all` (PROD)
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S129-A1** | popravak parkinga + multisporta (`--apply`) | ✅ 3 brisanja + 1 pomak, `ostalo 0` |
+| **T-S129-A2** | ⭐ Δ pada na `0,00` u 2025-02, 2025-03, 2026-03, 2026-04 | ✅ sva četiri |
+| **T-S129-A3** | parking `1,40` nestao iz **liste** | ✅ sva tri datuma po 2×`0,70` |
+| **T-S129-A4** | ⭐ podizanje `150,00` — duplikat obrisan, Δ(2025-10) na nulu | ✅ dokaz iz banke + Kokinog filea + baze |
+| **T-S129-A5** | ZABA 2026-07 i 2026-08 zatvaraju u cent, **uvoza nema** | ✅ 38 i 46 redaka |
+| **T-S129-A6** | ⭐ app reproducira ispisano stanje `12.784,36 @ 26.08.` | ✅ u cent |
+| **T-S129-A7** | sidro `2026-08-26 = 12.784,36` | ✅ S136 — duplikat `T-S130-8`, koji ga izrijekom preuzima |
+| **T-S129-A8** | delta sheet nakon sidra — prozor od 27.08., 2 retka | ✅ **S144 — nadidjeno**: mehanizam koji je mjerio **ukinut je u S142** (prozor se vise ne racuna od sidra kao poda nego se mjeri **sidrima**, `deltaBack`). Zamjenska tvrdnja je izvedena i jaca: otvarajuce stanje izlazi **jednako iznosu sidra u cent** (T-S142-1, T-S142-10) |
+| **T-S129-A9** | preostala dva mjeseca (2025-07 `+0,80`, 2025-08 `−46,74`) | ✅ **S144 — zatvoreno ispravkom podataka**: fantom `−45,94` obrisan, `−0,80` pomaknut s 08. na 07. mjesec. Aritmetika je tocna u cent (`−46,74 = −45,94 − 0,80`), a kontrolna tocka koja **pokriva oba mjeseca** (ZABA 30.07.2026.) daje `0,00`, potvrdjeno s tri instrumenta |
+| **T-S129-A10** | `MC_2026-08.pdf` — netaknut, prvi korak je `--dry` | ✅ S130, zatvara u cent |
+
+### B. Procedure i kod
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S129-1** | prekidač „Koristi filtre iz profila" mijenja prikazani raspon | ✅ |
+| **T-S129-2** | ⭐ brojka retka prati prekidač — **387** / **5.154** | ✅ |
+| **T-S129-3** | `Custom` raspon preživi **Structure tab** | ✅ |
+| **T-S129-4** | `Custom` raspon preživi **View details** | ✅ |
+| **T-S129-5** | `All Time` iz dropdowna i dalje radi | ✅ |
+| **T-S129-9** | Excel Import/Export uz `+` na uskom, uz listu na širokom — **nigdje oba** | ✅ |
+| **T-S129-B1** | ⭐ T-S127-9 — pravilo se ne okida na otvaranju (uz ispravak metode) | ✅ |
+| **T-S127-9** | pravilo `set_attribute` se ne okida na otvaranju retka | ✅ S129 — **izveden kao `T-S129-B1`**, uz ispravak metode (prvi pokušaj je pao na retku čiji se datum poklapao s rezultatom pravila ⇒ nije mjerio ništa) |
+| **T-S129-B2** | ⭐ ključ primatelja ne preživljava skraćen `Izvod opis` — popravljeno | ✅ 59 redaka |
+| **T-S129-6** | export s otkvačenim prekidačem stvarno sadrži traženi raspon | ✅ S136 — nadiđeno upotrebom |
+| **T-S129-7** | delta sheet s otkvačenim prekidačem nije prazan | ✅ S136 — nadiđeno upotrebom |
+| **T-S129-8** | shortcut s `periodKey` se više ne prepisuje | ✅ S136 — nadiđeno upotrebom |
+| **T-S129-B3** | ⏸ **PARKIRANO** — oznake iz presedana (45/71, `--apply` nije pušten) | ⏸ |
+| **T-S129-B4** | merge na `main` | ✅ 05.09.2026., `main` = `b080739` |
+| **T-S129-B5** | provjera na **PROD URL-u** uz hard refresh (3 stavke) | ✅ S136 — nadiđeno upotrebom (S129 popravci su na PROD-u od 05.09.) |
+
+**Otvoreno: NE VODI SE OVDJE** — vodi se u tablicama ispod. Kurirani popis se održavao rukom i razilazio se s tablicama (`data-prep_tools/Tools/audit_tests.py` to mjeri).
+
 ## S133 — popravak koji nije popravljao, i brojka koja je bila brava (2026-09-10)
 
 Sesija je krenula kao provjera jučerašnjeg popravka i završila tako da ga je

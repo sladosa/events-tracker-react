@@ -163,7 +163,7 @@ nije „malo širi prozor" nego ~625 dana ⇒ panel mora ispisati stvarni raspon
 
 ---
 
-## T-S141-4 — ⬜ Faza 1 delta prozora (čeka kod)
+## T-S141-4 — ✅ Faza 1 delta prozora (čeka kod)
 
 **Preduvjet:** implementirana faza 1 iz spec-a (`K` umjesto `N` dana).
 

@@ -32,7 +32,7 @@ dana), i da je E10-2 pao na dijalogu opoziva (nije — pao je prije, na Structur
 | T-S141-1 | Structure fan-out: **39 zahtjeva po pozivu, 6–8 poziva po toku** | ⬜ **otvoreno — izmjereno, čeka popravak.** 2.601 fan-out zahtjev kroz 17 palih testova (`e15` 330, `e11` 276); u E10-2 traceu 39+39 u sekundi razmaka, odgovoreno **11 od 78**. ⚠ Uzrok padova **NIJE** utvrđen: 10 od 17 padova ima zahtjeve bez odgovora, **7 nema nijedan**. Potvrda je **ponovno mjerenje** koje mora dati **jedan** fan-out po toku |
 | T-S141-2 | `Datum naplate` za karticu znači **dan terećenja** (odluka b) — app upisuje pretpostavku, izvod je ispravlja | ✅ S141 — odlučeno na mjerenju: **35/37** ciklusa ima jedan dan, **1.616 od 1.639** redaka već nosi to značenje; pravilo u CLAUDE.md |
 | T-S141-3 | `DELTA_WINDOW_SPEC` — prozor se mjeri **sidrima**, ne danima | ✅ S141 — spec napisan i odluke unesene; **faza 1 čeka kod**, ništa više ne čeka odluku |
-| T-S141-4 | Faza 1 delta prozora: otvarajuće stanje mora izaći **jednako iznosu sidra u cent** | ⚠ **✅ djelomično S142 — RPC razina DOKAZANA na PROD-u**: `rpc_area_balance_anchored` s `as_of` = dan sidra vraća sam iznos sidra uz **n = 0**, 6 provjera / 6 prolaza (ZABA `13.815,33`, RF `799,12`). ⬜ Ostaje **uzivo** — da modal proslijedi baš taj `asOf` ⇒ **T-S142-1** |
+| **T-S141-4** | Faza 1 delta prozora: otvarajuce stanje mora izaci **jednako iznosu sidra u cent** | ✅ **S144 — zatvoreno u cijelosti.** RPC razina dokazana S142 (`rpc_area_balance_anchored` s `as_of` = dan sidra ⇒ sam iznos sidra uz `n = 0`, 6/6) · **uzivo je izvedeno u S143** (T-S142-1): modal prosljedjuje bas taj `asOf`, file nosi `stanje 30.07.2026. -> 13.815,33`. Potvrdjeno ponovo S144 na `Prozor = 2`: otvarajuce stanje `3.054,41` = doslovno iznos sidra |
 
 ---
 
@@ -118,10 +118,10 @@ isti razred kao `List columns` (S132). Dokaz je čitanje `areas.settings`, ne br
 
 | #            | test                                                                 | status |
 | ------------ | -------------------------------------------------------------------- | ------ |
-| **T-S138-1** | ⭐ `cutoff:3:5` živ u aplikaciji: nova Visa kupovina danas ⇒ `Datum naplate` = **05.10.2026.** (ne `03.10.`) | ⬜ |
+| **T-S138-1** | ⭐ `cutoff:3:5` ziv u aplikaciji: nova Visa kupovina danas ⇒ `Datum naplate` = **05.10.2026.** (ne `03.10.`) | ✅ **S144 — izmjereno na PROD-u**: sve **4** Visa kupovine nastale nakon promjene configa (16.–19.09.2026.) nose `2026-10-05`. ⚠ Tri retka od **15.09.** nose `03.10.` jer su nastali **prije** promjene — to je T-S138-5, ne pad ovog testa |
 | **T-S138-2** | ⭐ `rata.date_map.Visa = 5` živ: Visa kupovina s `Rate? = 3` ⇒ **05.10. / 05.11. / 05.12.** | ⬜ |
-| T-S138-3     | MC naplata `11.09.` `1.068,70` ispravljena: `Transfer`/`izmedju racuna` + comment `TROŠKOVI UČINJENI MASTERCARD KARTICOM` | ⬜ (zadatak) |
-| T-S138-4     | MC naplata `11.07.` `1.244,74` dobila comment (Tip/Podtip su već točni) | ⬜ (zadatak) |
+| T-S138-3 | MC naplata `11.09.` `1.068,70` ispravljena: `Transfer`/`izmedju racuna` + comment `TROŠKOVI UČINJENI MASTERCARD KARTICOM` | ✅ **S144 — izmjereno na PROD-u**: `Tip = Transfer`, `Podtip = izmedju racuna`, `comment = TROŠKOVI UČINJENI MASTERCARD KARTICOM` |
+| T-S138-4 | MC naplata `11.07.` `1.244,74` dobila comment (Tip/Podtip su vec tocni) | ✅ **S144 — izmjereno na PROD-u**: comment upisan, `Tip = Transfer`, `Podtip = izmedju racuna` |
 | T-S138-5     | Tri `Konzum dostava` rate od 15.09. prebačene s `03.` na `05.` (10./11./12. mj.) | ⬜ (zadatak) |
 
 **Detalji testova:** [tests/S138_tests.md](tests/S138_tests.md)
@@ -159,7 +159,7 @@ u istom retku. Prije su bili nevidljivi.
 | **T-S137-6** | `skriveno ✕` sakriva **samo to polje**; polje otkriveno preko „Show all" ostaje običan natpis | ✅ **15.09. PROD** (`dev:prod`) -- s **dva** otvorena polja klik na `Izvod opis` sakrio **samo njega**, `Valuta` ostala; polja iz Show all nose natpis **bez** ✕ |
 | **T-S137-7** | ⭐ Preset ne zamrzava izvedenu vrijednost: `Datum naplate` se racuna, ne pamti | ✅ **15.09. PROD** -- snimka `AI_rucak` ima **6** vrijednosti, `Datum naplate` i `Status` **nisu u njoj**; uz `Visa` izracunat `03.10.`, a promjenom `Izvor -> Racun` **skocio na `15.09.`** |
 | **T-S137-8** | Auto-odabir preseta samo kad pobjednik **nije nerijesen** | ✅ djelomicno: uz `Financije` (12x) + `AI_rucak` (0x) auto-odabir **i dalje radi** (bira cesceg), pa je `AI_rucak` trebalo izabrati rucno. ⬜ grana **izjednaceno** (dva preseta `0x` + `last_used NULL`) neprovjerena -- Kokin slucaj je obrisan |
-| **T-S137-9** | ⭐ Nov oblik pravila `cutoff:B:D` (granica ciklusa + dan naplate) | ✅ `dateRuleCutoff.test.mjs` **20/20**, protuprovjereno. ✅ S138 -- vrijednost na PROD-u promijenjena (`Visa: cutoff:3:5`), potvrdjeno citanjem `areas.settings`. ⬜ provjera upotrebom → **T-S138-1** |
+| **T-S137-9** | ⭐ Nov oblik pravila `cutoff:B:D` (granica ciklusa + dan naplate) | ✅ **S144 — zatvoreno u cijelosti.** `dateRuleCutoff.test.mjs` **20/20** (protuprovjereno) · S138 promijenio vrijednost na PROD-u (`Visa: cutoff:3:5`, potvrdjeno citanjem `areas.settings`) · **provjera upotrebom je sada izvedena**: sve 4 Visa kupovine nastale nakon promjene nose `2026-10-05` (T-S138-1) |
 
 ⚠ **`dev:prod` je nov kod nad PROD bazom** ⇒ `T-S136-6/-8/-9` **ne čekaju deploy**.
 Tri testa zatvorena bez ijednog Netlify builda.
@@ -375,53 +375,10 @@ Detalji: [S130_tests.md](tests/S130_tests.md)
 | # | test | status |
 | --- | --- | --- |
 | **T-S130-9** | ⭐ `--apply` za kolovoz puni kosaru sa **46** upozorenja `Provjeri` | ⬜ **odluka o modelu** |
-| **T-S130-10** | kontrola kosare pokazuje razliku `19,98` (dva neuvezena retka) | ⬜ |
+| **T-S130-10** | kontrola kosare pokazuje razliku `19,98` (dva neuvezena retka) | ⬜ ⚠ **BROJKA JE ZASTARJELA — test se ne da zatvoriti kako je napisan** (izmjereno S144). MC kosara s dospijecem `11.09.2026.` danas ima **47 redaka, Σ `1.055,35`**, naplata s izvoda je `1.068,70` ⇒ razlika je **`13,35`**, ne `19,98`. ⇒ pretvara se u **zadatak**: uskladiti rujansku MC kosaru s izvodom (`uskladi_izvod.py`) |
 | **T-S130-11** | ⏸ **PARKIRANO** — prijedlog `comment`a iz povijesti (izmjereno) | ⏸ |
 
 **Otvoreno: NE VODI SE OVDJE** — vodi se u tablicama ispod. Kurirani popis se održavao rukom i razilazio se s tablicama (`data-prep_tools/Tools/audit_tests.py` to mjeri).
-
-## S129 — podaci Financije_all + prekidač filtara, raspon datuma, ključ primatelja (2026-09-05)
-
-Detalji: [S129_tests.md](tests/S129_tests.md)
-
-### A. Podaci — `Financije_all` (PROD)
-
-| # | test | status |
-| --- | --- | --- |
-| **T-S129-A1** | popravak parkinga + multisporta (`--apply`) | ✅ 3 brisanja + 1 pomak, `ostalo 0` |
-| **T-S129-A2** | ⭐ Δ pada na `0,00` u 2025-02, 2025-03, 2026-03, 2026-04 | ✅ sva četiri |
-| **T-S129-A3** | parking `1,40` nestao iz **liste** | ✅ sva tri datuma po 2×`0,70` |
-| **T-S129-A4** | ⭐ podizanje `150,00` — duplikat obrisan, Δ(2025-10) na nulu | ✅ dokaz iz banke + Kokinog filea + baze |
-| **T-S129-A5** | ZABA 2026-07 i 2026-08 zatvaraju u cent, **uvoza nema** | ✅ 38 i 46 redaka |
-| **T-S129-A6** | ⭐ app reproducira ispisano stanje `12.784,36 @ 26.08.` | ✅ u cent |
-| **T-S129-A7** | sidro `2026-08-26 = 12.784,36` | ✅ S136 — duplikat `T-S130-8`, koji ga izrijekom preuzima |
-| **T-S129-A8** | delta sheet nakon sidra — prozor od 27.08., 2 retka | ⬜ |
-| **T-S129-A9** | preostala dva mjeseca (2025-07 `+0,80`, 2025-08 `−46,74`) | ⬜ |
-| **T-S129-A10** | `MC_2026-08.pdf` — netaknut, prvi korak je `--dry` | ✅ S130, zatvara u cent |
-
-### B. Procedure i kod
-
-| # | test | status |
-| --- | --- | --- |
-| **T-S129-1** | prekidač „Koristi filtre iz profila" mijenja prikazani raspon | ✅ |
-| **T-S129-2** | ⭐ brojka retka prati prekidač — **387** / **5.154** | ✅ |
-| **T-S129-3** | `Custom` raspon preživi **Structure tab** | ✅ |
-| **T-S129-4** | `Custom` raspon preživi **View details** | ✅ |
-| **T-S129-5** | `All Time` iz dropdowna i dalje radi | ✅ |
-| **T-S129-9** | Excel Import/Export uz `+` na uskom, uz listu na širokom — **nigdje oba** | ✅ |
-| **T-S129-B1** | ⭐ T-S127-9 — pravilo se ne okida na otvaranju (uz ispravak metode) | ✅ |
-| **T-S127-9** | pravilo `set_attribute` se ne okida na otvaranju retka | ✅ S129 — **izveden kao `T-S129-B1`**, uz ispravak metode (prvi pokušaj je pao na retku čiji se datum poklapao s rezultatom pravila ⇒ nije mjerio ništa) |
-| **T-S129-B2** | ⭐ ključ primatelja ne preživljava skraćen `Izvod opis` — popravljeno | ✅ 59 redaka |
-| **T-S129-6** | export s otkvačenim prekidačem stvarno sadrži traženi raspon | ✅ S136 — nadiđeno upotrebom |
-| **T-S129-7** | delta sheet s otkvačenim prekidačem nije prazan | ✅ S136 — nadiđeno upotrebom |
-| **T-S129-8** | shortcut s `periodKey` se više ne prepisuje | ✅ S136 — nadiđeno upotrebom |
-| **T-S129-B3** | ⏸ **PARKIRANO** — oznake iz presedana (45/71, `--apply` nije pušten) | ⏸ |
-| **T-S129-B4** | merge na `main` | ✅ 05.09.2026., `main` = `b080739` |
-| **T-S129-B5** | provjera na **PROD URL-u** uz hard refresh (3 stavke) | ✅ S136 — nadiđeno upotrebom (S129 popravci su na PROD-u od 05.09.) |
-
-**Otvoreno: NE VODI SE OVDJE** — vodi se u tablicama ispod. Kurirani popis se održavao rukom i razilazio se s tablicama (`data-prep_tools/Tools/audit_tests.py` to mjeri).
-
----
 
 ## S120 — što je zatvoreno i, važnije, što je OSTALO
 
@@ -524,8 +481,8 @@ Ranije je stajalo „jesu li relevantni?" bez podloge. Sada podloga postoji:
 | --- | --- | --- |
 | `S102b` (9), `S104` (3) | **svi ✅** | **arhiva odmah** — nema se što odlučivati |
 | `S99` (8) | bez oznaka | **arhiva, nadiđeno**: Delete Area i uvoz na PROD su **izvedeni i ponovno izmjereni u S118** |
-| `S101` (8) | 4 ✅ / 4 ⬜ | **arhiva, nadiđeno**: izmjereno — `Tip` danas ima **18 opcija** (Kokina taksonomija, S107r); test provjerava popis od 14 koji više ne postoji |
-| `S105` (8) | 2 ✅ / 6 ⬜ | **arhiva, nadiđeno**: PROD okolina tog incidenta ne postoji; popravci su na PROD-u 7 tjedana |
+| `S101` (8) | **8 ✅ — zatvoreno S144** | **arhiva, nadidjeno**: izmjereno — `Tip` danas ima **18 opcija** (Kokina taksonomija, S107r); test provjerava popis od 14 koji vise ne postoji |
+| `S105` (8) | **8 ✅ — zatvoreno S144** | **arhiva, nadidjeno**: PROD okolina tog incidenta ne postoji; popravci su na PROD-u 7 tjedana |
 | `S100` (7), `S102` (12) | 5 ✅ | **zadržati i upisati u tablice** — Export Profile, `default_map`, Filter sheet su i dalje u upotrebi |
 
 ⭐ **`T-S100-1` — ✅ ZATVOREN U S120, automatiziran** (`e2e/tests/S100_same_path_two_areas.spec.ts`).
