@@ -1,7 +1,7 @@
 # Sljedeca sesija - handoff
 
-**Pisano protiv commita:** `5129f9c` + izmjene zatvaranja S143 (idu istim commitom).
-**`main` NIJE diran u S143** - sve stoji na `test-branch`. Deploy nije trazen ni pusten.
+**Pisano protiv commita:** `8aba8bc` + izmjene zatvaranja S144 (idu istim commitom).
+**`main` NIJE diran** - sve stoji na `test-branch`. Deploy nije trazen ni pusten.
 Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
 
 ---
@@ -10,116 +10,79 @@ Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
 
 ## Sto je gotovo
 
-**`DELTA_WINDOW_SPEC` je cijeli izveden** - sve cetiri faze. Zastita proslosti vise nije samo
-boja: sheet **kaze** (oznaka i ton), **mjeri** (kontrolna tocka po sidru) i uvoz **trazi
-pristanak** (druga kvacica koja imenuje sidro).
+**Fantomski redak je obrisan i stanje se slaze.** ZABA sada reproducira obje potvrde
+**tocno u cent** - i onu od 30.07.2026. i onu od 06.09.2026. Ranije je prva pokazivala
+manjak od `45,94`. Nista nije radjeno skriptom: sve je proslo kroz Excel roundtrip, isti
+put kojim Koka ionako radi.
 
-**Sort te vise ne moze iznenaditi.** Ono sto si nasao - da sort povuce karticne retke u glavni
-blok, a drugi put i sazetke - zatvoreno je u tri sloja: prazan redak zaustavlja sort iz vrpce,
-brojke su neovisne o redoslijedu, a pomijesan raspored **sam se prijavi** crvenom porukom koja
-kaze i **sto uciniti** ("novi izvoz ce srediti").
+**Nadjen je i popravljen kvar koji je sakrio cijelu jednu zastitu.** Upozorenje
+*"ovaj redak je vec potvrden"* (faza 4 iz S143) **nikad nije radilo** - ni kod tebe ni kod
+bilo koga, ni u jednoj Arei. Nije se vidjelo jer izostanak upozorenja izgleda isto kao
+"nema se sto upozoriti". Sada radi, i provjereno je oboje: da se javi gdje treba i da
+**suti** gdje nema sidara.
 
-**Dva upozorenja koja su lagala su maknuta**, ne preformulirana: ono o `created_at` pri uvozu
-(hvatalo je mehanizam samog appa) i "ne izvozi svih N dogadjaja" pri izvozu (tvrdilo suprotno
-od istine otkad se prozor mjeri sidrima).
+**Svi testovi iz S142 i S143 su zatvoreni** (10/10 i 13/13) i arhivirani.
 
-**Help je dopunjen** s tri teme koje ti i Koka stvarno trebate: kontrolne tocke, kako sigurno
-sortirati, i sto znaci uvoz retka koji je vec potvrdjen.
+## Sto treba od tebe
 
-## /!\ Nalaz koji ceka tvoju odluku
+1. **Odluka o deployu.** `main` je i dalje na **S137**. To znaci da produkcijska aplikacija
+   - ona koju koristi Koka - **nema nista** od zadnjih sedam sesija: ni kontrolne tocke, ni
+   kolonu `Potvrda`, ni ovaj guard, ni tri nove Help teme. Sve sto si testirao vidi samo
+   tvoj lokalni `dev:prod`.
+   Naredbe su u CLAUDE.md, § Session workflow, korak 11. **Ti ih pokreces.**
 
-**Faza 3 je na prvom pokretanju nasla stvarnu rupu u povijesti.** ZABA podaci izmedu
-02.01.2025. i 30.07.2026. **ne reproduciraju potvrdu** - fali **45,94**.
+2. **Nista drugo ne ceka tvoju akciju.** Nema otvorenih testova.
 
-Svedeno je na tri retka, sa svim dokazima izmjerenim:
+## Sto je vrijedno znati
 
-| redak | sto s njim |
-| --- | --- |
-| `17.08.2025. · -45,94 · bez opisa` | **obrisati** - banka ga nema ni u jednom izvodu |
-| blizanac iste minute, bez `Izvor`a | odluciti (ne dira saldo, ali je skriveni duplikat) |
-| `-0,80` na `07.08.2025.` | pomaknuti na **`07.07.2025.`** - tipfeler u mjesecu |
-
-**Skripta jos nije napisana.** Ide dry run pa `--apply` koji pokreces ti.
-/!\ Ispravak **ne mijenja danasnje stanje** (`12.284,32`) - svi su retci prije sidra 30.07.2026.
-Mijenja se samo to da povijest pocne reproducirati potvrde.
-
-/!\ Zasto to nitko nije vidio: oba blizanca su u **istoj minuti**, a aplikacija retke te minute
-prikazuje kao **jedan**.
-
-## Sto trazi tebe
-
-1. **Nista za push** - `test-branch` je pushan, `main` netaknut.
-2. **Cetiri testa cekaju** (`T-S143-12, -13, -14, -16`), detalji u
-   `docs/sessions/tests/S143_tests.md`. Najvazniji je **T-S143-12**: uvezi file s izmjenom
-   retka **prije 30.07.2026.** i provjeri da Apply trazi **dvije** kvacice.
-3. **Odluka o ona tri retka** (gore) - reci i pisem skriptu.
-4. Ostalo od prije: **T-S139-10 dio B** (uvoz Structure filea) kad budes kod Kokinog racuna.
-
-## Sto NE treba raditi
-
-- **Ne sortiraj delta file iz vrpce s rucno oznacenim rasponom** - strelica u zaglavlju je
-  siguran put. Ako ipak zalutas, crvena poruka ce ti reci.
-- **Ne diraj `next:3` / `cutoff:3:5`** - ostaje dok PBZVISA ispravljac ne postoji.
+- **Pocetak dana je odlucio ishod.** Pitanje *"ti potvrdi"* prije Applyja je otkrilo kvar
+  koji bi inace ostao skriven jos dugo - jer se guard koji ne radi **ne vidi**.
+- **Tvoje zapazanje o Help-u je bilo tocno i konkretno.** Help doista ne zna u kojoj si
+  Arei; zapisano u Backlog. Funkcija je **vec** pripremljena za to, samo klijent salje
+  krivi kljuc.
 
 ---
 
 # DIO 2 - tehnicki (za Claudea)
 
-## Novo u ovoj sesiji
+## Stanje grana
 
-| sto | gdje |
-| --- | --- |
-| Okvir praznih redaka (`solid fill` guta gridline-ove) | `src/lib/deltaSheet.ts` |
-| Prazan redak ISPOD praznih redaka i IZMEDU naslova i zaglavlja | `deltaSheet.ts`, `excelExport.ts` |
-| `calcTo` - `SUMIFS` rasponi neovisni o redoslijedu; `razlika` bez `LOOKUP` | `deltaSheet.ts` |
-| Detektor pomijesanog rasporeda (formula, nosi rjesenje) | `deltaSheet.ts` |
-| Kontrolne tocke po sidru + `extraHeaderRows` | `deltaSheet.ts`, `excelExport.ts` |
-| Pravilo "je li redak potvrdjen" - **cista funkcija** | `src/lib/confirmedPeriod.ts` (nov) |
-| Update-guard: `confirmedBy`/`confirmedCount` + druga kvacica | `excelImport.ts`, `ExcelImportModal.tsx` |
-| Uvoz trazi zaglavlje **skeniranjem**, ne pomakom od naslova | `excelImport.ts` |
-| `created_at >= session_start` provjera **maknuta** | `excelImport.ts` |
-| `FILTERS_IZVRSENO` bez `Cash` | `data-prep_tools/Financije/verify_rpc_vs_model.py` |
-| 49 -> 95 tvrdnji | `deltaSheetLayout.test.mjs` |
-| 27 -> 33 tvrdnji | `importForeignRows.test.mjs` |
-| 16 tvrdnji / 3 sabotaze | `confirmedPeriod.test.mjs` (nov) |
-| Sonde (read-only, PROD) | `Claude-temp_R/_probes/s143_*.py`, `s143_autofilter.mjs` |
+- `test-branch`: S144 (`8aba8bc` + zatvaranje sesije)
+- `main`: **S137** (`4e223f2`) - sedam sesija iza. Deploy nije trazen.
 
-## Otvoreno, po prioritetu
+## Sto je promijenjeno u kodu
 
-1. **`OTVORENO-S143-4594`** - skripta za tri ispravka (v. DIO 1). Dry run + `--apply` koji
-   pokrece Sasa. Poslije: `promet_check` 2025-07/-08 -> `0,00`, kontrolne tocke -> `0,00`.
-2. **PBZVISA ispravljac** - cita **dva** izvora (PBZVISA za stavke, **RF izvod** za dan i iznos
-   stvarne naplate). Glob mora biti `PBZVI[SZ]A_*`.
-3. **Zaglavlje Add Activity po Arei** - unos za jucer i dalje trazi dva ekrana.
-4. **Structure fan-out** - `AppHome:122` treba `refetch` bez automatskog dohvata.
-5. **E10-2 / E7-2** - uzrok nedovrsenih zahtjeva i dalje nije utvrden.
+Jedan zahvat: `src/components/activity/ExcelImportModal.tsx:246` - dep lista
+`analyzeFile`-a s `[]` na `[balanceWidget?.group_by, filter.areaId]`.
 
-## Zamke koje su danas ugrizle
+/!\ **Prije nego pomislis da je to kozmetika:** s praznom listom faza 4 nije radila
+**nijednom, nikome**. Pravilo je u CLAUDE.md § Zamke / UI (React).
 
-- **Excelov sort iz vrpce i `Ctrl+A` gledaju TEKUCU REGIJU, ne `autoFilter`** - omeduje je samo
-  redak bez ijedne popunjene celije. Dva jaza su bila lazna: kontrola kosare ispod, i naslov
-  `EVENT DATA:` (jedna celija!) iznad.
-- **Relativna tvrdnja ne hvata skliznuti raspored** - treba apsolutno sidro.
-- **Test koji ne moze pasti**: tvrdnja o sudaru `Potvrda`/`Provjeri` bila je stavljena na sheet
-  BEZ sekcije, gdje je sudar nemoguc po konstrukciji.
-- **Moja sonda je optuzila ispravan kod** - `FILTERS_IZVRSENO` je nosio filtar od prije S111.
-  Prije nego se nalaz pripise kodu, provjeri mjeri li alat istim ravnalom kao app.
-- **`sed -i` na fileu s dijakritikom pokvari bajt** - za izmjene koda koristi python s
-  eksplicitnim `encoding='utf-8'`.
+## Sto je izmjereno, da se ne ponavlja
 
-## Sto je izmjereno, da se ne mjeri ponovo
+- ZABA kontrolne tocke: `30.07.2026.` i `06.09.2026.` obje **`0,00`**.
+- Plocica ZABA `12.302,70`, RF `942,59` (22.09.2026.).
+- `Financije_all`: **5.237** `Transakcija` eventa, **svi** imaju `izvorplacanja`.
+- Sidra: 19 u `Financije_all`, nijedno drugdje. Dashboard config ima **samo** ta Area.
+- Aree bez sidara s podacima (za testiranje sutnje guarda): `Fitness` 572, `Financije_old`
+  2774, `Health_Sasa` 3719 - sve Sasine.
 
-- **Kontrolna tocka**: `Prozor = 1` -> `0,00`; `Prozor = 2` -> `45,94` na obje tocke, potvrdjeno
-  sirovim izracunom iz baze (`3.054,41 + 10.714,98 = 13.769,39` protiv sidra `13.815,33`).
-- **Parsiranje `ZABA_2025-07` i `-08`** se poklapa s ispisanim bankinim zbrojevima i
-  `NOVO STANJE` u cent -> banka nema redak od 45,94.
-- **Gotovinski troskovi** (`Izvor = Cash`): tri retka ukupno, `-66,00` (20.05.2026.),
-  `-20,00` (27.08.2026.), `-10,00` (08.09.2026.); samo zadnja dva imaju `racun = ZABA`.
-- **Sort Test A**: `Ctrl+A` daje `A25:AB100` - sazeci i kosara izvan.
-- **Sort Test B**: nasilni sort -> `razlika` ostaje `0,00`, upozorenje osvane, sazeci ostaju.
+## Otvoreno
 
-## Napomena o ritualu
+- **Backlog: Help ne zna u kojoj si Arei.** `help.ts:118` cita `context.areaName`, klijent
+  salje `context.areaId` (`HelpPanel.tsx:164`) => redak `area:` nikad ne udje u prompt.
+  `FilterContext` vec drzi `selectedArea` s `name` i `settings`, pa popravak ne trazi nov
+  upit. /!\ Ne filtrirati koje se teme ucitavaju po Arei - v. Backlog za razlog.
+- **Nema otvorenih testova.** `audit_tests.py`: 0 za arhivu, 0 razilazenja naslova.
 
-`audit_tests.py` javlja **S142 spreman za arhivu** (10/10 ✅). Arhiviranje nije napravljeno -
-sekcija u PENDING seli **zajedno** s `tests/S142_tests.md` u `DONE_HISTORY.md` odnosno
-`Claude-temp_R/test-sessions/archive/`.
+## Zamke potvrdjene ovom sesijom
+
+- **Upit bez filtra po Arei laze na PROD-u** - `Financije_all` i `Financije_old` obje imaju
+  `Transakcija`. Iz toga su izvedene **dvije** krive tvrdnje u jednoj sesiji.
+- **`p_from` u `rpc_area_group_agg` je ISKLJUCIV** - dan pomaka daje laznih `-49,00`.
+- **Odsutnost zahtjeva u Network tabu je mjerenje**, i jedino sto razlikuje "nije ni
+  pokusao" od "pokusao pa dobio prazno".
+- **Help funkcija cita `docs/help/*.md` iz radnog stabla**, pa se Help testira s
+  `npx dotenv -o -e .env.local -e .env.prod.local -- netlify functions:serve --port 8888`.
+  /!\ `npm run dev:netlify` bi digao **TEST** aplikaciju na 8888 i vjerojatno ostao bez
+  `ANTHROPIC_API_KEY` (projekt nije linkan na Netlify, nema plain `.env`).

@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S142).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S144).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -43,10 +43,10 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2376 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
 | 2473 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
 | 2481 | [Backlog](<#Backlog>) | ~ |
-| 2880 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2888 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 2899 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2907 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 3023 redaka, 18 sekcija._
+_Ukupno 3042 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2491,6 +2491,25 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 > kosta zadatak.
 
 ### Otvoreno — ovo je posao
+
+**⭐ Help ne zna u kojoj si Arei — a funkcija to VEĆ očekuje** (S144). `help.ts:118` gradi
+redak `area: <ime>` iz `context.areaName`, a klijent šalje `context: { page, areaId }`
+(`HelpPanel.tsx:164`) ⇒ ključ se nikad ne poklopi i **redak nikad ne uđe u prompt**. Dakle
+mrtva grana, ne nedostajuća zamisao: tip `HelpRequest.context` već nosi i `areaName` i
+`categoryId`.
+⚠ **Posljedica izmjerena uživo** (S144, T-S143-16): stojeći u Arei `Fitness`, Help uredno
+objašnjava sidra, kontrolne točke i delta sheet — strojariju koje ondje **nema** (`Fitness`
+nema `dashboard` config ni ijedno sidro).
+⚠ Popravak **ne traži nov upit**: `FilterContext` već drži `selectedArea` s `name` i
+`settings`. Dvije razine: (1) proslijedi **ime**; (2) proslijedi **što Area ima**
+(`dashboard`, `list_columns`, `automations`), pa odgovor može početi s *„ova Area ne vodi
+saldo"* umjesto objašnjavanja mehanizma koji korisnik ne može vidjeti.
+⚠ **NE filtrirati koje se teme učitavaju po Arei.** Legitimno je pitati *„kako app računa
+saldo"* iz bilo koje Aree, a kriva „sposobnost" koja **zaniječe postojeću funkciju** gora je
+od šuma. Dakle: **reci AI-u gdje je, nemoj mu uzimati knjige.**
+⚠ Isti princip koji app već provodi na Overviewu (OQ-4): Area bez dashboarda **nema** tab,
+jer je izostanak bolji od praznog. Help koji objašnjava sidra u Fitnessu je prazan Overview
+tab izrečen riječima.
 
 **⭐ `HiddenInAdd` se čita samo iz PRVOG retka atributa, a `IsRequired` iz svih** (S140).
 Nesimetrija u `structureImport.ts`: `group.isRequired = group.isRequired || row.isRequired`

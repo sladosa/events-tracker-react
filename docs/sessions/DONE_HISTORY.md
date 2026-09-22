@@ -5522,6 +5522,82 @@ roundtripom.
 ⚠ Usput nađena mina: `isRequired` se preko redaka spaja s **OR**, a `hiddenInAdd` se čita
 **samo iz prvog retka** — S131 je to popravio za susjednu zastavicu i propustio ovu. Danas ne
 grize; u Backlogu.
+## S144 — guard koji je bio mrtav od prvog dana, i fantom koji je nestao (2026-09-22)
+
+⚠ **Sesija je krenula kao izvođenje tuđe upute, a završila kao dijagnoza.** Plan je bio
+primijeniti ispravke iz S143 i verificirati preostale testove. Ispravak je prošao u pet
+minuta; ostatak je otišao na kvar koji je **ta ista verifikacija otkrila**.
+
+### 1. `OTVORENO-S143-4594` zatvoren — kroz Excel roundtrip, bez skripte
+
+Uvoz `0 New / 1 Modify / 1 Delete / 243 Unchanged`. Fantom `−45,94` (`17.08.2025.`,
+`Izvor = Racun`, bez opisa) obrisan; `−0,80` pomaknut s `07.08.` na `07.07.2025.`
+Provjereno **prije** Applyja da fantom doista ulazi u saldo (`izvorplacanja = Racun`,
+`status = Izvrsen`) — dakle da brisanje pomiče brojku, a ne samo listu.
+
+**Rezultat izmjeren s tri strane, sve tri daju isto:**
+
+| instrument | ZABA 30.07.2026. | plus |
+| --- | --- | --- |
+| kontrolna točka u delta sheetu (faza 3) | `0,00` (bilo `45,94`) | i druga točka 06.09. `0,00` |
+| `rpc_area_group_agg` nad PROD-om | `3.054,41 + 10.760,92 = 13.815,33` | = potvrda, u cent |
+| `Summ` kolone samog filea | `112.976,22 − 103.727,93 + 3.054,41 = 12.302,70` | = zadnji `Stanje (kontrola)` = pločica |
+
+⚠ Razlika prema `12.284,32` iz S143 nije naš zahvat nego **nov redak**: `2026-09-21 ·
+Uplata 18,38 · Povrat Zoran`. `12.284,32 + 18,38 = 12.302,70`.
+
+### 2. ⭐ Faza 4 (update-guard na uvozu) nije radila — i to 100 % vremena
+
+Prvi uvoz nije pokazao **ni sivu oznaku ni drugu kvačicu**, iako je redak bio unutar
+potvrđenog stanja. Uzrok: `analyzeFile` u `ExcelImportModal` je `useCallback(..., [])` još
+od S118, a faza 4 je **unutar** njega dodala čitanje `balanceWidget?.group_by` i
+`filter.areaId`. Snimka prvog rendera je zauvijek `null` ⇒ grana se nikad ne izvrši.
+
+⚠ **Tri hipoteze prije toga bile su krive, i sve tri je oborilo mjerenje:**
+
+| hipoteza | čime je oborena |
+| --- | --- |
+| stari bundle / krivi build | `localhost:5173`, `vite --mode prod`, restart + hard refresh — ništa |
+| RLS ne da grantee-u čitati `balance_anchors` | `balance_anchors_select USING (app_can_read_area(area_id))` pokriva `data_shares` |
+| nema sidra koje pokriva taj redak | sidro `2026-07-30 · 13.815,33` postoji; redak ima `racun = Kokin tekući ZABA` |
+
+⚠ **Presudno mjerenje je bila ODSUTNOST zahtjeva:** DevTools → Network, filtar
+`balance_anchors` ⇒ **`0 / 32`** zahtjeva pri odabiru filea. Time se *„nije ni pokušao"*
+razdvaja od *„pokušao pa dobio prazno"* — u UI-ju su te dvije dijagnoze **identične**.
+
+⚠ **Brana je postojala, bila u pravu, i nitko je nije pokrenuo.** `npm run check` javlja
+`GORE react-hooks/exhaustive-deps 0 -> 1` i imenuje točno taj file i te dvije varijable.
+Ratchet je u S139 spušten na nulu **baš za ovaj razred** — mina je opalila četiri sesije
+kasnije.
+
+Popravak je jedna dep lista. Protuprovjera zatvorena **s obje strane na stvarnom retku**:
+prije popravka nema oznake ni zahtjeva; poslije popravka oznaka `potvrđeno 30.07.2026. ·
+13815.33`, treća kvačica, Apply zaključan dok sve tri nisu kvačirane. A `T-S143-13` je
+dokazao i suprotno — u Arei bez sidara guard **šuti**, što bi naivan popravak pokvario.
+
+### 3. Tri ispravka zapisanog
+
+- **„Blizanac iste minute" iz S143 ne postoji u toj Arei.** Redak `85480c11` živi u
+  **`Financije_old`**. Uzrok krive tvrdnje: dijagnostički upit po `event_date` **bez filtra
+  po Arei**, a obje Aree imaju kategoriju `Transakcija`. Izmjereno: svih **5.237**
+  `Transakcija` eventa u `Financije_all` **ima** `izvorplacanja`.
+- **`p_from` u `rpc_area_group_agg` je isključiv.** Provjera sa `p_from` = dan nakon sidra
+  dala je lažnih `−49,00` (ispao `Saša multisport` od 02.01.).
+- **Predviđanje `1 New / 1 Modify` za stari file bilo je krivo.** Neizmijenjen izvoz po
+  definiciji daje `0 / 0` — uvoz mijenja samo ono što je u Excelu dirnuto.
+
+### 4. Verifikacija i zatvaranje
+
+`T-S143-6` (stari file, `razmak 1`): `5230` poklopljenih `row_hash`-eva ⇒ zaglavlje
+pročitano ispravno. `T-S143-13` (guard šuti): Area `Fitness`. `T-S143-16` (Help): sve tri
+nove teme nađene — ⚠ traži `netlify functions:serve --port 8888`, jer funkcija čita
+`docs/help/*.md` iz **radnog stabla**, a deployani Help ih nema (`main` je na S137).
+
+**S142 i S143 arhivirani** (10/10 i 13/13): sekcije u `DONE_HISTORY.md`, detaljni fileovi u
+`Claude-temp_R/test-sessions/archive/`. PENDING pao s **751 na 674** retka.
+
+---
+
 ## S143 — sort je mogao progutati sve, i dva upozorenja su lagala (2026-09-20)
 
 **Sesija bez plana: svaki zahvat je proizasao iz Sasinog mjerenja uzivo na PROD-u.**
@@ -5686,6 +5762,54 @@ prije commita. `DELTA_WINDOW_SPEC` je time **cijeli izveden** (sve cetiri faze).
 Jedanaest commitova na `test-branch`; `main` netaknut, deploy nije trazen.
 
 
+### Testovi — preseljeno iz PENDING_TESTS.md (S144), sekcija zatvorena
+
+⚠ **Sesija bez plana — svaki zahvat je proizasao iz Sasinog mjerenja uzivo.** Sortirao je
+delta file i karticni retci su zavrsili usred glavnog bloka; drugo mjerenje je pokazalo da
+isto vrijedi **iznad** zaglavlja, gdje sort guta bas ono cime se rezultat mjeri.
+
+⚠ **Izmjereno: Excelov ribbon sort i `Ctrl+A` ne gledaju `autoFilter` nego TEKUCU REGIJU**,
+a nju omeduje samo redak **bez ijedne** popunjene celije — takvog na listu nije bilo.
+
+⚠ **Drugi dio sesije: `DELTA_WINDOW_SPEC` je zavrsen — faze 3 i 4.** Kontrolna tocka po sidru
+pretvara oznaku u BROJ, a uvoz prvi put TRAZI PRISTANAK za izmjenu potvrdjenog retka.
+
+⚠ **Faza 3 je na prvom pokretanju nasla stvarnu gresku u povijesti:** ZABA podaci izmedu
+02.01.2025. i 30.07.2026. ne reproduciraju potvrdu — fali **45,94**. Svedeno na **jedan
+fantomski redak** (17.08.2025.), kojeg banka nema ni u jednom izvodu. **Ispravljeno S144**
+(T-S143-14): obje kontrolne tocke ZABA sada `0,00`. ⚠ Isti uvoz je otkrio da je **faza 4 bila
+mrtva** — v. T-S143-12.
+
+**Detalji testova:** [tests/S143_tests.md](../../Claude-temp_R/test-sessions/archive/S143_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S143-1 | Okvir praznih redaka (`solid fill` guta gridline-ove) | ✅ S143 uzivo + test (3 sabotaze) |
+| T-S143-2 | Uvoz vise ne prijavljuje `created_at < session_start` | ✅ S143 uzivo + test. Izmjereno: 10/8.009 redaka, ali **8 od 10 u jednom prozoru**; poruka je lagala za **8 od 8** |
+| T-S143-3 | Izvoz vise ne tvrdi „ne izvozi svih N dogadjaja" | ✅ S143 uzivo — na `Prozor = 2` filtar 268, prozor **1.388** |
+| T-S143-4 | ⭐ Sort vrpcom / `Ctrl+A` vise ne doseze sekciju (Test A) | ✅ S143 uzivo — odabir `A25:AB100`, sazeci i kosara izvan; `razlika 0,00`, bez upozorenja |
+| T-S143-5 | ⭐ Nasilni sort preko sekcije (Test B) | ✅ S143 uzivo — `razlika` ostala **0,00**, crveno upozorenje osvanulo, **sazeci ostali na mjestu**. `Σ kosara` pao s 973,96 na 1.024,96 (ocekivano) |
+| T-S143-6 | ⭐ **Stari file** (zaglavlje odmah ispod naslova) se i dalje uvozi | ✅ **S144 uzivo (PROD)** — `events_export_Kokin_format_20260918_114715.xlsx` (razmak naslov→zaglavlje **1**): `0 New / 0 Modify / 5230 Unchanged`. Dokaz je bas tih 5230 poklopljenih `row_hash`-eva — da je zaglavlje procitano kao prvi podatkovni redak, nijedan se ne bi poklopio. Nema retka s `event_id` kao vrijednoscu, nema poruke o zaglavlju. Usput: D7 guard imenovao 3 zastarjela retka i **preskocio** ih |
+| T-S143-7 | `Potvrda` suzena na 12; `Provjeri` u vidljivom polju | ✅ S143 uzivo + test (2 sabotaze) |
+| T-S143-8 | Sivi ton potvrdjenih redaka **postoji** i **uvjetni** je | ✅ S143 — dotad ga **nijedna tvrdnja nije mjerila**; sada 3 tvrdnje + 2 sabotaze |
+| T-S143-9 | `razlika` bez `LOOKUP` — zbroj cijelog prozora, neovisan o redoslijedu | ✅ S143 test |
+| T-S143-10 | Detektor pomijesanog rasporeda: formula, nosi rjesenje, gleda samo glavni blok | ✅ S143 test (2 sabotaze) |
+| T-S143-11 | ⭐ **Faza 3** — kontrolna tocka po sidru u zaglavlju | ✅ **S144 uzivo** — nakon ispravka podataka (T-S143-14) `Prozor = 2` daje **obje** tocke `0,00` zelene (bilo 45,94 crveno). Otvarajuce stanje = sam iznos sidra (`3.054,41`). Automatski: 12 tvrdnji + 4 sabotaze |
+| T-S143-12 | ⭐ **Faza 4** — update-guard na uvozu: siva oznaka s imenom sidra + **druga** kvacica, Apply zakljucan | ✅ **S144 uzivo, ali TEK NAKON POPRAVKA** — guard je bio **mrtav** (`analyzeFile` = `useCallback(..., [])`, mjereno `0 / 32` zahtjeva na `balance_anchors`). Poslije popravka: oznaka `potvrdjeno 30.07.2026. · 13815.33`, treca kvacica, Apply zakljucan dok sve tri nisu kvacirane. Pravilo: CLAUDE.md § Zamke / UI (React) |
+| T-S143-13 | Guard **suti** gdje nema sto reci (Area bez sidara, ili palo citanje) | ✅ **S144 uzivo (PROD)** — Area `Fitness` (nema `dashboard`, 0 sidara): blok „1 existing event will be modified" **postoji**, sive oznake **nema**, trece kvacice **nema**, Apply se otkljucava jednom kvacicom. ⚠ Ovo je druga strana S144 popravka: dokazuje da guard ne opali **svugdje**. Grana „palo citanje sidara" ostaje zatvorena konstrukcijom (`catch { confirmedIn = null }`) |
+| T-S143-14 | ⭐ ⚠ **Pise u bazu (Sasa):** tri ispravka koje je faza 3 otkrila | ✅ **S144 (Sasa)** — bez skripte, kroz Excel roundtrip: `0 New / 1 Modify / 1 Delete`. Fantom `-45,94` obrisan, `-0,80` pomaknut na 07.07.2025. Treci redak („blizanac") **otpao** — bio je redak `Financije_old`, ne iste Aree |
+| T-S143-15 | `FILTERS_IZVRSENO` vise ne nosi `Cash` | ✅ S143 — alat sada daje **12.284,32**, tocno plocicu (stari filtar 12.274,32) |
+| T-S143-16 | Help: tri nove teme u Excel (kontrolne tocke, siguran sort, uvoz potvrdjenog retka) | ✅ **S144 uzivo** — sve tri nadjene sa sadrzajem (detektor + *„novi delta export ce srediti"*; `Data → A↓Z` uzima tekucu regiju; kolona `Potvrda` + sidro + treca kvacica). ⚠ Trazi `netlify functions:serve --port 8888` jer funkcija cita `docs/help/*.md` iz radnog stabla; deployani Help ih nema (`main` je na S137) |
+
+⚠ **Sto NIJE zatvoreno, a tice se iste teme:** redak upisan u potvrdjeno razdoblje i dalje
+proizvodi **samo oznaku**, ne broj. Sasin nalaz uz T-S142-4. To je **faza 3**
+(`DELTA_WINDOW_SPEC`), i ona je sljedeci posao.
+
+⚠ **Ostaje i dalje neprevenirano:** rucno oznacen dio stupaca + Sort bez „Expand" rasapare
+stupce od redaka. Nijedna promjena filea to ne sprjecava; brana je **pregled prije uvoza**,
+koji nabraja svaku promjenu. Zabrana sorta (`ws.protect`) je **odbijena** — gasi `+`/`-`
+gumbe grupiranih stupaca, a grupe su srce `Kokin_format` profila.
+
 ## S142 — sidro prestaje biti rez, postaje oznaka (2026-09-19)
 
 **`DELTA_WINDOW_SPEC` faze 1 i 2.** Sesija je zatvorila zamku koju je S126 zapisao i
@@ -5766,6 +5890,31 @@ redaka ne postaje 40 gresaka, `row_hash` skip radi.
 **Commiti:** `af81266` (faza 1), `920af09` (faza 2). `main` netaknut.
 
 ---
+
+### Testovi — preseljeno iz PENDING_TESTS.md (S144), sekcija zatvorena
+
+⚠ **Prva sesija koja dira delta prozor otkad je S126 zamku lijecio disciplinom**
+(*„sidro ide tek kad je prozor gotov"*). Sada to radi mehanizam: prozor krece dan poslije
+**K-tog** sidra, pa zasidren mjesec vise ne ispada iz filea. Izmjereno da je dosad ZABA
+tiho gubila **47 `Racun` redaka** od trazenih 60 dana.
+
+⚠ **Zastita proslosti je OZNAKA, ne brana.** Kolona `Potvrda` i sivi ton kazu *„ovaj je
+redak vec potvrden"*, ali uvoz ga i dalje prihvaca bez pitanja — to je **faza 4**.
+
+**Detalji testova:** [tests/S142_tests.md](../../Claude-temp_R/test-sessions/archive/S142_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S142-1 | ⭐ Faza 1 uzivo: panel kaze `Od 31.07.2026. … pociva na potvrdi 30.07. = 13.815,33`; file nosi otvarajuce stanje **`13.815,33` u cent** i biljesku *„Nije izracunato"* | ✅ **S143 (uzivo, PROD)** — zatvoreno na oba prozora. `Prozor = 1`: panel `Od 31.07.2026. (51 dana) · pociva na potvrdi 30.07.2026. = 13.815,33`, file `stanje 30.07.2026. -> 13.815,33`. `Prozor = 0`: **14 dana** (12 izmjereno 18.09. + 2), otvarajuce stanje `12.772,86` = **doslovno iznos sidra**, glavni blok **retci 24-41 = 18**, sto se poklapa s plocicinih *„18 promjena poslije"*. ⭐ **Tri neovisna puta daju isti broj:** `12.772,86 + 1.439,52 - 1.928,06 = 12.284,32` = zadnji kontrolni redak = **plocica u appu** ⇒ Excelov `SUMIFS` i Postgresov RPC se slazu u cent. Usput vidjeno uzivo i ono sto je dotad cuvao samo jedinicni test: uz `Prozor = 0` **kolone `Potvrda` uopce nema** (prozor krece iza zadnje potvrde) |
+| T-S142-2 | Kolona `Potvrda`: retci do 06.09. nose kratku oznaku i **sivi ton**, poslije nje prazno | ✅ **S143 (uzivo, tezi slucaj od trazenog)** — na `Prozor = 2` file nosi **dva** sidra: do 30.07. `potvrdjeno 30.07. · ZABA_2026-07.pdf`, od 02.08. `potvrdjeno 06.09. · ekran bankovne aplikacije`, od 07.09. **prazno**. Redak datiran tocno na dan sidra nosi oznaku (granica je „strogo nakon"). Sivi ton potvrdjen; da je CF upisan sada cuvaju **3 tvrdnje + 2 sabotaze** (dotad ga nijedna nije mjerila) |
+| T-S142-3 | ⭐ Oznaka je **ziva**: promjena datuma retka je gasi istog trena, povratak je vraca | ✅ **S143 (uzivo, PROD)** |
+| T-S142-4 | ⭐ Prazan redak + datum u proslost ⇒ oznaka iskoci sama; topao ton razlicit od sivog | ✅ **S143 (uzivo, PROD)** — upisan `2026-08-20` u prazan redak, oznaka iskocila sama. ⚠ Sasin nalaz uz test: oznaka je **sve sto se tada dogodi** — broj koji bi pokazao razilazenje sa sidrom je **faza 3**, i nje jos nema |
+| T-S142-5 | Sort po datumu: oznaka putuje sa svojim retkom (kolona je u `auto_filter.ref`) | ✅ **S143 (uzivo, PROD)** — putuje. ⚠ Isti potez je otkrio da sort moze progutati **cijelu sekciju i sazetke** — v. sekciju S143 |
+| T-S142-6 | Rupe medu sidrima: Prozor = 2 ⇒ panel ispise ~**625 dana** i brojku PRIJE izvoza; Prozor = 9 na RF-u ⇒ *„ima samo 3 potvrde"* | ✅ **S143 (uzivo, PROD)** — oba ruba. `Prozor = 2` na ZABA-i ⇒ **627 dana**, `pociva na potvrdi 01.01.2025. = 3.054,41`, *„u prozoru su jos 2 potvrde"*, prag opalio na **1.388**, izvoz prosao. **Clamp**: `Prozor = 9` na RF-u ⇒ *„Racun ima samo 3 potvrde — prozor krece od najstarije"*, sidro `31.12.2022. = 12.712,28`, start `01.01.2023.`, **1.359 dana** (1.096 za 2023-25 + 263 za 2026., u dan), 2.305 dogadjaja uz crveno upozorenje. ⚠ Brojka i poruka dolaze **prije** izvoza, sto je i svrha — file od 1.359 dana nije ni preuzet |
+| T-S142-7 | ⚠ **Pise u bazu (Sasa):** uvoz delta filea s novom kolonom ⇒ **1 Modify**, bez poruke o nepoznatoj koloni | ✅ **S143 (uzivo, PROD)** — `0 created / 3 updated / 99 unchanged`, **nijedne** poruke o nepoznatoj koloni. Tri izmjene su bile Sasine (izmjereno prije uvoza: nijedan od tri retka nije dirnut u bazi nakon izvoza ⇒ file je bio noviji, nista se nije vratilo unatrag) |
+| T-S142-8 | Izbor prozora: K, clamp, fallback bez sidra, sort sidara | ✅ S142 — `deltaWindow.test.mjs`, **25 tvrdnji**, protuprovjereno s 3 sabotaze |
+| T-S142-9 | Kolona, tonovi, autofilter, kratki oblik biljeske | ✅ S142 — `deltaSheetLayout.test.mjs` **37 → 49** tvrdnji, protuprovjereno s 5 sabotaza |
+| T-S142-10 | Otvarajuce stanje = iznos sidra **u cent**, uz `n = 0` | ✅ S142 — PROD proba, **6 provjera / 6 prolaza**, oba racuna i K = 0/1/2 |
 
 ## S141 — tri tvrdnje oborene mjerenjem, i sve tri su bile moje (2026-09-18)
 
