@@ -237,3 +237,20 @@ else:
     print('PROTURJECNOST u PENDING_TESTS.md')
     print('  „Otvoreno:" navodi, a tablica ne kaze ⬜ : %d  %s' % (len(only_curated), only_curated[:12]))
     print('  tablica kaze ⬜, a „Otvoreno:" ne navodi : %d  %s' % (len(only_tables), only_tables[:12]))
+
+
+# --- linkovi -----------------------------------------------------------------
+# /!\ Arhiviranje PREMJESTA file, a link ostaje -- pa se cita kao "tog dokaza
+#     vise nema", dok je dokaz na disku (S139). Ciscen rukom dvaput i vratio se
+#     oba puta, zato ga mjeri alat koji o arhiviranju i odlucuje -- ovaj.
+# /!\ Ide na KRAJ filea, ne uz srodan ispis: umetnut na koloni 0 usred `if/else`
+#     bloka, `try/except` preuzme `else:` na sebe (try-except-else je valjana
+#     sintaksa) -- `py_compile` prodje, a alat pocne ispisivati OBJE grane.
+#     Izmjereno u S146: 10 fantomskih proturjecnosti, razred koji je S139 zatvorio.
+try:
+    import check_links
+
+    check_links.report(quiet_when_clean=True)
+except ImportError:
+    print()
+    print('/!\\ check_links.py nije nadjen -- linkovi NISU provjereni.')

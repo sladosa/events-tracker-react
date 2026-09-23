@@ -154,6 +154,15 @@ assert len(index.splitlines()) + 1 == offset, 'duljina indeksa nije stabilna'
 new = '\n'.join(lines[:cut]) + '\n' + index + '\n\n' + '\n'.join(lines[cut:]) + '\n'
 if '--write' in sys.argv:
     io.open(PATH, 'w', encoding='utf-8').write(new)
+
+    # /!\ CLAUDE.md je file s linkovima najviseg ranga: na njega se poziva
+    #     svaka sesija. Indeks se regenerira kad se file dirne, pa je to
+    #     jedini trenutak u kojem se mrtav link jamceno vidi prije commita.
+    try:
+        import check_links
+        check_links.report(quiet_when_clean=True)
+    except ImportError:
+        print('/!\\ check_links.py nije nadjen -- linkovi NISU provjereni.')
 else:
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     print(index)

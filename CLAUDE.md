@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S145).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S146).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 109 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 122 | [Critical rules](<#Critical rules>) | X |
-| 1193 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1835 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1851 | [Key files](<#Key files>) |  |
-| 1977 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1997 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2019 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2045 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2085 | [Open bugs](<#Open bugs>) | ~ |
-| 2183 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2376 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2473 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2481 | [Backlog](<#Backlog>) | ~ |
-| 2899 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2907 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1204 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1911 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1927 | [Key files](<#Key files>) |  |
+| 2060 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2080 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2102 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2128 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2168 | [Open bugs](<#Open bugs>) | ~ |
+| 2292 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2485 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2582 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2590 | [Backlog](<#Backlog>) | ~ |
+| 3008 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 3016 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 3042 redaka, 18 sekcija._
+_Ukupno 3174 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1793,6 +1793,26 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 
 **E2E (Playwright)**
 
+- **⚠ PONOVLJEN RUN JE PADAO NA 409 JER JE `supabaseUpsert` TIHO ISPUSTAO
+  `onConflict`** (S146). Helper ga prima i **koristi samo na admin putu**; REST
+  fallback ga nije prosljedjivao, a `Prefer: resolution=merge-duplicates` bez
+  `?on_conflict=` rjesava sudar **samo po primarnom kljucu**. Za `data_shares` je
+  prekrsen **slozeni** unique (`data_shares_unique_share`) ⇒ **svaki ponovljen run**
+  `e8`/`e9`/`e10`/`e15`/`S123` padne u `beforeAll`, i to **izgleda kao kvar featurea**.
+  ⚠ Admin put trazi `SUPABASE_SERVICE_ROLE_KEY`, **kojeg u `.env.testing` nema** — dakle
+  „ispravna" grana se nikad nije izvrsila. Komentar iznad fallbacka je to i pisao
+  (*„only works for PRIMARY KEY conflicts"*), pa je zamka bila **zapisana a neprocitana**.
+  ⚠ Specovi su `onConflict` **uredno slali** svih pet — argument je stizao i **nestajao**.
+  ⇒ Popravljen fallback (`e2e/fixtures/auth.ts`), bez secreta i bez diranja appa.
+  ⚠ `global-setup` **ne cisti** `data_shares` (u `seed.sql:119` je DELETE **zakomentiran**),
+  pa se stanje prenosi izmedju runova — v. „ponovljen pojedinacni run" (S139).
+- **⚠ E15-3 je ocekivao tekst INFO MODALA na BANERU** (S146) — treci slucaj istog razreda
+  (E7-3, E10-2, S140): **tvrdnja napisana iz dizajna, ne izmjerena.** `WriteGranteeBanner`
+  nosi samo *„Write access"* + `Info` + *„Take your data"* (`SharedAreaBanner.tsx:356`);
+  *„Your events are stored in …"* zivi u `WriteGranteeInfoModal` (`:335`), **iza klika**.
+  ⚠ Prva tvrdnja je **prolazila** — pa je izgledalo kao da baner ne radi, a nedostajao je
+  klik. `c25136e` (S76). Popravak **samo u specu**, po pravilu iz § Session workflow.
+
 - **⚠ E2E PREUZME DEV SERVER KOJI VEĆ STOJI NA 5173 — I TO MOŽE BITI PROD** (S133).
   `playwright.config.ts` ima `reuseExistingServer: true` i `baseURL: localhost:5173`.
   Vrti li se ondje `npm run dev:prod`, Playwright **ne podiže svoj TEST server nego
@@ -1929,6 +1949,13 @@ data-prep_tools/Tools/dump_schema.py
                                    `pg_dump --schema-only` -> `sql/SCHEMA_*.sql`.
                                    Ide preko Session poolera (IPv6 problem).
                                    `--diff` = slaze li se baza s gitom.
+data-prep_tools/Tools/check_links.py
+                                   Pokazuju li relativni linkovi u docs/ na postojece
+                                   fileove. `--fix` preusmjeri na arhivu.
+                                   /!\ Arhiviranje premjesta file a link ostaje -- zamka
+                                   se vratila dvaput nakon rucnog ciscenja (S139, S146).
+                                   Zovu ga i `audit_tests.py` i `claude_index.py --write`
+                                   => ne ovisi o tome da ga se netko sjeti pokrenuti.
 data-prep_tools/Tools/rls_probe.py Sto RLS STVARNO dopusta, po ulozi. Svaka proba
                                    u vlastitoj transakciji s ROLLBACK-om.
                                    Mjera PRIJE i POSLIJE svake RLS migracije.
@@ -3038,17 +3065,40 @@ does not block build. Ignore it.
      odluka — ni zatvoriti ga ni otvoriti. Tako su `S99`–`S105` stajali kao „poznata rupa"
      od S116 do S136. Razlog se upisuje u ćeliju statusa (`✅ S136 — nadiđeno upotrebom`,
      `✅ S136 — čuva automatski test`, …), pa se odluka poslije ne čita kao „staro je".
-   - **Pet kriterija za zatvaranje** (S136, svaki traži dokaz): izmjereno u ovoj sesiji ·
-     čuva ga automatski test · izvela ga novija sesija · alat/podaci više ne postoje ·
-     **nadiđeno upotrebom** (feature je na PROD-u i ponašanje je otad izmjereno drugim
-     putem). ⚠ Šesta mogućnost nije zatvaranje nego **sažimanje**: 14 ručnih koraka se
-     neće izvesti nikad, dva hoće (`T-S131-6..24` → `T-S136-3`).
+   - **Šest kriterija za zatvaranje** (S136 pet, S146 šesti; svaki traži dokaz): izmjereno u
+     ovoj sesiji · čuva ga automatski test · izvela ga novija sesija · alat/podaci više ne
+     postoje · **nadiđeno upotrebom** (feature je na PROD-u i ponašanje je otad izmjereno
+     drugim putem) · **⭐ ZASTARJELO** — v. dolje. ⚠ Sedma mogućnost nije zatvaranje nego
+     **sažimanje**: 14 ručnih koraka se neće izvesti nikad, dva hoće
+     (`T-S131-6..24` → `T-S136-3`).
+- **⭐ ZASTARJELO — šesti kriterij** (Sašina formulacija, S146): *test tvrdi* **brojku iz
+     trenutka**, *a mehanizam tu brojku mjeri iznova sam od sebe* ⇒ ponavljanje ga ne
+     može reproducirati, a ništa se ne gubi. Pitanje nije *„je li još točno"* nego
+     **„zanima li nas ičija brojka osim trenutne"**. Primjer: `T-S130-10` je tvrdio
+     kontrolu košare `19,98`; košara se otad zatvorila (48/48 = `1.068,70` u cent), a
+     kontrola se **računa na svakom izvodu** ⇒ stvarna razlika ispliva sama.
+     ⚠ **Granica, da kriterij ne postane koš za sve nezgodno:** ne primjenjuje se na
+     tvrdnju o **modelu** ni na stanje koje se **ponavlja svaki mjesec** — ono nije
+     zastarjelo nego **krivo evidentirano**: to je *odluka*, ne test, i seli se u
+     CLAUDE.md, ne u arhivu (tako je `T-S130-9` otišao u § Delta sheet).
+     ⚠ I ne primjenjuje se ondje gdje brojka **može tiho nestati**: vrijedi za kartičnu
+     košaru (ne miče saldo, idući izvod je ponovo mjeri), **ne** za redak koji ulazi u
+     saldo — ondje razlika ne ispliva sama (§ Mjerenje: *mali zbirni Δ nije dokaz*).
    - **⚠ `audit_tests.py` je do S136 bio SLIJEP za sufikse `-A7`/`-B5`** — regex je iza
      crtice tražio samo znamenke, pa **15 testova iz S129 nije vidio** i sesiju je
      prijavljivao kao *„svi ✅, spremno za arhivu"* dok su unutra stajala **4 otvorena**.
      Popravljeno, ali pouka je šira: **skripta koja miče sekcije mora odbiti maknuti onu
      u kojoj postoji ijedan ⬜** — guard je uhvatio ono što alat nije. ⚠ I guard mora
      gledati **samo tablične retke** (`|`), inače ga zapali ⬜ u običnom tekstu.
+   - **⚠ POSLIJE SVAKE SELIDBE: `python data-prep_tools/Tools/check_links.py`**
+     (`--fix` preusmjeri ono što je otišlo u arhivu). Arhiviranje **premješta file, a
+     link ostaje** — a mrtav link se čita kao *„tog dokaza više nema"*, dok je dokaz na
+     disku. Zamka je zapisana u S139 (21 od 30 linkova u prazno), čišćena **rukom dvaput**
+     i **vratila se oba puta**: u S146 su nađena tri mrtva linka (`S133`, `S138`,
+     `S139`) koja nije napravila ta sesija. ⇒ **brana, ne disciplina.**
+     ⚠ Alat namjerno preskace `venv`/`node_modules` — tuđa dokumentacija nosi
+     vlastite mrtve linkove (5 od 6 pogodaka prije iskljucenja), a brana koja od prvog
+     dana javlja tuđe kvarove nauči se otklikati.
    - `.pre-*` backupi stariji od zadnja 3 → `data-prep_data/Financije/_arhiva/backup/`
    - generirani izlazi (import/structure/export xlsx) → `_arhiva/izlazi/`
 4. **`CLAUDE.md`** — nova zamka ide u „Critical rules"/„Zamke". **Ne dopisuj sesijski

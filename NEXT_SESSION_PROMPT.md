@@ -1,117 +1,116 @@
-# Sljedeca sesija - handoff
+> Pisano protiv commita **`4028ca1`** (S145) + neispisane izmjene S146.
+> ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
+> Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-**Pisano protiv commita:** S145 (test-branch, 2026-09-22).
-**`main` NIJE diran** - stoji na **S137**, osam sesija iza. Deploy nije trazen ni pusten.
-Ako `git log` pokazuje novije, citaj ovo kao povijest; CLAUDE.md je autoritet.
+# Sljedeća sesija — nakon S146 (2026-09-23)
 
 ---
 
-# DIO 1 - netehnicki (za Sasu)
+# DIO 1 — netehnički (za Sašu)
 
-## Sto je gotovo u S145
+## Što je jutros napravljeno
 
-**Hrpa A je odradjena - svih sest testova prolazi.** Ali su usput ispala **cetiri kvara**
-kojih nije bilo na popisu, i tri su popravljena isti dan.
+Sesija trijaže. **Osam sekcija testova je zatvoreno i arhivirano**, popis otvorenog
+je s 543 pala na **277 redaka**, a otvorenih testova s 18 na **8**.
 
-1. **Koka nije mogla ostati na Overviewu.** Svaki F5, svaki povratak iz `View details` i
-   svaki povratak nakon Finisha bacao ju je na Activities - i to *zapamtio*, pa izbor nije
-   bio preskocen nego obrisan. Popravljeno i izmjereno.
-2. **Generator bi uvozom vratio Visa pravilo unatrag.** `make_financije_all_structure.py`
-   je konfiguraciju imao ukucanu u kodu (`next:3`), a baza ima novu (`cutoff:3:5`) - uvoz bi
-   tiho ponistio popravke iz S138, a vidjelo bi se tek za mjesec dana. Popravljeno **prije**
-   nego je file uvezen.
-3. **Rate su gubile lipe.** `117,32 / 6` je davalo 6 x `19,55` = `117,30`. Sada ostatak nosi
-   prva rata, kao kod banke, pa se zbroj slaze u cent.
-4. **Jedan kvar se nije dao ponoviti** - kvacica `Rate?` je dvaput pokazala prazno nad
-   retkom koji u bazi ima `da`. Izmjereno je da do nje stize ispravna vrijednost; zapisan je
-   kao otvoren, s uputom sto provjeriti ako se vrati.
+Tvoje dvije primjedbe sa slika:
 
-Usput potvrdjeno, a bilo je otvoreno pitanje: **popravak Visa datuma iz S138 doseze do
-produkcije bez deploya.** Koka je istog dana unijela plan od 6 rata i sve su dobile tocan
-dan (`05.` u mjesecu, zadnja `05.03.2027.`).
+- **Dva naslova u `PENDING_TESTS`** — nije kvar. Obsidian prikazuje ime filea iznad
+  naslova; file ima točno jedan.
+- **Otvoreno pitanje u `DONE_HISTORY`** — bilo je **već odgovoreno u S140**. Kvar je
+  bila *selidba*: tekst je pisan dok je stajao u PENDING-u, pa je preseljenjem
+  „o samom ovom dokumentu" počelo pokazivati na krivi dokument. Ispravljeno, i
+  zapisano kao pravilo.
 
-## Sto ceka tebe
+Tvoje dvije ideje su obje ušle u alat:
 
-### 1. Dva testa, ~5 min (T-S145-1 i T-S145-2)
+- **`check_links.py` iz drugog alata** — zovu ga sad `audit_tests.py` i
+  `claude_index.py --write`, pa **ne ovisi o tome da ga se netko sjeti**. Odmah se
+  dokazao: uhvatio je 3 mrtva linka koja ova sesija nije napravila.
+- **„Zastarjelo — nije relevantno"** — postalo je **šesti kriterij zatvaranja**, tvojim
+  riječima: *zanima nas trenutna kontrola, ne zastarjela*. Uz dvije granice, da ne
+  postane koš za sve nezgodno.
 
-| test | sto napraviti | sto mora biti |
+## Što čeka tebe — hrpa B, ~20 min u aplikaciji
+
+Svjesno si je odgodio da ne uđeš u konflikt s mojim E2E runovima nad istom TEST
+bazom. Detalji: `docs/sessions/tests/S145_tests.md` i `S146_tests.md`.
+
+| test | potez | gdje |
 | --- | --- | --- |
-| `T-S145-1` | s Overviewa udji u `View details` pa natrag; zatim s Overviewa unesi redak i Finish -> `Go to Home` | oba puta se vracas na **Overview**, ne na Activities |
-| `T-S145-2` | Visa kupovina `100,00`, `Rate? = da`, `Broj rata = 3` | modal pokazuje `33.34 / 33.33 / 33.33` + zutu napomenu; spremljeni retci nose te iznose |
+| **T-S145-1** | Overview → `View details` → natrag; pa Overview → Finish → `Go to Home` | `dev:prod` ili PROD |
+| **T-S145-2** | rata `100 / 3` ⇒ modal **33.34 / 33.33 / 33.33** + žuta napomena; isti broj u atributu **i** komentaru | isto |
+| **T-S108-1b** (korak 5) | uz `All Categories`: gumb **siv** + **žuti hint** | isto |
+| **T-S131-34** | Edit koji **pomakne datum** retka → odmah View (bez F5) | isto |
 
-/!\ Oba testa **pisu u bazu** - obrisi retke poslije. Redak s `Izvor = Racun` **mice saldo**,
-karticni ne.
+⚠ **T-S145-3** (boolean piše `Not set`) **ne traži namjerno** — nije reproduciran, četiri
+hipoteze su oborene. Ako iskoči: **prvo Ctrl+Shift+R**, pa javi.
 
-### 2. Odluka o deployu - sada je veca nego jucer
+⚠ Kod **T-S145-2** biraj iznos koji se **razlikuje** od onoga što automatika inače da
+(`100/3` je dobar) — inače test prolazi i nad pokvarenim kodom (pravilo iz S129).
 
-`main` je na **S137**. Produkcijska aplikacija nema nista od S138-S145, a to sada ukljucuje
-i **popravak Overview taba** - dakle Koka i dalje ne moze ostati na tabu zbog kojeg app
-otvara. Naredbe su u CLAUDE.md, § Session workflow, korak 11. **Ti ih pokreces.**
+## Što NIJE napravljeno, i zašto
 
-### 3. Cetiri S107 retka: tvoj "da" ili "ne" (stoji od S144)
-
-`T-S107c-2`, `T-S107d-4`, `T-S107i-6`, `T-S107j-1` testiraju migracijski put kroz Review
-workbook. Migracija je izvedena, klasifikacija danas ide drugim alatima.
-**Prijedlog: zatvoriti ih kao "nadidjeno upotrebom".** Cekaju samo tvoju rijec.
+- **Ništa nije commitano ni pushano** — sve je stageano i čeka tvoj `git commit`.
+- **PROD nije diran** nijednom.
+- Ostaju **T-S140-8** i **T-S141-1** — ista tema (E2E fan-out), i nisu test nego posao.
 
 ---
 
-# DIO 2 - tehnicki (za Claudea)
+# DIO 2 — tehnički (za Claudea)
 
-## Stanje
+## Stanje grana
 
-- `test-branch`: S145. `main`: `4e223f2` (S137).
-- `npm run check` zelen: typecheck + **14** test fileova + ratchet `0 -> 0`.
-- `audit_tests.py`: **0 za arhivu, 0 razilazenja**. `PENDING_TESTS.md` 631 -> **542** retka.
-- Izmjene u `src/` (S145): `useAreaDashboard.ts` (loaded se izvodi u renderu),
-  `AppHome.tsx` (uvjet zastite), `rataAutomation.ts` (`splitRataAmounts`),
-  `RataModal.tsx`, `AddActivityPage.tsx`. Nov test: `src/lib/__tests__/rataAmounts.test.mjs`.
-- Izmjena u alatu: `make_financije_all_structure.py` (`read_base_automations`).
-- Arhivirano: `S133`, `S138`, `S139` (sekcija + detaljni file).
+`test-branch`, zadnji commit `4028ca1` (S145). **Sve izmjene S146 su stageane,
+necommitane.** `main` netaknut.
 
-## Otvoreno - 21 redak
+`npm run check` ✅ · `check_links.py` 56 linkova / 0 mrtvih · `audit_tests.py` bez
+proturječnosti · unit **15 fileova / 0 palo**.
 
-**A. Zivi testovi (5):** `T-S145-1`, `T-S145-2` (koraci u DIO 1), `T-S130-10`,
-`T-S140-8`, `E15-full`.
+## Novo u repou
 
-**B. Cekaju Sasinu rijec (5):** cetiri S107 retka + `T-S130-9` (odluka o modelu).
+| file | što |
+| --- | --- |
+| `data-prep_tools/Tools/check_links.py` | **nov.** Brana mrtvih linkova; `find_dead()`/`report()` su uvozivi — zovu ih `audit_tests.py` i `claude_index.py --write`. `--fix` preusmjeri na arhivu |
+| `src/lib/__tests__/pagingOrderGuard.test.mjs` | **nov.** Svaki `.range()` u `src/` mora imati `.order()`. 10/10 danas |
+| `e2e/fixtures/auth.ts` | REST fallback sad šalje `?on_conflict=` |
+| `e2e/tests/e15-revoke-with-events.spec.ts` | E15-3 klikne `Info` prije tvrdnje o tekstu |
+| `audit_tests.py`, `claude_index.py` | zovu `check_links.report(quiet_when_clean=True)` |
 
-**C. Pravi posao, ne test (7):** `T-S141-1` (Structure fan-out: 39 zahtjeva x 3 instance
-hooka), `T-S135-11` (E2E se gusi sam), `T-S131-34` (BUG-S131-VIEWSTALE, neponovljen),
-`T-S108-9` (regresijska brava za paginaciju), `T-S137-8` (rijetka grana auto-odabira
-preseta), `T-S145-3` (BOOLEDIT pracenje), + Backlog stavke.
+## Otvoreno — točno dvije stvari koje traže Claudea
 
-## Izmjereno u S145 - ne ponavljati
+**T-S146-1 ⬜ (prvo)** — popravljen je **dijeljeni** helper `supabaseUpsert`, a izmjeren
+**samo `e15`**. Isti helper koriste `e8`, `e9`, `e10`, `S123`.
+⚠ Spec se mora pustiti **dvaput zaredom** — prvi run ne dokazuje ništa, jer je kvar bio
+baš u *ponovljenom* runu (409 u `beforeAll`).
+⚠ Ako 409 i dalje pada: `on_conflict` pretvara INSERT u UPSERT, pa sad treba i **UPDATE**
+pravo na `data_shares` — provjeri RLS, ne helper.
 
-- `Financije_all`: **5245** `Transakcija` eventa (S133 popravak brojanja radi; s odrezanih
-  1000 redaka bi pisalo `1000`).
-- UI rename **ne mijenja slug**: `Gym -> GYM` ostavio `slug=gym`. Vazno za planirani
-  rename `Financije_all -> Financije`.
-- Na PROD-u postoje **dvije** aree imena `Fitness` (Sasina + template demo
-  `10000000-...-0002`) - isti razred kao `Financije_all` / `Financije_old`.
-- P2 roditelji se pisu **pri spremanju**: umetanje razine **ne** popravlja povijesne evente
-  (stariji unos ostaje bez roditelja za novu razinu).
-- Generirani Structure file: `HiddenInAdd = TRUE` na **4 retka = 3 atributa**
-  (`Stanje` ima dva jer `depends_on` daje redak po `WhenValue`).
+**T-S146-5 ⬜ (jeftino, ~1 min)** — uz sljedeće arhiviranje provjeri da marker
+`**Otvoreno:` nije opet nestao. Alat ga vidi **samo ako redak počinje** s `**Otvoreno:`;
+u blockquoteu ga ne vidi.
 
-## Zamke potvrdjene u S145
+## Zamke koje je ova sesija platila — sve su u CLAUDE.md, ovdje samo pokazivač
 
-- **Zastavica `loaded` koja ne kaze ZA STO je ucitano prezivi promjenu ulaza** - v. CLAUDE.md,
-  § Zamke / UI (React). Prvi popravak (uvjet u potrosacu) **nije bio dovoljan**.
-- **Alat koji konfiguraciju drzi ukucanu vraca je unatrag pri svakom uvozu** - v. CLAUDE.md,
-  § Zamke / Python alati.
-- **Backtick u bash stringu je command substitution** (S141) - ugrizlo **ponovo**, i opet u
-  markdownu. Markdown se ne pise kroz `python -c "..."`, nego kroz zaseban `.py` file.
-- **Test koji ne moze pasti** - `T-S133-5` je trebao **tri** pokusaja da uopce pocne mjeriti.
-  Prije izvodjenja testa pitaj: *sto bi ovdje znacilo PAD?*
+- **§ Zamke / E2E:** `supabaseUpsert` ispuštao `onConflict` (5 specova, svaki ponovljen
+  run) · E15-3 očekivao tekst info modala na baneru (treći slučaj E7-3/E10-2)
+- **§ Session workflow:** šesti kriterij **ZASTARJELO** + njegove dvije granice ·
+  `check_links.py` u koraku 3
+- **§ Key files:** `check_links.py`
 
-## Sto NIJE napravljeno, a blizu je
+⚠ **Dvije regresije koje je izazvala selidba, ne izmjena** — vrijedi zapamtiti kao
+obrazac, jer se obje vraćaju tiho:
+1. blok umetnut na koloni 0 usred `if/else` u `audit_tests.py` ⇒ `try/except` preuzeo
+   `else:` na sebe, `py_compile` prošao, alat prijavio **10 fantomskih proturječnosti**
+2. arhiviranje S120 odnijelo marker `**Otvoreno:` koji je živio **unutar te sekcije**
+   ⇒ još **8** fantomskih
 
-- **`BUG-S145-BOOLEDIT`** ostaje otvoren i **nereproduciran**. Recept je u
-  `docs/sessions/tests/S145_tests.md`, `T-S145-3`. **Prvi potez je hard refresh**, ne debugiranje -
-  cetiri hipoteze su vec oborene mjerenjem, pa ih ne treba ponavljati.
-- **Generirani Structure file** je uvezen i arhiviran u
-  `data-prep_data/Financije/_arhiva/izlazi/` (ritual, korak 3).
-- **`T-S141-1` (Structure fan-out)** je i dalje najveci neiskoristen dobitak: hook se
-  zove na tri mjesta, a jedna instanca (`AppHome`) rezultat **nikad ne procita** -
-  39 zahtjeva po mountu u prazno.
+Oba su razred koji je **S139 već zatvorio**. Pouka: *provjeri alat pokretanjem nakon
+svake izmjene dokumenta koji taj alat čita* — `py_compile` i „izgleda uredno" nisu brana.
+
+## Što NE dirati
+
+- **`main`** — merge pušta Saša, i to PowerShell oblikom iz CLAUDE.md (nema `&&`)
+- **PROD** — `--apply` i upisi idu pod njegovim računom
+- **T-S130-9** je *odluka o modelu*, ne test — živi u CLAUDE.md § Delta sheet; ne vraćati
+  ga u PENDING

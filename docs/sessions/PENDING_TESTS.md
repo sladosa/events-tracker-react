@@ -13,8 +13,42 @@
 > korak 3). Do tada se arhivirao samo `tests/SXX_tests.md`, a sekcija je ostajala — pa je
 > dokument rastao zauvijek i polovica mu je bila zatvoreni posao.
 
+
+**Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama.
+
+> Kurirani popis je ukinut u **S116** jer se odrzavao rukom i razilazio s tablicama
+> (propustao je 60 testova). Stanje mjeri `python data-prep_tools/Tools/audit_tests.py`.
+>
+> /!\ **Ovaj redak mora ostati u ZAGLAVLJU** (S146). Do tada je stajao unutar sekcije
+> `S120` i **otisao s njom u arhivu** — nakon cega je audit istog trena prijavio
+> **8 fantomskih proturjecnosti**, jer bez markera usporedjuje tablice s *praznim*
+> kuriranim popisom. To je razred koji je S139 vec jednom zatvorio, ozivljen
+> **selidbom, ne izmjenom** (isti razred kao samoreferenca u `DONE_HISTORY.md`).
 **Branch:** `test-branch` (dev) / `main` (PROD)
-**Zadnji update:** S142 (2026-09-19) - `DELTA_WINDOW_SPEC` faze 1 i 2: sidro je prestalo biti **rez** i postalo **oznaka**. Prozor se mjeri sidrima umjesto danima (otvarajuce stanje je time POTVRDJEN broj, ne izracun -- izmjereno na PROD-u, 6/6 u cent), a retci unutar potvrdjenog stanja dobili su kolonu `Potvrda` + sivi ton; prazni retci topao ton. /!\ Zastita je OZNAKA, ne brana -- update-guard na uvozu je faza 4 i nje nema. Osam sabotaza kroz dva testna filea; `importForeignRows` sada uvozi file KOJI NOSI novu kolonu, pa je rizik za uvoz zatvoren mjerenjem. Ranije: S140 (2026-09-18) - instrumenti i dokumenti. `audit_tests.py` je fileu pripisivao svaki ID koji se u njemu SPOMINJE (unakrsne reference iz proze), pa je arhiviranje tri sesije tvrdilo da nema sto arhivirati. PENDING prepolovljen (1.198 -> 628), backlog dobio strukturu umjesto trijaznog odlomka. E7-3 i E10-2 zatvoreni -- nisu bili bug appa nego tvrdnja iz dizajna (isti commit `4413280`, S106). Obsidian navigacija zatvorena: goli `<datum>` je HTML tag, a dvotocka u naslovu lomi sidro (`+` je nevin). `dbScopedKey()` -- jedina promjena u `src/` -- sprjecava da TEST i PROD dijele filtar. Ranije: S140 (2026-09-18) - PENDING prepolovljen: 20 zatvorenih sekcija (588 redaka) preseljeno u `DONE_HISTORY.md`, pa se otvoreno vidi bez skrolanja (1.198 -> 628 redaka, 27 otvorenih testova u 15 sekcija). `audit_tests.py` je fileu pripisivao svaki ID koji se u njemu SPOMINJE (unakrsne reference iz proze) -- zato je arhiviranje 3 sesije tvrdilo da nema sto arhivirati. Zatvoreno E7-3/E10-2 (nisu bili bug appa nego tvrdnja iz dizajna) i Obsidian navigacija (goli `<datum>` je HTML tag; dvotocka u naslovu lomi sidro). Ranije: S139 (2026-09-17) - alati koji mjere nesto drugo nego sto tvrde: ESLint je linta o `Claude-temp_R/OLD/` pa je 75% nalaza dolazilo iz starih kopija; `structureExcel.test.mjs` je ispisivao pad i izlazio s exit 0; `audit_tests.py` je prijavljivao 22 proturjecnosti kojih nema. `react-hooks` 189 -> 0 problema, ratchet postao tvrda brana, CI se sada okida i na `test-branch`. Ranije: S138 (2026-09-15) - deploy na `main` pusten; `cutoff:3:5` i `rata.date_map.Visa=5` primijenjeni na PROD-u kroz Structure uvoz (pod Kokinim racunom -- `areas.settings` je vlasnikov). Nadjeno da `Datum naplate` ima DVA rjecnika i da samo jedan razumije tokene. Ranije: S137 (2026-09-15) - triaza: `S119`-`S123` arhivirani (17 -> 12 otvorenih session fileova), `audit_tests.py` prestao biti slijep za cetiri od pet oblika ID-a i za tri od pet oznaka statusa; PROD potvrdio kolonu `Racun`. Ranije: S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
+**Zadnji update:** S146 (2026-09-23) - trijaza. **Osam sekcija arhivirano** (S106, S107c/d/i/j, S120, S130, S135); PENDING **543 -> 277** redaka, otvorenih testova **18 -> 8**. Uveden **sesti kriterij zatvaranja, ZASTARJELO** (Sasina formulacija: *test tvrdi brojku iz trenutka, a mehanizam je mjeri iznova sam*) — s dvije granice, da ne postane kos za sve nezgodno. `check_links.py` je postao **brana** koju zovu `audit_tests.py` i `claude_index.py --write` (arhiviranje premjesta file a link ostaje; zamka se vratila **dvaput** nakon rucnog ciscenja). ⚠ **Dva kvara u E2E harnessu, app nijedan:** REST fallback je ispustao `onConflict` pa je svaki PONOVLJEN run pet specova padao na `409`; E15-3 je tekst info modala ocekivao na baneru. ⚠ **Dvije regresije izazvane SELIDBOM:** samoreferentno pitanje u `DONE_HISTORY` i marker `**Otvoreno:`. Ranije: S142 (2026-09-19) - `DELTA_WINDOW_SPEC` faze 1 i 2: sidro je prestalo biti **rez** i postalo **oznaka**. Prozor se mjeri sidrima umjesto danima (otvarajuce stanje je time POTVRDJEN broj, ne izracun -- izmjereno na PROD-u, 6/6 u cent), a retci unutar potvrdjenog stanja dobili su kolonu `Potvrda` + sivi ton; prazni retci topao ton. /!\ Zastita je OZNAKA, ne brana -- update-guard na uvozu je faza 4 i nje nema. Osam sabotaza kroz dva testna filea; `importForeignRows` sada uvozi file KOJI NOSI novu kolonu, pa je rizik za uvoz zatvoren mjerenjem. Ranije: S140 (2026-09-18) - instrumenti i dokumenti. `audit_tests.py` je fileu pripisivao svaki ID koji se u njemu SPOMINJE (unakrsne reference iz proze), pa je arhiviranje tri sesije tvrdilo da nema sto arhivirati. PENDING prepolovljen (1.198 -> 628), backlog dobio strukturu umjesto trijaznog odlomka. E7-3 i E10-2 zatvoreni -- nisu bili bug appa nego tvrdnja iz dizajna (isti commit `4413280`, S106). Obsidian navigacija zatvorena: goli `<datum>` je HTML tag, a dvotocka u naslovu lomi sidro (`+` je nevin). `dbScopedKey()` -- jedina promjena u `src/` -- sprjecava da TEST i PROD dijele filtar. Ranije: S140 (2026-09-18) - PENDING prepolovljen: 20 zatvorenih sekcija (588 redaka) preseljeno u `DONE_HISTORY.md`, pa se otvoreno vidi bez skrolanja (1.198 -> 628 redaka, 27 otvorenih testova u 15 sekcija). `audit_tests.py` je fileu pripisivao svaki ID koji se u njemu SPOMINJE (unakrsne reference iz proze) -- zato je arhiviranje 3 sesije tvrdilo da nema sto arhivirati. Zatvoreno E7-3/E10-2 (nisu bili bug appa nego tvrdnja iz dizajna) i Obsidian navigacija (goli `<datum>` je HTML tag; dvotocka u naslovu lomi sidro). Ranije: S139 (2026-09-17) - alati koji mjere nesto drugo nego sto tvrde: ESLint je linta o `Claude-temp_R/OLD/` pa je 75% nalaza dolazilo iz starih kopija; `structureExcel.test.mjs` je ispisivao pad i izlazio s exit 0; `audit_tests.py` je prijavljivao 22 proturjecnosti kojih nema. `react-hooks` 189 -> 0 problema, ratchet postao tvrda brana, CI se sada okida i na `test-branch`. Ranije: S138 (2026-09-15) - deploy na `main` pusten; `cutoff:3:5` i `rata.date_map.Visa=5` primijenjeni na PROD-u kroz Structure uvoz (pod Kokinim racunom -- `areas.settings` je vlasnikov). Nadjeno da `Datum naplate` ima DVA rjecnika i da samo jedan razumije tokene. Ranije: S137 (2026-09-15) - triaza: `S119`-`S123` arhivirani (17 -> 12 otvorenih session fileova), `audit_tests.py` prestao biti slijep za cetiri od pet oblika ID-a i za tri od pet oznaka statusa; PROD potvrdio kolonu `Racun`. Ranije: S135 (2026-09-11) - E2E triaza (46/22/3; deset specova pada SAMO u punom runu), `areas_select` je trazila sam sebe pa je `INSERT ... RETURNING` padao uz poruku koja laze (`sql/052`, pusten SAMO na TEST-u), sonda dobila `areas INSERT` sa i bez `RETURNING`. Ranije: S134 (2026-09-10) - backup baze (prva kopija PROD-a uopce), shema obje baze u gitu, ciscenje RLS-a (46-50, pusteno SAMO na TEST-u) i zatvaranje otvorene rupe: bilo tko prijavljen mogao je pisati u tudju Areu.
+
+---
+
+## S146 — trijaza: osam sekcija, sesti kriterij, i dva kvara u harnessu (2026-09-23)
+
+⚠ **Dva kvara koja su se vratila SELIDBOM, ne izmjenom.** Samoreferentno pitanje u
+`DONE_HISTORY.md` (*„o samom ovom dokumentu"*) pokazivalo je na krivi dokument
+otkad ga je S140 preselio; a marker `**Otvoreno:` otisao je s arhiviranom sekcijom
+S120 i ozivio **8 fantomskih proturjecnosti** koje je S139 vec bio zatvorio.
+
+⚠ **E2E harness je imao dva kvara, app nijedan.** Ponovljen run pet specova padao je na
+`409` jer je REST fallback tiho ispustao `onConflict`; E15-3 je tekst info
+modala ocekivao na baneru (treci slucaj razreda E7-3/E10-2).
+
+**Detalji testova:** [tests/S146_tests.md](tests/S146_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| **T-S146-1** | `supabaseUpsert` `on_conflict` — ponovljen run `e8`/`e9`/`e10`/`S123` | ⬜ ⚠ **popravljen je DIJELJENI helper, a izmjeren samo `e15`.** Spec se mora pustiti **dvaput zaredom** — prvi run ne dokazuje nista |
+| T-S146-2 | brana paginacije: svaki `.range()` ima `.order()` | ✅ **S146** — 10/10 sortirano, 8 tvrdnji; protuprovjera prijavljuje nesortiran upit |
+| T-S146-3 | `check_links.py` javlja iz `audit_tests` i `claude_index --write` | ✅ **S146** — sabotaza u oba smjera; uhvatio mrtav link na prvoj stvarnoj upotrebi |
+| T-S146-4 | `e15` zelen nakon popravaka harnessa | ✅ **S146** — **3 passed (58,7 s)** |
+| T-S146-5 | marker `**Otvoreno:` prezivi sljedece arhiviranje | ⬜ jeftino (~1 min), uz sljedecu selidbu sekcije |
 
 ---
 
@@ -134,37 +168,9 @@ kao „sidra se ne mogu vidjeti iz aplikacije" (S116). Pokrenut nakon oba današ
 
 
 **Arhivirano u S137:** `S136` (svi testovi ✅) → `Claude-temp_R/test-sessions/archive/`. Zadnji je pao `T-S136-7`, potvrđen i popravljen 15.09. Narativ je u `DONE_HISTORY.md`.
-## S135 — E2E triaza + `areas_select` samoreferentna politika (2026-09-11)
-
-Detalji: [S135_tests.md](tests/S135_tests.md)
-
-⚠ **`sql/052` je pusten SAMO na TEST-u.** PROD i dalje ima `047` verziju
-politike — dakle `INSERT ... RETURNING` nad `areas` ondje jos pada.
-
-### A. Kvar i popravak
-
-| #            | test                                                                       | status |
-| ------------ | -------------------------------------------------------------------------- | ------ |
-| **T-S135-1** | Sonda PRIJE na TEST-u: `areas INSERT svoju` DA, `INSERT +RETURNING` **NE**  | ✅ izmjereno — asimetrija vidljiva u dva susjedna retka |
-| **T-S135-2** | `sql/052` na TEST-u: `app_can_read_area(id)` → `user_id = auth.uid() OR …`  | ✅ |
-| **T-S135-3** | Sonda POSLIJE: jedina promjena je `INSERT +RETURNING` NE → DA               | ✅ stranac i dalje ne vidi tudju Areu; grantee i dalje bez UPDATE/DELETE |
-| **T-S135-4** | ⭐ Tri speca koja su kvar nasla sada prolaze (`S100`, `S107b`, `S119`)      | ✅ 1+2+1 passed |
-| **T-S135-5** | ⭐⭐ `sql/052` na PROD-u, sa sondom s obje strane                           | ✅ S136 — pušteno na PROD; politika pročitana iz `pg_policy`, poklapa se s migracijom |
-| **T-S135-6** | Rucna protuprovjera u SQL editoru (2 INSERT-a, razlika samo `RETURNING`)    | ✅ S136 — nepotrebno; `T-S135-5` je izmjerio isto na PROD-u |
-| **T-S135-7** | „Add Area" u aplikaciji i dalje radi (nije se pokvarilo popravkom)          | ✅ **14.09. PROD** — Area dodana i obrisana |
-
-### B. E2E triaza — 22 pada u punom runu
-
-| #             | test                                                                      | status |
-| ------------- | ------------------------------------------------------------------------- | ------ |
-| **T-S135-8**  | ⭐ Puni E2E nakon RLS migracija (preuzima T-S134-16)                       | ✅ **izmjereno** 46 proslo / 22 palo / 3 nisu krenula, 19,9 min — uzrok padova ide u `T-S135-11` |
-| **T-S135-9**  | ⭐ Pojedinacni run svakog palog speca — razdvaja kvar od artefakta runa    | ✅ 10 specova prolazi SAMO ⇒ artefakt; 6 padalo i samo |
-| **T-S135-10** | ⭐ **NALAZ: `e13`, `e15` i `e7` padaju na ISTOM mjestu** — stavka unutar ⋮ izbornika na Structure tabu (`Manage Access` ×2, `Add Between`). Meni se dokazano otvori (`button "Actions" [active]`), pa stavka nestane. `CategoryChainRow:343` zatvara meni na **svaki** `scroll`, s `capture: true`. `e7-1` jednom prosao jednom pao ⇒ ovisi o trenutku. ⚠ Hipoteza da to izazivaju asinkrone S133 znacke s brojem eventa **NIJE izmjerena** — trazi trace | ✅ S136 — popravljeno; protuprovjera: bez popravka `e13-1` pada, s njim prolazi |
-| **T-S135-11** | ⚠ Zasto suite rusi sam sebe (hipoteza: gusenje TEST baze kroz 20 min)     | ⬜ **neistrazeno** |
-
----
-
 ## Arhivirane sekcije — pune tablice su u `DONE_HISTORY.md`
+
+> **S146 (2026-09-23): još šest sekcija** — `S130`, `S135`, `S107c`, `S107d`, `S107i`, `S107j`. **Osam** zatvorenih testova: četiri S107 po kriteriju *stari pipeline / nadiđeno novijom sesijom* · T-S135-11 jer ga je **S140 istražio** a status je ostao „neistrazeno" · T-S130-10 po **šestom kriteriju, ZASTARJELO**, uvedenom u ovoj sesiji · T-S130-9 **preseljen** u CLAUDE.md § Delta sheet jer je **odluka, ne test** — i na njega se šesti kriterij namjerno **ne** primjenjuje.
 
 > **20 sekcija (588 redaka) preseljeno u `DONE_HISTORY.md` u S140.** Ovdje ostaje samo
 > ono s **otvorenim** testovima, da se „sto jos treba" vidi bez skrolanja.
@@ -259,176 +265,6 @@ postavi tek **nakon** deploya.
 
 ---
 
-## S130 — dropdowni na praznim retcima delta sheeta + priprema PROD podataka (2026-09-07)
-
-Detalji: [S130_tests.md](tests/S130_tests.md)
-
-### A. Kod — delta sheet
-
-| # | test | status |
-| --- | --- | --- |
-| **T-S130-1** | ⭐ `Podtip` na praznom retku nudi podtipove **vlastitog** `Tipa` | ✅ S136 — nadiđeno upotrebom |
-| **T-S130-2** | prazan glavni blok (`mainCount = 0`) i dalje ima dropdowne | ✅ S136 — nadiđeno upotrebom |
-| **T-S130-3** | ⭐ `deltaBlankRowDropdowns.test.mjs` | ✅ 8/8, protuprovjera pada 4/8 |
-| **T-S130-4** | ostali lib testovi + typecheck + build | ✅ 36/11/26/22, cisto |
-
-### B. Podaci — PROD
-
-| # | test | status |
-| --- | --- | --- |
-| **T-S130-5** | ⭐ `MC_2026-08.pdf` dry run zatvara u cent (`1.068,70`) | ✅ 46 spareno, 2 za uvoz, 0 pitanja |
-| **T-S130-6** | `--apply` za kolovoz — 46 ispravaka | ✅ **15.09. PROD** — obuhvaćeno istim prolazom (`69 ispravaka` = 48 MC_2026-08 + 21 stariji). ⚠ Uvjet „prvo T-S130-9" je **otpao sam**: košara je dospjela 11.09., pa formula `Provjeri` šuti |
-| **T-S130-7** | `--apply` za starije izvode — 21 ispravak + 2 brisanja | ✅ **15.09. PROD** — **u brojku**: `69 − 48 = 21` ispravak i točno **2 brisanja** (`LH 1:N`, 3,20 ×2) |
-| **T-S130-8** | sidro `2026-08-26 = 12.784,36` | ~ **nadiđeno**: PROD od 06.09. ima **novije** sidro (`12.772,86`, ekran banke), a `036` bira najnovije `confirmed_on <= as_of` ⇒ starije ne mijenja ništa. Kolovoz je ionako provjeren prometom (`promet_check` 2026-08 u cent) |
-
-### C. Nalaz koji ceka odluku
-
-| # | test | status |
-| --- | --- | --- |
-| **T-S130-9** | ⭐ `--apply` za kolovoz puni kosaru sa **46** upozorenja `Provjeri` | ⬜ **odluka o modelu** |
-| **T-S130-10** | kontrola kosare pokazuje razliku `19,98` (dva neuvezena retka) | ⬜ ⚠ **BROJKA JE ZASTARJELA — test se ne da zatvoriti kako je napisan** (izmjereno S144). MC kosara s dospijecem `11.09.2026.` danas ima **47 redaka, Σ `1.055,35`**, naplata s izvoda je `1.068,70` ⇒ razlika je **`13,35`**, ne `19,98`. ⇒ pretvara se u **zadatak**: uskladiti rujansku MC kosaru s izvodom (`uskladi_izvod.py`) |
-| **T-S130-11** | ⏸ **PARKIRANO** — prijedlog `comment`a iz povijesti (izmjereno) | ⏸ |
-
-**Otvoreno: NE VODI SE OVDJE** — vodi se u tablicama ispod. Kurirani popis se održavao rukom i razilazio se s tablicama (`data-prep_tools/Tools/audit_tests.py` to mjeri).
-
-## S120 — što je zatvoreno i, važnije, što je OSTALO
-
-### Zatvoreno (17)
-
-**Mjereno protiv TEST baze i alata, bez ijednog ručnog koraka (10):**
-`T-S111-3` `T-S111-4` `T-S114-1` `T-S114-2` `T-S114-3` `T-S114-4` `T-S111-6` `T-S110-4`
-`T-S107d-1` `T-S115-1` — dokaz je upisan uz svaki redak u tablicama ispod, ne ovdje.
-
-**Automatizirano (1):** `T-S119-6` → `e2e/tests/S119_list_columns_map.spec.ts`.
-
-**Pokriveno automatom koji je 26.08. prošao (2):** `T-S107b-3`, `T-S107b-4`.
-
-**Papirologija — zaglavlje je to tvrdilo, tablica nije znala (4):**
-`T-S107d-6` `T-S111-2` `T-S107u-2` `T-S107m-6`.
-
-⚠ Tri su zatvorena **djelomično** i to piše uz redak: `T-S111-4` (korak s Excel exportom nije
-izvršen), `T-S111-6` (zaštita blizanca se više ne da izazvati), `T-S107b-4` (help blok).
-
-### ✅ Prošlo uživo na PROD-u 2026-08-26 (Sašin Android, nakon deploya `main@ad0c6e1`)
-
-| test | dokaz |
-| --- | --- |
-| **T-S119-1** ⭐ | iznos vidljiv uz desni rub, bez ijednog pomicanja ustranu |
-| **T-S119-2** ⭐ | `RF` / `ZABA` sitno i sivo između datuma i iznosa |
-| **T-S120-1** ⭐ | drill → View Details → natrag: čip `Sašin tekući RF ×` **ostao**, lista i dalje filtrirana |
-| **T-S119-3** | `Anja 73/96` (25.08.2025.): `+450,00 €` **i** `−0,70 €`, složeni jedan ispod drugog |
-| **T-S119-4** | `neka dostava - rucnici i toster` prelomljeno u dva reda, bez vodoravnog scrolanja |
-| **T-S119-5** | `25.08.25. po` (lanjski, s godinom) vs `26.08. sr` (ovogodišnji, bez nje) |
-| **T-S120-2** | `N/A  KEKS PAY` — jedan `N/A`, ne `N/A/N/A` |
-| **T-S108-12** | Overview na telefonu: polje „u banci" **prima unos**, čip i brojevi na ekranu, ništa ne ispada |
-| **T-S107v-7** | ekran `Couldn't load this activity · 57014` s gumbom **Try again** — i retry je uspio. Test je tražio točno to („kad se opet dogodi") |
-| — | plava oznaka retka vidljiva pri povratku iz View Detailsa |
-
-**Time je prolaz na telefonu gotov: 8 od 8 što ovisi o Saši.** Ostaje `T-S118-6` (Kokin prolaz),
-`T-S119-7` (desktop), `T-S120-3`/`-4` (Excel uvoz, desktop).
-
-⚠ **Usput potvrđeno da lanac salda drži.** PROD pločica 26.08.: ZABA `13.231,31 €`,
-RF `796,43 €`. TEST je isti dan davao `13.239,31` — razlika je **točno 8,00 €**, Sašin redak
-`26.08. ZABA −8,00 dnevna karta C5`. I RF pokazuje **1 promjenu** poslije sidra od 11.08. iako
-je na listi šest RF redaka nakon tog datuma: samo `18.08. RF naknada −2,69` ima `Izvor = Racun`,
-ostalo su Visa kupovine koje račun terete tek skupnom naplatom. Model radi kako je zamišljen.
-
-**⚠ Nalaz koji je iz toga ispao — popravljen isti dan (commit `742c83a`, čeka sljedeći deploy):**
-na sporoj vezi lista je pokazivala `—` ondje gdje idu iznos i račun. To **nije bio prazan
-podatak nego upit u letu**. Za novac `—` je **tvrdnja** („ovaj redak nema iznos"), pa je lista
-sekundu-dvije to tvrdila o svakom retku. `useListColumnValues` je razliku već znao
-(`:38` — *„a missing key means not loaded yet, not empty"*), ali `loaded` nikad nije stigao do
-ćelija. Sada dok upit traje stoji blijedi placeholder.
-
-**⚠ Sporost i `57014` — izmjereno što NIJE uzrok** (2026-08-26):
-PROD servisnim ključem `0,14–0,30 s` · **grantee na 3.715 eventa** (TEST, isti odnos kao Saša
-kod Koke) `0,09–0,41 s` · atributni filtar u oba režima `0,3–0,7 s`. Dakle ni podaci, ni
-RLS-grantee, ni filtar. Ostaje **S105 obrazac** — free-tier PROD se povremeno guši (isti kod
-greške, ista tablica, „čas 0,2 s čas timeout"), što potvrđuje i to da je `Try again` odmah
-upalio. **Nije potvrđeno kao zaključak.** Ako se ponovi: zabilježi **sat i minutu** i ekran.
-Pravi potez ostaje **Postgres upgrade na PROD-u** (`Settings → Infrastructure`, otvoreno od S105).
-
-### Novo u S120 — traži telefon ili tvoj račun
-
-Detalji: [S120_tests.md](../../Claude-temp_R/test-sessions/archive/S120_tests.md)
-
-| # | test | status |
-| --- | --- | --- |
-| T-S120-1 | ⭐ **Filtar preživi View Details na telefonu** (E2E to pokriva na desktopu) | ✅ **26.08. uživo** — drill → View Details → natrag: čip `Sašin tekući RF ×` ostao, lista i dalje filtrirana|
-| T-S120-2 | `N/A` se pojavljuje **jednom**, ne `N/A/N/A` | ✅ **26.08. uživo** — `N/A  KEKS PAY`, jedan `N/A`|
-| T-S120-3 | „Import as mine" prijavi **kolizije** (prije: `0 New / 0 Modify` nad praznim skupom) | ✅ S136 — nadiđeno upotrebom |
-| T-S120-4 | Uvoz u areu s istim imenom kategorije — **prije batcha 2024** | ✅ S136 — nadiđeno upotrebom |
-| T-S100-1 | ⭐ Redak ide u areu koju imenuje kolona `Area`, ne u blizanca s istim pathom | ✅ S120 — **čuva automatski test** `e2e/tests/S100_same_path_two_areas.spec.ts` (provjeren i u drugom smjeru). Redak je dosad živio samo u prozi, pa ga audit nije vidio |
-
-**Automatizirano u S120, ne traži ništa:** `E16-1`, `E17-1`, `T-S119-6`, `T-S100-1`.
-Svaki je provjeren **i u drugom smjeru** (namjerno pokvaren kod ⇒ test padne).
-
-### Arhivirano u S120
-
-`S107m` i `S107u` (audit ih je sam prijavio) + `S102b` (9/9 ✅) i `S104` (3/3 ✅), koje audit
-nije vidio jer ih ovaj file nikad nije spominjao. Otišli u `Claude-temp_R/test-sessions/archive/`.
-⏸ `S99`, `S101`, `S105` — **nadiđeni po analizi, čekaju izričitu potvrdu** (v. tablicu siročadi).
-
-### Ostalo otvoreno — po tome TKO ga može zatvoriti
-
-Ovo je jedini popis koji treba gledati kad se pita „što još".
-
-| traka | koliko | što |
-| --- | --- | --- |
-| **Telefon, nakon deploya** | 8 | `T-S119-1…5`, `T-S119-7`, `T-S118-6`, `T-S108-12` — svi na istom ekranu |
-| **App na desktopu** (`Financije_all`) | ~22 | `T-S108-1b/-5/-6/-7/-10/-11/-13`, `T-S111-1/-5`, `T-S117-1…4`, `T-S118-1…5`, `T-S107v-2/-3/-7`, `T-S113-2`, `E15-full` |
-| **Excel pregled** (Review / Kokina) | ~13 | `T-S107i-5/-6`, `T-S107j-1/-4`, `T-S107n-3/-6`, `T-S107o-3/-4`, `T-S107p-1/-2`, `T-S107-6`, `T-S107d-4/-7` |
-| **Može se automatizirati** (nije još) | 6 | `T-S107-3/-4/-5`, `T-S107b-5/-6`, `T-S110-5` |
-| **Čeka podatke ili odluku, nije test** | ~8 | `T-S115-3` (tranša 4), `T-S116-14D`, `T-S107x-4`, `T-S107d-5`, `T-S108-9`, `T-S114-5`, `T-S107c-2`, `T-S107f-3` |
-
-⚠ **`T-S107c-2` je namjerno preskočen u S120:** piše u Review workbook, a to se ne dira pred
-deploy. Nije „nije stigao" nego „nije se smjelo".
-
-### 58 siročadi — izmjereno, čeka jednu odluku
-
-Ranije je stajalo „jesu li relevantni?" bez podloge. Sada podloga postoji:
-
-| file | stanje u **vlastitom** fileu | prijedlog |
-| --- | --- | --- |
-| `S102b` (9), `S104` (3) | **svi ✅** | **arhiva odmah** — nema se što odlučivati |
-| `S99` (8) | bez oznaka | **arhiva, nadiđeno**: Delete Area i uvoz na PROD su **izvedeni i ponovno izmjereni u S118** |
-| `S101` (8) | **8 ✅ — zatvoreno S144** | **arhiva, nadidjeno**: izmjereno — `Tip` danas ima **18 opcija** (Kokina taksonomija, S107r); test provjerava popis od 14 koji vise ne postoji |
-| `S105` (8) | **8 ✅ — zatvoreno S144** | **arhiva, nadidjeno**: PROD okolina tog incidenta ne postoji; popravci su na PROD-u 7 tjedana |
-| `S100` (7), `S102` (12) | 5 ✅ | **zadržati i upisati u tablice** — Export Profile, `default_map`, Filter sheet su i dalje u upotrebi |
-
-⭐ **`T-S100-1` — ✅ ZATVOREN U S120, automatiziran** (`e2e/tests/S100_same_path_two_areas.spec.ts`).
-Nije bio povijest: na PROD-u `Financije_all` i `Financije_old` **obje** imaju `Transakcija`, a
-pred nama su batch 2024 i 2023. Razrješavanje je ispravno — redak ide u areu koju imenuje
-kolona `Area`.
-
-⚠ **Dvije pouke iz pisanja tog testa, obje šire od njega:**
-
-1. **Prva verzija je bila bacanje novčića.** Uvozila je jedan file, u areu A, i **prošla je i s
-   namjerno pokvarenim razrješavanjem** — jer uz ključ bez imena aree jedan od blizanaca ionako
-   pobijedi rječnik, i slučajno je to bila A. Test mora uvoziti u **oba** blizanca: razrješavanje
-   po samoj putanji tada ne može zadovoljiti obje strane.
-2. **Ovlast nije ondje gdje izgleda.** `catByPath` (5 mjesta) se koristi za validaciju i kolizije;
-   o tome **gdje redak stvarno završi** odlučuje `getHierarchyLevels`. Lomljenje `catByPath`-a nije
-   promijenilo ishod — tek lomljenje `getHierarchyLevels` pošalje redak u krivu areu.
-
----
-
-**Zadnji update:** S119 (2026-08-25) — uska lista: iznos bez scrolanja, kratica racuna, prelom opisa; ranije: S118 (2026-08-25) — Koka na PROD-u; ranije: S116 (2026-08-23) — kolone Activities liste po Arei, `--iz-koke` izvor, sidro ZABA ispravljeno.
-**Prošlo 2026-08-22: T-S113-3.** · 2026-08-21: T-S112-3, -4, -6; T-S113-1. · 2026-08-19: T-S112-1, T-S112-2. · 2026-08-17: T-S110-1, -2, -3, -6, -7. · 2026-08-15: T-S108-1, -2, -3. · 2026-08-16: T-S108-4 korak 3.
-**Zatvoreno programski 2026-08-18: T-S107d-6** (RF OCR lanac reproducira ispisano stanje u cent, 196 tx / 18 mj).
-**⚠ T-S111-2 se BRIŠE:** krivo RF sidro (`3.453,03`) više ne postoji u bazi, pa test nema što provjeriti.
-**✅ T-S114-1 RIJEŠEN 2026-08-23 (S116):** sidro ZABA premješteno na **30.07.** (ručni ispravak retka u Supabase editoru), prije toga netautološki provjereno da app iz sidra 01.07. sam dođe do `13.815,33`. Mehanizam koji je grešku proizveo popravljen je u kodu — v. T-S116-10…13.
-**Otvoreno: NE VODI SE OVDJE — vodi se u tablicama ispod (⬜).** Ovaj redak je do S116 bio ručno kuriran popis i **propuštao je 60 testova** koje tablice označavaju ⬜ (izmjereno `data-prep_tools/Tools/audit_tests.py`). Dva popisa koja se moraju slagati, a jedan se održava rukom — isti razred greške koji inače lovimo. Za stanje pokreni:
-
-```
-python data-prep_tools/Tools/audit_tests.py
-```
-
-Ispisuje po session fileu koliko je testova definirano, koliko ✅ / ⬜, i koje je fileove **spremno arhivirati** (svi ✅). ⚠ Prijavljuje i testove kojih u ovom fileu uopće nema — v. „Siročad" ispod.
-**Detalji S119:** [S119_tests.md](../../Claude-temp_R/test-sessions/archive/S119_tests.md) · **S116:** [S116_tests.md](../../Claude-temp_R/test-sessions/archive/S116_tests.md) · **S115:** [S115_tests.md](../../Claude-temp_R/test-sessions/archive/S115_tests.md) · **S114:** [S114_tests.md](../../Claude-temp_R/test-sessions/archive/S114_tests.md) · **S113:** [S113_tests.md](../../Claude-temp_R/test-sessions/archive/S113_tests.md) · **S112:** [S112_tests.md](../../Claude-temp_R/test-sessions/archive/S112_tests.md) · **S111:** [S111_tests.md](../../Claude-temp_R/test-sessions/archive/S111_tests.md) · **S110:** [S110_tests.md](../../Claude-temp_R/test-sessions/archive/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107x:** [S107x_tests.md](../../Claude-temp_R/test-sessions/archive/S107x_tests.md) · **S107w:** [S107w_tests.md](../../Claude-temp_R/test-sessions/archive/S107w_tests.md) · **S107v:** [S107v_tests.md](../../Claude-temp_R/test-sessions/archive/S107v_tests.md) · **S107u:** [S107u_tests.md](../../Claude-temp_R/test-sessions/archive/S107u_tests.md)
-
----
-
 ## S108 — Faza 1: RPC salda + Overview tab + pločica sa sidrom
 
 **Preduvjet:** `sql/035`, `sql/036` i `sql/037` puštene na TEST — ✅ sve tri (2026-08-15;
@@ -451,7 +287,7 @@ ZABA `−22.943,71`.
 | T-S108-6 | ⭐ Drill s pločice → Activities filtriran na račun / na `Status=Planiran` | ✅ S136 — nadiđeno upotrebom |
 | T-S108-7 | ⭐ Izračunata kolona `Stanje` — silazi do salda, nestaje kod miješanih računa i obrnutog sorta | ✅ S136 — nadiđeno upotrebom |
 | T-S108-8 | Rename sluga popravlja `dashboard.widgets[]`; pokvaren slug daje **imenovanu** grešku, ne 0,00 | ✅ S136 — nadiđeno upotrebom |
-| T-S108-9 | Paginacija bez stabilnog sorta — Delete Area / Import Delete? nad >1000 atributa (regresija, nedeterministički) | ⬜ ⚠ regresijska brava — paginacija bez `.order()` je tiha (S108 razred) |
+| T-S108-9 | Paginacija bez stabilnog sorta — Delete Area / Import Delete? nad >1000 atributa (regresija, nedeterministički) | ✅ **S146 — čuva ga automatski test.** Rucno se nije dalo izvesti (opisan kao *„regresija, nedeterministicki"*), pa je zamijenjen **branom**: `src/lib/__tests__/pagingOrderGuard.test.mjs` staticki provjerava da svaki `.range()` u `src/` ima `.order()`. Izmjereno: **10 poziva, svih 10 sortirano**. ⚠ Detektor mora znati **tri** stvari koje naivna verzija promasi, sve tri izmjerene: komentar koji spominje `.range(` (`useStructureData:78` opisuje bas ovaj kvar) · lanac kroz vise redaka (`useActivities`) · pomocna funkcija (`buildBaseQuery().range()`). Protuprovjera: 8 tvrdnji, ukljucujuci da nesortiran upit **bude** prijavljen |
 | T-S108-10 | „From template" nosi `settings` bez `export_profiles` i bez sidara | ✅ S136 — nadiđeno upotrebom |
 | T-S108-11 | Read grantee vidi pločicu, nema „Potvrdi"; write grantee ima | ✅ S136 — nadiđeno upotrebom |
 | T-S108-12 | Mobitel — polje „u banci" i čip vidljivi i upotrebljivi | ✅ **26.08. uživo na PROD-u (Android)** — polje „u banci" prima unos, čip i brojevi na ekranu, ništa ne ispada|
@@ -461,82 +297,3 @@ ZABA `−22.943,71`.
 Shortcut sustavom), pa Faza 3 (Koka proba na mobitelu → odluka o cutoveru).
 
 ---
-
-## S107j — ZABA parser fix + izvodi konsolidirani u Review + N/A rule petlja (Python, data-prep; NEMA app koda)
-
-| ID        | Test                                                                                                          | Status              |
-| --------- | ------------------------------------------------------------------------------------------------------------- | ------------------- |
-| T-S107j-A | `parse_zaba_racun` fix: saldo-lanac Σupl/Σisp = bankov Zbroj prometa 40/40 u cent; lanac neprekinut 2023-26   | ✅ (programski verificirano) |
-| T-S107j-B | `consolidate_review.py`: +113 (31 MASTERCARD→Transfer, 82 N/A); Nematchano_v3 57 + Saldo kontrola 21/31        | ✅ (programski verificirano) |
-| T-S107j-C | `suggest_candidates.py`: Neklasificirano 2026 top 20, Tip/Podtip dropdowni; `backfill_napomena` 1870          | ✅ (programski verificirano) |
-| T-S107j-1 | **Saša:** N/A klasifikacija petlja — Neklasificirano popuni → `--harvest` → `apply_rules` → sljedeći krug kraći | ⬜ (glavni put do PROD) |
-| T-S107j-2 | **Saša:** `Nematchano_v3` pregled — dismiss dup, dodaj genuine missing                                        | ✅ (S107k Verdikt pass — 0 za odluku) |
-| T-S107j-3 | **Saša:** `Saldo kontrola` — razlike → pitanja za Koku                                                        | → T-S107k-3 (sad 7)  |
-| T-S107j-4 | **Saša:** Napomena backfill kontrola — 1870 popunjeno, Kokine ne-prazne netaknute (P3)                        | ✅ S136 — stari pipeline; podaci zamrznuti, PROD pušten roundtripom |
-
-**Backlog (S107j):** ~~date-accuracy pass~~ ✅ S107k; per-month reconcile view za velike saldo razlike;
-~~PBZ Visa Transfer stragglers~~ — provjeriti je li ostalo N/A "PBZCARD" redova nakon S107k pravila.
-
----
-
-## S107i — PBZ Visa merge u Review + reconcile/Problem dijagnoza (Python, data-prep; NEMA app koda)
-
-| ID        | Test                                                                                                          | Status              |
-| --------- | ------------------------------------------------------------------------------------------------------------- | ------------------- |
-| T-S107i-1 | `merge_pbzvisa.py`: 1538 PBZ tx → dedup 187 (tag-agnostički) → 1351 novih redaka; PREVIEW verificiran         | ✅ (0 sort padova, DV J/K prošireno, 3503 postojećih source_key netaknuto, 1351 nov jedinstven) |
-| T-S107i-2 | Pravi merge run: Review 3504→4855, `Sašin RF\|Visa` 220→1571, backup napravljen                               | ✅ (verificirano skriptom) |
-| T-S107i-3 | `apply_rules.py` na mergeanom: 257 klasificirano + 246 Napomena (konzum 230, bauhaus 16, parking 10)         | ✅ (dry=real brojevi, backup) |
-| T-S107i-4 | `reconcile_izvoda.py`: Coverage PBZVISA 1538/1539 (bilo 1/1539); Nematchano_v2 257 + Problem dijagnoza        | ✅ (sheetovi u Izvodi_transakcije.xlsx, backup) |
-| T-S107i-5 | **Saša Excel pregled:** `pbzvisa` novi retci (filter Izvor reda=`PBZ Visa:*`), RATA/lump ispravni, dropdowni  | ✅ S136 — stari pipeline; podaci zamrznuti, PROD pušten roundtripom |
-| T-S107i-6 | **Saša Excel pregled:** `Izvodi_transakcije.xlsx` → `Nematchano_v2` Problem kolona (39 Smjer? crveni, 51 nedostaje) | ⬜ (Saša — gdje su problemi) |
-
-**⚠ NALAZ za backlog (ne test):** ZABA parser (`parse_zaba_racun`) krivo određuje Smjer za dio priljeva
-(mirovina/Priljev iz inozemstva/uplate → Isplata) + saldo-lanac ne zatvara → account merge + bank
-kolone (UplataB/IsplataB/SaldoB) + SaldoB reconcile BLOKIRANI dok se parser ne popravi. `merge_missing_account.py`
-napisan i spreman, ali NE pokretati dok Smjer nije pouzdan (dry-run uhvatio greške, ništa upisano).
-
----
-
-## S107d — inventory izvoda + MC/PBZ parseri (Python, data-prep; NEMA app koda)
-
-| ID        | Test                                                                                                        | Status                        |
-| --------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| T-S107d-1 | `inventory_izvoda.py` idempotentnost: ponovni `--dry` = isti brojevi, ništa se ne premješta                 | ✅ **S120 (mjereno)** — 118 fajlova, **0 duplikata**, ništa se ne premješta. ⚠ Brojke u testu su zastarjele (MC 31/1139, PBZVISA 32/1587, ZABA 32/738 — pribilo je izvoda). ⚠ `RF_2026-07.pdf` preskočen: `rapidocr_onnxruntime` nije instaliran|
-| T-S107d-2 | `Izvodi_transakcije.xlsx`: 3182 tx, Manifest 117 redova, MC_2024-02 suma = 1.642,83                          | ✅ (verificirano skriptom)     |
-| T-S107d-3 | **Pravi enrich run** (Review zatvoren!): `--dry` ≈1429 match, pa bez `--dry` → Izvod kolone + Nematchano    | ✅ (2026-07-13; 1429 upisano, ručne kolone verificirane identične backupu, D1 auto-popravljen) |
-| T-S107d-4 | Lanac: `apply_rules.py` pravilo pogađa red kojem je merchant SAMO u `Izvod opis`                            | ⬜ (zamjenjuje T-S107c-4)      |
-| T-S107d-5 | Nematchano spot-check (PBZ Visa ~1538 tx) — podloga za odluku importati/ignorirati                          | ✅ S136 — stari pipeline; podaci zamrznuti, PROD pušten roundtripom |
-| T-S107d-6 | RF OCR spot-check: 3 nasumična reda iz Review s `Izvod file`=RF_* usporediti s PDF-om                       | ✅ S136 — stari pipeline; podaci zamrznuti, PROD pušten roundtripom |
-| T-S107d-7 | Pregled 9 `[OCR?]` redova (filter po `[OCR?]` u Izvod opis / Transakcije sheetu) — ispraviti ručno ako treba | ✅ S136 — stari pipeline; podaci zamrznuti, PROD pušten roundtripom |
-
----
-
-## S107c — klasifikacijski alati (Python, data-prep; NEMA app koda)
-
-| ID        | Test                                                                                                     | Status                           |
-| --------- | -------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| T-S107c-1 | `sync_taxonomy.py` na pravom review fileu: dropdowni prate editirani Taksonomija sheet                   | ✅ (Saša potvrdio "ok radi tool") |
-| T-S107c-2 | `apply_rules.py`: 1. run kreira Pravila sheet; upiši pravilo; `--dry` pokaže pogodke; run označi PRAVILO | ⬜                                |
-| T-S107c-3 | `enrich_from_izvoda.py --dry`: ZABA_2024-01 → ~15/18 match report; bez `--dry` puni Izvod kolone         | ~ superseded → T-S107d-3         |
-| T-S107c-4 | Lanac: pravilo koje matcha SAMO tekst iz `Izvod opis` kolone → red dobije Tip/Podtip                     | ~ superseded → T-S107d-4         |
-
----
-
-## S106 — E7/E8/E9 test harness race condition fix
-
-| ID       | Test                                                                           | Status                                                 |
-| -------- | ------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| E8-1     | Grantee write setup (supabaseUpsert): concurrent data_shares INSERT idempotent | ✅                                                      |
-| E8-2     | Grantee write: navigate to Add Activity (Area dropdown select)                 | ⚠️ (timeout: Area select disabled — RLS/loading issue) |
-| E9-1     | Grantee read setup + sees shared Fitness area in dropdown                      | ✅                                                      |
-| E9-2     | Grantee read: Add Activity button disabled                                     | ✅                                                      |
-| E9-3     | Grantee read: no Edit Mode button on Structure tab                             | ✅                                                      |
-| E10-1    | Before revoke — grantee sees Fitness area                                      | ✅                                                      |
-| E10-2    | Owner revokes access via Share modal                                           | ✅                                                      |
-| E10-3    | After revoke — grantee no longer sees Fitness area                             | ✅                                                      |
-| E15-full | Revoke with events: dialog + Take your data banner                             | ⬜ (pending smoke test)                                 |
-| E7-2    | Share Management: invite existing user → poziv prolazi bez fantomskog toasta          | ✅ **S139 (izmjereno)** — toast `Access granted` NIKAD nije postojao (`handleInvite` otvara messageBox); uklanjanjem tvrdnje spec prolazi |
-| E7-3 | Revoke access → user removed from Active access list | ✅ S140 — zatvoreno; `confirm revoke` je bila tvrdnja napisana iz dizajna, app radi ispravno. Popravak u specu (`e7`+`e10`), put s eventima čuva `e15` |
-
----
-

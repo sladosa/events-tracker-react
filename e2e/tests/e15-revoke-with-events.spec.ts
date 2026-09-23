@@ -194,6 +194,13 @@ test.describe('E15 — Revoke with events + Take your data banner', () => {
 
     // WriteGranteeBanner (green) with "Take your data" button
     await expect(page.getByRole('button', { name: /take your data/i })).toBeVisible({ timeout: 8_000 });
+
+    // /!\ Tekst „Your events are stored in ..." NIJE na baneru nego u info modalu
+    //     (`WriteGranteeInfoModal`, SharedAreaBanner.tsx:335); banner nosi samo
+    //     „Write access" + Info + „Take your data" (:356). Tvrdnja je od S76
+    //     (`c25136e`) ocekivala oboje na baneru, pa je padala nad ISPRAVNIM appom
+    //     -- isti razred kao E7-3/E10-2 (S140). Izmjereno i popravljeno u S146.
+    await page.getByRole('button', { name: /info/i }).click();
     await expect(page.getByText(/your events are stored in/i)).toBeVisible();
   });
 

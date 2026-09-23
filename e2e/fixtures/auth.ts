@@ -148,8 +148,13 @@ export async function supabaseUpsert(
     return data;
   }
 
-  // Fallback: REST API with merge-duplicates
-  // Note: This only works for PRIMARY KEY conflicts; custom unique constraints may not be properly merged.
+  // Fallback: REST API with merge-duplicates + explicit on_conflict.
+  // /!\ Bez `?on_conflict=` PostgREST rjesava sudar SAMO po primarnom kljucu,
+  //     pa upsert na slozeni unique (`data_shares_unique_share`) vrati 409 i
+  //     svaki PONOVLJEN run e8/e9/e10/e15/S123 padne u beforeAll -- sto izgleda
+  //     kao kvar featurea, a ostatak je prethodnog runa (izmjereno S146).
+  // /!\ Admin put (proper onConflict) trazi SUPABASE_SERVICE_ROLE_KEY, kojeg u
+  //     `.env.testing` NEMA -- zato se fallback mora snaci sam.
   const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
   const storageKey = `sb-${projectRef}-auth-token`;
 
@@ -163,8 +168,10 @@ export async function supabaseUpsert(
 
   if (!session?.access_token) throw new Error('No session available for supabaseUpsert');
 
+  const conflictParam = onConflict ? `?on_conflict=${encodeURIComponent(onConflict)}` : '';
+
   const res = await page.request.post(
-    `${SUPABASE_URL}/rest/v1/${table}`,
+    `${SUPABASE_URL}/rest/v1/${table}${conflictParam}`,
     {
       headers: {
         apikey: SUPABASE_ANON_KEY,
