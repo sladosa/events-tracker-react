@@ -616,6 +616,14 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   se uopće smije obrisati**. Drugo štiti i svaki budući put do te funkcije.
 - **Tuđi redak BEZ `event_id` se ne ispravlja nego prijavljuje** — to nije ispravak
   nego nov zapis pod tuđim imenom.
+- **⚠ GENERIRANI FILE MORA U KOLONI G NOSITI E-MAIL AUTORA RETKA, NE UVOZNIKA** (S148,
+  plaćeno sa 7 duplikata na PROD-u). Parser po koloni G odlučuje je li redak tuđi; Kokin
+  e-mail na Sašinom retku ⇒ redak „njezin", nema `fix_as_owner` ponude, `canUpdateExisting`
+  odbije ⇒ `smartReclassify` ga pošalje u **CREATE**. Poruka glasi *„event ID(s) not found
+  in database"* — **neistina**: redak postoji, samo pod drugim autorom (v. BUG-S148-G).
+  Izmjereno: 11 ispravaka postojećih ⇒ 4 ažurirana (Kokini) + **7 kopija** (Sašini).
+  Python alati: `visa_popravak.EMAIL` mapira `user_id → e-mail` i **staje** na nepoznatom.
+  ⚠ App export ovo radi ispravno — rizik je samo u fileovima koje piše alat.
 - **Ponuda se prikazuje samo vlasniku** svih Area u kojima ti retci žive
   (`foreignAreas` iz parsera + provjera nad `areas`). Ponuda koja ne može uspjeti
   gora je od izostanka.
@@ -2032,6 +2040,19 @@ data-prep_tools/Financije/oznaci_iz_presedana.py
 data-prep_tools/Financije/fix_podizanje_150.py
                                    Jednokratno: duplikat podizanja 150,00 s
                                    krivim mjesecom. Primijenjeno S129.
+data-prep_tools/Financije/visa_kosare.py
+                                   Visa kosara po mjesecu naplate vs PBZ naplata na RF-u
+                                   (bruto isplata) + redak po redak protiv izvoda.
+                                   Kriterij "svi mjeseci 0,00". Samo cita.
+data-prep_tools/Financije/visa_uvoz_izvoda.py
+                                   PBZ Visa izvod -> app Excel: novi retci (Tip/Podtip
+                                   iz brojane povijesti) + ispravci postojecih (naplata,
+                                   Izvrsen, Izvod opis). Rata se spari PO PLANU I BROJU,
+                                   nikad po datumu. Kontrola Σ = izvod u cent.
+data-prep_tools/Financije/visa_popravak.py
+                                   S148 jednokratni popisi (BRISI/ISPRAVI/ODLUKA/KOPIJE)
+                                   + zajednicki pisac `pisi()` (e-mail AUTORA u kol. G,
+                                   dropdowni Tip/Podtip).
 data-prep_tools/Financije/uvezi_transu.py
                                    Uvozi retke s izvoda kojih baza nema. Rječnik
                                    `Izvod opis → Tip/Podtip` iz brojane povijesti;
@@ -2281,6 +2302,14 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   roundtrip ga izbriše. Trenutno neopasno jer je u cijeloj bazi **0 od 12** `depends_on`
   atributa ima nepraznu listu — dakle rupa čeka prvog korisnika, ne ruši ništa danas.
   Fix: kolona za fallback opcije + isti graditelj pravila na obje strane.
+
+- **BUG-S148-G: postojeći redak s krivim e-mailom u koloni G tiho postaje DUPLIKAT.**
+  `smartReclassify` (`excelImport.ts:820`) redak koji **postoji** ali ga `canUpdateExisting`
+  odbije šalje u `toCreate` i javlja *„not found in database"*. Za redak čiji je autor u bazi
+  drugi korisnik to nije „nema ga" nego „nije tvoj" — isti razred kao `.eq('user_id')` filtar
+  koji je S125 izbacio iz upita, samo se vratio kroz kolonu G. Prijedlog: `found && !canUpdate`
+  ⇒ **stani i javi** („redak postoji, autor X — odaberi fix as owner ili ispravi kolonu G"),
+  nikad INSERT. Izmjereno S148: 7 duplikata, popravljeno fileom (`visa_popravak --duplikati`).
 
 - **Bulk delete (checkbox) nije ograničen za grantee-a**
 
@@ -2622,18 +2651,15 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 
 ### Otvoreno — ovo je posao
 
-**⭐⭐ Visa košara se ne slaže s PBZ naplatom OD VELJAČE 2026. — prvi posao S148** (izmjereno
-S147, PROD, bruto isplata košare po mjesecu naplate protiv PBZ retka na RF-u). **16 mjeseci
-u cent** (2024-10 → 2026-01), osim dva susjedna para koji se poništavaju (2025-04/05 `∓100,00`,
-2025-07/08 `∓0,99` — potpis kupovine u krivom ciklusu). Od **2026-02** razlika 6 od 7 mjeseci:
-`123,33 · 35,00 · 195,00 · 126,84 · 304,64 · −45,53` (2026-04 `0,00`).
-⚠ Dakle **model radi, a nešto se promijenilo oko veljače** — ograničen posao, ne svojstvo kartice.
-Počni od `2026-02 · 123,33` protiv `PBZVISA` izvoda. Okrugli iznosi **sugeriraju** retke
-upisane punim iznosom uz rate — **hipoteza, ne nalaz**.
-⚠ Saldo to **ne** otkriva (kartični retci ga ne miču); vidi se samo kao Σ košare ≠ naplata.
-⚠ Mjeriti **bruto isplatu**: do 2026-06 košara nosi i zrcalni redak `PRIMLJENA UPLATA - HVALA`
-(`Izvor = Visa`, uplata = naplata), pa bi neto pokazao samu razliku umjesto zbroja.
-Blokira D4 u `docs/DOSPJELO_SPEC.md` (Visa u traci).
+**✅ ~~Visa košara se ne slaže s PBZ naplatom od veljače 2026.~~ — ZATVORENO S148.** Sve Visa
+košare 2024-10 → 2026-09 su u cent (`visa_kosare.py`). Svih 8 izvoda 2026. slagalo se s RF
+naplatom — **greška je bila u bazi**: 24 Sašina ručna retka (sheet `sasa EU`) uvezena **uz**
+iste retke s izvoda, jer se dedup `(datum, iznos)` nije poklopio (datum mjesec ranije, iznos s
+tipfelerom `49,67`/`46,97`, ručna rata uz bankinu, 1:N `3,60` = `2,00 + 1,60`). Okrugli iznosi
+iz hipoteze S147 **nisu** bili uzrok. Kolovoški izvod (naplata 07.09.) uvezen: 37 redaka.
+⚠ Tri preostale razlike 2025. (`100,00`, `∓0,99`) su **bankine**: izvod netira povrat
+(`ODOBRENJE … 100,00`) i pomak unutar dva ciklusa; Σ isplata izvoda = Σ košare u cent.
+Odblokira D4 u `docs/DOSPJELO_SPEC.md`.
 
 **⭐ „Restoring filter…" nema timeout — jedan zahtjev bez odgovora zaključa filter panel**
 (S147, uživo na `dev:prod`). `FilterContext.doRestore` (`:229-330`) čeka **niz** `await`-ova
