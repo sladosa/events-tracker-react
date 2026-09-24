@@ -7510,4 +7510,5 @@ ispravljen istog dana.
 
 - **S148: Visa istraga od 2026-02** (prvi posao, Sašin izbor), zatim bugovi, zatim backlog.
 - Otvoreni testovi: **3** — T-S145-3 (praćenje), T-S140-8 i T-S141-1 (posao, ne test).
-- PROD i `main` netaknuti.
+- **Deploy na `main` pušten na kraju sesije** (Saša): 63 commita od S137, bez SQL migracija.
+  Potvrđeno sadržajem Netlify bundlea i Sašinim osvježavanjem Overviewa na mobitelu.

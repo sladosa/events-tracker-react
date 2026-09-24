@@ -31,9 +31,9 @@
 - **Visa košara se slaže s PBZ naplatom 16 mjeseci u cent, a od veljače 2026. ne.**
   Razlike: `123,33 · 35,00 · 195,00 · 126,84 · 304,64 · −45,53`. Nešto se promijenilo oko
   veljače; to je prvi posao. Trebat će `PBZVISA` izvodi od 2026-01 nadalje.
-- **PROD (`main`) stoji na S137 — 63 commita iza.** Koka zato još **nema** popravak
-  Overview taba (vraćao ju je na Activities) ni popravak rata (gubi lipe). Deploy je tvoja
-  odluka; naredbe su u CLAUDE.md, PowerShell oblik.
+- **✅ PROD je deployan na kraju S147** (`main` = `7ef95ac`, 63 commita od S137). Provjereno
+  dvaput: Netlify bundle nosi S145 kod, i ti si na mobitelu osvježio Overview i ostao na njemu.
+  Koka sada ima popravak Overview taba i rata — neka jednom povuče stranicu dolje.
 - Na TEST-u ostali tvoji test-zapisi: shortcuti `Lab Results1`, `Lab Results2`, `Medical Visit`
   i zapis „TODO /" od 24.09. 11:53 — obriši kad stigneš.
 
@@ -43,8 +43,12 @@
 
 ## Stanje grana
 
-`test-branch` = commit S147. `main` = `4e223f2` (S137), **63 commita iza**. PROD netaknut u S147
-(samo čitanje za mjerenje). `npm run check` nije puštan jer `src/` nije diran.
+`test-branch` = `main` = `7ef95ac` (S147) — **deploy pušten na kraju S147** (Saša, PowerShell;
+prije toga `npm run check` 15/0, ratchet 0, build ✓; **nijedna SQL migracija** od S137).
+Potvrđeno: Netlify bundle sadrži S145 tekst rata modala; Overview + osvježi na mobitelu ostaje.
+⚠ Pri provjeri deploya prvi `curl` bundlea je puknuo na mreži i **prazan rezultat pročitan je
+kao „stara verzija"** — provjera sadržaja mora provjeriti i da je file stigao cijeli
+(`size_download` ≈ lokalni build).
 
 ## S148, korak 1 — Visa istraga (Sašin prioritet „baza što točnija")
 
