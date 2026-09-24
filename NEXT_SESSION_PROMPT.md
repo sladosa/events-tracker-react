@@ -70,9 +70,19 @@ Druge stavke istog prioriteta (točnost baze), iz CLAUDE.md:
 - MC par `+105,30`/`−105,30` (`Planiran`, dospio 07.09./12.09.) — pogledati što je.
 - `oznaci_iz_presedana.py --apply` nikad pušten (45/71, S129).
 - `Izvod opis` za RF retke (Backlog, Sašin izričit zahtjev S131).
+- **PITANJE ZA SAŠU:** `PP (Posmrtna pripomoc)` **8,60 · 23.09.** na RF-u nosi `Izvor = Visa`.
+  U povijesti su PP bili **bankovni nalozi** (`Izvor = Racun`). Ako je i ovaj nalog, saldo RF-a
+  ga **ne broji**. Pitati prije ispravka.
+- Kokin plan `117,32 / 6` (22.09., prije popravka rata): rata 1/6 ima atribut `19.57`, a
+  komentar `19.55 od 117.32` — redak sam sebi proturječi. Jedan Edit komentara.
 
 ## Bugovi (korak 2) — kandidati, redom po šteti
 
+- **Pločica: „zadnji zapis" znači „zadnja promjena SALDA", a natpis to ne kaže** (S147, Saša
+  na mobitelu). RF pokazuje narančasto *„15.09. · prije 9 dana"* dok lista ima retke od danas —
+  svi su `Visa/Planiran` (22) ili `Cash` (1), dakle ispravno izvan salda. Za račun koji se
+  plaća karticom to je **stalno** stanje ⇒ upozorenje koje uvijek pali. Prijedlog: natpis
+  „zadnja promjena salda".
 - „Restoring filter" bez timeouta (+ hipoteza da je to E8-2) — Backlog.
 - `hidden_in_add` se briše uvozom bez kolone; `HiddenInAdd` samo iz prvog retka — Backlog.
 - `et_activity_draft` bez oznake baze — Backlog (dira dva E2E speca u istom commitu).
