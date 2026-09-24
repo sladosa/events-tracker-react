@@ -1,8 +1,8 @@
-> Pisano protiv commita **`44c295a`** (S146) + commit S147 koji nosi ovaj file.
-> ⚠ Ako `git log` pokazuje noviji commit od S147-ice, čitaj ovo kao **povijest**, ne kao stanje.
+> Pisano protiv commita **`e039fec`** (S148) + commit rituala S148 koji nosi ovaj file.
+> ⚠ Ako `git log` pokazuje noviji commit od S148 rituala, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S147 (2026-09-24)
+# Sljedeća sesija — nakon S148 (2026-09-24)
 
 ---
 
@@ -10,32 +10,33 @@
 
 ## Što je danas napravljeno
 
-- **Hrpa B je prošla u cijelosti** na `dev:prod`: Overview preživi povratak, rata `100/3`
-  daje `33.34/33.33/33.33`, sivi `+` s hintom, View nakon pomaka datuma. Uz to preset
-  „izjednačeno" na TEST-u i ponovljeni E2E run (11/11).
-- **PENDING 299 → 113 redaka.** Otvorena su još **3** stavke i nijedna nije test za odraditi:
-  boolean `Not set` (samo praćenje) i dvije o Structure fan-outu (posao, ne test).
-- **Odlučio si što znači `Planiran`:** kupovina je uvijek odrađena, `Planiran` = račun još
-  nije teretio. Time je zatvoren sukob pravila koji je stajao od S130.
-- **Prijedlog „Dospjelo → potvrdi"** (`docs/DOSPJELO_SPEC.md`), svih šest odluka prihvaćeno.
-  Kod još nije pisan.
+- **Visa košare su u cent od listopada 2024. do rujna 2026.** Banka je cijelo vrijeme bila
+  točna. Višak od 784,81 € bili su tvoji ručni retci (sheet `sasa EU`) uvezeni **uz** iste
+  retke s izvoda — isti dan dvaput, datum mjesec ranije, tipfeler u iznosu, ručna rata uz
+  bankinu. Obrisano ili prebačeno u `Cash` prema tvojim odlukama.
+- **Kolovoški Visa izvod je uvezen**: 37 redaka koje nitko nije upisao (~1.010 €).
+- **PP 8,60 (23.09.)** je sada na Kokinom ZABA, kako si rekao — ZABA saldo pao za 8,60.
+- Sve je išlo **Excel uvozom pod Kokinim računom**, nijedna skripta nije pisala u bazu.
+- Jedan uvoz je napravio 7 duplikata — **moja greška** (krivi e-mail u koloni G), popravljeno
+  istim putem. Zapisano da se ne ponovi.
 
-## Tvoj redoslijed za dalje (S147)
+## Što treba od tebe
 
-1. **Baza što točnija** — prvo **Visa istraga**.
+1. **6 redaka bez Podtipa** (AGS Tuhelj, AZM Mokrice, Kvatric, GLS Stupnik, Jadrolinija,
+   Studenac Orebić) — **Edit u appu** (nisu u import reportu jer ih zadnji uvoz nije dirao).
+   Javi pa provjerim.
+2. **`Wellness` natrag u taksonomiju** — Kokin račun, Structure → `Transakcija` → `Podtip`
+   → redak `Zabava` → dodaj `Wellness`. Izbrisao ga je naš Structure alat (v. DIO 2).
+3. **Komentar PP retka** i dalje glasi `Sašin tekući RF/Zdravlje/PP (Posmrtna pripomoc)` —
+   ostatak predloška, spominje krivi račun. Što da piše?
+4. Kad stigne **Visa izvod za rujan** (naplata ~05.10.), spremi ga u `izvodi/` — ide istim
+   alatom kao kolovoz, sada bez duplikata.
+
+## Tvoj redoslijed (S147) — gdje smo
+
+1. ~~Baza što točnija — Visa~~ ✅ · ostaje: **loši Tip/Podtip parovi** (v. DIO 2) i RF `Izvod opis`.
 2. **Bugovi.**
-3. **Prolaz kroz backlog** — što smo sve htjeli dovršiti.
-
-## Što je važno znati prije S148
-
-- **Visa košara se slaže s PBZ naplatom 16 mjeseci u cent, a od veljače 2026. ne.**
-  Razlike: `123,33 · 35,00 · 195,00 · 126,84 · 304,64 · −45,53`. Nešto se promijenilo oko
-  veljače; to je prvi posao. Trebat će `PBZVISA` izvodi od 2026-01 nadalje.
-- **✅ PROD je deployan na kraju S147** (`main` = `7ef95ac`, 63 commita od S137). Provjereno
-  dvaput: Netlify bundle nosi S145 kod, i ti si na mobitelu osvježio Overview i ostao na njemu.
-  Koka sada ima popravak Overview taba i rata — neka jednom povuče stranicu dolje.
-- Na TEST-u ostali tvoji test-zapisi: shortcuti `Lab Results1`, `Lab Results2`, `Medical Visit`
-  i zapis „TODO /" od 24.09. 11:53 — obriši kad stigneš.
+3. **Prolaz kroz backlog.**
 
 ---
 
@@ -43,68 +44,60 @@
 
 ## Stanje grana
 
-`test-branch` = `main` = `7ef95ac` (S147) — **deploy pušten na kraju S147** (Saša, PowerShell;
-prije toga `npm run check` 15/0, ratchet 0, build ✓; **nijedna SQL migracija** od S137).
-Potvrđeno: Netlify bundle sadrži S145 tekst rata modala; Overview + osvježi na mobitelu ostaje.
-⚠ Pri provjeri deploya prvi `curl` bundlea je puknuo na mreži i **prazan rezultat pročitan je
-kao „stara verzija"** — provjera sadržaja mora provjeriti i da je file stigao cijeli
-(`size_download` ≈ lokalni build).
+`test-branch` = `e039fec` + ritual S148. `main` = `7ef95ac` (S147) — **u `src/` se od
+deploya ništa nije promijenilo**, S148 je samo `data-prep_tools/` + dokumenti. Deploy ne treba.
 
-## S148, korak 1 — Visa istraga (Sašin prioritet „baza što točnija")
+## Novi alati (S148) — svi u `data-prep_tools/Financije/`
 
-Mjerenje je u `docs/DOSPJELO_SPEC.md` §2 i CLAUDE.md Backlog (prva stavka „Otvoreno").
-Skripta za ponavljanje stoji samo u scratchpadu S147 — **napiši je iznova kao alat** u
-`data-prep_tools/Financije/` (npr. `visa_kosare.py`), jer će trebati i poslije popravka:
-- Visa retci grupirani po **mjesecu `Datum naplate`**, **bruto `isplata`** (zrcalni
-  `PRIMLJENA UPLATA - HVALA` redak je `uplata` s `Izvor = Visa` — ne smije ući u Σ);
-- protiv `Izvor = Racun` retka čiji `Izvod opis` (bez razmaka, velika slova) sadrži `PBZCARD`;
-- ⚠ `ET_TARGET=prod` i **pročitaj zaglavlje prije brojke** (S137 zamka).
-Kreni od `2026-02 · 123,33`: usporedi retke košare s `PBZVISA_2026-01/02` izvodom
-(glob `PBZVI[SZ]A_*` — jedan file se zove `PBZVIZA_`). Hipoteza (ne nalaz): retci upisani
-punim iznosom **uz** rate. Popravak ide **fix skriptom + backup + `--apply` pod Sašom**
-(PROD upisi su mu blokirani za Claudea).
+- `visa_kosare.py [YYYY-MM ...]` — mjera; kriterij „svi mjeseci 0,00". Naplatu na RF-u
+  prepoznaje po `PBZCARD` u `Izvod opis` **ili** po `Transfer/izmedju racuna` + komentar
+  `Visa…` (07.09. `Visa racun` nema `Izvod opis` dok RF izvadak za rujan ne stigne).
+- `visa_uvoz_izvoda.py <PBZVI?A_YYYY-MM.pdf> <naplata YYYY-MM-DD> [--file]` — izvod → app
+  Excel. Za rujanski izvod: dopuni `RUCNO` (približni `~` iznosi) i `KLASA` ako treba.
+- `visa_popravak.py` — S148 jednokratni popisi + **zajednički pisac `pisi()`**
+  (e-mail autora u kol. G iz `EMAIL`, dropdowni). ⚠ Dropdown `Podtip` je **ravan** (ne
+  ovisi o Tipu) — Saša je to primijetio; ako se pisac ponovo koristi za klasifikaciju,
+  napravi ovisni (INDIRECT + imenovani rasponi, kao app export) ili pošalji Sašu na app export.
 
-Druge stavke istog prioriteta (točnost baze), iz CLAUDE.md:
-- 10 Visa `Planiran` redaka s `Datum naplate 03.09.` — generacija `next:3`; stvarna naplata
-  **07.09. `1.218,38`** već je u bazi. Riješiti uz istragu.
-- MC par `+105,30`/`−105,30` (`Planiran`, dospio 07.09./12.09.) — pogledati što je.
-- `oznaci_iz_presedana.py --apply` nikad pušten (45/71, S129).
-- `Izvod opis` za RF retke (Backlog, Sašin izričit zahtjev S131).
-- **PITANJE ZA SAŠU:** `PP (Posmrtna pripomoc)` **8,60 · 23.09.** na RF-u nosi `Izvor = Visa`.
-  U povijesti su PP bili **bankovni nalozi** (`Izvor = Racun`). Ako je i ovaj nalog, saldo RF-a
-  ga **ne broji**. Pitati prije ispravka.
-- Kokin plan `117,32 / 6` (22.09., prije popravka rata): rata 1/6 ima atribut `19.57`, a
-  komentar `19.55 od 117.32` — redak sam sebi proturječi. Jedan Edit komentara.
+## Otvoreno — točnost baze (prioritet 1)
 
-## Bugovi (korak 2) — kandidati, redom po šteti
+- **T-S148-4:** 6 redaka `Tip / N/A` (v. DIO 1). Provjera: skripta koja za svaki redak traži
+  `Podtip ∈ validation_rules.depends_on.options_map[Tip]` (`visa_uvoz_izvoda.taksonomija()`).
+- **14 starijih loših parova u Arei** (ista provjera, 24.09.):
+  `Zabava / Wellness` **×10** (2025-03 → 2026-09) — **uzrok nađen**:
+  `make_financije_all_structure.py` regenerira `Tip`/`Podtip` iz Review `Taksonomija`
+  sheeta (10.07.), pa je Structure uvoz iz alata izbrisao `Wellness` dodan u S124.
+  Saša ga vraća rukom (panel, Kokin račun) — **provjeri da je vraćen**.
+  ⭐ **Popravak alata** (S149): taksonomija iz `--base` (unija s Reviewom, ispis razlike),
+  isti obrazac kao `read_base_automations` (S145). Dok nije popravljen — alat se ne pokreće.
+  Ostali: `Zabava / N/A`
+  (Spotify 28.08.), `Razno / Balon`, `Razno / Poklon` ×2 (valjano je `Pokloni`),
+  `Razno / None` (Graviranje 200,00).
+- **RF `Izvod opis`** (Backlog, Sašin izričit zahtjev S131) — i `Visa racun` 07.09. čeka
+  RF_2026-09.
+- MC par `+105,30`/`−105,30` (`Planiran`) i `oznaci_iz_presedana.py --apply` — iz S147, nediran.
+- Kokin plan `117,32 / 6` (22.09.): rata 1/6 atribut `19.57`, komentar `19.55` — jedan Edit.
 
-- **Pločica: „zadnji zapis" znači „zadnja promjena SALDA", a natpis to ne kaže** (S147, Saša
-  na mobitelu). RF pokazuje narančasto *„15.09. · prije 9 dana"* dok lista ima retke od danas —
-  svi su `Visa/Planiran` (22) ili `Cash` (1), dakle ispravno izvan salda. Za račun koji se
-  plaća karticom to je **stalno** stanje ⇒ upozorenje koje uvijek pali. Prijedlog: natpis
-  „zadnja promjena salda".
-- „Restoring filter" bez timeouta (+ hipoteza da je to E8-2) — Backlog.
-- `hidden_in_add` se briše uvozom bez kolone; `HiddenInAdd` samo iz prvog retka — Backlog.
-- `et_activity_draft` bez oznake baze — Backlog (dira dva E2E speca u istom commitu).
-- `ViewDetailsPage` efekt prije deklaracije — Backlog.
-- Open bugs: BUG-S117-RULESHAPE, bulk delete za grantee-a, BUG-S103-ANYATTR.
+## Bugovi (prioritet 2)
 
-## Otvoreni testovi
+- **BUG-S148-G** (nov, Open bugs): postojeći redak s krivim e-mailom u kol. G uvoz tiho
+  upiše kao nov (`smartReclassify`, `excelImport.ts:820`), poruka „not found in database"
+  laže. Prijedlog: `found && !canUpdateExisting` ⇒ stani i javi, nikad INSERT. Test:
+  `importForeignRows.test.mjs` već ima okruženje.
+- Pločica „zadnji zapis" = zadnja promjena **salda** (S147 prijedlog natpisa).
+- „Restoring filter…" bez timeouta (+ hipoteza E8-2).
+- `hidden_in_add` / `HiddenInAdd`, `et_activity_draft`, `ViewDetailsPage` — Backlog.
+- „signal is aborted without reason" u Export modalu (S148, jednom, mreža) — sirova poruka
+  `AbortError`-a; ako se ponovi, prevesti u „veza je prekinuta — pokušaj ponovo".
 
-T-S145-3 (praćenje), T-S140-8 + T-S141-1 (Structure fan-out — posao). Sekcije S140/S141/S145
-čekaju samo njih.
+## Zamke koje je S148 platio — sve su u CLAUDE.md
 
-## Zamke koje je S147 platio — sve su u CLAUDE.md
-
-- § E2E: `ENOTFOUND`/`ECONNRESET` = run nije mjerio ništa; `dev:prod` između runova blokira drugi run.
-- § Unos u aplikaciji: `Status` kartičnog retka (odluka S147).
-- ⚠ **Mali uzorak kao dokaz o modelu**: „Visa 0/3" je bio točan broj i krivi zaključak dok se
-  nije izmjerila cijela povijest. Kad brojka kaže „model ne radi", izmjeri **cijelo** razdoblje
-  prije nego zapišeš.
+- Kolona G = autor retka, ne uvoznik (§ Collab — Excel put za tuđi redak).
+- Rata se sparuje po planu i broju, nikad po datumu (zaglavlje `visa_uvoz_izvoda.py`).
+- ⚠ Profil `Kokin_format` pregazi raspon iz panela (`last-3-months`) — pri izvozu starijih
+  redaka isključi „Koristi filtre iz profila". Pravilo je već u CLAUDE.md (S129).
 
 ## Što NE dirati
 
 - **`main`** — merge pušta Saša (PowerShell oblik iz CLAUDE.md).
-- **PROD upisi** — `--apply` pokreće Saša.
-- `DOSPJELO_SPEC` kod ne počinje dok Visa istraga ne završi? — **ne**: MC faza 1 (samo čitanje)
-  je neovisna o Visi. Ali Sašin redoslijed je baza → bugovi → backlog, pa pitaj prije.
+- **PROD upisi** — sve kroz Excel uvoz (Koka) ili `--apply` koji pokreće Saša.

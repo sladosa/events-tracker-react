@@ -7512,3 +7512,70 @@ ispravljen istog dana.
 - Otvoreni testovi: **3** — T-S145-3 (praćenje), T-S140-8 i T-S141-1 (posao, ne test).
 - **Deploy na `main` pušten na kraju sesije** (Saša): 63 commita od S137, bez SQL migracija.
   Potvrđeno sadržajem Netlify bundlea i Sašinim osvježavanjem Overviewa na mobitelu.
+
+---
+
+## S148 — Visa košare u cent, a višak je bio u bazi, ne u banci (2026-09-24)
+
+Prvi posao iz Sašinog redoslijeda (*„baza što točnija"*). Nijedna izmjena nije išla
+skriptom u bazu: sve su **Excel uvozi pod Kokinim računom** (Saša: *„bilo bi super cool
+izvući … u Excel export format pa da ja uvezem"*).
+
+### Mjerenje prije hipoteze
+
+`visa_kosare.py` (nov) ponovio je S147 tablicu, pa za svaki pokvaren mjesec spario izvod
+redak po redak. **Svih 7 PBZ izvoda 2026. slagalo se s RF naplatom u cent** — dakle banka
+je bila točna, višak u bazi. Hipoteza S147 (*okrugli iznosi = puni iznos uz rate*) **nije**
+bila uzrok.
+
+24 retka viška (Σ 784,81) i 2 rate u krivoj košari (45,53). Svih 24 su Sašini ručni retci
+iz sheeta `sasa EU`, uvezeni **uz** iste retke s izvoda jer se dedup `(datum, iznos)` nije
+poklopio:
+
+| oblik | primjer |
+| --- | --- |
+| isti dan, dvaput | DM 13,41 · Spar 24,92 · Amsterdam 6,05 |
+| datum **mjesec** ranije | Konzum ×3, Decathlon (06.06. vs banka 06.07.) |
+| ručna rata uz bankinu | Konzum 2/4 ×2 i 3/4, Traperice 4/4, Tekstilpromet 2/2, Šatrak 2/10 |
+| tipfeler u iznosu | H&M 49,67 / 46,97 · Biberon 9,10 / 9,01 · Bates 164,68 / 163,68 · McD 7,50 / 7,40 |
+| 1:N | Pekara 3,60 = Junior 2,00 + Svetice 1,60 |
+| nije na izvodu | Amsterdam 8,60, Cestarina 13,50, Carglass 85,00 → `Cash` (Saša) |
+
+Saša je pitao *„da nije u krivoj godini?"* — nije; drugo pitanje (*„provjeri prema Kokinoj
+Excelici / Reviewu"*) je dalo izvor: svih 8 zadnjih redaka stoji u `sasa EU` s
+`Izvor = Visa`.
+
+Tri razlike iz 2025. (`100,00`, `∓0,99`) su **bankine**: izvod netira povrat, Σ isplata
+izvoda = Σ košare.
+
+### Kolovoški izvod
+
+Koka poslala `PBZVIZA_2026-08.pdf` (opet sa Z). Baza je za ciklus imala **11 redaka /
+207,54** protiv naplate **1.218,38** — 37 redaka nitko nije upisao. `visa_uvoz_izvoda.py`
+(nov): 37 novih + 11 ispravaka, kontrola Σ = izvod u cent.
+⚠ Prvi prolaz je rate sparivao po `(datum, iznos)` i „našao" 7 od 7 — **nijednu stvarno**
+(`RATA 03/06` spojen s `2/6` od prošlog mjeseca). Rata se sparuje po planu i broju.
+⚠ Tip/Podtip: `presedani` ključ uzima prve tri riječi s adresom (`INA BP TRG` ≠ `INA BP
+MIRAMARSKA`) ⇒ druga razina po trgovcu (`short_opis`, Visa + MC) diže 15 → 23 od 37.
+
+### Sedam duplikata — moja greška
+
+Generator je u koloni G svih redaka pisao **Kokin** e-mail. Za 7 Sašinih redaka uvoz je
+zato dao `44 / 7` umjesto `37 / 14` uz poruku *„not found in database"*. Saša je posumnjao
+na poruku prije nego je išta rekao o brojkama. Popravljeno fileom (DELETE kopija + „fix as
+owner" na originalima); pisac sada mapira `user_id → e-mail` i staje na nepoznatom.
+Zapisano: pravilo u Critical rules, **BUG-S148-G** u Open bugs (app bi trebao stati, ne upisati).
+
+### Usput
+
+- **PP 8,60 (23.09.)** → `Racun`, Kokin ZABA (Saša odgovorio na pitanje iz S147).
+- Moj dropdown za `Podtip` nije ovisio o `Tipu` — Saša je klasificirao i ispravljao kroz
+  **app export**, gdje ovisi. Ostalo 6 redaka s `Tip / N/A` (T-S148-4).
+- Provjera parova nad cijelom Areom našla **14 starijih loših parova**, najviše
+  `Zabava / Wellness` (10) — podtip iz S124 kojeg u taksonomiji više nema. Za S149.
+
+### Stanje na kraju
+
+- Visa košare **2024-10 → 2026-09 u cent** (osim tri bankine razlike 2025.).
+- Commiti `e039fec` (alati + CLAUDE.md) i ritual; `test-branch`, bez deploya.
+- Otvoreni testovi: T-S148-4 + tri stara (T-S145-3, T-S140-8, T-S141-1).

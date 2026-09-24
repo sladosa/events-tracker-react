@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S147).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S148).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -1365,6 +1365,14 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   ⚠ Pravilo šire od ovog alata: **generirani file mora opisivati STANJE, ne sjećanje
   autora alata.** Za svaku vrijednost koju alat upisuje pitaj *„tko je vlasnik ovog
   podatka“* — ako je to baza, alat ga **prenosi**, nikad ne proizvodi.
+  ⚠ **ISTI ALAT ISTO RADI S TAKSONOMIJOM — i ondje JOŠ NIJE POPRAVLJENO** (S148).
+  `Tip`/`Podtip` se ne prenose iz `--base` nego **regeneriraju iz sheeta `Taksonomija`**
+  Review filea od 10.07. (`groups.pop("Podtip")` → `read_taxonomy`). Podtip dodan u bazu
+  poslije toga (`Zabava / Wellness`, S124) izbrisan je prvim Structure uvozom iz alata —
+  10 redaka ostalo bez valjane opcije u dropdownu, bez ijedne poruke. Otkrila ga je provjera
+  parova `Podtip ∈ options_map[Tip]` nad cijelom Areom (S148: 20 loših parova).
+  ⇒ **Alat ne pokretati dok taksonomija ne dolazi iz BASE-a** (unija s Reviewom, ispis
+  razlike — kao `read_base_automations`). `Wellness` vraćen rukom kroz panel.
   ⚠ Suprotno vrijedi za kolone kojih u generiranom fileu **nema**
   (`DisableSavePlus`, `AddTimer`, `AddDatePicker`): ondje uvoz odsutnost čita kao
   *„ne diraj“*, pa je izostanak **ispravan** — v. pravilo iz S139.
