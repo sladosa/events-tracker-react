@@ -7579,3 +7579,20 @@ Zapisano: pravilo u Critical rules, **BUG-S148-G** u Open bugs (app bi trebao st
 - Visa košare **2024-10 → 2026-09 u cent** (osim tri bankine razlike 2025.).
 - Commiti `e039fec` (alati + CLAUDE.md) i ritual; `test-branch`, bez deploya.
 - Otvoreni testovi: T-S148-4 + tri stara (T-S145-3, T-S140-8, T-S141-1).
+
+### PENDING sekcija S148 (arhivirana S148)
+
+#### S148 — Visa kosare u cent, a visak je bio u bazi, ne u banci (2026-09-24)
+
+⚠ **Sve izmjene su isle Excel uvozom pod Kokinim racunom** — nijedna skriptom u bazu.
+Jedan od tri uvoza napravio je 7 duplikata (kolona G, v. BUG-S148-G); popravljeni istim putem.
+
+**Detalji testova:** [tests/S148_tests.md](../../Claude-temp_R/test-sessions/archive/S148_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S148-1 | Visa kosare 2026-02 → 2026-08 u cent | ✅ S148 — izmjereno `visa_kosare.py`, svi mjeseci `0,00` |
+| T-S148-2 | Kolovoski izvod uvezen — rujan `48 / 1.218,38` u cent | ✅ S148 — izmjereno, detalj bez ijednog nesparenog retka |
+| T-S148-3 | 7 duplikata iz prvog uvoza uklonjeno | ✅ S148 — uvoz `0 / 7 / 7`, kosara bez parova |
+| T-S148-4 | Sest Podtipova koji ne pripadaju Tipu (AGS, AZM, Kvatric, GLS, Jadrolinija, Studenac) | ✅ S148 — izmjereno: svih 6 ispravljeno Editom; losih parova u Arei **20 → 1** (`Wellness` vracen u taksonomiju, ostali ispravljeni) |
+| T-S148-5 | PP 8,60 na Kokin ZABA | ✅ S148 — izmjereno u bazi; ZABA −8,60 poslije zadnjeg sidra |

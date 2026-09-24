@@ -22,10 +22,12 @@
 
 ## Što treba od tebe
 
-1. **6 redaka bez Podtipa** (AGS Tuhelj, AZM Mokrice, Kvatric, GLS Stupnik, Jadrolinija,
+1. ~~6 redaka bez Podtipa~~ ✅ ispravljeno (S148, izmjereno). Ostao 1 loš par u Arei:
+   16.09. `Hlace i carape` `Razno / Poklon` → `Pokloni`.
+   ~~Stari tekst:~~ **6 redaka bez Podtipa** (AGS Tuhelj, AZM Mokrice, Kvatric, GLS Stupnik, Jadrolinija,
    Studenac Orebić) — **Edit u appu** (nisu u import reportu jer ih zadnji uvoz nije dirao).
    Javi pa provjerim.
-2. **`Wellness` natrag u taksonomiju** — Kokin račun, Structure → `Transakcija` → `Podtip`
+2. ~~`Wellness` natrag u taksonomiju~~ ✅ vraćen (izmjereno). Stari tekst: **`Wellness` natrag u taksonomiju** — Kokin račun, Structure → `Transakcija` → `Podtip`
    → redak `Zabava` → dodaj `Wellness`. Izbrisao ga je naš Structure alat (v. DIO 2).
 3. **Komentar PP retka** i dalje glasi `Sašin tekući RF/Zdravlje/PP (Posmrtna pripomoc)` —
    ostatak predloška, spominje krivi račun. Što da piše?
