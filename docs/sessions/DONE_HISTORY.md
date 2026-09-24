@@ -7110,7 +7110,7 @@ python data-prep_tools/Tools/audit_tests.py
 ```
 
 Ispisuje po session fileu koliko je testova definirano, koliko ✅ / ⬜, i koje je fileove **spremno arhivirati** (svi ✅). ⚠ Prijavljuje i testove kojih u ovom fileu uopće nema — v. „Siročad" ispod.
-**Detalji S119:** [S119_tests.md](../../Claude-temp_R/test-sessions/archive/S119_tests.md) · **S116:** [S116_tests.md](../../Claude-temp_R/test-sessions/archive/S116_tests.md) · **S115:** [S115_tests.md](../../Claude-temp_R/test-sessions/archive/S115_tests.md) · **S114:** [S114_tests.md](../../Claude-temp_R/test-sessions/archive/S114_tests.md) · **S113:** [S113_tests.md](../../Claude-temp_R/test-sessions/archive/S113_tests.md) · **S112:** [S112_tests.md](../../Claude-temp_R/test-sessions/archive/S112_tests.md) · **S111:** [S111_tests.md](../../Claude-temp_R/test-sessions/archive/S111_tests.md) · **S110:** [S110_tests.md](../../Claude-temp_R/test-sessions/archive/S110_tests.md) · **S108:** [S108_tests.md](tests/S108_tests.md) · **S107x:** [S107x_tests.md](../../Claude-temp_R/test-sessions/archive/S107x_tests.md) · **S107w:** [S107w_tests.md](../../Claude-temp_R/test-sessions/archive/S107w_tests.md) · **S107v:** [S107v_tests.md](../../Claude-temp_R/test-sessions/archive/S107v_tests.md) · **S107u:** [S107u_tests.md](../../Claude-temp_R/test-sessions/archive/S107u_tests.md)
+**Detalji S119:** [S119_tests.md](../../Claude-temp_R/test-sessions/archive/S119_tests.md) · **S116:** [S116_tests.md](../../Claude-temp_R/test-sessions/archive/S116_tests.md) · **S115:** [S115_tests.md](../../Claude-temp_R/test-sessions/archive/S115_tests.md) · **S114:** [S114_tests.md](../../Claude-temp_R/test-sessions/archive/S114_tests.md) · **S113:** [S113_tests.md](../../Claude-temp_R/test-sessions/archive/S113_tests.md) · **S112:** [S112_tests.md](../../Claude-temp_R/test-sessions/archive/S112_tests.md) · **S111:** [S111_tests.md](../../Claude-temp_R/test-sessions/archive/S111_tests.md) · **S110:** [S110_tests.md](../../Claude-temp_R/test-sessions/archive/S110_tests.md) · **S108:** [S108_tests.md](../../Claude-temp_R/test-sessions/archive/S108_tests.md) · **S107x:** [S107x_tests.md](../../Claude-temp_R/test-sessions/archive/S107x_tests.md) · **S107w:** [S107w_tests.md](../../Claude-temp_R/test-sessions/archive/S107w_tests.md) · **S107v:** [S107v_tests.md](../../Claude-temp_R/test-sessions/archive/S107v_tests.md) · **S107u:** [S107u_tests.md](../../Claude-temp_R/test-sessions/archive/S107u_tests.md)
 
 ---
 
@@ -7132,6 +7132,199 @@ Ispisuje po session fileu koliko je testova definirano, koliko ✅ / ⬜, i koje
 | E7-3 | Revoke access → user removed from Active access list | ✅ S140 — zatvoreno; `confirm revoke` je bila tvrdnja napisana iz dizajna, app radi ispravno. Popravak u specu (`e7`+`e10`), put s eventima čuva `e15` |
 
 ---
+
+---
+
+> **Preseljeno iz `PENDING_TESTS.md` u S147 (2026-09-24)** — sve ✅. T-S131-34 zatvoren mjerenjem (neponovljen), T-S108-1b/T-S108-4 izvedeni na `dev:prod`.
+
+## S131 — decimalni zarez + obavezna polja (2026-09-08)
+
+Detalji: [S131_tests.md](../../Claude-temp_R/test-sessions/archive/S131_tests.md)
+
+⚠ **Gdje se testira:** kod nije na `main`, pa PROD aplikacija (Kokina) jos vrti
+stari bundle — kvacica `Required` upisana na PROD ondje nece ni blokirati ni
+pokazati zvjezdicu. B i D radi na TEST-u; PROD kvacicu na `Racun`/`Izvor`
+postavi tek **nakon** deploya.
+
+### A. Decimalni zarez u polju za broj
+
+| #            | test                                                     | status                           |
+| ------------ | -------------------------------------------------------- | -------------------------------- |
+| **T-S131-1** | ⭐ `amountInput.test.mjs`                                 | ✅ 28/28, protuprovjera pada 2/28 |
+| **T-S131-2** | ⭐ Add: `1.234,56` se spremi tocan (ne `1,23`, ne prazno) | ✅ |
+| **T-S131-3** | ⭐ Edit: iznos preživi otvaranje + Save nedirnut          | ✅ |
+| **T-S131-4** | neprepoznat unos pocrveni, ne nestane tiho               | ✅ |
+| **T-S131-5** | broj bez decimala ne dobiva `,00` (druga Area)           | ✅ 150 / 2,8 / 2,835 |
+| **T-S131-25** | ⭐ NALAZ+FIX: prvi znak u praznom „skriveno" polju rusio polje (gubitak fokusa, SVI tipovi atributa) | ✅ **14.09. PROD** — `Izvod opis` (prazan, `hidden_in_add`, otkriven „Show all"): `TEST,TEST` ostao cijel. Pod starim kodom bi ostalo `T` |
+| **T-S131-26** | ⭐ NALAZ+FIX: prazan `default_value` vise ne skriva polje (S117 podjela vracena) | ✅ **14.09. PROD** — svih 10 `Fitness > Activity` polja vidljivo BEZ „Show all". ⭐ I obrnuti smjer: `Strength_type = Core` (hide-at-default) je OSTAO skriven ⇒ popravak nije pregrub |
+| **T-S131-27** | Help pokriva sva tri razloga skrivanja + Required | ✅ S136 — nadiđeno upotrebom |
+
+### B. Obavezna polja — upis
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-6** | ⭐ UI kvacica se STVARNO sprema (provjera kroz Add, ne kroz panel) | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-7** | ⭐ Excel kol. J ⇒ `attributes updated`, ne „nothing changed" | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-8** | ⭐ `TRUE` na NE-prvom retku atributa (pravilo OR) | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-9** | `FALSE` na svim retcima iskljuci obavezno | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-10** | izvoz nosi `TRUE` nakon kvacice (roundtrip zatvoren) | ✅ S136 — sažeto u T-S136-3 |
+
+### C. Provjera pri spremanju
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-11** | Add Finish blokiran + poruka imenuje polje | ✅ ⚠ poruka je otad kraca — jos jedan pogled |
+| **T-S131-12** | ⭐ Edit blokiran kad se obavezno polje OBRIŠE | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-13** | Edit starog retka koji ima sve — sprema se (regresija) | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-14** | `Save +` takodjer blokira (Area bez `disable_save_plus`) | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-15** | ⭐ Excel uvoz aktivnosti NE provjerava obavezna polja | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-16** | obavezan boolean: netaknut blokira, `false` prolazi | ✅ S136 — sažeto u T-S136-3 |
+
+### D. Obavezno + skriveno
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-17** | panel ne da složiti kombinaciju (kvacice se iskljucuju) | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-18** | ⭐ kombinacija iz Excela: forma svejedno prikaze polje | ✅ S136 — čuva automatski test |
+| **T-S131-19** | obavezno dijete neobaveznog roditelja — upozorenje | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-22** | ⭐ uvoz JAVI kontradikciju + sam preuzme `structure_REVIEW_NEEDED_*` | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-23** | oznaka prezivi u OBICNOM izvozu i sama nestane kad se popravi | ✅ S136 — sažeto u T-S136-3 |
+| **T-S131-24** | sudar putanja i dalje radi — jedan file, oba razloga | ✅ S136 — sažeto u T-S136-3 |
+
+### E. Regresija i nalazi
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-20** | ⭐ `requiredAttributes.test.mjs` + typecheck + build | ✅ 18/18, protuprovjera pada 3/18 |
+| **T-S131-21** | ⚠ NALAZ: `structureExcel.test.mjs` odrezan u gitu od **S17** | ✅ **S137 -- dovrsen, ne obrisan**. Bio odrezan usred zadnjeg testa (`const row = buildRowsForNode` bez ostatka), pa je Node odbijao CIJELI file (`SyntaxError`) i **37 tvrdnji se nije izvrsavalo**. ⚠ `npm run typecheck` to ne vidi -- `.mjs` nije u tsconfigu. Sada 37/37 prolazi |
+
+### F. Podaci — PROD (mjereno 08.09.2026, samo citanje)
+
+| # | test | status |
+| --- | --- | --- |
+| **T-S131-28** | ⭐ `MC_2026-08` NIJE gotov — 48 ispravaka ceka `--apply` (47× Status, 1× Izvod opis) | ✅ **15.09. PROD** — pušteno; kontrola `48 POTVRĐENO / 0 ZA ISPRAVAK` (v. `T-S137-4`) |
+| **T-S131-29** | ⭐ RF: jedna greska (`0,17` upisan kao uplata) objasnjava Δ `+0,34` u cent | ✅ RF 690,79 = izvod, u cent |
+| **T-S131-30** | RF `Bankovna naknada 11,00` datiran 07.09., izvod kaze **04.09.** | ✅ pomaknut na 04.09., `Datum naplate` uz njega |
+| **T-S131-31** | ✅ redak `2,69` NE fali — postoji u bazi (18.08.), OCR ga je promasio | ✅ |
+| **T-S131-32** | ✅ `uskladi_izvod.py` vise ne pada na hrvatskom znaku (`stdout.reconfigure`) | ✅ |
+| **T-S131-33** | ✅ sidro `RF 690,79 @ 07.09.` (izvor `izvod`, nota imenuje `RF_2026-08.pdf`) | ✅ redoslijed: provjera pa sidro |
+| **T-S131-34** | ⚠ BUG-S131-VIEWSTALE — View „Activity not found" nakon Edita koji pomakne `session_start`; F5 rijesi | ✅ **S147 — izmjereno, ne javlja se.** 24.09. `dev:prod`: Edit pomakne datum 23.09. → 24.09. → `Save → View` otvori redak, ✕ vraća na listu; povratak na 23.09. isto. ⚠ Kvar nikad nije bio reproduciran, pa ovo **nije dokaz popravka** — ako se ponovi, unos se vraća u Open bugs |
+
+**Otvoreno (S131):** ništa — zadnji (`T-S131-34`) zatvoren u S147. ⚠ Ovaj redak je do S147 nabrajao **22** testa koji su u tablici već bili ✅; ručno vođen popis uz tablicu je razred koji je S116 ukinuo za zaglavlje, a ovdje je preživio.
+
+---
+
+## S108 — Faza 1: RPC salda + Overview tab + pločica sa sidrom
+
+**Preduvjet:** `sql/035`, `sql/036` i `sql/037` puštene na TEST — ✅ sve tri (2026-08-15;
+`036` je pušten dvaput, druga verzija ispravlja `FULL JOIN`).
+
+Prihvatni kriterij prošao **prije** pisanja UI-ja: RPC reproducira Python model (već validiran
+protiv banke) **u cent** — ZABA `150,80`, RF `−1.978,32`. Naivni zbroj po `Racun`u dao bi
+ZABA `−22.943,71`.
+
+| ID | Test | Status |
+| --- | --- | --- |
+| P-1…P-6 | `verify_rpc_vs_model.py`: B vs C 0,00, A vs B 0,00, sidro 0,00, D1b 634/634 | ✅ (programski) |
+| P-7…P-12 | `rpc_area_balance_anchored` end-to-end: sidro zbraja, granica **stvarno** isključiva (1 redak na granici), grupa bez prometa se i dalje prikazuje, poziv bez prava 401, nepoznat slug 400 s imenom | ✅ (programski) |
+| T-S108-1 | ⭐ Overview tab postoji samo uz `dashboard` config (OQ-4), redoslijed Overview → Activities → Structure | ✅ (2026-08-15) |
+| T-S108-1b | Add Activity + “⚡ Use” rade i iz Overviewa; povratak nakon spremanja ide na Overview; leaf hint uz sivi gumb | ✅ koraci 2/3 (15.09. + 22.09. PROD). ⚠ **Korak 4 PAO 22.09. (S145)** — `Go to Home` je vraćao na **Activities**. Uzrok nije bio u Add toku nego `BUG-S145-OVERVIEWTAB`: zastavica `loaded` je prezivjela promjenu `areaId`-a. Popravljeno (`useAreaDashboard` izvodi `loaded` u renderu + `AppHome` traži poznatu Areu), izmjereno istim potezom `Overview` + `F5`. ⚠ 15.09. je ovaj korak bio označen ✅ — nije utvrđeno je li tada bio promašaj u očitanju ili je kvar ovisan o vremenu. ✅ **S147, 24.09. `dev:prod`:** korak 4 ponovljen nakon popravka (v. `T-S145-1`), korak 5 — uz `All Categories` gumb `+` siv **i** žuti hint *„Select a leaf category…"* |
+| T-S108-2 | ⭐ Pločica — ZABA 150,80 €, RF −1.978,32 €, „od početka podataka" | ✅ (2026-08-15) |
+| T-S108-3 | „planirano" — ZABA −2.521,38 € (13) | ✅ (2026-08-15) |
+| T-S108-4 | ⭐ Sidro: Δ čip ✅; **„Potvrdi" ✅ (2026-08-16)** — sidro 3.000 spremljeno, podnaslov prešao na „od potvrde 16.08.2026. · 3.000,00 € · 0 promjena poslije". Koraci **4–5 (transakcija poslije / prije sidra) još neisprobani** | ✅ **S147 — izmjereno + nadiđeno upotrebom.** Korak 4 izveden 24.09. `dev:prod` (T-S145-1): `Racun −1` poslije ZABA sidra 06.09. ⇒ `12.301,90 → 12.300,90`, 20 → 21 promjena. Korak 5 (redak prije sidra ne miče saldo) mjeri od S143 **kontrolna točka po sidru** u delta sheetu, na svakom izvozu |
+| T-S108-5 | Δ ostaje dok se ne slaže; ništa se ne mijenja bez Potvrdi | ✅ S136 — nadiđeno upotrebom |
+| T-S108-6 | ⭐ Drill s pločice → Activities filtriran na račun / na `Status=Planiran` | ✅ S136 — nadiđeno upotrebom |
+| T-S108-7 | ⭐ Izračunata kolona `Stanje` — silazi do salda, nestaje kod miješanih računa i obrnutog sorta | ✅ S136 — nadiđeno upotrebom |
+| T-S108-8 | Rename sluga popravlja `dashboard.widgets[]`; pokvaren slug daje **imenovanu** grešku, ne 0,00 | ✅ S136 — nadiđeno upotrebom |
+| T-S108-9 | Paginacija bez stabilnog sorta — Delete Area / Import Delete? nad >1000 atributa (regresija, nedeterministički) | ✅ **S146 — čuva ga automatski test.** Rucno se nije dalo izvesti (opisan kao *„regresija, nedeterministicki"*), pa je zamijenjen **branom**: `src/lib/__tests__/pagingOrderGuard.test.mjs` staticki provjerava da svaki `.range()` u `src/` ima `.order()`. Izmjereno: **10 poziva, svih 10 sortirano**. ⚠ Detektor mora znati **tri** stvari koje naivna verzija promasi, sve tri izmjerene: komentar koji spominje `.range(` (`useStructureData:78` opisuje bas ovaj kvar) · lanac kroz vise redaka (`useActivities`) · pomocna funkcija (`buildBaseQuery().range()`). Protuprovjera: 8 tvrdnji, ukljucujuci da nesortiran upit **bude** prijavljen |
+| T-S108-10 | „From template" nosi `settings` bez `export_profiles` i bez sidara | ✅ S136 — nadiđeno upotrebom |
+| T-S108-11 | Read grantee vidi pločicu, nema „Potvrdi"; write grantee ima | ✅ S136 — nadiđeno upotrebom |
+| T-S108-12 | Mobitel — polje „u banci" i čip vidljivi i upotrebljivi | ✅ **26.08. uživo na PROD-u (Android)** — polje „u banci" prima unos, čip i brojevi na ekranu, ništa ne ispada|
+| T-S108-13 | Help zna za Overview — chipovi na tabu, odgovori o Δ i o sidru | ✅ S136 — nadiđeno upotrebom |
+
+**Sljedeće nakon prolaza:** Faza 2 (brzi unos — §2.9, dvije sitnice nad postojećim
+Shortcut sustavom), pa Faza 3 (Koka proba na mobitelu → odluka o cutoveru).
+
+---
+
+> **Preseljeno iz `PENDING_TESTS.md` u S147 (2026-09-24)** — sve ✅; zadnji `T-S137-8` (grana *izjednaceno*) izmjeren na TEST-u.
+
+## S137 — triaža: pet sesija zatvoreno, i instrument koji ih nije vidio (2026-09-15)
+
+**Arhivirano** (svi testovi zatvoreni, `Claude-temp_R/test-sessions/archive/`):
+`S119`, `S120`, `S121`, `S122`, `S123`. Otvorenih session fileova: **17 → 12**.
+
+⚠ **Osam od deset „nedostajućih" redaka NIJE nedostajalo — `audit_tests.py` ih nije vidio.**
+ID u prvoj ćeliji dolazi u pet oblika, a alat je poznavao jedan (`T-S119-3`):
+`` `T-S121-1` `` (backticks), `**T-S119-1** ⭐` (ukras), `` `T-S122-1` (2 slučaja) ``
+(sufiks), `` `T-S123-1/-2` `` (spojeni). Sva četiri su ispadala iz brojanja, pa je file
+izgledao nedovršen a odluka je **bila donesena**. Isti razred kao sufiks `A7` (S136) i
+sonda bez `areas INSERT` (S135): **instrument slijep točno ondje gdje se donosi odluka.**
+
+⚠ **Rječnik oznaka ima PET vrijednosti, ne dvije.** `~ superseded`, `→ T-Sxxx` i `⏸ PARKIRANO`
+su **donesene odluke**, a alat ih je čitao kao „bez oznake". Gore: redak bez ijedne oznake
+nije blokirao arhiviranje (`open == 0` je bilo dovoljno) ⇒ **sesija se mogla arhivirati s
+neodlučenim testom unutra, i to tiho.** Sada `unclear` blokira i **imenuje se**.
+
+⚠ **Brojka otvorenih je PORASLA s 20 na 22 i to je ispravno** — retci oblika
+`✅ u kodu · ⬜ provjera traži deploy` sada se čitaju kao **otvoreni**, jer ⬜ pobjeđuje ✅
+u istom retku. Prije su bili nevidljivi.
+
+| #            | test                                                                      | status |
+| ------------ | ------------------------------------------------------------------------- | ------ |
+| **T-S137-1** | ⭐ `audit_tests.py` vidi svih pet oblika ID-a + rječnik od pet oznaka; `unclear` blokira arhivu i imenuje se | ✅ izmjereno: `bez retka 10 → 0`, `bez oznake 6 → 0`, za arhivu `0 → 5` |
+| **T-S137-2** | PROD **ima** kolonu `Račun` (zatvara `T-S119-8`)                          | ✅ **15.09. PROD** — `set_list_columns.py --env prod --show`: `role: attr`, `label: Račun`, `map` RF/ZABA |
+| **T-S137-3** | ⭐ CLAUDE.md dobio **generiran** indeks + razdvojeno pravilo od plana     | ✅ izmjereno: `330 ⚠ redaka u HEAD, 0 izgubljenih`; `Critical rules` i `Zamke` bajt-identične; indeks 18/18 brojeva točan |
+| **T-S137-4** | ⭐ MC košara 11.09. — `--apply` + kontrola                                 | ✅ **15.09. PROD** — `69 ispravaka / 2 brisanja`, pa ponovni `uskladi_izvod`: `48 POTVRĐENO / 0 ZA ISPRAVAK`. `promet_check` **nepromijenjen** `27/5` ⇒ MC ne dira tekući |
+| **T-S137-5** | ⭐ `Tip`/`Podtip` za 15 neklasificiranih redaka košare                     | ✅ **15.09. PROD** — `upisano polja: 30 · provjera nakon čitanja: SVE SE SLAZE`; ponovni dry run daje **0 za promjenu** (idempotentno) |
+| **T-S137-6** | `skriveno ✕` sakriva **samo to polje**; polje otkriveno preko „Show all" ostaje običan natpis | ✅ **15.09. PROD** (`dev:prod`) -- s **dva** otvorena polja klik na `Izvod opis` sakrio **samo njega**, `Valuta` ostala; polja iz Show all nose natpis **bez** ✕ |
+| **T-S137-7** | ⭐ Preset ne zamrzava izvedenu vrijednost: `Datum naplate` se racuna, ne pamti | ✅ **15.09. PROD** -- snimka `AI_rucak` ima **6** vrijednosti, `Datum naplate` i `Status` **nisu u njoj**; uz `Visa` izracunat `03.10.`, a promjenom `Izvor -> Racun` **skocio na `15.09.`** |
+| **T-S137-8** | Auto-odabir preseta samo kad pobjednik **nije nerijesen** | ✅ djelomicno: uz `Financije` (12x) + `AI_rucak` (0x) auto-odabir **i dalje radi** (bira cesceg), pa je `AI_rucak` trebalo izabrati rucno. ✅ **S147, 24.09. TEST:** grana **izjednaceno** — `Lab Results1` + `Lab Results2`, oba `0×`, jedini na leafu ⇒ Clear all + ponovni odabir ostavlja *„Select shortcut…"*. Protuprovjera: `Use` na `Lab Results1` (1×) ⇒ isti potez ga **sam** odabere. ⚠ Izjednacenje se u praksi dogadja **samo na `0×`**: `last_used` je timestamp u ms, pa dva koristena preseta nikad nisu izjednacena |
+| **T-S137-9** | ⭐ Nov oblik pravila `cutoff:B:D` (granica ciklusa + dan naplate) | ✅ **S144 — zatvoreno u cijelosti.** `dateRuleCutoff.test.mjs` **20/20** (protuprovjereno) · S138 promijenio vrijednost na PROD-u (`Visa: cutoff:3:5`, potvrdjeno citanjem `areas.settings`) · **provjera upotrebom je sada izvedena**: sve 4 Visa kupovine nastale nakon promjene nose `2026-10-05` (T-S138-1) |
+
+⚠ **`dev:prod` je nov kod nad PROD bazom** ⇒ `T-S136-6/-8/-9` **ne čekaju deploy**.
+Tri testa zatvorena bez ijednog Netlify builda.
+
+⚠ **NALAZ: pločica precjenjuje saldo za `1.068,70`** — skupna MC naplata od 11.09. nije
+u bazi jer `ZABA_2026-09.pdf` nije stigao. **Račun je točan, podatak nije potpun** —
+v. „Critical rules". Zatvorit će ga rujanski izvadak; **ne dopisivati ručno**.
+
+⚠ **NALAZ: 2 retka bez `Status`a došla su uvozom**, ne UI-jem (`session_start = 07:00`,
+`created_at` +1 s). `depends_on.default_map` ne radi na Import putu — isto kao
+`set_attribute`. **Pomiče okidač Faze 3**, koja je mjerila `Datum naplate` (0 praznih),
+a to polje **pune Python alati u fileu**. Saša ispravio ručno.
+
+⚠ **NALAZ: vanjski backup bio star 5 dana** (`D:\...ackup.log` 10.09. 13:25) i to se
+**nigdje ne vidi** — otkriveno samo zato što je Saša pitao gdje je backup. Isti razred
+kao „sidra se ne mogu vidjeti iz aplikacije" (S116). Pokrenut nakon oba današnja upisa.
+
+⚠ **`PAYPAL *BANDIFY BANDIF` (19,95, 07.08.) namjerno ostaje `N/A`** — nema presedana,
+**pitanje za Koku**. Pogođen `Tip` u podacima izgleda identično izmjerenom.
+
+---
+
+> **Preseljeno iz `PENDING_TESTS.md` u S147 (2026-09-24)** — sve ✅; zadnji `T-S146-1` izmjeren ponovljenim E2E runom (11/11, 409 = 0).
+
+## S146 — trijaza: osam sekcija, sesti kriterij, i dva kvara u harnessu (2026-09-23)
+
+⚠ **Dva kvara koja su se vratila SELIDBOM, ne izmjenom.** Samoreferentno pitanje u
+`DONE_HISTORY.md` (*„o samom ovom dokumentu"*) pokazivalo je na krivi dokument
+otkad ga je S140 preselio; a marker `**Otvoreno:` otisao je s arhiviranom sekcijom
+S120 i ozivio **8 fantomskih proturjecnosti** koje je S139 vec bio zatvorio.
+
+⚠ **E2E harness je imao dva kvara, app nijedan.** Ponovljen run pet specova padao je na
+`409` jer je REST fallback tiho ispustao `onConflict`; E15-3 je tekst info
+modala ocekivao na baneru (treci slucaj razreda E7-3/E10-2).
+
+**Detalji testova:** [tests/S146_tests.md](../../Claude-temp_R/test-sessions/archive/S146_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| **T-S146-1** | `supabaseUpsert` `on_conflict` — ponovljen run `e8`/`e9`/`e10`/`S123` | ✅ **S147 — izmjereno ponovljenim runom.** Cetiri runa, **`409` = 0 u svima**. Runovi 1–2 nepošteni (TEST mrezno nedohvatljiva: `ENOTFOUND`/`ECONNRESET`). Na mirnoj mrezi: run 3 **8/3** (5,6 min), run 4 — **ponovljeni, bas onaj koji je padao — 11/11** (2,1 min). ⚠ Tri pada runa 3 nisu 409 nego **Area select ostaje disabled** (`waiting for element to be visible and enabled` ×229) = poznati **E8-2** |
+| T-S146-2 | brana paginacije: svaki `.range()` ima `.order()` | ✅ **S146** — 10/10 sortirano, 8 tvrdnji; protuprovjera prijavljuje nesortiran upit |
+| T-S146-3 | `check_links.py` javlja iz `audit_tests` i `claude_index --write` | ✅ **S146** — sabotaza u oba smjera; uhvatio mrtav link na prvoj stvarnoj upotrebi |
+| T-S146-4 | `e15` zelen nakon popravaka harnessa | ✅ **S146** — **3 passed (58,7 s)** |
+| T-S146-5 | marker `**Otvoreno:` prezivi sljedece arhiviranje | ✅ **S147** — selidba S131 + S108 (PENDING 299 → 188 redaka): marker ostao u zaglavlju, `audit_tests.py` bez ijedne fantomske proturjecnosti. Usput je `check_links.py` uhvatio **1** mrtav link koji je selidba napravila (`tests/S108_tests.md`) — brana iz S146 na prvoj pravoj upotrebi |
 
 ---
 
@@ -7230,3 +7423,91 @@ logike. ⚠ Marker je sada u **zaglavlju**, gdje ga arhiviranje ne dohvaca.
 
 ⚠ **Hrpa B nije izvedena** — Sasa ju je svjesno odgodio da ne udje u konflikt s mojim
 E2E runovima nad istom TEST bazom. To je bila ispravna procjena, ne propust.
+
+---
+
+## S147 — hrpa B prošla, a Visa se pokvarila tek u veljači (2026-09-24)
+
+Sesija testiranja, na Sašin zahtjev: *„trebam odraditi neke testove, pa pomozi"*.
+Završila je sa **8 zatvorenih testova, 4 arhivirane sekcije** (PENDING **299 → 113**),
+jednim prijedlogom prije koda (`docs/DOSPJELO_SPEC.md`) i jednom odlukom o modelu koja je
+tri sesije stajala kao sukob dvaju pravila.
+
+### Handoff je tvrdio dvije neistine
+
+- *„Sve je stageano, čeka commit"* — bilo je commitano (`44c295a`).
+- *„Hrpa B na `dev:prod` ili PROD"* — `main` stoji na **S137**, pa PROD **nema** S145
+  popravaka; testiranje na netlify stranici bi palo nad ispravnim kodom. Rečeno prije
+  prvog klika.
+
+### Zatvoreno — sve izvođenjem, nijedan procjenom
+
+| test | gdje | nalaz |
+| --- | --- | --- |
+| T-S145-1 | `dev:prod` | F5 i `Go to Home` vraćaju na Overview; pločica `12.301,90 → 12.300,90` za `Racun −1`, `Cash 1` ne miče saldo |
+| T-S145-2 | `dev:prod` | `33.34 / 33.33 / 33.33`, isti broj u atributu i komentaru |
+| T-S108-1b | `dev:prod` | korak 4 (isti potez kao T-S145-1) + korak 5 (sivi `+` i žuti hint) |
+| T-S108-4 | `dev:prod` + S143 | korak 4 izveden istim potezom; korak 5 mjeri kontrolna točka po sidru |
+| T-S131-34 | `dev:prod` | pomak datuma → `Save → View` otvori redak, dvaput; **i dalje neponovljen** |
+| T-S137-8 | TEST | izjednačeni `0×`/`0×` ⇒ ništa se ne bira; protuprovjera `1×` ⇒ bira se sam |
+| T-S146-5 | alat | marker preživio selidbu; `check_links` uhvatio **1** mrtav link koji je selidba napravila |
+| T-S146-1 | E2E | **4 runa, `409` = 0**; ponovljeni run **11/11** |
+
+⚠ **Korak 3 T-S145-1 bio je napisan iz dizajna** — s Overviewa nema puta do View detailsa.
+Saša je to uočio sam (*„to bih i očekivao"*). Treći put u tri sesije isti razred
+(E7-3/E10-2, E15-3).
+
+⚠ **Izjednačenje shortcuta u praksi postoji samo na `0×`** — `last_used` je timestamp u ms,
+pa dva korištena preseta nikad nisu izjednačena. Saša je pokušao doći do `1×`/`1×` i nije
+mogao; pouka je za pisca testa, ne za testera.
+
+### Mreža je dvaput pojela E2E run
+
+Runovi 1–2 pali **isključivo** na `getaddrinfo ENOTFOUND` / `ECONNRESET` prema TEST bazi,
+a tvrdnje su izgledale kao padovi featurea. Između njih je Saša pokrenuo `dev:prod`, koji je
+sjeo na oslobođeni 5173 — i drugi run je **ispravno stao** na `assertServedBuildIsTest`
+(S134). Na mirnoj mreži: 8/3 pa **11/11**. Tri pada runa 3 su E8-2 (Area select disabled).
+Zapisano kao zamka u § E2E.
+
+### Uživo nađeno: „Restoring filter" bez izlaza
+
+Na `dev:prod` se restore filtra vrtio dok F5 nije pomogao. `doRestore` čeka niz upita bez
+timeouta, a selektor za to vrijeme crta samo spinner. Zapisano u Backlog, uz **hipotezu**
+(ne nalaz) da je E8-2 isti uzrok.
+
+### Odluka o modelu: što znači `Planiran` na kartičnom retku
+
+Uz Visa redak `Planiran` Saša je rekao: *„Planiran je ok dok ne dođe datum da se naplata skida
+s računa"*, pa precizirao: *kupovine su uvijek odrađene; `Planiran` se prebacuje u `Izvrsen`
+kad rata ili odgođeno plaćanje skine saldo s računa.* To je presudilo **S130 sukob**
+(„kartični redak je `Izvrsen`" protiv „`Status` je prekidač potvrde") u korist delta toka.
+Pravilo je prepisano u CLAUDE.md; povijesni retci se ne diraju.
+
+### `DOSPJELO_SPEC.md` — i Sašina briga iz koje je nastao
+
+Sašino pitanje: *upozorenja na mobitelu, da Koka može provjeriti u bankovnoj aplikaciji.*
+Mehanizam je bio zamišljen još u kolovozu (OVERVIEW §2.5a) i nikad izveden. Prijedlog ga
+ispravlja: **potvrđuje se košara, ne redak** — Koka u banci vidi jedan broj.
+
+Sašina briga — *„što ako je kartična isplata propuštena i zbroj košare ≠ skidanje"* — dobila
+je vlastiti odjeljak: **saldo slijedi banku** (skupni redak s bankinim brojem), **košara ostaje
+otvorena** s razlikom dok se ne razriješi. Ništa se ne upija, ništa ne nestaje.
+
+Šest odluka prihvaćeno. D6 je Sašino pitanje o trećem `Status`u (*„Očekivanje potvrde"*) —
+odgovor je **izvesti, ne spremiti**: `Planiran` je tvrdo upisan na najmanje pet mjesta.
+
+### Mjerenje koje je okrenulo zaključak
+
+Prvo mjerenje (zadnja 3 mjeseca): MC **4/4 u cent**, Visa **0/3**. Upisano kao *„Visa nije
+spremna"*. Sašino drugo pitanje (*„status na tri Visa razlike?"*) potaknulo je mjerenje
+**cijele** povijesti — i ona je rekla drugo: Visa je **16 mjeseci u cent**, a razilazi se tek
+**od veljače 2026.** Dva stara susjedna para (`∓100,00`, `∓0,99`) usput su potvrdila
+nagovještaj „kupovina u krivoj košari" iz §5.2 na stvarnim podacima.
+⚠ **Tri točne brojke, krivi zaključak** — razred „mali uzorak kao dokaz o modelu". Spec je
+ispravljen istog dana.
+
+### Što ostaje
+
+- **S148: Visa istraga od 2026-02** (prvi posao, Sašin izbor), zatim bugovi, zatim backlog.
+- Otvoreni testovi: **3** — T-S145-3 (praćenje), T-S140-8 i T-S141-1 (posao, ne test).
+- PROD i `main` netaknuti.

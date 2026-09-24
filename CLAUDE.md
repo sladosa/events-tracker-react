@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S146).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S147).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -29,24 +29,24 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | ---: | --- | :---: |
 | 55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>) |  |
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 109 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 122 | [Critical rules](<#Critical rules>) | X |
-| 1204 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1911 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1927 | [Key files](<#Key files>) |  |
-| 2060 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2080 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2102 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2128 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2168 | [Open bugs](<#Open bugs>) | ~ |
-| 2292 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2485 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2582 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2590 | [Backlog](<#Backlog>) | ~ |
-| 3008 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 3016 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 110 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 123 | [Critical rules](<#Critical rules>) | X |
+| 1214 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1928 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1944 | [Key files](<#Key files>) |  |
+| 2077 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2097 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2119 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2145 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2185 | [Open bugs](<#Open bugs>) | ~ |
+| 2313 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2506 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2603 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2611 | [Backlog](<#Backlog>) | ~ |
+| 3057 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 3065 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 3174 redaka, 18 sekcija._
+_Ukupno 3223 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -92,6 +92,7 @@ podaci hrane i AI sloj.
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
 | `docs/DELTA_WINDOW_SPEC.md`               | **Delta prozor — sidro prestaje biti rez** (prijedlog prije koda, S141) — sidro kao **oznaka + kontrolna točka** umjesto poda; zatvara zamku iz S126 („retci ispadaju iz svakog budućeg delta sheeta“) mehanizmom umjesto disciplinom |
 | `docs/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
+| `docs/DOSPJELO_SPEC.md`                   | **Dospjelo → potvrdi** (prijedlog prije koda, S147, odluke D1–D6 prihvaćene) — traka na Overviewu potvrđuje **košaru**, ne redak; kad se Σ ne slaže, **saldo slijedi banku, košara ostaje otvorena**. §2 nosi mjerenje košara vs naplata (MC 4/4 u cent, Visa u cent do 2026-01) |
 | `docs/FAZA3_IMPORT_AUTOMATIKA.md`         | **⛔ Prije nego kreneš graditi Fazu 3** — izmjereno da meta ne postoji (`Datum naplate` 0 praznih od 5.192); okidač za ponovno otvaranje i pet odluka prije koda |
 | `docs/FINANCIJE_STATUS.md`                 | **Stanje migracije Financija** — tranše, PROD povijest, „Nakon tranši". ⚠ **Kvarljivo**: provjeri datum prije nego povjeruješ brojci; pravila su ostala u CLAUDE.md-u |
 | `docs/Analytics_tab.md`                   | **Cross-Area** analitika — `periods`, Series, AnalyticsDef Excel. Čeka drugu gustu Areu. ⚠ §3 („bucketiranje client-side") je opovrgnut u OVERVIEW_TAB_SPEC §2.2 |
@@ -509,9 +510,16 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **Ovo NIJE iznimka od zabrane automatske minute** — ona vrijedi za **import**, gdje je
   kolizija način na koji se hvata dvostruki uvoz istog filea. Ovdje čovjek tipka jedan redak,
   a dvije stvarne transakcije istog dana moraju proći. P2 ostaje: pomiče se **cijela sesija**.
-- **`Status` kartičnog retka je `Izvrsen`, ne `Planiran`.** Izmjereno: Visa **855/855**
-  `Izvrsen`, Racun 689/689, Mastercard 754 uz 11 `Planiran` (to su rate). Kupovina se
-  **dogodila**; `Planiran` znači „nije se dogodilo" i pločica se na to značenje oslanja.
+- **✅ ODLUČENO S147 (Saša): `Status` kartičnog retka znači „je li RAČUN već teretio", ne**
+  **„je li se kupovina dogodila".** *Kupovina je uvijek odrađena; `Planiran` = skidanje s
+  računa još nije bilo; u `Izvrsen` prelazi kad skupna naplata (ili rata) stvarno skine
+  novac.* Time je zatvoren sukob iz S130 (v. „`Provjeri` prijavljuje…", § Delta sheet) —
+  pobijedio je **delta tok**. Prijelaz radi **čovjek** koji gleda banku, nikad automat po
+  dospijeću; mehanizam je predložen u `docs/DOSPJELO_SPEC.md` (košara, ne redak).
+  ⚠ Staro pravilo („kartični redak je `Izvrsen`", izmjereno Visa **855/855**, Racun 689/689,
+  MC 754 uz 11 `Planiran`) opisuje **zatvorene** košare i za njih ostaje istinito —
+  **povijesni retci se ne diraju**. Na PROD-u 24.09.2026. je `Planiran` **81** redak, svi
+  kartični (MC 40, Visa 41), `Racun` 0.
   Saldo se ionako ne miče — kartični redak je pot, račun tereti tek skupna naplata.
   ⚠ Posljedica koju treba znati prije nego je netko primijeti: između kupovine i izvoda
   **nadolazeća naplata nigdje ne postoji** (`Racun/Planiran` = 0 redaka), pa saldo pokazuje
@@ -938,14 +946,16 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   predloska za kopiranje uopće nema ⇒ predložak je ostajao **bez ijednog dropdowna**.
   Sada dropdowne piše **pisač retka** (`addActivitiesSheetsTo`, parametar `dvBlankRows`),
   svakom retku sa **svojom** adresom. Čuva `deltaBlankRowDropdowns.test.mjs`.
-- **⚠ `Provjeri` PRIJAVLJUJE NORMALNO STANJE OTVORENE KOŠARE** (S130, neodlučeno).
+- **⚠ `Provjeri` PRIJAVLJUJE NORMALNO STANJE OTVORENE KOŠARE** (S130; **odlučeno S147** —
+  `Planiran` ostaje dok račun ne tereti, dakle formula je **ispravna**, a kriv je bio potez
+  „primijeni usklađenje prije naplate". V. „`Status` kartičnog retka", § Unos u aplikaciji).
   Formula glasi `Status <> "Planiran" AND dospijeće > TODAY()` ⇒
   *„dospijeva tek … — nije moglo biti naplaćeno"*. Za kartični redak u **otvorenoj**
   košari to je **normalno stanje**: kupovina se dogodila (`Izvrsen`), a skupna naplata
   tek dolazi. Izmjereno na `MC_2026-08`: košara je **46 redaka**, svih 46 dospijeva
   `11.09.2026.`, svih 46 `Izvor = Mastercard`. Dok su `Planiran`, stupac je **prazan**;
   primijeni li se usklađenje izvoda (`Planiran → Izvrsen`), pali **svih 46**.
-  ⚠ **Ovdje se dva zapisana pravila razilaze i to nije riješeno:**
+  ⚠ **Ovdje su se dva zapisana pravila razilazila (riješeno S147, v. gore):**
   „`Status` kartičnog retka je `Izvrsen`, kupovina se dogodila" (izmjereno Visa 855/855)
   protiv delta toka gdje je `Status` **prekidač potvrde** („potvrdi promjenom `Status`a").
   Slažu se za **zatvorene** košare (dospijeće u prošlosti), sudaraju samo za otvorenu.
@@ -1813,6 +1823,13 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   ⚠ Prva tvrdnja je **prolazila** — pa je izgledalo kao da baner ne radi, a nedostajao je
   klik. `c25136e` (S76). Popravak **samo u specu**, po pravilu iz § Session workflow.
 
+- **⚠ `getaddrinfo ENOTFOUND` / `ECONNRESET` u E2E izlazu znači da run NIJE IZMJERIO NIŠTA**
+  (S147). Dva uzastopna runa su pala **isključivo** na mreži prema TEST bazi, a tvrdnje u
+  njima izgledaju kao padovi featurea (`toHaveCount` 0, `localStorage` SecurityError).
+  Prije čitanja pada: `grep -c "ENOTFOUND|ECONNRESET"` i `curl` prema bazi; na mirnoj mreži
+  isti specovi su dali **11/11**. ⚠ I: `dev:prod` pokrenut **između** dva runa sjeda na
+  oslobođeni 5173, pa drugi run **stane** na `assertServedBuildIsTest` — ispravno, ali traži
+  da se redoslijed dogovori s korisnikom.
 - **⚠ E2E PREUZME DEV SERVER KOJI VEĆ STOJI NA 5173 — I TO MOŽE BITI PROD** (S133).
   `playwright.config.ts` ima `reuseExistingServer: true` i `baseURL: localhost:5173`.
   Vrti li se ondje `npm run dev:prod`, Playwright **ne podiže svoj TEST server nego
@@ -2212,6 +2229,8 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   (`:422`) — snimak od prije edita više ne sadrži novi ključ. ⚠ **Hipoteza nije dokazana**
   i nije se dala ponoviti; prvo reproducirati, pa popravljati. Redak koji **postoji** a app
   tvrdi da ga nema je gori od greške koja se vidi.
+  ⚠ **S147: ponovo pokušano i opet se NE javlja** (T-S131-34, `dev:prod`, 24.09.): pomak
+  23.09. → 24.09. → `Save → View` otvori redak; povratak isto. Unos ostaje, test je zatvoren.
 
 - **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
   StrictMode artefakt, nizak rizik
@@ -2248,6 +2267,8 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 
 - **E8-2 Area select timeout:** grantee-write test padne na `selectOption` (element disabled) —
   moguće isti family kao BUG-S103-ANYATTR
+  ⚠ S147: ponovljen (3 pada u jednom runu, 11/11 u sljedećem). Nova hipoteza: restore filtra
+  bez timeouta (v. Backlog „Restoring filter…“).
 
 - **BUG-S117-RULESHAPE:** panel i import **ne pišu isti oblik** `validation_rules` za
   `depends_on` atribut. Panel: `{type, suggest: [...], allow_other: true, depends_on}`;
@@ -2600,6 +2621,34 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 > kosta zadatak.
 
 ### Otvoreno — ovo je posao
+
+**⭐⭐ Visa košara se ne slaže s PBZ naplatom OD VELJAČE 2026. — prvi posao S148** (izmjereno
+S147, PROD, bruto isplata košare po mjesecu naplate protiv PBZ retka na RF-u). **16 mjeseci
+u cent** (2024-10 → 2026-01), osim dva susjedna para koji se poništavaju (2025-04/05 `∓100,00`,
+2025-07/08 `∓0,99` — potpis kupovine u krivom ciklusu). Od **2026-02** razlika 6 od 7 mjeseci:
+`123,33 · 35,00 · 195,00 · 126,84 · 304,64 · −45,53` (2026-04 `0,00`).
+⚠ Dakle **model radi, a nešto se promijenilo oko veljače** — ograničen posao, ne svojstvo kartice.
+Počni od `2026-02 · 123,33` protiv `PBZVISA` izvoda. Okrugli iznosi **sugeriraju** retke
+upisane punim iznosom uz rate — **hipoteza, ne nalaz**.
+⚠ Saldo to **ne** otkriva (kartični retci ga ne miču); vidi se samo kao Σ košare ≠ naplata.
+⚠ Mjeriti **bruto isplatu**: do 2026-06 košara nosi i zrcalni redak `PRIMLJENA UPLATA - HVALA`
+(`Izvor = Visa`, uplata = naplata), pa bi neto pokazao samu razliku umjesto zbroja.
+Blokira D4 u `docs/DOSPJELO_SPEC.md` (Visa u traci).
+
+**⭐ „Restoring filter…" nema timeout — jedan zahtjev bez odgovora zaključa filter panel**
+(S147, uživo na `dev:prod`). `FilterContext.doRestore` (`:229-330`) čeka **niz** `await`-ova
+prema bazi bez ikakve granice; dok traje, `ProgressiveCategorySelector` umjesto izbornika
+crta samo spinner — nema poruke, nema „pokušaj ponovno". Okidač je bila nestabilna mreža, ali
+kvar je u tome što **izostanak odgovora nema izlaz** (razred T-S140 „zahtjevi koji nikad ne
+dobiju odgovor"). F5 je pomogao.
+⚠ **Hipoteza, ne nalaz:** poznati **E8-2** (Area select ostaje disabled, S147 opet 3 pada
+`waiting for element to be visible and enabled` ×229) mogao bi biti isti uzrok. Ako jest,
+jedan popravak (timeout + poruka + nastavak bez restorea) zatvara oboje.
+
+**Kolone liste: `—` za vrijeme učitavanja izgleda isto kao prazan podatak** (S147, sitnica).
+`useListColumnValues` stiže **poslije** redaka, pa lista kratko pokazuje `—` u `Tip`/iznosu.
+Isti razred kao „prazno zbog mrtve reference izgleda identično kao prazno zbog nedostatka
+podatka" (§ Kolone). Lijek: blijeda crtica ili sjena dok se čeka.
 
 **⭐ Help ne zna u kojoj si Arei — a funkcija to VEĆ očekuje** (S144). `help.ts:118` gradi
 redak `area: <ime>` iz `context.areaName`, a klijent šalje `context: { page, areaId }`

@@ -5,7 +5,7 @@
 
 ---
 
-## T-S145-1 ⬜ Overview tab preživi povratak — sva tri puta
+## T-S145-1 ✅ Overview tab preživi povratak — sva tri puta
 
 **Što je popravljeno:** `BUG-S145-OVERVIEWTAB`. Zastavica `loaded` u `useAreaDashboard` je
 preživljavala promjenu `areaId`-a, pa je u prozoru dok se `FilterContext` još obnavlja
@@ -33,7 +33,7 @@ nakon svake izmjene u `useAreaDashboard` ili u toj zaštiti.
 
 ---
 
-## T-S145-2 ⬜ Rata s ostatkom zaokruživanja
+## T-S145-2 ✅ Rata s ostatkom zaokruživanja
 
 **Što je popravljeno:** `BUG-S145-RATASPLIT`. Svaka rata je dobivala isti zaokruženi iznos,
 pa je zbroj bio manji od ukupnog. Izmjereno na Kokinom planu od 22.09.2026.:
