@@ -17,6 +17,9 @@ import type { PeriodKey } from '@/hooks/useDateBounds';
 //     Ime kategorije se svejedno vidjelo, jer dolazi iz spremljenog `selectionChain`-a
 //     a ne iz baze — zato je simptom izgledao kao kvar citanja, ne kao stara snimka.
 const FILTER_STORAGE_KEY = dbScopedKey('events-tracker-filter-state');
+/** How long a restore may wait for the database before giving up (S149).
+ *  Healthy restores finish in well under a second; 8 s is past any real answer. */
+const RESTORE_DEADLINE_MS = 8000;
 // localStorage = persists across browser sessions (user sees last-used area on next open)
 const filterStorage = localStorage;
 
@@ -95,6 +98,10 @@ export interface FilterContextType {
   setDropdownOptions: (options: Category[]) => void;
   isRestored: boolean;
   isRestoring: boolean;
+  /** Restore gave up waiting for the database (S149): the Area was kept, the
+   *  category was dropped. Consumers say so — v. `RESTORE_DEADLINE_MS`. */
+  restoreTimedOut: boolean;
+  dismissRestoreTimedOut: () => void;
   
   // === Shortcuts ===
   selectedShortcutId: UUID | null;
@@ -219,6 +226,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   const [isRestoring, setIsRestoring] = useState(false);
   const restoreAttempted = useRef(false);
   const restoreAbortedRef = useRef(false);
+  const [restoreTimedOut, setRestoreTimedOut] = useState(false);
+  const dismissRestoreTimedOut = useCallback(() => setRestoreTimedOut(false), []);
 
   // Shortcut filter_state was just applied — consumers should skip their next reset effect
   const skipNextFilterReset = useRef(false);
@@ -240,7 +249,29 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
       }
       
       setIsRestoring(true);
-      
+
+      // /!\ ROK, NE NADA (S149). Restore je niz `await`-ova prema bazi, a
+      //   zahtjev koji nikad ne dobije odgovor (T-S140: 24 od 347 u jednom E2E
+      //   runu) ostavljao je `isRestoring` zauvijek `true` -- filter panel je
+      //   crtao samo spinner, bez poruke i bez izlaza; pomagao je tek F5.
+      //   Na isteku se ZADRZI Area (id je iz storagea, ne treba bazu) a pusti
+      //   kategorija: prazan `selectionChain` natjera selektor da Areu ucita
+      //   SVJEZIM upitom, sto je ujedno i drugi pokusaj. Kasni odgovori se
+      //   odbacuju preko `restoreAbortedRef`, isto kao kod `reset()`.
+      //   /!\ Timer se NE cisti u cleanupu efekta: StrictMode montira dvaput, a
+      //   `restoreAttempted` pusti samo prvi prolaz -- cleanup bi ga ubio.
+      const deadline = setTimeout(() => {
+        if (restoreAbortedRef.current) return;
+        restoreAbortedRef.current = true;
+        setSelectionChain([]);
+        setDropdownOptions([]);
+        setIsLeafCategory(false);
+        setFilter(prev => ({ ...prev, categoryId: null, categoryPath: [] }));
+        setIsRestoring(false);
+        setIsRestored(true);
+        setRestoreTimedOut(true);
+      }, RESTORE_DEADLINE_MS);
+
       try {
         const state: StoredState = JSON.parse(stored);
         
@@ -325,6 +356,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
         if (restoreAbortedRef.current) return;
         console.error('Error restoring filter state:', e);
       } finally {
+        clearTimeout(deadline);
         if (!restoreAbortedRef.current) {
           setIsRestoring(false);
           setIsRestored(true);
@@ -491,6 +523,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   // --------------------------------------------
 
   const selectArea = useCallback((areaId: UUID | null) => {
+    setRestoreTimedOut(false);   // user chose again — the timeout notice has done its job
     setFilter(prev => ({
       ...prev,
       areaId,
@@ -502,6 +535,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   }, []);
 
   const selectCategory = useCallback((categoryId: UUID | null, path: UUID[] = []) => {
+    setRestoreTimedOut(false);   // user chose again — the timeout notice has done its job
     setFilter(prev => ({
       ...prev,
       categoryId,
@@ -512,6 +546,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   // 2.1: Atomic – sets area AND category in one setState call
   // Prevents the race where selectArea() resets categoryId to null before selectCategory() fires
   const selectAreaAndCategory = useCallback((areaId: UUID | null, categoryId: UUID | null, path: UUID[] = []) => {
+    setRestoreTimedOut(false);   // user chose again — the timeout notice has done its job
     setFilter(prev => ({
       ...prev,
       areaId,
@@ -598,6 +633,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
 
   const reset = useCallback(() => {
     restoreAbortedRef.current = true;   // abort any in-flight doRestore immediately
+    setRestoreTimedOut(false);
     setIsRestoring(false);
     setIsRestored(true);
     setFilter(defaultFilterState);
@@ -770,6 +806,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     setDropdownOptions,
     isRestored,
     isRestoring,
+    restoreTimedOut,
+    dismissRestoreTimedOut,
     // Shortcuts
     selectedShortcutId,
     setSelectedShortcutId,
@@ -810,7 +848,7 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     isFiltered
   }), [
     filter, isLeafCategory, fullPathDisplay, selectionChain, dropdownOptions,
-    isRestored, isRestoring, selectedShortcutId, selectArea, selectCategory,
+    isRestored, isRestoring, restoreTimedOut, dismissRestoreTimedOut, selectedShortcutId, selectArea, selectCategory,
     selectAreaAndCategory, navigateToPath, navigateUp, reset, resetCategory,
     periodLabel, setPeriodKey, setDateRange, setSearchQuery, setCommentSearch,
     clearCommentSearch, setAttrFilter, clearAttrFilter, setSortOrder,

@@ -46,6 +46,8 @@ export function ProgressiveCategorySelector({
     setDropdownOptions,
     isRestored,
     isRestoring,
+    restoreTimedOut,
+    dismissRestoreTimedOut,
     // Shortcuts
     selectedShortcutId,
     setSelectedShortcutId,
@@ -792,6 +794,24 @@ export function ProgressiveCategorySelector({
 
   return (
     <div className={className}>
+      {/* S149: restore je istekao — reci sto se dogodilo I sto sad; upozorenje
+          bez izlaza se nauci otklikati (S143). */}
+      {restoreTimedOut && (
+        <div className="flex items-start gap-2 mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+          <span className="flex-1">
+            Baza nije odgovorila na vrijeme pa filter nije vraćen do kraja: prikazana je
+            cijela Area. Kategoriju odaberi ponovno.
+          </span>
+          <button
+            type="button"
+            onClick={dismissRestoreTimedOut}
+            className="text-amber-600 hover:text-amber-800"
+            aria-label="Zatvori"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       {/* Shortcuts Row */}
       <div className="flex items-end gap-2 mb-3">
         {/* Shortcuts Dropdown */}

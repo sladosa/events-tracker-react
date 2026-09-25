@@ -2662,15 +2662,8 @@ iz hipoteze S147 **nisu** bili uzrok. Kolovoški izvod (naplata 07.09.) uvezen: 
 (`ODOBRENJE … 100,00`) i pomak unutar dva ciklusa; Σ isplata izvoda = Σ košare u cent.
 Odblokira D4 u `docs/DOSPJELO_SPEC.md`.
 
-**⭐ „Restoring filter…" nema timeout — jedan zahtjev bez odgovora zaključa filter panel**
-(S147, uživo na `dev:prod`). `FilterContext.doRestore` (`:229-330`) čeka **niz** `await`-ova
-prema bazi bez ikakve granice; dok traje, `ProgressiveCategorySelector` umjesto izbornika
-crta samo spinner — nema poruke, nema „pokušaj ponovno". Okidač je bila nestabilna mreža, ali
-kvar je u tome što **izostanak odgovora nema izlaz** (razred T-S140 „zahtjevi koji nikad ne
-dobiju odgovor"). F5 je pomogao.
-⚠ **Hipoteza, ne nalaz:** poznati **E8-2** (Area select ostaje disabled, S147 opet 3 pada
-`waiting for element to be visible and enabled` ×229) mogao bi biti isti uzrok. Ako jest,
-jedan popravak (timeout + poruka + nastavak bez restorea) zatvara oboje.
+**✅ ~~„Restoring filter…" nema timeout~~ — ZATVORENO S149.** `FilterContext.doRestore` ima rok `RESTORE_DEADLINE_MS` (8 s); na isteku **zadrži Areu** (id je iz storagea), **pusti kategoriju** (prazan `selectionChain` natjera selektor da Areu učita svježim upitom, dakle drugi pokušaj) i kaže to trakom. ⚠ Timer se **ne čisti u cleanupu efekta** — StrictMode montira dvaput, a `restoreAttempted` pusti samo prvi prolaz. Čuva `e2e/tests/S149_restore_deadline.spec.ts` (svi `categories` zahtjevi vise zauvijek; sabotaža roka ⇒ pad na `toBeHidden`).
+⚠ **Hipoteza „E8-2 je isti uzrok" je OSLABLJENA:** dok restore traje, selektor ne crta `<select>` nego samo spinner, a E8-2 pada na `select` koji **postoji** i `disabled` je. Drugi mehanizam; E8-2 ostaje otvoren.
 
 **Kolone liste: `—` za vrijeme učitavanja izgleda isto kao prazan podatak** (S147, sitnica).
 `useListColumnValues` stiže **poslije** redaka, pa lista kratko pokazuje `—` u `Tip`/iznosu.
