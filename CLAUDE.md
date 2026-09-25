@@ -2311,14 +2311,6 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   atributa ima nepraznu listu — dakle rupa čeka prvog korisnika, ne ruši ništa danas.
   Fix: kolona za fallback opcije + isti graditelj pravila na obje strane.
 
-- **BUG-S148-G: postojeći redak s krivim e-mailom u koloni G tiho postaje DUPLIKAT.**
-  `smartReclassify` (`excelImport.ts:820`) redak koji **postoji** ali ga `canUpdateExisting`
-  odbije šalje u `toCreate` i javlja *„not found in database"*. Za redak čiji je autor u bazi
-  drugi korisnik to nije „nema ga" nego „nije tvoj" — isti razred kao `.eq('user_id')` filtar
-  koji je S125 izbacio iz upita, samo se vratio kroz kolonu G. Prijedlog: `found && !canUpdate`
-  ⇒ **stani i javi** („redak postoji, autor X — odaberi fix as owner ili ispravi kolonu G"),
-  nikad INSERT. Izmjereno S148: 7 duplikata, popravljeno fileom (`visa_popravak --duplikati`).
-
 - **Bulk delete (checkbox) nije ograničen za grantee-a**
 
 - **„Import as mine" za write grantee unutar iste shared aree** nema smisla (pravi put je
@@ -2332,6 +2324,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > provjereno nosi li koji od njih pravilo kojeg nema drugdje: tri su ga nosila i sva tri su
 > zadrzana (dva gore, `Postgres upgrade` u Backlogu). Isti postupak kao „Spaseno iz plana" (S137).
 
+- **~~BUG-S148-G~~** — zatvoreno S149: postojeći redak čiji je autor drugi korisnik (kriv e-mail u kol. G) više ne postaje INSERT nego **zaustavi uvoz** (preview ga javlja crveno i gasi Apply); reklasifikacija ide **prije** brisanja, pa zaustavljanje ne ostavi pola filea. Usput: palo čitanje u `smartReclassify` više se ne čita kao „nema ih" (prije bi blok od 200 redaka tiho postao 200 duplikata). Čuva `importForeignRows.test.mjs` (sabotaža ruši 3). **Neverificirano uživo: T-S149-1.**
 - **~~OTVORENO-S143-4594~~** — zatvoreno S144: fantom `−45,94` (17.08.2025.) obrisan, `−0,80` pomaknut s 07.08. na 07.07.2025., oboje kroz Excel roundtrip. Obje kontrolne točke ZABA (30.07.2026. i 06.09.2026.) sada `0,00`. „Blizanac" iz opisa bio je redak `Financije_old` — v. pravilo o upitu bez filtra po Arei.
 - **~~BUG-S145-RATASPLIT~~** — zatvoreno S145: rata modal je svakoj rati davao isti zaokruženi iznos, pa je zbroj bio manji od ukupnog (`117,32 / 6` ⇒ `117,30`). Ostatak sada nosi **prva** rata, kao kod banke. Pravilo: § Critical rules; čuva `src/lib/__tests__/rataAmounts.test.mjs` (21 tvrdnja, sabotaža ruši 11).
 - **~~BUG-S123-DELTAACCT~~** — zatvoreno S123: racun delta sheeta dolazio iz filtra a eventi iz profila => prazan sheet s tocnim sidrom. Pravilo: § Delta sheet.

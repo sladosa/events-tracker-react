@@ -20,6 +20,7 @@ import {
   warnStaleUntouched,
   analyzeUpdates,
   analyzeDeletes,
+  foreignOwnedMessage,
 } from '@/lib/excelImport';
 import type { ForeignMode } from '@/lib/excelTypes';
 import { importStructureExcel } from '@/lib/structureImport';
@@ -338,7 +339,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const deleteCount       = deleteAnalysis?.deletes.length ?? 0;
   const deleteGuardActive = deleteCount > 0;
   const confirmedGuardActive = (updateAnalysis?.confirmedCount ?? 0) > 0;
-  const applyBlocked      = (updateGuardActive && !updatesAcknowledged)
+  // BUG-S148-G: redak postoji pod drugim autorom — apply bi stao, pa se ne nudi.
+  const foreignOwnedCount = updateAnalysis?.foreignOwned.length ?? 0;
+  const applyBlocked      = foreignOwnedCount > 0
+                          || (updateGuardActive && !updatesAcknowledged)
                           || (deleteGuardActive && !deletesAcknowledged)
                           || (confirmedGuardActive && !confirmedAcknowledged);
 
@@ -904,6 +908,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   )}
                 </div>
               )}
+              {updateAnalysis && foreignOwnedCount > 0 && (
+                <div className="bg-red-50 border border-red-300 rounded-lg p-2.5 text-xs text-red-800">
+                  {foreignOwnedMessage(updateAnalysis.foreignOwned, 'preview')}
+                </div>
+              )}
               {updateAnalysis && updateAnalysis.invalidIdCount > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800">
                   ⚠️ {updateAnalysis.invalidIdCount} row{updateAnalysis.invalidIdCount !== 1 ? 's have' : ' has'} an event_id that no longer matches the database — they will be imported as NEW events instead.
@@ -1055,7 +1064,9 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   disabled={applyBlocked}
                   title={
                     applyBlocked
-                      ? (deleteGuardActive && !deletesAcknowledged
+                      ? (foreignOwnedCount > 0
+                          ? 'Neki retci postoje pod drugim autorom — ispravi kolonu G'
+                          : deleteGuardActive && !deletesAcknowledged
                           ? 'Review the deletion list and tick its checkbox first'
                           : confirmedGuardActive && !confirmedAcknowledged
                             ? 'Neki retci su unutar potvrdenog stanja — potvrdi i tu kvacicu'

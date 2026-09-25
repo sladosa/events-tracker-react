@@ -24,6 +24,7 @@ import { canonicalDatetime } from './excelDatetime';
 import { loadCategoriesForExport, loadAttrDefsForCategories } from './excelDataLoader';
 import { upsertParentEvent, type ParentAttrWrite } from './parentEventLoader';
 import { fetchAllPagedIn } from './supabasePaging';
+import { withRetryQuery } from './retry';
 import type {
   ExportCategoriesDict,
   ExportAttrDef,
@@ -769,13 +770,83 @@ export async function warnStaleUntouched(
 // Smart reclassify (port of Python V2.4.6)
 // ─────────────────────────────────────────────
 
+/**
+ * Razvrstaj UPDATE retke prema stanju u bazi. Cista funkcija -- zovu je apply
+ * put (`smartReclassify`) i preview (`analyzeUpdates`), pa se ne mogu raziCi.
+ *
+ * /!\ „NE POSTOJI" I „NIJE TVOJ" SU DVA RAZLICITA ODGOVORA (BUG-S148-G).
+ *   Do S149 su oba isla u CREATE, uz poruku "event ID(s) not found in database".
+ *   Za redak koji POSTOJI pod drugim autorom to je neistina, a posljedica je
+ *   DUPLIKAT: izmjereno S148 na PROD-u, 11 ispravaka => 4 azurirana + 7 kopija,
+ *   jer je generirani file u koloni G nosio e-mail uvoznika umjesto autora.
+ *   Parser po koloni G odlucuje je li redak tudji, pa `fix_as_owner` nije ni
+ *   bio ponudjen. Sada takav redak ide u `foreign` i uvoz STANE -- INSERT za
+ *   redak koji postoji nikad nije ispravan odgovor.
+ */
+export function sortUpdateRows(
+  toUpdate:    ParsedImportRow[],
+  existingMap: ReadonlyMap<string, { catId: string; userId: string }>,
+  catByPath:   Record<string, string>,
+  userId:      string,
+): {
+  valid:    ParsedImportRow[];
+  creates:  ParsedImportRow[];
+  notFound: string[];
+  mismatch: string[];
+  foreign:  ParsedImportRow[];
+} {
+  const valid:    ParsedImportRow[] = [];
+  const creates:  ParsedImportRow[] = [];
+  const notFound: string[] = [];
+  const mismatch: string[] = [];
+  const foreign:  ParsedImportRow[] = [];
+
+  for (const row of toUpdate) {
+    const eid   = row.event_id!;
+    const found = existingMap.get(eid);
+    if (!found) {
+      creates.push({ ...row, event_id: null });
+      notFound.push(eid.slice(0, 8) + '...');
+      continue;
+    }
+    if (!canUpdateExisting(found.userId, row, userId)) {
+      foreign.push(row);
+      continue;
+    }
+    const expectedCatId = catByPath[`${row.area}||${row.category_path}`] ?? null;
+    if (found.catId !== expectedCatId) {
+      creates.push({ ...row, event_id: null });
+      mismatch.push(eid.slice(0, 8) + '...');
+      continue;
+    }
+    valid.push(row);
+  }
+  return { valid, creates, notFound, mismatch, foreign };
+}
+
+/**
+ * Poruka za retke koji postoje pod drugim autorom -- isti tekst u previewu i na
+ * applyju, razlikuje se samo uvod (`preview`: ne moze se pokrenuti; `apply`:
+ * zaustavljeno, nista nije upisano).
+ */
+export function foreignOwnedMessage(rows: ParsedImportRow[], phase: 'preview' | 'apply'): string {
+  const named = rows.slice(0, 5)
+    .map(r => `red ${r._source_row} (${r.event_date} ${(r.comment || '').slice(0, 24)})`)
+    .join(' · ');
+  const lead = phase === 'preview' ? 'Uvoz se ne može pokrenuti' : 'Uvoz zaustavljen, ništa nije upisano';
+  return `${lead}: ${rows.length} ${rows.length === 1 ? 'redak postoji' : 'redaka postoji'} `
+    + `u bazi pod DRUGIM autorom, a kolona G (User) kaže da su tvoji. Upisati ih kao nove `
+    + `napravilo bi duplikate. Ispravi e-mail u koloni G na autora retka — tada ti se nudi `
+    + `„Fix as owner". (${named}${rows.length > 5 ? ' …' : ''})`;
+}
+
 async function smartReclassify(
   userId:         string,
   toCreate:       ParsedImportRow[],
   toUpdate:       ParsedImportRow[],
   categoriesDict: ExportCategoriesDict,
-): Promise<{ toCreate: ParsedImportRow[]; toUpdate: ParsedImportRow[]; warnings: string[] }> {
-  if (toUpdate.length === 0) return { toCreate, toUpdate, warnings: [] };
+): Promise<{ toCreate: ParsedImportRow[]; toUpdate: ParsedImportRow[]; warnings: string[]; errors: string[] }> {
+  if (toUpdate.length === 0) return { toCreate, toUpdate, warnings: [], errors: [] };
 
   const catByPath: Record<string, string> = {};
   for (const [id, info] of Object.entries(categoriesDict)) catByPath[`${info.area_name}||${info.full_path}`] = id;
@@ -791,53 +862,38 @@ async function smartReclassify(
   //   neistina o pravima, ne o postojanju. Izmjereno 2026-09-02, na prvom
   //   pokusaju ispravka tudjeg retka.
   //   RLS i dalje stiti: sto korisnik ne smije vidjeti, upit mu ne vrati.
+  // /!\ PALO CITANJE NIJE „NEMA IH" (S149). Do tada je `error` odbacivan
+  //   destrukturiranjem, pa bi jedan pali blok od 200 ID-eva svih 200 redaka
+  //   proglasio nepostojecima i upisao ih kao NOVE -- masovni duplikat bez
+  //   ijedne greske. Isti razred kao `excelDataLoader` (S125).
   const RECLASSIFY_CHUNK = 200;
   const allExisting: Array<{ id: string; category_id: string; user_id: string }> = [];
   for (let i = 0; i < eventIds.length; i += RECLASSIFY_CHUNK) {
     const chunk = eventIds.slice(i, i + RECLASSIFY_CHUNK);
-    const { data } = await supabase
+    const { data, error } = await withRetryQuery(() => supabase
       .from('events')
       .select('id, category_id, user_id')
-      .in('id', chunk);
-    if (data) allExisting.push(...(data as { id: string; category_id: string; user_id: string }[]));
+      .in('id', chunk));
+    if (error) {
+      throw new Error(`Uvoz prekinut - ne mogu provjeriti postojece retke: ${error.message}`);
+    }
+    allExisting.push(...((data ?? []) as { id: string; category_id: string; user_id: string }[]));
   }
 
   const existingMap = new Map<string, { catId: string; userId: string }>(
     allExisting.map(e => [e.id, { catId: e.category_id, userId: e.user_id }])
   );
 
-  const validUpdates:        ParsedImportRow[] = [];
-  const reclassifiedCreates: ParsedImportRow[] = [];
-  const notFound:            string[] = [];
-  const mismatch:            string[] = [];
+  const { valid, creates, notFound, mismatch, foreign } =
+    sortUpdateRows(toUpdate, existingMap, catByPath, userId);
 
-  for (const row of toUpdate) {
-    const eid = row.event_id!;
-
-    const found = existingMap.get(eid);
-    // Tudji redak je "nadjen" samo u `fix_as_owner` nacinu; inace se ponasa
-    // tocno kao dosad -- nije nadjen, pa ide u CREATE.
-    if (!found || !canUpdateExisting(found.userId, row, userId)) {
-      reclassifiedCreates.push({ ...row, event_id: null });
-      notFound.push(eid.slice(0, 8) + '...');
-      continue;
-    }
-
-    const existingCatId  = found.catId;
-    const expectedCatId  = catByPath[`${row.area}||${row.category_path}`] ?? null;
-
-    if (existingCatId !== expectedCatId) {
-      reclassifiedCreates.push({ ...row, event_id: null });
-      mismatch.push(eid.slice(0, 8) + '...');
-      continue;
-    }
-
-    validUpdates.push(row);
+  if (foreign.length > 0) {
+    return { toCreate, toUpdate: [], warnings: [], errors: [foreignOwnedMessage(foreign, 'apply')] };
   }
 
   const warnings: string[] = [];
-  if (reclassifiedCreates.length > 0) {
-    let msg = `⚠️ ${reclassifiedCreates.length} row(s) had invalid event IDs → will be created as NEW events:`;
+  if (creates.length > 0) {
+    let msg = `⚠️ ${creates.length} row(s) had invalid event IDs → will be created as NEW events:`;
     if (notFound.length > 0) msg += `\n  - ${notFound.length} event ID(s) not found in database`;
     if (mismatch.length  > 0) msg += `\n  - ${mismatch.length} event ID(s) belonged to different categories`;
     msg += '\n\n💡 Tip: When adding new events in Excel, clear column A to avoid this.';
@@ -845,9 +901,10 @@ async function smartReclassify(
   }
 
   return {
-    toCreate: [...toCreate, ...reclassifiedCreates],
-    toUpdate: validUpdates,
+    toCreate: [...toCreate, ...creates],
+    toUpdate: valid,
     warnings,
+    errors: [],
   };
 }
 
@@ -1671,6 +1728,12 @@ export interface UpdateAnalysis {
   /** event_id not found / category mismatch — smartReclassify turns these into CREATE at apply */
   invalidIdCount: number;
   /**
+   * Retci koji POSTOJE u bazi pod drugim autorom, a kolona G ih prikazuje kao
+   * uvoznikove (BUG-S148-G). Apply na njima STANE -- preview to mora reci
+   * prije klika, i ne smije ih brojati u `invalidIdCount` ("bit ce NOVI").
+   */
+  foreignOwned:   ParsedImportRow[];
+  /**
    * Koliko od `updates` dira redak unutar potvrđenog stanja (faza 4).
    * 0 kad Area nema sidra ili kad guard nije bio pozvan s njima.
    */
@@ -1698,7 +1761,7 @@ export async function analyzeUpdates(
   confirmed?:     { groupSlug: string; anchors: readonly AnchorLike[] } | null,
 ): Promise<UpdateAnalysis> {
   if (toUpdate.length === 0) {
-    return { updates: [], unchangedCount: 0, invalidIdCount: 0, confirmedCount: 0 };
+    return { updates: [], unchangedCount: 0, invalidIdCount: 0, confirmedCount: 0, foreignOwned: [] };
   }
 
   // Definicije atributa koje nose račun — slug je jedan, ali definicija ima po
@@ -1738,12 +1801,13 @@ export async function analyzeUpdates(
   let unchangedCount = 0;
   let invalidIdCount = 0;
   let confirmedCount = 0;
+  const foreignOwned: ParsedImportRow[] = [];
 
   for (const row of toUpdate) {
     const existing = existingById.get(row.event_id!);
     if (!existing) { invalidIdCount++; continue; }
     if (!canUpdateExisting((existing as { user_id?: string }).user_id, row, userId)) {
-      invalidIdCount++; continue;
+      foreignOwned.push(row); continue;
     }
 
     const expectedCatId = catByPath[`${row.area}||${row.category_path}`] ?? null;
@@ -1778,7 +1842,7 @@ export async function analyzeUpdates(
     });
   }
 
-  return { updates, unchangedCount, invalidIdCount, confirmedCount };
+  return { updates, unchangedCount, invalidIdCount, confirmedCount, foreignOwned };
 }
 
 // ─────────────────────────────────────────────
@@ -2200,6 +2264,14 @@ export async function importEventsFromExcel(
   const allCatIds      = Object.keys(categoriesDict);
   const attrDefs       = await loadAttrDefsForCategories(userId, allCatIds, categoriesDict);
 
+  // Step 3a (S149): reclassify BEFORE deletions. It only reads, and it can stop
+  // the import (a row that exists under another author, BUG-S148-G) — a stop
+  // after the deletes had run would leave half the file applied.
+  const reclassified = await smartReclassify(userId, parsed.toCreate, parsed.toUpdate, categoriesDict);
+  if (reclassified.errors.length > 0) {
+    return { ...empty, errors: reclassified.errors, warnings: [...parsed.warnings] };
+  }
+
   // Step 3 (S107w): deletions first — so a row can be deleted and its session
   // rebuilt by other rows of the same file in one pass. A failure here stops the
   // import before anything is created or updated.
@@ -2216,9 +2288,6 @@ export async function importEventsFromExcel(
       };
     }
   }
-
-  // Step 4: Smart reclassify (invalid event_ids → CREATE)
-  const reclassified = await smartReclassify(userId, parsed.toCreate, parsed.toUpdate, categoriesDict);
 
   // Step 5: Validate
   const { validCreates, validUpdates, errors: validationErrors } = validateImportData(

@@ -37,7 +37,7 @@ await build({
     }),
   },
 });
-const { createEventsExcel, createDeltaExcel, parseExcelFile, DELETE_MARKER, canUpdateExisting } = await import(pathToFileURL(out).href);
+const { createEventsExcel, createDeltaExcel, parseExcelFile, DELETE_MARKER, canUpdateExisting, sortUpdateRows, foreignOwnedMessage } = await import(pathToFileURL(out).href);
 
 const CAT = 'cat1';
 const AREA = 'Financije_all';
@@ -317,6 +317,43 @@ console.log('Stari file (zaglavlje ODMAH ispod naslova) se i dalje uvozi (S143):
   ok('i ne cita zaglavlje kao podatkovni redak',
      p.toCreate.length === 0 && p.toUpdate.length === 0 && p.untouchedCount === 1,
      `create ${p.toCreate.length}, update ${p.toUpdate.length}, untouched ${p.untouchedCount}`);
+}
+
+console.log('');
+console.log('Postojeci redak pod DRUGIM autorom nikad ne postaje INSERT (BUG-S148-G):');
+{
+  // /!\ ZASTO OVAJ TEST POSTOJI: S148 je na PROD-u uvezao file ciji je
+  //   generator u koloni G upisao e-mail UVOZNIKA (Koke) na Sasine retke.
+  //   Parser ih je zato procitao kao njene, `canUpdateExisting` ih je odbio,
+  //   a reklasifikacija ih je poslala u CREATE uz poruku "not found in
+  //   database" => 7 duplikata. Redak koji postoji mora ZAUSTAVITI uvoz.
+  const row = (eid, extra = {}) => ({
+    event_id: eid, area: AREA, category_path: `${AREA} > Transakcija`,
+    event_date: '2026-09-07', comment: `redak ${eid}`, _source_row: 20, ...extra,
+  });
+  const catByPath = { [`${AREA}||${AREA} > Transakcija`]: CAT };
+  const existing = new Map([
+    ['e-sasa', { catId: CAT, userId: 'u-sasa' }],
+    ['e-koka', { catId: CAT, userId: 'u-koka' }],
+  ]);
+
+  const r = sortUpdateRows(
+    [row('e-sasa'), row('e-koka'), row('e-nema')], existing, catByPath, 'u-koka');
+  ok('tudji postojeci redak ide u `foreign`, ne u CREATE',
+     r.foreign.length === 1 && r.foreign[0].event_id === 'e-sasa'
+       && !r.creates.some(c => c.comment === 'redak e-sasa'),
+     `foreign ${r.foreign.length}, creates ${JSON.stringify(r.creates.map(c => c.comment))}`);
+  ok('vlastiti redak ostaje UPDATE', r.valid.length === 1 && r.valid[0].event_id === 'e-koka');
+  ok('redak kojeg stvarno nema i dalje postaje nov (bez event_id)',
+     r.creates.length === 1 && r.creates[0].event_id === null && r.notFound.length === 1);
+
+  const fixed = sortUpdateRows(
+    [row('e-sasa', { _fixForeign: true })], existing, catByPath, 'u-koka');
+  ok('uz `fix_as_owner` tudji redak je UPDATE', fixed.valid.length === 1 && fixed.foreign.length === 0);
+
+  const msg = foreignOwnedMessage(r.foreign, 'apply');
+  ok('poruka imenuje redak filea i kolonu G, i ne tvrdi "not found"',
+     msg.includes('red 20') && msg.includes('kolona G') && !/not found/i.test(msg), msg);
 }
 
 console.log('');
