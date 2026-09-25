@@ -37,6 +37,9 @@ prolaziti, pa je to pravilo forme, a ne baze; postojeći retci se ne diraju.
 **`HiddenInAdd` (kol. K) — polje skriveno pri unosu:**
 Za atribute čija je **ispravna vrijednost prazna** (npr. `Izvod opis`, koji se popuni tek s izvoda).
 "Show all" ga i dalje otkrije — urednost, ne zaključavanje.
+Ako file **nema** kolonu `HiddenInAdd` (stariji export, ručno skraćen file), uvoz postojeće
+skrivanje **ne dira**. Prazna ćelija u koloni koja **postoji** znači „ne skrivaj". Kod atributa
+s više redaka dovoljan je `TRUE` u **bilo kojem** retku.
 ⚠ **`IsRequired` i `HiddenInAdd` ne mogu biti oboje `TRUE`** — tvrde suprotno o istom polju. Panel
 kombinaciju ne da složiti; dođe li Excel uvozom, uvoz je prijavi i **sam preuzme označeni file**
 (`structure_REVIEW_NEEDED_*`, žute ćelije u J/K), a forma polje svejedno prikaže — obavezno pobjeđuje,
