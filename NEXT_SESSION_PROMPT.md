@@ -22,16 +22,8 @@ Pet bugova, svaki s automatskim testom (i provjereno da test pada kad se poprava
 
 ## Što treba od tebe
 
-1. **Deploy** — ništa od ovoga nije na PROD-u. Kad želiš (PowerShell):
-   ```powershell
-   git checkout main
-   if ($?) { git merge test-branch --no-edit }
-   if ($?) { git push origin main }
-   git checkout test-branch
-   if ($?) { git merge main --no-edit }
-   if ($?) { git push origin test-branch }
-   ```
-   Poslije deploya **hard refresh** (Ctrl+Shift+R).
+1. ~~Deploy~~ ✅ S149 — Saša pustio merge, `main` = `515df05` (svih 5 popravaka na PROD-u).
+   Ako nešto izgleda staro: **Ctrl+Shift+R**.
 2. ~~Tri ručna testa~~ ✅ S149 — svih 5 testova zatvoreno mjerenjem (`dev:prod` + TEST),
    sekcija arhivirana. Traka s rokom restorea javila se samo na hladnom startu `npm run dev`.
 3. ~~Komentar PP retka~~ ✅ S149 — Saša ga obrisao (Edit, Kokin račun).
@@ -52,8 +44,7 @@ Pet bugova, svaki s automatskim testom (i provjereno da test pada kad se poprava
 
 ## Stanje grana
 
-`test-branch` = `f3741cb` + ritual S149, pushan. `main` = `7ef95ac` (S147) — **iza za 5
-commita u `src/`** (S149). Deploy pušta Saša.
+`main` = `test-branch` = `515df05` (S149 deploy, Saša). Poslije toga samo ovaj handoff commit (docs).
 
 ## Što je S149 promijenio u kodu
 
