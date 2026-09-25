@@ -6,7 +6,7 @@
 
 ---
 
-## T-S149-1 ⬜ Kriv e-mail u koloni G zaustavi uvoz umjesto da napravi duplikat
+## T-S149-1 ✅ Kriv e-mail u koloni G zaustavi uvoz umjesto da napravi duplikat
 
 **Što je popravljeno:** `BUG-S148-G`. Redak koji **postoji** pod drugim autorom, a kolona G ga
 prikazuje kao uvoznikov, uvoz je slao u INSERT uz poruku *„not found in database"* — S148 je
@@ -46,7 +46,7 @@ slaboj mreži ikad opet vidi spinner dulje od ~10 s — to je nov kvar, ne ovaj.
 
 ---
 
-## T-S149-3 ⬜ Structure file bez kolone `HiddenInAdd` ne briše skrivanje
+## T-S149-3 ✅ Structure file bez kolone `HiddenInAdd` ne briše skrivanje
 
 **Što je popravljeno:** nema kolone ⇒ `hidden_in_add` iz baze ostaje. Usput: `TRUE` na
 **bilo kojem** retku atributa sada skriva (kao `IsRequired`), ne samo na prvom.
@@ -65,6 +65,12 @@ u Structure Edit panelu). Ako ga nema, uključi ga na jednom atributu.
 
 **Pad:** u koraku 4 atribut vidljiv ⇒ zastavica je obrisana.
 
+⚠ **Test vrijedi samo ako je uvoz atribut STVARNO PREPISAO** (izmjereno S149): bez toga
+zastavica preživi i nad starim kodom. Dokaz je promijenjen `Description` u panelu nakon
+uvoza. Prvi pokušaj 25.09. nije ga imao — file nije bio spremljen (Ctrl+S) — pa je
+„ostalo skriveno" bilo tvrdnja bez mjerenja. Drugi uvoz istog filea javio je `Attributes
+updated 1`, što je i pokazalo da prvi nije pisao.
+
 ⚠ Automatski dio: `src/lib/__tests__/structureHiddenInAdd.test.mjs` (7 tvrdnji; sabotaža ruši 2).
 
 ---
@@ -82,7 +88,7 @@ nove verzije.
 
 ---
 
-## T-S149-5 ⬜ Pločica kaže „zadnja promjena salda"
+## T-S149-5 ✅ Pločica kaže „zadnja promjena salda"
 
 **Preduvjet:** nakon deploya, PROD, `Financije_all` → Overview.
 
