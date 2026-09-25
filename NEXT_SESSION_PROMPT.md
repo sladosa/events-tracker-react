@@ -32,8 +32,8 @@ Pet bugova, svaki s automatskim testom (i provjereno da test pada kad se poprava
    if ($?) { git push origin test-branch }
    ```
    Poslije deploya **hard refresh** (Ctrl+Shift+R).
-2. **Tri ručna testa** (`docs/sessions/tests/S149_tests.md`): T-S149-1 (kolona G),
-   T-S149-3 (HiddenInAdd, na TEST-u), T-S149-5 (natpis, PROD nakon deploya).
+2. ~~Tri ručna testa~~ ✅ S149 — svih 5 testova zatvoreno mjerenjem (`dev:prod` + TEST),
+   sekcija arhivirana. Traka s rokom restorea javila se samo na hladnom startu `npm run dev`.
 3. ~~Komentar PP retka~~ ✅ S149 — Saša ga obrisao (Edit, Kokin račun).
    **`comment_template` ugašen na obje razine** (Structure uvoz, Kokin račun) i 8 strojnih
    komentara obrisano (`ocisti_auto_komentare.py --i-stare --apply`, izmjereno: ostalo 0,
