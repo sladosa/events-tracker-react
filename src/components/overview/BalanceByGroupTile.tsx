@@ -591,14 +591,20 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
                         gap !== null && gap > STALE_DAYS ? T.asOfNote : 'text-gray-500',
                       )}
                     >
+                      {/* ⚠ „promjena SALDA", ne „zapis" (S149). `last_on` broji samo
+                          retke koji prolaze filtre pločice — kartični (`Visa`/`Mastercard`)
+                          i `Cash` retci ne. Natpis „zadnji zapis" je na RF-u palio
+                          narančasto „prije 9 dana" dok je lista imala retke od danas:
+                          za račun koji se plaća karticom to je STALNO stanje, a
+                          upozorenje koje uvijek pali nauči se ne čitati. */}
                       {row.last_on ? (
                         <>
-                          zadnji zapis{' '}
+                          zadnja promjena salda{' '}
                           <span className="font-medium">{formatDateHr(row.last_on)}</span>
                           {gap !== null && gap > 0 && <> · prije {gap} {danWord(gap)}</>}
                         </>
                       ) : (
-                        <>zadnji zapis: nema poslije potvrde</>
+                        <>zadnja promjena salda: nema poslije potvrde</>
                       )}
                     </p>
                   )}
