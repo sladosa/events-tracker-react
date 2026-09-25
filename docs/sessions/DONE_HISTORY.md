@@ -7638,3 +7638,20 @@ Korak 2 Sašinog redoslijeda (S147): **bugovi**. Redoslijed po šteti, Saša ga 
   u bazi: 9 = točno `depends_on` atributi, `Wellness` i `hidden_in_add` netaknuti).
 - `ocisti_auto_komentare.py --i-stare --apply` (Saša): 8 strojnih komentara obrisano,
   ponovni dry run 0 / ručnih 4.465 netaknuto. Backup `backup_autocomment_prod_20260925_101104.json`.
+
+
+### PENDING sekcija S149 (arhivirana S149)
+
+#### S149 — pet bugova, svaki s testom koji je provjeren i u drugom smjeru (2026-09-25)
+
+⚠ **Ništa od ovoga nije na PROD-u dok Saša ne pusti merge na `main`.**
+
+**Detalji testova:** [tests/S149_tests.md](../../Claude-temp_R/test-sessions/archive/S149_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S149-1 | Kriv e-mail u koloni G: preview crven, Apply siv; s ispravnim e-mailom *Fix as owner* ažurira, ne dodaje | ✅ S149 — izmjereno 25.09. na `dev:prod`, Kokin račun: Sašin redak s Kokinim e-mailom ⇒ crvena kutija (red 27), Apply siv, `0 New`; korak 4 (*Fix as owner*) nije ponavljan — postojeći put, radio na PROD-u u S148 |
+| T-S149-2 | „Restoring filter…" odustane nakon 8 s, Area ostaje, traka kaže što sad | ✅ S149 — čuva automatski test (`S149_restore_deadline.spec.ts`, sabotaža pada) |
+| T-S149-3 | Structure file bez kolone `HiddenInAdd` ne briše skrivanje; prazna ćelija u postojećoj koloni ga briše | ✅ S149 — izmjereno 25.09. na TEST-u (`Health_Sasa > Medical Visit > Napomena`): file bez kolone + promijenjen opis ⇒ `Attributes updated 1`, opis `X Notes…` upisan, Napomena ostala skrivena; protuprovjera prazna ćelija ⇒ vidljiva. ⚠ Prvi pokušaj nije mjerio ništa — file nije bio spremljen, pa uvoz nije imao što pisati |
+| T-S149-4 | Nacrt Add Activityja pod ključem s ref-om baze | ✅ S149 — čuvaju automatski testovi (`S121`/`S122` E2E, sabotaža ruši 2/3) |
+| T-S149-5 | Pločica: „zadnja promjena salda" umjesto „zadnji zapis" (PROD, nakon deploya) | ✅ S149 — izmjereno 25.09. na `dev:prod`, Kokin račun (ZABA i RF) |

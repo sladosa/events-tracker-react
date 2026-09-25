@@ -2662,6 +2662,7 @@ iz hipoteze S147 **nisu** bili uzrok. Kolovoški izvod (naplata 07.09.) uvezen: 
 Odblokira D4 u `docs/DOSPJELO_SPEC.md`.
 
 **✅ ~~„Restoring filter…" nema timeout~~ — ZATVORENO S149.** `FilterContext.doRestore` ima rok `RESTORE_DEADLINE_MS` (8 s); na isteku **zadrži Areu** (id je iz storagea), **pusti kategoriju** (prazan `selectionChain` natjera selektor da Areu učita svježim upitom, dakle drugi pokušaj) i kaže to trakom. ⚠ Timer se **ne čisti u cleanupu efekta** — StrictMode montira dvaput, a `restoreAttempted` pusti samo prvi prolaz. Čuva `e2e/tests/S149_restore_deadline.spec.ts` (svi `categories` zahtjevi vise zauvijek; sabotaža roka ⇒ pad na `toBeHidden`).
+⚠ **Izmjereno uživo (S149, TEST): rok JEST istekao — na prvom otvaranju odmah nakon `npm run dev`** (Vite prevodi module + TEST baza se budi); F5 na toplom startu vrati filtar uredno. Na PROD-u (gotov build) hladnog prevođenja nema. Ako se traka ikad javi **usred rada**, rok je prekratak — to je okidač za dizanje.
 ⚠ **Hipoteza „E8-2 je isti uzrok" je OSLABLJENA:** dok restore traje, selektor ne crta `<select>` nego samo spinner, a E8-2 pada na `select` koji **postoji** i `disabled` je. Drugi mehanizam; E8-2 ostaje otvoren.
 
 **Kolone liste: `—` za vrijeme učitavanja izgleda isto kao prazan podatak** (S147, sitnica).
