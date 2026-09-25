@@ -325,7 +325,7 @@ function parseRows(ws: ExcelJS.Worksheet, h: HeaderInfo): ParsedRow[] {
 // Group multi-row DependsOn attributes into single AttrGroup
 // ─────────────────────────────────────────────────────────────
 
-function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
+export function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
   // Key: `${categoryPath}||${slug || attrName}` — groups by slug when available
   const map = new Map<string, AttrGroup>();
   const order: string[] = []; // preserve insertion order
@@ -377,6 +377,10 @@ function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
     // (očistiš jedan od tri, polje ostane obavezno) vidi se čim netko pokuša
     // spremiti. Vidljivo krivo je bolje od tiho zanemarenog.
     group.isRequired = group.isRequired || row.isRequired;
+    // Isti razlog vrijedi za `HiddenInAdd` (S149): S131 je OR uveo samo za
+    // `IsRequired` i ovu zastavicu propustio, pa je `TRUE` na drugom retku
+    // (`Stanje` ih ima dva, po jedan za svaki `WhenValue`) bio tiho zanemaren.
+    group.hiddenInAdd = group.hiddenInAdd || row.hiddenInAdd;
 
     if (row.dependsOn) {
       // DependsOn row — build options_map + defaultMap
@@ -407,11 +411,34 @@ function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
 
 function buildValidationRules(
   group: AttrGroup,
+  hiddenInAdd: boolean,
 ): Record<string, unknown> {
   const rules = buildTypeRules(group);
   // Orthogonal to validation: attached after, so it survives every branch above.
-  if (group.hiddenInAdd) rules.hidden_in_add = true;
+  if (hiddenInAdd) rules.hidden_in_add = true;
   return rules;
+}
+
+/**
+ * Je li atribut skriven u Add formi nakon ovog uvoza.
+ *
+ * /!\ KOLONA KOJE NEMA NE DIRA SVOJU POSTAVKU (S149) -- isto nacelo koje Area
+ *   postavke vec imaju (`hasSavePlusCol` i dr.). `hidden_in_add` ne zivi u
+ *   vlastitoj koloni baze nego UNUTAR `validation_rules`, a taj se na UPDATE-u
+ *   prepisuje u cijelosti. Pa je file bez kolone `HiddenInAdd` (stariji export,
+ *   rucno skracen file, tudji alat) davao pravila BEZ kljuca => `rulesDiff` =>
+ *   UPDATE => zastavica tiho obrisana. Izmjereno po konstrukciji u S139.
+ *   /!\ Za `DisableSavePlus` vrijedi drukcije (prazno ondje legitimno znaci
+ *   FALSE) -- ovdje je izostanak kolone jedini slucaj koji se cita kao „ne diraj";
+ *   prazna celija u POSTOJECOJ koloni i dalje znaci FALSE.
+ */
+export function resolveHiddenInAdd(
+  hasColumn:     boolean,
+  fromFile:      boolean,
+  existingRules: Record<string, unknown> | null | undefined,
+): boolean {
+  if (hasColumn) return fromFile;
+  return existingRules?.hidden_in_add === true;
 }
 
 function buildTypeRules(
@@ -742,16 +769,6 @@ export async function importStructureExcel(
       continue;
     }
 
-    if (group.isRequired && group.hiddenInAdd) {
-      result.reviewFlags.push({
-        attrName:     group.attrName,
-        slug:         group.slug || makeAttrSlug(group.attrName),
-        categoryPath: group.categoryPath,
-      });
-    }
-
-    const validationRules = buildValidationRules(group);
-
     // Per-category lookup: slug is unique within a category, NOT globally.
     // Two categories can have an attribute with the same slug — that's valid.
     // When Excel slug is empty, generate one client-side (no DB trigger exists).
@@ -765,6 +782,20 @@ export async function importStructureExcel(
       const existingId = attrByKey.get(nameKey);
       if (existingId) existing = attrById.get(existingId) ?? null;
     }
+
+    // Lookup ide PRIJE pravila: bez kolone `HiddenInAdd` zastavica dolazi iz baze.
+    const hiddenInAdd = resolveHiddenInAdd(
+      header.colHiddenInAdd > 0, group.hiddenInAdd, existing?.validationRules);
+
+    if (group.isRequired && hiddenInAdd) {
+      result.reviewFlags.push({
+        attrName:     group.attrName,
+        slug:         group.slug || makeAttrSlug(group.attrName),
+        categoryPath: group.categoryPath,
+      });
+    }
+
+    const validationRules = buildValidationRules(group, hiddenInAdd);
 
     if (!existing) {
       // CREATE — slug not found in THIS category (or empty slug → trigger generates)

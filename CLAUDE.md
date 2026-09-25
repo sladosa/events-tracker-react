@@ -1777,7 +1777,7 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   ⚠ **Bilo je dohvatljivo:** `make_financije_all_structure.py` je imao popis od 19 kolona uz
   komentar „redoslijed kao u app exportu" — a kod ih ima 23. Sva **tri** `hidden_in_add`
   atributa u bazi su bas u `Financije_all`, dakle u Arei koju taj alat generira.
-  Zatvoreno u alatu (kolona dodana, S139); **uvoz nije diran** — v. Backlog.
+  Zatvoreno u alatu (kolona dodana, S139), a u **S149 i u uvozu** (`resolveHiddenInAdd`: nema kolone ⇒ zadrži bazu).
   ⚠ Suprotno vrijedi za `DisableSavePlus`: ondje prazno **legitimno znaci FALSE**, pa bi
   dodavanje kolone bez tocne vrijednosti ugasilo zabranu `Save +`. Izostanak je ondje
   ispravan, a prisutnost opasna — dakle „popis kolona mora biti potpun" je **kriva** pouka.
@@ -2689,18 +2689,7 @@ od šuma. Dakle: **reci AI-u gdje je, nemoj mu uzimati knjige.**
 jer je izostanak bolji od praznog. Help koji objašnjava sidra u Fitnessu je prazan Overview
 tab izrečen riječima.
 
-**⭐ `HiddenInAdd` se čita samo iz PRVOG retka atributa, a `IsRequired` iz svih** (S140).
-Nesimetrija u `structureImport.ts`: `group.isRequired = group.isRequired || row.isRequired`
-(`:379`) protiv `hiddenInAdd` koji se postavlja samo pri stvaranju grupe (`:347`).
-⚠ S131 je tu istu stvar popravio za `IsRequired` uz izričito obrazloženje — *„prvi
-pobjeđuje” bi `TRUE` na drugom retku tiho progutao* — i **propustio ovu zastavicu**.
-⚠ **Danas ne grize**, i to je izmjereno: i app export i
-`make_financije_all_structure.py` pišu istu vrijednost u **svaki** redak atributa. Ali
-`Stanje` (`Financije_all`) ima **dva** retka jer `depends_on` daje redak po `WhenValue`, pa
-čovjek koji ručno uredi drugi redak dobiva tiho zanemarenu namjeru.
-⚠ Popravak je jedan redak (`group.hiddenInAdd = group.hiddenInAdd || row.hiddenInAdd`), ali
-**mijenja semantiku uvoza za svaki file**, pa ide uz test i uz Sašinu potvrdu — isto pravilo
-koje već stoji uz susjednu stavku o `hidden_in_add` na uvozu.
+**✅ ~~`HiddenInAdd` se čita samo iz PRVOG retka~~ — ZATVORENO S149**: OR preko redaka, kao `IsRequired`. Čuva `structureHiddenInAdd.test.mjs`.
 
 **⭐ `et_activity_draft` nosi isti razred kao filtar — ključ bez oznake baze** (S140).
 `FilterContext` je zatvoren `dbScopedKey()`-em, ali nacrt Add Activityja i dalje stoji pod
@@ -2816,16 +2805,7 @@ korisnik vidi kao „meni mi se sam zatvorio". Drugo je posljedica prvog, pa se 
 ⚠ Nije hipoteza nego mjerenje, ali **uzrok kaskade nije utvrđen** — prije popravka izbrojati
 tko sve okida refetch (`useDateBounds` settle, `areas-changed`, promjena `attrFilter`).
 
-**⭐ `hidden_in_add` se tiho brise kad Structure file nema kolonu `HiddenInAdd`** (S139).
-Popravljen je **alat** (`make_financije_all_structure.py` sada emitira kolonu), ali **uvoz je
-ostao kakav jest**: svaki drugi file bez te kolone — stariji export, rucno skracen file, tudi
-alat — i dalje brise zastavicu, i to bez ijedne poruke.
-⚠ Pravi popravak je u `structureImport.ts`: `hidden_in_add` mora slijediti **isto nacelo** koje
-Area postavke vec imaju (`hasSavePlusCol` i dr.) — nema kolone ⇒ zadrzi postojecu vrijednost.
-Traži da se u `buildValidationRules` proslijedi „je li kolona postojala", jer se danas ne
-razlikuje *„pise FALSE"* od *„kolone nema"*.
-⚠ **Ne popravljati napamet:** mijenja semantiku uvoza za svaki file, pa ide uz test i uz
-Sasinu potvrdu. Danas pogađa **3 atributa**, sva tri u `Financije_all`.
+**✅ ~~`hidden_in_add` se tiho brise kad Structure file nema kolonu `HiddenInAdd`~~ — ZATVORENO S149.** `resolveHiddenInAdd()`: nema kolone ⇒ vrijednost iz baze; prazna ćelija u **postojećoj** koloni i dalje znači FALSE. Čuva `structureHiddenInAdd.test.mjs` (sabotaža ruši 2). **Neverificirano uživo: T-S149-3.**
 
 **⭐ `ViewDetailsPage`: efekt zove `loadActivityData` PRIJE nego je deklariran** (S139,
 `react-hooks/immutability`, `:334`). Radi danas — efekti se vrte nakon rendera, pa je `const`
