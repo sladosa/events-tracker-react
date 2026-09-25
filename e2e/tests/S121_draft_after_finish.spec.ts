@@ -37,7 +37,9 @@ import { loginAsOwner, supabaseDelete } from '../fixtures/auth';
 import { selectFilterPath, SEED } from '../fixtures/filter';
 
 const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
-const DRAFT_KEY = 'et_activity_draft';
+// The draft key carries the database ref (S149, `dbScopedKey`), so a TEST draft
+// can never surface on PROD. Built the same way the app builds it.
+const DRAFT_KEY = `et_activity_draft:${new URL(process.env.VITE_SUPABASE_URL!).hostname.split('.')[0]}`;
 
 /** Wait past several auto-save ticks (AUTO_SAVE_INTERVAL is 5 s). Generous on
  *  purpose: the point is that NO tick ever writes after Finish, and the margin

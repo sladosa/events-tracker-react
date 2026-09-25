@@ -25,7 +25,9 @@ import { test, expect } from '@playwright/test';
 import { loginAsOwner } from '../fixtures/auth';
 import { selectFilterPath, SEED } from '../fixtures/filter';
 
-const DRAFT_KEY = 'et_activity_draft';
+// The draft key carries the database ref (S149, `dbScopedKey`), so a TEST draft
+// can never surface on PROD. Built the same way the app builds it.
+const DRAFT_KEY = `et_activity_draft:${new URL(process.env.VITE_SUPABASE_URL!).hostname.split('.')[0]}`;
 
 /** Comfortably past two auto-save ticks (AUTO_SAVE_INTERVAL is 5 s). */
 const PAST_TICKS_MS = 12_000;

@@ -1534,8 +1534,7 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   Zatvoreno **sprječavanjem**: `dbScopedKey()` (`src/lib/storageKey.ts`) lijepi ref projekta
   na ključ i **jednom obriše stari, neograničen ključ** — inače bi zauvijek ležao u
   pregledniku i čekao sljedeću zabunu.
-  ⚠ **`et_activity_draft` je ISTI RAZRED i namjerno NIJE diran** — dva E2E speca ga tvrdo
-  kodiraju (`S121_draft_after_finish`, `S122_no_phantom_draft`). V. Backlog.
+  ⚠ **`et_activity_draft` je ISTI RAZRED** — zatvoren u S149 istim `dbScopedKey()`-em (E2E specovi grade ključ istim putem).
   ⚠ Ostali ključevi su pregledani i bezopasni: `ui:collapsedAreas` (stari id samo ne radi
   ništa), `attrExpanded:<catId>` (već nosi id), `et_shortcuts_area_only` (boolean).
 - **⚠ ONO ŠTO PREGLEDNIK PREBROJI OGRANIČENO JE NA 1000 REDAKA — I TO JE BRAVA,**
@@ -2691,16 +2690,8 @@ tab izrečen riječima.
 
 **✅ ~~`HiddenInAdd` se čita samo iz PRVOG retka~~ — ZATVORENO S149**: OR preko redaka, kao `IsRequired`. Čuva `structureHiddenInAdd.test.mjs`.
 
-**⭐ `et_activity_draft` nosi isti razred kao filtar — ključ bez oznake baze** (S140).
-`FilterContext` je zatvoren `dbScopedKey()`-em, ali nacrt Add Activityja i dalje stoji pod
-golim ključem, a drži `categoryId` i vrijednosti atributa. Posljedica je zapisana još u S118:
-nacrt napravljen pod jednim računom iskoči kao „Resume Previous Session?” pod **drugim**, i
-nudi kategoriju iz tuđe aree. Sada se zna da isto vrijedi **između TEST-a i PROD-a**.
-⚠ **Nije popravljeno odmah zato što dva E2E speca tvrdo kodiraju taj string**
-(`S121_draft_after_finish.spec.ts:40`, `S122_no_phantom_draft.spec.ts:28`) — popravak ih mora
-dirati u istom commitu, inače padnu i izgledaju kao regresija featurea.
-⚠ Manje je opasan od filtra (Discard ga riješi, i ne prikazuje praznu listu kao kvar), pa je
-svjesno odgođen, ne zaboravljen.
+**✅ ~~`et_activity_draft` nosi isti razred kao filtar~~ — ZATVORENO S149**: ključ nacrta ide kroz `dbScopedKey()` (`useLocalStorageSync.ts`), a oba E2E speca (`S121_draft_after_finish`, `S122_no_phantom_draft`) grade ključ istim putem (sabotaža golim ključem ruši 2 od 3; treći mjeri *odsutnost* nacrta pa ga ključ ne mijenja).
+⚠ **Ostaje otvoren dio iz S118:** nacrt nije vezan uz **korisnika** — dva računa u istom pregledniku i dalje dijele nacrt.
 
 **⭐ Zaglavlje Add Activity po Arei** (Sašina ideja S117) — isti obrazac kao `list_columns`:
 uloge u configu, ne domena u kodu. **Financije nemaju smisla pokazivati štopericu** — ona je

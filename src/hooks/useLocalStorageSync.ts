@@ -22,6 +22,16 @@ import {
   STORAGE_VERSION,
   AUTO_SAVE_INTERVAL,
 } from '@/types/activity';
+import { dbScopedKey } from '@/lib/storageKey';
+
+// /!\ Kljuc nacrta MORA nositi oznaku baze (S149) -- isti razred kao filtar
+//   (S140). Goli `et_activity_draft` dijele `npm run dev` (TEST) i `dev:prod`
+//   (PROD), a nacrt nosi `categoryId` i vrijednosti atributa: nacrt s jedne baze
+//   iskocio bi kao „Resume Previous Session?" na drugoj, s kategorijom koja ondje
+//   ne postoji. `dbScopedKey` usput jednom obrise stari, neograniceni kljuc.
+//   /!\ Ne veze nacrt uz KORISNIKA -- dva racuna u istom pregledniku i dalje
+//   dijele nacrt (S118, Backlog).
+const DRAFT_KEY = dbScopedKey(STORAGE_KEY);
 
 // ============================================
 // Serialization Helpers
@@ -219,7 +229,7 @@ export function useLocalStorageSync(
   const hasDraft = useCallback((): boolean => {
     if (!enabled) return false;
     try {
-      return localStorage.getItem(STORAGE_KEY) !== null;
+      return localStorage.getItem(DRAFT_KEY) !== null;
     } catch {
       return false;
     }
@@ -230,7 +240,7 @@ export function useLocalStorageSync(
     if (!enabled) return null;
     
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(DRAFT_KEY);
       if (!stored) return null;
       
       const draft = JSON.parse(stored) as ActivityDraft;
@@ -266,7 +276,7 @@ export function useLocalStorageSync(
     if (!enabled) return null;
     
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(DRAFT_KEY);
       if (!stored) return null;
       
       const draft = JSON.parse(stored) as ActivityDraft;
@@ -274,7 +284,7 @@ export function useLocalStorageSync(
       // Version check - discard incompatible drafts
       if (draft.version !== STORAGE_VERSION) {
         console.warn('Draft version mismatch, discarding');
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(DRAFT_KEY);
         return null;
       }
       
@@ -295,7 +305,7 @@ export function useLocalStorageSync(
       draft.version = STORAGE_VERSION;
       
       const serialized = JSON.stringify(draft);
-      localStorage.setItem(STORAGE_KEY, serialized);
+      localStorage.setItem(DRAFT_KEY, serialized);
       
       return true;
     } catch (e) {
@@ -345,7 +355,7 @@ export function useLocalStorageSync(
   const clearDraft = useCallback((): void => {
     haltAutoSave();
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(DRAFT_KEY);
     } catch (e) {
       console.error('Failed to clear draft:', e);
     }
