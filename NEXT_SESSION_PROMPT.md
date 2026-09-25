@@ -34,8 +34,10 @@ Pet bugova, svaki s automatskim testom (i provjereno da test pada kad se poprava
    Poslije deploya **hard refresh** (Ctrl+Shift+R).
 2. **Tri ručna testa** (`docs/sessions/tests/S149_tests.md`): T-S149-1 (kolona G),
    T-S149-3 (HiddenInAdd, na TEST-u), T-S149-5 (natpis, PROD nakon deploya).
-3. Iz S148, još bez odgovora: **komentar PP retka** glasi
-   `Sašin tekući RF/Zdravlje/PP (Posmrtna pripomoc)` — što da piše?
+3. ~~Komentar PP retka~~ ✅ S149 — Saša ga obrisao (Edit, Kokin račun).
+   **`comment_template` ugašen na obje razine** (Structure uvoz, Kokin račun) i 8 strojnih
+   komentara obrisano (`ocisti_auto_komentare.py --i-stare --apply`, izmjereno: ostalo 0,
+   ručnih 4.465 netaknuto). Novi retci bez opisa ostaju **prazni**.
 4. Kad stigne **Visa izvod za rujan** (naplata ~05.10.) — u `izvodi/`.
 
 ## Tvoj redoslijed (S147) — gdje smo
@@ -64,6 +66,12 @@ commita u `src/`** (S149). Deploy pušta Saša.
 - Novi testovi: `structureHiddenInAdd.test.mjs`, `e2e/tests/S149_restore_deadline.spec.ts`.
 
 ## Otvoreno — bugovi koji su ostali
+
+- ⭐ **BUG-S117-RULESHAPE je opet lagao uživo** (S149): Structure uvoz koji je mijenjao SAMO
+  `comment_template` javio je `Attributes updated 9` — točno 9 `depends_on` atributa koje je
+  panel (Wellness, 24.09. 20:13) zapisao u svom obliku. Uz to `Automation rules 2` /
+  `List columns 8` broje retke sheeta, ne promjene. Kandidat za vrh backloga: isti graditelj
+  pravila na obje strane + brojači koji broje promjene.
 
 - **E8-2** — hipoteza „restore bez roka" oslabljena (drugi mehanizam: `select` postoji i
   `disabled`). Treba trace pada, ne novu hipotezu.

@@ -7629,3 +7629,12 @@ Korak 2 Sašinog redoslijeda (S147): **bugovi**. Redoslijed po šteti, Saša ga 
 - Otvoreni ručni testovi: T-S149-1, -3, -5 (+ tri stara).
 - Otvoreno od bugova: E8-2, BUG-S103-ANYATTR, BUG-S117-RULESHAPE, bulk delete za grantee-a,
   `et_activity_draft` po **korisniku** (S118).
+
+### S149 — dodatak: `comment_template` ugašen
+
+- PP 23.09. komentar obrisan Editom (Kokin račun).
+- `comment_template` ispražnjen na Arei i leafu Structure uvozom; uvoz je pritom javio
+  `Attributes updated 9` bez ijedne stvarne promjene atributa (BUG-S117-RULESHAPE, izmjereno
+  u bazi: 9 = točno `depends_on` atributi, `Wellness` i `hidden_in_add` netaknuti).
+- `ocisti_auto_komentare.py --i-stare --apply` (Saša): 8 strojnih komentara obrisano,
+  ponovni dry run 0 / ručnih 4.465 netaknuto. Backup `backup_autocomment_prod_20260925_101104.json`.
