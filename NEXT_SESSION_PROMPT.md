@@ -1,8 +1,8 @@
-> Pisano protiv commita **`e039fec`** (S148) + commit rituala S148 koji nosi ovaj file.
-> ⚠ Ako `git log` pokazuje noviji commit od S148 rituala, čitaj ovo kao **povijest**, ne kao stanje.
+> Pisano protiv commita **`f3741cb`** (S149) + commit rituala S149 koji nosi ovaj file.
+> ⚠ Ako `git log` pokazuje noviji commit od S149 rituala, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S148 (2026-09-24)
+# Sljedeća sesija — nakon S149 (2026-09-25)
 
 ---
 
@@ -10,35 +10,39 @@
 
 ## Što je danas napravljeno
 
-- **Visa košare su u cent od listopada 2024. do rujna 2026.** Banka je cijelo vrijeme bila
-  točna. Višak od 784,81 € bili su tvoji ručni retci (sheet `sasa EU`) uvezeni **uz** iste
-  retke s izvoda — isti dan dvaput, datum mjesec ranije, tipfeler u iznosu, ručna rata uz
-  bankinu. Obrisano ili prebačeno u `Cash` prema tvojim odlukama.
-- **Kolovoški Visa izvod je uvezen**: 37 redaka koje nitko nije upisao (~1.010 €).
-- **PP 8,60 (23.09.)** je sada na Kokinom ZABA, kako si rekao — ZABA saldo pao za 8,60.
-- Sve je išlo **Excel uvozom pod Kokinim računom**, nijedna skripta nije pisala u bazu.
-- Jedan uvoz je napravio 7 duplikata — **moja greška** (krivi e-mail u koloni G), popravljeno
-  istim putem. Zapisano da se ne ponovi.
+Pet bugova, svaki s automatskim testom (i provjereno da test pada kad se popravak pokvari):
+
+1. **Kriv e-mail u koloni G više ne pravi duplikate.** Uvoz stane i kaže koji redak
+   postoji pod drugim autorom — umjesto da ga upiše kao nov (S148: 7 duplikata).
+2. **„Restoring filter…" više ne može zapeti.** Nakon 8 s odustane, zadrži Areu i kaže
+   da kategoriju odabereš ponovno.
+3. **Structure uvoz više ne briše „Hidden in Add"** kad file nema tu kolonu.
+4. **Nedovršeni unos s TEST-a ne iskače na PROD-u** (i obrnuto).
+5. **Pločica:** „zadnji zapis" sada glasi **„zadnja promjena salda"**.
 
 ## Što treba od tebe
 
-1. ~~6 redaka bez Podtipa~~ ✅ ispravljeno (S148, izmjereno). Ostao 1 loš par u Arei:
-   16.09. `Hlace i carape` `Razno / Poklon` → `Pokloni`.
-   ~~Stari tekst:~~ **6 redaka bez Podtipa** (AGS Tuhelj, AZM Mokrice, Kvatric, GLS Stupnik, Jadrolinija,
-   Studenac Orebić) — **Edit u appu** (nisu u import reportu jer ih zadnji uvoz nije dirao).
-   Javi pa provjerim.
-2. ~~`Wellness` natrag u taksonomiju~~ ✅ vraćen (izmjereno). Stari tekst: **`Wellness` natrag u taksonomiju** — Kokin račun, Structure → `Transakcija` → `Podtip`
-   → redak `Zabava` → dodaj `Wellness`. Izbrisao ga je naš Structure alat (v. DIO 2).
-3. **Komentar PP retka** i dalje glasi `Sašin tekući RF/Zdravlje/PP (Posmrtna pripomoc)` —
-   ostatak predloška, spominje krivi račun. Što da piše?
-4. Kad stigne **Visa izvod za rujan** (naplata ~05.10.), spremi ga u `izvodi/` — ide istim
-   alatom kao kolovoz, sada bez duplikata.
+1. **Deploy** — ništa od ovoga nije na PROD-u. Kad želiš (PowerShell):
+   ```powershell
+   git checkout main
+   if ($?) { git merge test-branch --no-edit }
+   if ($?) { git push origin main }
+   git checkout test-branch
+   if ($?) { git merge main --no-edit }
+   if ($?) { git push origin test-branch }
+   ```
+   Poslije deploya **hard refresh** (Ctrl+Shift+R).
+2. **Tri ručna testa** (`docs/sessions/tests/S149_tests.md`): T-S149-1 (kolona G),
+   T-S149-3 (HiddenInAdd, na TEST-u), T-S149-5 (natpis, PROD nakon deploya).
+3. Iz S148, još bez odgovora: **komentar PP retka** glasi
+   `Sašin tekući RF/Zdravlje/PP (Posmrtna pripomoc)` — što da piše?
+4. Kad stigne **Visa izvod za rujan** (naplata ~05.10.) — u `izvodi/`.
 
 ## Tvoj redoslijed (S147) — gdje smo
 
-1. ~~Baza što točnija — Visa~~ ✅ · ostaje: **loši Tip/Podtip parovi** (v. DIO 2) i RF `Izvod opis`.
-2. **Bugovi.**
-3. **Prolaz kroz backlog.**
+1. ~~Baza — Visa~~ ✅ · ostaje: 1 loš par (`Hlace i carape` `Razno / Poklon`), RF `Izvod opis`.
+2. ~~Bugovi~~ ✅ **pet s popisa gotovo** (ostali otvoreni su teži ili čekaju — v. DIO 2).
+3. **Prolaz kroz backlog** ← sljedeće.
 
 ---
 
@@ -46,60 +50,37 @@
 
 ## Stanje grana
 
-`test-branch` = `e039fec` + ritual S148. `main` = `7ef95ac` (S147) — **u `src/` se od
-deploya ništa nije promijenilo**, S148 je samo `data-prep_tools/` + dokumenti. Deploy ne treba.
+`test-branch` = `f3741cb` + ritual S149, pushan. `main` = `7ef95ac` (S147) — **iza za 5
+commita u `src/`** (S149). Deploy pušta Saša.
 
-## Novi alati (S148) — svi u `data-prep_tools/Financije/`
+## Što je S149 promijenio u kodu
 
-- `visa_kosare.py [YYYY-MM ...]` — mjera; kriterij „svi mjeseci 0,00". Naplatu na RF-u
-  prepoznaje po `PBZCARD` u `Izvod opis` **ili** po `Transfer/izmedju racuna` + komentar
-  `Visa…` (07.09. `Visa racun` nema `Izvod opis` dok RF izvadak za rujan ne stigne).
-- `visa_uvoz_izvoda.py <PBZVI?A_YYYY-MM.pdf> <naplata YYYY-MM-DD> [--file]` — izvod → app
-  Excel. Za rujanski izvod: dopuni `RUCNO` (približni `~` iznosi) i `KLASA` ako treba.
-- `visa_popravak.py` — S148 jednokratni popisi + **zajednički pisac `pisi()`**
-  (e-mail autora u kol. G iz `EMAIL`, dropdowni). ⚠ Dropdown `Podtip` je **ravan** (ne
-  ovisi o Tipu) — Saša je to primijetio; ako se pisac ponovo koristi za klasifikaciju,
-  napravi ovisni (INDIRECT + imenovani rasponi, kao app export) ili pošalji Sašu na app export.
+- `excelImport.ts`: `sortUpdateRows()` (čista, dijele je apply i preview) + `foreignOwnedMessage()`;
+  `UpdateAnalysis.foreignOwned`; `smartReclassify` čita kroz `withRetryQuery` i baca; reklasifikacija
+  ide **prije** `applyDeletes`.
+- `FilterContext.tsx`: `RESTORE_DEADLINE_MS`, `restoreTimedOut` / `dismissRestoreTimedOut`.
+- `structureImport.ts`: `resolveHiddenInAdd()`, `groupAttributes` exportan (za test).
+- `useLocalStorageSync.ts`: `DRAFT_KEY = dbScopedKey(STORAGE_KEY)`.
+- Novi testovi: `structureHiddenInAdd.test.mjs`, `e2e/tests/S149_restore_deadline.spec.ts`.
 
-## Otvoreno — točnost baze (prioritet 1)
+## Otvoreno — bugovi koji su ostali
 
-- **T-S148-4:** 6 redaka `Tip / N/A` (v. DIO 1). Provjera: skripta koja za svaki redak traži
-  `Podtip ∈ validation_rules.depends_on.options_map[Tip]` (`visa_uvoz_izvoda.taksonomija()`).
-- **14 starijih loših parova u Arei** (ista provjera, 24.09.):
-  `Zabava / Wellness` **×10** (2025-03 → 2026-09) — **uzrok nađen**:
-  `make_financije_all_structure.py` regenerira `Tip`/`Podtip` iz Review `Taksonomija`
-  sheeta (10.07.), pa je Structure uvoz iz alata izbrisao `Wellness` dodan u S124.
-  Saša ga vraća rukom (panel, Kokin račun) — **provjeri da je vraćen**.
-  ⭐ **Popravak alata** (S149): taksonomija iz `--base` (unija s Reviewom, ispis razlike),
-  isti obrazac kao `read_base_automations` (S145). Dok nije popravljen — alat se ne pokreće.
-  Ostali: `Zabava / N/A`
-  (Spotify 28.08.), `Razno / Balon`, `Razno / Poklon` ×2 (valjano je `Pokloni`),
-  `Razno / None` (Graviranje 200,00).
-- **RF `Izvod opis`** (Backlog, Sašin izričit zahtjev S131) — i `Visa racun` 07.09. čeka
-  RF_2026-09.
-- MC par `+105,30`/`−105,30` (`Planiran`) i `oznaci_iz_presedana.py --apply` — iz S147, nediran.
-- Kokin plan `117,32 / 6` (22.09.): rata 1/6 atribut `19.57`, komentar `19.55` — jedan Edit.
+- **E8-2** — hipoteza „restore bez roka" oslabljena (drugi mehanizam: `select` postoji i
+  `disabled`). Treba trace pada, ne novu hipotezu.
+- **`et_activity_draft` po korisniku** (S118) — ključ sada nosi bazu, ne i korisnika.
+- **BUG-S117-RULESHAPE**, **BUG-S103-ANYATTR** (RPC), bulk delete za grantee-a.
+- „signal is aborted without reason" u Export modalu (S148, jednom) — ako se ponovi.
 
-## Bugovi (prioritet 2)
+## Otvoreno — točnost baze
 
-- **BUG-S148-G** (nov, Open bugs): postojeći redak s krivim e-mailom u kol. G uvoz tiho
-  upiše kao nov (`smartReclassify`, `excelImport.ts:820`), poruka „not found in database"
-  laže. Prijedlog: `found && !canUpdateExisting` ⇒ stani i javi, nikad INSERT. Test:
-  `importForeignRows.test.mjs` već ima okruženje.
-- Pločica „zadnji zapis" = zadnja promjena **salda** (S147 prijedlog natpisa).
-- „Restoring filter…" bez timeouta (+ hipoteza E8-2).
-- `hidden_in_add` / `HiddenInAdd`, `et_activity_draft`, `ViewDetailsPage` — Backlog.
-- „signal is aborted without reason" u Export modalu (S148, jednom, mreža) — sirova poruka
-  `AbortError`-a; ako se ponovi, prevesti u „veza je prekinuta — pokušaj ponovo".
-
-## Zamke koje je S148 platio — sve su u CLAUDE.md
-
-- Kolona G = autor retka, ne uvoznik (§ Collab — Excel put za tuđi redak).
-- Rata se sparuje po planu i broju, nikad po datumu (zaglavlje `visa_uvoz_izvoda.py`).
-- ⚠ Profil `Kokin_format` pregazi raspon iz panela (`last-3-months`) — pri izvozu starijih
-  redaka isključi „Koristi filtre iz profila". Pravilo je već u CLAUDE.md (S129).
+- 1 loš par: 16.09. `Hlace i carape` `Razno / Poklon` → `Pokloni`.
+- ⭐ `make_financije_all_structure.py`: taksonomija iz `--base` (kao `read_base_automations`).
+  **Dok nije popravljen — alat se ne pokreće** (briše podtipove dodane u bazi).
+- RF `Izvod opis` (Sašin izričit zahtjev S131); `Visa racun` 07.09. čeka RF_2026-09.
+- MC par `+105,30`/`−105,30` (`Planiran`); `oznaci_iz_presedana.py --apply`; rata 1/6
+  `117,32 / 6` (atribut `19.57`, komentar `19.55`).
 
 ## Što NE dirati
 
-- **`main`** — merge pušta Saša (PowerShell oblik iz CLAUDE.md).
+- **`main`** — merge pušta Saša.
 - **PROD upisi** — sve kroz Excel uvoz (Koka) ili `--apply` koji pokreće Saša.

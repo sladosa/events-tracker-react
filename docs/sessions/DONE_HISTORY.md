@@ -7596,3 +7596,36 @@ Jedan od tri uvoza napravio je 7 duplikata (kolona G, v. BUG-S148-G); popravljen
 | T-S148-3 | 7 duplikata iz prvog uvoza uklonjeno | ✅ S148 — uvoz `0 / 7 / 7`, kosara bez parova |
 | T-S148-4 | Sest Podtipova koji ne pripadaju Tipu (AGS, AZM, Kvatric, GLS, Jadrolinija, Studenac) | ✅ S148 — izmjereno: svih 6 ispravljeno Editom; losih parova u Arei **20 → 1** (`Wellness` vracen u taksonomiju, ostali ispravljeni) |
 | T-S148-5 | PP 8,60 na Kokin ZABA | ✅ S148 — izmjereno u bazi; ZABA −8,60 poslije zadnjeg sidra |
+
+
+---
+
+## S149 — pet bugova, svaki s testom provjerenim u drugom smjeru (2026-09-25)
+
+Korak 2 Sašinog redoslijeda (S147): **bugovi**. Redoslijed po šteti, Saša ga je prihvatio.
+
+### Popravljeno (svi na `test-branch`, ništa na PROD-u)
+
+| # | commit | što | čuva |
+| --- | --- | --- | --- |
+| 1 | `01150cb` | **BUG-S148-G** — postojeći tuđi redak (kriv e-mail u kol. G) zaustavi uvoz umjesto INSERT-a; preview crven + Apply siv; reklasifikacija **prije** brisanja | `importForeignRows.test.mjs` (sabotaža ruši 3) |
+| 2 | `400c5b9` | „Restoring filter…" ima rok 8 s; Area ostaje, kategorija se pušta, traka kaže što sad | `S149_restore_deadline.spec.ts` (sabotaža pada na `toBeHidden`) |
+| 3 | `d1c2651` | `hidden_in_add` preživi Structure file bez kolone; `HiddenInAdd` OR preko redaka | `structureHiddenInAdd.test.mjs` (sabotaža ruši 2) |
+| 4 | `edadba9` | ključ nacrta kroz `dbScopedKey`; E2E `S121`/`S122` grade ključ istim putem | ta dva speca (sabotaža ruši 2/3) |
+| 5 | `f3741cb` | pločica: „zadnji zapis" → „zadnja promjena salda" | — (T-S149-5, vizualno) |
+
+### Nađeno usput
+
+- **`smartReclassify` je odbacivao `error`** (`const { data } = …`): palo čitanje bloka od 200
+  ID-eva pretvorilo bi svih 200 redaka u nove — isti razred kao `excelDataLoader` (S125).
+  Zatvoreno uz #1 (`withRetryQuery` + throw).
+- **Hipoteza „E8-2 = restore bez roka" je oslabljena**: dok restore traje, selektor ne crta
+  `<select>` nego spinner, a E8-2 pada na `select` koji postoji i `disabled` je.
+- Zamka iz S140 („heredoc jede backslash") ugrizla **opet**, u prvom patchu — `\n` u TS
+  template stringu postao stvaran prijelom. Uhvaćeno čitanjem ispisa prije typechecka.
+
+### Stanje na kraju
+
+- Otvoreni ručni testovi: T-S149-1, -3, -5 (+ tri stara).
+- Otvoreno od bugova: E8-2, BUG-S103-ANYATTR, BUG-S117-RULESHAPE, bulk delete za grantee-a,
+  `et_activity_draft` po **korisniku** (S118).
