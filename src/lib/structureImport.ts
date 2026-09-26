@@ -25,6 +25,7 @@
 import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
 import { isValidDateRule } from '@/lib/attributeRules';
+import { buildRules, sameRules } from '@/lib/validationRules';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig,
 } from '@/types/database';
@@ -70,13 +71,17 @@ export interface ImportResult {
   reviewFlags: ReviewFlagRow[];
   /** Automations sheet (set_attribute rules) — Faza 2b */
   automations: {
+    /** Aree kojima se config STVARNO promijenio — ovo modal prikazuje (S152). */
     areasUpdated: number;
+    /** Ispravnih redaka PROČITANO iz sheeta — nije broj promjena. */
     rulesImported: number;
     rulesSkipped: number; // invalid rows (unknown area/slug, bad DateMap syntax)
   };
   /** ListColumns sheet — Activities list layout per Area (Backlog) */
   listColumns: {
+    /** Aree kojima se popis kolona STVARNO promijenio — ovo modal prikazuje (S152). */
     areasUpdated: number;
+    /** Ispravnih redaka PROČITANO iz sheeta — nije broj promjena. */
     columnsImported: number;
     columnsSkipped: number; // unknown role, unknown slug, unknown area
   };
@@ -409,14 +414,18 @@ export function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
 // Build validation_rules jsonb from AttrGroup
 // ─────────────────────────────────────────────────────────────
 
-function buildValidationRules(
+/** Izlozeno za test roundtripa pravila (S152). */
+export function buildValidationRules(
   group: AttrGroup,
   hiddenInAdd: boolean,
 ): Record<string, unknown> {
-  const rules = buildTypeRules(group);
-  // Orthogonal to validation: attached after, so it survives every branch above.
-  if (hiddenInAdd) rules.hidden_in_add = true;
-  return rules;
+  // Isti graditelj kao panel (S152) — v. `validationRules.ts`.
+  return buildRules({
+    dependsOn: group.dependsOn,
+    options: group.valType === 'suggest' ? group.simpleOptions : undefined,
+    max: group.valMax ? (Number(group.valMax) || group.valMax) : undefined,
+    hiddenInAdd,
+  });
 }
 
 /**
@@ -439,33 +448,6 @@ export function resolveHiddenInAdd(
 ): boolean {
   if (hasColumn) return fromFile;
   return existingRules?.hidden_in_add === true;
-}
-
-function buildTypeRules(
-  group: AttrGroup,
-): Record<string, unknown> {
-  if (group.dependsOn) {
-    const dep: Record<string, unknown> = {
-      attribute_slug: group.dependsOn.parentSlug,
-      options_map: group.dependsOn.optionsMap,
-    };
-    if (group.dependsOn.defaultMap && Object.keys(group.dependsOn.defaultMap).length > 0) {
-      dep.default_map = group.dependsOn.defaultMap;
-    }
-    return {
-      type: 'suggest',
-      depends_on: dep,
-    };
-  }
-  if (group.valType === 'suggest' && group.simpleOptions.length > 0) {
-    const rules: Record<string, unknown> = {
-      type: 'suggest',
-      suggest: group.simpleOptions,
-    };
-    if (group.valMax) rules.max = Number(group.valMax) || group.valMax;
-    return rules;
-  }
-  return {};
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -849,7 +831,9 @@ export async function importStructureExcel(
     const importDefault = group.defaultVal === '_' ? '' : (group.defaultVal || '');
     const defaultDiff = (existing.defaultValue ?? '') !== importDefault;
     const sortDiff    = existing.sortOrder    !== group.sort;
-    const rulesDiff   = normalizeJson(existing.validationRules) !== normalizeJson(newRules);
+    // Po ZNACENJU, ne po obliku (S152, BUG-S117-RULESHAPE): pravilo koje je
+    // spremio panel (`allow_other: true`, prazan `suggest`) nije promjena.
+    const rulesDiff   = !sameRules(existing.validationRules, newRules);
     // ⚠ `IsRequired` mora biti I u dirty checku I u UPDATE-u. Bio je ni u
     // jednom (S131): kolona J je postojala u exportu, uvoz ju je parsirao, i
     // redak čija je JEDINA promjena bila `FALSE → TRUE` ispadao je „ništa se

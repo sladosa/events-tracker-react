@@ -16,6 +16,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useFilter } from '@/context/FilterContext';
 import { supabase } from '@/lib/supabaseClient';
+import { persistPendingOptions } from '@/lib/pendingOptions';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
@@ -166,62 +167,6 @@ interface LocalAttributeValue {
   definitionId: string;
   value: string | number | boolean | null;
   touched: boolean;
-}
-
-// ============================================
-// Helper: Persist pending "Other" option adds
-// ============================================
-
-async function persistPendingOptions(
-  options: Array<{ definitionId: string; newOption: string; dependencyValue?: string | null }>,
-  attrDefs: AttributeDefinition[]
-): Promise<void> {
-  // Track latest rules per definition — ensures multiple options for the same
-  // attr accumulate correctly (each iteration builds on the previous result,
-  // not on the stale initial snapshot).
-  const latestRules = new Map<string, AttributeDefinition['validation_rules']>();
-
-  for (const pending of options) {
-    const def = attrDefs.find(d => d.id === pending.definitionId);
-    if (!def) continue;
-
-    const currentRules = latestRules.get(pending.definitionId) ?? def.validation_rules;
-    const parsed = parseValidationRules(currentRules);
-
-    let updatedRules: Record<string, unknown>;
-
-    if (pending.dependencyValue && parsed.dependsOn) {
-      const fullMap = { ...(parsed.dependsOn.optionsMap ?? {}) };
-      const opts = fullMap[pending.dependencyValue] ?? [];
-      if (opts.includes(pending.newOption)) continue;
-      fullMap[pending.dependencyValue] = [...opts, pending.newOption];
-      updatedRules = {
-        type: 'suggest',
-        suggest: parsed.options,
-        allow_other: true,
-        depends_on: {
-          attribute_slug: parsed.dependsOn.attributeSlug,
-          options_map: fullMap,
-        },
-      };
-    } else {
-      const existing = [...parsed.options];
-      if (existing.includes(pending.newOption)) continue;
-      existing.push(pending.newOption);
-      updatedRules = { type: 'suggest', suggest: existing, allow_other: true };
-    }
-
-    const { error } = await supabase
-      .from('attribute_definitions')
-      .update({ validation_rules: updatedRules })
-      .eq('id', pending.definitionId);
-
-    if (error) {
-      console.error('[persistPendingOptions] Failed:', error);
-    } else {
-      latestRules.set(pending.definitionId, updatedRules as AttributeDefinition['validation_rules']);
-    }
-  }
 }
 
 // ============================================

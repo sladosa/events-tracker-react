@@ -267,14 +267,19 @@ export function StructureImportModal({
                   {(result.updated.settings ?? 0) > 0 && (
                     <ResultRow label="Settings updated"  value={result.updated.settings} />
                   )}
+                  {/* ⚠ Broji AREE KOJIMA SE CONFIG PROMIJENIO, ne retke sheeta (S152).
+                      Do tada je `Automation rules 2` izgledalo jednako za pravilo
+                      koje se nije promijenilo i za ono vraćeno godinu unatrag (S145).
+                      Red se prikazuje kad je sheet pročitan, pa sivo `0` znači
+                      „pročitano, bez promjene", a izostanak „sheeta nije bilo". */}
                   {(result.automations?.rulesImported ?? 0) > 0 && (
-                    <ResultRow label="Automation rules"  value={result.automations.rulesImported} />
+                    <ResultRow label="Automations changed (areas)" value={result.automations.areasUpdated} />
                   )}
                   {(result.automations?.rulesSkipped ?? 0) > 0 && (
                     <ResultRow label="Automation rules skipped" value={result.automations.rulesSkipped} warn />
                   )}
                   {(result.listColumns?.columnsImported ?? 0) > 0 && (
-                    <ResultRow label="List columns"         value={result.listColumns.columnsImported} />
+                    <ResultRow label="List columns changed (areas)" value={result.listColumns.areasUpdated} />
                   )}
                   {(result.listColumns?.columnsSkipped ?? 0) > 0 && (
                     <ResultRow label="List columns skipped" value={result.listColumns.columnsSkipped} warn />

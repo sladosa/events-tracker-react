@@ -281,7 +281,8 @@ function buildCategoryRow(node: StructureNode): DataRow {
   };
 }
 
-function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[] {
+/** Izlozeno za test roundtripa pravila (S152). */
+export function buildAttrRows(node: StructureNode, attr: AttributeDefinition): DataRow[] {
   const rules = parseRules(attr.validation_rules);
 
   const base = {

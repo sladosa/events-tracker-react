@@ -34,6 +34,7 @@ import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { fixupDashboardSlug } from '@/lib/dashboardConfig';
 import { fixupListColumnsSlug } from '@/lib/listColumns';
+import { buildRules, renameDependsOnParent } from '@/lib/validationRules';
 
 // --------------------------------------------------------
 // Types
@@ -213,55 +214,40 @@ function normalizeSlug(slug: string, originalSlug: string): string {
   return slug.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || originalSlug;
 }
 
-/** Reconstruct validation_rules jsonb from edit state */
+/** Reconstruct validation_rules jsonb from edit state.
+ *
+ *  Gradi ga `buildRules` — ISTI graditelj koji koristi Structure uvoz (S152).
+ *  Dok je panel pisao vlastiti oblik (`allow_other`, prazan `suggest`), svaki
+ *  uvoz nakon spremanja panela javljao je „Attributes updated N" bez promjene
+ *  (BUG-S117-RULESHAPE).
+ *  `max` se prenosi iz originala: panel ga ne prikazuje, pa ga ne smije brisati. */
 function buildValidationRules(
   state: AttrEditState,
 ): Record<string, unknown> {
-  const rules = buildTypeRules(state);
-  // Orthogonal to validation, so it is attached after the type branches rather
-  // than repeated inside each of them.
-  if (state.hiddenInAdd) rules.hidden_in_add = true;
-  return rules;
-}
-
-function buildTypeRules(
-  state: AttrEditState,
-): Record<string, unknown> {
+  const originalMax = (state.originalRules as Record<string, unknown> | null)?.max;
   if (state.validationType === 'depends_on') {
-    const defaultOpts = state.suggestOptions
-      .split('\n').map(s => s.trim()).filter(Boolean);
     const optionsMap: Record<string, string[]> = {};
-    for (const row of state.dependsOnMap) {
-      if (!row.whenValue.trim()) continue;
-      optionsMap[row.whenValue.trim()] = row.options
-        .split('\n').map(s => s.trim()).filter(Boolean);
-    }
-    const depObj: Record<string, unknown> = {
-      attribute_slug: state.dependsOnSlug,
-      options_map: optionsMap,
-    };
     const defaultMap: Record<string, string> = {};
     for (const row of state.dependsOnMap) {
-      if (row.defaultVal && row.whenValue.trim()) {
-        defaultMap[row.whenValue.trim()] = row.defaultVal;
-      }
+      const when = row.whenValue.trim();
+      if (!when) continue;
+      optionsMap[when] = row.options
+        .split('\n').map(s => s.trim()).filter(Boolean);
+      if (row.defaultVal) defaultMap[when] = row.defaultVal;
     }
-    if (Object.keys(defaultMap).length > 0) depObj.default_map = defaultMap;
-    return {
-      type: 'suggest',
-      suggest: defaultOpts,
-      allow_other: true,
-      depends_on: depObj,
-    };
+    return buildRules({
+      dependsOn: { parentSlug: state.dependsOnSlug, optionsMap, defaultMap },
+      hiddenInAdd: state.hiddenInAdd,
+    });
   }
   if (state.validationType === 'suggest') {
-    const options = state.suggestOptions
-      .split('\n')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-    return { type: 'suggest', suggest: options };
+    return buildRules({
+      options: state.suggestOptions.split('\n').map(s => s.trim()).filter(Boolean),
+      max: originalMax,
+      hiddenInAdd: state.hiddenInAdd,
+    });
   }
-  return {};
+  return buildRules({ hiddenInAdd: state.hiddenInAdd });
 }
 
 /** Generate slug from name; appends _2, _3 if collision with existing slugs */
@@ -1055,16 +1041,13 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
                 </button>
               </div>
 
-              <div>
-                <FieldLabel>Default options (when no WhenValue matches)</FieldLabel>
-                <TextArea
-                  value={attr.suggestOptions}
-                  onChange={v => update(i, { suggestOptions: v })}
-                  placeholder="one option per line (usually empty)"
-                  rows={2}
-                />
-                <p className="mt-1 text-xs text-gray-400">Used when parent value not found in map above.</p>
-              </div>
+              {/* „Default options" (top-level `suggest`) uklonjen S152: izvoz ga
+                  nikad nije nosio, pa ga je prvi roundtrip brisao. Redak `*`
+                  radi isto i putuje Excelom. */}
+              <p className="text-xs text-gray-400">
+                Fallback: add a row with WhenValue <code>*</code> — used when the parent value is not listed
+                (same as the <code>*</code> row in the Structure Excel).
+              </p>
             </div>
           )}
         </div>
@@ -1335,15 +1318,11 @@ export function StructureNodeEditPanel({
             for (const n of allNodes) {
               for (const ad of n.attributeDefinitions) {
                 if (attrStates.some(a => a.id === ad.id)) continue;
-                const parsed = parseValidationRules(ad.validation_rules);
-                if (parsed.dependsOn?.attributeSlug === attr.originalSlug) {
-                  const updatedRules = {
-                    ...ad.validation_rules as Record<string, unknown>,
-                    depends_on: {
-                      ...(parsed.dependsOn as Record<string, unknown>),
-                      attribute_slug: newSlug,
-                    },
-                  };
+                // /!\ Iz SIROVOG pravila, ne iz parsiranog (S152): parsirani
+                //   oblik nosi camelCase (`optionsMap`), pa je ovaj redak prije
+                //   ostavljao `depends_on` bez `options_map`.
+                const updatedRules = renameDependsOnParent(ad.validation_rules, attr.originalSlug, newSlug);
+                if (updatedRules) {
                   await supabase
                     .from('attribute_definitions')
                     .update({ validation_rules: updatedRules })
