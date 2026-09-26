@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S151).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S152).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 113 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 126 | [Critical rules](<#Critical rules>) | X |
 | 1156 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1559 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1575 | [Key files](<#Key files>) |  |
-| 1661 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1681 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1703 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1729 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1769 | [Open bugs](<#Open bugs>) | ~ |
-| 1876 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 1921 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2018 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2026 | [Backlog](<#Backlog>) | ~ |
-| 2030 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2038 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1570 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1586 | [Key files](<#Key files>) |  |
+| 1673 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1693 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1715 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1741 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1781 | [Open bugs](<#Open bugs>) | ~ |
+| 1888 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 1933 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2030 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2038 | [Backlog](<#Backlog>) | ~ |
+| 2042 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2050 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2196 redaka, 18 sekcija._
+_Ukupno 2208 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1159,6 +1159,17 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 **→ Python alati i AI (`ai_classify.py`)** — preseljeno u `data-prep_tools/CLAUDE.md` (S151).
 **UI (React)**
 
+- **⚠ `toISOString().split('T')[0]` JE UTC DAN, NE DAN KOJI ČOVJEK VIDI** (S152). U Zagrebu je
+  za lokalnu ponoć to **dan prije**. Izmjereno 26.09.2026.: filtar **„This Month" = `31.08. →
+  29.09.`** (zadnji dan mjeseca **izostavljen**, zadnji dan prošlog uključen), „This Year" =
+  `31.12.2025. → 30.12.2026.` Za „danas" se greška vidi samo 00:00–02:00, pa izgleda nasumično.
+  S117 je razred zatvorio **samo** za `event_date` u Addu; Edit, zaglavlje s datumom i predlošci
+  perioda ostali su na UTC-u. Lokalni dan ide **samo** kroz `src/lib/localDate.ts`.
+  ⚠ Put `YYYY-MM-DD` → `Date.UTC`/`T12:00Z` → `toISOString()` je **namjerno** UTC i ispravan
+  (`deltaWindow`, `prevDayIso`) — ne „popravljati".
+  ⚠ Test datuma mora **sam postaviti zonu** (`process.env.TZ`): u UTC-u (CI) su oba računa ista,
+  pa bi prolazio i nad pokvarenim kodom (`localDate.test.mjs`).
+
 - **⚠ ZASTAVICA `loaded` KOJA NE KAŽE **ZA ŠTO** JE UČITANO PREZIVI PROMJENU ULAZA —
   i u tom prozoru tvrdi nešto o **prošlom** ulazu** (S145, BUG-S145-OVERVIEWTAB).
   `useAreaDashboard` je za `areaId = null` radio `setLoaded(true)` uz `config = null`,
@@ -1631,6 +1642,7 @@ src/lib/structureImport.ts         Structure import — non-destructive, slug lo
 src/lib/validationRules.ts         JEDINI graditelj `validation_rules` (panel, uvoz, „Other") +
                                    `sameRules` za usporedbu po značenju (S152)
 src/lib/pendingOptions.ts          „Other" opcije iz Add/Edit u `validation_rules` (jedna kopija)
+src/lib/localDate.ts               `localYmd` / `todayLocalYmd` — dan koji čovjek vidi, ne UTC (S152)
 src/lib/attributeRules.ts          set_attribute automatika (evaluateDateRule, same/next:N)
 src/lib/deleteErrors.ts            classifyDeleteError() — čitljive poruke iz PG grešaka
 src/lib/theme.ts                   Theme colour tokens
@@ -2025,7 +2037,7 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 
 ## Backlog
 [↑ Sadrzaj](#Sadrzaj)
-Preseljen doslovno u **`docs/sessions/BACKLOG.md`** (S151). Prolaz s odlukama: `docs/sessions/BACKLOG_2026-09-26.md`. Čita se pri planiranju sesije.
+Preseljen doslovno u **`docs/sessions/BACKLOG.md`** (S151). Prolaz s odlukama: `docs/sessions/BACKLOG_2026-09-26.md`; **stanje nakon S152:** `docs/sessions/BACKLOG_2026-09-26_S152.md`. Čita se pri planiranju sesije.
 
 ## TypeScript known issue
 [↑ Sadrzaj](#Sadrzaj)

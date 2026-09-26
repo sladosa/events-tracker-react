@@ -2,7 +2,7 @@
 
 > Preseljeno iz korijenskog `CLAUDE.md`-a u S151 **doslovno** — backlog je plan (kvarljiv), ne
 > pravilo, a CLAUDE.md se učitava u svaku sesiju. Čitaj pri **planiranju sesije**.
-> Prolaz s odlukama po stavci: `BACKLOG_2026-09-26.md`.
+> Prolaz s odlukama po stavci: `BACKLOG_2026-09-26.md`. **Stanje nakon S152:** `BACKLOG_2026-09-26_S152.md`.
 
 
 > **Struktura NOSI trijazu, umjesto da je opisuje** (S140). Do tada je ovdje stajao odlomak
@@ -24,7 +24,7 @@
   svoju OneDrive mapu `Izvodi` → kod Saše `C:\0_Sasa\OneDrive\Izvodi` (postavljeno 26.09.) →
   **razvrstač** (prvi korak) preimenuje po **sadržaju** u `ZABA_YYYY-MM.pdf` i stavi u `izvodi/` →
   jedna naredba obrade → Excel za uvoz (pregled ostaje brana) → `Analizirani_izvodi/`.
-  ✅ **Razvrstač gotov (S152):** `Financijeun.bat razvrstaj_izvode.py [--apply]` — kopira iz
+  ✅ **Razvrstač gotov (S152):** `Financije\run.bat razvrstaj_izvode.py [--apply]` — kopira iz
   inboxa (Kokina mapa se ne dira), PBZ „Detalji transakcije" ostaje uz razlog. Sljedeće: obrada.
   Podsjetnik na pločici **iz podataka** („kolovoški izvod još nije obrađen“), ne iz kalendara.
   ⚠ Testni slučaj: PBZ „Detalji transakcije“ PDF — razvrstač ga mora odbiti kao ne-izvod.
@@ -37,7 +37,9 @@
   to je ispravno; zbrka je samo kad uvoznik već vidi Areu istog imena.
 - **D4/D5** — poruka „(read-only access)“ write-grantee-u kod profila je neistinita;
   „Import as mine“ sakriti unutar dijeljene Aree.
-- **„Dospjelo → potvrdi“ (C5)** — `docs/DOSPJELO_SPEC.md`; Saša: radimo.
+- **„Dospjelo → potvrdi“ (C5)** — `docs/DOSPJELO_SPEC.md`; Saša: radimo. ⚠ Otvoreno (S152):
+  `due` config ne može kroz Structure roundtrip dok nema `Dashboard` sheeta — ili prvo sheet,
+  ili jednokratni SQL na PROD-u (moj prijedlog, faza 1 je samo čitanje).
 - **Filtar za brojeve (F4)** — jedan uvjet s operatorom (`Iznos > 1000`), ne traži višeuvjetni
   filtar. V. „Potpuni attrFilter“.
 - **Help chip (F6)** — bez posebnog popisa: gotovo pitanje AI-u + kontekst stranice/Aree (uz Help
@@ -109,7 +111,10 @@ dijalog) koji hook **ne** koristi ⇒ ne zatvara se klikom na pozadinu **uopće*
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
 (fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
 
-**⭐ `rata` ne razumije `cutoff:B:D` — prva rata zna pasti mjesec prekasno** (S138).
+**~~⭐ `rata` ne razumije `cutoff:B:D`~~ — ✅ ZATVORENO S152 (C2)**, drukčije nego je ovdje
+predloženo: `rata.date_map` **ne** prima tokene, nego rata čita **isto `set_attribute` pravilo**
+(`findChargeDateRule`); `date_map` je samo rezerva. Config se ne mijenja ⇒ nema redoslijeda
+deploy/Excel. Čuva `rataChargeDates.test.mjs`. Izvorni zapis (S138):
 `generateRataChargeDates` (`rataAutomation.ts:77`) prima **broj dana** i uvijek kreće od
 **sljedećeg** mjeseca (`d.setMonth(d.getMonth() + i)`, `i` kreće od 1). Za kupovinu
 1.–3. u mjesecu to je mjesec previše: Visa kupovina 02.10. pripada izvodu koji se
@@ -124,7 +129,13 @@ tiho pretvori u zadanih `15` (isto pravilo kao za `cutoff` u S137e, samo tiše: 
 uvoz barem `console.warn`a).
 Veličina: **225 Visa rata** u bazi; pogođen je samo prozor 1.–3. u mjesecu.
 
-**`Datum naplate` ne prati promjenu datuma u Editu** (S110) — delta-shift
+**`Datum naplate` ne prati promjenu datuma u Editu** — ✅ **DJELOMIČNO S152 (C3)**: pomiče se
+za `same` pravilo (Racun/Cash) kad je target bio izveden iz starog datuma (`shiftSameDayTarget`).
+⚠ **Ostaje C3b** — Sašina odluka (prolaz 26.09.) je šira: *„samo retci bez žiga izvoda, i Racun
+i kartice"*. Fali (a) kartice na neožigosanim retcima, (b) provjera žiga — danas se pomiče i
+ožigosan Racun redak. Žig mora doći **iz configa** (npr. ključ pravila `lock_slug: izvod_opis`
++ kolona u `Automations` sheetu), ne iz koda — `izvod_opis` je pojam Financija.
+Izvorni zapis (S110): delta-shift
 (`EditActivityPage.handleDateTimeChange`) pomiče samo *vremena eventa*, ne i datumske atribute.
 Oba popravka u S110 tražila su ručnu izmjenu. D1b kaže `Izvor ∈ {Racun, Cash}` ⇒ `Datum naplate`
 = `event_date` (ovdje `Cash` **ostaje** — D1b je o datumu naplate, ne o saldu; v. S111),

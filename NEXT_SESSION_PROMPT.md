@@ -1,8 +1,8 @@
-> Pisano protiv commita **`02c5f0d`** (S151) + commit S151 koji nosi ovaj file (samo docs).
-> ⚠ Ako `git log` pokazuje noviji commit od S151 handoffa, čitaj ovo kao **povijest**, ne kao stanje.
+> Pisano protiv commita **`d9cb82c`** (S152) + commit S152 koji nosi ovaj file (samo docs).
+> ⚠ Ako `git log` pokazuje noviji commit od S152 handoffa, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S151 (2026-09-26)
+# Sljedeća sesija — nakon S152 (2026-09-26)
 
 ---
 
@@ -10,31 +10,36 @@
 
 ## Što je danas napravljeno
 
-1. **`docs/` pospremljen.** U korijenu je 15 dokumenata umjesto 28. Gotovo i zamijenjeno je u
-   `docs/_archive/`, ono što čeka okidač u `docs/parked/`. Audit od 16.09. ostaje za usporedbu sa
-   sljedećim auditom.
-2. **Kokin dokument prepisan:** `docs/FINANCIJE_KOKA_PROCES.md`. Opisuje kako Koka radi danas
-   (mobitel, Add/Edit, saldo) i cilj: plohu **„Raščišćavanje izvoda"** koja se otvara s Overview
-   pločice. Tvoje odluke K1–K5 su upisane.
-3. **CLAUDE.md je 30 % kraći** (3.152 → 2.189 redaka). Ništa nije obrisano: E2E zamke su u
-   `e2e/CLAUDE.md`, pravila alata i Financija u `data-prep_tools/CLAUDE.md`, backlog u
-   `docs/sessions/BACKLOG.md`. Skripta je dokazala da nijedan redak ne fali.
+Sažetak za tebe: **`docs/sessions/BACKLOG_2026-09-26_S152.md`** (nova verzija backlog sažetka).
 
-## Što treba od tebe / Koke (iz S150 — nije provjereno je li odrađeno)
+1. **Structure uvoz** više ne javlja lažne promjene. Usput zatvorena i opasnija rupa: upis nove
+   vrijednosti kroz „Other" brisao je ostale postavke polja (npr. zadani `Planiran` na `Status`u).
+2. **Alat za Structure file** sam staje nad postojećom `Financije_all` — nema više „ne smiješ ga pokrenuti".
+3. **Razvrstač izvoda:** `Financije\run.bat razvrstaj_izvode.py [--apply]` uzima iz Kokinog
+   OneDrive inboxa i imenuje po sadržaju. Kokina mapa se ne dira.
+4. **Rate:** Visa kupljena 1.–3. u mjesecu dobije prvu ratu isti mjesec (kao banka).
+   **Edit:** promjena datuma retku s `Racun`/`Cash` pomakne i `Datum naplate`.
+5. **Usput:** filtar „This Month" je rezao zadnji dan mjeseca (danas 31.08. → 29.09.) — popravljeno.
 
-- **Koka:** OneDrive na mobitel (bez backupa fotografija), ZABA izvod *Podijeli → OneDrive → Izvodi*.
-- **Ti:** ima li RF aplikacija gotov PDF izvod; zatražiti novi **Garmin export**.
-- **Koka:** crveni ✕ na OneDrive Desktopu (greška sinkronizacije).
+⚠ **C3 je napravljen uže od tvoje odluke** (kartice bez žiga nisu uključene, a žig se ne provjerava)
+— v. §2 sažetka; ostaje kao **C3b**.
 
-## Redoslijed — što slijedi (dogovoreno S151)
+## Što treba od tebe / Koke
 
-1. **B1 + B2** — Structure uvoz: brojila koja broje neizmjene + alat koji briše podtipove
-   (živa mina: `make_financije_all_structure.py` se ne smije pokretati dok ovo nije gotovo).
-2. **C1** — izvodi od inboxa do žiga; prvi korak **razvrstač** (preimenovanje po sadržaju).
-   Izvodi već stižu u OneDrive, pa je ovo najbliže Kokinom stvarnom radu.
-3. **C2 + C3** — točni datumi rata; `Datum naplate` prati promjenu datuma u Editu.
-4. **C5** — „Dospjelo → potvrdi", faza 1 (samo čitanje, MC). Nakon nje ploha za izvode (K3).
-5. Ostatak B, C4 performanse, D-sitnice, F4 filtar za brojeve; zatim veliki projekt `trening.xlsm`.
+- **Ti: 7 ručnih testova S152** (`docs/sessions/PENDING_TESTS.md`, koraci u `tests/S152_tests.md`).
+  Kad prođu → merge na `main` (naredbe u CLAUDE.md, § End of session 11).
+- **Ti: odluka za C5** — config trake: (a) prvo `Dashboard` sheet, ili (b) traka odmah + jednokratni
+  SQL koji pokrećeš ti (moj prijedlog).
+- **Ti: C3b** — slažeš li se da „žig izvoda" ide u config pravila (kolona u `Automations` sheetu)?
+- Iz S150, neprovjereno: Koka — OneDrive app na mobitelu + ✕ na OneDrive Desktopu; ti — RF gotov
+  PDF izvod, novi Garmin export.
+
+## Redoslijed — što slijedi
+
+1. **C5** faza 1 („Dospjelo → potvrdi", samo čitanje, MC) — nakon tvoje odluke o configu.
+2. **C3b** — žig izvoda.
+3. **C1 korak 4** — obrada izvoda jednom naredbom (kad stigne prvi pravi izvod kroz inbox; spec prvo).
+4. B3, B4+F7, B5, B6, C4, D2/D4/D5, F4, F5; zatim `trening.xlsm`.
 
 ---
 
@@ -42,28 +47,33 @@
 
 ## Stanje grana
 
-`main` = `515df05` (S149 deploy). `test-branch` = S151 (samo docs; deploy ne treba).
-Grana `claude-split` je mergeana i obrisana (lokalno i na originu).
+`main` = `515df05` (S149). `test-branch` = S152, **7 commitova ispred** (`efbf727`…`d9cb82c` + docs).
+Deploy **nije** tražen — ništa od S152 nije na PROD-u.
 
-## S151 promjene (bez koda aplikacije)
+## Novo u S152
 
-- Nove putanje: `docs/_archive/*`, `docs/parked/{RULES_ENGINE_SPEC,Analytics_tab}.md`,
-  `docs/FINANCIJE_KOKA_PROCES.md` (bivši `KOKA_PRVI_MJESEC.md`), `docs/sessions/BACKLOG.md`.
-- **Podmapni CLAUDE.md:** `e2e/CLAUDE.md`, `data-prep_tools/CLAUDE.md`. ⚠ Izmjereno da se **ne
-  učitaju sami** kad se čita Bashom — Key docs zato nosi retke „prije rada na X pročitaj Y".
-  Radiš li na testovima ili alatima, **pročitaj ih izravno**.
-- `Tools/verify_claude_split.py <original>` — dokaz da selidba nije izgubila redak.
-- K1–K5 (ploha izvoda): nova tablica stavki izvoda · Python parsira · C5 faza 1 prvo · kartice
-  kao košara · potvrđuje vlasnica Aree. Spec plohe još ne postoji — piše se prije koda.
+- `src/lib/validationRules.ts` — **jedini** graditelj `validation_rules` (`buildRules`, `sameRules`,
+  `addOptionToRules`, `renameDependsOnParent`). `src/lib/pendingOptions.ts` — jedna kopija „Other".
+- `src/lib/localDate.ts` — `localYmd` / `todayLocalYmd`.
+- `rataAutomation.findChargeDateRule` + `generateRataChargeDates(..., attributeRules)`;
+  `attributeRules.shiftSameDayTarget`; `EditActivityPage.sameDayBaseRef`.
+- Izloženo za testove: `structureExcel.buildAttrRows`, `structureImport.buildValidationRules`.
+- Testovi: `validationRules`, `rataChargeDates`, `shiftSameDayTarget`, `localDate` (sam postavlja
+  `TZ`); `ruleManagedAttrs` sada **bundla** (`attributeRules` uvozi `localDate`).
+- Alati: `Financije/razvrstaj_izvode.py` (novo); `make_financije_all_structure.refuse_if_area_exists`.
 
-## Otvoreno — iz S149/S150, i dalje vrijedi
+## Otvoreno
 
-- ⭐ `make_financije_all_structure.py` **ne pokretati** dok taksonomija ne dolazi iz `--base` (B2).
-- 1 loš par `Hlace i carape` `Razno / Poklon`; rata 1/6 `117,32` (atribut 19,57 / komentar 19,55);
-  MC par `+105,30 / −105,30` `Planiran` — B5, jedan roundtrip.
-- E8-2: treba trace pada, ne novu hipotezu.
-- Razvrstač: testni ne-izvod leži u inboxu (PBZ „Detalji transakcije") — mora ga odbiti.
-  Imena `PBZVISA_`/`PBZVIZA_` — razvrstač ih ujednačava.
-- Preimenovanje `Financije_all` → `Financije`: odluka **nakon C1**.
-- Daljnje smanjenje CLAUDE.md-a traži **sažimanje** priča uz pravila — sukob s „X ne skraćivati";
-  samo uz Sašin pristanak, zaseban razgovor.
+- **C3b** (Sašina odluka iz prolaza): pomak `Datum naplate` u Editu za **sve** retke **bez žiga**
+  (i kartice), ožigosan se ne dira. Žig iz configa (npr. `lock_slug` na pravilu + kolona u
+  `Automations` sheetu), nikad `izvod_opis` u kodu. `shiftSameDayTarget` je mjesto; derived-provjeru
+  (target == pravilo(stari datum)) zadržati.
+- **C5**: čeka odluku o configu. Ako (b): RPC `053` na TEST puštam sam (`SUPABASE_DB_URL`, pooler),
+  PROD i config pušta Saša. Provjeriti da Structure uvoz **ne briše** `settings.dashboard.*.due`.
+- `DEBUG — remove after S21` log `[Import dirty]` u `structureImport.ts` i dalje živi — koristan za
+  T-S152-1 ako padne; maknuti nakon.
+- ⚠ **Python heredoc na Windowsu:** `\\r` u tekstu je jednom postao CR (pokvaren `BACKLOG.md`), a
+  `„…"` navodnici ruše jednoredne stringove. Za veće izmjene docs-a piši skriptu u scratchpad fileu,
+  pokreni s `python -X utf8`, i poslije skeniraj izmijenjene fileove na `\r` bez `\n`.
+- Iz S149/S150 i dalje: 1 loš par `Hlace i carape`, rata `117,32` (19,57/19,55), MC `±105,30`
+  `Planiran` (B5); E8-2 treba trace; razvrstač imena `PBZVIZA_` ostavio (alati čitaju oba).

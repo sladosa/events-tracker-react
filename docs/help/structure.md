@@ -102,10 +102,18 @@ Kolona `Action` određuje vrstu pravila:
   `TriggerAttr` (checkbox koji pali modal), `CountAttr`, `AmountAttr`, `IndexAttr` (redni broj
   rate), `TargetAttr` (kamo ide datum naplate), `DateMap` = `vrijednost=DAN` (broj 1–31),
   `OverrideAttrs` = vrijednosti nametnute svakoj rati (npr. `status=Planiran`).
+  Datume rata računa **isto `set_attribute` pravilo** koje puni `TargetAttr` (prva rata =
+  datum naplate obične kupovine, svaka sljedeća +1 mjesec). Rata `DateMap` se koristi samo
+  kao rezerva kad takvog pravila nema.
 
 Import zamjenjuje navedene automatike svake area koja se pojavi u sheetu. **Odsutnost ne briše** —
 stariji export bez rata kolona ne može pobrisati postojeću rata konfiguraciju. Pravilo koje
 referencira nepostojeći slug se preskače (vidljivo u "Automation rules skipped").
+
+Rezultat uvoza broji **promjene, ne retke**: `Attributes updated` su atributi koji su se
+stvarno promijenili, a `Automations changed (areas)` / `List columns changed (areas)` broje
+Aree kojima se ta postavka promijenila. Sivo `0` znači „sheet je pročitan, ništa se nije
+promijenilo".
 
 ## Postavke area u Structure sheetu
 

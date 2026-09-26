@@ -22,6 +22,9 @@ a poruka imenuje koje polje nedostaje.
 - Postavlja se u Structure Excelu, na retku Aree: kolone `AddTimer` i `AddDatePicker`.
 - Promjena datuma **povlači automatike** koje ovise o njemu (npr. `Datum naplate`),
   osim ako si to polje već upisao rukom — ručni unos se ne pregazi.
+- U **Editu** promjena datuma pomakne `Datum naplate` samo za `Izvor = Racun` / `Cash`
+  (naplata je isti dan), i samo ako je bio izračunat iz starog datuma. Kartični datum
+  naplate (Mastercard, Visa) se u Editu ne pomiče — on dolazi s izvoda.
 
 **Ako ne znaš točan iznos — upiši približno i označi tildom:**
 - Stavi `~` na **početak** opisa: `~ gorivo, Ina Heinzlova`. Na početku je zato što
@@ -68,7 +71,10 @@ je više ne dira.
 **Rate** — ako area ima rata pravilo, nakon Finish se pojavi modal koji ponudi razdvajanje
 kupovine na rate. Prikazuje iznos po rati i **datume naplate** svake rate.
 
-- Nastane onoliko zapisa koliko je rata; iznos svake = ukupno ÷ broj rata.
+- Nastane onoliko zapisa koliko je rata; iznos svake = ukupno ÷ broj rata. Kad se ne dijeli
+  točno, **prva** rata nosi ostatak (kao banka), pa zbroj rata uvijek daje točno ukupan iznos.
+- **Prva rata ima isti datum naplate kao obična kupovina tom karticom** (npr. Visa kupljena
+  2. u mjesecu → 5. istog mjeseca; Mastercard → 11. sljedećeg), svaka sljedeća mjesec kasnije.
 - **Sve rate ostaju na danu kupnje** (`event_date`) — kupovina je jedna, samo se plaća u
   više navrata. Zato u listi stoje jedna do druge.
 - Razlikuje ih **`Datum naplate`** (kad novac stvarno ode) i **`Rata br`** (redni broj).

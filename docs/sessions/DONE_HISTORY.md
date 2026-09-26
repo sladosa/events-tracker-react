@@ -7819,3 +7819,51 @@ dira i app (Mjerenje/usklađenje, Ključne odluke D1b/D6/D7, Delta sheet, UI) os
 - Obećano je bilo „otprilike pola"; ispalo je 30 %, jer je pravilo bilo „kad sumnjaš, ostaje gore".
   Daljnje smanjenje traži **sažimanje** priča uz pravila — sukob s pravilom „X sekcije ne skraćivati",
   dakle zaseban razgovor.
+
+---
+
+## S152 — B1/B2, razvrstač izvoda, C2+C3, lokalni dan (2026-09-26)
+
+Po redoslijedu iz S151 handoffa: B1+B2 → C1 → C2+C3. C5 odgođen na Sašinu odluku o configu.
+Sedam commitova na `test-branch`, ništa na `main`.
+
+**B1 — jedan graditelj `validation_rules` (`efbf727`).** Pisala su ga **četiri** mjesta, ne dva:
+Structure uvoz, panel, te Add i Edit kroz „Other" (dvije doslovne kopije `persistPendingOptions`).
+- Uzrok `Attributes updated 9`: panel sprema `{…, suggest: [], allow_other: true}` za **sve**
+  atribute čvora na svaki Save; uvoz je uspoređivao oblik. Sada `sameRules` (značenje). Izmjereno na
+  PROD-u: danas su svih 9 `depends_on` u obliku uvoza — lažni broj se vraćao samo nakon Savea u panelu.
+- ⚠ **„Other" je gradio pravilo IZ PARSIRANOG oblika** i brisao `default_map` (`Status`) i
+  `hidden_in_add` (`Stanje`, `Valuta`). Put je na PROD-u korišten 2× (druge Aree). Nitko nije pogođen.
+- ⚠ **Rename fixup u panelu** širio je parsirani camelCase objekt ⇒ ovisni atribut na drugom čvoru
+  bez `options_map`.
+- „Default options" (top-level `suggest` uz `depends_on`) uklonjen iz panela: 0 od 13 nepraznih.
+- Brojači `Automations` / `List columns` broje Aree s promjenom, ne retke sheeta.
+- `validationRules.test.mjs`: 40 tvrdnji nad doslovnim PROD pravilima + roundtrip izvoz→uvoz;
+  sabotaže ruše 5 / 3 / 3.
+
+**B2 — alat umirovljen (`46006de`).** `make_financije_all_structure.py` staje kad `--base` nosi
+`Financije_all`. Odluka umjesto popravka (taksonomija iz BASE-a): sve što alat radi je na PROD-u
+već primijenjeno, pa nad postojećom Areom može samo gaziti.
+
+**C1 korak 3 — `razvrstaj_izvode.py` (`c7b64d6`).** Razvrstač po sadržaju je **već postojao**
+(`inventory_izvoda.classify`, S107d) — nedostajao je samo ulaz iz inboxa. Novi alat ga uvozi; kopira,
+nikad ne premješta ni prepisuje. PBZ „Detalji transakcije" klasifikator već odbija (`UNKNOWN`).
+
+**C2 + C3 (`62f953c`).** Rata čita **isto** `set_attribute` pravilo (`findChargeDateRule`) umjesto
+vlastitog rječnika; config se ne mijenja. MC 0 razlika u 365 dana, Visa samo 1.–3. i točno mjesec
+ranije. C3: `shiftSameDayTarget` — samo `same` pravilo i samo izveden target.
+⚠ **C3 je izveden UŽE od Sašine odluke** (prolaz: „bez žiga, i Racun i kartice") — kartice nisu
+uključene, a žig se ne provjerava (ožigosan Racun redak se pomiče). Prijavljeno na kraju sesije;
+ostaje **C3b** (žig iz configa).
+
+**Usput: lokalni dan umjesto UTC-a (`d9cb82c`).** Pri čitanju Edit spremanja nađen
+`toISOString().split('T')[0]` — i još desetak takvih. Filtar **„This Month" = 31.08. → 29.09.**
+(30.09. izostavljen), „This Year" pomaknut za dan; zaglavlje Add/Edita i Edit `event_date` krivi
+00:00–02:00. PROD: 0 od 12.362 eventa pogođeno. `src/lib/localDate.ts`; test sam postavlja zonu.
+
+**Usput: `BACKLOG.md` pokvaren vlastitim upisom** — `Financije\run.bat` je kroz Python heredoc
+postao `Financije` + CR + `un.bat`. Nađeno čitanjem, ispravljeno, i svi izmijenjeni fileovi
+provjereni na zalutali CR.
+
+**Ritual:** PENDING sekcija S152 (7 ⬜, 2 ✅), `tests/S152_tests.md`, Help (`activities`,
+`structure`), ENRICH_PLAN, novi sažetak `BACKLOG_2026-09-26_S152.md`.

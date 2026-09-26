@@ -1553,3 +1553,15 @@ Python stringu postane stvaran prijelom (`SyntaxError: unterminated string liter
 Za izmjene fileova: **line-based** zamjena, patch u **zasebnom `.py` fileu**, prijelom iz
 `chr(10)` i backslash iz `chr(92)`.
 
+---
+
+### S152 (2026-09-26) — razvrstač izvoda, alat za Structure umirovljen
+
+- **`razvrstaj_izvode.py` (novo)** — C1 korak 3: OneDrive inbox (`C:\0_Sasa\OneDrive\Izvodi`)
+  → `izvodi/TIP_YYYY-MM.pdf`. Klasifikacija i parsiranje su **uvezeni** iz `inventory_izvoda` /
+  `enrich_from_izvoda` (ne kopirani). Inbox je Kokin ⇒ samo **kopija**; nikad ne prepisuje.
+  Izmjereno: pravi inbox (PBZ „Detalji transakcije" `OSTAJE`) + pješčanik s 5 scenarija.
+  Korijen `izvodi/` = čeka obradu; `Analizirani_izvodi/` tek nakon uvoza (korak 6).
+- **`make_financije_all_structure.py`** — `refuse_if_area_exists()`: staje ako `--base` nosi
+  `Financije_all` (S145 file ⇒ exit 1, 49 redaka). Migracijski alat, nad postojećom Areom samo gazi.
+- Sljedeće (C1 korak 4): jedna naredba obrade → Excel za uvoz; spec prije koda.
