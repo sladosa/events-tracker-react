@@ -1,214 +1,142 @@
-# Kokin prvi mjesec — što je riješeno, što nije, i redoslijed
+# Kokin rad s `Financije_all` — kako radi danas i kamo idemo
 
-**Pisano:** 2026-09-02 (S125) · **Za:** Sašu, prije nego Koka počne gledati
-**Susjedni dokumenti:** `CLAUDE.md` (trajna pravila) · `NEXT_SESSION_PROMPT.md`
-(stanje u letu) · `docs/OVERVIEW_TAB_SPEC.md` (saldo i sidra)
+**Prepisano:** 2026-09-26 (S151) · **Za:** Sašu (i Claudea pri planiranju Kokinih plohe)
+**Prije:** `KOKA_PRVI_MJESEC.md` (S125, pisan „prije nego Koka počne"); stari tekst je u gitu.
+**Susjedni dokumenti:** `DOSPJELO_SPEC.md` (potvrda košare) · `OVERVIEW_TAB_SPEC.md` (saldo, sidra)
+· `sessions/BACKLOG_2026-09-26.md` C1 (izvodi od inboxa do žiga) · `CLAUDE.md` (trajna pravila)
 
 ---
 
-## Zašto ovaj dokument postoji
+## 0. Mjerilo koje vrijedi i dalje
 
-Sašin zahtjev: *„Koka će uskoro trebat početi to gledat i bilo bi mi važno da ne
-izgubi povjerenje i volju."*
-
-To je uži kriterij od „radi li aplikacija". Aplikacija može biti točna, a da je ona
-prestane koristiti — i obrnuto, može imati sitne smetnje koje je neće smetati.
-Razlika je u **jednoj vrsti greške**:
+Sašin zahtjev iz S125: *„bilo bi mi važno da ne izgubi povjerenje i volju."*
 
 > **Tihi gubitak njenog rada košta više od deset vidljivih smetnji.**
->
-> Ako klikne, ništa se ne dogodi i nigdje ne piše zašto — zaključit će da se
-> aplikaciji ne može vjerovati. Ako klikne i dobije poruku koja objasni što se
-> dogodilo, čak i kad je poruka neugodna, povjerenje ostaje.
+> Klikne, ništa se ne dogodi, nigdje ne piše zašto ⇒ aplikaciji se ne može vjerovati.
+> Klikne i dobije poruku (i neugodnu) ⇒ povjerenje ostaje.
 
-Cijela današnja sesija bila je lov na takve greške, i našle su se **četiri**. Sve
-četiri su bile nevidljive po konstrukciji.
+Svaka nova Kokina ploha se mjeri time, ne time „radi li".
 
 ---
 
-## Njen mjesečni tok
+## 1. Kako Koka radi DANAS (S151, 2026-09-26)
 
-Ovo je ono što će raditi, i redoslijed po kojem stvari mogu puknuti:
+- **Mobitel, Add i Edit Activity.** Troškove upisuje po računima dok nastaju.
+- **Zanima je saldo računa** — Overview pločica „Stanje po računu" je razlog zbog kojeg upisuje.
+- **Stara Excelica je napuštena.** Rečeno joj je da više nema smisla i prihvatila je — mobitel joj
+  je praktičniji. (Stavka „kad počneš upisivati u app, u Excelicu više ne" iz S125 je time
+  **zatvorena**.)
 
-1. **Unos tijekom mjeseca** — Add Activity, po nekoliko redaka dnevno
-2. **Stigne izvod** (ZABA izvadak, MC, Visa)
-3. **Izvoz delta sheeta** za jedan račun → Excel
-4. **Rad u Excelu**: dopiše retke s izvoda, potvrdi košaru (`Planiran` → `Izvrsen`),
-   ispravi što je krivo
-5. **Uvoz natrag** → izvještaj o uvozu
-6. **Pogled na Overview**: saldo mora odgovarati banci
-
-Koraci 3–5 su njen dom — na to je naviknuta iz svoje Excelice. **Excel put joj je
-važniji od aplikacije**, i to je Sašina izričita ocjena (S125). Ako ondje nešto tiho
-zakaže, ne prelazi.
+⚠ **Ovo mijenja pretpostavku iz S125** („Excel roundtrip joj je dom, važniji od aplikacije").
+Excel roundtrip **ostaje** — kao put za bulk ispravke i za Sašine alate — ali **nije njen
+svakodnevni put**. Nove Kokine funkcije se projektiraju **za mobitel, u aplikaciji**.
+Posljedica za prioritete: sve što traži da ona otvori Excel je za nju skupo.
 
 ---
 
-## Što je riješeno danas (S125)
+## 2. Njen mjesečni krug — ciljni oblik
 
-Sve je na `test-branch`. ⚠ **Koka ovo još ne vidi** — v. „Redoslijed", P0.
+Dva trenutka u mjesecu, oba na **istoj pločici** Overviewa, po računu:
 
-| bilo je | sada |
-| --- | --- |
-| ✎ „netko je dirao tvoj redak" nije se vidjela na širokom ekranu | vidi se na oba |
-| izvoz je mogao izaći **bez ijedne atributske kolone** i izgledati uredno | pada s porukom što se nije učitalo |
-| kartični redak s krivim `Statusom` ispadao iz **obje** strane delta sheeta | sekcija je cijela košara; `Σ` je neto |
-| ništa nije govorilo **što** s retkom nije u redu | stupac `Provjeri`, kao formula koja nestane kad se redak popravi |
-| Koka nije mogla ispraviti Sašin redak kroz Excel | „Ispravi kao vlasnik Aree" — mijenja original, bez duplikata |
-| oznaka `DELETE` na tuđem retku obrisala bi mu **sve atribute**, a redak ostavila | odbija se uz poruku |
-| preview je obećavao „bit će uvezen kao NOV" (duplikat) za tuđi redak | 1 Modify, bez upozorenja |
-| ugašena kvačica Delta sheeta bez objašnjenja | kaže **zašto** i **što učiniti** |
-| „2.342 events will be exported" i kad izlazi 16 redaka | jantarna kutija s onim što file stvarno nosi |
-| preskočen redak (`row_hash`) nije javljao ništa | javlja koliko ih je i imenuje do pet |
+| kada | izvor istine | što radi | mehanizam |
+| --- | --- | --- | --- |
+| **naplata kartice je prošla**, izvoda još nema | ekran bankovne aplikacije | potvrdi **košaru** jednim brojem | „Dospjelo → potvrdi" (`DOSPJELO_SPEC.md`, C5) |
+| **stigao je PDF izvod** | izvod | prođe **iznimke** redak po redak, na kraju sidro | **Raščišćavanje izvoda** (§3, novo) |
 
----
+Između toga: svakodnevni unos na mobitelu (§1). Saldo je točan cijelo vrijeme; izvod ga samo
+**potvrđuje** i čisti ono što se nakupilo (krivi iznosi, propušteno, duplikati).
 
-## Otvoreni problemi, po riziku za njeno povjerenje
+### 2.1 Put izvoda do nje (C1, dogovoreno 26.09.)
 
-### 🔴 P0 — Deploy na `main`
+1. Koka spremi PDF u svoju OneDrive mapu `Izvodi` → kod Saše `C:\0_Sasa\OneDrive\Izvodi`.
+2. **Razvrstač** preimenuje po **sadržaju** (`ZABA_YYYY-MM.pdf`, `PBZVISA_…`) i premjesti u `izvodi/`.
+   Ne-izvod (npr. PBZ „Detalji transakcije") **odbije**, ne pogađa.
+3. Jedna naredba obrade: parsiranje + sparivanje s bazom + prijedlozi (`Tip`/`Podtip` iz
+   brojane povijesti, `Izvod opis` za žig).
+4. Rezultat stiže **Koki u aplikaciju** (§3) — ne kao Excel.
+5. Obrađen PDF → `Analizirani_izvodi/`.
 
-**Problem:** ništa od gornje tablice nije na PROD-u. `main` je na `bb13153` (S124);
-PROD ima samo migracije `043` i `044`.
-
-**Što bi ona vidjela:** stare probleme, uključujući onaj s duplikatom pri ispravku
-tuđeg retka.
-
-**Namjera:** merge `test-branch` → `main` čim Saša potvrdi. Migracije su već gore i
-stari ih kod ignorira, pa nema redoslijednog rizika kao kod `043`.
+Podsjetnik na pločici **iz podataka**, ne iz kalendara: *„rujanski izvod ZABA još nije obrađen"*.
 
 ---
 
-### 🔴 P1 — Sumnjiv redak mora doći do nje, a ne samo do poruke
+## 3. Raščišćavanje izvoda — nova ploha (PRIJEDLOG, ništa nije izgrađeno)
 
-**Problem, izmjeren 2026-09-02.** Uvoz preskače redak čiji se `row_hash` poklapa s
-fileom. To je **namjerna zaštita**: zastarjeli izvoz ne smije vratiti unatrag ono što
-je netko u međuvremenu promijenio u aplikaciji. Ali dva slučaja se iz filea **ne daju
-razlikovati**:
+**Otvara se s Overview pločice**, iz retka računa, kad za taj račun postoji obrađen a
+nepregledan izvod:
 
-| slučaj | preskok je |
-| --- | --- |
-| redak nisi dirala, netko ga je promijenio u appu | **ispravan** — štiti tuđu izmjenu |
-| redak si **vratila** na staru vrijednost | **pogrešan** — tvoja namjera nestaje |
+```
+┌ Stanje po računu ─────────────────────────────────┐
+│ Kokin tekući ZABA        13.815,33 €   ✓           │
+│   📄 Izvod 2026-09 · 44 stavke · 5 za pregled  [›] │
+│ Sašin tekući RF             690,79 €   ✓           │
+└────────────────────────────────────────────────────┘
+```
 
-Danas je Saša upravo to napravio: vratio `Studio Nataši` na `Planiran`, uvoz je rekao
-`0 Modify`, baza ostala na `Izvrsen`. **Ništa nije javilo da je ispravak progutan.**
+**Na plohi se vide samo iznimke**; ono što se slaže u cent se samo ožigoše (`Izvod opis`)
+i prikaže kao jedan redak *„39 slaže se — ožigosano"*. Na mobitelu je razlika između 5 i 44
+redaka razlika između „odradim na kavi" i „ostavit ću za poslije".
 
-**Što je već napravljeno:** upozorenje u modalu — koliko je redaka preskočeno i koji
-su (do pet imena). Uz to delta file sada nosi `Filter` list, bez kojeg provjera nije
-mogla ni krenuti.
+| vrsta | značenje | njen potez |
+| --- | --- | --- |
+| ✎ **razlika** | redak postoji, iznos ili datum se ne slaže | **Prihvati bankin** (iznos je autoritet izvoda) ili ostavi |
+| ＋ **nema u bazi** | banka ima, app nema | **Dopiši** — `Tip`/`Podtip` predložen iz povijesti, ona potvrdi ili promijeni |
+| ？ **nema na izvodu** | app ima, banka ne (razdoblje pokriveno) | duplikat? kriv račun? kupovina još nije sjela? — **odluka je njena** |
+| ⇄ **1:N** | jedan njen redak = više bankinih (ili obrnuto) | prihvati spoj koji alat predlaže (pravilo S124: bankini retci su kostur) |
 
-**Što još treba (Sašina ideja, i bolja je od poruke):** *ne vraćati redak, nego ga
-**proglasiti sumnjivim** i pustiti čovjeka da odluči.*
+**Na kraju:** *„Izvod kaže 13.815,33 na 30.09. — app kaže 13.815,33 ✓"* → **`Potvrdi stanje`**
+upiše sidro s datumom **zatvaranja izvoda** i bilješkom `ZABA_2026-09.pdf`. Datum i broj dolaze
+s papira, nikad iz klika (pravilo S115/S116). Ne slaže li se, sidro se **ne nudi** — ploha kaže
+koliko fali i koji su retci još otvoreni.
 
-Mehanizam se uklapa u ono što već postoji:
-
-1. Uvoz otkrije preskočene retke koji su u bazi promijenjeni nakon izvoza
-   (`warnStaleUntouched`, već napisano)
-2. Ti retci se **dodaju u izvještaj o uvozu** — kao nov ishod uz `Created`/`Updated`,
-   npr. `Preskočen — promijenjen nakon izvoza`
-3. Izvještaj je **svjež izvoz**, pa ti retci u njemu nose **aktualne vrijednosti iz
-   baze i aktualan `row_hash`**
-
-⇒ ona vidi sumnjiv redak, usporedi ga sa svojim Excelom, ispravi ako treba i uveze
-izvještaj natrag — **bez ikakvog trika.** Izvještaj postaje lijek, a ne samo zapisnik.
-
-⚠ **Postoji i ručni izlaz koji već radi, a nitko ga ne zna:** obriši ćeliju
-`row_hash` u tom retku. Prazan otisak znači „nije netaknut", pa redak ide u usporedbu
-s bazom. Vrijedi joj to reći, ali ne kao glavni put — brisanje stupca koji ne razumije
-nije nešto na što treba navikavati.
-
-⚠ **Preduvjet:** `BUG-S114-REPORTDD` (niže). Ako izvještaj postaje mjesto na kojem
-ispravlja, mora imati dropdowne.
+⚠ Pravila koja ploha mora nositi, jer su već plaćena:
+- **Autoritet za iznos je izvod, za opis i klasifikaciju njen redak** (S113/S114). „Prihvati
+  bankin" mijenja iznos, **ne** njen opis.
+- **Ispravak ide Editom postojećeg retka**, nikad novim retkom (dedup `(datum, iznos)`, S111).
+- **Sličan opis nije duplikat** — ？ se nikad ne briše automatski; dokaz je redak **izvoda** (S137).
+- **Rata se veže brojem rate, ne datumom** (S124).
+- **Redak prije postojećeg sidra** — izmjena ne miče saldo; ploha to mora reći (S143 faza 4).
 
 ---
 
-### 🟠 P2 — Izvještaj o uvozu nema `DropdownData` (BUG-S114-REPORTDD)
+## 4. Otvorene odluke prije koda
 
-**Problem:** izvještaj nema list s dopuštenim vrijednostima, pa u njemu `Tip` i
-`Podtip` nemaju padajući izbornik.
+| # | pitanje | prijedlog | zašto |
+| --- | --- | --- | --- |
+| **K1** | Gdje žive stavke izvoda između Sašinog alata i Kokine plohe? | **Nova tablica** (npr. `statement_lines`: račun, izvod, redak, iznos, datum, opis, prijedlog, sparen s `event_id`, stanje pregleda) | Ploha na mobitelu ne može čitati Excel; tablica je i trag *što je koji izvod potvrdio* |
+| **K2** | Tko parsira PDF? | **Ostaje Sašin Python alat** (odluka S115: „app čita izvod" je odložen) | Alat već zna ZABA/MC/Visa; ploha prima gotove prijedloge |
+| **K3** | Redoslijed prema C5 | **C5 faza 1 prvo** (traka samo za čitanje) | Manja, dijeli istu pločicu; ploha izvoda se onda nasloni na isti raspored |
+| **K4** | Kartični izvodi (MC/Visa) kroz istu plohu? | **Da, ali kao košara** — kontrola je Σ košare = naplata, ne redak po redak | Isti model kao C5 |
+| **K5** | Tko smije potvrditi | **Vlasnica Aree** (Koka), kao D5 u C5 | Grantee (Saša) pokreće alat, ne potvrđuje |
 
-**Što bi ona vidjela:** tipkala bi slobodan tekst bez ijedne provjere. Podtip mimo
-`validation_rules` uveze se kao običan tekst i **ne javi grešku** — vidi se tek kad
-ga dropdown poslije odbije, a tada je već u bazi.
-
-**Namjera:** izvještaj nosi `DropdownData` kao i običan izvoz. Malo posla, i postaje
-blokirajuće čim P1 krene.
-
----
-
-### 🟠 P2 — Visa nema fiksan dan naplate, pa 855 redaka ne pada ni u jednu košaru
-
-**Problem (S124 nalaz, i dalje otvoren):** pravilo `Visa = 3. u sljedećem mjesecu`
-ne slaže se s podacima. Izmjereno na 855 Visa redaka: **5. (383×)**, 4. (231×),
-6. (109×), 7. (82×), 11. (49×), 3. (11×).
-
-**Što bi ona vidjela:** kontrola košare radi za Mastercard, a za Visu ne — zbroj se
-ne slaže ni s jednim izvodom, i to bez objašnjenja.
-
-**Namjera:** zaseban prolaz s PBZVISA izvodima, po uzoru na `uskladi_izvod.py` za MC.
-**Ne popravljati napamet** — dospijeće treba doći s papira.
-
-⚠ Sada je vidljivije nego prije, jer sekcija radi po dospijeću.
+⚠ **Dok ploha ne postoji**, izvodi i dalje idu Sašinim alatima + Excel uvozom (Saša ili Koka
+uvozi). To je prijelazno stanje, ne cilj.
 
 ---
 
-### 🟡 P3 — Gotovina je 99 % neevidentirana, i to je svjesno
+## 5. Još otvoreno iz S125 (provjereno 2026-09-26)
 
-**Izmjereno (S121):** 57 podizanja / 9.894,00 € naspram **2** gotovinska troška /
-86,00 €.
-
-**Zašto nije problem za saldo:** podizanje ga miče, gotovinski trošak ne — saldo je
-zato savršeno točan.
-
-**Gdje ugrize:** kad se bude radio **razrez po Tipu**. Bez vlastitog retka
-`gotovina, nerazvrstano` prešutio bi ~9.800 € i podcijenio potrošnju.
-
-**Namjera:** kad se taj widget gradi, nosi taj redak. Sašina odluka je da se svaka
-sitnica **ne bilježi** — parcijalnost je u redu, ali mora biti **vidljiva**.
-
----
-
-### 🟡 P3 — Da se sumnjivo vidi u LISTI, ne samo pri uvozu
-
-**Sašina ideja (S125):** *„…napravi filter po datumu i računu ili nečemu što bi UI-u
-omogućilo da se vidi što je sumnjivo."*
-
-Poruka pri uvozu je jednokratna — pročita se i nestane. Ono što zapravo treba je da
-se sumnjivo vidi **kad god pogleda listu**.
-
-Dijelovi postoje: ✎ već pokazuje „netko drugi je dirao ovaj redak", `edited_at` je u
-bazi, filtar zna po računu i datumu. Fali veza — uvjet filtra **„promijenjeno nakon
-<datum>"** ili kolona `Zadnja izmjena`.
-
-⚠ Dodiruje se s **filtrom od dva uvjeta**, koji je u S118 svjesno odgođen. Ne krenuti
-prije te odluke.
+- ✅ **Deploy** — davno na PROD-u.
+- ✅ **`DropdownData` u izvještaju o uvozu** — zatvoreno (BUG-S114-REPORTDD, S136).
+- ✅ **Visa dan naplate** — značenje odlučeno (S141: stvarni dan terećenja; `cutoff:3:5` je
+  privremena pretpostavka). Ispravljač još ne postoji (Backlog „PBZVISA prolaz").
+- 🟡 **Sumnjiv redak u izvještaj o uvozu** (preskočen `row_hash` a promijenjen u appu) — vrijedi
+  i dalje, ali **niže** nego u S125: pogađa Excel put, koji više nije njen svakodnevni.
+- 🟡 **Gotovina 99 % neevidentirana** — svjesno; kad se gradi razrez po `Tip`u, mora nositi
+  redak `gotovina, nerazvrstano`.
+- 🟡 **Sumnjivo vidljivo u listi** („promijenjeno nakon <datum>") — dodiruje filtar s dva uvjeta,
+  svjesno odgođen.
 
 ---
 
-## Što joj treba reći, njenim jezikom
+## 6. Što joj treba reći, njenim jezikom
 
-Kratko, i samo ovo:
+1. ~~Kad počneš upisivati u app, u Excelicu više ne.~~ ✅ rečeno, prihvaćeno.
+2. **Redak se potvrđuje kad se zbroj složi s bankom, ne kad datum dođe.** Dospjeli datum nije
+   dokaz da je banka naplatila.
+3. **Stanje na pločici uvijek uspoređuj s bankom, a razliku prijavi.** Δ znači da nešto fali,
+   nešto je dvaput ili je iznos kriv — nikad grešku u izračunu.
+4. **Ako nešto ispraviš, a ništa se ne dogodi — javi.** To je greška aplikacije, ne tvoja.
 
-1. **Kad počneš upisivati u app, u Excelicu više ne.** Radi li se oboje, sve dobivamo
-   dvaput — a to se neće vidjeti dok se saldo ne raziđe. *(stoji od S124, još nije
-   rečeno)*
-2. **Redak se potvrđuje kad se zbroj složi s izvodom, ne kad datum dođe.** Dospjeli
-   datum nije dokaz da je banka naplatila.
-3. **Stanje na pločici uvijek uspoređuj s bankom, a razliku prijavi.** Δ znači da
-   nešto fali, nešto je dvaput, ili je iznos kriv — nikad grešku u izračunu.
-4. **Ako nešto ispraviš u Excelu pa uvezeš, a ništa se ne dogodi** — javi. To je
-   greška aplikacije, ne tvoja.
-
-⚠ Četvrta je najvažnija za povjerenje: daje joj dopuštenje da prijavi tišinu umjesto
-da zaključi da je nešto krivo napravila.
-
----
-
-## Otvorene odluke za Sašu
-
-| odluka | zašto sada |
-| --- | --- |
-| **Deploy na `main`** | bez toga Koka ne vidi nijedan današnji popravak |
-| **Ide li P1 (sumnjiv redak u izvještaj) prije nego ona počne?** | ako počne bez toga, prvi tihi preskok bit će njen |
-| **Tko odrađuje Visa dospijeća** | pipeline (Saša) ili se ostavlja da ona potvrđuje ručno |
-| **Odglumiti Kokin unos 3 dana** (iz S124 popisa) | pretvara „bi li bila zadovoljna" u brojku, prije nego je pitamo |
+⚠ Četvrta je najvažnija za povjerenje: daje joj dopuštenje da prijavi tišinu umjesto da zaključi
+da je nešto krivo napravila.

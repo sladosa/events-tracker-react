@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 110 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 123 | [Critical rules](<#Critical rules>) | X |
-| 1222 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1943 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1959 | [Key files](<#Key files>) |  |
-| 2105 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2125 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2147 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2173 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2213 | [Open bugs](<#Open bugs>) | ~ |
-| 2331 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2524 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2621 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2629 | [Backlog](<#Backlog>) | ~ |
-| 2982 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2990 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1226 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1947 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1963 | [Key files](<#Key files>) |  |
+| 2109 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2129 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2151 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2177 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2217 | [Open bugs](<#Open bugs>) | ~ |
+| 2335 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2528 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2625 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2633 | [Backlog](<#Backlog>) | ~ |
+| 2986 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2994 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 3148 redaka, 18 sekcija._
+_Ukupno 3152 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -99,7 +99,7 @@ podaci hrane i AI sloj.
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist            |
 | `data-prep_tools/Financije/ENRICH_PLAN.md` | Financije pipeline — alati, koraci, nalazi po sesijama                          |
-| `docs/FINANCIJE_KOKA_PROCES.md`          | **Kokin rad s `Financije_all`** — sadašnji tok (mobitel, Add/Edit, saldo) i plan (izvodi, raščišćavanje). ⚠ Prepisuje se (S151): tekst je još iz S125 |
+| `docs/FINANCIJE_KOKA_PROCES.md`          | **Kokin rad s `Financije_all`** — sadašnji tok (mobitel, Add/Edit, saldo) i plan: izvodi → ploha „Raščišćavanje izvoda“ s Overview pločice. Odluke K1–K5 otvorene |
 | `NEXT_SESSION_PROMPT.md`                  | **Na početku svake sesije** — handoff, DIO 1 netehnički / DIO 2 tehnički. Prepisuje se na kraju svake sesije (v. „End of session" 5). ⚠ Provjeri commit u zaglavlju: ako nije zadnji, čitaj ga kao povijest, ne kao stanje |
 | `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** (⚠ gitignoriran — samo lokalno + `D:`)           |
 
@@ -595,6 +595,10 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   S125 ima treći način uz `skip` / `import_as_mine`: **`fix_as_owner`**, koji
   **zadržava `event_id`** ⇒ UPDATE na mjestu, autorstvo ostaje autoru, `edited_by`
   bilježi ispravljača. Baza je to dopuštala od `043`; blokada je bila u klijentu.
+  ⚠ **ISPRAVAK S151 (2026-09-26): premisa više ne vrijedi.** Koka je napustila Excelicu i
+  radi **na mobitelu, kroz Add/Edit**, radi salda. Excel roundtrip ostaje put za bulk ispravke
+  i Sašine alate — `fix_as_owner` zato ostaje — ali nove Kokine funkcije se projektiraju **za
+  mobitel, u aplikaciji** (v. `docs/FINANCIJE_KOKA_PROCES.md`).
 - **⚠ Nije rubni slučaj nego glavni tok delta sheeta.** Izmjereno na košari 03.09.:
   **7 od 10 redaka su Sašini**. Bez ovoga Kokin mjesečni krug ne bi vidio većinu
   košare — i to **tiho**, retci se preskaču bez poruke.
