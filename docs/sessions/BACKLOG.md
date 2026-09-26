@@ -24,6 +24,8 @@
   svoju OneDrive mapu `Izvodi` → kod Saše `C:\0_Sasa\OneDrive\Izvodi` (postavljeno 26.09.) →
   **razvrstač** (prvi korak) preimenuje po **sadržaju** u `ZABA_YYYY-MM.pdf` i stavi u `izvodi/` →
   jedna naredba obrade → Excel za uvoz (pregled ostaje brana) → `Analizirani_izvodi/`.
+  ✅ **Razvrstač gotov (S152):** `Financijeun.bat razvrstaj_izvode.py [--apply]` — kopira iz
+  inboxa (Kokina mapa se ne dira), PBZ „Detalji transakcije" ostaje uz razlog. Sljedeće: obrada.
   Podsjetnik na pločici **iz podataka** („kolovoški izvod još nije obrađen“), ne iz kalendara.
   ⚠ Testni slučaj: PBZ „Detalji transakcije“ PDF — razvrstač ga mora odbiti kao ne-izvod.
 - ~~**Structure uvoz (B1 + B2)**~~ — ✅ S152: jedan graditelj `validation_rules`

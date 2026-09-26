@@ -466,6 +466,15 @@ dira saldo. **Ratama se ne dira ni kasnije:** rate dijele dan **kupnje**, izvod 
 ## Key files — alati u `data-prep_tools/Financije/`
 
 ```
+data-prep_tools/Financije/razvrstaj_izvode.py
+                                   C1 korak 3 (S152): OneDrive inbox → `izvodi/TIP_YYYY-MM.pdf`
+                                   po SADRZAJU (`classify` + parseri iz inventory_izvoda,
+                                   ne kopije). Zadano dry run, `--apply` kopira.
+                                   /!\ Inbox je Kokin — KOPIJA, nikad premjestanje.
+                                   /!\ Nikad ne prepisuje: isto ime + druge transakcije
+                                   => ostaje u inboxu; iste transakcije => „vec imamo".
+                                   Korijen `izvodi/` = ceka obradu; `Analizirani_izvodi/`
+                                   tek nakon uvoza (alati ga citaju kao obradjeno).
 data-prep_tools/Financije/uskladi_izvod.py
                                    Jedan izvod ↔ baza ↔ Kokin file. Četiri sekcije po
                                    tome TKO ODLUČUJE + `--file` review workbook za Koku.
