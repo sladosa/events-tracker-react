@@ -253,6 +253,35 @@ def read_base(path: str) -> list[dict]:
     return rows
 
 
+def refuse_if_area_exists(base: list[dict], path: str) -> None:
+    """STANI ako BASE vec nosi `Financije_all` (S152, umirovljenje).
+
+    /!\\ Ovo je MIGRACIJSKI alat (`Financije` -> `Financije_all`). Sve sto radi
+        (preimenovanja, novi atributi, Sort, jedinice) je na PROD-u primijenjeno
+        -- nad exportom postojece Aree ne dodaje nista, a moze samo pregaziti:
+        taksonomiju regenerira iz Review filea od 10.07., pa je prvi uvoz
+        izbrisao podtip dodan u bazi poslije toga (`Zabava / Wellness`, S148),
+        a do S145 je isto radio s automatikama.
+        Dvaput popravljeno pravilom „ne pokretati" -- sjecanje je bila jedina
+        brana. Sada je brana alat sam.
+
+    Postojeca Area se mijenja u aplikaciji: Structure tab -> Export -> uredi
+    -> Import (pregled prije uvoza pokaze sto se mijenja).
+    """
+    hits = [r for r in base
+            if r.get("Type", "").lower() in ("area", "category", "attribute")
+            and (r.get("CategoryPath", "") == NEW_AREA
+                 or r.get("CategoryPath", "").startswith(NEW_AREA + " >"))]
+    if not hits:
+        return
+    sys.exit(
+        f"\n  STOP: BASE vec sadrzi Areu '{NEW_AREA}' ({len(hits)} redaka)\n"
+        f"        {os.path.basename(path)}\n\n"
+        f"  Ovaj alat je migracija 'Financije' -> '{NEW_AREA}' i nad postojecom\n"
+        f"  Areom samo gazi stanje baze (taksonomiju iz starog Review filea).\n"
+        f"  Promjena strukture: app -> Structure tab -> Export -> uredi -> Import.\n")
+
+
 def read_base_automations(path: str) -> list:
     """Cita `Automations` sheet BASE-a -> lista pravila (dict po koloni).
 
@@ -588,6 +617,7 @@ def main() -> None:
     print()
 
     base = read_base(base_path)
+    refuse_if_area_exists(base, base_path)
     taks = read_taxonomy(review_path)
     rows = build_rows(base, taks)
 

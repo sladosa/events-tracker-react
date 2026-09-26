@@ -252,8 +252,13 @@
   poslije toga (`Zabava / Wellness`, S124) izbrisan je prvim Structure uvozom iz alata —
   10 redaka ostalo bez valjane opcije u dropdownu, bez ijedne poruke. Otkrila ga je provjera
   parova `Podtip ∈ options_map[Tip]` nad cijelom Areom (S148: 20 loših parova).
-  ⇒ **Alat ne pokretati dok taksonomija ne dolazi iz BASE-a** (unija s Reviewom, ispis
-  razlike — kao `read_base_automations`). `Wellness` vraćen rukom kroz panel.
+  `Wellness` vraćen rukom kroz panel.
+  ✅ **ZATVORENO S152 umirovljenjem, ne popravkom:** alat je migracija `Financije` →
+  `Financije_all` i nad postojećom Areom ne dodaje ništa (sve što radi je na PROD-u već
+  primijenjeno) — mogao je samo gaziti. `refuse_if_area_exists()` **staje** čim `--base`
+  nosi `Financije_all` (izmjereno: S145 file ⇒ `STOP … 49 redaka`, exit 1; stari export
+  `Financije` i dalje prolazi). Pravilo „ne pokretati" je time postalo brana u alatu, a
+  ne sjećanje. Postojeća Area se mijenja **Structure Export → uredi → Import**.
   ⚠ Suprotno vrijedi za kolone kojih u generiranom fileu **nema**
   (`DisableSavePlus`, `AddTimer`, `AddDatePicker`): ondje uvoz odsutnost čita kao
   *„ne diraj“*, pa je izostanak **ispravan** — v. pravilo iz S139.

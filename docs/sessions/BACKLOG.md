@@ -26,8 +26,8 @@
   jedna naredba obrade → Excel za uvoz (pregled ostaje brana) → `Analizirani_izvodi/`.
   Podsjetnik na pločici **iz podataka** („kolovoški izvod još nije obrađen“), ne iz kalendara.
   ⚠ Testni slučaj: PBZ „Detalji transakcije“ PDF — razvrstač ga mora odbiti kao ne-izvod.
-- **Structure uvoz (B1 + B2), zajedno:** BUG-S117-RULESHAPE (brojila koja broje neizmjene) i
-  `make_financije_all_structure.py` taksonomija iz BASE-a (v. Zamke, S148).
+- ~~**Structure uvoz (B1 + B2)**~~ — ✅ S152: jedan graditelj `validation_rules`
+  (`src/lib/validationRules.ts`), brojači broje promjene; alat umirovljen za postojeću Areu.
 - **Area kao predložak specijalizacije (D3)** — prijatelj dobije Structure (+ demo Activities) i
   ima cijelu organizaciju Aree. **Prvo istraživanje na TEST-u** pod stranim računom, zapisati
   što fali i **koliko refaktora** (Saša ne želi veliku refaktorizaciju). „Roundtrip completeness“

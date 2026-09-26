@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 113 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 126 | [Critical rules](<#Critical rules>) | X |
-| 1141 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1544 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1560 | [Key files](<#Key files>) |  |
-| 1643 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1663 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1685 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1711 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1751 | [Open bugs](<#Open bugs>) | ~ |
-| 1869 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 1914 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2011 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2019 | [Backlog](<#Backlog>) | ~ |
-| 2023 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2031 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1156 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1559 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1575 | [Key files](<#Key files>) |  |
+| 1661 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1681 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1703 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1729 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1769 | [Open bugs](<#Open bugs>) | ~ |
+| 1876 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 1921 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2018 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2026 | [Backlog](<#Backlog>) | ~ |
+| 2030 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2038 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2189 redaka, 18 sekcija._
+_Ukupno 2196 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -367,6 +367,21 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   a uvoz je **prijavi i sam preuzme** `structure_REVIEW_NEEDED_*` s obojanim ćelijama J/K.
   ⚠ Jedina kombinacija koja **još** može ostaviti obavezno polje izvan ekrana: obavezno
   dijete **neobaveznog** `depends_on` roditelja — takvo polje ne otkriva ni „Show all".
+- **⚠ `validation_rules` SE GRADI SAMO KROZ `src/lib/validationRules.ts`** (S152). Pisala su ga
+  **četiri** mjesta u tri oblika (uvoz, panel, Add i Edit „Other"), pa je (a) svaki uvoz nakon
+  spremanja panela javljao „Attributes updated 9" bez promjene — šum na **jedinom** brojaču koji
+  kaže je li uvoz nešto dirnuo; (b) ⚠ „Other" je pravilo gradio **iz parsiranog oblika** i time
+  **brisao** `default_map` (`Status`: MC → `Planiran`) i `hidden_in_add` (`Stanje`, `Valuta`) —
+  dovoljan je jedan upis nove vrijednosti pod vlasnicom; (c) rename u panelu širio je parsirani
+  **camelCase** objekt, pa bi ovisni atribut na drugom čvoru ostao bez `options_map`.
+  ⚠ **Izmjena kreće od SIROVOG pravila, nikad od `parseValidationRules`** — parsirani oblik je
+  za čitanje; nosi drukčija imena ključeva i ne nosi sve što baza drži.
+  ⚠ Usporedba ide kroz `sameRules` (značenje: `allow_other: true`, prazan `suggest`, prazan `*`
+  nisu razlika), **nikad** kroz usporedbu JSON-a — izvoz sam dopiše `*` redak.
+  ⚠ „Default options" (top-level `suggest` uz `depends_on`) **ukinut** — izvoz ga nikad nije
+  nosio; fallback je redak `WhenValue = *`.
+  ⚠ Brojači `Automations` / `List columns` u modalu broje **Aree kojima se config promijenio**;
+  sivo `0` = sheet pročitan, bez promjene.
 - **`chain_key`** je sistemsko polje (UUID), nikad se ne prikazuje; `comment` je samo korisnički tekst
 - **`touched: true`** mora biti postavljen pri učitavanju atributa iz baze u Edit toku —
   inače ih `handleSave()` preskoči
@@ -1613,6 +1628,9 @@ src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u 
                                    ⚠ kontrolni SUMIFS ne broji `Planiran`
 src/lib/structureExcel.ts          Structure export (Automations, Dashboard, DisableSavePlus)
 src/lib/structureImport.ts         Structure import — non-destructive, slug lookup
+src/lib/validationRules.ts         JEDINI graditelj `validation_rules` (panel, uvoz, „Other") +
+                                   `sameRules` za usporedbu po značenju (S152)
+src/lib/pendingOptions.ts          „Other" opcije iz Add/Edit u `validation_rules` (jedna kopija)
 src/lib/attributeRules.ts          set_attribute automatika (evaluateDateRule, same/next:N)
 src/lib/deleteErrors.ts            classifyDeleteError() — čitljive poruke iz PG grešaka
 src/lib/theme.ts                   Theme colour tokens
@@ -1821,18 +1839,6 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   ⚠ S147: ponovljen (3 pada u jednom runu, 11/11 u sljedećem). Nova hipoteza: restore filtra
   bez timeouta (v. Backlog „Restoring filter…“).
 
-- **BUG-S117-RULESHAPE:** panel i import **ne pišu isti oblik** `validation_rules` za
-  `depends_on` atribut. Panel: `{type, suggest: [...], allow_other: true, depends_on}`;
-  import: `{type, depends_on}`. Zato svaki Structure import nakon spremanja panela prijavi
-  **9 „attributes updated"** koji nisu promjena nego poravnanje oblika (izmjereno S117).
-  Bezopasno za ponašanje (`allow_other` je ionako zadano `true`, `suggest` je prazan), ali
-  **šum koji skriva pravu promjenu** — a taj brojač je jedini signal da je import nešto dirnuo.
-  ⚠ **Ozbiljniji dio: fallback lista se GUBI.** Panelovo polje „Default options (when no
-  WhenValue matches)" piše u top-level `suggest`, a **export ga uopće ne nosi** ⇒ prvi
-  roundtrip ga izbriše. Trenutno neopasno jer je u cijeloj bazi **0 od 12** `depends_on`
-  atributa ima nepraznu listu — dakle rupa čeka prvog korisnika, ne ruši ništa danas.
-  Fix: kolona za fallback opcije + isti graditelj pravila na obje strane.
-
 - **D2 (prolaz 2026-09-26): grantee ne briše tuđe — VEĆ vrijedi na tri mjesta** (RLS od S134;
   UI nema Delete ni kvačicu, `canSelect={!sharedContext}`; Excel preskoči tuđi redak).
   Ostaje **pokus na TEST-u**: grantee označi Kokin redak `Delete?` i uveze — poruka mora
@@ -1849,6 +1855,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > provjereno nosi li koji od njih pravilo kojeg nema drugdje: tri su ga nosila i sva tri su
 > zadrzana (dva gore, `Postgres upgrade` u Backlogu). Isti postupak kao „Spaseno iz plana" (S137).
 
+- **~~BUG-S117-RULESHAPE~~** — zatvoreno S152: jedan graditelj `validation_rules` za panel, uvoz i „Other"; uvoz uspoređuje po značenju. Pravilo: § Model / atributi; čuva `validationRules.test.mjs` (40 tvrdnji, sabotaže ruše 5/3/3).
 - **~~BUG-S131-VIEWSTALE~~, ~~BUG-1~~** — zatvoreno S150 (prolaz): neponovljeno nakon ciljanih pokušaja; BUG-1 je dev-only poruka. Puni tekst: `DONE_HISTORY.md` § S150.
 - **~~BUG-S148-G~~** — zatvoreno S149: postojeći redak čiji je autor drugi korisnik (kriv e-mail u kol. G) više ne postaje INSERT nego **zaustavi uvoz** (preview ga javlja crveno i gasi Apply); reklasifikacija ide **prije** brisanja, pa zaustavljanje ne ostavi pola filea. Usput: palo čitanje u `smartReclassify` više se ne čita kao „nema ih" (prije bi blok od 200 redaka tiho postao 200 duplikata). Čuva `importForeignRows.test.mjs` (sabotaža ruši 3). **Neverificirano uživo: T-S149-1.**
 - **~~OTVORENO-S143-4594~~** — zatvoreno S144: fantom `−45,94` (17.08.2025.) obrisan, `−0,80` pomaknut s 07.08. na 07.07.2025., oboje kroz Excel roundtrip. Obje kontrolne točke ZABA (30.07.2026. i 06.09.2026.) sada `0,00`. „Blizanac" iz opisa bio je redak `Financije_old` — v. pravilo o upitu bez filtra po Arei.
