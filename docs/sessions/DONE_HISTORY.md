@@ -7655,3 +7655,124 @@ Korak 2 Sašinog redoslijeda (S147): **bugovi**. Redoslijed po šteti, Saša ga 
 | T-S149-3 | Structure file bez kolone `HiddenInAdd` ne briše skrivanje; prazna ćelija u postojećoj koloni ga briše | ✅ S149 — izmjereno 25.09. na TEST-u (`Health_Sasa > Medical Visit > Napomena`): file bez kolone + promijenjen opis ⇒ `Attributes updated 1`, opis `X Notes…` upisan, Napomena ostala skrivena; protuprovjera prazna ćelija ⇒ vidljiva. ⚠ Prvi pokušaj nije mjerio ništa — file nije bio spremljen, pa uvoz nije imao što pisati |
 | T-S149-4 | Nacrt Add Activityja pod ključem s ref-om baze | ✅ S149 — čuvaju automatski testovi (`S121`/`S122` E2E, sabotaža ruši 2/3) |
 | T-S149-5 | Pločica: „zadnja promjena salda" umjesto „zadnji zapis" (PROD, nakon deploya) | ✅ S149 — izmjereno 25.09. na `dev:prod`, Kokin račun (ZABA i RF) |
+
+
+## S150 — prolaz kroz backlog s Sašom (2026-09-26)
+
+Odluka po svakoj stavci: `docs/sessions/BACKLOG_2026-09-26.md`. Usput postavljen tok izvoda
+preko Kokine OneDrive mape `Izvodi` (kod Saše `C:\0_Sasa\OneDrive\Izvodi`) i dnevnik
+`trening.xlsm` preseljen u `C:\0_Sasa\OneDrive\`. Provjereno u kodu da su gotove stavke koje
+je backlog i dalje vodio kao posao: `add_header` (S117), delta faze 3/4 (S143/S144),
+`ViewDetailsPage` (S139), D9 User kolona (collab plan, „uvijek“), bulk delete za grantee-a
+(`canSelect={!sharedContext}` + RLS S134).
+
+### Tekst izbačen iz CLAUDE.md (doslovno)
+
+- **BUG-S131-VIEWSTALE — ⚠ NEPONOVLJEN, ne popravljati napamet.** Nakon Edita koji
+  **pomakne `session_start`** (promjena datuma retka), View na tom retku javi „Activity not
+  found"; **F5 ga riješi**. Izmjereno da su podaci ispravni: `event_date 2026-09-04`,
+  `session_start 2026-09-04T07:52:00+00:00`, bez kolizije sa susjednim minutama.
+  Hipoteza: `AppHome` prosljeđuje snimak liste kroz `navigate(..., { state })`
+  (`AppHome.tsx:1154`), a `ViewDetailsPage.currentIndex` traži grupu po `session_start`
+  (`:422`) — snimak od prije edita više ne sadrži novi ključ. ⚠ **Hipoteza nije dokazana**
+  i nije se dala ponoviti; prvo reproducirati, pa popravljati. Redak koji **postoji** a app
+  tvrdi da ga nema je gori od greške koja se vidi.
+  ⚠ **S147: ponovo pokušano i opet se NE javlja** (T-S131-34, `dev:prod`, 24.09.): pomak
+  23.09. → 24.09. → `Save → View` otvori redak; povratak isto. Unos ostaje, test je zatvoren.
+
+- **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
+  StrictMode artefakt, nizak rizik
+
+**✅ ~~Visa košara se ne slaže s PBZ naplatom od veljače 2026.~~ — ZATVORENO S148.** Sve Visa
+košare 2024-10 → 2026-09 su u cent (`visa_kosare.py`). Svih 8 izvoda 2026. slagalo se s RF
+naplatom — **greška je bila u bazi**: 24 Sašina ručna retka (sheet `sasa EU`) uvezena **uz**
+iste retke s izvoda, jer se dedup `(datum, iznos)` nije poklopio (datum mjesec ranije, iznos s
+tipfelerom `49,67`/`46,97`, ručna rata uz bankinu, 1:N `3,60` = `2,00 + 1,60`). Okrugli iznosi
+iz hipoteze S147 **nisu** bili uzrok. Kolovoški izvod (naplata 07.09.) uvezen: 37 redaka.
+⚠ Tri preostale razlike 2025. (`100,00`, `∓0,99`) su **bankine**: izvod netira povrat
+(`ODOBRENJE … 100,00`) i pomak unutar dva ciklusa; Σ isplata izvoda = Σ košare u cent.
+Odblokira D4 u `docs/DOSPJELO_SPEC.md`.
+
+**✅ ~~„Restoring filter…" nema timeout~~ — ZATVORENO S149.** `FilterContext.doRestore` ima rok `RESTORE_DEADLINE_MS` (8 s); na isteku **zadrži Areu** (id je iz storagea), **pusti kategoriju** (prazan `selectionChain` natjera selektor da Areu učita svježim upitom, dakle drugi pokušaj) i kaže to trakom. ⚠ Timer se **ne čisti u cleanupu efekta** — StrictMode montira dvaput, a `restoreAttempted` pusti samo prvi prolaz. Čuva `e2e/tests/S149_restore_deadline.spec.ts` (svi `categories` zahtjevi vise zauvijek; sabotaža roka ⇒ pad na `toBeHidden`).
+⚠ **Izmjereno uživo (S149, TEST): rok JEST istekao — na prvom otvaranju odmah nakon `npm run dev`** (Vite prevodi module + TEST baza se budi); F5 na toplom startu vrati filtar uredno. Na PROD-u (gotov build) hladnog prevođenja nema. Ako se traka ikad javi **usred rada**, rok je prekratak — to je okidač za dizanje.
+⚠ **Hipoteza „E8-2 je isti uzrok" je OSLABLJENA:** dok restore traje, selektor ne crta `<select>` nego samo spinner, a E8-2 pada na `select` koji **postoji** i `disabled` je. Drugi mehanizam; E8-2 ostaje otvoren.
+
+**✅ ~~`HiddenInAdd` se čita samo iz PRVOG retka~~ — ZATVORENO S149**: OR preko redaka, kao `IsRequired`. Čuva `structureHiddenInAdd.test.mjs`.
+
+**✅ ~~`et_activity_draft` nosi isti razred kao filtar~~ — ZATVORENO S149**: ključ nacrta ide kroz `dbScopedKey()` (`useLocalStorageSync.ts`), a oba E2E speca (`S121_draft_after_finish`, `S122_no_phantom_draft`) grade ključ istim putem (sabotaža golim ključem ruši 2 od 3; treći mjeri *odsutnost* nacrta pa ga ključ ne mijenja).
+⚠ **Ostaje otvoren dio iz S118:** nacrt nije vezan uz **korisnika** — dva računa u istom pregledniku i dalje dijele nacrt.
+
+**⭐ Zaglavlje Add Activity po Arei** (Sašina ideja S117) — isti obrazac kao `list_columns`:
+uloge u configu, ne domena u kodu. **Financije nemaju smisla pokazivati štopericu** — ona je
+bila donekle korisna za treninge, i ondje ograničeno. **Koka je već jednom pitala zašto je tu**,
+i odgovor je bio „za sada je tako". Umjesto nje: nešto poput Edit Activity panela — **birač
+datuma s defaultom „danas"**.
+⚠ Nije samo prosljeđivanje propsa. `ActivityHeader` **već zna** crtati datum (crta ga čim dobije
+`dateTime` + `onDateTimeChange`; Edit ih šalje, Add ne). Prepreka je što `sessionStart`
+(`useSessionTimer.ts:25`) služi **dvjema ulogama odjednom**: zapisano vrijeme eventa **i**
+ishodište štoperice — pomak na prošli datum natjera štopericu da broji danima. Razdvojiti te
+dvije uloge je jezgra posla; uz to ide ponovna evaluacija `set_attribute` na promjenu datuma i
+odluka o koliziji `session_start`a pri unosu unatrag.
+⚠ **Zašto je ovo najvrjednija stavka Faze 2:** danas se unos za prošli dan radi kroz **dva
+ekrana** (Add pa odmah Edit), a Koka gleda banku svakih par dana ⇒ pogađa je na **svakom**
+retku. Ostale stavke Faze 2 štede sekunde, ova uklanja cijeli drugi ekran.
+
+**✅ ~~`hidden_in_add` se tiho brise kad Structure file nema kolonu `HiddenInAdd`~~ — ZATVORENO S149.** `resolveHiddenInAdd()`: nema kolone ⇒ vrijednost iz baze; prazna ćelija u **postojećoj** koloni i dalje znači FALSE. Čuva `structureHiddenInAdd.test.mjs` (sabotaža ruši 2). **Neverificirano uživo: T-S149-3.**
+
+**⭐ `ViewDetailsPage`: efekt zove `loadActivityData` PRIJE nego je deklariran** (S139,
+`react-hooks/immutability`, `:334`). Radi danas — efekti se vrte nakon rendera, pa je `const`
+do tada dodijeljen — ali efekt drzi **staru** funkciju i ne osvjezava se kad se ona promijeni.
+Isti razred kao S119/S120, i u istom fileu.
+⚠ **Ne popravljati naivno:** dodavanje u dep listu ponovo bi pokretalo efekt na SVAKOM renderu
+(funkcija se stvara iznova), sto je klasicna zamjena jednog kvara drugim. Trazi `useCallback`
+ili premjestanje deklaracije, i E2E protuprovjeru (`e4-view-activity`).
+⚠ **Bio je NEVIDLJIV do S139:** skrivao ga je `eslint-disable-next-line` za **drugo** pravilo
+(`exhaustive-deps`) — plugin preskoci cijeli efekt koji nosi disable za bilo koje `react-hooks`
+pravilo. Mrtva suzbijanja zato nisu kozmetika nego **slijepa mrlja**.
+
+**FilterContext koraci 2+3** (Fable I.4) — tipizirani event bus (`appEvents.ts`),
+eventualno split FilterProvider/SharingProvider.
+
+**Health `health_lab_review.py` cleanup** — razdvajanje Medical Visit bilješki iz Lab Results komentara.
+
+**✅ ~~Delta prozor: sidro prestaje biti rez~~ — FAZE 1 i 2 IZVEDENE S142; faze 3 i 4 ostaju.**
+Spec je `docs/DELTA_WINDOW_SPEC.md` (§9 nosi što je gdje). Pravilo je promaknuto u
+„Critical rules" § Delta sheet — ondje piše i **zašto** je stari pod pao.
+
+⚠ **Što je izvedeno:** prozor se mjeri sidrima (`deltaBack`, zadano 1, `deltaWindow.ts`);
+panel ispisuje stvarni raspon, sidro na kojem počiva i broj događaja (prag **200**);
+kolona `Potvrda` + sivi ton na retcima unutar potvrđenog stanja; prazni retci topao ton.
+Izmjereno na PROD-u da otvarajuće stanje izlazi **jednako iznosu sidra u cent** (6/6, `n = 0`).
+
+⚠ **Što OSTAJE, i znači da zaštita još nije potpuna:**
+- **faza 3** — kontrolne točke u zaglavlju, po jedna za svako sidro u prozoru
+  (`sidro · sheet računa · razlika`, `ROUND(…,2)` obavezan — S112).
+- **faza 4** — **update-guard na uvozu**, jedina prava brana: proširenje postojećeg
+  `row_hash` guarda jednim uvjetom (*„a taj je redak unutar potvrđenog stanja"*), uz poruku
+  koja **imenuje sidro** koje se time dovodi u pitanje. Dira `excelImport.ts`.
+
+⚠ **Dok faze 4 nema, uvoz prihvaća izmjenu potvrđenog retka bez pitanja** — kolona i ton to
+samo **kažu**. Ako se pokaže da je premalo, red je faza 4, **ne jača boja**.
+
+**Plotly bundle** ~4.9MB — prihvatljivo dok performanse nisu problem.
+
+**Split-workbook** (Pravila + Neklasificirano u zaseban file nad app exportom) — kad Saša poželi.
+
+**~~Kolone Activities liste po Arei~~ — ✅ IZVEDENO S116.** `settings.list_columns`,
+slug-based, `ListColumns` sheet u Structure roundtripu, fixup na rename. Financije:
+`Datum | Iznos | Tip / Podtip | Opis | User | Stanje | ⋮`, uski ekran u dva reda.
+Pravila su promaknuta u „Critical rules". **Neverificirano uživo: T-S116-1…5.**
+⚠ Ostalo neizvedeno: rječnik uloga se širi **samo kodom** (namjerno), pa nova vrsta
+kolone (npr. `attr` s formatom broja) i dalje traži commit.
+
+**~~Sidra se ne mogu vidjeti ni obrisati iz aplikacije~~** — IZVEDENO S116: pločica ima
+„povijest potvrda" + ✕; uz to `data-prep_tools/Financije/anchors.py` (`--list`, `--delete`).
+**Neverificirano uživo: T-S116-13.** Povijest: `DONE_HISTORY.md`.
+
+**~~Sidro upisano kroz UI nema podrijetlo~~** — ZATVORENO: polje „odakle" (S113), **obavezno**
+od S116 jer o njemu ovisi datum potvrde. Povijest problema: `DONE_HISTORY.md`.
+
+**Stanje post-processing** — **otpada** (potvrđeno S109). `make_financije_import.py` prestaje
+pisati atribut `Stanje` na Transakciju; vrijednost seli u zasebnu kategoriju `Stanja`.
+⚠ **Postojećih 2220 zapisa se NE dira** — Kokin per-redak lanac je jedini **neovisni svjedok**
+protiv kojeg se app-ov izračun može provjeriti. Prestani pisati, nemoj brisati.

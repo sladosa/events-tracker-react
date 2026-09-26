@@ -1,8 +1,8 @@
-> Pisano protiv commita **`f3741cb`** (S149) + commit rituala S149 koji nosi ovaj file.
-> ⚠ Ako `git log` pokazuje noviji commit od S149 rituala, čitaj ovo kao **povijest**, ne kao stanje.
+> Pisano protiv commita **`3380459`** (S149) + commit S150 koji nosi ovaj file (samo docs).
+> ⚠ Ako `git log` pokazuje noviji commit od S150, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S149 (2026-09-25)
+# Sljedeća sesija — nakon S150 (2026-09-26)
 
 ---
 
@@ -10,33 +10,31 @@
 
 ## Što je danas napravljeno
 
-Pet bugova, svaki s automatskim testom (i provjereno da test pada kad se popravak pokvari):
+1. **Prolaz kroz cijeli backlog.** Svaka stavka ima odluku i jednostavan opis:
+   `docs/sessions/BACKLOG_2026-09-26.md` (sekcija „Odluke" na vrhu). Gotove stavke su
+   izbačene iz CLAUDE.md-a.
+2. **Izvodi više ne idu preko WhatsAppa.** Koka ima OneDrive mapu `Izvodi`, dijeljenu s tobom;
+   kod tebe je na disku u `C:\0_Sasa\OneDrive\Izvodi` (uvijek lokalno). Test PDF je stigao.
+3. **`trening.xlsm` je u OneDriveu** (`C:\0_Sasa\OneDrive\`), s AutoSaveom i povijesti verzija.
+   Stara kopija na `C:\0_Sasa\` je preimenovana — ne otvaraj nju.
 
-1. **Kriv e-mail u koloni G više ne pravi duplikate.** Uvoz stane i kaže koji redak
-   postoji pod drugim autorom — umjesto da ga upiše kao nov (S148: 7 duplikata).
-2. **„Restoring filter…" više ne može zapeti.** Nakon 8 s odustane, zadrži Areu i kaže
-   da kategoriju odabereš ponovno.
-3. **Structure uvoz više ne briše „Hidden in Add"** kad file nema tu kolonu.
-4. **Nedovršeni unos s TEST-a ne iskače na PROD-u** (i obrnuto).
-5. **Pločica:** „zadnji zapis" sada glasi **„zadnja promjena salda"**.
+## Što treba od tebe / Koke
 
-## Što treba od tebe
+- **Koka:** instalirati OneDrive na mobitel (svoj račun, **bez** backupa fotografija), pa ZABA
+  izvod slati *Podijeli → OneDrive → Izvodi*. RF na laptopu: *Save as PDF* u `OneDrive\Izvodi`.
+- **Ti:** provjeri ima li RF aplikacija **gotov PDF izvod** (stavka „Izvodi") — bolji od
+  *Save as PDF*. I zatraži novi **Garmin export** (tvoji podaci završavaju prerano).
+- **Koka, OneDrive Desktop ima crveni ✕** (greška sinkronizacije) — pogledati, možda se njena
+  Excelica ne sprema u oblak.
 
-1. ~~Deploy~~ ✅ S149 — Saša pustio merge, `main` = `515df05` (svih 5 popravaka na PROD-u).
-   Ako nešto izgleda staro: **Ctrl+Shift+R**.
-2. ~~Tri ručna testa~~ ✅ S149 — svih 5 testova zatvoreno mjerenjem (`dev:prod` + TEST),
-   sekcija arhivirana. Traka s rokom restorea javila se samo na hladnom startu `npm run dev`.
-3. ~~Komentar PP retka~~ ✅ S149 — Saša ga obrisao (Edit, Kokin račun).
-   **`comment_template` ugašen na obje razine** (Structure uvoz, Kokin račun) i 8 strojnih
-   komentara obrisano (`ocisti_auto_komentare.py --i-stare --apply`, izmjereno: ostalo 0,
-   ručnih 4.465 netaknuto). Novi retci bez opisa ostaju **prazni**.
-4. Kad stigne **Visa izvod za rujan** (naplata ~05.10.) — u `izvodi/`.
+## Tvoj redoslijed — što slijedi
 
-## Tvoj redoslijed (S147) — gdje smo
-
-1. ~~Baza — Visa~~ ✅ · ostaje: 1 loš par (`Hlace i carape` `Razno / Poklon`), RF `Izvod opis`.
-2. ~~Bugovi~~ ✅ **pet s popisa gotovo** (ostali otvoreni su teži ili čekaju — v. DIO 2).
-3. **Prolaz kroz backlog** ← sljedeće.
+1. **B1 + B2** — Structure uvoz: brojila koja lažu + alat koji briše podtipove.
+2. **C1** — izvodi od inboxa do žiga; **prvi korak razvrstavač** (preimenovanje po sadržaju).
+3. **C2 + C3** — točni datumi rata; `Datum naplate` prati promjenu datuma u Editu.
+4. Ostatak B (Help zna Areu, pitanje prije bacanja izmjena, sitni ispravci podataka, `—` dok se učitava).
+5. Zatim: C4 performanse, D-sitnice, F4 filtar za brojeve, C5 „Dospjelo → potvrdi",
+   pa **migracija `trening.xlsm`** kao sljedeći veliki projekt.
 
 ---
 
@@ -44,42 +42,21 @@ Pet bugova, svaki s automatskim testom (i provjereno da test pada kad se poprava
 
 ## Stanje grana
 
-`main` = `test-branch` = `515df05` (S149 deploy, Saša). Poslije toga samo ovaj handoff commit (docs).
+`main` = `515df05` (S149 deploy). `test-branch` = S150 commit (samo docs; nema deploya potrebe).
 
-## Što je S149 promijenio u kodu
+## S150 promjene (bez koda)
 
-- `excelImport.ts`: `sortUpdateRows()` (čista, dijele je apply i preview) + `foreignOwnedMessage()`;
-  `UpdateAnalysis.foreignOwned`; `smartReclassify` čita kroz `withRetryQuery` i baca; reklasifikacija
-  ide **prije** `applyDeletes`.
-- `FilterContext.tsx`: `RESTORE_DEADLINE_MS`, `restoreTimedOut` / `dismissRestoreTimedOut`.
-- `structureImport.ts`: `resolveHiddenInAdd()`, `groupAttributes` exportan (za test).
-- `useLocalStorageSync.ts`: `DRAFT_KEY = dbScopedKey(STORAGE_KEY)`.
-- Novi testovi: `structureHiddenInAdd.test.mjs`, `e2e/tests/S149_restore_deadline.spec.ts`.
+- CLAUDE.md backlog očišćen; izbačeni tekst doslovno u `DONE_HISTORY.md` § S150.
+- Nova stavka na vrhu backloga: popis novih/preformuliranih stavki iz prolaza.
+- Open bugs: VIEWSTALE i BUG-1 zatvoreni; „bulk delete" zamijenjen D2 (pokus na TEST-u).
+- Memorija: `izvodi_onedrive_inbox.md` (putevi OneDrive/trening).
 
-## Otvoreno — bugovi koji su ostali
+## Otvoreno — iz handoffa S149, i dalje vrijedi
 
-- ⭐ **BUG-S117-RULESHAPE je opet lagao uživo** (S149): Structure uvoz koji je mijenjao SAMO
-  `comment_template` javio je `Attributes updated 9` — točno 9 `depends_on` atributa koje je
-  panel (Wellness, 24.09. 20:13) zapisao u svom obliku. Uz to `Automation rules 2` /
-  `List columns 8` broje retke sheeta, ne promjene. Kandidat za vrh backloga: isti graditelj
-  pravila na obje strane + brojači koji broje promjene.
-
-- **E8-2** — hipoteza „restore bez roka" oslabljena (drugi mehanizam: `select` postoji i
-  `disabled`). Treba trace pada, ne novu hipotezu.
-- **`et_activity_draft` po korisniku** (S118) — ključ sada nosi bazu, ne i korisnika.
-- **BUG-S117-RULESHAPE**, **BUG-S103-ANYATTR** (RPC), bulk delete za grantee-a.
-- „signal is aborted without reason" u Export modalu (S148, jednom) — ako se ponovi.
-
-## Otvoreno — točnost baze
-
-- 1 loš par: 16.09. `Hlace i carape` `Razno / Poklon` → `Pokloni`.
-- ⭐ `make_financije_all_structure.py`: taksonomija iz `--base` (kao `read_base_automations`).
-  **Dok nije popravljen — alat se ne pokreće** (briše podtipove dodane u bazi).
-- RF `Izvod opis` (Sašin izričit zahtjev S131); `Visa racun` 07.09. čeka RF_2026-09.
-- MC par `+105,30`/`−105,30` (`Planiran`); `oznaci_iz_presedana.py --apply`; rata 1/6
-  `117,32 / 6` (atribut `19.57`, komentar `19.55`).
-
-## Što NE dirati
-
-- **`main`** — merge pušta Saša.
-- **PROD upisi** — sve kroz Excel uvoz (Koka) ili `--apply` koji pokreće Saša.
+- ⭐ `make_financije_all_structure.py` **ne pokretati** dok taksonomija ne dolazi iz `--base`.
+- 1 loš par `Hlace i carape` `Razno / Poklon`; rata 1/6 `117,32` (atribut 19,57 / komentar 19,55);
+  MC par `+105,30 / −105,30` `Planiran` — B5, jedan roundtrip.
+- E8-2: treba trace pada, ne novu hipotezu.
+- Razvrstavač: testni ne-izvod već leži u inboxu (PBZ „Detalji transakcije") — mora ga odbiti.
+  Imena izvoda: `PBZVISA_`/`PBZVIZA_` nered — razvrstavač ga gasi.
+- Preimenovanje `Financije_all` → `Financije`: odluka **nakon C1** (alati pišu ime Aree u Excel).

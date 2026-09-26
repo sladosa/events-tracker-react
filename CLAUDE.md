@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S149).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S150).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 110 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 123 | [Critical rules](<#Critical rules>) | X |
-| 1214 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1928 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1944 | [Key files](<#Key files>) |  |
-| 2077 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2097 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2119 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2145 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2185 | [Open bugs](<#Open bugs>) | ~ |
-| 2313 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2506 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2603 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2611 | [Backlog](<#Backlog>) | ~ |
-| 3057 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 3065 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1222 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1943 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1959 | [Key files](<#Key files>) |  |
+| 2105 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2125 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2147 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2173 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2213 | [Open bugs](<#Open bugs>) | ~ |
+| 2331 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2524 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2621 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2629 | [Backlog](<#Backlog>) | ~ |
+| 2982 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2990 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 3223 redaka, 18 sekcija._
+_Ukupno 3148 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -64,7 +64,7 @@ modela (kategorije, atributi, eventi) i ne znaju semantiku. Analitika je prva st
 semantika treba — zato ide kroz konfiguraciju, ne kroz kod (v. `docs/OVERVIEW_TAB_SPEC.md` §2.15).
 
 **Collab:** dovršen za 1–2 osobe po Arei (S34–S41, S106). **Ne širi se dalje** dok povijesna
-ingestija nije gotova. D9 (Excel User kolona — uvijek vs. samo za shared Aree) još neprovjeren.
+ingestija nije gotova. D9 (Excel User kolona) je odlučen „uvijek“ i izveden — kolona G nosi autora u svakom exportu.
 
 **Supabase:** bez arhitektonskog zaokreta — optimizacija upita dostaje. `categoryCache` (S105)
 je predložak. Lokalni Postgres je post-S110 ideja.
@@ -2248,21 +2248,6 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   postavlja `false`, a `Rate? = No` povlači čišćenje ovisnih polja ⇒ `Broj rata` i
   `Rata br` odu s njim, na retku koji je bio ispravan.
 
-- **BUG-S131-VIEWSTALE — ⚠ NEPONOVLJEN, ne popravljati napamet.** Nakon Edita koji
-  **pomakne `session_start`** (promjena datuma retka), View na tom retku javi „Activity not
-  found"; **F5 ga riješi**. Izmjereno da su podaci ispravni: `event_date 2026-09-04`,
-  `session_start 2026-09-04T07:52:00+00:00`, bez kolizije sa susjednim minutama.
-  Hipoteza: `AppHome` prosljeđuje snimak liste kroz `navigate(..., { state })`
-  (`AppHome.tsx:1154`), a `ViewDetailsPage.currentIndex` traži grupu po `session_start`
-  (`:422`) — snimak od prije edita više ne sadrži novi ključ. ⚠ **Hipoteza nije dokazana**
-  i nije se dala ponoviti; prvo reproducirati, pa popravljati. Redak koji **postoji** a app
-  tvrdi da ga nema je gori od greške koja se vidi.
-  ⚠ **S147: ponovo pokušano i opet se NE javlja** (T-S131-34, `dev:prod`, 24.09.): pomak
-  23.09. → 24.09. → `Save → View` otvori redak; povratak isto. Unos ostaje, test je zatvoren.
-
-- **BUG-1:** `useFilter must be used within a FilterProvider` (`AppHome.tsx:105`) — vjerojatno
-  StrictMode artefakt, nizak rizik
-
 - **BUG-S103-ANYATTR:** „In any attribute" filter (`ATTR_FILTER_ANY`) timeouta za grantee-e —
   `ILIKE` nije leakproof pa Postgres evaluira RLS EXISTS nad cijelom `event_attributes`.
   Privremeno: amber notice u UI. **Pravi fix = SECURITY DEFINER RPC — isti sloj kao Faza 1.**
@@ -2310,7 +2295,10 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   atributa ima nepraznu listu — dakle rupa čeka prvog korisnika, ne ruši ništa danas.
   Fix: kolona za fallback opcije + isti graditelj pravila na obje strane.
 
-- **Bulk delete (checkbox) nije ograničen za grantee-a**
+- **D2 (prolaz 2026-09-26): grantee ne briše tuđe — VEĆ vrijedi na tri mjesta** (RLS od S134;
+  UI nema Delete ni kvačicu, `canSelect={!sharedContext}`; Excel preskoči tuđi redak).
+  Ostaje **pokus na TEST-u**: grantee označi Kokin redak `Delete?` i uveze — poruka mora
+  jasno reći „tuđi redak, brisanje odbijeno“. Inače popraviti tekst.
 
 - **„Import as mine" za write grantee unutar iste shared aree** nema smisla (pravi put je
   Leave Area ili re-import u novu vlastitu Areu) — flag, nije implementirano
@@ -2323,6 +2311,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > provjereno nosi li koji od njih pravilo kojeg nema drugdje: tri su ga nosila i sva tri su
 > zadrzana (dva gore, `Postgres upgrade` u Backlogu). Isti postupak kao „Spaseno iz plana" (S137).
 
+- **~~BUG-S131-VIEWSTALE~~, ~~BUG-1~~** — zatvoreno S150 (prolaz): neponovljeno nakon ciljanih pokušaja; BUG-1 je dev-only poruka. Puni tekst: `DONE_HISTORY.md` § S150.
 - **~~BUG-S148-G~~** — zatvoreno S149: postojeći redak čiji je autor drugi korisnik (kriv e-mail u kol. G) više ne postaje INSERT nego **zaustavi uvoz** (preview ga javlja crveno i gasi Apply); reklasifikacija ide **prije** brisanja, pa zaustavljanje ne ostavi pola filea. Usput: palo čitanje u `smartReclassify` više se ne čita kao „nema ih" (prije bi blok od 200 redaka tiho postao 200 duplikata). Čuva `importForeignRows.test.mjs` (sabotaža ruši 3). **Neverificirano uživo: T-S149-1.**
 - **~~OTVORENO-S143-4594~~** — zatvoreno S144: fantom `−45,94` (17.08.2025.) obrisan, `−0,80` pomaknut s 07.08. na 07.07.2025., oboje kroz Excel roundtrip. Obje kontrolne točke ZABA (30.07.2026. i 06.09.2026.) sada `0,00`. „Blizanac" iz opisa bio je redak `Financije_old` — v. pravilo o upitu bez filtra po Arei.
 - **~~BUG-S145-RATASPLIT~~** — zatvoreno S145: rata modal je svakoj rati davao isti zaokruženi iznos, pa je zbroj bio manji od ukupnog (`117,32 / 6` ⇒ `117,30`). Ostatak sada nosi **prva** rata, kao kod banke. Pravilo: § Critical rules; čuva `src/lib/__tests__/rataAmounts.test.mjs` (21 tvrdnja, sabotaža ruši 11).
@@ -2651,19 +2640,35 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 
 ### Otvoreno — ovo je posao
 
-**✅ ~~Visa košara se ne slaže s PBZ naplatom od veljače 2026.~~ — ZATVORENO S148.** Sve Visa
-košare 2024-10 → 2026-09 su u cent (`visa_kosare.py`). Svih 8 izvoda 2026. slagalo se s RF
-naplatom — **greška je bila u bazi**: 24 Sašina ručna retka (sheet `sasa EU`) uvezena **uz**
-iste retke s izvoda, jer se dedup `(datum, iznos)` nije poklopio (datum mjesec ranije, iznos s
-tipfelerom `49,67`/`46,97`, ručna rata uz bankinu, 1:N `3,60` = `2,00 + 1,60`). Okrugli iznosi
-iz hipoteze S147 **nisu** bili uzrok. Kolovoški izvod (naplata 07.09.) uvezen: 37 redaka.
-⚠ Tri preostale razlike 2025. (`100,00`, `∓0,99`) su **bankine**: izvod netira povrat
-(`ODOBRENJE … 100,00`) i pomak unutar dva ciklusa; Σ isplata izvoda = Σ košare u cent.
-Odblokira D4 u `docs/DOSPJELO_SPEC.md`.
+**Prolaz kroz backlog 2026-09-26 (S150)** — odluka po svakoj stavci i jednostavni opisi:
+`docs/sessions/BACKLOG_2026-09-26.md`. Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
+§ S150). Nove i preformulirane stavke iz prolaza:
 
-**✅ ~~„Restoring filter…" nema timeout~~ — ZATVORENO S149.** `FilterContext.doRestore` ima rok `RESTORE_DEADLINE_MS` (8 s); na isteku **zadrži Areu** (id je iz storagea), **pusti kategoriju** (prazan `selectionChain` natjera selektor da Areu učita svježim upitom, dakle drugi pokušaj) i kaže to trakom. ⚠ Timer se **ne čisti u cleanupu efekta** — StrictMode montira dvaput, a `restoreAttempted` pusti samo prvi prolaz. Čuva `e2e/tests/S149_restore_deadline.spec.ts` (svi `categories` zahtjevi vise zauvijek; sabotaža roka ⇒ pad na `toBeHidden`).
-⚠ **Izmjereno uživo (S149, TEST): rok JEST istekao — na prvom otvaranju odmah nakon `npm run dev`** (Vite prevodi module + TEST baza se budi); F5 na toplom startu vrati filtar uredno. Na PROD-u (gotov build) hladnog prevođenja nema. Ako se traka ikad javi **usred rada**, rok je prekratak — to je okidač za dizanje.
-⚠ **Hipoteza „E8-2 je isti uzrok" je OSLABLJENA:** dok restore traje, selektor ne crta `<select>` nego samo spinner, a E8-2 pada na `select` koji **postoji** i `disabled` je. Drugi mehanizam; E8-2 ostaje otvoren.
+- **⭐ Izvodi: od inboxa do žiga (C1)** — RF **i** ZABA `Izvod opis`. Tok: Koka stavi PDF u
+  svoju OneDrive mapu `Izvodi` → kod Saše `C:\0_Sasa\OneDrive\Izvodi` (postavljeno 26.09.) →
+  **razvrstač** (prvi korak) preimenuje po **sadržaju** u `ZABA_YYYY-MM.pdf` i stavi u `izvodi/` →
+  jedna naredba obrade → Excel za uvoz (pregled ostaje brana) → `Analizirani_izvodi/`.
+  Podsjetnik na pločici **iz podataka** („kolovoški izvod još nije obrađen“), ne iz kalendara.
+  ⚠ Testni slučaj: PBZ „Detalji transakcije“ PDF — razvrstač ga mora odbiti kao ne-izvod.
+- **Structure uvoz (B1 + B2), zajedno:** BUG-S117-RULESHAPE (brojila koja broje neizmjene) i
+  `make_financije_all_structure.py` taksonomija iz BASE-a (v. Zamke, S148).
+- **Area kao predložak specijalizacije (D3)** — prijatelj dobije Structure (+ demo Activities) i
+  ima cijelu organizaciju Aree. **Prvo istraživanje na TEST-u** pod stranim računom, zapisati
+  što fali i **koliko refaktora** (Saša ne želi veliku refaktorizaciju). „Roundtrip completeness“
+  (`dashboard`, `export_profiles`) time postaje preduvjet. Za stranca uvoz već pravi novu Areu —
+  to je ispravno; zbrka je samo kad uvoznik već vidi Areu istog imena.
+- **D4/D5** — poruka „(read-only access)“ write-grantee-u kod profila je neistinita;
+  „Import as mine“ sakriti unutar dijeljene Aree.
+- **„Dospjelo → potvrdi“ (C5)** — `docs/DOSPJELO_SPEC.md`; Saša: radimo.
+- **Filtar za brojeve (F4)** — jedan uvjet s operatorom (`Iznos > 1000`), ne traži višeuvjetni
+  filtar. V. „Potpuni attrFilter“.
+- **Help chip (F6)** — bez posebnog popisa: gotovo pitanje AI-u + kontekst stranice/Aree (uz Help
+  koji zna Areu); sadržaj su `docs/help/*.md`, koje ritual ionako održava.
+- **⭐ Migracija `trening.xlsm` — veliki projekt**, kreće kad se zatvore osnovni zadaci Financija
+  (C1, C2/C3). File je od 26.09. u `C:\0_Sasa\OneDrive\trening.xlsm` (stara kopija preimenovana).
+  Izvor za više Area (projekti, health, treninzi, periodi). Uključuje Garmin i
+  `health_lab_review.py` cleanup. Načelo `oznaci_iz_presedana` Saša želi i ovdje.
+- **`oznaci_iz_presedana.py --apply`** — zadržati i pokrenuti (uz sitne ispravke podataka).
 
 **Kolone liste: `—` za vrijeme učitavanja izgleda isto kao prazan podatak** (S147, sitnica).
 `useListColumnValues` stiže **poslije** redaka, pa lista kratko pokazuje `—` u `Tip`/iznosu.
@@ -2688,26 +2693,6 @@ od šuma. Dakle: **reci AI-u gdje je, nemoj mu uzimati knjige.**
 ⚠ Isti princip koji app već provodi na Overviewu (OQ-4): Area bez dashboarda **nema** tab,
 jer je izostanak bolji od praznog. Help koji objašnjava sidra u Fitnessu je prazan Overview
 tab izrečen riječima.
-
-**✅ ~~`HiddenInAdd` se čita samo iz PRVOG retka~~ — ZATVORENO S149**: OR preko redaka, kao `IsRequired`. Čuva `structureHiddenInAdd.test.mjs`.
-
-**✅ ~~`et_activity_draft` nosi isti razred kao filtar~~ — ZATVORENO S149**: ključ nacrta ide kroz `dbScopedKey()` (`useLocalStorageSync.ts`), a oba E2E speca (`S121_draft_after_finish`, `S122_no_phantom_draft`) grade ključ istim putem (sabotaža golim ključem ruši 2 od 3; treći mjeri *odsutnost* nacrta pa ga ključ ne mijenja).
-⚠ **Ostaje otvoren dio iz S118:** nacrt nije vezan uz **korisnika** — dva računa u istom pregledniku i dalje dijele nacrt.
-
-**⭐ Zaglavlje Add Activity po Arei** (Sašina ideja S117) — isti obrazac kao `list_columns`:
-uloge u configu, ne domena u kodu. **Financije nemaju smisla pokazivati štopericu** — ona je
-bila donekle korisna za treninge, i ondje ograničeno. **Koka je već jednom pitala zašto je tu**,
-i odgovor je bio „za sada je tako". Umjesto nje: nešto poput Edit Activity panela — **birač
-datuma s defaultom „danas"**.
-⚠ Nije samo prosljeđivanje propsa. `ActivityHeader` **već zna** crtati datum (crta ga čim dobije
-`dateTime` + `onDateTimeChange`; Edit ih šalje, Add ne). Prepreka je što `sessionStart`
-(`useSessionTimer.ts:25`) služi **dvjema ulogama odjednom**: zapisano vrijeme eventa **i**
-ishodište štoperice — pomak na prošli datum natjera štopericu da broji danima. Razdvojiti te
-dvije uloge je jezgra posla; uz to ide ponovna evaluacija `set_attribute` na promjenu datuma i
-odluka o koliziji `session_start`a pri unosu unatrag.
-⚠ **Zašto je ovo najvrjednija stavka Faze 2:** danas se unos za prošli dan radi kroz **dva
-ekrana** (Add pa odmah Edit), a Koka gleda banku svakih par dana ⇒ pogađa je na **svakom**
-retku. Ostale stavke Faze 2 štede sekunde, ova uklanja cijeli drugi ekran.
 
 **⭐ `Izvod opis` za RF retke — nijedan alat ga danas ne puni** (Sašin izričit zahtjev
 S131: „pazi da ne zaboravimo"). `uskladi_izvod.py` radi **samo MC** izvode; RF je drugi
@@ -2797,19 +2782,6 @@ korisnik vidi kao „meni mi se sam zatvorio". Drugo je posljedica prvog, pa se 
 ⚠ Nije hipoteza nego mjerenje, ali **uzrok kaskade nije utvrđen** — prije popravka izbrojati
 tko sve okida refetch (`useDateBounds` settle, `areas-changed`, promjena `attrFilter`).
 
-**✅ ~~`hidden_in_add` se tiho brise kad Structure file nema kolonu `HiddenInAdd`~~ — ZATVORENO S149.** `resolveHiddenInAdd()`: nema kolone ⇒ vrijednost iz baze; prazna ćelija u **postojećoj** koloni i dalje znači FALSE. Čuva `structureHiddenInAdd.test.mjs` (sabotaža ruši 2). **Neverificirano uživo: T-S149-3.**
-
-**⭐ `ViewDetailsPage`: efekt zove `loadActivityData` PRIJE nego je deklariran** (S139,
-`react-hooks/immutability`, `:334`). Radi danas — efekti se vrte nakon rendera, pa je `const`
-do tada dodijeljen — ali efekt drzi **staru** funkciju i ne osvjezava se kad se ona promijeni.
-Isti razred kao S119/S120, i u istom fileu.
-⚠ **Ne popravljati naivno:** dodavanje u dep listu ponovo bi pokretalo efekt na SVAKOM renderu
-(funkcija se stvara iznova), sto je klasicna zamjena jednog kvara drugim. Trazi `useCallback`
-ili premjestanje deklaracije, i E2E protuprovjeru (`e4-view-activity`).
-⚠ **Bio je NEVIDLJIV do S139:** skrivao ga je `eslint-disable-next-line` za **drugo** pravilo
-(`exhaustive-deps`) — plugin preskoci cijeli efekt koji nosi disable za bilo koje `react-hooks`
-pravilo. Mrtva suzbijanja zato nisu kozmetika nego **slijepa mrlja**.
-
 **Postgres upgrade — otvoren od S105, i retry ga samo SKRIVA** (spaseno iz `BUG-S121-AREACTX`,
 S139). Palo citanje `areas` na PROD-u je vjerojatno S105 obrazac: free-tier se gusi. `withRetry`
 iz S121 je posljedicu ucinio prezivljivom (tab se vise ne gasi trajno), ali uzrok stoji.
@@ -2817,9 +2789,6 @@ iz S121 je posljedicu ucinio prezivljivom (tab se vise ne gasi trajno), ali uzro
 dogadja je broj retryja, koji danas nitko ne broji.
 
 **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC; ista investicija kao Faza 1.
-
-**FilterContext koraci 2+3** (Fable I.4) — tipizirani event bus (`appEvents.ts`),
-eventualno split FilterProvider/SharingProvider.
 
 **Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`,
 koristiti `value_number`/`value_boolean`/`value_datetime` s odgovarajućim operatorima.
@@ -2830,27 +2799,6 @@ formi · lakše dodavanje opcija u depends_on mapping · help docs update.
 
 **⭐ Help „What can I do here?" chip** — standing chip po `pageHint` kontekstu; zahtijeva
 sekciju „Feature inventory" u `docs/help/*.md`, **dosta detaljno** (korisnikov izričit zahtjev).
-
-**Health `health_lab_review.py` cleanup** — razdvajanje Medical Visit bilješki iz Lab Results komentara.
-
-**✅ ~~Delta prozor: sidro prestaje biti rez~~ — FAZE 1 i 2 IZVEDENE S142; faze 3 i 4 ostaju.**
-Spec je `docs/DELTA_WINDOW_SPEC.md` (§9 nosi što je gdje). Pravilo je promaknuto u
-„Critical rules" § Delta sheet — ondje piše i **zašto** je stari pod pao.
-
-⚠ **Što je izvedeno:** prozor se mjeri sidrima (`deltaBack`, zadano 1, `deltaWindow.ts`);
-panel ispisuje stvarni raspon, sidro na kojem počiva i broj događaja (prag **200**);
-kolona `Potvrda` + sivi ton na retcima unutar potvrđenog stanja; prazni retci topao ton.
-Izmjereno na PROD-u da otvarajuće stanje izlazi **jednako iznosu sidra u cent** (6/6, `n = 0`).
-
-⚠ **Što OSTAJE, i znači da zaštita još nije potpuna:**
-- **faza 3** — kontrolne točke u zaglavlju, po jedna za svako sidro u prozoru
-  (`sidro · sheet računa · razlika`, `ROUND(…,2)` obavezan — S112).
-- **faza 4** — **update-guard na uvozu**, jedina prava brana: proširenje postojećeg
-  `row_hash` guarda jednim uvjetom (*„a taj je redak unutar potvrđenog stanja"*), uz poruku
-  koja **imenuje sidro** koje se time dovodi u pitanje. Dira `excelImport.ts`.
-
-⚠ **Dok faze 4 nema, uvoz prihvaća izmjenu potvrđenog retka bez pitanja** — kolona i ton to
-samo **kažu**. Ako se pokaže da je premalo, red je faza 4, **ne jača boja**.
 
 **⭐ PBZVISA prolaz — `Datum naplate` za Visu nema ispravljača** (S137; značenje stupca
 odlučeno S141, v. dolje). `uskladi_izvod.py:939` prima **samo MC** (`Zasad samo MC izvodi`),
@@ -2994,25 +2942,22 @@ Predviđeno u OVERVIEW_TAB_SPEC §2.16 kao test; ispalo da filtru fali mogućnos
 filtru** — „ZABA **i** samo uplate" (`Racun` + `Smjer`) korisnik ne može složiti. Time to
 prestaje biti polish pločice i postaje svakodnevna potreba. Sašina odluka: **ne sada.**
 
+**Krovna analitika preko Area (F1)** — **ne** u običnom filtru (Sašina odluka 2026-09-26);
+`docs/Analytics_tab.md`. Okidač: prve Aree iz `trening.xlsm` u bazi. Tamo ide i „drill s dva uvjeta“.
+
+**Pravila razvrstavanja u bazi (F2, `RULES_ENGINE_SPEC.md`)** — kasnije; brojanje povijesti
+(`presedani.py`) ga je djelomično nadišlo. Okidač: AI sloj.
+
+**`et_activity_draft` nije vezan uz korisnika** — parkirano: Saša i Koka ne dijele preglednik.
+
 **Netlify scheduled maintenance** — kad se skupi 2–3 zadatka: `netlify/functions/maintenance.ts`
 sa `schedule = "@weekly"` (orphaned share_invites, stari accepted invites, stari help_log).
 
-**Garmin/Sleep skripta** — kad se nađu DI-Connect-Wellness fajlovi.
+**Garmin/Sleep** — podaci postoje (`C:\0_Sasa\GarminData`) ali **završavaju prerano** — treba novi Garmin export (samoposlužni izvoz podataka s garmin.com) ili alternativni alat. Ide uz migraciju `trening.xlsm`.
 
-**Historijska migracija** `trening.xlsm` — bez vremenskog pritiska.
-
-**Plotly bundle** ~4.9MB — prihvatljivo dok performanse nisu problem.
-
-**Split-workbook** (Pravila + Neklasificirano u zaseban file nad app exportom) — kad Saša poželi.
+**Historijska migracija** `trening.xlsm` — **premješteno u Otvoreno** (prolaz 2026-09-26).
 
 ---
-
-**~~Kolone Activities liste po Arei~~ — ✅ IZVEDENO S116.** `settings.list_columns`,
-slug-based, `ListColumns` sheet u Structure roundtripu, fixup na rename. Financije:
-`Datum | Iznos | Tip / Podtip | Opis | User | Stanje | ⋮`, uski ekran u dva reda.
-Pravila su promaknuta u „Critical rules". **Neverificirano uživo: T-S116-1…5.**
-⚠ Ostalo neizvedeno: rječnik uloga se širi **samo kodom** (namjerno), pa nova vrsta
-kolone (npr. `attr` s formatom broja) i dalje traži commit.
 
 **~~⭐ Shortcuts po Arei — toggle u Filter panelu~~ — ✅ IZVEDENO S122** (Sašina ideja S119).
 Kvačica „samo ova Area", `<optgroup>` po Arei, sufiks `0× · 25.06.` Provjereno usput:
@@ -3033,18 +2978,6 @@ Area zna, pa se veže bez pitanja.
 „globalan" shortcut kad se Area filtar promijeni — nestaje li iz popisa ili ostaje.
 ⚠ **Preset je per-user i ID-based** (nikad ne putuje) — v. „Preset ≠ widget" u sažetku
 Overview odluka. Ovo je čisto UI sužavanje popisa, ne nov oblik zapisa.
-
-**~~Sidra se ne mogu vidjeti ni obrisati iz aplikacije~~** — IZVEDENO S116: pločica ima
-„povijest potvrda" + ✕; uz to `data-prep_tools/Financije/anchors.py` (`--list`, `--delete`).
-**Neverificirano uživo: T-S116-13.** Povijest: `DONE_HISTORY.md`.
-
-**~~Sidro upisano kroz UI nema podrijetlo~~** — ZATVORENO: polje „odakle" (S113), **obavezno**
-od S116 jer o njemu ovisi datum potvrde. Povijest problema: `DONE_HISTORY.md`.
-
-**Stanje post-processing** — **otpada** (potvrđeno S109). `make_financije_import.py` prestaje
-pisati atribut `Stanje` na Transakciju; vrijednost seli u zasebnu kategoriju `Stanja`.
-⚠ **Postojećih 2220 zapisa se NE dira** — Kokin per-redak lanac je jedini **neovisni svjedok**
-protiv kojeg se app-ov izračun može provjeriti. Prestani pisati, nemoj brisati.
 
 ## TypeScript known issue
 [↑ Sadrzaj](#Sadrzaj)
