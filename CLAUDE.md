@@ -82,28 +82,28 @@ podaci hrane i AI sloj.
 | `docs/ARCHITECTURE_v1_6.md`               | Always — data model, P1/P2/P3, chain_key, session identity                       |
 | `docs/OVERVIEW_TAB_SPEC.md`               | **Overview tab / analitika** — model pločice, RPC, sidro salda, gdje živi konfiguracija |
 | `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` | **⚠ PROČITATI prije Faze 1** — dokaz modela salda nad 4.996 redaka, 3 zamke u mjerenju |
-| `docs/STRUCTURE_TAB_SPEC_FOR_DEV_v1.1.md` | Structure tab work                                                               |
-| `docs/EXCEL_FORMAT_ANALYSIS_v2.md`        | Excel export/import work — **⚠ POVIJESNI ZAPIS, ne referenca** (izmjereno S139: doc 17 kolona A–Q, kod 23 A–W, i svako slovo od D nadalje je pomaknuto). Popis kolona ima **samo** `COLS` u `src/lib/structureExcel.ts` |
+| `docs/_archive/EXCEL_FORMAT_ANALYSIS_v2.md`        | Excel export/import work — **⚠ POVIJESNI ZAPIS, ne referenca** (izmjereno S139: doc 17 kolona A–Q, kod 23 A–W, i svako slovo od D nadalje je pomaknuto). Popis kolona ima **samo** `COLS` u `src/lib/structureExcel.ts` |
 | `sql/SQL_schema_V5_commented.sql`         | DB schema reference                                                              |
 | `docs/Code_Guidelines_React_v6.md`        | Code conventions                                                                 |
-| `docs/COLLAB_PLAN_v2.md`                  | Collab implementation plan (v2) — faze 0–11, decisions                           |
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas, Add Area „From template"                   |
 | `docs/AUTOMATION_SPEC.md`                 | Post-Finish automatika — rata modal, comment template, `set_attribute`           |
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
 | `docs/DELTA_WINDOW_SPEC.md`               | **Delta prozor — sidro prestaje biti rez** (prijedlog prije koda, S141) — sidro kao **oznaka + kontrolna točka** umjesto poda; zatvara zamku iz S126 („retci ispadaju iz svakog budućeg delta sheeta“) mehanizmom umjesto disciplinom |
-| `docs/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
+| `docs/parked/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
 | `docs/DOSPJELO_SPEC.md`                   | **Dospjelo → potvrdi** (prijedlog prije koda, S147, odluke D1–D6 prihvaćene) — traka na Overviewu potvrđuje **košaru**, ne redak; kad se Σ ne slaže, **saldo slijedi banku, košara ostaje otvorena**. §2 nosi mjerenje košara vs naplata (MC 4/4 u cent, Visa u cent do 2026-01) |
 | `docs/FAZA3_IMPORT_AUTOMATIKA.md`         | **⛔ Prije nego kreneš graditi Fazu 3** — izmjereno da meta ne postoji (`Datum naplate` 0 praznih od 5.192); okidač za ponovno otvaranje i pet odluka prije koda |
 | `docs/FINANCIJE_STATUS.md`                 | **Stanje migracije Financija** — tranše, PROD povijest, „Nakon tranši". ⚠ **Kvarljivo**: provjeri datum prije nego povjeruješ brojci; pravila su ostala u CLAUDE.md-u |
-| `docs/Analytics_tab.md`                   | **Cross-Area** analitika — `periods`, Series, AnalyticsDef Excel. Čeka drugu gustu Areu. ⚠ §3 („bucketiranje client-side") je opovrgnut u OVERVIEW_TAB_SPEC §2.2 |
+| `docs/parked/Analytics_tab.md`                   | **Cross-Area** analitika — `periods`, Series, AnalyticsDef Excel. Čeka drugu gustu Areu. ⚠ §3 („bucketiranje client-side") je opovrgnut u OVERVIEW_TAB_SPEC §2.2 |
 | `docs/RLS_INVENTORY.md`                   | **Prava — tko što smije.** Namjera; `sql/SCHEMA_PROD.sql` je stvarnost, `rls_probe.py` mjeri razliku |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md`            | E2E test setup i workflow                                                        |
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist            |
 | `data-prep_tools/Financije/ENRICH_PLAN.md` | Financije pipeline — alati, koraci, nalazi po sesijama                          |
-| `docs/KOKA_PRVI_MJESEC.md`                | **Prije nego Koka počne** — što je riješeno, što nije, i redoslijed po riziku za njeno povjerenje |
+| `docs/FINANCIJE_KOKA_PROCES.md`          | **Kokin rad s `Financije_all`** — sadašnji tok (mobitel, Add/Edit, saldo) i plan (izvodi, raščišćavanje). ⚠ Prepisuje se (S151): tekst je još iz S125 |
 | `NEXT_SESSION_PROMPT.md`                  | **Na početku svake sesije** — handoff, DIO 1 netehnički / DIO 2 tehnički. Prepisuje se na kraju svake sesije (v. „End of session" 5). ⚠ Provjeri commit u zaglavlju: ako nije zadnji, čitaj ga kao povijest, ne kao stanje |
 | `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** (⚠ gitignoriran — samo lokalno + `D:`)           |
+
+> `docs/_archive/` = gotovo ili zamijenjeno, čuva se kao povijest. `docs/parked/` = čeka vanjski okidač (v. Backlog „Parkirano“). Ni jedno se ne čita pri planiranju.
 
 ---
 
@@ -2943,7 +2943,7 @@ filtru** — „ZABA **i** samo uplate" (`Racun` + `Smjer`) korisnik ne može sl
 prestaje biti polish pločice i postaje svakodnevna potreba. Sašina odluka: **ne sada.**
 
 **Krovna analitika preko Area (F1)** — **ne** u običnom filtru (Sašina odluka 2026-09-26);
-`docs/Analytics_tab.md`. Okidač: prve Aree iz `trening.xlsm` u bazi. Tamo ide i „drill s dva uvjeta“.
+`docs/parked/Analytics_tab.md`. Okidač: prve Aree iz `trening.xlsm` u bazi. Tamo ide i „drill s dva uvjeta“.
 
 **Pravila razvrstavanja u bazi (F2, `RULES_ENGINE_SPEC.md`)** — kasnije; brojanje povijesti
 (`presedani.py`) ga je djelomično nadišlo. Okidač: AI sloj.

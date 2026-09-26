@@ -430,7 +430,7 @@ Preview all themes at `/app/debug` → Theme Preview tab (HMR, no restart needed
 |---|---|---|
 | Structure Tab — Read-Only + Export | ✅ **Complete (S15–S18)** | Table View + Sunburst + Export wired; filter sync bugfixes (S18) |
 | Structure Tab — Edit Mode (safe ops) | ✅ **Complete (S19)** | Rename Area/Category/Attributes, suggest options editor; Edit Mode toggle; row highlight; Prev/Next in View panel |
-| Structure Excel format v2 | ✅ **Complete (S20B)** | 17 cols A–Q, single sheet HierarchicalView, multi-row DependsOn; see EXCEL_FORMAT_ANALYSIS_v2.md |
+| Structure Excel format v2 | ✅ **Complete (S20B)** | 17 cols A–Q, single sheet HierarchicalView, multi-row DependsOn; see _archive/EXCEL_FORMAT_ANALYSIS_v2.md |
 | Structure Excel Import | ✅ **Complete (S21)** | `structureImport.ts` + `StructureImportModal.tsx`; non-destructive; slug lookup; conflict report |
 | Structure Tab — Delete (no events) | ✅ **Complete (S22)** | `StructureDeleteModal`: cascade delete of empty subtrees; blocked with message if eventCount > 0 |
 | Structure Tab — Add Child Category | ✅ **Complete (S22)** | `StructureAddChildPanel`: "+ Add Child" on Area / non-leaf / leaf; amber panel; slug auto-generated |

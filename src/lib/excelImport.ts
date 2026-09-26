@@ -1089,7 +1089,7 @@ export async function applyImportChanges(
   // ────────────────────────────────────────────────────────
   // NOTE (S104): findParentEventByChain + upsertParentEventForUpdate su ekstrahirani
   // u src/lib/parentEventLoader.ts kao findParentEventByChain() + upsertParentEvent()
-  // — shared service koji koriste i Add/Edit Activity. Vidi docs/FABLE_PLAN.md I.2.
+  // — shared service koji koriste i Add/Edit Activity. Vidi docs/_archive/FABLE_PLAN.md I.2.
   const mergedAttrsToWrites = (
     mergedAttrs: Map<string, { def: ExportAttrDef; value: string | number | boolean | null }>
   ): ParentAttrWrite[] =>

@@ -134,7 +134,7 @@ export async function findParentEventByChain(
 /**
  * Piše (upsert) 1 parent event za jednu kategoriju/razinu, za dani lanac i sesiju.
  * Single source of truth za parent-event write logiku (S104 unifikacija — Fable I.2,
- * vidi docs/FABLE_PLAN.md). Koriste ga AddActivityPage, EditActivityPage i excelImport.ts
+ * vidi docs/_archive/FABLE_PLAN.md). Koriste ga AddActivityPage, EditActivityPage i excelImport.ts
  * (create + update tok) — bila su 4 odvojena copy-paste mjesta prije ovog refaktora.
  *
  * Ponašanje (hibrid odabran u S104):

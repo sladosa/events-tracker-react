@@ -149,8 +149,8 @@ sql/
 |----------|-------------|
 | `CLAUDE.md` | Session context, P1/P2/P3 rules, backlog — read by Claude Code automatically |
 | `docs/ARCHITECTURE_v1_6.md` | Data model, chain_key, session identity |
-| `docs/EXCEL_FORMAT_ANALYSIS_v2.md` | Excel format spec (17 cols, v2) |
-| `docs/COLLAB_PLAN_v2.md` | Multi-user sharing implementation plan |
+| `docs/_archive/EXCEL_FORMAT_ANALYSIS_v2.md` | Excel format spec (17 cols, v2) |
+| `docs/_archive/COLLAB_PLAN_v2.md` | Multi-user sharing implementation plan |
 | `docs/TEMPLATE_SYSTEM_SPEC.md` | Template user system |
 | `docs/PLAYWRIGHT_E2E_GUIDE.md` | E2E test setup and workflow |
 | `docs/HELP_STRUCTURE.md` | Help system — chip map, context detection |
