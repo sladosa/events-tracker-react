@@ -1,8 +1,8 @@
-> Pisano protiv commita **`3380459`** (S149) + commit S150 koji nosi ovaj file (samo docs).
-> ⚠ Ako `git log` pokazuje noviji commit od S150, čitaj ovo kao **povijest**, ne kao stanje.
+> Pisano protiv commita **`02c5f0d`** (S151) + commit S151 koji nosi ovaj file (samo docs).
+> ⚠ Ako `git log` pokazuje noviji commit od S151 handoffa, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S150 (2026-09-26)
+# Sljedeća sesija — nakon S151 (2026-09-26)
 
 ---
 
@@ -10,31 +10,31 @@
 
 ## Što je danas napravljeno
 
-1. **Prolaz kroz cijeli backlog.** Svaka stavka ima odluku i jednostavan opis:
-   `docs/sessions/BACKLOG_2026-09-26.md` (sekcija „Odluke" na vrhu). Gotove stavke su
-   izbačene iz CLAUDE.md-a.
-2. **Izvodi više ne idu preko WhatsAppa.** Koka ima OneDrive mapu `Izvodi`, dijeljenu s tobom;
-   kod tebe je na disku u `C:\0_Sasa\OneDrive\Izvodi` (uvijek lokalno). Test PDF je stigao.
-3. **`trening.xlsm` je u OneDriveu** (`C:\0_Sasa\OneDrive\`), s AutoSaveom i povijesti verzija.
-   Stara kopija na `C:\0_Sasa\` je preimenovana — ne otvaraj nju.
+1. **`docs/` pospremljen.** U korijenu je 15 dokumenata umjesto 28. Gotovo i zamijenjeno je u
+   `docs/_archive/`, ono što čeka okidač u `docs/parked/`. Audit od 16.09. ostaje za usporedbu sa
+   sljedećim auditom.
+2. **Kokin dokument prepisan:** `docs/FINANCIJE_KOKA_PROCES.md`. Opisuje kako Koka radi danas
+   (mobitel, Add/Edit, saldo) i cilj: plohu **„Raščišćavanje izvoda"** koja se otvara s Overview
+   pločice. Tvoje odluke K1–K5 su upisane.
+3. **CLAUDE.md je 30 % kraći** (3.152 → 2.189 redaka). Ništa nije obrisano: E2E zamke su u
+   `e2e/CLAUDE.md`, pravila alata i Financija u `data-prep_tools/CLAUDE.md`, backlog u
+   `docs/sessions/BACKLOG.md`. Skripta je dokazala da nijedan redak ne fali.
 
-## Što treba od tebe / Koke
+## Što treba od tebe / Koke (iz S150 — nije provjereno je li odrađeno)
 
-- **Koka:** instalirati OneDrive na mobitel (svoj račun, **bez** backupa fotografija), pa ZABA
-  izvod slati *Podijeli → OneDrive → Izvodi*. RF na laptopu: *Save as PDF* u `OneDrive\Izvodi`.
-- **Ti:** provjeri ima li RF aplikacija **gotov PDF izvod** (stavka „Izvodi") — bolji od
-  *Save as PDF*. I zatraži novi **Garmin export** (tvoji podaci završavaju prerano).
-- **Koka, OneDrive Desktop ima crveni ✕** (greška sinkronizacije) — pogledati, možda se njena
-  Excelica ne sprema u oblak.
+- **Koka:** OneDrive na mobitel (bez backupa fotografija), ZABA izvod *Podijeli → OneDrive → Izvodi*.
+- **Ti:** ima li RF aplikacija gotov PDF izvod; zatražiti novi **Garmin export**.
+- **Koka:** crveni ✕ na OneDrive Desktopu (greška sinkronizacije).
 
-## Tvoj redoslijed — što slijedi
+## Redoslijed — što slijedi (dogovoreno S151)
 
-1. **B1 + B2** — Structure uvoz: brojila koja lažu + alat koji briše podtipove.
-2. **C1** — izvodi od inboxa do žiga; **prvi korak razvrstavač** (preimenovanje po sadržaju).
+1. **B1 + B2** — Structure uvoz: brojila koja broje neizmjene + alat koji briše podtipove
+   (živa mina: `make_financije_all_structure.py` se ne smije pokretati dok ovo nije gotovo).
+2. **C1** — izvodi od inboxa do žiga; prvi korak **razvrstač** (preimenovanje po sadržaju).
+   Izvodi već stižu u OneDrive, pa je ovo najbliže Kokinom stvarnom radu.
 3. **C2 + C3** — točni datumi rata; `Datum naplate` prati promjenu datuma u Editu.
-4. Ostatak B (Help zna Areu, pitanje prije bacanja izmjena, sitni ispravci podataka, `—` dok se učitava).
-5. Zatim: C4 performanse, D-sitnice, F4 filtar za brojeve, C5 „Dospjelo → potvrdi",
-   pa **migracija `trening.xlsm`** kao sljedeći veliki projekt.
+4. **C5** — „Dospjelo → potvrdi", faza 1 (samo čitanje, MC). Nakon nje ploha za izvode (K3).
+5. Ostatak B, C4 performanse, D-sitnice, F4 filtar za brojeve; zatim veliki projekt `trening.xlsm`.
 
 ---
 
@@ -42,21 +42,28 @@
 
 ## Stanje grana
 
-`main` = `515df05` (S149 deploy). `test-branch` = S150 commit (samo docs; nema deploya potrebe).
+`main` = `515df05` (S149 deploy). `test-branch` = S151 (samo docs; deploy ne treba).
+Grana `claude-split` je mergeana i obrisana (lokalno i na originu).
 
-## S150 promjene (bez koda)
+## S151 promjene (bez koda aplikacije)
 
-- CLAUDE.md backlog očišćen; izbačeni tekst doslovno u `DONE_HISTORY.md` § S150.
-- Nova stavka na vrhu backloga: popis novih/preformuliranih stavki iz prolaza.
-- Open bugs: VIEWSTALE i BUG-1 zatvoreni; „bulk delete" zamijenjen D2 (pokus na TEST-u).
-- Memorija: `izvodi_onedrive_inbox.md` (putevi OneDrive/trening).
+- Nove putanje: `docs/_archive/*`, `docs/parked/{RULES_ENGINE_SPEC,Analytics_tab}.md`,
+  `docs/FINANCIJE_KOKA_PROCES.md` (bivši `KOKA_PRVI_MJESEC.md`), `docs/sessions/BACKLOG.md`.
+- **Podmapni CLAUDE.md:** `e2e/CLAUDE.md`, `data-prep_tools/CLAUDE.md`. ⚠ Izmjereno da se **ne
+  učitaju sami** kad se čita Bashom — Key docs zato nosi retke „prije rada na X pročitaj Y".
+  Radiš li na testovima ili alatima, **pročitaj ih izravno**.
+- `Tools/verify_claude_split.py <original>` — dokaz da selidba nije izgubila redak.
+- K1–K5 (ploha izvoda): nova tablica stavki izvoda · Python parsira · C5 faza 1 prvo · kartice
+  kao košara · potvrđuje vlasnica Aree. Spec plohe još ne postoji — piše se prije koda.
 
-## Otvoreno — iz handoffa S149, i dalje vrijedi
+## Otvoreno — iz S149/S150, i dalje vrijedi
 
-- ⭐ `make_financije_all_structure.py` **ne pokretati** dok taksonomija ne dolazi iz `--base`.
+- ⭐ `make_financije_all_structure.py` **ne pokretati** dok taksonomija ne dolazi iz `--base` (B2).
 - 1 loš par `Hlace i carape` `Razno / Poklon`; rata 1/6 `117,32` (atribut 19,57 / komentar 19,55);
   MC par `+105,30 / −105,30` `Planiran` — B5, jedan roundtrip.
 - E8-2: treba trace pada, ne novu hipotezu.
-- Razvrstavač: testni ne-izvod već leži u inboxu (PBZ „Detalji transakcije") — mora ga odbiti.
-  Imena izvoda: `PBZVISA_`/`PBZVIZA_` nered — razvrstavač ga gasi.
-- Preimenovanje `Financije_all` → `Financije`: odluka **nakon C1** (alati pišu ime Aree u Excel).
+- Razvrstač: testni ne-izvod leži u inboxu (PBZ „Detalji transakcije") — mora ga odbiti.
+  Imena `PBZVISA_`/`PBZVIZA_` — razvrstač ih ujednačava.
+- Preimenovanje `Financije_all` → `Financije`: odluka **nakon C1**.
+- Daljnje smanjenje CLAUDE.md-a traži **sažimanje** priča uz pravila — sukob s „X ne skraćivati";
+  samo uz Sašin pristanak, zaseban razgovor.

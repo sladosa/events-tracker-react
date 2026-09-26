@@ -7776,3 +7776,46 @@ od S116 jer o njemu ovisi datum potvrde. Povijest problema: `DONE_HISTORY.md`.
 pisati atribut `Stanje` na Transakciju; vrijednost seli u zasebnu kategoriju `Stanja`.
 ⚠ **Postojećih 2220 zapisa se NE dira** — Kokin per-redak lanac je jedini **neovisni svjedok**
 protiv kojeg se app-ov izračun može provjeriti. Prestani pisati, nemoj brisati.
+
+
+---
+
+## S151 — pospremanje dokumentacije i podjela CLAUDE.md-a (2026-09-26)
+
+Sesija bez koda aplikacije (samo dva komentara u `src/` s novom putanjom). Commiti `fd3daf4`…`02c5f0d`.
+
+**`docs/` pospremljen (28 → 15 u korijenu).** Za svaki dokument izmjereno tko ga spominje, datum
+zadnje izmjene i status u zaglavlju.
+- `docs/_archive/` (11): `DOCUMENTATION_AUDIT_2026-07-05`, `FABLE_PLAN`, `FABLE_REVIEW_2026-07-03`,
+  `Playwright_Supabase_Setup_Guide`, `RESTRUCTURE_DECISIONS_2026-04-01`, `COMMENT_FILTER_SPEC`,
+  `DATA_INTEGRATION_DESIGN`, `COLLAB_PLAN_v2`, `Help_details`, `EXCEL_FORMAT_ANALYSIS_v2`,
+  `STRUCTURE_TAB_SPEC_FOR_DEV_v1.1`.
+- `docs/parked/` (2): `RULES_ENGINE_SPEC`, `Analytics_tab`.
+- `audits/AUDIT_2026-09-16` **ostaje** (Saša): sljedeći audit ga koristi kao kontrolni popis.
+- Upozorenje „popis kolona ima samo `COLS` u `structureExcel.ts`" zadržano u Key docs — nigdje
+  drugdje ne piše.
+
+**`KOKA_PRVI_MJESEC.md` → `FINANCIJE_KOKA_PROCES.md`, prepisan.** Premisa iz S125 („Excel roundtrip
+joj je dom") više ne vrijedi: Koka je napustila Excelicu i radi **na mobitelu, kroz Add/Edit**,
+radi salda. Ispravak upisan i uz pravilo u CLAUDE.md-u (§ Collab — Excel put za tuđi redak);
+`fix_as_owner` ostaje. Novi cilj: ploha **„Raščišćavanje izvoda"**, otvara se s Overview pločice
+po računu, pokazuje samo iznimke, završava sidrom s papira. Odluke **K1–K5 prihvaćene**: stavke
+izvoda u novoj tablici, PDF parsira Python alat, C5 faza 1 prije plohe, kartice kao košara, potvrđuje
+vlasnica Aree.
+- Sašino pitanje: je li `gotovina, nerazvrstano` redak `Izvor = Cash`, `Tip = N/A`? **Ne** — pločica
+  ga računa; spremljen bi zastario prvim novim gotovinskim troškom (isto načelo kao D6/`Dospjelo`).
+
+**CLAUDE.md podijeljen: 3.152 → 2.189 redaka (243 → 170 KB, −30 %).** Doslovna selidba u
+`e2e/CLAUDE.md` (E2E zamke), `data-prep_tools/CLAUDE.md` (Python/AI zamke, rječnik `Izvod opis`,
+nastavak pravila domene Financija, Key files alata) i `docs/sessions/BACKLOG.md`. Pravila koja
+dira i app (Mjerenje/usklađenje, Ključne odluke D1b/D6/D7, Delta sheet, UI) ostala su u korijenu.
+- Dokaz: `Tools/verify_claude_split.py` — **FALI 0** od 2.906 nepraznih redaka.
+- Rađeno na grani `claude-split`, provjereno u **paralelnoj sesiji** (tri pitanja, sva točna), pa
+  mergeano i grana obrisana.
+- ⚠ **Izmjereno iz transkripta: podmapni CLAUDE.md se NIJE učitao sam** — sesija je čitala
+  Bashom (`cat`/`grep`), a samoučitavanje okida alat Read. Do fileova je došla preko **uputnica u
+  korijenu**. Zato su u Key docs dodana tri retka „prije rada na X pročitaj Y" — osigurač ne ovisi o
+  alatu kojim se čita.
+- Obećano je bilo „otprilike pola"; ispalo je 30 %, jer je pravilo bilo „kad sumnjaš, ostaje gore".
+  Daljnje smanjenje traži **sažimanje** priča uz pravila — sukob s pravilom „X sekcije ne skraćivati",
+  dakle zaseban razgovor.
