@@ -1285,7 +1285,10 @@ export function AddActivityPage() {
         const lastEvent = eventsToSave[eventsToSave.length - 1];
         const info = detectRata(lastEvent.attributes, allDefs, rataConfig);
         if (info) {
-          info.chargeDates = generateRataChargeDates(eventAt, info.count, info.dateMapValue, rataConfig);
+          info.chargeDates = generateRataChargeDates(
+            eventAt, info.count, info.dateMapValue, rataConfig,
+            selectedArea?.settings?.automations?.attribute_rules,
+          );
           // Use event note as comment; fall back to comment_attr_slug attr value if note is empty
           let rataComment = lastEvent.note ?? null;
           if (!rataComment && rataConfig.comment_attr_slug) {

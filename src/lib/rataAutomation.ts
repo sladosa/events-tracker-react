@@ -1,5 +1,7 @@
 import type { AttributeDefinition } from '@/types';
 import type { RataAutomationConfig } from '@/types/database';
+import type { AttributeRuleConfig } from '@/types/database';
+import { evaluateDateRule, isValidDateRule } from '@/lib/attributeRules';
 
 export type { RataAutomationConfig };
 
@@ -104,7 +106,37 @@ export function detectRata(
 }
 
 /**
- * Datumi naplate rata 1..count: N-ti dan svakog sljedećeg mjeseca od kupnje.
+ * Pravilo `Datum naplate` (`set_attribute`) koje puni ISTI atribut kao rata
+ * modal — `target_slug == charge_date_slug`, `map_slug == date_map_slug`.
+ * `null` kad ga nema ili ne zna tu vrijednost (`Izvor`).
+ */
+export function findChargeDateRule(
+  config: RataAutomationConfig,
+  attributeRules: AttributeRuleConfig[] | undefined,
+  dateMapValue: string,
+): string | null {
+  if (!config.charge_date_slug || !config.date_map_slug || !attributeRules) return null;
+  for (const r of attributeRules) {
+    if (r.action !== 'set_attribute') continue;
+    if (r.target_slug !== config.charge_date_slug || r.map_slug !== config.date_map_slug) continue;
+    const rule = r.date_map[dateMapValue];
+    if (rule && isValidDateRule(rule)) return rule;
+  }
+  return null;
+}
+
+/**
+ * Datumi naplate rata 1..count.
+ *
+ * ⚠ C2 (S152): PRVA RATA = ono sto pravilo `Datum naplate` da za dan kupnje,
+ *   svaka sljedeca mjesec kasnije. Do tada je rata modal imao VLASTITI rjecnik
+ *   (`rata.date_map`: goli dan, uvijek „od sljedeceg mjeseca"), pa je Visa
+ *   kupovina 1.–3. u mjesecu dobila prvu ratu MJESEC PREKASNO (`cutoff:3:5`
+ *   kaze 5. istog mjeseca). Dva rjecnika za isti atribut su vec jednom
+ *   razisla (S138) — sada je rjecnik jedan, a `rata.date_map` je samo rezerva
+ *   za Areu bez `set_attribute` pravila.
+ *   Za MC (`next:11`) i Visu kupljenu od 4. nadalje rezultat je ISTI kao prije.
+ *
  * Podne (12:00) je namjerno — izbjegava pomak dana po vremenskoj zoni, isto
  * kao `evaluateDateRule` u attributeRules.ts.
  */
@@ -112,8 +144,24 @@ export function generateRataChargeDates(
   purchaseDate: Date,
   count: number,
   dateMapValue: string,
-  config: RataAutomationConfig
+  config: RataAutomationConfig,
+  attributeRules?: AttributeRuleConfig[],
 ): Date[] {
+  const rule = findChargeDateRule(config, attributeRules, dateMapValue);
+  const first = rule ? evaluateDateRule(rule, purchaseDate) : null;
+  if (first) {
+    const out: Date[] = [];
+    for (let i = 0; i < count; i++) {
+      const d = new Date(first);
+      d.setDate(1);                 // month-overflow guard
+      d.setMonth(d.getMonth() + i);
+      d.setDate(first.getDate());
+      d.setHours(12, 0, 0, 0);
+      out.push(d);
+    }
+    return out;
+  }
+
   const dayOfMonth = config.date_map[dateMapValue] ?? 15;
   const dates: Date[] = [];
 

@@ -117,6 +117,44 @@ export function computeSetAttributeValue(
   return result ? formatForDatetimeInput(result) : null;
 }
 
+function localYmd(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * C3 (S152): datum retka promijenjen u Editu — pomakni li target?
+ * Vraca novu vrijednost ili `null` = ne diraj.
+ *
+ * Pomice SAMO kad su ispunjena oba uvjeta:
+ *   1. pravilo za tu vrijednost map atributa je `same` (Racun/Cash: naplata
+ *      je dan transakcije, pa novi datum znaci novu naplatu);
+ *   2. target je TRENUTNO upravo ono sto je pravilo dalo za stari datum —
+ *      dakle izveden, ne upisan rukom ni donesen s izvoda.
+ *
+ * ⚠ Kartice (`next:N`, `cutoff:B:D`) se NE diraju — Visa nema fiksan dan
+ *   naplate (855 redaka: 5. 383x, 4. 231x, ...), pa je datum na zatvorenim
+ *   retcima s izvoda, i pomak datuma kupovine ga ne mijenja. Isti razlog
+ *   zbog kojeg se `set_attribute` u Editu ne racuna na otvaranju (S127).
+ */
+export function shiftSameDayTarget(
+  rule: AttributeRuleConfig,
+  mapValue: string | null,
+  currentTarget: unknown,
+  oldDate: Date,
+  newDate: Date,
+): string | null {
+  if (mapValue == null || mapValue === '') return null;
+  if (rule.date_map[mapValue] !== 'same') return null;
+  if (currentTarget == null || currentTarget === '') return null;
+  const cur = new Date(String(currentTarget));
+  if (!Number.isFinite(cur.getTime())) return null;
+  if (localYmd(cur) !== localYmd(oldDate)) return null;
+  if (localYmd(oldDate) === localYmd(newDate)) return null;
+  const next = evaluateDateRule('same', newDate);
+  return next ? formatForDatetimeInput(next) : null;
+}
+
 /** Slug match tolerant to -/_ differences (same normalisation as default_map lookup). */
 function slugKey(slug: string): string {
   return slug.toLowerCase().replace(/[-_]/g, '_');

@@ -24,7 +24,7 @@ import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
 import { loadParentAttrs, buildParentChainIds, findParentEventByChain, upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
 import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
 import { useFilter } from '@/context/FilterContext';
-import { computeSetAttributeValue, findDefBySlug } from '@/lib/attributeRules';
+import { computeSetAttributeValue, findDefBySlug, shiftSameDayTarget } from '@/lib/attributeRules';
 import { withRetryQuery } from '@/lib/retry';
 import type { AttributeRuleConfig, AreaSettings } from '@/types/database';
 
@@ -138,6 +138,11 @@ export function EditActivityPage() {
   const [originalDateTime, setOriginalDateTime] = useState<Date>(new Date());
   /** Zadnja vrijednost od koje je pomak stvarno primijenjen (v. handleDateTimeChange). */
   const lastAppliedDateTimeRef = useRef<Date | null>(null);
+  /** Zadnji ISPRAVAN datum od kojeg je `same` target pomaknut (C3). Odvojen od
+   *  `lastAppliedDateTimeRef` jer taj prolazi i kroz medjustanja tipkanja
+   *  godine (0002, 0020...) — lanac usporedbi „target == stari datum" bi se
+   *  na njima prekinuo i target ostao na pola puta. */
+  const sameDayBaseRef = useRef<Date | null>(null);
   const [, setOriginalEventIds] = useState<UUID[]>([]);
   
   // Events being edited
@@ -275,6 +280,7 @@ export function EditActivityPage() {
       // Nova aktivnost ⇒ nema prethodno primijenjenog pomaka. Bez ovoga bi
       // otvaranje druge aktivnosti bez unmounta krenulo od tuđe baseline.
       lastAppliedDateTimeRef.current = null;
+      sameDayBaseRef.current = null;
       setOriginalEventIds(leafEvents.map(e => e.id));
       
       // --- Load leaf events → pendingEvents ---
@@ -747,16 +753,58 @@ export function EditActivityPage() {
     setSessionDateTime(newDateTime);
     setIsDirty(true);
 
-    if (deltaMs === 0) return;
+    // ── C3 (S152): `same` target (Racun/Cash `Datum naplate`) prati datum ──
+    // Samo za ispravan datum i samo target koji je bio izveden iz starog
+    // datuma — v. `shiftSameDayTarget`. Kartice se ne diraju.
+    const y = newDateTime.getFullYear();
+    const saneNew = Number.isFinite(newDateTime.getTime()) && y >= 1900 && y <= 2200;
+    const shifts = new Map<number, Map<string, string>>();   // event idx → defId → vrijednost
+    if (saneNew && attributeRules.length > 0) {
+      const base = sameDayBaseRef.current ?? originalDateTime;
+      pendingEvents.forEach((event, idx) => {
+        for (const rule of attributeRules) {
+          if (rule.action !== 'set_attribute') continue;
+          const mapDef = findDefBySlug(allAttrDefs, rule.map_slug);
+          const targetDef = findDefBySlug(allAttrDefs, rule.target_slug);
+          if (!mapDef || !targetDef) continue;
+          const mapVal = event.attributes.find(a => a.definitionId === mapDef.id)?.value;
+          const curTarget = event.attributes.find(a => a.definitionId === targetDef.id)?.value;
+          const next = shiftSameDayTarget(
+            rule, mapVal == null ? null : String(mapVal), curTarget, base, newDateTime);
+          if (next === null) continue;
+          if (!shifts.has(idx)) shifts.set(idx, new Map());
+          shifts.get(idx)!.set(targetDef.id, next);
+        }
+      });
+    }
+    if (saneNew) sameDayBaseRef.current = newDateTime;
+
+    const selectedShift = shifts.get(selectedEventIndex);
+    if (selectedShift) {
+      setAttributeValues(prev => {
+        const next = new Map(prev);
+        for (const [defId, value] of selectedShift) next.set(defId, { definitionId: defId, value, touched: true });
+        return next;
+      });
+    }
+
+    if (deltaMs === 0 && shifts.size === 0) return;
 
     setPendingEvents(evts =>
-      evts.map(event => ({
-        ...event,
-        createdAt: new Date(event.createdAt.getTime() + deltaMs),
-        isModified: true,
-      })),
+      evts.map((event, idx) => {
+        const sh = shifts.get(idx);
+        return {
+          ...event,
+          createdAt: new Date(event.createdAt.getTime() + deltaMs),
+          attributes: sh
+            ? event.attributes.map(a => sh.has(a.definitionId)
+                ? { ...a, value: sh.get(a.definitionId)!, touched: true } : a)
+            : event.attributes,
+          isModified: true,
+        };
+      }),
     );
-  }, [originalDateTime]);
+  }, [originalDateTime, attributeRules, pendingEvents, allAttrDefs, selectedEventIndex]);
   
   // ============================================
   // Copy Event Handler
