@@ -99,7 +99,7 @@ koliko fali i koji su retci još otvoreni.
 
 ---
 
-## 4. Otvorene odluke prije koda
+## 4. Odluke prije koda — ✅ PRIHVAĆENE (Saša, S151, 2026-09-26: „prijedlozi ok“)
 
 | # | pitanje | prijedlog | zašto |
 | --- | --- | --- | --- |
@@ -123,7 +123,11 @@ uvozi). To je prijelazno stanje, ne cilj.
 - 🟡 **Sumnjiv redak u izvještaj o uvozu** (preskočen `row_hash` a promijenjen u appu) — vrijedi
   i dalje, ali **niže** nego u S125: pogađa Excel put, koji više nije njen svakodnevni.
 - 🟡 **Gotovina 99 % neevidentirana** — svjesno; kad se gradi razrez po `Tip`u, mora nositi
-  redak `gotovina, nerazvrstano`.
+  redak `gotovina, nerazvrstano` = Σ(`Transfer / cash - bankomat`) − Σ(`Izvor = Cash`).
+  ⚠ **Taj redak pločica RAČUNA, nikad se ne sprema** (Sašino pitanje S151: „je li to
+  `Izvor = Cash`, `Tip = N/A`?" — ne): spremljen bi zastario prvim novim gotovinskim troškom i
+  dvostruko ga brojao, a `N/A` znači „odluka još nije donesena", ne „svjesno ne pratimo".
+  Koka ne radi ništa novo — upisuje gotovinu kad joj se da, a redak se sam smanjuje.
 - 🟡 **Sumnjivo vidljivo u listi** („promijenjeno nakon <datum>") — dodiruje filtar s dva uvjeta,
   svjesno odgođen.
 
