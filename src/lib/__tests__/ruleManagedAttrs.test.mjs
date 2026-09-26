@@ -18,17 +18,21 @@
  *   .mjs), ne svoju kopiju — inace bi kopija s vremenom odlutala od koda.
  */
 
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { transform } from 'esbuild';
+import { build } from 'esbuild';
 
-const src = readFileSync('src/lib/attributeRules.ts', 'utf8');
-const { code } = await transform(src, { loader: 'ts', format: 'esm' });
+// BUNDLE, ne `transform` (S152): `attributeRules.ts` od tada uvozi
+// `@/lib/localDate`, a samostalno prevedeni file alias `@/` ne zna razrijesiti.
 const dir = mkdtempSync(join(tmpdir(), 'rmattr-'));
 const out = join(dir, 'attributeRules.mjs');
-writeFileSync(out, code);
+await build({
+  entryPoints: ['src/lib/attributeRules.ts'],
+  bundle: true, format: 'esm', platform: 'node',
+  outfile: out, alias: { '@': './src' }, logLevel: 'error',
+});
 const { collectRuleManagedIds, computeSetAttributeValue, findDefBySlug } = await import(pathToFileURL(out).href);
 
 let pass = 0, fail = 0;

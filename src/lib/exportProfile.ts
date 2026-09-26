@@ -14,6 +14,7 @@ import ExcelJS from 'exceljs';
 import { FIXED_COLUMNS, ATTR_COL_START, DELETE_COL_HEADER } from './excelExport';
 import { ROW_HASH_HEADER } from './excelFingerprint';
 import type { ExportAttrDef, ExportCategoriesDict } from './excelTypes';
+import { todayLocalYmd } from './localDate';
 
 // ─────────────────────────────────────────────
 // Types
@@ -129,7 +130,7 @@ export function readProfileFromWorkbook(wb: ExcelJS.Workbook): ExportProfile | n
 
   return {
     columns,
-    createdAt: new Date().toISOString().split('T')[0],
+    createdAt: todayLocalYmd(),
   };
 }
 

@@ -26,6 +26,7 @@
 
 import type { AttributeDefinition } from '@/types';
 import type { AttributeRuleConfig } from '@/types/database';
+import { localYmd } from '@/lib/localDate';
 
 export type { AttributeRuleConfig };
 
@@ -115,11 +116,6 @@ export function computeSetAttributeValue(
   if (!dateRule) return null;
   const result = evaluateDateRule(dateRule, sessionStart);
   return result ? formatForDatetimeInput(result) : null;
-}
-
-function localYmd(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 /**

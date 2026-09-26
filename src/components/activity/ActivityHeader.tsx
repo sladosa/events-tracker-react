@@ -13,6 +13,7 @@
 
 import { forwardRef, useState } from 'react';
 import { cn } from '@/lib/cn';
+import { localYmd } from '@/lib/localDate';
 import type { EditorMode } from '@/types/activity';
 import { messages } from '@/types/activity';
 import { formatTimer, formatDuration } from '../../lib/timeFormat';
@@ -197,12 +198,12 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
                   <div className="flex gap-2 items-center">
                     {/* B4: Show YYYY-MM-DD text always (browser may render date input differently) */}
                     <span className="text-white font-medium text-sm tabular-nums">
-                      {dateTime.toISOString().split('T')[0]}
+                      {localYmd(dateTime)}
                     </span>
                     <input
                       type="date"
                       lang="sv"
-                      value={dateTime.toISOString().split('T')[0]}
+                      value={localYmd(dateTime)}
                       onChange={(e) => {
                         const newDate = new Date(dateTime);
                         const [year, month, day] = e.target.value.split('-').map(Number);

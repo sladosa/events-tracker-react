@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID } from '@/types';
+import { localYmd, todayLocalYmd } from '@/lib/localDate';
 
 interface DateBounds {
   minDate: string | null;  // YYYY-MM-DD
@@ -87,7 +88,7 @@ export function useDateBounds(
 
       // If maxDate is in the past, use today as max
       // If maxDate is in the future, keep it (for scheduled events)
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayLocalYmd();
       const effectiveMaxDate = maxDate 
         ? (maxDate > today ? maxDate : today)
         : today;
@@ -102,7 +103,7 @@ export function useDateBounds(
       setError(err instanceof Error ? err : new Error('Failed to fetch date bounds'));
       
       // Set fallback bounds
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayLocalYmd();
       setBounds({
         minDate: today,
         maxDate: today
@@ -174,18 +175,18 @@ export interface DatePreset {
 
 export function getDatePresets(): DatePreset[] {
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = localYmd(today);
 
   const yearsAgo = (n: number): string => {
     const d = new Date(today);
     d.setFullYear(d.getFullYear() - n);
-    return d.toISOString().split('T')[0];
+    return localYmd(d);
   };
 
   const monthsAgo = (n: number): string => {
     const d = new Date(today);
     d.setMonth(d.getMonth() - n);
-    return d.toISOString().split('T')[0];
+    return localYmd(d);
   };
 
   return [
@@ -204,8 +205,8 @@ export function getDatePresets(): DatePreset[] {
         const sunday = new Date(monday);
         sunday.setDate(monday.getDate() + 6);
         return {
-          from: monday.toISOString().split('T')[0],
-          to: sunday.toISOString().split('T')[0],
+          from: localYmd(monday),
+          to: localYmd(sunday),
         };
       },
     },
@@ -216,8 +217,8 @@ export function getDatePresets(): DatePreset[] {
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
         const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         return {
-          from: firstDay.toISOString().split('T')[0],
-          to: lastDay.toISOString().split('T')[0],
+          from: localYmd(firstDay),
+          to: localYmd(lastDay),
         };
       },
     },
@@ -235,8 +236,8 @@ export function getDatePresets(): DatePreset[] {
       key: 'this-year',
       label: 'This Year',
       getRange: () => ({
-        from: new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0],
-        to: new Date(today.getFullYear(), 11, 31).toISOString().split('T')[0],
+        from: localYmd(new Date(today.getFullYear(), 0, 1)),
+        to: localYmd(new Date(today.getFullYear(), 11, 31)),
       }),
     },
     {

@@ -32,6 +32,7 @@ import { listAnchors } from '@/lib/overviewApi';
 import { hrDate } from '@/lib/confirmedPeriod';
 import { useFilter } from '@/context/FilterContext';
 import { useAreaDashboard } from '@/hooks/useAreaDashboard';
+import { localYmd } from '@/lib/localDate';
 
 interface ExcelImportModalProps {
   onClose:   () => void;
@@ -332,7 +333,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     if (!updateAnalysis) return 0;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 30);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const cutoffStr = localYmd(cutoff);
     return updateAnalysis.updates.filter(u => u.existingEventDate < cutoffStr).length;
   }, [updateAnalysis]);
   const updateGuardActive = updateAnalysis !== null && updateAnalysis.updates.length > 0;

@@ -18,6 +18,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { persistPendingOptions } from '@/lib/pendingOptions';
+import { localYmd } from '@/lib/localDate';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
@@ -979,7 +980,9 @@ export function EditActivityPage() {
       }
 
       const newSessionStart = sessionDateTime.toISOString();
-      const eventDate = sessionDateTime.toISOString().split('T')[0];
+      // LOKALNI dan (S152) — isti razred kao Add u S117; UTC bi za sesiju
+      // izmedju 00:00 i 02:00 spremio dan PRIJE.
+      const eventDate = localYmd(sessionDateTime);
 
       // ── Collision check ──────────────────────────────────────────
       // Provjeri postoji li već druga aktivnost s istim lancem i

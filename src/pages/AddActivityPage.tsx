@@ -17,6 +17,7 @@ import { toast } from 'react-hot-toast';
 import { useFilter } from '@/context/FilterContext';
 import { supabase } from '@/lib/supabaseClient';
 import { persistPendingOptions } from '@/lib/pendingOptions';
+import { localYmd } from '@/lib/localDate';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
@@ -180,10 +181,7 @@ interface LocalAttributeValue {
  *  shows a local day, so a UTC-derived `event_date` could store the day BEFORE
  *  the one the person selected. The stored `session_start` stays UTC as always. */
 function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return localYmd(d);
 }
 
 /** First free minute at or after `desired`, for this user + category + day.
@@ -1336,7 +1334,7 @@ export function AddActivityPage() {
       // session_start se pomiče +1 min po rati, inače ih `useActivities` slijepi
       // u jedan redak liste (grupira po user+category+session_start).
       const purchaseDate = pendingRataBase?.eventDate
-        ?? pendingRataInfo.chargeDates[0].toISOString().split('T')[0];
+        ?? localYmd(pendingRataInfo.chargeDates[0]);
       const baseSession = pendingRataBase ? new Date(pendingRataBase.sessionStart) : new Date();
       const sessionStarts = [baseSession, ...rataSessionStarts(baseSession, pendingRataInfo.count)];
 

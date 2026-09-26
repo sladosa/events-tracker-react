@@ -27,6 +27,7 @@ import { pickDeltaWindow, type DeltaWindowAnchor } from '@/lib/deltaWindow';
 import { resolvePeriodKey, type PeriodKey } from '@/hooks/useDateBounds';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
 import type { ExportAttrDef } from '@/lib/excelTypes';
+import { todayLocalYmd } from '@/lib/localDate';
 
 interface ExcelExportModalProps {
   onClose: () => void;
@@ -334,7 +335,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
     if (!deltaAccount || deltaAnchors === null) return null;
     return pickDeltaWindow(
       deltaAnchors, deltaAccount,
-      new Date().toISOString().slice(0, 10),
+      todayLocalYmd(),
       deltaBack, DELTA_WINDOW_DAYS,
     );
   }, [deltaAnchors, deltaAccount, deltaBack]);
@@ -510,7 +511,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         if (!deltaAccount) throw new Error('Delta sheet: nije odabran racun (filtar atributa je prazan).');
         if (!effectiveFilters.areaId) throw new Error('Delta sheet: nije odabrana Area.');
 
-        const today   = new Date().toISOString().slice(0, 10);
+        const today   = todayLocalYmd();
         // ⚠ Sidra se dohvacaju SVJEZE, iako ih panel vec ima u stateu: modal zna
         //   stajati otvoren dok netko drugi upise potvrdu. Sto se NE smije
         //   udvostruciti je PRAVILO izbora — zato ista `pickDeltaWindow`.

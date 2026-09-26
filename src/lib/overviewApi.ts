@@ -16,6 +16,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabaseClient';
+import { todayLocalYmd } from '@/lib/localDate';
 import type { UUID, WidgetFilter } from '@/types/database';
 
 // --------------------------------------------
@@ -172,7 +173,7 @@ export async function saveAnchor(a: {
   //   would still show a confident number. The tile blocks this too; the guard
   //   sits here as well because it must hold for every caller, not just the
   //   one that happens to have the check today.
-  if (a.confirmedOn > new Date().toISOString().slice(0, 10)) {
+  if (a.confirmedOn > todayLocalYmd()) {
     throw new Error('Datum potvrde ne može biti u budućnosti.');
   }
 
