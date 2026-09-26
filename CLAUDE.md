@@ -29,24 +29,24 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | ---: | --- | :---: |
 | 55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>) |  |
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 110 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 123 | [Critical rules](<#Critical rules>) | X |
-| 1138 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1541 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1557 | [Key files](<#Key files>) |  |
-| 1640 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1660 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1682 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1708 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1748 | [Open bugs](<#Open bugs>) | ~ |
-| 1866 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 1911 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2008 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2016 | [Backlog](<#Backlog>) | ~ |
-| 2020 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2028 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 113 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 126 | [Critical rules](<#Critical rules>) | X |
+| 1141 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1544 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1560 | [Key files](<#Key files>) |  |
+| 1643 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1663 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1685 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1711 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1751 | [Open bugs](<#Open bugs>) | ~ |
+| 1869 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 1914 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2011 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2019 | [Backlog](<#Backlog>) | ~ |
+| 2023 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2031 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2186 redaka, 18 sekcija._
+_Ukupno 2189 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -79,6 +79,9 @@ podaci hrane i AI sloj.
 
 | Doc                                        | When to read                                                                     |
 | ------------------------------------------ | -------------------------------------------------------------------------------- |
+| `e2e/CLAUDE.md`                           | **Prije bilo kakvog rada na testovima** — sve E2E zamke (preseljene S151) |
+| `data-prep_tools/CLAUDE.md`               | **Prije rada s alatima ili na izvodima/sparivanju (i u appu)** — Python zamke, rječnik `Izvod opis`, 1:N, Visa (preseljeno S151) |
+| `docs/sessions/BACKLOG.md`                | **Pri planiranju sesije** — backlog (preseljen S151) |
 | `docs/ARCHITECTURE_v1_6.md`               | Always — data model, P1/P2/P3, chain_key, session identity                       |
 | `docs/OVERVIEW_TAB_SPEC.md`               | **Overview tab / analitika** — model pločice, RPC, sidro salda, gdje živi konfiguracija |
 | `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` | **⚠ PROČITATI prije Faze 1** — dokaz modela salda nad 4.996 redaka, 3 zamke u mjerenju |
