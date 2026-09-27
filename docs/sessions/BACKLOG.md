@@ -28,6 +28,13 @@
   inboxa (Kokina mapa se ne dira), PBZ „Detalji transakcije" ostaje uz razlog. Sljedeće: obrada.
   Podsjetnik na pločici **iz podataka** („kolovoški izvod još nije obrađen“), ne iz kalendara.
   ⚠ Testni slučaj: PBZ „Detalji transakcije“ PDF — razvrstač ga mora odbiti kao ne-izvod.
+- **Održavanje klasifikacije — spajanje/brisanje rijetkih i nekorištenih parova (S153)** —
+  `docs/KLASIFIKACIJA_ODRZAVANJE_SPEC.md`. Klasifikacija raste iz rada („Other"), održavanje
+  nije ugrađeno. Plan K0–K5: inventar (samo čita) → Kokina odluka → alat koji generira app
+  Excel + Structure file → uvoz (Activities **prije** Structure) → provjera (Σ nepromijenjen)
+  → kasnije broj redaka uz opciju u panelu. **Generično**, ne samo Financije.
+  ⚠ Brisanje opcije ne dira retke ⇒ opcija s retcima se **spaja**, nikad samo briše.
+  ⚠ Python rječnik uči iz baze ⇒ loš par se širi na nove retke; ranije je jeftinije.
 - ~~**Structure uvoz (B1 + B2)**~~ — ✅ S152: jedan graditelj `validation_rules`
   (`src/lib/validationRules.ts`), brojači broje promjene; alat umirovljen za postojeću Areu.
 - **Area kao predložak specijalizacije (D3)** — prijatelj dobije Structure (+ demo Activities) i
