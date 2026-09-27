@@ -852,7 +852,9 @@ export async function importStructureExcel(
 
     const isDirty = nameDiff || unitDiff || descDiff || defaultDiff || sortDiff || rulesDiff || reqDiff;
 
-    // DEBUG — remove after S21 testing
+    // Dijagnostika, NAMJERNO ostaje (S153): javlja se samo kad uvoz nešto
+    // mijenja, i jedini je dokaz ŠTO je proglašeno promjenom ako se lažni
+    // brojač vrati (BUG-S117-RULESHAPE, T-S152-1 ga navodi kao korak).
     if (isDirty) {
       console.log('[Import dirty]', group.slug, '|', group.categoryPath, {
         nameDiff,

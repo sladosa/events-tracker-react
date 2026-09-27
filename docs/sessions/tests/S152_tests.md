@@ -56,7 +56,7 @@ Automatski test to već čuva; ovo je potvrda u pravom pregledniku.
 
 ---
 
-## T-S152-3 ⬜ Panel: nema više polja „Default options" (B1)
+## T-S152-3 ✅ (S153) Panel: nema više polja „Default options" (B1)
 
 **Što se promijenilo:** polje „Default options (when no WhenValue matches)" je uklonjeno.
 Izvoz ga nikad nije nosio, pa ga je prvi Excel roundtrip brisao. Isto radi redak `WhenValue = *`.
@@ -64,6 +64,8 @@ Izvoz ga nikad nije nosio, pa ga je prvi Excel roundtrip brisao. Isto radi redak
 1. `npm run dev` → Edit Mode → atribut s `DependsOn`.
 2. **Očekivano:** ispod `WhenValue` redaka nema tekstnog polja „Default options"; umjesto njega
    piše *„Fallback: add a row with WhenValue `*` …"*.
+   ⚠ S153 je natpis zamijenio: tekstni atribut *„Each row: when the parent has this value…
+   Row `*` = any other parent value…"*, broj/da-ne/datum *„…rows control visibility…"*.
 
 ---
 

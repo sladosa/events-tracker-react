@@ -7867,3 +7867,38 @@ provjereni na zalutali CR.
 
 **Ritual:** PENDING sekcija S152 (7 ⬜, 2 ✅), `tests/S152_tests.md`, Help (`activities`,
 `structure`), ENRICH_PLAN, novi sažetak `BACKLOG_2026-09-26_S152.md`.
+
+## S153 — testiranje S152, list_columns usporedba, `*`, plan klasifikacije (2026-09-27)
+
+Sesija testiranja S152 na TEST-u; tri popravka ispala usput. Sve na `test-branch`, ništa na `main`.
+
+**T-S152-1 → `List columns changed 1` bez promjene (`2656891`).** JSONB presloži ključeve i unutar
+objekata u nizu (duljina imena, pa abecedno); uvoz je `list_columns.columns` uspoređivao doslovnim
+`JSON.stringify`. `normalizeJson` nije ulazio u nizove. Sada `sameJson` (i za `add_header`).
+Izmjereno: file vs TEST baza, svih 8 kolona identično osim redoslijeda ključeva.
+`structureListColumnsCompare.test.mjs` (11; sabotaža ruši glavnu tvrdnju). Pravilo: CLAUDE.md
+§ Kolone Activities liste.
+- Usput izmjereno: **Structure uvoz BRIŠE opciju koje nema u fileu** (`Smjer`: `TEST` dodan pa
+  maknut ⇒ nestao iz baze).
+
+**Okvir Structure import modala lagao (`37aa4e5`).** „Never deletes… name/unit/description updated"
+⇒ „What import changes" (dodaje, file pobjeđuje za postojeće atribute, opcija koje nema se briše).
+
+**`WhenValue = *` (`05e6ac0`).** `depends_on` radi dva posla po tipu: tekst ⇒ popis opcija, broj /
+da-ne / datum ⇒ vidljivost (`AttributeChainForm.isDependencyHidden`). Prazan `*` je gotovo
+svugdje (TEST 11, PROD 17) jer ga izvoz sam dopiše — bezopasan. Natpis u panelu po tipu; Help
+`structure.md` proširen (novi račun kao primjer; `SKRIVENO` nije posebna riječ).
+- Zapaženo, ne dirano: opcije se po roditelju traže točnim slovima, vidljivost bez obzira na veličinu.
+
+**T-S152-2 ✅** — A (`Status` Other → `TESTNOVO`, `default_map` netaknut) i B (`Valuta` Other u
+Editu, `hidden_in_add` ostao), provjereno u bazi. ⚠ Prvi pokušaj A spremio je `Planiran` bez
+opcije; **Edit nije uzrok** (atributi upisani samo pri Finishu, 08:06:32). Uzrok neutvrđen.
+⚠ `persistPendingOptions` ne dira `updated_at` — ta kolona **nije** dokaz je li „Other" upisao.
+**T-S152-3 ✅** iz Sašinih slika panela.
+
+**Plan održavanja klasifikacije (`ae00a29`, `651f5f2`).** `docs/KLASIFIKACIJA_ODRZAVANJE_SPEC.md`,
+faze K-1…K5 + Backlog stavka. Sašin nalaz: Structure uvoz mora **javiti** opcije koje briše a imaju
+retke (danas tiho pravi siročad) i **zaustaviti** file tuđe Aree (danas tihi duplikat) ⇒ K-1.
+Retke ne prepisuje sam — Excel ne razlikuje preimenovanje od brisanja.
+
+**Ritual:** `[Import dirty]` ispis ostaje namjerno (komentar ispravljen). Handoff prepisan.
