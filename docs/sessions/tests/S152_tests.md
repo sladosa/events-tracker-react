@@ -30,7 +30,7 @@ promjene. Isto su `Automation rules N` i `List columns N` brojali retke sheeta.
 
 ---
 
-## T-S152-2 ⬜ „Other" ne briše `default_map` ni „Hidden in Add" (B1)
+## T-S152-2 ✅ (S153) „Other" ne briše `default_map` ni „Hidden in Add" (B1)
 
 **Što je popravljeno:** upis nove vrijednosti kroz „Other" u Add/Editu gradio je pravilo
 atributa **iz nule** i brisao sve osim popisa opcija. Na PROD-u bi to pogodilo `Status`
