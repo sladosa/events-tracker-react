@@ -205,11 +205,18 @@ export function StructureImportModal({
 
           {/* Info banner */}
           <div className={cn('rounded-lg px-4 py-3 text-sm', t.light, t.lightBorder, 'border', t.lightText)}>
-            <p className="font-medium mb-1">Non-destructive import</p>
-            <p className="text-xs opacity-80">
-              Only ADDS new areas, categories, and attributes. Never deletes or changes existing data types.
-              Existing attributes with matching slugs will have name/unit/description updated.
-            </p>
+            {/* S153: stari tekst („Never deletes or changes…", „name/unit/description
+                updated") bio je neistina — izmjereno da uvoz opciju koje nema u
+                fileu BRIŠE. Tko vjeruje okviru, uveze stari file i izgubi opciju. */}
+            <p className="font-medium mb-1">What import changes</p>
+            <ul className="text-xs opacity-80 list-disc pl-4 space-y-0.5">
+              <li>Adds new areas, categories and attributes. Never deletes them, never changes a data type, never moves a category.</li>
+              <li>
+                For existing attributes <strong>the file wins</strong>: name, unit, description, default, required
+                and the option list — an option missing from the file is <strong>removed</strong>.
+              </li>
+              <li>Automations and list columns are replaced for each area listed in those sheets.</li>
+            </ul>
           </div>
 
           {/* File picker */}
