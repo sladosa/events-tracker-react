@@ -48,6 +48,19 @@ nego **posljedica rada** — i zato mu treba alat, a ne jednokratno čišćenje.
    prijedlog**; čovjek bira. Pitanja Koki samo o onome što samo ona zna (memorija
    `koka_pitanja_su_skup_resurs`).
 
+7. **Structure uvoz danas TIHO pravi siročad** (Sašin nalaz, S153). Opcija maknuta iz filea
+   nestane iz dropdowna, a retci koji je nose ostanu — bez ijedne riječi u modalu. Uvoz mora
+   **javiti prije primjene**: *„`Status`: opcija `X` se briše — N redaka je još nosi"*.
+   ⚠ **Ali uvoz retke ne smije sam prepisivati.** Excel ne može izraziti preimenovanje:
+   „nema `A`, ima `B`" je jednako moguće kao *preimenovanje* i kao *brisanje + nova opcija*.
+   Pogađanje bi tiho prepisalo stvarne podatke. Zato: uvoz **javi i ponudi** (zaustavi /
+   nastavi svjesno), a prepisivanje ide **izričitim mapiranjem** (K2 alat, kasnije „spoji u…").
+8. **Grantee i Structure uvoz** — strukturu tuđe Aree grantee ne može mijenjati (RLS od S134),
+   ali uvoz toga **ne kaže**: `structureImport` vidi samo vlastite Aree, pa file tuđe Aree
+   **tiho stvori duplikat Aree istog imena** pod uvoznikom (CLAUDE.md, S134 — popravak „stani i
+   javi" nije napravljen). Isti zahvat kao točka 7: modal mora reći *„ovo je Area od <vlasnik>
+   — nemaš pravo mijenjati njenu strukturu"* umjesto da išta napravi.
+
 ## Plan rada
 
 **Generično od početka:** alat radi nad bilo kojim `suggest` atributom bilo koje Aree, ne nad
@@ -55,6 +68,7 @@ nego **posljedica rada** — i zato mu treba alat, a ne jednokratno čišćenje.
 
 | faza | što | tko | piše po bazi? |
 | --- | --- | --- | --- |
+| **K-1 — brana na uvozu** | Structure uvoz: prije primjene nabroji opcije koje se brišu **a imaju retke** (broj po opciji) i traži svjesnu potvrdu; file tuđe Aree ⇒ poruka o vlasniku, ništa se ne upisuje. Neovisno o ostalim fazama i vrijedi i bez reklasifikacije. | Claude (app) | ne — sprječava |
 | **K0 — inventar** | Po Arei i atributu: svaki par s brojem redaka, Σ iznosa, prvim/zadnjim datumom, autorom; posebno **0 redaka** (opcija bez ijednog retka) i **siročad** (vrijednost na retku koje nema u opcijama). Excel s kolonom `Odluka` (zadrži / spoji u … / preimenuj u … / obriši). | Claude (Python, samo čita) | ne |
 | **K1 — odluka** | Koka (uz Sašu) popuni `Odluka`. Nekorišteni parovi mogu biti predloženi kao „obriši" unaprijed. | Koka / Saša | ne |
 | **K2 — alat** | Iz tablice odluka generira **(a)** app Excel pogođenih redaka (`event_id` ostaje, kol. G = autor retka, pregled nabroji svaku promjenu) i **(b)** Structure file s novim popisom opcija i preimenovanim `WhenValue` ključevima; uz to **ispiše** shortcute/profile/dashboard koji spominju staru vrijednost. Dry run prvo. | Claude | ne — generira fileove |

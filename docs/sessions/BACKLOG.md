@@ -35,6 +35,9 @@
   → kasnije broj redaka uz opciju u panelu. **Generično**, ne samo Financije.
   ⚠ Brisanje opcije ne dira retke ⇒ opcija s retcima se **spaja**, nikad samo briše.
   ⚠ Python rječnik uči iz baze ⇒ loš par se širi na nove retke; ranije je jeftinije.
+  **K-1 (prvo, samostalno):** Structure uvoz mora **javiti** opcije koje briše a imaju retke, i
+  **zaustaviti** file tuđe Aree porukom o vlasniku (danas tiho stvori duplikat Aree). Retke ne
+  prepisuje sam — Excel ne razlikuje preimenovanje od brisanja.
 - ~~**Structure uvoz (B1 + B2)**~~ — ✅ S152: jedan graditelj `validation_rules`
   (`src/lib/validationRules.ts`), brojači broje promjene; alat umirovljen za postojeću Areu.
 - **Area kao predložak specijalizacije (D3)** — prijatelj dobije Structure (+ demo Activities) i
