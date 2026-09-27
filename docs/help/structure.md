@@ -45,12 +45,29 @@ kombinaciju ne da složiti; dođe li Excel uvozom, uvoz je prijavi i **sam preuz
 (`structure_REVIEW_NEEDED_*`, žute ćelije u J/K), a forma polje svejedno prikaže — obavezno pobjeđuje,
 da se unos ne može zaključati.
 
-**`depends_on` — uvjetna vidljivost:**
-Atribut se prikazuje u formi samo kad drugi atribut ("parent") ima određenu vrijednost.
-Konfigurira se u Edit panelu → klikni na atribut → "Depends on" / "When value".
-- Primjer: `Broj rata` vidljiv samo kad `Na rate? = true`
-- `WhenValue = SKRIVENO`: atribut je uvijek skriven u formi (postoji u bazi, ali korisnik ga ne uređuje — za interne/sistemske vrijednosti)
-- `WhenValue = *`: catch-all — koristi se kad parent ima vrijednost koja nije eksplicitno navedena u mapi
+**`depends_on` — ovisnost o drugom atributu ("parent"):**
+Konfigurira se u Edit panelu → klikni na atribut → "Depends on" / "WhenValue → Options (+ Default)".
+Radi **dva različita posla, ovisno o tipu atributa**:
+
+- **Tekstni atribut (dropdown) — mijenja se POPIS OPCIJA.** Polje je uvijek vidljivo; svaki
+  WhenValue redak kaže *„kad parent ima ovu vrijednost, ponudi ove opcije"*.
+  Primjer: `Izvor` ovisi o `Racun` — uz `Sašin tekući RF` nudi `Racun / Visa / Cash`, uz
+  `Kokin tekući ZABA` nudi `Racun / Mastercard / Cash`.
+- **Broj, da/ne, datum — mijenja se VIDLJIVOST.** Polje se pojavi tek kad parent ima jednu od
+  navedenih vrijednosti. Primjer: `Uplata` vidljiva samo kad `Smjer = Uplata`; `Broj rata` samo
+  kad `Rate? = true`.
+
+**Redak `WhenValue = *` („sve ostalo"):**
+- Kod tekstnog atributa: opcije za **svaku vrijednost parenta koja nije navedena**. Koristan je kad
+  se doda nova vrijednost parenta — npr. **novi račun**: dok ga netko ne doda u popis `Izvor`a,
+  `Izvor` uz njega nudi ono što piše pod `*`. Upiše li se ondje `Racun / Cash`, novi račun odmah
+  dobije razumne opcije.
+- **Prazan `*` znači „za nenavedene vrijednosti ne nudi ništa"** — i to je normalno stanje.
+  Structure export ga **sam dopiše** svakom atributu s ovisnošću (kao mjesto za popuniti), pa ga
+  imaju gotovo svi; nitko ga nije upisao namjerno i ne smeta.
+- Kod broja / da-ne / datuma `*` **ne otkriva** polje — ostavi ga prazan.
+- Vrijednost koja se ne poklapa ni s jednom stvarnom vrijednošću parenta (npr. `SKRIVENO`) nije
+  posebna riječ — samo nikad ne pogodi. Za skrivanje polja služi kvačica **Hide in Add/Edit form**.
 
 **`default_map` — uvjetni default po parent vrijednosti:**
 Uz depends_on opcije, svaki WhenValue red može imati svoj Default. Kad korisnik odabere parent vrijednost u Add Activity, zavisni atribut automatski dobiva odgovarajući default.

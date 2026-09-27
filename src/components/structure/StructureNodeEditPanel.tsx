@@ -1044,10 +1044,20 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
               {/* „Default options" (top-level `suggest`) uklonjen S152: izvoz ga
                   nikad nije nosio, pa ga je prvi roundtrip brisao. Redak `*`
                   radi isto i putuje Excelom. */}
-              <p className="text-xs text-gray-400">
-                Fallback: add a row with WhenValue <code>*</code> — used when the parent value is not listed
-                (same as the <code>*</code> row in the Structure Excel).
-              </p>
+              {/* S153: `depends_on` radi DVA posla ovisno o tipu (AttributeChainForm
+                  isDependencyHidden) — natpis mora reći koji, inače `*` nije jasan. */}
+              {attr.dataType === 'text' ? (
+                <p className="text-xs text-gray-400">
+                  Each row: when the parent has this value, the dropdown offers these options.
+                  Row <code>*</code> = <strong>any other parent value</strong> (e.g. a newly added account).
+                  An empty <code>*</code> offers nothing for such values — the Structure export adds it by itself.
+                </p>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  For a {attr.dataType} field, rows control <strong>visibility</strong>: the field appears only when
+                  the parent has one of the listed values. Row <code>*</code> never shows it — leave it empty.
+                </p>
+              )}
             </div>
           )}
         </div>
