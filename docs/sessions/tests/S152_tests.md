@@ -8,7 +8,7 @@
 
 ---
 
-## T-S152-1 ⬜ Structure uvoz nakon Save u panelu ne javlja lažne promjene (B1)
+## T-S152-1 ✅ (S153) Structure uvoz nakon Save u panelu ne javlja lažne promjene (B1)
 
 **Što je popravljeno:** `BUG-S117-RULESHAPE`. Panel je spremao pravila u drugom obliku nego
 uvoz, pa je svaki uvoz nakon spremanja panela javljao npr. `Attributes updated 9` bez ijedne

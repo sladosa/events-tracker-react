@@ -486,6 +486,11 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   transakcije. ⚠ I: prazan iznos je `—`, **nikad `0,00`** — za novac je nula tvrdnja.
 - **`desktopHide` vrijedi samo za zadanu listu.** Area koja je konfigurirala kolone
   tražila ih je sve; sužavanje je posao `mobile` uloge, ne skrivanja iza korisnikovih leđa.
+- **⚠ JSON IZ BAZE SE NE USPOREĐUJE S `JSON.stringify`** (S153). JSONB presloži ključeve
+  (duljina imena, pa abecedno), i to **unutar svakog objekta u nizu**, pa je svaki uvoz Aree s
+  `pair`/`map`/`sep` kolonom javljao `List columns changed 1` i prepisivao identičan sadržaj.
+  Usporedba ide kroz `sameJson` (`structureImport.ts`) — redoslijed ključeva nije razlika,
+  redoslijed **elemenata niza** jest. Isti razred kao `sameRules` (S152).
 - **`ListColumns` import BRIŠE ono čega nema — namjerno, za razliku od `Automations`.**
   Kolone su jedan uređeni popis, pa je brisanje retka jedini način da čovjek makne
   kolonu. Zaštita je na razini **sheeta**: nema sheeta ⇒ ništa se ne dira.

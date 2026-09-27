@@ -148,9 +148,14 @@ interface AttrGroup {
 // cause false dirty-check positives on validation_rules.
 // ─────────────────────────────────────────────────────────────
 
+// ⚠ Mora ući i u NIZOVE (S153): `list_columns.columns` je niz objekata, a
+//   JSONB presloži ključeve i unutar njih (duljina imena, pa abecedno). Bez
+//   rekurzije je svaki uvoz Aree s `pair`/`map`/`sep` kolonom javljao
+//   „List columns changed 1" i prepisivao identičan sadržaj.
 function normalizeJson(v: unknown): string {
   if (v === null || v === undefined) return 'null';
-  if (typeof v !== 'object' || Array.isArray(v)) return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(normalizeJson).join(',') + ']';
+  if (typeof v !== 'object') return JSON.stringify(v);
   const sorted = Object.keys(v as Record<string, unknown>)
     .sort()
     .reduce<Record<string, unknown>>((acc, k) => {
@@ -161,6 +166,11 @@ function normalizeJson(v: unknown): string {
   return '{' + Object.entries(sorted).map(([k, val]) =>
     `${JSON.stringify(k)}:${normalizeJson(val)}`
   ).join(',') + '}';
+}
+
+/** Isti JSON po značenju — redoslijed ključeva ne broji se kao razlika. */
+export function sameJson(a: unknown, b: unknown): boolean {
+  return normalizeJson(a) === normalizeJson(b);
 }
 
 
@@ -938,7 +948,7 @@ export async function importStructureExcel(
             if (d === undefined) delete next.date; else next.date = d;
           }
           const cleaned = Object.keys(next).length > 0 ? next : undefined;
-          if (JSON.stringify(prev ?? null) !== JSON.stringify(cleaned ?? null)) {
+          if (!sameJson(prev, cleaned)) {
             newSettings.add_header = cleaned;
             dirty = true;
           }
@@ -1353,7 +1363,7 @@ export async function importStructureExcel(
         const columns = colsByArea.get(areaId) ?? [];
         const existingArea = dbAreas?.find(a => a.id === areaId);
         const existing = existingArea?.settings?.list_columns?.columns ?? [];
-        if (JSON.stringify(existing) === JSON.stringify(columns)) continue;
+        if (sameJson(existing, columns)) continue;
 
         // Prazan popis = povratak na zadanu listu. Ključ se briše, ne piše prazan:
         // `{ columns: [] }` i „nema configa" moraju izgledati isto i u bazi.

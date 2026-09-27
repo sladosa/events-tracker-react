@@ -39,7 +39,7 @@
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S152-1 | Structure uvoz nakon Save u panelu → `Attributes updated 0`; prava promjena → 1 (TEST) | ⬜ |
+| T-S152-1 | Structure uvoz nakon Save u panelu → `Attributes updated 0`; prava promjena → 1 (TEST) | ✅ **S153, 27.09. TEST** — nepromijenjen file: sve 0; opcija `TEST` dodana u `Smjer` ⇒ `Attributes updated 1`. ⚠ Prvi pokušaj je ispao `List columns 1` bez promjene (JSONB presloži ključeve, uvoz uspoređivao doslovnim `JSON.stringify`) — popravljeno, čuva `structureListColumnsCompare.test.mjs` |
 | T-S152-2 | „Other" u Add/Editu ne briše default (`WhenValue`) ni „Hidden in Add" (TEST, vlastita Area) | ⬜ |
 | T-S152-3 | Panel: nema polja „Default options", umjesto njega napomena o `*` (TEST) | ⬜ |
 | T-S152-4 | Visa rata kupljena 02.09. → prva rata **05.09.**; MC 26.09. → 11.10. (`dev:prod`, obriši retke) | ⬜ |
