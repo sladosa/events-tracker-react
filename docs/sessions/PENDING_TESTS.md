@@ -37,7 +37,10 @@
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S154-1 | „Data range" broji samo odabranu Areu: TEST `Financije_all` ⇒ `2025-01-01 — 2026-09-28`, i nakon F5 | ⬜ |
+| T-S154-1 | „Data range" broji samo odabranu Areu: TEST `Financije_all` ⇒ `2025-01-01 — 2026-09-28`, i nakon F5 | ⬜ **djelomično — 28.09. `dev:prod`, Kokin račun:** `Health_Sasa` `2003-04-07 — 2027-04-30`, `Financije_all` `2023-01-01 — 2026-09-28`, All Areas cijela baza — **sve se poklapa s bazom** (izmjereno REST-om istog dana). Ostaje F5 korak |
+| T-S154-2 | `+` dodirnut dok se filtar još obnavlja: kružić, pa se Add otvori sam (ne „ništa") | ⬜ |
+| T-S154-3 | `Financije_all > All Categories`: `+` zelen i vodi u `Transakcija`; Area s više leafova: dodir ⇒ poruka, hint na hrvatskom | ⬜ |
+| T-S154-4 | Zatvorena `Transakcija` u Addu se ne pamti — sljedeći Add je otvoren | ⬜ |
 
 ---
 

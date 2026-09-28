@@ -78,6 +78,7 @@ export function AttributeChainForm({
 
   // Reset both states when user selects a different category
   const chainKey = useMemo(() => categoryChain.map(c => c.id).join(','), [categoryChain]);
+  const leafId = categoryChain[0]?.id ?? null;
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset-na-promjenu-ulaza: kategorija se promijenila => stanje forme se mora ocistiti; nema ga sto izvesti iz rendera
     setShowAllDefaults(false);
@@ -86,14 +87,20 @@ export function AttributeChainForm({
 
   // Restore expanded state from localStorage when chain changes.
   // Per-category preference overrides the default (leaf open, parents closed).
+  // ⚠ S154: LEAF SE UVIJEK OTVARA. Zapamćeno zatvaranje vrijedilo je trajno, po
+  //   pregledniku — pa je jedan slučajan dodir na naslov Koki (mali iPhone, slaba
+  //   rasvjeta) ostavio `Transakcija` zatvorenu u svakom sljedećem unosu, bez
+  //   ijednog polja za upis i bez vidljivog razloga. Leaf su polja koja se
+  //   upisuju; zatvaranje unutar jednog unosa i dalje radi, samo se ne pamti.
+  //   Pamćenje ostaje za roditeljske razine.
   useEffect(() => {
     if (categoryChain.length > 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- citanje-okoline: `localStorage` se ne smije citati tijekom rendera
       setExpandedCategories(() => {
         const next = new Set<string>();
         for (const cat of categoryChain) {
-          const stored = getStoredExpanded(cat.id);
           const isLeaf = cat.id === categoryChain[0].id;
+          const stored = isLeaf ? null : getStoredExpanded(cat.id);
           if (stored !== null) {
             if (stored) next.add(cat.id);
             // stored=false → don't add (collapsed)
@@ -111,10 +118,10 @@ export function AttributeChainForm({
       const next = new Set(prev);
       const willExpand = !next.has(categoryId);
       if (willExpand) next.add(categoryId); else next.delete(categoryId);
-      setStoredExpanded(categoryId, willExpand);
+      if (categoryId !== leafId) setStoredExpanded(categoryId, willExpand);   // leaf se ne pamti (S154)
       return next;
     });
-  }, []);
+  }, [leafId]);
 
   // Normalize slug for consistent lookup
   const normalizeSlug = useCallback((slug: string): string => {

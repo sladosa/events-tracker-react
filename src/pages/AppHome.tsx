@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
@@ -36,6 +36,8 @@ import type { Category, AttributeDefinition } from '@/types/database';
 import type { UUID } from '@/types';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
+import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
+import { findSingleLeaf, categoryNamePath } from '@/lib/singleLeaf';
 
 // --------------------------------------------
 // Icons
@@ -136,6 +138,7 @@ function AppContent() {
     clearAttrFilter,
     skipNextFilterReset,
     areaContextError,
+    isRestoring,
   } = useFilter();
 
   // Attribute filter UI state — which field is selected in the "Filter by" dropdown
@@ -397,27 +400,82 @@ function AppContent() {
 
   // D1: Read grantee cannot add activities
   const isReadOnlyGrantee = sharedContext?.permission === 'read';
-  // Can add activity only when leaf category is selected AND not read-only
-  const canAddActivity = isLeafCategory && !isReadOnlyGrantee;
+
+  // S154: jedini leaf ispod filtra (v. `singleLeaf.ts`) — `Financije_all >
+  // All Categories` ima samo `Transakcija`, pa `+` nema što pitati.
+  // Odgovor nosi ključ ulaza za koji vrijedi (razred BUG-S145-OVERVIEWTAB).
+  const leafKey = `${filter.areaId ?? ''}|${filter.categoryId ?? ''}`;
+  const [singleLeafFor, setSingleLeafFor] = useState<
+    { key: string; leaf: { id: UUID; path: string[] } | null } | null
+  >(null);
+  useEffect(() => {
+    const areaId = filter.areaId;
+    if (!areaId || isLeafCategory) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cats, areaNames] = await Promise.all([getCategoryMap(), getAreaNameMap()]);
+        const id = findSingleLeaf(cats.values(), areaId, filter.categoryId);
+        const leaf = id
+          ? { id, path: [areaNames.get(areaId) ?? '', ...categoryNamePath(cats, id)] }
+          : null;
+        if (!cancelled) setSingleLeafFor({ key: leafKey, leaf });
+      } catch {
+        // Palo čitanje ⇒ ponašanje kao prije (treba odabrati leaf), ne tiha pogreška.
+        if (!cancelled) setSingleLeafFor({ key: leafKey, leaf: null });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [filter.areaId, filter.categoryId, isLeafCategory, leafKey]);
+  const singleLeaf = !isLeafCategory && singleLeafFor?.key === leafKey ? singleLeafFor.leaf : null;
+  const leafResolving = !!filter.areaId && !isLeafCategory && singleLeafFor?.key !== leafKey;
+
+  const canAddActivity = (isLeafCategory || !!singleLeaf) && !isReadOnlyGrantee;
+
+  // ⚠ S154: gumb NIJE `disabled`. Ugašen gumb na dodir ne radi ništa i ne kaže
+  //   ništa — a nakon otvaranja appa je ugašen dok se filtar obnavlja
+  //   (`isLeafCategory` je `false` do kraja obnove, na PROD-u sekundama). Koka je
+  //   to doživjela kao „+ ne reagira, pa nakon par pokušaja prođe". Poruka
+  //   „select a leaf category" je postojala, ali je bila mrtva: `disabled` ne
+  //   okida `onClick`. Sada: još se učitava ⇒ zapamti dodir i otvori Add čim
+  //   može; nije leaf ⇒ reci.
+  const [addPending, setAddPending] = useState(false);
 
   // Navigate to Add Activity
-  const handleAddActivity = () => {
+  const handleAddActivity = useCallback(() => {
     if (isReadOnlyGrantee) {
       toast.error('Read only access — cannot add activities');
       return;
     }
-    if (!canAddActivity) {
-      toast.error('Please select a leaf category first');
+    if (isLeafCategory) {
+      nav('/app/add', {
+        state: {
+          areaId: filter.areaId,
+          categoryId: filter.categoryId,
+          categoryPath: fullPathDisplay.split(' > ')  // Includes Area name
+        }
+      });
       return;
     }
-    nav('/app/add', {
-      state: {
-        areaId: filter.areaId,
-        categoryId: filter.categoryId,
-        categoryPath: fullPathDisplay.split(' > ')  // Includes Area name
-      }
-    });
-  };
+    if (singleLeaf) {
+      nav('/app/add', {
+        state: { areaId: filter.areaId, categoryId: singleLeaf.id, categoryPath: singleLeaf.path },
+      });
+      return;
+    }
+    if (isRestoring || leafResolving) {
+      setAddPending(true);
+      return;
+    }
+    toast.error('Odaberi kategoriju u filtru (onu bez podkategorija)');
+  }, [isReadOnlyGrantee, isLeafCategory, singleLeaf, isRestoring, leafResolving, filter.areaId, filter.categoryId, fullPathDisplay, nav]);
+
+  // Dodir za vrijeme učitavanja se izvrši čim učitavanje završi.
+  useEffect(() => {
+    if (!addPending || isRestoring || leafResolving) return;
+    setAddPending(false);
+    handleAddActivity();
+  }, [addPending, isRestoring, leafResolving, handleAddActivity]);
 
   const isTestEnv = import.meta.env.VITE_APP_ENV !== 'prod';
   const supabaseHost = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace('https://', '').split('.')[0] ?? '';
@@ -776,13 +834,18 @@ function AppContent() {
               <Button
                 leftIcon={<AddIcon />}
                 onClick={handleAddActivity}
-                disabled={!canAddActivity}
+                loading={addPending}
+                // Read grantee: unos nije moguć nikako ⇒ pravi `disabled` (e9).
+                // Inače `aria-disabled`: ne blokira dodir, a E2E `toBeDisabled`
+                // ga i dalje čita (specovi čekaju leaf prije klika).
+                disabled={isReadOnlyGrantee}
+                aria-disabled={!canAddActivity}
                 title={isReadOnlyGrantee ? 'Read only access' : undefined}
                 className={cn(
                   'transition-all',
                   canAddActivity
                     ? 'bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200'
-                    : '',
+                    : 'opacity-50',   // izgleda ugašeno, ali odgovara na dodir (S154)
                 )}
               >
                 {isMobile ? '' : 'Add Activity'}
@@ -896,9 +959,14 @@ function AppContent() {
                 pa i hint mora gledati ISTO -- dva uvjeta koja se mijenjaju ZAJEDNO.
             /!\ `filter.areaId` ostaje jer bez odabrane Aree gumb nije ni ponudjen,
                 pa bi hint ondje bio sum na praznom ekranu. */}
-        {activeTab !== 'structure' && !isLeafCategory && filter.areaId && !isReadOnlyGrantee && (
+        {/* S154: uvjet je `canAddActivity`, ne `isLeafCategory` -- Area s jednim
+            leafom `+` pusta, pa bi hint ondje tvrdio neistinu. Dok se filtar
+            obnavlja hint šuti (tada nije istina ni da treba birati). Hrvatski:
+            Kokina ploha unosa. */}
+        {activeTab !== 'structure' && !canAddActivity && !isRestoring && !leafResolving
+          && filter.areaId && !isReadOnlyGrantee && (
           <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-            ⚠️ Select a leaf category (no subcategories) to add an activity
+            ⚠️ Za unos odaberi kategoriju u filtru (onu bez podkategorija)
           </div>
         )}
 
