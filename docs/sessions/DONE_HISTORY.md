@@ -7902,3 +7902,36 @@ retke (danas tiho pravi siročad) i **zaustaviti** file tuđe Aree (danas tihi d
 Retke ne prepisuje sam — Excel ne razlikuje preimenovanje od brisanja.
 
 **Ritual:** `[Import dirty]` ispis ostaje namjerno (komentar ispravljen). Handoff prepisan.
+
+## S154 — testovi S152, „Data range", Kokine prijave s malog iPhonea, merge (2026-09-28)
+
+Sesija testiranja; dva kvara ispala usput, tri je prijavila Koka. **Sve na `main` (`d74c084`)** —
+S152, S153 i S154 zajedno; merge pustio Saša.
+
+**T-S152-4/5/6 ✅.** This Month / This Year točni (TEST); Edit pomiče `Datum naplate` za `Cash`
+(28.09. → 26. → 23.), MC ostaje `11.10.`; Visa rata kupljena 02.09. ⇒ `05.09. / 05.10. / 05.11.`,
+a forma Adda preračuna `Datum naplate` na promjenu datuma u zaglavlju. ⚠ Kartični korak T-S152-5 u
+UI-ju **ne razlikuje** ispravno od pokvarenog (S129) — čuva ga `shiftSameDayTarget.test.mjs`.
+T-S152-7 čeka Kokin izvod (u OneDrive inboxu samo PBZ „Detalji transakcije").
+
+**BUG-S154-DATARANGE (`bf5d60c`).** „Data range" na TEST-u za `Financije_all` (2025-01-01 →
+2026-08-24): `2003-04-07 — 2027-04-30`, obje granice iz `Health`/`Health_Sasa` (izmjereno REST-om).
+Tri puta do upita bez filtra: utrka (`areaId = null` pri obnovi, sporiji odgovor stigne zadnji),
+palo čitanje kategorija ⇒ `[]` ⇒ bez filtra, Area bez kategorija. Odgovor nosi ključ ulaza
+(razred S145), greška se kaže umjesto fallbacka „danas–danas" (koji bi auto-init upisao kao All
+time). `dateBounds.test.mjs` (15; stari hook ruši 8, utrka s točno izmjerenim brojkama).
+Potvrđeno na PROD-u: svaka Area svoj raspon, poklapa se s bazom.
+
+**Kokine prijave (`6a56cac`, `417c162`, `cc9fb4b`).** (1) `+` „ne proradi pa nakon par pokušaja
+prođe": gumb je bio `disabled` dok se filtar obnavlja, a poruka u handleru mrtva (`disabled` ne
+okida `onClick`) ⇒ `aria-disabled` + zapamćen dodir s kružićem; i read grantee sada dobiva poruku.
+(2) `Financije_all > All Categories` + sivi `+`: `findSingleLeaf` — točno jedan leaf ⇒ `+` ide na
+njega (`singleLeaf.test.mjs`, 12; sabotaža ruši 2); hint na hrvatskom. (3) Zatvorena `Transakcija`
+u svakom unosu: `attrExpanded:<id>` se pamtio trajno ⇒ leaf se uvijek otvara. Usput: na iPhone SE
+veličini Help `?` je prekrivao gornji rub `+` ⇒ na uskom ekranu jezičac uz desni rub.
+Izmjereno na `dev:prod` (iPhone SE, Kokin i Sašin račun): T-S154-1/3/4/5 ✅. **T-S154-2** (dodir za
+vrijeme učitavanja) lokalno neizvediv — pod 3G dev server ne učita ni popis Area ⇒ Kokin iPhone.
+- Zapaženo pod 3G, ne dirano: S149 traka kaže „prikazana je cijela Area", a Area je `All Areas` i
+  popis Area prazan.
+
+**Ritual:** zamka „`disabled` gumb ne kaže ništa" u CLAUDE.md § UI; handoff prepisan.

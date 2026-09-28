@@ -6,7 +6,7 @@
 
 ---
 
-## T-S154-1 ⬜ „Data range" broji samo odabranu Areu (BUG-S154-DATARANGE)
+## T-S154-1 ✅ „Data range" broji samo odabranu Areu (BUG-S154-DATARANGE)
 
 **Što je popravljeno:** ispod `Period` je na TEST-u za `Financije_all` pisalo
 `Data range: 2003-04-07 — 2027-04-30`, a Area stvarno ide `2025-01-01 → 2026-08-24`.
@@ -51,7 +51,7 @@ se filtar učita.
 
 **Pad:** dodir ne napravi ništa (bez kružića) ⇒ pošalji sliku.
 
-## T-S154-3 ⬜ Area s jednim leafom: `+` ide ravno na njega
+## T-S154-3 ✅ Area s jednim leafom: `+` ide ravno na njega
 
 **Što je popravljeno:** na `Financije_all > All Categories` `+` je bio siv, a Area ima samo
 jedan leaf (`Transakcija`). Pravilo je generičko: **točno jedan** leaf ispod odabira ⇒ `+` ide
@@ -64,7 +64,7 @@ na njega; dva ili više ⇒ i dalje treba birati.
    *„⚠️ Za unos odaberi kategoriju u filtru (onu bez podkategorija)"*; dodir ⇒ crvena poruka
    *„Odaberi kategoriju u filtru …"* (prije: ništa).
 
-## T-S154-4 ⬜ Zatvorena `Transakcija` se ne pamti
+## T-S154-4 ✅ Zatvorena `Transakcija` se ne pamti
 
 **Što je popravljeno:** zatvaranje odjeljka u Add formi pamtilo se **trajno** u pregledniku, pa
 je jedan slučajan dodir na naslov `Transakcija` ostavljao svaki sljedeći unos bez ijednog polja.
@@ -76,3 +76,18 @@ Sada se leaf uvijek otvara; zatvaranje radi samo unutar tog unosa. Roditeljske r
 3. Ponovo `+` ⇒ **Očekivano:** `Transakcija` je **otvorena**, polja vidljiva.
 4. (Kokin iPhone) Ako joj je i dalje zatvorena nakon deploya ⇒ hard refresh; stari zapis u
    pregledniku se ne briše, ali ga app za leaf više ne čita.
+
+## T-S154-5 ✅ Help gumb na uskom ekranu ne prekriva `+`
+
+**Što je popravljeno:** na iPhone SE veličini `?` (dolje desno) je prekrivao gornji rub zelenog
+`+`, pa je dodir u `+` otvarao Help. Na uskom ekranu je sada jezičac uz desni rub, na pola visine;
+desktop nepromijenjen.
+
+✅ **Izmjereno 28.09. (`dev:prod`, iPhone SE):** jezičac u listi i u Addu ne sjeda ni na `+` ni na
+polja forme; dodir otvara Help.
+
+## Dodatak: read grantee i `+` ✅
+
+Read grantee je dobivao ugašen `+` bez riječi (ista zbrka kao T-S154-2). Od `cc9fb4b` gumb je
+`aria-disabled` i za njega. ✅ Izmjereno 28.09.: Kokin račun, `Health_Sasa` (`read`) ⇒ dodir ⇒
+*„Read only access — cannot add activities"*.

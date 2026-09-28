@@ -69,7 +69,7 @@ Izvoz ga nikad nije nosio, pa ga je prvi Excel roundtrip brisao. Isto radi redak
 
 ---
 
-## T-S152-4 ⬜ Rata na Visi kupljenoj 1.–3. u mjesecu — prva rata ISTI mjesec (C2)
+## T-S152-4 ✅ (S154) Rata na Visi kupljenoj 1.–3. u mjesecu — prva rata ISTI mjesec (C2)
 
 **Što je popravljeno:** rata modal je imao vlastiti rječnik datuma (uvijek „od sljedećeg
 mjeseca"), pa je Visa kupovina 1.–3. dobila prvu ratu **mjesec prekasno**. Sada rata koristi
@@ -95,7 +95,7 @@ učitala `settings.automations`).
 
 ---
 
-## T-S152-5 ⬜ Edit: promjena datuma pomiče `Datum naplate` za Racun, ne za karticu (C3)
+## T-S152-5 ✅ (S154) Edit: promjena datuma pomiče `Datum naplate` za Racun, ne za karticu (C3)
 
 **Što je popravljeno:** redak `Izvor = Racun` kojem u Editu promijeniš datum ostajao je sa
 starim `Datum naplate`.
@@ -121,7 +121,7 @@ naplate` bio isti dan kao datum retka (ako nije, namjerno se ne dira — ručni 
 
 ---
 
-## T-S152-6 ⬜ Filtar „This Month" pokriva cijeli mjesec (UTC datum)
+## T-S152-6 ✅ (S154) Filtar „This Month" pokriva cijeli mjesec (UTC datum)
 
 **Što je popravljeno:** predlošci perioda računali su dan u UTC-u. Izmjereno 26.09.2026.:
 „This Month" = **31.08. → 29.09.** (30.09. izostavljen, 31.08. uključen), „This Year" =

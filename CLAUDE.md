@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S153).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S154).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -1164,6 +1164,22 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 
 **→ Python alati i AI (`ai_classify.py`)** — preseljeno u `data-prep_tools/CLAUDE.md` (S151).
 **UI (React)**
+
+- **⚠ `disabled` GUMB NA DODIR NE RADI NIŠTA I NE KAŽE NIŠTA — i njegova poruka je mrtva**
+  (S154, Kokina prijava s malog iPhonea: *„`+` ne proradi, nakon par pokušaja prođe"*).
+  `+` je bio `disabled={!isLeafCategory}`, a `isLeafCategory` je `false` **dok se filtar
+  obnavlja** nakon otvaranja appa — na PROD-u sekundama. `handleAddActivity` je imao
+  `toast.error('Please select a leaf category first')`, ali ga nitko nikad nije vidio:
+  `disabled` ne okida `onClick`. Isto je vrijedilo za read grantee-ja.
+  Lijek: **`aria-disabled`** (izgleda ugašeno, dodir prolazi) + handler koji kaže **zašto**,
+  a za „još se učitava" **zapamti dodir** i izvrši ga kad može (kružić na gumbu).
+  ⚠ Playwright `toBeDisabled`/`isDisabled` čita i `aria-disabled` — zato specovi koji čekaju
+  leaf prije klika (`not.toBeDisabled()`) rade bez izmjene.
+  ⚠ Uz to: **zapamćeno zatvaranje odjeljka forme je zamka iste vrste** — `attrExpanded:<id>` je
+  trajno, po pregledniku, pa je jedan slučajan dodir ostavio `Transakcija` bez ijednog polja u
+  svakom sljedećem unosu. Leaf se sada uvijek otvara (`AttributeChainForm`).
+  ⚠ I: **`fixed` gumb dolje desno na uskom ekranu sjeda na red s `+`** (izmjereno na iPhone SE
+  veličini) — Help je zato na `< sm` jezičac uz desni rub, na pola visine.
 
 - **⚠ `toISOString().split('T')[0]` JE UTC DAN, NE DAN KOJI ČOVJEK VIDI** (S152). U Zagrebu je
   za lokalnu ponoć to **dan prije**. Izmjereno 26.09.2026.: filtar **„This Month" = `31.08. →
