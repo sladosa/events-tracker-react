@@ -38,10 +38,10 @@
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S154-1 | „Data range" broji samo odabranu Areu: TEST `Financije_all` ⇒ `2025-01-01 — 2026-09-28`, i nakon F5 | ✅ **S154, 28.09. `dev:prod`, Kokin račun:** `Health_Sasa` `2003-04-07 — 2027-04-30`, `Financije_all` `2023-01-01 — 2026-09-28`, All Areas cijela baza — **sve se poklapa s bazom** (izmjereno REST-om istog dana); nakon F5 na iPhone SE veličini i dalje `2023-01-01 — 2026-09-28` |
-| T-S154-2 | `+` dodirnut dok se filtar još obnavlja: kružić, pa se Add otvori sam (ne „ništa") | ⬜ |
-| T-S154-3 | `Financije_all > All Categories`: `+` zelen i vodi u `Transakcija`; Area s više leafova: dodir ⇒ poruka, hint na hrvatskom | ⬜ |
-| T-S154-4 | Zatvorena `Transakcija` u Addu se ne pamti — sljedeći Add je otvoren | ⬜ |
-| T-S154-5 | iPhone SE: `?` je jezičac uz desni rub na pola visine, ne prekriva `+` ni ⋮ ni polja forme; na desktopu ostaje dolje desno | ⬜ |
+| T-S154-2 | `+` dodirnut dok se filtar još obnavlja: kružić, pa se Add otvori sam (ne „ništa") | ⬜ **lokalno neizvedivo** — pod 3G dev server ne učita ni popis Area (Sašina slika 28.09.). Mjeri se **na Kokinom iPhoneu nakon deploya**: reagira li `+` iz prve |
+| T-S154-3 | `Financije_all > All Categories`: `+` zelen i vodi u `Transakcija`; Area s više leafova: dodir ⇒ poruka, hint na hrvatskom | ⬜ **djelomično — 28.09. `dev:prod`, Kokin račun, iPhone SE:** `Financije_all > All Categories` ⇒ `+` zelen, Add `Financije_all > Transakcija` (otvorena). ⚠ Protuprovjera na `Health_Sasa` nije mjerila ništa: Koka ondje ima **`read`** (izmjereno u `data_shares`), a jedina Area koju smije pisati ima 1 leaf ⇒ protuprovjera ide pod **Sašinim** računom (`Fitness`, 3 leafa). Usput: read grantee je dobivao ugašen `+` bez riječi — od `cc9fb4b` i on dobiva poruku — **izmjereno 28.09.:** `Health_Sasa`, dodir ⇒ *„Read only access — cannot add activities"*. Ostaje samo protuprovjera pod Sašinim računom |
+| T-S154-4 | Zatvorena `Transakcija` u Addu se ne pamti — sljedeći Add je otvoren | ✅ **S154, 28.09. `dev:prod`, Kokin račun, iPhone SE** — zatvoreno, ✕, novi Add otvoren |
+| T-S154-5 | iPhone SE: `?` je jezičac uz desni rub na pola visine, ne prekriva `+` ni ⋮ ni polja forme; na desktopu ostaje dolje desno | ✅ **S154, 28.09.** — jezičac na pola visine (lista i Add), ne sjeda na `+` ni na polja; dodir otvara Help |
 
 ---
 
