@@ -835,10 +835,10 @@ function AppContent() {
                 leftIcon={<AddIcon />}
                 onClick={handleAddActivity}
                 loading={addPending}
-                // Read grantee: unos nije moguć nikako ⇒ pravi `disabled` (e9).
-                // Inače `aria-disabled`: ne blokira dodir, a E2E `toBeDisabled`
-                // ga i dalje čita (specovi čekaju leaf prije klika).
-                disabled={isReadOnlyGrantee}
+                // `aria-disabled`, ne `disabled`: ne blokira dodir (pa handler
+                // može reći ZAŠTO — i read grantee-ju, Koka na `Health_Sasa`),
+                // a Playwright `toBeDisabled`/`isDisabled` ga čita (e9 i specovi
+                // koji čekaju leaf prije klika).
                 aria-disabled={!canAddActivity}
                 title={isReadOnlyGrantee ? 'Read only access' : undefined}
                 className={cn(
