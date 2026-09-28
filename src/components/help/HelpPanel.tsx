@@ -633,15 +633,21 @@ export function HelpOverlay() {
 
   return (
     <>
-      {/* FAB — hidden when panel is open */}
+      {/* FAB — hidden when panel is open.
+          ⚠ S154: na uskom ekranu je jezičac uz desni rub, na pola visine. Dolje
+          desno je na iPhone SE veličini prekrivao gornji rub zelenog `+` (red s
+          `+` stoji baš na dnu prvog ekrana), pa je dodir u `+` otvarao Help.
+          Uz rub od 28 px ne sjeda ni na karticu forme ni na ⋮ u listi. */}
       {!isOpen && (
         <button
           onClick={toggle}
           title="Help"
           aria-label="Open help"
-          className="fixed bottom-5 right-5 z-50 w-12 h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+          className="fixed z-50 right-0 top-1/2 -translate-y-1/2 w-7 h-12 rounded-l-lg opacity-80
+                     sm:top-auto sm:translate-y-0 sm:bottom-5 sm:right-5 sm:w-12 sm:h-12 sm:rounded-full sm:opacity-100
+                     bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg flex items-center justify-center transition-colors"
         >
-          <HelpCircle size={22} />
+          <HelpCircle size={20} />
         </button>
       )}
       <HelpPanel />
