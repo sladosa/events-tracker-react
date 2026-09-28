@@ -12,7 +12,7 @@ const CUSTOM_VALUE   = '__custom__';
 
 export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   const { filter, setDateRange, setSortOrder, setPeriodLabel, setPeriodKey } = useFilter();
-  const { bounds, loading, refresh } = useDateBounds(filter.areaId, filter.categoryId);
+  const { bounds, loading, error: boundsError, refresh } = useDateBounds(filter.areaId, filter.categoryId);
 
   // Local state for From/To inputs
   const [localFrom, setLocalFrom] = useState<string>('');
@@ -216,8 +216,18 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
         </div>
       )}
 
+      {/* ⚠ Palo čitanje nije „nema podataka" (BUG-S154-DATARANGE, razred S121) */}
+      {!loading && boundsError && (
+        <div className="mt-2 text-xs text-amber-700">
+          ⚠️ Could not load the data range.{' '}
+          <button onClick={() => { void refresh(); }} className="underline hover:text-amber-900">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* No data message */}
-      {!loading && !bounds.minDate && (
+      {!loading && !boundsError && !bounds.minDate && (
         <div className="mt-2 text-xs text-gray-400">
           No activities found for current filter
         </div>

@@ -29,6 +29,18 @@
 
 ---
 
+## S154 — testovi S152 + BUG-S154-DATARANGE (2026-09-28)
+
+⚠ Na `test-branch`, nije na `main`. Automatski dio: `dateBounds.test.mjs` (15 tvrdnji; stari hook ruši **8**, uključujući utrku s točno izmjerenim `2003-04-07 — 2027-04-30`).
+
+**Detalji testova:** [tests/S154_tests.md](tests/S154_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S154-1 | „Data range" broji samo odabranu Areu: TEST `Financije_all` ⇒ `2025-01-01 — 2026-09-28`, i nakon F5 | ⬜ |
+
+---
+
 ## S152 — B1/B2, razvrstač izvoda, datumi rata i Edita, UTC datum (2026-09-26)
 
 ⚠ **Sve je na `test-branch`, nije na `main`** — ručni testovi idu na lokalnom dev serveru
@@ -42,9 +54,9 @@
 | T-S152-1 | Structure uvoz nakon Save u panelu → `Attributes updated 0`; prava promjena → 1 (TEST) | ✅ **S153, 27.09. TEST** — nepromijenjen file: sve 0; opcija `TEST` dodana u `Smjer` ⇒ `Attributes updated 1`; maknuta iz filea ⇒ opet `1` i **nestala iz baze** (uvoz ZAMJENJUJE popis opcija, ne samo dodaje). ⚠ Prvi pokušaj je ispao `List columns 1` bez promjene (JSONB presloži ključeve, uvoz uspoređivao doslovnim `JSON.stringify`) — popravljeno, čuva `structureListColumnsCompare.test.mjs` |
 | T-S152-2 | „Other" u Add/Editu ne briše default (`WhenValue`) ni „Hidden in Add" (TEST, vlastita Area) | ✅ **S153** — **A (27.09. TEST):** `Status` Other → `TESTNOVO` + Finish ⇒ redak nosi `TESTNOVO`, opcija dodana pod `Mastercard`, `default_map` (4 ključa) netaknut, Edit prikazuje `TESTNOVO`. ⚠ Prvi pokušaj spremio `Planiran` bez opcije — Edit **nije** uzrok (atributi upisani samo pri Finishu, izmjereno); uzrok neutvrđen, čisti put radi. **B:** `Valuta` Other → `TestB` u Editu ⇒ opcija dodana, `hidden_in_add: true` ostao (baza + panel), u Addu i dalje samo pod „prazna po pravilu". |
 | T-S152-3 | Panel: nema polja „Default options", umjesto njega napomena o `*` (TEST) | ✅ S153 — izmjereno u ovoj sesiji: Sašine slike panela (`Izvor`, `Status`, 27.09. TEST) nemaju polje, i sa starim i s novim natpisom (S153 natpis ovisi o tipu atributa) |
-| T-S152-4 | Visa rata kupljena 02.09. → prva rata **05.09.**; MC 26.09. → 11.10. (`dev:prod`, obriši retke) | ⬜ |
-| T-S152-5 | Edit: promjena datuma pomiče `Datum naplate` za Racun/Cash, ne za karticu (`dev:prod`, bez spremanja) | ⬜ |
-| T-S152-6 | „This Month" = 01.–30.09., „This Year" = 01.01.–31.12. | ⬜ |
+| T-S152-4 | Visa rata kupljena 02.09. → prva rata **05.09.**; MC 26.09. → 11.10. (`dev:prod`, obriši retke) | ✅ **S154, 28.09. `dev:prod`, Kokin račun** — datum u zaglavlju Adda 28.09. → 02.09. ⇒ `Datum naplate` 05/10 → **05/09/2026** (forma preračunava na promjenu datuma); modal `05.09. / 05.10. / 05.11.2026.` po `10.00`; lista: 3 retka `rata 1/3..3/3 · 10 od 30` na 02.09. Retci obrisani. MC kontrola u UI-ju nije izvođena — čuva je `rataChargeDates.test.mjs` (MC 26.09. ⇒ 11.10./11.11./11.12. i stari = novi za MC). ⚠ Prvi pokušaj: `3` upisan u `Rata br` umjesto `Broj rata` ⇒ modal se ne bi ni otvorio; uputa u testu je bila točna, ali polja stoje jedno ispod drugog |
+| T-S152-5 | Edit: promjena datuma pomiče `Datum naplate` za Racun/Cash, ne za karticu (`dev:prod`, bez spremanja) | ✅ **S154, 28.09. `dev:prod`, Kokin račun** — testni `Cash 1 €` (28.09.): datum → 26.09. ⇒ `Datum naplate` 26.09.; → 23.09. ⇒ 23.09., oba puta odmah. MC redak: datum → 23.09., `Datum naplate` ostao `11.10.` Testni retci obrisani. ⚠ Kartični korak u UI-ju **ne razlikuje** ispravno od pokvarenog (MC datum naplate ionako nije jednak datumu retka, pa ga ne bi dirao ni kod bez provjere `Izvor`a — S129 pravilo); taj rub čuva `shiftSameDayTarget.test.mjs` (*„Visa — ni kad se slučajno poklapa sa starim datumom"*) |
+| T-S152-6 | „This Month" = 01.–30.09., „This Year" = 01.01.–31.12. | ✅ **S154, 28.09. TEST** — This Month `01/09/2026 – 30/09/2026`, This Year `01/01/2026 – 31/12/2026` (Sašine slike). Prazna rujanska lista je ispravna: najnoviji redak `Financije_all` na TEST-u je 24.08. ⚠ Usput: „Data range" pokazuje `2003-04-07` iako je najstariji redak te Aree na TEST-u `2025-01-01` (izmjereno REST-om) ⇒ v. BUG-S154-DATARANGE |
 | T-S152-7 | Razvrstač na pravom novom izvodu (kad Koka pošalje): dry → `--apply` → „vec imamo" | ⬜ |
 | T-S152-8 | `make_financije_all_structure.py` staje nad `Financije_all` | ✅ S152 — izmjereno (exit 1, 49 redaka; stari export prolazi) |
 | T-S152-9 | Razvrstač: stvarni inbox + pješčanik (5 scenarija) | ✅ S152 — izmjereno |
