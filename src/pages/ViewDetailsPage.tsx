@@ -25,6 +25,7 @@ import {
   type CachedViewEvent,
   getOrFetchActivity,
   prefetchActivity,
+  clearActivityViewCache,
   makeCacheKey,
   takeLastFetchError,
 } from '@/lib/activityViewCache';
@@ -276,6 +277,11 @@ export function ViewDetailsPage() {
   const categoryIdParam = searchParams.get('categoryId') as UUID | null;
   const noSession = searchParams.get('noSession') === '1';
   const ownerIdParam = searchParams.get('userId');
+
+  // S155 (BUG-S155-VIEWSTALE): dolazak u View = svježi podaci. MORA biti prvi
+  // efekt u komponenti — efekti idu redom deklaracije, a učitavanje ispod čita
+  // keš. V. `clearActivityViewCache`.
+  useEffect(() => { clearActivityViewCache(); }, []);
 
   // BUG-S45-1 fix (Opcija A): use navActivities from location.state when available.
   // AppHome pre-builds this list (no date filter, 500 items) and passes it here,

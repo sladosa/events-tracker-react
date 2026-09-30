@@ -17,7 +17,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { todayLocalYmd } from '@/lib/localDate';
-import type { UUID, WidgetFilter } from '@/types/database';
+import type { DueConfig, UUID, WidgetFilter } from '@/types/database';
 
 // --------------------------------------------
 // rpc_area_group_agg
@@ -119,6 +119,56 @@ export async function fetchAnchoredBalance(p: {
     n: Number(r.n ?? 0),
     balance: Number(r.balance ?? 0),
     last_on: (r.last_on as string | null) ?? null,
+  }));
+}
+
+// --------------------------------------------
+// rpc_area_due_baskets (sql/053) — „Dospjelo → potvrdi", faza 1
+// --------------------------------------------
+// Neuspjelo čitanje BACA — pozivatelj ga mora prikazati kao „nisam učitao",
+// nikad kao „nema dospjelog" (S121).
+
+export interface DueBasketRow {
+  basket: string;
+  /** `YYYY-MM-DD`, u zoni preglednika. */
+  due_date: string;
+  n: number;
+  n_pending: number;
+  gross_plus: number;
+  gross_minus: number;
+}
+
+export async function fetchDueBaskets(p: {
+  areaId: UUID;
+  due: DueConfig;
+  plusSlug?: string | null;
+  minusSlug?: string | null;
+  asOf: string;
+}): Promise<DueBasketRow[]> {
+  // Dan dospijeća se čita u zoni u kojoj ga čovjek gleda — lokalna ponoć je
+  // u UTC-u dan prije (isti razred kao S152).
+  let tz = 'UTC';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { /* ostaje UTC */ }
+  const { data, error } = await supabase.rpc('rpc_area_due_baskets', {
+    p_area_id: p.areaId,
+    p_basket_slug: p.due.basket_by,
+    p_due_slug: p.due.due_slug,
+    p_status_slug: p.due.status_slug,
+    p_pending: p.due.pending,
+    p_plus_slug: p.plusSlug ?? null,
+    p_minus_slug: p.minusSlug ?? null,
+    p_baskets: Object.keys(p.due.baskets),
+    p_as_of: p.asOf,
+    p_tz: tz,
+  });
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    basket: String(r.basket ?? ''),
+    due_date: String(r.due_date ?? '').slice(0, 10),
+    n: Number(r.n ?? 0),
+    n_pending: Number(r.n_pending ?? 0),
+    gross_plus: Number(r.gross_plus ?? 0),
+    gross_minus: Number(r.gross_minus ?? 0),
   }));
 }
 

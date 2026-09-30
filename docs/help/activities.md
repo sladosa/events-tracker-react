@@ -22,9 +22,24 @@ a poruka imenuje koje polje nedostaje.
 - Postavlja se u Structure Excelu, na retku Aree: kolone `AddTimer` i `AddDatePicker`.
 - Promjena datuma **povlači automatike** koje ovise o njemu (npr. `Datum naplate`),
   osim ako si to polje već upisao rukom — ručni unos se ne pregazi.
-- U **Editu** promjena datuma pomakne `Datum naplate` samo za `Izvor = Racun` / `Cash`
-  (naplata je isti dan), i samo ako je bio izračunat iz starog datuma. Kartični datum
-  naplate (Mastercard, Visa) se u Editu ne pomiče — on dolazi s izvoda.
+- U **Editu** promjena datuma pomakne `Datum naplate` ako je bio **izračunat** iz starog
+  datuma — za `Racun`/`Cash` na novi dan, za karticu na naplatu koja pripada novom datumu.
+  Datum koji si upisala rukom se ne dira.
+- **Redak potvrđen izvodom** (popunjen `Izvod opis`) se ne pomiče: njegov `Datum naplate`
+  je bankin. Edit to kaže u žutom okviru; ako i on treba drugi datum, promijeni ga rukom.
+
+**Redak potvrđen izvodom ili stanjem računa — što se smije mijenjati:**
+- Ispod broja eventa piše sivo *„✓ potvrđen izvodom …"* i/ili *„unutar potvrđenog stanja
+  računa … na …"*. To je samo informacija.
+- **Tip, Podtip i opis** mijenjaš slobodno — na tome počiva razvrstavanje.
+- **Datum, iznos, račun, Izvor, Status i Datum naplate** dolaze iz banke. Promijeniš li
+  neki od njih, pojavi se žuti okvir s popisom izmjena (staro → novo), a Save traži kvačicu
+  *„Da, podatak s izvoda je bio krivo upisan"*. Promijeniš li poslije još nešto bankino,
+  kvačicu treba ponovo.
+- Ako je redak unutar potvrđenog stanja, izmjena **ne pomiče saldo** na pločici — razliku
+  tada pokazuje kontrolna točka sidra u delta sheetu.
+- Ako je redak sparen s **krivim** retkom izvoda: isprazni `Izvod opis` (u Excelu upiši `_`).
+  Redak tada više nije potvrđen, a sljedeća obrada izvoda ga spari ponovo.
 
 **Ako ne znaš točan iznos — upiši približno i označi tildom:**
 - Stavi `~` na **početak** opisa: `~ gorivo, Ina Heinzlova`. Na početku je zato što

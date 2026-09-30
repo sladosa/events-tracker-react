@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S154).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S155).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -29,24 +29,24 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | ---: | --- | :---: |
 | 55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>) |  |
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 113 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 126 | [Critical rules](<#Critical rules>) | X |
-| 1156 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1570 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1586 | [Key files](<#Key files>) |  |
-| 1673 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1693 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1715 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1741 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1781 | [Open bugs](<#Open bugs>) | ~ |
-| 1888 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 1933 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2030 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2038 | [Backlog](<#Backlog>) | ~ |
-| 2042 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2050 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 114 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 127 | [Critical rules](<#Critical rules>) | X |
+| 1174 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1619 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1635 | [Key files](<#Key files>) |  |
+| 1726 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1746 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1768 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1794 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1834 | [Open bugs](<#Open bugs>) | ~ |
+| 1943 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 1988 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2085 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2093 | [Backlog](<#Backlog>) | ~ |
+| 2097 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2105 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2208 redaka, 18 sekcija._
+_Ukupno 2263 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -553,6 +553,18 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   poseban znak u `ilike`). ⚠ Ispravak ide **Editom postojećeg retka**, nikad novim retkom:
   dedup je `(datum, iznos)`, pa bi `55,00` i `54,35` ostala **dva** retka — isti razred kao
   9 skoro-duplikata iz S111.
+- **⚠ ŽIG (`lock_slug`) ZAUSTAVLJA AUTOMATIKU, NE ČOVJEKA** (S155, Sašina odluka). Redak s
+  popunjenim `Izvod opis` nosi BANKIN `Datum naplate`; Edit ga pri promjeni datuma ne pomiče i to
+  kaže. Derivacijski uvjet („target = pravilo(stari datum)") to NE može sam: `Racun` ima naplatu =
+  dan i s izvoda, MC banka tereti 11. = `next:11`. ⚠ **Nema kolone `LockAttr` ≠ prazna ćelija**
+  (`resolveLockSlug`) — pravila se na uvozu zamjenjuju u cijelosti. ⚠ Rename sluga još ne popravlja
+  `attribute_rules` (ni prije žiga).
+- **⚠ C3c: BANKINA POLJA NA POTVRĐENOM RETKU TRAŽE VLASTITU KVAČICU U EDITU** (S155). Potvrđen =
+  žig **ili** sidro — ali sidro samo za redak koji **prolazi filtre pločice** (`passesFilters`):
+  kartični redak saldo nikad ne broji, pa mu rečenica „izmjena ne pomiče saldo" laže (izmjereno
+  T-S155-4). Tip/Podtip/opis nikad ne pale okvir. Popis bankinih polja se IZVODI iz configa pločice
+  i pravila, bez novog ključa. ⚠ Excel guard (S143) i kolona `Potvrda` sidro još primjenjuju i na
+  kartice — dva mjesta, Backlog.
 - **`Datum naplate` se ne upisuje rukom** — `set_attribute` ga računa iz `Izvor`a
   (`Racun`/`Cash` = isti dan, `Visa` = `next:3`, `Mastercard` = `next:11`). Ručni unos
   `userOwned` guard više ne dira, pa ga ne diraj bez razloga.
@@ -1165,6 +1177,21 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 **→ Python alati i AI (`ai_classify.py`)** — preseljeno u `data-prep_tools/CLAUDE.md` (S151).
 **UI (React)**
 
+- **⚠ POLJE DATUMA U ZAGLAVLJU IMALO JE DVIJE KOPIJE, I RAZIŠLE SU SE TRIPUT U JEDNOM TESTU**
+  (S155, BUG-S155-EDITNAN). Add je ignorirao prazan unos, Edit nije ⇒ brisanje dana = NaN datum, a
+  inkrementalni pomak (`lastAppliedDateTimeRef`) je nakon toga SVAKI pomak pretvarao u NaN; godina
+  bez dopune (`2-08-07`) ⇒ polje prazno usred tipkanja; Chrome bez `max` pušta 6 znamenki godine.
+  Sada samo `src/lib/dateInput.ts`. ⚠ **`setFullYear` nad `Invalid Date` kreće od ponoći** — sat
+  tiho postane 00:00. ⚠ Filtar u kontekst šalje samo `isCompleteDateValue` (inače pamti smeće).
+  ⚠ Međustanja godine (`0002`) se NAMJERNO propuštaju u Editu — odbijanje bi vratilo staru
+  vrijednost usred tipkanja; Save ih hvata.
+
+- **⚠ KEŠ VIEWA SE PRAZNI PRI MONTIRANJU — INVALIDACIJA PO PISAČU JE BILA KOMENTAR** (S155,
+  BUG-S155-VIEWSTALE). `activityViewCache.invalidateCacheKey` je nosio „after Edit saves new
+  data", a nitko ga nije zvao ⇒ Save → View pokazao `1171.5` dok je baza imala `1171.59`. Razred
+  S132. Invarijanta: svako pisanje je IZVAN Viewa ⇒ `clearActivityViewCache()` je PRVI efekt
+  `ViewDetailsPage`; Prev/Next ne remontira pa prefetch ostaje.
+
 - **⚠ `disabled` GUMB NA DODIR NE RADI NIŠTA I NE KAŽE NIŠTA — i njegova poruka je mrtva**
   (S154, Kokina prijava s malog iPhonea: *„`+` ne proradi, nakon par pokušaja prođe"*).
   `+` je bio `disabled={!isLeafCategory}`, a `isLeafCategory` je `false` **dok se filtar
@@ -1665,6 +1692,10 @@ src/lib/validationRules.ts         JEDINI graditelj `validation_rules` (panel, u
                                    `sameRules` za usporedbu po značenju (S152)
 src/lib/pendingOptions.ts          „Other" opcije iz Add/Edit u `validation_rules` (jedna kopija)
 src/lib/localDate.ts               `localYmd` / `todayLocalYmd` — dan koji čovjek vidi, ne UTC (S152)
+src/lib/dateInput.ts               JEDINO parsiranje polja datuma/vremena u Add i Edit zaglavlju (S155)
+src/lib/confirmedRowEdit.ts        C3c: bankina polja, je li redak potvrđen (žig / sidro u saldu)
+src/lib/dueBaskets.ts              C5: Σ košare u lipama, usporedba s bankom (tolerancija 0,00)
+src/components/overview/DueStrip.tsx  Traka „Čeka potvrdu" (DOSPJELO_SPEC faza 1, samo čitanje)
 src/lib/attributeRules.ts          set_attribute automatika (evaluateDateRule, same/next:N)
 src/lib/deleteErrors.ts            classifyDeleteError() — čitljive poruke iz PG grešaka
 src/lib/theme.ts                   Theme colour tokens
@@ -1889,6 +1920,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > provjereno nosi li koji od njih pravilo kojeg nema drugdje: tri su ga nosila i sva tri su
 > zadrzana (dva gore, `Postgres upgrade` u Backlogu). Isti postupak kao „Spaseno iz plana" (S137).
 
+- **~~BUG-S155-EDITNAN~~, ~~BUG-S155-VIEWSTALE~~** — zatvoreno S155: pravila su u § UI (React); čuva `dateInput.test.mjs`, T-S155-8/9 ✅. ⚠ `BUG-S131-VIEWSTALE` („Activity not found" nakon Edita) je vjerojatno isti keš — ako se javi nakon S155, pretpostavka je pala.
 - **~~BUG-S154-DATARANGE~~** — zatvoreno S154: „Data range" (i `From` kod All Time) brojao je cijelu bazu — zakašnjeli odgovor za `areaId = null` pregazio filtrirani, a palo čitanje kategorija / Area bez kategorija davali su „bez filtra". Odgovor sada nosi ključ ulaza (razred BUG-S145-OVERVIEWTAB), greška se kaže umjesto „danas–danas". Čuva `dateBounds.test.mjs` (stari hook ruši 8/15). **Neverificirano uživo: T-S154-1.**
 - **~~BUG-S117-RULESHAPE~~** — zatvoreno S152: jedan graditelj `validation_rules` za panel, uvoz i „Other"; uvoz uspoređuje po značenju. Pravilo: § Model / atributi; čuva `validationRules.test.mjs` (40 tvrdnji, sabotaže ruše 5/3/3).
 - **~~BUG-S131-VIEWSTALE~~, ~~BUG-1~~** — zatvoreno S150 (prolaz): neponovljeno nakon ciljanih pokušaja; BUG-1 je dev-only poruka. Puni tekst: `DONE_HISTORY.md` § S150.

@@ -118,37 +118,52 @@ export function computeSetAttributeValue(
   return result ? formatForDatetimeInput(result) : null;
 }
 
+/** Ishod `shiftDerivedTarget`: nova vrijednost, ili „pomaknuo bih, ali žig". */
+export type ShiftResult = { value: string } | { locked: true };
+
 /**
- * C3 (S152): datum retka promijenjen u Editu — pomakni li target?
- * Vraca novu vrijednost ili `null` = ne diraj.
+ * C3 (S152) + C3b (S155): datum retka promijenjen u Editu — pomakni li target?
+ * `null` = ne diraj (i nema se što reći).
  *
- * Pomice SAMO kad su ispunjena oba uvjeta:
- *   1. pravilo za tu vrijednost map atributa je `same` (Racun/Cash: naplata
- *      je dan transakcije, pa novi datum znaci novu naplatu);
- *   2. target je TRENUTNO upravo ono sto je pravilo dalo za stari datum —
- *      dakle izveden, ne upisan rukom ni donesen s izvoda.
+ * Pomiče SAMO kad je target TRENUTNO upravo ono što je pravilo dalo za stari
+ * datum — dakle izveden, ne upisan rukom. Vrijedi za svako pravilo (`same`,
+ * `next:N`, `cutoff:B:D`), jer je kartični datum na OTVORENOJ košari jednako
+ * izveden kao `Racun`ov.
  *
- * ⚠ Kartice (`next:N`, `cutoff:B:D`) se NE diraju — Visa nema fiksan dan
- *   naplate (855 redaka: 5. 383x, 4. 231x, ...), pa je datum na zatvorenim
- *   retcima s izvoda, i pomak datuma kupovine ga ne mijenja. Isti razlog
- *   zbog kojeg se `set_attribute` u Editu ne racuna na otvaranju (S127).
+ * ⚠ ALI „izveden" se na ožigosanom retku NE DA prepoznati iz same vrijednosti:
+ *   `Racun` ima naplatu = dan transakcije i kad je redak s izvoda, a MC banka
+ *   tereti 11. — točno ono što `next:11` izračuna. Zato `locked` (atribut
+ *   `rule.lock_slug` nije prazan ⇒ vrijednost je bankina) prevladava: vraća
+ *   `{ locked: true }` umjesto pomaka, da pozivatelj može reći ZAŠTO se nije
+ *   pomaknulo. Tihi izostanak učinka izgleda kao kvar.
+ *   Na zatvorenim Visa retcima (datum s izvoda, 5. 383×, 4. 231×…) derivacijski
+ *   uvjet ionako ne prolazi — isti razlog zbog kojeg se `set_attribute` u Editu
+ *   ne računa na otvaranju (S127).
+ *
+ * @param oldDate datum od kojeg je target izveden (za zaključan redak pozivatelj
+ *                daje IZVORNI datum — target se tada nikad ne pomiče, pa je to
+ *                jedina baza koja ostaje istinita kroz više promjena)
  */
-export function shiftSameDayTarget(
+export function shiftDerivedTarget(
   rule: AttributeRuleConfig,
   mapValue: string | null,
   currentTarget: unknown,
   oldDate: Date,
   newDate: Date,
-): string | null {
+  locked = false,
+): ShiftResult | null {
   if (mapValue == null || mapValue === '') return null;
-  if (rule.date_map[mapValue] !== 'same') return null;
+  const dateRule = rule.date_map[mapValue];
+  if (!dateRule) return null;
   if (currentTarget == null || currentTarget === '') return null;
   const cur = new Date(String(currentTarget));
   if (!Number.isFinite(cur.getTime())) return null;
-  if (localYmd(cur) !== localYmd(oldDate)) return null;
-  if (localYmd(oldDate) === localYmd(newDate)) return null;
-  const next = evaluateDateRule('same', newDate);
-  return next ? formatForDatetimeInput(next) : null;
+  const derived = evaluateDateRule(dateRule, oldDate);
+  if (!derived || localYmd(cur) !== localYmd(derived)) return null;
+  const next = evaluateDateRule(dateRule, newDate);
+  if (!next || localYmd(next) === localYmd(cur)) return null;
+  if (locked) return { locked: true };
+  return { value: formatForDatetimeInput(next) };
 }
 
 /** Slug match tolerant to -/_ differences (same normalisation as default_map lookup). */

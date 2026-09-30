@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useFilter } from '@/context/FilterContext';
 import { useDateBounds, getDatePresets, formatDateDisplay } from '@/hooks/useDateBounds';
+import { DATE_INPUT_MIN, DATE_INPUT_MAX, isCompleteDateValue } from '@/lib/dateInput';
 
 interface DateRangeFilterProps {
   className?: string;
@@ -65,7 +66,9 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   // ── Manual date input handlers ─────────────────────────────────────────────
   const handleFromChange = (value: string) => {
     setLocalFrom(value);
-    if (value && localTo) {
+    // Samo gotov datum ide u filtar — međustanje godine (`0002`, `202566`) bi
+    // poslalo upit i ostalo zapamćeno u pregledniku (S155).
+    if (isCompleteDateValue(value) && isCompleteDateValue(localTo)) {
       setDateRange(value, localTo);
       setPeriodLabel('Custom');
       setPeriodKey('custom');
@@ -74,12 +77,22 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
 
   const handleToChange = (value: string) => {
     setLocalTo(value);
-    if (localFrom && value) {
+    if (isCompleteDateValue(localFrom) && isCompleteDateValue(value)) {
       setDateRange(localFrom, value);
       setPeriodLabel('Custom');
       setPeriodKey('custom');
     }
   };
+
+  // ── Nedovršen / izvan raspona datum (S155) ────────────────────────────────
+  // `max` ograniči godinu na 4 znamenke, ali `6666` je i dalje 4 znamenke.
+  // U filtar takav datum ne ide (`isCompleteDateValue`); dok stoji u polju,
+  // polje je CRVENO, a na izlasku se vrati zadnji primijenjeni datum —
+  // vrijednost koja u polju tvrdi raspon kojeg filtar nema je gora od nikakve.
+  const badFrom = localFrom !== '' && !isCompleteDateValue(localFrom);
+  const badTo   = localTo   !== '' && !isCompleteDateValue(localTo);
+  const revertFrom = () => { if (badFrom) setLocalFrom(filter.dateFrom ?? ''); };
+  const revertTo   = () => { if (badTo)   setLocalTo(filter.dateTo ?? ''); };
 
   // ── Apply preset by key ───────────────────────────────────────────────────
   const handlePreset = (selectedKey: string) => {
@@ -133,10 +146,15 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
             lang="sv"
             value={localFrom}
             onChange={(e) => handleFromChange(e.target.value)}
-            min={bounds.minDate || undefined}
-            max={localTo || undefined}
+            onBlur={revertFrom}
+            title={badFrom ? `Datum mora biti između ${DATE_INPUT_MIN.slice(0, 4)} i ${DATE_INPUT_MAX.slice(0, 4)}` : undefined}
+            // Četveroznamenkast `max` je ono što Chromeu ograniči godinu na 4
+            // znamenke — bez njega pušta do 6 (S155).
+            min={bounds.minDate || DATE_INPUT_MIN}
+            max={isCompleteDateValue(localTo) ? localTo : DATE_INPUT_MAX}
             disabled={loading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 text-sm"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 text-sm ${
+              badFrom ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'}`}
           />
         </div>
 
@@ -148,9 +166,13 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
             lang="sv"
             value={localTo}
             onChange={(e) => handleToChange(e.target.value)}
-            min={localFrom || bounds.minDate || undefined}
+            onBlur={revertTo}
+            title={badTo ? `Datum mora biti između ${DATE_INPUT_MIN.slice(0, 4)} i ${DATE_INPUT_MAX.slice(0, 4)}` : undefined}
+            min={(isCompleteDateValue(localFrom) ? localFrom : '') || bounds.minDate || DATE_INPUT_MIN}
+            max={DATE_INPUT_MAX}
             disabled={loading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 text-sm"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 text-sm ${
+              badTo ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'}`}
           />
         </div>
 

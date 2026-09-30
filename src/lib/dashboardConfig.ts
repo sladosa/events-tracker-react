@@ -37,7 +37,19 @@ export function renameSlugInDashboard(
     minus: swap(w.minus),
     filters: w.filters?.map(f => ({ ...f, slug: swap(f.slug) ?? f.slug })),
     split: w.split
-      ? { ...w.split, filters: w.split.filters.map(f => ({ ...f, slug: swap(f.slug) ?? f.slug })) }
+      ? {
+          ...w.split,
+          filters: w.split.filters.map(f => ({ ...f, slug: swap(f.slug) ?? f.slug })),
+          due_slug: swap(w.split.due_slug),
+        }
+      : undefined,
+    due: w.due
+      ? {
+          ...w.due,
+          basket_by: swap(w.due.basket_by) ?? w.due.basket_by,
+          due_slug: swap(w.due.due_slug) ?? w.due.due_slug,
+          status_slug: swap(w.due.status_slug) ?? w.due.status_slug,
+        }
       : undefined,
   }));
 
@@ -94,6 +106,8 @@ export function dashboardSlugRefs(config: DashboardConfig | null | undefined): S
     if (w.minus) out.add(w.minus);
     for (const f of w.filters ?? []) out.add(f.slug);
     for (const f of w.split?.filters ?? []) out.add(f.slug);
+    if (w.split?.due_slug) out.add(w.split.due_slug);
+    if (w.due) { out.add(w.due.basket_by); out.add(w.due.due_slug); out.add(w.due.status_slug); }
   }
   return out;
 }

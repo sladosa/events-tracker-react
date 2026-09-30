@@ -13,7 +13,9 @@
 
 import { forwardRef, useState } from 'react';
 import { cn } from '@/lib/cn';
-import { localYmd } from '@/lib/localDate';
+import {
+  toDateInputValue, toTimeInputValue, applyDateInput, applyTimeInput, DATE_INPUT_MIN, DATE_INPUT_MAX,
+} from '@/lib/dateInput';
 import type { EditorMode } from '@/types/activity';
 import { messages } from '@/types/activity';
 import { formatTimer, formatDuration } from '../../lib/timeFormat';
@@ -24,20 +26,11 @@ import { formatTimer, formatDuration } from '../../lib/timeFormat';
 
 /** Format date as YYYY/MM/DD (P2.2) */
 function formatDateYMD(date: Date): string {
-  const y = date.getFullYear();
+  // Godina na 4 znamenke: dok se tipka, Chrome javlja i `0002` (S155).
+  const y = String(date.getFullYear()).padStart(4, '0');
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}/${m}/${d}`;
-}
-
-/** `YYYY-MM-DD` for `<input type="date">`, in LOCAL time.
- *  `toISOString()` would answer in UTC, so an evening entry east of Greenwich
- *  shows tomorrow's day in the picker while the row is stored as today. */
-function toDateInputValue(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
 
 /** Format time as HH:MM */
@@ -177,12 +170,12 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
                     type="date"
                     lang="sv"
                     value={toDateInputValue(dateTime)}
+                    min={DATE_INPUT_MIN}
+                    max={DATE_INPUT_MAX}
                     onChange={(e) => {
-                      if (!e.target.value) return;
-                      const [year, month, day] = e.target.value.split('-').map(Number);
-                      const next = new Date(dateTime);
-                      next.setFullYear(year, month - 1, day);
-                      onDateTimeChange(next);
+                      // Isti parser kao Edit (`dateInput.ts`) — dvije kopije su se razišle (S155).
+                      const next = applyDateInput(dateTime, e.target.value);
+                      if (next) onDateTimeChange(next);
                     }}
                     className="bg-white/20 text-white border-0 rounded px-1 py-1 text-sm focus:ring-2 focus:ring-white/50 opacity-60 hover:opacity-100 focus:opacity-100 cursor-pointer"
                     title="Dan na koji se zapis odnosi"
@@ -198,29 +191,30 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
                   <div className="flex gap-2 items-center">
                     {/* B4: Show YYYY-MM-DD text always (browser may render date input differently) */}
                     <span className="text-white font-medium text-sm tabular-nums">
-                      {localYmd(dateTime)}
+                      {toDateInputValue(dateTime)}
                     </span>
                     <input
                       type="date"
                       lang="sv"
-                      value={localYmd(dateTime)}
+                      value={toDateInputValue(dateTime)}
+                      min={DATE_INPUT_MIN}
+                      max={DATE_INPUT_MAX}
                       onChange={(e) => {
-                        const newDate = new Date(dateTime);
-                        const [year, month, day] = e.target.value.split('-').map(Number);
-                        newDate.setFullYear(year, month - 1, day);
-                        onDateTimeChange(newDate);
+                        // Prazno/nečitljivo (dan se upravo briše) ⇒ `null` ⇒ ništa se
+                        // ne javlja. Bez toga je Edit dobivao NaN datum (S155).
+                        const next = applyDateInput(dateTime, e.target.value);
+                        if (next) onDateTimeChange(next);
                       }}
                       className="bg-white/20 text-white border-0 rounded px-1 py-1 text-sm focus:ring-2 focus:ring-white/50 opacity-60 hover:opacity-100 focus:opacity-100 cursor-pointer"
                       title="Click to change date"
                     />
                     <input
                       type="time"
-                      value={dateTime.toTimeString().slice(0, 5)}
+                      value={toTimeInputValue(dateTime)}
                       onChange={(e) => {
-                        const newDate = new Date(dateTime);
-                        const [hours, minutes] = e.target.value.split(':').map(Number);
-                        newDate.setHours(hours, minutes, 0, 0); // reset sekundi i ms → kolizija na razini minute
-                        onDateTimeChange(newDate);
+                        // sekunde i ms na nulu → kolizija na razini minute
+                        const next = applyTimeInput(dateTime, e.target.value);
+                        if (next) onDateTimeChange(next);
                       }}
                       className="bg-white/20 text-white border-0 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-white/50"
                     />

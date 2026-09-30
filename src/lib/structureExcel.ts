@@ -785,6 +785,9 @@ const AUTOMATION_COLS = [
   { header: 'OverrideAttrs', width: 22 },
   { header: 'CommentAttr',   width: 14 },
   { header: 'IndexAttr',     width: 12 },
+  // C3b (S155) — samo `set_attribute`. Zadnja, jer import trazi PO IMENU i
+  // stariji fileovi bez nje moraju raditi (a bez nje se zig NE brise, v. import).
+  { header: 'LockAttr',      width: 14 },
 ] as const;
 
 export function serializeDateMap(dateMap: Record<string, string | number>): string {
@@ -829,6 +832,8 @@ function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
       emit([
         node.name, rule.name ?? '', rule.action,
         rule.target_slug, rule.map_slug, serializeDateMap(rule.date_map),
+        '', '', '', '', '', '',
+        rule.lock_slug ?? '',
       ]);
     }
 
@@ -862,6 +867,9 @@ function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
     '     cutoff:B:D  = prva pojava dana D nakon sljedećeg dana B',
     '  Primjer: Mastercard=next:11 | Visa=cutoff:3:5 | Racun=same | Cash=same',
     '  Vrijednost MapAttr-a koje nema u DateMap → pravilo se preskače (target se ne dira).',
+    '  LockAttr = slug "žiga" (npr. izvod_opis). Kad taj atribut NIJE prazan, target je vrijednost',
+    '     izvana (s izvoda) i automatika ga ne dira — ni pri promjeni datuma u Editu. Rukom se smije.',
+    '     Prazna ćelija = bez žiga. Nema li kolone u fileu, postojeći žig u bazi ostaje.',
     '',
     '  NOVA KARTICA — kartica ima TRI datuma i lako se zamijene:',
     '     zatvaranje izvoda (B)  →  terećenje računa (D)  →  dospijeće',

@@ -460,6 +460,25 @@ export function resolveHiddenInAdd(
   return existingRules?.hidden_in_add === true;
 }
 
+/**
+ * C3b (S155): žig (`lock_slug`) `set_attribute` pravila nakon uvoza.
+ *
+ * /!\ Isto nacelo kao `resolveHiddenInAdd`: pravila Aree se na uvozu ZAMJENJUJU
+ *   u cijelosti, pa bi file bez kolone `LockAttr` (izvezen prije S155) tiho
+ *   obrisao zig. Bez kolone se zato preuzima iz postojeceg pravila istog para
+ *   (target, map); prazna celija u POSTOJECOJ koloni ga legitimno brise.
+ */
+export function resolveLockSlug(
+  hasColumn:     boolean,
+  fromFile:      string,
+  existingRules: readonly AttributeRuleConfig[] | null | undefined,
+  targetSlug:    string,
+  mapSlug:       string,
+): string {
+  if (hasColumn) return fromFile.trim();
+  return existingRules?.find(r => r.target_slug === targetSlug && r.map_slug === mapSlug)?.lock_slug ?? '';
+}
+
 // ─────────────────────────────────────────────────────────────
 // Parse CategoryPath into segments
 // "Fitness > Activity > Gym > Cardio" → ["Fitness", "Activity", "Gym", "Cardio"]
@@ -1007,6 +1026,8 @@ export async function importStructureExcel(
     const colOverride = aCol('overrideattrs');
     const colCommentAttr = aCol('commentattr');
     const colIndexAttr = aCol('indexattr');
+    // C3b (S155) — nema kolone ≠ prazna ćelija, v. `resolveLockSlug`.
+    const colLock = aCol('lockattr');
 
     if (colArea > 0 && colAction > 0 && colTarget > 0 && colMap > 0 && colDateMap > 0) {
       // Per-area set of known attribute slugs (walk category → area via catById).
@@ -1070,7 +1091,11 @@ export async function importStructureExcel(
             result.automations.rulesSkipped++;
             continue;
           }
-          const bad = unknownSlug(targetSlug, mapSlug);
+          const lockSlug = resolveLockSlug(
+            colLock > 0, get(colLock),
+            dbAreas?.find(a => a.id === areaId)?.settings?.automations?.attribute_rules as AttributeRuleConfig[] | undefined,
+            targetSlug, mapSlug);
+          const bad = unknownSlug(targetSlug, mapSlug, ...(lockSlug ? [lockSlug] : []));
           if (bad) {
             console.warn(`[Automations import] row ${r}: slug "${bad}" not found in area "${areaName}" — skipped`);
             result.automations.rulesSkipped++;
@@ -1101,6 +1126,7 @@ export async function importStructureExcel(
             target_slug: targetSlug,
             map_slug: mapSlug,
             date_map: dateMap,
+            ...(lockSlug ? { lock_slug: lockSlug } : {}),
           };
           const list = rulesByArea.get(areaId) ?? [];
           list.push(rule);
@@ -1182,6 +1208,7 @@ export async function importStructureExcel(
         JSON.stringify(rules.map(rl => [
           rl.action, rl.name ?? '', rl.target_slug, rl.map_slug,
           Object.entries(rl.date_map).sort(([a], [b]) => a.localeCompare(b)),
+          rl.lock_slug ?? '',
         ]));
       const canonRata = (c: RataAutomationConfig | undefined): string =>
         c ? JSON.stringify([

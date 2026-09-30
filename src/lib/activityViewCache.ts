@@ -174,7 +174,25 @@ export function prefetchActivity(
   _dropIfNull(key, p);
 }
 
-/** Remove a specific entry (e.g. after Edit saves new data). */
+/**
+ * Isprazni cijeli keš. Zove ga View PRI MONTIRANJU (S155, BUG-S155-VIEWSTALE).
+ *
+ * ⚠ `invalidateCacheKey` ispod je nosio napomenu „e.g. after Edit saves new
+ *   data", a NITKO ga nije zvao — pa je Save → View pokazivao vrijednost iz
+ *   prethodnog posjeta (izmjereno: baza `1171.59`, View `1171.5`). Isti razred
+ *   kao S132 (`useCategoryChain`): invalidacija koju nitko ne pokreće je komentar.
+ *   Lijek nije da je svaki pisac zove (Edit, Add, brisanje, Excel uvoz, rata
+ *   modal… — sljedeći bi zaboravio), nego INVARIJANTA: svako pisanje se događa
+ *   IZVAN Viewa, pa svaki dolazak u View počinje od svježih podataka. Prev/Next
+ *   unutar Viewa ne remontira stranicu, pa prefetch i dalje radi.
+ */
+export function clearActivityViewCache(): void {
+  _cache.clear();
+  _order.length = 0;
+  _lastError.clear();
+}
+
+/** Remove a specific entry. */
 export function invalidateCacheKey(key: string): void {
   _cache.delete(key);
   const idx = _order.indexOf(key);

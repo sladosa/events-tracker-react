@@ -47,9 +47,10 @@
   to je ispravno; zbrka je samo kad uvoznik već vidi Areu istog imena.
 - **D4/D5** — poruka „(read-only access)“ write-grantee-u kod profila je neistinita;
   „Import as mine“ sakriti unutar dijeljene Aree.
-- **„Dospjelo → potvrdi“ (C5)** — `docs/DOSPJELO_SPEC.md`; Saša: radimo. ⚠ Otvoreno (S152):
-  `due` config ne može kroz Structure roundtrip dok nema `Dashboard` sheeta — ili prvo sheet,
-  ili jednokratni SQL na PROD-u (moj prijedlog, faza 1 je samo čitanje).
+- **„Dospjelo → potvrdi“ (C5)** — `docs/DOSPJELO_SPEC.md`. ✅ **Faza 1 S155** (traka, samo
+  čitanje, samo MC; `sql/053` + `054` na TEST-u, PROD čeka Sašu — T-S155-7). Sašina odluka S155:
+  config **jednokratno SQL-om**, `Dashboard` sheet (F5) poslije. ⚠ Do F5 `due` blok ne putuje
+  Excelom (uvoz ga ne briše). Sljedeće: faza 2 (`Potvrdi` + skupni redak, samo vlasnica).
 - **Filtar za brojeve (F4)** — jedan uvjet s operatorom (`Iznos > 1000`), ne traži višeuvjetni
   filtar. V. „Potpuni attrFilter“.
 - **Help chip (F6)** — bez posebnog popisa: gotovo pitanje AI-u + kontekst stranice/Aree (uz Help
@@ -141,7 +142,19 @@ Veličina: **225 Visa rata** u bazi; pogođen je samo prozor 1.–3. u mjesecu.
 
 **`Datum naplate` ne prati promjenu datuma u Editu** — ✅ **DJELOMIČNO S152 (C3)**: pomiče se
 za `same` pravilo (Racun/Cash) kad je target bio izveden iz starog datuma (`shiftSameDayTarget`).
-⚠ **Ostaje C3b** — Sašina odluka (prolaz 26.09.) je šira: *„samo retci bez žiga izvoda, i Racun
+✅ **C3b S155**: `lock_slug` na pravilu (kolona `LockAttr` u `Automations` sheetu; bez kolone
+uvoz žig čuva), pomiču se i kartice bez žiga; ožigosan redak se ne pomiče i Edit kaže zašto.
+✅ **C3c S155** (Sašina odluka): upozorenje u Editu kad se na potvrđenom retku (žig ili sidro)
+mijenja bankino polje — ne blokira, traži vlastitu kvačicu. Bankina polja: datum + `plus`/
+`minus`/`group_by`/`filters` pločice (dakle i `Izvor`, `Status`) + target i žig pravila.
+⚠ Otvoreno (S155): guard na Excel uvozu i kolona `Potvrda` (S143) sidro primjenjuju i na
+KARTIČNE retke (gledaju samo račun + datum, ne filtre pločice) — Edit od S155 ne (izmjereno T-S155-4).
+Pravilo je opet na dva mjesta; poravnati kroz `passesFilters`.
+⚠ Otvoreno (S155): Edit prikazuje `datetime` atribut u UTC satu (`12:00`), View lokalno (`14:00`) —
+isti dan, dosljedno spremanje; rub je UTC sat ≥ 22 (drugi dan) — pravila i uvoz takve ne pišu.
+⚠ Otvoreno: rename sluga ne popravlja `attribute_rules` (`target_slug`/`map_slug`/`lock_slug`)
+— isti razred kao S105d, postojao i prije `lock_slug`.
+Povijest (prolaz 26.09.): *„samo retci bez žiga izvoda, i Racun
 i kartice"*. Fali (a) kartice na neožigosanim retcima, (b) provjera žiga — danas se pomiče i
 ožigosan Racun redak. Žig mora doći **iz configa** (npr. ključ pravila `lock_slug: izvod_opis`
 + kolona u `Automations` sheetu), ne iz koda — `izvod_opis` je pojam Financija.

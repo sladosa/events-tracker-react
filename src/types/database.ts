@@ -47,6 +47,13 @@ export interface AttributeRuleConfig {
   target_slug: string;
   map_slug: string;
   date_map: Record<string, string>;
+  /**
+   * C3b (S155): „žig" — atribut koji, kad NIJE prazan, znači da target nosi
+   * vrijednost izvana (Financije: `izvod_opis` ⇒ datum naplate s izvoda).
+   * Automatika tada target NE DIRA; čovjek ga i dalje smije ispraviti rukom.
+   * Ime atributa živi ovdje, ne u kodu — `izvod_opis` je pojam Financija.
+   */
+  lock_slug?: string;
 }
 
 // --------------------------------------------
@@ -88,8 +95,36 @@ export interface BalanceByGroupWidget {
   split?: { label: string; filters: WidgetFilter[]; due_slug?: string };
   /** Show the "u banci" field, the ✓/Δ chip, and let the user write an anchor. */
   reconcile?: boolean;
+  /** „Dospjelo → potvrdi" traka iznad pločice (docs/DOSPJELO_SPEC.md §6). */
+  due?: DueConfig;
   /** Suffix appended to every amount, e.g. `€`. */
   unit?: string;
+}
+
+/**
+ * Kartične KOŠARE koje dospijevaju (DOSPJELO_SPEC §3): retci s istom
+ * vrijednošću `basket_by` (kartica) i istim `due_slug` (dan naplate).
+ * Kartica koje NEMA u `baskets` ne ulazi u traku — tako se Visa isključuje
+ * (odluka D4) brisanjem jednog ključa, bez deploya.
+ */
+export interface DueConfig {
+  /** Atribut čija vrijednost je košara, npr. `izvorplacanja`. */
+  basket_by: string;
+  /** Datumski atribut dospijeća, npr. `datum_naplate`. */
+  due_slug: string;
+  status_slug: string;
+  /** Vrijednost `status_slug` koja znači „banka još nije naplatila". */
+  pending: string;
+  /** Vrijednost nakon potvrde (faza 2). */
+  done?: string;
+  baskets: Record<string, {
+    /** Račun s kojeg banka skida skupnu naplatu (vrijednost `group_by`). */
+    account: string;
+    /** Strojni tekst skupne naplate na izvatku (faza 2: opis skupnog retka). */
+    text?: string;
+  }>;
+  /** Atributi skupnog `Racun` retka koji potvrda stvara (faza 2). */
+  settle?: Record<string, string>;
 }
 
 /** v1 dictionary. Widening it is a code change on purpose (§2.15 — the

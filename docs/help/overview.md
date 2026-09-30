@@ -172,6 +172,21 @@ Crvena kutija s porukom znači da konfiguracija pokazuje na atribut koji više n
 najčešće nakon preimenovanja sluga atributa. Poruka **imenuje** taj slug. Preimenovanje kroz
 Structure Edit Mode popravlja referencu automatski; ručna izmjena u bazi ne.
 
+## Traka „Čeka potvrdu" (kartične naplate)
+
+Iznad pločice salda pojavi se žuta traka kad neka **kartična košara** dospije, a banka je
+još nije potvrđeno naplatila. Košara su sve kupovine jedne kartice s istim datumom naplate
+(npr. *Mastercard · naplata 11.10. · 32 stavke*). Kad ništa ne čeka, trake nema.
+
+- **Σ** je ono što bi banka trebala skinuti: isplate minus povrati iz te košare.
+- U polje **„banka skinula"** upiši broj **s ekrana bankovne aplikacije**. App ga ne upisuje
+  sam — tada bi se uvijek slagalo.
+- **✓ slaže se** = u cent isto. **razlika** = nešto u košari ne štima: redak u krivoj
+  košari, upisan dvaput, propuštena kupovina ili tipfeler.
+- Zasad je to **samo usporedba** — ništa se ne sprema. Potvrda (`Planiran` → `Izvrsen`)
+  dolazi u sljedećoj verziji.
+- Zasad je u traci samo **Mastercard**. Visa dolazi kad se objasni razilaženje od veljače 2026.
+
 ## Unos iz Overviewa
 
 Gumb **Add Activity** i **⚡ Use** (Shortcut) rade i iz Overviewa, čim je odabrana leaf

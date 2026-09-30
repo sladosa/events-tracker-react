@@ -7935,3 +7935,51 @@ vrijeme učitavanja) lokalno neizvediv — pod 3G dev server ne učita ni popis 
   popis Area prazan.
 
 **Ritual:** zamka „`disabled` gumb ne kaže ništa" u CLAUDE.md § UI; handoff prepisan.
+
+---
+
+## S155 — C3b žig izvoda, C3c upozorenje u Editu, C5 traka „Čeka potvrdu" (2026-09-30)
+
+Tri Sašine odluke na početku: **C5 config jednokratno SQL-om** (`Dashboard` sheet/F5 poslije);
+**C3b žig kao ključ pravila** (`lock_slug`, kolona `LockAttr`), brava zaustavlja samo AUTOMATIKU,
+ručni ispravak ostaje slobodan; **`Izvor`/račun su bankina polja**; **C3c odmah**. Sve na
+`test-branch`; `sql/053` + `054` pušteni na TEST (Claude) i PROD (Saša).
+
+**C3b.** `shiftSameDayTarget` → `shiftDerivedTarget`: pomiče SVAKO pravilo (`same`, `next:N`,
+`cutoff`) kad je target izveden iz starog datuma; ožigosan redak vraća `{ locked: true }` i Edit
+to kaže. Zašto žig, a ne samo derivacijski uvjet: `Racun` ima naplatu = dan i s izvoda, a MC banka
+tereti 11. = `next:11` — iz vrijednosti se ne vidi. Uvoz: `resolveLockSlug` — nema kolone ⇒ žig iz
+baze ostaje (razred `HiddenInAdd`, S139). PROD: žig na 1.007 `Racun` + 1.187 MC + 1.634 Visa retka.
+
+**C3c.** `confirmedRowEdit.ts`: bankina polja izvedena iz postojećeg configa (datum, `plus`/`minus`/
+`group_by`/`filters` pločice, target + žig pravila) — nijedan nov ključ. Okvir `staro → novo`,
+vlastita kvačica, potvrda vrijedi samo za viđene izmjene (otisak, izveden u renderu). Ne blokira.
+⚠ **Prva verzija je lagala na kartičnom retku** (T-S155-4): ZABA sidro 01.07. „potvrđivalo" je MC
+redak koji saldo nikad ne broji ⇒ `passesFilters` (ista semantika kao `p_filters`, `sql/035`).
+Excel guard (S143) i kolona `Potvrda` to još NE rade — Backlog.
+
+**C5 faza 1.** `rpc_area_due_baskets` (053): košara = isti (kartica, dan naplate), cijela (ne samo
+`Planiran`), bruto obje strane, dan u zoni preglednika (`p_tz`). `DueStrip` iznad pločice, samo kad
+ima čega; polje „banka skinula" nikad popunjeno Σ-om; usporedba u lipama (`dueBaskets.ts`).
+Izmjereno na PROD-u nakon 054: 2 košare `07.09. 105,30` i `12.09. −105,30` — par ±105,30 (B5), u
+cent kako je predviđeno iz podataka prije puštanja. 11.10. dolazi 38 stavki / ~859,58.
+
+**Nađeno testiranjem (Saša, TEST), sve popravljeno:**
+- **BUG-S155-EDITNAN** — Edit polje datuma nije ignoriralo prazan unos (Add jest) ⇒ `Number('')`,
+  neispravan datum, a inkrementalni pomak je svaki sljedeći pomak pretvarao u NaN; `setFullYear` nad
+  Invalid Date kreće od ponoći (sat 00:00 — izmjereno). Pa: godina bez dopune (`2-08-07`) ⇒ polje
+  prazno usred tipkanja; pa: Chrome bez `max` pušta 6 znamenki godine (Edit i filtar `To`), a filtar
+  bi `202566-…` zapamtio. ⇒ `dateInput.ts` za Add i Edit, granice 1900–2200, `isCompleteDateValue`
+  za filtar, crveno + vraćanje na izlasku. `dateInput.test.mjs` (17).
+- **BUG-S155-VIEWSTALE** — Save → View pokazao `1171.5`, baza `1171.59`. `activityViewCache`:
+  `invalidateCacheKey` s napomenom „after Edit saves" koju nitko ne zove (razred S132) ⇒ View pri
+  montiranju isprazni keš (sva pisanja su izvan Viewa). Vjerojatni rođak `BUG-S131-VIEWSTALE`.
+
+**Testovi:** 8 novih test fileova/proširenja, svaki provjeren sabotažom; jedan (`dueBaskets`) prvo
+NIJE pao — primjer je bio slučajno točan u floatu (`0,1+0,2` ga je razotkrio). Ručno T-S155-1…6, 8,
+9 ✅; T-S155-7 čeka deploy.
+⚠ Usput: `git checkout -- file` za vraćanje sabotaže vratio je cijeli necommitani file na HEAD;
+spašeno iz kopije. Sabotaža se vraća KOPIJOM, nikad gitom.
+
+**Ritual:** zamke u CLAUDE.md (§ Model: žig; § UI: dvije kopije datuma, keš Viewa, sidro samo za
+retke u saldu); handoff prepisan.

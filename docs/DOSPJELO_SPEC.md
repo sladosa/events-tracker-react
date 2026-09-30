@@ -1,6 +1,9 @@
 # Dospjelo → potvrdi — prijedlog prije koda (S147, 2026-09-24)
 
-> **Status: PRIJEDLOG, svih šest odluka (D1–D6) prihvaćeno u S147.** Ništa od ovoga nije izgrađeno.
+> **Status: faza 1 IZGRAĐENA u S155** (traka samo za čitanje, samo MC; `sql/053`, `sql/054`,
+> `DueStrip.tsx`, `dueBaskets.ts`). Faze 2–4 nisu. Svih šest odluka (D1–D6) prihvaćeno u S147.
+> ⚠ Config (`due`) je na bazu išao SQL-om (Sašina odluka S155) i **ne putuje** Structure
+> Excelom dok ne dođe `Dashboard` sheet (F5); uvoz ga ne briše.
 > Proširuje `OVERVIEW_TAB_SPEC.md` §2.5a (traka „Dospjelo → potvrdi", zamišljena u kolovozu,
 > nikad izvedena) i ispravlja je u jednoj točki: **potvrđuje se košara, ne redak** (§3).
 
@@ -179,6 +182,7 @@ Novi blok u `settings.dashboard` widgetu, uz postojeći `split` (koji već nosi 
 ```json
 "due": {
   "basket_by": "izvorplacanja",
+  "due_slug": "datum_naplate",
   "baskets": {
     "Mastercard": { "account": "Kokin tekući ZABA", "text": "TROŠKOVI UČINJENI MASTERCARD KARTICOM" },
     "Visa":       { "account": "Sašin tekući RF",   "text": "PBZCard d.o.o." }

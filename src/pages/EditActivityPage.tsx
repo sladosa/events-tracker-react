@@ -25,8 +25,15 @@ import { useAttributeDefinitions } from '@/hooks/useAttributeDefinitions';
 import { loadParentAttrs, buildParentChainIds, findParentEventByChain, upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
 import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
 import { useFilter } from '@/context/FilterContext';
-import { computeSetAttributeValue, findDefBySlug, shiftSameDayTarget } from '@/lib/attributeRules';
+import { computeSetAttributeValue, findDefBySlug, shiftDerivedTarget } from '@/lib/attributeRules';
 import { withRetryQuery } from '@/lib/retry';
+import { listAnchors } from '@/lib/overviewApi';
+import { hrDate, type AnchorLike } from '@/lib/confirmedPeriod';
+import {
+  bankFieldSpec, rowConfirmation, bankFieldChanges, changesSignature, EVENT_DATE_KEY,
+  type RowConfirmation, type FieldChange,
+} from '@/lib/confirmedRowEdit';
+import { formatAmount } from '@/lib/amountFormat';
 import type { AttributeRuleConfig, AreaSettings } from '@/types/database';
 
 import { ActivityHeader } from '@/components/activity/ActivityHeader';
@@ -134,6 +141,18 @@ export function EditActivityPage() {
   const [categoryId, setCategoryId] = useState<UUID | null>(null);
   /** `set_attribute` pravila Aree. Edit ih do S127 uopce nije citao — v. efekt nize. */
   const [attributeRules, setAttributeRules] = useState<AttributeRuleConfig[]>([]);
+  // C3c (S155): config Aree (koja su polja bankina) + sidra salda. `anchors =
+  // null` = nisu učitana — tada se sidro ne tvrdi (S121: neuspjelo čitanje nije
+  // „nema ničega"), isto ponašanje kao guard na uvozu.
+  const [areaSettings, setAreaSettings] = useState<AreaSettings | null>(null);
+  const [anchors, setAnchors] = useState<AnchorLike[] | null>(null);
+  /** Izvorne vrijednosti po eventu (dbId → defId → vrijednost), leaf + parent. */
+  const [originalValues, setOriginalValues] = useState<Map<string, Map<string, unknown>>>(new Map());
+  /** C3b: targeti koje pomak datuma NIJE pomaknuo jer je redak ožigosan. */
+  const [lockSkips, setLockSkips] = useState<string[]>([]);
+  /** Otisak izmjena koje je čovjek potvrdio. Potvrda vrijedi samo za TE izmjene. */
+  const [bankAckFor, setBankAckFor] = useState<string | null>(null);
+  const bankPanelRef = useRef<HTMLDivElement>(null);
   const [categoryPath, setCategoryPath] = useState<string[]>([]);
   const [sessionDateTime, setSessionDateTime] = useState<Date>(new Date());
   const [originalDateTime, setOriginalDateTime] = useState<Date>(new Date());
@@ -411,6 +430,19 @@ export function EditActivityPage() {
       setParentDbIds(newParentDbIds);
       setParentAttrValues(newParentAttrValues);
       parentAttrValuesRef.current = newParentAttrValues;
+
+      // C3c: snimka IZVORNOG retka — s njom se uspoređuju bankina polja.
+      const originals = new Map<string, Map<string, unknown>>();
+      for (const ev of pendingEventsData) {
+        if (!ev.dbId) continue;
+        const m = new Map<string, unknown>();
+        for (const [defId, { value }] of newParentAttrValues) m.set(defId, value);
+        for (const a of ev.attributes) m.set(a.definitionId, a.value);
+        originals.set(ev.dbId, m);
+      }
+      setOriginalValues(originals);
+      setLockSkips([]);
+      setBankAckFor(null);
       
       // Initialize form: merge parent + leaf attrs for first event
       if (pendingEventsData.length > 0) {
@@ -643,8 +675,22 @@ export function EditActivityPage() {
         const { data } = await withRetryQuery(() => supabase
           .from('areas').select('settings').eq('id', areaId).single());
         if (cancelled) return;
-        const rules = (data?.settings as AreaSettings | null)?.automations?.attribute_rules;
-        setAttributeRules(rules ?? []);
+        const settings = (data?.settings as AreaSettings | null) ?? null;
+        setAttributeRules(settings?.automations?.attribute_rules ?? []);
+        setAreaSettings(settings);
+        // C3c: sidra za „je li redak unutar potvrđenog stanja". Ista pravila
+        // kao uvoz (S143): neuspjelo čitanje ⇒ guard za sidro šuti.
+        const gSlug = bankFieldSpec(settings).groupSlug;
+        if (gSlug) {
+          try {
+            const a = await listAnchors(areaId, gSlug);
+            if (!cancelled) setAnchors(a);
+          } catch (e) {
+            if (!cancelled) { setAnchors(null); console.error('[C3c] anchors unavailable:', e); }
+          }
+        } else {
+          setAnchors([]);
+        }
       } catch (e) {
         // Neuspjelo citanje NIJE „nema pravila" (S121) — ali ovdje je posljedica
         // samo izostanak automatike, pa se ne gasi ekran: javi u log i pusti
@@ -732,6 +778,13 @@ export function EditActivityPage() {
   // ============================================
   
   const handleDateTimeChange = useCallback((newDateTime: Date) => {
+    // ⚠ NEISPRAVAN DATUM SE ODBACUJE PRIJE IČEGA (S155). Pomak je inkrementalan
+    //   (v. dolje), pa bi jedan `Invalid Date` u `lastAppliedDateTimeRef` svaki
+    //   sljedeći pomak pretvorio u NaN — vrijeme eventa ostane `NaN` i kad se
+    //   upiše ispravan datum, a `setFullYear` nad neispravnim datumom kreće od
+    //   ponoći (sat postane 00:00). Izmjereno: brisanje dana u polju datuma.
+    //   Brana je ovdje, ne samo u zaglavlju — štiti od svakog pozivatelja.
+    if (!Number.isFinite(newDateTime.getTime())) return;
     // ⚠ INKREMENTALNI pomak, mjeren od ZADNJE PRIMIJENJENE vrijednosti.
     //
     //   Prije se delta računala od `originalDateTime` (fiksne), a primjenjivala
@@ -754,31 +807,50 @@ export function EditActivityPage() {
     setSessionDateTime(newDateTime);
     setIsDirty(true);
 
-    // ── C3 (S152): `same` target (Racun/Cash `Datum naplate`) prati datum ──
+    // ── C3 (S152) + C3b (S155): izveden target (`Datum naplate`) prati datum ──
     // Samo za ispravan datum i samo target koji je bio izveden iz starog
-    // datuma — v. `shiftSameDayTarget`. Kartice se ne diraju.
+    // datuma — v. `shiftDerivedTarget`. Ožigosan redak (`rule.lock_slug` nije
+    // prazan) se NE pomiče, ali se to KAŽE (`lockSkips`): tihi izostanak učinka
+    // izgleda kao kvar. Rukom se target i dalje smije ispraviti.
     const y = newDateTime.getFullYear();
     const saneNew = Number.isFinite(newDateTime.getTime()) && y >= 1900 && y <= 2200;
     const shifts = new Map<number, Map<string, string>>();   // event idx → defId → vrijednost
+    const skipped = new Set<string>();
     if (saneNew && attributeRules.length > 0) {
       const base = sameDayBaseRef.current ?? originalDateTime;
       pendingEvents.forEach((event, idx) => {
+        if (event.isDeleted) return;
         for (const rule of attributeRules) {
           if (rule.action !== 'set_attribute') continue;
           const mapDef = findDefBySlug(allAttrDefs, rule.map_slug);
           const targetDef = findDefBySlug(allAttrDefs, rule.target_slug);
           if (!mapDef || !targetDef) continue;
-          const mapVal = event.attributes.find(a => a.definitionId === mapDef.id)?.value;
+          const valueOf = (defId: string) =>
+            event.attributes.find(a => a.definitionId === defId)?.value
+            ?? parentAttrValuesRef.current.get(defId)?.value;
+          const mapVal = valueOf(mapDef.id);
+          // Target samo s leafa: pomak se upisuje u `event.attributes`, pa bi
+          // roditeljski target bio prikazan pomaknut, a spremljen star.
           const curTarget = event.attributes.find(a => a.definitionId === targetDef.id)?.value;
-          const next = shiftSameDayTarget(
-            rule, mapVal == null ? null : String(mapVal), curTarget, base, newDateTime);
-          if (next === null) continue;
+          const lockDef = rule.lock_slug ? findDefBySlug(allAttrDefs, rule.lock_slug) : undefined;
+          const lockVal = lockDef ? valueOf(lockDef.id) : null;
+          const locked = lockVal != null && String(lockVal).trim() !== '';
+          // Zaključan target se nikad ne pomiče, pa je njegova baza uvijek
+          // IZVORNI datum — inače bi druga promjena datuma prešutjela zašto.
+          const res = shiftDerivedTarget(
+            rule, mapVal == null ? null : String(mapVal), curTarget,
+            locked ? originalDateTime : base, newDateTime, locked);
+          if (res === null) continue;
+          if ('locked' in res) { skipped.add(targetDef.name); continue; }
           if (!shifts.has(idx)) shifts.set(idx, new Map());
-          shifts.get(idx)!.set(targetDef.id, next);
+          shifts.get(idx)!.set(targetDef.id, res.value);
         }
       });
     }
-    if (saneNew) sameDayBaseRef.current = newDateTime;
+    if (saneNew) {
+      sameDayBaseRef.current = newDateTime;
+      setLockSkips([...skipped]);
+    }
 
     const selectedShift = shifts.get(selectedEventIndex);
     if (selectedShift) {
@@ -909,6 +981,50 @@ export function EditActivityPage() {
   const canSave = useMemo(() => {
     return isDirty && activeEvents.length > 0;
   }, [isDirty, activeEvents.length]);
+
+  // ============================================
+  // C3c (S155): bankin podatak na potvrđenom retku
+  // ============================================
+  // Svaki postojeći event: je li potvrđen (žig ili sidro) i koja su mu se
+  // bankina polja promijenila. Ne blokira — traži vlastitu potvrdu na Save.
+  const bankSpec = useMemo(() => bankFieldSpec(areaSettings), [areaSettings]);
+
+  const confirmedRows = useMemo(() => {
+    const out: { id: string; index: number; conf: RowConfirmation; list: FieldChange[] }[] = [];
+    if (bankSpec.slugs.length === 0 && bankSpec.lockSlugs.length === 0) return out;
+    const slugOf = new Map(allAttrDefs.map(d => [d.id, d.slug]));
+    const bySlug = (m: Iterable<[string, unknown]>) => {
+      const r = new Map<string, unknown>();
+      for (const [defId, v] of m) { const sl = slugOf.get(defId); if (sl) r.set(sl, v); }
+      return r;
+    };
+    const dateBefore = localYmd(originalDateTime);
+    const dateAfter = localYmd(sessionDateTime);
+    pendingEvents.forEach((ev, index) => {
+      if (!ev.dbId || ev.isDeleted) return;
+      const orig = originalValues.get(ev.dbId);
+      if (!orig) return;
+      const before = bySlug(orig);
+      const conf = rowConfirmation(bankSpec, before, anchors, dateBefore);
+      if (!conf) return;
+      const now = new Map<string, unknown>();
+      for (const [defId, v] of parentAttrValues) now.set(defId, v.value);
+      for (const a of ev.attributes) now.set(a.definitionId, a.value);
+      out.push({
+        id: ev.dbId, index, conf,
+        list: bankFieldChanges(bankSpec, before, bySlug(now), dateBefore, dateAfter),
+      });
+    });
+    return out;
+  }, [bankSpec, allAttrDefs, originalValues, anchors, pendingEvents, parentAttrValues,
+      originalDateTime, sessionDateTime]);
+
+  const bankChanges = useMemo(() => confirmedRows.filter(r => r.list.length > 0), [confirmedRows]);
+  const bankSignature = useMemo(() => changesSignature(bankChanges), [bankChanges]);
+  // Izvedeno u renderu (isti obrazac kao `loadedFor`, S145): potvrda za JEDNE
+  // izmjene ne vrijedi za sljedeće — promijeni li čovjek još nešto bankino,
+  // pita se ponovo, bez efekta koji bi resetirao zastavicu.
+  const bankAcked = bankChanges.length === 0 || bankAckFor === bankSignature;
   
   // ============================================
   // Save Handler
@@ -916,6 +1032,13 @@ export function EditActivityPage() {
   
   const handleSave = async () => {
     if (!canSave || !categoryId) return;
+
+    // C3c: izmjena bankinog podatka na potvrđenom retku traži vlastitu potvrdu.
+    if (!bankAcked) {
+      toast.error('Mijenjaš podatak s izvoda — potvrdi izmjenu u žutom okviru.');
+      bankPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
 
     // ── Obavezna polja ───────────────────────────────────────────
     // Provjerava se SVAKI aktivan događaj posebno, a ne prikazana forma:
@@ -1508,6 +1631,20 @@ export function EditActivityPage() {
   // ============================================
 
   const currentEvent = pendingEvents[selectedEventIndex];
+
+  // C3c — prikaz. Imena iz definicija, vrijednosti čitljivo (dan kao dan).
+  const nameOfSlug = (key: string): string =>
+    key === EVENT_DATE_KEY ? 'Datum' : (findDefBySlug(allAttrDefs, key)?.name ?? key);
+  const showVal = (v: string): string =>
+    v === '' ? '—' : /^\d{4}-\d{2}-\d{2}$/.test(v) ? hrDate(v) : v;
+  const confText = (conf: RowConfirmation): string[] => [
+    ...conf.stamps.map(st => `potvrđen izvodom (${nameOfSlug(st.slug)}: „${
+      st.value.length > 60 ? st.value.slice(0, 60) + '…' : st.value}")`),
+    ...(conf.anchor ? [`unutar potvrđenog stanja računa ${conf.anchor.groupValue} na ${
+      hrDate(conf.anchor.confirmedOn)} (${formatAmount(conf.anchor.amount, '€')})`] : []),
+  ];
+  const currentConf = confirmedRows.find(r => r.index === selectedEventIndex)?.conf ?? null;
+  const multiEvent = activeEvents.length > 1;
   
   return (
     <div className="min-h-screen bg-gray-50 pb-4">
@@ -1561,6 +1698,60 @@ export function EditActivityPage() {
           <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
             <span className="text-red-500 mt-0.5">⚠️</span>
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* C3c (S155): bankin podatak na potvrđenom retku. Ne blokira, ali traži
+            VLASTITU potvrdu — „jesi li vidio" i „dovodiš u pitanje izvod" nisu
+            isto pitanje (isto načelo kao kvačica na uvozu, S143). */}
+        {(bankChanges.length > 0 || lockSkips.length > 0) && (
+          <div ref={bankPanelRef}
+               className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {bankChanges.length > 0 && (
+              <>
+                <p className="font-medium">Mijenjaš podatak koji dolazi iz banke</p>
+                {bankChanges.map(r => (
+                  <div key={r.id} className="mt-2">
+                    <p className="text-xs text-amber-800">
+                      {multiEvent ? `Event #${r.index + 1}: ` : 'Redak je '}{confText(r.conf).join('; ')}.
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {r.list.map(f => (
+                        <li key={f.key} className="text-xs">
+                          <span className="font-medium">{nameOfSlug(f.key)}</span>:{' '}
+                          <span className="line-through text-amber-700">{showVal(f.from)}</span>
+                          {' → '}<span className="font-medium">{showVal(f.to)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {r.conf.anchor && (
+                      <p className="mt-1 text-xs text-amber-800">
+                        Dok je redak unutar tog razdoblja, izmjena ne pomiče saldo na pločici —
+                        razliku pokazuje tek kontrolna točka tog sidra u delta sheetu.
+                      </p>
+                    )}
+                  </div>
+                ))}
+                <p className="mt-2 text-xs">
+                  Mijenjaj ovo samo ako je izvod krivo prepisan. Opis, Tip i Podtip se mijenjaju slobodno.
+                </p>
+                <label className="mt-2 flex items-start gap-2 text-xs font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={bankAcked}
+                    onChange={e => setBankAckFor(e.target.checked ? bankSignature : null)}
+                  />
+                  <span>Da, podatak s izvoda je bio krivo upisan — spremi izmjenu</span>
+                </label>
+              </>
+            )}
+            {lockSkips.length > 0 && (
+              <p className={`text-xs ${bankChanges.length > 0 ? 'mt-3 pt-2 border-t border-amber-200' : ''}`}>
+                <span className="font-medium">{lockSkips.join(', ')}</span> nije pomaknut s datumom:
+                redak je potvrđen izvodom, pa je taj datum bankin. Ako i on treba drugi, promijeni ga rukom.
+              </p>
+            )}
           </div>
         )}
 
@@ -1666,6 +1857,12 @@ export function EditActivityPage() {
                   return `${y}/${mo}/${dy} ${h}:${mi}:${sc}`;
                 })()}
               </div>
+              {/* C3c: samo informacija — upozorenje dolazi tek kad se bankino polje dirne. */}
+              {currentConf && (
+                <div className="mt-0.5 text-xs text-gray-400">
+                  ✓ {confText(currentConf).join(' · ')}
+                </div>
+              )}
             </div>
           )}
           

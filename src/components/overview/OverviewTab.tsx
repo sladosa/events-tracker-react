@@ -12,11 +12,12 @@
 //   the wrong vocabulary in concrete. Config is written by hand until N = 2.
 // ============================================================
 
-import { useCallback } from 'react';
+import { Fragment, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
 import { BalanceByGroupTile } from './BalanceByGroupTile';
+import { DueStrip } from './DueStrip';
 import type { DashboardConfig, UUID } from '@/types/database';
 
 interface Props {
@@ -68,8 +69,11 @@ export function OverviewTab({ areaId, config, canWrite, onNavigateToActivities }
         switch (w.type) {
           case 'balance_by_group':
             return (
+              <Fragment key={`${w.type}-${w.group_by}-${i}`}>
+              {/* „Dospjelo" IZNAD salda (DOSPJELO_SPEC §4): potvrdiš gore,
+                  saldo ispod se pomakne. Samo kad config ima `due`. */}
+              {w.due && <DueStrip areaId={areaId} widget={{ ...w, due: w.due }} />}
               <BalanceByGroupTile
-                key={`${w.type}-${w.group_by}-${i}`}
                 areaId={areaId}
                 widget={w}
                 canWrite={canWrite}
@@ -104,6 +108,7 @@ export function OverviewTab({ areaId, config, canWrite, onNavigateToActivities }
                   }
                 }}
               />
+              </Fragment>
             );
           default:
             // A widget type this build does not know. Say so — a silently
