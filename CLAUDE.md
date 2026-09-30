@@ -1695,7 +1695,11 @@ src/lib/localDate.ts               `localYmd` / `todayLocalYmd` — dan koji čo
 src/lib/dateInput.ts               JEDINO parsiranje polja datuma/vremena u Add i Edit zaglavlju (S155)
 src/lib/confirmedRowEdit.ts        C3c: bankina polja, je li redak potvrđen (žig / sidro u saldu)
 src/lib/dueBaskets.ts              C5: Σ košare u lipama, usporedba s bankom (tolerancija 0,00)
-src/components/overview/DueStrip.tsx  Traka „Čeka potvrdu" (DOSPJELO_SPEC faza 1, samo čitanje)
+src/components/overview/DueStrip.tsx  Traka „Čeka potvrdu" (faza 1 usporedba, faza 2 S156 upis; samo vlasnica)
+src/lib/dueConfirm.ts              C5 faza 2 I/O: članovi košare (sql/055), prepoznavanje skupnog retka,
+                                   upis REDAK PA STATUSI (pad između ostavlja samo „prebaci statuse")
+src/lib/insertEntry.ts             Upis jednog unosa izvan Add forme: slobodna minuta, P2, leaf — Add ga
+                                   koristi za leaf; svaki novi „stvori redak iz appa” ide OVUDA
 src/lib/attributeRules.ts          set_attribute automatika (evaluateDateRule, same/next:N)
 src/lib/deleteErrors.ts            classifyDeleteError() — čitljive poruke iz PG grešaka
 src/lib/theme.ts                   Theme colour tokens

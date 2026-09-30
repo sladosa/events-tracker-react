@@ -1,7 +1,18 @@
 # Dospjelo → potvrdi — prijedlog prije koda (S147, 2026-09-24)
 
 > **Status: faza 1 IZGRAĐENA u S155** (traka samo za čitanje, samo MC; `sql/053`, `sql/054`,
-> `DueStrip.tsx`, `dueBaskets.ts`). Faze 2–4 nisu. Svih šest odluka (D1–D6) prihvaćeno u S147.
+> `DueStrip.tsx`, `dueBaskets.ts`). **Faza 2 IZGRAĐENA u S156** na `test-branch` (`sql/055`,
+> `dueConfirm.ts`, `insertEntry.ts`; drugi prolaz u `fill_from_izvod.py`). Faze 3–4 nisu.
+> Svih šest odluka (D1–D6) prihvaćeno u S147.
+> ⚠ **Ispravak §5.1/§7 (S156):** skupnu naplatu s izvatka ne čita `uvezi_transu.py` (to je
+> jednokratni alat za **kartični** izvod MC_2026-07) nego **`fill_from_izvod.py --zaba`**.
+> Drugi prolaz je ondje (`skupna_vec_upisana`).
+> ⚠ **S156 odluke uz fazu 2:** (A) traka traži i **dan** naplate, bez zadanog, najviše 3 dana
+> od dospijeća; (B) skupni redak se **prepoznaje, ne veže**: opis = `text`, račun = `account`,
+> svi `settle` atributi, ≤ 3 dana — izmjereno da tako izgleda svih 7 MC naplata 2026-03…09
+> na PROD-u; (C) upis ide kroz zajednički `insertEntry.ts` (Add ga koristi za leaf);
+> (D) redoslijed upisa je **redak pa statusi** — pad između ostavlja košaru koja nudi samo
+> „prebaci statuse".
 > ⚠ Config (`due`) je na bazu išao SQL-om (Sašina odluka S155) i **ne putuje** Structure
 > Excelom dok ne dođe `Dashboard` sheet (F5); uvoz ga ne briše.
 > Proširuje `OVERVIEW_TAB_SPEC.md` §2.5a (traka „Dospjelo → potvrdi", zamišljena u kolovozu,

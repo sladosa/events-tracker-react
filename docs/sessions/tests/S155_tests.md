@@ -114,7 +114,7 @@ retku ista promjena datuma **pomakne** `Datum naplate` (C3 iz S152 i dalje radi)
 
 ---
 
-## T-S155-7 ⬜ PROD: `sql/053` + `sql/054`, pa traka nakon deploya
+## T-S155-7 ✅ PROD: `sql/053` + `sql/054`, pa traka nakon deploya
 
 > ✅ **Koraci 1–2 izvedeni 30.09.** (Saša, SQL Editor). Izmjereno REST-om: config i RPC
 > odgovaraju očekivanom iz koraka 3 u cent. Ostaje korak 3 **u aplikaciji** nakon deploya, i korak 4.

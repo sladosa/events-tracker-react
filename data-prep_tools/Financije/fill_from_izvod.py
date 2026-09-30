@@ -93,6 +93,32 @@ NA = 'N/A'                 # legitimna vrijednost, ne blokira uvoz (S107q)
 # Granice oko znamenki: bez njih `rezije voda za 07/2026` daje „ratu 07/202".
 _RATA_IZ_IZVODA = re.compile(r'(?<!\d)(\d{1,3})\s*/\s*(\d{1,3})(?!\d)')
 DATE_TOL = 3               # dana tolerancije pri prepoznavanju istog retka
+# Skupna kartična naplata na izvatku tekućeg. Isti tekst traka „Čeka potvrdu"
+# upisuje kao opis skupnog retka (`due.baskets[k].text`, DOSPJELO_SPEC §5.1).
+SKUPNA_NAPLATA = re.compile(r'MASTERCARD KARTICOM', re.I)
+
+
+def skupna_vec_upisana(zb: list[dict], keys: set) -> tuple[list[dict], list[tuple[dict, str]]]:
+    """Drugi prolaz za skupnu naplatu (S156): isti iznos + strojni tekst +
+    ≤ DATE_TOL dana ⇒ to je redak koji je Koka već upisala iz trake.
+
+    ⚠ Traka traži dan s ekrana banke, ali jedan dan krivo (10.10. umjesto
+      11.10.) i točan dedup po (datum, iznos) ga ne vidi — izvod bi donio
+      DRUGI skupni redak, a on MIČE SALDO (za razliku od kartičnih stavki).
+    ⚠ Namjerno USKO: samo redak sa strojnim tekstom. Za ostale ZABA retke
+      tolerancija na datum bila bi opasna (`Cash 100,00` se ponavlja, S114).
+    ⚠ Prozor = `DATE_TOL` = `SETTLE_WINDOW_DAYS` u `dueBaskets.ts`. Raziđu li
+      se, traka i alat drukčije odgovaraju na pitanje „je li već upisano".
+    """
+    ostaju, blizu = [], []
+    for r in zb:
+        hit = None
+        if SKUPNA_NAPLATA.search(r.get('opis_puni') or r.get('opis') or ''):
+            hit = next((d for (d, am) in keys
+                        if am == r['iznos']
+                        and abs((date.fromisoformat(d) - r['date']).days) <= DATE_TOL), None)
+        (blizu.append((r, hit)) if hit else ostaju.append(r))
+    return ostaju, blizu
 
 
 def _as_date(v) -> date:
@@ -1139,6 +1165,12 @@ def main() -> None:
         keys = tg.existing_keys() | extra_keys
         dup = [r for r in svi_zb if (r['date'].isoformat(), r['iznos']) in keys]
         zb  = [r for r in svi_zb if (r['date'].isoformat(), r['iznos']) not in keys]
+        zb, skupna_blizu = skupna_vec_upisana(zb, keys)
+        for r, hit in skupna_blizu:
+            print(f'   ≈ {r["date"]} {r["iznos"]:>9.2f}  {r["opis"][:40]}')
+            print(f'       ⚠ skupna naplata istog iznosa već upisana na {hit} (traka '
+                  f'„Čeka potvrdu") — PRESKOČENO. Autoritet za datum je izvod: '
+                  f'ispravi datum tog retka u appu na {r["date"]}, pa --zigosi.')
         prije_1n = len(zb)
         zb, spojevi = objasni_spojene(tg, zb, svi_zb)
         if a.zigosi:

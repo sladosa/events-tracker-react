@@ -181,10 +181,26 @@ još nije potvrđeno naplatila. Košara su sve kupovine jedne kartice s istim da
 - **Σ** je ono što bi banka trebala skinuti: isplate minus povrati iz te košare.
 - U polje **„banka skinula"** upiši broj **s ekrana bankovne aplikacije**. App ga ne upisuje
   sam — tada bi se uvijek slagalo.
+- Uz iznos upiši i **dan** kad je banka skinula — isto s ekrana banke, ne pogađaj. Mora biti
+  najviše 3 dana od datuma naplate košare.
 - **✓ slaže se** = u cent isto. **razlika** = nešto u košari ne štima: redak u krivoj
   košari, upisan dvaput, propuštena kupovina ili tipfeler.
-- Zasad je to **samo usporedba** — ništa se ne sprema. Potvrda (`Planiran` → `Izvrsen`)
-  dolazi u sljedećoj verziji.
+
+### Što gumb radi
+
+- **Slaže se → „Potvrdi"**: app upiše jedan redak naplate (`Racun`, `Transfer / izmedju
+  racuna`, opis *TROŠKOVI UČINJENI MASTERCARD KARTICOM*, bankin iznos i dan) i sve kupovine
+  košare prebaci iz `Planiran` u `Izvrsen`. Saldo je točan **isti dan**, ne tek kad stigne
+  izvod. Traka za tu košaru nestane.
+- **Ne slaže se → „Upiši naplatu kako ju je banka skinula"**: app upiše **samo** redak naplate,
+  s **bankinim** brojem. Saldo odmah slijedi banku, a kupovine ostaju `Planiran`. Košara
+  ostaje u traci kao **„naplaćeno — neusklađeno · razlika X"** dok razliku ne riješiš
+  (Edit krivog retka, ili nov redak za propuštenu kupovinu). Kad se Σ poklopi, traka ponudi
+  **„Potvrdi"** — tada se samo prebace statusi, drugi redak naplate se ne stvara.
+- Ako je naplata već upisana (rukom ili s izvoda), traka to prepozna i pokaže je — ne nudi
+  upis drugog retka.
+- Prije svakog upisa app ispiše **što će upisati**, i tek na **„Da, upiši"** to napravi.
+- Potvrđuje samo **vlasnica Aree**. Tko ima dijeljeni pristup, vidi usporedbu, ali ne gumb.
 - Zasad je u traci samo **Mastercard**. Visa dolazi kad se objasni razilaženje od veljače 2026.
 
 ## Unos iz Overviewa

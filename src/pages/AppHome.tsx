@@ -988,6 +988,7 @@ function AppContent() {
               areaId={filter.areaId}
               config={dashboardConfig}
               canWrite={!isReadOnlyGrantee}
+              isOwner={!sharedContext}
               onNavigateToActivities={() => setActiveTab('activities')}
             />
           ) : (

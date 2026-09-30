@@ -192,9 +192,11 @@ interface Props {
   asOf?: string | null;
   /** Open Activities filtered on this group value (§2.16 — drill = filter state). */
   onDrill?: (groupValue: string, opts: { planned: boolean }) => void;
+  /** Promjena broja = učitaj ponovo (npr. traka „Čeka potvrdu” upisala naplatu). */
+  reloadToken?: number;
 }
 
-export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: Props) {
+export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, reloadToken }: Props) {
   const [rows, setRows] = useState<AnchoredBalanceRow[]>([]);
   const [splitRows, setSplitRows] = useState<GroupAggRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -332,7 +334,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill }: 
     }
   }, [areaId, widget, asOf, effectiveAsOf, today]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, reloadToken]);
 
   /** Potvrde po vrijednosti grupe, najnovija prvo (`listAnchors` već sortira). */
   const anchorsByGroup = useMemo(() => {

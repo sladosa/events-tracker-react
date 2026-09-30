@@ -12,24 +12,28 @@
 //   the wrong vocabulary in concrete. Config is written by hand until N = 2.
 // ============================================================
 
-import { Fragment, useCallback } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
 import { BalanceByGroupTile } from './BalanceByGroupTile';
 import { DueStrip } from './DueStrip';
-import type { DashboardConfig, UUID } from '@/types/database';
+import type { DashboardConfig, DueConfig, UUID } from '@/types/database';
 
 interface Props {
   areaId: UUID;
   config: DashboardConfig;
   canWrite: boolean;
+  /** D5 (DOSPJELO_SPEC): potvrdu košare upisuje samo vlasnica Aree. */
+  isOwner: boolean;
   /** Switch the tab strip to Activities after a drill sets the filter. */
   onNavigateToActivities: () => void;
 }
 
-export function OverviewTab({ areaId, config, canWrite, onNavigateToActivities }: Props) {
+export function OverviewTab({ areaId, config, canWrite, isOwner, onNavigateToActivities }: Props) {
   const { filter, setAttrFilter } = useFilter();
+  // Skupni redak iz trake miče saldo ⇒ pločica se mora ponovo učitati.
+  const [balanceReload, setBalanceReload] = useState(0);
 
   /**
    * Drill = produce filter state, exactly the shape a Shortcut already saves
@@ -72,11 +76,21 @@ export function OverviewTab({ areaId, config, canWrite, onNavigateToActivities }
               <Fragment key={`${w.type}-${w.group_by}-${i}`}>
               {/* „Dospjelo" IZNAD salda (DOSPJELO_SPEC §4): potvrdiš gore,
                   saldo ispod se pomakne. Samo kad config ima `due`. */}
-              {w.due && <DueStrip areaId={areaId} widget={{ ...w, due: w.due }} />}
+              {/* ⚠ `w` iz configa, ne `{ ...w }` — nov objekt na svakom renderu
+                  bi traku ponovo učitavao pri svakoj promjeni filtra. */}
+              {w.due && (
+                <DueStrip
+                  areaId={areaId}
+                  widget={w as typeof w & { due: DueConfig }}
+                  isOwner={isOwner}
+                  onSettled={() => setBalanceReload(n => n + 1)}
+                />
+              )}
               <BalanceByGroupTile
                 areaId={areaId}
                 widget={w}
                 canWrite={canWrite}
+                reloadToken={balanceReload}
                 // The global date filter reaches the tile, so "balance on
                 // 31.03.2025" is answerable — and the same date stamps a
                 // confirmation, which is what makes the anchor a check (§2.17).

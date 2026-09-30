@@ -18,8 +18,8 @@ import { useFilter } from '@/context/FilterContext';
 import { supabase } from '@/lib/supabaseClient';
 import { persistPendingOptions } from '@/lib/pendingOptions';
 import { localYmd } from '@/lib/localDate';
-import { VALUE_COLUMNS } from '@/lib/constants';
 import { upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
+import { findFreeSessionStart, insertLeafEvent } from '@/lib/insertEntry';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
@@ -182,40 +182,6 @@ interface LocalAttributeValue {
  *  the one the person selected. The stored `session_start` stays UTC as always. */
 function toLocalDateStr(d: Date): string {
   return localYmd(d);
-}
-
-/** First free minute at or after `desired`, for this user + category + day.
- *
- *  One query, then a scan in memory — the day's rows for a single category are
- *  few. Gives up after an hour of candidates rather than looping: a category
- *  with sixty entries in one hour is a different problem, and a silent infinite
- *  retry would hide it. */
-async function findFreeSessionStart(
-  userId: string, categoryId: string, desired: Date, eventDate: string,
-): Promise<string> {
-  const dayStart = new Date(`${eventDate}T00:00:00`);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
-
-  const { data } = await supabase
-    .from('events')
-    .select('session_start')
-    .eq('user_id', userId)
-    .eq('category_id', categoryId)
-    .gte('session_start', dayStart.toISOString())
-    .lt('session_start', dayEnd.toISOString());
-
-  // Compare as instants, not as strings: the DB answers "+00:00" while JS
-  // produces ".000Z" for the very same moment (CLAUDE.md, session_start format).
-  const taken = new Set((data ?? []).map(r => new Date(r.session_start as string).getTime()));
-
-  const candidate = new Date(desired);
-  candidate.setSeconds(0, 0);
-  for (let i = 0; i < 60; i++) {
-    if (!taken.has(candidate.getTime())) return candidate.toISOString();
-    candidate.setMinutes(candidate.getMinutes() + 1);
-  }
-  return candidate.toISOString();
 }
 
 export function AddActivityPage() {
@@ -1174,39 +1140,24 @@ export function AddActivityPage() {
         // Samo leaf atributi za leaf event
         const leafEventAttrs = pendingEvent.attributes.filter(a => leafAttrDefIds.has(a.definitionId));
 
-        const { data: leafEvent, error: leafEventError } = await supabase
-          .from('events')
-          .insert({
-            user_id: user.id,
-            category_id: leafCategoryId,
-            event_date: eventDate,
-            session_start: sessionStartIso,
+        // Leaf event + atributi — isti upis kao skupni redak iz trake (S156).
+        const leafEvent = {
+          id: await insertLeafEvent({
+            userId: user.id,
+            leafCategoryId: leafCategoryId!,
+            eventDate,
+            sessionStartIso,
             comment: pendingEvent.note,
-            created_at: pendingEvent.createdAt.toISOString(),
-          })
-          .select('id, category_id')
-          .single();
-
-        if (leafEventError) throw leafEventError;
+            createdAt: pendingEvent.createdAt,
+            attrs: leafEventAttrs.map(attr => ({
+              definitionId: attr.definitionId,
+              value: attr.value,
+              dataType: leafAttrDefs.find(d => d.id === attr.definitionId)?.data_type ?? 'text',
+            })),
+          }),
+        };
         log(`Inserted leaf event: ${leafEvent.id}`);
         savedLeafEventIds.push(leafEvent.id);
-
-        if (leafEventAttrs.length > 0) {
-          const leafAttrRecords = leafEventAttrs.map(attr => {
-            const def = leafAttrDefs.find(d => d.id === attr.definitionId);
-            const valueColumn = def ? VALUE_COLUMNS[def.data_type] || 'value_text' : 'value_text';
-            return {
-              event_id: leafEvent.id,
-              user_id: user.id,
-              attribute_definition_id: attr.definitionId,
-              [valueColumn]: attr.value,
-            };
-          });
-          const { error: attrError } = await supabase
-            .from('event_attributes')
-            .insert(leafAttrRecords);
-          if (attrError) throw attrError;
-        }
 
         // Upload photos za leaf event
         log(`Checking photos: ${pendingEvent.photos.length} photos`);

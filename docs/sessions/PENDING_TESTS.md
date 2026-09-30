@@ -29,6 +29,24 @@
 
 ---
 
+## S156 — C5 faza 2: `Potvrdi` + skupni redak (2026-09-30)
+
+⚠ Na `test-branch`, nije na `main`. `sql/055` pušten **samo na TEST-u** (Claude); `rpc_area_due_baskets` izmjereno isto prije i poslije, pokus pod RLS-om (11 statusa + upis retka, `ROLLBACK`) prošao. Automatski dio: `dueSettle.test.mjs` (38) — sabotaže ruše 2 / 2 / 1. ⚠ **Merge tek nakon 11.10.** i nakon što Saša pusti `055` na PROD-u.
+
+**Detalji testova:** [tests/S156_tests.md](tests/S156_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S156-1 | TEST: `1244,74` / 11.07. ⇒ „Upiši naplatu kako ju je banka skinula” ⇒ skupni redak, košara ostaje kao „naplaćeno — neusklađeno · razlika 986,28”, pločica −1.244,74 | ⬜ |
+| T-S156-2 | TEST: Edit skupnog retka na 2231,02 ⇒ „✓ slaže se” + Potvrdi ⇒ samo 11 statusa, **bez** drugog retka | ⬜ |
+| T-S156-3 | TEST: `2231,02` / 11.07. ⇒ Potvrdi ⇒ redak + 11 statusa, traka nestane | ⬜ |
+| T-S156-4 | TEST: brane — bez dana nema gumba; dan >3 dana od dospijeća crveno; `abc`; izmjena iznosa zatvara kutiju; uska širina | ⬜ |
+| T-S156-5 | PROD (nakon merge-a), Saša kao grantee: usporedba da, gumb ne, rečenica zašto | ⬜ |
+| T-S156-6 | PROD, Koka, 11.10.: prava MC košara, saldo ZABA isti dan = banka | ⬜ |
+| T-S156-7 | `fill_from_izvod.py --zaba` sa ZABA_2026-10: skupna naplata preskočena (točno ili ≈ ≤3 dana), nikad nov redak | ⬜ |
+
+---
+
 ## S155 — C3b žig izvoda, C3c upozorenje u Editu, C5 traka „Čeka potvrdu” (2026-09-30)
 
 ⚠ Na `test-branch`, nije na `main`. `sql/053` + `sql/054` pušteni na TEST-u (Claude) **i na PROD-u** (Saša, 30.09.). Automatski dio: `shiftDerivedTarget` (19), `confirmedRowEdit` (25), `structureLockAttr` (6), `dueBaskets` (10) — svaki provjeren sabotažom (ruši 2 / 4 / 1 / 2).
