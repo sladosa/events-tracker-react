@@ -7983,3 +7983,9 @@ spašeno iz kopije. Sabotaža se vraća KOPIJOM, nikad gitom.
 
 **Ritual:** zamke u CLAUDE.md (§ Model: žig; § UI: dvije kopije datuma, keš Viewa, sidro samo za
 retke u saldu); handoff prepisan.
+
+**Nakon commita `b5020d6`:** Saša mergeao na `main`; traka na PROD-u pokazala točno predviđeni par
+(T-S155-7 ✅). **B5 dio — par ±105,30:** Kokini `Booking - krivo, vratili kasnije` (07.09.) i
+`Povrat Booking` (12.09.), MC, `Planiran`, s `Datum naplate` = dan kupovine. Pripadaju naplati
+11.10. (košara 11.09. se bez njih zatvorila u cent) ⇒ oba na `2026-10-11` jednim SQL-om (Saša;
+Claudeu je PROD upis blokiran). Traka nestala; 11.10. = 40 stavki, Σ 859,58 nepromijenjen.

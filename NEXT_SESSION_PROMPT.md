@@ -1,4 +1,4 @@
-> Pisano protiv commita **`d035725`** (S154) + commit S155 koji nosi ovaj file (kod + docs, samo `test-branch`).
+> Pisano protiv commita **`b5020d6`** (S155, mergeano na `main` — Saša) + docs commit nakon B5.
 > ⚠ Ako `git log` pokazuje noviji commit od S155 handoffa, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
@@ -26,15 +26,14 @@
 ## Što treba od tebe / Koke
 
 - **Ti: merge na `main`** (naredbe u završnoj poruci S155) — tek tada traka i žig rade na PROD-u.
-- **Ti, nakon deploya (T-S155-7):** `Financije_all` → Overview → traka mora pokazati
-  `07.09. Σ 105,30` i `12.09. Σ −105,30` (poznati par ±105,30 — ispravak ide kroz B5).
+- ✅ Merge + T-S155-7 odrađeni; par ±105,30 prebačen na 11.10. (traka danas prazna).
 - **11.10.:** prva prava MC košara (38 stavki, ~859,58) — Koka upiše što je banka skinula.
 - **Koka (kad se vrati):** T-S154-2 (reagira li `+` iz prve na iPhoneu); T-S152-7 kad stigne izvod.
 
 ## Redoslijed — što slijedi
 
 1. Merge + T-S155-7 · T-S154-2 · T-S152-7.
-2. **B5** (par ±105,30 — traka ga sad pokazuje svaki dan dok se ne riješi; rata 117,32; `Hlace i carape`).
+2. **B5** ostatak (rata 117,32; `Hlace i carape`) — par ±105,30 ✅ S155.
 3. **C5 faza 2** (`Potvrdi` + skupni `Racun` redak, samo Koka) — nakon što 11.10. prođe kao usporedba.
 4. **K-1** (brana na Structure uvozu) · **F5** (`Dashboard` sheet — `due` blok ne putuje Excelom).
 
@@ -44,7 +43,7 @@
 
 ## Stanje grana
 
-`main` = `d74c084` (S154). `test-branch` = S155 (kod + docs), **nije mergeano**.
+`main` = `b5020d6` (S155, merge pustio Saša). Docs commit poslije B5 samo na `test-branch`.
 `sql/053` + `054` pušteni na **TEST i PROD**; `SCHEMA_TEST.sql` i `SCHEMA_PROD.sql` osvježeni (jedina
 razlika: `rpc_area_due_baskets`).
 
