@@ -1565,3 +1565,13 @@ Za izmjene fileova: **line-based** zamjena, patch u **zasebnom `.py` fileu**, pr
 - **`make_financije_all_structure.py`** — `refuse_if_area_exists()`: staje ako `--base` nosi
   `Financije_all` (S145 file ⇒ exit 1, 49 redaka). Migracijski alat, nad postojećom Areom samo gazi.
 - Sljedeće (C1 korak 4): jedna naredba obrade → Excel za uvoz; spec prije koda.
+
+### S156 (2026-09-30) — `fill_from_izvod.py --zaba`: skupna naplata iz trake
+
+Traka „Čeka potvrdu" (C5 faza 2) sada upisuje skupnu MC naplatu **prije** izvatka. `--zaba`
+je dosad imao samo točan dedup `(datum, iznos)`; ako Koka upiše dan za jedan krivo, izvadak bi
+donio **drugi** skupni redak (i on miče saldo). Dodano `skupna_vec_upisana`: **samo** za redak s
+`MASTERCARD KARTICOM`, isti iznos, ≤ `DATE_TOL` (3) dana ⇒ `≈ … PRESKOČENO` + uputa da se datum
+ispravi u appu pa `--zigosi`. Za ostale ZABA retke tolerancije i dalje nema (`Cash 100,00`, S114).
+Provjereno na umjetnim retcima (1 dan ⇒ preskočeno; 5 dana, drugi iznos, bankomat ⇒ ostaju).
+Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.

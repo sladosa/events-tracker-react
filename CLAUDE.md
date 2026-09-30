@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S155).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S156).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 114 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 127 | [Critical rules](<#Critical rules>) | X |
-| 1174 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1619 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1635 | [Key files](<#Key files>) |  |
-| 1726 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1746 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1768 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1794 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1834 | [Open bugs](<#Open bugs>) | ~ |
-| 1943 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 1988 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2085 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2093 | [Backlog](<#Backlog>) | ~ |
-| 2097 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2105 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1184 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1629 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1645 | [Key files](<#Key files>) |  |
+| 1740 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1760 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1782 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1808 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1848 | [Open bugs](<#Open bugs>) | ~ |
+| 1957 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2002 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2099 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2107 | [Backlog](<#Backlog>) | ~ |
+| 2111 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2119 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2263 redaka, 18 sekcija._
+_Ukupno 2277 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -565,6 +565,16 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   T-S155-4). Tip/Podtip/opis nikad ne pale okvir. Popis bankinih polja se IZVODI iz configa pločice
   i pravila, bez novog ključa. ⚠ Excel guard (S143) i kolona `Potvrda` sidro još primjenjuju i na
   kartice — dva mjesta, Backlog.
+- **⚠ TRAKA „ČEKA POTVRDU" UPISUJE REDAK PA STATUSE, I PREPOZNAJE — NE VEŽE — SKUPNI REDAK** (S156).
+  Skupni redak je „već upisan" ako postoji redak s opisom = `due.baskets[k].text`, na računu
+  košare, sa svim `settle` atributima, ≤ 3 dana od dospijeća (`matchSettleRow`). Bez veze u bazi
+  namjerno: isti redak dolazi i s izvoda i rukom, i sva tri puta mora biti prepoznat.
+  ⚠ Prozor od 3 dana živi na **dva** mjesta — `SETTLE_WINDOW_DAYS` (`dueBaskets.ts`) i `DATE_TOL`
+  (`fill_from_izvod.py`). Raziđu li se, traka i alat drukčije odgovore na „je li već upisano" ⇒
+  drugi skupni redak, a on **miče saldo**.
+  ⚠ Redoslijed je invarijanta: pad između upisa retka i statusa ostavlja košaru koja nudi samo
+  „prebaci statuse". Obrnuto bi ostavilo `Izvrsen` kupovine bez naplate i praznu traku.
+  ⚠ Novi „stvori redak iz appa" ide kroz `insertEntry.ts` (slobodna minuta, P2) — ne kopija Add bloka.
 - **`Datum naplate` se ne upisuje rukom** — `set_attribute` ga računa iz `Izvor`a
   (`Racun`/`Cash` = isti dan, `Visa` = `next:3`, `Mastercard` = `next:11`). Ručni unos
   `userOwned` guard više ne dira, pa ga ne diraj bez razloga.

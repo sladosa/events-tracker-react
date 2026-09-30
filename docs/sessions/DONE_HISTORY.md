@@ -7989,3 +7989,67 @@ retke u saldu); handoff prepisan.
 `Povrat Booking` (12.09.), MC, `Planiran`, s `Datum naplate` = dan kupovine. Pripadaju naplati
 11.10. (košara 11.09. se bez njih zatvorila u cent) ⇒ oba na `2026-10-11` jednim SQL-om (Saša;
 Claudeu je PROD upis blokiran). Traka nestala; 11.10. = 40 stavki, Σ 859,58 nepromijenjen.
+
+---
+
+## Arhiva testova S155 — C3b žig izvoda, C3c upozorenje u Editu, C5 traka „Čeka potvrdu” (2026-09-30)
+
+⚠ Na `test-branch`, nije na `main`. `sql/053` + `sql/054` pušteni na TEST-u (Claude) **i na PROD-u** (Saša, 30.09.). Automatski dio: `shiftDerivedTarget` (19), `confirmedRowEdit` (25), `structureLockAttr` (6), `dueBaskets` (10) — svaki provjeren sabotažom (ruši 2 / 4 / 1 / 2).
+
+**Detalji testova:** [tests/S155_tests.md](../../Claude-temp_R/test-sessions/archive/S155_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S155-1 | Potvrđen redak: siva oznaka „✓ potvrđen izvodom · unutar potvrđenog stanja”; promjena Tipa/Podtipa NE pali okvir | ✅ **S155, 30.09. TEST** — oznaka nosi žig i sidro RF 11.08.2026. (799,12 €); Tip → `N/A` (Podtip se ispraznio, `depends_on`) bez okvira |
+| T-S155-2 | Datum na ožigosanom retku: `Datum naplate` stoji, okvir kaže zašto, Save bez kvačice odbija | ✅ **S155, 30.09. TEST** — 07.08. → 05.08.: `Datum naplate` ostao 07.08.2026. 12:00, okvir `Datum: 07.08.2026. → 05.08.2026.` + rečenica o sidru + „nije pomaknut”; Save bez kvačice ⇒ toast, ostao na Editu. Usput nađen BUG-S155-EDITNAN (v. T-S155-8) |
+| T-S155-3 | Ispravak iznosa: okvir `staro → novo`; nova bankina izmjena skida kvačicu | ✅ **S155, 30.09. TEST** — okvir `Isplata: 1171.59 → 1171.5`, kvačica se skine na drugoj izmjeni, povratak briše okvir; cijeli put spremljen i vraćen (baza `1171.59`, izmjereno REST-om). Usput nađen BUG-S155-VIEWSTALE (T-S155-9) |
+| T-S155-4 | MC redak BEZ žiga: datum 28.05. → 02.06. pomakne `Datum naplate` 11.06. → 11.07. | ✅ **S155, 30.09. TEST (ponovljeno nakon popravka):** bez sive oznake i bez okvira; 28.06. ⇒ `Datum naplate` 11.07.2026., natrag 28.05. ⇒ 11.06.2026. Prvi prolaz: 28.05. → 28.06. pomaknuo `Datum naplate` na 11.07.2026. ✅ — ali je iskočio žuti okvir zbog ZABA sidra 01.07. na **kartičnom** retku (neistina: kartica ne ulazi u saldo). Popravljeno (sidro samo za retke koji prolaze filtre pločice). Ponovljeno ✅ |
+| T-S155-5 | Overview TEST: traka `Mastercard · 11.07.2026. · 73 stavke · Σ 2.231,02`; `2231,02` ✓, `1244,74` razlika 986,28 | ✅ **S155, 30.09. TEST** — traka točno kako je opisano, uska širina bez skrolanja; `2231,02` ✓ slaže se, `1244,74` razlika 986,28 € + tekst, `abc` crveno bez oznake, F5 prazno |
+| T-S155-6 | `LockAttr` u Structure exportu; uvoz filea BEZ kolone ne briše žig; prazna ćelija ga briše | ✅ **S155, 30.09. TEST** — export nosi `LockAttr = izvod_opis`; uvoz istog filea 0; bez kolone 0 (žig ostao); prazna ćelija ⇒ `Automations 1`; vraćeno ⇒ 1, baza opet `izvod_opis` (REST) |
+| T-S155-8 | BUG-S155-EDITNAN: u Editu obriši dan/mjesec u polju datuma pa upiši ponovo ⇒ vrijeme ostaje (14:01), nema `NaN` ni `Duration NaNs`; godina `2` u polju piše `0002`, ne prazno; Add isto; godina najviše 4 znamenke (Edit ✅ Saša 30.09.); filtar `From`/`To` isto, i nedovršen datum ne ide u filtar (`dateInput.ts`, 17 tvrdnji) | ✅ **S155, 30.09.** — Edit i filtar (godina staje na 4; `6666` crveno i vrati se na izlasku) |
+| T-S155-9 | BUG-S155-VIEWSTALE: Save → View pokazuje TEK spremljenu vrijednost i nakon drugog spremanja istog retka | ✅ **S155, 30.09. TEST** — `Visa - test` → `Visa - test2` → prazno, View svaki put točan; Prev/Next ispravni |
+| T-S155-7 | PROD: Saša pušta `053` + `054`; nakon deploya traka `07.09. +105,30` i `12.09. −105,30` | ✅ **S155, 30.09.:** nakon deploya traka na PROD-u točno `07.09. 105,30` / `12.09. −105,30` (Saša, slika). Zatim B5: par prebačen na 11.10. (SQL, Saša) ⇒ traka nestala, košara 11.10. = 40 stavki, Σ 859,58 nepromijenjen (RPC). Ranije, **dio 1:** Saša pustio `053` + `054` na PROD-u bez greške; Claude izmjerio (samo čitanje): config nosi `due` + `lock_slug = izvod_opis`, RPC vraća točno predviđene 2 košare (`07.09.` 105,30 · `12.09.` −105,30), 1,22 s. **Ostaje:** traka u appu nakon deploya |
+
+> **Preseljeno iz `PENDING_TESTS.md` u S156 (2026-09-30)** — svih 9 ✅; detaljni file u `Claude-temp_R/test-sessions/archive/S155_tests.md`.
+
+---
+
+## S156 — C5 faza 2: `Potvrdi` + skupni redak iz trake „Čeka potvrdu" (2026-09-30)
+
+Saša s mobitela (Remote Control): „nastavi C5". Faza 2 je po handoffu išla **nakon** 11.10.;
+dogovoreno: **graditi sada na `test-branch`, merge tek nakon 11.10.** (prva prava košara ostaje
+usporedba). Četiri odluke „po prijedlozima": (A) traka traži i **dan** naplate, bez zadanog, ≤ 3
+dana od dospijeća; (B) skupni redak se **prepoznaje, ne veže** (opis = `text`, račun, svi `settle`
+atributi, ≤ 3 dana); (C) zajednički servis za upis retka umjesto kopije Add logike; (D) drugi
+prolaz u alatu u istoj sesiji.
+
+**Izmjereno prije koda (PROD, samo čitanje):** svih 7 MC naplata 2026-03…09 ima `comment` =
+`TROŠKOVI UČINJENI MASTERCARD KARTICOM` i `Racun`/`Transfer`/`izmedju racuna`/`Kokin tekući ZABA`
+⇒ pravilo B pogađa i retke s izvoda i ručne. RLS: `event_attrs_update_by_area_owner` dopušta
+vlasnici prebaciti status tuđeg retka ⇒ upis ide kroz RLS, ne kroz SECURITY DEFINER.
+
+**`sql/055`** — `app_due_rows` = JEDNA definicija košare; `rpc_area_due_baskets` sada agregira nad
+njom (isti potpis, **izlaz izmjeren identičan prije/poslije** na TEST-u), nova
+`rpc_area_due_basket_members`. Interni dijelovi `REVOKE`-ani (izmjereno: `permission denied`),
+stranac dobiva `No access`. Pušteno **samo na TEST-u**.
+
+**Klijent.** `dueBaskets.ts`: `matchSettleRow`, `basketAction` (confirm / record / flip / mismatch /
+none+razlog), `settleValues`. `dueConfirm.ts`: članovi košare, traženje skupnog retka, upis
+**redak pa statusi** (pad između ostavlja košaru koja nudi samo `flip`), svježe čitanje Σ prije
+upisa, broji prebačene retke. `insertEntry.ts`: `findFreeSessionStart` (sada **baca** na
+neuspjelo čitanje umjesto da ga čita kao „slobodno") + `insertLeafEvent` (Add ga koristi) +
+`insertEntry` (P2). Traka: dvostupanjska potvrda, samo vlasnica (`isOwner = !sharedContext`),
+pločica se osvježi (`reloadToken`). ⚠ `widget` se predaje iz configa, ne kao `{ ...w }` — nov
+objekt po renderu bi traku učitavao na svaku promjenu filtra.
+
+**Ispravak speca:** skupnu naplatu s izvatka ne čita `uvezi_transu.py` (jednokratni alat za
+kartični izvod MC_2026-07) nego `fill_from_izvod.py --zaba` ⇒ `skupna_vec_upisana` ondje
+(isti iznos + strojni tekst + `DATE_TOL` = 3 = `SETTLE_WINDOW_DAYS`).
+
+**Pokus na TEST-u pod RLS-om** (vlasnik, `ROLLBACK`): 11 statusa prebačeno, košara nestaje iz
+RPC-a, INSERT eventa prolazi. **Testovi:** `dueSettle.test.mjs` (38) — sabotaže (potvrda i kad se
+ne slaže / bez prozora dana / redak bez statusa) ruše 2 / 2 / 1; vraćeno kopijom. `npm run check`
+28/28. **UI nije kliknut** (Remote Control) — T-S156-1…4 čekaju Sašu na TEST-u.
+
+**Ritual:** S155 arhiviran (9/9 ✅); usput ispravljen naslov T-S155-7 (bio ⬜, test zatvoren);
+Help `overview.md`; CLAUDE.md Key files + zamka; handoff prepisan.
