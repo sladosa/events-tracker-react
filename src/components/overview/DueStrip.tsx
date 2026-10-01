@@ -25,13 +25,18 @@
 // ⚠ Potvrđuje SAMO vlasnica Aree (D5). Grantee vidi traku, ali ne gumb.
 // ⚠ Svaki upis ide u DVA koraka (sažetak pa „Da"): na mobitelu je jedan
 //   promašen dodir inače upisan novac.
+// ⚠ Pravilo C (S157): prije upisa skupnog retka traka traži RUČNI redak istog
+//   iznosa na računu (`findSuspectRows`). Ako ga ima, pita „je li to ova
+//   naplata?" — „Da" ga ispravlja u prepoznatljiv oblik (opis + Tip/Podtip iz
+//   configa), „Ne" tek onda pušta upis. Bez toga je ručno upisana naplata
+//   (bez opisa) dobila DRUGI skupni redak — izmjereno u T-S156-1.
 // ============================================================
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { fetchDueBaskets, type DueBasketRow } from '@/lib/overviewApi';
 import { basketAction, basketNetCents, SETTLE_WINDOW_DAYS, type SettleMatch } from '@/lib/dueBaskets';
-import { findSettleRow, settleBasket } from '@/lib/dueConfirm';
+import { adoptSettleRow, attributeNames, findSettleRow, findSuspectRows, settleBasket, type SuspectRow } from '@/lib/dueConfirm';
 import { formatAmount, formatDateHr, parseAmountInput, todayIso } from '@/lib/amountFormat';
 import { cn } from '@/lib/cn';
 import type { BalanceByGroupWidget, DueConfig, UUID } from '@/types/database';
@@ -72,11 +77,21 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
   const [dateInput, setDateInput] = useState<Record<string, string>>({});
   const [armed, setArmed] = useState<Record<string, Armed | undefined>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  /** Pravilo C po košari: ručni retci koji izgledaju kao ova naplata + što je čovjek htio. */
+  const [suspects, setSuspects] = useState<Record<string, { list: SuspectRow[]; kind: 'confirm' | 'record' } | undefined>>({});
+  const [dismissed, setDismissed] = useState<Record<string, string[]>>({});
+  const [adopting, setAdopting] = useState<Record<string, string | undefined>>({});
+  const [names, setNames] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     setArmed({});
+    setSuspects({});
+    setAdopting({});
+    // Imena atributa samo za tekst ispravka — neuspjeh nije kvar, pada na slug.
+    attributeNames(areaId, [...Object.keys(due.settle ?? {}), due.status_slug])
+      .then(setNames).catch(() => setNames({}));
     try {
       const fresh = await fetchDueBaskets({
         areaId, due,
@@ -113,6 +128,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
       const res = await settleBasket({
         areaId, w: widget, basket: row.basket, dueDate: row.due_date, kind,
         shownSumCents: basketNetCents(row), bankCents, bankDate,
+        suspectsDismissed: dismissed[key] ?? [],
       });
       toast.success(
         [res.settleRowId ? 'Naplata upisana' : null,
@@ -121,6 +137,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
       );
       setBankInput(prev => ({ ...prev, [key]: '' }));
       setDateInput(prev => ({ ...prev, [key]: '' }));
+      setDismissed(prev => ({ ...prev, [key]: [] }));
       onSettled?.();
     } catch (e) {
       toast.error((e as { message?: string })?.message ?? String(e), { duration: 8000 });
@@ -128,6 +145,50 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
       setBusy(null);
       void load();
     }
+  };
+
+  /** Klik na „Potvrdi"/„Upiši": prvo pravilo C, tek onda sažetak upisa. */
+  const check = async (row: DueBasketRow, kind: 'confirm' | 'record', bankCents?: number, bankDate?: string) => {
+    const key = `${row.basket}|${row.due_date}`;
+    if (bankCents == null || !bankDate) return;
+    setBusy(key);
+    try {
+      const list = (await findSuspectRows(areaId, widget, row.basket, bankCents, bankDate))
+        .filter(s => !(dismissed[key] ?? []).includes(s.id));
+      if (list.length > 0) setSuspects(prev => ({ ...prev, [key]: { list, kind } }));
+      else setArmed(prev => ({ ...prev, [key]: kind }));
+    } catch (e) {
+      // Neuspjelo čitanje NIJE „nema ga" — bez odgovora nema ni upisa (S121).
+      toast.error(`Nisam uspio provjeriti je li naplata već upisana rukom — ne upisujem. ${(e as { message?: string })?.message ?? String(e)}`, { duration: 8000 });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const adopt = async (row: DueBasketRow, s: SuspectRow, bankCents: number, bankDate: string) => {
+    const key = `${row.basket}|${row.due_date}`;
+    setBusy(key);
+    try {
+      await adoptSettleRow({ areaId, w: widget, basket: row.basket, eventId: s.id, bankCents, bankDate });
+      toast.success('Redak ispravljen — sada je prepoznat kao naplata');
+      setBankInput(prev => ({ ...prev, [key]: '' }));
+      setDateInput(prev => ({ ...prev, [key]: '' }));
+      setDismissed(prev => ({ ...prev, [key]: [] }));
+      onSettled?.();
+    } catch (e) {
+      toast.error((e as { message?: string })?.message ?? String(e), { duration: 8000 });
+    } finally {
+      setBusy(null);
+      void load();
+    }
+  };
+
+  /** Promjena iznosa ili dana poništava sve odgovore za tu košaru. */
+  const resetAnswers = (key: string) => {
+    setArmed(prev => ({ ...prev, [key]: undefined }));
+    setSuspects(prev => ({ ...prev, [key]: undefined }));
+    setAdopting(prev => ({ ...prev, [key]: undefined }));
+    setDismissed(prev => ({ ...prev, [key]: [] }));
   };
 
   // Ništa ne čeka ⇒ trake nema. Dok se učitava također ništa: traka koja
@@ -180,6 +241,11 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
           const canAct = isOwner && st !== undefined && !isErr(st) && !loading && busy === null;
           const arm = armed[key];
           const bankCents = bank !== null && Number.isFinite(bank) ? Math.round(bank * 100) : undefined;
+          const susp = suspects[key];
+          const sus = susp?.list[0];
+          const adoptId = adopting[key];
+          const nameOf = (slug: string) => names[slug] ?? slug;
+          const shownSlugs = Object.keys(due.settle ?? {}).filter(s => s !== due.basket_by);
 
           return (
             <div key={key} className="rounded-lg bg-white border border-amber-200 px-3 py-2">
@@ -196,7 +262,8 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
                 {cfg?.account && <> → s računa <span className="font-medium">{cfg.account}</span></>}
               </p>
 
-              {st === undefined && !loading && (
+              {/* I tijekom osvježavanja: košara bez ičega ispod Σ izgleda kao da je nešto nestalo (T-S157-1). */}
+              {st === undefined && (
                 <p className="mt-1 text-xs text-gray-500">tražim je li naplata već upisana…</p>
               )}
               {isErr(st) && (
@@ -248,7 +315,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
                       type="text"
                       inputMode="decimal"
                       value={typed}
-                      onChange={e => { setBankInput(prev => ({ ...prev, [key]: e.target.value })); setArmed(prev => ({ ...prev, [key]: undefined })); }}
+                      onChange={e => { setBankInput(prev => ({ ...prev, [key]: e.target.value })); resetAnswers(key); }}
                       placeholder="upiši s ekrana banke"
                       className={cn(
                         'w-36 px-2 py-1 text-sm border rounded tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-400',
@@ -263,7 +330,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
                           type="date"
                           value={bankDate}
                           max={today}
-                          onChange={e => { setDateInput(prev => ({ ...prev, [key]: e.target.value })); setArmed(prev => ({ ...prev, [key]: undefined })); }}
+                          onChange={e => { setDateInput(prev => ({ ...prev, [key]: e.target.value })); resetAnswers(key); }}
                           className={cn(
                             'px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-amber-400',
                             act.kind === 'none' && (act.reason === 'date-far' || act.reason === 'date-future')
@@ -305,11 +372,13 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
               {!isOwner && (act.kind === 'confirm' || act.kind === 'record' || act.kind === 'flip') && (
                 <p className="mt-2 text-xs text-gray-600">Potvrđuje vlasnica Aree — ti vidiš usporedbu, ali ne upisuješ.</p>
               )}
-              {isOwner && !arm && (act.kind === 'confirm' || act.kind === 'record' || act.kind === 'flip') && (
+              {isOwner && !arm && !sus && (act.kind === 'confirm' || act.kind === 'record' || act.kind === 'flip') && (
                 <div className="mt-2">
                   <button
                     disabled={!canAct}
-                    onClick={() => setArmed(prev => ({ ...prev, [key]: act.kind as Armed }))}
+                    onClick={() => act.kind === 'flip'
+                      ? setArmed(prev => ({ ...prev, [key]: 'flip' }))
+                      : void check(row, act.kind as 'confirm' | 'record', bankCents, bankDate || undefined)}
                     className={cn(
                       'px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-40',
                       act.kind === 'record'
@@ -317,8 +386,96 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
                         : 'bg-emerald-600 text-white hover:bg-emerald-700',
                     )}
                   >
-                    {act.kind === 'record' ? 'Upiši naplatu kako ju je banka skinula' : 'Potvrdi'}
+                    {rowBusy ? 'Provjeravam…' : act.kind === 'record' ? 'Upiši naplatu kako ju je banka skinula' : 'Potvrdi'}
                   </button>
+                </div>
+              )}
+
+              {/* Pravilo C: ručni redak istog iznosa — prvo pitanje, pa ispravak. */}
+              {isOwner && sus && susp && adoptId !== sus.id && (
+                <div className="mt-2 rounded-lg border border-amber-400 bg-amber-100/60 px-3 py-2 text-sm text-gray-800">
+                  <p>
+                    Na računu <span className="font-medium">{cfg?.account}</span> već postoji isplata{' '}
+                    <span className="font-semibold tabular-nums">{bankCents != null ? formatAmount(bankCents / 100, unit) : '?'}</span>{' '}
+                    od {formatDateHr(sus.date)}
+                    {/* S imenom: goli niz vrijednosti („Domaćinstvo / Isplata / …") čita se kao kategorija. */}
+                    {shownSlugs.length > 0 && <> · {shownSlugs.map(s => `${nameOf(s)}: ${String(sus.values[s] ?? '—')}`).join(' · ')}</>}
+                    {' '}· opis „{sus.comment || '—'}”.
+                  </p>
+                  <p className="mt-1 font-medium">Je li to ova naplata?</p>
+                  {susp.list.length > 1 && (
+                    <p className="mt-1 text-xs text-red-700">Takvih redaka ima {susp.list.length} — pitam za svaki redom.</p>
+                  )}
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    <button
+                      disabled={rowBusy}
+                      onClick={() => setAdopting(prev => ({ ...prev, [key]: sus.id }))}
+                      className="px-3 py-1.5 text-sm rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40"
+                    >
+                      Da, to je ona
+                    </button>
+                    <button
+                      disabled={rowBusy}
+                      onClick={() => {
+                        const rest = susp.list.slice(1);
+                        setDismissed(prev => ({ ...prev, [key]: [...(prev[key] ?? []), sus.id] }));
+                        setSuspects(prev => ({ ...prev, [key]: rest.length > 0 ? { list: rest, kind: susp.kind } : undefined }));
+                        if (rest.length === 0) setArmed(prev => ({ ...prev, [key]: susp.kind }));
+                      }}
+                      className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40"
+                    >
+                      Ne, to je nešto drugo
+                    </button>
+                    <button
+                      disabled={rowBusy}
+                      onClick={() => setSuspects(prev => ({ ...prev, [key]: undefined }))}
+                      className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40"
+                    >
+                      Odustani
+                    </button>
+                  </div>
+                </div>
+              )}
+              {isOwner && sus && adoptId === sus.id && (
+                <div className="mt-2 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800">
+                  <p>
+                    Skupnu naplatu kartice s računa vodimo s opisom <i>„{cfg?.text}”</i>
+                    {Object.keys(due.settle ?? {}).length > 0 && (
+                      <> i kao {Object.entries(due.settle ?? {}).map(([s, v]) => `${nameOf(s)} = ${v}`).join(', ')}</>
+                    )}
+                    {' '}— po tome je prepoznaju traka i alati.
+                  </p>
+                  {sus.changes.length > 0 ? (
+                    <>
+                      <p className="mt-1">Ispravit ću:</p>
+                      <ul className="mt-1 ml-4 list-disc text-xs">
+                        {sus.changes.map(c => (
+                          <li key={c.slug ?? '@comment'}>
+                            {c.slug === null ? 'Opis' : nameOf(c.slug)}: „{c.from || '—'}” → „{c.to}”
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p className="mt-1 text-xs">Redak je već u ispravnom obliku.</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-600">Iznos, račun i datum ostaju kakvi jesu.</p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      disabled={rowBusy || bankCents == null || !bankDate}
+                      onClick={() => { if (bankCents != null && bankDate) void adopt(row, sus, bankCents, bankDate); }}
+                      className="px-3 py-1.5 text-sm rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40"
+                    >
+                      {rowBusy ? 'Ispravljam…' : 'U redu, ispravi'}
+                    </button>
+                    <button
+                      disabled={rowBusy}
+                      onClick={() => setAdopting(prev => ({ ...prev, [key]: undefined }))}
+                      className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40"
+                    >
+                      Odustani
+                    </button>
+                  </div>
                 </div>
               )}
               {isOwner && arm && (

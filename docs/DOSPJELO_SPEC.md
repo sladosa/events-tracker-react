@@ -199,9 +199,14 @@ Novi blok u `settings.dashboard` widgetu, uz postojeći `split` (koji već nosi 
     "Visa":       { "account": "Sašin tekući RF",   "text": "PBZCard d.o.o." }
   },
   "status_slug": "status", "pending": "Planiran", "done": "Izvrsen",
-  "settle": { "izvorplacanja": "Racun", "tip": "Transfer", "podtip": "izmedju racuna" }
+  "settle": { "izvorplacanja": "Racun", "tip": "Transfer", "podtip": "izmedju racuna", "smjer": "Isplata" }
 }
 ```
+
+⚠ **`smjer` u `settle` (S157):** `isplata` ovisi o `smjer` (`depends_on`), pa redak bez njega u
+formi **skriva iznos**. Na PROD-u svaki redak s iznosom nosi `Smjer` (5.292/5.292, sve 34 MC
+naplate `Isplata`). Upis skupnog retka zato staje ako upisani atribut ovisi o roditelju kojeg
+`settle` ne postavlja. **Config na PROD-u mora nositi `smjer` prije prvog upisa iz trake.**
 
 - Kartica koja **nije** u `baskets` ne ulazi u traku ⇒ **Visa se isključuje brisanjem jednog
   ključa**, bez deploya. Faza 1 kreće samo s Mastercardom.

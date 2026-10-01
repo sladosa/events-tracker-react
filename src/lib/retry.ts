@@ -68,7 +68,21 @@ export async function withRetry<T>(
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  throw toError(lastError);
+}
+
+/**
+ * A Supabase `error` is a plain object (`{ message, code, details, hint }`),
+ * not an `Error` — `String()` of it is "[object Object]", which is what the
+ * user saw instead of PGRST201 (S157). Keep the message and the code.
+ */
+function toError(e: unknown): Error {
+  if (e instanceof Error) return e;
+  const o = e as { message?: unknown; code?: unknown } | null;
+  if (o && typeof o === 'object' && typeof o.message === 'string') {
+    return new Error(typeof o.code === 'string' && o.code ? `${o.message} (${o.code})` : o.message, { cause: e });
+  }
+  return new Error(String(e));
 }
 
 /** `withRetry` for a Supabase query, where failure means a non-null `error`. */

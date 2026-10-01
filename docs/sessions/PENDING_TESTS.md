@@ -29,6 +29,19 @@
 
 ---
 
+## S157 — traka: PGRST201, pravilo C (ručna naplata), TEST = kopija PROD-a (2026-10-01)
+
+**Detalji testova:** [tests/S157_tests.md](tests/S157_tests.md)
+
+| ID | Test | Status |
+|---|---|---|
+| T-S157-1 | TEST, košara A (11.08., prije sidra): `1300` ⇒ upis, „neusklađeno 32,52”, pločica **ista** | ✅ S157 — izmjereno, F5 isto; ZABA ostala 12.774,39 |
+| T-S157-2 | TEST, A: Edit naplate na 1332,52 ⇒ ✓ + Potvrdi ⇒ samo 47 statusa, jedan redak | ✅ S157 — izmjereno (baza: 0 Planiran, 1 skupni redak); usput nađen redak bez `Smjer` ⇒ popravljeno |
+| T-S157-3 | TEST, B (11.09., poslije sidra): `1068,70` ⇒ Potvrdi ⇒ redak + 48 statusa, pločica −1.068,70 | ✅ S157 — izmjereno: ZABA 12.774,39 → 11.705,69 (= PROD); 48/48 Izvrsen; novi redak nosi `Smjer = Isplata` |
+| T-S157-4 | TEST, B + ručni „MC” redak ⇒ „Je li to ova naplata?” ⇒ Da ⇒ ispravak (opis, Tip, Podtip) ⇒ Potvrdi; pločica ista, jedan redak | ✅ S157 — izmjereno: jedan skupni redak (ispravljen ručni), 48/48 Izvrsen, ZABA 11.705,69 cijelo vrijeme |
+| T-S157-5 | TEST, B + ručni redak ⇒ „Ne” ⇒ tek tada sažetak; „Ne” ne preživljava sljedeći klik | ✅ S157 — izmjereno: pitanje u koracima 1/3/4, bez pitanja uz 1000; baza netaknuta |
+| T-S157-6 | TEST, B: brane (prijašnji T-S156-4) + žuta kutija na uskoj širini | ✅ S157 — izmjereno: bez dana, 15.09., `abc`, `0`, zatvaranje kutije, iPhone SE 375 px |
+
 ## S156 — C5 faza 2: `Potvrdi` + skupni redak (2026-09-30)
 
 ⚠ Na `test-branch`, nije na `main`. `sql/055` pušten **samo na TEST-u** (Claude); `rpc_area_due_baskets` izmjereno isto prije i poslije, pokus pod RLS-om (11 statusa + upis retka, `ROLLBACK`) prošao. Automatski dio: `dueSettle.test.mjs` (38) — sabotaže ruše 2 / 2 / 1. ⚠ **Merge tek nakon 11.10.** i nakon što Saša pusti `055` na PROD-u.
@@ -37,10 +50,10 @@
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S156-1 | TEST: `1244,74` / 11.07. ⇒ „Upiši naplatu kako ju je banka skinula” ⇒ skupni redak, košara ostaje kao „naplaćeno — neusklađeno · razlika 986,28”, pločica −1.244,74 | ⬜ |
-| T-S156-2 | TEST: Edit skupnog retka na 2231,02 ⇒ „✓ slaže se” + Potvrdi ⇒ samo 11 statusa, **bez** drugog retka | ⬜ |
-| T-S156-3 | TEST: `2231,02` / 11.07. ⇒ Potvrdi ⇒ redak + 11 statusa, traka nestane | ⬜ |
-| T-S156-4 | TEST: brane — bez dana nema gumba; dan >3 dana od dospijeća crveno; `abc`; izmjena iznosa zatvara kutiju; uska širina | ⬜ |
+| T-S156-1 | TEST: `1244,74` / 11.07. ⇒ „Upiši naplatu kako ju je banka skinula” ⇒ skupni redak, košara ostaje kao „naplaćeno — neusklađeno · razlika 986,28”, pločica −1.244,74 | ✅ S157 — izmjereno: koraci 2–5 kako piše; „pločica −1.244,74” bila je **kriva tvrdnja** (11.07. je prije sidra 30.07.); otkrio PGRST201 i duplikat ručne naplate ⇒ pravilo C |
+| T-S156-2 | TEST: Edit skupnog retka na 2231,02 ⇒ „✓ slaže se” + Potvrdi ⇒ samo 11 statusa, **bez** drugog retka | ✅ S157 — zamijenjen T-S157-2 (TEST je sada kopija PROD-a, košara 11.07. zatvorena) |
+| T-S156-3 | TEST: `2231,02` / 11.07. ⇒ Potvrdi ⇒ redak + 11 statusa, traka nestane | ✅ S157 — zamijenjen T-S157-3 (košara poslije sidra, saldo se mora pomaknuti) |
+| T-S156-4 | TEST: brane — bez dana nema gumba; dan >3 dana od dospijeća crveno; `abc`; izmjena iznosa zatvara kutiju; uska širina | ✅ S157 — zamijenjen T-S157-6 |
 | T-S156-5 | PROD (nakon merge-a), Saša kao grantee: usporedba da, gumb ne, rečenica zašto | ⬜ |
 | T-S156-6 | PROD, Koka, 11.10.: prava MC košara, saldo ZABA isti dan = banka | ⬜ |
 | T-S156-7 | `fill_from_izvod.py --zaba` sa ZABA_2026-10: skupna naplata preskočena (točno ili ≈ ≤3 dana), nikad nov redak | ⬜ |

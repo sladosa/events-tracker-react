@@ -12,6 +12,9 @@
 //   koja se donosi kad Visa uđe u config, ne sad.
 // ============================================================
 
+import { passesFilters } from '@/lib/confirmedRowEdit';
+import type { WidgetFilter } from '@/types/database';
+
 const toCents = (x: number): number => Math.round(x * 100);
 
 /** Σ košare u lipama: ono što banka treba skinuti. */
@@ -194,5 +197,81 @@ export function settleValues(p: {
   const slug = p.amountCents >= 0 ? p.minusSlug : p.plusSlug;
   if (!slug) throw new Error('Pločica nema atribut za iznos (plus/minus) — skupni redak ne znam upisati.');
   out[slug] = abs;
+  return out;
+}
+
+/**
+ * Pravilo C (S157): redak koji IZGLEDA kao ova naplata, a pravilo B ga ne
+ * prepoznaje — jer ga je čovjek upisao rukom (opis „MC", krivi Podtip …).
+ * Traži se po onome što je banka napravila, ne po onome što je čovjek napisao:
+ *   • isti račun (`group_by` = `baskets[k].account`),
+ *   • redak koji MIČE SALDO (prolazi filtre pločice — osim filtra statusa:
+ *     ručna naplata ostavljena `Planiran` jednako je duplikat čim se potvrdi),
+ *   • neto iznos = bankin broj, u cent,
+ *   • datiran najviše `SETTLE_WINDOW_DAYS` od dana koji je čovjek upisao.
+ * Opis, Tip, Podtip se NE gledaju — upravo njih čovjek može upisati krivo.
+ *
+ * ⚠ Izmjereno u T-S156-1 (TEST, 01.10.2026.): naplata 1.244,74 od 11.07. bez
+ *   opisa ⇒ pravilo B je ne vidi ⇒ traka ponudila DRUGI skupni redak.
+ * ⚠ Namjerno u cent, bez tolerancije: „veća isplata istog dana" bi palila na
+ *   `Cash 100,00` koji se ponavlja (S114), a upozorenje koje laže se otklika.
+ *   Ručni redak s krivim iznosom ovo NE hvata — ispliva kao Δ na pločici.
+ */
+export function findSuspectSettleRows(
+  cands: readonly SettleCandidate[],
+  p: {
+    account: string;
+    groupSlug: string;
+    filters: readonly WidgetFilter[];
+    statusSlug: string;
+    plusSlug?: string | null;
+    minusSlug?: string | null;
+    bankCents: number;
+    bankDate: string;
+    windowDays?: number;
+  },
+): SettleCandidate[] {
+  const win = p.windowDays ?? SETTLE_WINDOW_DAYS;
+  const filters = p.filters.filter(f => f.slug !== p.statusSlug);
+  const num = (c: SettleCandidate, slug?: string | null) => {
+    const v = slug ? c.values[slug] : null;
+    return typeof v === 'number' ? v : 0;
+  };
+  return cands
+    .filter(c =>
+      c.values[p.groupSlug] === p.account
+      && passesFilters(filters, new Map(Object.entries(c.values)))
+      && toCents(num(c, p.minusSlug)) - toCents(num(c, p.plusSlug)) === p.bankCents
+      && Math.abs(daysBetween(p.bankDate, c.event_date.slice(0, 10))) <= win)
+    .sort((a, b) =>
+      Math.abs(daysBetween(p.bankDate, a.event_date.slice(0, 10)))
+      - Math.abs(daysBetween(p.bankDate, b.event_date.slice(0, 10))));
+}
+
+/** Jedna izmjena koju „usvajanje" ručnog retka donosi. `slug = null` ⇒ opis. */
+export interface AdoptChange {
+  slug: string | null;
+  from: string;
+  to: string;
+}
+
+/**
+ * Što treba promijeniti da ručni redak postane prepoznatljiv skupni redak
+ * (pravilo B): opis = strojni tekst, `settle` atributi, status = `done`.
+ * Račun i iznos se NE diraju — po njima je redak i nađen (pravilo C).
+ */
+export function adoptChanges(
+  c: SettleCandidate,
+  p: { text: string; settle: Record<string, string>; statusSlug: string; done: string },
+): AdoptChange[] {
+  const out: AdoptChange[] = [];
+  if ((c.comment ?? '').trim() !== p.text.trim()) {
+    out.push({ slug: null, from: c.comment ?? '', to: p.text });
+  }
+  const want: Record<string, string> = { ...p.settle, [p.statusSlug]: p.done };
+  for (const [slug, to] of Object.entries(want)) {
+    const from = c.values[slug];
+    if (from !== to) out.push({ slug, from: from == null ? '' : String(from), to });
+  }
   return out;
 }

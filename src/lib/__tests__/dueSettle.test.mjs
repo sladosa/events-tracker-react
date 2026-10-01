@@ -25,7 +25,8 @@ await build({
   bundle: true, format: 'esm', platform: 'node',
   outfile: out, alias: { '@': './src' }, logLevel: 'error',
 });
-const { matchSettleRow, basketAction, settleValues, daysBetween, SETTLE_WINDOW_DAYS } =
+const { matchSettleRow, basketAction, settleValues, daysBetween, SETTLE_WINDOW_DAYS,
+  findSuspectSettleRows, adoptChanges } =
   await import(pathToFileURL(out).href);
 
 let pass = 0, fail = 0;
@@ -124,6 +125,60 @@ console.log('Vrijednosti skupnog retka:');
   const v = settleValues({ settle: SETTLE, groupSlug: 'racun', account: 'A',
     statusSlug: 'status', done: 'Izvrsen', plusSlug: 'uplata', minusSlug: 'isplata', amountCents: -300 });
   ok('negativna naplata ide u uplatu', v.uplata === 3 && !('isplata' in v), JSON.stringify(v));
+}
+
+console.log('');
+console.log('Pravilo C (S157) — rucni redak istog iznosa, ma kako opisan:');
+{
+  // T-S156-1 na TEST-u: 1.244,74 od 11.07., BEZ opisa => pravilo B ga ne vidi
+  const FILTERS = [
+    { op: 'in', slug: 'izvorplacanja', values: ['Racun'] },
+    { op: 'not_in', slug: 'status', values: ['Planiran'] },
+  ];
+  const manual = (over = {}) => ({
+    id: 'm1', event_date: '2026-09-11', comment: 'MC',
+    values: { racun: 'Kokin tekući ZABA', izvorplacanja: 'Racun', status: 'Izvrsen',
+      tip: 'Domaćinstvo', podtip: 'Hrana i ostalo', isplata: 1068.7 },
+    ...over,
+  });
+  const C = { account: 'Kokin tekući ZABA', groupSlug: 'racun', filters: FILTERS, statusSlug: 'status',
+    plusSlug: 'uplata', minusSlug: 'isplata', bankCents: 106870, bankDate: '2026-09-11' };
+  const ids = (list) => list.map(r => r.id).join(',');
+
+  ok('rucni redak „MC" s krivim Podtipom => sumnjiv', ids(findSuspectSettleRows([manual()], C)) === 'm1');
+  ok('pravilo B ga NE vidi (zato pravilo C postoji)', matchSettleRow([manual()], P) === null);
+  ok('bez opisa => sumnjiv', ids(findSuspectSettleRows([manual({ comment: null })], C)) === 'm1');
+  ok('iznos u cent, ne priblizno (1.068,71 nije)',
+     findSuspectSettleRows([manual({ values: { ...manual().values, isplata: 1068.71 } })], C).length === 0);
+  ok('float iznos s greskom zapisa je isti cent',
+     findSuspectSettleRows([manual({ values: { ...manual().values, isplata: 1068.7000000001 } })], C).length === 1);
+  ok('drugi racun => nije',
+     findSuspectSettleRows([manual({ values: { ...manual().values, racun: 'Sašin tekući RF' } })], C).length === 0);
+  ok('kartican redak (ne mice saldo) => nije',
+     findSuspectSettleRows([manual({ values: { ...manual().values, izvorplacanja: 'Mastercard' } })], C).length === 0);
+  ok('`Planiran` Racun redak => JEST (duplikat cim se potvrdi)',
+     findSuspectSettleRows([manual({ values: { ...manual().values, status: 'Planiran' } })], C).length === 1);
+  ok('3 dana od upisanog dana => jest', findSuspectSettleRows([manual({ event_date: '2026-09-14' })], C).length === 1);
+  ok('4 dana => nije', findSuspectSettleRows([manual({ event_date: '2026-09-15' })], C).length === 0);
+  ok('uplata istog iznosa (neto suprotan) => nije',
+     findSuspectSettleRows([manual({ values: { ...manual().values, isplata: undefined, uplata: 1068.7 } })], C).length === 0);
+  ok('dva => najblizi prvi',
+     ids(findSuspectSettleRows([manual({ id: 'far', event_date: '2026-09-13' }), manual({ id: 'near' })], C)) === 'near,far');
+
+  const ch = adoptChanges(manual(), { text: TEXT, settle: SETTLE, statusSlug: 'status', done: 'Izvrsen' });
+  const sig = ch.map(c => `${c.slug ?? '@'}:${c.from}>${c.to}`).sort().join(' | ');
+  ok('ispravak: opis + Tip + Podtip, NE Izvor/status (vec su ispravni)',
+     sig === `@:MC>${TEXT} | podtip:Hrana i ostalo>izmedju racuna | tip:Domaćinstvo>Transfer`, sig);
+  const ch2 = adoptChanges(manual({ values: { ...manual().values, status: 'Planiran' } }),
+    { text: TEXT, settle: SETTLE, statusSlug: 'status', done: 'Izvrsen' });
+  ok('`Planiran` rucni redak => status ide u Izvrsen', ch2.some(c => c.slug === 'status' && c.to === 'Izvrsen'));
+  ok('ispravak NIKAD ne dira iznos ni racun',
+     !ch2.some(c => ['isplata', 'uplata', 'racun'].includes(c.slug)));
+  ok('vec ispravan redak => nema izmjena',
+     adoptChanges(prodRow(), { text: TEXT, settle: SETTLE, statusSlug: 'status', done: 'Izvrsen' }).length === 0);
+  // nakon ispravka ga pravilo B MORA prepoznati — inace bi traka pitala opet
+  const fixed = manual({ comment: TEXT, values: { ...manual().values, tip: 'Transfer', podtip: 'izmedju racuna' } });
+  ok('ispravljen redak pravilo B prepoznaje', matchSettleRow([fixed], P)?.id === 'm1');
 }
 
 console.log('');

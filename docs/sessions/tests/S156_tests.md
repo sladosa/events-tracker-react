@@ -18,7 +18,13 @@ u `Claude-temp_R/S156_planiran_ids.txt`) — reci „vrati” kad treba.
 
 ---
 
-## T-S156-1 ⬜ Ne slaže se → „Upiši naplatu kako ju je banka skinula”
+## T-S156-1 ✅ Ne slaže se → „Upiši naplatu kako ju je banka skinula”
+
+> ✅ **S157 (01.10.2026.) — izmjereno.** Koraci 2–5 prošli kako piše. Dvije stvari nisu:
+> „Stanje ZABA … manje za 1.244,74” je **kriva tvrdnja ovog testa** (11.07. je prije sidra
+> 30.07., pa saldo po pravilu „strogo nakon” ostaje isti — app je bio u pravu). I: na TEST-u je
+> naplata 11.07. već postojala **bez opisa**, pa je traka ponudila drugi redak ⇒ nastalo je
+> **pravilo C** (v. [S157_tests.md](S157_tests.md)). Usput popravljen PGRST201 (`[object Object]`).
 
 1. Overview → traka „Čeka potvrdu”. Zapiši stanje **Kokin tekući ZABA** na pločici ispod.
 2. „banka skinula” = `1244,74`, „dana” = **11.07.2026.**
@@ -42,7 +48,9 @@ unos ⇒ traka ne prepoznaje vlastiti redak ⇒ ponudila bi drugi (pravilo B).
 
 ---
 
-## T-S156-2 ⬜ Skupni redak postoji i slaže se → „Potvrdi” samo prebaci statuse
+## T-S156-2 ✅ Skupni redak postoji i slaže se → „Potvrdi” samo prebaci statuse
+
+> ✅ **S157 — zamijenjen T-S157-2.** TEST je sada kopija PROD-a; košara 11.07. je zatvorena.
 
 Nastavak na T-S156-1 (redak 1.244,74 postoji).
 
@@ -61,7 +69,9 @@ dio redaka nije prebačen (prava) — javi broj.
 
 ---
 
-## T-S156-3 ⬜ Slaže se, nema retka → „Potvrdi” upiše redak I prebaci statuse
+## T-S156-3 ✅ Slaže se, nema retka → „Potvrdi” upiše redak I prebaci statuse
+
+> ✅ **S157 — zamijenjen T-S157-3** (košara poslije sidra, gdje se saldo mora pomaknuti).
 
 (Nakon što je Claude vratio stanje.)
 
@@ -75,7 +85,9 @@ dio redaka nije prebačen (prava) — javi broj.
 
 ---
 
-## T-S156-4 ⬜ Brane u traci (ništa se ne upisuje)
+## T-S156-4 ✅ Brane u traci (ništa se ne upisuje)
+
+> ✅ **S157 — zamijenjen T-S157-6** (isti koraci, na košari B).
 
 1. „banka skinula” = `1244,74`, **bez** dana → siva poruka *„Upiši i dan kad je banka skinula
    — s ekrana banke, ne pogađaj.”*, gumba **nema**.
