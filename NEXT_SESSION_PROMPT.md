@@ -1,4 +1,4 @@
-> Pisano protiv commita **S158** na `test-branch` (iza `fc0ffd3`; `main` = `e8afdac`, deploy S157 — S158 nije dirao app).
+> Pisano protiv commita **S158** na `test-branch` (zadnji S158 commit: ovaj, iza `02a03ca`; `main` = `e8afdac`, deploy S157 — S158 nije dirao app).
 > ⚠ Ako `git log` pokazuje noviji commit od S158, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
@@ -12,7 +12,11 @@
 
 - **Dokument procesa je prepisan:** [`docs/FINANCIJE_PROCES.md`](docs/FINANCIJE_PROCES.md) —
   model u jednoj stranici, **tri aktivnosti** (unos · potvrda naplate · usklađenje s izvodom),
-  §4 popis onoga što škripi (T1–T25), §5 naredbe.
+  §4 popis onoga što škripi, §5 naredbe. **§4 je sada JEDINI popis otvorenog posla Financija**
+  (T1–T32): u njega su preseljene i financijske stavke backloga (C1, C5, PBZVISA, RF `Izvod
+  opis`…, puni tekst §8). U backlogu je ostao samo pokazivač i K0–K5.
+- **Razvrstač sada preimenuje izvod i u Kokinoj OneDrive mapi** (`Obavijest o učinjenim
+  troškovima.pdf` → `MC_2026-10.pdf`) — ništa ne briše, zauzeto ime ne prepisuje.
 - **Rujanski MC izvod je obrađen i uvezen:** košara za **11.10. = 55 stavki / 1.189,34 €**, točno
   kao izvod. Nađena i riješena dva duplikata (Plitvice, Hlace), Audible upisan u dolarima, 15 rata
   starih planova koje nitko nije upisao.
