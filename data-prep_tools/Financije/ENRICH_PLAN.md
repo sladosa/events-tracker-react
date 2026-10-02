@@ -1575,3 +1575,19 @@ donio **drugi** skupni redak (i on miče saldo). Dodano `skupna_vec_upisana`: **
 ispravi u appu pa `--zigosi`. Za ostale ZABA retke tolerancije i dalje nema (`Cash 100,00`, S114).
 Provjereno na umjetnim retcima (1 dan ⇒ preskočeno; 5 dana, drugi iznos, bankomat ⇒ ostaju).
 Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.
+
+### S158 (2026-10-02) — MC izvod 2026-09, buduće rate, alati mjesečnog toka
+
+- **`MC_2026-09`** prvi stvarni MC prolaz: košara 11.10. zatvorena u cent (55 / 1.189,34) uvozom
+  17 novih + 6 izmjena + 1 brisanje. `_filled` iz `fill_from_izvod --mc` **nije** uvezen sirov
+  (3 duplikata zbog malog pomaka iznosa) — file složen skriptom (scratchpad).
+- **`rate_alat.py`** — plan po mjesecu početka (13 „usporednih" grupa → 0), minute lokalno i
+  zajedničke, prepoznaje vlastite generirane rate (inače generira dvaput), `~` na zadnjoj rati.
+  Uvezeno 37 MC rata + 7 naknada `1,32` (jednokratna skripta). Visa (19 rata) nije generirana.
+- **`_db.py`** `target()`, `cat_transakcija()`, `load_env('test')` → `.env.local` + traži service
+  ključ. **`_izvodi.py`** (novo) — `svi`/`nadji`/`put`. Prebačeni: `uskladi_izvod`,
+  `fill_from_izvod`, `visa_uvoz_izvoda`, `visa_kosare`, `make_saldo_anchors`, `pregled_stanja`
+  (izlaz u `Financije/izlazi/`), `rate_alat`. `kosara_naplate.py` → `Obsolete/`.
+- **`fill_from_izvod.py`** — regex rate: `\x08RATA` → `\bRATA` (pokvareno od S126).
+- Ispisi kontrolnih alata identični prije/poslije (diff). Mapa podataka: korijen `izvodi/`,
+  `izlazi/`, `_arhiva/` (`povijest_migracije/`, `izlazi/`, `Obsolete/`).

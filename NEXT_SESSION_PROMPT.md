@@ -1,8 +1,8 @@
-> Pisano protiv commita **`e8afdac`** (S157, = `main` = deploy) + docs commit rituala odmah iza njega na `test-branch`.
-> ⚠ Ako `git log` pokazuje noviji commit od S157 rituala, čitaj ovo kao **povijest**, ne kao stanje.
+> Pisano protiv commita **S158** na `test-branch` (iza `fc0ffd3`; `main` = `e8afdac`, deploy S157 — S158 nije dirao app).
+> ⚠ Ako `git log` pokazuje noviji commit od S158, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S157 (2026-10-01)
+# Sljedeća sesija — nakon S158 (2026-10-02)
 
 ---
 
@@ -10,39 +10,53 @@
 
 ## Što je napravljeno
 
-**Traka „Čeka potvrdu" je na PROD-u** (deploy S156 + S157, 01.10.). Testirana uživo na TEST-u,
-koji je sada **kopija PROD-a** — svih 6 testova prošlo.
-- Popravljena greška zbog koje je traka pokazivala `[object Object]` umjesto provjere.
-- **Nova zaštita:** ako je Koka naplatu već upisala sama (npr. opis „MC"), traka je nađe po
-  iznosu i pita *„Je li to ova naplata?"* — „Da" je ispravi u dogovoreni oblik, umjesto da
-  upiše drugu (saldo bi je brojao dvaput).
-- Redak naplate iz trake sada nosi i **Smjer = Isplata** (bez njega Edit nije pokazivao iznos).
-- Novi dokument: **`docs/FINANCIJE_KOKA_PROCES.md` §2.2 — mjesečni tok danas**: tko, kada i
-  kojom naredbom (MC traka, Visa alat, „kad se ne slaže", ZABA/RF izvod).
+- **Dokument procesa je prepisan:** [`docs/FINANCIJE_PROCES.md`](docs/FINANCIJE_PROCES.md) —
+  model u jednoj stranici, **tri aktivnosti** (unos · potvrda naplate · usklađenje s izvodom),
+  §4 popis onoga što škripi (T1–T25), §5 naredbe.
+- **Rujanski MC izvod je obrađen i uvezen:** košara za **11.10. = 55 stavki / 1.189,34 €**, točno
+  kao izvod. Nađena i riješena dva duplikata (Plitvice, Hlace), Audible upisan u dolarima, 15 rata
+  starih planova koje nitko nije upisao.
+- **Buduće MC rate su u bazi** (37 rata + 7 naknada): košara 11.11. = 499,18, 11.12. = 434,05.
+  Traka 11. u mjesecu više ne čeka izvod da bi znala za rate.
+- **Alati su ujednačeni:** jedna naredba za bazu (`$env:ET_TARGET='prod'`), PDF samo imenom,
+  Visa uvijek `PBZVISA_`, mapa `data-prep_data/Financije/` pospremljena (ništa obrisano).
 
 ## Što dolazi — po datumu
 
-1. **~05.–07.10. — Visa (po starom, bez trake).** Koka pošalje `PBZVIZA_2026-09.pdf` u OneDrive
-   `Izvodi` → ti `visa_uvoz_izvoda.py` → Koka uveze. Postupak **B** u §2.2. Javi Claudeu kad
-   izvod stigne — zajedno prođemo dry run i brojke.
-   ⚠ Naknadu `0,17` na RF-u upiši kao `Bankovni troškovi`, opis `Naknada` — nikad `Visa`.
-2. **11.10. — prva prava MC košara u traci (Koka, PROD).** Ona upiše iznos i dan s ekrana banke
-   → Potvrdi (ili „Upiši naplatu…" ako se ne slaže). **T-S156-6.** Ti kao grantee pogledaš da
-   vidiš usporedbu, ali ne gumb: **T-S156-5**.
-   ⚠ Prije toga Koka na mobitelu **zatvori i ponovo otvori karticu** (stari bundle, S118).
-3. **Kad stigne ZABA izvod za listopad** — postupak **E**; skupna MC naplata mora biti
-   „preskočena": **T-S156-7**.
-4. Iz ranije: Koka T-S154-2 (`+` iz prve na iPhoneu), T-S152-7 kad stigne izvod.
+1. **~05.–07.10. — Visa izvod za rujan.** Javi kad stigne. To je sesija za **Visa buduće rate**
+   (v. dolje, korak 1). Naknadu `0,17` na RF-u upiši kao `Bankovni troškovi`, opis `Naknada`.
+2. **11.10. — Koka u traci:** upiše iznos i dan s ekrana banke. Ako je banka skinula 1.189,34 →
+   **✓ slaže se → Potvrdi**. Prije toga zatvori i ponovo otvori karticu na mobitelu.
+   (T-S158-1 = T-S156-6.)
+3. **Kad stigne ZABA izvod** — §5 „ZABA"; T-S156-7 i T-S158-5.
+4. Koka/ti: obrađeni PDF u OneDriveu → podmapa `Obrađeno` (prijedlog T25, vaša odluka).
 
-## Redoslijed — što slijedi
+## Daljnji koraci — prijedlog (Saša je tražio jasan mjesečni algoritam umjesto sesije svaki mjesec)
 
-1. Gore navedeno.
-2. **Ako se 11.10. NE slaže** → izmjeriti bi li naznake (Backlog C5 „Gdje bi mogla biti
-   razlika?") pogodile uzrok, pa ih tek onda graditi. Postupak „kad se ne slaže" za MC
-   (§2.2 **D**, koraci 2–3) još nije izveden uživo — tada ga provjeriti i ispraviti u dokumentu.
-3. **Visa u traku** (Backlog C5, cilj ~05.11.): širi prozor dana, `text: "Visa"`,
-   `fill_from_izvod.py` čita tekst iz configa, spec ažuriran.
-4. **F5** (`Dashboard` sheet — `due` config putuje Excelom) · B5 ostatak · K-1.
+**Načelo:** razdvojiti **rutinu** od **razvoja**. U mjesečnom krugu se alati **ne mijenjaju** —
+što zapne, ide na popis §4. Jednom mjesečno, kad se krug zatvori (~15.), jedna sesija održavanja
+uzme vrh popisa. Tako svaki mjesec ne postaje novi projekt.
+
+1. **Visa buduće rate (uz Visa izvod, ~05.–07.10.).** Nisu napravljene jer Visa nema stalan dan
+   naplate (5. je najčešći, ali i 4., 6., 7.). Plan: generirati 19 rata (7 planova) s danom **5.**
+   kao procjenom — `visa_uvoz_izvoda` ionako upisuje **stvarni dan** kad izvod stigne. ⚠ Uvjet:
+   `visa_uvoz` mora prepoznati generiranu ratu (nema `Izvod opis`), inače bi je dodao drugi put —
+   isti kvar koji je danas uhvaćen u `rate_alat`. Zato rate + rujanski izvod u **istoj** sesiji:
+   generiraj → `visa_uvoz` dry run → mora ih spariti, ne dodati.
+2. **Mjesečni algoritam kao alat, ne kao sjećanje:** `mjesec.py` — jedna naredba koja samo čita i
+   kaže **što je sljedeće**: koji PDF čeka u inboxu, koji izvod nije obrađen, stanje košara (Σ vs
+   naplata), ima li planova bez budućih rata, `N/A` redaka, koliko je staro zadnje sidro po računu.
+   Ti pokreneš `mjesec.py` i napraviš ono što piše; §5 dokumenta se svede na tablicu koraka.
+3. **Jedna naredba po izvodu** (`obradi_izvod.py`, T4 + T13–T19 + T23 + T24): prepozna vrstu,
+   napiše gotov uvozni file (ispravci malih pomaka umjesto duplikata, duplikati prijavljeni,
+   rate klasificirane po prethodnoj rati, naknade, `Status` ostaje `Planiran`) i kaže očekivane
+   brojke pregleda. **Test je spreman:** rujanski MC slučaj ima poznat točan odgovor (17 novih,
+   5 ispravaka, 1 duplikat) — alat ga mora reproducirati.
+4. **App (zasebno, traži deploy):** T12 Σ košare u delta sheetu po jednom dospijeću, T22 rata
+   modal za MC (ostatak na zadnjoj rati), Visa u traku (~05.11.).
+
+Ciljni mjesečni krug kad je 1–3 gotovo: **izvod stigne → `razvrstaj` → `obradi_izvod` → Koka uveze
+→ 11. traka Potvrdi** (+ `mjesec.py` kad nisi siguran gdje si).
 
 ---
 
@@ -50,42 +64,36 @@ koji je sada **kopija PROD-a** — svih 6 testova prošlo.
 
 ## Stanje grana i baza
 
-`main` = `e8afdac` (S156 + S157, deployano). `test-branch` = isto + ritual S157.
-`sql/055` na **TEST i PROD** (izmjereno: `rpc_area_due_basket_members` na PROD-u odgovara
-`22023 Group attribute slug … not found` = postoji i provjerava). `sql/SCHEMA_*.sql` osvježeni.
-PROD `areas.settings.dashboard.widgets[0].due.settle` = `{tip, smjer: Isplata, podtip, izvorplacanja}`
-(Saša SQL-om, izmjereno čitanjem). TEST isto.
+`main` = `e8afdac` (deploy S157). `test-branch` = S157 ritual + S158 (samo Python alati i docs,
+**bez promjene u `src/`**). PROD podaci promijenjeni uvozima (Saša kao Koka): `MC_2026-09_uvoz.xlsx`
+(17 novih / 6 izmjena / 1 brisanje), `rate_2026-10_B.xlsx` (37), `naknade_rata_2026-10.xlsx` (7);
+Kokin dupli plan Plitvice (3 retka) obrisan u appu. TEST = kopija PROD-a od **01.10.** (prije svega
+ovoga) — za test nad današnjim stanjem: `backup_db.py --env test` → `prod_to_test.py --apply`.
 
-## TEST = kopija PROD-a (01.10.2026.)
+## Novo u S158
 
-`data-prep_tools/Tools/prod_to_test.py` (dry run zadano; `--apply` zamijeni TEST `Financije_all`:
-eventi s PROD ID-evima, atributi, sidra, `validation_rules`; sve pod TEST vlasnikom; BROJI na
-kraju). Backup TEST-a prije: `data-prep_data/_backup/test/2026-10-01_1135`.
-Scenarij za ponovno testiranje trake (radni stol, gitignored):
-`Claude-temp_R/s156_test_state.py --setup | --plant | --show | --restore` — košara A = MC 11.08.
-(prije sidra 06.09.), B = MC 11.09. (poslije). **Stanje sada: `--restore` izveden** — TEST je
-točna kopija PROD-a (5.292 / 5.292). `orig.json` + `meta.json` u `Claude-temp_R/s156_state/`;
-marka vremena je prvi `--setup` — `--setup` briše sve u prozorima košara nastalo poslije nje.
-⚠ Kopija stari: PROD dobiva nove retke, TEST ne. Prije sljedećeg testa nad stvarnim podacima
-— novi `backup_db.py --env test`, pa `prod_to_test.py --apply`, pa `s156_state` obrisati
-(original se snima nanovo).
-
-## Novo u S157
-
-- `dueConfirm.ts`: `loadCandidates` (FK hint `events_category_id_fkey`; zajednički za pravilo B i
-  C), `findSuspectRows`, `attributeNames`, `adoptSettleRow` (atributi pa opis, pod autorom eventa,
-  broji), `settleBasket(..., suspectsDismissed)` — brana pravila C; `createSettleRow` staje na
-  atributu čiji `depends_on` roditelj nije u configu.
-- `dueBaskets.ts`: `findSuspectSettleRows`, `adoptChanges` (uvozi `passesFilters` iz
-  `confirmedRowEdit`). `dueSettle.test.mjs` 55 tvrdnji.
-- `retry.ts`: `toError` — Supabase `error` objekt → `Error(message (code))`.
-- `DueStrip.tsx`: `check` (pravilo C na klik), žuta kutija pitanja, siva kutija ispravka, „tražim…"
-  i tijekom osvježavanja.
+- `_db.py`: `target()` (ET_TARGET, krivo ime pada), `cat_transakcija()` (kategorija po imenu),
+  `load_env('test')` → `.env.local` + traži service ključ (bio anon ⇒ RLS bez `Financije_all`).
+- `_izvodi.py` (novo): `svi`/`nadji`/`put` — cijeli `izvodi/` osim `duplikati/`.
+- `uskladi_izvod`, `rate_alat`: `--env` zadano `target()` (bili `prod`!). `uskladi_izvod --koka`
+  opcionalno. `fill_from_izvod`: PDF imenom, `--presedan` zadano iz `ET_TARGET`, regex
+  `\x08RATA` → `\bRATA` (T24). `visa_uvoz_izvoda`, `visa_kosare`, `make_saldo_anchors`,
+  `pregled_stanja` (izlaz `Financije/izlazi/`) na `_izvodi`. `kosara_naplate.py` → `Obsolete/`.
+- `rate_alat.plans()`: ključ (trgovac, N, mjesec početka, iznos); `prolaz_b` prepoznaje generirane
+  rate; `slobodne_minute` lokalno + dijeljeno; zadnja rata `~`.
+- PDF-ovi: `PBZVIZA_2026-07/08` → `PBZVISA_`; `MC_2026-09` u `Analizirani_izvodi/`.
+- CLAUDE.md: S145 pravilo ispravljeno (Visa prva / MC zadnja rata), zamka „Analizirani" zatvorena,
+  ET_TARGET vrijedi za sve alate. `data-prep_tools/CLAUDE.md`: blok „Rate i MC izvod (S158)".
 
 ## Otvoreno / neverificirano
 
-- **Prvi pravi upis iz trake na PROD-u** (11.10.) — sve dosad je bilo na TEST-u.
-- `DOSPJELO_SPEC` još navodi Visa `text: "PBZCard d.o.o."` i D4 „Ne — dok se ne objasni" —
-  zastarjelo (S148 riješio, Saša odlučio da Koka potvrđuje i Visu); ispraviti kad se Visa radi.
-- Visa listopad: 12 redaka `Datum naplate` 03.10. + 20 na 05.10. (staro pravilo `next:3`) —
-  `visa_uvoz_izvoda.py` ih poravna na stvarni dan; provjeriti u dry runu.
+- **T24 higijena:** 38 MC rata bez `Rate?`/`Rata br` (12 iz 02.10.); `rate_alat --only a` nudi
+  91 ispravak (i Visa, mnogo Sašinih redaka ⇒ „fix as owner"). Nije pušteno.
+- **T-S158-2:** prepoznaje li `uskladi_izvod`/`fill_from_izvod` generirane MC rate u studenom
+  (sparivanje po iznosu unutar košare — trebalo bi; neizmjereno). Zadnje rate s `~` mogu odstupati
+  za cent ⇒ isplivaju kao par „ZA UVOZ" + „PITANJA" (T13).
+- **Visa listopad:** 12 redaka `Datum naplate` 03.10. + 20 na 05.10. — `visa_uvoz` poravna.
+- `DOSPJELO_SPEC` još navodi Visa `text: "PBZCard d.o.o."` i D4 — zastarjelo, ispraviti s Visom.
+- 2 zastarjela MC plana iz 2025. (Bauhaus 8/12, Inter Cars 2/6) — rupa u analizi, ne u saldu.
+- Uvozni fileovi su u `C:\Users\Saša\Downloads\` (izvan repoa); skripte kojima su složeni su u
+  scratchpadu sesije (nestaju) — logika je opisana u `DONE_HISTORY` § S158.

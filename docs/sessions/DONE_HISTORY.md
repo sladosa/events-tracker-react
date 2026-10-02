@@ -7294,7 +7294,7 @@ v. „Critical rules". Zatvorit će ga rujanski izvadak; **ne dopisivati ručno*
 `set_attribute`. **Pomiče okidač Faze 3**, koja je mjerila `Datum naplate` (0 praznih),
 a to polje **pune Python alati u fileu**. Saša ispravio ručno.
 
-⚠ **NALAZ: vanjski backup bio star 5 dana** (`D:\...ackup.log` 10.09. 13:25) i to se
+⚠ **NALAZ: vanjski backup bio star 5 dana** (`D:\...\backup.log` 10.09. 13:25) i to se
 **nigdje ne vidi** — otkriveno samo zato što je Saša pitao gdje je backup. Isti razred
 kao „sidra se ne mogu vidjeti iz aplikacije" (S116). Pokrenut nakon oba današnja upisa.
 
@@ -8125,3 +8125,61 @@ CLAUDE.md zamke + Key files; handoff prepisan.
 | T-S157-4 | TEST, B + ručni „MC” redak ⇒ „Je li to ova naplata?” ⇒ Da ⇒ ispravak (opis, Tip, Podtip) ⇒ Potvrdi; pločica ista, jedan redak | ✅ S157 — izmjereno: jedan skupni redak (ispravljen ručni), 48/48 Izvrsen, ZABA 11.705,69 cijelo vrijeme |
 | T-S157-5 | TEST, B + ručni redak ⇒ „Ne” ⇒ tek tada sažetak; „Ne” ne preživljava sljedeći klik | ✅ S157 — izmjereno: pitanje u koracima 1/3/4, bez pitanja uz 1000; baza netaknuta |
 | T-S157-6 | TEST, B: brane (prijašnji T-S156-4) + žuta kutija na uskoj širini | ✅ S157 — izmjereno: bez dana, 15.09., `abc`, `0`, zatvaranje kutije, iPhone SE 375 px |
+
+---
+
+## S158 — audit procesa Financija; MC izvod 2026-09 u cent; T11 buduće rate; T5–T10 alati (2026-10-02)
+
+Saša je otvorio sesiju kao *audit i sanity check*: proces mu se činio presložen, a
+`data-prep_data/Financije/` puna zastarjelih datoteka. Sesija je krenula od razgovora o modelu,
+a završila prvim stvarnim prolazom MC izvoda kroz cijeli tok.
+
+**Dokument.** `FINANCIJE_KOKA_PROCES.md` → **`FINANCIJE_PROCES.md`**, prepisan oko Sašinog opisa:
+§1 model (vrste transakcija s dva datuma, dva cilja — saldo / analiza — kao dva reza istih
+podataka, što izvod potvrđuje), §2 **tri aktivnosti** (unos · potvrda skupne naplate ·
+usklađenje s izvodom), §4 **popis trenja T1–T25** (stanje nije konačno), §5 naredbe.
+Zaostaci iz S125 preseljeni u backlog. Saša opisao Kokin laptop (desktop: `Izvodi – OneDrive`,
+app, `Downloads`) ⇒ mjesečni posao je laptop, mobitel je dnevni unos.
+
+**MC izvod 2026-09 (stigao 02.10., naplata 11.10.).** Razvrstač ga prepoznao (`Obavijest o
+učinjenim troškovima.pdf` → `MC_2026-09`). Košara 11.10. u bazi **40 / 859,58**, izvod
+**55 / 1.189,34**. Excelov „Σ košara" (1.185,38) bio je **zbroj sve tri buduće naplate** pa je
+razlika 3,96 izgledala sitno (T12). Razlika 329,76 = 15 rata starih planova + 4 naknade (365,91)
++ 2 neupisane kupovine + dva duplikata (Hlace i carape; plan Plitvice upisan dvaput — banka u
+retku u zagradi nosi datum kupnje **12.09.**, Saša potvrdio dnevnikom; Kokin plan obrisan) +
+4 retka s malo drugačijim iznosom (Audible upisan u USD, toner, cent rate, FENGHUA 28,79→33,10).
+Uvozni file složen skriptom iz Sašinog delta exporta (`fill_from_izvod` bi dao 3 duplikata, T13);
+Saša uvezao kao Koka, „Ispravi kao vlasnik Aree": 17 novih · 6 izmjena · 1 brisanje.
+**Izmjereno: košara 11.10. = 55 / 1.189,34 = izvod u cent.** `Status` ostaje `Planiran` do naplate.
+
+**T11 — buduće rate.** `rate_alat.py` prolaz B (S130) nikad pušten; preskakao je **13 grupa**
+„usporednih planova" — baš rate koje su falile. Popravci: plan = (trgovac, N, **mjesec početka**
+= `Datum naplate` − (n−1), iznos); minute zajedničke za sve planove i u lokalnom vremenu;
+**generirana rata se prepoznaje** (dan kupnje + Izvor + Broj rata + iznos), inače bi svako
+pokretanje generiralo isto ponovno (izmjereno: nakon uvoza nudio istih 37); zadnja rata `~`.
+Uvezeno **37 rata / 12 planova** + **7 naknada `1,32`** (T23: naknada dolazi uz svaku ratu plana
+s retkom u zagradi). Košare: 11.11. **499,18**, 11.12. **434,05**. Visa (7 planova / 19 rata)
+**nije** generirana — nema stalan dan naplate.
+
+**T22 — CLAUDE.md S145 ispravljen.** „Ostatak nosi PRVA rata" vrijedi samo za **Visu** (28/28);
+**MC** ga stavlja na **zadnju**, rata zaokružena naviše (16/16; Lufthansa 62,01 · 62,01 · 62,00).
+Rata modal (`splitRataAmounts`) za MC nedjeljiv iznos odstupa za cent — nije popravljeno.
+
+**T5–T10 — alati.** `_db.target()` (svi alati mjesečnog toka biraju bazu kroz `ET_TARGET`;
+`uskladi_izvod` i `rate_alat` su dotad bez `--env` gađali **PROD**), `_db.cat_transakcija()`
+(kategorija po imenu — tvrdi PROD ID je na TEST-u davao 0 redaka bez greške), novi `_izvodi.py`
+(PDF imenom, cijeli `izvodi/` osim `duplikati/` — zatvara zamku „Analizirani" iz S129),
+`PBZVIZA_` → `PBZVISA_`, Kokina Excelica samo uz `--koka`, `kosara_naplate.py` → `Obsolete/`,
+mapa pospremljena (korijen: `izvodi/`, `izlazi/`, `_arhiva/`; 45 datoteka premješteno, nijedna
+obrisana). Ispisi `promet_check`, sidara, `uskladi_izvod`, `visa_kosare`, `rate_alat`
+**identični** prije/poslije izmjena i selidbe (`diff`).
+⚠ **Usput:** `_db.load_env('test')` je čitao `.env.testing` s **anon** ključem — RLS mu je
+pokazivao 6 demo Area, bez `Financije_all`. Sada `.env.local` (service) i staje bez service ključa.
+⚠ **T24:** `fill_from_izvod --mc` od S126 nosio je znak **backspace** u regexu umjesto `\b` ⇒
+nove rate s izvoda nikad nisu dobile `Rate?`/`Rata br`. 38 MC rata u bazi bez oznake (12 današnjih);
+regex popravljen, higijena (`rate_alat --only a`, 91 redak) ostaje za sljedeću sesiju.
+⚠ Bash heredoc je opet pretvorio `\r` u znak CR (u dokumentu `Financije\run.bat`) — uhvaćeno
+skenom na zalutale kontrolne znakove; snippeti idu kroz Write, ne heredoc.
+
+**Saša na kraju:** brine ga Visa (buduće rate nisu napravljene) i to što svaki mjesec ima
+poseban session i dorađujemo alate — želi **jasan mjesečni algoritam**. Prijedlog je u handoffu.

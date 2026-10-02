@@ -58,7 +58,7 @@
     (b) banka više ⇒ redak u SUSJEDNOJ košari = razlici ⇒ krivi `Datum naplate` (S112);
     (c) par istog iznosa ±2 dana ⇒ duplikat (S148); (d) kupovine s ruba ciklusa.
     Naznake, ne presude — tipfelere i neupisano hvata samo izvod (postupak „kad se ne slaže",
-    `FINANCIJE_KOKA_PROCES.md` §2.2). **Zašto čeka:** na prvoj stvarnoj razlici izmjeriti bi li
+    `FINANCIJE_PROCES.md` §5). **Zašto čeka:** na prvoj stvarnoj razlici izmjeriti bi li
     (a)–(d) pogodili uzrok; projektirati naslijepo = upozorenje koje se nauči otklikati.
   - **Visa u traku** (S157): D4 razlog riješen u S148; Koka potvrđuje i Visu (Sašina odluka).
     Prije: 12 redaka `Datum naplate` 03.10. → stvarni dan (alat to radi sam), širi prozor dana
@@ -294,6 +294,12 @@ preimenuje.
 ⚠ Oblik rate se razlikuje i to je **već zapisano** u `rate_alat.py`: MC `X RATA n/N`,
 Visa `RATA n/N-X`. Ostale razlike su formatske: dvoznamenkasta godina (`05.06.26.`),
 referencija je 10 znamenki (ne `B0802…`), opis nosi **adresu** (`SPAR - MARTIĆEVA 13 - ZAGREB`).
+
+- **🟡 Dva zaostatka iz S125** (preseljeno iz `FINANCIJE_KOKA_PROCES.md` §5 pri prepisivanju, S158):
+  (a) **sumnjiv redak u izvještaj o uvozu** — preskočen po `row_hash`, a u međuvremenu promijenjen
+  u appu; pogađa Excel put, koji Koki više nije svakodnevni, pa je niže nego u S125.
+  (b) **„promijenjeno nakon <datum>" vidljivo u listi** — dodiruje filtar s dva uvjeta
+  (`docs/FILTER_SPEC.md`), svjesno odgođeno.
 
 ### Čeka Sašinu odluku prije ijedne linije koda
 
