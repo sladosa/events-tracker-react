@@ -103,7 +103,7 @@ podaci hrane i AI sloj.
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist            |
 | `data-prep_tools/Financije/ENRICH_PLAN.md` | Financije pipeline — alati, koraci, nalazi po sesijama                          |
-| `docs/FINANCIJE_PROCES.md`               | **Kako Koka i Saša vode `Financije_all`** (prepisano S158, bivši `FINANCIJE_KOKA_PROCES.md`) — §1 model (vrste transakcija, dva cilja: saldo / analiza, što izvod potvrđuje), §2 tri aktivnosti (unos · potvrda naplate · usklađenje s izvodom), **§4 popis trenja T1–T10 — stanje nije konačno**, §5 naredbe danas (kvarljivo), §6 ploha „Raščišćavanje izvoda“ (K1–K5) |
+| `docs/FINANCIJE_PROCES.md`               | **Kako Koka i Saša vode `Financije_all`** (prepisano S158, bivši `FINANCIJE_KOKA_PROCES.md`) — §1 model (vrste transakcija, dva cilja: saldo / analiza, što izvod potvrđuje), §2 tri aktivnosti (unos · potvrda naplate · usklađenje s izvodom), **§4 = JEDINI popis otvorenog posla Financija (T1–T32, i bivše stavke backloga C1/C5/PBZVISA/RF; puni tekst §8) — pri planiranju sesije o Financijama čitaj njega, ne backlog**, §5 naredbe danas (kvarljivo), §6 ploha „Raščišćavanje izvoda“ (K1–K5) |
 | `NEXT_SESSION_PROMPT.md`                  | **Na početku svake sesije** — handoff, DIO 1 netehnički / DIO 2 tehnički. Prepisuje se na kraju svake sesije (v. „End of session" 5). ⚠ Provjeri commit u zaglavlju: ako nije zadnji, čitaj ga kao povijest, ne kao stanje |
 | `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** (⚠ gitignoriran — samo lokalno + `D:`)           |
 
