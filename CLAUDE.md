@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S158).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S159).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 114 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 127 | [Critical rules](<#Critical rules>) | X |
 | 1216 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1661 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1677 | [Key files](<#Key files>) |  |
-| 1780 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1800 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1822 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1848 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1888 | [Open bugs](<#Open bugs>) | ~ |
-| 1997 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2042 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2139 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2147 | [Backlog](<#Backlog>) | ~ |
-| 2151 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2159 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1663 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1679 | [Key files](<#Key files>) |  |
+| 1782 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1802 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1824 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1850 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1890 | [Open bugs](<#Open bugs>) | ~ |
+| 1999 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2044 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2141 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2149 | [Backlog](<#Backlog>) | ~ |
+| 2153 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2161 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2317 redaka, 18 sekcija._
+_Ukupno 2319 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1280,7 +1280,9 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   ulaz je odgovor poznat (`loadedFor`), a `loaded = loadedFor === areaId`. Prozor u
   kojem zastavica laže tada **ne može nastati**, umjesto da se zatvara.
   ⚠ Vrijedi za **svaki** hook s parametrom: `loaded`/`ready`/`done` je tvrdnja o
-  **ulazu**, ne o hooku. Isti razred kao `BUG-S121-AREACTX` (*neuspjelo čitanje nije
+  **ulazu**, ne o hooku. **S159: isti kvar nađen u `useListColumnValues`** (zaliha
+  `loaded` od prošlih redaka ⇒ nove ćelije `—` umjesto placeholdera) — pravilo nije
+  samo od sebe stiglo do ostalih hookova; tko piše `loaded`, neka piše `loadedFor`. Isti razred kao `BUG-S121-AREACTX` (*neuspjelo čitanje nije
   „nema ničega“*) — ovdje je treće stanje **„još ne znam“**, i jednako je opasno.
 
 - **⚠ GUARD KOJI ŽIVI U `useCallback`-u DIJELI SUDBINU NJEGOVE DEP LISTE — faza 4 je bila MRTVA
@@ -1960,11 +1962,10 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 
 - **D2 (prolaz 2026-09-26): grantee ne briše tuđe — VEĆ vrijedi na tri mjesta** (RLS od S134;
   UI nema Delete ni kvačicu, `canSelect={!sharedContext}`; Excel preskoči tuđi redak).
-  Ostaje **pokus na TEST-u**: grantee označi Kokin redak `Delete?` i uveze — poruka mora
-  jasno reći „tuđi redak, brisanje odbijeno“. Inače popraviti tekst.
-
-- **„Import as mine" za write grantee unutar iste shared aree** nema smisla (pravi put je
-  Leave Area ili re-import u novu vlastitu Areu) — flag, nije implementirano
+  **S159: čitanjem koda nađeno da poruka NIJE bila jasna** — `skip` je oznaku gutao bez riječi,
+  a `import_as_mine` je prvo nulirao `event_id` pa javljao *„no saved record to delete"*
+  (neistina: redak postoji, samo je tuđi). Sada oba kažu „pripada drugom korisniku — brisanje
+  tuđeg retka nije moguće“ (`excelImport.ts`, grana tuđeg retka). Pokus uživo: **T-S159-5**.
 
 ---
 
@@ -1974,6 +1975,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > provjereno nosi li koji od njih pravilo kojeg nema drugdje: tri su ga nosila i sva tri su
 > zadrzana (dva gore, `Postgres upgrade` u Backlogu). Isti postupak kao „Spaseno iz plana" (S137).
 
+- **~~„Import as mine" unutar dijeljene Aree~~** — zatvoreno S159 (D5): opcija je ugašena kad tuđi retci žive u Arei koju vidiš a nije tvoja (kopija bi bila duplikat u istoj Arei, saldo dvaput); za file stranca ostaje.
 - **~~BUG-S155-EDITNAN~~, ~~BUG-S155-VIEWSTALE~~** — zatvoreno S155: pravila su u § UI (React); čuva `dateInput.test.mjs`, T-S155-8/9 ✅. ⚠ `BUG-S131-VIEWSTALE` („Activity not found" nakon Edita) je vjerojatno isti keš — ako se javi nakon S155, pretpostavka je pala.
 - **~~BUG-S154-DATARANGE~~** — zatvoreno S154: „Data range" (i `From` kod All Time) brojao je cijelu bazu — zakašnjeli odgovor za `areaId = null` pregazio filtrirani, a palo čitanje kategorija / Area bez kategorija davali su „bez filtra". Odgovor sada nosi ključ ulaza (razred BUG-S145-OVERVIEWTAB), greška se kaže umjesto „danas–danas". Čuva `dateBounds.test.mjs` (stari hook ruši 8/15). **Neverificirano uživo: T-S154-1.**
 - **~~BUG-S117-RULESHAPE~~** — zatvoreno S152: jedan graditelj `validation_rules` za panel, uvoz i „Other"; uvoz uspoređuje po značenju. Pravilo: § Model / atributi; čuva `validationRules.test.mjs` (40 tvrdnji, sabotaže ruše 5/3/3).

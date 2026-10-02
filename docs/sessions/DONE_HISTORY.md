@@ -8183,3 +8183,58 @@ skenom na zalutale kontrolne znakove; snippeti idu kroz Write, ne heredoc.
 
 **Saša na kraju:** brine ga Visa (buduće rate nisu napravljene) i to što svaki mjesec ima
 poseban session i dorađujemo alate — želi **jasan mjesečni algoritam**. Prijedlog je u handoffu.
+
+---
+
+## S159 — ne-Financije backlog: B3, fan-out, B6, D2/D4/D5, F4, C4 (2026-10-02)
+
+Saša je tražio sve što iz backloga **nije** Financije, „male stavke + F4 + C4 ako stigneš".
+Sve u `src/` + `netlify/functions/help.ts`, bez migracije. `npm run check` zeleno, build OK.
+
+**B3 — Help zna Areu.** `src/lib/helpContext.ts` (`describeAreaForHelp`) šalje ime Aree i
+činjenice o njoj (ima li `dashboard`, `list_columns`, pravila, rata, dijeljena li je i s kojim
+pravom); `help.ts` ih stavlja u system prompt uz uputu „ako Area mehanizam nema, reci to prvo".
+Teme se **ne** filtriraju (pravilo iz S144). Mrtva grana `context.areaName` je time oživljena.
+
+**Structure fan-out.** `useStructureData({ autoFetch: false })` u `AppHome` — ondje se čita samo
+`refetch` (Export/Import), a instanca je na svakom mountu slala ~39 `count` upita. Maknut i
+suvišan `refetchStructure()` nakon Structure uvoza (tablicu osvježava `refreshKey`).
+
+**B6 — `—` dok se lista učitava.** Placeholder postoji od S120; uzrok je bio `loaded` koji je
+ostajao `true` od **prošlog** skupa redaka (razred BUG-S145) ⇒ `loaded` se sada izvodi iz
+potpisa ulaza (`forSig`), a redak koji već ima odgovor ga zadrži pri „load more".
+⚠ Usput: upit vrijednosti nije bio paginiran (`rows × slugs` prijeđe 1000 nakon par „load more"
+⇒ rez bez greške ⇒ `—`) — sada `fetchAllPagedIn` + `.order('id')` + `withRetry`; palo čitanje
+daje narančasti `?`, ne `—`.
+
+**D4** je bio popravljen ranije (tekst iz S136), backlog nije znao. **D5:** „Import as mine"
+ugašen kad tuđi retci žive u Arei koju korisnik vidi a nije njegova (kopija = duplikat u istoj
+Arei, saldo dvaput); za file stranca ostaje. **D2:** odgovoreno čitanjem koda umjesto pokusa —
+`skip` je oznaku `Delete?` na tuđem retku gutao bez riječi, a `import_as_mine` prvo nulirao
+`event_id` pa tvrdio „no saved record to delete". Sada oba kažu da redak pripada drugom
+korisniku. Pokus uživo ostaje kao T-S159-5.
+
+**F4 — filtar za brojeve.** `src/lib/attrFilterNumeric.ts` + `op` u `attrFilter` (`gt`/`gte`/
+`lt`/`lte`/`eq`, imena su PostgREST operatori). `value` ostaje **sirov tekst**, broj se parsira
+gdje se primjenjuje (`parseAmountInput`); nepročitan broj **nije** filtar
+(`isAttrFilterActive` ⇒ ni join ni WHERE). Prolazi kroz `applyEventFilters` ⇒ lista, izvoz,
+brojač izvoza, shortcut; profil/`Filter` list nose `iznos: >1000` (`=` na number atributu =
+brojčana jednakost). `deriveDeltaAccount` ne uzima brojčani uvjet kao račun. Dep liste
+`useActivities` proširene na `op` (lint ih ondje ne gleda). UI: operator + polje + „= 1.000,00"
+(kako je pročitano). ⚠ `1.000` = jedan (isti parser kao Add) — piše u Helpu.
+`attrFilterNumeric.test.mjs`: 26 tvrdnji nad **snimljenim lancem upita**; sabotaže (krivi
+stupac / bez provjere parsiranja) ruše 3 i 4.
+
+**C4 — izmjereno Playwrightom na TEST-u** (privremeni spec, obrisan). Backlog „šest upita"
+bio je zbroj **dvije** promjene. Jedna promjena Aree = **3** upita liste: lista s granicama
+**prethodne** Aree (krivi retci na trenutak), nav (500), pa lista opet kad `useDateBounds`
+sjedne. Lijek: uz `periodKey === 'all-time'` lista ne šalje datume (min..max podataka je
+filtar bez učinka) ⇒ **2**; učitavanje 5 → 4 (dev StrictMode duplira). Usput `.order('id')`
+kao jedinstven zadnji ključ liste (leaf ima N eventa iste sesije s istim ključevima sorta).
+⚠ Neizmjereno: promjena Aree čita `categories` 7× i `areas` 4×.
+
+**E2E** (e16, e17, S119, S133, e6, e12): 11/12. Dva **spec** popravka bez promjene appa —
+E12-4 (`'All'` hvatao i „Collapse all") i T-S119-6 (od S152 nepromijenjen re-import kaže
+„Nothing to import"). E12-2 pada na **podacima** TEST-a (Health predložak već kopiran).
+
+7 ručnih testova (T-S159-1..7); T-S159-1 (Help) traži deploy.

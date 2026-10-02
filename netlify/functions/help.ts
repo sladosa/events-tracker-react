@@ -76,6 +76,8 @@ interface HelpRequest {
     page?: string;
     areaId?: string | null;
     areaName?: string | null;
+    /** What this Area has configured (src/lib/helpContext.ts) — B3, S159. */
+    areaFacts?: string[];
     categoryId?: string | null;
   };
   userId?: string;
@@ -116,8 +118,19 @@ export const handler = async (event: { httpMethod: string; body: string | null }
     const contextParts: string[] = [];
     if (context.page) contextParts.push(`page: ${context.page}`);
     if (context.areaName) contextParts.push(`area: ${context.areaName}`);
+    // Tell the model WHERE the user is — never take docs away. A question about
+    // a mechanism this Area lacks is still legitimate; the answer should just
+    // say so first instead of describing UI the user cannot see.
+    const facts = Array.isArray(context.areaFacts)
+      ? context.areaFacts.filter((f): f is string => typeof f === 'string').slice(0, 12)
+      : [];
+    const areaNote = context.areaName && facts.length
+      ? `\nThe current Area "${context.areaName}":\n${facts.map(f => `- ${f}`).join('\n')}\n` +
+        'When the question concerns a mechanism this Area does not have, say so first, ' +
+        'then explain briefly where it would apply.'
+      : '';
     const contextNote = contextParts.length
-      ? `\n\n[User context: ${contextParts.join(', ')}]`
+      ? `\n\n[User context: ${contextParts.join(', ')}]${areaNote}`
       : '';
 
     // Keep last 10 messages to avoid excessive token usage

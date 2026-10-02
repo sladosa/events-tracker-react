@@ -100,7 +100,7 @@ test.describe('E12 — Structure filter segments', () => {
   });
 
   test('E12-4: All segment: own areas + available templates; Fitness template absent', async ({ page }) => {
-    await page.getByRole('button', { name: 'All' }).click();
+    await page.getByRole('button', { name: 'All', exact: true }).click();
 
     // Both own areas and available templates should appear
     // Own fitness area (no "template" badge) should be there
@@ -119,7 +119,7 @@ test.describe('E12 — Structure filter segments', () => {
 
     // All three segment buttons should still be visible
     await expect(page.getByRole('button', { name: 'Mine' })).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByRole('button', { name: 'All' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Templates' })).toBeVisible();
   });
 

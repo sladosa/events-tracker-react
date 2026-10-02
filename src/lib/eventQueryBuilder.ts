@@ -7,6 +7,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID } from '@/types';
+import { numericFilterValue, type NumericOp } from '@/lib/attrFilterNumeric';
 
 // ─────────────────────────────────────────────
 // Filter types
@@ -18,6 +19,8 @@ export interface AttrFilterParam {
   attrDefId: string;
   value: string;
   isExact: boolean;
+  /** F4 — present ⇒ compare `value_number` with `op` (see attrFilterNumeric.ts). */
+  op?: NumericOp | null;
 }
 
 export interface EventQueryFilters {
@@ -44,16 +47,26 @@ export function attrFilterJoinClause(
   attrFilter?: AttrFilterParam | null,
   includeId = false,
 ): string {
-  if (!attrFilter?.attrDefId || !attrFilter.value) return '';
+  if (!isAttrFilterActive(attrFilter)) return '';
   const idField = includeId ? 'id, ' : '';
-  return `, event_attributes!event_attributes_event_id_fkey!inner(${idField}attribute_definition_id, value_text)`;
+  const valueField = attrFilter!.op ? 'value_number' : 'value_text';
+  return `, event_attributes!event_attributes_event_id_fkey!inner(${idField}attribute_definition_id, ${valueField})`;
 }
 
 /**
  * Whether the attr filter !inner join is active (non-empty attrDefId + value).
+ *
+ * ⚠ A numeric condition whose value does not parse is NOT active (F4): the
+ *   join and the WHERE must agree, and filtering by a guessed number is worse
+ *   than showing everything while the person is still typing.
+ *   "In any attribute" never carries `op` — it searches text.
  */
 export function isAttrFilterActive(attrFilter?: AttrFilterParam | null): boolean {
-  return !!(attrFilter?.attrDefId && attrFilter.value);
+  if (!attrFilter?.attrDefId || !attrFilter.value) return false;
+  if (attrFilter.op) {
+    return attrFilter.attrDefId !== ATTR_FILTER_ANY && numericFilterValue(attrFilter) !== null;
+  }
+  return true;
 }
 
 export function isAnyAttrFilter(attrFilter?: AttrFilterParam | null): boolean {
@@ -106,7 +119,10 @@ export function applyEventFilters(query: any, filters: EventQueryFilters): any {
     if (!isAnyAttrFilter(af)) {
       query = query.eq('event_attributes.attribute_definition_id', af.attrDefId);
     }
-    if (af.isExact) {
+    if (af.op) {
+      // F4: `gt`/`gte`/`lt`/`lte`/`eq` are PostgREST's own operator names.
+      query = query[af.op]('event_attributes.value_number', numericFilterValue(af));
+    } else if (af.isExact) {
       query = query.eq('event_attributes.value_text', af.value);
     } else {
       query = query.ilike('event_attributes.value_text', `%${escapeIlike(af.value)}%`);

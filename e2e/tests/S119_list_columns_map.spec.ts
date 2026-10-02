@@ -109,7 +109,10 @@ test.describe('T-S119-6 — ListColumns Map through the Structure roundtrip', ()
     await expect(page.getByText('Import Structure')).toBeVisible({ timeout: 5_000 });
     await page.locator('input[type="file"]').setInputFiles(file);
     await page.getByRole('button', { name: /^import$/i }).last().click();
-    await expect(page.getByText(/import completed successfully/i)).toBeVisible({ timeout: 60_000 });
+    // Since S152 the counters count REAL changes, so an unchanged re-import (step 3–4)
+    // ends with "Nothing to import — all data already exists", not "completed".
+    // Either message means the import ran; what it did is asserted by `readMap`.
+    await expect(page.getByText(/import completed successfully|nothing to import/i)).toBeVisible({ timeout: 60_000 });
   };
 
   /** Locate our Area's `attr` row in the ListColumns sheet, and the Map column. */

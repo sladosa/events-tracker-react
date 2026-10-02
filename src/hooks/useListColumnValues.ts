@@ -23,6 +23,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { fetchAllPagedIn } from '@/lib/supabasePaging';
+import { withRetry, withRetryQuery } from '@/lib/retry';
 import type { ActivityGroup } from '@/hooks/useActivities';
 import type { UUID } from '@/types/database';
 import type { ResolvedColumn } from '@/lib/listColumns';
@@ -37,10 +39,26 @@ export interface RowValues {
 export interface ListColumnValues {
   /** sessionKey → values. A missing key means "not loaded yet", not "empty". */
   byKey: Map<string, RowValues>;
+  /** True only when the answer is for the CURRENT rows and slugs.
+   *
+   *  ⚠ S159 (Backlog B6, S147 sighting): this used to be a plain flag that
+   *  stayed `true` from the previous answer while a new filter / "load more"
+   *  was in flight — so new rows rendered `—` ("no amount") instead of the
+   *  loading placeholder. Same class as BUG-S145-OVERVIEWTAB: `loaded` is a
+   *  claim about an INPUT, so it is derived from the input it was computed for. */
   loaded: boolean;
+  /** The read failed (after retries). Cells must not read this as "empty". */
+  failed: boolean;
 }
 
-const EMPTY: ListColumnValues = { byKey: new Map(), loaded: false };
+interface StoredResult {
+  byKey: Map<string, RowValues>;
+  /** `areaId|slugs|keys` the answer belongs to. */
+  forSig: string | null;
+  failed: boolean;
+}
+
+const EMPTY: StoredResult = { byKey: new Map(), forSig: null, failed: false };
 
 interface Params {
   areaId: UUID | null;
@@ -49,7 +67,7 @@ interface Params {
 }
 
 export function useListColumnValues(p: Params): ListColumnValues {
-  const [result, setResult] = useState<ListColumnValues>(EMPTY);
+  const [result, setResult] = useState<StoredResult>(EMPTY);
 
   // Which slugs the columns actually read. Sorted so the signature is stable.
   const wantedSlugs = useMemo(() => {
@@ -64,21 +82,32 @@ export function useListColumnValues(p: Params): ListColumnValues {
 
   const slugSignature = wantedSlugs.join('|');
   const keySignature = p.activities.map(g => g.sessionKey).join('|');
+  const sig = `${p.areaId ?? ''}#${slugSignature}#${keySignature}`;
 
   useEffect(() => {
     let cancelled = false;
+    const done = (byKey: Map<string, RowValues>, failed = false) => {
+      if (!cancelled) setResult({ byKey, forSig: sig, failed });
+    };
 
     if (!p.areaId || wantedSlugs.length === 0 || p.activities.length === 0) {
-      setResult({ byKey: new Map(), loaded: true });
+      done(new Map());
       return;
     }
 
     (async () => {
-      const { data: defs, error: defErr } = await supabase
-        .from('attribute_definitions')
-        .select('id, slug, categories!inner(area_id)')
-        .eq('categories.area_id', p.areaId);
-      if (defErr || !defs) { if (!cancelled) setResult({ byKey: new Map(), loaded: true }); return; }
+      let defs: unknown[];
+      try {
+        const res = await withRetryQuery(() => supabase
+          .from('attribute_definitions')
+          .select('id, slug, categories!inner(area_id)')
+          .eq('categories.area_id', p.areaId));
+        defs = res.data ?? [];
+      } catch (e) {
+        console.error('useListColumnValues: definitions failed', e);
+        done(new Map(), true);
+        return;
+      }
 
       // P1: the same slug can be defined at several levels of the chain, so a
       // slug maps to a LIST of definition ids, not to one.
@@ -89,17 +118,32 @@ export function useListColumnValues(p: Params): ListColumnValues {
         if (wantedSlugs.includes(d.slug)) wantedIds.push(d.id);
       }
       if (wantedIds.length === 0) {
-        if (!cancelled) setResult({ byKey: new Map(), loaded: true });
+        done(new Map());
         return;
       }
 
+      // ⚠ Paged and chunked (S159): rows × slugs passes PostgREST's 1000-row
+      //   cap after a few "load more" clicks, and the cap cuts WITHOUT an error
+      //   — the rows past it would render `—`, i.e. "no amount".
       const eventIds = p.activities.flatMap(g => g.events.map(e => e.id));
-      const { data: attrs, error: attrErr } = await supabase
-        .from('event_attributes')
-        .select('event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean')
-        .in('event_id', eventIds)
-        .in('attribute_definition_id', wantedIds);
-      if (attrErr || !attrs) { if (!cancelled) setResult({ byKey: new Map(), loaded: true }); return; }
+      let attrs: unknown[];
+      try {
+        const res = await withRetry(
+          () => fetchAllPagedIn<unknown>(eventIds, (chunk, from, to) => supabase
+            .from('event_attributes')
+            .select('id, event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean')
+            .in('event_id', chunk)
+            .in('attribute_definition_id', wantedIds)
+            .order('id')
+            .range(from, to)),
+          r => r.error != null,
+        );
+        attrs = res.data;
+      } catch (e) {
+        console.error('useListColumnValues: values failed', e);
+        done(new Map(), true);
+        return;
+      }
 
       type Row = {
         event_id: string; attribute_definition_id: string;
@@ -138,7 +182,7 @@ export function useListColumnValues(p: Params): ListColumnValues {
         byKey.set(g.sessionKey, { text, num });
       }
 
-      if (!cancelled) setResult({ byKey, loaded: true });
+      done(byKey);
     })();
 
     return () => { cancelled = true; };
@@ -147,5 +191,12 @@ export function useListColumnValues(p: Params): ListColumnValues {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.areaId, slugSignature, keySignature]);
 
-  return result;
+  const current = result.forSig === sig;
+  return {
+    // Rows already answered keep their values while a superset loads ("load
+    // more"); only the new rows show the placeholder.
+    byKey: result.byKey,
+    loaded: current,
+    failed: current && result.failed,
+  };
 }

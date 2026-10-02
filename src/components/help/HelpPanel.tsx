@@ -6,6 +6,7 @@ import { useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
 import { useHelp } from '@/context/HelpContext';
+import { describeAreaForHelp } from '@/lib/helpContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Tab = 'ask' | 'concepts' | 'feedback';
@@ -79,7 +80,7 @@ function useCurrentPage(): string {
 // ── HelpPanel ─────────────────────────────────────────────────────────────────
 export function HelpPanel() {
   const { isOpen, close } = useHelp();
-  const { filter } = useFilter();
+  const { filter, selectedArea, sharedContext } = useFilter();
   const currentPage = useCurrentPage();
 
   // ── Chat state
@@ -161,7 +162,11 @@ export function HelpPanel() {
         body: JSON.stringify({
           question: q,
           history: messages.filter(m => m !== WELCOME).slice(-8),
-          context: { page: currentPage, areaId: filter.areaId ?? null },
+          context: {
+            page: currentPage,
+            areaId: filter.areaId ?? null,
+            ...describeAreaForHelp(selectedArea, sharedContext),
+          },
           userId: user?.id,
         }),
       });
@@ -184,7 +189,7 @@ export function HelpPanel() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, currentPage, filter.areaId]);
+  }, [input, loading, messages, currentPage, filter.areaId, selectedArea, sharedContext]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

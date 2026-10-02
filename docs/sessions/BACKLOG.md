@@ -38,21 +38,29 @@
   što fali i **koliko refaktora** (Saša ne želi veliku refaktorizaciju). „Roundtrip completeness“
   (`dashboard`, `export_profiles`) time postaje preduvjet. Za stranca uvoz već pravi novu Areu —
   to je ispravno; zbrka je samo kad uvoznik već vidi Areu istog imena.
-- **D4/D5** — poruka „(read-only access)“ write-grantee-u kod profila je neistinita;
-  „Import as mine“ sakriti unutar dijeljene Aree.
-- **Filtar za brojeve (F4)** — jedan uvjet s operatorom (`Iznos > 1000`), ne traži višeuvjetni
-  filtar. V. „Potpuni attrFilter“.
+- ~~**D4/D5**~~ — ✅ S159. D4 je bio popravljen ranije (tekst prepisan, nitko nije javio);
+  D5: „Import as mine“ je **ugašen** kad tuđi retci žive u dijeljenoj Arei (kopija bi bila
+  duplikat u istoj Arei); za file stranca ostaje. D2: tuđi redak s `Delete?` sada **kaže**
+  da je brisanje odbijeno (prije: `skip` tiho, `import_as_mine` lagao „nema event_id“).
+- ~~**Filtar za brojeve (F4)**~~ — ✅ S159: `Iznos > 1000` (operator + broj, `value_number`).
+  Ostaje datum/boolean — v. „Potpuni attrFilter“.
 - **Help chip (F6)** — bez posebnog popisa: gotovo pitanje AI-u + kontekst stranice/Aree (uz Help
   koji zna Areu); sadržaj su `docs/help/*.md`, koje ritual ionako održava.
 - **⭐ Migracija `trening.xlsm` — veliki projekt**, kreće kad se zatvore osnovni zadaci Financija
   (C1, C2/C3). File je od 26.09. u `C:\0_Sasa\OneDrive\trening.xlsm` (stara kopija preimenovana).
   Izvor za više Area (projekti, health, treninzi, periodi). Uključuje Garmin i
   `health_lab_review.py` cleanup. Načelo `oznaci_iz_presedana` Saša želi i ovdje.
+**~~Kolone liste: `—` za vrijeme učitavanja~~ — ✅ S159.** Uzrok nije bio izostanak
+placeholdera (postoji od S120) nego zastavica `loaded` koja je ostajala `true` od **prošlog**
+skupa redaka (razred BUG-S145). Usput: upit vrijednosti nije bio paginiran (rez na 1000 ⇒ `—`
+nakon par „load more“), a palo čitanje je davalo `—` umjesto `?`. Izvorni zapis:
 **Kolone liste: `—` za vrijeme učitavanja izgleda isto kao prazan podatak** (S147, sitnica).
 `useListColumnValues` stiže **poslije** redaka, pa lista kratko pokazuje `—` u `Tip`/iznosu.
 Isti razred kao „prazno zbog mrtve reference izgleda identično kao prazno zbog nedostatka
 podatka" (§ Kolone). Lijek: blijeda crtica ili sjena dok se čeka.
 
+**~~⭐ Help ne zna u kojoj si Arei~~ — ✅ S159 (B3)**, obje razine: ime Aree + što ima
+(`src/lib/helpContext.ts`). Teme se NE filtriraju. Izvorni zapis:
 **⭐ Help ne zna u kojoj si Arei — a funkcija to VEĆ očekuje** (S144). `help.ts:118` gradi
 redak `area: <ime>` iz `context.areaName`, a klijent šalje `context: { page, areaId }`
 (`HelpPanel.tsx:164`) ⇒ ključ se nikad ne poklopi i **redak nikad ne uđe u prompt**. Dakle
@@ -141,6 +149,9 @@ Oba popravka u S110 tražila su ručnu izmjenu. D1b kaže `Izvor ∈ {Racun, Cas
 pa bi se za te retke moglo pomicati automatski. ⚠ Za kartice **ne smije** —
 tamo je datum naplate vezan uz ciklus banke, ne uz dan kupovine.
 
+**~~⭐ STRUCTURE FAN-OUT~~ — ✅ S159 za `AppHome`** (`useStructureData({ autoFetch: false })`;
+učitava tek na Export/Import). Ostaje: u Sunburst načinu na desktopu rade **dvije** instance
+(Sunburst + skrivena tablica) — nije mjereno je li vrijedno. Izvorni zapis:
 **⭐ STRUCTURE FAN-OUT: 39 ZAHTJEVA PO POZIVU, A JEDNA INSTANCA NIKAD NE ČITA REZULTAT**
 (izmjereno S141). `useStructureData()` broji evente **jednim `count: 'exact'` upitom po
 kategoriji, usporedno** (S133, i to je bio ispravan izbor). Ali hook se zove na **tri**
@@ -162,6 +173,13 @@ automatskog dohvata** (`AppHome` treba samo `refetch`), ili modul-level keš kao
 `categoryCache`. Prije koda izmjeriti **koliko poziva ostane** — v. susjednu stavku o
 šest upita liste, jer je vjerojatno isti uzrok (remount, ne pravi refetch).
 
+**~~Lista se preupita ŠEST puta~~ — ✅ S159 (C4), izmjereno.** Šest je bilo za **dvije**
+promjene (Area + atribut). Jedna promjena Aree: **3 → 2** upita liste (lista + nav za Prev/Next).
+Treći je bio lista s **granicama prethodne Aree** (dakle i krivi retci na trenutak), pa opet kad
+`useDateBounds` sjedne — „All time“ je min..max podataka, dakle filtar bez učinka, pa ga lista
+više ne šalje. Na učitavanju 5 → 4 (u devu StrictMode duplira; PROD 2). Usput `.order('id')`
+kao jedinstven zadnji ključ (leaf ima N eventa iste sesije). ⚠ Ostaje neizmjereno: Area promjena
+čita `categories` 7× i `areas` 4× — zaseban posao. Izvorni zapis:
 **Lista se preupita ŠEST puta na jednu promjenu filtra** (izmjereno S122 iz Playwright
 tracea: `events?select=…` na 16664, 16735, 16832, 16909, 17022, 17098 ms nakon promjene
 aree). Dvije posljedice: čist trošak — a na PROD-u je Saša **grantee**, dakle skupa RLS
@@ -169,6 +187,11 @@ grana (v. „Izmjereno i nije problem") — i **osvježavanje zatvara otvoren �
 korisnik vidi kao „meni mi se sam zatvorio". Drugo je posljedica prvog, pa se mjeri zajedno.
 ⚠ Nije hipoteza nego mjerenje, ali **uzrok kaskade nije utvrđen** — prije popravka izbrojati
 tko sve okida refetch (`useDateBounds` settle, `areas-changed`, promjena `attrFilter`).
+
+**Structure Export na grešci izlazi PRAZAN** (zapaženo S159, nije dirano). `useStructureData.fetchAll`
+hvata grešku i vraća `[]`, a Export (`AppHome`) to piše u file bez Area i javlja „Structure exported".
+Razred „izvoz koji ne može učitati podatke mora pasti, ne izaći kraći" (§ Excel, S125). Lijek: `refetch`
+baca (ili vraća grešku), Export javlja i ne sprema file.
 
 **Postgres upgrade — otvoren od S105, i retry ga samo SKRIVA** (spaseno iz `BUG-S121-AREACTX`,
 S139). Palo citanje `areas` na PROD-u je vjerojatno S105 obrazac: free-tier se gusi. `withRetry`
@@ -178,7 +201,7 @@ dogadja je broj retryja, koji danas nitko ne broji.
 
 **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC; ista investicija kao Faza 1.
 
-**Potpuni attrFilter za number/boolean/datetime** — proslijediti `data_type` u `AttrFilterParam`,
+**Potpuni attrFilter za ~~number~~/boolean/datetime** (number ✅ S159, F4) — proslijediti `data_type` u `AttrFilterParam`,
 koristiti `value_number`/`value_boolean`/`value_datetime` s odgovarajućim operatorima.
 
 **Structure Edit UX cleanup** (`StructureNodeEditPanel.tsx`, bez DB promjena):

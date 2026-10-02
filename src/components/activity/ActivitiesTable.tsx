@@ -10,6 +10,8 @@ import { formatAmount, formatDateHr } from '@/lib/amountFormat';
 import { resolveColumns, type ResolvedColumn } from '@/lib/listColumns';
 import { useListColumnValues, type RowValues } from '@/hooks/useListColumnValues';
 import type { UUID } from '@/types';
+import { isAttrFilterActive } from '@/lib/eventQueryBuilder';
+import { opLabel } from '@/lib/attrFilterNumeric';
 
 // --------------------------------------------
 // Avatar helpers
@@ -121,8 +123,15 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   } = useActivities({
     areaId: filter.areaId,
     categoryId: filter.categoryId,
-    dateFrom: filter.dateFrom,
-    dateTo: filter.dateTo,
+    // C4 (S159): "All time" is the data's own min..max, so as a filter it is a
+    // no-op — and sending it cost a SECOND list query on every Area change.
+    // Measured on TEST: Area change ⇒ list with the PREVIOUS Area's bounds
+    // (wrong rows for a moment), then again once `useDateBounds` settled.
+    // Without the bounds the list asks once, and never with stale dates.
+    // ⚠ `periodKey` is kept by every date setter (DateRangeFilter, S129), so
+    //   any range the person chose is `custom` or a preset, never `all-time`.
+    dateFrom: filter.periodKey === 'all-time' ? null : filter.dateFrom,
+    dateTo: filter.periodKey === 'all-time' ? null : filter.dateTo,
     sortOrder: filter.sortOrder,
     commentSearch: filter.commentSearch,
     attrFilter: filter.attrFilter,
@@ -405,10 +414,11 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
               </button>
             </span>
           )}
-          {/* Attr filter chip */}
-          {filter.attrFilter?.value && (
+          {/* Attr filter chip — only for a condition that is actually applied:
+              an unreadable number (F4) is not a filter, so it gets no chip. */}
+          {isAttrFilterActive(filter.attrFilter) && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-100 border border-indigo-300 text-indigo-800 text-xs font-medium rounded-full">
-              {filter.attrFilter.value}
+              {filter.attrFilter!.op ? `${opLabel(filter.attrFilter!.op)} ${filter.attrFilter!.value}` : filter.attrFilter!.value}
               <button
                 onClick={clearAttrFilter}
                 className="ml-0.5 text-indigo-600 hover:text-indigo-900 leading-none"
@@ -558,7 +568,10 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
                 showCategoryOnMobile={!filter.categoryId}
                 columns={columns}
                 values={colValues.byKey.get(group.sessionKey)}
-                valuesLoaded={colValues.loaded}
+                // A row answered earlier stays answered while "load more" fetches
+                // the superset — only rows without an answer show the placeholder.
+                valuesLoaded={colValues.loaded || colValues.byKey.has(group.sessionKey)}
+                valuesFailed={colValues.failed}
               />
             ))}
           </tbody>
@@ -599,13 +612,22 @@ function LoadingCell({ w = 'w-10' }: { w?: string }) {
   return <span className={`inline-block h-3 ${w} rounded bg-gray-200 animate-pulse align-middle`} />;
 }
 
-function PairCell({ col, values, stack, loaded }: { col: ResolvedColumn; values?: RowValues; stack?: boolean; loaded?: boolean }) {
+/** The values read FAILED (after retries). Neither `—` (a claim: "empty") nor
+ *  the pulse (a claim: "still coming") — a failed read is a third state (S121). */
+function FailedCell() {
+  return (
+    <span className="text-amber-600" title="Vrijednost se nije učitala — osvježi stranicu">?</span>
+  );
+}
+
+function PairCell({ col, values, stack, loaded, failed }: { col: ResolvedColumn; values?: RowValues; stack?: boolean; loaded?: boolean; failed?: boolean }) {
   const plus = col.plus ? values?.num.get(col.plus) : undefined;
   const minus = col.minus ? values?.num.get(col.minus) : undefined;
   const hasPlus = plus != null && plus !== 0;
   const hasMinus = minus != null && minus !== 0;
 
   if (!hasPlus && !hasMinus) {
+    if (failed && !values) return <FailedCell />;
     if (!loaded) return <LoadingCell w="w-14" />;
     return <span className="text-gray-300">—</span>;
   }
@@ -638,7 +660,7 @@ function PairCell({ col, values, stack, loaded }: { col: ResolvedColumn; values?
 type CellVariant = 'desktop' | 'line1' | 'line2';
 
 /** `attr` — one or more slugs joined into a single cell (e.g. `Tip / Podtip`). */
-function AttrCell({ col, values, plain, loaded }: { col: ResolvedColumn; values?: RowValues; plain?: boolean; loaded?: boolean }) {
+function AttrCell({ col, values, plain, loaded, failed }: { col: ResolvedColumn; values?: RowValues; plain?: boolean; loaded?: boolean; failed?: boolean }) {
   const parts = (col.slugs ?? [])
     .map(sl => values?.text.get(sl))
     .filter((v): v is string => !!v)
@@ -653,6 +675,7 @@ function AttrCell({ col, values, plain, loaded }: { col: ResolvedColumn; values?
     // drops entries with an empty value — `structureImport.ts` `if (k && v)`.)
     .filter((v, i, all) => all.indexOf(v) === i);
   if (parts.length === 0) {
+    if (failed && !values) return <FailedCell />;
     if (!loaded) return <LoadingCell />;
     return <span className="text-gray-400 italic">—</span>;
   }
@@ -697,9 +720,11 @@ interface ActivityRowProps {
   /** Has the values query finished? Without it a loading cell and an empty cell
    *  are the same `—`, and for money that is a claim, not a wait. */
   valuesLoaded?: boolean;
+  /** The values read failed — cells say so instead of `—`. */
+  valuesFailed?: boolean;
 }
 
-function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, currentUserId, canEditForeign = false, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance, columns, values, valuesLoaded }: ActivityRowProps) {
+function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, currentUserId, canEditForeign = false, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance, columns, values, valuesLoaded, valuesFailed }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -834,14 +859,14 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
           />
         );
       case 'pair':
-        return <PairCell col={c} values={values} stack={compact} loaded={valuesLoaded} />;
+        return <PairCell col={c} values={values} stack={compact} loaded={valuesLoaded} failed={valuesFailed} />;
       case 'attr':
         // On `line1` the attribute is a marker beside the date — the account a
         // row belongs to — so it is set small and grey, the same weight as
         // line 2. On `line1` the amount owns the emphasis.
         return variant === 'line1'
-          ? <span className="text-xs text-gray-500"><AttrCell col={c} values={values} plain loaded={valuesLoaded} /></span>
-          : <AttrCell col={c} values={values} plain={compact} loaded={valuesLoaded} />;
+          ? <span className="text-xs text-gray-500"><AttrCell col={c} values={values} plain loaded={valuesLoaded} failed={valuesFailed} /></span>
+          : <AttrCell col={c} values={values} plain={compact} loaded={valuesLoaded} failed={valuesFailed} />;
       case 'comment':
         return compact ? (
           <span title={firstEvent.comment || undefined}>

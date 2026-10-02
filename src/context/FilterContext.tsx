@@ -5,6 +5,7 @@ import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
 import { withRetryQuery } from '@/lib/retry';
 import { dbScopedKey } from '@/lib/storageKey';
 import type { PeriodKey } from '@/hooks/useDateBounds';
+import type { NumericOp } from '@/lib/attrFilterNumeric';
 
 // --------------------------------------------
 // Constants
@@ -33,6 +34,8 @@ export interface AttrFilterState {
   attrDefId: string;
   value: string;
   isExact: boolean;
+  /** F4 (S159) — numeric condition on `value_number`; absent = text filter. */
+  op?: NumericOp | null;
 }
 
 export interface FilterState {

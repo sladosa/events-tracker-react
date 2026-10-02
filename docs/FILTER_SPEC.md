@@ -47,6 +47,11 @@ dva atributa traže **dva zasebna `EXISTS` podupita**, a to PostgREST ne izraža
 
 ### 1.3 Filtrira se samo tekst
 
+> **✅ S159 (F4): broj se filtrira** — jedan uvjet s operatorom (`>`/`≥`/`<`/`≤`/`=`) na
+> `value_number`, kroz isti `attrFilter` i isti `applyEventFilters` (lista, izvoz, brojač,
+> profil `Attribute filter` = `iznos: >1000`, shortcut). Datum i boolean i dalje ne.
+> Tekst ispod je stanje prije S159.
+
 Filterable su samo `text`/`suggest` atributi; ostali se broje i prijave rečenicom
 „_N numeric/other attributes not shown — use Excel Export to filter by those_"
 ([AppHome.tsx:647](../src/pages/AppHome.tsx#L647)). Dakle **„iznos > 500" ne postoji** —

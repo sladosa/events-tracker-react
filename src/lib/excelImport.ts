@@ -482,6 +482,18 @@ export async function parseExcelFile(
         foreignRowCount++;
         foreignEmailsSummary[rowEmail] = (foreignEmailsSummary[rowEmail] ?? 0) + 1;
         if (r.area) foreignAreaSet.add(r.area);
+        // D2 (S159): a foreign row marked for deletion is REFUSED, and the
+        //   message says so. Before: `skip` dropped the mark without a word, and
+        //   `import_as_mine` nulled the event_id first, so the parser reported
+        //   "no saved record to delete" — false, the record exists, it is just
+        //   someone else's. `fix_as_owner` has its own message below (043:
+        //   the owner may FIX a foreign row, not delete it).
+        if (r._delete && foreignMode !== 'fix_as_owner') {
+          warnings.push(
+            `Red ${r._source_row}: redak je označen ${DELETE_MARKER}, ali pripada drugom `
+            + `korisniku (${rowEmail}) — brisanje tuđeg retka nije moguće. Redak je preskočen.`);
+          continue;
+        }
         if (foreignMode === 'import_as_mine') {
           // Force INSERT with new ID — user_id will be set to currentUserId in apply
           ownRows.push({ ...r, event_id: null });

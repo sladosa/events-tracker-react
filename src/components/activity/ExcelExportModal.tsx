@@ -26,6 +26,7 @@ import { readProfileFromWorkbook, readProfileNameFromWorkbook, readFilterFromWor
 import { pickDeltaWindow, type DeltaWindowAnchor } from '@/lib/deltaWindow';
 import { resolvePeriodKey, type PeriodKey } from '@/hooks/useDateBounds';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
+import { NUMERIC_DATA_TYPES, opAscii, opFromAscii, opLabel, type NumericOp } from '@/lib/attrFilterNumeric';
 import type { ExportAttrDef } from '@/lib/excelTypes';
 import { todayLocalYmd } from '@/lib/localDate';
 
@@ -75,22 +76,32 @@ function hrDate(iso: string): string {
 function parseAttrFilterRaw(
   raw: string,
   attrDefs?: ExportAttrDef[],
-): { attrDefId: string; value: string; isExact: boolean } | null {
-  // Format: "slug: =value" or "slug: ~value" or "*: ~value" or legacy "uuid: =value"
-  const match = raw.match(/^([^:]+):\s*([=~])(.+)$/);
+): { attrDefId: string; value: string; isExact: boolean; op?: NumericOp | null } | null {
+  // Format: "slug: =value" or "slug: ~value" or "*: ~value" or legacy "uuid: =value";
+  // F4 (S159): "slug: >1000", ">=", "<", "<=" — and "=" on a NUMBER attribute.
+  // ⚠ Longest operator first, so `>=5` is never read as `>` + `=5`.
+  const match = raw.match(/^([^:]+):\s*(>=|<=|>|<|=|~)(.+)$/);
   if (!match) return null;
   const key = match[1].trim();
-  const isExact = match[2] === '=';
+  const sym = match[2];
   const value = match[3];
 
   if (key === '*') return { attrDefId: ATTR_FILTER_ANY, isExact: false, value };
-  if (UUID_RE.test(key)) return { attrDefId: key, isExact, value };
-  // Slug lookup
-  if (attrDefs) {
-    const def = attrDefs.find(d => d.slug === key);
-    if (def) return { attrDefId: def.id, isExact, value };
+  let def: ExportAttrDef | undefined;
+  if (UUID_RE.test(key)) def = attrDefs?.find(d => d.id === key);
+  else def = attrDefs?.find(d => d.slug === key);
+  const attrDefId = def?.id ?? (UUID_RE.test(key) ? key : null);
+  if (!attrDefId) return null;
+
+  // `=` means numeric equality on a number attribute: as a text match it would
+  // look at `value_text`, which a number attribute never fills ⇒ always empty.
+  const numeric = sym !== '=' && sym !== '~'
+    || (sym === '=' && !!def && NUMERIC_DATA_TYPES.has(def.data_type));
+  if (numeric) {
+    const op = opFromAscii(sym);
+    return op ? { attrDefId, value, isExact: false, op } : null;
   }
-  return null;
+  return { attrDefId, isExact: sym === '=', value };
 }
 
 async function resolveAttrDefsForSlug(
@@ -111,10 +122,10 @@ async function resolveAttrDefsForSlug(
 }
 
 function formatAttrFilterDesc(
-  af: { attrDefId: string; value: string; isExact: boolean },
+  af: { attrDefId: string; value: string; isExact: boolean; op?: NumericOp | null },
   attrDefs?: ExportAttrDef[],
 ): string {
-  const op = af.isExact ? '=' : '~';
+  const op = af.op ? opAscii(af.op) : af.isExact ? '=' : '~';
   if (af.attrDefId === ATTR_FILTER_ANY) return `*: ${op}${af.value}`;
   const def = attrDefs?.find(d => d.id === af.attrDefId);
   const label = def?.slug || af.attrDefId;
@@ -177,7 +188,7 @@ function applyProfileFilterOverrides(
       const parsed = parseAttrFilterRaw(pfs.attrFilterRaw, attrDefs);
       if (parsed) {
         filters.attrFilter = parsed;
-        parts.push(`Attr filter: ${parsed.value}`);
+        parts.push(`Attr filter: ${parsed.op ? `${opLabel(parsed.op)} ` : ''}${parsed.value}`);
       }
     }
   }
@@ -296,7 +307,8 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
         ? profiles[selectedProfile]?.filterState?.attrFilterRaw
         : undefined,
       balanceWidget?.group_by,
-      filter.attrFilter?.value,
+      // A number condition (F4) is never an account name.
+      filter.attrFilter?.op ? undefined : filter.attrFilter?.value,
     ),
     [selectedProfile, useProfileFilters, profiles, balanceWidget, filter.attrFilter],
   );

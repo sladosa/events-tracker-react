@@ -142,7 +142,14 @@ Takav nacrt bi, potvrđen, upisao **isti zapis drugi put**.
 - **Pretraga po `~` (nepotvrđeni iznosi)** — upiši `~` u Comment pretragu da dobiješ sve
   retke kojima iznos još nije potvrđen (v. **Dodavanje aktivnosti**). Radi kao i svaka
   druga pretraga — tilda nije poseban znak.
-- **Attribute filter** — odaberi atribut, pa za suggest atribute odaberi opciju iz dropdowna; za text/number upiši tekst za pretragu (partial match)
+- **Attribute filter** — odaberi atribut, pa za suggest atribute odaberi opciju iz dropdowna; za tekstualni atribut upiši tekst za pretragu (partial match)
+- **Filtar za brojeve** — za brojčani atribut (npr. `Iznos`) uz polje stoji operator
+  `>`, `≥`, `<`, `≤`, `=`: npr. `Isplata` `>` `1000` pokaže samo retke s isplatom većom
+  od 1000. Broj se piše kao i u Add formi (`1.234,56` ili `1234.56`); desno od polja piše
+  **kako je broj pročitan** (`= 1.234,56`). ⚠ `1.000` se čita kao **jedan**, ne tisuću —
+  za tisuću piši `1000`. Nepročitan broj pocrveni i filtar se **ne primjenjuje**.
+  Jedan uvjet istovremeno (npr. „ZABA **i** veće od 1000" još ne ide). Datumi i da/ne
+  atributi još se ne filtriraju u appu — za to Excel Export.
 - **"In any attribute"** — traži tekst u svim atributima odjednom (npr. upiši "EUR" da nađeš sve evente gdje bilo koji atribut sadrži "EUR")
 
 ## Shortcuts (brzi pristup)

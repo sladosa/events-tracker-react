@@ -36,6 +36,8 @@ import type { Category, AttributeDefinition } from '@/types/database';
 import type { UUID } from '@/types';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
+import { NUMERIC_OPS, NUMERIC_DATA_TYPES, numericFilterValue, isNumericOp, type NumericOp } from '@/lib/attrFilterNumeric';
+import { formatAmount } from '@/lib/amountFormat';
 import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
 import { findSingleLeaf, categoryNamePath } from '@/lib/singleLeaf';
 
@@ -121,7 +123,8 @@ function AppContent() {
   const [structureRefreshKey, setStructureRefreshKey] = useState(0);
   
   // Structure data (needed for Export button)
-  const { refetch: refetchStructure } = useStructureData();
+  // Only `refetch` is used here (Export / Import) — no load on mount (S159).
+  const { refetch: refetchStructure } = useStructureData({ autoFetch: false });
 
   // Get filter context
   const {
@@ -144,6 +147,9 @@ function AppContent() {
   // Attribute filter UI state — which field is selected in the "Filter by" dropdown
   // Only text-based attrs (text/suggest) are filterable; number/boolean/datetime use different DB columns
   const [filterAttrDefs, setFilterAttrDefs] = useState<AttributeDefinition[]>([]);
+  // F4: operator of a number condition. Local, because an EMPTY value clears
+  // `attrFilter` (and with it `op`) — the chosen `>` must survive that.
+  const [numOp, setNumOp] = useState<NumericOp>('gt');
   const [hiddenAttrCount, setHiddenAttrCount] = useState(0);
   const [selectedFilterAttr, setSelectedFilterAttr] = useState<string>('comment');
 
@@ -205,12 +211,13 @@ function AppContent() {
         return true;
       });
 
-      // Only text-based attrs are filterable (value_text column); number/boolean/datetime
-      // use different DB columns — full support is a backlog item.
-      const TEXT_TYPES = new Set(['text', 'link']);
-      const textAttrs = deduped.filter(a => TEXT_TYPES.has(a.data_type));
-      setFilterAttrDefs(textAttrs as AttributeDefinition[]);
-      setHiddenAttrCount(deduped.length - textAttrs.length);
+      // Text attrs filter on `value_text`; number attrs (F4, S159) on
+      // `value_number` with an operator. boolean/datetime are still out —
+      // Backlog „Potpuni attrFilter".
+      const FILTERABLE = new Set(['text', 'link', ...NUMERIC_DATA_TYPES]);
+      const filterable = deduped.filter(a => FILTERABLE.has(a.data_type));
+      setFilterAttrDefs(filterable as AttributeDefinition[]);
+      setHiddenAttrCount(deduped.length - filterable.length);
     };
     load();
   }, [filter.areaId, filter.categoryId]);
@@ -256,6 +263,7 @@ function AppContent() {
         const found = filterAttrDefs.find(a => a.id === filter.attrFilter!.attrDefId);
         if (found) setSelectedFilterAttr(found.id);
       }
+      if (isNumericOp(filter.attrFilter.op)) setNumOp(filter.attrFilter.op);
     } else {
       setSelectedFilterAttr('comment');
     }
@@ -666,6 +674,58 @@ function AppContent() {
                   {selectedFilterAttr !== 'comment' && selectedFilterAttr !== ATTR_FILTER_ANY && (() => {
                     const attrDef = filterAttrDefs.find(a => a.id === selectedFilterAttr);
                     if (!attrDef) return null;
+                    if (NUMERIC_DATA_TYPES.has(attrDef.data_type)) {
+                      // F4 — one condition with an operator. The raw text stays
+                      // in `value`; what the app UNDERSTOOD is printed next to it,
+                      // because `1.000` reads as one, not a thousand (it is the
+                      // same parser as every amount field — S131).
+                      const raw = filter.attrFilter?.attrDefId === attrDef.id ? filter.attrFilter.value : '';
+                      const n = numericFilterValue({ value: raw, op: numOp });
+                      const bad = raw.trim() !== '' && n === null;
+                      const apply = (op: NumericOp, value: string) => {
+                        if (value.trim()) setAttrFilter({ attrDefId: attrDef.id, value, isExact: false, op });
+                        else clearAttrFilter();
+                      };
+                      return (
+                        <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-xs">
+                          <select
+                            value={numOp}
+                            onChange={(e) => {
+                              const op = e.target.value as NumericOp;
+                              setNumOp(op);
+                              if (raw) apply(op, raw);
+                            }}
+                            aria-label="Operator"
+                            className="text-sm border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          >
+                            {NUMERIC_OPS.map(o => <option key={o.op} value={o.op}>{o.label}</option>)}
+                          </select>
+                          <div className="relative flex-1 min-w-0">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={raw}
+                              onChange={(e) => apply(numOp, e.target.value)}
+                              placeholder="npr. 1000"
+                              title={bad ? 'Ne mogu pročitati broj — filtar nije primijenjen' : undefined}
+                              className={cn(
+                                'w-full px-3 py-2 pr-7 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
+                                bad ? 'border-red-400 bg-red-50' : 'border-gray-300',
+                              )}
+                            />
+                            {raw && (
+                              <button onClick={clearAttrFilter} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
+                            )}
+                          </div>
+                          {n !== null && (
+                            <span className="text-xs text-gray-500 whitespace-nowrap tabular-nums" title="Ovako je broj pročitan">
+                              = {formatAmount(n)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+
                     const parsed = parseValidationRules(attrDef.validation_rules);
                     const isSuggest = (parsed.type === 'suggest' || parsed.type === 'enum') && parsed.options.length > 0;
 
@@ -714,7 +774,7 @@ function AppContent() {
                 </div>
                 {hiddenAttrCount > 0 && (
                   <p className="text-xs text-gray-400 mt-1">
-                    {hiddenAttrCount} numeric/other {hiddenAttrCount === 1 ? 'attribute' : 'attributes'} not shown — use Excel Export to filter by those.
+                    {hiddenAttrCount} other {hiddenAttrCount === 1 ? 'attribute' : 'attributes'} (date, yes/no, …) not shown — use Excel Export to filter by those.
                   </p>
                 )}
                 {selectedFilterAttr === ATTR_FILTER_ANY && sharedContext && (
@@ -1049,7 +1109,8 @@ function AppContent() {
           onClose={() => setShowStructureImport(false)}
           onImported={() => {
             window.dispatchEvent(new CustomEvent('areas-changed'));
-            refetchStructure();
+            // No refetchStructure() here: its nodes are never read in AppHome;
+            // the refresh key makes the visible Structure view reload (S159).
             setStructureRefreshKey(k => k + 1);
             // Modal stays open so user can read the result summary;
             // user closes it via the "Close" button.

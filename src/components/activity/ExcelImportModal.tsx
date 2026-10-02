@@ -80,6 +80,14 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
    *   vraca 200 s praznim rezultatom, pa bi izgledalo kao da je proslo.
    */
   const [canFixForeign,    setCanFixForeign]    = useState(false);
+  /**
+   * D5 (S159): ime dijeljene Aree (tudje, ali vidljive) u kojoj tudji retci zive.
+   * „Import as mine" bi ondje napravio KOPIJU u ISTOJ Arei -- duplikat koji saldo
+   * broji dvaput (§ Collab — vlasnik Aree, S123). Pravi put je Leave Area ili
+   * uvoz u vlastitu Areu drugog imena. Za datoteku stranca (Area nije vidljiva)
+   * ponuda ostaje: ondje kopija ide u tvoju Areu, a original nije tvoj problem.
+   */
+  const [sharedForeignArea, setSharedForeignArea] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | undefined>(undefined);
   // Q4 (S104, Fable): progress za veće importe (npr. Diary 7000+ redaka) — bez ovoga
   // UI izgleda "frozen" jer applying nema drugog povratnog signala osim spinnera.
@@ -163,12 +171,18 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       // Vlasnistvo se PROVJERAVA, ne pretpostavlja: ponuda „ispravi kao vlasnik"
       // se prikazuje samo ako korisnik doista posjeduje sve te Aree.
       if (parsed.foreignAreas.length > 0) {
-        const { data: owned } = await supabase
-          .from('areas').select('name').eq('user_id', user.id).in('name', parsed.foreignAreas);
-        const ownedNames = new Set((owned ?? []).map(a => a.name as string));
+        // Jedan upit: RLS vraca vlastite I dijeljene Aree tih imena.
+        const { data: visible } = await supabase
+          .from('areas').select('name, user_id').in('name', parsed.foreignAreas);
+        const rows = (visible ?? []) as { name: string; user_id: string | null }[];
+        const ownedNames = new Set(rows.filter(a => a.user_id === user.id).map(a => a.name));
         setCanFixForeign(parsed.foreignAreas.every(a => ownedNames.has(a)));
+        const shared = rows.find(a => a.user_id !== user.id && !ownedNames.has(a.name));
+        setSharedForeignArea(shared?.name ?? null);
+        if (shared) setForeignMode(m => (m === 'import_as_mine' ? 'skip' : m));
       } else {
         setCanFixForeign(false);
+        setSharedForeignArea(null);
       }
 
       // Always load categories (needed for collision check and missing-category check)
@@ -469,6 +483,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setForeignRowCount(0);
     setForeignEmailsSummary({});
     setForeignMode('skip');
+    setSharedForeignArea(null);
     setCurrentUserEmail(undefined);
     setApplyProgress(null);
     setUpdateAnalysis(null);
@@ -640,11 +655,12 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                     <p className="text-xs text-gray-400">Safe, default — foreign rows are ignored</p>
                   </div>
                 </label>
-                <label className="flex items-start gap-2 cursor-pointer">
+                <label className={`flex items-start gap-2 ${sharedForeignArea ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input
                     type="radio"
                     name="foreignMode"
                     value="import_as_mine"
+                    disabled={!!sharedForeignArea}
                     checked={foreignMode === 'import_as_mine'}
                     onChange={() => setForeignMode('import_as_mine')}
                     className="mt-0.5"
@@ -652,6 +668,12 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                   <div>
                     <span className="text-sm font-medium text-gray-700">Import as mine</span>
                     <p className="text-xs text-gray-400">New event_id, your user_id — creates copies under your account</p>
+                    {sharedForeignArea && (
+                      <p className="text-xs text-gray-400">
+                        Nedostupno — ti retci žive u dijeljenoj Arei „{sharedForeignArea}", pa bi kopija
+                        završila u istoj Arei kao duplikat (i saldo bi je brojao dvaput).
+                      </p>
+                    )}
                   </div>
                 </label>
                 {foreignMode === 'import_as_mine' && (

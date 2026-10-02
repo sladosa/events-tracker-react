@@ -76,7 +76,7 @@ interface UseActivitiesOptions {
   dateTo?: string | null;
   sortOrder?: 'desc' | 'asc';   // D3: newest first (default) or oldest first
   commentSearch?: string;
-  attrFilter?: { attrDefId: string; value: string; isExact: boolean } | null;
+  attrFilter?: { attrDefId: string; value: string; isExact: boolean; op?: import('@/lib/attrFilterNumeric').NumericOp | null } | null;
   pageSize?: number;
   skip?: boolean;               // When true, skip fetch (e.g. caller already has list from location.state)
 }
@@ -177,6 +177,10 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         .order('session_start', { ascending: sortOrder === 'asc', nullsFirst: false })
         .order('user_id',      { ascending: true })   // tie-breaker: isti session_start + diff user → deterministički
         .order('category_id', { ascending: true })    // tie-breaker za parent evente iste sesije
+        // ⚠ S159: jedinstven zadnji kljuc. Leaf ima N eventa po sesiji s istim
+        //   datumom, `session_start`, korisnikom i kategorijom -- bez `id` se
+        //   na granici stranice (20) mogu preklopiti i preskociti (S108 razred).
+        .order('id',          { ascending: true })
         .range(currentOffset, currentOffset + pageSize - 1);
 
       const { data: events, error: fetchError, count } = await query;
@@ -385,12 +389,12 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   // /!\ NE DODAVATI `attrFilter` KAO OBJEKT, iako ga lint trazi. Iz konteksta dolazi
   //     kao nov objekt, pa bi callback — a s njim i refetch — isao cesce nego treba; to
   //     bi pogorsalo vec zabiljezeno „lista se preupita SEST puta na jednu promjenu
-  //     filtra" (Backlog). Tri polja SU iscrpna: `AttrFilterState` ima tocno `attrDefId`,
-  //     `value` i `isExact` (`FilterContext.tsx:22`).
-  // /!\ Doda li mu netko cetvrto polje, OVU listu treba prosiriti rucno — lint to vise
-  //     nece prijaviti jer je ovdje suzbijen.
+  //     filtra" (Backlog). Cetiri polja SU iscrpna: `AttrFilterState` ima tocno `attrDefId`,
+  //     `value`, `isExact` i (od S159, F4) `op`.
+  // /!\ Doda li mu netko peto polje, OVU listu treba prosiriti rucno — lint to vise
+  //     nece prijaviti jer je ovdje suzbijen. (S159 je to i napravio za `op`.)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, pageSize, offset]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, attrFilter?.op, pageSize, offset]);
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
@@ -403,10 +407,10 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   //     false), ali JEST dohvatljivo preko vracenog shortcuta cijem je atributu
   //     u medjuvremenu dodan `suggest`.
   // /!\ `attrFilter` se NE smije dodati kao objekt (sto lint trazi): nov identitet
-  //     na svakom renderu => refetch na svakom renderu. Tri polja SU iscrpna --
-  //     `AttrFilterState` ih ima tocno toliko (`FilterContext.tsx:22`).
+  //     na svakom renderu => refetch na svakom renderu. Cetiri polja SU iscrpna --
+  //     `AttrFilterState` ih ima tocno toliko (`op` od S159: `>` u `<` mijenja upit).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, skip]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, attrFilter?.op, skip]);
 
   const loadMore = useCallback(async () => {
     if (!loadingMore && hasMore) {

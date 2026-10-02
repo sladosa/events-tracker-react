@@ -59,7 +59,7 @@ interface Params {
   areaId: UUID | null;
   config: DashboardConfig | null;
   activities: ActivityGroup[];
-  attrFilter: { attrDefId: string; value: string; isExact: boolean } | null;
+  attrFilter: { attrDefId: string; value: string; isExact: boolean; op?: import('@/lib/attrFilterNumeric').NumericOp | null } | null;
   sortOrder: 'asc' | 'desc';
   dateTo: string | null;
 }

@@ -22,9 +22,22 @@ interface UseStructureDataReturn {
   refetch: () => Promise<StructureNode[]>;
 }
 
-export function useStructureData(): UseStructureDataReturn {
+interface UseStructureDataOptions {
+  /** Fetch on mount. Default true.
+   *
+   *  ⚠ S159 (Backlog „Structure fan-out"): `AppHome` needs only `refetch` (the
+   *  Structure Export / Import buttons), yet its instance used to run the whole
+   *  load on EVERY mount — one `count: 'exact'` request per category (39 on
+   *  PROD), whose result nobody read, also on every return from View Details.
+   *  Such a caller passes `autoFetch: false` and pays only when it asks. */
+  autoFetch?: boolean;
+}
+
+export function useStructureData(
+  { autoFetch = true }: UseStructureDataOptions = {},
+): UseStructureDataReturn {
   const [nodes, setNodes] = useState<StructureNode[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(autoFetch);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchAll = useCallback(async () => {
@@ -263,8 +276,8 @@ export function useStructureData(): UseStructureDataReturn {
   }, []);
 
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    if (autoFetch) fetchAll();
+  }, [fetchAll, autoFetch]);
 
   return { nodes, loading, error, refetch: fetchAll };
 }
