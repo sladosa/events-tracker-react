@@ -24,7 +24,7 @@ u `Claude-temp_R/S156_planiran_ids.txt`) — reci „vrati” kad treba.
 > „Stanje ZABA … manje za 1.244,74” je **kriva tvrdnja ovog testa** (11.07. je prije sidra
 > 30.07., pa saldo po pravilu „strogo nakon” ostaje isti — app je bio u pravu). I: na TEST-u je
 > naplata 11.07. već postojala **bez opisa**, pa je traka ponudila drugi redak ⇒ nastalo je
-> **pravilo C** (v. [S157_tests.md](S157_tests.md)). Usput popravljen PGRST201 (`[object Object]`).
+> **pravilo C** (v. [S157_tests.md](../../../Claude-temp_R/test-sessions/archive/S157_tests.md)). Usput popravljen PGRST201 (`[object Object]`).
 
 1. Overview → traka „Čeka potvrdu”. Zapiši stanje **Kokin tekući ZABA** na pločici ispod.
 2. „banka skinula” = `1244,74`, „dana” = **11.07.2026.**

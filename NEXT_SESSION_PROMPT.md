@@ -1,8 +1,8 @@
-> Pisano protiv commita **`cd5afeb`** (S156, `test-branch`) + docs commit rituala odmah iza njega.
-> ⚠ Ako `git log` pokazuje noviji commit od S156 rituala, čitaj ovo kao **povijest**, ne kao stanje.
+> Pisano protiv commita **`e8afdac`** (S157, = `main` = deploy) + docs commit rituala odmah iza njega na `test-branch`.
+> ⚠ Ako `git log` pokazuje noviji commit od S157 rituala, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S156 (2026-09-30)
+# Sljedeća sesija — nakon S157 (2026-10-01)
 
 ---
 
@@ -10,81 +10,82 @@
 
 ## Što je napravljeno
 
-**Traka „Čeka potvrdu" sada i upisuje (C5 faza 2), zasad samo na `test-branch`.**
-- **Slaže se** → „Potvrdi": upiše redak naplate (TROŠKOVI UČINJENI MASTERCARD KARTICOM, bankin
-  iznos i dan) i prebaci kupovine `Planiran → Izvrsen`. Saldo točan isti dan.
-- **Ne slaže se** → „Upiši naplatu kako ju je banka skinula": samo redak naplate s bankinim
-  brojem; kupovine ostaju `Planiran`, košara stoji kao „naplaćeno — neusklađeno · razlika X".
-- Naplatu upisanu rukom ili s izvoda traka prepozna i ne nudi drugu. Traži i **dan** s ekrana
-  banke. Uvijek prvo pokaže „što ću upisati", pa „Da, upiši". Gumb vidi samo Koka.
-- `fill_from_izvod.py --zaba` više ne donosi drugu naplatu ako je Koka dan upisala za 1–3 dana krivo.
+**Traka „Čeka potvrdu" je na PROD-u** (deploy S156 + S157, 01.10.). Testirana uživo na TEST-u,
+koji je sada **kopija PROD-a** — svih 6 testova prošlo.
+- Popravljena greška zbog koje je traka pokazivala `[object Object]` umjesto provjere.
+- **Nova zaštita:** ako je Koka naplatu već upisala sama (npr. opis „MC"), traka je nađe po
+  iznosu i pita *„Je li to ova naplata?"* — „Da" je ispravi u dogovoreni oblik, umjesto da
+  upiše drugu (saldo bi je brojao dvaput).
+- Redak naplate iz trake sada nosi i **Smjer = Isplata** (bez njega Edit nije pokazivao iznos).
+- Novi dokument: **`docs/FINANCIJE_KOKA_PROCES.md` §2.2 — mjesečni tok danas**: tko, kada i
+  kojom naredbom (MC traka, Visa alat, „kad se ne slaže", ZABA/RF izvod).
 
-## Što treba od tebe / Koke
+## Što dolazi — po datumu
 
-1. **Ti, na računalu (TEST, `npm run dev`):** T-S156-1 → 2 → 3 → 4 redom
-   (`docs/sessions/tests/S156_tests.md`). **Između 2 i 3, i nakon 3, reci „vrati"** — Claude
-   vraća 11 statusa na `Planiran` i briše redak naplate (snimka je u
-   `Claude-temp_R/S156_planiran_ids.txt`).
-2. **Ti, bilo kad prije merge-a:** pusti `sql/055_due_basket_members.sql` na **PROD** (SQL editor).
-   Bezopasno i prije deploya — postojeća traka dobiva isti odgovor. Claude poslije izmjeri isto
-   (samo čitanje).
-3. **11.10. — Koka, PROD:** košara ~40 stavki / Σ 859,58. S kodom na `main` (faza 1) ona samo
-   **usporedi** broj s bankom (dogovor iz S155).
-4. **Nakon 11.10. — merge na `main`** (naredbe u CLAUDE.md § End of session 11). Košara ostaje u
-   traci dok je `Planiran`, pa je Koka odmah potvrdi (T-S156-6). Ti kao grantee pogledaš da nemaš
-   gumb (T-S156-5).
-5. Iz ranije: Koka T-S154-2 (`+` iz prve na iPhoneu), T-S152-7 kad stigne izvod.
+1. **~05.–07.10. — Visa (po starom, bez trake).** Koka pošalje `PBZVIZA_2026-09.pdf` u OneDrive
+   `Izvodi` → ti `visa_uvoz_izvoda.py` → Koka uveze. Postupak **B** u §2.2. Javi Claudeu kad
+   izvod stigne — zajedno prođemo dry run i brojke.
+   ⚠ Naknadu `0,17` na RF-u upiši kao `Bankovni troškovi`, opis `Naknada` — nikad `Visa`.
+2. **11.10. — prva prava MC košara u traci (Koka, PROD).** Ona upiše iznos i dan s ekrana banke
+   → Potvrdi (ili „Upiši naplatu…" ako se ne slaže). **T-S156-6.** Ti kao grantee pogledaš da
+   vidiš usporedbu, ali ne gumb: **T-S156-5**.
+   ⚠ Prije toga Koka na mobitelu **zatvori i ponovo otvori karticu** (stari bundle, S118).
+3. **Kad stigne ZABA izvod za listopad** — postupak **E**; skupna MC naplata mora biti
+   „preskočena": **T-S156-7**.
+4. Iz ranije: Koka T-S154-2 (`+` iz prve na iPhoneu), T-S152-7 kad stigne izvod.
 
-## Redoslijed — što slijedi nakon testova
+## Redoslijed — što slijedi
 
-1. Testovi gore + `055` na PROD + 11.10. + merge.
-2. **Ako se 11.10. NE slaže** → **C5 faza 3** (nagovještaji uz razliku: „razlika = redak X",
-   „razlika = kupovine iz susjedne košare"). Tada Koki odmah treba pomoć da nađe uzrok.
-   **Ako se slaže** → **F5** (`Dashboard` sheet): `due` config od S156 nosi i upisne podatke
-   (`text`, `settle`, `done`), a živi samo u bazi i ne putuje Excelom.
-3. B5 ostatak (rata 117,32; `Hlače i čarape`) · K-1 (brana na Structure uvozu) · poravnati Excel
-   guard/`Potvrda` sa sidrom samo za retke u saldu · Visa u traku (faza 4) kad se objasni 2026-02.
+1. Gore navedeno.
+2. **Ako se 11.10. NE slaže** → izmjeriti bi li naznake (Backlog C5 „Gdje bi mogla biti
+   razlika?") pogodile uzrok, pa ih tek onda graditi. Postupak „kad se ne slaže" za MC
+   (§2.2 **D**, koraci 2–3) još nije izveden uživo — tada ga provjeriti i ispraviti u dokumentu.
+3. **Visa u traku** (Backlog C5, cilj ~05.11.): širi prozor dana, `text: "Visa"`,
+   `fill_from_izvod.py` čita tekst iz configa, spec ažuriran.
+4. **F5** (`Dashboard` sheet — `due` config putuje Excelom) · B5 ostatak · K-1.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Stanje grana
+## Stanje grana i baza
 
-`main` = `b5020d6` (S155). `test-branch` = `cd5afeb` + ritual (S156, **nije na main**).
-`sql/055` pušten **samo na TEST-u**; `SCHEMA_TEST.sql` **nije** osvježen (`dump_schema.py --env test`
-kad se pusti i na PROD — oba odjednom).
+`main` = `e8afdac` (S156 + S157, deployano). `test-branch` = isto + ritual S157.
+`sql/055` na **TEST i PROD** (izmjereno: `rpc_area_due_basket_members` na PROD-u odgovara
+`22023 Group attribute slug … not found` = postoji i provjerava). `sql/SCHEMA_*.sql` osvježeni.
+PROD `areas.settings.dashboard.widgets[0].due.settle` = `{tip, smjer: Isplata, podtip, izvorplacanja}`
+(Saša SQL-om, izmjereno čitanjem). TEST isto.
 
-## Novo u S156
+## TEST = kopija PROD-a (01.10.2026.)
 
-- `sql/055`: `app_due_rows` (interni, REVOKE), `app_due_check` (pristup + slugovi),
-  `rpc_area_due_baskets` preko njih (izlaz izmjeren identičan), `rpc_area_due_basket_members`.
-- `dueBaskets.ts`: `daysBetween`, `SETTLE_WINDOW_DAYS = 3`, `matchSettleRow`, `basketAction`,
-  `settleValues`. Test `dueSettle.test.mjs` (38; sabotaže 2/2/1).
-- `dueConfirm.ts`: `fetchBasketMembers`, `findSettleRow`, `settleBasket` (svježe čitanje Σ,
-  redak pa statusi, broji prebačene).
-- `insertEntry.ts`: `findFreeSessionStart` (preseljen iz Adda, sada **baca** na grešku čitanja),
-  `insertLeafEvent` (Add ga koristi), `insertEntry` (P2 roditelji + leaf).
-- `DueStrip` prima `isOwner` (`!sharedContext`) i `onSettled`; `BalanceByGroupTile.reloadToken`.
-- `fill_from_izvod.py`: `skupna_vec_upisana` u `--zaba` grani.
+`data-prep_tools/Tools/prod_to_test.py` (dry run zadano; `--apply` zamijeni TEST `Financije_all`:
+eventi s PROD ID-evima, atributi, sidra, `validation_rules`; sve pod TEST vlasnikom; BROJI na
+kraju). Backup TEST-a prije: `data-prep_data/_backup/test/2026-10-01_1135`.
+Scenarij za ponovno testiranje trake (radni stol, gitignored):
+`Claude-temp_R/s156_test_state.py --setup | --plant | --show | --restore` — košara A = MC 11.08.
+(prije sidra 06.09.), B = MC 11.09. (poslije). **Stanje sada: `--restore` izveden** — TEST je
+točna kopija PROD-a (5.292 / 5.292). `orig.json` + `meta.json` u `Claude-temp_R/s156_state/`;
+marka vremena je prvi `--setup` — `--setup` briše sve u prozorima košara nastalo poslije nje.
+⚠ Kopija stari: PROD dobiva nove retke, TEST ne. Prije sljedećeg testa nad stvarnim podacima
+— novi `backup_db.py --env test`, pa `prod_to_test.py --apply`, pa `s156_state` obrisati
+(original se snima nanovo).
 
-## Kako vratiti TEST između testova („vrati")
+## Novo u S157
 
-Kao vlasnik (`request.jwt.claims`) ili service: `UPDATE event_attributes SET value_text='Planiran'`
-za status-definiciju `Financije_all` i `event_id` iz `Claude-temp_R/S156_planiran_ids.txt`
-(11 redaka — provjeri broj), pa obriši redak(e) `comment = 'TROŠKOVI UČINJENI MASTERCARD KARTICOM'`
-na `event_date` 2026-07-08…14 u `Financije_all` (prvo `event_attributes`, pa `events`,
-`.select`/`RETURNING` i broj). TEST DB: `psql` + `SUPABASE_DB_URL` iz `.env.local`
-(`C:\Program Files\PostgreSQL\17\bin`).
-⚠ Na TEST-u 11.07. **nema** pravog skupnog retka (PROD ga ima: 1.244,74) — ne briši ništa izvan
-onoga što je test upisao (provjeri `created_at` = dan testa).
+- `dueConfirm.ts`: `loadCandidates` (FK hint `events_category_id_fkey`; zajednički za pravilo B i
+  C), `findSuspectRows`, `attributeNames`, `adoptSettleRow` (atributi pa opis, pod autorom eventa,
+  broji), `settleBasket(..., suspectsDismissed)` — brana pravila C; `createSettleRow` staje na
+  atributu čiji `depends_on` roditelj nije u configu.
+- `dueBaskets.ts`: `findSuspectSettleRows`, `adoptChanges` (uvozi `passesFilters` iz
+  `confirmedRowEdit`). `dueSettle.test.mjs` 55 tvrdnji.
+- `retry.ts`: `toError` — Supabase `error` objekt → `Error(message (code))`.
+- `DueStrip.tsx`: `check` (pravilo C na klik), žuta kutija pitanja, siva kutija ispravka, „tražim…"
+  i tijekom osvježavanja.
 
-## Otvoreno
+## Otvoreno / neverificirano
 
-- **UI faze 2 nije kliknut** (sesija s mobitela) — T-S156-1…4 su prvi pravi ispit.
-- PostgREST `max-rows` 1000 vrijedi i za `rpc_area_due_basket_members`; košara ima ~40–75 redaka.
-- Write-grantee bi kroz RLS smio prebaciti statuse Kokinih redaka (`event_attributes_update_policy`)
-  — brana je samo UI (D5). Isto svjesno otvoreno kao `events UPDATE` (S134).
-- Status flip ne dira `events.edited_by` — ✎ oznaka ga ne prikazuje. Namjerno zasad.
-- Iz S155: Excel guard / kolona `Potvrda` i dalje sidre kartične retke; rename sluga ne popravlja
-  `attribute_rules`; Edit prikazuje `datetime` u UTC satu; K-1, K0; C1 korak 4; B3–B6; C4; E8-2.
+- **Prvi pravi upis iz trake na PROD-u** (11.10.) — sve dosad je bilo na TEST-u.
+- `DOSPJELO_SPEC` još navodi Visa `text: "PBZCard d.o.o."` i D4 „Ne — dok se ne objasni" —
+  zastarjelo (S148 riješio, Saša odlučio da Koka potvrđuje i Visu); ispraviti kad se Visa radi.
+- Visa listopad: 12 redaka `Datum naplate` 03.10. + 20 na 05.10. (staro pravilo `next:3`) —
+  `visa_uvoz_izvoda.py` ih poravna na stvarni dan; provjeriti u dry runu.

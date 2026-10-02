@@ -199,9 +199,19 @@ još nije potvrđeno naplatila. Košara su sve kupovine jedne kartice s istim da
   **„Potvrdi"** — tada se samo prebace statusi, drugi redak naplate se ne stvara.
 - Ako je naplata već upisana (rukom ili s izvoda), traka to prepozna i pokaže je — ne nudi
   upis drugog retka.
+- **„Je li to ova naplata?"** — ako si naplatu već upisala sama, s drugim opisom ili drugim
+  Tipom (npr. opis *MC*), traka je nađe po **iznosu, računu i danu** i pita. **Da, to je ona**
+  → pokaže što će ispraviti (opis *TROŠKOVI UČINJENI MASTERCARD KARTICOM*, `Transfer /
+  izmedju racuna`) i nakon **„U redu, ispravi"** redak prepoznaje i ubuduće; iznos, račun i
+  datum ostaju isti. **Ne, to je nešto drugo** → tek tada nudi upis naplate. Bez tog pitanja
+  bi naplata ušla u saldo **dvaput**.
 - Prije svakog upisa app ispiše **što će upisati**, i tek na **„Da, upiši"** to napravi.
 - Potvrđuje samo **vlasnica Aree**. Tko ima dijeljeni pristup, vidi usporedbu, ali ne gumb.
-- Zasad je u traci samo **Mastercard**. Visa dolazi kad se objasni razilaženje od veljače 2026.
+- Zasad je u traci samo **Mastercard**. Visa dolazi kasnije (plan: studeni 2026.); do tada
+  se Visa potvrđuje kroz izvod.
+- Kad se košara **ne slaže**: saldo je i dalje točan. Najčešće je kriv jedan redak — kupovina
+  s ruba mjeseca u krivoj košari, ista kupovina upisana dvaput, ili tipfeler u iznosu.
+  Ispravi ga Editom; ako ga ne nađeš, kartični izvod pokaže točno koji je.
 
 ## Unos iz Overviewa
 

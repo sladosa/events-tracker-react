@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S156).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S157).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 114 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 127 | [Critical rules](<#Critical rules>) | X |
-| 1184 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1629 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1645 | [Key files](<#Key files>) |  |
-| 1740 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1760 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1782 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1808 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1848 | [Open bugs](<#Open bugs>) | ~ |
-| 1957 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2002 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2099 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2107 | [Backlog](<#Backlog>) | ~ |
-| 2111 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2119 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1202 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1647 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1663 | [Key files](<#Key files>) |  |
+| 1766 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1786 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1808 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1834 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1874 | [Open bugs](<#Open bugs>) | ~ |
+| 1983 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2028 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2125 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2133 | [Backlog](<#Backlog>) | ~ |
+| 2137 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2145 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2277 redaka, 18 sekcija._
+_Ukupno 2303 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -103,7 +103,7 @@ podaci hrane i AI sloj.
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist            |
 | `data-prep_tools/Financije/ENRICH_PLAN.md` | Financije pipeline — alati, koraci, nalazi po sesijama                          |
-| `docs/FINANCIJE_KOKA_PROCES.md`          | **Kokin rad s `Financije_all`** — sadašnji tok (mobitel, Add/Edit, saldo) i plan: izvodi → ploha „Raščišćavanje izvoda“ s Overview pločice. Odluke K1–K5 prihvaćene (S151) |
+| `docs/FINANCIJE_KOKA_PROCES.md`          | **Kokin rad s `Financije_all`** — sadašnji tok (mobitel, Add/Edit, saldo) i plan: izvodi → ploha „Raščišćavanje izvoda“ s Overview pločice. Odluke K1–K5 prihvaćene (S151). **§2.2 = mjesečni tok DANAS** (tko, kada, kojom naredbom; MC traka, Visa alat, „kad se ne slaže", ZABA/RF izvod — S157) |
 | `NEXT_SESSION_PROMPT.md`                  | **Na početku svake sesije** — handoff, DIO 1 netehnički / DIO 2 tehnički. Prepisuje se na kraju svake sesije (v. „End of session" 5). ⚠ Provjeri commit u zaglavlju: ako nije zadnji, čitaj ga kao povijest, ne kao stanje |
 | `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** (⚠ gitignoriran — samo lokalno + `D:`)           |
 
@@ -575,6 +575,24 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ Redoslijed je invarijanta: pad između upisa retka i statusa ostavlja košaru koja nudi samo
   „prebaci statuse". Obrnuto bi ostavilo `Izvrsen` kupovine bez naplate i praznu traku.
   ⚠ Novi „stvori redak iz appa" ide kroz `insertEntry.ts` (slobodna minuta, P2) — ne kopija Add bloka.
+  ⚠ **PRAVILO B NE VIDI RUČNU NAPLATU** (S157, izmjereno u T-S156-1): redak bez strojnog opisa
+  (prazno, „MC") ⇒ traka bi ponudila DRUGI skupni redak ⇒ saldo dvaput. Zato **pravilo C**
+  (`findSuspectSettleRows`): prije upisa traži redak na računu koji miče saldo, s neto iznosom =
+  bankin broj **u cent**, ±3 dana — opis/Tip/Podtip se ne gledaju. „Da" ga **ispravlja** u oblik
+  pravila B (uz popis izmjena), „Ne" tek tada pušta upis; brana je i u `settleBasket`.
+  Bez tolerancije namjerno (`Cash 100,00` se ponavlja, S114) — krivi iznos ispliva kao Δ.
+- **⚠ REDAK KOJI APP UPISUJE MORA NOSITI I `depends_on` RODITELJA SVAKOG ATRIBUTA** (S157).
+  `isplata` ovisi o `smjer`; skupni redak bez `Smjer` imao je iznos u bazi i u **listi**
+  (`−1.300,00`), a Edit ga **nije prikazao** — kolona liste ne gleda `depends_on`, forma gleda.
+  Na PROD-u 5.292/5.292 redaka s iznosom nosi `Smjer`. Zato `settle.smjer` u configu i brana u
+  `createSettleRow` (atribut bez roditelja ⇒ upis staje s porukom). Vrijedi za svaki budući
+  „stvori redak iz appa", ne samo traku.
+- **⚠ EMBED `events → categories` MORA IMENOVATI VEZU** (S157): `events` ima dva FK-a prema
+  `categories` (`category_id`, `chain_key`) ⇒ `categories!inner(...)` bez imena = **PGRST201**
+  (HTTP 300). Ispravno: `categories!events_category_id_fkey!inner(area_id)`. Ostala četiri
+  `categories!inner` u kodu idu iz `attribute_definitions` (jedan FK) i ispravna su.
+  ⚠ Supabase `error` je **obični objekt**, ne `Error` — `String(error)` = `[object Object]`.
+  `retry.ts` (`toError`) čuva `message (code)`; tko baca grešku sam, neka je ne pretvara u string.
 - **`Datum naplate` se ne upisuje rukom** — `set_attribute` ga računa iz `Izvor`a
   (`Racun`/`Cash` = isti dan, `Visa` = `next:3`, `Mastercard` = `next:11`). Ručni unos
   `userOwned` guard više ne dira, pa ga ne diraj bez razloga.
@@ -1674,6 +1692,13 @@ data-prep_tools/Tools/check_links.py
                                    se vratila dvaput nakon rucnog ciscenja (S139, S146).
                                    Zovu ga i `audit_tests.py` i `claude_index.py --write`
                                    => ne ovisi o tome da ga se netko sjeti pokrenuti.
+data-prep_tools/Tools/prod_to_test.py
+                                   `Financije_all` PROD -> TEST (S157): eventi, atributi,
+                                   sidra, `validation_rules` po slugu. PROD samo cita;
+                                   zadano dry run, `--apply` zamjenjuje TEST Areu i na
+                                   kraju BROJI u bazi (= PROD ili ✗). Svi retci pod TEST
+                                   vlasnikom; `areas.settings` se NE prenosi.
+                                   /!\ Prije --apply: `backup_db.py --env test --no-files`.
 data-prep_tools/Tools/rls_probe.py Sto RLS STVARNO dopusta, po ulozi. Svaka proba
                                    u vlastitoj transakciji s ROLLBACK-om.
                                    Mjera PRIJE i POSLIJE svake RLS migracije.
@@ -1707,7 +1732,8 @@ src/lib/confirmedRowEdit.ts        C3c: bankina polja, je li redak potvrđen (ž
 src/lib/dueBaskets.ts              C5: Σ košare u lipama, usporedba s bankom (tolerancija 0,00)
 src/components/overview/DueStrip.tsx  Traka „Čeka potvrdu" (faza 1 usporedba, faza 2 S156 upis; samo vlasnica)
 src/lib/dueConfirm.ts              C5 faza 2 I/O: članovi košare (sql/055), prepoznavanje skupnog retka,
-                                   upis REDAK PA STATUSI (pad između ostavlja samo „prebaci statuse")
+                                   upis REDAK PA STATUSI (pad između ostavlja samo „prebaci statuse"),
+                                   pravilo C: sumnjiv ručni redak + ispravak (`adoptSettleRow`, S157)
 src/lib/insertEntry.ts             Upis jednog unosa izvan Add forme: slobodna minuta, P2, leaf — Add ga
                                    koristi za leaf; svaki novi „stvori redak iz appa” ide OVUDA
 src/lib/attributeRules.ts          set_attribute automatika (evaluateDateRule, same/next:N)

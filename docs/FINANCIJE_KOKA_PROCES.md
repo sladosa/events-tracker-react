@@ -58,6 +58,79 @@ Između toga: svakodnevni unos na mobitelu (§1). Saldo je točan cijelo vrijeme
 
 Podsjetnik na pločici **iz podataka**, ne iz kalendara: *„rujanski izvod ZABA još nije obrađen"*.
 
+### 2.2 Mjesečni tok DANAS — tko što radi (S157, provjereno 2026-10-01)
+
+> ⚠ **Kvarljivo.** Opisuje alate i plohe kakvi su na dan u naslovu. Kad Visa uđe u traku
+> (cilj ~05.11., Backlog C5) mijenja se postupak **B**; kad ploha iz §3 bude izgrađena,
+> postupci **D–F** prelaze iz Excela u aplikaciju.
+> Naredbe su za **PowerShell iz `data-prep_tools\`**. Alat koji čita bazu traži
+> `$env:ET_TARGET='prod'` — bez toga gađa TEST, a brojka izgleda jednako uvjerljivo
+> (CLAUDE.md, S137). **Zaglavlje ispisa (`[PROD]`) se čita prije brojke.**
+> `run.bat` ne mijenja mapu, pa PDF putanje idu preko varijable (jednom po prozoru):
+> `$iz = 'C:\0_Sasa\events-tracker-react\data-prep_data\Financije\izvodi'`
+> (`visa_uvoz_izvoda.py` jedini sam traži PDF u `izvodi\` — njemu je dovoljno ime).
+
+| oko | što | tko | postupak |
+| --- | --- | --- | --- |
+| svaki dan | troškovi, uplate | Koka | **A** — mobitel, Add |
+| 5.–7. | **Visa** se skida s RF-a | Koka šalje izvod → Saša alat → Koka uvoz | **B** |
+| 11. | **MC** se skida sa ZABA-e | Koka | **C** — traka „Čeka potvrdu" |
+| kad traka kaže „neusklađeno" | košara ≠ naplata | Saša + Koka | **D** |
+| kad stigne | **ZABA** izvod | Saša alat → Koka uvoz | **E** |
+| kad stigne | **RF** izvod | Saša | **F** |
+
+**A — svaki dan (Koka).** Mobitel → Add. Nesiguran iznos: `~` na početak opisa. Ispravak
+uvijek **Editom postojećeg retka**, nikad novim retkom (dedup je `(datum, iznos)`).
+
+**B — Visa (~5.–7. u mjesecu).** Visa još **nije** u traci.
+1. Koka spremi PBZ izvod (`PBZVIZA_…pdf`) u svoju OneDrive mapu `Izvodi`.
+2. Saša: `Financije\run.bat razvrstaj_izvode.py` (pregled) → `… --apply` (kopira u `izvodi\`).
+3. Saša: `$env:ET_TARGET='prod'; Financije\run.bat visa_uvoz_izvoda.py PBZVIZA_YYYY-MM.pdf <dan naplate na RF-u> --file`
+   → app Excel: **ispravci** (`Status → Izvrsen`, `Datum naplate` = stvarni dan, `Izvod opis`)
+   + **novi retci** (stavke koje nitko nije upisao). Kontrola: **Σ = izvod u cent** — inače stati.
+4. Saša javi Koki očekivane brojke pregleda (*N novih, M ispravaka*); Koka uveze (Activities →
+   Import). Brojke u pregledu moraju biti te.
+5. Naplata na RF-u: redak `Racun` · Sašin tekući RF · `Transfer / izmedju racuna` · Smjer
+   `Isplata` · opis **`Visa`**. **Naknada `0,17`** ide kao `Domaćinstvo / Bankovni troškovi`,
+   opis `Naknada` — **nikad** s opisom `Visa` (traka bi poslije vidjela dvije „naplate").
+
+**C — Mastercard (11. u mjesecu, Koka, u aplikaciji).**
+1. U bankovnoj aplikaciji pogleda **koliko** je skinuto i **kojeg dana**.
+2. Overview → traka **„Čeka potvrdu"** → upiše iznos i dan.
+3. **✓ slaže se** → **Potvrdi** → upiše se naplata i sve stavke prelaze u `Izvrsen`. Gotovo.
+4. Ako traka pita **„Je li to ova naplata?"** — znači da je naplatu već upisala sama (rukom).
+   Ako jest: **Da, to je ona** → **U redu, ispravi** (opis i Tip/Podtip dobiju dogovoreni oblik)
+   → **Potvrdi**. Ako nije: **Ne, to je nešto drugo**.
+5. **Ne slaže se** → **„Upiši naplatu kako ju je banka skinula"** → saldo je odmah točan, a
+   košara ostaje u traci kao *„naplaćeno — neusklađeno"* → postupak **D**.
+
+**D — kad se košara ne slaže s naplatom.** Nije hitno: **saldo je točan** (slijedi banku), stavke
+ostaju `Planiran` dok se razlika ne riješi. Traži se **redak košare** koji je kriv.
+1. Brzi pogled (Koka, ako želi): kupovine s **ruba mjeseca** (najčešće sjednu u krivu košaru,
+   S112), **dva ista iznosa** blizu (duplikat), **jedan redak jednak razlici**.
+   *(Traka će to jednog dana nuditi sama — Backlog C5, čeka prvu stvarnu razliku.)*
+2. Konačno — **kartični izvod** je istina redak po redak. Za MC: Saša
+   `$env:ET_TARGET='prod'; Financije\run.bat uskladi_izvod.py --izvod "$iz\MC_YYYY-MM.pdf" --dry`
+   → nalaz po retku: što fali, što je višak, koji iznos/datum je kriv.
+3. Ispravci: nekoliko redaka → Koka **Editom** u aplikaciji; neupisane kupovine → Delta Export
+   ZABA iz appa + `Financije\run.bat fill_from_izvod.py <delta.xlsx> --mc "$iz\MC_YYYY-MM.pdf" --presedan prod`
+   → Koka uveze.
+4. Kad se **Σ košare poklopi** s naplatom, traka sama ponudi **Potvrdi** (samo statusi).
+   ⚠ Koraci 2–3 za MC nakon uvođenja trake još **nisu izvedeni uživo** — provjeriti pri prvoj
+   stvarnoj razlici i ovdje ispraviti.
+
+**E — ZABA izvod (kad stigne).**
+1. Razvrstač kao u **B.2**.
+2. Koka/Saša: Delta Export ZABA iz appa (prozor mora obuhvatiti mjesec izvoda).
+3. Saša: `$env:ET_TARGET='prod'; Financije\run.bat fill_from_izvod.py <delta.xlsx> --zaba "$iz\ZABA_YYYY-MM.pdf" --zigosi`
+   → `<delta>_filled.xlsx`. Skupna MC naplata iz trake je **„već na listu (preskočeno)"**;
+   poruka `≈ … već upisana na …` znači da je u traci upisan krivi dan → ispraviti ga u appu.
+4. Koka uveze; kontrolni stupac mora završiti na **ispisanom stanju izvoda**.
+5. Sidro s izvoda: broj s papira ⇒ **datum = zadnja transakcija izvoda** (ne kraj mjeseca, ne danas).
+
+**F — RF izvod (Sašin račun).** Kao **E**, s `--rf "$iz\RF_YYYY-MM.pdf"` (`--od <datum>` za početak
+prozora). U njemu je i Visa naplata iz **B.5**.
+
 ---
 
 ## 3. Raščišćavanje izvoda — nova ploha (PRIJEDLOG, ništa nije izgrađeno)

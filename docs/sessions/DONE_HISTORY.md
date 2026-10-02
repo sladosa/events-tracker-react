@@ -8053,3 +8053,75 @@ ne slaže / bez prozora dana / redak bez statusa) ruše 2 / 2 / 1; vraćeno kopi
 
 **Ritual:** S155 arhiviran (9/9 ✅); usput ispravljen naslov T-S155-7 (bio ⬜, test zatvoren);
 Help `overview.md`; CLAUDE.md Key files + zamka; handoff prepisan.
+
+## S157 — traka uživo na TEST-u: PGRST201, pravilo C, `Smjer`; TEST = kopija PROD-a; deploy (2026-10-01)
+
+Saša je pokrenuo T-S156-1 (prvi put da je traka iz S156 kliknuta) i dobio crveni tekst koji
+završava s `[object Object]`. Od toga je nastala cijela sesija.
+
+**PGRST201.** `findSettleRow` je spajao `events → categories!inner(area_id)`, a `events` ima
+**dva** FK-a prema `categories` (`category_id`, `chain_key`) ⇒ PostgREST odbija (HTTP 300).
+Upit se u S156 nikad nije izvršio uživo (Remote Control). Lijek: `categories!events_category_id_fkey!inner`.
+Usput `retry.ts`: Supabase `error` je **obični objekt**, ne `Error` ⇒ `String(obj)` =
+`[object Object]`; `toError` sada čuva `message (code)`. Vrijedi za svaki `withRetryQuery`.
+
+**T-S156-1 je otkrio duplikat.** Na TEST-u je naplata 11.07. `1.244,74` već postojala **bez
+opisa**, pa je pravilo B (opis = strojni tekst) nije vidjelo i traka je ponudila drugi skupni
+redak. Saldo se nije pomaknuo samo zato što su oba retka prije sidra 30.07. — a tvrdnja testa
+„pločica −1.244,74" bila je **kriva** (pravilo „strogo nakon sidra"). Na PROD-u svih 21 MC
+naplata od 2025. nosi strojni tekst ⇒ rubni slučaj TEST podataka, ali rupa je stvarna.
+
+**Pravilo C** (`findSuspectSettleRows`, `adoptChanges`): prije upisa skupnog retka traka traži
+redak na istom računu, koji miče saldo (filtri pločice osim statusa), s neto iznosom = bankin
+broj u cent, ±3 dana od upisanog dana — opis/Tip/Podtip se NE gledaju. Ako ga ima: *„Je li to
+ova naplata?"* → **Da** = ispravak (opis + `settle` atributi + status, uz objašnjenje i popis
+izmjena; atributi pa opis, pod autorom eventa) · **Ne** = tek tada sažetak upisa. Brana je i u
+`settleBasket` (`suspectsDismissed`), ne samo na ekranu. Saša: ispravak umjesto tihog
+preuzimanja — „najlogičnije je da je ponukana reći ok".
+
+**TEST = kopija PROD-a** (Sašina ideja, autorstvo „a" — sve pod TEST vlasnikom). Backup TEST-a
+prije (`_backup/test/2026-10-01_1135`), `prod_to_test.py` (sada `data-prep_tools/Tools/`):
+5.292 eventa / 49.770 atributa / 20 sidara = PROD, 0 sudara minute, `podtip` dropdown
+poravnat. Scenarij `Claude-temp_R/s156_test_state.py --setup/--plant/--restore`: košara A =
+MC 11.08. (prije sidra 06.09.), B = MC 11.09. (poslije) — obrisan skupni redak, stavke u
+`Planiran`, original u `s156_state/orig.json`. ⚠ Prva verzija `--plant` pala na PGRST102
+(batch insert traži iste ključeve u svakom retku) i ostavila event bez atributa — `--setup` ga
+je počistio.
+
+**`Smjer` (T-S157-2).** Redak `1.300,00` iz trake nije imao `Smjer`, a `isplata` ovisi o njemu
+(`depends_on`) ⇒ Edit nije pokazivao iznos, a lista jest (`−1.300,00`) — dva prikaza istog
+retka razilazila su se. Na PROD-u **5.292/5.292** redaka s iznosom nosi `Smjer`. Lijek: `smjer:
+Isplata` u `due.settle` (TEST; PROD Saša SQL-om) + brana u `createSettleRow`: upisani atribut
+čiji `depends_on` roditelj nije u configu ⇒ upis staje s porukom.
+
+**Testovi.** T-S157-1…6 svi ✅ uživo na TEST-u (baza provjerena nakon svakog): A ne miče saldo,
+B miče točno −1.068,70 (= PROD), ispravak ručnog „MC" retka bez duplikata, „Ne" ne preživljava
+sljedeći klik, brane na iPhone SE širini. `dueSettle.test.mjs` 38 → 55 (pravilo C + ispravak;
+sabotaža iznosa ruši 2, filtra statusa 1). Sitnice: traka tijekom osvježavanja piše „tražim…"
+umjesto prazne košare; žuta kutija nosi imena atributa (*„Tip: … · Smjer: Isplata · …"*).
+
+**PROD i deploy.** Saša pustio `UPDATE … settle.smjer` i `sql/055` (izmjereno: RPC odgovara
+isto kao na TEST-u), pa merge `e8afdac` na `main` — deploy nosi **S156 + S157**. Traka se na
+PROD-u prvi put pojavljuje 11.10. (T-S156-6).
+
+**Razgovor bez koda.** Visa (Koka potvrđuje i Visu; D4 razlog riješen u S148; prije: 12 redaka
+03.10., širi prozor, `text: "Visa"` — PBZ tekst ima 6 varijanti, naknada `0,17` nikad s opisom
+`Visa`; Visa košare 01–06/2026 nose `PRIMLJENA UPLATA` = cijela košara ⇒ neto 0,00 — danas
+zatvorene). „Kad se ne slaže": sloj 1 (naznake u traci) → Backlog, **čeka prvu stvarnu
+razliku**; sloj 2 (izvod) → novi `FINANCIJE_KOKA_PROCES.md` §2.2 „Mjesečni tok danas".
+
+**Ritual:** S157 arhiviran (6/6 ✅); Help `overview.md`; `DOSPJELO_SPEC` (`smjer`); BACKLOG C5;
+CLAUDE.md zamke + Key files; handoff prepisan.
+
+### PENDING sekcija S157 (arhivirana S157) — traka: PGRST201, pravilo C (ručna naplata), TEST = kopija PROD-a (2026-10-01)
+
+**Detalji testova:** [tests/S157_tests.md](../../Claude-temp_R/test-sessions/archive/S157_tests.md)
+
+| ID | Test | Status |
+|---|---|---|
+| T-S157-1 | TEST, košara A (11.08., prije sidra): `1300` ⇒ upis, „neusklađeno 32,52”, pločica **ista** | ✅ S157 — izmjereno, F5 isto; ZABA ostala 12.774,39 |
+| T-S157-2 | TEST, A: Edit naplate na 1332,52 ⇒ ✓ + Potvrdi ⇒ samo 47 statusa, jedan redak | ✅ S157 — izmjereno (baza: 0 Planiran, 1 skupni redak); usput nađen redak bez `Smjer` ⇒ popravljeno |
+| T-S157-3 | TEST, B (11.09., poslije sidra): `1068,70` ⇒ Potvrdi ⇒ redak + 48 statusa, pločica −1.068,70 | ✅ S157 — izmjereno: ZABA 12.774,39 → 11.705,69 (= PROD); 48/48 Izvrsen; novi redak nosi `Smjer = Isplata` |
+| T-S157-4 | TEST, B + ručni „MC” redak ⇒ „Je li to ova naplata?” ⇒ Da ⇒ ispravak (opis, Tip, Podtip) ⇒ Potvrdi; pločica ista, jedan redak | ✅ S157 — izmjereno: jedan skupni redak (ispravljen ručni), 48/48 Izvrsen, ZABA 11.705,69 cijelo vrijeme |
+| T-S157-5 | TEST, B + ručni redak ⇒ „Ne” ⇒ tek tada sažetak; „Ne” ne preživljava sljedeći klik | ✅ S157 — izmjereno: pitanje u koracima 1/3/4, bez pitanja uz 1000; baza netaknuta |
+| T-S157-6 | TEST, B: brane (prijašnji T-S156-4) + žuta kutija na uskoj širini | ✅ S157 — izmjereno: bez dana, 15.09., `abc`, `0`, zatvaranje kutije, iPhone SE 375 px |

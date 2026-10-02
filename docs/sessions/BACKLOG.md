@@ -51,6 +51,19 @@
   čitanje, samo MC; `sql/053` + `054` na TEST-u, PROD čeka Sašu — T-S155-7). Sašina odluka S155:
   config **jednokratno SQL-om**, `Dashboard` sheet (F5) poslije. ⚠ Do F5 `due` blok ne putuje
   Excelom (uvoz ga ne briše). Sljedeće: faza 2 (`Potvrdi` + skupni redak, samo vlasnica).
+  ✅ **Faza 2 S156–S157**, na PROD-u od 01.10.2026. (`sql/055`, `settle.smjer`, pravilo C).
+  - **⏸ „Gdje bi mogla biti razlika?" — ČEKA PRVU STVARNU RAZLIKU** (S157, Sašina odluka).
+    Kad traka kaže „naplaćeno — neusklađeno", ispod oznake na dodir popis SUMNJIVIH redaka
+    iz podataka, svaki s Edit: (a) redak/dva u košari = razlici ⇒ druga košara ili dvaput;
+    (b) banka više ⇒ redak u SUSJEDNOJ košari = razlici ⇒ krivi `Datum naplate` (S112);
+    (c) par istog iznosa ±2 dana ⇒ duplikat (S148); (d) kupovine s ruba ciklusa.
+    Naznake, ne presude — tipfelere i neupisano hvata samo izvod (postupak „kad se ne slaže",
+    `FINANCIJE_KOKA_PROCES.md` §2.2). **Zašto čeka:** na prvoj stvarnoj razlici izmjeriti bi li
+    (a)–(d) pogodili uzrok; projektirati naslijepo = upozorenje koje se nauči otklikati.
+  - **Visa u traku** (S157): D4 razlog riješen u S148; Koka potvrđuje i Visu (Sašina odluka).
+    Prije: 12 redaka `Datum naplate` 03.10. → stvarni dan (alat to radi sam), širi prozor dana
+    u configu (Visa nema fiksan dan), `text: "Visa"` (NE PBZ tekst — 6 varijanti), naknada
+    `0,17` nikad s opisom `Visa`, `fill_from_izvod.py` čita tekst iz configa. Cilj: ~05.11.
 - **Filtar za brojeve (F4)** — jedan uvjet s operatorom (`Iznos > 1000`), ne traži višeuvjetni
   filtar. V. „Potpuni attrFilter“.
 - **Help chip (F6)** — bez posebnog popisa: gotovo pitanje AI-u + kontekst stranice/Aree (uz Help
