@@ -489,6 +489,9 @@ data-prep_tools/Financije/razvrstaj_izvode.py
                                    po SADRZAJU (`classify` + parseri iz inventory_izvoda,
                                    ne kopije). Zadano dry run, `--apply` kopira.
                                    /!\ Inbox je Kokin — KOPIJA, nikad premjestanje.
+                                   S158: uz `--apply` PREIMENUJE u inboxu u nase ime
+                                   (MC stize svaki mjesec kao isto generičko ime) —
+                                   nikad brise, nikad prepisuje zauzeto ime.
                                    /!\ Nikad ne prepisuje: isto ime + druge transakcije
                                    => ostaje u inboxu; iste transakcije => „vec imamo".
                                    Korijen `izvodi/` = ceka obradu; `Analizirani_izvodi/`

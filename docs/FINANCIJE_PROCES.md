@@ -190,7 +190,7 @@ samo on zna.
 | T11 | **Rate starih planova nisu unaprijed upisane** — u bazi postoje samo do zadnjeg izvoda. Falilo 10 rata + Miele + 4 naknade = 365,91 €. Dok je tako, traka 11. se **nikad** ne složi bez MC izvoda | ✅ **MC izvedeno S158**: `rate_alat.py --only b` (popravljen: planovi po mjesecu početka, minute lokalno, ne generira dvaput) → 37 rata / 12 planova uvezeno 02.10.2026.; košara 11.11. = 493,90, 11.12. = 430,09. Zadnja rata nosi `~` (iznos procjena). **Ostaje:** Visa 7 planova / 19 rata (uz „Visa u traku"); 2 zastarjela plana iz 2025. (Bauhaus 8/12, Inter Cars 2/6) — rupa u analizi, ne u saldu. ⚠ Naknade `1,32` po rati (MC obročna otplata) alat **ne** generira — dolaze s izvodom |
 | T23 | **MC naknada `1,32` dolazi uz SVAKU ratu plana s novim načinom otplate** — prepoznaje ih redak u zagradi na izvodu (T15). Izmjereno 07–09/2026.: Lufthansa ×2, Miele, Booking ×2, Plitvice, svaka rata ⇒ jedna naknada. Trgovinski planovi (Konzum…) je nemaju | S158 jednokratno: 7 naknada za 11.11./11.12. (`naknade_rata_2026-10.xlsx`). Trajno: alat uz ratu takvog plana generira i naknadu; rata modal u appu isto (MC, kupnja na rate karticom) |
 | T24 | **`fill_from_izvod --mc` od S126 nikad nije prepoznao ratu**: u regexu je stajao pravi znak backspace (`\x08`) umjesto `\b`, pa nove rate s izvoda nisu dobivale `Rate?`/`Broj rata`/`Rata br`. Izmjereno: 38 MC rata bez oznake (12 iz uvoza 02.10.) | ✅ regex popravljen S158. **Ostaje:** `rate_alat.py --only a` (higijena, 91 redak, i Visa) → uvoz — sljedeća sesija |
-| T25 | Kokina OneDrive mapa `Izvodi` raste: razvrstač samo kopira, pa obrađen PDF ostaje ondje zauvijek (ponovno pokretanje kaže „već imamo") | **prijedlog:** nakon što je PDF u `Analizirani_izvodi/`, premjestiti ga u podmapu `Obrađeno` iste OneDrive mape (razvrstač podmape ne čita, Koka zadržava arhivu). Odluka Saša/Koka |
+| T25 | Kokina OneDrive mapa `Izvodi` raste i nosi **generička imena**: MC stiže kao `Obavijest o učinjenim troškovima.pdf` — **svaki mjesec isto ime**, pa sljedeći izvod dobije `(1)` ili prepiše prethodni, a čovjek ne vidi što je što | ✅ **Odluka Saša S158: preimenovati u inboxu** u isto ime kao kod nas (`MC_2026-09.pdf` — izveden ručno 02.10.; razvrstač ga i dalje prepoznaje po sadržaju, „već imamo"). ✅ **Razvrstač to radi sam uz `--apply`** (S158; samo preimenovanje, nikad brisanje ni prepisivanje zauzetog imena — testirano u pješčaniku). Podmapa `Obrađeno`: još otvoreno |
 | T22 | **Rata modal dijeli ostatak kao Visa i za MC.** Banka: Visa ostatak na **prvoj** rati (28/28), MC na **zadnjoj**, rata zaokružena naviše (16/16). MC plan s nedjeljivim iznosom iz appa zato odstupa od banke za cent ⇒ traka „neusklađeno" | `splitRataAmounts` po `Izvor`u — u configu (`automations.rata`), ne u kodu; CLAUDE.md S145 ispravljen |
 | T12 | **Delta „Σ košara" zbraja SVE buduće naplate** (11.10. + 11.11. + 11.12. = 1.185,38) i uspoređuje ih s **jednom** naplatom ⇒ razlika 3,96 izgledala je kao sitnica, a stvarna je bila 329,76. Uz to `fill_from_izvod` javlja „list nema kontrolu košare" iako je ima | Σ po **jednom** dospijeću (najbližem), ili po dospijeću zasebno — **kod, deltaSheet** |
 | T13 | **Redak s malo drugačijim iznosom alat dopisuje kao NOV** ⇒ duplikat. Ovdje 4: tečaj (Audible 8,99 USD → 8,11 €, toner 3,45 → 3,49), cent ostatka rate (Konzum 15,36 → 15,37), i redak bez opisa (28,79 → FENGHUA 33,10, isti dan) | isti račun, isti dan ±2, jedini neupareni s obje strane ⇒ **ispravak postojećeg** (iznos s izvoda, opis i `Tip` naši) |
@@ -217,9 +217,10 @@ se upisuje u eurima iz bankovne aplikacije; ako ga ne zna, `~` na početak opisa
 > PDF se zadaje **samo imenom** (`MC_2026-09.pdf`) — alat ga sam nađe u `izvodi\`.
 
 **Prvi korak za svaki izvod — razvrstač.** `Financije\run.bat razvrstaj_izvode.py` (pregled) →
-`… --apply` (kopira iz OneDrive inboxa u `izvodi\`, Kokina mapa se ne dira). Ne-izvod (PBZ
-„Detalji transakcije") ostaje u inboxu uz razlog. MC stiže kao `Obavijest o učinjenim
-troškovima.pdf` → `MC_YYYY-MM.pdf`. Nakon uvoza PDF u `izvodi\Analizirani_izvodi\` — to je
+`… --apply` (kopira iz OneDrive inboxa u `izvodi\` **i u inboxu preimenuje** u isto ime —
+ništa ne briše, zauzeto ime ne prepisuje). Ne-izvod (PBZ „Detalji transakcije") ostaje u inboxu
+uz razlog. MC stiže kao `Obavijest o učinjenim troškovima.pdf` → `MC_YYYY-MM.pdf` (i kod nas i
+u Kokinoj mapi). Nakon uvoza PDF u `izvodi\Analizirani_izvodi\` — to je
 oznaka „obrađeno" za čovjeka; alati ga vide i u korijenu.
 
 **Mastercard izvod (~2. u mjesecu, prije naplate)** — izveden uživo S158 (MC_2026-09)
