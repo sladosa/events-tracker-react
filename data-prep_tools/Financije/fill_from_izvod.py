@@ -28,7 +28,7 @@ ZAŠTO IZ IZVODA, A NE IZ KOKINOG FILEA
 
 Pokretanje (target = file skinut iz appa, ostaje netaknut):
     python fill_from_izvod.py <target.xlsx> --rf   <RF_2026-07.pdf>   [--od 2026-08-05]
-    python fill_from_izvod.py <target.xlsx> --visa <PBZVIZA_2026-07.pdf> --naplata 2026-08-07
+    python fill_from_izvod.py <target.xlsx> --visa PBZVISA_2026-07.pdf --naplata 2026-08-07
 Rezultat: `<target>_filled.xlsx` pokraj originala + izvještaj na ekran.
 """
 
@@ -45,6 +45,9 @@ from openpyxl.utils import get_column_letter
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')   # sys.exit poruke idu ovuda
 sys.path.insert(0, str(Path(__file__).parent))
+import os  # noqa: E402
+from _db import target  # noqa: E402
+from _izvodi import nadji  # noqa: E402
 
 AREA_COL, PATH_COL, DATE_COL, SESS_COL, USER_COL, COMMENT_COL = 2, 3, 4, 5, 7, 8
 TIME_START_H = 14          # isti pojas koji piše deltaSheet.ts (DELTA_TIME_START_H)
@@ -1070,11 +1073,19 @@ def main() -> None:
                     help='upisi `Izvod opis` i na retke koje baza vec ima, a ovaj '
                          'izvod ih potvrdjuje (mijenja postojece retke -> uvoz ih '
                          'javi kao Modify)')
+    # /!\ Zadano iz ET_TARGET (S158): naredba `$env:ET_TARGET='prod'; ...` iz
+    #     docs/FINANCIJE_PROCES.md tako dobije presedane bez trece zastavice.
+    #     Bez ET_TARGET ostaje kao prije — bez presedana, neprepoznato ide N/A.
     ap.add_argument('--presedan', choices=['prod', 'test'],
+                    default=target() if os.environ.get('ET_TARGET') else None,
                     help='predloži Tip/Podtip brojanjem povijesti TOG računa u bazi '
-                         '(v. presedani.py); bez njega neprepoznati redak ostaje N/A')
+                         '(v. presedani.py); zadano: ET_TARGET ako je postavljen')
     ap.add_argument('--dry',     action='store_true', help='samo ispiši što bi upisao')
     a = ap.parse_args()
+    # PDF se smije zadati samo imenom (`MC_2026-09.pdf`) — trazi se u izvodi/ (S158)
+    for _arg in ('rf', 'zaba', 'visa', 'mc'):
+        if getattr(a, _arg):
+            setattr(a, _arg, nadji(getattr(a, _arg)))
 
     if not a.rf and not a.visa and not a.zaba and not a.iz_koke and not a.mc:
         sys.exit('X Zadaj barem jedan izvor: --rf, --zaba, --visa, --mc ili --iz-koke.')
@@ -1241,7 +1252,7 @@ def main() -> None:
             print('       (ne uvozim ih: vjerojatno isti trosak pod krivim datumom. '
                   'Prvo ispravak datuma u bazi, pa uvoz — obrnuto udvostrucuje.)')
         for x in novi:
-            m = re.search(r'RATA\s+(\d+)\s*/\s*(\d+)', x['opis'], re.I)
+            m = re.search(r'\bRATA\s+(\d+)\s*/\s*(\d+)', x['opis'], re.I)
             kom = (koka.find(x['datum'], x['iznos']) if koka else None) or short_opis(x['opis'])
             rows.append({
                 'date': x['datum'], 'smjer': 'Isplata', 'iznos': x['iznos'],

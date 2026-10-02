@@ -25,7 +25,7 @@ Prvi put izveden nad `PBZVIZA_2026-08.pdf` (naplata 07.09.2026. = 1.218,38).
     (user, kategorija, session_start), a kolizija je zastita od dvostrukog uvoza.
 
 Pokretanje:
-  $env:ET_TARGET='prod'; Financije\\run.bat visa_uvoz_izvoda.py PBZVIZA_2026-08.pdf 2026-09-07
+  $env:ET_TARGET='prod'; Financije\\run.bat visa_uvoz_izvoda.py PBZVISA_2026-08.pdf 2026-09-07
   (dodaj --file za xlsx)
 """
 from __future__ import annotations
@@ -39,7 +39,8 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, str(Path(__file__).parent))
-from _db import load_env  # noqa: E402
+from _db import cat_transakcija, load_env, target as _target  # noqa: E402
+from _izvodi import nadji  # noqa: E402
 from enrich_from_izvoda import parse_pbz_visa  # noqa: E402
 from fill_from_izvod import short_opis  # noqa: E402
 from presedani import Presedani  # noqa: E402
@@ -81,8 +82,7 @@ def rucna_klasa(opis: str):
 
 def taksonomija(url, key):
     from _db import rest
-    from uskladi_izvod import CAT_PROD
-    d = rest(url, key, 'attribute_definitions?category_id=eq.' + CAT_PROD
+    d = rest(url, key, 'attribute_definitions?category_id=eq.' + cat_transakcija(url, key)
              + '&name=eq.Podtip&select=id,validation_rules')[0]
     om = d['validation_rules']['depends_on']['options_map']
     return {t: v for t, v in om.items() if t not in ('*', 'N/A')}
@@ -96,12 +96,10 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     if len(args) != 2:
         sys.exit('Upotreba: visa_uvoz_izvoda.py <PBZVISA_YYYY-MM.pdf> <naplata YYYY-MM-DD>')
-    izvod = next(IZVODI.rglob(args[0]), None)
-    if not izvod:
-        sys.exit(f'✗ Nema {args[0]} ni u izvodi/ ni u Analizirani_izvodi/')
+    izvod = nadji(args[0])
     naplata = date.fromisoformat(args[1])
 
-    target = os.environ.get('ET_TARGET', 'test').strip().lower()
+    target = _target()
     url, key = load_env(target)
     print(f'[{target.upper()}] {url}   izvod {izvod.name}   naplata {naplata}')
     rows = load_db(url, key)

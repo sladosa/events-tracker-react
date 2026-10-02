@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S157).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S158).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 114 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 127 | [Critical rules](<#Critical rules>) | X |
-| 1202 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1647 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1663 | [Key files](<#Key files>) |  |
-| 1766 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1786 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1808 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1834 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1874 | [Open bugs](<#Open bugs>) | ~ |
-| 1983 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2028 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2125 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2133 | [Backlog](<#Backlog>) | ~ |
-| 2137 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2145 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1216 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1661 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1677 | [Key files](<#Key files>) |  |
+| 1780 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1800 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1822 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1848 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1888 | [Open bugs](<#Open bugs>) | ~ |
+| 1997 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2042 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2139 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2147 | [Backlog](<#Backlog>) | ~ |
+| 2151 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2159 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2303 redaka, 18 sekcija._
+_Ukupno 2317 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -103,7 +103,7 @@ podaci hrane i AI sloj.
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist            |
 | `data-prep_tools/Financije/ENRICH_PLAN.md` | Financije pipeline — alati, koraci, nalazi po sesijama                          |
-| `docs/FINANCIJE_KOKA_PROCES.md`          | **Kokin rad s `Financije_all`** — sadašnji tok (mobitel, Add/Edit, saldo) i plan: izvodi → ploha „Raščišćavanje izvoda“ s Overview pločice. Odluke K1–K5 prihvaćene (S151). **§2.2 = mjesečni tok DANAS** (tko, kada, kojom naredbom; MC traka, Visa alat, „kad se ne slaže", ZABA/RF izvod — S157) |
+| `docs/FINANCIJE_PROCES.md`               | **Kako Koka i Saša vode `Financije_all`** (prepisano S158, bivši `FINANCIJE_KOKA_PROCES.md`) — §1 model (vrste transakcija, dva cilja: saldo / analiza, što izvod potvrđuje), §2 tri aktivnosti (unos · potvrda naplate · usklađenje s izvodom), **§4 popis trenja T1–T10 — stanje nije konačno**, §5 naredbe danas (kvarljivo), §6 ploha „Raščišćavanje izvoda“ (K1–K5) |
 | `NEXT_SESSION_PROMPT.md`                  | **Na početku svake sesije** — handoff, DIO 1 netehnički / DIO 2 tehnički. Prepisuje se na kraju svake sesije (v. „End of session" 5). ⚠ Provjeri commit u zaglavlju: ako nije zadnji, čitaj ga kao povijest, ne kao stanje |
 | `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** (⚠ gitignoriran — samo lokalno + `D:`)           |
 
@@ -188,6 +188,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **Backup napravljen anon ključem bio bi PRAZAN i izgledao uredan** — zato alat staje ako
   ključ nije `service`. Nije teorija: `_db.load_env('test')` pada na anon, i TEST je u prvom
   mjerenju izgledao kao baza s 0 eventa (stvarno 12.363).
+  ✅ **S158: `_db.load_env('test')` više ne pada na anon** — čita `.env.local` (isti TEST
+  projekt, service ključ) i **staje** ako service ključa nema. Do tada je svaki Financije alat
+  na TEST-u kroz RLS vidio 6 demo Area i nijednu `Financije_all`, bez greške.
 - **✅ RESTORE POSTOJI I DOKAZAN JE (S136).** `Tools\run.bat Tools\restore_db.py`.
   Izmjereno na TEST-u: obrisano **55 redaka** (5 `balance_anchors` + 50
   `event_attributes`), vraćeno, i **`sha256` po tablici se poklopio s manifestom** —
@@ -337,8 +340,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 
 **⚠ PYTHON ALAT BEZ `ET_TARGET` GAĐA **TEST**, A BROJKA IZGLEDA UVJERLJIVO** (S137)
 
-- `_db.load_env` pada na `.env.testing` kad `ET_TARGET` nije postavljen, pa alat uredno
-  odradi posao **nad krivom bazom**. Izmjereno isti dan, isti `promet_check.py`:
+- Alat bez `ET_TARGET` gađa TEST, pa uredno odradi posao **nad krivom bazom**.
+  (Od S158 to vrijedi za **sve** alate mjesečnog toka — `uskladi_izvod` i `rate_alat` su
+  dotad bez `--env` gađali **PROD**; sada `--env` zadano čita `ET_TARGET`, `_db.target()`.) Izmjereno isti dan, isti `promet_check.py`:
   **TEST `✓ 12 / ✗ 20`**, **PROD `✓ 27 / ✗ 5`** — dvije priče o zdravlju istih podataka.
   Jedina razlika u ispisu je zagrada u zaglavlju (`[TEST] area 98dd91f3 · .env.local`).
   ⚠ **Zaglavlje se čita PRIJE brojke, ne poslije.** U S137 je TEST ispis zamalo otišao
@@ -432,6 +436,13 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   kao razlika između Σ košare i iznosa terećenja, dakle kao greška u **sparivanju**.
   ⚠ **Prva, ne zadnja rata** — tako radi banka: od 62 plana s ≥3 rate njih **23** ima
   prvu ratu različitu od ostalih (`rate_alat.py`). Poklapamo se s izvorom.
+  ⚠ **ISPRAVAK S158 — vrijedi SAMO ZA VISU.** Izmjereno po kartici na kompletnim
+  planovima: **Visa prva** različita 28/28 (`12,50 · 12,49 · 12,49`), **Mastercard
+  ZADNJA** različita 16/16 (`18,49 · 18,49 · 18,47` = rata zaokružena **naviše**,
+  zadnja nosi ostatak). Brojka 23/62 miješala je kartice. `splitRataAmounts` danas
+  za MC plan s nedjeljivim iznosom daje rate koje se od banke razlikuju za cent u
+  više mjeseci — a traka ima toleranciju **0,00**. Popravak = pravilo po `Izvor`u
+  (`docs/FINANCIJE_PROCES.md` §4 T22), nije napravljen.
   ⚠ Računa se **u lipama** (`splitRataAmounts`): zbrajanje decimala nosi grešku
   binarnog zapisa, a novac se uspoređuje s nulom (isti razlog kao `ROUND` u Excelu, S112).
   ⚠ Isti broj mora ići **u atribut i u komentar** retka, inace redak sam sebi proturječi.
@@ -662,7 +673,7 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **ISPRAVAK S151 (2026-09-26): premisa više ne vrijedi.** Koka je napustila Excelicu i
   radi **na mobitelu, kroz Add/Edit**, radi salda. Excel roundtrip ostaje put za bulk ispravke
   i Sašine alate — `fix_as_owner` zato ostaje — ali nove Kokine funkcije se projektiraju **za
-  mobitel, u aplikaciji** (v. `docs/FINANCIJE_KOKA_PROCES.md`).
+  mobitel, u aplikaciji** (v. `docs/FINANCIJE_PROCES.md`).
 - **⚠ Nije rubni slučaj nego glavni tok delta sheeta.** Izmjereno na košari 03.09.:
   **7 od 10 redaka su Sašini**. Bez ovoga Kokin mjesečni krug ne bi vidio većinu
   košare — i to **tiho**, retci se preskaču bez poruke.
@@ -1174,6 +1185,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   „naplaćeno 11.07." ima 73 retka i `2.231,02`; banka je tog dana skinula `1.244,74`. Saldo je
   netaknut (kartične stavke nisu u njemu), ali svaka automatika „dospjelo → potvrdi" gleda
   krivi datum. Kontrola: **zbroj košare po datumu naplate mora dati iznos skupne naplate.**
+- **✅ ZATVORENO S158 — alati čitaju CIJELI `izvodi/` (`_izvodi.py`, bez `duplikati/`), pa
+  selidba u `Analizirani_izvodi/` više nije uvjet da te alat vidi; PDF se zadaje i samo imenom.**
+  Povijest zamke:
 - **⚠ `izvodi/Analizirani_izvodi/` NIJE arhiva — to je mapa koju alati čitaju** (S129).
   `make_saldo_anchors.py:65` i `pregled_stanja.py:61` glob-aju **samo** nju, pa izvod
   koji stoji u `izvodi/` korijenu za `promet_check`, `pregled_stanja` i sidra

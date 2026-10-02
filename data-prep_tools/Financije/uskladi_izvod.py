@@ -100,22 +100,25 @@ import openpyxl
 import pdfplumber
 
 ROOT = Path(__file__).resolve().parents[2]
+# /!\ CAT_PROD ostaje SAMO za stare jednokratne skripte koje ga uvoze; ovaj alat
+#     kategoriju trazi po imenu u ciljanoj bazi (`_db.cat_transakcija`, S158).
 CAT_PROD = '986a4612-86a2-49fa-b73f-a29e048e5750'
-KOKA_DEFAULT = ROOT / 'data-prep_data' / 'Financije' / 'Financije 2026-08-23.xlsx'
 
 
 # -- DB ----------------------------------------------------------------------
 # `load_env` i `rest` zive u `_db.py` — alat koji prica samo s bazom ne smije
 # vuci `pdfplumber` (S132). Re-export: postojeci `from uskladi_izvod import
 # load_env, rest` i dalje radi.
-from _db import load_env, rest  # noqa: F401,E402
+from _db import cat_transakcija, load_env, rest, target  # noqa: F401,E402
+from _izvodi import nadji  # noqa: E402
 
 
 def load_db(url, key):
+    cat = cat_transakcija(url, key)
     defs = {d['id']: d['name'] for d in rest(
-        url, key, 'attribute_definitions?category_id=eq.' + CAT_PROD + '&select=id,name')}
+        url, key, 'attribute_definitions?category_id=eq.' + cat + '&select=id,name')}
     events = {e['id']: e for e in rest(
-        url, key, 'events?category_id=eq.' + CAT_PROD
+        url, key, 'events?category_id=eq.' + cat
         + '&select=id,event_date,session_start,comment,user_id')}
     vals = defaultdict(dict)
     for a in rest(url, key,
@@ -226,6 +229,8 @@ def parse_koka_date(v):
 def index_koka(path):
     """Kolona C je dan kad novac napusti racun; dok naplata nije poznata C je
     prazan a dan troska stoji u G — zato se gledaju OBJE (S113)."""
+    if path is None:
+        return {}
     if not path.exists():
         print('⚠ Kokin file nije nadjen (' + path.name + ') — usporedba se preskace.')
         return {}
@@ -875,7 +880,7 @@ def report(iz, u, isp, koka, path):
         print('    nema')
     for s in sorted(u['izvod_bez_para'], key=lambda x: x['datum']):
         k = koka_par(koka, s['datum'], s['iznos'])
-        kk = ('Koka ' + k[0][0] + ' r.' + str(k[0][1]) + ' "' + k[0][2][:20] + '"') if k else 'Koka: nije nadjena'
+        kk = ('Koka ' + k[0][0] + ' r.' + str(k[0][1]) + ' "' + k[0][2][:20] + '"') if k else ('Koka: nije nadjena' if koka else '')
         print('  ' + s['datum'].strftime('%d.%m.%Y') + '  ' + s['opis'][:34].ljust(36)
               + format(s['iznos'], '9.2f') + '   ' + kk)
         for r, dd in u['daleki'].get(s['ref'], []):
@@ -911,7 +916,7 @@ def report(iz, u, isp, koka, path):
     for r in sorted(u['visak'], key=lambda x: x['event_date']):
         a = r['attrs']
         k = koka_par(koka, ev_date(r), net(a))
-        kk = ('Koka r.' + str(k[0][1])) if k else 'Koka: —'
+        kk = ('Koka r.' + str(k[0][1])) if k else ('Koka: —' if koka else '')
         print('  ' + r['event_date'] + '  ' + opis_db(r).ljust(34)
               + format(net(a), '9.2f') + '  ' + str(a.get('Status'))[:8].ljust(10)
               + ('potvrdio drugi izvod' if a.get('Izvod opis') else 'NEPOTVRDJEN').ljust(22) + kk)
@@ -922,8 +927,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--izvod', action='append', required=True,
                     help='moze se ponoviti; s --file svi idu u jedan workbook')
-    ap.add_argument('--koka', default=str(KOKA_DEFAULT))
-    ap.add_argument('--env', default='prod', choices=['prod', 'test'])
+    # /!\ Kokina Excelica je napustena (S151) — usporedba s njom samo na zahtjev (S158).
+    ap.add_argument('--koka', help='stari Kokin xlsx za usporedbu (zadano: bez)')
+    ap.add_argument('--env', default=target(), choices=['prod', 'test'],
+                    help='zadano iz ET_TARGET (bez njega TEST), kao i ostali alati')
     ap.add_argument('--izvor', default='Mastercard')
     ap.add_argument('--tol', type=int, default=5,
                     help='tolerancija u danima oko prozora izvoda')
@@ -931,16 +938,15 @@ def main():
     ap.add_argument('--file', help='napisi review workbook za Koku')
     args = ap.parse_args()
 
-    paths = [Path(p) for p in args.izvod]
+    paths = [nadji(p) for p in args.izvod]
     for p in paths:
-        if not p.exists():
-            sys.exit('Nema ' + str(p))
         if not p.name.upper().startswith('MC_'):
             sys.exit('Zasad samo MC izvodi (' + p.name + '). Visa/ZABA imaju drugi format.')
 
     url, key = load_env(args.env)
+    print('[' + args.env.upper() + ']  ' + url)
     db = load_db(url, key)
-    koka = index_koka(Path(args.koka))
+    koka = index_koka(Path(args.koka) if args.koka else None)
 
     rezultati = []
     for p in sorted(paths, key=lambda x: x.name):

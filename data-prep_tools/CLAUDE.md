@@ -308,6 +308,24 @@
 
 ---
 
+**Rate i MC izvod (S158)** — puni kontekst u `docs/FINANCIJE_PROCES.md` §4 (T11–T25)
+
+- **⚠ (trgovac, N) NIJE plan rata.** Konzum P-1000 na 6 rata ima četiri plana, dva istodobno.
+  Plan = (trgovac, N, **mjesec početka** = `Datum naplate` − (n−1), iznos) — `rate_alat.plans()`.
+- **⚠ Generirana rata nema `Izvod opis`** (žig = „potvrdio izvod") — zato je alat koji plan
+  prepoznaje samo po `Izvod opis`u ne vidi i generira je **ponovno**. `rate_alat` je prepoznaje po
+  danu kupnje + `Izvor` + `Broj rata` + iznos; svaki budući alat koji gleda planove mora isto.
+- **⚠ Ostatak zaokruživanja: Visa PRVA rata, MC ZADNJA** (28/28 vs 16/16). Za trgovinske MC
+  planove banka ne daje ukupni iznos ⇒ zadnja generirana rata nosi `~`.
+- **⚠ MC naknada `1,32` po rati** dolazi samo uz planove koji na izvodu imaju redak u zagradi
+  `(B… dd.mm.yy ukupno EUR)` (novi način obročne otplate) — taj redak nosi i **datum kupnje**.
+- **⚠ `fill_from_izvod --mc`: mali pomak iznosa = NOV redak** (tečaj, cent ostatka, redak bez
+  opisa) ⇒ duplikat. Prije uvoza `_filled` se pregledava; kontrola je Σ redaka s naplatom =
+  dan dospijeća prema iznosu izvoda, **ne** „Σ košara" iz delta sheeta (on zbraja sve buduće naplate).
+- **⚠ Regex u Python izvoru provjeri na kontrolne znakove** — `\b` je u `fill_from_izvod` od
+  S126 bio pravi backspace (`\x08`) i izraz nikad nije pogodio. Sken: `[\x00-\x08\x0b\x0c\x0e-\x1f]`.
+- **`_db.load_env` traži SERVICE ključ** (S158); TEST = `.env.local`. Anon kroz RLS daje dio baze.
+
 ## Financije — pravila domene (nastavak; „Ključne odluke" su u korijenu)
 
 ### Spašeno iz plana (S137) — četiri pravila bez kopije igdje drugdje
@@ -474,7 +492,8 @@ data-prep_tools/Financije/razvrstaj_izvode.py
                                    /!\ Nikad ne prepisuje: isto ime + druge transakcije
                                    => ostaje u inboxu; iste transakcije => „vec imamo".
                                    Korijen `izvodi/` = ceka obradu; `Analizirani_izvodi/`
-                                   tek nakon uvoza (alati ga citaju kao obradjeno).
+                                   tek nakon uvoza — od S158 samo oznaka za covjeka,
+                                   alati citaju cijeli `izvodi/` (`_izvodi.py`).
 data-prep_tools/Financije/uskladi_izvod.py
                                    Jedan izvod ↔ baza ↔ Kokin file. Četiri sekcije po
                                    tome TKO ODLUČUJE + `--file` review workbook za Koku.
@@ -487,6 +506,14 @@ data-prep_tools/Financije/_db.py   `load_env` + pagirani `rest`. Izdvojeno iz
                                    koji prica SAMO s bazom ne vuce PDF citac.
                                    /!\ PRESELJENO, ne kopirano — `uskladi_izvod`
                                    re-exporta, pravilo o paginaciji ostaje jedno.
+                                   S158: `target()` (ET_TARGET, bez njega TEST, krivo ime
+                                   PADA) i `cat_transakcija()` (kategorija PO IMENU u ciljanoj
+                                   bazi — tvrdi PROD ID je na TEST-u davao 0 redaka bez greske).
+                                   /!\ `load_env` trazi SERVICE kljuc; anon kroz RLS = dio baze.
+data-prep_tools/Financije/_izvodi.py
+                                   S158: `svi(uzorak)` / `nadji(ime)` / `put(ime)` — PDF iz
+                                   CIJELOG `izvodi/` osim `duplikati/`. Svaki alat koji cita
+                                   izvode ide OVUDA, inace se vraca zamka „Analizirani" (S129).
 data-prep_tools/Financije/ocisti_auto_komentare.py
                                    Brise `comment` koji je napisao `comment_template`.
                                    Kriterij je REKONSTRUKCIJA po retku, ne uzorak —

@@ -59,9 +59,12 @@ import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+ZG = ZoneInfo('Europe/Zagreb')
 
 sys.path.insert(0, str(Path(__file__).parent))
-from uskladi_izvod import load_db, load_env, net  # noqa: E402
+from uskladi_izvod import load_db, load_env, net, target  # noqa: E402
 
 try:
     import openpyxl
@@ -122,15 +125,51 @@ def hr(d: date) -> str:
 
 
 # ------------------------------------------------------------------ analiza --
+def _mjesec(d: date) -> int:
+    return d.year * 12 + d.month - 1
+
+
 def plans(db):
-    """Planovi rekonstruirani iz `Izvod opis`a. Kljuc = (trgovac, N)."""
+    """Planovi rekonstruirani iz `Izvod opis`a. Kljuc = (trgovac, N, pocetak, iznos).
+
+    /!\\ (trgovac, N) NIJE plan (S158). Konzum P-1000 na 6 rata ima ih cetiri, od
+        toga dva istodobno, pa je stari kljuc 13 grupa proglasavao „usporednima" i
+        preskakao -- upravo rate koje su u MC_2026-09 falile (365,91 EUR).
+        Rata n plana koji je poceo u mjesecu s naplacuje se u mjesecu s + n - 1,
+        dakle `Datum naplate` - (n - 1) = POCETAK plana. Dva plana istog pocetka
+        (P-1000 30,18 i 30,38, oba 08/2026) razdvaja iznos.
+    /!\\ MC ostatak zaokruzivanja nosi ZADNJA rata (26,82 x5 pa 26,77), pa se rata
+        n == N ne grupira po iznosu nego pridruzi najblizem planu bez nje --
+        inace bi odvojena zadnja rata ostavila svoj plan „otvorenim".
+    """
     g = defaultdict(list)
     for r in db:
-        m = RATA_PAT.search(str(r['attrs'].get('Izvod opis') or ''))
-        if m:
-            trg = RATA_PAT.sub('', str(r['attrs']['Izvod opis'])).strip()
-            g[(trg, int(m.group(2)))].append((int(m.group(1)), r))
-    return g
+        o = str(r['attrs'].get('Izvod opis') or '')
+        m = RATA_PAT.search(o)
+        if not m:
+            continue
+        n, N = int(m.group(1)), int(m.group(2))
+        due = parse_due(r['attrs'].get('Datum naplate'))
+        start = _mjesec(due) - (n - 1) if due else None
+        g[(RATA_PAT.sub('', o).strip(), N, start)].append((n, r))
+    out = {}
+    for (trg, N, start), v in g.items():
+        br = [x[0] for x in v]
+        if len(br) == len(set(br)):
+            out[(trg, N, start, None)] = v
+            continue
+        sub = defaultdict(list)
+        for n, r in v:
+            if n < N:
+                sub[round(abs(net(r['attrs'])), 2)].append((n, r))
+        for n, r in v:
+            if n == N:
+                bez = [k for k, w in sub.items() if all(x[0] != N for x in w)] or list(sub) or [None]
+                k = min(bez, key=lambda k: abs((k or 0) - abs(net(r['attrs']))))
+                sub[k].append((n, r))
+        for izn, w in sub.items():
+            out[(trg, N, start, izn)] = w
+    return out
 
 
 def prolaz_a(db):
@@ -174,11 +213,27 @@ def prolaz_a(db):
 def prolaz_b(db, danas: date):
     """Preostale rate otvorenih planova."""
     nove, visa, zastarjeli, uspor = [], [], [], []
-    for (trg, N), v in plans(db).items():
+    # /!\ RATE KOJE JE OVAJ ALAT VEC GENERIRAO nemaju `Izvod opis` (namjerno -- zig
+    #     znaci „potvrdio izvod"), pa ih `plans()` ne vidi. Bez ovog indeksa svako
+    #     sljedece pokretanje generira ISTE rate ponovno (izmjereno S158: nakon uvoza
+    #     37 rata alat je nudio istih 37). Prepoznaju se po onome sto alat upisuje:
+    #     dan kupnje + Izvor + Broj rata + iznos.
+    generirane = defaultdict(list)
+    for r in db:
+        a = r['attrs']
+        if a.get('Rate?') is True and a.get('Rata br') and a.get('Broj rata') \
+                and not RATA_PAT.search(str(a.get('Izvod opis') or '')):
+            generirane[(r['event_date'], a.get('Izvor'), int(a['Broj rata']))].append(
+                (int(a['Rata br']), round(abs(net(a)), 2)))
+    for (trg, N, _start, _izn), v in plans(db).items():
         br = [x[0] for x in v]
         if len(br) != len(set(br)):
             uspor.append((trg, N, sorted(set(round(abs(net(x[1]['attrs'])), 2) for x in v))))
             continue
+        prva0 = min(v)[1]
+        iznos0 = round(abs(net([x[1] for x in v if x[0] == max(br)][0]['attrs'])), 2)
+        br += [n for n, izn in generirane[(prva0['event_date'], prva0['attrs'].get('Izvor'), N)]
+               if abs(izn - iznos0) <= 0.10]
         mx = max(br)
         if mx >= N:
             continue
@@ -202,15 +257,27 @@ def prolaz_b(db, danas: date):
     return nove, visa, zastarjeli, uspor
 
 
-def slobodne_minute(db, dan: str, koliko: int) -> list[str]:
-    """/!\\ Kolizija `session_start`a spaja retke u JEDAN redak liste (useActivities)."""
-    zauzete = {str(r.get('session_start') or '')[11:16] for r in db if r['event_date'] == dan}
+def lokalno_hhmm(ss) -> str:
+    if not ss:
+        return ''
+    return datetime.fromisoformat(str(ss).replace('Z', '+00:00')).astimezone(ZG).strftime('%H:%M')
+
+
+def slobodne_minute(db, dan: str, koliko: int, dodijeljeno: dict) -> list[str]:
+    """/!\\ Kolizija `session_start`a spaja retke u JEDAN redak liste (useActivities).
+    /!\\ Baza drzi UTC, a file nosi LOKALNO vrijeme (S158) -- usporedba sirovog
+        `[11:16]` s minutama filea promasi za 1-2 h i proglasi zauzetu minutu slobodnom.
+    /!\\ `dodijeljeno` dijele SVI planovi: dva plana istog dana kupnje dobivala su
+        iste minute (P-1270 i Miele, oba 29.08.) -- sudar unutar samog filea."""
+    zauzete = {lokalno_hhmm(r.get('session_start')) for r in db if r['event_date'] == dan}
+    zauzete |= dodijeljeno.setdefault(dan, set())
     out = []
     for h in range(14, 24):
         for mi in range(60):
             s = '%02d:%02d' % (h, mi)
             if s not in zauzete:
                 out.append(s)
+                dodijeljeno[dan].add(s)
                 if len(out) == koliko:
                     return out
     return out
@@ -302,7 +369,8 @@ def napisi(path: Path, redci: list[dict]):
 # -------------------------------------------------------------------- main --
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--env', default='prod', choices=['prod', 'test'])
+    ap.add_argument('--env', default=target(), choices=['prod', 'test'],
+                    help='zadano iz ET_TARGET (bez njega TEST), kao i ostali alati (S158)')
     ap.add_argument('--file', help='prefiks; pise <prefiks>_A.xlsx i <prefiks>_B.xlsx')
     ap.add_argument('--only', choices=['a', 'b'], help='samo jedan prolaz')
     ap.add_argument('--danas', help='YYYY-MM-DD (za test)')
@@ -342,18 +410,23 @@ def main():
         uk = sum(p['N'] - p['od'] + 1 for p in nove)
         print('\nPROLAZ B — nove rate   [%d planova, %d rata]' % (len(nove), uk))
         print('-' * 96)
+        print('  ~ zadnja rata: MC ostatak zaokruzivanja nosi ZADNJA rata, a trgovinski planovi')
+        print('    (Konzum, Spar...) nemaju ukupni iznos na izvodu -- iznos je procjena (`~`).')
+        dodijeljeno = {}
         for p in sorted(nove, key=lambda x: -(x['N'] - x['od'] + 1)):
-            slob = slobodne_minute(db, p['event_date'], p['N'] - p['od'] + 1)
+            slob = slobodne_minute(db, p['event_date'], p['N'] - p['od'] + 1, dodijeljeno)
             print('  %-26s %6.2f  rate %d..%d  dan kupnje %s  minute %s'
                   % (p['trgovac'][:26], p['iznos'], p['od'], p['N'], p['event_date'],
                      ', '.join(slob)))
             for k, n in enumerate(range(p['od'], p['N'] + 1)):
                 due = plus_months(p['due'], n - p['od'] + 1)
                 print('        rata %2d/%d   dospijece %s' % (n, p['N'], hr(due)))
+                baza = re.sub(r'\d+/\d+\s*$', '', p['comment']).strip()
+                kom = ((baza + ' ') if baza else '') + '%d/%d' % (n, p['N'])
                 b_redci.append({
                     'date': p['event_date'], 'time': slob[k] if k < len(slob) else '23:%02d' % k,
-                    'comment': re.sub(r'\d+/\d+\s*$', '', p['comment']).strip()
-                               + ' %d/%d' % (n, p['N']),
+                    # `~` = nesiguran iznos (konvencija iz CLAUDE.md, „Unos u aplikaciji")
+                    'comment': ('~ ' + kom) if n == p['N'] else kom,
                     'attrs': {
                         'Racun': p['racun'], 'Izvor': p['izvor'], 'Smjer': 'Isplata',
                         'Isplata': p['iznos'], 'Tip': p['tip'], 'Podtip': p['podtip'],

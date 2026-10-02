@@ -1,9 +1,11 @@
 @echo off
 setlocal enabledelayedexpansion
 REM Run any script in the Financije folder using the shared venv.
-REM Usage: Financije\run.bat inventory_izvoda.py [args]
-REM Aktivni alati: inventory_izvoda, enrich_from_izvoda, apply_rules,
-REM sync_taxonomy, normalize_financije (stari su u Obsolete\).
+REM Usage: Financije\run.bat uskladi_izvod.py --izvod MC_2026-09.pdf --dry
+REM Mjesecni tok (docs\FINANCIJE_PROCES.md par. 5): razvrstaj_izvode, uskladi_izvod,
+REM fill_from_izvod, visa_uvoz_izvoda, rate_alat, promet_check.
+REM Baza: $env:ET_TARGET='prod' -- bez toga TEST (vrijedi za SVE alate od S158).
+REM PDF se zadaje samo imenom; trazi se u cijelom izvodi\ (osim duplikati\).
 
 set FIN_DIR=%~dp0
 set TOOLS_DIR=%FIN_DIR%..\Tools\

@@ -62,8 +62,9 @@ from verify_rpc_vs_model import (AREA_ID, ENV_FILE, FILTERS_IZVRSENO, Supa, targ
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-IZVODI = Path(r"C:\0_Sasa\events-tracker-react\data-prep_data\Financije"
-              r"\izvodi\Analizirani_izvodi")
+# /!\ Do S158 samo `Analizirani_izvodi/` — izvod ostavljen u korijenu za ovaj
+#     alat (i za promet_check) tiho nije postojao. Sada cijeli `izvodi/` (_izvodi.py).
+from _izvodi import svi as _svi_izvodi  # noqa: E402
 
 # Vrijednost `racun` atributa u bazi — grupa po kojoj pločica zbraja.
 GROUP_SLUG = 'racun'
@@ -80,7 +81,7 @@ def printed_series() -> list[dict]:
     `close` = datum zadnje tekuće transakcije izvoda = datum kojem `novo`
     pripada (zamka 1). `pocetno`/`novo` su bankovni brojevi, ne naši."""
     out = []
-    for f in sorted(IZVODI.glob('ZABA_*.pdf')):
+    for f in _svi_izvodi('ZABA_*.pdf'):
         txs, balances = _parse_zaba_all(f)
         tek = [t for t in txs if _zaba_is_tekuci(t['account'])]
         tb = [b for b in balances

@@ -38,6 +38,7 @@ from _db import ROOT, load_env  # noqa: E402
 from uskladi_izvod import load_db  # noqa: E402
 
 IZVODI = ROOT / 'data-prep_data' / 'Financije' / 'izvodi'
+from _izvodi import svi as _svi_izvodi  # noqa: E402
 EPS = 0.005
 
 
@@ -89,7 +90,8 @@ def kosare(rows):
 
 
 def find_izvod(ym: str) -> Path | None:
-    for p in sorted(IZVODI.rglob('PBZVI*A_' + ym + '*.pdf')):
+    # `_izvodi.svi` preskace `duplikati/` (drugi bajtovi istog izvoda) — rglob nije (S158)
+    for p in _svi_izvodi('PBZVI*A_' + ym + '*.pdf'):
         if re.match(r'PBZVI[SZ]A_', p.name) and 'duplikati' not in p.parts:
             return p
     return None

@@ -58,9 +58,11 @@ from enrich_from_izvoda import _parse_zaba_all, _zaba_is_tekuci  # noqa: E402
 sys.stdout.reconfigure(encoding='utf-8')
 
 ROOT = Path(__file__).resolve().parents[2]
-IZVODI = ROOT / 'data-prep_data' / 'Financije' / 'izvodi' / 'Analizirani_izvodi'
+# /!\ Izvodi iz cijelog `izvodi/`, ne samo `Analizirani_izvodi/` (S158, _izvodi.py).
+from _izvodi import put as _izvod  # noqa: E402
 KOKA = ROOT / 'data-prep_data' / 'Financije' / 'Financije 2026-08-16.xlsx'
-IZLAZ = ROOT / 'data-prep_data' / 'Financije'
+# Izlaz vise ne ide u korijen mape Financije (S158 — korijen se zatrpao starim izlazima).
+IZLAZ = ROOT / 'data-prep_data' / 'Financije' / 'izlazi'
 
 HEAD = PatternFill('solid', fgColor='1F4E79')
 OK = PatternFill('solid', fgColor='E2EFDA')
@@ -95,7 +97,7 @@ def koka_redci():
 
 
 def banka_tx(stem):
-    txs, _ = _parse_zaba_all(IZVODI / (stem + '.pdf'))
+    txs, _ = _parse_zaba_all(_izvod(stem + '.pdf'))
     return [{'d': t['date'],
              's': round(t['iznos'] if t['smjer'] == 'Uplata' else -t['iznos'], 2),
              'opis': t['opis']}
@@ -218,7 +220,7 @@ def main():
     r = 3
     for ym, od, do, d in sporni:
         stem = 'ZABA_' + ym
-        if not (IZVODI / (stem + '.pdf')).exists():
+        if not _izvod(stem + '.pdf'):
             continue
         b = [x for x in banka_tx(stem) if od < x['d'] <= do]
         a = [{'d': x['date'], 's': x['signed'], 'opis': (x['comment'] or '')[:60],
