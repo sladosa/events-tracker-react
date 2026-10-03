@@ -264,7 +264,13 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <h3 className="font-medium text-gray-900">Activities</h3>
-            <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
+            {/* S159 (Sašin prijedlog, T-S159-3): ista oznaka kao „Load next 20".
+                Siva traka sama ne kaže dovoljno — `animate-pulse` je blag, a
+                kratko učitavanje završi prije nego se puls uopće vidi. */}
+            <span className="text-sm text-indigo-600 font-medium flex items-center gap-1">
+              <span className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin inline-block" />
+              Loading...
+            </span>
           </div>
           <div className="hidden sm:flex items-center gap-2">
             <div className="h-8 w-20 bg-gray-100 rounded-lg animate-pulse" />

@@ -18,7 +18,7 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
    **Pad:** objašnjava sidra i delta sheet kao da su ondje (stanje prije S159).
 2. Ista pitanje u **Financije_all**. **Očekivano:** normalno objašnjenje salda, bez „ova Area nema".
 
-## T-S159-2 ⬜ Filtar za brojeve (F4) — TEST, `Financije_all > Transakcija`
+## T-S159-2 ✅ Filtar za brojeve (F4) — TEST, `Financije_all > Transakcija`
 
 1. `npm run dev` (TEST). Filter → Area `Financije_all`, kategorija `Transakcija`, All time.
 2. `Filter by` → **Isplata**. **Očekivano:** uz polje stoji operator (`>` zadano), polje „npr. 1000".
@@ -36,7 +36,7 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
 9. Isti filtar s `=` i `0` na nekom broju koji ima nule. **Očekivano:** `= 0` je uvjet
    (nula je odgovor), ne „prazno".
 
-## T-S159-3 ⬜ Lista ne laže `—` dok se učitava (B6) — `dev:prod` ili TEST, uski ekran
+## T-S159-3 ✅ Lista ne laže `—` dok se učitava (B6) — `dev:prod` ili TEST, uski ekran
 
 1. `Financije_all`, lista s kolonama iznosa. Promijeni Areu/kategoriju i natrag.
    **Očekivano:** dok vrijednosti stižu, ćelije iznosa pokazuju **sivu traku koja pulsira**,
