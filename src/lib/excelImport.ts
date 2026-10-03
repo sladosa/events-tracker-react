@@ -357,7 +357,7 @@ export async function parseExcelFile(
   await wb.xlsx.load(arrayBuffer);
 
   const emptyForeign = { foreignRowCount: 0, foreignEmailsSummary: {} as Record<string, number>,
-    foreignAreas: [] as string[], untouchedCount: 0,
+    foreignAreas: [] as string[], foreignEventIds: [] as string[], untouchedCount: 0,
     untouchedRows: [] as ParsedImportRow[], exportedAt: null as string | null };
   const emptyLists   = { toCreate: [], toUpdate: [], toDelete: [] };
 
@@ -473,6 +473,9 @@ export async function parseExcelFile(
   const foreignEmailsSummary: Record<string, number> = {};
 
   const foreignAreaSet = new Set<string>();
+  // S159: ONE representative per (Area, Category_Path, author) — rows of one
+  // place share the answer, and a 3.715-row file must not cost 25 requests.
+  const foreignRepByPlace = new Map<string, string>();
   if (currentUserEmail) {
     const ownRows: ParsedImportRow[] = [];
     for (const r of validRows) {
@@ -482,6 +485,8 @@ export async function parseExcelFile(
         foreignRowCount++;
         foreignEmailsSummary[rowEmail] = (foreignEmailsSummary[rowEmail] ?? 0) + 1;
         if (r.area) foreignAreaSet.add(r.area);
+        const place = `${r.area}|${r.category_path}|${rowEmail}`;
+        if (r.event_id && !foreignRepByPlace.has(place)) foreignRepByPlace.set(place, r.event_id);
         // D2 (S159): a foreign row marked for deletion is REFUSED, and the
         //   message says so. Before: `skip` dropped the mark without a word, and
         //   `import_as_mine` nulled the event_id first, so the parser reported
@@ -655,7 +660,7 @@ export async function parseExcelFile(
   const exportedAt = readExportedAt(wb);
 
   return { toCreate, toUpdate, toDelete, warnings, errors: [], legendMapping: mapping,
-           foreignRowCount, foreignEmailsSummary, foreignAreas: [...foreignAreaSet],
+           foreignRowCount, foreignEmailsSummary, foreignAreas: [...foreignAreaSet], foreignEventIds: [...foreignRepByPlace.values()],
            untouchedCount: untouchedRows.length, untouchedRows, exportedAt };
 }
 

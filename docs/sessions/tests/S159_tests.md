@@ -49,7 +49,7 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
    kolone — to je drugi test (S121), ne ovaj. Na kraju makni kvačicu i F5.
    **Očekivano:** ćelije bez vrijednosti pokazuju narančasti `?`, ne `—`.
 
-## T-S159-4 ⬜ „Import as mine" ugašen u dijeljenoj Arei (D5) — TEST, grantee
+## T-S159-4 ✅ „Import as mine" ugašen u dijeljenoj Arei (D5) — TEST, grantee
 
 1. Na TEST-u kao **grantee** (`userb`, ili Saša na kopiji ako ima share) izvezi Activities
    dijeljene Aree koja ima vlasnikove retke.

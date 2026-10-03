@@ -108,6 +108,11 @@ export interface ParseResult {
    * „ispravi kao vlasnik" -- ponuda koja ne moze uspjeti gora je od izostanka.
    */
   foreignAreas:         string[];
+  /** S159: one `event_id` per (Area, Category_Path, author) among the foreign
+   *  rows — ownership is decided by WHERE they live (`foreignRowOwnership.ts`),
+   *  never by the Area name. One per place, not all: a 3.715-row file would
+   *  otherwise cost ~25 requests for an answer every row of a place shares. */
+  foreignEventIds:      string[];
   /** S107 D7: UPDATE rows whose row_hash matched (not touched in Excel) — excluded from toUpdate, skipped without any DB call */
   untouchedCount: number;
   /**
