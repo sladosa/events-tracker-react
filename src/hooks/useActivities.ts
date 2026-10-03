@@ -117,6 +117,17 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
   const [activities, setActivities] = useState<ActivityGroup[]>([]);
   const [loading, setLoading] = useState(!skip); // skip=true → no fetch → not loading
+
+  // S159: `skip` can now flip true → false (the list waits for the filter
+  // restore). Raise `loading` IN THE SAME RENDER — the fetch effect only runs
+  // after paint, so without this the gap would paint "No activities found",
+  // a claim about the data made before anyone asked. (React's "adjust state
+  // while rendering" pattern, not an effect.)
+  const [prevSkip, setPrevSkip] = useState(skip);
+  if (prevSkip !== skip) {
+    setPrevSkip(skip);
+    if (!skip) setLoading(true);
+  }
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState(true);

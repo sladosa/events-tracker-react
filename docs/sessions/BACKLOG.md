@@ -178,7 +178,10 @@ promjene (Area + atribut). Jedna promjena Aree: **3 → 2** upita liste (lista +
 Treći je bio lista s **granicama prethodne Aree** (dakle i krivi retci na trenutak), pa opet kad
 `useDateBounds` sjedne — „All time“ je min..max podataka, dakle filtar bez učinka, pa ga lista
 više ne šalje. Na učitavanju 5 → 4 (u devu StrictMode duplira; PROD 2). Usput `.order('id')`
-kao jedinstven zadnji ključ (leaf ima N eventa iste sesije). ⚠ Ostaje neizmjereno: Area promjena
+kao jedinstven zadnji ključ (leaf ima N eventa iste sesije).
+**Iz Sašinog testa (T-S159-6): F5 je slao 6 upita liste** — prije završetka obnove filtra kontekst
+kaže „nema Aree", pa su lista i Prev/Next tražile retke **svih** Area, pa opet za obnovljenu.
+Sada obje čekaju `isRestored` ⇒ **6 → 2** (Playwright). ⚠ Ostaje neizmjereno: Area promjena
 čita `categories` 7× i `areas` 4× — zaseban posao. Izvorni zapis:
 **Lista se preupita ŠEST puta na jednu promjenu filtra** (izmjereno S122 iz Playwright
 tracea: `events?select=…` na 16664, 16735, 16832, 16909, 17022, 17098 ms nakon promjene

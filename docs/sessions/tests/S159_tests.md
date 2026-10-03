@@ -67,11 +67,16 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
 
 ## T-S159-6 ⬜ Manje upita (fan-out + C4) — DevTools Network
 
-1. Activities tab, F5, Network filtar `head=true` / `count=exact`.
+1. Activities tab, F5, Network filtar `select=id&` (⊘ Clear prije F5).
    **Očekivano:** **nema** niza od ~39 `events?select=id` upita (to je bio Structure fan-out
    na svakom učitavanju Activitiesa). Na Structure tabu ih i dalje ima — ondje su potrebni.
-2. Network filtar `events?select=id,category_id`. Promijeni Areu (period All time).
+2. Network filtar `select=id%2Ccategory` (Chrome prikazuje zarez kao `%2C`; ⊘ Clear). Promijeni Areu (period All time).
    **Očekivano:** **2** takva upita (lista + Prev/Next), ne 3; nijedan s `event_date=gte`.
+   ✅ 03.10. TEST (Saša): 2 upita, 2,4 kB + 27,9 kB.
+2b. Isti filtar, ⊘ Clear, **F5** na `Financije_all`. **Očekivano:** **2** upita.
+   ⚠ Izmjereno 03.10. PRIJE popravka: **6** — par za SVE Aree (obnova filtra još nije
+   završila, kontekst kaže „nema Aree"; u devu ×2 StrictMode) pa par za obnovljenu Areu.
+   Popravak: lista i Prev/Next čekaju `isRestored`. Playwright poslije: 6 → 2.
 3. Structure → **Export**. **Očekivano:** file normalno izlazi, sa svim Areama.
 
 ## T-S159-7 ⬜ Structure Import i dalje osvježi tablicu — TEST

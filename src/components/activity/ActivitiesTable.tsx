@@ -82,7 +82,7 @@ interface ActivitiesTableProps {
 }
 
 export function ActivitiesTable({ className = '', onEditActivity, onViewDetails, onDeleteActivity, onExport, onImport, orphanedPairKeys, filterOrphans, onClearOrphanFilter, onManageOrphan }: ActivitiesTableProps) {
-  const { filter, sharedContext, areaHasActiveShares, clearCommentSearch, clearAttrFilter } = useFilter();
+  const { filter, sharedContext, areaHasActiveShares, clearCommentSearch, clearAttrFilter, isRestored } = useFilter();
   const PAGE_SIZE = 20;
   const location = useLocation();
 
@@ -132,6 +132,10 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
     //   any range the person chose is `custom` or a preset, never `all-time`.
     dateFrom: filter.periodKey === 'all-time' ? null : filter.dateFrom,
     dateTo: filter.periodKey === 'all-time' ? null : filter.dateTo,
+    // C4 (S159, measured on F5): until the stored filter is restored the
+    // context says "no Area", so the list asked for EVERY Area's rows (27
+    // categories on TEST) and then again for the restored one. Wait instead.
+    skip: !isRestored,
     sortOrder: filter.sortOrder,
     commentSearch: filter.commentSearch,
     attrFilter: filter.attrFilter,
@@ -258,7 +262,8 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   };
 
   // Skeleton loading state — keeps table structure visible, prevents layout shift
-  if (loading) {
+  // (`!isRestored`: the list is waiting for the filter restore — S159, C4)
+  if (loading || !isRestored) {
     return (
       <div className={className}>
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">

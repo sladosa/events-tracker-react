@@ -8238,3 +8238,17 @@ E12-4 (`'All'` hvatao i „Collapse all") i T-S119-6 (od S152 nepromijenjen re-i
 „Nothing to import"). E12-2 pada na **podacima** TEST-a (Health predložak već kopiran).
 
 7 ručnih testova (T-S159-1..7); T-S159-1 (Help) traži deploy.
+
+**Testiranje sa Sašom (03.10., TEST) — što je iz njega izašlo:**
+T-S159-2, -3, -8 ✅. Popravci iz samog testa: ispis pročitanog broja `=` → `→` (uz `>` se čitao
+kao drugi uvjet); vidljiv crveni „nije broj — bez filtra" (tooltip na mobitelu ne postoji);
+`⚡ Use` radi bez leafa kad je ispod filtra **jedan** leaf (isto pravilo kao `+`, S154; Sašin
+zahtjev); kostur liste nosi kružić + „Loading..." (`animate-pulse` je preblag).
+⚠ **F5 je slao 6 upita liste** (Saša u Network tabu: dva para različitih veličina). Playwright
+s **zapamćenim** filtrom: prvi par traži retke **SVIH Area** (27 kategorija) jer obnova filtra još
+nije završila, drugi par obnovljenu Areu. Moje C4 mjerenje to nije vidjelo jer je krenulo bez
+zapamćenog filtra. Lista i Prev/Next sada čekaju `isRestored` (`skip`), a `useActivities` diže
+`loading` u istom renderu kad `skip` padne ⇒ **6 → 2**. E2E: e16, S149, e4, e2, S121 zeleni;
+E14-1 pao jednom u skupnom runu (prvi test, hladan Vite), samostalno 2/2.
+Usput za DevTools: Chrome „Request conditions" (bivši *Network request blocking*) čita uzorak kao
+**URLPattern** (`*://*/rest/v1/event_attributes*`), a Network popis prikazuje zarez kao `%2C`.

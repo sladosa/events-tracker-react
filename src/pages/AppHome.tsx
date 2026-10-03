@@ -145,7 +145,7 @@ function AppContent() {
   } = useFilter();
 
   // Attribute filter UI state — which field is selected in the "Filter by" dropdown
-  // Only text-based attrs (text/suggest) are filterable; number/boolean/datetime use different DB columns
+  // text/suggest filter on `value_text`, number (F4, S159) on `value_number`; boolean/datetime not yet
   const [filterAttrDefs, setFilterAttrDefs] = useState<AttributeDefinition[]>([]);
   // F4: operator of a number condition. Local, because an EMPTY value clears
   // `attrFilter` (and with it `op`) — the chosen `>` must survive that.
@@ -1250,7 +1250,7 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess,
 
 function ActivitiesView() {
   const nav = useNavigate();
-  const { filter, fullPathDisplay, isLeafCategory, setDateRange, filterOrphans, setFilterOrphans } = useFilter();
+  const { filter, fullPathDisplay, isLeafCategory, setDateRange, filterOrphans, setFilterOrphans, isRestored } = useFilter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -1285,6 +1285,9 @@ function ActivitiesView() {
     commentSearch: filter.commentSearch,
     attrFilter: filter.attrFilter,
     pageSize: 500,
+    // C4 (S159): same as the list — before the restore the context means "all
+    // Areas", and this is the 500-row query.
+    skip: !isRestored,
   });
 
   // Orphan detection — runs after navActivities loads (area-level detection)

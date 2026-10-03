@@ -42,7 +42,7 @@ App (`src/` + `help.ts`), bez migracije. `npm run check` zeleno; novi `attrFilte
 | T-S159-3 | Lista pulsira umjesto `—` dok se učitava, i na „Load more" (B6) | ✅ S159, 03.10. TEST — svi koraci (siva traka, nikad `—`; korak 3: blokiran `event_attributes` ⇒ `Račun`/`Iznos`/`Tip/Podtip` narančasti `?`, `Opis` normalno). Iz testa (Sašin prijedlog): kostur liste uz naslov nosi kružić + „Loading...”, kao „Load next 20” — puls je preblag da se vidi kod kratkog učitavanja |
 | T-S159-4 | Grantee: „Import as mine" siv za retke dijeljene Aree, za file stranca ostaje (D5) | ⬜ |
 | T-S159-5 | Grantee: tuđi redak s `Delete?` ⇒ poruka „pripada drugom korisniku", ništa obrisano (D2) | ⬜ |
-| T-S159-6 | Network: nema ~39 count upita na Activitiesu; promjena Aree = 2 upita liste; Structure Export radi | ⬜ |
+| T-S159-6 | Network: nema ~39 count upita na Activitiesu; promjena Aree = 2 upita liste; F5 = 2 upita; Structure Export radi | ⬜ 03.10. korak 2 ✅ (2 upita). Iz testa nađeno: F5 je slao **6** (lista za SVE Aree prije obnove filtra) ⇒ popravljeno, Playwright 6 → 2. Ostaje: korak 1, 2b (F5) i 3 |
 | T-S159-7 | Structure Import i dalje osvježi tablicu bez F5 | ⬜ |
 | T-S159-8 | `⚡ Use` na `All Categories` radi kad Area ima jedan leaf (Financije_all); na Fitnessu ostaje siv | ✅ S159, 03.10. TEST — sva tri koraka |
 
