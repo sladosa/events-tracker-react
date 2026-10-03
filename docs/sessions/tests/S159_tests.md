@@ -65,7 +65,7 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
    korisniku (…) — brisanje tuđeg retka nije moguće. Redak je preskočen."*; ništa obrisano.
 2. Provjeri u listi da vlasnikov redak i dalje postoji, **sa svim atributima**.
 
-## T-S159-6 ⬜ Manje upita (fan-out + C4) — DevTools Network
+## T-S159-6 ✅ Manje upita (fan-out + C4) — DevTools Network
 
 1. Activities tab, F5, Network filtar `select=id&` (⊘ Clear prije F5).
    **Očekivano:** **nema** niza od ~39 `events?select=id` upita (to je bio Structure fan-out
@@ -77,7 +77,7 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
    ⚠ Izmjereno 03.10. PRIJE popravka: **6** — par za SVE Aree (obnova filtra još nije
    završila, kontekst kaže „nema Aree"; u devu ×2 StrictMode) pa par za obnovljenu Areu.
    Popravak: lista i Prev/Next čekaju `isRestored`. Playwright poslije: 6 → 2.
-3. Structure → **Export**. **Očekivano:** file normalno izlazi, sa svim Areama.
+3. Tab **Structure** (ne Activities!) → **Export**. **Očekivano:** file `structure_….xlsx` brzo izlazi; nosi Aree iz filtra (odabrana Area ⇒ samo ona).
 
 ## T-S159-7 ⬜ Structure Import i dalje osvježi tablicu — TEST
 
