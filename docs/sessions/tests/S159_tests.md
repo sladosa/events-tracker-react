@@ -42,7 +42,11 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
    **Očekivano:** dok vrijednosti stižu, ćelije iznosa pokazuju **sivu traku koja pulsira**,
    nikad `—`.
 2. Na dnu „Load more". **Očekivano:** stari retci zadrže iznose, **novi** kratko pulsiraju.
-3. (Opcionalno, DevTools → Network → offline nakon učitavanja liste, pa promjena filtra.)
+3. DevTools (F12) → ⋮ → More tools → **Request conditions** → uključi blokiranje → **+** →
+   `*://*/rest/v1/event_attributes*` → **Enter** (crveni okvir = još se uređuje) → F5 → `Financije_all`.
+   ⚠ Chrome uzorak čita kao **URLPattern**: `*/rest/...` se ne parsira, a preširok uzorak
+   (npr. cijeli host) blokira i `areas` ⇒ žuta traka „Nisam uspio učitati postavke” i zadane
+   kolone — to je drugi test (S121), ne ovaj. Na kraju makni kvačicu i F5.
    **Očekivano:** ćelije bez vrijednosti pokazuju narančasti `?`, ne `—`.
 
 ## T-S159-4 ⬜ „Import as mine" ugašen u dijeljenoj Arei (D5) — TEST, grantee
