@@ -58,7 +58,7 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
 3. (Kontrola) Kao vlasnik uvezi file **stranca** čija Area kod tebe ne postoji.
    **Očekivano:** Import as mine je i dalje ponuđen.
 
-## T-S159-5 ⬜ Tuđi redak s `Delete?` — poruka kaže zašto (D2) — TEST, grantee
+## T-S159-5 ✅ Tuđi redak s `Delete?` — poruka kaže zašto (D2) — TEST, grantee
 
 1. Isti file iz T-S159-4: na vlasnikovom retku u koloni `Delete?` odaberi `DELETE`. Uvezi.
    **Očekivano:** u upozorenjima *„Red N: redak je označen DELETE, ali pripada drugom
