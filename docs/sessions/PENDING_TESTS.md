@@ -38,13 +38,13 @@ App (`src/` + `help.ts`), bez migracije. `npm run check` zeleno; novi `attrFilte
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S159-1 | Help u Fitnessu prvo kaže da ondje nema salda (B3) — nakon deploya | ⬜ |
-| T-S159-2 | TEST `Financije_all`: `Isplata > 1000`, operator, `1.000`=1, `12a` crveno bez filtra, Export + shortcut | ⬜ |
+| T-S159-2 | TEST `Financije_all`: `Isplata > 1000`, operator, `1.000`=1, `12a` crveno bez filtra, Export + shortcut | ⬜ 03.10. TEST: koraci 2–4 i 6–8 OK (Export: `isplata: >1000`, min 1.023,86). Iz testa popravljeno: ispis `=` → `→` (čitao se kao uvjet), vidljiv tekst „nije broj — bez filtra” (tooltipa na mobitelu nema), i T-S159-8. Ostaje: korak 5 s `1.000`, korak 9 (`= 0`) |
 | T-S159-3 | Lista pulsira umjesto `—` dok se učitava, i na „Load more" (B6) | ⬜ |
 | T-S159-4 | Grantee: „Import as mine" siv za retke dijeljene Aree, za file stranca ostaje (D5) | ⬜ |
 | T-S159-5 | Grantee: tuđi redak s `Delete?` ⇒ poruka „pripada drugom korisniku", ništa obrisano (D2) | ⬜ |
 | T-S159-6 | Network: nema ~39 count upita na Activitiesu; promjena Aree = 2 upita liste; Structure Export radi | ⬜ |
 | T-S159-7 | Structure Import i dalje osvježi tablicu bez F5 | ⬜ |
-| T-S159-8 | `⚡ Use` na `All Categories` radi kad Area ima jedan leaf (Financije_all); na Fitnessu ostaje siv | ⬜ |
+| T-S159-8 | `⚡ Use` na `All Categories` radi kad Area ima jedan leaf (Financije_all); na Fitnessu ostaje siv | ✅ S159, 03.10. TEST — sva tri koraka |
 
 ---
 

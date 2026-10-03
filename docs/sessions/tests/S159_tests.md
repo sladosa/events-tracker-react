@@ -77,7 +77,7 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
    (S159 je maknuo jedan suvišan `refetchStructure()` nakon uvoza; tablicu osvježava
    `refreshKey`.)
 
-## T-S159-8 ⬜ `⚡ Use` radi i bez leafa kad je leaf samo jedan — TEST
+## T-S159-8 ✅ `⚡ Use` radi i bez leafa kad je leaf samo jedan — TEST
 
 Sašin zahtjev iz testiranja T-S159-2: shortcut spremljen na `Financije_all > All Categories`
 imao je sivi `⚡ Use`, a `+` pored njega je radio (S154). Isto pravilo (`singleLeaf.ts`).
