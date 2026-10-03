@@ -8266,3 +8266,24 @@ Playwright (privremen): userb → Activities Export bez profila; novi kontekst o
 Ishod: A = kopija 43/43 (usporedba multiseta vrijednosti, komentara, datuma, vremena, roditelja);
 B (vlasnik ima istoimenu Areu bez `Lokacija`/`Datum kontrole`, `Vrsta` bez `Lab`) = **29/43, bez
 ijednog upozorenja**. Detalj i Sašin prijedlog opcija: `BACKLOG.md` § D3. Podaci obrisani, provjereno.
+
+### PENDING sekcija S159 (arhivirana S159)
+
+ne-Financije backlog: B3 Help, fan-out, B6, D2/D4/D5, F4 filtar za brojeve, C4 (2026-10-02)
+
+App (`src/` + `help.ts`), bez migracije. `npm run check` zeleno; novi `attrFilterNumeric.test.mjs` (26, sabotaže ruše 3/4).
+
+**Detalji testova:** [tests/S159_tests.md](../../Claude-temp_R/test-sessions/archive/S159_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S159-1 | Help u Fitnessu prvo kaže da ondje nema salda (B3) — nakon deploya | ✅ S159, 03.10. PROD (mobitel) — „Fitness area nema Overview tab" prije objašnjenja koncepta |
+| T-S159-2 | TEST `Financije_all`: `Isplata > 1000`, operator, `1.000`=1, `12a` crveno bez filtra, Export + shortcut | ✅ S159, 03.10. TEST — svih 9 koraka (Export: `isplata: >1000`, min 1.023,86). Iz testa popravljeno: ispis `=` → `→` (čitao se kao uvjet), vidljiv tekst „nije broj — bez filtra” (tooltipa na mobitelu nema), i T-S159-8 |
+| T-S159-3 | Lista pulsira umjesto `—` dok se učitava, i na „Load more" (B6) | ✅ S159, 03.10. TEST — svi koraci (siva traka, nikad `—`; korak 3: blokiran `event_attributes` ⇒ `Račun`/`Iznos`/`Tip/Podtip` narančasti `?`, `Opis` normalno). Iz testa (Sašin prijedlog): kostur liste uz naslov nosi kružić + „Loading...”, kao „Load next 20” — puls je preblag da se vidi kod kratkog učitavanja |
+| T-S159-4 | Grantee: „Import as mine" siv za retke dijeljene Aree, za file stranca ostaje (D5) | ✅ S159, 03.10. TEST (`owner@test.com`, write na Sašinu `Health_Sasa`, 3.715 tuđih redaka) — oba siva + Skip. ⚠ PRVI PROLAZ PAO: odluka po IMENU Aree, a grantee ima vlastitu `Health_Sasa` ⇒ obje ponude krivo otvorene (i starija „Ispravi kao vlasnik"). Sada po `event_id` (jedan predstavnik po Area+put+autor, `foreignRowOwnership.ts`). Korak 3 (file stranca) nije rađen |
+| T-S159-5 | Grantee: tuđi redak s `Delete?` ⇒ poruka „pripada drugom korisniku", ništa obrisano (D2) | ✅ S159, 03.10. TEST (`owner@test.com`) — „Red 35: … pripada drugom korisniku (sasasladoljev59@gmail.com) — brisanje tuđeg retka nije moguće", 0 novih / 0 izmjena; redak `39939f19…` provjeren u bazi: postoji, autor SL, oba atributa |
+| T-S159-6 | Network: nema ~39 count upita na Activitiesu; promjena Aree = 2 upita liste; F5 = 2 upita; Structure Export radi | ✅ S159, 03.10. TEST — svi koraci: promjena Aree 2 upita, F5 2 upita (prije 6 — nađeno ovim testom i popravljeno), nema `events` count niza, Structure Export brz i ispravan (prati filtar Aree) |
+| T-S159-7 | Structure Import i dalje osvježi tablicu bez F5 | ✅ S159, 03.10. TEST — `Attributes created 1`, `Test1234` (suggest Test1/Test2) odmah vidljiv pod `Transakcija` nakon Close |
+| T-S159-8 | `⚡ Use` na `All Categories` radi kad Area ima jedan leaf (Financije_all); na Fitnessu ostaje siv | ✅ S159, 03.10. TEST — sva tri koraka |
+
+---

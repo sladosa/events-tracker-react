@@ -216,6 +216,10 @@ korisnik vidi kao „meni mi se sam zatvorio". Drugo je posljedica prvog, pa se 
 ⚠ Nije hipoteza nego mjerenje, ali **uzrok kaskade nije utvrđen** — prije popravka izbrojati
 tko sve okida refetch (`useDateBounds` settle, `areas-changed`, promjena `attrFilter`).
 
+**Help prikazuje sirov markdown** (S159, T-S159-1 na mobitelu): `#`, `**`, ``` ``` ``` u odgovoru,
+jer `HelpPanel` crta `msg.content` kao običan tekst (`whitespace-pre-wrap`). Haiku odgovara u markdownu.
+Lijek: lagani renderer (naslovi, podebljano, liste, kod) ili uputa u promptu „bez markdowna". Sitnica.
+
 **Structure Export na grešci izlazi PRAZAN** (zapaženo S159, nije dirano). `useStructureData.fetchAll`
 hvata grešku i vraća `[]`, a Export (`AppHome`) to piše u file bez Area i javlja „Structure exported".
 Razred „izvoz koji ne može učitati podatke mora pasti, ne izaći kraći" (§ Excel, S125). Lijek: `refetch`

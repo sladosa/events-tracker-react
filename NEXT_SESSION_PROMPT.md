@@ -1,4 +1,4 @@
-> Pisano protiv commita **S159** na `test-branch`; **`main` = `c4747fa` (deploy S159, 03.10.)** — sve iz S159 je na PROD-u, ostaje samo T-S159-1 (Help) na PROD-u.
+> Pisano protiv commita **S159** na `test-branch`; **`main` = `c4747fa` (deploy S159, 03.10.)** — sve iz S159 je na PROD-u, T-S159-1 ✅ 03.10. — svih 8 testova S159 zatvoreno i arhivirano.
 > ⚠ Ako `git log` pokazuje noviji commit od S159, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
