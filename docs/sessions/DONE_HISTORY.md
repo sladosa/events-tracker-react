@@ -8252,3 +8252,17 @@ zapamćenog filtra. Lista i Prev/Next sada čekaju `isRestored` (`skip`), a `use
 E14-1 pao jednom u skupnom runu (prvi test, hladan Vite), samostalno 2/2.
 Usput za DevTools: Chrome „Request conditions" (bivši *Network request blocking*) čita uzorak kao
 **URLPattern** (`*://*/rest/v1/event_attributes*`), a Network popis prikazuje zarez kao `%2C`.
+
+**D3 pokus (03.10., TEST, Saša odobrio upis i brisanje).** Skripta u scratchpadu (service ključ,
+staje ako URL nije TEST): `D3 Pokus` pod `userb@test.com` — `Zdravlje` (P1 `Osoba` suggest) ›
+`Pregled` (`Vrsta` suggest, `Lokacija` `depends_on` Vrsta, `Cijena` EUR, `Datum kontrole`) i
+`Lijek` (`Naziv`, `Doza` mg), `set_attribute` (Vrsta → Datum kontrole), `list_columns`,
+`add_header`, 10 redaka + 10 P2 roditelja (`chain_key` = leaf). ⚠ PostgREST bulk insert traži
+**iste ključeve u svim retcima** (inače 400) — `chain_key: null` na leafu, `value_*: null` gdje nema.
+Playwright (privremen): userb → Activities Export bez profila; novi kontekst owner → Import →
+„Create categories & continue" → „Import as mine" → Apply → čeka **„Import successful!"**.
+⚠ Uvoz na TEST-u ide ~3 s po retku; prvi prolaz je zatvorio preglednik nakon 10 s i ostavio
+**4/10 redaka** — to je izgledalo kao nalaz, a bilo je prekinut uvoz („do not close this window").
+Ishod: A = kopija 43/43 (usporedba multiseta vrijednosti, komentara, datuma, vremena, roditelja);
+B (vlasnik ima istoimenu Areu bez `Lokacija`/`Datum kontrole`, `Vrsta` bez `Lab`) = **29/43, bez
+ijednog upozorenja**. Detalj i Sašin prijedlog opcija: `BACKLOG.md` § D3. Podaci obrisani, provjereno.

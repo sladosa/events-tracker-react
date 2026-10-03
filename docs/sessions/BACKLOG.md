@@ -33,6 +33,31 @@
   prepisuje sam — Excel ne razlikuje preimenovanje od brisanja.
 - ~~**Structure uvoz (B1 + B2)**~~ — ✅ S152: jedan graditelj `validation_rules`
   (`src/lib/validationRules.ts`), brojači broje promjene; alat umirovljen za postojeću Areu.
+- **⭐ D3 — POKUS IZVEDEN S159 (03.10., TEST), ishod: dva scenarija, dva odgovora.** Izvoznik
+  `userb@test.com`, Area `D3 Pokus` (L1 + 2 leafa, 7 atributa: izbornik, `depends_on`, broj, datum,
+  P1 atribut na roditelju; `set_attribute` pravilo, `list_columns`, `add_header`; 10 redaka + 10
+  P2 roditelja, 43 vrijednosti). Uvoznik `owner@test.com`, **jedan** Activities Export, **jedan**
+  Activities Import (Korak 7 „Create categories & continue" + „Import as mine").
+  **A — primatelj nema tu Areu: savršena kopija.** Struktura, opcije, ovisni izbornik, automatika,
+  kolone, zaglavlje identični; **43/43** vrijednosti, komentari, datumi, vremena, roditelji — sve
+  provjereno vrijednost po vrijednost. Ne putuju (poznato): `dashboard` (F5), `export_profiles`,
+  sidra, prilozi.
+  **B — primatelj IMA istoimenu Areu drukčije strukture: tihi gubitak.** Pregled kaže samo
+  „10 novih", uvoz „Import successful! 10 created", **nijedno upozorenje**. Stiglo **29/43**:
+  `Lokacija` (7) i `Datum kontrole` (7) **odbačeni** jer ih primateljeva Area nema (zamka
+  „krivo ime atributa se tiho preskoči", `excelImport.ts`); `Vrsta = Lab` (2) ušao kao tekst
+  **izvan** primateljevih opcija; automatika, kolone i zaglavlje **nisu** preneseni. Korak 7 se
+  ne javlja jer sve putanje kategorija postoje.
+  **Sašin prijedlog (03.10.), za spec prije koda:** kad je file TUĐI (kol. G) a postoji istoimena
+  Area koja se RAZLIKUJE — reći što se razlikuje (atributi kojih nema, opcije, automatika) i
+  ponuditi: (1) **uvezi kao novu Areu** (npr. `D3 Pokus (userb)`) — prijedlog za zadano, tvoje
+  ostaje netaknuto; (2) **preuzmi njihovu strukturu** — opasno, Structure Import po pravilu „file
+  pobjeđuje" **briše** opcije kojih u fileu nema ⇒ samo uz popis i vlastitu kvačicu; (3) **zadrži
+  svoju, uvezi samo retke** — današnje ponašanje, ali izabrano i s popisom onoga što neće stići.
+  Isti file, iste razlike — i za VLASTITI file (npr. stari export) gubitak atributa je isti;
+  minimalni korak koji vrijedi uvijek: **pregled mora nabrojati atribute iz filea koje Area
+  nema**, umjesto da ih tiho preskoči. Veže se uz K-1.
+  Logika pokusa (seed, Playwright tok, usporedba vrijednosti): `DONE_HISTORY.md` § S159.
 - **Area kao predložak specijalizacije (D3)** — prijatelj dobije Structure (+ demo Activities) i
   ima cijelu organizaciju Aree. **Prvo istraživanje na TEST-u** pod stranim računom, zapisati
   što fali i **koliko refaktora** (Saša ne želi veliku refaktorizaciju). „Roundtrip completeness“

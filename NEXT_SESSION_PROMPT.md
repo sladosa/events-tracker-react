@@ -2,7 +2,7 @@
 > ⚠ Ako `git log` pokazuje noviji commit od S159, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S159 (2026-10-02)
+# Sljedeća sesija — nakon S159 (2026-10-02/03)
 
 ---
 
@@ -21,12 +21,17 @@
   pita listu 2× umjesto 3× (i više ne pokaže na trenutak retke s datumima prošle Aree).
 - **Grantee poruke:** „Import as mine" je ugašen za retke dijeljene Aree (pravio bi duplikate);
   tuđi redak označen `Delete?` sada jasno kaže da se ne može obrisati.
+- **Iz testiranja 03.10. (Saša na TEST-u, 7/8 testova ✅):** `⚡ Use` radi i na `All Categories`
+  kad je leaf samo jedan; „Loading..." dok se lista mijenja; F5 više ne pita za retke SVIH Area
+  (6 → 2 upita); vlasništvo tuđih redaka pri uvozu po `event_id`, ne po imenu Aree.
+- **D3 pokus (slanje podataka drugome):** jedan Activities file prenosi cijelu Areu **savršeno** ako
+  je primatelj nema. Ako ima **istoimenu Areu drukčije strukture** — atributi kojih nema **tiho
+  nestanu** (29 od 43 vrijednosti, bez upozorenja). Tvoj prijedlog opcija je zapisan u backlog (D3).
 
 ## Što treba od tebe
 
-1. **Ručni testovi S159** — [`docs/sessions/tests/S159_tests.md`](docs/sessions/tests/S159_tests.md).
-   Najvažniji je **T-S159-2** (filtar za brojeve, TEST, `Financije_all`, ~5 min). Kad prođe →
-   merge na `main` (naredbe u CLAUDE.md, § End of session 11), pa **T-S159-1** (Help) na PROD-u.
+1. **Merge na `main`** (ako već nije) — naredbe u CLAUDE.md, § End of session 11. Zatim
+   **T-S159-1** na PROD-u: Help u Fitnessu prvo kaže da ondje nema salda. Koka: zatvori/otvori karticu.
 2. Financije — nepromijenjeno od S158:
    - **~05.–07.10. Visa izvod za rujan** — javi kad stigne (sesija za Visa buduće rate).
      Naknadu `0,17` na RF-u upiši kao `Bankovni troškovi`, opis `Naknada`.
@@ -37,6 +42,8 @@
 
 ## Što je još otvoreno izvan Financija (backlog)
 
+**Novo iz S159:** spec „uvoz tuđeg filea u istoimenu Areu" (D3 nalaz, prije koda — tvoja
+odluka o opcijama); popravak zapamćenog filtra između korisnika (v. DIO 2).
 B4+F7 (Structure panel: „Discard changes?" + sklopive kartice), K-1 (Structure uvoz javlja
 brisanje opcija s retcima, staje na file tuđe Aree), F5 (`Dashboard`/`ExportProfiles` sheet),
 help chip „What can I do here?", D3 (Area kao predložak), filtar za datum/da-ne.
@@ -70,6 +77,13 @@ stanjem: `backup_db.py --env test` → `prod_to_test.py --apply`.
   T-S119-6 (prihvaća „Nothing to import").
 
 ## Otvoreno / neverificirano
+
+- **Zapamćeni filtar nije vezan uz KORISNIKA** (nađeno 03.10.): `dbScopedKey` nosi bazu, ne
+  korisnika ⇒ prijava drugog računa u istom pregledniku obnovi tuđi `areaId` ⇒ žuta traka
+  „Nisam uspio učitati postavke" i prazan Structure. Prijedlog: `userId` u spremljenom stanju,
+  pri obnovi tuđi odbaciti. Nije napravljeno (Saša još nije odlučio); isti razred kao `et_activity_draft`.
+- **D3 spec**: nalazi i opcije u `docs/sessions/BACKLOG.md` § D3. Minimalni korak koji vrijedi
+  uvijek: pregled uvoza mora nabrojati atribute iz filea kojih Area nema.
 
 - **E12-2 pada na podacima TEST-a** (Health predložak već kopiran — dva `Health_Sasa`). Nije
   app. Ili očistiti kopiju na TEST-u ili spec učiniti neovisnim o stanju.
