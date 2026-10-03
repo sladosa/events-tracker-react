@@ -1,4 +1,4 @@
-> Pisano protiv commita **S159** na `test-branch` (zadnji S159 commit: ovaj, iza `6854846`; `main` = `e8afdac`, deploy S157 — **S159 mijenja app i još NIJE na PROD-u**).
+> Pisano protiv commita **S159** na `test-branch`; **`main` = `c4747fa` (deploy S159, 03.10.)** — sve iz S159 je na PROD-u, ostaje samo T-S159-1 (Help) na PROD-u.
 > ⚠ Ako `git log` pokazuje noviji commit od S159, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
@@ -30,7 +30,7 @@
 
 ## Što treba od tebe
 
-1. **Merge na `main`** (ako već nije) — naredbe u CLAUDE.md, § End of session 11. Zatim
+1. **Merge je napravljen 03.10.** (`c4747fa`). Ostaje
    **T-S159-1** na PROD-u: Help u Fitnessu prvo kaže da ondje nema salda. Koka: zatvori/otvori karticu.
 2. Financije — nepromijenjeno od S158:
    - **~05.–07.10. Visa izvod za rujan** — javi kad stigne (sesija za Visa buduće rate).
