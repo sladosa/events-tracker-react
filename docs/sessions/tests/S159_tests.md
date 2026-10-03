@@ -22,12 +22,12 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
 
 1. `npm run dev` (TEST). Filter → Area `Financije_all`, kategorija `Transakcija`, All time.
 2. `Filter by` → **Isplata**. **Očekivano:** uz polje stoji operator (`>` zadano), polje „npr. 1000".
-3. Upiši `1000`. **Očekivano:** desno `= 1.000,00`; lista samo retci s isplatom **> 1000**;
+3. Upiši `1000`. **Očekivano:** desno `→ 1.000,00`; lista samo retci s isplatom **> 1000**;
    chip iznad liste `> 1000 ×`.
 4. Promijeni operator u `≤`. **Očekivano:** lista se odmah okrene (isplate ≤ 1000), chip `≤ 1000`.
-5. Upiši `1.000`. **Očekivano:** desno `= 1,00` (čita se kao jedan — namjerno isti parser kao
+5. Upiši `1.000`. **Očekivano:** desno `→ 1,00` (čita se kao jedan — namjerno isti parser kao
    Add forma; Help to kaže).
-6. Upiši `12a`. **Očekivano:** polje **crveno**, nema chipa, lista **bez** filtra po iznosu.
+6. Upiši `12a`. **Očekivano:** polje **crveno**, desno crveno „nije broj — bez filtra", nema chipa, lista **bez** filtra po iznosu (svi retci).
    **Pad:** prazna lista (filtar primijenjen s nagađanjem).
 7. Vrati `> 1000` → Excel Export (bez profila). **Očekivano:** broj u modalu = broj redaka liste
    (uz „load more" do kraja); u fileu list `Filter` → `Attribute filter` = `isplata: >1000`.
@@ -76,6 +76,16 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
 2. Close. **Očekivano:** novi atribut je u tablici bez F5.
    (S159 je maknuo jedan suvišan `refetchStructure()` nakon uvoza; tablicu osvježava
    `refreshKey`.)
+
+## T-S159-8 ⬜ `⚡ Use` radi i bez leafa kad je leaf samo jedan — TEST
+
+Sašin zahtjev iz testiranja T-S159-2: shortcut spremljen na `Financije_all > All Categories`
+imao je sivi `⚡ Use`, a `+` pored njega je radio (S154). Isto pravilo (`singleLeaf.ts`).
+
+1. Shortcuts → `isplata>1000` (spremljen na `All Categories`). **Očekivano:** `⚡ Use` **nije siv**.
+2. Klik `⚡ Use`. **Očekivano:** otvara se Add Activity na `Financije_all > Transakcija`.
+3. Kontrola: shortcut na Arei s **više** leafova (npr. Fitness, `All Categories`).
+   **Očekivano:** `⚡ Use` ostaje siv (treba birati kategoriju).
 
 ---
 

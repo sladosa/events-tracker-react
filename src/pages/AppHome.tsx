@@ -590,6 +590,7 @@ function AppContent() {
             <ProgressiveCategorySelector
               onLeafSelected={handleLeafSelected}
               onUseShortcut={handleAddActivity}
+              singleLeafTarget={!!singleLeaf}
             />
 
             {/* Date Range Filter — Activities AND Overview.
@@ -718,8 +719,16 @@ function AppContent() {
                             )}
                           </div>
                           {n !== null && (
-                            <span className="text-xs text-gray-500 whitespace-nowrap tabular-nums" title="Ovako je broj pročitan">
-                              = {formatAmount(n)}
+                            <span className="text-xs text-gray-500 whitespace-nowrap tabular-nums" title="Ovako je app pročitao upisani broj (nije uvjet)">
+                              → {formatAmount(n)}
+                            </span>
+                          )}
+                          {/* Visible, not just a tooltip: a phone has no hover, and a
+                              full list next to a red field otherwise reads as "the
+                              filter returned everything" (S159, T-S159-2 korak 6). */}
+                          {bad && (
+                            <span className="text-xs text-red-600 whitespace-nowrap">
+                              nije broj — bez filtra
                             </span>
                           )}
                         </div>

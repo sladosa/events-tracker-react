@@ -44,6 +44,7 @@ App (`src/` + `help.ts`), bez migracije. `npm run check` zeleno; novi `attrFilte
 | T-S159-5 | Grantee: tuđi redak s `Delete?` ⇒ poruka „pripada drugom korisniku", ništa obrisano (D2) | ⬜ |
 | T-S159-6 | Network: nema ~39 count upita na Activitiesu; promjena Aree = 2 upita liste; Structure Export radi | ⬜ |
 | T-S159-7 | Structure Import i dalje osvježi tablicu bez F5 | ⬜ |
+| T-S159-8 | `⚡ Use` na `All Categories` radi kad Area ima jedan leaf (Financije_all); na Fitnessu ostaje siv | ⬜ |
 
 ---
 

@@ -17,6 +17,11 @@ interface ProgressiveCategorySelectorProps {
   onLeafSelected?: (category: Category, path: Category[], source?: 'manual' | 'shortcut') => void;
   /** Jump straight to Add Activity for the currently selected shortcut (explicit fast-lane action) */
   onUseShortcut?: () => void;
+  /** S159: the filter is not on a leaf, but Add Activity still knows where to go
+   *  (exactly one leaf under it — `singleLeaf.ts`, the same rule `+` uses since
+   *  S154). Without this `⚡ Use` stayed grey on `Financije_all > All Categories`
+   *  while `+` next to it worked — two buttons, two answers to one question. */
+  singleLeafTarget?: boolean;
   className?: string;
 }
 
@@ -27,6 +32,7 @@ interface ProgressiveCategorySelectorProps {
 export function ProgressiveCategorySelector({
   onLeafSelected,
   onUseShortcut,
+  singleLeafTarget = false,
   className = '',
 }: ProgressiveCategorySelectorProps) {
   // Get ALL state from context (Single Source of Truth)
@@ -420,7 +426,8 @@ export function ProgressiveCategorySelector({
   const canSaveShortcut = !!(filter.categoryId || filter.areaId);
 
   // Can jump to Add Activity: a shortcut is selected, it resolved to a leaf, and not read-only
-  const canUseShortcut = !!selectedShortcutId && isLeafCategory && !!filter.categoryId
+  const canUseShortcut = !!selectedShortcutId
+    && ((isLeafCategory && !!filter.categoryId) || singleLeafTarget)
     && sharedContext?.permission !== 'read';
 
   // Auto-select shortcut when filter matches a preset but selectedShortcutId is null
