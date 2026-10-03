@@ -43,7 +43,7 @@ App (`src/` + `help.ts`), bez migracije. `npm run check` zeleno; novi `attrFilte
 | T-S159-4 | Grantee: „Import as mine" siv za retke dijeljene Aree, za file stranca ostaje (D5) | ⬜ |
 | T-S159-5 | Grantee: tuđi redak s `Delete?` ⇒ poruka „pripada drugom korisniku", ništa obrisano (D2) | ⬜ |
 | T-S159-6 | Network: nema ~39 count upita na Activitiesu; promjena Aree = 2 upita liste; F5 = 2 upita; Structure Export radi | ✅ S159, 03.10. TEST — svi koraci: promjena Aree 2 upita, F5 2 upita (prije 6 — nađeno ovim testom i popravljeno), nema `events` count niza, Structure Export brz i ispravan (prati filtar Aree) |
-| T-S159-7 | Structure Import i dalje osvježi tablicu bez F5 | ⬜ |
+| T-S159-7 | Structure Import i dalje osvježi tablicu bez F5 | ✅ S159, 03.10. TEST — `Attributes created 1`, `Test1234` (suggest Test1/Test2) odmah vidljiv pod `Transakcija` nakon Close |
 | T-S159-8 | `⚡ Use` na `All Categories` radi kad Area ima jedan leaf (Financije_all); na Fitnessu ostaje siv | ✅ S159, 03.10. TEST — sva tri koraka |
 
 ---

@@ -79,7 +79,7 @@ Help funkcija ne radi lokalno (`netlify dev` ili PROD).
    Popravak: lista i Prev/Next čekaju `isRestored`. Playwright poslije: 6 → 2.
 3. Tab **Structure** (ne Activities!) → **Export**. **Očekivano:** file `structure_….xlsx` brzo izlazi; nosi Aree iz filtra (odabrana Area ⇒ samo ona).
 
-## T-S159-7 ⬜ Structure Import i dalje osvježi tablicu — TEST
+## T-S159-7 ✅ Structure Import i dalje osvježi tablicu — TEST
 
 1. Structure tab → Import nekog Structure filea koji **dodaje** atribut.
 2. Close. **Očekivano:** novi atribut je u tablici bez F5.
