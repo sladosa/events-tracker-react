@@ -9,7 +9,15 @@
 
 ---
 
-## T-S160-1 ⬜ Filter by: datum i da/ne
+## T-S160-1 ✅ Filter by: datum i da/ne
+
+✅ S160, 04.10. TEST — Saša: 40 / 20 / 55 / 49 / 653 / 1, i `> 11.10.` = **15** (= 55 − 40); View
+details + više puta Next i natrag ⇒ uvjet ostaje; shortcut spremi → Clear all → Use ⇒ vrati se
+`Datum naplate ≥ 11.10.2026.`, 55. **Usput nađeno i popravljeno:**
+(a) „Load next 20" nuđen i kad je ukupno višekratnik od 20 (40) — `hasMore` iz pune stranice
+umjesto iz `count` (`6687d39`); (b) „Filter by" skakao na Comment kad se uvjet briše iz panela
+(promjena polja, nepotpun datum) — efekt nije znao tko briše (`1a1d67f`); (c) ukupan broj
+nevidljiv dok se sve ne učita — sada „20 loaded · 653 events total" (`50580fb`).
 
 `Financije_all > Transakcija`, period **All time**. Brojke su izmjerene izravno u TEST bazi
 (`event_attributes`) 04.10. i poklapaju se s oblikom upita koji app šalje (6/6).
