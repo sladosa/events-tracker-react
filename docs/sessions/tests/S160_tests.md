@@ -91,7 +91,12 @@ pregled bi i tada rekao „0 modify". Jača brana (vlastita kvačica) = odluka u
 
 **Pad:** pregled bez upozorenja (stari tihi preskok).
 
-## T-S160-5 ⬜ Structure Export na grešci ne daje prazan file
+## T-S160-5 ✅ Structure Export na grešci ne daje prazan file
+
+✅ S160, 04.10. TEST — Saša: „Export failed — no file saved: TypeError: Failed to fetch", zahtjev
+`(blocked:devtools)`, nijedan file. ⚠ Za ponavljanje: uzorak u **filtru** Network taba NE blokira
+(samo skriva retke) — najlakše je desni klik na zahtjev → **Block request URL**; poslije pospremiti
+„Enable blocking and throttling".
 
 1. DevTools → Network → Request conditions: blokiraj `*://*/rest/v1/attribute_definitions*`.
 2. Structure → Export ⇒ crveni toast **„Export failed — no file saved: …"**, nijedan file preuzet.
