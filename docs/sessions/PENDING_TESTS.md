@@ -29,6 +29,25 @@
 
 ---
 
+## S160 — P1 tihi gubici + dio P3 (2026-10-04)
+
+⚠ Na `test-branch`, nije na `main`. Ručno na `npm run dev` (TEST) pod **sasasladoljev59@gmail.com** (vlasnik `Financije_all` na TEST-u). Automatski: `storedFilter`, `importDroppedAttrs`, `structureOptionRemoval`, `helpMarkdown`, `attrFilterTyped` (sabotaže ruše 1 / 3 / 3 / 5 / 8).
+
+**Detalji testova:** [tests/S160_tests.md](tests/S160_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S160-1 | Filter by datum/da-ne: `Datum naplate = 11.10.` ⇒ 40, `≥ 11.10.` ⇒ 55, `Rate? = Yes` ⇒ 653; preživi View details i shortcut | ⬜ |
+| T-S160-2 | Structure panel: izmjena ⇒ „Discard unsaved changes?" (X, pozadina, View); bez izmjene bez pitanja; sklopive kartice pamte stanje | ⬜ |
+| T-S160-3 | Structure uvoz s obrisanom opcijom koju retci nose ⇒ stop, popis, „Import anyway" tek uz kvačicu | ⬜ |
+| T-S160-4 | Activities uvoz s atributom kojeg Area nema ⇒ pregled ga imenuje (D3 minimum) | ⬜ |
+| T-S160-5 | Structure Export uz blokiran `attribute_definitions` ⇒ „Export failed — no file saved" | ⬜ |
+| T-S160-6 | Odjava OT → prijava SL u istom pregledniku ⇒ nema žute trake, tuđa Area nije obnovljena | ✅ S160 — Saša, 04.10. TEST (slika) |
+| T-S160-7 | Grantee uvozi Structure file tuđe Aree ⇒ stop s porukom o vlasniku, bez duplikata Aree | ⬜ — na TEST-u nema dijeljene `Financije_all` |
+| T-S160-8 | Help nakon deploya: odgovor bez `#` / `**` (mobitel) | ⬜ |
+
+---
+
 ## S158 — audit procesa Financija, MC izvod 2026-09, T11 rate, T5–T10 alati (2026-10-02)
 
 Samo Python alati i dokumenti, bez promjene u appu. Košara 11.10. na PROD-u = izvod u cent (55 / 1.189,34); uvezeno 37 budućih MC rata + 7 naknada (11.11. = 499,18, 11.12. = 434,05).
