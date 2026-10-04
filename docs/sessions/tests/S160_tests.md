@@ -58,7 +58,14 @@ Structure → Table → Edit Mode → ⋮ → Edit na leafu s više atributa (np
 
 **Pad:** zatvaranje bez pitanja nakon izmjene, ili pitanje bez izmjene.
 
-## T-S160-3 ⬜ Structure uvoz staje kad bi obrisao opciju koju retci nose (K-1)
+## T-S160-3 ✅ Structure uvoz staje kad bi obrisao opciju koju retci nose (K-1)
+
+✅ S160, 04.10. TEST — Saša: `Smjer` `Uplata|Isplata|PROVJERI` → `Isplata` ⇒ „Nothing imported yet —
+1 option in use would be removed", **samo** `Uplata · 511 rows` (TEST: Uplata 511, Isplata 4.781,
+PROVJERI 0 — opcija bez redaka se briše bez pitanja), „Import anyway" ugašen; Cancel ⇒ `Smjer`
+i dalje 3 opcije. **Usput:** opcije su u stupcu **P**, a pomoćni list `HelpStructure` je pisao O —
+12 slova od K nadalje zaostalo od umetanja `HiddenInAdd`. Slova se sada računaju iz `COLS`
+(`colOf`); čuva `structureHelpLetters.test.mjs` (stari kod: 12 krivih).
 
 1. Structure Export (filtar `Financije_all`).
 2. U fileu iz popisa opcija `Smjer` (ili drugog atributa s retcima) obriši jednu opciju; spremi.

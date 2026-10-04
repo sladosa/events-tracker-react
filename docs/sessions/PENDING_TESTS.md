@@ -39,7 +39,7 @@
 | --- | --- | --- |
 | T-S160-1 | Filter by datum/da-ne: `Datum naplate = 11.10.` ⇒ 40, `≥ 11.10.` ⇒ 55, `Rate? = Yes` ⇒ 653; preživi View details i shortcut | ✅ S160 — Saša, 04.10. TEST: svih 7 brojki (i `> 11.10.` = 15), View details + Next, shortcut. Usput nađena i popravljena **tri** kvara: „Load next" i kad je sve učitano (`6687d39`), „Filter by" skakao na Comment pri promjeni polja / nepotpunom datumu (`1a1d67f`), ukupan broj nevidljiv do kraja (`50580fb`) |
 | T-S160-2 | Structure panel: izmjena ⇒ „Discard unsaved changes?" (X, pozadina, View); bez izmjene bez pitanja; sklopive kartice pamte stanje | ✅ S160 — Saša, 04.10. TEST, svih 5 koraka. Usput: Structure tablica uz filtar na leaf bila **prazna** (zapamćeno sklapanje Aree čiji redak nije prikazan, `3ad26f6`); kartice sada **zadano sklopljene** na Sašin prijedlog (`759a491`) |
-| T-S160-3 | Structure uvoz s obrisanom opcijom koju retci nose ⇒ stop, popis, „Import anyway" tek uz kvačicu | ⬜ |
+| T-S160-3 | Structure uvoz s obrisanom opcijom koju retci nose ⇒ stop, popis, „Import anyway" tek uz kvačicu | ✅ S160 — Saša, 04.10. TEST: `Smjer` → `Isplata` ⇒ stop, popis samo `Uplata · 511 rows` (`PROVJERI` s 0 redaka ne pita), gumb ugašen, opcije netaknute. Usput: pomoćni list `HelpStructure` slao je u krivi stupac (12 slova pomaknuto od `HiddenInAdd`) — slova se sada računaju iz `COLS`, čuva `structureHelpLetters.test.mjs` |
 | T-S160-4 | Activities uvoz s atributom kojeg Area nema ⇒ pregled ga imenuje (D3 minimum) | ⬜ |
 | T-S160-5 | Structure Export uz blokiran `attribute_definitions` ⇒ „Export failed — no file saved" | ⬜ |
 | T-S160-6 | Odjava OT → prijava SL u istom pregledniku ⇒ nema žute trake, tuđa Area nije obnovljena | ✅ S160 — Saša, 04.10. TEST (slika) |

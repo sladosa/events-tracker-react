@@ -115,6 +115,12 @@ const N_COLS = COLS.length; // 23 (S139) — /!\ komentar je zaostajao za nizom;
                             // vrijednost je uvijek `COLS.length`, komentar samo podsjetnik.
 
 // Column letter helpers (0-based index: A=0, B=1, ...)
+/** Slovo kolone po kljucu iz `COLS` — S160: pomocni list je slova pisao rucno i
+ *  zaostao jedan stupac od umetanja `HiddenInAdd` (TextOptions „O" umjesto P). */
+function colOf(key: (typeof COLS)[number]['key']): string {
+  return colLetter(COLS.findIndex(c => c.key === key));
+}
+
 function colLetter(idx: number): string {
   return String.fromCharCode(65 + idx);
 }
@@ -663,34 +669,34 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
 
     { kind: 'section', text: 'Grouped / Hidden Columns' },
     { kind: 'row', label: '', value: 'Several columns are grouped and collapsed by default.  Click [+] in the column header area to expand.' },
-    { kind: 'row', label: 'Default collapsed', value: 'IsLeaf (B), Area (C), SharedWith (D), Sort (F), Slug (H), AttrType (I), IsRequired (J), Val.Type (K), Default (L), Val.Max (M)' },
-    { kind: 'row', label: 'Default open',      value: 'TextOptions/Val.Min (O), DependsOn (P), WhenValue (Q)' },
+    { kind: 'row', label: 'Default collapsed', value: COLS.filter(c => c.grouped && c.collapsed).map((c, _i) => `${c.header} (${colOf(c.key)})`).join(', ') },
+    { kind: 'row', label: 'Default open',      value: `TextOptions/Val.Min (${colOf('textOptions')}), DependsOn (${colOf('dependsOn')}), WhenValue (${colOf('whenValue')})` },
     { kind: 'row', label: '', value: '' },
 
-    { kind: 'section', text: 'Column Reference (A–S)' },
-    { kind: 'row', label: 'A  Type',              value: 'Area / Category / Attribute' },
-    { kind: 'row', label: 'B  IsLeaf',            value: 'TRUE if leaf category (no children).  Informational — importer recalculates from DB.' },
-    { kind: 'row', label: 'C  Area',              value: 'Auto-formula: extracts area name from CategoryPath.  Read-only.' },
-    { kind: 'row', label: 'D  SharedWith',        value: 'Emails with access to this Area at export time, separated by "|".  Informational only — ignored on import.  Manage sharing via app UI.' },
-    { kind: 'row', label: 'E  CategoryPath',      value: 'KEY column.  Full path e.g. "Fitness > Activity > Gym".  Do NOT change for existing rows.' },
-    { kind: 'row', label: 'F  Sort',              value: 'Display order within parent.' },
-    { kind: 'row', label: 'G  AttrName',          value: 'Attribute display name.' },
-    { kind: 'row', label: 'H  Slug',              value: 'Internal stable identifier.  Used for import matching and DependsOn references.  Never changes after creation.' },
-    { kind: 'row', label: 'I  AttrType',          value: 'Data type: number | text | datetime | boolean | link | image' },
-    { kind: 'row', label: 'J  IsRequired',        value: 'TRUE / FALSE — Add/Edit will not save while the field is empty. Excel import is NOT affected.' },
-    { kind: 'row', label: 'K  Val.Type',          value: 'suggest = dropdown with options.  none = free text.' },
-    { kind: 'row', label: 'L  Default',           value: 'Default value shown when creating a new event.' },
-    { kind: 'row', label: 'M  Val.Max (no)',      value: 'Maximum allowed value (number attributes only).' },
-    { kind: 'row', label: 'N  Unit',              value: 'Display unit e.g. kg, min, bpm.' },
-    { kind: 'row', label: 'O  TextOptions/Val.Min', value: 'For suggest: pipe-separated options e.g. "Low|Medium|High".  For number: minimum value.' },
-    { kind: 'row', label: 'P  DependsOn',         value: 'Slug of the parent attribute that controls this dropdown.  Must be in the same category.' },
-    { kind: 'row', label: 'Q  WhenValue',         value: 'Value of parent attribute for this row\'s options.  Use "*" as fallback for unlisted parent values.' },
-    { kind: 'row', label: 'J2 HiddenInAdd',       value: 'Attribute rows only.  TRUE keeps the field out of the Add/Edit form; "Show all" still reveals it.  Use for fields whose correct value is EMPTY (a statement-only field, a deprecated attribute) — those are the ones a Default cannot hide.  Blank = FALSE.' },
-    { kind: 'row', label: 'R  Description',       value: 'Optional documentation notes.' },
-    { kind: 'row', label: 'S  CommentTemplate',   value: 'Auto-comment template for Area or leaf Category.  Use {slug} to insert attribute values into event comment on Finish.  Leaf overrides Area.  Example: {napomena} ({tip})' },
-    { kind: 'row', label: 'T  DisableSavePlus',    value: 'Area rows only.  TRUE hides the "Save +" button in Add Activity (one event per session — e.g. Financije, Health).  Blank = FALSE.  Column absent from the file = setting left unchanged.' },
-    { kind: 'row', label: 'U  AddTimer',         value: 'Area rows only.  FALSE hides the SESSION/LAP stopwatch in Add Activity.  Useful when entries are RECORDED after the fact (a transaction) rather than PERFORMED while the screen is open (a workout).  Blank = TRUE (the header as it is today).' },
-    { kind: 'row', label: 'V  AddDatePicker',    value: 'Area rows only.  TRUE adds a date picker to Add Activity, defaulting to today, so an entry for a past day needs one screen instead of two (Add then Edit).  Blank = FALSE.' },
+    { kind: 'section', text: `Column Reference (A–${colLetter(N_COLS - 1)})` },
+    { kind: 'row', label: `${colOf('type')}  Type`,              value: 'Area / Category / Attribute' },
+    { kind: 'row', label: `${colOf('isLeaf')}  IsLeaf`,            value: 'TRUE if leaf category (no children).  Informational — importer recalculates from DB.' },
+    { kind: 'row', label: `${colOf('area')}  Area`,              value: 'Auto-formula: extracts area name from CategoryPath.  Read-only.' },
+    { kind: 'row', label: `${colOf('sharedWith')}  SharedWith`,        value: 'Emails with access to this Area at export time, separated by "|".  Informational only — ignored on import.  Manage sharing via app UI.' },
+    { kind: 'row', label: `${colOf('categoryPath')}  CategoryPath`,      value: 'KEY column.  Full path e.g. "Fitness > Activity > Gym".  Do NOT change for existing rows.' },
+    { kind: 'row', label: `${colOf('sort')}  Sort`,              value: 'Display order within parent.' },
+    { kind: 'row', label: `${colOf('attrName')}  AttrName`,          value: 'Attribute display name.' },
+    { kind: 'row', label: `${colOf('slug')}  Slug`,              value: 'Internal stable identifier.  Used for import matching and DependsOn references.  Never changes after creation.' },
+    { kind: 'row', label: `${colOf('attrType')}  AttrType`,          value: 'Data type: number | text | datetime | boolean | link | image' },
+    { kind: 'row', label: `${colOf('isRequired')}  IsRequired`,        value: 'TRUE / FALSE — Add/Edit will not save while the field is empty. Excel import is NOT affected.' },
+    { kind: 'row', label: `${colOf('valType')}  Val.Type`,          value: 'suggest = dropdown with options.  none = free text.' },
+    { kind: 'row', label: `${colOf('defaultVal')}  Default`,           value: 'Default value shown when creating a new event.' },
+    { kind: 'row', label: `${colOf('valMax')}  Val.Max (no)`,      value: 'Maximum allowed value (number attributes only).' },
+    { kind: 'row', label: `${colOf('unit')}  Unit`,              value: 'Display unit e.g. kg, min, bpm.' },
+    { kind: 'row', label: `${colOf('textOptions')}  TextOptions/Val.Min`, value: 'For suggest: pipe-separated options e.g. "Low|Medium|High".  For number: minimum value.' },
+    { kind: 'row', label: `${colOf('dependsOn')}  DependsOn`,         value: 'Slug of the parent attribute that controls this dropdown.  Must be in the same category.' },
+    { kind: 'row', label: `${colOf('whenValue')}  WhenValue`,         value: 'Value of parent attribute for this row\'s options.  Use "*" as fallback for unlisted parent values.' },
+    { kind: 'row', label: `${colOf('hiddenInAdd')}  HiddenInAdd`,       value: 'Attribute rows only.  TRUE keeps the field out of the Add/Edit form; "Show all" still reveals it.  Use for fields whose correct value is EMPTY (a statement-only field, a deprecated attribute) — those are the ones a Default cannot hide.  Blank = FALSE.' },
+    { kind: 'row', label: `${colOf('description')}  Description`,       value: 'Optional documentation notes.' },
+    { kind: 'row', label: `${colOf('commentTpl')}  CommentTemplate`,   value: 'Auto-comment template for Area or leaf Category.  Use {slug} to insert attribute values into event comment on Finish.  Leaf overrides Area.  Example: {napomena} ({tip})' },
+    { kind: 'row', label: `${colOf('disableSavePlus')}  DisableSavePlus`,    value: 'Area rows only.  TRUE hides the "Save +" button in Add Activity (one event per session — e.g. Financije, Health).  Blank = FALSE.  Column absent from the file = setting left unchanged.' },
+    { kind: 'row', label: `${colOf('addTimer')}  AddTimer`,         value: 'Area rows only.  FALSE hides the SESSION/LAP stopwatch in Add Activity.  Useful when entries are RECORDED after the fact (a transaction) rather than PERFORMED while the screen is open (a workout).  Blank = TRUE (the header as it is today).' },
+    { kind: 'row', label: `${colOf('addDate')}  AddDatePicker`,    value: 'Area rows only.  TRUE adds a date picker to Add Activity, defaulting to today, so an entry for a past day needs one screen instead of two (Add then Edit).  Blank = FALSE.' },
     { kind: 'row', label: '', value: '' },
 
     { kind: 'section', text: 'Understanding DependsOn Rows' },
