@@ -11,6 +11,13 @@ Unlock-a sve strukturne promjene:
 - Rename kategorije/areae: klikni na ime u Edit panelu
 - Dodaj atribut: klikni na kategoriju → Edit panel → "+ Add Attribute"
 - Brišanje atributa: trash ikona uz atribut (zaštita ako ima eventa)
+- Kartice atributa su **zadano sklopljene** (ime, tip, broj opcija, ⚠ ako kartica nosi
+  upozorenje); klik na redak je otvori, a panel pamti koje si otvorio. „Expand all / Collapse all"
+  iznad kartica. Novi, još nespremljen atribut je uvijek otvoren.
+- „+ Add Attribute" za tekstualni atribut prima i **opcije** (jedna po retku) — tada je odmah
+  dropdown (suggest).
+- Zatvaranje panela (X, klik pored, „View") s **nespremljenim izmjenama** pita „Discard unsaved
+  changes?" — „Keep editing" vraća u panel, ništa se ne gubi.
 
 ## Atributi u Edit panelu
 

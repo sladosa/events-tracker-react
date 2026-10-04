@@ -148,8 +148,15 @@ Takav nacrt bi, potvrđen, upisao **isti zapis drugi put**.
   od 1000. Broj se piše kao i u Add formi (`1.234,56` ili `1234.56`); desno od polja piše
   **kako je broj pročitan** (`→ 1.234,56`). ⚠ `1.000` se čita kao **jedan**, ne tisuću —
   za tisuću piši `1000`. Nepročitan broj pocrveni i filtar se **ne primjenjuje**.
-  Jedan uvjet istovremeno (npr. „ZABA **i** veće od 1000" još ne ide). Datumi i da/ne
-  atributi još se ne filtriraju u appu — za to Excel Export.
+  Jedan uvjet istovremeno (npr. „ZABA **i** veće od 1000" još ne ide).
+- **Filtar za datume** — za datumski atribut (npr. `Datum naplate`) isti operatori i birač
+  datuma; uspoređuje se **cijeli dan**: `= 11.10.2026.` su svi retci tog dana, `> 11.10.` od
+  12.10. nadalje. Primjer: što sve naplaćuje MasterCard 11.10. → `Datum naplate` `=` 11.10.
+- **Filtar za da/ne** — za atribut tipa da/ne (npr. `Rate?`) izbornik **Yes / No**. ⚠ **No**
+  pokaže samo retke gdje je „Ne" stvarno spremljeno; redak koji taj atribut uopće nema (npr.
+  obična kupovina bez rata) nije ni Yes ni No.
+- Iznad liste piše ukupan broj (`20 loaded · 653 events total`), pa ne treba klikati
+  „Load next" da se vidi koliko ih filtar nalazi.
 - **"In any attribute"** — traži tekst u svim atributima odjednom (npr. upiši "EUR" da nađeš sve evente gdje bilo koji atribut sadrži "EUR")
 
 ## Shortcuts (brzi pristup)

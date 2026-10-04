@@ -8287,3 +8287,47 @@ App (`src/` + `help.ts`), bez migracije. `npm run check` zeleno; novi `attrFilte
 | T-S159-8 | `⚡ Use` na `All Categories` radi kad Area ima jedan leaf (Financije_all); na Fitnessu ostaje siv | ✅ S159, 03.10. TEST — sva tri koraka |
 
 ---
+
+## S160 — P1 tihi gubici + dio P3 + ručno testiranje (2026-10-04)
+
+Saša: „prvo što testirati, pa backlog — popis i prioriteti", zatim „P1 pa P3". Prioriteti su
+složeni po kriteriju *tihi gubitak podataka prvo* (P1), Financije po kalendaru (P2), UX (P3),
+dug (P4), veliki projekti s okidačem (P5). Sve u `src/` + `help.ts`, bez migracije.
+
+**P1 (`f08377a`).** (1) Zapamćeni filtar nosi `userId` (`src/lib/storedFilter.ts`) — prijava
+drugog računa u istom pregledniku više ne obnavlja tuđu Areu; zapis bez `userId` se odbacuje
+(prihvatiti ga = prvo spremanje utisne trenutnog korisnika). (2) `useStructureData` dobio `load`
+koji BACA; Structure Export i review file koriste njega ⇒ „Export failed — no file saved" umjesto
+filea bez Area. `toError` iz `retry.ts` izvezen. (3) D3 minimum: `findDroppedAttributes` +
+`droppedAttributesWarning` — pregled i izvještaj uvoza imenuju atribute iz filea koje ni leaf ni
+roditelj nemaju (P1 atribut roditelja se ne prijavljuje). (4) K-1 u `structureImport.ts` § 5b,
+PRIJE ijednog upisa: file Aree koju vidiš a nije tvoja (osim predloška) ⇒ stop s porukom;
+opcije koje nestaju (`removedOptions`, unija svih lista) a imaju retke ⇒ `blocked` + popis +
+kvačica u modalu („Import anyway"); opcija s 0 redaka se briše bez pitanja; palo brojanje = `null`,
+ne nula. Korak 7 Activities uvoza pri blokadi staje i šalje na Structure Import.
+
+**P3 (`2c8735c`, `ffa5783`).** Help: `src/lib/helpMarkdown.ts` (naslov, liste, kod, **bold**,
+`kod`; bez HTML-a) + pravilo u promptu „bez naslova i tablica". Structure panel: B4 „Discard
+unsaved changes?" (zastavicu diže handler, ne izračun — efekt resinkronizacije postavki ne prlja;
+brisanje atributa je već upisano pa ne prlja), F7 sklopive kartice s ⚠ u zaglavlju i opcije u
+„New attribute"; dijalog brisanja atributa se zatvara pozadinom. Filter by: `kind` datetime /
+boolean na istom utoru kao `op` (S159) — dan s **UTC granicama** (naivni zapis = UTC), `=` je
+cijeli dan; profil `slug: >=2026-10-01` / `slug: =true`; `useActivities` dep liste dobile `kind`.
+
+**D3 spec** `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md` (odluke D3-1..6 čekaju Sašu). **F5 format
+odlučen:** generički sheet `AreaSettings`, retci `Area | Putanja | Vrijednost` (nije izgrađeno).
+
+**Ručno testiranje (Saša, TEST, 6/8 ✅) našlo je šest stvari, sve popravljene:**
+- `hasMore` iz pune stranice ⇒ „Load next 20" i kad je ukupno 40 (`6687d39`; sada iz `count`).
+- „Filter by" skakao na Comment pri promjeni polja i nepotpunom datumu — efekt sinkronizacije je
+  svako `attrFilter → null` čitao kao vanjski reset (`1a1d67f`; lokalno brisanje nosi zastavicu).
+- Ukupan broj nevidljiv do kraja klikanja ⇒ „20 loaded · 653 events total" (`50580fb`).
+- Structure tablica uz filtar na leaf PRAZNA, bez ⋮ → Edit: zapamćeno sklapanje Aree skrivalo je
+  retke Aree čiji redak uz filtar nije prikazan (`3ad26f6`, stari kvar).
+- Kartice atributa zadano sklopljene, pamte se otvorene (`759a491`, Sašin prijedlog).
+- `HelpStructure` list slao u krivi stupac (12 slova od `HiddenInAdd` pomaknuto) — slova sada
+  iz `COLS` (`colOf`), čuva `structureHelpLetters.test.mjs` (`cef2881`).
+Mjerenje na TEST-u: oblik upita filtra = izravno brojanje (6/6); `Rate?` ima 653 Da, **1** Ne,
+5 praznih — obični retci atribut nemaju, pa „No" ≠ „nije rata". `Smjer`: Uplata 511, Isplata
+4.781, PROVJERI 0. Na TEST-u `Financije_all` pripada `sasasladoljev59@gmail.com` i nije dijeljena.
+Otvoreno: T-S160-7 (grantee, PROD) i T-S160-8 (Help, nakon deploya).

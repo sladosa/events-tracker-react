@@ -1,52 +1,60 @@
-> Pisano protiv commita **S159** na `test-branch`; **`main` = `c4747fa` (deploy S159, 03.10.)** — sve iz S159 je na PROD-u, T-S159-1 ✅ 03.10. — svih 8 testova S159 zatvoreno i arhivirano.
-> ⚠ Ako `git log` pokazuje noviji commit od S159, čitaj ovo kao **povijest**, ne kao stanje.
+> Pisano protiv commita **S160** na `test-branch` (zadnji commit sesije = ritual „S160: kraj sesije").
+> **`main` = `c4747fa` (deploy S159)** — S160 čeka Sašin merge (naredbe ispod). Nema migracije.
+> ⚠ Ako `git log` pokazuje noviji commit od S160, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S159 (2026-10-02/03)
+# Sljedeća sesija — nakon S160 (2026-10-04)
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Što je napravljeno u S159 (ne-Financije backlog)
+## Što je napravljeno u S160
 
-- **Filtar za brojeve:** `Filter by` → brojčani atribut (npr. `Isplata`) → operator `>` `≥` `<` `≤` `=`
-  i broj. Desno piše kako je broj pročitan. ⚠ `1.000` = **jedan** (piši `1000`). Radi i u
-  Excel izvozu, profilu i shortcutu.
-- **Help zna u kojoj si Arei** — u Fitnessu više ne bi trebao objašnjavati saldo kao da ga ondje ima
-  (provjerljivo tek nakon deploya).
-- **Lista ne pokazuje `—` dok se iznosi učitavaju** (sivo pulsira), i ne gubi iznose nakon više
-  „Load more".
-- **Manje nepotrebnih upita:** početni ekran više ne broji evente za Structure; promjena Aree
-  pita listu 2× umjesto 3× (i više ne pokaže na trenutak retke s datumima prošle Aree).
-- **Grantee poruke:** „Import as mine" je ugašen za retke dijeljene Aree (pravio bi duplikate);
-  tuđi redak označen `Delete?` sada jasno kaže da se ne može obrisati.
-- **Iz testiranja 03.10. (Saša na TEST-u, 7/8 testova ✅):** `⚡ Use` radi i na `All Categories`
-  kad je leaf samo jedan; „Loading..." dok se lista mijenja; F5 više ne pita za retke SVIH Area
-  (6 → 2 upita); vlasništvo tuđih redaka pri uvozu po `event_id`, ne po imenu Aree.
-- **D3 pokus (slanje podataka drugome):** jedan Activities file prenosi cijelu Areu **savršeno** ako
-  je primatelj nema. Ako ima **istoimenu Areu drukčije strukture** — atributi kojih nema **tiho
-  nestanu** (29 od 43 vrijednosti, bez upozorenja). Tvoj prijedlog opcija je zapisan u backlog (D3).
+- **Tihi gubici (P1):** zapamćeni filtar više ne prelazi na drugi račun u istom pregledniku ·
+  Structure Export na grešci kaže „no file saved" umjesto praznog filea · Activities uvoz imenuje
+  atribute koje Area nema („NEĆE biti upisane …") · Structure uvoz **staje** kad bi obrisao opciju
+  koju retci nose (popis + kvačica) i kad je file tuđe Aree (prije: tihi duplikat Aree).
+- **UX (P3):** Filter by za **datum** (operator, cijeli dan) i **da/ne** · Help odgovor bez `#`/`**`
+  · Structure panel pita „Discard unsaved changes?", kartice atributa zadano sklopljene, opcije
+  odmah u „New attribute".
+- **Iz tvog testiranja (6 nalaza, svi popravljeni):** „Load next" kad je sve učitano · „Filter by"
+  skakao na Comment · ukupan broj vidljiv odmah („20 loaded · 653 events total") · prazna Structure
+  tablica uz filtar na leaf · kartice zadano sklopljene · pomoćni list Structure filea slao u krivi stupac.
+- **D3 spec** napisan: `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md` — šest odluka (D3-1..6) čeka tebe.
+- **F5 odlučeno:** `dashboard` i `export_profiles` idu u Structure Excel kao jedan sheet
+  `AreaSettings` (redak = Area | Putanja | Vrijednost). Nije izgrađeno.
 
 ## Što treba od tebe
 
-1. **Merge je napravljen 03.10.** (`c4747fa`). Ostaje
-   **T-S159-1** na PROD-u: Help u Fitnessu prvo kaže da ondje nema salda. Koka: zatvori/otvori karticu.
-2. Financije — nepromijenjeno od S158:
-   - **~05.–07.10. Visa izvod za rujan** — javi kad stigne (sesija za Visa buduće rate).
-     Naknadu `0,17` na RF-u upiši kao `Bankovni troškovi`, opis `Naknada`.
-   - **11.10. Koka u traci:** iznos i dan s ekrana banke; ako je 1.189,34 → ✓ → Potvrdi
-     (prije toga zatvori/otvori karticu). T-S158-1 = T-S156-6.
-   - **Kad stigne ZABA izvod** — `FINANCIJE_PROCES.md` §5 „ZABA"; T-S156-7 i T-S158-5.
-   - Obrađeni PDF u OneDriveu → podmapa `Obrađeno` (prijedlog T25, vaša odluka).
+1. **Merge na `main`** (PowerShell, iz projekta):
+   ```powershell
+   git checkout main
+   if ($?) { git merge test-branch --no-edit }
+   if ($?) { git push origin main }
+   git checkout test-branch
+   if ($?) { git merge main --no-edit }
+   if ($?) { git push origin test-branch }
+   ```
+2. **Nakon deploya, PROD:**
+   - **T-S160-8** — Help (`?`) → „kako dodati unos?" ⇒ odgovor bez `#` i `**`, koraci kao lista.
+   - **T-S160-7** — pod svojim računom (grantee `Financije_all`): Structure → Export → isti file
+     Import ⇒ crveno „Area "Financije_all" belongs to another user… Nothing was imported.", bez
+     nove Aree. Siguran pokus (staje prije upisa).
+   - Koka: zatvori/otvori karticu (stari bundle).
+3. **D3 odluke** (spec §7) kad stigneš — bez njih se D3 dalje ne gradi.
+4. **Financije — nepromijenjeno od S158:** ~05.–07.10. Visa izvod za rujan (javi kad stigne) ·
+   11.10. Koka u traci (1.189,34) · ZABA izvod (`FINANCIJE_PROCES.md` §5).
 
-## Što je još otvoreno izvan Financija (backlog)
+## Što je sljedeće u backlogu (prioriteti dogovoreni S160)
 
-**Novo iz S159:** spec „uvoz tuđeg filea u istoimenu Areu" (D3 nalaz, prije koda — tvoja
-odluka o opcijama); popravak zapamćenog filtra između korisnika (v. DIO 2).
-B4+F7 (Structure panel: „Discard changes?" + sklopive kartice), K-1 (Structure uvoz javlja
-brisanje opcija s retcima, staje na file tuđe Aree), F5 (`Dashboard`/`ExportProfiles` sheet),
-help chip „What can I do here?", D3 (Area kao predložak), filtar za datum/da-ne.
+- **P2 Financije po kalendaru:** Visa buduće rate uz rujanski izvod (T28) + `rate_alat --only a`
+  (T24, 91 ispravak) · prije/poslije 11.10.: T22 (MC ostatak na ZADNJOJ rati), T21 (guard za
+  kartice), T12 (Σ košare po jednom dospijeću).
+- **P3 ostatak:** F5 `AreaSettings` (format odlučen) · Help chip „What can I do here?" · D3-F1
+  (nakon tvojih odluka).
+- **P4:** promjena Aree čita `categories` 7× / `areas` 4× · Edit `datetime` u UTC satu ·
+  rename sluga ne popravlja `attribute_rules`.
 
 ---
 
@@ -54,47 +62,37 @@ help chip „What can I do here?", D3 (Area kao predložak), filtar za datum/da-
 
 ## Stanje grana i baza
 
-`main` = `e8afdac` (deploy S157). `test-branch` = S158 (alati/docs) + **S159 (app)**. Nema
-migracije. TEST = kopija PROD-a od **01.10.** (prije S158 uvoza) — za test nad današnjim
-stanjem: `backup_db.py --env test` → `prod_to_test.py --apply`.
+`main` = `c4747fa` (S159). `test-branch` = S160 (app + `help.ts`, **bez migracije**). TEST =
+kopija PROD-a od **01.10.**; `Financije_all` na TEST-u pripada **sasasladoljev59@gmail.com** i
+**nije dijeljena** (`owner@test.com` ima seed `Financije`) — test grantee puta na TEST-u traži share.
 
-## Novo u S159
+## Novo u S160
 
-- `src/lib/helpContext.ts` (`describeAreaForHelp`) → `HelpPanel` šalje `areaName` + `areaFacts`;
-  `help.ts` ih piše u system prompt.
-- `src/lib/attrFilterNumeric.ts` — `NumericOp`, `numericFilterValue`, ASCII oblik za profil.
-  `attrFilter.op` u `AttrFilterState` i svim inline tipovima; `eventQueryBuilder`
-  (`isAttrFilterActive` odbija nepročitan broj, join bira `value_number`). Profil:
-  `parseAttrFilterRaw`/`formatAttrFilterDesc` u `ExcelExportModal`.
-- `useStructureData({ autoFetch })`; `AppHome` ga zove s `false`.
-- `useListColumnValues`: `loaded` izveden iz potpisa ulaza, `failed`, paginacija;
-  `ActivitiesTable`: `FailedCell` (`?`).
-- `ActivitiesTable` → `useActivities` bez datuma kad je `periodKey === 'all-time'` (C4);
-  `useActivities` sort ima `.order('id')` na kraju.
-- `ExcelImportModal`: `sharedForeignArea` gasi `import_as_mine`; `excelImport.ts`: tuđi redak s
-  `_delete` (osim `fix_as_owner`) ⇒ upozorenje + preskok.
-- Test: `src/lib/__tests__/attrFilterNumeric.test.mjs`. Specovi: E12-4 (`exact: true`),
-  T-S119-6 (prihvaća „Nothing to import").
+- `src/lib/storedFilter.ts` (`parseStoredFilter`) — FilterContext zapis nosi `userId`; zapis bez
+  njega se odbacuje.
+- `useStructureData` → `{ refetch, load }`: `load` baca (Export, review file), `refetch` hvata (prikaz).
+  `retry.ts` izvozi `toError`.
+- `excelImport.ts`: `findDroppedAttributes` / `droppedAttributesWarning` (pregled + apply).
+- `structureImport.ts` § 5b: K-1 (tuđa Area ⇒ throw; `confirmOptionRemovals` opcija; rezultat
+  `blocked` + `optionRemovals`). `validationRules.ts`: `allOptions`, `removedOptions`.
+- `src/lib/helpMarkdown.ts` + `components/help/HelpMarkdown.tsx`; `help.ts` pravilo formatiranja.
+- `StructureNodeEditPanel`: `dirty`/`pendingLeave`/`edited()`, `onDeletedSaved`, `attrCardWarnings`,
+  ključ `structure-attr-expanded` (stari `structure-attr-collapsed` se briše).
+- `attrFilterNumeric.ts`: `AttrFilterKind`, `dateFilterBounds` (UTC), `booleanFilterValue`,
+  `isTypedFilterReadable`, `describeTypedFilter`; `eventQueryBuilder` `valueColumn`.
+- `useActivities`: `hasMore` iz `count`; dep liste s `attrFilter?.kind` (pet polja).
+- `AppHome`: `clearAttrFilterKeepField` + `keepFilterFieldRef`.
+- `StructureTableView`: sklapanje Aree samo kad je njezin redak prikazan.
+- `structureExcel.ts`: `colOf(key)` u `HelpStructure`.
+- Testovi (svi provjereni sabotažom): `storedFilter`, `importDroppedAttrs`, `structureOptionRemoval`,
+  `helpMarkdown`, `attrFilterTyped`, `structureHelpLetters`. `npm run check` = 35 fileova, 0 palo.
 
 ## Otvoreno / neverificirano
 
-- **Zapamćeni filtar nije vezan uz KORISNIKA** (nađeno 03.10.): `dbScopedKey` nosi bazu, ne
-  korisnika ⇒ prijava drugog računa u istom pregledniku obnovi tuđi `areaId` ⇒ žuta traka
-  „Nisam uspio učitati postavke" i prazan Structure. Prijedlog: `userId` u spremljenom stanju,
-  pri obnovi tuđi odbaciti. Nije napravljeno (Saša još nije odlučio); isti razred kao `et_activity_draft`.
-- **D3 spec**: nalazi i opcije u `docs/sessions/BACKLOG.md` § D3. Minimalni korak koji vrijedi
-  uvijek: pregled uvoza mora nabrojati atribute iz filea kojih Area nema.
-
-- **E12-2 pada na podacima TEST-a** (Health predložak već kopiran — dva `Health_Sasa`). Nije
-  app. Ili očistiti kopiju na TEST-u ili spec učiniti neovisnim o stanju.
-- C4 ostatak: promjena Aree čita `categories` 7× i `areas` 4× (izmjereno usput, uzrok ne).
-- Fan-out ostatak: u Sunburst načinu na desktopu rade dvije instance `useStructureData`.
-- Structure Export: `refetchStructure()` na grešci vraća `[]` ⇒ file bez Area **bez poruke**
-  (razred „izvoz koji ne može učitati mora pasti") — zapaženo, nije dirano.
-- Financije (iz S158, nepromijenjeno): T24 higijena (38 MC rata bez `Rate?`/`Rata br`,
-  `rate_alat --only a` nudi 91 ispravak), T-S158-2 (generirane MC rate u studenom), Visa
-  listopad (12 redaka 03.10. + 20 na 05.10.), `DOSPJELO_SPEC` Visa `text` zastario, 2 stara MC
-  plana iz 2025.
-- Daljnji koraci Financija (prijedlog iz S158, čeka): Visa buduće rate uz rujanski izvod;
-  `mjesec.py` (samo čita, kaže što je sljedeće); `obradi_izvod.py` (test: rujanski MC = 17 novih,
-  5 ispravaka, 1 duplikat); app T12/T22/Visa u traku.
+- T-S160-7 / T-S160-8 (PROD, nakon deploya).
+- T-S140-8 + T-S141-1: puni E2E run nakon S159 fan-out popravka nije pokrenut (E12-2 pada na
+  podacima TEST-a — dva `Health_Sasa`).
+- `Rate? = No` broji samo spremljeno Ne (TEST: 1 od 659); „nema vrijednosti" bi tražio NOT EXISTS.
+- Brana „atribut koji Area nema" je upozorenje, ne zabrana — vlastita kvačica je odluka uz D3-F1.
+- Financije (iz S158, nepromijenjeno): T24 higijena, T-S158-2, Visa listopad, `DOSPJELO_SPEC`
+  Visa `text` zastario, 2 stara MC plana iz 2025.

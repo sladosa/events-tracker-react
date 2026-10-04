@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S159).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S160).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -29,24 +29,24 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | ---: | --- | :---: |
 | 55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>) |  |
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 114 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 127 | [Critical rules](<#Critical rules>) | X |
-| 1216 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1663 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1679 | [Key files](<#Key files>) |  |
-| 1782 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1802 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1824 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1850 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1890 | [Open bugs](<#Open bugs>) | ~ |
-| 1999 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2044 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2141 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2149 | [Backlog](<#Backlog>) | ~ |
-| 2153 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2161 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 115 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 128 | [Critical rules](<#Critical rules>) | X |
+| 1224 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1684 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1700 | [Key files](<#Key files>) |  |
+| 1803 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1823 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1845 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1871 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1911 | [Open bugs](<#Open bugs>) | ~ |
+| 2020 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2065 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2162 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2170 | [Backlog](<#Backlog>) | ~ |
+| 2174 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2182 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2319 redaka, 18 sekcija._
+_Ukupno 2340 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -730,6 +730,13 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   popisa. **Glasan pad ide samo gdje šutnja kvari podatke.**
   ⚠ Email u kol. G je u toj skupini s razlogom: bez njega uvoz **tog** filea preskoči
   svaki redak kao „tuđi".
+- **⚠ SLOVO STUPCA U POMOĆNOM LISTU SE RAČUNA, NIKAD NE PIŠE** (S160, T-S160-3). `HelpStructure`
+  je slova pisao rukom i od umetanja `HiddenInAdd` (K) slao 12 stupaca krivo („O TextOptions",
+  stvarno P). Sada `colOf(key)` iz `COLS`; čuva `structureHelpLetters.test.mjs`. Vrijedi za svaki
+  tekst koji imenuje stupac Structure filea.
+- **Uvoz atributa kojeg Area nema se i dalje PRESKAČE, ali IMENUJE** (S160, `findDroppedAttributes`) —
+  namjerno upozorenje, ne zabrana (stupac viška je legitiman). Za update retke je to **jedini**
+  znak da je izmjena u tom stupcu ignorirana: pregled tada kaže „0 modify". Opcije: `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md`.
 - **`Category_Path` format:** Activities Events kol. C = **bez area name**
   (`Domacinstvo > Automobili > Gorivo`); Structure sheet kol. D = **sa area name**.
   `ExportCategoryInfo.full_path` nikad ne uključuje area name; `StructureNode.fullPath` da.
@@ -1219,6 +1226,19 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 
 **→ Python alati i AI (`ai_classify.py`)** — preseljeno u `data-prep_tools/CLAUDE.md` (S151).
 **UI (React)**
+
+- **⚠ EFEKT KOJI SINKRONIZIRA IZBOR IZ KONTEKSTA NE ZNA TKO JE OBRISAO** (S160, T-S160-1).
+  `AppHome` je na svako `attrFilter → null` vraćao „Filter by" na Comment — a null proizvodi i
+  vlastiti panel (promjena polja prvo briše stari uvjet; `type="date"` usred tipkanja javi `''`).
+  Lijek: lokalno brisanje nosi zastavicu (`clearAttrFilterKeepField`), reset ostaje za vanjsko
+  (Clear all, shortcut, promjena Aree). Zastavica se diže **samo kad uvjet postoji**, inače efekt
+  ne opali i ona ostane visjeti za sljedeći put.
+- **⚠ „PUNA STRANICA ⇒ IMA JOŠ" LAŽE NA VIŠEKRATNIKU** (S160): 40 redaka = 2 × 20 ⇒ „Load next"
+  koji ne donese ništa. Upit liste nosi `count: 'exact'` — `hasMore` = učitano < count.
+- **⚠ SKLAPANJE RODITELJA ČIJI REDAK NIJE PRIKAZAN SKRIVA DJECU BEZ IZLAZA** (S160). Structure
+  tablica uz filtar na leaf nema redak Aree; zapamćeno sklapanje (`ui:collapsedAreas`) sakrilo je
+  sve retke ⇒ prazna tablica bez poruke i bez ⋮ → Edit. Sklapanje smije skriti samo ono što se
+  na ekranu može i rasklopiti. Isti razred kao S154 `attrExpanded`.
 
 - **⚠ POLJE DATUMA U ZAGLAVLJU IMALO JE DVIJE KOPIJE, I RAZIŠLE SU SE TRIPUT U JEDNOM TESTU**
   (S155, BUG-S155-EDITNAN). Add je ignorirao prazan unos, Edit nije ⇒ brisanje dana = NaN datum, a
