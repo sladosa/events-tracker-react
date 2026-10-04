@@ -210,8 +210,13 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
         setTotalCount(count);
       }
 
-      // Check if there are more
-      setHasMore((events?.length || 0) === pageSize);
+      // Check if there are more.
+      // ⚠ S160 (T-S160-1, Saša): „puna stranica ⇒ ima jos" laze kad je ukupno
+      //   tocno visekratnik od `pageSize` (40 = 2 × 20) — nudio je „Load next 20"
+      //   koji ne donese nista. Isti upit vec nosi `count: 'exact'`; samo kad ga
+      //   nema (null) ostaje stara procjena.
+      const got = events?.length || 0;
+      setHasMore(count !== null ? currentOffset + got < count : got === pageSize);
 
       if (!events || events.length === 0) {
         if (!isLoadMore) {
