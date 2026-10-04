@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S160).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S160b).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 115 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 128 | [Critical rules](<#Critical rules>) | X |
-| 1224 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1684 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1700 | [Key files](<#Key files>) |  |
-| 1803 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1823 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1845 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1871 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1911 | [Open bugs](<#Open bugs>) | ~ |
-| 2020 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2065 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2162 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2170 | [Backlog](<#Backlog>) | ~ |
-| 2174 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2182 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1232 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1692 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1708 | [Key files](<#Key files>) |  |
+| 1811 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1831 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1853 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1879 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1919 | [Open bugs](<#Open bugs>) | ~ |
+| 2028 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2073 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2170 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2178 | [Backlog](<#Backlog>) | ~ |
+| 2182 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2190 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2340 redaka, 18 sekcija._
+_Ukupno 2348 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -622,6 +622,14 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   brojanje po opisu.
 
 **Collab — što grantee NE može**
+
+- **Grantee NE DODAJE OPCIJE izbornika — nijednog** (S160b, Sašina odluka: *„Podtipovi bi trebali
+  bit kontrolirani u bazi"*). Opcije su struktura Aree, a struktura je vlasnikova (S133). Do tada je
+  imao „Other...": vrijednost se spremala na redak, a upis u `validation_rules` RLS je tiho odbijao
+  (samo `console.warn`) ⇒ siročad izvan popisa i svaki put ponovni ručni unos. Sada umjesto
+  „Other..." siva stavka *„Nova opcija? Dodaje je vlasnik Aree (…)"* (`noNewOptionsHintFor`,
+  `pendingOptions.ts`); neuspio upis opcije je poruka (`failedOptionsMessage`). Excel uvoz i dalje
+  prima vrijednost izvan popisa (povijest, `N/A`) — v. D3-5.
 
 - **⚠ Grantee ne može spremiti Export/Import profil, ni s `write` dozvolom** (S122). Zid je
   **JEDAN, ne dva**: app ga zaustavi prije upisa (`ExcelExportModal.tsx:557`, uvjet je

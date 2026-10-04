@@ -8350,3 +8350,19 @@ Otvoreno: T-S160-7 (grantee, PROD) i T-S160-8 (Help, nakon deploya).
 | T-S160-6 | Odjava OT → prijava SL u istom pregledniku ⇒ nema žute trake, tuđa Area nije obnovljena | ✅ S160 — Saša, 04.10. TEST (slika) |
 | T-S160-7 | Grantee uvozi Structure file tuđe Aree ⇒ stop s porukom o vlasniku, bez duplikata Aree | ✅ S160 — Saša, 04.10. PROD (grantee `Financije_all`): crveno „Area "Financije_all" belongs to another user… Nothing was imported.", bez nove Aree. Iz testa: „Import" se nakon odbijanja više ne nudi za isti file (`StructureImportRefused`) |
 | T-S160-8 | Help nakon deploya: odgovor bez `#` / `**` (mobitel) | ✅ S160 — Saša, 04.10. PROD, mobitel: naslov, numerirana lista, podebljano. Iz testa: `---` stajao kao tekst ⇒ sada razdjelnik |
+
+## S160b — grantee ne dodaje opcije (2026-10-04, nastavak S160)
+
+Nakon deploya S160 (`006374c`) Saša je pod Kokinim računom dodao Podtip `Nena's funds` pod `Razno`
+i pitao vrijedi li to i za grantee-ja. Izmjereno čitanjem `pendingOptions.ts`: grantee-jev „Other..."
+spremao je vrijednost na redak, a upis u `validation_rules` RLS je odbijao s 0 redaka — samo
+`console.warn`. Sašina odluka: podtipovi (i Tip, i svaki izbornik) kontrolirani u bazi.
+**Izvedeno:** `AttributeInput.noNewOptionsHint` (siva neodabirljiva stavka umjesto „Other..."),
+proslijeđen kroz `AttributeChainForm` iz Add i Edit samo kad postoji `sharedContext`;
+`persistPendingOptions` vraća neupisane opcije, stranica ih kaže toastom. Usput iz T-S160-7/8:
+`StructureImportRefused` (Import se ne nudi nakon odbijanja tuđe Aree) i `---` u Helpu kao razdjelnik.
+**Mjereno:** Playwright na TEST-u (`owner@test.com` write na Sašinu `Health_Sasa` — ⚠ OT ima i
+VLASTITU `Health_Sasa`, pa se Area bira po ID-u `040adf55…`): `Lab` = `… | Ostalo | Nova opcija?
+Dodaje je vlasnik Aree (sladosa)`, bez „Other...". ⚠ E2E guard je odbio run dok je na :5173 vrtio
+Sašin `dev:prod` — ispravno. **Nije deployano** (Saša: ne treba, zna da ne smije dodavati).
+Otvoreno: T-S160b-1 vlasnička strana („Other..." i dalje postoji).
