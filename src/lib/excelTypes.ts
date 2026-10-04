@@ -167,5 +167,5 @@ export interface ExportFilters {
   dateTo:     string | null;   // YYYY-MM-DD
   sortOrder:  'asc' | 'desc';
   commentSearch?: string;
-  attrFilter?: { attrDefId: string; value: string; isExact: boolean; op?: import('@/lib/attrFilterNumeric').NumericOp | null } | null;
+  attrFilter?: { attrDefId: string; value: string; isExact: boolean; op?: import('@/lib/attrFilterNumeric').NumericOp | null; kind?: import('@/lib/attrFilterNumeric').AttrFilterKind | null } | null;
 }

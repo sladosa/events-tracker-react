@@ -6,7 +6,7 @@ import { withRetryQuery } from '@/lib/retry';
 import { dbScopedKey } from '@/lib/storageKey';
 import { parseStoredFilter, type StoredFilterState } from '@/lib/storedFilter';
 import type { PeriodKey } from '@/hooks/useDateBounds';
-import type { NumericOp } from '@/lib/attrFilterNumeric';
+import type { NumericOp, AttrFilterKind } from '@/lib/attrFilterNumeric';
 
 // --------------------------------------------
 // Constants
@@ -37,6 +37,8 @@ export interface AttrFilterState {
   isExact: boolean;
   /** F4 (S159) — numeric condition on `value_number`; absent = text filter. */
   op?: NumericOp | null;
+  /** S160 — `datetime` / `boolean` (v. attrFilterNumeric.ts); absent = number or text. */
+  kind?: AttrFilterKind | null;
 }
 
 export interface FilterState {

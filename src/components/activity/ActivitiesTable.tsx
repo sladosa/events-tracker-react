@@ -11,7 +11,7 @@ import { resolveColumns, type ResolvedColumn } from '@/lib/listColumns';
 import { useListColumnValues, type RowValues } from '@/hooks/useListColumnValues';
 import type { UUID } from '@/types';
 import { isAttrFilterActive } from '@/lib/eventQueryBuilder';
-import { opLabel } from '@/lib/attrFilterNumeric';
+import { describeTypedFilter } from '@/lib/attrFilterNumeric';
 
 // --------------------------------------------
 // Avatar helpers
@@ -429,7 +429,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
               an unreadable number (F4) is not a filter, so it gets no chip. */}
           {isAttrFilterActive(filter.attrFilter) && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-100 border border-indigo-300 text-indigo-800 text-xs font-medium rounded-full">
-              {filter.attrFilter!.op ? `${opLabel(filter.attrFilter!.op)} ${filter.attrFilter!.value}` : filter.attrFilter!.value}
+              {describeTypedFilter(filter.attrFilter!)}
               <button
                 onClick={clearAttrFilter}
                 className="ml-0.5 text-indigo-600 hover:text-indigo-900 leading-none"

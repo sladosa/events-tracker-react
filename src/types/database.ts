@@ -431,7 +431,7 @@ export interface PresetFilterState {
   periodKey: string;        // PeriodKey enum value (e.g. 'this-year', 'last-3-months')
   sortOrder: 'asc' | 'desc';
   commentSearch?: string;
-  attrFilter?: { attrDefId: string; value: string; isExact: boolean; op?: import('@/lib/attrFilterNumeric').NumericOp | null } | null;
+  attrFilter?: { attrDefId: string; value: string; isExact: boolean; op?: import('@/lib/attrFilterNumeric').NumericOp | null; kind?: import('@/lib/attrFilterNumeric').AttrFilterKind | null } | null;
 }
 
 export interface ActivityPreset {

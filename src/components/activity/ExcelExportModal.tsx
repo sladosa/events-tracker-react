@@ -26,7 +26,10 @@ import { readProfileFromWorkbook, readProfileNameFromWorkbook, readFilterFromWor
 import { pickDeltaWindow, type DeltaWindowAnchor } from '@/lib/deltaWindow';
 import { resolvePeriodKey, type PeriodKey } from '@/hooks/useDateBounds';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
-import { NUMERIC_DATA_TYPES, opAscii, opFromAscii, opLabel, type NumericOp } from '@/lib/attrFilterNumeric';
+import {
+  NUMERIC_DATA_TYPES, DATETIME_DATA_TYPES, BOOLEAN_DATA_TYPES, opAscii, opFromAscii,
+  describeTypedFilter, type NumericOp, type AttrFilterKind,
+} from '@/lib/attrFilterNumeric';
 import type { ExportAttrDef } from '@/lib/excelTypes';
 import { todayLocalYmd } from '@/lib/localDate';
 
@@ -76,7 +79,7 @@ function hrDate(iso: string): string {
 function parseAttrFilterRaw(
   raw: string,
   attrDefs?: ExportAttrDef[],
-): { attrDefId: string; value: string; isExact: boolean; op?: NumericOp | null } | null {
+): { attrDefId: string; value: string; isExact: boolean; op?: NumericOp | null; kind?: AttrFilterKind | null } | null {
   // Format: "slug: =value" or "slug: ~value" or "*: ~value" or legacy "uuid: =value";
   // F4 (S159): "slug: >1000", ">=", "<", "<=" — and "=" on a NUMBER attribute.
   // ⚠ Longest operator first, so `>=5` is never read as `>` + `=5`.
@@ -92,6 +95,18 @@ function parseAttrFilterRaw(
   else def = attrDefs?.find(d => d.slug === key);
   const attrDefId = def?.id ?? (UUID_RE.test(key) ? key : null);
   if (!attrDefId) return null;
+
+  // S160: datum (`slug: >=2026-10-01`, dan) i da/ne (`slug: =true`) — vrsta
+  // dolazi iz TIPA atributa, isto kao `=` na broju.
+  if (def && DATETIME_DATA_TYPES.has(def.data_type) && sym !== '~') {
+    const op = opFromAscii(sym);
+    return op ? { attrDefId, value: value.trim(), isExact: false, op, kind: 'datetime' } : null;
+  }
+  if (def && BOOLEAN_DATA_TYPES.has(def.data_type)) {
+    const v = value.trim().toLowerCase();
+    return sym === '=' && (v === 'true' || v === 'false')
+      ? { attrDefId, value: v, isExact: false, op: 'eq', kind: 'boolean' } : null;
+  }
 
   // `=` means numeric equality on a number attribute: as a text match it would
   // look at `value_text`, which a number attribute never fills ⇒ always empty.
@@ -122,7 +137,7 @@ async function resolveAttrDefsForSlug(
 }
 
 function formatAttrFilterDesc(
-  af: { attrDefId: string; value: string; isExact: boolean; op?: NumericOp | null },
+  af: { attrDefId: string; value: string; isExact: boolean; op?: NumericOp | null; kind?: AttrFilterKind | null },
   attrDefs?: ExportAttrDef[],
 ): string {
   const op = af.op ? opAscii(af.op) : af.isExact ? '=' : '~';
@@ -188,7 +203,7 @@ function applyProfileFilterOverrides(
       const parsed = parseAttrFilterRaw(pfs.attrFilterRaw, attrDefs);
       if (parsed) {
         filters.attrFilter = parsed;
-        parts.push(`Attr filter: ${parsed.op ? `${opLabel(parsed.op)} ` : ''}${parsed.value}`);
+        parts.push(`Attr filter: ${describeTypedFilter(parsed)}`);
       }
     }
   }

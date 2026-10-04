@@ -36,7 +36,7 @@ import type { Category, AttributeDefinition } from '@/types/database';
 import type { UUID } from '@/types';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
-import { NUMERIC_OPS, NUMERIC_DATA_TYPES, numericFilterValue, isNumericOp, type NumericOp } from '@/lib/attrFilterNumeric';
+import { NUMERIC_OPS, NUMERIC_DATA_TYPES, DATETIME_DATA_TYPES, BOOLEAN_DATA_TYPES, numericFilterValue, isNumericOp, type NumericOp } from '@/lib/attrFilterNumeric';
 import { formatAmount } from '@/lib/amountFormat';
 import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
 import { findSingleLeaf, categoryNamePath } from '@/lib/singleLeaf';
@@ -145,7 +145,7 @@ function AppContent() {
   } = useFilter();
 
   // Attribute filter UI state — which field is selected in the "Filter by" dropdown
-  // text/suggest filter on `value_text`, number (F4, S159) on `value_number`; boolean/datetime not yet
+  // text/suggest on `value_text`, number (F4, S159) on `value_number`, datetime/boolean (S160)
   const [filterAttrDefs, setFilterAttrDefs] = useState<AttributeDefinition[]>([]);
   // F4: operator of a number condition. Local, because an EMPTY value clears
   // `attrFilter` (and with it `op`) — the chosen `>` must survive that.
@@ -212,9 +212,9 @@ function AppContent() {
       });
 
       // Text attrs filter on `value_text`; number attrs (F4, S159) on
-      // `value_number` with an operator. boolean/datetime are still out —
-      // Backlog „Potpuni attrFilter".
-      const FILTERABLE = new Set(['text', 'link', ...NUMERIC_DATA_TYPES]);
+      // `value_number` with an operator; datetime (day) and boolean since S160.
+      // Still out: image (no value to compare).
+      const FILTERABLE = new Set(['text', 'link', ...NUMERIC_DATA_TYPES, ...DATETIME_DATA_TYPES, ...BOOLEAN_DATA_TYPES]);
       const filterable = deduped.filter(a => FILTERABLE.has(a.data_type));
       setFilterAttrDefs(filterable as AttributeDefinition[]);
       setHiddenAttrCount(deduped.length - filterable.length);
@@ -675,6 +675,63 @@ function AppContent() {
                   {selectedFilterAttr !== 'comment' && selectedFilterAttr !== ATTR_FILTER_ANY && (() => {
                     const attrDef = filterAttrDefs.find(a => a.id === selectedFilterAttr);
                     if (!attrDef) return null;
+                    // S160 — da/ne: jedan izbornik, `= true / false` nad `value_boolean`.
+                    // ⚠ „No" broji samo SPREMLJENO Ne; redak bez vrijednosti nije ni Da ni Ne.
+                    if (BOOLEAN_DATA_TYPES.has(attrDef.data_type)) {
+                      const cur = filter.attrFilter?.attrDefId === attrDef.id && filter.attrFilter.kind === 'boolean'
+                        ? filter.attrFilter.value : '';
+                      return (
+                        <select
+                          value={cur}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v) setAttrFilter({ attrDefId: attrDef.id, value: v, isExact: false, op: 'eq', kind: 'boolean' });
+                            else clearAttrFilter();
+                          }}
+                          title="No = spremljeno „Ne“; redak bez vrijednosti se ne broji ni pod Yes ni pod No"
+                          className="flex-1 min-w-[120px] max-w-[10rem] text-sm border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        >
+                          <option value="">— All —</option>
+                          <option value="true">Yes</option>
+                          <option value="false">No</option>
+                        </select>
+                      );
+                    }
+                    // S160 — datum: operator + dan (`=` je cijeli dan).
+                    if (DATETIME_DATA_TYPES.has(attrDef.data_type)) {
+                      const raw = filter.attrFilter?.attrDefId === attrDef.id && filter.attrFilter.kind === 'datetime'
+                        ? filter.attrFilter.value : '';
+                      const apply = (op: NumericOp, value: string) => {
+                        if (value) setAttrFilter({ attrDefId: attrDef.id, value, isExact: false, op, kind: 'datetime' });
+                        else clearAttrFilter();
+                      };
+                      return (
+                        <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-xs">
+                          <select
+                            value={numOp}
+                            onChange={(e) => {
+                              const op = e.target.value as NumericOp;
+                              setNumOp(op);
+                              if (raw) apply(op, raw);
+                            }}
+                            aria-label="Operator"
+                            className="text-sm border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          >
+                            {NUMERIC_OPS.map(o => <option key={o.op} value={o.op}>{o.label}</option>)}
+                          </select>
+                          <input
+                            type="date"
+                            value={raw}
+                            onChange={(e) => apply(numOp, e.target.value)}
+                            aria-label={`${attrDef.name} date`}
+                            className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          />
+                          {raw && (
+                            <button onClick={clearAttrFilter} className="text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
+                          )}
+                        </div>
+                      );
+                    }
                     if (NUMERIC_DATA_TYPES.has(attrDef.data_type)) {
                       // F4 — one condition with an operator. The raw text stays
                       // in `value`; what the app UNDERSTOOD is printed next to it,
@@ -783,7 +840,7 @@ function AppContent() {
                 </div>
                 {hiddenAttrCount > 0 && (
                   <p className="text-xs text-gray-400 mt-1">
-                    {hiddenAttrCount} other {hiddenAttrCount === 1 ? 'attribute' : 'attributes'} (date, yes/no, …) not shown — use Excel Export to filter by those.
+                    {hiddenAttrCount} other {hiddenAttrCount === 1 ? 'attribute' : 'attributes'} (image) not shown — nothing to compare.
                   </p>
                 )}
                 {selectedFilterAttr === ATTR_FILTER_ANY && sharedContext && (

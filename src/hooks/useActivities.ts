@@ -76,7 +76,7 @@ interface UseActivitiesOptions {
   dateTo?: string | null;
   sortOrder?: 'desc' | 'asc';   // D3: newest first (default) or oldest first
   commentSearch?: string;
-  attrFilter?: { attrDefId: string; value: string; isExact: boolean; op?: import('@/lib/attrFilterNumeric').NumericOp | null } | null;
+  attrFilter?: { attrDefId: string; value: string; isExact: boolean; op?: import('@/lib/attrFilterNumeric').NumericOp | null; kind?: import('@/lib/attrFilterNumeric').AttrFilterKind | null } | null;
   pageSize?: number;
   skip?: boolean;               // When true, skip fetch (e.g. caller already has list from location.state)
 }
@@ -400,12 +400,12 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   // /!\ NE DODAVATI `attrFilter` KAO OBJEKT, iako ga lint trazi. Iz konteksta dolazi
   //     kao nov objekt, pa bi callback — a s njim i refetch — isao cesce nego treba; to
   //     bi pogorsalo vec zabiljezeno „lista se preupita SEST puta na jednu promjenu
-  //     filtra" (Backlog). Cetiri polja SU iscrpna: `AttrFilterState` ima tocno `attrDefId`,
-  //     `value`, `isExact` i (od S159, F4) `op`.
+  //     filtra" (Backlog). Pet polja SU iscrpna: `AttrFilterState` ima tocno `attrDefId`,
+  //     `value`, `isExact`, (od S159, F4) `op` i (od S160) `kind`.
   // /!\ Doda li mu netko peto polje, OVU listu treba prosiriti rucno — lint to vise
   //     nece prijaviti jer je ovdje suzbijen. (S159 je to i napravio za `op`.)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, attrFilter?.op, pageSize, offset]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, attrFilter?.op, attrFilter?.kind, pageSize, offset]);
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
@@ -418,10 +418,11 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
   //     false), ali JEST dohvatljivo preko vracenog shortcuta cijem je atributu
   //     u medjuvremenu dodan `suggest`.
   // /!\ `attrFilter` se NE smije dodati kao objekt (sto lint trazi): nov identitet
-  //     na svakom renderu => refetch na svakom renderu. Cetiri polja SU iscrpna --
-  //     `AttrFilterState` ih ima tocno toliko (`op` od S159: `>` u `<` mijenja upit).
+  //     na svakom renderu => refetch na svakom renderu. Pet polja SU iscrpna --
+  //     `AttrFilterState` ih ima tocno toliko (`op` od S159: `>` u `<` mijenja upit;
+  //     `kind` od S160: isti `op` nad drugim stupcem).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, attrFilter?.op, skip]);
+  }, [areaId, categoryId, dateFrom, dateTo, sortOrder, commentSearch, attrFilter?.attrDefId, attrFilter?.value, attrFilter?.isExact, attrFilter?.op, attrFilter?.kind, skip]);
 
   const loadMore = useCallback(async () => {
     if (!loadingMore && hasMore) {

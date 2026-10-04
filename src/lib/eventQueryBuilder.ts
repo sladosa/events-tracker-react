@@ -7,7 +7,10 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import type { UUID } from '@/types';
-import { numericFilterValue, type NumericOp } from '@/lib/attrFilterNumeric';
+import {
+  numericFilterValue, dateFilterBounds, booleanFilterValue, isTypedFilterReadable,
+  type NumericOp, type AttrFilterKind,
+} from '@/lib/attrFilterNumeric';
 
 // ─────────────────────────────────────────────
 // Filter types
@@ -21,6 +24,16 @@ export interface AttrFilterParam {
   isExact: boolean;
   /** F4 — present ⇒ compare `value_number` with `op` (see attrFilterNumeric.ts). */
   op?: NumericOp | null;
+  /** S160 — `datetime` (`value_datetime`, `op` na razini dana) ili `boolean`
+   *  (`value_boolean`). Odsutan = broj uz `op`, tekst bez njega. */
+  kind?: AttrFilterKind | null;
+}
+
+/** Stupac `event_attributes` koji uvjet cita — JOIN i WHERE moraju se slagati. */
+function valueColumn(af: AttrFilterParam): string {
+  if (af.kind === 'datetime') return 'value_datetime';
+  if (af.kind === 'boolean') return 'value_boolean';
+  return af.op ? 'value_number' : 'value_text';
 }
 
 export interface EventQueryFilters {
@@ -49,7 +62,7 @@ export function attrFilterJoinClause(
 ): string {
   if (!isAttrFilterActive(attrFilter)) return '';
   const idField = includeId ? 'id, ' : '';
-  const valueField = attrFilter!.op ? 'value_number' : 'value_text';
+  const valueField = valueColumn(attrFilter!);
   return `, event_attributes!event_attributes_event_id_fkey!inner(${idField}attribute_definition_id, ${valueField})`;
 }
 
@@ -63,8 +76,8 @@ export function attrFilterJoinClause(
  */
 export function isAttrFilterActive(attrFilter?: AttrFilterParam | null): boolean {
   if (!attrFilter?.attrDefId || !attrFilter.value) return false;
-  if (attrFilter.op) {
-    return attrFilter.attrDefId !== ATTR_FILTER_ANY && numericFilterValue(attrFilter) !== null;
+  if (attrFilter.op || attrFilter.kind) {
+    return attrFilter.attrDefId !== ATTR_FILTER_ANY && isTypedFilterReadable(attrFilter);
   }
   return true;
 }
@@ -119,7 +132,13 @@ export function applyEventFilters(query: any, filters: EventQueryFilters): any {
     if (!isAnyAttrFilter(af)) {
       query = query.eq('event_attributes.attribute_definition_id', af.attrDefId);
     }
-    if (af.op) {
+    if (af.kind === 'datetime') {
+      for (const b of dateFilterBounds(af.op!, af.value)!) {
+        query = query[b.op]('event_attributes.value_datetime', b.iso);
+      }
+    } else if (af.kind === 'boolean') {
+      query = query.eq('event_attributes.value_boolean', booleanFilterValue(af));
+    } else if (af.op) {
       // F4: `gt`/`gte`/`lt`/`lte`/`eq` are PostgREST's own operator names.
       query = query[af.op]('event_attributes.value_number', numericFilterValue(af));
     } else if (af.isExact) {
