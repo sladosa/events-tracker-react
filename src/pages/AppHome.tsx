@@ -254,8 +254,25 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter.areaId, filter.categoryId]);
 
+  // ⚠ S160 (T-S160-1, Saša): brisanje uvjeta IZ OVOG PANELA ne smije vratiti
+  //   „Filter by" na Comment. Efekt ispod to radi na SVAKO `attrFilter → null`,
+  //   a ne zna tko je obrisao — pa je promjena polja (`Datum naplate` → `Rate?`,
+  //   koja prvo brise stari uvjet) i datum koji je usred tipkanja neispravan
+  //   (polje tada javi prazno) bacala izbor na Comment. Reset ostaje za brisanje
+  //   IZVANA (Clear all, shortcut bez uvjeta). Zastavica se dize samo kad uvjet
+  //   postoji — inace efekt ne bi opalio i ostala bi visjeti za sljedeci put.
+  const keepFilterFieldRef = useRef(false);
+  const clearAttrFilterKeepField = useCallback(() => {
+    if (filter.attrFilter) keepFilterFieldRef.current = true;
+    clearAttrFilter();
+  }, [filter.attrFilter, clearAttrFilter]);
+
   // Sync dropdown to context: restore selectedFilterAttr from attrFilter, or reset to 'comment'
   useEffect(() => {
+    if (!filter.attrFilter && keepFilterFieldRef.current) {
+      keepFilterFieldRef.current = false;
+      return;
+    }
     if (filter.attrFilter) {
       if (filter.attrFilter.attrDefId === ATTR_FILTER_ANY) {
         setSelectedFilterAttr(ATTR_FILTER_ANY);
@@ -620,7 +637,7 @@ function AppContent() {
                       const val = e.target.value;
                       setSelectedFilterAttr(val);
                       clearCommentSearch();
-                      clearAttrFilter();
+                      clearAttrFilterKeepField();
                     }}
                     className="text-sm font-medium border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
@@ -659,14 +676,14 @@ function AppContent() {
                           if (e.target.value) {
                             setAttrFilter({ attrDefId: ATTR_FILTER_ANY, value: e.target.value, isExact: false });
                           } else {
-                            clearAttrFilter();
+                            clearAttrFilterKeepField();
                           }
                         }}
                         placeholder="search all attributes..."
                         className="w-full px-3 py-2 pr-7 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                       {filter.attrFilter?.value && (
-                        <button onClick={clearAttrFilter} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
+                        <button onClick={clearAttrFilterKeepField} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
                       )}
                     </div>
                   )}
@@ -686,7 +703,7 @@ function AppContent() {
                           onChange={(e) => {
                             const v = e.target.value;
                             if (v) setAttrFilter({ attrDefId: attrDef.id, value: v, isExact: false, op: 'eq', kind: 'boolean' });
-                            else clearAttrFilter();
+                            else clearAttrFilterKeepField();
                           }}
                           title="No = spremljeno „Ne“; redak bez vrijednosti se ne broji ni pod Yes ni pod No"
                           className="flex-1 min-w-[120px] max-w-[10rem] text-sm border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -703,7 +720,7 @@ function AppContent() {
                         ? filter.attrFilter.value : '';
                       const apply = (op: NumericOp, value: string) => {
                         if (value) setAttrFilter({ attrDefId: attrDef.id, value, isExact: false, op, kind: 'datetime' });
-                        else clearAttrFilter();
+                        else clearAttrFilterKeepField();
                       };
                       return (
                         <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-xs">
@@ -727,7 +744,7 @@ function AppContent() {
                             className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                           />
                           {raw && (
-                            <button onClick={clearAttrFilter} className="text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
+                            <button onClick={clearAttrFilterKeepField} className="text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
                           )}
                         </div>
                       );
@@ -742,7 +759,7 @@ function AppContent() {
                       const bad = raw.trim() !== '' && n === null;
                       const apply = (op: NumericOp, value: string) => {
                         if (value.trim()) setAttrFilter({ attrDefId: attrDef.id, value, isExact: false, op });
-                        else clearAttrFilter();
+                        else clearAttrFilterKeepField();
                       };
                       return (
                         <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-xs">
@@ -772,7 +789,7 @@ function AppContent() {
                               )}
                             />
                             {raw && (
-                              <button onClick={clearAttrFilter} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
+                              <button onClick={clearAttrFilterKeepField} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
                             )}
                           </div>
                           {n !== null && (
@@ -803,7 +820,7 @@ function AppContent() {
                             if (e.target.value) {
                               setAttrFilter({ attrDefId: selectedFilterAttr, value: e.target.value, isExact: true });
                             } else {
-                              clearAttrFilter();
+                              clearAttrFilterKeepField();
                             }
                           }}
                           className="flex-1 min-w-[160px] max-w-xs text-sm border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -825,14 +842,14 @@ function AppContent() {
                             if (e.target.value) {
                               setAttrFilter({ attrDefId: selectedFilterAttr, value: e.target.value, isExact: false });
                             } else {
-                              clearAttrFilter();
+                              clearAttrFilterKeepField();
                             }
                           }}
                           placeholder={`filter by ${attrDef.name}...`}
                           className="w-full px-3 py-2 pr-7 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         />
                         {filter.attrFilter?.value && (
-                          <button onClick={clearAttrFilter} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
+                          <button onClick={clearAttrFilterKeepField} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none" title="Clear">×</button>
                         )}
                       </div>
                     );
