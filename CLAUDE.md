@@ -91,6 +91,7 @@ podaci hrane i AI sloj.
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas, Add Area „From template"                   |
 | `docs/AUTOMATION_SPEC.md`                 | Post-Finish automatika — rata modal, comment template, `set_attribute`           |
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
+| `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md`       | **Uvoz filea u istoimenu Areu drukčije strukture** (prijedlog prije koda, S160) — pokus S159 (29/43 tiho), tri opcije, faze D3-F1..F4, odluke D3-1..6 čekaju Sašu |
 | `docs/DELTA_WINDOW_SPEC.md`               | **Delta prozor — sidro prestaje biti rez** (prijedlog prije koda, S141) — sidro kao **oznaka + kontrolna točka** umjesto poda; zatvara zamku iz S126 („retci ispadaju iz svakog budućeg delta sheeta“) mehanizmom umjesto disciplinom |
 | `docs/parked/RULES_ENGINE_SPEC.md`               | **Pravila razvrstavanja** (prijedlog prije koda) — pravila u bazi uz Areu, konflikt se prijavljuje umjesto da ga odluči redoslijed |
 | `docs/DOSPJELO_SPEC.md`                   | **Dospjelo → potvrdi** (prijedlog prije koda, S147, odluke D1–D6 prihvaćene) — traka na Overviewu potvrđuje **košaru**, ne redak; kad se Σ ne slaže, **saldo slijedi banku, košara ostaje otvorena**. §2 nosi mjerenje košara vs naplata (MC 4/4 u cent, Visa u cent do 2026-01) |

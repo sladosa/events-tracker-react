@@ -28,6 +28,8 @@
   → kasnije broj redaka uz opciju u panelu. **Generično**, ne samo Financije.
   ⚠ Brisanje opcije ne dira retke ⇒ opcija s retcima se **spaja**, nikad samo briše.
   ⚠ Python rječnik uči iz baze ⇒ loš par se širi na nove retke; ranije je jeftinije.
+  ✅ **K-1 izvedeno S160** (`structureImport.ts` § 5b): opcije s retcima ⇒ stop + popis + kvačica;
+  file tuđe Aree ⇒ stop s porukom o vlasniku. Izvorni zapis:
   **K-1 (prvo, samostalno):** Structure uvoz mora **javiti** opcije koje briše a imaju retke, i
   **zaustaviti** file tuđe Aree porukom o vlasniku (danas tiho stvori duplikat Aree). Retke ne
   prepisuje sam — Excel ne razlikuje preimenovanje od brisanja.
@@ -58,6 +60,8 @@
   minimalni korak koji vrijedi uvijek: **pregled mora nabrojati atribute iz filea koje Area
   nema**, umjesto da ih tiho preskoči. Veže se uz K-1.
   Logika pokusa (seed, Playwright tok, usporedba vrijednosti): `DONE_HISTORY.md` § S159.
+  ✅ **Minimum izveden S160** (`findDroppedAttributes`: pregled i izvještaj imenuju atribute koje
+  Area nema). **Spec s opcijama: `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md`** — odluke D3-1..6 čekaju Sašu.
 - **Area kao predložak specijalizacije (D3)** — prijatelj dobije Structure (+ demo Activities) i
   ima cijelu organizaciju Aree. **Prvo istraživanje na TEST-u** pod stranim računom, zapisati
   što fali i **koliko refaktora** (Saša ne želi veliku refaktorizaciju). „Roundtrip completeness“
@@ -105,7 +109,10 @@ od šuma. Dakle: **reci AI-u gdje je, nemoj mu uzimati knjige.**
 jer je izostanak bolji od praznog. Help koji objašnjava sidra u Fitnessu je prazan Overview
 tab izrečen riječima.
 
-**⭐ Zatvaranje modala ne smije tiho baciti rad** (Sašin nalaz S135, uz T-S134-21).
+**~~⭐ Zatvaranje modala ne smije tiho baciti rad~~ — ✅ S160 (B4)** za `StructureNodeEditPanel`:
+zastavicu diže handler, X / pozadina / View pitaju „Discard unsaved changes?"; brisanje atributa
+(već upisano) ne prlja panel; ugniježđeni dijalog brisanja se sada zatvara pozadinom (= Cancel).
+Izvorni zapis: (Sašin nalaz S135, uz T-S134-21).
 S134 je maknuo **slučajni okidač** (selekcija koja završi izvan panela), ali ne i
 **posljedicu**: namjeran klik na pozadinu i dalje odbacuje nespremljene izmjene **bez
 pitanja**. Izmjereno: `StructureNodeEditPanel` uopće ne zna je li „prljav" — nema
@@ -127,7 +134,12 @@ jednu invarijantu u trinaest iznimki.
 dijalog) koji hook **ne** koristi ⇒ ne zatvara se klikom na pozadinu **uopće**. Nije kvar
 (ništa se ne gubi), ali je nedosljednost koju treba odlučiti zajedno s ovim.
 
-**Roundtrip completeness** — `export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
+**Roundtrip completeness (F5)** — ✅ **format ODLUČEN S160 (Saša): retci ključ-putanja**, jedan
+generički sheet `AreaSettings` (`Area | Putanja | Vrijednost`, npr.
+`dashboard.widgets[0].due.baskets.Mastercard.account`); Area iz kolone A prepisuje ime Aree u
+ključevima profila, pa profil preživi kopiranje u drugu Areu. Odbačeno: JSON ćelija (jedan zarez
+ruši uvoz), tablica po pločici (svaki novi ključ = nov kod). **Nije izgrađeno.** Izvorni zapis:
+`export_profiles` (ključ `attr:Area||CatPath||AttrName` ne preživi
 rename; fix = `ExportProfiles` sheet, isti obrazac kao `Automations`) **i `dashboard`**
 (fix = `Dashboard` sheet, Faza 4). „From template" je riješen u S108.
 
@@ -216,11 +228,13 @@ korisnik vidi kao „meni mi se sam zatvorio". Drugo je posljedica prvog, pa se 
 ⚠ Nije hipoteza nego mjerenje, ali **uzrok kaskade nije utvrđen** — prije popravka izbrojati
 tko sve okida refetch (`useDateBounds` settle, `areas-changed`, promjena `attrFilter`).
 
-**Help prikazuje sirov markdown** (S159, T-S159-1 na mobitelu): `#`, `**`, ``` ``` ``` u odgovoru,
+**~~Help prikazuje sirov markdown~~ — ✅ S160** (`src/lib/helpMarkdown.ts`, bez ovisnosti, bez HTML-a
++ pravilo u promptu „bez naslova i tablica"). Izvorni zapis: (S159, T-S159-1 na mobitelu): `#`, `**`, ``` ``` ``` u odgovoru,
 jer `HelpPanel` crta `msg.content` kao običan tekst (`whitespace-pre-wrap`). Haiku odgovara u markdownu.
 Lijek: lagani renderer (naslovi, podebljano, liste, kod) ili uputa u promptu „bez markdowna". Sitnica.
 
-**Structure Export na grešci izlazi PRAZAN** (zapaženo S159, nije dirano). `useStructureData.fetchAll`
+**~~Structure Export na grešci izlazi PRAZAN~~ — ✅ S160** (`useStructureData.load` baca; Export
+javlja „no file saved"). Izvorni zapis: (zapaženo S159). `useStructureData.fetchAll`
 hvata grešku i vraća `[]`, a Export (`AppHome`) to piše u file bez Area i javlja „Structure exported".
 Razred „izvoz koji ne može učitati podatke mora pasti, ne izaći kraći" (§ Excel, S125). Lijek: `refetch`
 baca (ili vraća grešku), Export javlja i ne sprema file.
@@ -233,10 +247,15 @@ dogadja je broj retryja, koji danas nitko ne broji.
 
 **BUG-S103-ANYATTR pravi fix** — SECURITY DEFINER RPC; ista investicija kao Faza 1.
 
-**Potpuni attrFilter za ~~number~~/boolean/datetime** (number ✅ S159, F4) — proslijediti `data_type` u `AttrFilterParam`,
+**~~Potpuni attrFilter~~ — ✅ S160** datum (operator, dan, UTC granice) i da/ne (`kind` na istom
+utoru; profil `slug: >=2026-10-01` / `slug: =true`). ⚠ `Rate? = No` broji samo spremljeno Ne
+(TEST: 1 od 659 — ostali retci atribut nemaju); „nema vrijednosti" bi trebao NOT EXISTS, ne `!inner`.
+Izvorni zapis: (number ✅ S159, F4) — proslijediti `data_type` u `AttrFilterParam`,
 koristiti `value_number`/`value_boolean`/`value_datetime` s odgovarajućim operatorima.
 
-**Structure Edit UX cleanup** (`StructureNodeEditPanel.tsx`, bez DB promjena):
+**Structure Edit UX cleanup** — ✅ **S160 dio:** sklopive kartice (+ ⚠ u zaglavlju sklopljene),
+opcije u „New attribute", „Discard changes?" (B4, vidi gore). **Ostaje:** lakše dodavanje opcija u
+depends_on mapping · help docs update. Izvorni zapis (`StructureNodeEditPanel.tsx`, bez DB promjena):
 collapsible attribute kartice (persist u localStorage) · `suggest` direktno u „New attribute"
 formi · lakše dodavanje opcija u depends_on mapping · help docs update.
 
