@@ -52,6 +52,8 @@ ok('obicna zvjezdica u tekstu nije lista ni bold', J(parseInline('iznos*2')) ===
 const multi = parseHelpMarkdown('red jedan\nred dva');
 ok('dva retka bez praznine = jedan odlomak s prijelomom', multi.length === 1 && multi[0].lines.length === 2);
 ok('CRLF', parseHelpMarkdown('a\r\n\r\nb').length === 2);
+ok('--- je razdjelnik, ne tekst (T-S160-8)', J(parseHelpMarkdown('a\n\n---\n\nb').map(x => x.kind)) === J(['para', 'hr', 'para']));
+ok('- stavka i dalje lista, ne razdjelnik', parseHelpMarkdown('- x')[0].kind === 'list');
 ok('nezatvoren blok koda ide do kraja', J(parseHelpMarkdown('```\nx\ny')) === J([{ kind: 'code', text: 'x\ny' }]));
 
 console.log('');

@@ -18,7 +18,8 @@ export type Block =
   | { kind: 'heading'; text: Inline[] }
   | { kind: 'para'; lines: Inline[][] }
   | { kind: 'list'; ordered: boolean; items: Inline[][] }
-  | { kind: 'code'; text: string };
+  | { kind: 'code'; text: string }
+  | { kind: 'hr' };
 
 /** `**x**` i `` `x` `` — nezatvorena oznaka ostaje doslovan tekst. */
 export function parseInline(s: string): Inline[] {
@@ -40,6 +41,8 @@ const LIST_UL = /^\s*[-*•]\s+(.*)$/;
 const LIST_OL = /^\s*\d+[.)]\s+(.*)$/;
 const HEADING = /^\s*#{1,6}\s+(.*?)\s*#*\s*$/;
 const FENCE = /^\s*```/;
+/** `---` / `***` / `___` sam u retku — razdjelnik (T-S160-8: stajao je kao tekst). */
+const RULE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
 
 export function parseHelpMarkdown(src: string): Block[] {
   const lines = src.replace(/\r\n?/g, '\n').split('\n');
@@ -58,6 +61,8 @@ export function parseHelpMarkdown(src: string): Block[] {
       blocks.push({ kind: 'code', text: body.join('\n') });   // nezatvoren blok ide do kraja
       continue;
     }
+
+    if (RULE.test(line)) { flushPara(); blocks.push({ kind: 'hr' }); continue; }
 
     const h = HEADING.exec(line);
     if (h) { flushPara(); blocks.push({ kind: 'heading', text: parseInline(h[1]) }); continue; }

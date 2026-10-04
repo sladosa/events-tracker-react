@@ -19,6 +19,7 @@ export function HelpMarkdown({ text }: { text: string }) {
   return (
     <div className="space-y-2">
       {blocks.map((b, i) => {
+        if (b.kind === 'hr') return <hr key={i} className="border-gray-300" />;
         if (b.kind === 'heading') return <p key={i} className="font-semibold"><InlineText parts={b.text} /></p>;
         if (b.kind === 'code') {
           return <pre key={i} className="text-xs font-mono bg-gray-200/70 rounded p-2 overflow-x-auto whitespace-pre">{b.text}</pre>;

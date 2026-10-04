@@ -10,7 +10,7 @@ import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { saveAs } from 'file-saver';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
-import { importStructureExcel, type ImportResult, type OptionRemoval } from '@/lib/structureImport';
+import { importStructureExcel, StructureImportRefused, type ImportResult, type OptionRemoval } from '@/lib/structureImport';
 import {
   exportStructureExcel,
   structureReviewFilename,
@@ -87,6 +87,9 @@ export function StructureImportModal({
    *  Drugi klik (uz kvacicu) ponavlja uvoz s potvrdom. */
   const [pendingRemovals, setPendingRemovals] = useState<OptionRemoval[] | null>(null);
   const [removalsAck, setRemovalsAck] = useState(false);
+  /** Uvoz ODBIJEN po pravilu (tudja Area) — isti file bi dao isti ishod, pa se
+   *  „Import" gasi dok se ne odabere drugi file (S160, T-S160-7). */
+  const [refused, setRefused] = useState(false);
 
   // ── File selection ───────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,6 +99,7 @@ export function StructureImportModal({
     setErrorMsg(null);
     setPendingRemovals(null);
     setRemovalsAck(false);
+    setRefused(false);
   };
 
   // ── Import ───────────────────────────────────────────────
@@ -129,6 +133,7 @@ export function StructureImportModal({
       await downloadReviewFile(res);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Import failed');
+      if (err instanceof StructureImportRefused) setRefused(true);
     } finally {
       setImporting(false);
     }
@@ -269,7 +274,14 @@ export function StructureImportModal({
           {errorMsg && (
             <div className="rounded-lg px-4 py-3 bg-red-50 border border-red-200 text-red-800 text-sm flex gap-2">
               <WarningIcon />
-              <span>{errorMsg}</span>
+              <span>
+                {errorMsg}
+                {refused && (
+                  <span className="block mt-1 text-xs text-red-700/80">
+                    Choose a different file above, or close.
+                  </span>
+                )}
+              </span>
             </div>
           )}
 
@@ -453,9 +465,9 @@ export function StructureImportModal({
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
           >
-            {isDone ? 'Close' : 'Cancel'}
+            {isDone || refused ? 'Close' : 'Cancel'}
           </button>
-          {!isDone && (
+          {!isDone && !refused && (
             <button
               onClick={handleImport}
               disabled={!file || importing || (pendingRemovals !== null && !removalsAck)}

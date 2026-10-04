@@ -49,6 +49,16 @@ export interface ReviewFlagRow {
   categoryPath: string;
 }
 
+/** Uvoz ODBIJEN po pravilu (npr. file tudje Aree, K-1) — ponovni pokusaj s istim
+ *  fileom dao bi isti ishod. Za razliku od prolazne greske (mreza), modal tada ne
+ *  nudi „Import" dok se ne odabere drugi file (S160, T-S160-7). */
+export class StructureImportRefused extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StructureImportRefused';
+  }
+}
+
 /** K-1 (S160): opcija koju uvoz BRISE iz izbornika, a retci je nose. */
 export interface OptionRemoval {
   categoryPath: string;
@@ -777,7 +787,7 @@ export async function importStructureExcel(
       .filter(a => a.user_id !== TEMPLATE_USER_ID && fileAreaNames.has(a.name.toLowerCase()))
       .map(a => a.name);
     if (foreign.length > 0) {
-      throw new Error(
+      throw new StructureImportRefused(
         `Area ${[...new Set(foreign)].map(n => `"${n}"`).join(', ')} belongs to another user (shared with you). `
         + `Its structure can only be changed by the owner — importing here would have created a second Area `
         + `with the same name under your account. Nothing was imported.`);

@@ -8331,3 +8331,22 @@ Mjerenje na TEST-u: oblik upita filtra = izravno brojanje (6/6); `Rate?` ima 653
 5 praznih — obični retci atribut nemaju, pa „No" ≠ „nije rata". `Smjer`: Uplata 511, Isplata
 4.781, PROVJERI 0. Na TEST-u `Financije_all` pripada `sasasladoljev59@gmail.com` i nije dijeljena.
 Otvoreno: T-S160-7 (grantee, PROD) i T-S160-8 (Help, nakon deploya).
+
+### PENDING sekcija S160 (arhivirana S160)
+
+— P1 tihi gubici + dio P3 (2026-10-04)
+
+⚠ Na `test-branch`, nije na `main`. Ručno na `npm run dev` (TEST) pod **sasasladoljev59@gmail.com** (vlasnik `Financije_all` na TEST-u). Automatski: `storedFilter`, `importDroppedAttrs`, `structureOptionRemoval`, `helpMarkdown`, `attrFilterTyped` (sabotaže ruše 1 / 3 / 3 / 5 / 8).
+
+**Detalji testova:** [tests/S160_tests.md](../../Claude-temp_R/test-sessions/archive/S160_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S160-1 | Filter by datum/da-ne: `Datum naplate = 11.10.` ⇒ 40, `≥ 11.10.` ⇒ 55, `Rate? = Yes` ⇒ 653; preživi View details i shortcut | ✅ S160 — Saša, 04.10. TEST: svih 7 brojki (i `> 11.10.` = 15), View details + Next, shortcut. Usput nađena i popravljena **tri** kvara: „Load next" i kad je sve učitano (`6687d39`), „Filter by" skakao na Comment pri promjeni polja / nepotpunom datumu (`1a1d67f`), ukupan broj nevidljiv do kraja (`50580fb`) |
+| T-S160-2 | Structure panel: izmjena ⇒ „Discard unsaved changes?" (X, pozadina, View); bez izmjene bez pitanja; sklopive kartice pamte stanje | ✅ S160 — Saša, 04.10. TEST, svih 5 koraka. Usput: Structure tablica uz filtar na leaf bila **prazna** (zapamćeno sklapanje Aree čiji redak nije prikazan, `3ad26f6`); kartice sada **zadano sklopljene** na Sašin prijedlog (`759a491`) |
+| T-S160-3 | Structure uvoz s obrisanom opcijom koju retci nose ⇒ stop, popis, „Import anyway" tek uz kvačicu | ✅ S160 — Saša, 04.10. TEST: `Smjer` → `Isplata` ⇒ stop, popis samo `Uplata · 511 rows` (`PROVJERI` s 0 redaka ne pita), gumb ugašen, opcije netaknute. Usput: pomoćni list `HelpStructure` slao je u krivi stupac (12 slova pomaknuto od `HiddenInAdd`) — slova se sada računaju iz `COLS`, čuva `structureHelpLetters.test.mjs` |
+| T-S160-4 | Activities uvoz s atributom kojeg Area nema ⇒ pregled ga imenuje (D3 minimum) | ✅ S160 — Saša, 04.10. TEST: `Izvor` → `IzvorX` ⇒ „41 vrijednosti … NEĆE biti upisane … `'IzvorX'` (Area `'Financije_all'`) — redovi 26, 27…". Apply ostaje dostupan NAMJERNO (upozorenje, ne zabrana; kvačica = D3-F1 / Sašina odluka) |
+| T-S160-5 | Structure Export uz blokiran `attribute_definitions` ⇒ „Export failed — no file saved" | ✅ S160 — Saša, 04.10. TEST: blokiran `attribute_definitions` (desni klik → Block request URL) ⇒ „Export failed — no file saved: TypeError: Failed to fetch", bez filea |
+| T-S160-6 | Odjava OT → prijava SL u istom pregledniku ⇒ nema žute trake, tuđa Area nije obnovljena | ✅ S160 — Saša, 04.10. TEST (slika) |
+| T-S160-7 | Grantee uvozi Structure file tuđe Aree ⇒ stop s porukom o vlasniku, bez duplikata Aree | ✅ S160 — Saša, 04.10. PROD (grantee `Financije_all`): crveno „Area "Financije_all" belongs to another user… Nothing was imported.", bez nove Aree. Iz testa: „Import" se nakon odbijanja više ne nudi za isti file (`StructureImportRefused`) |
+| T-S160-8 | Help nakon deploya: odgovor bez `#` / `**` (mobitel) | ✅ S160 — Saša, 04.10. PROD, mobitel: naslov, numerirana lista, podebljano. Iz testa: `---` stajao kao tekst ⇒ sada razdjelnik |
