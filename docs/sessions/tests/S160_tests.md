@@ -75,7 +75,13 @@ i dalje 3 opcije. **Usput:** opcije su u stupcu **P**, a pomoćni list `HelpStru
 
 **Pad:** uvoz prođe bez pitanja ⇒ opcija nestane (vrati je ponovnim uvozom originalnog exporta).
 
-## T-S160-4 ⬜ Activities uvoz imenuje atribut koji Area nema (D3 minimum)
+## T-S160-4 ✅ Activities uvoz imenuje atribut koji Area nema (D3 minimum)
+
+✅ S160, 04.10. TEST — Saša: `Izvor` → `IzvorX` u legendi i zaglavlju ⇒ pregled `0 new / 0 modify /
+41 unchanged` + upozorenje „41 vrijednosti … `'IzvorX'` … redovi 26, 27, …". ⚠ Apply ostaje
+dostupan **namjerno**: stupac viška je legitiman (stari export, tuđi file), a zabrana bi file
+učinila neuvozivim. Upozorenje je ovdje JEDINI znak da bi izmjena u tom stupcu bila ignorirana —
+pregled bi i tada rekao „0 modify". Jača brana (vlastita kvačica) = odluka uz D3-F1.
 
 1. Activities Export nekoliko redaka `Financije_all`.
 2. U fileu preimenuj atribut na **oba** mjesta (ATTRIBUTE LEGEND kol. D **i** zaglavlje stupca),
