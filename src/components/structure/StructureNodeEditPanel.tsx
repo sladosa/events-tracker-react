@@ -35,6 +35,7 @@ import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { fixupDashboardSlug } from '@/lib/dashboardConfig';
 import { fixupListColumnsSlug } from '@/lib/listColumns';
 import { buildRules, renameDependsOnParent } from '@/lib/validationRules';
+import { dbScopedKey } from '@/lib/storageKey';
 
 // --------------------------------------------------------
 // Types
@@ -93,6 +94,48 @@ interface NewAttrFormState {
   unit: string;
   required: boolean;
   defaultValue: string;
+  /** F7 (S160): opcije odmah pri dodavanju — tekst s opcijama postaje suggest. */
+  options: string;
+}
+
+const EMPTY_NEW_ATTR: NewAttrFormState = { name: '', dataType: 'text', unit: '', required: false, defaultValue: '', options: '' };
+
+// F7 (S160): sklopljene kartice atributa, po pregledniku i bazi.
+// ⚠ Zapamceno zatvaranje je vec jednom ostavilo formu unosa bez polja (S154,
+//   `attrExpanded`). Ovdje je to konfiguracijska ploha i zaglavlje kartice
+//   ostaje vidljivo (ime, tip, opcije, ⚠ ako kartica nosi upozorenje) — dakle
+//   sklopljeno nikad ne znaci „nema ga".
+const COLLAPSED_KEY = dbScopedKey('structure-attr-collapsed');
+const COLLAPSED_MAX = 500;
+
+function readCollapsed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeCollapsed(s: Set<string>): void {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...s].slice(-COLLAPSED_MAX)));
+  } catch {
+    /* private mode — samo se ne pamti */
+  }
+}
+
+/** Broj upozorenja koja otvorena kartica prikazuje — ⚠ u zaglavlju sklopljene.
+ *  ⚠ Mora pratiti uvjete u tijelu kartice; doda li se novo upozorenje, dodaj ga i ovdje. */
+function attrCardWarnings(attr: AttrEditState, attrs: AttrEditState[]): number {
+  let n = 0;
+  if (attr.isRequired && attr.hiddenInAdd) n++;
+  if (attr.isRequired && attr.dependsOnSlug
+    && !attrs.some(o => o.slug === attr.dependsOnSlug && o.isRequired)) n++;
+  if (attr.hiddenInAdd && attrs.some(o => o.id !== attr.id && o.dependsOnSlug === attr.slug)) n++;
+  if (!attr.isNew && attr.slug !== attr.originalSlug) n++;
+  return n;
 }
 
 interface DeleteConfirmState {
@@ -427,19 +470,45 @@ function CommentTemplateField({ value, onChange, inheritedTemplate, availableSlu
 
 interface AttrEditSectionProps {
   attrs:         AttrEditState[];
+  /** Izmjena koju je napravio korisnik i koja jos NIJE spremljena. */
   onChange:      (updated: AttrEditState[]) => void;
+  /** Brisanje atributa je VEC upisano u bazu — popis se uskladi, a panel ne
+   *  postaje „prljav" (nema sto odbaciti). */
+  onDeletedSaved: (updated: AttrEditState[]) => void;
   hasEvents:     boolean;
   nodeId:        string;
   ancestorAttrs: { levelName: string; attrs: AttributeDefinition[] }[];
   allNodes:      StructureNode[];
 }
 
-function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, allNodes }: AttrEditSectionProps) {
+function AttrEditSection({ attrs, onChange, onDeletedSaved, hasEvents, nodeId, ancestorAttrs, allNodes }: AttrEditSectionProps) {
   const t = THEME.structureEdit;
 
   const [addOpen,      setAddOpen]      = useState(false);
-  const [newForm,      setNewForm]      = useState<NewAttrFormState>({ name: '', dataType: 'text', unit: '', required: false, defaultValue: '' });
+  const [newForm,      setNewForm]      = useState<NewAttrFormState>(EMPTY_NEW_ATTR);
   const [deleteState,  setDeleteState]  = useState<DeleteConfirmState | null>(null);
+  const [collapsed,    setCollapsed]    = useState<Set<string>>(readCollapsed);
+
+  const setCollapsedAndRemember = (next: Set<string>) => {
+    setCollapsed(next);
+    writeCollapsed(next);
+  };
+  const toggleCollapsed = (id: string) => {
+    const next = new Set(collapsed);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setCollapsedAndRemember(next);
+  };
+  const savedIds = attrs.filter(a => !a.isNew).map(a => a.id);
+  const allCollapsed = savedIds.length > 0 && savedIds.every(id => collapsed.has(id));
+  const setAllCollapsed = (on: boolean) => {
+    const next = new Set(collapsed);
+    for (const id of savedIds) { if (on) next.add(id); else next.delete(id); }
+    setCollapsedAndRemember(next);
+  };
+
+  // Pozadina dijaloga brisanja = Cancel (S160; do tada se nije zatvarao uopce).
+  // ⚠ Hook na VRHU — dijalog se renderira uvjetno (S134, „Rendered fewer hooks").
+  const deleteBackdrop = useBackdropClose(() => setDeleteState(null), !deleteState?.deleting);
 
   const update = (index: number, partial: Partial<AttrEditState>) => {
     const next = [...attrs];
@@ -489,7 +558,7 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
         .delete()
         .eq('id', deleteState.attrId);
       if (e2) throw e2;
-      onChange(attrs.filter(a => a.id !== deleteState.attrId));
+      onDeletedSaved(attrs.filter(a => a.id !== deleteState.attrId));
       toast.success(`Attribute "${deleteState.attrName}" deleted`);
       setDeleteState(null);
     } catch (err) {
@@ -505,6 +574,9 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
     const existingSlugs = attrs.map(a => a.slug);
     const slug = generateSlug(newForm.name.trim(), existingSlugs);
     const maxSort = attrs.length > 0 ? Math.max(...attrs.map(a => a.sortOrder)) + 1 : 0;
+    const opts = newForm.dataType === 'text'
+      ? newForm.options.split('\n').map(s => s.trim()).filter(Boolean).join('\n')
+      : '';
     const newAttrState: AttrEditState = {
       id:            `new_${Date.now()}`,
       slug,
@@ -514,8 +586,8 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
       description:   '',
       sortOrder:     maxSort,
       dataType:      newForm.dataType,
-      validationType: 'none',
-      suggestOptions: '',
+      validationType: opts ? 'suggest' : 'none',
+      suggestOptions: opts,
       dependsOnSlug: '',
       dependsOnMap:  [],
       originalRules: {},
@@ -525,13 +597,13 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
       hiddenInAdd:   false,
     };
     onChange([...attrs, newAttrState]);
-    setNewForm({ name: '', dataType: 'text', unit: '', required: false, defaultValue: '' });
+    setNewForm(EMPTY_NEW_ATTR);
     setAddOpen(false);
   };
 
   // ── Delete confirm modal (inline) ──────────────────────────
   const DeleteConfirmPanel = deleteState && (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" {...deleteBackdrop}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5 space-y-4">
         <h3 className="text-sm font-semibold text-gray-800">
           Delete attribute "{deleteState.attrName}"?
@@ -643,9 +715,24 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
           />
         </div>
       )}
+      {newForm.dataType === 'text' && (
+        <div className="mb-2">
+          <FieldLabel>Options (one per line — optional)</FieldLabel>
+          <TextArea
+            value={newForm.options}
+            onChange={v => setNewForm(f => ({ ...f, options: v }))}
+            placeholder="Leave empty for free text"
+            rows={3}
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            With options the field becomes a dropdown (suggest). A dependency on another
+            attribute can be added on the card after Add.
+          </p>
+        </div>
+      )}
       <div className="flex gap-2 justify-end">
         <button
-          onClick={() => { setAddOpen(false); setNewForm({ name: '', dataType: 'text', unit: '', required: false, defaultValue: '' }); }}
+          onClick={() => { setAddOpen(false); setNewForm(EMPTY_NEW_ATTR); }}
           className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
         >
           Cancel
@@ -671,11 +758,55 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
         <p className="text-sm text-gray-400 italic py-2">(no attributes at this level)</p>
       )}
 
-      {attrs.map((attr, i) => (
+      {savedIds.length > 1 && (
+        <div className="flex justify-end -mt-1">
+          <button
+            type="button"
+            onClick={() => setAllCollapsed(!allCollapsed)}
+            className="text-xs text-amber-700 hover:text-amber-800 underline"
+          >
+            {allCollapsed ? 'Expand all' : 'Collapse all'}
+          </button>
+        </div>
+      )}
+
+      {attrs.map((attr, i) => {
+        const isCollapsed = !attr.isNew && collapsed.has(attr.id);
+        const warns = attrCardWarnings(attr, attrs);
+        const optionCount = attr.validationType === 'suggest'
+          ? attr.suggestOptions.split('\n').filter(s => s.trim()).length
+          : attr.validationType === 'depends_on'
+            ? attr.dependsOnMap.reduce((n, r) => n + r.options.split('\n').filter(s => s.trim()).length, 0)
+            : 0;
+        return (
         <div
           key={attr.id}
-          className={cn('rounded-lg border p-3', attr.isNew ? 'border-amber-300 bg-amber-50' : cn(t.lightBorder, t.light))}
+          className={cn('rounded-lg border', isCollapsed ? 'px-3 py-2' : 'p-3', attr.isNew ? 'border-amber-300 bg-amber-50' : cn(t.lightBorder, t.light))}
         >
+          {/* F7 (S160): zaglavlje kartice — uvijek vidljivo, sklapa/otvara */}
+          <button
+            type="button"
+            onClick={() => !attr.isNew && toggleCollapsed(attr.id)}
+            className={cn('w-full flex items-center gap-2 text-left', isCollapsed ? '' : 'mb-2', attr.isNew && 'cursor-default')}
+            aria-expanded={!isCollapsed}
+          >
+            {!attr.isNew && (
+              <svg className={cn('w-3.5 h-3.5 shrink-0 text-gray-400 transition-transform', isCollapsed ? '' : 'rotate-90')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            )}
+            <span className="text-sm font-medium text-gray-800 truncate">{attr.name || '(unnamed)'}</span>
+            <span className="text-xs text-gray-400 font-mono truncate">{attr.dataType}</span>
+            {attr.validationType === 'depends_on' && (
+              <span className="text-xs text-indigo-600 truncate">↳ {attr.dependsOnSlug || '?'}</span>
+            )}
+            {optionCount > 0 && <span className="text-xs text-gray-500 whitespace-nowrap">{optionCount} opt</span>}
+            {attr.isRequired && <span className="text-xs text-red-600">req</span>}
+            {attr.hiddenInAdd && <span className="text-xs text-gray-500">hidden</span>}
+            {warns > 0 && <span className="ml-auto text-xs text-amber-600" title="This card carries a warning — open it">⚠</span>}
+          </button>
+
+          {!isCollapsed && (<>
           {/* Name row + Delete button */}
           <div className="flex gap-3 mb-3">
             <div className="flex-1">
@@ -1060,8 +1191,10 @@ function AttrEditSection({ attrs, onChange, hasEvents, nodeId, ancestorAttrs, al
               )}
             </div>
           )}
+          </>)}
         </div>
-      ))}
+        );
+      })}
 
       {/* Add Attribute form / button */}
       {AddAttrForm}
@@ -1131,6 +1264,24 @@ export function StructureNodeEditPanel({
   );
 
   const [saving, setSaving] = useState(false);
+
+  // ---- B4 (S160): zatvaranje ne smije tiho baciti rad ----
+  // ⚠ Zastavicu dize HANDLER kroz koji je promjena prosla, ne izracun iz stanja
+  //   (obrazac `userTouchedRef`, S122): efekt gore resinkronizira postavke kad
+  //   uvoz promijeni bazu — to nije korisnikov rad i ne smije pitati.
+  // ⚠ „Prljav pa se tiho ne zatvara" bilo bi GORE od zatvaranja — zato pitanje,
+  //   nikad sutnja. Uvjet zivi u panelu, ne u `useBackdropClose` (13 modala nema
+  //   rad koji se moze izgubiti).
+  const [dirty, setDirty] = useState(false);
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
+  function edited<T>(set: (v: T) => void) {
+    return (v: T) => { set(v); setDirty(true); };
+  }
+  const requestLeave = (leave: () => void) => {
+    if (dirty) setPendingLeave(() => leave);
+    else leave();
+  };
+  const leaveBackdrop = useBackdropClose(() => setPendingLeave(null), pendingLeave !== null);
 
   // ---- Save handler ----
   const handleSave = useCallback(async () => {
@@ -1348,6 +1499,7 @@ export function StructureNodeEditPanel({
       // Uvijek (ne samo za Area node): rename kategorije mora invalidirati
       // categoryCache (breadcrumb putanje u View/Edit) i osvježiti dropdownove.
       window.dispatchEvent(new Event('areas-changed'));
+      setDirty(false);
       onSaved(node.id);
     } catch (err) {
       console.error('Save error (full):', err);
@@ -1369,8 +1521,33 @@ export function StructureNodeEditPanel({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      {...useBackdropClose(onClose)}
+      {...useBackdropClose(() => requestLeave(onClose))}
     >
+      {pendingLeave && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40" {...leaveBackdrop}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-800">Discard unsaved changes?</h3>
+            <p className="text-xs text-gray-500">
+              Your edits to this {node.nodeType === 'area' ? 'Area' : 'category'} have not been saved.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                autoFocus
+                onClick={() => setPendingLeave(null)}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
+              >
+                Keep editing
+              </button>
+              <button
+                onClick={() => { const leave = pendingLeave; setPendingLeave(null); leave(); }}
+                className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
 
         {/* ---- Sticky Header (amber) ---- */}
@@ -1379,7 +1556,7 @@ export function StructureNodeEditPanel({
 
             {/* Left: X close */}
             <button
-              onClick={onClose}
+              onClick={() => requestLeave(onClose)}
               className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/20 transition-colors"
               aria-label="Close"
             >
@@ -1399,7 +1576,7 @@ export function StructureNodeEditPanel({
             {/* Right: ← View + Save */}
             <div className="flex items-center gap-2">
               <button
-                onClick={onSwitchToView}
+                onClick={() => requestLeave(onSwitchToView)}
                 title="Back to View"
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
@@ -1447,7 +1624,7 @@ export function StructureNodeEditPanel({
                 <FieldLabel>Name</FieldLabel>
                 <TextInput
                   value={name}
-                  onChange={setName}
+                  onChange={edited(setName)}
                   placeholder={node.nodeType === 'area' ? 'Area name' : 'Category name'}
                 />
                 <p className="mt-1 text-xs text-gray-400">
@@ -1459,7 +1636,7 @@ export function StructureNodeEditPanel({
                 <FieldLabel>Description</FieldLabel>
                 <TextArea
                   value={description}
-                  onChange={setDescription}
+                  onChange={edited(setDescription)}
                   placeholder="Optional description"
                   rows={2}
                 />
@@ -1467,7 +1644,7 @@ export function StructureNodeEditPanel({
 
               <div>
                 <FieldLabel>Sort order</FieldLabel>
-                <NumberInput value={sortOrder} onChange={setSortOrder} min={0} />
+                <NumberInput value={sortOrder} onChange={edited(setSortOrder)} min={0} />
               </div>
 
               {node.nodeType === 'area' && (
@@ -1477,7 +1654,7 @@ export function StructureNodeEditPanel({
                     <input
                       type="checkbox"
                       checked={disableSavePlus}
-                      onChange={e => setDisableSavePlus(e.target.checked)}
+                      onChange={e => edited(setDisableSavePlus)(e.target.checked)}
                       className="w-4 h-4 rounded border-gray-300 accent-amber-600"
                     />
                     <span className="text-sm text-gray-700">Disable "Save+" (batch entry)</span>
@@ -1491,7 +1668,7 @@ export function StructureNodeEditPanel({
               {(node.nodeType === 'area' || node.isLeaf) && (
                 <CommentTemplateField
                   value={commentTemplate}
-                  onChange={setCommentTemplate}
+                  onChange={edited(setCommentTemplate)}
                   inheritedTemplate={node.isLeaf ? areaCommentTemplate : undefined}
                   availableSlugs={(() => {
                     if (node.nodeType === 'area') {
@@ -1524,7 +1701,8 @@ export function StructureNodeEditPanel({
               </h3>
               <AttrEditSection
                 attrs={attrStates}
-                onChange={setAttrStates}
+                onChange={edited(setAttrStates)}
+                onDeletedSaved={setAttrStates}
                 hasEvents={node.eventCount > 0}
                 nodeId={node.id}
                 ancestorAttrs={ancestorAttrs}

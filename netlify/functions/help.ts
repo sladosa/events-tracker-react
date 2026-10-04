@@ -56,7 +56,8 @@ RULES:
 • Be concise: 1–3 sentences max, with specific navigation steps
 • Reference UI elements by name: "Structure tab → Edit Mode → ⋮ menu → Add Leaf"
 • Never invent features that don't exist
-• If unsure, say so clearly`;
+• If unsure, say so clearly
+• Formatting: plain sentences; for steps a simple list ("- " or "1. "); **bold** only for a UI element name. No headings, no tables (the chat panel cannot show them)`;
 
 // ── Full system prompt = static framing + all feature docs ────────────────────
 const SYSTEM_PROMPT = HELP_DOCS

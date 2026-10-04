@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
 import { useHelp } from '@/context/HelpContext';
 import { describeAreaForHelp } from '@/lib/helpContext';
+import { HelpMarkdown } from './HelpMarkdown';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Tab = 'ask' | 'concepts' | 'feedback';
@@ -359,13 +360,14 @@ export function HelpPanel() {
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed ${
+                  className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${msg.role === 'user' ? 'whitespace-pre-wrap' : ''} ${
                     msg.role === 'user'
                       ? 'bg-indigo-600 text-white rounded-br-sm'
                       : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                   }`}
                 >
-                  {msg.content}
+                  {/* S160: odgovor AI-ja kao lagani markdown; korisnikov tekst doslovno. */}
+                  {msg.role === 'user' ? msg.content : <HelpMarkdown text={msg.content} />}
                 </div>
               </div>
             ))}
