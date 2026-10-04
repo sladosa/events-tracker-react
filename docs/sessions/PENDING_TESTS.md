@@ -37,7 +37,7 @@ Na `test-branch`, nije na `main`. Grantee umjesto „Other..." vidi sivu stavku 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S160b-1 | Grantee (PROD, `dev:prod`): Podtip/Smjer u Add i Edit bez „Other...", siva stavka „Nova opcija? Dodaje je vlasnik Aree (…)"; vlasnik i dalje ima „Other..." | ⬜ |
+| T-S160b-1 | Grantee (PROD, `dev:prod`): Podtip/Smjer u Add i Edit bez „Other...", siva stavka „Nova opcija? Dodaje je vlasnik Aree (…)"; vlasnik i dalje ima „Other..." | ⬜ DJELOMIČNO — grantee strana ✅ S160b (Playwright, TEST, `owner@test.com` write na Sašinu `Health_Sasa`, Add → `Lab`: `… | Ostalo | Nova opcija? Dodaje je vlasnik Aree (sladosa)`, bez „Other..."). Ostaje: vlasnik i dalje vidi „Other..." (Saša/Koka) |
 
 ---
 
