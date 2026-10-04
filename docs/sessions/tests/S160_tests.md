@@ -38,7 +38,16 @@ Uz to:
 
 **Pad:** broj se razlikuje ⇒ zapiši koji red tablice; granica dana je kriva (UTC/lokalno).
 
-## T-S160-2 ⬜ Structure panel: „Discard changes?" i sklopive kartice
+## T-S160-2 ✅ Structure panel: „Discard changes?" i sklopive kartice
+
+✅ S160, 04.10. TEST — Saša, `Lab Results` (10 atributa): X bez izmjene bez pitanja; izmjena ⇒
+pitanje (slika); Collapse/Expand all; otvorena kartica ostaje otvorena nakon ponovnog otvaranja;
+nova kartica s opcijama je odmah suggest (`a`, `b`). **Usput:**
+(a) Structure tablica uz filtar na leaf bila je **prazna, bez poruke i bez ⋮ → Edit** — zapamćeno
+sklapanje Aree (`ui:collapsedAreas`) skrivalo je retke Aree čiji redak uz taj filtar nije ni
+prikazan, pa se nije dalo rasklopiti (`3ad26f6`, stari kvar, potvrđen nakon popravka);
+(b) Sašin prijedlog: kartice **zadano sklopljene**, pamte se otvorene (`759a491`) — koraci 3–4
+dolje opisuju prvu verziju.
 
 Structure → Table → Edit Mode → ⋮ → Edit na leafu s više atributa (npr. `Health_Sasa > Medical > Lab Results`).
 1. Otvori i odmah X ⇒ zatvara se **bez pitanja**.
