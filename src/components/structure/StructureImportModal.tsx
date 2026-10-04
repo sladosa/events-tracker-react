@@ -10,7 +10,7 @@ import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { saveAs } from 'file-saver';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
-import { importStructureExcel, type ImportResult } from '@/lib/structureImport';
+import { importStructureExcel, type ImportResult, type OptionRemoval } from '@/lib/structureImport';
 import {
   exportStructureExcel,
   structureReviewFilename,
@@ -83,6 +83,10 @@ export function StructureImportModal({
   /** Ime anotiranog filea koji se preuzeo sam — prikazuje se u modalu, jer
    *  preuzimanje koje korisnik nije trazio mora reci STO je stiglo. */
   const [reviewFile, setReviewFile] = useState<string | null>(null);
+  /** K-1 (S160): uvoz je stao — opcije koje bi nestale a retci ih nose.
+   *  Drugi klik (uz kvacicu) ponavlja uvoz s potvrdom. */
+  const [pendingRemovals, setPendingRemovals] = useState<OptionRemoval[] | null>(null);
+  const [removalsAck, setRemovalsAck] = useState(false);
 
   // ── File selection ───────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,6 +94,8 @@ export function StructureImportModal({
     setFile(f);
     setResult(null);
     setErrorMsg(null);
+    setPendingRemovals(null);
+    setRemovalsAck(false);
   };
 
   // ── Import ───────────────────────────────────────────────
@@ -100,7 +106,16 @@ export function StructureImportModal({
     setErrorMsg(null);
 
     try {
-      const res = await importStructureExcel(file, userId);
+      const res = await importStructureExcel(file, userId, {
+        confirmOptionRemovals: pendingRemovals !== null && removalsAck,
+      });
+      if (res.blocked) {
+        // Nista nije upisano — bez `onImported()`, bez review filea.
+        setPendingRemovals(res.optionRemovals);
+        setRemovalsAck(false);
+        return;
+      }
+      setPendingRemovals(null);
       setResult(res);
 
       // Uvijek refetch, i kad su svi brojači 0. Uvoz koji mijenja SAMO
@@ -258,6 +273,48 @@ export function StructureImportModal({
             </div>
           )}
 
+          {/* K-1 (S160): opcije koje bi nestale iz izbornika a retci ih nose */}
+          {pendingRemovals && (
+            <div className="rounded-lg border border-amber-300 overflow-hidden">
+              <div className="bg-amber-50 px-4 py-2 flex items-center gap-2 text-amber-800">
+                <WarningIcon />
+                <span className="text-sm font-medium">
+                  Nothing imported yet — {pendingRemovals.length} option{pendingRemovals.length !== 1 ? 's' : ''} in use would be removed
+                </span>
+              </div>
+              <div className="px-4 py-3 text-xs text-gray-600 space-y-2">
+                <p>
+                  These options are in the database but not in the file, so the import would remove them
+                  from the dropdown. <span className="font-medium text-gray-700">Existing rows keep their value</span>,
+                  but it can no longer be picked. If you meant to <span className="font-medium">rename</span> an
+                  option, change the rows first (Activities export → import), then import this file.
+                </p>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {pendingRemovals.map((r, i) => (
+                    <div key={i} className="bg-gray-50 rounded px-2 py-1 flex justify-between gap-2">
+                      <span>
+                        <span className="font-medium">{r.attrName}</span>: <span className="font-mono">{r.option}</span>
+                        <span className="text-gray-400"> · {r.categoryPath}</span>
+                      </span>
+                      <span className={cn('tabular-nums whitespace-nowrap', r.rows === null ? 'text-red-600' : 'text-amber-700')}>
+                        {r.rows === null ? 'count failed' : `${r.rows} row${r.rows !== 1 ? 's' : ''}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={removalsAck}
+                    onChange={e => setRemovalsAck(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>I have read the list — remove these options anyway.</span>
+                </label>
+              </div>
+            </div>
+          )}
+
           {/* Result summary */}
           {isDone && result && (
             <div className="space-y-3">
@@ -401,10 +458,10 @@ export function StructureImportModal({
           {!isDone && (
             <button
               onClick={handleImport}
-              disabled={!file || importing}
+              disabled={!file || importing || (pendingRemovals !== null && !removalsAck)}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                !file || importing ? 'opacity-50 cursor-not-allowed' : '',
+                !file || importing || (pendingRemovals !== null && !removalsAck) ? 'opacity-50 cursor-not-allowed' : '',
                 t.headerBg, t.headerText,
               )}
             >
@@ -416,7 +473,7 @@ export function StructureImportModal({
               ) : (
                 <>
                   <UploadIcon />
-                  Import
+                  {pendingRemovals ? 'Import anyway' : 'Import'}
                 </>
               )}
             </button>

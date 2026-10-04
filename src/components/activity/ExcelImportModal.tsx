@@ -17,6 +17,8 @@ import {
   checkImportCollisions,
   checkMissingCategories,
   parseExcelFile,
+  findDroppedAttributes,
+  droppedAttributesWarning,
   warnStaleUntouched,
   analyzeUpdates,
   analyzeDeletes,
@@ -192,10 +194,17 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       setImportState('checking');
 
       const categoriesDict = await loadCategoriesForExport(user.id);
+      const attrDefs = await loadAttrDefsForCategories(user.id, Object.keys(categoriesDict), categoriesDict);
+
+      // S160 (D3 minimum): vrijednosti koje uvoz NECE upisati jer Area nema taj
+      // atribut — do sada tiho preskocene (pokus S159: 29 od 43 stiglo, pregled
+      // „10 novih", nijedno upozorenje). Ista poruka ide i u izvjestaj (apply put).
+      const droppedMsg = droppedAttributesWarning(
+        findDroppedAttributes([...parsed.toCreate, ...parsed.toUpdate], categoriesDict, attrDefs));
+      if (droppedMsg) setPreview(p => (p ? { ...p, warnings: [...p.warnings, droppedMsg] } : p));
 
       // S107 D7 update-guard: dry-run diff UPDATE redova (koje promjene bi Apply napravio)
       if (parsed.toUpdate.length > 0) {
-        const attrDefs = await loadAttrDefsForCategories(user.id, Object.keys(categoriesDict), categoriesDict);
         // Faza 4: sidra Aree, da guard moze reci KOJU potvrdu izmjena dovodi u
         // pitanje. /!\ Neuspjelo citanje se NE cita kao „nema sidara" — tada
         //   guard samo suti, a to je isto ponasanje kao prije faze 4; lazna
@@ -373,7 +382,19 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      await importStructureExcel(selectedFile, user.id);
+      const sres = await importStructureExcel(selectedFile, user.id);
+      // K-1 (S160): Structure sheet bi obrisao opcije koje retci nose — ovdje se
+      // ne potvrduje usput; to je odluka za Structure Import, gdje se vidi popis.
+      if (sres.blocked) {
+        setErrors([
+          'Nothing was imported. The Structure sheet of this file would remove dropdown options that '
+          + 'existing rows still use:\n'
+          + sres.optionRemovals.map(r => `  • ${r.attrName}: ${r.option} (${r.rows ?? '?'} rows) — ${r.categoryPath}`).join('\n')
+          + '\n\nReview it in Structure → Import first, then import this file again.',
+        ]);
+        setImportState('error');
+        return;
+      }
       // Notify AreaDropdown and other listeners that areas may have changed
       window.dispatchEvent(new CustomEvent('areas-changed'));
       if (foreignRowCount > 0) {

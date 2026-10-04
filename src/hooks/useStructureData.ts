@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { withRetry } from '@/lib/retry';
+import { withRetry, toError } from '@/lib/retry';
 import type { Area, Category, AttributeDefinition } from '@/types/database';
 import type { StructureNode, EventCountRow } from '@/types/structure';
 
@@ -19,7 +19,16 @@ interface UseStructureDataReturn {
   nodes: StructureNode[];
   loading: boolean;
   error: Error | null;
+  /** Reload for a VIEW: a failure lands in `error` and resolves to `[]`. */
   refetch: () => Promise<StructureNode[]>;
+  /** Reload for a FILE (Structure Export, review file): a failure THROWS.
+   *
+   *  ⚠ S160 (zapazeno S159): Export je zvao `refetch`, koji gresku hvata i vraca
+   *  `[]` — pa je palo citanje dalo file BEZ IJEDNE Aree uz toast „Structure
+   *  exported". Razred „izvoz koji ne moze ucitati podatke mora pasti, ne izaci
+   *  kraci" (CLAUDE.md § Excel, S125). Prikaz smije pokazati gresku i prazninu;
+   *  file ne smije, jer izgleda kao odgovor. */
+  load: () => Promise<StructureNode[]>;
 }
 
 interface UseStructureDataOptions {
@@ -40,7 +49,7 @@ export function useStructureData(
   const [loading, setLoading] = useState(autoFetch);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchAll = useCallback(async () => {
+  const load = useCallback(async (): Promise<StructureNode[]> => {
     try {
       setLoading(true);
       setError(null);
@@ -268,18 +277,24 @@ export function useStructureData(
       return finalResult;
     } catch (err) {
       console.error('useStructureData: fetch failed', err);
-      setError(err instanceof Error ? err : new Error('Failed to load structure data'));
-      return [];
+      const e = toError(err);
+      setError(e);
+      throw e;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    if (autoFetch) fetchAll();
-  }, [fetchAll, autoFetch]);
+  const refetch = useCallback(
+    () => load().catch((): StructureNode[] => []),
+    [load],
+  );
 
-  return { nodes, loading, error, refetch: fetchAll };
+  useEffect(() => {
+    if (autoFetch) refetch();
+  }, [refetch, autoFetch]);
+
+  return { nodes, loading, error, refetch, load };
 }
 
 // --------------------------------------------------------

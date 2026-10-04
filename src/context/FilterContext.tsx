@@ -4,6 +4,7 @@ import type { UUID, BreadcrumbItem, Category, Area } from '@/types';
 import { fetchSharedContext, type SharedContext } from '@/hooks/useDataShares';
 import { withRetryQuery } from '@/lib/retry';
 import { dbScopedKey } from '@/lib/storageKey';
+import { parseStoredFilter, type StoredFilterState } from '@/lib/storedFilter';
 import type { PeriodKey } from '@/hooks/useDateBounds';
 import type { NumericOp } from '@/lib/attrFilterNumeric';
 
@@ -51,15 +52,7 @@ export interface FilterState {
   attrFilter: AttrFilterState | null;
 }
 
-// --------------------------------------------
-// Stored State (sessionStorage format)
-// --------------------------------------------
-
-interface StoredState {
-  areaId: string | null;
-  selectionChain: Category[];
-  selectedShortcutId: string | null;
-}
+// Stored State: `src/lib/storedFilter.ts` — zapis nosi `userId` (S160).
 
 // --------------------------------------------
 // Default State
@@ -228,6 +221,8 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   const [isRestored, setIsRestored] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const restoreAttempted = useRef(false);
+  /** Korisnik pod kojim se filtar pamti (S160). Postavlja ga restore. */
+  const userIdRef = useRef<string | null>(null);
   const restoreAbortedRef = useRef(false);
   const [restoreTimedOut, setRestoreTimedOut] = useState(false);
   const dismissRestoreTimedOut = useCallback(() => setRestoreTimedOut(false), []);
@@ -245,12 +240,19 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
     restoreAttempted.current = true;
     
     const doRestore = async () => {
-      const stored = filterStorage.getItem(FILTER_STORAGE_KEY);
-      if (!stored) {
+      // /!\ Zapis vrijedi samo za korisnika koji ga je snimio (S160, v. storedFilter.ts).
+      //   `getSession` cita lokalnu sesiju, bez mreze — FilterProvider je unutar
+      //   ProtectedRoute, pa je sesija ovdje vec poznata.
+      const { data: { session } } = await supabase.auth.getSession();
+      const uid = session?.user?.id ?? null;
+      userIdRef.current = uid;
+      const state = parseStoredFilter(filterStorage.getItem(FILTER_STORAGE_KEY), uid);
+      if (!state) {
+        filterStorage.removeItem(FILTER_STORAGE_KEY);
         setIsRestored(true);
         return;
       }
-      
+
       setIsRestoring(true);
 
       // /!\ ROK, NE NADA (S149). Restore je niz `await`-ova prema bazi, a
@@ -276,8 +278,6 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
       }, RESTORE_DEADLINE_MS);
 
       try {
-        const state: StoredState = JSON.parse(stored);
-        
         if (state.areaId && state.selectionChain && state.selectionChain.length > 0) {
           // Restore selection chain
           setSelectionChain(state.selectionChain);
@@ -367,7 +367,13 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
       }
     };
     
-    doRestore();
+    // /!\ `.catch()` je obavezan (S121): `getSession` je sada PRIJE `try`-a, pa bi
+    //   njegov pad ostavio `isRestored` zauvijek `false` — lista i Prev/Next ga cekaju.
+    doRestore().catch(e => {
+      console.error('FilterContext: restore failed', e);
+      setIsRestoring(false);
+      setIsRestored(true);
+    });
   }, []);
 
   // --------------------------------------------
@@ -500,7 +506,10 @@ export function FilterProvider({ children, initialState }: FilterProviderProps) 
   // --------------------------------------------
   
   const saveToStorage = useCallback(() => {
-    const state: StoredState = {
+    // Bez poznatog korisnika nema snimke — zapis bez vlasnika se ionako odbacuje.
+    if (!userIdRef.current) return;
+    const state: StoredFilterState = {
+      userId: userIdRef.current,
       areaId: filter.areaId,
       selectionChain: selectionChain,
       selectedShortcutId: selectedShortcutId

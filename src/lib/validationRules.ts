@@ -120,6 +120,31 @@ export function sameRules(a: unknown, b: unknown): boolean {
   return stableStringify(canonicalRules(a)) === stableStringify(canonicalRules(b));
 }
 
+/** Sve opcije pravila: `suggest` + svaka lista u `depends_on.options_map`. */
+export function allOptions(raw: unknown): Set<string> {
+  const src = asObject(raw);
+  const out = new Set<string>();
+  if (!src) return out;
+  if (Array.isArray(src.suggest)) for (const o of src.suggest) if (typeof o === 'string') out.add(o);
+  const om = asObject(asObject(src.depends_on)?.options_map);
+  if (om) for (const list of Object.values(om)) {
+    if (Array.isArray(list)) for (const o of list) if (typeof o === 'string') out.add(o);
+  }
+  return out;
+}
+
+/**
+ * Opcije koje nakon zamjene pravila NESTAJU iz izbornika (K-1, S160).
+ *
+ * ⚠ Po UNIJI svih lista: opcija koja se samo preseli pod drugi `WhenValue`
+ *   ovdje nije „uklonjena" — retci s njom pod starim roditeljem time postaju
+ *   siročad para, a to ova brana ne hvata (K0 inventar hoće).
+ */
+export function removedOptions(before: unknown, after: unknown): string[] {
+  const next = allOptions(after);
+  return [...allOptions(before)].filter(o => !next.has(o));
+}
+
 function stableStringify(v: unknown): string {
   if (v === null || v === undefined) return 'null';
   if (typeof v !== 'object') return JSON.stringify(v);

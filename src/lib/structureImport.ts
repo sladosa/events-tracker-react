@@ -25,7 +25,8 @@
 import ExcelJS from 'exceljs';
 import { supabase } from '@/lib/supabaseClient';
 import { isValidDateRule } from '@/lib/attributeRules';
-import { buildRules, sameRules } from '@/lib/validationRules';
+import { buildRules, sameRules, removedOptions } from '@/lib/validationRules';
+import { TEMPLATE_USER_ID } from '@/lib/constants';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig,
 } from '@/types/database';
@@ -48,7 +49,22 @@ export interface ReviewFlagRow {
   categoryPath: string;
 }
 
+/** K-1 (S160): opcija koju uvoz BRISE iz izbornika, a retci je nose. */
+export interface OptionRemoval {
+  categoryPath: string;
+  attrName:     string;
+  option:       string;
+  /** Broj redaka s tom vrijednoscu; `null` = brojanje nije uspjelo (NIJE nula). */
+  rows:         number | null;
+}
+
 export interface ImportResult {
+  /**
+   * K-1 (S160): uvoz je STAO prije ijednog upisa jer bi obrisao opcije koje
+   * retci jos nose. Ponovi s `confirmOptionRemovals: true` kad je covjek vidio popis.
+   */
+  blocked?: boolean;
+  optionRemovals: OptionRemoval[];
   created: {
     areas: number;
     categories: number;
@@ -495,8 +511,10 @@ function parsePath(categoryPath: string): string[] {
 export async function importStructureExcel(
   file: File,
   userId: string,
+  { confirmOptionRemovals = false }: { confirmOptionRemovals?: boolean } = {},
 ): Promise<ImportResult> {
   const result: ImportResult = {
+    optionRemovals: [],
     created:  { areas: 0, categories: 0, attributes: 0 },
     updated:  { attributes: 0, settings: 0 },
     skipped:  0,
@@ -735,6 +753,89 @@ export async function importStructureExcel(
 
   // ── 5. Group attribute rows ───────────────────────────────
   const attrGroups = groupAttributes(parsedRows);
+
+  // ── 5b. K-1 brane (S160) — PRIJE ijednog upisa ────────────
+  // (a) TUDJA AREA. `areaByName` vidi samo VLASTITE Aree (`.eq('user_id')`), pa
+  //     file Aree koju korisnik vidi kao grantee nije mijenjao nju nego je TIHO
+  //     STVORIO DUPLIKAT istog imena pod uvoznikom (S134, ispravak zapisa). Sada
+  //     staje: strukturu Aree mijenja vlasnik (Sasina odluka S133).
+  //     ⚠ Predlozak (TEMPLATE_USER_ID) se ne broji — njegove Aree vide svi, a
+  //       vlastita Area istog imena kao predlozak je legitimna.
+  //     ⚠ Neuspjelo citanje NIJE „nema tudjih" — tada se ne zna, pa se staje.
+  const fileAreaNames = new Map<string, string>(); // lower → kako pise u fileu
+  for (const row of parsedRows) {
+    const a = parsePath(row.categoryPath)[0];
+    if (a && !areaByName.has(a.toLowerCase())) fileAreaNames.set(a.toLowerCase(), a);
+  }
+  if (fileAreaNames.size > 0) {
+    const { data: visible, error: visErr } = await supabase
+      .from('areas').select('name, user_id').neq('user_id', userId);
+    if (visErr || !visible) {
+      throw new Error(`Could not check who owns the Areas in this file — nothing was imported. (${visErr?.message ?? 'no data'})`);
+    }
+    const foreign = visible
+      .filter(a => a.user_id !== TEMPLATE_USER_ID && fileAreaNames.has(a.name.toLowerCase()))
+      .map(a => a.name);
+    if (foreign.length > 0) {
+      throw new Error(
+        `Area ${[...new Set(foreign)].map(n => `"${n}"`).join(', ')} belongs to another user (shared with you). `
+        + `Its structure can only be changed by the owner — importing here would have created a second Area `
+        + `with the same name under your account. Nothing was imported.`);
+    }
+  }
+
+  // (b) OPCIJE KOJE NESTAJU A RETCI IH NOSE. Uvoz pravilo ZAMJENJUJE u cijelosti
+  //     („file pobjeduje", izmjereno T-S152-1), pa opcija maknuta iz filea nestane
+  //     iz izbornika — retci zadrze vrijednost, ali je vise nitko ne moze odabrati
+  //     ni filtrirati iz popisa. Excel ne razlikuje preimenovanje od brisanja, pa
+  //     uvoz retke NE dira; samo prije upisa kaze sto ce se dogoditi i trazi potvrdu.
+  if (!confirmOptionRemovals) {
+    const lookupCat = (path: string): string | null => {
+      const segs = parsePath(path);
+      const areaId = segs[0] ? areaByName.get(segs[0].toLowerCase()) : undefined;
+      if (!areaId || segs.length < 2) return null;
+      let parent: string | null = null;
+      for (const name of segs.slice(1)) {
+        const id = catByKey.get(`${areaId}/${parent ?? 'root'}/${name.toLowerCase()}`);
+        if (!id) return null;
+        parent = id;
+      }
+      return parent;
+    };
+    const pending: { rec: AttrRecord; removal: OptionRemoval }[] = [];
+    for (const group of attrGroups) {
+      const categoryId = lookupCat(group.categoryPath);
+      if (!categoryId) continue;                       // nov put ⇒ nov atribut ⇒ nista se ne brise
+      const slug = group.slug || makeAttrSlug(group.attrName);
+      let existing = attrBySlugCat.get(`${slug}||${categoryId}`) ?? null;
+      if (!existing && !group.slug) {
+        const id = attrByKey.get(`${categoryId}/${group.attrName.toLowerCase()}`);
+        if (id) existing = attrById.get(id) ?? null;
+      }
+      if (!existing) continue;
+      const hidden = resolveHiddenInAdd(header.colHiddenInAdd > 0, group.hiddenInAdd, existing.validationRules);
+      for (const option of removedOptions(existing.validationRules, buildValidationRules(group, hidden))) {
+        pending.push({ rec: existing, removal: {
+          categoryPath: group.categoryPath, attrName: group.attrName, option, rows: null } });
+      }
+    }
+    // Brojanje: jedan `count` po opciji, usporedno (isti obrazac kao S133).
+    await Promise.all(pending.map(async p => {
+      const { count, error } = await supabase
+        .from('event_attributes')
+        .select('id', { count: 'exact', head: true })
+        .eq('attribute_definition_id', p.rec.id)
+        .eq('value_text', p.removal.option);
+      p.removal.rows = error ? null : (count ?? 0);
+    }));
+    // Opcija bez ijednog retka se smije obrisati bez pitanja — to je ciscenje.
+    const withRows = pending.map(p => p.removal).filter(r => r.rows !== 0);
+    if (withRows.length > 0) {
+      result.blocked = true;
+      result.optionRemovals = withRows;
+      return result;
+    }
+  }
 
   // ── 6. Collect unique CategoryPaths from Area + Category + Attribute rows ──
   // (Ensure all category chains exist before processing attributes)

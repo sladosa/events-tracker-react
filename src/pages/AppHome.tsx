@@ -124,7 +124,7 @@ function AppContent() {
   
   // Structure data (needed for Export button)
   // Only `refetch` is used here (Export / Import) — no load on mount (S159).
-  const { refetch: refetchStructure } = useStructureData({ autoFetch: false });
+  const { load: loadStructure } = useStructureData({ autoFetch: false });
 
   // Get filter context
   const {
@@ -953,7 +953,8 @@ function AppContent() {
                 onClick={async () => {
                   setIsExportingStructure(true);
                   try {
-                    const freshNodes = await refetchStructure(); // Always export fresh data
+                    // Fresh data; `load` THROWS on a failed read (S160) — never an empty file.
+                    const freshNodes = await loadStructure();
                     // When no specific area selected, exclude template areas from export
                     const exportNodes = filter.areaId
                       ? freshNodes
@@ -969,7 +970,7 @@ function AppContent() {
                     toast.success('Structure exported');
                   } catch (err) {
                     console.error('Structure export failed:', err);
-                    toast.error('Export failed');
+                    toast.error(`Export failed — no file saved: ${err instanceof Error ? err.message : String(err)}`);
                   } finally {
                     setIsExportingStructure(false);
                   }
@@ -1118,13 +1119,13 @@ function AppContent() {
           onClose={() => setShowStructureImport(false)}
           onImported={() => {
             window.dispatchEvent(new CustomEvent('areas-changed'));
-            // No refetchStructure() here: its nodes are never read in AppHome;
+            // No loadStructure() here: its nodes are never read in AppHome;
             // the refresh key makes the visible Structure view reload (S159).
             setStructureRefreshKey(k => k + 1);
             // Modal stays open so user can read the result summary;
             // user closes it via the "Close" button.
           }}
-          getNodes={refetchStructure}
+          getNodes={loadStructure}
         />
       )}
     </div>

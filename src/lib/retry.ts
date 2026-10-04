@@ -76,7 +76,7 @@ export async function withRetry<T>(
  * not an `Error` — `String()` of it is "[object Object]", which is what the
  * user saw instead of PGRST201 (S157). Keep the message and the code.
  */
-function toError(e: unknown): Error {
+export function toError(e: unknown): Error {
   if (e instanceof Error) return e;
   const o = e as { message?: unknown; code?: unknown } | null;
   if (o && typeof o === 'object' && typeof o.message === 'string') {

@@ -1012,6 +1012,80 @@ function getHierarchyLevels(
 }
 
 // ─────────────────────────────────────────────
+// Atributi iz filea kojih odredisna Area NEMA (S160, D3 minimum)
+// ─────────────────────────────────────────────
+
+export interface DroppedAttribute {
+  area:     string;
+  attrName: string;
+  /** Broj NEPRAZNIH vrijednosti koje uvoz nece upisati. */
+  count:    number;
+  rows:     number[];
+}
+
+/**
+ * Koje vrijednosti iz filea uvoz NECE upisati jer ni leaf ni nijedan roditelj
+ * retka nema atribut tog imena.
+ *
+ * ⚠ ZASTO (D3 pokus S159, 03.10. TEST): apply atribut trazi po
+ *   `kategorija||ime` i bez pogotka ga PRESKOCI (`if (!def) continue`, nema
+ *   `else`) — pregled kaze „10 novih", uvoz „10 created", a od 43 vrijednosti
+ *   stigne 29. Isto vrijedi za vlastiti stari export nakon renamea atributa.
+ *   Ponasanje se NE mijenja (uvoz i dalje preskace) — ali se vise ne preskace
+ *   nijemo: pregled i izvjestaj imenuju atribut, Areu i broj vrijednosti.
+ *
+ * Racuna se samo nad retcima koji ce stvarno pisati (`toCreate` + `toUpdate`),
+ * i samo nad retcima cija kategorija postoji — nepostojecu putanju javlja
+ * validacija (ili Korak 7), pa bi ovdje bila dvostruka poruka.
+ * Prazno i `_` (oznaka „ocisti") se ne broje: ne nose vrijednost koja bi se izgubila.
+ */
+export function findDroppedAttributes(
+  rows:           ParsedImportRow[],
+  categoriesDict: ExportCategoriesDict,
+  attrDefs:       ExportAttrDef[],
+): DroppedAttribute[] {
+  const namesByCat = new Map<string, Set<string>>();
+  for (const d of attrDefs) {
+    const set = namesByCat.get(d.category_id) ?? new Set<string>();
+    set.add(d.name);
+    namesByCat.set(d.category_id, set);
+  }
+
+  const out = new Map<string, DroppedAttribute>();
+  for (const row of rows) {
+    if (!row.category_path) continue;
+    const levels = getHierarchyLevels(row.category_path, categoriesDict, row.area);
+    const leaf = levels[levels.length - 1];
+    if (!leaf || leaf.partialPath !== row.category_path) continue;   // putanje nema ⇒ javlja je validacija
+
+    for (const [attrName, value] of Object.entries(row.attributes)) {
+      if (value == null || value === '' || value === '_') continue;
+      if (levels.some(l => namesByCat.get(l.categoryId)?.has(attrName))) continue;
+      const key = `${row.area}||${attrName}`;
+      const hit = out.get(key) ?? { area: row.area, attrName, count: 0, rows: [] };
+      hit.count++;
+      hit.rows.push(row._source_row);
+      out.set(key, hit);
+    }
+  }
+  return [...out.values()];
+}
+
+/** Poruka za pregled i izvjestaj — ISTA na oba mjesta. */
+export function droppedAttributesWarning(dropped: DroppedAttribute[]): string | null {
+  if (dropped.length === 0) return null;
+  const total = dropped.reduce((s, d) => s + d.count, 0);
+  const lines = dropped.map(d => {
+    const shown = d.rows.slice(0, 8).join(', ') + (d.rows.length > 8 ? ', …' : '');
+    return `  • '${d.attrName}' (Area '${d.area}'): ${d.count} vrijednost${d.count === 1 ? '' : 'i'} — redovi ${shown}`;
+  });
+  return `${total} vrijednost${total === 1 ? '' : 'i'} iz filea NEĆE biti upisan${total === 1 ? 'a' : 'e'}: `
+    + `Area nema atribut tog imena (ni na leafu ni na roditelju).\n`
+    + lines.join('\n')
+    + `\nAko ih trebaš: dodaj atribut u Structure (ili uvezi Structure file), pa ponovi uvoz.`;
+}
+
+// ─────────────────────────────────────────────
 // Apply import changes to database
 // ─────────────────────────────────────────────
 
@@ -2323,6 +2397,10 @@ export async function importEventsFromExcel(
     };
   }
 
+  // S160: isto upozorenje koje je pregled pokazao ide i u izvjestaj o uvozu.
+  const droppedMsg = droppedAttributesWarning(
+    findDroppedAttributes([...validCreates, ...validUpdates], categoriesDict, attrDefs));
+
   // Step 6: Apply (s overwrite odlukama za kolizije)
   const result = await applyImportChanges(userId, validCreates, validUpdates, categoriesDict, attrDefs, overwriteDecisions, onProgress);
 
@@ -2334,7 +2412,8 @@ export async function importEventsFromExcel(
     outcomes: result.outcomes,
     removed:  deleteResult.removed,
     errors:   result.errors,
-    warnings: [...parsed.warnings, ...deleteResult.warnings, ...reclassified.warnings, ...result.warnings],
+    warnings: [...parsed.warnings, ...deleteResult.warnings, ...reclassified.warnings,
+               ...(droppedMsg ? [droppedMsg] : []), ...result.warnings],
   };
 }
 
