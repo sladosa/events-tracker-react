@@ -304,15 +304,21 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onL
     return counts;
   }, [filtered]);
 
-  // Rows actually rendered — area children hidden when area is collapsed
-  const visibleRows = useMemo(
-    () => filtered.filter(
-      node => node.nodeType === 'area' || !collapsedAreaIds.has(node.areaId),
-    ),
-    [filtered, collapsedAreaIds],
-  );
-
   const areaNodes = useMemo(() => filtered.filter(n => n.nodeType === 'area'), [filtered]);
+
+  // Rows actually rendered — area children hidden when area is collapsed.
+  // ⚠ S160 (T-S160-2, Saša): samo ako je RED TE AREE u tablici. Filtar na
+  //   kategoriju (`Health_Sasa > Medical > Lab Results`) ostavlja samo njezine
+  //   retke, bez retka Aree — a zapamceno sklapanje (`ui:collapsedAreas`) ih je
+  //   sve sakrilo: prazna tablica, bez poruke, bez ⋮ → Edit, i bez retka kojim
+  //   bi se rasklopilo.
+  const visibleRows = useMemo(() => {
+    const shownAreaIds = new Set(areaNodes.map(n => n.id));
+    return filtered.filter(
+      node => node.nodeType === 'area'
+        || !(collapsedAreaIds.has(node.areaId) && shownAreaIds.has(node.areaId)),
+    );
+  }, [filtered, areaNodes, collapsedAreaIds]);
   const allCollapsed = areaNodes.length > 0 && areaNodes.every(n => collapsedAreaIds.has(n.id));
 
   const toggleCollapseAll = useCallback(() => {
