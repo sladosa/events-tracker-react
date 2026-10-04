@@ -17,7 +17,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
-import { persistPendingOptions } from '@/lib/pendingOptions';
+import { persistPendingOptions, failedOptionsMessage, noNewOptionsHintFor } from '@/lib/pendingOptions';
 import { localYmd } from '@/lib/localDate';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
@@ -1395,7 +1395,8 @@ export function EditActivityPage() {
       // Persist any "Other" options added during edit
       if (pendingOptionAdds.length > 0) {
         const allDefs = Array.from(attributesByCategory.values()).flat();
-        await persistPendingOptions(pendingOptionAdds, allDefs);
+        const optMsg = failedOptionsMessage(await persistPendingOptions(pendingOptionAdds, allDefs));
+        if (optMsg) toast.error(optMsg, { duration: 8000 });
       }
 
       // Success! Navigate to View Details
@@ -1890,6 +1891,7 @@ export function EditActivityPage() {
                   onTouch={handleAttributeTouch}
                   disabled={saving}
                   onNewOption={handleNewOption}
+                  noNewOptionsHint={noNewOptionsHintFor(sharedContext)}
                 />
               ) : (
                 <div className="text-center py-6 text-amber-600 text-sm">

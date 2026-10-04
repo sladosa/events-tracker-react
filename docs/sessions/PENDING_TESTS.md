@@ -29,6 +29,18 @@
 
 ---
 
+## S160b — grantee ne dodaje opcije (2026-10-04)
+
+Na `test-branch`, nije na `main`. Grantee umjesto „Other..." vidi sivu stavku o vlasniku; neuspio upis opcije sada je poruka, ne samo konzola.
+
+**Detalji testova:** [tests/S160b_tests.md](tests/S160b_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S160b-1 | Grantee (PROD, `dev:prod`): Podtip/Smjer u Add i Edit bez „Other...", siva stavka „Nova opcija? Dodaje je vlasnik Aree (…)"; vlasnik i dalje ima „Other..." | ⬜ |
+
+---
+
 ## S158 — audit procesa Financija, MC izvod 2026-09, T11 rate, T5–T10 alati (2026-10-02)
 
 Samo Python alati i dokumenti, bez promjene u appu. Košara 11.10. na PROD-u = izvod u cent (55 / 1.189,34); uvezeno 37 budućih MC rata + 7 naknada (11.11. = 499,18, 11.12. = 434,05).

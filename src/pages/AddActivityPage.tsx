@@ -16,7 +16,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useFilter } from '@/context/FilterContext';
 import { supabase } from '@/lib/supabaseClient';
-import { persistPendingOptions } from '@/lib/pendingOptions';
+import { persistPendingOptions, failedOptionsMessage, noNewOptionsHintFor } from '@/lib/pendingOptions';
 import { localYmd } from '@/lib/localDate';
 import { upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
 import { findFreeSessionStart, insertLeafEvent } from '@/lib/insertEntry';
@@ -1217,7 +1217,8 @@ export function AddActivityPage() {
       log('All events saved successfully');
       if (pendingOptionAdds.length > 0) {
         const allDefs = Array.from(attributesByCategory.values()).flat();
-        await persistPendingOptions(pendingOptionAdds, allDefs);
+        const optMsg = failedOptionsMessage(await persistPendingOptions(pendingOptionAdds, allDefs));
+        if (optMsg) toast.error(optMsg, { duration: 8000 });
         setPendingOptionAdds([]);
       }
       sessionFinishedRef.current = true;
@@ -1735,6 +1736,7 @@ export function AddActivityPage() {
                     disabled={saving}
                     expandedByDefault={false}
                     onNewOption={handleNewOption}
+                    noNewOptionsHint={noNewOptionsHintFor(sharedContext)}
                   />
                 </ErrorBoundary>
               ) : (

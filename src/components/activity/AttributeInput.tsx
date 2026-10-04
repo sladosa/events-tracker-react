@@ -14,6 +14,12 @@ interface AttributeInputProps {
   className?: string;
   // Callback kada korisnik unese novu "Other" vrijednost — parent je zadužen za persist
   onNewOption?: (definitionId: string, newOption: string, dependencyValue?: string | null) => void;
+  /**
+   * S160: korisnik NE SMIJE dodavati opcije (grantee — opcije su struktura Aree,
+   * a struktura je vlasnikova, S133). Umjesto „Other..." izbornik nosi ovu
+   * recenicu kao onemogucenu stavku — na mjestu gdje je bio izlaz.
+   */
+  noNewOptionsHint?: string | null;
 }
 
 export function AttributeInput({
@@ -25,7 +31,9 @@ export function AttributeInput({
   dependencyValue,
   className = '',
   onNewOption,
+  noNewOptionsHint = null,
 }: AttributeInputProps) {
+  const canAddOption = !noNewOptionsHint;
   const [showOtherInput, setShowOtherInput] = useState(false);
   const [otherValue, setOtherValue] = useState('');
 
@@ -142,7 +150,7 @@ export function AttributeInput({
       }
 
       // "Other" input modal
-      if (showOtherInput && parsedOptions.allowOther) {
+      if (showOtherInput && parsedOptions.allowOther && canAddOption) {
         return (
           <div className="space-y-2">
             <input
@@ -204,8 +212,11 @@ export function AttributeInput({
                 {currentValueStr}
               </option>
             )}
-            {parsedOptions.allowOther && (
+            {parsedOptions.allowOther && canAddOption && (
               <option value="__other__">Other...</option>
+            )}
+            {parsedOptions.allowOther && !canAddOption && (
+              <option value="__no_new__" disabled>{noNewOptionsHint}</option>
             )}
           </select>
         </div>

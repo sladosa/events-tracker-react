@@ -42,6 +42,8 @@ interface AttributeChainFormProps {
   expandedByDefault?: boolean;
   // Callback kada korisnik unese novu "Other" vrijednost — parent je zadužen za persist
   onNewOption?: (definitionId: string, newOption: string, dependencyValue?: string | null) => void;
+  /** S160: grantee ne dodaje opcije — v. `AttributeInput.noNewOptionsHint`. */
+  noNewOptionsHint?: string | null;
 }
 
 // Check if attribute is a dropdown type (should be sticky in leaf)
@@ -59,6 +61,7 @@ export function AttributeChainForm({
   disabled,
   expandedByDefault = false,
   onNewOption,
+  noNewOptionsHint = null,
 }: AttributeChainFormProps) {
   // Track which categories are expanded (leaf is always expanded)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -425,6 +428,7 @@ export function AttributeChainForm({
         dependencyValue={dependencyValue}
         disabled={disabled}
         onNewOption={onNewOption}
+        noNewOptionsHint={noNewOptionsHint}
       />
     );
 
