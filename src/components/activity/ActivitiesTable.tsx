@@ -443,7 +443,9 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
             {filterOrphans
               ? `${loadedCount} orphan ${loadedCount === 1 ? 'activity' : 'activities'}`
               : hasMore
-                ? `${loadedCount} loaded, more available`
+                // S160 (T-S160-1): ukupan broj je poznat iz prvog upita (`count`) —
+                // bez njega se „koliko ih ima" doznaje tek klikanjem do kraja.
+                ? `${loadedCount} loaded · ${totalCount} events total`
                 : `All ${loadedCount} loaded · ${totalCount} events`
             }
           </span>
