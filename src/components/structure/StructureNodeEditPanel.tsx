@@ -100,17 +100,21 @@ interface NewAttrFormState {
 
 const EMPTY_NEW_ATTR: NewAttrFormState = { name: '', dataType: 'text', unit: '', required: false, defaultValue: '', options: '' };
 
-// F7 (S160): sklopljene kartice atributa, po pregledniku i bazi.
+// F7 (S160): kartice atributa su ZADANO SKLOPLJENE (Sasina odluka, T-S160-2:
+// 10 otvorenih kartica je zid teksta); pamte se OTVORENE, po pregledniku i bazi.
+// Nespremljen (nov) atribut je uvijek otvoren — upravo ga se ureduje.
 // ⚠ Zapamceno zatvaranje je vec jednom ostavilo formu unosa bez polja (S154,
 //   `attrExpanded`). Ovdje je to konfiguracijska ploha i zaglavlje kartice
 //   ostaje vidljivo (ime, tip, opcije, ⚠ ako kartica nosi upozorenje) — dakle
 //   sklopljeno nikad ne znaci „nema ga".
-const COLLAPSED_KEY = dbScopedKey('structure-attr-collapsed');
-const COLLAPSED_MAX = 500;
+const EXPANDED_KEY = dbScopedKey('structure-attr-expanded');
+const EXPANDED_MAX = 500;
+// Prvi oblik istog dana (pamtio je SKLOPLJENE) — pospremi da ne lezi u pregledniku.
+try { localStorage.removeItem(dbScopedKey('structure-attr-collapsed')); } catch { /* private mode */ }
 
-function readCollapsed(): Set<string> {
+function readExpanded(): Set<string> {
   try {
-    const raw = localStorage.getItem(COLLAPSED_KEY);
+    const raw = localStorage.getItem(EXPANDED_KEY);
     const arr = raw ? JSON.parse(raw) : [];
     return new Set(Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : []);
   } catch {
@@ -118,9 +122,9 @@ function readCollapsed(): Set<string> {
   }
 }
 
-function writeCollapsed(s: Set<string>): void {
+function writeExpanded(s: Set<string>): void {
   try {
-    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...s].slice(-COLLAPSED_MAX)));
+    localStorage.setItem(EXPANDED_KEY, JSON.stringify([...s].slice(-EXPANDED_MAX)));
   } catch {
     /* private mode — samo se ne pamti */
   }
@@ -487,23 +491,23 @@ function AttrEditSection({ attrs, onChange, onDeletedSaved, hasEvents, nodeId, a
   const [addOpen,      setAddOpen]      = useState(false);
   const [newForm,      setNewForm]      = useState<NewAttrFormState>(EMPTY_NEW_ATTR);
   const [deleteState,  setDeleteState]  = useState<DeleteConfirmState | null>(null);
-  const [collapsed,    setCollapsed]    = useState<Set<string>>(readCollapsed);
+  const [expanded,     setExpanded]     = useState<Set<string>>(readExpanded);
 
-  const setCollapsedAndRemember = (next: Set<string>) => {
-    setCollapsed(next);
-    writeCollapsed(next);
+  const setExpandedAndRemember = (next: Set<string>) => {
+    setExpanded(next);
+    writeExpanded(next);
   };
   const toggleCollapsed = (id: string) => {
-    const next = new Set(collapsed);
+    const next = new Set(expanded);
     if (next.has(id)) next.delete(id); else next.add(id);
-    setCollapsedAndRemember(next);
+    setExpandedAndRemember(next);
   };
   const savedIds = attrs.filter(a => !a.isNew).map(a => a.id);
-  const allCollapsed = savedIds.length > 0 && savedIds.every(id => collapsed.has(id));
+  const allCollapsed = savedIds.length > 0 && savedIds.every(id => !expanded.has(id));
   const setAllCollapsed = (on: boolean) => {
-    const next = new Set(collapsed);
-    for (const id of savedIds) { if (on) next.add(id); else next.delete(id); }
-    setCollapsedAndRemember(next);
+    const next = new Set(expanded);
+    for (const id of savedIds) { if (on) next.delete(id); else next.add(id); }
+    setExpandedAndRemember(next);
   };
 
   // Pozadina dijaloga brisanja = Cancel (S160; do tada se nije zatvarao uopce).
@@ -771,7 +775,7 @@ function AttrEditSection({ attrs, onChange, onDeletedSaved, hasEvents, nodeId, a
       )}
 
       {attrs.map((attr, i) => {
-        const isCollapsed = !attr.isNew && collapsed.has(attr.id);
+        const isCollapsed = !attr.isNew && !expanded.has(attr.id);
         const warns = attrCardWarnings(attr, attrs);
         const optionCount = attr.validationType === 'suggest'
           ? attr.suggestOptions.split('\n').filter(s => s.trim()).length
