@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabaseClient';
 import type { UUID } from '@/types';
 import { localYmd, todayLocalYmd } from '@/lib/localDate';
 import { withRetryQuery } from '@/lib/retry';
+import { getCategoryMapContaining } from '@/lib/categoryCache';
+import { areaCategoryIds, descendantIds } from '@/lib/categoryTree';
 
 interface DateBounds {
   minDate: string | null;  // YYYY-MM-DD
@@ -92,14 +94,11 @@ async function loadDateBounds(areaId: UUID | null, categoryId: UUID | null): Pro
   const today = todayLocalYmd();
   let categoryIds: UUID[] | null = null;   // null = bez filtra (nije zadana ni Area ni kategorija)
 
-  if (categoryId) {
-    categoryIds = await getDescendantCategoryIds(categoryId);
-  } else if (areaId) {
-    const { data: areaCats } = await withRetryQuery(() => supabase
-      .from('categories')
-      .select('id')
-      .eq('area_id', areaId));
-    categoryIds = (areaCats || []).map(c => c.id as UUID);
+  // S162: stablo iz `categoryCache` (memorija) — prije upit po razini stabla.
+  //   Palo čitanje BACA (keš ne vraća praznu mapu umjesto greške).
+  if (categoryId || areaId) {
+    const map = await getCategoryMapContaining({ categoryId, areaId });
+    categoryIds = categoryId ? descendantIds(map, categoryId) : areaCategoryIds(map, areaId!);
   }
 
   // Area bez ijedne kategorije nema ni evenata — isto kao filtrirani upit bez redaka.
@@ -120,30 +119,6 @@ async function loadDateBounds(areaId: UUID | null, categoryId: UUID | null): Pro
   return { minDate, maxDate: maxDate && maxDate > today ? maxDate : today };
 }
 
-/**
- * Get all descendant category IDs for a given category (including itself)
- */
-async function getDescendantCategoryIds(categoryId: UUID): Promise<UUID[]> {
-  const ids: UUID[] = [categoryId];
-
-  // Recursive function to get children
-  const getChildren = async (parentId: UUID): Promise<void> => {
-    const { data: children } = await withRetryQuery(() => supabase
-      .from('categories')
-      .select('id')
-      .eq('parent_category_id', parentId));
-
-    if (children && children.length > 0) {
-      for (const child of children) {
-        ids.push(child.id);
-        await getChildren(child.id);
-      }
-    }
-  };
-
-  await getChildren(categoryId);
-  return ids;
-}
 
 /**
  * Helper to get date presets

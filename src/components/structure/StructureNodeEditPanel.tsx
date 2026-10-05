@@ -34,6 +34,7 @@ import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { fixupDashboardSlug } from '@/lib/dashboardConfig';
 import { fixupListColumnsSlug } from '@/lib/listColumns';
+import { fixupAutomationsSlug } from '@/lib/automationsConfig';
 import { buildRules, renameDependsOnParent } from '@/lib/validationRules';
 import { dbScopedKey } from '@/lib/storageKey';
 
@@ -1470,10 +1471,16 @@ export function StructureNodeEditPanel({
               if (fixedCols > 0) {
                 toast.success(`Kolone liste: ${fixedCols} reference${fixedCols === 1 ? '' : 's'} updated to "${newSlug}"`);
               }
+              // Automatika (`set_attribute`, rata) i `{slug}` u predlošku
+              // komentara — bez ovoga pravilo tiho prestane raditi (S162).
+              const fixedAuto = await fixupAutomationsSlug(node.areaId, attr.originalSlug, newSlug);
+              if (fixedAuto > 0) {
+                toast.success(`Automations / comment template: ${fixedAuto} reference${fixedAuto === 1 ? '' : 's'} updated to "${newSlug}"`);
+              }
             } catch (e) {
               // Loud, not fatal: the attribute rename itself already succeeded.
-              console.error('dashboard/list-column slug fixup failed:', e);
-              toast.error(`Attribute renamed, but the Overview or list-column config still points at "${attr.originalSlug}" — fix it before using the tab.`, { duration: 8000 });
+              console.error('dashboard/list-column/automations slug fixup failed:', e);
+              toast.error(`Attribute renamed, but Overview, list columns, automations or comment template may still point at "${attr.originalSlug}" — check the Structure export.`, { duration: 8000 });
             }
 
             // Only OTHER nodes: this node's dependents are written by the loop

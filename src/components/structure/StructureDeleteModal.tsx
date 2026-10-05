@@ -318,10 +318,24 @@ export function StructureDeleteModal({
       // max-rows (1000) without raising an error, so an unpaged fetch would
       // delete a prefix of the children and then hit a foreign key violation
       // on the parent. That is exactly what used to fail on large Areas.
-      const { data: events, error: selErr } = await fetchAllPaged<{ id: string }>(
+      const { data: ownEvents, error: selErr } = await fetchAllPaged<{ id: string }>(
         (from, to) => supabase.from('events').select('id').in('category_id', categoryIds).order('id').range(from, to),
       );
       if (selErr) throwStep('select events', selErr);
+
+      // /!\ P2 RODITELJSKI eventi lanca (S162): `chain_key` = id LEAFA, a sam
+      //     event živi na roditelju IZVAN brisanog podstabla (npr. `Medical`
+      //     kad se briše leaf `Medical > S162 probe`). FK `events.chain_key →
+      //     categories` tada brani brisanje kategorije — a leaf eventi su do tog
+      //     trenutka VEĆ obrisani, pa modal javlja „some records could not be
+      //     removed" nad kategorijom koja izgleda prazno. Takav event postoji
+      //     samo za sesije tog leafa (P2), pa odlazi s njim.
+      const { data: chainEvents, error: chainErr } = await fetchAllPaged<{ id: string }>(
+        (from, to) => supabase.from('events').select('id').in('chain_key', categoryIds).order('id').range(from, to),
+      );
+      if (chainErr) throwStep('select chain parent events', chainErr);
+
+      const events = [...new Map([...ownEvents, ...chainEvents].map(e => [e.id, e])).values()];
 
       if (events.length > 0) {
         const eventIds = events.map(e => e.id);

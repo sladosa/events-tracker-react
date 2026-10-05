@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S161).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S162).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 115 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 128 | [Critical rules](<#Critical rules>) | X |
-| 1241 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1701 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1717 | [Key files](<#Key files>) |  |
-| 1820 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1840 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1862 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1888 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1928 | [Open bugs](<#Open bugs>) | ~ |
-| 2037 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2082 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2179 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2187 | [Backlog](<#Backlog>) | ~ |
-| 2191 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2199 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1251 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1711 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1727 | [Key files](<#Key files>) |  |
+| 1836 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1856 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1878 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1904 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1944 | [Open bugs](<#Open bugs>) | ~ |
+| 2053 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2098 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2195 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2203 | [Backlog](<#Backlog>) | ~ |
+| 2207 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2215 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2357 redaka, 18 sekcija._
+_Ukupno 2373 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -392,6 +392,12 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **`touched: true`** mora biti postavljen pri učitavanju atributa iz baze u Edit toku —
   inače ih `handleSave()` preskoči
 - **`parentEventLoader.ts`** je jedini shared servis za parent event logiku — nikad duplicirati
+- **⚠ BRISANJE KATEGORIJE MORA POKUPITI I EVENTE S `chain_key` U PODSTABLU** (S162). P2 roditeljski
+  event živi na roditelju **izvan** brisanog podstabla (`Medical`), a `chain_key` mu je id leafa.
+  `StructureDeleteModal` je tražio samo `category_id ∈ podstablo` ⇒ leaf eventi obrisani, FK
+  `events.chain_key → categories` brani kategoriju, poruka „Some records could not be removed" nad
+  kategorijom koja izgleda prazno. Brisanje aktivnosti to zna od S104 (`category_id OR chain_key`);
+  svako novo brisanje po kategoriji mora isto. Čuva `S162_delete_leaf_chain_parent.spec.ts`.
 - **Promjena sluga lomi reference.** `depends_on` (S105d), a od Faze 1 i `dashboard.widgets[]`.
   Fixup referenci mora ići uz svaki rename sluga.
 - **`set_attribute` se evaluira u Add Activity i (od S127) u Edit — ne u Import.**
@@ -771,6 +777,10 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 
 - **Data Validation limiti:** `promptTitle` ≤32 znaka, `prompt` ≤255 — premašivanje daje
   neispravan OOXML i Excel nudi repair. Provjeri `string.length` prije proširivanja teksta.
+- **⚠ `datetime` atribut je ZIDNI SAT, ne trenutak** (S162). Svi ga pišu bez zone
+  (`2026-10-05T12:00`), baza drži `12:00+00:00`, svi čitaju iste znamenke. **Prikaz nikad kroz
+  `new Date(v).toLocale…`** — View je tako pokazivao `14:00`, a za sat ≥ 22 sutrašnji dan; ide kroz
+  `displayDatetime`. (Isto vrijedi za `event_date`/`session_start` pravila — ona su druga stvar.)
 - **`datetime` atribut ima TRI oblika i svi moraju proći kroz `excelDatetime.ts`** (S112):
   baza vraća `2025-01-07T12:00:00+00:00`, aplikacija piše `2025-01-07T12:00`, Excel drži pravu
   datumsku ćeliju. Kao **stringovi** se razlikuju, kao **trenutak** ne. Dok je usporedba bila
@@ -1759,6 +1769,12 @@ data-prep_tools/Tools/rls_probe.py Sto RLS STVARNO dopusta, po ulozi. Svaka prob
 src/lib/parentEventLoader.ts       Shared: buildParentChainIds(), loadParentAttrs(),
                                    findParentEventByChain(), upsertParentEvent()
 src/lib/categoryCache.ts           Module-level keš categories + area imena (TTL 5 min)
+                                   Od S162 IZVOR stabla za listu, raspon datuma i „Filter by"
+                                   (`categoryTree.ts`) -- zato paginiran; `getCategoryMapContaining`
+                                   osvježi kad tražene kategorije/Aree nema. Kategorija koju DRUGI
+                                   korisnik doda u Areu koja je već u kešu kasni do 5 min.
+src/lib/automationsConfig.ts       Rename sluga u `automations` + `comment_template` (S162) --
+                                   uz `dashboardConfig`/`listColumns`, sve u istom spremanju
 src/lib/supabasePaging.ts          fetchAllPaged / fetchAllPagedIn — obavezno za "sve retke"
 src/lib/excelExport.ts             Activities Excel export, mergeSessionEvents(), Delete? kolona
 src/lib/excelImport.ts             Activities Excel import, collision handling, applyDeletes()

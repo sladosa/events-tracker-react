@@ -32,6 +32,7 @@ import {
 
 import type { UUID } from '@/types';
 import { formatDuration } from '../lib/timeFormat';
+import { displayDatetime } from '@/lib/excelDatetime';
 
 // ============================================
 // Helpers
@@ -112,11 +113,8 @@ function AttributeValueDisplay({
   if (dataType === 'boolean') {
     displayValue = value ? 'Yes' : 'No';
   } else if (dataType === 'datetime' && typeof value === 'string') {
-    try {
-      displayValue = new Date(value).toLocaleString('sv-SE');
-    } catch {
-      displayValue = String(value);
-    }
+    // Znamenke kako su spremljene — v. `displayDatetime` (S162).
+    displayValue = displayDatetime(value) ?? value;
   } else {
     displayValue = String(value);
   }

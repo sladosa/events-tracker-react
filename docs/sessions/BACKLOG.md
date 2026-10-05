@@ -171,10 +171,12 @@ mijenja bankino polje — ne blokira, traži vlastitu kvačicu. Bankina polja: d
 ⚠ Otvoreno (S155): guard na Excel uvozu i kolona `Potvrda` (S143) sidro primjenjuju i na
 KARTIČNE retke (gledaju samo račun + datum, ne filtre pločice) — Edit od S155 ne (izmjereno T-S155-4).
 Pravilo je opet na dva mjesta; poravnati kroz `passesFilters`.
-⚠ Otvoreno (S155): Edit prikazuje `datetime` atribut u UTC satu (`12:00`), View lokalno (`14:00`) —
-isti dan, dosljedno spremanje; rub je UTC sat ≥ 22 (drugi dan) — pravila i uvoz takve ne pišu.
-⚠ Otvoreno: rename sluga ne popravlja `attribute_rules` (`target_slug`/`map_slug`/`lock_slug`)
-— isti razred kao S105d, postojao i prije `lock_slug`.
+✅ **S162** ~~Edit prikazuje `datetime` u UTC satu~~ — bilo je obrnuto: vrijednost je „zidni sat"
+(Add, Edit, pravila, uvoz, Excel i lista je pišu/čitaju bez zone), a **View** je jedini pretvarao
+zonu (`14:00`, za sat ≥ 22 sutrašnji dan). View sada kroz `displayDatetime` (T-S162-1).
+✅ **S162** rename sluga popravlja i `automations` (`attribute_rules` target/map/lock, `rata` svi
+`*_slug` + ključevi `override_attrs`), ključeve `due.settle` i `{slug}` u `comment_template` Aree i
+kategorija (`automationsConfig.ts`, T-S162-2). ⚠ `export_profiles` i dalje ne (ključ nosi ime).
 Povijest (prolaz 26.09.): *„samo retci bez žiga izvoda, i Racun
 i kartice"*. Fali (a) kartice na neožigosanim retcima, (b) provjera žiga — danas se pomiče i
 ožigosan Racun redak. Žig mora doći **iz configa** (npr. ključ pravila `lock_slug: izvod_opis`
@@ -218,8 +220,11 @@ više ne šalje. Na učitavanju 5 → 4 (u devu StrictMode duplira; PROD 2). Usp
 kao jedinstven zadnji ključ (leaf ima N eventa iste sesije).
 **Iz Sašinog testa (T-S159-6): F5 je slao 6 upita liste** — prije završetka obnove filtra kontekst
 kaže „nema Aree", pa su lista i Prev/Next tražile retke **svih** Area, pa opet za obnovljenu.
-Sada obje čekaju `isRestored` ⇒ **6 → 2** (Playwright). ⚠ Ostaje neizmjereno: Area promjena
-čita `categories` 7× i `areas` 4× — zaseban posao. Izvorni zapis:
+Sada obje čekaju `isRestored` ⇒ **6 → 2** (Playwright). ✅ **S162 izmjereno i popravljeno:**
+`categories` 9 → 2 (dev; = 1 upit selektora × StrictMode) — lista, raspon datuma i „Filter by"
+stablo računaju iz `categoryCache` (`categoryTree.ts`), bez tri serijska kruga prije upita liste;
+keš sada paginira. `areas` 3–4 u devu ostaje (dashboard ×2 StrictMode, `FilterContext`, imena) —
+na PROD-u ~2, ne vrijedi diranja. Izvorni zapis:
 **Lista se preupita ŠEST puta na jednu promjenu filtra** (izmjereno S122 iz Playwright
 tracea: `events?select=…` na 16664, 16735, 16832, 16909, 17022, 17098 ms nakon promjene
 aree). Dvije posljedice: čist trošak — a na PROD-u je Saša **grantee**, dakle skupa RLS

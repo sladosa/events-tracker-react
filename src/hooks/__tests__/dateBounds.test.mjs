@@ -117,6 +117,15 @@ writeFileSync(join(dir, 'react-stub.mjs'),
   'export const useState=globalThis.__R.useState, useEffect=globalThis.__R.useEffect, '
   + 'useCallback=globalThis.__R.useCallback, useRef=globalThis.__R.useRef;');
 writeFileSync(join(dir, 'supabase-stub.mjs'), 'export const supabase = globalThis.__SB;');
+// S162: hook stablo čita iz `categoryCache` — lažni keš nad istim kategorijama,
+// i jednako PADA kad je `failCategories` (palo čitanje nije „bez filtra").
+writeFileSync(join(dir, 'categorycache-stub.mjs'),
+  'export const getCategoryMapContaining = () => globalThis.__CC();');
+writeFileSync(join(dir, 'categorytree.mjs'), await tsToMjs('src/lib/categoryTree.ts'));
+globalThis.__CC = () => new Promise(r => setTimeout(r, 1)).then(() => {
+  if (failCategories) throw new Error('simulirani pad');
+  return new Map(categories.map(c => [c.id, { ...c, name: c.id }]));
+});
 writeFileSync(join(dir, 'localdate-stub.mjs'),
   `export const todayLocalYmd = () => '${TODAY}';\n`
   + 'export const localYmd = d => d.toISOString().slice(0, 10);');
@@ -125,7 +134,9 @@ writeFileSync(join(dir, 'hook.mjs'),
     .replace(/from ['"]react['"]/, "from './react-stub.mjs'")
     .replace(/from ['"]@\/lib\/supabaseClient['"]/, "from './supabase-stub.mjs'")
     .replace(/from ['"]@\/lib\/localDate['"]/, "from './localdate-stub.mjs'")
-    .replace(/from ['"]@\/lib\/retry['"]/, "from './retry.mjs'"));
+    .replace(/from ['"]@\/lib\/retry['"]/, "from './retry.mjs'")
+    .replace(/from ['"]@\/lib\/categoryCache['"]/, "from './categorycache-stub.mjs'")
+    .replace(/from ['"]@\/lib\/categoryTree['"]/, "from './categorytree.mjs'"));
 globalThis.__R = React;
 globalThis.__SB = supabaseStub;
 const { useDateBounds } = await import(pathToFileURL(join(dir, 'hook.mjs')).href);

@@ -210,7 +210,8 @@ test.describe('T-S107b — set_attribute automatika (Faza 2b)', () => {
     await page.getByRole('button', { name: /^import$/i }).last().click();
 
     await expect(page.getByText(/import completed successfully/i)).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByText('Automation rules', { exact: true })).toBeVisible();
+    // S152 je brojač preimenovao (broji Aree kojima se config promijenio, ne retke).
+    await expect(page.getByText('Automations changed (areas)', { exact: true })).toBeVisible();
 
     // ── Verify DB: area.settings.automations.attribute_rules updated ──
     const areas = await supabaseGet(page, 'areas', { id: ta.areaId }, 'id,settings');

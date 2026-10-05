@@ -19,6 +19,7 @@
  */
 
 import { supabase } from '@/lib/supabaseClient';
+import { fetchAllPaged } from '@/lib/supabasePaging';
 import type { UUID } from '@/types';
 
 export interface CachedCategory {
@@ -40,17 +41,41 @@ export function getCategoryMap(): Promise<Map<string, CachedCategory>> {
   if (!_cats || Date.now() - _catsFetchedAt > TTL_MS) {
     _catsFetchedAt = Date.now();
     const p = (async () => {
-      const { data, error } = await supabase
+      // ⚠ Paginirano + `.order('id')` (S162): od S162 lista i raspon datuma
+      //   ovise o ovoj mapi, a `max-rows = 1000` bi kategorije preko tisuće
+      //   odrezao BEZ greške — lista bi tiho ostala bez njihovih evenata.
+      const { data, error } = await fetchAllPaged<CachedCategory>((from, to) => supabase
         .from('categories')
-        .select('id, name, parent_category_id, area_id');
+        .select('id, name, parent_category_id, area_id')
+        .order('id')
+        .range(from, to));
       if (error) throw error;
-      const rows = (data ?? []) as unknown as CachedCategory[];
+      const rows = data;
       return new Map(rows.map(c => [c.id as string, c]));
     })();
     _cats = p;
     p.catch(() => { if (_cats === p) _cats = null; });
   }
   return _cats;
+}
+
+/**
+ * Kao `getCategoryMap`, ali ako tražena kategorija / Area u kešu NE POSTOJI,
+ * keš se jednom osvježi (S162). Pokriva kategoriju koju je drugi korisnik
+ * dijeljene Aree upravo stvorio: selektor je čita svježe iz baze, pa bi je
+ * lista inače tretirala kao nepostojeću sve do isteka TTL-a.
+ * ⚠ Nova kategorija u Arei koja je već u kešu ne izaziva osvježenje — njeni
+ *   eventi u „cijela Area" pogledu stižu najkasnije s TTL-om (5 min).
+ */
+export async function getCategoryMapContaining(
+  opts: { categoryId?: string | null; areaId?: string | null },
+): Promise<Map<string, CachedCategory>> {
+  const map = await getCategoryMap();
+  const missCat = !!opts.categoryId && !map.has(opts.categoryId);
+  const missArea = !!opts.areaId && ![...map.values()].some(c => c.area_id === opts.areaId);
+  if (!missCat && !missArea) return map;
+  _cats = null;
+  return getCategoryMap();
 }
 
 /** Imena svih area vidljivih korisniku, keširano. Map<areaId, name> */

@@ -63,5 +63,21 @@ export function datetimeCellValue(v: unknown): Date | null {
   return new Date(Date.UTC(y, mo - 1, d, 12));
 }
 
+/**
+ * Prikaz `datetime` atributa — ZNAMENKE KAKO SU SPREMLJENE, bez pretvorbe zone.
+ *
+ * ⚠ Vrijednost je „zidni sat", ne trenutak: Add, Edit, `set_attribute` i uvoz
+ * pišu `2025-01-07T12:00` BEZ zone, baza to spremi kao `12:00+00:00`, a Edit
+ * polje, lista, filtar i Excel čitaju iste znamenke natrag. View je jedini
+ * radio `new Date(v).toLocaleString()` i time pokazivao `14:00` (ljeti), a za
+ * spremljeni sat ≥ 22 — DRUGI DAN (S162, Backlog „Edit u UTC satu").
+ */
+export function displayDatetime(v: unknown): string | null {
+  const date = datePartOfDatetime(v);
+  if (!date) return null;
+  const time = timePartOfDatetime(v);
+  return time ? `${date} ${time}` : date;
+}
+
 /** Format datumskih ćelija u exportu. Hrvatski zapis, bez vremena. */
 export const DATE_ATTR_NUMFMT = 'd.m.yyyy';

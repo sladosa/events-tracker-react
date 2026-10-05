@@ -38,7 +38,8 @@ import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
 import { NUMERIC_OPS, NUMERIC_DATA_TYPES, DATETIME_DATA_TYPES, BOOLEAN_DATA_TYPES, numericFilterValue, isNumericOp, type NumericOp } from '@/lib/attrFilterNumeric';
 import { formatAmount } from '@/lib/amountFormat';
-import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
+import { getCategoryMap, getAreaNameMap, getCategoryMapContaining } from '@/lib/categoryCache';
+import { ancestorIds, areaCategoryIds } from '@/lib/categoryTree';
 import { findSingleLeaf, categoryNamePath } from '@/lib/singleLeaf';
 
 // --------------------------------------------
@@ -163,32 +164,13 @@ function AppContent() {
         return;
       }
 
-      let categoryIds: string[];
-
-      if (filter.categoryId) {
-        // Walk up ancestor chain from the selected category in DB.
-        // More reliable than selectionChain which may be stale/partial.
-        const ids: string[] = [];
-        let currentId: string | null = filter.categoryId;
-        while (currentId) {
-          ids.push(currentId);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const result: any = await supabase
-            .from('categories')
-            .select('parent_category_id')
-            .eq('id', currentId)
-            .single();
-          currentId = (result?.data?.parent_category_id as string | null | undefined) ?? null;
-        }
-        categoryIds = ids;
-      } else {
-        // Area-only filter: all categories in area
-        const { data: cats } = await supabase
-          .from('categories')
-          .select('id')
-          .eq('area_id', filter.areaId);
-        categoryIds = (cats ?? []).map(c => c.id as string);
-      }
+      // S162: preci / kategorije Aree iz `categoryCache` (memorija) — prije
+      //   upit po razini lanca. `getCategoryMapContaining` osvježi keš ako
+      //   kategorija još nije u njemu, pa svježe dodana ne ostaje bez atributa.
+      const map = await getCategoryMapContaining({ categoryId: filter.categoryId, areaId: filter.areaId });
+      const categoryIds: string[] = filter.categoryId
+        ? ancestorIds(map, filter.categoryId)
+        : areaCategoryIds(map, filter.areaId);
 
       if (categoryIds.length === 0) {
         setFilterAttrDefs([]);
@@ -219,7 +201,9 @@ function AppContent() {
       setFilterAttrDefs(filterable as AttributeDefinition[]);
       setHiddenAttrCount(deduped.length - filterable.length);
     };
-    load();
+    // Keš kategorija BACA na palo čitanje (S162) — bez `.catch` bi to bila tiha
+    // nehvaćena greška (S121). Popis ostaje kakav je bio; lista javlja sama.
+    load().catch(err => console.error('Filter by: popis atributa nije učitan', err));
   }, [filter.areaId, filter.categoryId]);
 
   // Reset filter attr dropdown when area or category changes

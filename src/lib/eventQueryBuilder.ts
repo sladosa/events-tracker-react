@@ -5,8 +5,9 @@
  * Adding a new filter? Add it here once → both consumers get it.
  */
 
-import { supabase } from '@/lib/supabaseClient';
 import type { UUID } from '@/types';
+import { getCategoryMapContaining } from '@/lib/categoryCache';
+import { areaCategoryIds, descendantIds, leafOnly } from '@/lib/categoryTree';
 import {
   numericFilterValue, dateFilterBounds, booleanFilterValue, isTypedFilterReadable,
   type NumericOp, type AttrFilterKind,
@@ -155,75 +156,33 @@ export function applyEventFilters(query: any, filters: EventQueryFilters): any {
 // Category ID resolution (Activities table)
 // ─────────────────────────────────────────────
 
-async function filterToLeafCategories(ids: UUID[]): Promise<UUID[]> {
-  if (ids.length === 0) return ids;
-  const { data } = await supabase
-    .from('categories')
-    .select('parent_category_id')
-    .in('parent_category_id', ids);
-  const parentSet = new Set(
-    (data ?? []).map(r => (r as { parent_category_id: string }).parent_category_id),
-  );
-  return ids.filter(id => !parentSet.has(id));
-}
-
-async function getDescendantCategoryIds(catId: UUID): Promise<UUID[]> {
-  const ids: UUID[] = [catId];
-  const getChildren = async (parentId: UUID): Promise<void> => {
-    const { data: children } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('parent_category_id', parentId);
-    if (children && children.length > 0) {
-      for (const child of children) {
-        ids.push(child.id);
-        await getChildren(child.id);
-      }
-    }
-  };
-  await getChildren(catId);
-  return ids;
-}
-
 /**
  * Resolve leaf category IDs from area/category filter.
  * Used by Activities table — only leaf categories (parent events are loaded separately).
+ *
+ * S162: iz `categoryCache` (memorija), ne iz baze. Prije su to bila TRI serijska
+ * kruga prije upita liste (id-jevi Aree → koji su leaf → eventi), a za odabranu
+ * kategoriju i po jedan upit po razini stabla. Palo čitanje keša BACA — nikad
+ * „nema kategorija" (to bi bila prazna lista koja izgleda kao odgovor).
  */
 export async function resolveLeafCategoryIds(
   areaId: UUID | null,
   categoryId: UUID | null,
 ): Promise<{ categoryIds: UUID[]; isLeafCategory: boolean }> {
-  if (categoryId) {
-    const { data } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('parent_category_id', categoryId)
-      .limit(1);
-    const hasChildren = (data?.length ?? 0) > 0;
+  const map = await getCategoryMapContaining({ categoryId, areaId });
 
-    if (hasChildren) {
-      const allDesc = await getDescendantCategoryIds(categoryId);
-      const leafIds = await filterToLeafCategories(allDesc);
-      return { categoryIds: leafIds, isLeafCategory: false };
+  if (categoryId) {
+    const desc = descendantIds(map, categoryId);
+    if (desc.length > 1) {
+      return { categoryIds: leafOnly(map, desc), isLeafCategory: false };
     }
     return { categoryIds: [categoryId], isLeafCategory: true };
   }
 
   if (areaId) {
-    const { data: areaCats } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('area_id', areaId);
-    const allAreaIds = (areaCats || []).map(c => c.id);
-    const leafIds = await filterToLeafCategories(allAreaIds);
-    return { categoryIds: leafIds, isLeafCategory: false };
+    return { categoryIds: leafOnly(map, areaCategoryIds(map, areaId)), isLeafCategory: false };
   }
 
   // No filter → all leaf categories (RLS scoped)
-  const { data: allCats } = await supabase
-    .from('categories')
-    .select('id');
-  const allCatIds = (allCats || []).map(c => c.id);
-  const leafIds = await filterToLeafCategories(allCatIds);
-  return { categoryIds: leafIds, isLeafCategory: false };
+  return { categoryIds: leafOnly(map, [...map.keys()] as UUID[]), isLeafCategory: false };
 }

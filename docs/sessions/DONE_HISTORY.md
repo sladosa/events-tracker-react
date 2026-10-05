@@ -8367,6 +8367,18 @@ Dodaje je vlasnik Aree (sladosa)`, bez „Other...". ⚠ E2E guard je odbio run 
 Sašin `dev:prod` — ispravno. **Nije deployano** (Saša: ne treba, zna da ne smije dodavati).
 Otvoreno: T-S160b-1 vlasnička strana („Other..." i dalje postoji).
 
+### PENDING sekcija S160b (arhivirana S162)
+
+— grantee ne dodaje opcije (2026-10-04)
+
+Na `test-branch`, nije na `main`. Grantee umjesto „Other..." vidi sivu stavku o vlasniku; neuspio upis opcije sada je poruka, ne samo konzola.
+
+**Detalji testova:** [tests/S160b_tests.md](../../Claude-temp_R/test-sessions/archive/S160b_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S160b-1 | Grantee (PROD, `dev:prod`): Podtip/Smjer u Add i Edit bez „Other...", siva stavka „Nova opcija? Dodaje je vlasnik Aree (…)"; vlasnik i dalje ima „Other..." | ✅ S162 — vlasnička strana izmjerena na TEST-u (Saša vlasnik kopije `Financije_all`, kod S160b+): Add → `Podtip` nudi „Other..." (slika uz T-S162-2). Ranije grantee strana ✅ S160b (Playwright, TEST, `owner@test.com` write na Sašinu `Health_Sasa`, Add → `Lab`: `… | Ostalo | Nova opcija? Dodaje je vlasnik Aree (sladosa)`, bez „Other..."). Ostaje: vlasnik i dalje vidi „Other..." (Saša/Koka) |
+
 ## S161 — mjesečni krug listopad: ZABA + Visa izvod 2026-09, Visa alat bez mjesečnih popisa (2026-10-05)
 
 Koka je poslala `ZABA_2026-09` i `PBZVISA_2026-09` (OneDrive inbox → razvrstač `--apply`, preimenovani
@@ -8396,3 +8408,52 @@ RF 2.040,18 @ 04.10.
 pomažu, izvod ih donosi sam, a koštale bi Koku još jedan uvoz.
 **Docs:** `FINANCIJE_PROCES.md` §3 i §5 (Visa: platiti pa jednom s datumom; ZABA: prvo `promet_check`,
 pa samo sidro ako je ✓), §4 T13/T14/T28. Otvoreno: T-S161-3 (studeni bez izmjene alata).
+
+## S162 — P4 sitnice: View datetime, rename sluga u configu, kategorije liste iz keša; Structure Delete i P2 roditelji (2026-10-05)
+
+Saša: „riješimo P4 sitnice, testiramo, pa vidimo odluke". Tri stavke iz backloga, sve izmjerene prije koda.
+**(1) „Edit prikazuje `datetime` u UTC satu" — bilo je obrnuto.** Vrijednost je zidni sat: Add,
+Edit, `set_attribute`, uvoz, Excel, lista i filtar pišu/čitaju `2026-10-05T12:00` bez zone; baza
+drži `12:00+00:00`. Jedini **View** je radio `new Date(v).toLocaleString()` ⇒ `14:00`, a za sat
+≥ 22 sutrašnji dan. Izvedeno: `displayDatetime` (`excelDatetime.ts`) u Viewu.
+**(2) Rename sluga** (Structure panel) popravljao je `depends_on`, pločicu i kolone liste, ali ne
+`automations` (`attribute_rules` target/map/`lock_slug`, `rata` svi `*_slug` + ključevi
+`override_attrs`), ključeve `due.settle` ni `{slug}` u `comment_template` (Area **i** kategorije).
+Izvedeno: `automationsConfig.ts` (`fixupAutomationsSlug`, upis provjeren brojem redaka) +
+`settle` u `renameSlugInDashboard`/`dashboardSlugRefs`.
+**(3) Promjena Aree „čita `categories` 7×" — izmjereno sondom (Playwright, TEST): 9 i 8.**
+Lista je prije upita evenata radila **tri serijska kruga** (id-jevi Aree → leaf → eventi), isti
+id-jevi s četiri mjesta (lista, Prev/Next, `useDateBounds`, „Filter by"), a odabir kategorije
+upit po razini stabla. Izvedeno: `categoryTree.ts` (čiste funkcije nad `categoryCache` mapom),
+`getCategoryMapContaining` (jednom osvježi keš ako tražene kategorije/Aree nema). Poslije: **2**
+(= jedan upit selektora × StrictMode). ⚠ `getCategoryMap` je vukao cijelu tablicu bez
+paginacije — sad `fetchAllPaged` + `.order('id')`, jer o njemu ovisi lista. `areas` (3–4 u devu)
+nije diran.
+**Nađeno testiranjem (T-S162-3):** Structure Delete leafa s eventom obrisao je leaf event, a
+kategoriju ne („Some records could not be removed"). Add uz leaf event upiše roditeljski event na
+`Medical` s `chain_key = leaf` (P2); `cascadeDelete` je tražio samo `category_id ∈ podstablo`, pa
+FK `chain_key → categories` brani. Brisanje aktivnosti to zna od S104. Izvedeno: modal briše i
+evente s `chain_key ∈ podstablo`. Čuva `S162_delete_leaf_chain_parent.spec.ts` (sabotaža pada).
+**Mjereno:** unit `slugRenameConfig` 23 (stari kod ruši 5), `categoryTree` 12, `dateBounds`
+prilagođen (lažni keš, 15/15). E2E lista/filtar/View/Edit 15/17 — oba pada postoje i na čistom
+S161 (stash): E12-2 = TEST nema predložak Health (stanje baze), S107b-2 = natpis iz S152
+(popravljen u specu, 2/2). Ručno Saša, TEST: T-S162-1..4 ✅ (`podtip` → `podtip_x`: poruke 1/1/2,
+`izvod_opis` 1, vraćeno i izmjereno u bazi; `Health_Sasa` 3715 / 91 / 43 / 48 / 3624 = baza;
+nov leaf vidljiv odmah, `Medical` 92 pa opet 91). Usput T-S160b-1 vlasnička strana ✅ (Saša
+vlasnik na TEST-u vidi „Other...").
+**Arhivirano:** S160b, S162. **Nije na `main`.**
+
+### PENDING sekcija S162 (arhivirana S162)
+
+— P4 sitnice: View datetime, rename sluga u configu, kategorije iz keša (2026-10-05)
+
+Na `test-branch`, nije na `main`. Unit testovi `slugRenameConfig` (23, sabotaža ruši 5) i `categoryTree` (12); E2E lista/filtar/View/Edit 15/17 — dva pada postoje i na čistom S161 (E12-2 = TEST nema predložak Health; S107b-2 = natpis iz S152, popravljen u specu).
+
+**Detalji testova:** [tests/S162_tests.md](../../Claude-temp_R/test-sessions/archive/S162_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S162-1 | View `Datum naplate` = isti sat kao Edit (`12:00`, ne `14:00`) | ✅ S162 — Saša, TEST |
+| T-S162-2 | Rename `podtip` ⇒ poruke Overview 1 · Kolone liste 1 · Automations/comment template 2; `izvod_opis` ⇒ 1; vraćanje iste brojke | ✅ S162 — Saša, TEST: tri poruke 1/1/2, `izvod_opis` 1; oba predloška `{…/podtip_x}` u panelu; vraćeno — baza izmjerena: slugovi, `lock_slug`, `settle`, kolone i predložak opet `podtip`/`izvod_opis` |
+| T-S162-3 | Lista: Area / ne-leaf kategorija / nova kategorija odmah vidljiva; `categories` 1–2 zahtjeva po promjeni Aree | ✅ S162 — Saša, TEST `Health_Sasa`: 3715 / 91 / 43 / 48 / 3624 = baza; Filter by na leafu 10 atributa; nov leaf `S162 probe` + redak vidljiv odmah, `Medical` 92 |
+| T-S162-4 | Structure Delete leafa s eventom briše i P2 roditeljske evente (`chain_key`); kategorija nestaje bez „Some records could not be removed" — nađeno u T-S162-3 | ✅ S162 — automatski (`S162_delete_leaf_chain_parent.spec.ts`, sabotaža ruši) + Saša na TEST-u: `S162 probe` obrisan bez poruke, baza: kategorija i roditeljski event nestali, `Medical` opet 91 |
