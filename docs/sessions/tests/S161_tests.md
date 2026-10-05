@@ -8,7 +8,7 @@
 
 ---
 
-## T-S161-1 ⬜ Koka uvozi Visa file (PROD)
+## T-S161-1 ✅ Koka uvozi Visa file (PROD)
 
 File: `data-prep_data\Financije\visa_uvoz_2026-09_20261005_0926.xlsx`.
 
@@ -26,7 +26,7 @@ File: `data-prep_data\Financije\visa_uvoz_2026-09_20261005_0926.xlsx`.
    **Očekivano:** `RF naplata … ✓ već upisana`, `0 New · 0 Modify`, KONTROLA ✓ u cent.
    **Pad:** bilo što u `NOVI` ⇒ uvoz nije prošao cijeli; ne uvoziti ponovno, javiti Claudeu.
 
-## T-S161-2 ⬜ ZABA sidro s izvoda (PROD, nakon T-S161-1)
+## T-S161-2 ✅ ZABA sidro s izvoda (PROD, nakon T-S161-1)
 
 1. `Financije\run.bat promet_check.py` ⇒ **2026-09 ✓** (prije: −8,60 ✗).
 2. Pločica ZABA → „u banci" **11.714,47**, izvor **izvod**, datum s papira **01.10.2026.**

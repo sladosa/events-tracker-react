@@ -8366,3 +8366,33 @@ VLASTITU `Health_Sasa`, pa se Area bira po ID-u `040adf55…`): `Lab` = `… | O
 Dodaje je vlasnik Aree (sladosa)`, bez „Other...". ⚠ E2E guard je odbio run dok je na :5173 vrtio
 Sašin `dev:prod` — ispravno. **Nije deployano** (Saša: ne treba, zna da ne smije dodavati).
 Otvoreno: T-S160b-1 vlasnička strana („Other..." i dalje postoji).
+
+## S161 — mjesečni krug listopad: ZABA + Visa izvod 2026-09, Visa alat bez mjesečnih popisa (2026-10-05)
+
+Koka je poslala `ZABA_2026-09` i `PBZVISA_2026-09` (OneDrive inbox → razvrstač `--apply`, preimenovani
+i u njenoj mapi). Pločica ZABA `11.182,51`, Kokina banka `11.191,11`.
+**Nađeno:** `promet_check` 2026-09 = **−8,60**; sparivanje izvoda s bazom 27/27 u cent + jedan višak:
+23.09. `8,60` `Racun`/ZABA `Zdravlje/PP` (Koka, bez opisa). Par mu je bio na **Visa** izvodu —
+21.09. LJEKARNA ŠTIMAC `8,60` [kartica: SAŠA] (Saša: participacija za lijekove Nataši ⇒ `Razno/Pokloni`).
+ZABA izvod sam to nije mogao reći (vidi samo „višak"). Visa izvod (izdan 03.10., dospijeće 12.10.,
+40 stavki / 1.150,92): 29 spareno, duplikat Eurospin 29,63, Purex 31,36 ↔ 31,13, 7 rata starih
+planova, a dva plana iz appa (Konzum dostava 1/3, Maxi Konzum 1/6) alat **nije vidio** i dopisao bi ih.
+`visa_uvoz_izvoda.py` uz to nije radio na rujanskom izvodu bez izmjene (popisi `RUCNO`/`KLASA_POSTOJECI`
+za kolovoz) i tražio je da naplata već postoji, a izvod sad stiže prije nje.
+**Izvedeno (alat):** bez mjesečnih popisa; dva načina (bez datuma = prije naplate, `Datum naplate`
+= dospijeće, `Status` netaknut; s datumom = `Izvrsen` + redak naplate i naknade 0,17 na RF-u ako ih
+nema, a **stane** ako na RF-u ±3 dana stoji nešto slično); plan rata = isti dan kupnje i (trgovac u
+`Izvod opis` ILI bez žiga s istim `Broj rata`); blizak iznos (±2 dana, ≤15 %, jedini par; uz više
+kandidata jedini istog dana); „MOŽDA KRIVO MJESTO" (isti iznos ±3 dana na drugom `Izvor`u, bez žiga →
+`--premjesti=<id8>`); `DUPLIKAT?` → `--brisi=<id8>`; „potvrđen drugdje" vezan uz mjesec naplate, pa
+ponovni prolaz daje 0/0; ispis „OČEKIVANO U PREGLEDU UVOZA".
+**Mjereno:** kolovoški izvod (uvezen u S148) ponovno ⇒ 48/48, 0 New / 0 Modify, Σ u cent; guard
+naplate s datumom 08.09. ⇒ stao i pokazao `07.09. 1.218,38`. Saša platio Visu 05.10. (fotonalog) ⇒
+file 9 New · 33 Modify · 1 Delete, Koka uvezla točno to. Nakon uvoza: ZABA `11.191,11`, RF `878,09`
+(uz Sašine mirovine 1.057,31 + 101,78 i naknadu −11,00) = banke; ponovni prolaz 40/40, 0/0;
+`promet_check` 30 u cent (3 stara iz 2024.). Sidra s ekrana (pod Kokinim računom): ZABA 11.191,11 i
+RF 2.040,18 @ 04.10.
+**Odluka:** buduće rate 4 preostala stara Visa plana (T28) ostaju za „Visa u traku" (T2) — saldu ne
+pomažu, izvod ih donosi sam, a koštale bi Koku još jedan uvoz.
+**Docs:** `FINANCIJE_PROCES.md` §3 i §5 (Visa: platiti pa jednom s datumom; ZABA: prvo `promet_check`,
+pa samo sidro ako je ✓), §4 T13/T14/T28. Otvoreno: T-S161-3 (studeni bez izmjene alata).

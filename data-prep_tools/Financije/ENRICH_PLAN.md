@@ -1591,3 +1591,11 @@ Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.
 - **`fill_from_izvod.py`** — regex rate: `\x08RATA` → `\bRATA` (pokvareno od S126).
 - Ispisi kontrolnih alata identični prije/poslije (diff). Mapa podataka: korijen `izvodi/`,
   `izlazi/`, `_arhiva/` (`povijest_migracije/`, `izlazi/`, `Obsolete/`).
+
+### S161 (2026-10-05) — ZABA + Visa izvod 2026-09, `visa_uvoz_izvoda` bez mjesečnih popisa
+
+- ZABA 2026-09: −8,60 = Visa kupnja (Ljekarna Štimac 21.09.) upisana kao `Racun`/ZABA; premještena
+  Visa uvozom (`--premjesti`). Nakon uvoza ZABA i RF = banke, `promet_check` 2026-09 ✓.
+- `visa_uvoz_izvoda.py`: bez `RUCNO`/`KLASA_POSTOJECI`; prije/nakon naplate; RF naplata + naknada
+  ako ih nema (guard ±3 dana); planovi iz appa; blizak iznos; „krivo mjesto"; duplikat. Test:
+  `PBZVISA_2026-08` ponovno ⇒ 48/48, 0/0. Uvezeno 9 New / 33 Modify / 1 Delete.

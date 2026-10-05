@@ -37,8 +37,8 @@ ZABA −8,60 = Visa kupnja (Ljekarna Štimac) upisana na ZABA račun. Visa izvod
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S161-1 | Koka uvozi `visa_uvoz_2026-09_*.xlsx`: pregled **9 New · 33 Modify · 1 Delete**; ZABA pločica **11.191,11**; RF −270,00 ± uplate od 29.09.; ponovno pokretanje alata ⇒ 0/0 | ⬜ |
-| T-S161-2 | ZABA sidro 01.10.2026. = 11.714,47 (izvod) nakon T-S161-1 ⇒ saldo 11.191,11, Δ 0; `promet_check` 2026-09 ✓ | ⬜ |
+| T-S161-1 | Koka uvozi `visa_uvoz_2026-09_*.xlsx`: pregled **9 New · 33 Modify · 1 Delete**; ZABA pločica **11.191,11**; RF −270,00 ± uplate od 29.09.; ponovno pokretanje alata ⇒ 0/0 | ✅ S161 — uvoz 9/33/1; ZABA 11.191,11 i RF 878,09 (uz Sašine mirovine 1.057,31 + 101,78 i naknadu −11,00) = banka; ponovni prolaz 40/40 spareno, 0 New · 0 Modify; `promet_check` 2026-09 ✓ (30 u cent, 3 stara iz 2024.) |
+| T-S161-2 | ZABA sidro 01.10.2026. = 11.714,47 (izvod) nakon T-S161-1 ⇒ saldo 11.191,11, Δ 0; `promet_check` 2026-09 ✓ | ✅ S161 — upisana sidra S EKRANA umjesto izvoda (Koka, 05.10.): ZABA očitano 11.246,61 − povrat 55,50 ⇒ **11.191,11 @ 04.10.**, RF 878,09 − promet 05.10. ⇒ **2.040,18 @ 04.10.**; oba = app prije sidra. Izvodno sidro 01.10. nije upisano (neobavezno: samo kontrolna točka) |
 | T-S161-3 | Visa izvod 2026-10 kroz isti alat bez izmjene koda; rate planova iz appa sparene | ⬜ |
 
 ---

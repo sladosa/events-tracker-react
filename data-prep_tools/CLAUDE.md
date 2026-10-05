@@ -561,6 +561,11 @@ data-prep_tools/Financije/visa_uvoz_izvoda.py
                                    iz brojane povijesti) + ispravci postojecih (naplata,
                                    Izvrsen, Izvod opis). Rata se spari PO PLANU I BROJU,
                                    nikad po datumu. Kontrola Σ = izvod u cent.
+                                   S161: BEZ mjesecnih popisa -- radi svaki mjesec bez
+                                   izmjene. Bez datuma = prije naplate; s datumom doda
+                                   i RF naplatu + 0,17 (stane ako slicna vec postoji).
+                                   `--premjesti=<id8>` / `--brisi=<id8>` su ODLUKE, alat
+                                   ih samo predlaze. Ponovni prolaz mora dati 0/0.
 data-prep_tools/Financije/visa_popravak.py
                                    S148 jednokratni popisi (BRISI/ISPRAVI/ODLUKA/KOPIJE)
                                    + zajednicki pisac `pisi()` (e-mail AUTORA u kol. G,
