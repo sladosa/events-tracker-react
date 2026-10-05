@@ -153,7 +153,7 @@ dati „slaže se": rate kupovina od prije (Konzum, Allianz…) u bazi postoje s
 | --- | --- | --- | --- |
 | svaki dan | unos | oboje | mobitel |
 | ~2. | MC izvod (stiže prije naplate) | Saša → Koka uvozi | alat → Excel |
-| 5.–7. | Visa naplata s RF-a + Visa izvod | Saša (Koka uvozi) | alat → Excel |
+| ~3.–12. | Visa izvod (~3.) → Saša plati fotonalogom → alat → Koka uvozi | Saša (Koka uvozi) | alat → Excel |
 | 11. | Mastercard naplata | Koka | traka — ako je MC izvod uvezen, samo **Potvrdi** |
 | kad stigne | ZABA izvod | Saša → Koka uvozi | alat → Excel |
 | kad stigne | RF izvod | Saša | alat → Excel |
@@ -194,8 +194,8 @@ samo on zna.
 | T25 | Kokina OneDrive mapa `Izvodi` raste i nosi **generička imena**: MC stiže kao `Obavijest o učinjenim troškovima.pdf` — **svaki mjesec isto ime**, pa sljedeći izvod dobije `(1)` ili prepiše prethodni, a čovjek ne vidi što je što | ✅ **Odluka Saša S158: preimenovati u inboxu** u isto ime kao kod nas (`MC_2026-09.pdf` — izveden ručno 02.10.; razvrstač ga i dalje prepoznaje po sadržaju, „već imamo"). ✅ **Razvrstač to radi sam uz `--apply`** (S158; samo preimenovanje, nikad brisanje ni prepisivanje zauzetog imena — testirano u pješčaniku). Podmapa `Obrađeno`: još otvoreno |
 | T22 | **Rata modal dijeli ostatak kao Visa i za MC.** Banka: Visa ostatak na **prvoj** rati (28/28), MC na **zadnjoj**, rata zaokružena naviše (16/16). MC plan s nedjeljivim iznosom iz appa zato odstupa od banke za cent ⇒ traka „neusklađeno" | `splitRataAmounts` po `Izvor`u — u configu (`automations.rata`), ne u kodu; CLAUDE.md S145 ispravljen |
 | T12 | **Delta „Σ košara" zbraja SVE buduće naplate** (11.10. + 11.11. + 11.12. = 1.185,38) i uspoređuje ih s **jednom** naplatom ⇒ razlika 3,96 izgledala je kao sitnica, a stvarna je bila 329,76. Uz to `fill_from_izvod` javlja „list nema kontrolu košare" iako je ima | Σ po **jednom** dospijeću (najbližem), ili po dospijeću zasebno — **kod, deltaSheet** |
-| T13 | **Redak s malo drugačijim iznosom alat dopisuje kao NOV** ⇒ duplikat. Ovdje 4: tečaj (Audible 8,99 USD → 8,11 €, toner 3,45 → 3,49), cent ostatka rate (Konzum 15,36 → 15,37), i redak bez opisa (28,79 → FENGHUA 33,10, isti dan) | isti račun, isti dan ±2, jedini neupareni s obje strane ⇒ **ispravak postojećeg** (iznos s izvoda, opis i `Tip` naši) |
-| T14 | **Nitko ne traži duplikate u košari**: plan Plitvice upisan dvaput (Koka 07.09., Saša 12.09.), „Hlace i carape" dvaput (drugi dan, unatrag) | alat uz sparivanje prijavi **višak**: dva retka a jedan na izvodu; za plan rata ključ je izvorna kupovina (T15) |
+| T13 | **Redak s malo drugačijim iznosom alat dopisuje kao NOV** ⇒ duplikat. Ovdje 4: tečaj (Audible 8,99 USD → 8,11 €, toner 3,45 → 3,49), cent ostatka rate (Konzum 15,36 → 15,37), i redak bez opisa (28,79 → FENGHUA 33,10, isti dan) | isti račun, isti dan ±2, jedini neupareni s obje strane ⇒ **ispravak postojećeg** (iznos s izvoda, opis i `Tip` naši). ✅ **Visa: izvedeno S161** (`visa_uvoz_izvoda`, ±2 dana, ≤15 %). MC (`fill_from_izvod`) ostaje |
+| T14 | **Nitko ne traži duplikate u košari**: plan Plitvice upisan dvaput (Koka 07.09., Saša 12.09.), „Hlace i carape" dvaput (drugi dan, unatrag) | alat uz sparivanje prijavi **višak**: dva retka a jedan na izvodu; za plan rata ključ je izvorna kupovina (T15). ✅ **Visa: prijavljuje S161** (`DUPLIKAT?` → `--brisi=<id8>`). MC ostaje |
 | T15 | **Parser baca redak u zagradi** ispod rate: `(B080262578769884 12.09.26 135 EUR)` = **datum i ukupni iznos izvorne kupovine**. Iz njega se Plitvice riješio (kupljeno 12.09.) | čitati ga: jedan plan = jedna referenca; rata dobije **dan kupnje** (D1b — danas nove rate dobiju datum knjiženja 28.09.) |
 | T16 | **Rata ne nasljeđuje klasifikaciju od ranije rate istog plana** — `Tip` je ostao N/A za Spar 2/4, Konzum P-1270 2/6, Miele 2/3, iako su 1. rate klasificirane. Presedani gledaju samo opću povijest naziva, i to samo **prije** početka delta prozora | rata ⇒ `Tip`/`Podtip`/komentar iz prethodne rate istog plana; komentar u obliku `<Trgovac> n/N` |
 | T17 | **Kad povijest šuti, alat odustane** (GLOVO: 2× N/A + 1 kriv; `VPA PARKING`: nov naziv) | kratka lista pravila po riječi, vidljiva u kodu (kao `RF_RULES`): `PARKING`/`GARAZ` ⇒ Prijevoz / Taksi, Zet, Parking (Sašino pravilo); `GLOVO` ⇒ Domaćinstvo / Kave/jelo vani |
@@ -210,7 +210,7 @@ samo on zna.
 | --- | --- | --- |
 | T26 | **C1 izvodi: od inboxa do žiga** (§8.1) | razvrstač ✅ (S152, S158 i preimenovanje u inboxu); ostaje „jedna naredba obrade" = **T4** / `obradi_izvod.py` |
 | T27 | **C5 traka „Čeka potvrdu"** (§8.2) | faze 1–2 ✅ na PROD-u; ostaju **Visa u traku** (T2, ~05.11.) i „Gdje bi mogla biti razlika?" (T3, čeka prvu razliku) |
-| T28 | **Visa buduće rate** — 7 planova / 19 rata nisu generirane (Visa nema stalan dan naplate) | uz Visa izvod ~05.–07.10.: generirati s danom 5. kao procjenom; `visa_uvoz_izvoda` ih mora **spariti, ne dodati** (generirana rata nema `Izvod opis`) |
+| T28 | **Visa buduće rate** — 7 planova / 19 rata nisu generirane (Visa nema stalan dan naplate) | uz Visa izvod ~05.–07.10.: generirati s danom 5. kao procjenom; `visa_uvoz_izvoda` ih mora **spariti, ne dodati** (generirana rata nema `Izvod opis`). ✅ S161: alat sparuje plan iz appa (isti dan kupnje + `Broj rata` + `Rata br`) — izmjereno na Konzum 1/3 i Maxi Konzum 1/6. **Ostaje:** generirati buduće rate 7 starih planova |
 | T29 | **PBZVISA prolaz** — ispravljač `Datum naplate` za Visu (§8.5) | dobrim dijelom ga radi `visa_uvoz_izvoda` (S148) — preispitati što ostaje; imena `PBZVIZA_` riješena (T8) |
 | T30 | **`Izvod opis` za RF retke** (§8.4) | dio T4 (žig); razdvojiti po `Izvor`u — kartične retke potvrđuje PBZVISA, ne RF izvadak |
 | T31 | **`oznaci_iz_presedana.py --apply`** (§8.3) | srodno T16–T17 (alat klasificira sam); pokrenuti uz sitne ispravke |
@@ -250,16 +250,29 @@ oznaka „obrađeno" za čovjeka; alati ga vide i u korijenu.
 5. Jednom mjesečno nakon izvoda: `Financije\run.bat rate_alat.py --only b` — novi planovi rata
    (ako ih ima) → `--file <ime>` → uvoz. Ponovno pokretanje ne generira dvaput.
 
-**Visa (~5.–7.)**
-1. `Financije\run.bat visa_uvoz_izvoda.py PBZVISA_YYYY-MM.pdf <dan naplate na RF-u> --file`
-   → app Excel: ispravci (`Status → Izvrsen`, `Datum naplate` = stvarni dan, `Izvod opis`) + novi
-   retci. Kontrola **Σ = izvod u cent** — inače stati.
-2. Koki javiti očekivane brojke; Koka uveze.
-3. Naplata na RF-u: redak `Racun` · Sašin tekući RF · `Transfer / izmedju racuna` · Smjer `Isplata` ·
-   opis **`Visa`**. **Naknada `0,17`** zasebno, kao `Domaćinstvo / Bankovni troškovi`, opis
-   `Naknada` — **nikad** s opisom `Visa` (traka bi vidjela dvije naplate).
+**Visa (izvod ~3., dospijeće ~12.; Saša plaća ručno fotonalogom)** — izvedeno S161 (PBZVISA_2026-09)
+1. **Prvo platiti** (fotonalog s RF-a, iznos = „Novi saldo" s izvoda), pa **jednom** pokrenuti s danom plaćanja:
+   `Financije\run.bat visa_uvoz_izvoda.py PBZVISA_YYYY-MM.pdf <dan plaćanja> --file`
+   → Excel: ispravci (`Izvod opis`, `Datum naplate`, `Status → Izvrsen`, iznos s izvoda kad se
+   razlikuje), nove stavke i rate starih planova, **i redak naplate + naknada `0,17` na RF-u** ako ih
+   još nema (ako na RF-u ±3 dana stoji nešto slično — alat **stane**, da naplata ne uđe dvaput).
+   Bez datuma = *prije naplate* (`Datum naplate` = dospijeće, `Status` se ne dira) — samo ako se
+   s plaćanjem čeka; tada drugi prolaz s datumom nakon plaćanja.
+2. Pročitati ispis: **KONTROLA ✓ u cent** (inače stati) · **MOŽDA KRIVO MJESTO** (isti iznos upisan
+   na drugom računu/izvoru → `--premjesti=<id8>` ako je to ta kupovina) · **DUPLIKAT?** (→
+   `--brisi=<id8>`). Ponoviti s tim argumentima; `N/A` (narančasto) klasificirati u fileu.
+3. Koki javiti **OČEKIVANO U PREGLEDU UVOZA** (zadnji redak ispisa); Koka uveze. Kartični retci
+   prije RF sidra traže kvačicu „potvrđeno razdoblje" (lažna uzbuna, T21).
+4. Ponovno pokretanje nad uvezenim izvodom mora dati **0 New · 0 Modify** — to je provjera da je
+   uvoz prošao.
 
 **ZABA (kad stigne)**
+0. **Prvo `promet_check.py`.** Je li mjesec izvoda ✓ u cent ⇒ ništa ne fali ni ne viška: upisati
+   samo **sidro s izvoda** (pločica → izvor „izvod", broj i datum s papira) i gotovo — bez Delta
+   Exporta i bez uvoza. Ako je ✗: razliku prvo tražiti **na drugim izvodima istog mjeseca**
+   (S161: ZABA višak 8,60 = Visa kupnja upisana na ZABA račun — našao ju je tek Visa alat), a
+   **sidro tek kad je ✓** — sidro preko greške je trajno sakrije.
+   Koraci 1–3 samo kad na izvodu ima redaka kojih baza nema.
 1. Delta Export ZABA iz appa (prozor mora obuhvatiti mjesec izvoda).
 2. `Financije\run.bat fill_from_izvod.py <delta.xlsx> --zaba ZABA_YYYY-MM.pdf --zigosi`
    → `<delta>_filled.xlsx`. Skupna MC naplata iz trake je *„već na listu (preskočeno)"*; poruka

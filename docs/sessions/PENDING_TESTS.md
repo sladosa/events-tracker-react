@@ -29,6 +29,20 @@
 
 ---
 
+## S161 — mjesečni krug: ZABA + Visa izvod 2026-09, Visa alat bez mjesečnih popisa (2026-10-05)
+
+ZABA −8,60 = Visa kupnja (Ljekarna Štimac) upisana na ZABA račun. Visa izvod 1.150,92 plaćen 05.10.; `visa_uvoz_izvoda.py` radi svaki mjesec bez izmjene (test: kolovoški izvod ponovno ⇒ 48/48, 0 New / 0 Modify).
+
+**Detalji testova:** [tests/S161_tests.md](tests/S161_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S161-1 | Koka uvozi `visa_uvoz_2026-09_*.xlsx`: pregled **9 New · 33 Modify · 1 Delete**; ZABA pločica **11.191,11**; RF −270,00 ± uplate od 29.09.; ponovno pokretanje alata ⇒ 0/0 | ⬜ |
+| T-S161-2 | ZABA sidro 01.10.2026. = 11.714,47 (izvod) nakon T-S161-1 ⇒ saldo 11.191,11, Δ 0; `promet_check` 2026-09 ✓ | ⬜ |
+| T-S161-3 | Visa izvod 2026-10 kroz isti alat bez izmjene koda; rate planova iz appa sparene | ⬜ |
+
+---
+
 ## S160b — grantee ne dodaje opcije (2026-10-04)
 
 Na `test-branch`, nije na `main`. Grantee umjesto „Other..." vidi sivu stavku o vlasniku; neuspio upis opcije sada je poruka, ne samo konzola.
