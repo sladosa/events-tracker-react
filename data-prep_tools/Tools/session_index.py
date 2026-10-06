@@ -42,6 +42,25 @@ CONTAINER = re.compile(r'^#{1,2} (Arhiva|Arhivirano|✅ Siročad)')
 HEAD = re.compile(r'^(#{1,6}) ')
 DATE = re.compile(r'(\d{4}-\d{2}-\d{2})')
 
+# Povratni link ispod svakog naslova sesije (S162, Sašin zahtjev) -- isti obrazac
+# kao `↑ Sadrzaj` u claude_index.py. Sidro je JEDNORIJEČNO namjerno: to je oblik
+# koji u Obsidianu dokazano skače (`Sadrzaj`, `Backlog`, S139).
+# /!\ Čišćenje po OBLIKU, ne doslovnom stringu (S139: promjena oblika je inače
+#     ostavila DVA linka ispod svakog naslova).
+BACKLINK = '[↑ Dnevnik](#Dnevnik)'
+BACKLINK_RE = re.compile(r'^\[↑ Dnevnik[^\]]*\]\(<?#Dnevnik[^)]*>?\)$')
+
+
+def add_backlinks(lines):
+    """Idempotentno: makni stare, dodaj po jedan ispod svakog naslova sesije."""
+    out = []
+    for line in (l for l in lines if not BACKLINK_RE.match(l.strip())):
+        out.append(line)
+        m = SESSION.match(line)
+        if m and len(m.group(1)) >= 2:
+            out.append(BACKLINK)
+    return out
+
 
 def sort_key(sid):
     m = re.match(r'S(\d+)([a-z]*)', sid)
@@ -117,8 +136,8 @@ def build(lines, offset=0):
     out = [BEGIN, '', '## Zadnje sesije', '']
     for _, sid, d, uk, title, n, _h in rows[-RECENT:]:
         out.append('- [%s](<#%s>) · r. %d — %s' % (sid + (' (' + d + ')' if d else ''), title, n, esc(uk)))
-    out += ['', '## Dnevnik (kronološki)', '',
-            '> Generirano: `python data-prep_tools/Tools/session_index.py --write`. '
+    out += ['', '## Dnevnik', '',
+            '> Kronološki. Generirano: `python data-prep_tools/Tools/session_index.py --write`. '
             'Ukratko = redak `> Ukratko:` ispod naslova sesije, inače naslov.',
             '', '| sesija | datum | ukratko | r. |', '| --- | --- | --- | ---: |']
     for _, sid, d, uk, title, n, _h in rows:
@@ -142,6 +161,8 @@ if '--normalize' in sys.argv:
         sys.exit('/!\\ normalize: sesije prije %d, poslije %d, H1 naslova %d -- NISTA nije zapisano'
                  % (len(before), len(after), len(h1)))
     print('normalize: %d sesija nepromijenjeno, H1 ostao samo naslov filea' % len(after))
+
+lines = add_backlinks(lines)
 
 cut = next(i for i, l in enumerate(lines) if l.strip() == '---')
 offset = len(build(lines)) + 1
