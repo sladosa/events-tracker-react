@@ -824,6 +824,8 @@ Posljedica koju je Saša tražio: razmak `zadnji zapis … · prije N dana` sada
 ## 2.19 ⏸ OTVORENA NIT — što Overview daje pri ulasku dublje u podatke
 
 **Prekinuto zbog vremena 2026-08-17; nastavlja se razgovorom, ne kodom.**
+**→ Sašina strana (analitika) nastavljena 2026-10-06 u `docs/RAZREZ_SPEC.md`** (pločica
+`breakdown`, bucketi, prekidač kupnja/naplata).
 
 Polazište (Sašine slike): najviša razina je pločica `Stanje po računu`; klik na `3.403,74 €`
 radi drill u Activities **s ispravnim stanjem filtera** (`Racun = Kokin tekući ZABA`, raspon

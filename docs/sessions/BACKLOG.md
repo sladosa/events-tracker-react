@@ -21,6 +21,10 @@
 § S150). Nove i preformulirane stavke iz prolaza:
 
 - **💶 Financije — sav otvoreni posao je u [`docs/FINANCIJE_PROCES.md`](../FINANCIJE_PROCES.md) §4** (preseljeno S158 doslovno, puni tekst u §8: C1 izvodi, C5 traka i Visa u traku, PBZVISA prolaz, RF `Izvod opis`, `oznaci_iz_presedana`, zaostaci S125). Ovdje ostaje samo održavanje klasifikacije (K0–K5), jer je generično.
+- **⭐ „Kamo ide novac" — pločica razreza + bucketi (S163)** — `docs/RAZREZ_SPEC.md`.
+  Prijedlog prije koda; odluke R1–R9 čekaju Sašu. Redoslijed: R-F0 podaci (redak 50.000 €) →
+  **F5** (`AreaSettings` + sheet `Grupiranja`) → RPC `rpc_area_breakdown` → pločica → iznimka
+  na retku (Kućište). Time **F5 dobiva konkretnog korisnika** (v. „Roundtrip completeness" niže).
 - **Održavanje klasifikacije — spajanje/brisanje rijetkih i nekorištenih parova (S153)** —
   `docs/KLASIFIKACIJA_ODRZAVANJE_SPEC.md`. Klasifikacija raste iz rada („Other"), održavanje
   nije ugrađeno. Plan K0–K5: inventar (samo čita) → Kokina odluka → alat koji generira app

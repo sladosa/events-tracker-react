@@ -1,11 +1,32 @@
-> Pisano protiv commita **S162** na `test-branch` (zadnji commit = „S162: …").
+> Pisano protiv commita **S163** na `test-branch` (zadnji commit = „S163: …").
 > **`main` = `006374c` (deploy S160, 04.10.)**. Na `test-branch` čekaju deploy: S160b (grantee bez
 > „Other..."), S161 (samo Python + docs) i S162 (app: View datetime, rename sluga, lista iz keša,
-> Structure Delete). Nijedna migracija.
-> ⚠ Ako `git log` pokazuje noviji commit od S162, čitaj ovo kao **povijest**, ne kao stanje.
+> Structure Delete). S163 je samo dokumentacija. Nijedna migracija.
+> ⚠ Ako `git log` pokazuje noviji commit od S163, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S162 (2026-10-05)
+# Sljedeća sesija — nakon S163 (2026-10-06)
+
+> **Ukratko (S163):** razgovor o preostalom backlogu i novim funkcijama završio je specom za
+> pločicu „Kamo ide novac" — prihodi i troškovi po Tip/Podtip, prekidač po kupnji/naplati i Sašini
+> bucketi višeg reda — uz mjerenje koje je našlo prolaznih 50.000 € upisanih kao prihod i trošak;
+> ništa nije kodirano, odluke R1–R9 čekaju Sašu.
+
+## S163 u jednom pogledu
+
+- **`docs/RAZREZ_SPEC.md`** — Saša ga čita u miru i odlučuje **R1–R9** (§9). Ne kodirati dok ne
+  odluči. Ključno: R1 (50.000 € → `Transfer / Nena`, dva retka, app Excel za uvoz), R2 (raspored
+  68 parova u buckete, §4.3 — moj prijedlog, ❓ nesigurno), R3/R4 (Kuća/Popravci miješan par;
+  Kućište nema svoj par ⇒ iznimka na retku), R9 (redoslijed **F5 → RPC → pločica**).
+- Ostale ideje iz razgovora, **nisu razrađene**: „koliko će ostati" (saldo − otvorene košare),
+  generička pločica „Nadolazeće" (budući datumski atributi, bilo koja Area), detekcija pretplata,
+  „Pitaj podatke" u Helpu (Haiku + alati nad RPC-om, samo čitanje), linija Σ filtra u Activities.
+- Prijedlog redoslijeda iz S162 (održavanje Financija prije ~05.11., pa `trening.xlsm`, pa D3-F1)
+  **i dalje stoji**; razrez se uklapa nakon održavanja Financija ili umjesto D3.
+
+---
+
+# Ostalo nepromijenjeno od S162 (stanje u letu)
 
 > **Ukratko (S162):** popravljene četiri tihe greške — View je pokazivao datum naplate pomaknut
 > za dva sata, preimenovanje atributa ostavljalo je mrtve veze u automatici i predlošku komentara,
@@ -36,7 +57,8 @@
 3. **~03.11. Visa izvod za listopad** — platiš, javiš datum, ista naredba (T-S161-3).
 4. **Deploy** S160b + S161 + S162 kad ti odgovara (naredbe: CLAUDE.md § End of session 11). Ništa
    od toga ne traži Koku ni migraciju; Koka dobije bržu listu i ispravan View.
-5. **D3 odluke** — `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md` §7, šest pitanja s prijedlozima. Nisu hitne
+5. **R1–R9** (`docs/RAZREZ_SPEC.md` §9) — kad pročitaš u miru.
+6. **D3 odluke** — `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md` §7, šest pitanja s prijedlozima. Nisu hitne
    (v. dolje).
 
 ## Što je sljedeće — prijedlog iz S162 (nije odlučeno)

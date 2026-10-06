@@ -29,24 +29,24 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | ---: | --- | :---: |
 | 55 | [Strategic Position (2026-08-15)](<#Strategic Position (2026-08-15)>) |  |
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 115 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 128 | [Critical rules](<#Critical rules>) | X |
-| 1251 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1711 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1727 | [Key files](<#Key files>) |  |
-| 1841 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1861 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1883 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1909 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1949 | [Open bugs](<#Open bugs>) | ~ |
-| 2058 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2103 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2200 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2208 | [Backlog](<#Backlog>) | ~ |
-| 2212 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2220 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 129 | [Critical rules](<#Critical rules>) | X |
+| 1252 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1712 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1728 | [Key files](<#Key files>) |  |
+| 1842 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1862 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1884 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1910 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1950 | [Open bugs](<#Open bugs>) | ~ |
+| 2059 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2104 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2201 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2209 | [Backlog](<#Backlog>) | ~ |
+| 2213 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2221 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2384 redaka, 18 sekcija._
+_Ukupno 2385 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -84,6 +84,7 @@ podaci hrane i AI sloj.
 | `docs/sessions/BACKLOG.md`                | **Pri planiranju sesije** — backlog (preseljen S151) |
 | `docs/ARCHITECTURE_v1_6.md`               | Always — data model, P1/P2/P3, chain_key, session identity                       |
 | `docs/OVERVIEW_TAB_SPEC.md`               | **Overview tab / analitika** — model pločice, RPC, sidro salda, gdje živi konfiguracija |
+| `docs/RAZREZ_SPEC.md`                     | **„Kamo ide novac"** (prijedlog prije koda, S163) — pločica razreza prihoda/troškova, prekidač kupnja/naplata, **bucketi** (sheet `Grupiranja`, par → jedan bucket po grupiranju), redoslijed F5 → RPC → pločica; odluke R1–R9 čekaju Sašu |
 | `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` | **⚠ PROČITATI prije Faze 1** — dokaz modela salda nad 4.996 redaka, 3 zamke u mjerenju |
 | `docs/_archive/EXCEL_FORMAT_ANALYSIS_v2.md`        | Excel export/import work — **⚠ POVIJESNI ZAPIS, ne referenca** (izmjereno S139: doc 17 kolona A–Q, kod 23 A–W, i svako slovo od D nadalje je pomaknuto). Popis kolona ima **samo** `COLS` u `src/lib/structureExcel.ts` |
 | `sql/SQL_schema_V5_commented.sql`         | DB schema reference                                                              |
