@@ -163,6 +163,13 @@ if '--write' in sys.argv:
         check_links.report(quiet_when_clean=True)
     except ImportError:
         print('/!\\ check_links.py nije nadjen -- linkovi NISU provjereni.')
+
+    # S162: dnevnik sesija na vrhu DONE_HISTORY.md -- isti trenutak (kraj
+    #     sesije), pa ne ovisi o tome da se netko sjeti pokrenuti ga zasebno.
+    import os
+    import subprocess
+    subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                 'session_index.py'), '--write'])
 else:
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     print(index)

@@ -34,19 +34,19 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 1251 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
 | 1711 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
 | 1727 | [Key files](<#Key files>) |  |
-| 1836 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1856 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1878 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1904 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1944 | [Open bugs](<#Open bugs>) | ~ |
-| 2053 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2098 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2195 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2203 | [Backlog](<#Backlog>) | ~ |
-| 2207 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2215 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1841 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1861 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1883 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1909 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1949 | [Open bugs](<#Open bugs>) | ~ |
+| 2058 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2103 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2200 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2208 | [Backlog](<#Backlog>) | ~ |
+| 2212 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2220 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2373 redaka, 18 sekcija._
+_Ukupno 2384 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1756,6 +1756,11 @@ data-prep_tools/Tools/check_links.py
                                    se vratila dvaput nakon rucnog ciscenja (S139, S146).
                                    Zovu ga i `audit_tests.py` i `claude_index.py --write`
                                    => ne ovisi o tome da ga se netko sjeti pokrenuti.
+data-prep_tools/Tools/session_index.py
+                                   „Zadnje sesije" + kronoloski dnevnik na vrhu DONE_HISTORY
+                                   (S162) iz naslova sesija i redaka `> Ukratko:`. Generator,
+                                   ne rucni popis. `--normalize` = jednokratno izjednacavanje
+                                   razina naslova (broji sesije prije/poslije).
 data-prep_tools/Tools/prod_to_test.py
                                    `Financije_all` PROD -> TEST (S157): eventi, atributi,
                                    sidra, `validation_rules` po slugu. PROD samo cita;
@@ -2305,6 +2310,12 @@ does not block build. Ignore it.
 5. **`docs/sessions/DONE_HISTORY.md`** — kronologija sesije. Vlastiti korak, ne podrečenica
    uz CLAUDE.md: kao podrečenica je preskočen za S107y i S107z. Ažuriraj i raspon sesija
    u zaglavlju CLAUDE.md-a (`> Povijest po sesijama…`) da se zaostajanje vidi odmah.
+   - **Naslov sesije je `## Sxxx — … (YYYY-MM-DD)`, BEZ dvotočke** (lomi sidro u Obsidianu), a
+     podsekcije `###`. Do S162 su S110–S135 bili `#`, pa je Obsidian sve od S136 sklapao *unutar*
+     „S135" — izgledalo je kao da povijest staje.
+   - **Odmah ispod naslova: `> Ukratko: <jedna rečenica>`** — Sašin dnevnik (S162). Ista rečenica
+     ide i u `NEXT_SESSION_PROMPT.md`. „Zadnje sesije" + kronološki dnevnik na vrhu filea generira
+     `session_index.py --write` (zove ga i `claude_index.py --write`); bez retka javi upozorenje.
 6. **`NEXT_SESSION_PROMPT.md` — prepiši ga, uvijek, bez da Saša traži.** Ako izostane, sljedeća
    sesija dobije handoff **pretprošle** sesije i otvara pitanja koja su već odgovorena. Pravila:
    - **prepiši cijeli file, ne dopisuj** — stari sadržaj je već u `DONE_HISTORY.md`

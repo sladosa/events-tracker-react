@@ -7,6 +7,11 @@
 
 # Sljedeća sesija — nakon S162 (2026-10-05)
 
+> **Ukratko (S162):** popravljene četiri tihe greške — View je pokazivao datum naplate pomaknut
+> za dva sata, preimenovanje atributa ostavljalo je mrtve veze u automatici i predlošku komentara,
+> lista je radila tri nepotrebna kruga do baze, a brisanje kategorije s unosom zapinjalo je na
+> skrivenom roditeljskom zapisu; sve potvrđeno testovima na TEST-u.
+
 ---
 
 # DIO 1 — netehnički (za Sašu)
