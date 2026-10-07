@@ -2,6 +2,7 @@
 
 > **Status: PRIJEDLOG, ništa nije izgrađeno.** Nastavak otvorene niti `OVERVIEW_TAB_SPEC.md`
 > §2.19 („Saša — analitika: koliko je potrošeno po Tip/Podtip"). Nastao razgovorom 2026-10-06.
+> **Detaljni tehnički spec R-F2/R-F3: DIO 2 (§10–§16, S164).**
 > Odluke (§9): S164 odlučeno R1–R8, R10–R15 (sve); **R3 čeka Kokin korak** (§4.4); ono što je u razgovoru već dogovoreno označeno je ✅.
 > **S164 (07.10.):** R1 izveden na PROD-u; TEST ponovo = PROD (`prod_to_test.py`); dodane odluke
 > R10–R15 iz skice; brojke u §8 ponovo izmjerene (TEST = PROD od **07.10.2026.**), razdoblje
@@ -63,7 +64,7 @@ Kuća investicije      ███             420,00  ›
 nesvrstano  ⓘ         █               110,00  ›
 ```
 
-Na mobitelu nema Plotlyja (4,9 MB) i ne gubi se ništa.
+Na mobitelu se krug ne crta (lista nosi sve brojke). ⚠ S164: Plotly je ionako u paketu, pa se štedi crtanje, ne preuzimanje (§12.2).
 
 ## 3. Što se broji — pravila
 
@@ -368,90 +369,257 @@ ostatak; kandidat za brisanje (`KLASIFIKACIJA_ODRZAVANJE_SPEC.md`).
 
 ---
 
-# DIO 2 — tehnički (za Claudea)
+# DIO 2 — tehnički (za Claudea) · detaljni spec R-F2 + R-F3 (S164)
+
+> Zamjenjuje skicu §10–§12 iz S163. Sve odluke iz §9 su ugrađene. Redoslijed je **R14**: RPC i
+> pločica **prije** F5; config do F5 upisuje alat (§13). Brojke u ovom dijelu izmjerene su na TEST-u
+> (= PROD od 07.10. + R3 osiguranje kuće).
 
 ## 10. Config
 
-Pločica — novi član rječnika `DashboardWidget` (`src/types/database.ts`; rječnik je u kodu
-namjerno, §2.15):
+### 10.1 Pločica — `areas.settings.dashboard.widgets[]`, novi član rječnika
+
+`src/types/database.ts` (rječnik je u kodu namjerno, OVERVIEW §2.15):
 
 ```ts
 export interface BreakdownWidget {
   type: 'breakdown';
   title: string;
-  /** Razine ispod bucketa, npr. ['tip', 'podtip']. */
+  /** Razine ispod bucketa, od vrha: ['tip', 'podtip']. */
   levels: string[];
-  plus: string;            // 'uplata'
-  minus: string;           // 'isplata'
-  /** Strana „Prihodi": uvjet koji redak čini prihodom. */
-  income: WidgetFilter;    // { slug: 'tip', op: 'in', values: ['Prihodi'] }
-  /** Izvan razreza, ali iznos se prikazuje (Transfer). */
-  outside?: WidgetFilter[];
-  /** Vrijednosti koje znače „nerazvrstano" (N/A); prazno se uvijek tako broji. */
-  unclassified?: string[];
-  /** Osi datuma; prva je zadana. Bez drugog člana nema prekidača. */
-  date_axes?: Array<{ label: string; slug: string | null }>; // null = event_date
-  /** Korekcijski retci (gotovina): Σ(add) − Σ(subtract), kao vlastiti bucket. */
+  plus: string;                 // 'uplata'
+  minus: string;                // 'isplata'
+  /** Redak je PRIHOD kad prolazi ovaj uvjet. slug ∈ levels. */
+  income: WidgetFilter;         // { slug: 'tip', op: 'in', values: ['Prihodi'] }
+  /** Izvan razreza; iznos se ispisuje u podnožju. slug ∈ levels. */
+  outside?: WidgetFilter[];     // [{ slug: 'tip', op: 'in', values: ['Transfer'] }]
+  /** Vrijednosti levels[0] koje znače „nerazvrstano" (R10: kriška UNUTAR Izašlo). Prazno uvijek. */
+  unclassified?: string[];      // ['N/A']
+  /** Osi datuma; prva je zadana (R7). slug null = event_date. Jedan član ⇒ nema prekidača. */
+  date_axes?: Array<{ label: string; slug: string | null }>;
+  /** Korekcijski retci troškova: Σneto(add) − Σneto(subtract). */
   adjustments?: Array<{ label: string; add: WidgetFilter[]; subtract: WidgetFilter[] }>;
-  /** Imena grupiranja iz `areas.settings.groupings` koja pločica nudi. */
-  groupings?: string[];
+  /** Ime grupiranja iz `areas.settings.groupings` (R5: jedno). Bez njega Tip → Podtip. */
+  grouping?: string;
   unit?: string;
 }
+export type DashboardWidget = BalanceByGroupWidget | BreakdownWidget;
 ```
 
-Grupiranja — **zaseban ključ** `areas.settings.groupings` (ne unutar pločice: više pločica,
-i budući filtar, smiju koristiti isto grupiranje):
+**Dimenzije RPC-a** = `levels` ∪ svi slugovi iz `income`, `outside`, `adjustments` (Financije:
+`['tip', 'podtip', 'izvorplacanja']`). Jedan poziv vraća retke po kombinaciji dimenzija (~120), a
+**sve ostalo računa model u pregledniku** nad tim retcima: strana prihod/trošak, izvan razreza,
+korekcije, bucketi. Nema drugog poziva za gotovinu.
+
+Filtri u `add`/`subtract`/`income`/`outside` se nad redom rezultata primjenjuju **kao AND**, s istom
+semantikom kao `p_filters` u 035 (`in` = vrijednost postoji i u popisu; `not_in` = nema je u popisu,
+prazno prolazi). Slug izvan dimenzija = **greška configa** (pločica je ispiše, ne šuti).
+
+Neto se svugdje računa kao **`minus − plus`** (trošak pozitivan). Prihod: `plus − minus`.
+
+### 10.2 Grupiranja — `areas.settings.groupings` (zaseban ključ)
+
+Zaseban, ne unutar pločice: istu tablicu smiju čitati i druge pločice i budući filtar.
 
 ```ts
-type Groupings = Record<string /*grupiranje*/, {
-  levels: [string, string];                     // ['tip', 'podtip'] — što parovi znače
-  rows: Array<{ bucket: string; values: [string, string] }>; // values[1] može biti '*'
-  row_override?: string;                        // faza R-F4: slug atributa „Namjena"
-}>;
+export interface Grouping {
+  levels: [string, string];                    // ['tip', 'podtip'] — što par znači
+  rows: Array<
+    | { bucket: string; values: [string, string] }   // values[1] = '*' ⇒ cijeli Tip
+    | { bucket: string; adjustment: string }         // korekcijski redak ide u bucket (gotovina → Mjesečni)
+  >;
+}
+// AreaSettings: groupings?: Record<string, Grouping>
 ```
 
-⚠ **Ključevi su slugovi i vrijednosti opcija** — rename sluga mora povući fixup
-(`fixupAutomationsSlug` / `dashboardConfig` obitelj, S162), inače bucketi tiho pokazuju u
-prazno. **Rename opcije** (Podtip) lomi par isto tako — Structure uvoz mora javiti par u
-`Grupiranja` koji pokazuje na opciju koje više nema (isti razred kao K-1, S160).
+Razrješavanje (specifičnost, ne redoslijed — §4.2): **par > `Tip / *` > „nesvrstano"**. Isti par
+dvaput u istom grupiranju (ili isti `Tip / *` dvaput) = **greška**: model je vrati, pločica je
+ispiše crveno i crta **bez bucketa** (Tip → Podtip) — nikad ne zbraja dvaput.
+Korekcija bez retka u grupiranju ide na vrh kao vlastita kriška. N/A je uvijek vlastita kriška
+„nerazvrstano (N/A)" (R10), i **ne** ide u buckete.
 
-## 11. RPC
+### 10.3 Financije_all — točan config (piše ga `set_breakdown.py`, §13)
 
-Novi `rpc_area_breakdown` (stari `rpc_area_group_agg` ostaje za saldo — drukčija semantika
-`p_from`, v. dolje):
-
+```json
+{ "type": "breakdown", "title": "Kamo ide novac", "unit": "€",
+  "levels": ["tip", "podtip"], "plus": "uplata", "minus": "isplata",
+  "income":  { "slug": "tip", "op": "in", "values": ["Prihodi"] },
+  "outside": [{ "slug": "tip", "op": "in", "values": ["Transfer"] }],
+  "unclassified": ["N/A"],
+  "date_axes": [{ "label": "po kupnji", "slug": null },
+                { "label": "po naplati", "slug": "datum_naplate" }],
+  "adjustments": [{ "label": "gotovina, nerazvrstano",
+     "add":      [{ "slug": "tip", "op": "in", "values": ["Transfer"] },
+                  { "slug": "podtip", "op": "in", "values": ["cash - bankomat"] }],
+     "subtract": [{ "slug": "izvorplacanja", "op": "in", "values": ["Cash"] },
+                  { "slug": "tip", "op": "not_in", "values": ["Transfer"] }] }],
+  "grouping": "Vrsta troška" }
 ```
+
+`groupings["Vrsta troška"]` = raspored iz §4.3 („Sašin raspored") + `Kuća/Osiguranje` → Povremeno
+nužno + `{ bucket: "Mjesečni troškovi", adjustment: "gotovina, nerazvrstano" }`. Popis parova živi
+**samo** u `set_breakdown.py` (jedan izvor); spec ga ne prepisuje.
+
+⚠ **Gotovina „add" broji Transfer retke** koje razrez inače drži vani — namjerno: podizanje je
+jedini trag gotovinske potrošnje (CLAUDE.md § Overview, S121). Podnožje „izvan razreza: Transfer"
+i dalje pokazuje puni Transfer iznos; korekcija ga ne umanjuje (to su dva različita pitanja).
+
+## 11. RPC — `sql/056_area_breakdown.sql`
+
+```sql
 rpc_area_breakdown(
-  p_area_id uuid, p_group_slugs text[],     -- ['tip','podtip'] (+ override u R-F4)
-  p_plus_slug text, p_minus_slug text, p_filters jsonb,
-  p_date_slug text,                         -- NULL = event_date; inače value_datetime::date
-  p_date_from date, p_date_to date          -- OBA UKLJUČIVA
-) RETURNS TABLE (g text[], plus_sum numeric, minus_sum numeric, n int, n_no_date int)
+  p_area_id     uuid,
+  p_group_slugs text[],                 -- 1..4 dimenzije, redoslijed se čuva u g[]
+  p_plus_slug   text,
+  p_minus_slug  text,
+  p_filters     jsonb DEFAULT '[]',     -- ista semantika kao 035 (zasad se ne koristi)
+  p_date_slug   text  DEFAULT NULL,     -- NULL = event_date; inače datetime atribut
+  p_date_from   date  DEFAULT NULL,     -- UKLJUČIVO
+  p_date_to     date  DEFAULT NULL      -- UKLJUČIVO
+) RETURNS TABLE (g text[], plus_sum numeric, minus_sum numeric, n integer, n_no_date integer)
 ```
 
-- `SECURITY DEFINER` + `app_can_read_area` (isto kao 035); `app_assert_slugs` proširiti na niz.
-- **P2 roditelji se nikad ne zbrajaju** (leaf-only, kao `area_agg_rows`).
-- ⚠ **Granice su obje UKLJUČIVE i to piše u imenu** (`p_date_from`). `rpc_area_group_agg.p_from`
-  je **isključiv** (S144 zamka: ime se čita kao „od", pa provjera s danom poslije ispusti dan).
-  Razdoblje iz filtra je uključivo s obje strane; novi RPC ne smije naslijediti tu zamku.
-- `datetime` je **zidni sat** (S162): `value_datetime::date` daje dan koji je upisan, jer baza
-  drži iste znamenke uz `+00:00`. Ne pretvarati zonu.
-- U osi `Datum naplate` redak **bez** tog atributa se ne gubi tiho: `n_no_date` ⇒ pločica
-  ispiše „N redaka bez datuma naplate".
-- Mapiranje parova u buckete radi **preglednik** nad rezultatom (≤ ~100 redaka) — agregacija
-  ostaje u Postgresu (pravilo iz CLAUDE.md § Što aplikacija zna raditi), samo preslikavanje
-  imena ne. Zato bucketi ne traže migraciju.
+- `SECURITY DEFINER`, `SET search_path = public, pg_temp`, prvo `app_can_read_area` (42501), pa
+  `app_assert_slugs(area, NULL, plus, minus, filters)` + svaki `p_group_slugs[i]` kroz
+  `app_slug_count > 0` + `p_date_slug` mora postojati **kao `datetime`** (novi uvjet, 22023).
+  Prazan ili > 4 člana niza ⇒ 22023.
+- **Leaf-only + `chain_key IS NULL`** — isti dvostruki čuvar kao `area_agg_rows` (P2 se ne zbraja).
+- Vlastiti izvor redaka (ne `area_agg_rows`: ona zna jednu dimenziju i nema datumsku os). Oblik je
+  izmjereni prototip: po jedan `LATERAL`/podupit po dimenziji, ključ `attribute_definition_id`
+  (nikad `ILIKE`, BUG-S103), `g = ARRAY(... ORDER BY ordinality)`.
+- **Datum atributa: `(value_datetime AT TIME ZONE 'UTC')::date`**, ne goli `::date`. Atribut je
+  zidni sat spremljen s `+00:00` (S162); goli cast ovisi o `TimeZone` sesije i u zoni ≠ UTC
+  pomakne ponoćne vrijednosti na dan prije.
+- **Obje granice UKLJUČIVE i to piše u imenu** (`p_date_from`). `rpc_area_group_agg.p_from` je
+  isključiv (S144 zamka) — novi RPC je ne nasljeđuje.
+- Redak bez datuma u osi atributa se ne gubi tiho: ne ulazi u sume, ali se broji u `n_no_date`
+  svoje grupe ⇒ pločica ispiše „N redaka bez datuma naplate". (Danas 0.)
+- Grupa koju čine samo retci bez datuma vraća se s nulama i `n_no_date > 0` — inače bi broj nestao.
+- Grants: `REVOKE ALL ... FROM PUBLIC, anon`; `GRANT EXECUTE ... TO authenticated`.
 
-## 12. Invarijante (testovi)
+**Izmjereno na prototipu (TEST, 07.10., `BEGIN READ ONLY`, ništa nije stvoreno):** dvije dimenzije
+`tip`, `podtip`, 10/2025–09/2026: **63 grupe, ~35 ms** na serveru, **obje osi**. Zbrojevi se s
+Python modelom (§8.6) slažu **u cent**: ušlo 46.972,48 · Tip neto 34.186,21 / 32.419,46 · N/A
+2.110,80 / 3.054,84 (kupnja / naplata). Treća dimenzija (`izvorplacanja`) dodaje jedan podupit.
 
-1. **Σ bucketa = Σ Tipova = ukupno** (uz nesvrstano, bez `outside`) — za svako grupiranje,
-   obje osi datuma. Sabotaža: par u dva bucketa ⇒ test pada.
-2. Uvoz `Grupiranja` **staje** na isti par dvaput u istom grupiranju (§4.2).
-3. Drill na Podtip daje u Activities **isti** zbroj kao ćelija pločice (os „po kupnji").
-   ⚠ U osi „po naplati" drill ne može izraziti Podtip **i** raspon `Datum naplate` (filtar nosi
-   jedan uvjet) ⇒ drill se u toj osi **ne nudi**, uz objašnjenje — drill koji vodi na druge
-   retke gori je od izostanka.
-4. Gotovinski korekcijski redak: Σ podizanja − Σ Cash troškova, izmjereno protiv Python
-   brojanja na istom razdoblju.
-5. Mobilni i desktop prikaz čitaju **isti** izračunati model (jedna funkcija), crtaju dva
-   crteža — test nad modelom, ne nad crtežom.
+## 12. Preglednik
+
+| file | što |
+| --- | --- |
+| `src/types/database.ts` | `BreakdownWidget`, `Grouping`, `AreaSettings.groupings`, unija `DashboardWidget` |
+| `src/lib/overviewApi.ts` | `fetchBreakdown()` — `.rpc('rpc_area_breakdown')`, greška se baca s porukom (kao `fetchGroupAgg`), `withRetry` |
+| **`src/lib/breakdownModel.ts`** | **čista funkcija, jedini izračun** (§12.1). Desktop i mobitel čitaju isti model |
+| `src/components/overview/BreakdownTile.tsx` | zaglavlje, sažetak, prekidači, lista, podnožje; krug samo `≥ sm` |
+| `src/components/overview/BreakdownSunburst.tsx` | `react-plotly` sunburst iz `toSunburst(model)` |
+| `src/components/overview/OverviewTab.tsx` | `case 'breakdown'` |
+| `src/lib/dashboardConfig.ts` | `fixupDashboardSlug` zna i breakdown slugove (`levels`, `plus`, `minus`, filtri, `date_axes`) + `groupings[*].levels` |
+| `docs/help/overview.md` | odlomak o pločici (Kokin jezik: hrvatski) |
+
+### 12.1 `breakdownModel.ts`
+
+```ts
+buildBreakdown(rows: BreakdownRow[], w: BreakdownWidget, grouping?: Grouping): BreakdownModel
+// BreakdownModel = { totals: {in, out, diff}, income: Node, expense: Node,
+//                    outside: {plus, minus}, nNoDate, errors: string[] }
+// Node = { name, value, n, children: Node[], meta: { pair?, unsure?, special?, drill? } }
+toSunburst(node): { ids, labels, parents, values, notDrawn: Array<{path, value}> }
+```
+
+- Novac **u lipama** (cijeli brojevi) kroz cijeli model, kao `splitRataAmounts` — zbroj stotinjak
+  decimala nosi grešku binarnog zapisa, a invarijanta se uspoređuje u cent.
+- Strana troška: redak koji nije `income`, nije `outside`, nije `unclassified` ⇒ par `levels`.
+  Povrat (uplata pod Tipom troška) **neto** umanjuje svoj par (§3). Negativan par/Tip/bucket ostaje
+  negativan (R8).
+- `toSunburst` crta **samo pozitivne listove**, roditelj = zbroj nacrtane djece; sve izostavljeno
+  ide u `notDrawn` i ispisuje se ispod kruga (R11). Lista nosi neto.
+- Redoslijed djece: po iznosu silazno; posebne kriške (N/A, nesvrstano) zadnje.
+
+### 12.2 `BreakdownTile.tsx`
+
+- **Razdoblje = filtar** (`filter.dateFrom`/`dateTo`, uključivo). Zaglavlje ga ispisuje
+  (`01.09.–30.09.2026. · iz filtra`). „All time" daje raspon do zadnjeg retka (i budućih `Planiran`
+  rata, 2027.) — za „po kupnji" je to ispravno (§3: rate u mjesecu kupnje).
+- Prekidači: **Troškovi | Prihodi** (zadano Troškovi), os datuma (samo kad `date_axes.length > 1`),
+  ime grupiranja kao oznaka (izbornik tek kad ih bude više, R5).
+- **Sklopiva** (§5): klik na naslov; stanje po pregledniku pod
+  `dbScopedKey('ui:tileCollapsed:' + areaId + ':' + title)` (S140: ključ nosi bazu). Zadano otvoreno.
+- Krug samo kad `matchMedia('(min-width: 640px)')`. ⚠ **Ispravak §2.2:** Plotly je ionako u paketu
+  (statički import u `StructureSunburstView`, rute nisu lazy — CLAUDE.md S133), dakle mobitel ne
+  štedi preuzimanje nego samo **crtanje i čitljivost**. Lazy učitavanje ostaje stavka backloga.
+- Stanja: „Računam…", greška RPC-a (crveno, s porukom), greška configa (crveno, imenuje ključ),
+  prazno („Nema zapisa u razdoblju").
+- `loaded`/`ready` se pamti **za koji ulaz** (`loadedFor`, S145/S159), ključ ulaza = area + raspon + os.
+
+### 12.3 Drill (§6, invarijanta 3)
+
+Filtar nosi **jedan** uvjet ⇒ drill postoji samo gdje jedan uvjet točno opisuje ćeliju:
+
+| redak | drill |
+| --- | --- |
+| Tip | `tip = X` (raspon iz filtra ostaje) |
+| Podtip **jedinstven** među Tipovima | `podtip = X` |
+| Podtip **dvoznačan** — danas `gorivo`, `registracija`, `popravci` (oba auta), `Koka` (Projekti i Prihodi) | drill na **Tip** + toast „filtar nosi jedan uvjet — prikazujem cijeli Tip auto C5" |
+| bucket, N/A, gotovina, nesvrstano | nema drilla (više uvjeta) |
+| bilo što u osi „po naplati" | nema drilla — filtar ne zna raspon `Datuma naplate` (ikona + objašnjenje) |
+
+Dvoznačnost se računa iz `validation_rules` (Podtip u > 1 popisa), ne iz koda.
+
+## 13. Alat za config — `data-prep_tools/Financije/set_breakdown.py`
+
+Obrazac `set_list_columns.py`: **merge, ne overwrite** (`settings` nosi `dashboard`, `automations`,
+`list_columns`, `export_profiles`…).
+- Piše **pločicu** (zamjenjuje widget istog `type` + `title`, ostale ne dira) i
+  **`groupings["Vrsta troška"]`**. Popis bucketa je u alatu kao Python konstanta — jedini izvor.
+- Provjere prije upisa (alat **staje**): slugovi postoje; isti par dvaput; par čiji Tip/Podtip nije u
+  `validation_rules` (pokazuje u prazno, K-1 razred); korekcija u retku grupiranja koje nema u pločici.
+- Ispis: parovi iz **podataka** (zadnjih 12 mj) koji nisu ni u jednom bucketu ⇒ „nesvrstano" — mora
+  biti prazno za Financije danas.
+- Zadano dry run (ispis razlike starog i novog JSON-a), `--apply`; PROD traži i `--yes-prod`.
+- ⚠ **Na PROD tek POSLIJE deploya.** Stari bundle za nepoznat tip crta žuti okvir „Nepoznat tip
+  pločice" (`OverviewTab` `default` grana) — Koka bi ga vidjela iznad salda.
+
+## 14. Testovi
+
+**Unit — `src/lib/__tests__/breakdownModel.test.mjs`** (obrazac `rataAmounts.test.mjs`, s protuprovjerom):
+1. **Σ bucketa = Σ Tipova = Izašlo** u lipu, uz grupiranje i bez njega, obje strane.
+   Sabotaža: model koji par u dva bucketa broji dvaput ⇒ test pada.
+2. Isti par dvaput u grupiranju ⇒ `errors` neprazan i model **bez** bucketa.
+3. Specifičnost: par > `Tip / *` > nesvrstano.
+4. Korekcija s retkom u grupiranju ide **u** bucket; bez retka na vrh.
+5. Negativan list nije u `toSunburst`, jest u `notDrawn`, i jest u `totals.out`.
+6. Povrat umanjuje svoj Tip; Tip smije biti negativan.
+7. `outside` nije ni u prihodu ni u trošku, a jest u podnožju.
+8. Drill tablica §12.3 (dvoznačan Podtip ⇒ Tip; os naplate ⇒ ništa).
+`slugRenameConfig.test.mjs`: rename `podtip` ⇒ breakdown `levels` i `groupings[*].levels` prate.
+
+**SQL protiv Pythona — `data-prep_tools/Financije/verify_breakdown.py`:** poziva RPC service
+ključem za 10/2025–09/2026 i rujan, obje osi, i uspoređuje svaku grupu s Python modelom (logika
+skice) — **mora biti u cent**. Pokreće se na TEST-u poslije 056, i na PROD-u poslije Sašinog 056.
+
+**Ručni (S16x_tests):** pločica na TEST-u, laptop i mobitel širina; brojke = §4.3 tablica (12 mj,
+po kupnji / naplati); drill Tip i Podtip daje isti zbroj kao ćelija; sklapanje preživi F5; Overview
+bez configa (druga Area) se ne mijenja; grantee (Saša na PROD-u) vidi pločicu.
+
+## 15. Redoslijed izvedbe
+
+| korak | tko | baza |
+| --- | --- | --- |
+| 1. `sql/056_area_breakdown.sql` + smoke upit | Claude | TEST (psql, `SUPABASE_DB_URL`) |
+| 2. `verify_breakdown.py` ⇒ u cent | Claude | TEST |
+| 3. model + unit testovi (sabotaže) → pločica → OverviewTab → fixup | Claude | — |
+| 4. `set_breakdown.py --apply` | Claude | TEST |
+| 5. ručni testovi (`npm run dev`) | Saša | TEST |
+| 6. 056 u SQL editoru, `verify_breakdown.py` | Saša | PROD |
+| 7. deploy (merge na `main`) | Saša | — |
+| 8. `set_breakdown.py --apply --yes-prod`, `Ctrl+Shift+R` | Saša | PROD |
+
+Procjena: jedna sesija za 1–4. Koraci 6–8 su jedan blok naredbi.
+
+## 16. Otvoreno (tehnički, ne traži odluku prije koda)
+
+- **F5** (Structure Excel: `AreaSettings` + `Grupiranja`) — poslije, kad se raspored ustali (R14).
+  Do tada je raspored u `set_breakdown.py`; F5 ga mora moći **izvesti**, ne samo uvesti.
+- **Rename opcije** (Podtip) lomi par u grupiranju tiho → do F5 to hvata `set_breakdown.py` pri
+  sljedećem pokretanju; poslije F5 uvoz Structure. Rename **sluga** pokriva fixup (§12).
+- Drugo grupiranje „Čiji trošak" + gorivo po kilometraži (R5, §6) — config i model ga već nose
+  (`grouping` je ime), treba samo izbornik.
