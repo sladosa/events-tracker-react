@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S162).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S164).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 129 | [Critical rules](<#Critical rules>) | X |
-| 1252 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1712 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1728 | [Key files](<#Key files>) |  |
-| 1842 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1862 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1884 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1910 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1950 | [Open bugs](<#Open bugs>) | ~ |
-| 2059 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2104 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2201 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2209 | [Backlog](<#Backlog>) | ~ |
-| 2213 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2221 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1253 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1713 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1729 | [Key files](<#Key files>) |  |
+| 1843 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1863 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1885 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1911 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1951 | [Open bugs](<#Open bugs>) | ~ |
+| 2060 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2105 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2205 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2213 | [Backlog](<#Backlog>) | ~ |
+| 2217 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2225 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2385 redaka, 18 sekcija._
+_Ukupno 2389 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -84,7 +84,7 @@ podaci hrane i AI sloj.
 | `docs/sessions/BACKLOG.md`                | **Pri planiranju sesije** — backlog (preseljen S151) |
 | `docs/ARCHITECTURE_v1_6.md`               | Always — data model, P1/P2/P3, chain_key, session identity                       |
 | `docs/OVERVIEW_TAB_SPEC.md`               | **Overview tab / analitika** — model pločice, RPC, sidro salda, gdje živi konfiguracija |
-| `docs/RAZREZ_SPEC.md`                     | **„Kamo ide novac"** (prijedlog prije koda, S163) — pločica razreza prihoda/troškova, prekidač kupnja/naplata, **bucketi** (sheet `Grupiranja`, par → jedan bucket po grupiranju), redoslijed F5 → RPC → pločica; odluke R1–R9 čekaju Sašu |
+| `docs/RAZREZ_SPEC.md`                     | **„Kamo ide novac"** — pločica razreza prihoda/troškova, prekidač kupnja/naplata, **bucketi** (`areas.settings.groupings`). Odluke R1–R15 **donesene** (S164); **DIO 2 = detaljni spec za kod** (RPC 056, model, pločica, `set_breakdown.py`), redoslijed RPC → pločica → F5 (R14) |
 | `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` | **⚠ PROČITATI prije Faze 1** — dokaz modela salda nad 4.996 redaka, 3 zamke u mjerenju |
 | `docs/_archive/EXCEL_FORMAT_ANALYSIS_v2.md`        | Excel export/import work — **⚠ POVIJESNI ZAPIS, ne referenca** (izmjereno S139: doc 17 kolona A–Q, kod 23 A–W, i svako slovo od D nadalje je pomaknuto). Popis kolona ima **samo** `COLS` u `src/lib/structureExcel.ts` |
 | `sql/SQL_schema_V5_commented.sql`         | DB schema reference                                                              |
@@ -781,7 +781,8 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **⚠ `datetime` atribut je ZIDNI SAT, ne trenutak** (S162). Svi ga pišu bez zone
   (`2026-10-05T12:00`), baza drži `12:00+00:00`, svi čitaju iste znamenke. **Prikaz nikad kroz
   `new Date(v).toLocale…`** — View je tako pokazivao `14:00`, a za sat ≥ 22 sutrašnji dan; ide kroz
-  `displayDatetime`. (Isto vrijedi za `event_date`/`session_start` pravila — ona su druga stvar.)
+  `displayDatetime`. ⚠ **U SQL-u isto: `(value_datetime AT TIME ZONE 'UTC')::date`**, nikad goli
+  `::date` — on ovisi o `TimeZone` sesije (S164, RAZREZ §11). (Isto vrijedi za `event_date`/`session_start` pravila — ona su druga stvar.)
 - **`datetime` atribut ima TRI oblika i svi moraju proći kroz `excelDatetime.ts`** (S112):
   baza vraća `2025-01-07T12:00:00+00:00`, aplikacija piše `2025-01-07T12:00`, Excel drži pravu
   datumsku ćeliju. Kao **stringovi** se razlikuju, kao **trenutak** ne. Dok je usporedba bila
@@ -2191,6 +2192,9 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
 - **RPC pravila:** `SECURITY DEFINER` mora **sam** provjeriti pristup (inače leak preko cijele
   baze) · **P2 parent eventi se nikad ne zbrajaju** · čita se `value_number`, filtar po
   `attribute_definition_id`, nikad `ILIKE` preko `event_attributes`.
+- **⚠ Config NOVOG tipa pločice ide na PROD tek POSLIJE deploya** (S164). Stari bundle za nepoznat
+  `type` crta žuti okvir „Nepoznat tip pločice" iznad salda (`OverviewTab`, `default` grana) — Koka
+  bi ga vidjela. Redoslijed: migracija → deploy → config.
 - **Automat `Planiran → Izvršen` po dospijeću je ODBAČEN** — dospjeli datum nije dokaz da je
   banka naplatila, pa bi automat sam proizveo razliku prema banci. Umjesto toga „Dospjelo → potvrdi".
 - **Transfer:** **ulazi** u saldo (novac je stvarno otišao), **izlazi** iz razreza po Tipu.

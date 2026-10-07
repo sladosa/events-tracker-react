@@ -410,6 +410,10 @@ od tih 6 postaje presedan. Baza ima **694 ključa**, od toga 679 jednoglasnih.
 - **⚠ Posrednik nije trgovac.** `KEKS PAY` ima **8 različitih Tipova** (Parking, Sport,
   Hardver, Pokloni, Domaćinstvo…) jer je aplikacija za plaćanje — `Izvod opis` ne govori
   što je kupljeno. Isto `PAYPAL *`, `KUPOVINA…`. Ondje rječnik **ne smije ni pokušati**.
+- **⚠ Ručna odluka za jednu transu NIJE pravilo** (S164). `uvezi_transu.RUCNO_IZNOS` (`Apple 9,99 →
+  HBOmax`) je provjerom unatrag (`razvrstaj_na.py --provjera`, povijest strogo starija od retka)
+  pobijen **3×** — na istih 9,99 živi i Cloud backup. Rječnik koji se širi na druge alate prvo se
+  provjeri unatrag; `razvrstaj_na.py` ga zato ne koristi.
 - **Ključ koji nije jednoglasan (< 90 %) se NE POGAĐA — alat STANE.** Prvi run tranše je
   stao na 3 retka, i sva tri su bila *pravilo koje fali*, ne *podatak koji fali*.
 - **⚠ Kokin opis je jači od statistike.** `APPLE.COM/BILL 9,99` je 5:3 i ostaje dvojben;
