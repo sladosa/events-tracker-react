@@ -1,6 +1,8 @@
 # Kamo ide novac — pločica razreza i grupiranja u buckete (prijedlog prije koda, S163)
 
-> **Status: PRIJEDLOG, ništa nije izgrađeno.** Nastavak otvorene niti `OVERVIEW_TAB_SPEC.md`
+> **Status (S165, 07.10.2026.): §15 koraci 1–4 IZVEDENI na TEST-u** — 056, `verify_breakdown.py` (u lipu),
+> model + pločica + testovi, config (`set_breakdown.py`). PROD (koraci 6–8) čeka Sašu; odstupanja od teksta: **§17**.
+> Nastavak otvorene niti `OVERVIEW_TAB_SPEC.md`
 > §2.19 („Saša — analitika: koliko je potrošeno po Tip/Podtip"). Nastao razgovorom 2026-10-06.
 > **Detaljni tehnički spec R-F2/R-F3: DIO 2 (§10–§16, S164).**
 > Odluke (§9): S164 odlučeno R1–R8, R10–R15 (sve); **R3 čeka Kokin korak** (§4.4); ono što je u razgovoru već dogovoreno označeno je ✅.
@@ -604,14 +606,14 @@ bez configa (druga Area) se ne mijenja; grantee (Saša na PROD-u) vidi pločicu.
 
 | korak | tko | baza |
 | --- | --- | --- |
-| 1. `sql/056_area_breakdown.sql` + smoke upit | Claude | TEST (psql, `SUPABASE_DB_URL`) |
-| 2. `verify_breakdown.py` ⇒ u cent | Claude | TEST |
-| 3. model + unit testovi (sabotaže) → pločica → OverviewTab → fixup | Claude | — |
-| 4. `set_breakdown.py --apply` | Claude | TEST |
+| 1. `sql/056_area_breakdown.sql` + smoke upit | Claude | TEST (psql, `SUPABASE_DB_URL`) ✅ S165 |
+| 2. `verify_breakdown.py` ⇒ u cent | Claude | TEST ✅ S165 |
+| 3. model + unit testovi (sabotaže) → pločica → OverviewTab → fixup | Claude | — ✅ S165 |
+| 4. `set_breakdown.py --apply` | Claude | TEST ✅ S165 |
 | 5. ručni testovi (`npm run dev`) | Saša | TEST |
 | 6. 056 u SQL editoru, `verify_breakdown.py` | Saša | PROD |
 | 7. deploy (merge na `main`) | Saša | — |
-| 8. `set_breakdown.py --apply --yes-prod`, `Ctrl+Shift+R` | Saša | PROD |
+| 8. `set_breakdown.py --apply --yes-prod`, `Ctrl+Shift+R` — ⚠ traži R3 na PROD-u prije (T-S164-2): alat staje jer `Kuća / Osiguranje` nije u `validation_rules` | Saša | PROD |
 
 Procjena: jedna sesija za 1–4. Koraci 6–8 su jedan blok naredbi.
 
@@ -623,3 +625,29 @@ Procjena: jedna sesija za 1–4. Koraci 6–8 su jedan blok naredbi.
   sljedećem pokretanju; poslije F5 uvoz Structure. Rename **sluga** pokriva fixup (§12).
 - Drugo grupiranje „Čiji trošak" + gorivo po kilometraži (R5, §6) — config i model ga već nose
   (`grouping` je ime), treba samo izbornik.
+
+## 17. Izvedba S165 — što je drukčije od teksta (izmjereno)
+
+- **`n_no_date` — koji redak bez datuma „pripada" razdoblju?** Spec nije rekao. Odluka: zamjena je
+  `event_date` u razdoblju (pločica za rujan javlja rujanske retke bez datuma naplate, ne sve iz 2019.).
+  Danas ih je 0. Zapisano u zaglavlju 056 i u `verify_breakdown.py` (ista zamjena na obje strane).
+- **Brzina 056** (TEST, 3 dimenzije, 12 mj, na serveru): os `event_date` ~75 ms; os „po naplati" je
+  prvom verzijom bila ~500 ms (svi atributi pa rez), pa ~280 ms (rez pa atributi, podupit po retku),
+  pa **~85 ms** (datum JOIN-om nad svim vrijednostima atributa). Os atributa nema jeftin pred-rez jer
+  rata dospijeva i godinu poslije kupnje.
+- **Grupna vrijednost datuma** u 056 ide kroz `AT TIME ZONE 'UTC'` i za `to_char` (035 to nema; ondje
+  datum nije dimenzija ni u jednom configu).
+- **`DashboardWidget` je sada unija** ⇒ `widgets.find(w => w.type === 'balance_by_group')` u TS-u NE
+  sužava tip. Svi potrošači salda (delta export/uvoz, `confirmedRowEdit`, `useRunningBalance`) idu kroz
+  `isBalanceWidget` (`types/database.ts`). Python alati `dashboard.widgets` ne čitaju (izmjereno grep-om).
+- **`groupings` rename:** `fixupDashboardSlug` piše `dashboard` i `groupings` u ISTOM write-u
+  (`renameSlugInGroupings`); `rows[].values` su vrijednosti i ostaju netaknute.
+- **Drill kad se `validation_rules` ne daju pročitati:** svaki Podtip se tretira kao dvoznačan ⇒ drill
+  ide na Tip. Nikad na krivi Podtip.
+- **Mobitel:** lista nosi trake i na 320–400 px (uže), imena se **prelamaju** (CLAUDE.md S119: prelom,
+  ne `…`). Krug od 640 px.
+- **Greška RPC-a 22023/42501 se ne ponavlja** (`fetchBreakdown`): config i pristup se ponavljanjem ne
+  popravljaju; ostale greške idu kroz `withRetry`.
+- **E2E `S165_breakdown_tile.spec.ts`:** stvarna pločica u aplikaciji s podmetnutim RPC odgovorom
+  (snimka `src/lib/__tests__/fixtures/breakdown_financije_12mj.json`) — širok i uzak ekran, prekidač osi,
+  sklapanje preživi reload. E2E korisnik nije vlasnik `Financije_all`, zato podmetanje.

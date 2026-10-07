@@ -127,9 +127,57 @@ export interface DueConfig {
   settle?: Record<string, string>;
 }
 
+/**
+ * „Kamo ide novac" — razrez prihoda i troškova po razinama i bucketima
+ * (docs/RAZREZ_SPEC.md §10.1). Uloge, ne domena: ista pločica razrezuje
+ * vježbe po mišićnim skupinama ako config tako kaže.
+ */
+export interface BreakdownWidget {
+  type: 'breakdown';
+  title: string;
+  /** Razine ispod bucketa, od vrha: ['tip', 'podtip']. */
+  levels: string[];
+  plus: string;
+  minus: string;
+  /** Redak je PRIHOD kad prolazi ovaj uvjet. */
+  income: WidgetFilter;
+  /** Izvan razreza; iznos se ispisuje u podnožju. */
+  outside?: WidgetFilter[];
+  /** Vrijednosti `levels[0]` koje znače „nerazvrstano" (R10). Prazno uvijek. */
+  unclassified?: string[];
+  /** Osi datuma; prva je zadana (R7). `slug: null` = event_date. */
+  date_axes?: Array<{ label: string; slug: string | null }>;
+  /** Korekcijski retci troškova: Σneto(add) − Σneto(subtract). Filtri u
+   *  `add`/`subtract` su AND. */
+  adjustments?: Array<{ label: string; add: WidgetFilter[]; subtract: WidgetFilter[] }>;
+  /** Ime grupiranja iz `areas.settings.groupings`. Bez njega razina → razina. */
+  grouping?: string;
+  unit?: string;
+}
+
 /** v1 dictionary. Widening it is a code change on purpose (§2.15 — the
  *  dictionary lives in code, the semantics of one Area live in config). */
-export type DashboardWidget = BalanceByGroupWidget;
+export type DashboardWidget = BalanceByGroupWidget | BreakdownWidget;
+
+/** Narrowing za `.find()` — bez njega `widgets.find(w => w.type === …)` ne
+ *  sužava tip, a svi postojeći potrošači traže upravo saldo. */
+export function isBalanceWidget(w: DashboardWidget): w is BalanceByGroupWidget {
+  return w.type === 'balance_by_group';
+}
+
+/**
+ * Grupiranje parova (razina 1, razina 2) u buckete (RAZREZ §10.2).
+ * Razrješavanje je SPECIFIČNOST, ne redoslijed: par > `X / *` > „nesvrstano".
+ * Isti par dvaput u istom grupiranju je GREŠKA — zbrojio bi se dvaput.
+ */
+export interface Grouping {
+  /** Što par znači, npr. ['tip', 'podtip']. Mora biti `levels` pločice. */
+  levels: [string, string];
+  rows: GroupingRow[];
+}
+export type GroupingRow =
+  | { bucket: string; values: [string, string] }   // values[1] = '*' ⇒ cijela razina 1
+  | { bucket: string; adjustment: string };        // korekcijski redak pločice ide u bucket
 
 export interface DashboardConfig {
   widgets: DashboardWidget[];
@@ -217,6 +265,8 @@ export interface AreaSettings {
   };
   export_profiles?: Record<string, unknown>;
   dashboard?: DashboardConfig;
+  /** Grupiranja u buckete po imenu (RAZREZ §10.2) — čitaju ih pločice. */
+  groupings?: Record<string, Grouping>;
   /** Activities list columns for this Area (Backlog — kolone po Arei). */
   list_columns?: ListColumnsConfig;
   /** Add Activity header for this Area. Absent = today's behaviour, exactly as

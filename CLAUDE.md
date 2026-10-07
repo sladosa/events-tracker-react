@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S164).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S165).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -34,19 +34,19 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 1253 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
 | 1713 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
 | 1729 | [Key files](<#Key files>) |  |
-| 1843 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1863 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1885 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1911 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1951 | [Open bugs](<#Open bugs>) | ~ |
-| 2060 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2105 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2205 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2213 | [Backlog](<#Backlog>) | ~ |
-| 2217 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2225 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1848 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1868 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1890 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1918 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1958 | [Open bugs](<#Open bugs>) | ~ |
+| 2067 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2112 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2219 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2227 | [Backlog](<#Backlog>) | ~ |
+| 2231 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2239 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2389 redaka, 18 sekcija._
+_Ukupno 2403 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -84,7 +84,7 @@ podaci hrane i AI sloj.
 | `docs/sessions/BACKLOG.md`                | **Pri planiranju sesije** — backlog (preseljen S151) |
 | `docs/ARCHITECTURE_v1_6.md`               | Always — data model, P1/P2/P3, chain_key, session identity                       |
 | `docs/OVERVIEW_TAB_SPEC.md`               | **Overview tab / analitika** — model pločice, RPC, sidro salda, gdje živi konfiguracija |
-| `docs/RAZREZ_SPEC.md`                     | **„Kamo ide novac"** — pločica razreza prihoda/troškova, prekidač kupnja/naplata, **bucketi** (`areas.settings.groupings`). Odluke R1–R15 **donesene** (S164); **DIO 2 = detaljni spec za kod** (RPC 056, model, pločica, `set_breakdown.py`), redoslijed RPC → pločica → F5 (R14) |
+| `docs/RAZREZ_SPEC.md`                     | **„Kamo ide novac"** — pločica razreza prihoda/troškova, prekidač kupnja/naplata, **bucketi** (`areas.settings.groupings`). Odluke R1–R15 **donesene** (S164); **DIO 2 = detaljni spec za kod** (RPC 056, model, pločica, `set_breakdown.py`), redoslijed RPC → pločica → F5 (R14). **S165: koraci 1–4 izvedeni na TEST-u**, odstupanja §17 |
 | `data-prep_tools/Financije/SALDO_MODEL_NALAZI.md` | **⚠ PROČITATI prije Faze 1** — dokaz modela salda nad 4.996 redaka, 3 zamke u mjerenju |
 | `docs/_archive/EXCEL_FORMAT_ANALYSIS_v2.md`        | Excel export/import work — **⚠ POVIJESNI ZAPIS, ne referenca** (izmjereno S139: doc 17 kolona A–Q, kod 23 A–W, i svako slovo od D nadalje je pomaknuto). Popis kolona ima **samo** `COLS` u `src/lib/structureExcel.ts` |
 | `sql/SQL_schema_V5_commented.sql`         | DB schema reference                                                              |
@@ -1816,6 +1816,11 @@ src/lib/insertEntry.ts             Upis jednog unosa izvan Add forme: slobodna m
 src/lib/attributeRules.ts          set_attribute automatika (evaluateDateRule, same/next:N)
 src/lib/deleteErrors.ts            classifyDeleteError() — čitljive poruke iz PG grešaka
 src/lib/theme.ts                   Theme colour tokens
+src/lib/breakdownModel.ts          „Kamo ide novac" — JEDINI izračun pločice razreza (u lipama):
+                                   strana, izvan razreza, korekcija gotovine, bucketi
+                                   (specifičnost par > Tip/* > nesvrstano), krug, drill.
+                                   Čuva `breakdownModel.test.mjs` (stvarna snimka = RAZREZ §4.3)
+src/components/overview/BreakdownTile.tsx  pločica razreza; razdoblje = filtar (uključivo)
 src/lib/overviewApi.ts             Overview read model — rpc_area_group_agg / _balance_anchored,
                                    CRUD sidara. Jedini `.rpc()` pozivi u aplikaciji.
 src/lib/dashboardConfig.ts         Fixup slug referenci u dashboard configu (S105d razred)
@@ -1904,6 +1909,8 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   `0× · 25.06.` (`usage_count` + `last_used`). **Bez granice po broju** — v. „Backlog".
 - **Overview (S108):** tab po Arei, postoji **samo** uz `settings.dashboard` (OQ-4). Pločica
   `balance_by_group` sa sidrom i `✓/Δ` čipom, drill u Activities, izračunata kolona `Stanje`.
+  **S165:** pločica `breakdown` „Kamo ide novac" (bucketi iz `settings.groupings`, os kupnja/naplata,
+  krug ≥ 640 px) — na TEST-u; PROD čeka 056 + deploy + `set_breakdown.py`.
   Agregacija ide u Postgres (`rpc_area_group_agg`, `rpc_area_balance_anchored`) — nikad u preglednik.
 
 ---
@@ -2192,6 +2199,13 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
 - **RPC pravila:** `SECURITY DEFINER` mora **sam** provjeriti pristup (inače leak preko cijele
   baze) · **P2 parent eventi se nikad ne zbrajaju** · čita se `value_number`, filtar po
   `attribute_definition_id`, nikad `ILIKE` preko `event_attributes`.
+- **⚠ `DashboardWidget` JE UNIJA (S165) — `widgets.find(w => w.type === 'balance_by_group')` NE SUŽAVA
+  TIP.** Do S165 je saldo bio jedina pločica, pa je četiri potrošača (delta izvoz/uvoz,
+  `confirmedRowEdit`, `useRunningBalance`) uzimalo „prvu pločicu" kao saldo. Sada idu kroz
+  `isBalanceWidget` (`types/database.ts`); svaki novi potrošač salda isto. Python alati
+  `dashboard.widgets` ne čitaju (izmjereno grep-om).
+  ⚠ `rpc_area_breakdown` (056) ima **UKLJUČIVE** granice `p_date_from`/`p_date_to` — za razliku od
+  `rpc_area_group_agg.p_from` (isključiv, S144). Razdoblje razreza dolazi iz filtra.
 - **⚠ Config NOVOG tipa pločice ide na PROD tek POSLIJE deploya** (S164). Stari bundle za nepoznat
   `type` crta žuti okvir „Nepoznat tip pločice" iznad salda (`OverviewTab`, `default` grana) — Koka
   bi ga vidjela. Redoslijed: migracija → deploy → config.

@@ -2,7 +2,27 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S164 (2026-10-07) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S165 (2026-10-07) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S165 — pločica „Kamo ide novac" na TEST-u (2026-10-07)
+
+RAZREZ §15 koraci 1–4: migracija `056` (RPC razreza) na TEST-u, `verify_breakdown.py` (RPC = Python u lipu, model = spec §4.3 u lipu), `breakdownModel.ts` + pločica + krug, config na TEST (`set_breakdown.py`). **PROD nije diran.**
+
+**Detalji testova:** [tests/S165_tests.md](tests/S165_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S165-1 | TEST, 01.10.2025.–30.09.2026., po kupnji: Ušlo 46.972,48 · Izašlo 40.127,91; 8 bucketa + N/A = §4.3; gotovina 3.830,90 u Mjesečnim; Transfer 61.420,64 / 81.561,51; krug + „Nije nacrtano" | ⬜ |
+| T-S165-2 | Isto, po naplati: Izašlo 39.305,20, Mjesečni 19.939,85, N/A 3.054,84; Prihodi Koka 26.723,22 · Saša 15.299,26 · Povrat Anja 4.950,00 | ⬜ |
+| T-S165-3 | Rujan 2026.: po kupnji Ušlo 2.844,16 · Izašlo 4.428,90; po naplati 4.203,07 (+ N/A 19,95) | ⬜ |
+| T-S165-4 | Drill ↗: Kuća ⇒ 80 zapisa; auto C5 › gorivo ⇒ poruka + cijeli auto C5 (48); Struja ⇒ 9 | ⬜ |
+| T-S165-5 | Uski ekran: bez kruga, lista s trakama, imena se prelamaju, bez vodoravnog scrolla | ⬜ |
+| T-S165-6 | Sklapanje pločice preživi F5 | ⬜ |
+| T-S165-7 | Regresija: saldo prvi i isti, kolona Stanje, ponuda delta sheeta u Exportu, Area bez configa bez taba | ⬜ |
+| T-S165-8 | Config u prazno ⇒ greška, ne tiha nula (pokriveno unit testom + alatom; ručno opcionalno) | ⬜ |
+| T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (traži R3 = T-S164-2 prije) → Koka i Saša vide pločicu | ⬜ |
 
 ---
 

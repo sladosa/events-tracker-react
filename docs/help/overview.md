@@ -1,7 +1,7 @@
 # Overview — Help
 
 Tab koji pokazuje **stanje jedne Aree sada**: stanja po računu, koliko je planirano, i slaže
-li se to s bankom.
+li se to s bankom — i, ako ga Area ima, **kamo ide novac** u odabranom razdoblju.
 
 ## Zašto ga neke Aree nemaju
 
@@ -212,6 +212,39 @@ još nije potvrđeno naplatila. Košara su sve kupovine jedne kartice s istim da
 - Kad se košara **ne slaže**: saldo je i dalje točan. Najčešće je kriv jedan redak — kupovina
   s ruba mjeseca u krivoj košari, ista kupovina upisana dvaput, ili tipfeler u iznosu.
   Ispravi ga Editom; ako ga ne nađeš, kartični izvod pokaže točno koji je.
+
+## Pločica „Kamo ide novac"
+
+Pokazuje **koliko je novca ušlo i odakle, koliko je izašlo i kamo**, za razdoblje koje je
+odabrano u **filtru** (npr. *This Month*, *Last Year*, ručni raspon). Pločica ne pamti svoj
+period — promijeniš filtar, promijeni se i ona. U zaglavlju piše koje razdoblje gleda.
+
+- **Gornji redak** — *Ušlo · Izašlo · Razlika*. Vidljiv je uvijek.
+- **Troškovi | Prihodi** — bira koja se strana prikazuje.
+- **po kupnji | po naplati** — dvije različite istine:
+  - *po kupnji* = što ste **potrošili** u tom razdoblju (kupnja na 6 rata ulazi cijela u
+    mjesec kupnje, i rate koje su još `Planiran`)
+  - *po naplati* = koliko je u tom razdoblju **stvarno otišlo s računa** (rate po mjesecima,
+    kartice na dan naplate). Za buduće Visa rate dan naplate je procjena (5.).
+- **Bucketi** (Mjesečni troškovi, Kvaliteta života, Putovanja i pokloni…) skupljaju parove
+  Tip/Podtip. Klik na redak ga rasklopi: bucket → Tip → Podtip.
+- **„gotovina, nerazvrstano"** (u Mjesečnim troškovima) = podignuto s bankomata minus ono
+  što je upisano kao gotovinski trošak. Bez tog retka razrez bi prešutio podignutu gotovinu.
+- **„nerazvrstano (N/A)"** su retci bez Tipa ili s `N/A`. Ne skrivaju se — inače bi
+  potrošnja izgledala manja nego što jest. Smanjuje se kako se retci razvrstavaju.
+- **„nesvrstano"** (ako se pojavi) je par Tip/Podtip koji još nije stavljen ni u jedan
+  bucket, npr. novi Podtip. Raspored bucketa mijenja Saša.
+- **Povrat** (uplata pod Tipom troška, npr. *Kuća / Povrat Zoran*) **umanjuje** taj trošak.
+  Ako je povrat veći od troška, iznos je zelen s oznakom *povrat > trošak* (npr. Porezi kad
+  je povrat poreza veći od plaćenog).
+- **Krug** (samo na širem ekranu) crta samo ono što je u plusu; što je u minusu, ispisano je
+  ispod kruga. Točne brojke su u listi desno.
+- **izvan razreza** (dno pločice) — Transfer: prijenosi među računima i podizanja. Novac je
+  prošao, ali nije potrošen ni zarađen, pa nije u razrezu. Saldo ga broji, razrez ne.
+- **↗** uz Tip ili Podtip otvara te retke u Activities (razdoblje iz filtra ostaje). Radi
+  samo u prikazu *po kupnji*. Za Podtip koji postoji pod više Tipova (npr. *gorivo* kod oba
+  auta) otvara cijeli Tip — filtar nosi jedan uvjet. Bucket nema ↗ jer je više uvjeta.
+- Klik na **naslov** sklapa pločicu; zapamti se u ovom pregledniku.
 
 ## Unos iz Overviewa
 

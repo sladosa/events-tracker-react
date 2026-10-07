@@ -24,7 +24,7 @@
 //   potvrđeno ono što već stoji u bazi (isto kao uvoz, S143).
 // ============================================================
 
-import type { AreaSettings, WidgetFilter } from '@/types/database';
+import { isBalanceWidget, type AreaSettings, type WidgetFilter } from '@/types/database';
 import { findCoveringAnchor, type AnchorLike, type ConfirmedMark } from '@/lib/confirmedPeriod';
 import { localYmd } from '@/lib/localDate';
 
@@ -51,7 +51,7 @@ export interface BankFieldSpec {
 export function bankFieldSpec(settings: AreaSettings | null | undefined): BankFieldSpec {
   const slugs = new Set<string>();
   const lockSlugs = new Set<string>();
-  const widget = settings?.dashboard?.widgets?.find(w => w.type === 'balance_by_group');
+  const widget = settings?.dashboard?.widgets?.find(isBalanceWidget);
   if (widget) {
     if (widget.plus) slugs.add(widget.plus);
     if (widget.minus) slugs.add(widget.minus);

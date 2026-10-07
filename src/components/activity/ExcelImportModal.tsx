@@ -36,6 +36,7 @@ import { useFilter } from '@/context/FilterContext';
 import { useAreaDashboard } from '@/hooks/useAreaDashboard';
 import { localYmd } from '@/lib/localDate';
 import { resolveForeignOwnership } from '@/lib/foreignRowOwnership';
+import { isBalanceWidget } from '@/types/database';
 
 interface ExcelImportModalProps {
   onClose:   () => void;
@@ -59,7 +60,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const { filter } = useFilter();
   const { config: dashboardCfg } = useAreaDashboard(filter.areaId);
   const balanceWidget = useMemo(
-    () => dashboardCfg?.widgets.find(w => w.type === 'balance_by_group') ?? null,
+    () => dashboardCfg?.widgets.find(isBalanceWidget) ?? null,
     [dashboardCfg],
   );
 

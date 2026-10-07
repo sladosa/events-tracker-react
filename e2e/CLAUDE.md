@@ -51,6 +51,15 @@
   ⚠ Provjereno nad živim serverom: 10.09. je na :5173 stajao `vite --mode prod` i
   guard je bacio. **Disciplina više nije jedina brana, ali `dev:prod` i dalje ugasi**
   — inače E2E jednostavno neće krenuti.
+  ⚠ **S165: ne gasi Sašin server — dogovori ili zaobiđi.** Kad on drži `dev:prod` na :5173,
+  njegov `npm run dev` sjedne na **:5174** (provjera: `curl :5174/src/lib/supabaseClient.ts`
+  ⇒ `xtnbhmojmffjelsqejpw`). Za jedan spec: privremeni config u korijenu (`import base from
+  './playwright.config'`; `baseURL` :5174, `webServer.url` :5174, `reuseExistingServer: true`,
+  `globalSetup: undefined` — guard gleda samo :5173), pa ga **obriši**. Bez `globalSetup` nema
+  ni čišćenja seeda ⇒ samo za spec koji svoje podatke sam stvara i briše.
+- **`fullPage` snimka uhvati ZATVOREN Help bottom-sheet** (S165): na uskom ekranu je samo
+  pomaknut (`translate-y-full`) ispod ekrana, pa snimka izgleda kao da je Help otvoren. Za
+  snimku komponente: `locator.screenshot()`, ne `page.screenshot({ fullPage })`.
 - **⚠ PONOVLJEN POJEDINACNI RUN MJERI BAZU KOJU JE PRETHODNI RUN PROMIJENIO** (S139).
   `global-setup.ts` vraca seed stanje **na pocetku runa**, nikad izmedju specova — pa
   ciljano ponavljanje jednog speca radi dijagnoze krece od stanja koje je ostavio

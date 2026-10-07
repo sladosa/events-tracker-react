@@ -496,6 +496,17 @@ dira saldo. **Ratama se ne dira ni kasnije:** rate dijele dan **kupnje**, izvod 
 ## Key files — alati u `data-prep_tools/Financije/`
 
 ```
+data-prep_tools/Financije/set_breakdown.py
+                                   S165: pločica „Kamo ide novac" + `groupings["Vrsta troška"]`
+                                   u `areas.settings` (merge). JEDINI izvor rasporeda bucketa do
+                                   F5 (RAZREZ §13). Staje na duplikatu para, Podtipu izvan
+                                   `validation_rules`, slugu koji ne postoji. Dry run zadano;
+                                   PROD `--yes-prod`, i TEK POSLIJE deploya (stari bundle crta
+                                   „Nepoznat tip pločice"). ⚠ Na PROD-u traži R3 (T-S164-2).
+data-prep_tools/Financije/verify_breakdown.py
+                                   S165: `rpc_area_breakdown` (056) protiv Pythona nad sirovim
+                                   retcima, PO GRUPI, u lipu (12 mj + rujan × obje osi), pa
+                                   model = RAZREZ §4.3 (na TEST-u uspoređuje, na PROD-u ispisuje).
 data-prep_tools/Financije/razvrstaj_izvode.py
                                    C1 korak 3 (S152): OneDrive inbox → `izvodi/TIP_YYYY-MM.pdf`
                                    po SADRZAJU (`classify` + parseri iz inventory_izvoda,

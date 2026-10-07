@@ -32,6 +32,7 @@ import {
 } from '@/lib/attrFilterNumeric';
 import type { ExportAttrDef } from '@/lib/excelTypes';
 import { todayLocalYmd } from '@/lib/localDate';
+import { isBalanceWidget } from '@/types/database';
 
 interface ExcelExportModalProps {
   onClose: () => void;
@@ -306,7 +307,7 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
   // ne prikazuje uopce.
   const { config: dashboardCfg } = useAreaDashboard(filter.areaId);
   const balanceWidget = useMemo(
-    () => dashboardCfg?.widgets.find(w => w.type === 'balance_by_group') ?? null,
+    () => dashboardCfg?.widgets.find(isBalanceWidget) ?? null,
     [dashboardCfg],
   );
   // Racun dolazi iz filtra atributa - drill s plocice ga upravo tako postavlja.

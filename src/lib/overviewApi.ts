@@ -17,6 +17,8 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { todayLocalYmd } from '@/lib/localDate';
+import { toError, withRetry } from '@/lib/retry';
+import type { BreakdownRow } from '@/lib/breakdownModel';
 import type { DueConfig, UUID, WidgetFilter } from '@/types/database';
 
 // --------------------------------------------
@@ -65,6 +67,47 @@ function toGroupAggRow(r: Record<string, unknown>): GroupAggRow {
     minus_sum: Number(r.minus_sum ?? 0),
     n: Number(r.n ?? 0),
   };
+}
+
+// --------------------------------------------
+// rpc_area_breakdown (sql/056) — „Kamo ide novac"
+// --------------------------------------------
+// ⚠ GRANICE SU UKLJUČIVE (`dateFrom`, `dateTo`) — za razliku od `from` gore,
+//   koji je isključiv po pravilu sidra (S144 zamka). Razdoblje dolazi iz filtra.
+
+export async function fetchBreakdown(p: {
+  areaId: UUID;
+  groupSlugs: string[];
+  plusSlug: string;
+  minusSlug: string;
+  /** `null` = event_date; inače datetime atribut (npr. `datum_naplate`). */
+  dateSlug?: string | null;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+}): Promise<BreakdownRow[]> {
+  const { data, error } = await withRetry(
+    () => supabase.rpc('rpc_area_breakdown', {
+      p_area_id: p.areaId,
+      p_group_slugs: p.groupSlugs,
+      p_plus_slug: p.plusSlug,
+      p_minus_slug: p.minusSlug,
+      p_filters: [],
+      p_date_slug: p.dateSlug ?? null,
+      p_date_from: p.dateFrom ?? null,
+      p_date_to: p.dateTo ?? null,
+    }),
+    // Greška configa (22023) i pristupa (42501) se ponavljanjem ne popravljaju —
+    // vrati je odmah, s porukom koja imenuje slug.
+    r => r.error != null && !['22023', '42501'].includes((r.error as { code?: string }).code ?? ''),
+  );
+  if (error) throw toError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map(r => ({
+    g: (r.g as (string | null)[]) ?? [],
+    plus_sum: Number(r.plus_sum ?? 0),
+    minus_sum: Number(r.minus_sum ?? 0),
+    n: Number(r.n ?? 0),
+    n_no_date: Number(r.n_no_date ?? 0),
+  }));
 }
 
 // --------------------------------------------

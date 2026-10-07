@@ -26,7 +26,7 @@ await build({
   stdin: {
     contents: [
       "export { renameSlugInAutomations, renameSlugInTemplate } from './src/lib/automationsConfig';",
-      "export { renameSlugInDashboard, dashboardSlugRefs } from './src/lib/dashboardConfig';",
+      "export { renameSlugInDashboard, renameSlugInGroupings, dashboardSlugRefs } from './src/lib/dashboardConfig';",
       "export { displayDatetime } from './src/lib/excelDatetime';",
     ].join('\n'),
     resolveDir: process.cwd(), loader: 'ts', sourcefile: 'entry.ts',
@@ -42,7 +42,7 @@ await build({
     }),
   },
 });
-const { renameSlugInAutomations, renameSlugInTemplate, renameSlugInDashboard, dashboardSlugRefs, displayDatetime }
+const { renameSlugInAutomations, renameSlugInTemplate, renameSlugInDashboard, renameSlugInGroupings, dashboardSlugRefs, displayDatetime }
   = await import(pathToFileURL(out).href);
 
 let pass = 0, fail = 0;
@@ -121,6 +121,40 @@ console.log('dashboard due.settle:');
   ok('dashboardSlugRefs vidi settle ključ', dashboardSlugRefs(dash).has('smjer'));
   const r2 = renameSlugInDashboard(dash, 'izvorplacanja', 'izvor');
   ok('basket_by + settle ključ = 2', r2.changed === 2 && r2.config.widgets[0].due.settle.izvor === 'Racun', String(r2.changed));
+}
+
+console.log('');
+console.log('breakdown pločica + groupings (S165, RAZREZ §12):');
+{
+  const bw = {
+    type: 'breakdown', title: 'Kamo ide novac', levels: ['tip', 'podtip'], plus: 'uplata', minus: 'isplata',
+    income: { slug: 'tip', op: 'in', values: ['Prihodi'] },
+    outside: [{ slug: 'tip', op: 'in', values: ['Transfer'] }],
+    date_axes: [{ label: 'po kupnji', slug: null }, { label: 'po naplati', slug: 'datum_naplate' }],
+    adjustments: [{ label: 'g', add: [{ slug: 'podtip', op: 'in', values: ['cash - bankomat'] }],
+                    subtract: [{ slug: 'izvorplacanja', op: 'in', values: ['Cash'] }] }],
+    grouping: 'Vrsta troška',
+  };
+  const r = renameSlugInDashboard({ widgets: [bw] }, 'podtip', 'pod_tip');
+  const w = r.config.widgets[0];
+  ok('levels prate rename', w.levels[1] === 'pod_tip' && w.levels[0] === 'tip');
+  ok('korekcija add prati rename', w.adjustments[0].add[0].slug === 'pod_tip');
+  ok('vrijednosti uvjeta netaknute', w.adjustments[0].add[0].values[0] === 'cash - bankomat');
+  ok('brojač = 2', r.changed === 2, String(r.changed));
+  ok('grouping (ime) netaknut', w.grouping === 'Vrsta troška');
+  const r2 = renameSlugInDashboard({ widgets: [bw] }, 'datum_naplate', 'naplata');
+  ok('os datuma prati rename, null ostaje null',
+     r2.config.widgets[0].date_axes[1].slug === 'naplata' && r2.config.widgets[0].date_axes[0].slug === null);
+  ok('income/plus prate rename', renameSlugInDashboard({ widgets: [bw] }, 'tip', 't').config.widgets[0].income.slug === 't'
+     && renameSlugInDashboard({ widgets: [bw] }, 'uplata', 'u').config.widgets[0].plus === 'u');
+  ok('dashboardSlugRefs vidi breakdown slugove',
+     ['tip', 'podtip', 'uplata', 'isplata', 'datum_naplate', 'izvorplacanja'].every(x => dashboardSlugRefs({ widgets: [bw] }).has(x)));
+  const g = { 'Vrsta troška': { levels: ['tip', 'podtip'], rows: [{ bucket: 'M', values: ['Kuća', 'podtip'] }] } };
+  const rg = renameSlugInGroupings(g, 'podtip', 'pod_tip');
+  ok('groupings[*].levels prate rename', rg.groupings['Vrsta troška'].levels[1] === 'pod_tip' && rg.changed === 1);
+  ok('rows.values su VRIJEDNOSTI — netaknute i kad se slučajno zovu kao slug',
+     rg.groupings['Vrsta troška'].rows[0].values[1] === 'podtip');
+  ok('ulaz nije mutiran', bw.levels[1] === 'podtip' && g['Vrsta troška'].levels[1] === 'podtip');
 }
 
 console.log('');

@@ -38,6 +38,7 @@ const CHIPS: Record<string, string[]> = {
     'Što znači Δ uz stanje računa?',
     'Kako radi „Potvrdi" i od kad se saldo računa?',
     'Zašto neka Area nema Overview tab?',
+    'Što je „gotovina, nerazvrstano" u Kamo ide novac?',
   ],
   activities: [
     'How do I add an activity?',

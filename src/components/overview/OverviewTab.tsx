@@ -18,11 +18,14 @@ import { supabase } from '@/lib/supabaseClient';
 import { useFilter } from '@/context/FilterContext';
 import { BalanceByGroupTile } from './BalanceByGroupTile';
 import { DueStrip } from './DueStrip';
-import type { DashboardConfig, DueConfig, UUID } from '@/types/database';
+import { BreakdownTile } from './BreakdownTile';
+import type { DashboardConfig, DueConfig, Grouping, UUID } from '@/types/database';
 
 interface Props {
   areaId: UUID;
   config: DashboardConfig;
+  /** `settings.groupings` — bucketi pločice razreza (RAZREZ §10.2). */
+  groupings?: Record<string, Grouping> | null;
   canWrite: boolean;
   /** D5 (DOSPJELO_SPEC): potvrdu košare upisuje samo vlasnica Aree. */
   isOwner: boolean;
@@ -30,7 +33,7 @@ interface Props {
   onNavigateToActivities: () => void;
 }
 
-export function OverviewTab({ areaId, config, canWrite, isOwner, onNavigateToActivities }: Props) {
+export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNavigateToActivities }: Props) {
   const { filter, setAttrFilter } = useFilter();
   // Skupni redak iz trake miče saldo ⇒ pločica se mora ponovo učitati.
   const [balanceReload, setBalanceReload] = useState(0);
@@ -123,6 +126,22 @@ export function OverviewTab({ areaId, config, canWrite, isOwner, onNavigateToAct
                 }}
               />
               </Fragment>
+            );
+          case 'breakdown':
+            return (
+              // Ključ nosi Areu: stanje sklopljenosti se čita u initializeru.
+              <BreakdownTile
+                key={`${w.type}-${w.title}-${areaId}-${i}`}
+                areaId={areaId}
+                widget={w}
+                grouping={w.grouping ? groupings?.[w.grouping] : undefined}
+                // Razdoblje = filtar, UKLJUČIVO s obje strane (RAZREZ §12.2).
+                dateFrom={filter.dateFrom}
+                dateTo={filter.dateTo}
+                // Drill ne dira raspon datuma: „po kupnji" je event_date, isto
+                // što filtar Activities filtrira (§12.3).
+                onDrill={(slug, value) => { void drill(slug, value); }}
+              />
             );
           default:
             // A widget type this build does not know. Say so — a silently

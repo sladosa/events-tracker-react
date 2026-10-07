@@ -32,7 +32,9 @@ export function describeAreaForHelp(
 
   const widgets = s.dashboard?.widgets ?? [];
   if (widgets.length > 0) {
-    facts.push(`has an Overview tab with ${widgets.length} tile(s) (balance by group, anchors, Δ)`);
+    const kinds = [...new Set(widgets.map(w =>
+      w.type === 'breakdown' ? 'income/expense breakdown by bucket (Kamo ide novac)' : 'balance by group, anchors, Δ'))];
+    facts.push(`has an Overview tab with ${widgets.length} tile(s): ${kinds.join('; ')}`);
   } else {
     facts.push('has NO Overview tab: no balance, no anchors, no delta sheet in this Area');
   }

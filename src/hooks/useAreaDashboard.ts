@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { withRetryQuery } from '@/lib/retry';
-import type { AreaSettings, DashboardConfig, ListColumnsConfig, UUID } from '@/types/database';
+import type { AreaSettings, DashboardConfig, Grouping, ListColumnsConfig, UUID } from '@/types/database';
 
 export interface AreaDashboard {
   config: DashboardConfig | null;
@@ -23,6 +23,9 @@ export interface AreaDashboard {
    * nothing. `null` means "no config", which the table renders as today's list.
    */
   listColumns: ListColumnsConfig | null;
+  /** `settings.groupings` (RAZREZ §10.2) — čita ih pločica razreza. Isti
+   *  razlog kao `listColumns`: dolazi iz istog čitanja. */
+  groupings: Record<string, Grouping> | null;
   /** True once the answer is known — the tab must not flicker into view. */
   loaded: boolean;
   areaName: string;
@@ -43,6 +46,7 @@ export interface AreaDashboard {
 export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [listColumns, setListColumns] = useState<ListColumnsConfig | null>(null);
+  const [groupings, setGroupings] = useState<Record<string, Grouping> | null>(null);
   const [areaName, setAreaName] = useState('');
   /**
    * Za KOJI je `areaId` odgovor poznat. `undefined` = jos nismo ucitali nista.
@@ -69,6 +73,7 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
     if (!areaId) {
       setConfig(null);
       setListColumns(null);
+      setGroupings(null);
       setAreaName('');
       setError(false);
       loadedAreaIdRef.current = null;
@@ -91,6 +96,7 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
         setConfig(dash && dash.widgets?.length ? dash : null);
         const cols = settings?.list_columns ?? null;
         setListColumns(cols && cols.columns?.length ? cols : null);
+        setGroupings(settings?.groupings ?? null);
         setAreaName((data?.name as string) ?? '');
         setError(false);
         loadedAreaIdRef.current = areaId;
@@ -105,6 +111,7 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
         if (loadedAreaIdRef.current !== areaId) {
           setConfig(null);
           setListColumns(null);
+          setGroupings(null);
           setAreaName('');
         }
         setError(true);
@@ -126,5 +133,5 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
   /** Izvedeno, ne pohranjeno: odgovor vrijedi samo za Areu koja je TRAZENA. */
   const loaded = loadedFor === areaId;
 
-  return { config, listColumns, loaded, areaName, error, reload };
+  return { config, listColumns, groupings, loaded, areaName, error, reload };
 }

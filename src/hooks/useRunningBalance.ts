@@ -34,7 +34,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { fetchAnchoredBalance } from '@/lib/overviewApi';
 import type { ActivityGroup } from '@/hooks/useActivities';
-import type { BalanceByGroupWidget, DashboardConfig, UUID } from '@/types/database';
+import { isBalanceWidget, type BalanceByGroupWidget, type DashboardConfig, type UUID } from '@/types/database';
 
 export interface RunningBalance {
   /** Render the column at all. */
@@ -69,9 +69,7 @@ export function useRunningBalance(p: Params): RunningBalance {
 
   // The widget this column mirrors: the first balance tile that has both amounts.
   const widget = useMemo<BalanceByGroupWidget | null>(() => {
-    const w = p.config?.widgets?.find(
-      x => x.type === 'balance_by_group' && (x.plus || x.minus),
-    );
+    const w = p.config?.widgets?.filter(isBalanceWidget).find(x => x.plus || x.minus);
     return w ?? null;
   }, [p.config]);
 

@@ -273,6 +273,7 @@ function AppContent() {
   // Overview tab — exists only for Areas that carry a dashboard config (OQ-4)
   const {
     config: dashboardConfig,
+    groupings: areaGroupings,
     loaded: dashboardLoaded,
     error: dashboardError,
     reload: reloadDashboard,
@@ -1115,6 +1116,7 @@ function AppContent() {
             <OverviewTab
               areaId={filter.areaId}
               config={dashboardConfig}
+              groupings={areaGroupings}
               canWrite={!isReadOnlyGrantee}
               isOwner={!sharedContext}
               onNavigateToActivities={() => setActiveTab('activities')}
