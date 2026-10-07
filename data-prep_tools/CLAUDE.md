@@ -410,6 +410,14 @@ od tih 6 postaje presedan. Baza ima **694 ključa**, od toga 679 jednoglasnih.
 - **⚠ Posrednik nije trgovac.** `KEKS PAY` ima **8 različitih Tipova** (Parking, Sport,
   Hardver, Pokloni, Domaćinstvo…) jer je aplikacija za plaćanje — `Izvod opis` ne govori
   što je kupljeno. Isto `PAYPAL *`, `KUPOVINA…`. Ondje rječnik **ne smije ni pokušati**.
+- **⚠ PODTIP IZBORNIK U APP EXCELU MORA OVISITI O TIPU — samo kroz `Financije/_excel_izbornici.py`**
+  (S164, prijavljeno dvaput: S148 i S164). `visa_popravak.pisi()` je nudio RAVAN popis svih Podtipova,
+  a Podtip mimo `validation_rules` se uveze kao tekst bez greške. Modul piše isto pravilo kao app
+  export (`Dep_tip_<Tip>` + `INDIRECT`), boji crveno Podtip koji ne pripada Tipu, a `provjeri()`
+  nakon spremanja simulira formulu za SVAKI Tip i alat **staje** ako ijedan ne pogađa svoj raspon
+  (sabotaža izmjerena). Novi alat koji piše Tip/Podtip **zove modul**, ne piše svoj izbornik.
+  ⚠ Stari S107 review alati (`normalize_financije`, `sync_taxonomy`, `suggest_candidates`,
+  `apply_ai`) imaju vlastite `Tip_*` izbornike — za review fileove, ne app uvoz; nisu dirani.
 - **⚠ Ručna odluka za jednu transu NIJE pravilo** (S164). `uvezi_transu.RUCNO_IZNOS` (`Apple 9,99 →
   HBOmax`) je provjerom unatrag (`razvrstaj_na.py --provjera`, povijest strogo starija od retka)
   pobijen **3×** — na istih 9,99 živi i Cloud backup. Rječnik koji se širi na druge alate prvo se

@@ -22,6 +22,8 @@ KAKO PREDLAŽE — brojanjem povijesti, nikad pogađanjem (pravila: data-prep_to
 IZLAZ (`--file`) — app Excel, jedan po RAČUNU (tko pregledava): `na_razvrstavanje_<račun>_*.xlsx`
     - kol. G = autor retka (S148), Tip/Podtip padajući izbornici, prijedlog žuto,
       bez prijedloga narančasto; list `Pregled` nosi dokaz za svaki redak
+    - Podtip izbornik OVISI o Tipu (`_excel_izbornici`, S164); izgled = Sašin (legenda i
+      tehnički stupci sklopljeni, zamrznuti datum + opis)
     - uvozi VLASNICA Aree (Koka ili Saša pod njezinim računom); tuđi retci: „fix as owner"
     - pregled uvoza smije pokazati SAMO izmjene (`N New = 0`, `Delete = 0`)
 
@@ -56,6 +58,7 @@ from uvezi_transu import RUCNO  # noqa: E402
 from uvezi_transu import kljuc as _kljuc_mc  # noqa: E402
 from visa_uvoz_izvoda import KLASA, taksonomija  # noqa: E402
 import visa_popravak  # noqa: E402
+from _excel_izbornici import izgled_pregleda  # noqa: E402
 
 KARTICE = ('Mastercard', 'Visa')
 # Posrednik nije trgovac: `Izvod opis` ne govori što je kupljeno (CLAUDE.md S124).
@@ -281,7 +284,7 @@ def main():
             redci_xl.append((r, a, r.get('comment'), False,
                              (f'PRIJEDLOG {p[0]} / {p[1]} — ' if p else 'RUČNO — ') + str(dokaz)))
         ime = 'na_razvrstavanje_' + re.sub(r'[^A-Za-z0-9]+', '_', fold(racun)).strip('_')
-        visa_popravak.pisi(redci_xl, {}, ime, tax=tax)
+        visa_popravak.pisi(redci_xl, {}, ime, tax=tax, izgled=izgled_pregleda)
     print('\nUvoz: vlasnica Aree (Koka, ili Saša pod njezinim računom), tuđi retci „fix as owner".'
           '\nOčekivani pregled: 0 New · Modify = broj redaka koje je pregled ostavio s Tipom · 0 Delete.')
 

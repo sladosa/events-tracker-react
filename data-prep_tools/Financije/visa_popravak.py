@@ -250,7 +250,7 @@ def main():
     pisi(redci, by8, 'visa_popravak')
 
 
-def pisi(redci, by8, ime, tax=None):
+def pisi(redci, by8, ime, tax=None, izgled=None):
     """`tax` = {Tip: [Podtip...]} -> dropdowni Tip/Podtip na svakom retku.
     /!\ Podtip mimo `validation_rules` uveze se kao tekst BEZ GRESKE (CLAUDE.md),
         pa file koji covjek rucno klasificira mora nuditi samo valjane vrijednosti."""
@@ -323,35 +323,18 @@ def pisi(redci, by8, ime, tax=None):
                     ws.cell(rr, cc).fill = red
     ws.auto_filter.ref = f'A{hdr}:{col_letter(del_col)}{hdr + len(redci)}'
     if tax:
-        from openpyxl.worksheet.datavalidation import DataValidation
+        # Ovisan izbornik Podtipa (S164). Do S164 je ovdje stajao RAVAN popis svih Podtipova
+        # + list `Tip-Podtip` kao štaka — izbornik nije pratio Tip (Saša, S148 i S164).
+        from _excel_izbornici import tip_podtip_izbornici
         orange = PatternFill('solid', fgColor='F4B084')
-        dd = wb.create_sheet('DropdownData')
-        podtipovi = sorted({p for v in tax.values() for p in v})
-        for i, t in enumerate(sorted(tax), start=1):
-            dd.cell(i, 1, t)
-        for i, p in enumerate(podtipovi, start=1):
-            dd.cell(i, 2, p)
         ctip = 9 + [n for n, _ in ATTRS].index('Tip')
         cpod = ctip + 1
         prvi, zadnji = hdr + 1, hdr + len(redci)
-        for col, n in ((ctip, len(tax)), (cpod, len(podtipovi))):
-            L = 'A' if col == ctip else 'B'
-            dv = DataValidation(type='list', formula1=f'DropdownData!${L}$1:${L}${n}',
-                                allow_blank=True)
-            ws.add_data_validation(dv)
-            dv.add(f'{col_letter(col)}{prvi}:{col_letter(col)}{zadnji}')
+        tip_podtip_izbornici(wb, ws, ctip, cpod, prvi, zadnji, tax)
         for rr in range(prvi, zadnji + 1):
             if ws.cell(rr, ctip).value in (None, 'N/A'):
                 ws.cell(rr, ctip).fill = orange
                 ws.cell(rr, cpod).fill = orange
-        # parovi, da se vidi koji Podtip pripada kojem Tipu
-        tp = wb.create_sheet('Tip-Podtip')
-        tp.append(['Tip', 'Podtip'])
-        for t in sorted(tax):
-            for p in tax[t]:
-                tp.append([t, p])
-        tp.column_dimensions['A'].width = 14
-        tp.column_dimensions['B'].width = 40
     for i, w in enumerate([38, 14, 12, 11, 8, 8, 12, 22], start=1):
         ws.column_dimensions[col_letter(i)].width = w
     for i in range(len(ATTRS) + 1):
@@ -370,8 +353,19 @@ def pisi(redci, by8, ime, tax=None):
     for col, w in zip('ABCD', (12, 10, 22, 90)):
         pr.column_dimensions[col].width = w
 
+    if izgled:
+        izgled(ws, hdr, heads)
+    wb.active = 0
     out = OUT / f'{ime}_{datetime.now():%Y%m%d_%H%M}.xlsx'
     wb.save(out)
+    if tax:
+        # Brana (S164): ponovo otvori file i provjeri da izbornik za SVAKI Tip pogađa
+        # svoj raspon. Pokvaren izbornik nudi krivi Podtip, a on se uveze bez greške.
+        from _excel_izbornici import provjeri
+        greske = provjeri(out, tax)
+        if greske:
+            sys.exit('✗ Izbornik Tip/Podtip u ' + out.name + ' nije ispravan:\n  '
+                     + '\n  '.join(greske))
     print(f'\n→ {out}  ({len(redci)} redaka)')
 
 
