@@ -2,8 +2,11 @@
 
 > **Status: PRIJEDLOG, ništa nije izgrađeno.** Nastavak otvorene niti `OVERVIEW_TAB_SPEC.md`
 > §2.19 („Saša — analitika: koliko je potrošeno po Tip/Podtip"). Nastao razgovorom 2026-10-06.
-> Odluke R1–R9 (§9) čekaju Sašu; ono što je u razgovoru već dogovoreno označeno je ✅.
-> Brojke u §8 izmjerene su na TEST-u (kopija PROD-a od 01.10.2026.), razdoblje **10/2025–09/2026**.
+> Odluke (§9) čekaju Sašu; ono što je u razgovoru već dogovoreno označeno je ✅.
+> **S164 (07.10.):** R1 izveden na PROD-u; TEST ponovo = PROD (`prod_to_test.py`); dodane odluke
+> R10–R15 iz skice; brojke u §8 ponovo izmjerene (TEST = PROD od **07.10.2026.**), razdoblje
+> **10/2025–09/2026**.
+> **Skica (interaktivna, stvarni podaci):** https://claude.ai/artifact/CKaA4SgUbfuvV5qo4zNvFs
 
 ---
 
@@ -152,7 +155,7 @@ siguran, ✱ = par koji mješa dvije stvari pa traži iznimku na retku (§4.2). 
 | --- | --- | ---: |
 | **Mjesečni troškovi** | Domaćinstvo/Hrana i ostalo, Domaćinstvo/Bankovni troškovi · Kuća/Struja, Plin, Voda, Holding (smeće) · Informatika/Komunikacije_T-com, Komunikacije_T-mobile, Cloud backup, Microsoft, HP, Hosting domene · Zabava/Audible_*, Spotify, Prime, Sky, Disney, HBOmax, Youtube, Kindle_Koka (pretplate) · Prijevoz/* · auto C5/gorivo, leasing, registracija · auto Lacetti/gorivo, registracija · Osiguranje/Zivotno · Zdravlje/Lječnička komora_Koka, PP ❓, Sport_* ❓ · Porezi/* ❓ (neto −973,23) | 20.109,26 |
 | **Kuća investicije** | Kuća/Popravci, održavanje, osiguranje ✱ (osiguranje je mjesečno, popravak investicija) | 947,73 |
-| **Kućište investicije** | **nijedan par** — samo kroz iznimku na retku (faza 2) | — |
+| **Kućište investicije** | ~~nijedan par~~ ⇒ **S164: `Razno / Nena's funds`** (novi Podtip na PROD-u, v. §8.4, R12) | 499,39 |
 | **Luksuzna potrošnja** | Putovanja/* · Domaćinstvo/Kave/jelo vani ❓ · Zabava/Kino/Kazalište/Muzeji, Wellness · Razno/Temu ❓ · Razno/Pokloni ❓ | 6.333,83 |
 | **ostaje nesvrstano** (treba ti bucket ili svjesno „ostalo") | Zdravlje/Medical_* · Razno/Odjeća/obuća_* · Razno/Razno, sitnice · auto */popravci · Informatika/Hardver · Projekti/* · Advokati/Ostavine · Razno bez Podtipa · Investicije/* (financijske, ≠ kuća; 0 u 12 mj) · **Kuća/Povrat Zoran, Povrat Nataša** ❓ (samo uplate, neto −889,18 — kamo god idu, smanjuju taj bucket) | 6.089,84 |
 | **izvan razreza** | Transfer/* · Prihodi/* (druga strana) · N/A (vlastiti redak „nerazvrstano") | — |
@@ -160,6 +163,13 @@ siguran, ✱ = par koji mješa dvije stvari pa traži iznimku na retku (§4.2). 
 Iz rasporeda se vidi da će vjerojatno trebati **peti bucket** („Zdravlje i ostalo nužno" ili
 „Povremeni troškovi") — inače „nesvrstano" ostaje trajno velik, a trajno velik „nesvrstano"
 se prestane čitati.
+
+**S164 — raspored u skici** (prijedlog, ne odluka): pet bucketa — *Mjesečni troškovi*, *Kuća
+investicije*, *Kućište · Nenin novac*, *Luksuzna potrošnja*, **Povremeno nužno** (Zdravlje/Medical_*,
+odjeća, Razno/sitnice, popravci auta, Hardver, Održavanje i servis, Advokati, Projekti). Uz to dvije
+posebne kriške troškova: *nerazvrstano (N/A)* i *gotovina, nerazvrstano*. Na 10/2025–09/2026 ništa
+ne ostaje „nesvrstano". Izmjereno (po kupnji): Mjesečni 21.567,42 · Luksuz 6.241,18 · Povremeno nužno
+5.718,53 · Kuća inv. **159,69** (v. R15) · Kućište 499,39 · N/A 2.110,80 · gotovina 3.830,90.
 
 ## 5. Spremljeni upiti — gdje žive (✅ dogovoreno)
 
@@ -190,11 +200,16 @@ se prestane čitati.
 
 | faza | što | veličina |
 | --- | --- | --- |
-| **R-F0** | Ispravak 50.000 € (§8.1) i odluka o bucketima — **podaci, ne kod** | XS |
+| **R-F0** | ~~Ispravak 50.000 € (§8.1)~~ ✅ S164 · odluka o bucketima — **podaci, ne kod** | XS |
 | **R-F1** | **F5:** `AreaSettings` sheet (Structure Excel) + sheet `Grupiranja`; uvoz brani dupli par u grupiranju i javlja par koji ne postoji | M |
 | **R-F2** | Migracija: RPC razreza (§11) — više razina grupiranja + os datuma | S–M |
 | **R-F3** | Pločica `breakdown`: sažetak, prekidači, sunburst + tablica, trake na mobitelu, drill na Podtip | M |
 | **R-F4** | Iznimka na retku (`Namjena`) — Kućište | S |
+
+**S164 — predloženi drukčiji redoslijed (R14):** R-F2 → R-F3 **prije** R-F1. Config pločice i
+grupiranja do F5 upisuje Python alat u `areas.settings` (obrazac `set_list_columns.py`, PROD pokreće
+Saša). Koka dobije pločicu ranije, a raspored bucketa će se ionako mijenjati nekoliko puta prije nego
+se isplati Excel put. R-F4 vjerojatno otpada (R12).
 
 ## 8. Nalazi iz mjerenja (TEST = PROD od 01.10., 10/2025–09/2026)
 
@@ -207,9 +222,10 @@ se prestane čitati.
 
 Posljedica bez ispravka: Kokini prihodi 76.723,22 umjesto ~26.700, a N/A trošak 54.472,71
 umjesto ~4.470 — svaki godišnji prikaz bi lagao u oba smjera.
-**Prijedlog:** oba retka `Tip = Transfer`, `Podtip = Nena` — **Podtip već postoji** (1 redak),
-dakle bez promjene strukture. Saldo se ne miče (oba su `Izvor = Racun`). Ispravak ide kao
-mali app Excel za uvoz (2 retka, kol. G = autor retka).
+**✅ IZVEDENO (Saša, prije 07.10.):** oba retka su `Transfer / Nena`. Provjereno na PROD-u
+07.10.: točno 2 retka s 50.000, svi atributi na mjestu (`Smjer`, `Izvor = Racun`, `Racun`,
+`Izvod opis`), autorica i `edited_by` = Koka, iznosi netaknuti ⇒ saldo se nije pomaknuo.
+Kokini prihodi u 12 mj sada **26.723,22**.
 
 ### 8.2 Prihodi po Podtipu = po osobi
 
@@ -221,6 +237,9 @@ vraća) živi pod dva Tipa. Ne lomi pločicu, ali je kandidat za održavanje kla
 
 `N/A` + prazan Podtip: **1.501** redak ukupno, **109** u 12 mj (54.162,89 s retkom iz §8.1,
 bez njega ~4.160). Najviše 10–12/2025 (16 + 19 + 42 retka).
+**S164 (nakon R1, podaci do 07.10.):** N/A u 12 mj = **121** redak, **2.110,80** po kupnji;
+po naplati 151 redak, 3.054,84 (kartični N/A kupljen u rujnu 2025. a naplaćen u listopadu ulazi
+u prozor).
 
 ### 8.4 Kućište nema svoj Tip ni Podtip
 
@@ -228,24 +247,58 @@ bez njega ~4.160). Najviše 10–12/2025 (16 + 19 + 42 retka).
 bez Podtipa (1 — „Pločice za Kućište" 299,39), N/A (1). ⇒ bucket „Kućište investicije"
 nije izrazljiv parovima (§4.2).
 
+**S164 — promijenilo se:** na PROD-u je nastao Podtip **`Razno / Nena's funds`**, 6 redaka,
+**2.321,47 €** (16.09.–04.10.2026.): Pločice za Kućište 299,39 · ventilatori 564,96 · Lampe 144,92 ·
+Geberit wc + prevoz 312,20 · 4 kreveta 800,00 · **Graviranje Neninog groba 200,00**. Pločice su
+prebačene s `Razno` bez Podtipa. Podtip dakle znači **čiji je novac** (Nenin), ne mjesto — grob
+nije Kućište. Ostaje 9 starih redaka (Studenac, voda, porez Kućište) pod svojim parovima.
+⇒ R12: bucket Kućište = taj par; R-F4 nije potreban za prvu verziju.
+
 ### 8.5 Inventar
 
 **68** parova Tip/Podtip u **18** Tipova; **62** korišteno u zadnjih 12 mj. Nekorišteni:
 Investicije/* (2), Osiguranje/Zivotno, Projekti/Koka, auto C5/leasing, Transfer/Nena.
+**S164:** Transfer/Nena sada 3 retka (R1). Nova opcija `Razno / Nena's funds` (6 redaka). Opcija
+**`Zdravlje / Other`** stoji u `validation_rules`, a **nijedan** redak je ne koristi — izgleda kao
+ostatak; kandidat za brisanje (`KLASIFIKACIJA_ODRZAVANJE_SPEC.md`).
+
+### 8.6 Ukupno, 10/2025–09/2026 (S164, TEST = PROD 07.10.)
+
+| | po kupnji | po naplati |
+| --- | ---: | ---: |
+| Ušlo (`Prihodi`: Koka 26.723,22 · Saša 15.299,26 · Povrat Anja 4.950,00) | 46.972,48 | 46.972,48 |
+| Izašlo po Tipu (neto, povrati oduzeti) | 34.186,21 | 32.419,46 |
+| + nerazvrstano (N/A) | 2.110,80 | 3.054,84 |
+| + gotovina, nerazvrstano (podignuto 4.044,00 − evidentirano 213,10) | 3.830,90 | 3.830,90 |
+| **= Izašlo** | **40.127,91** | **39.305,20** |
+| izvan razreza: Transfer ušlo / izašlo | 61.420,64 / 81.561,51 | isto |
+
+- Skupne naplate kartica su sve `Transfer / izmedju racuna` (55 redaka) ⇒ razrez kartičnu kupnju
+  **ne broji dvaput**. Provjereno jer bi suprotno udvostručilo svaku kartičnu potrošnju.
+- Najveći Tipovi (po kupnji): Domaćinstvo 9.574 · Kuća 4.324 · auto C5 4.128 · Informatika 3.746 ·
+  Razno 3.522 · Zdravlje 3.363 · Putovanja 2.347. **Porezi −973,23** (povrat > plaćeno, R11).
+- Invarijanta 1 (§12) provjerena u skici: Σ bucketa = Σ Tipova = Izašlo, u sve 4 kombinacije
+  (rujan / 12 mj × kupnja / naplata).
 
 ## 9. Odluke za Sašu
 
 | # | pitanje | prijedlog |
 | --- | --- | --- |
-| **R1** | 50.000 € (§8.1): oba retka `Transfer / Nena`? | **da** — Podtip postoji, saldo se ne miče |
-| **R2** | Raspored parova u §4.3 — ispravi/potvrdi; treba li **peti** bucket za nužno-povremeno (zdravlje, odjeća, popravci auta)? | peti bucket, inače „nesvrstano" ostaje ~6.100 |
+| ~~R1~~ | ~~50.000 € (§8.1): oba retka `Transfer / Nena`?~~ | ✅ **riješeno** — Saša izveo na PROD-u, provjereno 07.10. |
+| **R2** | Raspored parova u §4.3 — ispravi/potvrdi; treba li **peti** bucket za nužno-povremeno (zdravlje, odjeća, popravci auta)? | peti bucket, inače „nesvrstano" ostaje ~6.100. **S164:** u skici kao „Povremeno nužno" — pogledaj ondje (❓ = nesigurno) |
 | **R3** | `Kuća/Popravci, održavanje, osiguranje` miješa mjesečno (osiguranje) i investiciju — razdvojiti Podtip (Kokina odluka) ili čekati iznimku na retku (R-F4)? | **razdvojiti Podtip** ako Koka pristane — jeftinije od iznimke na svakom retku |
-| **R4** | Kućište: bucket samo za **investicije** (pločice, radovi) ili **sav** trošak Kućišta (i Studenac, voda, porez)? | o tome ovisi je li `Namjena` bucket ili zasebno grupiranje „Lokacija" |
+| **R4** | Kućište: bucket samo za **investicije** (pločice, radovi) ili **sav** trošak Kućišta (i Studenac, voda, porez)? | o tome ovisi je li `Namjena` bucket ili zasebno grupiranje „Lokacija". **S164:** vjerojatno ga zatvara R12 |
 | **R5** | Jedno grupiranje („Vrsta troška") ili odmah i drugo („Čiji trošak": Koka / Saša / zajedničko)? | **jedno** za prvu verziju |
 | **R6** | Prihodi „iz čega" (mirovina, plaća…) — mijenjati Podtipove pod `Prihodi`? | **ne sada** — osoba je dovoljan prvi odgovor |
 | **R7** | Zadana os datuma: po kupnji? | **da** (D1b) |
 | **R8** | `Porezi` negativni kad je povrat veći od plaćenog — prikazati kao negativan trošak? | **da**, s oznakom „povrat > trošak" |
-| **R9** | Redoslijed §7: F5 prvi, pa RPC, pa pločica? | **da** — bez F5 svaka nova pločica znači SQL koji pokrećeš ti |
+| ~~R9~~ | ~~Redoslijed §7: F5 prvi, pa RPC, pa pločica?~~ | **zamijenjeno s R14** |
+| **R10** | N/A: kriška **unutar** „Izašlo" ili redak izvan razreza? (§2.1 i §3 si proturječe) | **unutra**, kao kriška „nerazvrstano (N/A)" — vani bi „Izašlo" bilo manje od stvarnog |
+| **R11** | Krug ne crta negativne iznose (Porezi −973,23 u 12 mj) | krug crta samo pozitivne, lista nosi sve, ispod kruga „nije nacrtano: …"; sažetak je uvijek neto |
+| **R12** | Kućište = bucket `Razno / Nena's funds` (§8.4)? Ondje je i grob — bucket „Kućište · Nenin novac" ili Koka razdvoji Podtip? | **da**, bucket = taj par; R-F4 otpada za prvu verziju |
+| **R13** | Grupiranje i za stranu Prihodi? | **ne** — prihodi su 3 Podtipa, bucketi bi ih samo ponovili |
+| **R14** | Redoslijed: pločica (R-F2 + R-F3) **prije** F5, config upisuje alat? | **da** — Koka dobije pločicu ranije, raspored će se ionako mijenjati |
+| **R15** | Što vraćaju `Kuća / Povrat Zoran` i `Povrat Nataša`? U „Kuća investicije" bucket postaje negativan (rujan −68,38; 12 mj ostane 159,69 od 947,73) | **pitanje za Koku**: ako vraćaju dio režija ⇒ „Mjesečni troškovi". Povrat ide u bucket troška koji vraća |
 
 ---
 
