@@ -47,12 +47,14 @@ dogovori prije pokretanja.
 ## T-S164-3 ⬜ N/A prijedlozi — uvoz na TEST-u
 
 Fileovi (napravljeni nad TEST = PROD 07.10., prozor 10/2025–09/2026):
-`data-prep_data\Financije\na_razvrstavanje_kokin_tekuci_zaba_20261007_0946.xlsx` (72 retka, 8 prijedloga)
-`data-prep_data\Financije\na_razvrstavanje_sasin_tekuci_rf_20261007_0946.xlsx` (49 redaka, 6 prijedloga)
+`data-prep_data\Financije\na_razvrstavanje_kokin_tekuci_zaba_20261007_1025.xlsx` (72 retka, 8 prijedloga)
+`data-prep_data\Financije\na_razvrstavanje_sasin_tekuci_rf_20261007_1025.xlsx` (49 redaka, 6 prijedloga)
+(`…_0946` su stari: ravan izbornik Podtipa — ne koristiti.)
 
 1. Otvori RF file. List `Pregled` za svaki redak kaže prijedlog i dokaz (ili zašto ga nema).
-   Žuti Tip/Podtip = prijedlog; narančasti = `N/A`, razvrstaj ga sam iz padajućeg izbornika
-   (list `Tip-Podtip` pokazuje koji Podtip pripada kojem Tipu — izbornik Podtipa NIJE ovisan).
+   Žuti Tip/Podtip = prijedlog; narančasti = `N/A`, razvrstaj ga sam iz padajućeg izbornika.
+   **Izbornik Podtipa nudi samo Podtipove odabranog Tipa**; promijeniš li Tip, stari Podtip
+   pocrveni dok ga ne zamijeniš. Legenda i tehnički stupci su sklopljeni (`+` gore / lijevo).
    Što ne znaš, ostavi `N/A`.
 2. `npm run dev` (TEST), Activities → Import → RF file.
    **Očekivano:** **0 New · Modify = broj redaka kojima si ostavio Tip ≠ N/A** (bez ručnih: **6**)
