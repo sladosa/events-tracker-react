@@ -389,6 +389,12 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   nosio; fallback je redak `WhenValue = *`.
   ⚠ Brojači `Automations` / `List columns` u modalu broje **Aree kojima se config promijenio**;
   sivo `0` = sheet pročitan, bez promjene.
+- **Redoslijed opcija u izborniku je PRIKAZ, ne podatak** (S164, Koka i Saša). Atribut čiji najdulji
+  popis ima ≥ 7 opcija prikazuje sve popise abecedno (hr kolacija, `N/A`/`*` na vrhu) —
+  `src/lib/optionOrder.ts`, zovu ga forma (`AttributeInput`) i app Excel export; Python app Excel
+  (`_excel_izbornici.py`) ponavlja pravilo. Odluka je **po atributu**, ne po popisu (inače Podtip
+  pod `Razno` i pod `Zabava` različito). `validation_rules` čuva redoslijed vlasnika (Structure panel).
+  ⚠ Ne Pythonov `sorted()` — velika slova ispred malih, pa `auto C5` ispadne iza `Zdravlje`.
 - **`chain_key`** je sistemsko polje (UUID), nikad se ne prikazuje; `comment` je samo korisnički tekst
 - **`touched: true`** mora biti postavljen pri učitavanju atributa iz baze u Edit toku —
   inače ih `handleSave()` preskoči

@@ -47,9 +47,9 @@ dogovori prije pokretanja.
 ## T-S164-3 ⬜ N/A prijedlozi — uvoz na TEST-u
 
 Fileovi (napravljeni nad TEST = PROD 07.10., prozor 10/2025–09/2026):
-`data-prep_data\Financije\na_razvrstavanje_kokin_tekuci_zaba_20261007_1025.xlsx` (72 retka, 8 prijedloga)
-`data-prep_data\Financije\na_razvrstavanje_sasin_tekuci_rf_20261007_1025.xlsx` (49 redaka, 6 prijedloga)
-(`…_0946` su stari: ravan izbornik Podtipa — ne koristiti.)
+`data-prep_data\Financije\na_razvrstavanje_kokin_tekuci_zaba_20261007_1049.xlsx` (72 retka, 8 prijedloga)
+`data-prep_data\Financije\na_razvrstavanje_sasin_tekuci_rf_20261007_1049.xlsx` (49 redaka, 6 prijedloga)
+(`…_0946` i `…_1025` su stari: ravan izbornik odnosno nesložen popis — ne koristiti.)
 
 1. Otvori RF file. List `Pregled` za svaki redak kaže prijedlog i dokaz (ili zašto ga nema).
    Žuti Tip/Podtip = prijedlog; narančasti = `N/A`, razvrstaj ga sam iz padajućeg izbornika.
@@ -71,3 +71,18 @@ Fileovi (napravljeni nad TEST = PROD 07.10., prozor 10/2025–09/2026):
 2. RF file pregledaš ti, ZABA file Koka (ili ti uz nju) — kao T-S164-3 korak 1.
 3. Uvoz **pod Kokinim računom**; za tuđe retke (ako ih ima) „fix as owner".
    **Očekivano:** 0 New · Modify = broj razvrstanih · 0 Delete; saldo nepomaknut.
+
+## T-S164-5 ⬜ Dugi izbornici abecedno (app + Excel)
+
+Preduvjet: `npm run dev` (TEST), Area `Financije_all`, `Ctrl+Shift+R`.
+
+1. Add Activity → izbornik **Tip**. **Očekivano:** `N/A` prvi, pa `Advokati, auto C5, auto Lacetti,
+   Domaćinstvo, Informatika, …, Zabava, Zdravlje` (malo slovo `auto` je među A, ne na dnu).
+2. Tip = `Zabava` → izbornik **Podtip**: `Audible_Koka, Audible_Sasa, Disney, HBOmax, …, Youtube`.
+   Tip = `Razno` → `Nena's funds, Odjeća/…_Koka, …, Temu` (i kratki popis je abecedan — pravilo je
+   po atributu).
+3. **Smjer** (`Uplata, Isplata, PROVJERI`) i **Izvor** zadržavaju stari redoslijed (kratki popisi).
+4. Isto u **Editu** postojećeg retka (zatvori bez spremanja).
+5. Structure → Edit `Podtip`: popis opcija je u **starom** redoslijedu (baza se ne mijenja).
+6. Activities Excel export → stupac Tip/Podtip: isti redoslijed kao forma.
+   **Pad:** forma i Excel različitog redoslijeda ⇒ jedno od dva mjesta ne zove `optionOrder`.

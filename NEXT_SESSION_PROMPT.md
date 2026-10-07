@@ -39,6 +39,10 @@
 
 ---
 
+> **Dopisano iz S164 nakon S165 handoffa (isti dan):** dugi izbornici su sada abecedni u Add/Edit
+> i Excel exportu (`src/lib/optionOrder.ts`, T-S164-5); Python app Excel ima ovisan Podtip izbornik
+> (`_excel_izbornici.py`); novi N/A fileovi `na_razvrstavanje_*_20261007_1049.xlsx`. Ide u isti deploy.
+
 # DIO 2 — tehnički (za Claudea)
 
 ## Stanje

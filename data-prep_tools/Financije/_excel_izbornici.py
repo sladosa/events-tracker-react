@@ -34,6 +34,25 @@ DIJAKRITICI = [('č', 'c'), ('ć', 'c'), ('š', 's'), ('ž', 'z'), ('đ', 'd'),
 PREFIKS = 'Dep_tip'          # = sanitizeNamedRange(`Dep_${'tip'}`) u app exportu
 LIST = 'DropdownData'
 
+# Redoslijed opcija = `src/lib/optionOrder.ts` (S164): atribut čiji najdulji popis ima
+# >= ALPHA_MIN opcija prikazuje sve popise abecedno (hr), `N/A`/`*` na vrhu.
+# ⚠ Ne `sorted()`: on stavlja velika slova ispred malih, pa `auto C5` završi iza `Zdravlje`.
+ALPHA_MIN = 7
+_HR = {'č': ('c', 1), 'ć': ('c', 2), 'đ': ('d', 1), 'š': ('s', 1), 'ž': ('z', 1)}
+
+
+def _hr_kljuc(s: str):
+    return [_HR.get(c, (c, 0)) for c in s.lower()]
+
+
+def poredaj(opcije, svi_popisi) -> list[str]:
+    """= `orderForDisplay` iz optionOrder.ts."""
+    opcije = list(opcije)
+    if not any(len(p) >= ALPHA_MIN for p in svi_popisi):
+        return opcije
+    vrh = [p for p in ('N/A', '*') if p in opcije]
+    return vrh + sorted((o for o in opcije if o not in ('N/A', '*')), key=_hr_kljuc)
+
 
 def ime_raspona(vrijednost: str) -> str:
     """= `sanitizeNamedRange` iz excelExport.ts."""
@@ -72,12 +91,13 @@ def tip_podtip_izbornici(wb, ws, col_tip: int, col_pod: int, prvi: int, zadnji: 
     """Tip = popis Tipova (+ `N/A`), Podtip = popis OVISAN o Tipu u istom retku."""
     dd = wb.create_sheet(LIST)
     dd.sheet_state = 'hidden'
-    tipovi = sorted(tax) + ['N/A']
+    tipovi = poredaj(list(tax) + ['N/A'], [list(tax) + ['N/A']])
+    podtipovi = {t: poredaj(v, list(tax.values())) for t, v in tax.items()}
     for i, t in enumerate(tipovi, start=1):
         dd.cell(i, 1, t)
     stupac = 2
-    for t in sorted(tax):
-        opcije = tax[t]
+    for t in tipovi:
+        opcije = podtipovi.get(t)
         if not opcije:
             continue
         dd.cell(1, stupac, f'tip={t}')
@@ -127,8 +147,9 @@ def provjeri(path, tax: dict[str, list[str]]) -> list[str]:
             continue
         (list_, ref), = list(imena[ime].destinations)
         vrijednosti = [c.value for red in wb[list_][ref.replace('$', '')] for c in red]
-        if vrijednosti != list(opcije):
-            greske.append(f'Tip „{t}": raspon nosi {vrijednosti}, očekivano {list(opcije)}')
+        ocekivano = poredaj(opcije, list(tax.values()))
+        if vrijednosti != ocekivano:
+            greske.append(f'Tip „{t}": raspon nosi {vrijednosti}, očekivano {ocekivano}')
     pod = [dv for dv in wb['Events'].data_validations.dataValidation if 'INDIRECT' in (dv.formula1 or '')]
     if not pod:
         greske.append('Podtip stupac nema INDIRECT izbornik (ravan popis?)')

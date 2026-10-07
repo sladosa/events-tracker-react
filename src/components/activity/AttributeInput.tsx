@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import type { AttributeDefinition, DataType } from '@/types';
 import { parseValidationRules, getOptionsForDependency } from '@/hooks/useAttributeDefinitions';
 import { parseAmountInput } from '@/lib/amountFormat';
+import { orderForDisplay } from '@/lib/optionOrder';
 
 interface AttributeInputProps {
   definition: AttributeDefinition;
@@ -43,9 +44,12 @@ export function AttributeInput({
     [definition.validation_rules]
   );
 
-  // Get options based on dependency
-  const options = useMemo(() => 
-    getOptionsForDependency(parsedOptions, dependencyValue || null),
+  // Get options based on dependency — dugi popisi abecedno (optionOrder.ts, S164)
+  const options = useMemo(() =>
+    orderForDisplay(
+      getOptionsForDependency(parsedOptions, dependencyValue || null),
+      [parsedOptions.options, ...Object.values(parsedOptions.dependsOn?.optionsMap ?? {})],
+    ),
     [parsedOptions, dependencyValue]
   );
 

@@ -36,6 +36,7 @@ import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
 import { applyProfileToWorkbook, getProfileAttrOrder, type ExportProfile } from './exportProfile';
 import { computeRowFingerprint, ROW_HASH_HEADER } from './excelFingerprint';
 import { DATE_ATTR_NUMFMT, canonicalDatetime, datetimeCellValue } from './excelDatetime';
+import { orderForDisplay } from './optionOrder';
 
 // ─────────────────────────────────────────────
 // Constants
@@ -270,6 +271,17 @@ export function buildAttrMeta(
         for (const [k, v] of Object.entries(dd.mapping)) om[k] = [v as string];
         dependsOn = { attributeSlug: dd.field, optionsMap: om };
       }
+    }
+
+    // Isti redoslijed kao forma (optionOrder.ts, S164): dugi popisi abecedno.
+    const allLists = [suggestOptions, ...Object.values(dependsOn?.optionsMap ?? {})];
+    suggestOptions = orderForDisplay(suggestOptions, allLists);
+    if (dependsOn) {
+      dependsOn = {
+        ...dependsOn,
+        optionsMap: Object.fromEntries(Object.entries(dependsOn.optionsMap)
+          .map(([k, v]) => [k, Array.isArray(v) ? orderForDisplay(v, allLists) : v])),
+      };
     }
 
     attrMeta.set(def.id, {
