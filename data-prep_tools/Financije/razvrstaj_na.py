@@ -225,6 +225,44 @@ def predlozi(redci, ciljevi, rj, tax, provjera=False):
     return out
 
 
+def preuzmi(rez, fileovi, tax):
+    """Tip/Podtip koje je čovjek već upisao u ranije razvrstan file, po `event_id`. S164.
+
+    ZAŠTO: razvrstava se jednom (npr. na TEST-u, za probu), a uvozi na PROD. TEST file se na
+    PROD NE SMIJE uvesti: kol. G nosi TEST vlasnika, a PROD retke je upisala Koka ⇒ uvoz stane
+    (S149) — ili bi, bez te brane, napravio duplikate (S148). TEST je kopija PROD-a s ISTIM
+    event ID-evima (`prod_to_test.py`), pa se odluka prenese po ID-u u svjež PROD file, s
+    autorom iz PROD baze. Ručna odluka pobjeđuje prijedlog alata.
+    """
+    from openpyxl import load_workbook
+    rucno = {}
+    for f in fileovi:
+        ws = load_workbook(f, read_only=True)['Events']
+        redovi = list(ws.iter_rows(values_only=True))
+        hdr = next(i for i, r in enumerate(redovi) if r and r[0] == 'event_id')
+        h = list(redovi[hdr])
+        it, ip = h.index('Tip'), h.index('Podtip')
+        for r in redovi[hdr + 1:]:
+            if r and r[0] and r[it] not in (None, '', 'N/A'):
+                rucno[str(r[0])] = (str(r[it]), str(r[ip] or ''))
+        print(f'Preuzimam iz {Path(f).name}: {sum(1 for _ in rucno)} razvrstanih redaka (ukupno)')
+    out, n, krivo = [], 0, []
+    for r, p, dokaz in rez:
+        par = rucno.get(r['id'])
+        if par and (par[0] not in tax or (par[1] and par[1] not in tax[par[0]])):
+            krivo.append(f"{r['event_date']} {par[0]} / {par[1]}")
+            par = None
+        if par:
+            n += 1
+            out.append((r, par, 'PREUZETO (ručno razvrstano)' if par != p else dokaz))
+        else:
+            out.append((r, p, dokaz))
+    print(f'  primijenjeno na {n} N/A redaka ove baze')
+    if krivo:
+        print(f'  ✗ {len(krivo)} par(ova) nije u popisu opcija — NISU preuzeti: ' + '; '.join(krivo))
+    return out
+
+
 def main():
     env = target()
     url, key = load_env(env)
@@ -251,6 +289,9 @@ def main():
 
     ciljevi = sorted([r for r in u_prozoru if je_na(r)], key=lambda r: r['event_date'])
     rez = predlozi(redci, ciljevi, rj, tax)
+    if '--preuzmi' in sys.argv:
+        rez = preuzmi(rez, [a for a in sys.argv[sys.argv.index('--preuzmi') + 1:]
+                            if not a.startswith('--')], tax)
     po_racunu = defaultdict(list)
     for x in rez:
         po_racunu[x[0]['attrs'].get('Racun') or '(bez računa)'].append(x)
