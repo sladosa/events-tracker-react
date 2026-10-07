@@ -223,9 +223,18 @@ prešla na unos u appu s obaveznim Tipom; 2026. ih ima 42. **112 nosi `Izvod opi
 su razvrstivi (Restoran Lanterna 450,70 → Kave/jelo vani, Recepcija Lone 444,55 → Putovanja, Google
 Play, Masterclass, Nespresso…). Po računu: **Kokin ZABA 72** (MC 54, Racun 18), **Sašin RF 49**
 (Visa 40, Racun 9) ⇒ Saša svoje razvrstava sam.
-Put: postojeći alati (`apply_rules.py`, `ai_classify.py`) predlože Tip/Podtip → app Excel za pregled →
-uvoz (kol. G = autor, `fix_as_owner`). Pločica to ne čeka: N/A je vidljiva kriška (R10) i smanjuje se
-kako se razvrstava.
+**Alat (S164): `Financije/razvrstaj_na.py`** — prijedlog brojanjem povijesti (ljudska oznaka u opisu →
+trgovac → trgovac + iznos → za račun `presedani.Presedani`; ≥ 90 % i ≥ 3 presedana; `N/A` ne glasa;
+posrednik se ne pogađa; ručni rječnici `uvezi_transu.RUCNO` i `visa_uvoz_izvoda.KLASA`). Izlaz: app
+Excel **po računu** (tko pregledava), kol. G = autor, Tip/Podtip izbornici, list `Pregled` s dokazom.
+- **Provjera unatrag** (`--provjera`, povijest strogo starija od retka): na 1.318 razvrstanih redaka
+  12 mj prijedlog za **65 %**, od toga **97,3 % točno**. Najčešći promašaj: Apple 9,99 (HBOmax vs
+  Cloud backup — ista cijena, dvije pretplate) ⇒ žuto se **pregledava**, ne uvozi naslijepo.
+- Na stvarnim N/A (121): prijedlog za **14** (ZABA 8, RF 6). Ostatak su jednokratni trgovci
+  (Lanterna, Recepcija Lone, Masterclass…) i KEKS PAY — to zna samo čovjek; file ih nudi narančasto.
+- ⚠ `uvezi_transu.RUCNO_IZNOS` (Apple 9,99 → HBOmax) se **ne koristi**: provjera unatrag ga je 3×
+  pobila. Ručna odluka za jednu transu nije pravilo.
+Pločica to ne čeka: N/A je vidljiva kriška (R10) i smanjuje se kako se razvrstava.
 
 ## 5. Spremljeni upiti — gdje žive (✅ dogovoreno)
 

@@ -8,7 +8,7 @@
 
 ## S164 — Kamo ide novac: odluke, skica, R3 osiguranje kuće (2026-10-07)
 
-Odluke R1–R15 u `docs/RAZREZ_SPEC.md`; skica pločice nad stvarnim podacima. Jedini upis u bazu: 5 redaka osiguranja kuće u novi Podtip `Kuća / Osiguranje` (`fix_kuca_osiguranje_S164.py`) — izvedeno na TEST-u, PROD čeka Kokin pristanak.
+Odluke R1–R15 u `docs/RAZREZ_SPEC.md`; skica pločice nad stvarnim podacima. Novi alat `razvrstaj_na.py` (N/A → prijedlog Tip/Podtip, app Excel; provjera unatrag 97,3 % točno). Jedini upis u bazu: 5 redaka osiguranja kuće u novi Podtip `Kuća / Osiguranje` (`fix_kuca_osiguranje_S164.py`) — izvedeno na TEST-u, PROD čeka Kokin pristanak.
 
 **Detalji testova:** [tests/S164_tests.md](tests/S164_tests.md)
 
@@ -16,6 +16,8 @@ Odluke R1–R15 u `docs/RAZREZ_SPEC.md`; skica pločice nad stvarnim podacima. J
 | --- | --- | --- |
 | T-S164-1 | TEST app: Podtip `Osiguranje` = 5 redaka, izbornik pod `Kuća` ga nudi, stari Podtip 128 | ⬜ |
 | T-S164-2 | PROD: backup → dry run (5 ✓) → `--apply --yes-prod` ⇒ `5 od 5 ✓`; u appu 5 / 128, saldo nepomaknut | ⬜ |
+| T-S164-3 | TEST: uvoz `na_razvrstavanje_*` (RF 6 / ZABA 8 prijedloga) ⇒ 0 New · Modify = razvrstani · 0 Delete; saldo nepomaknut | ⬜ |
+| T-S164-4 | PROD: `razvrstaj_na.py --file` (kol. G = Koka), pregled po računu, uvoz pod Kokinim računom | ⬜ |
 
 ---
 

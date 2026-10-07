@@ -3,7 +3,7 @@
 > Sesija: **Kamo ide novac — odluke i skica** (`docs/RAZREZ_SPEC.md`). TEST ponovo = PROD
 > (`prod_to_test.py`), skica pločice nad stvarnim podacima, sve odluke R1–R15 donesene.
 > Jedini upis u bazu: **R3 — osiguranje kuće u vlastiti Podtip** (`fix_kuca_osiguranje_S164.py`),
-> izveden na TEST-u. **Nema promjene u appu**, nema deploya, nema migracije.
+> izveden na TEST-u. Novi alat **`razvrstaj_na.py`** (prijedlog Tip/Podtip za N/A, app Excel). **Nema promjene u appu**, nema deploya, nema migracije.
 > Naredbe: PowerShell iz `data-prep_tools\`.
 
 ---
@@ -43,3 +43,29 @@ dogovori prije pokretanja.
    **Očekivano:** `U bazi: opcija Osiguranje ✓ · retci s Osiguranje: 5 od 5 ✓`.
 4. U appu (PROD, `Ctrl+Shift+R`): isti koraci kao T-S164-1 ⇒ 5 / 128 redaka.
    Saldo se ne smije pomaknuti (mijenja se samo Podtip).
+
+## T-S164-3 ⬜ N/A prijedlozi — uvoz na TEST-u
+
+Fileovi (napravljeni nad TEST = PROD 07.10., prozor 10/2025–09/2026):
+`data-prep_data\Financije\na_razvrstavanje_kokin_tekuci_zaba_20261007_0946.xlsx` (72 retka, 8 prijedloga)
+`data-prep_data\Financije\na_razvrstavanje_sasin_tekuci_rf_20261007_0946.xlsx` (49 redaka, 6 prijedloga)
+
+1. Otvori RF file. List `Pregled` za svaki redak kaže prijedlog i dokaz (ili zašto ga nema).
+   Žuti Tip/Podtip = prijedlog; narančasti = `N/A`, razvrstaj ga sam iz padajućeg izbornika
+   (list `Tip-Podtip` pokazuje koji Podtip pripada kojem Tipu — izbornik Podtipa NIJE ovisan).
+   Što ne znaš, ostavi `N/A`.
+2. `npm run dev` (TEST), Activities → Import → RF file.
+   **Očekivano:** **0 New · Modify = broj redaka kojima si ostavio Tip ≠ N/A** (bez ručnih: **6**)
+   **· 0 Delete**. Ništa drugo osim Tip/Podtip u popisu izmjena.
+3. Overview, pločica ZABA i RF: saldo se **ne smije** pomaknuti (mijenja se samo klasifikacija).
+4. `Financije\run.bat razvrstaj_na.py --od 2025-10-01 --do 2026-09-30` ⇒ RF ima toliko manje N/A.
+   **Pad:** ijedan New ⇒ ne uvoziti (redak se ne prepoznaje kao postojeći), javiti Claudeu.
+
+## T-S164-4 ⬜ N/A prijedlozi na PROD-u
+
+1. `$env:ET_TARGET='prod'; Financije\run.bat razvrstaj_na.py --od 2025-10-01 --do 2026-09-30 --file`
+   **Očekivano:** zaglavlje `[PROD]`, 121 N/A, oko 14 prijedloga, dva filea; kol. G = **Kokin**
+   e-mail (autorica gotovo svih redaka).
+2. RF file pregledaš ti, ZABA file Koka (ili ti uz nju) — kao T-S164-3 korak 1.
+3. Uvoz **pod Kokinim računom**; za tuđe retke (ako ih ima) „fix as owner".
+   **Očekivano:** 0 New · Modify = broj razvrstanih · 0 Delete; saldo nepomaknut.
