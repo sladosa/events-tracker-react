@@ -63,14 +63,21 @@ Fileovi (napravljeni nad TEST = PROD 07.10., prozor 10/2025–09/2026):
 4. `Financije\run.bat razvrstaj_na.py --od 2025-10-01 --do 2026-09-30` ⇒ RF ima toliko manje N/A.
    **Pad:** ijedan New ⇒ ne uvoziti (redak se ne prepoznaje kao postojeći), javiti Claudeu.
 
-## T-S164-4 ⬜ N/A prijedlozi na PROD-u
+## T-S164-4 ⬜ N/A razvrstavanje na PROD-u
 
-1. `$env:ET_TARGET='prod'; Financije\run.bat razvrstaj_na.py --od 2025-10-01 --do 2026-09-30 --file`
-   **Očekivano:** zaglavlje `[PROD]`, 121 N/A, oko 14 prijedloga, dva filea; kol. G = **Kokin**
-   e-mail (autorica gotovo svih redaka).
-2. RF file pregledaš ti, ZABA file Koka (ili ti uz nju) — kao T-S164-3 korak 1.
-3. Uvoz **pod Kokinim računom**; za tuđe retke (ako ih ima) „fix as owner".
-   **Očekivano:** 0 New · Modify = broj razvrstanih · 0 Delete; saldo nepomaknut.
+⚠ **TEST file se na PROD NE uvozi**: kol. G nosi TEST vlasnika (tebe), a PROD retke je upisala Koka
+⇒ uvoz stane (S149). Razvrstava se **jednom** (u TEST fileovima iz T-S164-3), a odluke se prenesu po
+`event_id` (isti na TEST-u i PROD-u) u svjež PROD file s Kokinim e-mailom:
+
+1. ```powershell
+   $env:ET_TARGET='prod'
+   Financije\run.bat razvrstaj_na.py --od 2025-10-01 --do 2026-09-30 --file --preuzmi "..\data-prep_data\Financije\<razvrstan RF>.xlsx" "..\data-prep_data\Financije\<razvrstan ZABA>.xlsx"
+   ```
+   **Očekivano:** zaglavlje `[PROD]`, `Preuzimam iz …`, `primijenjeno na N` (= razvrstani u oba
+   filea, osim redaka koje je netko u međuvremenu razvrstao u appu), **nijedan `✗`**; dva nova
+   filea, kol. G = **Kokin** e-mail.
+2. Uvoz oba filea **pod Kokinim računom**. **Očekivano:** 0 New · Modify = N · 0 Delete; saldo nepomaknut.
+3. Kontrola: korak 1 **bez** `--file` ⇒ N/A manji za N.
 
 ## T-S164-5 ⬜ Dugi izbornici abecedno (app + Excel)
 

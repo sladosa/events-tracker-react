@@ -37,7 +37,7 @@ Odluke R1–R15 u `docs/RAZREZ_SPEC.md`; skica pločice nad stvarnim podacima. N
 | T-S164-1 | TEST app: Podtip `Osiguranje` = 5 redaka, izbornik pod `Kuća` ga nudi, stari Podtip 128 | ⬜ |
 | T-S164-2 | PROD: backup → dry run (5 ✓) → `--apply --yes-prod` ⇒ `5 od 5 ✓`; u appu 5 / 128, saldo nepomaknut | ⬜ |
 | T-S164-3 | TEST: uvoz `na_razvrstavanje_*` (RF 6 / ZABA 8 prijedloga) ⇒ 0 New · Modify = razvrstani · 0 Delete; saldo nepomaknut | ⬜ |
-| T-S164-4 | PROD: `razvrstaj_na.py --file` (kol. G = Koka), pregled po računu, uvoz pod Kokinim računom | ⬜ |
+| T-S164-4 | PROD: `razvrstaj_na.py --file --preuzmi <razvrstani TEST fileovi>` (odluke po `event_id`, kol. G = Koka), uvoz pod Kokinim računom; TEST file se na PROD NE uvozi | ⬜ |
 | T-S164-5 | Dugi izbornici abecedno: Tip (N/A prvi, `auto C5` među A), Podtip po atributu; Smjer/Izvor stari red; Structure panel netaknut; Excel export isti red | ⬜ |
 
 ---

@@ -38,6 +38,9 @@ Pokretanje (PowerShell, iz data-prep_tools\\):
     Financije\\run.bat razvrstaj_na.py --od 2025-01-01 --do 2025-12-31 --file
     Financije\\run.bat razvrstaj_na.py --sve --file         cijela povijest (1.513 redaka)
     Financije\\run.bat razvrstaj_na.py --provjera           točnost na razvrstanim retcima
+    Financije\\run.bat razvrstaj_na.py --file --preuzmi <razvrstan.xlsx> [<drugi.xlsx>]
+                    ručne odluke iz ranijeg filea (npr. TEST) po event_id u svjež file OVE baze.
+                    TEST file se na PROD NE uvozi (kol. G = TEST vlasnik, PROD retke je upisala Koka).
     Baza: $env:ET_TARGET='prod' (bez toga TEST).
 """
 from __future__ import annotations
