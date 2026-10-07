@@ -2,7 +2,7 @@
 
 > **Status: PRIJEDLOG, ništa nije izgrađeno.** Nastavak otvorene niti `OVERVIEW_TAB_SPEC.md`
 > §2.19 („Saša — analitika: koliko je potrošeno po Tip/Podtip"). Nastao razgovorom 2026-10-06.
-> Odluke (§9): S164 odlučeno R1, R2, R4–R8, R10–R15; **otvoreno samo R3 (Koka)**; ono što je u razgovoru već dogovoreno označeno je ✅.
+> Odluke (§9): S164 odlučeno R1–R8, R10–R15 (sve); **R3 čeka Kokin korak** (§4.4); ono što je u razgovoru već dogovoreno označeno je ✅.
 > **S164 (07.10.):** R1 izveden na PROD-u; TEST ponovo = PROD (`prod_to_test.py`); dodane odluke
 > R10–R15 iz skice; brojke u §8 ponovo izmjerene (TEST = PROD od **07.10.2026.**), razdoblje
 > **10/2025–09/2026**.
@@ -170,18 +170,23 @@ prijedloga). Grupiranje „Vrsta troška", 8 bucketa + dvije posebne kriške. Iz
 
 | Bucket | parovi | 12 mj |
 | --- | --- | ---: |
-| **Mjesečni troškovi** | Domaćinstvo/Hrana i ostalo, Bankovni troškovi · Kuća/Struja, Plin, Voda, Holding, **Povrat Zoran, Povrat Nataša** (R15: vraćaju dio režija; Zoran 12/12 mj) · Informatika/T-com, T-mobile, Cloud backup, Microsoft, HP, Hosting · Zabava/pretplate (Audible ×2, Kindle, Spotify, Prime, Sky, Disney, HBOmax, Youtube) · Prijevoz/* · Zdravlje/Lječnička komora_Koka, PP | 17.347,91 (16.292,87) |
+| **Mjesečni troškovi** | Domaćinstvo/Hrana i ostalo, Bankovni troškovi · Kuća/Struja, Plin, Voda, Holding, **Povrat Zoran, Povrat Nataša** (R15: vraćaju dio režija; Zoran 12/12 mj) · Informatika/T-com, T-mobile, Cloud backup, Microsoft, HP, Hosting · Zabava/pretplate (Audible ×2, Kindle, Spotify, Prime, Sky, Disney, HBOmax, Youtube) · Prijevoz/* · Zdravlje/PP · **gotovina, nerazvrstano** (S164, v. ispod) | 20.994,89 (19.939,85) |
 | **Kvaliteta života** | Razno/Temu (12/12 mj) · Domaćinstvo/Kave/jelo vani (12/12) · Zdravlje/Sport_Sasa (11/12), Sport_Koka (8/12) · Zabava/Kino/Kazalište/Muzeji, Wellness | 4.164,57 (4.106,59) |
 | **Putovanja i pokloni** | Putovanja/* · Razno/Pokloni | 2.909,94 (2.281,44) |
 | **Povremeno nužno** | **Osiguranje/*** · **Porezi/*** (−973,23 u 12 mj, R11) · Zdravlje/Medical_*, Other · Razno/Odjeća ×2, Razno sitnice · Informatika/Hardver, Održavanje i servis · Advokati/* | 2.476,71 (2.391,45) |
-| **Kuća investicije** | Kuća/Popravci, održavanje, osiguranje (R3: nosi i policu Generali 434,26 ⇒ prijedlog da Koka odvoji Podtip) | 1.048,87 (1.150,76) |
+| **Kuća investicije** | Kuća/Popravci, održavanje, osiguranje (R3: nosi i policu Generali 434,26 ⇒ odvaja se u Kuća/Osiguranje, v. §4.4) | 1.048,87 (1.150,76) |
 | **Kućište · Nenin novac** | Razno/Nena's funds (R12) | 499,39 (499,39) |
-| **Koka razno** | Projekti/Koka · **auto C5/*** (gorivo, leasing, registracija s osiguranjem Allianz, popravci) | 4.127,79 (4.058,11) |
+| **Koka razno** | Projekti/Koka · **auto C5/*** (gorivo, leasing, registracija s osiguranjem Allianz, popravci) · Zdravlje/Lječnička komora_Koka (S164) | 4.311,71 (4.242,03) |
 | **Saša razno** | Projekti/Sasa · **auto Lacetti/*** | 1.611,03 (1.638,85) |
 | *nerazvrstano (N/A)* | N/A i prazan Tip (R10) | 2.110,80 (3.054,84) |
-| *gotovina, nerazvrstano* | podignuto − evidentirano | 3.830,90 (3.830,90) |
 | **= Izašlo** | | **40.127,91 (39.305,20)** |
 
+- **Gotovina, nerazvrstano ide u Mjesečne troškove** (Saša, S164) kao vlastita podstavka bucketa
+  (podignuto − evidentirano), vidljiva kad se bucket rasklopi. **Bez razmazivanja po mjesecima:**
+  podizanja su neravnomjerna (10/2025 4,00 · 11/2025 800,00 · 07/2026 740,00), ali u pogledu jednog
+  mjeseca prosjek bi pokazao broj koji se nije dogodio; na 12 mj je zbroj isti. Prosjek kao opcija
+  prikaza — kasnije, ako zatreba. Config: redak grupiranja može pokazivati na korekcijski redak
+  (`{ bucket, adjustment: 'gotovina, nerazvrstano' }`, §10).
 - Ništa ne ostaje „nesvrstano" u 12 mj. Σ bucketa = Σ Tipova = Izašlo, provjereno u skici.
 - **Pravilo „mjesečno" = plaća se (gotovo) svaki mjesec** (Saša, S164). Zato su osiguranje, porezi i
   registracija izašli iz Mjesečnih: plaćaju se godišnje.
@@ -189,6 +194,37 @@ prijedloga). Grupiranje „Vrsta troška", 8 bucketa + dvije posebne kriške. Iz
   aute i projekte. Parovi s imenom osobe u drugim Tipovima (Medical, Sport, Odjeća, Audible) **ostaju**
   u bucketu po vrsti. Potpun pogled „čiji trošak" je drugo grupiranje (R5, kasnije); uz njega ide i
   **raspodjela goriva po godišnjoj kilometraži** (servisne knjižice) — Sašina ideja, nije izrađena.
+
+### 4.4 R3 — odvajanje osiguranja kuće (S164, plan)
+
+Izmjereno na PROD kopiji: `Kuća / Popravci, održavanje, osiguranje` ima **133** retka u povijesti
+(6.686,86). **Osiguranje su samo 5:** Generali 21.03.2023. 402,75 · Allianz kuća 02.04.2024. 418,76 ·
+Osiguranje za kuću 27.03.2025. 418,76 · Generali police 19.03.2026. 434,26 + naknada 0,17. Jednom
+godišnje, ožujak/travanj. Ostalih 128 su Ikea, Bauhaus (uglavnom rate), vrtlar, Letinčić 1.470 —
+oprema i održavanje kuće.
+
+Koraci:
+1. **Koka** (vlasnica, S160b: grantee ne dodaje opcije) doda Podtip **`Osiguranje`** pod `Kuća`
+   (Structure → Edit → opcije Podtipa).
+2. **5 redaka** prebaciti na `Kuća / Osiguranje` — Editom u appu (Tip/Podtip ne pale C3c kvačicu) ili
+   app Excel s kol. G = autor. Pet redaka ⇒ Edit je jeftiniji.
+3. Grupiranje: `Kuća / Osiguranje` → **Povremeno nužno**.
+4. Ime starog Podtipa (`…, osiguranje`) **ne dirati sada**: preimenovanje opcije ostavlja stari tekst
+   na 128 redaka (K-plan, `KLASIFIKACIJA_ODRZAVANJE_SPEC.md`). Ide u održavanje klasifikacije.
+
+⚠ „Kuća investicije" je po sadržaju više **oprema i održavanje** nego investicija (Ikea/Bauhaus rate).
+Ime je Sašino i ostaje dok on ne odluči drukčije.
+
+### 4.5 N/A — naknadno razvrstavanje (S164, zaseban zadatak)
+
+12 mj: **121** redak, 2.110,80 (cijela povijest 1.513). **79** ih je iz 10–12/2025 — prije nego je Koka
+prešla na unos u appu s obaveznim Tipom; 2026. ih ima 42. **112 nosi `Izvod opis`**, 109 komentar, pa
+su razvrstivi (Restoran Lanterna 450,70 → Kave/jelo vani, Recepcija Lone 444,55 → Putovanja, Google
+Play, Masterclass, Nespresso…). Po računu: **Kokin ZABA 72** (MC 54, Racun 18), **Sašin RF 49**
+(Visa 40, Racun 9) ⇒ Saša svoje razvrstava sam.
+Put: postojeći alati (`apply_rules.py`, `ai_classify.py`) predlože Tip/Podtip → app Excel za pregled →
+uvoz (kol. G = autor, `fix_as_owner`). Pločica to ne čeka: N/A je vidljiva kriška (R10) i smanjuje se
+kako se razvrstava.
 
 ## 5. Spremljeni upiti — gdje žive (✅ dogovoreno)
 
@@ -306,7 +342,7 @@ ostatak; kandidat za brisanje (`KLASIFIKACIJA_ODRZAVANJE_SPEC.md`).
 | --- | --- | --- |
 | ~~R1~~ | ~~50.000 € (§8.1): oba retka `Transfer / Nena`?~~ | ✅ **riješeno** — Saša izveo na PROD-u, provjereno 07.10. |
 | ~~R2~~ | Raspored parova u §4.3 — ispravi/potvrdi; treba li **peti** bucket za nužno-povremeno (zdravlje, odjeća, popravci auta)? | ✅ **Saša S164:** raspored u §4.3 („Sašin raspored"), 8 bucketa — prijedlog bio: peti bucket, inače „nesvrstano" ostaje ~6.100. **S164:** u skici kao „Povremeno nužno" — pogledaj ondje (❓ = nesigurno) |
-| **R3** | `Kuća/Popravci, održavanje, osiguranje` miješa mjesečno (osiguranje) i investiciju — razdvojiti Podtip (Kokina odluka) ili čekati iznimku na retku (R-F4)? | **razdvojiti Podtip** ako Koka pristane — jeftinije od iznimke na svakom retku |
+| ~~R3~~ | `Kuća/Popravci, održavanje, osiguranje` miješa mjesečno (osiguranje) i investiciju — razdvojiti Podtip (Kokina odluka) ili čekati iznimku na retku (R-F4)? | ✅ **Saša S164: razdvojiti** — novi Podtip `Kuća / Osiguranje` (5 redaka), koraci u §4.4; **čeka Koku** (korak 1) — prijedlog bio: **razdvojiti Podtip** ako Koka pristane — jeftinije od iznimke na svakom retku |
 | ~~R4~~ | Kućište: bucket samo za **investicije** (pločice, radovi) ili **sav** trošak Kućišta (i Studenac, voda, porez)? | ✅ **zatvoreno R12** (Kućište = izvor novca, ne mjesto) — prijedlog bio: o tome ovisi je li `Namjena` bucket ili zasebno grupiranje „Lokacija". **S164:** vjerojatno ga zatvara R12 |
 | ~~R5~~ | Jedno grupiranje („Vrsta troška") ili odmah i drugo („Čiji trošak": Koka / Saša / zajedničko)? | ✅ **Saša S164: da** — prijedlog bio: **jedno** za prvu verziju |
 | ~~R6~~ | Prihodi „iz čega" (mirovina, plaća…) — mijenjati Podtipove pod `Prihodi`? | ✅ **Saša S164: da** — prijedlog bio: **ne sada** — osoba je dovoljan prvi odgovor |
