@@ -173,8 +173,8 @@ prijedloga). Grupiranje „Vrsta troška", 8 bucketa + dvije posebne kriške. Iz
 | **Mjesečni troškovi** | Domaćinstvo/Hrana i ostalo, Bankovni troškovi · Kuća/Struja, Plin, Voda, Holding, **Povrat Zoran, Povrat Nataša** (R15: vraćaju dio režija; Zoran 12/12 mj) · Informatika/T-com, T-mobile, Cloud backup, Microsoft, HP, Hosting · Zabava/pretplate (Audible ×2, Kindle, Spotify, Prime, Sky, Disney, HBOmax, Youtube) · Prijevoz/* · Zdravlje/PP · **gotovina, nerazvrstano** (S164, v. ispod) | 20.994,89 (19.939,85) |
 | **Kvaliteta života** | Razno/Temu (12/12 mj) · Domaćinstvo/Kave/jelo vani (12/12) · Zdravlje/Sport_Sasa (11/12), Sport_Koka (8/12) · Zabava/Kino/Kazalište/Muzeji, Wellness | 4.164,57 (4.106,59) |
 | **Putovanja i pokloni** | Putovanja/* · Razno/Pokloni | 2.909,94 (2.281,44) |
-| **Povremeno nužno** | **Osiguranje/*** · **Porezi/*** (−973,23 u 12 mj, R11) · Zdravlje/Medical_*, Other · Razno/Odjeća ×2, Razno sitnice · Informatika/Hardver, Održavanje i servis · Advokati/* | 2.476,71 (2.391,45) |
-| **Kuća investicije** | Kuća/Popravci, održavanje, osiguranje (R3: nosi i policu Generali 434,26 ⇒ odvaja se u Kuća/Osiguranje, v. §4.4) | 1.048,87 (1.150,76) |
+| **Povremeno nužno** | **Osiguranje/*** · **Porezi/*** (−973,23 u 12 mj, R11) · Zdravlje/Medical_*, Other · Razno/Odjeća ×2, Razno sitnice · Informatika/Hardver, Održavanje i servis · Advokati/* · **Kuća/Osiguranje** (R3) | 2.911,14 (2.825,88) |
+| **Kuća investicije** | Kuća/Popravci, održavanje, osiguranje (bez osiguranja od R3, §4.4) | 614,44 (716,33) |
 | **Kućište · Nenin novac** | Razno/Nena's funds (R12) | 499,39 (499,39) |
 | **Koka razno** | Projekti/Koka · **auto C5/*** (gorivo, leasing, registracija s osiguranjem Allianz, popravci) · Zdravlje/Lječnička komora_Koka (S164) | 4.311,71 (4.242,03) |
 | **Saša razno** | Projekti/Sasa · **auto Lacetti/*** | 1.611,03 (1.638,85) |
@@ -203,11 +203,12 @@ Osiguranje za kuću 27.03.2025. 418,76 · Generali police 19.03.2026. 434,26 + n
 godišnje, ožujak/travanj. Ostalih 128 su Ikea, Bauhaus (uglavnom rate), vrtlar, Letinčić 1.470 —
 oprema i održavanje kuće.
 
-Koraci:
-1. **Koka** (vlasnica, S160b: grantee ne dodaje opcije) doda Podtip **`Osiguranje`** pod `Kuća`
-   (Structure → Edit → opcije Podtipa).
-2. **5 redaka** prebaciti na `Kuća / Osiguranje` — Editom u appu (Tip/Podtip ne pale C3c kvačicu) ili
-   app Excel s kol. G = autor. Pet redaka ⇒ Edit je jeftiniji.
+Koraci 1–2 radi alat **`Financije/fix_kuca_osiguranje_S164.py`** (Saša, S164: „alatom na TEST-u za
+probu, pa PROD"): doda opciju `Osiguranje` pod `Kuća` i prebaci 5 redaka, ciljano po `event_id`
+(TEST i PROD dijele ID-eve eventa). ✅ **Izvedeno na TEST-u 07.10.** (`5 od 5 ✓`, ponovni prolaz ne
+mijenja ništa). PROD: T-S164-2, nakon Kokinog pristanka — struktura je njezina (S133).
+1. ~~Koka doda Podtip `Osiguranje` pod `Kuća`~~ ⇒ alat (service ključ, uz Kokin pristanak).
+2. ~~5 redaka Editom~~ ⇒ alat.
 3. Grupiranje: `Kuća / Osiguranje` → **Povremeno nužno**.
 4. Ime starog Podtipa (`…, osiguranje`) **ne dirati sada**: preimenovanje opcije ostavlja stari tekst
    na 128 redaka (K-plan, `KLASIFIKACIJA_ODRZAVANJE_SPEC.md`). Ide u održavanje klasifikacije.

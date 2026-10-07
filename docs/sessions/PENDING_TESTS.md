@@ -2,7 +2,20 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S162 (2026-10-05) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S164 (2026-10-07) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S164 — Kamo ide novac: odluke, skica, R3 osiguranje kuće (2026-10-07)
+
+Odluke R1–R15 u `docs/RAZREZ_SPEC.md`; skica pločice nad stvarnim podacima. Jedini upis u bazu: 5 redaka osiguranja kuće u novi Podtip `Kuća / Osiguranje` (`fix_kuca_osiguranje_S164.py`) — izvedeno na TEST-u, PROD čeka Kokin pristanak.
+
+**Detalji testova:** [tests/S164_tests.md](tests/S164_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S164-1 | TEST app: Podtip `Osiguranje` = 5 redaka, izbornik pod `Kuća` ga nudi, stari Podtip 128 | ⬜ |
+| T-S164-2 | PROD: backup → dry run (5 ✓) → `--apply --yes-prod` ⇒ `5 od 5 ✓`; u appu 5 / 128, saldo nepomaknut | ⬜ |
 
 ---
 
