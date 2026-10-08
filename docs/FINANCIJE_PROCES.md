@@ -204,6 +204,19 @@ samo on zna.
 | T20 | 2 retka u košari **bez `Status`a** — ušli Excel uvozom, koji ne postavlja zadani `Status` (S137) | alat koji piše uvozni file uvijek postavlja `Status`; trajno: Faza 3 (`docs/FAZA3_IMPORT_AUTOMATIKA.md`) |
 | T21 | Uvoz traži kvačicu „potvrđeno razdoblje" i za **kartične** retke prije sidra — lažna uzbuna (Backlog, S155) | guard samo za retke koji ulaze u saldo, kao C3c u Editu |
 
+**Klasifikacija koju je otkrila pločica „Kamo ide novac" (S166, 08.10.2026.)** — puni tekst u §8.7
+
+Pločica nad **cijelom poviješću** (All time) pokazuje stavke koje u 12 mjeseci ne postoje. Izmjereno
+na TEST-u (= PROD 07.10.). **Nijedna ne miče saldo** (Tip/Podtip nisu u filtru salda). Treba
+**odluka**, ne kod; ispravak ide app Excelom koji uvozi Koka.
+
+| # | što pločica pokazuje | izmjereno | treba odlučiti |
+| --- | --- | --- | --- |
+| T33 | **`nesvrstano` 9.543,16 €** — Tip `Investicije` nije ni u jednom bucketu | Dionice / Kripto 10 redaka (isplata 9.250,00, uplata 256,84, 01.2023.–03.2024.) · Štednja 1 redak 550,00 (03.2024.) | Investicije **izvan razreza kao Transfer** (preporuka: nije potrošnja nego premještanje u imovinu) ili vlastiti bucket „Štednja i investicije" — zatim `set_breakdown.py` |
+| T34 | **Zdravlje / Medical_Koka −18.341,95** (u minusu) | 9 uplata **19.493,19 €** na Kokin ZABA, sve s opisom **„Pharmalog"** (2023.–2025.); stvarni medicinski trošak 1.151,24 € u 21 retku | to su **Kokini prihodi** (honorar), ne povrati ⇒ `Prihodi / Koka` ili novi Podtip `Prihodi / Pharmalog` — **Koka potvrđuje** |
+| T35 | **Osiguranje / Zivotno −5.691,96** (u minusu) | 1 uplata **7.782,55 €**, 12.12.2023., Sašin RF, „Triglav životno" — isplata police po isteku | `Prihodi / Saša` ili `Investicije` (s T33 izvan razreza = isti ishod kao povrat uloga) |
+| T36 | **N/A 27.452,88 € kroz povijest** (12 mj: 2.110,80) | prijedlozi za 12 mj su gotovi: `na_razvrstavanje_kokin_tekuci_zaba_20261007_1049.xlsx`, `…_sasin_tekuci_rf_…_1049.xlsx` (T-S164-3/4) | **čeka Koku** (ona se sjeća što je što); uz isto sjedenje T34 |
+
 **Preneseno iz backloga (S158)** — puni tekst u §8
 
 | # | što | smjer / stanje |
@@ -468,3 +481,23 @@ referencija je 10 znamenki (ne `B0802…`), opis nosi **adresu** (`SPAR - MARTI�
   u appu; pogađa Excel put, koji Koki više nije svakodnevni, pa je niže nego u S125.
   (b) **„promijenjeno nakon <datum>" vidljivo u listi** — dodiruje filtar s dva uvjeta
   (`docs/FILTER_SPEC.md`), svjesno odgođeno.
+
+### 8.7 Klasifikacija s pločice razreza (S166) — T33–T36
+
+**Kako je nađeno:** pločica „Kamo ide novac" na TEST-u uz filtar All time (01.01.2023.–08.10.2026.)
+pokazala je redak `nesvrstano` (9.543,16) i tri stavke u minusu ispod kruga. `set_breakdown.py` je
+pri upisu rasporeda provjerio samo **zadnjih 12 mjeseci** („nesvrstano: ništa"), pa stari parovi
+nisu bili viđeni. Mjerila skripta po retku (Tip, Podtip, iznos, račun, opis, datum).
+
+**Zašto je hitno prije PROD-a:** čim Koka na pločici vidi „Medical_Koka −18.341,95" ili
+`nesvrstano`, dolaze pitanja (Saša). Brojke pločice su **točne**; kriva je klasifikacija redaka.
+
+**Redoslijed kad se odluči:**
+1. T33 (Investicije) — odluka ⇒ `set_breakdown.py` (izvan razreza = `outside`, ili nov bucket).
+2. T34/T35 — app Excel s ispravcima Tip/Podtip po `event_id` (kol. G = autor retka), Koka uvozi;
+   reci očekivane brojke pregleda (0 New · N Modify · 0 Delete). Saldo nepomaknut.
+3. Ponovno pločica All time: `nesvrstano` nestaje (ili postaje bucket), Medical_Koka ≈ trošak
+   1.151,24, Zivotno bez uplate.
+4. `set_breakdown.py` provjeru proširiti na **svu povijest** (ne samo 12 mj), da sljedeći stari par
+   ne ostane neviđen.
+

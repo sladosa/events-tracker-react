@@ -5,6 +5,14 @@
 
 **E2E (Playwright)**
 
+- **⚠ EMITIRAN DOGAĐAJ NIJE KLIK — test je prošao, a kod korisnika ne radi** (S166). Prva
+  verzija testa „krug vodi, lista slijedi" zvala je `gd.emit('plotly_sunburstclick', …)` i tako
+  **zaobišla** baš put koji je bio pokvaren (slušač nije bio vezan). Mjeri se **pravim klikom**
+  (`page.mouse.click` na natpis isječka), i to na **svježe montiranom** krugu — v. CLAUDE.md
+  § UI (react-plotly i StrictMode).
+  ⚠ `boundingBox()` vraća koordinate i za element **izvan pogleda**; `page.mouse.click` tamo
+  tiho promaši (izmjereno: handler se nije ni pozvao). Prije klika `scrollIntoViewIfNeeded()`.
+
 - **⚠ PONOVLJEN RUN JE PADAO NA 409 JER JE `supabaseUpsert` TIHO ISPUSTAO
   `onConflict`** (S146). Helper ga prima i **koristi samo na admin putu**; REST
   fallback ga nije prosljedjivao, a `Prefer: resolution=merge-duplicates` bez

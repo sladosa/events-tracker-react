@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S165).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S166).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 129 | [Critical rules](<#Critical rules>) | X |
-| 1253 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1713 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1729 | [Key files](<#Key files>) |  |
-| 1848 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1868 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1890 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1918 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1958 | [Open bugs](<#Open bugs>) | ~ |
-| 2067 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2112 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2219 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2227 | [Backlog](<#Backlog>) | ~ |
-| 2231 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2239 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1259 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1729 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1745 | [Key files](<#Key files>) |  |
+| 1864 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1884 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1906 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1934 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1974 | [Open bugs](<#Open bugs>) | ~ |
+| 2083 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2128 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2242 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2250 | [Backlog](<#Backlog>) | ~ |
+| 2254 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2262 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2403 redaka, 18 sekcija._
+_Ukupno 2426 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1262,6 +1262,16 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
 **→ Python alati i AI (`ai_classify.py`)** — preseljeno u `data-prep_tools/CLAUDE.md` (S151).
 **UI (React)**
 
+- **⚠ `react-plotly` U DEV STRICTMODE-U GUBI SLUŠAČ IZ PROPA (`onSunburstClick`, `onClick`…)**
+  (S166, izmjereno). Montiraj → odmontiraj (`Plotly.purge` briše SVE slušače) → montiraj, a
+  njegov interni popis i dalje drži slušač kao vezan pa ga **ne veže ponovo**. Dok se graf ne
+  prerenderira s novim identitetom handlera, klik ide **samo Plotlyju** — krug se zumira, stanje
+  aplikacije ne. Izgleda nasumično („nakon povratka iz Add ne radi"). Lijek: slušač vezati
+  **sam** u `onInitialized(fig, gd)` (živi element pri svakom montiranju) i čitati handler iz
+  `useRef` — `BreakdownSunburst.tsx`. ⚠ Plotly uzima povratnu vrijednost **ZADNJEG** slušača, a
+  react-plotly na `plotly_sunburstclick` veže i svoj `handleUpdate` — `return false` zato nije
+  pouzdan; stanje (Plotly `level`) mora biti konzistentno i kad Plotly zumira sam.
+
 - **⚠ EFEKT KOJI SINKRONIZIRA IZBOR IZ KONTEKSTA NE ZNA TKO JE OBRISAO** (S160, T-S160-1).
   `AppHome` je na svako `attrFilter → null` vraćao „Filter by" na Comment — a null proizvodi i
   vlastiti panel (promjena polja prvo briše stari uvjet; `type="date"` usred tipkanja javi `''`).
@@ -2215,6 +2225,13 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
 - **⚠ Config NOVOG tipa pločice ide na PROD tek POSLIJE deploya** (S164). Stari bundle za nepoznat
   `type` crta žuti okvir „Nepoznat tip pločice" iznad salda (`OverviewTab`, `default` grana) — Koka
   bi ga vidjela. Redoslijed: migracija → deploy → config.
+- **Overview je harmonika (S166, Saša): uvijek je otvorena TOČNO JEDNA pločica**, zadano saldo
+  (Koka ga uvijek treba); klik na otvorenu prebacuje na drugu. Pamti se u **modulu**
+  (`OverviewTab`) — preživi drill i povratak, **ne** preživi F5. Dvije otvorene guraju filtar s
+  razdobljem predaleko. Sklopljen saldo se **skriva**, ne odmontira (upisano „u banci" ostaje).
+- **Provjera rasporeda bucketa mora gledati SVU povijest, ne 12 mjeseci** (S166). `set_breakdown.py`
+  je javio „nesvrstano: ništa", a All time je pokazao `nesvrstano` 9.543,16 (Tip `Investicije`,
+  2023.–2024.) — v. `docs/FINANCIJE_PROCES.md` T33–T36.
 - **Automat `Planiran → Izvršen` po dospijeću je ODBAČEN** — dospjeli datum nije dokaz da je
   banka naplatila, pa bi automat sam proizveo razliku prema banci. Umjesto toga „Dospjelo → potvrdi".
 - **Transfer:** **ulazi** u saldo (novac je stvarno otišao), **izlazi** iz razreza po Tipu.
