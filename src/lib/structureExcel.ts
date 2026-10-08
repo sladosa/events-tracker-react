@@ -109,6 +109,8 @@ const COLS = [
   // booleans — so they ride the existing sheet instead of earning one.
   { key: 'addTimer',    header: 'AddTimer',      width: 12, colColor: CLR.GREEN, grouped: true, collapsed: false },
   { key: 'addDate',     header: 'AddDatePicker', width: 14, colColor: CLR.GREEN, grouped: true, collapsed: false },
+  // S166 — na KRAJU, da se slova postojećih kolona ne pomaknu (S160 zamka).
+  { key: 'defaultPeriod', header: 'DefaultPeriod', width: 14, colColor: CLR.GREEN, grouped: true, collapsed: false },
 ] as const;
 
 const N_COLS = COLS.length; // 23 (S139) — /!\ komentar je zaostajao za nizom;
@@ -170,6 +172,7 @@ interface DataRow {
   disableSavePlus: string; // TRUE | FALSE | '' (Area rows only)
   addTimer:     string;    // TRUE | FALSE | '' (Area rows only)
   addDate:      string;    // TRUE | FALSE | '' (Area rows only)
+  defaultPeriod: string;   // preset ključ (this-year …) | '' (Area rows only)
   // Row meta (not written to cells)
   _isAreaRow:   boolean;
   _isLeafRow:   boolean;
@@ -263,6 +266,7 @@ function buildAreaRow(node: StructureNode, sharedWith: string): DataRow {
       ? '' : (node.area.settings.add_header.timer ? 'TRUE' : 'FALSE'),
     addDate: node.area.settings?.add_header?.date === undefined
       ? '' : (node.area.settings.add_header.date ? 'TRUE' : 'FALSE'),
+    defaultPeriod: node.area.settings?.default_period ?? '',
     _isAreaRow: true, _isLeafRow: false, _isAttrRow: false,
   };
 }
@@ -283,6 +287,7 @@ function buildCategoryRow(node: StructureNode): DataRow {
     disableSavePlus: '', // Area-level setting only
     addTimer: '',
     addDate: '',
+    defaultPeriod: '',
     _isAreaRow: false, _isLeafRow: node.isLeaf, _isAttrRow: false,
   };
 }
@@ -312,6 +317,7 @@ export function buildAttrRows(node: StructureNode, attr: AttributeDefinition): D
     disableSavePlus: '' as const,
     addTimer: '' as const,
     addDate: '' as const,
+    defaultPeriod: '' as const,
     _isAreaRow: false as const,
     _isLeafRow: false as const,
     _isAttrRow: true as const,
@@ -697,6 +703,7 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: `${colOf('disableSavePlus')}  DisableSavePlus`,    value: 'Area rows only.  TRUE hides the "Save +" button in Add Activity (one event per session — e.g. Financije, Health).  Blank = FALSE.  Column absent from the file = setting left unchanged.' },
     { kind: 'row', label: `${colOf('addTimer')}  AddTimer`,         value: 'Area rows only.  FALSE hides the SESSION/LAP stopwatch in Add Activity.  Useful when entries are RECORDED after the fact (a transaction) rather than PERFORMED while the screen is open (a workout).  Blank = TRUE (the header as it is today).' },
     { kind: 'row', label: `${colOf('addDate')}  AddDatePicker`,    value: 'Area rows only.  TRUE adds a date picker to Add Activity, defaulting to today, so an entry for a past day needs one screen instead of two (Add then Edit).  Blank = FALSE.' },
+    { kind: 'row', label: `${colOf('defaultPeriod')}  DefaultPeriod`,    value: 'Area rows only.  Date filter period when the Area is opened and nobody has chosen one: this-month, last-3-months, this-year, last-year … (same keys as the Period dropdown).  Blank = All time.' },
     { kind: 'row', label: '', value: '' },
 
     { kind: 'section', text: 'Understanding DependsOn Rows' },

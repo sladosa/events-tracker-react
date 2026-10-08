@@ -137,6 +137,9 @@ Takav nacrt bi, potvrđen, upisao **isti zapis drugi put**.
 - Area dropdown + Category dropdown u Filter panelu
 - Shortcuts dropdown — odaberi spremljeni shortcut da brzo postaviš Area + Category (i, ako ga ima, predefinirane vrijednosti atributa — vidi sekciju **Shortcuts**)
 - "Reset cat." resetira samo kategoriju, area ostaje
+- **Razdoblje (Period)** — Area može imati **zadano razdoblje** (npr. Financije: *This Year*):
+  pri otvaranju appa i odabiru te Aree filtar kreće od njega. Odabereš li drugo (i *All Time*),
+  vrijedi tvoj izbor do sljedećeg otvaranja appa. Area bez postavke kreće od *All Time*.
 - **Filter by** dropdown: odaberi "Comment" za pretragu komentara, specifični atribut za pretragu po vrijednosti atributa, ili **"In any attribute"** za pretragu po tekstu u svim atributima odjednom
 - **Comment contains** — pretražuje `comment` polje leaf eventa (case-insensitive, server-side); chip "xyz ×" u tablici kad je aktivan
 - **Pretraga po `~` (nepotvrđeni iznosi)** — upiši `~` u Comment pretragu da dobiješ sve

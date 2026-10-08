@@ -135,7 +135,8 @@ nacrtao žuti okvir „Nepoznat tip pločice".
    $env:ET_TARGET='prod'
    Financije\run.bat set_breakdown.py
    ```
-   Dry run: `[PROD]`, sve provjere ✓, `nesvrstano u zadnjih 12 mj: ništa`, pločica NOVA. Zatim:
+   Dry run: `[PROD]`, sve provjere ✓, `nesvrstano u zadnjih 12 mj: ništa`, pločica NOVA,
+   `zadano razdoblje filtra: — (All time) → this-year` (S166). Zatim:
    ```powershell
    Financije\run.bat set_breakdown.py --apply --yes-prod
    ```

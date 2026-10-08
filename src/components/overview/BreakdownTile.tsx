@@ -192,8 +192,10 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
 
   const renderRow = (nd: BreakdownNode, depth: number, parentCents: number): ReactNode => {
     const hasKids = nd.children.length > 0;
-    // Čvor u fokusu je uvijek rasklopljen — to je smisao klika u krugu.
-    const isOpen = open.has(nd.id) || (nd.id === focusId && focusPath.length > 0);
+    // Čvor u fokusu je uvijek rasklopljen — to je smisao klika u krugu. ⚠ SAMO dok se
+    // krug vidi (S166, Saša): fokus preživi prelazak na usku širinu, a ondje ga nema
+    // čime vratiti, pa bi redak ostao zaključan otvoren.
+    const isOpen = open.has(nd.id) || (wide && nd.id === focusId && focusPath.length > 0);
     const neg = nd.cents < 0;
     // Isti izvor kao klik: strelica postoji točno kad drill postoji.
     const target = axisIsEventDate && nd.kind === 'level' ? drillTarget(nd) : null;

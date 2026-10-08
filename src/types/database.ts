@@ -272,6 +272,9 @@ export interface AreaSettings {
   /** Add Activity header for this Area. Absent = today's behaviour, exactly as
    *  with `list_columns`: the default is a real default, not an empty object. */
   add_header?: AddHeaderConfig;
+  /** Razdoblje filtra kad čovjek još nije birao (S166, Koka: Financije ⇒ `this-year`).
+   *  Ključ preseta iz `getDatePresets()`; odsutno = All time, kao do sada. */
+  default_period?: string;
 }
 
 /** What the Add Activity header shows.

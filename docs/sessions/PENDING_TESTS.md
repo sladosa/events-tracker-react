@@ -22,6 +22,8 @@ T-S165-1..8 ✅ na TEST-u. Usput pet dorada: rub kruga, dvoznačan Podtip bez �
 | T-S166-7 | Klik na isječak kruga suzi listu (staza `Sve › …`), sredina kruga = razina gore | ✅ S166 — Saša (Mjesečni, Kvaliteta života) nakon Ctrl+Shift+R; čuva E2E s pravim klikom (sabotaža ruši) |
 | T-S166-8 | Svjež krug (povratak iz Add): PRVI klik na isječak suzi listu | ✅ S166 — Saša (Kvaliteta života nakon povratka); čuva E2E „svjež krug" (react-plotly u StrictMode-u gubi slušač iz propa — vežemo ga sami; sabotaža ruši) |
 | T-S166-9 | Postotak udjela u roditelju uz iznos (široki: stupac; uski: ispod iznosa) | ✅ S166 — Saša, laptop i mobitel (Kvaliteta života 8,7 %, Domaćinstvo 37,1 %…); čuva E2E (52,3 % / 18,2 %) |
+| T-S166-10 | Zadano razdoblje Financija = This Year (F5); ručni All Time ostaje; Health_Sasa bez promjene; Structure kolona `DefaultPeriod` | ⬜ (E2E ✓, sabotaža ruši) |
+| T-S166-11 | Uski ekran: redak fokusiran na laptopu se da sklopiti | ⬜ |
 | T-S166-6 | PROD nakon deploya: Koka na mobitelu — harmonika i poveznica (samo vlasnica) | ⬜ |
 
 ---

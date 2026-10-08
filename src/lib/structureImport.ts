@@ -27,6 +27,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { isValidDateRule } from '@/lib/attributeRules';
 import { buildRules, sameRules, removedOptions } from '@/lib/validationRules';
 import { TEMPLATE_USER_ID } from '@/lib/constants';
+import { getDatePresets } from '@/hooks/useDateBounds';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig,
 } from '@/types/database';
@@ -95,6 +96,9 @@ export interface ImportResult {
    * kojim moze nastati; zato se javlja bas ovdje, u trenutku kad nastane.
    */
   reviewFlags: ReviewFlagRow[];
+  /** Vrijednosti koje uvoz NIJE upisao, s razlogom (S166: nepoznat DefaultPeriod).
+   *  Tiho preskočena vrijednost izgleda kao uvezena. */
+  warnings: string[];
   /** Automations sheet (set_attribute rules) — Faza 2b */
   automations: {
     /** Aree kojima se config STVARNO promijenio — ovo modal prikazuje (S152). */
@@ -139,6 +143,7 @@ interface ParsedRow {
   disableSavePlus: string;
   addTimer:     string;
   addDate:      string;
+  defaultPeriod: string;
 }
 
 // Grouped attribute: combines multiple DependsOn rows
@@ -260,6 +265,7 @@ interface HeaderInfo {
   colDisableSavePlus: number;
   colAddTimer: number;
   colAddDate: number;
+  colDefaultPeriod: number;
 }
 
 function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
@@ -310,6 +316,7 @@ function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
       colDisableSavePlus: findCol('disablesaveplus'),
       colAddTimer: findCol('addtimer'),
       colAddDate: findCol('adddatepicker'),
+      colDefaultPeriod: findCol('defaultperiod'),
     };
   }
   return null;
@@ -357,6 +364,7 @@ function parseRows(ws: ExcelJS.Worksheet, h: HeaderInfo): ParsedRow[] {
       disableSavePlus: get(h.colDisableSavePlus),
       addTimer: get(h.colAddTimer),
       addDate: get(h.colAddDate),
+      defaultPeriod: get(h.colDefaultPeriod),
     });
   }
   return rows;
@@ -530,6 +538,7 @@ export async function importStructureExcel(
     skipped:  0,
     conflicts: [],
     reviewFlags: [],
+    warnings: [],
     automations: { areasUpdated: 0, rulesImported: 0, rulesSkipped: 0 },
     listColumns: { areasUpdated: 0, columnsImported: 0, columnsSkipped: 0 },
   };
@@ -1033,7 +1042,8 @@ export async function importStructureExcel(
   const hasSavePlusCol   = header.colDisableSavePlus > 0;
   const hasAddTimerCol   = header.colAddTimer > 0;
   const hasAddDateCol    = header.colAddDate > 0;
-  if (hasCommentTplCol || hasSavePlusCol || hasAddTimerCol || hasAddDateCol) {
+  const hasDefPeriodCol  = header.colDefaultPeriod > 0;
+  if (hasCommentTplCol || hasSavePlusCol || hasAddTimerCol || hasAddDateCol || hasDefPeriodCol) {
     for (const row of parsedRows) {
       if (row.type !== 'Area' && row.type !== 'Category') continue;
       const xlTpl = row.commentTpl === '_' ? null : (row.commentTpl || null);
@@ -1082,6 +1092,21 @@ export async function importStructureExcel(
           const cleaned = Object.keys(next).length > 0 ? next : undefined;
           if (!sameJson(prev, cleaned)) {
             newSettings.add_header = cleaned;
+            dirty = true;
+          }
+        }
+
+        // Zadano razdoblje filtra (S166). Prazno = All time (ključ se briše);
+        // NEPOZNAT ključ se ne upisuje nego JAVLJA — tiho ignoriran bi izgledao
+        // kao uvezen, a filtar bi ostao na All time bez ikakvog traga.
+        if (hasDefPeriodCol) {
+          const v = row.defaultPeriod.trim();
+          const prevP = existingArea?.settings?.default_period;
+          if (v !== '' && !getDatePresets().some(p => p.key === v)) {
+            result.warnings.push(`DefaultPeriod "${v}" (${row.categoryPath}) is not a known period — `
+              + `allowed: ${getDatePresets().map(p => p.key).join(', ')} or blank. Not imported.`);
+          } else if ((prevP ?? '') !== v) {
+            newSettings.default_period = v || undefined;
             dirty = true;
           }
         }

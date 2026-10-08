@@ -8770,4 +8770,11 @@ Medical_Koka −18.341,95 = 9 uplata „Pharmalog" 19.493,19 (Kokin honorar, ne 
 **Otvoreno pitanje:** F5 vraća filtar na All time (raspon se ne pamti) ⇒ pločica tada pokazuje
 2023.–danas — treba li razrez vlastito zadano razdoblje?
 `npm run check` ✓, build ✓, E2E `S165_breakdown_tile` 3/3.
+**Dopuna istog dana (Saša, mobitel + Koka):** (1) fokus kruga je preživio prelazak laptop → uski
+ekran i zaključao redak otvoren — fokus sada vrijedi samo dok se krug vidi. (2) **Zadano razdoblje
+po Arei** (`areas.settings.default_period`, Saša odabrao „po Arei, u filtru"): Financije ⇒
+This Year (Koka); primjenjuje se jednom po Arei dok čovjek nije birao, F5 ga vraća; Structure
+kolona `DefaultPeriod` (na kraju lista, nepoznat ključ ⇒ upozorenje „Not imported" u modalu —
+uvoz dobio kanal `warnings`); `set_breakdown.py` ga upisuje (TEST ✓ `--apply`). E2E „zadano
+razdoblje Aree" (sije event: prazna Area nema All Time granica), sabotaža brane ruši. T-S166-10/11.
 

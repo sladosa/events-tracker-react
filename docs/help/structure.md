@@ -141,12 +141,15 @@ promijenilo".
 
 ## Postavke area u Structure sheetu
 
-Dvije kolone na **Area** retku nose postavke same area, pa i one putuju roundtripom:
+Kolone na **Area** retku nose postavke same area, pa i one putuju roundtripom:
 
 - **`CommentTemplate`** — auto-komentar na Finish; `{slug}` umeće vrijednost atributa.
   Na Area retku = default za sve leafove, na leaf Category retku = override.
 - **`DisableSavePlus`** — `TRUE` skriva "Save +" u Add Activity (jedan event po sesiji,
   npr. Financije, Health). Prazno = `FALSE`. Čita se **samo** s Area retka.
+- **`DefaultPeriod`** — razdoblje filtra kad Area otvoriš, a još nisi birao: `this-month`,
+  `last-3-months`, `this-year`, `last-year` … (isti ključevi kao izbornik *Period*). Prazno =
+  *All Time*. Nepoznat ključ uvoz **ne upiše** i to javi.
 
 Kolone koje u fileu **nema** ne diraju svoju postavku — stariji export bez `DisableSavePlus`
 kolone je ne može pobrisati (isti princip kao rata automatika).

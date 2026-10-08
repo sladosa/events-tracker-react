@@ -48,6 +48,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 from verify_rpc_vs_model import AREA_ID, ENV_FILE, IS_PROD, Supa, load_env, target_banner  # noqa: E402
 
 TITLE = 'Kamo ide novac'
+# S166 (Koka): Financije se otvaraju na TEKUĆOJ godini, ne na povijesti od 2023.
+# Postavka Aree, ne pločice — vrijedi za filtar (razrez I listu); saldo je ne treba
+# (sidra). Ide i kroz Structure Excel (kolona `DefaultPeriod` na retku Aree).
+DEFAULT_PERIOD = 'this-year'
 GROUPING_NAME = 'Vrsta troška'
 GOTOVINA = 'gotovina, nerazvrstano'
 
@@ -263,6 +267,9 @@ def main() -> None:
     old_g = (settings.get('groupings') or {}).get(GROUPING_NAME)
     print('\npločica:', 'ISTA' if old_w == WIDGET else ('NOVA' if old_w is None else 'MIJENJA SE'))
     print('grupiranje:', 'ISTO' if old_g == grouping() else ('NOVO' if old_g is None else 'MIJENJA SE'))
+    old_p = settings.get('default_period')
+    print(f'zadano razdoblje filtra: {old_p or "— (All time)"} → {DEFAULT_PERIOD}'
+          + ('  (ISTO)' if old_p == DEFAULT_PERIOD else ''))
     print(f'pločice nakon upisa: {[w.get("type") + ":" + w.get("title", "") for w in new_dash["widgets"]]}')
     print(f'bucketi: {[b for b, _ in BUCKETS]} · parova {sum(len(p) for _, p in BUCKETS)}')
     if old_g and old_g != grouping():
@@ -276,7 +283,8 @@ def main() -> None:
         print('\n(dry run — ništa nije upisano; dodaj --apply)')
         return
 
-    merged = {**settings, 'dashboard': new_dash, 'groupings': new_groupings}
+    merged = {**settings, 'dashboard': new_dash, 'groupings': new_groupings,
+              'default_period': DEFAULT_PERIOD}
     got = sp._call(f'areas?id=eq.{AREA_ID}&select=id', method='PATCH',
                    body={'settings': merged}, extra={'Prefer': 'return=representation'})
     if not got:
@@ -284,12 +292,13 @@ def main() -> None:
     # Pročitaj natrag: upis koji „prođe" a ne zapiše je razred ovog projekta.
     back = sp.select_all(f'areas?id=eq.{AREA_ID}&select=settings&order=id')[0]['settings']
     ok = (back.get('groupings', {}).get(GROUPING_NAME) == grouping()
+          and back.get('default_period') == DEFAULT_PERIOD
           and any(w == WIDGET for w in back.get('dashboard', {}).get('widgets', []))
           and all(k in back for k in settings))
     if not ok:
         sys.exit('✗ Upis vraćen, ali pročitano se ne slaže s upisanim — provjeri ručno.')
     print(f'\n✓ Upisano i pročitano natrag. Ostali ključevi netaknuti: '
-          f'{sorted(k for k in back if k not in ("dashboard", "groupings"))}')
+          f'{sorted(k for k in back if k not in ("dashboard", "groupings", "default_period"))}')
     print('  Saldo pločica ostaje prva u nizu.')
 
 

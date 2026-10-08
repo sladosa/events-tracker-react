@@ -7,12 +7,18 @@ interface DateRangeFilterProps {
   className?: string;
 }
 
+/** Za koju je Areu zadano razdoblje (`settings.default_period`) već primijenjeno.
+ *  Modul, ne state ni storage: preživi odmontiranje (Structure tab, View Details),
+ *  a F5 ga vrati na null ⇒ svako otvaranje appa opet kreće od zadanog (S166, Koka). */
+let defaultPeriodAppliedFor: string | null = null;
+const markDefaultApplied = (areaId: string) => { defaultPeriodAppliedFor = areaId; };
+
 // Sentinel value for the All Time option in the <select>
 const ALL_TIME_VALUE = '__all_time__';
 const CUSTOM_VALUE   = '__custom__';
 
 export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
-  const { filter, setDateRange, setSortOrder, setPeriodLabel, setPeriodKey } = useFilter();
+  const { filter, selectedArea, setDateRange, setSortOrder, setPeriodLabel, setPeriodKey } = useFilter();
   const { bounds, loading, error: boundsError, refresh } = useDateBounds(filter.areaId, filter.categoryId);
 
   // Local state for From/To inputs
@@ -35,8 +41,36 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   // Presets (stable — getDatePresets() is pure, called once per render is fine)
   const presets = getDatePresets();
 
+  // ── Zadano razdoblje Aree (S166) ──────────────────────────────────────────
+  // Koka: Financije zanima TEKUĆA godina, ne povijest od 2023. Vrijedi samo dok
+  // čovjek nije birao (`all-time` = nije birao, v. gore) i samo JEDNOM po Arei —
+  // inače bi ručno odabran „All Time" odmah bio pregažen. Area bez postavke:
+  // ponašanje kao do sada.
+  // ⚠ `selectedArea` mora biti BAŠ filtrirana Area: za vrijeme obnove filtra zna
+  //   biti prethodna, a njena postavka ne smije pasti na drugu.
+  const defaultKey = selectedArea && selectedArea.id === filter.areaId
+    ? selectedArea.settings?.default_period ?? null : null;
+  useEffect(() => {
+    if (userModified || !filter.areaId || !defaultKey) return;
+    if (defaultPeriodAppliedFor === filter.areaId) return;
+    const preset = presets.find(p => p.key === defaultKey);
+    if (!preset) return;
+    markDefaultApplied(filter.areaId);
+    const { from, to } = preset.getRange();
+    setLocalFrom(from);
+    setLocalTo(to);
+    setDateRange(from, to);
+    setPeriodLabel(preset.label);
+    setPeriodKey(preset.key);
+  // `presets` je nov niz na svakom renderu, a čist (isti ključevi) — ne ide u deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter.areaId, defaultKey, userModified, setDateRange, setPeriodLabel, setPeriodKey]);
+
   // ── Auto-init from bounds ──────────────────────────────────────────────────
   useEffect(() => {
+    // Zadano razdoblje čeka primjenu ⇒ ne gurati All time preko njega u istom
+    // commitu (oba efekta bi postavila `periodKey`, a pobijedio bi zadnji).
+    if (defaultKey && filter.areaId && defaultPeriodAppliedFor !== filter.areaId) return;
     if (!loading && bounds.minDate && bounds.maxDate && !userModified) {
       setLocalFrom(bounds.minDate);
       setLocalTo(bounds.maxDate);
@@ -44,7 +78,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       setPeriodLabel('All time');
       setPeriodKey('all-time');
     }
-  }, [bounds.minDate, bounds.maxDate, loading, userModified, setDateRange, setPeriodLabel, setPeriodKey]);
+  }, [bounds.minDate, bounds.maxDate, loading, userModified, defaultKey, filter.areaId, setDateRange, setPeriodLabel, setPeriodKey]);
   // (`userModified` je izveden iz `filter.periodKey`, dakle iz konteksta — zato
   //  prezivi unmount i ne treba mu vlastiti dep.)
 

@@ -37,8 +37,8 @@
    --apply --yes-prod`. Zatim T-S166-6 (Koka na mobitelu).
 4. Od ranije: **11.10.** Koka potvrđuje MC naplatu u traci (T-S158-1 / T-S156-6); **~03.11.** Visa izvod.
 
-**Otvoreno pitanje (dizajn, nije hitno):** F5 vraća filtar na All time, pa razrez tada pokazuje
-2023.–danas. Treba li pločica razreza vlastito zadano razdoblje (npr. tekući mjesec)?
+**Riješeno istog dana:** Financije se otvaraju na **This Year** (Koka) — postavka Aree, na TEST-u
+upisana; na PROD ide istim `set_breakdown.py` korakom (T-S165-9). Testiraj T-S166-10 i T-S166-11.
 
 ---
 
@@ -59,6 +59,9 @@
 - `BreakdownSunburst.tsx`: `level` iz stanja, slušač vezan u `onInitialized` (⚠ ne `onSunburstClick`
   prop — CLAUDE.md § UI), `nets` u tooltipu, `marker.line` 2,5 px.
 - `breakdownModel.ts`: `drillFor` — dvoznačan/prazan Podtip ⇒ `{ none }`; `SunburstData.nets`.
+
+- `DateRangeFilter.tsx`: `default_period` Aree (modul `defaultPeriodAppliedFor`); Structure kolona
+  `DefaultPeriod` (export, import + `ImportResult.warnings`, help); `set_breakdown.py` `DEFAULT_PERIOD`.
 
 ## Otvoreno
 

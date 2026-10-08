@@ -36,17 +36,17 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 1745 | [Key files](<#Key files>) |  |
 | 1864 | [Structure tab — component map](<#Structure tab — component map>) |  |
 | 1884 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1906 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1934 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1974 | [Open bugs](<#Open bugs>) | ~ |
-| 2083 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2128 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2242 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2250 | [Backlog](<#Backlog>) | ~ |
-| 2254 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2262 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1907 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1935 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1975 | [Open bugs](<#Open bugs>) | ~ |
+| 2084 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2129 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2249 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2257 | [Backlog](<#Backlog>) | ~ |
+| 2261 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2269 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2426 redaka, 18 sekcija._
+_Ukupno 2433 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1896,7 +1896,8 @@ events (linked to category_id + user_id)
 `validation_rules` (JSONB) na `attribute_definitions` pokreće sve dropdowne — nema zasebne tablice.
 
 `areas.settings` (JSONB) nosi per-Area konfiguraciju: `comment_template`, `automations`
-(`attribute_rules` + `rata`), `export_profiles`, `disable_save_plus`, `dashboard` (S108).
+(`attribute_rules` + `rata`), `export_profiles`, `disable_save_plus`, `dashboard` (S108),
+`default_period` (S166 — zadano razdoblje filtra; Structure kolona `DefaultPeriod`).
 ⚠ **Sidro salda NIJE tu** — `balance_anchors` je zasebna tablica jer config smije putovati
 s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 **Sve što je tu mora ići kroz Structure Excel roundtrip** (Sašin princip „sve ide importom").
@@ -2229,6 +2230,12 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   (Koka ga uvijek treba); klik na otvorenu prebacuje na drugu. Pamti se u **modulu**
   (`OverviewTab`) — preživi drill i povratak, **ne** preživi F5. Dvije otvorene guraju filtar s
   razdobljem predaleko. Sklopljen saldo se **skriva**, ne odmontira (upisano „u banci" ostaje).
+- **Zadano razdoblje je postavka AREE, ne pločice** (S166, Koka: Financije ⇒ This Year).
+  `DateRangeFilter` ga primijeni **jednom po Arei** dok `periodKey = all-time` („čovjek nije
+  birao") — modul pamti za koju je Areu primijenjeno, pa ručni *All Time* ostaje, a F5 vraća
+  zadano. ⚠ Bounds auto-init (All time) **čeka** dok zadano nije primijenjeno, inače oba efekta
+  u istom commitu postave `periodKey` i pobijedi zadnji. ⚠ E2E nad praznom Areom ne može mjeriti
+  *All Time*: bez granica `handleAllTime` ne radi ništa (test zato sije jedan event).
 - **Provjera rasporeda bucketa mora gledati SVU povijest, ne 12 mjeseci** (S166). `set_breakdown.py`
   je javio „nesvrstano: ništa", a All time je pokazao `nesvrstano` 9.543,16 (Tip `Investicije`,
   2023.–2024.) — v. `docs/FINANCIJE_PROCES.md` T33–T36.

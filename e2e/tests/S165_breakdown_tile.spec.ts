@@ -60,6 +60,7 @@ test.describe('S165 — pločica Kamo ide novac', () => {
         // Saldo prvi, kao na Financijama — harmonika (S166) se vidi tek uz dvije pločice.
         dashboard: { widgets: [SALDO, FX.widget] },
         groupings: { [FX.widget.grouping]: FX.grouping },
+        default_period: 'this-year',   // S166 (Koka)
       },
     });
   });
@@ -163,6 +164,37 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     await page.mouse.click(bb!.x + bb!.width / 2, bb!.y + bb!.height / 2);
     await expect(page.getByRole('button', { name: 'Sve', exact: true })).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole('button', { name: /Mjesečni troškovi/ })).toHaveCount(0);
+  });
+
+  test('zadano razdoblje Aree: This Year; ručni All Time ostaje; F5 ga vraća (S166)', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    // Jedan event iz 2024. — bez njega All Time nema granica i `handleAllTime` ne radi
+    // ništa (prazna Area), pa bi test mjerio prazninu umjesto zadanog razdoblja.
+    const catId = randomUUID();
+    await supabasePost(page, 'categories', {
+      id: catId, user_id: OWNER_ID, area_id: areaId, parent_category_id: null,
+      name: 'Transakcija', slug: `transakcija-${catId.slice(0, 6)}`, level: 1, sort_order: 1,
+    });
+    await supabasePost(page, 'events', {
+      id: randomUUID(), user_id: OWNER_ID, category_id: catId,
+      event_date: '2024-03-03', session_start: '2024-03-03T09:00:00+00:00', comment: 'S166 seed',
+    });
+    await mockRpc(page);
+    await openOverview(page);
+    const period = page.locator('select').filter({ has: page.locator('option', { hasText: 'All Time' }) });
+    await expect(period).toHaveValue('this-year', { timeout: 15_000 });
+    const y = new Date().getFullYear();
+    await expect(page.getByText(`01.01.–31.12.${y}. · iz filtra`)).toBeVisible();
+    // Čovjek bira All Time ⇒ zadano ga NE pregazi (ni nakon odlaska u Activities i natrag).
+    await period.selectOption({ label: 'All Time' });
+    await expect(period).not.toHaveValue('this-year');
+    await page.getByRole('button', { name: 'Activities' }).click();
+    await page.getByRole('button', { name: 'Overview' }).click();
+    await page.waitForTimeout(1500);
+    await expect(period).not.toHaveValue('this-year');
+    // F5 = novo otvaranje appa ⇒ opet zadano.
+    await page.reload();
+    await expect(period).toHaveValue('this-year', { timeout: 20_000 });
   });
 
   test('uski ekran: lista bez kruga; harmonika sa saldom, reload vraća saldo', async ({ page }) => {
