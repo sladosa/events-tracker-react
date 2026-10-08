@@ -36,6 +36,14 @@ Laptop, 12 mj, po kupnji: mišem na **Povremeno nužno** ⇒ `neto 2.911,14 € 
 Ispod salda više nema tri trajna odlomka. Uz „povijest potvrda (N)" je **„kako radi potvrda?"** ⇒
 rasklopi isti tekst; „sakrij objašnjenje" ga zatvara. „Nije greška izračuna" je u tooltipu Δ čipa.
 
+## T-S166-7 ✅ Krug vodi, lista slijedi (08.10.)
+
+Laptop, razrez otvoren. Klik na isječak **Mjesečni troškovi** u krugu ⇒ lista samo Mjesečni,
+rasklopljeni, staza `Sve › Mjesečni troškovi ✕`; isto **Kvaliteta života**. Klik na sredinu kruga ⇒
+razina gore; „Sve"/✕ ⇒ cijela lista. Mobitel: bez promjene (nema kruga).
+⚠ Prvi pokušaj „ne radi" = stari bundle (Ctrl+Shift+R riješio). E2E mjeri PRAVI klik mišem (prva
+verzija je emitirala događaj i zaobišla put); sabotaža (odspojen handler) ga ruši.
+
 ## T-S166-6 ⬜ PROD (s deployem S165, T-S165-9): Koka vidi isto
 
 Nakon deploya, Kokin račun na mobitelu: saldo otvoren, razrez zatvoren; dodir na razrez ⇒ saldo se

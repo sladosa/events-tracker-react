@@ -87,6 +87,8 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
   const [axisIdx, setAxisIdx] = useState(0);
   const [reload, setReload] = useState(0);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
+  // Fokus kruga (S166, Saša): klik na isječak suzi i listu na taj dio.
+  const [focusId, setFocusId] = useState<string | null>(null);
 
   // Sklopiva (§5). Do S166 se pamtila po pregledniku; sada je harmonika s
   // pločicom salda u OverviewTab-u — zadano ZATVORENA (zatvorena ništa ne računa).
@@ -144,6 +146,21 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
   const axisIsEventDate = axis.slug == null;
   const root = model ? (side === 'expense' ? model.expense : model.income) : null;
   const maxAbs = root ? Math.max(1, ...root.children.map(c => Math.abs(c.cents))) : 1;
+  // Put od korijena do fokusa. Fokus koji u ovom stablu ne postoji (promjena strane,
+  // osi, razdoblja) ⇒ prazan put ⇒ cijela lista — izvedeno, bez efekta koji resetira.
+  const focusPath = useMemo(() => {
+    if (!root || !focusId) return [] as BreakdownNode[];
+    const walk = (nd: BreakdownNode, acc: BreakdownNode[]): BreakdownNode[] | null => {
+      for (const c of nd.children) {
+        const path = [...acc, c];
+        if (c.id === focusId) return path;
+        const deeper = walk(c, path);
+        if (deeper) return deeper;
+      }
+      return null;
+    };
+    return walk(root, []) ?? [];
+  }, [root, focusId]);
   const unit = widget.unit;
   const money = (cents: number) => formatAmount(cents / 100, unit);
 
@@ -166,7 +183,8 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
 
   const renderRow = (nd: BreakdownNode, depth: number): ReactNode => {
     const hasKids = nd.children.length > 0;
-    const isOpen = open.has(nd.id);
+    // Čvor u fokusu je uvijek rasklopljen — to je smisao klika u krugu.
+    const isOpen = open.has(nd.id) || (nd.id === focusId && focusPath.length > 0);
     const neg = nd.cents < 0;
     // Isti izvor kao klik: strelica postoji točno kad drill postoji.
     const target = axisIsEventDate && nd.kind === 'level' ? drillTarget(nd) : null;
@@ -293,10 +311,38 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
                 <p className="text-sm text-gray-500 py-4">Nema zapisa u razdoblju.</p>
               ) : (
                 <div className={cn('mt-2', wide && 'grid grid-cols-2 gap-4 items-start')}>
-                  {wide && <BreakdownSunburst root={root} unit={unit} />}
-                  <ul className="divide-y divide-gray-50">
-                    {root.children.map(c => renderRow(c, 0))}
-                  </ul>
+                  {wide && (
+                    <BreakdownSunburst root={root} unit={unit}
+                      focusId={focusPath.length ? focusId : null} onFocus={setFocusId} />
+                  )}
+                  <div>
+                    {/* Staza fokusa — samo dok je krug zumiran (na mobitelu kruga nema
+                        pa ni fokusa: lista ostaje samostalna). */}
+                    {wide && focusPath.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1 text-xs text-gray-500 mb-1">
+                        <button type="button" onClick={() => setFocusId(null)}
+                          className="text-teal-700 hover:underline">Sve</button>
+                        {focusPath.map((nd, i) => (
+                          <span key={nd.id} className="flex items-center gap-1">
+                            <span>›</span>
+                            {i < focusPath.length - 1 ? (
+                              <button type="button" onClick={() => setFocusId(nd.id)}
+                                className="text-teal-700 hover:underline">{nd.name}</button>
+                            ) : (
+                              <span className="text-gray-700 font-medium">{nd.name}</span>
+                            )}
+                          </span>
+                        ))}
+                        <button type="button" onClick={() => setFocusId(null)} title="Prikaži sve"
+                          className="ml-1 text-gray-400 hover:text-gray-700 px-1">✕</button>
+                      </div>
+                    )}
+                    <ul className="divide-y divide-gray-50">
+                      {wide && focusPath.length > 0
+                        ? renderRow(focusPath[focusPath.length - 1], 0)
+                        : root.children.map(c => renderRow(c, 0))}
+                    </ul>
+                  </div>
                 </div>
               )}
 

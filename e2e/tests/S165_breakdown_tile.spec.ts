@@ -108,6 +108,33 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     await expect(page.getByText('3.830,90 €')).toBeVisible();
     await page.screenshot({ path: 'e2e/test-results/S165_breakdown_wide.png', fullPage: true });
 
+    await bucket.click();   // natrag sklopljen
+
+    // S166: krug vodi, lista slijedi. PRAVI klik mišem na natpis isječka — prva verzija
+    // je emitirala `plotly_sunburstclick` izravno i time zaobišla put koji korisnik ide.
+    // ⚠ Krug mora biti U POGLEDU: boundingBox daje koordinate i izvan ekrana, pa
+    //   klik tiho promaši (izmjereno: handler se nije ni pozvao).
+    const clickSlice = async (label: string) => {
+      await page.locator('.js-plotly-plot').scrollIntoViewIfNeeded();
+      const bb = await page.locator('.js-plotly-plot g.slice text', { hasText: new RegExp(`^${label}$`) })
+        .first().boundingBox();
+      await page.mouse.click(bb!.x + bb!.width / 2, bb!.y + bb!.height / 2);
+    };
+    await clickSlice('Mjesečni troškovi');
+    await expect(page.getByRole('button', { name: 'Sve', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Koka razno/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'gotovina, nerazvrstano', exact: true })).toBeVisible();
+    // klik na sredinu kruga (sada je to „Mjesečni troškovi") = razina gore ⇒ cijela lista
+    await page.waitForTimeout(800);   // Plotly prerenderira krug nakon promjene `level`
+    await clickSlice('Mjesečni troškovi');
+    await expect(page.getByRole('button', { name: /Koka razno/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sve', exact: true })).toHaveCount(0);
+    // i staza „Sve" vraća
+    await page.waitForTimeout(800);
+    await clickSlice('Mjesečni troškovi');
+    await page.getByRole('button', { name: 'Sve', exact: true }).click();
+    await expect(page.getByRole('button', { name: /Koka razno/ })).toBeVisible();
+
     await page.getByRole('button', { name: 'po naplati' }).click();
     await expect(page.getByText('39.305,20 €').first()).toBeVisible();
     await expect(page.getByText('19.939,85 €')).toBeVisible();

@@ -19,6 +19,7 @@ T-S165-1..8 ✅ na TEST-u. Usput pet dorada: rub kruga, dvoznačan Podtip bez �
 | T-S166-3 | Tooltip kruga: neto (= lista) + nacrtano kad je ispod minus | ✅ S166 — Saša („sve mi radi"); čuva `breakdownModel.test.mjs` |
 | T-S166-4 | Harmonika: F5 ⇒ saldo otvoren / razrez zatvoren; klik prebacuje, nikad obje zatvorene; povratak iz drilla pamti | ✅ S166 — Saša (4, 5 i prebacivanje); čuva E2E `S165_breakdown_tile` (sabotaža ruši) |
 | T-S166-5 | „kako radi potvrda?" na klik umjesto trajnog teksta | ✅ S166 — Saša potvrdio |
+| T-S166-7 | Klik na isječak kruga suzi listu (staza `Sve › …`), sredina kruga = razina gore | ✅ S166 — Saša (Mjesečni, Kvaliteta života) nakon Ctrl+Shift+R; čuva E2E s pravim klikom (sabotaža ruši) |
 | T-S166-6 | PROD nakon deploya: Koka na mobitelu — harmonika i poveznica (samo vlasnica) | ⬜ |
 
 ---

@@ -238,7 +238,9 @@ period — promijeniš filtar, promijeni se i ona. U zaglavlju piše koje razdob
   Ako je povrat veći od troška, iznos je zelen s oznakom *povrat > trošak* (npr. Porezi kad
   je povrat poreza veći od plaćenog).
 - **Krug** (samo na širem ekranu) crta samo ono što je u plusu; što je u minusu, ispisano je
-  ispod kruga. Točne brojke su u listi desno.
+  ispod kruga. Točne brojke su u listi desno. **Klik na isječak** zumira krug i suzi listu na
+  taj dio (staza `Sve › …` iznad liste); klik na sredinu kruga ili na „Sve" vraća cijelu sliku.
+  Ako stavka ispod sebe ima minus, tooltip pokazuje i neto (= lista) i nacrtani iznos.
 - **izvan razreza** (dno pločice) — Transfer: prijenosi među računima i podizanja. Novac je
   prošao, ali nije potrošen ni zarađen, pa nije u razrezu. Saldo ga broji, razrez ne.
 - **↗** uz Tip ili Podtip otvara te retke u Activities (razdoblje iz filtra ostaje). Radi

@@ -23,6 +23,7 @@ import type { DashboardConfig, DueConfig, Grouping, UUID } from '@/types/databas
 
 /** Koja je pločica otvorena — v. „Harmonika" u komponenti. Modul, ne storage. */
 let lastOpenTile: { area: UUID; idx: number | null } | null = null;
+const rememberOpenTile = (v: { area: UUID; idx: number | null }) => { lastOpenTile = v; };
 
 interface Props {
   areaId: UUID;
@@ -60,7 +61,7 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
     const n = config.widgets.length;
     const idx = openIdx !== i ? i : n > 1 ? (i + 1) % n : null;
     const next = { area: areaId, idx };
-    lastOpenTile = next;
+    rememberOpenTile(next);
     setOpenState(next);
   };
   const many = config.widgets.length > 1;

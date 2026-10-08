@@ -25,9 +25,13 @@ const COLORS = [
 interface Props {
   root: BreakdownNode;
   unit?: string;
+  /** Čvor na koji je krug zumiran (S166: krug vodi, lista slijedi); null = cijeli krug. */
+  focusId: string | null;
+  /** Klik u krugu: novi fokus (null = natrag na cijeli krug). */
+  onFocus: (id: string | null) => void;
 }
 
-export function BreakdownSunburst({ root, unit }: Props) {
+export function BreakdownSunburst({ root, unit, focusId, onFocus }: Props) {
   const data = useMemo(() => toSunburst(root), [root]);
 
   if (data.ids.length === 0) {
@@ -51,9 +55,18 @@ export function BreakdownSunburst({ root, unit }: Props) {
     textinfo: 'label',
     insidetextorientation: 'radial',
     maxdepth: 3,
+    // Zum drži BreakdownTile, ne Plotly — inače krug i lista pokazuju dva pogleda.
+    level: focusId ?? root.id,
     // Djeca nasljeđuju boju roditelja (samo svjetliju), pa braću dijeli SAMO
     // rub — zadani 1 px bijelo se na svijetlom tonu ne vidi (Saša, S166).
     marker: { line: { color: '#ffffff', width: 2.5 } },
+  };
+
+  // Plotly javlja kamo BI zumirao (`nextLevel`; klik na sredinu = razina gore);
+  // `false` poništi njegov vlastiti zum, a stanje ga vrati kroz `level`.
+  const sunburstClick = (ev: { nextLevel?: string }) => {
+    if (ev?.nextLevel) onFocus(ev.nextLevel === root.id ? null : ev.nextLevel);
+    return false;
   };
 
   return (
@@ -73,6 +86,8 @@ export function BreakdownSunburst({ root, unit }: Props) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any}
         config={{ displayModeBar: false, responsive: true }}
+        // `onSunburstClick` react-plotly podržava, ali ga @types nemaju ⇒ spread.
+        {...{ onSunburstClick: sunburstClick }}
         useResizeHandler
         style={{ width: '100%' }}
         className="w-full"
