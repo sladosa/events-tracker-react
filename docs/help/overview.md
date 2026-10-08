@@ -241,6 +241,8 @@ period — promijeniš filtar, promijeni se i ona. U zaglavlju piše koje razdob
   ispod kruga. Točne brojke su u listi desno. **Klik na isječak** zumira krug i suzi listu na
   taj dio (staza `Sve › …` iznad liste); klik na sredinu kruga ili na „Sve" vraća cijelu sliku.
   Ako stavka ispod sebe ima minus, tooltip pokazuje i neto (= lista) i nacrtani iznos.
+- **Postotak** uz iznos je udio u retku iznad (bucket u Izašlo, Tip u bucketu, Podtip u Tipu).
+  Uz stavku u minusu se ne piše.
 - **izvan razreza** (dno pločice) — Transfer: prijenosi među računima i podizanja. Novac je
   prošao, ali nije potrošen ni zarađen, pa nije u razrezu. Saldo ga broji, razrez ne.
 - **↗** uz Tip ili Podtip otvara te retke u Activities (razdoblje iz filtra ostaje). Radi

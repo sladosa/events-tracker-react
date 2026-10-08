@@ -12,7 +12,7 @@
 //   za 1e-13 i Plotly tada tiho ne nacrta cijelu granu.
 // ============================================================
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import Plot from 'react-plotly.js';
 import { formatAmount, formatSigned } from '@/lib/amountFormat';
 import { toSunburst, type BreakdownNode } from '@/lib/breakdownModel';
@@ -33,6 +33,28 @@ interface Props {
 
 export function BreakdownSunburst({ root, unit, focusId, onFocus }: Props) {
   const data = useMemo(() => toSunburst(root), [root]);
+
+  // Plotly javlja kamo BI zumirao (`nextLevel`; klik na sredinu = razina gore);
+  // `false` poništi njegov vlastiti zum, a stanje ga vrati kroz `level`.
+  const sunburstClick = (ev: { nextLevel?: string }) => {
+    if (ev?.nextLevel) onFocus(ev.nextLevel === root.id ? null : ev.nextLevel);
+    return false;
+  };
+  const clickRef = useRef(sunburstClick);
+  useEffect(() => { clickRef.current = sunburstClick; });
+
+  // ⚠ Slušač vežemo SAMI, ne kroz `onSunburstClick` prop (S166, izmjereno): u dev
+  //   StrictMode-u react-plotly montira → odmontira (Plotly.purge briše SVE slušače)
+  //   → montira, a u svom popisu i dalje drži naš slušač kao vezan pa ga ne veže
+  //   ponovo. Na svježem krugu klik tada ide samo Plotlyju — zum bez liste.
+  //   `onInitialized` dobije živi element pri SVAKOM montiranju; slušač čita ref,
+  //   pa uvijek zove svježi `root`/`onFocus`.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bindClick = (_fig: unknown, gd: any) => {
+    if (gd.__etSunburstClick) gd.removeListener('plotly_sunburstclick', gd.__etSunburstClick);
+    gd.__etSunburstClick = (ev: { nextLevel?: string }) => clickRef.current(ev);
+    gd.on('plotly_sunburstclick', gd.__etSunburstClick);
+  };
 
   if (data.ids.length === 0) {
     return <p className="text-sm text-gray-400 py-8 text-center">Nema ničega pozitivnog za nacrtati.</p>;
@@ -62,12 +84,6 @@ export function BreakdownSunburst({ root, unit, focusId, onFocus }: Props) {
     marker: { line: { color: '#ffffff', width: 2.5 } },
   };
 
-  // Plotly javlja kamo BI zumirao (`nextLevel`; klik na sredinu = razina gore);
-  // `false` poništi njegov vlastiti zum, a stanje ga vrati kroz `level`.
-  const sunburstClick = (ev: { nextLevel?: string }) => {
-    if (ev?.nextLevel) onFocus(ev.nextLevel === root.id ? null : ev.nextLevel);
-    return false;
-  };
 
   return (
     <div>
@@ -86,8 +102,7 @@ export function BreakdownSunburst({ root, unit, focusId, onFocus }: Props) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any}
         config={{ displayModeBar: false, responsive: true }}
-        // `onSunburstClick` react-plotly podržava, ali ga @types nemaju ⇒ spread.
-        {...{ onSunburstClick: sunburstClick }}
+        onInitialized={bindClick}
         useResizeHandler
         style={{ width: '100%' }}
         className="w-full"

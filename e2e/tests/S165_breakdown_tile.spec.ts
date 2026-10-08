@@ -95,6 +95,8 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     const bucket = page.getByRole('button', { name: /Mjesečni troškovi/ });
     await expect(bucket).toBeVisible();
     await expect(page.getByText('20.994,89 €')).toBeVisible();
+    // S166: udio u roditelju — Mjesečni 20.994,89 / Izašlo 40.127,91 = 52,32 %
+    await expect(page.getByText('52,3 %', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /nerazvrstano \(N\/A\)/ })).toBeVisible();
     await expect(page.getByText(/grupirano: Vrsta troška/)).toBeVisible();
     await expect(page.locator('.js-plotly-plot')).toHaveCount(1);
@@ -106,6 +108,8 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     await bucket.click();
     await expect(page.getByRole('button', { name: 'gotovina, nerazvrstano', exact: true })).toBeVisible();
     await expect(page.getByText('3.830,90 €')).toBeVisible();
+    // gotovina u Mjesečnima: 3.830,90 / 20.994,89 = 18,25 %
+    await expect(page.getByText('18,2 %', { exact: true })).toBeVisible();
     await page.screenshot({ path: 'e2e/test-results/S165_breakdown_wide.png', fullPage: true });
 
     await bucket.click();   // natrag sklopljen
@@ -142,6 +146,23 @@ test.describe('S165 — pločica Kamo ide novac', () => {
 
     await page.getByRole('button', { name: 'Prihodi', exact: true }).click();
     await expect(page.getByRole('button', { name: /^▸ Prihodi/ })).toBeVisible();
+  });
+
+  test('svjež krug: PRVI klik na isječak već suzi listu (S166)', async ({ page }) => {
+    // Izmjereno S166: u dev StrictMode-u react-plotly izgubi slušač iz propa pri
+    // dvostrukom montiranju ⇒ na svježem krugu (povratak iz Add) klik je zumirao samo
+    // krug. Zato klik ODMAH nakon montiranja, bez ijednog renderiranja između.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await mockRpc(page);
+    await openOverview(page);
+    await expect(page.locator('.js-plotly-plot g.slice').first()).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(1000);
+    await page.locator('.js-plotly-plot').scrollIntoViewIfNeeded();
+    const bb = await page.locator('.js-plotly-plot g.slice text', { hasText: /^Putovanja i pokloni$/ })
+      .first().boundingBox();
+    await page.mouse.click(bb!.x + bb!.width / 2, bb!.y + bb!.height / 2);
+    await expect(page.getByRole('button', { name: 'Sve', exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /Mjesečni troškovi/ })).toHaveCount(0);
   });
 
   test('uski ekran: lista bez kruga; harmonika sa saldom, reload vraća saldo', async ({ page }) => {

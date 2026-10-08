@@ -181,7 +181,16 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
     return n;
   });
 
-  const renderRow = (nd: BreakdownNode, depth: number): ReactNode => {
+  // Udio u RODITELJU (S166, Saša): bucket od Izašlo/Ušlo, Tip od bucketa, Podtip od
+  // Tipa — isto što krug pokazuje na toj razini. U minusu (stavka ili roditelj) se ne
+  // piše: „−12 %" od neto zbroja koji uključuje povrate ne znači ništa.
+  const share = (cents: number, parentCents: number): string | null => {
+    if (cents <= 0 || parentCents <= 0) return null;
+    const pct = (cents / parentCents) * 100;
+    return pct < 0.1 ? '<0,1 %' : `${pct.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} %`;
+  };
+
+  const renderRow = (nd: BreakdownNode, depth: number, parentCents: number): ReactNode => {
     const hasKids = nd.children.length > 0;
     // Čvor u fokusu je uvijek rasklopljen — to je smisao klika u krugu.
     const isOpen = open.has(nd.id) || (nd.id === focusId && focusPath.length > 0);
@@ -213,9 +222,13 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
             <div className={cn('h-1.5 rounded', neg ? 'bg-emerald-400' : 'bg-teal-500')}
                  style={{ width: `${Math.min(100, (Math.abs(nd.cents) / maxAbs) * 100)}%` }} />
           </div>
-          <span className={cn('w-24 sm:w-28 shrink-0 text-right tabular-nums',
+          <span className={cn('w-24 sm:w-40 shrink-0 text-right tabular-nums leading-tight',
             neg ? 'text-emerald-700' : 'text-gray-900', depth === 0 && 'font-medium')}>
             {neg ? formatSigned(nd.cents / 100, unit) : money(nd.cents)}
+            {/* Uski ekran: postotak ispod iznosa (ime treba širinu); široki: stupac desno. */}
+            <span className="block sm:inline-block sm:w-12 sm:ml-1 text-[10px] sm:text-xs font-normal text-gray-400">
+              {share(nd.cents, parentCents) ?? ''}
+            </span>
           </span>
           <button
             type="button"
@@ -231,7 +244,7 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
           </button>
         </div>
         {hasKids && isOpen && (
-          <ul>{nd.children.map(c => renderRow(c, depth + 1))}</ul>
+          <ul>{nd.children.map(c => renderRow(c, depth + 1, nd.cents))}</ul>
         )}
       </li>
     );
@@ -339,8 +352,9 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
                     )}
                     <ul className="divide-y divide-gray-50">
                       {wide && focusPath.length > 0
-                        ? renderRow(focusPath[focusPath.length - 1], 0)
-                        : root.children.map(c => renderRow(c, 0))}
+                        ? renderRow(focusPath[focusPath.length - 1], 0,
+                            (focusPath[focusPath.length - 2] ?? root).cents)
+                        : root.children.map(c => renderRow(c, 0, root.cents))}
                     </ul>
                   </div>
                 </div>

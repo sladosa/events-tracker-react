@@ -79,7 +79,7 @@ Fileovi (napravljeni nad TEST = PROD 07.10., prozor 10/2025–09/2026):
 2. Uvoz oba filea **pod Kokinim računom**. **Očekivano:** 0 New · Modify = N · 0 Delete; saldo nepomaknut.
 3. Kontrola: korak 1 **bez** `--file` ⇒ N/A manji za N.
 
-## T-S164-5 ⬜ Dugi izbornici abecedno (app + Excel)
+## T-S164-5 ✅ (S166, 08.10.) Dugi izbornici abecedno (app + Excel)
 
 Preduvjet: `npm run dev` (TEST), Area `Financije_all`, `Ctrl+Shift+R`.
 

@@ -20,6 +20,8 @@ T-S165-1..8 ✅ na TEST-u. Usput pet dorada: rub kruga, dvoznačan Podtip bez �
 | T-S166-4 | Harmonika: F5 ⇒ saldo otvoren / razrez zatvoren; klik prebacuje, nikad obje zatvorene; povratak iz drilla pamti | ✅ S166 — Saša (4, 5 i prebacivanje); čuva E2E `S165_breakdown_tile` (sabotaža ruši) |
 | T-S166-5 | „kako radi potvrda?" na klik umjesto trajnog teksta | ✅ S166 — Saša potvrdio |
 | T-S166-7 | Klik na isječak kruga suzi listu (staza `Sve › …`), sredina kruga = razina gore | ✅ S166 — Saša (Mjesečni, Kvaliteta života) nakon Ctrl+Shift+R; čuva E2E s pravim klikom (sabotaža ruši) |
+| T-S166-8 | Svjež krug (povratak iz Add): PRVI klik na isječak suzi listu | ⬜ izmjereno i popravljeno u E2E (react-plotly u StrictMode-u gubi slušač iz propa — vežemo ga sami u `onInitialized`; sabotaža ruši); čeka Sašin klik nakon Ctrl+Shift+R |
+| T-S166-9 | Postotak udjela u roditelju uz iznos (široki: stupac; uski: ispod iznosa) | ⬜ |
 | T-S166-6 | PROD nakon deploya: Koka na mobitelu — harmonika i poveznica (samo vlasnica) | ⬜ |
 
 ---
@@ -56,7 +58,7 @@ Odluke R1–R15 u `docs/RAZREZ_SPEC.md`; skica pločice nad stvarnim podacima. N
 | T-S164-2 | PROD: backup → dry run (5 ✓) → `--apply --yes-prod` ⇒ `5 od 5 ✓`; u appu 5 / 128, saldo nepomaknut | ⬜ |
 | T-S164-3 | TEST: uvoz `na_razvrstavanje_*` (RF 6 / ZABA 8 prijedloga) ⇒ 0 New · Modify = razvrstani · 0 Delete; saldo nepomaknut | ⬜ |
 | T-S164-4 | PROD: `razvrstaj_na.py --file --preuzmi <razvrstani TEST fileovi>` (odluke po `event_id`, kol. G = Koka), uvoz pod Kokinim računom; TEST file se na PROD NE uvozi | ⬜ |
-| T-S164-5 | Dugi izbornici abecedno: Tip (N/A prvi, `auto C5` među A), Podtip po atributu; Smjer/Izvor stari red; Structure panel netaknut; Excel export isti red | ⬜ |
+| T-S164-5 | Dugi izbornici abecedno: Tip (N/A prvi, `auto C5` među A), Podtip po atributu; Smjer/Izvor stari red; Structure panel netaknut; Excel export isti red | ✅ **S166, 08.10. TEST** — Add → Tip: `N/A` prvi, `Advokati, auto C5, auto Lacetti, Domaćinstvo, …, Zdravlje` (Saša). Excel export i Structure panel nisu ručno gledani — red u Excelu čuva `optionOrder.test.mjs` |
 
 ---
 

@@ -44,6 +44,19 @@ razina gore; „Sve"/✕ ⇒ cijela lista. Mobitel: bez promjene (nema kruga).
 ⚠ Prvi pokušaj „ne radi" = stari bundle (Ctrl+Shift+R riješio). E2E mjeri PRAVI klik mišem (prva
 verzija je emitirala događaj i zaobišla put); sabotaža (odspojen handler) ga ruši.
 
+## T-S166-8 ⬜ Svjež krug: prvi klik radi
+
+1. Overview → otvori razrez → odmah klik na **Putovanja i pokloni** u krugu ⇒ lista samo taj bucket.
+2. Idi u **Add Activity**, zatvori (✕), natrag na Overview → razrez → **prvi** klik na isječak ⇒ isto.
+**Pad:** krug se zumira, lista ne ⇒ slušač nije vezan (S166: react-plotly ga u StrictMode-u gubi).
+
+## T-S166-9 ⬜ Postotak udjela uz iznos
+
+Laptop, 12 mj, po kupnji: Mjesečni **52,3 %** (od Izašlo 40.127,91); rasklopi ⇒ gotovina **18,2 %**
+(od Mjesečnih). U fokusu kruga (Putovanja i pokloni) Tipovi pokazuju udio u bucketu. Retci u minusu
+(Porezi, povrati) i djeca roditelja u minusu — bez postotka. Uski ekran: postotak sitno ispod iznosa,
+bez vodoravnog scrolla.
+
 ## T-S166-6 ⬜ PROD (s deployem S165, T-S165-9): Koka vidi isto
 
 Nakon deploya, Kokin račun na mobitelu: saldo otvoren, razrez zatvoren; dodir na razrez ⇒ saldo se
