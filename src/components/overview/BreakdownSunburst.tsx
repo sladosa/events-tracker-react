@@ -41,11 +41,19 @@ export function BreakdownSunburst({ root, unit }: Props) {
     parents: data.parents,
     values: data.values,
     branchvalues: 'total',
-    customdata: data.values.map(v => formatAmount(v / 100, unit)),
-    hovertemplate: '<b>%{label}</b><br>%{customdata}<br>%{percentRoot:.1%} od ukupnog<extra></extra>',
+    // Gdje je ispod stavke nešto u minusu, nacrtano ≠ neto — tooltip kaže oba, s
+    // neto (= broj iz liste) podebljanim; inače krug i lista izgledaju kao da se svađaju.
+    customdata: data.values.map((v, i) => data.nets[i] === v
+      ? formatAmount(v / 100, unit)
+      : `neto <b>${data.nets[i] < 0 ? formatSigned(data.nets[i] / 100, unit) : formatAmount(data.nets[i] / 100, unit)}</b> (kao u listi)<br>`
+        + `nacrtano ${formatAmount(v / 100, unit)} — minus ispod je izvan kruga`),
+    hovertemplate: '<b>%{label}</b><br>%{customdata}<br>%{percentRoot:.1%} kruga<extra></extra>',
     textinfo: 'label',
     insidetextorientation: 'radial',
     maxdepth: 3,
+    // Djeca nasljeđuju boju roditelja (samo svjetliju), pa braću dijeli SAMO
+    // rub — zadani 1 px bijelo se na svijetlom tonu ne vidi (Saša, S166).
+    marker: { line: { color: '#ffffff', width: 2.5 } },
   };
 
   return (

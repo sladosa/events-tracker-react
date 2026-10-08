@@ -194,9 +194,13 @@ interface Props {
   onDrill?: (groupValue: string, opts: { planned: boolean }) => void;
   /** Promjena broja = učitaj ponovo (npr. traka „Čeka potvrdu” upisala naplatu). */
   reloadToken?: number;
+  /** Harmonika na Overviewu (S166): sklopljen = samo naslov. Sadržaj se SKRIVA,
+   *  ne odmontira — upisano „u banci" i odabran izvor ne smiju nestati. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
-export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, reloadToken }: Props) {
+export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, reloadToken, collapsed = false, onToggleCollapsed }: Props) {
   const [rows, setRows] = useState<AnchoredBalanceRow[]>([]);
   const [splitRows, setSplitRows] = useState<GroupAggRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -224,6 +228,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, re
    */
   const [todayMove, setTodayMove] = useState<Map<string, { sum: number; n: number }> | null>(null);
   const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
+  const [showHow, setShowHow] = useState<Record<string, boolean>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // ── A BALANCE CANNOT BE "AS OF" A FUTURE DATE ────────────────────────────
@@ -481,9 +486,18 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, re
   // ------------------------------------------------------------------
   return (
     <div className={cn('bg-white rounded-xl shadow-sm border p-3 sm:p-4', T.tileBorder)}>
-      <div className="flex items-center justify-between gap-2 mb-3">
+      <div className={cn('flex items-center justify-between gap-2', !collapsed && 'mb-3')}>
         <div className="min-w-0">
-          <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{widget.title}</h3>
+          {onToggleCollapsed ? (
+            <button type="button" onClick={onToggleCollapsed} className="text-left">
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
+                <span className="text-gray-400 text-xs mr-1">{collapsed ? '▸' : '▾'}</span>
+                {widget.title}
+              </h3>
+            </button>
+          ) : (
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{widget.title}</h3>
+          )}
           {/* Rule: when the reading is not "now", the tile says so. A future
               dateTo is not a past reading, so it correctly says nothing. */}
           {isPast && (
@@ -492,15 +506,19 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, re
             </p>
           )}
         </div>
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          title="Osvježi"
-          className="text-xs text-gray-400 hover:text-gray-600 disabled:opacity-40 px-2 py-1"
-        >
-          {loading ? '…' : '↻'}
-        </button>
+        {!collapsed && (
+          <button
+            onClick={() => void load()}
+            disabled={loading}
+            title="Osvježi"
+            className="text-xs text-gray-400 hover:text-gray-600 disabled:opacity-40 px-2 py-1"
+          >
+            {loading ? '…' : '↻'}
+          </button>
+        )}
       </div>
+
+      <div className={cn(collapsed && 'hidden')}>
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -749,8 +767,8 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, re
                       className={cn('text-xs px-2 py-1 rounded-full', T.chipDiff)}
                       title={
                         delta > 0
-                          ? 'Aplikacija pokazuje više nego banka — nešto je upisano dvaput ili je iznos prevelik.'
-                          : 'Aplikacija pokazuje manje nego banka — nešto fali ili je iznos premalen.'
+                          ? 'Aplikacija pokazuje više nego banka — nešto je upisano dvaput ili je iznos prevelik. Nije greška izračuna.'
+                          : 'Aplikacija pokazuje manje nego banka — nešto fali ili je iznos premalen. Nije greška izračuna.'
                       }
                     >
                       Δ {formatSigned(delta, widget.unit)}
@@ -912,16 +930,34 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, re
                 </div>
               )}
 
-              {/* --- povijest potvrda: jedini put da se kriva potvrda VIDI --- */}
-              {widget.reconcile && groupAnchors.length > 0 && (
+              {/* --- povijest potvrda: jedini put da se kriva potvrda VIDI ---
+                  + „kako radi potvrda?": objašnjenje koje je do S166 stajalo TRAJNO
+                  ispod pločice i koje nitko više nije čitao (Saša). Treba samo pri
+                  potvrdi i samo onome tko koncept ne zna ⇒ na klik, uz polje. */}
+              {widget.reconcile && (
                 <div className="mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowHistory(prev => ({ ...prev, [key]: !prev[key] }))}
-                    className="text-[11px] text-gray-400 hover:text-gray-600 underline decoration-dotted"
-                  >
-                    {showHistory[key] ? 'sakrij' : 'povijest potvrda'} ({groupAnchors.length})
-                  </button>
+                  <div className="flex flex-wrap gap-x-3">
+                    {groupAnchors.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowHistory(prev => ({ ...prev, [key]: !prev[key] }))}
+                        className="text-[11px] text-gray-400 hover:text-gray-600 underline decoration-dotted"
+                      >
+                        {showHistory[key] ? 'sakrij' : 'povijest potvrda'} ({groupAnchors.length})
+                      </button>
+                    )}
+                    {canWrite && (
+                      <button
+                        type="button"
+                        onClick={() => setShowHow(prev => ({ ...prev, [key]: !prev[key] }))}
+                        className="text-[11px] text-gray-400 hover:text-gray-600 underline decoration-dotted"
+                      >
+                        {showHow[key] ? 'sakrij objašnjenje' : 'kako radi potvrda?'}
+                      </button>
+                    )}
+                  </div>
+
+                  {showHow[key] && <HowConfirmWorks />}
 
                   {showHistory[key] && (
                     <ul className="mt-1.5 space-y-1">
@@ -972,29 +1008,36 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, re
           );
         })}
       </div>
+      </div>
+    </div>
+  );
+}
 
-      {/* Δ is a signal, not a verdict — say so once, under the tile. */}
-      {widget.reconcile && rows.length > 0 && !error && (
-        <div className="text-[11px] text-gray-400 mt-3 leading-snug space-y-1">
-          <p>
-            Δ znači da se aplikacija i banka razilaze — nešto fali, nešto je dvaput, ili je iznos
-            kriv. Nije greška izračuna.
-          </p>
-          <p>
-            <strong className="text-gray-500">Zašto je datum potvrde važan:</strong> saldo se računa
-            kao <em>potvrđeni broj + sve što je datirano poslije njega</em>. Sve prije toga smatra se
-            već uključenim, pa promašen datum ne javlja grešku — transakcije između tiho ispadnu
-            iz salda.
-          </p>
-          <p>
-            Zato datum ne biraš ti nego <strong className="text-gray-500">izvor</strong>:{' '}
-            <em>izvod → dan zadnje transakcije na izvodu</em> (upisuješ ga ti),{' '}
-            <em>ekran banke → app ga izračuna sam</em>. Očitanje s ekrana vrijedi za trenutak, a
-            potvrda zna samo za cijele dane, pa se sprema kao stanje na kraju <em>jučerašnjeg</em>
-            {' '}dana umanjeno za današnji promet — tako današnje transakcije ostaju u saldu.
-          </p>
-        </div>
-      )}
+/**
+ * Objašnjenje potvrde (S116 pravila) — na klik „kako radi potvrda?" (S166).
+ * Konkretnu posljedicu za ovaj račun pločica ionako ispiše prije klika na
+ * Potvrdi; ovo je opći koncept za onoga tko ga ne zna.
+ */
+function HowConfirmWorks() {
+  return (
+    <div className="text-[11px] text-gray-500 mt-1.5 leading-snug space-y-1 bg-gray-50 rounded-lg px-2.5 py-2">
+      <p>
+        <strong className="text-gray-600">Zašto je datum potvrde važan:</strong> saldo se računa
+        kao <em>potvrđeni broj + sve što je datirano poslije njega</em>. Sve prije toga smatra se
+        već uključenim, pa promašen datum ne javlja grešku — transakcije između tiho ispadnu
+        iz salda.
+      </p>
+      <p>
+        Zato datum ne biraš ti nego <strong className="text-gray-600">izvor</strong>:{' '}
+        <em>izvod → dan zadnje transakcije na izvodu</em> (upisuješ ga ti),{' '}
+        <em>ekran banke → app ga izračuna sam</em>. Očitanje s ekrana vrijedi za trenutak, a
+        potvrda zna samo za cijele dane, pa se sprema kao stanje na kraju <em>jučerašnjeg</em>
+        {' '}dana umanjeno za današnji promet — tako današnje transakcije ostaju u saldu.
+      </p>
+      <p>
+        <strong className="text-gray-600">Δ</strong> znači da se aplikacija i banka razilaze —
+        nešto fali, nešto je dvaput, ili je iznos kriv. Nije greška izračuna.
+      </p>
     </div>
   );
 }

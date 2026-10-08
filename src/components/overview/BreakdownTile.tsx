@@ -19,7 +19,6 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
-import { dbScopedKey } from '@/lib/storageKey';
 import { formatAmount, formatDateHr, formatSigned } from '@/lib/amountFormat';
 import { fetchBreakdown } from '@/lib/overviewApi';
 import {
@@ -39,6 +38,9 @@ interface Props {
   dateFrom: string | null;
   dateTo: string | null;
   onDrill: (slug: string, value: string) => void;
+  /** Harmonika na Overviewu (S166): stanje drži OverviewTab, ne preglednik. */
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
 }
 
 interface Loaded {
@@ -73,7 +75,7 @@ function periodLabel(from: string | null, to: string | null): string {
   return from.slice(0, 4) === to.slice(0, 4) ? `${f.slice(0, 6)}–${t}` : `${f}–${t}`;
 }
 
-export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDrill }: Props) {
+export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDrill, collapsed, onToggleCollapsed }: Props) {
   const wide = useWide();
   const axes = useMemo(
     () => (widget.date_axes?.length ? widget.date_axes : [{ label: 'po datumu', slug: null }]),
@@ -86,19 +88,8 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
   const [reload, setReload] = useState(0);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
-  // Sklopiva (§5): stanje po pregledniku, ključ nosi BAZU (S140) i Areu.
-  // Komponenta je u OverviewTab-u ključana po Arei, pa initializer čita pravi ključ.
-  const collapseKey = useMemo(
-    () => dbScopedKey(`ui:tileCollapsed:${areaId}:${widget.title}`), [areaId, widget.title]);
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(collapseKey) === '1'; } catch { return false; }
-  });
-  const toggleCollapsed = () => {
-    setCollapsed(c => {
-      try { localStorage.setItem(collapseKey, c ? '0' : '1'); } catch { /* private mode */ }
-      return !c;
-    });
-  };
+  // Sklopiva (§5). Do S166 se pamtila po pregledniku; sada je harmonika s
+  // pločicom salda u OverviewTab-u — zadano ZATVORENA (zatvorena ništa ne računa).
 
   const axis = axes[Math.min(axisIdx, axes.length - 1)];
   const inputKey = `${areaId}|${dateFrom}|${dateTo}|${axis.slug}|${dims.join(',')}|${reload}`;
@@ -156,12 +147,14 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
   const unit = widget.unit;
   const money = (cents: number) => formatAmount(cents / 100, unit);
 
-  const drill = (nd: BreakdownNode) => {
-    // Nepoznata dvoznačnost ⇒ svaki Podtip tretiraj kao dvoznačan (drill na Tip).
+  const drillTarget = (nd: BreakdownNode) => {
+    // Nepoznata dvoznačnost ⇒ svaki Podtip tretiraj kao dvoznačan (bez drilla dok se ne zna).
     const amb = ambiguous ?? new Set(nd.values?.filter((v): v is string => !!v) ?? []);
-    const t = drillFor(nd, widget, { axisIsEventDate, ambiguous: amb });
+    return drillFor(nd, widget, { axisIsEventDate, ambiguous: amb });
+  };
+  const drill = (nd: BreakdownNode) => {
+    const t = drillTarget(nd);
     if ('none' in t) { toast(t.none); return; }
-    if (t.note) toast(t.note, { icon: 'ℹ️' });
     onDrill(t.slug, t.value);
   };
 
@@ -175,7 +168,9 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
     const hasKids = nd.children.length > 0;
     const isOpen = open.has(nd.id);
     const neg = nd.cents < 0;
-    const canDrill = axisIsEventDate && nd.kind === 'level';
+    // Isti izvor kao klik: strelica postoji točno kad drill postoji.
+    const target = axisIsEventDate && nd.kind === 'level' ? drillTarget(nd) : null;
+    const canDrill = target != null && !('none' in target);
     const special = nd.kind === 'unclassified' || nd.kind === 'unassigned';
     return (
       <li key={nd.id}>
@@ -210,7 +205,8 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
             disabled={!canDrill}
             className={cn('w-6 shrink-0 text-xs rounded', canDrill
               ? 'text-teal-600 hover:bg-teal-50' : 'text-transparent cursor-default')}
-            title={canDrill ? `Prikaži retke (${nd.n}) u Activities` : undefined}
+            title={canDrill ? `Prikaži retke (${nd.n}) u Activities`
+              : target && 'none' in target ? target.none : undefined}
             aria-label={canDrill ? `Prikaži retke za ${nd.name}` : undefined}
           >
             ↗
@@ -226,7 +222,7 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
   return (
     <div className={cn('bg-white rounded-xl shadow-sm border p-3 sm:p-4', T.tileBorder)}>
       <div className="flex items-start justify-between gap-2">
-        <button type="button" onClick={toggleCollapsed} className="min-w-0 text-left">
+        <button type="button" onClick={onToggleCollapsed} className="min-w-0 text-left">
           <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
             <span className="text-gray-400 text-xs mr-1">{collapsed ? '▸' : '▾'}</span>
             {widget.title}

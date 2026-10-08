@@ -560,7 +560,7 @@ Filtar nosi **jedan** uvjet ⇒ drill postoji samo gdje jedan uvjet točno opisu
 | --- | --- |
 | Tip | `tip = X` (raspon iz filtra ostaje) |
 | Podtip **jedinstven** među Tipovima | `podtip = X` |
-| Podtip **dvoznačan** — danas `gorivo`, `registracija`, `popravci` (oba auta), `Koka` (Projekti i Prihodi) | drill na **Tip** + toast „filtar nosi jedan uvjet — prikazujem cijeli Tip auto C5" |
+| Podtip **dvoznačan** — danas `gorivo`, `registracija`, `popravci` (oba auta), `Koka` (Projekti i Prihodi) | ~~drill na **Tip** + toast~~ **S166: nema ↗** (Saša: toast se previdi, a strelica bi bila kopija one uz Tip); `title` kaže zašto |
 | bucket, N/A, gotovina, nesvrstano | nema drilla (više uvjeta) |
 | bilo što u osi „po naplati" | nema drilla — filtar ne zna raspon `Datuma naplate` (ikona + objašnjenje) |
 
@@ -642,8 +642,8 @@ Procjena: jedna sesija za 1–4. Koraci 6–8 su jedan blok naredbi.
   `isBalanceWidget` (`types/database.ts`). Python alati `dashboard.widgets` ne čitaju (izmjereno grep-om).
 - **`groupings` rename:** `fixupDashboardSlug` piše `dashboard` i `groupings` u ISTOM write-u
   (`renameSlugInGroupings`); `rows[].values` su vrijednosti i ostaju netaknute.
-- **Drill kad se `validation_rules` ne daju pročitati:** svaki Podtip se tretira kao dvoznačan ⇒ drill
-  ide na Tip. Nikad na krivi Podtip.
+- **Drill kad se `validation_rules` ne daju pročitati:** svaki Podtip se tretira kao dvoznačan ⇒ Podtip
+  nema ↗ (S166), ostaje ↗ uz Tip. Nikad na krivi Podtip.
 - **Mobitel:** lista nosi trake i na 320–400 px (uže), imena se **prelamaju** (CLAUDE.md S119: prelom,
   ne `…`). Krug od 640 px.
 - **Greška RPC-a 22023/42501 se ne ponavlja** (`fetchBreakdown`): config i pristup se ponavljanjem ne

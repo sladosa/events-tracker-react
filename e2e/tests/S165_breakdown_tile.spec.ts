@@ -22,6 +22,16 @@ const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
 const FX = JSON.parse(readFileSync(
   join(process.cwd(), 'src', 'lib', '__tests__', 'fixtures', 'breakdown_financije_12mj.json'), 'utf8'));
 
+const SALDO = {
+  type: 'balance_by_group', title: 'Stanje po računu', group_by: 'racun',
+  plus: 'uplata', minus: 'isplata', unit: '€',
+};
+
+/** Tijelo pločice salda (sve ispod naslova) — sklopljeno = `hidden`. */
+const saldoBody = (page: Page) => page.getByRole('heading', { name: /Stanje po računu/ })
+  .locator('xpath=ancestor::div[contains(@class,"rounded-xl")][1]')
+  .locator(':scope > div').nth(1);
+
 async function mockRpc(page: Page): Promise<string[]> {
   const asked: string[] = [];
   await page.route(/\/rest\/v1\/rpc\/rpc_area_breakdown/, async route => {
@@ -47,7 +57,8 @@ test.describe('S165 — pločica Kamo ide novac', () => {
       id: areaId, user_id: OWNER_ID, name: `S165 razrez w${test.info().workerIndex}`,
       slug: `s165-razrez-${areaId.slice(0, 6)}`, sort_order: 93,
       settings: {
-        dashboard: { widgets: [FX.widget] },
+        // Saldo prvi, kao na Financijama — harmonika (S166) se vidi tek uz dvije pločice.
+        dashboard: { widgets: [SALDO, FX.widget] },
         groupings: { [FX.widget.grouping]: FX.grouping },
       },
     });
@@ -70,6 +81,8 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     await expect(strip.locator('> button')).toHaveCount(3, { timeout: 15_000 });
     await strip.locator('> button').first().click();
     await expect(page.getByRole('heading', { name: /Kamo ide novac/ })).toBeVisible({ timeout: 15_000 });
+    // S166: razrez je zadano ZATVOREN (harmonika sa saldom) ⇒ otvori ga.
+    await page.getByRole('heading', { name: /Kamo ide novac/ }).click();
   }
 
   test('široki ekran: brojke iz §4.3, krug, prekidač osi', async ({ page }) => {
@@ -104,7 +117,7 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     await expect(page.getByRole('button', { name: /^▸ Prihodi/ })).toBeVisible();
   });
 
-  test('uski ekran: lista bez kruga, sklapanje preživi reload', async ({ page }) => {
+  test('uski ekran: lista bez kruga; harmonika sa saldom, reload vraća saldo', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockRpc(page);
     await openOverview(page);
@@ -122,10 +135,21 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     await tile.screenshot({ path: 'e2e/test-results/S165_breakdown_narrow.png' });
     await page.getByRole('button', { name: /Mjesečni troškovi/ }).click();
 
-    await page.getByRole('heading', { name: /Kamo ide novac/ }).click();
+    // Harmonika (S166): razrez je otvoren ⇒ saldo sklopljen (samo naslov).
+    await expect(page.getByRole('heading', { name: /Stanje po računu/ })).toBeVisible();
+    await expect(saldoBody(page)).toBeHidden();
+    // Otvori saldo ⇒ razrez se sklopi.
+    await page.getByRole('heading', { name: /Stanje po računu/ }).click();
     await expect(page.getByRole('button', { name: /Mjesečni troškovi/ })).toHaveCount(0);
+    await expect(saldoBody(page)).toBeVisible({ timeout: 15_000 });
+    // Klik na OTVORENU (saldo) ne zatvara obje nego prebaci na razrez (Saša, S166).
+    await page.getByRole('heading', { name: /Stanje po računu/ }).click();
+    await expect(page.getByRole('button', { name: /Mjesečni troškovi/ })).toBeVisible();
+    await expect(saldoBody(page)).toBeHidden();
+    // Reload ⇒ zadano: saldo otvoren, razrez zatvoren.
     await page.reload();
     await expect(page.getByRole('heading', { name: /Kamo ide novac/ })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: /Mjesečni troškovi/ })).toHaveCount(0);
+    await expect(saldoBody(page)).toBeVisible({ timeout: 15_000 });
   });
 });

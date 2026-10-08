@@ -14,7 +14,7 @@ Razdoblje se postavlja u filtru: **From** / **To** (Period se sam prebaci na pri
 
 ---
 
-## T-S165-1 ⬜ 12 mj „po kupnji" = RAZREZ §4.3
+## T-S165-1 ✅ (S166, 08.10.) 12 mj „po kupnji" = RAZREZ §4.3
 
 1. Filtar From **01.10.2025.**, To **30.09.2026.**
 2. Ispod pločice „Stanje po računu" je nova pločica **„Kamo ide novac"**, zaglavlje
@@ -46,7 +46,7 @@ Razdoblje se postavlja u filtru: **From** / **To** (Period se sam prebaci na pri
    **Pad:** bilo koji broj drukčiji ⇒ prvo pogledaj je li netko na TEST-u upisao redak datiran u
    prozoru; pa javi Claudeu (i pokreni `Financije\run.bat verify_breakdown.py`).
 
-## T-S165-2 ⬜ Prekidač „po naplati" i Prihodi
+## T-S165-2 ✅ (S166, 08.10.) Prekidač „po naplati" i Prihodi
 
 Isti filtar kao T-S165-1.
 1. Klik **po naplati**. Kratko piše „Računam…", pa:
@@ -59,7 +59,7 @@ Isti filtar kao T-S165-1.
    **15.299,26** · Povrat Anja **4.950,00**. Sažetak gore ostaje isti.
 4. Natrag na **Troškovi** / **po kupnji**.
 
-## T-S165-3 ⬜ Rujan (kraći prozor, druge brojke)
+## T-S165-3 ✅ (S166, 08.10.) Rujan (kraći prozor, druge brojke)
 
 1. Filtar From **01.09.2026.**, To **30.09.2026.**
    **Očekivano (po kupnji):** Ušlo **2.844,16** · Izašlo **4.428,90** · Razlika **−1.584,74** (crveno);
@@ -69,7 +69,7 @@ Isti filtar kao T-S165-1.
 2. **po naplati:** Izašlo **4.203,07**; pojavi se Kuća investicije 114,14 i N/A **19,95**.
    Prihodi: Saša 1.454,64 · Koka 1.389,52.
 
-## T-S165-4 ⬜ Drill ↗ — Tip, jedinstven Podtip, dvoznačan Podtip
+## T-S165-4 ✅ (S166, 08.10.) Drill ↗ — Tip, jedinstven Podtip, dvoznačan Podtip
 
 Filtar 01.10.2025.–30.09.2026., **po kupnji**.
 1. Rasklopi Mjesečni troškovi → klik **↗** uz **Kuća**.
@@ -82,20 +82,20 @@ Filtar 01.10.2025.–30.09.2026., **po kupnji**.
 4. Bucket i N/A **nemaju** ↗.
    **Pad:** drill na „gorivo" pokaže samo gorivo (bez poruke) ⇒ dvoznačnost se ne čita.
 
-## T-S165-5 ⬜ Mobitel (uski ekran)
+## T-S165-5 ✅ (S166, 08.10.) Mobitel (uski ekran)
 
 1. DevTools → Toggle device (iPhone 12/13, 390 px) ili mobitel na lokalnoj mreži.
 2. **Očekivano:** **nema kruga**; ista lista s trakama, imena se **prelamaju** (ne `…`); nema vodoravnog
    scrolla stranice; prekidači stanu (mogu u dva reda).
 3. Dodir na bucket rasklopi; ↗ radi kao u T-S165-4.
 
-## T-S165-6 ⬜ Sklapanje preživi F5
+## T-S165-6 ✅ (S166, 08.10.) Sklapanje preživi F5
 
 1. Klik na naslov **„Kamo ide novac"** ⇒ pločica se sklopi (ostane naslov i razdoblje).
 2. **F5.** **Očekivano:** i dalje sklopljena; saldo iznad nepromijenjen.
 3. Klik na naslov ⇒ otvori se (vrati na otvoreno za ostale testove).
 
-## T-S165-7 ⬜ Ništa drugo se nije promijenilo (regresija)
+## T-S165-7 ✅ (S166, 08.10.) Ništa drugo se nije promijenilo (regresija)
 
 1. Pločica **„Stanje po računu"** je i dalje **prva**, s istim brojevima kao prije (ZABA/RF), traka
    „Čeka potvrdu" (ako postoji) iznad nje.
@@ -104,7 +104,7 @@ Filtar 01.10.2025.–30.09.2026., **po kupnji**.
    to ide kroz `isBalanceWidget`, jer pločica više nije jedina).
 4. Druga Area bez configa (npr. Fitness) ⇒ nema Overview taba, kao i prije.
 
-## T-S165-8 ⬜ Config pokazuje u prazno ⇒ glasno, ne tiho
+## T-S165-8 ✅ (S166, čuva automatski test) Config pokazuje u prazno ⇒ glasno, ne tiho
 
 (Opcionalno — samo ako želiš vidjeti zaštitu.) Ništa ne treba raditi ručno: pokriveno unit testom
 (`breakdownModel.test.mjs`, „isti par dvaput" i „grupiranje kojeg nema") i alatom

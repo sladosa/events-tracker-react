@@ -242,9 +242,12 @@ period — promijeniš filtar, promijeni se i ona. U zaglavlju piše koje razdob
 - **izvan razreza** (dno pločice) — Transfer: prijenosi među računima i podizanja. Novac je
   prošao, ali nije potrošen ni zarađen, pa nije u razrezu. Saldo ga broji, razrez ne.
 - **↗** uz Tip ili Podtip otvara te retke u Activities (razdoblje iz filtra ostaje). Radi
-  samo u prikazu *po kupnji*. Za Podtip koji postoji pod više Tipova (npr. *gorivo* kod oba
-  auta) otvara cijeli Tip — filtar nosi jedan uvjet. Bucket nema ↗ jer je više uvjeta.
-- Klik na **naslov** sklapa pločicu; zapamti se u ovom pregledniku.
+  samo u prikazu *po kupnji*. Podtip koji postoji pod više Tipova (npr. *gorivo* kod oba
+  auta) **nema** ↗ — filtar nosi jedan uvjet, pa bi pokazao gorivo obaju auta; ↗ uz Tip
+  (*auto C5*) otvara cijeli Tip. Bucket nema ↗ jer je više uvjeta.
+- Otvorena je **uvijek jedna** pločica: klik na naslov razreza otvori razrez i sklopi saldo,
+  klik na naslov salda vrati saldo — da filtar s razdobljem ostane blizu. Pri svakom
+  otvaranju appa saldo je otvoren, a razrez zatvoren.
 
 ## Unos iz Overviewa
 

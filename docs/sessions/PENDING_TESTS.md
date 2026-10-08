@@ -2,7 +2,24 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S165 (2026-10-07) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S166 (2026-10-08) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S166 — testovi S165 + dorade pločica po Sašinim nalazima (2026-10-08)
+
+T-S165-1..8 ✅ na TEST-u. Usput pet dorada: rub kruga, dvoznačan Podtip bez ↗ (umjesto toasta koji se previdi), tooltip neto/nacrtano, harmonika saldo/razrez (uvijek jedna otvorena), objašnjenje potvrde na klik. Sve na `test-branch`, ide u isti deploy kao S165.
+
+**Detalji testova:** [tests/S166_tests.md](tests/S166_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S166-1 | Rub kruga 2,5 px — Saša/Koka razdvojeni | ✅ S166 — Saša potvrdio („super je sada") |
+| T-S166-2 | Dvoznačan Podtip (gorivo, registracija, popravci) bez ↗; Tip i jedinstveni Podtip s ↗ | ✅ S166 — Saša potvrdio; čuva `breakdownModel.test.mjs` |
+| T-S166-3 | Tooltip kruga: neto (= lista) + nacrtano kad je ispod minus | ✅ S166 — Saša („sve mi radi"); čuva `breakdownModel.test.mjs` |
+| T-S166-4 | Harmonika: F5 ⇒ saldo otvoren / razrez zatvoren; klik prebacuje, nikad obje zatvorene; povratak iz drilla pamti | ✅ S166 — Saša (4, 5 i prebacivanje); čuva E2E `S165_breakdown_tile` (sabotaža ruši) |
+| T-S166-5 | „kako radi potvrda?" na klik umjesto trajnog teksta | ✅ S166 — Saša potvrdio |
+| T-S166-6 | PROD nakon deploya: Koka na mobitelu — harmonika i poveznica (samo vlasnica) | ⬜ |
 
 ---
 
@@ -14,14 +31,14 @@ RAZREZ §15 koraci 1–4: migracija `056` (RPC razreza) na TEST-u, `verify_break
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S165-1 | TEST, 01.10.2025.–30.09.2026., po kupnji: Ušlo 46.972,48 · Izašlo 40.127,91; 8 bucketa + N/A = §4.3; gotovina 3.830,90 u Mjesečnim; Transfer 61.420,64 / 81.561,51; krug + „Nije nacrtano" | ⬜ |
-| T-S165-2 | Isto, po naplati: Izašlo 39.305,20, Mjesečni 19.939,85, N/A 3.054,84; Prihodi Koka 26.723,22 · Saša 15.299,26 · Povrat Anja 4.950,00 | ⬜ |
-| T-S165-3 | Rujan 2026.: po kupnji Ušlo 2.844,16 · Izašlo 4.428,90; po naplati 4.203,07 (+ N/A 19,95) | ⬜ |
-| T-S165-4 | Drill ↗: Kuća ⇒ 80 zapisa; auto C5 › gorivo ⇒ poruka + cijeli auto C5 (48); Struja ⇒ 9 | ⬜ |
-| T-S165-5 | Uski ekran: bez kruga, lista s trakama, imena se prelamaju, bez vodoravnog scrolla | ⬜ |
-| T-S165-6 | Sklapanje pločice preživi F5 | ⬜ |
-| T-S165-7 | Regresija: saldo prvi i isti, kolona Stanje, ponuda delta sheeta u Exportu, Area bez configa bez taba | ⬜ |
-| T-S165-8 | Config u prazno ⇒ greška, ne tiha nula (pokriveno unit testom + alatom; ručno opcionalno) | ⬜ |
+| T-S165-1 | TEST, 01.10.2025.–30.09.2026., po kupnji: Ušlo 46.972,48 · Izašlo 40.127,91; 8 bucketa + N/A = §4.3; gotovina 3.830,90 u Mjesečnim; Transfer 61.420,64 / 81.561,51; krug + „Nije nacrtano" | ✅ **S166, 08.10. TEST** — sažetak, 9 bucketa, Transfer, Mjesečni (gotovina 3.830,90, Kuća s povratima −50,00/−839,18 zeleno, Σ Kuća 3.274,96 = djeca u cent), Porezi −973,23, „Nije nacrtano" sve tri — sve = očekivano; krug zumira (Mjesečni → Tip → Podtip) |
+| T-S165-2 | Isto, po naplati: Izašlo 39.305,20, Mjesečni 19.939,85, N/A 3.054,84; Prihodi Koka 26.723,22 · Saša 15.299,26 · Povrat Anja 4.950,00 | ✅ **S166, 08.10. TEST** — po naplati Izašlo 39.305,20 / +7.667,28, svih 9 bucketa (N/A 3.054,84), napomena o ↗ na dnu i strelice nestale; Prihodi 46.972,48 = Koka 26.723,22 · Saša 15.299,26 · Povrat Anja 4.950,00; povratak na po kupnji vraća T-S165-1 brojke |
+| T-S165-3 | Rujan 2026.: po kupnji Ušlo 2.844,16 · Izašlo 4.428,90; po naplati 4.203,07 (+ N/A 19,95) | ✅ **S166, 08.10. TEST** — po kupnji 2.844,16 / 4.428,90 / −1.584,74 crveno, 7 bucketa (Σ = Izašlo u cent), bez N/A i Kuća investicije, Transfer 450,00 / 2.487,08; po naplati 4.203,07 (Σ 9 redaka u cent) s Kuća investicije 114,14 i N/A 19,95; Prihodi Saša 1.454,64 · Koka 1.389,52. „Nije nacrtano" u rujnu: Povrat Zoran −18,38, Povrat Nataša −50,00 |
+| T-S165-4 | Drill ↗: Kuća ⇒ 80 zapisa; auto C5 › gorivo ⇒ poruka + cijeli auto C5 (48); Struja ⇒ 9 | ✅ **S166, 08.10. TEST** — Kuća ⇒ `Tip = Kuća`, isti raspon, 80 events; gorivo ⇒ toast + `Tip = auto C5`, 48 events; Struja ⇒ `Podtip = Struja`, 9 events (Σ 1.407,29 = pločica u cent); bucket/N/A/gotovina bez ↗. ⚠ Saša: toast se lako previdi — v. S166 |
+| T-S165-5 | Uski ekran: bez kruga, lista s trakama, imena se prelamaju, bez vodoravnog scrolla | ✅ **S166, 08.10. TEST, DevTools ~390 px** — bez kruga, trake, „Putovanja i pokloni" i „Kućište · Nenin novac" se prelamaju, prekidači u redu, rasklapanje i ↗ rade |
+| T-S165-6 | Sklapanje pločice preživi F5 | ✅ **S166, 08.10. TEST** — sklopljena i nakon F5, otvara se klikom. ⚠ Usput: F5 vraća filtar na All Time (raspon se ne pamti, samo Area/kategorija/shortcut — postojeće pravilo) ⇒ pločica tada pokazuje 2023.–danas; otvoreno pitanje zadanog razdoblja pločice |
+| T-S165-7 | Regresija: saldo prvi i isti, kolona Stanje, ponuda delta sheeta u Exportu, Area bez configa bez taba | ✅ **S166, 08.10. TEST** — saldo prvi (ZABA 11.246,61); Stanje uz filtar ZABA: 05.10. = 11.246,61 (= sidro 04.10. + 55,50), kartični 07.10. i retci na dan sidra „—" (provjereno u bazi: Mastercard/Planiran); Export nudi delta sheet; Health_Sasa bez Overview taba |
+| T-S165-8 | Config u prazno ⇒ greška, ne tiha nula (pokriveno unit testom + alatom; ručno opcionalno) | ✅ S166 — čuva automatski test (`breakdownModel.test.mjs` „isti par dvaput", „grupiranje kojeg nema") + `set_breakdown.py` staje; Saša pročitao, ručna proba ne treba |
 | T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (traži R3 = T-S164-2 prije) → Koka i Saša vide pločicu | ⬜ |
 
 ---

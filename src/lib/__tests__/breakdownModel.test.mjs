@@ -203,6 +203,10 @@ console.log('\n5. krug (R11):');
   });
   ok('roditelj = zbroj nacrtane djece (branchvalues total)', okTotals);
   ok('sve vrijednosti > 0', s.values.every(v => v > 0));
+  ok('nets poravnat s ids', s.nets.length === s.ids.length);
+  const iRoot = s.ids.indexOf(m.expense.id);
+  ok('neto korijena = Izašlo (lista), nacrtano veće (minus izvan kruga)',
+     s.nets[iRoot] === m.totals.outCents && s.values[iRoot] > s.nets[iRoot], `${s.nets[iRoot]} / ${s.values[iRoot]}`);
   ok('Nužno nije nacrtan (nema ničega pozitivnog)', !byId.has('out/b:Nužno'));
 }
 
@@ -242,7 +246,7 @@ console.log('\n8. drill (§12.3):');
   ok('jedinstven Podtip ⇒ podtip = Struja', JSON.stringify(drillFor(str, W, opt)) === JSON.stringify({ slug: 'podtip', value: 'Struja' }));
   const pk = find(flat.expense, nd => nd.values?.join('|') === 'Projekti|Koka');
   const d = drillFor(pk, W, opt);
-  ok('dvoznačan Podtip ⇒ cijeli Tip + objašnjenje', d.slug === 'tip' && d.value === 'Projekti' && !!d.note, JSON.stringify(d));
+  ok('dvoznačan Podtip ⇒ nema drilla (strelica redak iznad već vodi na cijeli Tip)', 'none' in d && d.none.includes('Projekti'), JSON.stringify(d));
   const bucket = m.expense.children.find(c => c.kind === 'bucket');
   ok('bucket ⇒ nema drilla', 'none' in drillFor(bucket, W, opt));
   ok('N/A ⇒ nema drilla', 'none' in drillFor(m.expense.children.at(-1), W, opt));

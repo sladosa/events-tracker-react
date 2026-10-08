@@ -21,6 +21,9 @@ import { DueStrip } from './DueStrip';
 import { BreakdownTile } from './BreakdownTile';
 import type { DashboardConfig, DueConfig, Grouping, UUID } from '@/types/database';
 
+/** Koja je pločica otvorena — v. „Harmonika" u komponenti. Modul, ne storage. */
+let lastOpenTile: { area: UUID; idx: number | null } | null = null;
+
 interface Props {
   areaId: UUID;
   config: DashboardConfig;
@@ -37,6 +40,30 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
   const { filter, setAttrFilter } = useFilter();
   // Skupni redak iz trake miče saldo ⇒ pločica se mora ponovo učitati.
   const [balanceReload, setBalanceReload] = useState(0);
+
+  // Harmonika (S166, Saša): otvorena je najviše JEDNA pločica — dvije otvorene
+  // guraju filtar (razdoblje!) predaleko gore. Zadano saldo, jer ga Koka uvijek
+  // treba; razrez se otvara na zahtjev.
+  // Pamti se na razini MODULA: preživi odlazak u Activities (drill ↗ i povratak —
+  // AppHome ovaj tab odmontira), a NE preživi F5 — svako otvaranje appa kreće od
+  // salda. Stanje nosi Areu za koju vrijedi (obrazac `loadedFor`, S145).
+  const defaultOpen = (() => {
+    const b = config.widgets.findIndex(w => w.type === 'balance_by_group');
+    return b >= 0 ? b : 0;
+  })();
+  const [openState, setOpenState] = useState(lastOpenTile);
+  const openIdx = openState && openState.area === areaId ? openState.idx : defaultOpen;
+  // Uvijek je otvorena TOČNO JEDNA (Saša: „ili jedno ili drugo"): klik na
+  // otvorenu pločicu otvara sljedeću — obje zatvorene nikome ne trebaju.
+  // Sama jedna pločica (druge Aree) se smije i sklopiti.
+  const toggleTile = (i: number) => {
+    const n = config.widgets.length;
+    const idx = openIdx !== i ? i : n > 1 ? (i + 1) % n : null;
+    const next = { area: areaId, idx };
+    lastOpenTile = next;
+    setOpenState(next);
+  };
+  const many = config.widgets.length > 1;
 
   /**
    * Drill = produce filter state, exactly the shape a Shortcut already saves
@@ -94,6 +121,8 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
                 widget={w}
                 canWrite={canWrite}
                 reloadToken={balanceReload}
+                collapsed={openIdx !== i}
+                onToggleCollapsed={many ? () => toggleTile(i) : undefined}
                 // The global date filter reaches the tile, so "balance on
                 // 31.03.2025" is answerable — and the same date stamps a
                 // confirmation, which is what makes the anchor a check (§2.17).
@@ -129,7 +158,7 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
             );
           case 'breakdown':
             return (
-              // Ključ nosi Areu: stanje sklopljenosti se čita u initializeru.
+              // Ključ nosi Areu: unutarnje stanje (strana, os) kreće iznova po Arei.
               <BreakdownTile
                 key={`${w.type}-${w.title}-${areaId}-${i}`}
                 areaId={areaId}
@@ -141,6 +170,8 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
                 // Drill ne dira raspon datuma: „po kupnji" je event_date, isto
                 // što filtar Activities filtrira (§12.3).
                 onDrill={(slug, value) => { void drill(slug, value); }}
+                collapsed={openIdx !== i}
+                onToggleCollapsed={() => toggleTile(i)}
               />
             );
           default:

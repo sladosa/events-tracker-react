@@ -328,6 +328,10 @@ export interface SunburstData {
   parents: string[];
   /** U lipama; roditelj = zbroj NACRTANE djece (branchvalues 'total'). */
   values: number[];
+  /** U lipama, poravnato s `ids`: NETO stavke (isto što lista pokazuje). Razlikuje se
+   *  od `values` kad je ispod stavke nešto u minusu — tooltip tada mora reći oboje,
+   *  inače krug i lista pokazuju dva broja za isto ime (Saša, S166). */
+  nets: number[];
   notDrawn: Array<{ path: string; cents: number }>;
 }
 
@@ -348,11 +352,12 @@ export function toSunburst(root: BreakdownNode): SunburstData {
   };
   measure(root, []);
 
-  const out: SunburstData = { ids: [], labels: [], parents: [], values: [], notDrawn };
+  const out: SunburstData = { ids: [], labels: [], parents: [], values: [], nets: [], notDrawn };
   const emit = (nd: BreakdownNode, parent: string) => {
     const v = drawn.get(nd.id);
     if (v == null) return;
     out.ids.push(nd.id); out.labels.push(nd.name); out.parents.push(parent); out.values.push(v);
+    out.nets.push(nd.cents);
     for (const c of nd.children) emit(c, nd.id);
   };
   emit(root, '');
@@ -364,7 +369,7 @@ export function toSunburst(root: BreakdownNode): SunburstData {
 // ============================================================
 
 export type DrillTarget =
-  | { slug: string; value: string; note?: string }
+  | { slug: string; value: string }
   | { none: string };
 
 /**
@@ -410,12 +415,15 @@ export function drillFor(
   const top = { slug: w.levels[0], value: v0 };
   if (nd.depth === 0) return top;
 
+  // Dvoznačan ili prazan Podtip NEMA drill (S166, Saša). Prije je vodio na cijeli
+  // Tip uz toast — dakle kopija strelice redak iznad koja obećava „gorivo" a daje
+  // gorivo + registraciju, a toast se previdi. Strelica koje nema ne laže.
   const v = nd.values[nd.depth];
   if (v == null || v === '') {
-    return { ...top, note: `prazna vrijednost — prikazujem cijeli ${v0}` };
+    return { none: `Prazna vrijednost se ne može filtrirati — ↗ uz ${v0} prikazuje cijeli ${v0}.` };
   }
   if (opts.ambiguous.has(v)) {
-    return { ...top, note: `filtar nosi jedan uvjet, a „${v}" postoji pod više vrijednosti — prikazujem cijeli ${v0}` };
+    return { none: `„${v}" postoji pod više vrijednosti, a filtar nosi jedan uvjet — ↗ uz ${v0} prikazuje cijeli ${v0}.` };
   }
   return { slug: w.levels[nd.depth], value: v };
 }
