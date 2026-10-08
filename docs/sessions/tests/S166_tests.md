@@ -57,7 +57,7 @@ Laptop, 12 mj, po kupnji: Mjesečni **52,3 %** (od Izašlo 40.127,91); rasklopi 
 (Porezi, povrati) i djeca roditelja u minusu — bez postotka. Uski ekran: postotak sitno ispod iznosa,
 bez vodoravnog scrolla.
 
-## T-S166-10 ⬜ Zadano razdoblje Financija = This Year
+## T-S166-10 ✅ (08.10.) Zadano razdoblje Financija = This Year
 
 TEST već nosi `default_period: this-year` (`set_breakdown.py --apply`, 08.10.). Ctrl+Shift+R:
 1. **F5** ⇒ Period = **This Year**, razrez `01.01.–31.12.2026. · iz filtra`, lista samo 2026.
@@ -66,7 +66,7 @@ TEST već nosi `default_period: this-year` (`set_breakdown.py --apply`, 08.10.).
 5. Structure export: na retku `Financije_all` kolona **DefaultPeriod** = `this-year`.
 Čuva E2E „zadano razdoblje Aree" (sabotaža brane „jednom po Arei" ruši).
 
-## T-S166-11 ⬜ Mobitel: fokus s laptopa ne zaključava redak
+## T-S166-11 ✅ (08.10.) Mobitel: fokus s laptopa ne zaključava redak
 
 Laptop: klik na **Kvaliteta života** u krugu ⇒ DevTools uski ekran ⇒ redak se rasklapa I sklapa
 (prije: ostao zaključan otvoren jer je fokus kruga preživio prelazak).
