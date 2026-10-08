@@ -1,6 +1,6 @@
 > Pisano protiv commita **S166 ritual** na `test-branch` (zadnji commit = „S166: ritual …").
-> **`main` = `006374c` (deploy S160, 04.10.)**. Na `test-branch` čekaju deploy: S160b, S161, S162,
-> **S165 + S166 (pločica „Kamo ide novac" i dorade Overviewa)**, S163–S164 (dokumenti, alati, abecedni izbornici).
+> **`main` = `45087b7` (deploy S166, 08.10.)** — sve do S166 je na PROD-u (kod). Na PROD-u se
+> pločica razreza i zadano razdoblje NE vide dok `set_breakdown.py` ne upiše config (T-S165-9).
 > **Migracija `056` je na TEST-u, NIJE na PROD-u.**
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
@@ -33,8 +33,9 @@
    - **T36** N/A fileovi `na_razvrstavanje_*_1049.xlsx` — s Kokom, u istom sjedenju kao T34.
    ⚠ Bolje riješiti **prije** PROD-a: Koka bi na pločici vidjela „Medical_Koka −18.341,95".
 2. **Prije PROD-a: R3 osiguranje kuće (T-S164-2)** — treba Kokin pristanak.
-3. **PROD (T-S165-9):** 056 u SQL editoru → `verify_breakdown.py` → deploy → `set_breakdown.py
-   --apply --yes-prod`. Zatim T-S166-6 (Koka na mobitelu).
+3. **PROD (T-S165-9):** deploy je **odrađen 08.10.** Ostaje: 056 u SQL editoru → `verify_breakdown.py`
+   → `set_breakdown.py --apply --yes-prod` (upisuje i This Year). Zatim T-S166-6 (Koka na mobitelu).
+   Koka nakon deploya: **Ctrl+Shift+R** / ponovo otvoriti app.
 4. Od ranije: **11.10.** Koka potvrđuje MC naplatu u traci (T-S158-1 / T-S156-6); **~03.11.** Visa izvod.
 
 **Riješeno istog dana:** Financije se otvaraju na **This Year** (Koka) — postavka Aree, na TEST-u

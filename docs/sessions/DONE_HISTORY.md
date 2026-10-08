@@ -8777,4 +8777,4 @@ This Year (Koka); primjenjuje se jednom po Arei dok čovjek nije birao, F5 ga vr
 kolona `DefaultPeriod` (na kraju lista, nepoznat ključ ⇒ upozorenje „Not imported" u modalu —
 uvoz dobio kanal `warnings`); `set_breakdown.py` ga upisuje (TEST ✓ `--apply`). E2E „zadano
 razdoblje Aree" (sije event: prazna Area nema All Time granica), sabotaža brane ruši. T-S166-10/11.
-
+**Deploy:** Saša mergao `test-branch` → `main` (`45087b7`, 08.10.) — kod S163–S166. 056 i config razreza na PROD-u još **nisu** (T-S165-9).
