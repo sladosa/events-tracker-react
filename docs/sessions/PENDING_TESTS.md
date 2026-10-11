@@ -37,7 +37,7 @@ T-S165-1..8 ✅ na TEST-u. Usput pet dorada: rub kruga, dvoznačan Podtip bez �
 | T-S166-9 | Postotak udjela u roditelju uz iznos (široki: stupac; uski: ispod iznosa) | ✅ S166 — Saša, laptop i mobitel (Kvaliteta života 8,7 %, Domaćinstvo 37,1 %…); čuva E2E (52,3 % / 18,2 %) |
 | T-S166-10 | Zadano razdoblje Financija = This Year (F5); ručni All Time ostaje; Health_Sasa bez promjene; Structure kolona `DefaultPeriod` | ✅ S166 — Saša; čuva E2E (sabotaža ruši) |
 | T-S166-11 | Uski ekran: redak fokusiran na laptopu se da sklopiti | ✅ S166 — Saša |
-| T-S166-6 | PROD nakon deploya: Koka na mobitelu — harmonika i poveznica (samo vlasnica) | ⬜ |
+| T-S166-6 | PROD nakon deploya: Koka na mobitelu — harmonika i poveznica (samo vlasnica) | ✅ S167 (11.10.) — Koka: „Kamo ide novac" radi (ne zanima je previše); mali ekran: otvoren filtar predug, jednom lista bez iznosa (nije reproducirano) ⇒ oboje u BACKLOG |
 
 ---
 
@@ -57,7 +57,7 @@ RAZREZ §15 koraci 1–4: migracija `056` (RPC razreza) na TEST-u, `verify_break
 | T-S165-6 | Sklapanje pločice preživi F5 | ✅ **S166, 08.10. TEST** — sklopljena i nakon F5, otvara se klikom. ⚠ Usput: F5 vraća filtar na All Time (raspon se ne pamti, samo Area/kategorija/shortcut — postojeće pravilo) ⇒ pločica tada pokazuje 2023.–danas; otvoreno pitanje zadanog razdoblja pločice |
 | T-S165-7 | Regresija: saldo prvi i isti, kolona Stanje, ponuda delta sheeta u Exportu, Area bez configa bez taba | ✅ **S166, 08.10. TEST** — saldo prvi (ZABA 11.246,61); Stanje uz filtar ZABA: 05.10. = 11.246,61 (= sidro 04.10. + 55,50), kartični 07.10. i retci na dan sidra „—" (provjereno u bazi: Mastercard/Planiran); Export nudi delta sheet; Health_Sasa bez Overview taba |
 | T-S165-8 | Config u prazno ⇒ greška, ne tiha nula (pokriveno unit testom + alatom; ručno opcionalno) | ✅ S166 — čuva automatski test (`breakdownModel.test.mjs` „isti par dvaput", „grupiranje kojeg nema") + `set_breakdown.py` staje; Saša pročitao, ručna proba ne treba |
-| T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (R3 = T-S164-2 ✅ 11.10.; prije toga T-S167-2 — inače alat stane na `Popravci, održavanje`) → Koka i Saša vide pločicu | ⬜ **baza gotova 11.10. (S167):** 056 ✓, `verify_breakdown` 4 ✓ + RPC = Python u lipu (model = T-S165-1 u cent), `set_breakdown --apply --yes-prod` ✓ (prvi pokušaj 555 prolazno, nakon 056). Ostaje korak 5: app (Saša mobitel, Koka) |
+| T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (R3 = T-S164-2 ✅ 11.10.; prije toga T-S167-2 — inače alat stane na `Popravci, održavanje`) → Koka i Saša vide pločicu | ✅ S167 (11.10.) — baza: 056 ✓, `verify_breakdown` 4 ✓ + RPC = Python u lipu (model = T-S165-1 u cent), `set_breakdown --apply --yes-prod` ✓ (prvi pokušaj 555 prolazno, nakon 056). app: Saša (mobitel, grantee) This Year, saldo + razrez, bez žutog okvira; Koka na mobitelu razrez radi |
 
 ---
 
@@ -99,7 +99,7 @@ Samo Python alati i dokumenti, bez promjene u appu. Košara 11.10. na PROD-u = i
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S158-1 | PROD, Koka, 11.10.: traka 55 stavki / 1.189,34 ⇒ ✓ slaže se ⇒ Potvrdi (isti trenutak kao T-S156-6) | ⬜ |
+| T-S158-1 | PROD, Koka, 11.10.: traka 55 stavki / 1.189,34 ⇒ ✓ slaže se ⇒ Potvrdi (isti trenutak kao T-S156-6) | ⬜ **11.10. (nedjelja): MC u banci još nije skinut** — Koka potvrđuje kad sjedne, s bankinim datumom |
 | T-S158-2 | `MC_2026-10`: rate i naknade NISU u `ZA UVOZ` (već u bazi); 11.11. razlika = samo neupisane kupovine | ⬜ |
 | T-S158-3 | `rate_alat --only b` nakon uvoza nudi 0 rata (ne generira dvaput) | ✅ S158 — izmjereno: 0 planova / 0 rata |
 | T-S158-4 | Visa rujan: razvrstač daje `PBZVISA_`, `visa_uvoz_izvoda` samo imenom, zaglavlje `[PROD]`, Σ u cent | ⬜ |
@@ -121,7 +121,7 @@ Samo Python alati i dokumenti, bez promjene u appu. Košara 11.10. na PROD-u = i
 | T-S156-3 | TEST: `2231,02` / 11.07. ⇒ Potvrdi ⇒ redak + 11 statusa, traka nestane | ✅ S157 — zamijenjen T-S157-3 (košara poslije sidra, saldo se mora pomaknuti) |
 | T-S156-4 | TEST: brane — bez dana nema gumba; dan >3 dana od dospijeća crveno; `abc`; izmjena iznosa zatvara kutiju; uska širina | ✅ S157 — zamijenjen T-S157-6 |
 | T-S156-5 | PROD (nakon merge-a), Saša kao grantee: usporedba da, gumb ne, rečenica zašto | ⬜ |
-| T-S156-6 | PROD, Koka, 11.10.: prava MC košara, saldo ZABA isti dan = banka | ⬜ |
+| T-S156-6 | PROD, Koka, 11.10.: prava MC košara, saldo ZABA isti dan = banka | ⬜ čeka naplatu (v. T-S158-1); očekivano ZABA ≈ 11.257,88 (12.447,22 − 1.189,34) ako nema drugih promjena |
 | T-S156-7 | `fill_from_izvod.py --zaba` sa ZABA_2026-10: skupna naplata preskočena (točno ili ≈ ≤3 dana), nikad nov redak | ⬜ |
 
 ---

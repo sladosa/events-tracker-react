@@ -28,6 +28,17 @@
   (`isExact`) — a ako je roditelj (Tip) i sam filtar, samo njegove opcije. Isti par smije
   postojati pod dva Tipa (`gorivo` pod oba auta) ⇒ vrijednost filtra je samo Podtip, a grupa je
   prikaz. Vrijedi za svaki `depends_on` atribut, ne samo Financije.
+- **Lista bez iznosa dok se postavke Aree učitavaju (S167, Koka na malom iPhoneu, nije
+  reproducirano)** — `ActivitiesTable` zove `resolveColumns(listColumnsConfig)`, a dok
+  `useAreaDashboard` nije odgovorio config je `null` ⇒ `DEFAULT_COLUMNS` (bez `pair`/iznosa).
+  Na sporoj mobilnoj mreži taj prozor traje sekundama: Koka vidi transakcije bez iznosa, pa iznosi
+  „dođu sami". Hipoteza iz koda, ne mjerenje. Prijedlog: dok config **za ovu Areu** nije poznat
+  (`loadedFor`, razred BUG-S145-OVERVIEWTAB), lista ne crta zadane kolone nego čeka (skeleton).
+  Ako se pokaže s trakom „Nisam uspio učitati postavke", onda je to drugi kvar (palo čitanje).
+- **Filtar na malom ekranu je predug kad je otvoren (S167, Koka)** — na uskom iPhoneu se polja
+  slažu jedno ispod drugog, pa otvoren filtar gura listu i Overview daleko dolje. Saša je uči da
+  ga zatvori. Prijedlog za razmisliti: filtar se sam sklopi nakon odabira kategorije/razdoblja,
+  ili sažetak u jednom redu (`Financije_all · This Year · Podtip = …`) dok je sklopljen.
 - **Lista: zaštita od zakašnjelog odgovora koristi `Date.now()` kao ID (S167, sumnja)** —
   `useActivities.ts` (`latestFetchIdRef`): dva dohvata u istoj milisekundi dobiju isti ID, pa
   oba prođu provjeru i stariji može pregaziti noviji. Viđeno jednom na TEST-u 11.10.: Transakcija +
