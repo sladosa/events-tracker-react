@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S167).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S168).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 129 | [Critical rules](<#Critical rules>) | X |
-| 1269 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1739 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1755 | [Key files](<#Key files>) |  |
-| 1874 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1894 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1917 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1945 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1985 | [Open bugs](<#Open bugs>) | ~ |
-| 2094 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2139 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2259 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2267 | [Backlog](<#Backlog>) | ~ |
-| 2271 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2279 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1275 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1745 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1761 | [Key files](<#Key files>) |  |
+| 1880 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1900 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1923 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1951 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1991 | [Open bugs](<#Open bugs>) | ~ |
+| 2100 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2145 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2265 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2273 | [Backlog](<#Backlog>) | ~ |
+| 2277 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2285 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2443 redaka, 18 sekcija._
+_Ukupno 2449 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -511,6 +511,10 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **Area bez configa zadrži današnju listu.** Odsutnost je zadano, ne prazna tablica —
   isti obrazac kao Overview tab (OQ-4). `DEFAULT_COLUMNS` je zato **pravi popis kolona**
   u `listColumns.ts`, ne `if (!config)` grana razasuta po tablici.
+  ⚠ **Ali „još ne znam" NIJE „nema configa"** (S168, Kokina „lista bez iznosa" na sporoj mreži):
+  dok `useAreaDashboard` nije odgovorio za OVU Areu, `listColumns` je `null` ⇒ zadane kolone bez
+  iznosa. Lista zato čeka (`columnsPending` = `!loaded`, kostur); palo čitanje i dalje postavi
+  `loadedFor`, pa ne visi. Čuva E2E `S168_list_waits_for_columns` (mjeri TRENUTAK pojave retka).
 - **`actions` se uvijek renderira i uvijek zadnji**, i kad ga config nema. Config koji ga
   zaboravi inače daje listu **bez ⋮ menija** — nema Edit, View ni Delete — i nigdje ne
   piše zašto. Sticky ćelija usred tablice pokriva susjede, pa se i pomiče na kraj.
