@@ -113,7 +113,7 @@ BUCKETS: list[tuple[str, list[tuple[str, str]]]] = [
         ('Kuća', 'Osiguranje'),                 # R3 (§4.4)
     ]),
     ('Kuća investicije', [
-        ('Kuća', 'Popravci, održavanje, osiguranje'),
+        ('Kuća', 'Popravci, održavanje'),        # bivše „…, osiguranje" (S167)
     ]),
     ('Kućište · Nenin novac', [                 # R12
         ('Razno', "Nena's funds"),

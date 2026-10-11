@@ -2,7 +2,20 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S166 (2026-10-08) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S167 (2026-10-11) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S167 — R3 na PROD-u + `Popravci, održavanje` (2026-10-11)
+
+R3 (osiguranje kuće u vlastiti Podtip) izveden na PROD-u (T-S164-2 ✅). Stari Podtip `Kuća / Popravci, održavanje, osiguranje` preimenovan u `Popravci, održavanje` alatom `fix_kuca_popravci_S167.py` (opcija + 128 redaka + `areas.settings` odjednom) — na TEST-u izvedeno, PROD čeka Koku. `set_breakdown.py` i `visa_uvoz_izvoda.py` nose novi naziv.
+
+**Detalji testova:** [tests/S167_tests.md](tests/S167_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S167-1 | TEST app: Podtip `Popravci, održavanje` = 128, stari = 0; izbornik pod `Kuća` bez starog naziva; razrez bez `nesvrstano` | ⬜ |
+| T-S167-2 | PROD (Kokin pristanak): backup → dry run (128, settings 0) → `--apply --yes-prod` ⇒ `128 od 128 ✓`; **prije** `set_breakdown.py` | ⬜ |
 
 ---
 
@@ -44,7 +57,7 @@ RAZREZ §15 koraci 1–4: migracija `056` (RPC razreza) na TEST-u, `verify_break
 | T-S165-6 | Sklapanje pločice preživi F5 | ✅ **S166, 08.10. TEST** — sklopljena i nakon F5, otvara se klikom. ⚠ Usput: F5 vraća filtar na All Time (raspon se ne pamti, samo Area/kategorija/shortcut — postojeće pravilo) ⇒ pločica tada pokazuje 2023.–danas; otvoreno pitanje zadanog razdoblja pločice |
 | T-S165-7 | Regresija: saldo prvi i isti, kolona Stanje, ponuda delta sheeta u Exportu, Area bez configa bez taba | ✅ **S166, 08.10. TEST** — saldo prvi (ZABA 11.246,61); Stanje uz filtar ZABA: 05.10. = 11.246,61 (= sidro 04.10. + 55,50), kartični 07.10. i retci na dan sidra „—" (provjereno u bazi: Mastercard/Planiran); Export nudi delta sheet; Health_Sasa bez Overview taba |
 | T-S165-8 | Config u prazno ⇒ greška, ne tiha nula (pokriveno unit testom + alatom; ručno opcionalno) | ✅ S166 — čuva automatski test (`breakdownModel.test.mjs` „isti par dvaput", „grupiranje kojeg nema") + `set_breakdown.py` staje; Saša pročitao, ručna proba ne treba |
-| T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (R3 = T-S164-2 ✅ 11.10.) → Koka i Saša vide pločicu | ⬜ |
+| T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (R3 = T-S164-2 ✅ 11.10.; prije toga T-S167-2 — inače alat stane na `Popravci, održavanje`) → Koka i Saša vide pločicu | ⬜ |
 
 ---
 

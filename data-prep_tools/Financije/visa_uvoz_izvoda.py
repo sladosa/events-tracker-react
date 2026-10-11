@@ -89,7 +89,7 @@ DRUGDJE_DANA = 3
 # u bazi `N/A`, pa rata 2 nema od koga naslijediti). S148, prikazano Sasi.
 # Pravila po trgovcu, ne po mjesecu — vrijede za svaki izvod.
 KLASA = {
-    'BAUHAUS': ('Kuća', 'Popravci, održavanje, osiguranje'),     # 32/32
+    'BAUHAUS': ('Kuća', 'Popravci, održavanje'),                 # 32/32 (S167 bez „, osiguranje")
     'SPAR': ('Domaćinstvo', 'Hrana i ostalo'),                    # 85/91
     'PEKARA DINARA': ('Domaćinstvo', 'Hrana i ostalo'),           # 2/2
     'GARAGE CVJETNI': ('Prijevoz', 'Taksi, Zet, Parking'),

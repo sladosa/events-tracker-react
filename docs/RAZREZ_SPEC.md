@@ -213,7 +213,9 @@ mijenja ništa). PROD: T-S164-2, nakon Kokinog pristanka — struktura je njezin
 1. ~~Koka doda Podtip `Osiguranje` pod `Kuća`~~ ⇒ alat (service ključ, uz Kokin pristanak).
 2. ~~5 redaka Editom~~ ⇒ alat.
 3. Grupiranje: `Kuća / Osiguranje` → **Povremeno nužno**.
-4. Ime starog Podtipa (`…, osiguranje`) **ne dirati sada**: preimenovanje opcije ostavlja stari tekst
+4. ✅ **S167: preimenovan u `Popravci, održavanje`** alatom `fix_kuca_popravci_S167.py` (opcija +
+   128 redaka + `areas.settings` odjednom; TEST 11.10., PROD T-S167-2 prije `set_breakdown.py`).
+   Prvotni plan je bio: ime starog Podtipa (`…, osiguranje`) **ne dirati sada**: preimenovanje opcije ostavlja stari tekst
    na 128 redaka (K-plan, `KLASIFIKACIJA_ODRZAVANJE_SPEC.md`). Ide u održavanje klasifikacije.
 
 ⚠ „Kuća investicije" je po sadržaju više **oprema i održavanje** nego investicija (Ikea/Bauhaus rate).
