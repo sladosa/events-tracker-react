@@ -107,8 +107,10 @@ nešto je dvaput ili je iznos kriv, nikad grešku u izračunu.
 
 **Mastercard (11., Koka, u aplikaciji):**
 1. U bankovnoj aplikaciji pogleda **koliko** je skinuto i **kojeg dana**.
-2. Overview → traka **„Čeka potvrdu"** → upiše iznos i dan.
-3. **✓ slaže se** → **Potvrdi** → upiše se naplata, sve kupovine prelaze u `Izvrsen`. Gotovo.
+2. Overview → traka **„Čeka potvrdu"** pita *„Je li banka skinula Σ?"* (od S168, D7).
+3. **Slaže se** → dodirne **dan** kad je skinuto → **Da, upiši** → upiše se naplata, sve
+   kupovine prelaze u `Izvrsen`. Gotovo, bez tipkanja. (Drukčiji iznos ili dan: **„Ne — iznos ili
+   dan je drukčiji"** → upiše iznos i dan s ekrana banke → **Potvrdi**.)
 4. Traka pita **„Je li to ova naplata?"** → naplata je već upisana rukom. Ako jest: **Da, to je
    ona** → **U redu, ispravi** → **Potvrdi**. Ako nije: **Ne, to je nešto drugo**.
 5. **Ne slaže se** → **„Upiši naplatu kako ju je banka skinula"** → saldo je odmah točan, košara

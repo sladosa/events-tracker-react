@@ -45,3 +45,17 @@ Preduvjet: `npm run dev` (banner **TEST**), `Financije_all > Transakcija`, **Ctr
 Nakon deploya, na Kokinom iPhoneu: otvaranje appa / povratak u listu pokaže kostur („Loading…")
 pa retke **s iznosima** — nikad retke bez iznosa. Mehanizam je potvrđen E2E-om (sabotaža: redak
 se pojavi prije kolone iz configa); ovo je potvrda na stvarnoj sporoj mreži.
+
+## T-S168-5 ⬜ D7 — traka pita, ne traži tipkanje (TEST ako ima košaru, inače PROD 11.11.)
+
+Odluka D7 (`docs/DOSPJELO_SPEC.md` §8). Automatski: E2E `S168_due_quick_confirm` (podmetnuta
+košara; sabotaže „bez pitanja" i „dan unaprijed označen" padaju).
+
+Ručno, kao **vlasnica** (Koka na PROD-u nakon deploya, ili TEST vlasnik ako TEST ima dospjelu košaru):
+1. Overview → traka: **„Je li banka skinula 1.189,34 €?"** i gumbi dana (npr. `ned 11.10.`,
+   `pon 12.10.`, … do danas). **Nijedan nije zelen** dok se ne dodirne; sutrašnjeg nema.
+2. Dodir dana s ekrana banke ⇒ gumb pozeleni, ispod sažetak *„Upisat ću redak … <dan> · 1.189,34 €"*
+   + **Da, upiši**. Tek „Da, upiši" upisuje (isti ishod kao T-S158-1).
+3. (Druga košara ili Odustani) **„Ne — iznos ili dan je drukčiji →"** ⇒ polja „banka skinula" i
+   „dana" **prazna**; **„← ipak se slaže"** vraća pitanje.
+4. Kao grantee (Saša): pitanja nema, samo polje za usporedbu i rečenica „Potvrđuje vlasnica Aree".

@@ -8,7 +8,7 @@
 
 ## S168 — T22 rata po kartici, lista čeka kolone, brojač dohvata (2026-10-11)
 
-Rata modal: ostatak zaokruživanja po kartici iz configa (MC zadnja, Visa prva). Lista ne crta retke sa zadanim kolonama dok postavke Aree nisu stigle (Kokina „lista bez iznosa"). `useActivities` brojač umjesto `Date.now()`. Kod na `test-branch`, TEST config upisan; PROD = deploy + `set_rata_ostatak_S168.py`.
+Rata modal: ostatak zaokruživanja po kartici iz configa (MC zadnja, Visa prva). Lista ne crta retke sa zadanim kolonama dok postavke Aree nisu stigle (Kokina „lista bez iznosa"). `useActivities` brojač umjesto `Date.now()`. **D7:** traka „Čeka potvrdu“ prvo pita i nudi dane — bez tipkanja kad se slaže. Kod na `test-branch`, TEST config upisan; PROD = deploy + `set_rata_ostatak_S168.py`.
 
 **Detalji testova:** [tests/S168_tests.md](tests/S168_tests.md)
 
@@ -18,6 +18,7 @@ Rata modal: ostatak zaokruživanja po kartici iz configa (MC zadnja, Visa prva).
 | T-S168-2 | TEST Structure export: `Automations` kolona `Remainder` = `Mastercard=last \| Visa=first`; ponovni uvoz 0 promjena | ⬜ |
 | T-S168-3 | PROD nakon deploya: `set_rata_ostatak_S168.py --apply --yes-prod` ✓; prvi MC plan „Zadnja…", traka se slaže u cent | ⬜ |
 | T-S168-4 | PROD (praćenje): Kokin iPhone — lista nikad bez iznosa (kostur pa retci s iznosima) | ⬜ |
+| T-S168-5 | D7: traka pita „Je li banka skinula Σ?“ + dani (nijedan označen, bez sutra) ⇒ sažetak ⇒ „Da, upiši“; „drukčije“ = prazna polja; grantee bez pitanja | ⬜ |
 
 ---
 

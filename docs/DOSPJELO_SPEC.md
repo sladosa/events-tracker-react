@@ -118,6 +118,8 @@ Redoslijed je namjeran: potvrdiš gore, saldo ispod se odmah pomakne.
 └────────────────────────────────────────────────────┘
 ```
 
+- ⚠ **Izmijenjeno odlukom D7 (S168):** kad se slaže, vlasnica ne tipka nego odgovara na pitanje
+  *„Je li banka skinula Σ?"* dodirom dana (§8). Ručna polja ispod vrijede za „drukčije".
 - Polje **„banka skinula"** mora biti upisano **rukom**, isto kao „u banci" na pločici. Unaprijed
   popunjeno sa Σ, provjera bi bila tautološka (§2.17).
 - **Datum** je dan s bankovne aplikacije. Ne nudi se zadani, jer pogođen datum koji izgleda kao
@@ -251,6 +253,7 @@ ako se pokaže da traku ne vidi na vrijeme.
 | **D4** | Visa u prvoj verziji? | **Ne** — dok se ne objasni razilaženje od 2026-02 (§2). Model sam po sebi radi (16 mjeseci u cent) |
 | **D5** | Tko potvrđuje | **Samo vlasnica Aree** (Koka) |
 | **D6** | Treća vrijednost `Status`a za „banka skinula, košara se ne slaže"? (Sašino pitanje) | **Ne sprema se — izvodi se.** Košara sa skupnim retkom i Σ ≠ banka ⇒ oznaka **„naplaćeno — neusklađeno"** u traci (i, ako zatreba, kao formula u Excelu, isto kao `Potvrda`). ✅ Saša potvrdio (S147) |
+| **D7** | Mora li vlasnica **tipkati** iznos i dan i kad se slaže? (Saša, S168, 2026-10-11) | **Ne — traka prvo pita** *„Je li banka skinula Σ?"* i nudi **dane od dospijeća do danas** (najviše dospijeće + 3, `quickConfirmDays`); dodir dana = „da, Σ, tog dana", pa isti put kao ručno (pravilo C, sažetak, „Da, upiši"). **„Ne — iznos ili dan je drukčiji"** otvara današnja ručna polja, i dalje **prazna**. ⚠ Ovo **mijenja §4** („mora biti upisano rukom"): tautologija iz §2.17 je aplikacija koja potvrđuje samu sebe — ovdje broj i dalje uspoređuje **čovjek** s ekranom banke, samo dodirom. Ostaje: **nijedan dan nije unaprijed označen** (BUG-S115), **budući dan se ne nudi**, grantee vidi samo ručno polje. Zašto dani, a ne „da/ne" za dan dospijeća: najčešće odstupanje je vikend (11.10.2026. = nedjelja, banka tereti u ponedjeljak). Čuva E2E `S168_due_quick_confirm` (sabotaže: bez pitanja, dan unaprijed označen) |
 
 **Zašto D6 ne sprema vrijednost** (Saša je predložio `Očekivanje potvrde`):
 - `Planiran` je tvrdo upisan na **najmanje pet** mjesta — delta `SUMIFS <>"Planiran"`, stupac

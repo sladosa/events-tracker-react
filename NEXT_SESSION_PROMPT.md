@@ -20,10 +20,12 @@
   - MC rate iz appa slažu se s bankom u cent (zadnja rata nosi ostatak, kao kod banke).
   - Lista više ne pokazuje transakcije bez iznosa na sporom mobitelu — pričeka svoje kolone.
   - Sitan popravak: lista ne može prikazati stari odgovor umjesto novog.
+  - **Traka „Čeka potvrdu“ prvo pita** „Je li banka skinula 1.189,34 €?“ — kad se slaže, Koka samo
+    dodirne dan (odluka D7). Tipka samo kad je iznos ili dan drukčiji.
 
 ## Što treba od tebe
 
-1. **T-S168-1/2 na TEST-u** (5 min): probni MC plan 55,45 / 3 rate ⇒ modal 18,49 · 18,49 · 18,47
+1. **T-S168-1/2 na TEST-u** (5 min; T-S168-5 traku prati Koka na PROD-u 11.11. ili TEST ako ima košaru): probni MC plan 55,45 / 3 rate ⇒ modal 18,49 · 18,49 · 18,47
    „Zadnja rata…"; Visa 37,48 / 3 ⇒ 12,50 · 12,49 · 12,49; Structure export ima kolonu `Remainder`.
 2. **Deploy** kad testovi prođu (PowerShell blok iz CLAUDE.md § End of session 11), zatim
    `set_rata_ostatak_S168.py --apply --yes-prod` (T-S168-3). Koka nakon deploya: zatvoriti i

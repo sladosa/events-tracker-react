@@ -60,6 +60,25 @@ export function daysBetween(a: string, b: string): number {
  */
 export const SETTLE_WINDOW_DAYS = 3;
 
+/**
+ * D7 (S168): dani koje traka nudi za „Je li banka skinula Σ? — kojeg dana".
+ * Od dospijeća do danas, najviše `SETTLE_WINDOW_DAYS` iza dospijeća — isti
+ * prozor koji `basketAction` prihvaća, pa ponuđen dan nikad nije „date-far".
+ * ⚠ Budući dan se NE nudi: naplata koja se još nije dogodila ne može biti
+ *   potvrđena. Prazno (dospijeće sutra) ⇒ traka nudi samo ručna polja.
+ * ⚠ Nijedan dan nije „zadani" — ovo je popis izbora, ne prijedlog (BUG-S115).
+ */
+export function quickConfirmDays(dueDate: string, today: string, windowDays = SETTLE_WINDOW_DAYS): string[] {
+  const out: string[] = [];
+  for (let i = 0; i <= windowDays; i++) {
+    const t = Date.UTC(+dueDate.slice(0, 4), +dueDate.slice(5, 7) - 1, +dueDate.slice(8, 10) + i, 12);
+    const d = new Date(t).toISOString().slice(0, 10);
+    if (d > today) break;
+    out.push(d);
+  }
+  return out;
+}
+
 /** Redak koji bi mogao biti skupna naplata košare (učitan iz baze). */
 export interface SettleCandidate {
   id: string;

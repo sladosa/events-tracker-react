@@ -8900,3 +8900,12 @@ guard). Drugih takvih hookova nema.
 
 `npm run check` ✓ (39 fileova), build ✓, E2E susjedi (S121, e16, S165, S119, S168) 10/10.
 Testovi T-S168-1..4 (rata modal na TEST-u, Structure `Remainder`, PROD nakon deploya, Kokin mobitel).
+
+**Dopuna istog dana — D7 (Saša): traka „Čeka potvrdu" prvo PITA.** „Je li banka skinula Σ?" +
+gumbi dana od dospijeća do danas (najviše +3, `quickConfirmDays`; budući se ne nudi, nijedan nije
+unaprijed označen); dodir = isti put kao ručno (pravilo C, sažetak, „Da, upiši"). „Ne — iznos ili
+dan je drukčiji" otvara **prazna** ručna polja, „← ipak se slaže" vraća pitanje. Grantee bez
+pitanja. Mijenja `DOSPJELO_SPEC` §4 („mora biti upisano rukom") — obrazloženje u §8 D7: tautologija
+§2.17 je app koja potvrđuje samu sebe; ovdje broj i dalje uspoređuje čovjek, samo dodirom.
+`dueBaskets.test` +6, E2E `S168_due_quick_confirm` (sabotaže „bez pitanja" i „dan označen" padaju).
+Help (`overview.md`) i `FINANCIJE_PROCES` §2.2 prepisani. T-S168-5.

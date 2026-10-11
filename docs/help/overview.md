@@ -179,9 +179,13 @@ još nije potvrđeno naplatila. Košara su sve kupovine jedne kartice s istim da
 (npr. *Mastercard · naplata 11.10. · 32 stavke*). Kad ništa ne čeka, trake nema.
 
 - **Σ** je ono što bi banka trebala skinuti: isplate minus povrati iz te košare.
-- U polje **„banka skinula"** upiši broj **s ekrana bankovne aplikacije**. App ga ne upisuje
-  sam — tada bi se uvijek slagalo.
-- Uz iznos upiši i **dan** kad je banka skinula — isto s ekrana banke, ne pogađaj. Mora biti
+- Traka pita **„Je li banka skinula Σ?"** Pogledaj u bankovnu aplikaciju. Ako je skinula
+  **točno toliko**, samo dodirni **dan** kad je skinula (nudi dane od datuma naplate do danas —
+  naplata zna pasti na ponedjeljak kad je datum naplate vikend). Ništa ne tipkaš.
+  App zatim pokaže što će upisati i traži **„Da, upiši"**.
+- Ako je iznos ili dan **drukčiji**: **„Ne — iznos ili dan je drukčiji"** otvori polja.
+  U **„banka skinula"** upiši broj **s ekrana bankovne aplikacije** (app ga ne upisuje sam —
+  tada bi se uvijek slagalo), i **dan** — isto s ekrana banke, ne pogađaj. Mora biti
   najviše 3 dana od datuma naplate košare.
 - **✓ slaže se** = u cent isto. **razlika** = nešto u košari ne štima: redak u krivoj
   košari, upisan dvaput, propuštena kupovina ili tipfeler.

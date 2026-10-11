@@ -20,8 +20,12 @@
 //   nije dokaz naplate (odbačeni automat, OVERVIEW §2.5a).
 // ⚠ Neuspjelo čitanje se KAŽE. Traka koja zbog greške nestane izgleda točno
 //   kao „ništa ne čeka" — a to je tvrdnja o novcu (S121).
-// ⚠ Polja „banka skinula" i „dana" se ne pune unaprijed: Σ bi učinio provjeru
-//   tautološkom (§2.17), a pogođen datum izgleda kao podatak (BUG-S115).
+// ⚠ D7 (S168, Saša): vlasnica prvo dobije PITANJE „Je li banka skinula Σ?" i
+//   dodirne DAN (dospijeće … danas, `quickConfirmDays`) — ne tipka ako se slaže.
+//   Nije tautologija iz §2.17: broj i dalje uspoređuje ČOVJEK s ekranom banke,
+//   samo potvrđuje dodirom. Nijedan dan nije unaprijed označen (BUG-S115), a
+//   budući se ne nudi. „Iznos ili dan je drukčiji" otvara ručna polja, koja se
+//   i dalje ne pune unaprijed. Grantee vidi samo ručno polje (usporedba).
 // ⚠ Potvrđuje SAMO vlasnica Aree (D5). Grantee vidi traku, ali ne gumb.
 // ⚠ Svaki upis ide u DVA koraka (sažetak pa „Da"): na mobitelu je jedan
 //   promašen dodir inače upisan novac.
@@ -35,7 +39,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { fetchDueBaskets, type DueBasketRow } from '@/lib/overviewApi';
-import { basketAction, basketNetCents, SETTLE_WINDOW_DAYS, type SettleMatch } from '@/lib/dueBaskets';
+import { basketAction, basketNetCents, quickConfirmDays, SETTLE_WINDOW_DAYS, type SettleMatch } from '@/lib/dueBaskets';
 import { adoptSettleRow, attributeNames, findSettleRow, findSuspectRows, settleBasket, type SuspectRow } from '@/lib/dueConfirm';
 import { formatAmount, formatDateHr, parseAmountInput, todayIso } from '@/lib/amountFormat';
 import { cn } from '@/lib/cn';
@@ -67,6 +71,13 @@ const isErr = (s: SettleState | undefined): s is { error: string } =>
 
 type Armed = 'confirm' | 'record' | 'flip';
 
+const DOW = ['ned', 'pon', 'uto', 'sri', 'čet', 'pet', 'sub'];
+/** `2026-10-12` → `pon 12.10.` — dan u tjednu, jer se naplata pomiče s vikenda. */
+const dayLabel = (iso: string) => {
+  const [y, m, d] = iso.split('-');
+  return `${DOW[new Date(Date.UTC(+y, +m - 1, +d, 12)).getUTCDay()]} ${d}.${m}.`;
+};
+
 export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
   const { due, unit } = widget;
   const [rows, setRows] = useState<DueBasketRow[]>([]);
@@ -82,6 +93,10 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
   const [dismissed, setDismissed] = useState<Record<string, string[]>>({});
   const [adopting, setAdopting] = useState<Record<string, string | undefined>>({});
   const [names, setNames] = useState<Record<string, string>>({});
+  /** D7: košara u kojoj je vlasnica rekla „iznos ili dan je drukčiji" ⇒ ručna polja. */
+  const [manual, setManual] = useState<Record<string, boolean>>({});
+  /** D7: dan koji je dodirnula u pitanju (samo za oznaku odabranog gumba). */
+  const [quickDay, setQuickDay] = useState<Record<string, string | undefined>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -138,6 +153,8 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
       setBankInput(prev => ({ ...prev, [key]: '' }));
       setDateInput(prev => ({ ...prev, [key]: '' }));
       setDismissed(prev => ({ ...prev, [key]: [] }));
+      setQuickDay(prev => ({ ...prev, [key]: undefined }));
+      setManual(prev => ({ ...prev, [key]: false }));
       onSettled?.();
     } catch (e) {
       toast.error((e as { message?: string })?.message ?? String(e), { duration: 8000 });
@@ -145,6 +162,18 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
       setBusy(null);
       void load();
     }
+  };
+
+  /** D7: dodir na dan u pitanju = „da, Σ, tog dana" ⇒ isti put kao ručni unos
+   *  (pravilo C, pa sažetak i „Da, upiši" — dva koraka ostaju). */
+  const quickPick = (row: DueBasketRow, day: string) => {
+    const key = `${row.basket}|${row.due_date}`;
+    const sum = basketNetCents(row);
+    setBankInput(prev => ({ ...prev, [key]: (sum / 100).toFixed(2).replace('.', ',') }));
+    setDateInput(prev => ({ ...prev, [key]: day }));
+    resetAnswers(key);
+    setQuickDay(prev => ({ ...prev, [key]: day }));
+    void check(row, 'confirm', sum, day);
   };
 
   /** Klik na „Potvrdi"/„Upiši": prvo pravilo C, tek onda sažetak upisa. */
@@ -246,6 +275,9 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
           const adoptId = adopting[key];
           const nameOf = (slug: string) => names[slug] ?? slug;
           const shownSlugs = Object.keys(due.settle ?? {}).filter(s => s !== due.basket_by);
+          const days = quickConfirmDays(row.due_date, today);
+          const canQuick = isOwner && sum > 0 && days.length > 0;
+          const quick = canQuick && !manual[key];
 
           return (
             <div key={key} className="rounded-lg bg-white border border-amber-200 px-3 py-2">
@@ -305,8 +337,49 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
                 </div>
               )}
 
-              {/* Nema skupnog retka: bankin broj i dan upisuje čovjek. */}
-              {!match && !isErr(st) && st !== undefined && (
+              {/* D7: nema skupnog retka ⇒ vlasnica prvo dobije pitanje i dodirne dan. */}
+              {!match && !isErr(st) && st !== undefined && quick && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-800">
+                    Je li banka skinula{' '}
+                    <span className="font-semibold tabular-nums">{formatAmount(sum / 100, unit)}</span>?
+                  </p>
+                  <div className="mt-1 flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-gray-600">Da, dana:</span>
+                    {days.map(d => (
+                      <button
+                        key={d}
+                        disabled={!canAct}
+                        onClick={() => quickPick(row, d)}
+                        className={cn(
+                          'px-3 py-1.5 text-sm rounded-lg border tabular-nums disabled:opacity-40',
+                          quickDay[key] === d
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50',
+                        )}
+                      >
+                        {dayLabel(d)}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    disabled={rowBusy}
+                    onClick={() => {
+                      setManual(prev => ({ ...prev, [key]: true }));
+                      setQuickDay(prev => ({ ...prev, [key]: undefined }));
+                      setBankInput(prev => ({ ...prev, [key]: '' }));
+                      setDateInput(prev => ({ ...prev, [key]: '' }));
+                      resetAnswers(key);
+                    }}
+                    className="mt-2 text-xs text-amber-800 underline underline-offset-2 hover:text-amber-950 disabled:opacity-40"
+                  >
+                    Ne — iznos ili dan je drukčiji →
+                  </button>
+                </div>
+              )}
+
+              {/* Nema skupnog retka, ručno: bankin broj i dan upisuje čovjek. */}
+              {!match && !isErr(st) && st !== undefined && !quick && (
                 <>
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
                     <label className="text-xs text-gray-600" htmlFor={`due-${key}`}>banka skinula</label>
@@ -357,6 +430,20 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
                         : 'Banka je skinula više — neka kupovina možda nije upisana, ili je upisana s krivim datumom naplate.'}
                     </p>
                   )}
+                  {canQuick && (
+                    <button
+                      disabled={rowBusy}
+                      onClick={() => {
+                        setManual(prev => ({ ...prev, [key]: false }));
+                        setBankInput(prev => ({ ...prev, [key]: '' }));
+                        setDateInput(prev => ({ ...prev, [key]: '' }));
+                        resetAnswers(key);
+                      }}
+                      className="mt-1 text-xs text-amber-800 underline underline-offset-2 hover:text-amber-950 disabled:opacity-40"
+                    >
+                      ← ipak se slaže (bez tipkanja)
+                    </button>
+                  )}
                   {isOwner && act.kind === 'none' && bank !== null && (
                     <p className="mt-1 text-xs text-gray-600">
                       {act.reason === 'no-date' && 'Upiši i dan kad je banka skinula — s ekrana banke, ne pogađaj.'}
@@ -372,7 +459,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
               {!isOwner && (act.kind === 'confirm' || act.kind === 'record' || act.kind === 'flip') && (
                 <p className="mt-2 text-xs text-gray-600">Potvrđuje vlasnica Aree — ti vidiš usporedbu, ali ne upisuješ.</p>
               )}
-              {isOwner && !arm && !sus && (act.kind === 'confirm' || act.kind === 'record' || act.kind === 'flip') && (
+              {isOwner && !arm && !sus && !(quick && !match) && (act.kind === 'confirm' || act.kind === 'record' || act.kind === 'flip') && (
                 <div className="mt-2">
                   <button
                     disabled={!canAct}

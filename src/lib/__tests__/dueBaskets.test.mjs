@@ -24,7 +24,7 @@ await build({
   bundle: true, format: 'esm', platform: 'node',
   outfile: out, alias: { '@': './src' }, logLevel: 'error',
 });
-const { basketNetCents, compareWithBank } = await import(pathToFileURL(out).href);
+const { basketNetCents, compareWithBank, quickConfirmDays, basketAction } = await import(pathToFileURL(out).href);
 
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => { if (cond) { pass++; console.log(`  PASS  ${name}`); }
@@ -50,6 +50,23 @@ const n = compareWithBank(71401, 736.51);
 ok('banka skinula vise => negativna razlika', n.state === 'diff' && n.diffCents === -2250);
 ok('prazno polje => ne tvrdi nista', compareWithBank(106870, null).state === 'empty');
 ok('NaN => ne tvrdi nista', compareWithBank(106870, NaN).state === 'empty');
+
+console.log('');
+console.log('D7 (S168) — dani koje traka nudi za „kojeg dana":');
+const J = x => JSON.stringify(x);
+ok('nedjelja 11.10., danas pon 12.10. => 11. i 12.',
+   J(quickConfirmDays('2026-10-11', '2026-10-12')) === J(['2026-10-11', '2026-10-12']));
+ok('na dan dospijeća => samo taj dan', J(quickConfirmDays('2026-10-11', '2026-10-11')) === J(['2026-10-11']));
+ok('dospijeće sutra => ništa (budući dan se ne nudi)', quickConfirmDays('2026-10-12', '2026-10-11').length === 0);
+ok('tjedan kasnije => najviše dospijeće + 3', J(quickConfirmDays('2026-10-11', '2026-10-20'))
+   === J(['2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14']));
+ok('preko kraja mjeseca', J(quickConfirmDays('2026-10-30', '2026-11-02'))
+   === J(['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02']));
+// Svaki ponuđeni dan + Σ kao bankin broj ⇒ basketAction kaže „confirm" — ponuđen dan nikad nije odbijen.
+const offered = quickConfirmDays('2026-10-11', '2026-10-20');
+ok('svaki ponuđeni dan prolazi basketAction (confirm)', offered.every(d =>
+   basketAction({ sumCents: 118934, settle: null, bank: 1189.34, bankDate: d,
+                  dueDate: '2026-10-11', today: '2026-10-20' }).kind === 'confirm'));
 
 console.log('');
 console.log(`${pass} passed, ${fail} failed`);
