@@ -87,7 +87,10 @@ je više ne dira.
 kupovine na rate. Prikazuje iznos po rati i **datume naplate** svake rate.
 
 - Nastane onoliko zapisa koliko je rata; iznos svake = ukupno ÷ broj rata. Kad se ne dijeli
-  točno, **prva** rata nosi ostatak (kao banka), pa zbroj rata uvijek daje točno ukupan iznos.
+  točno, ostatak nosi rata koju i banka tako tereti: kod **Vise prva** (12,50 · 12,49 · 12,49),
+  kod **Mastercarda zadnja**, a ostale su zaokružene naviše (18,49 · 18,49 · 18,47). Zbroj rata
+  uvijek daje točno ukupan iznos. Pravilo po kartici je postavka Aree (Structure → Automations,
+  kolona `Remainder`).
 - **Prva rata ima isti datum naplate kao obična kupovina tom karticom** (npr. Visa kupljena
   2. u mjesecu → 5. istog mjeseca; Mastercard → 11. sljedećeg), svaka sljedeća mjesec kasnije.
 - **Sve rate ostaju na danu kupnje** (`event_date`) — kupovina je jedna, samo se plaća u

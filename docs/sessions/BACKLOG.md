@@ -28,7 +28,7 @@
   (`isExact`) — a ako je roditelj (Tip) i sam filtar, samo njegove opcije. Isti par smije
   postojati pod dva Tipa (`gorivo` pod oba auta) ⇒ vrijednost filtra je samo Podtip, a grupa je
   prikaz. Vrijedi za svaki `depends_on` atribut, ne samo Financije.
-- **Lista bez iznosa dok se postavke Aree učitavaju (S167, Koka na malom iPhoneu, nije
+- ✅ **IZVEDENO S168** (lista čeka config Aree — `columnsPending` u `ActivitiesTable`; E2E `S168_list_waits_for_columns`, sabotaža ruši; mehanizam potvrđen) — **Lista bez iznosa dok se postavke Aree učitavaju (S167, Koka na malom iPhoneu, nije
   reproducirano)** — `ActivitiesTable` zove `resolveColumns(listColumnsConfig)`, a dok
   `useAreaDashboard` nije odgovorio config je `null` ⇒ `DEFAULT_COLUMNS` (bez `pair`/iznosa).
   Na sporoj mobilnoj mreži taj prozor traje sekundama: Koka vidi transakcije bez iznosa, pa iznosi
@@ -39,7 +39,7 @@
   slažu jedno ispod drugog, pa otvoren filtar gura listu i Overview daleko dolje. Saša je uči da
   ga zatvori. Prijedlog za razmisliti: filtar se sam sklopi nakon odabira kategorije/razdoblja,
   ili sažetak u jednom redu (`Financije_all · This Year · Podtip = …`) dok je sklopljen.
-- **Lista: zaštita od zakašnjelog odgovora koristi `Date.now()` kao ID (S167, sumnja)** —
+- ✅ **IZVEDENO S168** (brojač `latestFetchIdRef.current + 1`; drugih takvih hookova nema) — **Lista: zaštita od zakašnjelog odgovora koristi `Date.now()` kao ID (S167, sumnja)** —
   `useActivities.ts` (`latestFetchIdRef`): dva dohvata u istoj milisekundi dobiju isti ID, pa
   oba prođu provjeru i stariji može pregaziti noviji. Viđeno jednom na TEST-u 11.10.: Transakcija +
   This Year + `Podtip = Popravci, održavanje` ⇒ „No activities found", a baza ima 18 (izmjereno);

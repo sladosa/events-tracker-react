@@ -145,7 +145,11 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
 
   // Fetch activities
   const fetchActivities = useCallback(async (isLoadMore = false) => {
-    const fetchId = Date.now(); // Unique ID for this fetch
+    // ⚠ S168: brojač, NE `Date.now()`. Dva dohvata pokrenuta u istoj milisekundi
+    //   (kategorija + razdoblje + filtar u istom commitu) dobila su isti ID, oba
+    //   prošla guard ispod, i stariji je smio pregaziti noviji — viđeno jednom na
+    //   TEST-u 11.10.: „No activities found" uz 18 redaka u bazi (izmjereno).
+    const fetchId = latestFetchIdRef.current + 1;
     // Register as latest fetch - any older fetch that resolves later will be ignored
     latestFetchIdRef.current = fetchId;
 

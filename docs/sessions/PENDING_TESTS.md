@@ -2,7 +2,22 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S167 (2026-10-11) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S168 (2026-10-11) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S168 — T22 rata po kartici, lista čeka kolone, brojač dohvata (2026-10-11)
+
+Rata modal: ostatak zaokruživanja po kartici iz configa (MC zadnja, Visa prva). Lista ne crta retke sa zadanim kolonama dok postavke Aree nisu stigle (Kokina „lista bez iznosa"). `useActivities` brojač umjesto `Date.now()`. Kod na `test-branch`, TEST config upisan; PROD = deploy + `set_rata_ostatak_S168.py`.
+
+**Detalji testova:** [tests/S168_tests.md](tests/S168_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S168-1 | TEST rata modal: MC 55,45/3 ⇒ 18,49 · 18,49 · 18,47 „Zadnja…"; Visa 37,48/3 ⇒ 12,50 · 12,49 · 12,49 „Prva…" | ⬜ |
+| T-S168-2 | TEST Structure export: `Automations` kolona `Remainder` = `Mastercard=last \| Visa=first`; ponovni uvoz 0 promjena | ⬜ |
+| T-S168-3 | PROD nakon deploya: `set_rata_ostatak_S168.py --apply --yes-prod` ✓; prvi MC plan „Zadnja…", traka se slaže u cent | ⬜ |
+| T-S168-4 | PROD (praćenje): Kokin iPhone — lista nikad bez iznosa (kostur pa retci s iznosima) | ⬜ |
 
 ---
 

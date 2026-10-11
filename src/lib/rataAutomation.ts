@@ -1,9 +1,9 @@
 import type { AttributeDefinition } from '@/types';
-import type { RataAutomationConfig } from '@/types/database';
+import type { RataAutomationConfig, RataRemainder } from '@/types/database';
 import type { AttributeRuleConfig } from '@/types/database';
 import { evaluateDateRule, isValidDateRule } from '@/lib/attributeRules';
 
-export type { RataAutomationConfig };
+export type { RataAutomationConfig, RataRemainder };
 
 export interface RataInfo {
   count: number;
@@ -54,13 +54,32 @@ const TRUTHY_VALUES = new Set(['true', 'da', 'yes', '1', 'ja']);
  *   (S112).
  * ⚠ `Math.trunc`, ne `Math.floor`: kod negativnog iznosa (povrat) floor
  *   vuce od nule pa bi ostatak promijenio predznak.
+ *
+ * ⚠ S168 (T22): „prva rata" vrijedi SAMO ZA VISU. Izmjereno po kartici na
+ *   kompletnim planovima (S158): Visa prva razlicita 28/28 (`12,50 · 12,49 ·
+ *   12,49`), Mastercard ZADNJA 16/16 (`18,49 · 18,49 · 18,47` = rata
+ *   zaokruzena NAVISE, zadnja nosi ostatak). Brojka 23/62 gore mijesala je
+ *   kartice. Zato `mode = 'last'` — bira ga `rata.remainder_map` po kartici,
+ *   ne kod (kartica je pojam Financija). Bez configa: 'first', kao prije.
+ *   Kad bi zaokruzivanje navise zadnjoj rati ostavilo nulu ili suprotan
+ *   predznak (sitan iznos na puno rata), pada natrag na 'first' — zbroj je
+ *   vazniji od oblika.
  */
-export function splitRataAmounts(total: number, count: number): number[] {
+export function splitRataAmounts(total: number, count: number, mode?: RataRemainder): number[] {
   if (!Number.isFinite(total) || !Number.isInteger(count) || count < 1) return [];
   const cents = Math.round(total * 100);
+  const out = [];
+  if (mode === 'last' && count > 1) {
+    const sign = cents < 0 ? -1 : 1;
+    const up = sign * Math.ceil(Math.abs(cents) / count);
+    const last = cents - up * (count - 1);
+    if (last !== 0 && Math.sign(last) === Math.sign(cents)) {
+      for (let i = 0; i < count; i++) out.push((i === count - 1 ? last : up) / 100);
+      return out;
+    }
+  }
   const per = Math.trunc(cents / count);
   const rest = cents - per * count;
-  const out: number[] = [];
   for (let i = 0; i < count; i++) out.push((i === 0 ? per + rest : per) / 100);
   return out;
 }
@@ -93,13 +112,13 @@ export function detectRata(
   if (!amountAttr || isNaN(totalAmount) || totalAmount === 0) return null;
 
   const amountPerRata = Math.round((totalAmount / count) * 100) / 100;
-  const amounts = splitRataAmounts(totalAmount, count);
-
   let dateMapValue = '';
   if (dateMapDef) {
     const dmAttr = attrByDefId.get(dateMapDef.id);
     dateMapValue = String(dmAttr?.value ?? '');
   }
+  // T22 (S168): koja rata nosi ostatak ovisi o kartici — isti kljuc kao `date_map`.
+  const amounts = splitRataAmounts(totalAmount, count, config.remainder_map?.[dateMapValue]);
 
   return { count, amountPerRata, amounts, totalAmount, dateMapValue,
            chargeDates: [], originalComment: null };

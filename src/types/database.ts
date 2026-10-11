@@ -37,7 +37,16 @@ export interface RataAutomationConfig {
   // atribut, a ne u event_date. Oba su opcionalna radi starijih konfiguracija.
   charge_date_slug?: string;  // datetime attr koji prima datum naplate te rate
   index_slug?: string;        // number attr koji prima redni broj rate (1..count)
+  /**
+   * T22 (S168): koja rata nosi ostatak zaokruzivanja, po vrijednosti
+   * `date_map_slug` atributa (kartici). Odsutno ⇒ 'first'. Financije:
+   * Visa 'first' (28/28), Mastercard 'last' (16/16, rata zaokruzena navise).
+   */
+  remainder_map?: Record<string, RataRemainder>;
 }
+
+/** `first` = prva rata nosi ostatak; `last` = rata navise, zadnja nosi ostatak. */
+export type RataRemainder = 'first' | 'last';
 
 // Faza 2b (AUTOMATION_SPEC.md): derive attribute value from another attribute.
 // date_map values: 'same' (= session date) | 'next:N' (Nth day of next month).

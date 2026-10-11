@@ -149,7 +149,17 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
 
   // Running balance column (OVERVIEW_TAB_SPEC §2.12). Appears only when the list
   // is one account, newest-first — the hook decides and hides itself otherwise.
-  const { config: dashboardConfig, listColumns: listColumnsConfig } = useAreaDashboard(filter.areaId);
+  const {
+    config: dashboardConfig, listColumns: listColumnsConfig, loaded: areaCfgLoaded,
+  } = useAreaDashboard(filter.areaId);
+  // S168 (Koka, mali iPhone: „popis transakcija bez iznosa"): dok postavke OVE
+  // Aree nisu stigle, `listColumnsConfig` je null ⇒ `resolveColumns` da ZADANE
+  // kolone, a u njima iznosa nema. Na sporoj mreži to traje sekundama i izgleda
+  // kao lista bez iznosa. Lista zato čeka (skeleton), kao i za filtar.
+  // `loaded` je izveden po Arei (`loadedFor`, BUG-S145-OVERVIEWTAB) ⇒ zaliha od
+  // prošle Aree ne prolazi. Palo čitanje i dalje postavi `loadedFor` (finally), pa
+  // lista ne visi zauvijek — tada zadane kolone uz traku o grešci (S121).
+  const columnsPending = !!filter.areaId && !areaCfgLoaded;
   const running = useRunningBalance({
     areaId: filter.areaId,
     config: dashboardConfig,
@@ -190,10 +200,10 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   //   the problem, the starting point was. Gating on the same condition the
   //   scroll effect uses makes the 5 seconds five seconds OF VISIBILITY.
   useEffect(() => {
-    if (!highlightKey || loading || !hasHighlightRow) return;
+    if (!highlightKey || loading || columnsPending || !hasHighlightRow) return;
     const timer = setTimeout(() => setHighlightKey(null), HIGHLIGHT_MS);
     return () => clearTimeout(timer);
-  }, [highlightKey, loading, hasHighlightRow]);
+  }, [highlightKey, loading, columnsPending, hasHighlightRow]);
 
   // Safety net: the effect above only fires once the row is ON the current page,
   // so a row that is filtered out or sits on a later page would leave the key set
@@ -207,7 +217,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
   }, [highlightKey]);
 
   useEffect(() => {
-    if (!highlightKey || loading || !hasHighlightRow) return;
+    if (!highlightKey || loading || columnsPending || !hasHighlightRow) return;
     const timer = setTimeout(() => {
       const row = highlightRowRef.current;
       const container = scrollContainerRef.current;
@@ -220,7 +230,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
       container.scrollTo({ top: scrollTo, behavior: 'smooth' });
     }, 150);
     return () => clearTimeout(timer);
-  }, [highlightKey, loading, hasHighlightRow]);
+  }, [highlightKey, loading, columnsPending, hasHighlightRow]);
 
   // Multi-select state
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -263,7 +273,7 @@ export function ActivitiesTable({ className = '', onEditActivity, onViewDetails,
 
   // Skeleton loading state — keeps table structure visible, prevents layout shift
   // (`!isRestored`: the list is waiting for the filter restore — S159, C4)
-  if (loading || !isRestored) {
+  if (loading || !isRestored || columnsPending) {
     return (
       <div className={className}>
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">

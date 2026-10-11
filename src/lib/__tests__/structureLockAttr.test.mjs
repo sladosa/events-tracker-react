@@ -16,7 +16,7 @@ const out = join(process.cwd(), 'node_modules', '.cache', 'structureLock.bundle.
 mkdirSync(join(process.cwd(), 'node_modules', '.cache'), { recursive: true });
 await build({
   stdin: {
-    contents: "export { resolveLockSlug } from './src/lib/structureImport';",
+    contents: "export { resolveLockSlug, resolveRemainderMap } from './src/lib/structureImport';",
     resolveDir: process.cwd(), loader: 'ts', sourcefile: 'entry.ts',
   },
   bundle: true, format: 'esm', platform: 'node',
@@ -30,7 +30,7 @@ await build({
     }),
   },
 });
-const { resolveLockSlug } = await import(pathToFileURL(out).href);
+const { resolveLockSlug, resolveRemainderMap } = await import(pathToFileURL(out).href);
 
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => { if (cond) { pass++; console.log(`  PASS  ${name}`); }
@@ -56,6 +56,18 @@ console.log('');
 console.log('Kolona postoji — vrijedi file:');
 ok('prazna celija => zig obrisan (namjerno)', resolveLockSlug(true, '', DB, 'datum_naplate', 'izvorplacanja') === '');
 ok('upisan zig => taj', resolveLockSlug(true, ' izvod_opis ', DB, 'drugi', 'izvorplacanja') === 'izvod_opis');
+
+console.log('');
+console.log('T22 (S168) — kolona Remainder na rata retku, isto nacelo:');
+const RM = { Mastercard: 'last', Visa: 'first' };
+const j = x => JSON.stringify(x);
+ok('bez kolone => pravilo iz baze ostaje', j(resolveRemainderMap(false, '', RM)) === j(RM));
+ok('bez kolone, baza bez pravila => nista', resolveRemainderMap(false, '', undefined) === undefined);
+ok('kolona, prazna celija => nista (svi first)', resolveRemainderMap(true, '', RM) === undefined);
+ok('kolona, upisano => procitano', j(resolveRemainderMap(true, ' Mastercard = LAST | Visa=first ', undefined)) === j(RM));
+ok('kolona, nepoznata oznaka => null (redak se preskace)', resolveRemainderMap(true, 'Mastercard=zadnja', RM) === null);
+ok('kolona, bez znaka = => null', resolveRemainderMap(true, 'Mastercard', RM) === null);
+ok('vraca KOPIJU (ne mijenja bazu)', resolveRemainderMap(false, '', RM) !== RM);
 
 console.log('');
 console.log(`${pass} passed, ${fail} failed`);

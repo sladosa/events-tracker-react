@@ -51,7 +51,7 @@ const strip = s => s
   .replace(/const out: number\[\] = \[\]/g, 'const out = []')
   .replace(/: (?:string|Date|number|boolean)(?:\[\])?(?: \| null)?/g, '');
 
-const splitRataAmounts = new Function('total', 'count',
+const splitRataAmounts = new Function('total', 'count', 'mode',
   strip(extract('splitRataAmounts')).slice(1, -1));
 
 // Ono sto je kod radio PRIJE popravka — sluzi samo protuprovjeri.
@@ -102,11 +102,33 @@ check('count = 0', splitRataAmounts(10, 0), []);
 check('count nije cijeli broj', splitRataAmounts(10, 2.5), []);
 check('total nije broj', splitRataAmounts(NaN, 3), []);
 
+console.log('--- T22 (S168): MC — rata NAVISE, ZADNJA nosi ostatak ---');
+// Izmjereno na banci (S158): MC 16/16 planova, npr. 55,45 / 3 = 18,49 · 18,49 · 18,47.
+check('55,45 / 3 last', splitRataAmounts(55.45, 3, 'last'), [18.49, 18.49, 18.47]);
+check('117,32 / 6 last', splitRataAmounts(117.32, 6, 'last'),
+      [19.56, 19.56, 19.56, 19.56, 19.56, 19.52]);
+check('100 / 3 last', splitRataAmounts(100, 3, 'last'), [33.34, 33.34, 33.32]);
+for (const [total, count] of [[117.32, 6], [55.45, 3], [100, 3], [0.05, 2], [1234.56, 7],
+                              [-117.32, 6], [-10, 3], [0.07, 5]]) {
+  check(`${total} / ${count} last -> zbroj`, cents(splitRataAmounts(total, count, 'last')),
+        Math.round(total * 100));
+}
+check('djeljivo: last = first', splitRataAmounts(300, 3, 'last'), [100, 100, 100]);
+check('povrat -10 / 3 last', splitRataAmounts(-10, 3, 'last'), [-3.34, -3.34, -3.32]);
+check('count = 1 last', splitRataAmounts(25.51, 1, 'last'), [25.51]);
+// 0,02 / 3: navise bi dalo 0,01 · 0,01 · 0,00 — zadnja nula ⇒ natrag na first.
+check('sitno na puno rata ⇒ first', splitRataAmounts(0.02, 3, 'last'), [0.02, 0, 0]);
+check('bez moda = first (Visa, stari config)', splitRataAmounts(37.48, 3), [12.5, 12.49, 12.49]);
+check('first izricito', splitRataAmounts(37.48, 3, 'first'), [12.5, 12.49, 12.49]);
+check('nepoznat mod = first', splitRataAmounts(37.48, 3, 'xyz'), [12.5, 12.49, 12.49]);
+
 console.log('--- PROTUPROVJERA: stara implementacija mora pasti ---');
 // Ako ovo ikad prestane biti istina, test vise ne mjeri ono zbog cega postoji.
 check('stari 117,32 / 6 gubi 2 lipe', cents(stari(117.32, 6)) !== Math.round(117.32 * 100), true);
 check('stari 100 / 3 gubi lipu', cents(stari(100, 3)) !== 10000, true);
 check('novi 117,32 / 6 ne gubi nista', cents(splitRataAmounts(117.32, 6)), 11732);
+// T22: 'first' za MC odstupa od banke — upravo kvar zbog kojeg postoji 'last'.
+check('first za MC 55,45 / 3 != banka', JSON.stringify(splitRataAmounts(55.45, 3)) !== JSON.stringify([18.49, 18.49, 18.47]), true);
 
 console.log();
 if (fail > 0) {

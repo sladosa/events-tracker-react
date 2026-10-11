@@ -465,8 +465,10 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ZADNJA** različita 16/16 (`18,49 · 18,49 · 18,47` = rata zaokružena **naviše**,
   zadnja nosi ostatak). Brojka 23/62 miješala je kartice. `splitRataAmounts` danas
   za MC plan s nedjeljivim iznosom daje rate koje se od banke razlikuju za cent u
-  više mjeseci — a traka ima toleranciju **0,00**. Popravak = pravilo po `Izvor`u
-  (`docs/FINANCIJE_PROCES.md` §4 T22), nije napravljen.
+  više mjeseci — a traka ima toleranciju **0,00**. **Popravljeno S168 (T22):**
+  `automations.rata.remainder_map` po vrijednosti `Izvor`a (`Mastercard=last`), Structure
+  kolona `Remainder` (nema kolone ⇒ baza ostaje, `resolveRemainderMap`); bez configa `first`.
+  ⚠ `last` pada natrag na `first` kad bi zadnja rata bila 0 ili suprotnog predznaka.
   ⚠ Računa se **u lipama** (`splitRataAmounts`): zbrajanje decimala nosi grešku
   binarnog zapisa, a novac se uspoređuje s nulom (isti razlog kao `ROUND` u Excelu, S112).
   ⚠ Isti broj mora ići **u atribut i u komentar** retka, inace redak sam sebi proturječi.

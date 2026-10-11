@@ -36,10 +36,11 @@ export function RataModal({ isOpen, rataInfo, onConfirm, onSkip }: Props) {
             {' '}({rataInfo.totalAmount.toFixed(2)} / {rataInfo.count})
           </p>
           {rataInfo.amounts.length > 1
-            && rataInfo.amounts[0] !== rataInfo.amounts[1] && (
+            && new Set(rataInfo.amounts).size > 1 && (
             <p className="text-xs text-amber-600 mb-1">
-              Prva rata nosi ostatak zaokruživanja — zbroj je točno{' '}
-              {rataInfo.totalAmount.toFixed(2)}.
+              {/* T22 (S168): MC nosi ostatak na ZADNJOJ rati, Visa na prvoj (`remainder_map`). */}
+              {rataInfo.amounts[0] !== rataInfo.amounts[1] ? 'Prva' : 'Zadnja'} rata nosi ostatak
+              zaokruživanja — zbroj je točno {rataInfo.totalAmount.toFixed(2)}.
             </p>
           )}
           <p className="text-xs text-gray-400 mb-4">

@@ -801,6 +801,9 @@ const AUTOMATION_COLS = [
   // C3b (S155) — samo `set_attribute`. Zadnja, jer import trazi PO IMENU i
   // stariji fileovi bez nje moraju raditi (a bez nje se zig NE brise, v. import).
   { header: 'LockAttr',      width: 14 },
+  // T22 (S168) — samo `rata`: koja rata nosi ostatak, po kartici. Zadnja iz
+  // istog razloga kao LockAttr (import po imenu; bez kolone ostaje baza).
+  { header: 'Remainder',     width: 26 },
 ] as const;
 
 export function serializeDateMap(dateMap: Record<string, string | number>): string {
@@ -847,6 +850,7 @@ function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
         rule.target_slug, rule.map_slug, serializeDateMap(rule.date_map),
         '', '', '', '', '', '',
         rule.lock_slug ?? '',
+        '',
       ]);
     }
 
@@ -865,6 +869,8 @@ function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
         serializeOverrideAttrs(rata.override_attrs),
         rata.comment_attr_slug ?? '',
         rata.index_slug ?? '',
+        '',
+        serializeDateMap(rata.remainder_map ?? {}),
       ]);
     }
   }
@@ -904,6 +910,9 @@ function writeAutomationsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
     '  OverrideAttrs = "slug=vrijednost | ..." koje se postavlja na generirane rate (npr. status=Planiran).',
     '  CommentAttr = slug atributa koji se koristi kao prefiks komentara (neobavezno).',
     '  Sve rate dijele event_date (= dan kupnje); razlikuje ih datum naplate i pomak session_start-a za 1 min.',
+    '  Remainder = koja rata nosi ostatak zaokruživanja, po vrijednosti MapAttr-a: "Mastercard=last | Visa=first".',
+    '     first = prva rata nosi ostatak (12,50 · 12,49 · 12,49); last = rata zaokružena naviše, zadnja nosi',
+    '     ostatak (18,49 · 18,49 · 18,47). Vrijednost koje nema → first. Nema li kolone u fileu, pravilo u bazi ostaje.',
     '',
     'Import ZAMJENJUJE navedene automatike svake Aree koja se pojavi u sheetu.',
     'Odsutnost NE briše: stariji export bez rata kolona ne može pobrisati postojeću rata konfiguraciju.',

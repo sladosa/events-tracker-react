@@ -29,7 +29,7 @@ import { buildRules, sameRules, removedOptions } from '@/lib/validationRules';
 import { TEMPLATE_USER_ID } from '@/lib/constants';
 import { getDatePresets } from '@/hooks/useDateBounds';
 import type {
-  AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig,
+  AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig, RataRemainder,
 } from '@/types/database';
 
 // ─────────────────────────────────────────────────────────────
@@ -511,6 +511,34 @@ export function resolveLockSlug(
 ): string {
   if (hasColumn) return fromFile.trim();
   return existingRules?.find(r => r.target_slug === targetSlug && r.map_slug === mapSlug)?.lock_slug ?? '';
+}
+
+/**
+ * T22 (S168) — `Remainder` na `rata` retku Automations sheeta:
+ * „Mastercard=last | Visa=first". Isto načelo kao `resolveLockSlug`:
+ * **nema kolone ≠ prazna ćelija** — file izvezen prije S168 ne smije tiho
+ * vratiti MC rate na „prva rata nosi ostatak".
+ *   - nema kolone      ⇒ ono što je u bazi
+ *   - prazna ćelija    ⇒ bez pravila (svi 'first')
+ *   - nepoznata oznaka ⇒ `null` (redak se preskače, kao krivi DateMap)
+ */
+export function resolveRemainderMap(
+  hasColumn: boolean,
+  fromFile:  string,
+  existing:  Record<string, RataRemainder> | null | undefined,
+): Record<string, RataRemainder> | undefined | null {
+  if (!hasColumn) return existing && Object.keys(existing).length > 0 ? { ...existing } : undefined;
+  const out: Record<string, RataRemainder> = {};
+  for (const entry of fromFile.split('|')) {
+    const t = entry.trim();
+    if (!t) continue;
+    const eq = t.indexOf('=');
+    const key = eq > 0 ? t.slice(0, eq).trim() : '';
+    const val = eq > 0 ? t.slice(eq + 1).trim().toLowerCase() : '';
+    if (!key || (val !== 'first' && val !== 'last')) return null;
+    out[key] = val;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1164,6 +1192,8 @@ export async function importStructureExcel(
     const colIndexAttr = aCol('indexattr');
     // C3b (S155) — nema kolone ≠ prazna ćelija, v. `resolveLockSlug`.
     const colLock = aCol('lockattr');
+    // T22 (S168) — nema kolone ≠ prazna ćelija, v. `resolveRemainderMap`.
+    const colRemainder = aCol('remainder');
 
     if (colArea > 0 && colAction > 0 && colTarget > 0 && colMap > 0 && colDateMap > 0) {
       // Per-area set of known attribute slugs (walk category → area via catById).
@@ -1319,6 +1349,14 @@ export async function importStructureExcel(
         const commentAttr = get(colCommentAttr);
         const chargeAttr = get(colTarget);   // TargetAttr = kamo ide datum naplate
         const indexAttr = get(colIndexAttr);
+        const remainderRaw = colRemainder > 0 ? get(colRemainder) : '';
+        const remainderMap = resolveRemainderMap(colRemainder > 0, remainderRaw,
+          dbAreas?.find(a => a.id === areaId)?.settings?.automations?.rata?.remainder_map);
+        if (remainderMap === null) {
+          console.warn(`[Automations import] row ${r}: Remainder "${remainderRaw}" — expects "value=first|last" — skipped`);
+          result.automations.rulesSkipped++;
+          continue;
+        }
         const badOpt = unknownSlug(...[commentAttr, chargeAttr, indexAttr].filter(Boolean));
         if (badOpt) {
           console.warn(`[Automations import] row ${r}: slug "${badOpt}" not found in area "${areaName}" — skipped`);
@@ -1336,6 +1374,7 @@ export async function importStructureExcel(
           ...(commentAttr ? { comment_attr_slug: commentAttr } : {}),
           ...(chargeAttr ? { charge_date_slug: chargeAttr } : {}),
           ...(indexAttr ? { index_slug: indexAttr } : {}),
+          ...(remainderMap ? { remainder_map: remainderMap } : {}),
         });
       }
 
@@ -1352,6 +1391,7 @@ export async function importStructureExcel(
           Object.entries(c.date_map).sort(([a], [b]) => a.localeCompare(b)),
           Object.entries(c.override_attrs ?? {}).sort(([a], [b]) => a.localeCompare(b)),
           c.comment_attr_slug ?? '', c.charge_date_slug ?? '', c.index_slug ?? '',
+          Object.entries(c.remainder_map ?? {}).sort(([a], [b]) => a.localeCompare(b)),
         ]) : '';
 
       // Area koja se pojavljuje u ijednoj mapi. Odsutnost NE briše postojeću
