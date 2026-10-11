@@ -26,7 +26,7 @@ Preduvjet: `npm run dev` (banner **TEST**), `Financije_all`, **Ctrl+Shift+R**.
 **Pad:** 1. daje manje od 128 ili 2. nudi stari naziv (keš — F5 pa ponovo; ako ostane, javiti);
 4. pokazuje `nesvrstano` s Kućom (grupiranje nije prepisano).
 
-## T-S167-2 ⬜ PROD — preimenovanje (nakon Kokinog pristanka)
+## T-S167-2 ✅ PROD — preimenovanje (nakon Kokinog pristanka)
 
 Struktura je Kokina (S133) — pitati: *„Mogu li `Popravci, održavanje, osiguranje` preimenovati u
 `Popravci, održavanje`, na svim starim retcima isto?"*

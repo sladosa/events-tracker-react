@@ -15,7 +15,7 @@ R3 (osiguranje kuće u vlastiti Podtip) izveden na PROD-u (T-S164-2 ✅). Stari 
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S167-1 | TEST app: Podtip `Popravci, održavanje` = 128, stari = 0; izbornik pod `Kuća` bez starog naziva; razrez bez `nesvrstano` | ✅ S167 — Saša: filtar 128 (All Time) i 18 (2026, Transakcija), izbornik bez starog naziva, Kuća investicije 5.012,16 bez `nesvrstano` za Kuću; Edit (korak 3) nije zasebno gledan — retci liste nose novi naziv |
-| T-S167-2 | PROD (Kokin pristanak): backup → dry run (128, settings 0) → `--apply --yes-prod` ⇒ `128 od 128 ✓`; **prije** `set_breakdown.py` | ⬜ |
+| T-S167-2 | PROD (Kokin pristanak): backup → dry run (128, settings 0) → `--apply --yes-prod` ⇒ `128 od 128 ✓`; **prije** `set_breakdown.py` | ✅ S167 (11.10.) — backup `prod/2026-10-11_1312`, dry run 128 / settings 0, apply `128 od 128 ✓ · sa starim 0` |
 
 ---
 
@@ -57,7 +57,7 @@ RAZREZ §15 koraci 1–4: migracija `056` (RPC razreza) na TEST-u, `verify_break
 | T-S165-6 | Sklapanje pločice preživi F5 | ✅ **S166, 08.10. TEST** — sklopljena i nakon F5, otvara se klikom. ⚠ Usput: F5 vraća filtar na All Time (raspon se ne pamti, samo Area/kategorija/shortcut — postojeće pravilo) ⇒ pločica tada pokazuje 2023.–danas; otvoreno pitanje zadanog razdoblja pločice |
 | T-S165-7 | Regresija: saldo prvi i isti, kolona Stanje, ponuda delta sheeta u Exportu, Area bez configa bez taba | ✅ **S166, 08.10. TEST** — saldo prvi (ZABA 11.246,61); Stanje uz filtar ZABA: 05.10. = 11.246,61 (= sidro 04.10. + 55,50), kartični 07.10. i retci na dan sidra „—" (provjereno u bazi: Mastercard/Planiran); Export nudi delta sheet; Health_Sasa bez Overview taba |
 | T-S165-8 | Config u prazno ⇒ greška, ne tiha nula (pokriveno unit testom + alatom; ručno opcionalno) | ✅ S166 — čuva automatski test (`breakdownModel.test.mjs` „isti par dvaput", „grupiranje kojeg nema") + `set_breakdown.py` staje; Saša pročitao, ručna proba ne treba |
-| T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (R3 = T-S164-2 ✅ 11.10.; prije toga T-S167-2 — inače alat stane na `Popravci, održavanje`) → Koka i Saša vide pločicu | ⬜ |
+| T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (R3 = T-S164-2 ✅ 11.10.; prije toga T-S167-2 — inače alat stane na `Popravci, održavanje`) → Koka i Saša vide pločicu | ⬜ **baza gotova 11.10. (S167):** 056 ✓, `verify_breakdown` 4 ✓ + RPC = Python u lipu (model = T-S165-1 u cent), `set_breakdown --apply --yes-prod` ✓ (prvi pokušaj 555 prolazno, nakon 056). Ostaje korak 5: app (Saša mobitel, Koka) |
 
 ---
 
