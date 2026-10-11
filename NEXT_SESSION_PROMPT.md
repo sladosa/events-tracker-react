@@ -1,45 +1,33 @@
-> Pisano protiv commita **S166 ritual** na `test-branch` (zadnji commit = „S166: ritual …").
-> **`main` = `45087b7` (deploy S166, 08.10.)** — sve do S166 je na PROD-u (kod). Na PROD-u se
-> pločica razreza i zadano razdoblje NE vide dok `set_breakdown.py` ne upiše config (T-S165-9).
-> **Migracija `056` je na TEST-u, NIJE na PROD-u.**
+> Pisano protiv commita **S167 ritual** na `test-branch` (zadnji commit = „S167: ritual …").
+> **`main` = `45087b7` (deploy 08.10.)** — S167 nije mijenjao app kod, pa deploy ne treba.
+> **PROD baza (11.10.):** R3 `Kuća / Osiguranje` ✓ · `Popravci, održavanje` (preimenovano, 128) ✓ ·
+> `056` ✓ · config razreza + This Year ✓ ⇒ **pločica „Kamo ide novac" radi na PROD-u.**
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S166 (2026-10-08)
+# Sljedeća sesija — nakon S167 (2026-10-11)
 
-> **Ukratko (S166):** Pločica „Kamo ide novac" prošla je sve ručne testove na TEST-u, a usput je po
-> Sašinim primjedbama dobila povezan krug i listu, postotke, harmoniku sa saldom i objašnjenje potvrde
-> na klik; podaci kroz cijelu povijest pokazali su tri krivo razvrstane stavke koje čekaju odluku.
+> **Ukratko (S167):** Pločica „Kamo ide novac" i zadano razdoblje This Year sada rade i na PROD-u — prije toga je osiguranje kuće dobilo vlastiti Podtip, a stari Podtip preimenovan u „Popravci, održavanje" alatom koji mijenja izbornik i svih 128 redaka odjednom; Mastercard naplata od 11.10. još nije skinuta, pa Kokina potvrda čeka.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Što je napravljeno u S166
+## Što je napravljeno u S167
 
-- **Svi testovi pločice na TEST-u prošli** (T-S165-1..8), i abecedni izbornici (T-S164-5).
-- Po tvojim primjedbama: **jedna pločica otvorena** (saldo zadano, klik prebacuje), **klik na krug
-  suzi listu**, **postotak** uz svaki iznos, rubovi kruga vidljivi, nema ↗ ondje gdje bi lagala,
-  objašnjenje potvrde samo na klik „kako radi potvrda?".
-- **PROD nije diran.**
+- Na PROD-u: osiguranje kuće je svoj Podtip, `Popravci, održavanje` bez „osiguranje",
+  pločica „Kamo ide novac" i This Year. Vidjeli ste je ti (mobitel) i Koka.
+- Četiri nove stavke u backlogu (v. DIO 2) — dvije s Kokinog mobitela.
 
-## Što treba od tebe (kad budeš imao snage)
+## Što čeka
 
-1. **Tri odluke o podacima** — sve je jasno zapisano u `docs/FINANCIJE_PROCES.md` §4 (**T33–T36**) i §8.7:
-   - **T33** Investicije (9.543 €, 2023.–24.): izvan razreza kao Transfer (preporuka) ili vlastiti bucket?
-   - **T34** „Pharmalog" (9 uplata, 19.493 €, sada pod Medical_Koka): Kokin prihod — `Prihodi / Koka`
-     ili novi Podtip? **Koka potvrđuje.**
-   - **T35** Triglav životno (7.782,55 €, 12/2023): `Prihodi / Saša` ili Investicije?
-   - **T36** N/A fileovi `na_razvrstavanje_*_1049.xlsx` — s Kokom, u istom sjedenju kao T34.
-   ⚠ Bolje riješiti **prije** PROD-a: Koka bi na pločici vidjela „Medical_Koka −18.341,95".
-2. **Prije PROD-a: R3 osiguranje kuće (T-S164-2)** — treba Kokin pristanak.
-3. **PROD (T-S165-9):** deploy je **odrađen 08.10.** Ostaje: 056 u SQL editoru → `verify_breakdown.py`
-   → `set_breakdown.py --apply --yes-prod` (upisuje i This Year). Zatim T-S166-6 (Koka na mobitelu).
-   Koka nakon deploya: **Ctrl+Shift+R** / ponovo otvoriti app.
-4. Od ranije: **11.10.** Koka potvrđuje MC naplatu u traci (T-S158-1 / T-S156-6); **~03.11.** Visa izvod.
-
-**Riješeno istog dana:** Financije se otvaraju na **This Year** (Koka) — postavka Aree, na TEST-u
-upisana; na PROD ide istim `set_breakdown.py` korakom (T-S165-9). Testiraj T-S166-10 i T-S166-11.
+1. **Koka potvrđuje MC naplatu** kad je vidi u banci (11.10. je bila nedjelja, nije još skinuta):
+   Overview → „Čeka potvrdu" → iznos i **bankin** datum → Potvrdi. Očekivano 55 stavki / 1.189,34;
+   ZABA nakon toga ≈ 11.257,88 ako nema drugih promjena.
+2. **Odluke T33–T36** (`docs/FINANCIJE_PROCES.md` §4) — kad sjednete s Kokom na laptop. Vide se samo na
+   **All Time** (This Year je uredan): Investicije 9.543 € u `nesvrstano`, Pharmalog pod Medical_Koka,
+   Triglav životno, N/A razvrstavanje.
+3. **~03.11.** Visa izvod (T-S161-3, T-S158-4); prijedlog održavanja Financija prije ~05.11.
 
 ---
 
@@ -47,28 +35,26 @@ upisana; na PROD ide istim `set_breakdown.py` korakom (T-S165-9). Testiraj T-S16
 
 ## Stanje
 
-- **TEST:** 056 + config razreza (S165). Nema novih upisa u bazu u S166 (samo čitanje za T33–T36).
-- **PROD:** ništa od S165/S166.
-- `npm run check` ✓, build ✓, E2E `S165_breakdown_tile.spec.ts` **3/3** (široki, svjež krug, uski).
+- Svi S165–S167 testovi ✅, sekcije preseljene u `DONE_HISTORY.md`, session fileovi arhivirani.
+- Novi alat: `data-prep_tools/Financije/fix_kuca_popravci_S167.py` — predložak za preimenovanje
+  opcije s retcima (CLAUDE.md § Model/atributi, „preimenovanje opcije u panelu mijenja samo izbornik").
+- ⚠ Klasifikator od 11.10. blokira i **dry run** PROD alata — sve PROD naredbe idu Saši, s `cd` u
+  `data-prep_tools` i `.\` ispred (memorija).
 
-## Novo u S166 (kod)
+## Otvoreno — kod (backlog, S167 nove)
 
-- `OverviewTab.tsx`: harmonika — `lastOpenTile` na razini modula, zadano prvi `balance_by_group`;
-  `BalanceByGroupTile` dobio `collapsed`/`onToggleCollapsed` (sadržaj `hidden`, ne odmontiran) i
-  `HowConfirmWorks` (objašnjenje na klik); `BreakdownTile` više ne pamti sklapanje u localStorage.
-- `BreakdownTile.tsx`: `focusId` + `focusPath` (izvedeno), staza `Sve › …`, `share()` (udio u roditelju).
-- `BreakdownSunburst.tsx`: `level` iz stanja, slušač vezan u `onInitialized` (⚠ ne `onSunburstClick`
-  prop — CLAUDE.md § UI), `nets` u tooltipu, `marker.line` 2,5 px.
-- `breakdownModel.ts`: `drillFor` — dvoznačan/prazan Podtip ⇒ `{ none }`; `SunburstData.nets`.
+1. **Lista bez iznosa dok postavke Aree nisu stigle** (Koka, mali iPhone; hipoteza iz koda):
+   `ActivitiesTable` → `resolveColumns(null)` = `DEFAULT_COLUMNS`. Lijek: `loadedFor` (razred
+   BUG-S145-OVERVIEWTAB), ne crtati zadane kolone dok config za ovu Areu nije poznat.
+2. **`useActivities.latestFetchIdRef = Date.now()`** — dva dohvata iste ms prođu guard. Brojač.
+3. **Filtar `depends_on` atributa kao izbornik** grupiran po roditelju, `isExact`.
+4. **Filtar predug na malom ekranu** — sam se sklopi / sažetak u jednom redu.
 
-- `DateRangeFilter.tsx`: `default_period` Aree (modul `defaultPeriodAppliedFor`); Structure kolona
-  `DefaultPeriod` (export, import + `ImportResult.warnings`, help); `set_breakdown.py` `DEFAULT_PERIOD`.
+## Otvoreno — od ranije
 
-## Otvoreno
-
-- T33–T36 (gore) → poslije odluka: `set_breakdown.py` (Investicije u `outside` ili bucket) + app Excel
-  ispravaka po `event_id` (kol. G = autor) + **`set_breakdown.py` provjera nad svom poviješću**, ne 12 mj.
-- Mjerna skripta za T33–T35 je bila u scratchpadu (`mjeri166.py`, koristi `verify_breakdown.pull`) —
-  ako zatreba opet, napisati kao alat u `data-prep_tools/Financije/`.
-- Nepromijenjeno od S165: F5 (Structure Excel `AreaSettings`/`Grupiranja`), „Čiji trošak" (R5),
-  lazy Plotly, E12-2 na TEST-u, `export_profiles` rename, prijedlog održavanja Financija prije ~05.11.
+- **T22** rata modal dijeli ostatak kao Visa i za MC (MC: zadnja rata, zaokruženo naviše) — traka ima
+  toleranciju 0,00 ⇒ svaki MC plan s nedjeljivim iznosom iz appa odstupa za cent.
+- **T21** guard „potvrđeno razdoblje" na uvozu pali i za kartične retke (lažna uzbuna).
+- F5 (Structure Excel `AreaSettings`/`Grupiranja` — `groupings` još ne ide roundtripom), R5 „Čiji
+  trošak", lazy Plotly (4,9 MB na Kokinom sporom mobitelu), E12-2 na TEST-u, `export_profiles` rename.
+- Alati: T4 „jedna naredba obrade izvoda", T13–T18 (duplikati, rata nasljeđuje klasifikaciju…), Visa u traku (T2, ~05.11.).

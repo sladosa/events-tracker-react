@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S166).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S167).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 129 | [Critical rules](<#Critical rules>) | X |
-| 1259 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1729 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1745 | [Key files](<#Key files>) |  |
-| 1864 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1884 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1907 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1935 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1975 | [Open bugs](<#Open bugs>) | ~ |
-| 2084 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2129 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2249 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2257 | [Backlog](<#Backlog>) | ~ |
-| 2261 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2269 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1269 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1739 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1755 | [Key files](<#Key files>) |  |
+| 1874 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1894 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1917 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1945 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1985 | [Open bugs](<#Open bugs>) | ~ |
+| 2094 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2139 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2259 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2267 | [Backlog](<#Backlog>) | ~ |
+| 2271 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2279 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2433 redaka, 18 sekcija._
+_Ukupno 2443 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -154,6 +154,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **RLS-blokiran `DELETE` „uspije" s 0 redaka.** Uvijek `.select('id')` i provjeri je li
   rezultat prazan — inače brisanje izgleda kao da je prošlo.
 - **Supabase SELECT mora biti jednoredni** — ugniježđeni multiline selecti tiho ignoriraju relacije
+- **Odmah nakon DDL migracije PostgREST zna vratiti `555 Internal server error` na običnom GET-u**
+  (S167, izmjereno na PROD-u nakon `056`: `GET areas` pao, isti upis minutu kasnije prošao). To je
+  ponovno učitavanje sheme, ne kvar alata — **ponovi**; alat s dry runom po defaultu je bezopasan.
 - **`session_start` mora biti zaokružen na minutu** (`setHours(h, m, 0, 0)`) — detekcija kolizije ovisi o tome
 - **`session_start` format:** DB vraća `+00:00`, JS proizvodi `.000Z` — nikad ne koristi
   URL-dekodiranu vrijednost za Supabase upit; uvijek `events[0].session_start` (DB format)
@@ -395,6 +398,13 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   (`_excel_izbornici.py`) ponavlja pravilo. Odluka je **po atributu**, ne po popisu (inače Podtip
   pod `Razno` i pod `Zabava` različito). `validation_rules` čuva redoslijed vlasnika (Structure panel).
   ⚠ Ne Pythonov `sorted()` — velika slova ispred malih, pa `auto C5` ispadne iza `Zdravlje`.
+- **⚠ PREIMENOVANJE OPCIJE U STRUCTURE PANELU MIJENJA SAMO IZBORNIK** (S167, provjereno u kodu:
+  nitko ne dira `event_attributes`). Stari tekst ostane na svim retcima ⇒ siročad, `groupings`
+  razreza nove retke šalje u `nesvrstano`, a Python rječnici (`visa_uvoz_izvoda.KLASA`,
+  `set_breakdown.py`) i dalje predlažu stari naziv — sve bez greške. Opcija s retcima se zato
+  preimenuje **alatom** koji ide odjednom: pravilo (na istom mjestu u popisu) + retci + exact-string
+  u `areas.settings`/shortcutima + grep po alatima. Predložak: `Financije/fix_kuca_popravci_S167.py`;
+  općenito K-plan (`docs/KLASIFIKACIJA_ODRZAVANJE_SPEC.md`).
 - **`chain_key`** je sistemsko polje (UUID), nikad se ne prikazuje; `comment` je samo korisnički tekst
 - **`touched: true`** mora biti postavljen pri učitavanju atributa iz baze u Edit toku —
   inače ih `handleSave()` preskoči
@@ -1927,7 +1937,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 - **Overview (S108):** tab po Arei, postoji **samo** uz `settings.dashboard` (OQ-4). Pločica
   `balance_by_group` sa sidrom i `✓/Δ` čipom, drill u Activities, izračunata kolona `Stanje`.
   **S165:** pločica `breakdown` „Kamo ide novac" (bucketi iz `settings.groupings`, os kupnja/naplata,
-  krug ≥ 640 px) — na TEST-u; PROD čeka 056 + deploy + `set_breakdown.py`.
+  krug ≥ 640 px) — **na PROD-u od 11.10.2026. (S167)**, uz zadano razdoblje This Year.
   Agregacija ide u Postgres (`rpc_area_group_agg`, `rpc_area_balance_anchored`) — nikad u preglednik.
 
 ---

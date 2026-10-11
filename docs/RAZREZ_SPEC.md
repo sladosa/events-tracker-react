@@ -5,7 +5,7 @@
 > Nastavak otvorene niti `OVERVIEW_TAB_SPEC.md`
 > §2.19 („Saša — analitika: koliko je potrošeno po Tip/Podtip"). Nastao razgovorom 2026-10-06.
 > **Detaljni tehnički spec R-F2/R-F3: DIO 2 (§10–§16, S164).**
-> Odluke (§9): S164 odlučeno R1–R8, R10–R15 (sve); **R3 čeka Kokin korak** (§4.4); ono što je u razgovoru već dogovoreno označeno je ✅.
+> Odluke (§9): S164 odlučeno R1–R8, R10–R15 (sve); R3 izveden na PROD-u 11.10. (§4.4); **S167: pločica i This Year na PROD-u** (056, `set_breakdown.py`); ono što je u razgovoru već dogovoreno označeno je ✅.
 > **S164 (07.10.):** R1 izveden na PROD-u; TEST ponovo = PROD (`prod_to_test.py`); dodane odluke
 > R10–R15 iz skice; brojke u §8 ponovo izmjerene (TEST = PROD od **07.10.2026.**), razdoblje
 > **10/2025–09/2026**.
