@@ -14,7 +14,7 @@ R3 (osiguranje kuće u vlastiti Podtip) izveden na PROD-u (T-S164-2 ✅). Stari 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S167-1 | TEST app: Podtip `Popravci, održavanje` = 128, stari = 0; izbornik pod `Kuća` bez starog naziva; razrez bez `nesvrstano` | ⬜ |
+| T-S167-1 | TEST app: Podtip `Popravci, održavanje` = 128, stari = 0; izbornik pod `Kuća` bez starog naziva; razrez bez `nesvrstano` | ✅ S167 — Saša: filtar 128 (All Time) i 18 (2026, Transakcija), izbornik bez starog naziva, Kuća investicije 5.012,16 bez `nesvrstano` za Kuću; Edit (korak 3) nije zasebno gledan — retci liste nose novi naziv |
 | T-S167-2 | PROD (Kokin pristanak): backup → dry run (128, settings 0) → `--apply --yes-prod` ⇒ `128 od 128 ✓`; **prije** `set_breakdown.py` | ⬜ |
 
 ---

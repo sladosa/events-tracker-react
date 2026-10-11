@@ -7,7 +7,7 @@
 > `visa_uvoz_izvoda.py` (`BAUHAUS`) nose novi naziv.
 > Naredbe: PowerShell iz `data-prep_tools\` (`cd C:\0_Sasa\events-tracker-react\data-prep_tools`).
 
-## T-S167-1 ⬜ TEST app — novi naziv, stari nestao
+## T-S167-1 ✅ TEST app — novi naziv, stari nestao
 
 Izvedeno alatom na TEST-u 11.10.: `opcija ✓ · upisano 128 · 128 od 128 ✓ · sa starim 0 ·
 settings bez starog naziva ✓`; ponovni prolaz ne mijenja ništa; `set_breakdown.py` dry run:

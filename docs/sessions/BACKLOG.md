@@ -20,6 +20,21 @@
 `docs/sessions/BACKLOG_2026-09-26.md`. Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
 § S150). Nove i preformulirane stavke iz prolaza:
 
+- **Filtar „Filter by" za `depends_on` atribut nudi izbornik, ne slobodan tekst (S167, Saša)** —
+  `Podtip` ovisi o `Tip`u, pa `AppHome` (`isSuggest`) ne nađe ravan popis opcija i daje polje za
+  tekst s `ilike '%…%'`. Posljedica: `Popravci` vraća i `auto C5 / popravci` (30 umjesto 18), a
+  tipfeler daje 0 bez objašnjenja. Prijedlog: izbornik **svih** opcija iz `depends_on.options_map`,
+  grupiran po roditelju (`<optgroup>` `Kuća` › `Popravci, održavanje`), točno podudaranje
+  (`isExact`) — a ako je roditelj (Tip) i sam filtar, samo njegove opcije. Isti par smije
+  postojati pod dva Tipa (`gorivo` pod oba auta) ⇒ vrijednost filtra je samo Podtip, a grupa je
+  prikaz. Vrijedi za svaki `depends_on` atribut, ne samo Financije.
+- **Lista: zaštita od zakašnjelog odgovora koristi `Date.now()` kao ID (S167, sumnja)** —
+  `useActivities.ts` (`latestFetchIdRef`): dva dohvata u istoj milisekundi dobiju isti ID, pa
+  oba prođu provjeru i stariji može pregaziti noviji. Viđeno jednom na TEST-u 11.10.: Transakcija +
+  This Year + `Podtip = Popravci, održavanje` ⇒ „No activities found", a baza ima 18 (izmjereno);
+  ponovno tipkanje dalo 18. **Nije reproducirano**, uzrok nije dokazan. Popravak je jeftin i ne
+  ovisi o dokazu: brojač koji samo raste (`++ref.current`) umjesto sata. Provjeriti i ostale
+  hookove s istim obrascem (`grep "Date.now()" src/hooks`).
 - **💶 Financije — sav otvoreni posao je u [`docs/FINANCIJE_PROCES.md`](../FINANCIJE_PROCES.md) §4** (preseljeno S158 doslovno, puni tekst u §8: C1 izvodi, C5 traka i Visa u traku, PBZVISA prolaz, RF `Izvod opis`, `oznaci_iz_presedana`, zaostaci S125). Ovdje ostaje samo održavanje klasifikacije (K0–K5), jer je generično.
 - **⭐ „Kamo ide novac" — pločica razreza + bucketi (S163)** — `docs/RAZREZ_SPEC.md`.
   Prijedlog prije koda; odluke R1–R9 čekaju Sašu. Redoslijed: R-F0 podaci (redak 50.000 €) →
