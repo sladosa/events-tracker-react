@@ -209,7 +209,7 @@ oprema i održavanje kuće.
 Koraci 1–2 radi alat **`Financije/fix_kuca_osiguranje_S164.py`** (Saša, S164: „alatom na TEST-u za
 probu, pa PROD"): doda opciju `Osiguranje` pod `Kuća` i prebaci 5 redaka, ciljano po `event_id`
 (TEST i PROD dijele ID-eve eventa). ✅ **Izvedeno na TEST-u 07.10.** (`5 od 5 ✓`, ponovni prolaz ne
-mijenja ništa). PROD: T-S164-2, nakon Kokinog pristanka — struktura je njezina (S133).
+mijenja ništa). PROD: T-S164-2, nakon Kokinog pristanka — struktura je njezina (S133). ✅ **Izvedeno na PROD-u 11.10.** (S167, Koka pristala; `5 od 5 ✓`).
 1. ~~Koka doda Podtip `Osiguranje` pod `Kuća`~~ ⇒ alat (service ključ, uz Kokin pristanak).
 2. ~~5 redaka Editom~~ ⇒ alat.
 3. Grupiranje: `Kuća / Osiguranje` → **Povremeno nužno**.
@@ -613,7 +613,7 @@ bez configa (druga Area) se ne mijenja; grantee (Saša na PROD-u) vidi pločicu.
 | 5. ručni testovi (`npm run dev`) | Saša | TEST |
 | 6. 056 u SQL editoru, `verify_breakdown.py` | Saša | PROD |
 | 7. deploy (merge na `main`) | Saša | — |
-| 8. `set_breakdown.py --apply --yes-prod`, `Ctrl+Shift+R` — ⚠ traži R3 na PROD-u prije (T-S164-2): alat staje jer `Kuća / Osiguranje` nije u `validation_rules` | Saša | PROD |
+| 8. `set_breakdown.py --apply --yes-prod`, `Ctrl+Shift+R` — (R3 na PROD-u ✅ 11.10., T-S164-2 — alat više ne staje na `Kuća / Osiguranje`) | Saša | PROD |
 
 Procjena: jedna sesija za 1–4. Koraci 6–8 su jedan blok naredbi.
 

@@ -23,7 +23,11 @@ Preduvjet: `npm run dev` (TEST, banner!), prijava pod TEST vlasnikom `Financije_
    **Pad:** 0 redaka u koraku 1 (keš kategorija/pravila — F5 pa ponovo), ili `Osiguranje` nema u
    izborniku (⇒ `validation_rules` nije upisan, javiti).
 
-## T-S164-2 ⬜ R3 na PROD-u (nakon Kokinog pristanka)
+## T-S164-2 ✅ R3 na PROD-u (nakon Kokinog pristanka)
+
+> ✅ S167, 11.10.2026.: Koka pristala; izvedeno 1–3, alat ponovo pročitao bazu `5 od 5 ✓`.
+> ⚠ Naredbe se puštaju iz `data-prep_tools` (`cd …\data-prep_tools`, pa `.\Tools\run.bat …`) —
+> iz korijena repoa PowerShell `Tools\run.bat` čita kao modul „Tools“ i ništa se ne izvrši.
 
 Struktura `Financije_all` je Kokina (S133) — alat dodaje opciju service ključem, pa se s njom
 dogovori prije pokretanja.

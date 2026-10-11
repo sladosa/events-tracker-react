@@ -44,7 +44,7 @@ RAZREZ §15 koraci 1–4: migracija `056` (RPC razreza) na TEST-u, `verify_break
 | T-S165-6 | Sklapanje pločice preživi F5 | ✅ **S166, 08.10. TEST** — sklopljena i nakon F5, otvara se klikom. ⚠ Usput: F5 vraća filtar na All Time (raspon se ne pamti, samo Area/kategorija/shortcut — postojeće pravilo) ⇒ pločica tada pokazuje 2023.–danas; otvoreno pitanje zadanog razdoblja pločice |
 | T-S165-7 | Regresija: saldo prvi i isti, kolona Stanje, ponuda delta sheeta u Exportu, Area bez configa bez taba | ✅ **S166, 08.10. TEST** — saldo prvi (ZABA 11.246,61); Stanje uz filtar ZABA: 05.10. = 11.246,61 (= sidro 04.10. + 55,50), kartični 07.10. i retci na dan sidra „—" (provjereno u bazi: Mastercard/Planiran); Export nudi delta sheet; Health_Sasa bez Overview taba |
 | T-S165-8 | Config u prazno ⇒ greška, ne tiha nula (pokriveno unit testom + alatom; ručno opcionalno) | ✅ S166 — čuva automatski test (`breakdownModel.test.mjs` „isti par dvaput", „grupiranje kojeg nema") + `set_breakdown.py` staje; Saša pročitao, ručna proba ne treba |
-| T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (traži R3 = T-S164-2 prije) → Koka i Saša vide pločicu | ⬜ |
+| T-S165-9 | PROD: 056 u SQL editoru → `verify_breakdown.py` ✓ → deploy → `set_breakdown.py --apply --yes-prod` (R3 = T-S164-2 ✅ 11.10.) → Koka i Saša vide pločicu | ⬜ |
 
 ---
 
@@ -57,7 +57,7 @@ Odluke R1–R15 u `docs/RAZREZ_SPEC.md`; skica pločice nad stvarnim podacima. N
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S164-1 | TEST app: Podtip `Osiguranje` = 5 redaka, izbornik pod `Kuća` ga nudi, stari Podtip 128 | ⬜ |
-| T-S164-2 | PROD: backup → dry run (5 ✓) → `--apply --yes-prod` ⇒ `5 od 5 ✓`; u appu 5 / 128, saldo nepomaknut | ⬜ |
+| T-S164-2 | PROD: backup → dry run (5 ✓) → `--apply --yes-prod` ⇒ `5 od 5 ✓`; u appu 5 / 128, saldo nepomaknut | ✅ S167 (11.10.) — Koka pristala; backup `prod/2026-10-11_1202`, dry run 5 ✓, apply: alat ponovo pročitao bazu `opcija Osiguranje ✓ · 5 od 5 ✓` |
 | T-S164-3 | TEST: uvoz `na_razvrstavanje_*` (RF 6 / ZABA 8 prijedloga) ⇒ 0 New · Modify = razvrstani · 0 Delete; saldo nepomaknut | ⬜ |
 | T-S164-4 | PROD: `razvrstaj_na.py --file --preuzmi <razvrstani TEST fileovi>` (odluke po `event_id`, kol. G = Koka), uvoz pod Kokinim računom; TEST file se na PROD NE uvozi | ⬜ |
 | T-S164-5 | Dugi izbornici abecedno: Tip (N/A prvi, `auto C5` među A), Podtip po atributu; Smjer/Izvor stari red; Structure panel netaknut; Excel export isti red | ✅ **S166, 08.10. TEST** — Add → Tip: `N/A` prvi, `Advokati, auto C5, auto Lacetti, Domaćinstvo, …, Zdravlje` (Saša). Excel export i Structure panel nisu ručno gledani — red u Excelu čuva `optionOrder.test.mjs` |
