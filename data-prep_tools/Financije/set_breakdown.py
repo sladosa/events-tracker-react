@@ -27,7 +27,7 @@ PROVJERE PRIJE UPISA (alat STAJE):
     - par čiji Tip/Podtip nije u `validation_rules` (pokazuje u prazno, K-1 razred:
       rename opcije tiho lomi par — ovo je jedino mjesto koje to hvata do F5)
     - korekcija u grupiranju koje nema na pločici
-ISPIS: parovi iz PODATAKA (zadnjih 12 mj) koji nisu ni u jednom bucketu
+ISPIS: parovi iz PODATAKA (cijela povijest, S169) koji nisu ni u jednom bucketu
     ⇒ „nesvrstano" na pločici. Za Financije danas mora biti prazno.
 
 Pokretanje (PowerShell, iz data-prep_tools\\):
@@ -40,7 +40,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date, timedelta
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -60,7 +59,8 @@ WIDGET = {
     'type': 'breakdown', 'title': TITLE, 'unit': '€',
     'levels': ['tip', 'podtip'], 'plus': 'uplata', 'minus': 'isplata',
     'income': {'slug': 'tip', 'op': 'in', 'values': ['Prihodi']},
-    'outside': [{'slug': 'tip', 'op': 'in', 'values': ['Transfer']}],
+    # T33 (S169, Saša): Investicije = premještanje u imovinu, ne potrošnja ⇒ vani kao Transfer
+    'outside': [{'slug': 'tip', 'op': 'in', 'values': ['Transfer', 'Investicije']}],
     'unclassified': ['N/A'],
     'date_axes': [{'label': 'po kupnji', 'slug': None},
                   {'label': 'po naplati', 'slug': 'datum_naplate'}],
@@ -198,18 +198,18 @@ def check(sp: Supa, area_id: str) -> list[str]:
 
 
 def unassigned_pairs(sp: Supa, area_id: str) -> list[tuple]:
-    """Parovi troška iz podataka zadnjih 12 punih mjeseci bez bucketa."""
-    today = date.today()
-    do = date(today.year, today.month, 1)
-    od = date(do.year - 1, do.month, 1)
+    """Parovi troška iz CIJELE povijesti bez bucketa.
+    S169 (§8.7 korak 4): do tada samo zadnjih 12 mj — pa je Investicije 2023.–2024.
+    (9.543,16) izašao kao „nesvrstano" tek uz filtar All time (T33)."""
     rows = sp.rpc('rpc_area_breakdown', {
         'p_area_id': area_id, 'p_group_slugs': ['tip', 'podtip'],
         'p_plus_slug': 'uplata', 'p_minus_slug': 'isplata',
-        'p_date_from': od.isoformat(), 'p_date_to': (do - timedelta(days=1)).isoformat()})
+        'p_date_from': '1900-01-01', 'p_date_to': '2100-12-31'})
+    vani = {v for f in WIDGET['outside'] for v in f['values']}
     out = []
     for r in rows or []:
         t, p = r['g']
-        if t in (None, '', 'N/A', 'Prihodi', 'Transfer'):
+        if t in (None, '', 'N/A', 'Prihodi') or t in vani:
             continue
         if bucket_of(t, p) is None:
             out.append((t, p, r['n'], round(float(r['minus_sum']) - float(r['plus_sum']), 2)))
@@ -250,11 +250,11 @@ def main() -> None:
         print('⚠ rpc_area_breakdown nije dostupan (056 nije pušten?) — preskačem ispis nesvrstanih')
     if un is not None:
         if un:
-            print(f'\n⚠ Nesvrstano u zadnjih 12 mj ({len(un)} parova) — pojavit će se kao „nesvrstano":')
+            print(f'\n⚠ Nesvrstano u cijeloj povijesti ({len(un)} parova) — pojavit će se kao „nesvrstano":')
             for t, p, n, v in un:
                 print(f'    {t} / {p}   {n} redaka   {v:,.2f}')
         else:
-            print('✓ nesvrstano u zadnjih 12 mj: ništa')
+            print('✓ nesvrstano u cijeloj povijesti: ništa')
 
     dash = settings.get('dashboard') or {'widgets': []}
     widgets = [w for w in dash.get('widgets', [])

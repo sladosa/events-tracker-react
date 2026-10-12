@@ -503,6 +503,20 @@ data-prep_tools/Financije/set_breakdown.py
                                    `validation_rules`, slugu koji ne postoji. Dry run zadano;
                                    PROD `--yes-prod`, i TEK POSLIJE deploya (stari bundle crta
                                    „Nepoznat tip pločice"). ⚠ Na PROD-u traži R3 (T-S164-2).
+                                   S169: `outside` = Transfer + Investicije (T33); nesvrstano
+                                   se traži u CIJELOJ povijesti, ne 12 mj.
+data-prep_tools/Financije/ispravi_tip.py
+                                   S169: Tip/Podtip zadanim `event_id`-ima ⇒ app Excel (kol. G =
+                                   autor iz baze), `--komentar` samo gdje ga nema. Samo ČITA.
+                                   Id-eve složi na TEST-u (isti kao PROD), file piši s PROD-a.
+                                   Staje na nepostojećem id-u i paru izvan izbornika.
+data-prep_tools/Financije/razvrstaj_na.py
+                                   S164: N/A → prijedlog Tip/Podtip po presedanima, app Excel po
+                                   računu (žuto prijedlog, narančasto ručno, S169 svijetloplavo =
+                                   promijenjeno). `--preuzmi <razvrstan file>` prenosi Tip/Podtip
+                                   + komentar (S169) po `event_id` u svjež file ciljne baze.
+                                   /!\ Na PROD se uvozi SAMO file napravljen s PROD-a (kol. G);
+                                   „Foreign events" u modalu = krivi file (S169).
 data-prep_tools/Financije/verify_breakdown.py
                                    S165: `rpc_area_breakdown` (056) protiv Pythona nad sirovim
                                    retcima, PO GRUPI, u lipu (12 mj + rujan × obje osi), pa

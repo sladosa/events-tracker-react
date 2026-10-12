@@ -1,37 +1,41 @@
-> Pisano protiv commita **S168 ritual** na `test-branch` (zadnji commit = „S168: ritual …").
-> **`main` = `119653c` (deploy 12.10., S168)** — sve do S168 je na PROD-u, uključujući
-> `remainder_map` (MC last) u PROD bazi. MC potvrda 12.10. ✓, ZABA = banka (11.290,73), sidro potvrđeno.
-> **PROD baza (S167, 11.10.):** R3 ✓ · `Popravci, održavanje` ✓ · `056` ✓ · razrez + This Year ✓.
+> Pisano protiv commita **S169 ritual** na `test-branch` (zadnji commit = „S169: …").
+> **`main` = `119653c` (deploy 12.10., S168)** — S169 je samo alati + docs, **app kod nije mijenjan**,
+> deploy ne treba. **PROD baza (S169, 12.10.):** 72 ZABA N/A razvrstana, Pharmalog i Triglav u
+> prihodima, Investicije izvan razreza (`set_breakdown.py` upisan).
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S167 + S168 (2026-10-11, isti razgovor)
+# Sljedeća sesija — nakon S169 (2026-10-12)
 
-> **Ukratko (S168):** Rata modal sada ostatak zaokruživanja stavlja kao banka — kod Mastercarda na zadnju ratu, kod Vise na prvu — pa se MC planovi s izvodom slažu u cent; lista više ne pokazuje transakcije bez iznosa dok se postavke Aree učitavaju (Kokin nalaz s mobitela, mehanizam potvrđen testom), a sve čeka deploy.
+> **Ukratko (S169):** S Kokom smo razvrstali svih 72 neodređenih transakcija na njezinom računu iz zadnjih godinu dana i potvrdili da su Pharmalog uplate njezin prihod, a Investicije i isplata Triglav police su maknute iz troškova — pločica „Kamo ide novac" kroz cijelu povijest više nema ni „nesvrstano" ni stavki u minusu.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Što je napravljeno
+## Što je napravljeno (sve na PROD-u)
 
-- **S167 (PROD baza):** osiguranje kuće svoj Podtip, `Popravci, održavanje`, pločica „Kamo ide
-  novac" i This Year rade na PROD-u (ti i Koka vidjeli).
-- **S168 (kod, još nije na PROD-u):**
-  - MC rate iz appa slažu se s bankom u cent (zadnja rata nosi ostatak, kao kod banke).
-  - Lista više ne pokazuje transakcije bez iznosa na sporom mobitelu — pričeka svoje kolone.
-  - Sitan popravak: lista ne može prikazati stari odgovor umjesto novog.
-  - **Traka „Čeka potvrdu“ prvo pita** „Je li banka skinula 1.189,34 €?“ — kad se slaže, Koka samo
-    dodirne dan (odluka D7). Tipka samo kad je iznos ili dan drukčiji.
+- Kokin ZABA: svih 72 N/A iz zadnjih 12 mj razvrstano, uz 24 njezina opisa.
+- Pharmalog (10 uplata, 22.493,19 €) → `Prihodi / Koka`; Triglav 7.782,55 → `Prihodi / Saša`.
+- Investicije (9.543,16) su izvan razreza, kao Transfer.
+- Pločica All Time: Ušlo 189.787,17 · Izašlo 178.592,28 · nema „nesvrstano".
 
 ## Što treba od tebe
 
-1. **T-S168-1/2 na TEST-u** (5 min; T-S168-5 traku prati Koka na PROD-u 11.11. ili TEST ako ima košaru): probni MC plan 55,45 / 3 rate ⇒ modal 18,49 · 18,49 · 18,47
-   „Zadnja rata…"; Visa 37,48 / 3 ⇒ 12,50 · 12,49 · 12,49; Structure export ima kolonu `Remainder`.
-2. ✅ Deploy + `set_rata_ostatak_S168.py` (12.10.). Prati: prvi Kokin MC plan → „Zadnja rata…“ (T-S168-3),
-   Kokin mobitel → lista nikad bez iznosa (T-S168-4), MC 11.11. → traka pita (D7).
-3. ✅ Koka: MC potvrda 12.10. (stari način), ZABA = banka, sidro potvrđeno.
-4. **Odluke T33–T36** (`docs/FINANCIJE_PROCES.md` §4) — s Kokom na laptopu. **~03.11.** Visa izvod.
+1. **RF N/A** (T-S169-6): prođi `na_razvrstavanje_sasin_tekuci_rf_20261012_1102.xlsx`
+   (promijenjena ćelija postane svijetloplava), pa `--preuzmi` na PROD i uvoz **novog** filea
+   (koraci u `docs/sessions/tests/S169_tests.md`).
+2. **Morra ceramics 58,50 (17.11.2025.)** — Koka je obrisala broj rata; ako nije obročna kupnja,
+   u appu `Rate? = No`.
+3. **T-S169-5** — drill na pločici (All Time): Medical_Koka ≈ 1.151, Zivotno pozitivan.
+4. Iz S168 i dalje: T-S168-2/3/4 (Structure `Remainder`, prvi Kokin MC plan, Kokin mobitel);
+   **~03.11.** Visa izvod, **11.11.** MC traka (D7).
+
+## Što ostaje od klasifikacije (nije hitno)
+
+`nerazvrstano (N/A)` **29.056,73** na All Time = starija povijest (ZABA 769, RF 672 redaka).
+2023. je većinom bez teksta izvoda ⇒ ostaje N/A. **2025. siječanj–rujan (ZABA 149)** se isplati
+istim postupkom (`--od 2025-01-01 --do 2025-09-30`) — sada s 72 Kokine odluke više kao presedanima.
 
 ---
 
@@ -39,10 +43,13 @@
 
 ## Stanje
 
-- `test-branch` ispred `main` za S167 (samo docs/alati) i **S168 (app kod)**.
-- TEST: `automations.rata.remainder_map = {Mastercard: last, Visa: first}` upisan.
-- `npm run check` ✓, build ✓, E2E S121/e16/S165/S119/S168 10/10.
+- `test-branch` ispred `main` samo za docs/alate (S167, S169) — nema app koda.
+- Novi alat `ispravi_tip.py`; `razvrstaj_na.py --preuzmi` nosi i komentar; `visa_popravak.pisi`
+  dodaje svijetloplavi CF na Tip/Podtip; `set_breakdown.py` outside + provjera cijele povijesti.
+  TEST: `set_breakdown.py` upisan (isto kao PROD). TEST **nema** S169 Tip/Podtip izmjena (išle su
+  samo na PROD) — za testove nad Financijama prvo `prod_to_test.py`.
 - ⚠ Klasifikator blokira i **dry run** PROD alata — PROD naredbe idu Saši (`cd …\data-prep_tools`, `.\`).
+- ⚠ Python skripte u scratchpad, s `python -I` (u `$TEMP` leži `struct.py` koji ruši openpyxl).
 
 ## Otvoreno — kod (po prioritetu iz plana S167)
 

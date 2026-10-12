@@ -335,6 +335,21 @@ def pisi(redci, by8, ime, tax=None, izgled=None):
             if ws.cell(rr, ctip).value in (None, 'N/A'):
                 ws.cell(rr, ctip).fill = orange
                 ws.cell(rr, cpod).fill = orange
+        # S169: svijetloplavo = čovjek je promijenio vrijednost u odnosu na file (vidi se što je
+        # već razvrstano). Uvjet nosi IZVORNU vrijednost doslovno, po ćeliji — bez pomoćnog
+        # stupca, jer stupac viška uvoz prijavi kao nepoznat atribut. Crveno (krivi Podtip,
+        # `tip_podtip_izbornici`) je dodano prije ⇒ veći prioritet, ostaje vidljivo.
+        from openpyxl.formatting.rule import FormulaRule
+        plava = PatternFill('solid', fgColor='BDD7EE', bgColor='BDD7EE')
+        for rr in range(prvi, zadnji + 1):
+            for cc in (ctip, cpod):
+                adr = f'{col_letter(cc)}{rr}'
+                bilo = str(ws.cell(rr, cc).value or '')
+                if bilo in ('', 'N/A'):
+                    uvjet = f'AND({adr}<>"",{adr}<>"N/A")'
+                else:
+                    uvjet = adr + '<>"' + bilo.replace('"', '""') + '"'
+                ws.conditional_formatting.add(adr, FormulaRule(formula=[uvjet], fill=plava))
     for i, w in enumerate([38, 14, 12, 11, 8, 8, 12, 22], start=1):
         ws.column_dimensions[col_letter(i)].width = w
     for i in range(len(ATTRS) + 1):

@@ -238,19 +238,28 @@ def preuzmi(rez, fileovi, tax):
     autorom iz PROD baze. Ručna odluka pobjeđuje prijedlog alata.
     """
     from openpyxl import load_workbook
-    rucno = {}
+    rucno, komentari = {}, {}
     for f in fileovi:
         ws = load_workbook(f, read_only=True)['Events']
         redovi = list(ws.iter_rows(values_only=True))
         hdr = next(i for i, r in enumerate(redovi) if r and r[0] == 'event_id')
         h = list(redovi[hdr])
-        it, ip = h.index('Tip'), h.index('Podtip')
+        it, ip, ik = h.index('Tip'), h.index('Podtip'), h.index('leaf comment')
         for r in redovi[hdr + 1:]:
             if r and r[0] and r[it] not in (None, '', 'N/A'):
                 rucno[str(r[0])] = (str(r[it]), str(r[ip] or ''))
+            # S169: Koka uz razvrstavanje upiše i opis („PassSport Anjinom Petru" umjesto
+            # „KEKS PAY") — bez ovoga bi se izgubio. Tekst banke ostaje u `Izvod opis`.
+            # Prazna ćelija ne briše postojeći komentar (P3).
+            if r and r[0] and r[ik] not in (None, ''):
+                komentari[str(r[0])] = str(r[ik])
         print(f'Preuzimam iz {Path(f).name}: {sum(1 for _ in rucno)} razvrstanih redaka (ukupno)')
-    out, n, krivo = [], 0, []
+    out, n, krivo, nk = [], 0, [], 0
     for r, p, dokaz in rez:
+        kom = komentari.get(r['id'])
+        if kom is not None and kom != (r.get('comment') or ''):
+            r = dict(r, _kom=kom)
+            nk += 1
         par = rucno.get(r['id'])
         if par and (par[0] not in tax or (par[1] and par[1] not in tax[par[0]])):
             krivo.append(f"{r['event_date']} {par[0]} / {par[1]}")
@@ -260,7 +269,7 @@ def preuzmi(rez, fileovi, tax):
             out.append((r, par, 'PREUZETO (ručno razvrstano)' if par != p else dokaz))
         else:
             out.append((r, p, dokaz))
-    print(f'  primijenjeno na {n} N/A redaka ove baze')
+    print(f'  primijenjeno na {n} N/A redaka ove baze · izmijenjen komentar: {nk}')
     if krivo:
         print(f'  ✗ {len(krivo)} par(ova) nije u popisu opcija — NISU preuzeti: ' + '; '.join(krivo))
     return out
@@ -325,7 +334,7 @@ def main():
             a = dict(r['attrs'])
             if p:
                 a['Tip'], a['Podtip'] = p
-            redci_xl.append((r, a, r.get('comment'), False,
+            redci_xl.append((r, a, r.get('_kom', r.get('comment')), False,
                              (f'PRIJEDLOG {p[0]} / {p[1]} — ' if p else 'RUČNO — ') + str(dokaz)))
         ime = 'na_razvrstavanje_' + re.sub(r'[^A-Za-z0-9]+', '_', fold(racun)).strip('_')
         visa_popravak.pisi(redci_xl, {}, ime, tax=tax, izgled=izgled_pregleda)

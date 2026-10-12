@@ -214,10 +214,10 @@ na TEST-u (= PROD 07.10.). **Nijedna ne miče saldo** (Tip/Podtip nisu u filtru 
 
 | # | što pločica pokazuje | izmjereno | treba odlučiti |
 | --- | --- | --- | --- |
-| T33 | **`nesvrstano` 9.543,16 €** — Tip `Investicije` nije ni u jednom bucketu | Dionice / Kripto 10 redaka (isplata 9.250,00, uplata 256,84, 01.2023.–03.2024.) · Štednja 1 redak 550,00 (03.2024.) | Investicije **izvan razreza kao Transfer** (preporuka: nije potrošnja nego premještanje u imovinu) ili vlastiti bucket „Štednja i investicije" — zatim `set_breakdown.py` |
-| T34 | **Zdravlje / Medical_Koka −18.341,95** (u minusu) | 9 uplata **19.493,19 €** na Kokin ZABA, sve s opisom **„Pharmalog"** (2023.–2025.); stvarni medicinski trošak 1.151,24 € u 21 retku | to su **Kokini prihodi** (honorar), ne povrati ⇒ `Prihodi / Koka` ili novi Podtip `Prihodi / Pharmalog` — **Koka potvrđuje** |
-| T35 | **Osiguranje / Zivotno −5.691,96** (u minusu) | 1 uplata **7.782,55 €**, 12.12.2023., Sašin RF, „Triglav životno" — isplata police po isteku | `Prihodi / Saša` ili `Investicije` (s T33 izvan razreza = isti ishod kao povrat uloga) |
-| T36 | **N/A 27.452,88 € kroz povijest** (12 mj: 2.110,80) | prijedlozi za 12 mj su gotovi: `na_razvrstavanje_kokin_tekuci_zaba_20261007_1049.xlsx`, `…_sasin_tekuci_rf_…_1049.xlsx` (T-S164-3/4) | **čeka Koku** (ona se sjeća što je što); uz isto sjedenje T34 |
+| T33 | **`nesvrstano` 9.543,16 €** — Tip `Investicije` nije ni u jednom bucketu | Dionice / Kripto 10 redaka (isplata 9.250,00, uplata 256,84, 01.2023.–03.2024.) · Štednja 1 redak 550,00 (03.2024.) | Investicije **izvan razreza kao Transfer** (preporuka: nije potrošnja nego premještanje u imovinu) ili vlastiti bucket „Štednja i investicije" — zatim `set_breakdown.py` — **✅ ODLUČENO S169 (Saša): izvan razreza** (`outside` = Transfer + Investicije). TEST upisan; `set_breakdown.py` provjera nesvrstanog od S169 gleda **cijelu povijest** (§8.7 korak 4) ⇒ „ništa" |
+| T34 | **Zdravlje / Medical_Koka −18.341,95** (u minusu) | 9 uplata **19.493,19 €** na Kokin ZABA, sve s opisom **„Pharmalog"** (2023.–2025.); stvarni medicinski trošak 1.151,24 € u 21 retku | to su **Kokini prihodi** (honorar), ne povrati ⇒ `Prihodi / Koka` ili novi Podtip `Prihodi / Pharmalog` — **✅ ODLUČENO S169 (Koka, 12.10.): `Prihodi / Koka`**, i uplata **3.000,00 (09.06.2025.)** istog opisa („M-ZABA UPLATA … prijenos na vlastiti račun", bila N/A) je Pharmalog ⇒ 10 redaka, komentar `Pharmalog` na toj jednoj. Izvedba: `ispravi_tip.py` (S169, opći: Tip/Podtip po `event_id` ⇒ app Excel, kol. G = autor) |
+| T35 | **Osiguranje / Zivotno −5.691,96** (u minusu) | 1 uplata **7.782,55 €**, 12.12.2023., Sašin RF, „Triglav životno" — isplata police po isteku | `Prihodi / Saša` ili `Investicije` (s T33 izvan razreza = isti ishod kao povrat uloga) — **✅ ODLUČENO S169 (Saša): `Prihodi / Saša`** (premije ostaju čist trošak Osiguranja); `ispravi_tip.py`, event `445f5f86-…` |
+| T36 | **N/A 27.452,88 € kroz povijest** (12 mj: 2.110,80) | prijedlozi za 12 mj su gotovi: `na_razvrstavanje_kokin_tekuci_zaba_20261007_1049.xlsx`, `…_sasin_tekuci_rf_…_1049.xlsx` (T-S164-3/4) | **S169 (12.10.): Kokin ZABA 10/2025–09/2026 ✅** — 72/72 razvrstano s Kokom (+24 njezina opisa u komentar; tekst banke ostaje u `Izvod opis`), uvezeno na PROD pod Kokinim računom (0 New · 72 Modify, ZABA 11.290,73 nepomaknut). `--preuzmi` od S169 prenosi i komentar. **Ostaje:** RF 12 mj (Saša, `…_sasin_tekuci_rf_20261012_1102.xlsx`); starija povijest (TEST, 12.10.): **ZABA 769 redaka** (2023: 468 · 2024: 152 · 2025: 149), **RF 672** — 2023. većinom bez teksta izvoda ⇒ Koka ih ne može prepoznati. Morra ceramics 17.11.2025.: Koka obrisala `Broj rata`/`Rata br` u fileu (nije preneseno) — odluka Saša u appu (`Rate? = No`?) |
 
 **Preneseno iz backloga (S158)** — puni tekst u §8
 
@@ -502,4 +502,9 @@ nisu bili viđeni. Mjerila skripta po retku (Tip, Podtip, iznos, račun, opis, d
    1.151,24, Zivotno bez uplate.
 4. `set_breakdown.py` provjeru proširiti na **svu povijest** (ne samo 12 mj), da sljedeći stari par
    ne ostane neviđen.
+
+**✅ Izvedeno S169 (12.10.), sva četiri koraka, na PROD-u.** T33 izvan razreza, T34 `Prihodi / Koka`
+(10 redaka, uz 3.000,00 od 09.06.2025.), T35 `Prihodi / Saša`; provjera nesvrstanog gleda cijelu
+povijest. Pločica All Time: Ušlo 189.787,17 · Izašlo 178.592,28 · bez `nesvrstano`, bez minusa na
+razini bucketa. Ostaje: drill do Podtipa (T-S169-5), RF N/A (T-S169-6), starija N/A povijest (T36).
 

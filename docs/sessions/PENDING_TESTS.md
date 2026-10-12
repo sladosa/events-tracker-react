@@ -2,7 +2,24 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S168 (2026-10-11) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S169 (2026-10-12) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S169 — Klasifikacija s Kokom: N/A ZABA, Pharmalog, Investicije, Triglav (2026-10-12)
+
+Odluke T33–T36 izvedene na PROD-u (uvozi pod Kokinim računom, config razreza `set_breakdown.py`). Alati: `razvrstaj_na.py --preuzmi` prenosi i komentar; file za razvrstavanje boji promijenjenu ćeliju svijetloplavo; novi `ispravi_tip.py` (Tip/Podtip po `event_id` ⇒ app Excel); `set_breakdown.py` traži nesvrstano u cijeloj povijesti.
+
+**Detalji testova:** [tests/S169_tests.md](tests/S169_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S169-1 | PROD: Kokin ZABA N/A 10/2025–09/2026 — `--preuzmi` iz razvrstanog TEST filea ⇒ PROD file (kol. G = Koka) ⇒ uvoz | ✅ S169 (12.10., Koka/Saša) — 0 created · 72 updated, ZABA 11.290,73 nepomaknut |
+| T-S169-2 | PROD: Pharmalog 9 + 3.000,00 (09.06.2025.) ⇒ `Prihodi / Koka` (`ispravi_tip.py`) | ✅ S169 (12.10.) — 0 · 10 updated; prihod Koka 99.584,69 |
+| T-S169-3 | PROD: Investicije izvan razreza (`set_breakdown.py --apply --yes-prod`) | ✅ S169 (12.10.) — Izašlo 180.352,89 → 170.809,73 (−9.543,16), `nesvrstano` nestao, „izvan razreza (Transfer, Investicije)" |
+| T-S169-4 | PROD: Triglav 7.782,55 ⇒ `Prihodi / Saša` | ✅ S169 (12.10.) — 0 · 1 updated; Povremeno nužno 22.237,74, Ušlo 189.787,17, Razlika 11.194,89 nepomaknuta |
+| T-S169-5 | PROD All Time drill: Povremeno nužno → Zdravlje → `Medical_Koka` ≈ 1.151 trošak (ne minus); Osiguranje → `Zivotno` pozitivan | ⬜ |
+| T-S169-6 | RF N/A 10/2025–09/2026 (Saša): razvrstaj `…_sasin_tekuci_rf_20261012_1102.xlsx` ⇒ `--preuzmi` na PROD ⇒ uvoz pod Kokinim računom | ⬜ |
 
 ---
 
@@ -32,8 +49,8 @@ Odluke R1–R15 u `docs/RAZREZ_SPEC.md`; skica pločice nad stvarnim podacima. N
 | --- | --- | --- |
 | T-S164-1 | TEST app: Podtip `Osiguranje` = 5 redaka, izbornik pod `Kuća` ga nudi, stari Podtip 128 | ⬜ |
 | T-S164-2 | PROD: backup → dry run (5 ✓) → `--apply --yes-prod` ⇒ `5 od 5 ✓`; u appu 5 / 128, saldo nepomaknut | ✅ S167 (11.10.) — Koka pristala; backup `prod/2026-10-11_1202`, dry run 5 ✓, apply: alat ponovo pročitao bazu `opcija Osiguranje ✓ · 5 od 5 ✓` |
-| T-S164-3 | TEST: uvoz `na_razvrstavanje_*` (RF 6 / ZABA 8 prijedloga) ⇒ 0 New · Modify = razvrstani · 0 Delete; saldo nepomaknut | ⬜ |
-| T-S164-4 | PROD: `razvrstaj_na.py --file --preuzmi <razvrstani TEST fileovi>` (odluke po `event_id`, kol. G = Koka), uvoz pod Kokinim računom; TEST file se na PROD NE uvozi | ⬜ |
+| T-S164-3 | TEST: uvoz `na_razvrstavanje_*` (RF 6 / ZABA 8 prijedloga) ⇒ 0 New · Modify = razvrstani · 0 Delete; saldo nepomaknut | ✅ S169 — nadiđeno: odluke idu `--preuzmi`-om ravno u PROD file (T-S169-1), TEST uvoz nije korak |
+| T-S164-4 | PROD: `razvrstaj_na.py --file --preuzmi <razvrstani TEST fileovi>` (odluke po `event_id`, kol. G = Koka), uvoz pod Kokinim računom; TEST file se na PROD NE uvozi | ✅ S169 — ZABA izveden (T-S169-1); RF ostaje kao T-S169-6 |
 | T-S164-5 | Dugi izbornici abecedno: Tip (N/A prvi, `auto C5` među A), Podtip po atributu; Smjer/Izvor stari red; Structure panel netaknut; Excel export isti red | ✅ **S166, 08.10. TEST** — Add → Tip: `N/A` prvi, `Advokati, auto C5, auto Lacetti, Domaćinstvo, …, Zdravlje` (Saša). Excel export i Structure panel nisu ručno gledani — red u Excelu čuva `optionOrder.test.mjs` |
 
 ---
