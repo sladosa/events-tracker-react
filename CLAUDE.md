@@ -2246,6 +2246,9 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   (Koka ga uvijek treba); klik na otvorenu prebacuje na drugu. Pamti se u **modulu**
   (`OverviewTab`) — preživi drill i povratak, **ne** preživi F5. Dvije otvorene guraju filtar s
   razdobljem predaleko. Sklopljen saldo se **skriva**, ne odmontira (upisano „u banci" ostaje).
+  **S169:** isto vrijedi i ZA UNUTRAŠNJOST razreza — rasklopljeni retci, strana, os i fokus kruga
+  pamte se u modulu `BreakdownTile` (`lastView`, ključ Area + naslov pločice); drill ↗ i povratak ih
+  vraćaju, F5 ne. Čuva E2E `S165_breakdown_tile` „drill ↗ i povratak" (sabotaža pada).
 - **Zadano razdoblje je postavka AREE, ne pločice** (S166, Koka: Financije ⇒ This Year).
   `DateRangeFilter` ga primijeni **jednom po Arei** dok `periodKey = all-time` („čovjek nije
   birao") — modul pamti za koju je Areu primijenjeno, pa ručni *All Time* ostaje, a F5 vraća

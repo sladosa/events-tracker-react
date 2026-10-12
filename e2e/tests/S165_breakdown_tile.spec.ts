@@ -197,6 +197,49 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     await expect(period).toHaveValue('this-year', { timeout: 20_000 });
   });
 
+  test('drill ↗ i povratak: rasklopljeno i strana ostaju; F5 čisti (S169)', async ({ page }) => {
+    // Saša, S169: Povremeno nužno › Osiguranje ↗ pa natrag ⇒ pločica je bila sklopljena.
+    // AppHome odmontira Overview pri odlasku u Activities, a stanje je bilo lokalno.
+    await page.setViewportSize({ width: 390, height: 844 });
+    // Drill traži atribut `tip` u Arei (OverviewTab `drill`) — bez njega javi grešku i ostane.
+    const catId = randomUUID();
+    await supabasePost(page, 'categories', {
+      id: catId, user_id: OWNER_ID, area_id: areaId, parent_category_id: null,
+      name: 'Transakcija', slug: `transakcija-${catId.slice(0, 6)}`, level: 1, sort_order: 1,
+    });
+    await supabasePost(page, 'attribute_definitions', {
+      id: randomUUID(), user_id: OWNER_ID, category_id: catId, name: 'Tip',
+      slug: 'tip', data_type: 'text', is_required: false, sort_order: 1, validation_rules: {},
+    });
+    await mockRpc(page);
+    await openOverview(page);
+    const strip = page.locator('div.p-1.shadow-sm.border-gray-100');
+
+    await page.getByRole('button', { name: /Mjesečni troškovi/ }).click();
+    await expect(page.getByRole('button', { name: /^▸ Prijevoz/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Prikaži retke za Prijevoz' }).click();
+    await expect(page.getByRole('heading', { name: /Kamo ide novac/ })).toHaveCount(0, { timeout: 15_000 });
+
+    await strip.locator('> button').first().click();   // natrag na Overview
+    await expect(page.getByRole('heading', { name: /Kamo ide novac/ })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: /^▸ Prijevoz/ })).toBeVisible({ timeout: 15_000 });
+
+    // Strana (Prihodi) isto preživi odlazak i povratak.
+    await page.getByRole('button', { name: 'Prihodi', exact: true }).click();
+    await expect(page.getByRole('button', { name: /^▸ Prihodi/ })).toBeVisible();
+    await strip.locator('> button').nth(1).click();     // Activities
+    await expect(page.getByRole('heading', { name: /Kamo ide novac/ })).toHaveCount(0, { timeout: 15_000 });
+    await strip.locator('> button').first().click();
+    await expect(page.getByRole('button', { name: /^▸ Prihodi/ })).toBeVisible({ timeout: 15_000 });
+
+    // F5 = novo otvaranje appa ⇒ čisto (i harmonika se vrati na saldo).
+    await page.reload();
+    await expect(page.getByRole('heading', { name: /Kamo ide novac/ })).toBeVisible({ timeout: 20_000 });
+    await page.getByRole('heading', { name: /Kamo ide novac/ }).click();
+    await expect(page.getByRole('button', { name: /Mjesečni troškovi/ })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: /^▸ Prijevoz/ })).toHaveCount(0);
+  });
+
   test('uski ekran: lista bez kruga; harmonika sa saldom, reload vraća saldo', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockRpc(page);

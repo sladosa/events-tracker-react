@@ -1,6 +1,6 @@
 > Pisano protiv commita **S169 ritual** na `test-branch` (zadnji commit = „S169: …").
-> **`main` = `119653c` (deploy 12.10., S168)** — S169 je samo alati + docs, **app kod nije mijenjan**,
-> deploy ne treba. **PROD baza (S169, 12.10.):** 72 ZABA N/A razvrstana, Pharmalog i Triglav u
+> **`main` = `119653c` (deploy 12.10., S168)** — S169 ima **jednu app izmjenu** (razrez pamti
+> rasklopljeno nakon drilla, `BreakdownTile`) ⇒ **čeka deploy** (T-S169-8). **PROD baza (S169, 12.10.):** 72 ZABA N/A razvrstana, Pharmalog i Triglav u
 > prihodima, Investicije izvan razreza (`set_breakdown.py` upisan).
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
@@ -43,7 +43,7 @@ izgledaju udvostručeno (dvije 6/6, dvije 3/6, nema 4/6) — provjeriti s MC izv
 
 ## Stanje
 
-- `test-branch` ispred `main` samo za docs/alate (S167, S169) — nema app koda.
+- `test-branch` ispred `main`: docs/alati (S167, S169) + **`BreakdownTile` pamćenje (S169)** — deploy kad Saša kaže.
 - Novi alat `ispravi_tip.py`; `razvrstaj_na.py --preuzmi` nosi i komentar; `visa_popravak.pisi`
   dodaje svijetloplavi CF na Tip/Podtip; `set_breakdown.py` outside + provjera cijele povijesti.
   TEST: `set_breakdown.py` upisan (isto kao PROD). TEST **nema** S169 Tip/Podtip izmjena (išle su

@@ -66,6 +66,21 @@ function useWide(): boolean {
   return wide;
 }
 
+/** Što je čovjek rasklopio i odabrao (S169, Saša). Modul, ne storage — isti obrazac kao
+ *  `lastOpenTile` u OverviewTab-u: preživi drill ↗ i povratak (AppHome odmontira tab), NE
+ *  preživi F5. Nosi ključ (Area + pločica) za koji vrijedi — tuđe stanje se ne primjenjuje.
+ *  Id-evi čvorova su iz imena (`out/b:…`), pa preživljavaju i ponovno učitavanje; čvor kojeg
+ *  u novom razdoblju nema samo se ne prikaže. */
+interface TileView {
+  key: string;
+  side: 'expense' | 'income';
+  axisIdx: number;
+  open: string[];
+  focusId: string | null;
+}
+let lastView: TileView | null = null;
+const rememberView = (v: TileView) => { lastView = v; };
+
 /** `01.09.–30.09.2026.` ili `01.09.2025.–30.09.2026.` */
 function periodLabel(from: string | null, to: string | null): string {
   if (!from && !to) return 'cijelo razdoblje';
@@ -83,12 +98,17 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
   );
   const dims = useMemo(() => breakdownDims(widget), [widget]);
 
-  const [side, setSide] = useState<'expense' | 'income'>('expense');
-  const [axisIdx, setAxisIdx] = useState(0);
+  const viewKey = `${areaId}|${widget.title}`;
+  const [saved] = useState(() => (lastView?.key === viewKey ? lastView : null));
+  const [side, setSide] = useState<'expense' | 'income'>(saved?.side ?? 'expense');
+  const [axisIdx, setAxisIdx] = useState(saved?.axisIdx ?? 0);
   const [reload, setReload] = useState(0);
-  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const [open, setOpen] = useState<Set<string>>(() => new Set(saved?.open ?? []));
   // Fokus kruga (S166, Saša): klik na isječak suzi i listu na taj dio.
-  const [focusId, setFocusId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(saved?.focusId ?? null);
+  useEffect(() => {
+    rememberView({ key: viewKey, side, axisIdx, open: [...open], focusId });
+  }, [viewKey, side, axisIdx, open, focusId]);
 
   // Sklopiva (§5). Do S166 se pamtila po pregledniku; sada je harmonika s
   // pločicom salda u OverviewTab-u — zadano ZATVORENA (zatvorena ništa ne računa).

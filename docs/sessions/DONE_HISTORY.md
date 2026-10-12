@@ -8942,3 +8942,10 @@ PROD (Saša pokretao alate, Koka/Saša uvozili): Ušlo 189.787,17 · Izašlo 178
 672 redaka mjereno na TEST-u; 2023. većinom bez teksta izvoda). Testovi T-S169-1..6 (1–4 ✅).
 ⚠ Zamka okoline: Python skripta u `$TEMP` povukla je tamošnji `struct.py` (openpyxl puca na
 `struct.calcsize`) — skripte idu u scratchpad, s `python -I`.
+
+**Dopuna istog dana — razrez pamti rasklopljeno (Saša).** Drill ↗ iz „Povremeno nužno › Osiguranje"
+pa povratak vraćao je sklopljenu pločicu: `open`/`side`/`axisIdx`/`focusId` bili su lokalni, a AppHome
+odmontira Overview. Sada modul (`lastView`, ključ Area + naslov), obrazac `lastOpenTile` (S166) — F5
+čisti. E2E u `S165_breakdown_tile` (sije atribut `tip` jer ga drill traži; sabotaža pada na povratku),
+spec 5/5, `check` ✓, build ✓. Usput u alatima: `razvrstaj_na --s-tekstom --po-iznosu`, prozor u
+imenu filea (T-S169-7, fileovi 01/2024–09/2025 napravljeni s PROD-a); T37 Intercar rate 2025.
