@@ -5,6 +5,8 @@ Pregled: [PENDING_TESTS.md](../PENDING_TESTS.md#s169--klasifikacija-s-kokom-na-z
 
 ## T-S169-1 ✅ Kokin ZABA N/A → PROD
 
+Iskorišteni fileovi S169 su u `data-prep_data\Financije\_arhiva\izlazi\` (Kokine odluke = `…_kokin_tekuci_zaba_20261012_0939.xlsx`).
+
 Izmjereno 12.10.: razvrstan TEST file `na_razvrstavanje_kokin_tekuci_zaba_20261012_0939.xlsx`
 (72/72, 24 Kokina opisa) ⇒ `razvrstaj_na.py --file --preuzmi` s `ET_TARGET=prod` ⇒
 `…_20261012_1102.xlsx` (kol. G = Koka 72/72; Tip/Podtip/komentar = TEST file 72/72; razlika samo
@@ -32,7 +34,7 @@ Pločica All Time, Prihodi: Koka **99.584,69**.
 ⇒ uvoz **0 · 1 updated**. Povremeno nužno **14.455,19 → 22.237,74**, Izašlo **178.592,28**,
 Ušlo **189.787,17**, Razlika **11.194,89** nepomaknuta.
 
-## T-S169-5 ⬜ Drill do Podtipa (PROD, All Time)
+## T-S169-5 ✅ (12.10.: Medical_Koka 1.168,23, Zivotno 2.090,59) Drill do Podtipa (PROD, All Time)
 
 Preduvjet: `npm run dev:prod` ili PROD app, Financije_all, filtar All Time, Overview.
 

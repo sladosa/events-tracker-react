@@ -18,7 +18,7 @@ Odluke T33–T36 izvedene na PROD-u (uvozi pod Kokinim računom, config razreza 
 | T-S169-2 | PROD: Pharmalog 9 + 3.000,00 (09.06.2025.) ⇒ `Prihodi / Koka` (`ispravi_tip.py`) | ✅ S169 (12.10.) — 0 · 10 updated; prihod Koka 99.584,69 |
 | T-S169-3 | PROD: Investicije izvan razreza (`set_breakdown.py --apply --yes-prod`) | ✅ S169 (12.10.) — Izašlo 180.352,89 → 170.809,73 (−9.543,16), `nesvrstano` nestao, „izvan razreza (Transfer, Investicije)" |
 | T-S169-4 | PROD: Triglav 7.782,55 ⇒ `Prihodi / Saša` | ✅ S169 (12.10.) — 0 · 1 updated; Povremeno nužno 22.237,74, Ušlo 189.787,17, Razlika 11.194,89 nepomaknuta |
-| T-S169-5 | PROD All Time drill: Povremeno nužno → Zdravlje → `Medical_Koka` ≈ 1.151 trošak (ne minus); Osiguranje → `Zivotno` pozitivan | ⬜ |
+| T-S169-5 | PROD All Time drill: Povremeno nužno → Zdravlje → `Medical_Koka` ≈ 1.151 trošak (ne minus); Osiguranje → `Zivotno` pozitivan | ✅ S169 (12.10., Saša) — Medical_Koka **1.168,23** (uz danas razvrstane ljekarne), Zivotno **2.090,59**, Zdravlje 3.786,76 bez minusa |
 | T-S169-6 | RF N/A 10/2025–09/2026 (Saša): razvrstaj `…_sasin_tekuci_rf_20261012_1102.xlsx` ⇒ `--preuzmi` na PROD ⇒ uvoz pod Kokinim računom | ⬜ |
 
 ---

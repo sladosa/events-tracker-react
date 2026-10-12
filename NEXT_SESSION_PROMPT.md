@@ -25,10 +25,8 @@
 1. **RF N/A** (T-S169-6): prođi `na_razvrstavanje_sasin_tekuci_rf_20261012_1102.xlsx`
    (promijenjena ćelija postane svijetloplava), pa `--preuzmi` na PROD i uvoz **novog** filea
    (koraci u `docs/sessions/tests/S169_tests.md`).
-2. **Morra ceramics 58,50 (17.11.2025.)** — Koka je obrisala broj rata; ako nije obročna kupnja,
-   u appu `Rate? = No`.
-3. **T-S169-5** — drill na pločici (All Time): Medical_Koka ≈ 1.151, Zivotno pozitivan.
-4. Iz S168 i dalje: T-S168-2/3/4 (Structure `Remainder`, prvi Kokin MC plan, Kokin mobitel);
+2. ✅ Morra (`Rate? = No`) i T-S169-5 (Medical_Koka 1.168,23, Zivotno 2.090,59) — zatvoreno 12.10.
+3. Iz S168 i dalje: T-S168-2/3/4 (Structure `Remainder`, prvi Kokin MC plan, Kokin mobitel);
    **~03.11.** Visa izvod, **11.11.** MC traka (D7).
 
 ## Što ostaje od klasifikacije (nije hitno)
