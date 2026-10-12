@@ -46,7 +46,7 @@ Nakon deploya, na Kokinom iPhoneu: otvaranje appa / povratak u listu pokaže kos
 pa retke **s iznosima** — nikad retke bez iznosa. Mehanizam je potvrđen E2E-om (sabotaža: redak
 se pojavi prije kolone iz configa); ovo je potvrda na stvarnoj sporoj mreži.
 
-## T-S168-5 ⬜ D7 — traka pita, ne traži tipkanje (TEST ako ima košaru, inače PROD 11.11.)
+## T-S168-5 ✅ D7 — traka pita, ne traži tipkanje (TEST ako ima košaru, inače PROD 11.11.)
 
 Odluka D7 (`docs/DOSPJELO_SPEC.md` §8). Automatski: E2E `S168_due_quick_confirm` (podmetnuta
 košara; sabotaže „bez pitanja" i „dan unaprijed označen" padaju).

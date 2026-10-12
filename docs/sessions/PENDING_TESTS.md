@@ -18,7 +18,7 @@ Rata modal: ostatak zaokruživanja po kartici iz configa (MC zadnja, Visa prva).
 | T-S168-2 | TEST Structure export: `Automations` kolona `Remainder` = `Mastercard=last \| Visa=first`; ponovni uvoz 0 promjena | ⬜ |
 | T-S168-3 | PROD nakon deploya: `set_rata_ostatak_S168.py --apply --yes-prod` ✓; prvi MC plan „Zadnja…", traka se slaže u cent | ⬜ |
 | T-S168-4 | PROD (praćenje): Kokin iPhone — lista nikad bez iznosa (kostur pa retci s iznosima) | ⬜ |
-| T-S168-5 | D7: traka pita „Je li banka skinula Σ?“ + dani (nijedan označen, bez sutra) ⇒ sažetak ⇒ „Da, upiši“; „drukčije“ = prazna polja; grantee bez pitanja | ⬜ |
+| T-S168-5 | D7: traka pita „Je li banka skinula Σ?“ + dani (nijedan označen, bez sutra) ⇒ sažetak ⇒ „Da, upiši“; „drukčije“ = prazna polja; grantee bez pitanja | ✅ S168 (12.10., TEST, Saša) — nudi 11. i 12. i iznos; „drukčije“ ispravlja; „sve kako treba“. PROD: Koka 11.11. |
 
 ---
 
