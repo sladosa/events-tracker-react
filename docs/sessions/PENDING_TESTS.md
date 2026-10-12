@@ -82,7 +82,7 @@ Samo Python alati i dokumenti, bez promjene u appu. Košara 11.10. na PROD-u = i
 | T-S156-3 | TEST: `2231,02` / 11.07. ⇒ Potvrdi ⇒ redak + 11 statusa, traka nestane | ✅ S157 — zamijenjen T-S157-3 (košara poslije sidra, saldo se mora pomaknuti) |
 | T-S156-4 | TEST: brane — bez dana nema gumba; dan >3 dana od dospijeća crveno; `abc`; izmjena iznosa zatvara kutiju; uska širina | ✅ S157 — zamijenjen T-S157-6 |
 | T-S156-5 | PROD (nakon merge-a), Saša kao grantee: usporedba da, gumb ne, rečenica zašto | ⬜ |
-| T-S156-6 | PROD, Koka, 11.10.: prava MC košara, saldo ZABA isti dan = banka | ⬜ čeka naplatu (v. T-S158-1); očekivano ZABA ≈ 11.257,88 (12.447,22 − 1.189,34) ako nema drugih promjena |
+| T-S156-6 | PROD, Koka, 11.10.: prava MC košara, saldo ZABA isti dan = banka | ✅ S168 (12.10.) — nakon Kokine MC potvrde pločica ZABA **11.290,73 = banka** (uz povrate KEKS Pay +30,00 / +3,73); Koka odmah potvrdila sidro na mobitelu |
 | T-S156-7 | `fill_from_izvod.py --zaba` sa ZABA_2026-10: skupna naplata preskočena (točno ili ≈ ≤3 dana), nikad nov redak | ⬜ |
 
 ---
