@@ -38,6 +38,8 @@ Pokretanje (PowerShell, iz data-prep_tools\\):
     Financije\\run.bat razvrstaj_na.py --od 2025-01-01 --do 2025-12-31 --file
     Financije\\run.bat razvrstaj_na.py --sve --file         cijela povijest (1.513 redaka)
     Financije\\run.bat razvrstaj_na.py --provjera           točnost na razvrstanim retcima
+    … --s-tekstom   samo retci s opisom ili tekstom izvoda (S169; bez toga čovjek ne prepozna)
+    … --po-iznosu   retci od najvećeg iznosa (S169)
     Financije\\run.bat razvrstaj_na.py --file --preuzmi <razvrstan.xlsx> [<drugi.xlsx>]
                     ručne odluke iz ranijeg filea (npr. TEST) po event_id u svjež file OVE baze.
                     TEST file se na PROD NE uvozi (kol. G = TEST vlasnik, PROD retke je upisala Koka).
@@ -300,7 +302,17 @@ def main():
         return
 
     ciljevi = sorted([r for r in u_prozoru if je_na(r)], key=lambda r: r['event_date'])
+    if '--s-tekstom' in sys.argv:
+        # S169: redak bez opisa i bez teksta izvoda čovjek ne može prepoznati (2023.: 11 od 585
+        # ima tekst) — u fileu je samo šum. Ostaje N/A, i to je legitimno.
+        bez = [r for r in ciljevi if not ((r.get('comment') or '').strip()
+                                          or (r['attrs'].get('Izvod opis') or '').strip())]
+        ciljevi = [r for r in ciljevi if r not in bez]
+        print(f'--s-tekstom: izostavljeno {len(bez)} redaka bez opisa i teksta izvoda\n')
     rez = predlozi(redci, ciljevi, rj, tax)
+    if '--po-iznosu' in sys.argv:
+        # S169: s čovjekom se ide od najvećeg iznosa — bolje 20 sigurnih nego 70 napola.
+        rez = sorted(rez, key=lambda x: -abs(net(x[0]['attrs'])))
     if '--preuzmi' in sys.argv:
         rez = preuzmi(rez, [a for a in sys.argv[sys.argv.index('--preuzmi') + 1:]
                             if not a.startswith('--')], tax)
@@ -337,6 +349,9 @@ def main():
             redci_xl.append((r, a, r.get('_kom', r.get('comment')), False,
                              (f'PRIJEDLOG {p[0]} / {p[1]} — ' if p else 'RUČNO — ') + str(dokaz)))
         ime = 'na_razvrstavanje_' + re.sub(r'[^A-Za-z0-9]+', '_', fold(racun)).strip('_')
+        if '--od' in sys.argv or '--do' in sys.argv:
+            # S169: dva prozora istog računa u istoj mapi se inače razlikuju samo po minuti
+            ime += '_' + od_[:7].replace('-', '') + '-' + do_[:7].replace('-', '')
         visa_popravak.pisi(redci_xl, {}, ime, tax=tax, izgled=izgled_pregleda)
     print('\nUvoz: vlasnica Aree (Koka, ili Saša pod njezinim računom), tuđi retci „fix as owner".'
           '\nOčekivani pregled: 0 New · Modify = broj redaka koje je pregled ostavio s Tipom · 0 Delete.')

@@ -33,7 +33,9 @@
 
 `nerazvrstano (N/A)` **29.056,73** na All Time = starija povijest (ZABA 769, RF 672 redaka).
 2023. je većinom bez teksta izvoda ⇒ ostaje N/A. **2025. siječanj–rujan (ZABA 149)** se isplati
-istim postupkom (`--od 2025-01-01 --do 2025-09-30`) — sada s 72 Kokine odluke više kao presedanima.
+istim postupkom — **pripremljeno (T-S169-7)**: `--od 2024-01-01 --do 2025-09-30 --s-tekstom --po-iznosu
+--file` s PROD-a (ZABA 258 / RF 384 redaka, od najvećeg iznosa). ⚠ **T37**: Intercar rate 2025.
+izgledaju udvostručeno (dvije 6/6, dvije 3/6, nema 4/6) — provjeriti s MC izvodom prije Koke.
 
 ---
 
