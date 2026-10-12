@@ -1,6 +1,6 @@
 > Pisano protiv commita **S168 ritual** na `test-branch` (zadnji commit = „S168: ritual …").
-> **`main` = `119653c` (deploy 12.10., S168)** — sve do S168 je na PROD-u. Ostaje samo
-> `set_rata_ostatak_S168.py --apply --yes-prod` (T-S168-3; T-S168-1 ✅ na TEST-u).
+> **`main` = `119653c` (deploy 12.10., S168)** — sve do S168 je na PROD-u, uključujući
+> `remainder_map` (MC last) u PROD bazi. MC potvrda 12.10. ✓, ZABA = banka (11.290,73), sidro potvrđeno.
 > **PROD baza (S167, 11.10.):** R3 ✓ · `Popravci, održavanje` ✓ · `056` ✓ · razrez + This Year ✓.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
@@ -28,10 +28,9 @@
 
 1. **T-S168-1/2 na TEST-u** (5 min; T-S168-5 traku prati Koka na PROD-u 11.11. ili TEST ako ima košaru): probni MC plan 55,45 / 3 rate ⇒ modal 18,49 · 18,49 · 18,47
    „Zadnja rata…"; Visa 37,48 / 3 ⇒ 12,50 · 12,49 · 12,49; Structure export ima kolonu `Remainder`.
-2. **Deploy** kad testovi prođu (PowerShell blok iz CLAUDE.md § End of session 11), zatim
-   `set_rata_ostatak_S168.py --apply --yes-prod` (T-S168-3). Koka nakon deploya: zatvoriti i
-   ponovo otvoriti app.
-3. **Koka:** MC potvrda u traci kad naplata sjedne u banci (11.10. još nije); ZABA tada ≈ 11.257,88.
+2. ✅ Deploy + `set_rata_ostatak_S168.py` (12.10.). Prati: prvi Kokin MC plan → „Zadnja rata…“ (T-S168-3),
+   Kokin mobitel → lista nikad bez iznosa (T-S168-4), MC 11.11. → traka pita (D7).
+3. ✅ Koka: MC potvrda 12.10. (stari način), ZABA = banka, sidro potvrđeno.
 4. **Odluke T33–T36** (`docs/FINANCIJE_PROCES.md` §4) — s Kokom na laptopu. **~03.11.** Visa izvod.
 
 ---
