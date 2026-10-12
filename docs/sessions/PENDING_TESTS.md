@@ -14,7 +14,7 @@ Rata modal: ostatak zaokruživanja po kartici iz configa (MC zadnja, Visa prva).
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S168-1 | TEST rata modal: MC 55,45/3 ⇒ 18,49 · 18,49 · 18,47 „Zadnja…"; Visa 37,48/3 ⇒ 12,50 · 12,49 · 12,49 „Prva…" | ⬜ |
+| T-S168-1 | TEST rata modal: MC 55,45/3 ⇒ 18,49 · 18,49 · 18,47 „Zadnja…"; Visa 37,48/3 ⇒ 12,50 · 12,49 · 12,49 „Prva…" | ✅ S168 (12.10., TEST, Saša) — MC 18.49 · 18.49 · 18.47 „Zadnja…“, Visa 12.50 · 12.49 · 12.49 „Prva…“ |
 | T-S168-2 | TEST Structure export: `Automations` kolona `Remainder` = `Mastercard=last \| Visa=first`; ponovni uvoz 0 promjena | ⬜ |
 | T-S168-3 | PROD nakon deploya: `set_rata_ostatak_S168.py --apply --yes-prod` ✓; prvi MC plan „Zadnja…", traka se slaže u cent | ⬜ |
 | T-S168-4 | PROD (praćenje): Kokin iPhone — lista nikad bez iznosa (kostur pa retci s iznosima) | ⬜ |
@@ -60,7 +60,7 @@ Samo Python alati i dokumenti, bez promjene u appu. Košara 11.10. na PROD-u = i
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S158-1 | PROD, Koka, 11.10.: traka 55 stavki / 1.189,34 ⇒ ✓ slaže se ⇒ Potvrdi (isti trenutak kao T-S156-6) | ⬜ **11.10. (nedjelja): MC u banci još nije skinut** — Koka potvrđuje kad sjedne, s bankinim datumom |
+| T-S158-1 | PROD, Koka, 11.10.: traka 55 stavki / 1.189,34 ⇒ ✓ slaže se ⇒ Potvrdi (isti trenutak kao T-S156-6) | ✅ S168 (12.10.) — Koka potvrdila na PROD-u (stari način, prije deploya D7) |
 | T-S158-2 | `MC_2026-10`: rate i naknade NISU u `ZA UVOZ` (već u bazi); 11.11. razlika = samo neupisane kupovine | ⬜ |
 | T-S158-3 | `rate_alat --only b` nakon uvoza nudi 0 rata (ne generira dvaput) | ✅ S158 — izmjereno: 0 planova / 0 rata |
 | T-S158-4 | Visa rujan: razvrstač daje `PBZVISA_`, `visa_uvoz_izvoda` samo imenom, zaglavlje `[PROD]`, Σ u cent | ⬜ |

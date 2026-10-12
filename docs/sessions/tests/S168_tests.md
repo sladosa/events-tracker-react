@@ -8,7 +8,7 @@
 > (+7 za `Remainder`), E2E `S168_list_waits_for_columns` (sabotaža ruši).
 > Naredbe: PowerShell iz `data-prep_tools\` (`cd C:\0_Sasa\events-tracker-react\data-prep_tools`).
 
-## T-S168-1 ⬜ TEST — rata modal: MC zadnja, Visa prva
+## T-S168-1 ✅ TEST — rata modal: MC zadnja, Visa prva
 
 Preduvjet: `npm run dev` (banner **TEST**), `Financije_all > Transakcija`, **Ctrl+Shift+R**.
 

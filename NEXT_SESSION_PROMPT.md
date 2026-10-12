@@ -1,5 +1,6 @@
 > Pisano protiv commita **S168 ritual** na `test-branch` (zadnji commit = „S168: ritual …").
-> **`main` = `45087b7` (deploy 08.10.)** — **S168 mijenja app kod ⇒ čeka deploy** (Saša).
+> **`main` = `119653c` (deploy 12.10., S168)** — sve do S168 je na PROD-u. Ostaje samo
+> `set_rata_ostatak_S168.py --apply --yes-prod` (T-S168-3; T-S168-1 ✅ na TEST-u).
 > **PROD baza (S167, 11.10.):** R3 ✓ · `Popravci, održavanje` ✓ · `056` ✓ · razrez + This Year ✓.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.

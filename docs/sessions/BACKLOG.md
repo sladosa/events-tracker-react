@@ -35,6 +35,11 @@
   „dođu sami". Hipoteza iz koda, ne mjerenje. Prijedlog: dok config **za ovu Areu** nije poznat
   (`loadedFor`, razred BUG-S145-OVERVIEWTAB), lista ne crta zadane kolone nego čeka (skeleton).
   Ako se pokaže s trakom „Nisam uspio učitati postavke", onda je to drugi kvar (palo čitanje).
+- **`Rate?` = Yes bez `Broj rata` sprema se tiho (S168, Saša na T-S168-1)** — rata modal traži
+  broj rata > 1 (`detectRata`), pa redak s kvačicom „na rate" i praznim brojem prođe bez modala i
+  bez riječi; Koka bi dobila redak koji tvrdi da je plan, a rata nema. Prijedlog: Finish pita
+  „Rate? je Yes, a broj rata je prazan — upiši broj ili makni kvačicu" (forma, ne baza; isto
+  mjesto kao `requiredAttributes.ts`). Ne dirati Excel uvoz (povijest nosi takve retke).
 - **Filtar na malom ekranu je predug kad je otvoren (S167, Koka)** — na uskom iPhoneu se polja
   slažu jedno ispod drugog, pa otvoren filtar gura listu i Overview daleko dolje. Saša je uči da
   ga zatvori. Prijedlog za razmisliti: filtar se sam sklopi nakon odabira kategorije/razdoblja,
