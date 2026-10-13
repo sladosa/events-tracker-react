@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 129 | [Critical rules](<#Critical rules>) | X |
-| 1275 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1749 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1765 | [Key files](<#Key files>) |  |
-| 1888 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1908 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1931 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1959 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1999 | [Open bugs](<#Open bugs>) | ~ |
-| 2108 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2153 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2280 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2288 | [Backlog](<#Backlog>) | ~ |
-| 2292 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2300 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1283 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1757 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1773 | [Key files](<#Key files>) |  |
+| 1896 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1916 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1939 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1967 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2007 | [Open bugs](<#Open bugs>) | ~ |
+| 2116 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2161 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2288 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2296 | [Backlog](<#Backlog>) | ~ |
+| 2300 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2308 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2464 redaka, 18 sekcija._
+_Ukupno 2472 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -604,8 +604,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   žig **ili** sidro — ali sidro samo za redak koji **prolazi filtre pločice** (`passesFilters`):
   kartični redak saldo nikad ne broji, pa mu rečenica „izmjena ne pomiče saldo" laže (izmjereno
   T-S155-4). Tip/Podtip/opis nikad ne pale okvir. Popis bankinih polja se IZVODI iz configa pločice
-  i pravila, bez novog ključa. ⚠ Excel guard (S143) i kolona `Potvrda` sidro još primjenjuju i na
-  kartice — dva mjesta, Backlog.
+  i pravila, bez novog ključa. ✅ **S170 (T21): isto pravilo i na Excel uvozu i u koloni `Potvrda`**
+  (`inBalanceBeforeOrAfter`; uvoz gleda saldo PRIJE ili POSLIJE izmjene — `Visa → Racun` ispred
+  sidra i dalje pita).
 - **⚠ TRAKA „ČEKA POTVRDU" UPISUJE REDAK PA STATUSE, I PREPOZNAJE — NE VEŽE — SKUPNI REDAK** (S156).
   Skupni redak je „već upisan" ako postoji redak s opisom = `due.baskets[k].text`, na računu
   košare, sa svim `settle` atributima, ≤ 3 dana od dospijeća (`matchSettleRow`). Bez veze u bazi
@@ -613,6 +614,13 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ Prozor od 3 dana živi na **dva** mjesta — `SETTLE_WINDOW_DAYS` (`dueBaskets.ts`) i `DATE_TOL`
   (`fill_from_izvod.py`). Raziđu li se, traka i alat drukčije odgovore na „je li već upisano" ⇒
   drugi skupni redak, a on **miče saldo**.
+  ⚠ **S170: prozor i mjera su PO KOŠARI** (`due.baskets[k].window {before, after}`, `measure`).
+  Visa = `{2, 6}` oko procjene 5. (banka 3.–11.) i **`gross`** — košara nosi zrcalo naplate
+  (`PRIMLJENA UPLATA`), neto bi dao 126,84 umjesto 1.409,63. Bez ključeva = MC ponašanje (±3, neto).
+  Visin skupni redak upisuje `visa_uvoz_izvoda.py` (opis `Visa`, staje na sličan redak ±3 dana od
+  stvarne naplate) — `DATE_TOL` uspoređuje bankin dan s bankinim, pa ga širi prozor ne dira.
+  ⚠ Visa config (`set_due_visa_S170.py`) ide na PROD **tek poslije deploya** — stari bundle bi
+  Visu računao neto i ±3.
   ⚠ Redoslijed je invarijanta: pad između upisa retka i statusa ostavlja košaru koja nudi samo
   „prebaci statuse". Obrnuto bi ostavilo `Izvrsen` kupovine bez naplate i praznu traku.
   ⚠ Novi „stvori redak iz appa" ide kroz `insertEntry.ts` (slobodna minuta, P2) — ne kopija Add bloka.

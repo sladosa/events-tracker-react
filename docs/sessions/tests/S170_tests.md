@@ -59,3 +59,46 @@ filtar je ostajao na **All Time**.
 1. DevTools → Network, filtar `rpc_category` ⇒ Structure tab ⇒ **1** zahtjev po učitavanju.
 2. Filtar `events?select=id` ⇒ **0** HEAD zahtjeva (prije: 39 po učitavanju; izmjereno na TEST-u 156 → 0 u istom toku).
 3. Brojke `N events` / `no events yet` uz kategorije iste kao prije; `Transakcija` ne nudi Add Child (brava S24).
+
+---
+
+## Drugi dio sesije — Visa u traci (T2), T21, T12
+
+## T-S170-8 PROD: Visa u config trake (Saša, POSLIJE deploya)
+
+⚠ Tek nakon deploya: stari bundle ne zna `window`/`measure`, pa bi Visu računao neto i ±3 dana.
+```powershell
+cd C:\0_Sasa\events-tracker-react\data-prep_tools
+$env:ET_TARGET='prod'; .\Financije\run.bat set_due_visa_S170.py
+```
+1. Zaglavlje `[PROD]`. Ispis „Visa „Planiran" po dospijeću" — redak s `← ODMAH U TRACI` je ono što će Koka vidjeti odmah.
+   ⚠ Ako se pojavi stara košara **03.10.** (doba `next:3`), prvo izvod kroz `visa_uvoz_izvoda.py` (ispravlja datume), pa tek config.
+2. `... set_due_visa_S170.py --apply --yes-prod` ⇒ `U bazi: Visa ✓ · ostale postavke netaknute ✓`.
+
+## T-S170-9 PROD (~03.–11.11.): prva Visa košara u traci
+
+1. Overview → traka „Čeka potvrdu": `Visa · naplata 05.11.2026. · N stavki`, Σ s oznakom **(samo isplate)**.
+2. Brzi izbor dana: od **03.11.** do danas (najviše 11.11.).
+3. Kad PBZ naplata sjedne na RF: dodir dana ⇒ sažetak ⇒ „Da, upiši" ⇒ RF redak opisa `Visa`, `Transfer / izmedju racuna`.
+4. Kontrola: `visa_uvoz_izvoda.py` s tim izvodom kaže `RF naplata … ✓ već upisana` (ne dodaje drugi).
+- **Pad:** Σ manji od PBZ naplate za iznos `PRIMLJENA UPLATA` (= neto), ili alat dodaje drugi redak naplate.
+
+## T-S170-10 TEST: uvoz ne traži kvačicu „potvrđeno" za kartični redak (T21)
+
+1. `npm run dev`, `Financije_all`, Excel export retka **prije zadnjeg sidra** ZABA: jedan `Izvor = Mastercard`, jedan `Izvor = Racun`.
+2. U fileu promijeni opis/iznos na oba ⇒ Import.
+3. **Očekivano:** pregled javlja „potvrđeno" (i traži kvačicu) **samo za Racun** redak; MC redak je obična izmjena.
+4. Ponovi s MC retkom kojem `Izvor` mijenjaš u `Racun` ⇒ kvačica se traži (ulazi u saldo).
+
+## T-S170-11 TEST: delta sheet — Σ košara jednog dospijeća (T12)
+
+1. Export → Delta (ZABA), file otvori u Excelu.
+2. Kontrola košare: `Σ košara za naplatu (dan desno)` | Σ | **dan** (najbliže dospijeće, npr. 11.10. ili 11.11.).
+3. Σ = samo retci s tim `Datum naplate`; upiši drugi dan (npr. 11.12.) ⇒ Σ se promijeni.
+4. Kolona `Potvrda` (ako prozor nosi sidro): kartični retci u glavnom bloku **bez** oznake „potvrđeno".
+
+## T-S170-12 `fill_from_izvod` vidi kontrolu košare i kad list nosi kolonu `Potvrda` (T12)
+
+Delta sheet iz T-S170-11 (sa sidrom u prozoru) + `fill_from_izvod.py --zaba … --mc …` koji dopisuje kartične retke.
+**Očekivano:** `Σ kosare prosirena do retka N` — **ne** „List nema kontrolu košare".
+(Izmjereno na generiranom fileu 13.10.: `last_col = Potvrda`, `ctrl_col = Stanje (kontrola)`, svi rasponi do 99.)

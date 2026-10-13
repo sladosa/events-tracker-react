@@ -171,7 +171,7 @@ Stavka se miče kad je izvedena, ne kad je opisana.
 | # | što škripi | smjer |
 | --- | --- | --- |
 | T1 | **Uvoz Excela** za svaki izvod — na mobitelu najskuplji korak koji radi | ploha „Raščišćavanje izvoda" (§6): samo iznimke, u aplikaciji |
-| T2 | **Visa nije u traci** — Visa naplata ide preko Saše i izvoda | Visa u traku (Backlog C5, ~05.11.) |
+| T2 | **Visa nije u traci** — Visa naplata ide preko Saše i izvoda | Visa u traku (Backlog C5, ~05.11.) — **✅ kod S170** (prozor −2/+6, Σ bruto, `set_due_visa_S170.py`; TEST config ✓). PROD: deploy pa config (T-S170-8), prva košara ~05.11. (T-S170-9) |
 | T3 | Neusklađena MC košara **ne kaže gdje tražiti** | „Gdje bi mogla biti razlika?" (Backlog C5 — čeka prvu stvarnu razliku) |
 
 **Sašino trenje**
@@ -195,7 +195,7 @@ samo on zna.
 | T24 | **`fill_from_izvod --mc` od S126 nikad nije prepoznao ratu**: u regexu je stajao pravi znak backspace (`\x08`) umjesto `\b`, pa nove rate s izvoda nisu dobivale `Rate?`/`Broj rata`/`Rata br`. Izmjereno: 38 MC rata bez oznake (12 iz uvoza 02.10.) | ✅ regex popravljen S158. **Ostaje:** `rate_alat.py --only a` (higijena, 91 redak, i Visa) → uvoz — sljedeća sesija |
 | T25 | Kokina OneDrive mapa `Izvodi` raste i nosi **generička imena**: MC stiže kao `Obavijest o učinjenim troškovima.pdf` — **svaki mjesec isto ime**, pa sljedeći izvod dobije `(1)` ili prepiše prethodni, a čovjek ne vidi što je što | ✅ **Odluka Saša S158: preimenovati u inboxu** u isto ime kao kod nas (`MC_2026-09.pdf` — izveden ručno 02.10.; razvrstač ga i dalje prepoznaje po sadržaju, „već imamo"). ✅ **Razvrstač to radi sam uz `--apply`** (S158; samo preimenovanje, nikad brisanje ni prepisivanje zauzetog imena — testirano u pješčaniku). Podmapa `Obrađeno`: još otvoreno |
 | T22 | **Rata modal dijeli ostatak kao Visa i za MC.** Banka: Visa ostatak na **prvoj** rati (28/28), MC na **zadnjoj**, rata zaokružena naviše (16/16). MC plan s nedjeljivim iznosom iz appa zato odstupa od banke za cent ⇒ traka „neusklađeno" | ✅ **S168 na TEST-u:** `automations.rata.remainder_map` (`Mastercard=last`), Structure kolona `Remainder`; PROD = deploy + `set_rata_ostatak_S168.py` (T-S168-1/2) |
-| T12 | **Delta „Σ košara" zbraja SVE buduće naplate** (11.10. + 11.11. + 11.12. = 1.185,38) i uspoređuje ih s **jednom** naplatom ⇒ razlika 3,96 izgledala je kao sitnica, a stvarna je bila 329,76. Uz to `fill_from_izvod` javlja „list nema kontrolu košare" iako je ima | Σ po **jednom** dospijeću (najbližem), ili po dospijeću zasebno — **kod, deltaSheet** |
+| T12 | **Delta „Σ košara" zbraja SVE buduće naplate** (11.10. + 11.11. + 11.12. = 1.185,38) i uspoređuje ih s **jednom** naplatom ⇒ razlika 3,96 izgledala je kao sitnica, a stvarna je bila 329,76. Uz to `fill_from_izvod` javlja „list nema kontrolu košare" iako je ima | Σ po **jednom** dospijeću (najbližem), ili po dospijeću zasebno — **kod, deltaSheet** **✅ S170:** Σ po jednom dospijeću (dan u ćeliji desno, najbliži); `fill_from_izvod` nalazi kontrolu po naslovu (T-S170-11/12). |
 | T13 | **Redak s malo drugačijim iznosom alat dopisuje kao NOV** ⇒ duplikat. Ovdje 4: tečaj (Audible 8,99 USD → 8,11 €, toner 3,45 → 3,49), cent ostatka rate (Konzum 15,36 → 15,37), i redak bez opisa (28,79 → FENGHUA 33,10, isti dan) | isti račun, isti dan ±2, jedini neupareni s obje strane ⇒ **ispravak postojećeg** (iznos s izvoda, opis i `Tip` naši). ✅ **Visa: izvedeno S161** (`visa_uvoz_izvoda`, ±2 dana, ≤15 %). MC (`fill_from_izvod`) ostaje |
 | T14 | **Nitko ne traži duplikate u košari**: plan Plitvice upisan dvaput (Koka 07.09., Saša 12.09.), „Hlace i carape" dvaput (drugi dan, unatrag) | alat uz sparivanje prijavi **višak**: dva retka a jedan na izvodu; za plan rata ključ je izvorna kupovina (T15). ✅ **Visa: prijavljuje S161** (`DUPLIKAT?` → `--brisi=<id8>`). MC ostaje |
 | T15 | **Parser baca redak u zagradi** ispod rate: `(B080262578769884 12.09.26 135 EUR)` = **datum i ukupni iznos izvorne kupovine**. Iz njega se Plitvice riješio (kupljeno 12.09.) | čitati ga: jedan plan = jedna referenca; rata dobije **dan kupnje** (D1b — danas nove rate dobiju datum knjiženja 28.09.) |
@@ -204,7 +204,7 @@ samo on zna.
 | T18 | **Komentar se ne upisuje kad povijest nije jednoglasna** (`Allianz` / `Alianz`, `Keindl` / `KEINDL SPORT…`) | rata ⇒ `<Trgovac> n/N`; inače najčešći oblik |
 | T19 | `uskladi_izvod` predlaže `Status → Izvrsen` **prije naplate** — proturječi S147 | do naplate samo `Izvod opis` (žig) i ispravci; `Izvrsen` radi traka |
 | T20 | 2 retka u košari **bez `Status`a** — ušli Excel uvozom, koji ne postavlja zadani `Status` (S137) | alat koji piše uvozni file uvijek postavlja `Status`; trajno: Faza 3 (`docs/FAZA3_IMPORT_AUTOMATIKA.md`) |
-| T21 | Uvoz traži kvačicu „potvrđeno razdoblje" i za **kartične** retke prije sidra — lažna uzbuna (Backlog, S155) | guard samo za retke koji ulaze u saldo, kao C3c u Editu |
+| T21 | Uvoz traži kvačicu „potvrđeno razdoblje" i za **kartične** retke prije sidra — lažna uzbuna (Backlog, S155) | guard samo za retke koji ulaze u saldo, kao C3c u Editu **✅ S170:** `inBalanceBeforeOrAfter` + kolona `Potvrda` s uvjetima pločice (T-S170-10). |
 
 **Klasifikacija koju je otkrila pločica „Kamo ide novac" (S166, 08.10.2026.)** — puni tekst u §8.7
 
