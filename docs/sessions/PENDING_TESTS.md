@@ -24,7 +24,7 @@
 | T-S170-8 | PROD **poslije deploya**: `set_due_visa_S170.py` dry ⇒ popis Visa košara; `--apply --yes-prod` ⇒ `Visa ✓ · ostale netaknute ✓` | ⬜ |
 | T-S170-9 | PROD ~03.–11.11.: Visa košara u traci, Σ „(samo isplate)“, dani od 03.11.; potvrda ⇒ `visa_uvoz_izvoda` kaže „već upisana“ | ⬜ |
 | T-S170-10 | TEST: Excel izmjena retka prije sidra — kvačica „potvrđeno“ za `Racun`, NE za `Mastercard`; MC→Racun ⇒ traži | ⬜ |
-| T-S170-11 | TEST: delta ZABA — Σ košara jednog dospijeća (dan desno, najbliži); drugi dan ⇒ drugi Σ; `Potvrda` prazna na kartičnim retcima | ⬜ |
+| T-S170-11 | TEST: delta ZABA — Σ košara jednog dospijeća (dan desno, najbliži); drugi dan ⇒ drugi Σ; `Potvrda` prazna na kartičnim retcima | ✅ S170 (13.10., Saša, TEST) — sekcija KOSARA u grupama po datumu naplate (+/−), izbornik dana uz Σ, odabrana košara žuta; „file je ok“. Usput: TEST nije imao `split.due_slug` (044) — poravnato |
 | T-S170-12 | `fill_from_izvod` nad delta sheetom sa sidrom u prozoru ⇒ „Σ kosare prosirena“, ne „List nema kontrolu“ | ⬜ |
 
 ---

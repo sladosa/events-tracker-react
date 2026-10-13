@@ -97,6 +97,8 @@ $env:ET_TARGET='prod'; .\Financije\run.bat set_due_visa_S170.py
 3. Σ = samo retci s tim `Datum naplate`; upiši drugi dan (npr. 11.12.) ⇒ Σ se promijeni.
 4. Kolona `Potvrda` (ako prozor nosi sidro): kartični retci u glavnom bloku **bez** oznake „potvrđeno".
 
+**Dorada istog dana (Sašin prijedlog):** sekcija je složena po košarama; ispred svake košare redak-oznaka `naplata dd.mm.yyyy · n stavki` s gumbom `+`/`−` (1/2 = sve); dan uz Σ ima padajući izbornik; odabrana košara se oboji žuto. Otvaranje grupa po izboru datuma namjerno NE (formula ne može, makro ne radi na mobitelu).
+
 ## T-S170-12 `fill_from_izvod` vidi kontrolu košare i kad list nosi kolonu `Potvrda` (T12)
 
 Delta sheet iz T-S170-11 (sa sidrom u prozoru) + `fill_from_izvod.py --zaba … --mc …` koji dopisuje kartične retke.
