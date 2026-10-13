@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 129 | [Critical rules](<#Critical rules>) | X |
-| 1283 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1757 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1773 | [Key files](<#Key files>) |  |
-| 1896 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1916 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1939 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1967 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2007 | [Open bugs](<#Open bugs>) | ~ |
-| 2116 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2161 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2288 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2296 | [Backlog](<#Backlog>) | ~ |
-| 2300 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2308 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1293 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1767 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1783 | [Key files](<#Key files>) |  |
+| 1910 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1930 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1953 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1981 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2021 | [Open bugs](<#Open bugs>) | ~ |
+| 2130 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2175 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2302 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2310 | [Backlog](<#Backlog>) | ~ |
+| 2314 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2322 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2472 redaka, 18 sekcija._
+_Ukupno 2486 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -905,6 +905,16 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ZABA` ⇒ 79 RF eventa u upitu, **0 redaka** u sheetu, gumb „Download Excel (RF)",
   file `delta_Kokin_teku_i_ZABA_*.xlsx`, bez ijedne poruke.
   Lijek: `deriveDeltaAccount()` + upozorenje kad je sekcija prazna.
+- **⚠ SEKCIJA KOŠARE NOSI RETKE-OZNAKE — položaj retka nije indeks** (S170, Sašin prijedlog).
+  Sekcija je složena po košari (datum naplate, pa kupnje) i **prije svake košare** pisač ostavlja
+  redak bez `Area` (`trailing.labelRows`) — Excel bi susjedne grupe iste razine stopio u jednu.
+  Duljina sekcije je `plannedCount + plannedGroups`; tko traži retke sekcije, traži po `event_id`
+  (kol. A), ne `pFrom + i`. Gumb grupe je na oznaci (`outlinePr summaryBelow=0`).
+  ⚠ Izbornik dana uz Σ čita **ćelije s datumima** (skriven stupac `ctrlCol + 3`): tekstualni
+  popis bi upisao TEKST, a `INT(tekst)` u Σ ne daje dan. Datumi su podne, ručni unos ponoć ⇒ Σ
+  ide kroz `>= INT(dan)` i `< INT(dan)+1`, nikad jednakost.
+  ⚠ Otvaranje grupe po izboru datuma **namjerno ne postoji** — formula ne može, makro (.xlsm) ne
+  radi u Excelu na mobitelu. Izbor zato samo boji.
 - **Sekcija „planirano" ide ISPOD praznih redaka** (S123), odvojena praznim
   retkom. Piše je **isti pisač redaka** (`trailing` u `addActivitiesSheetsTo`), pa
   nosi ispravan `row_hash` i dropdowne — logika retka se nigdje ne duplicira.
@@ -1813,6 +1823,10 @@ data-prep_tools/Tools/prod_to_test.py
                                    zadano dry run, `--apply` zamjenjuje TEST Areu i na
                                    kraju BROJI u bazi (= PROD ili ✗). Svi retci pod TEST
                                    vlasnikom; `areas.settings` se NE prenosi.
+                                   ⚠ Zato TEST config ZAOSTAJE za PROD-om: config
+                                   migracije (037, 041, 044, 054…) treba pustiti i na TEST.
+                                   Izmjereno S170: bez `split.due_slug` (044) delta je
+                                   izašla u starom obliku i izgledala kao kvar koda.
                                    /!\ Prije --apply: `backup_db.py --env test --no-files`.
 data-prep_tools/Tools/rls_probe.py Sto RLS STVARNO dopusta, po ulozi. Svaka proba
                                    u vlastitoj transakciji s ROLLBACK-om.

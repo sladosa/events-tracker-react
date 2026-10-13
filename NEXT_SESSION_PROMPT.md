@@ -1,47 +1,55 @@
-> Pisano protiv commita **S169 ritual** na `test-branch` (zadnji commit = „S169: …").
-> **`main` = `119653c` (deploy 12.10., S168)** — S169 ima **jednu app izmjenu** (razrez pamti
-> rasklopljeno nakon drilla, `BreakdownTile`) ⇒ **čeka deploy** (T-S169-8). **PROD baza (S169, 12.10.):** 72 ZABA N/A razvrstana, Pharmalog i Triglav u
-> prihodima, Investicije izvan razreza (`set_breakdown.py` upisan).
+> Pisano protiv commita **S170 ritual** na `test-branch` (zadnji commit = „S170: zatvaranje …").
+> **`main` = `119653c` (deploy 12.10., S168)** — na `test-branch` čeka **S169 + S170** (jedan build).
+> **PROD baza (S170, 13.10.):** `sql/057` pušten (Saša) ✓. Visa config **NIJE** na PROD-u — ide tek
+> poslije deploya (`set_due_visa_S170.py`).
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S169 (2026-10-12)
+# Sljedeća sesija — nakon S170 (2026-10-13)
 
-> **Ukratko (S169):** S Kokom smo razvrstali svih 72 neodređenih transakcija na njezinom računu iz zadnjih godinu dana i potvrdili da su Pharmalog uplate njezin prihod, a Investicije i isplata Triglav police su maknute iz troškova — pločica „Kamo ide novac" kroz cijelu povijest više nema ni „nesvrstano" ni stavki u minusu.
+> **Ukratko (S170):** Filtar sada nudi izbornik i za Izvor, Podtip i Status, aplikacija se otvara bez 1,7 MB koje nije trebala, Structure broji jednim upitom umjesto stotinu, Visa je spremna za traku „Čeka potvrdu“, a delta sheet pokazuje košare po mjesecima s izbornikom i bojom.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Što je napravljeno (sve na PROD-u)
+## Što je napravljeno (na `test-branch`, čeka deploy)
 
-- Kokin ZABA: svih 72 N/A iz zadnjih 12 mj razvrstano, uz 24 njezina opisa.
-- Pharmalog (10 uplata, 22.493,19 €) → `Prihodi / Koka`; Triglav 7.782,55 → `Prihodi / Saša`.
-- Investicije (9.543,16) su izvan razreza, kao Transfer.
-- Pločica All Time: Ušlo 189.787,17 · Izašlo 178.592,28 · nema „nesvrstano".
+- **Filtar:** `Izvor`, `Podtip` (grupiran po `Tip`u), `Status` imaju izbornik. Provjereno: 18 / 22.
+- **Add:** `Rate?` bez broja rata se ne sprema tiho; gumb „Kreiraj 3 rate".
+- **Brže otvaranje:** 2.036 → 269 KB (krug i Excel se skidaju tek kad zatrebaju). Kokin iPhone!
+- **Financije se uvijek otvaraju na This Year** (bio je rijedak kvar koji je vraćao All Time).
+- **Structure tab:** jedan upit za brojanje umjesto 39 po učitavanju (`057` već na PROD-u).
+- **Visa u traci „Čeka potvrdu"** — kod spreman, uključuje se configom poslije deploya.
+- **Excel uvoz** više ne traži kvačicu „potvrđeno" za kartične retke.
+- **Delta sheet:** košare po mjesecima, `+`/`−` po košari, izbornik dana uz Σ, odabrana košara žuta.
 
 ## Što treba od tebe
 
-1. **RF N/A** (T-S169-6): prođi `na_razvrstavanje_sasin_tekuci_rf_20261012_1102.xlsx`
-   (promijenjena ćelija postane svijetloplava), pa `--preuzmi` na PROD i uvoz **novog** filea
-   (koraci u `docs/sessions/tests/S169_tests.md`).
-2. ✅ Morra (`Rate? = No`) i T-S169-5 (Medical_Koka 1.168,23, Zivotno 2.090,59) — zatvoreno 12.10.
-3. **ODGOĐENO (12.10. nije stiglo, 13.10. Koke nema) — idući termin s Kokom:** razvrstavanje
-   01/2024–09/2025 (T-S169-7; ZABA `…_kokin_tekuci_zaba_202401-202509_20261012_1154.xlsx`).
-   Fileovi ostaju upotrebljivi i za par tjedana: `--preuzmi` ionako pravi SVJEŽ file iz PROD-a,
-   a retke koje je netko u međuvremenu razvrstao u appu ne dira. ISTI prozor i zastavice.
-   Intercar rate (T37) ostaviti N/A. **RF dio (T-S169-6 i RF iz T-S169-7) Saša može i bez Koke.**
-4. Razrez pamti rasklopljeno: lokalno ✅ (Saša) — deploy kad kažeš, pa T-S169-8 na PROD-u.
-5. Iz S168 i dalje: T-S168-2/3/4 (Structure `Remainder`, prvi Kokin MC plan, Kokin mobitel);
-   **~03.11.** Visa izvod, **11.11.** MC traka (D7).
-
-## Što ostaje od klasifikacije (nije hitno)
-
-`nerazvrstano (N/A)` **29.056,73** na All Time = starija povijest (ZABA 769, RF 672 redaka).
-2023. je većinom bez teksta izvoda ⇒ ostaje N/A. **2025. siječanj–rujan (ZABA 149)** se isplati
-istim postupkom — **pripremljeno (T-S169-7)**: `--od 2024-01-01 --do 2025-09-30 --s-tekstom --po-iznosu
---file` s PROD-a (ZABA 258 / RF 384 redaka, od najvećeg iznosa). ⚠ **T37**: Intercar rate 2025.
-izgledaju udvostručeno (dvije 6/6, dvije 3/6, nema 4/6) — provjeriti s MC izvodom prije Koke.
+1. **Deploy** (S169 + S170 jednim buildom), PowerShell:
+   ```powershell
+   git checkout main
+   if ($?) { git merge test-branch --no-edit }
+   if ($?) { git push origin main }
+   git checkout test-branch
+   if ($?) { git merge main --no-edit }
+   if ($?) { git push origin test-branch }
+   ```
+2. **Poslije deploya:** T-S170-4 (Network: nema plotly/excel na početku), T-S169-8 (razrez pamti),
+   pa **Visa config** (T-S170-8):
+   ```powershell
+   cd C:\0_Sasa\events-tracker-react\data-prep_tools
+   $env:ET_TARGET='prod'; .\Financije\run.bat set_due_visa_S170.py
+   $env:ET_TARGET='prod'; .\Financije\run.bat set_due_visa_S170.py --apply --yes-prod
+   ```
+   ⚠ Ako dry run pokaže staru Visa košaru **03.10.** — prvo izvod kroz `visa_uvoz_izvoda.py`.
+3. **Ostatak testa na TEST-u:** T-S170-1 (Filter `Izvor = Racun` ≈ 355), T-S170-10 (uvoz: kvačica
+   samo za Racun redak). T-S170-12 uz sljedeći ZABA izvod.
+4. **Razmisli:** kako provjeravati **košare u „Review" sheetu** (zapisano u Backlog → „Čeka Sašinu
+   odluku"). Pretpostavio sam da je to izvještaj nakon uvoza (`ImportReport`) — potvrdi.
+5. Opcionalno: `.\Tools\run.bat Tools\dump_schema.py --env prod` (osvježi `SCHEMA_PROD.sql` s `057`).
+6. Iz ranije: RF N/A (T-S169-6), s Kokom starija povijest (T-S169-7), ~03.11. Visa izvod (T-S170-9),
+   11.11. MC traka.
 
 ---
 
@@ -49,19 +57,21 @@ izgledaju udvostručeno (dvije 6/6, dvije 3/6, nema 4/6) — provjeriti s MC izv
 
 ## Stanje
 
-- `test-branch` ispred `main`: docs/alati (S167, S169) + **`BreakdownTile` pamćenje (S169)** — deploy kad Saša kaže.
-- Novi alat `ispravi_tip.py`; `razvrstaj_na.py --preuzmi` nosi i komentar; `visa_popravak.pisi`
-  dodaje svijetloplavi CF na Tip/Podtip; `set_breakdown.py` outside + provjera cijele povijesti.
-  TEST: `set_breakdown.py` upisan (isto kao PROD). TEST **nema** S169 Tip/Podtip izmjena (išle su
-  samo na PROD) — za testove nad Financijama prvo `prod_to_test.py`.
-- ⚠ Klasifikator blokira i **dry run** PROD alata — PROD naredbe idu Saši (`cd …\data-prep_tools`, `.\`).
-- ⚠ Python skripte u scratchpad, s `python -I` (u `$TEMP` leži `struct.py` koji ruši openpyxl).
+- `test-branch` ispred `main`: S169 `BreakdownTile` + cijeli S170 (filterOptions, rataCountProblem,
+  lazy Plotly/Excel + `LazyModalFallback` + `useMinWidth`, DateRangeFilter jedan efekt, `057` RPC +
+  fallback, `due.baskets[k].window/measure`, T21 `inBalanceBeforeOrAfter`, T12 Σ po danu + grupe
+  košara u delta sekciji).
+- TEST: `057` ✓, Visa due config ✓, `split.due_slug` ✓ (bio je zaostao — `prod_to_test` ne prenosi
+  `settings`). PROD: `057` ✓; Visa config ✗ (namjerno, poslije deploya).
+- E2E: novi `S170_structure_event_counts`, Visa test u `S168_due_quick_confirm`. Dok Saša drži
+  `dev:prod` na :5173, E2E ide preko privremenog configa na :5174 (`e2e/CLAUDE.md`, S165) — obrisan.
+- Python skripte u scratchpad + `python -I`; hrvatski navodnici u bash heredocu lome naredbu —
+  skripta u fileu.
 
-## Otvoreno — kod (po prioritetu iz plana S167)
+## Otvoreno — kod (po prioritetu)
 
-1. **Lazy Plotly** (4,9 MB, Kokin spori mobitel; na uskom ekranu kruga ni nema) — izmjeriti
-   prije/poslije. ⚠ `clearChainCache` ovisi o tome da rute nisu lazy (CLAUDE.md § UI, S133).
-2. **Filtar predug na malom ekranu** — prvo razgovor o obliku (sam se sklopi / sažetak u redu).
-3. **Filtar `depends_on` atributa kao izbornik** grupiran po roditelju (Backlog S167).
-4. **T21** guard „potvrđeno razdoblje" za kartične retke; **F5** (`groupings` kroz Structure
-   Excel); Visa u traku (T2, prije ~05.11.); alati T4, T13–T18.
+1. **„Review" sheet — provjera košara** (čeka Sašu; vidi Backlog).
+2. **Filtar predug na malom ekranu** (B9) — razgovor o obliku.
+3. **T23** naknada 1,32 uz MC rate „novog načina otplate"; **T13/T14** za MC u `fill_from_izvod`.
+4. **F5** (`groupings` / `due` kroz Structure Excel) — roundtrip completeness.
+5. Delta: retci koje `fill_from_izvod` dopiše ispod sekcije nisu u grupi ni u bojanju (Σ ih broji).

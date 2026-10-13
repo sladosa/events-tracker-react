@@ -179,6 +179,8 @@ još nije potvrđeno naplatila. Košara su sve kupovine jedne kartice s istim da
 (npr. *Mastercard · naplata 11.10. · 32 stavke*). Kad ništa ne čeka, trake nema.
 
 - **Σ** je ono što bi banka trebala skinuti: isplate minus povrati iz te košare.
+  Za **Visu** piše *(samo isplate)*: Visa košara nosi i uplatu kojom je kartica plaćena, pa se
+  ona ne oduzima. Visa nema stalan dan naplate — traka nudi dane od **3.** do **11.**
 - Traka pita **„Je li banka skinula Σ?"** Pogledaj u bankovnu aplikaciju. Ako je skinula
   **točno toliko**, samo dodirni **dan** kad je skinula (nudi dane od datuma naplate do danas —
   naplata zna pasti na ponedjeljak kad je datum naplate vikend). Ništa ne tipkaš.

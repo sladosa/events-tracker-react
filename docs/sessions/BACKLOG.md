@@ -307,9 +307,15 @@ sekciju „Feature inventory" u `docs/help/*.md`, **dosta detaljno** (korisnikov
 
 ### Čeka Sašinu odluku prije ijedne linije koda
 
-> **Prazno je PODATAK, ne propust** (S141): trenutno ništa ne čeka Sašinu odluku, pa se
-> nijedna stavka ne smije parkirati ovdje „dok se ne odluči“. Zadnji stanar je bio
-> **PBZVISA prolaz** — odlučen u S141 i premješten u „Otvoreno“.
+> **Prazno je PODATAK, ne propust** (S141): stavka smije ovdje samo dok Saša stvarno
+> razmišlja — čim odluči, seli u „Otvoreno“.
+
+- **Provjera KOŠARA i u „Review" sheetu (S170, Saša: „moram malo razmisliti")** — delta sheet od
+  S170 ima košare kao grupe po datumu naplate, izbornik dana uz Σ i bojanje odabrane košare
+  (T-S170-11). Saša želi „neki način da provjerim košare" i u Review sheetu.
+  ⚠ **Pretpostavka, provjeriti sa Sašom:** „Review" = izvještaj nakon uvoza (`ImportReport`,
+  `excelImportReport.ts`, „radni file, ne log"), jer sheet tog imena nema. Ideja za razgovor:
+  isti blok kontrole košare (Σ po danu + izbornik) nad retcima koji su uvozom prešli u `Izvrsen`.
 
 ### Parkirano i izvedeno — ne traži akciju
 

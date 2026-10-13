@@ -48,7 +48,7 @@ dogovori prije pokretanja.
 4. U appu (PROD, `Ctrl+Shift+R`): isti koraci kao T-S164-1 ⇒ 5 / 128 redaka.
    Saldo se ne smije pomaknuti (mijenja se samo Podtip).
 
-## T-S164-3 ⬜ N/A prijedlozi — uvoz na TEST-u
+## T-S164-3 ✅ N/A prijedlozi — uvoz na TEST-u
 
 Fileovi (napravljeni nad TEST = PROD 07.10., prozor 10/2025–09/2026):
 `data-prep_data\Financije\na_razvrstavanje_kokin_tekuci_zaba_20261007_1049.xlsx` (72 retka, 8 prijedloga)
@@ -67,7 +67,7 @@ Fileovi (napravljeni nad TEST = PROD 07.10., prozor 10/2025–09/2026):
 4. `Financije\run.bat razvrstaj_na.py --od 2025-10-01 --do 2026-09-30` ⇒ RF ima toliko manje N/A.
    **Pad:** ijedan New ⇒ ne uvoziti (redak se ne prepoznaje kao postojeći), javiti Claudeu.
 
-## T-S164-4 ⬜ N/A razvrstavanje na PROD-u
+## T-S164-4 ✅ N/A razvrstavanje na PROD-u
 
 ⚠ **TEST file se na PROD NE uvozi**: kol. G nosi TEST vlasnika (tebe), a PROD retke je upisala Koka
 ⇒ uvoz stane (S149). Razvrstava se **jednom** (u TEST fileovima iz T-S164-3), a odluke se prenesu po

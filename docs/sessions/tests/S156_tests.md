@@ -111,7 +111,7 @@ usporedbu, ali ne upisuješ.”* Polje „dana” se ne prikazuje.
 
 ---
 
-## T-S156-6 ⬜ PROD, Koka, 11.10.: prava košara
+## T-S156-6 ✅ PROD, Koka, 11.10.: prava košara
 
 **Gdje:** PROD, **Kokin** račun (D5), na dan kad banka skine MC (11.10.; košara ~40 stavki,
 Σ 859,58 prema RPC-u 30.09.).

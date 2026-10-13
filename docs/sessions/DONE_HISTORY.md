@@ -7,9 +7,9 @@ Active project state is in CLAUDE.md (repo root).
 
 ## Zadnje sesije
 
-- [S167 (2026-10-11)](<#S167 — PROD razrez dovršen: osiguranje kuće, preimenovan Podtip, 056 i config (2026-10-11)>) · r. 8785 — Pločica „Kamo ide novac" i zadano razdoblje This Year sada rade i na PROD-u — prije toga je osiguranje kuće dobilo vlastiti Podtip, a stari Podtip preimenovan u „Popravci, održavanje" alatom koji mijenja izbornik i svih 128 redaka odjednom; Mastercard naplata od 11.10. još nije skinuta, pa Kokina potvrda čeka.
-- [S168 (2026-10-11)](<#S168 — rate po kartici u cent, lista čeka svoje kolone, brojač dohvata (2026-10-11)>) · r. 8876 — Rata modal sada ostatak zaokruživanja stavlja kao banka — kod Mastercarda na zadnju ratu, kod Vise na prvu — pa se MC planovi s izvodom slažu u cent; lista više ne pokazuje transakcije bez iznosa dok se postavke Aree učitavaju (Kokin nalaz s mobitela, mehanizam potvrđen testom), a sve čeka deploy.
-- [S169 (2026-10-12)](<#S169 — Klasifikacija s Kokom: N/A ZABA, Pharmalog, Investicije, Triglav (2026-10-12)>) · r. 8914 — S Kokom smo razvrstali svih 72 neodređenih transakcija na njezinom računu iz zadnjih godinu dana i potvrdili da su Pharmalog uplate njezin prihod, a Investicije i isplata Triglav police su maknute iz troškova — pločica „Kamo ide novac" kroz cijelu povijest više nema ni „nesvrstano" ni stavki u minusu.
+- [S168 (2026-10-11)](<#S168 — rate po kartici u cent, lista čeka svoje kolone, brojač dohvata (2026-10-11)>) · r. 8877 — Rata modal sada ostatak zaokruživanja stavlja kao banka — kod Mastercarda na zadnju ratu, kod Vise na prvu — pa se MC planovi s izvodom slažu u cent; lista više ne pokazuje transakcije bez iznosa dok se postavke Aree učitavaju (Kokin nalaz s mobitela, mehanizam potvrđen testom), a sve čeka deploy.
+- [S169 (2026-10-12)](<#S169 — Klasifikacija s Kokom: N/A ZABA, Pharmalog, Investicije, Triglav (2026-10-12)>) · r. 8915 — S Kokom smo razvrstali svih 72 neodređenih transakcija na njezinom računu iz zadnjih godinu dana i potvrdili da su Pharmalog uplate njezin prihod, a Investicije i isplata Triglav police su maknute iz troškova — pločica „Kamo ide novac" kroz cijelu povijest više nema ni „nesvrstano" ni stavki u minusu.
+- [S170 (2026-10-13)](<#S170 — Filtar izbornici, brže učitavanje, Structure RPC, Visa u traci, delta košare (2026-10-13)>) · r. 8955 — Filtar sada nudi izbornik i za Izvor, Podtip i Status, aplikacija se otvara bez 1,7 MB koje nije trebala, Structure broji jednim upitom umjesto stotinu, Visa je spremna za traku „Čeka potvrdu“, a delta sheet pokazuje košare po mjesecima s izbornikom i bojom.
 
 ## Dnevnik
 
@@ -17,94 +17,95 @@ Active project state is in CLAUDE.md (repo root).
 
 | sesija | datum | ukratko | r. |
 | --- | --- | --- | ---: |
-| [S1-S33](<#Done S1-S33 — Jezgra aplikacije (Activities, Structure, Excel roundtrip)>) |  | Jezgra aplikacije (Activities, Structure, Excel roundtrip) | 113 |
-| [S34–S72](<#Done S34–S72 — Collab system + Foundation>) |  | Collab system + Foundation | 198 |
-| [S49–S72](<#S49–S72 — Templates, E2E, Add Between, Help, perf>) |  | Templates, E2E, Add Between, Help, perf | 226 |
-| [S73–S103](<#Done S73–S103 — UX + Data + Fixes>) |  | UX + Data + Fixes | 274 |
-| [S104-S107y](<#Done S104-S107y — Perf, collab fixevi, Financije pipeline>) |  | Perf, collab fixevi, Financije pipeline | 492 |
-| [S106](<#S106 — E7/E8/E9 race condition fix + test modal flows ✅ DONE (2026-07-07)>) | 2026-07-07 | E7/E8/E9 race condition fix + test modal flows ✅ DONE | 499 |
-| [S107](<#S107 — Historical Financije pipeline — IN PROGRESS (2026-07-09)>) | 2026-07-09 | Historical Financije pipeline — IN PROGRESS | 507 |
-| [S107c](<#S107c — klasifikacijski alati (Python, data-prep; NEMA app koda)>) |  | klasifikacijski alati (Python, data-prep; NEMA app koda) | 7119 |
-| [S107d](<#S107d — inventory izvoda + MC/PBZ parseri (Python, data-prep; NEMA app koda)>) |  | inventory izvoda + MC/PBZ parseri (Python, data-prep; NEMA app koda) | 7104 |
-| [S107g](<#S107g — prvi pravi apply_rules run + Pravilo/Preimenovanja prioritet>) |  | prvi pravi apply_rules run + Pravilo/Preimenovanja prioritet | 6889 |
-| [S107h](<#S107h — drugi krug Pravila (Osiguranje/Allianz/Generali/Triglav, Audible/Apple po iznosu)>) |  | drugi krug Pravila (Osiguranje/Allianz/Generali/Triglav, Audible/Apple po iznosu) | 6875 |
-| [S107i](<#S107i — PBZ Visa merge u Review + reconcile/Problem dijagnoza (Python, data-prep; NEMA app koda)>) |  | PBZ Visa merge u Review + reconcile/Problem dijagnoza (Python, data-prep; NEMA app koda) | 7085 |
-| [S107j](<#S107j — ZABA parser fix + izvodi konsolidirani u Review + N/A rule petlja (Python, data-prep; NEMA app koda)>) |  | ZABA parser fix + izvodi konsolidirani u Review + N/A rule petlja (Python, data-prep; NEMA app koda) | 7067 |
-| [S107k](<#S107k — v3 Verdikt tok + date_accuracy + kartice_datum_naplate (Python, data-prep; NEMA app koda)>) |  | v3 Verdikt tok + date_accuracy + kartice_datum_naplate (Python, data-prep; NEMA app koda) | 6835 |
-| [S107l/m](<#S107l/m — N/A petlja 2026 (Python, data-prep; NEMA app koda)>) |  | N/A petlja 2026 (Python, data-prep; NEMA app koda) | 6855 |
-| [S107m](<#S107m — AI klasifikacija — eval + 223 ispravke labela (Python data-prep; NEMA app koda)>) |  | AI klasifikacija — eval + 223 ispravke labela (Python data-prep; NEMA app koda) | 6811 |
-| [S107r](<#S107r — migracija na Kokinu taksonomiju Taksonomija (2) (Python data-prep; NEMA app koda)>) |  | migracija na Kokinu taksonomiju Taksonomija (2) (Python data-prep; NEMA app koda) | 6779 |
-| [S107s](<#S107s — odluke o formatu importa + generator strukture Financije_all (Python; NEMA app koda)>) |  | odluke o formatu importa + generator strukture Financije_all (Python; NEMA app koda) | 6752 |
-| [S107t](<#S107t — Rata br · čišćenje lažnih rata · import generator · rata u Automations roundtripu>) |  | Rata br · čišćenje lažnih rata · import generator · rata u Automations roundtripu | 6721 |
-| [S107u](<#S107u — bugfix — nova Area gubi comment_template pri Structure importu>) |  | bugfix — nova Area gubi comment_template pri Structure importu | 6684 |
-| [S107w](<#S107w — Delete? kolona + izvještaj nakon uvoza kao radni file>) |  | Delete? kolona + izvještaj nakon uvoza kao radni file | 6650 |
-| [S107x](<#S107x — Overview tab — zašto Koka još bira svoj Excel (2026-08-11, odluke; NEMA koda)>) | 2026-08-11 | Overview tab — zašto Koka još bira svoj Excel (odluke; NEMA koda) | 1289 |
-| [S107y](<#S107y — Pitanja za Koku odgovoreno + popravci + batch 2025 uvezen>) |  | Pitanja za Koku odgovoreno + popravci + batch 2025 uvezen | 6628 |
-| [S108](<#Done S108 — Faza 1 — RPC salda, Overview tab, pločica sa sidrom>) |  | Faza 1 — RPC salda, Overview tab, pločica sa sidrom | 1559 |
-| [S109](<#Done S109 — stanja kao podatak, ne kao parametar (sesija odluka — NEMA src/ koda)>) |  | stanja kao podatak, ne kao parametar (sesija odluka — NEMA src/ koda) | 1711 |
-| [S110](<#S110 — provjera lanca salda (2026-08-17)>) | 2026-08-17 | provjera lanca salda | 1838 |
-| [S111](<#S111 — RF lanac zatvoren · gotovina izvan salda · svježina po računu (2026-08-18)>) | 2026-08-18 | RF lanac zatvoren · gotovina izvan salda · svježina po računu | 1957 |
-| [S112](<#S112 — kako Koka rješava deltu · Faza 0 i Faza 1 (2026-08-19)>) | 2026-08-19 | kako Koka rješava deltu · Faza 0 i Faza 1 | 2135 |
-| [S113](<#S113 (2026-08-21) — tranše 1 i 2 zatvorene izvodom, fill_from_izvod.py>) | 2026-08-21 | tranše 1 i 2 zatvorene izvodom, fill_from_izvod.py | 2284 |
-| [S114](<#S114 — tranša 3 (ZABA) · klasifikacija iz povijesti, ne iz heuristike (2026-08-22)>) | 2026-08-22 | tranša 3 (ZABA) · klasifikacija iz povijesti, ne iz heuristike | 2353 |
-| [S115](<#S115 — 2026-08-22 (druga sesija istog dana) · razgovor, mjerenje, plan za PROD>) | 2026-08-22 | (druga sesija istog dana) · razgovor, mjerenje, plan za PROD | 2478 |
-| [S116](<#S116 — kolone po Arei · Kokin file kao izvor · sidro na pravi datum (2026-08-23)>) | 2026-08-23 | kolone po Arei · Kokin file kao izvor · sidro na pravi datum | 2585 |
-| [S117](<#Done S117 (2026-08-24) — kolone i sidro provjereni · kolovoz uvezen · unos prepravljen za Koku>) | 2026-08-24 | kolone i sidro provjereni · kolovoz uvezen · unos prepravljen za Koku | 2811 |
-| [S118](<#S118 — 2026-08-25 · Koka na PROD-u>) | 2026-08-25 | Koka na PROD-u | 2887 |
-| [S119](<#Done S119 (2026-08-25) — uska lista — iznos prije ⋮>) | 2026-08-25 | uska lista — iznos prije ⋮ | 3371 |
-| [S120](<#Done S120 (2026-08-26) — tri popravka pred deploy, 22 zatvorena testa, i dan lova na krive tragove>) | 2026-08-26 | tri popravka pred deploy, 22 zatvorena testa, i dan lova na krive tragove | 3287 |
-| [S121](<#Done S121 (2026-08-28) — dva Sašina nalaza, oba veća nego što su izgledala>) | 2026-08-28 | dva Sašina nalaza, oba veća nego što su izgledala | 3144 |
-| [S122](<#Done S122 (2026-08-29) — potvrda popravaka, jedan fantom, jedan krivi trag i spec za filtar>) | 2026-08-29 | potvrda popravaka, jedan fantom, jedan krivi trag i spec za filtar | 3031 |
-| [S123](<#Done S123 (2026-08-31) — Kokin roundtrip, ispravci tuđih redaka, Datum naplate>) | 2026-08-31 | Kokin roundtrip, ispravci tuđih redaka, Datum naplate | 3448 |
-| [S124](<#Done S124 (2026-09-01) — izvod je odgovorio na sve, i alat koji to radi mjesečno>) | 2026-09-01 | izvod je odgovorio na sve, i alat koji to radi mjesečno | 3503 |
-| [S125](<#Done S125 (2026-09-02) — 15 eura, 043 na PROD, i tri tiha kvara>) | 2026-09-02 | 15 eura, 043 na PROD, i tri tiha kvara | 3608 |
-| [S126](<#Done S126 — ZABA kolovoz usklađena s bankom, Tip/Podtip iz izbrojane povijesti (2026-09-03)>) | 2026-09-03 | ZABA kolovoz usklađena s bankom, Tip/Podtip iz izbrojane povijesti | 3684 |
-| [S127](<#S127 — izvedene vrijednosti, gusta sidra, i priprema povijesti (2026-09-04)>) | 2026-09-04 | izvedene vrijednosti, gusta sidra, i priprema povijesti | 3765 |
-| [S128](<#S128 — povijest je u bazi, a provjera je morala zaobići sidro (2026-09-04)>) | 2026-09-04 | povijest je u bazi, a provjera je morala zaobići sidro | 3885 |
-| [S129](<#S129 — pet popravaka na PROD-u, ZABA zatvara do kolovoza, i jedna tvrdnja koja je devet sesija bila netočna (2026-09-05)>) | 2026-09-05 | pet popravaka na PROD-u, ZABA zatvara do kolovoza, i jedna tvrdnja koja je devet sesija bila netočna | 4271 |
-| [S130](<#S130 — dropdown koji je izgledao ispravno, i jedan popravak koji bi Deltu napunio upozorenjima (2026-09-07)>) | 2026-09-07 | dropdown koji je izgledao ispravno, i jedan popravak koji bi Deltu napunio upozorenjima | 4121 |
-| [S131](<#S131 — jedno prazno polje, i tri načina da polje nestane sa ekrana (2026-09-08)>) | 2026-09-08 | jedno prazno polje, i tri načina da polje nestane sa ekrana | 3987 |
-| [S132](<#S132 — keš koji laže o bazi (2026-09-09)>) | 2026-09-09 | keš koji laže o bazi | 4534 |
-| [S133](<#S133 — popravak koji nije popravljao, i brojka koja je bila brava (2026-09-10)>) | 2026-09-10 | popravak koji nije popravljao, i brojka koja je bila brava | 4433 |
-| [S134](<#S134 — backup baze, shema u gitu, čišćenje RLS-a (2026-09-10)>) | 2026-09-10 | backup baze, shema u gitu, čišćenje RLS-a | 4628 |
-| [S135](<#S135 — testiranje umjesto deploya, i kvar koji je iz toga ispao (2026-09-11)>) | 2026-09-11 | testiranje umjesto deploya, i kvar koji je iz toga ispao | 4806 |
-| [S136](<#S136 — meni koji je bježao, i popis testova koji je rastao osam mjeseci (2026-09-14)>) | 2026-09-14 | meni koji je bježao, i popis testova koji je rastao osam mjeseci | 5052 |
-| [S137](<#S137 — triaža PENDING-a, CLAUDE.md navigacija, MC košara 11.09. (2026-09-15)>) | 2026-09-15 | triaža PENDING-a, CLAUDE.md navigacija, MC košara 11.09. | 5186 |
-| [S138](<#S138 — deploy, cutoff:3:5 na PROD, i pravilo promijenjeno samo napola (2026-09-15)>) | 2026-09-15 | deploy, cutoff:3:5 na PROD, i pravilo promijenjeno samo napola | 5299 |
-| [S139](<#S139 — alati koji mjere nešto drugo nego što tvrde (2026-09-17)>) | 2026-09-17 | alati koji mjere nešto drugo nego što tvrde | 5380 |
-| [S140](<#S140 — instrumenti koji su blokirali posao, i dva pada s jednim uzrokom (2026-09-18)>) | 2026-09-18 | instrumenti koji su blokirali posao, i dva pada s jednim uzrokom | 5634 |
-| [S141](<#S141 — tri tvrdnje oborene mjerenjem, i sve tri su bile moje (2026-09-18)>) | 2026-09-18 | tri tvrdnje oborene mjerenjem, i sve tri su bile moje | 6197 |
-| [S142](<#S142 — sidro prestaje biti rez, postaje oznaka (2026-09-19)>) | 2026-09-19 | sidro prestaje biti rez, postaje oznaka | 6090 |
-| [S143](<#S143 — sort je mogao progutati sve, i dva upozorenja su lagala (2026-09-20)>) | 2026-09-20 | sort je mogao progutati sve, i dva upozorenja su lagala | 5877 |
-| [S144](<#S144 — guard koji je bio mrtav od prvog dana, i fantom koji je nestao (2026-09-22)>) | 2026-09-22 | guard koji je bio mrtav od prvog dana, i fantom koji je nestao | 5800 |
-| [S145](<#S145 — testirali smo hrpu A, a ispala su četiri kvara kojih nije bilo na popisu (2026-09-22)>) | 2026-09-22 | testirali smo hrpu A, a ispala su četiri kvara kojih nije bilo na popisu | 5719 |
-| [S146](<#S146 — trijaza — osam sekcija, sesti kriterij, i dva kvara u harnessu (2026-09-23)>) | 2026-09-23 | trijaza — osam sekcija, sesti kriterij, i dva kvara u harnessu | 7498 |
-| [S147](<#S147 — hrpa B prošla, a Visa se pokvarila tek u veljači (2026-09-24)>) | 2026-09-24 | hrpa B prošla, a Visa se pokvarila tek u veljači | 7621 |
-| [S148](<#S148 — Visa košare u cent, a višak je bio u bazi, ne u banci (2026-09-24)>) | 2026-09-24 | Visa košare u cent, a višak je bio u bazi, ne u banci | 7711 |
-| [S149](<#S149 — pet bugova, svaki s testom provjerenim u drugom smjeru (2026-09-25)>) | 2026-09-25 | pet bugova, svaki s testom provjerenim u drugom smjeru | 7797 |
-| [S150](<#S150 — prolaz kroz backlog s Sašom (2026-09-26)>) | 2026-09-26 | prolaz kroz backlog s Sašom | 7856 |
-| [S151](<#S151 — pospremanje dokumentacije i podjela CLAUDE.md-a (2026-09-26)>) | 2026-09-26 | pospremanje dokumentacije i podjela CLAUDE.md-a | 7980 |
-| [S152](<#S152 — B1/B2, razvrstač izvoda, C2+C3, lokalni dan (2026-09-26)>) | 2026-09-26 | B1/B2, razvrstač izvoda, C2+C3, lokalni dan | 8023 |
-| [S153](<#S153 — testiranje S152, list_columns usporedba, *, plan klasifikacije (2026-09-27)>) | 2026-09-27 | testiranje S152, list_columns usporedba, *, plan klasifikacije | 8070 |
-| [S154](<#S154 — testovi S152, „Data range", Kokine prijave s malog iPhonea, merge (2026-09-28)>) | 2026-09-28 | testovi S152, „Data range", Kokine prijave s malog iPhonea, merge | 8106 |
-| [S155](<#S155 — C3b žig izvoda, C3c upozorenje u Editu, C5 traka „Čeka potvrdu" (2026-09-30)>) | 2026-09-30 | C3b žig izvoda, C3c upozorenje u Editu, C5 traka „Čeka potvrdu" | 8142 |
-| [S156](<#S156 — C5 faza 2 — Potvrdi + skupni redak iz trake „Čeka potvrdu" (2026-09-30)>) | 2026-09-30 | C5 faza 2 — Potvrdi + skupni redak iz trake „Čeka potvrdu" | 8219 |
-| [S157](<#S157 — traka uživo na TEST-u — PGRST201, pravilo C, Smjer; TEST = kopija PROD-a; deploy (2026-10-01)>) | 2026-10-01 | traka uživo na TEST-u — PGRST201, pravilo C, Smjer; TEST = kopija PROD-a; deploy | 8260 |
-| [S158](<#S158 — audit procesa Financija; MC izvod 2026-09 u cent; T11 buduće rate; T5–T10 alati (2026-10-02)>) | 2026-10-02 | audit procesa Financija; MC izvod 2026-09 u cent; T11 buduće rate; T5–T10 alati | 8335 |
-| [S159](<#S159 — ne-Financije backlog — B3, fan-out, B6, D2/D4/D5, F4, C4 (2026-10-02)>) | 2026-10-02 | ne-Financije backlog — B3, fan-out, B6, D2/D4/D5, F4, C4 | 8394 |
-| [S160](<#S160 — P1 tihi gubici + dio P3 + ručno testiranje (2026-10-04)>) | 2026-10-04 | P1 tihi gubici + dio P3 + ručno testiranje | 8497 |
-| [S160b](<#S160b — grantee ne dodaje opcije (2026-10-04, nastavak S160)>) | 2026-10-04 | grantee ne dodaje opcije (nastavak S160) | 8561 |
-| [S161](<#S161 — mjesečni krug listopad — ZABA + Visa izvod 2026-09, Visa alat bez mjesečnih popisa (2026-10-05)>) | 2026-10-05 | mjesečni krug listopad — ZABA + Visa izvod 2026-09, Visa alat bez mjesečnih popisa | 8590 |
-| [S162](<#S162 — P4 sitnice — View datetime, rename sluga u configu, kategorije liste iz keša; Structure Delete i P2 roditelji (2026-10-05)>) | 2026-10-05 | popravljene četiri tihe greške — View je pokazivao datum naplate pomaknut za dva sata, preimenovanje atributa ostavljalo je mrtve veze u automatici i predlošku komentara, lista je radila tri nepotrebna kruga do baze, a brisanje kategorije s unosom zapinjalo je na skrivenom roditeljskom zapisu; sve potvrđeno testovima na TEST-u. | 8621 |
-| [S163](<#S163 — razgovor o backlogu i analitici: spec „Kamo ide novac" (pločica razreza + bucketi) (2026-10-06)>) | 2026-10-06 | razgovor o preostalom backlogu i novim funkcijama završio je specom za pločicu „Kamo ide novac" — prihodi i troškovi po Tip/Podtip, prekidač po kupnji/naplati i Sašini bucketi višeg reda — uz mjerenje koje je našlo prolaznih 50.000 € upisanih kao prihod i trošak; ništa nije kodirano, odluke R1–R9 čekaju Sašu. | 8673 |
-| [S164](<#S164 — „Kamo ide novac": odluke R1–R15, skica nad stvarnim podacima, alati R3 i N/A, detaljni spec (2026-10-07)>) | 2026-10-07 | Saša je donio sve odluke o pločici „Kamo ide novac" uz interaktivnu skicu nad stvarnim podacima (osam bucketa, gotovina u mjesečnim troškovima, osiguranje kuće odvojeno), dobio dva alata (osiguranje kuće u vlastiti Podtip i prijedlog razvrstavanja N/A redaka, 97 % točan na povijesti) i detaljni spec za RPC i pločicu, s izmjerenim prototipom upita koji se s Python modelom slaže u cent. | 8695 |
-| [S165](<#S165 — pločica „Kamo ide novac" izgrađena i provjerena u lipu na TEST-u (2026-10-07)>) | 2026-10-07 | Pločica „Kamo ide novac" je izgrađena i radi na TEST-u — novi upit u bazi, izračun bucketa, krug na laptopu i lista na mobitelu — i svaka brojka se s neovisnim izračunom i sa Sašinom tablicom iz skice slaže u lipu; PROD čeka migraciju, deploy i osiguranje kuće. | 8722 |
-| [S166](<#S166 — testovi pločice razreza na TEST-u i sedam dorada po Sašinim nalazima (2026-10-08)>) | 2026-10-08 | Pločica „Kamo ide novac" prošla je sve ručne testove na TEST-u, a usput je po Sašinim primjedbama dobila povezan krug i listu, postotke, harmoniku sa saldom i objašnjenje potvrde na klik; podaci kroz cijelu povijest pokazali su tri krivo razvrstane stavke koje čekaju odluku. | 8751 |
-| [S167](<#S167 — PROD razrez dovršen: osiguranje kuće, preimenovan Podtip, 056 i config (2026-10-11)>) | 2026-10-11 | Pločica „Kamo ide novac" i zadano razdoblje This Year sada rade i na PROD-u — prije toga je osiguranje kuće dobilo vlastiti Podtip, a stari Podtip preimenovan u „Popravci, održavanje" alatom koji mijenja izbornik i svih 128 redaka odjednom; Mastercard naplata od 11.10. još nije skinuta, pa Kokina potvrda čeka. | 8785 |
-| [S168](<#S168 — rate po kartici u cent, lista čeka svoje kolone, brojač dohvata (2026-10-11)>) | 2026-10-11 | Rata modal sada ostatak zaokruživanja stavlja kao banka — kod Mastercarda na zadnju ratu, kod Vise na prvu — pa se MC planovi s izvodom slažu u cent; lista više ne pokazuje transakcije bez iznosa dok se postavke Aree učitavaju (Kokin nalaz s mobitela, mehanizam potvrđen testom), a sve čeka deploy. | 8876 |
-| [S169](<#S169 — Klasifikacija s Kokom: N/A ZABA, Pharmalog, Investicije, Triglav (2026-10-12)>) | 2026-10-12 | S Kokom smo razvrstali svih 72 neodređenih transakcija na njezinom računu iz zadnjih godinu dana i potvrdili da su Pharmalog uplate njezin prihod, a Investicije i isplata Triglav police su maknute iz troškova — pločica „Kamo ide novac" kroz cijelu povijest više nema ni „nesvrstano" ni stavki u minusu. | 8914 |
+| [S1-S33](<#Done S1-S33 — Jezgra aplikacije (Activities, Structure, Excel roundtrip)>) |  | Jezgra aplikacije (Activities, Structure, Excel roundtrip) | 114 |
+| [S34–S72](<#Done S34–S72 — Collab system + Foundation>) |  | Collab system + Foundation | 199 |
+| [S49–S72](<#S49–S72 — Templates, E2E, Add Between, Help, perf>) |  | Templates, E2E, Add Between, Help, perf | 227 |
+| [S73–S103](<#Done S73–S103 — UX + Data + Fixes>) |  | UX + Data + Fixes | 275 |
+| [S104-S107y](<#Done S104-S107y — Perf, collab fixevi, Financije pipeline>) |  | Perf, collab fixevi, Financije pipeline | 493 |
+| [S106](<#S106 — E7/E8/E9 race condition fix + test modal flows ✅ DONE (2026-07-07)>) | 2026-07-07 | E7/E8/E9 race condition fix + test modal flows ✅ DONE | 500 |
+| [S107](<#S107 — Historical Financije pipeline — IN PROGRESS (2026-07-09)>) | 2026-07-09 | Historical Financije pipeline — IN PROGRESS | 508 |
+| [S107c](<#S107c — klasifikacijski alati (Python, data-prep; NEMA app koda)>) |  | klasifikacijski alati (Python, data-prep; NEMA app koda) | 7120 |
+| [S107d](<#S107d — inventory izvoda + MC/PBZ parseri (Python, data-prep; NEMA app koda)>) |  | inventory izvoda + MC/PBZ parseri (Python, data-prep; NEMA app koda) | 7105 |
+| [S107g](<#S107g — prvi pravi apply_rules run + Pravilo/Preimenovanja prioritet>) |  | prvi pravi apply_rules run + Pravilo/Preimenovanja prioritet | 6890 |
+| [S107h](<#S107h — drugi krug Pravila (Osiguranje/Allianz/Generali/Triglav, Audible/Apple po iznosu)>) |  | drugi krug Pravila (Osiguranje/Allianz/Generali/Triglav, Audible/Apple po iznosu) | 6876 |
+| [S107i](<#S107i — PBZ Visa merge u Review + reconcile/Problem dijagnoza (Python, data-prep; NEMA app koda)>) |  | PBZ Visa merge u Review + reconcile/Problem dijagnoza (Python, data-prep; NEMA app koda) | 7086 |
+| [S107j](<#S107j — ZABA parser fix + izvodi konsolidirani u Review + N/A rule petlja (Python, data-prep; NEMA app koda)>) |  | ZABA parser fix + izvodi konsolidirani u Review + N/A rule petlja (Python, data-prep; NEMA app koda) | 7068 |
+| [S107k](<#S107k — v3 Verdikt tok + date_accuracy + kartice_datum_naplate (Python, data-prep; NEMA app koda)>) |  | v3 Verdikt tok + date_accuracy + kartice_datum_naplate (Python, data-prep; NEMA app koda) | 6836 |
+| [S107l/m](<#S107l/m — N/A petlja 2026 (Python, data-prep; NEMA app koda)>) |  | N/A petlja 2026 (Python, data-prep; NEMA app koda) | 6856 |
+| [S107m](<#S107m — AI klasifikacija — eval + 223 ispravke labela (Python data-prep; NEMA app koda)>) |  | AI klasifikacija — eval + 223 ispravke labela (Python data-prep; NEMA app koda) | 6812 |
+| [S107r](<#S107r — migracija na Kokinu taksonomiju Taksonomija (2) (Python data-prep; NEMA app koda)>) |  | migracija na Kokinu taksonomiju Taksonomija (2) (Python data-prep; NEMA app koda) | 6780 |
+| [S107s](<#S107s — odluke o formatu importa + generator strukture Financije_all (Python; NEMA app koda)>) |  | odluke o formatu importa + generator strukture Financije_all (Python; NEMA app koda) | 6753 |
+| [S107t](<#S107t — Rata br · čišćenje lažnih rata · import generator · rata u Automations roundtripu>) |  | Rata br · čišćenje lažnih rata · import generator · rata u Automations roundtripu | 6722 |
+| [S107u](<#S107u — bugfix — nova Area gubi comment_template pri Structure importu>) |  | bugfix — nova Area gubi comment_template pri Structure importu | 6685 |
+| [S107w](<#S107w — Delete? kolona + izvještaj nakon uvoza kao radni file>) |  | Delete? kolona + izvještaj nakon uvoza kao radni file | 6651 |
+| [S107x](<#S107x — Overview tab — zašto Koka još bira svoj Excel (2026-08-11, odluke; NEMA koda)>) | 2026-08-11 | Overview tab — zašto Koka još bira svoj Excel (odluke; NEMA koda) | 1290 |
+| [S107y](<#S107y — Pitanja za Koku odgovoreno + popravci + batch 2025 uvezen>) |  | Pitanja za Koku odgovoreno + popravci + batch 2025 uvezen | 6629 |
+| [S108](<#Done S108 — Faza 1 — RPC salda, Overview tab, pločica sa sidrom>) |  | Faza 1 — RPC salda, Overview tab, pločica sa sidrom | 1560 |
+| [S109](<#Done S109 — stanja kao podatak, ne kao parametar (sesija odluka — NEMA src/ koda)>) |  | stanja kao podatak, ne kao parametar (sesija odluka — NEMA src/ koda) | 1712 |
+| [S110](<#S110 — provjera lanca salda (2026-08-17)>) | 2026-08-17 | provjera lanca salda | 1839 |
+| [S111](<#S111 — RF lanac zatvoren · gotovina izvan salda · svježina po računu (2026-08-18)>) | 2026-08-18 | RF lanac zatvoren · gotovina izvan salda · svježina po računu | 1958 |
+| [S112](<#S112 — kako Koka rješava deltu · Faza 0 i Faza 1 (2026-08-19)>) | 2026-08-19 | kako Koka rješava deltu · Faza 0 i Faza 1 | 2136 |
+| [S113](<#S113 (2026-08-21) — tranše 1 i 2 zatvorene izvodom, fill_from_izvod.py>) | 2026-08-21 | tranše 1 i 2 zatvorene izvodom, fill_from_izvod.py | 2285 |
+| [S114](<#S114 — tranša 3 (ZABA) · klasifikacija iz povijesti, ne iz heuristike (2026-08-22)>) | 2026-08-22 | tranša 3 (ZABA) · klasifikacija iz povijesti, ne iz heuristike | 2354 |
+| [S115](<#S115 — 2026-08-22 (druga sesija istog dana) · razgovor, mjerenje, plan za PROD>) | 2026-08-22 | (druga sesija istog dana) · razgovor, mjerenje, plan za PROD | 2479 |
+| [S116](<#S116 — kolone po Arei · Kokin file kao izvor · sidro na pravi datum (2026-08-23)>) | 2026-08-23 | kolone po Arei · Kokin file kao izvor · sidro na pravi datum | 2586 |
+| [S117](<#Done S117 (2026-08-24) — kolone i sidro provjereni · kolovoz uvezen · unos prepravljen za Koku>) | 2026-08-24 | kolone i sidro provjereni · kolovoz uvezen · unos prepravljen za Koku | 2812 |
+| [S118](<#S118 — 2026-08-25 · Koka na PROD-u>) | 2026-08-25 | Koka na PROD-u | 2888 |
+| [S119](<#Done S119 (2026-08-25) — uska lista — iznos prije ⋮>) | 2026-08-25 | uska lista — iznos prije ⋮ | 3372 |
+| [S120](<#Done S120 (2026-08-26) — tri popravka pred deploy, 22 zatvorena testa, i dan lova na krive tragove>) | 2026-08-26 | tri popravka pred deploy, 22 zatvorena testa, i dan lova na krive tragove | 3288 |
+| [S121](<#Done S121 (2026-08-28) — dva Sašina nalaza, oba veća nego što su izgledala>) | 2026-08-28 | dva Sašina nalaza, oba veća nego što su izgledala | 3145 |
+| [S122](<#Done S122 (2026-08-29) — potvrda popravaka, jedan fantom, jedan krivi trag i spec za filtar>) | 2026-08-29 | potvrda popravaka, jedan fantom, jedan krivi trag i spec za filtar | 3032 |
+| [S123](<#Done S123 (2026-08-31) — Kokin roundtrip, ispravci tuđih redaka, Datum naplate>) | 2026-08-31 | Kokin roundtrip, ispravci tuđih redaka, Datum naplate | 3449 |
+| [S124](<#Done S124 (2026-09-01) — izvod je odgovorio na sve, i alat koji to radi mjesečno>) | 2026-09-01 | izvod je odgovorio na sve, i alat koji to radi mjesečno | 3504 |
+| [S125](<#Done S125 (2026-09-02) — 15 eura, 043 na PROD, i tri tiha kvara>) | 2026-09-02 | 15 eura, 043 na PROD, i tri tiha kvara | 3609 |
+| [S126](<#Done S126 — ZABA kolovoz usklađena s bankom, Tip/Podtip iz izbrojane povijesti (2026-09-03)>) | 2026-09-03 | ZABA kolovoz usklađena s bankom, Tip/Podtip iz izbrojane povijesti | 3685 |
+| [S127](<#S127 — izvedene vrijednosti, gusta sidra, i priprema povijesti (2026-09-04)>) | 2026-09-04 | izvedene vrijednosti, gusta sidra, i priprema povijesti | 3766 |
+| [S128](<#S128 — povijest je u bazi, a provjera je morala zaobići sidro (2026-09-04)>) | 2026-09-04 | povijest je u bazi, a provjera je morala zaobići sidro | 3886 |
+| [S129](<#S129 — pet popravaka na PROD-u, ZABA zatvara do kolovoza, i jedna tvrdnja koja je devet sesija bila netočna (2026-09-05)>) | 2026-09-05 | pet popravaka na PROD-u, ZABA zatvara do kolovoza, i jedna tvrdnja koja je devet sesija bila netočna | 4272 |
+| [S130](<#S130 — dropdown koji je izgledao ispravno, i jedan popravak koji bi Deltu napunio upozorenjima (2026-09-07)>) | 2026-09-07 | dropdown koji je izgledao ispravno, i jedan popravak koji bi Deltu napunio upozorenjima | 4122 |
+| [S131](<#S131 — jedno prazno polje, i tri načina da polje nestane sa ekrana (2026-09-08)>) | 2026-09-08 | jedno prazno polje, i tri načina da polje nestane sa ekrana | 3988 |
+| [S132](<#S132 — keš koji laže o bazi (2026-09-09)>) | 2026-09-09 | keš koji laže o bazi | 4535 |
+| [S133](<#S133 — popravak koji nije popravljao, i brojka koja je bila brava (2026-09-10)>) | 2026-09-10 | popravak koji nije popravljao, i brojka koja je bila brava | 4434 |
+| [S134](<#S134 — backup baze, shema u gitu, čišćenje RLS-a (2026-09-10)>) | 2026-09-10 | backup baze, shema u gitu, čišćenje RLS-a | 4629 |
+| [S135](<#S135 — testiranje umjesto deploya, i kvar koji je iz toga ispao (2026-09-11)>) | 2026-09-11 | testiranje umjesto deploya, i kvar koji je iz toga ispao | 4807 |
+| [S136](<#S136 — meni koji je bježao, i popis testova koji je rastao osam mjeseci (2026-09-14)>) | 2026-09-14 | meni koji je bježao, i popis testova koji je rastao osam mjeseci | 5053 |
+| [S137](<#S137 — triaža PENDING-a, CLAUDE.md navigacija, MC košara 11.09. (2026-09-15)>) | 2026-09-15 | triaža PENDING-a, CLAUDE.md navigacija, MC košara 11.09. | 5187 |
+| [S138](<#S138 — deploy, cutoff:3:5 na PROD, i pravilo promijenjeno samo napola (2026-09-15)>) | 2026-09-15 | deploy, cutoff:3:5 na PROD, i pravilo promijenjeno samo napola | 5300 |
+| [S139](<#S139 — alati koji mjere nešto drugo nego što tvrde (2026-09-17)>) | 2026-09-17 | alati koji mjere nešto drugo nego što tvrde | 5381 |
+| [S140](<#S140 — instrumenti koji su blokirali posao, i dva pada s jednim uzrokom (2026-09-18)>) | 2026-09-18 | instrumenti koji su blokirali posao, i dva pada s jednim uzrokom | 5635 |
+| [S141](<#S141 — tri tvrdnje oborene mjerenjem, i sve tri su bile moje (2026-09-18)>) | 2026-09-18 | tri tvrdnje oborene mjerenjem, i sve tri su bile moje | 6198 |
+| [S142](<#S142 — sidro prestaje biti rez, postaje oznaka (2026-09-19)>) | 2026-09-19 | sidro prestaje biti rez, postaje oznaka | 6091 |
+| [S143](<#S143 — sort je mogao progutati sve, i dva upozorenja su lagala (2026-09-20)>) | 2026-09-20 | sort je mogao progutati sve, i dva upozorenja su lagala | 5878 |
+| [S144](<#S144 — guard koji je bio mrtav od prvog dana, i fantom koji je nestao (2026-09-22)>) | 2026-09-22 | guard koji je bio mrtav od prvog dana, i fantom koji je nestao | 5801 |
+| [S145](<#S145 — testirali smo hrpu A, a ispala su četiri kvara kojih nije bilo na popisu (2026-09-22)>) | 2026-09-22 | testirali smo hrpu A, a ispala su četiri kvara kojih nije bilo na popisu | 5720 |
+| [S146](<#S146 — trijaza — osam sekcija, sesti kriterij, i dva kvara u harnessu (2026-09-23)>) | 2026-09-23 | trijaza — osam sekcija, sesti kriterij, i dva kvara u harnessu | 7499 |
+| [S147](<#S147 — hrpa B prošla, a Visa se pokvarila tek u veljači (2026-09-24)>) | 2026-09-24 | hrpa B prošla, a Visa se pokvarila tek u veljači | 7622 |
+| [S148](<#S148 — Visa košare u cent, a višak je bio u bazi, ne u banci (2026-09-24)>) | 2026-09-24 | Visa košare u cent, a višak je bio u bazi, ne u banci | 7712 |
+| [S149](<#S149 — pet bugova, svaki s testom provjerenim u drugom smjeru (2026-09-25)>) | 2026-09-25 | pet bugova, svaki s testom provjerenim u drugom smjeru | 7798 |
+| [S150](<#S150 — prolaz kroz backlog s Sašom (2026-09-26)>) | 2026-09-26 | prolaz kroz backlog s Sašom | 7857 |
+| [S151](<#S151 — pospremanje dokumentacije i podjela CLAUDE.md-a (2026-09-26)>) | 2026-09-26 | pospremanje dokumentacije i podjela CLAUDE.md-a | 7981 |
+| [S152](<#S152 — B1/B2, razvrstač izvoda, C2+C3, lokalni dan (2026-09-26)>) | 2026-09-26 | B1/B2, razvrstač izvoda, C2+C3, lokalni dan | 8024 |
+| [S153](<#S153 — testiranje S152, list_columns usporedba, *, plan klasifikacije (2026-09-27)>) | 2026-09-27 | testiranje S152, list_columns usporedba, *, plan klasifikacije | 8071 |
+| [S154](<#S154 — testovi S152, „Data range", Kokine prijave s malog iPhonea, merge (2026-09-28)>) | 2026-09-28 | testovi S152, „Data range", Kokine prijave s malog iPhonea, merge | 8107 |
+| [S155](<#S155 — C3b žig izvoda, C3c upozorenje u Editu, C5 traka „Čeka potvrdu" (2026-09-30)>) | 2026-09-30 | C3b žig izvoda, C3c upozorenje u Editu, C5 traka „Čeka potvrdu" | 8143 |
+| [S156](<#S156 — C5 faza 2 — Potvrdi + skupni redak iz trake „Čeka potvrdu" (2026-09-30)>) | 2026-09-30 | C5 faza 2 — Potvrdi + skupni redak iz trake „Čeka potvrdu" | 8220 |
+| [S157](<#S157 — traka uživo na TEST-u — PGRST201, pravilo C, Smjer; TEST = kopija PROD-a; deploy (2026-10-01)>) | 2026-10-01 | traka uživo na TEST-u — PGRST201, pravilo C, Smjer; TEST = kopija PROD-a; deploy | 8261 |
+| [S158](<#S158 — audit procesa Financija; MC izvod 2026-09 u cent; T11 buduće rate; T5–T10 alati (2026-10-02)>) | 2026-10-02 | audit procesa Financija; MC izvod 2026-09 u cent; T11 buduće rate; T5–T10 alati | 8336 |
+| [S159](<#S159 — ne-Financije backlog — B3, fan-out, B6, D2/D4/D5, F4, C4 (2026-10-02)>) | 2026-10-02 | ne-Financije backlog — B3, fan-out, B6, D2/D4/D5, F4, C4 | 8395 |
+| [S160](<#S160 — P1 tihi gubici + dio P3 + ručno testiranje (2026-10-04)>) | 2026-10-04 | P1 tihi gubici + dio P3 + ručno testiranje | 8498 |
+| [S160b](<#S160b — grantee ne dodaje opcije (2026-10-04, nastavak S160)>) | 2026-10-04 | grantee ne dodaje opcije (nastavak S160) | 8562 |
+| [S161](<#S161 — mjesečni krug listopad — ZABA + Visa izvod 2026-09, Visa alat bez mjesečnih popisa (2026-10-05)>) | 2026-10-05 | mjesečni krug listopad — ZABA + Visa izvod 2026-09, Visa alat bez mjesečnih popisa | 8591 |
+| [S162](<#S162 — P4 sitnice — View datetime, rename sluga u configu, kategorije liste iz keša; Structure Delete i P2 roditelji (2026-10-05)>) | 2026-10-05 | popravljene četiri tihe greške — View je pokazivao datum naplate pomaknut za dva sata, preimenovanje atributa ostavljalo je mrtve veze u automatici i predlošku komentara, lista je radila tri nepotrebna kruga do baze, a brisanje kategorije s unosom zapinjalo je na skrivenom roditeljskom zapisu; sve potvrđeno testovima na TEST-u. | 8622 |
+| [S163](<#S163 — razgovor o backlogu i analitici: spec „Kamo ide novac" (pločica razreza + bucketi) (2026-10-06)>) | 2026-10-06 | razgovor o preostalom backlogu i novim funkcijama završio je specom za pločicu „Kamo ide novac" — prihodi i troškovi po Tip/Podtip, prekidač po kupnji/naplati i Sašini bucketi višeg reda — uz mjerenje koje je našlo prolaznih 50.000 € upisanih kao prihod i trošak; ništa nije kodirano, odluke R1–R9 čekaju Sašu. | 8674 |
+| [S164](<#S164 — „Kamo ide novac": odluke R1–R15, skica nad stvarnim podacima, alati R3 i N/A, detaljni spec (2026-10-07)>) | 2026-10-07 | Saša je donio sve odluke o pločici „Kamo ide novac" uz interaktivnu skicu nad stvarnim podacima (osam bucketa, gotovina u mjesečnim troškovima, osiguranje kuće odvojeno), dobio dva alata (osiguranje kuće u vlastiti Podtip i prijedlog razvrstavanja N/A redaka, 97 % točan na povijesti) i detaljni spec za RPC i pločicu, s izmjerenim prototipom upita koji se s Python modelom slaže u cent. | 8696 |
+| [S165](<#S165 — pločica „Kamo ide novac" izgrađena i provjerena u lipu na TEST-u (2026-10-07)>) | 2026-10-07 | Pločica „Kamo ide novac" je izgrađena i radi na TEST-u — novi upit u bazi, izračun bucketa, krug na laptopu i lista na mobitelu — i svaka brojka se s neovisnim izračunom i sa Sašinom tablicom iz skice slaže u lipu; PROD čeka migraciju, deploy i osiguranje kuće. | 8723 |
+| [S166](<#S166 — testovi pločice razreza na TEST-u i sedam dorada po Sašinim nalazima (2026-10-08)>) | 2026-10-08 | Pločica „Kamo ide novac" prošla je sve ručne testove na TEST-u, a usput je po Sašinim primjedbama dobila povezan krug i listu, postotke, harmoniku sa saldom i objašnjenje potvrde na klik; podaci kroz cijelu povijest pokazali su tri krivo razvrstane stavke koje čekaju odluku. | 8752 |
+| [S167](<#S167 — PROD razrez dovršen: osiguranje kuće, preimenovan Podtip, 056 i config (2026-10-11)>) | 2026-10-11 | Pločica „Kamo ide novac" i zadano razdoblje This Year sada rade i na PROD-u — prije toga je osiguranje kuće dobilo vlastiti Podtip, a stari Podtip preimenovan u „Popravci, održavanje" alatom koji mijenja izbornik i svih 128 redaka odjednom; Mastercard naplata od 11.10. još nije skinuta, pa Kokina potvrda čeka. | 8786 |
+| [S168](<#S168 — rate po kartici u cent, lista čeka svoje kolone, brojač dohvata (2026-10-11)>) | 2026-10-11 | Rata modal sada ostatak zaokruživanja stavlja kao banka — kod Mastercarda na zadnju ratu, kod Vise na prvu — pa se MC planovi s izvodom slažu u cent; lista više ne pokazuje transakcije bez iznosa dok se postavke Aree učitavaju (Kokin nalaz s mobitela, mehanizam potvrđen testom), a sve čeka deploy. | 8877 |
+| [S169](<#S169 — Klasifikacija s Kokom: N/A ZABA, Pharmalog, Investicije, Triglav (2026-10-12)>) | 2026-10-12 | S Kokom smo razvrstali svih 72 neodređenih transakcija na njezinom računu iz zadnjih godinu dana i potvrdili da su Pharmalog uplate njezin prihod, a Investicije i isplata Triglav police su maknute iz troškova — pločica „Kamo ide novac" kroz cijelu povijest više nema ni „nesvrstano" ni stavki u minusu. | 8915 |
+| [S170](<#S170 — Filtar izbornici, brže učitavanje, Structure RPC, Visa u traci, delta košare (2026-10-13)>) | 2026-10-13 | Filtar sada nudi izbornik i za Izvor, Podtip i Status, aplikacija se otvara bez 1,7 MB koje nije trebala, Structure broji jednim upitom umjesto stotinu, Visa je spremna za traku „Čeka potvrdu“, a delta sheet pokazuje košare po mjesecima s izbornikom i bojom. | 8955 |
 
-_86 sesija._
+_87 sesija._
 
 <!-- SESSION-INDEX:END -->
 
@@ -8949,3 +8950,43 @@ odmontira Overview. Sada modul (`lastView`, ključ Area + naslov), obrazac `last
 čisti. E2E u `S165_breakdown_tile` (sije atribut `tip` jer ga drill traži; sabotaža pada na povratku),
 spec 5/5, `check` ✓, build ✓. Usput u alatima: `razvrstaj_na --s-tekstom --po-iznosu`, prozor u
 imenu filea (T-S169-7, fileovi 01/2024–09/2025 napravljeni s PROD-a); T37 Intercar rate 2025.
+
+
+## S170 — Filtar izbornici, brže učitavanje, Structure RPC, Visa u traci, delta košare (2026-10-13)
+[↑ Dnevnik](#Dnevnik)
+
+> Ukratko: Filtar sada nudi izbornik i za Izvor, Podtip i Status, aplikacija se otvara bez 1,7 MB koje nije trebala, Structure broji jednim upitom umjesto stotinu, Visa je spremna za traku „Čeka potvrdu“, a delta sheet pokazuje košare po mjesecima s izbornikom i bojom.
+
+Sesija programiranja bez Koke, da sljedeći deploy bude kompletniji (manje Netlify buildova).
+
+### Kod (sve na `test-branch`, nije deployano)
+- **B2 Filter by izbornik** (`filterOptions.ts`): `depends_on` atributi nemaju ravan `suggest`, pa su
+  padali na tekst + `ilike` (`Popravci` = 30 umjesto 18). Dug atribut grupiran po roditelju, kratak
+  ravan bez ponavljanja. Saša potvrdio na PROD bazi (`dev:prod`) i TEST-u: 18 / 22.
+- **B1 `Rate?` bez broja rata** (`rataCountProblem`): Add Finish i `Save +` staju s porukom. Usput
+  gumb rata modala „Kreiraj 3 rate" (hr množina).
+- **B3 lazy Plotly + ExcelJS**: početno učitavanje **2.036 → 269 KB gzipa**. `index.html` je preloadao
+  oba vendora, iako je komentar u `vite.config.ts` tvrdio da je Excel lazy. `useMinWidth`: Sunburst se
+  na < 768 px više ne montira (bio je samo CSS-om skriven, skidao Plotly i radio upite).
+- **Kvar nađen usput** (E2E S165, čim je lazy promijenio tajming): zadano razdoblje i bounds auto-init
+  bila su dva efekta; u istom commitu je drugi vraćao All Time preko This Year. Spojeni u jedan.
+- **B4 Structure brojanje** (`sql/057` `rpc_category_event_counts`, SECURITY INVOKER): isti tok
+  **156 → 0** upita po kategoriji; fallback samo za `PGRST202`. TEST i **PROD** (Saša, SQL editor,
+  bez `anon` prava); potvrđeno u Network panelu na PROD bazi kao grantee.
+- **T2 Visa u traci**: `due.baskets[k].window {before, after}` i `measure: 'gross'` (zrcalo `PRIMLJENA
+  UPLATA` — neto bi dao 126,84 umjesto 1.409,63). MC bez ključeva nepromijenjen. `set_due_visa_S170.py`
+  (TEST upisan; PROD tek poslije deploya). Python bez izmjene (provjereno: `visa_uvoz_izvoda` već piše
+  opis `Visa`).
+- **T21**: kvačica „potvrđeno razdoblje" na uvozu i kolona `Potvrda` samo za retke u saldu (prije ili
+  poslije izmjene). Ratchet uhvatio S144 razred (`filters` u dep listi `analyzeFile`).
+- **T12**: Σ košara po jednom dospijeću; `fill_from_izvod` od S142 tražio kontrolu u koloni `Potvrda`
+  (`last_col`) — sada po naslovu. Saša je u testu predložio **košare po mjesecima**: sekcija sortirana
+  po košari, grupe `+`/`−` s retkom-oznakom, izbornik dana uz Σ, odabrana košara žuta. „File je ok."
+
+### Usput
+- TEST config nije imao `split.due_slug` (044) jer `prod_to_test.py` ne prenosi `settings` — poravnato.
+- `sql/SCHEMA_TEST.sql` osvježen (zaostajao od 056). `SCHEMA_PROD.sql` čeka Sašu (`dump_schema.py --env prod`).
+
+### Testovi
+✅ T-S170-2, 3, 5, 6, 7, 11. Otvoreno: 1 (broj `Racun` ≈ 355), 10 (uvoz), 12 (s izvodom), poslije
+deploya 4, 8, 9. Nova backlog stavka: provjera košara u „Review" sheetu (Saša razmišlja).

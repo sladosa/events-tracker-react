@@ -78,7 +78,9 @@ izvodom** — dospjeli datum sam po sebi nije dokaz da je banka naplatila.
 - Sadrži planirane retke tog računa koje **prozor ne pokriva** — tipično kartične stavke i rate, koje saldo ne miču pa u glavnom bloku ne bi ni bile prikazane
 - Kolona `Stanje (kontrola)` je na njima **prazna** — kartična stavka ne tereti račun, tereti ga tek skupna naplata
 - Potvrda ide **promjenom `Status`a u `Izvrsen`** pa uvozom; nedirnuti retci se preskaču
-- ⚠ **Iznad** sekcije, odmah ispod praznih redaka, stoje `Σ košara (dolje)`, `naplaćeno s izvoda` (upisuješ rukom) i `razlika`. **Potvrdi tek kad se to slaže** — dospjeli datum nije dokaz da je banka naplatila, a `Datum naplate` na kartičnim retcima zna biti kriv
+- ⚠ **Iznad** sekcije, odmah ispod praznih redaka, stoje `Σ košara za naplatu (dan desno)`, `naplaćeno s izvoda` (upisuješ rukom) i `razlika`. **Potvrdi tek kad se to slaže** — dospjeli datum nije dokaz da je banka naplatila, a `Datum naplate` na kartičnim retcima zna biti kriv
+- **Σ zbraja JEDNU košaru** — onu čiji je datum naplate u ćeliji desno od Σ (izvoz upiše najbliži). Datum biraš **padajućim izbornikom**; izabrana košara se dolje **oboji žuto**
+- Sekcija je složena **po košarama**: ispred svake stoji sivi redak `naplata 11.11.2026 · 7 stavki` s gumbom **`−`/`+`** lijevo (gumbi **1 / 2** u kutu = sve košare odjednom). Grupe se po izboru datuma ne otvaraju same — to Excel bez makroa ne zna
 - Kontrola je iznad, a ne ispod, jer sekcija **raste**: kad joj se dopišu retci s kartičnog izvoda, blok se širi prema dolje a kontrola ostaje na istom mjestu
 
 ## Export profil

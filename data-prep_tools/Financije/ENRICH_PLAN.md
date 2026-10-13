@@ -1599,3 +1599,15 @@ Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.
 - `visa_uvoz_izvoda.py`: bez `RUCNO`/`KLASA_POSTOJECI`; prije/nakon naplate; RF naplata + naknada
   ako ih nema (guard ±3 dana); planovi iz appa; blizak iznos; „krivo mjesto"; duplikat. Test:
   `PBZVISA_2026-08` ponovno ⇒ 48/48, 0/0. Uvezeno 9 New / 33 Modify / 1 Delete.
+
+### S170 (2026-10-13) — alati uz Visu u traci i delta košare
+
+- **`set_due_visa_S170.py`** (nov, jednokratno): Visa ključ u `due.baskets` (`window {2, 6}`,
+  `measure: gross`, `text: Visa`). Dry run ispiše Visa košare koje traka odmah pokaže. TEST upisan;
+  PROD tek **poslije deploya** S170 (T-S170-8).
+- **`fill_from_izvod.py`**: `Target.ctrl_col` po naslovu `Stanje (kontrola)`. Od S142 je
+  `last_col` kolona `Potvrda` kad prozor nosi sidro ⇒ `prosiri_kosaru` je javljao „list nema
+  kontrolu košare" nad listom koji je ima. Σ košare je sada `SUMIFS` po danu — regex za raspone
+  ih proširuje jednako (izmjereno na generiranom fileu).
+- `visa_uvoz_izvoda.py` bez izmjene: skupni redak naplate već nosi opis `Visa` (= `text` trake),
+  naknada `Naknada`; na sličan redak ±3 dana staje.

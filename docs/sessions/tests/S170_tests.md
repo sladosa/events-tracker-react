@@ -14,7 +14,7 @@ Brojke su izmjerene na TEST-u 13.10.2026. (`Financije_all`, kopija PROD-a iz S15
 4. Odaberi `Racun` ⇒ lista ~**355** redaka (svi `Racun`); na mobitelu isto.
 - **Pad:** polje „filter by Izvor…", ili `Racun` dvaput.
 
-## T-S170-2 Filter by `Podtip` grupiran po `Tip`u (TEST)
+## T-S170-2 ✅ Filter by `Podtip` grupiran po `Tip`u (TEST)
 
 1. Kao gore, Filter by → `Podtip`.
 2. **Očekivano:** izbornik s grupama (`Advokati`, `auto C5`, …, `Kuća`, …), unutar grupe abecedno; `N/A` i prazne grupe nema.
@@ -23,7 +23,7 @@ Brojke su izmjerene na TEST-u 13.10.2026. (`Financije_all`, kopija PROD-a iz S15
 5. `Status` ⇒ ravan izbornik `Izvrsen, Planiran`.
 - **Pad:** polje za tekst, ili 30 umjesto 18.
 
-## T-S170-3 `Rate?` uključen bez broja rata (TEST)
+## T-S170-3 ✅ `Rate?` uključen bez broja rata (TEST)
 
 1. Add Activity, `Financije_all > Transakcija`, Isplata 30,00, Izvor Mastercard, kvačica `Rate?`, `Broj rata` prazno.
 2. Finish ⇒ **crvena poruka** *„"Rate?" je uključeno, a "Broj rata" je prazan — upiši broj rata (2 ili više) ili makni kvačicu."* Ništa nije spremljeno, forma ostaje.
@@ -40,7 +40,7 @@ Brojke su izmjerene na TEST-u 13.10.2026. (`Financije_all`, kopija PROD-a iz S15
 5. **Kokin iPhone:** app se otvara osjetno brže (subjektivno; mjerenje je korak 2).
 - **Pad:** modal se ne otvori, ili krug ostane na „Učitavam krug…".
 
-## T-S170-5 Financije se otvaraju na This Year (TEST i PROD)
+## T-S170-5 ✅ Financije se otvaraju na This Year (TEST i PROD)
 
 Kvar iz S166 koji je E2E otkrio ovdje: kad postavka Aree i granice podataka stignu istovremeno,
 filtar je ostajao na **All Time**.
@@ -48,13 +48,13 @@ filtar je ostajao na **All Time**.
 2. Ručno All Time ⇒ Activities ⇒ Overview ⇒ ostaje All Time; F5 ⇒ This Year.
 - **Pad:** bilo koji F5 ostane na All Time.
 
-## T-S170-6 PROD: migracija `057` (Saša, SQL editor)
+## T-S170-6 ✅ PROD: migracija `057` (Saša, SQL editor)
 
 1. Supabase (PROD) → SQL editor → sadržaj `sql/057_category_event_counts.sql` → Run ⇒ `Success`.
 2. Provjera u istom editoru: `select count(*), sum(n) from rpc_category_event_counts();` (kao `postgres` broji SVE evente — to je u redu; app ga zove kao korisnik, pa RLS vrijedi).
 - Redoslijed s deployem **nije bitan**: bez funkcije app broji starim putem (čuva E2E `S170_structure_event_counts`).
 
-## T-S170-7 Structure tab — jedan zahtjev za brojanje (PROD nakon 057 + deploya)
+## T-S170-7 ✅ Structure tab — jedan zahtjev za brojanje (PROD nakon 057 + deploya)
 
 1. DevTools → Network, filtar `rpc_category` ⇒ Structure tab ⇒ **1** zahtjev po učitavanju.
 2. Filtar `events?select=id` ⇒ **0** HEAD zahtjeva (prije: 39 po učitavanju; izmjereno na TEST-u 156 → 0 u istom toku).
@@ -90,7 +90,7 @@ $env:ET_TARGET='prod'; .\Financije\run.bat set_due_visa_S170.py
 3. **Očekivano:** pregled javlja „potvrđeno" (i traži kvačicu) **samo za Racun** redak; MC redak je obična izmjena.
 4. Ponovi s MC retkom kojem `Izvor` mijenjaš u `Racun` ⇒ kvačica se traži (ulazi u saldo).
 
-## T-S170-11 TEST: delta sheet — Σ košara jednog dospijeća (T12)
+## T-S170-11 ✅ TEST: delta sheet — Σ košara jednog dospijeća (T12)
 
 1. Export → Delta (ZABA), file otvori u Excelu.
 2. Kontrola košare: `Σ košara za naplatu (dan desno)` | Σ | **dan** (najbliže dospijeće, npr. 11.10. ili 11.11.).

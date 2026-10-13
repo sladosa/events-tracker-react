@@ -9,7 +9,7 @@
 
 ---
 
-## T-S158-1 ⬜ 11.10. — MC košara se slaže iz prve (Koka, PROD)
+## T-S158-1 ✅ 11.10. — MC košara se slaže iz prve (Koka, PROD)
 
 Isti trenutak kao T-S156-6; ovaj test mjeri **posljedicu današnjeg uvoza**.
 

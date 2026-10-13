@@ -144,6 +144,7 @@ Takav nacrt bi, potvrđen, upisao **isti zapis drugi put**.
   pri otvaranju appa i odabiru te Aree filtar kreće od njega. Odabereš li drugo (i *All Time*),
   vrijedi tvoj izbor do sljedećeg otvaranja appa. Area bez postavke kreće od *All Time*.
 - **Filter by** dropdown: odaberi "Comment" za pretragu komentara, specifični atribut za pretragu po vrijednosti atributa, ili **"In any attribute"** za pretragu po tekstu u svim atributima odjednom
+- Atribut koji ima **popis opcija** (npr. `Izvor`, `Tip`, `Podtip`, `Status`) dobiva **izbornik**, ne polje za tekst — i traži točno tu vrijednost. Dugi popis (`Podtip`) je **grupiran po roditelju** (`Kuća › Popravci, održavanje`); ista opcija pod dva roditelja (`gorivo` pod oba auta) hvata oba
 - **Comment contains** — pretražuje `comment` polje leaf eventa (case-insensitive, server-side); chip "xyz ×" u tablici kad je aktivan
 - **Pretraga po `~` (nepotvrđeni iznosi)** — upiši `~` u Comment pretragu da dobiješ sve
   retke kojima iznos još nije potvrđen (v. **Dodavanje aktivnosti**). Radi kao i svaka
