@@ -121,24 +121,13 @@ export function useStructureData(
       //   stotine, tada dolazi na red funkcija u bazi s `GROUP BY`.
       //   PostgREST agregati (`id.count()`) NISU opcija — projekt ih odbija
       //   s `PGRST123` (`Use of aggregate functions is not allowed`).
+      // ⚠ S170: to je i dalje fallback, ali PRVI je `rpc_category_event_counts`
+      //   (sql/057) — JEDAN upit umjesto jednog po kategoriji. Jedan tok kroz
+      //   Structure tab učita strukturu 6–8 puta, pa je fan-out bio ~300
+      //   zahtjeva (T-S141-1). Fallback samo kad funkcije NEMA (PROD prije
+      //   migracije); svaka druga greška i dalje baca — nikad tiha nula.
       // --------------------------------------------------------
-      const counted = await Promise.all(categories.map(async cat => {
-        const { count, error: cntErr } = await withRetry(
-          () => supabase
-            .from('events')
-            .select('id', { count: 'exact', head: true })
-            .eq('category_id', cat.id),
-          r => !!r.error || r.count == null,
-        );
-        if (cntErr || count == null) {
-          throw cntErr instanceof Error
-            ? cntErr
-            : new Error(`Ne mogu prebrojati evente za kategoriju ${cat.name}`);
-        }
-        return [cat.id, count] as const;
-      }));
-
-      const eventCountMap = new Map<string, number>(counted);
+      const eventCountMap = await fetchEventCounts(categories);
 
       // --------------------------------------------------------
       // 5. Build lookup maps
@@ -295,6 +284,40 @@ export function useStructureData(
   }, [refetch, autoFetch]);
 
   return { nodes, loading, error, refetch, load };
+}
+
+// --------------------------------------------------------
+// Broj eventa po kategoriji (S170): jedan RPC, fan-out samo kao fallback.
+// `PGRST202` = PostgREST ne zna funkciju (baza bez sql/057) — jedini slučaj
+// u kojem se smije pasti natrag; sve ostalo je greška i BACA (brava, S133).
+// --------------------------------------------------------
+async function fetchEventCounts(categories: Category[]): Promise<Map<string, number>> {
+  const res = await withRetry(
+    () => supabase.rpc('rpc_category_event_counts'),
+    r => !!r.error && r.error.code !== 'PGRST202',
+  );
+  if (!res.error) {
+    const rows = (res.data ?? []) as { category_id: string; n: number | string }[];
+    return new Map(rows.map(r => [r.category_id, Number(r.n)]));
+  }
+  if (res.error.code !== 'PGRST202') throw toError(res.error);
+
+  const counted = await Promise.all(categories.map(async cat => {
+    const { count, error: cntErr } = await withRetry(
+      () => supabase
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .eq('category_id', cat.id),
+      r => !!r.error || r.count == null,
+    );
+    if (cntErr || count == null) {
+      throw cntErr instanceof Error
+        ? cntErr
+        : new Error(`Ne mogu prebrojati evente za kategoriju ${cat.name}`);
+    }
+    return [cat.id, count] as const;
+  }));
+  return new Map<string, number>(counted);
 }
 
 // --------------------------------------------------------
