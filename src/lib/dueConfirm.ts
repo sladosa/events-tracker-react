@@ -24,7 +24,7 @@ import { computeSetAttributeValue, findDefBySlug } from '@/lib/attributeRules';
 import { findFreeSessionStart, insertEntry, type EntryAttr } from '@/lib/insertEntry';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import {
-  SETTLE_WINDOW_DAYS, adoptChanges, basketNetCents, findSuspectSettleRows, matchSettleRow, settleValues,
+  SETTLE_WINDOW_DAYS, adoptChanges, basketSumCents, basketWindow, findSuspectSettleRows, matchSettleRow, settleValues,
   type AdoptChange, type SettleCandidate, type SettleMatch,
 } from '@/lib/dueBaskets';
 import type { AttributeDefinition } from '@/types';
@@ -84,7 +84,10 @@ export async function fetchBasketMembers(areaId: UUID, w: Widget, basket: string
  * po slugu. `comment` sužava upit (pravilo B); bez njega se čita cijeli
  * prozor (pravilo C — ručni redak može imati bilo kakav opis).
  */
-async function loadCandidates(areaId: UUID, centerYmd: string, comment?: string): Promise<SettleCandidate[]> {
+async function loadCandidates(
+  areaId: UUID, centerYmd: string, comment?: string,
+  before = SETTLE_WINDOW_DAYS, after = SETTLE_WINDOW_DAYS,
+): Promise<SettleCandidate[]> {
   // ⚠ `events` ima DVA FK-a prema `categories` (`category_id`, `chain_key`) ⇒
   //   embed bez imena veze PostgREST odbija (PGRST201, HTTP 300).
   let q = supabase
@@ -92,8 +95,8 @@ async function loadCandidates(areaId: UUID, centerYmd: string, comment?: string)
     .select('id, event_date, comment, categories!events_category_id_fkey!inner(area_id)')
     .eq('categories.area_id', areaId)
     .is('chain_key', null)
-    .gte('event_date', shiftYmd(centerYmd, -SETTLE_WINDOW_DAYS))
-    .lte('event_date', shiftYmd(centerYmd, SETTLE_WINDOW_DAYS));
+    .gte('event_date', shiftYmd(centerYmd, -before))
+    .lte('event_date', shiftYmd(centerYmd, after));
   if (comment != null) q = q.eq('comment', comment);
   const { data: evs } = await withRetryQuery(() => q.order('id'));
   const rows = (evs ?? []) as { id: string; event_date: string; comment: string | null }[];
@@ -129,14 +132,15 @@ export async function findSettleRow(areaId: UUID, w: Widget, basket: string, due
   const cfg = w.due.baskets[basket];
   if (!cfg?.text || !w.due.settle) return null;
 
-  const cands = await loadCandidates(areaId, dueDate, cfg.text);
+  const win = basketWindow(cfg);
+  const cands = await loadCandidates(areaId, dueDate, cfg.text, win.before, win.after);
   if (cands.length === 0) return null;
 
   return matchSettleRow(
     cands,
     {
       text: cfg.text, account: cfg.account, groupSlug: w.group_by, settle: w.due.settle,
-      plusSlug: w.plus, minusSlug: w.minus, dueDate,
+      plusSlug: w.plus, minusSlug: w.minus, dueDate, window: win,
     },
   );
 }
@@ -379,10 +383,10 @@ export async function settleBasket(p: {
   if (!user) throw new Error('Nisi prijavljen.');
 
   const members = await fetchBasketMembers(p.areaId, p.w, p.basket, p.dueDate);
-  const fresh = basketNetCents({
+  const fresh = basketSumCents({
     gross_plus: members.reduce((s, m) => s + (m.plus_v ?? 0), 0),
     gross_minus: members.reduce((s, m) => s + (m.minus_v ?? 0), 0),
-  });
+  }, p.w.due.baskets[p.basket]);
   if (fresh !== p.shownSumCents) {
     throw new Error('Košara se promijenila otkad je traka učitana — osvježi (↻) i provjeri ponovo.');
   }

@@ -33,14 +33,22 @@ const hr = (iso: string) => { const [y, m, d] = iso.split('-'); return `${d}.${m
 const today = ymd(new Date());
 const yesterday = ymd(new Date(Date.now() - 86_400_000));
 
-async function mockDue(page: Page) {
+const MC_ROW = { basket: 'Mastercard', due_date: yesterday, n: 55, n_pending: 55, gross_plus: 0, gross_minus: 1189.34 };
+
+async function mockDue(page: Page, rows: object[] = [MC_ROW]) {
   await page.route(/\/rest\/v1\/rpc\/rpc_area_due_baskets/, route => route.fulfill({
-    status: 200, contentType: 'application/json',
-    body: JSON.stringify([{
-      basket: 'Mastercard', due_date: yesterday, n: 55, n_pending: 55,
-      gross_plus: 0, gross_minus: 1189.34,
-    }]),
+    status: 200, contentType: 'application/json', body: JSON.stringify(rows),
   }));
+}
+
+async function openOverview(page: Page, areaId: string) {
+  await page.goto('/app');
+  const areaSelect = page.locator('select').filter({
+    has: page.locator('option[value=""]', { hasText: 'All Areas' }),
+  });
+  await areaSelect.waitFor({ state: 'visible', timeout: 15_000 });
+  await areaSelect.selectOption(areaId);
+  await page.getByRole('button', { name: /Overview/i }).click();
 }
 
 test.describe('S168 — D7: traka pita, ne traži tipkanje', () => {
@@ -63,7 +71,11 @@ test.describe('S168 — D7: traka pita, ne traži tipkanje', () => {
             due: {
               basket_by: 'izvorplacanja', due_slug: 'datum_naplate', status_slug: 'status',
               pending: 'Planiran', done: 'Izvrsen',
-              baskets: { Mastercard: { account: 'ZABA', text: 'TROŠKOVI MC S168' } },
+              baskets: {
+                Mastercard: { account: 'ZABA', text: 'TROŠKOVI MC S168' },
+                // S170: Visa — prozor −2/+6 oko procjene, Σ bruto (zrcalo uplate u košari)
+                Visa: { account: 'RF', text: 'Visa', window: { before: 2, after: 6 }, measure: 'gross' },
+              },
               settle: { tip: 'Transfer', izvorplacanja: 'Racun' },
             },
           }],
@@ -79,13 +91,7 @@ test.describe('S168 — D7: traka pita, ne traži tipkanje', () => {
   test('pitanje → dan → sažetak; „drukčije" otvara prazna polja', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await mockDue(page);
-    await page.goto('/app');
-    const areaSelect = page.locator('select').filter({
-      has: page.locator('option[value=""]', { hasText: 'All Areas' }),
-    });
-    await areaSelect.waitFor({ state: 'visible', timeout: 15_000 });
-    await areaSelect.selectOption(areaId);
-    await page.getByRole('button', { name: /Overview/i }).click();
+    await openOverview(page, areaId);
 
     // 1. Pitanje s iznosom, bez ručnih polja
     await expect(page.getByText(/Je li banka skinula/)).toBeVisible({ timeout: 20_000 });
@@ -123,5 +129,25 @@ test.describe('S168 — D7: traka pita, ne traži tipkanje', () => {
     await page.getByRole('button', { name: /ipak se slaže/ }).click();
     await expect(page.getByText(/Je li banka skinula/)).toBeVisible();
     await expect(page.getByPlaceholder('upiši s ekrana banke')).toHaveCount(0);
+  });
+
+  test('S170 Visa: Σ bruto (zrcalo se ne oduzima), dani i PRIJE procjene', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    // Košara 05.06.2026. iz DOSPJELO_SPEC §2: bruto 1.409,63, zrcalo PRIMLJENA UPLATA 1.282,79.
+    // Dospijeće = jučer ⇒ prozor nudi jučer−2 … danas.
+    await mockDue(page, [{ basket: 'Visa', due_date: yesterday, n: 12, n_pending: 12,
+      gross_plus: 1282.79, gross_minus: 1409.63 }]);
+    await openOverview(page, areaId);
+
+    const q = page.getByText(/Je li banka skinula/);
+    await expect(q).toBeVisible({ timeout: 20_000 });
+    await expect(q).toContainText('1.409,63');           // neto bi bio 126,84
+    await expect(page.getByText('(samo isplate)')).toBeVisible();
+
+    const dayMinus2 = ymd(new Date(Date.now() - 3 * 86_400_000));   // dospijeće − 2
+    const dayMinus3 = ymd(new Date(Date.now() - 4 * 86_400_000));   // izvan prozora
+    await expect(page.getByRole('button', { name: label(dayMinus2), exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: label(today), exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: label(dayMinus3), exact: true })).toHaveCount(0);
   });
 });

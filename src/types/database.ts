@@ -131,6 +131,10 @@ export interface DueConfig {
     account: string;
     /** Strojni tekst skupne naplate na izvatku (faza 2: opis skupnog retka). */
     text?: string;
+    /** Prozor naplate u danima oko dospijeća (S170, Visa). Bez njega ±3. */
+    window?: { before?: number; after?: number };
+    /** `gross` = Σ samo isplata (Visa: zrcalo `PRIMLJENA UPLATA` u košari). Zadano `net`. */
+    measure?: 'net' | 'gross';
   }>;
   /** Atributi skupnog `Racun` retka koji potvrda stvara (faza 2). */
   settle?: Record<string, string>;

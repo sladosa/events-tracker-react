@@ -22,6 +22,21 @@ export function basketNetCents(row: { gross_plus: number; gross_minus: number })
   return toCents(row.gross_minus) - toCents(row.gross_plus);
 }
 
+/**
+ * Σ košare po mjeri iz configa (S170, Visa u traku).
+ *   `net` (zadano, MC): minus − plus — banka tereti neto, povrat umanjuje naplatu.
+ *   `gross` (Visa): samo minus. Visa košara nosi ZRCALO naplate — `PRIMLJENA
+ *     UPLATA` s `Izvor = Visa` (uplata na karticu) — pa bi ga neto pojeo
+ *     (05.06.: neto 126,84 umjesto 1.409,63). Bruto se slaže s PBZ naplatom na
+ *     RF-u 16 mjeseci u cent (DOSPJELO_SPEC §2).
+ */
+export function basketSumCents(
+  row: { gross_plus: number; gross_minus: number },
+  cfg?: { measure?: 'net' | 'gross' } | null,
+): number {
+  return cfg?.measure === 'gross' ? toCents(row.gross_minus) : basketNetCents(row);
+}
+
 export type BankCompare =
   | { state: 'empty' }
   | { state: 'ok' }
@@ -61,6 +76,32 @@ export function daysBetween(a: string, b: string): number {
 export const SETTLE_WINDOW_DAYS = 3;
 
 /**
+ * Prozor naplate jedne košare, u danima oko dospijeća (S170).
+ * Bez `window` u configu: ±`SETTLE_WINDOW_DAYS`, a brzi izbor dana kreće od
+ * dospijeća — točno dosadašnje ponašanje (MC tereti 11., uvijek).
+ * S `window`: Visa nema stalan dan (izmjereno na 855 redaka: 5. 383×, 4. 231×,
+ * 6. 109×, 7. 82×, 11. 49×, 3. 11×), a `Datum naplate` je procjena (5.) ⇒
+ * `{before: 2, after: 6}` hvata 3.–11., i brzi izbor nudi i dane PRIJE procjene.
+ * ⚠ `fill_from_izvod.py` mora čitati ISTI prozor iz configa (inače traka i alat
+ *   različito odgovore na „je li već upisano" ⇒ drugi skupni redak, S156).
+ */
+export interface BasketWindow { before: number; after: number; quickFrom: number }
+
+export function basketWindow(cfg?: { window?: { before?: number; after?: number } } | null): BasketWindow {
+  const w = cfg?.window;
+  if (!w) return { before: SETTLE_WINDOW_DAYS, after: SETTLE_WINDOW_DAYS, quickFrom: 0 };
+  const before = Math.max(0, Math.trunc(w.before ?? SETTLE_WINDOW_DAYS));
+  const after = Math.max(0, Math.trunc(w.after ?? SETTLE_WINDOW_DAYS));
+  return { before, after, quickFrom: -before };
+}
+
+/** Je li `date` unutar prozora košare s dospijećem `due`. */
+export function inBasketWindow(due: string, date: string, w: BasketWindow): boolean {
+  const d = daysBetween(due, date);
+  return d >= -w.before && d <= w.after;
+}
+
+/**
  * D7 (S168): dani koje traka nudi za „Je li banka skinula Σ? — kojeg dana".
  * Od dospijeća do danas, najviše `SETTLE_WINDOW_DAYS` iza dospijeća — isti
  * prozor koji `basketAction` prihvaća, pa ponuđen dan nikad nije „date-far".
@@ -68,9 +109,9 @@ export const SETTLE_WINDOW_DAYS = 3;
  *   potvrđena. Prazno (dospijeće sutra) ⇒ traka nudi samo ručna polja.
  * ⚠ Nijedan dan nije „zadani" — ovo je popis izbora, ne prijedlog (BUG-S115).
  */
-export function quickConfirmDays(dueDate: string, today: string, windowDays = SETTLE_WINDOW_DAYS): string[] {
+export function quickConfirmDays(dueDate: string, today: string, windowDays = SETTLE_WINDOW_DAYS, fromOffset = 0): string[] {
   const out: string[] = [];
-  for (let i = 0; i <= windowDays; i++) {
+  for (let i = fromOffset; i <= windowDays; i++) {
     const t = Date.UTC(+dueDate.slice(0, 4), +dueDate.slice(5, 7) - 1, +dueDate.slice(8, 10) + i, 12);
     const d = new Date(t).toISOString().slice(0, 10);
     if (d > today) break;
@@ -122,14 +163,16 @@ export function matchSettleRow(
     minusSlug?: string | null;
     dueDate: string;
     windowDays?: number;
+    /** Prozor košare (S170); ima prednost pred simetričnim `windowDays`. */
+    window?: BasketWindow;
   },
 ): SettleMatch | null {
-  const win = p.windowDays ?? SETTLE_WINDOW_DAYS;
+  const w = p.window ?? { before: p.windowDays ?? SETTLE_WINDOW_DAYS, after: p.windowDays ?? SETTLE_WINDOW_DAYS, quickFrom: 0 };
   const hits = cands.filter(c =>
     (c.comment ?? '').trim() === p.text.trim()
     && c.values[p.groupSlug] === p.account
     && Object.entries(p.settle).every(([slug, v]) => c.values[slug] === v)
-    && Math.abs(daysBetween(p.dueDate, c.event_date.slice(0, 10))) <= win,
+    && inBasketWindow(p.dueDate, c.event_date.slice(0, 10), w),
   );
   if (hits.length === 0) return null;
   const best = [...hits].sort((a, b) =>
@@ -177,6 +220,8 @@ export function basketAction(p: {
   dueDate: string;
   today: string;
   windowDays?: number;
+  /** Prozor košare (S170); ima prednost pred simetričnim `windowDays`. */
+  window?: BasketWindow;
 }): BasketAction {
   if (p.settle) {
     const diff = p.sumCents - p.settle.amountCents;
@@ -187,7 +232,8 @@ export function basketAction(p: {
   if (toCents(p.bank) <= 0) return { kind: 'none', reason: 'not-positive' };
   if (!p.bankDate) return { kind: 'none', reason: 'no-date' };
   if (p.bankDate > p.today) return { kind: 'none', reason: 'date-future' };
-  if (Math.abs(daysBetween(p.dueDate, p.bankDate)) > (p.windowDays ?? SETTLE_WINDOW_DAYS)) {
+  const w = p.window ?? { before: p.windowDays ?? SETTLE_WINDOW_DAYS, after: p.windowDays ?? SETTLE_WINDOW_DAYS, quickFrom: 0 };
+  if (!inBasketWindow(p.dueDate, p.bankDate, w)) {
     return { kind: 'none', reason: 'date-far' };
   }
   const diff = p.sumCents - toCents(p.bank);

@@ -39,7 +39,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { fetchDueBaskets, type DueBasketRow } from '@/lib/overviewApi';
-import { basketAction, basketNetCents, quickConfirmDays, SETTLE_WINDOW_DAYS, type SettleMatch } from '@/lib/dueBaskets';
+import { basketAction, basketSumCents, basketWindow, quickConfirmDays, type SettleMatch } from '@/lib/dueBaskets';
 import { adoptSettleRow, attributeNames, findSettleRow, findSuspectRows, settleBasket, type SuspectRow } from '@/lib/dueConfirm';
 import { formatAmount, formatDateHr, parseAmountInput, todayIso } from '@/lib/amountFormat';
 import { cn } from '@/lib/cn';
@@ -142,7 +142,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
     try {
       const res = await settleBasket({
         areaId, w: widget, basket: row.basket, dueDate: row.due_date, kind,
-        shownSumCents: basketNetCents(row), bankCents, bankDate,
+        shownSumCents: basketSumCents(row, due.baskets[row.basket]), bankCents, bankDate,
         suspectsDismissed: dismissed[key] ?? [],
       });
       toast.success(
@@ -168,7 +168,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
    *  (pravilo C, pa sažetak i „Da, upiši" — dva koraka ostaju). */
   const quickPick = (row: DueBasketRow, day: string) => {
     const key = `${row.basket}|${row.due_date}`;
-    const sum = basketNetCents(row);
+    const sum = basketSumCents(row, due.baskets[row.basket]);
     setBankInput(prev => ({ ...prev, [key]: (sum / 100).toFixed(2).replace('.', ',') }));
     setDateInput(prev => ({ ...prev, [key]: day }));
     resetAnswers(key);
@@ -256,7 +256,8 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
         {rows.map(row => {
           const key = `${row.basket}|${row.due_date}`;
           const cfg = due.baskets[row.basket];
-          const sum = basketNetCents(row);
+          const sum = basketSumCents(row, cfg);
+          const win = basketWindow(cfg);
           const st = settle[key];
           const match = st && !isErr(st) ? st : null;
           const typed = bankInput[key] ?? '';
@@ -264,7 +265,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
           const bankDate = dateInput[key] ?? '';
           const act = basketAction({
             sumCents: sum, settle: match, bank, bankDate: bankDate || null,
-            dueDate: row.due_date, today,
+            dueDate: row.due_date, today, window: win,
           });
           const rowBusy = busy === key;
           const canAct = isOwner && st !== undefined && !isErr(st) && !loading && busy === null;
@@ -275,7 +276,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
           const adoptId = adopting[key];
           const nameOf = (slug: string) => names[slug] ?? slug;
           const shownSlugs = Object.keys(due.settle ?? {}).filter(s => s !== due.basket_by);
-          const days = quickConfirmDays(row.due_date, today);
+          const days = quickConfirmDays(row.due_date, today, win.after, win.quickFrom);
           const canQuick = isOwner && sum > 0 && days.length > 0;
           const quick = canQuick && !manual[key];
 
@@ -291,6 +292,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
               )}
               <p className="mt-1 text-sm text-gray-700 w-full max-w-full break-words">
                 Σ <span className="font-semibold tabular-nums">{formatAmount(sum / 100, unit)}</span>
+                {cfg?.measure === 'gross' && <span className="text-xs text-gray-500"> (samo isplate)</span>}
                 {cfg?.account && <> → s računa <span className="font-medium">{cfg.account}</span></>}
               </p>
 
@@ -318,7 +320,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
                   </p>
                   {match.count > 1 && (
                     <p className="mt-1 text-xs text-red-700">
-                      Našao sam {match.count} takva retka unutar {SETTLE_WINDOW_DAYS} dana — vjerojatno je naplata upisana dvaput. Provjeri u Activities.
+                      Našao sam {match.count} takva retka u prozoru naplate — vjerojatno je naplata upisana dvaput. Provjeri u Activities.
                     </p>
                   )}
                   {act.kind === 'mismatch' && (
@@ -448,7 +450,7 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
                     <p className="mt-1 text-xs text-gray-600">
                       {act.reason === 'no-date' && 'Upiši i dan kad je banka skinula — s ekrana banke, ne pogađaj.'}
                       {act.reason === 'date-future' && 'Taj dan još nije došao.'}
-                      {act.reason === 'date-far' && `Banka tereti oko ${formatDateHr(row.due_date)} (najviše ${SETTLE_WINDOW_DAYS} dana razlike) — provjeri dan.`}
+                      {act.reason === 'date-far' && `Banka tereti oko ${formatDateHr(row.due_date)} (${win.before === win.after ? `najviše ${win.after} dana razlike` : `${win.before} dana prije do ${win.after} poslije`}) — provjeri dan.`}
                       {act.reason === 'not-positive' && 'Iznos mora biti veći od nule.'}
                     </p>
                   )}
