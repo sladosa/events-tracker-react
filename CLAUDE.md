@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S169).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S170).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 129 | [Critical rules](<#Critical rules>) | X |
 | 1275 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1745 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1761 | [Key files](<#Key files>) |  |
-| 1880 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1900 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1923 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1951 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 1991 | [Open bugs](<#Open bugs>) | ~ |
-| 2100 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2145 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2265 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2273 | [Backlog](<#Backlog>) | ~ |
-| 2277 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2285 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1749 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1765 | [Key files](<#Key files>) |  |
+| 1888 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1908 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1931 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1959 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 1999 | [Open bugs](<#Open bugs>) | ~ |
+| 2108 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2153 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2280 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2288 | [Backlog](<#Backlog>) | ~ |
+| 2292 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2300 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2449 redaka, 18 sekcija._
+_Ukupno 2464 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1429,8 +1429,10 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   pomakne preostale za jedno mjesto ⇒ preskoči se svaki drugi, bez ijedne greške
   (razred „paginacija bez `.order()`", S108).
   ⚠ Popravak **ovisi o tome da rute nisu lazy-loadane** (`App.tsx:12-13` su statički
-  importi). Uvede li se ikad code splitting — a `vendor-plotly` je 4,9 MB, pa je to
-  živa stavka u backlogu — `clearChainCache` mora u modul koji se učitava bezuvjetno.
+  importi). **S170 je uveo code splitting, ali SAMO za listove** (krug razreza, Structure
+  Sunburst, Excel/Structure modali) — nijedan od njih ne registrira listener na razini
+  modula (provjereno grepom). ⚠ **Ne `lazy` modul koji registrira modulski listener**
+  (`categoryCache`, `clearChainCache`): dok se ne učita, signal ode u prazno.
   ⚠ Keš ne hrani samo `comment_template`: `categoryChain.map(c => c.id)` gradi **P2
   parent evente** (`AddActivityPage.tsx:1178`), pa bi stara snimka nakon renamea ili
   premještanja upisala roditelje po **staroj** hijerarhiji.
@@ -1474,8 +1476,10 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   0,46 s**, zbroj točan u redak.
   ⚠ Neuspjelo brojanje se **ne čita kao nula** (`withRetry` pa throw) — tiha nula je
   upravo ono što otključava bravu.
-  ⚠ RPC s `GROUP BY` je odbačen **zasad, ne zauvijek**: dok su kategorije u desecima
-  ovo je jeftinije jer nema migracije; narastu li na stotine, RPC. PostgREST agregati
+  ✅ **S170: RPC `rpc_category_event_counts` (`sql/057`)** — trošak nije bio broj kategorija
+  nego broj POZIVA (tok Structure ↔ Activities ↔ Edit Mode: **156 → 0** upita po kategoriji).
+  **SECURITY INVOKER** = isto značenje kao count po kategoriji (RLS pozivatelja). Fan-out ostaje
+  **samo** kao fallback za `PGRST202` (baza bez funkcije); sve drugo baca. PostgREST agregati
   (`id.count()`) **nisu opcija** — projekt ih odbija s `PGRST123`.
   ⚠ **Prva verzija testa nije čuvala ništa**, i uhvatila ju je samo protuprovjera:
   tvrdila je da leaf s eventima nema značku `no events yet`, a na TEST-u ta kategorija
@@ -1835,6 +1839,10 @@ src/lib/structureImport.ts         Structure import — non-destructive, slug lo
 src/lib/validationRules.ts         JEDINI graditelj `validation_rules` (panel, uvoz, „Other") +
                                    `sameRules` za usporedbu po značenju (S152)
 src/lib/pendingOptions.ts          „Other" opcije iz Add/Edit u `validation_rules` (jedna kopija)
+src/lib/filterOptions.ts           Izbornik „Filter by" za atribut s opcijama (i `depends_on`): dug =
+                                   grupe po roditelju, kratak = ravan bez ponavljanja (S170)
+src/hooks/useMinWidth.ts           Širina prozora — za ono što se na uskom ekranu NE SMIJE montirati
+                                   (`hidden md:block` i dalje skida Plotly i radi upite, S170)
 src/lib/localDate.ts               `localYmd` / `todayLocalYmd` — dan koji čovjek vidi, ne UTC (S152)
 src/lib/dateInput.ts               JEDINO parsiranje polja datuma/vremena u Add i Edit zaglavlju (S155)
 src/lib/confirmedRowEdit.ts        C3c: bankina polja, je li redak potvrđen (žig / sidro u saldu)
@@ -2252,8 +2260,12 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
 - **Zadano razdoblje je postavka AREE, ne pločice** (S166, Koka: Financije ⇒ This Year).
   `DateRangeFilter` ga primijeni **jednom po Arei** dok `periodKey = all-time` („čovjek nije
   birao") — modul pamti za koju je Areu primijenjeno, pa ručni *All Time* ostaje, a F5 vraća
-  zadano. ⚠ Bounds auto-init (All time) **čeka** dok zadano nije primijenjeno, inače oba efekta
-  u istom commitu postave `periodKey` i pobijedi zadnji. ⚠ E2E nad praznom Areom ne može mjeriti
+  zadano. ⚠ **Zadano i bounds auto-init su JEDAN efekt** (S170). Dok su bili dva, „čekanje" je bila
+  modulska zastavica — a prvi efekt ju je podigao **u istom prolazu** u kojem je drugi, sa
+  `userModified` iz starog rendera, vratio All Time. Vidi se samo kad postavka Aree i granice
+  stignu u istom commitu (E2E S165 pao čim je lazy Plotly promijenio tajming). **Pravilo šire od
+  filtra: dva efekta koja pišu isto stanje ne mogu se uskladiti zastavicom koju jedan postavlja
+  — spoji ih.** ⚠ E2E nad praznom Areom ne može mjeriti
   *All Time*: bez granica `handleAllTime` ne radi ništa (test zato sije jedan event).
 - **Provjera rasporeda bucketa mora gledati SVU povijest, ne 12 mjeseci** (S166). `set_breakdown.py`
   je javio „nesvrstano: ništa", a All time je pokazao `nesvrstano` 9.543,16 (Tip `Investicije`,

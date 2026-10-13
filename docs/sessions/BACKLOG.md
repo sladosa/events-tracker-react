@@ -20,7 +20,7 @@
 `docs/sessions/BACKLOG_2026-09-26.md`. Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
 § S150). Nove i preformulirane stavke iz prolaza:
 
-- **Filtar „Filter by" za `depends_on` atribut nudi izbornik, ne slobodan tekst (S167, Saša)** —
+- ✅ **IZVEDENO S170** (`src/lib/filterOptions.ts`: dug atribut grupiran po roditelju, kratak ravan bez ponavljanja; vrijednost izvan popisa = „(not in list)"; čuva `filterOptions.test.mjs`) — **Filtar „Filter by" za `depends_on` atribut nudi izbornik, ne slobodan tekst (S167, Saša)** —
   `Podtip` ovisi o `Tip`u, pa `AppHome` (`isSuggest`) ne nađe ravan popis opcija i daje polje za
   tekst s `ilike '%…%'`. Posljedica: `Popravci` vraća i `auto C5 / popravci` (30 umjesto 18), a
   tipfeler daje 0 bez objašnjenja. Prijedlog: izbornik **svih** opcija iz `depends_on.options_map`,
@@ -35,7 +35,7 @@
   „dođu sami". Hipoteza iz koda, ne mjerenje. Prijedlog: dok config **za ovu Areu** nije poznat
   (`loadedFor`, razred BUG-S145-OVERVIEWTAB), lista ne crta zadane kolone nego čeka (skeleton).
   Ako se pokaže s trakom „Nisam uspio učitati postavke", onda je to drugi kvar (palo čitanje).
-- **`Rate?` = Yes bez `Broj rata` sprema se tiho (S168, Saša na T-S168-1)** — rata modal traži
+- ✅ **IZVEDENO S170** (`rataCountProblem`, Add Finish i `Save +`; čuva `rataCountProblem.test.mjs`) — **`Rate?` = Yes bez `Broj rata` sprema se tiho (S168, Saša na T-S168-1)** — rata modal traži
   broj rata > 1 (`detectRata`), pa redak s kvačicom „na rate" i praznim brojem prođe bez modala i
   bez riječi; Koka bi dobila redak koji tvrdi da je plan, a rata nema. Prijedlog: Finish pita
   „Rate? je Yes, a broj rata je prazan — upiši broj ili makni kvačicu" (forma, ne baza; isto
@@ -224,8 +224,11 @@ pa bi se za te retke moglo pomicati automatski. ⚠ Za kartice **ne smije** —
 tamo je datum naplate vezan uz ciklus banke, ne uz dan kupovine.
 
 **~~⭐ STRUCTURE FAN-OUT~~ — ✅ S159 za `AppHome`** (`useStructureData({ autoFetch: false })`;
-učitava tek na Export/Import). Ostaje: u Sunburst načinu na desktopu rade **dvije** instance
-(Sunburst + skrivena tablica) — nije mjereno je li vrijedno. Izvorni zapis:
+učitava tek na Export/Import). **✅ S170: brojanje JEDNIM RPC-om** (`sql/057`
+`rpc_category_event_counts`, SECURITY INVOKER) — isti tok na TEST-u **156 → 0** upita po
+kategoriji; fallback na fan-out samo kad funkcije nema (`PGRST202`). Sunburst se na < 768 px
+više ne montira. Ostaje: u Sunburst načinu na desktopu rade **dvije** instance (4 zahtjeva
+svaka — više nije vrijedno diranja). Izvorni zapis:
 **⭐ STRUCTURE FAN-OUT: 39 ZAHTJEVA PO POZIVU, A JEDNA INSTANCA NIKAD NE ČITA REZULTAT**
 (izmjereno S141). `useStructureData()` broji evente **jednim `count: 'exact'` upitom po
 kategoriji, usporedno** (S133, i to je bio ispravan izbor). Ali hook se zove na **tri**

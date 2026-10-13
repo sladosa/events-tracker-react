@@ -2,7 +2,25 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S169 (2026-10-12) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S170 (2026-10-13) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S170 — Filtar izbornik, Rate? bez broja, lazy Plotly/Excel, Structure RPC (2026-10-13)
+
+„Filter by" nudi izbornik i za `depends_on` atribute (`Izvor`, `Podtip` grupiran po `Tip`u, `Status`). Add ne sprema `Rate?` bez broja rata. Plotly i ExcelJS se skidaju tek kad zatrebaju (početno 2.036 → 269 KB gzipa). Zadano razdoblje više ne gubi utrku s All Time. Structure broji evente jednim RPC-om (`sql/057`; TEST ✓, PROD čeka Sašu).
+
+**Detalji testova:** [tests/S170_tests.md](tests/S170_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S170-1 | TEST: Filter by `Izvor` ⇒ izbornik `Racun, Visa, Cash, Mastercard`; `Racun` This Year ≈ 355 | ⬜ |
+| T-S170-2 | TEST: Filter by `Podtip` grupiran po Tipu; `Kuća › Popravci, održavanje` = 18 (ne 30); `gorivo` = 22 (oba auta); `Status` ravan | ⬜ |
+| T-S170-3 | TEST: Add, `Rate?` ✓ i `Broj rata` prazno/1 ⇒ poruka, ništa spremljeno; 3 ⇒ rata modal | ⬜ |
+| T-S170-4 | PROD nakon deploya: Network bez `vendor-plotly`/`vendor-excel` na početku; krug, Export/Import, Structure modali rade („Loading…") | ⬜ |
+| T-S170-5 | TEST + PROD: `Financije_all` + F5 ×5 ⇒ uvijek This Year; ručni All Time preživi Activities↔Overview | ⬜ |
+| T-S170-6 | PROD: `sql/057` u SQL editoru (Saša) | ⬜ |
+| T-S170-7 | PROD nakon 057 + deploya: Structure = 1 `rpc_category_event_counts`, 0 `events?select=id` HEAD; brojke kao prije | ⬜ |
 
 ---
 
@@ -173,7 +191,7 @@ dana), i da je E10-2 pao na dijalogu opoziva (nije — pao je prije, na Structur
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S141-1 | Structure fan-out: **39 zahtjeva po pozivu, 6–8 poziva po toku** | ⬜ **otvoreno — izmjereno, čeka popravak.** 2.601 fan-out zahtjev kroz 17 palih testova (`e15` 330, `e11` 276); u E10-2 traceu 39+39 u sekundi razmaka, odgovoreno **11 od 78**. ⚠ Uzrok padova **NIJE** utvrđen: 10 od 17 padova ima zahtjeve bez odgovora, **7 nema nijedan**. Potvrda je **ponovno mjerenje** koje mora dati **jedan** fan-out po toku |
+| T-S141-1 | Structure fan-out: **39 zahtjeva po pozivu, 6–8 poziva po toku** | ⬜ **S170: popravak izveden** (`sql/057`, jedan RPC; TEST tok 156 → 0 upita po kategoriji, E2E `S170_structure_event_counts`). Ostaje: puni E2E run (T-S140-8) da se vidi jesu li padovi bili ovo. Stari opis: 2.601 fan-out zahtjev kroz 17 palih testova (`e15` 330, `e11` 276); u E10-2 traceu 39+39 u sekundi razmaka, odgovoreno **11 od 78**. ⚠ Uzrok padova **NIJE** utvrđen: 10 od 17 padova ima zahtjeve bez odgovora, **7 nema nijedan**. Potvrda je **ponovno mjerenje** koje mora dati **jedan** fan-out po toku |
 | T-S141-2 | `Datum naplate` za karticu znači **dan terećenja** (odluka b) — app upisuje pretpostavku, izvod je ispravlja | ✅ S141 — odlučeno na mjerenju: **35/37** ciklusa ima jedan dan, **1.616 od 1.639** redaka već nosi to značenje; pravilo u CLAUDE.md |
 | T-S141-3 | `DELTA_WINDOW_SPEC` — prozor se mjeri **sidrima**, ne danima | ✅ S141 — spec napisan i odluke unesene; **faza 1 čeka kod**, ništa više ne čeka odluku |
 | **T-S141-4** | Faza 1 delta prozora: otvarajuce stanje mora izaci **jednako iznosu sidra u cent** | ✅ **S144 — zatvoreno u cijelosti.** RPC razina dokazana S142 (`rpc_area_balance_anchored` s `as_of` = dan sidra ⇒ sam iznos sidra uz `n = 0`, 6/6) · **uzivo je izvedeno u S143** (T-S142-1): modal prosljedjuje bas taj `asOf`, file nosi `stanje 30.07.2026. -> 13.815,33`. Potvrdjeno ponovo S144 na `Prozor = 2`: otvarajuce stanje `3.054,41` = doslovno iznos sidra |

@@ -36,7 +36,9 @@ AS $$
   GROUP BY e.category_id;
 $$;
 
-REVOKE ALL ON FUNCTION public.rpc_category_event_counts() FROM PUBLIC;
+-- ⚠ i `anon`: Supabase novoj funkciji sam dodijeli EXECUTE anonimnoj ulozi (izmjereno
+--   dumpom TEST-a nakon prvog puštanja) — isto kao 056.
+REVOKE ALL ON FUNCTION public.rpc_category_event_counts() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_category_event_counts() TO authenticated;
 
 -- PostgREST mora vidjeti novu funkciju bez restarta.
