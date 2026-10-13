@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useRef, useCallback } from 'react';
+import { Fragment, lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
@@ -6,19 +6,16 @@ import { useFilter } from '@/context/FilterContext';
 import { ProgressiveCategorySelector } from '@/components/filter/ProgressiveCategorySelector';
 import { DateRangeFilter } from '@/components/filter/DateRangeFilter';
 import { ActivitiesTable } from '@/components/activity/ActivitiesTable';
-import { ExcelExportModal } from '@/components/activity/ExcelExportModal';
-import { ExcelImportModal } from '@/components/activity/ExcelImportModal';
 import { StructureTableView } from '@/components/structure/StructureTableView';
 import type { NodeFilter } from '@/components/structure/StructureTableView';
-import { StructureSunburstView } from '@/components/structure/StructureSunburstView';
 import { StructureViewSwitcher } from '@/components/structure/StructureViewSwitcher';
 import type { StructureViewMode } from '@/components/structure/StructureViewSwitcher';
 import { Button } from '@/components/ui/Button';
 import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
-import { exportStructureExcel, structureExportFilename } from '@/lib/structureExcel';
 import { TEMPLATE_USER_ID } from '@/lib/constants';
-import { StructureImportModal } from '@/components/structure/StructureImportModal';
+import { LazyModalFallback } from '@/components/ui/LazyModalFallback';
+import { useMinWidth } from '@/hooks/useMinWidth';
 import { saveAs } from 'file-saver';
 import { useStructureData } from '@/hooks/useStructureData';
 import { SharedAreaBanner } from '@/components/sharing/SharedAreaBanner';
@@ -42,6 +39,13 @@ import { formatAmount } from '@/lib/amountFormat';
 import { getCategoryMap, getAreaNameMap, getCategoryMapContaining } from '@/lib/categoryCache';
 import { ancestorIds, areaCategoryIds } from '@/lib/categoryTree';
 import { findSingleLeaf, categoryNamePath } from '@/lib/singleLeaf';
+
+// Plotly (1,4 MB gzipa) se skida tek kad se Sunburst stvarno prikaže (S170).
+// ExcelJS (264 KB gzipa) isto: modali i Structure export vuku ga tek na klik.
+const ExcelExportModal = lazy(() => import('@/components/activity/ExcelExportModal').then(m => ({ default: m.ExcelExportModal })));
+const ExcelImportModal = lazy(() => import('@/components/activity/ExcelImportModal').then(m => ({ default: m.ExcelImportModal })));
+const StructureImportModal = lazy(() => import('@/components/structure/StructureImportModal').then(m => ({ default: m.StructureImportModal })));
+const StructureSunburstView = lazy(() => import('@/components/structure/StructureSunburstView').then(m => ({ default: m.StructureSunburstView })));
 
 // --------------------------------------------
 // Icons
@@ -1030,6 +1034,7 @@ function AppContent() {
                     const exportNodes = filter.areaId
                       ? freshNodes
                       : freshNodes.filter(n => n.area?.user_id !== TEMPLATE_USER_ID);
+                    const { exportStructureExcel, structureExportFilename } = await import('@/lib/structureExcel');
                     const buffer = await exportStructureExcel(exportNodes, {
                       filterAreaId: filter.areaId ?? null,
                       filterCategoryId: filter.categoryId ?? null,
@@ -1186,6 +1191,7 @@ function AppContent() {
 
       {/* Structure Import Modal (S20C) */}
       {showStructureImport && userId && (
+        <Suspense fallback={<LazyModalFallback />}>
         <StructureImportModal
           userId={userId}
           onClose={() => setShowStructureImport(false)}
@@ -1199,6 +1205,7 @@ function AppContent() {
           }}
           getNodes={loadStructure}
         />
+        </Suspense>
       )}
     </div>
   );
@@ -1252,6 +1259,8 @@ interface StructureTabContentProps {
 
 function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess, onLeaveArea }: StructureTabContentProps) {
   const { filter, fullPathDisplay } = useFilter();
+  // Sunburst se na uskom ekranu ne MONTIRA (ne samo sakrije) — inače skine Plotly (S170).
+  const sunburstFits = useMinWidth(768);
 
   // Node filter state lives here so both Table and Sunburst share it
   const [nodeFilter, setNodeFilter] = useState<NodeFilter>(() => {
@@ -1296,9 +1305,11 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess,
       )}
 
       {/* Sunburst — hidden on mobile via internal class; hidden when table mode */}
-      {viewMode === 'sunburst' && !isEditMode && (
+      {viewMode === 'sunburst' && !isEditMode && sunburstFits && (
         <div className="hidden md:block p-2">
-          <StructureSunburstView nodeFilter={effectiveNodeFilter} />
+          <Suspense fallback={<div className="h-80 flex items-center justify-center text-sm text-gray-400">Loading sunburst…</div>}>
+            <StructureSunburstView nodeFilter={effectiveNodeFilter} />
+          </Suspense>
         </div>
       )}
 
@@ -1512,11 +1523,14 @@ function ActivitiesView() {
 
       {/* Export Modal */}
       {showExport && (
-        <ExcelExportModal onClose={() => setShowExport(false)} />
+        <Suspense fallback={<LazyModalFallback />}>
+          <ExcelExportModal onClose={() => setShowExport(false)} />
+        </Suspense>
       )}
 
       {/* Import Modal */}
       {showImport && (
+        <Suspense fallback={<LazyModalFallback />}>
         <ExcelImportModal
           onClose={() => setShowImport(false)}
           onRefresh={() => setRefreshKey(prev => prev + 1)}
@@ -1526,6 +1540,7 @@ function ActivitiesView() {
             setDateRange(null, null);
           }}
         />
+        </Suspense>
       )}
 
       {/* Orphan Management Modal */}

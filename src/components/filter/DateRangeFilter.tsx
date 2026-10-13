@@ -50,34 +50,37 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   //   biti prethodna, a njena postavka ne smije pasti na drugu.
   const defaultKey = selectedArea && selectedArea.id === filter.areaId
     ? selectedArea.settings?.default_period ?? null : null;
+  // ── … i auto-init from bounds — JEDAN efekt, ne dva (S170) ─────────────────
+  // ⚠ Bila su dva efekta, a zadano je auto-init „čekao" provjerom modulske
+  //   zastavice. Kad postavka Aree i granice stignu U ISTOM COMMITU, prvi efekt
+  //   je primijenio This Year i ODMAH podigao zastavicu, pa je drugi — u istom
+  //   prolazu, sa `userModified` iz starog rendera — prošao i vratio All Time.
+  //   Izmjereno E2E-om (S165, test zadanog razdoblja) čim je lazy Plotly
+  //   promijenio tajming. Jedan efekt s `return` poslije primjene to ne može.
   useEffect(() => {
-    if (userModified || !filter.areaId || !defaultKey) return;
-    if (defaultPeriodAppliedFor === filter.areaId) return;
-    const preset = presets.find(p => p.key === defaultKey);
-    if (!preset) return;
-    markDefaultApplied(filter.areaId);
-    const { from, to } = preset.getRange();
-    setLocalFrom(from);
-    setLocalTo(to);
-    setDateRange(from, to);
-    setPeriodLabel(preset.label);
-    setPeriodKey(preset.key);
-  // `presets` je nov niz na svakom renderu, a čist (isti ključevi) — ne ide u deps.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter.areaId, defaultKey, userModified, setDateRange, setPeriodLabel, setPeriodKey]);
-
-  // ── Auto-init from bounds ──────────────────────────────────────────────────
-  useEffect(() => {
-    // Zadano razdoblje čeka primjenu ⇒ ne gurati All time preko njega u istom
-    // commitu (oba efekta bi postavila `periodKey`, a pobijedio bi zadnji).
-    if (defaultKey && filter.areaId && defaultPeriodAppliedFor !== filter.areaId) return;
-    if (!loading && bounds.minDate && bounds.maxDate && !userModified) {
+    if (userModified) return;
+    if (filter.areaId && defaultKey && defaultPeriodAppliedFor !== filter.areaId) {
+      const preset = presets.find(p => p.key === defaultKey);
+      if (preset) {
+        markDefaultApplied(filter.areaId);
+        const { from, to } = preset.getRange();
+        setLocalFrom(from);
+        setLocalTo(to);
+        setDateRange(from, to);
+        setPeriodLabel(preset.label);
+        setPeriodKey(preset.key);
+        return;
+      }
+    }
+    if (!loading && bounds.minDate && bounds.maxDate) {
       setLocalFrom(bounds.minDate);
       setLocalTo(bounds.maxDate);
       setDateRange(bounds.minDate, bounds.maxDate);
       setPeriodLabel('All time');
       setPeriodKey('all-time');
     }
+  // `presets` je nov niz na svakom renderu, a čist (isti ključevi) — ne ide u deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bounds.minDate, bounds.maxDate, loading, userModified, defaultKey, filter.areaId, setDateRange, setPeriodLabel, setPeriodKey]);
   // (`userModified` je izveden iz `filter.periodKey`, dakle iz konteksta — zato
   //  prezivi unmount i ne treba mu vlastiti dep.)

@@ -14,18 +14,21 @@
 //   ista pločica odgovara na rujan i na cijelu godinu.
 // ============================================================
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { formatAmount, formatDateHr, formatSigned } from '@/lib/amountFormat';
 import { fetchBreakdown } from '@/lib/overviewApi';
+import { useMinWidth } from '@/hooks/useMinWidth';
 import {
   ambiguousValues, breakdownDims, buildBreakdown, drillFor,
   type BreakdownNode, type BreakdownRow,
 } from '@/lib/breakdownModel';
-import { BreakdownSunburst } from './BreakdownSunburst';
+// Plotly je 1,4 MB gzipa (S170) — krug se crta tek od 640 px, pa ga mobitel
+// nikad ne skida. Isto vrijedi za Structure Sunburst (AppHome).
+const BreakdownSunburst = lazy(() => import('./BreakdownSunburst').then(m => ({ default: m.BreakdownSunburst })));
 import type { BreakdownWidget, Grouping, UUID } from '@/types/database';
 
 const T = THEME.overview;
@@ -52,19 +55,7 @@ interface Loaded {
   error: string | null;
 }
 
-function useWide(): boolean {
-  const q = '(min-width: 640px)';
-  const [wide, setWide] = useState(() =>
-    typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(q).matches);
-  useEffect(() => {
-    if (!window.matchMedia) return;
-    const mq = window.matchMedia(q);
-    const on = (e: MediaQueryListEvent) => setWide(e.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
-  return wide;
-}
+const useWide = () => useMinWidth(640);
 
 /** Što je čovjek rasklopio i odabrao (S169, Saša). Modul, ne storage — isti obrazac kao
  *  `lastOpenTile` u OverviewTab-u: preživi drill ↗ i povratak (AppHome odmontira tab), NE
@@ -347,8 +338,10 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
               ) : (
                 <div className={cn('mt-2', wide && 'grid grid-cols-2 gap-4 items-start')}>
                   {wide && (
-                    <BreakdownSunburst root={root} unit={unit}
-                      focusId={focusPath.length ? focusId : null} onFocus={setFocusId} />
+                    <Suspense fallback={<div className="h-[380px] flex items-center justify-center text-xs text-gray-400">Učitavam krug…</div>}>
+                      <BreakdownSunburst root={root} unit={unit}
+                        focusId={focusPath.length ? focusId : null} onFocus={setFocusId} />
+                    </Suspense>
                   )}
                   <div>
                     {/* Staza fokusa — samo dok je krug zumiran (na mobitelu kruga nema

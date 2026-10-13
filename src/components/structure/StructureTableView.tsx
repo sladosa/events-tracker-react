@@ -27,7 +27,7 @@
 //   - StructureAddAreaPanel: "+ Add Area" button in Edit Mode toolbar.
 // ============================================================
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { lazy, Suspense, useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { useFilter } from '@/context/FilterContext';
@@ -39,7 +39,9 @@ export { TEMPLATE_USER_ID };
 import { CategoryChainRow } from './CategoryChainRow';
 import { CategoryDetailPanel } from './CategoryDetailPanel';
 import { StructureNodeEditPanel } from './StructureNodeEditPanel';
-import { StructureDeleteModal } from './StructureDeleteModal';
+import { LazyModalFallback } from '@/components/ui/LazyModalFallback';
+// Brisanje radi Excel backup ⇒ vuče ExcelJS; skida se tek kad se modal otvori (S170).
+const StructureDeleteModal = lazy(() => import('./StructureDeleteModal').then(m => ({ default: m.StructureDeleteModal })));
 import { StructureAddChildPanel } from './StructureAddChildPanel';
 import { StructureAddAreaPanel } from './StructureAddAreaPanel';
 import { StructureAddBetweenPanel } from './StructureAddBetweenPanel';
@@ -594,12 +596,14 @@ export function StructureTableView({ isEditMode, refreshKey, onManageAccess, onL
 
       {/* ---- Delete Modal ---- */}
       {deleteNode && (
-        <StructureDeleteModal
-          node={deleteNode}
-          allNodes={nodes}
-          onClose={() => setDeleteNode(null)}
-          onDeleted={handleDeleted}
-        />
+        <Suspense fallback={<LazyModalFallback />}>
+          <StructureDeleteModal
+            node={deleteNode}
+            allNodes={nodes}
+            onClose={() => setDeleteNode(null)}
+            onDeleted={handleDeleted}
+          />
+        </Suspense>
       )}
 
       {/* ---- Add Child Panel ---- */}
