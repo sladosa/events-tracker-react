@@ -8,6 +8,14 @@ interface Props {
   onSkip: () => void;
 }
 
+/** Akuzativ: 2–4 rate, 5+ rata, 21 ratu (hr; 12–14 su „rata“). S170. */
+function rataWord(n: number): string {
+  const d = n % 10, h = n % 100;
+  if (d === 1 && h !== 11) return 'ratu';
+  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return 'rate';
+  return 'rata';
+}
+
 export function RataModal({ isOpen, rataInfo, onConfirm, onSkip }: Props) {
   const [creating, setCreating] = useState(false);
 
@@ -69,7 +77,7 @@ export function RataModal({ isOpen, rataInfo, onConfirm, onSkip }: Props) {
               disabled={creating}
               className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-2 px-4 rounded-lg transition-colors"
             >
-              {creating ? 'Kreiranje...' : `Kreiraj ${rataInfo.count} rata`}
+              {creating ? 'Kreiranje...' : `Kreiraj ${rataInfo.count} ${rataWord(rataInfo.count)}`}
             </button>
             <button
               onClick={onSkip}
