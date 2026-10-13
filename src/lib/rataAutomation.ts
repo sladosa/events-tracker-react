@@ -125,6 +125,34 @@ export function detectRata(
 }
 
 /**
+ * Poruka kad je okidač rata uključen a broj rata nije upotrebljiv (S170).
+ * `null` = u redu (ili Area nema rata automatiku).
+ *
+ * `detectRata` takav redak tiho propušta (`count <= 1` ⇒ nema modala), pa je
+ * Finish spremao redak koji TVRDI da je plan na rate, a rata nema — i to bez
+ * riječi (Saša na T-S168-1).
+ * ⚠ Pravilo FORME (Add), kao `is_required`: Edit i Excel uvoz ga ne primjenjuju
+ *   — povijest nosi takve retke, a Edit ih ne smije zaključati.
+ */
+export function rataCountProblem(
+  valueOf: (definitionId: string) => unknown,
+  attrDefs: AttributeDefinition[],
+  config: RataAutomationConfig | undefined,
+): string | null {
+  if (!config) return null;
+  const triggerDef = attrDefs.find(d => d.slug === config.trigger_slug);
+  const countDef = attrDefs.find(d => d.slug === config.count_slug);
+  if (!triggerDef || !countDef) return null;
+  if (!TRUTHY_VALUES.has(String(valueOf(triggerDef.id) ?? '').toLowerCase().trim())) return null;
+
+  const raw = String(valueOf(countDef.id) ?? '').trim();
+  const n = Number(raw.replace(',', '.'));
+  if (raw !== '' && Number.isInteger(n) && n >= 2) return null;
+  const what = raw === '' ? 'je prazan' : `je ${raw}`;
+  return `"${triggerDef.name}" je uključeno, a "${countDef.name}" ${what} — upiši broj rata (2 ili više) ili makni kvačicu.`;
+}
+
+/**
  * Pravilo `Datum naplate` (`set_attribute`) koje puni ISTI atribut kao rata
  * modal — `target_slug == charge_date_slug`, `map_slug == date_map_slug`.
  * `null` kad ga nema ili ne zna tu vrijednost (`Izvor`).

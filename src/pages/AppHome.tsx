@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { Fragment, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
@@ -35,6 +35,7 @@ import { OrphanManagementModal } from '@/components/activity/OrphanManagementMod
 import type { Category, AttributeDefinition } from '@/types/database';
 import type { UUID } from '@/types';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
+import { buildFilterOptionGroups } from '@/lib/filterOptions';
 import { ATTR_FILTER_ANY } from '@/lib/eventQueryBuilder';
 import { NUMERIC_OPS, NUMERIC_DATA_TYPES, DATETIME_DATA_TYPES, BOOLEAN_DATA_TYPES, numericFilterValue, isNumericOp, type NumericOp } from '@/lib/attrFilterNumeric';
 import { formatAmount } from '@/lib/amountFormat';
@@ -794,13 +795,19 @@ function AppContent() {
                       );
                     }
 
-                    const parsed = parseValidationRules(attrDef.validation_rules);
-                    const isSuggest = (parsed.type === 'suggest' || parsed.type === 'enum') && parsed.options.length > 0;
+                    // `depends_on` atributi (Podtip, Izvor, Status) nemaju ravan
+                    // popis — opcije su po roditelju (S170, `filterOptions.ts`).
+                    const groups = buildFilterOptionGroups(parseValidationRules(attrDef.validation_rules));
 
-                    if (isSuggest) {
+                    if (groups.length > 0) {
+                      const current = filter.attrFilter?.attrDefId === attrDef.id ? filter.attrFilter.value : '';
+                      // Spremljen shortcut / stari djelomični tekst nije među opcijama —
+                      // pokaži ga, inače izbornik laže „All" dok lista filtrira.
+                      const orphan = current && !groups.some(g => g.options.includes(current)) ? current : '';
+                      const renderOpts = (opts: string[]) => opts.map(opt => <option key={opt} value={opt}>{opt}</option>);
                       return (
                         <select
-                          value={filter.attrFilter?.value ?? ''}
+                          value={current}
                           onChange={(e) => {
                             if (e.target.value) {
                               setAttrFilter({ attrDefId: selectedFilterAttr, value: e.target.value, isExact: true });
@@ -811,9 +818,14 @@ function AppContent() {
                           className="flex-1 min-w-[160px] max-w-xs text-sm border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         >
                           <option value="">— All —</option>
-                          {parsed.options.map(opt => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
+                          {orphan && <option value={orphan}>{orphan} (not in list)</option>}
+                          {groups.map(g => g.label === null
+                            ? <Fragment key="__flat">{renderOpts(g.options)}</Fragment>
+                            : (
+                              <optgroup key={g.label} label={g.label === '*' ? 'Other (*)' : g.label}>
+                                {renderOpts(g.options)}
+                              </optgroup>
+                            ))}
                         </select>
                       );
                     }

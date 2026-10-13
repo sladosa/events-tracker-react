@@ -44,7 +44,7 @@ import {
 import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
 import { computeSetAttributeValue, collectRuleManagedIds, findDefBySlug, formatForDatetimeInput } from '@/lib/attributeRules';
 import { missingRequired, requiredMessage } from '@/lib/requiredAttributes';
-import { detectRata, generateRataChargeDates, rataSessionStarts, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
+import { detectRata, rataCountProblem, generateRataChargeDates, rataSessionStarts, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
 import { resolveCommentTemplate, evaluateCommentTemplate } from '@/lib/commentTemplate';
 import type { RataAutomationConfig } from '@/types/database';
 import { RataModal } from '@/components/activity/RataModal';
@@ -865,6 +865,11 @@ export function AddActivityPage() {
     return missingRequired(allAttrDefs, id => attributeValues.get(id)?.value);
   }, [allAttrDefs, attributeValues]);
 
+  /** `Rate?` uključen bez broja rata (S170) — ista mjesta kao obavezna polja. */
+  const rataProblemNow = useCallback(() => rataCountProblem(
+    id => attributeValues.get(id)?.value, allAttrDefs, selectedArea?.settings?.automations?.rata,
+  ), [allAttrDefs, attributeValues, selectedArea]);
+
   const handleSaveContinue = useCallback(() => {
     if (!canSave || !categoryId) return;
 
@@ -873,6 +878,11 @@ export function AddActivityPage() {
     const missing = missingRequiredNow();
     if (missing.length > 0) {
       toast.error(requiredMessage(missing));
+      return;
+    }
+    const rataProblem = rataProblemNow();
+    if (rataProblem) {
+      toast.error(rataProblem, { duration: 6000 });
       return;
     }
 
@@ -983,7 +993,7 @@ export function AddActivityPage() {
   //     osvjezava — pa bi ovaj handler zadrzao STARI `comment_template`. To je isti
   //     simptom koji je S133 zatvorio na razini kesa; ovo je drugi put do njega.
   //     Dodavanje je bezopasno: ovo je klik handler, ne efekt.
-  }, [canSave, categoryId, attributeValues, attributesByCategory, eventNote, currentPhotos, lapElapsed, resetLap, getDraftData, saveDraft, log, missingRequiredNow, resolveEventNote]);
+  }, [canSave, categoryId, attributeValues, attributesByCategory, eventNote, currentPhotos, lapElapsed, resetLap, getDraftData, saveDraft, log, missingRequiredNow, rataProblemNow, resolveEventNote]);
 
   // ============================================
   // Finish (Batch Write to DB)
@@ -998,6 +1008,11 @@ export function AddActivityPage() {
       const missing = missingRequiredNow();
       if (missing.length > 0) {
         toast.error(requiredMessage(missing));
+        return;
+      }
+      const rataProblem = rataProblemNow();
+      if (rataProblem) {
+        toast.error(rataProblem, { duration: 6000 });
         return;
       }
     }
