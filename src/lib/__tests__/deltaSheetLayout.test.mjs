@@ -290,6 +290,12 @@ console.log('Kolona „Potvrda" -- sidro UNUTAR prozora (glavni blok 02.-04.08.)
      f1.includes('ZABA_2026-07.pdf') && !f1.includes('ispisano stanje s izvoda'), `got ${f1}`);
   ok('tekst nosi dan potvrde', f1.includes('03.08.'), `got ${f1}`);
 
+  // /!\ T21 (S170): oznaka samo za redak koji ULAZI U SALDO — isti uvjeti kao
+  //     kontrolni stupac (fixture: Izvor = Racun, Status <> Planiran). Kartica
+  //     saldo ne mice, pa je sidro ne „potvrdjuje".
+  ok('oznaka trazi Izvor = Racun (kartica ne dobiva „potvrdjeno")', /\$[A-Z]+\d+="Racun"/.test(f1), `got ${f1}`);
+  ok('oznaka trazi Status <> Planiran', /\$[A-Z]+\d+<>"Planiran"/.test(f1), `got ${f1}`);
+
   // /!\ IDE I NA PRAZNE RETKE, i to je glavna korist: upise li korisnik u prazan
   //     redak datum unutar potvrdjenog razdoblja, oznaka iskoci sama. To je jedini
   //     trenutak u kojem se takav unos moze uhvatiti prije uvoza.

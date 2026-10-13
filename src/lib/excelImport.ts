@@ -17,6 +17,8 @@
 
 import ExcelJS from 'exceljs';
 import { findCoveringAnchor, type AnchorLike, type ConfirmedMark } from '@/lib/confirmedPeriod';
+import { passesFilters } from '@/lib/confirmedRowEdit';
+import type { WidgetFilter } from '@/types/database';
 import { supabase } from '@/lib/supabaseClient';
 import { FIXED_COL_COUNT, DELETE_COL_HEADER, DELETE_MARKER } from './excelExport';
 import { computeRowFingerprint, ROW_HASH_HEADER } from './excelFingerprint';
@@ -1790,6 +1792,34 @@ function computeRowDiff(
 // Update-guard dry-run analysis (S107 D7)
 // ─────────────────────────────────────────────
 
+/**
+ * T21 (S170): ulazi li postojeći redak u saldo — prije izmjene ILI poslije nje.
+ * Bez filtara (Area bez pločice salda / stari pozivatelj) ⇒ `true`, dakle
+ * doslovno prijašnje ponašanje.
+ */
+export function inBalanceBeforeOrAfter(
+  existing: Pick<ExistingLeafEvent, 'event_attributes'> & { category_id: string },
+  changes: readonly UpdateFieldChange[],
+  attrByCatName: ReadonlyMap<string, Pick<ExportAttrDef, 'slug'>>,
+  slugById: ReadonlyMap<string, string>,
+  filters: readonly WidgetFilter[] | undefined,
+): boolean {
+  if (!filters || filters.length === 0) return true;
+  const before = new Map<string, unknown>();
+  for (const ea of existing.event_attributes) {
+    const slug = slugById.get(ea.attribute_definition_id);
+    if (!slug) continue;
+    before.set(slug, ea.value_text ?? ea.value_number ?? ea.value_datetime ?? ea.value_boolean);
+  }
+  if (passesFilters(filters, before)) return true;
+  const after = new Map(before);
+  for (const c of changes) {
+    const slug = attrByCatName.get(`${existing.category_id}||${c.field}`)?.slug;
+    if (slug) after.set(slug, c.newValue === '' ? null : c.newValue);
+  }
+  return passesFilters(filters, after);
+}
+
 export interface UpdatePreview {
   eventId:           string;
   sourceRow:         number;
@@ -1849,7 +1879,13 @@ export async function analyzeUpdates(
    *   (`balance_anchors.group_slug`), inače se `group_value` neće poklopiti ni
    *   s jednim retkom i guard bi tiho pokazivao nulu.
    */
-  confirmed?:     { groupSlug: string; anchors: readonly AnchorLike[] } | null,
+  confirmed?:     {
+    groupSlug: string;
+    anchors: readonly AnchorLike[];
+    /** Filtri pločice salda (T21, S170). Redak koji ih ne prolazi ni prije ni
+     *  poslije izmjene ne miče saldo ⇒ sidro ga ne „potvrđuje" ⇒ nema kvačice. */
+    filters?: readonly WidgetFilter[];
+  } | null,
 ): Promise<UpdateAnalysis> {
   if (toUpdate.length === 0) {
     return { updates: [], unchangedCount: 0, invalidIdCount: 0, confirmedCount: 0, foreignOwned: [] };
@@ -1865,6 +1901,8 @@ export async function analyzeUpdates(
 
   const attrByCatName = new Map<string, ExportAttrDef>();
   for (const def of attrDefs) attrByCatName.set(`${def.category_id}||${def.name}`, def);
+  const slugById = new Map<string, string>();
+  for (const def of attrDefs) if (def.slug) slugById.set(def.id, def.slug);
 
   const catByPath: Record<string, string> = {};
   for (const [id, info] of Object.entries(categoriesDict)) catByPath[`${info.area_name}||${info.full_path}`] = id;
@@ -1916,8 +1954,15 @@ export async function analyzeUpdates(
       for (const ea of existing.event_attributes) {
         if (groupDefIds.has(ea.attribute_definition_id) && ea.value_text) { gv = ea.value_text; break; }
       }
-      confirmedBy = findCoveringAnchor(confirmed.anchors, gv, existing.event_date);
-      if (confirmedBy) confirmedCount++;
+      // T21 (S170): kartični redak saldo ne miče, pa mu izmjena ne dovodi sidro
+      //   u pitanje — kvačica bi bila lažna uzbuna na svakom uvozu s karticama.
+      //   ISTO pravilo kao Edit (C3c, `rowConfirmation`), uz jedno proširenje:
+      //   gleda se i stanje POSLIJE izmjene — `Visa → Racun` ispred sidra
+      //   stvarno pomiče saldo i mora pitati.
+      if (inBalanceBeforeOrAfter(existing, changes, attrByCatName, slugById, confirmed.filters)) {
+        confirmedBy = findCoveringAnchor(confirmed.anchors, gv, existing.event_date);
+        if (confirmedBy) confirmedCount++;
+      }
     }
 
     const ssParsed = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };

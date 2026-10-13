@@ -388,8 +388,15 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
   }
 
   const crit: string[] = [];
+  // T21 (S170): isti uvjeti kao test PO RETKU (`{R}`) — za kolonu `Potvrda`.
+  const rowTests: string[] = [];
   for (const f of opts.filters) {
     const c = filterToCriteria(f, layout, attrNameBySlug, layout.dataStart, calcTo);
+    if (c) {
+      const ltr = c.range.match(/^\$([A-Z]+)\$/)![1];
+      const v = f.values[0].replace(/"/g, '""');
+      rowTests.push(f.op === 'in' ? `$${ltr}{R}="${v}"` : `$${ltr}{R}<>"${v}"`);
+    }
     if (c) crit.push(`,${c.range},${c.criterion}`);
     else   warnings.push(`Uvjet "${f.slug} ${f.op} ${f.values.join('/')}" nije ušao u kontrolni stupac — brojka će se razlikovati od pločice.`);
   }
@@ -472,7 +479,15 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
         .replace(/"/g, '""');
       return `IF($${dLtr}{R}<=DATE(${y},${m},${d}),"${label}",${branch(i + 1)})`;
     };
-    const tpl = `IF($${dLtr}{R}="","",${branch(0)})`;
+    // T21 (S170): oznaka samo za redak koji ULAZI U SALDO (uvjeti pločice, kao
+    //   kontrolni stupac). Kartični redak saldo ne miče, pa ga sidro ne
+    //   „potvrđuje" — oznaka bi tvrdila nešto što nije istina (isto pravilo kao
+    //   Edit C3c i update-guard na uvozu).
+    const inBalance = rowTests.length === 0 ? null
+      : rowTests.length === 1 ? rowTests[0] : `AND(${rowTests.join(',')})`;
+    const tpl = inBalance
+      ? `IF($${dLtr}{R}="","",IF(${inBalance},${branch(0)},""))`
+      : `IF($${dLtr}{R}="","",${branch(0)})`;
 
     for (let r = layout.dataStart; r <= blankTo; r++) {
       const cell = ws.getCell(r, confCol);
@@ -496,7 +511,8 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
         {
           type: 'expression',
           priority: 5,
-          formulae: [`AND($${dLtr}${layout.dataStart}<>"",$${dLtr}${layout.dataStart}<=DATE(${ny},${nm},${nd}))`],
+          formulae: [`AND($${dLtr}${layout.dataStart}<>"",$${dLtr}${layout.dataStart}<=DATE(${ny},${nm},${nd})`
+            + `${rowTests.map(t => ',' + t.replace(/\{R\}/g, String(layout.dataStart))).join('')})`],
           style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: CONFIRMED_ROW_BG } } },
         },
       ],

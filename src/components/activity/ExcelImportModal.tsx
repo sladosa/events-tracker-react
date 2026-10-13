@@ -210,11 +210,14 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
         // pitanje. /!\ Neuspjelo citanje se NE cita kao „nema sidara" — tada
         //   guard samo suti, a to je isto ponasanje kao prije faze 4; lazna
         //   tvrdnja „nista nije potvrdjeno" bila bi gora od izostanka.
-        let confirmedIn: { groupSlug: string; anchors: Awaited<ReturnType<typeof listAnchors>> } | null = null;
+        let confirmedIn: Parameters<typeof analyzeUpdates>[4] = null;
         const gSlug = balanceWidget?.group_by ?? null;
         if (gSlug && filter.areaId) {
           try {
-            confirmedIn = { groupSlug: gSlug, anchors: await listAnchors(filter.areaId, gSlug) };
+            confirmedIn = {
+              groupSlug: gSlug, anchors: await listAnchors(filter.areaId, gSlug),
+              filters: balanceWidget?.filters ?? [],   // T21: kartični redak ne pita
+            };
           } catch {
             confirmedIn = null;
           }
@@ -282,7 +285,9 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   //   /!\ Obje su primitivi, a analyzeFile ne ulazi ni u jedan useEffect (koristi
   //   ga samo handleFile), pa promjena identiteta ne pokrece nista u petlji —
   //   zamka iz S121 (interval koji se rusi na svakom renderu) ovdje ne vrijedi.
-  }, [balanceWidget?.group_by, filter.areaId]);
+  //   S170 (T21): + `filters` (niz iz configa — novi identitet tek kad se config
+  //   ponovo procita, a i tada samo nova funkcija, bez petlje).
+  }, [balanceWidget?.group_by, balanceWidget?.filters, filter.areaId]);
 
   const handleFile = useCallback(
     (file: File) => analyzeFile(file, 'skip'),
