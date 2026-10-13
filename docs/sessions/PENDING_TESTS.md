@@ -19,7 +19,7 @@
 | T-S170-3 | TEST: Add, `Rate?` ✓ i `Broj rata` prazno/1 ⇒ poruka, ništa spremljeno; 3 ⇒ rata modal | ⬜ |
 | T-S170-4 | PROD nakon deploya: Network bez `vendor-plotly`/`vendor-excel` na početku; krug, Export/Import, Structure modali rade („Loading…") | ⬜ |
 | T-S170-5 | TEST + PROD: `Financije_all` + F5 ×5 ⇒ uvijek This Year; ručni All Time preživi Activities↔Overview | ⬜ |
-| T-S170-6 | PROD: `sql/057` u SQL editoru (Saša) | ⬜ |
+| T-S170-6 | PROD: `sql/057` u SQL editoru (Saša) | ✅ S170 (13.10., Saša) — pušteno; prava `authenticated · postgres · service_role`, **bez `anon`** |
 | T-S170-7 | PROD nakon 057 + deploya: Structure = 1 `rpc_category_event_counts`, 0 `events?select=id` HEAD; brojke kao prije | ⬜ |
 
 ---
