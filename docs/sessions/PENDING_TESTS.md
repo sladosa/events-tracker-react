@@ -18,7 +18,7 @@
 | T-S170-2 | TEST: Filter by `Podtip` grupiran po Tipu; `Kuća › Popravci, održavanje` = 18 (ne 30); `gorivo` = 22 (oba auta); `Status` ravan | ⬜ **grupe ✅ 13.10. (Saša, lokalno `dev:prod`, slika: `Advokati › Ostavine`, `auto C5 › gorivo…`, abecedno)**; ostaju brojke 18 / 22 |
 | T-S170-3 | TEST: Add, `Rate?` ✓ i `Broj rata` prazno/1 ⇒ poruka, ništa spremljeno; 3 ⇒ rata modal | ⬜ **poruka ✅ 13.10. (Saša, slika: prazan `Broj rata` ⇒ crveni toast, forma ostaje)**; ostaje `1` ⇒ ista poruka, `3` ⇒ rata modal |
 | T-S170-4 | PROD nakon deploya: Network bez `vendor-plotly`/`vendor-excel` na početku; krug, Export/Import, Structure modali rade („Loading…") | ⬜ |
-| T-S170-5 | TEST + PROD: `Financije_all` + F5 ×5 ⇒ uvijek This Year; ručni All Time preživi Activities↔Overview | ⬜ **F5 ×5 ⇒ This Year ✅ 13.10. (Saša)**; ostaje ručni All Time ⇒ Activities ⇒ Overview ⇒ ostaje All Time |
+| T-S170-5 | TEST + PROD: `Financije_all` + F5 ×5 ⇒ uvijek This Year; ručni All Time preživi Activities↔Overview | ✅ S170 (13.10., Saša) — F5 ×5 ⇒ This Year; ručni All Time preživi Activities ↔ Overview, F5 ga vraća na This Year |
 | T-S170-6 | PROD: `sql/057` u SQL editoru (Saša) | ✅ S170 (13.10., Saša) — pušteno; prava `authenticated · postgres · service_role`, **bez `anon`** |
 | T-S170-7 | PROD nakon 057 + deploya: Structure = 1 `rpc_category_event_counts`, 0 `events?select=id` HEAD; brojke kao prije | ✅ S170 (13.10., Saša) — TEST i **PROD** (`dev:prod`, Saša kao grantee na `Financije_all`): 2 × RPC 200 ~1 kB (dev StrictMode duplira; deployano 1), **0** `events?select=id` (prije 39 po učitavanju) |
 | T-S170-8 | PROD **poslije deploya**: `set_due_visa_S170.py` dry ⇒ popis Visa košara; `--apply --yes-prod` ⇒ `Visa ✓ · ostale netaknute ✓` | ⬜ |
