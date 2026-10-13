@@ -26,8 +26,11 @@
    (promijenjena ćelija postane svijetloplava), pa `--preuzmi` na PROD i uvoz **novog** filea
    (koraci u `docs/sessions/tests/S169_tests.md`).
 2. ✅ Morra (`Rate? = No`) i T-S169-5 (Medical_Koka 1.168,23, Zivotno 2.090,59) — zatvoreno 12.10.
-3. **Predvečer 12.10. s Kokom:** razvrstavanje 01/2024–09/2025 (T-S169-7; fileovi `…_202401-202509_20261012_1154.xlsx`),
-   pa `--preuzmi` s ISTIM prozorom i zastavicama. Intercar rate (T37) ostaviti N/A.
+3. **ODGOĐENO (12.10. nije stiglo, 13.10. Koke nema) — idući termin s Kokom:** razvrstavanje
+   01/2024–09/2025 (T-S169-7; ZABA `…_kokin_tekuci_zaba_202401-202509_20261012_1154.xlsx`).
+   Fileovi ostaju upotrebljivi i za par tjedana: `--preuzmi` ionako pravi SVJEŽ file iz PROD-a,
+   a retke koje je netko u međuvremenu razvrstao u appu ne dira. ISTI prozor i zastavice.
+   Intercar rate (T37) ostaviti N/A. **RF dio (T-S169-6 i RF iz T-S169-7) Saša može i bez Koke.**
 4. Razrez pamti rasklopljeno: lokalno ✅ (Saša) — deploy kad kažeš, pa T-S169-8 na PROD-u.
 5. Iz S168 i dalje: T-S168-2/3/4 (Structure `Remainder`, prvi Kokin MC plan, Kokin mobitel);
    **~03.11.** Visa izvod, **11.11.** MC traka (D7).
