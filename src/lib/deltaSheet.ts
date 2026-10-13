@@ -124,6 +124,9 @@ export interface DeltaSheetOptions {
    * 0 = sekcije nema.
    */
   plannedCount: number;
+  /** Koliko redaka-oznaka košara sekcija nosi (S170) — po jedan prije svake
+   *  grupe datuma naplate. Sekcija je `plannedCount + plannedGroups` redaka. */
+  plannedGroups?: number;
   /**
    * Slug datumskog atributa dospijeca (`split.due_slug` iz configa).
    * Kad ga ima, sekcija je CIJELA KOSARA -- i retci koje je netko vec
@@ -298,7 +301,7 @@ export function addDeltaHelpersTo(
    *   `sum_range` a ne i raspon uvjeta, Excel vrati `#VALUE!`. Zato jedna
    *   vrijednost, `calcTo`, hrani sve.
    */
-  const calcTo = opts.plannedCount > 0 ? blankTo + 5 + opts.plannedCount : blankTo;
+  const calcTo = opts.plannedCount > 0 ? blankTo + 5 + opts.plannedCount + (opts.plannedGroups ?? 0) : blankTo;
 
   // ── 1. Prazni retci ─────────────────────────────────────────────────────
   for (let i = 0; i < opts.blankRows; i++) {
@@ -370,6 +373,10 @@ export function addDeltaHelpersTo(
  *   koje su vec naslov necega -- korisnik ih klikne kad ga zanima -- nikad kao
  *   jedini nositelj informacije bez koje se ne moze.
  */
+/** Odabrana košara u delta sekciji (S170) — jasno žuto, različito od sivog
+ *  „potvrđeno" i toplog tona praznih redaka. */
+const SELECTED_BASKET_BG = 'FFFFE699';
+
 function explain(cell: ExcelJS.Cell, title: string, text: string): void {
   if (title.length <= 32 && text.length <= 255) {
     cell.dataValidation = {
@@ -792,7 +799,7 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     const sepRow      = blankTo + 5;                 // redak-razdjelnik
     const plannedFrom = blankTo + 6;
     void gapRow;
-    const plannedTo   = plannedFrom + opts.plannedCount - 1;
+    const plannedTo   = plannedFrom + opts.plannedCount + (opts.plannedGroups ?? 0) - 1;
 
     // Naslov ide u kolonu H (komentar). Kolona B ostaje PRAZNA, pa import ovaj
     // redak uopce ne vidi kao redak.
@@ -908,10 +915,72 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
       dayCell.numFmt = 'dd.mm.yyyy';
       dayCell.font   = { bold: true };
       dayCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-      explain(dayCell, 'Dan naplate košare',
-        'Σ lijevo zbraja SAMO retke s ovim datumom naplate. Izvoz je upisao najbliži; '
-        + 'za drugu košaru upiši njezin dan.');
       const dRef = `${colLetter(ctrlCol + 1)}${sumRow}`;
+      const dAbs = `$${colLetter(ctrlCol + 1)}$${sumRow}`;
+
+      // ── Izbornik datuma (S170, Saša) ──────────────────────────────────────
+      // ⚠ Popis iz ĆELIJA, ne iz teksta: tekstualni popis bi u ćeliju upisao
+      //   TEKST („11.11.2026"), a `INT(tekst)` u Σ ne daje dan. Ćelije s
+      //   datumima stoje u skrivenom stupcu desno od `Provjeri`.
+      const dates = [...new Set(dueDates)].sort();
+      const listCol = ctrlCol + 3;
+      dates.forEach((iso, i) => {
+        const [yy, mm, dd] = iso.split('-').map(Number);
+        const c = ws.getCell(sumRow + i, listCol);
+        c.value = new Date(Date.UTC(yy, mm - 1, dd));
+        c.numFmt = 'dd.mm.yyyy';
+      });
+      ws.getColumn(listCol).hidden = true;
+      const listL = colLetter(listCol);
+      dayCell.dataValidation = {
+        type: 'list', allowBlank: false,
+        formulae: [`$${listL}$${sumRow}:$${listL}$${sumRow + dates.length - 1}`],
+        showInputMessage: true, showErrorMessage: false,
+        promptTitle: 'Dan naplate košare',
+        prompt: 'Izaberi košaru: Σ lijevo zbraja samo nju, a njezini retci dolje se oboje. '
+          + 'Grupe otvaraš i zatvaraš gumbima +/− lijevo (1/2 = sve).',
+      };
+
+      // ── Grupe po košari (S170, Saša) ──────────────────────────────────────
+      // Pisač je prije svake košare ostavio PRAZAN redak (`labelRows`): Excel bi
+      // susjedne grupe iste razine stopio u jednu. Ovdje dobiva oznaku, a retci
+      // košare razinu 1 — gumb `+`/`−` stoji na oznaci (summaryBelow: false).
+      // ⚠ Oznaka nema `Area` (kol. B) ⇒ uvoz je ne vidi kao redak (isto kao
+      //   sumarni retci, S126).
+      // ⚠ Otvaranje/zatvaranje NE ide po izboru datuma: formula to ne može, a
+      //   makro (.xlsm) Excel na mobitelu ne pokreće. Izbor zato samo BOJI.
+      for (let r = plannedFrom; r <= plannedTo; r++) {
+        if (String(ws.getCell(r, 2).value ?? '').trim() !== '') {
+          ws.getRow(r).outlineLevel = 1;
+          continue;
+        }
+        let n = 0;
+        while (r + 1 + n <= plannedTo && String(ws.getCell(r + 1 + n, 2).value ?? '').trim() !== '') n++;
+        const v = ws.getCell(r + 1, dueColIdx).value;
+        const iso = v instanceof Date ? v.toISOString().slice(0, 10) : null;
+        const lab = ws.getCell(r, 4);
+        lab.value = `${iso ? `naplata ${hr(iso)}` : 'bez datuma naplate'} · ${n} ${n === 1 ? 'stavka' : n >= 2 && n <= 4 ? 'stavke' : 'stavki'}`;
+        lab.font  = { italic: true, size: 9, color: { argb: 'FF6B7280' } };
+      }
+      (ws.properties as unknown as { outlineProperties?: object }).outlineProperties =
+        { summaryBelow: false, summaryRight: true };
+
+      // ── Odabrana košara se oboji ──────────────────────────────────────────
+      // Redak košare: njegov datum naplate = izabrani dan. Oznaka (bez `Area`):
+      // datum PRVOG retka ispod nje. IFERROR jer `INT("")` daje grešku, a greška
+      // u AND-u ugasi cijeli uvjet.
+      const lastL = colLetter(layout.lastCol);
+      ws.addConditionalFormatting({
+        ref: `A${plannedFrom}:${lastL}${plannedTo}`,
+        rules: [{
+          type: 'expression', priority: 3,
+          formulae: [
+            `OR(IFERROR(INT($${dueL}${plannedFrom})=INT(${dAbs}),FALSE),`
+            + `AND($B${plannedFrom}="",IFERROR(INT($${dueL}${plannedFrom + 1})=INT(${dAbs}),FALSE)))`,
+          ],
+          style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: SELECTED_BASKET_BG } } },
+        }],
+      });
       const by = (col: string) =>
         `SUMIFS($${col}$${plannedFrom}:$${col}$${plannedTo},$${dueL}$${plannedFrom}:$${dueL}$${plannedTo},">="&INT(${dRef}),`
         + `$${dueL}$${plannedFrom}:$${dueL}$${plannedTo},"<"&(INT(${dRef})+1))`;
@@ -992,7 +1061,7 @@ export async function createDeltaExcel(
   events:         ExportEvent[],
   attrDefs:       ExportAttrDef[],
   categoriesDict: ExportCategoriesDict,
-  opts:           Omit<DeltaSheetOptions, 'mainCount' | 'plannedCount'>,
+  opts:           Omit<DeltaSheetOptions, 'mainCount' | 'plannedCount' | 'plannedGroups'>,
   exportProfile?: ExportProfile | null,
   /**
    * Planirani retci ovog racuna koje glavni blok NE pokriva (tipicno kartcni:
@@ -1041,7 +1110,9 @@ export async function createDeltaExcel(
   };
   await addActivitiesSheetsTo(
     wb, events, attrDefs, categoriesDict, 'asc', attrColumnOrder, undefined,
-    plannedRows.length > 0 ? { events: plannedRows, gapRows, groupKey: basketKey } : undefined,
+    plannedRows.length > 0
+      ? { events: plannedRows, gapRows, groupKey: basketKey, labelRows: dueDefIds.size > 0 }
+      : undefined,
     // Prazni retci predloska dobivaju dropdowne od PISACA retka, s ispravnom
     // adresom roditelja u svakom retku. v. `dvEnd` u excelExport.ts.
     opts.blankRows,
@@ -1062,6 +1133,7 @@ export async function createDeltaExcel(
 
   const warnings = addDeltaHelpersTo(ws, attrDefs, {
     ...opts, mainCount: events.length, plannedCount: plannedRows.length,
+    plannedGroups: dueDefIds.size > 0 ? new Set(plannedRows.map(basketKey)).size : 0,
   });
   return { buffer: (await wb.xlsx.writeBuffer()) as ArrayBuffer, warnings };
 }

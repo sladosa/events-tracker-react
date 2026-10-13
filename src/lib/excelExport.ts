@@ -471,6 +471,10 @@ export async function addActivitiesSheetsTo(
     /** Ključ grupe (S170, Saša): delta sekcija ide PO KOŠARI (datum naplate),
      *  pa unutar nje po datumu. Prazan ključ ide na kraj. */
     groupKey?: (e: ExportEvent) => string;
+    /** Uz `groupKey`: jedan PRAZAN redak prije svake grupe (oznaka + gumb
+     *  `+`/`−` grupe). Excel dvije susjedne grupe iste razine stopi u jednu,
+     *  pa ih mora dijeliti redak izvan grupe. Popunjava ga delta alat. */
+    labelRows?: boolean;
   },
   /**
    * Koliko praznih redaka predloska dolazi ODMAH ISPOD glavnog bloka (delta
@@ -764,10 +768,16 @@ export async function addActivitiesSheetsTo(
   const allRows = [...sortedEvents, ...trailingSorted];
 
   let writtenIdx = 0;
+  let lastGroup: string | null = null;
   for (const event of allRows) {
     // Praznina izmedju blokova: `readLayout` u deltaSheet.ts po njoj prepoznaje
     // gdje glavni blok zavrsava, a import prazan redak ne vidi kao redak (kol. B).
     if (trailing && writtenIdx === mainCount) row += trailing.gapRows;
+    if (trailing?.labelRows && gk && writtenIdx >= mainCount) {
+      const g = gk(event);
+      if (writtenIdx === mainCount || g !== lastGroup) row += 1;   // redak-oznaka grupe
+      lastGroup = g;
+    }
     writtenIdx++;
     const catInfo = categoriesDict[event.category_id] ?? {};
 

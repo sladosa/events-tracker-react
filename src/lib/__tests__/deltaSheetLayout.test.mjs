@@ -73,6 +73,12 @@ const colNum = (s) => {
   return m ? m[0].split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0) : 0;
 };
 const raw = (ws,r,c) => ws.getCell(r,c).value;
+/** event_id-evi redaka sekcije, redom — retke-oznake kosara (bez kol. A) preskace (S170). */
+const sectionIds = (ws, from) => {
+  const out = [];
+  for (let r = from; r <= ws.rowCount; r++) { const v = String(ws.getCell(r,1).value ?? '').trim(); if (v) out.push(v); }
+  return out;
+};
 /** Redak-razdjelnik sekcije, nadjen po NASLOVU (kolona H) — ne po razmaku. */
 const findSep = (ws) => {
   for (let r = 1; r <= ws.rowCount; r++) {
@@ -155,7 +161,7 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
   // Tekst se mijenja jer se mijenja i posao: u kosari nisu svi retci planirani,
   // pa uputa ne smije glasiti "potvrdi svaki redak" nego "slozi zbroj".
   ok('naslov je KOSARA, ne PLANIRANO', String(txt(ws,sep,8)).startsWith('KOSARA'));
-  ok('vec potvrdjen redak JE u sekciji', txt(ws,pFrom+1,1)==='b2', `got ${txt(ws,pFrom+1,1)}`);
+  ok('vec potvrdjen redak JE u sekciji', sectionIds(ws, pFrom).includes('b2'), `got ${sectionIds(ws, pFrom)}`);
   // /!\ Neto: povrat u istoj kosari inace naduva zbroj i izmisli razliku
   //     prema izvodu. Izmjereno na ZABA kosari 11.08. (povrat 3,00).
   const f = String(raw(ws,sumRow,ctrl)?.formula ?? '');
@@ -281,8 +287,40 @@ console.log('Σ kosare po jednom dospijecu (T12):');
   const mixed = [...basket, mk('k0','2026-09-10','ZABA','Mastercard',3,'Planiran','2026-12-11T12:00:00Z')];
   const ms = await buildSheet(mixed, { dueSlug: 'datum_naplate', today: '2026-10-13' });
   const p0 = findSep(ms.ws) + 1;
-  const order = [0, 1, 2, 3].map(i => txt(ms.ws, p0 + i, 1)).join(',');
+  const order = sectionIds(ms.ws, p0).join(',');
   ok('sekcija ide po kosari: k1 (11.10.), k2 (11.11.), k0 i k3 (11.12.)', order === 'k1,k2,k0,k3', `got ${order}`);
+
+  // Grupe (S170, Sasa): redak-oznaka PRIJE svake kosare, retci kosare razina 1.
+  const w = ms.ws;
+  const lab = (r) => String(w.getCell(r, 4).value ?? '');
+  ok('prvi redak sekcije je oznaka kosare 11.10. (1 stavka)', /naplata 11\.10\.2026.* 1 stavka/.test(lab(p0)), `got ${lab(p0)}`);
+  ok('oznaka nema Area (uvoz je ne vidi kao redak)', String(w.getCell(p0, 2).value ?? '') === '');
+  ok('oznaka je izvan grupe, redak kosare u grupi',
+     (w.getRow(p0).outlineLevel ?? 0) === 0 && w.getRow(p0 + 1).outlineLevel === 1,
+     `got ${w.getRow(p0).outlineLevel}/${w.getRow(p0 + 1).outlineLevel}`);
+  const lab12 = [...Array(12).keys()].map(i => lab(p0 + i)).find(t => t.includes('11.12.2026')) ?? '';
+  ok('kosara 11.12. ima oznaku s 2 stavke', /2 stavke/.test(lab12), `got ${lab12}`);
+
+  // Izbornik datuma: LISTA iz celija (datumi), ne tekst
+  const sr = findSep(w) - 3;
+  const ctrlM = ms.ctrl;
+  const dv = w.getCell(sr, ctrlM + 1).dataValidation;
+  ok('dan uz Σ ima padajuci izbornik (list)', dv?.type === 'list', `got ${dv?.type}`);
+  const ref = String(dv?.formulae?.[0] ?? '');
+  const m = ref.match(/^\$([A-Z]+)\$(\d+):\$[A-Z]+\$(\d+)$/);
+  ok('izbornik cita raspon celija (ne tekstualni popis)', !!m, `got ${ref}`);
+  if (m) {
+    const col = m[1].split('').reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
+    const vals = [];
+    for (let r = +m[2]; r <= +m[3]; r++) { const v = w.getCell(r, col).value; vals.push(v instanceof Date ? v.toISOString().slice(0,10) : String(v)); }
+    ok('popis = tri datuma kosara, kao DATUMI', vals.join(',') === '2026-10-11,2026-11-11,2026-12-11', `got ${vals}`);
+    ok('stupac popisa je skriven', w.getColumn(col).hidden === true);
+  }
+
+  // Boja odabrane kosare: uvjetni format na sekciji, gleda celiju s danom
+  const cf = (w.conditionalFormattings ?? []).find(c => String(c.ref).startsWith(`A${p0}:`));
+  const cff = String(cf?.rules?.[0]?.formulae?.[0] ?? '');
+  ok('odabrana kosara se boji (CF nad sekcijom, gleda dan)', cff.includes('INT(') && cff.includes(`$${sr}`), `got ${cff}`);
 }
 
 // ── Kolona „Potvrda" (S142, faza 2) ───────────────────────────────────────
