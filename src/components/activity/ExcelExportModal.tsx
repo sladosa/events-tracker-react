@@ -762,6 +762,9 @@ export function ExcelExportModal({ onClose }: ExcelExportModalProps) {
             filters:      balanceWidget.filters ?? [],
             blankRows:    deltaBlanks,
             dueSlug,
+            // Ista mjera kao traka „Čeka potvrdu" za košaru ovog računa (S170, Visa = gross).
+            basketMeasure: Object.values(balanceWidget.due?.baskets ?? {})
+              .find(b => b.account === deltaAccount)?.measure,
             prefill,
             areaName:     cat?.area_name ?? '',
             categoryPath: cat?.full_path ?? '',

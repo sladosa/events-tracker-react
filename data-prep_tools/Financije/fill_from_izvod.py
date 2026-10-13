@@ -183,6 +183,13 @@ class Target:
                 continue
             self.last_col = c
             self.col[v.split(' (')[0].strip().lower()] = c
+        # Kontrolni stupac se trazi PO NASLOVU (S170, T12). `last_col` je od S142
+        # kolona `Potvrda` kad prozor nosi sidro, pa je `last_col - 1` gadjao
+        # `Stanje (kontrola)` umjesto oznake — i alat je javljao „list nema
+        # kontrolu kosare" nad listom koji je ima.
+        self.ctrl_col = next((c for c in range(1, self.ws.max_column + 1)
+                              if str(self.ws.cell(self.header_row, c).value or '').strip()
+                              == 'Stanje (kontrola)'), self.last_col)
 
         # redak s podacima = ima Area; „pravi" = ima i datum. Ostatak su prazni
         # retci predloška (nose prepisan Area/email/vrijeme, čekaju unos).
@@ -866,11 +873,11 @@ def prosiri_kosaru(tg: 'Target', novi_kraj: int) -> bool:
     ⚠ Od S126 kontrola stoji IZNAD sekcije, pa se sekcija smije siriti prema
       dolje bez pomicanja icega. Ovdje se zato mijenja samo kraj raspona.
     """
-    lbl = tg.last_col - 1                       # kolona oznaka (`Delete?`)
+    lbl = tg.ctrl_col - 1                       # kolona oznaka (`Delete?`)
     for r in range(tg.header_row, tg.ws.max_row + 1):
         if not str(tg.ws.cell(r, lbl).value or '').strip().startswith('Σ'):
             continue
-        c = tg.ws.cell(r, tg.last_col)
+        c = tg.ws.cell(r, tg.ctrl_col)
         f = str(c.value or '')
         if not f.startswith('='):
             continue

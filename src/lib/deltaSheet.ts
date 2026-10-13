@@ -34,6 +34,7 @@
 import ExcelJS from 'exceljs';
 import type { ExportEvent, ExportAttrDef, ExportCategoriesDict } from './excelTypes';
 import type { WidgetFilter } from '@/types/database';
+import { localYmd } from '@/lib/localDate';
 import { addActivitiesSheetsTo, buildAttrMeta, colLetter, FIXED_COL_COUNT,
          HEADER_FILL, HEADER_FONT } from './excelExport';
 import { type FilterSheetInfo, addFilterSheet } from './excelUtils';
@@ -131,6 +132,14 @@ export interface DeltaSheetOptions {
    * pronalazak kolone i tekst.
    */
   dueSlug?:     string;
+  /**
+   * Mjera „Σ košara" (S170, isto kao traka): `gross` = samo isplate — Visa
+   * košara nosi zrcalo naplate (`PRIMLJENA UPLATA`), neto bi ga pojeo.
+   * Zadano `net`.
+   */
+  basketMeasure?: 'net' | 'gross';
+  /** „Danas" za izbor najbližeg dospijeća (testovi); zadano lokalni dan. */
+  today?:       string;
   /** Kolone B/C/G praznih redaka. */
   areaName:     string;
   categoryPath: string;
@@ -862,7 +871,7 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
       warnings.push('Stupac „Provjeri" preskočen: ne nalazim kolonu za status ili dospijeće.');
     }
 
-    ws.getCell(sumRow, labelCol).value = opts.dueSlug ? 'Σ košara (dolje) ->' : 'Σ planirano (dolje) ->';
+    ws.getCell(sumRow, labelCol).value = opts.dueSlug ? 'Σ košara za naplatu (dan desno) ->' : 'Σ planirano (dolje) ->';
     ws.getCell(sumRow, labelCol).alignment = { horizontal: 'right' };
     const sumCell = ws.getCell(sumRow, ctrlCol);
     // /!\ NETO, ne samo zbroj isplata: povrat zna sjediti u istoj kosari.
@@ -870,7 +879,48 @@ function explain(cell: ExcelJS.Cell, title: string, text: string): void {
     //   jedan povrat od 3,00 -- banka tereti neto. Zbroj bez njega bi
     //   tvrdio razliku prema izvodu koje nema.
     const pLtr     = colLetter(plusCol);
-    sumCell.value  = { formula: `ROUND(SUM($${mLtr}$${plannedFrom}:$${mLtr}$${plannedTo})-SUM($${pLtr}$${plannedFrom}:$${pLtr}$${plannedTo}),2)` };
+    // T12 (S170): Σ JEDNOG dospijeća, ne cijele sekcije. Sekcija nosi i buduće
+    //   rate (11.10. + 11.11. + 11.12. = 1.185,38), a izvod jednu naplatu —
+    //   razlika 3,96 izgledala je kao sitnica, a stvarna je bila 329,76.
+    //   Dan je u ćeliji DESNO od Σ: izvoz upiše najbliže dospijeće, čovjek ga
+    //   smije prepisati za drugu košaru.
+    // ⚠ Raspon `>= dan` i `< dan+1`, s INT: datumske ćelije sidre se u PODNE
+    //   (S112), a ručno upisan dan je ponoć — jednakost bi promašila oboje.
+    const dueDates: string[] = [];
+    if (dueColIdx) {
+      for (let r = plannedFrom; r <= plannedTo; r++) {
+        const v = ws.getCell(r, dueColIdx).value;
+        const iso = v instanceof Date ? v.toISOString().slice(0, 10)
+          : typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null;
+        if (iso) dueDates.push(iso);
+      }
+    }
+    const today = opts.today ?? localYmd(new Date());
+    const dayNo = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 86_400_000;
+    const nearest = [...new Set(dueDates)].sort((a, b) =>
+      Math.abs(dayNo(a) - dayNo(today)) - Math.abs(dayNo(b) - dayNo(today)) || a.localeCompare(b))[0];
+    const gross = opts.basketMeasure === 'gross';
+    if (dueColIdx && nearest) {
+      const dueL  = colLetter(dueColIdx);
+      const dayCell = ws.getCell(sumRow, ctrlCol + 1);
+      const [y, m, d] = nearest.split('-').map(Number);
+      dayCell.value  = new Date(Date.UTC(y, m - 1, d));
+      dayCell.numFmt = 'dd.mm.yyyy';
+      dayCell.font   = { bold: true };
+      dayCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      explain(dayCell, 'Dan naplate košare',
+        'Σ lijevo zbraja SAMO retke s ovim datumom naplate. Izvoz je upisao najbliži; '
+        + 'za drugu košaru upiši njezin dan.');
+      const dRef = `${colLetter(ctrlCol + 1)}${sumRow}`;
+      const by = (col: string) =>
+        `SUMIFS($${col}$${plannedFrom}:$${col}$${plannedTo},$${dueL}$${plannedFrom}:$${dueL}$${plannedTo},">="&INT(${dRef}),`
+        + `$${dueL}$${plannedFrom}:$${dueL}$${plannedTo},"<"&(INT(${dRef})+1))`;
+      sumCell.value = { formula: gross ? `ROUND(${by(mLtr)},2)` : `ROUND(${by(mLtr)}-${by(pLtr)},2)` };
+    } else {
+      sumCell.value = { formula: gross
+        ? `ROUND(SUM($${mLtr}$${plannedFrom}:$${mLtr}$${plannedTo}),2)`
+        : `ROUND(SUM($${mLtr}$${plannedFrom}:$${mLtr}$${plannedTo})-SUM($${pLtr}$${plannedFrom}:$${pLtr}$${plannedTo}),2)` };
+    }
     sumCell.numFmt = '#,##0.00';
     explain(sumCell, 'Σ košare',
       'Usporedi sa SKUPNOM NAPLATOM s izvoda za taj datum. Ne slažu li se, kriv je '

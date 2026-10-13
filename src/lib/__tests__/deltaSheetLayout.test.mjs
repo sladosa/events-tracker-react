@@ -159,7 +159,7 @@ console.log('Kosara (split.due_slug u configu) — sekcija nosi i vec potvrdjene
   // /!\ Neto: povrat u istoj kosari inace naduva zbroj i izmisli razliku
   //     prema izvodu. Izmjereno na ZABA kosari 11.08. (povrat 3,00).
   const f = String(raw(ws,sumRow,ctrl)?.formula ?? '');
-  ok('Σ kosare je NETO (oduzima kolonu uplata)', f.includes('-SUM('), `got ${f}`);
+  ok('Σ kosare je NETO (oduzima kolonu uplata)', /\)-SUM(IFS)?\(/.test(f), `got ${f}`);
   ok('Σ kosare i dalje ROUND-a na 2 decimale', f.startsWith('ROUND('), `got ${f}`);
 
   // Stupac `Provjeri` — FORMULA, da napomena nestane cim korisnik popravi redak.
@@ -253,6 +253,28 @@ console.log('row_hash: profil ga smije sakriti, Delete? nikad:');
   const fCol = (n) => { for (let c=1;c<=fresh.ws.columnCount;c++) if (String(fresh.ws.getCell(fresh.hdr,c).value??'').trim()===n) return c; return 0; };
   ok('primjena profila SAKRIVA row_hash', fresh.ws.getColumn(fCol('row_hash')).hidden === true);
   ok('primjena profila OSTAVLJA Delete? vidljiv', !fresh.ws.getColumn(fCol('Delete?')).hidden);
+}
+
+
+// ── T12 (S170): Σ kosare po JEDNOM dospijecu ─────────────────────────────
+// Sekcija nosi i buduce rate (11.10. + 11.11. + 11.12. = 1.185,38), a izvod
+// jednu naplatu: razlika 3,96 je izgledala kao sitnica, stvarna je bila 329,76.
+console.log('');
+console.log('Σ kosare po jednom dospijecu (T12):');
+{
+  const basket = [mk('k1','2026-09-20','ZABA','Mastercard',100,'Planiran','2026-10-11T12:00:00Z'),
+                  mk('k2','2026-09-21','ZABA','Mastercard',40,'Planiran','2026-11-11T12:00:00Z'),
+                  mk('k3','2026-09-22','ZABA','Mastercard',7,'Planiran','2026-12-11T12:00:00Z')];
+  const { ws, ctrl } = await buildSheet(basket, { dueSlug: 'datum_naplate', today: '2026-10-13' });
+  const sep = findSep(ws), sumRow = sep - 3;
+  const f = String(raw(ws,sumRow,ctrl)?.formula ?? '');
+  const day = raw(ws, sumRow, ctrl + 1);
+  ok('Σ je SUMIFS po danu naplate (ne SUM cijele sekcije)', f.includes('SUMIFS(') && f.includes('INT('), `got ${f}`);
+  ok('dan desno = NAJBLIZE dospijece (11.10.)', day instanceof Date && day.toISOString().slice(0,10) === '2026-10-11', `got ${day}`);
+  ok('Σ gleda celiju s danom', f.includes(`${String.fromCharCode(64 + ctrl + 1)}${sumRow}`), `got ${f}`);
+  const g = await buildSheet(basket, { dueSlug: 'datum_naplate', today: '2026-10-13', basketMeasure: 'gross' });
+  const fg = String(raw(g.ws, findSep(g.ws) - 3, g.ctrl)?.formula ?? '');
+  ok('gross (Visa): bez oduzimanja uplata', fg.includes('SUMIFS(') && !/\)-SUMIFS\(/.test(fg), `got ${fg}`);
 }
 
 // ── Kolona „Potvrda" (S142, faza 2) ───────────────────────────────────────
