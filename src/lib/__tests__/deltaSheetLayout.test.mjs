@@ -275,6 +275,14 @@ console.log('Σ kosare po jednom dospijecu (T12):');
   const g = await buildSheet(basket, { dueSlug: 'datum_naplate', today: '2026-10-13', basketMeasure: 'gross' });
   const fg = String(raw(g.ws, findSep(g.ws) - 3, g.ctrl)?.formula ?? '');
   ok('gross (Visa): bez oduzimanja uplata', fg.includes('SUMIFS(') && !/\)-SUMIFS\(/.test(fg), `got ${fg}`);
+
+  // Sekcija PO KOSARI (S170, Sasa): datum naplate, pa datum kupnje. Kupnja 10.09.
+  // s naplatom 11.12. ide IZA kupnji koje se naplacuju 11.10. i 11.11.
+  const mixed = [...basket, mk('k0','2026-09-10','ZABA','Mastercard',3,'Planiran','2026-12-11T12:00:00Z')];
+  const ms = await buildSheet(mixed, { dueSlug: 'datum_naplate', today: '2026-10-13' });
+  const p0 = findSep(ms.ws) + 1;
+  const order = [0, 1, 2, 3].map(i => txt(ms.ws, p0 + i, 1)).join(',');
+  ok('sekcija ide po kosari: k1 (11.10.), k2 (11.11.), k0 i k3 (11.12.)', order === 'k1,k2,k0,k3', `got ${order}`);
 }
 
 // ── Kolona „Potvrda" (S142, faza 2) ───────────────────────────────────────

@@ -465,7 +465,13 @@ export async function addActivitiesSheetsTo(
    * ⚠ Praznina mora biti >= broja praznih redaka koje delta alat poslije upisuje,
    *   inace bi ih upisao PREKO ovog bloka.
    */
-  trailing?: { events: ExportEvent[]; gapRows: number },
+  trailing?: {
+    events: ExportEvent[];
+    gapRows: number;
+    /** Ključ grupe (S170, Saša): delta sekcija ide PO KOŠARI (datum naplate),
+     *  pa unutar nje po datumu. Prazan ključ ide na kraj. */
+    groupKey?: (e: ExportEvent) => string;
+  },
   /**
    * Koliko praznih redaka predloska dolazi ODMAH ISPOD glavnog bloka (delta
    * sheet ih upisuje naknadno). Sluzi SAMO validaciji: dropdowni i provjera
@@ -744,7 +750,16 @@ export async function addActivitiesSheetsTo(
   // glavne po datumu, a upravo ih se zeli drzati odvojeno (planirane kartcne
   // stavke su starije od prozora, pa bi inace ili nestale ili se rasule).
   const sortedEvents = [...events].sort(byDateThenSession);
-  const trailingSorted = trailing ? [...trailing.events].sort(byDateThenSession) : [];
+  const gk = trailing?.groupKey;
+  const trailingSorted = trailing
+    ? [...trailing.events].sort((a, b) => {
+        if (gk) {
+          const ka = gk(a) || '\uffff', kb = gk(b) || '\uffff';
+          if (ka !== kb) return ka < kb ? -1 : 1;
+        }
+        return byDateThenSession(a, b);
+      })
+    : [];
   const mainCount = sortedEvents.length;
   const allRows = [...sortedEvents, ...trailingSorted];
 

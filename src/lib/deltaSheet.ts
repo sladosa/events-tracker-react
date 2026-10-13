@@ -1030,9 +1030,18 @@ export async function createDeltaExcel(
   //   `addDeltaHelpersTo` (v. tamo) — razidu li se, kontrola se upise preko
   //   prvih redaka sekcije.
   const gapRows = opts.blankRows + 5;
+  // Sekcija PO KOŠARAMA (S170, Saša: „zanimljivo je imati cjeline po
+  // mjesecima"): datum naplate, pa datum kupnje. Košara je jedinica koja se
+  // uspoređuje s izvodom — i `Σ košara` zbraja točno jednu.
+  const dueDefIds = new Set(opts.dueSlug
+    ? attrDefs.filter(d => d.slug === opts.dueSlug).map(d => d.id) : []);
+  const basketKey = (e: ExportEvent): string => {
+    const a = (e.event_attributes ?? []).find(x => dueDefIds.has(x.attribute_definition_id) && x.value_datetime);
+    return a ? String(a.value_datetime).slice(0, 10) : '';
+  };
   await addActivitiesSheetsTo(
     wb, events, attrDefs, categoriesDict, 'asc', attrColumnOrder, undefined,
-    plannedRows.length > 0 ? { events: plannedRows, gapRows } : undefined,
+    plannedRows.length > 0 ? { events: plannedRows, gapRows, groupKey: basketKey } : undefined,
     // Prazni retci predloska dobivaju dropdowne od PISACA retka, s ispravnom
     // adresom roditelja u svakom retku. v. `dvEnd` u excelExport.ts.
     opts.blankRows,
