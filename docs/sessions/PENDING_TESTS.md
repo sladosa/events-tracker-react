@@ -20,7 +20,7 @@
 | T-S170-4 | PROD nakon deploya: Network bez `vendor-plotly`/`vendor-excel` na početku; krug, Export/Import, Structure modali rade („Loading…") | ⬜ |
 | T-S170-5 | TEST + PROD: `Financije_all` + F5 ×5 ⇒ uvijek This Year; ručni All Time preživi Activities↔Overview | ⬜ |
 | T-S170-6 | PROD: `sql/057` u SQL editoru (Saša) | ✅ S170 (13.10., Saša) — pušteno; prava `authenticated · postgres · service_role`, **bez `anon`** |
-| T-S170-7 | PROD nakon 057 + deploya: Structure = 1 `rpc_category_event_counts`, 0 `events?select=id` HEAD; brojke kao prije | ⬜ **TEST ✅ 13.10. (Saša, `npm run dev`, iPhone 16 emulacija):** 2 × `rpc_category_event_counts` 200 (~1 kB, StrictMode u devu duplira) + 1 preflight; ostaje `events?select=id` = 0 i PROD (`dev:prod`) |
+| T-S170-7 | PROD nakon 057 + deploya: Structure = 1 `rpc_category_event_counts`, 0 `events?select=id` HEAD; brojke kao prije | ✅ S170 (13.10., Saša) — TEST i **PROD** (`dev:prod`, Saša kao grantee na `Financije_all`): 2 × RPC 200 ~1 kB (dev StrictMode duplira; deployano 1), **0** `events?select=id` (prije 39 po učitavanju) |
 
 ---
 
