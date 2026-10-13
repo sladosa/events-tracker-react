@@ -14,8 +14,8 @@
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S170-1 | TEST: Filter by `Izvor` ⇒ izbornik `Racun, Visa, Cash, Mastercard`; `Racun` This Year ≈ 355 | ⬜ |
-| T-S170-2 | TEST: Filter by `Podtip` grupiran po Tipu; `Kuća › Popravci, održavanje` = 18 (ne 30); `gorivo` = 22 (oba auta); `Status` ravan | ⬜ |
+| T-S170-1 | TEST: Filter by `Izvor` ⇒ izbornik `Racun, Visa, Cash, Mastercard`; `Racun` This Year ≈ 355 | ⬜ **izbornik ✅ 13.10. (Saša, lokalno `dev:prod`, slika: ravan `Racun, Visa, Cash, Mastercard`)**; ostaje broj redaka nakon odabira |
+| T-S170-2 | TEST: Filter by `Podtip` grupiran po Tipu; `Kuća › Popravci, održavanje` = 18 (ne 30); `gorivo` = 22 (oba auta); `Status` ravan | ⬜ **grupe ✅ 13.10. (Saša, lokalno `dev:prod`, slika: `Advokati › Ostavine`, `auto C5 › gorivo…`, abecedno)**; ostaju brojke 18 / 22 |
 | T-S170-3 | TEST: Add, `Rate?` ✓ i `Broj rata` prazno/1 ⇒ poruka, ništa spremljeno; 3 ⇒ rata modal | ⬜ |
 | T-S170-4 | PROD nakon deploya: Network bez `vendor-plotly`/`vendor-excel` na početku; krug, Export/Import, Structure modali rade („Loading…") | ⬜ |
 | T-S170-5 | TEST + PROD: `Financije_all` + F5 ×5 ⇒ uvijek This Year; ručni All Time preživi Activities↔Overview | ⬜ |
