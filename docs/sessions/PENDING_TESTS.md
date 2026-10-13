@@ -15,7 +15,7 @@
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S170-1 | TEST: Filter by `Izvor` ⇒ izbornik `Racun, Visa, Cash, Mastercard`; `Racun` This Year ≈ 355 | ⬜ **izbornik ✅ 13.10. (Saša, lokalno `dev:prod`, slika: ravan `Racun, Visa, Cash, Mastercard`)**; ostaje broj redaka nakon odabira |
-| T-S170-2 | TEST: Filter by `Podtip` grupiran po Tipu; `Kuća › Popravci, održavanje` = 18 (ne 30); `gorivo` = 22 (oba auta); `Status` ravan | ⬜ **grupe ✅ 13.10. (Saša, lokalno `dev:prod`, slika: `Advokati › Ostavine`, `auto C5 › gorivo…`, abecedno)**; ostaju brojke 18 / 22 |
+| T-S170-2 | TEST: Filter by `Podtip` grupiran po Tipu; `Kuća › Popravci, održavanje` = 18 (ne 30); `gorivo` = 22 (oba auta); `Status` ravan | ✅ S170 (13.10., Saša) — grupe po Tipu (PROD `dev:prod`); TEST This Year: `Kuća › Popravci, održavanje` **18** (stari tekstualni 30), `gorivo` **22** s `auto C5` i `auto Lacetti` |
 | T-S170-3 | TEST: Add, `Rate?` ✓ i `Broj rata` prazno/1 ⇒ poruka, ništa spremljeno; 3 ⇒ rata modal | ✅ S170 (13.10., Saša) — prazno i `1` ⇒ poruka, forma ostaje; `3` ⇒ rata modal (MC: 0,34 · 0,34 · 0,32, zadnja nosi ostatak = T22 na TEST-u). Usput: gumb „Kreiraj 3 rata“ ⇒ „3 rate“ (popravljeno) |
 | T-S170-4 | PROD nakon deploya: Network bez `vendor-plotly`/`vendor-excel` na početku; krug, Export/Import, Structure modali rade („Loading…") | ⬜ |
 | T-S170-5 | TEST + PROD: `Financije_all` + F5 ×5 ⇒ uvijek This Year; ručni All Time preživi Activities↔Overview | ✅ S170 (13.10., Saša) — F5 ×5 ⇒ This Year; ručni All Time preživi Activities ↔ Overview, F5 ga vraća na This Year |
