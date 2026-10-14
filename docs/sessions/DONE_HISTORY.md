@@ -9,7 +9,7 @@ Active project state is in CLAUDE.md (repo root).
 
 - [S169 (2026-10-12)](<#S169 — Klasifikacija s Kokom: N/A ZABA, Pharmalog, Investicije, Triglav (2026-10-12)>) · r. 8916 — S Kokom smo razvrstali svih 72 neodređenih transakcija na njezinom računu iz zadnjih godinu dana i potvrdili da su Pharmalog uplate njezin prihod, a Investicije i isplata Triglav police su maknute iz troškova — pločica „Kamo ide novac" kroz cijelu povijest više nema ni „nesvrstano" ni stavki u minusu.
 - [S170 (2026-10-13)](<#S170 — Filtar izbornici, brže učitavanje, Structure RPC, Visa u traci, delta košare (2026-10-13)>) · r. 8956 — Filtar sada nudi izbornik i za Izvor, Podtip i Status, aplikacija se otvara bez 1,7 MB koje nije trebala, Structure broji jednim upitom umjesto stotinu, Visa je spremna za traku „Čeka potvrdu“, a delta sheet pokazuje košare po mjesecima s izbornikom i bojom.
-- [S171 (2026-10-14)](<#S171 — Filtar na mobitelu i pločica Košare (2026-10-14)>) · r. 8995 — Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — sve čeka Sašin lokalni test i deploy.
+- [S171 (2026-10-14)](<#S171 — Filtar na mobitelu i pločica Košare (2026-10-14)>) · r. 8995 — Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — Saša je sve testirao lokalno, pa je isti dan otišlo na PROD zajedno sa S169–S170 i Visom u traci.
 
 ## Dnevnik
 
@@ -104,7 +104,7 @@ Active project state is in CLAUDE.md (repo root).
 | [S168](<#S168 — rate po kartici u cent, lista čeka svoje kolone, brojač dohvata (2026-10-11)>) | 2026-10-11 | Rata modal sada ostatak zaokruživanja stavlja kao banka — kod Mastercarda na zadnju ratu, kod Vise na prvu — pa se MC planovi s izvodom slažu u cent; lista više ne pokazuje transakcije bez iznosa dok se postavke Aree učitavaju (Kokin nalaz s mobitela, mehanizam potvrđen testom), a sve čeka deploy. | 8878 |
 | [S169](<#S169 — Klasifikacija s Kokom: N/A ZABA, Pharmalog, Investicije, Triglav (2026-10-12)>) | 2026-10-12 | S Kokom smo razvrstali svih 72 neodređenih transakcija na njezinom računu iz zadnjih godinu dana i potvrdili da su Pharmalog uplate njezin prihod, a Investicije i isplata Triglav police su maknute iz troškova — pločica „Kamo ide novac" kroz cijelu povijest više nema ni „nesvrstano" ni stavki u minusu. | 8916 |
 | [S170](<#S170 — Filtar izbornici, brže učitavanje, Structure RPC, Visa u traci, delta košare (2026-10-13)>) | 2026-10-13 | Filtar sada nudi izbornik i za Izvor, Podtip i Status, aplikacija se otvara bez 1,7 MB koje nije trebala, Structure broji jednim upitom umjesto stotinu, Visa je spremna za traku „Čeka potvrdu“, a delta sheet pokazuje košare po mjesecima s izbornikom i bojom. | 8956 |
-| [S171](<#S171 — Filtar na mobitelu i pločica Košare (2026-10-14)>) | 2026-10-14 | Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — sve čeka Sašin lokalni test i deploy. | 8995 |
+| [S171](<#S171 — Filtar na mobitelu i pločica Košare (2026-10-14)>) | 2026-10-14 | Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — Saša je sve testirao lokalno, pa je isti dan otišlo na PROD zajedno sa S169–S170 i Visom u traci. | 8995 |
 
 _88 sesija._
 
@@ -8995,7 +8995,7 @@ deploya 4, 8, 9. Nova backlog stavka: provjera košara u „Review" sheetu (Saš
 ## S171 — Filtar na mobitelu i pločica Košare (2026-10-14)
 [↑ Dnevnik](#Dnevnik)
 
-> Ukratko: Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — sve čeka Sašin lokalni test i deploy.
+> Ukratko: Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — Saša je sve testirao lokalno, pa je isti dan otišlo na PROD zajedno sa S169–S170 i Visom u traci.
 
 Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zapisane u backlog, pa kod.
 
@@ -9060,3 +9060,6 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
   E2E: tekst, Edit u nizu, ↗ (protuprovjera: bez prijenosa u Edit pada na Prev); `navAndLine2.test.mjs`.
   Na Sašin pogled: `Tip/Podtip · opis` u jednom retku nije stao ⇒ **dva retka** (`line2Parts`),
   a zaglavlje košare ne lomi karticu od dana.
+- **DEPLOY 14.10.2026. (Saša): `main` = `6ff19d4`** — S169 + S170 + S171 jednim buildom. Odmah
+  poslije **Visa config na PROD** (`set_due_visa_S170.py --apply --yes-prod`: `Visa ✓ · ostale
+  netaknute ✓`; Visa 05.11. 20 redaka / 579,05). T-S171-1..4 i 6 ✅ lokalno; PROD provjere čekaju.

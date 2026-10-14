@@ -18,7 +18,7 @@ Na uskom ekranu Overview od filtra nudi samo red razdoblja, a Activities kreće 
 | T-S171-2 | TEST mobitel: Activities sklopljen sa sažetkom (razdoblje, Podtip, uvjet s drilla); Clear all unutra | ✅ 14.10. (Saša) — 1–4 ok (drill = dodir na iznos salda); 5: uvjet s drilla ne preživi F5 — staro ponašanje (filtar pamti Areu/kategoriju/razdoblje, ne uvjet), preporuka: ostaje tako (F5 = svježe otvaranje; trajno ⇒ Shortcut) |
 | T-S171-3 | TEST: Košare — ZABA danas 10.057,27, MC 11.11. −2.081,48 ostaje 7.975,79 … RF Visa ~05.11. ostaje 689,67 | ✅ 14.10. (Saša) — sve brojke u cent; RF prvi i Visa rasklopljena (ispravan redoslijed, opis testa ispravljen); usput `· N kupnji` više se ne lomi |
 | T-S171-4 | TEST: kupnje košare (26), dodir → View → Back ostaje rasklopljeno; F5 vraća saldo | ⬜ 1–4 ✅ 14.10. (Saša); nakon testa dodano: oznaka kupnje na kojoj si stao + **Prev/Next samo kroz košaru** (bio po cijeloj Arei) — ponoviti korak 2a |
-| T-S171-6 | TEST: košara piše Tip/Podtip, ispod opis (dva retka); ↗ ⇒ Activities za taj dan (sve rate plana zajedno); Edit → Save → Next ostaje u košari | ⬜ |
+| T-S171-6 | TEST: košara piše Tip/Podtip, ispod opis (dva retka); ↗ ⇒ Activities za taj dan (sve rate plana zajedno); Edit → Save → Next ostaje u košari | ✅ 14.10. (Saša) — dva retka (Tip/Podtip, opis), ↗ isti dan, Edit u nizu |
 | T-S171-5 | PROD ~11.11.: „pokaži kupnje" u traci otvori tu košaru; naplaćena se ne oduzima dvaput | ⬜ |
 
 ---
@@ -38,7 +38,7 @@ Na uskom ekranu Overview od filtra nudi samo red razdoblja, a Activities kreće 
 | T-S170-5 | TEST + PROD: `Financije_all` + F5 ×5 ⇒ uvijek This Year; ručni All Time preživi Activities↔Overview | ✅ S170 (13.10., Saša) — F5 ×5 ⇒ This Year; ručni All Time preživi Activities ↔ Overview, F5 ga vraća na This Year |
 | T-S170-6 | PROD: `sql/057` u SQL editoru (Saša) | ✅ S170 (13.10., Saša) — pušteno; prava `authenticated · postgres · service_role`, **bez `anon`** |
 | T-S170-7 | PROD nakon 057 + deploya: Structure = 1 `rpc_category_event_counts`, 0 `events?select=id` HEAD; brojke kao prije | ✅ S170 (13.10., Saša) — TEST i **PROD** (`dev:prod`, Saša kao grantee na `Financije_all`): 2 × RPC 200 ~1 kB (dev StrictMode duplira; deployano 1), **0** `events?select=id` (prije 39 po učitavanju) |
-| T-S170-8 | PROD **poslije deploya**: `set_due_visa_S170.py` dry ⇒ popis Visa košara; `--apply --yes-prod` ⇒ `Visa ✓ · ostale netaknute ✓` | ⬜ |
+| T-S170-8 | PROD **poslije deploya**: `set_due_visa_S170.py` dry ⇒ popis Visa košara; `--apply --yes-prod` ⇒ `Visa ✓ · ostale netaknute ✓` | ✅ 14.10. (Saša) — dry run: Visa 05.11. 20 redaka / 579,05, najranija 05.11. (stare 03.10. nema); `--apply` ⇒ `Visa ✓ · ostale postavke netaknute ✓` |
 | T-S170-9 | PROD ~03.–11.11.: Visa košara u traci, Σ „(samo isplate)“, dani od 03.11.; potvrda ⇒ `visa_uvoz_izvoda` kaže „već upisana“ | ⬜ |
 | T-S170-10 | TEST: Excel izmjena retka prije sidra — kvačica „potvrđeno“ za `Racun`, NE za `Mastercard`; MC→Racun ⇒ traži | ⬜ |
 | T-S170-11 | TEST: delta ZABA — Σ košara jednog dospijeća (dan desno, najbliži); drugi dan ⇒ drugi Σ; `Potvrda` prazna na kartičnim retcima | ✅ S170 (13.10., Saša, TEST) — sekcija KOSARA u grupama po datumu naplate (+/−), izbornik dana uz Σ, odabrana košara žuta; „file je ok“. Usput: TEST nije imao `split.due_slug` (044) — poravnato |

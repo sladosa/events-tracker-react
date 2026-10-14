@@ -1,19 +1,18 @@
-> Pisano protiv commita **S171 zatvaranje** na `test-branch` (zadnji commit = „S171: zatvaranje …“).
-> **`main` = `119653c` (deploy 12.10., S168)** — na `test-branch` čeka **S169 + S170 + S171** (jedan build).
-> **PROD baza:** `sql/057` ✓ (S170). Visa config **NIJE** na PROD-u — ide tek poslije deploya
-> (`set_due_visa_S170.py`). S171 nema migracije ni configa.
+> Pisano protiv commita **S171 deploy** na `test-branch` (zadnji commit = „S171: deploy …“).
+> **`main` = `6ff19d4` (deploy 14.10., S169 + S170 + S171).** `test-branch` = `main` + ovi dokumenti.
+> **PROD baza:** `sql/057` ✓ (S170), **Visa config ✓ (14.10.)**. S171 nema migracije.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
 # Sljedeća sesija — nakon S171 (2026-10-14)
 
-> **Ukratko (S171):** Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — sve čeka Sašin lokalni test i deploy.
+> **Ukratko (S171):** Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — Saša je sve testirao lokalno, pa je isti dan otišlo na PROD zajedno sa S169–S170 i Visom u traci.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Što je napravljeno (na `test-branch`, čeka tvoj test pa deploy)
+## Što je napravljeno — NA PROD-u od 14.10.
 
 - **Filtar na mobitelu:** Overview pokazuje samo red `📅 This Year · 01.01.–31.12.2026.`; izbor
   razdoblja ga sam sklopi. Activities kreće sklopljen i kaže što je aktivno (i uvjet s ↗).
@@ -21,34 +20,22 @@
 - **Pločica „Košare (otvorene)"** ispod salda: po računu (ZABA, RF), košara po danu naplate,
   dodir pokaže kupnje, uz svaku **ostaje** (stanje danas − košare redom; plaće ne zna — piše).
   Visa s `~` (dan je procjena). U traci „Čeka potvrdu" novo: **pokaži kupnje**.
-- Iz S170 (također čeka deploy): filtar izbornici, brže otvaranje, Visa u traci, delta košare.
+- Iz S170 (isti deploy): filtar izbornici, brže otvaranje, Visa u traci (config ✓), delta košare.
+- Nakon tvog testa: kupnja u dva retka (Tip/Podtip, opis), ↗ „isti dan u Activities", Prev/Next
+  samo kroz košaru, Edit → Save → Next ostaje u košari, označena kupnja na kojoj si stao.
 
 ## Što treba od tebe
 
-1. **Lokalni test:** T-S171-1..3 ✅, T-S171-4 ✅ (korak 2a: Prev/Next samo kroz košaru). Nakon tvojih
-   prijedloga novo **T-S171-6**: tekst kupnje `Tip/Podtip · opis`, ↗ „isti dan u Activities",
-   i Edit → Save → Next ostaje u košari. Ctrl+Shift+R pa koraci u `S171_tests.md`.
-2. **Deploy** (S169 + S170 + S171 jednim buildom), PowerShell:
-   ```powershell
-   git checkout main
-   if ($?) { git merge test-branch --no-edit }
-   if ($?) { git push origin main }
-   git checkout test-branch
-   if ($?) { git merge main --no-edit }
-   if ($?) { git push origin test-branch }
-   ```
-3. **Poslije deploya:** T-S170-4 (Network bez plotly/excel na početku), T-S169-8, pa **Visa config**
-   (T-S170-8):
-   ```powershell
-   cd C:\0_Sasa\events-tracker-react\data-prep_tools
-   $env:ET_TARGET='prod'; .\Financije\run.bat set_due_visa_S170.py
-   $env:ET_TARGET='prod'; .\Financije\run.bat set_due_visa_S170.py --apply --yes-prod
-   ```
-   Bez Visa configa pločica Košare na PROD-u pokazuje samo MC (Visa nije u `due.baskets`).
-4. Na TEST-u iz S170: T-S170-1 (broj `Racun` ≈ 355), T-S170-10 (uvoz). T-S170-12 uz ZABA izvod.
-5. **Razmisli** (iz S170): provjera košara u „Review" sheetu — Backlog „Čeka Sašinu odluku".
-6. Iz ranije: RF N/A (T-S169-6), s Kokom starija povijest (T-S169-7), ~03.11. Visa izvod (T-S170-9),
-   11.11. MC traka + „pokaži kupnje" (T-S171-5).
+1. **PROD provjere (nakon hard refresha; Koka: zatvori karticu i otvori iznova):**
+   - Košare: ZABA „danas" = pločica salda; Visa se vidi u Košarama (05.11., 20 kupnji, −579,05).
+   - Mobitel: Overview = samo red razdoblja; Activities sklopljen sa sažetkom.
+   - T-S170-4 (Network: na početku nema `plotly`/`excel`), T-S169-8 (razrez pamti nakon ↗).
+   - T-S168-4 (praćenje): Kokin iPhone — lista nikad bez iznosa.
+2. Na TEST-u iz S170: T-S170-1 (broj `Racun` ≈ 355), T-S170-10 (uvoz). T-S170-12 uz ZABA izvod.
+3. **~03.–11.11.:** Visa košara u traci (T-S170-9); **11.11.** MC traka + „pokaži kupnje" (T-S171-5).
+4. **Razmisli** (iz S170): provjera košara u „Review" sheetu — Backlog „Čeka Sašinu odluku".
+5. Iz ranije: RF N/A (T-S169-6), s Kokom starija povijest (T-S169-7).
+6. Opcionalno: `.Toolsun.bat Toolsdump_schema.py --env prod` (osvježi `SCHEMA_PROD.sql` s `057`).
 
 ---
 
@@ -56,7 +43,7 @@
 
 ## Stanje
 
-- `test-branch` ispred `main`: S169 `BreakdownTile` + S170 + S171 (`filterSummary.ts`,
+- **Deployano 14.10.** (`main` = `6ff19d4`): S169 `BreakdownTile` + S170 + S171 (`filterSummary.ts`,
   `BasketsTile.tsx` + `basketsView.ts`, `fetchBasketLines`, harmonika po ključevima u `OverviewTab`,
   `DateRangeFilter` `onPresetChosen`/`periodOnly`, `DueStrip` `onShowBasket`).
 - S171 je **neverificiran uživo na `Financije_all`**: E2E račun (`PLAYWRIGHT_TEST_EMAIL`) na TEST-u
