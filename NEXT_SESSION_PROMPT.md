@@ -35,7 +35,7 @@
 3. **~03.–11.11.:** Visa košara u traci (T-S170-9); **11.11.** MC traka + „pokaži kupnje" (T-S171-5).
 4. **Razmisli** (iz S170): provjera košara u „Review" sheetu — Backlog „Čeka Sašinu odluku".
 5. Iz ranije: RF N/A (T-S169-6), s Kokom starija povijest (T-S169-7).
-6. Opcionalno: `.Toolsun.bat Toolsdump_schema.py --env prod` (osvježi `SCHEMA_PROD.sql` s `057`).
+6. Opcionalno: `.\Tools\run.bat Tools\dump_schema.py --env prod` (osvježi `SCHEMA_PROD.sql` s `057`).
 
 ---
 
