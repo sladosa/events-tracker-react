@@ -173,6 +173,16 @@ test.describe('S171 — košare i uski filtar', () => {
     await page.getByRole('button', { name: 'pokaži kupnje' }).click();
     await expect(tile.getByText('Prva kupnja S171')).toBeVisible({ timeout: 15_000 });
 
+    // 3b. Kupnja → View → Back ⇒ ista kupnja OZNAČENA (Saša, T-S171-4: „teško je
+    //     prepoznati iz kojeg si eventa došao natrag"), i samo ona.
+    await expect(tile.locator('tr[data-last-opened]')).toHaveCount(0);
+    await tile.getByText('Druga kupnja S171').click();
+    await expect(page).toHaveURL(/\/app\/view\//, { timeout: 15_000 });
+    await page.goBack();
+    const marked = page.getByTestId('baskets-tile').locator('tr[data-last-opened]');
+    await expect(marked).toHaveCount(1, { timeout: 15_000 });
+    await expect(marked).toContainText('Druga kupnja S171');
+
     // 4. Activities: sklopljen filtar sa sažetkom razdoblja.
     await strip.locator('> button').nth(1).click();
     await expect(summary).toContainText('Filter');

@@ -62,7 +62,8 @@ fokus pada „pokaži kupnje"), `basketsView.test.mjs`, `filterSummary.test.mjs`
 1. U pločici Košare, rasklopljena MC 11.11.: **26** redaka, redom po datumu kupnje (najstarija gore),
    opis i iznos; dugi opis skraćen `…`, iznos uvijek vidljiv desno (nema vodoravnog scrolla).
 2. Dodir na redak ⇒ View tog retka; Back ⇒ Overview, pločica Košare i dalje otvorena, MC 11.11.
-   rasklopljena.
+   rasklopljena, a **kupnja iz koje si se vratio označena** (obojena, uokvirena) i u vidiku
+   (dodano nakon Sašinog testa 14.10.).
 3. Dodir na `Visa · ~05.11.` ⇒ rasklopi se i ona (7 redaka), MC ostaje rasklopljena.
 4. F5 ⇒ otvoren je saldo, Košare zatvorene (harmonika kao razrez).
 - **Pad:** prazno / „Učitavam kupnje…" zauvijek, ili Back zatvori pločicu.

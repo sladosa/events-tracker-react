@@ -9038,3 +9038,8 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
   učitava stranicu. Sada se briše pri **ulasku u Areu** (`lastSeenArea`, u istom efektu — S170
   pravilo „jedan efekt"); ručni All Time unutar Aree ostaje. E2E glumi odjavu navigacijom bez
   reloada (reload bi modul počistio i test bi prolazio nad kvarom); protuprovjera pada.
+- **Saša testirao T-S171-1..4 ✅.** Usput: drill salda je dodir na iznos (opis testa je krivo tražio
+  ↗); uvjet s drilla ne preživi F5 — staro ponašanje, ostaje (F5 = svježe otvaranje); redoslijed
+  košara (RF prvi jer Visa ~05.11. dospijeva prva) ispravan, opis testa ispravljen; `· N kupnji`
+  se više ne lomi. **Na Sašin zahtjev:** nakon Back iz kupnje ta kupnja je označena i u vidiku
+  (`lastOpened` u modulu, `data-last-opened`; E2E + protuprovjera).

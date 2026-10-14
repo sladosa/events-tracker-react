@@ -31,6 +31,9 @@ const T = THEME.overview;
 /** Koje su košare rasklopljene — modul, ne storage: preživi View i povratak, F5 ne
  *  (isti obrazac kao harmonika i razrez, S166/S169). */
 let lastExpanded: { area: UUID; keys: string[] } | null = null;
+/** Kupnja koja je zadnja otvorena iz pločice (T-S171-4, Saša: „teško je prepoznati iz kojeg
+ *  si eventa došao natrag"). Ostaje označena dok se ne otvori druga; F5 je briše. */
+let lastOpened: { area: UUID; eventId: string } | null = null;
 
 /** Daleki `as_of`: RPC trake vraća košare dospjele DO njega ⇒ ovako i buduće. */
 const FAR_FUTURE = '9999-12-31';
@@ -159,7 +162,16 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
     requestAnimationFrame(() => rowRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }, [focusKey, collapsed, groups, openKeys, setOpen]);
 
+  // Povratak iz View: dovedi označenu kupnju u vidik — jednom po montiranju.
+  const scrolledToLast = useRef(false);
+  const lastRowRef = useCallback((el: HTMLTableRowElement | null) => {
+    if (!el || scrolledToLast.current) return;
+    scrolledToLast.current = true;
+    requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  }, []);
+
   const openRow = (l: BasketLine) => {
+    lastOpened = { area: areaId, eventId: l.event_id };
     const state = { collapseFilter: true };
     if (l.session_start) {
       nav(`/app/view/${encodeURIComponent(l.session_start)}?categoryId=${l.category_id}&userId=${l.user_id}`, { state });
@@ -265,11 +277,18 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
                                 {l.map(x => {
                                   const amt = (x.plus_v ?? 0) - (x.minus_v ?? 0);
                                   const pending = x.status === due.pending;
+                                  const isLast = lastOpened?.area === areaId && lastOpened.eventId === x.event_id;
                                   return (
                                     <tr
                                       key={x.event_id}
+                                      ref={isLast ? lastRowRef : undefined}
+                                      data-last-opened={isLast || undefined}
                                       onClick={() => openRow(x)}
-                                      className={cn('cursor-pointer hover:bg-gray-50', !pending && 'text-gray-400')}
+                                      className={cn(
+                                        'cursor-pointer hover:bg-gray-50',
+                                        !pending && 'text-gray-400',
+                                        isLast && cn(T.light, 'font-semibold outline outline-1 outline-teal-400'),
+                                      )}
                                       title={pending ? 'Otvori redak' : `Status: ${x.status ?? '—'}`}
                                     >
                                       <td className="py-0.5 pr-2 whitespace-nowrap tabular-nums align-top">
