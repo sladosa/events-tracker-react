@@ -33,6 +33,7 @@ import {
 import type { UUID } from '@/types';
 import { formatDuration } from '../lib/timeFormat';
 import { displayDatetime } from '@/lib/excelDatetime';
+import { setLastViewed } from '@/lib/lastViewed';
 
 // ============================================
 // Helpers
@@ -478,6 +479,10 @@ export function ViewDetailsPage() {
     if (categoryIdParam) return `${categoryIdParam}_${decoded}`;
     return decoded;
   }, [sessionStart, noSession, categoryIdParam, ownerIdParam]);
+
+  // S171: pločica Košare po povratku označi redak na kojem si STAO (i nakon Prev/Next,
+  // i na Back preglednika / swipe — zato modul, ne `location.state`). V. `lastViewed.ts`.
+  useEffect(() => { setLastViewed(currentSessionKey); }, [currentSessionKey]);
 
   const navigateBack = useCallback(() => {
     navigate('/app', { state: { highlightKey: currentSessionKey, collapseFilter: true } });

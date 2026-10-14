@@ -35,8 +35,13 @@ const BASKETS = [
   { basket: 'Visa', due_date: VISA, n: 2, n_pending: 2, gross_plus: 300, gross_minus: 40 },
 ];
 
-const E1 = randomUUID();
-const E2 = randomUUID();
+// Kupnje su PRAVI retci u testnoj Arei (sije ih beforeEach): View → Prev/Next mora
+// ih naći u bazi, podmetnuti id daje „Activity not found". Podmeće se samo članstvo
+// košare (055) i saldo — Area nema atribute pa ih pravi RPC ne bi vratio.
+let E1 = '';
+let E2 = '';
+let CAT = '';
+const ss = (days: number) => `${inDays(days)}T10:00:00+00:00`;
 
 async function mockAll(page: Page) {
   // Isto kao pravi RPC: samo košare dospjele DO `p_as_of` (traka: danas, pločica: daleko).
@@ -58,22 +63,12 @@ async function mockAll(page: Page) {
   await page.route(/\/rest\/v1\/rpc\/rpc_area_due_basket_members/, route => route.fulfill({
     status: 200, contentType: 'application/json',
     body: JSON.stringify([
-      { event_id: E1, user_id: OWNER_ID, category_id: randomUUID(), status: 'Planiran', plus_v: null, minus_v: 150 },
-      { event_id: E2, user_id: OWNER_ID, category_id: randomUUID(), status: 'Planiran', plus_v: null, minus_v: 50 },
+      { event_id: E2, user_id: OWNER_ID, category_id: CAT, status: 'Planiran', plus_v: null, minus_v: 50 },
+      { event_id: E1, user_id: OWNER_ID, category_id: CAT, status: 'Planiran', plus_v: null, minus_v: 150 },
     ]),
   }));
-  // ⚠ Kao pravi PostgREST: druga stranica je PRAZNA — `fetchAllPaged` staje tek
-  //   na praznoj, pa mock koji uvijek vraća retke vrti beskonačno.
-  await page.route(/\/rest\/v1\/events\?select=id%2Cevent_date%2Csession_start%2Ccomment/, route => {
-    const offset = Number(new URL(route.request().url()).searchParams.get('offset') ?? 0);
-    return route.fulfill({
-      status: 200, contentType: 'application/json',
-      body: JSON.stringify(offset > 0 ? [] : [
-        { id: E2, event_date: inDays(-30), session_start: null, comment: 'Druga kupnja S171' },
-        { id: E1, event_date: inDays(-35), session_start: null, comment: 'Prva kupnja S171' },
-      ]),
-    });
-  });
+  // ⚠ Ako se `events` ikad podmeće: druga stranica mora biti PRAZNA — `fetchAllPaged`
+  //   staje tek na praznoj, pa mock koji uvijek vraća retke vrti beskonačno (e2e/CLAUDE.md).
 }
 
 async function selectArea(page: Page, areaId: string) {
@@ -116,6 +111,27 @@ test.describe('S171 — košare i uski filtar', () => {
           }],
         },
       },
+    });
+    CAT = randomUUID();
+    E1 = randomUUID();
+    E2 = randomUUID();
+    await supabasePost(page, 'categories', {
+      id: CAT, user_id: OWNER_ID, area_id: areaId, parent_category_id: null,
+      name: 'Transakcija', slug: `transakcija-${CAT.slice(0, 6)}`, level: 1, sort_order: 1,
+    });
+    await supabasePost(page, 'events', {
+      id: E1, user_id: OWNER_ID, category_id: CAT, event_date: inDays(-35),
+      session_start: ss(-35), comment: 'Prva kupnja S171',
+    });
+    await supabasePost(page, 'events', {
+      id: E2, user_id: OWNER_ID, category_id: CAT, event_date: inDays(-30),
+      session_start: ss(-30), comment: 'Druga kupnja S171',
+    });
+    // Redak Aree koji NIJE u košari, između njih: Prev/Next po cijeloj Arei bi ga
+    // pokupio — bez njega test ne bi razlikovao košaru od Aree (protuprovjera).
+    await supabasePost(page, 'events', {
+      id: randomUUID(), user_id: OWNER_ID, category_id: CAT, event_date: inDays(-32),
+      session_start: ss(-32), comment: 'Nije u kosari S171',
     });
   });
 
@@ -173,12 +189,21 @@ test.describe('S171 — košare i uski filtar', () => {
     await page.getByRole('button', { name: 'pokaži kupnje' }).click();
     await expect(tile.getByText('Prva kupnja S171')).toBeVisible({ timeout: 15_000 });
 
-    // 3b. Kupnja → View → Back ⇒ ista kupnja OZNAČENA (Saša, T-S171-4: „teško je
-    //     prepoznati iz kojeg si eventa došao natrag"), i samo ona.
+    // 3b. Saša, T-S171-4: Prev/Next u View-u ide kroz kupnje OVE košare (ne cijelu Areu),
+    //     a po povratku je označena kupnja na kojoj je STAO — i nakon Next, i na Back
+    //     preglednika (swipe na iPhoneu), koji `location.state` ne nosi.
     await expect(tile.locator('tr[data-last-opened]')).toHaveCount(0);
-    await tile.getByText('Druga kupnja S171').click();
+    await tile.getByText('Prva kupnja S171').click();
     await expect(page).toHaveURL(/\/app\/view\//, { timeout: 15_000 });
-    await page.goBack();
+    await expect(page.getByText('Prva kupnja S171').first()).toBeVisible({ timeout: 15_000 });
+    // Popis je košara (2), ne cijela Area: Prva nema prethodnu, Druga nema sljedeću.
+    await expect(page.getByTitle('Previous activity')).toBeDisabled({ timeout: 15_000 });
+    await page.getByTitle('Next activity').click();
+    await expect(page.getByText('Druga kupnja S171').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTitle('Next activity')).toBeDisabled({ timeout: 15_000 });
+    // Gumb Back u View-u (ide ravno na početnu) ⇒ označena je Druga, na kojoj je STAO.
+    // (Back preglednika bi prošao i kroz View Prve, pa bi ona bila zadnja prikazana.)
+    await page.getByTitle('Back to list').click();
     const marked = page.getByTestId('baskets-tile').locator('tr[data-last-opened]');
     await expect(marked).toHaveCount(1, { timeout: 15_000 });
     await expect(marked).toContainText('Druga kupnja S171');

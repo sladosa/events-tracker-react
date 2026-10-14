@@ -18,6 +18,8 @@
 import { basketSumCents, basketWindow, daysBetween } from './dueBaskets';
 import type { DueBasketRow } from './overviewApi';
 import type { DueConfig } from '@/types/database';
+import type { BasketLine } from './dueConfirm';
+import type { ActivityEvent, ActivityGroup } from '@/hooks/useActivities';
 
 export const basketKey = (r: { basket: string; due_date: string }) => `${r.basket}|${r.due_date}`;
 
@@ -103,4 +105,41 @@ export function planBasketView(p: {
 export function defaultOpenKey(groups: BasketAccountGroup[]): string | null {
   const all = groups.flatMap(g => g.rows).sort((a, b) => a.due_date.localeCompare(b.due_date));
   return (all.find(r => !r.settled) ?? all[0])?.key ?? null;
+}
+
+/**
+ * Prev/Next u View-u kroz KUPNJE OVE KOŠARE (T-S171-4, Saša: „jel se Prev/Next miču po
+ * tabeli košare?"). Bez ovoga View sam učita cijelu Areu (500 redaka, bez datuma) pa Prev/Next
+ * skače po svim transakcijama. View iz popisa čita samo `session_start`, kategoriju, autora i
+ * id prvog eventa (`ViewDetailsPage`: `currentIndex`, `navigateToGroup`, prefetch) — ostala
+ * polja su prazna namjerno. Redoslijed = redoslijed tablice u pločici (po datumu kupnje).
+ * ⚠ Ključ grupe je isti kao u `useActivities` (`user_category_session`): dva eventa iste sesije
+ *   su JEDAN redak liste, pa i jedan korak Prev/Next.
+ */
+/** Ključ retka liste — isti oblik kao `useActivities` i `highlightKey` koji View → Back šalje. */
+export function lineSessionKey(l: Pick<BasketLine, 'user_id' | 'category_id' | 'session_start' | 'event_id'>): string {
+  return l.session_start ? `${l.user_id}_${l.category_id}_${l.session_start}` : l.event_id;
+}
+
+export function basketNavList(lines: BasketLine[], areaId: string): ActivityGroup[] {
+  const seen = new Set<string>();
+  const out: ActivityGroup[] = [];
+  for (const l of lines) {
+    const sessionKey = lineSessionKey(l);
+    if (seen.has(sessionKey)) continue;
+    seen.add(sessionKey);
+    const ev: ActivityEvent = {
+      id: l.event_id, category_id: l.category_id, event_date: l.event_date,
+      session_start: l.session_start, comment: l.comment, created_at: '', edited_at: '',
+      edited_by: null, user_id: l.user_id, category_name: '', category_path: [],
+      area_id: areaId, area_name: '', area_icon: null,
+    };
+    out.push({
+      sessionKey, category_id: l.category_id, category_name: '', category_path: [],
+      area_id: areaId, area_name: '', area_icon: null, event_date: l.event_date,
+      session_start: l.session_start, events: [ev], eventCount: 1, has_photos: false,
+      user_id: l.user_id, user_display_name: '', edited_by_other: null, user_email: '',
+    });
+  }
+  return out;
 }

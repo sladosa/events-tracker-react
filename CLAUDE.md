@@ -34,19 +34,19 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 1293 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
 | 1767 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
 | 1783 | [Key files](<#Key files>) |  |
-| 1913 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1933 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1956 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1984 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2024 | [Open bugs](<#Open bugs>) | ~ |
-| 2133 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2178 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2316 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2324 | [Backlog](<#Backlog>) | ~ |
-| 2328 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2336 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1914 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1934 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1957 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1985 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2025 | [Open bugs](<#Open bugs>) | ~ |
+| 2134 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2179 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2321 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2329 | [Backlog](<#Backlog>) | ~ |
+| 2333 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2341 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2500 redaka, 18 sekcija._
+_Ukupno 2505 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1872,6 +1872,7 @@ src/lib/dueBaskets.ts              C5: Σ košare u lipama, usporedba s bankom (
 src/lib/basketsView.ts             Pločica „Košare" (S171): košare po računu, „ostaje" kumulativno;
                                    naplaćena (skupni redak upisan) se NE oduzima. UI: `BasketsTile.tsx`
 src/lib/filterSummary.ts           Sažetak sklopljenog filtra + JEDINI uvjet „uski ekran + tab" (S171)
+src/lib/lastViewed.ts              Zadnji redak prikazan u View-u (i nakon Prev/Next) — oznaka po povratku (S171)
 src/components/overview/DueStrip.tsx  Traka „Čeka potvrdu" (faza 1 usporedba, faza 2 S156 upis; samo vlasnica)
 src/lib/dueConfirm.ts              C5 faza 2 I/O: članovi košare (sql/055), prepoznavanje skupnog retka,
                                    upis REDAK PA STATUSI (pad između ostavlja samo „prebaci statuse"),
@@ -2287,6 +2288,10 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   daleki `as_of`); „ostaje" polazi od salda s filtrima pločice i oduzima SAMO košare — buduće plaće
   ne zna i to mora pisati. ⚠ Košara sa skupnim retkom već upisanim (D6 „neusklađeno") je u saldu —
   oduzeti je opet = dvaput (`settled`, čuva `basketsView.test.mjs`).
+  ⚠ **View otvoren IZVAN Activities liste mora predati `navActivities`** (Sašin nalaz S171): bez
+  njega View sam učita cijelu Areu (500, bez datuma) i Prev/Next skače po svemu. Košare predaju
+  `basketNavList`. Oznaka „gdje sam stao" se čita iz `lastViewed.ts` (upisuje View), **ne** iz
+  `location.state.highlightKey` — Back preglednika/swipe ga ne nose, a stari ostaje u povijesti.
 - **Filtar na uskom ekranu (S171):** Overview = samo red razdoblja (selektor **skriven, ne
   odmontiran**), Activities sklopljen sa sažetkom. Sklopljen filtar koji ne kaže ništa nitko ne
   sklapa — sažetak je uvjet sklapanja, ne ukras. Bez Aree selektor se ne skriva (`mustStayOpen`).

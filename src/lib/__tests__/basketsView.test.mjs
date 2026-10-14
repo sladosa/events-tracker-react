@@ -101,5 +101,21 @@ eq('MC 11.11. ⇒ ne (banka još ne može)', m.needsSettleCheck('2026-11-11', to
 eq('Visa 16.10. (2 dana) ⇒ provjeri', m.needsSettleCheck('2026-10-16', today, due.baskets.Visa), true);
 eq('Visa 17.10. ⇒ ne', m.needsSettleCheck('2026-10-17', today, due.baskets.Visa), false);
 
+// basketNavList: Prev/Next u View-u kroz kupnje OVE košare (T-S171-4)
+const line = (id, date, ss, user = 'u1', cat = 'c1') =>
+  ({ event_id: id, user_id: user, category_id: cat, status: 'Planiran', plus_v: null, minus_v: 1,
+     event_date: date, session_start: ss, comment: id });
+const nav = m.basketNavList([
+  line('e1', '2026-09-29', '2026-09-29T10:00:00+00:00'),
+  line('e2', '2026-10-02', null),
+  line('e3', '2026-10-02', '2026-09-29T10:00:00+00:00'),   // ista sesija kao e1 ⇒ isti redak liste
+  line('e4', '2026-10-03', '2026-10-03T12:00:00+00:00'),
+], 'area');
+eq('nav: redoslijed tablice, ista sesija jednom', nav.map(g => g.events[0].id), ['e1', 'e2', 'e4']);
+eq('nav: ključ kao useActivities', nav[0].sessionKey, 'u1_c1_2026-09-29T10:00:00+00:00');
+eq('nav: bez sesije ⇒ ključ = event id', nav[1].sessionKey, 'e2');
+eq('nav: polja koja View čita', [nav[2].session_start, nav[2].category_id, nav[2].user_id],
+  ['2026-10-03T12:00:00+00:00', 'c1', 'u1']);
+
 console.log(failed ? `\n❌ ${failed} pao` : '\n✅ sve prolazi');
 process.exit(failed ? 1 : 0);

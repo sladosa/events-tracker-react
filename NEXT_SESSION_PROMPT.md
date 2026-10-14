@@ -25,8 +25,9 @@
 
 ## Što treba od tebe
 
-1. ✅ **Lokalni test T-S171-1..4 gotov (14.10.).** Nakon tvog testa dodano: kupnja iz koje se vraćaš
-   (Back) označena je u Košarama — pogledaj je usput (Ctrl+Shift+R).
+1. **Lokalni test T-S171-1..3 ✅, T-S171-4 ✅ osim koraka 2a:** nakon tvog testa Prev/Next iz
+   kupnje ide samo kroz košaru (bio je po cijeloj Arei), a po Back je označena kupnja na kojoj si
+   stao. Ctrl+Shift+R pa korak 2a u `S171_tests.md`.
 2. **Deploy** (S169 + S170 + S171 jednim buildom), PowerShell:
    ```powershell
    git checkout main

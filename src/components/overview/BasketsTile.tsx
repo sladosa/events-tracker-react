@@ -16,13 +16,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getLastViewed } from '@/lib/lastViewed';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { formatSigned, todayIso } from '@/lib/amountFormat';
 import { fetchAnchoredBalance, fetchDueBaskets } from '@/lib/overviewApi';
 import { fetchBasketLines, findSettleRow, type BasketLine } from '@/lib/dueConfirm';
 import {
-  basketKey, defaultOpenKey, needsSettleCheck, planBasketView, type BasketAccountGroup,
+  basketKey, basketNavList, defaultOpenKey, lineSessionKey, needsSettleCheck, planBasketView, type BasketAccountGroup,
 } from '@/lib/basketsView';
 import type { BalanceByGroupWidget, DueConfig, UUID } from '@/types/database';
 
@@ -31,9 +32,6 @@ const T = THEME.overview;
 /** Koje su košare rasklopljene — modul, ne storage: preživi View i povratak, F5 ne
  *  (isti obrazac kao harmonika i razrez, S166/S169). */
 let lastExpanded: { area: UUID; keys: string[] } | null = null;
-/** Kupnja koja je zadnja otvorena iz pločice (T-S171-4, Saša: „teško je prepoznati iz kojeg
- *  si eventa došao natrag"). Ostaje označena dok se ne otvori druga; F5 je briše. */
-let lastOpened: { area: UUID; eventId: string } | null = null;
 
 /** Daleki `as_of`: RPC trake vraća košare dospjele DO njega ⇒ ovako i buduće. */
 const FAR_FUTURE = '9999-12-31';
@@ -68,6 +66,9 @@ const isLinesErr = (l: Lines): l is { error: string } => !!l && !Array.isArray(l
 
 export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focusKey, reloadToken }: Props) {
   const nav = useNavigate();
+  // Redak na kojem je čovjek u View-u STAO (i nakon Prev/Next) — označava se po povratku
+  // (T-S171-4, Saša: „teško je prepoznati iz kojeg si eventa došao natrag"). `lastViewed.ts`.
+  const returnedKey = getLastViewed();
   const { due, unit } = widget;
   const [groups, setGroups] = useState<BasketAccountGroup[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -170,9 +171,9 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
     requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   }, []);
 
-  const openRow = (l: BasketLine) => {
-    lastOpened = { area: areaId, eventId: l.event_id };
-    const state = { collapseFilter: true };
+  const openRow = (l: BasketLine, basket: BasketLine[]) => {
+    // Prev/Next u View-u ide kroz kupnje OVE košare, istim redom kao tablica.
+    const state = { collapseFilter: true, navActivities: basketNavList(basket, areaId) };
     if (l.session_start) {
       nav(`/app/view/${encodeURIComponent(l.session_start)}?categoryId=${l.category_id}&userId=${l.user_id}`, { state });
     } else {
@@ -277,13 +278,13 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
                                 {l.map(x => {
                                   const amt = (x.plus_v ?? 0) - (x.minus_v ?? 0);
                                   const pending = x.status === due.pending;
-                                  const isLast = lastOpened?.area === areaId && lastOpened.eventId === x.event_id;
+                                  const isLast = returnedKey !== null && lineSessionKey(x) === returnedKey;
                                   return (
                                     <tr
                                       key={x.event_id}
                                       ref={isLast ? lastRowRef : undefined}
                                       data-last-opened={isLast || undefined}
-                                      onClick={() => openRow(x)}
+                                      onClick={() => openRow(x, l)}
                                       className={cn(
                                         'cursor-pointer hover:bg-gray-50',
                                         !pending && 'text-gray-400',

@@ -64,6 +64,10 @@ fokus pada „pokaži kupnje"), `basketsView.test.mjs`, `filterSummary.test.mjs`
 2. Dodir na redak ⇒ View tog retka; Back ⇒ Overview, pločica Košare i dalje otvorena, MC 11.11.
    rasklopljena, a **kupnja iz koje si se vratio označena** (obojena, uokvirena) i u vidiku
    (dodano nakon Sašinog testa 14.10.).
+2a. U View-u kupnje: **Prev / Next idu samo kroz kupnje te košare** (MC 11.11.: 26 koraka, prva
+   nema Prev, zadnja nema Next), redom kao u pločici. Next par puta pa Back (gumb u View-u) ⇒
+   označena je kupnja na kojoj si STAO, ne ona koju si prvu otvorio. (Sašin nalaz 14.10.: prije
+   je Prev/Next skakao po cijeloj Areji.)
 3. Dodir na `Visa · ~05.11.` ⇒ rasklopi se i ona (7 redaka), MC ostaje rasklopljena.
 4. F5 ⇒ otvoren je saldo, Košare zatvorene (harmonika kao razrez).
 - **Pad:** prazno / „Učitavam kupnje…" zauvijek, ili Back zatvori pločicu.

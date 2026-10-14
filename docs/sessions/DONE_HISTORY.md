@@ -9042,4 +9042,10 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
   ↗); uvjet s drilla ne preživi F5 — staro ponašanje, ostaje (F5 = svježe otvaranje); redoslijed
   košara (RF prvi jer Visa ~05.11. dospijeva prva) ispravan, opis testa ispravljen; `· N kupnji`
   se više ne lomi. **Na Sašin zahtjev:** nakon Back iz kupnje ta kupnja je označena i u vidiku
-  (`lastOpened` u modulu, `data-last-opened`; E2E + protuprovjera).
+  (`data-last-opened`; E2E + protuprovjera).
+- **Sašin nalaz: Prev/Next iz kupnje skakao po cijeloj Arei** — pločica nije predala popis, pa je
+  View sam učitao Areu (500 redaka, bez datuma). Sada `basketNavList` (popis košare, isti ključ
+  kao `useActivities`) ide u `navActivities`. Oznaka se izvodi iz **zadnjeg prikazanog** retka
+  (`lastViewed.ts`, upisuje ga View) — ne iz `location.state.highlightKey`, koji Back preglednika
+  /swipe ne nosi, a stari ostaje u povijesti. E2E sije PRAVE kupnje + redak Aree izvan košare
+  (bez njega protuprovjera ne bi razlikovala košaru od Aree); obje protuprovjere padaju.
