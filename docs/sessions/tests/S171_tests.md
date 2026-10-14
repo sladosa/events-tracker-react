@@ -36,7 +36,7 @@ fokus pada „pokaži kupnje"), `basketsView.test.mjs`, `filterSummary.test.mjs`
 3. Dodir ⇒ puni filtar; **Clear all** je unutra (desno gore), **ne** u zaglavlju uz strelicu.
 4. Filter by → `Podtip` → `Kuća › Popravci, održavanje`, sklopi ⇒ red nosi i
    `· Podtip = Popravci, održavanje`.
-5. Overview → saldo → ↗ uz račun ⇒ Activities: red nosi `Racun = Kokin tekući ZABA`
+5. Overview → saldo → dodir na **zeleni iznos** računa (pločica salda nema ↗; ↗ je samo u razrezu) ⇒ Activities: red nosi `Racun = Kokin tekući ZABA`
    (uvjet s drilla se vidi).
 6. Široki ekran (≥ 768 px): filtar otvoren kao prije; sklopljen također pokazuje sažetak.
 - **Pad:** sklopljen red piše samo „Filter", ili Clear all u zaglavlju.
