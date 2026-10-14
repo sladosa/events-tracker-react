@@ -37,10 +37,18 @@ const eq = (name, got, want) => {
 };
 
 // ── filterMode: uvjet „uski + tab" na jednom mjestu ──────────────────────────
-eq('uski Overview ⇒ samo razdoblje', m.filterMode(true, 'overview'), 'period-only');
-eq('uski Activities ⇒ puni', m.filterMode(true, 'activities'), 'full');
-eq('široki Overview ⇒ puni', m.filterMode(false, 'overview'), 'full');
-eq('uski Structure ⇒ puni', m.filterMode(true, 'structure'), 'full');
+const A = { areaId: 'a', restoring: false };
+eq('uski Overview ⇒ samo razdoblje', m.filterMode(true, 'overview', A), 'period-only');
+eq('uski Activities ⇒ puni', m.filterMode(true, 'activities', A), 'full');
+eq('široki Overview ⇒ puni', m.filterMode(false, 'overview', A), 'full');
+eq('uski Structure ⇒ puni', m.filterMode(true, 'structure', A), 'full');
+// T-S171-1 (Saša): odjava/prijava ⇒ tab zapamćen kao Overview, Area nije odabrana
+eq('uski Overview BEZ Aree ⇒ puni (izbornik Area vidljiv)',
+  m.filterMode(true, 'overview', { areaId: null, restoring: false }), 'full');
+eq('uski Overview dok se filtar obnavlja ⇒ i dalje samo razdoblje',
+  m.filterMode(true, 'overview', { areaId: null, restoring: true }), 'period-only');
+eq('uski Overview s Areom ⇒ samo razdoblje',
+  m.filterMode(true, 'overview', { areaId: 'a', restoring: false }), 'period-only');
 
 // ── mustStayOpen: bez Aree selektor se ne skriva, ali obnova nije „bez Aree" ─
 eq('nema Aree ⇒ ostaje otvoren', m.mustStayOpen({ areaId: null, restoring: false }), true);

@@ -397,7 +397,7 @@ function AppContent() {
   }, [hasActiveFilter]);
 
   // S171: koliko se filtra nudi i što kaže kad je sklopljen (`filterSummary.ts`).
-  const fMode = filterMode(isMobile, activeTab);
+  const fMode = filterMode(isMobile, activeTab, { areaId: filter.areaId, restoring: isRestoring });
   const filterOpen = isFilterExpanded || mustStayOpen({ areaId: filter.areaId, restoring: isRestoring });
   const summaryParts = filterSummaryParts({
     mode: fMode,

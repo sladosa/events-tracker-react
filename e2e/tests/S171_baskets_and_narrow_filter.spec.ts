@@ -182,6 +182,22 @@ test.describe('S171 — košare i uski filtar', () => {
     await expect(page.getByRole('button', { name: 'Clear all' })).toBeVisible();
   });
 
+  test('390 px, zapamćen tab Overview, a Area nije odabrana ⇒ izbornik Area vidljiv (T-S171-1)', async ({ page }) => {
+    // Saša: odjava → prijava drugim računom → natrag ⇒ `All Areas`, tab i dalje
+    // Overview, a filtar je nudio samo razdoblje — Areu nije imao gdje odabrati.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => localStorage.setItem('ui:activeTab', 'overview'));
+    await page.goto('/app');
+    const areaSelect = page.locator('select').filter({
+      has: page.locator('option[value=""]', { hasText: 'All Areas' }),
+    });
+    await expect(areaSelect).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('filter-summary')).not.toContainText('📅');
+    // Odabir Aree s Overviewom ⇒ tek tada red razdoblja.
+    await areaSelect.selectOption(areaId);
+    await expect(page.getByTestId('filter-summary')).toContainText('📅', { timeout: 15_000 });
+  });
+
   test('široki ekran: Overview i dalje nudi puni filtar', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await mockAll(page);

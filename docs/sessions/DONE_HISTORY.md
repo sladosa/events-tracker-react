@@ -9030,3 +9030,6 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
   7.975,79; RF 878,09 → Visa ~05.11. ostaje 689,67). Moj TEST račun ne vidi `Financije_all`
   (kopija je pod Sašinim TEST računom) — zato E2E na vlastitoj Arei s podmetnutim RPC-ovima.
 - Otvoreno: T-S171-1..4 (Saša lokalno), T-S171-5 (PROD ~11.11.).
+- **Sašin nalaz pri T-S171-1:** odjava → prijava ⇒ `All Areas`, a zapamćeni tab (`ui:activeTab`) i
+  dalje Overview ⇒ filtar „samo razdoblje" bez izbornika Area. `filterMode` sada bez Aree vraća
+  `full` (isti uvjet kao `mustStayOpen`; obnova nakon F5 ne trepće). E2E slučaj + protuprovjera.

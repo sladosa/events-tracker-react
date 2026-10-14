@@ -20,7 +20,19 @@ export type FilterTab = 'activities' | 'overview' | 'structure';
  */
 export type FilterMode = 'period-only' | 'full';
 
-export function filterMode(narrow: boolean, tab: FilterTab): FilterMode {
+/**
+ * ⚠ BEZ AREE NEMA „SAMO RAZDOBLJE" (T-S171-1, Saša): tab se pamti
+ *   (`ui:activeTab`), pa nakon odjave i prijave drugim računom tab je i dalje
+ *   Overview, a Area nije odabrana — izbornik Area je bio skriven i jedini put
+ *   do njega bio je prelazak na Activities. Isti uvjet kao `mustStayOpen`:
+ *   obnova filtra (F5) nije „bez Aree", inače red razdoblja trepne u puni filtar.
+ */
+export function filterMode(
+  narrow: boolean,
+  tab: FilterTab,
+  area: { areaId: string | null; restoring: boolean },
+): FilterMode {
+  if (mustStayOpen(area)) return 'full';
   return narrow && tab === 'overview' ? 'period-only' : 'full';
 }
 

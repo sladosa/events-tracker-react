@@ -25,7 +25,8 @@
 
 ## Što treba od tebe
 
-1. **Lokalni test na laptopu (TEST, mobilni prikaz u DevTools):** T-S171-1..4 — koraci i brojke u
+1. **Lokalni test na laptopu (TEST, mobilni prikaz u DevTools):** T-S171-1 osnovno ✅; kvar
+   odjava/prijava (bez Aree nije bilo izbornika Area) popravljen — ponovi korak 6. Zatim T-S171-2..4 — koraci i brojke u
    `docs/sessions/tests/S171_tests.md`. Ključno: ZABA „danas" u Košarama = broj na pločici salda;
    MC 11.11. `−2.081,48 · ostaje 7.975,79`, Visa ~05.11. `−188,42 · ostaje 689,67`.
 2. **Deploy** (S169 + S170 + S171 jednim buildom), PowerShell:

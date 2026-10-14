@@ -20,7 +20,11 @@ fokus pada „pokaži kupnje"), `basketsView.test.mjs`, `filterSummary.test.mjs`
 4. Dodir na red ⇒ From / To / Period (bez ↓ Newest / ↑ Oldest i bez „Data range").
 5. Period → `This Month` ⇒ red se **sam sklopi** i piše `This Month · 01.10.–31.10.2026.`;
    pločica razreza (ako je otvoriš) gleda listopad.
-- **Pad:** puni filtar na Overviewu, ili red ostane otvoren nakon izbora.
+6. (Sašin nalaz 14.10.) Odjava → prijava (može i drugi račun pa natrag) dok je zadnji tab
+   Overview ⇒ filtar je `All Areas`: **mora** se vidjeti izbornik Area (puni filtar, zaglavlje
+   „Filter", ne 📅). Odaberi `Financije_all` ⇒ Overview, filtar opet samo red razdoblja.
+- **Pad:** puni filtar na Overviewu, ili red ostane otvoren nakon izbora, ili bez Aree nema
+  izbornika Area (jedini put do njega bio je tab Activities).
 
 ## T-S171-2 Activities na mobitelu: sklopljen filtar kaže što je aktivno (TEST)
 

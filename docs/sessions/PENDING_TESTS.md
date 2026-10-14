@@ -14,7 +14,7 @@ Na uskom ekranu Overview od filtra nudi samo red razdoblja, a Activities kreće 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S171-1 | TEST mobitel: Overview = samo red razdoblja; izbor razdoblja ga sklopi | ⬜ |
+| T-S171-1 | TEST mobitel: Overview = samo red razdoblja; izbor razdoblja ga sklopi; **bez odabrane Aree puni filtar** | ⬜ **osnovno ✅ 14.10. (Saša)**; nađen kvar: odjava → prijava ⇒ `All Areas` na Overviewu bez izbornika Area — **popravljeno** (`filterMode` bez Aree = puni; E2E + protuprovjera); ponoviti korak 6 |
 | T-S171-2 | TEST mobitel: Activities sklopljen sa sažetkom (razdoblje, Podtip, uvjet s drilla); Clear all unutra | ⬜ |
 | T-S171-3 | TEST: Košare — ZABA danas 10.057,27, MC 11.11. −2.081,48 ostaje 7.975,79 … RF Visa ~05.11. ostaje 689,67 | ⬜ |
 | T-S171-4 | TEST: kupnje košare (26), dodir → View → Back ostaje rasklopljeno; F5 vraća saldo | ⬜ |
