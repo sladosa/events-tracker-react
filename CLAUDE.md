@@ -34,19 +34,19 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 1293 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
 | 1767 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
 | 1783 | [Key files](<#Key files>) |  |
-| 1910 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1930 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1953 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1981 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2021 | [Open bugs](<#Open bugs>) | ~ |
-| 2130 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2175 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2302 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2310 | [Backlog](<#Backlog>) | ~ |
-| 2314 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2322 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1913 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1933 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1956 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1984 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2024 | [Open bugs](<#Open bugs>) | ~ |
+| 2133 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2178 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2313 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2321 | [Backlog](<#Backlog>) | ~ |
+| 2325 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2333 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2486 redaka, 18 sekcija._
+_Ukupno 2497 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
