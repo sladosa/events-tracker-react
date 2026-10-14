@@ -230,7 +230,7 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
                           <span className="font-medium">{r.basket}</span>
                           {' · '}
                           {r.estimate ? '~' : ''}{shortDate(r.due_date, today)}
-                          <span className="text-gray-500"> · {r.n} {kupnji(r.n)}</span>
+                          <span className="text-gray-500 whitespace-nowrap"> · {r.n} {kupnji(r.n)}</span>
                           {r.overdue && !r.settled && (
                             <span className="ml-1 text-xs text-amber-700">· dospjelo, čeka potvrdu</span>
                           )}

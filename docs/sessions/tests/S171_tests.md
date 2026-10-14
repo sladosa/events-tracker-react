@@ -44,9 +44,10 @@ fokus pada „pokaži kupnje"), `basketsView.test.mjs`, `filterSummary.test.mjs`
 ## T-S171-3 Pločica „Košare": iznosi i „ostaje" (TEST)
 
 1. Overview → dodir na **Košare (otvorene)** (saldo se sklopi).
-2. **Očekivano** (14.10.):
+2. **Očekivano** (14.10.) — računi idu redom PRVE naplate, pa je **RF prvi** (Visa ~05.11. prije
+   MC 11.11.), a rasklopljena je **Visa ~05.11.** (sljedeća naplata; ispravljeno nakon Sašinog testa):
    - `Kokin tekući ZABA · danas +10.057,27 €` (= broj na pločici salda za ZABA)
-     - `Mastercard · 11.11. · 26 kupnji · −2.081,48 € · ostaje +7.975,79 €` (rasklopljena)
+     - `Mastercard · 11.11. · 26 kupnji · −2.081,48 € · ostaje +7.975,79 €`
      - `11.12. · 16 · −434,05 · ostaje 7.541,74` · `11.01.27. · 7 · −264,31 · 7.277,43` ·
        `11.02.27. · −65,97 · 7.211,46` · `11.03.27. · −45,64 · 7.165,82` · `11.04.27. · −15,42 · 7.150,40`
    - `Sašin tekući RF · danas +878,09 €`
