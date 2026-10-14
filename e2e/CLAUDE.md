@@ -5,6 +5,11 @@
 
 **E2E (Playwright)**
 
+- **⚠ MOCK STRANIČENOG UPITA MORA VRATITI PRAZNU DRUGU STRANICU** (S171). `fetchAllPaged` staje
+  tek kad stranica dođe **prazna**, pa `route.fulfill` koji na svaki `offset` vrati iste retke vrti
+  beskonačno — u UI-ju „Učitavam…" zauvijek, a izgleda kao kvar koda. Čitaj `offset` iz URL-a
+  (`S171_baskets_and_narrow_filter`).
+
 - **⚠ EMITIRAN DOGAĐAJ NIJE KLIK — test je prošao, a kod korisnika ne radi** (S166). Prva
   verzija testa „krug vodi, lista slijedi" zvala je `gd.emit('plotly_sunburstclick', …)` i tako
   **zaobišla** baš put koji je bio pokvaren (slušač nije bio vezan). Mjeri se **pravim klikom**

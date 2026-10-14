@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S170).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S171).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -1869,6 +1869,9 @@ src/lib/localDate.ts               `localYmd` / `todayLocalYmd` — dan koji čo
 src/lib/dateInput.ts               JEDINO parsiranje polja datuma/vremena u Add i Edit zaglavlju (S155)
 src/lib/confirmedRowEdit.ts        C3c: bankina polja, je li redak potvrđen (žig / sidro u saldu)
 src/lib/dueBaskets.ts              C5: Σ košare u lipama, usporedba s bankom (tolerancija 0,00)
+src/lib/basketsView.ts             Pločica „Košare" (S171): košare po računu, „ostaje" kumulativno;
+                                   naplaćena (skupni redak upisan) se NE oduzima. UI: `BasketsTile.tsx`
+src/lib/filterSummary.ts           Sažetak sklopljenog filtra + JEDINI uvjet „uski ekran + tab" (S171)
 src/components/overview/DueStrip.tsx  Traka „Čeka potvrdu" (faza 1 usporedba, faza 2 S156 upis; samo vlasnica)
 src/lib/dueConfirm.ts              C5 faza 2 I/O: članovi košare (sql/055), prepoznavanje skupnog retka,
                                    upis REDAK PA STATUSI (pad između ostavlja samo „prebaci statuse"),
@@ -2279,6 +2282,14 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   **S169:** isto vrijedi i ZA UNUTRAŠNJOST razreza — rasklopljeni retci, strana, os i fokus kruga
   pamte se u modulu `BreakdownTile` (`lastView`, ključ Area + naslov pločice); drill ↗ i povratak ih
   vraćaju, F5 ne. Čuva E2E `S165_breakdown_tile` „drill ↗ i povratak" (sabotaža pada).
+  **S171:** uz saldo s `due` configom harmonika ima i pločicu **Košare** (ključevi `"<i>"` /
+  `"<i>:k"`, ne indeks configa). Košara je ISTA definicija kao traka (`rpc_area_due_baskets`, samo
+  daleki `as_of`); „ostaje" polazi od salda s filtrima pločice i oduzima SAMO košare — buduće plaće
+  ne zna i to mora pisati. ⚠ Košara sa skupnim retkom već upisanim (D6 „neusklađeno") je u saldu —
+  oduzeti je opet = dvaput (`settled`, čuva `basketsView.test.mjs`).
+- **Filtar na uskom ekranu (S171):** Overview = samo red razdoblja (selektor **skriven, ne
+  odmontiran**), Activities sklopljen sa sažetkom. Sklopljen filtar koji ne kaže ništa nitko ne
+  sklapa — sažetak je uvjet sklapanja, ne ukras. Bez Aree selektor se ne skriva (`mustStayOpen`).
 - **Zadano razdoblje je postavka AREE, ne pločice** (S166, Koka: Financije ⇒ This Year).
   `DateRangeFilter` ga primijeni **jednom po Arei** dok `periodKey = all-time` („čovjek nije
   birao") — modul pamti za koju je Areu primijenjeno, pa ručni *All Time* ostaje, a F5 vraća
