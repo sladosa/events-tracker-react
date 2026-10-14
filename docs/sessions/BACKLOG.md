@@ -40,10 +40,39 @@
   bez riječi; Koka bi dobila redak koji tvrdi da je plan, a rata nema. Prijedlog: Finish pita
   „Rate? je Yes, a broj rata je prazan — upiši broj ili makni kvačicu" (forma, ne baza; isto
   mjesto kao `requiredAttributes.ts`). Ne dirati Excel uvoz (povijest nosi takve retke).
-- **Filtar na malom ekranu je predug kad je otvoren (S167, Koka)** — na uskom iPhoneu se polja
+- ✅ **IZVEDENO S171 na `test-branch`** (`filterSummary.ts`, `filterMode`/`mustStayOpen`; čuva `filterSummary.test.mjs` + E2E `S171_baskets_and_narrow_filter`; T-S171-1/2) — **Filtar na malom ekranu je predug kad je otvoren (S167, Koka)** — na uskom iPhoneu se polja
   slažu jedno ispod drugog, pa otvoren filtar gura listu i Overview daleko dolje. Saša je uči da
   ga zatvori. Prijedlog za razmisliti: filtar se sam sklopi nakon odabira kategorije/razdoblja,
   ili sažetak u jednom redu (`Financije_all · This Year · Podtip = …`) dok je sklopljen.
+  **✅ ODLUČENO S171 (Saša, 14.10.)** — uski ekran (< `md`):
+  - **Overview:** umjesto filtra JEDAN red razdoblja (`📅 This Year ▾ 01.01.–14.10.`); kategorija,
+    shortcuti i Area se ne nude (Area se na Overviewu ne mijenja).
+  - **Activities:** puni filtar, ali **zadano sklopljen**, sa sažetkom aktivnih uvjeta
+    (`This Year · Podtip = Popravci`). ⚠ Drill s pločice postavlja `attrFilter` — sažetak ga mora
+    pokazati, inače lista izgleda filtrirana bez objašnjenja.
+  - Sažetak vrijedi i na širokom ekranu (sklopljen filtar koji ne kaže ništa nitko ne sklapa).
+  - `Clear all` iz zaglavlja u otvoren filtar (promašen dodir uz strelicu briše sve).
+  - Rub: nema odabrane Aree (nov korisnik, filtar se još obnavlja) ⇒ ne skrivati selektor.
+  - ⚠ `DateRangeFilter` ostaje **jedan i montiran** (S111/S129/S170) — red razdoblja samo prikazuje
+    i zove settere konteksta, nije druga kopija komponente. Uvjet „uski + tab" na jednom mjestu (S129).
+- ✅ **IZVEDENO S171 na `test-branch`** (`BasketsTile.tsx`, model `basketsView.ts`, retci `fetchBasketLines` — bez migracije; čuva `basketsView.test.mjs` + E2E, protuprovjera ruši „pokaži kupnje"; T-S171-3..5) — **Pločica „Košare" na Overviewu — otvorene kartične košare i koliko ostaje (S171, Saša)** —
+  ista ideja kao delta sekcija S170 (grupe po datumu naplate), ali u appu. Danas traka „Čeka
+  potvrdu" pokazuje samo **dospjele** košare i samo Σ; buduće (MC 11.11., rate 11.12., Visa ~05.)
+  postoje samo u Excelu, a saldo kaže „koliko imam", ne „koliko će ostati" (S147).
+  **Odluke S171:** samo **otvorene** (`Planiran`) košare; bira se košara po datumu naplate
+  (zadano otvorena **sljedeća**); uz svaku **„ostaje na računu"** — kumulativno po računu iz
+  `due.baskets[k].account` (saldo danas − košare redom po dospijeću).
+  Prijedlog oblika: popis `MC · 11.11. · 23 kupnje · −493,90 · ostaje 12.0xx`, dodir rasklopi
+  kupnje (datum kupnje, opis, iznos) → redak vodi u View; harmonika kao ostale pločice. Traka za
+  dospjelu košaru dobiva „pokaži kupnje" ⇒ otvara ovu pločicu na toj košari (= T3 „gdje tražiti
+  razliku").
+  ⚠ Podaci: `rpc_area_due_baskets` (053/055) s kasnim `p_as_of` vraća i buduće košare — ISTA
+  definicija košare kao traka i potvrda (ne druga kopija). `rpc_area_due_basket_members` vjerojatno
+  ne vraća iznos/opis — provjeriti; Σ po `measure` (Visa `gross`), u lipama (`dueBaskets.ts`).
+  ⚠ „Ostaje" je nova tvrdnja o novcu: polazi od salda s **istim filtrima kao pločica** (S112),
+  oduzima SAMO košare — buduće plaće/ostale terećenje ne zna ⇒ natpis to mora reći; Visa dan je
+  procjena (`~`). Dospjela a nepotvrđena košara ide prva (novac je možda već otišao, S137).
+  Pločica ne gleda razdoblje filtra (košare su budućnost). Uključuje se postojećim `due` configom.
 - ✅ **IZVEDENO S168** (brojač `latestFetchIdRef.current + 1`; drugih takvih hookova nema) — **Lista: zaštita od zakašnjelog odgovora koristi `Date.now()` kao ID (S167, sumnja)** —
   `useActivities.ts` (`latestFetchIdRef`): dva dohvata u istoj milisekundi dobiju isti ID, pa
   oba prođu provjeru i stariji može pregaziti noviji. Viđeno jednom na TEST-u 11.10.: Transakcija +

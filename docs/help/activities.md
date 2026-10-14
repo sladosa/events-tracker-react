@@ -138,6 +138,8 @@ Takav nacrt bi, potvrđen, upisao **isti zapis drugi put**.
 
 ## Filter
 - Area dropdown + Category dropdown u Filter panelu
+- **Sklopljen filtar kaže što je aktivno** — razdoblje i uvjet (npr. `This Year · 01.01.–31.12.2026. · Podtip = Popravci, održavanje`). Na mobitelu filtar kreće sklopljen; dodir na red ga otvori. Kad dođeš s pločice (↗), ovdje vidiš koji je uvjet postavljen.
+- **Clear all** je unutar otvorenog filtra (više nije u zaglavlju, uz strelicu — promašen dodir je brisao cijeli filtar)
 - Shortcuts dropdown — odaberi spremljeni shortcut da brzo postaviš Area + Category (i, ako ga ima, predefinirane vrijednosti atributa — vidi sekciju **Shortcuts**)
 - "Reset cat." resetira samo kategoriju, area ostaje
 - **Razdoblje (Period)** — Area može imati **zadano razdoblje** (npr. Financije: *This Year*):

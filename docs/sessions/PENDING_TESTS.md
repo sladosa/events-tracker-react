@@ -2,7 +2,23 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S170 (2026-10-13) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S171 (2026-10-14) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S171 — Filtar na mobitelu i pločica Košare (2026-10-14)
+
+Na uskom ekranu Overview od filtra nudi samo red razdoblja, a Activities kreće sklopljen sa sažetkom (razdoblje + uvjet); `Clear all` je ušao u otvoren filtar. Nova pločica **Košare (otvorene)**: kartične košare po računu i danu naplate, kupnje na dodir, i „ostaje" (stanje danas − košare redom). Traka „Čeka potvrdu" dobila je „pokaži kupnje".
+
+**Detalji testova:** [tests/S171_tests.md](tests/S171_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S171-1 | TEST mobitel: Overview = samo red razdoblja; izbor razdoblja ga sklopi | ⬜ |
+| T-S171-2 | TEST mobitel: Activities sklopljen sa sažetkom (razdoblje, Podtip, uvjet s drilla); Clear all unutra | ⬜ |
+| T-S171-3 | TEST: Košare — ZABA danas 10.057,27, MC 11.11. −2.081,48 ostaje 7.975,79 … RF Visa ~05.11. ostaje 689,67 | ⬜ |
+| T-S171-4 | TEST: kupnje košare (26), dodir → View → Back ostaje rasklopljeno; F5 vraća saldo | ⬜ |
+| T-S171-5 | PROD ~11.11.: „pokaži kupnje" u traci otvori tu košaru; naplaćena se ne oduzima dvaput | ⬜ |
 
 ---
 

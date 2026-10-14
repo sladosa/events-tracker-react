@@ -5,6 +5,11 @@ import { DATE_INPUT_MIN, DATE_INPUT_MAX, isCompleteDateValue } from '@/lib/dateI
 
 interface DateRangeFilterProps {
   className?: string;
+  /** Čovjek je izabrao gotovo razdoblje (ne ručni From/To) — S171, sklapanje
+   *  reda razdoblja na Overviewu uskog ekrana. Automatika ga ne zove. */
+  onPresetChosen?: () => void;
+  /** S171: Overview uskog ekrana — bez sortiranja i „Data range" (pločice ih ne koriste). */
+  periodOnly?: boolean;
 }
 
 /** Za koju je Areu zadano razdoblje (`settings.default_period`) već primijenjeno.
@@ -17,7 +22,7 @@ const markDefaultApplied = (areaId: string) => { defaultPeriodAppliedFor = areaI
 const ALL_TIME_VALUE = '__all_time__';
 const CUSTOM_VALUE   = '__custom__';
 
-export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
+export function DateRangeFilter({ className = '', onPresetChosen, periodOnly = false }: DateRangeFilterProps) {
   const { filter, selectedArea, setDateRange, setSortOrder, setPeriodLabel, setPeriodKey } = useFilter();
   const { bounds, loading, error: boundsError, refresh } = useDateBounds(filter.areaId, filter.categoryId);
 
@@ -219,7 +224,10 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Period</label>
             <select
               value={activePresetKey}
-              onChange={(e) => handlePreset(e.target.value)}
+              onChange={(e) => {
+                handlePreset(e.target.value);
+                if (e.target.value !== CUSTOM_VALUE) onPresetChosen?.();
+              }}
               disabled={loading}
               className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 text-sm text-gray-700 cursor-pointer"
             >
@@ -235,7 +243,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
           </div>
 
           {/* Sort order — kept adjacent to period dropdown */}
-          <div className="flex items-center gap-1">
+          <div className={`flex items-center gap-1 ${periodOnly ? 'hidden' : ''}`}>
             <button
               onClick={() => setSortOrder('desc')}
               title="Newest first"
@@ -263,7 +271,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       </div>
 
       {/* Date Range Info */}
-      {bounds.minDate && bounds.maxDate && (
+      {bounds.minDate && bounds.maxDate && !periodOnly && (
         <div className="mt-2 text-xs text-gray-500">
           📅 Data range: {formatDateDisplay(bounds.minDate)} — {formatDateDisplay(bounds.maxDate)}
           {loading && (

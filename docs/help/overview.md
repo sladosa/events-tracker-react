@@ -218,6 +218,30 @@ još nije potvrđeno naplatila. Košara su sve kupovine jedne kartice s istim da
 - Kad se košara **ne slaže**: saldo je i dalje točan. Najčešće je kriv jedan redak — kupovina
   s ruba mjeseca u krivoj košari, ista kupovina upisana dvaput, ili tipfeler u iznosu.
   Ispravi ga Editom; ako ga ne nađeš, kartični izvod pokaže točno koji je.
+- **„pokaži kupnje"** ispod Σ otvori pločicu **Košare** na toj košari: popis kupnji koje
+  čine Σ, pa ih možeš usporediti s popisom u bankovnoj aplikaciji. Dodir na kupnju je otvori.
+
+## Pločica „Košare (otvorene)"
+
+Kartične kupnje koje banka **tek treba skinuti**, složene po **danu naplate** — ista ideja
+kao grupe košara u delta Excelu. Za razliku od trake, ovdje su i **buduće** košare
+(sljedeća MC naplata, rate idućih mjeseci, Visa).
+
+- Košare su složene **po računu** s kojeg ih banka skida (npr. ZABA za Mastercard), a uz
+  račun piše njegovo stanje **danas** (isti broj kao pločica salda).
+- Svaka košara: kartica · dan naplate · broj kupnji · **Σ** — i **ostaje**: koliko će biti
+  na računu kad prođe i ta košara (stanje danas minus košare redom).
+- ⚠ **„Ostaje" ne zna za plaće, mirovine ni druga buduća plaćanja** — oduzima samo košare.
+  To je odgovor na pitanje *„koliko mi ostane kad kartice dođu na naplatu"*, ne prognoza.
+- **`~`** ispred dana (Visa) znači da je dan naplate **procjena** — Visa nema stalan dan.
+- **dospjelo, čeka potvrdu** — dan naplate je prošao, a košara još nije potvrđena (vidi
+  traku iznad). **naplata upisana, već u stanju** — skupna naplata je upisana, pa se košara
+  više ne oduzima (bila bi oduzeta dvaput).
+- Dodir na košaru je rasklopi: kupnje redom po danu kupnje, s opisom i iznosom. Dodir na
+  kupnju otvori redak. Rasklopljena je zadano **sljedeća** košara.
+- Pločica **ne gleda razdoblje iz filtra** — košare su budućnost.
+- Prikazuju se samo **otvorene** košare (bar jedna kupnja `Planiran`). Potvrđena košara
+  nestane iz pločice.
 
 ## Pločica „Kamo ide novac"
 
@@ -255,9 +279,17 @@ period — promijeniš filtar, promijeni se i ona. U zaglavlju piše koje razdob
   samo u prikazu *po kupnji*. Podtip koji postoji pod više Tipova (npr. *gorivo* kod oba
   auta) **nema** ↗ — filtar nosi jedan uvjet, pa bi pokazao gorivo obaju auta; ↗ uz Tip
   (*auto C5*) otvara cijeli Tip. Bucket nema ↗ jer je više uvjeta.
-- Otvorena je **uvijek jedna** pločica: klik na naslov razreza otvori razrez i sklopi saldo,
-  klik na naslov salda vrati saldo — da filtar s razdobljem ostane blizu. Pri svakom
-  otvaranju appa saldo je otvoren, a razrez zatvoren.
+- Otvorena je **uvijek jedna** pločica (saldo, Košare ili razrez): klik na naslov jedne
+  otvori nju i sklopi ostale — da filtar s razdobljem ostane blizu. Pri svakom otvaranju
+  appa saldo je otvoren, a ostale zatvorene.
+
+## Filtar na mobitelu
+
+Na uskom ekranu Overview od filtra pokazuje samo **red razdoblja**
+(`📅 This Year · 01.01.–31.12.2026.`). Area i kategorija se ondje ne nude — pločice ovise
+samo o Arei, a ona se na Overviewu ne mijenja. Dodir na red otvori izbor razdoblja; izbor
+ga sam sklopi. Na Activities je filtar puni, ali na mobitelu kreće **sklopljen** i u
+jednom redu kaže što je aktivno.
 
 ## Unos iz Overviewa
 

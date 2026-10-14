@@ -52,6 +52,8 @@ interface Props {
   isOwner: boolean;
   /** Nakon upisa — pločica salda mora se osvježiti (skupni redak je miče). */
   onSettled?: () => void;
+  /** S171: „pokaži kupnje" — pločica Košare rasklopi ovu košaru (T3: gdje tražiti razliku). */
+  onShowBasket?: (key: string) => void;
 }
 
 const stavki = (n: number) =>
@@ -78,7 +80,7 @@ const dayLabel = (iso: string) => {
   return `${DOW[new Date(Date.UTC(+y, +m - 1, +d, 12)).getUTCDay()]} ${d}.${m}.`;
 };
 
-export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
+export function DueStrip({ areaId, widget, isOwner, onSettled, onShowBasket }: Props) {
   const { due, unit } = widget;
   const [rows, setRows] = useState<DueBasketRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -295,6 +297,15 @@ export function DueStrip({ areaId, widget, isOwner, onSettled }: Props) {
                 {cfg?.measure === 'gross' && <span className="text-xs text-gray-500"> (samo isplate)</span>}
                 {cfg?.account && <> → s računa <span className="font-medium">{cfg.account}</span></>}
               </p>
+              {onShowBasket && (
+                <button
+                  type="button"
+                  onClick={() => onShowBasket(key)}
+                  className="mt-0.5 text-xs text-amber-800 underline hover:text-amber-950"
+                >
+                  pokaži kupnje
+                </button>
+              )}
 
               {/* I tijekom osvježavanja: košara bez ičega ispod Σ izgleda kao da je nešto nestalo (T-S157-1). */}
               {st === undefined && (

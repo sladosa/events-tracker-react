@@ -17,7 +17,8 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabaseClient';
-import { withRetryQuery } from '@/lib/retry';
+import { toError, withRetryQuery } from '@/lib/retry';
+import { fetchAllPagedIn } from '@/lib/supabasePaging';
 import { localYmd } from '@/lib/localDate';
 import { buildParentChainIds } from '@/lib/parentEventLoader';
 import { computeSetAttributeValue, findDefBySlug } from '@/lib/attributeRules';
@@ -50,6 +51,45 @@ export interface BasketMember {
   status: string | null;
   plus_v: number | null;
   minus_v: number | null;
+}
+
+/** Redak košare za prikaz (pločica „Košare", S171): član + datum kupnje i opis. */
+export interface BasketLine extends BasketMember {
+  event_date: string;
+  session_start: string | null;
+  comment: string | null;
+}
+
+/**
+ * Kupnje jedne košare za popis u pločici. Članstvo iz `fetchBasketMembers`
+ * (ista definicija kao Σ), datum i opis iz `events` — RPC ih ne vraća, a
+ * migracija samo za prikaz nije vrijedna druge kopije `app_due_rows`.
+ * ⚠ Neuspjelo čitanje BACA — prazan popis bi tvrdio „košara je prazna" (S121).
+ */
+export async function fetchBasketLines(areaId: UUID, w: Widget, basket: string, dueDate: string): Promise<BasketLine[]> {
+  const members = await fetchBasketMembers(areaId, w, basket, dueDate);
+  if (members.length === 0) return [];
+  type Ev = { id: UUID; event_date: string; session_start: string | null; comment: string | null };
+  const { data, error } = await fetchAllPagedIn<Ev>(
+    members.map(m => m.event_id),
+    (chunk, from, to) => supabase.from('events')
+      .select('id, event_date, session_start, comment')
+      .in('id', chunk).order('id').range(from, to),
+  );
+  if (error) throw toError(error);
+  const byId = new Map(data.map(e => [e.id, e]));
+  return members
+    .map(m => {
+      const e = byId.get(m.event_id);
+      return {
+        ...m,
+        event_date: (e?.event_date ?? '').slice(0, 10),
+        session_start: e?.session_start ?? null,
+        comment: e?.comment ?? null,
+      };
+    })
+    .sort((a, b) => a.event_date.localeCompare(b.event_date)
+      || (a.session_start ?? '').localeCompare(b.session_start ?? ''));
 }
 
 /** Retci jedne košare (sql/055) — ISTA definicija košare kao Σ u traci. */

@@ -39,6 +39,7 @@ import { formatAmount } from '@/lib/amountFormat';
 import { getCategoryMap, getAreaNameMap, getCategoryMapContaining } from '@/lib/categoryCache';
 import { ancestorIds, areaCategoryIds } from '@/lib/categoryTree';
 import { findSingleLeaf, categoryNamePath } from '@/lib/singleLeaf';
+import { filterMode, filterSummaryParts, mustStayOpen } from '@/lib/filterSummary';
 
 // Plotly (1,4 MB gzipa) se skida tek kad se Sunburst stvarno prikaže (S170).
 // ExcelJS (264 KB gzipa) isto: modali i Structure export vuku ga tek na klik.
@@ -148,6 +149,7 @@ function AppContent() {
     skipNextFilterReset,
     areaContextError,
     isRestoring,
+    periodLabel,
   } = useFilter();
 
   // Attribute filter UI state — which field is selected in the "Filter by" dropdown
@@ -337,9 +339,11 @@ function AppContent() {
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   // Collapse filter when returning from View/Edit (collapseFilter flag in location.state)
+  // S171 (Saša): na uskom ekranu filtar kreće SKLOPLJEN — sklopljen red nosi
+  // sažetak (`filterSummary.ts`), pa se ne gubi što je aktivno.
   const [isFilterExpanded, setIsFilterExpanded] = useState(() => {
     const state = location.state as { collapseFilter?: boolean } | null;
-    return !state?.collapseFilter;
+    return !state?.collapseFilter && window.innerWidth >= 768;
   });
 
   // Ako korisnik je grantee i ima Edit Mode aktivan, resetiraj ga
@@ -391,6 +395,26 @@ function AppContent() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [hasActiveFilter]);
+
+  // S171: koliko se filtra nudi i što kaže kad je sklopljen (`filterSummary.ts`).
+  const fMode = filterMode(isMobile, activeTab);
+  const filterOpen = isFilterExpanded || mustStayOpen({ areaId: filter.areaId, restoring: isRestoring });
+  const summaryParts = filterSummaryParts({
+    mode: fMode,
+    periodLabel,
+    dateFrom: filter.dateFrom,
+    dateTo: filter.dateTo,
+    commentSearch: filter.commentSearch,
+    attr: filter.attrFilter ? {
+      name: filter.attrFilter.attrDefId === ATTR_FILTER_ANY
+        ? null
+        : filterAttrDefs.find(a => a.id === filter.attrFilter!.attrDefId)?.name ?? 'Attribute',
+      value: filter.attrFilter.value,
+      isExact: filter.attrFilter.isExact,
+      op: filter.attrFilter.op,
+      kind: filter.attrFilter.kind,
+    } : null,
+  });
 
   // Sign out handler
   const onSignOut = async () => {
@@ -553,13 +577,23 @@ function AppContent() {
           {/* Filter Header */}
           <div 
             className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 cursor-pointer"
-            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+            onClick={() => setIsFilterExpanded(!filterOpen)}
           >
-            <div className="flex items-center gap-2">
-              <h2 className="font-medium text-gray-900 text-sm sm:text-base">Filter</h2>
+            {/* S171: sklopljen red kaže ŠTO je aktivno (razdoblje, uvjet s drilla);
+                na Overviewu uskog ekrana to je red razdoblja. */}
+            <div className="flex items-center gap-2 min-w-0" data-testid="filter-summary">
+              <h2 className="font-medium text-gray-900 text-sm sm:text-base shrink-0">
+                {fMode === 'period-only' ? '📅' : 'Filter'}
+              </h2>
+              {/* Structure ne gleda razdoblje ni uvjet — sažetak bi ondje lagao. */}
+              {(!filterOpen || fMode === 'period-only') && activeTab !== 'structure' && summaryParts.length > 0 && (
+                <span className="text-xs sm:text-sm text-gray-600 truncate">
+                  {summaryParts.join(' · ')}
+                </span>
+              )}
             </div>
-            
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-2 shrink-0">
               {/* Faza 7 — Entry point 1: Manage Access badge (owner, area has active shares) */}
               {!sharedContext && areaHasActiveShares && filter.areaId && (
                 <button
@@ -572,19 +606,8 @@ function AppContent() {
                   🔗 Manage Access
                 </button>
               )}
-              {hasActiveFilter && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    reset();
-                  }}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 px-2 py-1"
-                >
-                  Clear all
-                </button>
-              )}
               <span className="text-gray-400">
-                {isFilterExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                {filterOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
               </span>
             </div>
           </div>
@@ -592,13 +615,31 @@ function AppContent() {
           {/* Filter Content — always mounted so areas-changed listener stays active */}
           <div className={cn(
             'px-3 pb-3 sm:px-4 sm:pb-4 border-t border-gray-100 pt-3',
-            !isFilterExpanded && 'hidden'
+            !filterOpen && 'hidden'
           )}>
-            <ProgressiveCategorySelector
-              onLeafSelected={handleLeafSelected}
-              onUseShortcut={handleAddActivity}
-              singleLeafTarget={!!singleLeaf}
-            />
+            {/* S171: `Clear all` je bio u zaglavlju, uz strelicu za sklapanje —
+                promašen dodir palcem brisao je cijeli filtar. Sada samo u
+                otvorenom filtru. Na Overviewu uskog ekrana ga nema: ondje se
+                nudi samo razdoblje, a „clear" bi bacio i Areu. */}
+            {hasActiveFilter && fMode === 'full' && (
+              <div className="flex justify-end -mt-1 mb-2">
+                <button
+                  onClick={() => reset()}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 px-2 py-1"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+            {/* Na Overviewu uskog ekrana selektor je SKRIVEN, ne odmontiran:
+                drži `areas-changed` listener i obnovu filtra (v. gore). */}
+            <div className={cn(fMode === 'period-only' && 'hidden')}>
+              <ProgressiveCategorySelector
+                onLeafSelected={handleLeafSelected}
+                onUseShortcut={handleAddActivity}
+                singleLeafTarget={!!singleLeaf}
+              />
+            </div>
 
             {/* Date Range Filter — Activities AND Overview.
                 Overview needs it because `dateTo` IS the tile's `asOf` (§2.17:
@@ -611,8 +652,13 @@ function AppContent() {
                 On Overview `dateFrom` is ignored by the tile (a balance has no
                 start) but is still carried into the drill. */}
             {activeTab !== 'structure' && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <DateRangeFilter />
+              <div className={cn(fMode === 'full' && 'mt-4 pt-4 border-t border-gray-100')}>
+                <DateRangeFilter
+                  // S171: na Overviewu uskog ekrana izbor razdoblja je cijeli
+                  // posao — red se sklopi i ostavi pločice na vrhu.
+                  onPresetChosen={fMode === 'period-only' ? () => setIsFilterExpanded(false) : undefined}
+                  periodOnly={fMode === 'period-only'}
+                />
               </div>
             )}
 

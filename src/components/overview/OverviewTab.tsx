@@ -19,11 +19,14 @@ import { useFilter } from '@/context/FilterContext';
 import { BalanceByGroupTile } from './BalanceByGroupTile';
 import { DueStrip } from './DueStrip';
 import { BreakdownTile } from './BreakdownTile';
+import { BasketsTile } from './BasketsTile';
 import type { DashboardConfig, DueConfig, Grouping, UUID } from '@/types/database';
 
-/** Koja je pločica otvorena — v. „Harmonika" u komponenti. Modul, ne storage. */
-let lastOpenTile: { area: UUID; idx: number | null } | null = null;
-const rememberOpenTile = (v: { area: UUID; idx: number | null }) => { lastOpenTile = v; };
+/** Koja je pločica otvorena — v. „Harmonika" u komponenti. Modul, ne storage.
+ *  Ključ je `"<i>"` za pločicu iz configa, `"<i>:k"` za košare uz saldo `i` (S171). */
+let lastOpenTile: { area: UUID; key: string | null } | null = null;
+const rememberOpenTile = (v: { area: UUID; key: string | null }) => { lastOpenTile = v; };
+const basketsKey = (i: number) => `${i}:k`;
 
 interface Props {
   areaId: UUID;
@@ -48,23 +51,36 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
   // Pamti se na razini MODULA: preživi odlazak u Activities (drill ↗ i povratak —
   // AppHome ovaj tab odmontira), a NE preživi F5 — svako otvaranje appa kreće od
   // salda. Stanje nosi Areu za koju vrijedi (obrazac `loadedFor`, S145).
+  // S171: uz saldo s `due` configom, odmah ispod njega, pločica „Košare" — i
+  // ona je u harmonici, pa ključ nije indeks configa nego `tileKeys`.
+  const tileKeys = config.widgets.flatMap((w, i) =>
+    w.type === 'balance_by_group' && w.due ? [String(i), basketsKey(i)] : [String(i)]);
   const defaultOpen = (() => {
     const b = config.widgets.findIndex(w => w.type === 'balance_by_group');
-    return b >= 0 ? b : 0;
+    return String(b >= 0 ? b : 0);
   })();
   const [openState, setOpenState] = useState(lastOpenTile);
-  const openIdx = openState && openState.area === areaId ? openState.idx : defaultOpen;
-  // Uvijek je otvorena TOČNO JEDNA (Saša: „ili jedno ili drugo"): klik na
-  // otvorenu pločicu otvara sljedeću — obje zatvorene nikome ne trebaju.
-  // Sama jedna pločica (druge Aree) se smije i sklopiti.
-  const toggleTile = (i: number) => {
-    const n = config.widgets.length;
-    const idx = openIdx !== i ? i : n > 1 ? (i + 1) % n : null;
-    const next = { area: areaId, idx };
+  const openKey = openState && openState.area === areaId ? openState.key : defaultOpen;
+  const openTile = (key: string | null) => {
+    const next = { area: areaId, key };
     rememberOpenTile(next);
     setOpenState(next);
   };
-  const many = config.widgets.length > 1;
+  // Uvijek je otvorena TOČNO JEDNA (Saša: „ili jedno ili drugo"): klik na
+  // otvorenu pločicu otvara sljedeću — obje zatvorene nikome ne trebaju.
+  // Sama jedna pločica (druge Aree) se smije i sklopiti.
+  const toggleTile = (key: string) => {
+    const n = tileKeys.length;
+    const at = tileKeys.indexOf(key);
+    openTile(openKey !== key ? key : n > 1 ? tileKeys[(at + 1) % n] : null);
+  };
+  const many = tileKeys.length > 1;
+  /** Traka „pokaži kupnje" ⇒ otvori košare i rasklopi tu (`basket|due#n`). */
+  const [basketFocus, setBasketFocus] = useState<string | null>(null);
+  const showBasket = (i: number, key: string) => {
+    openTile(basketsKey(i));
+    setBasketFocus(prev => `${key}#${Number(prev?.split('#')[1] ?? 0) + 1}`);
+  };
 
   /**
    * Drill = produce filter state, exactly the shape a Shortcut already saves
@@ -115,6 +131,7 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
                   widget={w as typeof w & { due: DueConfig }}
                   isOwner={isOwner}
                   onSettled={() => setBalanceReload(n => n + 1)}
+                  onShowBasket={key => showBasket(i, key)}
                 />
               )}
               <BalanceByGroupTile
@@ -122,8 +139,8 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
                 widget={w}
                 canWrite={canWrite}
                 reloadToken={balanceReload}
-                collapsed={openIdx !== i}
-                onToggleCollapsed={many ? () => toggleTile(i) : undefined}
+                collapsed={openKey !== String(i)}
+                onToggleCollapsed={many ? () => toggleTile(String(i)) : undefined}
                 // The global date filter reaches the tile, so "balance on
                 // 31.03.2025" is answerable — and the same date stamps a
                 // confirmation, which is what makes the anchor a check (§2.17).
@@ -155,6 +172,16 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
                   }
                 }}
               />
+              {w.due && (
+                <BasketsTile
+                  areaId={areaId}
+                  widget={w as typeof w & { due: DueConfig }}
+                  collapsed={openKey !== basketsKey(i)}
+                  onToggleCollapsed={() => toggleTile(basketsKey(i))}
+                  focusKey={basketFocus}
+                  reloadToken={balanceReload}
+                />
+              )}
               </Fragment>
             );
           case 'breakdown':
@@ -171,8 +198,8 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
                 // Drill ne dira raspon datuma: „po kupnji" je event_date, isto
                 // što filtar Activities filtrira (§12.3).
                 onDrill={(slug, value) => { void drill(slug, value); }}
-                collapsed={openIdx !== i}
-                onToggleCollapsed={() => toggleTile(i)}
+                collapsed={openKey !== String(i)}
+                onToggleCollapsed={() => toggleTile(String(i))}
               />
             );
           default:
