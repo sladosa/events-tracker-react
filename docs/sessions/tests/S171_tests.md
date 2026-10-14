@@ -74,8 +74,10 @@ fokus pada „pokaži kupnje"), `basketsView.test.mjs`, `filterSummary.test.mjs`
 
 ## T-S171-6 Košara: tekst kupnje, ↗ isti dan, Edit u nizu (TEST, nakon Sašinih prijedloga 14.10.)
 
-1. Košare → MC 11.11.: svaka kupnja piše **Tip/Podtip · opis** kao drugi redak liste na mobitelu
-   (npr. `Putovanja/Smještaj · Kutjevo booking 2/2`); bez opisa samo `Prijevoz/Taksi, Zet, Parking`.
+1. Košare → MC 11.11.: svaka kupnja u **dva retka** — `Putovanja/Smještaj`, ispod sivo
+   `Kutjevo booking 2/2`; bez opisa samo `Prijevoz/Taksi, Zet, Parking`. (Prva verzija je pisala
+   oboje u jednom retku pa opis nije stao — Saša 14.10.) Zaglavlje `Mastercard · 11.02.27.` se ne lomi
+   između kartice i dana.
 2. **↗** na kraju retka (npr. `Konzum 4/6`, 29.07.) ⇒ tab Activities, filtar `Custom · 29.07.2026.`,
    bez uvjeta; na listi su **sve** kupnje tog dana, i sve rate tog plana jedna ispod druge.
    Period → This Year vraća normalnu listu.

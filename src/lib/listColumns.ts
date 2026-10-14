@@ -138,6 +138,23 @@ export function line2Text(
     .join(' · ');
 }
 
+/**
+ * Isto, ali ODVOJENO (S171, Saša na T-S171-6: u jednom retku opis ne stane — Tip/Podtip
+ * ga pojede): `attrs` = `attr` kolone drugog retka spojene s ` · `, `comment` = opis
+ * (prazan ako ga config ne prikazuje). Košara ih crta kao dva retka.
+ */
+export function line2Parts(
+  columns: ResolvedColumn[],
+  text: Map<string, string> | undefined,
+  comment: string | null,
+): { attrs: string; comment: string } {
+  const cols = columns.filter(c => c.mobile === 'line2');
+  return {
+    attrs: cols.filter(c => c.role === 'attr').map(c => attrColumnText(c, text)).filter(Boolean).join(' · '),
+    comment: cols.some(c => c.role === 'comment') ? (comment ?? '').trim() : '',
+  };
+}
+
 /** Every attribute slug the columns read. Feeds one bounded query, and the
  *  pre-delete warning that `depends_on` references already get. */
 export function listColumnSlugRefs(config: ListColumnsConfig | null | undefined): Set<string> {

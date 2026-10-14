@@ -9058,3 +9058,5 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
   = dan kupnje, uvjet obrisan (drill `Racun = ZABA` bi sakrio kartične). Odbačeno: Back u Activities
   umjesto u košaru, i filtar `Datum naplate = dan` (pokupio bi i `Racun` retke tog dana).
   E2E: tekst, Edit u nizu, ↗ (protuprovjera: bez prijenosa u Edit pada na Prev); `navAndLine2.test.mjs`.
+  Na Sašin pogled: `Tip/Podtip · opis` u jednom retku nije stao ⇒ **dva retka** (`line2Parts`),
+  a zaglavlje košare ne lomi karticu od dana.

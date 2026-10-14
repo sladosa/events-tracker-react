@@ -237,8 +237,8 @@ kao grupe košara u delta Excelu. Za razliku od trake, ovdje su i **buduće** ko
 - **dospjelo, čeka potvrdu** — dan naplate je prošao, a košara još nije potvrđena (vidi
   traku iznad). **naplata upisana, već u stanju** — skupna naplata je upisana, pa se košara
   više ne oduzima (bila bi oduzeta dvaput).
-- Dodir na košaru je rasklopi: kupnje redom po danu kupnje, i uz svaku **Tip/Podtip · opis**
-  (isto kao drugi redak liste na mobitelu) i iznos. Dodir na kupnju otvori redak. U tom prikazu **Prev / Next** idu samo kroz kupnje **te košare**,
+- Dodir na košaru je rasklopi: kupnje redom po danu kupnje, uz svaku **Tip/Podtip**, ispod
+  njega **opis** (sivo) i iznos. Dodir na kupnju otvori redak. U tom prikazu **Prev / Next** idu samo kroz kupnje **te košare**,
   istim redom kao u pločici. Nakon **Back** označena je (obojena) kupnja na kojoj si **stao**,
   i dovedena u vidik. **Edit** iz tog prikaza ne prekida niz: nakon spremanja Prev/Next i dalje
   idu kroz košaru, pa se može ispravljati jedna za drugom.

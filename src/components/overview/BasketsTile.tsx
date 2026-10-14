@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getLastViewed } from '@/lib/lastViewed';
-import { line2Text, resolveColumns } from '@/lib/listColumns';
+import { line2Parts, resolveColumns } from '@/lib/listColumns';
 import { useListColumnValues } from '@/hooks/useListColumnValues';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
@@ -256,9 +256,12 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
                       >
                         <span className="min-w-0 text-sm text-gray-900">
                           <span className="text-gray-400 text-xs mr-1">{open ? '▾' : '▸'}</span>
-                          <span className="font-medium">{r.basket}</span>
-                          {' · '}
-                          {r.estimate ? '~' : ''}{shortDate(r.due_date, today)}
+                          {/* Kartica i dan zajedno — lom ide tek ispred broja kupnji. */}
+                          <span className="whitespace-nowrap">
+                            <span className="font-medium">{r.basket}</span>
+                            {' · '}
+                            {r.estimate ? '~' : ''}{shortDate(r.due_date, today)}
+                          </span>
                           <span className="text-gray-500 whitespace-nowrap"> · {r.n} {kupnji(r.n)}</span>
                           {r.overdue && !r.settled && (
                             <span className="ml-1 text-xs text-amber-700">· dospjelo, čeka potvrdu</span>
@@ -312,10 +315,21 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
                                         {shortDate(x.event_date, today)}
                                       </td>
                                       {/* ⚠ `w-full max-w-0` — bez gornje granice tekst rasteže tablicu (S119) */}
-                                      <td className="py-0.5 pr-2 w-full max-w-0 align-top">
-                                        <span className="block truncate">
-                                          {line2Text(line2Cols, lineValues.byKey.get(lineSessionKey(x))?.text, x.comment) || '—'}
-                                        </span>
+                                      {/* Dva retka (Saša, T-S171-6): Tip/Podtip, pa opis ispod — u
+                                          jednom retku opis nije stao. Bez opisa ostaje jedan. */}
+                                      <td className="py-1 pr-2 w-full max-w-0 align-top">
+                                        {(() => {
+                                          const p = line2Parts(line2Cols, lineValues.byKey.get(lineSessionKey(x))?.text, x.comment);
+                                          if (!p.attrs && !p.comment) return <span className="block">—</span>;
+                                          return (
+                                            <>
+                                              {p.attrs && <span className="block truncate">{p.attrs}</span>}
+                                              {p.comment && (
+                                                <span className={cn('block truncate', p.attrs && 'text-gray-500')}>{p.comment}</span>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
                                       </td>
                                       <td className="py-0.5 text-right whitespace-nowrap tabular-nums align-top">
                                         {amt === 0 ? '—' : formatSigned(amt, unit)}

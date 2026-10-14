@@ -20,7 +20,7 @@ mkdirSync(cache, { recursive: true });
 const out = join(cache, 'navAndLine2.bundle.mjs');
 await build({
   stdin: {
-    contents: "export * from './src/lib/navActivities'; export { attrColumnText, line2Text, resolveColumns } from './src/lib/listColumns';",
+    contents: "export * from './src/lib/navActivities'; export { attrColumnText, line2Parts, line2Text, resolveColumns } from './src/lib/listColumns';",
     resolveDir: process.cwd(), loader: 'ts', sourcefile: 'entry.ts',
   },
   bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'error',
@@ -73,6 +73,13 @@ eq('vrijednosti još nema ⇒ opis', m.line2Text(line2, undefined, 'Konzum'), 'K
 eq('ništa ⇒ prazno', m.line2Text(line2, undefined, '  '), '');
 eq('map skraćuje (line1 kolona)', m.attrColumnText(cols[1], t({ racun: 'Kokin tekući ZABA' })), 'ZABA');
 eq('nepoznata vrijednost cijela', m.attrColumnText(cols[1], t({ racun: 'Novi račun' })), 'Novi račun');
+// line2Parts — košara crta dva retka (Saša, T-S171-6: u jednom opis nije stao)
+eq('dijelovi: Tip/Podtip i opis odvojeno',
+  m.line2Parts(line2, t({ tip: 'Domaćinstvo', podtip: 'Hrana i ostalo' }), 'Konzum 4/6'),
+  { attrs: 'Domaćinstvo/Hrana i ostalo', comment: 'Konzum 4/6' });
+eq('dijelovi: bez opisa', m.line2Parts(line2, t({ tip: 'Prijevoz' }), null), { attrs: 'Prijevoz', comment: '' });
+eq('dijelovi: config bez comment kolone ⇒ opis se ne pokazuje',
+  m.line2Parts(line2.filter(c => c.role !== 'comment'), t({ tip: 'X' }), 'opis'), { attrs: 'X', comment: '' });
 eq('bez configa: zadane kolone ne pucaju', typeof m.line2Text(m.resolveColumns(null).filter(c => c.mobile === 'line2'), undefined, 'x'), 'string');
 
 console.log(failed ? `\n❌ ${failed} pao` : '\n✅ sve prolazi');

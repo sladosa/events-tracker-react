@@ -133,7 +133,7 @@ test.describe('S171 — košare i uski filtar', () => {
       id: E2, user_id: OWNER_ID, category_id: CAT, event_date: inDays(-30),
       session_start: ss(-30), comment: 'Druga kupnja S171',
     });
-    // Tip/Podtip na Prvoj ⇒ u košari `Putovanja/Smještaj · Prva kupnja S171`.
+    // Tip/Podtip na Prvoj ⇒ u košari `Putovanja/Smještaj`, ispod opis.
     for (const [slug, name, val, so] of [['tip', 'Tip', 'Putovanja', 1], ['podtip', 'Podtip', 'Smještaj', 2]] as const) {
       const defId = randomUUID();
       await supabasePost(page, 'attribute_definitions', {
@@ -191,8 +191,12 @@ test.describe('S171 — košare i uski filtar', () => {
     await expect(tile.getByText(/dospjelo, čeka potvrdu/)).toBeVisible();
     // Zadano rasklopljena dospjela košara ⇒ kupnje, redom po datumu kupnje.
     await expect(tile.getByText('Prva kupnja S171')).toBeVisible({ timeout: 15_000 });
-    // Tekst kao drugi redak uske liste: Tip/Podtip · opis (Saša, S171).
-    await expect(tile.getByText('Putovanja/Smještaj · Prva kupnja S171')).toBeVisible({ timeout: 15_000 });
+    // Tip/Podtip pa opis, DVA retka (Saša, T-S171-6: u jednom opis nije stao).
+    const tipLine = tile.getByText('Putovanja/Smještaj', { exact: true });
+    const opisLine = tile.getByText('Prva kupnja S171', { exact: true });
+    await expect(tipLine).toBeVisible({ timeout: 15_000 });
+    const [a, b] = [await tipLine.boundingBox(), await opisLine.boundingBox()];
+    expect(b!.y).toBeGreaterThan(a!.y + a!.height - 1);   // opis ISPOD, ne u istom retku
     const rows = tile.locator('tbody tr');
     await expect(rows.first()).toContainText('Prva kupnja S171');
     await expect(rows.nth(1)).toContainText('Druga kupnja S171');
