@@ -9033,3 +9033,8 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
 - **Sašin nalaz pri T-S171-1:** odjava → prijava ⇒ `All Areas`, a zapamćeni tab (`ui:activeTab`) i
   dalje Overview ⇒ filtar „samo razdoblje" bez izbornika Area. `filterMode` sada bez Aree vraća
   `full` (isti uvjet kao `mustStayOpen`; obnova nakon F5 ne trepće). E2E slučaj + protuprovjera.
+- **Drugi nalaz istim potezom:** nakon nove prijave i odabira `Financije_all` razdoblje je ostalo
+  All Time. Modulska zastavica „zadano već primijenjeno za Areu" (S166) preživi odjavu — ona ne
+  učitava stranicu. Sada se briše pri **ulasku u Areu** (`lastSeenArea`, u istom efektu — S170
+  pravilo „jedan efekt"); ručni All Time unutar Aree ostaje. E2E glumi odjavu navigacijom bez
+  reloada (reload bi modul počistio i test bi prolazio nad kvarom); protuprovjera pada.

@@ -17,6 +17,12 @@ interface DateRangeFilterProps {
  *  a F5 ga vrati na null ⇒ svako otvaranje appa opet kreće od zadanog (S166, Koka). */
 let defaultPeriodAppliedFor: string | null = null;
 const markDefaultApplied = (areaId: string) => { defaultPeriodAppliedFor = areaId; };
+/** Area u kojoj je filtar zadnji put bio (i `null` = All Areas). Promjena = ULAZAK u Areu
+ *  ⇒ zadano se smije primijeniti ponovo (T-S171-1, Saša: odjava → prijava → All Areas →
+ *  Financije je ostala na All Time, jer je modul i dalje „znao" da je This Year već dan —
+ *  odjava ne učitava stranicu, pa modul preživi). Ručni All Time UNUTAR Aree i dalje ostaje:
+ *  povratak iz View/Edit ne mijenja Areu (FilterProvider je iznad ruta). */
+let lastSeenArea: string | null | undefined;
 
 // Sentinel value for the All Time option in the <select>
 const ALL_TIME_VALUE = '__all_time__';
@@ -63,6 +69,11 @@ export function DateRangeFilter({ className = '', onPresetChosen, periodOnly = f
   //   Izmjereno E2E-om (S165, test zadanog razdoblja) čim je lazy Plotly
   //   promijenio tajming. Jedan efekt s `return` poslije primjene to ne može.
   useEffect(() => {
+    // Ulazak u (drugu) Areu — bilježi se i kad je čovjek birao razdoblje, zato prije `return`.
+    if (filter.areaId !== lastSeenArea) {
+      lastSeenArea = filter.areaId;
+      defaultPeriodAppliedFor = null;
+    }
     if (userModified) return;
     if (filter.areaId && defaultKey && defaultPeriodAppliedFor !== filter.areaId) {
       const preset = presets.find(p => p.key === defaultKey);

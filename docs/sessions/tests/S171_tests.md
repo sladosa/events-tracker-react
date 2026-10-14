@@ -23,6 +23,9 @@ fokus pada „pokaži kupnje"), `basketsView.test.mjs`, `filterSummary.test.mjs`
 6. (Sašin nalaz 14.10.) Odjava → prijava (može i drugi račun pa natrag) dok je zadnji tab
    Overview ⇒ filtar je `All Areas`: **mora** se vidjeti izbornik Area (puni filtar, zaglavlje
    „Filter", ne 📅). Odaberi `Financije_all` ⇒ Overview, filtar opet samo red razdoblja.
+7. (Sašin nalaz 14.10., drugi) U istom potezu, nakon odabira `Financije_all`: razdoblje mora biti
+   **This Year** (zadano Aree), ne All Time. Ručno odabran All Time unutar Aree i dalje ostaje
+   (Activities ↔ Overview, View → Back); F5 vraća This Year.
 - **Pad:** puni filtar na Overviewu, ili red ostane otvoren nakon izbora, ili bez Aree nema
   izbornika Area (jedini put do njega bio je tab Activities).
 

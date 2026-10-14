@@ -99,6 +99,7 @@ test.describe('S171 — košare i uski filtar', () => {
       id: areaId, user_id: OWNER_ID, name: `S171 kosare w${test.info().workerIndex}`,
       slug: `s171-kosare-${areaId.slice(0, 6)}`, sort_order: 95,
       settings: {
+        default_period: 'this-year',
         dashboard: {
           widgets: [{
             type: 'balance_by_group', title: 'Stanje po računu', group_by: 'racun',
@@ -196,6 +197,30 @@ test.describe('S171 — košare i uski filtar', () => {
     // Odabir Aree s Overviewom ⇒ tek tada red razdoblja.
     await areaSelect.selectOption(areaId);
     await expect(page.getByTestId('filter-summary')).toContainText('📅', { timeout: 15_000 });
+  });
+
+  test('ponovni ulazak u Areu nakon nove prijave ⇒ opet zadano This Year (T-S171-1)', async ({ page }) => {
+    // Saša: odjava → prijava drugim računom → natrag ⇒ All Areas ⇒ Financije na All Time.
+    // Odjava NE učitava stranicu, pa je modul DateRangeFiltera i dalje „znao" da je
+    // This Year za tu Areu već dan. Isto se ovdje glumi navigacijom unutar appa
+    // (bez reloada — reload bi modul počistio i test bi prošao i nad kvarom).
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const areaSelect = await selectArea(page, areaId);
+    const period = page.locator('select').filter({ has: page.locator('option', { hasText: 'This Month' }) });
+    await expect(period).toHaveValue('this-year', { timeout: 15_000 });
+
+    // „Odjava": FilterProvider se odmontira, zapamćeni filtar ne vrijedi (drugi korisnik).
+    await page.evaluate(() => {
+      for (const k of Object.keys(localStorage)) if (k.startsWith('events-tracker-filter-state')) localStorage.removeItem(k);
+      history.pushState({}, '', '/debug');
+      dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect(areaSelect).toHaveCount(0, { timeout: 15_000 });
+    await page.evaluate(() => { history.pushState({}, '', '/app'); dispatchEvent(new PopStateEvent('popstate')); });
+    await expect(areaSelect).toHaveValue('', { timeout: 15_000 });
+
+    await areaSelect.selectOption(areaId);
+    await expect(period).toHaveValue('this-year', { timeout: 15_000 });
   });
 
   test('široki ekran: Overview i dalje nudi puni filtar', async ({ page }) => {

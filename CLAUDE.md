@@ -41,12 +41,12 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2024 | [Open bugs](<#Open bugs>) | ~ |
 | 2133 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
 | 2178 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2313 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2321 | [Backlog](<#Backlog>) | ~ |
-| 2325 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2333 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 2316 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2324 | [Backlog](<#Backlog>) | ~ |
+| 2328 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2336 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2497 redaka, 18 sekcija._
+_Ukupno 2500 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2300,6 +2300,9 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   filtra: dva efekta koja pišu isto stanje ne mogu se uskladiti zastavicom koju jedan postavlja
   — spoji ih.** ⚠ E2E nad praznom Areom ne može mjeriti
   *All Time*: bez granica `handleAllTime` ne radi ništa (test zato sije jedan event).
+  ⚠ **S171: „jednom po Arei" znači jednom po ULASKU u Areu** — modulska zastavica preživi odjavu
+  (ne učitava stranicu), pa je nova prijava → All Areas → Financije ostajala na All Time.
+  `lastSeenArea` je briše na promjeni Aree, u ISTOM efektu. E2E to glumi bez reloada.
 - **Provjera rasporeda bucketa mora gledati SVU povijest, ne 12 mjeseci** (S166). `set_breakdown.py`
   je javio „nesvrstano: ništa", a All time je pokazao `nesvrstano` 9.543,16 (Tip `Investicije`,
   2023.–2024.) — v. `docs/FINANCIJE_PROCES.md` T33–T36.
