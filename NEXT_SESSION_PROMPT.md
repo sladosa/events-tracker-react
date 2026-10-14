@@ -25,9 +25,9 @@
 
 ## Što treba od tebe
 
-1. **Lokalni test T-S171-1..3 ✅, T-S171-4 ✅ osim koraka 2a:** nakon tvog testa Prev/Next iz
-   kupnje ide samo kroz košaru (bio je po cijeloj Arei), a po Back je označena kupnja na kojoj si
-   stao. Ctrl+Shift+R pa korak 2a u `S171_tests.md`.
+1. **Lokalni test:** T-S171-1..3 ✅, T-S171-4 ✅ (korak 2a: Prev/Next samo kroz košaru). Nakon tvojih
+   prijedloga novo **T-S171-6**: tekst kupnje `Tip/Podtip · opis`, ↗ „isti dan u Activities",
+   i Edit → Save → Next ostaje u košari. Ctrl+Shift+R pa koraci u `S171_tests.md`.
 2. **Deploy** (S169 + S170 + S171 jednim buildom), PowerShell:
    ```powershell
    git checkout main

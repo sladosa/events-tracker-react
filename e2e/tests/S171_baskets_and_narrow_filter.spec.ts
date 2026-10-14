@@ -95,6 +95,12 @@ test.describe('S171 — košare i uski filtar', () => {
       slug: `s171-kosare-${areaId.slice(0, 6)}`, sort_order: 95,
       settings: {
         default_period: 'this-year',
+        // Košara piše kupnju kao drugi redak uske liste (S171) — isti config kao Financije.
+        list_columns: { columns: [
+          { role: 'date', mobile: 'line1' },
+          { role: 'attr', slugs: ['tip', 'podtip'], sep: '/', mobile: 'line2' },
+          { role: 'comment', mobile: 'line2' },
+        ] },
         dashboard: {
           widgets: [{
             type: 'balance_by_group', title: 'Stanje po računu', group_by: 'racun',
@@ -127,6 +133,17 @@ test.describe('S171 — košare i uski filtar', () => {
       id: E2, user_id: OWNER_ID, category_id: CAT, event_date: inDays(-30),
       session_start: ss(-30), comment: 'Druga kupnja S171',
     });
+    // Tip/Podtip na Prvoj ⇒ u košari `Putovanja/Smještaj · Prva kupnja S171`.
+    for (const [slug, name, val, so] of [['tip', 'Tip', 'Putovanja', 1], ['podtip', 'Podtip', 'Smještaj', 2]] as const) {
+      const defId = randomUUID();
+      await supabasePost(page, 'attribute_definitions', {
+        id: defId, user_id: OWNER_ID, category_id: CAT, name, slug, data_type: 'text',
+        is_required: false, sort_order: so, validation_rules: {},
+      });
+      await supabasePost(page, 'event_attributes', {
+        event_id: E1, user_id: OWNER_ID, attribute_definition_id: defId, value_text: val,
+      });
+    }
     // Redak Aree koji NIJE u košari, između njih: Prev/Next po cijeloj Arei bi ga
     // pokupio — bez njega test ne bi razlikovao košaru od Aree (protuprovjera).
     await supabasePost(page, 'events', {
@@ -174,6 +191,8 @@ test.describe('S171 — košare i uski filtar', () => {
     await expect(tile.getByText(/dospjelo, čeka potvrdu/)).toBeVisible();
     // Zadano rasklopljena dospjela košara ⇒ kupnje, redom po datumu kupnje.
     await expect(tile.getByText('Prva kupnja S171')).toBeVisible({ timeout: 15_000 });
+    // Tekst kao drugi redak uske liste: Tip/Podtip · opis (Saša, S171).
+    await expect(tile.getByText('Putovanja/Smještaj · Prva kupnja S171')).toBeVisible({ timeout: 15_000 });
     const rows = tile.locator('tbody tr');
     await expect(rows.first()).toContainText('Prva kupnja S171');
     await expect(rows.nth(1)).toContainText('Druga kupnja S171');
@@ -201,6 +220,16 @@ test.describe('S171 — košare i uski filtar', () => {
     await page.getByTitle('Next activity').click();
     await expect(page.getByText('Druga kupnja S171').first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTitle('Next activity')).toBeDisabled({ timeout: 15_000 });
+    // View → Edit → natrag u View: popis košare ostaje (Prev s Druge vodi na Prvu, ne na
+    // redak Aree izvan košare). Bez prenošenja View učita Areu i Prev pokaže „Nije u kosari".
+    await page.getByRole('button', { name: 'Edit Activity' }).click();
+    await expect(page).toHaveURL(/\/app\/edit\//, { timeout: 15_000 });
+    await page.getByTitle('Discard changes and switch to View mode').click();
+    await expect(page.getByText('Druga kupnja S171').first()).toBeVisible({ timeout: 15_000 });
+    await page.getByTitle('Previous activity').click();
+    await expect(page.getByText('Prva kupnja S171').first()).toBeVisible({ timeout: 15_000 });
+    await page.getByTitle('Next activity').click();
+    await expect(page.getByText('Druga kupnja S171').first()).toBeVisible({ timeout: 15_000 });
     // Gumb Back u View-u (ide ravno na početnu) ⇒ označena je Druga, na kojoj je STAO.
     // (Back preglednika bi prošao i kroz View Prve, pa bi ona bila zadnja prikazana.)
     await page.getByTitle('Back to list').click();
@@ -208,10 +237,21 @@ test.describe('S171 — košare i uski filtar', () => {
     await expect(marked).toHaveCount(1, { timeout: 15_000 });
     await expect(marked).toContainText('Druga kupnja S171');
 
-    // 4. Activities: sklopljen filtar sa sažetkom razdoblja.
+    // 3c. „Isti dan u Activities ↗" na Drugoj ⇒ Activities, raspon = taj dan, samo Druga.
+    await tile.getByRole('button', { name: `Isti dan u Activities ${inDays(-30)}` }).click();
+    await expect(page.getByTestId('filter-summary')).toContainText('Custom', { timeout: 15_000 });
+    // Lista ima i skriveni desktop redak (`hidden sm:table-row`) — gleda se samo vidljivo.
+    await expect(page.locator(':text("Druga kupnja S171"):visible').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Prva kupnja S171')).toHaveCount(0);
+    await expect(page.getByText('Nije u kosari S171')).toHaveCount(0);
+    // Natrag na Overview za ostatak testa; razdoblje vrati na This Month.
+    await strip.locator('> button').first().click();
+    await expect(page.getByRole('heading', { name: /Košare/ })).toBeVisible({ timeout: 15_000 });
+
+    // 4. Activities: sklopljen filtar sa sažetkom razdoblja (dan iz 3c, Custom).
     await strip.locator('> button').nth(1).click();
     await expect(summary).toContainText('Filter');
-    await expect(summary).toContainText('This Month');
+    await expect(summary).toContainText('Custom');
     await expect(areaSelect).toBeHidden();
     await summary.click();
     await expect(areaSelect).toBeVisible();

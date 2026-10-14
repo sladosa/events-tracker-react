@@ -17,6 +17,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getLastViewed } from '@/lib/lastViewed';
+import { line2Text, resolveColumns } from '@/lib/listColumns';
+import { useListColumnValues } from '@/hooks/useListColumnValues';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
 import { formatSigned, todayIso } from '@/lib/amountFormat';
@@ -25,7 +27,7 @@ import { fetchBasketLines, findSettleRow, type BasketLine } from '@/lib/dueConfi
 import {
   basketKey, basketNavList, defaultOpenKey, lineSessionKey, needsSettleCheck, planBasketView, type BasketAccountGroup,
 } from '@/lib/basketsView';
-import type { BalanceByGroupWidget, DueConfig, UUID } from '@/types/database';
+import type { BalanceByGroupWidget, DueConfig, ListColumnsConfig, UUID } from '@/types/database';
 
 const T = THEME.overview;
 
@@ -48,6 +50,10 @@ interface Props {
   focusKey?: string | null;
   /** Promjena = upis u traci ili saldu ⇒ učitaj ponovo. */
   reloadToken?: number;
+  /** `settings.list_columns` — kupnja se piše kao drugi redak uske liste (Tip/Podtip · opis). */
+  listColumns?: ListColumnsConfig | null;
+  /** „Isti dan u Activities ↗" — sve kupnje tog dana (i sve rate plana: dijele dan kupnje). */
+  onShowDay?: (day: string) => void;
 }
 
 /** `2026-11-11` → `11.11.` (godina samo kad nije tekuća, isto kao lista, S119). */
@@ -64,7 +70,7 @@ const kupnji = (n: number) =>
 type Lines = BasketLine[] | { error: string } | undefined;
 const isLinesErr = (l: Lines): l is { error: string } => !!l && !Array.isArray(l);
 
-export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focusKey, reloadToken }: Props) {
+export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focusKey, reloadToken, listColumns, onShowDay }: Props) {
   const nav = useNavigate();
   // Redak na kojem je čovjek u View-u STAO (i nakon Prev/Next) — označava se po povratku
   // (T-S171-4, Saša: „teško je prepoznati iz kojeg si eventa došao natrag"). `lastViewed.ts`.
@@ -78,6 +84,16 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
   );
   const [lines, setLines] = useState<Record<string, Lines>>({});
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Tekst kupnje = drugi redak uske liste (S171, Saša: opisa nema uvijek ⇒ Tip/Podtip).
+  // Iste kolone i ISTI hook kao lista — bez nove postavke i bez druge kopije pravila.
+  const line2Cols = useMemo(() => resolveColumns(listColumns).filter(c => c.mobile === 'line2'), [listColumns]);
+  const loadedLines = useMemo(
+    () => Object.values(lines).filter((l): l is BasketLine[] => Array.isArray(l)).flat(),
+    [lines],
+  );
+  const lineGroups = useMemo(() => basketNavList(loadedLines, areaId), [loadedLines, areaId]);
+  const lineValues = useListColumnValues({ areaId, columns: line2Cols, activities: lineGroups });
   const today = todayIso();
 
   const load = useCallback(async () => {
@@ -297,11 +313,26 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
                                       </td>
                                       {/* ⚠ `w-full max-w-0` — bez gornje granice tekst rasteže tablicu (S119) */}
                                       <td className="py-0.5 pr-2 w-full max-w-0 align-top">
-                                        <span className="block truncate">{x.comment || '—'}</span>
+                                        <span className="block truncate">
+                                          {line2Text(line2Cols, lineValues.byKey.get(lineSessionKey(x))?.text, x.comment) || '—'}
+                                        </span>
                                       </td>
                                       <td className="py-0.5 text-right whitespace-nowrap tabular-nums align-top">
                                         {amt === 0 ? '—' : formatSigned(amt, unit)}
                                       </td>
+                                      {onShowDay && (
+                                        <td className="py-0.5 pl-1 align-top">
+                                          <button
+                                            type="button"
+                                            onClick={e => { e.stopPropagation(); onShowDay(x.event_date); }}
+                                            title={`Isti dan u Activities (${shortDate(x.event_date, today)})`}
+                                            aria-label={`Isti dan u Activities ${x.event_date}`}
+                                            className="px-1 text-teal-700 hover:text-teal-900"
+                                          >
+                                            ↗
+                                          </button>
+                                        </td>
+                                      )}
                                     </tr>
                                   );
                                 })}

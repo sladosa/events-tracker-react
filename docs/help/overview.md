@@ -237,10 +237,14 @@ kao grupe košara u delta Excelu. Za razliku od trake, ovdje su i **buduće** ko
 - **dospjelo, čeka potvrdu** — dan naplate je prošao, a košara još nije potvrđena (vidi
   traku iznad). **naplata upisana, već u stanju** — skupna naplata je upisana, pa se košara
   više ne oduzima (bila bi oduzeta dvaput).
-- Dodir na košaru je rasklopi: kupnje redom po danu kupnje, s opisom i iznosom. Dodir na
-  kupnju otvori redak. U tom prikazu **Prev / Next** idu samo kroz kupnje **te košare**,
+- Dodir na košaru je rasklopi: kupnje redom po danu kupnje, i uz svaku **Tip/Podtip · opis**
+  (isto kao drugi redak liste na mobitelu) i iznos. Dodir na kupnju otvori redak. U tom prikazu **Prev / Next** idu samo kroz kupnje **te košare**,
   istim redom kao u pločici. Nakon **Back** označena je (obojena) kupnja na kojoj si **stao**,
-  i dovedena u vidik.
+  i dovedena u vidik. **Edit** iz tog prikaza ne prekida niz: nakon spremanja Prev/Next i dalje
+  idu kroz košaru, pa se može ispravljati jedna za drugom.
+- **↗** na kraju kupnje otvara **Activities za taj dan** (razdoblje *Custom*, od–do = dan
+  kupnje, bez uvjeta). Tu su sve rate istog plana zajedno — dijele dan kupnje, dok je u košari
+  od plana samo jedna. Natrag na *This Year* biraš u Period.
   Rasklopljena je zadano **sljedeća** košara.
 - Pločica **ne gleda razdoblje iz filtra** — košare su budućnost.
 - Prikazuju se samo **otvorene** košare (bar jedna kupnja `Planiran`). Potvrđena košara

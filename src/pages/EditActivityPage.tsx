@@ -14,7 +14,8 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { navFromState, replaceSessionInNav } from '@/lib/navActivities';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { persistPendingOptions, failedOptionsMessage, noNewOptionsHintFor } from '@/lib/pendingOptions';
@@ -104,7 +105,22 @@ export function EditActivityPage() {
   const [searchParams] = useSearchParams();
   const categoryIdParam = searchParams.get('categoryId') as UUID | null;
   const noSession = searchParams.get('noSession') === '1';
-  
+  // S171: popis za Prev/Next (košara ili lista) i autor putuju View → Edit → View —
+  // inače View nakon spremanja učita cijelu Areu i Next skače po svemu (`navActivities.ts`).
+  const location = useLocation();
+  const ownerIdParam = searchParams.get('userId');
+  const navList = navFromState(location.state);
+  /** Put i state za povratak u View. `oldNew` = Save promijenio `session_start`. */
+  const viewTarget = (segment: string, oldNew?: { from: string; to: string }) => {
+    const q = [
+      noSession ? 'noSession=1' : null,
+      categoryIdParam ? `categoryId=${categoryIdParam}` : null,
+      ownerIdParam ? `userId=${ownerIdParam}` : null,
+    ].filter(Boolean).join('&');
+    const list = navList && oldNew ? replaceSessionInNav(navList, oldNew.from, oldNew.to, categoryIdParam) : navList;
+    return [`/app/view/${segment}${q ? `?${q}` : ''}`, list ? { state: { navActivities: list } } : undefined] as const;
+  };
+
   // ============================================
   // EDIT-P2: Parent Events State
   // Parent eventi (Activity, Gym) su dijeljeni po sesiji.
@@ -1402,11 +1418,7 @@ export function EditActivityPage() {
       // Success! Navigate to View Details
       if (sessionStart) {
         const encodedNew = encodeURIComponent(newSessionStart);
-        if (noSession) {
-          navigate(`/app/view/${encodedNew}?noSession=1${categoryIdParam ? `&categoryId=${categoryIdParam}` : ''}`);
-        } else {
-          navigate(`/app/view/${encodedNew}${categoryIdParam ? `?categoryId=${categoryIdParam}` : ''}`);
-        }
+        navigate(...viewTarget(encodedNew, noSession ? undefined : { from: decodeURIComponent(sessionStart), to: newSessionStart }));
       } else {
         navigate('/app');
       }
@@ -1436,14 +1448,10 @@ export function EditActivityPage() {
     }
   }, [isDirty, navigate, sessionStart, categoryIdParam, noSession]);
 
-  const handleViewMode = useCallback(() => {
+  const handleViewMode = () => {
     if (!sessionStart) return;
-    if (noSession) {
-      navigate(`/app/view/${sessionStart}?noSession=1${categoryIdParam ? `&categoryId=${categoryIdParam}` : ''}`);
-    } else {
-      navigate(`/app/view/${sessionStart}${categoryIdParam ? `?categoryId=${categoryIdParam}` : ''}`);
-    }
-  }, [sessionStart, noSession, categoryIdParam, navigate]);
+    navigate(...viewTarget(sessionStart));
+  };
 
   const handleConfirmCancel = useCallback(() => {
     setShowCancelDialog(false);
@@ -1609,13 +1617,7 @@ export function EditActivityPage() {
             </button>
             {sessionStart && (
               <button
-                onClick={() => {
-                  if (noSession) {
-                    navigate(`/app/view/${sessionStart}?noSession=1${categoryIdParam ? `&categoryId=${categoryIdParam}` : ''}`);
-                  } else {
-                    navigate(`/app/view/${sessionStart}${categoryIdParam ? `?categoryId=${categoryIdParam}` : ''}`);
-                  }
-                }}
+                onClick={() => navigate(...viewTarget(sessionStart))}
                 className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm font-medium"
               >
                 Pregledaj

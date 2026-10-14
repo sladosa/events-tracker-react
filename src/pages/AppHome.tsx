@@ -281,6 +281,7 @@ function AppContent() {
   const {
     config: dashboardConfig,
     groupings: areaGroupings,
+    listColumns: areaListColumns,
     loaded: dashboardLoaded,
     error: dashboardError,
     reload: reloadDashboard,
@@ -1180,6 +1181,7 @@ function AppContent() {
               areaId={filter.areaId}
               config={dashboardConfig}
               groupings={areaGroupings}
+              listColumns={areaListColumns}
               canWrite={!isReadOnlyGrantee}
               isOwner={!sharedContext}
               onNavigateToActivities={() => setActiveTab('activities')}

@@ -9049,3 +9049,12 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
   (`lastViewed.ts`, upisuje ga View) — ne iz `location.state.highlightKey`, koji Back preglednika
   /swipe ne nosi, a stari ostaje u povijesti. E2E sije PRAVE kupnje + redak Aree izvan košare
   (bez njega protuprovjera ne bi razlikovala košaru od Aree); obje protuprovjere padaju.
+- **Sašini prijedlozi nakon testa (odobreni):** (1) kupnja u košari piše **drugi redak uske liste**
+  (`Tip/Podtip · opis`) — pravilo `AttrCell` izvučeno u `attrColumnText`/`line2Text`
+  (`listColumns.ts`), lista i košara dijele jednu kopiju i isti hook vrijednosti; (2a) **kvar:**
+  View → Edit → Save gubio je popis za Prev/Next (i autora) pa je Next nakon spremanja skakao po
+  cijeloj Arei — sada `navActivities.ts` (`replaceSessionInNav` kad Save promijeni datum), Edit ima
+  jedan `viewTarget` za sva tri povratka u View; (2b) **↗ „isti dan u Activities"** — Custom raspon
+  = dan kupnje, uvjet obrisan (drill `Racun = ZABA` bi sakrio kartične). Odbačeno: Back u Activities
+  umjesto u košaru, i filtar `Datum naplate = dan` (pokupio bi i `Racun` retke tog dana).
+  E2E: tekst, Edit u nizu, ↗ (protuprovjera: bez prijenosa u Edit pada na Prev); `navAndLine2.test.mjs`.

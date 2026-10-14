@@ -103,6 +103,41 @@ export function resolveColumns(config: ListColumnsConfig | null | undefined): Re
   });
 }
 
+/**
+ * Tekst `attr` kolone za jedan redak — JEDNA kopija pravila (S171): dijele je
+ * lista (`AttrCell`) i pločica Košare. `map` skraćuje vrijednost (`Kokin tekući
+ * ZABA` → `ZABA`; nepoznata ostaje cijela), ista vrijednost dvaput se ne ponavlja
+ * (`N/A/N/A` je jeo pola uske linije), `sep` spaja. Prazno = `''`.
+ */
+export function attrColumnText(
+  col: Pick<ListColumn, 'slugs' | 'map' | 'sep'>,
+  text: Map<string, string> | undefined,
+): string {
+  return (col.slugs ?? [])
+    .map(sl => text?.get(sl))
+    .filter((v): v is string => !!v)
+    .map(v => col.map?.[v] ?? v)
+    .filter((v, i, all) => all.indexOf(v) === i)
+    .join(col.sep ?? '/');
+}
+
+/**
+ * Drugi redak uske liste kao tekst (S171, pločica Košare: „Tip/Podtip · opis",
+ * isto kao lista na mobitelu): `attr` i `comment` kolone s `mobile: 'line2'`,
+ * redom iz configa, spojene s ` · `. Prazni dijelovi se izostavljaju.
+ */
+export function line2Text(
+  columns: ResolvedColumn[],
+  text: Map<string, string> | undefined,
+  comment: string | null,
+): string {
+  return columns
+    .filter(c => c.mobile === 'line2' && (c.role === 'attr' || c.role === 'comment'))
+    .map(c => (c.role === 'comment' ? (comment ?? '').trim() : attrColumnText(c, text)))
+    .filter(Boolean)
+    .join(' · ');
+}
+
 /** Every attribute slug the columns read. Feeds one bounded query, and the
  *  pre-delete warning that `depends_on` references already get. */
 export function listColumnSlugRefs(config: ListColumnsConfig | null | undefined): Set<string> {

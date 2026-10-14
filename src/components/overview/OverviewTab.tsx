@@ -20,7 +20,7 @@ import { BalanceByGroupTile } from './BalanceByGroupTile';
 import { DueStrip } from './DueStrip';
 import { BreakdownTile } from './BreakdownTile';
 import { BasketsTile } from './BasketsTile';
-import type { DashboardConfig, DueConfig, Grouping, UUID } from '@/types/database';
+import type { DashboardConfig, DueConfig, Grouping, ListColumnsConfig, UUID } from '@/types/database';
 
 /** Koja je pločica otvorena — v. „Harmonika" u komponenti. Modul, ne storage.
  *  Ključ je `"<i>"` za pločicu iz configa, `"<i>:k"` za košare uz saldo `i` (S171). */
@@ -33,6 +33,8 @@ interface Props {
   config: DashboardConfig;
   /** `settings.groupings` — bucketi pločice razreza (RAZREZ §10.2). */
   groupings?: Record<string, Grouping> | null;
+  /** `settings.list_columns` — Košare pišu kupnju kao drugi redak uske liste (S171). */
+  listColumns?: ListColumnsConfig | null;
   canWrite: boolean;
   /** D5 (DOSPJELO_SPEC): potvrdu košare upisuje samo vlasnica Aree. */
   isOwner: boolean;
@@ -40,8 +42,10 @@ interface Props {
   onNavigateToActivities: () => void;
 }
 
-export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNavigateToActivities }: Props) {
-  const { filter, setAttrFilter } = useFilter();
+export function OverviewTab({ areaId, config, groupings, listColumns, canWrite, isOwner, onNavigateToActivities }: Props) {
+  const {
+    filter, setAttrFilter, clearAttrFilter, clearCommentSearch, setDateRange, setPeriodLabel, setPeriodKey,
+  } = useFilter();
   // Skupni redak iz trake miče saldo ⇒ pločica se mora ponovo učitati.
   const [balanceReload, setBalanceReload] = useState(0);
 
@@ -75,6 +79,20 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
     openTile(openKey !== key ? key : n > 1 ? tileKeys[(at + 1) % n] : null);
   };
   const many = tileKeys.length > 1;
+  /**
+   * Košare „isti dan u Activities ↗" (S171, Saša: rate plana jedna iza druge — sve
+   * dijele dan kupnje, a u košari je od plana samo jedna). Raspon = taj dan (Custom,
+   * pa ga zadano razdoblje ne pregazi), uvjet se briše — drill `Racun = ZABA` bi
+   * sakrio upravo kartične kupnje. Sažetak filtra kaže što je postavljeno.
+   */
+  const showDay = (day: string) => {
+    clearAttrFilter();
+    clearCommentSearch();
+    setDateRange(day, day);
+    setPeriodLabel('Custom');
+    setPeriodKey('custom');
+    onNavigateToActivities();
+  };
   /** Traka „pokaži kupnje" ⇒ otvori košare i rasklopi tu (`basket|due#n`). */
   const [basketFocus, setBasketFocus] = useState<string | null>(null);
   const showBasket = (i: number, key: string) => {
@@ -180,6 +198,8 @@ export function OverviewTab({ areaId, config, groupings, canWrite, isOwner, onNa
                   onToggleCollapsed={() => toggleTile(basketsKey(i))}
                   focusKey={basketFocus}
                   reloadToken={balanceReload}
+                  listColumns={listColumns}
+                  onShowDay={showDay}
                 />
               )}
               </Fragment>

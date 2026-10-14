@@ -517,12 +517,15 @@ export function ViewDetailsPage() {
 
   const handleEdit = useCallback(() => {
     if (!sessionStart) return;
-    if (noSession) {
-      navigate(`/app/edit/${sessionStart}?noSession=1${categoryIdParam ? `&categoryId=${categoryIdParam}` : ''}`);
-    } else {
-      navigate(`/app/edit/${sessionStart}${categoryIdParam ? `?categoryId=${categoryIdParam}` : ''}`);
-    }
-  }, [sessionStart, noSession, categoryIdParam, navigate]);
+    // S171: popis za Prev/Next i autor idu u Edit i natrag (`navActivities.ts`) —
+    // „više njih redom" (View → Edit → Save → Next) inače nakon Savea skače po cijeloj Arei.
+    const q = [
+      noSession ? 'noSession=1' : null,
+      categoryIdParam ? `categoryId=${categoryIdParam}` : null,
+      ownerIdParam ? `userId=${ownerIdParam}` : null,
+    ].filter(Boolean).join('&');
+    navigate(`/app/edit/${sessionStart}${q ? `?${q}` : ''}`, { state: { navActivities: activities } });
+  }, [sessionStart, noSession, categoryIdParam, ownerIdParam, activities, navigate]);
 
   // ============================================
   // Duration

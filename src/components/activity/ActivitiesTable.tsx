@@ -7,7 +7,7 @@ import { useActivities, formatTime, formatDate, formatDateCompact, type Activity
 import { useAreaDashboard } from '@/hooks/useAreaDashboard';
 import { useRunningBalance } from '@/hooks/useRunningBalance';
 import { formatAmount, formatDateHr } from '@/lib/amountFormat';
-import { resolveColumns, type ResolvedColumn } from '@/lib/listColumns';
+import { attrColumnText, resolveColumns, type ResolvedColumn } from '@/lib/listColumns';
 import { useListColumnValues, type RowValues } from '@/hooks/useListColumnValues';
 import type { UUID } from '@/types';
 import { isAttrFilterActive } from '@/lib/eventQueryBuilder';
@@ -684,27 +684,21 @@ type CellVariant = 'desktop' | 'line1' | 'line2';
 
 /** `attr` — one or more slugs joined into a single cell (e.g. `Tip / Podtip`). */
 function AttrCell({ col, values, plain, loaded, failed }: { col: ResolvedColumn; values?: RowValues; plain?: boolean; loaded?: boolean; failed?: boolean }) {
-  const parts = (col.slugs ?? [])
-    .map(sl => values?.text.get(sl))
-    .filter((v): v is string => !!v)
-    // `map` shortens a value for display (`Kokin tekući ZABA` -> `ZABA`). A value
-    // that is not in the dictionary keeps its full text — see the type comment.
-    .map(v => col.map?.[v] ?? v)
-    // The same value twice says nothing the once does not: `Tip/Podtip` on an
-    // unclassified row read `N/A/N/A` and ate half of the narrow line. Repeats
-    // are dropped, not `N/A` specifically — the column has no idea what its
-    // values mean, and a rule about one value would be domain knowledge in code.
-    // (Hiding a value outright would be the `map` dictionary's job, but import
-    // drops entries with an empty value — `structureImport.ts` `if (k && v)`.)
-    .filter((v, i, all) => all.indexOf(v) === i);
-  if (parts.length === 0) {
+  // `map` shortens a value for display (`Kokin tekući ZABA` -> `ZABA`); a value
+  // not in the dictionary keeps its full text. The same value twice says nothing
+  // the once does not (`N/A/N/A` ate half of the narrow line) — repeats are
+  // dropped, not `N/A` specifically: the column has no idea what its values mean.
+  // (Hiding a value outright would be the `map` dictionary's job, but import
+  // drops entries with an empty value — `structureImport.ts` `if (k && v)`.)
+  // `sep` default is tight on purpose: it survives the Structure roundtrip only
+  // if trimming cannot change it. ONE copy of this rule: `attrColumnText` (S171,
+  // the Baskets tile renders the same text).
+  const txt = attrColumnText(col, values?.text);
+  if (!txt) {
     if (failed && !values) return <FailedCell />;
     if (!loaded) return <LoadingCell />;
     return <span className="text-gray-400 italic">—</span>;
   }
-  // Default is tight on purpose: `Sep` survives the Structure roundtrip only
-  // if trimming cannot change it (structureImport trims every config cell).
-  const txt = parts.join(col.sep ?? '/');
   // `plain` = the narrow-screen line, which wraps. `truncate` would put
   // `white-space: nowrap` back and take the wrapping with it.
   if (plain) return <span title={txt}>{txt}</span>;

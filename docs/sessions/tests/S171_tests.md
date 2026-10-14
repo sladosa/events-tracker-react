@@ -72,6 +72,19 @@ fokus pada „pokaži kupnje"), `basketsView.test.mjs`, `filterSummary.test.mjs`
 4. F5 ⇒ otvoren je saldo, Košare zatvorene (harmonika kao razrez).
 - **Pad:** prazno / „Učitavam kupnje…" zauvijek, ili Back zatvori pločicu.
 
+## T-S171-6 Košara: tekst kupnje, ↗ isti dan, Edit u nizu (TEST, nakon Sašinih prijedloga 14.10.)
+
+1. Košare → MC 11.11.: svaka kupnja piše **Tip/Podtip · opis** kao drugi redak liste na mobitelu
+   (npr. `Putovanja/Smještaj · Kutjevo booking 2/2`); bez opisa samo `Prijevoz/Taksi, Zet, Parking`.
+2. **↗** na kraju retka (npr. `Konzum 4/6`, 29.07.) ⇒ tab Activities, filtar `Custom · 29.07.2026.`,
+   bez uvjeta; na listi su **sve** kupnje tog dana, i sve rate tog plana jedna ispod druge.
+   Period → This Year vraća normalnu listu.
+3. Košare → otvori kupnju → **Edit Activity** → promijeni nešto (npr. opis) → Save ⇒ View ⇒
+   **Next** vodi na sljedeću kupnju **iste košare** (ne na drugu transakciju Financija); opet Edit…
+   Na kraju gumb Back ⇒ označena je zadnja.
+- **Pad:** samo opis (bez Tip/Podtip), ↗ ostavi uvjet (lista prazna ili samo ZABA), ili Next nakon
+  Savea skoči izvan košare.
+
 ## T-S171-5 „pokaži kupnje" iz trake (PROD, uz prvu dospjelu košaru — ~11.11. MC)
 
 1. Kad traka „Čeka potvrdu" pokaže MC košaru: ispod Σ dodir na **pokaži kupnje**.

@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 77 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 129 | [Critical rules](<#Critical rules>) | X |
-| 1293 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1767 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1783 | [Key files](<#Key files>) |  |
-| 1914 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1934 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1957 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1985 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2025 | [Open bugs](<#Open bugs>) | ~ |
-| 2134 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2179 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2321 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2329 | [Backlog](<#Backlog>) | ~ |
-| 2333 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2341 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1296 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1770 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1786 | [Key files](<#Key files>) |  |
+| 1917 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1937 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1960 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1988 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2028 | [Open bugs](<#Open bugs>) | ~ |
+| 2137 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2182 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2328 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2336 | [Backlog](<#Backlog>) | ~ |
+| 2340 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2348 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2505 redaka, 18 sekcija._
+_Ukupno 2512 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -522,6 +522,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   što `dashboardConfig.ts` radi za pločice). Ovdje je pad **tiši** nego kod pločice:
   RPC na nepoznat slug baci grešku, a kolona samo ostane prazna — a prazno zbog mrtve
   reference izgleda **identično** kao prazno zbog nedostatka podatka.
+- **Tekst `attr` kolone ima JEDNU kopiju: `attrColumnText`** (`map`, bez ponavljanja, `sep`;
+  S171). Koriste je lista (`AttrCell`) i pločica Košare (`line2Text` = drugi redak uske liste).
+  Nova ploha koja pokazuje redak „kao lista" ide kroz nju i kroz `useListColumnValues`.
 - **`pair` mora pokazati OBJE strane kad su obje popunjene.** ZABA `Anja 73/96`
   (25.08.2025.) nosi uplatu `450,00` **i** isplatu `0,70` u istom eventu i to nije
   greška nego vjeran spoj dvaju redaka izvoda. Ćelija koja pokaže jednu skriva pola
@@ -2292,6 +2295,10 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   njega View sam učita cijelu Areu (500, bez datuma) i Prev/Next skače po svemu. Košare predaju
   `basketNavList`. Oznaka „gdje sam stao" se čita iz `lastViewed.ts` (upisuje View), **ne** iz
   `location.state.highlightKey` — Back preglednika/swipe ga ne nose, a stari ostaje u povijesti.
+  ⚠ **Popis mora preživjeti i View → Edit → View** (S171, kvar star koliko i Edit): Edit ga je
+  gubio na sva tri povratka, pa je Next nakon Savea skakao po Arei. Sada `viewTarget` u Editu +
+  `replaceSessionInNav` (Save koji promijeni datum mijenja `session_start` — inače `currentIndex
+  = -1` i ugase se oba gumba). Novi put u View/Edit nosi `navActivities` i `userId`.
 - **Filtar na uskom ekranu (S171):** Overview = samo red razdoblja (selektor **skriven, ne
   odmontiran**), Activities sklopljen sa sažetkom. Sklopljen filtar koji ne kaže ništa nitko ne
   sklapa — sažetak je uvjet sklapanja, ne ukras. Bez Aree selektor se ne skriva (`mustStayOpen`).
