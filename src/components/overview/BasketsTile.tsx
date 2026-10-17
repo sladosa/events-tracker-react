@@ -254,23 +254,26 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
                         className="w-full flex items-start justify-between gap-2 text-left"
                         aria-expanded={open}
                       >
+                        {/* Dva retka s obje strane (S172, Kokin mali iPhone): kartica · dan
+                            nasuprot iznosu, broj kupnji nasuprot „ostaje". U jednom retku se
+                            „· 35 kupnji" podvlačio pod iznos — razmak ispred njega bio je unutar
+                            `nowrap`, pa redak nije imao gdje prijeći u novi. */}
                         <span className="min-w-0 text-sm text-gray-900">
-                          <span className="text-gray-400 text-xs mr-1">{open ? '▾' : '▸'}</span>
-                          {/* Kartica i dan zajedno — lom ide tek ispred broja kupnji. */}
-                          <span className="whitespace-nowrap">
+                          <span className="block whitespace-nowrap">
+                            <span className="text-gray-400 text-xs mr-1">{open ? '▾' : '▸'}</span>
                             <span className="font-medium">{r.basket}</span>
                             {' · '}
                             {r.estimate ? '~' : ''}{shortDate(r.due_date, today)}
                           </span>
-                          <span className="text-gray-500 whitespace-nowrap"> · {r.n} {kupnji(r.n)}</span>
-                          {r.overdue && !r.settled && (
-                            <span className="ml-1 text-xs text-amber-700">· dospjelo, čeka potvrdu</span>
-                          )}
-                          {r.settled && (
-                            <span className="ml-1 text-xs text-gray-500">· naplata upisana, već u stanju</span>
-                          )}
+                          <span className="block pl-3 text-xs text-gray-500">
+                            {r.n} {kupnji(r.n)}
+                            {r.overdue && !r.settled && (
+                              <span className="text-amber-700"> · dospjelo, čeka potvrdu</span>
+                            )}
+                            {r.settled && <span> · naplata upisana, već u stanju</span>}
+                          </span>
                         </span>
-                        <span className="text-right whitespace-nowrap tabular-nums">
+                        <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
                           <span className="block text-sm font-medium text-gray-900">
                             {formatSigned(-r.sumCents / 100, unit)}
                           </span>
