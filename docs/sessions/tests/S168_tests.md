@@ -22,7 +22,7 @@ Preduvjet: `npm run dev` (banner **TEST**), `Financije_all > Transakcija`, **Ctr
 
 **Pad:** MC pokazuje `18.49 · 18.48 · 18.48` (stari kod ili keš ⇒ Ctrl+Shift+R; ako ostane, javiti).
 
-## T-S168-2 ⬜ TEST — Structure export nosi `Remainder`, ponovni uvoz ne mijenja ništa
+## T-S168-2 ✅ (17.10., Saša) TEST — Structure export nosi `Remainder`, ponovni uvoz ne mijenja ništa
 
 1. Structure → Export. List `Automations`, redak `rata` za `Financije_all`: zadnja kolona
    **`Remainder`** = `Mastercard=last | Visa=first` (redoslijed smije biti obrnut).

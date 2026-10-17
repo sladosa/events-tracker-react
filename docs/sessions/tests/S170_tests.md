@@ -6,7 +6,7 @@ Pregled: [PENDING_TESTS.md](../PENDING_TESTS.md#s170--filtar-izbornik-rate-bez-b
 
 Brojke su izmjerene na TEST-u 13.10.2026. (`Financije_all`, kopija PROD-a iz S157 + kasnije izmjene na TEST-u).
 
-## T-S170-1 Filter by `Izvor` je izbornik (TEST)
+## T-S170-1 ✅ (17.10., Saša: 370 = baza) Filter by `Izvor` je izbornik (TEST)
 
 1. `npm run dev` (banner TEST), Area `Financije_all`, kategorija `Transakcija`, razdoblje This Year.
 2. Filter by → `Izvor`.
@@ -83,12 +83,15 @@ $env:ET_TARGET='prod'; .\Financije\run.bat set_due_visa_S170.py
 4. Kontrola: `visa_uvoz_izvoda.py` s tim izvodom kaže `RF naplata … ✓ već upisana` (ne dodaje drugi).
 - **Pad:** Σ manji od PBZ naplate za iznos `PRIMLJENA UPLATA` (= neto), ili alat dodaje drugi redak naplate.
 
-## T-S170-10 TEST: uvoz ne traži kvačicu „potvrđeno" za kartični redak (T21)
+## T-S170-10 ✅ (17.10., Saša) TEST: uvoz ne traži kvačicu „potvrđeno" za kartični redak (T21)
 
 1. `npm run dev`, `Financije_all`, Excel export retka **prije zadnjeg sidra** ZABA: jedan `Izvor = Mastercard`, jedan `Izvor = Racun`.
 2. U fileu promijeni opis/iznos na oba ⇒ Import.
 3. **Očekivano:** pregled javlja „potvrđeno" (i traži kvačicu) **samo za Racun** redak; MC redak je obična izmjena.
-4. Ponovi s MC retkom kojem `Izvor` mijenjaš u `Racun` ⇒ kvačica se traži (ulazi u saldo).
+4. Ponovi s MC retkom kojem `Izvor` mijenjaš u `Racun` **i `Status` u `Izvrsen`** ⇒ kvačica se traži (ulazi u saldo).
+   ⚠ Samo `Izvor → Racun` uz `Status = Planiran` kvačicu **ne** traži, i to je ispravno: saldo broji
+   `Izvor = Racun` **i** `Status ≠ Planiran`, pa redak ni poslije izmjene ne ulazi u saldo (Saša 17.10.:
+   opis testa bio je nepotpun, app točan).
 
 ## T-S170-11 ✅ TEST: delta sheet — Σ košara jednog dospijeća (T12)
 

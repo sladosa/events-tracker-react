@@ -14,10 +14,10 @@ Košare „isti dan u Activities ↗" postavljaju filtar na jedan dan; povratak 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S172-1 | PROD (nakon deploya): This Year → Košare → ↗ na kupnji ⇒ Activities na taj dan ⇒ tab Overview ⇒ opet This Year, ZABA saldo = današnji; s ručno promijenjenim razdobljem u Activities ostaje ručno | ⬜ |
+| T-S172-1 | PROD (nakon deploya): This Year → Košare → ↗ na kupnji ⇒ Activities na taj dan ⇒ tab Overview ⇒ opet This Year, ZABA saldo = današnji; s ručno promijenjenim razdobljem u Activities ostaje ručno | ✅ 17.10. (Saša, lokalno TEST = kopija PROD-a) — ↗ pa tab Overview ⇒ opet This Year, saldo isti; ručni This Month u Activities ostao This Month |
 | T-S172-2 | E2E E11-4 / E12-2 / E13-2 stalno padaju — podaci na TEST-u i zastarjeli tekst | ✅ S172 (17.10.) — TEST očišćen (8 zaostalih Area, 2 tuđa sharea); `global-setup` to sada provodi pri svakom runu (pokus: podmetnuta Area + share ⇒ uklonjeni i ispisani); E13-2 spec tražio stari tekst „move up" (app: „become direct children of"). S133-1 je ovisio o tuđem shareu (`Garmin_data`) ⇒ sada sije vlastitih 1.100 eventa (protuprovjera: brojka odrezana na 1000 ⇒ pada). **Puni run 84 / 3**; S107-3 i S104-3 pojedinačno prolaze ⇒ T-S172-4 |
 | T-S172-4 | E2E povremeni padovi u punom runu: S104-3 (kategorije Fitnessa „Loading…" > 10 s, `waitFor` option), S107-3 | ⬜ pojedinačno prolaze (S104 2/2 zaredom); izmjeriti zašto se kategorije ponekad učitavaju > 10 s prije nego se produlji čekanje |
-| T-S172-3 | PROD (nakon deploya), **Kokin mali iPhone**: zaglavlje košare u dva retka — `Mastercard · 11.11.` / `35 kupnji` lijevo, iznos / `ostaje` desno, ništa se ne preklapa | ⬜ |
+| T-S172-3 | PROD (nakon deploya), **Kokin mali iPhone**: zaglavlje košare u dva retka — `Mastercard · 11.11.` / `35 kupnji` lijevo, iznos / `ostaje` desno, ništa se ne preklapa | ⬜ **laptop ✅ 17.10.** (Saša, Chrome iPhone 393 px: dva retka, bez preklapanja); ostaje Kokin iPhone nakon deploya (širi iOS font) |
 
 ---
 
@@ -46,7 +46,7 @@ Na uskom ekranu Overview od filtra nudi samo red razdoblja, a Activities kreće 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S170-1 | TEST: Filter by `Izvor` ⇒ izbornik `Racun, Visa, Cash, Mastercard`; `Racun` This Year ≈ 355 | ⬜ **izbornik ✅ 13.10. (Saša, lokalno `dev:prod`, slika: ravan `Racun, Visa, Cash, Mastercard`)**; ostaje broj redaka nakon odabira |
+| T-S170-1 | TEST: Filter by `Izvor` ⇒ izbornik `Racun, Visa, Cash, Mastercard`; `Racun` This Year ≈ 355 | ✅ 17.10. (Saša, TEST = kopija PROD-a 17.10.) — izbornik ravan `Racun, Visa, Cash, Mastercard` (13.10.); `Izvor = Racun`, This Year ⇒ **370 events total** = baza (izmjereno isti dan, TEST i PROD 370; stara procjena 355 zastarjela) |
 | T-S170-2 | TEST: Filter by `Podtip` grupiran po Tipu; `Kuća › Popravci, održavanje` = 18 (ne 30); `gorivo` = 22 (oba auta); `Status` ravan | ✅ S170 (13.10., Saša) — grupe po Tipu (PROD `dev:prod`); TEST This Year: `Kuća › Popravci, održavanje` **18** (stari tekstualni 30), `gorivo` **22** s `auto C5` i `auto Lacetti` |
 | T-S170-3 | TEST: Add, `Rate?` ✓ i `Broj rata` prazno/1 ⇒ poruka, ništa spremljeno; 3 ⇒ rata modal | ✅ S170 (13.10., Saša) — prazno i `1` ⇒ poruka, forma ostaje; `3` ⇒ rata modal (MC: 0,34 · 0,34 · 0,32, zadnja nosi ostatak = T22 na TEST-u). Usput: gumb „Kreiraj 3 rata“ ⇒ „3 rate“ (popravljeno) |
 | T-S170-4 | PROD nakon deploya: Network bez `vendor-plotly`/`vendor-excel` na početku; krug, Export/Import, Structure modali rade („Loading…") | ⬜ |
@@ -55,7 +55,7 @@ Na uskom ekranu Overview od filtra nudi samo red razdoblja, a Activities kreće 
 | T-S170-7 | PROD nakon 057 + deploya: Structure = 1 `rpc_category_event_counts`, 0 `events?select=id` HEAD; brojke kao prije | ✅ S170 (13.10., Saša) — TEST i **PROD** (`dev:prod`, Saša kao grantee na `Financije_all`): 2 × RPC 200 ~1 kB (dev StrictMode duplira; deployano 1), **0** `events?select=id` (prije 39 po učitavanju) |
 | T-S170-8 | PROD **poslije deploya**: `set_due_visa_S170.py` dry ⇒ popis Visa košara; `--apply --yes-prod` ⇒ `Visa ✓ · ostale netaknute ✓` | ✅ 14.10. (Saša) — dry run: Visa 05.11. 20 redaka / 579,05, najranija 05.11. (stare 03.10. nema); `--apply` ⇒ `Visa ✓ · ostale postavke netaknute ✓` |
 | T-S170-9 | PROD ~03.–11.11.: Visa košara u traci, Σ „(samo isplate)“, dani od 03.11.; potvrda ⇒ `visa_uvoz_izvoda` kaže „već upisana“ | ⬜ |
-| T-S170-10 | TEST: Excel izmjena retka prije sidra — kvačica „potvrđeno“ za `Racun`, NE za `Mastercard`; MC→Racun ⇒ traži | ⬜ |
+| T-S170-10 | TEST: Excel izmjena retka prije sidra — kvačica „potvrđeno“ za `Racun`, NE za `Mastercard`; MC→Racun ⇒ traži | ✅ 17.10. (Saša, TEST) — opis: kvačica samo za `Racun` redak 09.10. („1 redak“), MC redak obična izmjena; MC → `Izvor = Racun` **i** `Status = Izvrsen` ⇒ „2 redaka“. Samo Izvor uz `Planiran` ⇒ i dalje 1 — ispravno (saldo ne broji `Planiran`), opis testa bio nepotpun |
 | T-S170-11 | TEST: delta ZABA — Σ košara jednog dospijeća (dan desno, najbliži); drugi dan ⇒ drugi Σ; `Potvrda` prazna na kartičnim retcima | ✅ S170 (13.10., Saša, TEST) — sekcija KOSARA u grupama po datumu naplate (+/−), izbornik dana uz Σ, odabrana košara žuta; „file je ok“. Usput: TEST nije imao `split.due_slug` (044) — poravnato |
 | T-S170-12 | `fill_from_izvod` nad delta sheetom sa sidrom u prozoru ⇒ „Σ kosare prosirena“, ne „List nema kontrolu“ | ⬜ |
 
@@ -89,7 +89,7 @@ Rata modal: ostatak zaokruživanja po kartici iz configa (MC zadnja, Visa prva).
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S168-1 | TEST rata modal: MC 55,45/3 ⇒ 18,49 · 18,49 · 18,47 „Zadnja…"; Visa 37,48/3 ⇒ 12,50 · 12,49 · 12,49 „Prva…" | ✅ S168 (12.10., TEST, Saša) — MC 18.49 · 18.49 · 18.47 „Zadnja…“, Visa 12.50 · 12.49 · 12.49 „Prva…“ |
-| T-S168-2 | TEST Structure export: `Automations` kolona `Remainder` = `Mastercard=last \| Visa=first`; ponovni uvoz 0 promjena | ⬜ |
+| T-S168-2 | TEST Structure export: `Automations` kolona `Remainder` = `Mastercard=last \| Visa=first`; ponovni uvoz 0 promjena | ✅ 17.10. (Saša, TEST = kopija PROD-a s postavkama) — `Automations` redak `rata`: `Remainder` = `Visa=first \| Mastercard=last`; isti file ⇒ Import: sve 0, „Nothing to import“ |
 | T-S168-3 | PROD nakon deploya: `set_rata_ostatak_S168.py --apply --yes-prod` ✓; prvi MC plan „Zadnja…", traka se slaže u cent | ⬜ **config ✅ 12.10.** (`remainder_map ✓ · ostale postavke netaknute ✓`, deploy `119653c`); ostaje korak 3: prvi Kokin MC plan „Zadnja…“ i traka 11. u cent |
 | T-S168-4 | PROD (praćenje): Kokin iPhone — lista nikad bez iznosa (kostur pa retci s iznosima) | ⬜ |
 | T-S168-5 | D7: traka pita „Je li banka skinula Σ?“ + dani (nijedan označen, bez sutra) ⇒ sažetak ⇒ „Da, upiši“; „drukčije“ = prazna polja; grantee bez pitanja | ✅ S168 (12.10., TEST, Saša) — nudi 11. i 12. i iznos; „drukčije“ ispravlja; „sve kako treba“. PROD: Koka 11.11. |

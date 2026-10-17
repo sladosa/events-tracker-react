@@ -1,6 +1,6 @@
 # S172 — testovi (2026-10-17)
 
-## T-S172-1 ⬜ Povratak na Overview vraća razdoblje od prije ↗ (PROD, nakon deploya)
+## T-S172-1 ✅ (17.10., Saša, lokalno TEST) Povratak na Overview vraća razdoblje od prije ↗ (PROD, nakon deploya)
 
 **Što je novo:** „Isti dan u Activities ↗" u Košarama postavlja filtar na jedan dan. Do sada je
 Overview nakon povratka ostajao na tom danu — saldo je pokazivao stanje NA TAJ DAN, ne danas.
