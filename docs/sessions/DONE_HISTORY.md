@@ -9159,3 +9159,11 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
   ⚠ Usput: puni run je dijelio dev server s izmjenom koda (HMR), pa je S171 vrtio **stari spec nad novim
   kodom** i pao točno na novom ponašanju — padovi u runu tijekom kojeg se kod mijenja čitaju se pojedinačno.
 - **Arhiva:** S140, S141, S152, S164 (sekcije ovdje, fileovi u `Claude-temp_R/test-sessions/archive/`).
+- **Na Sašin zahtjev (nastavak):** košare na Kokinom malom iPhoneu — „· 35 kupnji" se podvlačio pod
+  iznos (razmak unutar `nowrap`, iOS font širi) ⇒ zaglavlje u dva retka (kartica · dan / N kupnji
+  nasuprot iznos / ostaje), T-S172-3. **`prod_to_test.py --settings`** (dry run ispiše razlike po
+  ključu, staje na UUID u configu); TEST = PROD (5.424 / 51.071 / 25 sidara + settings ✓) — TEST je
+  imao Visa `next:3` i rata `3` iz doba prije S138. **E2E:** TEST očišćen (8 Area, 2 tuđa sharea),
+  `global-setup` briše tuđe shareove i Aree izvan seeda za oba E2E računa i ispisuje (pokus prošao);
+  E13-2 spec tražio stari tekst; S133-1 sije vlastitih 1.100 eventa (bio je ovisan o tuđem shareu,
+  protuprovjera pada). Puni run **84 / 3** (S104-3, S107-3 povremeni ⇒ T-S172-4).

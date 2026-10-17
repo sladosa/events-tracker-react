@@ -5,6 +5,21 @@
 
 **E2E (Playwright)**
 
+- **⚠ E2E RAČUNI SU SAMO ZA TESTOVE — `global-setup` to sada PROVODI** (S172). Na TEST-u je
+  `owner@test.com` imao `write` share na ručno testiran `Health_Sasa` (slug `health`, svibanj) i
+  sedam zaostalih Area prekinutih runova (`S100 A …`, `S121 ctx …`, drugi `Health_Sasa`, `Alpha`).
+  E11-4 i E12-2 padali su **na svakom runu** (dvije opcije „Health"; predložak `health` se ne nudi
+  jer je Area sa slugom `health` već vidljiva) i izgledali kao kvar appa. Sada `global-setup` za
+  oba E2E računa prije runa **briše share od ne-E2E korisnika** i **svaku vlastitu Areu koju seed
+  nije stvorio** (s kategorijama, eventima i P2 roditeljima), i svaku izmjenu **ispiše** — tiho
+  čišćenje bi sakrilo da je netko opet dijelio. Pokus: podmetnuta Area + share ⇒ oba uklonjena.
+  ⚠ Ručni test koji treba grantee-ja ide pod **zasebnim** računom, nikad pod E2E računom.
+  ⚠ Spec koji stvara Areu **mora** biti u `SEED_AREAS` ili ju sam brisati — inače je sljedeći run
+  obriše (namjerno).
+- **⚠ PUNI RUN DOK SE KOD MIJENJA LAŽE** (S172). Dev server (HMR) pokupi izmjenu usred runa, pa je
+  S171 vrtio **stari spec nad novim kodom** i pao točno na novom ponašanju. Padove takvog runa
+  ponovi pojedinačno prije zaključka.
+
 - **⚠ MOCK STRANIČENOG UPITA MORA VRATITI PRAZNU DRUGU STRANICU** (S171). `fetchAllPaged` staje
   tek kad stranica dođe **prazna**, pa `route.fulfill` koji na svaki `offset` vrati iste retke vrti
   beskonačno — u UI-ju „Učitavam…" zauvijek, a izgleda kao kvar koda. Čitaj `offset` iz URL-a

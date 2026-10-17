@@ -1,13 +1,17 @@
 """Kopija `Financije_all` PROD → TEST (S157). PROD se samo ČITA.
 
-  Toolsun.bat Tools\prod_to_test.py            dry run: što bi se dogodilo
-  Toolsun.bat Tools\prod_to_test.py --apply    zamijeni TEST-ove evente, atribute i sidra Aree
+  Tools\\run.bat Tools\\prod_to_test.py            dry run: što bi se dogodilo
+  Tools\\run.bat Tools\\prod_to_test.py --apply    zamijeni TEST-ove evente, atribute i sidra Aree
+  … --settings                                     i `areas.settings` (S172) — dry run ispiše razlike po ključu
 
 Što se prenosi:
   • svi eventi Aree + njihovi atributi (event ID-evi ostaju PROD-ovi ⇒ lako uspoređivanje)
   • sva sidra Aree (`balance_anchors`)
   • `validation_rules` atributa po slugu (dropdowni moraju odgovarati podacima)
-Što NE: `areas.settings` (TEST nosi config trake koji PROD možda još nema), presetovi, prilozi.
+Što NE: presetovi, prilozi; `areas.settings` SAMO uz `--settings` (S172).
+  ⚠ Bez zastavice TEST config zaostaje za PROD-om — u S170 je delta izašla u starom obliku jer TEST
+    nije imao `split.due_slug` (044), i izgledala je kao kvar koda. Zastavica nije zadana jer TEST
+    zna nositi config koji se tek razvija (traka u S156) — dry run zato kaže što bi se pregazilo.
 
 Autorstvo (Sašina odluka S157, „a"): SVI retci idu pod vlasnika TEST Aree.
   ⚠ Posljedica: `useActivities` grupira po user+kategorija+session_start, pa dva retka
@@ -16,13 +20,14 @@ Autorstvo (Sašina odluka S157, „a"): SVI retci idu pod vlasnika TEST Aree.
 
 ⚠ Prije --apply: `Tools\\run.bat Tools\\backup_db.py --env test --no-files`.
 """
-import json, sys, urllib.request
+import json, re, sys, urllib.request
 from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]   # data-prep_tools/Tools/ -> repo
 APPLY = '--apply' in sys.argv
+SETTINGS = '--settings' in sys.argv
 
 
 def client(envfile, expect_ref):
@@ -115,6 +120,16 @@ new_attrs = [{k: v for k, v in a.items() if k != 'id'} | {
     for a in p_attrs]
 new_anchors = [{k: v for k, v in x.items() if k != 'id'} | {'area_id': t_area['id'], 'created_by': OWNER}
                for x in p_anchors]
+# areas.settings po ključu (S172). Config je slug-based i ne smije nositi ID-eve
+# (preset je ID-based i zato NIKAD ne putuje, OVERVIEW §2.16) — UUID u njemu bi na TEST-u
+# pokazivao u prazno, pa se prijavljuje.
+p_set = PROD('GET', f"areas?select=settings&id=eq.{p_area['id']}")[0]['settings'] or {}
+t_set = TEST('GET', f"areas?select=settings&id=eq.{t_area['id']}")[0]['settings'] or {}
+canon = lambda v: json.dumps(v, sort_keys=True, ensure_ascii=False)
+set_diff = {k: ('samo PROD' if k not in t_set else 'samo TEST' if k not in p_set else 'razlikuje se')
+            for k in sorted(set(p_set) | set(t_set))
+            if k not in p_set or k not in t_set or canon(p_set[k]) != canon(t_set[k])}
+uuids = sorted(set(re.findall(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', canon(p_set))))
 rules_changed = [s for s, d in t_by_slug.items()
                  if s in {p_slug[i] for i in p_slug} and json.dumps(d['validation_rules'], sort_keys=True)
                  != json.dumps(next(x['validation_rules'] for x in p_defs if x['slug'] == s), sort_keys=True)]
@@ -124,6 +139,11 @@ print(f"\nPROD: {len(p_evs)} eventa, {len(p_attrs)} atributa, {len(p_anchors)} s
 print(f"TEST: {len(t_evs)} eventa, {len(t_anchors)} sidara  ⇒  bit će ZAMIJENJENO")
 print(f"Pomaknuto na slobodnu minutu (sudar nakon spajanja autora): {moved}")
 print(f"validation_rules koji se mijenjaju: {rules_changed or 'nijedan'}")
+print("areas.settings razlike (PROD vs TEST): "
+      + (', '.join(f'{k} ({v})' for k, v in set_diff.items()) or 'nijedna')
+      + ('' if SETTINGS else '  — NE prenosi se (bez --settings)'))
+if SETTINGS and uuids:
+    sys.exit(f'STOP: PROD settings nose ID-eve {uuids} — na TEST-u bi pokazivali u prazno.')
 if not APPLY:
     sys.exit('\nDry run. Za upis: --apply')
 
@@ -148,9 +168,15 @@ for s in rules_changed:
     pr = next(x['validation_rules'] for x in p_defs if x['slug'] == s)
     TEST('PATCH', f"attribute_definitions?id=eq.{t_by_slug[s]['id']}", {'validation_rules': pr})
 
+if SETTINGS:
+    TEST('PATCH', f"areas?id=eq.{t_area['id']}", {'settings': p_set})
+
 # Provjera: broj u bazi, ne broj poslanih
 _, _, chk = area_data(TEST)
 n_attr = len(attrs_of(TEST, [e['id'] for e in chk]))
 n_anc = len(TEST('GET', f"balance_anchors?select=id&area_id=eq.{t_area['id']}"))
 ok = len(chk) == len(p_evs) and n_attr == len(p_attrs) and n_anc == len(p_anchors)
 print(f"TEST sada: {len(chk)} eventa, {n_attr} atributa, {n_anc} sidara  {'✓ = PROD' if ok else '✗ NE ODGOVARA PROD-u'}")
+if SETTINGS:
+    back = TEST('GET', f"areas?select=settings&id=eq.{t_area['id']}")[0]['settings'] or {}
+    print(f"areas.settings: {'✓ = PROD' if canon(back) == canon(p_set) else '✗ NE ODGOVARA PROD-u'}")

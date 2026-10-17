@@ -15,7 +15,9 @@ Košare „isti dan u Activities ↗" postavljaju filtar na jedan dan; povratak 
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S172-1 | PROD (nakon deploya): This Year → Košare → ↗ na kupnji ⇒ Activities na taj dan ⇒ tab Overview ⇒ opet This Year, ZABA saldo = današnji; s ručno promijenjenim razdobljem u Activities ostaje ručno | ⬜ |
-| T-S172-2 | E2E E11-4 / E12-2 (i E13-2, E12-5) padaju zbog podataka na TEST-u: E2E vlasnik vidi Sašin `Health_Sasa` (slug `health`, share `write` od 18.05.) + svoj zaostali `Health_Sasa` (10.07.) ⇒ dvije opcije „Health", a predložak `health` se ne nudi | ⬜ čeka Sašinu odluku: ukinuti share/obrisati zaostatak na TEST-u, ili spec učiniti otpornim |
+| T-S172-2 | E2E E11-4 / E12-2 / E13-2 stalno padaju — podaci na TEST-u i zastarjeli tekst | ✅ S172 (17.10.) — TEST očišćen (8 zaostalih Area, 2 tuđa sharea); `global-setup` to sada provodi pri svakom runu (pokus: podmetnuta Area + share ⇒ uklonjeni i ispisani); E13-2 spec tražio stari tekst „move up" (app: „become direct children of"). S133-1 je ovisio o tuđem shareu (`Garmin_data`) ⇒ sada sije vlastitih 1.100 eventa (protuprovjera: brojka odrezana na 1000 ⇒ pada). **Puni run 84 / 3**; S107-3 i S104-3 pojedinačno prolaze ⇒ T-S172-4 |
+| T-S172-4 | E2E povremeni padovi u punom runu: S104-3 (kategorije Fitnessa „Loading…" > 10 s, `waitFor` option), S107-3 | ⬜ pojedinačno prolaze (S104 2/2 zaredom); izmjeriti zašto se kategorije ponekad učitavaju > 10 s prije nego se produlji čekanje |
+| T-S172-3 | PROD (nakon deploya), **Kokin mali iPhone**: zaglavlje košare u dva retka — `Mastercard · 11.11.` / `35 kupnji` lijevo, iznos / `ostaje` desno, ništa se ne preklapa | ⬜ |
 
 ---
 

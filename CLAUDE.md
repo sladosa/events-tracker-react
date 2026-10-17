@@ -1825,11 +1825,11 @@ data-prep_tools/Tools/prod_to_test.py
                                    sidra, `validation_rules` po slugu. PROD samo cita;
                                    zadano dry run, `--apply` zamjenjuje TEST Areu i na
                                    kraju BROJI u bazi (= PROD ili ✗). Svi retci pod TEST
-                                   vlasnikom; `areas.settings` se NE prenosi.
-                                   ⚠ Zato TEST config ZAOSTAJE za PROD-om: config
-                                   migracije (037, 041, 044, 054…) treba pustiti i na TEST.
-                                   Izmjereno S170: bez `split.due_slug` (044) delta je
-                                   izašla u starom obliku i izgledala kao kvar koda.
+                                   vlasnikom; `areas.settings` SAMO uz `--settings` (S172;
+                                   dry run ispiše razlike po ključu, staje na UUID u configu).
+                                   ⚠ Bez zastavice TEST config ZAOSTAJE za PROD-om:
+                                   S170 delta bez `split.due_slug` (044) izgledala je kao kvar
+                                   koda; S172 TEST je imao Visa `next:3` (stanje prije S138).
                                    /!\ Prije --apply: `backup_db.py --env test --no-files`.
 data-prep_tools/Tools/rls_probe.py Sto RLS STVARNO dopusta, po ulozi. Svaka proba
                                    u vlastitoj transakciji s ROLLBACK-om.

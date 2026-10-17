@@ -213,7 +213,8 @@ test.describe.serial('E13 — Add Between + Collapse Level', () => {
 
     // Modal should describe what will happen
     await expect(page.getByText(/Removing.*Mid Level/i)).toBeVisible();
-    await expect(page.getByText(/children.*move up.*Gym/i)).toBeVisible();
+    // Tekst panela: „N children (…) will become direct children of Gym” (bio je „move up”).
+    await expect(page.getByText(/children.*become direct children of.*Gym/i)).toBeVisible();
 
     // Confirm collapse
     await page.getByRole('button', { name: /^Collapse Level$/i }).click();
