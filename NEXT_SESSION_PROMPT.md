@@ -30,8 +30,7 @@
    (↗ → Overview ⇒ This Year) i **T-S172-3** (Koka, iPhone: košare bez preklapanja).
 2. **T-S170-4** — Network: filtar `vendor`, Disable cache, Ctrl+Shift+R; pa krug ⇒ `vendor-plotly`,
    Export ⇒ `vendor-excel`. Pošalji slike.
-3. Brzi: T-S169-8 (razrez nakon ↗ na PROD-u), T-S170-1 (broj `Racun` — TEST je sada svjež),
-   T-S168-2 (Structure `Remainder`), T-S170-10.
+3. Brzi: T-S169-8 (razrez nakon ↗ na PROD-u). (T-S170-1, T-S168-2, T-S170-10, T-S172-1 ✅ 17.10. na laptopu.)
 4. **Koku pitaj:** lista bez iznosa od 14.10.? (T-S168-4) · `+` iz prve? (T-S154-2) — ako ne, zatvaramo.
 5. T-S145-3 (kvačica `Not set`) nije se ponovila od 22.09. — zatvoriti?
 6. Studeni: ~03.–11.11. Visa traka (T-S170-9) · 11.11. MC traka (T-S171-5), prvi MC plan s ostatkom
@@ -56,9 +55,11 @@
 ## Otvoreno — kod (po prioritetu)
 1. **Prije 11.11. (preporuka S172):** MC alat — T13/T14 (blizak iznos = ispravak, duplikati) u
    `fill_from_izvod`, T16 (rata nasljeđuje Tip/Podtip), T23 (naknada 1,32).
-2. **T-S172-4:** povremeni E2E padovi S104-3 (kategorije Fitnessa „Loading…“ > 10 s), S107-3 —
+2. **Excel uvoz: `default_map` kad se roditelj promijeni** (Saša S172: A + upozorenje) — BACKLOG, vrh
+   „Otvoreno". Okida samo na promjenu roditelja, dijete koje je čovjek promijenio pobjeđuje.
+3. **T-S172-4:** povremeni E2E padovi S104-3 (kategorije Fitnessa „Loading…“ > 10 s), S107-3 —
    izmjeriti (trace/Network) prije produljenja čekanja.
-3. „Review“ sheet — provjera košara (čeka Sašu).
-4. F5 (`groupings` / `due` kroz Structure Excel).
-5. Delta: retci koje `fill_from_izvod` dopiše ispod sekcije nisu u grupi ni u bojanju.
-6. Nakon ↗ se ne vraćaju `attrFilter`/komentar u Activities (↗ ih briše) — nitko nije tražio.
+4. „Review“ sheet — provjera košara (čeka Sašu).
+5. F5 (`groupings` / `due` kroz Structure Excel).
+6. Delta: retci koje `fill_from_izvod` dopiše ispod sekcije nisu u grupi ni u bojanju.
+7. Nakon ↗ se ne vraćaju `attrFilter`/komentar u Activities (↗ ih briše) — nitko nije tražio.

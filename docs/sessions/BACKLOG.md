@@ -20,6 +20,18 @@
 `docs/sessions/BACKLOG_2026-09-26.md`. Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
 § S150). Nove i preformulirane stavke iz prolaza:
 
+- **Excel uvoz primjenjuje `depends_on.default_map` kad se RODITELJ promijeni (S172, Saša: odlučeno
+  „A + upozorenje")** — nađeno u T-S170-10: MC → `Izvor = Racun` u fileu ostavlja `Status = Planiran`,
+  pa redak tiho ostaje izvan salda iako je novac otišao. Forma (Add/Edit) to već radi
+  (`AttributeChainForm` korak 3), uvoz ne (S137). Izmjereno 17.10.: PROD `Racun + Planiran` = **0**.
+  **Pravilo:** okida se SAMO kad se roditelj u fileu promijenio prema bazi **i** dijete je u fileu
+  jednako bazi; dijete koje je čovjek promijenio pobjeđuje; bez promjene roditelja nikad (nema petlje).
+  Pregled pokazuje izmjenu zasebno („po pravilu Izvora") + **žuto upozorenje** jer je nije postavio
+  čovjek. Pravilo iz configa (`default_map`), ne iz koda ⇒ vrijedi za svaku Areu. Iznimka
+  (izričito `Racun + Planiran`): Edit u appu (forma predloži, čovjek vrati) ili dva uvoza. Kvačica
+  „ne primjenjuj" po retku **namjerno ne** — dodaje se tek ako se slučaj počne ponavljati.
+  ⚠ `canUpdateExisting`/`analyzeUpdates`/apply: isto pravilo na tri mjesta (S125) — jedna funkcija.
+
 - ✅ **IZVEDENO S170** (`src/lib/filterOptions.ts`: dug atribut grupiran po roditelju, kratak ravan bez ponavljanja; vrijednost izvan popisa = „(not in list)"; čuva `filterOptions.test.mjs`) — **Filtar „Filter by" za `depends_on` atribut nudi izbornik, ne slobodan tekst (S167, Saša)** —
   `Podtip` ovisi o `Tip`u, pa `AppHome` (`isSuggest`) ne nađe ravan popis opcija i daje polje za
   tekst s `ilike '%…%'`. Posljedica: `Popravci` vraća i `auto C5 / popravci` (30 umjesto 18), a
