@@ -2,7 +2,20 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S171 (2026-10-14) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S172 (2026-10-17) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S172 — povratak razdoblja nakon ↗, zatvaranje testova (2026-10-17)
+
+Košare „isti dan u Activities ↗" postavljaju filtar na jedan dan; povratak na Overview sada vraća razdoblje od prije (saldo je inače pokazivao stanje na taj dan, Sašin nalaz). Ručno razdoblje izabrano u Activities ostaje. Pamti se do F5 (`dayDrillReturn.ts`). Automatski: `dayDrillReturn.test.mjs` (7; sabotaža ruši 2), E2E `S171_baskets_and_narrow_filter` korak 3d.
+
+**Detalji testova:** [tests/S172_tests.md](tests/S172_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S172-1 | PROD (nakon deploya): This Year → Košare → ↗ na kupnji ⇒ Activities na taj dan ⇒ tab Overview ⇒ opet This Year, ZABA saldo = današnji; s ručno promijenjenim razdobljem u Activities ostaje ručno | ⬜ |
+| T-S172-2 | E2E E11-4 / E12-2 (i E13-2, E12-5) padaju zbog podataka na TEST-u: E2E vlasnik vidi Sašin `Health_Sasa` (slug `health`, share `write` od 18.05.) + svoj zaostali `Health_Sasa` (10.07.) ⇒ dvije opcije „Health", a predložak `health` se ne nudi | ⬜ čeka Sašinu odluku: ukinuti share/obrisati zaostatak na TEST-u, ili spec učiniti otpornim |
 
 ---
 
@@ -17,7 +30,7 @@ Na uskom ekranu Overview od filtra nudi samo red razdoblja, a Activities kreće 
 | T-S171-1 | TEST mobitel: Overview = samo red razdoblja; izbor razdoblja ga sklopi; **bez odabrane Aree puni filtar** | ✅ 14.10. (Saša, lokalno TEST) — uz dva nalaza (odjava/prijava: izbornik Area; ponovni ulazak: This Year), oba popravljena i potvrđena |
 | T-S171-2 | TEST mobitel: Activities sklopljen sa sažetkom (razdoblje, Podtip, uvjet s drilla); Clear all unutra | ✅ 14.10. (Saša) — 1–4 ok (drill = dodir na iznos salda); 5: uvjet s drilla ne preživi F5 — staro ponašanje (filtar pamti Areu/kategoriju/razdoblje, ne uvjet), preporuka: ostaje tako (F5 = svježe otvaranje; trajno ⇒ Shortcut) |
 | T-S171-3 | TEST: Košare — ZABA danas 10.057,27, MC 11.11. −2.081,48 ostaje 7.975,79 … RF Visa ~05.11. ostaje 689,67 | ✅ 14.10. (Saša) — sve brojke u cent; RF prvi i Visa rasklopljena (ispravan redoslijed, opis testa ispravljen); usput `· N kupnji` više se ne lomi |
-| T-S171-4 | TEST: kupnje košare (26), dodir → View → Back ostaje rasklopljeno; F5 vraća saldo | ⬜ 1–4 ✅ 14.10. (Saša); nakon testa dodano: oznaka kupnje na kojoj si stao + **Prev/Next samo kroz košaru** (bio po cijeloj Arei) — ponoviti korak 2a |
+| T-S171-4 | TEST: kupnje košare (26), dodir → View → Back ostaje rasklopljeno; F5 vraća saldo | ✅ 17.10. (Saša, PROD) — 1–4 ✅ 14.10.; ponovljen 2a: Prev/Next samo kroz košaru, po povratku označena kupnja na kojoj je stao |
 | T-S171-6 | TEST: košara piše Tip/Podtip, ispod opis (dva retka); ↗ ⇒ Activities za taj dan (sve rate plana zajedno); Edit → Save → Next ostaje u košari | ✅ 14.10. (Saša) — dva retka (Tip/Podtip, opis), ↗ isti dan, Edit u nizu |
 | T-S171-5 | PROD ~11.11.: „pokaži kupnje" u traci otvori tu košaru; naplaćena se ne oduzima dvaput | ⬜ |
 
@@ -81,22 +94,6 @@ Rata modal: ostatak zaokruživanja po kartici iz configa (MC zadnja, Visa prva).
 
 ---
 
-## S164 — Kamo ide novac: odluke, skica, R3 osiguranje kuće (2026-10-07)
-
-Odluke R1–R15 u `docs/RAZREZ_SPEC.md`; skica pločice nad stvarnim podacima. Novi alat `razvrstaj_na.py` (N/A → prijedlog Tip/Podtip, app Excel; provjera unatrag 97,3 % točno). Jedini upis u bazu: 5 redaka osiguranja kuće u novi Podtip `Kuća / Osiguranje` (`fix_kuca_osiguranje_S164.py`) — izvedeno na TEST-u, PROD čeka Kokin pristanak.
-
-**Detalji testova:** [tests/S164_tests.md](tests/S164_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S164-1 | TEST app: Podtip `Osiguranje` = 5 redaka, izbornik pod `Kuća` ga nudi, stari Podtip 128 | ⬜ |
-| T-S164-2 | PROD: backup → dry run (5 ✓) → `--apply --yes-prod` ⇒ `5 od 5 ✓`; u appu 5 / 128, saldo nepomaknut | ✅ S167 (11.10.) — Koka pristala; backup `prod/2026-10-11_1202`, dry run 5 ✓, apply: alat ponovo pročitao bazu `opcija Osiguranje ✓ · 5 od 5 ✓` |
-| T-S164-3 | TEST: uvoz `na_razvrstavanje_*` (RF 6 / ZABA 8 prijedloga) ⇒ 0 New · Modify = razvrstani · 0 Delete; saldo nepomaknut | ✅ S169 — nadiđeno: odluke idu `--preuzmi`-om ravno u PROD file (T-S169-1), TEST uvoz nije korak |
-| T-S164-4 | PROD: `razvrstaj_na.py --file --preuzmi <razvrstani TEST fileovi>` (odluke po `event_id`, kol. G = Koka), uvoz pod Kokinim računom; TEST file se na PROD NE uvozi | ✅ S169 — ZABA izveden (T-S169-1); RF ostaje kao T-S169-6 |
-| T-S164-5 | Dugi izbornici abecedno: Tip (N/A prvi, `auto C5` među A), Podtip po atributu; Smjer/Izvor stari red; Structure panel netaknut; Excel export isti red | ✅ **S166, 08.10. TEST** — Add → Tip: `N/A` prvi, `Advokati, auto C5, auto Lacetti, Domaćinstvo, …, Zdravlje` (Saša). Excel export i Structure panel nisu ručno gledani — red u Excelu čuva `optionOrder.test.mjs` |
-
----
-
 ## S161 — mjesečni krug: ZABA + Visa izvod 2026-09, Visa alat bez mjesečnih popisa (2026-10-05)
 
 ZABA −8,60 = Visa kupnja (Ljekarna Štimac) upisana na ZABA račun. Visa izvod 1.150,92 plaćen 05.10.; `visa_uvoz_izvoda.py` radi svaki mjesec bez izmjene (test: kolovoški izvod ponovno ⇒ 48/48, 0 New / 0 Modify).
@@ -122,8 +119,8 @@ Samo Python alati i dokumenti, bez promjene u appu. Košara 11.10. na PROD-u = i
 | T-S158-1 | PROD, Koka, 11.10.: traka 55 stavki / 1.189,34 ⇒ ✓ slaže se ⇒ Potvrdi (isti trenutak kao T-S156-6) | ✅ S168 (12.10.) — Koka potvrdila na PROD-u (stari način, prije deploya D7) |
 | T-S158-2 | `MC_2026-10`: rate i naknade NISU u `ZA UVOZ` (već u bazi); 11.11. razlika = samo neupisane kupovine | ⬜ |
 | T-S158-3 | `rate_alat --only b` nakon uvoza nudi 0 rata (ne generira dvaput) | ✅ S158 — izmjereno: 0 planova / 0 rata |
-| T-S158-4 | Visa rujan: razvrstač daje `PBZVISA_`, `visa_uvoz_izvoda` samo imenom, zaglavlje `[PROD]`, Σ u cent | ⬜ |
-| T-S158-5 | ZABA: `fill_from_izvod --zaba` imenom, presedani iz `ET_TARGET`; `promet_check` vidi PDF i u korijenu `izvodi\` | ⬜ |
+| T-S158-4 | Visa rujan: razvrstač daje `PBZVISA_`, `visa_uvoz_izvoda` samo imenom, zaglavlje `[PROD]`, Σ u cent | ✅ S172 — izvela novija sesija: S161 (05.10.) razvrstač ⇒ `PBZVISA_2026-09.pdf`, `visa_uvoz_izvoda` na PROD-u, Σ = izvod u cent, Koka uvezla 9/33/1 |
+| T-S158-5 | ZABA: `fill_from_izvod --zaba` imenom, presedani iz `ET_TARGET`; `promet_check` vidi PDF i u korijenu `izvodi\` | ⬜ **korak 2 ✅** (S161 `promet_check` 2026-09 nad `ZABA_2026-09.pdf` koji i danas stoji u korijenu `izvodi\`, provjereno 17.10.); ostaje korak 1 — `fill_from_izvod --zaba` treba tek kad `promet_check` NIJE ✓ |
 | T-S158-6 | Ispisi kontrolnih alata prije/poslije izmjena i selidbe identični | ✅ S158 — izmjereno `diff`om (namjerne razlike: `[PROD]` redak, `PBZVISA_`) |
 
 ---
@@ -162,28 +159,6 @@ Samo Python alati i dokumenti, bez promjene u appu. Košara 11.10. na PROD-u = i
 
 ---
 
-## S152 — B1/B2, razvrstač izvoda, datumi rata i Edita, UTC datum (2026-09-26)
-
-⚠ **Sve je na `test-branch`, nije na `main`** — ručni testovi idu na lokalnom dev serveru
-(`npm run dev` = TEST, `dev:prod` = PROD). Automatski dio: `validationRules`, `rataChargeDates`,
-`shiftSameDayTarget`, `localDate` (svaki provjeren sabotažom).
-
-**Detalji testova:** [tests/S152_tests.md](tests/S152_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S152-1 | Structure uvoz nakon Save u panelu → `Attributes updated 0`; prava promjena → 1 (TEST) | ✅ **S153, 27.09. TEST** — nepromijenjen file: sve 0; opcija `TEST` dodana u `Smjer` ⇒ `Attributes updated 1`; maknuta iz filea ⇒ opet `1` i **nestala iz baze** (uvoz ZAMJENJUJE popis opcija, ne samo dodaje). ⚠ Prvi pokušaj je ispao `List columns 1` bez promjene (JSONB presloži ključeve, uvoz uspoređivao doslovnim `JSON.stringify`) — popravljeno, čuva `structureListColumnsCompare.test.mjs` |
-| T-S152-2 | „Other" u Add/Editu ne briše default (`WhenValue`) ni „Hidden in Add" (TEST, vlastita Area) | ✅ **S153** — **A (27.09. TEST):** `Status` Other → `TESTNOVO` + Finish ⇒ redak nosi `TESTNOVO`, opcija dodana pod `Mastercard`, `default_map` (4 ključa) netaknut, Edit prikazuje `TESTNOVO`. ⚠ Prvi pokušaj spremio `Planiran` bez opcije — Edit **nije** uzrok (atributi upisani samo pri Finishu, izmjereno); uzrok neutvrđen, čisti put radi. **B:** `Valuta` Other → `TestB` u Editu ⇒ opcija dodana, `hidden_in_add: true` ostao (baza + panel), u Addu i dalje samo pod „prazna po pravilu". |
-| T-S152-3 | Panel: nema polja „Default options", umjesto njega napomena o `*` (TEST) | ✅ S153 — izmjereno u ovoj sesiji: Sašine slike panela (`Izvor`, `Status`, 27.09. TEST) nemaju polje, i sa starim i s novim natpisom (S153 natpis ovisi o tipu atributa) |
-| T-S152-4 | Visa rata kupljena 02.09. → prva rata **05.09.**; MC 26.09. → 11.10. (`dev:prod`, obriši retke) | ✅ **S154, 28.09. `dev:prod`, Kokin račun** — datum u zaglavlju Adda 28.09. → 02.09. ⇒ `Datum naplate` 05/10 → **05/09/2026** (forma preračunava na promjenu datuma); modal `05.09. / 05.10. / 05.11.2026.` po `10.00`; lista: 3 retka `rata 1/3..3/3 · 10 od 30` na 02.09. Retci obrisani. MC kontrola u UI-ju nije izvođena — čuva je `rataChargeDates.test.mjs` (MC 26.09. ⇒ 11.10./11.11./11.12. i stari = novi za MC). ⚠ Prvi pokušaj: `3` upisan u `Rata br` umjesto `Broj rata` ⇒ modal se ne bi ni otvorio; uputa u testu je bila točna, ali polja stoje jedno ispod drugog |
-| T-S152-5 | Edit: promjena datuma pomiče `Datum naplate` za Racun/Cash, ne za karticu (`dev:prod`, bez spremanja) | ✅ **S154, 28.09. `dev:prod`, Kokin račun** — testni `Cash 1 €` (28.09.): datum → 26.09. ⇒ `Datum naplate` 26.09.; → 23.09. ⇒ 23.09., oba puta odmah. MC redak: datum → 23.09., `Datum naplate` ostao `11.10.` Testni retci obrisani. ⚠ Kartični korak u UI-ju **ne razlikuje** ispravno od pokvarenog (MC datum naplate ionako nije jednak datumu retka, pa ga ne bi dirao ni kod bez provjere `Izvor`a — S129 pravilo); taj rub čuva `shiftSameDayTarget.test.mjs` (*„Visa — ni kad se slučajno poklapa sa starim datumom"*) |
-| T-S152-6 | „This Month" = 01.–30.09., „This Year" = 01.01.–31.12. | ✅ **S154, 28.09. TEST** — This Month `01/09/2026 – 30/09/2026`, This Year `01/01/2026 – 31/12/2026` (Sašine slike). Prazna rujanska lista je ispravna: najnoviji redak `Financije_all` na TEST-u je 24.08. ⚠ Usput: „Data range" pokazuje `2003-04-07` iako je najstariji redak te Aree na TEST-u `2025-01-01` (izmjereno REST-om) ⇒ v. BUG-S154-DATARANGE |
-| T-S152-7 | Razvrstač na pravom novom izvodu (kad Koka pošalje): dry → `--apply` → „vec imamo" | ⬜ |
-| T-S152-8 | `make_financije_all_structure.py` staje nad `Financije_all` | ✅ S152 — izmjereno (exit 1, 49 redaka; stari export prolazi) |
-| T-S152-9 | Razvrstač: stvarni inbox + pješčanik (5 scenarija) | ✅ S152 — izmjereno |
-
----
-
 ## S145 — testiranje hrpe A, a tri od cetiri popravka nisu bila na popisu (2026-09-22)
 
 ⚠ **Sest testova hrpe A su svi prosli, ali su usput ispala cetiri kvara.** Jedan je
@@ -199,48 +174,6 @@ S138 unatrag, jedan gubi lipe pri dijeljenju rata, a cetvrti se nije dao reprodu
 | **T-S145-2** | Rata s ostatkom: `100 / 3` — modal `33.34 / 33.33 / 33.33` + žuta napomena, isti broj u atributu i u komentaru retka | ✅ **S147, 24.09. `dev:prod`** — modal `33.34 / 33.33 / 33.33` + napomena *„zbroj je točno 100.00"*; u listi isti broj u iznosu i komentaru (`rata 1/3 · 33.34 od 100`); naplate 05.10./05.11./05.12. (kupnja 24.09. ⇒ `cutoff:3:5` točan). Automatski dio: `rataAmounts.test.mjs` |
 | T-S145-3 | (praćenje) Boolean u Edit formi piše `Not set` nad retkom koji u bazi ima `true` | ⬜ **nije reproduciran** — ako se ponovi, **prvo** hard refresh; četiri hipoteze su već oborene (izmjereno: do kvačice stiže pravi boolean) |
 | T-S145-4 | Generator ne vraća `Automations` unatrag | ✅ **izmjereno 22.09. prije uvoza**: file je nosio `Visa=next:3` i rata `Visa=3` (stanje od prije S138), popravljeno pa potvrđeno uvozom — nova Visa kupovina nosi `05.10.2026.` |
-
----
-
-## S141 — tri tvrdnje oborene mjerenjem, i sve tri su bile moje (2026-09-18)
-
-⚠ **Sesija bez ijedne izmjene u `src/`.** Tri stvari su zapisane kao istina pa oborene brojkom:
-da se Visa retci „ne grupiraju“ (grupiraju se — **35 od 37** ciklusa ima jedan dan), da je za
-delta prozor dobro uzeti `N` dana (nije — otvarajuće stanje bi postalo nagadjanje dugo **565**
-dana), i da je E10-2 pao na dijalogu opoziva (nije — pao je prije, na Structure retku).
-
-**Detalji testova:** [tests/S141_tests.md](tests/S141_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S141-1 | Structure fan-out: **39 zahtjeva po pozivu, 6–8 poziva po toku** | ⬜ **S170: popravak izveden** (`sql/057`, jedan RPC; TEST tok 156 → 0 upita po kategoriji, E2E `S170_structure_event_counts`). Ostaje: puni E2E run (T-S140-8) da se vidi jesu li padovi bili ovo. Stari opis: 2.601 fan-out zahtjev kroz 17 palih testova (`e15` 330, `e11` 276); u E10-2 traceu 39+39 u sekundi razmaka, odgovoreno **11 od 78**. ⚠ Uzrok padova **NIJE** utvrđen: 10 od 17 padova ima zahtjeve bez odgovora, **7 nema nijedan**. Potvrda je **ponovno mjerenje** koje mora dati **jedan** fan-out po toku |
-| T-S141-2 | `Datum naplate` za karticu znači **dan terećenja** (odluka b) — app upisuje pretpostavku, izvod je ispravlja | ✅ S141 — odlučeno na mjerenju: **35/37** ciklusa ima jedan dan, **1.616 od 1.639** redaka već nosi to značenje; pravilo u CLAUDE.md |
-| T-S141-3 | `DELTA_WINDOW_SPEC` — prozor se mjeri **sidrima**, ne danima | ✅ S141 — spec napisan i odluke unesene; **faza 1 čeka kod**, ništa više ne čeka odluku |
-| **T-S141-4** | Faza 1 delta prozora: otvarajuce stanje mora izaci **jednako iznosu sidra u cent** | ✅ **S144 — zatvoreno u cijelosti.** RPC razina dokazana S142 (`rpc_area_balance_anchored` s `as_of` = dan sidra ⇒ sam iznos sidra uz `n = 0`, 6/6) · **uzivo je izvedeno u S143** (T-S142-1): modal prosljedjuje bas taj `asOf`, file nosi `stanje 30.07.2026. -> 13.815,33`. Potvrdjeno ponovo S144 na `Prozor = 2`: otvarajuce stanje `3.054,41` = doslovno iznos sidra |
-
----
-
-## S140 — instrumenti i dokumenti: četiri tvrdnje koje su bile napisane, a ne izmjerene (2026-09-18)
-
-⚠ **Jedina promjena u `src/` je `dbScopedKey()`.** Sve ostalo su alati i dokumenti — ali
-su tri od njih **blokirala posao**: `audit_tests.py` je tvrdio da nema što arhivirati,
-`claude_index.py` je generirao mrtve linkove, a `PENDING_TESTS.md` je narastao tako da se
-„što još treba" nije vidjelo. Dva E2E pada koja su se vodila kao nepoznata imala su **jedan**
-uzrok, i on nije bio u aplikaciji.
-
-**Detalji testova:** [tests/S140_tests.md](tests/S140_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S140-1 | E7-3 + E10-2: `Confirm revoke` postoji samo kad grantee **ima evente** ⇒ app je ispravan, tvrdnja u specu nije | ✅ S140 — 6/6 prolaz; protuprovjera: sabotiran `doSimpleRevoke` ruši točno ta dva |
-| T-S140-2 | CLAUDE.md: goli `<datum>` je za Markdown **HTML tag** koji se ne zatvara | ✅ S140 — Saša potvrdio da `Zamke` sada skače i renderira se |
-| T-S140-3 | Dvotočka u naslovu lomi Obsidian sidro; **`+` je nevin**; kodiranje **kvari** link koji radi | ✅ S140 — 11 varijanti klikano; guard: 0 upozorenja nad ispravnim, točno 1 kad se dvotočka vrati |
-| T-S140-4 | `audit_tests.py` pripisivao fileu svaki ID koji se u njemu **spominje** | ✅ S140 — 4 od 12 fileova nose tuđe ID-eve; S134 postao arhivabilan |
-| T-S140-5 | `PENDING_TESTS.md` 1.198 → 628 redaka, 20 sekcija u `DONE_HISTORY.md` | ✅ S140 — poslije selidbe audit ima **0** pojava „PENDING nema redak za" |
-| T-S140-6 | Backlog: struktura nosi trijažu (3 podnaslova), unosi presloženi bez izmjene znaka | ✅ S140 — brana prebrojala retke prije i poslije |
-| T-S140-7 | `dbScopedKey`: filtar više ne curi između TEST-a i PROD-a | ✅ S141 — TEST **nije** naslijedio PROD-ov `Health_Sasa > Medical` nego pokazao **svoj** `Financije_all`; povratak na `dev:prod` vratio `Health_Sasa > Medical` netaknut. Bez `Unknown`, bez trake o grešci |
-| T-S140-8 | Puni E2E nakon popravka `e7`/`e10` — E7-3 i E10-2 zeleni i u **punom** runu | ⬜ **DJELOMIČNO — ostaje otvoren.** **E7-3 ✅ S141** prolazi i u punom runu (popravak drži). **E10-2 ❌** pada, ali **na drugom mjestu**: `structure-row-…` se nikad ne pojavi, pa dijalog opoziva nije ni dosegnut ⇒ v. T-S141-1. Ukupno **54/17** protiv baseline-a 60/11 |
-| T-S140-9 | `S139_tests.md` napisan (ritual korak 2 bio preskočen u S139) | ✅ S140 — audit ga vidi (5 definiranih, 4 zatvorena, 1 otvoren) |
 
 ---
 

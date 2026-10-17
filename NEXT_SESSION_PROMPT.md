@@ -1,64 +1,46 @@
-> Pisano protiv commita **S171 deploy** na `test-branch` (zadnji commit = „S171: deploy …“).
-> **`main` = `6ff19d4` (deploy 14.10., S169 + S170 + S171).** `test-branch` = `main` + ovi dokumenti.
-> **PROD baza:** `sql/057` ✓ (S170), **Visa config ✓ (14.10.)**. S171 nema migracije.
+> Pisano protiv commita **S172** na `test-branch` (zadnji commit = „S172: …").
+> **`main` = `6ff19d4` (deploy 14.10., S169 + S170 + S171).** `test-branch` = `main` + S172 (povratak razdoblja nakon ↗, **nije deployano**).
+> **PROD baza:** `sql/057` ✓, Visa config ✓ (14.10.). S172 nema migracije ni configa.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S171 (2026-10-14)
+# Sljedeća sesija — nakon S172 (2026-10-17)
 
-> **Ukratko (S171):** Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — Saša je sve testirao lokalno, pa je isti dan otišlo na PROD zajedno sa S169–S170 i Visom u traci.
+> **Ukratko (S172):** povratak na Overview nakon „isti dan u Activities ↗" sada vraća razdoblje od prije, pa saldo opet pokazuje današnje stanje; zatvoreno osam testova mjerenjem (među njima puni E2E run 80/7 umjesto 54/17), a četiri sesije testova su otišle u arhivu.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Što je napravljeno — NA PROD-u od 14.10.
-
-- **Filtar na mobitelu:** Overview pokazuje samo red `📅 This Year · 01.01.–31.12.2026.`; izbor
-  razdoblja ga sam sklopi. Activities kreće sklopljen i kaže što je aktivno (i uvjet s ↗).
-  **Clear all** je unutar otvorenog filtra, više ne uz strelicu.
-- **Pločica „Košare (otvorene)"** ispod salda: po računu (ZABA, RF), košara po danu naplate,
-  dodir pokaže kupnje, uz svaku **ostaje** (stanje danas − košare redom; plaće ne zna — piše).
-  Visa s `~` (dan je procjena). U traci „Čeka potvrdu" novo: **pokaži kupnje**.
-- Iz S170 (isti deploy): filtar izbornici, brže otvaranje, Visa u traci (config ✓), delta košare.
-- Nakon tvog testa: kupnja u dva retka (Tip/Podtip, opis), ↗ „isti dan u Activities", Prev/Next
-  samo kroz košaru, Edit → Save → Next ostaje u košari, označena kupnja na kojoj si stao.
+## Gotovo
+- PROD (14.10.) radi: Košare, ↗, mobilni filtar, Prev/Next kroz košaru (T-S171-4 ✅).
+- **Na `test-branch`, čeka deploy:** nakon ↗ i klika na Overview vraća se razdoblje od prije (This Year),
+  pa ZABA saldo opet pokazuje danas. Ručno izabrano razdoblje u Activities ostaje.
 
 ## Što treba od tebe
-
-1. **PROD provjere (nakon hard refresha; Koka: zatvori karticu i otvori iznova):**
-   - Košare: ZABA „danas" = pločica salda; Visa se vidi u Košarama (05.11., 20 kupnji, −579,05).
-   - Mobitel: Overview = samo red razdoblja; Activities sklopljen sa sažetkom.
-   - T-S170-4 (Network: na početku nema `plotly`/`excel`), T-S169-8 (razrez pamti nakon ↗).
-   - T-S168-4 (praćenje): Kokin iPhone — lista nikad bez iznosa.
-2. Na TEST-u iz S170: T-S170-1 (broj `Racun` ≈ 355), T-S170-10 (uvoz). T-S170-12 uz ZABA izvod.
-3. **~03.–11.11.:** Visa košara u traci (T-S170-9); **11.11.** MC traka + „pokaži kupnje" (T-S171-5).
-4. **Razmisli** (iz S170): provjera košara u „Review" sheetu — Backlog „Čeka Sašinu odluku".
-5. Iz ranije: RF N/A (T-S169-6), s Kokom starija povijest (T-S169-7).
-6. Opcionalno: `.\Tools\run.bat Tools\dump_schema.py --env prod` (osvježi `SCHEMA_PROD.sql` s `057`).
+1. **Deploy kad želiš** (PowerShell naredbe u CLAUDE.md § End of session 11), pa T-S172-1.
+2. **T-S170-4** (Network: `vendor` filtar, Disable cache, Ctrl+Shift+R) — upute dane u sesiji, slike pošalji.
+3. Brzi: T-S169-8 (razrez nakon ↗ na PROD-u), T-S170-1 (broj `Racun`), T-S168-2 (Structure `Remainder`), T-S170-10.
+4. **Koku pitaj:** lista bez iznosa od 14.10.? (T-S168-4) · `+` iz prve? (T-S154-2) — ako ne, zatvaramo.
+5. T-S145-3 (kvačica `Not set`) se nije ponovila od 22.09. — zatvoriti?
+6. **Odluka T-S172-2:** na TEST-u ukinuti share Sašin `Health_Sasa` → E2E vlasnik i obrisati zaostali
+   `Health_Sasa` (10.07.) — ili spec učiniti otpornim.
+7. Studeni: ~03.–11.11. Visa traka (T-S170-9) · 11.11. MC traka (T-S171-5, T-S168-3, T-S156-5) ·
+   izvodi listopad (T-S156-7, T-S170-12, T-S161-3, T-S158-2). Razvrstavanje RF N/A (T-S169-6), starija povijest (T-S169-7), T37 Intercar.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
 ## Stanje
-
-- **Deployano 14.10.** (`main` = `6ff19d4`): S169 `BreakdownTile` + S170 + S171 (`filterSummary.ts`,
-  `BasketsTile.tsx` + `basketsView.ts`, `fetchBasketLines`, harmonika po ključevima u `OverviewTab`,
-  `DateRangeFilter` `onPresetChosen`/`periodOnly`, `DueStrip` `onShowBasket`).
-- S171 je **neverificiran uživo na `Financije_all`**: E2E račun (`PLAYWRIGHT_TEST_EMAIL`) na TEST-u
-  ne vidi `Financije_all` (kopija je pod Sašinim TEST računom). Provjereno E2E-om na vlastitoj Arei s
-  podmetnutim RPC-ovima (`S171_baskets_and_narrow_filter`, 2/2, protuprovjera pada) + brojke za ručni
-  test izmjerene RPC-om service ključem (`rpc_area_due_baskets` s `as_of` 9999-12-31).
-- Python skripte u scratchpad + `python -I` (+ `sys.stdout.reconfigure(encoding="utf-8")` — `-I`
-  ignorira `PYTHONIOENCODING`).
+- `dayDrillReturn.ts` (modul): `OverviewTab.showDay` pamti, `AppHome.openOverview` vraća prije montiranja.
+- Puni E2E 17.10.: 80/7. Stalni padovi E11-4, E12-2, E13-2 (E12-5 povremeno) — T-S172-2 (podaci TEST-a).
+- PROD od 12.10. nema MC plana rata (T-S168-3 čeka prvi Kokin plan).
 
 ## Otvoreno — kod (po prioritetu)
-
-1. Ako Saša na T-S171 nađe nešto — prvo to.
-2. **„Review" sheet — provjera košara** (čeka Sašu; Backlog).
-3. **T23** naknada 1,32 uz MC rate „novog načina otplate"; **T13/T14** za MC u `fill_from_izvod`.
-4. **F5** (`groupings` / `due` kroz Structure Excel) — roundtrip completeness.
-5. Delta: retci koje `fill_from_izvod` dopiše ispod sekcije nisu u grupi ni u bojanju (Σ ih broji).
-6. Moguće proširenje Košara (nije traženo): ↗ košara u Activities traži filtar s dva uvjeta
-   (`Izvor` + `Datum naplate`) — `FilterContext` nosi jedan; zato je popis kupnji u pločici.
+1. **Prije 11.11. (preporuka S172):** MC alat — T13/T14 (blizak iznos = ispravak, duplikati) u
+   `fill_from_izvod`, T16 (rata nasljeđuje Tip/Podtip), T23 (naknada 1,32).
+2. „Review" sheet — provjera košara (čeka Sašu; Backlog).
+3. F5 (`groupings` / `due` kroz Structure Excel).
+4. Delta: retci koje `fill_from_izvod` dopiše ispod sekcije nisu u grupi ni u bojanju.
+5. Nakon ↗ se ne vraćaju `attrFilter`/komentar u Activities (↗ ih briše) — nitko nije tražio.

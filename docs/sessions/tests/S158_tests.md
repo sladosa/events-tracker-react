@@ -36,7 +36,7 @@ Isti trenutak kao T-S156-6; ovaj test mjeri **posljedicu današnjeg uvoza**.
 ✅ S158 — izmjereno: nakon uvoza 37 rata `rate_alat.py --only b` nudi **0 planova / 0 rata**
 (prije popravka nudio je istih 37 ponovno — generirane rate nemaju `Izvod opis`).
 
-## T-S158-4 ⬜ Visa izvod rujan kroz nove alate (Saša, ~05.–07.10.)
+## T-S158-4 ✅ (S172: izveo S161, 05.10.) Visa izvod rujan kroz nove alate (Saša, ~05.–07.10.)
 
 Prvi stvarni prolaz Visa toka nakon T5–T8.
 1. `Financije\run.bat razvrstaj_izvode.py` → `--apply`. **Očekivano:** `PBZVISA_2026-09.pdf`

@@ -40,6 +40,7 @@ import { getCategoryMap, getAreaNameMap, getCategoryMapContaining } from '@/lib/
 import { ancestorIds, areaCategoryIds } from '@/lib/categoryTree';
 import { findSingleLeaf, categoryNamePath } from '@/lib/singleLeaf';
 import { filterMode, filterSummaryParts, mustStayOpen } from '@/lib/filterSummary';
+import { takePeriodToRestore } from '@/lib/dayDrillReturn';
 
 // Plotly (1,4 MB gzipa) se skida tek kad se Sunburst stvarno prikaže (S170).
 // ExcelJS (264 KB gzipa) isto: modali i Structure export vuku ga tek na klik.
@@ -150,7 +151,23 @@ function AppContent() {
     areaContextError,
     isRestoring,
     periodLabel,
+    setDateRange,
+    setPeriodLabel,
+    setPeriodKey,
   } = useFilter();
+
+  // Povratak na Overview vraća razdoblje od prije „isti dan u Activities ↗" (S172):
+  // u istom handleru kao prebacivanje taba, pa se pločice montiraju već s njim —
+  // inače bi saldo prvo pokazao stanje na taj dan (v. `dayDrillReturn.ts`).
+  const openOverview = () => {
+    const back = takePeriodToRestore(filter);
+    if (back) {
+      setDateRange(back.dateFrom, back.dateTo);
+      setPeriodLabel(back.periodLabel);
+      setPeriodKey(back.periodKey);
+    }
+    setActiveTab('overview');
+  };
 
   // Attribute filter UI state — which field is selected in the "Filter by" dropdown
   // text/suggest on `value_text`, number (F4, S159) on `value_number`, datetime/boolean (S160)
@@ -959,7 +976,7 @@ function AppContent() {
             {hasOverview && (
               <TabButton
                 active={activeTab === 'overview'}
-                onClick={() => setActiveTab('overview')}
+                onClick={openOverview}
                 icon={<OverviewIcon />}
                 label="Overview"
                 isMobile={isMobile}

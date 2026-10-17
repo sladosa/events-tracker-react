@@ -20,6 +20,7 @@ import { BalanceByGroupTile } from './BalanceByGroupTile';
 import { DueStrip } from './DueStrip';
 import { BreakdownTile } from './BreakdownTile';
 import { BasketsTile } from './BasketsTile';
+import { rememberPeriodBeforeDay } from '@/lib/dayDrillReturn';
 import type { DashboardConfig, DueConfig, Grouping, ListColumnsConfig, UUID } from '@/types/database';
 
 /** Koja je pločica otvorena — v. „Harmonika" u komponenti. Modul, ne storage.
@@ -45,6 +46,7 @@ interface Props {
 export function OverviewTab({ areaId, config, groupings, listColumns, canWrite, isOwner, onNavigateToActivities }: Props) {
   const {
     filter, setAttrFilter, clearAttrFilter, clearCommentSearch, setDateRange, setPeriodLabel, setPeriodKey,
+    periodLabel,
   } = useFilter();
   // Skupni redak iz trake miče saldo ⇒ pločica se mora ponovo učitati.
   const [balanceReload, setBalanceReload] = useState(0);
@@ -84,8 +86,14 @@ export function OverviewTab({ areaId, config, groupings, listColumns, canWrite, 
    * dijele dan kupnje, a u košari je od plana samo jedna). Raspon = taj dan (Custom,
    * pa ga zadano razdoblje ne pregazi), uvjet se briše — drill `Racun = ZABA` bi
    * sakrio upravo kartične kupnje. Sažetak filtra kaže što je postavljeno.
+   * Dosadašnje razdoblje se pamti i vraća pri povratku na Overview (S172,
+   * `dayDrillReturn.ts`) — inače bi saldo pokazao stanje na taj dan.
    */
   const showDay = (day: string) => {
+    rememberPeriodBeforeDay({
+      area: areaId, day, dateFrom: filter.dateFrom, dateTo: filter.dateTo,
+      periodLabel, periodKey: filter.periodKey,
+    });
     clearAttrFilter();
     clearCommentSearch();
     setDateRange(day, day);

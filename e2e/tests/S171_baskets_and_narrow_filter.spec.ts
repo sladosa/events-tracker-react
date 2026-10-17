@@ -248,14 +248,17 @@ test.describe('S171 — košare i uski filtar', () => {
     await expect(page.locator(':text("Druga kupnja S171"):visible').first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('Prva kupnja S171')).toHaveCount(0);
     await expect(page.getByText('Nije u kosari S171')).toHaveCount(0);
-    // Natrag na Overview za ostatak testa; razdoblje vrati na This Month.
+    // 3d. S172 (Saša): povratak na Overview VRAĆA razdoblje od prije ↗ (This Month) —
+    //     inače bi saldo pokazao stanje na taj dan, a ne danas.
     await strip.locator('> button').first().click();
     await expect(page.getByRole('heading', { name: /Košare/ })).toBeVisible({ timeout: 15_000 });
+    await expect(summary).toContainText('This Month', { timeout: 15_000 });
+    await expect(summary).not.toContainText('Custom');
 
-    // 4. Activities: sklopljen filtar sa sažetkom razdoblja (dan iz 3c, Custom).
+    // 4. Activities: sklopljen filtar sa sažetkom razdoblja (vraćeni This Month).
     await strip.locator('> button').nth(1).click();
     await expect(summary).toContainText('Filter');
-    await expect(summary).toContainText('Custom');
+    await expect(summary).toContainText('This Month');
     await expect(areaSelect).toBeHidden();
     await summary.click();
     await expect(areaSelect).toBeVisible();
