@@ -28,8 +28,7 @@
 ## Što treba od tebe
 1. **Deploy kad želiš** (PowerShell naredbe u CLAUDE.md § End of session 11), pa **T-S172-1**
    (↗ → Overview ⇒ This Year) i **T-S172-3** (Koka, iPhone: košare bez preklapanja).
-2. **T-S170-4** — Network: filtar `vendor`, Disable cache, Ctrl+Shift+R; pa krug ⇒ `vendor-plotly`,
-   Export ⇒ `vendor-excel`. Pošalji slike.
+2. ~~T-S170-4~~ ✅ 17.10. lokalnim buildom (početak 132 KB, Plotly/Excel tek na zahtjev).
 3. Brzi: T-S169-8 (razrez nakon ↗ na PROD-u). (T-S170-1, T-S168-2, T-S170-10, T-S172-1 ✅ 17.10. na laptopu.)
 4. **Koku pitaj:** lista bez iznosa od 14.10.? (T-S168-4) · `+` iz prve? (T-S154-2) — ako ne, zatvaramo.
 5. T-S145-3 (kvačica `Not set`) nije se ponovila od 22.09. — zatvoriti?

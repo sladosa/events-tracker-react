@@ -31,7 +31,7 @@ Brojke su izmjerene na TEST-u 13.10.2026. (`Financije_all`, kopija PROD-a iz S15
 4. Upiši `3` ⇒ Finish ⇒ rata modal (3 rate). Poništi/obriši testni redak.
 - **Pad:** redak spremljen bez modala.
 
-## T-S170-4 Brže otvaranje — Plotly i Excel se ne skidaju na početku (PROD, nakon deploya)
+## T-S170-4 ✅ (17.10., Saša, lokalni build) Brže otvaranje — Plotly i Excel se ne skidaju na početku (PROD, nakon deploya)
 
 1. Desktop Chrome, DevTools → Network (JS), Ctrl+Shift+R na `/app`.
 2. **Očekivano:** nema `vendor-plotly-*.js` ni `vendor-excel-*.js` u početnom učitavanju (prije: 1,4 MB + 0,26 MB gzipa).
