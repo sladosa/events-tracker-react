@@ -9,7 +9,7 @@ Active project state is in CLAUDE.md (repo root).
 
 - [S170 (2026-10-13)](<#S170 — Filtar izbornici, brže učitavanje, Structure RPC, Visa u traci, delta košare (2026-10-13)>) · r. 9029 — Filtar sada nudi izbornik i za Izvor, Podtip i Status, aplikacija se otvara bez 1,7 MB koje nije trebala, Structure broji jednim upitom umjesto stotinu, Visa je spremna za traku „Čeka potvrdu“, a delta sheet pokazuje košare po mjesecima s izbornikom i bojom.
 - [S171 (2026-10-14)](<#S171 — Filtar na mobitelu i pločica Košare (2026-10-14)>) · r. 9068 — Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — Saša je sve testirao lokalno, pa je isti dan otišlo na PROD zajedno sa S169–S170 i Visom u traci.
-- [S172 (2026-10-17)](<#S172 — povratak razdoblja nakon ↗ i zatvaranje testova (2026-10-17)>) · r. 9141 — povratak na Overview nakon „isti dan u Activities ↗" sada vraća razdoblje od prije, pa saldo opet pokazuje današnje stanje; zatvoreno osam testova mjerenjem (među njima puni E2E run 80/7 umjesto 54/17), a četiri sesije testova su otišle u arhivu.
+- [S172 (2026-10-17)](<#S172 — povratak razdoblja nakon ↗ i zatvaranje testova (2026-10-17)>) · r. 9141 — povratak na Overview nakon „isti dan u Activities ↗" vraća razdoblje od prije, košare na malom iPhoneu više se ne preklapaju, TEST je ponovo kopija PROD-a (sada i s postavkama), a E2E računi se prije svakog runa sami čiste — puni run 84/3 umjesto 54/17; osam testova zatvoreno mjerenjem, četiri sesije u arhivi.
 
 ## Dnevnik
 
@@ -105,7 +105,7 @@ Active project state is in CLAUDE.md (repo root).
 | [S169](<#S169 — Klasifikacija s Kokom: N/A ZABA, Pharmalog, Investicije, Triglav (2026-10-12)>) | 2026-10-12 | S Kokom smo razvrstali svih 72 neodređenih transakcija na njezinom računu iz zadnjih godinu dana i potvrdili da su Pharmalog uplate njezin prihod, a Investicije i isplata Triglav police su maknute iz troškova — pločica „Kamo ide novac" kroz cijelu povijest više nema ni „nesvrstano" ni stavki u minusu. | 8989 |
 | [S170](<#S170 — Filtar izbornici, brže učitavanje, Structure RPC, Visa u traci, delta košare (2026-10-13)>) | 2026-10-13 | Filtar sada nudi izbornik i za Izvor, Podtip i Status, aplikacija se otvara bez 1,7 MB koje nije trebala, Structure broji jednim upitom umjesto stotinu, Visa je spremna za traku „Čeka potvrdu“, a delta sheet pokazuje košare po mjesecima s izbornikom i bojom. | 9029 |
 | [S171](<#S171 — Filtar na mobitelu i pločica Košare (2026-10-14)>) | 2026-10-14 | Na mobitelu Overview od filtra pokazuje samo razdoblje, a Activities kreće sklopljen i u jednom redu kaže što je aktivno; nova pločica „Košare“ pokazuje otvorene kartične košare po danu naplate, s kupnjama i koliko ostaje na računu kad prođu — Saša je sve testirao lokalno, pa je isti dan otišlo na PROD zajedno sa S169–S170 i Visom u traci. | 9068 |
-| [S172](<#S172 — povratak razdoblja nakon ↗ i zatvaranje testova (2026-10-17)>) | 2026-10-17 | povratak na Overview nakon „isti dan u Activities ↗" sada vraća razdoblje od prije, pa saldo opet pokazuje današnje stanje; zatvoreno osam testova mjerenjem (među njima puni E2E run 80/7 umjesto 54/17), a četiri sesije testova su otišle u arhivu. | 9141 |
+| [S172](<#S172 — povratak razdoblja nakon ↗ i zatvaranje testova (2026-10-17)>) | 2026-10-17 | povratak na Overview nakon „isti dan u Activities ↗" vraća razdoblje od prije, košare na malom iPhoneu više se ne preklapaju, TEST je ponovo kopija PROD-a (sada i s postavkama), a E2E računi se prije svakog runa sami čiste — puni run 84/3 umjesto 54/17; osam testova zatvoreno mjerenjem, četiri sesije u arhivi. | 9141 |
 
 _89 sesija._
 
@@ -9141,7 +9141,7 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
 ## S172 — povratak razdoblja nakon ↗ i zatvaranje testova (2026-10-17)
 [↑ Dnevnik](#Dnevnik)
 
-> Ukratko: povratak na Overview nakon „isti dan u Activities ↗" sada vraća razdoblje od prije, pa saldo opet pokazuje današnje stanje; zatvoreno osam testova mjerenjem (među njima puni E2E run 80/7 umjesto 54/17), a četiri sesije testova su otišle u arhivu.
+> Ukratko: povratak na Overview nakon „isti dan u Activities ↗" vraća razdoblje od prije, košare na malom iPhoneu više se ne preklapaju, TEST je ponovo kopija PROD-a (sada i s postavkama), a E2E računi se prije svakog runa sami čiste — puni run 84/3 umjesto 54/17; osam testova zatvoreno mjerenjem, četiri sesije u arhivi.
 
 - **Saša (povratak s puta):** na PROD-u Košare (Visa i MC), rasklapanje, ↗, mobilni filtar `This Year` —
   sve radi; T-S171-4 ponovljen 2a ✅ (Prev/Next samo kroz košaru, oznaka kupnje).

@@ -229,8 +229,8 @@ kao grupe košara u delta Excelu. Za razliku od trake, ovdje su i **buduće** ko
 
 - Košare su složene **po računu** s kojeg ih banka skida (npr. ZABA za Mastercard), a uz
   račun piše njegovo stanje **danas** (isti broj kao pločica salda).
-- Svaka košara: kartica · dan naplate · broj kupnji · **Σ** — i **ostaje**: koliko će biti
-  na računu kad prođe i ta košara (stanje danas minus košare redom).
+- Svaka košara u dva retka: gore kartica · dan naplate i **Σ**, ispod broj kupnji i **ostaje**:
+  koliko će biti na računu kad prođe i ta košara (stanje danas minus košare redom).
 - ⚠ **„Ostaje" ne zna za plaće, mirovine ni druga buduća plaćanja** — oduzima samo košare.
   To je odgovor na pitanje *„koliko mi ostane kad kartice dođu na naplatu"*, ne prognoza.
 - **`~`** ispred dana (Visa) znači da je dan naplate **procjena** — Visa nema stalan dan.
@@ -244,7 +244,9 @@ kao grupe košara u delta Excelu. Za razliku od trake, ovdje su i **buduće** ko
   idu kroz košaru, pa se može ispravljati jedna za drugom.
 - **↗** na kraju kupnje otvara **Activities za taj dan** (razdoblje *Custom*, od–do = dan
   kupnje, bez uvjeta). Tu su sve rate istog plana zajedno — dijele dan kupnje, dok je u košari
-  od plana samo jedna. Natrag na *This Year* biraš u Period.
+  od plana samo jedna. Kad se tabom vratiš na **Overview**, vrati se razdoblje koje je bilo
+  prije ↗ (npr. *This Year*), pa saldo opet pokazuje današnje stanje. Ako si u Activities sam
+  izabrao drugo razdoblje, ono ostaje. (F5 između briše to pamćenje.)
   Rasklopljena je zadano **sljedeća** košara.
 - Pločica **ne gleda razdoblje iz filtra** — košare su budućnost.
 - Prikazuju se samo **otvorene** košare (bar jedna kupnja `Planiran`). Potvrđena košara

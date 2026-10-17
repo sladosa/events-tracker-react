@@ -32,21 +32,21 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 116 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 129 | [Critical rules](<#Critical rules>) | X |
 | 1296 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1770 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1786 | [Key files](<#Key files>) |  |
-| 1917 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1937 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1960 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 1988 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2028 | [Open bugs](<#Open bugs>) | ~ |
-| 2137 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2182 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2328 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2336 | [Backlog](<#Backlog>) | ~ |
-| 2340 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2348 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1775 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1791 | [Key files](<#Key files>) |  |
+| 1923 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1943 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 1966 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 1994 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2034 | [Open bugs](<#Open bugs>) | ~ |
+| 2143 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2188 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2339 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2347 | [Backlog](<#Backlog>) | ~ |
+| 2351 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2359 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2512 redaka, 18 sekcija._
+_Ukupno 2523 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -1309,6 +1309,11 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   react-plotly na `plotly_sunburstclick` veže i svoj `handleUpdate` — `return false` zato nije
   pouzdan; stanje (Plotly `level`) mora biti konzistentno i kad Plotly zumira sam.
 
+- **⚠ RAZMAK UNUTAR `whitespace-nowrap` NIJE MJESTO PRIJELOMA** (S172, Kokin iPhone). Košara je
+  pisala `<span nowrap> · 35 kupnji</span>` — razmak ispred je bio unutar `nowrap`, pa cijeli redak
+  nije imao gdje prijeći u novi i podvukao se pod iznos (`min-w-0` lijevo, desni stupac bez
+  `shrink-0`). Na Androidu (uži font) je stao, pa se vidi tek na iPhoneu. Razmak ide **izvan**
+  `nowrap`-a, a stupac s iznosom nosi `shrink-0` — ili, kao sada, fiksna dva retka.
 - **⚠ EFEKT KOJI SINKRONIZIRA IZBOR IZ KONTEKSTA NE ZNA TKO JE OBRISAO** (S160, T-S160-1).
   `AppHome` je na svako `attrFilter → null` vraćao „Filter by" na Comment — a null proizvodi i
   vlastiti panel (promjena polja prvo briše stari uvjet; `type="date"` usred tipkanja javi `''`).
@@ -1874,6 +1879,7 @@ src/lib/confirmedRowEdit.ts        C3c: bankina polja, je li redak potvrđen (ž
 src/lib/dueBaskets.ts              C5: Σ košare u lipama, usporedba s bankom (tolerancija 0,00)
 src/lib/basketsView.ts             Pločica „Košare" (S171): košare po računu, „ostaje" kumulativno;
                                    naplaćena (skupni redak upisan) se NE oduzima. UI: `BasketsTile.tsx`
+src/lib/dayDrillReturn.ts          Razdoblje prije Košare ↗ — vraća ga tab Overview (S172)
 src/lib/filterSummary.ts           Sažetak sklopljenog filtra + JEDINI uvjet „uski ekran + tab" (S171)
 src/lib/lastViewed.ts              Zadnji redak prikazan u View-u (i nakon Prev/Next) — oznaka po povratku (S171)
 src/components/overview/DueStrip.tsx  Traka „Čeka potvrdu" (faza 1 usporedba, faza 2 S156 upis; samo vlasnica)
@@ -2299,6 +2305,11 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   gubio na sva tri povratka, pa je Next nakon Savea skakao po Arei. Sada `viewTarget` u Editu +
   `replaceSessionInNav` (Save koji promijeni datum mijenja `session_start` — inače `currentIndex
   = -1` i ugase se oba gumba). Novi put u View/Edit nosi `navActivities` i `userId`.
+  ⚠ **Drill koji mijenja RAZDOBLJE mora ga vratiti pri povratku na Overview** (S172, Sašin nalaz):
+  saldo čita `asOf = filter.dateTo`, pa je nakon Košare ↗ (Custom = dan kupnje) pokazivao stanje
+  NA TAJ DAN — broj koji se ne slaže s bankom, bez greške. `dayDrillReturn.ts`: pamti `showDay`,
+  vraća handler taba **prije montiranja** (iz efekta bi pločice učitale saldo dvaput), samo ako je
+  filtar još taj dan. Drill salda/razreza razdoblje ne dira i ne treba ovo.
 - **Filtar na uskom ekranu (S171):** Overview = samo red razdoblja (selektor **skriven, ne
   odmontiran**), Activities sklopljen sa sažetkom. Sklopljen filtar koji ne kaže ništa nitko ne
   sklapa — sažetak je uvjet sklapanja, ne ukras. Bez Aree selektor se ne skriva (`mustStayOpen`).
