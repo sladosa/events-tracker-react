@@ -9167,3 +9167,9 @@ Sesija bez Koke (T-S169-7 namjerno ne diran). Prvo razgovor o obliku, odluke zap
   `global-setup` briše tuđe shareove i Aree izvan seeda za oba E2E računa i ispisuje (pokus prošao);
   E13-2 spec tražio stari tekst; S133-1 sije vlastitih 1.100 eventa (bio je ovisan o tuđem shareu,
   protuprovjera pada). Puni run **84 / 3** (S104-3, S107-3 povremeni ⇒ T-S172-4).
+- **Saša na laptopu, pa DEPLOY 17.10.2026. (`main` = `ca496cb`, S172).** Prije deploya na TEST-u (=
+  kopija PROD-a): T-S172-1, T-S170-1 (370 = baza), T-S168-2, T-S170-10 (opis testa ispravljen:
+  `Izvor → Racun` uz `Planiran` s pravom ne traži kvačicu — saldo broji i `Status ≠ Planiran`),
+  T-S170-4 lokalnim buildom (`npm run preview`: početak 132 KB, Plotly/Excel tek na zahtjev). Nakon
+  deploya na PROD-u: T-S169-8, T-S172-1, T-S172-3 (Kokin iPhone) ✅. Odluka: Excel uvoz primjenjuje
+  `default_map` kad se roditelj promijeni + upozorenje (BACKLOG).

@@ -1,5 +1,5 @@
 > Pisano protiv zadnjeg commita **S172** na `test-branch` („S172: zatvaranje sesije …“).
-> **`main` = `6ff19d4` (deploy 14.10., S169 + S170 + S171).** `test-branch` = `main` + S172 (**nije deployano**).
+> **`main` = `ca496cb` (deploy 17.10., S172).** `test-branch` = `main` + dokumenti zatvaranja.
 > **PROD baza:** `sql/057` ✓, Visa config ✓ (14.10.). S172 nema migracije ni configa za PROD.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md`; ovdje je samo **stanje u letu**.
@@ -12,7 +12,7 @@
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (na `test-branch`, čeka deploy)
+## Gotovo — NA PROD-u od 17.10. (T-S172-1, T-S172-3 Kokin iPhone, T-S169-8 ✅)
 - Nakon ↗ u Košarama i klika na tab **Overview** vraća se razdoblje od prije (This Year), pa ZABA
   saldo opet pokazuje danas. Ručno izabrano razdoblje u Activities ostaje.
 - Zaglavlje košare u dva retka — na Kokinom iPhoneu se „· 35 kupnji“ podvlačio pod iznos.
@@ -26,10 +26,9 @@
   Arhiva: S140, S141, S152, S164.
 
 ## Što treba od tebe
-1. **Deploy kad želiš** (PowerShell naredbe u CLAUDE.md § End of session 11), pa **T-S172-1**
-   (↗ → Overview ⇒ This Year) i **T-S172-3** (Koka, iPhone: košare bez preklapanja).
+1. ~~Deploy~~ ✅ 17.10. — T-S172-1, T-S172-3, T-S169-8 potvrđeni na PROD-u.
 2. ~~T-S170-4~~ ✅ 17.10. lokalnim buildom (početak 132 KB, Plotly/Excel tek na zahtjev).
-3. Brzi: T-S169-8 (razrez nakon ↗ na PROD-u). (T-S170-1, T-S168-2, T-S170-10, T-S172-1 ✅ 17.10. na laptopu.)
+3. ✅ 17.10. na laptopu: T-S170-1, T-S168-2, T-S170-10, T-S172-1, T-S170-4.
 4. **Koku pitaj:** lista bez iznosa od 14.10.? (T-S168-4) · `+` iz prve? (T-S154-2) — ako ne, zatvaramo.
 5. T-S145-3 (kvačica `Not set`) nije se ponovila od 22.09. — zatvoriti?
 6. Studeni: ~03.–11.11. Visa traka (T-S170-9) · 11.11. MC traka (T-S171-5), prvi MC plan s ostatkom

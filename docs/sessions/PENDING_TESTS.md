@@ -14,10 +14,10 @@ Košare „isti dan u Activities ↗" postavljaju filtar na jedan dan; povratak 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S172-1 | PROD (nakon deploya): This Year → Košare → ↗ na kupnji ⇒ Activities na taj dan ⇒ tab Overview ⇒ opet This Year, ZABA saldo = današnji; s ručno promijenjenim razdobljem u Activities ostaje ručno | ✅ 17.10. (Saša, lokalno TEST = kopija PROD-a) — ↗ pa tab Overview ⇒ opet This Year, saldo isti; ručni This Month u Activities ostao This Month |
+| T-S172-1 | PROD (nakon deploya): This Year → Košare → ↗ na kupnji ⇒ Activities na taj dan ⇒ tab Overview ⇒ opet This Year, ZABA saldo = današnji; s ručno promijenjenim razdobljem u Activities ostaje ručno | ✅ 17.10. (Saša, lokalno TEST = kopija PROD-a) — ↗ pa tab Overview ⇒ opet This Year, saldo isti; ručni This Month u Activities ostao This Month; **PROD 17.10.** nakon deploya isto ✅ |
 | T-S172-2 | E2E E11-4 / E12-2 / E13-2 stalno padaju — podaci na TEST-u i zastarjeli tekst | ✅ S172 (17.10.) — TEST očišćen (8 zaostalih Area, 2 tuđa sharea); `global-setup` to sada provodi pri svakom runu (pokus: podmetnuta Area + share ⇒ uklonjeni i ispisani); E13-2 spec tražio stari tekst „move up" (app: „become direct children of"). S133-1 je ovisio o tuđem shareu (`Garmin_data`) ⇒ sada sije vlastitih 1.100 eventa (protuprovjera: brojka odrezana na 1000 ⇒ pada). **Puni run 84 / 3**; S107-3 i S104-3 pojedinačno prolaze ⇒ T-S172-4 |
 | T-S172-4 | E2E povremeni padovi u punom runu: S104-3 (kategorije Fitnessa „Loading…" > 10 s, `waitFor` option), S107-3 | ⬜ pojedinačno prolaze (S104 2/2 zaredom); izmjeriti zašto se kategorije ponekad učitavaju > 10 s prije nego se produlji čekanje |
-| T-S172-3 | PROD (nakon deploya), **Kokin mali iPhone**: zaglavlje košare u dva retka — `Mastercard · 11.11.` / `35 kupnji` lijevo, iznos / `ostaje` desno, ništa se ne preklapa | ⬜ **laptop ✅ 17.10.** (Saša, Chrome iPhone 393 px: dva retka, bez preklapanja); ostaje Kokin iPhone nakon deploya (širi iOS font) |
+| T-S172-3 | PROD (nakon deploya), **Kokin mali iPhone**: zaglavlje košare u dva retka — `Mastercard · 11.11.` / `35 kupnji` lijevo, iznos / `ostaje` desno, ništa se ne preklapa | ✅ 17.10. — laptop (393 px) i **Kokin iPhone na PROD-u** (deploy `ca496cb`): „Koka vidi sve ok“ |
 
 ---
 
@@ -76,7 +76,7 @@ Odluke T33–T36 izvedene na PROD-u (uvozi pod Kokinim računom, config razreza 
 | T-S169-5 | PROD All Time drill: Povremeno nužno → Zdravlje → `Medical_Koka` ≈ 1.151 trošak (ne minus); Osiguranje → `Zivotno` pozitivan | ✅ S169 (12.10., Saša) — Medical_Koka **1.168,23** (uz danas razvrstane ljekarne), Zivotno **2.090,59**, Zdravlje 3.786,76 bez minusa |
 | T-S169-6 | RF N/A 10/2025–09/2026 (Saša): razvrstaj `…_sasin_tekuci_rf_20261012_1102.xlsx` ⇒ `--preuzmi` na PROD ⇒ uvoz pod Kokinim računom | ⬜ |
 | T-S169-7 | Starija povijest 01/2024–09/2025, `--s-tekstom --po-iznosu`: ZABA s Kokom (od najvećeg iznosa, stane se kad god), RF Saša ⇒ `--preuzmi` (ISTI prozor i zastavice) ⇒ uvoz | ⬜ |
-| T-S169-8 | Nakon deploya (PROD): Kamo ide novac → rasklopi Povremeno nužno › Osiguranje → ↗ → povratak na Overview ⇒ isto rasklopljeno (i Troškovi/Prihodi, os); F5 ⇒ čisto | ⬜ **lokalno ✅ 12.10. (Saša, ručno: povratak na rasklopljeno radi)**; ostaje PROD nakon deploya |
+| T-S169-8 | Nakon deploya (PROD): Kamo ide novac → rasklopi Povremeno nužno › Osiguranje → ↗ → povratak na Overview ⇒ isto rasklopljeno (i Troškovi/Prihodi, os); F5 ⇒ čisto | ✅ 17.10. (Saša, PROD nakon deploya `ca496cb`) — razrez rasklopljen nakon ↗ i povratka; lokalno ✅ 12.10. |
 
 ---
 

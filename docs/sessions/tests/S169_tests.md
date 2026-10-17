@@ -81,7 +81,7 @@ kad god (neodlučeni ostaju N/A, `--preuzmi` ih ne dira). 2023. nije u prozoru (
    saldo nepomaknut.
 4. ⚠ Intercar rate 2025. (T37) Koka ne razvrstava dok Saša ne provjeri duplikate.
 
-## T-S169-8 ⬜ Razrez pamti rasklopljeno nakon drilla (nakon deploya)
+## T-S169-8 ✅ (17.10., PROD) Razrez pamti rasklopljeno nakon drilla (nakon deploya)
 
 Saša, S169: rasklopljen redak se gubio pri povratku iz Activities. Sada modul `BreakdownTile`
 pamti otvorene retke, stranu, os i fokus kruga (kao harmonika, S166); F5 kreće čisto.

@@ -41,7 +41,7 @@ S104-3: Area `Fitness` odabrana, a izbornik kategorija stoji na „Loading…" d
 na `option`). Pojedinačno 2/2 prolaz. S107-3 pojedinačno prolazi. Prije produljenja čekanja
 izmjeriti zašto se kategorije ponekad učitavaju > 10 s (Network u traceu).
 
-## T-S172-3 ⬜ Zaglavlje košare na malom iPhoneu (PROD, nakon deploya)
+## T-S172-3 ✅ (17.10., laptop + Kokin iPhone na PROD-u) Zaglavlje košare na malom iPhoneu (PROD, nakon deploya)
 
 **Što je novo:** na Kokinom iPhoneu „· 35 kupnji" se podvlačio pod iznos košare (razmak ispred
 njega bio je u dijelu koji se ne lomi, a iOS font je širi od Androidova). Sada dva retka s obje strane.
