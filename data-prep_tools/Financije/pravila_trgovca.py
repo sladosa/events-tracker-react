@@ -43,6 +43,9 @@ PRAVILA = [
     (r'^na-ma\b',                               None,         'Domaćinstvo', 'Hrana i ostalo',           '2/2'),
     (r'^speceraj\b',                            None,         'Domaćinstvo', 'Hrana i ostalo',           '1/1'),
     (r'^the meat\b',                            None,         'Domaćinstvo', 'Hrana i ostalo',           '5/5'),
+    # Saša 18.10.: Miele TRGOVINA = potrošni (Hrana i ostalo). NE riječ „Miele" u opisu — servis
+    # (Elektro mehanika Kovačić) i dio (OPREMANJE) su Kuća / Popravci.
+    (r'^miele\b',                               None,         'Domaćinstvo', 'Hrana i ostalo',           '4/4'),
     # Domaćinstvo / kave, jelo vani — `restoran … zagreb` bez projektnih (Kvatrić, Time)
     (r'\baristos\b',                            None,         'Domaćinstvo', 'Kave/jelo vani',           '8/8'),
     (r'^vincek\b',                              None,         'Domaćinstvo', 'Kave/jelo vani',           '2/2'),

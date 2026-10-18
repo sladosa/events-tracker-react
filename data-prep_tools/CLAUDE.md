@@ -571,7 +571,7 @@ data-prep_tools/Financije/razvrstaj_na.py
 data-prep_tools/Financije/pravila_trgovca.py
                                    S174 (T17): `PRAVILA` uzorak trgovca → Tip/Podtip (+ `izvor`),
                                    `po_pravilu(tekst, izvor)`. AI predložio, PREBROJANO nad bazom,
-                                   Saša odobrio 31. Novo pravilo = isti postupak (radni stol
+                                   Saša odobrio 31 (+ Miele 4/4, 18.10.). Novo pravilo = isti postupak (radni stol
                                    `Claude-temp_R/s174_pravila/`: skupi → predlozi_ai →
                                    provjeri_pravila), nikad ručni upis bez brojanja (S164).
                                    Sljedeći korak: zvati ga iz `fill_from_izvod`/`visa_uvoz_izvoda`.
