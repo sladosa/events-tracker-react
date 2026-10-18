@@ -32,8 +32,8 @@
    razvrstač → Delta Export ZABA → `fill_from_izvod.py <delta> --mc MC_2026-10.pdf --dry` →
    odluke `--brisi=<id8>` → bez `--dry` → Koka uvozi (brojke iz zadnjeg retka ispisa) → ponovni
    prolaz `0 New · 0 Modify` → 11.11. traka Potvrdi.
-   ⚠ `docs/FINANCIJE_PROCES.md` §5 (MC naredbe) još opisuje **stari** tok („`_filled` se ne uvozi
-   bez pregleda dok se ne riješe T13–T16") — vrijede koraci iz `S173_tests.md`.
+   ✅ `docs/FINANCIJE_PROCES.md` §5 „Mastercard izvod“ prepisan na novi tok (docs sesija, 18.10.) —
+   to je trajni mjesečni postupak; `S173_tests.md` nosi očekivane brojke za studeni.
 2. Iz S172, i dalje otvoreno: **Koku pitaj** lista bez iznosa od 14.10.? (T-S168-4) · `+` iz prve?
    (T-S154-2) · T-S145-3 zatvoriti? · studeni: Visa traka (T-S170-9), MC traka (T-S171-5), prvi MC
    plan s ostatkom na zadnjoj rati (T-S168-3), ti kao grantee (T-S156-5), izvodi listopad
@@ -71,5 +71,4 @@
 6. Iz S172: Excel uvoz `default_map` kad se roditelj promijeni (BACKLOG vrh) · T-S172-4 (E2E
    S104-3/S107-3 izmjeriti) · „Review" sheet (čeka Sašu) · F5 · delta: retci koje `fill_from_izvod`
    dopiše ispod sekcije nisu u grupi ni u bojanju · ↗ ne vraća `attrFilter`.
-7. Zaglavlje korijenskog `CLAUDE.md` (`> Povijest po sesijama … S1–S172`) nije ažurirano na S173 —
-   korijen je ove sesije bio teritorij docs sesije.
+7. ~~Zaglavlje korijenskog `CLAUDE.md` na S173~~ ✅ (docs sesija, 18.10.).

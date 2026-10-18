@@ -154,7 +154,7 @@ dati „slaže se": rate kupovina od prije (Konzum, Allianz…) u bazi postoje s
 | kada | što | tko | gdje |
 | --- | --- | --- | --- |
 | svaki dan | unos | oboje | mobitel |
-| ~2. | MC izvod (stiže prije naplate) | Saša → Koka uvozi | alat → Excel |
+| ~2. | MC izvod (stiže prije naplate) | Saša → Koka uvozi | alat → Excel — **§5 „Mastercard izvod“, koraci 1–8** |
 | ~3.–12. | Visa izvod (~3.) → Saša plati fotonalogom → alat → Koka uvozi | Saša (Koka uvozi) | alat → Excel |
 | 11. | Mastercard naplata | Koka | traka — ako je MC izvod uvezen, samo **Potvrdi** |
 | kad stigne | ZABA izvod | Saša → Koka uvozi | alat → Excel |
@@ -253,18 +253,30 @@ uz razlog. MC stiže kao `Obavijest o učinjenim troškovima.pdf` → `MC_YYYY-M
 u Kokinoj mapi). Nakon uvoza PDF u `izvodi\Analizirani_izvodi\` — to je
 oznaka „obrađeno" za čovjeka; alati ga vide i u korijenu.
 
-**Mastercard izvod (~2. u mjesecu, prije naplate)** — izveden uživo S158 (MC_2026-09)
-1. `Financije\run.bat uskladi_izvod.py --izvod MC_YYYY-MM.pdf --dry` → spareno, što fali
-   (`ZA UVOZ`), što je višak (`PITANJA`). Prijedlog `Status → Izvrsen` se **ne primjenjuje** (T19).
-2. Delta Export ZABA iz appa (Activities, filtar na račun — najlakše klikom na račun na pločici) →
-   `Financije\run.bat fill_from_izvod.py <delta.xlsx> --mc MC_YYYY-MM.pdf` → `<delta>_filled.xlsx`
-   (presedani se uzmu sami iz `ET_TARGET`).
-3. ⚠ **`_filled` se NE uvozi bez pregleda** dok se ne riješe T13–T16: mali pomak iznosa = nov redak
-   (duplikat), duplikati u košari se ne prijavljuju, rate ostanu `N/A`. Kontrola prije uvoza:
-   **Σ redaka s naplatom = dan dospijeća = iznos izvoda u cent** — ne „Σ košara" iz sheeta (T12).
-4. Koka uveze; 11. traka ponudi **Potvrdi**.
-5. Jednom mjesečno nakon izvoda: `Financije\run.bat rate_alat.py --only b` — novi planovi rata
-   (ako ih ima) → `--file <ime>` → uvoz. Ponovno pokretanje ne generira dvaput.
+**Mastercard izvod (~2. u mjesecu, prije naplate)** — alat S173 (T13–T16, T23); izmjeren offline
+nad stanjem od 02.10., **prvi put uživo s MC_2026-10 (~02.11., T-S173-2..4** — tamo su i očekivane
+brojke za taj mjesec, `docs/sessions/tests/S173_tests.md`)
+1. Razvrstač (gore) ⇒ `MC_YYYY-MM.pdf` u `izvodi\`.
+2. **Delta Export ZABA** iz appa (Activities, filtar na račun — najlakše klikom na račun na
+   pločici). Sekcija košare mora biti u fileu.
+3. `Financije\run.bat fill_from_izvod.py <delta.xlsx> --mc MC_YYYY-MM.pdf --dry`
+   Čitaj: zaglavlje **`[PROD]`** · `novi retci pod <Kokin e-mail>` (ne tvoj) ·
+   **`KONTROLA košare <dan> … ✓ u cent`** · **`DUPLIKAT?`** / `U KOŠARI … NE POTVRĐUJE` ·
+   **`NEJASNO`** · `⚠ NOV PLAN`.
+   Rate starih planova i postojeće naknade moraju biti u `ISPRAVCI` (žig), **nikad** u `NOVI`.
+4. Odluke: za svaki prijavljeni višak/duplikat koji stvarno treba maknuti ponovi s
+   `--brisi=<id8>` (svaki zaseban argument). Alat briše samo ono što je sam prijavio.
+   KONTROLA ✗ je u redu **samo** uz „razlika je točno Σ prijavljenih" — inače stati.
+5. Isto **bez `--dry`** ⇒ `<delta>_filled.xlsx`. Zapiši zadnji redak ispisa
+   **`OČEKIVANO U PREGLEDU UVOZA (MC): N New · M Modify · K Delete`**.
+6. **Koka uveze** (za Sašine retke „Ispravi kao vlasnik Aree"); pregled mora pokazati **te brojke**.
+7. **Provjera:** novi Delta Export ⇒ korak 3 ponovo (`--dry`) ⇒ **`0 New · 0 Modify`**, ✓.
+8. Samo ako je ispis rekao `⚠ NOV PLAN`: `Financije\run.bat rate_alat.py --only b` (dry, pa
+   `--file <ime>` → uvoz) — buduće **rate** novog plana; njegove naknade su već ušle korakom 5.
+9. **11. u mjesecu Koka:** traka „Čeka potvrdu" ⇒ slaže se ⇒ **Potvrdi**.
+
+(Do S173 je ovdje stajao tok `uskladi_izvod.py` + ručni pregled `_filled`a, jer alat nije
+razlikovao ispravak od novog retka — T13–T16. Kontrola je sada u ispisu alata, ne u sheetu, T12.)
 
 **Visa (izvod ~3., dospijeće ~12.; Saša plaća ručno fotonalogom)** — izvedeno S161 (PBZVISA_2026-09)
 1. **Prvo platiti** (fotonalog s RF-a, iznos = „Novi saldo" s izvoda), pa **jednom** pokrenuti s danom plaćanja:
