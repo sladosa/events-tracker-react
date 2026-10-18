@@ -30,9 +30,13 @@
 2. **Deploy** kad hoćeš (guard je jedina app promjena od 17.10.) — inače T-S174-3 uvoz i dalje pita.
 3. **T-S174-3 (PROD):** starija povijest s Kokom (ZABA, od najvećeg iznosa) i ti (RF) — file s PROD-a,
    `--preuzmi`, uvoz pod Kokinim računom. Očekivane brojke u `S174_tests.md`. T37 (Intercar duplikati) prije uvoza.
-4. **Odluka:** tvoja pravila iz T17 izmjerena — `PARKING` 12/13 (dodati? koristi mjesečnom krugu, npr.
+4. **T-S174-5 (PROD, TEK POSLIJE uvoza T-S174-3):** Nenini retci — dvije naredbe iz
+   `Claude-temp_R\s174_pravila\nena_naredbe.ps1` ⇒ Koka uvozi `0 · 36 · 0` (Transfer / Nena, prije
+   25.07.2026.) i `0 · 5 · 0` (Nena's funds: pričuva od 18.08. + uplate 7.000/5.000).
+   Usput (S174, nakon rituala): pravilo `^miele` (4/4) dodano; iz pravila plina maknut Međimurje-plin (Nenin).
+5. **Odluka:** tvoja pravila iz T17 izmjerena — `PARKING` 12/13 (dodati? koristi mjesečnom krugu, npr.
    `VPA PARKING`); `GLOVO` povijest ne potvrđuje (Kave 1 · Hrana 1 · Temu 1) — ostaviti ručno?
-5. Iz S173, i dalje: **~2.11. MC_2026-10** (T-S173-2..4) · Koku pitaj: lista bez iznosa od 14.10.?
+6. Iz S173, i dalje: **~2.11. MC_2026-10** (T-S173-2..4) · Koku pitaj: lista bez iznosa od 14.10.?
    (T-S168-4) · `+` iz prve? (T-S154-2) · studeni trake (T-S170-9, T-S171-5), T-S168-3, T-S156-5,
    izvodi listopad (T-S156-7, T-S170-12, T-S161-3, T-S158-5). Odluka: provjera košara u „Review" sheetu.
 

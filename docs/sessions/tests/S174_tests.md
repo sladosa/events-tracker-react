@@ -70,3 +70,26 @@ Promašaji pravila su jednokratne iznimke, nijedno pravilo ispod 90 %: ljekarna 
 ⚠ Mjerenje je **in-sample** (pravila su izvedena iz istih redaka, ali nijedan od njih nije razvrstalo
 pravilo — svi su ručni). Out-of-sample (AI samo na povijesti do 2025-09, mjeri se na 12 mj) nije
 rađeno — ~0,70 $, ako ikad zatreba za proširenje liste.
+
+## T-S174-5 ⬜ (PROD, Saša + Koka, TEK POSLIJE uvoza T-S174-3) Nenini retci u Transfer / Nena i Nena's funds
+
+**Odluke (Saša, 18.10.):** Nena je umrla 01.08.2026.; granica = prva uplata **25.07.2026.**
+Prije: sve što je Koka plaćala za Nenu (grijanje Međimurje-plin, Holding, voda, Lind-grad pričuva,
+Telemach/Bilan „Nena", Kućište režije i **Porez Kućište** 280 + 350) ⇒ `Transfer / Nena` — Nena je
+vraćala, nije trošak kućanstva. Od granice ⇒ `Razno / Nena's funds` (već postoji, Koka ga koristi od
+18.08.): pričuva Lind-grad 18.08. ×3 i **uplate 7.000 + 5.000 €** (bile `Prihodi / Koka`) — fond tada
+pokazuje i ušlo i potrošeno. Postojeća razvrstavanja se gaze. Kupnje na ljetovanju (Plodine/Studenac
+Orebić, restoran) i podizanje gotovine NISU Nena i ne diraju se.
+
+**Zašto tek poslije:** `ispravi_tip.py` piše CIJELI redak kakav je u bazi u trenutku izrade — file
+napravljen prije uvoza razvrstavanja mogao bi vratiti staro stanje retka.
+
+1. Uvezen T-S174-3 (Nenine retke u tom fileu ostaviti N/A).
+2. PowerShell, naredbe iz `Claude-temp_R\s174_pravila\nena_naredbe.ps1` (izravno venv Python, NE
+   `run.bat` — `"Nena's funds"` s navodnicima). **Očekivano** (suha proba nad PROD snimkom 18.10.):
+   `ispravak_tip_Transfer_Nena_*.xlsx (36 redaka)` i `ispravak_tip_Razno_Nena_s_funds_*.xlsx (5 redaka)`;
+   alat staje ako id ne postoji ili par nije u izborniku.
+3. Koka uvozi oba: `0 New · 36 Modify · 0 Delete` i `0 · 5 · 0`; mijenja se samo Tip/Podtip; ZABA saldo
+   nepomaknut (nakon deploya bez kutije potvrđenog stanja).
+4. Overview → Kamo ide novac, All Time: Kuća manja za Nenin dio, `Prihodi / Koka` manji za 12.000, Razno
+   (Nena's funds) pokazuje uplate i trošenje.
