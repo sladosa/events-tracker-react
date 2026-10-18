@@ -2,7 +2,9 @@
 
 > Preseljeno iz korijenskog `CLAUDE.md`-a u S151 **doslovno** — backlog je plan (kvarljiv), ne
 > pravilo, a CLAUDE.md se učitava u svaku sesiju. Čitaj pri **planiranju sesije**.
-> Prolaz s odlukama po stavci: `BACKLOG_2026-09-26.md`. **Stanje nakon S152:** `BACKLOG_2026-09-26_S152.md`.
+> Ovo je **jedini** backlog. Zapis prolaza s odlukama po stavci (26.09., S150) i snimka stanja
+> nakon S152 su povijest: `docs/_archive/BACKLOG_2026-09-26.md`, `docs/_archive/BACKLOG_2026-09-26_S152.md`.
+> Redoslijed velikih koraka nije ovdje nego u `CLAUDE.md` § Strategic Position.
 
 
 > **Struktura NOSI trijazu, umjesto da je opisuje** (S140). Do tada je ovdje stajao odlomak
@@ -17,7 +19,7 @@
 ### Otvoreno — ovo je posao
 
 **Prolaz kroz backlog 2026-09-26 (S150)** — odluka po svakoj stavci i jednostavni opisi:
-`docs/sessions/BACKLOG_2026-09-26.md`. Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
+`docs/_archive/BACKLOG_2026-09-26.md` (povijest). Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
 § S150). Nove i preformulirane stavke iz prolaza:
 
 - **Excel uvoz primjenjuje `depends_on.default_map` kad se RODITELJ promijeni (S172, Saša: odlučeno

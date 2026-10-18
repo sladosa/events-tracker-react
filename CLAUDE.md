@@ -2378,7 +2378,7 @@ Sjeda **na** Overview, ne umjesto njega. Success criteria se definiraju kad Faza
 
 ## Backlog
 [↑ Sadrzaj](#Sadrzaj)
-Preseljen doslovno u **`docs/sessions/BACKLOG.md`** (S151). Prolaz s odlukama: `docs/sessions/BACKLOG_2026-09-26.md`; **stanje nakon S152** (arhiva): `docs/_archive/BACKLOG_2026-09-26_S152.md`. Čita se pri planiranju sesije.
+Preseljen doslovno u **`docs/sessions/BACKLOG.md`** (S151). To je **jedini** backlog; zapis prolaza s odlukama (S150) i snimka nakon S152 su povijest u `docs/_archive/` (`BACKLOG_2026-09-26*.md`). Čita se pri planiranju sesije.
 
 ## TypeScript known issue
 [↑ Sadrzaj](#Sadrzaj)
