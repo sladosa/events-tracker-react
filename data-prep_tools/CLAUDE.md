@@ -319,12 +319,51 @@
   planove banka ne daje ukupni iznos ⇒ zadnja generirana rata nosi `~`.
 - **⚠ MC naknada `1,32` po rati** dolazi samo uz planove koji na izvodu imaju redak u zagradi
   `(B… dd.mm.yy ukupno EUR)` (novi način obročne otplate) — taj redak nosi i **datum kupnje**.
-- **⚠ `fill_from_izvod --mc`: mali pomak iznosa = NOV redak** (tečaj, cent ostatka, redak bez
-  opisa) ⇒ duplikat. Prije uvoza `_filled` se pregledava; kontrola je Σ redaka s naplatom =
-  dan dospijeća prema iznosu izvoda, **ne** „Σ košara" iz delta sheeta (on zbraja sve buduće naplate).
+- **~~`fill_from_izvod --mc`: mali pomak iznosa = NOV redak~~ — ZATVORENO S173** (v. dolje
+  „MC alat"). Kontrola ostaje Σ redaka s naplatom = dan dospijeća prema UKUPNO s izvoda — alat je
+  sada sam ispisuje (`KONTROLA košare …`), **ne** „Σ košara" iz delta sheeta.
 - **⚠ Regex u Python izvoru provjeri na kontrolne znakove** — `\b` je u `fill_from_izvod` od
   S126 bio pravi backspace (`\x08`) i izraz nikad nije pogodio. Sken: `[\x00-\x08\x0b\x0c\x0e-\x1f]`.
 - **`_db.load_env` traži SERVICE ključ** (S158); TEST = `.env.local`. Anon kroz RLS daje dio baze.
+
+**MC alat (S173)** — `fill_from_izvod --mc` + `_mc_spajanje.py`; isti obrazac kao Visa (S161)
+
+- **⚠ PLAN NIJE „ISTI `event_date`".** Rate uvezene s izvoda nose dan KNJIŽENJA (Konzum P-0277:
+  28.06., 11.07., 29.08.), generirane (`rate_alat`) dan PRVE rate, rata modal dan kupnje. Ključ je
+  `rate_alat.plans()`: trgovac iz `Izvod opis` + N + **mjesec početka** (`Datum naplate` − (n−1)).
+  Generirana rata (bez `Izvod opis`) nasljeđuje trgovca od retka plana istog dana i N.
+- **⚠ Rata s izvoda često NEMA `Rate?`** (T24, S126–S158): plan se čita iz `Izvod opis`, a Kokina
+  rata upisana rukom (`Konzum 1/6`, bez `Rate?`) iz `n/N` u komentaru. Bez toga `15,36` ostane i
+  `15,37` uđe kao nov plan.
+- **⚠ BLIZAK IZNOS (T13): dva retka izvoda traže isti redak baze ⇒ RAZVRSTAVANJE prije DATUMA.**
+  Izmjereno MC_2026-09 u oba smjera: Kokin `tonner 3,45` (12.09., Informatika/HP) traže 2CO|HP 3,49
+  (11.09., presedan Informatika/HP) i VPA PARKING 4,00 (12.09.) — sam „isti dan" dao bi ga parkingu;
+  Kokin `28,79` bez opisa (07.09.) traže FENGHUA 33,10 (isti dan) i GLOVO 29,64 — presedana nema,
+  odlučuje dan. Bez ijednog dokaza „jedini s obje strane" padne na oba ⇒ `NEJASNO`, nov redak.
+- **⚠ `Tip` SPARENOG retka je NAŠ — presedan ga ne dira** (T13: „opis i Tip naši"). Kokin
+  `Temu .. pokloni za decke` (N/A) dobio bi `Razno / Temu`, ona ga je razvrstala u `Pokloni`.
+- **⚠ NAKNADE SU ZAMJENJIVE** (sve 1,32, ista košara): spari se BILO KOJA nesparena naknada
+  košare, dan plana je samo prednost. S158 ih je uvezao s danom knjiženja (28.09.), generirao s danom
+  plana (07.09.) — uvjet „dan plana" proglasio bi prave naknade duplikatima i ponudio nove.
+  Buduće (T23) se broje **po dospijeću**; postojeća pokriva plan svog dana, pa svog imena, a ostatak
+  stare planove — **nikad** nov plan s ovog izvoda (njegovih još nema).
+- **⚠ Duplikat PLANA tek POSLIJE svih rata.** Dva prava ista plana (LUFTHAN…447/…448, S137) izvod
+  nosi dvaput; prijava unutar petlje bi drugi proglasila duplikatom a njegovu ratu novom. Zagrada
+  (T15) bira pravi plan po danu kupnje (Plitvice: Sašin 12.09., Kokin 07.09. = duplikat, sva 3 retka).
+- **⚠ NOV REDAK NOSI U KOLONI G VLASNICU AREE, ne izvoznika delta sheeta.** Prazni retci predloška
+  nose onoga tko je izvezao; izveze li Saša a uvozi Koka, redak bez `event_id` s tuđim e-mailom uvoz
+  **preskače** (S125). E-mail se čita iz baze (`areas.user_id` → `profiles`), ne iz konstante.
+- **⚠ Slobodna minuta za nov redak traži se U BAZI tog dana**, ne na listu: rata nosi dan prve
+  rate plana (i 29.12.2025.), a list taj dan ne vidi. Stari `free_time()` gleda samo list.
+- **Brisanje samo uz `--brisi=<id8>`, i samo prijavljeno** (DUPLIKAT / višak / nejasno) — alat staje
+  na id-u koji nije prijavio. Ispravci idu NA retke sekcije košare po `event_id`; redak kojeg na listu
+  nema dopiše se cijeli iz baze (P3: prazna ćelija ne briše).
+- **Metoda mjerenja (S173): backup snimke su fixture.** `_backup/test/2026-10-07_0836` = stanje prije
+  S158 uvoza (košara 11.10. 40/859,58), `2026-10-17_1013` = poslije (55/1.189,34). Harness
+  `Claude-temp_R/s173_mc/` (`fixdb.py` glumi `_db.rest` iz snimke; delta sheet iz pravog
+  `createDeltaExcel`; `parse_import.mjs` = pravi parser uvoza appa) — `regresija.sh` vrti 6 provjera
+  offline. Vrijedi za svaki budući alat: **prije/poslije ručnog zahvata imamo dvije snimke**, pa se
+  „alat bi to sam napravio" dade izmjeriti, ne procijeniti.
 
 ## Financije — pravila domene (nastavak; „Ključne odluke" su u korijenu)
 
@@ -541,6 +580,11 @@ data-prep_tools/Financije/uskladi_izvod.py
 data-prep_tools/Financije/primijeni_uskladu.py
                                    Upisuje nalaz na PROD (ispravci + dopune + brisanja),
                                    jednim potezom, s backupom i brojanjem redaka.
+data-prep_tools/Financije/_mc_spajanje.py
+                                   S173: MC izvod <-> baza — rate po planu i broju (T16),
+                                   naknade + buduce (T23), `uskladi()` za ostalo, blizak
+                                   iznos (T13), duplikati (T14). Samo odlucuje; pise
+                                   `fill_from_izvod --mc` (ispravci NA retke sekcije).
 data-prep_tools/Financije/_db.py   `load_env` + pagirani `rest`. Izdvojeno iz
                                    `uskladi_izvod` (koji uvozi pdfplumber) da alat
                                    koji prica SAMO s bazom ne vuce PDF citac.

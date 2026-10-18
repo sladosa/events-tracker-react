@@ -147,6 +147,14 @@ def ev_date(r):
 # -- izvod -------------------------------------------------------------------
 AMT = r'(-?\d{1,3}(?:\.\d{3})*,\d{2})'
 ROW_RE = re.compile(r'^(B\d{10,20})\s+(\d{2}\.\d{2}\.\d{4})\.\s+(.+?)\s+' + AMT + r'\s*$')
+# T15 (S173): redak U ZAGRADI ispod rate novog nacina obrocne otplate nosi izvornu
+# kupnju: `(B080262578769884 12.09.26 135 EUR)` = referenca, DAN KUPNJE, ukupni
+# iznos. Iznos zna biti bez decimala (`135`) ili s jednom (`105,9`). Parser ga je
+# do S173 bacao — a iz njega se Plitvice riješio (dva plana, banka zna jedan).
+ZAGRADA_RE = re.compile(r'^\((B\d{10,20})\s+(\d{2}\.\d{2}\.\d{2})\s+(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s+EUR\)$')
+# Ispod `NAKNADA ZA OBROCNU OTPLATU PO RATI` stoji gola referenca RATE kojoj
+# naknada pripada — jedina veza naknade s planom (T23).
+REF_RE = re.compile(r'^(B\d{10,20})$')
 
 
 def to_f(s):
@@ -189,6 +197,18 @@ def parse_mc(path):
                          'opis': clean_opis(m.group(3)),
                          'iznos': to_f(m.group(4)),
                          'kartica': card})
+            continue
+        # ⚠ Zagrada i referenca vrijede SAMO za redak neposredno iznad — pa se
+        #   pridružuju zadnjem retku, i samo ako ga ima.
+        m = ZAGRADA_RE.match(ln)
+        if m and rows:
+            rows[-1]['kupnja'] = datetime.strptime(m.group(2), '%d.%m.%y').date()
+            rows[-1]['ukupno'] = to_f(m.group(3))
+            rows[-1]['kupnja_ref'] = m.group(1)
+            continue
+        m = REF_RE.match(ln)
+        if m and rows and re.match(r'NAKNADA ZA OBRO', rows[-1]['opis'], re.I):
+            rows[-1]['za_ref'] = m.group(1)
     if dosp is None or total is None:
         sys.exit(path.name + ': ne mogu procitati datum dospijeca / UKUPNO.')
     got = round(sum(r['iznos'] for r in rows), 2)

@@ -2,7 +2,23 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S172 (2026-10-17) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S173 (2026-10-18) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S173 — MC alat prije 11.11.: T13/T14/T15/T16/T23 u `fill_from_izvod --mc` (2026-10-18)
+
+Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `uskladi_izvod.py`), bez promjene appa. Nad stanjem od 02.10. alat sam proizvodi ono što je S158 složio ručno (košara 55 / 1.189,34 u cent; pravi parser uvoza appa 24 / 38 / 4). Harness: `Claude-temp_R/s173_mc/regresija.sh`.
+
+**Detalji testova:** [tests/S173_tests.md](tests/S173_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S173-1 | Offline nad backup snimkama: stanje 02.10. ⇒ 24 New · 38 Modify · 4 Delete, košara = S158, ponovni prolaz 0/0, stanje poslije S158 0 New, sintetički studeni 12/12 | ✅ S173 — izmjereno (8 provjera u detaljima; sabotaže ruše 4 i 2); čuva `regresija.sh` (lokalno, uz backupe) |
+| T-S173-2 | ~02.11. PROD, Saša: `MC_2026-10` kroz `--mc` — 15 rata starih planova i 4 naknade 11.11. SPARENE (nijedna u NOVI), KONTROLA ✓ u cent, novi retci pod Kokom | ⬜ |
+| T-S173-3 | Koka uvozi `_filled`: pregled = OČEKIVANO iz ispisa, nijedan nov redak „tuđi" | ⬜ |
+| T-S173-4 | Ponovni prolaz nad uvezenim: 0 New · 0 Modify; 11.11. traka MC slaže se ⇒ Potvrdi | ⬜ |
+| T-S173-5 | Samo uz `⚠ NOV PLAN`: `rate_alat --only b` nudi preostale rate, naknade su već ušle | ⬜ |
 
 ---
 

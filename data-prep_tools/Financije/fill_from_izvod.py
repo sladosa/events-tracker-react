@@ -16,7 +16,8 @@ ZAŠTO IZ IZVODA, A NE IZ KOKINOG FILEA
 ŠTO ALAT NE RADI
   • ne uvozi ništa — piše samo Excel, uvoz ide kroz app kao i dosad
   • ne dira postojeće retke (samo prazne retke predloška i, ako ih ponestane,
-    dopisuje nove ispod)
+    dopisuje nove ispod) — OSIM `--zigosi` (žig) i `--mc` (S173: ispravci i
+    brisanja na retke sekcije košare, po `event_id`; v. `_mc_spajanje.py`)
   • ne izmišlja `session_start` ondje gdje ga app već zapisao — prazni retci
     predloška ga imaju, a dopisani ga dobivaju iz istog pojasa (14:00+n)
 
@@ -29,7 +30,15 @@ ZAŠTO IZ IZVODA, A NE IZ KOKINOG FILEA
 Pokretanje (target = file skinut iz appa, ostaje netaknut):
     python fill_from_izvod.py <target.xlsx> --rf   <RF_2026-07.pdf>   [--od 2026-08-05]
     python fill_from_izvod.py <target.xlsx> --visa PBZVISA_2026-07.pdf --naplata 2026-08-07
+    python fill_from_izvod.py <delta ZABA.xlsx> --mc MC_2026-10.pdf  [--brisi=<id8> ...]
 Rezultat: `<target>_filled.xlsx` pokraj originala + izvještaj na ekran.
+
+--mc (S173, ~2. u mjesecu, PRIJE naplate 11.): isto što `visa_uvoz_izvoda` radi za
+  Visu — rata po planu i broju (T16 nasljeđuje Tip/komentar), blizak iznos =
+  ISPRAVAK (T13), duplikat se prijavljuje (T14), naknada 1,32 ide u plan svoje
+  rate i generiraju se buduće (T23). Brisanje SAMO uz `--brisi=<id8>` (svaki
+  zaseban — run.bat guši zarez). Kontrola: Σ košare dospijeća = UKUPNO s izvoda u
+  cent; ponovni prolaz nad uvezenim izvodom mora dati 0 New · 0 Modify.
 """
 
 import argparse
@@ -940,6 +949,8 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
         if v:
             used_times.add(str(v)[:5])
 
+    used_times |= {r['time'] for r in rows if r.get('time')}
+
     def free_time() -> str:
         for m in range(TIME_START_H * 60, 24 * 60):
             t = f'{m // 60:02d}:{m % 60:02d}'
@@ -976,14 +987,17 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
             row = next_free
             next_free += 1
             appended += 1
-            tg.ws.cell(row, SESS_COL).value = free_time()
+            # ⚠ `time` zadaje pozivatelj kad redak NIJE iz prozora lista (S173: MC
+            #   rata datirana danom prve rate plana, npr. 29.12.2025.) — minuta mora
+            #   biti slobodna U BAZI tog dana, a list taj dan ne vidi.
+            tg.ws.cell(row, SESS_COL).value = r.get('time') or free_time()
             tg.ws.cell(row, SESS_COL).number_format = '@'
 
         # ⚠ Area / Category_Path / User se popunjavaju UVIJEK kad fale — ne samo
         #   na dopisanim retcima. Prazan prozor daje prazne retke predloška BEZ
         #   Area, a redak bez Area parser preskoči **bez ijedne poruke**: uvoz
         #   javi „0 New, 0 Modify" i file izgleda prazan iako je pun.
-        for col, val in ((AREA_COL, area), (PATH_COL, path), (USER_COL, mail)):
+        for col, val in ((AREA_COL, area), (PATH_COL, path), (USER_COL, r.get('mail') or mail)):
             if not str(tg.ws.cell(row, col).value or '').strip():
                 tg.ws.cell(row, col).value = val
 
@@ -1006,7 +1020,7 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
         # `Planiran` (S113) - a planirani retci MORAJU ostati vidljivi, inace ih
         # korisnik dopise iz bankovne aplikacije i dobijemo ih dvaput.
         tg.put(row, 'Status', r.get('status', 'Izvrsen'))
-        tg.put(row, 'Izvod opis', r['opis'])
+        tg.put(row, 'Izvod opis', r['opis'] or None)
         cn = tg.find('Datum naplate')
         if cn:
             tg.ws.cell(row, cn).value = r['naplata']
@@ -1035,6 +1049,293 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
     return used_blanks, appended
 
 
+def _fmt(v) -> str:
+    if v is None or v == '':
+        return '—'
+    if isinstance(v, float):
+        return f'{v:.2f}'
+    return str(v)[:10] if isinstance(v, (date, datetime)) else str(v)
+
+
+def mc_odluke(a, racun: str, koka: 'KokaOpisi | None', rows: list[dict]) -> dict:
+    """`--mc` (S173): ispravci, novi retci, duplikati — isti obrazac kao
+    `visa_uvoz_izvoda` (S161). Odluke donosi `_mc_spajanje.spari`; ovdje se
+    ispisuju, novi retci idu u `rows`, a ispravci i brisanja u povratnu vrijednost
+    (pise ih `upisi_mc` NA POSTOJECE retke lista, po `event_id`).
+
+    ⚠ Dedup ide protiv BAZE, ne protiv lista: delta sheet nosi samo one karticne
+      retke koji su u kosari (dospijece jos nije proslo), a baza ih ima jos. Bez
+      toga bi svaka vec uvezena stavka usla drugi put — i to tiho, jer karticni
+      redak saldo ne dira pa se greska ne pokaze ni na plocici ni u kontrolnom stupcu.
+    ⚠ Kontrola je Σ retka s naplatom = DOSPIJECE IZVODA prema UKUPNO s izvoda (T12),
+      ne „Σ kosara" iz lista.
+    """
+    from collections import defaultdict
+    from _mc_spajanje import NAKNADA, NAKNADA_TIP, due as _due, izmjene, spari
+    from presedani import Presedani
+    from uskladi_izvod import load_db, load_env, net, parse_mc
+    from visa_popravak import lokalno
+
+    from _db import rest
+    url, key = load_env(a.presedan)
+    izm = parse_mc(a.mc)
+    db = load_db(url, key)
+    dosp = izm['dospijece']
+    # ⚠ Nov redak nosi u koloni G VLASNICU AREE, ne onoga tko je izvezao delta
+    #   (prazni retci predloska nose izvoznika). Izveze li Saša a uvozi Koka, redak
+    #   bez `event_id` s tuđim e-mailom uvoz PRESKACE (S125) — isto kao Visa alat.
+    _vl = rest(url, key, 'areas?name=eq.Financije_all&select=id,user_id')
+    vlasnica = (rest(url, key, 'profiles?id=eq.' + _vl[0]['user_id'] + '&select=id,email')
+                or [{}])[0].get('email') if len(_vl) == 1 else None
+    if not vlasnica:
+        sys.exit('✗ Ne nalazim e-mail vlasnice Aree `Financije_all` — novi retci bi bili „tuđi".')
+    pres = Presedani([d for d in db if d['attrs'].get('Racun') == racun
+                      and d['attrs'].get('Izvor') == a.mc_izvor], prije=str(izm['od']))
+
+    def klasa(t):
+        h = pres.nadji(t['iznos'], t['opis'], 'Isplata')
+        return (h['tip'], h['podtip']) if h else None
+
+    sp = spari(izm, db, a.mc_izvor, a.mc_tol, klasa=klasa)
+    izmj = izmjene(sp, dosp, klasa=klasa)
+    print('MC izvod %s: dospijece %s, %d redaka / %.2f  [%s]  novi retci pod %s'
+          % (a.mc.name, dosp, len(izm['rows']), izm['total'], a.presedan.upper(), vlasnica))
+
+    # -- koje se smije brisati: samo ono sto je alat sam prijavio (kao Visa S161)
+    smije = {}
+    for d in sp['duplikati']:
+        smije[d['r']['id'][:8]] = (d['r'], f'duplikat retka {d["kao"]["event_date"]} [{d["kao"]["id"][:8]}]')
+    for d in sp['duplikati_plana']:
+        for c in d['clanovi']:
+            smije[c['id'][:8]] = (c, f'duplikat plana — izvod nosi plan od {d["kao"]["event_date"]}')
+    for r in sp['visak']:
+        smije[r['id'][:8]] = (r, 'izvod ga ne nosi')
+    for _, k in sp['nejasni']:
+        for r in k:
+            smije[r['id'][:8]] = (r, 'blizak iznos, nejasno')
+    brisi = {x.strip()[:8] for x in a.brisi if x.strip()}
+    if brisi - set(smije):
+        sys.exit('✗ --brisi=%s: alat taj redak nije prijavio (DUPLIKAT / višak / nejasno) — '
+                 'briše se samo prijavljeno.' % ', '.join(sorted(brisi - set(smije))))
+    brisanja = [smije[i] for i in sorted(brisi)]
+    obrisani = {r['id'] for r, _ in brisanja}
+    izmj = [z for z in izmj if z['r']['id'] not in obrisani]
+
+    # -- ISPRAVCI
+    zig = [z for z in izmj if set(z['polja']) == {'Izvod opis'}
+           and z['komentar'] == z['r'].get('comment')]
+    print(f'\nISPRAVCI ({len(izmj)}) — postojeći retci, mijenja se samo navedeno:')
+    for z in izmj:
+        if z in zig:
+            continue
+        r, at = z['r'], z['r']['attrs']
+        sto = ', '.join(f'{k} {_fmt(at.get(k))} → {_fmt(v)}' for k, v in z['polja'].items()
+                        if k != 'Izvod opis')
+        print(f'  {r["event_date"]} {abs(net(at)):8.2f}  {str(r.get("comment") or "")[:24]:24} '
+              f'[{r["id"][:8]}]  {z["zasto"]}: {sto or "komentar"}')
+    if zig:
+        print(f'  (+ {len(zig)} samo žig `Izvod opis` — potvrda ovim izvodom)')
+    if len(sp['parovi']) > len(izmj):
+        print(f'  (+ {len(sp["parovi"]) - len(izmj)} sparenih bez ijedne promjene)')
+
+    # -- NOVI: slobodna minuta U BAZI tog dana (rata nosi dan prve rate plana)
+    zauzeto = defaultdict(set)
+    for d in db:
+        if d.get('session_start'):
+            zauzeto[d['event_date']].add(lokalno(d['session_start']))
+
+    def slobodna(dan: str) -> str:
+        for m in range(TIME_START_H * 60, 24 * 60):
+            hh = f'{m // 60:02d}:{m % 60:02d}'
+            if hh not in zauzeto[dan]:
+                zauzeto[dan].add(hh)
+                return hh
+        sys.exit(f'✗ Nema slobodne minute na {dan}.')
+
+    novi_mc = []
+    for n in sp['novi']:
+        t = n['t']
+        kom = n.get('komentar')
+        kk = None if kom else (koka.find(t['datum'], t['iznos']) if koka else None)
+        novi_mc.append({
+            'date': _as_date(n['event_date']), 'smjer': 'Isplata' if t['iznos'] > 0 else 'Uplata',
+            'iznos': round(abs(t['iznos']), 2), 'opis': t['opis'], 'opis_puni': t['opis'],
+            'izvor': a.mc_izvor, 'tip': n.get('tip') or NA, 'podtip': n.get('podtip') or NA,
+            'komentar': kom or kk or short_opis(t['opis']),
+            'opis_izvor': 'plan' if kom else ('koka' if kk else 'izvod'),
+            # ⚠ `Planiran` jer dospijece JOS NIJE PROSLO (S147): `Izvrsen` tek kad
+            #   racun stvarno tereti — traka, nikad zakljucak iz dospijeca.
+            'naplata': dosp, 'status': 'Planiran', 'stanje': None, 'rata': n.get('rata'),
+            'time': slobodna(str(n['event_date'])), 'mc_zasto': n['zasto'], 'mail': vlasnica,
+        })
+    for b in sp['buduce_naknade']:
+        novi_mc.append({
+            'date': _as_date(b['E']), 'smjer': 'Isplata', 'iznos': NAKNADA, 'opis': None,
+            'opis_puni': '', 'izvor': a.mc_izvor, 'tip': NAKNADA_TIP[0], 'podtip': NAKNADA_TIP[1],
+            'komentar': b['komentar'], 'opis_izvor': 'plan', 'naplata': b['due'],
+            'status': 'Planiran', 'stanje': None, 'time': slobodna(b['E']), 'mail': vlasnica,
+            'mc_zasto': f'T23 buduća naknada, naplata {b["due"]}',
+        })
+    print(f'\nNOVI ({len(novi_mc)}):')
+    for r in novi_mc:
+        print(f'  {r["date"]} {r["iznos"]:8.2f}  {str(r["komentar"])[:30]:30} '
+              f'{r["tip"]}/{r["podtip"]}  [{r["mc_zasto"]}]')
+    if any(n.get('nov_plan') for n in sp['novi']):
+        print('  ⚠ NOV PLAN: nakon uvoza `rate_alat.py --only b` generira preostale rate.')
+    rows += novi_mc
+
+    # -- DUPLIKATI, nejasno, sumnjivo, visak
+    def stanje(r):
+        return '→ BRIŠE SE (--brisi)' if r['id'] in obrisani else f'→ --brisi={r["id"][:8]}'
+    if sp['duplikati'] or sp['duplikati_plana']:
+        print('\nDUPLIKAT? — u bazi dvaput, izvod nosi jednom:')
+        for d in sp['duplikati']:
+            r = d['r']
+            print(f'  {r["event_date"]} {abs(net(r["attrs"])):8.2f}  {str(r.get("comment"))[:28]:28} '
+                  f'[{r["id"][:8]}]  isti iznos kao sparen {d["kao"]["event_date"]} '
+                  f'[{d["kao"]["id"][:8]}]  {stanje(r)}')
+        for d in sp['duplikati_plana']:
+            t = d['t']
+            dokaz = f', zagrada: kupnja {t["kupnja"]}' if t.get('kupnja') else ''
+            print(f'  plan od {d["r"]["event_date"]} ({len(d["clanovi"])} rata × '
+                  f'{abs(net(d["r"]["attrs"])):.2f}) — izvod nosi plan od '
+                  f'{d["kao"]["event_date"]}{dokaz}:')
+            for c in d['clanovi']:
+                print(f'      {str(c.get("comment"))[:30]:30} naplata {_fmt(_due(c))}  {stanje(c)}')
+    for t, k in sp['nejasni']:
+        print(f'\n⚠ NEJASNO: izvod {t["datum"]} {t["iznos"]:.2f} {t["opis"][:30]} — blizak iznos ima '
+              f'{len(k)} redaka ({", ".join(r["id"][:8] for r in k)}). Ide kao NOV; ako je '
+              f'to isti trošak, obriši stari (--brisi=<id8>).')
+    for t in sp['sumnjivi']:
+        bliski = ', '.join('%s (%d d)' % (r['event_date'], dd) for r, dd in sp['daleki'][t['ref']][:3])
+        print(f'   ? {t["datum"]} {t["iznos"]:9.2f}  {t["opis"][:34]:34} — isti iznos već u bazi: '
+              f'{bliski}  (NE UVOZIM: vjerojatno krivi datum — prvo ispravak, pa uvoz)')
+    for r, cs in sp['slozeni']:
+        print(f'   ⊃ {r["event_date"]} {abs(net(r["attrs"])):9.2f} {r.get("comment")} [{r["id"][:8]}] '
+              f'= zbroj {" + ".join("%.2f" % c["iznos"] for c in cs)} s izvoda (1:N)  {stanje(r)}')
+    if sp['visak']:
+        print(f'\nU KOŠARI {dosp}, IZVOD IH NE POTVRĐUJE ({len(sp["visak"])}):')
+        for r in sp['visak']:
+            print(f'  {r["event_date"]} {abs(net(r["attrs"])):8.2f}  {r.get("comment")}  '
+                  f'[{r["id"][:8]}]  {stanje(r)}')
+
+    # -- KONTROLA: kosara poslije uvoza ovog filea
+    nove = {z['r']['id']: z['polja'] for z in izmj}
+    s = 0.0
+    for r in db:
+        if r['attrs'].get('Izvor') != a.mc_izvor or r['id'] in obrisani:
+            continue
+        at = dict(r['attrs'], **nove.get(r['id'], {}))
+        if str(at.get('Datum naplate') or '')[:10] == str(dosp):
+            s += net(at)
+    s = round(s + sum((r['iznos'] if r['smjer'] == 'Isplata' else -r['iznos'])
+                      for r in novi_mc if r['naplata'] == dosp), 2)
+    ok = abs(s - izm['total']) < 0.005
+    print(f'\nKONTROLA košare {dosp}: Σ poslije uvoza {s:.2f}  vs izvod {izm["total"]:.2f}  → '
+          + ('✓ u cent' if ok else f'✗ RAZLIKA {s - izm["total"]:+.2f} — ne uvoziti'))
+    if not ok:
+        ponuda = round(sum(net(r['attrs']) for i, (r, _) in smije.items()
+                           if r['id'] not in obrisani and _due(r) == dosp), 2)
+        if ponuda and abs(s - ponuda - izm['total']) < 0.005:
+            print(f'  … razlika je točno Σ prijavljenih redaka ({ponuda:.2f}): odluči o njima '
+                  f'(--brisi) i pokreni ponovno.')
+    print(f'OČEKIVANO U PREGLEDU UVOZA (MC): {len(novi_mc)} New · {len(izmj)} Modify'
+          + (f' · {len(brisanja)} Delete' if brisanja else ''))
+    return {'izmjene': izmj, 'brisanja': brisanja, 'db': {r['id']: r for r in db}}
+
+
+def upisi_mc(tg: 'Target', plan: dict) -> None:
+    """Ispravci i brisanja `--mc` NA POSTOJECE retke lista, po `event_id` (S173).
+
+    ⚠ Delta sheet uz `split.due_slug` nosi CIJELU kosaru (sve s dospijecem >=
+      danas), pa je redak koji izvod ispravlja u pravilu vec na listu. Ako nije,
+      dopise se CIJELI redak iz baze (svi atributi + izmjena) — uvoz ga po
+      `event_id` vidi kao Modify, a prazna celija ne brise nista (P3).
+    ⚠ Kolona G na dopisanom retku = e-mail AUTORA retka (S148: Kokin e-mail na
+      Sasinom retku dao je 7 duplikata). Uzima se s lista (isti autor na drugom
+      retku), inace iz `visa_popravak.EMAIL`; nepoznat autor ⇒ STOP.
+    """
+    from visa_popravak import EMAIL, lokalno
+    po_id, mail = {}, {}
+    for red in tg.real_rows:
+        eid = str(tg.ws.cell(red, 1).value or '').strip()
+        if not eid:
+            continue
+        po_id[eid] = red
+        r = plan['db'].get(eid)
+        m = str(tg.ws.cell(red, USER_COL).value or '').strip()
+        if r and m:
+            mail.setdefault(r['user_id'], m)
+    tpl = tg.real_rows[0] if tg.real_rows else None
+    area = tg.ws.cell(tpl, AREA_COL).value if tpl else 'Financije_all'
+    path = tg.ws.cell(tpl, PATH_COL).value if tpl else 'Transakcija'
+    c_del = tg.find('Delete?')
+    fale = set()
+
+    def pisi(red, ime, v):
+        c = tg.find(ime)
+        if c is None:
+            fale.add(ime)
+            return
+        cell = tg.ws.cell(red, c)
+        if isinstance(v, date) and not isinstance(v, datetime):
+            # datumska celija se sidri u PODNE (excelDatetime.ts)
+            cell.value = datetime(v.year, v.month, v.day, 12, 0)
+            cell.number_format = 'd.m.yyyy'
+        else:
+            cell.value = v
+
+    dopisano = 0
+
+    def red_za(r) -> int:
+        nonlocal dopisano
+        if r['id'] in po_id:
+            return po_id[r['id']]
+        m = mail.get(r['user_id']) or EMAIL.get(r['user_id'])
+        if not m:
+            sys.exit(f'✗ Redak {r["id"][:8]} nije na listu, a autor {r["user_id"]} nema poznat '
+                     f'e-mail (kol. G) — dopuni visa_popravak.EMAIL ili izvezi delta s tim retkom.')
+        red = tg.ws.max_row + 1
+        tg.ws.cell(red, 1).value = r['id']
+        tg.ws.cell(red, AREA_COL).value = area
+        tg.ws.cell(red, PATH_COL).value = path
+        d = _as_date(r['event_date'])
+        tg.ws.cell(red, DATE_COL).value = datetime(d.year, d.month, d.day)
+        tg.ws.cell(red, DATE_COL).number_format = 'yyyy-mm-dd'
+        tg.ws.cell(red, SESS_COL).value = lokalno(r['session_start'])
+        tg.ws.cell(red, SESS_COL).number_format = '@'
+        tg.ws.cell(red, USER_COL).value = m
+        tg.ws.cell(red, COMMENT_COL).value = r.get('comment')
+        for ime, v in r['attrs'].items():
+            if ime == 'Datum naplate' and v:
+                v = _as_date(v)
+            if tg.find(ime) is not None and v is not None:
+                pisi(red, ime, v)
+        po_id[r['id']] = red
+        dopisano += 1
+        return red
+
+    for z in plan['izmjene']:
+        red = red_za(z['r'])
+        for ime, v in z['polja'].items():
+            pisi(red, ime, v)
+        if z['komentar'] != z['r'].get('comment'):
+            tg.ws.cell(red, COMMENT_COL).value = z['komentar']
+    for r, zasto in plan['brisanja']:
+        if c_del is None:
+            sys.exit('✗ List nema kolonu `Delete?` — brisanje se ne može upisati.')
+        tg.ws.cell(red_za(r), c_del).value = 'DELETE'
+    if fale:
+        print(f'  ⚠ List nema kolone {", ".join(sorted(fale))} — te izmjene NISU upisane.')
+    if dopisano:
+        prosiri_kosaru(tg, tg.ws.max_row)
+        if tg.ws.auto_filter.ref:
+            tg.ws.auto_filter.ref = (f'A{tg.header_row}:{get_column_letter(tg.last_col)}'
+                                     f'{tg.ws.max_row}')
+    print(f'  MC: {len(plan["izmjene"])} ispravaka i {len(plan["brisanja"])} brisanja upisano '
+          f'na retke lista' + (f' ({dopisano} redaka dopisano iz baze)' if dopisano else ''))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description='Popuni app-ov Excel retcima s bankovnog izvoda.')
     ap.add_argument('target', type=Path, help='xlsx skinut iz appa (delta sheet ili export)')
@@ -1049,6 +1350,9 @@ def main() -> None:
                     help='vrijednost atributa Izvor za --mc retke')
     ap.add_argument('--mc-tol', dest='mc_tol', type=int, default=5,
                     help='tolerancija u danima oko prozora MC izvoda')
+    ap.add_argument('--brisi', action='append', default=[], metavar='ID8',
+                    help='--mc: obrisi redak koji je alat prijavio kao DUPLIKAT (prvih 8 '
+                         'znakova event_id). Svaki zasebno: --brisi=e980d930 --brisi=…')
     ap.add_argument('--naplata', help='datum skupne naplate Vise, YYYY-MM-DD (s RF izvoda)')
     ap.add_argument('--od',      help='uzmi retke od datuma (YYYY-MM-DD)')
     ap.add_argument('--do',      help='uzmi retke do datuma (YYYY-MM-DD)')
@@ -1148,6 +1452,7 @@ def main() -> None:
               f'zato slabiji; provjeri popis prije upisa.')
 
     rows: list[dict] = []
+    mc_plan = None          # --mc ispravci i brisanja; pisu se POSLIJE novih redaka
     if a.rf:
         rf = rf_rows(a.rf, od, do)
         # Dedup protiv redaka koji su već na listu: prozor delta sheeta pokazuje
@@ -1235,43 +1540,7 @@ def main() -> None:
         #   ni na plocici ni u kontrolnom stupcu.
         if not a.presedan:
             sys.exit('X --mc trazi --presedan prod|test (dedup se radi protiv baze).')
-        from uskladi_izvod import (load_db as _mld, load_env as _mle, parse_mc,
-                                   uskladi as _uskladi)
-        _u, _k = _mle(a.presedan)
-        izm = parse_mc(a.mc)
-        us = _uskladi(izm, _mld(_u, _k), a.mc_izvor, a.mc_tol)
-        # `daleki` = redak izvoda bez para U PROZORU, ali isti trosak postoji u
-        # bazi izvan njega. Uvoz bi ga UDVOSTRUCIO, a dedup po (datum, iznos) ga
-        # ne vidi jer je datum upravo ono sto je krivo (razred S115).
-        sumnjivi = [x for x in us['izvod_bez_para'] if x['ref'] in us['daleki']]
-        novi = [x for x in us['izvod_bez_para'] if x['ref'] not in us['daleki']]
-        print('MC izvod %s: dospijece %s, %d redaka / %.2f'
-              % (a.mc.name, izm['dospijece'], len(izm['rows']),
-                 sum(x['iznos'] for x in izm['rows'])))
-        print('  %d za uvoz, %d vec u bazi, %d SUMNJIVIH (ne uvozim)'
-              % (len(novi), len(izm['rows']) - len(us['izvod_bez_para']), len(sumnjivi)))
-        for x in sumnjivi:
-            bliski = ', '.join('%s (%d d)' % (r['event_date'], dd)
-                               for r, dd in us['daleki'][x['ref']][:3])
-            print('   ? %s %9.2f  %-34s — isti iznos vec u bazi: %s'
-                  % (x['datum'], x['iznos'], x['opis'][:34], bliski))
-        if sumnjivi:
-            print('       (ne uvozim ih: vjerojatno isti trosak pod krivim datumom. '
-                  'Prvo ispravak datuma u bazi, pa uvoz — obrnuto udvostrucuje.)')
-        for x in novi:
-            m = re.search(r'\bRATA\s+(\d+)\s*/\s*(\d+)', x['opis'], re.I)
-            kom = (koka.find(x['datum'], x['iznos']) if koka else None) or short_opis(x['opis'])
-            rows.append({
-                'date': x['datum'], 'smjer': 'Isplata', 'iznos': x['iznos'],
-                'opis': x['opis'], 'opis_puni': x['opis'],
-                'izvor': a.mc_izvor, 'tip': NA, 'podtip': NA,
-                'komentar': kom, 'opis_izvor': 'koka' if koka and kom != short_opis(x['opis']) else 'izvod',
-                # ⚠ `Planiran` jer dospijece JOS NIJE PROSLO. Status prelazi u
-                #   Izvrsen tek kad se kosara slozi sa skupnom naplatom na
-                #   izvatku tekuceg — nikad kao zakljucak iz dospijeca.
-                'naplata': izm['dospijece'], 'status': 'Planiran', 'stanje': None,
-                'rata': (int(m.group(1)), int(m.group(2))) if m else None,
-            })
+        mc_plan = mc_odluke(a, racun, koka, rows)
 
     if a.iz_koke:
         osim = {int(x) for x in a.osim.replace(';', ',').split(',') if x.strip()}
@@ -1313,18 +1582,22 @@ def main() -> None:
             koka_lanac(a.iz_koke, a.sheet, date.fromisoformat(d_txt), float(i_txt),
                        do, osim)
 
-    if not rows:
+    if not rows and not (mc_plan and (mc_plan['izmjene'] or mc_plan['brisanja'])):
         print('Nema ničega za upisati.')
         return
 
-    if a.presedan:
+    if a.presedan and rows:
         from presedani import Presedani
         from uskladi_izvod import load_db as _load_db, load_env as _load_env
         _url, _key = _load_env(a.presedan)
         # WARN Povijest je ono STARIJE od prozora koji uskladujemo. Bez te
         #   granice bi se prozor klasificirao sam sobom — to nije presedan nego
         #   jeka vlastitog uvoza.
-        _prije = min(r['date'] for r in rows).isoformat()
+        # ⚠ Rata nosi dan PRVE rate plana (S173: i 29.12.2025.) — granica iz nje
+        #   bi ostale retke klasificirala poviješću od prije deset mjeseci.
+        _prije = min((r['date'] for r in rows if not r.get('rata')
+                      and r.get('opis_izvor') != 'plan'),
+                     default=min(r['date'] for r in rows)).isoformat()
         _svi = [d for d in _load_db(_url, _key)
                 if str(d['attrs'].get('Racun')) == racun]
         _po_izvoru: dict = {}
@@ -1346,7 +1619,8 @@ def main() -> None:
             # WARN Kokin opis se NE prepisuje presedanom — ona je autoritet za
             #   znacenje (CLAUDE.md „Politika izvora"). Prepisuje se samo
             #   strojni tekst izvoda, koji ionako ne kaze nista.
-            if hit['comment'] and r.get('opis_izvor') != 'koka':
+            # `plan` = rata/naknada nosi `<Trgovac> n/N` (T16) — presedan bi ga srezao.
+            if hit['comment'] and r.get('opis_izvor') not in ('koka', 'plan'):
                 r['komentar'] = hit['comment']
             if hit['alternative']:
                 _dvojbeni.append((r, hit['alternative']))
@@ -1392,7 +1666,9 @@ def main() -> None:
         print('\n--dry: ništa nije zapisano.')
         return
 
-    used, app = write_rows(tg, rows, racun, a.dry, ref)
+    used, app = write_rows(tg, rows, racun, a.dry, ref) if rows else (0, 0)
+    if mc_plan:
+        upisi_mc(tg, mc_plan)
     out = a.target.with_name(f'{a.target.stem}_filled.xlsx')
     for note in strip_comments(tg.wb):
         first = note.strip().splitlines()[0] if note.strip() else ''
