@@ -70,7 +70,9 @@ PRAVILA = [
     # Kuća
     (r'^harvey norman\b',                       None,         'Kuća',        'Popravci, održavanje',     '3/3'),
     (r'^art rasvjeta\b',                        None,         'Kuća',        'Popravci, održavanje',     '3/3'),
-    (r'^(me[đd]imurje-plin|gpz-opskrba|gradska plinara)', 'Racun', 'Kuća',   'Plin',                     '30/30'),
+    # Saša 18.10.: Međimurje-plin je NENIN opskrbljivač (sva 4 retka „Nena plin/grijanje") ⇒ izbačen;
+    # „30/30" je uključivao jedan Nenin račun krivo razvrstan kao Kuća / Plin.
+    (r'^(gpz-opskrba|gradska plinara)',         'Racun',      'Kuća',        'Plin',                     '29/29'),
     # Razno / Zabava
     (r'^zara(home)?\b',                         None,         'Razno',       'Odjeća/obuća/ostalo_Koka', '7/7'),
     (r'^google\W*youtube',                      'Mastercard', 'Zabava',      'Youtube',                  '25/25'),
