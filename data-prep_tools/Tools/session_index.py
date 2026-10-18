@@ -136,13 +136,19 @@ def build(lines, offset=0):
     out = [BEGIN, '', '## Zadnje sesije', '']
     for _, sid, d, uk, title, n, _h in rows[-RECENT:]:
         out.append('- [%s](<#%s>) · r. %d — %s' % (sid + (' (' + d + ')' if d else ''), title, n, esc(uk)))
+    # Skok na kraj tablice (S173, Sašin zahtjev): tablica je kronološka, pa su najnovije
+    # sesije na dnu, 80+ redaka niže. Sidro je jednoriječan naslov iz istog razloga kao
+    # BACKLINK (oblik koji u Obsidianu dokazano skače).
     out += ['', '## Dnevnik', '',
+            '[↓ Najnovije (kraj tablice)](#Najnovije)', '',
             '> Kronološki. Generirano: `python data-prep_tools/Tools/session_index.py --write`. '
             'Ukratko = redak `> Ukratko:` ispod naslova sesije, inače naslov.',
             '', '| sesija | datum | ukratko | r. |', '| --- | --- | --- | ---: |']
     for _, sid, d, uk, title, n, _h in rows:
         out.append('| [%s](<#%s>) | %s | %s | %d |' % (sid, title, d, esc(uk), n))
-    out += ['', '_%d sesija._' % len(rows), '', END]
+    out += ['', '### Najnovije', '',
+            '_%d sesija._ Zadnja: [%s](<#%s>) · [↑ Dnevnik](#Dnevnik)' % (len(rows), rows[-1][1], rows[-1][4]),
+            '', END]
     return out
 
 
