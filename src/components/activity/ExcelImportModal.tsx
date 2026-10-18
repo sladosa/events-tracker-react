@@ -37,6 +37,7 @@ import { useAreaDashboard } from '@/hooks/useAreaDashboard';
 import { localYmd } from '@/lib/localDate';
 import { resolveForeignOwnership } from '@/lib/foreignRowOwnership';
 import { isBalanceWidget } from '@/types/database';
+import { bankFieldSpec } from '@/lib/confirmedRowEdit';
 
 interface ExcelImportModalProps {
   onClose:   () => void;
@@ -58,10 +59,16 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   // Faza 4: guard mora znati KOJA su stanja potvrdjena, a to je per-Area i
   // per-racun (`balance_anchors`). Widget daje slug po kojem su sidra spremljena.
   const { filter } = useFilter();
-  const { config: dashboardCfg } = useAreaDashboard(filter.areaId);
+  const { config: dashboardCfg, automations } = useAreaDashboard(filter.areaId);
   const balanceWidget = useMemo(
     () => dashboardCfg?.widgets.find(isBalanceWidget) ?? null,
     [dashboardCfg],
+  );
+  // 18.10. (T-S169-6): bankina polja — ISTO pravilo kao Edit (C3c). Bez toga je
+  // uvoz razvrstavanja (samo Tip/Podtip) tražio kvačicu „potvrđeno stanje".
+  const bankSpec = useMemo(
+    () => bankFieldSpec({ dashboard: dashboardCfg ?? undefined, automations: automations ?? undefined }),
+    [dashboardCfg, automations],
   );
 
   const [importState,   setImportState]   = useState<ImportState>('idle');
@@ -217,6 +224,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
             confirmedIn = {
               groupSlug: gSlug, anchors: await listAnchors(filter.areaId, gSlug),
               filters: balanceWidget?.filters ?? [],   // T21: kartični redak ne pita
+              bank: bankSpec,                          // 18.10.: Tip/Podtip ne pitaju
             };
           } catch {
             confirmedIn = null;
@@ -287,7 +295,8 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   //   zamka iz S121 (interval koji se rusi na svakom renderu) ovdje ne vrijedi.
   //   S170 (T21): + `filters` (niz iz configa — novi identitet tek kad se config
   //   ponovo procita, a i tada samo nova funkcija, bez petlje).
-  }, [balanceWidget?.group_by, balanceWidget?.filters, filter.areaId]);
+  //   18.10.: + `bankSpec` (isti razlog; bez njega bi guard opet pitao za sve).
+  }, [balanceWidget?.group_by, balanceWidget?.filters, filter.areaId, bankSpec]);
 
   const handleFile = useCallback(
     (file: File) => analyzeFile(file, 'skip'),

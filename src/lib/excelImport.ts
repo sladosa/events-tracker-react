@@ -17,7 +17,7 @@
 
 import ExcelJS from 'exceljs';
 import { findCoveringAnchor, type AnchorLike, type ConfirmedMark } from '@/lib/confirmedPeriod';
-import { passesFilters } from '@/lib/confirmedRowEdit';
+import { passesFilters, isBankKey, EVENT_DATE_KEY, type BankFieldSpec } from '@/lib/confirmedRowEdit';
 import type { WidgetFilter } from '@/types/database';
 import { supabase } from '@/lib/supabaseClient';
 import { FIXED_COL_COUNT, DELETE_COL_HEADER, DELETE_MARKER } from './excelExport';
@@ -1820,6 +1820,30 @@ export function inBalanceBeforeOrAfter(
   return passesFilters(filters, after);
 }
 
+/**
+ * 18.10. (T-S169-6): koje izmjene uvoza su BANKINE — ISTO pravilo kao Edit
+ * (C3c, `isBankKey` nad `bankFieldSpec`). Vraća ključeve (slug / `EVENT_DATE_KEY`).
+ * Tip/Podtip/opis/sat nikad: razvrstavanje retka unutar potvrđenog stanja ne
+ * dovodi potvrdu u pitanje, a kutija koja pali na svakom uvozu razvrstavanja
+ * nauči se otklikati (S143).
+ * `spec` izostavljen ⇒ svaka izmjena je „bankina" (prijašnje ponašanje).
+ */
+export function importBankChanges(
+  changes: readonly UpdateFieldChange[],
+  categoryId: string,
+  attrByCatName: ReadonlyMap<string, Pick<ExportAttrDef, 'slug'>>,
+  spec: Pick<BankFieldSpec, 'slugs'> | undefined,
+): string[] {
+  const keys: string[] = [];
+  for (const c of changes) {
+    const key = c.field === 'event_date' ? EVENT_DATE_KEY
+      : c.field === 'session_start' || c.field === 'comment' ? `@${c.field}`
+      : attrByCatName.get(`${categoryId}||${c.field}`)?.slug ?? `?${c.field}`;
+    if (!spec || isBankKey(spec, key)) keys.push(key);
+  }
+  return keys;
+}
+
 export interface UpdatePreview {
   eventId:           string;
   sourceRow:         number;
@@ -1885,6 +1909,9 @@ export async function analyzeUpdates(
     /** Filtri pločice salda (T21, S170). Redak koji ih ne prolazi ni prije ni
      *  poslije izmjene ne miče saldo ⇒ sidro ga ne „potvrđuje" ⇒ nema kvačice. */
     filters?: readonly WidgetFilter[];
+    /** Bankina polja (`bankFieldSpec`, isto kao Edit). Izostavljeno ⇒ pita
+     *  za svaku izmjenu (prijašnje ponašanje). */
+    bank?: Pick<BankFieldSpec, 'slugs'>;
   } | null,
 ): Promise<UpdateAnalysis> {
   if (toUpdate.length === 0) {
@@ -1959,7 +1986,9 @@ export async function analyzeUpdates(
       //   ISTO pravilo kao Edit (C3c, `rowConfirmation`), uz jedno proširenje:
       //   gleda se i stanje POSLIJE izmjene — `Visa → Racun` ispred sidra
       //   stvarno pomiče saldo i mora pitati.
-      if (inBalanceBeforeOrAfter(existing, changes, attrByCatName, slugById, confirmed.filters)) {
+      //   18.10.: i samo kad se mijenja BANKINO polje — Tip/Podtip ne pitaju.
+      if (importBankChanges(changes, existing.category_id, attrByCatName, confirmed.bank).length > 0
+          && inBalanceBeforeOrAfter(existing, changes, attrByCatName, slugById, confirmed.filters)) {
         confirmedBy = findCoveringAnchor(confirmed.anchors, gv, existing.event_date);
         if (confirmedBy) confirmedCount++;
       }

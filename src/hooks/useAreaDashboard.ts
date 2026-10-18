@@ -26,6 +26,9 @@ export interface AreaDashboard {
   /** `settings.groupings` (RAZREZ §10.2) — čita ih pločica razreza. Isti
    *  razlog kao `listColumns`: dolazi iz istog čitanja. */
   groupings: Record<string, Grouping> | null;
+  /** `settings.automations` — uvoz ga treba za `bankFieldSpec` (žig pravila,
+   *  isto kao Edit). Isti razlog kao `listColumns`: dolazi iz istog čitanja. */
+  automations: AreaSettings['automations'] | null;
   /** True once the answer is known — the tab must not flicker into view. */
   loaded: boolean;
   areaName: string;
@@ -47,6 +50,7 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [listColumns, setListColumns] = useState<ListColumnsConfig | null>(null);
   const [groupings, setGroupings] = useState<Record<string, Grouping> | null>(null);
+  const [automations, setAutomations] = useState<AreaSettings['automations'] | null>(null);
   const [areaName, setAreaName] = useState('');
   /**
    * Za KOJI je `areaId` odgovor poznat. `undefined` = jos nismo ucitali nista.
@@ -74,6 +78,7 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
       setConfig(null);
       setListColumns(null);
       setGroupings(null);
+      setAutomations(null);
       setAreaName('');
       setError(false);
       loadedAreaIdRef.current = null;
@@ -97,6 +102,7 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
         const cols = settings?.list_columns ?? null;
         setListColumns(cols && cols.columns?.length ? cols : null);
         setGroupings(settings?.groupings ?? null);
+        setAutomations(settings?.automations ?? null);
         setAreaName((data?.name as string) ?? '');
         setError(false);
         loadedAreaIdRef.current = areaId;
@@ -112,6 +118,7 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
           setConfig(null);
           setListColumns(null);
           setGroupings(null);
+          setAutomations(null);
           setAreaName('');
         }
         setError(true);
@@ -133,5 +140,5 @@ export function useAreaDashboard(areaId: UUID | null): AreaDashboard {
   /** Izvedeno, ne pohranjeno: odgovor vrijedi samo za Areu koja je TRAZENA. */
   const loaded = loadedFor === areaId;
 
-  return { config, listColumns, groupings, loaded, areaName, error, reload };
+  return { config, listColumns, groupings, automations, loaded, areaName, error, reload };
 }

@@ -143,6 +143,17 @@ export interface FieldChange {
   to: string;
 }
 
+/**
+ * Je li ključ (slug atributa ili `EVENT_DATE_KEY`) bankin. JEDINO pravilo „koja
+ * izmjena dovodi potvrdu u pitanje" — zovu ga Edit (kroz `bankFieldChanges`) i
+ * uvoz (`importBankChanges`). Tip/Podtip/opis nikad.
+ * ⚠ 18.10. (T-S169-6): uvoz je pitao za SVAKU izmjenu retka u saldu, pa je
+ *   razvrstavanje 49 RF redaka (samo Tip/Podtip) tražilo kvačicu za 9 redaka.
+ */
+export function isBankKey(spec: Pick<BankFieldSpec, 'slugs'>, key: string): boolean {
+  return key === EVENT_DATE_KEY || spec.slugs.includes(key);
+}
+
 /** Koja se bankina polja razlikuju između izvornog i sadašnjeg retka. */
 export function bankFieldChanges(
   spec: BankFieldSpec,
