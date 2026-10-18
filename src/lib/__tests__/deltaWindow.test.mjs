@@ -1,7 +1,7 @@
 /**
  * pickDeltaWindow tests
  * =====================
- * Cuva fazu 1 iz `docs/DELTA_WINDOW_SPEC.md`: prozor delta sheeta mjeri se
+ * Cuva fazu 1 iz `docs/_archive/DELTA_WINDOW_SPEC.md`: prozor delta sheeta mjeri se
  * SIDRIMA, ne danima. Do S142 je sidro bilo tvrd pod prozora, pa je panel trazio
  * 60 dana a ZABA file nosio 12 -- i 47 `Racun` redaka je nestajalo bez poruke.
  *

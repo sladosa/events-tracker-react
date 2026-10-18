@@ -1,7 +1,7 @@
 // ============================================================
 // confirmedPeriod.ts — je li ovaj redak već unutar potvrđenog stanja?
 // ============================================================
-// Spec: `docs/DELTA_WINDOW_SPEC.md` §5, sloj 3 (faza 4).
+// Spec: `docs/_archive/DELTA_WINDOW_SPEC.md` §5, sloj 3 (faza 4).
 //
 // ⚠ ZAŠTO POSTOJI KAO ZASEBAN MODUL
 //   Isto pitanje postavljaju DVA mjesta: delta sheet (kolona `Potvrda`, koja

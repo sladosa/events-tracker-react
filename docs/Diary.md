@@ -1,5 +1,13 @@
 # DIARY migracija — strategija (trening.xlsm)
 
+> ⚠ **ŽIV, ALI PREDSTOJI PREPISIVANJE (oznaka 2026-10-18).** `trening.xlsm` je sljedeća domena
+> (`CLAUDE.md` § Strategic Position, korak 3). Ovaj tekst je iz 04.07., **prije** svega što su
+> Financije naučile o uvozu — v. `docs/FINANCIJE_PREGLED.md` §4 („što je prenosivo").
+> Na početku prve trening sesije: pogledati file, prepisati ovo u `docs/TRENING_MIGRACIJA.md`
+> i učiniti ga **jedinim** planom migracije (AUTOMATION_SPEC Faza 4, `DATA_PIPELINE_PLAN.md`
+> Prioritet 5 i BACKLOG neka samo upućuju). File: `C:\0_Sasa\OneDrive\trening.xlsm` (OneDrive,
+> lokalna kopija).
+
 **Datum:** 2026-07-04
 **Izvor:** `trening.xlsm`, sheet DIARY (sličice 1, 2), ~7000 redaka, od ~2015 (vjerojatno ranije)
 **Status:** Strategija — nije počето. U `MIGRATION_STATE.md` = red "trening.xlsm (ručni log)".

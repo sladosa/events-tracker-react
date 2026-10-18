@@ -66,7 +66,7 @@ te cijene.
 
 ### 2.1 Prozor
 
-[`ExcelExportModal.tsx:429-441`](../src/components/activity/ExcelExportModal.tsx#L429):
+[`ExcelExportModal.tsx:429-441`](../../src/components/activity/ExcelExportModal.tsx#L429):
 
 ```ts
 const nDaysAgo = new Date(Date.now() - deltaDays * 86400000);
@@ -78,7 +78,7 @@ sidro **tvrd pod**: raspon iz panela ne može doseći ispred njega.
 
 ### 2.2 Otvarajuće stanje
 
-[`ExcelExportModal.tsx:446-460`](../src/components/activity/ExcelExportModal.tsx#L446) zove
+[`ExcelExportModal.tsx:446-460`](../../src/components/activity/ExcelExportModal.tsx#L446) zove
 `fetchAnchoredBalance({ …, asOf: dayBefore })` — **isti RPC koji hrani pločicu**
 (`rpc_area_balance_anchored`), a on sam bira najnovije sidro `confirmed_on <= asOf` i
 pribraja promjene **strogo nakon** njega.
@@ -89,7 +89,7 @@ bira pozivatelj.
 
 ### 2.3 Kontrolni stupac
 
-[`deltaSheet.ts:287-300`](../src/lib/deltaSheet.ts#L287), po retku:
+[`deltaSheet.ts:287-300`](../../src/lib/deltaSheet.ts#L287), po retku:
 
 ```
 IF(datum="", "", opening + SUMIFS(uplate, datum<=ovaj) - SUMIFS(isplate, datum<=ovaj))
@@ -168,7 +168,7 @@ razdjelni redak usred bloka odlutao od svog mjesta. Vrijednost u koloni putuje s
 
 ⚠ **Mora ući u `auto_filter.ref`** — stupac izvan autofiltera se pri sortu raspari od retka.
 Danas autofilter ide `to: { column: ctrlCol }`
-([`deltaSheet.ts:552`](../src/lib/deltaSheet.ts#L552)), pa se granica pomiče.
+([`deltaSheet.ts:552`](../../src/lib/deltaSheet.ts#L552)), pa se granica pomiče.
 
 ⚠ **Ne ide u `export_profiles`** — dodaje ga delta alat **nakon** primjene profila (postojeće
 pravilo), isti položaj koji već ima `Stanje (kontrola)`.

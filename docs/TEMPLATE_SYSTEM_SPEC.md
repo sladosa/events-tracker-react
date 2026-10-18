@@ -1,5 +1,12 @@
 # Template System Spec — Events Tracker React
 
+> ⚠ **ZASTARIO (oznaka 2026-10-18).** Tablice ispod opisuju stanje iz S49. Od tada: „From template"
+> je izgrađen (S108, kopira strukturu i `settings` osim `export_profiles`), template korisnik
+> postoji i na PROD-u (`docs/RLS_INVENTORY.md`), a `TEMPLATE_USER_ID` se čita iz env-a.
+> **Prepisuje se kad krene Financije template** (`CLAUDE.md` § Strategic Position, korak 4 —
+> prvo na hrvatskom, poslije F5). Jedino što i danas vrijedi bez provjere: §B — template
+> korisnik se **ne može prijaviti** (GoTrue odbija `.local` e-mail), pa se template ne slaže kroz UI.
+
 **Status:** Djelomično implementirano (S49)
 **Branch:** test-branch
 

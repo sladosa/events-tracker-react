@@ -8,7 +8,7 @@
  * nosi **12**, i **47 `Racun` redaka nestane bez ijedne poruke**. Isti razred kao
  * BUG-S123-DELTAACCT — file izađe uredan, s krivim opsegom, i ništa ne kaže.
  *
- * Sada se prozor mjeri **sidrima**, ne danima (`docs/DELTA_WINDOW_SPEC.md` §4.1).
+ * Sada se prozor mjeri **sidrima**, ne danima (`docs/_archive/DELTA_WINDOW_SPEC.md` §4.1).
  *
  * ⚠ ZAŠTO SIDRA, A NE DANI — i zašto je „N dana" pao na mjerenju:
  *   prozor mora krenuti DAN POSLIJE nekog sidra, jer tada je otvarajuće stanje

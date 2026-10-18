@@ -47,7 +47,7 @@ const DELTA_BLANK_ROWS = 40;
 /**
  * Koliko dana unatrag delta sheet pokazuje kad racun NEMA nijedno sidro.
  * ⚠ Ovo je od S142 samo FALLBACK, ne vise glavno pravilo: prozor se mjeri
- *   SIDRIMA (v. `deltaWindow.ts` i `docs/DELTA_WINDOW_SPEC.md` §4.1). Dani ostaju
+ *   SIDRIMA (v. `deltaWindow.ts` i `docs/_archive/DELTA_WINDOW_SPEC.md` §4.1). Dani ostaju
  *   jer racun bez ijednog sidra nema od cega krenuti, a „od pocetka vremena" bi
  *   izvezlo cijelu povijest.
  */

@@ -4,7 +4,7 @@
 **§4 je JEDINI popis otvorenog posla Financija** (od S158 i bivše stavke backloga; puni tekst §8).
 **Prije:** `FINANCIJE_KOKA_PROCES.md` (S151–S157), a još prije `KOKA_PRVI_MJESEC.md` (S125) — oba u gitu.
 **Susjedni:** `DOSPJELO_SPEC.md` (traka „Čeka potvrdu") · `OVERVIEW_TAB_SPEC.md` (saldo, sidra) ·
-`FINANCIJE_STATUS.md` (stanje migracije) · `data-prep_tools/CLAUDE.md` (pravila alata) · `CLAUDE.md`
+`FINANCIJE_PREGLED.md` (ulazna točka, povijest migracije) · `data-prep_tools/CLAUDE.md` (pravila alata) · `CLAUDE.md`
 
 > **Stanje NIJE konačno.** Cilj je proces s **najmanje trenja za oboje**. §4 je popis mjesta gdje
 > danas škripi — taj popis vodi sljedeće izmjene, i stavka iz njega nestaje tek kad je izvedena.
