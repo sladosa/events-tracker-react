@@ -14,7 +14,9 @@ KAKO PREDLAŽE — brojanjem povijesti, nikad pogađanjem (pravila: data-prep_to
     1. KARTICA: trgovac (`uvezi_transu.kljuc`: bez `[kartica: …]`, rate, broja transakcije)
        2. trgovac + iznos, kad trgovac sam nije jednoglasan (Apple 2,99 = Cloud backup 17/17)
     3. RAČUN: `presedani.Presedani` — primatelj + poziv na broj → primatelj → iznos s predznakom
-    Svaki ključ traži ≥ 90 % jednoglasnosti i ≥ 3 presedana (ime+poziv: ≥ 2). `N/A` u
+    4. PRAVILO po trgovcu (`pravila_trgovca.py`, S174/T17) — TEK kad 0–3 šute: nova poslovnica
+       ili varijacija imena (`INA ZAGREB JAGICEVA`). Vlastita boja u fileu (lila), razlog u `Pregled`.
+    Svaki ključ 0–3 traži ≥ 90 % jednoglasnosti i ≥ 3 presedana (ime+poziv: ≥ 2). `N/A` u
     povijesti NE glasa. Posrednik (KEKS PAY, KUPOVINA…, goli PAYPAL) se ne pokušava.
     Prijedlog mimo `validation_rules` se odbacuje (uvezao bi se kao tekst bez greške).
     Što ne prođe — ostaje `N/A` u fileu (narančasto) za ručno razvrstavanje.
@@ -64,8 +66,18 @@ from uvezi_transu import kljuc as _kljuc_mc  # noqa: E402
 from visa_uvoz_izvoda import KLASA, taksonomija  # noqa: E402
 import visa_popravak  # noqa: E402
 from _excel_izbornici import izgled_pregleda  # noqa: E402
+from pravila_trgovca import po_pravilu  # noqa: E402
 
 KARTICE = ('Mastercard', 'Visa')
+LILA = 'E4DFEC'     # prijedlog iz pravila po trgovcu (S174) — nije presedan, gledaj ga posebno
+
+
+def iz_pravila(tekst, izvor):
+    """4. ključ (S174): → ((tip, podtip, 1, 1), dokaz) ili (None, None)."""
+    pr = po_pravilu(tekst, izvor)
+    if not pr:
+        return None, None
+    return (pr[0], pr[1], 1, 1), f'pravilo „{pr[2]}" (povijest {pr[3]})'
 # Posrednik nije trgovac: `Izvod opis` ne govori što je kupljeno (CLAUDE.md S124).
 POSREDNIK = re.compile(r'^(keks pay|kupovina|paypal\s*$|paypal\s*\*\s*$)', re.I)
 
@@ -181,6 +193,9 @@ class Rjecnik:
             g = jednoglasno(self._uzmi(self.po_trgovcu_iznosu.get((k, abs(net(a))), []), prije), MIN_PO_IMENU)
             if g:
                 return g, f'trgovac „{k}" + iznos {abs(net(a)):.2f}'
+            g, dokaz = iz_pravila(a.get('Izvod opis') or r.get('comment') or '', a.get('Izvor'))
+            if g:
+                return g, dokaz
             pp = self._uzmi(self.po_trgovcu.get(k, []), prije)
             if not pp:
                 return None, f'trgovac „{k}" bez presedana'
@@ -218,13 +233,14 @@ def predlozi(redci, ciljevi, rj, tax, provjera=False):
                 par = (p['tip'], p['podtip'], *map(int, re.findall(r'(\d+)/(\d+)', p['dokaz'])[0]))
                 dokaz = 'račun: ' + p['dokaz'].split(',')[0]
             else:
-                dokaz = 'račun: nema jednoglasnog presedana'
+                par, dokaz = iz_pravila(a.get('Izvod opis'), a.get('Izvor'))
+                dokaz = dokaz or 'račun: nema jednoglasnog presedana'
         if par:
             tip, podtip, n, uk = par
             if tip not in tax or (podtip and podtip not in tax[tip]):
                 out.append((r, None, f'{tip} / {podtip} nije u popisu opcija — ne predlažem'))
                 continue
-            out.append((r, (tip, podtip), f'{dokaz}: {tip} / {podtip}' + ('' if dokaz.startswith('ručni') else f' {n}/{uk}')))
+            out.append((r, (tip, podtip), f'{dokaz}: {tip} / {podtip}' + ('' if dokaz.startswith(('ručni', 'pravilo')) else f' {n}/{uk}')))
         else:
             out.append((r, None, dokaz))
     return out
@@ -299,6 +315,24 @@ def main():
                         if p != (r['attrs']['Tip'], r['attrs'].get('Podtip') or ''))
         for (stvarno, predlozeno), n in krivi.most_common(10):
             print(f'    {n:>3}×  stvarno {stvarno[0]} / {stvarno[1]}  ←  predloženo {predlozeno[0]} / {predlozeno[1]}')
+        # S174: pogodak PO PRAVILU (4. ključ) — samo retci na kojima je baš pravilo odlučilo,
+        # dakle povijest (ključevi 0–3) je šutjela. Pravilo koje ovdje griješi ne ostaje u popisu.
+        po = defaultdict(lambda: [0, 0, Counter()])
+        for r, p, dokaz in rez:
+            if p and str(dokaz).startswith('pravilo'):
+                s = po[str(dokaz).split('"')[0].removeprefix('pravilo „')]
+                s[0] += 1
+                stv = (r['attrs']['Tip'], r['attrs'].get('Podtip') or '')
+                if p == stv:
+                    s[1] += 1
+                else:
+                    s[2][stv] += 1
+        if po:
+            n_p, t_p = sum(s[0] for s in po.values()), sum(s[1] for s in po.values())
+            print(f'\n  od toga iz PRAVILA po trgovcu: {n_p}, točno {t_p} ({t_p / n_p:.1%})')
+            for u, (n, t, kriv) in sorted(po.items(), key=lambda x: -x[1][0]):
+                print(f'    {t:>3}/{n:<3} {u}' + ('' if not kriv else '   ✗ stvarno: ' + ', '.join(
+                    f'{a} / {b} {k}' for (a, b), k in kriv.most_common(3))))
         return
 
     ciljevi = sorted([r for r in u_prozoru if je_na(r)], key=lambda r: r['event_date'])
@@ -320,11 +354,14 @@ def main():
     for x in rez:
         po_racunu[x[0]['attrs'].get('Racun') or '(bez računa)'].append(x)
 
+    def iz_pr(xs):
+        return sum(1 for _, p, d in xs if p and str(d).startswith('pravilo'))
     uk_p = sum(1 for _, p, _ in rez if p)
-    print(f'N/A redaka: {len(rez)} · s prijedlogom {uk_p} · ostaje ručno {len(rez) - uk_p}\n')
+    print(f'N/A redaka: {len(rez)} · s prijedlogom {uk_p} (iz pravila {iz_pr(rez)}) · '
+          f'ostaje ručno {len(rez) - uk_p}\n')
     for racun, xs in sorted(po_racunu.items()):
         s = sum(1 for _, p, _ in xs if p)
-        print(f'── {racun}: {len(xs)} redaka, prijedlog {s}')
+        print(f'── {racun}: {len(xs)} redaka, prijedlog {s} (iz pravila {iz_pr(xs)})')
         for r, p, dokaz in xs:
             iznos = net(r['attrs'])
             opis = (r.get('comment') or r['attrs'].get('Izvod opis') or '')[:38]
@@ -342,6 +379,7 @@ def main():
             visa_popravak.EMAIL.setdefault(pr['id'], pr['email'])
     for racun, xs in sorted(po_racunu.items()):
         redci_xl = []
+        boje = {j: LILA for j, (_, p, dokaz) in enumerate(xs) if p and str(dokaz).startswith('pravilo')}
         for r, p, dokaz in xs:
             a = dict(r['attrs'])
             if p:
@@ -352,7 +390,7 @@ def main():
         if '--od' in sys.argv or '--do' in sys.argv:
             # S169: dva prozora istog računa u istoj mapi se inače razlikuju samo po minuti
             ime += '_' + od_[:7].replace('-', '') + '-' + do_[:7].replace('-', '')
-        visa_popravak.pisi(redci_xl, {}, ime, tax=tax, izgled=izgled_pregleda)
+        visa_popravak.pisi(redci_xl, {}, ime, tax=tax, izgled=izgled_pregleda, boje=boje)
     print('\nUvoz: vlasnica Aree (Koka, ili Saša pod njezinim računom), tuđi retci „fix as owner".'
           '\nOčekivani pregled: 0 New · Modify = broj redaka koje je pregled ostavio s Tipom · 0 Delete.')
 

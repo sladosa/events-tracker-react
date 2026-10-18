@@ -250,8 +250,10 @@ def main():
     pisi(redci, by8, 'visa_popravak')
 
 
-def pisi(redci, by8, ime, tax=None, izgled=None):
+def pisi(redci, by8, ime, tax=None, izgled=None, boje=None):
     """`tax` = {Tip: [Podtip...]} -> dropdowni Tip/Podtip na svakom retku.
+    `boje` = {indeks retka: 'RRGGBB'} -> vlastita boja Tip/Podtip ćelija (S174: prijedlog
+    iz pravila po trgovcu se mora razlikovati od prijedloga iz presedana).
     /!\ Podtip mimo `validation_rules` uveze se kao tekst BEZ GRESKE (CLAUDE.md),
         pa file koji covjek rucno klasificira mora nuditi samo valjane vrijednosti."""
     wb = openpyxl.Workbook()
@@ -335,6 +337,10 @@ def pisi(redci, by8, ime, tax=None, izgled=None):
             if ws.cell(rr, ctip).value in (None, 'N/A'):
                 ws.cell(rr, ctip).fill = orange
                 ws.cell(rr, cpod).fill = orange
+            elif boje and (rr - prvi) in boje:
+                f = PatternFill('solid', fgColor=boje[rr - prvi])
+                ws.cell(rr, ctip).fill = f
+                ws.cell(rr, cpod).fill = f
         # S169: svijetloplavo = čovjek je promijenio vrijednost u odnosu na file (vidi se što je
         # već razvrstano). Uvjet nosi IZVORNU vrijednost doslovno, po ćeliji — bez pomoćnog
         # stupca, jer stupac viška uvoz prijavi kao nepoznat atribut. Crveno (krivi Podtip,
