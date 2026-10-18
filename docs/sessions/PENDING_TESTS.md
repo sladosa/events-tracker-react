@@ -2,7 +2,22 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S173 (2026-10-18) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S174 (2026-10-18) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S174 — Klasifikacija povijesti: uvozni guard + pravila po trgovcu (T17) (2026-10-18)
+
+Uvoz više ne traži kvačicu „potvrđeno stanje" za razvrstavanje (samo bankino polje pita — isto pravilo kao Edit). 31 pravilo po trgovcu (AI predložio, Python prebrojao, Saša odobrio) je 4. ključ `razvrstaj_na.py`: starija povijest ZABA 38 → 70, RF 29 → 90 prijedloga (PROD snimka 18.10.).
+
+**Detalji testova:** [tests/S174_tests.md](tests/S174_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S174-1 | Guard pita samo za bankino polje (unit `importConfirmedBankFields`, 10 tvrdnji) | ✅ S174 — čuva automatski test (protuprovjera i sabotaža ruše 4) |
+| T-S174-2 | TEST lokalno: uvoz `na_razvrstavanje_kokin_tekuci_zaba_202401-202509_20261018_1628.xlsx` ⇒ 0 · 70 · 0, **bez** kutije „POTVRĐENOG stanja" (staro: 15); izmijenjen iznos jednog Racun retka ⇒ pita za 1 | ⬜ |
+| T-S174-3 | PROD: starija povijest s pravilima (nasljeđuje T-S169-7) — ZABA 257 / 70 (32 pravila), RF 384 / 90 (61) ⇒ razvrstavanje ⇒ `--preuzmi` ⇒ uvoz pod Kokom, bez kutije potvrđenog stanja | ⬜ |
+| T-S174-4 | Provjera unatrag po pravilu (PROD snimka): iz pravila 144/147 (98,0 %), 12 mj 54/56 | ✅ S174 — izmjereno (in-sample, v. detalje) |
 
 ---
 
@@ -74,25 +89,6 @@ Na uskom ekranu Overview od filtra nudi samo red razdoblja, a Activities kreće 
 | T-S170-10 | TEST: Excel izmjena retka prije sidra — kvačica „potvrđeno“ za `Racun`, NE za `Mastercard`; MC→Racun ⇒ traži | ✅ 17.10. (Saša, TEST) — opis: kvačica samo za `Racun` redak 09.10. („1 redak“), MC redak obična izmjena; MC → `Izvor = Racun` **i** `Status = Izvrsen` ⇒ „2 redaka“. Samo Izvor uz `Planiran` ⇒ i dalje 1 — ispravno (saldo ne broji `Planiran`), opis testa bio nepotpun |
 | T-S170-11 | TEST: delta ZABA — Σ košara jednog dospijeća (dan desno, najbliži); drugi dan ⇒ drugi Σ; `Potvrda` prazna na kartičnim retcima | ✅ S170 (13.10., Saša, TEST) — sekcija KOSARA u grupama po datumu naplate (+/−), izbornik dana uz Σ, odabrana košara žuta; „file je ok“. Usput: TEST nije imao `split.due_slug` (044) — poravnato |
 | T-S170-12 | `fill_from_izvod` nad delta sheetom sa sidrom u prozoru ⇒ „Σ kosare prosirena“, ne „List nema kontrolu“ | ⬜ |
-
----
-
-## S169 — Klasifikacija s Kokom: N/A ZABA, Pharmalog, Investicije, Triglav (2026-10-12)
-
-Odluke T33–T36 izvedene na PROD-u (uvozi pod Kokinim računom, config razreza `set_breakdown.py`). Alati: `razvrstaj_na.py --preuzmi` prenosi i komentar; file za razvrstavanje boji promijenjenu ćeliju svijetloplavo; novi `ispravi_tip.py` (Tip/Podtip po `event_id` ⇒ app Excel); `set_breakdown.py` traži nesvrstano u cijeloj povijesti.
-
-**Detalji testova:** [tests/S169_tests.md](tests/S169_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S169-1 | PROD: Kokin ZABA N/A 10/2025–09/2026 — `--preuzmi` iz razvrstanog TEST filea ⇒ PROD file (kol. G = Koka) ⇒ uvoz | ✅ S169 (12.10., Koka/Saša) — 0 created · 72 updated, ZABA 11.290,73 nepomaknut |
-| T-S169-2 | PROD: Pharmalog 9 + 3.000,00 (09.06.2025.) ⇒ `Prihodi / Koka` (`ispravi_tip.py`) | ✅ S169 (12.10.) — 0 · 10 updated; prihod Koka 99.584,69 |
-| T-S169-3 | PROD: Investicije izvan razreza (`set_breakdown.py --apply --yes-prod`) | ✅ S169 (12.10.) — Izašlo 180.352,89 → 170.809,73 (−9.543,16), `nesvrstano` nestao, „izvan razreza (Transfer, Investicije)" |
-| T-S169-4 | PROD: Triglav 7.782,55 ⇒ `Prihodi / Saša` | ✅ S169 (12.10.) — 0 · 1 updated; Povremeno nužno 22.237,74, Ušlo 189.787,17, Razlika 11.194,89 nepomaknuta |
-| T-S169-5 | PROD All Time drill: Povremeno nužno → Zdravlje → `Medical_Koka` ≈ 1.151 trošak (ne minus); Osiguranje → `Zivotno` pozitivan | ✅ S169 (12.10., Saša) — Medical_Koka **1.168,23** (uz danas razvrstane ljekarne), Zivotno **2.090,59**, Zdravlje 3.786,76 bez minusa |
-| T-S169-6 | RF N/A 10/2025–09/2026 (Saša): razvrstaj `…_sasin_tekuci_rf_20261012_1102.xlsx` ⇒ `--preuzmi` na PROD ⇒ uvoz pod Kokinim računom | ✅ 18.10. (Saša) — 49/49 razvrstano; `--preuzmi` s PROD-a ⇒ `…_202510-202609_20261018_1135.xlsx`; uvoz **0 created · 49 updated**, bez „Foreign events". Kutija „9 redaka unutar POTVRĐENOG stanja" = lažna uzbuna (samo Tip/Podtip) ⇒ BACKLOG „Uvozni guard potvrđenog stanja" |
-| T-S169-7 | Starija povijest 01/2024–09/2025, `--s-tekstom --po-iznosu`: ZABA s Kokom (od najvećeg iznosa, stane se kad god), RF Saša ⇒ `--preuzmi` (ISTI prozor i zastavice) ⇒ uvoz | ⬜ |
-| T-S169-8 | Nakon deploya (PROD): Kamo ide novac → rasklopi Povremeno nužno › Osiguranje → ↗ → povratak na Overview ⇒ isto rasklopljeno (i Troškovi/Prihodi, os); F5 ⇒ čisto | ✅ 17.10. (Saša, PROD nakon deploya `ca496cb`) — razrez rasklopljen nakon ↗ i povratka; lokalno ✅ 12.10. |
 
 ---
 

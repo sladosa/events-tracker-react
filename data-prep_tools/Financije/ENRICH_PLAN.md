@@ -1611,3 +1611,13 @@ Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.
   ih proširuje jednako (izmjereno na generiranom fileu).
 - `visa_uvoz_izvoda.py` bez izmjene: skupni redak naplate već nosi opis `Visa` (= `text` trake),
   naknada `Naknada`; na sličan redak ±3 dana staje.
+
+### S174 (2026-10-18) — pravila po trgovcu (T17) za stariju povijest
+
+- **`pravila_trgovca.py`** (nov): 31 pravilo `uzorak trgovca → Tip/Podtip` (+ `izvor`). AI
+  (Opus 5.5) predložio 34 iz razvrstane povijesti PROD snimke 18.10., Python prebrojao (potvrde,
+  protuprimjeri, par u `validation_rules`, dokaz postoji), Saša odobrio 31.
+- **`razvrstaj_na.py`**: 4. ključ (iza opisa, presedana trgovca/iznosa i `Presedani`), lila u fileu,
+  `--provjera` po pravilu: 144/147. Starija povijest 2024-01…2025-09: ZABA 38 → 70, RF 29 → 90.
+- **`visa_popravak.pisi(boje=)`**: vlastita boja Tip/Podtip po retku (ostali pozivatelji netaknuti).
+- Mjereno offline nad `_backup/prod/2026-10-18_1157` (`fixdb`, S173 metoda) — nula upisa.

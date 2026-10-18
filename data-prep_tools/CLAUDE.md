@@ -473,6 +473,16 @@ od tih 6 postaje presedan. Baza ima **694 ključa**, od toga 679 jednoglasnih.
 - **⚠ Ista trgovina, drugi trošak.** `TERME JEZERCICA-VODENI` je `Zabava / Wellness`, a
   `TERME JEZERCICA-POOL BAR` je `Domaćinstvo / Kave/jelo vani`. Ključ po trgovcu bi ih
   slio.
+- **⚠ AI PREDLAŽE PRAVILO, BROJKU DAJE BAZA** (S174, `pravila_trgovca.py`). Od 34 prijedloga
+  modela jedan (`paypal *booking`) je kao dokaz naveo **3 ključa koji u povijesti ne postoje**
+  — izgledao je uvjerljivo. Zato svako pravilo prolazi Python brojanje (potvrde, protuprimjeri,
+  par u `validation_rules`, posrednik, sukob, postoji li naveden dokaz) prije nego ga čovjek vidi.
+- **⚠ Ista vrsta trgovca, drugi predmet po KARTICI.** Gorivo na Visi je i Lacetti (8 od ~50),
+  na Mastercardu samo C5 (15/15) — pravilo nosi `izvor`, inače „INA → C5" na Visi griješi svaki
+  šesti put. Isto pitaj za svako buduće pravilo nad trgovcem koji se dijeli između osoba.
+- **Sašina pravila iz T17 izmjerena, NE dodana (S174):** `\bparking\b` 12/13 (protuprimjer
+  `parking za saloon …` → Kino), ali u starijoj povijesti bez cilja; `GLOVO` povijest ne potvrđuje
+  (Kave 1 · Hrana 1 · Temu 1). Odluka čeka Sašu (handoff).
 
 **Gdje taksonomija živi:** isključivo `attribute_definitions.validation_rules` za `Podtip`,
 u `depends_on.options_map.<Tip>`. **U kodu aplikacije nema nijedne hardkodirane vrijednosti**
@@ -556,6 +566,15 @@ data-prep_tools/Financije/razvrstaj_na.py
                                    + komentar (S169) po `event_id` u svjež file ciljne baze.
                                    /!\ Na PROD se uvozi SAMO file napravljen s PROD-a (kol. G);
                                    „Foreign events" u modalu = krivi file (S169).
+                                   S174: 4. ključ = `pravila_trgovca.py` (lila u fileu, razlog
+                                   u `Pregled`); `--provjera` ispisuje pogodak PO PRAVILU.
+data-prep_tools/Financije/pravila_trgovca.py
+                                   S174 (T17): `PRAVILA` uzorak trgovca → Tip/Podtip (+ `izvor`),
+                                   `po_pravilu(tekst, izvor)`. AI predložio, PREBROJANO nad bazom,
+                                   Saša odobrio 31. Novo pravilo = isti postupak (radni stol
+                                   `Claude-temp_R/s174_pravila/`: skupi → predlozi_ai →
+                                   provjeri_pravila), nikad ručni upis bez brojanja (S164).
+                                   Sljedeći korak: zvati ga iz `fill_from_izvod`/`visa_uvoz_izvoda`.
 data-prep_tools/Financije/verify_breakdown.py
                                    S165: `rpc_area_breakdown` (056) protiv Pythona nad sirovim
                                    retcima, PO GRUPI, u lipu (12 mj + rujan × obje osi), pa

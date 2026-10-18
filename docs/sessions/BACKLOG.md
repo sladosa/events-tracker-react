@@ -34,7 +34,7 @@
   „ne primjenjuj" po retku **namjerno ne** — dodaje se tek ako se slučaj počne ponavljati.
   ⚠ `canUpdateExisting`/`analyzeUpdates`/apply: isto pravilo na tri mjesta (S125) — jedna funkcija.
 
-- **Uvozni guard potvrđenog stanja pita i za izmjenu koja nije bankina (nađeno 18.10., T-S169-6)** —
+- ✅ **IZVEDENO S174** (`isBankKey` = jedino pravilo za Edit i uvoz, `importBankChanges`; čuva `importConfirmedBankFields.test.mjs`; uživo T-S174-2) — **Uvozni guard potvrđenog stanja pita i za izmjenu koja nije bankina (nađeno 18.10., T-S169-6)** —
   razvrstavanje 49 RF redaka (samo Tip/Podtip) tražilo je kvačicu „9 redaka unutar POTVRĐENOG
   stanja". Edit (C3c, S155) pita samo kad se mijenja **bankino polje** (`bankFieldSpec` /
   `bankFieldChanges`, `confirmedRowEdit.ts`) — Tip/Podtip/opis „nikad ne pale okvir"; uvoz

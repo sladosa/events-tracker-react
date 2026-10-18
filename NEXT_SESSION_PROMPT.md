@@ -1,74 +1,70 @@
-> Pisano protiv `3c261de` (docs sesija, paralelno) + commita **S173** koji nosi ovaj file („S173: MC alat …“).
-> **`main` = `ca496cb` (deploy 17.10., S172).** S173 je samo Python alati — nema deploya ni migracije.
-> **PROD baza:** S173 nije pisala ništa (sve mjereno offline nad backupima i `--dry` nad TEST-om).
+> Pisano protiv `568b7c5` (S174 alati) + commita **S174 docs** koji nosi ovaj file.
+> **`main` = `ca496cb` (deploy 17.10., S172).** S174 ima promjenu appa (uvozni guard, `6720662`) — **nije na PROD-u**.
+> **PROD baza:** S174 nije pisala ništa (sve mjereno offline nad backupom `prod/2026-10-18_1157`; TEST samo čitan).
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S173 (2026-10-18)
+# Sljedeća sesija — nakon S174 (2026-10-18)
 
-> **Ukratko (S173):** MC izvod sada sam razlikuje ispravak od novog retka i prijavljuje duplikate, rate nasljeđuju razvrstavanje svog plana, a naknade za rate idu u svoj plan i generiraju se unaprijed — izmjereno nad stanjem od 2. listopada, alat sam proizvodi ono što je S158 složio ručno, u cent.
+> **Ukratko (S174):** uvoz razvrstavanja više ne traži kvačicu „potvrđeno stanje" (pita samo kad se mijenja bankino polje, kao Edit), a 31 pravilo po trgovcu — AI ga je predložio, baza prebrojala, Saša odobrio — udvostručilo je prijedloge za stariju povijest: ZABA 38 → 70, RF 29 → 90, uz 98 % pogodaka unatrag.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (S173)
-- **MC izvod (~2.11.) bez ručnog slaganja filea.** Alat iz Delta Exporta i PDF-a sam:
-  ispravi postojeći redak kad je iznos malo drukčiji (tečaj, cent, redak bez opisa), prijavi
-  duplikate (i cijeli dvostruki plan rata), novu ratu razvrsta po njezinom planu, naknadu 1,32
-  stavi uz njezinu ratu i doda buduće naknade koje fale. Na kraju kaže **Σ košare = izvod u cent**
-  i **koliko New / Modify / Delete** Koka mora vidjeti u pregledu uvoza.
-- Dokaz: nad stanjem baze od 2. listopada alat daje točno ono što smo u S158 složili ručno
-  (košara 55 / 1.189,34), a pravi uvoz appa čita file s istim brojkama.
-
-## Paralelno (docs sesija, 18.10.) — ⚠ neverificirano iz ove sesije
-- Pospremanje `docs/` (`9e7806a`, `8629f59`, `3c261de`): `FINANCIJE_STATUS`, `DELTA_WINDOW_SPEC`,
-  stari backlog i audit u `_archive/`; nov `docs/FINANCIJE_PREGLED.md` (karta dokumenata);
-  `CLAUDE.md` § Strategic Position s putom (MC alat do 11.11. → F5 AreaSettings → trening →
-  Financije template); `BACKLOG.md` je jedini backlog. Ova sesija to nije čitala ni provjeravala.
+## Gotovo (S174)
+- **Uvoz razvrstavanja više ne pita „X redaka unutar POTVRĐENOG stanja"** kad se mijenja samo
+  Tip/Podtip (lažnih 9 iz RF uvoza). Pita i dalje za iznos, datum, račun, Izvor, tekst izvoda.
+  ⚠ To je promjena **appa** — na PROD-u radi tek nakon deploya (dotad kutija i dalje iskače; smiješ je kvačnuti).
+- **Pravila po trgovcu (T17):** 31 pravilo koje si odobrio (npr. sve INA/Petrol na Mastercardu = C5
+  gorivo, parkirališta/garaže, Bmove, Dubravica, ljekarne na Visi…). U fileu za razvrstavanje su
+  **lila** — prijedlog iz pravila, ne iz povijesti tog trgovca; razlog piše u listu `Pregled`.
+  Unatrag pogađaju 144 od 147.
+- **Starija povijest (2024-01…2025-09)** sada ima prijedlog za ZABA **70** od 257 i RF **90** od 384
+  (prije 38 i 29). Ostatak su većinom jednokratni trgovci s putovanja — za njih nema pravila.
 
 ## Što treba od tebe
-1. **~2.11. MC_2026-10** (T-S173-2..4, koraci u `docs/sessions/tests/S173_tests.md`):
-   razvrstač → Delta Export ZABA → `fill_from_izvod.py <delta> --mc MC_2026-10.pdf --dry` →
-   odluke `--brisi=<id8>` → bez `--dry` → Koka uvozi (brojke iz zadnjeg retka ispisa) → ponovni
-   prolaz `0 New · 0 Modify` → 11.11. traka Potvrdi.
-   ✅ `docs/FINANCIJE_PROCES.md` §5 „Mastercard izvod“ prepisan na novi tok (docs sesija, 18.10.) —
-   to je trajni mjesečni postupak; `S173_tests.md` nosi očekivane brojke za studeni.
-2. Iz S172, i dalje otvoreno: **Koku pitaj** lista bez iznosa od 14.10.? (T-S168-4) · `+` iz prve?
-   (T-S154-2) · T-S145-3 zatvoriti? · studeni: Visa traka (T-S170-9), MC traka (T-S171-5), prvi MC
-   plan s ostatkom na zadnjoj rati (T-S168-3), ti kao grantee (T-S156-5), izvodi listopad
-   (T-S156-7, T-S170-12, T-S161-3, T-S158-5 korak 1), RF N/A (T-S169-6), T-S169-7, T37 Intercar.
-3. Odluka iz Backloga: provjera košara u „Review" sheetu.
+1. **T-S174-2 (TEST, lokalno, ~5 min):** uvoz `na_razvrstavanje_kokin_tekuci_zaba_202401-202509_20261018_1628.xlsx`
+   ⇒ pregled `0 · 70 · 0` **bez** kutije potvrđenog stanja; pa isti file s promijenjenim iznosom
+   jednog Racun retka ⇒ kutija pita za 1. Koraci: `docs/sessions/tests/S174_tests.md`.
+2. **Deploy** kad hoćeš (guard je jedina app promjena od 17.10.) — inače T-S174-3 uvoz i dalje pita.
+3. **T-S174-3 (PROD):** starija povijest s Kokom (ZABA, od najvećeg iznosa) i ti (RF) — file s PROD-a,
+   `--preuzmi`, uvoz pod Kokinim računom. Očekivane brojke u `S174_tests.md`. T37 (Intercar duplikati) prije uvoza.
+4. **Odluka:** tvoja pravila iz T17 izmjerena — `PARKING` 12/13 (dodati? koristi mjesečnom krugu, npr.
+   `VPA PARKING`); `GLOVO` povijest ne potvrđuje (Kave 1 · Hrana 1 · Temu 1) — ostaviti ručno?
+5. Iz S173, i dalje: **~2.11. MC_2026-10** (T-S173-2..4) · Koku pitaj: lista bez iznosa od 14.10.?
+   (T-S168-4) · `+` iz prve? (T-S154-2) · studeni trake (T-S170-9, T-S171-5), T-S168-3, T-S156-5,
+   izvodi listopad (T-S156-7, T-S170-12, T-S161-3, T-S158-5). Odluka: provjera košara u „Review" sheetu.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
 ## Stanje
-- **`_mc_spajanje.py`** (nov): `spari()` odluke (rate po planu = trgovac + N + mjesec početka;
-  Kokina rata bez `Rate?` po `n/N` u komentaru; naknade zamjenjive, buduće po dospijeću; `uskladi()`
-  za ostalo; T13 s dokazom razvrstavanje > isti dan; duplikat plana POSLIJE svih rata),
-  `izmjene()` (žig samo u praznu ćeliju, `Status` samo prazan ⇒ `Planiran`, `Tip` sparenog se ne dira).
-- **`fill_from_izvod --mc`:** `mc_odluke()` (izvještaj, novi retci sa slobodnom minutom U BAZI,
-  e-mail vlasnice Aree u kol. G) + `upisi_mc()` (ispravci NA retke sekcije po `event_id`, `DELETE`,
-  redak kojeg nema dopiše cijeli iz baze). `--brisi=<id8>` samo za prijavljeno.
-- **`uskladi_izvod.parse_mc`:** `kupnja`/`ukupno`/`kupnja_ref` iz zagrade, `za_ref` na naknadi
-  (33/33 MC izvoda: zagrada = naknada, svaka referenca nađe ratu).
-- **Harness** `Claude-temp_R/s173_mc/` (ignoriran): `regresija.sh` iz korijena — 6 provjera offline nad
-  `_backup/test/2026-10-07_0836` (prije S158) i `2026-10-17_1013` (poslije). Ovisi o tim snimkama
-  (lokalno + `D:`). `synth_nov.py` = sintetički studeni (12 tvrdnji, sabotaže ruše 4 i 2).
-- TEST (= PROD 17.10.) košara 11.11. = 35 / 2.264,35 (rate 15 / 493,90, naknade 4, kupnje 16).
+- **Guard (`6720662`):** `isBankKey(spec, key)` u `confirmedRowEdit.ts` je jedino pravilo; uvoz ga
+  zove kroz `importBankChanges(changes, categoryId, attrByCatName, spec)` u `analyzeUpdates`
+  (`confirmed.bank`). `useAreaDashboard` vraća i `automations`; `ExcelImportModal` gradi
+  `bankFieldSpec({dashboard, automations})` i ima ga u dep listi `analyzeFile`. Bez `bank` ⇒ staro ponašanje.
+- **`pravila_trgovca.py` (`568b7c5`):** `PRAVILA` (31), `kljuc_trgovca(tekst, izvor)` (kartica =
+  `uvezi_transu.kljuc` bez adrese; račun = bez uvoda naloga i IBAN-a), `po_pravilu(tekst, izvor)`.
+  `razvrstaj_na.iz_pravila` = 4. ključ (kartica: iza trgovac+iznos; račun: iza `Presedani`);
+  `pisi(boje={j: 'E4DFEC'})`; `--provjera` ispisuje po pravilu.
+- **Radni stol** `Claude-temp_R/s174_pravila/` (ignoriran): `fixdb.py` + `_snap.py` (PROD snimka
+  18.10.), `skupi.py` → `ulaz.json`, `predlozi_ai.py` (Opus 5.5, high, 0,70 $) → `ai_pravila.json`,
+  `provjeri_pravila.py` → `provjera.json`, `lista_md.py` → `PRAVILA_PRIJEDLOG.md`, `gen_modul.py`,
+  `na_fix.py` (razvrstaj_na nad snimkom). Novo pravilo = isti put, nikad ručni upis bez brojanja.
+- S169 arhiviran (sekcija u `DONE_HISTORY`, file u `Claude-temp_R/test-sessions/archive/`).
 
 ## Otvoreno — kod (po prioritetu)
-1. **Uz MC_2026-10 (~2.11.):** pratiti T-S173-2; ako se pojavi `NEJASNO` za očito isti trošak —
-   dodati `--par=<id8>:<iznos>` (sada je jedini izlaz `--brisi` starog retka).
-2. **T17** (pravila po riječi: `GLOVO`, `PARKING`/`GARAZ`) — u MC_2026-09 su Glovo i VPA ostali N/A;
-   Visa ima `KLASA` — zajedničko mjesto za oba alata (provjera unatrag prije, S164).
-3. **§5 `FINANCIJE_PROCES.md` (MC naredbe)** prepisati na novi tok (`uskladi_izvod` korak 1 više ne
-   treba; `rate_alat --only b` samo uz `⚠ NOV PLAN`). Dogovoriti s docs sesijom tko piše.
-4. `MOŽDA KRIVO MJESTO` (`--premjesti`) kao Visa — MC još nema.
-5. T23 u appu: rata modal za MC plan novog načina ne stvara naknade.
-6. Iz S172: Excel uvoz `default_map` kad se roditelj promijeni (BACKLOG vrh) · T-S172-4 (E2E
-   S104-3/S107-3 izmjeriti) · „Review" sheet (čeka Sašu) · F5 · delta: retci koje `fill_from_izvod`
-   dopiše ispod sekcije nisu u grupi ni u bojanju · ↗ ne vraća `attrFilter`.
-7. ~~Zaglavlje korijenskog `CLAUDE.md` na S173~~ ✅ (docs sesija, 18.10.).
+1. **`po_pravilu` u `fill_from_izvod` (MC/ZABA/RF) i `visa_uvoz_izvoda`** — retci koje mjesečni krug
+   ne zna razvrstati (Glovo/VPA iz MC_2026-09). Redoslijed isti: postojeći rječnici/presedan prvo.
+   Prije: provjera unatrag na tim tokovima (S164). Visa `KLASA` i `uvezi_transu.RUCNO` možda preseliti
+   u isti modul (jedno mjesto).
+2. Ako Saša odluči: `\bparking\b` (12/13) u `PRAVILA`.
+3. Iz S173: `--par=<id8>:<iznos>` ako MC_2026-10 da `NEJASNO` · `MOŽDA KRIVO MJESTO` za MC · T23 u appu
+   (rata modal bez naknade).
+4. Iz S172: Excel uvoz `default_map` kad se roditelj promijeni (BACKLOG vrh) · T-S172-4 · „Review"
+   sheet · F5 (Strategic Position korak 2) · delta: retci koje `fill_from_izvod` dopiše ispod sekcije
+   nisu u grupi ni bojanju · ↗ ne vraća `attrFilter`.
+5. Uvozni guard još **ne** pita za redak sa žigom (`Izvod opis`) bez sidra — Edit pita. Zasad
+   svjesno izvan opsega (sidro je ono što uvoz čuva); otvoriti samo ako se pokaže potreba.
