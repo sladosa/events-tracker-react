@@ -34,6 +34,15 @@
   „ne primjenjuj" po retku **namjerno ne** — dodaje se tek ako se slučaj počne ponavljati.
   ⚠ `canUpdateExisting`/`analyzeUpdates`/apply: isto pravilo na tri mjesta (S125) — jedna funkcija.
 
+- **Uvozni guard potvrđenog stanja pita i za izmjenu koja nije bankina (nađeno 18.10., T-S169-6)** —
+  razvrstavanje 49 RF redaka (samo Tip/Podtip) tražilo je kvačicu „9 redaka unutar POTVRĐENOG
+  stanja". Edit (C3c, S155) pita samo kad se mijenja **bankino polje** (`bankFieldSpec` /
+  `bankFieldChanges`, `confirmedRowEdit.ts`) — Tip/Podtip/opis „nikad ne pale okvir"; uvoz
+  (`analyzeUpdates`, `excelImport.ts` ~1962) gleda samo je li redak u saldu, ne **što** se mijenja,
+  iako komentar tvrdi „ISTO pravilo kao Edit". **Popravak:** isti `bankFieldSpec` u `analyzeUpdates`.
+  ⚠ **Prije T-S169-7** (starija povijest, 1.400+ redaka) — inače kutija pali na svakom uvozu
+  razvrstavanja i nauči se otklikati.
+
 - ✅ **IZVEDENO S170** (`src/lib/filterOptions.ts`: dug atribut grupiran po roditelju, kratak ravan bez ponavljanja; vrijednost izvan popisa = „(not in list)"; čuva `filterOptions.test.mjs`) — **Filtar „Filter by" za `depends_on` atribut nudi izbornik, ne slobodan tekst (S167, Saša)** —
   `Podtip` ovisi o `Tip`u, pa `AppHome` (`isSuggest`) ne nađe ravan popis opcija i daje polje za
   tekst s `ilike '%…%'`. Posljedica: `Popravci` vraća i `auto C5 / popravci` (30 umjesto 18), a

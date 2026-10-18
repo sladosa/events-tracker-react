@@ -90,7 +90,7 @@ Odluke T33–T36 izvedene na PROD-u (uvozi pod Kokinim računom, config razreza 
 | T-S169-3 | PROD: Investicije izvan razreza (`set_breakdown.py --apply --yes-prod`) | ✅ S169 (12.10.) — Izašlo 180.352,89 → 170.809,73 (−9.543,16), `nesvrstano` nestao, „izvan razreza (Transfer, Investicije)" |
 | T-S169-4 | PROD: Triglav 7.782,55 ⇒ `Prihodi / Saša` | ✅ S169 (12.10.) — 0 · 1 updated; Povremeno nužno 22.237,74, Ušlo 189.787,17, Razlika 11.194,89 nepomaknuta |
 | T-S169-5 | PROD All Time drill: Povremeno nužno → Zdravlje → `Medical_Koka` ≈ 1.151 trošak (ne minus); Osiguranje → `Zivotno` pozitivan | ✅ S169 (12.10., Saša) — Medical_Koka **1.168,23** (uz danas razvrstane ljekarne), Zivotno **2.090,59**, Zdravlje 3.786,76 bez minusa |
-| T-S169-6 | RF N/A 10/2025–09/2026 (Saša): razvrstaj `…_sasin_tekuci_rf_20261012_1102.xlsx` ⇒ `--preuzmi` na PROD ⇒ uvoz pod Kokinim računom | ⬜ |
+| T-S169-6 | RF N/A 10/2025–09/2026 (Saša): razvrstaj `…_sasin_tekuci_rf_20261012_1102.xlsx` ⇒ `--preuzmi` na PROD ⇒ uvoz pod Kokinim računom | ✅ 18.10. (Saša) — 49/49 razvrstano; `--preuzmi` s PROD-a ⇒ `…_202510-202609_20261018_1135.xlsx`; uvoz **0 created · 49 updated**, bez „Foreign events". Kutija „9 redaka unutar POTVRĐENOG stanja" = lažna uzbuna (samo Tip/Podtip) ⇒ BACKLOG „Uvozni guard potvrđenog stanja" |
 | T-S169-7 | Starija povijest 01/2024–09/2025, `--s-tekstom --po-iznosu`: ZABA s Kokom (od najvećeg iznosa, stane se kad god), RF Saša ⇒ `--preuzmi` (ISTI prozor i zastavice) ⇒ uvoz | ⬜ |
 | T-S169-8 | Nakon deploya (PROD): Kamo ide novac → rasklopi Povremeno nužno › Osiguranje → ↗ → povratak na Overview ⇒ isto rasklopljeno (i Troškovi/Prihodi, os); F5 ⇒ čisto | ✅ 17.10. (Saša, PROD nakon deploya `ca496cb`) — razrez rasklopljen nakon ↗ i povratka; lokalno ✅ 12.10. |
 
