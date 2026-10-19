@@ -13,7 +13,7 @@ koristi kao 4. ključ (lila u fileu).
 uspoređuje s `isBankKey` (ista funkcija kao Edit). Protuprovjera (staro: pitaj za sve) pada 4;
 sabotaža pravog koda (`importBankChanges` bez `isBankKey`) ruši 4. `npm run check` 48/0, build ✓.
 
-## T-S174-2 ⬜ (TEST, lokalno `npm run dev`, Saša) Uvoz razvrstavanja ne traži kvačicu „potvrđeno stanje"
+## T-S174-2 ✅ (19.10., Saša: 0 · 193 · 0 bez kutije — file nosi i njegovo ručno razvrstavanje; iznos +0,01 ⇒ kutija za 1) (TEST, lokalno `npm run dev`, Saša) Uvoz razvrstavanja ne traži kvačicu „potvrđeno stanje"
 
 **Zašto ovaj file:** ZABA prijedlog ima **70** redaka s Tipom, od toga **15 `Izvor = Racun`** —
 svi ispred ZABA sidara. Stari guard bi za njih pitao „15 redaka unutar POTVRĐENOG stanja"

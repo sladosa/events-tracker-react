@@ -19,7 +19,7 @@
   PROD-u do deploya). 31 pravilo po trgovcu: starija povijest ZABA 70 / RF 90 prijedloga.
 
 ## Što treba od tebe — sad
-1. **T-S174-2 (TEST, lokalno, ~5 min):** uvoz `na_razvrstavanje_kokin_tekuci_zaba_202401-202509_20261018_1628.xlsx`
+1. ~~T-S174-2~~ ✅ 19.10. — bez kutije za razvrstavanje (193 izmjene), iznos +0,01 ⇒ pita za 1.
    ⇒ pregled `0 · 70 · 0` **bez** kutije potvrđenog stanja; isti file s promijenjenim iznosom jednog
    Racun retka ⇒ kutija pita za 1. Koraci: `S174_tests.md`.
 2. **Deploy** kad hoćeš (guard je jedina app promjena od 17.10.). Bez deploya uvoz u T-S174-3 i dalje pita (smiješ kvačnuti).
