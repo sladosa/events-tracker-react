@@ -8,7 +8,7 @@
 
 ## S175 — Čišćenje: studeni krug u tri testa, deset sekcija u arhivu (2026-10-19)
 
-Bez promjene koda. Testovi koji su čekali prvi mjesečni krug u studenom (MC, Visa, ZABA) iz osam sesija sažeti su u T-S175-1..3, a dva praćenja Kokinog mobitela u jedno pitanje (T-S175-4). T-S145-3 prepušten unosu BUG-S145-BOOLEDIT, T-S172-4 preseljen u BACKLOG. Sekcije S145–S173 (svih 10) su u `DONE_HISTORY.md`.
+Testovi koji su čekali prvi mjesečni krug u studenom (MC, Visa, ZABA) iz osam sesija sažeti su u T-S175-1..3, a dva praćenja Kokinog mobitela u jedno pitanje (T-S175-4). T-S145-3 prepušten unosu BUG-S145-BOOLEDIT, T-S172-4 preseljen u BACKLOG. Sekcije S145–S173 (svih 10) su u `DONE_HISTORY.md`. Kod: Košare ↗ označava redak po povratku (T-S175-5; E2E `S171_baskets_and_narrow_filter` 3e, sabotaža pada).
 
 **Detalji testova:** [tests/S175_tests.md](tests/S175_tests.md)
 
@@ -18,6 +18,7 @@ Bez promjene koda. Testovi koji su čekali prvi mjesečni krug u studenom (MC, V
 | T-S175-2 | ~03.–11.11. PROD: Visa košara u traci „(samo isplate)", Saša kao grantee vidi usporedbu bez gumba, Koka upiše naplatu, `visa_uvoz_izvoda` kaže „već upisana" i spari rate iz appa, ✓ u cent | ⬜ |
 | T-S175-3 | ZABA_2026-10: `fill_from_izvod --zaba` imenom, presedani iz `ET_TARGET`, MC naplata 11.10. preskočena (nikad nov redak), „Σ kosare prosirena" uz `Potvrda`, `promet_check` 2026-10 ✓ | ⬜ |
 | T-S175-4 | Pitanje Koki: od sredine listopada lista nikad bez iznosa i `+` uvijek iz prve? | ✅ S175 (19.10., Koka: „sve vidim ok") — nadiđeno upotrebom; zatvara i T-S168-4, T-S154-2 |
+| T-S175-5 | Košare ↗ na kupnji ⇒ Activities taj dan ⇒ tab Overview ⇒ This Year, Košare otvorene **i ta kupnja označena** (lokalno TEST, pa PROD nakon deploya) | ⬜ |
 
 ---
 

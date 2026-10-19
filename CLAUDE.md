@@ -2332,7 +2332,7 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   oduzeti je opet = dvaput (`settled`, čuva `basketsView.test.mjs`).
   ⚠ **View otvoren IZVAN Activities liste mora predati `navActivities`** (Sašin nalaz S171): bez
   njega View sam učita cijelu Areu (500, bez datuma) i Prev/Next skače po svemu. Košare predaju
-  `basketNavList`. Oznaka „gdje sam stao" se čita iz `lastViewed.ts` (upisuje View), **ne** iz
+  `basketNavList`. Oznaka „gdje sam stao" se čita iz `lastViewed.ts` (upisuju View i Košare ↗, S175), **ne** iz
   `location.state.highlightKey` — Back preglednika/swipe ga ne nose, a stari ostaje u povijesti.
   ⚠ **Popis mora preživjeti i View → Edit → View** (S171, kvar star koliko i Edit): Edit ga je
   gubio na sva tri povratka, pa je Next nakon Savea skakao po Arei. Sada `viewTarget` u Editu +

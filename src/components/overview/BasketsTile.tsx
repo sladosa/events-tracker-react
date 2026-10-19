@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getLastViewed } from '@/lib/lastViewed';
+import { getLastViewed, setLastViewed } from '@/lib/lastViewed';
 import { line2Parts, resolveColumns } from '@/lib/listColumns';
 import { useListColumnValues } from '@/hooks/useListColumnValues';
 import { cn } from '@/lib/cn';
@@ -341,7 +341,13 @@ export function BasketsTile({ areaId, widget, collapsed, onToggleCollapsed, focu
                                         <td className="py-0.5 pl-1 align-top">
                                           <button
                                             type="button"
-                                            onClick={e => { e.stopPropagation(); onShowDay(x.event_date); }}
+                                            onClick={e => {
+                                              e.stopPropagation();
+                                              // Po povratku na Overview označen je ovaj redak, kao nakon View-a
+                                              // (Saša, S175) — isti modul, pa ga označavanje i skrol već znaju.
+                                              setLastViewed(lineSessionKey(x));
+                                              onShowDay(x.event_date);
+                                            }}
                                             title={`Isti dan u Activities (${shortDate(x.event_date, today)})`}
                                             aria-label={`Isti dan u Activities ${x.event_date}`}
                                             className="px-1 text-teal-700 hover:text-teal-900"

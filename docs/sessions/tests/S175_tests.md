@@ -129,3 +129,21 @@ transakcije pokažu bez iznosa, ili da `+` ne reagira pa ga moraš dodirnuti ope
 - **Ne i ne** ⇒ oba ✅ (nadiđeno upotrebom).
 - **Da** ⇒ kad (otvaranje appa / povratak iz pregleda), na kojoj mreži, slika ako može. Lista bez
   iznosa uz traku „Nisam uspio učitati postavke" je **drugi** kvar (palo čitanje), ne ovaj.
+
+---
+
+## T-S175-5 ⬜ (TEST lokalno, pa PROD nakon deploya; Saša) Košare ↗ — povratak označi kupnju
+
+Saša 19.10.: nakon ↗ i povratka Overview vraća This Year i otvorene Košare (S172), ali se ne vidi s
+koje je kupnje krenuo. Sada ↗ pamti redak u istom modulu kao View (`lastViewed.ts`), pa ga pločica
+označi i dovede u vidik. Automatski: E2E `S171_baskets_and_narrow_filter` korak 3e — ↗ na kupnji
+koja NIJE zadnja otvorena u View-u; sabotaža (bez upisa) pada s „označena Druga, a ne Prva".
+
+1. `npm run dev` (TEST), Ctrl+Shift+R, `Financije_all`, Overview → Košare, rasklopi MC 11.11.
+2. Otvori jednu kupnju u View (npr. treću), Back ⇒ ona je označena (ponašanje od S171).
+3. Na **drugoj** kupnji (npr. sedmoj) dodir na **↗** ⇒ Activities, `Custom` = dan te kupnje.
+4. Tab **Overview**. **Očekivano:** This Year, Košare otvorene, MC 11.11. rasklopljena, **sedma**
+   kupnja označena (obojena, uokvirena) i u vidiku. Treća više nije označena.
+5. Varijanta: u Activities nakon ↗ otvori neki redak u View, Back, pa tab Overview ⇒ označen je
+   redak zadnji prikazan u View-u (ako je u košari), jer je to mjesto gdje si stao.
+- **Pad:** označena treća (stara oznaka), ili ništa.

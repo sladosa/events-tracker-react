@@ -241,12 +241,13 @@ test.describe('S171 — košare i uski filtar', () => {
     await expect(marked).toHaveCount(1, { timeout: 15_000 });
     await expect(marked).toContainText('Druga kupnja S171');
 
-    // 3c. „Isti dan u Activities ↗" na Drugoj ⇒ Activities, raspon = taj dan, samo Druga.
-    await tile.getByRole('button', { name: `Isti dan u Activities ${inDays(-30)}` }).click();
+    // 3c. „Isti dan u Activities ↗" na PRVOJ (označena je Druga — inače bi 3e prošao i
+    //     bez popravka) ⇒ Activities, raspon = taj dan, samo Prva.
+    await tile.getByRole('button', { name: `Isti dan u Activities ${inDays(-35)}` }).click();
     await expect(page.getByTestId('filter-summary')).toContainText('Custom', { timeout: 15_000 });
     // Lista ima i skriveni desktop redak (`hidden sm:table-row`) — gleda se samo vidljivo.
-    await expect(page.locator(':text("Druga kupnja S171"):visible').first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('Prva kupnja S171')).toHaveCount(0);
+    await expect(page.locator(':text("Prva kupnja S171"):visible').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Druga kupnja S171')).toHaveCount(0);
     await expect(page.getByText('Nije u kosari S171')).toHaveCount(0);
     // 3d. S172 (Saša): povratak na Overview VRAĆA razdoblje od prije ↗ (This Month) —
     //     inače bi saldo pokazao stanje na taj dan, a ne danas.
@@ -254,6 +255,10 @@ test.describe('S171 — košare i uski filtar', () => {
     await expect(page.getByRole('heading', { name: /Košare/ })).toBeVisible({ timeout: 15_000 });
     await expect(summary).toContainText('This Month', { timeout: 15_000 });
     await expect(summary).not.toContainText('Custom');
+    // 3e. S175 (Saša): označena je kupnja s koje je ↗ krenuo, kao nakon View-a.
+    const markedAfterDay = page.getByTestId('baskets-tile').locator('tr[data-last-opened]');
+    await expect(markedAfterDay).toHaveCount(1, { timeout: 15_000 });
+    await expect(markedAfterDay).toContainText('Prva kupnja S171');
 
     // 4. Activities: sklopljen filtar sa sažetkom razdoblja (vraćeni This Month).
     await strip.locator('> button').nth(1).click();

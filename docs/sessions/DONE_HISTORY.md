@@ -9440,3 +9440,9 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
 - **Selidba:** 10 PENDING sekcija (S145, S154, S156, S158, S161, S168, S170–S173) u ovaj file uz
   svoje sesije; detaljni fileovi u `Claude-temp_R/test-sessions/archive/` (naslovi označeni ✅ S175).
   Jednokratna skripta u scratchpadu, dry run pa apply; audit poslije: 2 filea, 7 ⬜, 0 neslaganja.
+- **Kod (Saša, isti dan):** Košare ↗ sada upisuje redak u `lastViewed` prije drilla, pa povratak na
+  Overview označi kupnju s koje se krenulo (isto označavanje i skrol kao nakon View-a, bez nove
+  logike). E2E `S171_baskets_and_narrow_filter` 3e: ↗ na Prvoj dok je označena Druga ⇒ po povratku
+  Prva (4/4; sabotaža pada na 3e). `check` ✓, build ✓. Ručno: T-S175-5.
+- **Testovi isti dan:** T-S175-4 ✅ (Koka „sve vidim ok"), T-S174-2 ✅ (TEST: 193 izmjene razvrstavanja
+  bez kutije — file nosi i Sašino ručno razvrstavanje; iznos +0,01 ⇒ kutija za 1).
