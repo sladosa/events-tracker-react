@@ -132,7 +132,7 @@ transakcije pokažu bez iznosa, ili da `+` ne reagira pa ga moraš dodirnuti ope
 
 ---
 
-## T-S175-5 ⬜ (TEST lokalno, pa PROD nakon deploya; Saša) Košare ↗ — povratak označi kupnju
+## T-S175-5 ✅ (19.10., Saša na TEST-u: označena kupnja 04.10. s koje je krenuo ↗) (TEST lokalno, pa PROD nakon deploya; Saša) Košare ↗ — povratak označi kupnju
 
 Saša 19.10.: nakon ↗ i povratka Overview vraća This Year i otvorene Košare (S172), ali se ne vidi s
 koje je kupnje krenuo. Sada ↗ pamti redak u istom modulu kao View (`lastViewed.ts`), pa ga pločica

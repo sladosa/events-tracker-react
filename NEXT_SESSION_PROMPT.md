@@ -22,7 +22,7 @@
 1. ~~T-S174-2~~ ✅ 19.10. — bez kutije za razvrstavanje (193 izmjene), iznos +0,01 ⇒ pita za 1.
    ⇒ pregled `0 · 70 · 0` **bez** kutije potvrđenog stanja; isti file s promijenjenim iznosom jednog
    Racun retka ⇒ kutija pita za 1. Koraci: `S174_tests.md`.
-2. **T-S175-5 (TEST, lokalno):** Košare ↗ pa povratak ⇒ kupnja označena. Zatim **deploy** (guard S174 + ↗ oznaka S175). Bez deploya uvoz u T-S174-3 i dalje pita (smiješ kvačnuti).
+2. ~~T-S175-5~~ ✅ 19.10. Zatim **deploy** (guard S174 + ↗ oznaka S175). Bez deploya uvoz u T-S174-3 i dalje pita (smiješ kvačnuti).
 3. **T-S174-3 (PROD):** starija povijest s Kokom (ZABA) i ti (RF), pa **T-S174-5** (Nenini retci, tek poslije).
 4. ~~T-S175-4~~ ✅ 19.10. — Koka: „sve vidim ok".
 5. **Odluka iz S174:** `PARKING` (12/13) kao pravilo? `GLOVO` ostaviti ručno?
