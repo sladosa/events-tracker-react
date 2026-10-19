@@ -357,6 +357,12 @@ formi · lakše dodavanje opcija u depends_on mapping · help docs update.
 **⭐ Help „What can I do here?" chip** — standing chip po `pageHint` kontekstu; zahtijeva
 sekciju „Feature inventory" u `docs/help/*.md`, **dosta detaljno** (korisnikov izričit zahtjev).
 
+**E2E povremeni padovi u punom runu (S172, preseljeno iz T-S172-4 u S175)** — S104-3 (kategorije
+Fitnessa ostanu na „Loading…" > 10 s, pada `waitFor` na opciji) i S107-3. Pojedinačno prolaze
+(S104 2/2 zaredom). Puni run 17.10.: 84 / 3. **Prvo izmjeriti** zašto se kategorije ponekad
+učitavaju dulje od 10 s (trace iz punog runa: koji zahtjev čeka, paralelni workeri?), tek onda
+eventualno produljiti čekanje — inače se produljenjem sakrije pravi uzrok.
+
 ### Čeka Sašinu odluku prije ijedne linije koda
 
 > **Prazno je PODATAK, ne propust** (S141): stavka smije ovdje samo dok Saša stvarno
