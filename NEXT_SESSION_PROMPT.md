@@ -1,6 +1,6 @@
 > Pisano protiv `463aca4` (S174) + commita **S175 docs** koji nosi ovaj file.
-> **`main` = `ca496cb` (deploy 17.10., S172).** S174 ima promjenu appa (uvozni guard, `6720662`) — **nije na PROD-u**.
-> **PROD baza:** ni S174 ni S175 nisu pisale ništa. S175 kod: Košare ↗ označava redak po povratku (nije na PROD-u).
+> **`main` = `07361eb` (deploy 19.10., S175):** uvozni guard (S174) i Košare ↗ oznaka (S175) su na PROD-u.
+> **PROD baza:** ni S174 ni S175 nisu pisale ništa.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
@@ -22,7 +22,7 @@
 1. ~~T-S174-2~~ ✅ 19.10. — bez kutije za razvrstavanje (193 izmjene), iznos +0,01 ⇒ pita za 1.
    ⇒ pregled `0 · 70 · 0` **bez** kutije potvrđenog stanja; isti file s promijenjenim iznosom jednog
    Racun retka ⇒ kutija pita za 1. Koraci: `S174_tests.md`.
-2. ~~T-S175-5~~ ✅ 19.10. Zatim **deploy** (guard S174 + ↗ oznaka S175). Bez deploya uvoz u T-S174-3 i dalje pita (smiješ kvačnuti).
+2. ~~T-S175-5~~ ✅ 19.10. **Deploy ✅ 19.10.** (`07361eb`) — Koka: jednom zatvori i otvori karticu (stari bundle).
 3. **T-S174-3 (PROD):** starija povijest s Kokom (ZABA) i ti (RF), pa **T-S174-5** (Nenini retci, tek poslije).
 4. ~~T-S175-4~~ ✅ 19.10. — Koka: „sve vidim ok".
 5. **Odluka iz S174:** `PARKING` (12/13) kao pravilo? `GLOVO` ostaviti ručno?
