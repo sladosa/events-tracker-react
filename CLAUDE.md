@@ -27,32 +27,32 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 
 | r. | sekcija | |
 | ---: | --- | :---: |
-| 55 | [Strategic Position (2026-10-18)](<#Strategic Position (2026-10-18)>) |  |
-| 106 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 145 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 158 | [Critical rules](<#Critical rules>) | X |
-| 1342 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1821 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1837 | [Key files](<#Key files>) |  |
-| 1970 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1990 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2013 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2041 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2081 | [Open bugs](<#Open bugs>) | ~ |
-| 2190 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2235 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2386 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2394 | [Backlog](<#Backlog>) | ~ |
-| 2398 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2406 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 55 | [Strategic Position (2026-10-19)](<#Strategic Position (2026-10-19)>) |  |
+| 109 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
+| 148 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 161 | [Critical rules](<#Critical rules>) | X |
+| 1345 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1824 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1840 | [Key files](<#Key files>) |  |
+| 1973 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1993 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2016 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2044 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2084 | [Open bugs](<#Open bugs>) | ~ |
+| 2193 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2238 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2389 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2397 | [Backlog](<#Backlog>) | ~ |
+| 2401 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2409 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2570 redaka, 18 sekcija._
+_Ukupno 2573 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
 ---
 
-## Strategic Position (2026-10-18)
+## Strategic Position (2026-10-19)
 [↑ Sadrzaj](#Sadrzaj)
 
 **Misija:** Personal structured memory/decision system nad povijesnim podacima. Pretvoriti
@@ -83,12 +83,15 @@ trenja (`docs/FINANCIJE_PROCES.md` §4). Ulazna točka: **`docs/FINANCIJE_PREGLE
 2. ✅ **F5 — sheet `AreaSettings` izveden S175 (19.10., na `test-branch`)**: Structure roundtrip
    sada nosi i `dashboard`, `groupings`, `export_profiles` i svaki budući ključ `areas.settings`.
    Princip „sve ide importom" je zatvoren; Structure export je od tada **jedna Area**.
-3. **`trening.xlsm`** (sljedeća domena; `C:\0_Sasa\OneDrive\trening.xlsm`). **Ne čeka F5:**
-   analiza filea i prepisivanje `docs/Diary.md` u `TRENING_MIGRACIJA.md` mogu odmah; F5 treba tek
-   kad trening Aree dobiju pločice. Plan migracije živi na **jednom** mjestu (taj dokument) —
-   `AUTOMATION_SPEC.md` Faza 4, `DATA_PIPELINE_PLAN.md` Prioritet 5 i BACKLOG samo upućuju.
+3. **`trening.xlsm`** (sljedeća domena; `C:\0_Sasa\OneDrive\trening.xlsm`). **Analiza gotova
+   (19.10., paralelna sesija uz S175): `docs/TRENING_MIGRACIJA.md`** — izmjeren inventar (7.451 dan
+   od 2006., 0 rupa/duplikata, kolone s erama), prijedlog modela (Area `Dnevnik`, leafovi `Trening`
+   i `Dan`) i **17 pitanja za Sašu; Q1–Q3 blokiraju generator**. Plan migracije živi na **jednom**
+   mjestu (taj dokument) — `Diary.md`, `AUTOMATION_SPEC.md` Faza 4, `DATA_PIPELINE_PLAN.md`
+   Prioritet 5 i BACKLOG samo upućuju (preusmjeravanje uputnica: TRENING §6 korak 1).
 4. **Financije kao template za novog korisnika** — prvo na **hrvatskom** (npr. Kokina
-   prijateljica), poslije F5: alat „Area → template" (rođak `prod_to_test.py`) + čišćenje
+   prijateljica), poslije F5 i **pregleda razlika prije Structure uvoza** (BACKLOG „Napredak Aree
+   između korisnika", S175): alat „Area → template" (rođak `prod_to_test.py`) + čišćenje
    osobnog (računi, dani naplate kartica, osobni Podtipovi, tekst skupne naplate u `due`).
    ⚠ Vrijednosti opcija su u configu citirane doslovno (zamka S167). Engleski tek uz
    višejezičnost — zaseban velik posao: tekst ekrana Financija je hrvatski **u kodu**, ne u configu.
@@ -119,7 +122,7 @@ stavke, `FINANCIJE_PROCES.md` §4 posao Financija; nijedan od njih ne ponavlja r
 | `sql/SQL_schema_V5_commented.sql`         | DB schema reference                                                              |
 | `docs/Code_Guidelines_React_v6.md`        | Code conventions                                                                 |
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas, Add Area „From template". ⚠ **Zastario (S49)**; prepisuje se uz Financije template (Strategic Position, korak 4). Jedino živo pravilo: template korisnik se ne može prijaviti (GoTrue odbija `.local`) |
-| `docs/Diary.md`                           | **Migracija `trening.xlsm`** — strategija iz 04.07. (prije Financija); prepisuje se u `TRENING_MIGRACIJA.md` na početku trening sesije (Strategic Position, korak 3) |
+| `docs/TRENING_MIGRACIJA.md`               | **Migracija `trening.xlsm`** (19.10.) — izmjeren inventar `DIARY`, ere kolona, prijedlog modela `Dnevnik`, 17 pitanja (Q1–Q3 blokiraju generator). **Jedini** plan; zamjenjuje `docs/Diary.md` (04.07., povijest) |
 | `docs/AUTOMATION_SPEC.md`                 | Post-Finish automatika — rata modal, comment template, `set_attribute`           |
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
 | `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md`       | **Uvoz filea u istoimenu Areu drukčije strukture** (prijedlog prije koda, S160) — pokus S159 (29/43 tiho), tri opcije, faze D3-F1..F4, odluke D3-1..6 čekaju Sašu |

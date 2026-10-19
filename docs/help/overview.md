@@ -246,7 +246,8 @@ kao grupe košara u delta Excelu. Za razliku od trake, ovdje su i **buduće** ko
   kupnje, bez uvjeta). Tu su sve rate istog plana zajedno — dijele dan kupnje, dok je u košari
   od plana samo jedna. Kad se tabom vratiš na **Overview**, vrati se razdoblje koje je bilo
   prije ↗ (npr. *This Year*), pa saldo opet pokazuje današnje stanje. Ako si u Activities sam
-  izabrao drugo razdoblje, ono ostaje. (F5 između briše to pamćenje.)
+  izabrao drugo razdoblje, ono ostaje. Kupnja s koje si krenuo je **označena** i dovedena u
+  vidik, kao nakon povratka iz pregleda retka. (F5 između briše to pamćenje.)
   Rasklopljena je zadano **sljedeća** košara.
 - Pločica **ne gleda razdoblje iz filtra** — košare su budućnost.
 - Prikazuju se samo **otvorene** košare (bar jedna kupnja `Planiran`). Potvrđena košara

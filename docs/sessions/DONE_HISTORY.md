@@ -9,7 +9,7 @@ Active project state is in CLAUDE.md (repo root).
 
 - [S173 (2026-10-18)](<#S173 — MC alat prije 11.11. (ispravci, duplikati, rate i naknade u fill_from_izvod --mc) (2026-10-18)>) · r. 9344 — MC izvod sada sam razlikuje ispravak od novog retka i prijavljuje duplikate, rate nasljeđuju razvrstavanje svog plana, a naknade za rate idu u svoj plan i generiraju se unaprijed — izmjereno nad stanjem od 2. listopada, alat sam proizvodi ono što je S158 složio ručno, u cent.
 - [S174 (2026-10-18)](<#S174 — Klasifikacija povijesti: uvozni guard i pravila po trgovcu (T17) (2026-10-18)>) · r. 9394 — uvoz razvrstavanja više ne traži kvačicu „potvrđeno stanje" (pita samo kad se mijenja bankino polje, kao Edit), a 31 pravilo po trgovcu — AI ga je predložio, baza prebrojala, Saša odobrio — udvostručilo je prijedloge za stariju povijest: ZABA 38 → 70, RF 29 → 90, uz 98 % pogodaka unatrag.
-- [S175 (2026-10-19)](<#S175 — Čišćenje PENDING-a, Košare ↗ oznaka, F5 sheet AreaSettings (2026-10-19)>) · r. 9424 — otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri (MC, Visa, ZABA) i jedno pitanje Koki, i sada su otvorene samo dvije; usput Košare ↗ po povratku označe kupnju (na PROD-u), a Structure Excel sada nosi i pločice, grupiranja i export profile (sheet `AreaSettings`, F5) — princip „sve ide importom" je zatvoren.
+- [S175 (2026-10-19)](<#S175 — Čišćenje PENDING-a, Košare ↗ oznaka, F5 sheet AreaSettings (2026-10-19)>) · r. 9424 — otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri i jedno pitanje Koki; Košare ↗ po povratku označe kupnju (na PROD-u), Structure Excel sada nosi i pločice, grupiranja i export profile (F5, „sve ide importom" zatvoreno), stari Activities file više ne vraća Areu unatrag, a paralelna sesija je izmjerila `trening.xlsm` i postavila 17 pitanja za migraciju treninga.
 
 ## Dnevnik
 
@@ -110,7 +110,7 @@ Active project state is in CLAUDE.md (repo root).
 | [S172](<#S172 — povratak razdoblja nakon ↗ i zatvaranje testova (2026-10-17)>) | 2026-10-17 | povratak na Overview nakon „isti dan u Activities ↗" vraća razdoblje od prije, košare na malom iPhoneu više se ne preklapaju, TEST je ponovo kopija PROD-a (sada i s postavkama), a E2E računi se prije svakog runa sami čiste — puni run 84/3 umjesto 54/17; osam testova zatvoreno mjerenjem, četiri sesije u arhivi. | 9294 |
 | [S173](<#S173 — MC alat prije 11.11. (ispravci, duplikati, rate i naknade u fill_from_izvod --mc) (2026-10-18)>) | 2026-10-18 | MC izvod sada sam razlikuje ispravak od novog retka i prijavljuje duplikate, rate nasljeđuju razvrstavanje svog plana, a naknade za rate idu u svoj plan i generiraju se unaprijed — izmjereno nad stanjem od 2. listopada, alat sam proizvodi ono što je S158 složio ručno, u cent. | 9344 |
 | [S174](<#S174 — Klasifikacija povijesti: uvozni guard i pravila po trgovcu (T17) (2026-10-18)>) | 2026-10-18 | uvoz razvrstavanja više ne traži kvačicu „potvrđeno stanje" (pita samo kad se mijenja bankino polje, kao Edit), a 31 pravilo po trgovcu — AI ga je predložio, baza prebrojala, Saša odobrio — udvostručilo je prijedloge za stariju povijest: ZABA 38 → 70, RF 29 → 90, uz 98 % pogodaka unatrag. | 9394 |
-| [S175](<#S175 — Čišćenje PENDING-a, Košare ↗ oznaka, F5 sheet AreaSettings (2026-10-19)>) | 2026-10-19 | otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri (MC, Visa, ZABA) i jedno pitanje Koki, i sada su otvorene samo dvije; usput Košare ↗ po povratku označe kupnju (na PROD-u), a Structure Excel sada nosi i pločice, grupiranja i export profile (sheet `AreaSettings`, F5) — princip „sve ide importom" je zatvoren. | 9424 |
+| [S175](<#S175 — Čišćenje PENDING-a, Košare ↗ oznaka, F5 sheet AreaSettings (2026-10-19)>) | 2026-10-19 | otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri i jedno pitanje Koki; Košare ↗ po povratku označe kupnju (na PROD-u), Structure Excel sada nosi i pločice, grupiranja i export profile (F5, „sve ide importom" zatvoreno), stari Activities file više ne vraća Areu unatrag, a paralelna sesija je izmjerila `trening.xlsm` i postavila 17 pitanja za migraciju treninga. | 9424 |
 
 ### Najnovije
 
@@ -9424,7 +9424,7 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
 ## S175 — Čišćenje PENDING-a, Košare ↗ oznaka, F5 sheet AreaSettings (2026-10-19)
 [↑ Dnevnik](#Dnevnik)
 
-> Ukratko: otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri (MC, Visa, ZABA) i jedno pitanje Koki, i sada su otvorene samo dvije; usput Košare ↗ po povratku označe kupnju (na PROD-u), a Structure Excel sada nosi i pločice, grupiranja i export profile (sheet `AreaSettings`, F5) — princip „sve ide importom" je zatvoren.
+> Ukratko: otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri i jedno pitanje Koki; Košare ↗ po povratku označe kupnju (na PROD-u), Structure Excel sada nosi i pločice, grupiranja i export profile (F5, „sve ide importom" zatvoreno), stari Activities file više ne vraća Areu unatrag, a paralelna sesija je izmjerila `trening.xlsm` i postavila 17 pitanja za migraciju treninga.
 
 - **Zašto:** `audit_tests.py` je javljao 11 fileova / 21 otvoren test i nijedan za arhivu. Prebrojano po
   razlogu: **12** čeka studeni (MC_2026-10, Visa ~05.11., ZABA_2026-10 — svaka sesija je za isti
@@ -9470,3 +9470,15 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
   E2E `S175_create_categories_keeps_area` (sabotaža vrati `Staro`); `supabasePatch` u fixtureu (baca na
   0 redaka). Niz 6 povezanih specova: jednom pao F5 spec na praznom izborniku Area, ponovljeno 7/7 —
   zapisano u BACKLOG uz E2E padove. `check` 49/0, build ✓.
+- **Paralelna sesija — `trening.xlsm` (Strategic Position korak 3).** Isti radni direktorij, zabrana
+  diranja dijeljenih dokumenata (CLAUDE.md, handoff, DONE_HISTORY, PENDING, BACKLOG) — nije bilo
+  sudara; commit `5607040` nosi samo `docs/TRENING_MIGRACIJA.md`. Ishod: `DIARY` = 7.451 dan od
+  29.05.2006., 0 rupa i 0 duplikata (jedan redak = jedan dan); od 126 kolona trening nosi ~15; kolone
+  `I`, `O`, `N`, `AM` mijenjaju značenje u izmjerenim rezovima (ere); prijedlog Area `Dnevnik` s
+  leafovima `Trening` (svaki dan) i `Dan` (privatno/zdravlje); 17 pitanja, Q1–Q3 (ime Aree, fiksno
+  vrijeme, nastavlja li se Excel) blokiraju generator. ⚠ Brojke nisu ponovo mjerene u ovom prozoru —
+  pročitano, ne verificirano. Uputnice (`Diary.md`, AUTOMATION_SPEC F4, DATA_PIPELINE P5) još nisu
+  preusmjerene; CLAUDE.md (korak 3, Key docs) jest.
+- **Zatvaranje (ritual):** Help `structure.md` (AreaSettings, jedna Area), `excel.md` (Korak 7),
+  `overview.md` (↗ označi kupnju); Strategic Position datiran 19.10. (korak 2 ✅, korak 4 traži i
+  pregled razlika); audit S174 2 ⬜ / S175 4 ⬜, ništa za arhivu.
