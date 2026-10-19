@@ -122,6 +122,16 @@
   prepisuje sam — Excel ne razlikuje preimenovanje od brisanja.
 - ~~**Structure uvoz (B1 + B2)**~~ — ✅ S152: jedan graditelj `validation_rules`
   (`src/lib/validationRules.ts`), brojači broje promjene; alat umirovljen za postojeću Areu.
+- **⭐ Napredak Aree između korisnika: pregled razlika prije Structure uvoza (S175, Saša, korak 2 —
+  preduvjet za Financije-template, Strategic Position korak 4).** Četiri slučaja: A primatelj nema
+  Areu (✅ radi, od F5 i pločice) · B zaostaje (Structure Import „file pobjeđuje" ✅) · **C ispred je**
+  (⚠ Import ga vrati unatrag; vidi se tek u brojaču poslije) · **D razišli su se** (⚠ isto). Slučajni
+  put do C zatvoren S175 (Korak 7 ne dira postojeću Areu); namjerni nije. Prijedlog: (1) pregled po
+  postavci (`dashboard`, `groupings`, `Automations`, kolone, opcije…) „u fileu / kod tebe" s izborom
+  **uzmi iz filea / zadrži svoje**; (2) file nosi datum izvoza, Area pamti zadnju promjenu configa ⇒
+  ako je Area mijenjana POSLIJE izvoza, zadano „zadrži svoje" + upozorenje „file je stariji od tvoje
+  Aree". Pokriva B, C, D bez rodovnice. Rodovnica templatea (prava trostruka usporedba) tek ako
+  zatreba. Veže se uz D3 (odluke D3-1..6 čekaju Sašu) — isti pregled.
 - **⭐ D3 — POKUS IZVEDEN S159 (03.10., TEST), ishod: dva scenarija, dva odgovora.** Izvoznik
   `userb@test.com`, Area `D3 Pokus` (L1 + 2 leafa, 7 atributa: izbornik, `depends_on`, broj, datum,
   P1 atribut na roditelju; `set_attribute` pravilo, `list_columns`, `add_header`; 10 redaka + 10
@@ -362,6 +372,9 @@ Fitnessa ostanu na „Loading…" > 10 s, pada `waitFor` na opciji) i S107-3. Po
 (S104 2/2 zaredom). Puni run 17.10.: 84 / 3. **Prvo izmjeriti** zašto se kategorije ponekad
 učitavaju dulje od 10 s (trace iz punog runa: koji zahtjev čeka, paralelni workeri?), tek onda
 eventualno produljiti čekanje — inače se produljenjem sakrije pravi uzrok.
+⚠ S175, isti razred: u nizu od 6 specova `S175_area_settings_roundtrip` je jednom pao jer je izbornik
+Area imao **samo „All Areas"** (lista „All 1 loaded · 1 events"); ponovljeni niz 7/7. Neponovljeno —
+ako se vrati, prvo pitati je li čitanje `areas` palo (traka) ili je lista stvarno prazna.
 
 ### Čeka Sašinu odluku prije ijedne linije koda
 

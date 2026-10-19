@@ -1,15 +1,19 @@
 # Excel Import/Export — Help
 
 ## Export
-- Gumb "Export" (Activities ili Structure tab)
-- Preuzima .xlsx s dva sheeta: Activities Events + Structure
+- Gumb "Export" (Activities ili Structure tab). Structure tab izvozi **jednu area** (odaberi je u filtru).
+- Activities export uz retke nosi i strukturu iste area (Structure, Automations, ListColumns, AreaSettings)
 - Activities Events sheet: datum, session time, user email (col G), category path, atributi
 - Structure sheet: hijerarhija kategorija s atributima, shared-with emailovi
 
 ## Import (Activities)
 1. Klikni "Import"
 2. Odaberi .xlsx fajl (isti format kao export)
-3. Ako fajl sadrži kategorije koje ne postoje → modal nudi kreiranje strukture
+3. Ako fajl sadrži kategorije koje ne postoje → modal nudi **Create categories & continue**.
+   To **stvara samo ono što nedostaje**. Postojeća area ostaje kakva jest: njezini atributi,
+   opcije izbornika i postavke (pločice, automatike, kolone liste) se **ne mijenjaju**, pa stari
+   file ne može vratiti area na stanje iz trenutka izvoza. Area koja još ne postoji dobije sve.
+   Postavke postojeće area mijenjaš namjerno: Structure tab → Import.
 4. Ako fajl sadrži tuđe evente (User email kolona) → odaberi jedan od tri načina
 5. Pregled: identični eventi = sivi (skipped), izmijenjeni = žuti (update), novi = zeleni
 

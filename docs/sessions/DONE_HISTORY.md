@@ -9461,3 +9461,12 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
   ⚠ Prvi pokušaj sabotaže „isključena" pao je na preuzimanju, ne na tvrdnji — nije se ponovio u 5
   čistih runova (vjerojatno dev server ponovo učitao vraćeni file usred testa); ponovljena sabotaža
   pala je na pravom mjestu. `check` 49/0, build ✓. Ručno: T-S175-6.
+- **Napredak Aree se ne vraća unatrag (Saša).** Pitanje „vuče li Activities export sve Structure
+  postavke" ⇒ da (osim delta exporta), a Activities uvoz ih je u Koraku 7 („Create categories &
+  continue") primjenjivao CIJELE ⇒ stari file vraća config. Razgovor o četiri slučaja (A nema Areu ·
+  B zaostaje · C ispred · D razišli se); odluka: sad samo zatvoriti slučajni put — `importStructureExcel`
+  opcija `existingAreasUntouched` (`keepArea()` u K-1, §7, §8–§11), Korak 7 je zove; nova Area dobije
+  sve. Namjerni put (pregled razlika + datum izvoza) je BACKLOG stavka, preduvjet za template.
+  E2E `S175_create_categories_keeps_area` (sabotaža vrati `Staro`); `supabasePatch` u fixtureu (baca na
+  0 redaka). Niz 6 povezanih specova: jednom pao F5 spec na praznom izborniku Area, ponovljeno 7/7 —
+  zapisano u BACKLOG uz E2E padove. `check` 49/0, build ✓.

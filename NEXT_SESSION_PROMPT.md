@@ -19,6 +19,7 @@
   polje (S174); Košare ↗ po povratku označe kupnju s koje si krenuo.
 - **Na `test-branch`:** F5 — Structure export nosi sheet `AreaSettings` (pločice Overviewa,
   grupiranja „Kamo ide novac", export profili, i svaka buduća postavka). Export je sada **jedna Area**.
+  Activities uvoz „Create categories & continue" više ne vraća postojeću Areu na stanje iz starog filea.
 - Koka: lista s iznosima i `+` iz prve — „sve vidim ok" (T-S175-4 ✅).
 
 ## Što treba od tebe — sad
@@ -44,6 +45,10 @@
   brojač u `StructureImportModal`. Export = jedna Area (`AppHome`, `aria-disabled`). Unit
   `areaSettingsSheet.test.mjs` nad fixtureom `fixtures/areaSettings_prod_2026-10-18.json`; E2E
   `S175_area_settings_roundtrip` (+ S119 i S107b-2 dobili odabir Aree). Pravila: CLAUDE.md § Excel.
+- **Korak 7 (S175):** `importStructureExcel(..., { existingAreasUntouched: true })` iz `ExcelImportModal`
+  — `keepArea()` preskače postojeće atribute (i K-1 za njih) i §8–§11 Aree koja je postojala prije
+  uvoza. E2E `S175_create_categories_keeps_area`. Namjerni put (pregled razlika + datum izvoza, slučajevi
+  C/D) je BACKLOG stavka „Napredak Aree između korisnika" — preduvjet za template (korak 4).
 - **Paralelna sesija `trening.xlsm`:** ako ju je Saša pokrenuo, njen rezultat je
   `docs/TRENING_MIGRACIJA.md` — **neverificiran** dok ga netko ne pročita; u `DONE_HISTORY` i ovaj
   handoff unijeti tek tada.

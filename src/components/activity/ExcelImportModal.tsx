@@ -397,7 +397,8 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      const sres = await importStructureExcel(selectedFile, user.id);
+      // S175: stvori što nedostaje, postojeću Areu ne mijenjaj (stari file bi vratio config).
+      const sres = await importStructureExcel(selectedFile, user.id, { existingAreasUntouched: true });
       // K-1 (S160): Structure sheet bi obrisao opcije koje retci nose — ovdje se
       // ne potvrduje usput; to je odluka za Structure Import, gdje se vidi popis.
       if (sres.blocked) {

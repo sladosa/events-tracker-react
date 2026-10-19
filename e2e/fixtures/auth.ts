@@ -396,3 +396,40 @@ export async function supabaseDelete(
     },
   );
 }
+
+/**
+ * PATCH preko REST-a pod sesijom stranice (S175). Vraća broj promijenjenih redaka
+ * i BACA kad je 0 — RLS-blokiran UPDATE „uspije" s 200 i praznim rezultatom
+ * (CLAUDE.md § Collab), pa bi test inače mjerio nešto što se nije dogodilo.
+ */
+export async function supabasePatch(
+  page: Page,
+  table: string,
+  filter: Record<string, string>,
+  body: Record<string, unknown>,
+): Promise<number> {
+  const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
+  const storageKey = `sb-${projectRef}-auth-token`;
+  const session = await page.evaluate(
+    (key: string) => {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    },
+    storageKey,
+  );
+  if (!session?.access_token) throw new Error('No session available for supabasePatch');
+  const params = new URLSearchParams(Object.entries(filter).map(([k, v]) => [k, `eq.${v}`]));
+  const res = await page.request.patch(`${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    data: body,
+  });
+  if (!res.ok()) throw new Error(`supabasePatch ${table} failed: ${res.status()} ${await res.text()}`);
+  const rows = (await res.json()) as unknown[];
+  if (rows.length === 0) throw new Error(`supabasePatch ${table}: 0 rows changed (RLS?)`);
+  return rows.length;
+}

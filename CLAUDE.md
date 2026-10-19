@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 106 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 145 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 158 | [Critical rules](<#Critical rules>) | X |
-| 1336 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1815 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1831 | [Key files](<#Key files>) |  |
-| 1964 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1984 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2007 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2035 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2075 | [Open bugs](<#Open bugs>) | ~ |
-| 2184 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2229 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2380 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2388 | [Backlog](<#Backlog>) | ~ |
-| 2392 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2400 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1342 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1821 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1837 | [Key files](<#Key files>) |  |
+| 1970 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1990 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2013 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2041 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2081 | [Open bugs](<#Open bugs>) | ~ |
+| 2190 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2235 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2386 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2394 | [Backlog](<#Backlog>) | ~ |
+| 2398 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2406 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2564 redaka, 18 sekcija._
+_Ukupno 2570 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -890,7 +890,13 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   upisuje** (javi u warnings) — preskočen redak bi tiho obrisao ključ, a pola pločice je gore od stare.
   ⚠ `Type` postoji jer Excel ne čuva namjeru (`05` → 5, `TRUE` → bool). ⚠ `attr:<Area>||` u
   ključevima profila izvozi se kao `attr:{Area}||` (preživi kopiju; **rename Aree u appu** i dalje
-  lomi profil — to je druga stvar). ⚠ Structure export je **jedna Area** (S175, Saša): file svih
+  lomi profil — to je druga stvar). ⚠ **Activities uvoz „Create categories & continue" NE MIJENJA
+  POSTOJEĆU AREU** (S175, `existingAreasUntouched`): stvara kategorije/atribute koji nedostaju, a
+  atribute, opcije i §8–§11 postojeće Aree preskače. Do tada je pokretao cijeli Structure uvoz, pa je
+  stari Activities file (nosi sve Structure sheetove) usput vraćao config na stanje iz izvoza
+  (razred T-S145-4). Nova Area (file stranca) i dalje dobije sve. Svaka nova sekcija Structure
+  uvoza koja mijenja postojeće mora poštovati `keepArea()`. Čuva E2E `S175_create_categories_keeps_area`
+  (sabotaža vrati `Staro`). ⚠ Structure export je **jedna Area** (S175, Saša): file svih
   Area bi uvozom dirao i dijeljene; backup je `backup_db.py`. Čuvaju `areaSettingsSheet.test.mjs`
   (roundtrip nad stvarnim PROD configom, fixture 18.10.) i E2E `S175_area_settings_roundtrip`.
 - **„From template" kopira `areas.settings` OSIM `export_profiles`** (popravljeno S108).

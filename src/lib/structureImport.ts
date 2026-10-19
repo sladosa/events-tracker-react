@@ -568,7 +568,20 @@ function parsePath(categoryPath: string): string[] {
 export async function importStructureExcel(
   file: File,
   userId: string,
-  { confirmOptionRemovals = false }: { confirmOptionRemovals?: boolean } = {},
+  {
+    confirmOptionRemovals = false,
+    existingAreasUntouched = false,
+  }: {
+    confirmOptionRemovals?: boolean;
+    /**
+     * S175 (Saša): Activities uvoz „Create categories & continue" STVARA ono što
+     * nedostaje, a postojeću Areu NE MIJENJA — ni atribute, ni opcije, ni postavke
+     * (§8–§11). Bez ovoga bi stari Activities file usput vratio config Aree na
+     * stanje iz trenutka izvoza (razred T-S145-4). Nova Area (file stranca) i
+     * dalje dobije sve. Namjerna izmjena postojeće Aree ide Structure → Import.
+     */
+    existingAreasUntouched?: boolean;
+  } = {},
 ): Promise<ImportResult> {
   const result: ImportResult = {
     optionRemovals: [],
@@ -622,6 +635,12 @@ export async function importStructureExcel(
   if (!dbAreas || !dbCats || !dbAttrs) {
     throw new Error('Failed to load current structure from database.');
   }
+
+  // S175: što je postojalo PRIJE ovog uvoza — `existingAreasUntouched` to ne dira.
+  const preexistingAreaIds = new Set(dbAreas.map(a => a.id));
+  const preexistingCatIds = new Set(dbCats.map(c => c.id));
+  const keepArea = (areaId: string | null | undefined): boolean =>
+    existingAreasUntouched && !!areaId && preexistingAreaIds.has(areaId);
 
   // Build lookup maps
   const areaByName  = new Map<string, string>(); // name → id
@@ -872,6 +891,7 @@ export async function importStructureExcel(
         if (id) existing = attrById.get(id) ?? null;
       }
       if (!existing) continue;
+      if (keepArea(catById.get(categoryId)?.areaId)) continue;   // S175: neće se ni mijenjati
       const hidden = resolveHiddenInAdd(header.colHiddenInAdd > 0, group.hiddenInAdd, existing.validationRules);
       for (const option of removedOptions(existing.validationRules, buildValidationRules(group, hidden))) {
         pending.push({ rec: existing, removal: {
@@ -967,6 +987,9 @@ export async function importStructureExcel(
     }
 
     const validationRules = buildValidationRules(group, hiddenInAdd);
+
+    // S175: postojeći atribut postojeće Aree ostaje kakav jest (nov se i dalje stvara).
+    if (existing && keepArea(catById.get(categoryId)?.areaId)) continue;
 
     if (!existing) {
       // CREATE — slug not found in THIS category (or empty slug → trigger generates)
@@ -1090,7 +1113,7 @@ export async function importStructureExcel(
 
       if (row.type === 'Area') {
         const areaId = areaByName.get(row.categoryPath.split('>')[0].trim().toLowerCase());
-        if (!areaId) continue;
+        if (!areaId || keepArea(areaId)) continue;
         const existingArea = dbAreas?.find(a => a.id === areaId);
         const newSettings = { ...(existingArea?.settings ?? {}) };
         let dirty = false;
@@ -1162,6 +1185,7 @@ export async function importStructureExcel(
       if (row.type === 'Category' && hasCommentTplCol) {
         const catId = catByPath.get(row.categoryPath);
         if (!catId) continue;
+        if (preexistingCatIds.has(catId) && keepArea(catById.get(catId)?.areaId)) continue;
         // Dirty check — bez njega svaki uvoz prepisuje settings svakog leafa
         // i brojač bi prijavljivao promjenu koje nema.
         const existingCat = dbCats?.find(c => c.id === catId);
@@ -1410,6 +1434,7 @@ export async function importStructureExcel(
       // konfiguraciju — stariji export bez `rata` kolona ne smije je pobrisati.
       const touchedAreas = new Set([...rulesByArea.keys(), ...rataByArea.keys()]);
       for (const areaId of touchedAreas) {
+        if (keepArea(areaId)) continue;
         const rules = rulesByArea.get(areaId);
         const rata = rataByArea.get(areaId);
         const existingArea = dbAreas?.find(a => a.id === areaId);
@@ -1577,6 +1602,7 @@ export async function importStructureExcel(
       }
 
       for (const areaId of seenAreas) {
+        if (keepArea(areaId)) continue;
         const columns = colsByArea.get(areaId) ?? [];
         const existingArea = dbAreas?.find(a => a.id === areaId);
         const existing = existingArea?.settings?.list_columns?.columns ?? [];
@@ -1648,6 +1674,7 @@ export async function importStructureExcel(
       }
 
       for (const [areaId, { name, rows }] of rowsByArea) {
+        if (keepArea(areaId)) continue;
         const { settings: fromSheet, errors } = unflattenAreaSettings(rows, name);
         if (errors.length) {
           result.areaSettings.rowsSkipped += rows.length;

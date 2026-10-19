@@ -170,3 +170,14 @@ svih Area) i E2E `S175_area_settings_roundtrip` (sabotaže „ne briše" i „se
 5. Vrati naslov (isti postupak) ⇒ opet `1`, pa ponovni uvoz istog filea ⇒ `0`.
 - **Pad:** korak 3 pokaže `1` (svaki uvoz bi prepisivao config); korak 4 ne pokaže popis ili
   promijeni još nešto osim `dashboard`; Overview nestane (pločica pokvarena).
+
+---
+
+## T-S175-7 ✅ (S175, automatski) „Create categories & continue" ne dira postojeću Areu
+
+Saša (S175): napredak Aree ne smije se vratiti unatrag slučajnim putem. Activities export nosi i
+Structure sheetove; kad file ima kategoriju koje nema, uvoz nudi „Create categories & continue", a
+taj je do S175 pokretao cijeli Structure uvoz. E2E `S175_create_categories_keeps_area`: Area (Trans,
+Druga) → Activities export → u bazi naslov pločice `Staro → Novo`, opcija `C` dodana, Druga obrisana →
+uvoz filea → Korak 7 ⇒ Druga ponovo postoji, naslov `Novo`, opcije `A, B, C`. Sabotaža (opcija
+isključena) ⇒ naslov `Staro`. Ručni test ne treba: korak nije na PROD-u u svakodnevnoj upotrebi.
