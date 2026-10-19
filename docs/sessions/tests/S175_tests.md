@@ -115,7 +115,7 @@ Kokine kupnje **16 / 1.765,17**. Izvod donosi i njene kupnje od 17.10. do zatvar
 
 ---
 
-## T-S175-4 ⬜ (PROD, jedno pitanje Koki) Mobitel: lista s iznosima, `+` iz prve
+## T-S175-4 ✅ (19.10., Koka: „sve vidim ok" — nadiđeno upotrebom) (PROD, jedno pitanje Koki) Mobitel: lista s iznosima, `+` iz prve
 
 **Sažima:** T-S168-4, T-S154-2.
 
