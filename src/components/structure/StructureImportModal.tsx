@@ -194,6 +194,7 @@ export function StructureImportModal({
     ? totalCreated + result.updated.attributes + (result.updated.settings ?? 0)
       + (result.automations?.areasUpdated ?? 0)
       + (result.listColumns?.areasUpdated ?? 0)
+      + (result.areaSettings?.areasUpdated ?? 0)
     : 0;
   const isDone = result !== null;
 
@@ -359,6 +360,18 @@ export function StructureImportModal({
                   )}
                   {(result.listColumns?.columnsSkipped ?? 0) > 0 && (
                     <ResultRow label="List columns skipped" value={result.listColumns.columnsSkipped} warn />
+                  )}
+                  {/* F5 (S175): isto pravilo — sivo `0` = sheet pročitan, bez promjene. */}
+                  {(result.areaSettings?.rowsRead ?? 0) > 0 && (
+                    <ResultRow label="Area settings changed (areas)" value={result.areaSettings.areasUpdated} />
+                  )}
+                  {(result.areaSettings?.rowsSkipped ?? 0) > 0 && (
+                    <ResultRow label="Area settings rows skipped" value={result.areaSettings.rowsSkipped} warn />
+                  )}
+                  {(result.areaSettings?.changed.length ?? 0) > 0 && (
+                    <div className="text-xs text-gray-500 pl-1" data-testid="area-settings-changed">
+                      {result.areaSettings.changed.map((c, i) => <p key={i}>↳ {c}</p>)}
+                    </div>
                   )}
                   <ResultRow label="Rows skipped"        value={result.skipped} warn={result.skipped > 0} />
                 </div>

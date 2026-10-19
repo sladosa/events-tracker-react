@@ -1,0 +1,1098 @@
+{
+ "Fitness": {
+  "export_profiles": {
+   "test": {
+    "columns": [
+     {
+      "key": "event_id",
+      "width": 10,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "Area",
+      "width": 12,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "Category_Path",
+      "width": 32,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "event_date",
+      "width": 16,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "session_start",
+      "width": 10,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "created_at",
+      "width": 10,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "user_email",
+      "width": 40,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "comment",
+      "width": 30,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||Wormup_notes",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||duration",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||hr_avg",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||hr_max",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||kcal",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||aerobic_effect",
+      "width": 9.88671875,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||anaerobic_effect",
+      "width": 9.88671875,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||training_load",
+      "width": 8,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||intensity",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||mood",
+      "width": 8,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity||comment",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity > Gym > Cardio||Cardio_type",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Fitness||Activity > Gym > Cardio||equipment",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Fitness||Activity > Gym > Cardio||intervals_description",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Fitness||Activity > Gym > Strength||Strength_type",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity > Gym > Strength||exercise_name",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity > Gym > Strength||sets_reps",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity > Gym > Strength||weight_info",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Fitness||Activity > Outdoor||Outdoor_type",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Fitness||Activity > Outdoor||Trening_type",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Fitness||Activity > Outdoor||distance",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Fitness||Activity > Outdoor||pace",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Fitness||Activity > Outdoor||terrain",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Fitness||Activity > Outdoor||total_ascent",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     }
+    ],
+    "createdAt": "2026-07-28",
+    "filterState": {
+     "periodKey": "this-year",
+     "sortOrder": "desc"
+    }
+   }
+  }
+ },
+ "Health_Sasa": {
+  "export_profiles": {
+   "Zrinka": {
+    "columns": [
+     {
+      "key": "event_id",
+      "width": 10,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "Area",
+      "width": 12,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "Category_Path",
+      "width": 32,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "event_date",
+      "width": 16,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "session_start",
+      "width": 10,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "created_at",
+      "width": 10,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "user_email",
+      "width": 40,
+      "hidden": false,
+      "outlineLevel": 1
+     },
+     {
+      "key": "comment",
+      "width": 30,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||HR Rest",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||HR Min",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||Body Battery High",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||Body Battery Low",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||VO2max",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||Steps",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||Active Min Mod",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||Active Min Vig",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||Calories Active",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Daily_metrics > Garmin_data||Avg Stress",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||Zeljezo",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||Eritrociti",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||Hemoglobin",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||Feritin",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||Kreatinin",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||Kolesterol",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||Kolesterol-LDL",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||PSA",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||F/T ratio",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Lab Results||Lab",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Medical Visit||Doktor",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Medical Visit||Vrsta",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Medical Visit||Iznos",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Health_Sasa||Medical > Medical Visit||Napomena",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     }
+    ],
+    "createdAt": "2026-07-03",
+    "filterState": {
+     "periodKey": "all-time",
+     "sortOrder": "desc",
+     "attrFilterRaw": "Doktor:~Zrinka"
+    }
+   }
+  }
+ },
+ "Financije_all": {
+  "dashboard": {
+   "widgets": [
+    {
+     "due": {
+      "done": "Izvrsen",
+      "settle": {
+       "tip": "Transfer",
+       "smjer": "Isplata",
+       "podtip": "izmedju racuna",
+       "izvorplacanja": "Racun"
+      },
+      "baskets": {
+       "Visa": {
+        "text": "Visa",
+        "window": {
+         "after": 6,
+         "before": 2
+        },
+        "account": "Sašin tekući RF",
+        "measure": "gross"
+       },
+       "Mastercard": {
+        "text": "TROŠKOVI UČINJENI MASTERCARD KARTICOM",
+        "account": "Kokin tekući ZABA"
+       }
+      },
+      "pending": "Planiran",
+      "due_slug": "datum_naplate",
+      "basket_by": "izvorplacanja",
+      "status_slug": "status"
+     },
+     "plus": "uplata",
+     "type": "balance_by_group",
+     "unit": "€",
+     "minus": "isplata",
+     "split": {
+      "label": "planirano",
+      "filters": [
+       {
+        "op": "in",
+        "slug": "izvorplacanja",
+        "values": [
+         "Racun"
+        ]
+       },
+       {
+        "op": "in",
+        "slug": "status",
+        "values": [
+         "Planiran"
+        ]
+       }
+      ],
+      "due_slug": "datum_naplate"
+     },
+     "title": "Stanje po računu",
+     "filters": [
+      {
+       "op": "in",
+       "slug": "izvorplacanja",
+       "values": [
+        "Racun"
+       ]
+      },
+      {
+       "op": "not_in",
+       "slug": "status",
+       "values": [
+        "Planiran"
+       ]
+      }
+     ],
+     "group_by": "racun",
+     "reconcile": true
+    },
+    {
+     "plus": "uplata",
+     "type": "breakdown",
+     "unit": "€",
+     "minus": "isplata",
+     "title": "Kamo ide novac",
+     "income": {
+      "op": "in",
+      "slug": "tip",
+      "values": [
+       "Prihodi"
+      ]
+     },
+     "levels": [
+      "tip",
+      "podtip"
+     ],
+     "outside": [
+      {
+       "op": "in",
+       "slug": "tip",
+       "values": [
+        "Transfer",
+        "Investicije"
+       ]
+      }
+     ],
+     "grouping": "Vrsta troška",
+     "date_axes": [
+      {
+       "slug": null,
+       "label": "po kupnji"
+      },
+      {
+       "slug": "datum_naplate",
+       "label": "po naplati"
+      }
+     ],
+     "adjustments": [
+      {
+       "add": [
+        {
+         "op": "in",
+         "slug": "tip",
+         "values": [
+          "Transfer"
+         ]
+        },
+        {
+         "op": "in",
+         "slug": "podtip",
+         "values": [
+          "cash - bankomat"
+         ]
+        }
+       ],
+       "label": "gotovina, nerazvrstano",
+       "subtract": [
+        {
+         "op": "in",
+         "slug": "izvorplacanja",
+         "values": [
+          "Cash"
+         ]
+        },
+        {
+         "op": "not_in",
+         "slug": "tip",
+         "values": [
+          "Transfer"
+         ]
+        }
+       ]
+      }
+     ],
+     "unclassified": [
+      "N/A"
+     ]
+    }
+   ]
+  },
+  "groupings": {
+   "Vrsta troška": {
+    "rows": [
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Domaćinstvo",
+       "Hrana i ostalo"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Domaćinstvo",
+       "Bankovni troškovi"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Struja"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Plin"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Voda"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Holding (smeće)"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Povrat Zoran"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Povrat Nataša"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Komunikacije_T-com (internet, MaxTv)"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Komunikacije_T-mobile"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Cloud backup"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Microsoft"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "HP"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Hosting domene (DPS, Igor)"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Audible_Koka"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Audible_Sasa"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Kindle_Koka"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Spotify"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Prime"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Sky"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Disney"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "HBOmax"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Youtube"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Prijevoz",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zdravlje",
+       "PP (Posmrtna pripomoc)"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Razno",
+       "Temu"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Domaćinstvo",
+       "Kave/jelo vani"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Zdravlje",
+       "Sport_Sasa"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Zdravlje",
+       "Sport_Koka"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Zabava",
+       "Kino/Kazalište/Muzeji"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Zabava",
+       "Wellness"
+      ]
+     },
+     {
+      "bucket": "Putovanja i pokloni",
+      "values": [
+       "Putovanja",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Putovanja i pokloni",
+      "values": [
+       "Razno",
+       "Pokloni"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Osiguranje",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Porezi",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Zdravlje",
+       "Medical_Sasa"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Zdravlje",
+       "Medical_Koka"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Zdravlje",
+       "Other"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Razno",
+       "Odjeća/obuća/ostalo_Koka"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Razno",
+       "Odjeća/obuća/ostalo_Sasa"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Razno",
+       "Razno, sitnice"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Informatika",
+       "Hardver"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Informatika",
+       "Odrzavanje i servis"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Advokati",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Kuća",
+       "Osiguranje"
+      ]
+     },
+     {
+      "bucket": "Kuća investicije",
+      "values": [
+       "Kuća",
+       "Popravci, održavanje"
+      ]
+     },
+     {
+      "bucket": "Kućište · Nenin novac",
+      "values": [
+       "Razno",
+       "Nena's funds"
+      ]
+     },
+     {
+      "bucket": "Koka razno",
+      "values": [
+       "Projekti",
+       "Koka"
+      ]
+     },
+     {
+      "bucket": "Koka razno",
+      "values": [
+       "auto C5",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Koka razno",
+      "values": [
+       "Zdravlje",
+       "Lječnička komora_Koka"
+      ]
+     },
+     {
+      "bucket": "Saša razno",
+      "values": [
+       "Projekti",
+       "Sasa"
+      ]
+     },
+     {
+      "bucket": "Saša razno",
+      "values": [
+       "auto Lacetti",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "adjustment": "gotovina, nerazvrstano"
+     }
+    ],
+    "levels": [
+     "tip",
+     "podtip"
+    ]
+   }
+  },
+  "export_profiles": {
+   "Kokin_format": {
+    "columns": [
+     {
+      "key": "event_id",
+      "width": 10,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "Area",
+      "width": 12,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "Category_Path",
+      "width": 32,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "event_date",
+      "width": 16,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "session_start",
+      "width": 10,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "created_at",
+      "width": 10,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "user_email",
+      "width": 40,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "comment",
+      "width": 30,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Racun",
+      "width": 17.5546875,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Izvor",
+      "width": 12,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Smjer",
+      "width": 7.5546875,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Uplata",
+      "width": 10.44140625,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Isplata",
+      "width": 9.5546875,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Tip",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Podtip",
+      "width": 20.44140625,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Izvod opis",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Rate?",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Broj rata",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Rata br",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Datum naplate",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Status",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Stanje",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Valuta",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     }
+    ],
+    "createdAt": "2026-08-31",
+    "filterState": {
+     "periodKey": "last-3-months",
+     "sortOrder": "asc"
+    }
+   }
+  }
+ }
+}

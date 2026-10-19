@@ -40,6 +40,7 @@ import ExcelJS from 'exceljs';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
+import { flattenAreaSettings, AREA_SETTINGS_TYPES } from './areaSettingsSheet';
 import {
   timestampSuffix,
   formatTimestampSuffix,
@@ -1033,6 +1034,73 @@ function writeListColumnsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
 }
 
 // ─────────────────────────────────────────────────────────────
+// AreaSettings sheet — F5 (S175): sve iz `areas.settings` što ne nosi drugi sheet
+// ─────────────────────────────────────────────────────────────
+
+const AREASET_COLS = [
+  { header: 'Area',  width: 18 },
+  { header: 'Path',  width: 64 },
+  { header: 'Type',  width: 9 },
+  { header: 'Value', width: 40 },
+] as const;
+
+function writeAreaSettingsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
+  const ws = wb.addWorksheet('AreaSettings');
+  ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+  for (let ci = 0; ci < AREASET_COLS.length; ci++) {
+    ws.getColumn(ci + 1).width = AREASET_COLS[ci].width;
+    const cell = ws.getCell(1, ci + 1);
+    cell.value = AREASET_COLS[ci].header;
+    cell.fill = makeFill(CLR.HEADER_BG);
+    cell.font = { name: 'Calibri', bold: true, size: 11, color: { argb: CLR.HEADER_FG } };
+    cell.border = THIN_BORDER;
+  }
+
+  let rowNum = 2;
+  for (const node of nodes) {
+    if (node.nodeType !== 'area') continue;
+    for (const r of flattenAreaSettings(node.area.settings as Record<string, unknown> | null, node.name)) {
+      const vals: (string | number | boolean | null)[] = [node.name, r.path, r.type, r.value];
+      for (let ci = 0; ci < AREASET_COLS.length; ci++) {
+        const cell = ws.getCell(rowNum, ci + 1);
+        cell.value = vals[ci] ?? null;
+        cell.fill = makeFill(CLR.BLUE);
+        cell.border = THIN_BORDER;
+      }
+      ws.getCell(rowNum, 3).dataValidation = {
+        type: 'list', allowBlank: true, formulae: [`"${AREA_SETTINGS_TYPES.join(',')}"`],
+      };
+      rowNum++;
+    }
+  }
+
+  const helpLines = [
+    'HELP — postavke Aree koje ne nose ostali sheetovi (pločice Overviewa, grupiranja razreza, export profili, …).',
+    'Jedan red = jedna vrijednost. Path = put do nje:  dashboard.widgets[0].due.baskets.Visa.text',
+    '  .ime = ključ objekta · [0] = mjesto u popisu · ["ime.s točkom"] = ključ s posebnim znakovima',
+    '',
+    'Type  = text | number | bool | null | [] | {}   — izvoz ga uvijek popuni.',
+    '        ⚠ Ne briši ga: Excel tekst "05" pretvori u broj 5, a tekst "TRUE" u da/ne.',
+    '        [] i {} = prazan popis / prazan objekt (Value ostaje prazan).',
+    '{Area} u Value = ime Aree iz kolone A (ključevi export profila) — profil tako vrijedi i u kopiji Aree.',
+    '',
+    'Popis bez rupa NIJE potreban: obrišeš li red [1], ostali se slože redom ([0], [2] → prvi, drugi).',
+    '',
+    'Import ZAMJENJUJE ove postavke svake Aree koja se pojavi u sheetu — obrisan red = obrisana',
+    'postavka. Area koje nema u sheetu ostaje netaknuta; nema li sheeta, ništa se ne dira.',
+    'Postavke iz Structure sheeta, Automations i ListColumns ovaj sheet NE dira.',
+  ];
+  let hr = rowNum + 1;
+  for (const line of helpLines) {
+    const cell = ws.getCell(hr, 1);
+    cell.value = line;
+    cell.font = { italic: true, size: 9, color: { argb: 'FF888888' } };
+    hr++;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Events stub sheet (for Structure Export — no events included)
 // ─────────────────────────────────────────────────────────────
 function _addEventsStubSheet(wb: ExcelJS.Workbook): void {
@@ -1114,6 +1182,7 @@ export async function addStructureSheetsTo(
   writeStructureSheet(wb, rows, infoRow, conflictSlugs);
   writeAutomationsSheet(wb, scoped);
   writeListColumnsSheet(wb, scoped);
+  writeAreaSettingsSheet(wb, scoped);
   writeHelpStructureSheet(wb);
 }
 

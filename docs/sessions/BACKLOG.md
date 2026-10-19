@@ -221,7 +221,7 @@ jednu invarijantu u trinaest iznimki.
 dijalog) koji hook **ne** koristi ⇒ ne zatvara se klikom na pozadinu **uopće**. Nije kvar
 (ništa se ne gubi), ali je nedosljednost koju treba odlučiti zajedno s ovim.
 
-**Roundtrip completeness (F5)** — ✅ **format ODLUČEN S160 (Saša): retci ključ-putanja**, jedan
+✅ **IZVEDENO S175** (`areaSettingsSheet.ts`, sheet `AreaSettings` + kolona `Type`; F5-1..6 u `DONE_HISTORY` § S175; Structure export = jedna Area) — **Roundtrip completeness (F5)** — ✅ **format ODLUČEN S160 (Saša): retci ključ-putanja**, jedan
 generički sheet `AreaSettings` (`Area | Putanja | Vrijednost`, npr.
 `dashboard.widgets[0].due.baskets.Mastercard.account`); Area iz kolone A prepisuje ime Aree u
 ključevima profila, pa profil preživi kopiranje u drugu Areu. Odbačeno: JSON ćelija (jedan zarez

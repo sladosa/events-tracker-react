@@ -170,7 +170,8 @@ test.describe('T-S107b — set_attribute automatika (Faza 2b)', () => {
   test('T-S107b-2: Structure Excel roundtrip — Automations sheet export + import mijenja area.settings', async ({ page }) => {
     test.setTimeout(180_000);
 
-    // ── Export ──
+    // ── Export ── (S175: Structure export je jedna Area — bez odabira ne izlazi)
+    await selectFilterPath(page, ta.areaId, []);
     await page.getByRole('button', { name: 'Structure' }).click();
     await expect(page.getByRole('button', { name: /edit mode/i })).toBeVisible({ timeout: 10_000 });
 

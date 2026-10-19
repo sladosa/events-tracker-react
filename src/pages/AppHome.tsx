@@ -13,7 +13,6 @@ import type { StructureViewMode } from '@/components/structure/StructureViewSwit
 import { Button } from '@/components/ui/Button';
 import { THEME } from '@/lib/theme';
 import { cn } from '@/lib/cn';
-import { TEMPLATE_USER_ID } from '@/lib/constants';
 import { LazyModalFallback } from '@/components/ui/LazyModalFallback';
 import { useMinWidth } from '@/hooks/useMinWidth';
 import { saveAs } from 'file-saver';
@@ -1086,21 +1085,26 @@ function AppContent() {
               </button>
 
               {/* Export button (S17) */}
+              {/* ⚠ S175 (Saša): Structure export je JEDNA Area. Postavke Aree (AreaSettings,
+                  Automations, ListColumns) su po Arei, a file svih Area bi uvozom dirao
+                  i tuđe (dijeljene) Aree; backup baze ide `backup_db.py`, ne ovuda.
+                  `aria-disabled` kao `+` (S154): dodir prolazi i kaže zašto. */}
               <button
                 disabled={isExportingStructure}
-                title="Export structure to Excel"
+                aria-disabled={!filter.areaId}
+                title={filter.areaId ? 'Export structure to Excel' : 'Select an Area in the filter to export its structure'}
                 onClick={async () => {
+                  if (!filter.areaId) {
+                    toast.error('Select an Area in the filter — Structure export covers one Area.');
+                    return;
+                  }
                   setIsExportingStructure(true);
                   try {
                     // Fresh data; `load` THROWS on a failed read (S160) — never an empty file.
-                    const freshNodes = await loadStructure();
-                    // When no specific area selected, exclude template areas from export
-                    const exportNodes = filter.areaId
-                      ? freshNodes
-                      : freshNodes.filter(n => n.area?.user_id !== TEMPLATE_USER_ID);
+                    const exportNodes = await loadStructure();
                     const { exportStructureExcel, structureExportFilename } = await import('@/lib/structureExcel');
                     const buffer = await exportStructureExcel(exportNodes, {
-                      filterAreaId: filter.areaId ?? null,
+                      filterAreaId: filter.areaId,
                       filterCategoryId: filter.categoryId ?? null,
                     });
                     const blob = new Blob([buffer], {
@@ -1117,7 +1121,7 @@ function AppContent() {
                 }}
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                  isExportingStructure ? 'opacity-50 cursor-not-allowed' : '',
+                  isExportingStructure || !filter.areaId ? 'opacity-50 cursor-not-allowed' : '',
                   THEME.structure.btnExport,
                 )}
               >

@@ -28,25 +28,25 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | r. | sekcija | |
 | ---: | --- | :---: |
 | 55 | [Strategic Position (2026-10-18)](<#Strategic Position (2026-10-18)>) |  |
-| 109 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 148 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 161 | [Critical rules](<#Critical rules>) | X |
-| 1329 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1808 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1824 | [Key files](<#Key files>) |  |
-| 1956 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1976 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 1999 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2027 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2067 | [Open bugs](<#Open bugs>) | ~ |
-| 2176 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2221 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2372 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2380 | [Backlog](<#Backlog>) | ~ |
-| 2384 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2392 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 106 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
+| 145 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 158 | [Critical rules](<#Critical rules>) | X |
+| 1336 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1815 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1831 | [Key files](<#Key files>) |  |
+| 1964 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 1984 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2007 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2035 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2075 | [Open bugs](<#Open bugs>) | ~ |
+| 2184 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2229 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2380 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2388 | [Backlog](<#Backlog>) | ~ |
+| 2392 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2400 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2556 redaka, 18 sekcija._
+_Ukupno 2564 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -80,12 +80,9 @@ trenja (`docs/FINANCIJE_PROCES.md` §4). Ulazna točka: **`docs/FINANCIJE_PREGLE
 **Put — redoslijed velikih koraka i zašto** (dogovoreno 18.10., Saša):
 1. **MC alat prije 11.11.** (T13/T14/T16/T23 u `fill_from_izvod`) — jedini posao s rokom; bez
    njega MC izvod opet znači ručno slaganje uvoznog filea, baš u mjesecu koji je ispit rutine.
-2. **F5 — sheet `AreaSettings`** (format odlučen S160, BACKLOG „Roundtrip completeness").
-   Izmjereno 18.10.: Structure uvoz nosi `comment_template`, `disable_save_plus`, `add_header`,
-   `default_period`, `automations`, `list_columns` — a **ne** `dashboard`, `groupings` ni
-   `export_profiles`. Dakle cijeli Overview živi samo u bazi i mijenja se `set_*.py` skriptama.
-   F5 zatvara princip „sve ide importom", preduvjet je za samoposlužan template i za pločice
-   trening Area.
+2. ✅ **F5 — sheet `AreaSettings` izveden S175 (19.10., na `test-branch`)**: Structure roundtrip
+   sada nosi i `dashboard`, `groupings`, `export_profiles` i svaki budući ključ `areas.settings`.
+   Princip „sve ide importom" je zatvoren; Structure export je od tada **jedna Area**.
 3. **`trening.xlsm`** (sljedeća domena; `C:\0_Sasa\OneDrive\trening.xlsm`). **Ne čeka F5:**
    analiza filea i prepisivanje `docs/Diary.md` u `TRENING_MIGRACIJA.md` mogu odmah; F5 treba tek
    kad trening Aree dobiju pločice. Plan migracije živi na **jednom** mjestu (taj dokument) —
@@ -884,8 +881,18 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   list zapisuje **efektivni** filtar atributa; nema li ga profil, ondje završi onaj
   **iz panela**. Prije `Import Profile` isprazni ćeliju `Attribute filter`.
   Prazna ćelija = „naslijedi panel"; `_` = „izričito bez filtra". Nisu isto.
-- **`export_profiles` još ne preživljava Structure roundtrip** (ključ `attr:Area||CatPath||AttrName`
-  ne preživi rename aree/atributa) — jedina preostala rupa u „sve ide importom".
+- **⚠ SHEET `AreaSettings` NOSI SVE ŠTO NE NOSI DRUGI SHEET — `OWNED_ELSEWHERE` je jedini popis**
+  (S175, F5). `src/lib/areaSettingsSheet.ts`: retci `Area | Path | Type | Value`. Nova postavka u
+  `areas.settings` putuje **sama**; ključ koji dobije vlastiti sheet/kolonu MORA ući u
+  `OWNED_ELSEWHERE`, inače ga dva dijela filea pišu i zadnji (AreaSettings, §11 uvoza) pobjeđuje.
+  ⚠ Brisanje kao `ListColumns`: Area u sheetu ⇒ postavke TOČNO iz sheeta (obrisan red = obrisan
+  ključ); Area koje nema / file bez sheeta ⇒ ništa. ⚠ Area s ijednim neispravnim retkom se **ne
+  upisuje** (javi u warnings) — preskočen redak bi tiho obrisao ključ, a pola pločice je gore od stare.
+  ⚠ `Type` postoji jer Excel ne čuva namjeru (`05` → 5, `TRUE` → bool). ⚠ `attr:<Area>||` u
+  ključevima profila izvozi se kao `attr:{Area}||` (preživi kopiju; **rename Aree u appu** i dalje
+  lomi profil — to je druga stvar). ⚠ Structure export je **jedna Area** (S175, Saša): file svih
+  Area bi uvozom dirao i dijeljene; backup je `backup_db.py`. Čuvaju `areaSettingsSheet.test.mjs`
+  (roundtrip nad stvarnim PROD configom, fixture 18.10.) i E2E `S175_area_settings_roundtrip`.
 - **„From template" kopira `areas.settings` OSIM `export_profiles`** (popravljeno S108).
   Izostavljen je namjerno: ključ `attr:Area||CatPath||AttrName` nosi **ime izvorne aree**, pa
   bi u drugačije nazvanoj Arei svaki ključ bio mrtav. Vraća se kad se format ključa popravi.
@@ -1899,6 +1906,7 @@ src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u 
                                    ⚠ kontrolni SUMIFS ne broji `Planiran`
 src/lib/structureExcel.ts          Structure export (Automations, Dashboard, DisableSavePlus)
 src/lib/structureImport.ts         Structure import — non-destructive, slug lookup
+src/lib/areaSettingsSheet.ts       F5: `areas.settings` ⇄ retci `Path | Type | Value` (`OWNED_ELSEWHERE`)
 src/lib/validationRules.ts         JEDINI graditelj `validation_rules` (panel, uvoz, „Other") +
                                    `sameRules` za usporedbu po značenju (S152)
 src/lib/pendingOptions.ts          „Other" opcije iz Add/Edit u `validation_rules` (jedna kopija)

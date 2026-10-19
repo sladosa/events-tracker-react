@@ -28,6 +28,7 @@ import { isValidDateRule } from '@/lib/attributeRules';
 import { buildRules, sameRules, removedOptions } from '@/lib/validationRules';
 import { TEMPLATE_USER_ID } from '@/lib/constants';
 import { getDatePresets } from '@/hooks/useDateBounds';
+import { unflattenAreaSettings, mergeAreaSettings, changedTopKeys } from '@/lib/areaSettingsSheet';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig, RataRemainder,
 } from '@/types/database';
@@ -114,6 +115,16 @@ export interface ImportResult {
     /** Ispravnih redaka PROČITANO iz sheeta — nije broj promjena. */
     columnsImported: number;
     columnsSkipped: number; // unknown role, unknown slug, unknown area
+  };
+  /** AreaSettings sheet — F5 (S175): dashboard, groupings, export_profiles, … */
+  areaSettings: {
+    /** Aree kojima su se postavke STVARNO promijenile. */
+    areasUpdated: number;
+    /** Ispravnih redaka PROČITANO iz sheeta — nije broj promjena. */
+    rowsRead: number;
+    rowsSkipped: number;
+    /** `Area: kljuc1, kljuc2` — što se promijenilo (tiha promjena configa izgleda kao nikakva). */
+    changed: string[];
   };
 }
 
@@ -569,6 +580,7 @@ export async function importStructureExcel(
     warnings: [],
     automations: { areasUpdated: 0, rulesImported: 0, rulesSkipped: 0 },
     listColumns: { areasUpdated: 0, columnsImported: 0, columnsSkipped: 0 },
+    areaSettings: { areasUpdated: 0, rowsRead: 0, rowsSkipped: 0, changed: [] },
   };
 
   // ── 1. Read file ──────────────────────────────────────────
@@ -1584,6 +1596,80 @@ export async function importStructureExcel(
         } else {
           if (existingArea) existingArea.settings = newSettings;
           result.listColumns.areasUpdated++;
+        }
+      }
+    }
+  }
+
+  // ── 11. AreaSettings sheet — F5 (S175) ──────────────────────
+  //   Sve iz `areas.settings` što ne nosi drugi dio filea (`areaSettingsSheet.ts`).
+  //   ⚠ ZADNJA sekcija i nad SVJEŽOM snimkom (`existingArea.settings` koju su
+  //     §8–§10 osvježili): ključeve drugih sheetova uzima odande, pa ih ne vrati unatrag.
+  //   ⚠ Isto pravilo brisanja kao ListColumns (F5-2): nema sheeta ⇒ ništa; Area
+  //     koje nema u sheetu ⇒ netaknuta; Area u sheetu ⇒ postavke TOČNO iz sheeta.
+  //   ⚠ Neispravan redak se preskače i JAVLJA (warnings) — Area s ijednim
+  //     neispravnim retkom se NE upisuje: djelomičan config (npr. pločica bez
+  //     `group_by`) gori je od starog, a „preskočen redak" bi tiho obrisao ključ.
+  const asWs = wb.worksheets.find(s => s.name.toLowerCase() === 'areasettings');
+  if (asWs) {
+    const headerVals: string[] = [];
+    asWs.getRow(1).eachCell({ includeEmpty: true }, (cell, colNum) => {
+      headerVals[colNum - 1] = cellStr(cell).toLowerCase();
+    });
+    const aCol = (...names: string[]) => headerVals.findIndex(v => names.includes(v)) + 1;
+    const colArea = aCol('area');
+    const colPath = aCol('path', 'putanja');
+    const colType = aCol('type', 'tip');
+    const colValue = aCol('value', 'vrijednost');
+
+    if (colArea > 0 && colPath > 0 && colValue > 0) {
+      type SheetRow = { rowNum: number; path: string; type: string; raw: unknown };
+      const rowsByArea = new Map<string, { name: string; rows: SheetRow[] }>();
+      const lastRow = asWs.lastRow?.number ?? 1;
+      for (let r = 2; r <= lastRow; r++) {
+        const row = asWs.getRow(r);
+        const path = cellStr(row.getCell(colPath));
+        if (!path) continue;                          // help / prazni retci
+        const areaName = cellStr(row.getCell(colArea));
+        const areaId = areaByName.get(areaName.toLowerCase());
+        if (!areaId) {
+          result.warnings.push(`AreaSettings red ${r}: nepoznata Area „${areaName}" — preskočeno.`);
+          result.areaSettings.rowsSkipped++;
+          continue;
+        }
+        // Sirova vrijednost ćelije (broj / bool ostaju svoj tip; formula ⇒ rezultat).
+        let raw: unknown = row.getCell(colValue).value;
+        if (raw && typeof raw === 'object') {
+          raw = 'result' in (raw as object) ? (raw as { result: unknown }).result : cellStr(row.getCell(colValue));
+        }
+        const entry = rowsByArea.get(areaId) ?? { name: dbAreas?.find(a => a.id === areaId)?.name ?? areaName, rows: [] as SheetRow[] };
+        entry.rows.push({ rowNum: r, path, type: colType > 0 ? cellStr(row.getCell(colType)) : '', raw });
+        rowsByArea.set(areaId, entry);
+      }
+
+      for (const [areaId, { name, rows }] of rowsByArea) {
+        const { settings: fromSheet, errors } = unflattenAreaSettings(rows, name);
+        if (errors.length) {
+          result.areaSettings.rowsSkipped += rows.length;
+          result.warnings.push(`AreaSettings „${name}" NIJE uvezen (postavke ostaju kakve jesu):`, ...errors);
+          continue;
+        }
+        result.areaSettings.rowsRead += rows.length;
+        const existingArea = dbAreas?.find(a => a.id === areaId);
+        const current = (existingArea?.settings ?? {}) as Record<string, unknown>;
+        const next = mergeAreaSettings(current, fromSheet);
+        const changed = changedTopKeys(current, next, sameJson);
+        if (changed.length === 0) continue;
+
+        const { error } = await supabase.from('areas').update({ settings: next }).eq('id', areaId);
+        if (error) {
+          result.warnings.push(`AreaSettings „${name}": upis nije uspio — ${error.message}`);
+          result.areaSettings.rowsSkipped += rows.length;
+          result.areaSettings.rowsRead -= rows.length;
+        } else {
+          if (existingArea) existingArea.settings = next as AreaSettings;
+          result.areaSettings.areasUpdated++;
+          result.areaSettings.changed.push(`${name}: ${changed.join(', ')}`);
         }
       }
     }

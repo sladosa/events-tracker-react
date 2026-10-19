@@ -9,7 +9,7 @@ Active project state is in CLAUDE.md (repo root).
 
 - [S173 (2026-10-18)](<#S173 — MC alat prije 11.11. (ispravci, duplikati, rate i naknade u fill_from_izvod --mc) (2026-10-18)>) · r. 9344 — MC izvod sada sam razlikuje ispravak od novog retka i prijavljuje duplikate, rate nasljeđuju razvrstavanje svog plana, a naknade za rate idu u svoj plan i generiraju se unaprijed — izmjereno nad stanjem od 2. listopada, alat sam proizvodi ono što je S158 složio ručno, u cent.
 - [S174 (2026-10-18)](<#S174 — Klasifikacija povijesti: uvozni guard i pravila po trgovcu (T17) (2026-10-18)>) · r. 9394 — uvoz razvrstavanja više ne traži kvačicu „potvrđeno stanje" (pita samo kad se mijenja bankino polje, kao Edit), a 31 pravilo po trgovcu — AI ga je predložio, baza prebrojala, Saša odobrio — udvostručilo je prijedloge za stariju povijest: ZABA 38 → 70, RF 29 → 90, uz 98 % pogodaka unatrag.
-- [S175 (2026-10-19)](<#S175 — Čišćenje PENDING-a: studeni krug u tri testa, deset sekcija u arhivu (2026-10-19)>) · r. 9424 — otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri (MC, Visa, ZABA) i jedno pitanje Koki, i sada su otvorene samo dvije: S174 i S175.
+- [S175 (2026-10-19)](<#S175 — Čišćenje PENDING-a, Košare ↗ oznaka, F5 sheet AreaSettings (2026-10-19)>) · r. 9424 — otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri (MC, Visa, ZABA) i jedno pitanje Koki, i sada su otvorene samo dvije; usput Košare ↗ po povratku označe kupnju (na PROD-u), a Structure Excel sada nosi i pločice, grupiranja i export profile (sheet `AreaSettings`, F5) — princip „sve ide importom" je zatvoren.
 
 ## Dnevnik
 
@@ -110,11 +110,11 @@ Active project state is in CLAUDE.md (repo root).
 | [S172](<#S172 — povratak razdoblja nakon ↗ i zatvaranje testova (2026-10-17)>) | 2026-10-17 | povratak na Overview nakon „isti dan u Activities ↗" vraća razdoblje od prije, košare na malom iPhoneu više se ne preklapaju, TEST je ponovo kopija PROD-a (sada i s postavkama), a E2E računi se prije svakog runa sami čiste — puni run 84/3 umjesto 54/17; osam testova zatvoreno mjerenjem, četiri sesije u arhivi. | 9294 |
 | [S173](<#S173 — MC alat prije 11.11. (ispravci, duplikati, rate i naknade u fill_from_izvod --mc) (2026-10-18)>) | 2026-10-18 | MC izvod sada sam razlikuje ispravak od novog retka i prijavljuje duplikate, rate nasljeđuju razvrstavanje svog plana, a naknade za rate idu u svoj plan i generiraju se unaprijed — izmjereno nad stanjem od 2. listopada, alat sam proizvodi ono što je S158 složio ručno, u cent. | 9344 |
 | [S174](<#S174 — Klasifikacija povijesti: uvozni guard i pravila po trgovcu (T17) (2026-10-18)>) | 2026-10-18 | uvoz razvrstavanja više ne traži kvačicu „potvrđeno stanje" (pita samo kad se mijenja bankino polje, kao Edit), a 31 pravilo po trgovcu — AI ga je predložio, baza prebrojala, Saša odobrio — udvostručilo je prijedloge za stariju povijest: ZABA 38 → 70, RF 29 → 90, uz 98 % pogodaka unatrag. | 9394 |
-| [S175](<#S175 — Čišćenje PENDING-a: studeni krug u tri testa, deset sekcija u arhivu (2026-10-19)>) | 2026-10-19 | otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri (MC, Visa, ZABA) i jedno pitanje Koki, i sada su otvorene samo dvije: S174 i S175. | 9424 |
+| [S175](<#S175 — Čišćenje PENDING-a, Košare ↗ oznaka, F5 sheet AreaSettings (2026-10-19)>) | 2026-10-19 | otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri (MC, Visa, ZABA) i jedno pitanje Koki, i sada su otvorene samo dvije; usput Košare ↗ po povratku označe kupnju (na PROD-u), a Structure Excel sada nosi i pločice, grupiranja i export profile (sheet `AreaSettings`, F5) — princip „sve ide importom" je zatvoren. | 9424 |
 
 ### Najnovije
 
-_92 sesija._ Zadnja: [S175](<#S175 — Čišćenje PENDING-a: studeni krug u tri testa, deset sekcija u arhivu (2026-10-19)>) · [↑ Dnevnik](#Dnevnik)
+_92 sesija._ Zadnja: [S175](<#S175 — Čišćenje PENDING-a, Košare ↗ oznaka, F5 sheet AreaSettings (2026-10-19)>) · [↑ Dnevnik](#Dnevnik)
 
 <!-- SESSION-INDEX:END -->
 
@@ -9421,10 +9421,10 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
   (Kave 1 · Hrana 1 · Temu 1).
 - **Ostaje:** `po_pravilu` iz `fill_from_izvod` i `visa_uvoz_izvoda` (mjesečni krug); T-S174-2/3.
 
-## S175 — Čišćenje PENDING-a: studeni krug u tri testa, deset sekcija u arhivu (2026-10-19)
+## S175 — Čišćenje PENDING-a, Košare ↗ oznaka, F5 sheet AreaSettings (2026-10-19)
 [↑ Dnevnik](#Dnevnik)
 
-> Ukratko: otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri (MC, Visa, ZABA) i jedno pitanje Koki, i sada su otvorene samo dvije: S174 i S175.
+> Ukratko: otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri (MC, Visa, ZABA) i jedno pitanje Koki, i sada su otvorene samo dvije; usput Košare ↗ po povratku označe kupnju (na PROD-u), a Structure Excel sada nosi i pločice, grupiranja i export profile (sheet `AreaSettings`, F5) — princip „sve ide importom" je zatvoren.
 
 - **Zašto:** `audit_tests.py` je javljao 11 fileova / 21 otvoren test i nijedan za arhivu. Prebrojano po
   razlogu: **12** čeka studeni (MC_2026-10, Visa ~05.11., ZABA_2026-10 — svaka sesija je za isti
@@ -9446,3 +9446,18 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
   Prva (4/4; sabotaža pada na 3e). `check` ✓, build ✓. Ručno: T-S175-5.
 - **Testovi isti dan:** T-S175-4 ✅ (Koka „sve vidim ok"), T-S174-2 ✅ (TEST: 193 izmjene razvrstavanja
   bez kutije — file nosi i Sašino ručno razvrstavanje; iznos +0,01 ⇒ kutija za 1).
+- **F5 — sheet `AreaSettings` (Strategic Position korak 2).** Odluke F5-1..6 (Saša odobrio):
+  (1) sheet nosi sve ključeve `areas.settings` osim `OWNED_ELSEWHERE` (Structure kolone,
+  `Automations`, `ListColumns`) i svaki budući ključ sam; (2) brisanje kao `ListColumns`; (3) kolona
+  `Type` (text/number/bool/null/[]/{}); (4) indeksi niza se slažu i zatvaraju rupe; (5) `attr:<Area>||`
+  u profilima ⇒ `{Area}`; (6) brojač `Area settings changed (areas)` + popis ključeva. Dodatno (Saša):
+  **Structure export = jedna Area** (`aria-disabled` + poruka u All Areas). Izmjereno prije koda (PROD
+  snimka 18.10.): Financije_all 325 vrijednosti (dashboard 70, groupings 160, export_profiles 95),
+  Fitness/Health_Sasa samo profili, **nijedan UUID** u configu. Kod: `areaSettingsSheet.ts` (čiste
+  funkcije), `writeAreaSettingsSheet`, §11 u `importStructureExcel` (zadnji, nad svježom snimkom; Area
+  s neispravnim retkom se ne upisuje). Unit 29 (roundtrip nad stvarnim configom svih Area); E2E
+  `S175_area_settings_roundtrip` — sabotaže „merge ne briše" i „sekcija isključena" padaju na pravom
+  koraku. S119 i S107b-2 izvozili su bez Aree ⇒ dodan odabir (ispravno novo ponašanje, ne kvar).
+  ⚠ Prvi pokušaj sabotaže „isključena" pao je na preuzimanju, ne na tvrdnji — nije se ponovio u 5
+  čistih runova (vjerojatno dev server ponovo učitao vraćeni file usred testa); ponovljena sabotaža
+  pala je na pravom mjestu. `check` 49/0, build ✓. Ručno: T-S175-6.

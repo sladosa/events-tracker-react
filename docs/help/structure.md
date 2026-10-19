@@ -153,3 +153,25 @@ Kolone na **Area** retku nose postavke same area, pa i one putuju roundtripom:
 
 Kolone koje u fileu **nema** ne diraju svoju postavku — stariji export bez `DisableSavePlus`
 kolone je ne može pobrisati (isti princip kao rata automatika).
+
+## AreaSettings sheet — ostale postavke area
+
+Export ide za **jednu area** — odaberi je u filtru (u *All Areas* gumb Export kaže
+„Select an Area"). Backup cijele baze ne ide ovim putem.
+
+Sheet `AreaSettings` nosi **sve postavke area koje ne nose ostali sheetovi**: pločice Overviewa
+(`dashboard`), grupiranja razreza „Kamo ide novac" (`groupings`), export profile i svaku buduću
+postavku. Jedan red = jedna vrijednost:
+
+- **`Path`** — put do vrijednosti, npr. `dashboard.widgets[0].title`.
+  `.ime` = ključ, `[0]` = mjesto u popisu, `["ime.s točkom"]` = ključ s posebnim znakovima.
+- **`Type`** — `text` · `number` · `bool` · `null` · `[]` · `{}`. Izvoz ga popuni; **ne briši ga**
+  (Excel tekst `05` pretvori u broj 5).
+- **`Value`** — vrijednost. `{Area}` u ključu export profila znači „ova area", pa profil vrijedi
+  i kad area dobije drugo ime ili postane kopija.
+
+Uvoz **zamjenjuje** te postavke svake area koja se pojavi u sheetu: obrisan red = obrisana
+postavka; red `[1]` smiješ obrisati bez prenumeriranja ostalih. Area koje nema u sheetu ostaje
+netaknuta, a file bez sheeta ne dira ništa. Neispravan red (kriv `Type`, kriva putanja) uvoz
+**javi** i tu area **ne mijenja** — djelomična pločica bila bi gora od stare.
+Rezultat: `Area settings changed (areas)` + popis što se promijenilo (`area: dashboard, …`).

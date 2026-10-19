@@ -147,3 +147,26 @@ koja NIJE zadnja otvorena u View-u; sabotaža (bez upisa) pada s „označena Dr
 5. Varijanta: u Activities nakon ↗ otvori neki redak u View, Back, pa tab Overview ⇒ označen je
    redak zadnji prikazan u View-u (ako je u košari), jer je to mjesto gdje si stao.
 - **Pad:** označena treća (stara oznaka), ili ništa.
+
+---
+
+## T-S175-6 ⬜ (TEST lokalno, Saša) F5 — sheet `AreaSettings` u Structure roundtripu
+
+Novo: Structure export nosi sheet `AreaSettings` (`Area | Path | Type | Value`) sa svim postavkama
+Aree koje ne nose ostali sheetovi. Za `Financije_all` to su `dashboard`, `groupings` i
+`export_profiles`, ukupno **325** redaka (izmjereno na TEST-u 19.10.; PROD isto). Export je sada
+**jedna Area**. Automatski: `areaSettingsSheet.test.mjs` (29, roundtrip nad stvarnim PROD configom
+svih Area) i E2E `S175_area_settings_roundtrip` (sabotaže „ne briše" i „sekcija isključena" padaju).
+
+1. `npm run dev` (TEST), Ctrl+Shift+R. Area **All Areas** → tab Structure → **Export**.
+   **Očekivano:** gumb blijed, dodir ⇒ crvena poruka *„Select an Area in the filter…"*, file ne izlazi.
+2. Area `Financije_all` → Export. U fileu sheet **AreaSettings**: **325** redaka + HELP ispod;
+   kolona `Type` popunjena; profil `Kokin_format` ima ključeve `attr:{Area}||Transakcija||…`.
+3. Isti file → Import. **Očekivano:** *„Nothing to import"*, red `Area settings changed (areas)` = **0**
+   (sivo), kao i `Automations` / `List columns`.
+4. U fileu redak `dashboard.widgets[1].title` (`Kamo ide novac`) promijeni u `Kamo ide novac T`,
+   spremi, Import. **Očekivano:** `Area settings changed (areas)` = **1**, ispod
+   `↳ Financije_all: dashboard`; Overview → pločica razreza se zove `Kamo ide novac T`.
+5. Vrati naslov (isti postupak) ⇒ opet `1`, pa ponovni uvoz istog filea ⇒ `0`.
+- **Pad:** korak 3 pokaže `1` (svaki uvoz bi prepisivao config); korak 4 ne pokaže popis ili
+  promijeni još nešto osim `dashboard`; Overview nestane (pločica pokvarena).

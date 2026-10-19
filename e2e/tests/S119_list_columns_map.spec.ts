@@ -95,6 +95,12 @@ test.describe('T-S119-6 — ListColumns Map through the Structure roundtrip', ()
   };
 
   const exportStructure = async (page: Page, name: string): Promise<string> => {
+    // S175: Structure export je jedna Area — bez odabira gumb samo kaže „Select an Area".
+    const areaSelect = page.locator('select').filter({
+      has: page.locator('option[value=""]', { hasText: 'All Areas' }),
+    });
+    await areaSelect.waitFor({ state: 'visible', timeout: 15_000 });
+    await areaSelect.selectOption(areaId);
     await page.getByRole('button', { name: 'Structure' }).click();
     await expect(page.getByRole('button', { name: /edit mode/i })).toBeVisible({ timeout: 10_000 });
     const dl = page.waitForEvent('download', { timeout: 20_000 });
