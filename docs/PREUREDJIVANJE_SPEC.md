@@ -334,3 +334,260 @@ za poslije: vlastiti sheet `Bucketi` (*bucket | Tip | Podtip*).
 ⚠ Prije izvedbe: saldo se ne miče (Tip/Podtip nisu u filtru salda), ali **pravila trgovca**,
 **rječnik `Izvod opis`** i **bucketi** nose stara imena — upravo mjesta iz §1.3 koja jezgra mora
 prebrojati. Zato je ovo dobar **prvi test** cijelog alata.
+
+---
+
+# DIO 2 — Tehnički spec F1 (za kod)
+
+> **Saša 20.10.:** jezgra je **transakcija u bazi** (Postgres funkcija), ulaz je **sheet prvo**,
+> povrat kroz **zapis operacija** (prije / poslije), alat sa service ključem **smije**.
+> Ovaj dio je prijedlog za kod — ništa od njega još nije izvedeno.
+
+## 9. Arhitektura u jednoj slici
+
+```
+Structure Excel ──► sheet `Preuređivanje` (koraci)
+                         │
+                         ▼
+  ┌──────────── PLANER (TypeScript, čist, bez I/O) ─────────────┐
+  │ ulaz:  koraci + snimka Aree (atributi, validation_rules,     │
+  │        settings, shortcuti, sidra, vrijednosti redaka)       │
+  │ radi:  simulira korake REDOM u memoriji                      │
+  │ izlaz: očekivani broj redaka po koraku · nova pravila        │
+  │        izbornika · nove postavke · popis promjena za čovjeka │
+  │        · upozorenja · blokirajuće greške                     │
+  └──────────────────────────────┬──────────────────────────────┘
+                                 ▼
+                  PREGLED u modalu (čovjek čita, kvačica)
+                                 ▼
+  ┌──────── rpc_restructure_apply (Postgres, JEDNA transakcija) ─┐
+  │ provjeri pravo (vlasnik Aree ili service_role)               │
+  │ zaključa Areu · provjeri da se ništa nije promijenilo        │
+  │   od pregleda (očekivani brojevi + „prije" config jednak)    │
+  │ izvede korake nad retcima · upiše config                     │
+  │ zapiše svaki dirnuti redak: prije / poslije                  │
+  │ bilo kakvo odstupanje ⇒ RAISE ⇒ ništa nije upisano           │
+  └──────────────────────────────┬──────────────────────────────┘
+                                 ▼
+           ponovno mjerenje (planer nad svježom snimkom: 0 starih)
+                                 ▼
+             rpc_restructure_undo(op_id) kad zatreba
+```
+
+**Zašto podjela planer / baza:** znanje o **obliku** postavki (gdje u `dashboard`, `due`,
+`groupings`, `automations` stoji vrijednost opcije) već živi u TypeScriptu
+(`dashboardConfig.ts`, `automationsConfig.ts`) i mora se održavati na jednom mjestu — u
+plpgsql-u bi bila druga kopija. Baza radi ono što samo ona može: **atomičnost, provjeru prava i
+zaključavanje**. Retke baza mijenja **po pravilu** (uvjet koraka), ne po popisu ID-eva — planer
+šalje samo **očekivani broj**, a razilaženje znači „baza se promijenila od pregleda" ⇒ odbij.
+
+## 10. Model operacije: korak = „kad … postavi …"
+
+Sve što F1 treba (O1 preimenuj, O2 spoji, O3 premjesti, O5 izdvoji os, pojedinačne odluke)
+svodi se na **jedan oblik koraka**:
+
+```jsonc
+{ "category": "Transakcija",                              // leaf čiji eventi se gledaju
+  "when": { "tip": "Zabava", "podtip": "Audible_Koka" },  // svi uvjeti AND, točna jednakost
+  "set":  { "podtip": "Audible", "namjena": "Koka" } }
+```
+
+| Što | Kako izgleda korak |
+| --- | --- |
+| O1 preimenuj Tip | `when {tip: A}` → `set {tip: B}` |
+| O1 preimenuj Podtip | `when {tip: T, podtip: P}` → `set {podtip: Q}` |
+| O2 spoji | dva koraka u isti cilj |
+| O3 premjesti Podtip | `when {tip: A, podtip: P}` → `set {tip: B}` |
+| O5 izdvoji os | `when {podtip: Audible_Koka}` → `set {podtip: Audible, namjena: Koka}` |
+| pojedinačno | `when {event_id: [...]}` → `set {...}` (prijedlozi iz alata, npr. Projekti/Sasa) |
+| zadano za ostatak | `when {namjena: (prazno)}` → `set {namjena: Zajedničko}` — **zadnji** korak |
+
+**Pravila koraka:**
+- **Koraci se izvode redom**; korak vidi rezultat prethodnih (planer simulira isto).
+- **`(prazno)`** u `when` = atribut nema vrijednost; u `set` = **obriši** vrijednost.
+- F1 radi samo s **tekstualnim** atributima i **točnom jednakošću**. „Sadrži" i regex su F2 (A2).
+- **Atributi istog eventa.** P1 roditeljska razina nije u F1 — za Financije nebitno, jer je
+  `Transakcija` L1 leaf; za Fitness/DIARY dolazi u F3.
+- `set` na atribut koji redak **nema** ⇒ **novi** `event_attributes` redak, s `user_id` =
+  **autor eventa** (isto pravilo kao Edit tok, CLAUDE.md § Collab — vlasnik Aree).
+- `set` vrijednosti koja je **ista** kao postojeća ne broji se kao promjena i ne ide u zapis.
+
+## 11. Sheet `Preuređivanje`
+
+| Korak | Kategorija | kad: tip | kad: podtip | kad: namjena | postavi: tip | postavi: podtip | postavi: namjena | event_id | Napomena |
+| ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Transakcija | Zabava | Audible_Koka | | | Audible | Koka | | O5 |
+| 2 | Transakcija | Zabava | Audible_Sasa | | | Audible | Saša | | O5 |
+| 3 | Transakcija | Kuća | Osiguranje | | Osiguranje | Kuća | | | O3 |
+| 4 | Transakcija | Projekti | Sasa | | | Saša | | | O1 |
+| 5 | Transakcija | auto Lacetti | | | | | Saša | | |
+| 6 | Transakcija | | | | Domaćinstvo | Hrana i ostalo | Saša | 3f2a…, 81c0… | iz alata (Konzum) |
+| 99 | Transakcija | | | (prazno) | | | Zajedničko | | zadano |
+
+- **Stupci su po atributu**: `kad: <slug>` i `postavi: <slug>`, koliko god treba; zaglavlje
+  određuje atribute (slug, ne ime — isti razlog kao `ListColumns`).
+- Prazna ćelija = „ne gleda se / ne mijenja se"; `(prazno)` = izričito prazno.
+- `event_id`: popis odvojen zarezom ili razmakom (ćelija do 32.767 znakova ≈ 900 ID-eva; više ⇒
+  više redaka istog koraka).
+- Structure export nosi **prazan** sheet sa zaglavljem i uputom (da se zna da postoji).
+  ⚠ **Slova stupaca se računaju, nikad pišu** (S160).
+- Sheet se obrađuje **poslije** ostatka Structure uvoza, kao **zasebna faza** s vlastitim
+  pregledom i vlastitim „Primijeni" — jer korak smije koristiti atribut koji je isti uvoz tek
+  stvorio (npr. `namjena`).
+
+## 12. Planer — što računa (`src/lib/restructure/plan.ts`, čista funkcija)
+
+**Ulaz:** koraci + snimka Aree: `attribute_definitions` (s `validation_rules`), `areas.settings`,
+`activity_presets` Aree, `balance_anchors` Aree, sve tekstualne vrijednosti atributa koje koraci
+spominju (`fetchAllPaged` + `.order('id')`; Financije: ~11k redaka za 3 atributa).
+
+**Izlaz:**
+1. **Po koraku:** broj pogođenih redaka, broj stvarnih promjena, primjer 3 retka (datum, opis, iznos).
+2. **Izbornik** (`validation_rules`) — kroz `src/lib/validationRules.ts`, **nikad iz parsiranog
+   oblika** (S152):
+   - vrijednost **A** koja nakon svih koraka ima **0 redaka**, a bila je izvor u koraku ⇒
+     **nestaje iz izbornika**; ako je korak preslikao A → B 1:1 i B još nije u izborniku, **B
+     sjeda na A-ovo mjesto** (redoslijed vlasnika ostaje, S164/S167);
+   - nova vrijednost koje nema u izborniku ⇒ **dodaje se na kraj** popisa, a za `depends_on`
+     atribut **pod roditeljsku vrijednost** retka (Podtip `Kuća` pod Tip `Osiguranje`);
+   - preimenovan **roditelj** (Tip) ⇒ preimenuje se i **ključ** u `options_map` djeteta (inače
+     Podtip ostane bez opcija — K-spec §4), a spoj dvaju ključeva **spaja popise**;
+   - `default_map` ključevi i vrijednosti prate isto pravilo;
+   - vrijednost s 0 redaka koju **nijedan korak nije dirao** ostaje — nikakvo čišćenje usput.
+3. **Postavke** (`areas.settings`) — za svaku promjenu vrijednosti `A → B` atributa `s`:
+
+   | Mjesto | Što se mijenja |
+   | --- | --- |
+   | `dashboard.widgets[].filters[]`, `split.filters[]` | `values` gdje je `slug = s` |
+   | breakdown `income`, `outside[]`, `adjustments[].add/subtract` | isto |
+   | breakdown `unclassified` | ako je `levels[0] = s` |
+   | `due` | `basket_by = s` ⇒ **ključ** u `baskets`; `group_by = s` ⇒ `baskets[*].account`; `status_slug = s` ⇒ `pending`/`done`; `settle[s]` |
+   | `groupings[*].rows[].values` | na položaju `levels.indexOf(s)`; O3 mijenja **par**. ⚠ Isti par dvaput = **greška** (zbrojio bi se dvaput, RAZREZ §10.2) ⇒ blokira |
+   | `automations.attribute_rules[]` | `map_slug = s` ⇒ ključ u `date_map` |
+   | `automations.rata` | `date_map_slug = s` ⇒ ključ u `date_map` i `remainder_map`; `override_attrs[s]` |
+   | `list_columns[].map` | `attr` kolona sa `s` u `slugs` ⇒ ključ |
+   | `export_profiles` | filtar atributa po `s` (oblik provjeriti pri izvedbi — `exportProfile.ts`) |
+
+   Promjena koja nije čisto preimenovanje (A se raspalo na više B-ova) ⇒ planer **ne pogađa**
+   nego **upozori**: „bucket / filtar pokazuje na A, a A više nema redaka".
+4. **Izvan `settings`:** `activity_presets` (`default_attributes` vrijednost, `filter_state.attrFilter`
+   kad je `isExact`; djelomičan filtar ⇒ upozorenje), `balance_anchors.group_value` kad je
+   `group_slug = s` (⚠ račun bez sidra = pločica bez potvrđenog stanja, bez greške).
+5. **Samo upozorenja (ne piše):** `comment_template` koji sadrži doslovno A; **Python rječnici**
+   — preglednik ne može grepati, pa ih pokriva `Tools/preuredjivanje_grep.py <file.xlsx>`
+   (ispiše file:redak za svaku staru vrijednost; pokreće se uz suhi prolaz).
+6. **Blokirajuće greške:** atribut iz zaglavlja ne postoji u kategoriji · `set` na netekstualni
+   atribut · korak bez ijednog `kad` (osim `event_id`) · dvostruki par u `groupings` · vrijednost
+   s vodećim/pratećim razmakom (zamka S167: config citira doslovno).
+
+## 13. Baza — migracija `058_restructure.sql`
+
+**Tablice:**
+
+```sql
+restructure_ops (
+  id uuid PK, area_id uuid FK areas, actor uuid,          -- auth.uid() ili NULL za service
+  actor_label text,                                        -- 'service: <alat>' kad nema uid
+  created_at timestamptz, source text,                     -- ime filea / sheeta
+  plan jsonb,                                              -- koraci + očekivani brojevi (dokaz)
+  status text CHECK (status IN ('applied','undone')),
+  undone_at timestamptz, undone_by uuid )
+
+restructure_op_rows (
+  op_id uuid FK ON DELETE CASCADE, seq int,
+  kind text CHECK (kind IN ('event_attribute','attribute_rules','area_settings',
+                            'preset','anchor')),
+  target_id uuid,                                          -- id dirnutog retka
+  before jsonb,                                            -- NULL = redak nije postojao
+  after  jsonb )                                           -- NULL = redak obrisan
+```
+
+RLS: `SELECT` vlasniku Aree; **nema** INSERT/UPDATE/DELETE politika — pišu samo funkcije.
+
+**`rpc_restructure_apply(p_area_id uuid, p_steps jsonb, p_config jsonb, p_source text) RETURNS uuid`**
+
+- `SECURITY DEFINER`, `SET search_path = public, pg_temp`. Pravo: `areas.user_id = auth.uid()`
+  **ili** JWT `role = service_role` (isti obrazac kao `app_can_read_area`, `035`; ⚠ nikad
+  `current_user` — u DEFINER funkciji to je vlasnik funkcije). Grantee i stranac ⇒ `RAISE`.
+- `SELECT … FROM areas WHERE id = p_area_id FOR UPDATE` — dvije operacije nad istom Areom ne
+  mogu se preplesti.
+- **Provjera „ništa se nije promijenilo od pregleda":**
+  - za svaki `p_config` dio: trenutna vrijednost (`validation_rules`, `settings`, preset, sidro)
+    mora biti **jednaka** (`jsonb =`, neosjetljivo na redoslijed ključeva — S153) onoj „prije"
+    koju je planer vidio;
+  - za svaki korak: broj pogođenih redaka **u trenutku izvođenja** = `expected` iz plana;
+  - inače `RAISE` s porukom *„korak N: očekivano 22, nađeno 23 — baza se promijenila od
+    pregleda, napravi pregled ponovo"* ⇒ cijela transakcija se poništi.
+- **Koraci redom**, svaki kao `UPDATE … RETURNING` / `INSERT … RETURNING` / `DELETE … RETURNING`,
+  s pisanjem `before`/`after` u `restructure_op_rows`. Mijenja se **na mjestu** (UPDATE), nikad
+  „obriši pa upiši" (S125/S134 razred).
+- `events` se **ne dira** — ni `user_id` (autor ostaje), ni `edited_by` (inače bi tisuće redaka
+  dobile ✎ oznaku u listi; trag je u zapisu operacije).
+- Vraća `op_id`.
+
+**`rpc_restructure_undo(p_op_id uuid) RETURNS int`**
+
+- Isto pravo, isto zaključavanje.
+- Za svaki zapis: trenutno stanje mora biti **jednako `after`** — inače je netko poslije
+  operacije dirao isti redak ⇒ `RAISE` s popisom (prvih 20) i **ništa se ne vraća**.
+  Djelomičan povrat bi ostavio mješavinu starog i novog — gore od ijednog od njih.
+- Vraća `before` obrnutim redom (`seq DESC`), `status = 'undone'`.
+
+`REVOKE ALL … FROM PUBLIC, anon; GRANT EXECUTE … TO authenticated` (⚠ Supabase sam dodijeli
+`anon` — `057`), `NOTIFY pgrst, 'reload schema'`.
+
+⚠ **Vremenski limit:** PostgREST ima `statement_timeout` za `authenticated`. Financije: najveći
+korak ~1.400 redaka, cijela operacija procjena < 1 s — **izmjeriti na TEST-u** (kopija PROD-a)
+prije nego se tvrdi. Ako zatreba: `SET LOCAL statement_timeout` u funkciji.
+
+## 14. Aplikacija
+
+- `src/lib/restructure/sheet.ts` — čitanje/pisanje sheeta (prazan predložak u Structure exportu).
+- `src/lib/restructure/plan.ts` — planer (§12), čist, s testovima.
+- `src/lib/restructure/apply.ts` — snimka Aree, poziv RPC-a, ponovno mjerenje.
+- `StructureImportModal` — faza „Preuređivanje": tablica koraka (broj, primjer), popis promjena
+  izbornika i postavki, upozorenja (žuto), greške (crveno, gase Primijeni), kvačica *„Vidio sam
+  što se mijenja"*, rezultat s `op_id` i gumbom **Poništi**.
+- Poslije primjene: `areas-changed` (keš lanca i kategorija se prazne — S132/S133).
+- **Popis operacija Aree s Poništi** u Structure tabu = F1b (do tada povrat ide iz modala odmah
+  ili alatom).
+- **Ne u F1:** prekidač Bucketi | Namjena u razrezu (§8.3) i traženje u izborniku (O6) — zasebni,
+  mali zadaci koji ne ovise o jezgri.
+
+## 15. Testovi i dokaz
+
+1. **Planer** (`restructurePlan.test.mjs`): fixture = PROD snimka postavki
+   (`areaSettings_prod_2026-10-18.json`, postoji od S175) + sintetičke vrijednosti. Tvrdnje:
+   preimenovanje Tipa preimenuje ključ `options_map`; O3 mijenja par u `groupings`; dvostruki par
+   blokira; `Visa` ključ u `due.baskets` prati preimenovanje `izvorplacanja`; vrijednost bez
+   ijednog koraka ostaje u izborniku. **Protuprovjera sabotažom** (pravilo S120).
+2. **Baza na TEST-u** (kopija PROD-a kroz `prod_to_test.py --settings`):
+   - primijeni → izmjeri → poništi → **`sha256` po tablici jednak snimci prije** (isti dokaz kao
+     `restore_db.py`, S136) — jedini pošten dokaz da povrat radi;
+   - promijeni jedan redak između pregleda i primjene ⇒ odbijeno, **0 redaka promijenjeno**;
+   - promijeni redak poslije operacije ⇒ povrat odbijen, ništa vraćeno.
+3. **Prava:** `rls_probe.py` dobiva probe za obje funkcije — vlasnik DA, write-grantee NE,
+   stranac NE, service DA.
+4. **E2E:** jedan spec — sheet s preimenovanjem, lista pokazuje novi naziv, Poništi vraća stari.
+
+## 16. Puštanje na PROD (redoslijed)
+
+1. `backup_db.py --env prod` (Saša).
+2. `058` u Supabase SQL editoru (Saša), `dump_schema.py --diff` potvrdi.
+3. Deploy (merge `main`, Saša).
+4. Structure uvoz: atribut **`namjena`** (text, suggest: Zajedničko · Koka · Saša · Kućište,
+   `default_value` Zajedničko, `depends_on: tip` s `default_map` {`auto Lacetti`: Saša,
+   `auto C5`: Koka} — **postojeći** mehanizam forme).
+5. Sheet `Preuređivanje` s koracima iz §8.2 — **pod Kokinim računom** (vlasnica; ili service
+   alat, uz njen pristanak — §7.3). Suhi prolaz + `preuredjivanje_grep.py` ⇒ pregled ⇒ Primijeni.
+6. **Mjerenje poslije** (kontrolne brojke **zapisati prije**): saldo svakog računa **nepomaknut**
+   (Tip/Podtip/Namjena nisu u filtru salda) · N/A broj isti · Σ razreza isti osim izvedenog
+   pomaka (Anja → Transfer: prihodi manji za taj iznos) · stari nazivi: 0 mjesta.
+7. Python rječnici (`pravila_trgovca.py` …) — ispraviti po grep popisu istog dana.
+
+## 17. Otvoreno (odluke pri izvedbi, ne blokiraju početak)
+
+- Treba li F1 i **brisanje opcije s retcima uz obavezno „spoji u…"** (K-spec §7: danas uvoz tiho
+  pravi siročad)? Prijedlog: da, kao upozorenje u Structure uvozu koje upućuje na ovaj sheet.
+- `export_profiles` filtar — točan oblik ključa provjeriti u `exportProfile.ts` prije koda.
+- Ime atributa `namjena` vs `za_koga` — kozmetika, Koka bira.
