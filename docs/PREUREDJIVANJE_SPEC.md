@@ -179,6 +179,46 @@ Obje zovu istu funkciju u bazi; razlikuju se samo po tome odakle dolazi popis.
    premještanja) je prvi test F1 — i pokazuje treba li O4 (dijeljenje) već u F1.
    *(Djelomično odgovoreno 20.10. — v. §8.)*
 
+### 7.1 Sašini odgovori (20.10.)
+
+| # | Odgovor | Što to znači |
+| --- | --- | --- |
+| 1 | sheet prvo | F1 ulaz je sheet `Preuređivanje` u Structure Excelu; panel kasnije |
+| 2 | zapis operacija | za **svaki** dirnuti redak alat sprema **„prije"** (stara vrijednost) i **„poslije"** (nova). „Poništi operaciju" vrati sve „prije" vrijednosti — i nakon više dana, bez vraćanja cijele baze |
+| 3 | pitanje: što je regex? | v. 7.2 |
+| 4 | **smije** alat sa service ključem | v. 7.3 — i pitanje kako to ide s retcima write-grantee-ja |
+| 5 | puno nedosljednosti, „posljedica prekompleksnog sistema" — izmjeriti | izmjereno, §8.1 |
+
+### 7.2 Što je regex i gdje se puštaju Python alati (objašnjenje)
+
+**Regex** (*regular expression*) je **uzorak za traženje teksta**. Umjesto „nađi točno `HR 110(134)`"
+kaže se „nađi `HR`, pa broj, pa broj u zagradi" — i isti uzorak pogodi `HR 99(127)`,
+`HR 128(137)`… u svih ~3.000 redaka, i izvuče oba broja. Tako bi se iz kolone `O` dobili
+prosječni i maksimalni puls kao brojevi. Uzorak se piše **iterativno**: probaš, pogledaš koje
+retke nije pogodio, popraviš — zato je bliži alatu nego formi u aplikaciji.
+
+**Python alati se puštaju u terminalu** na tvom laptopu (`Tools\run.bat <alat>.py`):
+- na **TEST**-u ih puštam ja;
+- na **PROD**-u upise puštaš **ti** (auto-mode meni ih blokira), ili alat napravi **Excel koji
+  uvoziš** u aplikaciji (obrazac koji je radio za Financije — vidiš svaku promjenu prije Apply).
+
+### 7.3 Service ključ i retci write-grantee-ja
+
+**Kako je danas u aplikaciji** (`Financije_all`, vlasnica Koka, Saša write-grantee):
+- svaki redak ima **autora** (`user_id`) — Koka ili Saša;
+- **promjena Tipa/Podtipa ne mijenja autora** — mijenja samo vrijednost atributa retka;
+- kroz aplikaciju tuđi redak smije ispraviti **samo vlasnica Aree** (`sql/043`); autor ostaje,
+  a `edited_by` zapiše tko je ispravljao. Saša kao grantee **ne može** ispraviti Kokin redak.
+
+**Alat sa service ključem** zaobilazi sva prava (RLS) — zato **sam** mora držati ista pravila:
+1. **nikad ne dira `user_id`** (autor ostaje); mijenja samo vrijednosti atributa i config;
+2. mijenja vrijednost **na mjestu** (UPDATE), nikad „obriši pa upiši" — Edit tok aplikacije
+   briše i ponovno upisuje sve atribute retka, i to je već jednom ostavilo redak bez atributa;
+3. **zapisuje tko je pokrenuo operaciju** (u zapisu operacija iz 7.1/2), kad i zašto;
+4. ⚠ **Struktura `Financije_all` je Kokina** (Sašina odluka S133). Pokretanje alata nad njom
+   je **svjesna iznimka** — Koka treba znati i pristati, jer mijenja ono što ona vidi u
+   izborniku svaki dan.
+
 ---
 
 ## 8. Financije — prvi konkretan zadatak (Saša 20.10., izmjereno na PROD-u, samo čitanje)
@@ -204,16 +244,76 @@ Kuća, Prijevoz.
 (Kuća, Prijevoz, Zabava…) i *„za koga / čiji je"* (zajedničko, Koka, Saša, Kućište). Zato se
 stvari ponavljaju (Audible dvaput, auto dvaput) i zato bucketi izgledaju neuredno.
 
-**Prijedlog (za razgovor s Kokom — pitanje je njeno):**
+### 8.1 Mjerenje nedosljednosti (PROD, 20.10., 5.443 transakcije, samo čitanje)
+
+**Higijena popisa je dobra** — to nije problem:
+- 0 vrijednosti u retcima koje nema u izborniku (nema siročadi);
+- 1 par bez ijednog retka (`Informatika / Odrzavanje i servis`), 9 rijetkih parova (< 5 redaka);
+- 1 skoro-isti naziv: Podtip **`Sasa`** (`Projekti`) i **`Saša`** (`Prihodi`);
+- N/A: 2023. 585/1.133 · 2024. 476/1.605 · 2025. 330/1.462 · **2026. 1/1.243** — novi unos je
+  uredan; N/A je stara povijest (T36).
+
+**Nedosljednost je u RAZVRSTAVANJU — isti trgovac, različit par.** Od 136 trgovaca s ≥ 4
+retka, 36 je razvrstano na više načina. (Bankovni opći tekstovi poput `KREDITNI TRANSFER` i
+`KEKS PAY` nisu trgovci — izbačeni iz brojke ispod.) Uzroci, poredani:
+
+| Uzrok | Primjeri (redaka) | Je li greška? |
+| --- | --- | --- |
+| **Osoba u imenu Podtipa** | `AUDIBLE` → `Audible_Sasa` 22 / `_Koka` 13 · `GRADSKA LJEKARNA` → `Medical_Sasa` 18 / `_Koka` 2 · `RATA AUTO` → C5 21 / Lacetti 3 | ne — **dvije osi u jednom polju** |
+| **`Projekti / Sasa` kao „Sašine stvari"** | `SUPER KONZUM` → `Projekti/Sasa` 30 / `Hrana i ostalo` 14 · `BIBERON RESTORAN` → `Projekti/Sasa` 56 | ne — isto: **namjena** prerušena u Tip |
+| **Dva Podtipa koja znače skoro isto** | `DECATHLON` → `Odjeća/obuća_Sasa` 10 / `Sport_Sasa` 7 · `ANJA` → `Prihodi/Povrat Anja` 32 / `Transfer/Anja` 16 | **da** — preklapanje značenja |
+| Trgovac stvarno prodaje više stvari | `APPLE` → Cloud backup 57 / HBOmax 6 · `MALL MEGA` | ne |
+| Prave greške | `NAKNADA KREDITNI` → `Kuća/Osiguranje` 1 · `MACGREGOR` → `auto C5/registracija` 15 / `Prihodi/Saša` 1 | da, ali **malo** |
+
+**„Iste stvari dvaput" u razrezu — izmjereno:** bucketi su **treća os** (koliko je trošak
+nužan / čest), pa se jedan Tip raspe po više bucketa: **Zdravlje → 4 bucketa**, **Razno → 4**,
+**Kuća → 3**, Domaćinstvo, Informatika, Zabava → po 2, Projekti → `Koka razno` / `Saša razno`.
+
+**Zaključak jednostavno:** sustav nije prekompleksan zbog broja opcija (69 parova, uredan
+popis), nego zato što **tri različita pitanja** žive u dva polja i bucketima:
+
+1. **na što** je novac otišao (Kuća, Prijevoz, Zabava…) — Tip/Podtip;
+2. **za koga / čiji** je (zajedničko, Koka, Saša, Kućište) — danas u imenima Podtipova i u
+   `Projekti`;
+3. **kakav je to trošak** (mjesečni, povremeno nužan, kvaliteta života) — bucketi.
+
+Kad se ta tri razdvoje, većina „nedosljednosti" nestane sama, a ostane mali broj pravih
+odluka (Decathlon, Anja, Konzum).
+
+### 8.2 Prijedlog (za razgovor s Kokom — pitanje je njeno)
 
 1. Novi atribut **`Namjena`**: Zajedničko · Koka · Saša · Kućište (· Nena?).
-2. **O5** ga popuni **sam** gdje je podatak u imenu (14 Podtipova + 2 auta): `Audible_Koka` →
-   Podtip `Audible`, Namjena `Koka`; `auto C5 / gorivo` → Tip `Auto` (ili `Prijevoz`), Podtip
-   `gorivo`, Namjena `Koka`. Ostali retci dobiju zadanu vrijednost (npr. Zajedničko) — **to je
-   jedina odluka po retku**, i samo gdje zadano nije točno.
-3. Tada se Tip/Podtip **skrati** (nema više parova po osobi), a razrez dobije **dvije osi**:
-   „na što" i „za koga". Bucketi `Koka razno` / `Saša razno` prestaju biti potrebni.
-4. **O6** (traženje u izborniku) neovisno o svemu — Koka utipka „pok" i dobije `Razno / Pokloni`.
+2. **O5** ga popuni **sam** gdje je podatak u imenu: `Audible_Koka` → Podtip `Audible` +
+   Namjena `Koka`; `Sport_Sasa` → `Sport` + `Saša`; `Projekti / Sasa` → Namjena `Saša` (a Tip po
+   tome što je kupljeno — **to** su odluke po retku: Konzum, Biberon…). Ostali retci dobiju
+   zadano (npr. Zajedničko) — mijenja se samo gdje zadano nije točno.
+3. **Auti — ispravak ranijeg prijedloga:** auto **ostaje Tip** (`auto C5`, `auto Lacetti`).
+   „Koliko košta koji auto" je pitanje **na što**, pa ponavljanje Podtipova (gorivo, registracija,
+   popravci) tu nije greška. Namjena je zasebna: **Lacetti → Saša**; **C5 → Koka**, a na
+   **putovanjima → Zajedničko** (Saša 20.10.). Kad periodi postoje (`Life_Sasa`), „putovanje" se
+   može prepoznati po razdoblju — dotad ručno.
+4. Riješiti **preklapanja** (Odjeća vs Sport, Povrat vs Transfer, `Kuća/Osiguranje` vs
+   `Osiguranje`) i **`Sasa`/`Saša`** — O1/O2.
+5. **O6** (traženje u izborniku) neovisno o svemu — Koka utipka „pok" i dobije `Razno / Pokloni`.
+
+### 8.3 Kako se prikazuje Namjena i kako se definiraju bucketi
+
+**Bucketi danas:** `areas.settings.groupings["Vrsta troška"]` — popis redaka *bucket ← (Tip, Podtip)*
+ili *bucket ← (Tip, \*)*. Pravila: točan par pobjeđuje `Tip/*`; što ne pogodi ništa ide u
+`nesvrstano`; `Transfer` i `Investicije` su **izvan razreza**. Mijenjalo se skriptom
+`set_breakdown.py`; **od S175** (na `test-branch`, još ne na PROD-u) i kroz sheet `AreaSettings`
+u Structure Excelu — ali tamo je svaki podatak jedan redak s putanjom
+(`groupings.Vrsta troška.rows[3].bucket`), što je za uređivanje bucketa **nespretno**. Kandidat
+za poslije: vlastiti sheet `Bucketi` (*bucket | Tip | Podtip*).
+
+**Prijedlog prikaza Namjene:**
+- **Unos (mobitel):** polje `Namjena` ispod Podtipa, sa zadanom vrijednošću (Zajedničko);
+  za auto pravilo zadaje samo (Lacetti → Saša, C5 → Koka).
+- **Lista:** po želji kratka oznaka (`Z`/`K`/`S`) kroz postojeći `map` kolone liste.
+- **„Kamo ide novac":** prekidač na vrhu pločice **Bucketi | Namjena** (i možda **Tip**).
+  Na **velikom ekranu** krug (unutra os, vani Tip), na **malom** samo popis s iznosima — krug se
+  ondje ionako ne crta (≥ 640 px). ⚠ Danas pločica zna **jedno** grupiranje (RAZREZ R5) i
+  razine su par `[tip, podtip]` — prekidač je **mala, nova dorada koda**, ne samo config.
 
 ⚠ Prije izvedbe: saldo se ne miče (Tip/Podtip nisu u filtru salda), ali **pravila trgovca**,
 **rječnik `Izvod opis`** i **bucketi** nose stara imena — upravo mjesta iz §1.3 koja jezgra mora
