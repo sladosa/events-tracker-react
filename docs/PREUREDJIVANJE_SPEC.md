@@ -1,0 +1,177 @@
+# Preuređivanje strukture — spec (prijedlog prije koda)
+
+> **Status:** prijedlog, 2026-10-20. Nastalo iz razgovora o `trening.xlsm`
+> ([`TRENING_MIGRACIJA.md`](TRENING_MIGRACIJA.md)). **Sašina odluka (20.10.):** operacije
+> preuređivanja dolaze **prije** uvoza treninga — *„nije moguće unaprijed sve definirati savršeno"*.
+> **Odnos prema [`KLASIFIKACIJA_ODRZAVANJE_SPEC.md`](KLASIFIKACIJA_ODRZAVANJE_SPEC.md):** ondje
+> ostaju kriteriji održavanja (kad spojiti, tko odlučuje — K0, K1, K3–K5); njegov **K2**
+> („prepisivanje izričitim mapiranjem") ovaj spec poopćuje na sve tri razine i sve Aree.
+
+---
+
+## 0. Ukratko
+
+- **Danas se zaključava sve, jer se skoro ništa ne može promijeniti jeftino.** Pravilo
+  „taksonomiju zaključati PRIJE uvoza" (CLAUDE.md, S105d) je zaobilaženje ograničenja
+  aplikacije, ne princip.
+- **Uzrok za opcije je jedan:** tekst opcije je istodobno i oznaka i identitet — prepisan je u
+  svaki redak i u još najmanje šest mjesta (§1.3). Kategorije taj problem **nemaju** (event pamti
+  `category_id`, putanja se izvodi), atributi su ga **riješili** slugom (S56, S105d) — opcije su
+  jedina razina koja je ostala na tekstu.
+- **Prijedlog:** skup operacija preuređivanja, svaka s istim oblikom — **prebroji sva mjesta →
+  pokaži → izvedi u jednoj transakciji → izmjeri**. Tekst ostaje u retcima (Excel roundtrip mora
+  ostati čitljiv), ali promjena postaje **jedan potez**, ne šest ručnih.
+- **Posljedica:** zaključava se samo **identitet** (Area, leaf u koji event ide, granularnost,
+  `session_start`). Taksonomija, atributi i izbornici smiju se uvesti grubo i dotjerivati poslije.
+- **Ostaje skupo, i to se ne može zaobići:** **dijeljenje** opcije (A → A1/A2) traži odluku po
+  retku. Jeftinijim ga čine samo sačuvan izvorni tekst i pravila nad njim.
+
+---
+
+## 1. Što danas radi (izmjereno iz koda, 20.10.)
+
+### 1.1 Kategorije
+
+| Operacija | Stanje | Gdje |
+| --- | --- | --- |
+| Preimenovanje | ✅ ime; slug ostaje | `StructureNodeEditPanel` |
+| Umetni razinu između / iznad | ✅ | `StructureAddBetweenPanel`, `StructureAddAbovePanel` |
+| Ukloni međurazinu | ✅ s prijenosom atributa na djecu (merge-down) | `StructureCollapseLevelPanel` |
+| Dodaj dijete **leafu koji ima evente** | ❌ blokirano (S24) | `StructureAddChildPanel:124` |
+| Premjesti kategoriju pod drugog roditelja | ❌ | — (Structure uvoz: *„never moves categories"*) |
+| Premjesti evente iz leafa u leaf | ❌ | Activities uvoz: `event_id` iz druge kategorije se **preskače** (`excelImport.ts:1970`) |
+| Spoji dva leafa | ❌ | — |
+| Obriši kategoriju s eventima | ❌ blokirano | `StructureDeleteModal` |
+
+### 1.2 Atributi
+
+| Operacija | Stanje | Gdje |
+| --- | --- | --- |
+| Preimenovanje (ime **i** slug) | ✅ s ispravkom referenci: `depends_on`, `dashboard`, `list_columns`, `automations`, `comment_template` | `StructureNodeEditPanel:1434–1483` |
+| Promjena tipa (`text → number` …) | ❌ read-only čim postoje eventi; uvoz *„never changes data_type"* | panel `:16`, `structureImport.ts:6` |
+| Premjesti atribut na drugu razinu lanca | ❌ (osim kao dio Collapse Level) | — |
+| Spoji dva atributa | ❌ | — |
+| Izvedi novi atribut iz teksta (regex) | ❌ u appu; radi se Python alatom + Excel uvozom | — |
+
+### 1.3 Opcije izbornika
+
+| Operacija | Stanje |
+| --- | --- |
+| Dodaj | ✅ „Other" (samo vlasnik) i Structure uvoz |
+| Obriši | ✅ **ali ostavi siročad** — retci zadrže tekst, izbornik ga više ne nudi (K-spec §2, §7) |
+| Preimenuj | ❌ panel mijenja **samo izbornik** (S167 zamka) — retci i config ostaju na starom |
+| Spoji | ❌ |
+| Premjesti (Podtip pod drugi Tip) | ❌ — mijenja i **Tip na svakom retku** |
+| Jednokratno | `Financije/fix_kuca_popravci_S167.py` — predložak, ne alat |
+
+**Gdje sve živi tekst jedne opcije** (K-spec §4 + ovaj pregled — svako mjesto je put kojim
+preimenovanje tiho promaši):
+
+1. `event_attributes.value_text` — svaki redak;
+2. `attribute_definitions.validation_rules` — `suggest`, **ključ** `depends_on.options_map`
+   (Tip je `WhenValue` za Podtip), `default_map`;
+3. `areas.settings` — `automations` (`date_map` ključevi `Visa`/`Mastercard`, `rata.date_map`,
+   `remainder_map`), `dashboard` filtri i `split`, `due` (`baskets[k].text`, `settle`),
+   `groupings` (bucketi), `list_columns.map`, `export_profiles` filtri;
+4. `balance_anchors.group_value` — **sidro salda je vezano uz tekst računa**: preimenovan
+   `Racun` bez sidara = pločica bez potvrđenog stanja, bez greške;
+5. `activity_presets` — `default_attributes` i `filter_state`;
+6. `categories.settings.comment_template` (samo ako template nosi doslovnu vrijednost);
+7. **Python rječnici** (`pravila_trgovca.py`, `visa_uvoz_izvoda.KLASA`, `set_breakdown.py` …) —
+   operacija ih ne može pisati, ali ih mora **prijaviti** (grep).
+
+---
+
+## 2. Rupe — što treba, poredano po koristi
+
+Oznake: **O** = opcija, **A** = atribut, **K** = kategorija. Stupac *Tko treba* kaže je li rupa
+izmjerena u Financijama ili je predviđena za DIARY.
+
+| # | Operacija | Tko treba | Napomena |
+| --- | --- | --- | --- |
+| **O1** | Preimenuj opciju | Financije (Tip/Podtip), DIARY | sva mjesta iz §1.3 |
+| **O2** | Spoji opcije A, B → C | Financije (rijetki parovi), DIARY (`x-TRAIN`/`X-TRAIN`, `SICK` varijante) | = O1 nad više izvora |
+| **O3** | Premjesti opciju (Podtip pod drugi Tip) | Financije | mijenja Tip na retcima koji nose taj Podtip |
+| **O4** | Pomoć pri dijeljenju A → A1/A2 | Financije, DIARY | **ne automatski**: popis redaka + izvorni tekst + pravila ⇒ Excel ⇒ uvoz |
+| **A1** | Promijeni tip atributa s konverzijom | DIARY (uvesti kao text, poslije u broj) | izvještaj o retcima koji se ne daju pretvoriti; ne briše ih |
+| **A2** | Izvedi atribut iz teksta | DIARY (`O` → puls/kcal/TE, `AM` → san/HRV/bb, vrijeme i mjesto iz `M`) | ponovljivo; izvornik ostaje |
+| **A3** | Premjesti atribut na drugu razinu lanca | DIARY, Fitness | P2: vrijednost seli s leaf eventa na parent event iste sesije (ili obrnuto); logika postoji u Collapse Level |
+| **A4** | Spoji dva atributa | DIARY (`I` era 2 + `mood` u `Fitness`) | sukob kad su oba popunjena ⇒ prijava, P3 |
+| **K1** | Dodaj dijete leafu s eventima | DIARY, Fitness | postojeći eventi idu u novo dijete (npr. „Ostalo") — skida S24 blokadu **sigurno** |
+| **K2** | Premjesti evente iz leafa u leaf (po filtru) | DIARY | P2 roditelji se grade iznova (`parentEventLoader`) |
+| **K3** | Premjesti kategoriju pod drugog roditelja | Fitness | P2 roditelji cijelog podstabla |
+| **K4** | Atribut ↔ podkategorije | DIARY („kategorije koje ne koristimo baš") | vrijednosti atributa postaju leafovi i obrnuto; najveća operacija |
+
+---
+
+## 3. Zajednički oblik svake operacije (invarijante)
+
+1. **Prebroji prije pisanja.** Prvi korak je uvijek suhi prolaz koji ispiše **sva** mjesta iz
+   §1.3 s brojem pogođenih (*„247 redaka · 2 shortcuta · 1 bucket · 1 sidro · `pravila_trgovca.py`
+   redak 41"*). Pouka S138: „promijenili smo pravilo" je tvrdnja o jednom mjestu.
+2. **Jedna transakcija.** Postgres funkcija, ne petlja u pregledniku. Petlja koja padne napola
+   ostavlja retke bez atributa uz poruku o uspjehu (S125, S134 — isti razred).
+3. **Samo vlasnik Aree** (S133, `docs/RLS_INVENTORY.md`). Funkcija to provjerava sama; RLS je
+   druga brana.
+4. **Izmjeri poslije.** Rezultat ponovno broji: stari tekst = 0 mjesta, novi = očekivano.
+   „Uspjelo" znači izmjereno, ne „nije bacilo grešku".
+5. **Zapis i povrat.** Svaka operacija sprema **prijašnje stanje** pogođenih redaka (tablica
+   zapisa operacija) ⇒ poništavanje bez restorea cijele baze. Operacije diraju tisuće redaka
+   odjednom — jeftino osiguranje (P2).
+6. **Excel ne izražava preimenovanje** (K-spec §7): „nema `A`, ima `B`" je i preimenovanje i
+   brisanje + nova opcija. Zato preuređivanje ide **izričitim mapiranjem**, nikad pogađanjem
+   iz razlike dvaju Structure fileova.
+7. **TEST prvo, s kopijom PROD-a** (`prod_to_test.py`), i `rls_probe.py` ako funkcija dira prava.
+
+---
+
+## 4. Dva ulaza, jedna jezgra (prijedlog)
+
+- **Panel u Structure tabu** — jedna operacija, s pregledom iz §3.1. Za povremeno.
+- **Sheet `Preuređivanje` u Structure Excelu** — popis redaka `operacija | atribut | staro | novo`,
+  pregled u modalu prije primjene. Za **čišćenje u seriji**, što je upravo posao nakon
+  grubog uvoza DIARY-ja — i drži Sašin princip „sve ide importom".
+
+Obje zovu istu funkciju u bazi; razlikuju se samo po tome odakle dolazi popis.
+
+---
+
+## 5. Što ostaje skupo (i zašto se ne treba pretvarati da nije)
+
+- **Dijeljenje** (O4) — nova informacija, odluka po retku. Pravila po trgovcu daju 98 % na
+  Financijama (S174), ali samo gdje postoji izvorni tekst; 2023. ga nema.
+- **Reklasifikacija bez dokaza** — ista stvar s druge strane: zato DIARY izvornik (`M`, `O`,
+  sirovi `K`, `AM`) ostaje **uvijek** u bazi (`TRENING_MIGRACIJA.md` §3.3).
+- **Pravi identitet opcija** (ID u retku umjesto teksta) — bio bi trajno rješenje za O1–O3, ali
+  dira sve što čita `value_text` (filtri, lista, Excel u oba smjera, RPC-ovi, Python alati) i
+  Excel čini nečitljivim bez prijevoda. **Ne predlaže se**; §3 daje većinu koristi uz djelić
+  cijene. Vraća se na stol samo ako O1–O3 postanu česti.
+
+---
+
+## 6. Prijedlog redoslijeda
+
+| Faza | Sadržaj | Prvi korisnik | Zašto tim redom |
+| --- | --- | --- | --- |
+| **F1** | Jezgra (§3: brojanje, transakcija, zapis/povrat) + **O1–O3** | Financije (Tip/Podtip, bucketi) | najčešća potreba, sva mjesta poznata, izmjerljivo na stvarnim podacima |
+| **F2** | **A1, A2, A4** + sheet `Preuređivanje` | DIARY | omogućuje „uvezi grubo, dotjeraj poslije" |
+| — | **Uvoz DIARY-ja** (sirovo, jednostavna struktura) | — | može nakon F2 |
+| **F3** | **K1, K2, A3** | DIARY, Fitness | kategorije se dotjeruju kad su podaci već unutra i vidi se što treba |
+| **F4** | **K3, K4** | po potrebi | najveće, najrjeđe |
+
+---
+
+## 7. Pitanja za Sašu
+
+1. **Ulaz:** panel, Excel sheet ili oboje (preporuka: oboje nad jednom jezgrom; sheet prvi, jer
+   je čišćenje serijski posao)?
+2. **Povrat:** tablica zapisa operacija s prijašnjim stanjem (preporuka) ili je dovoljan
+   `backup_db.py` prije svake operacije?
+3. **A2 (izvođenje iz teksta):** u aplikaciji, ili ostaje Python alat + Excel uvoz? Regex se
+   piše iterativno, a to je bliže alatu nego formi — preporuka: Python prvo, app tek ako se
+   ponavlja.
+4. **Financije_all je Kokina Area** ⇒ F1 nad njom izvodi **Koka** (vlasništvo, S133). Je li to u
+   redu, ili da operacije nad strukturom smije pokrenuti i alat sa service ključem (kao danas
+   `fix_*.py`), uz tvoju potvrdu?
+5. **Što konkretno ne valja u Tip/Podtip i bucketima?** Popis želja (preimenovanja, spajanja,
+   premještanja) je prvi test F1 — i pokazuje treba li O4 (dijeljenje) već u F1.

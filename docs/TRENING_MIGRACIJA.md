@@ -14,6 +14,80 @@
 
 ---
 
+## Razgovor 20.10. — zaključci (za Sašu, jednostavno)
+
+> Ovaj odjeljak je **noviji od ostatka dokumenta** i ima prednost. §3 (prijedlog modela) i dio
+> pitanja u §5 su njime djelomično zastarjeli; prepisat ćemo ih kad odgovoriš na pitanja dolje.
+
+### Što si mi rekao
+
+1. **Ambicije s DIARY-jem** su veće od samog prijenosa treninga:
+   - **periodi** u životu (sportski blokovi, poslovni projekti, putovanja) i **trenuci** (rođenja,
+     smrti, vjenčanja, diplome — tvoji i bliskih ljudi);
+   - **AI koji predlaže trening** prema formi i osjećaju (tu su važni Garmin podaci);
+   - **usporedbe kroz razdoblja** između Area — npr. „kako sam trenirao i kako sam se osjećao u
+     pripremama za različite maratone". Za to treba nešto novo, npr. Excel sa standardnim upitima.
+2. **DIARY vodiš i dalje, paralelno** s aplikacijom (od siječnja 2026. trening upisuješ i u
+   `Fitness`). Excel je postao velik, ali je ugodan za pisanje.
+3. **Ideja za Excel:** stara povijest živi u bazi, a ti u Excelu pišeš samo zadnjih 1–3 godine;
+   iz baze se po potrebi izvozi natrag u novi Excel.
+4. **Vrijeme 06:00** ti je u redu kad pravo vrijeme nije poznato — ali i Garmin i tvoj opis
+   često imaju pravo vrijeme i mjesto (teretana, Sljeme, ruta).
+5. **Iz Financija si naučio:** „zaključaj taksonomiju prije uvoza" je skupo pravilo. Tip/Podtip u
+   Financijama nije dobar, a popravak je preskup. Kod treninga će biti **još više** dotjerivanja
+   (više Area, kategorije, atributi, izbornici) — **ne može se sve unaprijed savršeno smisliti**.
+6. **Odluka:** prije uvoza treninga treba napraviti **alat za preuređivanje strukture**.
+
+### Što sam izmjerio u bazi (PROD, samo čitanje)
+
+- **`Fitness`** (tvoj, ne dijeli se): od 29.01.2026. — `Activity` (puls, training effect, kcal,
+  mood, intenzitet…) s `Gym > Cardio` (34), `Gym > Strength` (453 vježbe) i `Outdoor` (13).
+  ⇒ Jedan zapis **po vježbi**, dok je DIARY jedan **po danu**. Oboje može živjeti: dan je sažetak,
+  vježba detalj.
+- **`Health_Sasa`** — **Koka ga može čitati** (dijeljeno, read). Unutra: Garmin dnevni podaci
+  **24.04.2014. – 14.02.2025.** (3.624 dana; ima body battery, korake, VO2max, stres), nalazi krvi
+  (43, iz sheeta `Krv`) i pregledi (50).
+- ⚠ **Dvije moje tvrdnje u ovom dokumentu su bile krive:** `Krv` je **već** u bazi, a Garmin
+  dnevni podaci **jesu** na PROD-u. (Pitanja Q16 i Q17 u §5 time otpadaju.)
+- ⚠ **Rupa:** Garmin dnevni podaci staju u **veljači 2025.** — za zadnjih 20 mjeseci baza nema
+  fiziologiju. Za AI preporuke to je najveći nedostatak.
+
+### Moji prijedlozi (redom kojim bih radio)
+
+1. **Alat za preuređivanje strukture** — detalji u
+   [`PREUREDJIVANJE_SPEC.md`](PREUREDJIVANJE_SPEC.md). Ukratko: danas promjena imena jedne opcije
+   (npr. Podtipa) znači ručno dirati ~7 mjesta; alat to radi **u jednom potezu**, prvo pokaže što
+   će promijeniti, i može se poništiti. Isto za atribute (npr. tekst → broj) i kategorije
+   (premještanje). Prvi korisnik: **Tip/Podtip u Financijama**. Posljedica: trening se smije
+   uvesti **grubo**, pa dotjerivati poslije.
+2. **Raspored po Areama** (prijedlog, čeka tvoju potvrdu):
+   - **`Fitness`** — novi leaf `Dan`: DIARY trening, jedan zapis po danu od 2006.;
+   - **`Health_Sasa`** — Garmin dnevni podaci, plus dotok do danas;
+   - **`Život`** (nova, privatna) — periodi, trenuci, privatni dnevnik (`AM`), projektni log (`DS`).
+3. **Periodi kao okosnica.** Spec za to postoji od srpnja (`docs/parked/Analytics_tab.md`) i
+   čekao je baš ovakvu Areu. DIARY već ima gotove kandidate: 47 trenažnih blokova (kolona `A`),
+   poslovne projekte s datumima, putovanja. Prvi, najjeftiniji korak: tvoji periodi u izborniku
+   razdoblja u filtru.
+4. **Usporedbe između Area:** prvo **jedan** upit dokazati (npr. pripreme za maratone: km/tjedan,
+   puls, raspoloženje, odmor), rezultat u Excel — tek onda graditi novi tab.
+5. **Garmin dotok** do danas — preduvjet za AI.
+6. **Excel kao radni prozor** (tvoja ideja, slažem se — isto kao Financije): baza je glavna,
+   Excel nosi zadnjih 1–3 godine i vraća promjene uvozom. Do prelaska DIARY ostaje glavni.
+7. **Pravo vrijeme i mjesto** idu u atribute (`vrijeme`, `lokacija`), a 06:00 ostaje samo kao
+   „ključ" dnevnog retka. Za mjesta mi treba tvoj popis naziva.
+8. **AI** na kraju, kad su podaci gore spojeni.
+
+### Što trebam od tebe (kad stigneš)
+
+1. Slažeš li se s rasporedom **Fitness / Health_Sasa / Život**?
+2. Smije li Koka vidjeti san, HRV i body battery (tj. idu li u `Health_Sasa`)?
+3. Kako si dobio Garmin podatke do 02.2025. (GDPR export?) — može li to postati redovno?
+4. Za alat: **što konkretno ne valja** u Tip/Podtip i bucketima Financija (popis želja)?
+5. Pet pitanja na dnu [`PREUREDJIVANJE_SPEC.md`](PREUREDJIVANJE_SPEC.md) §7.
+6. Značenje kolona (Q4–Q11 u §5) — kasnije, nije hitno.
+
+---
+
 ## 0. Ukratko
 
 - **DIARY je čišći nego što je `Diary.md` pretpostavljao**: točno **jedan redak po danu** od
