@@ -63,7 +63,8 @@
 2. **Raspored po Areama** (prijedlog, čeka tvoju potvrdu):
    - **`Fitness`** — novi leaf `Dan`: DIARY trening, jedan zapis po danu od 2006.;
    - **`Health_Sasa`** — Garmin dnevni podaci, plus dotok do danas;
-   - **`Život`** (nova, privatna) — periodi, trenuci, privatni dnevnik (`AM`), projektni log (`DS`).
+   - **`Life_Sasa`** (nova, privatna; prvo ime bilo `Život`) — periodi, trenuci, privatni dnevnik
+     (`AM`), projektni log (`DS`).
 3. **Periodi kao okosnica.** Spec za to postoji od srpnja (`docs/parked/Analytics_tab.md`) i
    čekao je baš ovakvu Areu. DIARY već ima gotove kandidate: 47 trenažnih blokova (kolona `A`),
    poslovne projekte s datumima, putovanja. Prvi, najjeftiniji korak: tvoji periodi u izborniku
@@ -79,12 +80,63 @@
 
 ### Što trebam od tebe (kad stigneš)
 
-1. Slažeš li se s rasporedom **Fitness / Health_Sasa / Život**?
+1. Slažeš li se s rasporedom **Fitness / Health_Sasa / Life_Sasa**? *(odgovoreno: da, uz ime `Life_Sasa`)*
 2. Smije li Koka vidjeti san, HRV i body battery (tj. idu li u `Health_Sasa`)?
 3. Kako si dobio Garmin podatke do 02.2025. (GDPR export?) — može li to postati redovno?
 4. Za alat: **što konkretno ne valja** u Tip/Podtip i bucketima Financija (popis želja)?
 5. Pet pitanja na dnu [`PREUREDJIVANJE_SPEC.md`](PREUREDJIVANJE_SPEC.md) §7.
 6. Značenje kolona (Q4–Q11 u §5) — kasnije, nije hitno.
+
+### Tvoji odgovori (20.10., drugi dio) i što iz njih slijedi
+
+| # | Tvoj odgovor | Što to znači za plan |
+| --- | --- | --- |
+| Ime | `Life_Sasa` umjesto `Život` | ✅ prihvaćeno |
+| Koka vidi san/HRV/bb | **smije** | brojevi iz `AM` (san %, HRV, body battery) idu u `Health_Sasa > Daily_metrics` |
+| Garmin dotok | pokušat ćeš zahtjev Garminu; idealno API ili Strava | v. „Garmin" dolje |
+| Financije | Podtip se teško nađe (npr. `Pokloni`); u bucketima se iste stvari pojavljuju dvaput; **namjena** (zajedničko, Koka, Saša, Kućište) nije ista klasa kao Domaćinstvo/Kuća/Prijevoz | izmjereno i potvrđeno — `PREUREDJIVANJE_SPEC.md` §8 |
+| Fitness | današnja struktura nije idealna; DIARY fitness podaci trebaju ući u nju; mogući sukobi Garmin ↔ DIARY | v. „Sukobi" dolje |
+| **Q4** `X` Teka | broj **papirnate bilježnice** s opširnijim rukom pisanim opisima | atribut `teka` — uputnica „gdje pogledati detalj"; ostaje |
+| **Q5** stari `I`/`H` | Polar sat: `I` = Polarov „exertion", `H` = prosječni puls (max puls tada > 200), `Z2` = zona 2 | `H` → `hr_avg` (2006–2011); Polar `exertion` → vlastiti broj `napor_polar` (samo do 2014.); zone ostaju tekst. Usporedba pulsa preko 20 godina traži oprez (drukčiji max puls) |
+| **Q6** | da — aerobni / anaerobni training effect | dva broja `te_aerobni`, `te_anaerobni` |
+| **Q7** `AL` | **minimalni noćni puls**, svako jutro s Garmina | → `Health_Sasa`, isti atribut kao Garminov `HR Min`. Pokriva i rupu poslije 02.2025. |
+| **Q8** `kk` | tisuće koraka, **zaokruženo naniže** | → `Health_Sasa` `Steps` (× 1000). Približno — kad postoji Garminov broj, on ima prednost |
+| **Q9** raspoloženje | broj u bazi, a u alatu i dalje smajlić | broj 1–5 u bazi; prikaz smajlića u listi radi već postojeći `map` kolone liste. **U formi za unos** to danas ne postoji (forma bi pokazala brojeve) — mala dorada |
+| **Q10** `K` | služio za filtar; treba više oznaka: vrsta aktivnosti, tip treninga, vrsta utrke (maraton, polumaraton, lige); uz to **PB** | četiri polja: `vrsta` (trčanje, x-train, šetnja, odmor, bolest…), `tip_treninga` (long, interval, tempo, fartlek, track…), `utrka` (maraton, polumaraton, 5K, liga …), `pb` (da/ne). **PB je izmjeren: 58 dana** (`P.B.`/`PB` u `O` i `M`) |
+| **Q11** tempo | izveden prosjek miješa zagrijavanje, rastrčavanje i odmore | **ne spremati** `pace`; pravi tempo dolazi iz Garminovih dionica, a vrijeme utrke ostaje u opisu |
+| **Q12** `AM` | san → `Health_Sasa` (Koka i prijatelji smiju vidjeti); ostatak privatnije; kasnije možda „pametno" razbiti na više događaja (počeci/krajevi razdoblja, npr. kad je Koku udario tramvaj) | prvi uvoz: brojevi u `Health_Sasa`, cijeli tekst u `Life_Sasa`. Razbijanje na događaje je **kasniji AI posao** — tekst je sačuvan, pa se može kad god |
+| **Q13** posao | prebaciti **kao periode**, ne dnevno; tjedna tablica (`DN`–`DQ`: tjedan, norma 20 h, prijavljeno, razlika) pokazuje akutno opterećenje | time je riješen i brojač `DM`–`DQ`. Prijedlog: poslovni projekti = periodi u `Life_Sasa`; **tjedni sati** = jedan zapis po tjednu (sati, norma) — vrijedan za usporedbu s pulsom/HRV-om. Nije hitno |
+| **Q14** `DS` | P-klasifikacija nije zaživjela; vibe-coding vodiš kao `P5` | tekst u `Life_Sasa`, šifra `P#` kao atribut gdje postoji |
+| **Q15** `Y` | ponekad ima smisla (trener, IMOM sklekovi) | `Y` → tekstualni atribut uz trening (bilješka o snazi). `Z`–`AH` (2013–2016) ostaju u Excelu |
+| **Q16** | ostali sheetovi ostaju u Excelu | ✅ |
+| **Q17** | `Fitness_Garmin` spojiti s `Fitness`; o sukobima još razgovarati | v. „Sukobi" dolje. ⚠ `Fitness_Garmin` je samo na **TEST-u**; na PROD-u ga nema |
+
+### Garmin — moguće opcije dotoka (⚠ iz znanja, nisam provjerio danas)
+
+- **Službeni Garmin API** (Health/Connect Developer Program) je za tvrtke i traži odobrenje —
+  za osobnu upotrebu teško dostupan.
+- **Strava API** je otvoren za osobne aplikacije, ali nosi samo **aktivnosti**, ne san, HRV,
+  body battery ni korake.
+- **Neslužbena Python biblioteka** (`garminconnect`) se prijavljuje tvojim računom i čita i
+  dnevne podatke (san, HRV, body battery). Radi lokalno, podaci ostaju kod tebe. Nije službena,
+  pa se zna pokvariti kad Garmin nešto promijeni.
+- **GDPR export** (kako je rađeno do sada) radi, ali je ručan i spor.
+
+**Prijedlog:** prvo probati neslužbenu biblioteku na tvom laptopu (jedan pokus, samo čitanje);
+ako ne ide, GDPR export jednom do danas pa povremeno.
+
+### Sukobi Garmin ↔ DIARY — prijedlog načela (za razgovor)
+
+1. **Ne spajati u jedan zapis i ne prepisivati.** Garminova aktivnost i DIARY dan ostaju
+   **dva zapisa** s jasnim izvorom (`izvor = Garmin` / `DIARY`). Nijedan uvoz ne briše drugi.
+2. **Za svaki atribut unaprijed reći tko je autoritet** — kao u Financijama, gdje je izvod
+   autoritet za iznos, a Koka za razvrstavanje:
+   - puls, kcal, training effect, točan tempo, vrijeme početka → **Garmin**;
+   - raspoloženje, opis, osjećaj, ozljede, „zašto" → **DIARY**;
+   - km i trajanje → Garmin kad postoji, DIARY kad Garmina nema (stara povijest, zaboravljen sat);
+   - koraci i noćni puls → Garmin; DIARY popunjava rupe.
+3. **Sukob se prijavljuje, ne rješava tiho:** popis dana gdje se brojke razlikuju više od
+   praga (npr. km > 10 %) — često je to zaboravljen sat ili dvije aktivnosti u jednom danu.
 
 ---
 

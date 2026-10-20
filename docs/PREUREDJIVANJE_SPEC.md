@@ -93,6 +93,8 @@ izmjerena u Financijama ili je predviđena za DIARY.
 | **O2** | Spoji opcije A, B → C | Financije (rijetki parovi), DIARY (`x-TRAIN`/`X-TRAIN`, `SICK` varijante) | = O1 nad više izvora |
 | **O3** | Premjesti opciju (Podtip pod drugi Tip) | Financije | mijenja Tip na retcima koji nose taj Podtip |
 | **O4** | Pomoć pri dijeljenju A → A1/A2 | Financije, DIARY | **ne automatski**: popis redaka + izvorni tekst + pravila ⇒ Excel ⇒ uvoz |
+| **O5** | **Izdvoji os u novi atribut** (npr. osoba iz `Audible_Koka` → Podtip `Audible` + `Namjena = Koka`) | Financije (§8), DIARY (`K` → vrsta / tip treninga / utrka) | jeftino kad je podatak **u imenu** (sufiks, Tip auta); inače postaje O4 |
+| **O6** | Traženje u izborniku po oba nivoa (tipkaš „pok" ⇒ `Razno / Pokloni`, Tip se popuni sam) | Financije (Koka na mobitelu) | **nije preuređivanje** nego dorada forme — ali rješava „ne sjećam se gdje je" bez diranja ijednog retka |
 | **A1** | Promijeni tip atributa s konverzijom | DIARY (uvesti kao text, poslije u broj) | izvještaj o retcima koji se ne daju pretvoriti; ne briše ih |
 | **A2** | Izvedi atribut iz teksta | DIARY (`O` → puls/kcal/TE, `AM` → san/HRV/bb, vrijeme i mjesto iz `M`) | ponovljivo; izvornik ostaje |
 | **A3** | Premjesti atribut na drugu razinu lanca | DIARY, Fitness | P2: vrijednost seli s leaf eventa na parent event iste sesije (ili obrnuto); logika postoji u Collapse Level |
@@ -153,7 +155,7 @@ Obje zovu istu funkciju u bazi; razlikuju se samo po tome odakle dolazi popis.
 
 | Faza | Sadržaj | Prvi korisnik | Zašto tim redom |
 | --- | --- | --- | --- |
-| **F1** | Jezgra (§3: brojanje, transakcija, zapis/povrat) + **O1–O3** | Financije (Tip/Podtip, bucketi) | najčešća potreba, sva mjesta poznata, izmjerljivo na stvarnim podacima |
+| **F1** | Jezgra (§3: brojanje, transakcija, zapis/povrat) + **O1–O3, O5** (+ O6 kao dorada forme) | Financije (Tip/Podtip, bucketi — §8) | najčešća potreba, sva mjesta poznata, izmjerljivo na stvarnim podacima |
 | **F2** | **A1, A2, A4** + sheet `Preuređivanje` | DIARY | omogućuje „uvezi grubo, dotjeraj poslije" |
 | — | **Uvoz DIARY-ja** (sirovo, jednostavna struktura) | — | može nakon F2 |
 | **F3** | **K1, K2, A3** | DIARY, Fitness | kategorije se dotjeruju kad su podaci već unutra i vidi se što treba |
@@ -175,3 +177,44 @@ Obje zovu istu funkciju u bazi; razlikuju se samo po tome odakle dolazi popis.
    `fix_*.py`), uz tvoju potvrdu?
 5. **Što konkretno ne valja u Tip/Podtip i bucketima?** Popis želja (preimenovanja, spajanja,
    premještanja) je prvi test F1 — i pokazuje treba li O4 (dijeljenje) već u F1.
+   *(Djelomično odgovoreno 20.10. — v. §8.)*
+
+---
+
+## 8. Financije — prvi konkretan zadatak (Saša 20.10., izmjereno na PROD-u, samo čitanje)
+
+**Što si rekao:** Podtip se teško nađe (npr. `Pokloni`); u bucketima se iste stvari pojavljuju
+dvaput; **namjena** (zajedničko, Koka, Saša, Kućište) nije ista vrsta podjele kao Domaćinstvo,
+Kuća, Prijevoz.
+
+**Što baza pokazuje** (18 Tipova, 69 parova Tip/Podtip):
+
+- **Osoba je ugrađena u imena — na tri načina:**
+  - **14 Podtipova** nosi osobu: `Audible_Koka` / `Audible_Sasa`, `Kindle_Koka`,
+    `Sport_Koka` / `Sport_Sasa`, `Medical_Koka` / `Medical_Sasa`, `Lječnička komora_Koka`,
+    `Odjeća/obuća/ostalo_Koka` / `_Sasa`, `Prihodi / Koka` / `Saša`, `Projekti / Koka` / `Sasa`;
+  - **auti su dva Tipa** (`auto C5`, `auto Lacetti`) s **istim** Podtipovima (gorivo,
+    registracija, popravci) — uz to postoji i Tip `Prijevoz`;
+  - **bucketi** `Koka razno`, `Saša razno`, `Kućište · Nenin novac` stoje u istom popisu kao
+    `Mjesečni troškovi` i `Kvaliteta života`.
+- **Ista stvar na dva mjesta:** `Kuća / Osiguranje` uz Tip `Osiguranje`.
+- **Teško naći:** `Pokloni` je pod `Razno` (bucket ga šalje u „Putovanja i pokloni").
+
+**Jednostavno rečeno:** u jednom popisu žive **dva pitanja** — *„na što je novac otišao"*
+(Kuća, Prijevoz, Zabava…) i *„za koga / čiji je"* (zajedničko, Koka, Saša, Kućište). Zato se
+stvari ponavljaju (Audible dvaput, auto dvaput) i zato bucketi izgledaju neuredno.
+
+**Prijedlog (za razgovor s Kokom — pitanje je njeno):**
+
+1. Novi atribut **`Namjena`**: Zajedničko · Koka · Saša · Kućište (· Nena?).
+2. **O5** ga popuni **sam** gdje je podatak u imenu (14 Podtipova + 2 auta): `Audible_Koka` →
+   Podtip `Audible`, Namjena `Koka`; `auto C5 / gorivo` → Tip `Auto` (ili `Prijevoz`), Podtip
+   `gorivo`, Namjena `Koka`. Ostali retci dobiju zadanu vrijednost (npr. Zajedničko) — **to je
+   jedina odluka po retku**, i samo gdje zadano nije točno.
+3. Tada se Tip/Podtip **skrati** (nema više parova po osobi), a razrez dobije **dvije osi**:
+   „na što" i „za koga". Bucketi `Koka razno` / `Saša razno` prestaju biti potrebni.
+4. **O6** (traženje u izborniku) neovisno o svemu — Koka utipka „pok" i dobije `Razno / Pokloni`.
+
+⚠ Prije izvedbe: saldo se ne miče (Tip/Podtip nisu u filtru salda), ali **pravila trgovca**,
+**rječnik `Izvod opis`** i **bucketi** nose stara imena — upravo mjesta iz §1.3 koja jezgra mora
+prebrojati. Zato je ovo dobar **prvi test** cijelog alata.
