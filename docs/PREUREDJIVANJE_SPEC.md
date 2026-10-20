@@ -296,6 +296,22 @@ odluka (Decathlon, Anja, Konzum).
    `Osiguranje`) i **`Sasa`/`Saša`** — O1/O2.
 5. **O6** (traženje u izborniku) neovisno o svemu — Koka utipka „pok" i dobije `Razno / Pokloni`.
 
+**✅ ODLUČENO 20.10. — Koka se slaže s prijedlozima 1–5** (Namjena kao zaseban atribut, O5
+popunjava gdje je osoba u imenu, auti ostaju Tip, preklapanja se rješavaju, traženje u izborniku).
+
+**Još otvoreno — sitni izbori, svaki s prijedlogom** (potvrđuju se u suhom prolazu alata, kad se
+vide brojke; ne traže zaseban razgovor):
+
+| Izbor | Prijedlog | Zašto |
+| --- | --- | --- |
+| Vrijednosti `Namjena` | Zajedničko · Koka · Saša · Kućište | „Nena" ostaje pod Kućište (bucket `Kućište · Nenin novac` već ih spaja) |
+| Zadana vrijednost | Zajedničko | najčešći slučaj; mijenja se samo iznimka |
+| `Decathlon`: Odjeća vs Sport | `Zdravlje / Sport` (+ Namjena) | sportska oprema; `Odjeća` ostaje za svakodnevnu |
+| `Anja`: `Prihodi / Povrat Anja` vs `Transfer / Anja` | Transfer (izvan razreza) | povrat posuđenog nije prihod — ako je posudba, onda je transfer u oba smjera |
+| `Kuća / Osiguranje` | spojiti u Tip `Osiguranje` (Podtip `Kuća`) | jedno mjesto za osiguranja |
+| `Projekti / Sasa` + `Prihodi / Saša` | `Sasa` → `Saša` | O1, jedan naziv |
+| Retci `Projekti / Sasa` (Konzum, Biberon…) | Namjena `Saša`; Tip po tome što je kupljeno — **prijedlog po trgovcu** iz povijesti, ti potvrđuješ | jedine prave odluke po retku |
+
 ### 8.3 Kako se prikazuje Namjena i kako se definiraju bucketi
 
 **Bucketi danas:** `areas.settings.groupings["Vrsta troška"]` — popis redaka *bucket ← (Tip, Podtip)*
