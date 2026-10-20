@@ -11,7 +11,7 @@ Track what data sources exist, where we are in the pipeline, and what area they 
 | Garmin / Sleep           | ✅ S71 | ⬜      | ⬜     | ⬜     | —     | ⬜     | `Health_Sasa > Daily_metrics > Garmin_data` (stub cols ready) |
 | Bloodwork.xlsx           | ✅ S68 | ✅ S68  | ✅ S68 | ✅     | ✅ S74 | ✅     | `Health_Saša`                                                 |
 | Za Sašu 2026 (Financije) | ✅ S65 | ✅ S65  | ✅ S65 | ✅     | ⬜     | ⬜     | `Financije_1`                                                 |
-| trening.xlsm (ručni log) | ⬜     | ⬜      | ⬜     | ⬜     | —     | ⬜     | (mapiranje u Fitness?)                                        |
+| trening.xlsm (ručni log) | ✅ S176 | ⬜      | ⬜     | ⬜     | —     | ⬜     | `Fitness` / `Health_Sasa` / `Life_Sasa` — `docs/TRENING_MIGRACIJA.md` |
 
 ---
 

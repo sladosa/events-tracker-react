@@ -1,41 +1,38 @@
-> Pisano protiv `13a9104` (S175 kod) + commita **S175 zatvaranje** koji nosi ovaj file.
+> Pisano protiv `854b2b5` (zadnji S176 spec) + commita **S176 zatvaranje** koji nosi ovaj file.
 > **`main` = `07361eb` (deploy 19.10.):** uvozni guard (S174) i Košare ↗ oznaka (S175) su na PROD-u.
 > **Na `test-branch`, NIJE na PROD-u:** F5 (`AreaSettings`, Structure export = jedna Area) i
 > „Create categories & continue" ne dira postojeću Areu — čekaju T-S175-6 i deploy (bez migracije).
-> **PROD baza:** S174 i S175 nisu pisale ništa.
+> **PROD baza:** S174, S175 i S176 nisu pisale ništa (S176 samo čitao, service ključ).
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija — nakon S175 (2026-10-19)
+# Sljedeća sesija — nakon S176 (2026-10-20)
 
-> **Ukratko (S175):** otvorenih test sesija bilo je jedanaest, a većina je čekala isti događaj — prvi mjesečni krug u studenom — pa su ti testovi sažeti u tri i jedno pitanje Koki; Košare ↗ po povratku označe kupnju (na PROD-u), Structure Excel sada nosi i pločice, grupiranja i export profile (F5, „sve ide importom" zatvoreno), stari Activities file više ne vraća Areu unatrag, a paralelna sesija je izmjerila `trening.xlsm` i postavila 17 pitanja za migraciju treninga.
+> **Ukratko (S176):** razgovor o treningu pokazao je da je pravi problem krutost strukture, ne sam uvoz — pa je odlučeno da prije treninga dođe alat za preuređivanje (preimenuj, spoji, premjesti, izdvoji os; jedna transakcija u bazi, s poništavanjem), da trening ide u Fitness / Health_Sasa / Life_Sasa, a mjerenje Financija je pokazalo da Tip/Podtip u dva polja nosi tri pitanja, pa Koka pristaje na novi atribut Namjena.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (S175)
-- **Testovi:** 2 test sesije umjesto 11; studeni krug je jedan popis (`docs/sessions/tests/S175_tests.md`).
-  Koka: lista s iznosima i `+` iz prve — „sve vidim ok".
-- **Na PROD-u (19.10.):** uvoz razvrstavanja pita samo za bankino polje (S174); Košare ↗ po povratku
-  označe kupnju.
-- **Na `test-branch`:**
-  - **F5** — Structure Excel nosi i pločice Overviewa, grupiranja „Kamo ide novac", export profile
-    i svaku buduću postavku (sheet `AreaSettings`). Structure export je **jedna Area**.
-  - **Stari Activities file ne vraća Areu unatrag** — „Create categories & continue" samo dodaje ono
-    što nedostaje.
-- **Trening:** `docs/TRENING_MIGRACIJA.md` — dnevnik ima 7.451 dan od 2006., bez rupa; prijedlog je
-  privatna Area `Dnevnik` s `Trening` (svaki dan) i `Dan` (privatno/zdravlje).
+## Gotovo (S176) — samo dokumenti, ništa u bazi
+- **Trening:** tvoje ambicije (periodi, AI, usporedbe između Area) i odgovori na Q1–Q17 su na vrhu
+  `docs/TRENING_MIGRACIJA.md`. Raspodjela: `Fitness` (dnevni trening), `Health_Sasa` (san, HRV,
+  noćni puls, koraci — Koka smije vidjeti), `Life_Sasa` (nova, privatna: periodi, trenuci, dnevnik).
+- **Alat za preuređivanje strukture** — dolazi **prije** treninga: `docs/PREUREDJIVANJE_SPEC.md`.
+  Jednim potezom preimenuje / spoji / premjesti opcije i izdvoji „za koga" u novi atribut; prvo
+  pokaže što će promijeniti, radi u jednoj transakciji i može se poništiti.
+- **Financije:** izmjereno da Tip/Podtip u dva polja nosi tri pitanja (na što / za koga / kakav
+  trošak). **Koka se složila** s novim atributom `Namjena` (Zajedničko · Koka · Saša · Kućište) i
+  čišćenjem preklapanja (T38).
 
 ## Što treba od tebe
 1. **T-S175-6 (TEST, lokalno, ~10 min):** Structure export/import s `AreaSettings` (`S175_tests.md`).
-   Ako prođe ⇒ **deploy** (PowerShell blok iz CLAUDE.md § End of session 11).
-2. **Trening — pitanja Q1–Q3** iz `docs/TRENING_MIGRACIJA.md` §5 (blokiraju generator):
-   ime Aree i leafova, fiksno vrijeme `session_start` (prijedlog 06:00), nastavljaš li pisati
-   `trening.xlsm` ili prelaziš na app. Ostala pitanja (Q4–Q17) mogu i poslije.
-3. **T-S174-3 (PROD)** kad nastaviš ručno razvrstavanje (ZABA file na TEST-u nosi ~123 tvojih odluka),
-   pa **T-S174-5** (Nenini retci).
-4. **Odluka iz S174:** `PARKING` (12/13) kao pravilo? `GLOVO` ručno?
+   Ako prođe ⇒ **deploy** (PowerShell blok iz CLAUDE.md § End of session 11). F1 se gradi na tome.
+2. **Ništa za preuređivanje prije koda** — sitni izbori (Decathlon → Sport, Anja → Transfer,
+   `Kuća/Osiguranje` → `Osiguranje / Kuća`, `Sasa` → `Saša`) imaju prijedlog i potvrđuješ ih u suhom
+   prolazu alata (PREUREDJIVANJE §8.2).
+3. **Garmin:** ako stigneš, zahtjev Garminu za izvoz do danas (podaci u bazi staju 14.02.2025.).
+4. **T-S174-3 (PROD)** kad nastaviš ručno razvrstavanje, pa **T-S174-5**; odluka `PARKING` (12/13) / `GLOVO`.
 
 ## Studeni (`S175_tests.md`)
 - **~03.–11.11. T-S175-2 Visa** · **~02.11. → 11.11. T-S175-1 MC** · **ZABA_2026-10 T-S175-3**.
@@ -45,28 +42,31 @@
 # DIO 2 — tehnički (za Claudea)
 
 ## Stanje
-- **F5:** `src/lib/areaSettingsSheet.ts` (`flattenAreaSettings`, `unflattenAreaSettings`,
-  `mergeAreaSettings`, `OWNED_ELSEWHERE`), `writeAreaSettingsSheet` u `structureExcel.ts`, §11 na kraju
-  `importStructureExcel`, brojač u `StructureImportModal`; export = jedna Area (`AppHome`,
-  `aria-disabled`). Unit `areaSettingsSheet.test.mjs` (fixture PROD 18.10.); E2E
-  `S175_area_settings_roundtrip`. Pravila: CLAUDE.md § Excel.
-- **Korak 7:** `importStructureExcel(..., { existingAreasUntouched: true })` iz `ExcelImportModal`;
-  `keepArea()` u K-1, §7, §8–§11. E2E `S175_create_categories_keeps_area`; `supabasePatch` u
-  `e2e/fixtures/auth.ts` (baca na 0 redaka).
-- **Trening:** `docs/TRENING_MIGRACIJA.md` (commit `5607040`, paralelna sesija) — **pročitan, brojke
-  nisu ponovo mjerene**. Uputnice `Diary.md` / `AUTOMATION_SPEC` F4 / `DATA_PIPELINE_PLAN` P5 /
-  BACKLOG / `MIGRATION_STATE` još upućuju na stari plan — preusmjeriti uz odgovore (TRENING §6 korak 1).
-  Kopija filea: `Claude-temp_R/trening/trening.xlsm`.
-- **E2E:** jednom viđen prazan izbornik Area u nizu specova (BACKLOG, uz T-S172-4).
+- **S176 = samo dokumenti:** `docs/PREUREDJIVANJE_SPEC.md` (nov; DIO 2 §9–§17 je spec za kod F1),
+  `docs/TRENING_MIGRACIJA.md` (vrh: zaključci i odgovori 20.10. — **imaju prednost** nad §3/§5 niže,
+  koji su djelomično zastarjeli; prepisati ih kad krene generator). `Diary.md` → `docs/_archive/`.
+- **Izmjereno na PROD-u 20.10. (samo čitanje):** Financije_all 5.443 transakcije, 18 Tipova, 69 parova;
+  36/136 trgovaca na više parova; `groupings["Vrsta troška"]` 52 retka. Fitness / Health_Sasa
+  struktura i brojke: TRENING_MIGRACIJA „Što sam izmjerio". Skripte su bile jednokratne (scratchpad).
+- **F5 (S175):** `areaSettingsSheet.ts`, `writeAreaSettingsSheet`, §11 u `importStructureExcel`;
+  E2E `S175_area_settings_roundtrip`. Korak 7: `existingAreasUntouched`.
+- Kopija trening filea: `Claude-temp_R/trening/trening.xlsm` (19.10.).
 
 ## Otvoreno — kod (po prioritetu)
 1. **`po_pravilu` u `fill_from_izvod` (MC/ZABA/RF) i `visa_uvoz_izvoda`** — **prije studenog**
-   (Glovo/VPA iz MC_2026-09). Postojeći rječnici/presedan prvo; provjera unatrag prije (S164).
+   (rok MC 11.11.). Postojeći rječnici/presedan prvo; provjera unatrag prije (S164).
    ⚠ Ne smije pomaknuti T-S173-1 harness (`Claude-temp_R/s173_mc/regresija.sh`) osim u `Tip`u.
-2. **Trening generator** (`data-prep_tools/Trening/trening_to_xlsx.py`) — tek kad stignu Q1–Q3.
-3. **Pregled razlika prije Structure uvoza** (BACKLOG „Napredak Aree između korisnika") — preduvjet
-   za Financije-template (Strategic Position korak 4), uz D3.
-4. Ako Saša odluči: `\bparking\b` (12/13) u `PRAVILA`.
-5. Iz S173: `--par=<id8>:<iznos>` ako MC_2026-10 da `NEJASNO` · `MOŽDA KRIVO MJESTO` za MC · T23 u appu.
-6. Iz S172: Excel uvoz `default_map` kad se roditelj promijeni (BACKLOG vrh) · „Review" sheet ·
-   delta retci ispod sekcije · ↗ ne vraća `attrFilter`.
+2. **F1 preuređivanja** po PREUREDJIVANJE DIO 2 — redoslijed izvedbe:
+   `058_restructure.sql` (TEST kroz psql; PROD pušta Saša) → `src/lib/restructure/plan.ts` + unit
+   testovi nad `areaSettings_prod_2026-10-18.json` (sabotaže) → `sheet.ts` + prazan sheet u exportu →
+   faza u `StructureImportModal` → `apply.ts` → dokaz povrata `sha256` na TEST-u (kopija PROD-a,
+   `prod_to_test.py --settings`) → `rls_probe.py` probe → E2E → `Tools/preuredjivanje_grep.py`.
+   ⚠ Otvoreno pri izvedbi: oblik filtra u `export_profiles` (`exportProfile.ts`), §17.
+   ⚠ Prije `058` na PROD: F5 deploy (T-S175-6), jer puštanje §16 koristi Structure uvoz.
+3. **Mali, neovisni:** traženje u izborniku po oba nivoa (O6) · prekidač Bucketi | Namjena u razrezu
+   (poslije `Namjene`; RAZREZ R5 = jedno grupiranje).
+4. **Trening:** F2 (tip atributa, izvođenje iz teksta) pa generator — tek poslije F1.
+5. **Pregled razlika prije Structure uvoza** (BACKLOG „Napredak Aree između korisnika") — Financije-template.
+6. Iz S173: `--par=<id8>:<iznos>` ako MC_2026-10 da `NEJASNO` · `MOŽDA KRIVO MJESTO` za MC · T23 u appu.
+7. Iz S172: Excel uvoz `default_map` kad se roditelj promijeni · „Review" sheet · delta retci ispod
+   sekcije · ↗ ne vraća `attrFilter`.

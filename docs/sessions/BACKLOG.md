@@ -172,10 +172,18 @@
   Ostaje datum/boolean — v. „Potpuni attrFilter“.
 - **Help chip (F6)** — bez posebnog popisa: gotovo pitanje AI-u + kontekst stranice/Aree (uz Help
   koji zna Areu); sadržaj su `docs/help/*.md`, koje ritual ionako održava.
-- **⭐ Migracija `trening.xlsm` — veliki projekt**, kreće kad se zatvore osnovni zadaci Financija
-  (C1, C2/C3). File je od 26.09. u `C:\0_Sasa\OneDrive\trening.xlsm` (stara kopija preimenovana).
-  Izvor za više Area (projekti, health, treninzi, periodi). Uključuje Garmin i
-  `health_lab_review.py` cleanup. Načelo `oznaci_iz_presedana` Saša želi i ovdje.
+- **⭐ Migracija `trening.xlsm` — veliki projekt.** Plan, inventar i Sašini odgovori:
+  **`docs/TRENING_MIGRACIJA.md`** (S176). Redoslijed: CLAUDE.md § Strategic Position. File:
+  `C:\0_Sasa\OneDrive\trening.xlsm` (čitati samo kopiju). Načelo `oznaci_iz_presedana` Saša želi i ovdje.
+- **⭐ Preuređivanje strukture (S176, prije treninga)** — `docs/PREUREDJIVANJE_SPEC.md`: F1 jezgra
+  (planer + `058` transakcija + zapis prije/poslije + povrat) s O1–O3, O5; prvi korisnik Financije
+  (`Namjena`, FINANCIJE_PROCES T38). Tehnički spec: DIO 2 (§9–§17). Zatim F2 (tip atributa,
+  izvođenje iz teksta) — preduvjet za grubi uvoz treninga.
+- **Razrez: prekidač Bucketi | Namjena** (S176, PREUREDJIVANJE §8.3) — pločica danas zna jedno
+  grupiranje (R5); dolazi poslije atributa `Namjena`.
+- **Traženje u izborniku po oba nivoa** (S176, O6) — „pok" ⇒ `Razno / Pokloni`; ne ovisi o jezgri.
+- **Garmin dotok do danas** (S176) — `Health_Sasa > Garmin_data` staje 14.02.2025.; opcije u
+  TRENING_MIGRACIJA („Garmin"). Spojeno s „Garmin/Sleep" niže.
 **~~Kolone liste: `—` za vrijeme učitavanja~~ — ✅ S159.** Uzrok nije bio izostanak
 placeholdera (postoji od S120) nego zastavica `loaded` koja je ostajala `true` od **prošlog**
 skupa redaka (razred BUG-S145). Usput: upit vrijednosti nije bio paginiran (rez na 1000 ⇒ `—`
@@ -455,7 +463,8 @@ filtru** — „ZABA **i** samo uplate" (`Racun` + `Smjer`) korisnik ne može sl
 prestaje biti polish pločice i postaje svakodnevna potreba. Sašina odluka: **ne sada.**
 
 **Krovna analitika preko Area (F1)** — **ne** u običnom filtru (Sašina odluka 2026-09-26);
-`docs/parked/Analytics_tab.md`. Okidač: prve Aree iz `trening.xlsm` u bazi. Tamo ide i „drill s dva uvjeta“.
+`docs/parked/Analytics_tab.md`. Okidač: prve Aree iz `trening.xlsm` u bazi (S176: Saša želi
+periode i usporedbe između Area — prvi korak „My periods" u filtru, TRENING_MIGRACIJA prijedlozi 3–4). Tamo ide i „drill s dva uvjeta“.
 
 **Pravila razvrstavanja u bazi (F2, `RULES_ENGINE_SPEC.md`)** — kasnije; brojanje povijesti
 (`presedani.py`) ga je djelomično nadišlo. Okidač: AI sloj.

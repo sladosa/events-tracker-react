@@ -94,13 +94,10 @@ Docs: `data-prep_data/Financije/KOKA_STRUKTURA_PRIJEDLOG.md`
 
 ### Prioritet 5: trening.xlsm (historijski podaci) ⬜
 
-**Status:** Nije početo. Nema vremenskog pritiska.
-
-**Plan:**
-1. Audit: otvoriti xlsm, dokumentirati sheetove i kolone
-2. Mapiranje: kolone → kategorije/atributi u Fitness_Garmin (ili nova area?)
-3. Python skripta za konverziju
-4. Import TEST → PROD
+**Status:** audit gotov (S176, 19.–20.10.2026.). **Jedini plan je `docs/TRENING_MIGRACIJA.md`**
+(inventar, odluke, Sašini odgovori); preduvjet je alat za preuređivanje (`docs/PREUREDJIVANJE_SPEC.md`).
+Raspodjela: `Fitness` (dnevni trening) · `Health_Sasa` (san, HRV, noćni puls, koraci) · `Life_Sasa`
+(periodi, trenuci, privatni dnevnik).
 
 ---
 

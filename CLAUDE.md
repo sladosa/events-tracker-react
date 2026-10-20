@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S175).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S176).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -27,32 +27,32 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 
 | r. | sekcija | |
 | ---: | --- | :---: |
-| 55 | [Strategic Position (2026-10-19)](<#Strategic Position (2026-10-19)>) |  |
-| 109 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 148 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 161 | [Critical rules](<#Critical rules>) | X |
-| 1345 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1824 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1840 | [Key files](<#Key files>) |  |
-| 1973 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 1993 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2016 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2044 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2084 | [Open bugs](<#Open bugs>) | ~ |
-| 2193 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2238 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2389 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2397 | [Backlog](<#Backlog>) | ~ |
-| 2401 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2409 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 55 | [Strategic Position (2026-10-20)](<#Strategic Position (2026-10-20)>) |  |
+| 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
+| 155 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 168 | [Critical rules](<#Critical rules>) | X |
+| 1362 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1841 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1857 | [Key files](<#Key files>) |  |
+| 1990 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2010 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2033 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2061 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2101 | [Open bugs](<#Open bugs>) | ~ |
+| 2210 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2255 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2406 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2414 | [Backlog](<#Backlog>) | ~ |
+| 2418 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2426 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2573 redaka, 18 sekcija._
+_Ukupno 2590 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
 ---
 
-## Strategic Position (2026-10-19)
+## Strategic Position (2026-10-20)
 [↑ Sadrzaj](#Sadrzaj)
 
 **Misija:** Personal structured memory/decision system nad povijesnim podacima. Pretvoriti
@@ -83,13 +83,19 @@ trenja (`docs/FINANCIJE_PROCES.md` §4). Ulazna točka: **`docs/FINANCIJE_PREGLE
 2. ✅ **F5 — sheet `AreaSettings` izveden S175 (19.10., na `test-branch`)**: Structure roundtrip
    sada nosi i `dashboard`, `groupings`, `export_profiles` i svaki budući ključ `areas.settings`.
    Princip „sve ide importom" je zatvoren; Structure export je od tada **jedna Area**.
-3. **`trening.xlsm`** (sljedeća domena; `C:\0_Sasa\OneDrive\trening.xlsm`). **Analiza gotova
-   (19.10., paralelna sesija uz S175): `docs/TRENING_MIGRACIJA.md`** — izmjeren inventar (7.451 dan
-   od 2006., 0 rupa/duplikata, kolone s erama), prijedlog modela (Area `Dnevnik`, leafovi `Trening`
-   i `Dan`) i **17 pitanja za Sašu; Q1–Q3 blokiraju generator**. Plan migracije živi na **jednom**
-   mjestu (taj dokument) — `Diary.md`, `AUTOMATION_SPEC.md` Faza 4, `DATA_PIPELINE_PLAN.md`
-   Prioritet 5 i BACKLOG samo upućuju (preusmjeravanje uputnica: TRENING §6 korak 1).
-4. **Financije kao template za novog korisnika** — prvo na **hrvatskom** (npr. Kokina
+3. **Alat za preuređivanje strukture — PRIJE treninga** (odluka 20.10., S176, Saša: *„nije moguće
+   unaprijed sve definirati savršeno"*). `docs/PREUREDJIVANJE_SPEC.md`: F1 = jezgra (planer u TS +
+   **transakcija u bazi** `058` + zapis prije/poslije + povrat) s preimenuj/spoji/premjesti/izdvoji
+   os; **prvi korisnik Financije** (`Namjena`, T38 — Koka se složila 20.10.). F2 (tip atributa,
+   izvođenje iz teksta) je preduvjet za uvoz treninga. **Zašto prije:** pravilo „zaključaj
+   taksonomiju prije uvoza" je u Financijama postalo preskupo; s alatom se zaključava samo identitet.
+4. **`trening.xlsm`** (sljedeća domena). Analiza i Sašini odgovori (S176): **`docs/TRENING_MIGRACIJA.md`**
+   — jedini plan. Raspodjela: **`Fitness`** (dnevni trening, uz postojeće sesije), **`Health_Sasa`**
+   (san, HRV, noćni puls, koraci — Koka smije vidjeti), **`Life_Sasa`** (nova, privatna: periodi,
+   trenuci, privatni dnevnik). Uvoz **grubo, pa dotjerivanje** alatom iz koraka 3. Uz to: periodi u
+   filtru (`docs/parked/Analytics_tab.md` — okidač ispunjen), Garmin dotok (podaci staju 02.2025.),
+   prvi usporedni upit (pripreme za maratone).
+5. **Financije kao template za novog korisnika** — prvo na **hrvatskom** (npr. Kokina
    prijateljica), poslije F5 i **pregleda razlika prije Structure uvoza** (BACKLOG „Napredak Aree
    između korisnika", S175): alat „Area → template" (rođak `prod_to_test.py`) + čišćenje
    osobnog (računi, dani naplate kartica, osobni Podtipovi, tekst skupne naplate u `due`).
@@ -122,7 +128,8 @@ stavke, `FINANCIJE_PROCES.md` §4 posao Financija; nijedan od njih ne ponavlja r
 | `sql/SQL_schema_V5_commented.sql`         | DB schema reference                                                              |
 | `docs/Code_Guidelines_React_v6.md`        | Code conventions                                                                 |
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas, Add Area „From template". ⚠ **Zastario (S49)**; prepisuje se uz Financije template (Strategic Position, korak 4). Jedino živo pravilo: template korisnik se ne može prijaviti (GoTrue odbija `.local`) |
-| `docs/TRENING_MIGRACIJA.md`               | **Migracija `trening.xlsm`** (19.10.) — izmjeren inventar `DIARY`, ere kolona, prijedlog modela `Dnevnik`, 17 pitanja (Q1–Q3 blokiraju generator). **Jedini** plan; zamjenjuje `docs/Diary.md` (04.07., povijest) |
+| `docs/TRENING_MIGRACIJA.md`               | **Migracija `trening.xlsm`** (S176) — vrh: zaključci 20.10. i Sašini odgovori (imaju prednost); ispod izmjeren inventar `DIARY`, ere kolona. Raspodjela Fitness / Health_Sasa / Life_Sasa, načelo „autoritet po atributu" za Garmin ↔ DIARY. **Jedini** plan; `Diary.md` je u `_archive/` |
+| `docs/PREUREDJIVANJE_SPEC.md`             | **Preuređivanje strukture** (S176, prije treninga) — DIO 1: što danas radi (§1), rupe O/A/K (§2), invarijante (§3), Financije `Namjena` izmjereno i odlučeno (§8). **DIO 2 = tehnički spec F1** (§9–§17: korak „kad/postavi", sheet `Preuređivanje`, planer, `058` + povrat, testovi, puštanje). Poopćuje K2 iz `KLASIFIKACIJA_ODRZAVANJE_SPEC.md` |
 | `docs/AUTOMATION_SPEC.md`                 | Post-Finish automatika — rata modal, comment template, `set_attribute`           |
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
 | `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md`       | **Uvoz filea u istoimenu Areu drukčije strukture** (prijedlog prije koda, S160) — pokus S159 (29/43 tiho), tri opcije, faze D3-F1..F4, odluke D3-1..6 čekaju Sašu |
@@ -720,6 +727,16 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   trigger (S118). Zatvoreno tek migracijom `sql/047`.
   ⚠ Isto vrijedi za svaku buduću per-Area konfiguraciju: **`areas.settings` je vlasnikov**
   (Sašina odluka, S134 — v. `docs/RLS_INVENTORY.md`).
+
+**Nova domena — prvo pogledaj što PROD već ima (S176)**
+
+- **⚠ Prijedlog modela za novu domenu kreće od POSTOJEĆIH Area na PROD-u, ne od dokumenata.**
+  Prvi prijedlog za `trening.xlsm` (19.10.) predložio je novu Areu `Dnevnik` za podatke koji već
+  žive u `Fitness` (sesije od 01.2026.) i `Health_Sasa` (Garmin dnevno 2014.–02.2025., nalazi krvi),
+  i tvrdio da `Krv` nije uvezen — jer je `MIGRATION_STATE.md` bio jedini izvor. Mjera je jeftina:
+  kategorije + broj eventa + raspon datuma po Arei (samo čitanje, service ključ).
+- **`Health_Sasa` je dijeljen s Kokom (read)** — izmjereno `data_shares` 20.10. Privatno (dnevnik,
+  `AM` tekst) ne smije ondje; brojke o spavanju smiju (Saša, S176).
 
 **Collab — vlasnik Aree (S123)**
 

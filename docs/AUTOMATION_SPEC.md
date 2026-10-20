@@ -242,7 +242,7 @@ Compact notacija → eventi (parser) i eventi → compact notacija (inverz).
 ```
 
 Inverz: korisno za **pregled i edit plana na visokoj razini** — umjesto row-by-row u tablici.
-Dizajn tek kad vidimo strukturu trening tablice (`trening.xlsm` analiza).
+Dizajn tek kad vidimo strukturu trening tablice — analiza je od S176 u `docs/TRENING_MIGRACIJA.md` (jedini plan migracije treninga).
 
 ---
 
@@ -255,4 +255,4 @@ Dizajn tek kad vidimo strukturu trening tablice (`trening.xlsm` analiza).
 | Faza 2 — Auto-comment template | ✅ S95 | `commentTemplate.ts`; roundtrip kroz Structure sheet |
 | Faza 2b — set_attribute pravila | ✅ S107b | `attributeRules.ts` + live prefill u AddActivityPage; T-S107b-1/2 Playwright PASS |
 | Faza 3 — Excel Automations sheet | ✅ S107t | `set_attribute` (S107b) + **`rata`** (S107t) prolaze Structure roundtripom; rata više ne treba SQL |
-| Faza 4 — Training parser | ⬜ | Čeka `trening.xlsm` analizu |
+| Faza 4 — Training parser | ⬜ | Analiza gotova (S176) — plan i redoslijed u `docs/TRENING_MIGRACIJA.md` |
