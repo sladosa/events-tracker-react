@@ -612,7 +612,9 @@ prije nego se tvrdi. Ako zatreba: `SET LOCAL statement_timeout` u funkciji.
   (`slug: =vrijednost` točno · `slug: ~dio` · `*: ~dio` · stari `uuid: =…` · `_` = namjerno
   obrisan). Planer prepisuje samo `=` (uuid ključ razriješi u slug), `~`/`*` upozori. Ključevi
   stupaca profila nose **ime atributa**, ne vrijednost — preuređivanje opcija ih ne dira.
-- Ime atributa `namjena` vs `za_koga` — kozmetika, Koka bira.
+- ~~Ime atributa~~ — **odlučeno 22.10. (Saša): `namjena`**, s izbornikom. ⚠ Uz `depends_on: tip` (radi
+  `default_map` za aute) lista ide u redak `WhenValue = *`, inače se nudi samo uz aute. Otvoreno:
+  vrijednost `Nena` ili „Nena / Kućište" (§8.2, Koka bira).
 
 ## 18. Izvedeno (S178, 22.10.) — i gdje je kod odstupio od §9–§15
 

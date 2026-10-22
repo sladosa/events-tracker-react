@@ -30,7 +30,8 @@ atribut `namjena`, sheet s koracima iz §8.2 pod Kokinim računom.
 
 ## Što treba od tebe
 1. **Za F1 ništa prije koda.** Na kraju idućeg dijela: naredbe za PROD dobiješ gotove.
-2. **Ime atributa** `namjena` (ili `za_koga`) — Koka bira, može i pri puštanju.
+2. ✅ **Ime atributa: `namjena`** (Saša 22.10.), s izbornikom Zajedničko · Koka · Saša · Kućište.
+   Otvoreno za Koku: vrijednost `Nena` ili „Nena / Kućište" (Nenin fond, spec §8.2) — može pri puštanju.
 3. Ostalo nepromijenjeno: **T-S174-3/5** (PROD razvrstavanje), **Garmin** izvoz, **studeni**
    (T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~03.–11.11., T-S175-3 ZABA_2026-10).
 
