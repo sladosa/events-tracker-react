@@ -13,7 +13,7 @@
 //   citiraju hrvatske vrijednosti.
 // ============================================================
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { formatAmount, formatDateHr } from '@/lib/amountFormat';
 import {
@@ -76,6 +76,14 @@ export function RestructurePanel({
   const [error, setError] = useState<string | null>(null);
   const [ack, setAck] = useState(false);
 
+  // Panel se rađa ISPOD rezultata uvoza (sve nule) — na ekranu se vidi samo rub naslova.
+  // Tko ne skrola, pročita „Structure unchanged" kao kraj i zatvori prozor: koraci se tada
+  // ne primijene, a izgleda kao obavljen posao (Saša, T-S179-1). Zato se prozor pomakne sam.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   useEffect(() => {
     if (!measurable || !areaId) return;
     let alive = true;
@@ -113,7 +121,7 @@ export function RestructurePanel({
   };
 
   return (
-    <div className="rounded-lg border border-indigo-200 overflow-hidden" data-testid="restructure-panel">
+    <div ref={rootRef} className="rounded-lg border border-indigo-200 overflow-hidden scroll-mt-2" data-testid="restructure-panel">
       <div className="bg-indigo-50 px-4 py-2 text-indigo-900">
         <p className="text-sm font-semibold">Restructure — preview</p>
         <p className="text-xs opacity-80">

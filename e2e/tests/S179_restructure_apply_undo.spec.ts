@@ -132,6 +132,9 @@ test.describe('S179 — Preuređivanje: Primijeni i Poništi kroz Structure uvoz
     await page.getByRole('button', { name: /^import$/i }).last().click();
     const panel = page.getByTestId('restructure-panel');
     await expect(panel).toBeVisible({ timeout: 60_000 });
+    // Panel se rađa ispod rezultata uvoza — prozor se mora sam pomaknuti na njega,
+    // inače „Structure unchanged" izgleda kao kraj i Close ostavi korake neprimijenjene.
+    await expect(page.getByText('Restructure — preview')).toBeInViewport({ timeout: 5_000 });
     await expect(page.getByText(/measured in/)).toBeVisible({ timeout: 60_000 });
     const step = page.getByTestId('restructure-step-1');
     await expect(step.locator('td').nth(2)).toHaveText('2');
