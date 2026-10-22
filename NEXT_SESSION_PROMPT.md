@@ -1,4 +1,4 @@
-> Pisano protiv `134b486` (S180) + commita koji nosi ovaj file (S180, 22.10.).
+> Pisano protiv `3ea74c9` (S180) + commita koji nosi ovaj file (S180, 22.10.).
 > **`main` = `1f53e90` (deploy 22.10., S179).** Na `test-branch`, NIJE na PROD-u: `ca7fa08` (klik sa strane ne
 > zatvara Structure Import dok postoji pregled) — deploy uz iduću izmjenu appa; S180 su samo Python alati i docs.
 > **PROD (22.10., 15:10):** preuređivanje Financija PRIMIJENJENO (op `e0c3de1f`, 6.066 promjena) — svaki redak

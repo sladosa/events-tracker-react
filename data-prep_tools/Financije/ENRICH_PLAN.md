@@ -1621,3 +1621,16 @@ Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.
   `--provjera` po pravilu: 144/147. Starija povijest 2024-01…2025-09: ZABA 38 → 70, RF 29 → 90.
 - **`visa_popravak.pisi(boje=)`**: vlastita boja Tip/Podtip po retku (ostali pozivatelji netaknuti).
 - Mjereno offline nad `_backup/prod/2026-10-18_1157` (`fixdb`, S173 metoda) — nula upisa.
+
+### S180 (2026-10-22) — rječnici poslije preuređivanja Financija (Namjena)
+
+- Preuređivanje na PROD-u (op `e0c3de1f`): Podtipovi s osobom spojeni (`Audible`, `Kindle`, `Sport`,
+  `Medical`, `Lječnička komora`, `Odjeća/obuća/ostalo`), `Projekti / Saša`, `Prihodi / Nasljedstvo`,
+  `Osiguranje / Kuća`; osoba je u atributu **`namjena`**. Spec: `docs/PREUREDJIVANJE_SPEC.md` §8.2, §20.
+- Po `Tools/preuredjivanje_grep.py` ispravljeni: `set_breakdown.py` (dry run PROD: grupiranje ISTO),
+  `pravila_trgovca.py`, `uvezi_transu.py` (`RUCNO`, `RUCNO_IZNOS`), `klasificiraj_transu.py` (+ `nena` →
+  `Prihodi / Nasljedstvo`). Jednokratne S107 skripte ne diraju se (zapis).
+- `fix_shortcuti_S180.py`: Sašin shortcut `AI_rucak` (Kokin uvoz ga ne vidi).
+- ⚠ **Otvoreno:** alati koji pišu nove retke (`fill_from_izvod`, `visa_uvoz_izvoda`) ne pišu `namjena` ⇒
+  novi retci s izvoda dolaze bez Namjene; pravila po trgovcu ne znaju Namjenu (npr. ljekarna na Visi je
+  bila `Medical_Sasa`, sada `Medical` bez osobe).
