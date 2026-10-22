@@ -361,6 +361,7 @@ prebrojati. Zato je ovo dobar **prvi test** cijelog alata.
 > **Saša 20.10.:** jezgra je **transakcija u bazi** (Postgres funkcija), ulaz je **sheet prvo**,
 > povrat kroz **zapis operacija** (prije / poslije), alat sa service ključem **smije**.
 > **S178:** jezgra izvedena i dokazana na TEST-u (`058`, planer, sheet) — stanje i odstupanja u **§18**.
+> **S179:** faza u Structure uvozu (pregled, Primijeni, Poništi), `apply.ts`, E2E, grep alat — **§19**.
 
 ## 9. Arhitektura u jednoj slici
 
@@ -595,8 +596,11 @@ prije nego se tvrdi. Ako zatreba: `SET LOCAL statement_timeout` u funkciji.
 2. `058` u Supabase SQL editoru (Saša), `dump_schema.py --diff` potvrdi.
 3. Deploy (merge `main`, Saša).
 4. Structure uvoz: atribut **`namjena`** (text, suggest: Zajedničko · Koka · Saša · Kućište,
-   `default_value` Zajedničko, `depends_on: tip` s `default_map` {`auto Lacetti`: Saša,
-   `auto C5`: Koka} — **postojeći** mehanizam forme).
+   `depends_on: tip`) — **tri retka** u Structure sheetu, svi s istom listom u `TextOptions`:
+   `WhenValue = *` / `Default` Zajedničko · `auto Lacetti` / Saša · `auto C5` / Koka.
+   ⚠ **Ne `default_value`** (S179): za `depends_on` atribut uvoz `Default` čita kao `default_map`
+   za taj `WhenValue` (T-S107u-2), a forma pada na `default_map['*']`. Izvedeno tako na TEST-u
+   (`Claude-temp_R/s179/measure.mjs build` je predložak redaka).
 5. Sheet `Preuređivanje` s koracima iz §8.2 — **pod Kokinim računom** (vlasnica; ili service
    alat, uz njen pristanak — §7.3). Suhi prolaz + `preuredjivanje_grep.py` ⇒ pregled ⇒ Primijeni.
 6. **Mjerenje poslije** (kontrolne brojke **zapisati prije**): saldo svakog računa **nepomaknut**
@@ -620,7 +624,7 @@ prije nego se tvrdi. Ako zatreba: `SET LOCAL statement_timeout` u funkciji.
 
 **Stanje:** `058` na **TEST-u** (ne na PROD-u) · `plan.ts` + `sheet.ts` + prazan sheet u
 Structure exportu na `test-branch` · **nema** faze u `StructureImportModal`, `apply.ts`, E2E ni
-`preuredjivanje_grep.py`. Uvoz popunjenog sheeta zasad samo **javlja** da koraci nisu primijenjeni.
+`preuredjivanje_grep.py`. ~~Uvoz popunjenog sheeta zasad samo **javlja** da koraci nisu primijenjeni.~~ **S179: faza u modalu postoji — §19.**
 
 **Oblik poziva** (`p_steps` / `p_config`) — opisan u zaglavlju `sql/058_restructure.sql`; planer ga
 gradi u `plan.rpc`. Slugovi se razriješe u ID-eve u planeru; baza ID-eve **provjerava** (kategorija
@@ -643,3 +647,26 @@ u Arei, atribut tekstualan i na toj kategoriji, config cilj u Arei).
 **Izmjereno na TEST-u (kopija PROD-a 22.10.):** 10 koraka, 9.743 promjene + 12 config zapisa ⇒
 apply **2,5 s** (service preko PostgREST-a; `authenticated` ima `statement_timeout` 8 s — pod Kokinim
 računom **nije** mjereno, ali je isti posao), povrat **1 s**, `sha256` 12/12 tablica jednak.
+
+## 19. Izvedeno (S179, 22.10.) — faza u Structure uvozu
+
+**Stanje:** na `test-branch` — `restructure/apply.ts`, `RestructurePanel.tsx` (faza u
+`StructureImportModal`), E2E `S179_restructure_apply_undo`, `Tools/preuredjivanje_grep.py`.
+`structureImport.ts` §12 više ne javlja „NIJE primijenjeno" nego predaje korake modalu
+(`result.restructure`). Na TEST-u postoji atribut `namjena` (Structure uvozom, §16.4). PROD: ništa.
+
+| Mjesto | Spec | Izvedeno | Zašto |
+| --- | --- | --- | --- |
+| §9 ponovno mjerenje | „planer nad svježom snimkom: 0 starih" | **baza = predviđanje pregleda** (`plan.predicted`: vrijednosti iz „postavi" po eventu + svaki config zapis `jsonb =` `after`); poslije povrata baza = stanje prije | izmjereno: niz koraka ne mora biti idempotentan (99 postavi zadano, 100 ga na 3 retka obriše) ⇒ „isti koraci opet" je javljao **6 promjena nad ispravnom bazom** |
+| §12 ulaz | sve tekstualne vrijednosti | samo slugovi koje koraci trebaju (uvjeti, „postavi", `depends_on` roditelj/dijete, razine `groupings`), **paralelno po atributu** | 14 s → 9 s za pregled (TEST, 10 koraka, 7 atributa); na PROD koracima (tip/podtip/namjena) manje |
+| §14 Area | — | iz Structure sheeta istog filea; file s više Area ⇒ greška | koraci nose samo ime kategorije |
+| §14 shortcuti | — | snimka vidi samo **pozivateljeve** shortcute (RLS po korisniku) ⇒ žuto upozorenje **kad Area ima share** | tuđi shortcut ostaje sa starom vrijednošću; upozorenje koje uvijek pali nauči se otklikati |
+| §14 Poništi | gumb u modalu | isto; `op_id` piše u rezultatu (za alat) | popis operacija = F1b |
+| §16.4 `namjena` | `default_value` Zajedničko | red `WhenValue = *` s `Default` | v. §16.4 |
+
+**Izmjereno kroz modal, pod vlasnikom (`authenticated`, `statement_timeout` 8 s), TEST = kopija PROD-a:**
+10 koraka / 9.743 promjene: apply **2,4 s i 4,4 s**, undo **1,9 s i 3,2 s** (RPC iz preglednika);
+pregled ~9 s, provjera poslije ~7 s. Dva ciklusa primijeni → poništi: `sha256` **11/12** tablica
+jednak (12. = `attribute_definitions` +1, `namjena`). ⚠ Zalihost do 8 s je **~2×** — PROD plan
+(§8.2) je manji (bez Visa/RF koraka, ~5,6k promjena), ali **ne spajati** u jedan sheet više velikih
+domena; dijeli se u dva uvoza.

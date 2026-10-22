@@ -2,7 +2,24 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S178 (2026-10-22, F1 jezgra preuređivanja na TEST-u — dokaz izmjeren alatom, bez novih ručnih testova; ručni test dolazi s modalom) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S179 (2026-10-22, F1 faza u Structure uvozu — pregled, Primijeni, Poništi; `namjena` na TEST-u) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S179 — Preuređivanje u Structure uvozu: pregled, Primijeni, Poništi (2026-10-22)
+
+Popunjen sheet `Preuređivanje` više se ne javlja kao „NIJE primijenjeno" — uvoz ga predaje modalu, koji ga planira nad svježom snimkom, pokaže korake s brojkama i primjerima, i primjenjuje uz kvačicu; Poništi u istom prozoru. Ponovno mjerenje provjerava da je baza točno ono što je pregled predvidio. Na TEST-u (kopija PROD-a) pod vlasnikom: 9.743 promjene, apply 2,4–4,4 s, undo 1,9–3,2 s.
+
+**Detalji testova:** [tests/S179_tests.md](tests/S179_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S179-1 | TEST lokalno: `structure_s179.xlsx` ⇒ pregled 10 koraka / 9.743 / 5.448 (brojke po koraku u detaljima) ⇒ Apply ⇒ „exactly what the preview predicted" ⇒ druga kartica `Audible` 68, pločica `RF račun`, saldo isti ⇒ Undo ⇒ „exactly what it was before", `Audible` 0 | ⬜ |
+| T-S179-2 | TEST: razmak na kraju vrijednosti ⇒ crvena greška, nema Apply, ništa upisano | ⬜ |
+| T-S179-3 | TEST: Add forma — `Namjena` tek uz Tip; `Zabava` ⇒ Zajedničko, `auto Lacetti` ⇒ Saša, `auto C5` ⇒ Koka | ⬜ |
+| T-S179-4 | E2E: sheet s preimenovanjem ⇒ lista novi naziv ⇒ Poništi ⇒ stari | ✅ S179 — čuva automatski test (`S179_restructure_apply_undo`, protuprovjera pada) |
+| T-S179-5 | `preuredjivanje_grep.py` nad `structure_s179.xlsx` ⇒ 71 jak pogodak; za PROD korake `set_breakdown.py` 92/113/125, `uvezi_transu.py:72` | ✅ S179 — izmjereno |
+| T-S179-6 | PROD puštanje §16: backup ⇒ sonda `-` ⇒ `058` ⇒ sonda DA/NE ⇒ deploy ⇒ `namjena` uvozom ⇒ sheet §8.2 pod Kokom ⇒ saldo nepomaknut, `N/A` isti, grep ispravljen | ⬜ |
 
 ---
 
