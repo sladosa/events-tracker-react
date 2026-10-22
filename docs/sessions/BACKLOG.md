@@ -182,6 +182,14 @@
 - **Razrez: prekidač Bucketi | Namjena** (S176, PREUREDJIVANJE §8.3) — pločica danas zna jedno
   grupiranje (R5); dolazi poslije atributa `Namjena`.
 - **Traženje u izborniku po oba nivoa** (S176, O6) — „pok" ⇒ `Razno / Pokloni`; ne ovisi o jezgri.
+- **`AreaSettings` sheet: objašnjenje po retku** (Saša, T-S175-6, 22.10.) — 325 redaka putanja bez
+  riječi što koji radi. Prijedlog: rječnik *uzorak putanje → opis* (izvor: komentari tipova u
+  `database.ts`), kolona `Opis` (import je ignorira) + Data Validation „input message" na `Path`
+  (limiti 32/255, `explain()` iz delta sheeta); test da svaka izvezena putanja ima opis. Retke
+  `export_profiles.*.columns[n].*` grupirati (outline) jer su šum za čitanje.
+- **Razrez: os datuma (po kupnji / po naplati) samo gdje ima smisla** (Saša, 22.10.) — na strani
+  Prihodi ne mijenja ništa (prihod sjeda isti dan). Prijedlog: ključ u configu pločice
+  (`date_axes` po strani), ne pravilo u kodu. Uz prekidač Bucketi | Namjena (isti zahvat na pločici).
 - **Garmin dotok do danas** (S176) — `Health_Sasa > Garmin_data` staje 14.02.2025.; opcije u
   TRENING_MIGRACIJA („Garmin"). Spojeno s „Garmin/Sleep" niže.
 **~~Kolone liste: `—` za vrijeme učitavanja~~ — ✅ S159.** Uzrok nije bio izostanak
