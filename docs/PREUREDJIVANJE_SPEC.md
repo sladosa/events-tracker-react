@@ -331,6 +331,17 @@ vide brojke; ne traže zaseban razgovor):
 | `Projekti / Sasa` + `Prihodi / Saša` | `Sasa` → `Saša` | O1, jedan naziv |
 | Retci `Projekti / Sasa` (Konzum, Biberon…) | Namjena `Saša`; Tip po tome što je kupljeno — **prijedlog po trgovcu** iz povijesti, ti potvrđuješ | jedine prave odluke po retku |
 
+**✅ ODLUČENO 22.10. (S180, Saša) — sheet za PROD, izmjereno na kopiji PROD-a:**
+
+| Izbor | Odluka | Izmjereno |
+| --- | --- | --- |
+| O5 opseg | **sve s osobom u imenu**: Audible, Kindle, Sport, Medical, Lječnička komora, Odjeća/obuća/ostalo → jedan Podtip + Namjena; `Prihodi / Koka`, `Saša`, `Projekti / Koka` samo Namjena (Podtip izvora = kasnije) | 445 redaka preimenovano; svaki par `_Koka`/`_Sasa` je u **istom** bucketu ⇒ spoj se sažme |
+| `Projekti / Sasa` | **ostaje `Projekti / Saša`** + Namjena Saša — bez odluka po retku | 113 redaka nije „razno Sašino": 64 ručka (Biberon/Kvatrić/Time, Radnička 49) 619 €, 30 Konzum ista adresa 152 €, 18 Claude/Anthropic/Perplexity 571 €, 1 parking — trošak projekta je odgovor na „na što" |
+| Nenine uplate 25.07./28.07. | `Prihodi / Nasljedstvo` (nov Podtip) + Namjena „Nena / Kućište"; `Razno / Nena's funds` (14) isto Namjena | fond po Namjeni: ušlo 12.000, izašlo 2.465,05, **ostaje 9.534,95** |
+| Decathlon | Odjeća_Sasa (13) **i** N/A (13) → `Zdravlje / Sport` + Saša; Sport_Sasa (8) kroz O5 | N/A −13 |
+| `Kuća / Osiguranje` | 4 Generali → `Osiguranje / Kuća`; naknada 0,17 (§8.1 „prava greška") → `Domaćinstvo / Bankovni troškovi` | — |
+| Izbornik Namjene | Zajedničko · Koka · Saša · **Nena / Kućište** | — |
+
 ### 8.3 Kako se prikazuje Namjena i kako se definiraju bucketi
 
 **Bucketi danas:** `areas.settings.groupings["Vrsta troška"]` — popis redaka *bucket ← (Tip, Podtip)*
@@ -604,8 +615,9 @@ prije nego se tvrdi. Ako zatreba: `SET LOCAL statement_timeout` u funkciji.
 5. Sheet `Preuređivanje` s koracima iz §8.2 — **pod Kokinim računom** (vlasnica; ili service
    alat, uz njen pristanak — §7.3). Suhi prolaz + `preuredjivanje_grep.py` ⇒ pregled ⇒ Primijeni.
 6. **Mjerenje poslije** (kontrolne brojke **zapisati prije**): saldo svakog računa **nepomaknut**
-   (Tip/Podtip/Namjena nisu u filtru salda) · N/A broj isti · Σ razreza isti osim izvedenog
-   pomaka (Anja → Transfer: prihodi manji za taj iznos) · stari nazivi: 0 mjesta.
+   (Tip/Podtip/Namjena nisu u filtru salda) · Σ neto isti · izvedeni pomaci (S180: N/A −13 zbog
+   Decathlona; Anja 25.09. **Transfer → Prihodi** +450) · stari nazivi: 0 mjesta.
+   Alat: `Claude-temp_R/s180/kontrola.mjs <oznaka> [--env prod]` + `--diff` (samo čitanje).
 7. Python rječnici (`pravila_trgovca.py` …) — ispraviti po grep popisu istog dana.
 
 ## 17. Otvoreno (odluke pri izvedbi, ne blokiraju početak)
@@ -671,3 +683,38 @@ pregled ~9 s, provjera poslije ~7 s. Dva ciklusa primijeni → poništi: `sha256
 jednak (12. = `attribute_definitions` +1, `namjena`). ⚠ Zalihost do 8 s je **~1,6×** (najgore izmjereno 4,9 s) — PROD plan
 (§8.2) je manji (bez Visa/RF koraka, ~5,6k promjena), ali **ne spajati** u jedan sheet više velikih
 domena; dijeli se u dva uvoza.
+
+## 20. Izvedeno (S180, 22.10.) — sheet §8.2 na kopiji PROD-a
+
+**Stanje:** sheet složen alatom `Claude-temp_R/s180/build_sheet.mjs <structure_export.xlsx>` (isti nad
+TEST i PROD exportom — event ID-evi su isti, `prod_to_test.py`); na TEST-u primijenjen i ostavljen
+(op `2b200967`). PROD čeka deploy (`ca7fa08`) i Kokin uvoz — T-S180-2.
+
+| Mjesto | Izvedeno | Zašto |
+| --- | --- | --- |
+| koraci po retku | `event_id` **uz** uvjet Tip/Podtip (Decathlon, Anja, Nena, naknada) | brana: promijeni li se redak, broj se ne poklopi i baza odbije cijelu operaciju |
+| bucketi koji bi se raspali | (Razno, Odjeća_Sasa) i (Kuća, Osiguranje) **maknuti iz `AreaSettings` u istom fileu** | planer za raspadnut par samo upozori i ostavi mrtav redak; Structure dio uvoza ide PRIJE planiranja, pa par u planiranju već ne postoji; poslije koraka ih pokrivaju (Razno, Odjeća/obuća/ostalo) i (Osiguranje, *) u **istom** bucketu. Indeksi `rows[N]` se ne prenumeriraju (`unflattenAreaSettings` sažme po redu) |
+| izbornik Namjene | redak `namjena` × 3 u Structure sheetu istog filea | Namjena je bila prazna ⇒ obična izmjena liste, bez koraka |
+| shortcuti | `fix_shortcuti_S180.py` (service, poslije Apply) | planer vidi samo vlasnikove; Sašin `AI_rucak` nosi `Projekti / Sasa` (PROD, 1 od 5) |
+| grep | korak s `event_id` se preskače | `kad tip=N/A` + ID-evi je davao jak pogodak za svaki `'N/A'` (106 → 29) |
+
+**Izmjereno (TEST = PROD 22.10. 14:15, pod vlasnikom):** 24 koraka / 6.066 promjena, pregled 12 s (drugi
+put 4 s), apply **2,1–2,4 s**, provjera ✓, undo 1,1 s ✓. Saldo i Σ neto isti u cent; N/A 1.392 → 1.379;
+Namjena: Zajedničko 4.420 · Saša 548 · Koka 471 · Nena / Kućište 16. Poslije povrata tip/par/Namjena/saldo
+ISTO. `set_breakdown.py` nad primijenjenim TEST-om: „grupiranje: ISTO", nesvrstano: ništa.
+Python rječnici ispravljeni po grep popisu (`set_breakdown`, `pravila_trgovca`, `uvezi_transu`,
+`klasificiraj_transu` — i `nena` → `Prihodi / Nasljedstvo`); preostalih 8 pogodaka su jednokratne S107.
+
+**⚠ Nađeno, NIJE popravljeno (preduvjet za iduće preuređivanje Namjene):** grana planera „dodaj cilj u
+izbornik" (§12, `depends_on`) radi samo kad atribut **ima izvora** (prije je imao vrijednost). Tada za
+roditelja bez vlastitog ključa stvori ključ **samo s ciljem** — a lista Namjene živi pod `*` (ključevi:
+`*`, `auto C5`, `auto Lacetti`). Korak koji mijenja POSTOJEĆU Namjenu (npr. C5 putovanja → Zajedničko,
+preimenovanje „Nena / Kućište") dao bi `options_map.Zabava = ["Zajedničko"]` ⇒ izbornik pod Zabavom
+nudi samo to. Isto „makni / preimenuj" ne vidi listu pod `*` (traži `om[roditelj]`). Danas bezopasno
+(Namjena je bila prazna ⇒ grana se ne izvrši). Popravak: cilj koji `*` već nudi ne stvara ključ;
+izvor čija lista je pod `*` mijenja `*`. Uz test u `restructurePlan.test.mjs`.
+
+**⚠ Otvoreno:** Python uvozni alati (`fill_from_izvod`, `visa_uvoz_izvoda`) ne pišu Namjenu ⇒ novi retci s
+izvoda dolaze bez nje (forma je puni sama kroz `default_map`, Excel uvoz ne). Prije prekidača
+Bucketi | Namjena (RAZREZ R5) — ili alati upisuju zadano po Tipu, ili razrez prazninu broji kao Zajedničko.
+

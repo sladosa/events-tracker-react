@@ -2,24 +2,22 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S179 (2026-10-22, F1 faza u Structure uvozu — pregled, Primijeni, Poništi; `namjena` na TEST-u) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S180 (2026-10-22, korak 8 Financija: sheet §8.2 izmjeren na TEST-u, čeka Kokin uvoz na PROD-u) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 
-## S179 — Preuređivanje u Structure uvozu: pregled, Primijeni, Poništi (2026-10-22)
+## S180 — Korak 8 preuređivanja Financija: sheet §8.2, Namjena „Nena / Kućište" (2026-10-22)
 
-Popunjen sheet `Preuređivanje` više se ne javlja kao „NIJE primijenjeno" — uvoz ga predaje modalu, koji ga planira nad svježom snimkom, pokaže korake s brojkama i primjerima, i primjenjuje uz kvačicu; Poništi u istom prozoru. Ponovno mjerenje provjerava da je baza točno ono što je pregled predvidio. Na TEST-u (kopija PROD-a) pod vlasnikom: 9.743 promjene, apply 2,4–4,4 s, undo 1,9–3,2 s.
+Sheet s 24 koraka (O5 osoba → Namjena za sve `_Koka/_Sasa`, `Projekti / Saša`, Nenin fond → `Prihodi / Nasljedstvo`, Decathlon → Sport, Anja, Kuća/Osiguranje, auti, zadano Zajedničko) složen alatom nad Structure exportom; na TEST-u (= PROD) 6.066 promjena, saldo i Σ isti u cent. Python rječnici ispravljeni po grep popisu; Sašin shortcut `AI_rucak` čeka alat (Kokin uvoz ga ne vidi).
 
-**Detalji testova:** [tests/S179_tests.md](tests/S179_tests.md)
+**Detalji testova:** [tests/S180_tests.md](tests/S180_tests.md)
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S179-1 | TEST lokalno: `structure_s179.xlsx` ⇒ pregled 10 koraka / 9.743 / 5.448 (brojke po koraku u detaljima) ⇒ Apply ⇒ „exactly what the preview predicted" ⇒ druga kartica `Audible` 68, pločica `RF račun`, saldo isti ⇒ Undo ⇒ „exactly what it was before", `Audible` 0 | ✅ S179 (22.10., Saša, TEST lokalno) — sve brojke po koraku točne; Apply **4,9 s**, provjera 13,6 s; druga kartica: izbornik samo `Audible`, `Audible` 68 (All Time), `RF račun` 905,45 € uz sidro 11.10. 878,09 € i povijest (6), Košare `VISA · ~05.11.` pod `RF račun`; Undo 9.752 / 2,2 s / provjera ✓; poslije: `Sašin tekući RF` 905,45 €, `Audible_Koka`/`_Sasa` natrag |
-| T-S179-2 | TEST: razmak na kraju vrijednosti ⇒ crvena greška, nema Apply, ništa upisano | ✅ S179 (22.10., Saša) — razmak u koracima 1 i 2 ⇒ dvije crvene greške, bez kvačice i Apply; zaglavlje 9.675 promjena (bez ta dva koraka) |
-| T-S179-3 | TEST: Add forma — `Namjena` tek uz Tip; `Zabava` ⇒ Zajedničko, `auto Lacetti` ⇒ Saša, `auto C5` ⇒ Koka | ✅ S179 (22.10., Saša) — `Zabava` ⇒ Zajedničko, `auto Lacetti` ⇒ Saša, polje ispod Statusa; `auto C5` nije snimljen (isti mehanizam, `default_map`) |
-| T-S179-4 | E2E: sheet s preimenovanjem ⇒ lista novi naziv ⇒ Poništi ⇒ stari | ✅ S179 — čuva automatski test (`S179_restructure_apply_undo`, protuprovjera pada) |
-| T-S179-5 | `preuredjivanje_grep.py` nad `structure_s179.xlsx` ⇒ 71 jak pogodak; za PROD korake `set_breakdown.py` 92/113/125, `uvezi_transu.py:72` | ✅ S179 — izmjereno |
-| T-S179-6 | PROD puštanje §16: backup ⇒ sonda `-` ⇒ `058` ⇒ sonda DA/NE ⇒ deploy ⇒ `namjena` uvozom ⇒ sheet §8.2 pod Kokom ⇒ saldo nepomaknut, `N/A` isti, grep ispravljen | ⬜ 22.10. koraci 1–7 GOTOVI: backup `prod/2026-10-22_1328` (111.372 retka) · sonda prije: sve tri RPC probe `-` za 4 uloge, ostale tablice nepromijenjene · `058` kroz SQL editor · shema po objektima: samo 058 (+ 056/057 koje dump nije imao) · sonda poslije: vlasnik DA, grantee NE, stranac NE, service DA; `restructure_ops` prazan · deploy (`main`) · `namjena` Kokinim uvozom (`Attributes created 1`, 16 atributa, vlasnik Koka), mobitel: `auto C5` ⇒ Koka. Ostaje korak 8 (sheet §8.2). |
+| T-S180-1 | TEST kroz modal: `24 steps · 6.066 changes` ⇒ Apply 2,4 s ✓ ⇒ saldo/Σ isti, N/A 1.392 → 1.379 ⇒ Undo 1,1 s ✓ ⇒ sve isto | ✅ S180 — izmjereno (automatski, pod vlasnikom); TEST ostavljen primijenjen (op `2b200967`) |
+| T-S180-2 | PROD: backup ⇒ export ⇒ `build_sheet.mjs` ⇒ Koka uvozi ⇒ pregled 24 / 6.066 (+ žuto o shortcutima) ⇒ Apply ✓ ⇒ `kontrola.mjs --diff` = TEST ⇒ `fix_shortcuti_S180.py` ⇒ `set_breakdown` ISTO ⇒ mobitel | ⬜ |
+| T-S180-3 | `preuredjivanje_grep.py`: korak s `event_id` ne gasi naziv (106 → 29 jakih; poslije ispravka 8, svi u jednokratnim S107) | ✅ S180 — izmjereno; S179 sheet i dalje 71 |
+| T-S180-4 | `fix_shortcuti_S180.py` na TEST-u: podmetnut `Projekti / Sasa` ⇒ 1 od 4 ⇒ upis i čitanje ✓ ⇒ 0 od 4 | ✅ S180 — izmjereno |
 
 ---
 

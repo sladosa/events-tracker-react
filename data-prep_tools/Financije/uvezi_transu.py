@@ -59,7 +59,7 @@ KOKA = ROOT / 'data-prep_data' / 'Financije' / 'Financije 2026-08-23.xlsx'
 DRY = '--apply' not in sys.argv
 
 RUCNO = {
-    '001 pj gajeva': ('Zdravlje', 'Medical_Koka'),
+    '001 pj gajeva': ('Zdravlje', 'Medical'),
     # `GARAZA CVJETNI` i `GARAZA KAPTOL` su presedani, ali kljuc je po trgovcu
     # pa Tuskanac nema svoj. Parking je parking -- 134/145 presedana za Podtip.
     'javna garaza tuskanac': ('Prijevoz', 'Taksi, Zet, Parking'),
@@ -69,7 +69,7 @@ RUCNO = {
 # Kljuc + iznos, kad sam trgovac nije dovoljan
 RUCNO_IZNOS = {
     ('apple.com/bill', 9.99): ('Zabava', 'HBOmax'),
-    ('audible', 8.16): ('Zabava', 'Audible_Koka'),
+    ('audible', 8.16): ('Zabava', 'Audible'),
 }
 LH_2_3 = ['7e5c06ca-62b8-4160-84b7-7e7024e0207f', 'a7317f60-b174-42bc-9fb6-1675169c5244']
 

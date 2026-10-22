@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S179).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S180).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 155 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 168 | [Critical rules](<#Critical rules>) | X |
-| 1377 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1856 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1872 | [Key files](<#Key files>) |  |
-| 2014 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2034 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2057 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2085 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2125 | [Open bugs](<#Open bugs>) | ~ |
-| 2234 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2279 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2430 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2438 | [Backlog](<#Backlog>) | ~ |
-| 2442 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2450 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1383 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1862 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1878 | [Key files](<#Key files>) |  |
+| 2020 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2040 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2063 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2091 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2131 | [Open bugs](<#Open bugs>) | ~ |
+| 2240 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2285 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2436 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2444 | [Backlog](<#Backlog>) | ~ |
+| 2448 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2456 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2614 redaka, 18 sekcija._
+_Ukupno 2620 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -469,6 +469,12 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   99 postavi zadano, 100 ga obriše ⇒ 6 lažnih „preostalih" promjena nad ispravnom bazom).
   ⚠ Snimka za planer mora biti CIJELA (`fetchAllPaged` + `order`, greška baca): odrezana snimka ne daje
   krivu primjenu nego odbijenu, uz poruku „baza se promijenila od pregleda" koja laže.
+  ⚠ **Lista `depends_on` pod `*` (Namjena) planer NE ZNA mijenjati** (S180, nađeno čitanjem, spec §20):
+  korak koji mijenja POSTOJEĆU vrijednost takvog atributa stvori ključ po roditelju SAMO s ciljem ⇒ izbornik
+  pod `Zabava` nudi samo „Zajedničko". Do popravka Namjenu s retcima ne preuređivati sheetom. (S180 je
+  prošao jer je Namjena bila prazna — grana se izvrši tek kad atribut ima izvora.)
+  ⚠ **Shortcute drugog korisnika planer ne vidi** (RLS): prije uvoza ih prebroji service ključem — S180:
+  Sašin `AI_rucak` (`Projekti / Sasa`) ⇒ `fix_shortcuti_S180.py` poslije Apply.
 - **Promjena sluga lomi reference.** `depends_on` (S105d), a od Faze 1 i `dashboard.widgets[]`.
   Fixup referenci mora ići uz svaki rename sluga.
 - **`set_attribute` se evaluira u Add Activity i (od S127) u Edit — ne u Import.**

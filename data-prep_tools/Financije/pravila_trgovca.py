@@ -65,10 +65,10 @@ PRAVILA = [
     (r'parking',                                'Mastercard', 'Prijevoz',    'Taksi, Zet, Parking',      '27/27'),
     (r'parking',                                'Visa',       'Prijevoz',    'Taksi, Zet, Parking',      '11/11'),
     # Zdravlje — ljekarne samo na Visi (Sašina kartica); 2 od 36 su Kokine
-    (r'(\bljekarn|^farmacia\b)',                'Visa',       'Zdravlje',    'Medical_Sasa',             '33/36'),
-    (r'\boptika stepinac\b',                    None,         'Zdravlje',    'Medical_Koka',             '3/3'),
-    (r'^(x dent|ord\. dent)\b',                 None,         'Zdravlje',    'Medical_Sasa',             '5/5'),
-    (r'^(worldclass|playfitness|cf fitness)\b', 'Visa',       'Zdravlje',    'Sport_Sasa',               '2/2'),
+    (r'(\bljekarn|^farmacia\b)',                'Visa',       'Zdravlje',    'Medical',                  '33/36'),
+    (r'\boptika stepinac\b',                    None,         'Zdravlje',    'Medical',                  '3/3'),
+    (r'^(x dent|ord\. dent)\b',                 None,         'Zdravlje',    'Medical',                  '5/5'),
+    (r'^(worldclass|playfitness|cf fitness)\b', 'Visa',       'Zdravlje',    'Sport',                    '2/2'),
     # Auto — samo Mastercard (Kokina kartica = C5); Inter Cars = zimske gume za C5 (Saša)
     (r'^(ina|petrol|lukoil|tifon)\b',           'Mastercard', 'auto C5',     'gorivo',                   '15/15'),
     (r'^inter ?cars?\b',                        'Mastercard', 'auto C5',     'popravci',                 '1/1'),
@@ -79,7 +79,7 @@ PRAVILA = [
     # „30/30" je uključivao jedan Nenin račun krivo razvrstan kao Kuća / Plin.
     (r'^(gpz-opskrba|gradska plinara)',         'Racun',      'Kuća',        'Plin',                     '29/29'),
     # Razno / Zabava
-    (r'^zara(home)?\b',                         None,         'Razno',       'Odjeća/obuća/ostalo_Koka', '7/7'),
+    (r'^zara(home)?\b',                         None,         'Razno',       'Odjeća/obuća/ostalo',      '7/7'),
     (r'^google\W*youtube',                      'Mastercard', 'Zabava',      'Youtube',                  '25/25'),
     # Račun
     (r'^zarađena kamata',                       'Racun',      'Prihodi',     'Koka',                     '2/2'),

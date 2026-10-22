@@ -25,8 +25,10 @@ STO JE „STARA VRIJEDNOST"
 /!\\ `fix_*.py` i `Obsolete/` se preskacu: to je ZAPIS sto je uradjeno nad
     podacima (CLAUDE.md, „87 Python alata"), ne alat koji ce sutra predloziti
     stari naziv. Ispravljati povijest bi bilo krivotvorenje zapisa.
-/!\\ Koraci samo s `event_id` (bez „kad" za taj atribut) nemaju staru vrijednost
-    -- pojedinacne odluke ne gase naziv.
+/!\\ Korak s `event_id` nema staru vrijednost, ni kad uz popis nosi i „kad"
+    (S180) -- pojedinacne odluke ne gase naziv. „kad" je ondje brana (broj se
+    ne poklopi ako se redak promijenio), ne izvor: korak `kad tip=N/A` + 13 ID-eva
+    davao je jak pogodak za svaki `'N/A'` u kodu.
 
 Izlaz: 0 = nema jakih pogodaka, 1 = ima (popis je posao za isti dan).
 """
@@ -69,6 +71,8 @@ def read_steps(path):
         low = h.lower()
         if low == 'korak':
             cols.append(('n', i, None))
+        elif low == 'event_id':
+            cols.append(('ids', i, None))
         elif low.startswith(WHEN):
             cols.append(('when', i, h[len(WHEN):].strip()))
         elif low.startswith(SET):
@@ -79,7 +83,7 @@ def read_steps(path):
             break
         if not r or all(c is None or str(c).strip() == '' for c in r):
             continue
-        n, when, setv = None, {}, {}
+        n, when, setv, ids = None, {}, {}, False
         for kind, i, slug in cols:
             v = r[i] if i < len(r) else None
             if v is None or str(v).strip() == '':
@@ -87,16 +91,21 @@ def read_steps(path):
             if kind == 'n':
                 n = v
                 continue
+            if kind == 'ids':
+                ids = True
+                continue
             v = None if str(v).strip() == EMPTY else str(v)
             (when if kind == 'when' else setv)[slug] = v
-        steps.append((n, when, setv))
+        steps.append((n, when, setv, ids))
     return steps
 
 
 def old_values(steps):
     """[(korak, slug, stara, {kontekst slug: vrijednost}, nova)]"""
     out = []
-    for n, when, setv in steps:
+    for n, when, setv, ids in steps:
+        if ids:
+            continue
         for slug, new in setv.items():
             old = when.get(slug)
             if old is None or old == new:

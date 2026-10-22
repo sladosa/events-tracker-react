@@ -89,7 +89,7 @@ BUCKETS: list[tuple[str, list[tuple[str, str]]]] = [
         ('Informatika', 'Komunikacije_T-mobile'), ('Informatika', 'Cloud backup'),
         ('Informatika', 'Microsoft'), ('Informatika', 'HP'),
         ('Informatika', 'Hosting domene (DPS, Igor)'),
-        ('Zabava', 'Audible_Koka'), ('Zabava', 'Audible_Sasa'), ('Zabava', 'Kindle_Koka'),
+        ('Zabava', 'Audible'), ('Zabava', 'Kindle'),      # S180 O5: osoba je u Namjeni
         ('Zabava', 'Spotify'), ('Zabava', 'Prime'), ('Zabava', 'Sky'), ('Zabava', 'Disney'),
         ('Zabava', 'HBOmax'), ('Zabava', 'Youtube'),
         ('Prijevoz', '*'),
@@ -97,7 +97,7 @@ BUCKETS: list[tuple[str, list[tuple[str, str]]]] = [
     ]),
     ('Kvaliteta života', [
         ('Razno', 'Temu'), ('Domaćinstvo', 'Kave/jelo vani'),
-        ('Zdravlje', 'Sport_Sasa'), ('Zdravlje', 'Sport_Koka'),
+        ('Zdravlje', 'Sport'),
         ('Zabava', 'Kino/Kazalište/Muzeji'), ('Zabava', 'Wellness'),
     ]),
     ('Putovanja i pokloni', [
@@ -105,12 +105,11 @@ BUCKETS: list[tuple[str, list[tuple[str, str]]]] = [
     ]),
     ('Povremeno nužno', [
         ('Osiguranje', '*'), ('Porezi', '*'),   # R11: Porezi smiju biti negativni
-        ('Zdravlje', 'Medical_Sasa'), ('Zdravlje', 'Medical_Koka'), ('Zdravlje', 'Other'),
-        ('Razno', 'Odjeća/obuća/ostalo_Koka'), ('Razno', 'Odjeća/obuća/ostalo_Sasa'),
+        ('Zdravlje', 'Medical'), ('Zdravlje', 'Other'),
+        ('Razno', 'Odjeća/obuća/ostalo'),
         ('Razno', 'Razno, sitnice'),
         ('Informatika', 'Hardver'), ('Informatika', 'Odrzavanje i servis'),
         ('Advokati', '*'),
-        ('Kuća', 'Osiguranje'),                 # R3 (§4.4)
     ]),
     ('Kuća investicije', [
         ('Kuća', 'Popravci, održavanje'),        # bivše „…, osiguranje" (S167)
@@ -119,10 +118,10 @@ BUCKETS: list[tuple[str, list[tuple[str, str]]]] = [
         ('Razno', "Nena's funds"),
     ]),
     ('Koka razno', [
-        ('Projekti', 'Koka'), ('auto C5', '*'), ('Zdravlje', 'Lječnička komora_Koka'),
+        ('Projekti', 'Koka'), ('auto C5', '*'), ('Zdravlje', 'Lječnička komora'),
     ]),
     ('Saša razno', [
-        ('Projekti', 'Sasa'), ('auto Lacetti', '*'),
+        ('Projekti', 'Saša'), ('auto Lacetti', '*'),
     ]),
 ]
 # Korekcijski redak u bucket (S164: gotovina je podstavka Mjesečnih, bez razmazivanja)

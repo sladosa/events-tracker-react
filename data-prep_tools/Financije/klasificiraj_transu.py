@@ -43,10 +43,10 @@ PO_OPISU: list[tuple[str, str, str, str]] = [
     ('povrat poreza',      'Porezi',      'porez/prirez/dohodak',                 '4/5'),
     ('pp saša',            'Zdravlje',    'PP (Posmrtna pripomoc)',               '5/5'),
     ('pp koka',            'Zdravlje',    'PP (Posmrtna pripomoc)',               '5/5'),
-    ('hlk',                'Zdravlje',    'Lječnička komora_Koka',                '16/18'),
+    ('hlk',                'Zdravlje',    'Lječnička komora',                     '16/18'),
     ('anja 84/96',         'Prihodi',     'Povrat Anja',                          '41/41, niz 83/96 -> 84/96'),
     ('anja povrat',        'Transfer',    'Anja',                                 '19/19 za ne-ratne'),
-    ('nena',               'Prihodi',     'Koka',                                 'Sašina odluka'),
+    ('nena',               'Prihodi',     'Nasljedstvo',                          'Sašina odluka S180 (Nenin fond)'),
     ('mall.hr povrat',     'Prihodi',     'Koka',                                 'Sašina odluka'),
 ]
 
