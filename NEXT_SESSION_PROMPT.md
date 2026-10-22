@@ -30,8 +30,8 @@
 ## Što treba od tebe
 1. **Testovi na TEST-u (lokalni dev, Ctrl+Shift+R):** ~~T-S179-1, -2, -3~~ ✅ 22.10. (sva tri na TEST-u). Modal se od `7068d19` sam pomakne na pregled.
 2. **PROD puštanje** — naredbe su ispod (koraci 1–7). Sheet s koracima za Financije složit ćemo
-   **zajedno** sljedeći put. Prije toga Koka mora odlučiti jedno: vrijednost **`Nena`** ili **„Nena / Kućište"**
-   (Nenin fond, spec §8.2). Za retke `Projekti / Sasa` alat predlaže Tip po trgovcu, a ti potvrđuješ.
+   **zajedno** sljedeći put. ✅ Koka je odlučila (22.10.): **„Nena / Kućište"** — zamjenjuje
+   `Kućište` u izborniku Namjene (Nenin fond, spec §8.2). Za retke `Projekti / Sasa` alat predlaže Tip po trgovcu, a ti potvrđuješ.
 3. Ostalo nepromijenjeno: **T-S174-3/5** (PROD razvrstavanje), **Garmin** izvoz, **studeni**
    (T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~03.–11.11., T-S175-3 ZABA_2026-10).
 
@@ -95,6 +95,16 @@ Koka uvozi ⇒ pregled ⇒ Apply. Kontrolne brojke **prije** i **poslije**: T-S1
 Backup TEST-a: `2026-10-22_1135` (prije), `_1145` (poslije dva ciklusa). Zapisi u `restructure_ops`
 na TEST-u: S178 dokaz + 2 × S179 mjerenje + E2E (E2E Area obrisana kaskadom) — svi `undone`.
 
+## Plan sljedeće sesije (korak 8) — redom
+1. `prod_to_test.py --settings --apply` (TEST = PROD 22.10.+, uključujući `namjena` iz PROD-a;
+   prije toga `backup_db.py --env test --no-files`).
+2. **Izbornik Namjene:** `Kućište` → **„Nena / Kućište"**. Nijedan redak još nema Namjenu, pa je to
+   obična izmjena liste u Structure sheetu (sva tri retka `namjena`, `TextOptions`) — bez K-1 bloka.
+   Ide u **isti file** kao sheet `Preuređivanje`: uvoz prvo upiše Structure, pa planira korake.
+3. Sheet §8.2 (v. „NIJE napravljeno" ispod) ⇒ pregled i Apply/Undo **na TEST-u** ⇒ `preuredjivanje_grep.py`.
+4. Deploy (donosi „klik sa strane ne zatvara", v. dolje) ⇒ Koka uvozi isti file na PROD-u ⇒ kontrolne
+   brojke prije/poslije (T-S179-6) ⇒ Python rječnici po grep popisu istog dana.
+
 ## ⚠ Na `test-branch`, NIJE na PROD-u (mora prije Kokinog uvoza sheeta)
 - Klik sa strane ne zatvara Structure Import modal dok postoji blok preuređivanja (inače odnese Undo).
   Deploy zajedno s idućom izmjenom — ali **prije** koraka 8.
@@ -102,7 +112,7 @@ na TEST-u: S178 dokaz + 2 × S179 mjerenje + E2E (E2E Area obrisana kaskadom) �
 ## NIJE napravljeno / otvoreno
 - **Sheet za PROD (§8.2):** Audible O5, Kuća/Osiguranje → Osiguranje/Kuća, Projekti/Sasa → Saša
   (+ Namjena; retci po trgovcu = prijedlog alata, `event_id` koraci), Anja 25.09. `Rata 86/96` →
-  Prihodi/Povrat Anja (jedan `event_id`), Nena 25.07./28.07. → Namjena (čeka Koku), Lacetti → Saša,
+  Prihodi/Povrat Anja (jedan `event_id`), Nena 25.07./28.07. → Namjena „Nena / Kućište" (+ `Razno / Nena's funds` isto), Lacetti → Saša,
   C5 → Koka, zadano Zajedničko **zadnji**. Decathlon → Zdravlje/Sport (§8.2 prijedlog).
   Python rječnici po grep popisu istog dana (`pravila_trgovca.PRAVILA`, `set_breakdown.py`, `uvezi_transu.py`).
 - **Zalihost vremena:** do 4,9 s od 8 s (`authenticated`) na 9.743 promjene. PROD plan je manji, ali

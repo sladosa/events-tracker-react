@@ -320,8 +320,8 @@ vide brojke; ne traže zaseban razgovor):
   (5.000 €) — **ali stoje kao `Prihodi / Koka`**, pa Kokin prihod 2026. izgleda 12.000 € veći nego
   što jest. Troškovi iz fonda su `Razno / Nena's funds` (račune za stan, grob, Kućište — dosad
   ~2.465 €, isto što pločica pokazuje u bucketu „Kućište · Nenin novac").
-- **Prijedlog — fond kroz os Namjena:** Namjena vrijednost **`Nena`** (ili spojeno „Nena / Kućište"
-  — Koka bira) na **obje** strane: dvije uplate dobiju Namjenu `Nena` (Podtip izvora, npr.
+- **Prijedlog — fond kroz os Namjena:** Namjena vrijednost ~~`Nena`~~ **„Nena / Kućište"** (odlučeno
+  22.10.: zamjenjuje `Kućište` u izborniku) na **obje** strane: dvije uplate dobiju Namjenu `Nena` (Podtip izvora, npr.
   `Nasljedstvo`), troškovi `Nena's funds` isto. Razrez po Namjeni tada sam pokaže
   *ušlo 12.000 · izašlo ~2.465 · ostaje ~9.535*, i radi i za uplatu nakon ostavinske.
   ⚠ Te uplate i dalje broje u „Ušlo" — ako to smeta (usporedba godina), alternativa je
@@ -617,8 +617,9 @@ prije nego se tvrdi. Ako zatreba: `SET LOCAL statement_timeout` u funkciji.
   obrisan). Planer prepisuje samo `=` (uuid ključ razriješi u slug), `~`/`*` upozori. Ključevi
   stupaca profila nose **ime atributa**, ne vrijednost — preuređivanje opcija ih ne dira.
 - ~~Ime atributa~~ — **odlučeno 22.10. (Saša): `namjena`**, s izbornikom. ⚠ Uz `depends_on: tip` (radi
-  `default_map` za aute) lista ide u redak `WhenValue = *`, inače se nudi samo uz aute. Otvoreno:
-  vrijednost `Nena` ili „Nena / Kućište" (§8.2, Koka bira).
+  `default_map` za aute) lista ide u redak `WhenValue = *`, inače se nudi samo uz aute. **Odlučeno 22.10.
+  (Koka, kroz Sašu): „Nena / Kućište"** — jedna vrijednost umjesto `Kućište`; izbornik postaje
+  Zajedničko · Koka · Saša · Nena / Kućište (v. §8.2).
 
 ## 18. Izvedeno (S178, 22.10.) — i gdje je kod odstupio od §9–§15
 
