@@ -24,6 +24,12 @@ pod vlasnikom. PROD je u 14:40 bio **identičan** (kontrola: saldo, N/A, svi par
 
 ## T-S180-2 ⬜ (PROD — Saša pa Koka) Preuređivanje Financija na PROD-u
 
+**Izvedeno 22.10. (koraci 1–8 ✅):** backup `prod/2026-10-22_1454` (111.373 retka) · kontrola prije = TEST prije ·
+export `structure_export_20261022_150118.xlsx` → builder ispisao očekivano · uvoz i pregled točno kao gore (Kokin
+račun, Netlify) · **Apply op `e0c3de1f`, 6.066 promjena, 3,7 s, provjera ✓** · `kontrola --diff` PROD poslije vs TEST
+poslije: sve ISTO · `fix_shortcuti_S180.py` AI_rucak „upisano i pročitano natrag" · `set_breakdown` grupiranje ISTO,
+nesvrstano ništa. **Ostaje korak 9 (Koka na mobitelu).**
+
 Naredbe: `NEXT_SESSION_PROMPT.md` § „PROD — korak 8". Preduvjet: deploy s `ca7fa08` (klik sa strane ne
 zatvara modal) — inače slučajan klik poslije Apply odnese Undo.
 

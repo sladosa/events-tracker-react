@@ -2,7 +2,7 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S180 (2026-10-22, korak 8 Financija: sheet §8.2 izmjeren na TEST-u, čeka Kokin uvoz na PROD-u) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S180 (2026-10-22, korak 8 Financija primijenjen na PROD-u, op `e0c3de1f`; ostaje provjera na mobitelu) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 
@@ -15,7 +15,7 @@ Sheet s 24 koraka (O5 osoba → Namjena za sve `_Koka/_Sasa`, `Projekti / Saša`
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S180-1 | TEST kroz modal: `24 steps · 6.066 changes` ⇒ Apply 2,4 s ✓ ⇒ saldo/Σ isti, N/A 1.392 → 1.379 ⇒ Undo 1,1 s ✓ ⇒ sve isto | ✅ S180 — izmjereno (automatski, pod vlasnikom); TEST ostavljen primijenjen (op `2b200967`) |
-| T-S180-2 | PROD: backup ⇒ export ⇒ `build_sheet.mjs` ⇒ Koka uvozi ⇒ pregled 24 / 6.066 (+ žuto o shortcutima) ⇒ Apply ✓ ⇒ `kontrola.mjs --diff` = TEST ⇒ `fix_shortcuti_S180.py` ⇒ `set_breakdown` ISTO ⇒ mobitel | ⬜ |
+| T-S180-2 | PROD: backup ⇒ export ⇒ `build_sheet.mjs` ⇒ Koka uvozi ⇒ pregled 24 / 6.066 (+ žuto o shortcutima) ⇒ Apply ✓ ⇒ `kontrola.mjs --diff` = TEST ⇒ `fix_shortcuti_S180.py` ⇒ `set_breakdown` ISTO ⇒ mobitel | ⬜ 22.10. PROD (Saša, Kokin račun, Netlify): backup `prod/2026-10-22_1454` (111.373) · kontrola prije = TEST · export `150118` → builder (rows[39], rows[44], 24 koraka) · uvoz `Attributes updated 1`, `Area settings 1 · groupings` · pregled 24 / 6.066 / 5.455 + žuto o shortcutima · **Apply op `e0c3de1f` 3,7 s, provjera ✓ 3,2 s** · `kontrola --diff` PROD poslije = TEST poslije (saldo, N/A 1.379, 26 parova, Namjena, Σ — ISTO) · `fix_shortcuti` AI_rucak 1 od 5 ✓ · `set_breakdown` grupiranje ISTO. **Ostaje: Koka na mobitelu (korak 9).** |
 | T-S180-3 | `preuredjivanje_grep.py`: korak s `event_id` ne gasi naziv (106 → 29 jakih; poslije ispravka 8, svi u jednokratnim S107) | ✅ S180 — izmjereno; S179 sheet i dalje 71 |
 | T-S180-4 | `fix_shortcuti_S180.py` na TEST-u: podmetnut `Projekti / Sasa` ⇒ 1 od 4 ⇒ upis i čitanje ✓ ⇒ 0 od 4 | ✅ S180 — izmjereno |
 

@@ -9,7 +9,7 @@ Active project state is in CLAUDE.md (repo root).
 
 - [S178 (2026-10-22)](<#S178 — F1 jezgra preuređivanja: `058` na TEST-u, planer, sheet `Preuređivanje` (2026-10-22)>) · r. 9552 — jezgra alata za preuređivanje radi i dokazana je na kopiji PROD-a — deset koraka (Audible → Namjena, Kuća/Osiguranje, Sasa → Saša, Visa → VISA, preimenovan račun sa sidrima, zadana Namjena za 5.348 redaka) primijenjeno u 2,5 s i poništeno u 1 s, a svih 12 tablica je nakon toga bajt za bajt isto kao prije; UI za to dolazi sljedeće.
 - [S179 (2026-10-22)](<#S179 — F1 faza u Structure uvozu: pregled, Primijeni, Poništi; `namjena` na TEST-u (2026-10-22)>) · r. 9585 — preuređivanje se sada radi iz aplikacije — Structure uvoz pokaže korake s brojkama i primjerima, Primijeni ih izvede pod vlasnikom u 2–4 s i provjeri da je baza točno ono što je pregled predvidio, a Poništi sve vrati; izmjereno na kopiji PROD-a, sa 11/12 tablica bajt za bajt istih nakon dva ciklusa.
-- [S180 (2026-10-22)](<#S180 — Korak 8 preuređivanja Financija: sheet §8.2 izmjeren na kopiji PROD-a (2026-10-22)>) · r. 9627 — sheet s 24 koraka za Financije (osoba iz imena Podtipa u Namjenu, Nenin fond, Decathlon, Anja, osiguranje kuće, auti, zadano Zajedničko) složen je alatom i izmjeren na kopiji PROD-a — 6.066 promjena u 2,4 s, saldo i ukupni zbroj isti u cent, povrat vraća sve — a Python rječnici su ispravljeni istog dana; na PROD čeka deploy i Kokin uvoz.
+- [S180 (2026-10-22)](<#S180 — Korak 8 preuređivanja Financija: sheet §8.2 izmjeren na kopiji PROD-a (2026-10-22)>) · r. 9627 — sheet s 24 koraka za Financije (osoba iz imena Podtipa u Namjenu, Nenin fond, Decathlon, Anja, osiguranje kuće, auti, zadano Zajedničko) složen je alatom i izmjeren na kopiji PROD-a — 6.066 promjena u 2,4 s, saldo i ukupni zbroj isti u cent, povrat vraća sve — a Python rječnici su ispravljeni istog dana; isti dan primijenjeno i na PROD-u, s identičnim brojkama.
 
 ## Dnevnik
 
@@ -115,7 +115,7 @@ Active project state is in CLAUDE.md (repo root).
 | [S177](<#S177 — Pravila po trgovcu u mjesečnom krugu, pravilo `parking` (2026-10-22)>) | 2026-10-22 | pravila po trgovcu iz S174 sada rade i u mjesečnom krugu (MC, ZABA, RF, Visa) kao zadnji ključ kad povijest šuti — unatrag 12 mjeseci to je 64 retka koja više nisu N/A, 62 točno — a Saša je dodao pravilo „parking" za kartice i odbio pravilo za Glovo. | 9533 |
 | [S178](<#S178 — F1 jezgra preuređivanja: `058` na TEST-u, planer, sheet `Preuređivanje` (2026-10-22)>) | 2026-10-22 | jezgra alata za preuređivanje radi i dokazana je na kopiji PROD-a — deset koraka (Audible → Namjena, Kuća/Osiguranje, Sasa → Saša, Visa → VISA, preimenovan račun sa sidrima, zadana Namjena za 5.348 redaka) primijenjeno u 2,5 s i poništeno u 1 s, a svih 12 tablica je nakon toga bajt za bajt isto kao prije; UI za to dolazi sljedeće. | 9552 |
 | [S179](<#S179 — F1 faza u Structure uvozu: pregled, Primijeni, Poništi; `namjena` na TEST-u (2026-10-22)>) | 2026-10-22 | preuređivanje se sada radi iz aplikacije — Structure uvoz pokaže korake s brojkama i primjerima, Primijeni ih izvede pod vlasnikom u 2–4 s i provjeri da je baza točno ono što je pregled predvidio, a Poništi sve vrati; izmjereno na kopiji PROD-a, sa 11/12 tablica bajt za bajt istih nakon dva ciklusa. | 9585 |
-| [S180](<#S180 — Korak 8 preuređivanja Financija: sheet §8.2 izmjeren na kopiji PROD-a (2026-10-22)>) | 2026-10-22 | sheet s 24 koraka za Financije (osoba iz imena Podtipa u Namjenu, Nenin fond, Decathlon, Anja, osiguranje kuće, auti, zadano Zajedničko) složen je alatom i izmjeren na kopiji PROD-a — 6.066 promjena u 2,4 s, saldo i ukupni zbroj isti u cent, povrat vraća sve — a Python rječnici su ispravljeni istog dana; na PROD čeka deploy i Kokin uvoz. | 9627 |
+| [S180](<#S180 — Korak 8 preuređivanja Financija: sheet §8.2 izmjeren na kopiji PROD-a (2026-10-22)>) | 2026-10-22 | sheet s 24 koraka za Financije (osoba iz imena Podtipa u Namjenu, Nenin fond, Decathlon, Anja, osiguranje kuće, auti, zadano Zajedničko) složen je alatom i izmjeren na kopiji PROD-a — 6.066 promjena u 2,4 s, saldo i ukupni zbroj isti u cent, povrat vraća sve — a Python rječnici su ispravljeni istog dana; isti dan primijenjeno i na PROD-u, s identičnim brojkama. | 9627 |
 
 ### Najnovije
 
@@ -9627,7 +9627,7 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
 ## S180 — Korak 8 preuređivanja Financija: sheet §8.2 izmjeren na kopiji PROD-a (2026-10-22)
 [↑ Dnevnik](#Dnevnik)
 
-> Ukratko: sheet s 24 koraka za Financije (osoba iz imena Podtipa u Namjenu, Nenin fond, Decathlon, Anja, osiguranje kuće, auti, zadano Zajedničko) složen je alatom i izmjeren na kopiji PROD-a — 6.066 promjena u 2,4 s, saldo i ukupni zbroj isti u cent, povrat vraća sve — a Python rječnici su ispravljeni istog dana; na PROD čeka deploy i Kokin uvoz.
+> Ukratko: sheet s 24 koraka za Financije (osoba iz imena Podtipa u Namjenu, Nenin fond, Decathlon, Anja, osiguranje kuće, auti, zadano Zajedničko) složen je alatom i izmjeren na kopiji PROD-a — 6.066 promjena u 2,4 s, saldo i ukupni zbroj isti u cent, povrat vraća sve — a Python rječnici su ispravljeni istog dana; isti dan primijenjeno i na PROD-u, s identičnim brojkama.
 
 - **TEST = PROD** (`backup_db --env test` `2026-10-22_1412`, `prod_to_test.py --settings --apply`: 5.455 eventa,
   51.395 atributa, 25 sidara, settings ✓). PROD u 14:40 identičan (kontrola po paru i saldu).
@@ -9650,6 +9650,9 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
 - **Nađeno, nije popravljeno:** planer ne zna mijenjati listu `depends_on` pod `*` (Namjena) kad atribut ima
   izvora — stvorio bi ključ po Tipu samo s ciljem. Danas bezopasno; preduvjet za iduće preuređivanje Namjene
   (CLAUDE.md, spec §20). Python uvozni alati ne pišu Namjenu (otvoreno uz RAZREZ R5).
+- **PROD isti dan** (Saša pod Kokinim računom, Netlify, bez deploya — `ca7fa08` čeka iduću izmjenu): backup
+  `1454`, export → builder → uvoz → **Apply op `e0c3de1f` 3,7 s ✓**; `kontrola --diff` PROD poslije = TEST poslije u
+  svemu; `fix_shortcuti_S180.py` AI_rucak ✓; `set_breakdown` grupiranje ISTO. Ostaje Kokin mobitel (T-S180-2 korak 9).
 - Spec §8.2 (odluke), §16.6, §20; S180_tests (T-S180-1..4), T-S179-6 → T-S180-2.
 
 ### PENDING sekcija S179 (arhivirana S180) — Preuređivanje u Structure uvozu: pregled, Primijeni, Poništi (2026-10-22)

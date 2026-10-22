@@ -688,7 +688,8 @@ domena; dijeli se u dva uvoza.
 
 **Stanje:** sheet složen alatom `Claude-temp_R/s180/build_sheet.mjs <structure_export.xlsx>` (isti nad
 TEST i PROD exportom — event ID-evi su isti, `prod_to_test.py`); na TEST-u primijenjen i ostavljen
-(op `2b200967`). PROD čeka deploy (`ca7fa08`) i Kokin uvoz — T-S180-2.
+(op `2b200967`). **PROD 22.10. (Kokin račun, Netlify bez deploya): op `e0c3de1f`, 6.066 promjena, 3,7 s,
+provjera ✓; kontrolne brojke PROD poslije = TEST poslije u svemu** (T-S180-2).
 
 | Mjesto | Izvedeno | Zašto |
 | --- | --- | --- |
