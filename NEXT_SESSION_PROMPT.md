@@ -2,7 +2,7 @@
 > **`main` = `1f53e90` (deploy 22.10., S179).** Na `test-branch`, NIJE na PROD-u: `ca7fa08` (klik sa strane ne
 > zatvara Structure Import dok postoji pregled) — deploy uz iduću izmjenu appa; S180 su samo Python alati i docs.
 > **PROD (22.10., 15:10):** preuređivanje Financija PRIMIJENJENO (op `e0c3de1f`, 6.066 promjena) — svaki redak
-> ima Namjenu, Podtipovi bez `_Koka/_Sasa`, `AI_rucak` ispravljen. Ostaje Kokina provjera na mobitelu.
+> ima Namjenu, Podtipovi bez `_Koka/_Sasa`, `AI_rucak` ispravljen, Koka provjerila na mobitelu (T-S180-2 ✅).
 > **TEST:** kopija PROD-a 22.10. 14:15 + isti sheet primijenjen (op `2b200967`) ⇒ TEST = PROD.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
@@ -26,8 +26,7 @@
 - Tvoj shortcut `AI_rucak` ispravljen (`Projekti / Saša`, Namjena Saša); Python alati predlažu nove nazive.
 
 ## Što treba od tebe / Koke
-1. **Koka na mobitelu** (ponovo otvoriti app): Add → Tip `Zabava` ⇒ Podtip nudi `Audible` (bez `_Koka`),
-   Namjena zadano Zajedničko i nudi „Nena / Kućište". Javi ✅ ili sliku ⇒ zatvara T-S180-2.
+1. ~~Koka na mobitelu~~ ✅ 22.10.
 2. Ostalo nepromijenjeno: **T-S174-3/5** (PROD razvrstavanje — ⚠ prijedlozi sada koriste nove nazive),
    **Garmin** izvoz, **studeni** (T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~03.–11.11., T-S175-3 ZABA_2026-10).
 
