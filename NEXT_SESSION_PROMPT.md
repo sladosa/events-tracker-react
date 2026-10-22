@@ -1,4 +1,4 @@
-> Pisano protiv `854b2b5` (zadnji S176 spec) + commita **S176 zatvaranje** koji nosi ovaj file.
+> Pisano protiv `4082c7b` (S176, nastavak 22.10.) + commita koji nosi ovaj file.
 > **`main` = `07361eb` (deploy 19.10.):** uvozni guard (S174) i Košare ↗ oznaka (S175) su na PROD-u.
 > **Na `test-branch`, NIJE na PROD-u:** F5 (`AreaSettings`, Structure export = jedna Area) i
 > „Create categories & continue" ne dira postojeću Areu — čekaju T-S175-6 i deploy (bez migracije).
@@ -26,8 +26,8 @@
   čišćenjem preklapanja (T38).
 
 ## Što treba od tebe
-1. **T-S175-6 (TEST, lokalno, ~10 min):** Structure export/import s `AreaSettings` (`S175_tests.md`).
-   Ako prođe ⇒ **deploy** (PowerShell blok iz CLAUDE.md § End of session 11). F1 se gradi na tome.
+1. ✅ **T-S175-6 prošao (22.10.).** **Deploy ČEKA — odluka 22.10.:** F5 ide na PROD **zajedno s F1**
+   (jedan Netlify build); ranije samo ako zatreba mijenjati buckete Excelom na PROD-u.
 2. **Ništa za preuređivanje prije koda** — sitni izbori (Decathlon → Sport, Anja → Transfer,
    `Kuća/Osiguranje` → `Osiguranje / Kuća`, `Sasa` → `Saša`) imaju prijedlog i potvrđuješ ih u suhom
    prolazu alata (PREUREDJIVANJE §8.2).
@@ -51,6 +51,13 @@
 - **F5 (S175):** `areaSettingsSheet.ts`, `writeAreaSettingsSheet`, §11 u `importStructureExcel`;
   E2E `S175_area_settings_roundtrip`. Korak 7: `existingAreasUntouched`.
 - Kopija trening filea: `Claude-temp_R/trening/trening.xlsm` (19.10.).
+- **22.10. (nastavak S176, samo dokumenti):** T-S175-6 ✅; PREUREDJIVANJE §8.2 dopunjen — Anja
+  **ostaje prihod** (46 rata `NN/96`; jedna, 25.09.2026. `Rata 86/96`, krivo kao Transfer), prihodi po
+  osobi = os Namjena (ne bucketi), **Nenin novac**: 50.000 € je prolaz Nena→Koka→Igor (Transfer,
+  ispravno), a fond su 7.000 + 5.000 (25./28.07.) **krivo kao `Prihodi / Koka`** ⇒ prijedlog Namjena
+  `Nena` na obje strane (Koka bira ime). BACKLOG: opis po retku `AreaSettings` sheeta, os datuma
+  samo na Troškovima (uz prekidač Bucketi | Namjena).
+- **Deploy:** `test-branch` (F5 + Korak 7) čeka F1 — v. DIO 1 točka 1.
 
 ## Otvoreno — kod (po prioritetu)
 1. **`po_pravilu` u `fill_from_izvod` (MC/ZABA/RF) i `visa_uvoz_izvoda`** — **prije studenog**

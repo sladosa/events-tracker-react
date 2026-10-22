@@ -9520,3 +9520,8 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
 - **Strategic Position** prepisan (20.10.): korak 3 = alat za preuređivanje, korak 4 = trening.
   Uputnice preusmjerene (`Diary.md` → `_archive/`, AUTOMATION_SPEC F4, DATA_PIPELINE P5,
   MIGRATION_STATE, BACKLOG). Testova nema (samo dokumenti).
+- **Nastavak 22.10.:** T-S175-6 ✅ (F5 na TEST-u); **deploy čeka F1** (jedan build). Nalazi u
+  PREUREDJIVANJE §8.2: Anja ostaje prihod (46 rata; jedna `86/96` krivo kao Transfer); prihodi po
+  osobi idu kroz os Namjena; Nenin novac — 50.000 € je prolaz Nena→Koka→Igor (ispravno kao
+  Transfer), fond su 7.000 + 5.000 krivo kao `Prihodi / Koka`. BACKLOG: opis po retku
+  `AreaSettings`, os datuma samo na Troškovima.
