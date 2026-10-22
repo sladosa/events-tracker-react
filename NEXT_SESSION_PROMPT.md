@@ -3,7 +3,7 @@
 > **Na `test-branch`, NIJE na PROD-u:** F5 (`AreaSettings`), „Create categories & continue" ne dira
 > postojeću Areu, F1 jezgra (S178) i **S179: faza „Preuređivanje" u Structure uvozu** (pregled, Primijeni,
 > Poništi). Deploy = jedan build za sve to, **poslije** `058` na PROD-u.
-> **PROD baza:** S174–S179 nisu pisale ništa. **`058` je SAMO na TEST-u.** TEST ima atribut `namjena`.
+> **PROD (22.10., S179):** `058` PUŠTEN, deploy `main` (F5 + F1 + S179), atribut `namjena` stvoren (Koka). Nijedan redak još nema Namjenu — to je korak 8.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
@@ -37,7 +37,7 @@
 3. Ostalo nepromijenjeno: **T-S174-3/5** (PROD razvrstavanje), **Garmin** izvoz, **studeni**
    (T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~03.–11.11., T-S175-3 ZABA_2026-10).
 
-## PROD puštanje — naredbe (PowerShell, redom; svaki korak pogledaj prije sljedećeg)
+## PROD puštanje — ✅ koraci 1–7 izvedeni 22.10. (zapis: T-S179-6); naredbe ostaju kao predložak
 
 ```powershell
 cd C:\0_Sasa\events-tracker-react\data-prep_tools

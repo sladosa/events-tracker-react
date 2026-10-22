@@ -98,6 +98,8 @@ Ostalo (Visa → VISA, RF) su testni koraci kojih na PROD-u neće biti.
 Naredbe: `NEXT_SESSION_PROMPT.md` § „PROD puštanje". Sheet s koracima iz §8.2 se slaže **zajedno**
 (sljedeća sesija) — otvoreno: Nena (`Nena` ili „Nena / Kućište", Koka), Projekti/Sasa po trgovcu.
 
+**Izvedeno:** 22.10. koraci 1–7 GOTOVI: backup `prod/2026-10-22_1328` (111.372 retka) · sonda prije: sve tri RPC probe `-` za 4 uloge, ostale tablice nepromijenjene · `058` kroz SQL editor · shema po objektima: samo 058 (+ 056/057 koje dump nije imao) · sonda poslije: vlasnik DA, grantee NE, stranac NE, service DA; `restructure_ops` prazan · deploy (`main`) · `namjena` Kokinim uvozom (`Attributes created 1`, 16 atributa, vlasnik Koka), mobitel: `auto C5` ⇒ Koka. Ostaje korak 8 (sheet §8.2).
+
 **Prije** (zapiši): saldo svakog računa na pločici · broj `N/A` (Filter by Tip = `N/A`) · Σ „Kamo ide
 novac" This Year (Ušlo / Izašlo).
 **Očekivano poslije:** saldo **nepomaknut** · `N/A` isti · Σ razreza isti osim izvedenog pomaka

@@ -19,7 +19,7 @@ Popunjen sheet `Preuređivanje` više se ne javlja kao „NIJE primijenjeno" —
 | T-S179-3 | TEST: Add forma — `Namjena` tek uz Tip; `Zabava` ⇒ Zajedničko, `auto Lacetti` ⇒ Saša, `auto C5` ⇒ Koka | ✅ S179 (22.10., Saša) — `Zabava` ⇒ Zajedničko, `auto Lacetti` ⇒ Saša, polje ispod Statusa; `auto C5` nije snimljen (isti mehanizam, `default_map`) |
 | T-S179-4 | E2E: sheet s preimenovanjem ⇒ lista novi naziv ⇒ Poništi ⇒ stari | ✅ S179 — čuva automatski test (`S179_restructure_apply_undo`, protuprovjera pada) |
 | T-S179-5 | `preuredjivanje_grep.py` nad `structure_s179.xlsx` ⇒ 71 jak pogodak; za PROD korake `set_breakdown.py` 92/113/125, `uvezi_transu.py:72` | ✅ S179 — izmjereno |
-| T-S179-6 | PROD puštanje §16: backup ⇒ sonda `-` ⇒ `058` ⇒ sonda DA/NE ⇒ deploy ⇒ `namjena` uvozom ⇒ sheet §8.2 pod Kokom ⇒ saldo nepomaknut, `N/A` isti, grep ispravljen | ⬜ |
+| T-S179-6 | PROD puštanje §16: backup ⇒ sonda `-` ⇒ `058` ⇒ sonda DA/NE ⇒ deploy ⇒ `namjena` uvozom ⇒ sheet §8.2 pod Kokom ⇒ saldo nepomaknut, `N/A` isti, grep ispravljen | ⬜ 22.10. koraci 1–7 GOTOVI: backup `prod/2026-10-22_1328` (111.372 retka) · sonda prije: sve tri RPC probe `-` za 4 uloge, ostale tablice nepromijenjene · `058` kroz SQL editor · shema po objektima: samo 058 (+ 056/057 koje dump nije imao) · sonda poslije: vlasnik DA, grantee NE, stranac NE, service DA; `restructure_ops` prazan · deploy (`main`) · `namjena` Kokinim uvozom (`Attributes created 1`, 16 atributa, vlasnik Koka), mobitel: `auto C5` ⇒ Koka. Ostaje korak 8 (sheet §8.2). |
 
 ---
 
