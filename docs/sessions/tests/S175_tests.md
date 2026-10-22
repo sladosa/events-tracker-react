@@ -150,7 +150,7 @@ koja NIJE zadnja otvorena u View-u; sabotaža (bez upisa) pada s „označena Dr
 
 ---
 
-## T-S175-6 ⬜ (TEST lokalno, Saša) F5 — sheet `AreaSettings` u Structure roundtripu
+## T-S175-6 ✅ (22.10., Saša na TEST-u: export bez Aree javlja, naslov pločice promijenjen i vraćen uvozom) (TEST lokalno, Saša) F5 — sheet `AreaSettings` u Structure roundtripu
 
 Novo: Structure export nosi sheet `AreaSettings` (`Area | Path | Type | Value`) sa svim postavkama
 Aree koje ne nose ostali sheetovi. Za `Financije_all` to su `dashboard`, `groupings` i
