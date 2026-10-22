@@ -95,6 +95,10 @@ Koka uvozi ⇒ pregled ⇒ Apply. Kontrolne brojke **prije** i **poslije**: T-S1
 Backup TEST-a: `2026-10-22_1135` (prije), `_1145` (poslije dva ciklusa). Zapisi u `restructure_ops`
 na TEST-u: S178 dokaz + 2 × S179 mjerenje + E2E (E2E Area obrisana kaskadom) — svi `undone`.
 
+## ⚠ Na `test-branch`, NIJE na PROD-u (mora prije Kokinog uvoza sheeta)
+- Klik sa strane ne zatvara Structure Import modal dok postoji blok preuređivanja (inače odnese Undo).
+  Deploy zajedno s idućom izmjenom — ali **prije** koraka 8.
+
 ## NIJE napravljeno / otvoreno
 - **Sheet za PROD (§8.2):** Audible O5, Kuća/Osiguranje → Osiguranje/Kuća, Projekti/Sasa → Saša
   (+ Namjena; retci po trgovcu = prijedlog alata, `event_id` koraci), Anja 25.09. `Rata 86/96` →

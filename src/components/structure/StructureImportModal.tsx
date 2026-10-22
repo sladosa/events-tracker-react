@@ -202,7 +202,10 @@ export function StructureImportModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      {...useBackdropClose(onClose)}
+      // Klik sa strane NE zatvara dok uvoz traje ni dok postoji blok preuređivanja
+      // (Saša, S179: „ne želimo slučajne akcije"). Poslije Apply bi slučajan klik
+      // odnio gumb Undo; zatvara se samo namjerno — ✕ ili Close.
+      {...useBackdropClose(onClose, !importing && !result?.restructure)}
     >
       {/* Preuređivanje (F1) nosi tablicu koraka — uski prozor bi je slomio. */}
       <div className={cn('bg-white rounded-xl shadow-2xl w-full flex flex-col overflow-hidden max-h-[90vh]',

@@ -9615,4 +9615,10 @@ Samo Python alati (`_mc_spajanje.py` nov, `fill_from_izvod.py`, parser u `usklad
 - **`Tools/preuredjivanje_grep.py <xlsx>`** — JAK pogodak = stara vrijednost + kontekst koraka u istom
   retku; `fix_*.py` i `Obsolete/` preskočeni (zapis, ne alat). Na mjernom fileu 71 jak pogodak; za
   PROD korake `set_breakdown.py:92/113/125`, `uvezi_transu.py:72`, `update_pravila_s107h.py:77–78`.
+- **Poslije testova (Saša):** modal se sam pomakne na pregled (`7068d19`); klik sa strane NE zatvara
+  modal dok uvoz traje ili postoji blok preuređivanja — poslije Apply bi slučajan klik odnio Undo
+  („ne želimo slučajne akcije"). Oboje čuva E2E (`toBeInViewport`, klik u kut), sabotaže padaju.
+- **PROD (koraci 1–7 §16):** backup, sonda prije (`-`), `058` kroz SQL editor, shema po objektima,
+  sonda poslije (vlasnik DA, ostali NE), deploy `1f53e90`, `namjena` Kokinim uvozom. Supabase je tog
+  dana imao incident prijave u dashboard (Management API) — baza i pooler radili normalno.
 - Spec §19 (odstupanja), CLAUDE.md pravilo preuređivanja + Key files, S179_tests (T-S179-1..6).

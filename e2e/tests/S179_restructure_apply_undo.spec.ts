@@ -143,6 +143,10 @@ test.describe('S179 — Preuređivanje: Primijeni i Poništi kroz Structure uvoz
     await expect(page.getByTestId('restructure-errors')).toHaveCount(0);
     expect(await tipRules(page), 'pregled je nešto upisao').toEqual([OLD, 'Drugo']);
 
+    // Klik na pozadinu (kut ekrana) ne smije zatvoriti modal dok postoji pregled
+    await page.mouse.click(5, 5);
+    await expect(panel, 'klik sa strane zatvorio je modal s preuređivanjem').toBeVisible();
+
     // Bez kvačice nema primjene
     await expect(page.getByTestId('restructure-apply')).toBeDisabled();
     await page.getByTestId('restructure-ack').check();
@@ -150,6 +154,9 @@ test.describe('S179 — Preuređivanje: Primijeni i Poništi kroz Structure uvoz
     await expect(page.getByTestId('restructure-applied')).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId('restructure-check')).toContainText('exactly what the preview predicted');
 
+    // Najvažniji trenutak: poslije Apply bi slučajan klik odnio gumb Undo
+    await page.mouse.click(5, 5);
+    await expect(page.getByTestId('restructure-undo'), 'klik sa strane odnio je Undo').toBeVisible();
     expect(await tipRules(page), 'izbornik: novi naziv na mjestu starog').toEqual([NEW, 'Drugo']);
     await listShows(page, NEW, OLD);
 
