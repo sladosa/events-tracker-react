@@ -1,8 +1,6 @@
 > Pisano protiv `c31b8b1` (S179) + commita koji nosi ovaj file (S179, 22.10.).
-> **`main` = `07361eb` (deploy 19.10.):** uvozni guard (S174) i Košare ↗ oznaka (S175) su na PROD-u.
-> **Na `test-branch`, NIJE na PROD-u:** F5 (`AreaSettings`), „Create categories & continue" ne dira
-> postojeću Areu, F1 jezgra (S178) i **S179: faza „Preuređivanje" u Structure uvozu** (pregled, Primijeni,
-> Poništi). Deploy = jedan build za sve to, **poslije** `058` na PROD-u.
+> **`main` = `1f53e90` (deploy 22.10., S179):** sve do S179 je na PROD-u — F5 (`AreaSettings`), „Create categories
+> & continue" ne dira postojeću Areu, F1 preuređivanje (jezgra + faza u Structure uvozu, pomak na pregled).
 > **PROD (22.10., S179):** `058` PUŠTEN, deploy `main` (F5 + F1 + S179), atribut `namjena` stvoren (Koka). Nijedan redak još nema Namjenu — to je korak 8.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
