@@ -1,0 +1,3444 @@
+{
+ "_comment": "S178 F1: PROD snimka 18.10.2026. (backup_db), samo Financije_all. Bez iznosa, opisa i datuma: retci su brojevi KOMBINACIJA tekstualnih atributa. settings = cijeli areas.settings.",
+ "area_id": "de8662e6-54f7-4ded-ab42-a786e7456067",
+ "categories": [
+  {
+   "id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "name": "Transakcija",
+   "parent_category_id": null
+  }
+ ],
+ "attributes": [
+  {
+   "id": "053fee1c-e74d-4612-9a3f-ecc57daf1b5f",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "isplata",
+   "name": "Isplata",
+   "data_type": "number",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "depends_on": {
+     "options_map": {
+      "*": [],
+      "Isplata": [],
+      "PROVJERI": []
+     },
+     "attribute_slug": "smjer"
+    }
+   }
+  },
+  {
+   "id": "08257813-71c4-472a-a386-3eb787edb962",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "uplata",
+   "name": "Uplata",
+   "data_type": "number",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "depends_on": {
+     "options_map": {
+      "*": [],
+      "Uplata": [],
+      "PROVJERI": []
+     },
+     "attribute_slug": "smjer"
+    }
+   }
+  },
+  {
+   "id": "08641982-95f2-44f9-a7a7-3d050fe75d85",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "stanje",
+   "name": "Stanje",
+   "data_type": "number",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "depends_on": {
+     "options_map": {
+      "*": [],
+      "SKRIVENO": []
+     },
+     "attribute_slug": "smjer"
+    },
+    "hidden_in_add": true
+   }
+  },
+  {
+   "id": "126b1970-a226-4a59-b810-188839dfc661",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "valuta",
+   "name": "Valuta",
+   "data_type": "text",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "suggest": [
+     "EUR",
+     "USD"
+    ],
+    "hidden_in_add": true
+   }
+  },
+  {
+   "id": "2000afc8-a352-4bb6-8fb7-e641de611895",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "smjer",
+   "name": "Smjer",
+   "data_type": "text",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "suggest": [
+     "Uplata",
+     "Isplata",
+     "PROVJERI"
+    ]
+   }
+  },
+  {
+   "id": "670128e3-ffa7-48a2-ac14-d4a40187f766",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "izvorplacanja",
+   "name": "Izvor",
+   "data_type": "text",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "depends_on": {
+     "options_map": {
+      "*": [],
+      "Sašin tekući RF": [
+       "Racun",
+       "Visa",
+       "Cash"
+      ],
+      "Kokin tekući ZABA": [
+       "Racun",
+       "Mastercard",
+       "Cash"
+      ]
+     },
+     "attribute_slug": "racun"
+    }
+   }
+  },
+  {
+   "id": "994e4005-914d-4d1b-8726-54c0df24919b",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "tip",
+   "name": "Tip",
+   "data_type": "text",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "suggest": [
+     "N/A",
+     "auto C5",
+     "auto Lacetti",
+     "Prijevoz",
+     "Domaćinstvo",
+     "Informatika",
+     "Investicije",
+     "Kuća",
+     "Prihodi",
+     "Osiguranje",
+     "Advokati",
+     "Porezi",
+     "Projekti",
+     "Putovanja",
+     "Razno",
+     "Transfer",
+     "Zabava",
+     "Zdravlje"
+    ]
+   }
+  },
+  {
+   "id": "9ffb9d6f-8e21-4bb0-b2b7-3cc48eea33d3",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "datum_naplate",
+   "name": "Datum naplate",
+   "data_type": "datetime",
+   "default_value": null,
+   "validation_rules": {}
+  },
+  {
+   "id": "af85091f-c69b-4c6f-b398-b02a8180a21b",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "rata_br",
+   "name": "Rata br",
+   "data_type": "number",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "depends_on": {
+     "options_map": {
+      "*": [],
+      "TRUE": []
+     },
+     "attribute_slug": "rate"
+    }
+   }
+  },
+  {
+   "id": "d1ab52da-025b-4398-9523-c9c4cec14405",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "racun",
+   "name": "Racun",
+   "data_type": "text",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "suggest": [
+     "Kokin tekući ZABA",
+     "Sašin tekući RF"
+    ]
+   }
+  },
+  {
+   "id": "d1d30403-283f-49e1-9a1a-d018220a9eab",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "status",
+   "name": "Status",
+   "data_type": "text",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "depends_on": {
+     "default_map": {
+      "Cash": "Izvrsen",
+      "Visa": "Planiran",
+      "Racun": "Izvrsen",
+      "Mastercard": "Planiran"
+     },
+     "options_map": {
+      "*": [],
+      "Cash": [
+       "Izvrsen",
+       "Planiran"
+      ],
+      "Visa": [
+       "Izvrsen",
+       "Planiran"
+      ],
+      "Racun": [
+       "Izvrsen",
+       "Planiran"
+      ],
+      "Mastercard": [
+       "Izvrsen",
+       "Planiran"
+      ]
+     },
+     "attribute_slug": "izvorplacanja"
+    }
+   }
+  },
+  {
+   "id": "d2dfcf77-c0fa-411a-90ef-225024025e61",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "podtip",
+   "name": "Podtip",
+   "data_type": "text",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "depends_on": {
+     "options_map": {
+      "*": [],
+      "N/A": [],
+      "Kuća": [
+       "Struja",
+       "Voda",
+       "Holding (smeće)",
+       "Plin",
+       "Popravci, održavanje",
+       "Povrat Nataša",
+       "Povrat Zoran",
+       "Osiguranje"
+      ],
+      "Razno": [
+       "Odjeća/obuća/ostalo_Koka",
+       "Odjeća/obuća/ostalo_Sasa",
+       "Pokloni",
+       "Temu",
+       "Razno, sitnice",
+       "Nena's funds"
+      ],
+      "Porezi": [
+       "porez/prirez/dohodak"
+      ],
+      "Zabava": [
+       "Kino/Kazalište/Muzeji",
+       "Audible_Koka",
+       "Audible_Sasa",
+       "Kindle_Koka",
+       "Disney",
+       "Sky",
+       "Prime",
+       "HBOmax",
+       "Youtube",
+       "Spotify",
+       "Wellness"
+      ],
+      "Prihodi": [
+       "Saša",
+       "Koka",
+       "Povrat Anja"
+      ],
+      "auto C5": [
+       "leasing",
+       "gorivo",
+       "registracija",
+       "popravci"
+      ],
+      "Advokati": [
+       "Ostavine"
+      ],
+      "Prijevoz": [
+       "Taksi, Zet, Parking"
+      ],
+      "Projekti": [
+       "Sasa",
+       "Koka"
+      ],
+      "Transfer": [
+       "cash - bankomat",
+       "izmedju racuna",
+       "Anja",
+       "Natasa",
+       "Nena"
+      ],
+      "Zdravlje": [
+       "Medical_Sasa",
+       "Medical_Koka",
+       "Sport_Sasa",
+       "Sport_Koka",
+       "Lječnička komora_Koka",
+       "PP (Posmrtna pripomoc)",
+       "Other"
+      ],
+      "Putovanja": [
+       "Karte, osiguranje",
+       "Smještaj",
+       "Restoran"
+      ],
+      "Osiguranje": [
+       "Zivotno"
+      ],
+      "Informatika": [
+       "Komunikacije_T-mobile",
+       "Komunikacije_T-com (internet, MaxTv)",
+       "HP",
+       "Cloud backup",
+       "Microsoft",
+       "Hosting domene (DPS, Igor)",
+       "Hardver",
+       "Odrzavanje i servis"
+      ],
+      "Investicije": [
+       "Dionice / Kripto",
+       "Štednja"
+      ],
+      "Domaćinstvo": [
+       "Kave/jelo vani",
+       "Bankovni troškovi",
+       "Hrana i ostalo"
+      ],
+      "auto Lacetti": [
+       "gorivo",
+       "registracija",
+       "popravci"
+      ]
+     },
+     "attribute_slug": "tip"
+    }
+   }
+  },
+  {
+   "id": "dabdbea2-ae7e-468c-8975-3a80f728d1ab",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "brojrata",
+   "name": "Broj rata",
+   "data_type": "number",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "depends_on": {
+     "options_map": {
+      "*": [],
+      "TRUE": []
+     },
+     "attribute_slug": "rate"
+    }
+   }
+  },
+  {
+   "id": "dd5ed3a6-8192-46dc-b314-146cf875e9f3",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "rate",
+   "name": "Rate?",
+   "data_type": "boolean",
+   "default_value": null,
+   "validation_rules": {
+    "type": "suggest",
+    "depends_on": {
+     "options_map": {
+      "*": [],
+      "Isplata": []
+     },
+     "attribute_slug": "smjer"
+    }
+   }
+  },
+  {
+   "id": "e34fb4ef-2c89-4dd7-b0f9-11d863573658",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "slug": "izvod_opis",
+   "name": "Izvod opis",
+   "data_type": "text",
+   "default_value": null,
+   "validation_rules": {
+    "hidden_in_add": true
+   }
+  }
+ ],
+ "settings": {
+  "dashboard": {
+   "widgets": [
+    {
+     "due": {
+      "done": "Izvrsen",
+      "settle": {
+       "tip": "Transfer",
+       "smjer": "Isplata",
+       "podtip": "izmedju racuna",
+       "izvorplacanja": "Racun"
+      },
+      "baskets": {
+       "Visa": {
+        "text": "Visa",
+        "window": {
+         "after": 6,
+         "before": 2
+        },
+        "account": "Sašin tekući RF",
+        "measure": "gross"
+       },
+       "Mastercard": {
+        "text": "TROŠKOVI UČINJENI MASTERCARD KARTICOM",
+        "account": "Kokin tekući ZABA"
+       }
+      },
+      "pending": "Planiran",
+      "due_slug": "datum_naplate",
+      "basket_by": "izvorplacanja",
+      "status_slug": "status"
+     },
+     "plus": "uplata",
+     "type": "balance_by_group",
+     "unit": "€",
+     "minus": "isplata",
+     "split": {
+      "label": "planirano",
+      "filters": [
+       {
+        "op": "in",
+        "slug": "izvorplacanja",
+        "values": [
+         "Racun"
+        ]
+       },
+       {
+        "op": "in",
+        "slug": "status",
+        "values": [
+         "Planiran"
+        ]
+       }
+      ],
+      "due_slug": "datum_naplate"
+     },
+     "title": "Stanje po računu",
+     "filters": [
+      {
+       "op": "in",
+       "slug": "izvorplacanja",
+       "values": [
+        "Racun"
+       ]
+      },
+      {
+       "op": "not_in",
+       "slug": "status",
+       "values": [
+        "Planiran"
+       ]
+      }
+     ],
+     "group_by": "racun",
+     "reconcile": true
+    },
+    {
+     "plus": "uplata",
+     "type": "breakdown",
+     "unit": "€",
+     "minus": "isplata",
+     "title": "Kamo ide novac",
+     "income": {
+      "op": "in",
+      "slug": "tip",
+      "values": [
+       "Prihodi"
+      ]
+     },
+     "levels": [
+      "tip",
+      "podtip"
+     ],
+     "outside": [
+      {
+       "op": "in",
+       "slug": "tip",
+       "values": [
+        "Transfer",
+        "Investicije"
+       ]
+      }
+     ],
+     "grouping": "Vrsta troška",
+     "date_axes": [
+      {
+       "slug": null,
+       "label": "po kupnji"
+      },
+      {
+       "slug": "datum_naplate",
+       "label": "po naplati"
+      }
+     ],
+     "adjustments": [
+      {
+       "add": [
+        {
+         "op": "in",
+         "slug": "tip",
+         "values": [
+          "Transfer"
+         ]
+        },
+        {
+         "op": "in",
+         "slug": "podtip",
+         "values": [
+          "cash - bankomat"
+         ]
+        }
+       ],
+       "label": "gotovina, nerazvrstano",
+       "subtract": [
+        {
+         "op": "in",
+         "slug": "izvorplacanja",
+         "values": [
+          "Cash"
+         ]
+        },
+        {
+         "op": "not_in",
+         "slug": "tip",
+         "values": [
+          "Transfer"
+         ]
+        }
+       ]
+      }
+     ],
+     "unclassified": [
+      "N/A"
+     ]
+    }
+   ]
+  },
+  "groupings": {
+   "Vrsta troška": {
+    "rows": [
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Domaćinstvo",
+       "Hrana i ostalo"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Domaćinstvo",
+       "Bankovni troškovi"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Struja"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Plin"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Voda"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Holding (smeće)"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Povrat Zoran"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Kuća",
+       "Povrat Nataša"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Komunikacije_T-com (internet, MaxTv)"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Komunikacije_T-mobile"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Cloud backup"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Microsoft"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "HP"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Informatika",
+       "Hosting domene (DPS, Igor)"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Audible_Koka"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Audible_Sasa"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Kindle_Koka"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Spotify"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Prime"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Sky"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Disney"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "HBOmax"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zabava",
+       "Youtube"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Prijevoz",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "values": [
+       "Zdravlje",
+       "PP (Posmrtna pripomoc)"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Razno",
+       "Temu"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Domaćinstvo",
+       "Kave/jelo vani"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Zdravlje",
+       "Sport_Sasa"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Zdravlje",
+       "Sport_Koka"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Zabava",
+       "Kino/Kazalište/Muzeji"
+      ]
+     },
+     {
+      "bucket": "Kvaliteta života",
+      "values": [
+       "Zabava",
+       "Wellness"
+      ]
+     },
+     {
+      "bucket": "Putovanja i pokloni",
+      "values": [
+       "Putovanja",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Putovanja i pokloni",
+      "values": [
+       "Razno",
+       "Pokloni"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Osiguranje",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Porezi",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Zdravlje",
+       "Medical_Sasa"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Zdravlje",
+       "Medical_Koka"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Zdravlje",
+       "Other"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Razno",
+       "Odjeća/obuća/ostalo_Koka"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Razno",
+       "Odjeća/obuća/ostalo_Sasa"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Razno",
+       "Razno, sitnice"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Informatika",
+       "Hardver"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Informatika",
+       "Odrzavanje i servis"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Advokati",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Povremeno nužno",
+      "values": [
+       "Kuća",
+       "Osiguranje"
+      ]
+     },
+     {
+      "bucket": "Kuća investicije",
+      "values": [
+       "Kuća",
+       "Popravci, održavanje"
+      ]
+     },
+     {
+      "bucket": "Kućište · Nenin novac",
+      "values": [
+       "Razno",
+       "Nena's funds"
+      ]
+     },
+     {
+      "bucket": "Koka razno",
+      "values": [
+       "Projekti",
+       "Koka"
+      ]
+     },
+     {
+      "bucket": "Koka razno",
+      "values": [
+       "auto C5",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Koka razno",
+      "values": [
+       "Zdravlje",
+       "Lječnička komora_Koka"
+      ]
+     },
+     {
+      "bucket": "Saša razno",
+      "values": [
+       "Projekti",
+       "Sasa"
+      ]
+     },
+     {
+      "bucket": "Saša razno",
+      "values": [
+       "auto Lacetti",
+       "*"
+      ]
+     },
+     {
+      "bucket": "Mjesečni troškovi",
+      "adjustment": "gotovina, nerazvrstano"
+     }
+    ],
+    "levels": [
+     "tip",
+     "podtip"
+    ]
+   }
+  },
+  "add_header": {
+   "date": true,
+   "timer": false
+  },
+  "automations": {
+   "rata": {
+    "date_map": {
+     "Visa": 5,
+     "Mastercard": 11
+    },
+    "count_slug": "brojrata",
+    "index_slug": "rata_br",
+    "amount_slug": "isplata",
+    "trigger_slug": "rate",
+    "date_map_slug": "izvorplacanja",
+    "remainder_map": {
+     "Visa": "first",
+     "Mastercard": "last"
+    },
+    "override_attrs": {
+     "status": "Planiran"
+    },
+    "charge_date_slug": "datum_naplate"
+   },
+   "attribute_rules": [
+    {
+     "name": "Datum naplate po Izvoru",
+     "action": "set_attribute",
+     "date_map": {
+      "Cash": "same",
+      "Visa": "cutoff:3:5",
+      "Racun": "same",
+      "Mastercard": "next:11"
+     },
+     "map_slug": "izvorplacanja",
+     "lock_slug": "izvod_opis",
+     "target_slug": "datum_naplate"
+    }
+   ]
+  },
+  "list_columns": {
+   "columns": [
+    {
+     "role": "date",
+     "label": "Datum",
+     "width": "w-28",
+     "mobile": "line1"
+    },
+    {
+     "map": {
+      "Sašin tekući RF": "RF",
+      "Kokin tekući ZABA": "ZABA"
+     },
+     "role": "attr",
+     "label": "Račun",
+     "slugs": [
+      "racun"
+     ],
+     "width": "w-32",
+     "mobile": "line1"
+    },
+    {
+     "plus": "uplata",
+     "role": "pair",
+     "unit": "€",
+     "label": "Iznos",
+     "minus": "isplata",
+     "width": "w-36",
+     "mobile": "line1"
+    },
+    {
+     "sep": "/",
+     "role": "attr",
+     "label": "Tip/Podtip",
+     "slugs": [
+      "tip",
+      "podtip"
+     ],
+     "mobile": "line2"
+    },
+    {
+     "role": "comment",
+     "label": "Opis",
+     "mobile": "line2"
+    },
+    {
+     "role": "user",
+     "mobile": "line1"
+    },
+    {
+     "role": "balance",
+     "unit": "€",
+     "label": "Stanje",
+     "width": "w-28",
+     "mobile": "hide"
+    },
+    {
+     "role": "actions"
+    }
+   ]
+  },
+  "default_period": "this-year",
+  "export_profiles": {
+   "Kokin_format": {
+    "columns": [
+     {
+      "key": "event_id",
+      "width": 10,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "Area",
+      "width": 12,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "Category_Path",
+      "width": 32,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "event_date",
+      "width": 16,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "session_start",
+      "width": 10,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "created_at",
+      "width": 10,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "user_email",
+      "width": 40,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "comment",
+      "width": 30,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Racun",
+      "width": 17.5546875,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Izvor",
+      "width": 12,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Smjer",
+      "width": 7.5546875,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Uplata",
+      "width": 10.44140625,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Isplata",
+      "width": 9.5546875,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Tip",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Podtip",
+      "width": 20.44140625,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Izvod opis",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Rate?",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Broj rata",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Rata br",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Datum naplate",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Status",
+      "width": 13,
+      "hidden": false,
+      "outlineLevel": 0
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Stanje",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     },
+     {
+      "key": "attr:Financije_all||Transakcija||Valuta",
+      "width": 13,
+      "hidden": true,
+      "outlineLevel": 1
+     }
+    ],
+    "createdAt": "2026-08-31",
+    "filterState": {
+     "periodKey": "last-3-months",
+     "sortOrder": "asc"
+    }
+   }
+  },
+  "disable_save_plus": true
+ },
+ "presets": [
+  {
+   "id": "111d4f12-bec4-41a1-b245-178a5c8d02e6",
+   "name": "Zaba MC isplate",
+   "area_id": "de8662e6-54f7-4ded-ab42-a786e7456067",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "default_attributes": {
+    "2000afc8-a352-4bb6-8fb7-e641de611895": "Isplata",
+    "670128e3-ffa7-48a2-ac14-d4a40187f766": "Mastercard",
+    "994e4005-914d-4d1b-8726-54c0df24919b": "Razno",
+    "d1ab52da-025b-4398-9523-c9c4cec14405": "Kokin tekući ZABA"
+   },
+   "filter_state": {
+    "periodKey": "all-time",
+    "sortOrder": "desc",
+    "attrFilter": {
+     "value": "Domaćinstvo",
+     "isExact": true,
+     "attrDefId": "994e4005-914d-4d1b-8726-54c0df24919b"
+    }
+   }
+  },
+  {
+   "id": "6f8a6003-1236-48bd-8fe5-8237a932aa21",
+   "name": "Transakcijaparking",
+   "area_id": "de8662e6-54f7-4ded-ab42-a786e7456067",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "default_attributes": {
+    "053fee1c-e74d-4612-9a3f-ecc57daf1b5f": 0.8,
+    "2000afc8-a352-4bb6-8fb7-e641de611895": "Isplata",
+    "670128e3-ffa7-48a2-ac14-d4a40187f766": "Racun",
+    "994e4005-914d-4d1b-8726-54c0df24919b": "Prijevoz",
+    "d1ab52da-025b-4398-9523-c9c4cec14405": "Kokin tekući ZABA",
+    "d2dfcf77-c0fa-411a-90ef-225024025e61": "Taksi, Zet, Parking"
+   },
+   "filter_state": {
+    "periodKey": "all-time",
+    "sortOrder": "desc",
+    "attrFilter": {
+     "value": "Domaćinstvo",
+     "isExact": true,
+     "attrDefId": "994e4005-914d-4d1b-8726-54c0df24919b"
+    }
+   }
+  },
+  {
+   "id": "9d7f01b3-a56a-4ed5-901c-9818ab3cbf44",
+   "name": "Financije",
+   "area_id": "de8662e6-54f7-4ded-ab42-a786e7456067",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "default_attributes": null,
+   "filter_state": {
+    "periodKey": "all-time",
+    "sortOrder": "desc"
+   }
+  },
+  {
+   "id": "be0aadcc-a0ae-4f79-8d36-8c5ec22b4256",
+   "name": "AI_rucak",
+   "area_id": "de8662e6-54f7-4ded-ab42-a786e7456067",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "default_attributes": {
+    "053fee1c-e74d-4612-9a3f-ecc57daf1b5f": 10,
+    "2000afc8-a352-4bb6-8fb7-e641de611895": "Isplata",
+    "670128e3-ffa7-48a2-ac14-d4a40187f766": "Visa",
+    "994e4005-914d-4d1b-8726-54c0df24919b": "Projekti",
+    "d1ab52da-025b-4398-9523-c9c4cec14405": "Sašin tekući RF",
+    "d2dfcf77-c0fa-411a-90ef-225024025e61": "Sasa"
+   },
+   "filter_state": {
+    "periodKey": "last-2-months",
+    "sortOrder": "desc"
+   }
+  },
+  {
+   "id": "f51ad690-18ed-47cd-8097-430295742295",
+   "name": "Financije",
+   "area_id": "de8662e6-54f7-4ded-ab42-a786e7456067",
+   "category_id": "986a4612-86a2-49fa-b73f-a29e048e5750",
+   "default_attributes": null,
+   "filter_state": {
+    "periodKey": "all-time",
+    "sortOrder": "desc"
+   }
+  }
+ ],
+ "anchors": [
+  {
+   "id": "026898e9-9f2a-4cc8-89bf-52c9e1e82054",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "032da22a-4f8c-4b40-9209-93add96be971",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "0491d964-68bf-4c37-bb67-0203040aa504",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "10644328-2d86-4dda-a0b0-717e8da5e673",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "11d84aba-0997-4c6d-8b7a-76db5c6bc09e",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "16d69f93-db7a-4f56-8ed6-d81be70a1b5c",
+   "group_slug": "racun",
+   "group_value": "Sašin tekući RF"
+  },
+  {
+   "id": "18e07133-6360-420a-a108-802c1a2283cc",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "260b4c53-68d3-494a-9292-515955085f91",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "262155dc-2567-4795-80c8-53d682df6a1c",
+   "group_slug": "racun",
+   "group_value": "Sašin tekući RF"
+  },
+  {
+   "id": "63226b03-6438-47b0-bbde-1fa865d907e9",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "63650a9f-a97c-4f8a-b073-5780ccf5026a",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "651f7b8d-8c3b-478b-b5e6-e51ab51cf0e7",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "654dcb9f-0a9a-4f67-9e9c-7a1acc153e64",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "6ba08cb8-3c47-477c-b516-981870fc9634",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "6d352e55-69c2-4483-bc9c-f37c6a06047c",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "98a2b9f7-cfe3-416b-855c-b73b29acedac",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "9d1a27c7-76f2-4a73-aa86-923976e3d174",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "aa1ac26a-bf57-4b7c-ac47-8bf5a14127aa",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "b56234ef-412e-41c5-a98b-cc5f9d211065",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "bf79cea4-3f55-4259-8e6f-0f2fcbcbb06a",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "c56f173e-7cf7-4ea8-aa20-8195c2e1ab8d",
+   "group_slug": "racun",
+   "group_value": "Sašin tekući RF"
+  },
+  {
+   "id": "cb56770b-ded3-46ac-87cb-eaaecaab7a43",
+   "group_slug": "racun",
+   "group_value": "Sašin tekući RF"
+  },
+  {
+   "id": "e9484a5e-b95d-480f-bc55-953e4d793ac2",
+   "group_slug": "racun",
+   "group_value": "Sašin tekući RF"
+  },
+  {
+   "id": "ef2aef8e-dfd0-4944-9dfe-6b135f64bfba",
+   "group_slug": "racun",
+   "group_value": "Kokin tekući ZABA"
+  },
+  {
+   "id": "f2d33461-dc45-4688-8809-7a19ad146e86",
+   "group_slug": "racun",
+   "group_value": "Sašin tekući RF"
+  }
+ ],
+ "combo_slugs": [
+  "izvorplacanja",
+  "podtip",
+  "racun",
+  "smjer",
+  "status",
+  "tip"
+ ],
+ "combos": [
+  [
+   [
+    "Mastercard",
+    null,
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "N/A"
+   ],
+   685
+  ],
+  [
+   [
+    "Visa",
+    "Hrana i ostalo",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   594
+  ],
+  [
+   [
+    "Visa",
+    null,
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "N/A"
+   ],
+   375
+  ],
+  [
+   [
+    "Mastercard",
+    "Hrana i ostalo",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   241
+  ],
+  [
+   [
+    "Racun",
+    null,
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "N/A"
+   ],
+   184
+  ],
+  [
+   [
+    "Visa",
+    "Kave/jelo vani",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   136
+  ],
+  [
+   [
+    "Racun",
+    "Saša",
+    "Sašin tekući RF",
+    "Uplata",
+    "Izvrsen",
+    "Prihodi"
+   ],
+   134
+  ],
+  [
+   [
+    "Mastercard",
+    "Temu",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   124
+  ],
+  [
+   [
+    "Mastercard",
+    "Taksi, Zet, Parking",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Prijevoz"
+   ],
+   108
+  ],
+  [
+   [
+    "Racun",
+    "Koka",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Prihodi"
+   ],
+   103
+  ],
+  [
+   [
+    "Racun",
+    "Taksi, Zet, Parking",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Prijevoz"
+   ],
+   100
+  ],
+  [
+   [
+    "Racun",
+    "Holding (smeće)",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   97
+  ],
+  [
+   [
+    "Visa",
+    "Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Projekti"
+   ],
+   91
+  ],
+  [
+   [
+    "Mastercard",
+    "Odjeća/obuća/ostalo_Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   69
+  ],
+  [
+   [
+    "Racun",
+    null,
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "N/A"
+   ],
+   68
+  ],
+  [
+   [
+    "Racun",
+    "Bankovni troškovi",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   67
+  ],
+  [
+   [
+    "Racun",
+    null,
+    "Sašin tekući RF",
+    "Uplata",
+    "Izvrsen",
+    "N/A"
+   ],
+   64
+  ],
+  [
+   [
+    "Mastercard",
+    "Popravci, održavanje",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   63
+  ],
+  [
+   [
+    "Visa",
+    "Popravci, održavanje",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   60
+  ],
+  [
+   [
+    "Racun",
+    "izmedju racuna",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   59
+  ],
+  [
+   [
+    "Mastercard",
+    "Cloud backup",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   58
+  ],
+  [
+   [
+    "Racun",
+    "Bankovni troškovi",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   56
+  ],
+  [
+   [
+    "Racun",
+    "izmedju racuna",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   55
+  ],
+  [
+   [
+    "Mastercard",
+    "Audible_Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   53
+  ],
+  [
+   [
+    "Racun",
+    "cash - bankomat",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   52
+  ],
+  [
+   [
+    "Racun",
+    "Sport_Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   50
+  ],
+  [
+   [
+    "Racun",
+    "Plin",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   46
+  ],
+  [
+   [
+    "Visa",
+    "Medical_Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   46
+  ],
+  [
+   [
+    "Racun",
+    "Komunikacije_T-com (internet, MaxTv)",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   45
+  ],
+  [
+   [
+    "Visa",
+    "Restoran",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   45
+  ],
+  [
+   [
+    "Racun",
+    "Komunikacije_T-mobile",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   44
+  ],
+  [
+   [
+    "Racun",
+    "Povrat Anja",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Prihodi"
+   ],
+   44
+  ],
+  [
+   [
+    "Racun",
+    "Povrat Zoran",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   44
+  ],
+  [
+   [
+    "Racun",
+    "Zivotno",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Osiguranje"
+   ],
+   43
+  ],
+  [
+   [
+    "Racun",
+    "porez/prirez/dohodak",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Porezi"
+   ],
+   43
+  ],
+  [
+   [
+    "Racun",
+    "Struja",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   42
+  ],
+  [
+   [
+    "Mastercard",
+    "Prime",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   40
+  ],
+  [
+   [
+    "Visa",
+    "gorivo",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   38
+  ],
+  [
+   [
+    "Racun",
+    "cash - bankomat",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   37
+  ],
+  [
+   [
+    "Mastercard",
+    "Hrana i ostalo",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Domaćinstvo"
+   ],
+   36
+  ],
+  [
+   [
+    "Visa",
+    "Odjeća/obuća/ostalo_Koka",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   34
+  ],
+  [
+   [
+    "Mastercard",
+    "Karte, osiguranje",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   33
+  ],
+  [
+   [
+    "Mastercard",
+    "Spotify",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   33
+  ],
+  [
+   [
+    "Racun",
+    "Sport_Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   32
+  ],
+  [
+   [
+    "Visa",
+    "Pokloni",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   32
+  ],
+  [
+   [
+    "Visa",
+    "Taksi, Zet, Parking",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Prijevoz"
+   ],
+   32
+  ],
+  [
+   [
+    "Visa",
+    "izmedju racuna",
+    "Sašin tekući RF",
+    "Uplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   32
+  ],
+  [
+   [
+    "Mastercard",
+    "registracija",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   29
+  ],
+  [
+   [
+    "Mastercard",
+    "Kave/jelo vani",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   28
+  ],
+  [
+   [
+    "Mastercard",
+    "Sky",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   28
+  ],
+  [
+   [
+    "Racun",
+    "leasing",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   27
+  ],
+  [
+   [
+    "Mastercard",
+    "Youtube",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   26
+  ],
+  [
+   [
+    "Visa",
+    "Sport_Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   26
+  ],
+  [
+   [
+    "Visa",
+    "Hardver",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   25
+  ],
+  [
+   [
+    "Mastercard",
+    "Pokloni",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   22
+  ],
+  [
+   [
+    "Racun",
+    "izmedju racuna",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   22
+  ],
+  [
+   [
+    "Visa",
+    "popravci",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   22
+  ],
+  [
+   [
+    "Racun",
+    "Anja",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   20
+  ],
+  [
+   [
+    "Racun",
+    "Lječnička komora_Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   20
+  ],
+  [
+   [
+    "Visa",
+    "Odjeća/obuća/ostalo_Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   19
+  ],
+  [
+   [
+    "Racun",
+    "PP (Posmrtna pripomoc)",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   18
+  ],
+  [
+   [
+    "Racun",
+    "Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Projekti"
+   ],
+   17
+  ],
+  [
+   [
+    "Mastercard",
+    "Sport_Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   16
+  ],
+  [
+   [
+    "Mastercard",
+    "gorivo",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   16
+  ],
+  [
+   [
+    "Mastercard",
+    "HP",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   15
+  ],
+  [
+   [
+    "Racun",
+    "registracija",
+    "Sašin tekući RF",
+    "Uplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   15
+  ],
+  [
+   [
+    "Visa",
+    "Hrana i ostalo",
+    "Sašin tekući RF",
+    "Isplata",
+    "Planiran",
+    "Domaćinstvo"
+   ],
+   15
+  ],
+  [
+   [
+    "Mastercard",
+    "Audible_Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   14
+  ],
+  [
+   [
+    "Mastercard",
+    "Sport_Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   14
+  ],
+  [
+   [
+    "Mastercard",
+    "Smještaj",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   13
+  ],
+  [
+   [
+    "Racun",
+    null,
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "N/A"
+   ],
+   13
+  ],
+  [
+   [
+    "Mastercard",
+    "Kino/Kazalište/Muzeji",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   12
+  ],
+  [
+   [
+    "Mastercard",
+    "Bankovni troškovi",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   11
+  ],
+  [
+   [
+    "Mastercard",
+    "Medical_Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   11
+  ],
+  [
+   [
+    "Racun",
+    "Nena's funds",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   11
+  ],
+  [
+   [
+    "Racun",
+    "Voda",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   11
+  ],
+  [
+   [
+    "Mastercard",
+    "Kindle_Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   10
+  ],
+  [
+   [
+    "Racun",
+    "Pokloni",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   10
+  ],
+  [
+   [
+    "Visa",
+    "Karte, osiguranje",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   10
+  ],
+  [
+   [
+    "Visa",
+    "Kino/Kazalište/Muzeji",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   10
+  ],
+  [
+   [
+    "Visa",
+    "registracija",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "auto Lacetti"
+   ],
+   10
+  ],
+  [
+   [
+    "Mastercard",
+    "Disney",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   8
+  ],
+  [
+   [
+    "Racun",
+    "Anja",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   8
+  ],
+  [
+   [
+    "Racun",
+    "Hosting domene (DPS, Igor)",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   8
+  ],
+  [
+   [
+    "Racun",
+    "Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Prihodi"
+   ],
+   8
+  ],
+  [
+   [
+    "Visa",
+    "gorivo",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "auto Lacetti"
+   ],
+   8
+  ],
+  [
+   [
+    "Mastercard",
+    "Bankovni troškovi",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Domaćinstvo"
+   ],
+   7
+  ],
+  [
+   [
+    "Mastercard",
+    "HBOmax",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   7
+  ],
+  [
+   [
+    "Racun",
+    "Natasa",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   7
+  ],
+  [
+   [
+    "Mastercard",
+    "Hardver",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   6
+  ],
+  [
+   [
+    "Mastercard",
+    "Smještaj",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Putovanja"
+   ],
+   6
+  ],
+  [
+   [
+    "Racun",
+    "Dionice / Kripto",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Investicije"
+   ],
+   6
+  ],
+  [
+   [
+    "Racun",
+    "registracija",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   6
+  ],
+  [
+   [
+    "Visa",
+    "Medical_Koka",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   6
+  ],
+  [
+   [
+    "Visa",
+    "Wellness",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   6
+  ],
+  [
+   [
+    "Mastercard",
+    "Restoran",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   5
+  ],
+  [
+   [
+    "Racun",
+    "Natasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   5
+  ],
+  [
+   [
+    "Visa",
+    "popravci",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "auto Lacetti"
+   ],
+   5
+  ],
+  [
+   [
+    "Mastercard",
+    "Prime",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Zabava"
+   ],
+   4
+  ],
+  [
+   [
+    "Mastercard",
+    "Wellness",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   4
+  ],
+  [
+   [
+    "Racun",
+    "Hardver",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   4
+  ],
+  [
+   [
+    "Racun",
+    "Hrana i ostalo",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   4
+  ],
+  [
+   [
+    "Racun",
+    "Medical_Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   4
+  ],
+  [
+   [
+    "Racun",
+    "Medical_Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   4
+  ],
+  [
+   [
+    "Racun",
+    "leasing",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   4
+  ],
+  [
+   [
+    "Racun",
+    "porez/prirez/dohodak",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Porezi"
+   ],
+   4
+  ],
+  [
+   [
+    "Racun",
+    "registracija",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "auto Lacetti"
+   ],
+   4
+  ],
+  [
+   [
+    "Visa",
+    "Kave/jelo vani",
+    "Sašin tekući RF",
+    "Isplata",
+    "Planiran",
+    "Domaćinstvo"
+   ],
+   4
+  ],
+  [
+   [
+    "Visa",
+    "gorivo",
+    "Sašin tekući RF",
+    "Isplata",
+    "Planiran",
+    "auto C5"
+   ],
+   4
+  ],
+  [
+   [
+    "Mastercard",
+    "Microsoft",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   3
+  ],
+  [
+   [
+    "Mastercard",
+    "Nena's funds",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Razno"
+   ],
+   3
+  ],
+  [
+   [
+    "Mastercard",
+    "Odjeća/obuća/ostalo_Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   3
+  ],
+  [
+   [
+    "Mastercard",
+    "Other",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   3
+  ],
+  [
+   [
+    "Mastercard",
+    "registracija",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "auto C5"
+   ],
+   3
+  ],
+  [
+   [
+    "Racun",
+    "Kave/jelo vani",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   3
+  ],
+  [
+   [
+    "Racun",
+    "Osiguranje",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   3
+  ],
+  [
+   [
+    "Racun",
+    "Popravci, održavanje",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   3
+  ],
+  [
+   [
+    "Visa",
+    "Smještaj",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   3
+  ],
+  [
+   [
+    "Visa",
+    "registracija",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   3
+  ],
+  [
+   [
+    "Cash",
+    "popravci",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   2
+  ],
+  [
+   [
+    "Mastercard",
+    "Karte, osiguranje",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Putovanja"
+   ],
+   2
+  ],
+  [
+   [
+    "Mastercard",
+    "Medical_Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Zdravlje"
+   ],
+   2
+  ],
+  [
+   [
+    "Mastercard",
+    null,
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "N/A"
+   ],
+   2
+  ],
+  [
+   [
+    "Mastercard",
+    "Sport_Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Zdravlje"
+   ],
+   2
+  ],
+  [
+   [
+    "Mastercard",
+    "izmedju racuna",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   2
+  ],
+  [
+   [
+    "Mastercard",
+    "popravci",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Bankovni troškovi",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Dionice / Kripto",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Investicije"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Dionice / Kripto",
+    "Sašin tekući RF",
+    "Uplata",
+    "Izvrsen",
+    "Investicije"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Hrana i ostalo",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Nena",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Osiguranje",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Ostavine",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Advokati"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Pokloni",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Povrat Anja",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Prihodi"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Smještaj",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "Sport_Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   2
+  ],
+  [
+   [
+    "Racun",
+    "registracija",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "auto Lacetti"
+   ],
+   2
+  ],
+  [
+   [
+    "Visa",
+    "Bankovni troškovi",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   2
+  ],
+  [
+   [
+    "Visa",
+    "Karte, osiguranje",
+    "Sašin tekući RF",
+    "Isplata",
+    "Planiran",
+    "Putovanja"
+   ],
+   2
+  ],
+  [
+   [
+    "Visa",
+    "Razno, sitnice",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   2
+  ],
+  [
+   [
+    "Cash",
+    "Karte, osiguranje",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   1
+  ],
+  [
+   [
+    "Cash",
+    "Karte, osiguranje",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   1
+  ],
+  [
+   [
+    "Cash",
+    "Kave/jelo vani",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   1
+  ],
+  [
+   [
+    "Cash",
+    "Restoran",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   1
+  ],
+  [
+   [
+    "Cash",
+    "Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Projekti"
+   ],
+   1
+  ],
+  [
+   [
+    "Cash",
+    "Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Projekti"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "Anja",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "HBOmax",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Zabava"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "HP",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Informatika"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "Koka",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Projekti"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "Medical_Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "Pokloni",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Planiran",
+    "Razno"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "Popravci, održavanje",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Projekti"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "Smještaj",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "Sport_Koka",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   1
+  ],
+  [
+   [
+    "Mastercard",
+    "Temu",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Karte, osiguranje",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Kave/jelo vani",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Domaćinstvo"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Komunikacije_T-mobile",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Informatika"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Medical_Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Nena",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    null,
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    null
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    null,
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "auto C5"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Odjeća/obuća/ostalo_Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Pokloni",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Popravci, održavanje",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Povrat Nataša",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Kuća"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Razno, sitnice",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Razno"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Restoran",
+    "Kokin tekući ZABA",
+    "Uplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Restoran",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Putovanja"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Sasa",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Projekti"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Wellness",
+    "Kokin tekući ZABA",
+    "Isplata",
+    "Izvrsen",
+    "Zabava"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "izmedju racuna",
+    "Sašin tekući RF",
+    "Uplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "porez/prirez/dohodak",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Porezi"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "porez/prirez/dohodak",
+    "Sašin tekući RF",
+    "Uplata",
+    "Izvrsen",
+    "Porezi"
+   ],
+   1
+  ],
+  [
+   [
+    "Racun",
+    "Štednja",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Investicije"
+   ],
+   1
+  ],
+  [
+   [
+    "Visa",
+    "Medical_Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Planiran",
+    "Zdravlje"
+   ],
+   1
+  ],
+  [
+   [
+    "Visa",
+    "Pokloni",
+    "Sašin tekući RF",
+    "Isplata",
+    "Planiran",
+    "Razno"
+   ],
+   1
+  ],
+  [
+   [
+    "Visa",
+    "Restoran",
+    "Sašin tekući RF",
+    "Isplata",
+    "Planiran",
+    "Putovanja"
+   ],
+   1
+  ],
+  [
+   [
+    "Visa",
+    "Sasa",
+    "Sašin tekući RF",
+    "Isplata",
+    "Planiran",
+    "Projekti"
+   ],
+   1
+  ],
+  [
+   [
+    "Visa",
+    "Sport_Koka",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Zdravlje"
+   ],
+   1
+  ],
+  [
+   [
+    "Visa",
+    "cash - bankomat",
+    "Sašin tekući RF",
+    "Isplata",
+    "Izvrsen",
+    "Transfer"
+   ],
+   1
+  ]
+ ]
+}

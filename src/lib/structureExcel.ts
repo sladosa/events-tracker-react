@@ -41,6 +41,7 @@ import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { flattenAreaSettings, AREA_SETTINGS_TYPES } from './areaSettingsSheet';
+import { RESTRUCTURE_SHEET, restructureHeader, restructureHelpLines } from './restructure/sheet';
 import {
   timestampSuffix,
   formatTimestampSuffix,
@@ -1101,6 +1102,47 @@ function writeAreaSettingsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): v
 }
 
 // ─────────────────────────────────────────────────────────────
+// Preuređivanje sheet — F1 (S178): PRAZAN predložak, da se zna da postoji
+// ─────────────────────────────────────────────────────────────
+// Stupci `kad:`/`postavi:` za tekstualne atribute S IZBORNIKOM (ono što se
+// preuređuje); ostali idu u uputu. ⚠ Slova se ne pišu nigdje — parser čita
+// zaglavlje po imenu (S160).
+function writeRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
+  const ws = wb.addWorksheet(RESTRUCTURE_SHEET);
+  ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+  const slugs: string[] = [];
+  const byCat: Array<[string, string[]]> = [];
+  for (const node of nodes) {
+    if (node.nodeType !== 'category' || !node.isLeaf) continue;
+    const text = node.attributeDefinitions.filter(a => a.data_type === 'text');
+    if (text.length) byCat.push([node.fullPath, text.map(a => a.slug)]);
+    for (const a of text) {
+      const r = a.validation_rules as Record<string, unknown> | null;
+      const hasMenu = !!r && (Array.isArray(r.suggest) || !!r.depends_on);
+      if (hasMenu && !slugs.includes(a.slug)) slugs.push(a.slug);
+    }
+  }
+
+  const header = restructureHeader(slugs);
+  header.forEach((h, ci) => {
+    ws.getColumn(ci + 1).width = ci === 0 ? 8 : h === 'event_id' ? 40 : 18;
+    const cell = ws.getCell(1, ci + 1);
+    cell.value = h;
+    cell.fill = makeFill(CLR.HEADER_BG);
+    cell.font = { name: 'Calibri', bold: true, size: 11, color: { argb: CLR.HEADER_FG } };
+    cell.border = THIN_BORDER;
+  });
+
+  let hr = 4;   // dva prazna retka za upis, pa uputa (čitač staje na „HELP")
+  for (const line of restructureHelpLines(byCat)) {
+    const cell = ws.getCell(hr++, 1);
+    cell.value = line;
+    cell.font = { italic: true, size: 9, color: { argb: 'FF888888' } };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Events stub sheet (for Structure Export — no events included)
 // ─────────────────────────────────────────────────────────────
 function _addEventsStubSheet(wb: ExcelJS.Workbook): void {
@@ -1183,6 +1225,7 @@ export async function addStructureSheetsTo(
   writeAutomationsSheet(wb, scoped);
   writeListColumnsSheet(wb, scoped);
   writeAreaSettingsSheet(wb, scoped);
+  writeRestructureSheet(wb, scoped);
   writeHelpStructureSheet(wb);
 }
 

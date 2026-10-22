@@ -360,7 +360,7 @@ prebrojati. Zato je ovo dobar **prvi test** cijelog alata.
 
 > **Saša 20.10.:** jezgra je **transakcija u bazi** (Postgres funkcija), ulaz je **sheet prvo**,
 > povrat kroz **zapis operacija** (prije / poslije), alat sa service ključem **smije**.
-> Ovaj dio je prijedlog za kod — ništa od njega još nije izvedeno.
+> **S178:** jezgra izvedena i dokazana na TEST-u (`058`, planer, sheet) — stanje i odstupanja u **§18**.
 
 ## 9. Arhitektura u jednoj slici
 
@@ -608,5 +608,36 @@ prije nego se tvrdi. Ako zatreba: `SET LOCAL statement_timeout` u funkciji.
 
 - Treba li F1 i **brisanje opcije s retcima uz obavezno „spoji u…"** (K-spec §7: danas uvoz tiho
   pravi siročad)? Prijedlog: da, kao upozorenje u Structure uvozu koje upućuje na ovaj sheet.
-- `export_profiles` filtar — točan oblik ključa provjeriti u `exportProfile.ts` prije koda.
+- ~~`export_profiles` filtar~~ — **riješeno S178:** jedan string `filterState.attrFilterRaw`
+  (`slug: =vrijednost` točno · `slug: ~dio` · `*: ~dio` · stari `uuid: =…` · `_` = namjerno
+  obrisan). Planer prepisuje samo `=` (uuid ključ razriješi u slug), `~`/`*` upozori. Ključevi
+  stupaca profila nose **ime atributa**, ne vrijednost — preuređivanje opcija ih ne dira.
 - Ime atributa `namjena` vs `za_koga` — kozmetika, Koka bira.
+
+## 18. Izvedeno (S178, 22.10.) — i gdje je kod odstupio od §9–§15
+
+**Stanje:** `058` na **TEST-u** (ne na PROD-u) · `plan.ts` + `sheet.ts` + prazan sheet u
+Structure exportu na `test-branch` · **nema** faze u `StructureImportModal`, `apply.ts`, E2E ni
+`preuredjivanje_grep.py`. Uvoz popunjenog sheeta zasad samo **javlja** da koraci nisu primijenjeni.
+
+**Oblik poziva** (`p_steps` / `p_config`) — opisan u zaglavlju `sql/058_restructure.sql`; planer ga
+gradi u `plan.rpc`. Slugovi se razriješe u ID-eve u planeru; baza ID-eve **provjerava** (kategorija
+u Arei, atribut tekstualan i na toj kategoriji, config cilj u Arei).
+
+**Odstupanja / dopune:**
+
+| Mjesto | Spec | Izvedeno | Zašto |
+| --- | --- | --- | --- |
+| §13 zapis | `seq`, redak po promjeni | **PK (op, vrsta, cilj)**: dira li više koraka isti redak, `before` ostaje prvi, `after` zadnji | povrat bi inače provjeravao međustanje koje više ne postoji i odbio ispravnu operaciju |
+| §13 provjera | očekivani broj po koraku | **dva** broja: pogođeni eventi I stvarne promjene atributa | isti broj eventa s drukčijim vrijednostima prošao bi prvu provjeru |
+| §13 FK | `area_id FK areas` | `ON DELETE CASCADE` | inače zapis blokira Delete Area kroz UI |
+| §13 pravo | inline | helper `app_can_restructure_area` | ista provjera u apply i undo |
+| §13 | — | prazan plan ⇒ greška; dvostruki redak (event, atribut) ⇒ greška; isti atribut dvaput u „postavi" ⇒ greška | brane, ne grane (izmjereno 0 duplikata na PROD-u) |
+| §12.3 groupings | isti par dvaput = greška | isti par **u istom bucketu** ⇒ sažme se (javi u promjenama); u **dva** bucketa ⇒ greška | O5 (`Audible_Koka` + `_Sasa` → `Audible`) bi inače uvijek blokirao |
+| §12.4 shortcut | `default_attributes`, `attrFilter` | isto; config cilj `{default_attributes, filter_state}` | — |
+| §12.2 `default_value` | — | samo **upozorenje** (stupac, ne `validation_rules`) | F1 ne piše `attribute_definitions` osim pravila |
+| §15.3 sonda | — | dodana uloga `service`; priprema (lažna operacija) u istoj transakciji | TEST nema write-share ⇒ za probu se doda privremeno |
+
+**Izmjereno na TEST-u (kopija PROD-a 22.10.):** 10 koraka, 9.743 promjene + 12 config zapisa ⇒
+apply **2,5 s** (service preko PostgREST-a; `authenticated` ima `statement_timeout` 8 s — pod Kokinim
+računom **nije** mjereno, ali je isti posao), povrat **1 s**, `sha256` 12/12 tablica jednak.

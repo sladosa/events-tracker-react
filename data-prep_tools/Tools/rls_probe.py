@@ -180,6 +180,33 @@ def probes(sc):
     return out
 
 
+# Lazni zapis operacije za probu povrata. Upisuje ga konekcija (vlasnik tablice,
+# zaobilazi RLS) PRIJE `SET ROLE`, u istoj transakciji -- ROLLBACK ga odnese.
+FAKE_OP = '00000000-0000-0000-0000-0000000005f1'
+
+
+def rpc_probes(sc):
+    """S178 (058): preuredjivanje smije SAMO vlasnik Aree ili service kljuc.
+    (tablica, operacija, SQL, priprema). Rezultat se ispisuje s prefiksom
+    (`op=` / `vraceno=`) jer povrat prazne operacije vrati 0, a gola nula se
+    cita kao „ne vidi" -- dakle kao zabrana."""
+    a = sc['area']['id']
+    pre = ("INSERT INTO public.restructure_ops (id, area_id, plan) "
+           "VALUES ('%s','%s','{}'::jsonb)" % (FAKE_OP, a))
+    # config bez promjene (before = after = trenutno) -- prolazi sve provjere
+    noop = ("jsonb_build_array(jsonb_build_object('kind','area_settings','target_id','%s',"
+            "'before',(SELECT settings FROM public.areas WHERE id='%s'),"
+            "'after',(SELECT settings FROM public.areas WHERE id='%s')))" % (a, a, a))
+    return [
+        ('rpc_restructure_apply', 'EXECUTE',
+         "SELECT 'op=' || public.rpc_restructure_apply('%s','[]'::jsonb,%s,'rls_probe')" % (a, noop), None),
+        ('rpc_restructure_undo', 'EXECUTE',
+         "SELECT 'vraceno=' || public.rpc_restructure_undo('%s')" % FAKE_OP, pre),
+        ('restructure_ops', 'SELECT',
+         "SELECT 'vidi=' || count(*) FROM public.restructure_ops WHERE id='%s'" % FAKE_OP, pre),
+    ]
+
+
 def build_sql(sc):
     # ⚠ BEZ tihog nacina: psql s `-q` / `QUIET` ne ispisuje status naredbe
     #   (`UPDATE 1`), pa bi svaka write proba ostala neprocitana -- a to izgleda
@@ -198,6 +225,20 @@ def build_sql(sc):
                 sql + ';',
                 'ROLLBACK;',
             ]
+    # S178: preuredjivanje -- uz tri uloge i SERVICE (jedini put za alate).
+    roles = [(r, uid) for r, uid, _ in sc['roles'] if uid] + [('service', None)]
+    for role, uid in roles:
+        claims = json.dumps({'sub': uid, 'role': 'authenticated'} if uid else {'role': 'service_role'})
+        for tab, op, sql, pre in rpc_probes(sc):
+            lines += ['\\echo #PROBE|%s|%s|%s' % (role, tab, op), 'BEGIN;']
+            if pre:
+                lines.append(pre + ';')
+            lines += [
+                'SET LOCAL ROLE %s;' % ('authenticated' if uid else 'service_role'),
+                "SELECT set_config('request.jwt.claims', '%s', true);" % claims,
+                sql + ';',
+                'ROLLBACK;',
+            ]
     return '\n'.join(lines) + '\n'
 
 
@@ -205,16 +246,31 @@ def read_result(chunk):
     """v. zaglavlje: 0 redaka bez greske = BLOKIRAO."""
     # `SELECT set_config(...)` vrati postavljene claimove i ispise ih -- to nije
     # rezultat probe nego njezina priprema; bez ovoga parser cita nju.
-    chunk = '\n'.join(l for l in chunk.splitlines() if '"sub"' not in l)
+    chunk = '\n'.join(l for l in chunk.splitlines()
+                      if '"sub"' not in l and '"role"' not in l)
     err = re.search(r'ERROR:\s*(.+)', chunk)
     if err:
         msg = err.group(1).strip()
+        # S178: baza bez 058 -- „nema funkcije" nije ni DA ni NE
+        if 'does not exist' in msg:
+            return '-', 'nema u bazi: ' + msg[:50]
+        # vlastita provjera prava u DEFINER funkciji (058), ne RLS
+        if 'smije samo vlasnik' in msg or 'Poništiti smije' in msg:
+            return 'NE', 'funkcija odbila (pravo)'
         if 'row-level security' in msg:
             # ⚠ NE pise se vise „(WITH CHECK)": uz `RETURNING` istu poruku
             #   proizvede SELECT politika nad NOVIM retkom, a ne WITH CHECK
             #   (S135). Tvrdnja koja imenuje krivu politiku salje na krivi trag.
             return 'NE', 'RLS odbio'
         return 'DA*', 'proslo RLS, palo na: ' + msg[:58]
+    # priprema (`INSERT 0 1`) ide u isti chunk -- zato prefiks, i to PRIJE statusa
+    m = re.search(r'\bvidi=(\d+)', chunk)
+    if m:
+        n = int(m.group(1))
+        return ('DA', 'vidi %d' % n) if n else ('NE', 'ne vidi')
+    m = re.search(r'\b(op|vraceno)=(\S+)', chunk)
+    if m:
+        return 'DA', '%s=%s' % (m.group(1), m.group(2)[:8])
     m = re.search(r'\b(INSERT 0|UPDATE|DELETE)\s+(\d+)', chunk)
     if m:
         n = int(m.group(2))

@@ -29,6 +29,7 @@ import { buildRules, sameRules, removedOptions } from '@/lib/validationRules';
 import { TEMPLATE_USER_ID } from '@/lib/constants';
 import { getDatePresets } from '@/hooks/useDateBounds';
 import { unflattenAreaSettings, mergeAreaSettings, changedTopKeys } from '@/lib/areaSettingsSheet';
+import { readRestructureSheet } from '@/lib/restructure/sheet';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig, RataRemainder,
 } from '@/types/database';
@@ -1700,6 +1701,16 @@ export async function importStructureExcel(
         }
       }
     }
+  }
+
+  // ── 12. Preuređivanje sheet — F1 (S178) ─────────────────────
+  //   ⚠ Export ga nosi PRAZNOG prije nego uvoz zna primijeniti korake. Popunjen
+  //     sheet koji uvoz tiho preskoči izgledao bi kao obavljen posao — zato
+  //     upozorenje dok faza primjene (StructureImportModal) ne postoji.
+  const restructure = readRestructureSheet(wb);
+  if (restructure && restructure.rowsRead > 0) {
+    result.warnings.push(
+      `Preuređivanje: ${restructure.steps.length} koraka NIJE primijenjeno — ova verzija aplikacije sheet još ne izvodi (F1 u izradi). Ništa od toga nije upisano.`);
   }
 
   return result;

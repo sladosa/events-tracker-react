@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S177).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S178).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 155 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 168 | [Critical rules](<#Critical rules>) | X |
-| 1362 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1841 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1857 | [Key files](<#Key files>) |  |
-| 1990 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2010 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2033 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2061 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2101 | [Open bugs](<#Open bugs>) | ~ |
-| 2210 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2255 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2406 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2414 | [Backlog](<#Backlog>) | ~ |
-| 2418 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2426 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1372 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1851 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1867 | [Key files](<#Key files>) |  |
+| 2004 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2024 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2047 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2075 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2115 | [Open bugs](<#Open bugs>) | ~ |
+| 2224 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2269 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2420 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2428 | [Backlog](<#Backlog>) | ~ |
+| 2432 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2440 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2590 redaka, 18 sekcija._
+_Ukupno 2604 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -196,6 +196,8 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **Odmah nakon DDL migracije PostgREST zna vratiti `555 Internal server error` na običnom GET-u**
   (S167, izmjereno na PROD-u nakon `056`: `GET areas` pao, isti upis minutu kasnije prošao). To je
   ponovno učitavanje sheme, ne kvar alata — **ponovi**; alat s dry runom po defaultu je bezopasan.
+- **plpgsql `IF NOT CASE x WHEN … THEN … END THEN` puca** (`syntax error at end of input`, S178):
+  uvjet `IF`-a se reže na prvom `THEN`. CASE ide u varijablu, pa `IF NOT coalesce(v, false)`.
 - **`session_start` mora biti zaokružen na minutu** (`setHours(h, m, 0, 0)`) — detekcija kolizije ovisi o tome
 - **`session_start` format:** DB vraća `+00:00`, JS proizvodi `.000Z` — nikad ne koristi
   URL-dekodiranu vrijednost za Supabase upit; uvijek `events[0].session_start` (DB format)
@@ -454,6 +456,14 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `events.chain_key → categories` brani kategoriju, poruka „Some records could not be removed" nad
   kategorijom koja izgleda prazno. Brisanje aktivnosti to zna od S104 (`category_id OR chain_key`);
   svako novo brisanje po kategoriji mora isto. Čuva `S162_delete_leaf_chain_parent.spec.ts`.
+- **⚠ PREUREĐIVANJE (F1, S178): `src/lib/restructure/plan.ts` je JEDINO mjesto koje zna gdje u
+  configu stoji VRIJEDNOST opcije** (filtri pločica, `due`, `groupings`, `automations`, `list_columns.map`,
+  `export_profiles.attrFilterRaw`, shortcuti, sidra). Novi ključ u `areas.settings` koji citira
+  vrijednost opcije MORA ući u planer (+ tvrdnju u `restructurePlan.test.mjs`), inače preuređivanje
+  ostavi mrtvu referencu bez greške — baza (`058`) provjerava samo brojeve, ne oblik.
+  ⚠ Config se prepisuje **samo za čisto preimenovanje** (svi A → B); raspad A na više vrijednosti
+  ⇒ upozorenje, nikad pogađanje. ⚠ Opcija s retcima se od sada preimenuje sheetom `Preuređivanje`,
+  ne panelom ni `fix_*.py` — kad faza primjene u uvozu postoji (do tada uvoz samo javlja).
 - **Promjena sluga lomi reference.** `depends_on` (S105d), a od Faze 1 i `dashboard.widgets[]`.
   Fixup referenci mora ići uz svaki rename sluga.
 - **`set_attribute` se evaluira u Add Activity i (od S127) u Edit — ne u Import.**
@@ -1933,6 +1943,10 @@ src/lib/deltaSheet.ts              Delta sheet — prozor, kontrolni stupac, "u 
 src/lib/structureExcel.ts          Structure export (Automations, Dashboard, DisableSavePlus)
 src/lib/structureImport.ts         Structure import — non-destructive, slug lookup
 src/lib/areaSettingsSheet.ts       F5: `areas.settings` ⇄ retci `Path | Type | Value` (`OWNED_ELSEWHERE`)
+src/lib/restructure/plan.ts        F1 planer preuređivanja (čist): koraci „kad … postavi …" + snimka ⇒
+                                   brojevi po koraku, izbornik, config, paket za `rpc_restructure_apply`
+src/lib/restructure/sheet.ts       Sheet `Preuređivanje` (zaglavlje `kad: <slug>` / `postavi: <slug>`)
+sql/058_restructure.sql            apply/undo u JEDNOJ transakciji + zapis prije/poslije (TEST; PROD ne)
 src/lib/validationRules.ts         JEDINI graditelj `validation_rules` (panel, uvoz, „Other") +
                                    `sameRules` za usporedbu po značenju (S152)
 src/lib/pendingOptions.ts          „Other" opcije iz Add/Edit u `validation_rules` (jedna kopija)

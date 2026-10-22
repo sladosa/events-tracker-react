@@ -2,7 +2,7 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S177 (2026-10-22, Python alati — bez novih ručnih testova; mjesečni krug provjeravaju T-S175-1..3) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S178 (2026-10-22, F1 jezgra preuređivanja na TEST-u — dokaz izmjeren alatom, bez novih ručnih testova; ručni test dolazi s modalom) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 
