@@ -73,6 +73,7 @@ from _izvodi import nadji  # noqa: E402
 from enrich_from_izvoda import parse_pbz_visa  # noqa: E402
 from fill_from_izvod import short_opis  # noqa: E402
 from presedani import Presedani  # noqa: E402
+from pravila_trgovca import prijedlog  # noqa: E402
 from uskladi_izvod import load_db  # noqa: E402
 from visa_kosare import num  # noqa: E402
 from visa_popravak import ZG, lokalno as lokalno_hhmm, pisi  # noqa: E402
@@ -322,8 +323,15 @@ def main():
         return {'tip': tp[0], 'podtip': tp[1], 'comment': None,
                 'dokaz': f'trgovac {short_opis(opis)!r}, {n}/{len(same)} (Visa+MC)'}
 
+    # S177 (T17): pravilo po trgovcu je ZADNJI ključ — presedan i ručni rječnik pobjeđuju.
+    tax = taksonomija(url, key)
+
+    def po_pravilu(t):
+        return prijedlog(t['opis'], 'Visa', tax)
+
     def klasa(t):
-        return pres.nadji(t['iznos'], t['opis']) or po_trgovcu(t['opis']) or rucna_klasa(t['opis'])
+        return (pres.nadji(t['iznos'], t['opis']) or po_trgovcu(t['opis'])
+                or rucna_klasa(t['opis']) or po_pravilu(t))
 
     zbroj = 0.0
     print(f'\nISPRAVCI ({len(par)}):')
@@ -384,7 +392,7 @@ def main():
                 kom = re.sub(r'\s*\d+/\d+\s*$', '', str(u.get('comment') or '')) + f' {n}/{N}'
                 dokaz = f'rata {n}/{N}, klasifikacija s rate {int(num(u["attrs"].get("Rata br")))}'
             elif u:
-                p = rucna_klasa(t['opis'])
+                p = rucna_klasa(t['opis']) or po_pravilu(t)
                 a.update({'Tip': p['tip'] if p else 'N/A', 'Podtip': p['podtip'] if p else 'N/A'})
                 kom = re.sub(r'\s*\d+/\d+\s*$', '', str(u.get('comment') or '')) + f' {n}/{N}'
                 dokaz = f'rata {n}/{N}; ' + (p['dokaz'] if p else 'rata 1 je N/A')

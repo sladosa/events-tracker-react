@@ -66,7 +66,7 @@ from uvezi_transu import kljuc as _kljuc_mc  # noqa: E402
 from visa_uvoz_izvoda import KLASA, taksonomija  # noqa: E402
 import visa_popravak  # noqa: E402
 from _excel_izbornici import izgled_pregleda  # noqa: E402
-from pravila_trgovca import po_pravilu  # noqa: E402
+from pravila_trgovca import POSREDNIK, po_pravilu  # noqa: E402
 
 KARTICE = ('Mastercard', 'Visa')
 LILA = 'E4DFEC'     # prijedlog iz pravila po trgovcu (S174) — nije presedan, gledaj ga posebno
@@ -78,8 +78,6 @@ def iz_pravila(tekst, izvor):
     if not pr:
         return None, None
     return (pr[0], pr[1], 1, 1), f'pravilo „{pr[2]}" (povijest {pr[3]})'
-# Posrednik nije trgovac: `Izvod opis` ne govori što je kupljeno (CLAUDE.md S124).
-POSREDNIK = re.compile(r'^(keks pay|kupovina|paypal\s*$|paypal\s*\*\s*$)', re.I)
 
 
 def arg(name, default=None):

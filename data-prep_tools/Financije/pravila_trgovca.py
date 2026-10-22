@@ -23,8 +23,9 @@ PRAVILA PRAVILA (data-prep_tools/CLAUDE.md „Rječnik `Izvod opis`")
 ⚠ `izvor` sužava pravilo na jednu karticu/račun: gorivo na Visi je i Lacetti (8 od ~50), na
   Mastercardu je samo C5 (15/15). Bez toga bi „INA → C5" na Visi griješio svaki šesti put.
 
-Sljedeći korak (zapisano, ne izvedeno): isto zvati iz `fill_from_izvod` i `visa_uvoz_izvoda`
-(retci koje mjesečni krug ne zna razvrstati) — `po_pravilu(tekst, izvor)` je cijelo sučelje.
+MJESEČNI KRUG (S177): `fill_from_izvod` (MC/ZABA/RF) i `visa_uvoz_izvoda` zovu `prijedlog()` kao
+ZADNJI ključ — tek kad presedan (i ručni rječnik) šuti. `prijedlog()` sam isključuje posrednika i
+par izvan izbornika, pa pozivatelj ne mora ponavljati ta dva uvjeta (jedna kopija, ne tri).
 """
 from __future__ import annotations
 
@@ -83,6 +84,8 @@ PRAVILA = [
 _RX = [(re.compile(u, re.I), u, iz, t, p, dk) for u, iz, t, p, dk in PRAVILA]
 
 KARTICE = ('Mastercard', 'Visa')
+# Posrednik nije trgovac: `Izvod opis` ne govori što je kupljeno (CLAUDE.md S124). Gleda se KLJUČ.
+POSREDNIK = re.compile(r'^(keks pay|kupovina|paypal\s*$|paypal\s*\*\s*$)', re.I)
 # Uvod naloga s ZABA izvoda: `Kreditni transfer nacionalni u eurima on-line bankarstvom (m-zaba) `
 # (S126: `Izvod opis` se skraćuje za uvod, `(m-zaba)` zna ostati) i `UPLATA `.
 _UVOD = re.compile(r'^(kreditni transfer[^()]*)?(\((m-zaba|mobilne aplikacije)\)\s*-?\s*|uplata\s+)', re.I)
@@ -118,3 +121,23 @@ def po_pravilu(tekst, izvor):
         if (iz is None or iz == izvor) and rx.search(k):
             return t, p, u, dk
     return None
+
+
+def prijedlog(tekst, izvor, tax=None):
+    """Za mjesečni krug (S177): → dict u obliku `Presedani.nadji` ili None.
+    `tax` = `visa_uvoz_izvoda.taksonomija()` ({Tip: [Podtip…]}); par izvan nje se NE predlaže
+    nego JAVLJA — taksonomija se mijenja (preuređivanje), a Podtip mimo izbornika uvoz primi
+    kao tekst bez greške. `comment` je None: pravilo zna kategoriju, ne i oznaku."""
+    k = kljuc_trgovca(tekst, izvor)
+    if not k or POSREDNIK.match(k):
+        return None
+    pr = po_pravilu(tekst, izvor)
+    if not pr:
+        return None
+    t, p, u, dk = pr
+    if tax is not None and (t not in tax or p not in tax[t]):
+        print(f'   ⚠ pravilo „{u}" daje {t} / {p}, a toga nema u izborniku — ne predlažem '
+              f'(popravi `pravila_trgovca.PRAVILA`)')
+        return None
+    return {'tip': t, 'podtip': p, 'comment': None, 'alternative': [], 'kljuc': 'pravilo',
+            'dokaz': f'pravilo „{u}" (povijest {dk})'}

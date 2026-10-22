@@ -574,7 +574,10 @@ data-prep_tools/Financije/pravila_trgovca.py
                                    Saša odobrio 31 (+ Miele 4/4, 18.10.). Novo pravilo = isti postupak (radni stol
                                    `Claude-temp_R/s174_pravila/`: skupi → predlozi_ai →
                                    provjeri_pravila), nikad ručni upis bez brojanja (S164).
-                                   Sljedeći korak: zvati ga iz `fill_from_izvod`/`visa_uvoz_izvoda`.
+                                   S177: i mjesečni krug — `prijedlog(tekst, izvor, tax)` je ZADNJI
+                                   ključ u `fill_from_izvod` (MC/ZABA/RF) i `visa_uvoz_izvoda`;
+                                   posrednik i par izvan izbornika isključuje SAM (jedna kopija).
+                                   Unatrag 12 mj (PROD 18.10.): 63 N/A → razvrstano, 61 točno.
 data-prep_tools/Financije/verify_breakdown.py
                                    S165: `rpc_area_breakdown` (056) protiv Pythona nad sirovim
                                    retcima, PO GRUPI, u lipu (12 mj + rujan × obje osi), pa

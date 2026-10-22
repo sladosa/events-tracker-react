@@ -1600,8 +1600,13 @@ def main() -> None:
                      default=min(r['date'] for r in rows)).isoformat()
         _svi = [d for d in _load_db(_url, _key)
                 if str(d['attrs'].get('Racun')) == racun]
+        # S177 (T17): kad presedan šuti, ZADNJI ključ je pravilo po trgovcu. `prijedlog`
+        #   sam isključi posrednika i par izvan izbornika (taksonomija se mijenja).
+        from pravila_trgovca import prijedlog
+        from visa_uvoz_izvoda import taksonomija
+        _tax = taksonomija(_url, _key)
         _po_izvoru: dict = {}
-        _pogodaka, _dvojbeni = 0, []
+        _pogodaka, _po_pravilu, _dvojbeni = 0, 0, []
         for r in rows:
             if r['tip'] != NA:
                 continue
@@ -1613,7 +1618,10 @@ def main() -> None:
             hit = _po_izvoru[izv].nadji(r['iznos'], r.get('opis_puni') or r['opis'],
                                         r['smjer'])
             if not hit:
-                continue
+                hit = prijedlog(r.get('opis_puni') or r['opis'], izv, _tax)
+                if not hit:
+                    continue
+                _po_pravilu += 1
             r['tip'], r['podtip'] = hit['tip'], hit['podtip']
             r['presedan'] = hit['dokaz']
             # WARN Kokin opis se NE prepisuje presedanom — ona je autoritet za
@@ -1627,8 +1635,8 @@ def main() -> None:
             _pogodaka += 1
         print()
         print('Presedani (%s, povijest racuna %r prije %s): %d od %d redaka '
-              'klasificirano brojanjem'
-              % (a.presedan, racun, _prije, _pogodaka, len(rows)))
+              'klasificirano brojanjem (od toga %d po pravilu trgovca)'
+              % (a.presedan, racun, _prije, _pogodaka, len(rows), _po_pravilu))
         for r in rows:
             if r.get('presedan'):
                 print('   > %s %9.2f  %-26s %-24s (%s)'
