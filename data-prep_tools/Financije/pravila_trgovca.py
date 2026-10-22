@@ -60,6 +60,10 @@ PRAVILA = [
     # Prijevoz
     (r'^(parkiraliste|javna garaza|garaza|garage)\b', None,   'Prijevoz',    'Taksi, Zet, Parking',      '23/23'),
     (r'^bmove\b',                               None,         'Prijevoz',    'Taksi, Zet, Parking',      '86/88'),
+    # Saša 22.10. (S177): „čim piše PARKING" — i usred imena (`zagrebparking.hr`, `vpa parking hrv`).
+    # Samo kartice: na računu riječ zna biti u tuđem nalogu (uplata Anji, S174).
+    (r'parking',                                'Mastercard', 'Prijevoz',    'Taksi, Zet, Parking',      '27/27'),
+    (r'parking',                                'Visa',       'Prijevoz',    'Taksi, Zet, Parking',      '11/11'),
     # Zdravlje — ljekarne samo na Visi (Sašina kartica); 2 od 36 su Kokine
     (r'(\bljekarn|^farmacia\b)',                'Visa',       'Zdravlje',    'Medical_Sasa',             '33/36'),
     (r'\boptika stepinac\b',                    None,         'Zdravlje',    'Medical_Koka',             '3/3'),
