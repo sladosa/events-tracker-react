@@ -264,6 +264,28 @@ console.log('\n── Blokirajuće greške ──');
   ok('rpc null', p.rpc === null);
 }
 
+console.log('\n── Predviđeno stanje (S179: ponovno mjerenje uspoređuje bazu s njim) ──');
+{
+  // Niz koji NIJE idempotentan: 1 postavi zadano svima, 2 ga na dva retka obriše.
+  // „Isti koraci opet ne mijenjaju ništa" bi ovdje lagao; predviđanje ne smije.
+  const s = snap();
+  const kuca = s.events.filter(e => e.values.tip === 'Kuća').slice(0, 2).map(e => e.id);
+  const zab = s.events.find(e => e.values.tip === 'Zabava');
+  const p = planRestructure([
+    step(1, { tip: 'Zabava' }, { tip: 'Zabava X' }),
+    step(2, { tip: 'Kuća' }, { tip: null }, kuca),
+  ], s);
+  ok('predicted.slugs = atributi iz „postavi"', eq(p.predicted.slugs, ['tip']));
+  ok('preimenovan redak: nova vrijednost', p.predicted.values[zab.id].tip === 'Zabava X');
+  ok('obrisan redak: nema ključa', kuca.length === 2 && kuca.every(id => !('tip' in p.predicted.values[id])));
+  ok('nedirnut redak: stara vrijednost', Object.entries(p.predicted.values)
+    .filter(([id]) => !kuca.includes(id)).every(([id, v]) => {
+      const was = s.events.find(e => e.id === id).values.tip;
+      return was === 'Zabava' ? v.tip === 'Zabava X' : (v.tip ?? null) === (was ?? null);
+    }));
+  ok('svi eventi kategorije su u predviđanju', Object.keys(p.predicted.values).length === s.events.length);
+}
+
 console.log('\n── Snimka se ne mijenja ──');
 {
   const s = snap();

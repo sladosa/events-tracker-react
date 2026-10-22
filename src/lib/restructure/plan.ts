@@ -124,6 +124,13 @@ export interface RestructurePlan {
   errors: string[];
   config: ConfigWrite[];
   rpc: { p_steps: RpcStep[]; p_config: ConfigWrite[] } | null;
+  /**
+   * PREDVIĐENO stanje poslije primjene: event id → vrijednosti atributa iz „postavi"
+   * (samo eventi dirnutih kategorija; izostanak sluga = prazno). Ponovno mjerenje
+   * uspoređuje bazu s ovim — „isti koraci opet ne mijenjaju ništa" nije dokaz,
+   * jer niz koraka ne mora biti idempotentan (99 postavi, 100 obriše).
+   */
+  predicted: { slugs: string[]; values: Record<string, Record<string, string>> };
 }
 
 // ─────────────────────────────────────────────
@@ -142,7 +149,8 @@ function stable(v: unknown): string {
   return '{' + Object.keys(v as Obj).sort()
     .map(k => JSON.stringify(k) + ':' + stable((v as Obj)[k])).join(',') + '}';
 }
-const same = (a: unknown, b: unknown) => stable(a) === stable(b);
+/** Jednakost JSON-a neovisna o redoslijedu ključeva (JSONB ih presloži, S153). */
+export const same = (a: unknown, b: unknown) => stable(a) === stable(b);
 
 const show = (v: StepValue | undefined) => (v == null ? '(prazno)' : `„${v}"`);
 
@@ -678,8 +686,18 @@ export function planRestructure(steps: RestructureStep[], snap: AreaSnapshot): R
   const nAnchors = config.filter(c => c.kind === 'anchor').length;
   if (nAnchors) changes.push(`Sidra salda: ${nAnchors} prate preimenovani račun`);
 
+  const predicted: RestructurePlan['predicted'] = { slugs: [...touchedSlugs], values: {} };
+  for (const e of snap.events) {
+    if (!touchedCats.has(e.category_id)) continue;
+    const w = work.get(e.id)!;
+    const out: Record<string, string> = {};
+    for (const s of touchedSlugs) if (w[s]) out[s] = w[s];
+    predicted.values[e.id] = out;
+  }
+
   return {
     steps: results, changes, warnings, errors, config,
     rpc: errors.length ? null : { p_steps: rpcSteps, p_config: config },
+    predicted,
   };
 }

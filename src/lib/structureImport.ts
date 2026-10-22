@@ -30,6 +30,7 @@ import { TEMPLATE_USER_ID } from '@/lib/constants';
 import { getDatePresets } from '@/hooks/useDateBounds';
 import { unflattenAreaSettings, mergeAreaSettings, changedTopKeys } from '@/lib/areaSettingsSheet';
 import { readRestructureSheet } from '@/lib/restructure/sheet';
+import type { RestructureStep } from '@/lib/restructure/plan';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig, RataRemainder,
 } from '@/types/database';
@@ -126,6 +127,16 @@ export interface ImportResult {
     rowsSkipped: number;
     /** `Area: kljuc1, kljuc2` — što se promijenilo (tiha promjena configa izgleda kao nikakva). */
     changed: string[];
+  };
+  /** Popunjen sheet `Preuređivanje` (F1) — NIJE primijenjen; modal ga planira i traži potvrdu.
+   *  Izostanak = sheeta nema ili je prazan predložak. */
+  restructure?: {
+    areaId: string | null;
+    areaName: string;
+    steps: RestructureStep[];
+    /** Greške čitanja sheeta / filea — gase primjenu. */
+    errors: string[];
+    source: string;
   };
 }
 
@@ -1703,14 +1714,29 @@ export async function importStructureExcel(
     }
   }
 
-  // ── 12. Preuređivanje sheet — F1 (S178) ─────────────────────
-  //   ⚠ Export ga nosi PRAZNOG prije nego uvoz zna primijeniti korake. Popunjen
-  //     sheet koji uvoz tiho preskoči izgledao bi kao obavljen posao — zato
-  //     upozorenje dok faza primjene (StructureImportModal) ne postoji.
-  const restructure = readRestructureSheet(wb);
+  // ── 12. Preuređivanje sheet — F1 (S178/S179) ───────────────
+  //   Uvoz koraka NE IZVODI — samo ih preda modalu, koji ih planira nad svježom
+  //   snimkom (POSLIJE §1–§11, jer korak smije koristiti atribut koji je ovaj
+  //   uvoz upravo stvorio) i traži vlastitu potvrdu (`restructure/apply.ts`).
+  //   ⚠ Area je ona iz Structure sheeta istog filea — export je jedna Area (S175).
+  //     File s više Area: koraci nose samo ime kategorije, pa bi Area bila pogađanje.
+  //   ⚠ Activities „Create categories & continue" (`existingAreasUntouched`) ga
+  //     ne nosi dalje — preuređivanje je namjerna izmjena, ide Structure → Import.
+  const restructure = existingAreasUntouched ? null : readRestructureSheet(wb);
   if (restructure && restructure.rowsRead > 0) {
-    result.warnings.push(
-      `Preuređivanje: ${restructure.steps.length} koraka NIJE primijenjeno — ova verzija aplikacije sheet još ne izvodi (F1 u izradi). Ništa od toga nije upisano.`);
+    const names = [...new Set(parsedRows.map(r => parsePath(r.categoryPath)[0]).filter(Boolean))];
+    const ids = [...new Set(names.map(n => areaByName.get(n.toLowerCase())).filter((x): x is string => !!x))];
+    const errors = [...restructure.errors];
+    if (ids.length !== 1) {
+      errors.push(`Preuređivanje: file nosi ${ids.length} Area (${names.join(', ')}) — sheet se primjenjuje samo uz Structure jedne Aree.`);
+    }
+    result.restructure = {
+      areaId: ids.length === 1 ? ids[0] : null,
+      areaName: ids.length === 1 ? (dbAreas?.find(a => a.id === ids[0])?.name ?? names[0]) : names.join(', '),
+      steps: restructure.steps,
+      errors,
+      source: file.name,
+    };
   }
 
   return result;
