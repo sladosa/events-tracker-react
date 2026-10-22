@@ -665,8 +665,8 @@ računom **nije** mjereno, ali je isti posao), povrat **1 s**, `sha256` 12/12 ta
 | §16.4 `namjena` | `default_value` Zajedničko | red `WhenValue = *` s `Default` | v. §16.4 |
 
 **Izmjereno kroz modal, pod vlasnikom (`authenticated`, `statement_timeout` 8 s), TEST = kopija PROD-a:**
-10 koraka / 9.743 promjene: apply **2,4 s i 4,4 s**, undo **1,9 s i 3,2 s** (RPC iz preglednika);
+10 koraka / 9.743 promjene: apply **2,4 s, 4,4 s i 4,9 s** (treće = Saša, T-S179-1), undo **1,9 · 2,2 · 3,2 s** (RPC iz preglednika);
 pregled ~9 s, provjera poslije ~7 s. Dva ciklusa primijeni → poništi: `sha256` **11/12** tablica
-jednak (12. = `attribute_definitions` +1, `namjena`). ⚠ Zalihost do 8 s je **~2×** — PROD plan
+jednak (12. = `attribute_definitions` +1, `namjena`). ⚠ Zalihost do 8 s je **~1,6×** (najgore izmjereno 4,9 s) — PROD plan
 (§8.2) je manji (bez Visa/RF koraka, ~5,6k promjena), ali **ne spajati** u jedan sheet više velikih
 domena; dijeli se u dva uvoza.

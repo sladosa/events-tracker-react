@@ -30,8 +30,7 @@
   to su `set_breakdown.py` i `uvezi_transu.py`.
 
 ## Što treba od tebe
-1. **Testovi na TEST-u (lokalni dev, Ctrl+Shift+R):** T-S179-1 (cijeli tok, brojke u
-   `docs/sessions/tests/S179_tests.md`), T-S179-2 (greška gasi Apply), T-S179-3 (Namjena u Add formi).
+1. **Testovi na TEST-u (lokalni dev, Ctrl+Shift+R):** ~~T-S179-1~~ ✅ 22.10., T-S179-2 (greška gasi Apply), T-S179-3 (Namjena u Add formi).
 2. **PROD puštanje** — naredbe su ispod (koraci 1–7). Sheet s koracima za Financije složit ćemo
    **zajedno** sljedeći put. Prije toga Koka mora odlučiti jedno: vrijednost **`Nena`** ili **„Nena / Kućište"**
    (Nenin fond, spec §8.2). Za retke `Projekti / Sasa` alat predlaže Tip po trgovcu, a ti potvrđuješ.
@@ -104,7 +103,7 @@ na TEST-u: S178 dokaz + 2 × S179 mjerenje + E2E (E2E Area obrisana kaskadom) �
   Prihodi/Povrat Anja (jedan `event_id`), Nena 25.07./28.07. → Namjena (čeka Koku), Lacetti → Saša,
   C5 → Koka, zadano Zajedničko **zadnji**. Decathlon → Zdravlje/Sport (§8.2 prijedlog).
   Python rječnici po grep popisu istog dana (`pravila_trgovca.PRAVILA`, `set_breakdown.py`, `uvezi_transu.py`).
-- **Zalihost vremena:** 4,4 s od 8 s (`authenticated`) na 9.743 promjene. PROD plan je manji, ali
+- **Zalihost vremena:** do 4,9 s od 8 s (`authenticated`) na 9.743 promjene. PROD plan je manji, ali
   više velikih domena u jednom sheetu = podijeliti. `SET statement_timeout` unutar funkcije NE pomaže
   (brojač naredbe je već krenuo); ako zatreba, `ALTER ROLE authenticated` — odluka, ne refleks.
 - **Snimka ~9 s** na kopiji PROD-a: sporo je čitanje `event_attributes` pod RLS-om, stranicu po stranicu.

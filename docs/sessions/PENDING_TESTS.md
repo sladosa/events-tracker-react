@@ -14,7 +14,7 @@ Popunjen sheet `Preuređivanje` više se ne javlja kao „NIJE primijenjeno" —
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S179-1 | TEST lokalno: `structure_s179.xlsx` ⇒ pregled 10 koraka / 9.743 / 5.448 (brojke po koraku u detaljima) ⇒ Apply ⇒ „exactly what the preview predicted" ⇒ druga kartica `Audible` 68, pločica `RF račun`, saldo isti ⇒ Undo ⇒ „exactly what it was before", `Audible` 0 | ⬜ |
+| T-S179-1 | TEST lokalno: `structure_s179.xlsx` ⇒ pregled 10 koraka / 9.743 / 5.448 (brojke po koraku u detaljima) ⇒ Apply ⇒ „exactly what the preview predicted" ⇒ druga kartica `Audible` 68, pločica `RF račun`, saldo isti ⇒ Undo ⇒ „exactly what it was before", `Audible` 0 | ✅ S179 (22.10., Saša, TEST lokalno) — sve brojke po koraku točne; Apply **4,9 s**, provjera 13,6 s; druga kartica: izbornik samo `Audible`, `Audible` 68 (All Time), `RF račun` 905,45 € uz sidro 11.10. 878,09 € i povijest (6), Košare `VISA · ~05.11.` pod `RF račun`; Undo 9.752 / 2,2 s / provjera ✓; poslije: `Sašin tekući RF` 905,45 €, `Audible_Koka`/`_Sasa` natrag |
 | T-S179-2 | TEST: razmak na kraju vrijednosti ⇒ crvena greška, nema Apply, ništa upisano | ⬜ |
 | T-S179-3 | TEST: Add forma — `Namjena` tek uz Tip; `Zabava` ⇒ Zajedničko, `auto Lacetti` ⇒ Saša, `auto C5` ⇒ Koka | ⬜ |
 | T-S179-4 | E2E: sheet s preimenovanjem ⇒ lista novi naziv ⇒ Poništi ⇒ stari | ✅ S179 — čuva automatski test (`S179_restructure_apply_undo`, protuprovjera pada) |

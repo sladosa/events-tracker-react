@@ -10,7 +10,7 @@ od 22.10.), kroz modal, pod tvojim računom (vlasnik `Financije_all` na TEST-u �
 
 ---
 
-## T-S179-1 ⬜ (TEST, Saša) Cijeli tok kroz modal: pregled → Primijeni → lista → Poništi
+## T-S179-1 ✅ S179 (TEST, Saša) Cijeli tok kroz modal: pregled → Primijeni → lista → Poništi
 
 **File:** `Claude-temp_R/s179/structure_s179.xlsx` (Structure `Financije_all` + 3 retka `namjena` +
 10 koraka iz dokaza S178). ⚠ Koraci 8 i 100 nose **fiksne** `event_id` TEST-a od 22.10.; nakon
@@ -40,6 +40,10 @@ od 22.10.), kroz modal, pod tvojim računom (vlasnik `Financije_all` na TEST-u �
 
 **Pad:** bilo koja brojka drukčija u koraku 3 (baza se promijenila — reci koja); `Re-measure` žut;
 modal se zatvori sam; saldo se pomakne u koraku 5.
+**Izvedeno 22.10. (Saša):** sve brojke po koraku točne; Apply **4,9 s** (provjera 13,6 s), Undo 9.752
+zapisa 2,2 s (provjera 8,9 s). Saldo `RF račun` = `Sašin tekući RF` = **905,45 €** (sidro 11.10.,
+povijest 6). Usput potvrđeno: košara za vrijeme primjene `VISA · ~05.11.` pod `RF račun` (ključ
+`due.baskets` je pošao s preimenovanjem).
 **Moje mjerenje (skripta, isti tok):** apply RPC 2,4 s i 4,4 s (dva puta), undo 1,9 s i 3,2 s;
 `sha256` 11/12 tablica isto nakon dva ciklusa (12. je `attribute_definitions` +1 = `namjena`).
 
