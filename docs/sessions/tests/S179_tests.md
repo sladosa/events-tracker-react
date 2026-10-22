@@ -49,7 +49,7 @@ povijest 6). Usput potvrđeno: košara za vrijeme primjene `VISA · ~05.11.` pod
 
 ---
 
-## T-S179-2 ⬜ (TEST, Saša) Greška u sheetu gasi Primijeni i ništa ne piše
+## T-S179-2 ✅ S179 (TEST, Saša) Greška u sheetu gasi Primijeni i ništa ne piše
 
 1. Kopiraj `structure_s179.xlsx`, u sheetu `Preuređivanje` u koraku 1 stupac `postavi: podtip` upiši
    `Audible ` (**razmak na kraju**). Uvezi.
@@ -62,7 +62,7 @@ povijest 6). Usput potvrđeno: košara za vrijeme primjene `VISA · ~05.11.` pod
 
 ---
 
-## T-S179-3 ⬜ (TEST, Saša) Atribut `Namjena` u Add formi
+## T-S179-3 ✅ S179 (TEST, Saša) Atribut `Namjena` u Add formi
 
 1. Lokalni dev, Add Activity u `Financije_all > Transakcija`.
 2. Prije Tipa: polje `Namjena` se **ne vidi** (ovisi o Tipu).

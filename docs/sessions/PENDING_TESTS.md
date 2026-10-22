@@ -15,8 +15,8 @@ Popunjen sheet `Preuređivanje` više se ne javlja kao „NIJE primijenjeno" —
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S179-1 | TEST lokalno: `structure_s179.xlsx` ⇒ pregled 10 koraka / 9.743 / 5.448 (brojke po koraku u detaljima) ⇒ Apply ⇒ „exactly what the preview predicted" ⇒ druga kartica `Audible` 68, pločica `RF račun`, saldo isti ⇒ Undo ⇒ „exactly what it was before", `Audible` 0 | ✅ S179 (22.10., Saša, TEST lokalno) — sve brojke po koraku točne; Apply **4,9 s**, provjera 13,6 s; druga kartica: izbornik samo `Audible`, `Audible` 68 (All Time), `RF račun` 905,45 € uz sidro 11.10. 878,09 € i povijest (6), Košare `VISA · ~05.11.` pod `RF račun`; Undo 9.752 / 2,2 s / provjera ✓; poslije: `Sašin tekući RF` 905,45 €, `Audible_Koka`/`_Sasa` natrag |
-| T-S179-2 | TEST: razmak na kraju vrijednosti ⇒ crvena greška, nema Apply, ništa upisano | ⬜ |
-| T-S179-3 | TEST: Add forma — `Namjena` tek uz Tip; `Zabava` ⇒ Zajedničko, `auto Lacetti` ⇒ Saša, `auto C5` ⇒ Koka | ⬜ |
+| T-S179-2 | TEST: razmak na kraju vrijednosti ⇒ crvena greška, nema Apply, ništa upisano | ✅ S179 (22.10., Saša) — razmak u koracima 1 i 2 ⇒ dvije crvene greške, bez kvačice i Apply; zaglavlje 9.675 promjena (bez ta dva koraka) |
+| T-S179-3 | TEST: Add forma — `Namjena` tek uz Tip; `Zabava` ⇒ Zajedničko, `auto Lacetti` ⇒ Saša, `auto C5` ⇒ Koka | ✅ S179 (22.10., Saša) — `Zabava` ⇒ Zajedničko, `auto Lacetti` ⇒ Saša, polje ispod Statusa; `auto C5` nije snimljen (isti mehanizam, `default_map`) |
 | T-S179-4 | E2E: sheet s preimenovanjem ⇒ lista novi naziv ⇒ Poništi ⇒ stari | ✅ S179 — čuva automatski test (`S179_restructure_apply_undo`, protuprovjera pada) |
 | T-S179-5 | `preuredjivanje_grep.py` nad `structure_s179.xlsx` ⇒ 71 jak pogodak; za PROD korake `set_breakdown.py` 92/113/125, `uvezi_transu.py:72` | ✅ S179 — izmjereno |
 | T-S179-6 | PROD puštanje §16: backup ⇒ sonda `-` ⇒ `058` ⇒ sonda DA/NE ⇒ deploy ⇒ `namjena` uvozom ⇒ sheet §8.2 pod Kokom ⇒ saldo nepomaknut, `N/A` isti, grep ispravljen | ⬜ |

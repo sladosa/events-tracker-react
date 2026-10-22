@@ -30,7 +30,7 @@
   to su `set_breakdown.py` i `uvezi_transu.py`.
 
 ## Što treba od tebe
-1. **Testovi na TEST-u (lokalni dev, Ctrl+Shift+R):** ~~T-S179-1~~ ✅ 22.10., T-S179-2 (greška gasi Apply), T-S179-3 (Namjena u Add formi).
+1. **Testovi na TEST-u (lokalni dev, Ctrl+Shift+R):** ~~T-S179-1, -2, -3~~ ✅ 22.10. (sva tri na TEST-u). Modal se od `7068d19` sam pomakne na pregled.
 2. **PROD puštanje** — naredbe su ispod (koraci 1–7). Sheet s koracima za Financije složit ćemo
    **zajedno** sljedeći put. Prije toga Koka mora odlučiti jedno: vrijednost **`Nena`** ili **„Nena / Kućište"**
    (Nenin fond, spec §8.2). Za retke `Projekti / Sasa` alat predlaže Tip po trgovcu, a ti potvrđuješ.
