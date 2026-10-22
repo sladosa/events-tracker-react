@@ -2,7 +2,7 @@
 -- SCHEMA_PROD.sql -- SNIMKA STVARNE SHEME, generirano alatom
 -- ============================================================
 -- Generirao: data-prep_tools/Tools/dump_schema.py --env prod
--- Vrijeme:   2026-10-02T08:32:44+02:00
+-- Vrijeme:   2026-10-22T13:44:08+02:00
 --
 -- ⚠ OVO SE NE PUSTA I NE UREĐUJE RUKOM. Ovo je ono sto u bazi
 --   STVARNO STOJI, ne ono sto smo mislili da smo pustili. Promjene
@@ -47,6 +47,116 @@ CREATE SCHEMA public;
 --
 
 COMMENT ON SCHEMA public IS 'standard public schema';
+
+
+--
+-- Name: _restructure_current(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public._restructure_current(p_kind text, p_target uuid) RETURNS jsonb
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+
+DECLARE v jsonb;
+
+BEGIN
+
+  CASE p_kind
+
+    WHEN 'event_attribute' THEN
+
+      SELECT to_jsonb(ea) INTO v FROM public.event_attributes ea WHERE ea.id = p_target;
+
+    WHEN 'attribute_rules' THEN
+
+      SELECT d.validation_rules INTO v FROM public.attribute_definitions d WHERE d.id = p_target;
+
+    WHEN 'area_settings' THEN
+
+      SELECT a.settings INTO v FROM public.areas a WHERE a.id = p_target;
+
+    WHEN 'preset' THEN
+
+      SELECT jsonb_build_object('default_attributes', p.default_attributes,
+
+                                'filter_state', p.filter_state)
+
+        INTO v FROM public.activity_presets p WHERE p.id = p_target;
+
+    WHEN 'anchor' THEN
+
+      SELECT jsonb_build_object('group_value', b.group_value)
+
+        INTO v FROM public.balance_anchors b WHERE b.id = p_target;
+
+    ELSE
+
+      RAISE EXCEPTION 'nepoznata vrsta zapisa: %', p_kind;
+
+  END CASE;
+
+  RETURN v;
+
+END;
+
+$$;
+
+
+--
+-- Name: _restructure_write_config(text, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public._restructure_write_config(p_kind text, p_target uuid, p_value jsonb) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+
+DECLARE n int;
+
+BEGIN
+
+  CASE p_kind
+
+    WHEN 'attribute_rules' THEN
+
+      UPDATE public.attribute_definitions SET validation_rules = p_value WHERE id = p_target;
+
+    WHEN 'area_settings' THEN
+
+      UPDATE public.areas SET settings = p_value WHERE id = p_target;
+
+    WHEN 'preset' THEN
+
+      UPDATE public.activity_presets
+
+         SET default_attributes = p_value -> 'default_attributes',
+
+             filter_state       = p_value -> 'filter_state'
+
+       WHERE id = p_target;
+
+    WHEN 'anchor' THEN
+
+      UPDATE public.balance_anchors SET group_value = p_value ->> 'group_value' WHERE id = p_target;
+
+    ELSE
+
+      RAISE EXCEPTION 'nepoznata vrsta configa: %', p_kind;
+
+  END CASE;
+
+  GET DIAGNOSTICS n = ROW_COUNT;
+
+  IF n <> 1 THEN
+
+    RAISE EXCEPTION 'config %/%: upis pogodio % redaka (očekivan 1)', p_kind, p_target, n;
+
+  END IF;
+
+END;
+
+$$;
 
 
 --
@@ -214,6 +324,28 @@ $$;
 --
 
 COMMENT ON FUNCTION public.app_can_read_area(p_area_id uuid) IS 'True when the caller may read this Area (service_role, owner, template user, or a data_shares row). Mirrors the areas_select RLS policy; keep the two in sync.';
+
+
+--
+-- Name: app_can_restructure_area(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.app_can_restructure_area(p_area_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+
+  -- nullif('') prije casta: postavka zna biti prazan string, a ''::jsonb baca.
+
+  SELECT
+
+    coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', '')
+
+      = 'service_role'
+
+  OR EXISTS (SELECT 1 FROM public.areas a WHERE a.id = p_area_id AND a.user_id = auth.uid());
+
+$$;
 
 
 --
@@ -1301,6 +1433,317 @@ COMMENT ON FUNCTION public.rpc_area_balance_anchored(p_area_id uuid, p_group_slu
 
 
 --
+-- Name: rpc_area_breakdown(uuid, text[], text, text, jsonb, text, date, date); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rpc_area_breakdown(p_area_id uuid, p_group_slugs text[], p_plus_slug text, p_minus_slug text, p_filters jsonb DEFAULT '[]'::jsonb, p_date_slug text DEFAULT NULL::text, p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date) RETURNS TABLE(g text[], plus_sum numeric, minus_sum numeric, n integer, n_no_date integer)
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+
+DECLARE
+
+  v_slug text;
+
+BEGIN
+
+  -- pravilo 1 — funkcija zaobilazi RLS, pa se mora čuvati sama
+
+  IF NOT public.app_can_read_area(p_area_id) THEN
+
+    RAISE EXCEPTION 'No access to area %', p_area_id USING ERRCODE = '42501';
+
+  END IF;
+
+
+
+  IF p_group_slugs IS NULL OR cardinality(p_group_slugs) NOT BETWEEN 1 AND 4 THEN
+
+    RAISE EXCEPTION 'p_group_slugs must have 1..4 elements, got %',
+
+      coalesce(cardinality(p_group_slugs), 0)
+
+      USING ERRCODE = '22023';
+
+  END IF;
+
+
+
+  -- plus/minus kao broj, filtri: ista provjera kao 035 (nepoznat slug = greška
+
+  -- configa, nikad tiha nula)
+
+  PERFORM public.app_assert_slugs(p_area_id, NULL, p_plus_slug, p_minus_slug, p_filters);
+
+
+
+  FOREACH v_slug IN ARRAY p_group_slugs LOOP
+
+    IF v_slug IS NULL OR public.app_slug_count(p_area_id, v_slug) = 0 THEN
+
+      RAISE EXCEPTION 'Group attribute slug "%" not found in area %', v_slug, p_area_id
+
+        USING ERRCODE = '22023';
+
+    END IF;
+
+  END LOOP;
+
+
+
+  -- Os datuma mora biti DATETIME: tekstualni atribut bi dao NULL na svakom retku,
+
+  -- dakle pločicu bez ijedne brojke i n_no_date = sve — a to izgleda kao podatak.
+
+  IF p_date_slug IS NOT NULL AND NOT EXISTS (
+
+       SELECT 1 FROM public.attribute_definitions ad
+
+       JOIN public.categories c ON c.id = ad.category_id
+
+       WHERE c.area_id = p_area_id AND ad.slug = p_date_slug AND ad.data_type = 'datetime') THEN
+
+    RAISE EXCEPTION 'Date attribute slug "%" not found in area % as a datetime', p_date_slug, p_area_id
+
+      USING ERRCODE = '22023';
+
+  END IF;
+
+
+
+  RETURN QUERY
+
+  WITH
+
+  defs AS (
+
+    SELECT ad.id, ad.slug, ad.data_type
+
+    FROM public.attribute_definitions ad
+
+    JOIN public.categories c ON c.id = ad.category_id
+
+    WHERE c.area_id = p_area_id
+
+  ),
+
+  -- dimenzija → id-evi definicija; `i` čuva redoslijed iz p_group_slugs
+
+  gdefs AS (
+
+    SELECT o.i, ARRAY(SELECT d.id FROM defs d WHERE d.slug = o.s) AS ids
+
+    FROM unnest(p_group_slugs) WITH ORDINALITY AS o(s, i)
+
+  ),
+
+  plus_defs  AS (SELECT coalesce(array_agg(id), '{}') AS ids FROM defs WHERE slug = p_plus_slug  AND data_type = 'number'),
+
+  minus_defs AS (SELECT coalesce(array_agg(id), '{}') AS ids FROM defs WHERE slug = p_minus_slug AND data_type = 'number'),
+
+  date_defs  AS (SELECT coalesce(array_agg(id), '{}') AS ids FROM defs WHERE slug = p_date_slug  AND data_type = 'datetime'),
+
+  fdef AS (
+
+    SELECT
+
+      lower(coalesce(elem->>'op', 'in')) AS op,
+
+      ARRAY(SELECT jsonb_array_elements_text(elem->'values')) AS vals,
+
+      ARRAY(SELECT d.id FROM defs d WHERE d.slug = elem->>'slug') AS def_ids
+
+    FROM jsonb_array_elements(coalesce(p_filters, '[]'::jsonb)) AS elem
+
+  ),
+
+  elig AS (
+
+    SELECT e.id, e.event_date
+
+    FROM public.events e
+
+    JOIN public.categories c ON c.id = e.category_id
+
+    WHERE c.area_id = p_area_id
+
+      -- pravilo 2, čuvar A: samo leaf
+
+      AND NOT EXISTS (SELECT 1 FROM public.categories ch WHERE ch.parent_category_id = c.id)
+
+      -- pravilo 2, čuvar B: chain_key nose samo P2 roditelji
+
+      AND e.chain_key IS NULL
+
+      -- event_date os: razdoblje se reže odmah (jeftino). Za os atributa se
+
+      -- isti uvjet koristi samo za retke BEZ datuma (v. zaglavlje).
+
+      AND (p_date_slug IS NOT NULL OR (
+
+            (p_date_from IS NULL OR e.event_date >= p_date_from)
+
+        AND (p_date_to   IS NULL OR e.event_date <= p_date_to)))
+
+      AND coalesce((
+
+        SELECT bool_and(CASE WHEN fd.op = 'not_in' THEN NOT hit.v ELSE hit.v END)
+
+        FROM fdef fd
+
+        CROSS JOIN LATERAL (
+
+          SELECT EXISTS (
+
+            SELECT 1 FROM public.event_attributes ea
+
+            WHERE ea.event_id = e.id
+
+              AND ea.attribute_definition_id = ANY (fd.def_ids)   -- pravilo 3
+
+              AND ea.value_text = ANY (fd.vals)
+
+          )
+
+        ) AS hit(v)
+
+      ), true)
+
+  ),
+
+  -- Prvo datum i rez po razdoblju, tek onda dimenzije i iznosi — i datum
+
+  -- JOIN-om nad svim vrijednostima tog atributa, ne podupitom po retku.
+
+  -- Izmjereno na TEST-u 07.10.2026. (3 dimenzije, 12 mj, na serveru): os
+
+  -- „po naplati" ~500 ms (sve pa rez) → ~280 ms (rez pa sve, podupit) →
+
+  -- ~85 ms (join); os event_date ~75 ms. Os atributa nema jeftin pred-rez
+
+  -- jer rata zna dospjeti godinu nakon kupnje.
+
+  dvals AS (
+
+    SELECT DISTINCT ON (ea.event_id)
+
+           ea.event_id, (ea.value_datetime AT TIME ZONE 'UTC')::date AS d
+
+    FROM public.event_attributes ea, date_defs dd
+
+    WHERE ea.attribute_definition_id = ANY (dd.ids)
+
+      AND ea.value_datetime IS NOT NULL
+
+    ORDER BY ea.event_id, ea.id
+
+  ),
+
+  dated AS (
+
+    SELECT e.id, e.event_date,
+
+           CASE WHEN p_date_slug IS NULL THEN e.event_date ELSE dv.d END AS d
+
+    FROM elig e
+
+    LEFT JOIN dvals dv ON dv.event_id = e.id
+
+  ),
+
+  inwin AS (
+
+    SELECT x.*
+
+    FROM dated x
+
+    WHERE (x.d IS NOT NULL
+
+           AND (p_date_from IS NULL OR x.d >= p_date_from)
+
+           AND (p_date_to   IS NULL OR x.d <= p_date_to))
+
+       OR (x.d IS NULL
+
+           AND (p_date_from IS NULL OR x.event_date >= p_date_from)
+
+           AND (p_date_to   IS NULL OR x.event_date <= p_date_to))
+
+  ),
+
+  w AS (
+
+    SELECT
+
+      x.d,
+
+      ARRAY(
+
+        SELECT (
+
+          SELECT coalesce(
+
+                   ea.value_text,
+
+                   ea.value_number::text,
+
+                   to_char(ea.value_datetime AT TIME ZONE 'UTC', 'YYYY-MM-DD'),
+
+                   ea.value_boolean::text)
+
+          FROM public.event_attributes ea
+
+          WHERE ea.event_id = x.id AND ea.attribute_definition_id = ANY (gd.ids)
+
+          LIMIT 1)
+
+        FROM gdefs gd ORDER BY gd.i
+
+      ) AS gv,
+
+      (SELECT ea.value_number FROM public.event_attributes ea, plus_defs pd
+
+        WHERE ea.event_id = x.id AND ea.attribute_definition_id = ANY (pd.ids) LIMIT 1) AS pv,
+
+      (SELECT ea.value_number FROM public.event_attributes ea, minus_defs md
+
+        WHERE ea.event_id = x.id AND ea.attribute_definition_id = ANY (md.ids) LIMIT 1) AS mv
+
+    FROM inwin x
+
+  )
+
+  SELECT
+
+    w.gv,
+
+    coalesce(sum(w.pv) FILTER (WHERE w.d IS NOT NULL), 0)::numeric,
+
+    coalesce(sum(w.mv) FILTER (WHERE w.d IS NOT NULL), 0)::numeric,
+
+    (count(*) FILTER (WHERE w.d IS NOT NULL))::integer,
+
+    (count(*) FILTER (WHERE w.d IS NULL))::integer
+
+  FROM w
+
+  GROUP BY w.gv
+
+  ORDER BY w.gv;
+
+END;
+
+$$;
+
+
+--
+-- Name: FUNCTION rpc_area_breakdown(p_area_id uuid, p_group_slugs text[], p_plus_slug text, p_minus_slug text, p_filters jsonb, p_date_slug text, p_date_from date, p_date_to date); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.rpc_area_breakdown(p_area_id uuid, p_group_slugs text[], p_plus_slug text, p_minus_slug text, p_filters jsonb, p_date_slug text, p_date_from date, p_date_to date) IS 'Overview razrez: plus/minus po kombinaciji 1..4 dimenzija, os datuma event_date ili datetime atribut, granice UKLJUČIVE. Sam provjerava pristup (SECURITY DEFINER).';
+
+
+--
 -- Name: rpc_area_due_basket_members(uuid, text, text, text, text, text, text, date, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1447,6 +1890,622 @@ $$;
 --
 
 COMMENT ON FUNCTION public.rpc_area_group_agg(p_area_id uuid, p_group_slug text, p_plus_slug text, p_minus_slug text, p_filters jsonb, p_from date, p_as_of date) IS 'Overview: sum plus/minus per group value for one Area. Checks area access itself (SECURITY DEFINER).';
+
+
+--
+-- Name: rpc_category_event_counts(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rpc_category_event_counts() RETURNS TABLE(category_id uuid, n bigint)
+    LANGUAGE sql STABLE
+    SET search_path TO 'public'
+    AS $$
+
+  SELECT e.category_id, count(*)::bigint
+
+  FROM public.events e
+
+  GROUP BY e.category_id;
+
+$$;
+
+
+--
+-- Name: rpc_restructure_apply(uuid, jsonb, jsonb, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rpc_restructure_apply(p_area_id uuid, p_steps jsonb, p_config jsonb, p_source text DEFAULT NULL::text) RETURNS uuid
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+
+DECLARE
+
+  v_uid     uuid := auth.uid();
+
+  v_op      uuid := extensions.uuid_generate_v4();
+
+  v_seq     int  := 0;
+
+  v_step    jsonb;
+
+  v_cond    jsonb;
+
+  v_cfg     jsonb;
+
+  v_n       int;
+
+  v_cat     uuid;
+
+  v_attr    uuid;
+
+  v_val     text;
+
+  v_ids     uuid[];
+
+  v_matched int;
+
+  v_changed int;
+
+  v_k       int;
+
+  v_cur     jsonb;
+
+  v_ok      boolean;
+
+BEGIN
+
+  IF NOT public.app_can_restructure_area(p_area_id) THEN
+
+    RAISE EXCEPTION 'Preuređivanje smije samo vlasnik Aree (ili service ključ).'
+
+      USING ERRCODE = '42501';
+
+  END IF;
+
+
+
+  -- Dvije operacije nad istom Areom ne mogu se preplesti.
+
+  PERFORM 1 FROM public.areas WHERE id = p_area_id FOR UPDATE;
+
+  IF NOT FOUND THEN
+
+    RAISE EXCEPTION 'Area % ne postoji.', p_area_id;
+
+  END IF;
+
+
+
+  p_steps  := coalesce(p_steps, '[]'::jsonb);
+
+  p_config := coalesce(p_config, '[]'::jsonb);
+
+  IF jsonb_typeof(p_steps) <> 'array' OR jsonb_typeof(p_config) <> 'array' THEN
+
+    RAISE EXCEPTION 'p_steps i p_config moraju biti nizovi.';
+
+  END IF;
+
+  IF jsonb_array_length(p_steps) = 0 AND jsonb_array_length(p_config) = 0 THEN
+
+    RAISE EXCEPTION 'Prazan plan — nema što primijeniti.';
+
+  END IF;
+
+
+
+  INSERT INTO public.restructure_ops (id, area_id, actor, actor_label, source, plan)
+
+  VALUES (v_op, p_area_id, v_uid,
+
+          CASE WHEN v_uid IS NULL THEN 'service: ' || coalesce(p_source, '?') END,
+
+          p_source,
+
+          jsonb_build_object(
+
+            'steps', p_steps,
+
+            -- before/after configa su u restructure_op_rows; ovdje samo što je dirano
+
+            'config', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+
+                         'kind', c -> 'kind', 'target_id', c -> 'target_id')), '[]'::jsonb)
+
+                       FROM jsonb_array_elements(p_config) c)));
+
+
+
+  -- ── 1. Config: provjera „prije" (prije ijednog upisa — pad je jeftiniji) ──
+
+  FOR v_cfg IN SELECT * FROM jsonb_array_elements(p_config) LOOP
+
+    v_attr := (v_cfg ->> 'target_id')::uuid;
+
+    -- cilj mora pripadati OVOJ Arei — DEFINER inače piše bilo gdje
+
+    v_ok := CASE v_cfg ->> 'kind'
+
+      WHEN 'area_settings'   THEN v_attr = p_area_id
+
+      WHEN 'attribute_rules' THEN EXISTS (
+
+        SELECT 1 FROM public.attribute_definitions d
+
+        JOIN public.categories c ON c.id = d.category_id
+
+        WHERE d.id = v_attr AND c.area_id = p_area_id)
+
+      WHEN 'preset'          THEN EXISTS (
+
+        SELECT 1 FROM public.activity_presets p
+
+        LEFT JOIN public.categories c ON c.id = p.category_id
+
+        WHERE p.id = v_attr AND (p.area_id = p_area_id OR c.area_id = p_area_id))
+
+      WHEN 'anchor'          THEN EXISTS (
+
+        SELECT 1 FROM public.balance_anchors b WHERE b.id = v_attr AND b.area_id = p_area_id)
+
+      ELSE false END;
+
+    IF NOT coalesce(v_ok, false) THEN
+
+      RAISE EXCEPTION 'config %/%: cilj ne postoji ili nije u ovoj Arei.',
+
+        v_cfg ->> 'kind', v_attr;
+
+    END IF;
+
+    v_cur := public._restructure_current(v_cfg ->> 'kind', v_attr);
+
+    IF v_cur IS DISTINCT FROM (v_cfg -> 'before') THEN
+
+      RAISE EXCEPTION 'config %/%: promijenjen od pregleda — napravi pregled ponovo.',
+
+        v_cfg ->> 'kind', v_attr;
+
+    END IF;
+
+  END LOOP;
+
+
+
+  -- ── 2. Koraci, redom ──────────────────────────────────────────────────────
+
+  FOR v_step IN SELECT * FROM jsonb_array_elements(p_steps) LOOP
+
+    v_n   := coalesce((v_step ->> 'n')::int, 0);
+
+    v_cat := (v_step ->> 'category_id')::uuid;
+
+
+
+    IF NOT EXISTS (SELECT 1 FROM public.categories c WHERE c.id = v_cat AND c.area_id = p_area_id) THEN
+
+      RAISE EXCEPTION 'korak %: kategorija nije u ovoj Arei.', v_n;
+
+    END IF;
+
+    IF coalesce(jsonb_array_length(v_step -> 'when'), 0) = 0
+
+       AND jsonb_typeof(v_step -> 'event_ids') IS DISTINCT FROM 'array' THEN
+
+      RAISE EXCEPTION 'korak %: nema nijednog uvjeta (kad / event_id).', v_n;
+
+    END IF;
+
+    IF coalesce(jsonb_array_length(v_step -> 'set'), 0) = 0 THEN
+
+      RAISE EXCEPTION 'korak %: nema što postaviti.', v_n;
+
+    END IF;
+
+    -- F1: samo tekstualni atributi, i samo atributi TOG leafa (P1 roditelji su F3)
+
+    IF EXISTS (
+
+      SELECT 1 FROM jsonb_array_elements(coalesce(v_step -> 'when', '[]') || (v_step -> 'set')) c
+
+      WHERE NOT EXISTS (SELECT 1 FROM public.attribute_definitions d
+
+                        WHERE d.id = (c ->> 'attr')::uuid
+
+                          AND d.category_id = v_cat AND d.data_type = 'text'))
+
+    THEN
+
+      RAISE EXCEPTION 'korak %: atribut nije tekstualni atribut te kategorije.', v_n;
+
+    END IF;
+
+    IF (SELECT count(*) <> count(DISTINCT c ->> 'attr')
+
+        FROM jsonb_array_elements(v_step -> 'set') c) THEN
+
+      RAISE EXCEPTION 'korak %: isti atribut dvaput u „postavi".', v_n;
+
+    END IF;
+
+
+
+    -- Izbor eventa: kategorija (+ popis), pa uvjet po uvjet.
+
+    SELECT array_agg(e.id) INTO v_ids
+
+    FROM public.events e
+
+    WHERE e.category_id = v_cat
+
+      AND (jsonb_typeof(v_step -> 'event_ids') IS DISTINCT FROM 'array'
+
+           OR e.id IN (SELECT (x #>> '{}')::uuid FROM jsonb_array_elements(v_step -> 'event_ids') x));
+
+    v_ids := coalesce(v_ids, '{}');
+
+
+
+    FOR v_cond IN SELECT * FROM jsonb_array_elements(coalesce(v_step -> 'when', '[]')) LOOP
+
+      v_attr := (v_cond ->> 'attr')::uuid;
+
+      v_val  := v_cond ->> 'value';
+
+      IF v_val IS NULL THEN
+
+        SELECT coalesce(array_agg(i), '{}') INTO v_ids FROM unnest(v_ids) i
+
+        WHERE NOT EXISTS (SELECT 1 FROM public.event_attributes ea
+
+                          WHERE ea.event_id = i AND ea.attribute_definition_id = v_attr
+
+                            AND ea.value_text IS NOT NULL);
+
+      ELSE
+
+        SELECT coalesce(array_agg(i), '{}') INTO v_ids FROM unnest(v_ids) i
+
+        WHERE EXISTS (SELECT 1 FROM public.event_attributes ea
+
+                      WHERE ea.event_id = i AND ea.attribute_definition_id = v_attr
+
+                        AND ea.value_text = v_val);
+
+      END IF;
+
+    END LOOP;
+
+
+
+    v_matched := cardinality(v_ids);
+
+    IF v_matched <> (v_step ->> 'expected_matched')::int THEN
+
+      RAISE EXCEPTION 'korak %: očekivano % eventa, nađeno % — baza se promijenila od pregleda, napravi pregled ponovo.',
+
+        v_n, v_step ->> 'expected_matched', v_matched;
+
+    END IF;
+
+
+
+    -- ⚠ Dvostruki redak (event, atribut) bi dao dvosmislen „prije" i dvostruko
+
+    --   brojanje. Izmjereno 18.10.: 0 na PROD-u — zato brana, ne grana.
+
+    IF EXISTS (
+
+      SELECT 1 FROM public.event_attributes ea
+
+      WHERE ea.event_id = ANY (v_ids)
+
+        AND ea.attribute_definition_id IN (SELECT (c ->> 'attr')::uuid
+
+                                           FROM jsonb_array_elements(v_step -> 'set') c)
+
+      GROUP BY ea.event_id, ea.attribute_definition_id HAVING count(*) > 1)
+
+    THEN
+
+      RAISE EXCEPTION 'korak %: event ima isti atribut dvaput — popravi prije preuređivanja.', v_n;
+
+    END IF;
+
+
+
+    v_changed := 0;
+
+    FOR v_cond IN SELECT * FROM jsonb_array_elements(v_step -> 'set') LOOP
+
+      v_attr := (v_cond ->> 'attr')::uuid;
+
+      v_val  := v_cond ->> 'value';
+
+
+
+      IF v_val IS NULL THEN
+
+        -- obriši vrijednost
+
+        WITH del AS (
+
+          DELETE FROM public.event_attributes ea
+
+          WHERE ea.event_id = ANY (v_ids) AND ea.attribute_definition_id = v_attr
+
+          RETURNING ea.*
+
+        )
+
+        INSERT INTO public.restructure_op_rows (op_id, seq, kind, target_id, before, after)
+
+        SELECT v_op, v_seq + row_number() OVER (), 'event_attribute', d.id, to_jsonb(d), NULL
+
+        FROM del d
+
+        ON CONFLICT (op_id, kind, target_id) DO UPDATE SET after = NULL;
+
+        GET DIAGNOSTICS v_k = ROW_COUNT;
+
+      ELSE
+
+        -- izmijeni postojeće: zapis PRIJE upisa (Postgres < 18 nema OLD u RETURNING)
+
+        INSERT INTO public.restructure_op_rows (op_id, seq, kind, target_id, before, after)
+
+        SELECT v_op, v_seq + row_number() OVER (ORDER BY ea.id), 'event_attribute', ea.id,
+
+               to_jsonb(ea), to_jsonb(ea) || jsonb_build_object('value_text', v_val)
+
+        FROM public.event_attributes ea
+
+        WHERE ea.event_id = ANY (v_ids) AND ea.attribute_definition_id = v_attr
+
+          AND ea.value_text IS DISTINCT FROM v_val
+
+        ON CONFLICT (op_id, kind, target_id) DO UPDATE SET after = EXCLUDED.after;
+
+        GET DIAGNOSTICS v_k = ROW_COUNT;
+
+
+
+        UPDATE public.event_attributes ea SET value_text = v_val
+
+        WHERE ea.event_id = ANY (v_ids) AND ea.attribute_definition_id = v_attr
+
+          AND ea.value_text IS DISTINCT FROM v_val;
+
+        v_seq := v_seq + v_k;
+
+        v_changed := v_changed + v_k;
+
+
+
+        -- dodaj gdje ga nema; autor = autor eventa
+
+        WITH ins AS (
+
+          INSERT INTO public.event_attributes (event_id, attribute_definition_id, value_text, user_id)
+
+          SELECT e.id, v_attr, v_val, e.user_id
+
+          FROM public.events e
+
+          WHERE e.id = ANY (v_ids)
+
+            AND NOT EXISTS (SELECT 1 FROM public.event_attributes x
+
+                            WHERE x.event_id = e.id AND x.attribute_definition_id = v_attr)
+
+          RETURNING *
+
+        )
+
+        INSERT INTO public.restructure_op_rows (op_id, seq, kind, target_id, before, after)
+
+        SELECT v_op, v_seq + row_number() OVER (), 'event_attribute', i.id, NULL, to_jsonb(i)
+
+        FROM ins i;
+
+        GET DIAGNOSTICS v_k = ROW_COUNT;
+
+      END IF;
+
+      v_seq := v_seq + v_k;
+
+      v_changed := v_changed + v_k;
+
+    END LOOP;
+
+
+
+    IF v_changed <> (v_step ->> 'expected_changed')::int THEN
+
+      RAISE EXCEPTION 'korak %: očekivano % promjena, izvedeno % — baza se promijenila od pregleda, napravi pregled ponovo.',
+
+        v_n, v_step ->> 'expected_changed', v_changed;
+
+    END IF;
+
+  END LOOP;
+
+
+
+  -- ── 3. Config: upis „poslije" ─────────────────────────────────────────────
+
+  FOR v_cfg IN SELECT * FROM jsonb_array_elements(p_config) LOOP
+
+    v_attr := (v_cfg ->> 'target_id')::uuid;
+
+    PERFORM public._restructure_write_config(v_cfg ->> 'kind', v_attr, v_cfg -> 'after');
+
+    v_seq := v_seq + 1;
+
+    INSERT INTO public.restructure_op_rows (op_id, seq, kind, target_id, before, after)
+
+    VALUES (v_op, v_seq, v_cfg ->> 'kind', v_attr, v_cfg -> 'before',
+
+            public._restructure_current(v_cfg ->> 'kind', v_attr))
+
+    ON CONFLICT (op_id, kind, target_id) DO UPDATE SET after = EXCLUDED.after;
+
+  END LOOP;
+
+
+
+  RETURN v_op;
+
+END;
+
+$$;
+
+
+--
+-- Name: rpc_restructure_undo(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rpc_restructure_undo(p_op_id uuid) RETURNS integer
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+
+DECLARE
+
+  v_op     public.restructure_ops%ROWTYPE;
+
+  v_row    public.restructure_op_rows%ROWTYPE;
+
+  v_bad    text;
+
+  v_nbad   int;
+
+  v_n      int := 0;
+
+  v_status text;
+
+BEGIN
+
+  SELECT * INTO v_op FROM public.restructure_ops WHERE id = p_op_id;
+
+  -- ⚠ Pravo PRIJE poruke „ne postoji": inače stranac pogađanjem ID-eva saznaje
+
+  --   koje operacije postoje.
+
+  IF NOT FOUND OR NOT public.app_can_restructure_area(v_op.area_id) THEN
+
+    RAISE EXCEPTION 'Poništiti smije samo vlasnik Aree (ili service ključ).'
+
+      USING ERRCODE = '42501';
+
+  END IF;
+
+
+
+  PERFORM 1 FROM public.areas WHERE id = v_op.area_id FOR UPDATE;
+
+  -- i sam zapis: dva povrata iste operacije ne smiju ići usporedno
+
+  PERFORM 1 FROM public.restructure_ops WHERE id = p_op_id FOR UPDATE;
+
+  SELECT status INTO v_status FROM public.restructure_ops WHERE id = p_op_id;
+
+  IF v_status <> 'applied' THEN
+
+    RAISE EXCEPTION 'Operacija je već poništena.';
+
+  END IF;
+
+
+
+  -- ⚠ SVE ILI NIŠTA: prvo provjeri sve, pa tek onda vraćaj. Djelomičan povrat
+
+  --   ostavio bi mješavinu starog i novog — gore od ijednog od njih (§13).
+
+  SELECT count(*),
+
+         string_agg(r.kind || ' ' || r.target_id, ', ' ORDER BY r.seq)
+
+           FILTER (WHERE r.rn <= 20)
+
+    INTO v_nbad, v_bad
+
+  FROM (SELECT x.*, row_number() OVER (ORDER BY x.seq) rn
+
+        FROM public.restructure_op_rows x
+
+        WHERE x.op_id = p_op_id
+
+          AND public._restructure_current(x.kind, x.target_id) IS DISTINCT FROM x.after) r;
+
+  IF v_nbad > 0 THEN
+
+    RAISE EXCEPTION 'Povrat odbijen: % zapisa je mijenjano poslije operacije (prvih 20: %). Ništa nije vraćeno.',
+
+      v_nbad, v_bad;
+
+  END IF;
+
+
+
+  FOR v_row IN SELECT * FROM public.restructure_op_rows
+
+               WHERE op_id = p_op_id ORDER BY seq DESC LOOP
+
+    IF v_row.kind = 'event_attribute' THEN
+
+      IF v_row.before IS NULL THEN
+
+        DELETE FROM public.event_attributes WHERE id = v_row.target_id;
+
+      ELSIF v_row.after IS NULL THEN
+
+        INSERT INTO public.event_attributes
+
+        SELECT * FROM jsonb_populate_record(NULL::public.event_attributes, v_row.before);
+
+      ELSE
+
+        UPDATE public.event_attributes t
+
+           SET value_text = r.value_text, value_number = r.value_number,
+
+               value_datetime = r.value_datetime, value_boolean = r.value_boolean,
+
+               value_json = r.value_json, user_id = r.user_id
+
+          FROM jsonb_populate_record(NULL::public.event_attributes, v_row.before) r
+
+         WHERE t.id = v_row.target_id;
+
+      END IF;
+
+    ELSE
+
+      PERFORM public._restructure_write_config(v_row.kind, v_row.target_id, v_row.before);
+
+    END IF;
+
+    v_n := v_n + 1;
+
+  END LOOP;
+
+
+
+  UPDATE public.restructure_ops
+
+     SET status = 'undone', undone_at = now(), undone_by = auth.uid()
+
+   WHERE id = p_op_id;
+
+
+
+  RETURN v_n;
+
+END;
+
+$$;
 
 
 --
@@ -2320,6 +3379,40 @@ CREATE TABLE public.profiles (
 
 
 --
+-- Name: restructure_op_rows; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.restructure_op_rows (
+    op_id uuid NOT NULL,
+    seq integer NOT NULL,
+    kind text NOT NULL,
+    target_id uuid NOT NULL,
+    before jsonb,
+    after jsonb,
+    CONSTRAINT restructure_op_rows_kind_check CHECK ((kind = ANY (ARRAY['event_attribute'::text, 'attribute_rules'::text, 'area_settings'::text, 'preset'::text, 'anchor'::text])))
+);
+
+
+--
+-- Name: restructure_ops; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.restructure_ops (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    area_id uuid NOT NULL,
+    actor uuid,
+    actor_label text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    source text,
+    plan jsonb NOT NULL,
+    status text DEFAULT 'applied'::text NOT NULL,
+    undone_at timestamp with time zone,
+    undone_by uuid,
+    CONSTRAINT restructure_ops_status_check CHECK ((status = ANY (ARRAY['applied'::text, 'undone'::text])))
+);
+
+
+--
 -- Name: share_invites; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2456,6 +3549,22 @@ ALTER TABLE ONLY public.profiles
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: restructure_op_rows restructure_op_rows_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.restructure_op_rows
+    ADD CONSTRAINT restructure_op_rows_pkey PRIMARY KEY (op_id, kind, target_id);
+
+
+--
+-- Name: restructure_ops restructure_ops_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.restructure_ops
+    ADD CONSTRAINT restructure_ops_pkey PRIMARY KEY (id);
 
 
 --
@@ -2698,6 +3807,20 @@ CREATE INDEX idx_events_user_date ON public.events USING btree (user_id, event_d
 --
 
 CREATE INDEX idx_events_user_id ON public.events USING btree (user_id);
+
+
+--
+-- Name: restructure_op_rows_seq_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX restructure_op_rows_seq_idx ON public.restructure_op_rows USING btree (op_id, seq);
+
+
+--
+-- Name: restructure_ops_area_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX restructure_ops_area_idx ON public.restructure_ops USING btree (area_id, created_at);
 
 
 --
@@ -2954,6 +4077,22 @@ ALTER TABLE ONLY public.help_log
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: restructure_op_rows restructure_op_rows_op_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.restructure_op_rows
+    ADD CONSTRAINT restructure_op_rows_op_id_fkey FOREIGN KEY (op_id) REFERENCES public.restructure_ops(id) ON DELETE CASCADE;
+
+
+--
+-- Name: restructure_ops restructure_ops_area_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.restructure_ops
+    ADD CONSTRAINT restructure_ops_area_id_fkey FOREIGN KEY (area_id) REFERENCES public.areas(id) ON DELETE CASCADE;
 
 
 --
@@ -3685,6 +4824,37 @@ CREATE POLICY profiles_update ON public.profiles FOR UPDATE USING ((id = auth.ui
 
 
 --
+-- Name: restructure_op_rows; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.restructure_op_rows ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: restructure_op_rows restructure_op_rows_select; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY restructure_op_rows_select ON public.restructure_op_rows FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM (public.restructure_ops o
+     JOIN public.areas a ON ((a.id = o.area_id)))
+  WHERE ((o.id = restructure_op_rows.op_id) AND (a.user_id = auth.uid())))));
+
+
+--
+-- Name: restructure_ops; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.restructure_ops ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: restructure_ops restructure_ops_select; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY restructure_ops_select ON public.restructure_ops FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.areas a
+  WHERE ((a.id = restructure_ops.area_id) AND (a.user_id = auth.uid())))));
+
+
+--
 -- Name: share_invites; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3698,6 +4868,22 @@ GRANT USAGE ON SCHEMA public TO postgres;
 GRANT USAGE ON SCHEMA public TO anon;
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT USAGE ON SCHEMA public TO service_role;
+
+
+--
+-- Name: FUNCTION _restructure_current(p_kind text, p_target uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public._restructure_current(p_kind text, p_target uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public._restructure_current(p_kind text, p_target uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION _restructure_write_config(p_kind text, p_target uuid, p_value jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public._restructure_write_config(p_kind text, p_target uuid, p_value jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public._restructure_write_config(p_kind text, p_target uuid, p_value jsonb) TO service_role;
 
 
 --
@@ -3715,6 +4901,15 @@ GRANT ALL ON FUNCTION public.app_assert_slugs(p_area_id uuid, p_group_slug text,
 GRANT ALL ON FUNCTION public.app_can_read_area(p_area_id uuid) TO anon;
 GRANT ALL ON FUNCTION public.app_can_read_area(p_area_id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.app_can_read_area(p_area_id uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION app_can_restructure_area(p_area_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.app_can_restructure_area(p_area_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.app_can_restructure_area(p_area_id uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.app_can_restructure_area(p_area_id uuid) TO service_role;
 
 
 --
@@ -3876,6 +5071,15 @@ GRANT ALL ON FUNCTION public.rpc_area_balance_anchored(p_area_id uuid, p_group_s
 
 
 --
+-- Name: FUNCTION rpc_area_breakdown(p_area_id uuid, p_group_slugs text[], p_plus_slug text, p_minus_slug text, p_filters jsonb, p_date_slug text, p_date_from date, p_date_to date); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.rpc_area_breakdown(p_area_id uuid, p_group_slugs text[], p_plus_slug text, p_minus_slug text, p_filters jsonb, p_date_slug text, p_date_from date, p_date_to date) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.rpc_area_breakdown(p_area_id uuid, p_group_slugs text[], p_plus_slug text, p_minus_slug text, p_filters jsonb, p_date_slug text, p_date_from date, p_date_to date) TO authenticated;
+GRANT ALL ON FUNCTION public.rpc_area_breakdown(p_area_id uuid, p_group_slugs text[], p_plus_slug text, p_minus_slug text, p_filters jsonb, p_date_slug text, p_date_from date, p_date_to date) TO service_role;
+
+
+--
 -- Name: FUNCTION rpc_area_due_basket_members(p_area_id uuid, p_basket_slug text, p_due_slug text, p_status_slug text, p_plus_slug text, p_minus_slug text, p_basket text, p_due_date date, p_tz text); Type: ACL; Schema: public; Owner: -
 --
 
@@ -3900,6 +5104,33 @@ GRANT ALL ON FUNCTION public.rpc_area_due_baskets(p_area_id uuid, p_basket_slug 
 GRANT ALL ON FUNCTION public.rpc_area_group_agg(p_area_id uuid, p_group_slug text, p_plus_slug text, p_minus_slug text, p_filters jsonb, p_from date, p_as_of date) TO anon;
 GRANT ALL ON FUNCTION public.rpc_area_group_agg(p_area_id uuid, p_group_slug text, p_plus_slug text, p_minus_slug text, p_filters jsonb, p_from date, p_as_of date) TO authenticated;
 GRANT ALL ON FUNCTION public.rpc_area_group_agg(p_area_id uuid, p_group_slug text, p_plus_slug text, p_minus_slug text, p_filters jsonb, p_from date, p_as_of date) TO service_role;
+
+
+--
+-- Name: FUNCTION rpc_category_event_counts(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.rpc_category_event_counts() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.rpc_category_event_counts() TO authenticated;
+GRANT ALL ON FUNCTION public.rpc_category_event_counts() TO service_role;
+
+
+--
+-- Name: FUNCTION rpc_restructure_apply(p_area_id uuid, p_steps jsonb, p_config jsonb, p_source text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.rpc_restructure_apply(p_area_id uuid, p_steps jsonb, p_config jsonb, p_source text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.rpc_restructure_apply(p_area_id uuid, p_steps jsonb, p_config jsonb, p_source text) TO authenticated;
+GRANT ALL ON FUNCTION public.rpc_restructure_apply(p_area_id uuid, p_steps jsonb, p_config jsonb, p_source text) TO service_role;
+
+
+--
+-- Name: FUNCTION rpc_restructure_undo(p_op_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.rpc_restructure_undo(p_op_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.rpc_restructure_undo(p_op_id uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.rpc_restructure_undo(p_op_id uuid) TO service_role;
 
 
 --
@@ -4062,6 +5293,22 @@ GRANT ALL ON TABLE public.help_log TO service_role;
 GRANT ALL ON TABLE public.profiles TO anon;
 GRANT ALL ON TABLE public.profiles TO authenticated;
 GRANT ALL ON TABLE public.profiles TO service_role;
+
+
+--
+-- Name: TABLE restructure_op_rows; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.restructure_op_rows TO service_role;
+GRANT SELECT ON TABLE public.restructure_op_rows TO authenticated;
+
+
+--
+-- Name: TABLE restructure_ops; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.restructure_ops TO service_role;
+GRANT SELECT ON TABLE public.restructure_ops TO authenticated;
 
 
 --
