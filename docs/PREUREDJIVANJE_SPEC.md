@@ -309,16 +309,24 @@ vide brojke; ne traže zaseban razgovor):
 | `Decathlon`: Odjeća vs Sport | `Zdravlje / Sport` (+ Namjena) | sportska oprema; `Odjeća` ostaje za svakodnevnu |
 | `Anja`: `Prihodi / Povrat Anja` vs `Transfer / Anja` | ~~Transfer~~ → **ostaje Prihod** (Saša 22.10.: *„prihod svaki mjesec"*) | izmjereno 22.10.: `Povrat Anja` = 46 mjesečnih rata `NN/96` po 450 € (Σ 20.250 €); `Transfer / Anja` = 29 povrata za sitne zajedničke kupnje (kapa, alat, karte). **Razlika je smislena** — ostaju oba. ⚠ **Jedna prava greška:** 25.09.2026. `Rata 86/96` 450 € stoji kao `Transfer / Anja` ⇒ treba `Prihodi / Povrat Anja` |
 | **Prihodi po osobi** (Saša 22.10.: Koka · Saša · Ostalo) | **os Namjena**, ne bucketi | Podtipovi `Prihodi / Koka` (111, 101.312 €) i `Saša` (134, 71.026 €) **već jesu** namjena. Nakon O5: Podtip = **izvor** (plaća, mirovina, honorar, povrat Anja…), Namjena = čiji. Prekidač Bucketi \| Namjena tada daje Koka / Saša / Zajedničko i na Prihodima. (Razrez danas buckete primjenjuje **samo na troškove** — `breakdownModel.ts`.) |
-| **Nenin novac** (Saša 22.10.: *„7.000 + 5.000, a nakon ostavinske još nešto"*) | **otvoreno** — v. ispod | izmjereno: **jedna** uplata **50.000,00 €** (10.04.2026., `Transfer / Nena`, „UPLATA NEVENKA PAVIĆ", Kokin ZABA) — izvan razreza; troškovi iz nje su `Razno / Nena's funds` (Kućište, grob…). ⚠ Iznos se ne slaže s „7.000 + 5.000" — provjeriti |
+| **Nenin novac** (Saša 22.10.) | v. ispod | izmjereno 22.10. na PROD snimci |
 
-**Nenin novac — tri moguća mjesta** (odluka Saše i Koke):
-1. **Prihod** (`Prihodi / Nasljedstvo`) — jednostavno, ali „Ušlo" 2026. skoči s ~42.600 na ~92.600 €
-   i iskrivi svaku usporedbu godina.
-2. **Izvan razreza kao danas** (Transfer), a troškovi iz njega s Namjenom **Kućište/Nena** — razrez
-   po Namjeni pokaže koliko je potrošeno; koliko je **ušlo** vidi se samo u podnožju „izvan razreza".
-3. **Fond** — uplata i troškovi iste Namjene, uz mali pregled *„ušlo 50.000 · potrošeno X · ostaje Y"*.
-   Najčitljivije za „što imamo od Nenina", i radi i za uplatu nakon ostavinske. Traži malu
-   doradu (prikaz), ne novi model. **Preporuka: 3**, s 2 kao korakom do njega.
+**Nenin novac — izmjereno i razjašnjeno (Saša 22.10.):**
+
+- **50.000 € je prolaz, ne prihod:** Nena → Koka (10.04.2026., *„Poklon od majke kćeri"*) → Igor
+  (18.04.2026., isti iznos, prijenos u inozemstvo) — poklon Igoru za stan. Oba retka su
+  `Transfer / Nena` ⇒ izvan razreza, neto 0. **Već je ispravno — ne dira se.**
+- **„7.000 + 5.000" su stvarni Nenin fond:** uplate od Nevenke 25.07. (7.000 €) i 28.07.2026.
+  (5.000 €) — **ali stoje kao `Prihodi / Koka`**, pa Kokin prihod 2026. izgleda 12.000 € veći nego
+  što jest. Troškovi iz fonda su `Razno / Nena's funds` (račune za stan, grob, Kućište — dosad
+  ~2.465 €, isto što pločica pokazuje u bucketu „Kućište · Nenin novac").
+- **Prijedlog — fond kroz os Namjena:** Namjena vrijednost **`Nena`** (ili spojeno „Nena / Kućište"
+  — Koka bira) na **obje** strane: dvije uplate dobiju Namjenu `Nena` (Podtip izvora, npr.
+  `Nasljedstvo`), troškovi `Nena's funds` isto. Razrez po Namjeni tada sam pokaže
+  *ušlo 12.000 · izašlo ~2.465 · ostaje ~9.535*, i radi i za uplatu nakon ostavinske.
+  ⚠ Te uplate i dalje broje u „Ušlo" — ako to smeta (usporedba godina), alternativa je
+  `Transfer / Nena` (izvan razreza) uz cijenu da se „ušlo u fond" ne vidi na pločici.
+- `Prihodi / Koka` 24.04. (200 €, *„Poklon"* od Nevenke) — pravi poklon, ostaje Kokin.
 | `Kuća / Osiguranje` | spojiti u Tip `Osiguranje` (Podtip `Kuća`) | jedno mjesto za osiguranja |
 | `Projekti / Sasa` + `Prihodi / Saša` | `Sasa` → `Saša` | O1, jedan naziv |
 | Retci `Projekti / Sasa` (Konzum, Biberon…) | Namjena `Saša`; Tip po tome što je kupljeno — **prijedlog po trgovcu** iz povijesti, ti potvrđuješ | jedine prave odluke po retku |
