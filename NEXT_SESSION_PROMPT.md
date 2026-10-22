@@ -25,6 +25,21 @@
 - **Saldo oba računa i ukupni zbroj isti u cent**; PROD poslije je u svakoj brojci isti kao TEST poslije.
 - Tvoj shortcut `AI_rucak` ispravljen (`Projekti / Saša`, Namjena Saša); Python alati predlažu nove nazive.
 
+## Plan sljedeće sesije (Saša 22.10.): Excel roundtrip `Financije_all` s Namjenom + Namjena u razrezu
+1. **Activities export / profili:** Namjena je novi stupac. Provjereno čitanjem koda: atribut kojeg profil ne
+   zna ide **na kraj** atributskih stupaca (`getProfileAttrOrder`), pa postojeći profili NE klize — Namjena
+   samo izađe zadnja, vidljiva, bez grupe. Posao: odlučiti gdje je želiš u svakom profilu (`Kokin_format` …),
+   izvesti, pomaknuti/sakriti, `Import Profile` — i izmjeriti da se ništa drugo nije pomaknulo.
+2. **Delta sheet** — dvije stvari koje treba izmjeriti, ne pretpostaviti: (a) kontrolni stupac i `Provjeri`
+   rade sa stupcima `Izvor`/`Status` — ostaju li točni kad profil stavi Namjenu ispred njih; (b) prazni
+   retci predloška: dobiva li Namjena dropdown (`depends_on: tip`, lista pod `*`) i što se uveze kad ostane
+   prazna (forma bi stavila Zajedničko, uvoz ne — v. Otvoreno).
+3. **Roundtrip bez izmjena** (export → import): `0 New · 0 Modify`, i redak kojem promijeniš samo Namjenu ⇒
+   točno 1 Modify (uvoz pita? Namjena nije bankino polje ⇒ ne smije pitati za potvrđeno stanje).
+4. **„Kamo ide novac" po Namjeni** (RAZREZ R5): prekidač **Bucketi | Namjena** na pločici. Uz to odluka
+   o bucketima „Koka razno" / „Saša razno" (s Namjenom su ista os dvaput) i što s „Nena / Kućište" na
+   strani Prihoda (12.000 ušlo u fond).
+
 ## Što treba od tebe / Koke
 1. ~~Koka na mobitelu~~ ✅ 22.10.
 2. Ostalo nepromijenjeno: **T-S174-3/5** (PROD razvrstavanje — ⚠ prijedlozi sada koriste nove nazive),
