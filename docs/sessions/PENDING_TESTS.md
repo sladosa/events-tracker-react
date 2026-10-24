@@ -2,7 +2,21 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S180 (2026-10-22, korak 8 Financija primijenjen na PROD-u, op `e0c3de1f`, provjeren i na mobitelu) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S181 (2026-10-24, profil `Kokin_format` s Namjenom; roundtrip i delta izmjereni na TEST-u) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S181 — Excel roundtrip Financija s Namjenom (2026-10-24)
+
+Namjena u profilu iza Podtipa. Na TEST-u izmjereno: izvoz identičan staromu (osim položaja stupca), roundtrip `0 · 0`, promjena Namjene = 1 Modify bez pitanja o potvrđenom stanju, delta formule ispravne. Nađen BUG-S181-DEPNAME (dropdown Namjene nudi Podtipove).
+
+**Detalji testova:** [tests/S181_tests.md](tests/S181_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S181-1 | PROD pod Kokom: Ctrl+Shift+R ⇒ Import Profile `Claude-temp_R\s181\c_profil_namjena.xlsx` kao `Kokin_format` ⇒ toast „12 hidden cols … + filter overrides", Namjena iza Podtipa; Claude potvrdi da se promijenio samo `export_profiles` | ✅ S181 (24.10., Saša pod Kokom) — očekivani toast; PROD čitanjem: promijenio se samo `export_profiles`, i PROD = TEST poslije u svih 8 ključeva |
+| T-S181-2 | PROD **poslije deploya**: Export `Kokin_format` (Download Excel) ⇒ u Excelu Namjena pod `Razno` nudi Zajedničko · Koka · Saša · Nena / Kućište (ne Podtipove), uz prazan Tip isto; Podtip pod `auto C5` nudi gorivo · leasing · popravci · registracija | ⬜ |
+| T-S181-3 | Uz studeni krug (T-S175-1..3): `fill_from_izvod` ispiše `Namjena [PROD]: * → Zajedničko, auto C5 → Koka, auto Lacetti → Saša` i novi retci u `_filled` imaju Namjenu; `visa_uvoz_izvoda --file` isto (`Namjena novih redaka: …`) | ⬜ |
 
 ---
 

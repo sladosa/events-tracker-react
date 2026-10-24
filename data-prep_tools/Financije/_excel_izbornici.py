@@ -6,7 +6,9 @@ ZAŠTO POSTOJI
     nije pratio Tip, a Podtip mimo `validation_rules` se uveze kao tekst BEZ GREŠKE
     (CLAUDE.md). Saša je to prijavio dvaput (S148 i S164). App export (`excelExport.ts`
     `addDependentDropdowns`) to radi ispravno od S105: imenovani raspon po vrijednosti Tipa
-    (`Dep_tip_<Tip>`) i `INDIRECT` na Podtip stupcu. Ovaj modul je ISTO pravilo u Pythonu.
+    (od S181 `Dep_podtip_<Tip>`, prije `Dep_tip_<Tip>`) i `INDIRECT` na Podtip stupcu. Ovaj
+    modul je ISTO pravilo u Pythonu. S181: i Namjena (`Dep_namjena_<Tip>`, `*` za Tip bez
+    vlastitog popisa i za prazan Tip).
 
 ⚠ JEDINA IMPLEMENTACIJA za app-format fileove. Tko piše Tip/Podtip izbornik, zove ovo —
   ravan popis Podtipova je kvar, ne pojednostavljenje.
@@ -31,7 +33,10 @@ from openpyxl.worksheet.datavalidation import DataValidation
 # Isto kao `DIACRITICAL_MAP` u `src/lib/excelExport.ts`.
 DIJAKRITICI = [('č', 'c'), ('ć', 'c'), ('š', 's'), ('ž', 'z'), ('đ', 'd'),
                ('Č', 'C'), ('Ć', 'C'), ('Š', 'S'), ('Ž', 'Z'), ('Đ', 'D')]
-PREFIKS = 'Dep_tip'          # = sanitizeNamedRange(`Dep_${'tip'}`) u app exportu
+# Ime raspona = `Dep_<slug OVISNOG atributa>_<vrijednost roditelja>`, kao `rangePrefix` u
+# excelExport.ts. ⚠ BUG-S181-DEPNAME: do S181 prefiks je nosio slug RODITELJA (`Dep_tip`), pa
+# bi Podtip i Namjena (oba ← Tip) dijelili imena i Namjena nudila Podtipove.
+PREFIKS = 'Dep_podtip'
 LIST = 'DropdownData'
 
 # Redoslijed opcija = `src/lib/optionOrder.ts` (S164): atribut čiji najdulji popis ima
@@ -54,9 +59,9 @@ def poredaj(opcije, svi_popisi) -> list[str]:
     return vrh + sorted((o for o in opcije if o not in ('N/A', '*')), key=_hr_kljuc)
 
 
-def ime_raspona(vrijednost: str) -> str:
+def ime_raspona(vrijednost: str, prefiks: str = PREFIKS) -> str:
     """= `sanitizeNamedRange` iz excelExport.ts."""
-    s = f'{PREFIKS}_{vrijednost}'
+    s = f'{prefiks}_{vrijednost}'
     for a, b in DIJAKRITICI:
         s = s.replace(a, b)
     s = re.sub(r'[^A-Za-z0-9_]', '_', s)
@@ -71,19 +76,59 @@ def _zamjene(tipovi) -> list[tuple[str, str]]:
     return [(c, dij.get(c, '_')) for c in znakovi]
 
 
-def _formula_ime(celija: str, zamjene) -> str:
+def _formula_ime(celija: str, zamjene, prefiks: str = PREFIKS) -> str:
     sub = celija
     for a, b in zamjene:
         sub = f'SUBSTITUTE({sub},"{a}","{b}")'
-    return f'INDIRECT("{PREFIKS}_"&{sub})'
+    return f'INDIRECT("{prefiks}_"&{sub})'
 
 
-def _excel_ime(tip: str, zamjene) -> str:
+def _excel_ime(tip: str, zamjene, prefiks: str = PREFIKS) -> str:
     """Što Excelova formula izračuna za danu vrijednost Tipa (simulacija SUBSTITUTE lanca)."""
     s = tip
     for a, b in zamjene:
         s = s.replace(a, b)
-    return f'{PREFIKS}_{s}'
+    return f'{prefiks}_{s}'
+
+
+PREFIKS_NAMJENA = 'Dep_namjena'
+
+
+def _namjena_popisi(tipovi, pravilo: dict) -> dict[str, list[str]]:
+    """Popis Namjene za SVAKI Tip i za prazan Tip: vlastiti iz `options_map`, inače `*`.
+    = `dependentRanges` u excelExport.ts (INDIRECT ne zna za zamjenu `*`)."""
+    om = pravilo.get('options_map') or {}
+    zvj = [o for o in om.get('*') or [] if o]
+    out = {}
+    for t in [''] + [t for t in tipovi if t != '*'] + [k for k in om if k not in ('*', *tipovi)]:
+        vlastiti = [o for o in om.get(t) or [] if o]
+        popis = vlastiti or zvj
+        if popis:
+            out[t] = poredaj(popis, list(om.values()))
+    return out
+
+
+def namjena_izbornik(wb, ws, col_tip: int, col_nam: int, prvi: int, zadnji: int,
+                     tipovi, pravilo: dict):
+    """Namjena = popis OVISAN o Tipu (S181). Zove se POSLIJE `tip_podtip_izbornici` (list
+    `DropdownData` već postoji; Namjena dobiva stupce iza Podtipova)."""
+    dd = wb[LIST]
+    stupac = dd.max_column + 1
+    popisi = _namjena_popisi(tipovi, pravilo)
+    for t, opcije in popisi.items():
+        dd.cell(1, stupac, f'namjena|tip={t}')
+        for i, p in enumerate(opcije, start=2):
+            dd.cell(i, stupac, p)
+        L = get_column_letter(stupac)
+        ime = ime_raspona(t, PREFIKS_NAMJENA)
+        wb.defined_names[ime] = DefinedName(ime, attr_text=f"{LIST}!${L}$2:${L}${1 + len(opcije)}")
+        stupac += 1
+    T, N = get_column_letter(col_tip), get_column_letter(col_nam)
+    f = _formula_ime(f'{T}{prvi}', _zamjene(list(popisi)), PREFIKS_NAMJENA)
+    dv = DataValidation(type='list', formula1=f, allow_blank=True, showErrorMessage=True,
+                        errorTitle='Namjena', error='Namjena nije u izborniku.')
+    ws.add_data_validation(dv)
+    dv.add(f'{N}{prvi}:{N}{zadnji}')
 
 
 def tip_podtip_izbornici(wb, ws, col_tip: int, col_pod: int, prvi: int, zadnji: int,
@@ -129,10 +174,37 @@ def tip_podtip_izbornici(wb, ws, col_tip: int, col_pod: int, prvi: int, zadnji: 
     return len(f)
 
 
-def provjeri(path, tax: dict[str, list[str]]) -> list[str]:
-    """Ponovo otvori file i provjeri da formula za SVAKI Tip pogađa raspon s točnim opcijama."""
+def _opcije_raspona(wb, ime) -> list | None:
+    if ime not in wb.defined_names:
+        return None
+    dest = list(wb.defined_names[ime].destinations)
+    if len(dest) != 1:
+        return ['<raspon od %d područja>' % len(dest)]
+    list_, ref = dest[0]
+    ref = ref.replace('$', '')
+    if ':' not in ref:                                  # popis s jednom opcijom
+        return [wb[list_][ref].value]
+    return [c.value for red in wb[list_][ref] for c in red]
+
+
+def provjeri(path, tax: dict[str, list[str]], namjena: dict | None = None) -> list[str]:
+    """Ponovo otvori file i provjeri da formula za SVAKI Tip pogađa raspon s točnim opcijama.
+    Uz `namjena` (S181) isto i za izbornik Namjene, uključujući prazan Tip."""
     wb = load_workbook(path)
     greske = []
+    if namjena is not None:
+        dvs = [dv for dv in wb['Events'].data_validations.dataValidation
+               if f'"{PREFIKS_NAMJENA}_"' in (dv.formula1 or '')]
+        if not dvs:
+            greske.append('Namjena stupac nema INDIRECT izbornik')
+        else:
+            popisi = _namjena_popisi(list(tax) + ['N/A'], namjena)
+            zam = [(a, b) for a, b in re.findall(r',"([^"]*)","([^"]*)"\)', dvs[0].formula1)]
+            for t, ocekivano in popisi.items():
+                ime = _excel_ime(t, zam, PREFIKS_NAMJENA)
+                dobiveno = _opcije_raspona(wb, ime)
+                if dobiveno != ocekivano:
+                    greske.append(f'Namjena uz Tip „{t}": {ime} nosi {dobiveno}, očekivano {ocekivano}')
     zam = _zamjene(tax)
     imena = wb.defined_names
     for t, opcije in tax.items():
@@ -150,7 +222,9 @@ def provjeri(path, tax: dict[str, list[str]]) -> list[str]:
         ocekivano = poredaj(opcije, list(tax.values()))
         if vrijednosti != ocekivano:
             greske.append(f'Tip „{t}": raspon nosi {vrijednosti}, očekivano {ocekivano}')
-    pod = [dv for dv in wb['Events'].data_validations.dataValidation if 'INDIRECT' in (dv.formula1 or '')]
+    # Po prefiksu, ne po `INDIRECT`: od S181 ga nosi i izbornik Namjene.
+    pod = [dv for dv in wb['Events'].data_validations.dataValidation
+           if f'"{PREFIKS}_"' in (dv.formula1 or '')]
     if not pod:
         greske.append('Podtip stupac nema INDIRECT izbornik (ravan popis?)')
     elif len(pod[0].formula1) > 255:

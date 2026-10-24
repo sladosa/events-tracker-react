@@ -57,6 +57,32 @@ def cat_transakcija(url, key) -> str:
     return cats[0]['id']
 
 
+def namjena_pravilo(url, key) -> dict:
+    """`depends_on` atributa Namjena (S181): `{'attribute_slug', 'options_map', 'default_map'}`.
+
+    /!\\ Pravilo se CITA iz baze, ne pise u alat: isti `default_map` puni Namjenu u
+        formi (Add), pa alat i forma ne mogu dati razlicit odgovor za isti Tip.
+        Bez njega bi retci s izvoda od studenog stizali BEZ Namjene (uvoz
+        `default_map` ne primjenjuje — CLAUDE.md, „ne radi na import putu").
+    """
+    d = rest(url, key, 'attribute_definitions?category_id=eq.' + cat_transakcija(url, key)
+             + '&name=eq.Namjena&select=id,validation_rules')
+    if len(d) != 1:
+        sys.exit('✗ Atribut `Namjena`: nadjeno ' + str(len(d)) + ', ocekivan tocno jedan.')
+    dep = (d[0].get('validation_rules') or {}).get('depends_on') or {}
+    if dep.get('attribute_slug') != 'tip' or not dep.get('default_map'):
+        sys.exit('✗ `Namjena` nema `depends_on` na `tip` s `default_map` — pravilo za zadanu '
+                 'vrijednost nije u bazi, a alat ga ne smije izmisliti.')
+    return dep
+
+
+def namjena_za(pravilo: dict, tip) -> str | None:
+    """Zadana Namjena za Tip — ISTO kao forma (`useAttributeDefinitions.ts`):
+    `default_map[Tip] ?? default_map['*']`."""
+    dm = pravilo.get('default_map') or {}
+    return dm.get(str(tip or '')) or dm.get('*')
+
+
 def load_env(which):
     # /!\ TEST je do S158 bio `.env.testing`, a on nosi SAMO anon kljuc ⇒ RLS je
     #     alatu pokazivao 6 javnih/demo Area, bez `Financije_all`, i to bez ijedne

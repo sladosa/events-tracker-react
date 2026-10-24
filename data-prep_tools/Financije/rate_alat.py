@@ -87,6 +87,7 @@ ATTRS = [
     ('Isplata',       'number'),
     ('Tip',           'text'),
     ('Podtip',        'text'),
+    ('Namjena',       'text'),     # S181 — iza Podtipa, kao profil `Kokin_format`
     ('Izvod opis',    'text'),
     ('Rate?',         'boolean'),
     ('Broj rata',     'number'),

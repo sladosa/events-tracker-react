@@ -343,6 +343,66 @@ function sanitizeNamedRange(s: string): string {
   return transliterateDiacriticals(s).replace(/[^A-Za-z0-9_]/g, '_').replace(/^(\d)/, '_$1');
 }
 
+/**
+ * Prefiks imenovanih raspona JEDNOG ovisnog atributa: `Dep_<slug ovisnog>`.
+ *
+ * ⚠ BUG-S181-DEPNAME: do S181 je prefiks nosio slug RODITELJA (`Dep_tip`), pa su
+ *   dva atributa ovisna o istom roditelju (Podtip i Namjena ← Tip) dijelila imena.
+ *   `definedNames.add` istog imena SPAJA raspone: `Dep_tip_auto_C5` je postao
+ *   `$H$2:$H$5,$U$2:$U$5` (podtipovi + namjene), što Excel ne može ponuditi kao
+ *   popis — ni za Podtip — a Namjena je pod svakim drugim Tipom nudila Podtipove.
+ */
+function rangePrefix(slug: string): string {
+  return sanitizeNamedRange(`Dep_${slug}`);
+}
+
+/**
+ * Imenovani rasponi ovisnog atributa: po jedan za SVAKU vrijednost roditelja koju
+ * ćelija može imati, plus prazan roditelj.
+ *
+ * ⚠ Ključ `*` je popis za vrijednost roditelja koja nema vlastiti (Namjena:
+ *   `*` + samo `auto C5`/`auto Lacetti`). `INDIRECT` ne zna za zamjenu, pa se `*`
+ *   popis upisuje pod IMENOM svake takve vrijednosti — uključujući prazan
+ *   roditelj (`Dep_namjena_`), jer forma `*` nudi i dok Tip nije izabran.
+ * ⚠ Prazan popis znači „nema izbornika" (npr. `uplata` ← `smjer`), ne „prazan izbornik".
+ */
+export function dependentRanges(
+  meta: AttrMeta,
+  attrMeta: Map<string, AttrMeta>,
+  attrColumns: AttrColumn[],
+): { parentValue: string; rangeName: string; options: string[] }[] {
+  const dep = meta.dependsOn;
+  if (!dep) return [];
+  const map = dep.optionsMap;
+  const star = (map['*'] ?? []).filter(Boolean);
+
+  // Vrijednosti roditelja: njegov popis (ili unija popisa ako i sam ovisi) + ključevi mape.
+  const parent = attrColumns.map(c => attrMeta.get(c.attrDefId)!).find(m => m.slug === dep.attributeSlug);
+  const parentValues = new Set<string>();
+  if (parent) {
+    for (const v of parent.suggestOptions) parentValues.add(v);
+    for (const list of Object.values(parent.dependsOn?.optionsMap ?? {})) {
+      for (const v of list ?? []) parentValues.add(v);
+    }
+  }
+  for (const k of Object.keys(map)) if (k !== '*') parentValues.add(k);
+
+  const prefix = rangePrefix(meta.slug);
+  const out: { parentValue: string; rangeName: string; options: string[] }[] = [];
+  const used = new Set<string>();
+  for (const pv of ['', ...parentValues]) {
+    const own = (map[pv] ?? []).filter(Boolean);
+    const options = own.length > 0 ? own : star;
+    if (options.length === 0) continue;
+    const rangeName = sanitizeNamedRange(`${prefix}_${pv}`);
+    // Dvije vrijednosti koje se svedu na isto ime: prva pobjeđuje (spajanje bi pokvarilo obje).
+    if (used.has(rangeName)) continue;
+    used.add(rangeName);
+    out.push({ parentValue: pv, rangeName, options });
+  }
+  return out;
+}
+
 function addDependentDropdowns(
   wb: ExcelJS.Workbook,
   ws: ExcelJS.Worksheet,
@@ -379,22 +439,13 @@ function addDependentDropdowns(
     const parentColLtr = colLetter(parentColNum);
     const depColNum    = ATTR_COL_START + colIdx;
 
-    // prefix shared by all named ranges for this dependency
-    const prefix = sanitizeNamedRange(`Dep_${dep.attributeSlug}`);
+    const ranges = dependentRanges(meta, attrMeta, attrColumns);
+    if (ranges.length === 0) continue;
+    const prefix = rangePrefix(meta.slug);
 
-    // Write each parent value's options as a column on DropdownData
-    const parentValues = Object.keys(dep.optionsMap);
-    const rangeNameByValue = new Map<string, string>();
-
-    for (const pv of parentValues) {
-      const options = dep.optionsMap[pv];
-      if (!options || options.length === 0) continue;
-
-      const rangeName = sanitizeNamedRange(`${prefix}_${pv}`);
-      rangeNameByValue.set(pv, rangeName);
-
+    for (const { parentValue, rangeName, options } of ranges) {
       // Write header + options in this column
-      ddSheet.getCell(1, ddCol).value = `${dep.attributeSlug}=${pv}`;
+      ddSheet.getCell(1, ddCol).value = `${meta.slug}|${dep.attributeSlug}=${parentValue}`;
       for (let i = 0; i < options.length; i++) {
         ddSheet.getCell(2 + i, ddCol).value = options[i];
       }
@@ -406,8 +457,6 @@ function addDependentDropdowns(
 
       ddCol++;
     }
-
-    if (rangeNameByValue.size === 0) continue;
 
     // Set INDIRECT-based Data Validation on the dependent column.
     // The SUBSTITUTE chain must produce exactly the sanitized named range name.

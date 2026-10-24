@@ -55,7 +55,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')   # sys.exit poruke idu ovuda
 sys.path.insert(0, str(Path(__file__).parent))
 import os  # noqa: E402
-from _db import target  # noqa: E402
+from _db import load_env, namjena_pravilo, namjena_za, target  # noqa: E402
 from _izvodi import nadji  # noqa: E402
 
 AREA_COL, PATH_COL, DATE_COL, SESS_COL, USER_COL, COMMENT_COL = 2, 3, 4, 5, 7, 8
@@ -903,8 +903,9 @@ def prosiri_kosaru(tg: 'Target', novi_kraj: int) -> bool:
 
 
 def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
-               ref: 'Target | None' = None) -> tuple[int, int]:
-    """Popuni prazne retke predloška; kad ih ponestane, dopiši nove ispod."""
+               ref: 'Target | None' = None, namjena: dict | None = None) -> tuple[int, int]:
+    """Popuni prazne retke predloška; kad ih ponestane, dopiši nove ispod.
+    `namjena` = `_db.namjena_pravilo()` ⇒ svaki novi redak dobiva zadanu Namjenu po Tipu (S181)."""
     template = tg.blank_rows[0] if tg.blank_rows else (tg.real_rows[-1] if tg.real_rows else None)
     area = tg.ws.cell(template, AREA_COL).value if template else None
     path = tg.ws.cell(template, PATH_COL).value if template else None
@@ -1015,6 +1016,9 @@ def write_rows(tg: Target, rows: list[dict], racun: str, dry: bool,
         tg.put(row, 'Uplata'  if r['smjer'] == 'Uplata' else 'Isplata', r['iznos'])
         tg.put(row, 'Tip',    r['tip'])
         tg.put(row, 'Podtip', r['podtip'])
+        if namjena is not None:
+            # S181: isto pravilo kao forma (`default_map`); ostalo bira čovjek u izborniku.
+            tg.put(row, 'Namjena', namjena_za(namjena, r['tip']))
         # Retci s izvoda su se vec dogodili. Kokini nose vlastiti status: prazna
         # kolona C (naplata jos nepoznata) je upravo ono sto u nasem modelu znaci
         # `Planiran` (S113) - a planirani retci MORAJU ostati vidljivi, inace ih
@@ -1670,11 +1674,24 @@ def main() -> None:
         print(f'\n► Kontrolni stupac mora završiti na {last_stanje:.2f} — '
               f'to je ISPISANO stanje s izvoda, ne naš izračun.')
 
+    # S181: zadana Namjena po Tipu, iz `default_map` u bazi (isto pravilo kao forma).
+    namjena = None
+    if rows:
+        if tg.find('Namjena') is None:
+            print('\n⚠ List nema stupca `Namjena` (izvoz od prije S180?) — novi retci će '
+                  'ostati BEZ Namjene. Izvezi delta sheet ponovno.')
+        else:
+            _env = a.presedan or target()
+            namjena = namjena_pravilo(*load_env(_env))
+            _dm = namjena.get('default_map') or {}
+            print(f'\nNamjena [{_env.upper()}]: ' + ', '.join(f'{k} → {v}' for k, v in _dm.items())
+                  + ' — upisuje se svakom novom retku po Tipu.')
+
     if a.dry:
         print('\n--dry: ništa nije zapisano.')
         return
 
-    used, app = write_rows(tg, rows, racun, a.dry, ref) if rows else (0, 0)
+    used, app = write_rows(tg, rows, racun, a.dry, ref, namjena) if rows else (0, 0)
     if mc_plan:
         upisi_mc(tg, mc_plan)
     out = a.target.with_name(f'{a.target.stem}_filled.xlsx')

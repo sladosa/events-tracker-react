@@ -68,7 +68,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, str(Path(__file__).parent))
-from _db import cat_transakcija, load_env, target as _target  # noqa: E402
+from _db import cat_transakcija, load_env, namjena_pravilo, namjena_za, target as _target  # noqa: E402
 from _izvodi import nadji  # noqa: E402
 from enrich_from_izvoda import parse_pbz_visa  # noqa: E402
 from fill_from_izvod import short_opis  # noqa: E402
@@ -456,8 +456,16 @@ def main():
           + (f' · {brisanja} Delete' if brisanja else ''))
 
     if '--file' in sys.argv:
+        # S181: novi redak dobiva zadanu Namjenu po Tipu (isti `default_map` kao forma);
+        #   postojećem se ne dira — ondje je Namjena već odluka.
+        nam = namjena_pravilo(url, key)
+        for r, a, *_ in izlaz:
+            if r is None and not a.get('Namjena'):
+                a['Namjena'] = namjena_za(nam, a.get('Tip'))
+        print('Namjena novih redaka: ' + ', '.join(
+            f'{k} → {v}' for k, v in (nam.get('default_map') or {}).items()))
         pisi(izlaz, {r['id'][:8]: r for r in rows}, 'visa_uvoz_' + izvod.stem.split('_')[-1],
-             taksonomija(url, key))
+             taksonomija(url, key), namjena=nam)
 
 
 if __name__ == '__main__':

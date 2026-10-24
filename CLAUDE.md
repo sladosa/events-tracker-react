@@ -2141,6 +2141,20 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 >   je zatvorio refaktor u nekoj ranijoj sesiji, a unos je stajao jos dugo — a „otvoren bug"
 >   se cita kao poznat kvar i trosi paznju svake iduce sesije.
 
+- **BUG-S181-DEPNAME — Excel dropdown ovisnog atributa: ime raspona nosi samo RODITELJA** (S181,
+  izmjereno na TEST exportu 24.10.). `addDependentDropdowns` (`excelExport.ts:383`) gradi
+  `Dep_<roditelj>_<vrijednost>`, pa dva atributa koja ovise o istom roditelju (Podtip i Namjena ← Tip,
+  od S180) dijele imena. Posljedica: dropdown Namjene nudi **Podtipove** (`Dep_tip_Razno` = Nena's
+  funds · Pokloni · …), a `Dep_tip_auto_C5`/`auto_Lacetti` postanu raspon od **dva** popisa
+  (`$H$2:$H$5,$U$2:$U$5`) — Excel ga ne može ponuditi ni za **Podtip**. Ključ `*` (Namjena) se kroz
+  `INDIRECT` nikad ne koristi. Validacija nema `showErrorMessage`, pa Excel ne odbija upis — ali izbor
+  iz dropdowna stavi Podtip u Namjenu, a uvoz vrijednost izvan popisa prima tiho. Vrijedi za svaki
+  Financije Excel od 22.10. `_excel_izbornici.py` ponavlja pravilo (`PREFIKS = 'Dep_tip'`).
+  ✅ **Popravljeno S181 na `test-branch`, čeka deploy (T-S181-2):** ime = `Dep_<ovisni>_<vrijednost>`
+  (`rangePrefix`), raspon za SVAKU vrijednost roditelja + prazan roditelj, `*` gdje nema vlastitog
+  (`dependentRanges`). Čuva `excelDependentRanges.test.mjs` (stari kod ruši 8/10). Python isto
+  (`Dep_podtip`, `Dep_namjena`, `provjeri()` pokriva Namjenu; sabotaža pada).
+
 - **BUG-S145-BOOLEDIT — ⚠ NIJE REPRODUCIRAN. Pojava viđena dvaput, pa nestala; ulaz je
   izmjeren i ISPRAVAN je.** Boolean atribut (`Rate?`) prikazao se u **Edit** formi kao
   prazna kvačica s natpisom `Not set`, iako je u bazi `true`. Viđeno 22.09.2026. na dva

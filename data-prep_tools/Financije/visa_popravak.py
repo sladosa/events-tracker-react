@@ -250,8 +250,9 @@ def main():
     pisi(redci, by8, 'visa_popravak')
 
 
-def pisi(redci, by8, ime, tax=None, izgled=None, boje=None):
+def pisi(redci, by8, ime, tax=None, izgled=None, boje=None, namjena=None):
     """`tax` = {Tip: [Podtip...]} -> dropdowni Tip/Podtip na svakom retku.
+    `namjena` = `_db.namjena_pravilo()` -> i dropdown Namjene po Tipu (S181).
     `boje` = {indeks retka: 'RRGGBB'} -> vlastita boja Tip/Podtip ćelija (S174: prijedlog
     iz pravila po trgovcu se mora razlikovati od prijedloga iz presedana).
     /!\ Podtip mimo `validation_rules` uveze se kao tekst BEZ GRESKE (CLAUDE.md),
@@ -333,6 +334,10 @@ def pisi(redci, by8, ime, tax=None, izgled=None, boje=None):
         cpod = ctip + 1
         prvi, zadnji = hdr + 1, hdr + len(redci)
         tip_podtip_izbornici(wb, ws, ctip, cpod, prvi, zadnji, tax)
+        if namjena is not None:
+            from _excel_izbornici import namjena_izbornik
+            cnam = 9 + [n for n, _ in ATTRS].index('Namjena')
+            namjena_izbornik(wb, ws, ctip, cnam, prvi, zadnji, list(tax) + ['N/A'], namjena)
         for rr in range(prvi, zadnji + 1):
             if ws.cell(rr, ctip).value in (None, 'N/A'):
                 ws.cell(rr, ctip).fill = orange
@@ -383,7 +388,7 @@ def pisi(redci, by8, ime, tax=None, izgled=None, boje=None):
         # Brana (S164): ponovo otvori file i provjeri da izbornik za SVAKI Tip pogađa
         # svoj raspon. Pokvaren izbornik nudi krivi Podtip, a on se uveze bez greške.
         from _excel_izbornici import provjeri
-        greske = provjeri(out, tax)
+        greske = provjeri(out, tax, namjena)
         if greske:
             sys.exit('✗ Izbornik Tip/Podtip u ' + out.name + ' nije ispravan:\n  '
                      + '\n  '.join(greske))

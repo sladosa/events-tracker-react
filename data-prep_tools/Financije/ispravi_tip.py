@@ -81,7 +81,9 @@ def main():
               f"   | {(r.get('comment') or '')[:40]}")
         redci.append((r, a, kom, False, f'ISPRAVAK {tip} / {podtip} (S169)'))
     ime = 'ispravak_tip_' + re.sub(r'[^A-Za-z0-9]+', '_', f'{tip}_{podtip}').strip('_')
-    visa_popravak.pisi(redci, {}, ime, tax=tax, izgled=izgled_pregleda)
+    from _db import namjena_pravilo
+    visa_popravak.pisi(redci, {}, ime, tax=tax, izgled=izgled_pregleda,
+                       namjena=namjena_pravilo(url, key))
     print(f'\nUvoz pod Kokinim računom. Očekivani pregled: 0 New · {izmjena} Modify · 0 Delete; '
           'saldo se ne miče (mijenja se samo klasifikacija).')
 
