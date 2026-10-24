@@ -19,6 +19,7 @@ import {
   parseExcelFile,
   findDroppedAttributes,
   droppedAttributesWarning,
+  fillImportDefaults,
   warnStaleUntouched,
   analyzeUpdates,
   analyzeDeletes,
@@ -38,6 +39,7 @@ import { localYmd } from '@/lib/localDate';
 import { resolveForeignOwnership } from '@/lib/foreignRowOwnership';
 import { isBalanceWidget } from '@/types/database';
 import { bankFieldSpec } from '@/lib/confirmedRowEdit';
+import { defaultFillsMessage } from '@/lib/importDefaults';
 
 interface ExcelImportModalProps {
   onClose:   () => void;
@@ -210,6 +212,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       const droppedMsg = droppedAttributesWarning(
         findDroppedAttributes([...parsed.toCreate, ...parsed.toUpdate], categoriesDict, attrDefs));
       if (droppedMsg) setPreview(p => (p ? { ...p, warnings: [...p.warnings, droppedMsg] } : p));
+
+      // S181: što će uvoz upisati iz `default_map` na novim retcima — ista funkcija kao upis.
+      const defaultsMsg = defaultFillsMessage(
+        fillImportDefaults(parsed.toCreate, categoriesDict, attrDefs).fills);
+      if (defaultsMsg) setPreview(p => (p ? { ...p, warnings: [...p.warnings, defaultsMsg] } : p));
 
       // S107 D7 update-guard: dry-run diff UPDATE redova (koje promjene bi Apply napravio)
       if (parsed.toUpdate.length > 0) {

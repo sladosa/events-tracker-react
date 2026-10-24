@@ -27,6 +27,7 @@ import { loadCategoriesForExport, loadAttrDefsForCategories } from './excelDataL
 import { upsertParentEvent, type ParentAttrWrite } from './parentEventLoader';
 import { fetchAllPagedIn } from './supabasePaging';
 import { withRetryQuery } from './retry';
+import { fillDefaultMaps, type DefaultFill } from './importDefaults';
 import type {
   ExportCategoriesDict,
   ExportAttrDef,
@@ -1091,6 +1092,21 @@ export function droppedAttributesWarning(dropped: DroppedAttribute[]): string | 
 // Apply import changes to database
 // ─────────────────────────────────────────────
 
+/**
+ * `default_map` na novim retcima (S181, `importDefaults.ts`). Jedini ulaz i za
+ * pregled (ExcelImportModal) i za upis (`applyImportChanges`).
+ */
+export function fillImportDefaults(
+  rows:           ParsedImportRow[],
+  categoriesDict: ExportCategoriesDict,
+  attrDefs:       ExportAttrDef[],
+): { rows: ParsedImportRow[]; fills: DefaultFill[] } {
+  return fillDefaultMaps(rows, attrDefs, row => {
+    const levels = getHierarchyLevels(row.category_path, categoriesDict, row.area);
+    return levels.length > 0 ? levels.map(l => l.categoryId) : null;
+  });
+}
+
 export async function applyImportChanges(
   userId:              string,
   _toCreate:           ParsedImportRow[],
@@ -1109,7 +1125,9 @@ export async function applyImportChanges(
   onProgress?:         (done: number, total: number) => void,
 ): Promise<ApplyResult> {
   // Local mutable copies so BUG-F fix can reclassify rows
-  let toCreate = _toCreate;
+  // S181: zadano iz `default_map` SAMO na retcima koji ulaze kao novi — prije
+  //   BUG-F reklasifikacije, pa redak koji „replace" ponovo stvara ostaje kakav je.
+  let toCreate = fillImportDefaults(_toCreate, categoriesDict, attrDefs).rows;
   let toUpdate = _toUpdate;
 
   let created  = 0;
