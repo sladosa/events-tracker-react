@@ -1634,3 +1634,14 @@ Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.
 - ⚠ **Otvoreno:** alati koji pišu nove retke (`fill_from_izvod`, `visa_uvoz_izvoda`) ne pišu `namjena` ⇒
   novi retci s izvoda dolaze bez Namjene; pravila po trgovcu ne znaju Namjenu (npr. ljekarna na Visi je
   bila `Medical_Sasa`, sada `Medical` bez osobe).
+
+### S181 (2026-10-24) — Namjena na novim retcima i u izbornicima
+
+- ✅ Zatvara otvoreno iz S180: `fill_from_izvod` (`write_rows`) i `visa_uvoz_izvoda` novim retcima upisuju
+  Namjenu iz `default_map` u bazi (`_db.namjena_pravilo` / `namjena_za` — isto pravilo kao forma:
+  `auto C5` → Koka, `auto Lacetti` → Saša, ostalo Zajedničko). Ispis alata to kaže (`Namjena [PROD]: …`).
+- `rate_alat.ATTRS` nosi `Namjena` **iza Podtipa** (`visa_popravak.pisi` računa Podtip kao Tip + 1).
+- `_excel_izbornici`: imena raspona po ovisnom atributu (`Dep_podtip_*`, `Dep_namjena_*`, BUG-S181-DEPNAME),
+  `namjena_izbornik()`, `provjeri(path, tax, namjena)`; `ispravi_tip.py` šalje pravilo Namjene u `pisi`.
+- ⚠ Ostaje: pravila po trgovcu (`pravila_trgovca.py`) ne znaju Namjenu — ljekarna na Visi dobiva
+  `Medical` + zadano Zajedničko, a bila je Sašina. Koka/Saša je mijenja u izborniku.

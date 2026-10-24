@@ -72,6 +72,7 @@ izvodom** — dospjeli datum sam po sebi nije dokaz da je banka naplatila.
   - ćeliju „u banci piše" i „razlika": upiši stanje s ekrana banke, razlika mora biti 0,00 (zeleno)
 - Novi redak se dopisuje na dno; `session_start` je već upisan i **ne treba ga dirati**
 - Neiskorišteni prazni retci se pri uvozu preskaču (javi se koliko ih je); redak s iznosom ali bez datuma je **greška**, ne preskakanje
+- Ostaviš li u **novom** retku praznu `Namjenu` ili `Status`, uvoz upiše zadanu vrijednost kao i forma (npr. Namjena `Zajedničko`, uz `auto C5` `Koka`, uz `auto Lacetti` `Saša`) i to kaže u pregledu prije uvoza. Upisana vrijednost se nikad ne mijenja, a postojeći retci se ne diraju
 - Nakon uvoza: otvori bankovnu aplikaciju i **potvrdi stanje** na pločici — sljedeći delta sheet tada kreće od potvrđenog broja, pa je kraći
 - Broj u „u banci piše" i u potvrdi mora doći **s ekrana banke ili s izvoda**, nikad iz same aplikacije — inače provjera potvrđuje samu sebe
 - **Račun uzima onaj koji traži odabrani Export profil**; nema li ga profil, uzima se filtar iz panela. Ako se profil i panel ne slažu, ponuda delta sheeta se ne prikazuje — umjesto da izađe sheet s točnim sidrom i nula redaka
@@ -90,6 +91,7 @@ izvodom** — dospjeli datum sam po sebi nije dokaz da je banka naplatila.
 ## Export profil
 - Modal **sam odabere prvi profil** te Aree — bez profila izvoz izađe u punoj širini
 - Za izradu **novog** profila prvo odaberi „No profile (all columns)", pa `Preview (10 rows)`
+- ⚠ Za **izmjenu postojećeg** profila (npr. premještanje stupca) izvezi ga s **`Download Excel`**, ne s `Preview`: Preview ne primjenjuje filtre profila, pa bi `Import Profile` u profil upisao filtre iz panela. Redoslijed stupaca profil čita iz redoslijeda redaka u `ATTRIBUTE LEGEND` — premjesti redak ondje, ne stupac
 - Profil pamti raspored kolona, širine, grupe, period i sort. **`row_hash` smije sakriti**, `Delete?` nikad — to je okidač brisanja, a zastavica koju nitko ne vidi je zastavica koju nitko ne može ni maknuti
 - ⚠ `Filter` list zapisuje **efektivni** filtar atributa. Spremaš li profil iz exporta, prvo **isprazni ćeliju `Attribute filter`** — inače se u profil vrati račun iz panela. Prazna ćelija znači „naslijedi panel"; `_` znači „izričito bez filtra"
 

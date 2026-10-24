@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S180).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S181).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 155 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 168 | [Critical rules](<#Critical rules>) | X |
-| 1383 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1862 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1878 | [Key files](<#Key files>) |  |
-| 2020 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2040 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2063 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2091 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2131 | [Open bugs](<#Open bugs>) | ~ |
-| 2240 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2285 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2436 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2444 | [Backlog](<#Backlog>) | ~ |
-| 2448 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2456 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1392 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1871 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1887 | [Key files](<#Key files>) |  |
+| 2031 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2051 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2074 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2102 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2142 | [Open bugs](<#Open bugs>) | ~ |
+| 2265 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2310 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2461 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2469 | [Backlog](<#Backlog>) | ~ |
+| 2473 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2481 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2620 redaka, 18 sekcija._
+_Ukupno 2645 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -565,6 +565,15 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **Ovo pomiče okidač Faze 3.** `docs/FAZA3_IMPORT_AUTOMATIKA.md` ju je odgodio jer
   `Datum naplate` ima **0 praznih od 5.192** — ali to polje **pune Python alati u fileu**,
   pa mjeri alat, ne app. `Status` nitko ne puni ⇒ **2**. Brojka više nije nula.
+- **✅ S181 (na `test-branch`, deploy čeka): uvoz upisuje `default_map` na NOVI redak s
+  PRAZNOM ćelijom** (`importDefaults.ts`, `fillImportDefaults` — isti poziv u pregledu i upisu;
+  pregled kaže „Zadano iz pravila …: Namjena 3 (…)"). Na PROD-u `default_map` imaju samo
+  `Namjena` i `Status` (`Financije_all`, izmjereno 24.10.).
+  ⚠ **NIKAD `default_value`** — Fitness ih ima 7 (`Trening_type=easy`…); na povijesnom uvozu
+  (trening) izmislili bi podatak. ⚠ `_` ostaje, popunjeno ostaje, postojeći redak (i onaj koji
+  „replace" ponovo stvara) ostaje. ⚠ `set_attribute` (datum naplate) se na uvozu i dalje NE
+  računa — razlog (Visa) je u `FAZA3_IMPORT_AUTOMATIKA.md`.
+  ⚠ Nova Area s `default_map` ⇒ njen Excel uvoz ga primjenjuje SAM; to je namjera („kao forma").
 
 **Kolone Activities liste (`settings.list_columns`)**
 
@@ -1963,6 +1972,8 @@ src/lib/restructure/apply.ts       F1 I/O: snimka (samo potrebni atributi, paral
 data-prep_tools/Tools/preuredjivanje_grep.py
                                    Stare vrijednosti iz sheeta `Preuređivanje` u Python rječnicima
                                    (JAK = vrijednost + kontekst koraka u retku); bez `fix_*` i `Obsolete/`
+src/lib/importDefaults.ts          `default_map` na NOVIM retcima Excel uvoza (S181) — samo prazna ćelija,
+                                   nikad `default_value`; pregled i upis kroz `fillImportDefaults`
 src/lib/validationRules.ts         JEDINI graditelj `validation_rules` (panel, uvoz, „Other") +
                                    `sameRules` za usporedbu po značenju (S152)
 src/lib/pendingOptions.ts          „Other" opcije iz Add/Edit u `validation_rules` (jedna kopija)

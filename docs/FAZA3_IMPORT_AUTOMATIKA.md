@@ -3,6 +3,11 @@
 **Mjereno na PROD-u 2026-09-14 (S136).** Dokument postoji da se hipoteza iz backloga
 ne gradi nanovo: brojke su ovdje, i **jedna od njih ruši polazište**.
 
+> **S181 (24.10.2026.): izveden je USKI dio — `depends_on.default_map`** na novim retcima
+> s praznom ćelijom (`src/lib/importDefaults.ts`; odluke 1, 2 i 4 ispod vrijede, 3 ne
+> treba jer nov redak nema otisak). `set_attribute` (datum naplate) **i dalje nije** —
+> razlozi ispod stoje. Okidač: Namjena (S180) je postala polje koje razrez čita.
+
 ---
 
 ## DIO 1 — jednostavno, za Sašu

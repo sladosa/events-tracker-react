@@ -60,6 +60,19 @@ Claude zatim pročita PROD `areas.settings` i potvrdi da se promijenio samo `exp
 
 **Pad:** Namjena nudi Podtipove (stari bundle — ponovi Ctrl+Shift+R) ili Podtip pod `auto C5` nema strelicu.
 
+## T-S181-4 ⬜ (PROD, poslije deploya) Excel uvoz: zadana Namjena na novom retku
+
+**Izmjereno na TEST-u (24.10.):** file s 3 nova retka bez Namjene (`g_delta_zaba_fix_bez.xlsx`) ⇒
+pregled `3 New` + „Zadano iz pravila (kao forma) na novim retcima s praznom ćelijom: Namjena 3
+(Saša 1, Zajedničko 1, Koka 1)" ⇒ Apply ⇒ baza: auto Lacetti → Saša, Razno → Zajedničko,
+auto C5 → Koka. Retci obrisani, `kontrola.mjs` prije = poslije (saldo, Namjena, Tip, ukupno).
+
+**Koraci (PROD):** Ctrl+Shift+R → delta ili obični export → u prazan redak upiši novu transakciju
+(Tip npr. `Domaćinstvo`), Namjenu ostavi praznu; u drugi novi redak upiši Namjenu `Saša` → uvoz.
+**Očekivano:** u pregledu redak „Zadano iz pravila … Namjena 1 (Zajedničko 1)" (ne 2); u appu prvi
+redak ima Zajedničko, drugi Saša.
+**Pad:** nema retka u pregledu (stari bundle — Ctrl+Shift+R) ili je drugi redak dobio Zajedničko.
+
 ## T-S181-3 ⬜ (studeni, uz T-S175-1..3) Namjena na retcima s izvoda
 
 **Očekivano u ispisu** `fill_from_izvod` (bez `--dry` i s njim): redak
