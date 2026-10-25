@@ -1,4 +1,4 @@
-> Pisano protiv `5fc3a98` (S183 kod) + commita koji nosi ovaj file (S183 docs, 25.10.).
+> Pisano protiv S183 kod commita (`5fc3a98`, `839387c`, Fond) + commita koji nosi ovaj file (S183 docs, 25.10.).
 > **`main` = `1ed9798` (S181, PROD od 25.10.).** `test-branch` = `main` + docs S182 + **S183 (kod, nije na PROD-u)**.
 > **TEST:** `Financije_all` ima novi config razreza (`set_breakdown.py --apply`, 25.10.): `views`, `sides`, bucketi 1A.
 > **PROD:** stari config razreza (Koka razno / Saša razno); novi ide tek POSLIJE deploya (T-S183-2).
@@ -7,7 +7,7 @@
 
 # Sljedeća sesija (S184)
 
-> **Ukratko (S183):** pločica „Kamo ide novac" dobila je tri pogleda na iste retke — Bucketi, Namjena (čiji je trošak i prihod, s fondom Nena / Kućište: ušlo 12.000 · izašlo 2.465,05 · ostaje 9.534,95) i Tip — a „Koka razno" / „Saša razno" su raspušteni po vrsti troška; bez migracije, na TEST-u upisano i izmjereno, PROD čeka deploy.
+> **Ukratko (S183):** pločica „Kamo ide novac" dobila je tri pogleda na iste retke — Bucketi, Namjena (čiji je trošak i prihod) i Tip — i stranu Fond, koja krupno kaže koliko je u Neninom fondu od početka (9.534,95 €), a „Koka razno" / „Saša razno" su raspušteni po vrsti troška, N/A ima ↗ za razvrstavanje; bez migracije, na TEST-u upisano i izmjereno, PROD čeka deploy.
 
 ---
 
@@ -16,7 +16,11 @@
 ## Gotovo (S183)
 - „Kamo ide novac" ima prekidač **Bucketi | Namjena | Tip**. Brojke su iste u sva tri pogleda (Izašlo
   This Year na TEST-u 36.148,05), mijenja se samo raspored.
-- **Namjena** radi i na Prihodima; iznad liste je **fond Nena / Kućište** (ušlo · izašlo · ostaje).
+- **Namjena** radi i na Prihodima (ravno na Podtip, bez međurazine „Prihodi").
+- **Fond** (treći izbor uz Troškovi | Prihodi, u pogledu Namjena): krupno koliko je u Neninom fondu **od
+  početka** (9.534,95), traka potrošeno / ostaje, razdoblje iz filtra, kamo je otišlo / odakle je ušlo.
+- **↗ na „nerazvrstano (N/A)"** — popis za razvrstavanje (retci bez Tipa ↗ nemaju; filtar ne zna „prazno").
+  Tip pod bucketom ima ↗ samo kad je cijeli u tom bucketu (Razno nema, njegovi Podtipovi imaju).
 - **Bucketi:** nema više „Koka razno" / „Saša razno". Gorivo, leasing i Lječnička komora su u Mjesečnima,
   registracija i popravci auta u Povremeno nužno, Projekti su svoj bucket.
 - Na **Prihodima** nema izbora „po kupnji / po naplati" (bio bi isti broj).
@@ -52,11 +56,13 @@
 | pločica | `BreakdownTile`: prop `groupings` (sva), prekidač pogleda u `lastView`, `sideAxes` / `axisOnSide`, redak fonda |
 | config | `set_breakdown.py` (TEST upisano): 49 parova, `views`, `sides`, provjere ≤ 4 dims i fond ∈ opcije; `grouping` ostaje za stari bundle |
 | testovi | unit §10–11 105/105 (sabotaže 1/4/1), `verify_breakdown` 4D ✓ + `EXPECTED_12` (TEST 25.10.) 19/19, E2E S183 2/2 + S165 5/5, `AreaSettings` roundtrip ISTO, `npm run check` ✓, build ✓ |
+| dopune (Saša) | N/A po vrsti s ↗, `splitAcross` (Tip pod bucketom), strana Fond (`allModel` = 056 bez granica, `renderFund`), `LevelTree.skip` (Prihodi bez stalne razine); unit 125/125, E2E 7/7 (sabotaža stanja fonda s granicama ruši) |
 | docs | RAZREZ §18, PREUREDJIVANJE §8.3/§20, help `overview.md`, CLAUDE.md § Overview, BACKLOG (2 stavke ✅) |
 
 ## Otvoreno
 - **T-S183-2:** prvi pravi PROD ispis `verify_breakdown.py` s novim bucketima — PROD brojke (This Year) zapisati
   u T-S183-2 kad Saša pošalje. Claude ih ne može izmjeriti: klasifikator odbija i čisto read-only PROD alat (memorija).
+- BACKLOG (S183): crta stanja fonda kroz vrijeme (migracija, mjesečno grupiranje) · ušlo/izašlo po računu na pločici salda.
 - **056 granica 4 dimenzije** — Financije su na njoj. Ako zatreba `racun` (gotovina po vlasniku) ili nova os: migracija.
 - **Prihodi Podtip = izvor** (R6, „plaća / mirovina") — tek tada pogled Namjena na Prihodima daje novu informaciju.
 - Nepromijenjeno iz S181/S182: planer i lista `depends_on` pod `*` (PREUREDJIVANJE §20 — prije idućeg preuređivanja

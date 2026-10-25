@@ -698,6 +698,23 @@ All time 1.378 `N/A` + taj 1. (b) **Tip pod bucketom ima ↗ samo kad je cijeli 
 (`splitAcross`): Razno je u 4 bucketa, pa ↗ uz Razno pod „Kućište" više ne obećava 2.465,05 a daje
 cijeli Razno; ↗ uz Podtip ostaje. Sabotaže ruše 2 / 3 (+ pad testa).
 
+**Fond — dopuna istog dana (Saša, „umjesto one rečenice"):** rečenica *fond X: ušlo · izašlo · ostaje*
+je bila **kriva za svako razdoblje kraće od života fonda** — „ostaje" je računala iz filtra (TEST,
+This Month = listopad: *ušlo 0 · izašlo 1.822,08 · ostaje −1.822,08*, a u fondu je 9.534,95). Sada treći
+izbor strane **Troškovi | Prihodi | Fond** (samo pogled s `funds`): krupno **stanje od početka** —
+zaseban poziv 056 **bez granica**, samo dok je Fond otvoren; traka potrošeno / ostaje od onoga što je
+ušlo; ušlo / izašlo u razdoblju iz filtra; *Kamo je otišlo* / *Odakle je ušlo* (čvorovi osi iz modela,
+`BreakdownFund.expenseNode/incomeNode`; N/A fonda zaseban redak); „retci ↗" = drill na os (samo po
+kupnji). Krug fonda tek uz ≥ 2 stavke troška. Zapamćen „Fond" uz pogled bez fondova ⇒ Troškovi.
+⚠ Stanje „od početka" čuva **E2E** (poziv bez granica; sabotaža s granicama ga ruši) — model ga ne zna.
+Odgođeno: crta stanja kroz vrijeme (056 ne grupira po mjesecu ⇒ migracija), ušlo/izašlo po računu
+(mjesto je pločica salda, ne razrez — Transfer ondje ulazi).
+
+**Prihodi bez stalne razine (isti dan):** razina na kojoj je `income` uvjet s **jednom** vrijednošću
+(Tip = Prihodi) se na strani prihoda ne prikazuje — Namjena → Podtip, ravno Podtip u Bucketi/Tip.
+`depth`/`values` ostaju apsolutni (`LevelTree.skip`), pa drill zna da je čvor Podtip (Koka i Saša su
+dvoznačni — `Projekti / Koka`, `Projekti / Saša` — pa bez ↗; Nasljedstvo, Povrat Anja s ↗).
+
 **Pločica:** prekidač pogleda (pamti se u `lastView`, preživi drill, ne F5); prekidač osi se crta samo
 kad strana ima > 1 os, a odabrana os **ostaje** — inače bi se Izašlo u sažetku mijenjalo s prebacivanjem strane.
 

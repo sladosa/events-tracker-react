@@ -9,7 +9,7 @@ Active project state is in CLAUDE.md (repo root).
 
 - [S181 (2026-10-24)](<#S181 — Namjena u Excel roundtripu: profil, izbornici, zadano na novom retku (2026-10-24)>) · r. 9689 — profil `Kokin_format` dobio je Namjenu iza Podtipa (na PROD-u, Saša pod Kokom), roundtrip i delta sheet izmjereni na TEST-u bez ijedne razlike, a usput nađen i popravljen bug zbog kojeg je Excel izbornik Namjene nudio Podtipove; alati za izvode i Excel uvoz sada novom retku upisuju zadanu Namjenu kao forma — deploy sutra.
 - [S182 (2026-10-25)](<#S182 — Dan testiranja deploya S181; Namjena ispod Podtipa (2026-10-25)>) · r. 9718 — deploy S181 potvrđen na PROD-u — Excel izbornici Namjene i Podtipa rade, a Excel uvoz praznoj Namjeni upisuje zadanu — Koka je delta exportom našla krivu transakciju od 9,55 € i saldo se poklopio s bankom, a Namjena je u formi, Viewu i Excelu bez profila sada odmah ispod Podtipa (izmjereno na TEST-u, pa Structure uvozom na PROD-u, kontrolne brojke iste).
-- [S183 (2026-10-25)](<#S183 — Razrez: prekidač Bucketi | Namjena | Tip (2026-10-25)>) · r. 9752 — pločica „Kamo ide novac" dobila je tri pogleda na iste retke — Bucketi, Namjena (čiji je trošak i prihod, s fondom Nena / Kućište: ušlo 12.000 · izašlo 2.465,05 · ostaje 9.534,95) i Tip — a „Koka razno" / „Saša razno" su raspušteni po vrsti troška; bez migracije, na TEST-u upisano i izmjereno, PROD čeka deploy.
+- [S183 (2026-10-25)](<#S183 — Razrez: prekidač Bucketi | Namjena | Tip (2026-10-25)>) · r. 9752 — pločica „Kamo ide novac" dobila je tri pogleda na iste retke — Bucketi, Namjena (čiji je trošak i prihod) i Tip — i stranu Fond, koja krupno kaže koliko je u Neninom fondu od početka (9.534,95 €), a „Koka razno" / „Saša razno" su raspušteni po vrsti troška, N/A ima ↗ za razvrstavanje; bez migracije, na TEST-u upisano i izmjereno, PROD čeka deploy.
 
 ## Dnevnik
 
@@ -118,7 +118,7 @@ Active project state is in CLAUDE.md (repo root).
 | [S180](<#S180 — Korak 8 preuređivanja Financija: sheet §8.2 izmjeren na kopiji PROD-a (2026-10-22)>) | 2026-10-22 | sheet s 24 koraka za Financije (osoba iz imena Podtipa u Namjenu, Nenin fond, Decathlon, Anja, osiguranje kuće, auti, zadano Zajedničko) složen je alatom i izmjeren na kopiji PROD-a — 6.066 promjena u 2,4 s, saldo i ukupni zbroj isti u cent, povrat vraća sve — a Python rječnici su ispravljeni istog dana; isti dan primijenjeno i na PROD-u, s identičnim brojkama. | 9630 |
 | [S181](<#S181 — Namjena u Excel roundtripu: profil, izbornici, zadano na novom retku (2026-10-24)>) | 2026-10-24 | profil `Kokin_format` dobio je Namjenu iza Podtipa (na PROD-u, Saša pod Kokom), roundtrip i delta sheet izmjereni na TEST-u bez ijedne razlike, a usput nađen i popravljen bug zbog kojeg je Excel izbornik Namjene nudio Podtipove; alati za izvode i Excel uvoz sada novom retku upisuju zadanu Namjenu kao forma — deploy sutra. | 9689 |
 | [S182](<#S182 — Dan testiranja deploya S181; Namjena ispod Podtipa (2026-10-25)>) | 2026-10-25 | deploy S181 potvrđen na PROD-u — Excel izbornici Namjene i Podtipa rade, a Excel uvoz praznoj Namjeni upisuje zadanu — Koka je delta exportom našla krivu transakciju od 9,55 € i saldo se poklopio s bankom, a Namjena je u formi, Viewu i Excelu bez profila sada odmah ispod Podtipa (izmjereno na TEST-u, pa Structure uvozom na PROD-u, kontrolne brojke iste). | 9718 |
-| [S183](<#S183 — Razrez: prekidač Bucketi | Namjena | Tip (2026-10-25)>) | 2026-10-25 | pločica „Kamo ide novac" dobila je tri pogleda na iste retke — Bucketi, Namjena (čiji je trošak i prihod, s fondom Nena / Kućište: ušlo 12.000 · izašlo 2.465,05 · ostaje 9.534,95) i Tip — a „Koka razno" / „Saša razno" su raspušteni po vrsti troška; bez migracije, na TEST-u upisano i izmjereno, PROD čeka deploy. | 9752 |
+| [S183](<#S183 — Razrez: prekidač Bucketi | Namjena | Tip (2026-10-25)>) | 2026-10-25 | pločica „Kamo ide novac" dobila je tri pogleda na iste retke — Bucketi, Namjena (čiji je trošak i prihod) i Tip — i stranu Fond, koja krupno kaže koliko je u Neninom fondu od početka (9.534,95 €), a „Koka razno" / „Saša razno" su raspušteni po vrsti troška, N/A ima ↗ za razvrstavanje; bez migracije, na TEST-u upisano i izmjereno, PROD čeka deploy. | 9752 |
 
 ### Najnovije
 
@@ -9752,7 +9752,7 @@ Deploy S181 na PROD-u potvrđen (bundle). T-S181-4 prošao uživo. Namjena u for
 ## S183 — Razrez: prekidač Bucketi | Namjena | Tip (2026-10-25)
 [↑ Dnevnik](#Dnevnik)
 
-> Ukratko: pločica „Kamo ide novac" dobila je tri pogleda na iste retke — Bucketi, Namjena (čiji je trošak i prihod, s fondom Nena / Kućište: ušlo 12.000 · izašlo 2.465,05 · ostaje 9.534,95) i Tip — a „Koka razno" / „Saša razno" su raspušteni po vrsti troška; bez migracije, na TEST-u upisano i izmjereno, PROD čeka deploy.
+> Ukratko: pločica „Kamo ide novac" dobila je tri pogleda na iste retke — Bucketi, Namjena (čiji je trošak i prihod) i Tip — i stranu Fond, koja krupno kaže koliko je u Neninom fondu od početka (9.534,95 €), a „Koka razno" / „Saša razno" su raspušteni po vrsti troška, N/A ima ↗ za razvrstavanje; bez migracije, na TEST-u upisano i izmjereno, PROD čeka deploy.
 
 - **Mjerenje prije odluka (TEST = PROD 22.10. + S180, samo čitanje):** RPC s 4 dimenzije ispravan (isti zbroj
   po prve tri u lipu, 98 → 103 grupe, isto vrijeme) ⇒ **bez migracije**. Prazne Namjene 0; „Koka razno" /
@@ -9772,3 +9772,10 @@ Deploy S181 na PROD-u potvrđen (bundle). T-S181-4 prošao uživo. Namjena u for
 - ⚠ Usput: upit nad `node_modules/.cache` bundleom poslije sabotaže čitao je SABOTIRAN kod (+0,80 u
   Namjeni) — bundle se gradi samo pokretanjem testa. · Klasifikator je odbio i čisto read-only
   `verify_breakdown.py` na PROD-u ⇒ PROD mjerenje je T-S183-2 (memorija ažurirana).
+- **Dopune istog dana (Saša, slike):** (1) **↗ na N/A** po vrsti — This Year 0,80 € je redak BEZ Tipa
+  (`2b9be073`), filtar ne zna „prazno" ⇒ podretci N/A (↗) / (prazno); **Tip pod bucketom ↗ samo kad je
+  cijeli u bucketu** (Razno u 4 ⇒ ↗ uz Razno pod Kućištem obećavao 2.465,05 a davao cijeli Razno).
+  (2) **Strana „Fond"** umjesto rečenice — rečenica je bila KRIVA uz kraće razdoblje („ostaje" iz filtra:
+  listopad −1.822,08 umjesto 9.534,95); stanje od početka zasebnim pozivom bez granica (čuva E2E,
+  sabotaža ruši). (3) **Prihodi bez razine „Prihodi"** (`LevelTree.skip`, `depth` apsolutan). Unit 125/125,
+  E2E 7/7. Odgođeno u BACKLOG: crta fonda kroz vrijeme (migracija), ušlo/izašlo po računu na saldu.

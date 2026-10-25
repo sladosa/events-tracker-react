@@ -187,6 +187,12 @@
   `database.ts`), kolona `Opis` (import je ignorira) + Data Validation „input message" na `Path`
   (limiti 32/255, `explain()` iz delta sheeta); test da svaka izvezena putanja ima opis. Retke
   `export_profiles.*.columns[n].*` grupirati (outline) jer su šum za čitanje.
+- **Fond: crta stanja kroz vrijeme** (Saša, S183) — stanje fonda po mjesecima (kumulativno). 056 ne
+  grupira po datumu (dimenzije su atributi) ⇒ migracija (npr. `p_date_bucket 'month'`), koja bi dala i
+  mjesečni trend troškova. Financije su već na 4 dimenzije (CLAUDE.md § Overview).
+- **Pločica salda: ušlo / izašlo u razdoblju po računu** (Saša, S183, „računi" uz fond) — bez migracije
+  (`rpc_area_group_agg` već vraća uplate/isplate po grupi s `p_from`/`p_as_of`). Na saldu, ne u razrezu:
+  računu u promet ulazi i Transfer, razrez ga namjerno drži vani.
 - **~~Razrez: os datuma samo gdje ima smisla~~ — ✅ S183** (`date_axes[].sides`, „po naplati" samo Troškovi).
   Izvorni zapis: **Razrez: os datuma (po kupnji / po naplati) samo gdje ima smisla** (Saša, 22.10.) — na strani
   Prihodi ne mijenja ništa (prihod sjeda isti dan). Prijedlog: ključ u configu pločice

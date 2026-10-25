@@ -18,13 +18,14 @@ TEST = PROD 22.10. + S180 (nepromijenjen od snimke `fixtures/breakdown_financije
    3.775,64 · Putovanja i pokloni 3.130,40 · Kućište · Nenin novac 2.465,05 · **Projekti 683,91** ·
    Kuća investicije 614,44 · nerazvrstano (N/A) 0,80. **Nema** „Koka razno" ni „Saša razno".
 3. **Namjena**: Izašlo i dalje **36.148,05**. Zajedničko 21.223,00 · Koka 5.765,86 · Saša 3.376,44 ·
-   gotovina, nerazvrstano 3.316,90 · Nena / Kućište 2.465,05 · nerazvrstano (N/A) 0,80. Iznad liste:
-   **fond Nena / Kućište: ušlo 12.000,00 € · izašlo 2.465,05 € · ostaje +9.534,95 €**. Krug: unutra
+   gotovina, nerazvrstano 3.316,90 · Nena / Kućište 2.465,05 · nerazvrstano (N/A) 0,80. Rečenice o
+   fondu **nema** (preselila u Fond, korak 10). Krug: unutra
    Namjena, vani Tip. ↗ postoji uz Koka; rasklopi Koka ⇒ auto C5 3.998,72 **bez** ↗.
 4. ↗ uz **Koka** ⇒ Activities s filtrom Namjena = Koka (samo Kokini retci, This Year) ⇒ natrag na
    Overview ⇒ pločica je i dalje u pogledu **Namjena**.
 5. **Prihodi** (u pogledu Namjena): Saša 13.611,83 · Koka 13.410,44 · Nena / Kućište 12.000,00 ·
-   Zajedničko 4.050,00; prekidač `po kupnji | po naplati` **nestaje**.
+   Zajedničko 4.050,00; prekidač `po kupnji | po naplati` **nestaje**. Rasklopi Nena / Kućište ⇒
+   odmah **Nasljedstvo** (bez međurazine „Prihodi"). Isto u pogledu Bucketi: Prihodi = Koka · Saša · Povrat Anja · Nasljedstvo.
 6. Natrag Troškovi ⇒ **po naplati** ⇒ Izašlo **39.031,63** ⇒ Prihodi ⇒ Izašlo u gornjem retku
    **ostaje 39.031,63** (os se ne mijenja), prekidača osi nema.
 7. **Tip**: ravno, prvi Domaćinstvo 8.833,31 (po kupnji), Izašlo 36.148,05.
@@ -34,6 +35,14 @@ TEST = PROD 22.10. + S180 (nepromijenjen od snimke `fixtures/breakdown_financije
    This Year: „nerazvrstano (N/A)" 0,80 **bez ↗** (hover: „1 redak bez vrijednosti „tip"…").
    Filtar **All Time** ⇒ N/A se rasklopi u **N/A** (↗, 1.378 redaka) i **(prazno)** (1, bez ↗); ↗ uz N/A ⇒
    Activities s filtrom Tip = N/A.
+10. **Fond (dopuna, Saša 25.10.)**: This Year, pogled **Namjena** ⇒ treći izbor **Fond** ⇒ ploča
+    „Fond Nena / Kućište": krupno **+9.534,95 €** („u fondu je (od početka)"), traka žuto ~⅕, ispod
+    *ušlo 12.000,00 · potrošeno 2.465,05 (20,5 %) · ostaje +9.534,95* i *u razdoblju 01.01.–31.12.2026.:
+    ušlo 12.000,00 · izašlo 2.465,05*; *Kamo je otišlo*: Razno › Nena's funds 2.465,05; *Odakle je ušlo*:
+    Nasljedstvo 12.000,00; „retci ↗" ⇒ 16 redaka (14 troškova + 2 uplate). Bez kruga (jedna stavka troška).
+    **Ključna provjera:** Period **This Month** (listopad) ⇒ krupni broj **ostaje +9.534,95** (od početka),
+    a „u razdoblju" pokazuje samo listopad (ušlo 0,00 · izašlo 1.822,08).
+    Pogled **Bucketi** ⇒ izbora Fond nema, pločica je na Troškovima.
 
 **Pad:** Izašlo različit između pogleda; ↗ ispod Namjene; prekidač osi na Prihodima; nakon koraka 4
 pogled vraćen na Bucketi.

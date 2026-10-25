@@ -41,12 +41,12 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2148 | [Open bugs](<#Open bugs>) | ~ |
 | 2258 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
 | 2303 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2462 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2470 | [Backlog](<#Backlog>) | ~ |
-| 2474 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2482 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 2465 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2473 | [Backlog](<#Backlog>) | ~ |
+| 2477 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2485 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2646 redaka, 18 sekcija._
+_Ukupno 2649 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2405,6 +2405,9 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   ⚠ Uz `views` pločica `grouping` ne čita, ali ga config **zadržava**: stari keširani bundle (S118) bez
   njega crta ravno Tip → Podtip. `date_axes[].sides`: strana bez osi gubi prekidač, odabrana os OSTAJE
   (inače se Izašlo u sažetku mijenja pri prebacivanju strane).
+  ⚠ **Stanje fonda (strana „Fond") je OD POČETKA, nikad iz filtra** — prva verzija („ostaje" iz
+  razdoblja) uz This Month je za Nenin fond pisala −1.822,08 umjesto 9.534,95. Zaseban poziv 056 bez
+  granica; čuva ga E2E S183, ne model.
 - **⚠ Config NOVOG tipa pločice ide na PROD tek POSLIJE deploya** (S164). Stari bundle za nepoznat
   `type` crta žuti okvir „Nepoznat tip pločice" iznad salda (`OverviewTab`, `default` grana) — Koka
   bi ga vidjela. Redoslijed: migracija → deploy → config.

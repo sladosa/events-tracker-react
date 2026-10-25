@@ -275,8 +275,13 @@ period — promijeniš filtar, promijeni se i ona. U zaglavlju piše koje razdob
     Auti su po vrsti troška: gorivo i leasing u Mjesečnima, registracija i popravci u
     Povremeno nužno. Čiji je trošak, kaže pogled Namjena.
   - **Namjena** (Zajedničko, Koka, Saša, Nena / Kućište) — *za koga / čiji*, na troškovima
-    **i** na prihodima. Ispod Namjene je Tip → Podtip. Iznad liste stoji **fond Nena /
-    Kućište**: koliko je u razdoblju ušlo u Nenin fond, koliko izašlo i koliko ostaje.
+    **i** na prihodima. Ispod Namjene je Tip → Podtip (na Prihodima ravno Podtip — razina
+    „Prihodi" je ondje uvijek ista pa se ne prikazuje).
+  - **Fond** (treći izbor uz Troškovi | Prihodi, samo u pogledu Namjena) — **Nena / Kućište**:
+    krupno **koliko je u fondu**, i to **od početka**, bez obzira na razdoblje u filtru (uz
+    „This Month" bi inače pisalo samo što je potrošeno u mjesecu). Traka: cijela = sve što je
+    ušlo, žuto = potrošeno, zeleno = ostaje. Ispod: ušlo / izašlo **u razdoblju iz filtra**, pa
+    *Kamo je otišlo* i *Odakle je ušlo*. „retci ↗" otvara sve retke fonda (uplate i troškove).
   - **Tip** — samo Tip → Podtip, bez ikakvog grupiranja.
 - **„gotovina, nerazvrstano"** (u Mjesečnim troškovima; u pogledu Namjena zasebno, jer se ne
   zna čija je) = podignuto s bankomata minus ono što je upisano kao gotovinski trošak. Bez
