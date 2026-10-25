@@ -1,4 +1,5 @@
-> Pisano protiv S183 kod commita (`5fc3a98`, `839387c`, Fond) + commita koji nosi ovaj file (S183 docs, 25.10.).
+> Pisano protiv `af6b691` (zadnji S183 kod; prije njega `5fc3a98`, `839387c`) + commita koji nosi ovaj file (S183 zatvaranje, 25.10.).
+> **Stanje u letu:** S183 je na `test-branch`, **netestiran ručno i nije na PROD-u** — Saša testira (T-S183-1) i deploya kasnije.
 > **`main` = `1ed9798` (S181, PROD od 25.10.).** `test-branch` = `main` + docs S182 + **S183 (kod, nije na PROD-u)**.
 > **TEST:** `Financije_all` ima novi config razreza (`set_breakdown.py --apply`, 25.10.): `views`, `sides`, bucketi 1A.
 > **PROD:** stari config razreza (Koka razno / Saša razno); novi ide tek POSLIJE deploya (T-S183-2).
