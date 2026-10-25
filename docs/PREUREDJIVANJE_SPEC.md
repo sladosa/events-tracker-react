@@ -360,6 +360,8 @@ za poslije: vlastiti sheet `Bucketi` (*bucket | Tip | Podtip*).
   Na **velikom ekranu** krug (unutra os, vani Tip), na **malom** samo popis s iznosima — krug se
   ondje ionako ne crta (≥ 640 px). ⚠ Danas pločica zna **jedno** grupiranje (RAZREZ R5) i
   razine su par `[tip, podtip]` — prekidač je **mala, nova dorada koda**, ne samo config.
+  ✅ **S183 (25.10.): izveden na TEST-u** — Bucketi | Namjena | Tip, fond Nena / Kućište, bez
+  migracije (`namjena` = 4. dimenzija 056); „Koka razno" / „Saša razno" raspušteni. `RAZREZ_SPEC.md` §18.
 
 ⚠ Prije izvedbe: saldo se ne miče (Tip/Podtip nisu u filtru salda), ali **pravila trgovca**,
 **rječnik `Izvod opis`** i **bucketi** nose stara imena — upravo mjesta iz §1.3 koja jezgra mora
@@ -718,4 +720,6 @@ izvor čija lista je pod `*` mijenja `*`. Uz test u `restructurePlan.test.mjs`.
 **⚠ Otvoreno:** Python uvozni alati (`fill_from_izvod`, `visa_uvoz_izvoda`) ne pišu Namjenu ⇒ novi retci s
 izvoda dolaze bez nje (forma je puni sama kroz `default_map`, Excel uvoz ne). Prije prekidača
 Bucketi | Namjena (RAZREZ R5) — ili alati upisuju zadano po Tipu, ili razrez prazninu broji kao Zajedničko.
+✅ Zatvoreno S181 (alati i Excel uvoz upisuju zadano); S183 izmjerio 0 praznih Namjena, a razrez prazninu
+prikazuje kao vidljivu krišku `(prazno)` — nikad je ne pretvara u Zajedničko.
 

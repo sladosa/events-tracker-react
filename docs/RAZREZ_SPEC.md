@@ -1,6 +1,6 @@
 # Kamo ide novac — pločica razreza i grupiranja u buckete (prijedlog prije koda, S163)
 
-> **Status (S165, 07.10.2026.): §15 koraci 1–4 IZVEDENI na TEST-u** — 056, `verify_breakdown.py` (u lipu),
+> **S183 (25.10.): prekidač Bucketi | Namjena | Tip izveden na TEST-u (§18), bez migracije.** · **Status (S165, 07.10.2026.): §15 koraci 1–4 IZVEDENI na TEST-u** — 056, `verify_breakdown.py` (u lipu),
 > model + pločica + testovi, config (`set_breakdown.py`). PROD (koraci 6–8) čeka Sašu; odstupanja od teksta: **§17**.
 > Nastavak otvorene niti `OVERVIEW_TAB_SPEC.md`
 > §2.19 („Saša — analitika: koliko je potrošeno po Tip/Podtip"). Nastao razgovorom 2026-10-06.
@@ -653,3 +653,49 @@ Procjena: jedna sesija za 1–4. Koraci 6–8 su jedan blok naredbi.
 - **E2E `S165_breakdown_tile.spec.ts`:** stvarna pločica u aplikaciji s podmetnutim RPC odgovorom
   (snimka `src/lib/__tests__/fixtures/breakdown_financije_12mj.json`) — širok i uzak ekran, prekidač osi,
   sklapanje preživi reload. E2E korisnik nije vlasnik `Financije_all`, zato podmetanje.
+
+## 18. S183 (25.10.2026.) — prekidač Bucketi | Namjena | Tip (R5)
+
+**Mjereno prije odluka** (TEST = PROD 22.10. + S180, samo čitanje, RPC s 4 dimenzije):
+prazne Namjene nema nijedne; „Koka razno" = 100 % Koka, „Saša razno" = 100 % Saša, „Kućište ·
+Nenin novac" = 100 % Nena / Kućište (dakle ista podjela dvaput); ostali bucketi su mješoviti
+(Povremeno nužno: Koka 1.134 · Saša 1.094 · Zajedničko −239, This Year). Prihodi: Podtip je danas
+isto što Namjena (Koka · Saša · Nasljedstvo = Nena · Povrat Anja = Zajedničko). N/A (1.379 redaka
+u povijesti) je sav „Zajedničko" — zadana vrijednost S180, ne izbor. Prihodi po kupnji = po
+naplati u This Year, 12 mj i All time.
+
+**RPC: bez migracije.** 056 prima 1..4 dimenzije; pločica je slala 3, `namjena` je 4. Isti zbroj po
+prve tri u lipu (6/6 kombinacija), 98 → 103 grupe, isto vrijeme. ⚠ **Financije su na granici**:
+peta dimenzija (npr. `racun` za gotovinu po vlasniku) traži migraciju (PROD: migracija → deploy → config).
+
+| # | odluka (Saša 25.10.) | izvedba |
+| --- | --- | --- |
+| 1A | „Koka razno" / „Saša razno" raspušteni po vrsti | gorivo, leasing, Lječnička komora → Mjesečni; `auto C5/*`, `auto Lacetti/*` → Povremeno nužno; `Projekti/*` → nov bucket **Projekti**. 49 parova, nesvrstano u povijesti: ništa |
+| 2A | Nena ostaje u Ušlo + redak fonda | `views[].funds` — „fond X: ušlo · izašlo · ostaje" (This Year 12.000,00 · 2.465,05 · 9.534,95). Izašlo fonda nosi i N/A s tom Namjenom, Transfer ne |
+| 3A | krug: unutra Namjena, pa Tip, pa Podtip | isti `toSunburst`, 3 prstena |
+| 4 | treći pogled **Tip** | `{label: 'Tip'}` = ravno |
+| 5A | N/A i gotovina zasebno na vrhu i u pogledu Namjena | model: korekcija bez retka grupiranja ide na vrh (postojeće pravilo) |
+| 6A | os datuma po strani, iz configa | `date_axes[].sides`; „po naplati" `['expense']` |
+
+**Config** (`set_breakdown.py`, TEST upisano 25.10.):
+`views: [{label:'Bucketi', grouping:'Vrsta troška'}, {label:'Namjena', by:'namjena', funds:['Nena / Kućište']}, {label:'Tip'}]`.
+`grouping` na pločici ostaje — novi kod ga uz `views` ne čita, a **stari keširani bundle** (S118) i
+dalje crta buckete. Bez `views` = jedan pogled iz `grouping` (`resolveViews`), pa stari config radi.
+
+**Model** (`buildBreakdown(rows, w, grouping, view)`): pogled `by` slaže os pogleda (čvor `facet`)
+iznad `levels` na **obje** strane; čvorovi ispod nose `scoped`. Bucketi i dalje samo na troškovima (R13).
+Svi pogledi su iz **istog** RPC odgovora (dimenzije = razine ∪ uvjeti ∪ `views[].by`) — prekidač nije upit.
+
+**Drill:** čvor osi ⇒ `namjena = X` (jedan uvjet). Ispod osi **nema ↗** — `tip = auto C5` pod Koka bi
+pokazao i Zajedničke retke (razred S166). Na strani koju os ne nosi (Prihodi uz „po naplati") čita se
+os strane; ako je to event_date, drill je pošten.
+
+**Pločica:** prekidač pogleda (pamti se u `lastView`, preživi drill, ne F5); prekidač osi se crta samo
+kad strana ima > 1 os, a odabrana os **ostaje** — inače bi se Izašlo u sažetku mijenjalo s prebacivanjem strane.
+
+**Brane:** `breakdownModel.test.mjs` §10 (sintetika, protuprovjera) i §11 (snimka TEST 25.10., This Year,
+`fixtures/breakdown_financije_2026_namjena.json`) — sabotaže (fond broji Transfer · N/A dvaput · drill
+ispod osi) ruše 1 / 4 / 1. `verify_breakdown.py` sada 4 dimenzije + Namjena po strani, `EXPECTED_12` =
+TEST 25.10. (snimka 07.10. više ne postoji). E2E `S183_breakdown_views.spec.ts` (2 testa), S165 (stari
+config) i dalje prolazi. `slugRenameConfig`: `views[].by` prati rename, `funds` su vrijednosti.
+`AreaSettings` roundtrip novog configa: 191 redak, ISTO.

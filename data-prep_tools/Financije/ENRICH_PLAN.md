@@ -1645,3 +1645,11 @@ Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.
   `namjena_izbornik()`, `provjeri(path, tax, namjena)`; `ispravi_tip.py` šalje pravilo Namjene u `pisi`.
 - ⚠ Ostaje: pravila po trgovcu (`pravila_trgovca.py`) ne znaju Namjenu — ljekarna na Visi dobiva
   `Medical` + zadano Zajedničko, a bila je Sašina. Koka/Saša je mijenja u izborniku.
+
+### S183 (2026-10-25) — razrez po Namjeni
+
+- `set_breakdown.py`: bucketi 1A (Koka/Saša razno raspušteni: gorivo, leasing, Lječnička komora → Mjesečni;
+  `auto C5/*`, `auto Lacetti/*` → Povremeno nužno; `Projekti/*` → Projekti), pločica `views` (Bucketi |
+  Namjena | Tip, fond Nena / Kućište) i `date_axes[].sides`. Nove provjere: ≤ 4 dimenzije (056), fond mora
+  biti opcija atributa osi. TEST upisano; PROD poslije deploya (T-S183-2).
+- `verify_breakdown.py`: 4 dimenzije (+ `namjena`), Namjena po strani u modelu, `EXPECTED_12` = TEST 25.10.

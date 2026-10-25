@@ -266,12 +266,24 @@ period — promijeniš filtar, promijeni se i ona. U zaglavlju piše koje razdob
     mjesec kupnje, i rate koje su još `Planiran`)
   - *po naplati* = koliko je u tom razdoblju **stvarno otišlo s računa** (rate po mjesecima,
     kartice na dan naplate). Za buduće Visa rate dan naplate je procjena (5.).
-- **Bucketi** (Mjesečni troškovi, Kvaliteta života, Putovanja i pokloni…) skupljaju parove
-  Tip/Podtip. Klik na redak ga rasklopi: bucket → Tip → Podtip.
-- **„gotovina, nerazvrstano"** (u Mjesečnim troškovima) = podignuto s bankomata minus ono
-  što je upisano kao gotovinski trošak. Bez tog retka razrez bi prešutio podignutu gotovinu.
+  - Na **Prihodima** tog izbora nema — prihod sjeda na račun isti dan, pa bi obje istine bile
+    iste. Ostaje izabrano ono što je bilo na Troškovima, pa se gornji redak ne mijenja.
+- **Bucketi | Namjena | Tip** — tri pogleda na **iste** retke (Ušlo i Izašlo su u sva tri
+  isti, mijenja se samo raspored):
+  - **Bucketi** (Mjesečni troškovi, Kvaliteta života, Putovanja i pokloni, Povremeno nužno,
+    Projekti…) — *kakav je to trošak*. Klik na redak ga rasklopi: bucket → Tip → Podtip.
+    Auti su po vrsti troška: gorivo i leasing u Mjesečnima, registracija i popravci u
+    Povremeno nužno. Čiji je trošak, kaže pogled Namjena.
+  - **Namjena** (Zajedničko, Koka, Saša, Nena / Kućište) — *za koga / čiji*, na troškovima
+    **i** na prihodima. Ispod Namjene je Tip → Podtip. Iznad liste stoji **fond Nena /
+    Kućište**: koliko je u razdoblju ušlo u Nenin fond, koliko izašlo i koliko ostaje.
+  - **Tip** — samo Tip → Podtip, bez ikakvog grupiranja.
+- **„gotovina, nerazvrstano"** (u Mjesečnim troškovima; u pogledu Namjena zasebno, jer se ne
+  zna čija je) = podignuto s bankomata minus ono što je upisano kao gotovinski trošak. Bez
+  tog retka razrez bi prešutio podignutu gotovinu.
 - **„nerazvrstano (N/A)"** su retci bez Tipa ili s `N/A`. Ne skrivaju se — inače bi
-  potrošnja izgledala manja nego što jest. Smanjuje se kako se retci razvrstavaju.
+  potrošnja izgledala manja nego što jest. Smanjuje se kako se retci razvrstavaju. I u
+  pogledu Namjena stoje zasebno.
 - **„nesvrstano"** (ako se pojavi) je par Tip/Podtip koji još nije stavljen ni u jedan
   bucket, npr. novi Podtip. Raspored bucketa mijenja Saša.
 - **Povrat** (uplata pod Tipom troška, npr. *Kuća / Povrat Zoran*) **umanjuje** taj trošak.
@@ -289,6 +301,8 @@ period — promijeniš filtar, promijeni se i ona. U zaglavlju piše koje razdob
   samo u prikazu *po kupnji*. Podtip koji postoji pod više Tipova (npr. *gorivo* kod oba
   auta) **nema** ↗ — filtar nosi jedan uvjet, pa bi pokazao gorivo obaju auta; ↗ uz Tip
   (*auto C5*) otvara cijeli Tip. Bucket nema ↗ jer je više uvjeta.
+  U pogledu **Namjena** ↗ postoji samo uz Namjenu (npr. sve Kokine retke); ispod nje ga
+  nema, jer bi „auto C5 pod Koka" bila dva uvjeta.
 - Otvorena je **uvijek jedna** pločica (saldo, Košare ili razrez): klik na naslov jedne
   otvori nju i sklopi ostale — da filtar s razdobljem ostane blizu. Pri svakom otvaranju
   appa saldo je otvoren, a ostale zatvorene.

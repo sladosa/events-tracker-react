@@ -179,15 +179,16 @@
   (planer + `058` transakcija + zapis prije/poslije + povrat) s O1–O3, O5; prvi korisnik Financije
   (`Namjena`, FINANCIJE_PROCES T38). Tehnički spec: DIO 2 (§9–§17). Zatim F2 (tip atributa,
   izvođenje iz teksta) — preduvjet za grubi uvoz treninga.
-- **Razrez: prekidač Bucketi | Namjena** (S176, PREUREDJIVANJE §8.3) — pločica danas zna jedno
-  grupiranje (R5); dolazi poslije atributa `Namjena`.
+- **~~Razrez: prekidač Bucketi | Namjena~~ — ✅ S183** (TEST; PROD poslije deploya) — Bucketi | Namjena | Tip,
+  fond, bez migracije. `RAZREZ_SPEC.md` §18. (Izvorno: S176, PREUREDJIVANJE §8.3.)
 - **Traženje u izborniku po oba nivoa** (S176, O6) — „pok" ⇒ `Razno / Pokloni`; ne ovisi o jezgri.
 - **`AreaSettings` sheet: objašnjenje po retku** (Saša, T-S175-6, 22.10.) — 325 redaka putanja bez
   riječi što koji radi. Prijedlog: rječnik *uzorak putanje → opis* (izvor: komentari tipova u
   `database.ts`), kolona `Opis` (import je ignorira) + Data Validation „input message" na `Path`
   (limiti 32/255, `explain()` iz delta sheeta); test da svaka izvezena putanja ima opis. Retke
   `export_profiles.*.columns[n].*` grupirati (outline) jer su šum za čitanje.
-- **Razrez: os datuma (po kupnji / po naplati) samo gdje ima smisla** (Saša, 22.10.) — na strani
+- **~~Razrez: os datuma samo gdje ima smisla~~ — ✅ S183** (`date_axes[].sides`, „po naplati" samo Troškovi).
+  Izvorni zapis: **Razrez: os datuma (po kupnji / po naplati) samo gdje ima smisla** (Saša, 22.10.) — na strani
   Prihodi ne mijenja ništa (prihod sjeda isti dan). Prijedlog: ključ u configu pločice
   (`date_axes` po strani), ne pravilo u kodu. Uz prekidač Bucketi | Namjena (isti zahvat na pločici).
 - **Garmin dotok do danas** (S176) — `Health_Sasa > Garmin_data` staje 14.02.2025.; opcije u
