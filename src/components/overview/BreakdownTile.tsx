@@ -23,21 +23,21 @@ import { formatAmount, formatDateHr, formatSigned } from '@/lib/amountFormat';
 import { fetchBreakdown } from '@/lib/overviewApi';
 import { useMinWidth } from '@/hooks/useMinWidth';
 import {
-  ambiguousValues, breakdownDims, buildBreakdown, drillFor,
+  ambiguousValues, breakdownDims, buildBreakdown, drillFor, resolveViews,
   type BreakdownNode, type BreakdownRow,
 } from '@/lib/breakdownModel';
 // Plotly je 1,4 MB gzipa (S170) — krug se crta tek od 640 px, pa ga mobitel
 // nikad ne skida. Isto vrijedi za Structure Sunburst (AppHome).
 const BreakdownSunburst = lazy(() => import('./BreakdownSunburst').then(m => ({ default: m.BreakdownSunburst })));
-import type { BreakdownWidget, Grouping, UUID } from '@/types/database';
+import type { BreakdownSide, BreakdownWidget, Grouping, UUID } from '@/types/database';
 
 const T = THEME.overview;
 
 interface Props {
   areaId: UUID;
   widget: BreakdownWidget;
-  /** `settings.groupings[widget.grouping]`; undefined = nema ga. */
-  grouping?: Grouping;
+  /** `settings.groupings` Aree — pogled bira svoje grupiranje po imenu (S183). */
+  groupings?: Record<string, Grouping>;
   dateFrom: string | null;
   dateTo: string | null;
   onDrill: (slug: string, value: string) => void;
@@ -64,8 +64,9 @@ const useWide = () => useMinWidth(640);
  *  u novom razdoblju nema samo se ne prikaže. */
 interface TileView {
   key: string;
-  side: 'expense' | 'income';
+  side: BreakdownSide;
   axisIdx: number;
+  viewIdx: number;
   open: string[];
   focusId: string | null;
 }
@@ -81,7 +82,7 @@ function periodLabel(from: string | null, to: string | null): string {
   return from.slice(0, 4) === to.slice(0, 4) ? `${f.slice(0, 6)}–${t}` : `${f}–${t}`;
 }
 
-export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDrill, collapsed, onToggleCollapsed }: Props) {
+export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onDrill, collapsed, onToggleCollapsed }: Props) {
   const wide = useWide();
   const axes = useMemo(
     () => (widget.date_axes?.length ? widget.date_axes : [{ label: 'po datumu', slug: null }]),
@@ -91,20 +92,30 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
 
   const viewKey = `${areaId}|${widget.title}`;
   const [saved] = useState(() => (lastView?.key === viewKey ? lastView : null));
-  const [side, setSide] = useState<'expense' | 'income'>(saved?.side ?? 'expense');
+  const [side, setSide] = useState<BreakdownSide>(saved?.side ?? 'expense');
   const [axisIdx, setAxisIdx] = useState(saved?.axisIdx ?? 0);
+  // Pogled (S183): Bucketi | Namjena | Tip. Isti RPC odgovor, samo drukčiji model.
+  const views = useMemo(() => resolveViews(widget), [widget]);
+  const [viewIdx, setViewIdx] = useState(saved?.viewIdx ?? 0);
+  const view = views[Math.min(viewIdx, views.length - 1)];
+  const grouping = view.grouping ? groupings?.[view.grouping] : undefined;
   const [reload, setReload] = useState(0);
   const [open, setOpen] = useState<Set<string>>(() => new Set(saved?.open ?? []));
   // Fokus kruga (S166, Saša): klik na isječak suzi i listu na taj dio.
   const [focusId, setFocusId] = useState<string | null>(saved?.focusId ?? null);
   useEffect(() => {
-    rememberView({ key: viewKey, side, axisIdx, open: [...open], focusId });
-  }, [viewKey, side, axisIdx, open, focusId]);
+    rememberView({ key: viewKey, side, axisIdx, viewIdx, open: [...open], focusId });
+  }, [viewKey, side, axisIdx, viewIdx, open, focusId]);
 
   // Sklopiva (§5). Do S166 se pamtila po pregledniku; sada je harmonika s
   // pločicom salda u OverviewTab-u — zadano ZATVORENA (zatvorena ništa ne računa).
 
   const axis = axes[Math.min(axisIdx, axes.length - 1)];
+  // Os po strani (S183, odluka 6A): na strani koju os ne nosi prekidača nema, a
+  // odabrana os OSTAJE — inače bi se Izašlo u sažetku mijenjalo pri prebacivanju
+  // strane. Config time tvrdi da ta strana po toj osi daje isto što i po svojoj.
+  const sideAxes = axes.map((a, i) => ({ a, i })).filter(({ a }) => !a.sides || a.sides.includes(side));
+  const axisOnSide = sideAxes.some(({ i }) => i === Math.min(axisIdx, axes.length - 1));
   const inputKey = `${areaId}|${dateFrom}|${dateTo}|${axis.slug}|${dims.join(',')}|${reload}`;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
 
@@ -146,15 +157,17 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
 
   const fresh = loaded?.key === inputKey;
   const model = useMemo(
-    () => (loaded && !loaded.error ? buildBreakdown(loaded.rows, widget, grouping) : null),
-    [loaded, widget, grouping],
+    () => (loaded && !loaded.error ? buildBreakdown(loaded.rows, widget, grouping, view) : null),
+    [loaded, widget, grouping, view],
   );
   const ambiguous = useMemo(() => {
     if (!loaded || loaded.optionsMap === null) return null;     // ne znam ⇒ v. drill
     return ambiguousValues(loaded.optionsMap, loaded.rows, 0, 1);
   }, [loaded]);
 
-  const axisIsEventDate = axis.slug == null;
+  // Drill zna samo event_date. Os koja na ovoj strani ne vrijedi čita se kao os strane
+  // (v. `sideAxes`) — ako je to event_date, drill je pošten.
+  const axisIsEventDate = axis.slug == null || (!axisOnSide && sideAxes.some(({ a }) => a.slug == null));
   const root = model ? (side === 'expense' ? model.expense : model.income) : null;
   const maxAbs = root ? Math.max(1, ...root.children.map(c => Math.abs(c.cents))) : 1;
   // Put od korijena do fokusa. Fokus koji u ovom stablu ne postoji (promjena strane,
@@ -209,7 +222,7 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
     const isOpen = open.has(nd.id) || (wide && nd.id === focusId && focusPath.length > 0);
     const neg = nd.cents < 0;
     // Isti izvor kao klik: strelica postoji točno kad drill postoji.
-    const target = axisIsEventDate && nd.kind === 'level' ? drillTarget(nd) : null;
+    const target = axisIsEventDate && (nd.kind === 'level' || nd.kind === 'facet') ? drillTarget(nd) : null;
     const canDrill = target != null && !('none' in target);
     const special = nd.kind === 'unclassified' || nd.kind === 'unassigned';
     return (
@@ -317,21 +330,43 @@ export function BreakdownTile({ areaId, widget, grouping, dateFrom, dateTo, onDr
                 <Segmented
                   value={side}
                   options={[['expense', 'Troškovi'], ['income', 'Prihodi']]}
-                  onChange={v => setSide(v as 'expense' | 'income')}
+                  onChange={v => setSide(v as BreakdownSide)}
                 />
-                {axes.length > 1 && (
+                {views.length > 1 && (
+                  <Segmented
+                    value={String(Math.min(viewIdx, views.length - 1))}
+                    options={views.map((v, i) => [String(i), v.label])}
+                    onChange={v => setViewIdx(Number(v))}
+                  />
+                )}
+                {sideAxes.length > 1 && (
                   <Segmented
                     value={String(axisIdx)}
-                    options={axes.map((a, i) => [String(i), a.label])}
+                    options={sideAxes.map(({ a, i }) => [String(i), a.label])}
                     onChange={v => setAxisIdx(Number(v))}
                   />
                 )}
-                {side === 'expense' && model.bucketsApplied && widget.grouping && (
-                  <span className="text-xs text-gray-500">grupirano: {widget.grouping}</span>
+                {views.length === 1 && side === 'expense' && model.bucketsApplied && view.grouping && (
+                  <span className="text-xs text-gray-500">grupirano: {view.grouping}</span>
                 )}
               </div>
 
               {!fresh && <p className="text-xs text-gray-400 mt-1">Računam…</p>}
+
+              {/* Fond (S183): blagajna jedne vrijednosti osi — ista na obje strane. */}
+              {model.funds.length > 0 && (
+                <div className="mt-2 space-y-0.5">
+                  {model.funds.map(f => (
+                    <p key={f.name} className="text-xs text-gray-600"
+                       title="Ušlo i izašlo s ovom vrijednošću u razdoblju iz filtra (i nerazvrstani retci; Transfer ne).">
+                      fond <b>{f.name}</b>: ušlo <span className="tabular-nums">{money(f.inCents)}</span> ·
+                      izašlo <span className="tabular-nums">{money(f.outCents)}</span> ·
+                      ostaje <b className={cn('tabular-nums', f.leftCents < 0 ? T.amountNeg : T.amountPos)}>
+                        {formatSigned(f.leftCents / 100, unit)}</b>
+                    </p>
+                  ))}
+                </div>
+              )}
 
               {root.children.length === 0 ? (
                 <p className="text-sm text-gray-500 py-4">Nema zapisa u razdoblju.</p>

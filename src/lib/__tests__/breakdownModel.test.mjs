@@ -36,7 +36,7 @@ await build({
   bundle: true, format: 'esm', platform: 'node',
   outfile: out, alias: { '@': './src' }, logLevel: 'error',
 });
-const { buildBreakdown, toSunburst, drillFor, ambiguousValues, breakdownDims, validateGrouping }
+const { buildBreakdown, toSunburst, drillFor, ambiguousValues, breakdownDims, validateGrouping, resolveViews }
   = await import(pathToFileURL(out).href);
 
 let pass = 0, fail = 0;
@@ -288,6 +288,142 @@ console.log('\n9. stvarna snimka (TEST 07.10.2026., 10/2025–09/2026) = RAZREZ 
     ok(`${ax}: gotovina 3.830,90 unutar Mjesečnih`, got?.cents === 383090, String(got?.cents));
     ok(`${ax}: Transfer 61.420,64 / 81.561,51`, mm.outside.plusCents === 6142064 && mm.outside.minusCents === 8156151);
   });
+}
+
+// ── 10. pogledi (S183, RAZREZ §18): Bucketi | Namjena | Tip ─────────────────
+console.log('\n10. pogledi (S183):');
+{
+  const VIEWS = [
+    { label: 'Bucketi', grouping: 'G' },
+    { label: 'Namjena', by: 'namjena', funds: ['Nena', 'Nema je'] },
+    { label: 'Tip' },
+  ];
+  const W4 = { ...W, grouping: undefined, views: VIEWS };
+  // dims = tip, podtip, izvor, namjena
+  const R4 = (tip, podtip, izvor, nm, plus, minus, n = 1) =>
+    ({ g: [tip, podtip, izvor, nm], plus_sum: plus, minus_sum: minus, n, n_no_date: 0 });
+  const ROWS4 = [
+    R4('Prihodi', 'Koka', 'Racun', 'Koka', 1000, 0),
+    R4('Prihodi', 'Nasljedstvo', 'Racun', 'Nena', 500, 0),
+    R4('Kuća', 'Struja', 'Racun', 'Zajedničko', 0, 80),
+    R4('Kuća', 'Plin', 'Racun', 'Koka', 0, 40),
+    R4('Razno', 'fond', 'Racun', 'Nena', 0, 120),
+    R4('Porezi', 'porez', 'Racun', 'Zajedničko', 30, 10),     // povrat > plaćeno
+    R4('Zabava', 'Kino', 'Cash', 'Saša', 0, 12),
+    R4('Kuća', 'Struja', 'Racun', null, 0, 7),                // prazna Namjena
+    R4('Transfer', 'cash', 'Racun', 'Zajedničko', 0, 200),    // podizanje (korekcija)
+    R4('Transfer', 'izmedju', 'Racun', 'Nena', 0, 999),       // Transfer NE ulazi u fond
+    R4('N/A', null, 'Racun', 'Nena', 0, 5),                   // N/A ulazi u fond
+    R4('N/A', null, 'Racun', 'Zajedničko', 0, 3),
+  ];
+  ok('dims: pogled `by` je dimenzija, jednom', JSON.stringify(breakdownDims(W4)) === JSON.stringify(['tip', 'podtip', 'izvor', 'namjena']),
+     JSON.stringify(breakdownDims(W4)));
+  const [vb, vn, vt] = VIEWS;
+  const mb = buildBreakdown(ROWS4, W4, G, vb);
+  const mn = buildBreakdown(ROWS4, W4, undefined, vn);
+  const mt = buildBreakdown(ROWS4, W4, undefined, vt);
+  ok('bez grešaka u sva tri pogleda', [mb, mn, mt].every(x => x.errors.length === 0),
+     JSON.stringify([mb.errors, mn.errors, mt.errors]));
+  ok('pogled ne mijenja brojke: Izašlo i Ušlo isti u sva tri',
+     mb.totals.outCents === mn.totals.outCents && mn.totals.outCents === mt.totals.outCents
+     && mb.totals.inCents === mn.totals.inCents && mn.totals.inCents === mt.totals.inCents);
+  ok('Σ kriški = Izašlo / Ušlo u pogledu Namjena',
+     sumChildren(mn.expense) === mn.totals.outCents && sumChildren(mn.income) === mn.totals.inCents);
+  ok('Bucketi: buckete primjenjuje, Namjena i Tip ne', mb.bucketsApplied && !mn.bucketsApplied && !mt.bucketsApplied);
+  ok('Tip: ravno Tip → Podtip (nijedan bucket ni os)', !mt.expense.children.some(c => c.kind === 'bucket' || c.kind === 'facet'));
+
+  const fNames = (nd) => nd.children.filter(c => c.kind === 'facet').map(c => c.name).sort().join();
+  ok('Namjena: os na OBJE strane', fNames(mn.expense) === ['(prazno)', 'Koka', 'Nena', 'Saša', 'Zajedničko'].sort().join()
+     && fNames(mn.income) === 'Koka,Nena', `${fNames(mn.expense)} | ${fNames(mn.income)}`);
+  ok('Namjena: ispod osi Tip → Podtip',
+     !!find(mn.expense.children.find(c => c.name === 'Koka'), nd => nd.kind === 'level' && nd.values?.join('|') === 'Kuća|Plin'));
+  ok('Namjena: N/A je zasebna kriška na vrhu (5A), ne pod Zajedničko',
+     mn.expense.children.some(c => c.kind === 'unclassified' && c.cents === 800)
+     && !find(mn.expense.children.find(c => c.name === 'Zajedničko'), nd => nd.kind === 'unclassified'));
+  ok('Namjena: korekcija (gotovina) na vrhu (5A)',
+     mn.expense.children.some(c => c.kind === 'adjustment' && c.cents === 20000 - 1200));
+  ok('Namjena: prazna vrijednost je vidljiva kriška, ne izostaje',
+     mn.expense.children.find(c => c.name === '(prazno)')?.cents === 700);
+  ok('Namjena: povrat ostaje u svojoj Namjeni (Zajedničko = 80 − 20)',
+     mn.expense.children.find(c => c.name === 'Zajedničko')?.cents === 6000);
+
+  ok('fond Nena: ušlo 500 · izašlo 120 + N/A 5 · ostaje 375 (Transfer ne)',
+     JSON.stringify(mn.funds[0]) === JSON.stringify({ name: 'Nena', inCents: 50000, outCents: 12500, leftCents: 37500 }),
+     JSON.stringify(mn.funds[0]));
+  ok('fond bez ijednog retka: nule, ne izostaje', mn.funds[1]?.inCents === 0 && mn.funds[1]?.outCents === 0);
+  ok('fond samo u pogledu `by`', mb.funds.length === 0 && mt.funds.length === 0);
+
+  const opt = { axisIsEventDate: true, ambiguous: new Set() };
+  const koka = mn.expense.children.find(c => c.name === 'Koka');
+  ok('drill na os: namjena = Koka', JSON.stringify(drillFor(koka, W4, opt)) === JSON.stringify({ slug: 'namjena', value: 'Koka' }));
+  const kucaPodKokom = koka.children.find(c => c.name === 'Kuća');
+  ok('ispod osi NEMA drilla (dva uvjeta) — ni Tip ni Podtip',
+     'none' in drillFor(kucaPodKokom, W4, opt) && 'none' in drillFor(kucaPodKokom.children[0], W4, opt));
+  ok('prazna os nema drilla', 'none' in drillFor(mn.expense.children.find(c => c.name === '(prazno)'), W4, opt));
+  ok('os naplate: ni os nema drilla', 'none' in drillFor(koka, W4, { ...opt, axisIsEventDate: false }));
+  const kucaTip = mt.expense.children.find(c => c.name === 'Kuća');
+  ok('pogled Tip: Tip i dalje ima drill', JSON.stringify(drillFor(kucaTip, W4, opt)) === JSON.stringify({ slug: 'tip', value: 'Kuća' }));
+  ok('id-evi pogleda se ne sudaraju (fokus iz drugog pogleda ne postoji)',
+     !mn.expense.children.some(c => mb.expense.children.some(b => b.id === c.id && b.kind !== c.kind)));
+
+  ok('krug pogleda Namjena: os unutra, Tip ispod', (() => {
+    const s = toSunburst(mn.expense);
+    const iK = s.ids.indexOf(koka.id), iT = s.ids.indexOf(kucaPodKokom.id);
+    return iK >= 0 && iT >= 0 && s.parents[iT] === koka.id && s.parents[iK] === mn.expense.id;
+  })());
+
+  // Stari config (bez `views`) = jedan pogled iz `grouping`; snimka §9 ga i dalje vrti.
+  ok('resolveViews bez views: Bucketi iz `grouping`',
+     JSON.stringify(resolveViews(W)) === JSON.stringify([{ label: 'Bucketi', grouping: 'G' }]));
+  ok('resolveViews bez views i grouping: Tip', resolveViews({ ...W, grouping: undefined })[0].label === 'Tip');
+  ok('uz views se `grouping` pločice ne čita',
+     resolveViews({ ...W4, grouping: 'G' }).length === 3 && !buildBreakdown(ROWS4, { ...W4, grouping: 'G' }, G, vt).bucketsApplied);
+  const both = buildBreakdown(ROWS4, W4, G, { label: 'X', grouping: 'G', by: 'namjena' });
+  ok('pogled s grouping I by ⇒ greška, slaže po by', both.errors.length > 0 && !both.bucketsApplied
+     && both.expense.children.some(c => c.kind === 'facet'));
+  const noG = buildBreakdown(ROWS4, W4, undefined, vb);
+  ok('pogled Bucketi bez grupiranja ⇒ greška imenuje grupiranje pogleda', noG.errors.some(e => e.includes('„G"')), JSON.stringify(noG.errors));
+
+  // PROTUPROVJERA: model koji N/A stavi i na vrh i pod svoju Namjenu (lako se
+  // dogodi kad se „N/A ima Namjenu" pomiješa s R10) — invarijanta ga ruši.
+  const naive = structuredClone(mn);
+  const zaj = naive.expense.children.find(c => c.name === 'Zajedničko');
+  zaj.children.push({ id: 'dup-na', name: 'N/A', cents: 300, n: 1, kind: 'unclassified', children: [] });
+  zaj.cents += 300;
+  ok('PROTUPROVJERA: N/A dvaput ruši „Σ kriški = Izašlo"', sumChildren(naive.expense) !== naive.totals.outCents);
+}
+
+// ── 11. stvarna snimka s Namjenom (TEST 25.10.2026., This Year) ────────────
+console.log('\n11. stvarna snimka s Namjenom (TEST 25.10.2026., 2026.):');
+{
+  const fx = JSON.parse(readFileSync(join(here, 'fixtures', 'breakdown_financije_2026_namjena.json'), 'utf8'));
+  const views = resolveViews(fx.widget);
+  ok('config: tri pogleda, Bucketi prvi', views.map(v => v.label).join() === 'Bucketi,Namjena,Tip');
+  ok('dims = 4 (granica 056)', breakdownDims(fx.widget).length === 4, JSON.stringify(breakdownDims(fx.widget)));
+  const mb = buildBreakdown(fx.kupnja, fx.widget, fx.grouping, views[0]);
+  const mn = buildBreakdown(fx.kupnja, fx.widget, undefined, views[1]);
+  ok('Bucketi: bez grešaka, ništa nesvrstano, nema Koka/Saša razno (1A)',
+     mb.errors.length === 0 && !mb.expense.children.some(c => c.kind === 'unassigned')
+     && !mb.expense.children.some(c => /razno$/.test(c.name)), JSON.stringify(mb.errors));
+  ok('Ušlo 43.072,27 u oba pogleda', mb.totals.inCents === 4307227 && mn.totals.inCents === 4307227, String(mn.totals.inCents));
+  ok('Izašlo isto u oba pogleda', mb.totals.outCents === mn.totals.outCents, `${mb.totals.outCents} / ${mn.totals.outCents}`);
+  // Mjerenje S183 (s183_namjena.py, zaseban klasifikator) — u lipu.
+  const SPEC_OUT = { 'Zajedničko': 2122300, 'Koka': 576586, 'Saša': 337644, 'Nena / Kućište': 246505 };
+  const SPEC_IN = { 'Saša': 1361183, 'Koka': 1341044, 'Nena / Kućište': 1200000, 'Zajedničko': 405000 };
+  const wrong = (root, spec) => Object.entries(spec).filter(([k, v]) => root.children.find(c => c.name === k)?.cents !== v).map(([k]) => k);
+  ok('Troškovi po Namjeni = mjerenje', wrong(mn.expense, SPEC_OUT).length === 0, wrong(mn.expense, SPEC_OUT).join());
+  ok('Prihodi po Namjeni = mjerenje', wrong(mn.income, SPEC_IN).length === 0, wrong(mn.income, SPEC_IN).join());
+  ok('N/A 0,80 na vrhu', mn.expense.children.find(c => c.kind === 'unclassified')?.cents === 80);
+  ok('gotovina 3.316,90 na vrhu (podignuto 3.540,00 − evidentirano 223,10)',
+     mn.expense.children.find(c => c.kind === 'adjustment')?.cents === 331690,
+     String(mn.expense.children.find(c => c.kind === 'adjustment')?.cents));
+  ok('fond Nena / Kućište: 12.000,00 · 2.465,05 · ostaje 9.534,95',
+     JSON.stringify(mn.funds) === JSON.stringify([{ name: 'Nena / Kućište', inCents: 1200000, outCents: 246505, leftCents: 953495 }]),
+     JSON.stringify(mn.funds));
+  ok('os „po naplati" samo za Troškove (6A)',
+     JSON.stringify(fx.widget.date_axes[1].sides) === '["expense"]' && !fx.widget.date_axes[0].sides);
+  const pn = buildBreakdown(fx.naplata, fx.widget, undefined, views[1]);
+  ok('Prihodi isti po obje osi (zato 6A)', pn.totals.inCents === mn.totals.inCents);
 }
 
 console.log(`\n${pass} prošlo, ${fail} palo`);

@@ -155,6 +155,16 @@ console.log('breakdown pločica + groupings (S165, RAZREZ §12):');
   ok('rows.values su VRIJEDNOSTI — netaknute i kad se slučajno zovu kao slug',
      rg.groupings['Vrsta troška'].rows[0].values[1] === 'podtip');
   ok('ulaz nije mutiran', bw.levels[1] === 'podtip' && g['Vrsta troška'].levels[1] === 'podtip');
+
+  // S183: os pogleda (`views[].by`) je slug; `funds` su vrijednosti.
+  const vw = { ...bw, views: [{ label: 'Bucketi', grouping: 'Vrsta troška' },
+    { label: 'Namjena', by: 'namjena', funds: ['namjena'] }, { label: 'Tip' }] };
+  const rv = renameSlugInDashboard({ widgets: [vw] }, 'namjena', 'za_koga');
+  const v2 = rv.config.widgets[0].views;
+  ok('views[].by prati rename, brojač = 1', v2[1].by === 'za_koga' && rv.changed === 1, String(rv.changed));
+  ok('funds su VRIJEDNOSTI — netaknute', v2[1].funds[0] === 'namjena');
+  ok('pogled bez `by` netaknut', v2[0].grouping === 'Vrsta troška' && v2[0].by === undefined && v2[2].by === undefined);
+  ok('dashboardSlugRefs vidi views[].by', dashboardSlugRefs({ widgets: [vw] }).has('namjena'));
 }
 
 console.log('');

@@ -219,7 +219,7 @@ export function OverviewTab({ areaId, config, groupings, listColumns, canWrite, 
                 key={`${w.type}-${w.title}-${areaId}-${i}`}
                 areaId={areaId}
                 widget={w}
-                grouping={w.grouping ? groupings?.[w.grouping] : undefined}
+                groupings={groupings ?? undefined}
                 // Razdoblje = filtar, UKLJUČIVO s obje strane (RAZREZ §12.2).
                 dateFrom={filter.dateFrom}
                 dateTo={filter.dateTo}

@@ -158,14 +158,39 @@ export interface BreakdownWidget {
   outside?: WidgetFilter[];
   /** Vrijednosti `levels[0]` koje znače „nerazvrstano" (R10). Prazno uvijek. */
   unclassified?: string[];
-  /** Osi datuma; prva je zadana (R7). `slug: null` = event_date. */
-  date_axes?: Array<{ label: string; slug: string | null }>;
+  /** Osi datuma; prva je zadana (R7). `slug: null` = event_date.
+   *  `sides` (S183): na kojim stranama os ima smisla — bez njega na obje. Na strani
+   *  koja os ne nosi prekidač nestaje, a odabrana os OSTAJE (sažetak se ne mijenja
+   *  pri prebacivanju strane) — config time tvrdi da ta strana po njoj daje isto. */
+  date_axes?: Array<{ label: string; slug: string | null; sides?: BreakdownSide[] }>;
   /** Korekcijski retci troškova: Σneto(add) − Σneto(subtract). Filtri u
    *  `add`/`subtract` su AND. */
   adjustments?: Array<{ label: string; add: WidgetFilter[]; subtract: WidgetFilter[] }>;
-  /** Ime grupiranja iz `areas.settings.groupings`. Bez njega razina → razina. */
+  /** Ime grupiranja iz `areas.settings.groupings`. Bez njega razina → razina.
+   *  Uz `views` se ne čita (pogled nosi svoje grupiranje). */
   grouping?: string;
+  /** Pogledi pločice (S183, RAZREZ §18) — prvi je zadani; jedan ⇒ nema prekidača.
+   *  Bez ključa: jedan pogled iz `grouping`. */
+  views?: BreakdownView[];
   unit?: string;
+}
+
+export type BreakdownSide = 'expense' | 'income';
+
+/**
+ * Jedan pogled pločice razreza (S183). Najviše jedno od `grouping` / `by`:
+ *   - `grouping` — bucketi iz `settings.groupings` (samo strana troška, R13);
+ *   - `by`       — slug atributa koji postaje GORNJA razina na OBJE strane
+ *                  (Financije: `namjena`), ispod njega `levels`;
+ *   - ništa      — ravno `levels` (Tip → Podtip).
+ * `by` je dimenzija RPC-a (056 ih prima najviše 4 — Financije su na granici).
+ */
+export interface BreakdownView {
+  label: string;
+  grouping?: string;
+  by?: string;
+  /** Vrijednosti `by` koje su FOND: pločica uz pogled ispiše „ušlo · izašlo · ostaje". */
+  funds?: string[];
 }
 
 /** v1 dictionary. Widening it is a code change on purpose (§2.15 — the

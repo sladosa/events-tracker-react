@@ -12,13 +12,13 @@ DVIJE TVRDNJE, RAZDVOJENE NAMJERNO (obrazac `verify_rpc_vs_model.py`)
   1. RPC == Python PO GRUPI  — „radi li SQL ono što mislim"  (kodno pitanje)
      Python zbraja SIROVE retke (events + event_attributes, service ključ), sam
      primjenjuje leaf + `chain_key IS NULL`, uključive granice i datum naplate
-     kao UTC dan. Svaka grupa (tip, podtip, izvorplacanja) mora se poklopiti u
-     plus, minus, n i n_no_date. Razlika = kvar SQL-a (ili Pythona) — ne podataka.
-  2. MODEL == spec §4.3      — „daje li pravilo razreza brojke koje je Saša vidio"
+     kao UTC dan. Svaka grupa (tip, podtip, izvorplacanja, namjena) mora se poklopiti
+     u plus, minus, n i n_no_date. Razlika = kvar SQL-a (ili Pythona) — ne podataka.
+  2. MODEL == očekivano      — „daje li pravilo razreza brojke koje je Saša vidio"
      Python model (strana, izvan razreza, N/A, gotovina, bucketi iz
-     `set_breakdown.py`) nad RPC retcima. Na TEST-u se uspoređuje s tablicom iz
-     spec-a (TEST = PROD 07.10. + R3); na PROD-u se samo ispisuje — ondje R3
-     još nije izveden pa se dva bucketa razlikuju (spec §4.3, NEXT_SESSION).
+     `set_breakdown.py`, Namjena po strani) nad RPC retcima. Na TEST-u se uspoređuje
+     s `EXPECTED_12` (TEST 25.10., S183; prije: snimka 07.10. = RAZREZ §4.3); na
+     PROD-u se samo ispisuje.
      ⚠ Novi retci u bazi pomiču brojke za ZADNJI mjesec — tvrdnja 1 i dalje vrijedi.
 
 Pokretanje (PowerShell, iz data-prep_tools\\):
@@ -36,26 +36,39 @@ sys.path.insert(0, str(Path(__file__).parent))
 from verify_rpc_vs_model import AREA_ID, ENV_FILE, IS_PROD, Supa, load_env, target_banner  # noqa: E402
 from set_breakdown import ADJUSTMENT_ROWS, WIDGET, bucket_of  # noqa: E402
 
-DIMS = ['tip', 'podtip', 'izvorplacanja']        # = breakdownDims(WIDGET) za Financije
+# = breakdownDims(WIDGET) za Financije; S183: + `namjena` (os pogleda Namjena, 4. dimenzija)
+DIMS = ['tip', 'podtip', 'izvorplacanja', 'namjena']
 NEED = DIMS + ['uplata', 'isplata', 'datum_naplate']
 
 WINDOWS = [('12 mj', '2025-10-01', '2026-09-30'), ('rujan', '2026-09-01', '2026-09-30')]
 AXES = [('po kupnji', None), ('po naplati', 'datum_naplate')]
 
-# RAZREZ §4.3 „Sašin raspored" + §8.6, TEST 07.10.2026., 12 mj: (po kupnji, po naplati)
+# TEST 25.10.2026. (= PROD 22.10. + S180 preuređivanje + S183 bucketi 1A), 12 mj:
+# (po kupnji, po naplati). ⚠ Snimka 07.10. (RAZREZ §4.3) više ne postoji — S167 i S180
+# su promijenili podatke. Unakrsno provjereno S183: Ušlo, Kvaliteta, Putovanja, Kuća i
+# Kućište = mjerenje prije 1A u lipu; prirast Mjesečnih (bez gotovine) + Povremenih +
+# Projekti = staro „Koka razno" + „Saša razno" (6.355,90). Namjena = zasebno mjerenje
+# (scratchpad s183_namjena.py, drugi klasifikator) u lipu.
 EXPECTED_12 = {
-    'Ušlo': (46972.48, 46972.48),
-    'Izašlo': (40127.91, 39305.20),
-    'Mjesečni troškovi': (20994.89, 19939.85),
-    'Kvaliteta života': (4164.57, 4106.59),
-    'Putovanja i pokloni': (2909.94, 2281.44),
-    'Povremeno nužno': (2911.14, 2825.88),
+    'Ušlo': (49756.32, 49756.32),
+    'Izašlo': (42461.75, 41639.04),
+    'Mjesečni troškovi': (23920.54, 22817.62),
+    'Kvaliteta života': (5276.48, 5243.48),
+    'Putovanja i pokloni': (3698.43, 3069.93),
+    'Povremeno nužno': (7026.20, 6889.86),
     'Kuća investicije': (614.44, 716.33),
-    'Kućište · Nenin novac': (499.39, 499.39),
-    'Koka razno': (4311.71, 4242.03),
-    'Saša razno': (1611.03, 1638.85),
-    'nerazvrstano (N/A)': (2110.80, 3054.84),
+    'Kućište · Nenin novac': (642.97, 642.97),
+    'Projekti': (1282.69, 1339.79),
+    'nerazvrstano (N/A)': (0.00, 919.06),
     'gotovina, nerazvrstano': (3830.90, 3830.90),
+    'Namjena trošak: Zajedničko': (26578.15, 25009.39),
+    'Namjena trošak: Koka': (6876.88, 6704.22),
+    'Namjena trošak: Saša': (4532.85, 4532.50),
+    'Namjena trošak: Nena / Kućište': (642.97, 642.97),
+    'Namjena prihod: Saša': (16372.10, 16372.10),
+    'Namjena prihod: Koka': (15984.22, 15984.22),
+    'Namjena prihod: Nena / Kućište': (12000.00, 12000.00),
+    'Namjena prihod: Zajedničko': (5400.00, 5400.00),
 }
 
 
@@ -141,6 +154,7 @@ def model(rpc):
         net = minus - plus
         if passes(a['tip'], w['income']):
             out['Ušlo'] += plus - minus
+            out[f"Namjena prihod: {a['namjena']}"] += plus - minus
             continue
         if any(passes(a[f['slug']], f) for f in w['outside']):
             continue
@@ -149,6 +163,7 @@ def model(rpc):
         else:
             b = bucket_of(a['tip'], a['podtip'])
             out[b or 'nesvrstano'] += net
+            out[f"Namjena trošak: {a['namjena']}"] += net   # pogled Namjena: N/A je zasebna kriška
         out['Izašlo'] += net
     for adj in w['adjustments']:
         v = 0
@@ -190,7 +205,7 @@ def main():
             models[(wname, aname)] = model(rp)
 
     print('\nMODEL (12 mj)                     po kupnji     po naplati' +
-          ('' if IS_PROD else '   spec §4.3'))
+          ('' if IS_PROD else '   očekivano'))
     m1, m2 = models[('12 mj', 'po kupnji')], models[('12 mj', 'po naplati')]
     keys = list(EXPECTED_12) + [k for k in set(m1) | set(m2) if k not in EXPECTED_12]
     mbad = 0
@@ -201,9 +216,10 @@ def main():
             exp = tuple(c(x) for x in EXPECTED_12[k])
             ok = exp == got
             mbad += not ok
-            line += '   ✓' if ok else f'   ✗ spec {eur(exp[0])} / {eur(exp[1])}'
+            line += '   ✓' if ok else f'   ✗ očekivano {eur(exp[0])} / {eur(exp[1])}'
         print(line)
-    sb = sum(v for k, v in m1.items() if k not in ('Ušlo', 'Izašlo', 'gotovina, nerazvrstano'))
+    sb = sum(v for k, v in m1.items() if k not in ('Ušlo', 'Izašlo', 'gotovina, nerazvrstano')
+             and not k.startswith('Namjena'))
     print(f'\n  Σ bucketa + N/A (po kupnji) = {eur(sb)}  ·  Izašlo = {eur(m1["Izašlo"])}  '
           + ('✓' if sb == m1['Izašlo'] else '✗'))
     mbad += sb != m1['Izašlo']
@@ -214,9 +230,9 @@ def main():
     else:
         print('✓ RPC = Python u lipu, sve grupe, oba razdoblja, obje osi.')
     if mbad:
-        print(f'✗ Model se ne slaže sa spec-om u {mbad} stavki.')
+        print(f'✗ Model se ne slaže s očekivanim u {mbad} stavki.')
     elif not IS_PROD:
-        print('✓ Model = spec §4.3 u lipu.')
+        print('✓ Model = očekivano (TEST 25.10.) u lipu.')
     sys.exit(1 if bad or mbad else 0)
 
 

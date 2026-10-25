@@ -48,6 +48,8 @@ export function renameSlugInDashboard(
         adjustments: w.adjustments?.map(a => ({
           ...a, add: a.add.map(swapFilter), subtract: a.subtract.map(swapFilter),
         })),
+        // S183: os pogleda je slug; `funds` su VRIJEDNOSTI (isto kao `groupings.rows`).
+        views: w.views?.map(v => (v.by ? { ...v, by: swap(v.by) ?? v.by } : v)),
       };
     }
     return {
@@ -165,6 +167,7 @@ export function dashboardSlugRefs(config: DashboardConfig | null | undefined): S
       for (const f of w.outside ?? []) out.add(f.slug);
       for (const a of w.date_axes ?? []) if (a.slug) out.add(a.slug);
       for (const a of w.adjustments ?? []) for (const f of [...a.add, ...a.subtract]) out.add(f.slug);
+      for (const v of w.views ?? []) if (v.by) out.add(v.by);
       continue;
     }
     if (w.group_by) out.add(w.group_by);

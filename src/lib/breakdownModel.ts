@@ -19,9 +19,16 @@
 //      dvostruko brojanje (kolač veći od stvarne potrošnje, bez poruke).
 //   3. Specifičnost: par > `X / *` > „nesvrstano".
 //   4. Negativno se ne crta, ali se ne gubi: lista i zbroj ga nose.
+//   5. Pogled ne mijenja brojke (S183): Σ po Namjeni = Σ po bucketima = Izašlo,
+//      i Ušlo isto. Pogled samo drukčije slaže iste retke.
+//
+// POGLEDI (S183, RAZREZ §18): `views[]` pločice — bucketi (`grouping`), os
+//   atributa iznad razina (`by`, npr. Namjena, na OBJE strane) ili ravno.
+//   N/A i korekcija (gotovina) u pogledu `by` stoje na vrhu, kao zasebne kriške:
+//   Namjenu N/A retku nitko nije birao, a čija je gotovina ne zna se.
 // ============================================================
 
-import type { BreakdownWidget, Grouping, WidgetFilter } from '@/types/database';
+import type { BreakdownView, BreakdownWidget, Grouping, WidgetFilter } from '@/types/database';
 
 /** Jedan redak iz `rpc_area_breakdown`; `g` po redoslijedu `breakdownDims`. */
 export interface BreakdownRow {
@@ -35,6 +42,7 @@ export interface BreakdownRow {
 export type BreakdownNodeKind =
   | 'root'
   | 'bucket'
+  | 'facet'          // vrijednost osi pogleda `by` (Namjena: Koka, Saša…), S183
   | 'level'          // vrijednost razine (Tip, Podtip…)
   | 'unclassified'   // N/A i prazna razina 1 (R10) — kriška UNUTAR Izašlo
   | 'unassigned'     // par bez bucketa — „dodijeli me", nikad ne nestane
@@ -52,7 +60,20 @@ export interface BreakdownNode {
   /** `level`: indeks razine (0 = Tip) i vrijednosti razina do ovog čvora. */
   depth?: number;
   values?: (string | null)[];
+  /** `facet`: slug i vrijednost osi pogleda (drill = taj jedan uvjet). */
+  facet?: { slug: string; value: string | null };
+  /** `level` ispod `facet`: čvor opisuju DVA uvjeta, a filtar nosi jedan ⇒ bez drilla. */
+  scoped?: boolean;
   children: BreakdownNode[];
+}
+
+/** Fond (S183): vrijednost osi pogleda koju se prati kao blagajnu. */
+export interface BreakdownFund {
+  name: string;
+  inCents: number;
+  /** Svi retci troška s tom vrijednošću — i N/A (fond ne smije prešutjeti trošak). */
+  outCents: number;
+  leftCents: number;
 }
 
 export interface BreakdownModel {
@@ -68,6 +89,10 @@ export interface BreakdownModel {
   errors: string[];
   /** Je li grupiranje primijenjeno (false i kad ga ima, a neispravno je). */
   bucketsApplied: boolean;
+  /** Pogled po kojem je model složen. */
+  view: BreakdownView;
+  /** Fondovi pogleda (`view.funds`); prazno kad ih nema. */
+  funds: BreakdownFund[];
 }
 
 /** Ime čvora za praznu vrijednost razine. */
@@ -90,13 +115,21 @@ export function breakdownDims(w: BreakdownWidget): string[] {
   add(w.income?.slug);
   (w.outside ?? []).forEach(f => add(f.slug));
   for (const a of w.adjustments ?? []) [...a.add, ...a.subtract].forEach(f => add(f.slug));
+  // Svi pogledi u ISTOM pozivu: prekidač pogleda je samo novi model, ne novi upit.
+  for (const v of w.views ?? []) add(v.by);
   return out;
 }
 
+/** Pogledi pločice. Bez `views` jedan, iz starog ključa `grouping` (config prije S183). */
+export function resolveViews(w: BreakdownWidget): BreakdownView[] {
+  if (w.views?.length) return w.views;
+  return [w.grouping ? { label: 'Bucketi', grouping: w.grouping } : { label: 'Tip' }];
+}
+
 /** Greške grupiranja u odnosu na pločicu. Prazno = smije se primijeniti. */
-export function validateGrouping(w: BreakdownWidget, grouping: Grouping): string[] {
+export function validateGrouping(w: BreakdownWidget, grouping: Grouping, groupingName?: string): string[] {
   const errs: string[] = [];
-  const name = w.grouping ?? '?';
+  const name = groupingName ?? w.grouping ?? '?';
   if (w.levels.length < 2) {
     errs.push(`Grupiranje „${name}" traži dvije razine, pločica ima ${w.levels.length}.`);
   }
@@ -138,7 +171,9 @@ class LevelTree {
   private byId = new Map<string, BreakdownNode>();
   readonly top: BreakdownNode[] = [];
   private prefix: string;
-  constructor(prefix: string) { this.prefix = prefix; }
+  private scoped: boolean;
+  /** `scoped`: stablo živi ispod čvora osi pogleda (v. `BreakdownNode.scoped`). */
+  constructor(prefix: string, scoped = false) { this.prefix = prefix; this.scoped = scoped; }
 
   add(values: (string | null)[], cents: number, n: number): void {
     let parent: BreakdownNode | null = null;
@@ -149,7 +184,7 @@ class LevelTree {
       let nd = this.byId.get(id);
       if (!nd) {
         nd = node(id, v == null || v === '' ? EMPTY_LABEL : v, 'level', {
-          depth: d, values: values.slice(0, d + 1),
+          depth: d, values: values.slice(0, d + 1), ...(this.scoped ? { scoped: true } : {}),
         });
         this.byId.set(id, nd);
         (parent ? parent.children : this.top).push(nd);
@@ -176,19 +211,26 @@ function finish(nd: BreakdownNode): void {
 }
 
 /**
- * Model pločice iz redaka RPC-a. `grouping` je `settings.groupings[w.grouping]`
- * (undefined = nema ga ⇒ greška ako ga pločica traži).
+ * Model pločice iz redaka RPC-a. `view` je jedan od `resolveViews(w)` (zadano
+ * prvi); `grouping` je `settings.groupings[view.grouping]` (undefined = nema ga
+ * ⇒ greška ako ga pogled traži).
  */
 export function buildBreakdown(
   rows: BreakdownRow[],
   w: BreakdownWidget,
   grouping?: Grouping,
+  view: BreakdownView = resolveViews(w)[0],
 ): BreakdownModel {
   const errors: string[] = [];
   const dims = breakdownDims(w);
   const levels = w.levels ?? [];
   if (levels.length === 0) errors.push('Pločica razreza nema `levels`.');
   if (!w.income?.slug) errors.push('Pločica razreza nema `income`.');
+  if (view.grouping && view.by) {
+    errors.push(`Pogled „${view.label}" ima i \`grouping\` i \`by\` — prikazujem po \`by\`.`);
+  }
+  const by = view.by ?? null;
+  const groupingName = by ? undefined : view.grouping;
 
   const idx = new Map(dims.map((d, i) => [d, i] as const));
   const bad = rows.find(r => !Array.isArray(r.g) || r.g.length !== dims.length);
@@ -197,10 +239,10 @@ export function buildBreakdown(
 
   // ── grupiranje: primijeni samo ispravno ──────────────────────────────
   let applyBuckets = false;
-  if (w.grouping) {
-    if (!grouping) errors.push(`Grupiranje „${w.grouping}" ne postoji u postavkama Aree.`);
+  if (groupingName) {
+    if (!grouping) errors.push(`Grupiranje „${groupingName}" ne postoji u postavkama Aree.`);
     else {
-      const gErr = validateGrouping(w, grouping);
+      const gErr = validateGrouping(w, grouping, groupingName);
       errors.push(...gErr);
       applyBuckets = gErr.length === 0;
     }
@@ -228,26 +270,41 @@ export function buildBreakdown(
   const unassignedTree = new LevelTree(`out/u`);
   const outside = { plusCents: 0, minusCents: 0, n: 0 };
   let naCents = 0, naN = 0, nNoDate = 0;
+  // Pogled `by`: po jedno stablo razina za svaku vrijednost osi, na obje strane.
+  const facetIn = new Map<string | null, LevelTree>();
+  const facetOut = new Map<string | null, LevelTree>();
+  const facetTree = (m: Map<string | null, LevelTree>, side: 'in' | 'out', v: string | null) => {
+    let t = m.get(v);
+    if (!t) { t = new LevelTree(`${side}/f:${v ?? SEP}`, true); m.set(v, t); }
+    return t;
+  };
+  const fundNames = by ? (view.funds ?? []) : [];
+  const fundSums = new Map<string, { in: number; out: number }>(fundNames.map(f => [f, { in: 0, out: 0 }]));
 
   if (!bad && levels.length > 0 && w.income?.slug) {
     for (const r of rows) {
       const plus = toCents(r.plus_sum), minus = toCents(r.minus_sum);
       nNoDate += Number(r.n_no_date ?? 0);
       const lv = levels.map(l => val(r, l));
+      const fv = by ? (val(r, by) || null) : null;
+      const fund = fv != null ? fundSums.get(fv) : undefined;
 
       if (passes(val(r, w.income.slug), w.income)) {
-        incomeTree.add(lv, plus - minus, r.n);
+        if (fund) fund.in += plus - minus;
+        (by ? facetTree(facetIn, 'in', fv) : incomeTree).add(lv, plus - minus, r.n);
         continue;
       }
       if ((w.outside ?? []).some(f => passes(val(r, f.slug), f))) {
         outside.plusCents += plus; outside.minusCents += minus; outside.n += r.n;
         continue;
       }
+      if (fund) fund.out += minus - plus;
       const v0 = lv[0];
       if (v0 == null || v0 === '' || unclassified.has(v0)) {
         naCents += minus - plus; naN += r.n;
         continue;
       }
+      if (by) { facetTree(facetOut, 'out', fv).add(lv, minus - plus, r.n); continue; }
       if (!applyBuckets) { flatTree.add(lv, minus - plus, r.n); continue; }
       const b = bucketOf(v0, lv[1] ?? null);
       if (b == null) { unassignedTree.add(lv, minus - plus, r.n); continue; }
@@ -274,8 +331,18 @@ export function buildBreakdown(
   }
 
   // ── slaganje strane troška ────────────────────────────────────────────
+  const facetNodes = (m: Map<string | null, LevelTree>, side: 'in' | 'out'): BreakdownNode[] =>
+    [...m].map(([v, t]) => {
+      const fn = node(`${side}/f:${v ?? SEP}`, v ?? EMPTY_LABEL, 'facet', { facet: { slug: by!, value: v } });
+      fn.children.push(...t.top);
+      return fn;
+    });
   const expense = node('out', 'Izašlo', 'root');
-  if (applyBuckets) {
+  if (by) {
+    expense.children.push(...facetNodes(facetOut, 'out'));
+    // Korekcija na vrhu: čija je gotovina, ne zna se (S183, odluka 5A).
+    for (const x of adjNodes) expense.children.push(x.nd);
+  } else if (applyBuckets) {
     for (const b of bucketOrder) {
       const t = bucketTrees.get(b);
       const adj = adjNodes.filter(x => adjBucket.get(x.label) === b);
@@ -303,7 +370,7 @@ export function buildBreakdown(
   finish(expense);
 
   const income = node('in', 'Ušlo', 'root');
-  income.children.push(...incomeTree.top);
+  income.children.push(...(by ? facetNodes(facetIn, 'in') : incomeTree.top));
   finish(income);
 
   return {
@@ -315,6 +382,11 @@ export function buildBreakdown(
     nNoDate,
     errors,
     bucketsApplied: applyBuckets,
+    view,
+    funds: fundNames.map(name => {
+      const s = fundSums.get(name)!;
+      return { name, inCents: s.in, outCents: s.out, leftCents: s.in - s.out };
+    }),
   };
 }
 
@@ -406,6 +478,15 @@ export function drillFor(
 ): DrillTarget {
   if (!opts.axisIsEventDate) {
     return { none: 'Filtar ne zna raspon datuma naplate — drill radi samo „po kupnji".' };
+  }
+  if (nd.kind === 'facet' && nd.facet) {
+    if (nd.facet.value == null) return { none: 'Prazna vrijednost se ne može filtrirati.' };
+    return { slug: nd.facet.slug, value: nd.facet.value };
+  }
+  if (nd.scoped) {
+    // `tip = auto C5` ispod `Koka` bi pokazao i Zajedničke retke tog Tipa — strelica
+    // koja obećava jedno a daje drugo (razred S166). Čvor iznad nosi jedini uvjet.
+    return { none: 'Ova stavka je dva uvjeta (os pogleda i razina), a filtar nosi jedan — ↗ uz os pogleda prikazuje sve njene retke.' };
   }
   if (nd.kind !== 'level' || nd.depth == null || !nd.values) {
     return { none: 'Ova stavka je više uvjeta, a filtar nosi jedan.' };

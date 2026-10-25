@@ -62,8 +62,10 @@ WIDGET = {
     # T33 (S169, Saša): Investicije = premještanje u imovinu, ne potrošnja ⇒ vani kao Transfer
     'outside': [{'slug': 'tip', 'op': 'in', 'values': ['Transfer', 'Investicije']}],
     'unclassified': ['N/A'],
+    # S183 (6A): „po naplati" samo na Troškovima — prihod sjeda isti dan (izmjereno na
+    # TEST-u 25.10.: This Year, 12 mj i All time daju na Prihodima isti broj po obje osi).
     'date_axes': [{'label': 'po kupnji', 'slug': None},
-                  {'label': 'po naplati', 'slug': 'datum_naplate'}],
+                  {'label': 'po naplati', 'slug': 'datum_naplate', 'sides': ['expense']}],
     # Podignuto − evidentirano (CLAUDE.md § Overview, S121). „add" broji Transfer
     # retke koje razrez inače drži vani — namjerno: podizanje je jedini trag.
     'adjustments': [{
@@ -73,6 +75,15 @@ WIDGET = {
         'subtract': [{'slug': 'izvorplacanja', 'op': 'in', 'values': ['Cash']},
                      {'slug': 'tip', 'op': 'not_in', 'values': ['Transfer']}],
     }],
+    # S183 (RAZREZ §18): prekidač Bucketi | Namjena | Tip. Prvi je zadani. `namjena` je
+    # 4. dimenzija RPC-a (056 prima najviše 4). Fond = Nenin novac (ušlo · izašlo · ostaje).
+    'views': [
+        {'label': 'Bucketi', 'grouping': GROUPING_NAME},
+        {'label': 'Namjena', 'by': 'namjena', 'funds': ['Nena / Kućište']},
+        {'label': 'Tip'},
+    ],
+    # Uz `views` ga novi kod ne čita; ostaje da STARI keširani bundle (S118) i dalje
+    # crta buckete umjesto ravnog Tip → Podtip.
     'grouping': GROUPING_NAME,
 }
 
@@ -94,6 +105,10 @@ BUCKETS: list[tuple[str, list[tuple[str, str]]]] = [
         ('Zabava', 'HBOmax'), ('Zabava', 'Youtube'),
         ('Prijevoz', '*'),
         ('Zdravlje', 'PP (Posmrtna pripomoc)'),
+        # S183 (1A): „Koka razno" / „Saša razno" raspušteni — čiji je trošak kaže Namjena.
+        # Pravilo „mjesečno = (gotovo) svaki mjesec": gorivo, leasing, Lječnička komora.
+        ('auto C5', 'gorivo'), ('auto C5', 'leasing'), ('auto Lacetti', 'gorivo'),
+        ('Zdravlje', 'Lječnička komora'),
     ]),
     ('Kvaliteta života', [
         ('Razno', 'Temu'), ('Domaćinstvo', 'Kave/jelo vani'),
@@ -110,6 +125,8 @@ BUCKETS: list[tuple[str, list[tuple[str, str]]]] = [
         ('Razno', 'Razno, sitnice'),
         ('Informatika', 'Hardver'), ('Informatika', 'Odrzavanje i servis'),
         ('Advokati', '*'),
+        # S183 (1A): ostatak auta — registracija (s osiguranjem), popravci, bez Podtipa
+        ('auto C5', '*'), ('auto Lacetti', '*'),
     ]),
     ('Kuća investicije', [
         ('Kuća', 'Popravci, održavanje'),        # bivše „…, osiguranje" (S167)
@@ -117,11 +134,8 @@ BUCKETS: list[tuple[str, list[tuple[str, str]]]] = [
     ('Kućište · Nenin novac', [                 # R12
         ('Razno', "Nena's funds"),
     ]),
-    ('Koka razno', [
-        ('Projekti', 'Koka'), ('auto C5', '*'), ('Zdravlje', 'Lječnička komora'),
-    ]),
-    ('Saša razno', [
-        ('Projekti', 'Saša'), ('auto Lacetti', '*'),
+    ('Projekti', [                               # S183 (1A): Koka + Saša, Namjena ih dijeli
+        ('Projekti', '*'),
     ]),
 ]
 # Korekcijski redak u bucket (S164: gotovina je podstavka Mjesečnih, bez razmazivanja)
@@ -170,6 +184,33 @@ def check(sp: Supa, area_id: str) -> list[str]:
     for ax in w['date_axes']:
         if ax['slug'] and by_slug.get(ax['slug'], {}).get('data_type') != 'datetime':
             errs.append(f'os datuma `{ax["slug"]}` nije datetime atribut')
+        for sd in ax.get('sides') or []:
+            if sd not in ('expense', 'income'):
+                errs.append(f'os `{ax["label"]}`: strana `{sd}` nije expense/income')
+
+    # S183: pogledi — os `by` je dimenzija RPC-a (056: najviše 4), fond je VRIJEDNOST osi
+    dims = list(dict.fromkeys(list(w['levels']) + [w['income']['slug']]
+                              + [f['slug'] for f in w['outside']]
+                              + [f['slug'] for a in w['adjustments'] for f in a['add'] + a['subtract']]
+                              + [v['by'] for v in w.get('views', []) if v.get('by')]))
+    if len(dims) > 4:
+        errs.append(f'dimenzija RPC-a {len(dims)} {dims} — 056 prima najviše 4 (treba migracija)')
+    for v in w.get('views', []):
+        if v.get('grouping') and v.get('by'):
+            errs.append(f'pogled `{v["label"]}` ima i grouping i by')
+        if v.get('grouping') and v['grouping'] != GROUPING_NAME:
+            errs.append(f'pogled `{v["label"]}`: grupiranje `{v["grouping"]}` ovaj alat ne piše')
+        if v.get('by'):
+            if v['by'] not in by_slug:
+                errs.append(f'pogled `{v["label"]}`: slug `{v["by"]}` ne postoji u Arei')
+                continue
+            vr = by_slug[v['by']].get('validation_rules') or {}
+            opts = set(vr.get('suggest') or [])
+            for lst in ((vr.get('depends_on') or {}).get('options_map') or {}).values():
+                opts |= set(lst or [])
+            for f in v.get('funds') or []:
+                if f not in opts:
+                    errs.append(f'fond `{f}` (pogled {v["label"]}) nije opcija atributa `{v["by"]}`')
 
     g = grouping()
     seen: dict = {}
