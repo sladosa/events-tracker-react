@@ -51,7 +51,10 @@ Claude zatim pročita PROD `areas.settings` i potvrdi da se promijenio samo `exp
 
 ---
 
-## T-S181-2 ⬜ (PROD, poslije deploya) Excel izbornici Namjene i Podtipa
+## T-S181-2 ✅ (PROD, poslije deploya) Excel izbornici Namjene i Podtipa
+
+> ✅ **25.10. (S182):** Saša pod Kokom, `Kokin_format` Download Excel (450 redaka): Namjena pod `Razno` nudi
+> 4 namjene, Podtip pod `auto C5` gorivo · leasing · popravci · registracija. Korak 2 (prazan Tip) čuva mjerenje S181.
 
 **Koraci:** Ctrl+Shift+R → `Financije_all` → Export → profil `Kokin_format` → **Download Excel** → otvori u Excelu.
 1. Redak s Tipom `Razno`: klik na ćeliju Namjena ⇒ strelica nudi **Zajedničko · Koka · Saša · Nena / Kućište**.
@@ -60,7 +63,11 @@ Claude zatim pročita PROD `areas.settings` i potvrdi da se promijenio samo `exp
 
 **Pad:** Namjena nudi Podtipove (stari bundle — ponovi Ctrl+Shift+R) ili Podtip pod `auto C5` nema strelicu.
 
-## T-S181-4 ⬜ (PROD, poslije deploya) Excel uvoz: zadana Namjena na novom retku
+## T-S181-4 ✅ (PROD, poslije deploya) Excel uvoz: zadana Namjena na novom retku
+
+> ✅ **25.10. (S182):** Saša pod svojim računom, RF delta s 2 nova retka (Passport 39 bez Namjene, naknada 2,54
+> s Namjenom Saša) ⇒ `2 New · 0 Modify · 15 Unchanged` + „Namjena 1 (Zajedničko 1)"; baza: Zajedničko / Saša.
+> ⚠ Pod Kokinim računom isti file je uvezao samo 1 redak: novi retci s tuđim e-mailom u kol. G se ne upisuju.
 
 **Izmjereno na TEST-u (24.10.):** file s 3 nova retka bez Namjene (`g_delta_zaba_fix_bez.xlsx`) ⇒
 pregled `3 New` + „Zadano iz pravila (kao forma) na novim retcima s praznom ćelijom: Namjena 3

@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S181).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S182).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 155 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 168 | [Critical rules](<#Critical rules>) | X |
-| 1392 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1871 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1887 | [Key files](<#Key files>) |  |
-| 2031 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2051 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2074 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2102 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2142 | [Open bugs](<#Open bugs>) | ~ |
-| 2265 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2310 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2461 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2469 | [Backlog](<#Backlog>) | ~ |
-| 2473 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2481 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1396 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1875 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1891 | [Key files](<#Key files>) |  |
+| 2035 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2055 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2078 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2106 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2146 | [Open bugs](<#Open bugs>) | ~ |
+| 2256 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2301 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2452 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2460 | [Backlog](<#Backlog>) | ~ |
+| 2464 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2472 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2645 redaka, 18 sekcija._
+_Ukupno 2636 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -446,6 +446,10 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   preimenuje **alatom** koji ide odjednom: pravilo (na istom mjestu u popisu) + retci + exact-string
   u `areas.settings`/shortcutima + grep po alatima. Predložak: `Financije/fix_kuca_popravci_S167.py`;
   općenito K-plan (`docs/KLASIFIKACIJA_ODRZAVANJE_SPEC.md`).
+- **Redoslijed atributa je `sort_order`, i mijenja se Structure uvozom (stupac `Sort`)** (S182). Određuje formu,
+  View i Excel **bez** profila; profil (`Kokin_format`) nosi vlastiti redoslijed, a uvoz i Python alati traže stupac
+  po naslovu — pa pomak ne dira nijedan postojeći file. ⚠ File za PROD uvoz uvijek iz **PROD** exporta: TEST
+  zaostaje (izmjereno 25.10.: `is_required` Racun/Izvor, opis Namjene), a uvoz prepisuje sva polja atributa.
 - **`chain_key`** je sistemsko polje (UUID), nikad se ne prikazuje; `comment` je samo korisnički tekst
 - **`touched: true`** mora biti postavljen pri učitavanju atributa iz baze u Edit toku —
   inače ih `handleSave()` preskoči
@@ -565,7 +569,7 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ **Ovo pomiče okidač Faze 3.** `docs/FAZA3_IMPORT_AUTOMATIKA.md` ju je odgodio jer
   `Datum naplate` ima **0 praznih od 5.192** — ali to polje **pune Python alati u fileu**,
   pa mjeri alat, ne app. `Status` nitko ne puni ⇒ **2**. Brojka više nije nula.
-- **✅ S181 (na `test-branch`, deploy čeka): uvoz upisuje `default_map` na NOVI redak s
+- **✅ S181 (PROD od 25.10., T-S181-4 ✅ S182): uvoz upisuje `default_map` na NOVI redak s
   PRAZNOM ćelijom** (`importDefaults.ts`, `fillImportDefaults` — isti poziv u pregledu i upisu;
   pregled kaže „Zadano iz pravila …: Namjena 3 (…)"). Na PROD-u `default_map` imaju samo
   `Namjena` i `Status` (`Financije_all`, izmjereno 24.10.).
@@ -2152,20 +2156,6 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 >   je zatvorio refaktor u nekoj ranijoj sesiji, a unos je stajao jos dugo — a „otvoren bug"
 >   se cita kao poznat kvar i trosi paznju svake iduce sesije.
 
-- **BUG-S181-DEPNAME — Excel dropdown ovisnog atributa: ime raspona nosi samo RODITELJA** (S181,
-  izmjereno na TEST exportu 24.10.). `addDependentDropdowns` (`excelExport.ts:383`) gradi
-  `Dep_<roditelj>_<vrijednost>`, pa dva atributa koja ovise o istom roditelju (Podtip i Namjena ← Tip,
-  od S180) dijele imena. Posljedica: dropdown Namjene nudi **Podtipove** (`Dep_tip_Razno` = Nena's
-  funds · Pokloni · …), a `Dep_tip_auto_C5`/`auto_Lacetti` postanu raspon od **dva** popisa
-  (`$H$2:$H$5,$U$2:$U$5`) — Excel ga ne može ponuditi ni za **Podtip**. Ključ `*` (Namjena) se kroz
-  `INDIRECT` nikad ne koristi. Validacija nema `showErrorMessage`, pa Excel ne odbija upis — ali izbor
-  iz dropdowna stavi Podtip u Namjenu, a uvoz vrijednost izvan popisa prima tiho. Vrijedi za svaki
-  Financije Excel od 22.10. `_excel_izbornici.py` ponavlja pravilo (`PREFIKS = 'Dep_tip'`).
-  ✅ **Popravljeno S181 na `test-branch`, čeka deploy (T-S181-2):** ime = `Dep_<ovisni>_<vrijednost>`
-  (`rangePrefix`), raspon za SVAKU vrijednost roditelja + prazan roditelj, `*` gdje nema vlastitog
-  (`dependentRanges`). Čuva `excelDependentRanges.test.mjs` (stari kod ruši 8/10). Python isto
-  (`Dep_podtip`, `Dep_namjena`, `provjeri()` pokriva Namjenu; sabotaža pada).
-
 - **BUG-S145-BOOLEDIT — ⚠ NIJE REPRODUCIRAN. Pojava viđena dvaput, pa nestala; ulaz je
   izmjeren i ISPRAVAN je.** Boolean atribut (`Rate?`) prikazao se u **Edit** formi kao
   prazna kvačica s natpisom `Not set`, iako je u bazi `true`. Viđeno 22.09.2026. na dva
@@ -2241,6 +2231,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > provjereno nosi li koji od njih pravilo kojeg nema drugdje: tri su ga nosila i sva tri su
 > zadrzana (dva gore, `Postgres upgrade` u Backlogu). Isti postupak kao „Spaseno iz plana" (S137).
 
+- **~~BUG-S181-DEPNAME~~** — zatvoreno S181, na PROD-u od 25.10. (T-S181-2 ✅ S182): ime Excel raspona ovisnog atributa nosi **ovisni** atribut (`Dep_<ovisni>_<vrijednost>`, `rangePrefix`/`dependentRanges`), inače dva atributa istog roditelja (Podtip, Namjena ← Tip) dijele imena. Python `_excel_izbornici` isto. Čuva `excelDependentRanges.test.mjs`.
 - **~~„Import as mine" unutar dijeljene Aree~~** — zatvoreno S159 (D5): opcija je ugašena kad tuđi retci žive u Arei koju vidiš a nije tvoja (kopija bi bila duplikat u istoj Arei, saldo dvaput); za file stranca ostaje.
 - **~~BUG-S155-EDITNAN~~, ~~BUG-S155-VIEWSTALE~~** — zatvoreno S155: pravila su u § UI (React); čuva `dateInput.test.mjs`, T-S155-8/9 ✅. ⚠ `BUG-S131-VIEWSTALE` („Activity not found" nakon Edita) je vjerojatno isti keš — ako se javi nakon S155, pretpostavka je pala.
 - **~~BUG-S154-DATARANGE~~** — zatvoreno S154: „Data range" (i `From` kod All Time) brojao je cijelu bazu — zakašnjeli odgovor za `areaId = null` pregazio filtrirani, a palo čitanje kategorija / Area bez kategorija davali su „bez filtra". Odgovor sada nosi ključ ulaza (razred BUG-S145-OVERVIEWTAB), greška se kaže umjesto „danas–danas". Čuva `dateBounds.test.mjs` (stari hook ruši 8/15). **Neverificirano uživo: T-S154-1.**
