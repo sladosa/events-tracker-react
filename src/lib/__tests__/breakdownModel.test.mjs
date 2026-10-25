@@ -426,5 +426,53 @@ console.log('\n11. stvarna snimka s Namjenom (TEST 25.10.2026., 2026.):');
   ok('Prihodi isti po obje osi (zato 6A)', pn.totals.inCents === mn.totals.inCents);
 }
 
+// ── 12. ↗ na N/A i strogi ↗ za Tip pod bucketom (S183, Saša) ────────────────
+console.log('\n12. drill: N/A po vrsti, Tip pod bucketom:');
+{
+  const opt = { axisIsEventDate: true, ambiguous: new Set() };
+  // ROWS: N/A 33,33 + prazni Tip (null i '') 1,11 + 2,22 ⇒ dvije vrste
+  const na = m.expense.children.find(c => c.kind === 'unclassified');
+  ok('dvije vrste ⇒ podretci N/A i (prazno), zbroj = kriška',
+     na.children.length === 2 && sumChildren(na) === na.cents
+     && na.children.map(c => c.name).sort().join() === '(prazno),N/A', na.children.map(c => c.name).join());
+  ok('kriška s dvije vrste nema ↗', 'none' in drillFor(na, W, opt));
+  const naNA = na.children.find(c => c.name === 'N/A');
+  ok('podredak N/A ⇒ tip = N/A', JSON.stringify(drillFor(naNA, W, opt)) === JSON.stringify({ slug: 'tip', value: 'N/A' }));
+  const naEmpty = na.children.find(c => c.name === '(prazno)');
+  const de = drillFor(naEmpty, W, opt);
+  ok('podredak (prazno) nema ↗ i kaže koliko redaka', 'none' in de && de.none.startsWith('2 redaka'), JSON.stringify(de));
+  const only = buildBreakdown([R('N/A', null, 'Racun', 0, 5), R('Kuća', 'Struja', 'Racun', 0, 1)], { ...W, grouping: undefined });
+  const na1 = only.expense.children.find(c => c.kind === 'unclassified');
+  ok('jedna vrsta (samo N/A) ⇒ bez podredaka, ↗ na samoj kriški',
+     na1.children.length === 0 && JSON.stringify(drillFor(na1, W, opt)) === JSON.stringify({ slug: 'tip', value: 'N/A' }));
+  const onlyEmpty = buildBreakdown([R(null, null, 'Racun', 0, 0.8)], { ...W, grouping: undefined });
+  ok('samo prazan Tip ⇒ nema ↗ (This Year 25.10.: 0,80 €)', 'none' in drillFor(onlyEmpty.expense.children[0], W, opt));
+  ok('os naplate: ni N/A nema ↗', 'none' in drillFor(naNA, W, { ...opt, axisIsEventDate: false }));
+
+  // Tip pod bucketom: Kuća je u Mjesečni (Struja, Povrat, `Kuća / *`) I u Investicije (Plin).
+  const kucaMj = m.expense.children.find(c => c.name === 'Mjesečni').children.find(c => c.name === 'Kuća');
+  const kucaInv = m.expense.children.find(c => c.name === 'Investicije').children.find(c => c.name === 'Kuća');
+  ok('Tip u dva bucketa ⇒ nema ↗ ni u jednom', kucaMj.splitAcross === 2 && 'none' in drillFor(kucaMj, W, opt)
+     && 'none' in drillFor(kucaInv, W, opt));
+  ok('Podtip ispod i dalje ima ↗', JSON.stringify(drillFor(kucaInv.children[0], W, opt)) === JSON.stringify({ slug: 'podtip', value: 'Plin' }));
+  const por = m.expense.children.find(c => c.name === 'Nužno').children.find(c => c.name === 'Porezi');
+  ok('Tip cijeli u jednom bucketu ⇒ ↗ ostaje', JSON.stringify(drillFor(por, W, opt)) === JSON.stringify({ slug: 'tip', value: 'Porezi' }));
+  const kucaFlat = flat.expense.children.find(c => c.name === 'Kuća');
+  ok('bez bucketa (pogled Tip) Tip ima ↗', !kucaFlat.splitAcross && 'slug' in drillFor(kucaFlat, W, opt));
+
+  // Stvarna snimka (Saša, slika 25.10.): Razno pod „Kućište · Nenin novac" je u više bucketa.
+  const fx = JSON.parse(readFileSync(join(here, 'fixtures', 'breakdown_financije_2026_namjena.json'), 'utf8'));
+  const mb = buildBreakdown(fx.kupnja, fx.widget, fx.grouping, resolveViews(fx.widget)[0]);
+  const razno = mb.expense.children.find(c => c.name === 'Kućište · Nenin novac').children.find(c => c.name === 'Razno');
+  ok('snimka: Razno pod Kućištem nema ↗ (Razno je u više bucketa)', razno.splitAcross > 1 && 'none' in drillFor(razno, fx.widget, opt),
+     String(razno.splitAcross));
+  ok("snimka: Nena's funds ispod ima ↗", JSON.stringify(drillFor(razno.children[0], fx.widget, opt))
+     === JSON.stringify({ slug: 'podtip', value: "Nena's funds" }));
+  const naTY = mb.expense.children.find(c => c.kind === 'unclassified');
+  ok('snimka This Year: N/A 0,80 je prazan Tip ⇒ nema ↗', naTY.cents === 80 && 'none' in drillFor(naTY, fx.widget, opt));
+  const pz = mb.expense.children.find(c => c.name === 'Putovanja i pokloni').children.find(c => c.name === 'Putovanja');
+  ok('snimka: Putovanja (cijeli Tip u bucketu) ima ↗', 'slug' in drillFor(pz, fx.widget, opt));
+}
+
 console.log(`\n${pass} prošlo, ${fail} palo`);
 if (fail) process.exit(1);

@@ -690,6 +690,14 @@ Svi pogledi su iz **istog** RPC odgovora (dimenzije = razine ∪ uvjeti ∪ `vie
 pokazao i Zajedničke retke (razred S166). Na strani koju os ne nosi (Prihodi uz „po naplati") čita se
 os strane; ako je to event_date, drill je pošten.
 
+**Drill — dopuna istog dana (Saša, slika 25.10.):** (a) **N/A ima ↗** na `tip = N/A` (popis za
+razvrstavanje). Filtar ne zna „prazno", pa kriška s dvije vrste dobiva podretke `N/A` (↗) i `(prazno)`
+(bez ↗, `title` broji retke); jedna vrsta ⇒ ↗ na samoj kriški. Izmjereno TEST This Year: 0,80 € je
+redak **bez** Tipa (`2b9be073`, ZABA 15.10., bez opisa) ⇒ naivni ↗ `tip = N/A` dao bi praznu listu;
+All time 1.378 `N/A` + taj 1. (b) **Tip pod bucketom ima ↗ samo kad je cijeli u tom bucketu**
+(`splitAcross`): Razno je u 4 bucketa, pa ↗ uz Razno pod „Kućište" više ne obećava 2.465,05 a daje
+cijeli Razno; ↗ uz Podtip ostaje. Sabotaže ruše 2 / 3 (+ pad testa).
+
 **Pločica:** prekidač pogleda (pamti se u `lastView`, preživi drill, ne F5); prekidač osi se crta samo
 kad strana ima > 1 os, a odabrana os **ostaje** — inače bi se Izašlo u sažetku mijenjalo s prebacivanjem strane.
 

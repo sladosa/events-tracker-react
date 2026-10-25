@@ -303,6 +303,12 @@ period — promijeniš filtar, promijeni se i ona. U zaglavlju piše koje razdob
   (*auto C5*) otvara cijeli Tip. Bucket nema ↗ jer je više uvjeta.
   U pogledu **Namjena** ↗ postoji samo uz Namjenu (npr. sve Kokine retke); ispod nje ga
   nema, jer bi „auto C5 pod Koka" bila dva uvjeta.
+  U pogledu **Bucketi** Tip ima ↗ samo kad je **cijeli** u tom bucketu (npr. Putovanja); Tip
+  koji je razasut po više bucketa (npr. Razno) ↗ nema — otvorio bi i retke drugih bucketa —
+  pa se ide preko ↗ uz Podtip.
+  **↗ uz „nerazvrstano (N/A)"** otvara retke s Tipom `N/A` — popis za razvrstavanje. Ako ima i
+  redaka **bez** Tipa, kriška se rasklopi u *N/A* (s ↗) i *(prazno)* (bez ↗, jer filtar ne zna
+  tražiti prazno polje).
 - Otvorena je **uvijek jedna** pločica (saldo, Košare ili razrez): klik na naslov jedne
   otvori nju i sklopi ostale — da filtar s razdobljem ostane blizu. Pri svakom otvaranju
   appa saldo je otvoren, a ostale zatvorene.

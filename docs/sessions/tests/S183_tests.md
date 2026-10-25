@@ -29,6 +29,11 @@ TEST = PROD 22.10. + S180 (nepromijenjen od snimke `fixtures/breakdown_financije
    **ostaje 39.031,63** (os se ne mijenja), prekidača osi nema.
 7. **Tip**: ravno, prvi Domaćinstvo 8.833,31 (po kupnji), Izašlo 36.148,05.
 8. Uski prozor (ili mobitel na lokalnoj mreži): tri prekidača se prelome, nema vodoravnog scrolla, krug se ne crta.
+9. **↗ (dopuna, Saša 25.10.)**, Bucketi: rasklopi „Kućište · Nenin novac" ⇒ uz **Razno nema ↗**
+   (hover kaže „Razno je u 4 bucketa…"), uz **Nena's funds ima**. Uz Putovanja (u „Putovanja i pokloni") ↗ ima.
+   This Year: „nerazvrstano (N/A)" 0,80 **bez ↗** (hover: „1 redak bez vrijednosti „tip"…").
+   Filtar **All Time** ⇒ N/A se rasklopi u **N/A** (↗, 1.378 redaka) i **(prazno)** (1, bez ↗); ↗ uz N/A ⇒
+   Activities s filtrom Tip = N/A.
 
 **Pad:** Izašlo različit između pogleda; ↗ ispod Namjene; prekidač osi na Prihodima; nakon koraka 4
 pogled vraćen na Bucketi.

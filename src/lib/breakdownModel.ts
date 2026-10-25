@@ -64,6 +64,8 @@ export interface BreakdownNode {
   facet?: { slug: string; value: string | null };
   /** `level` ispod `facet`: čvor opisuju DVA uvjeta, a filtar nosi jedan ⇒ bez drilla. */
   scoped?: boolean;
+  /** Tip (razina 0) pod bucketom koji je u N bucketa ⇒ ↗ `tip = X` bi pokazao više (S183). */
+  splitAcross?: number;
   children: BreakdownNode[];
 }
 
@@ -99,6 +101,8 @@ export interface BreakdownModel {
 export const EMPTY_LABEL = '(prazno)';
 export const UNCLASSIFIED_LABEL = 'nerazvrstano (N/A)';
 export const UNASSIGNED_LABEL = 'nesvrstano';
+/** Podredak N/A kriške: retci bez ikakve vrijednosti razine 1 (filtar ih ne zna naći). */
+export const NO_LEVEL1_LABEL = '(prazno)';
 
 const SEP = '\u0000';
 
@@ -270,6 +274,7 @@ export function buildBreakdown(
   const unassignedTree = new LevelTree(`out/u`);
   const outside = { plusCents: 0, minusCents: 0, n: 0 };
   let naCents = 0, naN = 0, nNoDate = 0;
+  const naBy = new Map<string | null, { cents: number; n: number }>();   // null = prazna razina 1
   // Pogled `by`: po jedno stablo razina za svaku vrijednost osi, na obje strane.
   const facetIn = new Map<string | null, LevelTree>();
   const facetOut = new Map<string | null, LevelTree>();
@@ -302,6 +307,9 @@ export function buildBreakdown(
       const v0 = lv[0];
       if (v0 == null || v0 === '' || unclassified.has(v0)) {
         naCents += minus - plus; naN += r.n;
+        const nk = v0 == null || v0 === '' ? null : v0;
+        const s = naBy.get(nk) ?? { cents: 0, n: 0 };
+        s.cents += minus - plus; s.n += r.n; naBy.set(nk, s);
         continue;
       }
       if (by) { facetTree(facetOut, 'out', fv).add(lv, minus - plus, r.n); continue; }
@@ -363,11 +371,36 @@ export function buildBreakdown(
     for (const x of adjNodes) expense.children.push(x.nd);
   }
   if (naN > 0 || naCents !== 0) {
+    // N/A po vrijednosti (S183, Saša): `N/A` se da filtrirati, prazan Tip ne (filtar
+    // zna samo „= X"). Jedna vrsta ⇒ kriška sama nosi vrijednost (i ↗); dvije ⇒ podretci,
+    // da ↗ na `N/A` ne obeća retke bez Tipa (This Year 25.10.: 0,80 € je baš takav redak).
     const na = node('out/na', UNCLASSIFIED_LABEL, 'unclassified');
     na.cents = naCents; na.n = naN;
+    const kinds = [...naBy];
+    if (kinds.length === 1) na.values = [kinds[0][0]];
+    else {
+      for (const [v, s] of kinds) {
+        const ch = node(`out/na/${v ?? SEP}`, v ?? NO_LEVEL1_LABEL, 'unclassified', { values: [v] });
+        ch.cents = s.cents; ch.n = s.n;
+        na.children.push(ch);
+      }
+    }
     expense.children.push(na);
   }
   finish(expense);
+
+  // Tip pod bucketom (S183): ↗ `tip = X` smije samo kad je CIJELI Tip u tom bucketu —
+  // inače obeća iznos bucketa, a pokaže Tip iz svih bucketa (razred S166).
+  if (applyBuckets) {
+    const spans = new Map<string, number>();
+    const tops = expense.children.filter(b => b.kind === 'bucket' || b.kind === 'unassigned')
+      .flatMap(b => b.children.filter(c => c.kind === 'level' && c.depth === 0));
+    for (const c of tops) { const k = c.values?.[0] ?? ''; spans.set(k, (spans.get(k) ?? 0) + 1); }
+    for (const c of tops) {
+      const s = spans.get(c.values?.[0] ?? '') ?? 1;
+      if (s > 1) c.splitAcross = s;
+    }
+  }
 
   const income = node('in', 'Ušlo', 'root');
   income.children.push(...(by ? facetNodes(facetIn, 'in') : incomeTree.top));
@@ -482,6 +515,18 @@ export function drillFor(
   if (nd.kind === 'facet' && nd.facet) {
     if (nd.facet.value == null) return { none: 'Prazna vrijednost se ne može filtrirati.' };
     return { slug: nd.facet.slug, value: nd.facet.value };
+  }
+  if (nd.kind === 'unclassified') {
+    // N/A (S183): ↗ samo kad čvor nosi JEDNU vrijednost razine 1 koja se da tražiti.
+    if (nd.values?.length !== 1) return { none: 'Kriška ima više vrsta — ↗ je uz svaku vrstu ispod.' };
+    const v = nd.values[0];
+    if (v == null || v === '') {
+      return { none: `${nd.n} ${nd.n === 1 ? 'redak' : 'redaka'} bez vrijednosti „${w.levels[0]}" — filtar zna tražiti samo vrijednost, ne prazno.` };
+    }
+    return { slug: w.levels[0], value: v };
+  }
+  if (nd.splitAcross && nd.depth === 0) {
+    return { none: `${nd.values?.[0]} je u ${nd.splitAcross} bucketa — ↗ bi pokazao cijeli Tip, ne samo ovaj dio; ↗ uz Podtip pokazuje točno.` };
   }
   if (nd.scoped) {
     // `tip = auto C5` ispod `Koka` bi pokazao i Zajedničke retke tog Tipa — strelica

@@ -98,7 +98,9 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     await expect(page.getByText('20.994,89 €')).toBeVisible();
     // S166: udio u roditelju — Mjesečni 20.994,89 / Izašlo 40.127,91 = 52,32 %
     await expect(page.getByText('52,3 %', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: /nerazvrstano \(N\/A\)/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'nerazvrstano (N/A)', exact: true })).toBeVisible();
+    // S183: u 12 mj su svi nerazvrstani `N/A` (bez praznog Tipa) ⇒ kriška ima ↗ (121 redak).
+    await expect(page.getByRole('button', { name: 'Prikaži retke za nerazvrstano (N/A)' })).toBeVisible();
     await expect(page.getByText(/grupirano: Vrsta troška/)).toBeVisible();
     await expect(page.locator('.js-plotly-plot')).toHaveCount(1);
     await expect(page.getByText(/Nije nacrtano/)).toBeVisible();

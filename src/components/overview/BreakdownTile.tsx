@@ -222,7 +222,8 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
     const isOpen = open.has(nd.id) || (wide && nd.id === focusId && focusPath.length > 0);
     const neg = nd.cents < 0;
     // Isti izvor kao klik: strelica postoji točno kad drill postoji.
-    const target = axisIsEventDate && (nd.kind === 'level' || nd.kind === 'facet') ? drillTarget(nd) : null;
+    const target = axisIsEventDate && (nd.kind === 'level' || nd.kind === 'facet' || nd.kind === 'unclassified')
+      ? drillTarget(nd) : null;
     const canDrill = target != null && !('none' in target);
     const special = nd.kind === 'unclassified' || nd.kind === 'unassigned';
     return (
