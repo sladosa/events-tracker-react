@@ -28,11 +28,12 @@ const SALDO = {
   plus: 'uplata', minus: 'isplata', unit: '€',
 };
 
-async function mockRpc(page: Page): Promise<string[][]> {
-  const asked: string[][] = [];
+type Asked = { p_group_slugs: string[]; p_date_from: string | null; p_date_to: string | null };
+async function mockRpc(page: Page): Promise<Asked[]> {
+  const asked: Asked[] = [];
   await page.route(/\/rest\/v1\/rpc\/rpc_area_breakdown/, async route => {
     const body = JSON.parse(route.request().postData() ?? '{}');
-    asked.push(body.p_group_slugs);
+    asked.push(body);
     const rows = body.p_date_slug === 'datum_naplate' ? FX.naplata : FX.kupnja;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) });
   });
@@ -87,7 +88,7 @@ test.describe('S183 — pogledi pločice Kamo ide novac', () => {
     await expect(page.getByRole('button', { name: /Mjesečni troškovi/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /razno$/ })).toHaveCount(0);
     // Jedan upit nosi sva tri pogleda: namjena je 4. dimenzija.
-    expect(asked[0]).toEqual(['tip', 'podtip', 'izvorplacanja', 'namjena']);
+    expect(asked[0].p_group_slugs).toEqual(['tip', 'podtip', 'izvorplacanja', 'namjena']);
     const callsBefore = asked.length;
 
     await page.getByRole('button', { name: 'Namjena', exact: true }).click();
@@ -101,9 +102,9 @@ test.describe('S183 — pogledi pločice Kamo ide novac', () => {
     // N/A i gotovina na vrhu (5A), ne pod Zajedničko.
     await expect(page.getByRole('button', { name: 'gotovina, nerazvrstano', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'nerazvrstano (N/A)', exact: true })).toBeVisible();
-    // Fond (2A).
-    await expect(page.getByText(/fond Nena \/ Kućište/)).toContainText('9.534,95');
     await expect(page.locator('.js-plotly-plot')).toHaveCount(1);
+    // Rečenice fonda više nema — fond je strana „Fond" (S183, Saša).
+    await expect(page.getByText(/fond Nena/)).toHaveCount(0);
 
     // Drill: ↗ uz Namjenu postoji, ispod nje ne.
     await expect(page.getByRole('button', { name: 'Prikaži retke za Koka' })).toBeVisible();
@@ -119,10 +120,39 @@ test.describe('S183 — pogledi pločice Kamo ide novac', () => {
     await expect(page.getByRole('button', { name: 'po naplati' })).toHaveCount(0);
     await expect(page.getByText('39.031,63 €').first()).toBeVisible();
     await expect(page.getByText('12.000,00 €').first()).toBeVisible();
+    // Prihodi ravno na Podtip — stalna razina „Prihodi" se ne prikazuje (S183).
+    await page.getByRole('button', { name: /^▸ Nena \/ Kućište/ }).click();
+    await expect(page.getByRole('button', { name: 'Nasljedstvo', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^▸ Prihodi/ })).toHaveCount(0);
     // Na Prihodima je drill pošten i uz os naplate (config tvrdi: ista os).
     await expect(page.getByRole('button', { name: 'Prikaži retke za Saša' })).toBeVisible();
     await page.getByRole('button', { name: 'Troškovi', exact: true }).click();
     await expect(page.getByRole('button', { name: 'po naplati' })).toBeVisible();
+
+    // Fond: stanje OD POČETKA (poziv bez granica), traka, razdoblje, kamo / odakle.
+    // ↗ fonda postoji samo „po kupnji" (filtar ne zna raspon datuma naplate).
+    await page.getByRole('button', { name: 'Fond', exact: true }).click();
+    await expect(page.getByTestId('fund-panel')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Prikaži retke fonda Nena / Kućište' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'po kupnji' }).click();
+    const fund = page.getByTestId('fund-panel');
+    await expect(fund).toContainText('Fond Nena / Kućište');
+    await expect(fund).toContainText('+9.534,95');
+    await expect(fund).toContainText('potrošeno 2.465,05');
+    await expect(fund).toContainText('(20,5 %)');
+    await expect(fund).toContainText('u razdoblju 01.01.–31.12.2026.');
+    expect(asked.some(a => a.p_date_from == null && a.p_date_to == null)).toBe(true);
+    await fund.getByRole('button', { name: /^▸ Razno/ }).click();
+    await expect(fund.getByRole('button', { name: "Nena's funds" })).toBeVisible();
+    await expect(fund.getByRole('button', { name: 'Nasljedstvo', exact: true })).toBeVisible();
+    await expect(fund.getByRole('button', { name: 'Prikaži retke fonda Nena / Kućište' })).toBeVisible();
+    // Jedna stavka troška (Nena's funds) ⇒ bez kruga (jednobojni disk ne govori ništa).
+    await expect(fund.locator('.js-plotly-plot')).toHaveCount(0);
+    await page.screenshot({ path: 'e2e/test-results/S183_fond_wide.png', fullPage: true });
+    // Fond ne postoji u pogledu bez fondova ⇒ prekidač se vrati na Troškove.
+    await page.getByRole('button', { name: 'Bucketi', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Fond', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Mjesečni troškovi/ })).toBeVisible();
 
     // Pogled Tip: ravno, bez bucketa i bez Namjene.
     await page.getByRole('button', { name: 'po kupnji' }).click();
@@ -160,6 +190,8 @@ test.describe('S183 — pogledi pločice Kamo ide novac', () => {
     await strip.locator('> button').first().click();
     await expect(page.getByRole('heading', { name: /Kamo ide novac/ })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: /^▸ Zajedničko/ })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/fond Nena \/ Kućište/)).toBeVisible();
+    await page.getByRole('button', { name: 'Fond', exact: true }).click();
+    await expect(page.getByTestId('fund-panel')).toContainText('+9.534,95');
+    await page.getByTestId('fund-panel').screenshot({ path: 'e2e/test-results/S183_fond_narrow.png' });
   });
 });

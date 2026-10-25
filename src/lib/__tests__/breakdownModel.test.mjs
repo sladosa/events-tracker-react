@@ -118,8 +118,14 @@ ok('invarijanta vrijedi (s grupiranjem i bez)', invariant1(m, flat));
 ok('Izašlo = 91,96 u lipu', m.totals.outCents === 9196, String(m.totals.outCents));
 ok('Ušlo = 1.500,50', m.totals.inCents === 150050, String(m.totals.inCents));
 ok('razlika = ušlo − izašlo', m.totals.diffCents === 150050 - 9196);
-ok('prihod po Podtipu (Prihodi → Koka, Saša)',
-   m.income.children.length === 1 && m.income.children[0].children.map(c => c.name).join() === 'Koka,Saša');
+// S183: razina s jednom vrijednošću `income` uvjeta (Tip = Prihodi) se na prihodima preskače.
+ok('prihod ravno po Podtipu (Koka, Saša) — bez stalne razine „Prihodi"',
+   m.income.children.map(c => c.name).join() === 'Koka,Saša', m.income.children.map(c => c.name).join());
+ok('preskočena razina: depth i values ostaju apsolutni (drill zna da je to Podtip)',
+   m.income.children[0].depth === 1 && JSON.stringify(m.income.children[0].values) === '["Prihodi","Koka"]');
+ok('income uvjet s DVIJE vrijednosti ⇒ razina se ne preskače',
+   buildBreakdown(ROWS, { ...W, income: { slug: 'tip', op: 'in', values: ['Prihodi', 'Mirovina'] } }, G)
+     .income.children.map(c => c.name).join() === 'Prihodi');
 
 // PROTUPROVJERA: naivno grupiranje stavlja Kuća/Plin u OBA bucketa (par i `*`).
 {
@@ -347,9 +353,14 @@ console.log('\n10. pogledi (S183):');
   ok('Namjena: povrat ostaje u svojoj Namjeni (Zajedničko = 80 − 20)',
      mn.expense.children.find(c => c.name === 'Zajedničko')?.cents === 6000);
 
+  const f0 = mn.funds[0];
   ok('fond Nena: ušlo 500 · izašlo 120 + N/A 5 · ostaje 375 (Transfer ne)',
-     JSON.stringify(mn.funds[0]) === JSON.stringify({ name: 'Nena', inCents: 50000, outCents: 12500, leftCents: 37500 }),
-     JSON.stringify(mn.funds[0]));
+     f0.name === 'Nena' && f0.inCents === 50000 && f0.outCents === 12500 && f0.leftCents === 37500 && f0.naCents === 500,
+     JSON.stringify({ ...f0, expenseNode: undefined, incomeNode: undefined }));
+  ok('fond nosi svoje čvorove: kamo je otišlo (bez N/A) i odakle je ušlo',
+     f0.expenseNode?.cents === 12000 && f0.expenseNode.cents + f0.naCents === f0.outCents
+     && f0.incomeNode?.cents === 50000 && f0.incomeNode.children[0].name === 'Nasljedstvo');
+  ok('fond bez ijednog retka: čvorova nema (null), ne izmišlja se', mn.funds[1].expenseNode === null && mn.funds[1].incomeNode === null);
   ok('fond bez ijednog retka: nule, ne izostaje', mn.funds[1]?.inCents === 0 && mn.funds[1]?.outCents === 0);
   ok('fond samo u pogledu `by`', mb.funds.length === 0 && mt.funds.length === 0);
 
@@ -417,9 +428,13 @@ console.log('\n11. stvarna snimka s Namjenom (TEST 25.10.2026., 2026.):');
   ok('gotovina 3.316,90 na vrhu (podignuto 3.540,00 − evidentirano 223,10)',
      mn.expense.children.find(c => c.kind === 'adjustment')?.cents === 331690,
      String(mn.expense.children.find(c => c.kind === 'adjustment')?.cents));
+  const nf = mn.funds;
   ok('fond Nena / Kućište: 12.000,00 · 2.465,05 · ostaje 9.534,95',
-     JSON.stringify(mn.funds) === JSON.stringify([{ name: 'Nena / Kućište', inCents: 1200000, outCents: 246505, leftCents: 953495 }]),
-     JSON.stringify(mn.funds));
+     nf.length === 1 && nf[0].inCents === 1200000 && nf[0].outCents === 246505 && nf[0].leftCents === 953495 && nf[0].naCents === 0,
+     JSON.stringify(nf.map(f => [f.inCents, f.outCents, f.leftCents, f.naCents])));
+  ok("fond: kamo je otišlo = Razno › Nena's funds 2.465,05; odakle = Nasljedstvo 12.000,00",
+     nf[0].expenseNode?.children[0]?.children[0]?.name === "Nena's funds" && nf[0].incomeNode?.children[0]?.name === 'Nasljedstvo');
+  // Stanje fonda OD POČETKA mjeri E2E S183 (pločica zove RPC bez granica) — model ga ne zna.
   ok('os „po naplati" samo za Troškove (6A)',
      JSON.stringify(fx.widget.date_axes[1].sides) === '["expense"]' && !fx.widget.date_axes[0].sides);
   const pn = buildBreakdown(fx.naplata, fx.widget, undefined, views[1]);

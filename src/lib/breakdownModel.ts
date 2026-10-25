@@ -76,6 +76,11 @@ export interface BreakdownFund {
   /** Svi retci troška s tom vrijednošću — i N/A (fond ne smije prešutjeti trošak). */
   outCents: number;
   leftCents: number;
+  /** Od `outCents` dio koji je N/A (nije u `expenseNode`, nego u kriški N/A). */
+  naCents: number;
+  /** Čvorovi osi te vrijednosti (Tip → Podtip ispod) — „kamo je otišlo" / „odakle je ušlo". */
+  expenseNode: BreakdownNode | null;
+  incomeNode: BreakdownNode | null;
 }
 
 export interface BreakdownModel {
@@ -176,13 +181,16 @@ class LevelTree {
   readonly top: BreakdownNode[] = [];
   private prefix: string;
   private scoped: boolean;
-  /** `scoped`: stablo živi ispod čvora osi pogleda (v. `BreakdownNode.scoped`). */
-  constructor(prefix: string, scoped = false) { this.prefix = prefix; this.scoped = scoped; }
+  private skip: number;
+  /** `scoped`: stablo živi ispod čvora osi pogleda (v. `BreakdownNode.scoped`).
+   *  `skip`: koliko gornjih razina se NE prikazuje (stalne su — v. `incomeSkip`); `depth` i
+   *  `values` ostaju apsolutni, pa drill i dalje zna koju razinu čvor nosi. */
+  constructor(prefix: string, scoped = false, skip = 0) { this.prefix = prefix; this.scoped = scoped; this.skip = skip; }
 
   add(values: (string | null)[], cents: number, n: number): void {
     let parent: BreakdownNode | null = null;
     let id = this.prefix;
-    for (let d = 0; d < values.length; d++) {
+    for (let d = this.skip; d < values.length; d++) {
       const v = values[d];
       id += `/${d}:${v ?? SEP}`;
       let nd = this.byId.get(id);
@@ -268,7 +276,11 @@ export function buildBreakdown(
     pairBucket.get(`${v0}${SEP}${v1}`) ?? (v0 != null ? starBucket.get(v0) : undefined) ?? null;
 
   const unclassified = new Set(w.unclassified ?? []);
-  const incomeTree = new LevelTree('in');
+  // Strana prihoda (S183, Saša): razina na kojoj je `income` uvjet s JEDNOM vrijednošću je na
+  // svakom retku prihoda ista (Financije: Tip = Prihodi) ⇒ ne prikazuje se, ide se ravno na Podtip.
+  const incomeSkip = levels.length > 1 && w.income?.slug === levels[0]
+    && (w.income.op ?? 'in') === 'in' && w.income.values?.length === 1 ? 1 : 0;
+  const incomeTree = new LevelTree('in', false, incomeSkip);
   const flatTree = new LevelTree('out');
   const bucketTrees = new Map<string, LevelTree>();
   const unassignedTree = new LevelTree(`out/u`);
@@ -280,11 +292,11 @@ export function buildBreakdown(
   const facetOut = new Map<string | null, LevelTree>();
   const facetTree = (m: Map<string | null, LevelTree>, side: 'in' | 'out', v: string | null) => {
     let t = m.get(v);
-    if (!t) { t = new LevelTree(`${side}/f:${v ?? SEP}`, true); m.set(v, t); }
+    if (!t) { t = new LevelTree(`${side}/f:${v ?? SEP}`, true, side === 'in' ? incomeSkip : 0); m.set(v, t); }
     return t;
   };
   const fundNames = by ? (view.funds ?? []) : [];
-  const fundSums = new Map<string, { in: number; out: number }>(fundNames.map(f => [f, { in: 0, out: 0 }]));
+  const fundSums = new Map<string, { in: number; out: number; na: number }>(fundNames.map(f => [f, { in: 0, out: 0, na: 0 }]));
 
   if (!bad && levels.length > 0 && w.income?.slug) {
     for (const r of rows) {
@@ -307,6 +319,7 @@ export function buildBreakdown(
       const v0 = lv[0];
       if (v0 == null || v0 === '' || unclassified.has(v0)) {
         naCents += minus - plus; naN += r.n;
+        if (fund) fund.na += minus - plus;
         const nk = v0 == null || v0 === '' ? null : v0;
         const s = naBy.get(nk) ?? { cents: 0, n: 0 };
         s.cents += minus - plus; s.n += r.n; naBy.set(nk, s);
@@ -418,7 +431,12 @@ export function buildBreakdown(
     view,
     funds: fundNames.map(name => {
       const s = fundSums.get(name)!;
-      return { name, inCents: s.in, outCents: s.out, leftCents: s.in - s.out };
+      const find = (root: BreakdownNode) =>
+        root.children.find(c => c.kind === 'facet' && c.facet?.value === name) ?? null;
+      return {
+        name, inCents: s.in, outCents: s.out, leftCents: s.in - s.out, naCents: s.na,
+        expenseNode: find(expense), incomeNode: find(income),
+      };
     }),
   };
 }

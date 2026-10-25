@@ -64,12 +64,14 @@ const useWide = () => useMinWidth(640);
  *  u novom razdoblju nema samo se ne prikaže. */
 interface TileView {
   key: string;
-  side: BreakdownSide;
+  side: TileSide;
   axisIdx: number;
   viewIdx: number;
   open: string[];
   focusId: string | null;
 }
+/** Strana pločice: dvije strane modela + Fond (S183, Saša) — stanje fonda, ne strana razreza. */
+type TileSide = BreakdownSide | 'fund';
 let lastView: TileView | null = null;
 const rememberView = (v: TileView) => { lastView = v; };
 
@@ -92,13 +94,18 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
 
   const viewKey = `${areaId}|${widget.title}`;
   const [saved] = useState(() => (lastView?.key === viewKey ? lastView : null));
-  const [side, setSide] = useState<BreakdownSide>(saved?.side ?? 'expense');
+  const [side, setSide] = useState<TileSide>(saved?.side ?? 'expense');
   const [axisIdx, setAxisIdx] = useState(saved?.axisIdx ?? 0);
   // Pogled (S183): Bucketi | Namjena | Tip. Isti RPC odgovor, samo drukčiji model.
   const views = useMemo(() => resolveViews(widget), [widget]);
   const [viewIdx, setViewIdx] = useState(saved?.viewIdx ?? 0);
   const view = views[Math.min(viewIdx, views.length - 1)];
   const grouping = view.grouping ? groupings?.[view.grouping] : undefined;
+  // „Fond" postoji samo u pogledu `by` s fondovima; zapamćen „Fond" uz drugi pogled ⇒ Troškovi
+  // (izvedeno, bez efekta koji resetira). Os i brojke razdoblja Fond čita sa strane troška.
+  const hasFunds = !!view.by && (view.funds?.length ?? 0) > 0;
+  const tileSide: TileSide = side === 'fund' && !hasFunds ? 'expense' : side;
+  const dataSide: BreakdownSide = tileSide === 'fund' ? 'expense' : tileSide;
   const [reload, setReload] = useState(0);
   const [open, setOpen] = useState<Set<string>>(() => new Set(saved?.open ?? []));
   // Fokus kruga (S166, Saša): klik na isječak suzi i listu na taj dio.
@@ -114,7 +121,7 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
   // Os po strani (S183, odluka 6A): na strani koju os ne nosi prekidača nema, a
   // odabrana os OSTAJE — inače bi se Izašlo u sažetku mijenjalo pri prebacivanju
   // strane. Config time tvrdi da ta strana po toj osi daje isto što i po svojoj.
-  const sideAxes = axes.map((a, i) => ({ a, i })).filter(({ a }) => !a.sides || a.sides.includes(side));
+  const sideAxes = axes.map((a, i) => ({ a, i })).filter(({ a }) => !a.sides || a.sides.includes(dataSide));
   const axisOnSide = sideAxes.some(({ i }) => i === Math.min(axisIdx, axes.length - 1));
   const inputKey = `${areaId}|${dateFrom}|${dateTo}|${axis.slug}|${dims.join(',')}|${reload}`;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -155,6 +162,27 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
     return () => { cancelled = true; };
   }, [inputKey, collapsed, areaId, dims, widget.levels, widget.plus, widget.minus, axis.slug, dateFrom, dateTo]);
 
+  // Stanje fonda je OD POČETKA (S183): zbroj od prvog retka, ne od 1. u mjesecu iz filtra —
+  // uz „This Month" bi „ostaje" bilo −potrošeno u mjesecu. Zaseban poziv istog RPC-a bez
+  // granica, samo dok je Fond otvoren.
+  const allKey = `${areaId}|ALL|${dims.join(',')}|${reload}`;
+  const [allTime, setAllTime] = useState<{ key: string; rows: BreakdownRow[]; error: string | null } | null>(null);
+  const wantAll = !collapsed && tileSide === 'fund';
+  useEffect(() => {
+    if (!wantAll) return;
+    let cancelled = false;
+    fetchBreakdown({
+      areaId, groupSlugs: dims, plusSlug: widget.plus, minusSlug: widget.minus,
+      dateSlug: null, dateFrom: null, dateTo: null,
+    }).then(rows => { if (!cancelled) setAllTime({ key: allKey, rows, error: null }); })
+      .catch(e => { if (!cancelled) setAllTime({ key: allKey, rows: [], error: (e as Error)?.message ?? String(e) }); });
+    return () => { cancelled = true; };
+  }, [wantAll, allKey, areaId, dims, widget.plus, widget.minus]);
+  const allModel = useMemo(
+    () => (allTime && allTime.key === allKey && !allTime.error ? buildBreakdown(allTime.rows, widget, undefined, view) : null),
+    [allTime, allKey, widget, view],
+  );
+
   const fresh = loaded?.key === inputKey;
   const model = useMemo(
     () => (loaded && !loaded.error ? buildBreakdown(loaded.rows, widget, grouping, view) : null),
@@ -168,7 +196,7 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
   // Drill zna samo event_date. Os koja na ovoj strani ne vrijedi čita se kao os strane
   // (v. `sideAxes`) — ako je to event_date, drill je pošten.
   const axisIsEventDate = axis.slug == null || (!axisOnSide && sideAxes.some(({ a }) => a.slug == null));
-  const root = model ? (side === 'expense' ? model.expense : model.income) : null;
+  const root = model ? (dataSide === 'expense' ? model.expense : model.income) : null;
   const maxAbs = root ? Math.max(1, ...root.children.map(c => Math.abs(c.cents))) : 1;
   // Put od korijena do fokusa. Fokus koji u ovom stablu ne postoji (promjena strane,
   // osi, razdoblja) ⇒ prazan put ⇒ cijela lista — izvedeno, bez efekta koji resetira.
@@ -214,7 +242,7 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
     return pct < 0.1 ? '<0,1 %' : `${pct.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} %`;
   };
 
-  const renderRow = (nd: BreakdownNode, depth: number, parentCents: number): ReactNode => {
+  const renderRow = (nd: BreakdownNode, depth: number, parentCents: number, scale = maxAbs): ReactNode => {
     const hasKids = nd.children.length > 0;
     // Čvor u fokusu je uvijek rasklopljen — to je smisao klika u krugu. ⚠ SAMO dok se
     // krug vidi (S166, Saša): fokus preživi prelazak na usku širinu, a ondje ga nema
@@ -241,13 +269,13 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
               special && 'italic text-gray-600', nd.kind === 'adjustment' && 'italic')}>
               {nd.name}
             </span>
-            {neg && side === 'expense' && nd.kind === 'level' && (
+            {neg && dataSide === 'expense' && nd.kind === 'level' && (
               <span className="shrink-0 text-[10px] text-emerald-700 bg-emerald-50 rounded px-1">povrat &gt; trošak</span>
             )}
           </button>
           <div className="w-10 sm:w-20 shrink-0 h-1.5 bg-gray-100 rounded">
             <div className={cn('h-1.5 rounded', neg ? 'bg-emerald-400' : 'bg-teal-500')}
-                 style={{ width: `${Math.min(100, (Math.abs(nd.cents) / maxAbs) * 100)}%` }} />
+                 style={{ width: `${Math.min(100, (Math.abs(nd.cents) / scale) * 100)}%` }} />
           </div>
           <span className={cn('w-24 sm:w-40 shrink-0 text-right tabular-nums leading-tight',
             neg ? 'text-emerald-700' : 'text-gray-900', depth === 0 && 'font-medium')}>
@@ -271,9 +299,93 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
           </button>
         </div>
         {hasKids && isOpen && (
-          <ul>{nd.children.map(c => renderRow(c, depth + 1, nd.cents))}</ul>
+          <ul>{nd.children.map(c => renderRow(c, depth + 1, nd.cents, scale))}</ul>
         )}
       </li>
+    );
+  };
+
+  /** Ploča jednog fonda (S183, Saša): stanje OD POČETKA krupno, traka potrošeno/ostaje, razdoblje
+   *  iz filtra, kamo je otišlo / odakle je ušlo (isti `renderRow`, isti model — ništa se ne zbraja ovdje). */
+  const renderFund = (name: string): ReactNode => {
+    const all = allModel?.funds.find(f => f.name === name) ?? null;
+    const per = model?.funds.find(f => f.name === name) ?? null;
+    const head = per?.expenseNode ?? per?.incomeNode ?? all?.expenseNode ?? all?.incomeNode ?? null;
+    const headDrill = head ? drillTarget(head) : null;
+    const canHeadDrill = axisIsEventDate && headDrill != null && !('none' in headDrill);
+    const pct = all && all.inCents > 0 ? Math.min(100, Math.max(0, (all.outCents / all.inCents) * 100)) : null;
+    const allErr = allTime && allTime.key === allKey ? allTime.error : null;
+    // Krug fonda tek uz barem dvije stavke troška — jedna stavka je jednobojni disk bez informacije.
+    const leaves = (nd: BreakdownNode | null): number =>
+      !nd ? 0 : nd.children.length === 0 ? (nd.cents > 0 ? 1 : 0) : nd.children.reduce((a, c) => a + leaves(c), 0);
+    const showKrug = wide && leaves(per?.expenseNode ?? null) >= 2;
+    const list = (title: string, nd: BreakdownNode | null, extra?: ReactNode) => (
+      <div>
+        <p className="text-xs font-medium text-gray-500 mb-0.5">{title}</p>
+        {nd && nd.children.length > 0 ? (
+          <ul className="divide-y divide-gray-50">
+            {nd.children.map(c => renderRow(c, 0, nd.cents, Math.max(1, ...nd.children.map(x => Math.abs(x.cents)))))}
+          </ul>
+        ) : (!extra && <p className="text-xs text-gray-400 py-1">ništa u razdoblju</p>)}
+        {extra}
+      </div>
+    );
+    return (
+      <div key={name} className="rounded-lg border border-gray-100 p-3" data-testid="fund-panel">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900">Fond {name}</p>
+            <p className="text-xs text-gray-500">u fondu je (od početka)</p>
+            <p className={cn('text-2xl font-semibold tabular-nums leading-tight',
+              all && all.leftCents < 0 ? T.amountNeg : 'text-gray-900')}>
+              {allErr ? '—' : all ? formatSigned(all.leftCents / 100, unit) : '…'}
+            </p>
+          </div>
+          {canHeadDrill && (
+            <button type="button" onClick={() => head && drill(head)}
+              className="shrink-0 text-xs text-teal-700 hover:underline px-1"
+              aria-label={`Prikaži retke fonda ${name}`}
+              title="Svi retci fonda u razdoblju iz filtra (uplate i troškovi)">retci ↗</button>
+          )}
+        </div>
+        {allErr && <p className="mt-1 text-xs text-red-700 break-words">Stanje fonda se ne može izračunati: {allErr}</p>}
+        {all && (
+          <>
+            {pct != null && (
+              <div className="mt-2 h-3 rounded bg-emerald-100 overflow-hidden" title={`potrošeno ${pct.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} % onoga što je ušlo`}>
+                <div className="h-3 bg-amber-400" style={{ width: `${pct}%` }} />
+              </div>
+            )}
+            <p className="mt-1 text-xs text-gray-600 flex flex-wrap gap-x-3">
+              <span>ušlo <b className="tabular-nums">{money(all.inCents)}</b></span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-amber-400 mr-1" />potrošeno <b className="tabular-nums">{money(all.outCents)}</b>
+                {pct != null && <span className="text-gray-400"> ({pct.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} %)</span>}</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-emerald-100 border border-emerald-300 mr-1" />ostaje <b className="tabular-nums">{formatSigned(all.leftCents / 100, unit)}</b></span>
+            </p>
+          </>
+        )}
+        {per && (
+          <p className="mt-1 text-xs text-gray-500">
+            u razdoblju {periodLabel(dateFrom, dateTo)}: ušlo <span className="tabular-nums">{money(per.inCents)}</span> ·
+            izašlo <span className="tabular-nums">{money(per.outCents)}</span>
+          </p>
+        )}
+        {per && (
+          <div className={cn('mt-3', showKrug && 'grid grid-cols-2 gap-4 items-start')}>
+            {showKrug && per.expenseNode && (
+              <Suspense fallback={<div className="h-[380px] flex items-center justify-center text-xs text-gray-400">Učitavam krug…</div>}>
+                <BreakdownSunburst root={per.expenseNode} unit={unit} focusId={null} onFocus={() => {}} />
+              </Suspense>
+            )}
+            <div className="space-y-3">
+              {list('Kamo je otišlo (u razdoblju)', per.expenseNode, per.naCents !== 0 ? (
+                <p className="text-xs italic text-gray-600 py-1">nerazvrstano (N/A) <span className="tabular-nums">{money(per.naCents)}</span></p>
+              ) : undefined)}
+              {list('Odakle je ušlo (u razdoblju)', per.incomeNode)}
+            </div>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -329,9 +441,10 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
 
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 <Segmented
-                  value={side}
-                  options={[['expense', 'Troškovi'], ['income', 'Prihodi']]}
-                  onChange={v => setSide(v as BreakdownSide)}
+                  value={tileSide}
+                  options={[['expense', 'Troškovi'], ['income', 'Prihodi'],
+                    ...(hasFunds ? [['fund', 'Fond'] as [string, string]] : [])]}
+                  onChange={v => setSide(v as TileSide)}
                 />
                 {views.length > 1 && (
                   <Segmented
@@ -347,29 +460,18 @@ export function BreakdownTile({ areaId, widget, groupings, dateFrom, dateTo, onD
                     onChange={v => setAxisIdx(Number(v))}
                   />
                 )}
-                {views.length === 1 && side === 'expense' && model.bucketsApplied && view.grouping && (
+                {views.length === 1 && tileSide === 'expense' && model.bucketsApplied && view.grouping && (
                   <span className="text-xs text-gray-500">grupirano: {view.grouping}</span>
                 )}
               </div>
 
               {!fresh && <p className="text-xs text-gray-400 mt-1">Računam…</p>}
 
-              {/* Fond (S183): blagajna jedne vrijednosti osi — ista na obje strane. */}
-              {model.funds.length > 0 && (
-                <div className="mt-2 space-y-0.5">
-                  {model.funds.map(f => (
-                    <p key={f.name} className="text-xs text-gray-600"
-                       title="Ušlo i izašlo s ovom vrijednošću u razdoblju iz filtra (i nerazvrstani retci; Transfer ne).">
-                      fond <b>{f.name}</b>: ušlo <span className="tabular-nums">{money(f.inCents)}</span> ·
-                      izašlo <span className="tabular-nums">{money(f.outCents)}</span> ·
-                      ostaje <b className={cn('tabular-nums', f.leftCents < 0 ? T.amountNeg : T.amountPos)}>
-                        {formatSigned(f.leftCents / 100, unit)}</b>
-                    </p>
-                  ))}
+              {tileSide === 'fund' ? (
+                <div className="mt-2 space-y-3">
+                  {(view.funds ?? []).map(name => renderFund(name))}
                 </div>
-              )}
-
-              {root.children.length === 0 ? (
+              ) : root.children.length === 0 ? (
                 <p className="text-sm text-gray-500 py-4">Nema zapisa u razdoblju.</p>
               ) : (
                 <div className={cn('mt-2', wide && 'grid grid-cols-2 gap-4 items-start')}>

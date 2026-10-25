@@ -148,7 +148,7 @@ test.describe('S165 — pločica Kamo ide novac', () => {
     expect(asked).toContain('datum_naplate');
 
     await page.getByRole('button', { name: 'Prihodi', exact: true }).click();
-    await expect(page.getByRole('button', { name: /^▸ Prihodi/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Povrat Anja', exact: true })).toBeVisible();
   });
 
   test('svjež krug: PRVI klik na isječak već suzi listu (S166)', async ({ page }) => {
@@ -228,11 +228,11 @@ test.describe('S165 — pločica Kamo ide novac', () => {
 
     // Strana (Prihodi) isto preživi odlazak i povratak.
     await page.getByRole('button', { name: 'Prihodi', exact: true }).click();
-    await expect(page.getByRole('button', { name: /^▸ Prihodi/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Povrat Anja', exact: true })).toBeVisible();
     await strip.locator('> button').nth(1).click();     // Activities
     await expect(page.getByRole('heading', { name: /Kamo ide novac/ })).toHaveCount(0, { timeout: 15_000 });
     await strip.locator('> button').first().click();
-    await expect(page.getByRole('button', { name: /^▸ Prihodi/ })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Povrat Anja', exact: true })).toBeVisible({ timeout: 15_000 });
 
     // F5 = novo otvaranje appa ⇒ čisto (i harmonika se vrati na saldo).
     await page.reload();
