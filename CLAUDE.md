@@ -473,10 +473,11 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   99 postavi zadano, 100 ga obriše ⇒ 6 lažnih „preostalih" promjena nad ispravnom bazom).
   ⚠ Snimka za planer mora biti CIJELA (`fetchAllPaged` + `order`, greška baca): odrezana snimka ne daje
   krivu primjenu nego odbijenu, uz poruku „baza se promijenila od pregleda" koja laže.
-  ⚠ **Lista `depends_on` pod `*` (Namjena) planer NE ZNA mijenjati** (S180, nađeno čitanjem, spec §20):
-  korak koji mijenja POSTOJEĆU vrijednost takvog atributa stvori ključ po roditelju SAMO s ciljem ⇒ izbornik
-  pod `Zabava` nudi samo „Zajedničko". Do popravka Namjenu s retcima ne preuređivati sheetom. (S180 je
-  prošao jer je Namjena bila prazna — grana se izvrši tek kad atribut ima izvora.)
+  ⚠ **Lista `depends_on` pod `*` (Namjena): roditelj bez vlastitog ključa nudi listu pod `*`**
+  (`getOptionsForDependency`). Planer je do S185 za njega stvarao ključ SAMO s ciljem ⇒ izbornik pod
+  `Zabava` bi nudio samo „Zajedničko" (S180, spec §20). **Popravljeno S185:** par se broji pod ključem
+  liste koju forma stvarno nudi — ali samo uz **nepraznu** `*` listu (Podtip ima `*: []`, ondje vlastiti
+  ključ ostaje ispravan). Na PROD-u vrijedi tek s deployem; do tada Namjenu s retcima ne preuređivati sheetom.
   ⚠ **Shortcute drugog korisnika planer ne vidi** (RLS): prije uvoza ih prebroji service ključem — S180:
   Sašin `AI_rucak` (`Projekti / Sasa`) ⇒ `fix_shortcuti_S180.py` poslije Apply.
 - **Promjena sluga lomi reference.** `depends_on` (S105d), a od Faze 1 i `dashboard.widgets[]`.

@@ -163,6 +163,83 @@ console.log('\n── O5: izdvoji os (Audible_Koka/_Sasa → Audible + Namjena),
     rows.filter(r => eq(r.values, ['Zabava', 'Audible'])).length === 1);
 }
 
+// S185 (spec §20): Namjena živi kao PROD — lista pod `*` (+ ista lista pod autima, radi
+// default_map). Forma za roditelja bez vlastitog ključa nudi listu pod `*`
+// (`getOptionsForDependency`), pa ključ samo s ciljem SAKRIJE cijelu listu.
+const NAMJENA = ['Zajedničko', 'Koka', 'Saša', 'Nena / Kućište'];
+function snapNamjena() {
+  const s = snap();
+  s.attributes.push({ id: 'attr-namjena', category_id: CAT, slug: 'namjena', name: 'Namjena', data_type: 'text',
+    default_value: null, validation_rules: { type: 'suggest', depends_on: { attribute_slug: 'tip',
+      options_map: { '*': [...NAMJENA], 'auto Lacetti': [...NAMJENA], 'auto C5': [...NAMJENA] },
+      default_map: { '*': 'Zajedničko', 'auto Lacetti': 'Saša', 'auto C5': 'Koka' } } } });
+  let nena = 0;
+  for (const e of s.events) {
+    const t = e.values.tip;
+    e.values.namjena = t === 'auto C5' ? 'Koka' : t === 'auto Lacetti' ? 'Saša'
+      : t === 'Razno' && nena++ < 16 ? 'Nena / Kućište' : 'Zajedničko';
+  }
+  return s;
+}
+const namjenaRules = p => cfg(p, 'attribute_rules', 'attr-namjena')?.after ?? null;
+
+console.log('\n── §20: Namjena pod `*` — promjena POSTOJEĆE vrijednosti ne stvara ključ ──');
+{
+  const s = snapNamjena();
+  const ids = s.events.filter(e => e.values.tip === 'Zabava').slice(0, 3).map(e => e.id);
+  const p = planRestructure([step(1, { tip: 'Zabava', namjena: 'Zajedničko' }, { namjena: 'Koka' }, ids)], s);
+  ok('nema grešaka', p.errors.length === 0 && p.steps[0].changed === 3);
+  const r = namjenaRules(p);
+  ok('Zabava NE dobiva vlastiti ključ (Koka je već pod *)', !r || !('Zabava' in r.depends_on.options_map));
+  ok('lista pod * netaknuta', !r || eq(r.depends_on.options_map['*'], NAMJENA));
+}
+
+console.log('\n── §20: preimenuj vrijednost liste pod `*` (Nena / Kućište → Nena) ──');
+{
+  const s = snapNamjena();
+  const p = planRestructure([step(1, { namjena: 'Nena / Kućište' }, { namjena: 'Nena' })], s);
+  const om = namjenaRules(p)?.depends_on.options_map ?? {};
+  const want = ['Zajedničko', 'Koka', 'Saša', 'Nena'];
+  ok('*: „Nena" na mjestu „Nena / Kućište"', eq(om['*'], want));
+  ok('auto C5 i auto Lacetti isto (dijele listu, bez svojih redaka te vrijednosti)',
+    eq(om['auto C5'], want) && eq(om['auto Lacetti'], want));
+  ok('nijedan novi ključ (Razno ne dobiva svoj)', eq(Object.keys(om), ['*', 'auto Lacetti', 'auto C5']));
+}
+
+console.log('\n── §20: preimenuj zadanu vrijednost pod `*` (Zajedničko → Zajednicko) ──');
+{
+  const s = snapNamjena();
+  const p = planRestructure([step(1, { namjena: 'Zajedničko' }, { namjena: 'Zajednicko' })], s);
+  const dep = namjenaRules(p)?.depends_on;
+  ok('default_map[*] prati', dep?.default_map['*'] === 'Zajednicko');
+  ok('default_map auta netaknut', dep?.default_map['auto C5'] === 'Koka' && dep?.default_map['auto Lacetti'] === 'Saša');
+  ok('lista pod * i pod autima: Zajednicko prvi', dep && ['*', 'auto C5', 'auto Lacetti']
+    .every(k => dep.options_map[k][0] === 'Zajednicko' && !dep.options_map[k].includes('Zajedničko')));
+  ok('nijedan novi ključ', dep && eq(Object.keys(dep.options_map), ['*', 'auto Lacetti', 'auto C5']));
+}
+
+console.log('\n── §20: nova vrijednost samo za jednog roditelja ⇒ njegov ključ = lista pod * + nova ──');
+{
+  const s = snapNamjena();
+  const ids = s.events.filter(e => e.values.tip === 'Putovanja').slice(0, 2).map(e => e.id);
+  const p = planRestructure([step(1, { tip: 'Putovanja' }, { namjena: 'Prijatelji' }, ids)], s);
+  const om = namjenaRules(p)?.depends_on.options_map ?? {};
+  ok('Putovanja: cijela lista + Prijatelji', eq(om.Putovanja, [...NAMJENA, 'Prijatelji']));
+  ok('* bez Prijatelja (ne curi drugim Tipovima)', eq(om['*'], NAMJENA));
+}
+
+console.log('\n── §20: prazna lista pod `*` (Podtip) — ponašanje kao prije ──');
+{
+  const s = snap();
+  const ids = s.events.filter(e => e.values.tip === 'Advokati').map(e => e.id);
+  const om0 = fx.attributes.find(a => a.slug === 'podtip').validation_rules.depends_on.options_map;
+  const p = planRestructure([step(1, { tip: 'Advokati' }, { tip: 'Pravnici' }, ids)], s);
+  const om = rulesAfter(p, 'podtip').depends_on.options_map;
+  ok('fixture: Podtip * je prazan', Array.isArray(om0['*']) && om0['*'].length === 0);
+  ok('Pravnici dobiva vlastiti ključ (kao prije)', 'Pravnici' in om && !('Advokati' in om));
+  ok('* ostaje prazan', eq(om['*'], []));
+}
+
 console.log('\n── Spoj u DVA bucketa = greška ──');
 {
   // Medical_Sasa i PP su u fixtureu u različitim bucketima? Napravi ga sam.

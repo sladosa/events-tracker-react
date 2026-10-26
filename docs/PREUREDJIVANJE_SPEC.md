@@ -711,6 +711,13 @@ ISTO. `set_breakdown.py` nad primijenjenim TEST-om: „grupiranje: ISTO", nesvrs
 Python rječnici ispravljeni po grep popisu (`set_breakdown`, `pravila_trgovca`, `uvezi_transu`,
 `klasificiraj_transu` — i `nena` → `Prihodi / Nasljedstvo`); preostalih 8 pogodaka su jednokratne S107.
 
+**✅ Popravljeno S185 (26.10., `test-branch`, PROD tek s deployem):** planer broji par (roditelj, dijete)
+pod ključem liste koju forma **stvarno nudi** — vlastiti ključ, a bez njega `*` kad `*` nije prazan
+(Namjena; Podtip ima `*: []` i ponaša se kao prije). Cilj koji `*` već nudi ne stvara ključ; preimenovanje
+pod `*` prati i u vlastitim ključevima koji ponavljaju listu (auti) i u `default_map`; nova vrijednost samo
+za neke roditelje ⇒ njihov ključ = lista pod `*` + nova (u `*` bi curila svim Tipovima). Čuva 5 blokova u
+`restructurePlan.test.mjs` (nad starim kodom pada 8 tvrdnji). Izvorni nalaz:
+
 **⚠ Nađeno, NIJE popravljeno (preduvjet za iduće preuređivanje Namjene):** grana planera „dodaj cilj u
 izbornik" (§12, `depends_on`) radi samo kad atribut **ima izvora** (prije je imao vrijednost). Tada za
 roditelja bez vlastitog ključa stvori ključ **samo s ciljem** — a lista Namjene živi pod `*` (ključevi:
@@ -1025,7 +1032,7 @@ Proširuje `058`; F1 koraci ostaju kakvi jesu (i dalje samo tekst), osim jedne i
 
 | # | Što | Gdje | Dokaz |
 | --- | --- | --- | --- |
-| 0 | §20 popravak planera (`depends_on` pod `*`) | `plan.ts` + test | neovisno, mali |
+| 0 | ✅ §20 popravak planera (`depends_on` pod `*`) — S185 | `plan.ts` + test | 78/78, nad starim kodom 8 pada |
 | 1 | `059` + `pravila.py` + `izvedi.py`, **A2 `kcal` na `Fitness_Garmin`** | TEST | §29.4–5 |
 | 2 | `garmin_activities_to_xlsx.py`: `kcal = calories / 4.184` (+ test) | alat | prije ikakvog PROD uvoza Garmina |
 | 3 | A1 (`attrSheet`, `attrPlan`, modal) — `pace` na `Fitness_Garmin`, `mood` mapa | TEST | §29.2, .4, .6 |

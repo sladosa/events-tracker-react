@@ -316,7 +316,9 @@ export function planRestructure(steps: RestructureStep[], snap: AreaSnapshot): R
 
   // ── 2. Prijelazi po atributu (i po paru roditelj/dijete) ─────────────────
   const trans = new Map<string, Transitions>();          // slug → globalno
-  const pairTrans = new Map<string, Transitions>();      // `${slug}` → ključ para „roditelj\u0000dijete"
+  // `${slug}` → parovi „roditelj\u0000dijete" prije/poslije, po retku. Sirovo, jer se ključ
+  // liste za roditelja zna tek uz izbornik (vlastiti ključ ili `*`, §20).
+  const pairRaw = new Map<string, Array<[string | undefined, string | undefined]>>();
   const tupleTrans = new Map<string, Transitions>();     // „l0|l1" → ključ „v0\u0000v1"
   const touchedSlugs = new Set<string>();
   for (const st of steps) for (const s of Object.keys(st.set ?? {})) touchedSlugs.add(s);
@@ -345,9 +347,9 @@ export function planRestructure(steps: RestructureStep[], snap: AreaSnapshot): R
       trans.get(s)!.add(b[s], a[s]);
       const p = parentOf.get(s);
       if (p) {
-        if (!pairTrans.has(s)) pairTrans.set(s, new Transitions());
-        pairTrans.get(s)!.add(b[s] ? (b[p] ?? '') + PAIR + b[s] : undefined,
-                              a[s] ? (a[p] ?? '') + PAIR + a[s] : undefined);
+        if (!pairRaw.has(s)) pairRaw.set(s, []);
+        pairRaw.get(s)!.push([b[s] ? (b[p] ?? '') + PAIR + b[s] : undefined,
+                              a[s] ? (a[p] ?? '') + PAIR + a[s] : undefined]);
       }
     }
     for (const lv of groupLevels) {
@@ -393,46 +395,102 @@ export function planRestructure(steps: RestructureStep[], snap: AreaSnapshot): R
       }
 
       // (b) parovi (roditelj, dijete) koje su koraci pomaknuli — i kad se mijenjao
-      //     samo roditelj (O3: Podtip ostaje, Tip se mijenja)
-      const pt = pairTrans.get(a.slug);
-      if (pt && pt.sources.size) {
-        for (const src of pt.sources) {
-          const [pb, vb] = src.split(PAIR);
-          const k = pureOf(p, pb) ?? pb;
-          if ((pt.afterCount.get(k + PAIR + vb) ?? 0) > 0) continue;
+      //     samo roditelj (O3: Podtip ostaje, Tip se mijenja).
+      //     ⚠ §20 (S185): roditelj BEZ vlastitog ključa nudi listu pod `*`
+      //     (`getOptionsForDependency`) — kad ona nije prazna (Namjena; Podtip ima
+      //     `*: []`). Par se zato broji pod ključem liste koju forma stvarno nudi,
+      //     inače bi cilj stvorio ključ samo sa sobom i sakrio cijelu listu.
+      const star0 = Array.isArray(om['*']) ? [...om['*']] : [];
+      const star = star0.length > 0;
+      const listKey = (pv: string) => (pv in om || !star ? pv : '*');
+      const raw = pairRaw.get(a.slug);
+      const lt = new Transitions();
+      const starParents = new Map<string, Set<string>>();   // nova vrijednost → roditelji pod `*`
+      for (const [b, aft] of raw ?? []) {
+        let kb: string | undefined;
+        if (b) { const [pb, vb] = b.split(PAIR); kb = listKey(pureOf(p, pb) ?? pb) + PAIR + vb; }
+        let ka: string | undefined;
+        if (aft) {
+          const [pa, va] = aft.split(PAIR);
+          ka = listKey(pa) + PAIR + va;
+          if (listKey(pa) === '*' && pa !== '*') {
+            if (!starParents.has(va)) starParents.set(va, new Set());
+            starParents.get(va)!.add(pa);
+          }
+        }
+        lt.add(kb, ka);
+      }
+      const renamed = new Set<string>();                     // vrijednosti koje je (b) preimenovao pod `*`
+      if (lt.sources.size) {
+        for (const src of lt.sources) {
+          const [k, vb] = src.split(PAIR);
+          if ((lt.afterCount.get(src) ?? 0) > 0) continue;
           const list = om[k];
           if (!list?.includes(vb)) continue;
-          const to = pt.pure(src);
+          const to = lt.pure(src);
           const [pa, va] = to ? to.split(PAIR) : [null, null];
           if (to && pa === k && !list.includes(va!)) {
             om[k] = list.map(o => (o === vb ? va! : o));
             lines.push(`„${k}": „${vb}" → „${va}"`);
+            if (k === '*') renamed.add(vb);
           } else {
             om[k] = list.filter(o => o !== vb);
             lines.push(`„${k}": makni „${vb}"`);
           }
         }
-        for (const tg of pt.targets) {
-          const [pa, va] = tg.split(PAIR);
-          if (!pt.afterCount.get(tg)) continue;
-          const list = om[pa] ?? [];
+        for (const tg of lt.targets) {
+          const [pk, va] = tg.split(PAIR);
+          if (!lt.afterCount.get(tg)) continue;
+          if (pk === '*' && star) {
+            if (om['*'].includes(va)) continue;               // `*` je već nudi — bez ključa
+            // Nova vrijednost samo za neke roditelje: vlastiti ključ = lista pod `*` + nova.
+            // U `*` bi je ponudila i SVIM ostalim roditeljima.
+            for (const pv of starParents.get(va) ?? []) {
+              const list = om[pv] ?? [...om['*']];
+              if (list.includes(va)) continue;
+              om[pv] = [...list, va];
+              lines.push(`„${pv}": lista pod * + „${va}"`);
+            }
+            continue;
+          }
+          const list = om[pk] ?? [];
           if (list.includes(va)) continue;
-          om[pa] = [...list, va];
-          lines.push(`„${pa}": dodaj „${va}"`);
+          om[pk] = [...list, va];
+          lines.push(`„${pk}": dodaj „${va}"`);
         }
-        // default_map vrijednosti: čisto preimenovanje para unutar istog roditelja
+        // default_map vrijednosti: čisto preimenovanje para unutar istog ključa liste
         if (dm) {
           for (const [k, v] of Object.entries(dm)) {
-            const src = k + PAIR + v;
-            if (!pt.sources.has(src) || (pt.afterCount.get(src) ?? 0) > 0) continue;
-            const to = pt.pure(src);
-            if (to && to.split(PAIR)[0] === k) {
+            const src = (k === '*' ? '*' : listKey(k)) + PAIR + v;
+            if (!lt.sources.has(src) || (lt.afterCount.get(src) ?? 0) > 0) continue;
+            const to = lt.pure(src);
+            if (to && to.split(PAIR)[0] === src.split(PAIR)[0]) {
               dm = { ...dm, [k]: to.split(PAIR)[1] };
               lines.push(`default „${k}": „${v}" → „${to.split(PAIR)[1]}"`);
             } else {
               warnings.push(`${a.slug}: zadana vrijednost za „${k}" je „${v}", a ona više nema redaka.`);
             }
           }
+        }
+      }
+
+      // (c) §20: lista pod `*` je ZAJEDNIČKA (Namjena) — vlastiti ključevi koji je ponavljaju
+      //     (auti, radi default_map) nemaju retke te vrijednosti, pa ih (b) ne vidi. Preimenovanje
+      //     koje je (b) izveo pod `*` i koje je ČISTO za cijeli atribut prati i u njima.
+      //     Samo uz nepraznu `*` listu: kod Podtipa (`*: []`) bi preimenovanje u jednom Tipu
+      //     preimenovalo istu riječ i u drugim Tipovima.
+      for (const vb of renamed) {
+        const va = pureOf(a.slug, vb);
+        if (!va) continue;
+        for (const k of Object.keys(om)) {
+          if (k === '*' || !om[k].includes(vb)) continue;
+          om[k] = om[k].includes(va) ? om[k].filter(o => o !== vb) : om[k].map(o => (o === vb ? va : o));
+          lines.push(`„${k}": „${vb}" → „${va}" (kao pod *)`);
+        }
+        for (const [k, v] of Object.entries(dm ?? {})) {
+          if (v !== vb) continue;
+          dm = { ...dm, [k]: va };
+          lines.push(`default „${k}": „${vb}" → „${va}" (kao pod *)`);
         }
       }
       dep.options_map = om;
