@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S183).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S184).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -2100,7 +2100,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
   `balance_by_group` sa sidrom i `✓/Δ` čipom, drill u Activities, izračunata kolona `Stanje`.
   **S165:** pločica `breakdown` „Kamo ide novac" (bucketi iz `settings.groupings`, os kupnja/naplata,
   krug ≥ 640 px) — **na PROD-u od 11.10.2026. (S167)**, uz zadano razdoblje This Year.
-  **S183:** pogledi Bucketi | Namjena | Tip + fond Nena / Kućište (TEST; PROD poslije deploya).
+  **S183:** pogledi Bucketi | Namjena | Tip + fond Nena / Kućište — **na PROD-u od 26.10.2026. (S184)**.
   Agregacija ide u Postgres (`rpc_area_group_agg`, `rpc_area_balance_anchored`) — nikad u preglednik.
 
 ---

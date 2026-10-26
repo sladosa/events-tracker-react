@@ -1,70 +1,76 @@
-> Pisano protiv `af6b691` (zadnji S183 kod; prije njega `5fc3a98`, `839387c`) + commita koji nosi ovaj file (S183 zatvaranje, 25.10.).
-> **Stanje u letu:** S183 je na `test-branch`, **netestiran ručno i nije na PROD-u** — Saša testira (T-S183-1) i deploya kasnije.
-> **`main` = `1ed9798` (S181, PROD od 25.10.).** `test-branch` = `main` + docs S182 + **S183 (kod, nije na PROD-u)**.
-> **TEST:** `Financije_all` ima novi config razreza (`set_breakdown.py --apply`, 25.10.): `views`, `sides`, bucketi 1A.
-> **PROD:** stari config razreza (Koka razno / Saša razno); novi ide tek POSLIJE deploya (T-S183-2).
+> Pisano protiv `51e5564` (S184: T-S183-2 ✅) + commita koji nosi ovaj file (S184 zatvaranje, 26.10.).
+> **Stanje:** `main` = `f903401` (S183 kod, **PROD od 26.10.**); `test-branch` = `main` + samo docs S184.
+> **PROD config razreza je upisan** (`set_breakdown.py`, 26.10.) — PROD i TEST imaju isti razrez.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S184)
+# Sljedeća sesija (S185) — F2 preuređivanja
 
-> **Ukratko (S183):** pločica „Kamo ide novac" dobila je tri pogleda na iste retke — Bucketi, Namjena (čiji je trošak i prihod) i Tip — i stranu Fond, koja krupno kaže koliko je u Neninom fondu od početka (9.534,95 €), a „Koka razno" / „Saša razno" su raspušteni po vrsti troška, N/A ima ↗ za razvrstavanje; bez migracije, na TEST-u upisano i izmjereno, PROD čeka deploy.
+> **Ukratko (S184):** pločica „Kamo ide novac" s pogledima Bucketi / Namjena / Tip i stranom Fond je na PROD-u — test na TEST-u prošao u svih deset koraka, deploy `f903401`, PROD config upisan i provjeren u lipu (This Year Izašlo 36.493,49 €, fond 9.534,95 €).
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (S183)
-- „Kamo ide novac" ima prekidač **Bucketi | Namjena | Tip**. Brojke su iste u sva tri pogleda (Izašlo
-  This Year na TEST-u 36.148,05), mijenja se samo raspored.
-- **Namjena** radi i na Prihodima (ravno na Podtip, bez međurazine „Prihodi").
-- **Fond** (treći izbor uz Troškovi | Prihodi, u pogledu Namjena): krupno koliko je u Neninom fondu **od
-  početka** (9.534,95), traka potrošeno / ostaje, razdoblje iz filtra, kamo je otišlo / odakle je ušlo.
-- **↗ na „nerazvrstano (N/A)"** — popis za razvrstavanje (retci bez Tipa ↗ nemaju; filtar ne zna „prazno").
-  Tip pod bucketom ima ↗ samo kad je cijeli u tom bucketu (Razno nema, njegovi Podtipovi imaju).
-- **Bucketi:** nema više „Koka razno" / „Saša razno". Gorivo, leasing i Lječnička komora su u Mjesečnima,
-  registracija i popravci auta u Povremeno nužno, Projekti su svoj bucket.
-- Na **Prihodima** nema izbora „po kupnji / po naplati" (bio bi isti broj).
-- ↗ u pogledu Namjena: samo uz Namjenu (sve Kokine retke itd.), ispod nje ne.
+## Gotovo (S184)
+- S183 testiran na TEST-u (svih 10 koraka) i pušten na PROD; config razreza upisan i provjeren. Koka i ti na PROD-u
+  vidite prekidač Bucketi | Namjena | Tip i Fond (Nena / Kućište +9.534,95 €).
+
+## Sljedeće: F2 — „uvezi grubo, dotjeraj poslije" za trening
+Redoslijed velikih koraka (CLAUDE.md § Strategic Position): korak 3 (alat za preuređivanje) je **napola gotov** —
+F1 (opcije: preimenuj, spoji, premjesti, izdvoji) radi i korišten je na PROD-u (Namjena, S180). **F2** su tri
+operacije nad **atributima**, i bez njih uvoz `trening.xlsm` ne može ići „grubo pa dotjerati":
+- **A1 — promijeni tip atributa** (npr. uvezeno kao tekst ⇒ broj), uz popis redaka koji se ne daju pretvoriti.
+- **A2 — izvedi atribut iz teksta** (npr. iz stupca `O` u DIARY-ju puls / kcal / TE; iz `AM` san / HRV).
+- **A4 — spoji dva atributa** (npr. raspoloženje iz DIARY-ja i `mood` u Fitnessu).
+
+**Kako predlažem sesiju:** prvo razgovor (ti voliš „nemoj odmah kodirati"), na **stvarnim stupcima DIARY-ja** —
+što od toga zaista treba, u kojem redu, i gdje živi A2 (Python alat ili aplikacija). Kod tek kad je spec dogovoren.
 
 ## Što treba od tebe
-1. **T-S183-1 — TEST lokalno** (`npm run dev`, tvoj račun): brojke po koracima su u
-   `docs/sessions/tests/S183_tests.md`. Kad prođe ⇒ deploy.
-2. **Deploy** (PowerShell, kad T-S183-1 prođe):
-   ```powershell
-   git checkout main
-   if ($?) { git merge test-branch --no-edit }
-   if ($?) { git push origin main }
-   git checkout test-branch
-   if ($?) { git merge main --no-edit }
-   if ($?) { git push origin test-branch }
-   ```
-3. **T-S183-2 — PROD poslije deploya:** `set_breakdown.py` dry run (mora pokazati točno 9 razlika iz
-   testa) ⇒ `--apply --yes-prod` ⇒ `verify_breakdown.py` ⇒ pošalji ispis. Migracije nema.
-   Dok config ne ode, PROD pločica izgleda kao prije (novi kod bez `views` radi po starom).
-4. Studeni (nepromijenjeno): T-S175-1 MC ~02.–11.11., T-S175-2 Visa, T-S175-3 ZABA_2026-10, T-S181-3.
-5. T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti), Garmin izvoz.
+1. Za S185: ništa unaprijed. Ako stigneš — pogledaj u `trening.xlsm` stupce `O`, `AM`, `M`, `I` i reci koji su ti
+   najvažniji za analizu (to određuje što F2 mora znati prvo).
+2. **Studeni krug (bez razvoja, nepromijenjeno):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11., T-S175-3
+   ZABA_2026-10, T-S181-3 (Namjena u alatima). To je ispit „Financije su dovoljno gotove".
+3. Kad stigneš: T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti), Garmin izvoz.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Izvedeno (S183)
-| Što | Gdje / dokaz |
+## Izvedeno (S184)
+| Što | Dokaz |
 | --- | --- |
-| tipovi | `BreakdownWidget.views[]` (`BreakdownView`: `grouping` \| `by` \| ravno, `funds`), `date_axes[].sides`, `BreakdownSide` |
-| model | `resolveViews`, `buildBreakdown(rows, w, grouping, view)`: `facet` čvorovi (obje strane), `scoped` ispod (drill none), `funds`; dims + `views[].by` |
-| pločica | `BreakdownTile`: prop `groupings` (sva), prekidač pogleda u `lastView`, `sideAxes` / `axisOnSide`, redak fonda |
-| config | `set_breakdown.py` (TEST upisano): 49 parova, `views`, `sides`, provjere ≤ 4 dims i fond ∈ opcije; `grouping` ostaje za stari bundle |
-| testovi | unit §10–11 105/105 (sabotaže 1/4/1), `verify_breakdown` 4D ✓ + `EXPECTED_12` (TEST 25.10.) 19/19, E2E S183 2/2 + S165 5/5, `AreaSettings` roundtrip ISTO, `npm run check` ✓, build ✓ |
-| dopune (Saša) | N/A po vrsti s ↗, `splitAcross` (Tip pod bucketom), strana Fond (`allModel` = 056 bez granica, `renderFund`), `LevelTree.skip` (Prihodi bez stalne razine); unit 125/125, E2E 7/7 (sabotaža stanja fonda s granicama ruši) |
-| docs | RAZREZ §18, PREUREDJIVANJE §8.3/§20, help `overview.md`, CLAUDE.md § Overview, BACKLOG (2 stavke ✅) |
+| T-S183-1 ✅ | TEST, Saša, 10/10 koraka u brojku; `verify_breakdown` [TEST] 19/19 prije testa |
+| deploy | `main` = `test-branch` = `f903401`, Netlify zelen |
+| T-S183-2 ✅ | PROD dry run = 9 razlika, `--apply --yes-prod` ✓, `verify_breakdown` [PROD] RPC = Python; model 12 mj = TEST u lipu |
+| arhiva | PENDING sekcija S183 → `DONE_HISTORY.md`; `S183_tests.md` → `Claude-temp_R/test-sessions/archive/` |
 
-## Otvoreno
-- **T-S183-2:** prvi pravi PROD ispis `verify_breakdown.py` s novim bucketima — PROD brojke (This Year) zapisati
-  u T-S183-2 kad Saša pošalje. Claude ih ne može izmjeriti: klasifikator odbija i čisto read-only PROD alat (memorija).
-- BACKLOG (S183): crta stanja fonda kroz vrijeme (migracija, mjesečno grupiranje) · ušlo/izašlo po računu na pločici salda.
-- **056 granica 4 dimenzije** — Financije su na njoj. Ako zatreba `racun` (gotovina po vlasniku) ili nova os: migracija.
-- **Prihodi Podtip = izvor** (R6, „plaća / mirovina") — tek tada pogled Namjena na Prihodima daje novu informaciju.
-- Nepromijenjeno iz S181/S182: planer i lista `depends_on` pod `*` (PREUREDJIVANJE §20 — prije idućeg preuređivanja
-  Namjene sheetom); pravila po trgovcu ne znaju Namjenu; F1b; O6 traženje u izborniku; Trening F2.
+## Za F2 — što pročitati prije razgovora
+- `docs/PREUREDJIVANJE_SPEC.md`: §2 (rupe A1–A4, K1–K4), §3 (invarijante — vrijede i za F2), §6 (faze: F2 = A1, A2,
+  A4 + sheet), §7 / §7.1–7.2 (Sašini odgovori: sheet prvi, zapis prije/poslije, **A2 preporuka: Python prvo, app
+  tek ako se ponavlja**), §9–§17 (tehnički spec F1 — predložak oblika za F2 spec), §18–§20 (što je kod odstupio,
+  i otvoreno: **lista `depends_on` pod `*` — planer je ne zna mijenjati**; prije idućeg preuređivanja Namjene).
+- `docs/TRENING_MIGRACIJA.md`: vrh (zaključci 20.10. + Sašini odgovori), §1.3 (kolone), **§1.4 (ere — stupac je
+  mijenjao značenje; A2 pravila moraju to znati)**, §3 (predloženi model), §5 (otvorena pitanja).
+- Kod F1: `src/lib/restructure/plan.ts` (planer, JEDINO mjesto koje zna gdje u configu stoji vrijednost opcije),
+  `sheet.ts`, `apply.ts`, `sql/058_restructure.sql` (apply/undo u jednoj transakciji; **provjeri što 058 zna o
+  `value_number`/`value_datetime` i o promjeni `data_type`** — spec: „F1 radi samo s tekstualnim atributima i točnom jednakošću. Sadrži i regex su F2").
+- `trening.xlsm` je OneDrive živi file (`C:\0_Sasa\OneDrive\trening.xlsm`) — čitati **read-only / s kopije**.
+
+## Otvorena pitanja za razgovor (prijedlog, ne odluke)
+1. **Na čemu se F2 mjeri prije uvoza DIARY-ja?** DIARY još nije u bazi. Opcija: grubi uvoz DIARY-ja na **TEST**
+   (sve kao tekst) ⇒ F2 dotjeruje stvarni materijal ⇒ PROD uvoz tek s gotovim alatom. Alternativa: Fitness/Health_Sasa.
+2. **A2 u Pythonu ili u appu** (Saša je 20.10. pitao „što je regex"; preporuka u §7.1: Python prvo). Ako Python:
+   ide li izlaz kroz isti sheet `Preuređivanje` / Excel uvoz, s istim zapisom prije/poslije i Poništi?
+3. **A1 i `058`:** promjena `data_type` seli vrijednost između stupaca `value_*` — povrat mora vratiti i tip i stupac.
+   Retci koji se ne daju pretvoriti: ostaju tekst (na kojem atributu?) ili blokiraju operaciju?
+4. **A4 sukob** (oba popunjena): prijava + P3 (§2) — tko pobjeđuje kad su različiti i neprazni?
+5. Ide li §20 (`depends_on` pod `*`) u F2 ili zasebno.
+
+## Otvoreno (nepromijenjeno)
+- BACKLOG (S183): crta stanja fonda kroz vrijeme (migracija) · ušlo/izašlo po računu na pločici salda.
+- 056 granica 4 dimenzije — Financije su na njoj.
+- Prihodi Podtip = izvor (R6); pravila po trgovcu ne znaju Namjenu; F1b (popis operacija s Poništi); O6 traženje
+  u izborniku.
+- Klasifikator odbija i read-only PROD alate ⇒ PROD mjerenja pokreće Saša (memorija `prod_writes_blocked`).

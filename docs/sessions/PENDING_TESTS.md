@@ -2,20 +2,7 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S183 (2026-10-25, prekidač Bucketi | Namjena | Tip na TEST-u; T-S183-1..2) · povijest sesija: `DONE_HISTORY.md`
-
----
-
-## S183 — Razrez: prekidač Bucketi | Namjena | Tip (2026-10-25)
-
-Pločica „Kamo ide novac" dobila tri pogleda na iste retke, fond Nena / Kućište i os datuma samo na Troškovima; „Koka razno" / „Saša razno" raspušteni po vrsti troška. Bez migracije. Na TEST-u upisano i izmjereno; PROD čeka deploy.
-
-**Detalji testova:** [tests/S183_tests.md](tests/S183_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S183-1 | TEST lokalno: This Year Izašlo 36.148,05 u Bucketi / Namjena / Tip; Projekti 683,91, nema Koka/Saša razno; ↗ samo uz Namjenu, N/A po vrsti, Tip pod bucketom samo kad je cijeli; Prihodi bez razine „Prihodi" i bez prekidača osi (Izašlo ostaje 39.031,63); **Fond**: +9.534,95 od početka i uz This Month (listopad: u razdoblju 0,00 · 1.822,08) | ✅ S184 (26.10.) — svih 10 koraka u brojku, screenshotovi |
-| T-S183-2 | PROD poslije deploya: `set_breakdown.py` dry run = točno 9 razlika ⇒ `--apply --yes-prod` ⇒ `verify_breakdown.py` ✓ ⇒ Ctrl+Shift+R, Izašlo isti u sva tri pogleda | ✅ S184 (26.10.) — 9 razlika, upis, verify ✓; PROD This Year Izašlo 36.493,49, fond 9.534,95 |
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S184 (2026-10-26, T-S183-1..2 ✅, S183 na PROD-u; sekcija S183 arhivirana) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 
