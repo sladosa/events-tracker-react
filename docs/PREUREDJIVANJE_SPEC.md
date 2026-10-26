@@ -1,5 +1,8 @@
 # Preuređivanje strukture — spec (prijedlog prije koda)
 
+> **Stanje 26.10. (S185):** F1 na PROD-u (§18–§20). **F2 (A1, A2, A4) je NACRT u DIO 3 (§21–§31)**,
+> s tri pretpostavke koje čekaju Sašu (§21.2) — bez koda.
+>
 > **Status:** prijedlog, 2026-10-20. Nastalo iz razgovora o `trening.xlsm`
 > ([`TRENING_MIGRACIJA.md`](TRENING_MIGRACIJA.md)). **Sašina odluka (20.10.):** operacije
 > preuređivanja dolaze **prije** uvoza treninga — *„nije moguće unaprijed sve definirati savršeno"*.
@@ -723,3 +726,322 @@ Bucketi | Namjena (RAZREZ R5) — ili alati upisuju zadano po Tipu, ili razrez p
 ✅ Zatvoreno S181 (alati i Excel uvoz upisuju zadano); S183 izmjerio 0 praznih Namjena, a razrez prazninu
 prikazuje kao vidljivu krišku `(prazno)` — nikad je ne pretvara u Zajedničko.
 
+
+---
+
+# DIO 3 — F2: atributi (A1 promijeni tip, A2 izvedi, A4 spoji) — NACRT
+
+> **Status:** nacrt, 26.10.2026. (S185), **bez koda**. Pisano dok je Saša bio vani, na njegov „ok".
+> Odluke koje je Saša donio u razgovoru stoje u §21.1. Tri odluke koje **još čekaju njega** su
+> upisane kao pretpostavke i označene **⏳ čeka Sašu** (§21.2); odbije li koju, mijenja se odlomak koji
+> ona nosi, ne cijeli spec.
+> Predložak oblika je F1 (§9–§17); sve invarijante iz §3 vrijede i ovdje.
+
+## 21. Ukratko i odluke
+
+- **A1 i A4 idu istim putem kao F1** — sheet u Structure Excelu → planer (TypeScript) → pregled u
+  modalu → jedna transakcija u bazi → zapis prije/poslije → Poništi. Razlog: obje operacije mijenjaju
+  **config** (reference na slug, izbornik, `list_columns.map`), a znanje o obliku configa živi
+  **samo** u TypeScriptu (§9, `plan.ts`). Python kopija tog znanja bila bi drugo mjesto koje odluta.
+- **A2 živi u Pythonu** — jedan modul pravila, dva pozivatelja (generator prije uvoza; alat nad bazom).
+  Alat šalje bazi **gotove vrijednosti**, a baza ih upisuje kroz istu jezgru (`058` + `059`): ista
+  transakcija, isti zapis, isti Poništi. A2 **ne piše config** — zato mu planer ne treba.
+- **Prvi korisnik F2 nije DIARY nego `Fitness_Garmin` na TEST-u**: ondje već stoje dvije izmjerene
+  greške (§22.3) — `kcal` je u kilodžulima (A2) i `pace` je tekst (A1). F2 se tako dokazuje na
+  stvarnim podacima **prije** generatora za DIARY.
+
+### 21.1 Odlučeno (Saša, 26.10.)
+
+| # | Odluka |
+| --- | --- |
+| 1 | `vr NNN` / `v.r.NNN` u `O` = **visinska razlika** (uz `L = brda`) ⇒ `total_ascent` |
+| 2 | `opt NN` = Garminovo **opterećenje vježbanja** ⇒ `training_load` |
+| 3 | brojevi i smajlići u `N` (2015–16) se **ne izvode** — premalo, ostaju u Excelu |
+| 4 | `VO2max` iz `O` se ne izvodi — Garmin ga ima kontinuirano (dnevni podatak); tekst ostaje u izvorniku |
+| 5 | A2 zadano **puni samo prazno**; „uskladi s pravilom" se traži izričito (§26.3) |
+| 6 | **A1 i A4 ulaze u F2** — *„da ne moramo jako precizno pogoditi organizaciju iz prve"* |
+
+### 21.2 Pretpostavke — ⏳ čeka Sašu
+
+| # | Pretpostavka | Što ovisi o njoj |
+| --- | --- | --- |
+| P1 | DIARY dan = novi leaf **`Fitness > Activity > Dan`** (na TEST-u pod `Fitness_Garmin`) | treba li A2 pisati na **roditeljski** event sesije (§26.4). ⚠ §22.4 daje razlog da se o tome još razgovara |
+| P2 | mapa za `mood`: `:-(` = 1 · `:-/` = 2 · `:-\|` = 3 · `:-)` = 4 · `:-D` = 5 | prvi A1 s mapom (§24) |
+| P3 | **novi Garmin GDPR izvoz** teče paralelno; `garminconnect` pokus poslije | koliko A2 nad `O` uopće treba (§22.4) |
+
+## 22. Izmjereno (S185, samo čitanje)
+
+### 22.1 DIARY — oblici (kopija 26.10., 7.458 dana)
+
+| Stupac | Oblik | Pokrivenost / era |
+| --- | --- | --- |
+| `O` puls | `HR 110(134)` | 2017.→ ~99 %; bez oblika 56 redaka 2016.→ (najviše 2016: 21, 2021: 12) |
+| `O` TE | `t.ef.2,3` (2015–2020) · `t.ef.2,3/0` (2023.→), 2021–22 prijelaz | **anaerobni tek od 2021.** — pravilo nosi razdoblje |
+| `O` kcal | `394kcal`, 63 × `cal` (2020.→) | 2016.→ ~99 % |
+| `O` opt / vr | `opt35` 2022.→ (248) · `vr 190` / `v.r.190` (~480) | |
+| `AM` | `NN%, NNHRV, NNbb` 2024.→ (99 %); 2024. bb i kao `bbNN` (82), HRV i kao `HRVNN` (14); 2 tipfelera | **privatno** — v. §26.5 |
+| `M` | vrijeme na početku: `16:30` 320 · `16h` 135 · `9:00` 98 (2024.→ 128 / 194 / 197 dana) | izvor je **komentar**, ne atribut |
+| `I` | smajlići 3.329 (od 22.12.2014.) | mapa 1:1, ništa se ne gubi |
+| `E`, `F`, `AL` | broj (1 tekst) · uvijek vrijeme · broj 39–52 | čisti — generator ih uvozi s pravim tipom, ne trebaju F2 |
+
+### 22.2 Model `Fitness` (PROD export 26.10.) = model `Fitness_Garmin` (TEST)
+
+`Activity` (L1, roditelj sesije): `duration`, `hr_avg`, `hr_max`, `kcal`, `aerobic_effect`,
+`anaerobic_effect`, `training_load`, `intensity` (text), **`mood` (text, smajlići, bez `:-|`)**.
+Leafovi: `Gym > Strength`, `Gym > Cardio`, `Outdoor` (`distance`, `pace`, `terrain` `ravno|brda|mix`,
+`total_ascent`). Razlike TEST ↔ PROD: `pace` text (TEST) / number (PROD), TEST ima `location`.
+⚠ Slugovi na PROD-u nose **crticu** (`hr-avg`) — generacija slug triggera prije `042`.
+
+### 22.3 `Fitness_Garmin` (TEST): Garmin aktivnosti 01.2015. – 14.02.2025.
+
+3.133 sesije na 2.822 dana, iz GDPR izvoza (S71). **Na PROD nikad nije prešla** (`MIGRATION_STATE.md`).
+
+- ⚠ **`kcal` je u kilodžulima.** Omjer Garmin/DIARY na danima s jednom sesijom i istim pulsom:
+  **4,19 na 1.794 od 1.905** (kJ/kcal = 4,184). `garmin_activities_to_xlsx.py:325` upisuje
+  `calories` iz izvoza bez pretvorbe. ⇒ **Popraviti alat prije bilo kakvog PROD uvoza**, a podatke
+  na TEST-u popraviti A2-om (§26, prvi korisnik).
+- `pace` je tekst `MM:SS` (alat ga namjerno pretvara u tekst) ⇒ A1 korisnik (§24, pretvorba `mm:ss`).
+
+### 22.4 DIARY ↔ Garmin, po danu (01.01.2015. – 14.02.2025.)
+
+| | Dana |
+| --- | ---: |
+| DIARY trening (`F > 0`) | 2.832 |
+| Garmin aktivnost | 2.822 |
+| **oboje** | **2.661** (94 %) |
+| samo DIARY (najviše `x-TRAIN` 69, `ODMOR` s vremenom 46) | 171 |
+| samo Garmin (većina 2015.) | 161 |
+| dan s više Garmin sesija | 280 |
+| puls: DIARY ima i Garmin istog dana ima / **isti ±1** | 2.245 / **2.098** (93 %) |
+| km: oba / unutar 10 % | 1.663 / 1.515 (91 %) |
+| `opt` = training load ±1 | 90 / 97 |
+| `vr` = total ascent ±10 % | 317 / 398 |
+| **DIARY poslije 14.02.2025.** — dana / s treningom / s pulsom | **619 / 465 / 454** |
+
+**Što to znači za F2:** za 2015.–02.2025. su brojevi iz `O` **prepis Garmina** (93 % u bpm). A2 nad
+`O` zato ima pravu vrijednost samo za (a) rupu od 15.02.2025. — dok je ne zatvori novi GDPR izvoz,
+(b) 171 dan bez Garmina, (c) **kontrolu** (sukob DIARY ↔ Garmin kao popis, ne kao upis). Zato se o
+P1 (§21.2) još razgovara: ako dnevni event DIARY-ja puni `Activity` istog dana na kojem već postoji
+Garmin sesija, isti trening se broji dvaput.
+
+### 22.5 `C:\0_Sasa\GarminData` (GDPR izvoz 15.02.2025.)
+
+- **San: 3.127 noći, 07.2016. – 02.2025.** (`DI-Connect-Wellness/*sleepData.json`: faze, disanje,
+  stres u snu; Garminova ocjena sna ~860 noći) — **nije uvezen**. `garmin_daily_metrics_to_xlsx.py`
+  tvrdi „Sleep/HRV not available" — zastarjelo (mapa raspakirana 07.05.).
+- HRV-a u JSON-u nema; možda u `.fit` tipu 58 (~6.000 fileova, tek od 2022.) — **pretpostavka**,
+  treba FIT čitač (venv ga nema). 2024.→ HRV ionako stoji u DIARY `AM`.
+- `.fit` treninzi (~3.600, 2014–2025) nose dionice ⇒ pravi tempo (TRENING Q11) — kasnije.
+
+## 23. Arhitektura
+
+```
+Structure Excel ──► sheet `Preuređivanje atributa` (A1, A4)      Python: pravila.py ──► izvedi.py (A2)
+                         │                                                  │  računa vrijednosti
+                         ▼                                                  │  (dry run: xlsx pregled)
+          PLANER F2 (TS, čist) — config, izbornik, blokade                  │
+                         │                                                  │
+                         ▼                                                  ▼
+              pregled u modalu ─────────► rpc_restructure_apply ◄──── service ključ (TEST: Claude,
+                                          (058 + 059: nove vrste          PROD: Saša)
+                                           koraka, jedna transakcija)
+                                                    │
+                                     zapis prije/poslije ─► rpc_restructure_undo
+```
+
+- **Svaki sheet = jedna operacija** (vlastiti `op_id`, vlastiti Poništi). Redoslijed faza u Structure
+  uvozu: Structure (stvori ciljne atribute) → `Preuređivanje atributa` → `Preuređivanje` (F1).
+- **A2 je jedna operacija po pravilu** (jedan ciljni atribut) — Poništi po pravilu, i svaki poziv
+  ostaje ispod `statement_timeout` (§19: 9,7k promjena = 2,4–4,9 s; DIARY ≤ 7,5k po pravilu).
+
+## 24. A1 — promijeni tip atributa
+
+**Opseg F2:** `text → number` (s pretvorbom) i `number → text`. Ostali smjerovi (`datetime`,
+`boolean`) ⇒ blokada „nije u F2".
+
+**Pretvorbe** (stupac `Pretvorba` u sheetu):
+
+| Pretvorba | Primjer | Korisnik |
+| --- | --- | --- |
+| `broj` | `2,3` → 2.3 · `1.234,5` → 1234.5 (isto pravilo kao `parseAmountInput`) | opći |
+| `mm:ss` | `6:06` → 6.1 | `pace` na `Fitness_Garmin` |
+| `mapa` | `:-( = 1 \| :-/ = 2 \| …` (oblik kao `Map` u `ListColumns`) | `mood` (P2) |
+
+**Pravila:**
+1. **Svaki redak mora se dati pretvoriti — inače blokada** s popisom (datum, vrijednost; prvih 50).
+   Ne „ostavi kao tekst": app za brojčani atribut čita `value_number`, pa bi tekst postao nevidljiv —
+   gubitak bez ijedne poruke. Popravak je Excelom ili A2, pa ponovni pregled.
+2. Mijenja se **na mjestu**: `value_text` → `value_number` (`value_text = NULL`) i
+   `attribute_definitions.data_type`. Slug ostaje ⇒ reference na slug ostaju žive.
+3. **Blokade:** atribut je `depends_on` roditelj ili dijete (ključevi `options_map` su tekst) ·
+   atribut je `group_by` / `basket_by` / `status_slug` pločice (tekstualna uloga) · `number → text` uz
+   `list_columns` ulogu novca.
+4. **Config** (planer, ista tablica mjesta kao §12.3): s pretvorbom `mapa` vrijednosti se prevode
+   kao preimenovanje opcije (filtri pločica, `list_columns.map` **ključevi** — `:-)` → `4`, pa lista i
+   dalje pokazuje smajlić; shortcut `default_attributes`). Bez mape (`broj`, `mm:ss`) config koji
+   citira vrijednost tog atributa ⇒ **upozorenje** (nikad pogađanje). `validation_rules`: `suggest`
+   pada (number ga nema), `min`/`max` ostaju prazni.
+5. Opcija izbornika s 0 redaka ne ulazi u pretvorbu; nestaje sa `suggest`-om (upozorenje ako ih ima).
+
+## 25. A4 — spoji atribute (B u A)
+
+**Opseg:** A i B su atributi **istog tipa** u **istom lancu**: ista kategorija, ili A na pretku
+B-ove kategorije (vrijednost seli na roditeljski event iste sesije — §26.4).
+
+**Po eventu:**
+
+| A | B | Ishod |
+| --- | --- | --- |
+| prazno | ima | B → A, B redak obrisan |
+| ima | ista vrijednost | B redak obrisan |
+| ima | **različita** | **sukob — ništa se ne dira**, redak ostaje u B, prijava |
+| — | prazno | ništa |
+
+- **B se briše kao atribut samo ako mu ne ostane nijedan redak** (i uz kvačicu „obriši izvor").
+  Sukobi ⇒ B ostaje s preostalim retcima — ništa se ne gubi, a popis sukoba je posao za Excel.
+  (Odgovor na pitanje 4 iz handoffa: nitko ne pobjeđuje; P3 ovdje ne vrijedi jer nijedna strana nije
+  „zadnja".)
+- **Config:** reference na B prelaze na A istim čistim funkcijama kao rename sluga u panelu
+  (`renameSlugInDashboard`, `renameSlugInGroupings`, `renameSlugInListColumns`,
+  `renameSlugInAutomations`; `depends_on` kao §12.2). Citira li config **već** i A i B na istom mjestu
+  (dvije kolone liste) ⇒ upozorenje, ne spajanje.
+- **Izbornik** (tekst sa `suggest`): A dobiva uniju, redoslijed vlasnika A, B-ove nove na kraj (§12.2).
+- `export_profiles` ključevi stupaca nose **ime** atributa (`attr:Area||Cat||Ime`) ⇒ upozorenje
+  „profil X ima stupac B" (ime se ne prepisuje — isto kao §17).
+- **Blokade:** različit tip (prvo A1) · A i B nisu u istom lancu · B je `depends_on` roditelj nekog
+  trećeg atributa (rupa §20 — ne otvarati drugu).
+
+## 26. A2 — izvedi atribut iz teksta (Python)
+
+### 26.1 Modul pravila `data-prep_tools/Trening/pravila.py`
+
+Jedan izvor istine za regexe; zovu ga generator i `izvedi.py`. Pravilo:
+
+```python
+Pravilo(ime='hr_avg', izvor='biljeska',          # slug ili 'comment'
+        od='2015-01-01', do=None,                # era (§22.1: TE oblik se mijenja 2021.)
+        uzorak=r'HR\s*(\d{2,3})\s*\(', grupa=1,
+        pretvorba='broj',                        # broj · mm:ss · ×faktor · /faktor · mapa · vrijeme
+        cilj='hr-avg', razina='isti')            # ili 'roditelj' (§26.4)
+```
+
+- **Pravilo smije biti Python funkcija kad regex ne dostaje** (npr. `kcal = kcal / 4.184`, izvor = cilj).
+- Uz modul ide **samoprovjera** (`pravila.py --test`, §29.1); `izvedi.py --apply` odbija rad ako ona pada.
+
+### 26.2 Alat `izvedi.py`
+
+```
+izvedi.py --area Fitness_Garmin --pravilo hr_avg [--od 2025-02-15] [--nacin prazno|uskladi] [--apply]
+izvedi.py --ponisti <op_id>
+```
+
+- **Dry run (zadano):** po godini — izvora / pogođeno / nepogođeno / cilj već pun (isti · različit);
+  `izvedi_<pravilo>_<datum>.xlsx` za Sašin pregled (datum, izvor, izvedeno, postojeće; **za privatne
+  izvore samo oblik**, kao u §22.1). Broj promjena koje idu u bazu = `expected`.
+- `--apply`: jedan RPC poziv (§27), pa **ponovno mjerenje = baza je ono što je dry run predvidio**
+  (pouka S179, ne „ponovi pravilo i očekuj 0").
+- `ET_TARGET` / `--env` kao svi alati (zaglavlje `[TEST]` / `[PROD]` prvo, S137). PROD `--apply`
+  pokreće Saša.
+- `--od`: za DIARY dotok (DIARY se piše dalje) — isto pravilo nad novim danima.
+
+### 26.3 Načini
+
+- **`prazno` (zadano):** upisuje samo gdje cilj nema vrijednost. Ponovljiv bez štete.
+- **`uskladi`:** gdje pravilo **pogodi**, cilj postaje izvedena vrijednost (i prepisuje ručni
+  ispravak — zato izričito). Gdje pravilo **ne pogodi**, cilj se **ne dira** — A2 nikad ne briše.
+  Brisanje krive vrijednosti je F1 korak `(prazno)` (proširen na brojeve, §27) ili Excel.
+
+### 26.4 Razina `roditelj` (samo ako P1 ostane)
+
+Izvor na leaf eventu (`Dan.biljeska`), cilj na **roditeljskom eventu iste sesije** (`Activity.hr-avg`):
+isti `user_id`, isti `session_start`, `chain_key` = kategorija izvora, kategorija = predak. Alat šalje
+par (izvorni event, ciljni event); baza tu vezu **provjerava**. Padne li P1 (DIARY brojevi na
+vlastitom leafu), razina je uvijek `isti` i ovaj odlomak ispada iz F2 (ostaje F3 / A3).
+
+### 26.5 Između Area — nije A2
+
+San / HRV / bb iz privatnog `AM` idu u `Health_Sasa` (Koka čita). Tekst `AM` ondje ne smije ni
+privremeno ⇒ to izvodi **generator prije uvoza**, istim funkcijama iz `pravila.py`. A2 nad bazom radi
+samo unutar sesije.
+
+## 27. Baza — `059_restructure_f2.sql`
+
+Proširuje `058`; F1 koraci ostaju kakvi jesu (i dalje samo tekst), osim jedne iznimke dolje.
+
+**Nove vrste koraka** u `p_steps` (polje `kind`; bez njega = F1 korak):
+
+| `kind` | Oblik | Provjera u trenutku izvođenja |
+| --- | --- | --- |
+| `values` (A2) | `target_attr`, `rows: [{src_event, dst_event, value, expect, src_md5}]` | `dst_event` = `src_event` ili njegov P2 roditelj (§26.4) · `md5(izvorni tekst)` = `src_md5` · trenutna vrijednost cilja = `expect` (`null` za način `prazno`) · broj redaka = plan |
+| `retype` (A1) | `attr`, `to_type`, `conv: 'broj' \| 'mm:ss' \| {mapa}`, `expected` | **svaki** redak se pretvara (inače `RAISE` s prvih 20) · broj = plan |
+| `merge` (A4) | `from_attr`, `into_attr`, `drop_from`, `expected_moved`, `expected_conflicts` | isti tip · isti lanac · brojevi = plan |
+
+- Vrijednost se piše u **stupac po `data_type`** (`value_number` / `value_text` / `value_datetime`) —
+  jedna pomoćna funkcija za sve tri vrste.
+- **Pretvorba je u SQL-u** (`retype`): `broj` = regex provjera pa zamjena zareza; `mm:ss` = split;
+  mapa = `jsonb ->>`. Planer istu pretvorbu radi u TS-u za pregled ⇒ **dvije kopije pravila
+  pretvorbe** — zato ih čuva zajednički popis primjera (§29.3).
+- **Nova vrsta zapisa `attribute_definition`** (`restructure_op_rows.kind`): `before` / `after` =
+  cijeli redak definicije. `retype` mijenja `data_type`; `merge` uz `drop_from` briše B (`after = NULL`).
+  ⚠ Brisanje definicije ide **zadnje** u operaciji ⇒ povrat (`seq DESC`) **prvo** vraća definiciju,
+  pa tek onda njene retke (FK).
+- Povrat event atributa već vraća **sve** `value_*` stupce (`058`, provjereno čitanjem) — A1 povrat
+  zato traži samo `attribute_definition`.
+- **Iznimka u F1 grani:** `set` s `(prazno)` smije i na ne-tekstualni atribut (brisanje krive izvedene
+  vrijednosti). Postavljanje broja kroz F1 i dalje ne.
+- Pravo, zaključavanje Aree, „ništa se nije promijenilo od pregleda", `REVOKE … anon` — kao `058`.
+
+## 28. Aplikacija
+
+- `src/lib/restructure/attrSheet.ts` — sheet **`Preuređivanje atributa`**:
+  `Korak | Operacija | Kategorija | Atribut | Novi tip | U atribut | Pretvorba | Obriši izvor | Napomena`
+  (`Operacija` ∈ `promijeni tip`, `spoji u`). Prazan predložak u Structure exportu; slova stupaca se
+  računaju (S160). Mapa u obliku `ListColumns` `Map`.
+- `src/lib/restructure/attrPlan.ts` — planer A1/A4 (čist): brojevi, nepretvorivi retci, sukobi, config
+  (§24.4, §25), blokade. ⚠ **`plan.ts` ostaje JEDINO mjesto koje zna gdje u configu stoji vrijednost
+  opcije** — `attrPlan` njegove funkcije **zove**, ne kopira.
+- `RestructurePanel` — isti pregled i Poništi; dodaje tablice „nepretvorivo" (crveno, gasi Primijeni)
+  i „sukobi" (žuto, ne blokira).
+- **A2 nema UI u F2.** Operacije A2 vide se tek u F1b popisu operacija (kad ga bude).
+
+## 29. Testovi i dokaz
+
+1. **`pravila.py --test`**: oblici iz §22.1 (HR, oba TE oblika, `kcal`/`cal`, `opt`, `vr`/`v.r.`,
+   `16:30`/`16h`, AM prefiksi; dva tipfelera kao **nepogođeni**). Sabotaža (pokvaren regex) ruši test.
+2. **`attrPlan.test.mjs`**: A1 mapa prevodi `list_columns.map` ključeve i filtar pločice; nepretvoriv
+   redak blokira; `depends_on` blokira; A4 sukob ostavlja B; A4 prepisuje slug u dashboardu (fixture
+   PROD snimka iz S175). Protuprovjera sabotažom (S120).
+3. **Ista pretvorba u TS-u i SQL-u** — jedan popis primjera (`2,3`, `1.234,5`, `6:06`, `-`, `abc`),
+   isti očekivani ishod; SQL strana kao proba na TEST-u.
+4. **Baza na TEST-u**, nad `Fitness_Garmin`, svaka vrsta: primijeni → izmjeri → poništi → **`sha256`
+   po tablici jednak** (dokaz iz §15 / §18) · promijeni izvor između dry runa i `--apply` ⇒ odbijeno,
+   0 promjena · promijeni cilj poslije ⇒ povrat odbijen.
+5. **Kontrolne brojke** (zapisati prije): A2 `kcal` dira sve sesije s `kcal`, svaka nova = stara /
+   4,184 (±1); poslije toga DIARY ↔ Garmin `kcal` ±2 slaže se kao puls (~93 %). A1 `pace`: svi retci
+   pretvoreni ili popis nepretvorivih.
+6. **E2E:** sheet A1 (`mood` mapa) ⇒ lista pokazuje smajlić kroz `map`, Edit forma broj; Poništi vraća.
+
+## 30. Redoslijed izvedbe (prijedlog)
+
+| # | Što | Gdje | Dokaz |
+| --- | --- | --- | --- |
+| 0 | §20 popravak planera (`depends_on` pod `*`) | `plan.ts` + test | neovisno, mali |
+| 1 | `059` + `pravila.py` + `izvedi.py`, **A2 `kcal` na `Fitness_Garmin`** | TEST | §29.4–5 |
+| 2 | `garmin_activities_to_xlsx.py`: `kcal = calories / 4.184` (+ test) | alat | prije ikakvog PROD uvoza Garmina |
+| 3 | A1 (`attrSheet`, `attrPlan`, modal) — `pace` na `Fitness_Garmin`, `mood` mapa | TEST | §29.2, .4, .6 |
+| 4 | A4 | TEST | §29.2, .4 |
+| 5 | generator DIARY v0 → grubi uvoz na TEST; A2 nad `O` / `M` za rupu 02.2025.→ | TEST | brojke §22.4 |
+| 6 | PROD: `backup_db` → `059` (Saša) → deploy → prvi stvarni PROD korisnik: `Fitness` `mood` A1 | PROD | kontrolne brojke prije/poslije |
+
+Koraci 5–6 ovise o P1 i o tome stigne li novi GDPR izvoz (P3).
+
+## 31. Otvoreno
+
+- **P1–P3** (§21.2).
+- `pravila.py --test` u CI (CI danas vrti samo Node) ili ručna brana uz `izvedi.py`? Prijedlog:
+  brana u alatu (§26.1), CI kasnije.
+- A2 nad **tekstom sa `suggest`** (izvedena vrijednost koje nema u izborniku): u F2 **blokada** —
+  dodavanje u izbornik traži planer, a A2 ga namjerno nema.
+- `restructure_op_rows` uz A2 na DIARY-ju: ~7,5k zapisa po pravilu × ~8 pravila ≈ 60k — izmjeriti
+  rast; čišćenje starih zapisa nije u F2.
+- Garmin san (§22.5) u `Health_Sasa` — nije F2, ali je jeftin i čeka samo odluku.

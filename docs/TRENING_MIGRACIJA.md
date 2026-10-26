@@ -111,6 +111,20 @@
 | **Q16** | ostali sheetovi ostaju u Excelu | ✅ |
 | **Q17** | `Fitness_Garmin` spojiti s `Fitness`; o sukobima još razgovarati | v. „Sukobi" dolje. ⚠ `Fitness_Garmin` je samo na **TEST-u**; na PROD-u ga nema |
 
+### Izmjereno 26.10. (S185) — za F2 i za sukobe Garmin ↔ DIARY
+
+Puni brojevi su u [`PREUREDJIVANJE_SPEC.md`](PREUREDJIVANJE_SPEC.md) §22. Ukratko:
+
+- **DIARY `O` za 2015.–02.2025. je prepis Garmina:** oba izvora imaju 2.661 dan treninga, puls isti
+  ±1 na 2.098 od 2.245 dana (93 %), km unutar 10 % na 91 %. Pravu novu informaciju `O` nosi samo za
+  **rupu poslije 14.02.2025.** (465 dana s treningom, 454 s pulsom) i 171 dan bez Garmina.
+- ⚠ **`Fitness_Garmin` (TEST) drži `kcal` u kilodžulima** — omjer prema DIARY-ju 4,19 na 1.794 od 1.905
+  dana. `garmin_activities_to_xlsx.py` ne pretvara `calories`. Popraviti **prije** ikakvog PROD uvoza.
+- **Garmin san 07.2016.–02.2025. (3.127 noći) postoji u `C:\0_Sasa\GarminData` i nije uvezen**;
+  bilješka u `garmin_daily_metrics_to_xlsx.py` („not available") je zastarjela.
+- Model `Fitness` (PROD) ima atribute za sve iz `O`: `hr_avg`/`hr_max`, `kcal`, `aerobic_effect`/
+  `anaerobic_effect`, `training_load` (= `opt`), `total_ascent` (= `vr`, Saša 26.10.), `mood`, `intensity`.
+
 ### Garmin — moguće opcije dotoka (⚠ iz znanja, nisam provjerio danas)
 
 - **Službeni Garmin API** (Health/Connect Developer Program) je za tvrtke i traži odobrenje —
