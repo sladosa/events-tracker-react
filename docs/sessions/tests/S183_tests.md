@@ -6,7 +6,7 @@ TEST = PROD 22.10. + S180 (nepromijenjen od snimke `fixtures/breakdown_financije
 
 ---
 
-## T-S183-1 ⬜ (TEST lokalno, Saša) Pločica s tri pogleda
+## T-S183-1 ✅ S184 26.10. (TEST lokalno, Saša) Pločica s tri pogleda
 
 **Preduvjet:** `npm run dev` (žuti banner **TEST**), Sašin račun (vlasnik `Financije_all` na TEST-u),
 **Ctrl+Shift+R**.
