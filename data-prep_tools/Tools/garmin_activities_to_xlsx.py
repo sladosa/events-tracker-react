@@ -24,6 +24,7 @@ Unit assumptions (Garmin summarizedActivities JSON):
   duration       ms  -> minutes  (/ 60000)
   distance       cm  -> km       (/ 100000)
   elevationGain  cm  -> m        (/ 100)
+  calories       kJ  -> kcal     (/ 4.184, `Trening/pravila.kj_u_kcal`; do S185 bez pretvorbe)
   avgSpeed       m/s
   startTimeLocal epoch ms (local tz, no conversion needed)
 
@@ -37,6 +38,9 @@ import json, os, sys, argparse, time, urllib.request
 from pathlib import Path
 from datetime import datetime, timezone
 from collections import defaultdict
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "Trening"))
+from pravila import kj_u_kcal  # noqa: E402  (jedina kopija pretvorbe kJ -> kcal)
 
 try:
     import openpyxl
@@ -322,8 +326,10 @@ def map_activity(act: dict, area_name: str, user_email: str, geocode: bool = Fal
     hr_max = round(hr_max) if hr_max else None
 
     # ── Calories ──
-    kcal = act.get("calories")
-    kcal = round(kcal) if kcal else None
+    # /!\ `calories` u summarizedActivities je u KILODŽULIMA (S185: omjer prema
+    #     DIARY-ju 4,19 na 1.794 dana). Do S185 se upisivao bez pretvorbe, pa je
+    #     `kcal` u Fitness_Garmin bio ~4,2x prevelik. Pretvorba ima JEDNU kopiju.
+    kcal = kj_u_kcal(act.get("calories")) if act.get("calories") else None
 
     # ── Training effects ──
     aerobic   = act.get("aerobicTrainingEffect")

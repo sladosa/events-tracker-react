@@ -1,7 +1,7 @@
 # Preuređivanje strukture — spec (prijedlog prije koda)
 
-> **Stanje 26.10. (S185):** F1 na PROD-u (§18–§20). **F2 (A1, A2, A4) je NACRT u DIO 3 (§21–§31)**,
-> s tri pretpostavke koje čekaju Sašu (§21.2) — bez koda.
+> **Stanje 26.10. (S185):** F1 na PROD-u (§18–§20). **F2 (A1, A2, A4) je spec u DIO 3 (§21–§31)**;
+> izveden je A2 (`059`, `izvedi.py`) i dokazan na TEST-u — §32. A1 i A4 slijede.
 >
 > **Status:** prijedlog, 2026-10-20. Nastalo iz razgovora o `trening.xlsm`
 > ([`TRENING_MIGRACIJA.md`](TRENING_MIGRACIJA.md)). **Sašina odluka (20.10.):** operacije
@@ -1033,8 +1033,8 @@ Proširuje `058`; F1 koraci ostaju kakvi jesu (i dalje samo tekst), osim jedne i
 | # | Što | Gdje | Dokaz |
 | --- | --- | --- | --- |
 | 0 | ✅ §20 popravak planera (`depends_on` pod `*`) — S185 | `plan.ts` + test | 78/78, nad starim kodom 8 pada |
-| 1 | `059` + `pravila.py` + `izvedi.py`, **A2 `kcal` na `Fitness_Garmin`** | TEST | §29.4–5 |
-| 2 | `garmin_activities_to_xlsx.py`: `kcal = calories / 4.184` (+ test) | alat | prije ikakvog PROD uvoza Garmina |
+| 1 | ✅ `059` + `pravila.py` + `izvedi.py`, **A2 `kcal` na `Fitness_Garmin`** — S185, §32 | TEST | §29.4–5 |
+| 2 | ✅ `garmin_activities_to_xlsx.py`: `kcal = calories / 4.184` — S185, §32 | alat | prije ikakvog PROD uvoza Garmina |
 | 3 | A1 (`attrSheet`, `attrPlan`, modal) — `pace` na `Fitness_Garmin`, `mood` mapa | TEST | §29.2, .4, .6 |
 | 4 | A4 | TEST | §29.2, .4 |
 | 5 | model dana u `TRENING_MIGRACIJA.md` (trening → `Activity`; ostalo → `Health_Sasa` / `Life_Sasa`; periodi), pa generator v0 → grubi uvoz na TEST; A2 nad `O` / `M` za treninge bez Garmina | TEST | brojke §22.4 |
@@ -1060,3 +1060,39 @@ Korak 5 ovisi o modelu dana i o tome kad stigne novi GDPR izvoz (P3). Koraci 0�
 - `restructure_op_rows` uz A2 na DIARY-ju: ~7,5k zapisa po pravilu × ~8 pravila ≈ 60k — izmjeriti
   rast; čišćenje starih zapisa nije u F2.
 - Garmin san (§22.5) u `Health_Sasa` — nije F2, ali je jeftin i čeka samo odluku.
+
+## 32. Izvedeno (S185, 26.10.) — korak 0–2 iz §30
+
+**Stanje:** `test-branch`. `059` na **TEST-u** (ne na PROD-u). Ništa od ovoga nije na PROD-u.
+
+| Mjesto | Spec | Izvedeno | Zašto |
+| --- | --- | --- | --- |
+| §30.0 | §20 popravak | `plan.ts` (v. §20), 5 blokova testa | — |
+| §27 | `kind: 'values'` u `rpc_restructure_apply` | **zasebna funkcija `rpc_restructure_values`** (`sql/059`) | F1 funkcija ostaje netaknuta (dokazana na PROD-u, S180); A2 od nje treba samo pravo, zaključavanje i zapis — isto. Zapis je istog oblika, pa **povrat je postojeći `rpc_restructure_undo`** |
+| §27 provjera | `expect` + `src_md5` | isto, **po retku**; uz to: isti event dvaput, prazna vrijednost, „nova = stara" ⇒ greška | alat šalje popis (regex je u Pythonu), pa jedan broj nije dovoljan |
+| §26.1 | modul pravila | `data-prep_tools/Trening/pravila.py`: parseri `O`/`M`/`AM` + `kj_u_kcal`, registar s jednim pravilom (`kcal_kj`), samoprovjera 30/30 | DIARY pravila (izvor → cilj) dolaze s generatorom — izvorni atribut još nema ime |
+| §26.2 | `izvedi.py` | isto; **jednokratno pravilo** (pretvorba na mjestu) alat odbija ako postoji neponištena operacija tog pravila nad tim atributom | drugi prolaz bi kJ → kcal podijelio još jednom, i izgledao bi kao uredna operacija |
+| §30.2 | alat za Garmin | `garmin_activities_to_xlsx.py` uvozi `kj_u_kcal` iz `pravila.py` (jedna kopija) | 01.12.2024. sada daje 630, isto kao baza poslije A2 |
+
+**Parseri nad DIARY kopijom 26.10.** (kontrolni brojevi za generator): puls 2017. 203 · 2025. 295;
+TE s anaerobnim 2023. 297; kcal (s `cal`) 2020. 323; HRV 2025. 355; bb 2025. 356; vrijeme iz `M`
+2025. 214. Razlike prema §22.1 su oblici koje strogo pravilo namjerno ne pogađa (npr. HRV izvan prva
+tri dijela `AM`).
+
+**Dokaz na TEST-u (`Fitness_Garmin`, 3.124 treninga s `kcal`):**
+
+| # | Proba | Ishod |
+| --- | --- | --- |
+| 1 | promijeni 1 redak između suhog prolaza i upisa | **odbijeno**, poruka imenuje redak; otisak `kcal` redaka isti |
+| 2 | upis (`--apply`, service ključ) | 3.124 redaka, **2,1 s**; provjera 3.124/3.124 = predviđanje |
+| 3 | isto pravilo opet | **alat odbija** (jednokratno) |
+| 4 | promijeni 1 redak poslije operacije, pa Poništi | **odbijeno**, ništa vraćeno |
+| 5 | Poništi | 3.124 zapisa; **otisak = otisak prije upisa** (`83b0358…`), Σ kcal isti, broj `event_attributes` isti |
+
+Kontrola sadržaja: omjer Garmin/DIARY `kcal` **4,19 → 1,00** (1.811 od 1.905 dana s jednom sesijom i
+istim pulsom); ±2 kcal 1.973 od 2.231. Pretvorba je poslije dokaza **ponovno primijenjena** (op
+`a000241e`) — TEST `Fitness_Garmin` sada drži kcal.
+
+**Za PROD (kad dođe red):** `Fitness_Garmin` nikad nije bio na PROD-u; ako ide, ide popravljenim
+alatom (kcal ispravan od početka), pa A2 `kcal_kj` na PROD-u **ne treba**. `059` na PROD treba tek za
+prvo PROD izvođenje (DIARY) — tada Saša u SQL editoru, kao `058`.

@@ -128,8 +128,10 @@ Puni brojevi su u [`PREUREDJIVANJE_SPEC.md`](PREUREDJIVANJE_SPEC.md) §22. Ukrat
 - **DIARY `O` za 2015.–02.2025. je prepis Garmina:** oba izvora imaju 2.661 dan treninga, puls isti
   ±1 na 2.098 od 2.245 dana (93 %), km unutar 10 % na 91 %. Pravu novu informaciju `O` nosi samo za
   **rupu poslije 14.02.2025.** (465 dana s treningom, 454 s pulsom) i 171 dan bez Garmina.
-- ⚠ **`Fitness_Garmin` (TEST) drži `kcal` u kilodžulima** — omjer prema DIARY-ju 4,19 na 1.794 od 1.905
-  dana. `garmin_activities_to_xlsx.py` ne pretvara `calories`. Popraviti **prije** ikakvog PROD uvoza.
+- ⚠ **`Fitness_Garmin` (TEST) je držao `kcal` u kilodžulima** — omjer prema DIARY-ju 4,19 na 1.794 od 1.905
+  dana. ✅ **S185:** podaci na TEST-u pretvoreni A2-om (omjer sada 1,00), a `garmin_activities_to_xlsx.py`
+  pretvara sam (`pravila.kj_u_kcal`). `Fitness_Garmin` je na TEST-u prebačen s testnog outlook računa na
+  Sašin Gmail (vlasništvo i autorstvo, 6.267 eventa; backup `_backup/test/2026-10-26_1621`).
 - **Garmin san 07.2016.–02.2025. (3.127 noći) postoji u `C:\0_Sasa\GarminData` i nije uvezen**;
   bilješka u `garmin_daily_metrics_to_xlsx.py` („not available") je zastarjela.
 - Model `Fitness` (PROD) ima atribute za sve iz `O`: `hr_avg`/`hr_max`, `kcal`, `aerobic_effect`/

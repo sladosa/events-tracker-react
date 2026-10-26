@@ -1974,6 +1974,12 @@ src/lib/restructure/sheet.ts       Sheet `Preuređivanje` (zaglavlje `kad: <slug
 sql/058_restructure.sql            apply/undo u JEDNOJ transakciji + zapis prije/poslije (TEST; PROD ne)
 src/lib/restructure/apply.ts       F1 I/O: snimka (samo potrebni atributi, paralelno) → planer → RPC →
                                    provjera „baza = predviđanje"; undo → „baza = prije". UI: `RestructurePanel.tsx`
+sql/059_restructure_values.sql     F2/A2: `rpc_restructure_values` — gotove vrijednosti po eventu (alat računa),
+                                   provjera po retku (cilj = viđeno, md5 izvora); povrat = 058 undo (TEST; PROD ne)
+data-prep_tools/Trening/pravila.py JEDINI parseri DIARY teksta (`O`, `M`, `AM`) i pretvorbe (`kj_u_kcal`);
+                                   `--test` samoprovjera. Zovu ga `izvedi.py`, Garmin alat i budući generator
+data-prep_tools/Trening/izvedi.py  A2 nad bazom: suhi prolaz po godini → `--apply` (service) → mjeri
+                                   „baza = predviđanje"; `--ponisti <op>`. Jednokratno pravilo ne pušta dvaput
 data-prep_tools/Tools/preuredjivanje_grep.py
                                    Stare vrijednosti iz sheeta `Preuređivanje` u Python rječnicima
                                    (JAK = vrijednost + kontekst koraka u retku); bez `fix_*` i `Obsolete/`
