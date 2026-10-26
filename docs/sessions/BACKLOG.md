@@ -22,6 +22,17 @@
 `docs/_archive/BACKLOG_2026-09-26.md` (povijest). Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
 § S150). Nove i preformulirane stavke iz prolaza:
 
+- **Tempo (`pace`) kao PRIKAZNA kolona — trajanje ÷ udaljenost, `mm:ss` (S185, Saša: opcija A)** — ne
+  sprema se; lista, View i Excel izvoz ga računaju (Excel može kao pravu formulu, pa prati izmjene u fileu).
+  Izmjereno na TEST `Fitness_Garmin`: Garminov `pace` = `duration` / `distance` na **1.935 od 1.936** treninga
+  (±2 s/km) ⇒ spremljeni `pace` je suvišan. ⚠ `duration` je na `Activity` (roditelj sesije), `distance` na
+  `Outdoor` (leaf) — prikaz mora vidjeti obje razine (provjeriti `useListColumnValues`). Odbačeno (B):
+  automatika u formi koja zapisuje tekst — zastari na Excel uvozu bez poruke (razred S137).
+  ⚠ Jedan Garmin trening (01.08.2017.) daje 0:01 min/km ⇒ kriv ulaz; ispravak uz uvoz treninga.
+- **Garmin san u `Health_Sasa` (S185)** — 3.127 noći (07.2016.–02.2025.) iz `C:\0_Sasa\GarminData` nije
+  uvezeno (faze sna, disanje, stres u snu, ocjena ~860 noći). Jeftino: JSON, bez FIT parsera. Uz novi GDPR
+  izvoz (zatražen 26.10.) pokriva se i rupa do danas.
+
 - **Excel uvoz primjenjuje `depends_on.default_map` kad se RODITELJ promijeni (S172, Saša: odlučeno
   „A + upozorenje")** — nađeno u T-S170-10: MC → `Izvor = Racun` u fileu ostavlja `Status = Planiran`,
   pa redak tiho ostaje izvan salda iako je novac otišao. Forma (Add/Edit) to već radi

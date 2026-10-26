@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S184).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S185).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 155 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 168 | [Critical rules](<#Critical rules>) | X |
-| 1396 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1875 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1891 | [Key files](<#Key files>) |  |
-| 2036 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2056 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2079 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2108 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2148 | [Open bugs](<#Open bugs>) | ~ |
-| 2258 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2303 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2465 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2473 | [Backlog](<#Backlog>) | ~ |
-| 2477 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2485 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1409 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1888 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1904 | [Key files](<#Key files>) |  |
+| 2059 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2079 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2102 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2131 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2171 | [Open bugs](<#Open bugs>) | ~ |
+| 2281 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2326 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2488 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2496 | [Backlog](<#Backlog>) | ~ |
+| 2500 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2508 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2649 redaka, 18 sekcija._
+_Ukupno 2672 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -480,6 +480,18 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ključ ostaje ispravan). Na PROD-u vrijedi tek s deployem; do tada Namjenu s retcima ne preuređivati sheetom.
   ⚠ **Shortcute drugog korisnika planer ne vidi** (RLS): prije uvoza ih prebroji service ključem — S180:
   Sašin `AI_rucak` (`Projekti / Sasa`) ⇒ `fix_shortcuti_S180.py` poslije Apply.
+- **⚠ F2 (S185): A2 i A1 su ZASEBNE funkcije (`059`, `060`) koje pišu u ISTI zapis kao F1 — povrat je
+  jedan (`rpc_restructure_undo`, 058).** Nova vrsta zapisa mora ući u `_restructure_current` **i**
+  `_restructure_write_config` (`060` ih je prepisao s granom `attribute_definition`), inače povrat baci
+  „nepoznata vrsta" — tek kad zatreba, dakle prekasno.
+  ⚠ Pretvorba tipa (A1) živi u TS-u (`retype.ts`) i SQL-u (`_restructure_convert`) — `CONVERT_EXAMPLES` je
+  zajednički popis; promjena jedne strane bez druge ⇒ pregled obeća broj koji baza ne upiše.
+  ⚠ A2 pravilo „na mjestu" (izvor = cilj, npr. kJ → kcal) je **jednokratno**: `izvedi.py` ga ne pušta drugi put
+  dok postoji neponištena operacija — drugi prolaz izgleda kao uredna operacija i podijeli još jednom.
+- **Izvedenu vrijednost RAČUNAJ PRI PRIKAZU, ne spremaj kao atribut** (Saša S185, `pace` = trajanje ÷
+  udaljenost; izmjereno 1.935/1.936 Garmin treninga isto ±2 s). Spremljeni izvod zastari čim se ulaz promijeni
+  putem koji ga ne preračuna (Excel uvoz, alat) — bez poruke; razred `set_attribute` na uvozu (S137). Isto
+  načelo kao saldo i kolona `Stanje`. BACKLOG: tempo kao prikazna kolona.
 - **Promjena sluga lomi reference.** `depends_on` (S105d), a od Faze 1 i `dashboard.widgets[]`.
   Fixup referenci mora ići uz svaki rename sluga.
 - **`set_attribute` se evaluira u Add Activity i (od S127) u Edit — ne u Import.**

@@ -365,6 +365,20 @@
   offline. Vrijedi za svaki budući alat: **prije/poslije ručnog zahvata imamo dvije snimke**, pa se
   „alat bi to sam napravio" dade izmjeriti, ne procijeniti.
 
+**Trening / Garmin (S185)**
+
+- **⚠ Garmin `summarizedActivities.calories` je u KILODŽULIMA.** `garmin_activities_to_xlsx.py` ga je do
+  S185 upisivao u `kcal` bez pretvorbe ⇒ `Fitness_Garmin` (TEST) ~4,2× previše (omjer prema DIARY-ju 4,19 na
+  1.794 dana). Dnevni alat čita `activeKilocalories` — on JEST kcal. Polje bez jedinice u imenu se mjeri
+  prema drugom izvoru, ne pretpostavlja.
+- **`Trening/pravila.py` je JEDINA kopija** parsera DIARY teksta (`O`, `M`, `AM`) i pretvorbi (`kj_u_kcal`);
+  zovu ga `izvedi.py`, Garmin alat i (budući) generator. Regex prepisan u drugi alat = drugo mjesto koje odluta.
+- `izvedi.py` = A2 nad bazom (spec §26, §32): suhi prolaz zadano, `--apply` mjeri „baza = predviđanje",
+  `--ponisti <op>`. Na PROD-u ga pokreće Saša.
+- GDPR izvoz 15.02.2025. je u `C:\0_Sasa\GarminData` (raspakiran 07.05.2026.): san 3.127 noći
+  (`DI-Connect-Wellness/*sleepData.json`) **postoji** — bilješka „Sleep/HRV not available" u
+  `garmin_daily_metrics_to_xlsx.py` je zastarjela. Novi izvoz Saša je zatražio 26.10.2026.
+
 ## Financije — pravila domene (nastavak; „Ključne odluke" su u korijenu)
 
 ### Spašeno iz plana (S137) — četiri pravila bez kopije igdje drugdje

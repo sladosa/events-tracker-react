@@ -2,7 +2,21 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S184 (2026-10-26, T-S183-1..2 ✅, S183 na PROD-u; sekcija S183 arhivirana) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S185 (2026-10-26, F2: §20, A2, jezgra A1 na TEST-u; T-S185-1..3) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S185 — F2 preuređivanja: §20, A2 (izvedi), jezgra A1 (promijeni tip) (2026-10-26)
+
+Spec F2 (`PREUREDJIVANJE_SPEC.md` DIO 3, §21–§33). Na TEST-u: `059` (A2) i `060` (A1); `Fitness_Garmin` prebačen na Sašin Gmail, `kcal` pretvoren iz kJ, `mood` posijan (30) i pretvoren u broj. PROD nije diran. Sheet i modal za A1 još ne postoje.
+
+**Detalji testova:** [tests/S185_tests.md](tests/S185_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S185-1 | TEST lokalno (`npm run dev`, Gmail): `Fitness_Garmin` je u izborniku Area; trening **01.12.2024.** pod `Activity` ima `kcal` **630** (prije 2.636); bilo koji elliptical od ~1 h oko 300–400 | ⬜ |
+| T-S185-2 | TEST lokalno: lista `Fitness_Garmin` (od 06.2024.) ima kolonu **Mood** sa sličicom na 30 posijanih treninga; View istog treninga pokazuje broj 1–5; Edit: `mood` je polje za broj, bez izbornika smajlića | ⬜ |
+| T-S185-3 | Automatske brane: `restructurePlan` 78/78 (§20, nad starim kodom pada 8) · `restructureRetype` 43/43 (sabotaža ruši 4) · `pravila.py --test` 30/30 · SQL pretvorba = TS na 15/15 · dokaz A2 i A1 na TEST-u (brane, upis = predviđanje, povrat s istim otiskom) | ✅ S185 — čuva automatski test (+ izmjereno u sesiji, §32–§33) |
 
 ---
 
