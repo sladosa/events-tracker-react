@@ -1,7 +1,8 @@
 # Preuređivanje strukture — spec (prijedlog prije koda)
 
 > **Stanje 26.10. (S185):** F1 na PROD-u (§18–§20). **F2 (A1, A2, A4) je spec u DIO 3 (§21–§31)**;
-> izveden je A2 (`059`, `izvedi.py`) i dokazan na TEST-u — §32. A1 i A4 slijede.
+> izveden je A2 (`059`, `izvedi.py`, §32) i jezgra A1 (`060`, `retype.ts`, §33), dokazani na TEST-u.
+> Slijede: sheet i modal za A1, pa A4.
 >
 > **Status:** prijedlog, 2026-10-20. Nastalo iz razgovora o `trening.xlsm`
 > ([`TRENING_MIGRACIJA.md`](TRENING_MIGRACIJA.md)). **Sašina odluka (20.10.):** operacije
@@ -1035,7 +1036,7 @@ Proširuje `058`; F1 koraci ostaju kakvi jesu (i dalje samo tekst), osim jedne i
 | 0 | ✅ §20 popravak planera (`depends_on` pod `*`) — S185 | `plan.ts` + test | 78/78, nad starim kodom 8 pada |
 | 1 | ✅ `059` + `pravila.py` + `izvedi.py`, **A2 `kcal` na `Fitness_Garmin`** — S185, §32 | TEST | §29.4–5 |
 | 2 | ✅ `garmin_activities_to_xlsx.py`: `kcal = calories / 4.184` — S185, §32 | alat | prije ikakvog PROD uvoza Garmina |
-| 3 | A1 (`attrSheet`, `attrPlan`, modal) — `pace` na `Fitness_Garmin`, `mood` mapa | TEST | §29.2, .4, .6 |
+| 3 | A1 — ✅ jezgra S185 (`060`, `retype.ts`, dokaz `mood`/`pace`, §33); ⬜ sheet + modal + E2E | TEST | §29.2, .4, .6 |
 | 4 | A4 | TEST | §29.2, .4 |
 | 5 | model dana u `TRENING_MIGRACIJA.md` (trening → `Activity`; ostalo → `Health_Sasa` / `Life_Sasa`; periodi), pa generator v0 → grubi uvoz na TEST; A2 nad `O` / `M` za treninge bez Garmina | TEST | brojke §22.4 |
 | 6 | PROD: `backup_db` → `059` (Saša) → deploy → prvi stvarni PROD korisnik: `Fitness` `mood` A1 | PROD | kontrolne brojke prije/poslije |
@@ -1096,3 +1097,33 @@ istim pulsom); ±2 kcal 1.973 od 2.231. Pretvorba je poslije dokaza **ponovno pr
 **Za PROD (kad dođe red):** `Fitness_Garmin` nikad nije bio na PROD-u; ako ide, ide popravljenim
 alatom (kcal ispravan od početka), pa A2 `kcal_kj` na PROD-u **ne treba**. `059` na PROD treba tek za
 prvo PROD izvođenje (DIARY) — tada Saša u SQL editoru, kao `058`.
+
+## 33. Izvedeno (S185, 26.10.) — A1 jezgra (korak 3 iz §30, bez sheeta i modala)
+
+**Stanje:** `test-branch`; `060` na **TEST-u**. **Nema** sheeta `Preuređivanje atributa` ni faze u
+modalu — A1 se danas pokreće samo skriptom (`Claude-temp_R/s185/a1_runner.mjs`, dokaz). UI je sljedeći korak.
+
+| Mjesto | Spec | Izvedeno | Zašto |
+| --- | --- | --- | --- |
+| §27 | `kind: 'retype'` u apply | **`rpc_restructure_retype`** (`sql/060`), povrat = postojeći `rpc_restructure_undo` | isti razlog kao §32; `_restructure_current`/`_write_config` dobili granu `attribute_definition` (`{data_type, default_value}`) |
+| §24 pretvorba | `broj` kao `parseAmountInput` | **stroži**: samo `-12`, `2,3`, `2.3` | `1.234` je dvosmislen (tisuća ili decimala); pogađanje bi bila tiha greška, a ovako je redak na popisu nepretvorivih |
+| §24 pretvorba | dvije kopije | `convertValue` (`restructure/retype.ts`) + `_restructure_convert` (`060`); **`CONVERT_EXAMPLES`** — TS test i SQL proba nad TEST bazom, **15/15 isto** | — |
+| §24.3 blokade | `depends_on`, uloge pločice | uz to i **sidra** (`group_slug`) te **bilo koje spominjanje** sluga u `dashboard` / `groupings` / `automations` (konzervativno: blokada je sigurna) | — |
+| §24.4 config | mapa prevodi ključeve | `list_columns.map` ključevi → tekst broja (`:-)` → `"4"`, jer lista uspoređuje PRIKAZANI tekst); **shortcut** dobiva **broj** (`4`); zadana vrijednost se pretvara, nepretvoriva blokira; nepretvoriv ključ mape ostaje uz upozorenje | — |
+| §29.2 | `attrPlan.test.mjs` | `restructureRetype.test.mjs` — 43 tvrdnje; sabotaža (`mm:ss` + blokada pločice) ruši 4 | — |
+
+**Dokaz na TEST-u (`Fitness_Garmin`):**
+
+| | `mood` (mapa, 30 posijanih redaka + kolona liste s mapom) | `pace` (`mm:ss`, 1.936 redaka) |
+| --- | --- | --- |
+| redak postao nepretvoriv između pregleda i upisa | odbijeno | odbijeno |
+| definicija dirana između pregleda i upisa | odbijeno | odbijeno |
+| upis | 30/30 = predviđanje, tip number, postavke = predviđanje, 0,4 s | 1.936/1.936, 1,0 s |
+| redak diran poslije, pa Poništi | odbijeno | odbijeno |
+| Poništi | 33 zapisa, **otisak = prije** | 1.937 zapisa, **otisak = prije** |
+
+**Ostavljeno na TEST-u:** `mood` = broj (P2 odlučen; op `9f749b3d`); **`pace` vraćen na tekst** — čeka
+Sašin odgovor kako je `pace` zapisan na PROD-u (decimalne minute `6.1` ili min.sek `6.06`). `mm:ss`
+pretvorba daje decimalne minute.
+
+**Sljedeće za A1:** sheet `Preuređivanje atributa` + faza u `StructureImportModal` (§28), E2E (§29.6).

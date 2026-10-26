@@ -1976,6 +1976,10 @@ src/lib/restructure/apply.ts       F1 I/O: snimka (samo potrebni atributi, paral
                                    provjera „baza = predviđanje"; undo → „baza = prije". UI: `RestructurePanel.tsx`
 sql/059_restructure_values.sql     F2/A2: `rpc_restructure_values` — gotove vrijednosti po eventu (alat računa),
                                    provjera po retku (cilj = viđeno, md5 izvora); povrat = 058 undo (TEST; PROD ne)
+sql/060_restructure_retype.sql     F2/A1: `rpc_restructure_retype` (text ↔ number) + `_restructure_convert`; zapis
+                                   `attribute_definition` (tip + zadana) u 058 povratu (TEST; PROD ne)
+src/lib/restructure/retype.ts      A1 planer (čist): pretvorba, blokade (depends_on, pločica, sidro), config
+                                   (mapa kolone, profil, shortcut). ⚠ pretvorba = `CONVERT_EXAMPLES` i u SQL-u
 data-prep_tools/Trening/pravila.py JEDINI parseri DIARY teksta (`O`, `M`, `AM`) i pretvorbe (`kj_u_kcal`);
                                    `--test` samoprovjera. Zovu ga `izvedi.py`, Garmin alat i budući generator
 data-prep_tools/Trening/izvedi.py  A2 nad bazom: suhi prolaz po godini → `--apply` (service) → mjeri
