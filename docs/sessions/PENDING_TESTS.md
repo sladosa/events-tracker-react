@@ -15,7 +15,7 @@ Pločica „Kamo ide novac" dobila tri pogleda na iste retke, fond Nena / Kući�
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S183-1 | TEST lokalno: This Year Izašlo 36.148,05 u Bucketi / Namjena / Tip; Projekti 683,91, nema Koka/Saša razno; ↗ samo uz Namjenu, N/A po vrsti, Tip pod bucketom samo kad je cijeli; Prihodi bez razine „Prihodi" i bez prekidača osi (Izašlo ostaje 39.031,63); **Fond**: +9.534,95 od početka i uz This Month (listopad: u razdoblju 0,00 · 1.822,08) | ✅ S184 (26.10.) — svih 10 koraka u brojku, screenshotovi |
-| T-S183-2 | PROD poslije deploya: `set_breakdown.py` dry run = točno 9 razlika ⇒ `--apply --yes-prod` ⇒ `verify_breakdown.py` ✓ ⇒ Ctrl+Shift+R, Izašlo isti u sva tri pogleda | ⬜ |
+| T-S183-2 | PROD poslije deploya: `set_breakdown.py` dry run = točno 9 razlika ⇒ `--apply --yes-prod` ⇒ `verify_breakdown.py` ✓ ⇒ Ctrl+Shift+R, Izašlo isti u sva tri pogleda | ✅ S184 (26.10.) — 9 razlika, upis, verify ✓; PROD This Year Izašlo 36.493,49, fond 9.534,95 |
 
 ---
 

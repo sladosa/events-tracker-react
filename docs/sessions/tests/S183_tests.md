@@ -49,7 +49,7 @@ pogled vraćen na Bucketi.
 
 ---
 
-## T-S183-2 ⬜ (PROD **poslije deploya**, Saša) Config i provjera
+## T-S183-2 ✅ S184 26.10. (PROD **poslije deploya**, Saša) Config i provjera
 
 **Redoslijed (CLAUDE.md § Overview):** deploy → **Ctrl+Shift+R** → config. Migracije nema.
 
@@ -71,6 +71,20 @@ pogled vraćen na Bucketi.
 
 **Pad:** dry run s drugim razlikama; Izašlo različit među pogledima; žuti okvir „Nepoznat tip
 pločice" (= stari bundle ⇒ Ctrl+Shift+R).
+
+**Izmjereno na PROD-u (S184, 26.10., deploy `f903401`, Sašin račun):**
+- Dry run: `[PROD] area de8662e6`, točno 9 razlika (doslovno kao gore), obje ✓ provjere. `--apply --yes-prod` ⇒
+  `✓ Upisano i pročitano natrag`, ostali ključevi netaknuti.
+- `verify_breakdown.py` [PROD]: 5.467 redaka (TEST 5.455), RPC = Python u lipu (4/4). Model 12 mj
+  (01.10.2025.–30.09.2026.) **identičan TEST-u u lipu** (Izašlo 42.461,75 / 41.639,04 …) — razlika PROD/TEST su
+  samo listopadski unosi, izvan prozora.
+- App, This Year (po kupnji): **Ušlo 43.522,27 · Izašlo 36.493,49** (isti u Bucketi i Namjena; Tip nije snimljen —
+  isti RPC odgovor). Bucketi: Mjesečni 20.306,11 · Povremeno nužno 5.442,14 · Kvaliteta 3.850,64 · Putovanja
+  3.130,40 · Kućište 2.465,05 · Projekti 683,91 · Kuća inv. 614,44 · N/A 0,80; nema Koka/Saša razno.
+  Namjena: Zajedničko 21.290,90 · Koka 5.801,86 · gotovina 3.516,90 · Saša 3.417,98 · Nena 2.465,05 · N/A 0,80.
+  Fond: **+9.534,95** (ušlo 12.000,00 · potrošeno 2.465,05, 20,5 %).
+- Saša pitao „nema Projekti – Koka": izmjereno na TEST-u (= PROD 22.10.) — Projekti/Koka je **1 redak, 61,37,
+  nije iz 2026.** (Namjena Koka); 2026. je samo Projekti/Saša (66 redaka, 683,91). Nije greška.
 
 ---
 
