@@ -1122,8 +1122,10 @@ modalu — A1 se danas pokreće samo skriptom (`Claude-temp_R/s185/a1_runner.mjs
 | redak diran poslije, pa Poništi | odbijeno | odbijeno |
 | Poništi | 33 zapisa, **otisak = prije** | 1.937 zapisa, **otisak = prije** |
 
-**Ostavljeno na TEST-u:** `mood` = broj (P2 odlučen; op `9f749b3d`); **`pace` vraćen na tekst** — čeka
-Sašin odgovor kako je `pace` zapisan na PROD-u (decimalne minute `6.1` ili min.sek `6.06`). `mm:ss`
-pretvorba daje decimalne minute.
+**Ostavljeno na TEST-u:** `mood` = broj (P2 odlučen; op `9f749b3d`); **`pace` vraćen na tekst i tako ostaje.**
+✅ **Odlučeno 26.10. (Saša): `pace` je tekst `mm:ss`** — *„trkači su navikli na mm:ss, ne decimale"*. Za analizu se
+tempo **računa** iz `duration` i `distance` (isto načelo kao TRENING Q11). PROD `Fitness.pace` je `number` s **0
+redaka** ⇒ u novom modelu treninga postaje `text` (A1 bez ijednog retka). Pretvorba `mm:ss` u A1 ostaje kao
+mogućnost; „broj u bazi + prikaz `mm:ss`" (kao smajlići za `mood`) je zasebna dorada prikaza, ako zatreba.
 
 **Sljedeće za A1:** sheet `Preuređivanje atributa` + faza u `StructureImportModal` (§28), E2E (§29.6).

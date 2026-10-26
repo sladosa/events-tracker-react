@@ -118,6 +118,8 @@
   blokovi `A`, teka `X`, posao, putovanja, bolest). Time otpada leaf `Dan` iz §3 i iz ranijeg prijedloga.
 - **Novi model ide uz stari („Activity1"), ne preko njega** — prvo TEST (`Fitness_Garmin`), na PROD
   tek gotov, kao nova kategorija u Arei `Fitness` (v. `PREUREDJIVANJE_SPEC.md` §31).
+- `pace` = **tekst `mm:ss`** (kako su trkači navikli); za analizu se tempo računa iz trajanja i udaljenosti (Q11).
+  PROD `Fitness.pace` je danas `number` bez ijednog retka ⇒ u novom modelu `text`.
 - `mood` u bazi = broj 1–5 (`:-(` 1 · `:-/` 2 · `:-|` 3 · `:-)` 4 · `:-D` 5); smajlić ostaje prikaz.
 - Novi Garmin GDPR izvoz Saša traži paralelno (web, ne mobilna aplikacija).
 
