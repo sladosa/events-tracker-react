@@ -761,13 +761,13 @@ prikazuje kao vidljivu krišku `(prazno)` — nikad je ne pretvara u Zajedničko
 | 5 | A2 zadano **puni samo prazno**; „uskladi s pravilom" se traži izričito (§26.3) |
 | 6 | **A1 i A4 ulaze u F2** — *„da ne moramo jako precizno pogoditi organizaciju iz prve"* |
 
-### 21.2 Pretpostavke — ⏳ čeka Sašu
+### 21.2 Pretpostavke — ✅ odlučeno 26.10. (Saša)
 
-| # | Pretpostavka | Što ovisi o njoj |
+| # | Odluka | Posljedica za F2 |
 | --- | --- | --- |
-| P1 | DIARY dan = novi leaf **`Fitness > Activity > Dan`** (na TEST-u pod `Fitness_Garmin`) | treba li A2 pisati na **roditeljski** event sesije (§26.4). ⚠ §22.4 daje razlog da se o tome još razgovara |
+| P1 | ~~DIARY dan = leaf `Activity > Dan`~~ → **`Activity` ostaje TRENING** (jedan event = jedan stvarni trening); ostatak dana se **raspodijeli** na `Health_Sasa`, `Life_Sasa` i slično, uz **periode** za razne slučajeve | A2 radi **unutar jednog eventa** — razina `roditelj` ispada iz F2 (§26.4); A4 samo unutar iste kategorije (§25). Model dana je posao `TRENING_MIGRACIJA.md`, ne F2 |
 | P2 | mapa za `mood`: `:-(` = 1 · `:-/` = 2 · `:-\|` = 3 · `:-)` = 4 · `:-D` = 5 | prvi A1 s mapom (§24) |
-| P3 | **novi Garmin GDPR izvoz** teče paralelno; `garminconnect` pokus poslije | koliko A2 nad `O` uopće treba (§22.4) |
+| P3 | **novi Garmin GDPR izvoz** teče paralelno (Saša ga traži) | A2 nad `O` je dopuna za rupu, ne glavni izvor (§22.4) |
 
 ## 22. Izmjereno (S185, samo čitanje)
 
@@ -820,9 +820,9 @@ Leafovi: `Gym > Strength`, `Gym > Cardio`, `Outdoor` (`distance`, `pace`, `terra
 
 **Što to znači za F2:** za 2015.–02.2025. su brojevi iz `O` **prepis Garmina** (93 % u bpm). A2 nad
 `O` zato ima pravu vrijednost samo za (a) rupu od 15.02.2025. — dok je ne zatvori novi GDPR izvoz,
-(b) 171 dan bez Garmina, (c) **kontrolu** (sukob DIARY ↔ Garmin kao popis, ne kao upis). Zato se o
-P1 (§21.2) još razgovara: ako dnevni event DIARY-ja puni `Activity` istog dana na kojem već postoji
-Garmin sesija, isti trening se broji dvaput.
+(b) 171 dan bez Garmina, (c) **kontrolu** (sukob DIARY ↔ Garmin kao popis, ne kao upis). Zato je
+P1 odlučen tako da `Activity` nosi **trening, ne dan** (§21.2): dnevni event DIARY-ja koji bi punio
+`Activity` uz već postojeću Garmin sesiju brojao bi isti trening dvaput.
 
 ### 22.5 `C:\0_Sasa\GarminData` (GDPR izvoz 15.02.2025.)
 
@@ -885,8 +885,8 @@ Structure Excel ──► sheet `Preuređivanje atributa` (A1, A4)      Python: 
 
 ## 25. A4 — spoji atribute (B u A)
 
-**Opseg:** A i B su atributi **istog tipa** u **istom lancu**: ista kategorija, ili A na pretku
-B-ove kategorije (vrijednost seli na roditeljski event iste sesije — §26.4).
+**Opseg:** A i B su atributi **istog tipa** na **istoj kategoriji** (dakle na istom eventu).
+A na pretku B-ove kategorije (seljenje na roditeljski event sesije) je A3 — F3 (§26.4).
 
 **Po eventu:**
 
@@ -908,7 +908,7 @@ B-ove kategorije (vrijednost seli na roditeljski event iste sesije — §26.4).
 - **Izbornik** (tekst sa `suggest`): A dobiva uniju, redoslijed vlasnika A, B-ove nove na kraj (§12.2).
 - `export_profiles` ključevi stupaca nose **ime** atributa (`attr:Area||Cat||Ime`) ⇒ upozorenje
   „profil X ima stupac B" (ime se ne prepisuje — isto kao §17).
-- **Blokade:** različit tip (prvo A1) · A i B nisu u istom lancu · B je `depends_on` roditelj nekog
+- **Blokade:** različit tip (prvo A1) · A i B nisu na istoj kategoriji · B je `depends_on` roditelj nekog
   trećeg atributa (rupa §20 — ne otvarati drugu).
 
 ## 26. A2 — izvedi atribut iz teksta (Python)
@@ -922,7 +922,7 @@ Pravilo(ime='hr_avg', izvor='biljeska',          # slug ili 'comment'
         od='2015-01-01', do=None,                # era (§22.1: TE oblik se mijenja 2021.)
         uzorak=r'HR\s*(\d{2,3})\s*\(', grupa=1,
         pretvorba='broj',                        # broj · mm:ss · ×faktor · /faktor · mapa · vrijeme
-        cilj='hr-avg', razina='isti')            # ili 'roditelj' (§26.4)
+        cilj='hr-avg')                           # isti event (§26.4)
 ```
 
 - **Pravilo smije biti Python funkcija kad regex ne dostaje** (npr. `kcal = kcal / 4.184`, izvor = cilj).
@@ -951,12 +951,12 @@ izvedi.py --ponisti <op_id>
   ispravak — zato izričito). Gdje pravilo **ne pogodi**, cilj se **ne dira** — A2 nikad ne briše.
   Brisanje krive vrijednosti je F1 korak `(prazno)` (proširen na brojeve, §27) ili Excel.
 
-### 26.4 Razina `roditelj` (samo ako P1 ostane)
+### 26.4 Samo unutar istog eventa (P1, 26.10.)
 
-Izvor na leaf eventu (`Dan.biljeska`), cilj na **roditeljskom eventu iste sesije** (`Activity.hr-avg`):
-isti `user_id`, isti `session_start`, `chain_key` = kategorija izvora, kategorija = predak. Alat šalje
-par (izvorni event, ciljni event); baza tu vezu **provjerava**. Padne li P1 (DIARY brojevi na
-vlastitom leafu), razina je uvijek `isti` i ovaj odlomak ispada iz F2 (ostaje F3 / A3).
+Izvor i cilj su na **istom eventu**. Za trening iz DIARY-ja to znači: izvorni tekst `O` ide u
+atribut **na istoj razini** kao brojevi (`Activity`, npr. `biljeska`), pa A2 čita i piše isti event.
+Seljenje vrijednosti između leafa i roditelja sesije (P2 lanac) ostaje **A3 u F3**. Time `059` ne
+mora znati lanac sesije, a tako je bilo i u prvom nacrtu (razina `roditelj`, ispala 26.10.).
 
 ### 26.5 Između Area — nije A2
 
@@ -972,9 +972,9 @@ Proširuje `058`; F1 koraci ostaju kakvi jesu (i dalje samo tekst), osim jedne i
 
 | `kind` | Oblik | Provjera u trenutku izvođenja |
 | --- | --- | --- |
-| `values` (A2) | `target_attr`, `rows: [{src_event, dst_event, value, expect, src_md5}]` | `dst_event` = `src_event` ili njegov P2 roditelj (§26.4) · `md5(izvorni tekst)` = `src_md5` · trenutna vrijednost cilja = `expect` (`null` za način `prazno`) · broj redaka = plan |
+| `values` (A2) | `target_attr`, `rows: [{event, value, expect, src_md5}]` | event je u Arei i na kategoriji ciljnog atributa · `md5(izvorni tekst)` = `src_md5` · trenutna vrijednost cilja = `expect` (`null` za način `prazno`) · broj redaka = plan |
 | `retype` (A1) | `attr`, `to_type`, `conv: 'broj' \| 'mm:ss' \| {mapa}`, `expected` | **svaki** redak se pretvara (inače `RAISE` s prvih 20) · broj = plan |
-| `merge` (A4) | `from_attr`, `into_attr`, `drop_from`, `expected_moved`, `expected_conflicts` | isti tip · isti lanac · brojevi = plan |
+| `merge` (A4) | `from_attr`, `into_attr`, `drop_from`, `expected_moved`, `expected_conflicts` | isti tip · ista kategorija · brojevi = plan |
 
 - Vrijednost se piše u **stupac po `data_type`** (`value_number` / `value_text` / `value_datetime`) —
   jedna pomoćna funkcija za sve tri vrste.
@@ -1030,14 +1030,22 @@ Proširuje `058`; F1 koraci ostaju kakvi jesu (i dalje samo tekst), osim jedne i
 | 2 | `garmin_activities_to_xlsx.py`: `kcal = calories / 4.184` (+ test) | alat | prije ikakvog PROD uvoza Garmina |
 | 3 | A1 (`attrSheet`, `attrPlan`, modal) — `pace` na `Fitness_Garmin`, `mood` mapa | TEST | §29.2, .4, .6 |
 | 4 | A4 | TEST | §29.2, .4 |
-| 5 | generator DIARY v0 → grubi uvoz na TEST; A2 nad `O` / `M` za rupu 02.2025.→ | TEST | brojke §22.4 |
+| 5 | model dana u `TRENING_MIGRACIJA.md` (trening → `Activity`; ostalo → `Health_Sasa` / `Life_Sasa`; periodi), pa generator v0 → grubi uvoz na TEST; A2 nad `O` / `M` za treninge bez Garmina | TEST | brojke §22.4 |
 | 6 | PROD: `backup_db` → `059` (Saša) → deploy → prvi stvarni PROD korisnik: `Fitness` `mood` A1 | PROD | kontrolne brojke prije/poslije |
 
-Koraci 5–6 ovise o P1 i o tome stigne li novi GDPR izvoz (P3).
+Korak 5 ovisi o modelu dana i o tome kad stigne novi GDPR izvoz (P3). Koraci 0–4 ne ovise ni o čemu.
 
 ## 31. Otvoreno
 
-- **P1–P3** (§21.2).
+- ~~P1–P3~~ — odlučeno 26.10. (§21.2).
+- **„Activity1" — ne ubiti sadašnji `Activity`** (Saša 26.10.): novi model treninga gradi se
+  **uz** postojeći, ne preko njega. Prijedlog: prvo na TEST-u (`Fitness_Garmin` je već odvojena
+  kopija modela — ondje se smije lomiti); na PROD ide tek gotov model, kao nova kategorija
+  (`Activity1`, ime nije odluka) u istoj Arei `Fitness`. Ista Area je namjerna: seljenje 2026.
+  treninga iz starog u novi je tada K2 (F3), a ne seljenje između Area (koje se ne planira).
+- **Dnevni subjektivni podaci uz Garmin trening** (`mood`, `intensity`, komentar `M`, vrsta iz `K`):
+  dan s jednom Garmin sesijom (~2.380 dana) je jednoznačan; **280 dana ima više sesija** — kojoj ide
+  raspoloženje dana? Pitanje modela (`TRENING_MIGRACIJA.md`), ne F2.
 - `pravila.py --test` u CI (CI danas vrti samo Node) ili ručna brana uz `izvedi.py`? Prijedlog:
   brana u alatu (§26.1), CI kasnije.
 - A2 nad **tekstom sa `suggest`** (izvedena vrijednost koje nema u izborniku): u F2 **blokada** —

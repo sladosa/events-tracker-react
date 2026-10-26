@@ -111,6 +111,16 @@
 | **Q16** | ostali sheetovi ostaju u Excelu | ✅ |
 | **Q17** | `Fitness_Garmin` spojiti s `Fitness`; o sukobima još razgovarati | v. „Sukobi" dolje. ⚠ `Fitness_Garmin` je samo na **TEST-u**; na PROD-u ga nema |
 
+### Odluke 26.10. (S185, Saša)
+
+- **`Activity` ostaje TRENING** — jedan event = jedan stvarni trening. Ostatak DIARY dana se
+  raspodijeli na `Health_Sasa`, `Life_Sasa` i slično, uz **periode** za razne slučajeve (trenažni
+  blokovi `A`, teka `X`, posao, putovanja, bolest). Time otpada leaf `Dan` iz §3 i iz ranijeg prijedloga.
+- **Novi model ide uz stari („Activity1"), ne preko njega** — prvo TEST (`Fitness_Garmin`), na PROD
+  tek gotov, kao nova kategorija u Arei `Fitness` (v. `PREUREDJIVANJE_SPEC.md` §31).
+- `mood` u bazi = broj 1–5 (`:-(` 1 · `:-/` 2 · `:-|` 3 · `:-)` 4 · `:-D` 5); smajlić ostaje prikaz.
+- Novi Garmin GDPR izvoz Saša traži paralelno (web, ne mobilna aplikacija).
+
 ### Izmjereno 26.10. (S185) — za F2 i za sukobe Garmin ↔ DIARY
 
 Puni brojevi su u [`PREUREDJIVANJE_SPEC.md`](PREUREDJIVANJE_SPEC.md) §22. Ukratko:
