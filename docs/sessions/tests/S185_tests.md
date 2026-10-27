@@ -36,16 +36,34 @@ elliptical od oko sat vremena ⇒ `kcal` ~300–400, ne 1.200–1.600.
 
 **Preduvjet:** isti kao T-S185-1.
 
+> ⚠ **Ispravljeno S186.** Prva verzija je tražila „prvih ~30 treninga od 01.06.2024., redom" — a posijano je
+> **raspršeno** (30 treninga, 13.06.2024.–14.02.2025., izmjereno u bazi 27.10.). Uz to lista nije čitala atribut
+> roditeljske razine (`mood` je na `Activity`) — popravljeno S186 (`listChainValues.ts`). Prvi run: View ✓,
+> Edit ✓, lista `—` ⇒ pao.
+
+**Preduvjet:** isti kao T-S185-1, i kod iz S186 (Ctrl+Shift+R nakon povlačenja).
+
 **Koraci:**
-1. `Fitness_Garmin` → Activities, razdoblje **od 01.06.2024.** do danas, sortiranje Oldest.
-2. Pogledaj kolonu **Mood** na prvih ~30 treninga.
-3. Otvori jedan trening sa sličicom (View).
-4. Edit istog treninga → pogledaj polje `mood`. **Ne spremaj** (Cancel).
+1. `Fitness_Garmin` → Activities, razdoblje **Custom 13.06.2024.–31.07.2024.**, sortiranje Oldest.
+2. Pogledaj kolonu **Mood** na retcima iz tablice ispod.
+3. Razdoblje **Custom 01.12.2024.–01.12.2024.**: kolona Mood.
+4. Otvori trening 01.12.2024. (View), pa Edit → polje `mood`. **Ne spremaj** (Cancel).
 
 **Očekivano:**
-- 2.: sličice 🙂 😐 😀 🙁 ☹ redom kako su posijane (ponavljaju se svakih 5 treninga).
-- 3.: `mood` je **broj** 1–5 (🙂 = 4, 😐 = 3, 😀 = 5, 🙁 = 2, ☹ = 1).
-- 4.: `mood` je polje za **broj**, bez izbornika smajlića.
+- 2.: (vrijeme je UTC iz baze; lista pokazuje lokalno, +2 h ljeti)
+
+  | datum | Mood |
+  | --- | --- |
+  | 13.06.2024. (Outdoor) | ☹ |
+  | 14.06.2024. (Cardio) | 🙁 |
+  | 04.07.2024. | 😀 |
+  | 19.07.2024. | ☹ |
+  | 21.07.2024. | 😐 |
+  | 22.07.2024. | 🙂 |
+  | 27.07.2024., 28.07.2024. | 🙁 |
+  | ostali treninzi u rasponu | `—` (nisu posijani) |
+- 3.: **🙂** (`mood` 4).
+- 4.: View `mood` je **broj 4**; Edit: polje za **broj**, bez izbornika smajlića.
 
 **Pad:** kolona prazna ili pokazuje broj umjesto sličice ⇒ mapa kolone nije prevedena; izbornik smajlića u
 Editu ⇒ pravila izbornika nisu promijenjena. U oba slučaja javi — povrat je `node Claude-temp_R/s185/a1_runner.mjs undo 9f749b3d-906f-4740-85e3-97b2dde95732`.

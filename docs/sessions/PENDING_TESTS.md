@@ -2,9 +2,17 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S185 (2026-10-26, F2: §20, A2, jezgra A1 na TEST-u; T-S185-1..3) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S186 (2026-10-27, kolona liste čita cijeli lanac; T-S185-1 ✅, T-S186-1) · povijest sesija: `DONE_HISTORY.md`
 
 ---
+
+## S186 — kolona liste čita cijeli lanac (2026-10-27)
+
+Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—`. Kolona sada čita i P2 roditeljske evente sesije (`listChainValues.ts`), istim identitetom kao View. Financije bez promjene (bez dodatnog upita).
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S186-1 | Automatske brane: `listChainValues` 17/17 (sabotaže „samo leaf" / „roditelj se zbraja" / „bez chain_key" ruše 5 / 2 / 2) · E2E `S186_list_parent_attr` (🙂 s `chain_key`, 🙁 stari zapis bez njega, leaf `orb`; sabotaža hooka ⇒ `—`; 3/3 ponavljanja) · S119, S168, S171 i dalje prolaze | ✅ S186 — čuva automatski test |
 
 ## S185 — F2 preuređivanja: §20, A2 (izvedi), jezgra A1 (promijeni tip) (2026-10-26)
 
@@ -15,7 +23,7 @@ Spec F2 (`PREUREDJIVANJE_SPEC.md` DIO 3, §21–§33). Na TEST-u: `059` (A2) i `
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S185-1 | TEST lokalno (`npm run dev`, Gmail): `Fitness_Garmin` je u izborniku Area; trening **01.12.2024.** pod `Activity` ima `kcal` **630** (prije 2.636); bilo koji elliptical od ~1 h oko 300–400 | ✅ S186 — 01.12.2024. `kcal` 630 (Saša, screenshot) |
-| T-S185-2 | TEST lokalno: lista `Fitness_Garmin` (od 06.2024.) ima kolonu **Mood** sa sličicom na 30 posijanih treninga; View istog treninga pokazuje broj 1–5; Edit: `mood` je polje za broj, bez izbornika smajlića | ⬜ S186 — **pao**: View `mood` 4 ✓, Edit broj ✓, ali lista `—` na 01.12.2024. — kolona liste čita samo leaf evente, a `mood` je na `Activity` (roditelj). Opis testa bio i kriv (posijano raspršeno 13.06.2024.–14.02.2025., ne „prvih 30") |
+| T-S185-2 | TEST lokalno: lista `Fitness_Garmin` ima kolonu **Mood** sa sličicom na posijanim treninzima (13.06.–28.07.2024. po tablici u koracima; 01.12.2024. = 🙂); View pokazuje broj 1–5; Edit: `mood` je polje za broj, bez izbornika smajlića (koraci ispravljeni S186) | ⬜ S186 — **pao**: View `mood` 4 ✓, Edit broj ✓, ali lista `—` na 01.12.2024. — kolona liste čita samo leaf evente, a `mood` je na `Activity` (roditelj). Opis testa bio i kriv (posijano raspršeno 13.06.2024.–14.02.2025., ne „prvih 30") |
 | T-S185-3 | Automatske brane: `restructurePlan` 78/78 (§20, nad starim kodom pada 8) · `restructureRetype` 43/43 (sabotaža ruši 4) · `pravila.py --test` 30/30 · SQL pretvorba = TS na 15/15 · dokaz A2 i A1 na TEST-u (brane, upis = predviđanje, povrat s istim otiskom) | ✅ S185 — čuva automatski test (+ izmjereno u sesiji, §32–§33) |
 
 ---

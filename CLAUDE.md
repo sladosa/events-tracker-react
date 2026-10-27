@@ -611,6 +611,13 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **Tekst `attr` kolone ima JEDNU kopiju: `attrColumnText`** (`map`, bez ponavljanja, `sep`;
   S171). Koriste je lista (`AttrCell`) i pločica Košare (`line2Text` = drugi redak uske liste).
   Nova ploha koja pokazuje redak „kao lista" ide kroz nju i kroz `useListColumnValues`.
+- **⚠ Kolona `attr` čita CIJELI LANAC retka, ne samo leaf** (S186, T-S185-2: `Activity.mood` u Viewu 4, u
+  listi `—`). Lista ima retke samo za leaf sesije; atribut roditeljske razine živi na P2 roditeljskom eventu.
+  `listChainValues.ts` ga nalazi **istim identitetom kao View** (korisnik + `session_start` + predak +
+  `chain_key = leaf`, ili stari zapis s `chain_key` NULL **samo kao jedini kandidat** — PROD `Fitness` ih ima
+  6/182). Leaf pobjeđuje, pa najbliži roditelj; roditeljski broj se **ne zbraja**. Upit roditelja ide samo kad
+  je traženi atribut na kategoriji koja nije leaf retka ⇒ Financije šalju iste upite kao prije.
+  Čuvaju `listChainValues.test.mjs` i E2E `S186_list_parent_attr`.
 - **`pair` mora pokazati OBJE strane kad su obje popunjene.** ZABA `Anja 73/96`
   (25.08.2025.) nosi uplatu `450,00` **i** isplatu `0,70` u istom eventu i to nije
   greška nego vjeran spoj dvaju redaka izvoda. Ćelija koja pokaže jednu skriva pola
