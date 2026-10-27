@@ -56,6 +56,11 @@ ok('par bez razmaka ispred | ⇒ greška', 'error' in parseConv(':-( = 1| :-/ = 
 ok('vrijednost nije broj ⇒ greška', 'error' in parseConv(':-( = loše | :-) = 4'));
 ok('ista vrijednost dvaput ⇒ greška', 'error' in parseConv(':-) = 4 | :-) = 5'));
 ok('nepoznata pretvorba ⇒ greška', 'error' in parseConv('decimal'));
+// Saša S186: „strah me ako korisnik upiše višak blankova" — višak se ne vidi, pa ne smije smetati.
+const M3 = { conv: { kind: 'mapa', map: { ':-(': 1, ':-/': 2, ':-|': 3 } } };
+ok('višak razmaka svuda ne smeta', eq(parseConv('   :-(   =   1     |     :-/  =  2   |   :-|   =   3   '), M3));
+ok('tabovi ne smetaju', eq(parseConv(':-(\t=\t1\t|\t:-/ = 2\t|\t:-| = 3'), M3));
+ok('NBSP (zalijepljeno iz weba/Worda) ne smeta', eq(parseConv(':-( = 1 | :-/ = 2 | :-| = 3'), M3));
 
 console.log('\n── Retci ──');
 const H = attrHeader();

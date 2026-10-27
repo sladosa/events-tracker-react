@@ -37,8 +37,17 @@ E2E `S186_list_parent_attr` (🙂 s `chain_key`, 🙁 stari zapis bez njega, lea
 
    | Step | Operation | Category | Attribute | New type | Into attribute | Conversion |
    | --- | --- | --- | --- | --- | --- | --- |
-   | 1 | change type | Activity | mood | number | | `:-( = 1 \| :-/ = 2 \| :-\| = 3 \| :-) = 4 \| :-D = 5` |
+   | 1 | change type | Activity | mood | number | | *(mapa — vidi ispod)* |
    | 2 | change type | Outdoor | pace | number | | `mm:ss` |
+
+   Conversion za korak 1 (kopiraj točno ovako, bez kosih crta):
+
+   ```
+   :-( = 1 | :-/ = 2 | :-| = 3 | :-) = 4 | :-D = 5
+   ```
+
+   ⚠ Ispravljeno S186: prva verzija je mapu imala u tablici kao `\|` (markdown), pa je u Excel otišla s kosim
+   crtama — uvoz ju je ispravno odbio greškom za redak 2 (brana radi).
 
    Spremi file.
 3. Structure → **Import** → odaberi file → Import. Skrolaj (prozor se sam spusti) do bloka **Restructure attributes — preview**.
