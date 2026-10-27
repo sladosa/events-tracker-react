@@ -1,5 +1,5 @@
 /**
- * S186 / F2 — sheet `Preuređivanje atributa` (`src/lib/restructure/attrSheet.ts`, PREUREDJIVANJE_SPEC §28).
+ * S186 / F2 — sheet `Restructure attributes` (`src/lib/restructure/attrSheet.ts`, PREUREDJIVANJE_SPEC §28).
  *
  * STO CUVA
  *   - stupci po NASLOVU (redoslijed i dijakritika nisu bitni), nepoznat stupac je greška;
@@ -46,7 +46,7 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const MOOD = ':-( = 1 | :-/ = 2 | :-| = 3 | :-) = 4 | :-D = 5';
 
 console.log('\n── Pretvorba ──');
-ok('broj', eq(parseConv('broj'), { conv: { kind: 'broj' } }));
+ok('number (interno broj)', eq(parseConv('number'), { conv: { kind: 'broj' } }));
 ok('mm:ss (veličina slova nije bitna)', eq(parseConv(' MM:SS '), { conv: { kind: 'mm:ss' } }));
 ok('mapa s :-| — pet ključeva, ništa se ne raspada',
   eq(parseConv(MOOD), { conv: { kind: 'mapa', map: { ':-(': 1, ':-/': 2, ':-|': 3, ':-)': 4, ':-D': 5 } } }));
@@ -55,17 +55,17 @@ ok('par bez razmaka iza | ⇒ greška (ne tiho čudan ključ)', 'error' in parse
 ok('par bez razmaka ispred | ⇒ greška', 'error' in parseConv(':-( = 1| :-/ = 2'));
 ok('vrijednost nije broj ⇒ greška', 'error' in parseConv(':-( = loše | :-) = 4'));
 ok('ista vrijednost dvaput ⇒ greška', 'error' in parseConv(':-) = 4 | :-) = 5'));
-ok('nepoznata pretvorba ⇒ greška', 'error' in parseConv('decimalno'));
+ok('nepoznata pretvorba ⇒ greška', 'error' in parseConv('decimal'));
 
 console.log('\n── Retci ──');
 const H = attrHeader();
 const row = (rowNum, o) => ({ rowNum, cells: H.map(h => o[h] ?? null) });
 {
   const p = parseAttrRows(H, [
-    row(2, { Korak: 2, Operacija: 'spoji u', Kategorija: 'Outdoor', Atribut: 'vr', 'U atribut': 'total_ascent', 'Obriši izvor': 'DA' }),
-    row(3, { Korak: 1, Operacija: 'promijeni tip', Kategorija: 'Activity', Atribut: 'mood', 'Novi tip': 'number', Pretvorba: MOOD, Napomena: 'P2' }),
+    row(2, { Step: 2, Operation: 'merge into', Category: 'Outdoor', Attribute: 'vr', 'Into attribute': 'total_ascent', 'Delete source': 'yes' }),
+    row(3, { Step: 1, Operation: 'change type', Category: 'Activity', Attribute: 'mood', 'New type': 'number', Conversion: MOOD, Note: 'P2' }),
     row(4, {}),
-    row(5, { Korak: 3, Operacija: 'Promijeni tip', Kategorija: 'Outdoor', Atribut: 'pace', 'Novi tip': 'tekst' }),
+    row(5, { Step: 3, Operation: 'Change Type', Category: 'Outdoor', Attribute: 'pace', 'New type': 'text' }),
   ]);
   ok('bez grešaka', p.errors.length === 0);
   ok('3 retka pročitana (prazan se ne broji)', p.rowsRead === 3);
@@ -77,43 +77,43 @@ const row = (rowNum, o) => ({ rowNum, cells: H.map(h => o[h] ?? null) });
 }
 {
   const p = parseAttrRows(H, [
-    row(2, { Korak: 1, Operacija: 'promijeni tip', Kategorija: 'Activity', Atribut: 'mood', 'Novi tip': 'number' }),
-    row(3, { Korak: 2, Operacija: 'promijeni tip', Kategorija: 'Outdoor', Atribut: 'pace', 'Novi tip': 'text', Pretvorba: 'broj' }),
-    row(4, { Korak: 3, Operacija: 'promijeni tip', Kategorija: 'Outdoor', Atribut: 'pace', 'Novi tip': 'datum' }),
-    row(5, { Korak: 4, Operacija: 'spoji u', Kategorija: 'Outdoor', Atribut: 'vr', 'U atribut': 'vr' }),
-    row(6, { Korak: 5, Operacija: 'spoji u', Kategorija: 'Outdoor', Atribut: 'vr', 'U atribut': 'x', 'Obriši izvor': 'možda' }),
-    row(7, { Korak: 6, Operacija: 'obriši', Kategorija: 'Outdoor', Atribut: 'vr' }),
-    row(8, { Korak: 6, Operacija: 'spoji u', Kategorija: 'Outdoor', Atribut: 'vr', 'U atribut': 'x' }),
-    row(9, { Korak: 'x', Operacija: 'spoji u', Kategorija: 'Outdoor', Atribut: 'vr', 'U atribut': 'x' }),
-    row(10, { Korak: 7, Operacija: 'spoji u', Atribut: 'vr', 'U atribut': 'x' }),
-    row(11, { Korak: 8, Operacija: 'spoji u', Kategorija: 'Outdoor', Atribut: 'vr', 'U atribut': 'x', Pretvorba: 'broj' }),
+    row(2, { Step: 1, Operation: 'change type', Category: 'Activity', Attribute: 'mood', 'New type': 'number' }),
+    row(3, { Step: 2, Operation: 'change type', Category: 'Outdoor', Attribute: 'pace', 'New type': 'text', Conversion: 'number' }),
+    row(4, { Step: 3, Operation: 'change type', Category: 'Outdoor', Attribute: 'pace', 'New type': 'date' }),
+    row(5, { Step: 4, Operation: 'merge into', Category: 'Outdoor', Attribute: 'vr', 'Into attribute': 'vr' }),
+    row(6, { Step: 5, Operation: 'merge into', Category: 'Outdoor', Attribute: 'vr', 'Into attribute': 'x', 'Delete source': 'maybe' }),
+    row(7, { Step: 6, Operation: 'delete', Category: 'Outdoor', Attribute: 'vr' }),
+    row(8, { Step: 6, Operation: 'merge into', Category: 'Outdoor', Attribute: 'vr', 'Into attribute': 'x' }),
+    row(9, { Step: 'x', Operation: 'merge into', Category: 'Outdoor', Attribute: 'vr', 'Into attribute': 'x' }),
+    row(10, { Step: 7, Operation: 'merge into', Attribute: 'vr', 'Into attribute': 'x' }),
+    row(11, { Step: 8, Operation: 'merge into', Category: 'Outdoor', Attribute: 'vr', 'Into attribute': 'x', Conversion: 'number' }),
   ]);
-  const has = (r, s) => p.errors.some(e => e.startsWith(`redak ${r}:`) && e.includes(s));
-  ok('tekst → broj bez Pretvorbe', has(2, 'traži Pretvorbu'));
-  ok('broj → tekst s Pretvorbom', has(3, 'nema Pretvorbu'));
-  ok('nepoznat tip', has(4, 'Novi tip'));
-  ok('spoji sam u sebe', has(5, 'sam u sebe'));
-  ok('Obriši izvor nije DA/NE', has(6, 'DA ili NE'));
-  ok('nepoznata operacija', has(7, 'Operacija mora biti'));
-  ok('isti Korak dvaput', has(8, 'već postoji'));
-  ok('Korak nije broj', has(9, 'cijeli broj'));
-  ok('nema Kategorije', has(10, 'Kategorija'));
-  ok('Pretvorba uz spoji', has(11, 'samo za'));
+  const has = (r, s) => p.errors.some(e => e.startsWith(`row ${r}:`) && e.includes(s));
+  ok('tekst → broj bez Pretvorbe', has(2, 'needs a Conversion'));
+  ok('broj → tekst s Pretvorbom', has(3, 'takes no Conversion'));
+  ok('nepoznat tip', has(4, 'New type'));
+  ok('spoji sam u sebe', has(5, 'into itself'));
+  ok('Obriši izvor nije DA/NE', has(6, 'yes or no'));
+  ok('nepoznata operacija', has(7, 'Operation must be'));
+  ok('isti Korak dvaput', has(8, 'already exists'));
+  ok('Korak nije broj', has(9, 'whole number'));
+  ok('nema Kategorije', has(10, 'Category'));
+  ok('Pretvorba uz spoji', has(11, 'only for'));
   ok('nijedan neispravan redak ne postaje korak', p.steps.length === 0);
 }
 {
-  const p = parseAttrRows(['Atribut', 'Kategorija', 'Operacija', 'Korak', 'Novi tip', 'Pretvorba', 'Obrisi izvor'],
-    [{ rowNum: 2, cells: ['mood', 'Activity', 'promijeni tip', 1, 'number', 'broj', null] }]);
-  ok('drukčiji redoslijed stupaca i „Obrisi" bez dijakritike', p.errors.length === 0 && p.steps[0]?.slug === 'mood');
+  const p = parseAttrRows(['Attribute', 'category', 'OPERATION', 'Step', 'New type', 'Conversion', 'Delete source'],
+    [{ rowNum: 2, cells: ['mood', 'Activity', 'change type', 1, 'number', 'number', null] }]);
+  ok('drukčiji redoslijed stupaca i veličina slova', p.errors.length === 0 && p.steps[0]?.slug === 'mood');
   const q = parseAttrRows([...H, 'Boja'], []);
-  ok('nepoznat stupac ⇒ greška', q.errors.some(e => e.includes('„Boja"')));
-  const r = parseAttrRows(['Korak', 'Kategorija', 'Atribut'], []);
-  ok('nedostaje Operacija ⇒ greška, nijedan korak', r.errors.some(e => e.includes('Operacija')) && r.steps.length === 0);
+  ok('nepoznat stupac ⇒ greška', q.errors.some(e => e.includes('"Boja"')));
+  const r = parseAttrRows(['Step', 'Category', 'Attribute'], []);
+  ok('nedostaje Operation ⇒ greška, nijedan korak', r.errors.some(e => e.includes('Operation')) && r.steps.length === 0);
 }
 
 console.log('\n── Korak iz sheeta → pravi planer ──');
 {
-  const p = parseAttrRows(H, [row(2, { Korak: 1, Operacija: 'promijeni tip', Kategorija: 'Activity', Atribut: 'mood', 'Novi tip': 'number', Pretvorba: MOOD })]);
+  const p = parseAttrRows(H, [row(2, { Step: 1, Operation: 'change type', Category: 'Activity', Attribute: 'mood', 'New type': 'number', Conversion: MOOD })]);
   const snap = {
     areaId: 'area-1', settings: {}, presets: [], anchors: [],
     categories: [{ id: 'c-act', name: 'Activity' }],
@@ -133,13 +133,13 @@ console.log('\n── Korak iz sheeta → pravi planer ──');
 console.log('\n── Radna knjiga ──');
 {
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Preuredjivanje atributa');   // bez dijakritike — i to se prepoznaje
+  const ws = wb.addWorksheet('restructure Attributes');   // veličina slova nije bitna
   ws.addRow(H);
-  ws.addRow([1, 'promijeni tip', 'Activity', 'mood', 'number', null, MOOD, null, null]);
+  ws.addRow([1, 'change type', 'Activity', 'mood', 'number', null, MOOD, null, null]);
   ws.addRow([]);
   ws.getCell('A4').value = 'HELP — uputa';
   ws.getCell('A5').value = 2;                               // ispod upute: NE smije biti korak
-  ws.getCell('B5').value = 'spoji u';
+  ws.getCell('B5').value = 'merge into';
   const wb2 = new ExcelJS.Workbook();
   await wb2.xlsx.load(await wb.xlsx.writeBuffer());
   const p = readAttrSheet(wb2);
@@ -167,12 +167,12 @@ console.log('\n── Structure export nosi prazan predložak ──');
   const wb2 = new ExcelJS.Workbook();
   await wb2.xlsx.load(await wb.xlsx.writeBuffer());
   const ws = wb2.getWorksheet(ATTR_SHEET);
-  ok('sheet postoji pod imenom „Preuređivanje atributa"', !!ws);
+  ok('sheet postoji pod imenom „Restructure attributes"', !!ws);
   ok('zaglavlje = attrHeader()', ws && eq(ws.getRow(1).values.slice(1), attrHeader()));
   const p = readAttrSheet(wb2);
   ok('uvoz ga čita kao prazan: 0 redaka, 0 grešaka', p && p.rowsRead === 0 && p.errors.length === 0);
   const help = [];
-  ws?.eachRow(r => { const v = r.getCell(1).value; if (typeof v === 'string' && v.includes('Atributi —')) help.push(v); });
+  ws?.eachRow(r => { const v = r.getCell(1).value; if (typeof v === 'string' && v.includes('Attributes —')) help.push(v); });
   ok('uputa nosi atribut RODITELJSKE razine (Activity: mood (text), kcal (number))',
     help.some(h => h.includes('Activity:') && h.includes('mood (text)') && h.includes('kcal (number)')));
   ok('F1 sheet se s njim ne brka', findRestructureSheet(wb2)?.name === RESTRUCTURE_SHEET);

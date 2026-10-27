@@ -43,6 +43,7 @@ import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { flattenAreaSettings, AREA_SETTINGS_TYPES } from './areaSettingsSheet';
 import { RESTRUCTURE_SHEET, restructureHeader, restructureHelpLines } from './restructure/sheet';
 import { ATTR_SHEET, attrHeader, attrHelpLines } from './restructure/attrSheet';
+import { serializeColumnMap } from './listColumns';
 import {
   timestampSuffix,
   formatTimestampSuffix,
@@ -959,11 +960,8 @@ const LISTCOL_COLS = [
   { header: 'Map',    width: 34 },
 ] as const;
 
-/** `{ 'Kokin tekući ZABA': 'ZABA' }` -> `Kokin tekući ZABA = ZABA | ...` */
-function serializeColMap(map: Record<string, string> | undefined): string {
-  if (!map) return '';
-  return Object.entries(map).map(([k, v]) => `${k} = ${v}`).join(' | ');
-}
+/** Pisač i čitač ćelije `Map` su zajedno u `listColumns.ts` (S186). */
+const serializeColMap = serializeColumnMap;
 
 function writeListColumnsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
   const ws = wb.addWorksheet('ListColumns');

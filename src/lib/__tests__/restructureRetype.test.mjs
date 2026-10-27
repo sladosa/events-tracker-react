@@ -69,7 +69,7 @@ console.log('\n── Nepretvorivo blokira ──');
 {
   const s = snap({ values: [v('1', '6:06', null, '2024-02-01'), v('2', '6.06', null, '2024-01-15'), v('3', '--')] });
   const p = planRetype({ category: 'Outdoor', slug: 'pace', to: 'number', conv: { kind: 'mm:ss' } }, s);
-  ok('greška s brojem i najranijim primjerom', p.errors.some(e => e.includes('2 redaka') && e.includes('2024-01-01')));
+  ok('greška s brojem i najranijim primjerom', p.errors.some(e => e.includes('2 rows') && e.includes('2024-01-01')));
   ok('popis nepretvorivih', p.unconvertible.count === 2);
   ok('nema rpc paketa', p.rpc === null);
 }
@@ -92,7 +92,7 @@ console.log('\n── mood: smajlić → broj (mapa), izbornik, kolona liste, sh
   ok('izbornik pada, hidden_in_add ostaje', r && eq(r.after, { hidden_in_add: true }));
   const lc = p.config.find(c => c.kind === 'area_settings').after.list_columns.columns[1].map;
   ok('mapa kolone: ključevi u brojeve', lc['4'] === 'dobro' && lc['1'] === 'loše' && !(':-)' in lc));
-  ok('nepretvoriv ključ mape ostaje + upozorenje', lc[':)'] === 'x' && p.warnings.some(w => w.includes('„:)"')));
+  ok('nepretvoriv ključ mape ostaje + upozorenje', lc[':)'] === 'x' && p.warnings.some(w => w.includes('":)"')));
   const p1 = p.config.find(c => c.kind === 'preset' && c.target_id === 'p1');
   ok('shortcut: :-) → 4, ostali atributi netaknuti', p1 && p1.after.default_attributes['a-mood'] === 4 && p1.after.default_attributes['a-hr'] === 120);
   ok('filtar po mood: upozorenje, bez pisanja', p.warnings.some(w => w.includes('Filtar')) && !p.config.some(c => c.target_id === 'p2'));
@@ -112,23 +112,25 @@ console.log('\n── Uloge koje A1 ne zna prevesti ⇒ blokada ──');
   dep.attributes.push({ id: 'a-x', category_id: CAT, slug: 'x', name: 'x', data_type: 'text', default_value: null,
     validation_rules: { type: 'suggest', depends_on: { attribute_slug: 'mood', options_map: { '*': ['a'] } } } });
   ok('roditelj depends_on', planRetype({ category: 'Activity', slug: 'mood', to: 'number', conv: { kind: 'mapa', map: MOOD } }, dep)
-    .errors.some(e => e.includes('ovisi o mood')));
+    .errors.some(e => e.includes('depends on mood')));
   const own = snap();
   own.attributes[0].validation_rules = { type: 'suggest', depends_on: { attribute_slug: 'tip', options_map: {} } };
   ok('dijete depends_on', planRetype({ category: 'Activity', slug: 'mood', to: 'number', conv: { kind: 'mapa', map: MOOD } }, own)
-    .errors.some(e => e.includes('ima depends_on')));
+    .errors.some(e => e.includes('has depends_on')));
   const dash = snap({ settings: { dashboard: { widgets: [{ type: 'balance_by_group', group_by: 'mood' }] } } });
   ok('pločica', planRetype({ category: 'Activity', slug: 'mood', to: 'number', conv: { kind: 'mapa', map: MOOD } }, dash)
     .errors.some(e => e.includes('dashboard')));
   const anc = snap({ anchors: [{ id: 'b1', group_slug: 'mood', group_value: ':-)' }] });
   ok('sidro', planRetype({ category: 'Activity', slug: 'mood', to: 'number', conv: { kind: 'mapa', map: MOOD } }, anc)
-    .errors.some(e => e.includes('sidra')));
+    .errors.some(e => e.includes('anchors')));
   ok('text → number bez pretvorbe', planRetype({ category: 'Outdoor', slug: 'pace', to: 'number' }, snap())
-    .errors.some(e => e.includes('traži pretvorbu')));
-  ok('isti tip', planRetype({ category: 'Activity', slug: 'hr-avg', to: 'number', conv: { kind: 'broj' } }, snap())
-    .errors.some(e => e.includes('već number')));
+    .errors.some(e => e.includes('needs a conversion')));
+  // S186: isti tip = korak je već izveden (stanje baze je dokaz) — ne greška, i ništa za poslati.
+  const same = planRetype({ category: 'Activity', slug: 'hr-avg', to: 'number', conv: { kind: 'broj' } }, snap());
+  ok('isti tip ⇒ state done, bez greške, bez rpc', same.state === 'done' && same.errors.length === 0 && same.rpc === null);
+  ok('tip koji treba mijenjati ⇒ state todo', planRetype({ category: 'Outdoor', slug: 'pace', to: 'number', conv: { kind: 'mm:ss' } }, snap()).state === 'todo');
   ok('kriva kategorija', planRetype({ category: 'Activity', slug: 'pace', to: 'number', conv: { kind: 'mm:ss' } }, snap())
-    .errors.some(e => e.includes('nije na kategoriji')));
+    .errors.some(e => e.includes('is not on category')));
 }
 
 console.log('\n── number → text i zadana vrijednost ──');
@@ -144,7 +146,7 @@ console.log('\n── number → text i zadana vrijednost ──');
   ok('zadana :-) → „4"', q.config[0].after.default_value === '4');
   t.attributes[0].default_value = 'super';
   ok('nepretvoriva zadana blokira', planRetype({ category: 'Activity', slug: 'mood', to: 'number', conv: { kind: 'mapa', map: MOOD } }, t)
-    .errors.some(e => e.includes('zadana')));
+    .errors.some(e => e.includes('default value')));
 }
 
 console.log(`\n${pass} prošlo, ${fail} palo`);

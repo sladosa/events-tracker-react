@@ -31,6 +31,7 @@ import { getDatePresets } from '@/hooks/useDateBounds';
 import { unflattenAreaSettings, mergeAreaSettings, changedTopKeys } from '@/lib/areaSettingsSheet';
 import { readRestructureSheet } from '@/lib/restructure/sheet';
 import { readAttrSheet, type AttrStep } from '@/lib/restructure/attrSheet';
+import { parseColumnMap } from '@/lib/listColumns';
 import type { RestructureStep } from '@/lib/restructure/plan';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig, RataRemainder,
@@ -139,7 +140,7 @@ export interface ImportResult {
     errors: string[];
     source: string;
   };
-  /** Popunjen sheet `Preuređivanje atributa` (F2: A1 promijeni tip, A4 spoji, S186) —
+  /** Popunjen sheet `Restructure attributes` (F2: A1 change type, A4 merge into, S186) —
    *  NIJE primijenjen; kao `restructure`. */
   attrRestructure?: {
     areaId: string | null;
@@ -1589,16 +1590,9 @@ export async function importStructureExcel(
           continue;
         }
 
-        // `Vrijednost = kratica | Vrijednost2 = kratica2`. Dijeli se na PRVOM
-        // '=' — ime računa smije sadržavati bilo što osim '|'.
-        const map: Record<string, string> = {};
-        for (const part of get(colMap).split('|')) {
-          const eq = part.indexOf('=');
-          if (eq < 0) continue;
-          const k = part.slice(0, eq).trim();
-          const v = part.slice(eq + 1).trim();
-          if (k && v) map[k] = v;
-        }
+        // `Vrijednost = kratica | Vrijednost2 = kratica2` — isti oblik kao izvoz (S186:
+        // ključ smije sadržavati `|`, npr. `:-|`).
+        const map = parseColumnMap(get(colMap));
 
         const label = get(colLabel);
         const sep = get(colSep);
@@ -1751,20 +1745,17 @@ export async function importStructureExcel(
     };
   }
 
-  // ── 13. Preuređivanje atributa — F2 (S186) ─────────────────
-  //   Isto kao §12: uvoz koraka NE IZVODI. ⚠ Dok modal ne zna primijeniti A1/A4,
-  //   popunjen sheet se JAVLJA — inače bi izgledao kao primijenjen.
+  // ── 13. Restructure attributes — F2 (S186) ─────────────────
+  //   Isto kao §12: uvoz koraka NE IZVODI — `AttrRestructurePanel` ih planira i
+  //   primjenjuje korak po korak, svaki s vlastitom potvrdom.
   if (attrRestructure && attrRestructure.rowsRead > 0) {
     result.attrRestructure = {
       areaId: oneArea,
       areaName: areaLabel,
       steps: attrRestructure.steps,
-      errors: [...attrRestructure.errors, ...(oneArea ? [] : [oneAreaError('Preuređivanje atributa')])],
+      errors: [...attrRestructure.errors, ...(oneArea ? [] : [oneAreaError('Restructure attributes')])],
       source: file.name,
     };
-    result.warnings.push(
-      `Preuređivanje atributa: pročitano ${attrRestructure.steps.length} koraka — primjena u aplikaciji još ne postoji, ništa nije promijenjeno.`,
-    );
   }
 
   return result;

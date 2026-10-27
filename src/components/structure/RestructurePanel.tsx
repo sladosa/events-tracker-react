@@ -26,7 +26,7 @@ import type { ImportResult } from '@/lib/structureImport';
 const clean = (c: Verification) => c.rowDiffs === 0 && c.configDiffs === 0;
 
 /** Ponovno mjerenje: baza = očekivano (predviđanje pregleda, ili stanje prije). */
-function CheckLine({ check, what }: { check: Verification; what: string }) {
+export function CheckLine({ check, what }: { check: Verification; what: string }) {
   return clean(check) ? (
     <p data-testid="restructure-check">
       Re-measure: the database is exactly what {what} ✓

@@ -17,6 +17,7 @@ import {
 } from '@/lib/structureExcel';
 import type { StructureNode } from '@/types/structure';
 import { RestructurePanel } from './RestructurePanel';
+import { AttrRestructurePanel } from './AttrRestructurePanel';
 
 // ─────────────────────────────────────────────────────────────
 // Icons
@@ -205,11 +206,11 @@ export function StructureImportModal({
       // Klik sa strane NE zatvara dok uvoz traje ni dok postoji blok preuređivanja
       // (Saša, S179: „ne želimo slučajne akcije"). Poslije Apply bi slučajan klik
       // odnio gumb Undo; zatvara se samo namjerno — ✕ ili Close.
-      {...useBackdropClose(onClose, !importing && !result?.restructure)}
+      {...useBackdropClose(onClose, !importing && !result?.restructure && !result?.attrRestructure)}
     >
       {/* Preuređivanje (F1) nosi tablicu koraka — uski prozor bi je slomio. */}
       <div className={cn('bg-white rounded-xl shadow-2xl w-full flex flex-col overflow-hidden max-h-[90vh]',
-        result?.restructure ? 'max-w-3xl' : 'max-w-md')}>
+        result?.restructure || result?.attrRestructure ? 'max-w-3xl' : 'max-w-md')}>
 
         {/* ── Header ── */}
         <div className={cn('flex-shrink-0 px-5 py-3 rounded-t-xl', t.headerBg, t.headerText)}>
@@ -393,7 +394,7 @@ export function StructureImportModal({
               {/* No-op message */}
               {totalChanged === 0 && !hasConflicts && !hasReviewFlags && (
                 <div className="rounded-lg px-4 py-3 bg-gray-50 border border-gray-200 text-gray-600 text-sm">
-                  {result.restructure
+                  {result.restructure || result.attrRestructure
                     ? 'Structure unchanged — the restructure steps below are not applied yet.'
                     : 'Nothing to import — all data already exists in the database.'}
                 </div>
@@ -463,6 +464,11 @@ export function StructureImportModal({
                   POSLIJE ostatka uvoza (korak smije koristiti upravo stvoren atribut). */}
               {result.restructure && (
                 <RestructurePanel data={result.restructure} onChanged={onImported} />
+              )}
+
+              {/* F2 (S186): popunjen sheet `Restructure attributes` — korak po korak. */}
+              {result.attrRestructure && (
+                <AttrRestructurePanel data={result.attrRestructure} onChanged={onImported} />
               )}
 
               {/* Anotirani file — preuzet sam. Preuzimanje koje korisnik nije

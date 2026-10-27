@@ -1036,7 +1036,7 @@ Proširuje `058`; F1 koraci ostaju kakvi jesu (i dalje samo tekst), osim jedne i
 | 0 | ✅ §20 popravak planera (`depends_on` pod `*`) — S185 | `plan.ts` + test | 78/78, nad starim kodom 8 pada |
 | 1 | ✅ `059` + `pravila.py` + `izvedi.py`, **A2 `kcal` na `Fitness_Garmin`** — S185, §32 | TEST | §29.4–5 |
 | 2 | ✅ `garmin_activities_to_xlsx.py`: `kcal = calories / 4.184` — S185, §32 | alat | prije ikakvog PROD uvoza Garmina |
-| 3 | A1 — ✅ jezgra S185 (`060`, `retype.ts`, dokaz `mood`/`pace`, §33); ✅ sheet S186 (`attrSheet.ts`, §34); ⬜ modal + E2E | TEST | §29.2, .4, .6 |
+| 3 | A1 — ✅ jezgra S185 (`060`, `retype.ts`, dokaz `mood`/`pace`, §33); ✅ sheet + faza u uvozu + E2E S186 (§34) | TEST | §29.2, .4, .6 |
 | 4 | A4 | TEST | §29.2, .4 |
 | 5 | model dana u `TRENING_MIGRACIJA.md` (trening → `Activity`; ostalo → `Health_Sasa` / `Life_Sasa`; periodi), pa generator v0 → grubi uvoz na TEST; A2 nad `O` / `M` za treninge bez Garmina | TEST | brojke §22.4 |
 | 6 | PROD: `backup_db` → `059` (Saša) → deploy → prvi stvarni PROD korisnik: `Fitness` `mood` A1 | PROD | kontrolne brojke prije/poslije |
@@ -1130,19 +1130,37 @@ mogućnost; „broj u bazi + prikaz `mm:ss`" (kao smajlići za `mood`) je zasebn
 
 **Sljedeće za A1:** sheet `Preuređivanje atributa` + faza u `StructureImportModal` (§28), E2E (§29.6).
 
-## 34. Izvedeno (S186, 27.10.) — sheet `Preuređivanje atributa` (bez modala)
+## 34. Izvedeno (S186, 27.10.) — A1 u aplikaciji: sheet `Restructure attributes` + faza u uvozu
 
-- `src/lib/restructure/attrSheet.ts`: zaglavlje §28 (stupci po naslovu, i bez dijakritike), `promijeni tip`
-  i `spoji u` s obaveznim/zabranjenim poljima, `toRetypeInput` → `planRetype`. A4 se **čita**, planer za njega još ne postoji.
-- **Mapa u `Pretvorba`: parovi odvojeni s „ | " (razmak s obje strane).** DIARY ima `:-|` (794 dana) — goli `|`
-  je dio vrijednosti. Ključ koji sadrži `=` (nerazdvojen par) je **greška**, ne čudan ključ.
-  ⚠ Postojeći parseri (`TextOptions`, `ListColumns` `Map`, `DateMap`) dijele na golom `|` — opcija `:-|` se kroz
-  njih **ne da** zapisati (vjerojatno zato model `Fitness` nema `:-|`, §22.2). Za `mood` kao broj to ne smeta
-  (mapa kolone liste ima ključeve `1`–`5`); za bilo koju buduću opciju s `|` smeta.
-- Structure export: prazan predložak; uputa nabraja atribute **svih razina** (`Activity: mood (text), …`).
-- Structure uvoz: `result.attrRestructure` (Area kao §12) + **upozorenje** „primjena još ne postoji" — popunjen
-  sheet bez poruke izgledao bi primijenjen.
-- Čuva `restructureAttrSheet.test.mjs` (40; sabotaže: goli `|` ruši 8, bez provjere `=` 2, predložak samo leaf 1).
-- **Otvoreno za modal:** sheet s više koraka = više `rpc_restructure_retype` poziva (svaki svoj `op_id`), a §23 kaže
-  „svaki sheet = jedna operacija". Prijedlog: jedan korak = jedna operacija i jedan Poništi; pregled prikazuje sve,
-  primjena redom, staje na prvoj grešci.
+**Odluke (Saša, 27.10.):**
+- **Engleski** — sheet, stupci, operacije, uputa, poruke planera (`retype.ts`) i panel: *„dosta općenit alat"*.
+  Sheet `Restructure attributes`: `Step | Operation | Category | Attribute | New type | Into attribute |
+  Conversion | Delete source | Note`; operacije `change type` / `merge into`; pretvorba `number` / `mm:ss` / mapa.
+  (F1 sheet `Preuređivanje` i njegove poruke ostaju hrvatski — zasebna odluka, nije dirano.)
+- **Korak po korak.** Pregled kaže *„Doing 1 change: step N — … The remaining K steps go one at a time, in later
+  passes."*; primjenjuje se samo prvi neizvedeni korak, pa se pregled računa iznova (korak smije ovisiti o prethodnom).
+  Svaki korak = vlastita operacija i vlastiti Undo (odgovor na pitanje iz §23 „sheet = jedna operacija").
+- **„Već izvedeno" = STANJE BAZE, ne oznaka u fileu.** Atribut koji JE traženog tipa ⇒ *„✓ Already in this state"*
+  (+ *„applied <datum vrijeme> by <tko> · <file>"* iz `restructure_ops`, ako je izveden alatom). Isti file uvezen
+  drugi put ne mijenja ništa. Log u Excelu (Sašin prvi prijedlog) odbačen: preglednik ne može pisati u njegov
+  file, kopija bez oznake bi korak pokušala opet, a oznaka bi lagala nakon Undo.
+
+**Izvedeno:**
+- `restructure/attrSheet.ts` — parser (stupci po naslovu), `toRetypeInput`, `describeAttrStep`, predložak + uputa.
+  A4 (`merge into`) se **čita**; planer ne postoji ⇒ status *„not available yet — steps stop here"*.
+- `restructure/retype.ts` — `state: 'todo' | 'done'` (isti tip više nije greška); poruke engleski.
+- `restructure/attrApply.ts` — snimka po koraku, `previewAttrSteps` (done / next / blocked / waiting /
+  unsupported), `applyAttrStep` / `undoAttrStep` s ponovnim mjerenjem (vrijednosti, tip, config).
+- `components/structure/AttrRestructurePanel.tsx` — u `StructureImportModal` ispod F1 panela; crvena tablica
+  nepretvorivih (prvih 50), kvačica, *Apply step N*, *Undo step N*.
+- **Mapa u `Conversion`: parovi odvojeni s „ | " (razmak s obje strane)** — DIARY `:-|` (794 dana). Ključ koji
+  sadrži `=` (nerazdvojen par) je greška.
+- **Popravljen postojeći kvar:** ćelija `Map` u `ListColumns` — izvoz je pisao ` | `, uvoz dijelio na golom `|`,
+  pa je svaki Structure roundtrip ključ `:-|` raspolovio (kolona je za te retke pokazivala sirovu vrijednost).
+  Pisač i čitač su sada zajedno (`listColumns.ts`: `serializeColumnMap` / `parseColumnMap`); stara ćelija bez
+  razmaka i dalje radi. Uhvatio E2E `S186_attr_restructure` u prvom runu.
+  ⚠ `TextOptions` i `DateMap` i dalje dijele na golom `|` — opcija izbornika s `|` se kroz Structure Excel ne da
+  zapisati (zato model `Fitness` nema `:-|`, §22.2). Za `mood` kao broj nevažno.
+- Čuvaju: `restructureAttrSheet` (40), `restructureRetype` (44), `listColumnMap` (8), E2E `S186_attr_restructure`.
+
+**Sljedeće:** A4 (`merge into`) — planer `attrPlan`/`merge`, SQL funkcija uz isti zapis i zajednički povrat (§25, §27).

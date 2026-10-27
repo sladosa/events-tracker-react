@@ -157,6 +157,40 @@ export function line2Parts(
 
 /** Every attribute slug the columns read. Feeds one bounded query, and the
  *  pre-delete warning that `depends_on` references already get. */
+// ─────────────────────────────────────────────
+// Ćelija `Map` u sheetu `ListColumns` (S186)
+// ─────────────────────────────────────────────
+// ⚠ Pisač i čitač stoje ZAJEDNO jer su se razišli: izvoz je pisao parove odvojene
+//   s ` | `, a uvoz dijelio na golom `|` — pa je ključ koji sadrži `|` (smajlić
+//   `:-|`, DIARY 794 dana) svaki Structure roundtrip tiho raspolovio, i kolona je
+//   za taj redak pokazivala sirovu vrijednost. Uhvatio ga E2E S186 (prvi koji vrti
+//   mapu smajlića kroz export → uvoz).
+
+/** `{ 'Kokin tekući ZABA': 'ZABA' }` → `Kokin tekući ZABA = ZABA | …` */
+export function serializeColumnMap(map: Record<string, string> | undefined): string {
+  if (!map) return '';
+  return Object.entries(map).map(([k, v]) => `${k} = ${v}`).join(' | ');
+}
+
+/**
+ * Obrnuto od `serializeColumnMap`. Dijeli na ` | ` (razmak s obje strane), kao pisač;
+ * par se dijeli na PRVOM `=`. Stara, rukom pisana ćelija bez razmaka (`a = b|c = d`)
+ * daje dio s dva `=` — tada (i samo tada) se dijeli na golom `|`, kao prije.
+ */
+export function parseColumnMap(cell: string): Record<string, string> {
+  const strict = cell.split(/\s+\|\s+/);
+  const parts = strict.some(p => (p.match(/=/g) ?? []).length > 1) ? cell.split('|') : strict;
+  const map: Record<string, string> = {};
+  for (const part of parts) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    const k = part.slice(0, eq).trim();
+    const v = part.slice(eq + 1).trim();
+    if (k && v) map[k] = v;
+  }
+  return map;
+}
+
 export function listColumnSlugRefs(config: ListColumnsConfig | null | undefined): Set<string> {
   const out = new Set<string>();
   for (const c of config?.columns ?? []) {

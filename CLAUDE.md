@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 155 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 168 | [Critical rules](<#Critical rules>) | X |
-| 1409 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1888 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1904 | [Key files](<#Key files>) |  |
-| 2059 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2079 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2102 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2131 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2171 | [Open bugs](<#Open bugs>) | ~ |
-| 2281 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2326 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2488 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2496 | [Backlog](<#Backlog>) | ~ |
-| 2500 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2508 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1426 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1905 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1921 | [Key files](<#Key files>) |  |
+| 2081 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2101 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2124 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2153 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2193 | [Open bugs](<#Open bugs>) | ~ |
+| 2303 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2348 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2510 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2518 | [Backlog](<#Backlog>) | ~ |
+| 2522 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2530 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2672 redaka, 18 sekcija._
+_Ukupno 2694 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -480,6 +480,12 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ključ ostaje ispravan). Na PROD-u vrijedi tek s deployem; do tada Namjenu s retcima ne preuređivati sheetom.
   ⚠ **Shortcute drugog korisnika planer ne vidi** (RLS): prije uvoza ih prebroji service ključem — S180:
   Sašin `AI_rucak` (`Projekti / Sasa`) ⇒ `fix_shortcuti_S180.py` poslije Apply.
+- **Sheet `Restructure attributes` (F2 A1, S186) — engleski, KORAK PO KORAK, „već izvedeno" = STANJE BAZE.**
+  Primjenjuje se samo prvi neizvedeni korak, pa se pregled računa iznova. Atribut koji JE traženog tipa ⇒ „Already
+  in this state" (+ kad/tko iz `restructure_ops`) — isti file drugi put ne mijenja ništa. ⚠ **Nikad oznaka „done"
+  u fileu** (Saša je predložio, odbačeno S186): preglednik ne piše u njegov file, kopija bez oznake ponovi korak,
+  oznaka laže nakon Undo. `planRetype` za isti tip vraća `state: 'done'`, ne grešku. `merge into` (A4) se čita,
+  planer ne postoji. Spec §34.
 - **⚠ F2 (S185): A2 i A1 su ZASEBNE funkcije (`059`, `060`) koje pišu u ISTI zapis kao F1 — povrat je
   jedan (`rpc_restructure_undo`, 058).** Nova vrsta zapisa mora ući u `_restructure_current` **i**
   `_restructure_write_config` (`060` ih je prepisao s granom `attribute_definition`), inače povrat baci
@@ -646,6 +652,10 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   boolean: `truncate` na `line2` bi vratio `nowrap` i s njim cijeli gornji kvar.
   ⚠ Vodoravno scrolanje je bilo **jedini** način da se pročita kraj opisa na mobitelu —
   ukine li ga se, mora ga nešto zamijeniti. Zamjena je prelom, ne `…`.
+- **⚠ Ćelija `Map` u `ListColumns`: pisač i čitač su JEDAN par** (`serializeColumnMap` / `parseColumnMap`,
+  `listColumns.ts`, S186). Izvoz je pisao ` | `, uvoz dijelio na golom `|` ⇒ svaki Structure roundtrip je ključ
+  `:-|` raspolovio i kolona je za te retke pokazivala sirovu vrijednost — bez greške. ⚠ `TextOptions` i `DateMap`
+  i dalje dijele na golom `|`: opcija s `|` se kroz Structure Excel ne da zapisati.
 - **`map` na `attr` koloni je rječnik kratica po VRIJEDNOSTI** (`Kokin tekući ZABA` →
   `ZABA`). Vrijednost koje u rječniku nema prikazuje se **cijela** — preimenovan račun
   time izgleda neskraćeno (**vidljivo**), nikad kao krivi račun (**nevidljivo**). Zato
@@ -1997,6 +2007,11 @@ sql/059_restructure_values.sql     F2/A2: `rpc_restructure_values` — gotove vr
                                    provjera po retku (cilj = viđeno, md5 izvora); povrat = 058 undo (TEST; PROD ne)
 sql/060_restructure_retype.sql     F2/A1: `rpc_restructure_retype` (text ↔ number) + `_restructure_convert`; zapis
                                    `attribute_definition` (tip + zadana) u 058 povratu (TEST; PROD ne)
+src/lib/restructure/attrSheet.ts   Sheet `Restructure attributes` (S186, engleski): parser, predložak, uputa.
+                                   Mapa u `Conversion` odvojena s ` | ` (ključ `:-|`)
+src/lib/restructure/attrApply.ts   A1 I/O korak po korak: done (stanje baze) / next / blocked / waiting;
+                                   apply/undo + ponovno mjerenje. UI: `AttrRestructurePanel.tsx`
+src/lib/listChainValues.ts         Kolona liste iz CIJELOG lanca (P2 roditelj, isti identitet kao View, S186)
 src/lib/restructure/retype.ts      A1 planer (čist): pretvorba, blokade (depends_on, pločica, sidro), config
                                    (mapa kolone, profil, shortcut). ⚠ pretvorba = `CONVERT_EXAMPLES` i u SQL-u
 data-prep_tools/Trening/pravila.py JEDINI parseri DIARY teksta (`O`, `M`, `AM`) i pretvorbe (`kj_u_kcal`);

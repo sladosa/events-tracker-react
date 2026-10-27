@@ -2,18 +2,22 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S186 (2026-10-27, kolona liste čita cijeli lanac; T-S185-1 ✅, T-S186-1) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S186 (2026-10-27, lista čita lanac, Restructure attributes A1 u aplikaciji; T-S186-1..4) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 
-## S186 — kolona liste čita cijeli lanac (2026-10-27)
+## S186 — kolona liste čita lanac; Restructure attributes (F2 A1) u aplikaciji (2026-10-27)
 
-Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—`. Kolona sada čita i P2 roditeljske evente sesije (`listChainValues.ts`), istim identitetom kao View. Financije bez promjene (bez dodatnog upita).
+Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—` — kolona sada čita i P2 roditeljske evente (`listChainValues.ts`). Sheet `Restructure attributes` (engleski) + faza u Structure uvozu, korak po korak; „već izvedeno" se čita iz stanja baze. Usput: ćelija `Map` u `ListColumns` je raspolavljala ključ s `|`.
+
+**Detalji testova:** [tests/S186_tests.md](tests/S186_tests.md)
 
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S186-1 | Automatske brane: `listChainValues` 17/17 (sabotaže „samo leaf" / „roditelj se zbraja" / „bez chain_key" ruše 5 / 2 / 2) · E2E `S186_list_parent_attr` (🙂 s `chain_key`, 🙁 stari zapis bez njega, leaf `orb`; sabotaža hooka ⇒ `—`; 3/3 ponavljanja) · S119, S168, S171 i dalje prolaze | ✅ S186 — čuva automatski test |
-| T-S186-2 | Automatske brane, sheet `Preuređivanje atributa`: `restructureAttrSheet` 40/40 (goli `\|` ruši 8, bez provjere `=` u ključu 2, predložak samo leaf 1) · Structure roundtrip E2E S119, S175 (oba), S179 i dalje prolaze | ✅ S186 — čuva automatski test |
+| T-S186-2 | Automatske brane, sheet `Restructure attributes` (bio `Preuređivanje atributa`): `restructureAttrSheet` 40/40 (goli `\|` ruši 8, bez provjere `=` u ključu 2, predložak samo leaf 1) · Structure roundtrip E2E S119, S175 (oba), S179 i dalje prolaze | ✅ S186 — čuva automatski test |
+| T-S186-3 | Automatske brane, A1 u aplikaciji: E2E `S186_attr_restructure` (pregled → Apply → Undo → Apply → isti file ⇒ „Already in this state"; sabotaža ⇒ „Blocked") · `listColumnMap` 8/8 (stari split ruši 1) · `restructureRetype` 44/44 | ✅ S186 — čuva automatski test |
+| T-S186-4 | TEST lokalno (Gmail): `Fitness_Garmin`, sheet s 2 koraka — `mood` „Already in this state · applied 26.10.2026 16:49:12 by service: dokaz-S185", `pace` „Next · 1.936 rows" → Apply ✓ → Undo ✓ → isti file opet | ⬜ |
 
 ## S185 — F2 preuređivanja: §20, A2 (izvedi), jezgra A1 (promijeni tip) (2026-10-26)
 

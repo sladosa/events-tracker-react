@@ -103,6 +103,8 @@ export interface RetypeConfigWrite {
 }
 
 export interface RetypePlan {
+  /** `done` = atribut JE već traženog tipa (S186: ponovljen file ⇒ „already in this state", ne greška). */
+  state: 'todo' | 'done';
   attr: SnapshotAttribute | null;
   from: string | null;
   /** retci koji se mijenjaju (izvor nije prazan) */
@@ -129,24 +131,25 @@ const mentions = (v: unknown, slug: string) => v != null && JSON.stringify(v).in
 
 export function planRetype(input: RetypeInput, snap: RetypeSnapshot): RetypePlan {
   const out: RetypePlan = {
-    attr: null, from: null, rows: 0, unconvertible: { count: 0, first: [] },
+    state: 'todo', attr: null, from: null, rows: 0, unconvertible: { count: 0, first: [] },
     changes: [], warnings: [], errors: [], config: [], predicted: {}, rpc: null,
   };
   const { errors, warnings, changes } = out;
   const cat = snap.categories.find(c => c.name === input.category);
   const attr = cat ? snap.attributes.find(a => a.category_id === cat.id && a.slug === input.slug) : undefined;
-  if (!cat) { errors.push(`kategorija „${input.category}" ne postoji u Arei.`); return out; }
-  if (!attr) { errors.push(`atribut „${input.slug}" nije na kategoriji „${input.category}".`); return out; }
+  if (!cat) { errors.push(`category "${input.category}" does not exist in this Area.`); return out; }
+  if (!attr) { errors.push(`attribute "${input.slug}" is not on category "${input.category}".`); return out; }
   out.attr = attr;
   out.from = attr.data_type;
   const from = attr.data_type, to = input.to;
   const conv = input.conv ?? null;
 
-  if (from === to) errors.push(`atribut je već ${to}.`);
-  else if (!((from === 'text' && to === 'number') || (from === 'number' && to === 'text'))) {
-    errors.push(`${from} → ${to} nije u F2 (samo text ↔ number).`);
+  // Stanje baze je dokaz da je korak izveden (S186) — ponovljen file nije greška.
+  if (from === to) { out.state = 'done'; return out; }
+  if (!((from === 'text' && to === 'number') || (from === 'number' && to === 'text'))) {
+    errors.push(`${from} → ${to} is not supported (only text ↔ number).`);
   }
-  if (from === 'text' && to === 'number' && !conv) errors.push('text → number traži pretvorbu (broj, mm:ss ili mapa).');
+  if (from === 'text' && to === 'number' && !conv) errors.push('text → number needs a conversion (number, mm:ss or map).');
   if (errors.length) return out;
 
   const conversion = (s: string): number | string | null =>
@@ -155,18 +158,18 @@ export function planRetype(input: RetypeInput, snap: RetypeSnapshot): RetypePlan
 
   // ── Blokade: uloge koje F2 ne zna prevesti ──
   const rules = isObj(attr.validation_rules) ? attr.validation_rules : {};
-  if (isObj(rules.depends_on)) errors.push(`${attr.slug} ima depends_on (ključevi izbornika su tekst).`);
+  if (isObj(rules.depends_on)) errors.push(`${attr.slug} has depends_on (menu keys are text).`);
   for (const a of snap.attributes) {
     const dep = isObj(a.validation_rules) && isObj(a.validation_rules.depends_on) ? a.validation_rules.depends_on : null;
     if (dep && dep.attribute_slug === attr.slug && a.category_id === attr.category_id) {
-      errors.push(`${a.slug} ovisi o ${attr.slug} (depends_on).`);
+      errors.push(`${a.slug} depends on ${attr.slug} (depends_on).`);
     }
   }
   const s0 = isObj(snap.settings) ? snap.settings : {};
   for (const k of ['dashboard', 'groupings', 'automations'] as const) {
-    if (mentions(s0[k], attr.slug)) errors.push(`${k} koristi ${attr.slug} — A1 ne zna prevesti tu ulogu; prvo makni ${attr.slug} iz ${k}.`);
+    if (mentions(s0[k], attr.slug)) errors.push(`${k} uses ${attr.slug} — changing the type cannot translate that role; remove ${attr.slug} from ${k} first.`);
   }
-  if (snap.anchors.some(b => b.group_slug === attr.slug)) errors.push(`sidra salda grupiraju po ${attr.slug}.`);
+  if (snap.anchors.some(b => b.group_slug === attr.slug)) errors.push(`balance anchors are grouped by ${attr.slug}.`);
 
   // ── Retci ──
   const bad: Array<{ event_date: string; value: string }> = [];
@@ -184,28 +187,28 @@ export function planRetype(input: RetypeInput, snap: RetypeSnapshot): RetypePlan
   }
   bad.sort((x, y) => x.event_date.localeCompare(y.event_date));
   out.unconvertible = { count: bad.length, first: bad.slice(0, 50) };
-  if (bad.length) errors.push(`${bad.length} redaka se ne da pretvoriti (prvi: ${bad[0].event_date} „${bad[0].value}").`);
+  if (bad.length) errors.push(`${bad.length} rows cannot be converted (first: ${bad[0].event_date} "${bad[0].value}").`);
 
   // ── Definicija: tip + zadana vrijednost ──
   let dv: string | null = attr.default_value;
   if (dv != null && dv !== '') {
     const n = to === 'number' ? convertValue(dv, conv!) : dv;
-    if (n == null) errors.push(`zadana vrijednost „${dv}" se ne da pretvoriti.`);
-    else { dv = String(n); if (dv !== attr.default_value) changes.push(`zadana vrijednost „${attr.default_value}" → „${dv}"`); }
+    if (n == null) errors.push(`default value "${dv}" cannot be converted.`);
+    else { dv = String(n); if (dv !== attr.default_value) changes.push(`default value "${attr.default_value}" → "${dv}"`); }
   }
   out.config.push({
     kind: 'attribute_definition', target_id: attr.id,
     before: { data_type: from, default_value: attr.default_value },
     after: { data_type: to, default_value: dv },
   });
-  changes.push(`${attr.slug}: ${from} → ${to}${conv ? ` (${conv.kind})` : ''}, ${out.rows} redaka`);
+  changes.push(`${attr.slug}: ${from} → ${to}${conv ? ` (${conv.kind === 'broj' ? 'number' : conv.kind})` : ''}, ${out.rows} rows`);
 
   // ── Izbornik: broj nema suggest ──
   if (to === 'number') {
     const after = buildRules({ hiddenInAdd: rules.hidden_in_add === true });
     if (!sameRules(rules, after)) {
       out.config.push({ kind: 'attribute_rules', target_id: attr.id, before: attr.validation_rules, after });
-      if (Array.isArray(rules.suggest) && rules.suggest.length) changes.push(`izbornik (${rules.suggest.length} opcija) se miče — broj se upisuje`);
+      if (Array.isArray(rules.suggest) && rules.suggest.length) changes.push(`menu (${rules.suggest.length} options) is removed — a number is typed in`);
     }
   }
 
@@ -222,8 +225,8 @@ export function planRetype(input: RetypeInput, snap: RetypeSnapshot): RetypePlan
     const nm: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(c.map)) {
       const nk = key(k);
-      if (nk == null) { warnings.push(`kolona „${c.label ?? attr.slug}": ključ mape „${k}" se ne da pretvoriti — ostaje (neće se pogoditi).`); nm[k] = v; }
-      else { nm[nk] = v; if (nk !== k) changes.push(`kolona „${c.label ?? attr.slug}": map „${k}" → „${nk}"`); }
+      if (nk == null) { warnings.push(`column "${c.label ?? attr.slug}": map key "${k}" cannot be converted — it stays (and will never match).`); nm[k] = v; }
+      else { nm[nk] = v; if (nk !== k) changes.push(`column "${c.label ?? attr.slug}": map "${k}" → "${nk}"`); }
     }
     c.map = nm;
   }
@@ -236,8 +239,8 @@ export function planRetype(input: RetypeInput, snap: RetypeSnapshot): RetypePlan
       const k = m[1].trim();
       if (k !== attr.slug && k !== attr.id) continue;
       const nv = m[2] === '=' ? key(m[3]) : null;
-      if (nv != null) { fs!.attrFilterRaw = `${k}: =${nv}`; if (nv !== m[3]) changes.push(`profil „${pname}": filtar „${m[3]}" → „${nv}"`); }
-      else warnings.push(`profil „${pname}": filtar „${raw}" — provjeri poslije promjene tipa.`);
+      if (nv != null) { fs!.attrFilterRaw = `${k}: =${nv}`; if (nv !== m[3]) changes.push(`profile "${pname}": filter "${m[3]}" → "${nv}"`); }
+      else warnings.push(`profile "${pname}": filter "${raw}" — check it after the type change.`);
     }
   }
   if (!same(s0, s)) out.config.push({ kind: 'area_settings', target_id: snap.areaId, before: snap.settings, after: s });
@@ -246,17 +249,17 @@ export function planRetype(input: RetypeInput, snap: RetypeSnapshot): RetypePlan
   for (const p of snap.presets) {
     const before = { default_attributes: p.default_attributes ?? null, filter_state: p.filter_state ?? null };
     const after = clone(before);
-    const where = `shortcut „${p.name}"`;
+    const where = `shortcut "${p.name}"`;
     if (isObj(after.default_attributes) && attr.id in after.default_attributes) {
       const v = after.default_attributes[attr.id];
       // shortcut drži VRIJEDNOST (broj za number), za razliku od ključa mape kolone (tekst prikaza)
       const nv = v == null || v === '' ? v
         : to === 'number' ? convertValue(String(v), conv!) : String(v);
-      if (nv == null && v != null && v !== '') errors.push(`${where}: zadaje „${String(v)}", a to se ne da pretvoriti.`);
-      else if (nv !== v) { after.default_attributes[attr.id] = nv; changes.push(`${where}: „${String(v)}" → „${String(nv)}"`); }
+      if (nv == null && v != null && v !== '') errors.push(`${where}: sets "${String(v)}", which cannot be converted.`);
+      else if (nv !== v) { after.default_attributes[attr.id] = nv; changes.push(`${where}: "${String(v)}" → "${String(nv)}"`); }
     }
     const af = isObj(after.filter_state) && isObj(after.filter_state.attrFilter) ? after.filter_state.attrFilter : null;
-    if (af && String(af.attrDefId) === attr.id) warnings.push(`${where}: filtrira po ${attr.slug} — provjeri poslije promjene tipa.`);
+    if (af && String(af.attrDefId) === attr.id) warnings.push(`${where}: filters by ${attr.slug} — check it after the type change.`);
     if (!same(before, after)) out.config.push({ kind: 'preset', target_id: p.id, before, after });
   }
 
