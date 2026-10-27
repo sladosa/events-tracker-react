@@ -161,6 +161,10 @@ leg r. x25` u `weight_info`). Analiza (4.) traži strukturu, unos traži brzinu 
 - **„Ponovi zadnji trening ove rutine"** (`rutina` na `Activity1`): Add otvori dijelove zadnjeg treninga iste
   rutine, Saša samo ispravi brojke. Bez nove tablice — predložak je zadnji stvarni trening, pa se sam osvježava.
   (Postojeći shortcuti pamte jedan event, ne trening s N dijelova.)
+  **Veza sa shortcutima (Saša, 27.10.):** pamti se zadnji trening **svake vrste/rutine**. Shortcut (npr.
+  `Strength – Upper`) **pokazuje na rutinu** (kategorija + `rutina`), a sadržaj se čita iz baze pri pokretanju —
+  zadnji stvarni trening te rutine. ⚠ **Nikad snimka treninga u shortcutu** (zamka S127: zamrznute vrijednosti
+  zastare i tiho upravljaju svakim unosom). Bez shortcuta isto: odabir rutine u Addu nudi „Kopiraj zadnji (datum)".
 
 **Redoslijed (prijedlog S186, prije A4):** d1 → dorada vidljivosti → model Activity1 + `Dio` na TEST-u
 (`Fitness_Garmin`) → mjerenje notacije i gramatika → unos s raspisivanjem + „Ponovi zadnji" → Overview pločice
