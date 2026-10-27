@@ -2,34 +2,7 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S186 (2026-10-27, lista čita lanac, Restructure attributes A1 u aplikaciji; T-S186-1..4) · povijest sesija: `DONE_HISTORY.md`
-
----
-
-## S186 — kolona liste čita lanac; Restructure attributes (F2 A1) u aplikaciji (2026-10-27)
-
-Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—` — kolona sada čita i P2 roditeljske evente (`listChainValues.ts`). Sheet `Restructure attributes` (engleski) + faza u Structure uvozu, korak po korak; „već izvedeno" se čita iz stanja baze. Usput: ćelija `Map` u `ListColumns` je raspolavljala ključ s `|`.
-
-**Detalji testova:** [tests/S186_tests.md](tests/S186_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S186-1 | Automatske brane: `listChainValues` 17/17 (sabotaže „samo leaf" / „roditelj se zbraja" / „bez chain_key" ruše 5 / 2 / 2) · E2E `S186_list_parent_attr` (🙂 s `chain_key`, 🙁 stari zapis bez njega, leaf `orb`; sabotaža hooka ⇒ `—`; 3/3 ponavljanja) · S119, S168, S171 i dalje prolaze | ✅ S186 — čuva automatski test |
-| T-S186-2 | Automatske brane, sheet `Restructure attributes` (bio `Preuređivanje atributa`): `restructureAttrSheet` 40/40 (goli `\|` ruši 8, bez provjere `=` u ključu 2, predložak samo leaf 1) · Structure roundtrip E2E S119, S175 (oba), S179 i dalje prolaze | ✅ S186 — čuva automatski test |
-| T-S186-3 | Automatske brane, A1 u aplikaciji: E2E `S186_attr_restructure` (pregled → Apply → Undo → Apply → isti file ⇒ „Already in this state"; sabotaža ⇒ „Blocked") · `listColumnMap` 8/8 (stari split ruši 1) · `restructureRetype` 44/44 | ✅ S186 — čuva automatski test |
-| T-S186-4 | TEST lokalno (Gmail): `Fitness_Garmin`, sheet s 2 koraka — `mood` „Already in this state · applied 26.10.2026 16:49:12 by service: dokaz-S185", `pace` „Next · 1.936 rows" → Apply ✓ → Undo ✓ → isti file opet | ✅ S186 — Saša, svih 8 koraka u brojku (Apply op `cf78ad87` 1.936 redaka 2,6 s, mjerenje ✓; Undo 1.937 zapisa ✓; ponovni uvoz isti). Prvi pokušaj: mapa s `\|` iz markdowna ⇒ uvoz ju je ispravno odbio |
-
-## S185 — F2 preuređivanja: §20, A2 (izvedi), jezgra A1 (promijeni tip) (2026-10-26)
-
-Spec F2 (`PREUREDJIVANJE_SPEC.md` DIO 3, §21–§33). Na TEST-u: `059` (A2) i `060` (A1); `Fitness_Garmin` prebačen na Sašin Gmail, `kcal` pretvoren iz kJ, `mood` posijan (30) i pretvoren u broj. PROD nije diran. Sheet i modal za A1 još ne postoje.
-
-**Detalji testova:** [tests/S185_tests.md](tests/S185_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S185-1 | TEST lokalno (`npm run dev`, Gmail): `Fitness_Garmin` je u izborniku Area; trening **01.12.2024.** pod `Activity` ima `kcal` **630** (prije 2.636); bilo koji elliptical od ~1 h oko 300–400 | ✅ S186 — 01.12.2024. `kcal` 630 (Saša, screenshot) |
-| T-S185-2 | TEST lokalno: lista `Fitness_Garmin` ima kolonu **Mood** sa sličicom na posijanim treninzima (13.06.–28.07.2024. po tablici u koracima; 01.12.2024. = 🙂); View pokazuje broj 1–5; Edit: `mood` je polje za broj, bez izbornika smajlića (koraci ispravljeni S186) | ✅ S186 — nakon popravka (`c6427a3`) sva 3 koraka OK (Saša): sličice na 8 posijanih datuma, 01.12.2024. 🙂, View 4, Edit broj. Prvi run **pao**: View `mood` 4 ✓, Edit broj ✓, ali lista `—` na 01.12.2024. — kolona liste čita samo leaf evente, a `mood` je na `Activity` (roditelj). Opis testa bio i kriv (posijano raspršeno 13.06.2024.–14.02.2025., ne „prvih 30") |
-| T-S185-3 | Automatske brane: `restructurePlan` 78/78 (§20, nad starim kodom pada 8) · `restructureRetype` 43/43 (sabotaža ruši 4) · `pravila.py --test` 30/30 · SQL pretvorba = TS na 15/15 · dokaz A2 i A1 na TEST-u (brane, upis = predviđanje, povrat s istim otiskom) | ✅ S185 — čuva automatski test (+ izmjereno u sesiji, §32–§33) |
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S186 (2026-10-27, T-S185-* i T-S186-* ✅, sekcije arhivirane) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 

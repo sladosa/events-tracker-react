@@ -1,72 +1,73 @@
-> Pisano protiv `62f0713` (S185: pace odluka) + commita koji nosi ovaj file (S185 zatvaranje, 26.10.).
-> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 (kod F2 + docs), **nije deployano**.
-> **Baze:** `059` i `060` su na **TEST-u**, na PROD-u **nisu**. PROD podaci S185 nisu dirani.
+> Pisano protiv `1d62b33` (S186: T-S186-4 ✅) + commita koji nosi ovaj file (S186 zatvaranje, 27.10.).
+> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 + S186 (kod F2 + docs), **nije deployano**.
+> **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S186) — A1: sheet i pregled u aplikaciji
+# Sljedeća sesija (S187) — A4 „merge into" (spoji atribute)
 
-> **Ukratko (S185):** dogovoren i napisan spec F2 (preuređivanje atributa) na stvarnim stupcima DIARY-ja, a na TEST-u izvedeni i dokazani popravak izbornika Namjene, izvođenje atributa iz teksta (Garmin kalorije su bile u kilodžulima — sada kcal) i promjena tipa atributa (`mood` smajlić → broj); sheet i pregled u aplikaciji za A1 su sljedeći korak.
+> **Ukratko (S186):** novi Garmin izvoz je spremljen i ima kopiju na vanjskom disku, lista aktivnosti sada pokazuje i podatke s roditeljske razine (raspoloženje treninga), a promjena tipa atributa radi iz aplikacije kroz Structure Excel — na engleskom, korak po korak, s Undo, a ponovljen file prepoznaje što je već napravljeno.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (S185)
-- **Spec F2** je u `docs/PREUREDJIVANJE_SPEC.md`, DIO 3 (§21–§33), s tvojim odlukama (§21.1–21.2).
-- **Na TEST-u:**
-  - `Fitness_Garmin` je sada pod tvojim Gmailom (bio je na testnom outlook računu za pozivnice);
-  - kalorije Garmin treninga su ispravljene iz kilodžula u kcal, a Garmin alat ih od sada pretvara sam;
-  - `mood` je broj 1–5, a lista pokazuje sličicu (30 testnih treninga od 06.2024.).
-- **Popravak izbornika Namjene** (§20) je u kodu. Na PROD-u vrijedi tek s deployem — do tada Namjenu s
-  retcima ne preuređuj sheetom (ionako ne planiraš).
-- **Odluke:** `Activity` ostaje trening, ostatak DIARY dana ide u Health/Life uz periode; novi model treninga
-  „uz stari" (Activity1); `pace` je tekst `mm:ss`, a tempo za analizu računa se pri prikazu (BACKLOG).
+## Gotovo (S186)
+- **Garmin izvoz** je u `data-prep_data\Garmin\2026-10-27\garmin_gdpr_2026-10-27.zip`, s kopijom na `D:`.
+  Cjelovit je (podaci do 27.10.2026.). Ne raspakirava se dok ne zatreba.
+- **Lista aktivnosti** pokazuje i atribute roditeljske razine (npr. Mood na `Activity`) — do sada je pisala `—`.
+- **Promjena tipa atributa iz aplikacije:** sheet `Restructure attributes` u Structure Excelu → Import → pregled
+  → Apply → (Undo). Korak po korak; isti file drugi put kaže „Already in this state". Tvoj test na
+  `Fitness_Garmin` prošao je u svih 8 koraka.
+- **Usput popravljen stari kvar:** Structure uvoz je kvario kratice kolone liste kad vrijednost sadrži `|` (`:-|`).
+- Na TEST-u je sve kao prije testa: `mood` broj, `pace` tekst `mm:ss`.
 
 ## Što treba od tebe
-1. **Kad stigne Garminov e-mail** (GDPR izvoz, zatražen 26.10.): zip u `C:\0_Sasa\GarminData_2026`, ne
-   raspakiravati, javiti.
-2. **Kad stigneš, na TEST-u** (`npm run dev`): T-S185-1 (kalorije 01.12.2024. = 630) i T-S185-2 (Mood
-   kolona sa sličicama, View broj, Edit polje za broj). Koraci: `docs/sessions/tests/S185_tests.md`.
-3. **Studeni krug (bez razvoja, nepromijenjeno):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11., T-S175-3
+1. **Studeni krug (bez razvoja, nepromijenjeno):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11., T-S175-3
    ZABA_2026-10, T-S181-3. To je ispit „Financije su dovoljno gotove".
-4. Kad stigneš: T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti).
+2. Kad stigneš: T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti).
+3. Iz S186 ništa ne čeka tebe.
 
 ## Sljedeće (prijedlog)
-A1 kroz aplikaciju: sheet **`Preuređivanje atributa`** u Structure Excelu + pregled i Poništi u modalu
-(isti tok kao F1 sheet za Namjenu). Zatim A4 (spoji atribute). Deploy F2 na PROD tek kad je cijeli tok
-(A1 + A4 u aplikaciji) prošao test na TEST-u.
+**A4 — „merge into"** (spoji atribut B u A na istom eventu): treći korak alata, kroz isti sheet i isti panel.
+Poslije toga je F2 alat cijel (A1 + A2 + A4), pa: **deploy F2 na PROD** (tvoja odluka; `059`/`060` ti pustiš u
+SQL editoru) i nastavak treninga — model dana (`TRENING_MIGRACIJA.md`), Garmin san iz novog izvoza.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Izvedeno (S185)
+## Izvedeno (S186)
 | Što | Gdje | Dokaz |
 | --- | --- | --- |
-| §20 Namjena pod `*` | `restructure/plan.ts` | `restructurePlan.test.mjs` 78/78; nad starim kodom pada 8 |
-| A2 jezgra | `sql/059` (TEST), `data-prep_tools/Trening/pravila.py` + `izvedi.py` | spec §32: brane, upis = predviđanje, povrat = otisak |
-| A2 prvi korisnik | TEST `Fitness_Garmin.kcal` kJ → kcal, op `a000241e` | Garmin/DIARY 4,19 → 1,00 |
-| Garmin alat | `garmin_activities_to_xlsx.py` uvozi `pravila.kj_u_kcal` | 01.12.2024. = 630 |
-| A1 jezgra | `sql/060` (TEST), `restructure/retype.ts` | `restructureRetype.test.mjs` 43/43; TS = SQL 15/15; dokaz `mood`/`pace` §33 |
-| TEST priprema | `Fitness_Garmin` outlook → Gmail; `mood` posijan (30) + `list_columns` s mapom; `mood` → broj (op `9f749b3d`) | backup `_backup/test/2026-10-26_1621` |
+| Kolona liste čita P2 roditelje | `src/lib/listChainValues.ts`, `useListColumnValues.ts` | unit 17 (sabotaže 5/2/2), E2E `S186_list_parent_attr` |
+| Sheet `Restructure attributes` (engleski) | `restructure/attrSheet.ts`, predložak u `structureExcel.ts`, čitanje u `structureImport.ts` §13 | `restructureAttrSheet` 43 |
+| A1 korak po korak + „Already in this state" | `restructure/attrApply.ts`, `AttrRestructurePanel.tsx`, `retype.ts` (`state`) | E2E `S186_attr_restructure` (sabotaža ⇒ „Blocked"), `restructureRetype` 44, T-S186-4 ✅ |
+| Ćelija `Map` u `ListColumns` | `listColumns.ts` (`serializeColumnMap` / `parseColumnMap`) | `listColumnMap` 8, E2E S119 |
 
-## Za S186 — A1 u aplikaciji (spec §28)
-- `src/lib/restructure/attrSheet.ts` — sheet `Preuređivanje atributa`
-  (`Korak | Operacija | Kategorija | Atribut | Novi tip | U atribut | Pretvorba | Obriši izvor | Napomena`),
-  prazan predložak u Structure exportu (slova se računaju, S160), mapa u obliku `ListColumns` `Map`.
-- Faza u `StructureImportModal` / `RestructurePanel`: Structure → `Preuređivanje atributa` → `Preuređivanje`;
-  tablica „nepretvorivo" (crveno, gasi Primijeni), Poništi, `areas-changed` poslije.
-- Snimka za `planRetype`: obrazac je `Claude-temp_R/s185/a1_runner.mjs` (`snapshot()`), u appu kroz
-  `fetchAllPaged` + `order` (pravilo S108/S179).
-- E2E (§29.6): sheet A1 `mood` mapa ⇒ lista sličica, Edit broj, Poništi vraća.
-- Pa A4 (`merge`): spec §25 + §27; isti obrazac kao `060` (zasebna funkcija, isti zapis, zajednički povrat).
+Spec: `PREUREDJIVANJE_SPEC.md` §34 (odluke: engleski, korak po korak, stanje baze umjesto oznake u fileu).
+
+## Za S187 — A4 „merge into" (spec §25, §27)
+- **Planer** `planMerge` (čist), uz `retype.ts`: tablica §25 (prazno/isto/različito ⇒ sukob ostaje u B);
+  config prati reference B → A **istim funkcijama kao rename sluga** (`renameSlugInDashboard`,
+  `renameSlugInGroupings`, `renameSlugInListColumns`, `renameSlugInAutomations`; `depends_on` kao §12.2);
+  izbornik = unija; `export_profiles` ključevi nose IME ⇒ upozorenje. Blokade: različit tip, različita
+  kategorija, B je `depends_on` roditelj trećeg.
+- **SQL `061`**: `rpc_restructure_merge` — zasebna funkcija, ISTI zapis (`restructure_ops`/`_op_rows`), povrat =
+  `rpc_restructure_undo` (058). ⚠ Brisanje atributa B („Delete source") je NOVA vrsta zapisa (cijeli redak
+  `attribute_definitions`) ⇒ grana u `_restructure_current` **i** `_restructure_write_config` (zamka S185 u CLAUDE.md).
+  `event_attribute` zapis s `before NULL` (redak nije postojao) / `after NULL` (obrisan) već postoji u 058.
+- **„Već izvedeno" za merge:** B nema nijedan redak (ili ne postoji) ⇒ `done`. Sukobi ⇒ B ostaje s retcima ⇒
+  sljedeći prolaz opet „Next" sa samo sukobima (0 premještanja) — pregled to mora reći, ne nuditi prazan Apply.
+- **App:** `previewAttrSteps` danas za `merge` vraća `unsupported` — zamijeniti planom; panel dobiva tablicu
+  „Conflicts" (žuto, ne blokira). E2E obrazac: `S186_attr_restructure`.
+- Na TEST-u kandidat za dokaz: `Fitness_Garmin` — atributi istog tipa na istoj kategoriji (npr. dva tekstualna
+  na `Outdoor`); posijati par sukoba kao S185 za `mood`.
 
 ## Otvoreno / zapamti
-- `059`/`060` na PROD: tek uz prvi PROD posao F2 (Saša u SQL editoru, `backup_db` prije, `dump_schema --diff` poslije).
-- PROD `Fitness.pace` je `number` s 0 redaka ⇒ u novom modelu `text` (A1 bez redaka).
-- BACKLOG (S185): tempo kao prikazna kolona (`duration` na `Activity`, `distance` na `Outdoor` — prikaz treba obje
-  razine); Garmin san 3.127 noći u `Health_Sasa`; Garmin trening 01.08.2017. s krivim ulazom (0:01 min/km).
-- Model dana DIARY-ja (`TRENING_MIGRACIJA.md`): 280 dana ima više Garmin treninga — kojem ide raspoloženje dana?
+- `TextOptions` i `DateMap` u Structure uvozu i dalje dijele na golom `|` — opcija s `|` se ne da zapisati.
+- Ponovno mjerenje A1 učita cijelu Areu (8,9 s za 1.936 redaka) — suziti na atribut ako zasmeta.
+- Deploy F2 na PROD: `059`/`060` (Saša u SQL editoru, `backup_db` prije, `dump_schema --diff` poslije). Bez `060`
+  panel A1 pada na RPC — ali tek kad netko popuni sheet; lista-lanac popravak ne treba migraciju.
 - Nepromijenjeno: 056 granica 4 dimenzije (Financije na njoj); klasifikator odbija i read-only PROD alate ⇒
-  PROD mjerenja pokreće Saša.
+  PROD mjerenja pokreće Saša; model dana DIARY (280 dana s više Garmin treninga).

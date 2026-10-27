@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S185).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S186).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -2000,7 +2000,7 @@ src/lib/areaSettingsSheet.ts       F5: `areas.settings` ⇄ retci `Path | Type |
 src/lib/restructure/plan.ts        F1 planer preuređivanja (čist): koraci „kad … postavi …" + snimka ⇒
                                    brojevi po koraku, izbornik, config, paket za `rpc_restructure_apply`
 src/lib/restructure/sheet.ts       Sheet `Preuređivanje` (zaglavlje `kad: <slug>` / `postavi: <slug>`)
-sql/058_restructure.sql            apply/undo u JEDNOJ transakciji + zapis prije/poslije (TEST; PROD ne)
+sql/058_restructure.sql            apply/undo u JEDNOJ transakciji + zapis prije/poslije (TEST; PROD od 22.10., S180)
 src/lib/restructure/apply.ts       F1 I/O: snimka (samo potrebni atributi, paralelno) → planer → RPC →
                                    provjera „baza = predviđanje"; undo → „baza = prije". UI: `RestructurePanel.tsx`
 sql/059_restructure_values.sql     F2/A2: `rpc_restructure_values` — gotove vrijednosti po eventu (alat računa),
