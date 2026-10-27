@@ -4,7 +4,12 @@
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S187) — A4 „merge into" (spoji atribute)
+# Sljedeća sesija (S187) — model treninga Activity1: prvo d1 i vidljivost polja
+
+> ⚠ **Plan promijenjen 27.10. poslije zatvaranja S186** (Sašine odluke, `TRENING_MIGRACIJA.md` „Odluke 27.10."):
+> model `Activity1` + jedan leaf `Dio` (vrsta je atribut) ide **prije A4**. Redoslijed: d1 (ukinuti implicitno
+> skrivanje na defaultu) → „polje vidljivo samo uz vrijednost" → model na TEST-u → notacija snage → unos s
+> raspisivanjem + „Ponovi zadnji trening" → Overview za Fitness → A4 / K2. A4 niže ostaje plan za kasnije.
 
 > **Ukratko (S186):** novi Garmin izvoz je spremljen i ima kopiju na vanjskom disku, lista aktivnosti sada pokazuje i podatke s roditeljske razine (raspoloženje treninga), a promjena tipa atributa radi iz aplikacije kroz Structure Excel — na engleskom, korak po korak, s Undo, a ponovljen file prepoznaje što je već napravljeno.
 
@@ -29,6 +34,8 @@
 3. Iz S186 ništa ne čeka tebe.
 
 ## Sljedeće (prijedlog)
+⚠ **Promijenjeno 27.10.:** prvo model treninga (v. vrh) — tvoje odluke d1, d2a, d2b su u `TRENING_MIGRACIJA.md`.
+Ispod je stari prijedlog; A4 dolazi poslije.
 **A4 — „merge into"** (spoji atribut B u A na istom eventu): treći korak alata, kroz isti sheet i isti panel.
 Poslije toga je F2 alat cijel (A1 + A2 + A4), pa: **deploy F2 na PROD** (tvoja odluka; `059`/`060` ti pustiš u
 SQL editoru) i nastavak treninga — model dana (`TRENING_MIGRACIJA.md`), Garmin san iz novog izvoza.
@@ -47,7 +54,18 @@ SQL editoru) i nastavak treninga — model dana (`TRENING_MIGRACIJA.md`), Garmin
 
 Spec: `PREUREDJIVANJE_SPEC.md` §34 (odluke: engleski, korak po korak, stanje baze umjesto oznake u fileu).
 
-## Za S187 — A4 „merge into" (spec §25, §27)
+## Za S187 — d1 i vidljivost polja (prvi koraci novog plana)
+- **d1:** ukinuti implicitno skrivanje na defaultu — `isHiddenByDefault`, `isRevealedOnly`, `requiredParentSlugs`
+  u `AttributeChainForm.tsx` (tri mjesta se mijenjaju ZAJEDNO, zamke S131/S136). Vidljivost = samo `HiddenInAdd`.
+  Pogođeno samo `Fitness` (8 atributa) i `Financije_old`; `Financije_all` nijedan (PROD backup 22.10.). CLAUDE.md
+  opisuje današnje ponašanje (S117, S131) — prepisati uz kod.
+- **Vidljivost uz vrijednost:** novi ključ u `validation_rules` (samo kroz `validationRules.ts`), stupac u
+  Structure Excelu (slovo se računa, S160), forma; obavezno + skriveno razrješava se kao kod `hidden_in_add`.
+  Prije koda dogovoriti oblik: jedna vrijednost ili popis; samo isti event ili i roditelj.
+- Zatim model `Activity1` + `Dio` na TEST-u (`Fitness_Garmin`), pa mjerenje notacije iz PROD `Strength`
+  (`sets_reps`, `weight_info`) — Saša pokreće PROD čitanje ili radimo iz backupa.
+
+## Kasnije — A4 „merge into" (spec §25, §27)
 - **Planer** `planMerge` (čist), uz `retype.ts`: tablica §25 (prazno/isto/različito ⇒ sukob ostaje u B);
   config prati reference B → A **istim funkcijama kao rename sluga** (`renameSlugInDashboard`,
   `renameSlugInGroupings`, `renameSlugInListColumns`, `renameSlugInAutomations`; `depends_on` kao §12.2);
