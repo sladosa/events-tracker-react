@@ -123,6 +123,49 @@
 - `mood` u bazi = broj 1–5 (`:-(` 1 · `:-/` 2 · `:-|` 3 · `:-)` 4 · `:-D` 5); smajlić ostaje prikaz.
 - Novi Garmin GDPR izvoz Saša traži paralelno (web, ne mobilna aplikacija).
 
+### Odluke 27.10. (S186, Saša) — model treninga Activity1, vidljivost polja, unos snage
+
+**Problem (PROD `Fitness`):** jedna sesija pripada TOČNO jednom leafu (P2: roditelj `Activity` ima jedan event
+po sesiji, `chain_key` = leaf). Zato 45 min ergometra (`Gym > Cardio`) pa vježbe snage (`Gym > Strength`) ne
+stanu u isti trening — dvije sesije bi Garminov puls/kcal za cijeli trening udvostručile ili proizvoljno
+podijelile. `Cardio`/`Strength` danas glume **vrstu vježbe**, a leaf određuje **vrstu sesije**.
+
+1. ✅ **Model Activity1: jedan leaf `Dio`, vrsta je ATRIBUT.**
+   ```
+   Activity1          1 event po treningu: trajanje, puls, kcal, TE, opterećenje, intenzitet, mood, mjesto, rutina
+     └── Dio (leaf)   N eventa po treningu: vrsta (Cardio | Snaga | Outdoor | Istezanje …),
+                      sprava/vježba (ovisi o vrsti), trajanje, udaljenost, zapis …
+   ```
+   Odbačeno: sesija preko više leafova (promjena P2, `chain_key`, grupiranja liste, Excel kolizija).
+2. ✅ **Dorada forme: „polje vidljivo samo uz vrijednost X atributa Y"** (npr. serije×ponavljanja samo uz
+   `vrsta = Snaga`). Općenita — korisna svakoj Arei.
+3. ✅ **d1 — ukinuti IMPLICITNO skrivanje polja na defaultu** (S117 „hide-at-default"). Vidljivost određuje
+   samo stupac `HiddenInAdd`; polje s defaultom se prikazuje popunjeno. Izmjereno (PROD backup 22.10.): default
+   imaju samo `Fitness` (8 atributa: `intensity`, `equipment`, `cardio-type`, `terrain`, `trening-type`,
+   `outdoor-type`, `strengthtype`) i arhivski `Financije_old` — **`Financije_all` nijedan** ⇒ Kokina forma se ne mijenja.
+4. ✅ **d2a — analiza snage TREBA**, „nešto što podsjeća na Overview" (pločice kao Financije): npr. napredak po
+   vježbi (težina / ponavljanja kroz vrijeme), Z2 minute tjedno, obujam po vrsti.
+5. ✅ **d2b — rutine se ponavljaju.** Sašine vrste treninga: **Strength — Upper / Core / Legs**; **Z2** na
+   spravama `orb` (orbitrek), `bic` (stacionarni bicikl; ponekad sjedeći s poduprtim leđima), `erg` (veslački
+   ergometar), ponekad pokretna traka; **Tempo / HIIT** (jači puls), ponekad girje 12 ili 16 kg.
+
+**Unos snage (d2) — prijedlog, otvoreno za razgovor:** u teretani je biranje vježbe po vježbu gnjavaža, pa Saša
+piše skraćeno, više vježbi u jednom eventu (`55kg x 12, tric.20kg` u `sets_reps`, `h.rs 2kg x 12, bic.17,5kg,
+leg r. x25` u `weight_info`). Analiza (4.) traži strukturu, unos traži brzinu ⇒ razdvojiti:
+- **brz unos** ostaje notacija u jednom polju;
+- **strukturirano spremanje:** pri Save se notacija raspiše u N `Dio` eventa (vježba, težina, ponavljanja), a
+  izvorni tekst ostaje u komentaru — analiza onda ide u Postgresu (pravilo: agregacija nikad u pregledniku).
+  ⚠ Nije u sukobu s „izvedeno računaj pri prikazu" (S185): notacija je ULAZ koji se zamjenjuje strukturom, ne
+  drugi izvor istog podatka. Treba ujednačiti notaciju — prvo izmjeriti stvarne zapise iz PROD `Strength`
+  (`sets_reps`, `weight_info`) i iz njih složiti gramatiku.
+- **„Ponovi zadnji trening ove rutine"** (`rutina` na `Activity1`): Add otvori dijelove zadnjeg treninga iste
+  rutine, Saša samo ispravi brojke. Bez nove tablice — predložak je zadnji stvarni trening, pa se sam osvježava.
+  (Postojeći shortcuti pamte jedan event, ne trening s N dijelova.)
+
+**Redoslijed (prijedlog S186, prije A4):** d1 → dorada vidljivosti → model Activity1 + `Dio` na TEST-u
+(`Fitness_Garmin`) → mjerenje notacije i gramatika → unos s raspisivanjem + „Ponovi zadnji" → Overview pločice
+za Fitness → A4 / K2 (seljenje starih treninga).
+
 ### Izmjereno 26.10. (S185) — za F2 i za sukobe Garmin ↔ DIARY
 
 Puni brojevi su u [`PREUREDJIVANJE_SPEC.md`](PREUREDJIVANJE_SPEC.md) §22. Ukratko:
