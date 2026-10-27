@@ -15,7 +15,7 @@ Stanje TEST-a koje testovi pretpostavljaju (napravljeno u S185):
 
 ---
 
-## T-S185-1 ⬜ (TEST lokalno, Gmail) Kalorije treninga u kcal, ne kJ
+## T-S185-1 ✅ S186 (TEST lokalno, Gmail) Kalorije treninga u kcal, ne kJ
 
 **Preduvjet:** `npm run dev` (TEST — žuta traka „TEST DATABASE"), prijava `sasasladoljev59@gmail.com`,
 **Ctrl+Shift+R**.
@@ -32,7 +32,7 @@ elliptical od oko sat vremena ⇒ `kcal` ~300–400, ne 1.200–1.600.
 
 ---
 
-## T-S185-2 ⬜ (TEST lokalno, Gmail) `mood` kao broj, lista i dalje pokazuje sličicu
+## T-S185-2 ✅ S186 (TEST lokalno, Gmail) `mood` kao broj, lista i dalje pokazuje sličicu
 
 **Preduvjet:** isti kao T-S185-1.
 
