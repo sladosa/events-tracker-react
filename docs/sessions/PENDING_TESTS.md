@@ -14,8 +14,8 @@ Spec F2 (`PREUREDJIVANJE_SPEC.md` DIO 3, §21–§33). Na TEST-u: `059` (A2) i `
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S185-1 | TEST lokalno (`npm run dev`, Gmail): `Fitness_Garmin` je u izborniku Area; trening **01.12.2024.** pod `Activity` ima `kcal` **630** (prije 2.636); bilo koji elliptical od ~1 h oko 300–400 | ⬜ |
-| T-S185-2 | TEST lokalno: lista `Fitness_Garmin` (od 06.2024.) ima kolonu **Mood** sa sličicom na 30 posijanih treninga; View istog treninga pokazuje broj 1–5; Edit: `mood` je polje za broj, bez izbornika smajlića | ⬜ |
+| T-S185-1 | TEST lokalno (`npm run dev`, Gmail): `Fitness_Garmin` je u izborniku Area; trening **01.12.2024.** pod `Activity` ima `kcal` **630** (prije 2.636); bilo koji elliptical od ~1 h oko 300–400 | ✅ S186 — 01.12.2024. `kcal` 630 (Saša, screenshot) |
+| T-S185-2 | TEST lokalno: lista `Fitness_Garmin` (od 06.2024.) ima kolonu **Mood** sa sličicom na 30 posijanih treninga; View istog treninga pokazuje broj 1–5; Edit: `mood` je polje za broj, bez izbornika smajlića | ⬜ S186 — **pao**: View `mood` 4 ✓, Edit broj ✓, ali lista `—` na 01.12.2024. — kolona liste čita samo leaf evente, a `mood` je na `Activity` (roditelj). Opis testa bio i kriv (posijano raspršeno 13.06.2024.–14.02.2025., ne „prvih 30") |
 | T-S185-3 | Automatske brane: `restructurePlan` 78/78 (§20, nad starim kodom pada 8) · `restructureRetype` 43/43 (sabotaža ruši 4) · `pravila.py --test` 30/30 · SQL pretvorba = TS na 15/15 · dokaz A2 i A1 na TEST-u (brane, upis = predviđanje, povrat s istim otiskom) | ✅ S185 — čuva automatski test (+ izmjereno u sesiji, §32–§33) |
 
 ---

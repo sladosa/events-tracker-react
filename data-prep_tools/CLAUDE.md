@@ -377,7 +377,13 @@
   `--ponisti <op>`. Na PROD-u ga pokreće Saša.
 - GDPR izvoz 15.02.2025. je u `C:\0_Sasa\GarminData` (raspakiran 07.05.2026.): san 3.127 noći
   (`DI-Connect-Wellness/*sleepData.json`) **postoji** — bilješka „Sleep/HRV not available" u
-  `garmin_daily_metrics_to_xlsx.py` je zastarjela. Novi izvoz Saša je zatražio 26.10.2026.
+  `garmin_daily_metrics_to_xlsx.py` je zastarjela.
+- **Novi GDPR izvoz (stigao 27.10.2026.):** `data-prep_data\Garmin\2026-10-27\garmin_gdpr_2026-10-27.zip`
+  (222 MB, 329 datoteka, podaci do 27.10.2026., CRC provjeren). U `data-prep_data` je namjerno: sirovi izvor
+  ide na `D:` s `backup_to_external.bat`, a `Claude-temp_R` je radni stol. Drži se **zapakiran**; raspakirava se
+  samo ono što treba (Wellness, Fitness), u mapu uz zip. FIT datoteke su u 5 ugniježđenih zipova
+  (`DI-Connect-Uploaded-Files`, 227 MB) — stari izvoz je bio 871 MB samo zato što su ondje raspakirane.
+  Alat čita put iz `GARMIN_DATA_DIR`.
 
 ## Financije — pravila domene (nastavak; „Ključne odluke" su u korijenu)
 
