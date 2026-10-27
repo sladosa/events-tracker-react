@@ -17,7 +17,7 @@ Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—
 | T-S186-1 | Automatske brane: `listChainValues` 17/17 (sabotaže „samo leaf" / „roditelj se zbraja" / „bez chain_key" ruše 5 / 2 / 2) · E2E `S186_list_parent_attr` (🙂 s `chain_key`, 🙁 stari zapis bez njega, leaf `orb`; sabotaža hooka ⇒ `—`; 3/3 ponavljanja) · S119, S168, S171 i dalje prolaze | ✅ S186 — čuva automatski test |
 | T-S186-2 | Automatske brane, sheet `Restructure attributes` (bio `Preuređivanje atributa`): `restructureAttrSheet` 40/40 (goli `\|` ruši 8, bez provjere `=` u ključu 2, predložak samo leaf 1) · Structure roundtrip E2E S119, S175 (oba), S179 i dalje prolaze | ✅ S186 — čuva automatski test |
 | T-S186-3 | Automatske brane, A1 u aplikaciji: E2E `S186_attr_restructure` (pregled → Apply → Undo → Apply → isti file ⇒ „Already in this state"; sabotaža ⇒ „Blocked") · `listColumnMap` 8/8 (stari split ruši 1) · `restructureRetype` 44/44 | ✅ S186 — čuva automatski test |
-| T-S186-4 | TEST lokalno (Gmail): `Fitness_Garmin`, sheet s 2 koraka — `mood` „Already in this state · applied 26.10.2026 16:49:12 by service: dokaz-S185", `pace` „Next · 1.936 rows" → Apply ✓ → Undo ✓ → isti file opet | ⬜ |
+| T-S186-4 | TEST lokalno (Gmail): `Fitness_Garmin`, sheet s 2 koraka — `mood` „Already in this state · applied 26.10.2026 16:49:12 by service: dokaz-S185", `pace` „Next · 1.936 rows" → Apply ✓ → Undo ✓ → isti file opet | ✅ S186 — Saša, svih 8 koraka u brojku (Apply op `cf78ad87` 1.936 redaka 2,6 s, mjerenje ✓; Undo 1.937 zapisa ✓; ponovni uvoz isti). Prvi pokušaj: mapa s `\|` iz markdowna ⇒ uvoz ju je ispravno odbio |
 
 ## S185 — F2 preuređivanja: §20, A2 (izvedi), jezgra A1 (promijeni tip) (2026-10-26)
 

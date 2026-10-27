@@ -26,7 +26,7 @@ E2E `S186_list_parent_attr` (🙂 s `chain_key`, 🙁 stari zapis bez njega, lea
 
 ---
 
-## T-S186-4 ⬜ (TEST lokalno, Gmail) Restructure attributes na `Fitness_Garmin`
+## T-S186-4 ✅ S186 (TEST lokalno, Gmail) Restructure attributes na `Fitness_Garmin`
 
 **Preduvjet:** `npm run dev` (TEST — žuta traka), prijava `sasasladoljev59@gmail.com`, **Ctrl+Shift+R**.
 

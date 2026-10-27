@@ -40,7 +40,8 @@ function StatusCell({ s }: { s: AttrStepStatus }) {
           ✓ Already in this state
           {s.record && (
             <span className="text-gray-500"> · applied {fmtAt(s.record.at)} by {s.record.by}
-              {s.record.source ? ` · ${s.record.source}` : ''}</span>
+              {/* Skripta (service) već nosi izvor u oznaci autora — „service: dokaz-S185 · dokaz-S185" */}
+              {s.record.source && !s.record.by.includes(s.record.source) ? ` · ${s.record.source}` : ''}</span>
           )}
         </span>
       );
