@@ -30,6 +30,7 @@ import { TEMPLATE_USER_ID } from '@/lib/constants';
 import { getDatePresets } from '@/hooks/useDateBounds';
 import { unflattenAreaSettings, mergeAreaSettings, changedTopKeys } from '@/lib/areaSettingsSheet';
 import { readRestructureSheet } from '@/lib/restructure/sheet';
+import { readAttrSheet, type AttrStep } from '@/lib/restructure/attrSheet';
 import type { RestructureStep } from '@/lib/restructure/plan';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig, RataRemainder,
@@ -135,6 +136,15 @@ export interface ImportResult {
     areaName: string;
     steps: RestructureStep[];
     /** Greške čitanja sheeta / filea — gase primjenu. */
+    errors: string[];
+    source: string;
+  };
+  /** Popunjen sheet `Preuređivanje atributa` (F2: A1 promijeni tip, A4 spoji, S186) —
+   *  NIJE primijenjen; kao `restructure`. */
+  attrRestructure?: {
+    areaId: string | null;
+    areaName: string;
+    steps: AttrStep[];
     errors: string[];
     source: string;
   };
@@ -1723,20 +1733,38 @@ export async function importStructureExcel(
   //   ⚠ Activities „Create categories & continue" (`existingAreasUntouched`) ga
   //     ne nosi dalje — preuređivanje je namjerna izmjena, ide Structure → Import.
   const restructure = existingAreasUntouched ? null : readRestructureSheet(wb);
+  const attrRestructure = existingAreasUntouched ? null : readAttrSheet(wb);
+  const areaNames = [...new Set(parsedRows.map(r => parsePath(r.categoryPath)[0]).filter(Boolean))];
+  const areaIds = [...new Set(areaNames.map(n => areaByName.get(n.toLowerCase())).filter((x): x is string => !!x))];
+  const oneArea = areaIds.length === 1 ? areaIds[0] : null;
+  const areaLabel = oneArea ? (dbAreas?.find(a => a.id === oneArea)?.name ?? areaNames[0]) : areaNames.join(', ');
+  const oneAreaError = (sheet: string) =>
+    `${sheet}: file nosi ${areaIds.length} Area (${areaNames.join(', ')}) — sheet se primjenjuje samo uz Structure jedne Aree.`;
+
   if (restructure && restructure.rowsRead > 0) {
-    const names = [...new Set(parsedRows.map(r => parsePath(r.categoryPath)[0]).filter(Boolean))];
-    const ids = [...new Set(names.map(n => areaByName.get(n.toLowerCase())).filter((x): x is string => !!x))];
-    const errors = [...restructure.errors];
-    if (ids.length !== 1) {
-      errors.push(`Preuređivanje: file nosi ${ids.length} Area (${names.join(', ')}) — sheet se primjenjuje samo uz Structure jedne Aree.`);
-    }
     result.restructure = {
-      areaId: ids.length === 1 ? ids[0] : null,
-      areaName: ids.length === 1 ? (dbAreas?.find(a => a.id === ids[0])?.name ?? names[0]) : names.join(', '),
+      areaId: oneArea,
+      areaName: areaLabel,
       steps: restructure.steps,
-      errors,
+      errors: [...restructure.errors, ...(oneArea ? [] : [oneAreaError('Preuređivanje')])],
       source: file.name,
     };
+  }
+
+  // ── 13. Preuređivanje atributa — F2 (S186) ─────────────────
+  //   Isto kao §12: uvoz koraka NE IZVODI. ⚠ Dok modal ne zna primijeniti A1/A4,
+  //   popunjen sheet se JAVLJA — inače bi izgledao kao primijenjen.
+  if (attrRestructure && attrRestructure.rowsRead > 0) {
+    result.attrRestructure = {
+      areaId: oneArea,
+      areaName: areaLabel,
+      steps: attrRestructure.steps,
+      errors: [...attrRestructure.errors, ...(oneArea ? [] : [oneAreaError('Preuređivanje atributa')])],
+      source: file.name,
+    };
+    result.warnings.push(
+      `Preuređivanje atributa: pročitano ${attrRestructure.steps.length} koraka — primjena u aplikaciji još ne postoji, ništa nije promijenjeno.`,
+    );
   }
 
   return result;

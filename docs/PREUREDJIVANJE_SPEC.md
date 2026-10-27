@@ -1036,7 +1036,7 @@ Proširuje `058`; F1 koraci ostaju kakvi jesu (i dalje samo tekst), osim jedne i
 | 0 | ✅ §20 popravak planera (`depends_on` pod `*`) — S185 | `plan.ts` + test | 78/78, nad starim kodom 8 pada |
 | 1 | ✅ `059` + `pravila.py` + `izvedi.py`, **A2 `kcal` na `Fitness_Garmin`** — S185, §32 | TEST | §29.4–5 |
 | 2 | ✅ `garmin_activities_to_xlsx.py`: `kcal = calories / 4.184` — S185, §32 | alat | prije ikakvog PROD uvoza Garmina |
-| 3 | A1 — ✅ jezgra S185 (`060`, `retype.ts`, dokaz `mood`/`pace`, §33); ⬜ sheet + modal + E2E | TEST | §29.2, .4, .6 |
+| 3 | A1 — ✅ jezgra S185 (`060`, `retype.ts`, dokaz `mood`/`pace`, §33); ✅ sheet S186 (`attrSheet.ts`, §34); ⬜ modal + E2E | TEST | §29.2, .4, .6 |
 | 4 | A4 | TEST | §29.2, .4 |
 | 5 | model dana u `TRENING_MIGRACIJA.md` (trening → `Activity`; ostalo → `Health_Sasa` / `Life_Sasa`; periodi), pa generator v0 → grubi uvoz na TEST; A2 nad `O` / `M` za treninge bez Garmina | TEST | brojke §22.4 |
 | 6 | PROD: `backup_db` → `059` (Saša) → deploy → prvi stvarni PROD korisnik: `Fitness` `mood` A1 | PROD | kontrolne brojke prije/poslije |
@@ -1129,3 +1129,20 @@ redaka** ⇒ u novom modelu treninga postaje `text` (A1 bez ijednog retka). Pret
 mogućnost; „broj u bazi + prikaz `mm:ss`" (kao smajlići za `mood`) je zasebna dorada prikaza, ako zatreba.
 
 **Sljedeće za A1:** sheet `Preuređivanje atributa` + faza u `StructureImportModal` (§28), E2E (§29.6).
+
+## 34. Izvedeno (S186, 27.10.) — sheet `Preuređivanje atributa` (bez modala)
+
+- `src/lib/restructure/attrSheet.ts`: zaglavlje §28 (stupci po naslovu, i bez dijakritike), `promijeni tip`
+  i `spoji u` s obaveznim/zabranjenim poljima, `toRetypeInput` → `planRetype`. A4 se **čita**, planer za njega još ne postoji.
+- **Mapa u `Pretvorba`: parovi odvojeni s „ | " (razmak s obje strane).** DIARY ima `:-|` (794 dana) — goli `|`
+  je dio vrijednosti. Ključ koji sadrži `=` (nerazdvojen par) je **greška**, ne čudan ključ.
+  ⚠ Postojeći parseri (`TextOptions`, `ListColumns` `Map`, `DateMap`) dijele na golom `|` — opcija `:-|` se kroz
+  njih **ne da** zapisati (vjerojatno zato model `Fitness` nema `:-|`, §22.2). Za `mood` kao broj to ne smeta
+  (mapa kolone liste ima ključeve `1`–`5`); za bilo koju buduću opciju s `|` smeta.
+- Structure export: prazan predložak; uputa nabraja atribute **svih razina** (`Activity: mood (text), …`).
+- Structure uvoz: `result.attrRestructure` (Area kao §12) + **upozorenje** „primjena još ne postoji" — popunjen
+  sheet bez poruke izgledao bi primijenjen.
+- Čuva `restructureAttrSheet.test.mjs` (40; sabotaže: goli `|` ruši 8, bez provjere `=` 2, predložak samo leaf 1).
+- **Otvoreno za modal:** sheet s više koraka = više `rpc_restructure_retype` poziva (svaki svoj `op_id`), a §23 kaže
+  „svaki sheet = jedna operacija". Prijedlog: jedan korak = jedna operacija i jedan Poništi; pregled prikazuje sve,
+  primjena redom, staje na prvoj grešci.

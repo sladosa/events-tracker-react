@@ -34,7 +34,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** Ćelija → tekst ili null (prazno). Broj/bool iz Excela postaje tekst; razmaci ostaju. */
 export type Cell = string | number | boolean | null | undefined;
-const cellText = (c: Cell): string | null => {
+export const cellText = (c: Cell): string | null => {
   if (c === null || c === undefined) return null;
   const s = String(c);
   return s.trim() === '' ? null : s;
@@ -142,7 +142,7 @@ export function parseRestructureRows(
 // ─────────────────────────────────────────────
 
 // \p{M} = kombinirajući znakovi (č → c + ˇ); `đ` se ne rastavlja, pa ide posebno
-const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd');
+export const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd');
 
 /** Sheet `Preuređivanje` (i bez dijakritike — `Preuredjivanje`), ili null. */
 export function findRestructureSheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet | null {
@@ -150,7 +150,7 @@ export function findRestructureSheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet | 
   return wb.worksheets.find(ws => want.has(norm(ws.name))) ?? null;
 }
 
-function plain(v: ExcelJS.CellValue): Cell {
+export function plain(v: ExcelJS.CellValue): Cell {
   if (v === null || v === undefined) return null;
   if (typeof v === 'object') {
     if (v instanceof Date) return v.toISOString().slice(0, 10);

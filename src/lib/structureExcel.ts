@@ -42,6 +42,7 @@ import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { flattenAreaSettings, AREA_SETTINGS_TYPES } from './areaSettingsSheet';
 import { RESTRUCTURE_SHEET, restructureHeader, restructureHelpLines } from './restructure/sheet';
+import { ATTR_SHEET, attrHeader, attrHelpLines } from './restructure/attrSheet';
 import {
   timestampSuffix,
   formatTimestampSuffix,
@@ -1143,6 +1144,38 @@ function writeRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
 }
 
 // ─────────────────────────────────────────────────────────────
+// Preuređivanje atributa — F2 (S186): PRAZAN predložak (A1 promijeni tip, A4 spoji)
+// ─────────────────────────────────────────────────────────────
+// Za razliku od `Preuređivanje` (opcije na leafu) ovdje ulaze atributi SVIH razina
+// — `mood` je na `Activity` (P1). Uputa nosi slug i tip svakog atributa.
+function writeAttrRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
+  const ws = wb.addWorksheet(ATTR_SHEET);
+  ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+  const byCat: Array<[string, Array<[string, string]>]> = [];
+  for (const node of nodes) {
+    if (node.nodeType !== 'category' || node.attributeDefinitions.length === 0) continue;
+    byCat.push([node.name, node.attributeDefinitions.map(a => [a.slug, a.data_type] as [string, string])]);
+  }
+
+  attrHeader().forEach((h, ci) => {
+    ws.getColumn(ci + 1).width = ci === 0 ? 8 : h === 'Pretvorba' ? 44 : 16;
+    const cell = ws.getCell(1, ci + 1);
+    cell.value = h;
+    cell.fill = makeFill(CLR.HEADER_BG);
+    cell.font = { name: 'Calibri', bold: true, size: 11, color: { argb: CLR.HEADER_FG } };
+    cell.border = THIN_BORDER;
+  });
+
+  let hr = 4;   // dva prazna retka za upis, pa uputa (čitač staje na „HELP")
+  for (const line of attrHelpLines(byCat)) {
+    const cell = ws.getCell(hr++, 1);
+    cell.value = line;
+    cell.font = { italic: true, size: 9, color: { argb: 'FF888888' } };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Events stub sheet (for Structure Export — no events included)
 // ─────────────────────────────────────────────────────────────
 function _addEventsStubSheet(wb: ExcelJS.Workbook): void {
@@ -1226,6 +1259,7 @@ export async function addStructureSheetsTo(
   writeListColumnsSheet(wb, scoped);
   writeAreaSettingsSheet(wb, scoped);
   writeRestructureSheet(wb, scoped);
+  writeAttrRestructureSheet(wb, scoped);
   writeHelpStructureSheet(wb);
 }
 

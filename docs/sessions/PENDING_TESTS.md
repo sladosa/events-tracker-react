@@ -13,6 +13,7 @@ Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S186-1 | Automatske brane: `listChainValues` 17/17 (sabotaže „samo leaf" / „roditelj se zbraja" / „bez chain_key" ruše 5 / 2 / 2) · E2E `S186_list_parent_attr` (🙂 s `chain_key`, 🙁 stari zapis bez njega, leaf `orb`; sabotaža hooka ⇒ `—`; 3/3 ponavljanja) · S119, S168, S171 i dalje prolaze | ✅ S186 — čuva automatski test |
+| T-S186-2 | Automatske brane, sheet `Preuređivanje atributa`: `restructureAttrSheet` 40/40 (goli `\|` ruši 8, bez provjere `=` u ključu 2, predložak samo leaf 1) · Structure roundtrip E2E S119, S175 (oba), S179 i dalje prolaze | ✅ S186 — čuva automatski test |
 
 ## S185 — F2 preuređivanja: §20, A2 (izvedi), jezgra A1 (promijeni tip) (2026-10-26)
 
