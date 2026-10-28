@@ -23,12 +23,15 @@
  *   suggest:    { type:'suggest', suggest:[...], max? }
  *   ostalo:     {}
  *   + `hidden_in_add: true` ortogonalno, na bilo kojem od njih.
+ *   + `visible_when: { attribute_slug, values }` ortogonalno (S187, `visibleWhen.ts`).
  *   `allow_other` se ne pise: odsutnost = true (`parseValidationRules`).
  *   Top-level `suggest` uz `depends_on` („Default options" u panelu) se vise ne
  *   pise: izvoz ga nikad nije nosio, pa ga je prvi roundtrip brisao; redak
  *   `WhenValue = *` radi isto i putuje Excelom. Izmjereno S152: 0 od 13
  *   `depends_on` atributa na PROD-u ga je imalo nepraznog.
  */
+
+import { readVisibleWhen, visibleWhenToRaw, type VisibleWhen } from './visibleWhen';
 
 export type Rules = Record<string, unknown>;
 
@@ -42,6 +45,8 @@ export interface RuleSpec {
   };
   max?: unknown;
   hiddenInAdd?: boolean;
+  /** S187: polje vidljivo samo uz vrijednost atributa Y. */
+  visibleWhen?: VisibleWhen | null;
 }
 
 export function buildRules(spec: RuleSpec): Rules {
@@ -61,6 +66,9 @@ export function buildRules(spec: RuleSpec): Rules {
   }
   // Ortogonalno tipu — dodaje se poslije svih grana, pa prezivi svaku.
   if (spec.hiddenInAdd) rules.hidden_in_add = true;
+  if (spec.visibleWhen && spec.visibleWhen.values.length > 0) {
+    rules.visible_when = visibleWhenToRaw(spec.visibleWhen);
+  }
   return rules;
 }
 
@@ -90,6 +98,12 @@ export function canonicalRules(raw: unknown): Rules {
 
   if (out.allow_other === true) delete out.allow_other;
   if (out.hidden_in_add === false) delete out.hidden_in_add;
+  // `visible_when` bez ijedne vrijednosti ne skriva ništa = kao da ga nema.
+  if ('visible_when' in out) {
+    const vw = readVisibleWhen(out);
+    if (vw) out.visible_when = visibleWhenToRaw(vw);
+    else delete out.visible_when;
+  }
 
   const dep = asObject(out.depends_on);
   if (dep) {
@@ -196,4 +210,17 @@ export function renameDependsOnParent(raw: unknown, fromSlug: string, toSlug: st
   const dep = asObject(src?.depends_on);
   if (!src || !dep || dep.attribute_slug !== fromSlug) return null;
   return { ...src, depends_on: { ...dep, attribute_slug: toSlug } };
+}
+
+/**
+ * Preusmjeri `visible_when` na novi slug atributa Y (rename sluga, S187).
+ * Vraca `null` ako pravilo ne gleda `fromSlug`. Isti razred kao `depends_on`:
+ * bez ovoga rename sluga Y ostavi pravilo koje gleda u prazno — a prazan Y znači
+ * „pokaži polje", pa kvar ne bi bio ni vidljiv.
+ */
+export function renameVisibleWhenSlug(raw: unknown, fromSlug: string, toSlug: string): Rules | null {
+  const src = asObject(raw);
+  const vw = readVisibleWhen(src);
+  if (!src || !vw || vw.attributeSlug !== fromSlug) return null;
+  return { ...src, visible_when: visibleWhenToRaw({ ...vw, attributeSlug: toSlug }) };
 }

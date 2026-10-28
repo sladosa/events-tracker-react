@@ -31,6 +31,7 @@ import { useTouchSwipe } from '@/hooks/useTouchSwipe';
 import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
+import { readVisibleWhen } from '@/lib/visibleWhen';
 
 // --------------------------------------------------------
 // Types
@@ -149,6 +150,7 @@ const CloseIcon = () => (
 function AttrRow({ attr }: { attr: AttributeDefinition }) {
   const t = THEME.structure;
   const validation = describeValidation(attr);
+  const visibleWhen = readVisibleWhen(attr.validation_rules);   // S187
 
   return (
     <div className="py-2 border-b border-gray-50 last:border-0">
@@ -185,6 +187,13 @@ function AttrRow({ attr }: { attr: AttributeDefinition }) {
             </span>
           ))}
         </div>
+      )}
+
+      {visibleWhen && (
+        <p className="mt-1 text-xs text-gray-500">
+          visible only when: <span className="font-mono text-indigo-600">{visibleWhen.attributeSlug}</span>
+          {' = '}{visibleWhen.values.join(' | ')}
+        </p>
       )}
 
       {validation.dependsOnSlug && (

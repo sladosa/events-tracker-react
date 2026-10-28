@@ -22,6 +22,8 @@
  *   nijedan, i to mora vidjeti čovjek.
  */
 
+import { readVisibleWhen } from '../visibleWhen';
+
 // ─────────────────────────────────────────────
 // Ulaz
 // ─────────────────────────────────────────────
@@ -370,13 +372,34 @@ export function planRestructure(steps: RestructureStep[], snap: AreaSnapshot): R
   for (const [child, p] of parentOf) if (changedSlugs.includes(p)) ruleSlugs.add(child);
 
   for (const a of snap.attributes) {
-    if (!touchedCats.has(a.category_id) || !ruleSlugs.has(a.slug) || !isObj(a.validation_rules)) continue;
+    if (!isObj(a.validation_rules)) continue;
+    // S187: `visible_when` citira VRIJEDNOST atributa Y — i Y smije biti na pretku,
+    //   pa atribut s pravilom ne mora biti na kategoriji koju koraci diraju.
+    const vw = readVisibleWhen(a.validation_rules);
+    const vwHit = !!vw && changedSlugs.includes(vw.attributeSlug);
+    const ownRules = touchedCats.has(a.category_id) && ruleSlugs.has(a.slug);
+    if (!ownRules && !vwHit) continue;
     const before = a.validation_rules;
     const after = clone(before) as Obj;
     const t = trans.get(a.slug);
     const lines: string[] = [];
 
-    if (isObj(after.depends_on)) {
+    if (vw && vwHit) {
+      const out: string[] = [];
+      for (const v of vw.values) {
+        const to = pureOf(vw.attributeSlug, v);
+        if (to && to !== v) lines.push(`vidljivo uz ${vw.attributeSlug}: „${v}" → „${to}"`);
+        else if (vanishedOf(vw.attributeSlug, v)) {
+          warnings.push(`${a.slug}: vidljivo samo uz ${vw.attributeSlug} „${v}", a ta vrijednost više nema redaka.`);
+        }
+        const m = to ?? v;
+        if (!out.includes(m)) out.push(m);
+      }
+      after.visible_when = { attribute_slug: vw.attributeSlug, values: out };
+    }
+
+    // Izbornik samog atributa — samo kad ga koraci diraju (inače je ovdje zbog `visible_when`).
+    if (ownRules && isObj(after.depends_on)) {
       const dep = after.depends_on;
       const p = String(dep.attribute_slug);
       let om = (isObj(dep.options_map) ? dep.options_map : {}) as Record<string, string[]>;
@@ -495,7 +518,7 @@ export function planRestructure(steps: RestructureStep[], snap: AreaSnapshot): R
       }
       dep.options_map = om;
       if (dm) dep.default_map = dm;
-    } else if (Array.isArray(after.suggest) && t) {
+    } else if (ownRules && Array.isArray(after.suggest) && t) {
       let list = after.suggest as string[];
       for (const src of t.sources) {
         if (t.afterCount.get(src) || !list.includes(src)) continue;
@@ -514,7 +537,7 @@ export function planRestructure(steps: RestructureStep[], snap: AreaSnapshot): R
       after.suggest = list;
     }
 
-    if (a.default_value) {
+    if (ownRules && a.default_value) {
       const to = pureOf(a.slug, a.default_value);
       if (to || vanishedOf(a.slug, a.default_value)) {
         warnings.push(`${a.slug}: default_value „${a.default_value}" ${to ? `postaje „${to}"` : 'više nema redaka'} — promijeni Structure uvozom.`);

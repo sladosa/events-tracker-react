@@ -44,6 +44,7 @@ import {
 import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
 import { computeSetAttributeValue, collectRuleManagedIds, findDefBySlug, formatForDatetimeInput } from '@/lib/attributeRules';
 import { missingRequired, requiredMessage } from '@/lib/requiredAttributes';
+import { ruleHiddenIds } from '@/lib/visibleWhen';
 import { detectRata, rataCountProblem, generateRataChargeDates, rataSessionStarts, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
 import { resolveCommentTemplate, evaluateCommentTemplate } from '@/lib/commentTemplate';
 import type { RataAutomationConfig } from '@/types/database';
@@ -560,6 +561,12 @@ export function AddActivityPage() {
     return defs;
   }, [attributesByCategory]);
 
+  /** Lanac za pravilo vidljivosti (S187, `visibleWhen.ts`): leaf → korijen. */
+  const chainLevels = useMemo(
+    () => categoryChain.map(c => ({ categoryId: c.id, defs: attributesByCategory.get(c.id) || [] })),
+    [categoryChain, attributesByCategory],
+  );
+
   // Atributi koje forma IZVODI — ne smiju se ni snimiti u shortcut ni iz njega
   // vratiti kao doslovna vrijednost (v. `collectRuleManagedIds`).
   const ruleManaged = useMemo(() => collectRuleManagedIds(
@@ -862,8 +869,9 @@ export function AddActivityPage() {
   /** Obavezna polja koja trenutna forma nema ispunjena, u redoslijedu forme.
    *  Gleda cijeli lanac (P1 — i roditeljske razine smiju imati atribute). */
   const missingRequiredNow = useCallback(() => {
-    return missingRequired(allAttrDefs, id => attributeValues.get(id)?.value);
-  }, [allAttrDefs, attributeValues]);
+    const valueOf = (id: string) => attributeValues.get(id)?.value;
+    return missingRequired(allAttrDefs, valueOf, ruleHiddenIds(chainLevels, valueOf));
+  }, [allAttrDefs, attributeValues, chainLevels]);
 
   /** `Rate?` uključen bez broja rata (S170) — ista mjesta kao obavezna polja. */
   const rataProblemNow = useCallback(() => rataCountProblem(
@@ -912,13 +920,17 @@ export function AddActivityPage() {
       }
     }
     
+    // S187: skriveno pravilom vidljivosti se ne sprema (npr. zadana vrijednost
+    // polja koje uz ovu vrstu nije na ekranu).
+    const ruleHidden = ruleHiddenIds(chainLevels, id => workingAttrs.get(id)?.value);
+
     // Create pending event
     const newEvent: PendingEvent = {
       tempId: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       categoryId,
       createdAt: new Date(),
       attributes: Array.from(workingAttrs.values())
-        .filter(v => v.touched && v.value != null)
+        .filter(v => v.touched && v.value != null && !ruleHidden.has(v.definitionId))
         .map(v => ({
           definitionId: v.definitionId,
           value: v.value,
@@ -993,7 +1005,7 @@ export function AddActivityPage() {
   //     osvjezava — pa bi ovaj handler zadrzao STARI `comment_template`. To je isti
   //     simptom koji je S133 zatvorio na razini kesa; ovo je drugi put do njega.
   //     Dodavanje je bezopasno: ovo je klik handler, ne efekt.
-  }, [canSave, categoryId, attributeValues, attributesByCategory, eventNote, currentPhotos, lapElapsed, resetLap, getDraftData, saveDraft, log, missingRequiredNow, rataProblemNow, resolveEventNote]);
+  }, [canSave, categoryId, attributeValues, attributesByCategory, eventNote, currentPhotos, lapElapsed, resetLap, getDraftData, saveDraft, log, missingRequiredNow, rataProblemNow, resolveEventNote, chainLevels]);
 
   // ============================================
   // Finish (Batch Write to DB)
@@ -1051,12 +1063,15 @@ export function AddActivityPage() {
           }
         }
         
+        // S187: skriveno pravilom vidljivosti se ne sprema (isto kao `Save +`).
+        const ruleHidden = ruleHiddenIds(chainLevels, id => workingAttrs.get(id)?.value);
+
         const currentEvent: PendingEvent = {
           tempId: `temp_${Date.now()}`,
           categoryId,
           createdAt: new Date(),
           attributes: Array.from(workingAttrs.values())
-            .filter(v => v.touched && v.value != null)
+            .filter(v => v.touched && v.value != null && !ruleHidden.has(v.definitionId))
             .map(v => ({
               definitionId: v.definitionId,
               value: v.value,

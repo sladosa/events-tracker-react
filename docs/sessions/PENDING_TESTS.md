@@ -6,15 +6,16 @@
 
 ---
 
-## S187 — Model treninga, korak 1: default ne skriva polje (2026-10-28)
+## S187 — Model treninga, koraci 1–2: default ne skriva polje; pravilo vidljivosti (2026-10-28)
 
-Dogovor o modelu treninga zapisan u `TRENING_MIGRACIJA.md` („Dogovor 28.10.", tablica „Koraci" 1–10). Korak 1 (d1): polje s `default_value` se u formi prikazuje, popunjeno; skrivanje samo kroz `HiddenInAdd`. Pogođen samo `Fitness` (7 atributa); `Financije_all` nema nijedan default.
+Dogovor o modelu treninga zapisan u `TRENING_MIGRACIJA.md` („Dogovor 28.10.", tablica „Koraci" 1–10). Korak 1 (d1): polje s `default_value` se u formi prikazuje, popunjeno; skrivanje samo kroz `HiddenInAdd`. Pogođen samo `Fitness` (7 atributa); `Financije_all` nema nijedan default. Korak 2: `VisibleWhen` — polje vidljivo samo uz vrijednost drugog atributa (panel, Excel kolona L, forma, obavezno, planer).
 
 **Detalji testova:** [tests/S187_tests.md](tests/S187_tests.md)
 
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S187-1 | `dev:prod`, samo gledanje: Fitness Cardio/Strength/Outdoor Add ⇒ svih 7 polja s defaultom na ekranu, popunjena, bez bloka „na defaultu"; `Financije_all` Add ⇒ ista kao prije („prazna po pravilu: Izvod opis, Valuta") | ✅ S187 (28.10., Saša, `dev:prod`, 4 slike) — Cardio: intensity/Cardio_type/equipment na ekranu popunjeni; Strength: intensity, Strength_type; Outdoor: Outdoor_type/Trening_type/terrain/intensity; Financije_all ista. „Prije" viđeno uživo na Netlify PROD-u: Cardio „na defaultu: Cardio_type = Z2 · equipment = orb · intensity = light" + Show all; čuva E2E `S187_default_visible` (stara forma pada) |
+| T-S187-2 | TEST `npm run dev`: panel „Visible only when" (`weight_info` uz `Strength_type = Upp`) ⇒ Add: vidljivo samo uz Upp, upisano se briše pri skrivanju; Structure export kolona L `VisibleWhen`, nepromijenjen uvoz = 0 promjena, `Upp \| Low` = 1, `nepostoji = x` ⇒ upozorenje i pravilo ostaje | ⬜ |
 
 ---
 

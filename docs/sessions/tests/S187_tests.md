@@ -38,3 +38,30 @@ skriveno i imenovano; nad starom formom pada (polje s defaultom nije na ekranu).
 
 **Pad:** bilo koje od 7 polja nije na ekranu, ili je na ekranu prazno; ili se Kokina forma promijenila
 (npr. nestala linija „prazna po pravilu", ili se Isplata/Uplata prikazuju bez Smjera).
+
+---
+
+## T-S187-2 ⬜ (TEST, lokalno `npm run dev`) Pravilo vidljivosti — panel, forma, Excel
+
+Korak 2 dogovora: `validation_rules.visible_when` („polje vidljivo samo uz vrijednost X atributa Y").
+**Automatski (TEST):** unit `visibleWhen.test.mjs` (53) i E2E `S187_visible_when` (Add: vrsta mijenja polja,
+upisano se briše, obavezno samo vidljivo, skriveni default se ne sprema; Edit: „izvan pravila").
+Ovaj ručni test pokriva ono što automatski ne: **panel** i **Excel roundtrip** na tvojoj strukturi.
+
+**Koraci:**
+1. `npm run dev` (banner TEST). Structure → Edit Mode → `Fitness > Activity > Gym > Strength` → Edit.
+2. Atribut `weight_info` → **Visible only when** = `Strength_type`, kvačica **Upp** → Save.
+   (Nema li TEST-ov Fitness tih atributa, uzmi bilo koji tekstualni atribut i dropdown istog leafa.)
+3. View panel istog čvora: uz `weight_info` piše „visible only when: strengthtype = Upp".
+4. Add na `Strength`: `Strength_type` = Core ⇒ `weight_info` **nije** na ekranu. Promijeni u Upp ⇒ pojavi se;
+   upiši nešto; vrati na Core ⇒ nestane; opet Upp ⇒ **prazno**.
+5. Structure export (Area Fitness) ⇒ stupac **L `VisibleWhen`** (u skupini uz HiddenInAdd) na retku
+   `weight_info`: `strengthtype = Upp`. Uvezi file **nepromijenjen** ⇒ `Attributes updated` se ne pojavi (0).
+6. U fileu promijeni ćeliju u `strengthtype = Upp | Low`, uvezi ⇒ `Attributes updated 1`; Add: uz Low se
+   `weight_info` vidi.
+7. U fileu upiši `nepostoji = x`, uvezi ⇒ upozorenje „no attribute "nepostoji" … rule left as it was",
+   pravilo ostaje `Upp | Low`.
+8. Počisti: panel → Visible only when = „— always shown —" → Save.
+
+**Očekivano:** kako piše u koracima. **Pad:** polje vidljivo uz krivu vrijednost; upisano ostaje nakon
+skrivanja; nepromijenjen roundtrip javlja promjenu; loša ćelija obriše pravilo bez upozorenja.

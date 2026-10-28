@@ -433,6 +433,20 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   nosio; fallback je redak `WhenValue = *`.
   ⚠ Brojači `Automations` / `List columns` u modalu broje **Aree kojima se config promijenio**;
   sivo `0` = sheet pročitan, bez promjene.
+- **Pravilo vidljivosti `visible_when` ŽIVI U `src/lib/visibleWhen.ts` — I SAMO ONDJE** (S187, model treninga).
+  `validation_rules.visible_when = {attribute_slug, values}`: polje vidljivo samo dok Y ima jednu od vrijednosti.
+  Zovu ga forma, `missingRequired` (obavezno samo dok je vidljivo), Add spremanje (skriveno se ne sprema),
+  Structure uvoz/izvoz (kolona `VisibleWhen`), panel, View panel — kopija uvjeta = forma sakrije, Save traži.
+  ⚠ Y je na istom eventu ili **pretku, nikad na djetetu** (roditelj 1 event, leaf N); najbliži pobjeđuje; Y kojeg
+  nema ⇒ polje se **prikazuje** (pokvaren config ne skriva podatak). ⚠ Brisanje vrijednosti okida **potez nad Y**
+  (`fieldsToClear`), nikad otvaranje forme (S127) — zato Edit dobiva `storedAttrIds`: vrijednost iz baze izvan
+  pravila je vidljiva s oznakom „izvan pravila" dok se Y ne promijeni. ⚠ Citira VRIJEDNOST opcije Y ⇒ mora biti u
+  planeru (`plan.ts`, čisto preimenovanje prepiše `values`), u rename sluga (`renameVisibleWhenSlug`, i drugi
+  čvorovi) i blokira A1 nad Y (`retype.ts`). ⚠ Uvoz: nema kolone ⇒ baza; loša ćelija / Y kojeg nema ⇒ baza + upozorenje.
+  `depends_on` za ne-tekst i dalje radi vidljivost po starom (Financije) — na tekst se NE proširuje.
+  ⚠ Prazni se samo polje koje je BILO NA EKRANU (`wasShown`): skriveni default (`sprava = orb` dok vrsta nije
+  izabrana) ostaje, inače Z2 poslije pokaže prazno (izmjereno E2E); ne sprema se jer Add filtrira skriveno.
+  Čuvaju `visibleWhen.test.mjs` (53; sabotaže „dijete" i „planer" padaju) i E2E `S187_visible_when` (stara forma pada 2/2).
 - **Redoslijed opcija u izborniku je PRIKAZ, ne podatak** (S164, Koka i Saša). Atribut čiji najdulji
   popis ima ≥ 7 opcija prikazuje sve popise abecedno (hr kolacija, `N/A`/`*` na vrhu) —
   `src/lib/optionOrder.ts`, zovu ga forma (`AttributeInput`) i app Excel export; Python app Excel
@@ -2022,6 +2036,8 @@ data-prep_tools/Tools/preuredjivanje_grep.py
                                    (JAK = vrijednost + kontekst koraka u retku); bez `fix_*` i `Obsolete/`
 src/lib/importDefaults.ts          `default_map` na NOVIM retcima Excel uvoza (S181) — samo prazna ćelija,
                                    nikad `default_value`; pregled i upis kroz `fillImportDefaults`
+src/lib/visibleWhen.ts             JEDINO pravilo „vidljivo uz vrijednost" (S187): čitanje, ćelija
+                                   `VisibleWhen`, procjena po lancu, `fieldsToClear`, `ruleHiddenIds`
 src/lib/validationRules.ts         JEDINI graditelj `validation_rules` (panel, uvoz, „Other") +
                                    `sameRules` za usporedbu po značenju (S152)
 src/lib/pendingOptions.ts          „Other" opcije iz Add/Edit u `validation_rules` (jedna kopija)

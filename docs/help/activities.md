@@ -52,8 +52,8 @@ a poruka imenuje koje polje nedostaje.
   upiši `~`**. Lista pokaže samo retke s tildom, uz chip `comment: "~" ×`. Tilda je
   običan znak u pretrazi, ne poseban.
 
-**Vidljivost polja u formi.** Polje može nedostajati iz **dva** razloga, a `"Show all"`
-otkriva **samo prvi**:
+**Vidljivost polja u formi.** Polje može nedostajati iz **tri** razloga, a `"Show all"`
+otkriva **samo prvi** (`HiddenInAdd`):
 
 - Polje s `default_value` se **prikazuje, popunjeno** — default samo upisuje vrijednost, ne
   skriva polje (do listopada 2026. forma je takva polja skrivala; ukinuto u S187).
@@ -67,6 +67,10 @@ otkriva **samo prvi**:
 - Polja s `depends_on` prikazuju se samo kad drugi atribut ("parent") ima određenu vrijednost
   (npr. `Broj rata` se pojavi tek kad označiš `Na rate?`).
   ⚠ **Ovo `"Show all"` NE otkriva** — jedini način je ispuniti roditelja.
+- **Vidljivo samo uz vrijednost** (`VisibleWhen`, S187) — npr. `serije` samo uz `vrsta = Snaga`.
+  Promijeniš li vrstu tako da polje nestane, upisano se **briše**; skriveno polje se ne sprema i
+  nije obavezno. `"Show all"` ga ne otkriva. U Editu starog retka polje s vrijednošću iz baze
+  ostaje vidljivo s oznakom `izvan pravila` dok ne promijeniš atribut o kojem ovisi.
 - Sva pravila vrijede i u Edit Activity.
 
 ## Automatike nakon Finish

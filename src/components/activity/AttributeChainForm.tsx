@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { AttributeDefinition, Category } from '@/types';
 import { AttributeInput } from './AttributeInput';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
+import { controllingDef, fieldsToClear, isHiddenByRule } from '@/lib/visibleWhen';
 
 // ---- localStorage helpers ----
 // Key per category UUID: 'attrExpanded:<uuid>' → 'true' | 'false'
@@ -44,6 +45,11 @@ interface AttributeChainFormProps {
   onNewOption?: (definitionId: string, newOption: string, dependencyValue?: string | null) => void;
   /** S160: grantee ne dodaje opcije — v. `AttributeInput.noNewOptionsHint`. */
   noNewOptionsHint?: string | null;
+  /** S187 (Edit): atributi koji imaju vrijednost SPREMLJENU U BAZI. Pravilo
+   *  vidljivosti (`visible_when`) takvo polje ne skriva dok čovjek ne promijeni
+   *  atribut o kojem ovisi — inače bi otvaranje + Save starog retka tiho obrisalo
+   *  podatak (skriveno se ne sprema). Add ga ne šalje. */
+  storedAttrIds?: ReadonlySet<string>;
 }
 
 // Check if attribute is a dropdown type (should be sticky in leaf)
@@ -62,6 +68,7 @@ export function AttributeChainForm({
   expandedByDefault = false,
   onNewOption,
   noNewOptionsHint = null,
+  storedAttrIds,
 }: AttributeChainFormProps) {
   // Track which categories are expanded (leaf is always expanded)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -77,14 +84,23 @@ export function AttributeChainForm({
    *  ⚠ Postoji zato što je „Show all" sve-ili-ništa: da otvoriš jedno polje,
    *  morao si otvoriti sva, pa ih zatvoriti natrag. */
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+  /** Atributi koje je ČOVJEK promijenio u ovoj formi (S187). Samo za iznimku
+   *  Edita (`storedAttrIds`): spremljena vrijednost izvan pravila ostaje vidljiva
+   *  dok se ne promijeni atribut o kojem polje ovisi. */
+  const [userChangedIds, setUserChangedIds] = useState<Set<string>>(new Set());
 
-  // Reset when user selects a different category
+  // Reset when user selects a different category — or (Edit) a different event
   const chainKey = useMemo(() => categoryChain.map(c => c.id).join(','), [categoryChain]);
+  const storedKey = useMemo(() => (storedAttrIds ? [...storedAttrIds].sort().join(',') : ''), [storedAttrIds]);
   const leafId = categoryChain[0]?.id ?? null;
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset-na-promjenu-ulaza: kategorija se promijenila => stanje forme se mora ocistiti; nema ga sto izvesti iz rendera
     setShowAll(false);
   }, [chainKey]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset-na-promjenu-ulaza: drugi kategorija ili event (tab u Editu) => „čovjek je promijenio" više ne vrijedi
+    setUserChangedIds(new Set());
+  }, [chainKey, storedKey]);
 
   // Restore expanded state from localStorage when chain changes.
   // Per-category preference overrides the default (leaf open, parents closed).
@@ -139,11 +155,37 @@ export function AttributeChainForm({
     return all;
   }, [categoryChain, attributesByCategory]);
 
+  /** Lanac za pravilo vidljivosti: od leafa prema korijenu (`visibleWhen.ts`). */
+  const chainLevels = useMemo(
+    () => categoryChain.map(c => ({ categoryId: c.id, defs: attributesByCategory.get(c.id) || [] })),
+    [categoryChain, attributesByCategory],
+  );
+  const valueOf = useCallback((id: string) => values.get(id)?.value, [values]);
+
+  /** S187: pravilo `visible_when` skriva — ali NE spremljenu vrijednost u Editu
+   *  dok čovjek ne promijeni atribut o kojem polje ovisi (v. `storedAttrIds`). */
+  const isOutOfRule = useCallback((attr: AttributeDefinition): boolean => {
+    if (!storedAttrIds?.has(attr.id) || !isHiddenByRule(attr, chainLevels, valueOf)) return false;
+    const ctrl = controllingDef(attr, chainLevels);
+    const v = valueOf(attr.id);
+    return !!ctrl && !userChangedIds.has(ctrl.id) && v != null && v !== '';
+  }, [storedAttrIds, chainLevels, valueOf, userChangedIds]);
+
   // onChange koji automatski cleara dependent atribute kad se parent promijeni.
   // Primjer: kad Strength_type promijeni vrijednost, exercise_name se resetira na null.
   const handleChangeWithClearDependents = useCallback((attrId: string, value: string | number | boolean | null) => {
     // 1. Promijeni vrijednost samog atributa
     onChange(attrId, value);
+    setUserChangedIds(prev => (prev.has(attrId) ? prev : new Set(prev).add(attrId)));
+
+    // 1b. S187: polja koja ova promjena SKRIJE (`visible_when`) gube vrijednost —
+    //   skriveno se ne sprema, a bez ovoga bi Cardio dio spremio serije upisane
+    //   dok je vrsta bila Snaga. Okidač je ovaj potez, nikad otvaranje forme (S127).
+    // „Bilo na ekranu" = stanje ovog rendera (vrijednosti još nisu promijenjene),
+    // uključujući Edit iznimku „izvan pravila".
+    const cleared = new Set(fieldsToClear(attrId, value, chainLevels, valueOf,
+      d => !isHiddenByRule(d, chainLevels, valueOf) || isOutOfRule(d as AttributeDefinition)));
+    for (const id of cleared) onChange(id, null);
 
     // 2. Nadji slug atributa koji se promijenio
     const changedAttr = allAttributes.find(a => a.id === attrId);
@@ -153,6 +195,8 @@ export function AttributeChainForm({
     // 3. Pronadji sve atribute koji ovise o ovom slug-u i postavi default_map ili cleari
     const parentVal = value != null ? String(value) : null;
     for (const attr of allAttributes) {
+      // Skriveno pravilom (1b) ne dobiva ni `default_map` — ostaje prazno.
+      if (cleared.has(attr.id)) continue;
       const parsed = parseValidationRules(attr.validation_rules);
       if (!parsed.dependsOn) continue;
       const depSlug = parsed.dependsOn.attributeSlug;
@@ -166,7 +210,7 @@ export function AttributeChainForm({
         onChange(attr.id, mappedDefault);
       }
     }
-  }, [onChange, allAttributes, normalizeSlug]);
+  }, [onChange, allAttributes, normalizeSlug, chainLevels, valueOf, isOutOfRule]);
 
   // Build a map of attribute slugs to their current values
   const attributeValuesBySlug = useMemo(() => {
@@ -236,10 +280,14 @@ export function AttributeChainForm({
     return showAll && hasHiddenFlag(attr);
   }, [showAll, revealedIds, hasHiddenFlag]);
 
+  const isRuleHidden = useCallback((attr: AttributeDefinition): boolean =>
+    isHiddenByRule(attr, chainLevels, valueOf) && !isOutOfRule(attr),
+  [chainLevels, valueOf, isOutOfRule]);
+
   /** Any reason this attribute is not on screen right now. */
   const isHidden = useCallback((attr: AttributeDefinition): boolean =>
-    isDependencyHidden(attr) || isHiddenExplicitly(attr),
-  [isDependencyHidden, isHiddenExplicitly]);
+    isDependencyHidden(attr) || isRuleHidden(attr) || isHiddenExplicitly(attr),
+  [isDependencyHidden, isRuleHidden, isHiddenExplicitly]);
 
   /** Skrivena polja, IMENOVANA (S136, Sašin nalaz) — ne brojač: „1 field hidden"
    *  ne kaže što je unutra, pa da otvoriš jedno polje moraš otvoriti sva.
@@ -247,11 +295,12 @@ export function AttributeChainForm({
    *  ⚠ `depends_on`-skrivena polja se IZOSTAVLJAJU. „Show all" ih
    *  namjerno ne otkriva (dropdown bez roditeljske vrijednosti nema što ponuditi),
    *  pa bi ih nabrajanje obećalo — izmjereno kao „3 fields hidden" koje otkrije
-   *  dva, uz `Stanje` skriveno na OBA načina.
+   *  dva, uz `Stanje` skriveno na OBA načina. Isto za `visible_when` (S187):
+   *  polje za snagu nema smisla uz Cardio, pa ga „Show all" ne otkriva.
    */
   const hiddenExplicit = useMemo(
-    () => allAttributes.filter(a => !isDependencyHidden(a) && isHiddenExplicitly(a)),
-    [allAttributes, isDependencyHidden, isHiddenExplicitly]
+    () => allAttributes.filter(a => !isDependencyHidden(a) && !isRuleHidden(a) && isHiddenExplicitly(a)),
+    [allAttributes, isDependencyHidden, isRuleHidden, isHiddenExplicitly]
   );
 
   const revealOne = useCallback((id: string) => {
@@ -340,6 +389,7 @@ export function AttributeChainForm({
     if (isHidden(attr)) return null;
 
     const revealed = isRevealedOnly(attr);
+    const outOfRule = isOutOfRule(attr);
     // Klik na oznaku smije sakriti samo ono što je klik i otkrio.
     const canHide = revealedIds.has(attr.id);
     const input = (
@@ -373,8 +423,17 @@ export function AttributeChainForm({
     return (
       <div
         key={attr.id}
-        className={revealed ? 'relative pl-2 border-l-2 border-dashed border-gray-300' : undefined}
+        className={revealed ? 'relative pl-2 border-l-2 border-dashed border-gray-300'
+          : outOfRule ? 'relative pl-2 border-l-2 border-dashed border-amber-300' : undefined}
       >
+        {outOfRule && !revealed && (
+          <span
+            className="absolute -top-0.5 right-0 text-[10px] text-amber-600 italic"
+            title="Pravilo vidljivosti ovo polje uz ovu vrijednost skriva, ali u bazi ima vrijednost — zato je ovdje. Promijeniš li atribut o kojem ovisi, polje nestaje i vrijednost se briše."
+          >
+            izvan pravila
+          </span>
+        )}
         {revealed && (canHide ? (
           <button
             type="button"

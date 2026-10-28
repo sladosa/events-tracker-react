@@ -62,7 +62,9 @@ help.eachRow((row) => {
 });
 ok('pomocni list navodi stupce', checked >= 20, String(checked));
 ok('svako slovo odgovara stupcu na listu Structure', wrong.length === 0, wrong.join('; '));
-ok('TextOptions je u P (stanje 04.10.2026.)', headerAt.get('TextOptions/Val.Min') === 'P');
+// S187: `VisibleWhen` umetnut iza `HiddenInAdd` (L) ⇒ sve desno pomaknuto za jedan.
+ok('TextOptions je u Q (stanje 28.10.2026., S187)', headerAt.get('TextOptions/Val.Min') === 'Q');
+ok('VisibleWhen je u L, iza HiddenInAdd (K)', headerAt.get('VisibleWhen') === 'L' && headerAt.get('HiddenInAdd') === 'K');
 
 console.log('');
 console.log(`${pass} passed, ${fail} failed`);

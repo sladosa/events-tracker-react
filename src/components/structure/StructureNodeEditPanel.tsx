@@ -35,8 +35,9 @@ import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { fixupDashboardSlug } from '@/lib/dashboardConfig';
 import { fixupListColumnsSlug } from '@/lib/listColumns';
 import { fixupAutomationsSlug } from '@/lib/automationsConfig';
-import { buildRules, renameDependsOnParent } from '@/lib/validationRules';
+import { allOptions, buildRules, renameDependsOnParent, renameVisibleWhenSlug } from '@/lib/validationRules';
 import { dbScopedKey } from '@/lib/storageKey';
+import type { VisibleWhen } from '@/lib/visibleWhen';
 
 // --------------------------------------------------------
 // Types
@@ -87,6 +88,10 @@ interface AttrEditState {
    *  `validation_rules.hidden_in_add` — no migration, and it sits beside
    *  the other per-attribute config the app already reads from there. */
   hiddenInAdd: boolean;
+  /** S187: `validation_rules.visible_when` — polje vidljivo samo uz vrijednost
+   *  atributa Y (isti čvor ili predak). Prazan slug = nema pravila. */
+  visibleWhenSlug: string;
+  visibleWhenValues: string[];
 }
 
 interface NewAttrFormState {
@@ -247,7 +252,17 @@ function attrToEditState(attr: AttributeDefinition): AttrEditState {
     defaultValue: attr.default_value ?? '',
     isRequired: attr.is_required ?? false,
     hiddenInAdd: parsed.hiddenInAdd,
+    visibleWhenSlug: parsed.visibleWhen?.attributeSlug ?? '',
+    visibleWhenValues: parsed.visibleWhen?.values ?? [],
   };
+}
+
+/** S187: pravilo vidljivosti iz stanja panela — `null` kad nije potpuno. */
+function visibleWhenOf(state: AttrEditState): VisibleWhen | null {
+  const values = state.visibleWhenValues.map(v => v.trim()).filter(Boolean);
+  return state.visibleWhenSlug && values.length > 0
+    ? { attributeSlug: state.visibleWhenSlug, values }
+    : null;
 }
 
 /** The slug that will actually be written.
@@ -286,6 +301,7 @@ function buildValidationRules(
     return buildRules({
       dependsOn: { parentSlug: state.dependsOnSlug, optionsMap, defaultMap },
       hiddenInAdd: state.hiddenInAdd,
+      visibleWhen: visibleWhenOf(state),
     });
   }
   if (state.validationType === 'suggest') {
@@ -293,9 +309,36 @@ function buildValidationRules(
       options: state.suggestOptions.split('\n').map(s => s.trim()).filter(Boolean),
       max: originalMax,
       hiddenInAdd: state.hiddenInAdd,
+      visibleWhen: visibleWhenOf(state),
     });
   }
-  return buildRules({ hiddenInAdd: state.hiddenInAdd });
+  return buildRules({ hiddenInAdd: state.hiddenInAdd, visibleWhen: visibleWhenOf(state) });
+}
+
+/** Poznate vrijednosti atributa Y (za kvačice u „Visible when"). `null` = slobodan unos. */
+function knownValuesOf(
+  slug: string,
+  sameLevel: AttrEditState[],
+  ancestorAttrs: { levelName: string; attrs: AttributeDefinition[] }[],
+): string[] | null {
+  const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
+  const own = sameLevel.find(a => a.slug === slug);
+  if (own) {
+    if (own.dataType === 'boolean') return ['TRUE', 'FALSE'];
+    if (own.validationType === 'suggest') return lines(own.suggestOptions);
+    if (own.validationType === 'depends_on') {
+      return [...new Set(own.dependsOnMap.flatMap(r => lines(r.options)))];
+    }
+    return null;
+  }
+  for (const g of ancestorAttrs) {
+    const a = g.attrs.find(x => x.slug === slug);
+    if (!a) continue;
+    if (a.data_type === 'boolean') return ['TRUE', 'FALSE'];
+    const opts = [...allOptions(a.validation_rules)];
+    return opts.length > 0 ? opts : null;
+  }
+  return null;
 }
 
 /** Generate slug from name; appends _2, _3 if collision with existing slugs */
@@ -600,6 +643,8 @@ function AttrEditSection({ attrs, onChange, onDeletedSaved, hasEvents, nodeId, a
       isNew:         true,
       isRequired:    newForm.required,
       hiddenInAdd:   false,
+      visibleWhenSlug:   '',
+      visibleWhenValues: [],
     };
     onChange([...attrs, newAttrState]);
     setNewForm(EMPTY_NEW_ATTR);
@@ -980,6 +1025,86 @@ function AttrEditSection({ attrs, onChange, onDeletedSaved, hasEvents, nodeId, a
               </p>
             )}
           </div>
+
+          {/* S187: Visible only when — `validation_rules.visible_when`. Y = atribut
+              istog čvora ili pretka (dijete nikad: roditelj ima 1 event, leaf N). */}
+          {(() => {
+            const sameLevel = attrs.filter(a => a.id !== attr.id && a.slug);
+            const known = attr.visibleWhenSlug
+              ? knownValuesOf(attr.visibleWhenSlug, sameLevel, ancestorAttrs) : null;
+            const found = !attr.visibleWhenSlug
+              || sameLevel.some(a => a.slug === attr.visibleWhenSlug)
+              || ancestorAttrs.some(g => g.attrs.some(a => a.slug === attr.visibleWhenSlug));
+            const toggle = (v: string) => update(i, {
+              visibleWhenValues: attr.visibleWhenValues.includes(v)
+                ? attr.visibleWhenValues.filter(x => x !== v)
+                : [...attr.visibleWhenValues, v],
+            });
+            return (
+              <div className="mb-3">
+                <FieldLabel>Visible only when</FieldLabel>
+                <select
+                  value={attr.visibleWhenSlug}
+                  onChange={e => update(i, { visibleWhenSlug: e.target.value, visibleWhenValues: [] })}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-300"
+                >
+                  <option value="">— always shown —</option>
+                  {!found && (
+                    <option value={attr.visibleWhenSlug}>⚠ {attr.visibleWhenSlug} (not found)</option>
+                  )}
+                  {sameLevel.length > 0 && (
+                    <optgroup label="Same level">
+                      {sameLevel.map(a => <option key={a.id} value={a.slug}>{a.name} ({a.slug})</option>)}
+                    </optgroup>
+                  )}
+                  {ancestorAttrs.map(g => g.attrs.length === 0 ? null : (
+                    <optgroup key={g.levelName} label={`↑ ${g.levelName}`}>
+                      {g.attrs.map(a => <option key={a.id} value={a.slug}>{a.name} ({a.slug})</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+                {attr.visibleWhenSlug && (
+                  <div className="mt-2">
+                    {known ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {[...known, ...attr.visibleWhenValues.filter(v => !known.includes(v))].map(v => (
+                          <label key={v} className="flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-200 bg-gray-50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={attr.visibleWhenValues.includes(v)}
+                              onChange={() => toggle(v)}
+                            />
+                            {known.includes(v) ? v : <span className="text-amber-600">⚠ {v}</span>}
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      // Čita se na izlasku iz polja: kontrolirano polje bi usred
+                      // tipkanja `Snaga |` odmah pojelo ` |` i drugu vrijednost.
+                      <input
+                        key={attr.visibleWhenSlug}
+                        type="text"
+                        defaultValue={attr.visibleWhenValues.join(' | ')}
+                        onBlur={e => update(i, { visibleWhenValues: e.target.value.split(/\s+\|\s+/).map(x => x.trim()).filter(Boolean) })}
+                        placeholder="value | value"
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-300"
+                      />
+                    )}
+                    {attr.visibleWhenValues.length === 0 && (
+                      <p className="mt-1 text-xs text-amber-600">
+                        ⚠ Pick at least one value — without one the field stays always shown.
+                      </p>
+                    )}
+                  </div>
+                )}
+                <p className="mt-1 text-xs text-gray-400">
+                  The field appears only while the chosen attribute has one of these values.
+                  A hidden field is not saved, and "Show all" does not reveal it.
+                  Excel column <code>VisibleWhen</code>.
+                </p>
+              </div>
+            );
+          })()}
 
           {/* Slug — editable (safe: events link by UUID, not slug) */}
           {!attr.isNew && (
@@ -1402,7 +1527,13 @@ export function StructureNodeEditPanel({
 
       const writeStates = renames.length === 0 ? attrStates : attrStates.map(a => {
         const r = renames.find(r => r.from === a.dependsOnSlug);
-        return r ? { ...a, dependsOnSlug: r.to } : a;
+        // S187: i `visible_when` istog čvora prati rename (drugi čvorovi: petlja dolje).
+        const rv = renames.find(r => r.from === a.visibleWhenSlug);
+        return r || rv ? {
+          ...a,
+          ...(r ? { dependsOnSlug: r.to } : {}),
+          ...(rv ? { visibleWhenSlug: rv.to } : {}),
+        } : a;
       });
 
       for (const attr of writeStates) {
@@ -1491,7 +1622,10 @@ export function StructureNodeEditPanel({
                 // /!\ Iz SIROVOG pravila, ne iz parsiranog (S152): parsirani
                 //   oblik nosi camelCase (`optionsMap`), pa je ovaj redak prije
                 //   ostavljao `depends_on` bez `options_map`.
-                const updatedRules = renameDependsOnParent(ad.validation_rules, attr.originalSlug, newSlug);
+                const afterDep = renameDependsOnParent(ad.validation_rules, attr.originalSlug, newSlug);
+                // S187: `visible_when` dijete smije gledati Y na pretku ⇒ i drugi čvorovi.
+                const afterVw = renameVisibleWhenSlug(afterDep ?? ad.validation_rules, attr.originalSlug, newSlug);
+                const updatedRules = afterVw ?? afterDep;
                 if (updatedRules) {
                   await supabase
                     .from('attribute_definitions')

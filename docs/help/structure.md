@@ -40,8 +40,8 @@ prolaziti, pa je to pravilo forme, a ne baze; postojeći retci se ne diraju.
   u formi uopće ne prikaže, a obavezno je — panel na to upozorava.
 
 **`HiddenInAdd` (kol. K) — polje skriveno pri unosu:**
-Jedini način da se polje sakrije. Za atribute čija je **ispravna vrijednost prazna** (npr. `Izvod opis`,
-koji se popuni tek s izvoda). "Show all" ga i dalje otkrije — urednost, ne zaključavanje.
+Za atribute čija je **ispravna vrijednost prazna** (npr. `Izvod opis`, koji se popuni tek s izvoda).
+"Show all" ga i dalje otkrije — urednost, ne zaključavanje.
 Ako file **nema** kolonu `HiddenInAdd` (stariji export, ručno skraćen file), uvoz postojeće
 skrivanje **ne dira**. Prazna ćelija u koloni koja **postoji** znači „ne skrivaj". Kod atributa
 s više redaka dovoljan je `TRUE` u **bilo kojem** retku.
@@ -49,6 +49,18 @@ s više redaka dovoljan je `TRUE` u **bilo kojem** retku.
 kombinaciju ne da složiti; dođe li Excel uvozom, uvoz je prijavi i **sam preuzme označeni file**
 (`structure_REVIEW_NEEDED_*`, žute ćelije u J/K), a forma polje svejedno prikaže — obavezno pobjeđuje,
 da se unos ne može zaključati.
+
+**`VisibleWhen` (kol. L) — polje vidljivo samo uz vrijednost drugog atributa:**
+Oblik `slug = vrijednost | vrijednost`, npr. `vrsta = Snaga | Istezanje`. Radi za svaki tip polja.
+Atribut o kojem ovisi mora biti na istoj kategoriji ili roditelju (nikad dijete); umjesto sluga smije
+i ime atributa — uvoz ga pretvori u slug. Skriveno polje se ne sprema, „Show all" ga ne otkriva,
+a obavezno vrijedi samo dok je vidljivo. U Edit panelu: „Visible only when".
+- Prazna ćelija = nema pravila. Ako file **nema** kolonu `VisibleWhen` (stariji export), pravilo u
+  bazi **ostaje**.
+- Atribut ima više redaka (po jedan za `WhenValue`): vrijedi **prva popunjena** ćelija; različite
+  vrijednosti uvoz prijavi upozorenjem.
+- Neprepoznata ćelija ili atribut kojeg nema na kategoriji/roditelju ⇒ pravilo u bazi ostaje, uz
+  upozorenje u rezultatu uvoza.
 
 **`depends_on` — ovisnost o drugom atributu ("parent"):**
 Konfigurira se u Edit panelu → klikni na atribut → "Depends on" / "WhenValue → Options (+ Default)".

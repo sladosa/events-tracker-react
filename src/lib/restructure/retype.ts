@@ -18,6 +18,7 @@
  *   se prevode istom pretvorbom.
  */
 import { buildRules, sameRules } from '@/lib/validationRules';
+import { readVisibleWhen } from '@/lib/visibleWhen';
 import { same } from './plan';
 import type { SnapshotAttribute, SnapshotPreset } from './plan';
 
@@ -164,6 +165,13 @@ export function planRetype(input: RetypeInput, snap: RetypeSnapshot): RetypePlan
     if (dep && dep.attribute_slug === attr.slug && a.category_id === attr.category_id) {
       errors.push(`${a.slug} depends on ${attr.slug} (depends_on).`);
     }
+    // S187: `visible_when` citira VRIJEDNOSTI ovog atributa kao tekst — pretvorba
+    //   tipa ih ne zna prevesti. Gleda se cijela Area (Y smije biti na pretku), pa
+    //   blokada može biti šira od nužnog; uža bi tiho ostavila mrtvo pravilo.
+    const vw = readVisibleWhen(a.validation_rules);
+    if (vw && vw.attributeSlug === attr.slug) {
+      errors.push(`${a.slug} is visible only when ${attr.slug} = ${vw.values.join(' | ')} (VisibleWhen) — remove that rule first.`);
+    }
   }
   const s0 = isObj(snap.settings) ? snap.settings : {};
   for (const k of ['dashboard', 'groupings', 'automations'] as const) {
@@ -205,7 +213,7 @@ export function planRetype(input: RetypeInput, snap: RetypeSnapshot): RetypePlan
 
   // ── Izbornik: broj nema suggest ──
   if (to === 'number') {
-    const after = buildRules({ hiddenInAdd: rules.hidden_in_add === true });
+    const after = buildRules({ hiddenInAdd: rules.hidden_in_add === true, visibleWhen: readVisibleWhen(rules) });
     if (!sameRules(rules, after)) {
       out.config.push({ kind: 'attribute_rules', target_id: attr.id, before: attr.validation_rules, after });
       if (Array.isArray(rules.suggest) && rules.suggest.length) changes.push(`menu (${rules.suggest.length} options) is removed — a number is typed in`);

@@ -34,9 +34,13 @@ export function hasAttributeValue(v: unknown): boolean {
 export function missingRequired(
   defs: AttributeDefinition[],
   valueOf: (definitionId: string) => unknown,
+  /** S187: polja koja forma NE PRIKAZUJE po pravilu vidljivosti (`ruleHiddenIds`).
+   *  Obavezno vrijedi samo dok je polje vidljivo — inače bi Save tražio polje
+   *  kojeg na ekranu nema (serije obavezne uz Snagu, ne uz Cardio). */
+  hiddenIds?: ReadonlySet<string>,
 ): string[] {
   return defs
-    .filter(d => d.is_required && !hasAttributeValue(valueOf(d.id)))
+    .filter(d => d.is_required && !hiddenIds?.has(d.id) && !hasAttributeValue(valueOf(d.id)))
     .slice()
     .sort((a, b) => a.sort_order - b.sort_order)
     .map(d => d.name);

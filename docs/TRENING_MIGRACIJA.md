@@ -275,7 +275,7 @@ oslanja „Review" tab (trendovi po vježbi).
 | # | Korak | Status |
 | --- | --- | --- |
 | 1 | d1 — ukinuti skrivanje na defaultu (forma, help, CLAUDE.md) | ✅ S187 kod (`test-branch`), E2E `S187_default_visible`; ručno T-S187-1 ✅ |
-| 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ⬜ |
+| 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ⬜ |
 | 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ⬜ |
 | 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ⬜ |
 | 5 | Katalog vježbi (slug + puno ime, slika) + izbornik iz druge kategorije + gumb „prikaži vježbu" | ⬜ |

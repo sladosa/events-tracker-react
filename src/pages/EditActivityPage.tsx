@@ -44,6 +44,7 @@ import { CancelDialog } from '@/components/activity/ConfirmDialog';
 
 import type { UUID, AttributeDefinition } from '@/types';
 import { missingRequired, requiredMessage } from '@/lib/requiredAttributes';
+import { ruleHiddenIds } from '@/lib/visibleWhen';
 import type {
   PendingEvent,
   PendingPhoto,
@@ -631,6 +632,25 @@ export function EditActivityPage() {
     [attributesByCategory],
   );
 
+  /** Lanac za pravilo vidljivosti (S187, `visibleWhen.ts`): leaf → korijen. */
+  const chainLevels = useMemo(
+    () => categoryChain.map(c => ({ categoryId: c.id, defs: attributesByCategory.get(c.id) || [] })),
+    [categoryChain, attributesByCategory],
+  );
+
+  /** S187: atributi s vrijednošću SPREMLJENOM u bazi za prikazani event (leaf +
+   *  roditelji). Forma ih ne skriva pravilom vidljivosti dok čovjek ne promijeni
+   *  atribut o kojem ovise — skriveno se ne sprema, pa bi otvaranje + Save
+   *  starog retka inače tiho obrisalo podatak. Novi event (bez `dbId`) nema ništa. */
+  const storedAttrIds = useMemo(() => {
+    const dbId = pendingEvents[selectedEventIndex]?.dbId;
+    const out = new Set<string>();
+    for (const [defId, v] of (dbId ? originalValues.get(dbId) : undefined) ?? []) {
+      if (v != null && v !== '') out.add(defId);
+    }
+    return out;
+  }, [pendingEvents, selectedEventIndex, originalValues]);
+
   /** Korisnik je promijenio polje. Uz upis ide i ono sto se iz njega IZVODI.
    *
    *  Do S127 je Edit izvodio samo `depends_on.default_map` (to radi
@@ -1068,7 +1088,10 @@ export function EditActivityPage() {
         if (catId !== categoryId) parentDefs.push(...defs);
       }
 
-      const missingParent = missingRequired(parentDefs, id => parentAttrValues.get(id)?.value);
+      // S187: obavezno vrijedi samo dok je polje vidljivo (`visible_when`). Roditelj
+      // ne smije ovisiti o djetetu, pa mu dostaju roditeljske vrijednosti.
+      const parentValueOf = (id: string) => parentAttrValues.get(id)?.value;
+      const missingParent = missingRequired(parentDefs, parentValueOf, ruleHiddenIds(chainLevels, parentValueOf));
       if (missingParent.length > 0) {
         toast.error(requiredMessage(missingParent));
         return;
@@ -1077,7 +1100,8 @@ export function EditActivityPage() {
       for (let i = 0; i < activeEvents.length; i++) {
         const ev = activeEvents[i];
         const byId = new Map(ev.attributes.map(a => [a.definitionId, a.value]));
-        const missing = missingRequired(leafDefs, id => byId.get(id));
+        const leafValueOf = (id: string) => (byId.has(id) ? byId.get(id) : parentAttrValues.get(id)?.value);
+        const missing = missingRequired(leafDefs, id => byId.get(id), ruleHiddenIds(chainLevels, leafValueOf));
         if (missing.length > 0) {
           toast.error(requiredMessage(
             missing,
@@ -1894,6 +1918,7 @@ export function EditActivityPage() {
                   disabled={saving}
                   onNewOption={handleNewOption}
                   noNewOptionsHint={noNewOptionsHintFor(sharedContext)}
+                  storedAttrIds={storedAttrIds}
                 />
               ) : (
                 <div className="text-center py-6 text-amber-600 text-sm">

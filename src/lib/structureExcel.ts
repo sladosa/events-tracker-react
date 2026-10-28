@@ -44,6 +44,7 @@ import { flattenAreaSettings, AREA_SETTINGS_TYPES } from './areaSettingsSheet';
 import { RESTRUCTURE_SHEET, restructureHeader, restructureHelpLines } from './restructure/sheet';
 import { ATTR_SHEET, attrHeader, attrHelpLines } from './restructure/attrSheet';
 import { serializeColumnMap } from './listColumns';
+import { readVisibleWhen, serializeVisibleWhen } from './visibleWhen';
 import {
   timestampSuffix,
   formatTimestampSuffix,
@@ -99,6 +100,10 @@ const COLS = [
   // S117 — per attribute, any level (P1). Hide-at-default cannot express
   // "correct value is empty", which is exactly the clutter worth removing.
   { key: 'hiddenInAdd', header: 'HiddenInAdd',       width: 12, colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
+  // S187 — `vrsta = Snaga | Istezanje`. Uz HiddenInAdd jer oba odlučuju je li polje
+  // na ekranu. Umetnut, ne na kraju: uvoz traži stupce po NASLOVU (`findCol`), a
+  // slova u pomoćnom listu računa `colOf` — pomak slova ne lomi ni jedno ni drugo.
+  { key: 'visibleWhen', header: 'VisibleWhen',       width: 22, colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
   { key: 'valType',     header: 'Val.Type',          width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
   { key: 'defaultVal',  header: 'Default',           width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
   { key: 'valMax',      header: 'Val.Max (no)',       width: 9,  colColor: CLR.BLUE,   grouped: true,  collapsed: true  },
@@ -117,7 +122,7 @@ const COLS = [
   { key: 'defaultPeriod', header: 'DefaultPeriod', width: 14, colColor: CLR.GREEN, grouped: true, collapsed: false },
 ] as const;
 
-const N_COLS = COLS.length; // 23 (S139) — /!\ komentar je zaostajao za nizom;
+const N_COLS = COLS.length; // 25 (S187) — /!\ komentar je zaostajao za nizom;
                             // vrijednost je uvijek `COLS.length`, komentar samo podsjetnik.
 
 // Column letter helpers (0-based index: A=0, B=1, ...)
@@ -164,6 +169,7 @@ interface DataRow {
   attrType:     string;
   isRequired:   string; // TRUE | FALSE | ''
   hiddenInAdd:  string; // TRUE | FALSE | '' (attribute rows only)
+  visibleWhen:  string; // `slug = v1 | v2` | '' (attribute rows only, S187)
   valType:      string; // suggest | none | ''
   defaultVal:   string;
   valMax:       string;
@@ -258,7 +264,7 @@ function buildAreaRow(node: StructureNode, sharedWith: string): DataRow {
     sharedWith,
     categoryPath: node.name,
     sort: node.sortOrder,
-    attrName: '', slug: '', attrType: '', isRequired: '', hiddenInAdd: '',
+    attrName: '', slug: '', attrType: '', isRequired: '', hiddenInAdd: '', visibleWhen: '',
     valType: '', defaultVal: '', valMax: '', unit: '',
     textOptions: '', dependsOn: '', whenValue: '',
     description: node.description ?? '',
@@ -283,7 +289,7 @@ function buildCategoryRow(node: StructureNode): DataRow {
     sharedWith: '',
     categoryPath: node.fullPath,
     sort: node.sortOrder,
-    attrName: '', slug: '', attrType: '', isRequired: '', hiddenInAdd: '',
+    attrName: '', slug: '', attrType: '', isRequired: '', hiddenInAdd: '', visibleWhen: '',
     valType: '', defaultVal: '', valMax: '', unit: '',
     textOptions: '', dependsOn: '', whenValue: '',
     description: node.description ?? '',
@@ -312,6 +318,7 @@ export function buildAttrRows(node: StructureNode, attr: AttributeDefinition): D
     attrType: attr.data_type,
     isRequired: attr.is_required ? 'TRUE' : 'FALSE',
     hiddenInAdd: parseValidationRules(attr.validation_rules).hiddenInAdd ? 'TRUE' : 'FALSE',
+    visibleWhen: serializeVisibleWhen(readVisibleWhen(attr.validation_rules)),
     valType: getValType(attr),
     defaultVal: attr.default_value ?? '',
     valMax: rules?.max != null ? String(rules.max) : '',
@@ -619,6 +626,16 @@ function writeStructureSheet(
     formulae: ['"TRUE,FALSE"'],
   });
 
+  dv.add(dvRange(colLetter(colNum('visibleWhen') - 1)), {
+    type: 'custom', allowBlank: true,
+    formulae: ['a'],
+    promptTitle: 'Visible only when …',                                   // 19 / 32
+    prompt: 'Field shown only when another attribute has one of the values.\n'
+      + 'Form: attribute_slug = value | value\nExample: vrsta = Snaga | Istezanje\n'
+      + 'Attribute on the same category or a parent. Blank = always shown.',  // 175 / 255
+    showInputMessage: true,
+  });
+
   dv.add(dvRange(colLetter(colNum('valType') - 1)), {
     type: 'list', allowBlank: true,
     formulae: ['"suggest,none"'],
@@ -702,6 +719,7 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: `${colOf('dependsOn')}  DependsOn`,         value: 'Slug of the parent attribute that controls this dropdown.  Must be in the same category.' },
     { kind: 'row', label: `${colOf('whenValue')}  WhenValue`,         value: 'Value of parent attribute for this row\'s options.  Use "*" as fallback for unlisted parent values.' },
     { kind: 'row', label: `${colOf('hiddenInAdd')}  HiddenInAdd`,       value: 'Attribute rows only.  TRUE keeps the field out of the Add/Edit form; "Show all" still reveals it.  The only way to hide a field: a field with a Default is shown, filled in.  Use for fields whose correct value is usually EMPTY (a statement-only field, a deprecated attribute).  Blank = FALSE.' },
+    { kind: 'row', label: `${colOf('visibleWhen')}  VisibleWhen`,       value: 'Attribute rows only.  The field is shown only when another attribute has one of the listed values:  vrsta = Snaga | Istezanje  (attribute slug, then values separated by " | ").  That attribute must be on the same category or a parent — never a child.  A hidden field is not saved, and "Show all" does not reveal it.  Required applies only while the field is shown.  Blank = always shown.  Column missing from the file = the rule in the database stays.' },
     { kind: 'row', label: `${colOf('description')}  Description`,       value: 'Optional documentation notes.' },
     { kind: 'row', label: `${colOf('commentTpl')}  CommentTemplate`,   value: 'Auto-comment template for Area or leaf Category.  Use {slug} to insert attribute values into event comment on Finish.  Leaf overrides Area.  Example: {napomena} ({tip})' },
     { kind: 'row', label: `${colOf('disableSavePlus')}  DisableSavePlus`,    value: 'Area rows only.  TRUE hides the "Save +" button in Add Activity (one event per session — e.g. Financije, Health).  Blank = FALSE.  Column absent from the file = setting left unchanged.' },

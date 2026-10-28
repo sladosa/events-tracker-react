@@ -32,6 +32,10 @@ import { unflattenAreaSettings, mergeAreaSettings, changedTopKeys } from '@/lib/
 import { readRestructureSheet } from '@/lib/restructure/sheet';
 import { readAttrSheet, type AttrStep } from '@/lib/restructure/attrSheet';
 import { parseColumnMap } from '@/lib/listColumns';
+import {
+  normalizeSlug as normalizeVwSlug, parseVisibleWhenCell, readVisibleWhen, serializeVisibleWhen,
+  type VisibleWhen,
+} from '@/lib/visibleWhen';
 import type { RestructureStep } from '@/lib/restructure/plan';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig, RataRemainder,
@@ -165,6 +169,7 @@ interface ParsedRow {
   attrType:     string;
   isRequired:   boolean;
   hiddenInAdd:  boolean;
+  visibleWhen:  string; // S187: sirova ćelija `slug = v1 | v2`
   valType:      string; // 'suggest' | 'none'
   defaultVal:   string;
   valMax:       string;
@@ -188,6 +193,11 @@ interface AttrGroup {
   attrType:     string;
   isRequired:   boolean;
   hiddenInAdd:  boolean;
+  /** S187: prva NEPRAZNA ćelija `VisibleWhen` atributa (ostala atributska polja:
+   *  prvi redak) — pravilo je jedno po atributu, a izvoz ga piše u svaki redak. */
+  visibleWhen:  string;
+  /** Različite neprazne ćelije `VisibleWhen` na recima istog atributa. */
+  visibleWhenConflict: boolean;
   valType:      string;
   defaultVal:   string;
   valMax:       string;
@@ -296,6 +306,7 @@ interface HeaderInfo {
   colDescription: number;
   colCommentTpl:  number;
   colHiddenInAdd: number;
+  colVisibleWhen: number;
   colDisableSavePlus: number;
   colAddTimer: number;
   colAddDate: number;
@@ -347,6 +358,7 @@ function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
       colDescription:  findCol('description'),
       colCommentTpl:   findCol('commenttemplate'),
       colHiddenInAdd: findCol('hiddeninadd'),
+      colVisibleWhen: findCol('visiblewhen'),
       colDisableSavePlus: findCol('disablesaveplus'),
       colAddTimer: findCol('addtimer'),
       colAddDate: findCol('adddatepicker'),
@@ -386,6 +398,7 @@ function parseRows(ws: ExcelJS.Worksheet, h: HeaderInfo): ParsedRow[] {
       attrType:     get(h.colAttrType) || 'text',
       isRequired:   get(h.colIsRequired).toUpperCase() === 'TRUE',
       hiddenInAdd:  get(h.colHiddenInAdd).toUpperCase() === 'TRUE',
+      visibleWhen:  get(h.colVisibleWhen),
       valType:      get(h.colValType) || 'none',
       defaultVal:   get(h.colDefault),
       valMax:       get(h.colValMax),
@@ -428,6 +441,8 @@ export function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
         attrType:     row.attrType,
         isRequired:   row.isRequired,
         hiddenInAdd:  row.hiddenInAdd,
+        visibleWhen:  '',
+        visibleWhenConflict: false,
         valType:      row.valType,
         // ⚠ T-S107u-2. On a DependsOn row the `Default` cell belongs to
         //   `default_map` — it is the default FOR THAT PARENT VALUE, not for the
@@ -464,6 +479,13 @@ export function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
     // `IsRequired` i ovu zastavicu propustio, pa je `TRUE` na drugom retku
     // (`Stanje` ih ima dva, po jedan za svaki `WhenValue`) bio tiho zanemaren.
     group.hiddenInAdd = group.hiddenInAdd || row.hiddenInAdd;
+    // S187: pravilo vidljivosti je jedno po atributu. Prva neprazna ćelija vrijedi
+    //   (prazna na drugom retku nije „makni pravilo" — izvoz ga piše u svaki redak,
+    //   a čovjek koji uredi jedan redak ne smije ga tiho obrisati drugim praznim).
+    if (row.visibleWhen) {
+      if (!group.visibleWhen) group.visibleWhen = row.visibleWhen;
+      else if (group.visibleWhen !== row.visibleWhen) group.visibleWhenConflict = true;
+    }
 
     if (row.dependsOn) {
       // DependsOn row — build options_map + defaultMap
@@ -496,6 +518,7 @@ export function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
 export function buildValidationRules(
   group: AttrGroup,
   hiddenInAdd: boolean,
+  visibleWhen: VisibleWhen | null = null,
 ): Record<string, unknown> {
   // Isti graditelj kao panel (S152) — v. `validationRules.ts`.
   return buildRules({
@@ -503,7 +526,43 @@ export function buildValidationRules(
     options: group.valType === 'suggest' ? group.simpleOptions : undefined,
     max: group.valMax ? (Number(group.valMax) || group.valMax) : undefined,
     hiddenInAdd,
+    visibleWhen,
   });
+}
+
+/**
+ * Pravilo vidljivosti nakon uvoza (S187).
+ *
+ * /!\ Isto nacelo kao `resolveHiddenInAdd`: `visible_when` zivi UNUTAR
+ *   `validation_rules`, koji se na UPDATE-u prepisuje u cijelosti — pa file bez
+ *   kolone `VisibleWhen` (stariji export, Python generator) ne smije obrisati
+ *   pravilo. Bez kolone ⇒ iz baze; prazna celija u POSTOJECOJ koloni ⇒ nema pravila.
+ *   Neprepoznata celija ⇒ pravilo iz baze ostaje, uz upozorenje (pola pravila je
+ *   gore od starog). `controlling` provjerava je li Y na istoj kategoriji ili pretku
+ *   i vraca njegov stvarni slug (prima i ime atributa).
+ */
+export function resolveVisibleWhen(
+  hasColumn:     boolean,
+  group:         Pick<AttrGroup, 'visibleWhen' | 'visibleWhenConflict' | 'attrName' | 'categoryPath'>,
+  existingRules: Record<string, unknown> | null | undefined,
+  controlling:   (wanted: string) => string | null,
+): { value: VisibleWhen | null; warning?: string } {
+  const keep = readVisibleWhen(existingRules);
+  if (!hasColumn) return { value: keep };
+  const where = `${group.categoryPath} / ${group.attrName}`;
+  const parsed = parseVisibleWhenCell(group.visibleWhen);
+  if (!parsed.ok) {
+    return { value: keep, warning: `VisibleWhen ${where}: ${parsed.error} — rule left as it was.` };
+  }
+  if (!parsed.value) return { value: null };
+  const slug = controlling(parsed.value.attributeSlug);
+  if (!slug) {
+    return { value: keep, warning: `VisibleWhen ${where}: no attribute "${parsed.value.attributeSlug}" on this category or a parent — rule left as it was.` };
+  }
+  const value = { attributeSlug: slug, values: parsed.value.values };
+  return group.visibleWhenConflict
+    ? { value, warning: `VisibleWhen ${where}: rows of this attribute differ — the first non-empty one is used (${serializeVisibleWhen(value)}).` }
+    : { value };
 }
 
 /**
@@ -968,6 +1027,34 @@ export async function importStructureExcel(
   }
 
   // ── 7. Process attributes ─────────────────────────────────
+
+  // S187: atribut Y pravila `VisibleWhen` — na istoj kategoriji ili pretku (file
+  // ili baza), nikad na djetetu. Prima slug ili ime; vraća stvarni slug.
+  const pathKey = (p: string) => parsePath(p).join(' > ').toLowerCase();
+  const controllingFor = (group: AttrGroup) => (wanted: string): string | null => {
+    const want = normalizeVwSlug(wanted);
+    const wantName = wanted.trim().toLowerCase();
+    const self = normalizeVwSlug(group.slug || makeAttrSlug(group.attrName));
+    const segs = parsePath(group.categoryPath);
+    for (let n = segs.length; n >= 2; n--) {
+      const p = segs.slice(0, n).join(' > ');
+      const ownLevel = n === segs.length;
+      const hit = (slug: string, name: string) =>
+        !(ownLevel && normalizeVwSlug(slug) === self)
+        && (normalizeVwSlug(slug) === want || name.trim().toLowerCase() === wantName);
+      for (const g of attrGroups) {
+        if (pathKey(g.categoryPath) !== p.toLowerCase()) continue;
+        const s = g.slug || makeAttrSlug(g.attrName);
+        if (hit(s, g.attrName)) return s;
+      }
+      const cid = catByPath.get(p);
+      if (cid) for (const r of attrById.values()) {
+        if (r.categoryId === cid && hit(r.slug, r.name)) return r.slug;
+      }
+    }
+    return null;
+  };
+
   for (const group of attrGroups) {
     const segments = parsePath(group.categoryPath);
     if (segments.length < 2) {
@@ -1009,10 +1096,14 @@ export async function importStructureExcel(
       });
     }
 
-    const validationRules = buildValidationRules(group, hiddenInAdd);
-
     // S175: postojeći atribut postojeće Aree ostaje kakav jest (nov se i dalje stvara).
     if (existing && keepArea(catById.get(categoryId)?.areaId)) continue;
+
+    const vw = resolveVisibleWhen(
+      header.colVisibleWhen > 0, group, existing?.validationRules, controllingFor(group));
+    if (vw.warning) result.warnings.push(vw.warning);
+
+    const validationRules = buildValidationRules(group, hiddenInAdd, vw.value);
 
     if (!existing) {
       // CREATE — slug not found in THIS category (or empty slug → trigger generates)

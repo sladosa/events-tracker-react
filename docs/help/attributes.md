@@ -50,13 +50,13 @@ polja **redoslijedom forme**, pa se prvo ispuni roditelj — dijete se tek tada 
 ponuđenim opcijama. Zato obavezno dijete traži i **obaveznog roditelja**; panel na to
 upozorava.
 
-## Kada se polje NE vidi pri unosu — dva različita razloga
+## Kada se polje NE vidi pri unosu — tri različita razloga
 
-Polje može nedostajati na dva načina i **svaki se rješava drukčije**.
+Polje može nedostajati na tri načina i **svaki se rješava drukčije**.
 
 ⚠ **Default value polje NE skriva** (od S187): polje s defaultom se prikazuje, popunjeno.
 Do listopada 2026. forma je skrivala svako polje koje je sjedilo na svom defaultu — pravilo
-koje nitko nije postavio, pa se nije znalo zašto polje fali. Za skrivanje postoji samo točka 1.
+koje nitko nije postavio, pa se nije znalo zašto polje fali.
 
 ### 1. Izričito skriveno za ovu Areu (`Hide in Add/Edit form`)
 
@@ -77,6 +77,24 @@ ima jednu od navedenih vrijednosti (npr. `Broj rata` tek uz `Na rate?`). Tekstua
 s `DependsOn` je uvijek vidljiv — roditelj mu samo mijenja ponuđene opcije.
 
 - ⚠ **"Show all" ga NE otkriva.** Jedini način je ispuniti roditelja.
+
+### 3. Vidljivo samo uz vrijednost drugog atributa (`Visible only when`)
+
+Polje se prikazuje samo dok neki drugi atribut ima jednu od zadanih vrijednosti — npr.
+`serije` samo uz `vrsta = Snaga`, `sprava` uz `vrsta = Z2 | HIIT`. Radi za **svaki tip** polja
+(i za tekst, gdje `DependsOn` samo mijenja ponuđene opcije).
+
+- Postavlja se u Edit panelu atributa („Visible only when": atribut + kvačice vrijednosti) ili u
+  Structure Excelu, kolona `VisibleWhen`: `vrsta = Snaga | Istezanje`.
+- Atribut o kojem ovisi mora biti na **istoj kategoriji ili roditelju** — nikad na djetetu
+  (roditelj ima jedan zapis po treningu, a leaf više).
+- **Skriveno se ne sprema.** Promijeniš li vrstu tako da polje nestane, upisana vrijednost se
+  briše; zadana vrijednost skrivenog polja se ne upisuje.
+- **Obavezno vrijedi samo dok je polje vidljivo** — `serije` obavezne uz Snagu ne traže se uz Cardio.
+- **"Show all" ga NE otkriva.**
+- ⚠ **Edit starog retka:** ako u bazi postoji vrijednost koju pravilo skriva (npr. stari zapis),
+  polje je ipak vidljivo, s oznakom `izvan pravila` — inače bi otvaranje i Save tiho obrisali
+  podatak. Promijeniš li atribut o kojem ovisi, polje nestaje i vrijednost se briše.
 
 ## Dodavanje atributa
 1. Structure tab → Edit Mode

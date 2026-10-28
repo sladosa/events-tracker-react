@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { AttributeDefinition, UUID } from '@/types';
+import { readVisibleWhen, type VisibleWhen } from '@/lib/visibleWhen';
 
 interface UseAttributeDefinitionsReturn {
   attributes: AttributeDefinition[];
@@ -91,6 +92,8 @@ export interface ParsedAttributeOptions {
    *  statement import, a deprecated attribute kept for history.
    *  "Show all" still reveals them: hidden is tidiness, not a lock. */
   hiddenInAdd: boolean;
+  /** S187: vidljivo samo uz vrijednost atributa Y (`src/lib/visibleWhen.ts`). */
+  visibleWhen: VisibleWhen | null;
 }
 
 export function parseValidationRules(
@@ -101,6 +104,7 @@ export function parseValidationRules(
     options: [],
     allowOther: true,
     hiddenInAdd: false,
+    visibleWhen: null,
   };
 
   if (!validationRules) return result;
@@ -123,6 +127,7 @@ export function parseValidationRules(
   // Read before any of the type branches below, and before their early
   // returns — this flag is orthogonal to how the field validates.
   result.hiddenInAdd = rules.hidden_in_add === true;
+  result.visibleWhen = readVisibleWhen(rules);
 
   // Check for type field (from V3 export)
   if ('type' in rules) {
