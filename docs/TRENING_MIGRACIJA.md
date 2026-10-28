@@ -270,13 +270,34 @@ oslanja „Review" tab (trendovi po vježbi).
   (`10:10 CleverFIT 5'erg, istezanje, 8xIMOM 7z.sklek - pull.m (45-55-65kg x 8, 75kg (5x5) …`). Mjesta: GymS,
   GymF, MoFit, Westin, CleverFIT, Gibi gym.
 
+**Analiza zapisa — izmjereno 28.10. (S187, korak 3)** — alat `data-prep_tools/Trening/analiza_snage.py`
+(samo čita PROD backup 22.10. i kopiju `trening_2026-10-26.xlsm`), prijedlog kataloga
+`Trening/vjezbe_prijedlog.json`, Excel za Sašu `Claude-temp_R/s187/analiza_snage_<datum>.xlsx` (lokalno —
+DIARY `M` je osobni tekst):
+- **Izvori:** PROD 493 eventa (Strength + Cardio), **78 treninga snage**; DIARY **1.282 dana s teretanom od
+  2021.** (2021: 138 → 2025: 261 dan/god.).
+- **Katalog — prijedlog 46 vježbi** iz 123 aliasa. Najčešće (PROD eventi + DIARY dani): erg 731, istezanje 690,
+  orb 484, pull_m 411, leg_raises 396, plank 293, bic 278, triceps 176, ramena 174, kosa_k 168, swing 136,
+  indian_clubs 129, z_sklek 127. ⚠ Dvoznačno, odlučuje Saša: `bic` (bicikl uz `'`, biceps uz `kg`), `rot.`
+  (trup ili ruke), `girja` (sprava, ne vježba), `raises`, `dead`. „Način" (IMOM, GtG, HIIT, TbyT) nije vježba
+  nego oblik — vjerojatno atribut, ne zapis kataloga.
+- **Rutine (PROD):** Upp 39 treninga (ergometar 77 %, pull.m 72 %, istezanje 69 %, plank / leg raises 26 %),
+  Core 19 (ergometar 68 %, plank i istezanje 58 %, kosa k. 47 %), Low 9 (ergometar i plank 78 %, squat-bulg 56 %).
+  ⇒ **Zagrijavanje na ergometru danas je „vježba" unutar Strengtha** — u novom modelu je zaseban `Gym` dio
+  (vrsta Zagrijavanje / Z2, sprava erg). Potvrđuje odluku 27.10.
+- **Oblik serija** (DIARY dani / PROD polja): serije×ponavljanja 536 / 126, samo kg 455 / 194, **piramida
+  ponavljanja 183**, **piramida težina 76**, kg×ponavljanja 143 / 133, mm:ss 324 / 39, minute 1.100 / 48,
+  **blok N×( … ) 235** (kružni: `4x(leg r.12 + plank)`), IMOM/GtG/HIIT 232.
+  ⇒ Za korak 4: piramide su česte (jedan zapis „serije × reps × kg" nije dovoljan), a **kružni blokovi**
+  (više vježbi ponovljeno N puta) traže odluku — atribut `blok` na `Gym` dijelu ili samo napomena.
+
 **Koraci** (status se ažurira; A4 / K2 dolaze poslije koraka 9):
 
 | # | Korak | Status |
 | --- | --- | --- |
 | 1 | d1 — ukinuti skrivanje na defaultu (forma, help, CLAUDE.md) | ✅ S187 kod (`test-branch`), E2E `S187_default_visible`; ručno T-S187-1 ✅ |
 | 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ⬜ |
-| 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ⬜ |
+| 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel (46 vježbi predloženo); **Saša ispravlja Excel** ⬜ |
 | 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ⬜ |
 | 5 | Katalog vježbi (slug + puno ime, slika) + izbornik iz druge kategorije + gumb „prikaži vježbu" | ⬜ |
 | 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) | ⬜ |
