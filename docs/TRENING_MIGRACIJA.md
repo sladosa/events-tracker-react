@@ -290,6 +290,11 @@ DIARY `M` je osobni tekst):
   **blok N×( … ) 235** (kružni: `4x(leg r.12 + plank)`), IMOM/GtG/HIIT 232.
   ⇒ Za korak 4: piramide su česte (jedan zapis „serije × reps × kg" nije dovoljan), a **kružni blokovi**
   (više vježbi ponovljeno N puta) traže odluku — atribut `blok` na `Gym` dijelu ili samo napomena.
+- **Napomene usred zapisa** (Saša 28.10.: `- opet nemam vremena - po Karla`, retci bez prijedloga ispod
+  133 u listu `Vjezbe`). Prijedlog za korak 9: raspisivač ne traži napomene nego **vježbe** (katalog +
+  aliasi + obrasci broj/kg/`'`); što od segmenta ostane neprepoznato ide u **komentar `Activity1`** (isto
+  mjesto kao novi unos). Izvorni `M` tekst se čuva cijeli (skriven atribut ili komentar), pa krivo
+  razvrstavanje ne gubi ništa. Saša te retke **ne mora razvrstavati** — samo upiše A–D ako među njima vidi vježbu.
 
 **Koraci** (status se ažurira; A4 / K2 dolaze poslije koraka 9):
 
