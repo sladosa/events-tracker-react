@@ -85,10 +85,10 @@ export interface ParsedAttributeOptions {
   };
   /** Keep this field out of the Add/Edit form for this Area (S117).
    *
-   *  Distinct from hide-at-default, which can only hide a field that HAS a
-   *  sensible value. The fields that actually clutter the form are the ones
-   *  whose correct value is EMPTY — `Izvod opis` outside a statement import,
-   *  a deprecated attribute kept for history. No default can express that.
+   *  Since S187 (d1) this is the ONLY way to hide a field on purpose — the
+   *  form no longer hides a field sitting at its `default_value`. Meant for
+   *  fields whose correct value is usually EMPTY — `Izvod opis` outside a
+   *  statement import, a deprecated attribute kept for history.
    *  "Show all" still reveals them: hidden is tidiness, not a lock. */
   hiddenInAdd: boolean;
 }

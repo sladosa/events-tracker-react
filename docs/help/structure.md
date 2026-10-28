@@ -25,11 +25,9 @@ Unlock-a sve strukturne promjene:
 
 **`default_value`:** vrijednost automatski upisana kad korisnik otvori Add Activity za tu kategoriju.
 Za suggest atribute mora točno odgovarati jednoj od opcija (case-sensitive).
-Polja na defaultu se skrivaju u formi (hide-if-default) — korisnik klika "Show all" ako ih želi urediti.
-Iznimka: polje o kojem ovisi vidljivo `depends_on` polje nikad se ne skriva (S107f).
+Polje s defaultom se u formi **prikazuje, popunjeno** — default ne skriva polje (od S187; prije je
+forma skrivala polja na defaultu). Za skrivanje polja postoji samo `HiddenInAdd`.
 Za brisanje `default_value` via Excel Structure importa: upiši `_` u Default kolonu — import postavlja null (prazno).
-⚠ **Prazan default nije default.** Polje bez postavljene vrijednosti se **ne** skriva — hide-if-default
-može sakriti samo polje koje *ima* vrijednost. Za skrivanje praznog polja postoji `HiddenInAdd`.
 
 **`IsRequired` (kol. J) — obavezno polje:**
 Add i Edit ne daju spremiti dok polje nije ispunjeno (`false` i `0` **jesu** odgovori; netaknut
@@ -42,8 +40,8 @@ prolaziti, pa je to pravilo forme, a ne baze; postojeći retci se ne diraju.
   u formi uopće ne prikaže, a obavezno je — panel na to upozorava.
 
 **`HiddenInAdd` (kol. K) — polje skriveno pri unosu:**
-Za atribute čija je **ispravna vrijednost prazna** (npr. `Izvod opis`, koji se popuni tek s izvoda).
-"Show all" ga i dalje otkrije — urednost, ne zaključavanje.
+Jedini način da se polje sakrije. Za atribute čija je **ispravna vrijednost prazna** (npr. `Izvod opis`,
+koji se popuni tek s izvoda). "Show all" ga i dalje otkrije — urednost, ne zaključavanje.
 Ako file **nema** kolonu `HiddenInAdd` (stariji export, ručno skraćen file), uvoz postojeće
 skrivanje **ne dira**. Prazna ćelija u koloni koja **postoji** znači „ne skrivaj". Kod atributa
 s više redaka dovoljan je `TRUE` u **bilo kojem** retku.

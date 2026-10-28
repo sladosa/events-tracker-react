@@ -50,44 +50,33 @@ polja **redoslijedom forme**, pa se prvo ispuni roditelj — dijete se tek tada 
 ponuđenim opcijama. Zato obavezno dijete traži i **obaveznog roditelja**; panel na to
 upozorava.
 
-## Kada se polje NE vidi pri unosu — tri različita razloga
+## Kada se polje NE vidi pri unosu — dva različita razloga
 
-Ovo je najlakše pomiješati, pa ide u cijelosti. Polje može nedostajati na tri načina i
-**svaki se rješava drukčije**.
+Polje može nedostajati na dva načina i **svaki se rješava drukčije**.
 
-### 1. Sjedi na svojoj default vrijednosti
+⚠ **Default value polje NE skriva** (od S187): polje s defaultom se prikazuje, popunjeno.
+Do listopada 2026. forma je skrivala svako polje koje je sjedilo na svom defaultu — pravilo
+koje nitko nije postavio, pa se nije znalo zašto polje fali. Za skrivanje postoji samo točka 1.
 
-Ako atribut ima **Default value** i polje trenutno sadrži baš tu vrijednost, skriva se dok
-ga korisnik ne dotakne. Svrha je da forma ne bude puna polja koja ionako pišu ono što se
-podrazumijeva (npr. `intensity = light`).
+### 1. Izričito skriveno za ovu Areu (`Hide in Add/Edit form`)
 
-- Otkriva ga **"Show all"**; otkriveno polje nosi oznaku `skriveno`.
-- Čim se vrijednost promijeni, polje ostaje vidljivo do kraja unosa.
-- ⚠ **Prazna Default value nije default.** Prazno polje bez postavljenog defaulta se
-  **ne skriva** — za skrivanje takvog polja postoji točka 2. (Do rujna 2026. prazna
-  vrijednost se ponašala kao default, pa su se prazna polja skrivala i bez ikakve postavke.
-  To je popravljeno.)
+Kvačica u Edit panelu atributa (u Structure Excelu kolona `HiddenInAdd`), za polja **čija je
+ispravna vrijednost prazna** — npr. `Izvod opis`, koji se popunjava tek kad stigne bankovni izvod.
 
-### 2. Izričito skriveno za ovu Areu (`Hide in Add/Edit form`)
-
-Kvačica u Edit panelu atributa, za polja **čija je ispravna vrijednost prazna** — npr.
-`Izvod opis`, koji se popunjava tek kad stigne bankovni izvod.
-
-- Razlika prema točki 1 je bitna: skrivanje-na-defaultu može sakriti samo polje koje **ima**
-  vrijednost; ovo skriva polje koje je **prazno i treba ostati prazno**.
-- Otkriva ga **"Show all"** — ovo je urednost, ne zaključavanje.
+- Na dnu forme piše "prazna po pravilu: …" s imenima; klik na ime otvori samo to polje,
+  **"Show all"** sva. Otkriveno polje nosi oznaku `skriveno`. Ovo je urednost, ne zaključavanje.
 - ⚠ **Ne može se kombinirati s "Required field".** Dvije kvačice tvrde suprotno o istom
   polju, pa je u panelu uključena jedna onemogućuje drugu. Dođe li takav par Excel uvozom,
   uvoz to prijavi i **sam preuzme označeni file** (`structure_REVIEW_NEEDED_*`), a forma polje
   **svejedno prikaže** — obavezno pobjeđuje, da se unos ne može zaključati.
 
-### 3. Roditelj nema vrijednost (`DependsOn`)
+### 2. Roditelj nema odgovarajuću vrijednost (`DependsOn`)
 
-Ovisni dropdown se ne prikazuje dok atribut o kojem ovisi nema vrijednost — nema iz čega
-ponuditi opcije.
+Polje tipa broj, boolean ili datum s `DependsOn` prikazuje se tek kad atribut o kojem ovisi
+ima jednu od navedenih vrijednosti (npr. `Broj rata` tek uz `Na rate?`). Tekstualni dropdown
+s `DependsOn` je uvijek vidljiv — roditelj mu samo mijenja ponuđene opcije.
 
 - ⚠ **"Show all" ga NE otkriva.** Jedini način je ispuniti roditelja.
-- Zato roditelj ovisnog polja nikad nije skriven na defaultu ako je dijete vidljivo.
 
 ## Dodavanje atributa
 1. Structure tab → Edit Mode

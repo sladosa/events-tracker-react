@@ -2,7 +2,19 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S186 (2026-10-27, T-S185-* i T-S186-* ✅, sekcije arhivirane) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S187 (2026-10-28, T-S187-1 dodan) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S187 — Model treninga, korak 1: default ne skriva polje (2026-10-28)
+
+Dogovor o modelu treninga zapisan u `TRENING_MIGRACIJA.md` („Dogovor 28.10.", tablica „Koraci" 1–10). Korak 1 (d1): polje s `default_value` se u formi prikazuje, popunjeno; skrivanje samo kroz `HiddenInAdd`. Pogođen samo `Fitness` (7 atributa); `Financije_all` nema nijedan default.
+
+**Detalji testova:** [tests/S187_tests.md](tests/S187_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S187-1 | `dev:prod`, samo gledanje: Fitness Cardio/Strength/Outdoor Add ⇒ svih 7 polja s defaultom na ekranu, popunjena, bez bloka „na defaultu"; `Financije_all` Add ⇒ ista kao prije („prazna po pravilu: Izvod opis, Valuta") | ⬜ |
 
 ---
 

@@ -1680,16 +1680,15 @@ direktorija projekta**, inače ENOENT `package.json`; Browserslist poruka je upo
   na broju se vidi kao izgubljena decimala, na tekstu kao skraćena riječ, i korisnik to
   pripiše svojim prstima. Lijek: omotač se **uvijek** renderira, mijenjaju se samo klase,
   a oznaka ide kao `{revealed && …}` da slot djeteta ostane stabilan.
-- **⚠ PRAZAN STRING NIJE DEFAULT — `'' == null` je `false`** (S131). Uvjet
-  `attr.default_value == null` propuštao je svako prazno polje s `default_value = ''` i
-  proglašavao ga „na svom defaultu" (`'' === ''`) ⇒ **skriveno**. Time je skrivanje-na-defaultu
-  radilo posao zbog kojeg je `hidden_in_add` uopće izmišljen, i tiho poništavalo podjelu
-  odlučenu u **S117**: *hide-at-default* skriva polje koje **ima** vrijednost jednaku
-  defaultu, *`hidden_in_add`* polje čija je **ispravna vrijednost prazna**. Izmjereno na
-  PROD-u: **14** atributa s `''`, **svi u `Fitness`**, nijedan s `hidden_in_add`; sva **3**
-  `hidden_in_add` su u `Financije_all`. Mehanizmi se u podacima nigdje ne preklapaju —
-  preklapao ih je samo taj uvjet. ⚠ Uvjet živi na **tri** mjesta (`isHiddenByDefault`,
-  `isRevealedOnly`, `requiredParentSlugs`) i mijenja se **zajedno**.
+  (Okidač `userEditedIds` je otišao sa skrivanjem na defaultu u S187; omotač ostaje — svaki
+  uvjet vidljivosti koji se mijenja tijekom unosa, i `visible_when`, opet bi ga prevrnuo.)
+- **Polje s `default_value` SE PRIKAZUJE, popunjeno — default ne skriva** (S187, d1, Saša).
+  Do tada je forma (S117 „hide-at-default") skrivala svako polje čija je vrijednost jednaka
+  defaultu: pravilo koje nitko nije postavio, nego ga je forma izvodila sama, uz izuzetak za
+  `depends_on` roditelje i uvjet na tri mjesta koja su se morala mijenjati zajedno (S131, S136).
+  Vidljivost sada određuju **samo** `hidden_in_add` (+ „Show all") i `depends_on` za ne-tekst
+  tipove. Pogođen je samo `Fitness` (7 atributa s defaultom, PROD backup 22.10.) i arhivski
+  `Financije_old`; **`Financije_all` nema nijedan `default_value`** ⇒ Kokina forma se ne mijenja.
 - **⚠ `<input type="number">` PREPUŠTA DECIMALNI SEPARATOR PREGLEDNIKU** (S131), pa se isti
   build drukčije ponaša na dva uređaja. Gore od nedosljednosti: kad preglednik odbije znak,
   `e.target.value` je `''`, a kod je to mapirao u `null` ⇒ **iznos tiho nestane**. Polje je

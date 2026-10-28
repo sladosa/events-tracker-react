@@ -52,23 +52,18 @@ a poruka imenuje koje polje nedostaje.
   upiši `~`**. Lista pokaže samo retke s tildom, uz chip `comment: "~" ×`. Tilda je
   običan znak u pretrazi, ne poseban.
 
-**Vidljivost polja u formi.** Polje može nedostajati iz **tri** razloga, a `"Show all"`
-otkriva **samo prva dva**:
+**Vidljivost polja u formi.** Polje može nedostajati iz **dva** razloga, a `"Show all"`
+otkriva **samo prvi**:
 
-- Polja čija vrijednost odgovara `default_value` automatski se skrivaju pri otvaranju.
-  Broj skrivenih polja prikazan je na dnu forme ("N fields hidden (at default)").
-  Klik "Show all" otkriva sva polja; klik "Hide fields at default" ih sakriva nazad.
-  Jednom kad ručno promijeniš vrijednost, polje ostaje vidljivo (čak i ako se vratiš na default).
-- **Iznimka (S107f):** polje o kojem ovisi neko VIDLJIVO polje (`depends_on` parent, npr.
-  `Strength_type` za `exercise_name`) nikad se ne skriva — inače dependent dropdown "visi u zraku".
-- Ako su SVI atributi neke kategorije skriveni (npr. shortcut je sve prefillao na default),
-  otvorena kategorija prikazuje poruku "All fields hidden (at default values)" umjesto praznine.
-- ⚠ **Prazan `default_value` nije default.** Prazno polje bez postavljene vrijednosti se
-  **ne** skriva — skrivanje-na-defaultu može sakriti samo polje koje *ima* vrijednost.
-  Za skrivanje praznog polja postoji sljedeća točka.
+- Polje s `default_value` se **prikazuje, popunjeno** — default samo upisuje vrijednost, ne
+  skriva polje (do listopada 2026. forma je takva polja skrivala; ukinuto u S187).
 - **Izričito skriveno za tu Areu** (`HiddenInAdd`) — za polja **čija je ispravna vrijednost
-  prazna**, npr. `Izvod opis`, koji se popuni tek kad stigne bankovni izvod. I njega otkriva
-  `"Show all"` — urednost, ne zaključavanje. Ne može se kombinirati s obaveznim poljem.
+  prazna**, npr. `Izvod opis`, koji se popuni tek kad stigne bankovni izvod. Imena skrivenih
+  polja piše na dnu forme ("prazna po pravilu: …") — klik na ime otvori samo to polje,
+  `"Show all"` sva, `"Hide again"` ih vraća. Urednost, ne zaključavanje. Ne može se
+  kombinirati s obaveznim poljem.
+- Ako su SVI atributi neke kategorije skriveni, otvorena kategorija prikazuje poruku
+  "All fields hidden" umjesto praznine.
 - Polja s `depends_on` prikazuju se samo kad drugi atribut ("parent") ima određenu vrijednost
   (npr. `Broj rata` se pojavi tek kad označiš `Na rate?`).
   ⚠ **Ovo `"Show all"` NE otkriva** — jedini način je ispuniti roditelja.
@@ -217,8 +212,7 @@ unose. Obično odabir shortcuta samo postavlja filter (za pregled povijesti te k
 Prazne ćelije nikad ne brišu postojeće vrijednosti (P3 pravilo — blank ne prepisuje).
 Da eksplicitno obrišeš vrijednost nekog atributa, upiši `_` (underscore) u tu ćeliju.
 Import tretira `_` kao "postavi na prazno", zaobilazeći P3.
-- Primjer: atribut `Smjer` ima vrijednost "Isplata" (i to je default pa polje ne vidiš u formi);
-  želiš ga obrisati → upiši `_` u xlsx kolonu Smjer za taj event → import → vrijednost se briše
+- Primjer: atribut `Smjer` ima vrijednost "Isplata", a želiš je obrisati → upiši `_` u xlsx kolonu Smjer za taj event → import → vrijednost se briše
 - Za **nove redove** (novi eventi): `_` se tretira jednako kao prazno (atribut se ne kreira)
 
 **Brisanje zapisa via Excel — kolona `Delete?` (S107w):**

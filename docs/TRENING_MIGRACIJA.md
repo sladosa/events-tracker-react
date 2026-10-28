@@ -170,6 +170,121 @@ leg r. x25` u `weight_info`). Analiza (4.) traži strukturu, unos traži brzinu 
 (`Fitness_Garmin`) → mjerenje notacije i gramatika → unos s raspisivanjem + „Ponovi zadnji" → Overview pločice
 za Fitness → A4 / K2 (seljenje starih treninga).
 
+> ⚠ **„Unos snage" i „Redoslijed" gore su zamijenjeni dogovorom 28.10. (ispod).** Točke 1–5 vrijede i dalje.
+
+### Dogovor 28.10. (S187, Saša) — teretana, rutine, katalog vježbi, plan po koracima
+
+> Ovo je **živi plan treninga**: tablica „Koraci" se ažurira kad se korak izvede (status + sesija), ne
+> prepisuje. Redoslijed velikih koraka cijelog projekta i dalje je samo u CLAUDE.md § Strategic Position.
+
+**Model (dorada odluke 27.10.):**
+```
+Activity1            1 event po treningu: Garmin brojke (trajanje, puls, kcal, TE, opterećenje), intenzitet,
+│                    mood, lokacija (bivši Wormup_notes: ime teretane ili staze, „Sljeme - Puntijarka"), rutina
+├── Gym (leaf)       1–N eventa po treningu, svaki sa SVOJOM `vrsta`; vrsta određuje koja su polja na ekranu
+└── Outdoor (leaf)   ostaje zaseban leaf (Saša, 28.10.)
+```
+Leaf `Gym` = ono što je 27.10. zvano `Dio`. N eventa istog leafa u jednoj sesiji već radi (`Save +`), pa
+miješani trening (ergometar pa snaga pa istezanje) ostaje **jedan** trening. Polja `Gym` — prijedlog, konačno
+nakon analize (korak 3):
+
+| Polje | Tip | Vidljivo uz |
+| --- | --- | --- |
+| `vrsta` (Z2 · Snaga · Tempo/HIIT · Istezanje · Zagrijavanje) | izbornik | uvijek |
+| `sprava` (orb · bic · erg · traka) | izbornik | vrsta = Z2 \| Tempo/HIIT \| Zagrijavanje |
+| `vježba` (iz kataloga, korak 5) | izbornik | vrsta = Snaga \| Istezanje |
+| `trajanje` | broj | vrsta ≠ Snaga |
+| `serije` (zapis jedne vježbe, v. Unos) | tekst | vrsta = Snaga |
+| `napomena` | tekst | uvijek |
+
+**d1 — ukinuto implicitno skrivanje na defaultu.** Vidljivost određuje samo `HiddenInAdd` (+ `depends_on` i novo
+pravilo ispod). Izmjereno (PROD backup 22.10.): default ima **7** atributa, svi u `Fitness` (`intensity`,
+`Cardio_type`, `equipment`, `Strength_type`, `Outdoor_type`, `Trening_type`, `terrain`) + arhivski
+`Financije_old`. U Fitness formi se ta polja pojavljuju popunjena, a blok „na defaultu … / Show all" nestaje.
+**`Financije_all` nema nijedan `default_value` ⇒ Kokina forma je ista** (ostaje „prazna po pravilu: Izvod opis,
+Valuta" i `depends_on` vidljivost Isplata/Uplata/Rate/Broj rata).
+
+**Pravilo vidljivosti `visible_when` („polje vidljivo samo uz vrijednost X atributa Y")** — odluke:
+- Za **svaki tip** polja; neovisno o `depends_on` (izbornik može ovisiti o jednom atributu, vidljivost o drugom).
+  `depends_on` za brojeve i dalje radi kao do sada (Financije se ne diraju) — na tekst se NE proširuje, jer već
+  radi dva posla ovisno o tipu (S153).
+- **Popis vrijednosti** (jedna = popis s jednim članom), bez razlike velikih/malih slova.
+- Y je na **istom eventu ili pretku**, nikad na djetetu (roditelj ima 1 event po treningu, leaf N). Isti slug na
+  dvije razine ⇒ vrijedi najbliži. Uvoz to provjerava.
+- **Skriveno pravilom se ne sprema.** Ali **Edit ne skriva vrijednost koja već postoji u bazi** (polje vidljivo,
+  s oznakom) dok čovjek ne promijeni Y — inače bi otvaranje + Save starog retka tiho obrisalo podatak (razred S127).
+- „Show all" ga ne otkriva (kao `depends_on`). Obavezno vrijedi **samo dok je vidljivo** (`missingRequired` dobiva
+  istu funkciju vidljivosti kao forma).
+- **Structure Excel:** stupac `VisibleWhen` iza `HiddenInAdd`, oblik `vrsta = Cardio | Outdoor`; prazno = nema
+  pravila; nema stupca ⇒ uvoz zadrži bazu (S139/S149); prva popunjena ćelija atributa vrijedi, različite ⇒
+  upozorenje. Pisač i čitač ćelije su jedan par (S186). **Structure panel:** i uređivanje (sve postavke
+  atributa su na oba mjesta).
+- Mora ući i u: `validationRules.ts` + `sameRules`, planer preuređivanja `plan.ts` (citira vrijednost opcije),
+  preimenovanje sluga, blokadu A1 (`retype.ts`).
+
+**Unos (zamjenjuje „Unos snage" od 27.10.):**
+- **Jedna vježba = jedan `Gym` event.** Ne „jedan redak u koji ide sve" (kad, gdje, sve vježbe) pa razbijanje.
+- Serije jedne vježbe kratkim zapisom, jer su piramide česte (DIARY: `pull m.44-52-58-64-68kg (15x-12-8-6-4)`):
+  npr. `44x15, 52x12, 58x8, 64x6, 68x4`. Forma ga provjerava dok tipkaš (crveno ako ga ne razumije, kao polje
+  iznosa); najveća težina i obujam računaju se iz njega. **Format se odlučuje nakon analize** (korak 4).
+- **Tekstualno polje raste dok pišeš** (više redaka) — opće poboljšanje forme.
+- Notacija „sve u jednom retku" ostaje samo za **povijest**: jednokratni alat je raspiše u `Gym` evente, a što ne
+  razumije ostavi u `napomena` (uvezi grubo, pa dotjeraj).
+
+**Rutine:** `rutina` je obično polje s izbornikom na `Activity1` (Upper · Core · Legs · Z2 · Tempo/HIIT), uređuje
+se kao svaki izbornik. **Predložak = zadnji stvarni trening te rutine** — ništa se posebno ne sprema; rutina se
+„mijenja" tako da se jednom odradi drukčije. Shortcut (`Strength – Upper`) samo pokazuje na kategoriju + rutinu,
+sadržaj se čita iz baze pri pokretanju (nikad snimka u shortcutu, zamka S127).
+
+**Katalog vježbi (Saša: „jako koristan"):** `Fitness > Katalog > Vježba` — svaka vježba je zapis (puno ime,
+skupina, sprava, opis, slika), uređuje se zasebno, kao vlastiti projekt. Izbornik `vježba` u `Gym` čita iz
+kataloga ⇒ **novi opći mehanizam „izbornik iz druge kategorije"** (koristan i drugim Areama). Na katalog se
+oslanja „Review" tab (trendovi po vježbi).
+- **Slug vježbe (Saša, 28.10.) — odgovor na „ime ili veza": oboje.** Svaki zapis kataloga ima **slug** = kratko,
+  trajno ime (`pull_m`, `z_sklek`) i **puno ime** koje se smije mijenjati (isti obrazac kao slug/ime atributa).
+  `Gym` event pamti **slug**: čitljiv je u Excelu i jest veza na zapis. Promjena punog imena, slike ili opisa ne
+  dira nijedan trening; promjena sluga je rijetka i ide alatom za preuređivanje.
+  ⚠ Zapis kataloga je event (EAV), pa baza **ne jamči jedinstvenost** sluga — uvoz i forma kataloga moraju
+  odbiti duplikat.
+- **Aliasi iz povijesti** (`pull`, `pull.m`, `pull m.`) se pri uvozu povijesti svode na jedan slug — to je
+  rječnik iz analize (korak 3).
+- **Slika** = postojeći privitak eventa (`event_attachments`), bez novog mehanizma.
+- **Gumb „prikaži vježbu" (Saša, 28.10.):** uz izbornik vježbe u Add formi otvara zapis kataloga dok se vježba
+  izvodi (slika, opis, sprava). Prijedlog uz to: „zadnji put: `64x6`" iz zadnjeg treninga s tom vježbom.
+
+**Analiza zapisa (korak 3)** — samo čitanje lokalnih kopija (PROD backup, kopija `trening.xlsm`), bez PROD-a:
+1. **rječnik vježbi s aliasima** (`pull`, `pull.m`, `pull m.`, `pull.m.` = jedna vježba): Python izvuče i prebroji,
+   Claude predloži spajanje + puno ime + skupinu, Saša ispravi **jedan Excel** ⇒ uvoz u katalog (postupak kao
+   pravila po trgovcu, S174) — to je put „s minimalno frikcije";
+2. **popis mjesta** za `lokacija`; 3. **stvarne rutine** (koje se vježbe javljaju zajedno);
+4. **oblik serija** (piramide, supersetovi „između serija", vremena `plank 2:20`) ⇒ format zapisa serija.
+
+**Izmjereno 28.10. (S187):**
+- PROD `Fitness > Gym > Strength` (backup 22.10.): **76 treninga, 457 eventa, prosječno 6 po treningu** — već
+  danas jedan event po vježbi. `sets_reps` popunjen 437, `weight_info` 273; najdulji zapis 45 znakova. Najčešće
+  vježbe: `pull.m` 114, `ergometar` 56, `istezanje` 52, `kosa k.` 41, `plank` 39, `z.sklek` 28. U uzorku od 25
+  eventa oko pola je „čisto" (`pull.m | 12 | 45`), ostatak trpa više vježbi u jedan event
+  (`60kg, 20kg tric, leg r.25x / x 9 | bic.15kg, rot.ruku 2x2x10`); isto se piše na više načina (`12xkg55`,
+  `60kg x 12`, `10x2x2kg`).
+- DIARY `M` (kopija 26.10.): **648 dana s opisom od 2025., 420 s teretanom**; oblik „vrijeme mjesto niz vježbi"
+  (`10:10 CleverFIT 5'erg, istezanje, 8xIMOM 7z.sklek - pull.m (45-55-65kg x 8, 75kg (5x5) …`). Mjesta: GymS,
+  GymF, MoFit, Westin, CleverFIT, Gibi gym.
+
+**Koraci** (status se ažurira; A4 / K2 dolaze poslije koraka 9):
+
+| # | Korak | Status |
+| --- | --- | --- |
+| 1 | d1 — ukinuti skrivanje na defaultu (forma, help, CLAUDE.md) | ✅ S187 kod (`test-branch`), E2E `S187_default_visible`; ručno T-S187-1 ⬜ |
+| 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ⬜ |
+| 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ⬜ |
+| 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ⬜ |
+| 5 | Katalog vježbi (slug + puno ime, slika) + izbornik iz druge kategorije + gumb „prikaži vježbu" | ⬜ |
+| 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) | ⬜ |
+| 7 | „Ponovi zadnji trening ove rutine" (Add + shortcut na rutinu) | ⬜ |
+| 8 | Review tab treninga (pločice: napredak po vježbi, Z2 minute tjedno, obujam po vrsti) | ⬜ |
+| 9 | Uvoz povijesti: PROD `Strength` (457) + DIARY — alat za raspisivanje notacije | ⬜ |
+| 10 | Na PROD (`Fitness`), uz Sašinu odluku o deployu | ⬜ |
+
 ### Izmjereno 26.10. (S185) — za F2 i za sukobe Garmin ↔ DIARY
 
 Puni brojevi su u [`PREUREDJIVANJE_SPEC.md`](PREUREDJIVANJE_SPEC.md) §22. Ukratko:

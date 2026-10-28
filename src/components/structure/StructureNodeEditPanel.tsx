@@ -944,10 +944,8 @@ function AttrEditSection({ attrs, onChange, onDeletedSaved, hasEvents, nodeId, a
             )}
           </div>
 
-          {/* Hide in Add/Edit form. Sits next to Default deliberately: the two
-              are the only ways to get a field off the screen, and they answer
-              different cases — Default hides a field that HAS a value, this one
-              hides a field whose correct value is empty. */}
+          {/* Hide in Add/Edit form — since S187 (d1) the only way to get a field
+              off the screen on purpose (a Default no longer hides it). */}
           <div className="mb-3">
             <label className={`flex items-start gap-2 ${!attr.hiddenInAdd && attr.isRequired ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
               <input
