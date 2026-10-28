@@ -6,7 +6,11 @@ i `depends_on`. Kod je na `test-branch`, nije deployan.
 
 ---
 
-## T-S187-1 ⬜ (lokalno `npm run dev:prod`, samo gledanje — ništa se ne sprema) Fitness forma i Kokina forma
+## T-S187-1 ✅ (lokalno `npm run dev:prod`, samo gledanje — ništa se ne sprema) Fitness forma i Kokina forma
+
+> ✅ **28.10.:** Saša na `dev:prod`, 4 slike — svih 7 polja s defaultom na ekranu i popunjeno, `Financije_all`
+> ista. Sašina opaska „čini mi se da je bilo i prije": stara forma ih je skrivala u blok „na defaultu …" (osim
+> `Strength_type`, kojeg je čuvao `exercise_name`); to dokazuje E2E protuprovjera, ne ovaj ručni test.
 
 **Izmjereno prije (PROD backup 22.10.):** default ima 7 atributa, svi u `Fitness`: `intensity = light`
 (na `Activity`), `Cardio_type = Z2`, `equipment = orb` (`Gym > Cardio`), `Strength_type = Core`
