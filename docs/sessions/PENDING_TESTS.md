@@ -14,7 +14,7 @@ Dogovor o modelu treninga zapisan u `TRENING_MIGRACIJA.md` („Dogovor 28.10.", 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S187-1 | `dev:prod`, samo gledanje: Fitness Cardio/Strength/Outdoor Add ⇒ svih 7 polja s defaultom na ekranu, popunjena, bez bloka „na defaultu"; `Financije_all` Add ⇒ ista kao prije („prazna po pravilu: Izvod opis, Valuta") | ✅ S187 (28.10., Saša, `dev:prod`, 4 slike) — Cardio: intensity/Cardio_type/equipment na ekranu popunjeni; Strength: intensity, Strength_type; Outdoor: Outdoor_type/Trening_type/terrain/intensity; Financije_all ista. „Prije" (skriveno u bloku „na defaultu") nije gledano uživo — čuva ga E2E `S187_default_visible` (stara forma pada) |
+| T-S187-1 | `dev:prod`, samo gledanje: Fitness Cardio/Strength/Outdoor Add ⇒ svih 7 polja s defaultom na ekranu, popunjena, bez bloka „na defaultu"; `Financije_all` Add ⇒ ista kao prije („prazna po pravilu: Izvod opis, Valuta") | ✅ S187 (28.10., Saša, `dev:prod`, 4 slike) — Cardio: intensity/Cardio_type/equipment na ekranu popunjeni; Strength: intensity, Strength_type; Outdoor: Outdoor_type/Trening_type/terrain/intensity; Financije_all ista. „Prije" viđeno uživo na Netlify PROD-u: Cardio „na defaultu: Cardio_type = Z2 · equipment = orb · intensity = light" + Show all; čuva E2E `S187_default_visible` (stara forma pada) |
 
 ---
 
