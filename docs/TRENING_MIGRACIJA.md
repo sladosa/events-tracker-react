@@ -235,6 +235,9 @@ Valuta" i `depends_on` vidljivost Isplata/Uplata/Rate/Broj rata).
 se kao svaki izbornik. **Predložak = zadnji stvarni trening te rutine** — ništa se posebno ne sprema; rutina se
 „mijenja" tako da se jednom odradi drukčije. Shortcut (`Strength – Upper`) samo pokazuje na kategoriju + rutinu,
 sadržaj se čita iz baze pri pokretanju (nikad snimka u shortcutu, zamka S127).
+**Ime rutine je oznaka za pamćenje, ne razvrstavanje** (S188, 29.10., Saša): rutina se zove po glavnom naglasku
+(Upper i kad ima adductor/abductor), jer se `Strength1` teško pamti. Analiza „po dijelu tijela" ne čita ime rutine
+nego vježbe u zapisima + mišićnu skupinu iz kataloga (korak 5) — pa netočno ime ne kvari nijednu brojku.
 
 **Katalog vježbi (Saša: „jako koristan"):** `Fitness > Katalog > Vježba` — svaka vježba je zapis (puno ime,
 skupina, sprava, opis, slika), uređuje se zasebno, kao vlastiti projekt. Izbornik `vježba` u `Gym` čita iz
