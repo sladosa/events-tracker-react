@@ -22,6 +22,11 @@
 `docs/_archive/BACKLOG_2026-09-26.md` (povijest). Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
 § S150). Nove i preformulirane stavke iz prolaza:
 
+- **Poruke planera preuređivanja na engleski (S188, Saša: „kasnije prevesti", poslije koraka 4 treninga)** —
+  sheet `Restructure options` je od S188 engleski, a greške i upozorenja u pregledu (`src/lib/restructure/plan.ts`,
+  ~30 `errors.push`/`warnings.push`, i `show()` s `(prazno)`) su hrvatski ⇒ pregled je mješavina jezika.
+  Uz prijevod: tvrdnje u `restructurePlan.test.mjs` koje čitaju tekst poruke, i `apply.ts` (`Preuređivanje: …`).
+
 - **Tempo (`pace`) kao PRIKAZNA kolona — trajanje ÷ udaljenost, `mm:ss` (S185, Saša: opcija A)** — ne
   sprema se; lista, View i Excel izvoz ga računaju (Excel može kao pravu formulu, pa prati izmjene u fileu).
   Izmjereno na TEST `Fitness_Garmin`: Garminov `pace` = `duration` / `distance` na **1.935 od 1.936** treninga

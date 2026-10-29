@@ -19,19 +19,6 @@ Dvije želje iz T-S187-2. Structure View: otvorena samo razina kliknutog čvora,
 
 ---
 
-## S187 — Model treninga, koraci 1–2: default ne skriva polje; pravilo vidljivosti (2026-10-28)
-
-Dogovor o modelu treninga zapisan u `TRENING_MIGRACIJA.md` („Dogovor 28.10.", tablica „Koraci" 1–10). Korak 1 (d1): polje s `default_value` se u formi prikazuje, popunjeno; skrivanje samo kroz `HiddenInAdd`. Pogođen samo `Fitness` (7 atributa); `Financije_all` nema nijedan default. Korak 2: `VisibleWhen` — polje vidljivo samo uz vrijednost drugog atributa (panel, Excel kolona L, forma, obavezno, planer).
-
-**Detalji testova:** [tests/S187_tests.md](tests/S187_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S187-1 | `dev:prod`, samo gledanje: Fitness Cardio/Strength/Outdoor Add ⇒ svih 7 polja s defaultom na ekranu, popunjena, bez bloka „na defaultu"; `Financije_all` Add ⇒ ista kao prije („prazna po pravilu: Izvod opis, Valuta") | ✅ S187 (28.10., Saša, `dev:prod`, 4 slike) — Cardio: intensity/Cardio_type/equipment na ekranu popunjeni; Strength: intensity, Strength_type; Outdoor: Outdoor_type/Trening_type/terrain/intensity; Financije_all ista. „Prije" viđeno uživo na Netlify PROD-u: Cardio „na defaultu: Cardio_type = Z2 · equipment = orb · intensity = light" + Show all; čuva E2E `S187_default_visible` (stara forma pada) |
-| T-S187-2 | TEST `npm run dev`: panel „Visible only when" (`weight_info` uz `Strength_type = Upp`) ⇒ Add: vidljivo samo uz Upp, upisano se briše pri skrivanju; Structure export kolona L `VisibleWhen`, nepromijenjen uvoz = 0 promjena, `Upp \| Low` = 1, `nepostoji = x` ⇒ upozorenje i pravilo ostaje | ✅ S188 (29.10., Saša, TEST, Area `Fitness_Garmin`, slug `strength-type`) — svih 8 koraka kako je očekivano; baza poslije koraka 2/6/8: `[Upp]` → `[Upp, Low]` → `{}`. Usput dvije želje (sklapanje razina u View panelu; Restructure sheetovi na engleskom + primjeri u stupcima) — izvedeno S188 |
-
----
-
 ## S181 — Excel roundtrip Financija s Namjenom (2026-10-24)
 
 Namjena u profilu iza Podtipa. Na TEST-u izmjereno: izvoz identičan staromu (osim položaja stupca), roundtrip `0 · 0`, promjena Namjene = 1 Modify bez pitanja o potvrđenom stanju, delta formule ispravne. Nađen BUG-S181-DEPNAME (dropdown Namjene nudi Podtipove) i popravljen na `test-branch`; alati za izvode i Excel uvoz upisuju zadanu Namjenu na nove retke. Deploy 25.10. (S182): T-S181-2 i T-S181-4 ✅; ostaje T-S181-3 (studeni).
