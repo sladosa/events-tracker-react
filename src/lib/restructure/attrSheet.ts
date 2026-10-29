@@ -5,7 +5,7 @@
  * ⚠ Engleski (Saša, S186: „dosta općenit alat") — sheet, stupci, operacije i poruke.
  *   Konfiguracijska ploha, isto pravilo kao ostali natpisi Structure taba.
  *
- * Jedan redak = jedan korak nad ATRIBUTOM (ne nad opcijom — to je sheet `Preuređivanje`):
+ * Jedan redak = jedan korak nad ATRIBUTOM (ne nad opcijom — to je sheet `Restructure options`):
  *   Step | Operation | Category | Attribute | New type | Into attribute | Conversion | Delete source | Note
  *
  *   change type  (A1, §24)  Attribute → New type (`number` / `text`); uz `number` obavezna Conversion.
@@ -24,7 +24,7 @@
  */
 import type ExcelJS from 'exceljs';
 import type { Conv, RetypeInput, RetypeType } from './retype';
-import { cellText, norm, plain, type Cell } from './sheet';
+import { cellText, norm, rowsBeforeHelp, type Cell, type ExampleRow } from './sheet';
 
 export const ATTR_SHEET = 'Restructure attributes';
 export const ATTR_HEAD = {
@@ -204,22 +204,14 @@ export function findAttrSheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet | null {
 export function readAttrSheet(wb: ExcelJS.Workbook): ParsedAttrSheet | null {
   const ws = findAttrSheet(wb);
   if (!ws) return null;
-  const width = ws.columnCount;
-  const rowCells = (r: number) => Array.from({ length: width }, (_, i) => plain(ws.getRow(r).getCell(i + 1).value));
-  const rows: Array<{ rowNum: number; cells: Cell[] }> = [];
-  const last = ws.lastRow?.number ?? 1;
-  for (let r = 2; r <= last; r++) {
-    const cells = rowCells(r);
-    if (typeof cells[0] === 'string' && cells[0].startsWith('HELP')) break;
-    rows.push({ rowNum: r, cells });
-  }
-  return parseAttrRows(rowCells(1), rows);
+  const { header, rows } = rowsBeforeHelp(ws);
+  return parseAttrRows(header, rows);
 }
 
 /** Uputa ispod zaglavlja praznog predloška (čitač staje na `HELP`). */
-export function attrHelpLines(attrsByCategory: Array<[string, Array<[string, string]>]>): string[] {
+export function attrHelpLines(): string[] {
   return [
-    'HELP — restructure ATTRIBUTES (not menu options — that is the "Preuređivanje" sheet). One row = one step.',
+    'HELP — restructure ATTRIBUTES (not menu options — that is the "Restructure options" sheet). One row = one step.',
     `  Operation    "${OP_RETYPE}" or "${OP_MERGE}".`,
     '  Category     name of the category that holds the attribute (any level, e.g. Activity).',
     '  Attribute    attribute slug (see the list below).',
@@ -230,13 +222,47 @@ export function attrHelpLines(attrsByCategory: Array<[string, Array<[string, str
     '               map    — :-( = 1 | :-/ = 2 | :-| = 3 | :-) = 4 | :-D = 5   (pairs separated by " | ", a SPACE on both sides)',
     `  ${OP_MERGE}: Into attribute = target slug on the SAME category, same type; Delete source = yes/no.`,
     '               Different values on the same row are a conflict — nothing is touched, you get a list.',
-    '',
-    `  Example:  1 | ${OP_RETYPE} | Activity | mood | number |  | :-( = 1 | :-/ = 2 | :-| = 3 | :-) = 4 | :-D = 5 |  |`,
+    `               ⚠ "${OP_MERGE}" is not available yet — the preview stops at such a step.`,
     '',
     '  Steps run ONE AT A TIME: the import shows a preview of the next step, you apply it, then the next one.',
     '  A step already done shows "Already in this state" — importing the same file again changes nothing.',
     '  Each applied step can be undone while the window is open.',
     '',
-    ...attrsByCategory.map(([cat, attrs]) => `  Attributes — ${cat}: ${attrs.map(([s, t]) => `${s} (${t})`).join(', ')}`),
   ];
+}
+
+/** Popis atributa po kategoriji — ispod primjera. */
+export function attrListLines(attrsByCategory: Array<[string, Array<[string, string]>]>): string[] {
+  return attrsByCategory.map(([cat, attrs]) => `  Attributes — ${cat}: ${attrs.map(([s, t]) => `${s} (${t})`).join(', ')}`);
+}
+
+/**
+ * Primjeri ispod `HELP` (S188), u pravim stupcima — isto pravilo kao `restructureExamples`.
+ * Kategorija i slugovi su iz ove Aree; vrijednosti u Conversion su oblik, ne podatak.
+ */
+export function attrExamples(src: { category: string; text?: string; number?: string } | null): ExampleRow[] {
+  if (!src || (!src.text && !src.number)) return [];
+  const header = attrHeader();
+  const out: ExampleRow[] = [];
+  const add = (vals: Partial<Record<HeadKey, Cell>>, explain: string) => {
+    const cells: Cell[] = header.map(() => null);
+    cells[header.indexOf(ATTR_HEAD.step)] = out.length + 1;
+    cells[header.indexOf(ATTR_HEAD.op)] = OP_RETYPE;
+    cells[header.indexOf(ATTR_HEAD.category)] = src.category;
+    for (const [k, v] of Object.entries(vals)) cells[header.indexOf(ATTR_HEAD[k as HeadKey])] = v ?? null;
+    out.push({ cells, explain: `  ↑ ${out.length + 1}. ${explain}` });
+  };
+  if (src.text) {
+    const t = src.text;
+    add({ attr: t, type: 'number', conv: 'number' },
+      `Text → number: "2,3" and "2.3" become 2.3. EVERY row of ${t} must convert — otherwise the preview lists the rows that do not, and nothing changes.`);
+    add({ attr: t, type: 'number', conv: 'mm:ss' },
+      'Text → number from minutes:seconds: "6:06" becomes 6.1.');
+    add({ attr: t, type: 'number', conv: ':-( = 1 | :-| = 3 | :-) = 5' },
+      'Text → number by a map: each listed text becomes its number (pairs separated by " | ", a space on both sides).');
+  }
+  if (src.number) {
+    add({ attr: src.number, type: 'text' }, `Number → text: ${src.number} becomes a text attribute (no Conversion).`);
+  }
+  return out;
 }

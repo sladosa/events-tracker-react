@@ -21,6 +21,7 @@ import {
   type ApplyResult, type RestructurePreview, type UndoResult, type Verification,
 } from '@/lib/restructure/apply';
 import type { RestructureStep, StepValue } from '@/lib/restructure/plan';
+import { EMPTY_TOKEN } from '@/lib/restructure/sheet';
 import type { ImportResult } from '@/lib/structureImport';
 
 const clean = (c: Verification) => c.rowDiffs === 0 && c.configDiffs === 0;
@@ -46,7 +47,7 @@ export function CheckLine({ check, what }: { check: Verification; what: string }
 type Phase = 'loading' | 'preview' | 'applying' | 'applied' | 'undoing' | 'undone';
 
 const fmtNum = (n: number) => n.toLocaleString('hr-HR');
-const val = (v: StepValue) => (v == null ? '(prazno)' : v);
+const val = (v: StepValue) => (v == null ? EMPTY_TOKEN : v);
 const pairs = (o: Record<string, StepValue>) =>
   Object.entries(o).map(([k, v]) => `${k} = ${val(v)}`).join(' · ');
 

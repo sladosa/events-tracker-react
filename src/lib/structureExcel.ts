@@ -41,8 +41,11 @@ import type { StructureNode } from '@/types/structure';
 import type { AttributeDefinition } from '@/types/database';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { flattenAreaSettings, AREA_SETTINGS_TYPES } from './areaSettingsSheet';
-import { RESTRUCTURE_SHEET, restructureHeader, restructureHelpLines } from './restructure/sheet';
-import { ATTR_SHEET, attrHeader, attrHelpLines } from './restructure/attrSheet';
+import {
+  RESTRUCTURE_SHEET, restructureHeader, restructureHelpLines, restructureAttrListLines, restructureExamples,
+  EXAMPLES_INTRO, type ExampleRow, type RestructureExampleSource,
+} from './restructure/sheet';
+import { ATTR_SHEET, ATTR_HEAD, attrHeader, attrHelpLines, attrListLines, attrExamples } from './restructure/attrSheet';
 import { serializeColumnMap } from './listColumns';
 import { readVisibleWhen, serializeVisibleWhen } from './visibleWhen';
 import {
@@ -1119,9 +1122,9 @@ function writeAreaSettingsSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): v
 }
 
 // ─────────────────────────────────────────────────────────────
-// Preuređivanje sheet — F1 (S178): PRAZAN predložak, da se zna da postoji
+// Restructure options sheet — F1 (S178, engleski od S188): PRAZAN predložak
 // ─────────────────────────────────────────────────────────────
-// Stupci `kad:`/`postavi:` za tekstualne atribute S IZBORNIKOM (ono što se
+// Stupci `when:`/`set:` za tekstualne atribute S IZBORNIKOM (ono što se
 // preuređuje); ostali idu u uputu. ⚠ Slova se ne pišu nigdje — parser čita
 // zaglavlje po imenu (S160).
 function writeRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
@@ -1130,6 +1133,7 @@ function writeRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
 
   const slugs: string[] = [];
   const byCat: Array<[string, string[]]> = [];
+  let example: RestructureExampleSource | null = null;
   for (const node of nodes) {
     if (node.nodeType !== 'category' || !node.isLeaf) continue;
     const text = node.attributeDefinitions.filter(a => a.data_type === 'text');
@@ -1139,6 +1143,7 @@ function writeRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
       const hasMenu = !!r && (Array.isArray(r.suggest) || !!r.depends_on);
       if (hasMenu && !slugs.includes(a.slug)) slugs.push(a.slug);
     }
+    example ??= exampleSourceOf(node.name, text);
   }
 
   const header = restructureHeader(slugs);
@@ -1151,31 +1156,94 @@ function writeRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
     cell.border = THIN_BORDER;
   });
 
-  let hr = 4;   // dva prazna retka za upis, pa uputa (čitač staje na „HELP")
-  for (const line of restructureHelpLines(byCat)) {
-    const cell = ws.getCell(hr++, 1);
-    cell.value = line;
+  writeHelpAndExamples(ws, restructureHelpLines(), restructureExamples(header, example), restructureAttrListLines(byCat));
+}
+
+/**
+ * Izvor primjera: prvi tekstualni atribut leafa s `suggest` popisom, i (ako ga ima)
+ * atribut čiji izbornik ovisi o njemu — s prvom opcijom pod nekom vrijednošću roditelja.
+ */
+function exampleSourceOf(category: string, text: AttributeDefinition[]): RestructureExampleSource | null {
+  const rulesOf = (a: AttributeDefinition) => (a.validation_rules ?? {}) as Record<string, unknown>;
+  const menu = text.find(a => Array.isArray(rulesOf(a).suggest) && (rulesOf(a).suggest as unknown[]).length > 0);
+  if (!menu) return null;
+  const options = (rulesOf(menu).suggest as unknown[]).filter((o): o is string => typeof o === 'string' && o !== '');
+  if (!options.length) return null;
+  let child: RestructureExampleSource['child'];
+  for (const a of text) {
+    const dep = rulesOf(a).depends_on as { attribute_slug?: string; options_map?: Record<string, unknown> } | undefined;
+    if (dep?.attribute_slug !== menu.slug || !dep.options_map) continue;
+    for (const [pv, list] of Object.entries(dep.options_map)) {
+      const v = Array.isArray(list) ? list.find((x): x is string => typeof x === 'string' && x !== '') : undefined;
+      if (pv !== '*' && options.includes(pv) && v) { child = { slug: a.slug, parentValue: pv, value: v }; break; }
+    }
+    if (child) break;
+  }
+  return { category, menu: menu.slug, options, ...(child ? { child } : {}) };
+}
+
+/**
+ * Uputa (od retka 4 — dva prazna za upis), pa PRIMJERI u pravim stupcima s
+ * objašnjenjem ispod svakog, pa popis atributa. Sve je ispod prvog `HELP` retka ⇒
+ * uvoz ništa od toga ne čita (`rowsBeforeHelp`). Primjeri su sivi i u kurzivu, da se
+ * ne brkaju s upisanim retkom.
+ */
+function writeHelpAndExamples(ws: ExcelJS.Worksheet, help: string[], examples: ExampleRow[], tail: string[]): void {
+  const note = (r: number, text: string) => {
+    const cell = ws.getCell(r, 1);
+    cell.value = text;
     cell.font = { italic: true, size: 9, color: { argb: 'FF888888' } };
+  };
+  let hr = 4;
+  for (const line of help) note(hr++, line);
+  if (examples.length) {
+    hr++;
+    note(hr++, EXAMPLES_INTRO);
+    for (const ex of examples) {
+      ex.cells.forEach((v, ci) => {
+        const cell = ws.getCell(hr, ci + 1);
+        cell.value = v ?? null;
+        cell.fill = makeFill('FFF3F4F6');
+        cell.font = { italic: true, size: 10, color: { argb: 'FF555555' } };
+        cell.border = THIN_BORDER;
+      });
+      hr++;
+      note(hr++, ex.explain);
+    }
+  }
+  if (tail.length) {
+    hr++;
+    for (const line of tail) note(hr++, line);
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Preuređivanje atributa — F2 (S186): PRAZAN predložak (A1 promijeni tip, A4 spoji)
+// Restructure attributes — F2 (S186): PRAZAN predložak (A1 promijeni tip, A4 spoji)
 // ─────────────────────────────────────────────────────────────
-// Za razliku od `Preuređivanje` (opcije na leafu) ovdje ulaze atributi SVIH razina
+// Za razliku od `Restructure options` (opcije na leafu) ovdje ulaze atributi SVIH razina
 // — `mood` je na `Activity` (P1). Uputa nosi slug i tip svakog atributa.
 function writeAttrRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): void {
   const ws = wb.addWorksheet(ATTR_SHEET);
   ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
 
   const byCat: Array<[string, Array<[string, string]>]> = [];
+  let example: { category: string; text?: string; number?: string } | null = null;
   for (const node of nodes) {
     if (node.nodeType !== 'category' || node.attributeDefinitions.length === 0) continue;
     byCat.push([node.name, node.attributeDefinitions.map(a => [a.slug, a.data_type] as [string, string])]);
+    // Primjer: tekstualni atribut BEZ izbornika i brojčani, s iste kategorije.
+    if (!example) {
+      const rulesOf = (a: AttributeDefinition) => (a.validation_rules ?? {}) as Record<string, unknown>;
+      const plainText = node.attributeDefinitions.find(a => a.data_type === 'text'
+        && !Array.isArray(rulesOf(a).suggest) && !rulesOf(a).depends_on);
+      const num = node.attributeDefinitions.find(a => a.data_type === 'number');
+      if (plainText || num) example = { category: node.name, text: plainText?.slug, number: num?.slug };
+    }
   }
 
   attrHeader().forEach((h, ci) => {
-    ws.getColumn(ci + 1).width = ci === 0 ? 8 : h === 'Pretvorba' ? 44 : 16;
+    // S188: do tada `h === 'Pretvorba'` — stupac se zove Conversion, pa je ostajao uzak
+    ws.getColumn(ci + 1).width = ci === 0 ? 8 : h === ATTR_HEAD.conv ? 44 : 16;
     const cell = ws.getCell(1, ci + 1);
     cell.value = h;
     cell.fill = makeFill(CLR.HEADER_BG);
@@ -1183,12 +1251,7 @@ function writeAttrRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[])
     cell.border = THIN_BORDER;
   });
 
-  let hr = 4;   // dva prazna retka za upis, pa uputa (čitač staje na „HELP")
-  for (const line of attrHelpLines(byCat)) {
-    const cell = ws.getCell(hr++, 1);
-    cell.value = line;
-    cell.font = { italic: true, size: 9, color: { argb: 'FF888888' } };
-  }
+  writeHelpAndExamples(ws, attrHelpLines(), attrExamples(example), attrListLines(byCat));
 }
 
 // ─────────────────────────────────────────────────────────────

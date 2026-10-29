@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Gdje Python alati jos citiraju vrijednost koju sheet `Preuredjivanje` mijenja (F1, S179).
+"""Gdje Python alati jos citiraju vrijednost koju sheet `Restructure options` mijenja (F1, S179).
+
+Do S188 se sheet zvao `Preuredjivanje` (`kad:` / `postavi:` / `(prazno)`); stara imena se ne citaju.
 
 Planer u appu prepise SVE sto zivi u bazi (retci, izbornik, pločice, bucketi,
 koske, kolone, shortcuti, sidra) -- ali preglednik ne vidi Python rjecnike
@@ -47,8 +49,8 @@ if hasattr(sys.stdout, 'reconfigure'):
 ROOT = Path(__file__).resolve().parents[2]
 SCAN = ROOT / 'data-prep_tools'
 SKIP_PARTS = {'Obsolete', '__pycache__', 'venv', 'site-packages', '_arhiva'}
-EMPTY = '(prazno)'
-WHEN, SET = 'kad:', 'postavi:'
+EMPTY = '(empty)'
+WHEN, SET = 'when:', 'set:'
 
 
 def _norm(s):
@@ -57,11 +59,11 @@ def _norm(s):
 
 
 def read_steps(path):
-    """Sheet `Preuređivanje` -> [(korak, {slug: kad}, {slug: postavi})]. Isto kao `restructure/sheet.ts`."""
+    """Sheet `Restructure options` -> [(korak, {slug: when}, {slug: set})]. Isto kao `restructure/sheet.ts`."""
     wb = load_workbook(path, read_only=True, data_only=True)
-    ws = next((w for w in wb.worksheets if _norm(w.title) in ('preuredivanje', 'preuredjivanje')), None)
+    ws = next((w for w in wb.worksheets if _norm(w.title) == 'restructure options'), None)
     if ws is None:
-        sys.exit(f'Nema sheeta „Preuređivanje" u {path}.')
+        sys.exit(f'Nema sheeta „Restructure options" u {path} (do S188 se zvao „Preuređivanje" -- uzmi svjez Structure export).')
     rows = list(ws.iter_rows(values_only=True))
     if not rows:
         return []
@@ -69,7 +71,7 @@ def read_steps(path):
     cols = []
     for i, h in enumerate(head):
         low = h.lower()
-        if low == 'korak':
+        if low == 'step':
             cols.append(('n', i, None))
         elif low == 'event_id':
             cols.append(('ids', i, None))

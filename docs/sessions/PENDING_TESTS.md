@@ -2,7 +2,20 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S187 (2026-10-28, zatvaranje: T-S187-2 otvoren) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S188 (2026-10-29, T-S187-2 ✅) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S188 — View panel sklapa razine; Restructure sheetovi na engleskom s primjerima (2026-10-29)
+
+Dvije želje iz T-S187-2. Structure View: otvorena samo razina kliknutog čvora, preci sklopljeni, Expand/Collapse all, stanje se ne pamti. Sheet `Preuređivanje` je sada `Restructure options` (`when:` / `set:` / `Step` / `Category` / `Note` / `(empty)`); oba Restructure sheeta ispod `HELP` nose primjere u pravim stupcima s objašnjenjem; stari sheet s upisanim retkom ⇒ upozorenje.
+
+**Detalji testova:** [tests/S188_tests.md](tests/S188_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S188-1 | TEST: View na `Strength` ⇒ otvorena samo L3, `Activity`/`Gym` sklopljene; klik na zaglavlje, Expand/Collapse all; Next/ponovno otvaranje kreće od zadanog | ⬜ |
+| T-S188-2 | TEST: Structure export ⇒ `Restructure options` + `Restructure attributes` na engleskom, primjeri ispod HELP; nepromijenjen uvoz ⇒ ništa; sheet preimenovan natrag u `Preuređivanje` s retkom ⇒ upozorenje „was NOT read" | ⬜ |
 
 ---
 
@@ -15,7 +28,7 @@ Dogovor o modelu treninga zapisan u `TRENING_MIGRACIJA.md` („Dogovor 28.10.", 
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S187-1 | `dev:prod`, samo gledanje: Fitness Cardio/Strength/Outdoor Add ⇒ svih 7 polja s defaultom na ekranu, popunjena, bez bloka „na defaultu"; `Financije_all` Add ⇒ ista kao prije („prazna po pravilu: Izvod opis, Valuta") | ✅ S187 (28.10., Saša, `dev:prod`, 4 slike) — Cardio: intensity/Cardio_type/equipment na ekranu popunjeni; Strength: intensity, Strength_type; Outdoor: Outdoor_type/Trening_type/terrain/intensity; Financije_all ista. „Prije" viđeno uživo na Netlify PROD-u: Cardio „na defaultu: Cardio_type = Z2 · equipment = orb · intensity = light" + Show all; čuva E2E `S187_default_visible` (stara forma pada) |
-| T-S187-2 | TEST `npm run dev`: panel „Visible only when" (`weight_info` uz `Strength_type = Upp`) ⇒ Add: vidljivo samo uz Upp, upisano se briše pri skrivanju; Structure export kolona L `VisibleWhen`, nepromijenjen uvoz = 0 promjena, `Upp \| Low` = 1, `nepostoji = x` ⇒ upozorenje i pravilo ostaje | ⬜ |
+| T-S187-2 | TEST `npm run dev`: panel „Visible only when" (`weight_info` uz `Strength_type = Upp`) ⇒ Add: vidljivo samo uz Upp, upisano se briše pri skrivanju; Structure export kolona L `VisibleWhen`, nepromijenjen uvoz = 0 promjena, `Upp \| Low` = 1, `nepostoji = x` ⇒ upozorenje i pravilo ostaje | ✅ S188 (29.10., Saša, TEST, Area `Fitness_Garmin`, slug `strength-type`) — svih 8 koraka kako je očekivano; baza poslije koraka 2/6/8: `[Upp]` → `[Upp, Low]` → `{}`. Usput dvije želje (sklapanje razina u View panelu; Restructure sheetovi na engleskom + primjeri u stupcima) — izvedeno S188 |
 
 ---
 

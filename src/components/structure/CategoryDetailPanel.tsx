@@ -16,6 +16,7 @@
 //     - Level heading + attribute_definitions for that level
 //     - Attr: name, data_type, unit, is_required, validation summary
 //     - "(no attributes)" when none
+//     - S188: level is collapsible; only the selected node's level starts open
 //
 // For Area node:
 //   - Area name + description
@@ -23,7 +24,7 @@
 //   - Totals: X categories, Y leaf events
 // ============================================================
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { cn } from '@/lib/cn';
 import { THEME } from '@/lib/theme';
@@ -227,15 +228,25 @@ function AttrRow({ attr }: { attr: AttributeDefinition }) {
 // LevelSection
 // --------------------------------------------------------
 
-function LevelSection({ chainNode }: { chainNode: StructureNode }) {
+function LevelSection({ chainNode, open, onToggle }: {
+  chainNode: StructureNode;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const t = THEME.structure;
   const isArea = chainNode.nodeType === 'area';
   const attrs = isArea ? [] : chainNode.attributeDefinitions;
 
   return (
     <div className={cn('mb-4 rounded-lg border overflow-hidden', t.lightBorder)}>
-      <div className={cn('flex items-center justify-between px-3 py-2', t.light)}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className={cn('w-full flex items-center justify-between px-3 py-2 text-left', t.light)}
+      >
         <div className="flex items-center gap-2">
+          <span className={cn('text-xs transition-transform', t.lightText, open && 'rotate-90')}>▶</span>
           <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded', t.lightText)}>
             {levelLabel(chainNode.level, chainNode.nodeType)}
           </span>
@@ -249,14 +260,16 @@ function LevelSection({ chainNode }: { chainNode: StructureNode }) {
             {attrs.length > 0 ? `${attrs.length} attr${attrs.length !== 1 ? 's' : ''}` : 'no attrs'}
           </span>
         )}
-      </div>
-      <div className="px-3 divide-y divide-gray-50">
-        {attrs.length > 0 ? (
-          attrs.map(attr => <AttrRow key={attr.id} attr={attr} />)
-        ) : (
-          <p className="py-3 text-sm text-gray-400 italic">(no attributes at this level)</p>
-        )}
-      </div>
+      </button>
+      {open && (
+        <div className="px-3 divide-y divide-gray-50">
+          {attrs.length > 0 ? (
+            attrs.map(attr => <AttrRow key={attr.id} attr={attr} />)
+          ) : (
+            <p className="py-3 text-sm text-gray-400 italic">(no attributes at this level)</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -313,20 +326,46 @@ function AreaContent({ node, allNodes }: { node: StructureNode; allNodes: Struct
 // Category content
 // --------------------------------------------------------
 
+// S188: razine se sklapaju; zadano je otvorena samo razina kliknutog čvora (zbog
+// nje je panel otvoren — preci od 12 atributa su je gurali na dno). Stanje se NE
+// pamti: pozivatelj daje `key={node.id}`, pa Prev/Next i novo otvaranje kreću od
+// zadanog. Zapamćeno sklapanje je zamka iz S154 (`attrExpanded`) i S160.
 function CategoryContent({ node, allNodes }: { node: StructureNode; allNodes: StructureNode[] }) {
   const chain = buildChain(node, allNodes);
   const t = THEME.structure;
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set([node.id]));
+  const allOpen = chain.every(c => openIds.has(c.id));
+
+  const toggle = (id: string) => setOpenIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   return (
     <div>
-      {node.isLeaf && (
-        <div className="mb-4">
-          <span className={cn('text-xs px-2 py-0.5 rounded-full', t.badgeLeaf)}>leaf</span>
-        </div>
-      )}
+      <div className="mb-4 flex items-center justify-between">
+        {node.isLeaf
+          ? <span className={cn('text-xs px-2 py-0.5 rounded-full', t.badgeLeaf)}>leaf</span>
+          : <span />}
+        {chain.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setOpenIds(allOpen ? new Set() : new Set(chain.map(c => c.id)))}
+            className={cn('text-xs underline', t.lightText)}
+          >
+            {allOpen ? 'Collapse all' : 'Expand all'}
+          </button>
+        )}
+      </div>
       <div>
         {chain.map(chainNode => (
-          <LevelSection key={chainNode.id} chainNode={chainNode} />
+          <LevelSection
+            key={chainNode.id}
+            chainNode={chainNode}
+            open={openIds.has(chainNode.id)}
+            onToggle={() => toggle(chainNode.id)}
+          />
         ))}
       </div>
     </div>
@@ -492,7 +531,7 @@ export function CategoryDetailPanel({
           {node.nodeType === 'area' ? (
             <AreaContent node={node} allNodes={allNodes} />
           ) : (
-            <CategoryContent node={node} allNodes={allNodes} />
+            <CategoryContent key={node.id} node={node} allNodes={allNodes} />
           )}
         </div>
       </div>

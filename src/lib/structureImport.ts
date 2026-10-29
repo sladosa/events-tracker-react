@@ -29,7 +29,7 @@ import { buildRules, sameRules, removedOptions } from '@/lib/validationRules';
 import { TEMPLATE_USER_ID } from '@/lib/constants';
 import { getDatePresets } from '@/hooks/useDateBounds';
 import { unflattenAreaSettings, mergeAreaSettings, changedTopKeys } from '@/lib/areaSettingsSheet';
-import { readRestructureSheet } from '@/lib/restructure/sheet';
+import { readRestructureSheet, legacyRestructureWarning, RESTRUCTURE_SHEET } from '@/lib/restructure/sheet';
 import { readAttrSheet, type AttrStep } from '@/lib/restructure/attrSheet';
 import { parseColumnMap } from '@/lib/listColumns';
 import {
@@ -1809,7 +1809,7 @@ export async function importStructureExcel(
     }
   }
 
-  // ── 12. Preuređivanje sheet — F1 (S178/S179) ───────────────
+  // ── 12. Restructure options sheet — F1 (S178/S179; do S188 `Preuređivanje`) ────────────────
   //   Uvoz koraka NE IZVODI — samo ih preda modalu, koji ih planira nad svježom
   //   snimkom (POSLIJE §1–§11, jer korak smije koristiti atribut koji je ovaj
   //   uvoz upravo stvorio) i traži vlastitu potvrdu (`restructure/apply.ts`).
@@ -1818,20 +1818,23 @@ export async function importStructureExcel(
   //   ⚠ Activities „Create categories & continue" (`existingAreasUntouched`) ga
   //     ne nosi dalje — preuređivanje je namjerna izmjena, ide Structure → Import.
   const restructure = existingAreasUntouched ? null : readRestructureSheet(wb);
+  // S188: sheet starog imena se ne čita — s upisanim retkom bi bio TIHO preskočen.
+  const legacy = existingAreasUntouched ? null : legacyRestructureWarning(wb);
+  if (legacy) result.warnings.push(legacy);
   const attrRestructure = existingAreasUntouched ? null : readAttrSheet(wb);
   const areaNames = [...new Set(parsedRows.map(r => parsePath(r.categoryPath)[0]).filter(Boolean))];
   const areaIds = [...new Set(areaNames.map(n => areaByName.get(n.toLowerCase())).filter((x): x is string => !!x))];
   const oneArea = areaIds.length === 1 ? areaIds[0] : null;
   const areaLabel = oneArea ? (dbAreas?.find(a => a.id === oneArea)?.name ?? areaNames[0]) : areaNames.join(', ');
   const oneAreaError = (sheet: string) =>
-    `${sheet}: file nosi ${areaIds.length} Area (${areaNames.join(', ')}) — sheet se primjenjuje samo uz Structure jedne Aree.`;
+    `${sheet}: the file holds ${areaIds.length} Areas (${areaNames.join(', ')}) — this sheet only applies with the Structure of ONE Area.`;
 
   if (restructure && restructure.rowsRead > 0) {
     result.restructure = {
       areaId: oneArea,
       areaName: areaLabel,
       steps: restructure.steps,
-      errors: [...restructure.errors, ...(oneArea ? [] : [oneAreaError('Preuređivanje')])],
+      errors: [...restructure.errors, ...(oneArea ? [] : [oneAreaError(RESTRUCTURE_SHEET)])],
       source: file.name,
     };
   }

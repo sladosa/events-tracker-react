@@ -1,5 +1,5 @@
 /**
- * S179 / F1 — sheet `Preuređivanje` kroz Structure uvoz: pregled → Primijeni → lista → Poništi.
+ * S179 / F1 — sheet `Restructure options` (do S188 `Preuređivanje`) kroz Structure uvoz: pregled → Primijeni → lista → Poništi.
  *
  * Vlastita Area: `tip` (Stari S179 · Drugo), dva eventa sa `Stari S179`, jedan s `Drugo`,
  * i kolona liste po `tip` — pa se preimenovanje vidi u Activities listi, ne samo u bazi.
@@ -101,7 +101,7 @@ test.describe('S179 — Preuređivanje: Primijeni i Poništi kroz Structure uvoz
 
     await listShows(page, OLD, NEW);
 
-    // Structure export ⇒ prazan sheet `Preuređivanje` sa zaglavljem po slugu ⇒ jedan korak
+    // Structure export ⇒ prazan sheet `Restructure options` sa zaglavljem po slugu ⇒ jedan korak
     await areaSelect(page).selectOption(areaId);
     await page.getByRole('button', { name: 'Structure' }).click();
     await expect(page.getByRole('button', { name: /edit mode/i })).toBeVisible({ timeout: 10_000 });
@@ -112,16 +112,16 @@ test.describe('S179 — Preuređivanje: Primijeni i Poništi kroz Structure uvoz
 
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(file);
-    const ws = wb.getWorksheet('Preuređivanje');
-    expect(ws, 'export nema sheet Preuređivanje').toBeTruthy();
+    const ws = wb.getWorksheet('Restructure options');
+    expect(ws, 'export nema sheet Restructure options').toBeTruthy();
     const head: string[] = [];
     ws!.getRow(1).eachCell({ includeEmpty: true }, (c, n) => { head[n] = String(c.value ?? ''); });
     const col = (h: string) => { const i = head.indexOf(h); expect(i, `stupac ${h}`).toBeGreaterThan(0); return i; };
     const r = ws!.getRow(2);
-    r.getCell(col('Korak')).value = 1;
-    r.getCell(col('Kategorija')).value = 'Trans';
-    r.getCell(col('kad: tip')).value = OLD;
-    r.getCell(col('postavi: tip')).value = NEW;
+    r.getCell(col('Step')).value = 1;
+    r.getCell(col('Category')).value = 'Trans';
+    r.getCell(col('when: tip')).value = OLD;
+    r.getCell(col('set: tip')).value = NEW;
     r.commit();
     const edited = path.join(path.dirname(file), 'structure_preur.xlsx');
     await wb.xlsx.writeFile(edited);

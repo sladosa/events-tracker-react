@@ -4,6 +4,12 @@
 > izveden je A2 (`059`, `izvedi.py`, §32) i jezgra A1 (`060`, `retype.ts`, §33), dokazani na TEST-u.
 > Slijede: sheet i modal za A1, pa A4.
 >
+> **S188 (29.10.) — imena u ovom specu su STARA.** Sheet `Preuređivanje` se sada zove
+> **`Restructure options`**, zaglavlja `kad:` / `postavi:` / `Korak` / `Kategorija` / `Napomena` su
+> `when:` / `set:` / `Step` / `Category` / `Note`, a `(prazno)` je `(empty)` (Saša: par s
+> `Restructure attributes`, konfiguracijska ploha). Stara imena se ne čitaju; sheet starog imena s
+> upisanim retkom uvoz prijavi. Oba sheeta ispod `HELP` nose primjere u pravim stupcima.
+>
 > **Status:** prijedlog, 2026-10-20. Nastalo iz razgovora o `trening.xlsm`
 > ([`TRENING_MIGRACIJA.md`](TRENING_MIGRACIJA.md)). **Sašina odluka (20.10.):** operacije
 > preuređivanja dolaze **prije** uvoza treninga — *„nije moguće unaprijed sve definirati savršeno"*.

@@ -129,7 +129,7 @@ stavke, `FINANCIJE_PROCES.md` §4 posao Financija; nijedan od njih ne ponavlja r
 | `docs/Code_Guidelines_React_v6.md`        | Code conventions                                                                 |
 | `docs/TEMPLATE_SYSTEM_SPEC.md`            | Template user sistem — starter Areas, Add Area „From template". ⚠ **Zastario (S49)**; prepisuje se uz Financije template (Strategic Position, korak 4). Jedino živo pravilo: template korisnik se ne može prijaviti (GoTrue odbija `.local`) |
 | `docs/TRENING_MIGRACIJA.md`               | **Migracija `trening.xlsm`** (S176) — vrh: zaključci 20.10. i Sašini odgovori (imaju prednost); ispod izmjeren inventar `DIARY`, ere kolona. Raspodjela Fitness / Health_Sasa / Life_Sasa, načelo „autoritet po atributu" za Garmin ↔ DIARY. **Jedini** plan; `Diary.md` je u `_archive/` |
-| `docs/PREUREDJIVANJE_SPEC.md`             | **Preuređivanje strukture** (S176, prije treninga) — DIO 1: što danas radi (§1), rupe O/A/K (§2), invarijante (§3), Financije `Namjena` izmjereno i odlučeno (§8). **DIO 2 = tehnički spec F1** (§9–§17: korak „kad/postavi", sheet `Preuređivanje`, planer, `058` + povrat, testovi, puštanje). Poopćuje K2 iz `KLASIFIKACIJA_ODRZAVANJE_SPEC.md` |
+| `docs/PREUREDJIVANJE_SPEC.md`             | **Preuređivanje strukture** (S176, prije treninga) — DIO 1: što danas radi (§1), rupe O/A/K (§2), invarijante (§3), Financije `Namjena` izmjereno i odlučeno (§8). **DIO 2 = tehnički spec F1** (§9–§17: korak „kad/postavi", sheet `Preuređivanje` — od S188 `Restructure options` / `when:` / `set:`, planer, `058` + povrat, testovi, puštanje). Poopćuje K2 iz `KLASIFIKACIJA_ODRZAVANJE_SPEC.md` |
 | `docs/AUTOMATION_SPEC.md`                 | Post-Finish automatika — rata modal, comment template, `set_attribute`           |
 | `docs/FILTER_SPEC.md`                     | **Nadogradnja filtra** (prijedlog prije koda, S122) — jedan uvjet ⇒ lista uvjeta, RPC granica, shortcutovi po Arei, faze |
 | `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md`       | **Uvoz filea u istoimenu Areu drukčije strukture** (prijedlog prije koda, S160) — pokus S159 (29/43 tiho), tri opcije, faze D3-F1..F4, odluke D3-1..6 čekaju Sašu |
@@ -480,8 +480,12 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   vrijednost opcije MORA ući u planer (+ tvrdnju u `restructurePlan.test.mjs`), inače preuređivanje
   ostavi mrtvu referencu bez greške — baza (`058`) provjerava samo brojeve, ne oblik.
   ⚠ Config se prepisuje **samo za čisto preimenovanje** (svi A → B); raspad A na više vrijednosti
-  ⇒ upozorenje, nikad pogađanje. ⚠ Opcija s retcima se od sada preimenuje sheetom `Preuređivanje`,
+  ⇒ upozorenje, nikad pogađanje. ⚠ Opcija s retcima se od sada preimenuje sheetom `Restructure options` (do S188 `Preuređivanje`),
   ne panelom ni `fix_*.py` — Structure uvoz (faza „Preuređivanje" u modalu, S179; PROD nakon `058`).
+  ⚠ **S188: oba Restructure sheeta nose PRIMJERE u pravim stupcima ISPOD `HELP` retka** — uvoz ih ne čita samo
+  zato što čitač staje na prvom `HELP` u stupcu A (`rowsBeforeHelp`, jedina kopija; čuva `restructureSheet.test.mjs`,
+  sabotaža pada 4). Primjer iznad `HELP` bio bi pravi korak nad svim retcima. Staro ime sheeta se NE čita (Saša) —
+  s upisanim retkom uvoz javi upozorenje, inače bi bio tiho preskočen.
   ⚠ **Ponovno mjerenje = „baza je ono što je pregled predvidio"** (`plan.predicted` + config `after`),
   nikad „isti koraci opet ne mijenjaju ništa": niz koraka ne mora biti idempotentan (S179, izmjereno —
   99 postavi zadano, 100 ga obriše ⇒ 6 lažnih „preostalih" promjena nad ispravnom bazom).
@@ -2012,7 +2016,8 @@ src/lib/structureImport.ts         Structure import — non-destructive, slug lo
 src/lib/areaSettingsSheet.ts       F5: `areas.settings` ⇄ retci `Path | Type | Value` (`OWNED_ELSEWHERE`)
 src/lib/restructure/plan.ts        F1 planer preuređivanja (čist): koraci „kad … postavi …" + snimka ⇒
                                    brojevi po koraku, izbornik, config, paket za `rpc_restructure_apply`
-src/lib/restructure/sheet.ts       Sheet `Preuređivanje` (zaglavlje `kad: <slug>` / `postavi: <slug>`)
+src/lib/restructure/sheet.ts       Sheet `Restructure options` (zaglavlje `when: <slug>` / `set: <slug>`, `(empty)`;
+                                   do S188 `Preuređivanje`) + primjeri ispod HELP + `rowsBeforeHelp`
 sql/058_restructure.sql            apply/undo u JEDNOJ transakciji + zapis prije/poslije (TEST; PROD od 22.10., S180)
 src/lib/restructure/apply.ts       F1 I/O: snimka (samo potrebni atributi, paralelno) → planer → RPC →
                                    provjera „baza = predviđanje"; undo → „baza = prije". UI: `RestructurePanel.tsx`
@@ -2032,7 +2037,7 @@ data-prep_tools/Trening/pravila.py JEDINI parseri DIARY teksta (`O`, `M`, `AM`) 
 data-prep_tools/Trening/izvedi.py  A2 nad bazom: suhi prolaz po godini → `--apply` (service) → mjeri
                                    „baza = predviđanje"; `--ponisti <op>`. Jednokratno pravilo ne pušta dvaput
 data-prep_tools/Tools/preuredjivanje_grep.py
-                                   Stare vrijednosti iz sheeta `Preuređivanje` u Python rječnicima
+                                   Stare vrijednosti iz sheeta `Restructure options` u Python rječnicima
                                    (JAK = vrijednost + kontekst koraka u retku); bez `fix_*` i `Obsolete/`
 src/lib/importDefaults.ts          `default_map` na NOVIM retcima Excel uvoza (S181) — samo prazna ćelija,
                                    nikad `default_value`; pregled i upis kroz `fillImportDefaults`

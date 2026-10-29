@@ -41,7 +41,12 @@ skriveno i imenovano; nad starom formom pada (polje s defaultom nije na ekranu).
 
 ---
 
-## T-S187-2 ⬜ (TEST, lokalno `npm run dev`) Pravilo vidljivosti — panel, forma, Excel
+## T-S187-2 ✅ (TEST, lokalno `npm run dev`) Pravilo vidljivosti — panel, forma, Excel
+
+> ✅ **29.10. (S188):** Saša pod svojim računom, svih 8 koraka prošlo. ⚠ Na TEST-u su atributi u Arei
+> **`Fitness_Garmin`** (obje TEST `Fitness` su demo), slug je **`strength-type`** ⇒ View i ćelija L pišu
+> `strength-type = Upp`. Izmjereno u bazi: korak 2 `[Upp]`, korak 6 `[Upp, Low]`, korak 7 ostao `[Upp, Low]`
+> (upozorenje „no attribute "nepostoji" … rule left as it was", Attributes updated 0), korak 8 `{}`.
 
 Korak 2 dogovora: `validation_rules.visible_when` („polje vidljivo samo uz vrijednost X atributa Y").
 **Automatski (TEST):** unit `visibleWhen.test.mjs` (53) i E2E `S187_visible_when` (Add: vrsta mijenja polja,
