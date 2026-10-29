@@ -5,7 +5,9 @@ engleskom, s primjerima u pravim stupcima. Kod je na `test-branch`, nije deploya
 
 ---
 
-## T-S188-1 ⬜ (TEST, `npm run dev`) View panel: razine se sklapaju
+## T-S188-1 ✅ (TEST, `npm run dev`) View panel: razine se sklapaju
+
+> ✅ 29.10. Saša, svih 7 koraka kako je očekivano.
 
 **Automatski:** nema (čisti UI, jedan file `CategoryDetailPanel.tsx`); E2E koji otvaraju View
 (`S133_structure_event_count`) čitaju samo zaglavlje i ne ovise o sklapanju.
@@ -43,6 +45,9 @@ svaki primjer prolazi parser; sabotaža „čitač ne staje na HELP" pada 4) i E
    event_id | Note`; ispod dva prazna retka uputa `HELP — restructure MENU OPTIONS …` na engleskom.
 3. Ispod upute: `EXAMPLES — never imported …`, pa sivi retci u pravim stupcima, svaki s objašnjenjem
    `↑ 1. Rename …` ispod. Vrijednosti su iz tvoje Aree (npr. `strength-type` = Upp/Low…, `exercise-name`).
+   ⚠ Prvi export (29.10.) uzeo je primjere iz `Cardio` (prvi leaf, bez ovisnog polja) ⇒ 4 primjera, bez „Move".
+   Popravljeno isti dan: prednost ima leaf s ovisnim izbornikom ⇒ **5 primjera iz `Strength`** (Rename, Merge,
+   Move `Low`+`squat-bw` → `Upp`, Fill `exercise-name`, Single rows). Ponovi export nakon hard refresha.
 4. Sheet **`Restructure attributes`**: isto — uputa, pa primjeri `change type` (number, mm:ss, map, → text),
    stupac `Conversion` je sada širok.
 5. Uvezi file **nepromijenjen** ⇒ nema faze preuređivanja (primjeri se ne izvode), `Attributes updated` 0.

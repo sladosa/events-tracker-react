@@ -14,7 +14,7 @@ Dvije želje iz T-S187-2. Structure View: otvorena samo razina kliknutog čvora,
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S188-1 | TEST: View na `Strength` ⇒ otvorena samo L3, `Activity`/`Gym` sklopljene; klik na zaglavlje, Expand/Collapse all; Next/ponovno otvaranje kreće od zadanog | ⬜ |
+| T-S188-1 | TEST: View na `Strength` ⇒ otvorena samo L3, `Activity`/`Gym` sklopljene; klik na zaglavlje, Expand/Collapse all; Next/ponovno otvaranje kreće od zadanog | ✅ S188 — Saša, svih 7 koraka (Area: popis kategorija kao prije; L1 `Activity` otvorena, Area sklopljena) |
 | T-S188-2 | TEST: Structure export ⇒ `Restructure options` + `Restructure attributes` na engleskom, primjeri ispod HELP; nepromijenjen uvoz ⇒ ništa; sheet preimenovan natrag u `Preuređivanje` s retkom ⇒ upozorenje „was NOT read" | ⬜ |
 
 ---

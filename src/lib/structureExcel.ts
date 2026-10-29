@@ -1143,7 +1143,10 @@ function writeRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
       const hasMenu = !!r && (Array.isArray(r.suggest) || !!r.depends_on);
       if (hasMenu && !slugs.includes(a.slug)) slugs.push(a.slug);
     }
-    example ??= exampleSourceOf(node.name, text);
+    // Prednost leafu s ovisnim izbornikom: samo on pokazuje i „Move" i dva uvjeta u
+    // jednom koraku (Saša, S188 — Cardio bez ovisnog polja dao je 4 primjera od 5).
+    const src = exampleSourceOf(node.name, text);
+    if (src && (!example || (!example.child && src.child))) example = src;
   }
 
   const header = restructureHeader(slugs);

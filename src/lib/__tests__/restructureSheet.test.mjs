@@ -210,6 +210,24 @@ console.log('\n── Export: Restructure options ──');
     texts.some(h => h.includes('Text attributes') && h.includes('izvod_opis') && !h.includes('isplata')));
 }
 
+console.log('\n── Primjeri: prednost leafu s ovisnim izbornikom (S188, Fitness_Garmin: Cardio pa Strength) ──');
+{
+  const cardio = { ...attr('cardio_type', 'text', { suggest: ['Z2', 'tempo'] }), id: 'd-cardio', category_id: 'c0' };
+  const nodes2 = [
+    nodes[0],
+    { ...nodes[1], id: 'c0', name: 'Cardio', fullPath: 'Financije_all > Cardio', attributeDefinitions: [cardio], attrCount: 1,
+      category: { id: 'c0', name: 'Cardio', area_id: 'a1', settings: null } },
+    nodes[1],
+  ];
+  const wb2 = new ExcelJS.Workbook();
+  await addStructureSheetsTo(wb2, nodes2, { filterAreaId: 'a1' });
+  const ws = wb2.getWorksheet(RESTRUCTURE_SHEET);
+  const ex = examplesBelowHelp(ws);
+  const pe = parseRestructureRows(ws.getRow(1).values.slice(1), ex);
+  ok('prvi leaf bez ovisnog polja ⇒ primjeri iz drugog (5, s „Move")', ex.length === 5 && pe.errors.length === 0);
+  ok('kategorija primjera = Transakcija, ne Cardio', pe.steps.every(s => s.category === 'Transakcija'));
+}
+
 console.log('\n── Primjeri: Area bez depends_on djeteta / bez izbornika ──');
 {
   const h = restructureHeader(['tip']);
