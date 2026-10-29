@@ -29,8 +29,9 @@
 1. **Excel analize snage** `C:\0_Sasa\events-tracker-react\Claude-temp_R\s187\analiza_snage_20261028.xlsx`
    (nepromijenjeno iz S187): list **Vjezbe** žuti stupci A–D, napomene u M; list **Mjesta**; pogledaj
    **Rutine** i **Serije**. Spremi pod istim imenom i javi. Ne treba savršeno.
-2. **Odluka za korak 4 — kružni blokovi** (235 dana `4x(leg r.12 + plank)`): treba li aplikacija pamtiti da
-   su vježbe bile u istom krugu, ili je dovoljna bilješka? Dogovaramo prije koda.
+2. **Korak 4 — prijedlog je gotov** (29.10., skica <https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>, tvoj „sve je ok"):
+   zapis po seriji s `blok` i `serija`, tekst samo za prikaz i uvoz povijesti. Potvrđujemo ga u S189 uz tvoj Excel
+   i mjerenje na TEST-u. Ime vježbe (npr. `hand lat.r.`) upisuješ u Excel kataloga.
 3. **Studeni krug Financija (bez razvoja, nepromijenjeno):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11.,
    T-S175-3 ZABA_2026-10, T-S181-3. To je ispit „Financije su dovoljno gotove".
 4. Kad stigneš: T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti).
@@ -55,7 +56,10 @@ Kasnije (BACKLOG): poruke pregleda preuređivanja na engleski.
 Pravilo (primjeri ispod `HELP`, `rowsBeforeHelp` jedina kopija) je u CLAUDE.md § Model / atributi (F1).
 `PREUREDJIVANJE_SPEC.md` nosi napomenu da su imena u njemu stara.
 
-## Za S189 — korak 4 (nepromijenjeno iz S187)
+## Za S189 — korak 4
+- **Prijedlog je zapisan** u `TRENING_MIGRACIJA.md` („Prijedlog za korak 4 — 29.10.") — zapis = serija jedne vježbe,
+  `blok` + `serija`; notacija se NE sprema (razlog ondje). Prije potvrde **izmjeri na TEST-u** nekoliko tisuća
+  takvih zapisa (lista grupira po sesiji, View, Excel export/import) — tvrdnja „količina nije problem" nije mjerena.
 - **Prvo pročitaj Sašin ispravljeni Excel** (stupci A–D lista `Vjezbe`, `Mjesta` A) i prenesi odluke u
   `data-prep_tools/Trening/vjezbe_prijedlog.json` (izvor za katalog u koraku 5) — Excel je radni stol, JSON u git.
 - Format serija: izmjereno — piramide ponavljanja 183 dana, težina 76; kružni blokovi `N×(…)` 235 dana;

@@ -296,14 +296,35 @@ DIARY `M` je osobni tekst):
   mjesto kao novi unos). Izvorni `M` tekst se čuva cijeli (skriven atribut ili komentar), pa krivo
   razvrstavanje ne gubi ništa. Saša te retke **ne mora razvrstavati** — samo upiše A–D ako među njima vidi vježbu.
 
+**Prijedlog za korak 4 — 29.10. (S188, skica Add forme; Saša: „sve je ok")** — skica (privatni artifact,
+Sašin primjer: zagrijavanje + Blok 1 4 vježbe × 3 serije + Blok 2 2 × 2):
+<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>. **Još nije odluka** — potvrđuje se u S189 uz Sašin Excel i
+mjerenje na TEST-u (nekoliko tisuća takvih zapisa: lista, View, Excel).
+- **Jedan zapis = jedna serija jedne vježbe**, s atributima `blok` i `serija` (+ vježba, kg, ponavljanja,
+  trajanje). Isto pravilo za piramidu, krug i zagrijavanje. Aplikacija tako zna koje su vježbe bile u istom krugu
+  (Saša: „bilo bi dobro da zna da je serija"). Naziv: **serija** = jedan prolaz kroz blok.
+- **Forma:** serije jedna ispod druge (mali ekran); „+ serija" ponovi zadnju ispod s istim vježbama, kg i
+  ponavljanjima, prethodne se sklope u jedan red teksta; u seriji „+" (vježba ispod) i „×" — zamjena vježbe kad je
+  sprava zauzeta je normalan tok, pa svaka serija nosi svoj popis vježbi. Zagrijavanje je popis bez krugova,
+  vrijednost se upisuje kao u DIARY-ju (`7:00`, `2x20`, `2:30`) i forma pokaže kako je razumjela.
+- **Tekstualna notacija se NE sprema** (Saša je pitao: jedan red teksta po seriji + alat koji komprimira /
+  dekomprimira). Odbačeno: dekomprimirani zapisi bili bi druga kopija istog podatka koja se razilazi s tekstom
+  bez poruke (pravilo S185 „izvedeno računaj pri prikazu"), a tipfeler u tekstu tiho ispada iz analize. Tekst je
+  **prikaz** (sklopljena serija, lista) i **ulaz za uvoz povijesti** (korak 9, `pravila.py`).
+- **Mjere vježbe žive u katalogu** (korak 5), ne u zapisu: npr. „po ruci" (Saša: lateralno = uteg od 2 kg u
+  svakoj ruci ⇒ upisuje se 2, volumen 2 × 2 × 12). Ime vježbe u skici (`lateralno (uže)`) je krivo — Saša:
+  nešto kao *hand lateral raises*, slug tipa `hand lat.r.`; odlučuje u Excelu kataloga.
+- **Odmor:** jedno neobavezno polje po bloku (sekunde), skriveno dok se ne uključi; dodaje se kad zatreba (EAV —
+  ne dira postojeće zapise). Saša ga ne bilježi.
+
 **Koraci** (status se ažurira; A4 / K2 dolaze poslije koraka 9):
 
 | # | Korak | Status |
 | --- | --- | --- |
 | 1 | d1 — ukinuti skrivanje na defaultu (forma, help, CLAUDE.md) | ✅ S187 kod (`test-branch`), E2E `S187_default_visible`; ručno T-S187-1 ✅ |
-| 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ⬜ |
+| 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ✅ S188 |
 | 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel (46 vježbi predloženo); **Saša ispravlja Excel** ⬜ |
-| 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ⬜ |
+| 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ⬜ prijedlog 29.10. (S188, skica gore: zapis po seriji, `blok` + `serija`); potvrda u S189 uz Excel + mjerenje |
 | 5 | Katalog vježbi (slug + puno ime, slika) + izbornik iz druge kategorije + gumb „prikaži vježbu" | ⬜ |
 | 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) | ⬜ |
 | 7 | „Ponovi zadnji trening ove rutine" (Add + shortcut na rutinu) | ⬜ |
