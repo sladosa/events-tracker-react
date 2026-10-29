@@ -320,6 +320,21 @@ mjerenje na TEST-u (nekoliko tisuća takvih zapisa: lista, View, Excel).
 - **Odmor:** jedno neobavezno polje po bloku (sekunde), skriveno dok se ne uključi; dodaje se kad zatreba (EAV —
   ne dira postojeće zapise). Saša ga ne bilježi.
 
+**Oporavak i spremnost — 29.10. (S188, Saša, smjer prihvaćen)** — cilj: *„naučiti što više o sebi — kako ne
+pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od najjednostavnije:
+1. **Pravila odmora po mišićnoj skupini** (postavka Aree, ne kod): najmanji odmor (npr. upper 3 dana ⇒ „odmara se
+   još 1 dan") i najdulji razmak (npr. 14 dana ⇒ „17 dana pauze, kreni lakše" + prijedlog manjeg opsega). Čita
+   zapise po seriji (korak 4) + mišićnu skupinu iz kataloga (korak 5). ⚠ Prijedlog se **prikazuje**, čovjek ga
+   potvrdi — „Ponovi zadnji" nikad sam ne smanjuje težine (razred S127: tiha automatika nad unosom).
+2. **Izmjeriti osobni oporavak umjesto pogađati:** alat koji samo čita — za svaki trening snage (DIARY od 2021.)
+   koliko dana treba da se noćni puls i HRV (Garmin 2014.–02.2025., `Health_Sasa` / `GarminData`) vrate na osobnu
+   razinu, i mijenja li se to kroz godine. Daje brojeve za pravila iz 1.
+3. **Dnevna spremnost:** odstupanje od **osobne** razine (npr. 30 dana) — noćni puls, HRV, san ⇒ „danas lakše / Z2".
+   ⚠ Traži **Garmin dotok** (podaci staju 02.2025.).
+- **Odmah (korak 5):** katalog vježbi dobiva stupac **mišićna skupina**.
+- Aplikacija pokazuje Sašine podatke i njegova pravila, ne propisuje trening; granice opterećenja potvrđuje
+  liječnik / fizioterapeut.
+
 **Koraci** (status se ažurira; A4 / K2 dolaze poslije koraka 9):
 
 | # | Korak | Status |
@@ -328,12 +343,15 @@ mjerenje na TEST-u (nekoliko tisuća takvih zapisa: lista, View, Excel).
 | 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ✅ S188 |
 | 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel (46 vježbi predloženo); **Saša ispravlja Excel** ⬜ |
 | 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ⬜ prijedlog 29.10. (S188, skica gore: zapis po seriji, `blok` + `serija`); potvrda u S189 uz Excel + mjerenje |
-| 5 | Katalog vježbi (slug + puno ime, slika) + izbornik iz druge kategorije + gumb „prikaži vježbu" | ⬜ |
+| 5 | Katalog vježbi (slug + puno ime, slika, **mišićna skupina**, „po ruci") + izbornik iz druge kategorije + gumb „prikaži vježbu" | ⬜ |
 | 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) | ⬜ |
 | 7 | „Ponovi zadnji trening ove rutine" (Add + shortcut na rutinu) | ⬜ |
 | 8 | Review tab treninga (pločice: napredak po vježbi, Z2 minute tjedno, obujam po vrsti) | ⬜ |
 | 9 | Uvoz povijesti: PROD `Strength` (457) + DIARY — alat za raspisivanje notacije | ⬜ |
 | 10 | Na PROD (`Fitness`), uz Sašinu odluku o deployu | ⬜ |
+| 11 | Mjerenje osobnog oporavka (DIARY snaga × Garmin noćni puls / HRV; samo čita) — može i prije koraka 9 | ⬜ |
+| 12 | Pločica spremnosti po mišićnoj skupini: pravila najmanjeg odmora / najduljeg razmaka (brojevi iz 11) | ⬜ |
+| 13 | Dnevna spremnost iz Garmina (odstupanje od osobne razine) — uz Garmin dotok | ⬜ |
 
 ### Izmjereno 26.10. (S185) — za F2 i za sukobe Garmin ↔ DIARY
 
