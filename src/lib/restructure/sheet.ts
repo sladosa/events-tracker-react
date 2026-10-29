@@ -257,6 +257,34 @@ export interface RestructureExampleSource {
   child?: { slug: string; parentValue: string; value: string };
 }
 
+/** Primjer s VLASTITIM zaglavljem — kad stupaca za njega u ovoj Arei nema. */
+export interface StaticExample { intro: string; header: string[]; rows: ExampleRow[]; notes: string[] }
+
+/**
+ * „Move" iz izmišljene Aree, za Areu BEZ ovisnog izbornika (Saša, S188: bez primjera
+ * korisnik ne zna da se to može). Ne smije u gornje zaglavlje — izmišljen stupac bi uvoz
+ * čitao kao pravi — pa nosi svoje, ispod `HELP`, gdje se ništa ne čita.
+ */
+export function restructureStaticMoveExample(): StaticExample {
+  const header = restructureHeader(['type', 'subtype']);
+  const cells: Cell[] = header.map(() => null);
+  const put = (h: string, v: Cell) => { cells[header.indexOf(h)] = v; };
+  put(FIXED_HEAD.step, 1);
+  put(FIXED_HEAD.category, 'Transaction');
+  put(`${WHEN_PREFIX} type`, 'Home');
+  put(`${WHEN_PREFIX} subtype`, 'Insurance');
+  put(`${SET_PREFIX} type`, 'Bills');
+  return {
+    intro: '  EXAMPLE FROM ANOTHER AREA — this Area has no dependent menu (depends_on), so its columns cannot show a Move.',
+    header,
+    rows: [{ cells, explain: '  ↑ Move: rows with type = "Home" and subtype = "Insurance" go under type = "Bills" (subtype stays "Insurance").' }],
+    notes: [
+      '    Possible once a menu depends on another: Structure → Edit → attribute → Depends on.',
+      '    The next export then adds both columns ("when: …" for each) to the header above.',
+    ],
+  };
+}
+
 /** Zamjenski UUID za primjer s `event_id` — oblik je ono što se uči. */
 export const EXAMPLE_EVENT_ID = '00000000-0000-4000-8000-000000000001';
 

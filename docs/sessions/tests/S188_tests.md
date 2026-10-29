@@ -48,6 +48,9 @@ svaki primjer prolazi parser; sabotaža „čitač ne staje na HELP" pada 4) i E
    ⚠ Prvi export (29.10.) uzeo je primjere iz `Cardio` (prvi leaf, bez ovisnog polja) ⇒ 4 primjera, bez „Move".
    Popravljeno isti dan: prednost ima leaf s ovisnim izbornikom ⇒ **5 primjera iz `Strength`** (Rename, Merge,
    Move `Low`+`squat-bw` → `Upp`, Fill `exercise-name`, Single rows). Ponovi export nakon hard refresha.
+   Area **bez** ovisnog izbornika (npr. `Projekti`, ako nema `depends_on`) umjesto toga ispod svojih primjera
+   dobiva blok `EXAMPLE FROM ANOTHER AREA` s vlastitim (tamnije sivim) zaglavljem i primjerom Move; gornje
+   zaglavlje ostaje samo s njenim stupcima. `Fitness_Garmin` taj blok NE smije imati.
 4. Sheet **`Restructure attributes`**: isto — uputa, pa primjeri `change type` (number, mm:ss, map, → text),
    stupac `Conversion` je sada širok.
 5. Uvezi file **nepromijenjen** ⇒ nema faze preuređivanja (primjeri se ne izvode), `Attributes updated` 0.

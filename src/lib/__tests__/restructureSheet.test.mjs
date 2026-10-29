@@ -39,7 +39,7 @@ await build({
 });
 const M = await import(pathToFileURL(out).href);
 const { parseRestructureRows, readRestructureSheet, restructureHeader, addStructureSheetsTo, RESTRUCTURE_SHEET,
-  legacyRestructureWarning, restructureExamples, readAttrSheet, parseAttrRows, ATTR_SHEET } = M;
+  legacyRestructureWarning, restructureExamples, restructureStaticMoveExample, readAttrSheet, parseAttrRows, ATTR_SHEET } = M;
 
 let pass = 0, fail = 0;
 const ok = (name, cond) => { if (cond) { pass++; console.log(`  PASS  ${name}`); }
@@ -235,6 +235,34 @@ console.log('\n── Primjeri: Area bez depends_on djeteta / bez izbornika ─�
   const pe = parseRestructureRows(h, ex.map((e, i) => ({ rowNum: i + 2, cells: e.cells })));
   ok('bez djeteta: preimenuj, spoji, popuni, event_id (4), bez greške', ex.length === 4 && pe.errors.length === 0);
   ok('bez izbornika ⇒ nema primjera', restructureExamples(h, null).length === 0);
+}
+
+console.log('\n── Statični „Move" s vlastitim zaglavljem (Area bez ovisnog izbornika, S188) ──');
+{
+  const st = restructureStaticMoveExample();
+  const pe = parseRestructureRows(st.header, st.rows.map((e, i) => ({ rowNum: i + 2, cells: e.cells })));
+  ok('statični primjer prolazi parser sa SVOJIM zaglavljem', pe.errors.length === 0 && pe.steps.length === 1
+    && eq(pe.steps[0].when, { type: 'Home', subtype: 'Insurance' }) && eq(pe.steps[0].set, { type: 'Bills' }));
+
+  const cardio = { ...attr('cardio_type', 'text', { suggest: ['Z2', 'tempo'] }), id: 'd-cardio', category_id: 'c0' };
+  const only = [nodes[0], { ...nodes[1], id: 'c0', name: 'Cardio', fullPath: 'Financije_all > Cardio',
+    attributeDefinitions: [cardio], attrCount: 1, category: { id: 'c0', name: 'Cardio', area_id: 'a1', settings: null } }];
+  const wb3 = new ExcelJS.Workbook();
+  await addStructureSheetsTo(wb3, only, { filterAreaId: 'a1' });
+  const wb3x = new ExcelJS.Workbook();
+  await wb3x.xlsx.load(await wb3.xlsx.writeBuffer());
+  const ws = wb3x.getWorksheet(RESTRUCTURE_SHEET);
+  const texts = [];
+  ws.eachRow(r => { const v = r.getCell(1).value; if (typeof v === 'string') texts.push(v); });
+  ok('Area bez ovisnog izbornika ⇒ blok „EXAMPLE FROM ANOTHER AREA"', texts.some(t => t.includes('EXAMPLE FROM ANOTHER AREA')));
+  ok('gornje zaglavlje NE dobiva izmišljene stupce (type/subtype)',
+    eq(ws.getRow(1).values.slice(1), restructureHeader(['cardio_type'])));
+  const p = readRestructureSheet(wb3x);
+  ok('uvoz i dalje čita 0 redaka, 0 grešaka', p && p.rowsRead === 0 && p.errors.length === 0);
+  ok('Area S ovisnim izbornikom ⇒ bez statičnog bloka (ima pravi Move)', (() => {
+    const t = []; wbX.getWorksheet(RESTRUCTURE_SHEET).eachRow(r => { const v = r.getCell(1).value; if (typeof v === 'string') t.push(v); });
+    return !t.some(x => x.includes('EXAMPLE FROM ANOTHER AREA'));
+  })());
 }
 
 console.log('\n── Export: Restructure attributes ──');

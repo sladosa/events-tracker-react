@@ -43,7 +43,7 @@ import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { flattenAreaSettings, AREA_SETTINGS_TYPES } from './areaSettingsSheet';
 import {
   RESTRUCTURE_SHEET, restructureHeader, restructureHelpLines, restructureAttrListLines, restructureExamples,
-  EXAMPLES_INTRO, type ExampleRow, type RestructureExampleSource,
+  EXAMPLES_INTRO, restructureStaticMoveExample, type ExampleRow, type RestructureExampleSource, type StaticExample,
 } from './restructure/sheet';
 import { ATTR_SHEET, ATTR_HEAD, attrHeader, attrHelpLines, attrListLines, attrExamples } from './restructure/attrSheet';
 import { serializeColumnMap } from './listColumns';
@@ -1159,7 +1159,8 @@ function writeRestructureSheet(wb: ExcelJS.Workbook, nodes: StructureNode[]): vo
     cell.border = THIN_BORDER;
   });
 
-  writeHelpAndExamples(ws, restructureHelpLines(), restructureExamples(header, example), restructureAttrListLines(byCat));
+  writeHelpAndExamples(ws, restructureHelpLines(), restructureExamples(header, example), restructureAttrListLines(byCat),
+    example?.child ? undefined : restructureStaticMoveExample());
 }
 
 /**
@@ -1189,30 +1190,44 @@ function exampleSourceOf(category: string, text: AttributeDefinition[]): Restruc
  * Uputa (od retka 4 — dva prazna za upis), pa PRIMJERI u pravim stupcima s
  * objašnjenjem ispod svakog, pa popis atributa. Sve je ispod prvog `HELP` retka ⇒
  * uvoz ništa od toga ne čita (`rowsBeforeHelp`). Primjeri su sivi i u kurzivu, da se
- * ne brkaju s upisanim retkom.
+ * ne brkaju s upisanim retkom. `extra` = primjer s vlastitim zaglavljem (izmišljena Area).
  */
-function writeHelpAndExamples(ws: ExcelJS.Worksheet, help: string[], examples: ExampleRow[], tail: string[]): void {
+function writeHelpAndExamples(ws: ExcelJS.Worksheet, help: string[], examples: ExampleRow[], tail: string[],
+  extra?: StaticExample): void {
+  let hr = 4;
   const note = (r: number, text: string) => {
     const cell = ws.getCell(r, 1);
     cell.value = text;
     cell.font = { italic: true, size: 9, color: { argb: 'FF888888' } };
   };
-  let hr = 4;
+  const exampleRow = (cells: unknown[], bold = false) => {
+    cells.forEach((v, ci) => {
+      const cell = ws.getCell(hr, ci + 1);
+      cell.value = (v ?? null) as ExcelJS.CellValue;
+      cell.fill = makeFill(bold ? 'FFE5E7EB' : 'FFF3F4F6');
+      cell.font = { italic: true, bold, size: 10, color: { argb: 'FF555555' } };
+      cell.border = THIN_BORDER;
+    });
+    hr++;
+  };
   for (const line of help) note(hr++, line);
   if (examples.length) {
     hr++;
     note(hr++, EXAMPLES_INTRO);
     for (const ex of examples) {
-      ex.cells.forEach((v, ci) => {
-        const cell = ws.getCell(hr, ci + 1);
-        cell.value = v ?? null;
-        cell.fill = makeFill('FFF3F4F6');
-        cell.font = { italic: true, size: 10, color: { argb: 'FF555555' } };
-        cell.border = THIN_BORDER;
-      });
-      hr++;
+      exampleRow(ex.cells);
       note(hr++, ex.explain);
     }
+  }
+  if (extra) {
+    hr++;
+    note(hr++, extra.intro);
+    exampleRow(extra.header, true);
+    for (const ex of extra.rows) {
+      exampleRow(ex.cells);
+      note(hr++, ex.explain);
+    }
+    for (const line of extra.notes) note(hr++, line);
   }
   if (tail.length) {
     hr++;
