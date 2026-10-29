@@ -9935,7 +9935,7 @@ Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—
   poslije koraka 2/6/7/8: `[Upp]` → `[Upp, Low]` → ostao (upozorenje, `Attributes updated 0`) → `{}`.
 - **View panel** (`CategoryDetailPanel`, Sašina želja iz testa): razine lanca su sklopive, otvorena samo razina
   kliknutog čvora, Expand/Collapse all, stanje se ne pamti (`key = node.id`; razred S154/S160). Sklapa se
-  **razina, ne atribut** — u Viewu atribut ima 2–3 retka i baš njih se dolazi pročitati. T-S188-1 ⬜.
+  **razina, ne atribut** — u Viewu atribut ima 2–3 retka i baš njih se dolazi pročitati. T-S188-1 ✅.
 - **Restructure sheetovi na engleskom** (Saša: `Preuređivanje` uz `Restructure attributes` nije dosljedno;
   konfiguracijska ploha = engleski): `Restructure options`, `Step | Category | when: | set: | event_id | Note`,
   `(empty)`; poruke parsera sheeta engleske. **Stara imena se ne čitaju** (Saša: nema starih fileova), ali sheet
@@ -9944,11 +9944,26 @@ Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—
   PRAVIM stupcima, s objašnjenjem `↑ N.` ispod, vrijednosti iz Aree (prvi izbornik leafa + njegovo `depends_on`
   dijete). Sigurnost je položaj: čitač staje na prvom `HELP` — `rowsBeforeHelp` je sada jedina kopija (oba sheeta
   + upozorenje). Unit `restructureSheet` 44 (pravi export oba sheeta ⇒ 0 redaka; svaki primjer prolazi parser),
-  sabotaža „čitač ne staje" pada 4. E2E S179 + S186 prolaze. T-S188-2 ⬜.
+  sabotaža „čitač ne staje" pada 4. E2E S179 + S186 prolaze. T-S188-2 ✅.
+- **Iz T-S188-2 (Saša), isti dan:** (a) izvor primjera je leaf **s ovisnim izbornikom** kad ga Area ima — prvi
+  leaf `Cardio` (bez njega) dao je 4 primjera bez Move, sada 5 iz `Strength`; (b) Area **bez** ovisnog izbornika
+  (`Health_Sasa`) dobiva statični Move iz izmišljene Aree s **vlastitim zaglavljem** ispod `HELP` (`restructureStaticMoveExample`) — gornje zaglavlje ne smije dobiti izmišljen stupac, uvoz bi ga čitao. Saša: „ako ga nema,
+  korisnik neće imati ideju da bi se mogao definirati". Unit 51, obje sabotaže padaju. Commitovi `200288c`, `c65485e`.
 - Usput: stupac `Conversion` je od S186 ostajao uzak (`h === 'Pretvorba'` nikad nije pogodio). Python
   `preuredjivanje_grep.py` čita nova imena.
 - **Odluka:** poruke planera (`plan.ts`, ~30, hrvatski) prevode se **kasnije**, poslije koraka 4 treninga (BACKLOG).
 - Excel analize snage Saša još pregledava ⇒ korak 4 se seli u S189.
+
+### PENDING sekcija S188 (arhivirana S188) — View panel sklapa razine; Restructure sheetovi na engleskom s primjerima (2026-10-29)
+
+Dvije želje iz T-S187-2. Structure View: otvorena samo razina kliknutog čvora, preci sklopljeni, Expand/Collapse all, stanje se ne pamti. Sheet `Preuređivanje` je sada `Restructure options` (`when:` / `set:` / `Step` / `Category` / `Note` / `(empty)`); oba Restructure sheeta ispod `HELP` nose primjere u pravim stupcima s objašnjenjem; stari sheet s upisanim retkom ⇒ upozorenje.
+
+**Detalji testova:** [tests/S188_tests.md](../../Claude-temp_R/test-sessions/archive/S188_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S188-1 | TEST: View na `Strength` ⇒ otvorena samo L3, `Activity`/`Gym` sklopljene; klik na zaglavlje, Expand/Collapse all; Next/ponovno otvaranje kreće od zadanog | ✅ S188 — Saša, svih 7 koraka (Area: popis kategorija kao prije; L1 `Activity` otvorena, Area sklopljena) |
+| T-S188-2 | TEST: Structure export ⇒ `Restructure options` + `Restructure attributes` na engleskom, primjeri ispod HELP; nepromijenjen uvoz ⇒ ništa; sheet preimenovan natrag u `Preuređivanje` s retkom ⇒ upozorenje „was NOT read" | ✅ S188 (29.10., Saša, TEST) — svih 7 koraka: `Fitness_Garmin` 5 primjera iz `Strength` (s Move), `Health_Sasa` 4 + blok `EXAMPLE FROM ANOTHER AREA`; nepromijenjen uvoz 0; preimenovan prazan sheet šuti (namjerno), s `Step = 1` upozorenje; primjer 1 iznad HELP ⇒ pregled 1 korak / 1 redak |
 
 ### PENDING sekcija S187 (arhivirana S188) — Model treninga, koraci 1–2: default ne skriva polje; pravilo vidljivosti (2026-10-28)
 

@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 155 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 168 | [Critical rules](<#Critical rules>) | X |
-| 1444 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1922 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1938 | [Key files](<#Key files>) |  |
-| 2101 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2121 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2144 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2173 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2213 | [Open bugs](<#Open bugs>) | ~ |
-| 2323 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2368 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2530 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2538 | [Backlog](<#Backlog>) | ~ |
-| 2542 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2550 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1445 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1923 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1939 | [Key files](<#Key files>) |  |
+| 2102 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2122 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2145 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2174 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2214 | [Open bugs](<#Open bugs>) | ~ |
+| 2324 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2369 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2531 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2539 | [Backlog](<#Backlog>) | ~ |
+| 2543 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2551 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2714 redaka, 18 sekcija._
+_Ukupno 2715 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -484,7 +484,8 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ne panelom ni `fix_*.py` — Structure uvoz (faza „Preuređivanje" u modalu, S179; PROD nakon `058`).
   ⚠ **S188: oba Restructure sheeta nose PRIMJERE u pravim stupcima ISPOD `HELP` retka** — uvoz ih ne čita samo
   zato što čitač staje na prvom `HELP` u stupcu A (`rowsBeforeHelp`, jedina kopija; čuva `restructureSheet.test.mjs`,
-  sabotaža pada 4). Primjer iznad `HELP` bio bi pravi korak nad svim retcima. Staro ime sheeta se NE čita (Saša) —
+  sabotaža pada 4). Primjer iznad `HELP` bio bi pravi korak nad svim retcima. Area bez `depends_on` dobiva
+  statični „Move" s VLASTITIM zaglavljem ispod `HELP` — izmišljen stupac u retku 1 uvoz bi čitao kao pravi. Staro ime sheeta se NE čita (Saša) —
   s upisanim retkom uvoz javi upozorenje, inače bi bio tiho preskočen.
   ⚠ **Ponovno mjerenje = „baza je ono što je pregled predvidio"** (`plan.predicted` + config `after`),
   nikad „isti koraci opet ne mijenjaju ništa": niz koraka ne mora biti idempotentan (S179, izmjereno —

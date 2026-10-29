@@ -2,20 +2,7 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S188 (2026-10-29, T-S187-2 ✅) · povijest sesija: `DONE_HISTORY.md`
-
----
-
-## S188 — View panel sklapa razine; Restructure sheetovi na engleskom s primjerima (2026-10-29)
-
-Dvije želje iz T-S187-2. Structure View: otvorena samo razina kliknutog čvora, preci sklopljeni, Expand/Collapse all, stanje se ne pamti. Sheet `Preuređivanje` je sada `Restructure options` (`when:` / `set:` / `Step` / `Category` / `Note` / `(empty)`); oba Restructure sheeta ispod `HELP` nose primjere u pravim stupcima s objašnjenjem; stari sheet s upisanim retkom ⇒ upozorenje.
-
-**Detalji testova:** [tests/S188_tests.md](tests/S188_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S188-1 | TEST: View na `Strength` ⇒ otvorena samo L3, `Activity`/`Gym` sklopljene; klik na zaglavlje, Expand/Collapse all; Next/ponovno otvaranje kreće od zadanog | ✅ S188 — Saša, svih 7 koraka (Area: popis kategorija kao prije; L1 `Activity` otvorena, Area sklopljena) |
-| T-S188-2 | TEST: Structure export ⇒ `Restructure options` + `Restructure attributes` na engleskom, primjeri ispod HELP; nepromijenjen uvoz ⇒ ništa; sheet preimenovan natrag u `Preuređivanje` s retkom ⇒ upozorenje „was NOT read" | ⬜ |
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S188 (2026-10-29, T-S187-2, T-S188-1/2 ✅) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 
