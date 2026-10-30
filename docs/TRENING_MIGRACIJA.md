@@ -340,12 +340,56 @@ pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od naj
   veliki gluteus iz čučnja). **Listovi otvoreno:** najviše ih troši trčanje i brdo, ne teretana. ⇒ šire: oporavak
   nogu troši i **Outdoor** (dugi, brdski trening), pa pravilo „noge odmaraju N dana" mora brojati i njega, inače
   ne vidi dugo trčanje dan prije; koliko je to važno pokaže mjerenje (korak 11).
-  Katalog: po vježbi jedna **gruba skupina za pravila** (npr. Upper · Core · Noge · Kukovi · možda Listovi) + po
-  želji **detalj** (quads, glutes…) samo za čitanje. Grube skupine su opcije izbornika ⇒ kasnije se preimenuju /
-  dijele sheetom `Restructure options`, bez diranja zapisa. Saša upisuje prijedlog skupine u stupac M lista
-  `Vjezbe`; popis skupina predlaže Claude u S189 iz toga.
+  Katalog: po vježbi jedna **gruba skupina za pravila** + po želji **detalj** (quads, glutes…) samo za čitanje.
+  Grube skupine su opcije izbornika ⇒ kasnije se preimenuju / dijele sheetom `Restructure options`, bez diranja zapisa.
+  ⇒ **Odlučeno 30.10. — v. „Katalog vježbi — Sašine odluke 30.10." ispod.**
 - Aplikacija pokazuje Sašine podatke i njegova pravila, ne propisuje trening; granice opterećenja potvrđuje
   liječnik / fizioterapeut.
+
+**Katalog vježbi — Sašine odluke 30.10. (S188/S189, Excel `analiza_snage_20261030_prijedlog.xlsx`)** — prenesene u
+[`vjezbe_prijedlog.json`](../data-prep_tools/Trening/vjezbe_prijedlog.json): 451 ključ ⇒ **59 vježbi (slugova)**, 270 ključeva
+`nije vježba` (pripovijedanje: „nemam", „doma"…). Po ključu: `slug`, `ime`, `skupina`, `sporedna`, `vrsta`, `napomena`.
+- **Skupine (6):** `Upper-push` · `Upper-pull` · `Core` · `Legs-main` (quads, glutes, hamstrings) · `Legs-hips`
+  (adductor/abductor) · `Legs-calves`. Saša: Upper odmah dijeli na push/pull (spojiti kasnije je čisto preimenovanje,
+  razdvojiti traži odluku po vježbi). Ramena (lateral raises, rotatori, čunjevi, halo) ⇒ `Upper-push`.
+- **Skupina pripada vježbi, ne treningu** ⇒ trening „cijelog tijela" samo obnovi više skupina; nema vrijednosti
+  `whole body` (pravilo ne bi znalo koju skupinu zaključati). Vježba koja jako opterećuje dvije: **glavna** u
+  `skupina`, druga u **`sporedna`** (erg + Upper-pull; step, traka + Legs-calves; swing, deadlift + Core). Koliko
+  sporedna vrijedi u pravilu (cijelo / pola / ništa) — mjerenje, korak 11.
+- **Vrste (5):** `Strength` · `Cardio` · `Mobility` (lagan uteg kroz opseg: indijski čunjevi, halo, rotatori,
+  otvaranje ramena; i istezanje — Saša: „meni većina istezanja nije lagana") · `Stretching` · `Method` (IMOM, GtG,
+  HIIT, TbyT — **način bloka, ne vježba** ⇒ atribut bloka, ne katalog; IMOM: svaka minuta = jedna serija).
+- **Pravilo odmora po vrsti** (Saša 30.10.): `Strength` = najmanji odmor + najdulji razmak; `Mobility`/`Stretching` =
+  **samo najdulji razmak** („ramena nisi istezao 5 dana") — gibljivost se gradi učestalošću; za Sašu je to „ni pustiti".
+  Kardio/zagrijavanje zadano NE zaključava skupinu (bicikl, erg kao zagrijavanje).
+- **Treći uvjet: rast tjednog volumena po skupini** („ovaj tjedan X % iznad prosjeka zadnja 4 tjedna", omjer
+  akutnog i kroničnog opterećenja). Razlog izmjeren 30.10.: dnevni IMOM sklekovi 2022. (DIARY `M` od 03.2022, vrh
+  07.2022 = 17 dana; stupac `Y` 06–07.2022; stupac `N`: *„prije sloma: … IMOM 13x4 2022-08-04 … 14x5 Brugge
+  2022-11-19"*) ⇒ problem s ramenom došao je uz **rast** volumena, ne uz izostanak odmora — pravilo „3 dana odmora"
+  ga ne bi uhvatilo. **Prvi slučaj za korak 11.** Volumen snage = Σ kg × ponavljanja po skupini, **ne Garmin**
+  (puls kod snage ne raste, Garmin ga ne vidi). Serija zagrijavanja: neobavezna kvačica, računa se odvojeno.
+- **Neobavezno:** napor po bloku/treningu (RPE 1–10; Saši je istezanje teže od ergometra); povremeni **test
+  gibljivosti** (zasebna mala kategorija, ne sada).
+- **Simptom kao zapis** (`Health_Sasa > Symptom`: mjesto, jačina 0–10, datum). Saša: noćni bol u ramenima javlja se
+  **1–2 dana poslije** treninga ⇒ korak 11 mjeri razmak trening → bol. Povijest bez zapisa: (a) DIARY tekst
+  („rame", „boli", „loše spavao") — izravno, rijetko; (b) **Garmin san 10.2022.–02.2025.** (oko 860 noći s
+  `awakeCount`, `awakeSleepSeconds`, `restlessMomentCount`, `avgSleepStress`, ocjenama prekida; 2016.–09.2022. samo
+  početak/kraj) — neizravno; (a) potvrđuje (b). ⚠ San remeti puno toga ⇒ samo usporedba stotina noći „nakon
+  treninga / bez", nikad jedna noć. Noćni bol + smanjen opseg iznad glave ⇒ Saši preporučen fizioterapeut.
+- **S kim (polje na `Activity1`): `sam` / `Ašo` / `grupa`** + **periodi** (`Life_Sasa`, preklapajući, spec
+  `docs/parked/Analytics_tab.md`). Ašo Nadarević (osobni trener) — DIARY „Aso" 222 dana (10 „otkazao"):
+  06.2021.–12.2022. 6–10/mj (**2×/tj**), 01.2023.–10.2024. 2–6/mj (**1×/tj**), 2025. 3 dana. Prijelaz se vjerojatno
+  poklapa s prijevremenom mirovinom (datum: Saša). Pitanje „je li Ašo pomagao" = usporedba po periodima (napredak
+  težina po vježbi, koliko sam, nove vježbe — stupac „prvi", bol/san/HRV) uz **prikaz preklapajućih perioda**
+  (mirovina, posao) — putokaz, ne dokaz (jedna osoba).
+- **Pravila za uvoz povijesti (korak 9)** — iz napomena u JSON-u; jedna riječ ne smije dati dvije vježbe:
+  „girja/girje" = `swing` **samo kad u zapisu nema druge vježbe**; „cucnjevi s girjom" = **jedan** `goblet_squat`;
+  „ženski sklek" = jedan `z_sklek`; „loze/loza" uz kg ili „m." = `hamstring_m`, inače `istezanje_loze`; „ramena s
+  2kg" = `lat_raises`, bez kg dio fraze (otv./istezanje ramena); „bic-lrg r." = `biceps` + `leg_raises`;
+  „bic" = bicikl uz `'`, biceps uz kg; `squat.m`/`sqat.m` = `leg_press` (45°, Ašo); `rot.`/`rot.pod.`/`rot.ruku`/
+  `rot.na boku` = `rotatori` (rotacija podlaktice na koloturu, lakat 90°, 2 smjera × 2 ruke).
+- **Katalog je proširiv bez koda** (Saša: „ako netko bude htio back squat"): nova vježba = novi zapis kataloga
+  (korak 5).
 
 **Koraci** (status se ažurira; A4 / K2 dolaze poslije koraka 9):
 
@@ -353,7 +397,7 @@ pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od naj
 | --- | --- | --- |
 | 1 | d1 — ukinuti skrivanje na defaultu (forma, help, CLAUDE.md) | ✅ S187 kod (`test-branch`), E2E `S187_default_visible`; ručno T-S187-1 ✅ |
 | 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ✅ S188 |
-| 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel (46 vježbi predloženo); **Saša ispravlja Excel** ⬜ |
+| 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel; ✅ 30.10. Saša ispravio list `Vjezbe` ⇒ `vjezbe_prijedlog.json` (59 vježbi, skupine, vrste). List `Mjesta` još nije pregledan |
 | 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ⬜ prijedlog 29.10. (S188, skica gore: zapis po seriji, `blok` + `serija`); potvrda u S189 uz Excel + mjerenje |
 | 5 | Katalog vježbi (slug + puno ime, slika, **mišićna skupina**, „po ruci") + izbornik iz druge kategorije + gumb „prikaži vježbu" | ⬜ |
 | 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) | ⬜ |
