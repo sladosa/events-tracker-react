@@ -41,7 +41,7 @@ import {
 } from './plan';
 
 const must = <T>(r: { data: T[]; error: unknown }, what: string): T[] => {
-  if (r.error) throw new Error(`Preuređivanje: čitanje „${what}" nije uspjelo — ${toError(r.error).message}`);
+  if (r.error) throw new Error(`Restructure: reading ${what} failed — ${toError(r.error).message}`);
   return r.data;
 };
 
@@ -78,7 +78,7 @@ export async function loadAreaSnapshot(
   const { data: area, error: aErr } = await withRetryQuery(() =>
     supabase.from('areas').select('id, name, settings').eq('id', areaId).maybeSingle());
   if (aErr) throw toError(aErr);
-  if (!area) throw new Error('Preuređivanje: Area nije pronađena (ili nemaš pravo čitanja).');
+  if (!area) throw new Error('Restructure: Area not found (or no permission to read it).');
   const settings = (area.settings ?? null) as Record<string, unknown> | null;
 
   const cats = must(await fetchAllPaged<AreaSnapshot['categories'][number]>((f, t) =>
@@ -176,7 +176,7 @@ export async function previewRestructure(areaId: string, steps: RestructureStep[
     .select('id', { count: 'exact', head: true })
     .eq('share_type', 'area').eq('target_id', areaId);
   if (shErr || (count ?? 0) > 0) {
-    plan.warnings.push('Shortcuti: pregled vidi samo TVOJE shortcute u ovoj Arei — shortcuti dijeljenog korisnika ostaju sa starom vrijednošću.');
+    plan.warnings.push('Shortcuts: the preview sees only YOUR shortcuts in this Area — shortcuts of the user it is shared with keep the old value.');
   }
   const before: RestructurePreview['before'] = {};
   const valsById = new Map(snap.events.map(e => [e.id, e.values]));
@@ -229,9 +229,9 @@ async function verify(preview: RestructurePreview, want: 'after' | 'before'): Pr
   let rowDiffs = 0;
   for (const [id, exp] of Object.entries(expected)) {
     const got = fresh.get(id);
-    const bad = !got ? ['(event više ne postoji)']
+    const bad = !got ? ['(event no longer exists)']
       : slugs.filter(s => (got[s] ?? '') !== (exp[s] ?? ''))
-        .map(s => `${s}: „${got[s] ?? ''}" umjesto „${exp[s] ?? ''}"`);
+        .map(s => `${s}: "${got[s] ?? ''}" instead of "${exp[s] ?? ''}"`);
     if (bad.length) { rowDiffs++; if (examples.length < 5) examples.push(`${id.slice(0, 8)} ${bad.join(', ')}`); }
   }
   let configDiffs = 0;
@@ -259,7 +259,7 @@ export interface ApplyResult {
 
 export async function applyRestructure(preview: RestructurePreview, source: string): Promise<ApplyResult> {
   const rpc = preview.plan.rpc;
-  if (!rpc) throw new Error('Preuređivanje: pregled ima greške — ništa se ne primjenjuje.');
+  if (!rpc) throw new Error('Restructure: the preview has errors — nothing is applied.');
   const t0 = performance.now();
   // ⚠ Bez withRetry: apply nije idempotentan — drugi pokušaj nakon prekinute
   //   veze naišao bi na već primijenjeno i (ispravno) pao na brojevima.

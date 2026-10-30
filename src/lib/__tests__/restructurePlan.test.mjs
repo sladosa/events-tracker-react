@@ -331,12 +331,12 @@ console.log('\n── Blokirajuće greške ──');
     { n: 5, category: 'Nema', when: { tip: 'x' }, set: { tip: 'y' } },
     step(6, {}, { tip: 'X' }, ['nije-u-kategoriji']),
   ], s);
-  const has = (n, txt) => p.errors.some(e => e.startsWith(`korak ${n}:`) && e.includes(txt));
+  const has = (n, txt) => p.errors.some(e => e.startsWith(`step ${n}:`) && e.includes(txt));
   ok('nepoznat atribut', has(1, 'nepostoji'));
   ok('netekstualni atribut', has(2, 'number'));
-  ok('bez uvjeta', has(3, 'nema nijednog uvjeta'));
-  ok('prateći razmak (S167)', has(4, 'razmak'));
-  ok('nepoznata kategorija', has(5, 'ne postoji'));
+  ok('bez uvjeta', has(3, 'no condition'));
+  ok('prateći razmak (S167)', has(4, 'leading/trailing space'));
+  ok('nepoznata kategorija', has(5, 'does not exist'));
   ok('event_id izvan kategorije', has(6, 'nije-u-kategoriji'));
   ok('rpc null', p.rpc === null);
 }

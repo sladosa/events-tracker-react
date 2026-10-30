@@ -139,7 +139,7 @@ test.describe('S179 — Preuređivanje: Primijeni i Poništi kroz Structure uvoz
     const step = page.getByTestId('restructure-step-1');
     await expect(step.locator('td').nth(2)).toHaveText('2');
     await expect(step.locator('td').nth(3)).toHaveText('2');
-    await expect(page.getByTestId('restructure-changes')).toContainText(`„${OLD}" → „${NEW}"`);
+    await expect(page.getByTestId('restructure-changes')).toContainText(`"${OLD}" → "${NEW}"`);
     await expect(page.getByTestId('restructure-errors')).toHaveCount(0);
     expect(await tipRules(page), 'pregled je nešto upisao').toEqual([OLD, 'Drugo']);
 

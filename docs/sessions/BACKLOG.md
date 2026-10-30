@@ -22,7 +22,7 @@
 `docs/_archive/BACKLOG_2026-09-26.md` (povijest). Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
 § S150). Nove i preformulirane stavke iz prolaza:
 
-- **Poruke planera preuređivanja na engleski (S188, Saša: „kasnije prevesti", poslije koraka 4 treninga)** —
+- ✅ **IZVEDENO S189** (`plan.ts`, `apply.ts`; T-S189-1; poruke baze `058`–`060` ostale hrvatske) — **Poruke planera preuređivanja na engleski (S188, Saša: „kasnije prevesti", poslije koraka 4 treninga)** —
   sheet `Restructure options` je od S188 engleski, a greške i upozorenja u pregledu (`src/lib/restructure/plan.ts`,
   ~30 `errors.push`/`warnings.push`, i `show()` s `(prazno)`) su hrvatski ⇒ pregled je mješavina jezika.
   Uz prijevod: tvrdnje u `restructurePlan.test.mjs` koje čitaju tekst poruke, i `apply.ts` (`Preuređivanje: …`).

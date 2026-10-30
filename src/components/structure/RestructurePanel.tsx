@@ -9,8 +9,8 @@
 //   koji je isti uvoz tek stvorio (`namjena`), a brojke moraju biti brojke baze.
 // ⚠ Greške gase Primijeni — `plan.rpc` je tada null, pa ni gumb ne bi imao što
 //   poslati; gašenje samo kaže zašto.
-// ⚠ Natpisi su engleski (konfiguracijska ploha), poruke planera hrvatske —
-//   citiraju hrvatske vrijednosti.
+// ⚠ Natpisi i poruke planera su engleski (konfiguracijska ploha, S189); vrijednosti
+//   koje poruke citiraju ostaju kakve jesu u bazi (hrvatske u Financijama).
 // ============================================================
 
 import { useEffect, useRef, useState } from 'react';
