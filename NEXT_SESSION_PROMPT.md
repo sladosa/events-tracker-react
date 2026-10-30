@@ -35,7 +35,7 @@
 
 ## Što treba od tebe — redom
 1. ✅ **Korak 4 odlučen** (30.10.): način/napor/odmor bloka na prvoj seriji bloka; zagrijavanje = blok 0.
-2. **T-S189-1** — jedan pregled preuređivanja na TEST-u (koraci u `docs/sessions/tests/S189_tests.md`).
+2. ✅ **T-S189-1** (30.10.) — pregled preuređivanja na engleskom.
 3. Po želji: pogledaj probnu Areu `S189 serije proba` na TEST-u (podijeljena ti je, read) — vidi se kako lista i
    View danas izgledaju s 20 serija po treningu. Briše se kad korak 6 krene.
 4. Kad stigneš: list **Mjesta** u Excelu analize snage.
@@ -55,7 +55,7 @@ treninzima, prikaz serija po bloku u View/Edit (skica `docs/mockups/trening_snag
 ## Izvedeno (S189)
 | Što | Gdje | Dokaz |
 | --- | --- | --- |
-| Prijevod poruka preuređivanja | `restructure/plan.ts`, `apply.ts`, `restructurePlan.test.mjs`, E2E S179 | check + S179/S186 ✅; T-S189-1 ⬜ |
+| Prijevod poruka preuređivanja | `restructure/plan.ts`, `apply.ts`, `restructurePlan.test.mjs`, E2E S179 | check + S179/S186 ✅; T-S189-1 ✅ |
 | Izvoz: jedinstven redoslijed + paginirani roditelji | `excelDataLoader.ts` (`loadEventsForExport` `.order('id')`; `mergeParentAttrsIntoEvents` `fetchAllPaged`) | T-S189-2 ✅ (proba: 10 dvostrukih / 3 sukoba → 0) |
 | View/Edit atributi paginirani | `activityViewCache.ts`, `EditActivityPage.tsx` (`fetchAllPagedIn`) | T-S189-3 ✅ (pomak vremena 220 serija: 1.102 → 1.000 prije, 1.102 poslije) |
 | Mjerenje koraka 4 | `data-prep_tools/Trening/proba_serije.py` (samo TEST; `--apply` / `--obrisi`); probni spec `Claude-temp_R/s189/_probe_S189_serije.spec.ts` (+ snimke) | `TRENING_MIGRACIJA.md` „Mjerenje za korak 4" |

@@ -10017,3 +10017,15 @@ Dogovor o modelu treninga zapisan u `TRENING_MIGRACIJA.md` („Dogovor 28.10.", 
 - **Usput nađeno:** `BUG-S189-PARENTSHIFT` (Edit pomak vremena ostavlja stari P2 roditelj; TEST `Fitness` 4) —
   Open bugs; zastarjeli izvoz ne vraća obrisan redak (`row_hash` skip) — BACKLOG; E2E global-setup briše sve
   ne-seed Aree vlasnika `owner@test.com` (pa je probnoj obrisao dijeljenje — vraćeno).
+
+### PENDING sekcija S189 (arhivirana S189) — Poruke preuređivanja na engleskom; mjerenje koraka 4 treninga (2026-10-30)
+
+Greške, upozorenja i „Also changes" u pregledu sheeta `Restructure options` prevedeni (`plan.ts`, `apply.ts`); samo tekst, logika ista. Poruke baze (`058`–`060`) uz prvu sljedeću migraciju (BACKLOG). Mjerenje formata „zapis po seriji" na TEST probi (7.936 serija) i dva popravka koja je ono našlo: izvoz s jedinstvenim redoslijedom (`id`), View/Edit atributi paginirani.
+
+**Detalji testova:** [tests/S189_tests.md](../../Claude-temp_R/test-sessions/archive/S189_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S189-1 | TEST `Financije_all`: Structure export ⇒ u `Restructure options` 3 koraka (Transfer → Prijenos · Nepostoji → X · Zabava → `Zabava `) ⇒ uvoz ⇒ pregled: `✗ step 3: value "Zabava " …`, `⚠ step 2: matches no rows.`, „Also changes (6)" od `Menu tip: "Transfer" → "Prijenos"`; nijedna hrvatska riječ osim vrijednosti; bez primjene | ✅ S189 (30.10., Saša, TEST) — 305/305, ✗ step 3 i ⚠ step 2 doslovno, „Also changes (6)" redak po redak; sve englesko osim vrijednosti iz Aree. Korak 2 upisan kao `Transfer → X` (ne `Nepostoji`) ⇒ isto upozorenje, jer korak 1 već preimenovao sve `Transfer` — usput potvrđeno da se koraci računaju redom |
+| T-S189-2 | TEST proba: izvoz 7.936 serija ⇒ uvoz istog filea = 7.936 nepromijenjenih, 0 sukoba, 0 dvostrukih redaka | ✅ S189 — izmjereno (prije popravka 7.926 + 10 dvostrukih, 3 sukoba); probni spec `Claude-temp_R/s189/` |
+| T-S189-3 | TEST proba: Edit treninga od 220 serija, pomak vremena +1 min, Save ⇒ sve vrijednosti ostaju (1.102) | ✅ S189 — izmjereno (prije popravka 1.102 → 1.000, 20 serija prazno, poruka o uspjehu) |
