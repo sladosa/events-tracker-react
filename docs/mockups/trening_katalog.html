@@ -1,0 +1,324 @@
+<title>Katalog vježbi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Skica, ne aplikacija. Raspored: traka s karticama (Katalog · Vježba · Unos · Oporavak) iznad jednog stupca
+   širine ~760px; boje skupina dosljedne na svim karticama (lik tijela, čipovi, pločica oporavka). */
+:root {
+  --bg: #f3f5f8; --surface: #ffffff; --fg: #17202e; --muted: #5d6a7c; --line: #dfe4eb; --soft: #eef2f7;
+  --accent: #2459d6; --accent-soft: #e2eafc; --body: #d3d9e2; --warn: #b45309; --warn-soft: #fdf0dc;
+  --ok: #15803d; --ok-soft: #dcf2e3; --bad: #b42318; --bad-soft: #fbe4e1;
+  --g-push: #e0612a; --g-pull: #5b5bd6; --g-core: #0e8f8f; --g-main: #3f8f3a; --g-hips: #a26fc4; --g-calves: #c79a12;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161e; --surface: #19202b; --fg: #e6ebf2; --muted: #9aa6b6; --line: #2b3442; --soft: #202937;
+  --accent: #7ea2ff; --accent-soft: #1f2c4d; --body: #3a4556; --warn: #f0b35a; --warn-soft: #3a2d15;
+  --ok: #6fd18d; --ok-soft: #173323; --bad: #ff8a7a; --bad-soft: #3d1d1a;
+  --g-push: #ff8a55; --g-pull: #9a9aff; --g-core: #3cc6c6; --g-main: #77c76f; --g-hips: #c99ae6; --g-calves: #e8c14c;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161e; --surface: #19202b; --fg: #e6ebf2; --muted: #9aa6b6; --line: #2b3442; --soft: #202937;
+  --accent: #7ea2ff; --accent-soft: #1f2c4d; --body: #3a4556; --warn: #f0b35a; --warn-soft: #3a2d15;
+  --ok: #6fd18d; --ok-soft: #173323; --bad: #ff8a7a; --bad-soft: #3d1d1a;
+  --g-push: #ff8a55; --g-pull: #9a9aff; --g-core: #3cc6c6; --g-main: #77c76f; --g-hips: #c99ae6; --g-calves: #e8c14c;
+  color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px }
+.wrap { max-width: 780px; margin: 0 auto; display: grid; gap: 18px }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; letter-spacing: .01em; margin: 0; text-wrap: balance }
+h1 { font-size: 34px; line-height: 1.05 }
+h2 { font-size: 22px }
+h3 { font-size: 17px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted) }
+.lede { color: var(--muted); max-width: 65ch; margin: 6px 0 0 }
+.note { font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 6px 10px; display: inline-block }
+.mono { font-family: var(--f-mono); font-size: 12.5px }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line) }
+.tabs button { font: 600 15px var(--f-body); color: var(--muted); background: none; border: 0; padding: 9px 12px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent) }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.panel { display: grid; gap: 14px }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+.toolbar input { flex: 1 1 200px; min-width: 0; font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg) }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--muted); white-space: nowrap }
+.chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block }
+button.chip { border: 1px solid transparent; cursor: pointer; font-family: var(--f-body) }
+button.chip[aria-pressed="true"] { border-color: var(--fg); color: var(--fg) }
+.grp { display: grid; gap: 2px }
+.grp-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 2px 6px; border-bottom: 2px solid var(--gc) }
+.grp-head h2 { color: var(--gc) }
+.grp-head span { color: var(--muted); font-size: 13px }
+.row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 4px; border-bottom: 1px solid var(--line); cursor: pointer; background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left; font: inherit; color: inherit; width: 100% }
+.row:hover { background: var(--soft) }
+.row .t { min-width: 0 }
+.row .nm { font-weight: 600 }
+.row .sub { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px }
+.row .hist { text-align: right; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap }
+.detail { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 18px }
+@media (max-width: 560px) { .detail { grid-template-columns: 1fr } .row .hist { display: none } .row { grid-template-columns: 34px minmax(0,1fr) } }
+.photo { aspect-ratio: 4 / 3; max-width: 100%; border: 2px dashed var(--line); border-radius: 10px; display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 12.5px; padding: 10px; background: var(--soft) }
+.fig-big { display: grid; place-items: center; background: var(--soft); border-radius: 10px; padding: 8px }
+dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0 }
+dl.kv dt { color: var(--muted) }
+dl.kv dd { margin: 0; min-width: 0 }
+.add-head { background: var(--accent); color: #fff; border-radius: 10px 10px 0 0; padding: 10px 14px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap }
+.add-head b { font-family: var(--f-display); font-size: 20px; font-weight: 600 }
+.add-body { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 10px 10px; background: var(--surface); padding: 12px; display: grid; gap: 10px }
+.serija { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 8px }
+.serija-h { font-weight: 700; display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .05em }
+.ex-line { display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px; gap: 6px; align-items: center }
+.picker-btn { display: flex; gap: 8px; align-items: center; min-width: 0; font: inherit; color: var(--fg); background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; cursor: pointer; text-align: left }
+.picker-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
+.ex-line input { font: inherit; width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); text-align: right; font-variant-numeric: tabular-nums }
+.lbl { font-size: 12px; color: var(--muted); display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px; gap: 6px }
+.lbl span:not(:first-child) { text-align: right }
+.last { font-size: 12.5px; color: var(--muted); padding-left: 4px }
+.overlay { position: fixed; inset: 0; background: rgb(0 0 0 / .45); display: grid; place-items: center; padding: 16px; z-index: 20 }
+.sheet { background: var(--surface); color: var(--fg); border-radius: 12px; width: min(560px, 100%); max-height: 86vh; overflow: auto; padding: 14px; display: grid; gap: 10px }
+.sheet-h { display: flex; justify-content: space-between; align-items: center; gap: 8px }
+.x { font: 600 14px var(--f-body); background: var(--soft); color: var(--fg); border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer }
+.rec { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line) }
+.rec .nm { font-weight: 600 }
+.bar { position: relative; height: 8px; border-radius: 4px; background: var(--soft); margin-top: 5px; max-width: 320px }
+.bar b { position: absolute; inset: 0 auto 0 0; border-radius: 4px }
+.bar s { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); text-decoration: none }
+.st { font-size: 12.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap }
+.st.ok { background: var(--ok-soft); color: var(--ok) } .st.warn { background: var(--warn-soft); color: var(--warn) } .st.bad { background: var(--bad-soft); color: var(--bad) }
+.legend { display: flex; gap: 6px; flex-wrap: wrap }
+@media (prefers-reduced-motion: no-preference) { .row, .tabs button { transition: background .12s, color .12s } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Katalog vježbi</h1>
+    <p class="lede">Kako bi izgledao katalog iz tvog Excela (30.10.): 56 vježbi u 6 skupina, plus 4 načina bloka. Vježbe su stvarne, s brojem dana iz DIARY-ja i PROD-a.</p>
+    <p class="note">Skica, ništa od ovoga još nije u aplikaciji. „Zadnji put", serije i brojke oporavka su izmišljeni primjeri.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Pogledi">
+    <button role="tab" id="t-katalog" aria-selected="true" data-v="katalog">Katalog</button>
+    <button role="tab" id="t-vjezba" aria-selected="false" data-v="vjezba">Vježba</button>
+    <button role="tab" id="t-unos" aria-selected="false" data-v="unos">Unos treninga</button>
+    <button role="tab" id="t-oporavak" aria-selected="false" data-v="oporavak">Oporavak</button>
+  </nav>
+
+  <section class="panel" id="v-katalog">
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Traži: ime, slug ili kako si pisao (pull.m, bulg…)" aria-label="Traži vježbu">
+    </div>
+    <div class="toolbar legend" id="f-vrsta" aria-label="Vrsta"></div>
+    <p class="lede" style="margin:0">Ovo je Activities lista na kategoriji <b>Katalog › Vježba</b>: svaka vježba je jedan zapis. Klik otvara View. Nova vježba = Add Activity na istoj kategoriji.</p>
+    <div id="list"></div>
+  </section>
+
+  <section class="panel" id="v-vjezba" hidden></section>
+
+  <section class="panel" id="v-unos" hidden>
+    <div>
+      <div class="add-head"><b>Add · Fitness › Activity1 › Gym</b><span>rutina: Upper · CleverFIT</span></div>
+      <div class="add-body" id="add"></div>
+    </div>
+    <p class="lede" style="margin:0">Polje „vježba" ne nudi popis upisan u strukturu, nego <b>čita katalog</b>: grupirano po skupini, sa slikom. ⓘ otvara zapis vježbe dok stojiš uz spravu.</p>
+  </section>
+
+  <section class="panel" id="v-oporavak" hidden>
+    <div class="card">
+      <h2>Oporavak po skupini</h2>
+      <p class="lede">Pločica na Overview tabu. Računa se iz zapisa po seriji i skupine iz kataloga. Pravila (dani odmora, prag rasta) su tvoja postavka, a brojke za njih daje mjerenje u koraku 11.</p>
+      <div id="rec"></div>
+      <p class="lede" style="font-size:13px">Crtica na traci = prosjek zadnja 4 tjedna. Traka = ovaj tjedan (Σ kg × ponavljanja; kardio i Mobility se ne zbrajaju u snagu). Uz primjer: vrh IMOM-a u 2022. bi ovdje bio narančast tjednima prije ramena.</p>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="ov" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ov-h" id="ov-in"></div></div>
+
+<script>
+const DATA = [{"s":"erg","n":"Veslački ergometar","g":"Legs-main","g2":"Upper-pull","t":"Cardio","a":["erg","ergometar","veslanje"],"c":734,"f":"2021-05-14","l":"2026-10-21"},{"s":"istezanje","n":"Istezanje","g":"","g2":"","t":"Mobility","a":["istezanja","istezanje","istezem","strech"],"c":690,"f":"2021-04-30","l":"2026-10-19"},{"s":"orb","n":"Orbitrek","g":"Legs-main","g2":"","t":"Cardio","a":["orb","orbitrek"],"c":487,"f":"2021-04-27","l":"2026-10-21"},{"s":"pull_m","n":"Povlačenje na mašini (lat pulldown)","g":"Upper-pull","g2":"","t":"Strength","a":["povlacenje","privlacenje","puling","pull","pulling","pullingm","pullm"],"c":417,"f":"2021-06-09","l":"2026-10-21"},{"s":"leg_raises","n":"Podizanje nogu","g":"Core","g2":"","t":"Strength","a":["dizanje","diznogu","leg","legr","legraises","xlegr"],"c":396,"f":"2021-06-29","l":"2026-10-21"},{"s":"biceps","n":"Biceps","g":"Upper-pull","g2":"","t":"Strength","a":["bic","biceps","bicepsi"],"c":340,"f":"2021-06-06","l":"2026-10-21"},{"s":"lat_raises","n":"Lateralno podizanje ruku","g":"Upper-push","g2":"","t":"Strength","a":["handr","istezramena","kglat","lat","lateral","lateralhandraises","lateralno","lath","lathand","lathands","lathr","latr","latraises","latruke","latt","raise","ramena","xlat"],"c":319,"f":"2021-05-21","l":"2026-10-17"},{"s":"plank","n":"Plank","g":"Core","g2":"","t":"Strength","a":["plank","plankovi"],"c":293,"f":"2021-06-09","l":"2026-10-19"},{"s":"swing","n":"Swing s girjom","g":"Legs-main","g2":"Core","t":"Strength","a":["girja","girje","swing","swingovi"],"c":202,"f":"2021-07-23","l":"2026-10-08"},{"s":"triceps","n":"Triceps (mašina)","g":"Upper-push","g2":"","t":"Strength","a":["tric","triceps","tricepsi"],"c":179,"f":"2022-06-30","l":"2026-10-21"},{"s":"kosa_k","n":"Trbušnjaci na kosoj klupi","g":"Core","g2":"","t":"Strength","a":["kosa","kosak","kosoj"],"c":168,"f":"2021-08-20","l":"2026-10-21"},{"s":"z_sklek","n":"Sklek na koljenima (ženski sklek)","g":"Upper-push","g2":"","t":"Strength","a":["xzsklek","zenski","zskl","zsklek","zsklekovi","zslek"],"c":138,"f":"2021-11-04","l":"2026-10-12"},{"s":"sklek","n":"Sklek","g":"Upper-push","g2":"","t":"Strength","a":["kosi","sklek","skleka","sklekova","sklekovi","xsklek"],"c":133,"f":"2021-05-05","l":"2026-07-15"},{"s":"indian_clubs","n":"Indijski čunjevi (indian clubs)","g":"Upper-push","g2":"","t":"Mobility","a":["clubs","indian","indianc"],"c":129,"f":"2025-10-22","l":"2026-05-05"},{"s":"otvaranje_ramena","n":"Otvaranje ramena","g":"Upper-push","g2":"","t":"Mobility","a":["opseg","otv","otvaranje","otvramena"],"c":126,"f":"2021-06-09","l":"2026-08-09"},{"s":"rotatori","n":"Rotacija podlaktica na koloturu (rotatori ramena)","g":"Upper-push","g2":"","t":"Mobility","a":["podlaktice","rot","rotator","rotatori","rotna","rotpod","rotpodlaktice","rotpodlkatice","rotruku"],"c":124,"f":"2021-12-24","l":"2026-10-19"},{"s":"imom","n":"IMOM ? (način: svake minute)","g":"","g2":"","t":"Method","a":["imom"],"c":116,"f":"2022-03-29","l":"2026-04-16"},{"s":"trbusnjaci","n":"Trbušnjaci","g":"Core","g2":"","t":"Strength","a":["trbug","trbuh","trbusni","trbusnjaci"],"c":108,"f":"2021-07-31","l":"2026-09-05"},{"s":"squat","n":"Čučanj (vlastita težina)","g":"Legs-main","g2":"","t":"Strength","a":["cucanj","cucnjevi","squat"],"c":102,"f":"2021-06-25","l":"2026-07-30"},{"s":"halo","n":"Halo (girja oko glave)","g":"Upper-push","g2":"","t":"Mobility","a":["hallo","halo","vrtim","xhallo"],"c":101,"f":"2022-01-01","l":"2026-07-04"},{"s":"bulg_squat","n":"Bugarski čučanj (split squat)","g":"Legs-main","g2":"","t":"Strength","a":["bsquat","bulg","bulgarian","bulgarians","bulgs","bulgsplitsquat","bulgsquat","bulgssquat","split","squatbulg"],"c":95,"f":"2021-08-03","l":"2026-10-19"},{"s":"hiit","n":"HIIT (način)","g":"","g2":"","t":"Method","a":["hiit","hiit14"],"c":94,"f":"2021-07-01","l":"2026-04-05"},{"s":"add_abd","n":"Adduktori / abduktori (mašina)","g":"Legs-hips","g2":"","t":"Strength","a":["abductor","abductori","abductoriaductori","abduktor","adductor","adductorabductor","adductori","aductor","aductori"],"c":80,"f":"2021-08-20","l":"2026-10-17"},{"s":"rotacija_trupa","n":"Rotacija trupa (torzija)","g":"Core","g2":"","t":"Strength","a":["rotacija","rotacije","rottijela","torz","torzija"],"c":77,"f":"2021-12-30","l":"2026-08-23"},{"s":"leg_press","n":"Leg press (45°)","g":"Legs-main","g2":"","t":"Strength","a":["press","sqatm","squatm"],"c":73,"f":"2021-11-28","l":"2026-07-30"},{"s":"quad_m","n":"Mašina za kvadricepse","g":"Legs-main","g2":"","t":"Strength","a":["kvadri","quad","quadm"],"c":57,"f":"2021-06-21","l":"2025-11-11"},{"s":"step","n":"Stepper / stepenice","g":"Legs-main","g2":"Legs-calves","t":"Cardio","a":["stairs","step"],"c":56,"f":"2021-06-16","l":"2026-04-07"},{"s":"kosa_k_side","n":"Trbušnjaci na kosoj klupi (bočno)","g":"Core","g2":"","t":"Strength","a":["side","xside"],"c":46,"f":"2022-04-21","l":"2026-09-05"},{"s":"goblet_squat","n":"Goblet squat (čučanj s girjom)","g":"Legs-main","g2":"Core","t":"Strength","a":["girjom","goblet","gsquat"],"c":43,"f":"2021-07-27","l":"2026-07-30"},{"s":"iskoraci","n":"Iskoraci","g":"Legs-main","g2":"","t":"Strength","a":["iskoraci","iskorak"],"c":43,"f":"2021-08-26","l":"2026-10-12"},{"s":"glute_bridge","n":"Glute bridge","g":"Legs-main","g2":"","t":"Strength","a":["bridge","glute","glutes","kukova"],"c":34,"f":"2021-06-28","l":"2026-04-18"},{"s":"calf_raises","n":"Podizanje na prste (listovi)","g":"Legs-calves","g2":"","t":"Strength","a":["calf","calfr","listovi","listovim"],"c":32,"f":"2021-11-10","l":"2026-10-19"},{"s":"zgib_m","n":"Zgib uz pomoć (mašina)","g":"Upper-pull","g2":"","t":"Strength","a":["assist","pullup","zgib","zgibm"],"c":31,"f":"2022-10-07","l":"2026-09-25"},{"s":"gtg","n":"Grease the groove ? (način)","g":"","g2":"","t":"Method","a":["gtg"],"c":28,"f":"2022-01-28","l":"2022-06-10"},{"s":"tbyt","n":"TbyT ? (puno ime)","g":"","g2":"","t":"Method","a":["tbt","tbyt"],"c":28,"f":"2021-11-03","l":"2025-07-23"},{"s":"istezanje_loze","n":"Istezanje lože (stražnja loža)","g":"Legs-main","g2":"","t":"Stretching","a":["istezanjeloze","loza","loze"],"c":25,"f":"2021-10-04","l":"2026-10-02"},{"s":"push_m","n":"Potisak na mašini","g":"Upper-push","g2":"","t":"Strength","a":["push","pushm"],"c":24,"f":"2023-02-18","l":"2026-09-15"},{"s":"carry","n":"Nošenje utega (farmer / suitcase carry)","g":"Core","g2":"","t":"Strength","a":["carry","farmers"],"c":22,"f":"2026-02-08","l":"2026-10-05"},{"s":"dead_hang","n":"Dead hang (vis na šipci)","g":"Upper-pull","g2":"","t":"Strength","a":["hang","visim"],"c":21,"f":"2022-04-29","l":"2026-03-06"},{"s":"deadlift","n":"Mrtvo dizanje","g":"Legs-main","g2":"Core","t":"Strength","a":["deadlift"],"c":14,"f":"2021-12-24","l":"2023-05-17"},{"s":"bear_crawl","n":"Bear crawl","g":"Core","g2":"","t":"Strength","a":["bear"],"c":11,"f":"2023-09-23","l":"2024-09-13"},{"s":"bic","n":"Stacionarni bicikl","g":"Legs-main","g2":"","t":"Cardio","a":["byc","sittbike"],"c":10,"f":"2021-07-05","l":"2023-01-02"},{"s":"dead_bug","n":"Dead bug","g":"Core","g2":"","t":"Strength","a":["bug"],"c":9,"f":"2021-06-09","l":"2024-08-22"},{"s":"superman","n":"Superman","g":"Core","g2":"","t":"Strength","a":["supeman","superman"],"c":9,"f":"2026-05-16","l":"2026-09-22"},{"s":"db_press","n":"Potisak bučicama ležeći","g":"Upper-push","g2":"","t":"Strength","a":["dizem"],"c":8,"f":"2023-09-14","l":"2023-12-03"},{"s":"traka","n":"Pokretna traka","g":"Legs-main","g2":"Legs-calves","t":"Cardio","a":["traka"],"c":8,"f":"2021-11-18","l":"2025-01-24"},{"s":"hamstring_m","n":"Stražnja loža (mašina, leg curl)","g":"Legs-main","g2":"","t":"Strength","a":["lozam"],"c":7,"f":"2023-04-20","l":"2024-01-06"},{"s":"sled","n":"Guranje sanjki (sled)","g":"Legs-main","g2":"","t":"Strength","a":["sled"],"c":7,"f":"2022-11-26","l":"2026-10-19"},{"s":"mcgill","n":"McGill big 3 (curl-up, side plank, bird dog)","g":"Core","g2":"","t":"Strength","a":["mcgill"],"c":5,"f":"2025-05-02","l":"2026-05-13"},{"s":"glute_m","n":"Glute mašina","g":"Legs-main","g2":"","t":"Strength","a":["glutem"],"c":4,"f":"2022-01-30","l":"2022-12-04"},{"s":"heel_touch","n":"Dodirivanje peta (heel touches)","g":"Core","g2":"","t":"Strength","a":["dodirivanje"],"c":4,"f":"2023-05-27","l":"2023-12-11"},{"s":"mobilnost","n":"Mobilnost (općenito, s trenerom)","g":"","g2":"","t":"Mobility","a":["mobiliti"],"c":4,"f":"2021-04-27","l":"2023-09-07"},{"s":"pistol_squat","n":"Pistol squat (čučanj na jednoj nozi)","g":"Legs-main","g2":"","t":"Strength","a":["pistol"],"c":4,"f":"2021-09-28","l":"2021-11-18"},{"s":"balans","n":"Balans hod","g":"Core","g2":"","t":"Mobility","a":["balans"],"c":3,"f":"2022-10-10","l":"2026-07-30"},{"s":"bird_dog","n":"Bird dog","g":"Core","g2":"","t":"Strength","a":["birddog"],"c":3,"f":"2024-02-21","l":"2026-04-29"},{"s":"grip","n":"Stisak (grip mašina)","g":"Upper-pull","g2":"","t":"Strength","a":["grip"],"c":3,"f":"2023-05-27","l":"2023-06-16"},{"s":"hod_unatrag","n":"Hodanje unatrag (traka)","g":"Legs-main","g2":"","t":"Cardio","a":["natraske"],"c":3,"f":"2021-08-06","l":"2026-10-19"},{"s":"krugovi_ruke","n":"Krugovi ispruženim rukama","g":"Upper-push","g2":"","t":"Mobility","a":["krugovi"],"c":3,"f":"2023-05-04","l":"2026-05-17"},{"s":"rolanje","n":"Rolanje (foam roller)","g":"","g2":"","t":"Mobility","a":["rolanje"],"c":3,"f":"2023-07-05","l":"2023-09-01"},{"s":"row_m","n":"Veslanje na kabelu (sjedeći, horizontalno)","g":"Upper-pull","g2":"","t":"Strength","a":["hor"],"c":3,"f":"2022-10-31","l":"2025-05-24"}];
+const G = {
+  'Upper-push': {c: 'var(--g-push)', d: 'prsa, ramena, triceps'},
+  'Upper-pull': {c: 'var(--g-pull)', d: 'leđa, biceps, stisak'},
+  'Core': {c: 'var(--g-core)', d: 'trbuh, bok, donja leđa'},
+  'Legs-main': {c: 'var(--g-main)', d: 'quads, glutes, hamstrings'},
+  'Legs-hips': {c: 'var(--g-hips)', d: 'adductor, abductor'},
+  'Legs-calves': {c: 'var(--g-calves)', d: 'listovi'},
+};
+const ORDER = Object.keys(G);
+const VRSTE = ['Strength', 'Cardio', 'Mobility', 'Stretching'];
+const ex = DATA.filter(e => e.t !== 'Method');
+const methods = DATA.filter(e => e.t === 'Method');
+const bySlug = Object.fromEntries(DATA.map(e => [e.s, e]));
+const esc = s => String(s ?? '').replace(/[&<>"]/g, ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[ch]));
+const yr = d => d ? d.slice(0, 4) : '';
+
+// Lik tijela sprijeda: glavna skupina puna boja, sporedna blijeda.
+function fig(g, g2, size = 30) {
+  const col = k => k === g ? G[k].c : null;
+  const op = k => k === g ? 1 : (k === g2 ? .45 : 1);
+  const fill = k => (k === g || k === g2) ? G[k].c : 'var(--body)';
+  const P = (k, shape) => shape.replace('/>', ` fill="${fill(k)}" fill-opacity="${op(k)}"/>`);
+  return `<svg width="${size}" height="${size * 1.3}" viewBox="0 0 100 130" aria-hidden="true">
+    <circle cx="50" cy="11" r="9" fill="var(--body)"/>
+    ${P('Upper-pull', '<rect x="17" y="26" width="10" height="28" rx="5"/>')}
+    ${P('Upper-pull', '<rect x="73" y="26" width="10" height="28" rx="5"/>')}
+    <rect x="16" y="55" width="9" height="24" rx="4.5" fill="var(--body)"/>
+    <rect x="75" y="55" width="9" height="24" rx="4.5" fill="var(--body)"/>
+    ${P('Upper-pull', '<path d="M31 30 L37 30 L38 56 L33 56 Z"/>')}
+    ${P('Upper-pull', '<path d="M69 30 L63 30 L62 56 L67 56 Z"/>')}
+    ${P('Upper-push', '<rect x="31" y="22" width="38" height="14" rx="7"/>')}
+    ${P('Core', '<rect x="38" y="38" width="24" height="24" rx="5"/>')}
+    ${P('Legs-hips', '<rect x="33" y="63" width="34" height="8" rx="4"/>')}
+    ${P('Legs-main', '<rect x="34" y="72" width="14" height="28" rx="6"/>')}
+    ${P('Legs-main', '<rect x="52" y="72" width="14" height="28" rx="6"/>')}
+    ${P('Legs-calves', '<rect x="36" y="102" width="11" height="24" rx="5"/>')}
+    ${P('Legs-calves', '<rect x="53" y="102" width="11" height="24" rx="5"/>')}
+  </svg>`;
+}
+const chipG = g => g ? `<span class="chip"><i style="background:${G[g].c}"></i>${esc(g)}</span>` : '';
+
+// ── Katalog
+let q = '', vrsta = null;
+const fv = document.getElementById('f-vrsta');
+fv.innerHTML = ['Sve', ...VRSTE].map((v, i) => `<button class="chip" id="fv-${i}" aria-pressed="${i === 0}" data-v="${i ? v : ''}">${v}</button>`).join('');
+fv.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  vrsta = b.dataset.v || null;
+  fv.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  renderList();
+});
+document.getElementById('q').addEventListener('input', e => { q = e.target.value.trim().toLowerCase(); renderList(); });
+
+function match(e) {
+  if (vrsta && e.t !== vrsta) return false;
+  if (!q) return true;
+  const n = q.replace(/[.\s-]/g, '');
+  return e.n.toLowerCase().includes(q) || e.s.includes(n) || e.a.some(a => a.includes(n));
+}
+function rowHtml(e) {
+  return `<button class="row" data-s="${e.s}">${fig(e.g, e.g2)}
+    <span class="t"><span class="nm">${esc(e.n)}</span>
+      <span class="sub"><span class="mono">${esc(e.s)}</span><span class="chip">${esc(e.t)}</span>${e.g2 ? `+ ${chipG(e.g2)}` : ''}</span></span>
+    <span class="hist">~${e.c} dana<br>${yr(e.f)}–${yr(e.l)}</span></button>`;
+}
+function renderList() {
+  const groups = [...ORDER, ''].map(g => {
+    const items = ex.filter(e => (e.g || '') === g && match(e));
+    if (!items.length) return '';
+    const head = g ? `<h2>${g}</h2><span>${G[g].d} · ${items.length}</span>` : `<h2>Bez skupine</h2><span>opće (istezanje, mobilnost, rolanje) · ${items.length}</span>`;
+    return `<div class="grp" style="--gc:${g ? G[g].c : 'var(--muted)'}"><div class="grp-head">${head}</div>${items.map(rowHtml).join('')}</div>`;
+  }).join('');
+  const m = methods.filter(match);
+  const meth = m.length && !vrsta ? `<div class="grp" style="--gc:var(--muted)"><div class="grp-head"><h2>Načini bloka</h2><span>nisu vježbe: atribut bloka (IMOM = svaka minuta je serija)</span></div>
+    <div class="sub" style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 2px">${m.map(e => `<span class="chip">${esc(e.n.replace(/ \?.*$/, '').replace(/ \(.*$/, ''))}</span>`).join('')}</div></div>` : '';
+  document.getElementById('list').innerHTML = (groups || '<p class="lede">Ništa ne odgovara traženju.</p>') + meth;
+}
+document.getElementById('list').addEventListener('click', e => { const b = e.target.closest('.row'); if (b) { showEx(b.dataset.s); go('vjezba'); } });
+
+// ── Vježba (View)
+const LAST = {pull_m: '75 kg × 5 · 21.10.', lat_raises: '2 kg × 12 (po ruci) · 17.10.', bulg_squat: '8 kg × 12 · 19.10.', swing: '16 kg · 45 s · 08.10.', rotatori: '2,5 kg · 2 × 2 × 10 · 19.10.'};
+function exHtml(e, compact) {
+  const photo = `<div class="photo">Slika vježbe (privitak)<br>tvoja fotografija sprave ili crtež iz zbirke s otvorenom licencom</div>`;
+  return `<div class="detail">
+    <div style="display:grid;gap:10px"><div class="fig-big">${fig(e.g, e.g2, 92)}</div>${compact ? '' : photo}</div>
+    <div style="display:grid;gap:10px;min-width:0">
+      ${compact ? photo : ''}
+      <dl class="kv">
+        <dt>Slug</dt><dd class="mono">${esc(e.s)}</dd>
+        <dt>Skupina</dt><dd>${chipG(e.g) || '<span class="chip">bez skupine</span>'} ${e.g2 ? ' + ' + chipG(e.g2) + ' <span style="color:var(--muted);font-size:13px">sporedna</span>' : ''}</dd>
+        <dt>Vrsta</dt><dd>${esc(e.t)}</dd>
+        <dt>Po ruci</dt><dd>${e.s === 'lat_raises' ? 'da (upisuješ 2 kg, volumen 2 × 2 kg)' : 'ne'}</dd>
+        <dt>Zadnji put</dt><dd>${LAST[e.s] ? esc(LAST[e.s]) + ' <span style="color:var(--warn);font-size:12px">primjer</span>' : '<span style="color:var(--muted)">iz zapisa po seriji</span>'}</dd>
+        <dt>Povijest</dt><dd>~${e.c} dana · ${esc(e.f)} → ${esc(e.l)}</dd>
+        <dt>U DIARY-ju</dt><dd class="mono" style="color:var(--muted)">${e.a.map(esc).join(', ')}</dd>
+      </dl>
+    </div></div>`;
+}
+function showEx(s) {
+  const e = bySlug[s];
+  document.getElementById('v-vjezba').innerHTML = `<div class="card" style="display:grid;gap:12px">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><h2>${esc(e.n)}</h2><span class="lede" style="margin:0">View · Katalog › Vježba</span></div>
+    ${exHtml(e)}</div>
+    <p class="lede" style="margin:0">Promjena imena, slike ili opisa ne dira nijedan trening: trening pamti <span class="mono">slug</span>.</p>`;
+}
+showEx('pull_m');
+
+// ── Unos (Add)
+const SER = [
+  ['pull_m', 55, 15], ['triceps', 15, 14], ['lat_raises', 2, 12], ['biceps', 15, 14],
+];
+function addHtml() {
+  const line = ([s, kg, r], i) => { const e = bySlug[s]; return `
+    <div class="ex-line"><button class="picker-btn" data-i="${i}" aria-label="Promijeni vježbu">${fig(e.g, e.g2, 18)}<span>${esc(e.n)}</span></button>
+      <input id="kg-${i}" value="${kg}" aria-label="kg" inputmode="decimal"><input id="r-${i}" value="${r}" aria-label="ponavljanja" inputmode="numeric"></div>
+    <div class="last">ⓘ <a href="#" data-info="${s}">prikaži vježbu</a> · zadnji put: ${esc(LAST[s] || '—')}</div>`; };
+  document.getElementById('add').innerHTML = `
+    <div class="serija" style="opacity:.7"><div class="serija-h"><span>Blok 1 · serija 1</span><span>sklopljeno</span></div>
+      <div class="mono">pull.m 45×12 · tric. 15×14 · lat. 2×12 · bic. 15×14</div></div>
+    <div class="serija"><div class="serija-h"><span>Blok 1 · serija 2</span><span>kg · pon.</span></div>
+      <div class="lbl"><span>vježba</span><span>kg</span><span>pon.</span></div>
+      ${SER.map(line).join('')}</div>`;
+}
+let pickIdx = null;
+document.getElementById('add').addEventListener('click', e => {
+  const b = e.target.closest('.picker-btn'); const a = e.target.closest('[data-info]');
+  if (a) { e.preventDefault(); openInfo(a.dataset.info); }
+  else if (b) { pickIdx = +b.dataset.i; openPicker(); }
+});
+
+// ── Prozorčići (izbornik vježbe, kartica vježbe)
+const ov = document.getElementById('ov'), ovIn = document.getElementById('ov-in');
+function openOv(html) { ovIn.innerHTML = html; ov.hidden = false; ovIn.querySelector('button, input')?.focus(); }
+function closeOv() { ov.hidden = true; }
+ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('.x')) closeOv(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOv(); });
+function openInfo(s) {
+  const e = bySlug[s];
+  openOv(`<div class="sheet-h"><h2 id="ov-h">${esc(e.n)}</h2><button class="x">Zatvori</button></div>${exHtml(e, true)}`);
+}
+function openPicker() {
+  const list = f => ORDER.map(g => {
+    const items = ex.filter(e => e.g === g && (!f || e.n.toLowerCase().includes(f) || e.a.some(a => a.includes(f.replace(/[.\s-]/g, '')))));
+    return items.length ? `<div class="grp" style="--gc:${G[g].c}"><div class="grp-head"><h2 style="font-size:18px">${g}</h2></div>${items.map(e => `<button class="row" data-pick="${e.s}">${fig(e.g, e.g2)}<span class="t"><span class="nm">${esc(e.n)}</span><span class="sub mono">${esc(e.s)}</span></span></button>`).join('')}</div>` : '';
+  }).join('');
+  openOv(`<div class="sheet-h"><h2 id="ov-h">Vježba</h2><button class="x">Zatvori</button></div>
+    <div class="toolbar"><input id="pq" type="search" placeholder="Traži (npr. pull, bulg, lat)" aria-label="Traži vježbu"></div><div id="pl">${list('')}</div>`);
+  ovIn.querySelector('#pq').addEventListener('input', ev => { ovIn.querySelector('#pl').innerHTML = list(ev.target.value.trim().toLowerCase()); });
+}
+ovIn.addEventListener('click', e => {
+  const b = e.target.closest('[data-pick]'); if (!b || pickIdx === null) return;
+  SER[pickIdx][0] = b.dataset.pick; addHtml(); closeOv();
+});
+addHtml();
+
+// ── Oporavak (primjer brojki)
+const REC = [
+  {g: 'Upper-pull', last: 1, wk: 6200, avg: 5900, st: ['warn', 'odmara se još 2 dana']},
+  {g: 'Upper-push', last: 1, wk: 4100, avg: 2700, st: ['bad', 'volumen +52 % u tjedan dana']},
+  {g: 'Core', last: 3, wk: 0, avg: 0, st: ['ok', 'spremno'], txt: 'plank, kosa klupa (minute, ne kg)'},
+  {g: 'Legs-main', last: 9, wk: 0, avg: 2400, st: ['ok', 'spremno'], txt: 'trčanje 2 dana prije se broji'},
+  {g: 'Legs-hips', last: 9, wk: 0, avg: 1300, st: ['ok', 'spremno']},
+  {g: 'Legs-calves', last: 19, wk: 0, avg: 300, st: ['warn', '19 dana pauze: kreni lakše']},
+];
+document.getElementById('rec').innerHTML = REC.map(r => {
+  const max = 7000, w = Math.min(100, r.wk / max * 100), a = Math.min(100, r.avg / max * 100);
+  return `<div class="rec">${fig(r.g, null)}
+    <div style="min-width:0"><div class="nm">${r.g} <span style="color:var(--muted);font-weight:400;font-size:13px">· zadnji put prije ${r.last} ${r.last === 1 ? 'dan' : 'dana'}</span></div>
+      ${r.avg ? `<div class="bar"><b style="width:${w}%;background:${G[r.g].c}"></b><s style="left:${a}%"></s></div>
+      <div style="font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums">ovaj tjedan ${r.wk.toLocaleString('hr')} kg · prosjek ${r.avg.toLocaleString('hr')} kg</div>` : ''}
+      ${r.txt ? `<div style="font-size:12.5px;color:var(--muted)">${r.txt}</div>` : ''}</div>
+    <span class="st ${r.st[0]}">${r.st[1]}</span></div>`;
+}).join('') + `<div class="rec"><span></span><div><div class="nm">Mobility: ramena</div><div style="font-size:12.5px;color:var(--muted)">otvaranje ramena, čunjevi, rotatori · bez praga odmora, samo najdulji razmak</div></div><span class="st warn">5 dana bez</span></div>`;
+
+// ── Kartice
+function go(v) {
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.v === v));
+  ['katalog', 'vjezba', 'unos', 'oporavak'].forEach(x => document.getElementById('v-' + x).hidden = x !== v);
+}
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) go(b.dataset.v); });
+renderList();
+</script>

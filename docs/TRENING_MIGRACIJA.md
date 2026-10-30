@@ -397,7 +397,12 @@ pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od naj
   (`orb`) s trajanjem i intenzitetom (`jako`/`lagano`). Ukupno minuta, minuta jako i broj intervala računaju se pri
   prikazu; prikaz sklapa natrag u `4j · 3p · 4j …`. Parser za sve tri vrste zapisa ide u `pravila.py` (korak 9).
 - **Katalog je proširiv bez koda** (Saša: „ako netko bude htio back squat"): nova vježba = novi zapis kataloga
-  (korak 5).
+  (korak 5) — Add Activity na `Katalog > Vježba`; prvih 59 jednim Excel uvozom iz JSON-a.
+- **Skica kataloga** (30.10., prije koda): <https://claude.ai/artifact/Wku3VTDv5dm1Qn42NviHnw>, kopija
+  [`mockups/trening_katalog.html`](mockups/trening_katalog.html) — lista po skupinama, View vježbe, izbornik vježbe
+  u Add formi (grupiran, sa slikom, ⓘ „prikaži vježbu"), pločica oporavka (primjer brojki). **Slike:** privitak uz
+  zapis kataloga (Sašina fotografija sprave ili zbirka s otvorenom licencom — free-exercise-db / wger, licencu
+  provjeriti), nikad dohvat s tuđeg servera pri prikazu.
 
 **Koraci** (status se ažurira; A4 / K2 dolaze poslije koraka 9):
 
