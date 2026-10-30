@@ -441,18 +441,18 @@ Usput izmjereno (nije format, ide u BACKLOG / Open bugs): **Edit pomak vremena o
 stvara novi (`BUG-S189-PARENTSHIFT`; TEST `Fitness` ima 4 takva siročeta od 18.09. i 17.10.); **zastarjeli izvoz ne
 vraća obrisan redak** — `row_hash` netaknut + `event_id` kojeg nema ⇒ „Unchanged (skipped)" bez poruke.
 
-**Prijedlog odluke za korak 4 (S189, na temelju mjerenja — čeka Sašin „da" za dvije točke):**
+**ODLUKA za korak 4 (S189, 30.10., na temelju mjerenja; Saša: točka 3 „po prvom prijedlogu", točka 4 „slažem se"):**
 1. **Jedan zapis = jedna serija jedne vježbe** — potvrđeno: količina nije problem ni u bazi, ni u upitu, ni u Excelu.
    Ono što puca je **postojeći prikaz** koji pretpostavlja malo eventa po treningu (lista, View/Edit tabovi) — to je
    posao koraka 6/7, ne razlog za drukčiji format.
 2. **Atributi zapisa:** `vjezba` (slug iz Aree `Katalog vježbi`), `blok`, `serija`, **`red`** (položaj vježbe u
    seriji — nužan, v. redoslijed), `kg`, `ponavljanja`, `trajanje` (s), `intenzitet` (`jako`/`lagano`, intervali),
    `zagrijavanje` (kvačica). Prikaz slaže po `blok` → `serija` → `red`, nikad po `created_at`.
-3. ❓ **Atributi bloka** (`metoda`, `rpe`, `odmor`): blok nema vlastiti event (roditelj ima 1 event po treningu,
+3. ✅ **Atributi bloka** (`metoda`, `rpe`, `odmor`): blok nema vlastiti event (roditelj ima 1 event po treningu,
    leaf N) ⇒ prijedlog: **na prvom zapisu bloka** (serija 1, red 1) — jedna kopija; forma ih ondje čita i piše, u
    Excelu stoje u prvom retku bloka. Alternativa (na svakom zapisu bloka) daje kopije koje se Excelom mogu
    razići bez poruke.
-4. ❓ **Zagrijavanje:** popis prije blokova = **`blok` 0** (bez krugova: `serija` 1, `red` 1…N); kvačica
+4. ✅ **Zagrijavanje:** popis prije blokova = **`blok` 0** (bez krugova: `serija` 1, `red` 1…N); kvačica
    `zagrijavanje` ostaje za lakšu seriju unutar bloka. Volumen ih računa odvojeno.
 5. `s_kim` i `rutina` na `Activity1` (roditelj) — kako je dogovoreno.
 6. **Prije uvoza povijesti (korak 9) mora biti gotovo:** lista po treninzima i prikaz serija (korak 6/7).
@@ -464,7 +464,7 @@ vraća obrisan redak** — `row_hash` netaknut + `event_id` kojeg nema ⇒ „Un
 | 1 | d1 — ukinuti skrivanje na defaultu (forma, help, CLAUDE.md) | ✅ S187 kod (`test-branch`), E2E `S187_default_visible`; ručno T-S187-1 ✅ |
 | 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ✅ S188 |
 | 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel; ✅ 30.10. Saša ispravio list `Vjezbe` ⇒ `vjezbe_prijedlog.json` (59 vježbi, skupine, vrste). List `Mjesta` još nije pregledan |
-| 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | 🟡 S189 **izmjereno** (7.936 serija na TEST-u, v. „Mjerenje za korak 4"): zapis po seriji potvrđen, + `red`; usput popravljeni izvoz i View/Edit (rezanje na 1000). ⬜ Sašin „da" za atribute bloka (prvi zapis bloka) i zagrijavanje (`blok` 0) |
+| 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ✅ S189 odluka (mjereno na 7.936 serija, v. „Mjerenje za korak 4"): zapis po seriji + `red`; atributi bloka na prvom zapisu bloka; zagrijavanje = `blok` 0. Usput popravljeni izvoz i View/Edit (rezanje na 1000) |
 | 5 | Katalog vježbi kao **zasebna Area `Katalog vježbi`** (slug + puno ime, slika, skupina + sporedna, vrsta, „po ruci") + izbornik iz kategorije **druge Aree** + gumb „prikaži vježbu"; uvoz 59 vježbi iz `vjezbe_prijedlog.json` | ⬜ (odluka 30.10.) |
 | 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) + **lista stranici po treninzima** i **prikaz serija po bloku** u View/Edit (izmjereno S189: postojeći prikaz puca na N zapisa po treningu) | ⬜ |
 | 7 | „Ponovi zadnji trening ove rutine" (Add + shortcut na rutinu) | ⬜ |

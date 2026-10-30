@@ -4,7 +4,7 @@
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S190) — model treninga: odluka o koraku 4, pa korak 5 (katalog) i 6 (model + prikaz)
+# Sljedeća sesija (S190) — model treninga: korak 5 (katalog vježbi) pa 6 (model + prikaz)
 
 > **Ukratko (S189):** poruke pregleda preuređivanja su na engleskom, format „jedan zapis = jedna serija" izmjeren je
 > na 7.936 probnih serija i drži, a mjerenje je našlo i popravilo dva tiha kvara — izvoz je na granici stranice
@@ -34,10 +34,7 @@
   treninga s više od ~1000 vrijednosti obrisao je višak, uz poruku o uspjehu.
 
 ## Što treba od tebe — redom
-1. **Dvije odluke za korak 4** (prijedlog u `TRENING_MIGRACIJA.md` „Mjerenje za korak 4", točke 3–4):
-   - **Način, napor, odmor bloka** (IMOM, RPE…): blok nema vlastiti zapis ⇒ prijedlog: upisan **na prvoj seriji
-     bloka** (jedna kopija). Druga mogućnost: na svakoj seriji bloka (kopije koje se Excelom mogu razići).
-   - **Zagrijavanje** = blok 0 (popis bez krugova), a kvačica „zagrijavanje" ostaje za lakšu seriju unutar bloka?
+1. ✅ **Korak 4 odlučen** (30.10.): način/napor/odmor bloka na prvoj seriji bloka; zagrijavanje = blok 0.
 2. **T-S189-1** — jedan pregled preuređivanja na TEST-u (koraci u `docs/sessions/tests/S189_tests.md`).
 3. Po želji: pogledaj probnu Areu `S189 serije proba` na TEST-u (podijeljena ti je, read) — vidi se kako lista i
    View danas izgledaju s 20 serija po treningu. Briše se kad korak 6 krene.
@@ -47,7 +44,7 @@
 6. Kad stigneš: T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti).
 
 ## Sljedeće (prijedlog)
-Uz tvoj „da" za korak 4: **korak 5** — Area `Katalog vježbi` (uvoz 56 vježbi iz JSON-a) + izbornik vježbe koji čita
+**Korak 5** — Area `Katalog vježbi` (uvoz 56 vježbi iz JSON-a) + izbornik vježbe koji čita
 kategoriju iz druge Aree (zapis pamti slug). Pa **korak 6** — model `Activity1` / `Gym` na TEST-u, lista po
 treninzima, prikaz serija po bloku u View/Edit (skica `docs/mockups/trening_snaga_add.html`).
 
@@ -68,9 +65,9 @@ Pravilo „leaf s mnogo eventa po sesiji lomi prikaz" je u CLAUDE.md § Model / 
 Open bugs; „zastarjeli izvoz ne vraća obrisan redak" i poruke baze 058–060 u BACKLOG-u.
 
 ## Za korak 4 → 5 → 6
-- **Odluka koraka 4 čeka Sašu** samo za atribute bloka (prvi zapis bloka?) i zagrijavanje (`blok` 0?). Sve ostalo
-  je izmjereno: zapis po seriji, atributi `vjezba`, `blok`, `serija`, `red`, `kg`, `ponavljanja`, `trajanje`,
-  `intenzitet`, `zagrijavanje`. Po odluci: tablica „Koraci" red 4 → ✅.
+- **Korak 4 ✅ (S189):** zapis po seriji; atributi `vjezba`, `blok`, `serija`, `red`, `kg`, `ponavljanja`,
+  `trajanje`, `intenzitet`, `zagrijavanje`; `metoda`/`rpe`/`odmor` na prvom zapisu bloka (serija 1, red 1);
+  zagrijavanje = `blok` 0 (`serija` 1, `red` 1…N).
 - **Korak 6 mora riješiti:** lista stranici po sesijama (danas `useActivities` po eventima, 20; grupe se preko
   stranica ne spajaju; Prev/Next nav 500 eventa ≈ 25 treninga); prikaz serija po blok → serija → red (nikad
   `created_at`); Edit pomak vremena ostavlja stari roditelj (`BUG-S189-PARENTSHIFT`); Edit Save po eventu ~0,5 s
