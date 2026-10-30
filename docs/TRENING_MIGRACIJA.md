@@ -387,7 +387,15 @@ pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od naj
   „ženski sklek" = jedan `z_sklek`; „loze/loza" uz kg ili „m." = `hamstring_m`, inače `istezanje_loze`; „ramena s
   2kg" = `lat_raises`, bez kg dio fraze (otv./istezanje ramena); „bic-lrg r." = `biceps` + `leg_raises`;
   „bic" = bicikl uz `'`, biceps uz kg; `squat.m`/`sqat.m` = `leg_press` (45°, Ašo); `rot.`/`rot.pod.`/`rot.ruku`/
-  `rot.na boku` = `rotatori` (rotacija podlaktice na koloturu, lakat 90°, 2 smjera × 2 ruke).
+  `rot.na boku` = `rotatori` (rotacija podlaktice na koloturu, lakat 90°, 2 smjera × 2 ruke); „kosa k. side/bočno"
+  = `kosa_k_side` (Saša 30.10.: zasebna vježba, bočni core; lakša od side planka jer ne opterećuje rame), „ravno" =
+  `kosa_k`. **Prije prepoznavanja normalizacija:** brojke odvojene od slova (`2xside` → `2 x side`), bez točaka,
+  sinonimi (`side` = `bocno`) — pa `2xside`, `2x side`, `2x bocno` daju isto. „raises" sam ne određuje vježbu
+  (`lat.` / `leg` ispred); neprepoznato ide u komentar `Activity1`, nikad krivo pripisano vježbi.
+- **Intervali na kardiju** (DIARY: `4'j na 15 - 3'p, 4'j - 3,5p - 3,5j`, `6x45"+75"p`, `10x30"-p90"`,
+  `4x(30"max + 90"lagano)`): blok s `Method = intervali/HIIT`, **svaki interval = jedna serija** iste vježbe
+  (`orb`) s trajanjem i intenzitetom (`jako`/`lagano`). Ukupno minuta, minuta jako i broj intervala računaju se pri
+  prikazu; prikaz sklapa natrag u `4j · 3p · 4j …`. Parser za sve tri vrste zapisa ide u `pravila.py` (korak 9).
 - **Katalog je proširiv bez koda** (Saša: „ako netko bude htio back squat"): nova vježba = novi zapis kataloga
   (korak 5).
 
