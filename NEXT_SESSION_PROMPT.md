@@ -1,4 +1,4 @@
-> Pisano protiv `f9ec646` (S189 prijevod) + `75d2771` (S188 paralelni prozor: katalog, odluke 30.10.) + commita koji nosi ovaj file (S189 zatvaranje: mjerenje koraka 4, popravci izvoza i View/Edit).
+> Pisano protiv `0bb63a8` (S189: skica View-a) i commita koji nosi ovaj file (S189 završno zatvaranje). Ranije u S189: `f9ec646` prijevod, `831c35a` mjerenje + popravci, `58b2142` odluka koraka 4, `29a0900` T-S189-1; `75d2771` paralelni prozor (katalog, odluke 30.10.).
 > **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 … S189, **nije deployano**.
 > **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187–S189 nemaju migraciju.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
@@ -7,7 +7,7 @@
 # Sljedeća sesija (S190) — model treninga: korak 5 (katalog vježbi) pa 6 (model + prikaz)
 
 > **Ukratko (S189):** poruke pregleda preuređivanja su na engleskom, format „jedan zapis = jedna serija" izmjeren je
-> na 7.936 probnih serija i drži, a mjerenje je našlo i popravilo dva tiha kvara — izvoz je na granici stranice
+> na 7.936 probnih serija i odlučen, a mjerenje je našlo i popravilo dva tiha kvara — izvoz je na granici stranice
 > udvostručio i izgubio retke, a Edit je pri pomaku vremena obrisao vrijednosti iznad 1000 po treningu.
 
 > **Živi plan je tablica „Koraci" u `docs/TRENING_MIGRACIJA.md`** (koraci 1–13). Ovaj file je samo stanje u letu.
@@ -32,12 +32,18 @@
 - **Dva tiha kvara nađena mjerenjem i popravljena** (vrijede za sve Aree, bit će na PROD-u uz sljedeći deploy):
   izvoz je na granici svakih 1000 redaka neke retke stavio dvaput, a neke izostavio; Edit koji pomakne vrijeme
   treninga s više od ~1000 vrijednosti obrisao je višak, uz poruku o uspjehu.
+- **Korak 4 odlučen** (tvoji odgovori 30.10.): zapis po seriji s `blok`, `serija`, `red`; način / RPE / odmor bloka
+  na prvoj seriji bloka; zagrijavanje = blok 0.
+- **Skica View-a** dodana uz Add formu, isti link: <https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy> — jedan
+  ekran po treningu, red po vježbi s piramidom (ili po seriji), IMOM od 55 minuta u jednom redu. **Još je nisi
+  pregledao** (30.10.: „nemam energije sada").
 
 ## Što treba od tebe — redom
 1. ✅ **Korak 4 odlučen** (30.10.): način/napor/odmor bloka na prvoj seriji bloka; zagrijavanje = blok 0.
 2. ✅ **T-S189-1** (30.10.) — pregled preuređivanja na engleskom.
-3. Po želji: pogledaj probnu Areu `S189 serije proba` na TEST-u (podijeljena ti je, read) — vidi se kako lista i
-   View danas izgledaju s 20 serija po treningu. Briše se kad korak 6 krene.
+3. **Pregledaj skicu View-a** (link gore, najbolje na mobitelu) i javi primjedbe — npr. treba li „po vježbi"
+   ostati zadani prikaz. Treba prije koda koraka 6, ne prije koraka 5. Probnu Areu `S189 serije proba` si već vidio
+   (220 gumba) — briše se kad korak 6 krene.
 4. Kad stigneš: list **Mjesta** u Excelu analize snage.
 5. **Studeni krug Financija (bez razvoja):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11., T-S175-3 ZABA_2026-10,
    T-S181-3. To je ispit „Financije su dovoljno gotove".
@@ -58,6 +64,8 @@ treninzima, prikaz serija po bloku u View/Edit (skica `docs/mockups/trening_snag
 | Prijevod poruka preuređivanja | `restructure/plan.ts`, `apply.ts`, `restructurePlan.test.mjs`, E2E S179 | check + S179/S186 ✅; T-S189-1 ✅ |
 | Izvoz: jedinstven redoslijed + paginirani roditelji | `excelDataLoader.ts` (`loadEventsForExport` `.order('id')`; `mergeParentAttrsIntoEvents` `fetchAllPaged`) | T-S189-2 ✅ (proba: 10 dvostrukih / 3 sukoba → 0) |
 | View/Edit atributi paginirani | `activityViewCache.ts`, `EditActivityPage.tsx` (`fetchAllPagedIn`) | T-S189-3 ✅ (pomak vremena 220 serija: 1.102 → 1.000 prije, 1.102 poslije) |
+| Odluka koraka 4 | `TRENING_MIGRACIJA.md` „Mjerenje za korak 4" (ODLUKA, točke 1–7), tablica „Koraci" red 4 ✅ | Saša 30.10. |
+| Skica View-a (prijedlog za korak 6) | `docs/mockups/trening_snaga_add.html` = isti artifact kao Add; objava = kopija bez prva 4 retka (doctype, meta) na isti URL | ⬜ Saša nije pregledao |
 | Mjerenje koraka 4 | `data-prep_tools/Trening/proba_serije.py` (samo TEST; `--apply` / `--obrisi`); probni spec `Claude-temp_R/s189/_probe_S189_serije.spec.ts` (+ snimke) | `TRENING_MIGRACIJA.md` „Mjerenje za korak 4" |
 | E2E e6-3 | spec bira Areu (S175: Structure export = jedna Area) | 3/3 ✅ |
 

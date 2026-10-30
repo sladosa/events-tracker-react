@@ -10017,6 +10017,13 @@ Dogovor o modelu treninga zapisan u `TRENING_MIGRACIJA.md` („Dogovor 28.10.", 
 - **Usput nađeno:** `BUG-S189-PARENTSHIFT` (Edit pomak vremena ostavlja stari P2 roditelj; TEST `Fitness` 4) —
   Open bugs; zastarjeli izvoz ne vraća obrisan redak (`row_hash` skip) — BACKLOG; E2E global-setup briše sve
   ne-seed Aree vlasnika `owner@test.com` (pa je probnoj obrisao dijeljenje — vraćeno).
+- **Odluka koraka 4 (Saša, isti dan):** atributi bloka (`metoda`, `rpe`, `odmor`) na prvom zapisu bloka;
+  zagrijavanje = `blok` 0. Tablica „Koraci" red 4 ✅. Commit `58b2142`.
+- **T-S189-1 ✅** (Saša, TEST): pregled sve englesko; korak 2 upisan kao `Transfer → X`, isto upozorenje jer je korak
+  1 već preimenovao sve `Transfer` — usput potvrđeno da se koraci računaju redom. S189 testovi arhivirani (`29a0900`).
+- **Skica View-a** (Saša je vidio probu: 220 gumba, „nije baš upotrebljivo"): dodana u isti artifact kao Add forma
+  (`docs/mockups/trening_snaga_add.html`) — red po vježbi s piramidom / po seriji, iste uzastopne serije sklopljene,
+  polja bloka u zaglavlju, IMOM 55 min kao primjer. Saša je još nije pregledao (`0bb63a8`).
 
 ### PENDING sekcija S189 (arhivirana S189) — Poruke preuređivanja na engleskom; mjerenje koraka 4 treninga (2026-10-30)
 
