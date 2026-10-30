@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S188).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S189).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -29,24 +29,24 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | ---: | --- | :---: |
 | 55 | [Strategic Position (2026-10-20)](<#Strategic Position (2026-10-20)>) |  |
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 155 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 168 | [Critical rules](<#Critical rules>) | X |
-| 1445 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1923 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1939 | [Key files](<#Key files>) |  |
-| 2102 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2122 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2145 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2174 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2214 | [Open bugs](<#Open bugs>) | ~ |
-| 2324 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2369 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2531 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2539 | [Backlog](<#Backlog>) | ~ |
-| 2543 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2551 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 156 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 169 | [Critical rules](<#Critical rules>) | X |
+| 1454 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1932 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1948 | [Key files](<#Key files>) |  |
+| 2111 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2131 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2154 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2183 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2223 | [Open bugs](<#Open bugs>) | ~ |
+| 2340 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2385 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2547 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2555 | [Backlog](<#Backlog>) | ~ |
+| 2559 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2567 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2715 redaka, 18 sekcija._
+_Ukupno 2731 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -469,6 +469,14 @@ Applies in: Add Activity, Edit Activity, Excel Import.
 - **`touched: true`** mora biti postavljen pri učitavanju atributa iz baze u Edit toku —
   inače ih `handleSave()` preskoči
 - **`parentEventLoader.ts`** je jedini shared servis za parent event logiku — nikad duplicirati
+- **⚠ LEAF S MNOGO EVENTA PO SESIJI (trening po seriji, S189) LOMI PRIKAZ KOJI JE PISAN ZA 1–3** (izmjereno na
+  probi od 7.936 serija, `TRENING_MIGRACIJA.md` „Mjerenje za korak 4"): (a) lista stranici po **eventima**
+  (`useActivities`, 20) ⇒ trening od 220 serija = 11 istih redaka, grupe se preko stranica ne spajaju; Prev/Next
+  (500 eventa) ≈ 25 treninga; (b) View/Edit = tab po eventu; (c) **svaki upit „sve vrijednosti sesije" mora biti
+  paginiran** — View i Edit su rezali na 1000, a Edit uz pomak vremena (svi eventi `isModified`) je odrezano
+  **obrisao** uz poruku o uspjehu (popravljeno S189, `fetchAllPagedIn`); (d) paginacija po `session_start` bez
+  `id` na kraju udvostruči/izgubi retke na granici (izvoz, popravljeno S189); (e) redoslijed unutar sesije NE
+  smije ovisiti o `created_at` — uvoz svim retcima sesije daje isti (izmjereno: View ih miješa).
 - **⚠ BRISANJE KATEGORIJE MORA POKUPITI I EVENTE S `chain_key` U PODSTABLU** (S162). P2 roditeljski
   event živi na roditelju **izvan** brisanog podstabla (`Medical`), a `chain_key` mu je id leafa.
   `StructureDeleteModal` je tražio samo `category_id ∈ podstablo` ⇒ leaf eventi obrisani, FK
@@ -2224,6 +2232,13 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 > - **/!\ Bug zatvoren usput ostaje otvoren dok ga netko ne IZMJERI.** `BUG-S114-REPORTDD`
 >   je zatvorio refaktor u nekoj ranijoj sesiji, a unos je stajao jos dugo — a „otvoren bug"
 >   se cita kao poznat kvar i trosi paznju svake iduce sesije.
+
+- **BUG-S189-PARENTSHIFT — Edit koji pomakne vrijeme sesije OSTAVI stari P2 roditeljski event i stvori novi.**
+  Izmjereno na TEST probi (S189): trening 18:41 → 18:42 ⇒ roditelj s `rutina`/`s_kim` ostao na 18:41 (siroče,
+  `chain_key` = leaf kojeg na tom vremenu više nema), kopija na 18:42. TEST `Fitness` već ima **4** takva (edit
+  18.09. i 17.10.); PROD nije izmjeren (sonda: roditelj s `chain_key` bez leafa istog korisnika i
+  `session_start`). Posljedica: View/lista čitaju novi, pa se ne vidi; siročad kvare brojanje roditelja i
+  `StructureDeleteModal` ih mora pokupiti. Nije popravljeno — ide uz korak 6 treninga (Edit nad modelom serija).
 
 - **BUG-S145-BOOLEDIT — ⚠ NIJE REPRODUCIRAN. Pojava viđena dvaput, pa nestala; ulaz je
   izmjeren i ISPRAVAN je.** Boolean atribut (`Rate?`) prikazao se u **Edit** formi kao

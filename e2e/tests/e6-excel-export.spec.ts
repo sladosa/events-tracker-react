@@ -43,6 +43,9 @@ test.describe('E6 — Excel Export', () => {
   });
 
   test('E6-3: Structure Export triggers .xlsx download', async ({ page }) => {
+    // S175: Structure export je JEDNA Area — bez odabrane Aree gumb je ugašen
+    //   („Select an Area in the filter…"). Spec je do S189 klikao bez Aree.
+    await selectFilterPath(page, SEED.AREA_FITNESS);
     await page.getByRole('button', { name: 'Structure' }).click();
     // Wait for Structure tab toolbar (Edit Mode button is unique to Structure tab)
     await expect(page.getByRole('button', { name: /edit mode/i })).toBeVisible({ timeout: 10_000 });

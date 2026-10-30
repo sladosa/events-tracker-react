@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabaseClient';
 import type { Area, Category, AttributeDefinition } from '@/types/database';
 import type { StructureNode } from '@/types/structure';
 import { applyEventFilters, attrFilterJoinClause } from '@/lib/eventQueryBuilder';
-import { fetchAllPagedIn } from '@/lib/supabasePaging';
+import { fetchAllPaged, fetchAllPagedIn } from '@/lib/supabasePaging';
 import { withRetryQuery } from '@/lib/retry';
 import type {
   ExportCategoriesDict,
@@ -258,10 +258,15 @@ export async function loadEventsForExport(
       attrFilter: filters.attrFilter,
     });
 
+    // ⚠ S189: `id` kao jedinstven zadnji ključ (S108 razred). Bez njega su se
+    //   eventi istog `session_start` (N serija jednog treninga) na granici
+    //   stranice od 1000 preklopili i preskočili — izmjereno na probi od 7.936
+    //   redaka: 10 redaka dvaput u fileu, 10 drugih izostalo, bez poruke.
     return q
       .order('event_date',    { ascending: !desc })
       .order('session_start', { ascending: !desc, nullsFirst: false })
-      .order('user_id',       { ascending: true });
+      .order('user_id',       { ascending: true })
+      .order('id',            { ascending: true });
   };
 
   const PAGE_SIZE = 1000;
@@ -507,12 +512,19 @@ async function mergeParentAttrsIntoEvents(
         // Fetch parent events WITHOUT nested attrs (avoids large JOIN)
         // Bez ovih redaka izvoz izadje bez P2 roditeljskih atributa -- opet
         // tiho i opet uvjerljivo.
-        const parentEventsRaw = must(await withRetryQuery(() => supabase
-          .from('events')
-          .select('id, user_id, category_id, session_start, chain_key')
-          .in('category_id', [...parentCatIds])
-          .gte('event_date', dateFrom)
-          .lte('event_date', dateTo)), 'roditeljske dogadjaje');
+        // ⚠ S189: paginirano — jedan roditelj po treningu, pa batch od 10.000
+        //   eventa Aree s jednim leaf eventom po sesiji nosi i 10.000 roditelja;
+        //   bez stranica bi ih stiglo 1000, a ostali retci izašli bez roditeljskih
+        //   atributa, bez greške.
+        const parentEventsRaw = must(await withRetryQuery(() => fetchAllPaged<Record<string, unknown>>(
+          (from, to) => supabase
+            .from('events')
+            .select('id, user_id, category_id, session_start, chain_key')
+            .in('category_id', [...parentCatIds])
+            .gte('event_date', dateFrom)
+            .lte('event_date', dateTo)
+            .order('id')
+            .range(from, to))), 'roditeljske dogadjaje');
 
         // Load parent event_attributes separately in chunks
         const parentIds = (parentEventsRaw ?? []).map((pe: Record<string, unknown>) => pe.id as string);

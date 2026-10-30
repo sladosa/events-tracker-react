@@ -1,102 +1,100 @@
-> Pisano protiv `98e6ebd` (S188: oporavak i spremnost, koraci 11–13; prije toga `c65485e` statični primjer Move) + commita koji nosi ovaj file (S188 treće zatvaranje, 30.10. — mišićne skupine, kopija skice u repou).
-> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 + S186 + S187 + S188, **nije deployano**.
-> **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187 i S188 nemaju migraciju.
+> Pisano protiv `f9ec646` (S189 prijevod) + `75d2771` (S188 paralelni prozor: katalog, odluke 30.10.) + commita koji nosi ovaj file (S189 zatvaranje: mjerenje koraka 4, popravci izvoza i View/Edit).
+> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 … S189, **nije deployano**.
+> **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187–S189 nemaju migraciju.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S189) — model treninga, korak 4: format zapisa serija
+# Sljedeća sesija (S190) — model treninga: odluka o koraku 4, pa korak 5 (katalog) i 6 (model + prikaz)
 
-> **Ukratko (S188):** pravilo vidljivosti je prošlo Sašin ručni test u panelu, formi i Excelu, View panel u
-> Structure tabu sada sklapa razine (otvorena samo kliknuta), a sheet `Preuređivanje` se zove
-> `Restructure options` i oba Restructure sheeta nose primjere u pravim stupcima.
+> **Ukratko (S189):** poruke pregleda preuređivanja su na engleskom, format „jedan zapis = jedna serija" izmjeren je
+> na 7.936 probnih serija i drži, a mjerenje je našlo i popravilo dva tiha kvara — izvoz je na granici stranice
+> udvostručio i izgubio retke, a Edit je pri pomaku vremena obrisao vrijednosti iznad 1000 po treningu.
 
-> **Živi plan je tablica „Koraci" u `docs/TRENING_MIGRACIJA.md`** (koraci 1–10). Ovaj file je samo stanje u letu.
+> **Živi plan je tablica „Koraci" u `docs/TRENING_MIGRACIJA.md`** (koraci 1–13). Ovaj file je samo stanje u letu.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (S188)
-- **T-S187-2 ✅** — „polje vidljivo samo uz vrijednost" radi u panelu, formi i Excelu (tvoj test, 8/8).
-- **View panel u Structure tabu:** razine se sklapaju; otvorena je samo razina koju si kliknuo.
-- **Restructure sheetovi:** `Preuređivanje` se sada zove **`Restructure options`** (engleski, kao
-  `Restructure attributes`); oba imaju ispod uputa sive primjere u pravim stupcima s objašnjenjem.
-  Stari sheet s upisanim retkom uvoz više ne preskače tiho, nego to kaže.
-- **T-S188-1 i T-S188-2 ✅** (tvoj test, isti dan). Usput: primjeri se uzimaju iz kategorije s ovisnim izbornikom
-  (kod tebe `Strength`, 5 primjera s „Move“), a Area bez njega (`Health_Sasa`) dobiva primjer „Move“ iz izmišljene Aree.
+## Gotovo (S189)
+- **Poruke preuređivanja na engleskom** (greške, upozorenja, „Also changes"). Tvoje odluke: sirove putanje u
+  `Settings:` ostaju; poruke iz baze se prevode uz prvu sljedeću migraciju koja ih dira (BACKLOG).
+- **Excel analize snage je gotov** (paralelni prozor, 30.10.) — osim lista **Mjesta**, koji nisi pregledao.
+  Iz njega: `vjezbe_prijedlog.json` = izvor kataloga (60 slugova: 56 vježbi + 4 načina), glavna + sporedna skupina,
+  vrste Strength / Cardio / Mobility / Stretching / Method. **Katalog je zasebna Area „Katalog vježbi"** (dijeli se,
+  Koka kasnije iz predloška). Method (IMOM, HIIT, GtG, TbyT) je način bloka, ne vježba. Sve u `TRENING_MIGRACIJA.md`.
+- **Korak 4 izmjeren na TEST-u** (probna Area `S189 serije proba`, 402 izmišljena treninga = 7.936 serija):
+  - **Količina nije problem** — lista se učita za ~1 s, izvoz cijele Aree ~50 s (1 MB), uvoz novih treninga ~0,23 s
+    po seriji (tvoja povijest, ~20.000 serija ≈ 75 min, u više fileova).
+  - **Puca današnji prikaz**, ne format: lista broji po 20 *serija*, pa je jedan trening od 220 serija 11 istih
+    redaka; View i Edit pokazuju jednu seriju po gumbu `#1 … #24`. To je posao koraka 6.
+  - Uvoz svim serijama treninga daje isto vrijeme upisa, pa ih View miješa ⇒ svaka serija nosi i **`red`** (položaj).
+- **Dva tiha kvara nađena mjerenjem i popravljena** (vrijede za sve Aree, bit će na PROD-u uz sljedeći deploy):
+  izvoz je na granici svakih 1000 redaka neke retke stavio dvaput, a neke izostavio; Edit koji pomakne vrijeme
+  treninga s više od ~1000 vrijednosti obrisao je višak, uz poruku o uspjehu.
 
 ## Što treba od tebe — redom
-1. **Excel analize snage** `C:\0_Sasa\events-tracker-react\Claude-temp_R\s187\analiza_snage_20261028.xlsx`
-   (nepromijenjeno iz S187): list **Vjezbe** žuti stupci A–D, napomene u M; list **Mjesta**; pogledaj
-   **Rutine** i **Serije**. Spremi pod istim imenom i javi. Ne treba savršeno.
-   **Novo (30.10.):** u stupac M uz vježbu upiši i **mišićnu skupinu** kako ti se čini prirodno (npr. Upper,
-   Core, Noge, Kukovi, Listovi) i ime vježbe kakvo želiš (npr. `hand lat.r.`).
-2. **Korak 4 — prijedlog je gotov** (29.10., tvoj „sve je ok"): zapis po seriji s `blok` i `serija`, tekst samo za
-   prikaz i uvoz povijesti. Potvrđujemo ga u S189 uz tvoj Excel i mjerenje na TEST-u.
-   Skica forme: <https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>, kopija u repou `docs/mockups/trening_snaga_add.html`.
-   Sve odluke i prijedlozi o treningu su na jednom mjestu: **`docs/TRENING_MIGRACIJA.md`**, odjeljci
-   „Prijedlog za korak 4", „Oporavak i spremnost" i tablica „Koraci".
-3. **Studeni krug Financija (bez razvoja, nepromijenjeno):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11.,
-   T-S175-3 ZABA_2026-10, T-S181-3. To je ispit „Financije su dovoljno gotove".
-4. Kad stigneš: T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti).
-
-## Dogovoreno u razgovoru 29.–30.10. (bez koda, zapisano u `TRENING_MIGRACIJA.md`)
-- **Ime treninga = rutina** (Upper · Core · Legs · Z2 · Tempo/HIIT), bira se shortcutom ili „Ponovi zadnji";
-  predložak je zadnji stvarni trening te rutine. Ime je oznaka za pamćenje, ne razvrstavanje.
-- **Oporavak i spremnost** (tvoj cilj: „kako ne pretjerati, ali ni pustiti"), tri razine = novi koraci 11–13:
-  pravila odmora po mišićnoj skupini (najmanje N dana / najdulje M dana ⇒ „kreni lakše"), izmjeriti tvoj stvarni
-  oporavak iz DIARY × Garmin noćni puls/HRV, dnevna spremnost (traži Garmin dotok).
-- **Mišićne skupine:** noge (quads, glutes, hamstrings) jedna, kukovi (adductor, abductor) druga; listovi otvoreno
-  jer ih najviše troši trčanje — zato i Outdoor trening mora brojati u opterećenje nogu.
+1. **Dvije odluke za korak 4** (prijedlog u `TRENING_MIGRACIJA.md` „Mjerenje za korak 4", točke 3–4):
+   - **Način, napor, odmor bloka** (IMOM, RPE…): blok nema vlastiti zapis ⇒ prijedlog: upisan **na prvoj seriji
+     bloka** (jedna kopija). Druga mogućnost: na svakoj seriji bloka (kopije koje se Excelom mogu razići).
+   - **Zagrijavanje** = blok 0 (popis bez krugova), a kvačica „zagrijavanje" ostaje za lakšu seriju unutar bloka?
+2. **T-S189-1** — jedan pregled preuređivanja na TEST-u (koraci u `docs/sessions/tests/S189_tests.md`).
+3. Po želji: pogledaj probnu Areu `S189 serije proba` na TEST-u (podijeljena ti je, read) — vidi se kako lista i
+   View danas izgledaju s 20 serija po treningu. Briše se kad korak 6 krene.
+4. Kad stigneš: list **Mjesta** u Excelu analize snage.
+5. **Studeni krug Financija (bez razvoja):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11., T-S175-3 ZABA_2026-10,
+   T-S181-3. To je ispit „Financije su dovoljno gotove".
+6. Kad stigneš: T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti).
 
 ## Sljedeće (prijedlog)
-Korak 4 — format zapisa serija: kako se jedna vježba s piramidom (`12/10/8 × 20/25/30 kg`) i kružni blok
-zapisuju u bazi, na temelju tvog ispravljenog Excela. Pa korak 5 (katalog vježbi + izbornik) i 6 (model na TEST-u).
-Kasnije (BACKLOG): poruke pregleda preuređivanja na engleski.
+Uz tvoj „da" za korak 4: **korak 5** — Area `Katalog vježbi` (uvoz 56 vježbi iz JSON-a) + izbornik vježbe koji čita
+kategoriju iz druge Aree (zapis pamti slug). Pa **korak 6** — model `Activity1` / `Gym` na TEST-u, lista po
+treninzima, prikaz serija po bloku u View/Edit (skica `docs/mockups/trening_snaga_add.html`).
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Izvedeno (S188)
+## Izvedeno (S189)
 | Što | Gdje | Dokaz |
 | --- | --- | --- |
-| T-S187-2 | ručni, TEST `Fitness_Garmin` (ne `Fitness`!), slug `strength-type` | baza po koracima `[Upp]` → `[Upp, Low]` → ostao → `{}` |
-| View sklapa razine | `CategoryDetailPanel.tsx` (`CategoryContent` stanje, `key = node.id`) | T-S188-1 ✅ (nema automatskog) |
-| `Restructure options` + primjeri | `restructure/sheet.ts` (`rowsBeforeHelp`, `restructureExamples`, `legacyRestructureWarning`), `attrSheet.ts` (`attrExamples`), `structureExcel.ts` (`writeHelpAndExamples`, `exampleSourceOf`), `structureImport.ts` §12 | unit `restructureSheet` 51 (sabotaža „ne staje na HELP" pada 4), E2E S179 + S186 ✅, T-S188-2 ✅ |
-| Primjeri iz leafa s `depends_on`; statični Move (`restructureStaticMoveExample`, vlastito zaglavlje ispod HELP) | `structureExcel.ts` (`writeRestructureSheet`, `writeHelpAndExamples(extra)`), `sheet.ts` | unit +7, obje sabotaže padaju; T-S188-2 ✅ (`Fitness_Garmin` 5, `Health_Sasa` 4 + blok) |
+| Prijevod poruka preuređivanja | `restructure/plan.ts`, `apply.ts`, `restructurePlan.test.mjs`, E2E S179 | check + S179/S186 ✅; T-S189-1 ⬜ |
+| Izvoz: jedinstven redoslijed + paginirani roditelji | `excelDataLoader.ts` (`loadEventsForExport` `.order('id')`; `mergeParentAttrsIntoEvents` `fetchAllPaged`) | T-S189-2 ✅ (proba: 10 dvostrukih / 3 sukoba → 0) |
+| View/Edit atributi paginirani | `activityViewCache.ts`, `EditActivityPage.tsx` (`fetchAllPagedIn`) | T-S189-3 ✅ (pomak vremena 220 serija: 1.102 → 1.000 prije, 1.102 poslije) |
+| Mjerenje koraka 4 | `data-prep_tools/Trening/proba_serije.py` (samo TEST; `--apply` / `--obrisi`); probni spec `Claude-temp_R/s189/_probe_S189_serije.spec.ts` (+ snimke) | `TRENING_MIGRACIJA.md` „Mjerenje za korak 4" |
+| E2E e6-3 | spec bira Areu (S175: Structure export = jedna Area) | 3/3 ✅ |
 
-Pravilo (primjeri ispod `HELP`, `rowsBeforeHelp` jedina kopija) je u CLAUDE.md § Model / atributi (F1).
-`PREUREDJIVANJE_SPEC.md` nosi napomenu da su imena u njemu stara.
+Pravilo „leaf s mnogo eventa po sesiji lomi prikaz" je u CLAUDE.md § Model / atributi; `BUG-S189-PARENTSHIFT` u
+Open bugs; „zastarjeli izvoz ne vraća obrisan redak" i poruke baze 058–060 u BACKLOG-u.
 
-## Za S189 — korak 4
-- **Prijedlog je zapisan** u `TRENING_MIGRACIJA.md` („Prijedlog za korak 4 — 29.10.") — zapis = serija jedne vježbe,
-  `blok` + `serija`; notacija se NE sprema (razlog ondje). Prije potvrde **izmjeri na TEST-u** nekoliko tisuća
-  takvih zapisa (lista grupira po sesiji, View, Excel export/import) — tvrdnja „količina nije problem" nije mjerena.
-- **Prvo pročitaj Sašin ispravljeni Excel** (stupci A–D lista `Vjezbe`, `Mjesta` A) i prenesi odluke u
-  `data-prep_tools/Trening/vjezbe_prijedlog.json` (izvor za katalog u koraku 5) — Excel je radni stol, JSON u git.
-- Format serija: izmjereno — piramide ponavljanja 183 dana, težina 76; kružni blokovi `N×(…)` 235 dana;
-  `mm:ss` 324. Prijedlog prije koda: jedan event po vježbi (leaf `Dio`?) s `serije`/`ponavljanja`/`kg` — ili
-  tekst po seriji — i kako izgleda blok. Odluku upisati u `TRENING_MIGRACIJA.md` (tablica „Koraci", red 4)
-  **prije** koda.
-- `analiza_snage.py --termini` ispisuje sirove termine; `pravila.py` je jedino mjesto za parsere DIARY teksta.
-- **Mišićne skupine** (prijedlog 30.10., `TRENING_MIGRACIJA.md` § Oporavak): iz Sašinog stupca M predloži popis
-  grubih skupina za pravila (+ neobavezan detalj); listovi otvoreni; pravilo odmora nogu mora brojati i `Outdoor`.
-- Skica Add forme: izvor je `docs/mockups/trening_snaga_add.html` (kopija artifacta; za izmjenu skice uredi tu
-  kopiju i ponovo objavi na isti URL — temp scratchpad stare sesije ne postoji).
+## Za korak 4 → 5 → 6
+- **Odluka koraka 4 čeka Sašu** samo za atribute bloka (prvi zapis bloka?) i zagrijavanje (`blok` 0?). Sve ostalo
+  je izmjereno: zapis po seriji, atributi `vjezba`, `blok`, `serija`, `red`, `kg`, `ponavljanja`, `trajanje`,
+  `intenzitet`, `zagrijavanje`. Po odluci: tablica „Koraci" red 4 → ✅.
+- **Korak 6 mora riješiti:** lista stranici po sesijama (danas `useActivities` po eventima, 20; grupe se preko
+  stranica ne spajaju; Prev/Next nav 500 eventa ≈ 25 treninga); prikaz serija po blok → serija → red (nikad
+  `created_at`); Edit pomak vremena ostavlja stari roditelj (`BUG-S189-PARENTSHIFT`); Edit Save po eventu ~0,5 s
+  (220 izmijenjenih = 114 s) — nova forma piše skupno.
+- **Korak 5:** „izbornik iz druge kategorije" čita kategoriju **druge Aree** (RLS čitanja); zapis kataloga je event
+  ⇒ jedinstvenost sluga brani uvoz/forma; uvoz kataloga iz `vjezbe_prijedlog.json` (Excel u app format, kol. G = autor).
+
+## Probna Area (TEST)
+- `S189 serije proba` = `efe3ec96-…`, kategorije `Activity1` `e56a7a00-…`, `Gym` `9420b1c2-…`, vlasnik
+  `owner@test.com`, read Saši. Sadrži 1 roditelja-siroče (18:41, iz mjerenja pomaka vremena).
+- ⚠ **E2E global-setup briše sve ne-seed Aree vlasnika `owner@test.com`** i njihova dijeljenja: pri sljedećem E2E
+  krugu proba će izgubiti dijeljenje (S189 se dogodilo, vraćeno) i možda dio eventa. Ako treba čista: `run.bat
+  Trening\proba_serije.py --obrisi` pa `--apply` (nove id-jeve upiši u probni spec).
+- Obrisati kad korak 6 krene (`--obrisi`).
 
 ## Kasnije
-- **Poruke planera na engleski** — BACKLOG (S188): `plan.ts` ~30 poruka + `show()` `(prazno)`, `apply.ts`,
-  tvrdnje u `restructurePlan.test.mjs`.
-- **A4 „merge into"** (spec §25, §27): `planMerge` uz `retype.ts`; SQL `061`; „Delete source" = nova vrsta
-  zapisa ⇒ grana u `_restructure_current` **i** `_restructure_write_config`. Help sheeta već kaže „not available yet".
+- **A4 „merge into"** (spec §25, §27): `planMerge` uz `retype.ts`; SQL `061` (uz njega prevesti poruke 058–060);
+  „Delete source" = nova vrsta zapisa ⇒ grana u `_restructure_current` **i** `_restructure_write_config`.
 
 ## Otvoreno / zapamti
-- Na TEST-u Sašin trening je **`Fitness_Garmin`**; TEST `Fitness` ×2 su demo
-  (`owner@test.com`, `+template`). Slugovi na TEST-u imaju crticu (`strength-type`, `weight-info`).
-- Deploy F2 + S187 + S188 na PROD: `059`/`060` (Saša u SQL editoru, `backup_db` prije, `dump_schema --diff`
-  poslije). S187 mijenja Fitness formu (7 polja s defaultom vidljiva); S188 mijenja ime sheeta — PROD export do
-  deploya nosi `Preuređivanje`, koji novi uvoz ne čita (javi upozorenje).
+- Na TEST-u Sašin trening je **`Fitness_Garmin`**; TEST `Fitness` ×2 su demo. Slugovi na TEST-u imaju crticu.
+- Deploy F2 + S187–S189 na PROD: `059`/`060` (Saša u SQL editoru, `backup_db` prije, `dump_schema --diff` poslije).
+  S187 mijenja Fitness formu (7 polja s defaultom vidljiva); S188 mijenja ime sheeta (PROD export do deploya nosi
+  `Preuređivanje`, koji novi uvoz ne čita — javi upozorenje); S189 popravci izvoza/View/Edit vrijede za sve Aree.
 - `visible_when` za tekst ne proširuje `depends_on`; `TextOptions`/`DateMap` dijele na golom `|`.
 - Nepromijenjeno: 056 granica 4 dimenzije (Financije na njoj); klasifikator odbija i read-only PROD alate ⇒
   PROD mjerenja pokreće Saša; model dana DIARY (280 dana s više Garmin treninga).

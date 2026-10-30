@@ -304,7 +304,7 @@ DIARY `M` je osobni tekst):
 Sašin primjer: zagrijavanje + Blok 1 4 vježbe × 3 serije + Blok 2 2 × 2):
 <https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>; kopija u repou [`mockups/trening_snaga_add.html`](mockups/trening_snaga_add.html)
 (otvara se dvoklikom). **Još nije odluka** — potvrđuje se u S189 uz Sašin Excel i
-mjerenje na TEST-u (nekoliko tisuća takvih zapisa: lista, View, Excel).
+mjerenje na TEST-u (nekoliko tisuća takvih zapisa: lista, View, Excel). ⇒ **Izmjereno S189 — v. „Mjerenje za korak 4" ispod.**
 - **Jedan zapis = jedna serija jedne vježbe**, s atributima `blok` i `serija` (+ vježba, kg, ponavljanja,
   trajanje). Isto pravilo za piramidu, krug i zagrijavanje. Aplikacija tako zna koje su vježbe bile u istom krugu
   (Saša: „bilo bi dobro da zna da je serija"). Naziv: **serija** = jedan prolaz kroz blok.
@@ -419,6 +419,44 @@ pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od naj
   zapis kataloga (Sašina fotografija sprave ili zbirka s otvorenom licencom — free-exercise-db / wger, licencu
   provjeriti), nikad dohvat s tuđeg servera pri prikazu.
 
+**Mjerenje za korak 4 — 30.10. (S189, TEST, probna Area `S189 serije proba`)** — alat
+[`proba_serije.py`](../data-prep_tools/Trening/proba_serije.py) (samo TEST): 402 treninga po obrascu DIARY-ja
+(snaga u blokovima, IMOM, intervali) = **7.936 zapisa serija** + 402 roditelja, 46.919 vrijednosti; serija po
+treningu medijan 19, 90 % ≤ 23, plus dva ekstrema (120 i 220 serija). Mjereno Playwrightom kroz app
+(`Claude-temp_R/s189/_probe_S189_serije.spec.ts`, ne commita se) i brojanjem u bazi.
+
+| Što | Izmjereno | Sud |
+| --- | --- | --- |
+| Upit liste (izbor leafa → prvi redak) | 1,1 s (mala seed Area 0,9 s) | ✅ količina nije problem |
+| Lista — stranice | stranica = **20 eventa**, ne 20 treninga: trening od 220 serija = **11 istih redaka**, „Load next 20" doda 1 redak, brojač „1 loaded · 7936 events" | ✗ **lista mora stranicati po treninzima** (korak 6) |
+| View / Edit — prikaz | jedan zapis po tabu `#1 … #N` (24 taba za 24 serije) | ✗ treba prikaz serija po bloku (skica forme; korak 6/7) |
+| View / Edit — atributi treninga | upit bez stranica: 220 serija = 1.102 vrijednosti ⇒ stiglo **1.000**, 20 serija prazno; Edit + pomak vremena ih je **obrisao** (1.102 → 1.000, poruka o uspjehu) | ✅ **popravljeno S189** (paginirano); isto mjerenje poslije: 1.102 → 1.102 |
+| Excel izvoz (7.936 redaka) | 44–58 s, 0,97 MB; **10 redaka dvaput, 10 izostalo** (granice 1000, isti `session_start`) | ✅ **popravljeno S189** (`.order('id')`); uvoz istog filea poslije: 7.936 nepromijenjenih, 0 sukoba |
+| Excel uvoz istog filea | analiza 9–10 s | ✅ |
+| Excel uvoz NOVIH treninga (11 treninga, 209 serija, bez `event_id`) | analiza 3 s, upis **47 s ≈ 0,23 s po seriji**; roditelji 11, vrijednosti točno 1.263 | ✅ povijest (~20.000 serija) ≈ 75 min, u više fileova (korak 9) |
+| Redoslijed serija u View-u | uvoz daje svim zapisima treninga **isti `created_at`** ⇒ View ih je prikazao izmiješane (`1/3/4, 1/2/3, 1/1/2…`) | ⇒ redoslijed mora nositi zapis (`red`) |
+| Edit Save kad se mijenjaju svi zapisi (220) | 114 s (po eventu update + delete + insert) | ~0,5 s po zapisu; nova forma će pisati skupno |
+
+Usput izmjereno (nije format, ide u BACKLOG / Open bugs): **Edit pomak vremena ostavlja stari P2 roditelj** i
+stvara novi (`BUG-S189-PARENTSHIFT`; TEST `Fitness` ima 4 takva siročeta od 18.09. i 17.10.); **zastarjeli izvoz ne
+vraća obrisan redak** — `row_hash` netaknut + `event_id` kojeg nema ⇒ „Unchanged (skipped)" bez poruke.
+
+**Prijedlog odluke za korak 4 (S189, na temelju mjerenja — čeka Sašin „da" za dvije točke):**
+1. **Jedan zapis = jedna serija jedne vježbe** — potvrđeno: količina nije problem ni u bazi, ni u upitu, ni u Excelu.
+   Ono što puca je **postojeći prikaz** koji pretpostavlja malo eventa po treningu (lista, View/Edit tabovi) — to je
+   posao koraka 6/7, ne razlog za drukčiji format.
+2. **Atributi zapisa:** `vjezba` (slug iz Aree `Katalog vježbi`), `blok`, `serija`, **`red`** (položaj vježbe u
+   seriji — nužan, v. redoslijed), `kg`, `ponavljanja`, `trajanje` (s), `intenzitet` (`jako`/`lagano`, intervali),
+   `zagrijavanje` (kvačica). Prikaz slaže po `blok` → `serija` → `red`, nikad po `created_at`.
+3. ❓ **Atributi bloka** (`metoda`, `rpe`, `odmor`): blok nema vlastiti event (roditelj ima 1 event po treningu,
+   leaf N) ⇒ prijedlog: **na prvom zapisu bloka** (serija 1, red 1) — jedna kopija; forma ih ondje čita i piše, u
+   Excelu stoje u prvom retku bloka. Alternativa (na svakom zapisu bloka) daje kopije koje se Excelom mogu
+   razići bez poruke.
+4. ❓ **Zagrijavanje:** popis prije blokova = **`blok` 0** (bez krugova: `serija` 1, `red` 1…N); kvačica
+   `zagrijavanje` ostaje za lakšu seriju unutar bloka. Volumen ih računa odvojeno.
+5. `s_kim` i `rutina` na `Activity1` (roditelj) — kako je dogovoreno.
+6. **Prije uvoza povijesti (korak 9) mora biti gotovo:** lista po treninzima i prikaz serija (korak 6/7).
+
 **Koraci** (status se ažurira; A4 / K2 dolaze poslije koraka 9):
 
 | # | Korak | Status |
@@ -426,9 +464,9 @@ pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od naj
 | 1 | d1 — ukinuti skrivanje na defaultu (forma, help, CLAUDE.md) | ✅ S187 kod (`test-branch`), E2E `S187_default_visible`; ručno T-S187-1 ✅ |
 | 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ✅ S188 |
 | 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel; ✅ 30.10. Saša ispravio list `Vjezbe` ⇒ `vjezbe_prijedlog.json` (59 vježbi, skupine, vrste). List `Mjesta` još nije pregledan |
-| 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ⬜ prijedlog 29.10. (S188, skica gore: zapis po seriji, `blok` + `serija`); potvrda u S189 uz Excel + mjerenje |
+| 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | 🟡 S189 **izmjereno** (7.936 serija na TEST-u, v. „Mjerenje za korak 4"): zapis po seriji potvrđen, + `red`; usput popravljeni izvoz i View/Edit (rezanje na 1000). ⬜ Sašin „da" za atribute bloka (prvi zapis bloka) i zagrijavanje (`blok` 0) |
 | 5 | Katalog vježbi kao **zasebna Area `Katalog vježbi`** (slug + puno ime, slika, skupina + sporedna, vrsta, „po ruci") + izbornik iz kategorije **druge Aree** + gumb „prikaži vježbu"; uvoz 59 vježbi iz `vjezbe_prijedlog.json` | ⬜ (odluka 30.10.) |
-| 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) | ⬜ |
+| 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) + **lista stranici po treninzima** i **prikaz serija po bloku** u View/Edit (izmjereno S189: postojeći prikaz puca na N zapisa po treningu) | ⬜ |
 | 7 | „Ponovi zadnji trening ove rutine" (Add + shortcut na rutinu) | ⬜ |
 | 8 | Review tab treninga (pločice: napredak po vježbi, Z2 minute tjedno, obujam po vrsti) | ⬜ |
 | 9 | Uvoz povijesti: PROD `Strength` (457) + DIARY — alat za raspisivanje notacije | ⬜ |

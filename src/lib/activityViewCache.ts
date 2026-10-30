@@ -10,6 +10,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { loadParentAttrs } from '@/lib/parentEventLoader';
+import { fetchAllPagedIn } from '@/lib/supabasePaging';
 import { getCategoryMap, getAreaNameMap } from '@/lib/categoryCache';
 import type { UUID } from '@/types';
 
@@ -324,11 +325,16 @@ async function _fetchActivityData(
     // (was 2 queries per event). Fewer round trips, and one .in() scan instead
     // of N separate scans — matters on PROD where event_attributes is large.
     const eventIds = events.map(e => e.id);
+    // ⚠ S189: atributi PAGINIRANO. Trening od 220 serija nosi 1.102 vrijednosti, a
+    //   PostgREST reže na 1000 bez greške — 20 serija je u View-u ostalo prazno,
+    //   a Edit (isti obrazac) ih je pri pomaku vremena obrisao.
     const [attrsRes, attachmentsRes] = await Promise.all([
-      supabase
+      fetchAllPagedIn<unknown>(eventIds, (chunk, from, to) => supabase
         .from('event_attributes')
         .select('id, event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-        .in('event_id', eventIds),
+        .in('event_id', chunk)
+        .order('id')
+        .range(from, to)),
       supabase
         .from('event_attachments')
         .select('id, event_id, url, filename')

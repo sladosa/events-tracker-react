@@ -27,6 +27,18 @@
   ~30 `errors.push`/`warnings.push`, i `show()` s `(prazno)`) su hrvatski ⇒ pregled je mješavina jezika.
   Uz prijevod: tvrdnje u `restructurePlan.test.mjs` koje čitaju tekst poruke, i `apply.ts` (`Preuređivanje: …`).
 
+- **Zastarjeli Activities izvoz ne vraća obrisan redak — i ne kaže to (S189, izmjereno na probi)** — redak čiji
+  `event_id` više ne postoji, a `row_hash` mu je netaknut, uvoz broji kao „Unchanged (skipped)" (209/209) i ništa ne
+  stvori. D7 skip vjeruje otisku iz filea bez provjere postoji li redak. Danas bezopasno (restore ide
+  `restore_db.py`), ali file se čini kao kopija koja to nije. Prijedlog: retke s nepostojećim `event_id` izdvojiti u
+  pregledu („N redaka više ne postoji u bazi — uvesti kao nove?"), umjesto tihog preskakanja.
+
+- **Poruke baze `058`–`060` na engleski — UZ PRVU SLJEDEĆU MIGRACIJU koja dira te funkcije (npr. `061`, A4)**
+  (S189, Saša: „ne radimo migraciju samo zbog teksta"). `RAISE EXCEPTION` u `rpc_restructure_apply` / `_undo` /
+  `_values` / `_retype` (`korak %: očekivano % eventa … baza se promijenila od pregleda`, `Povrat odbijen…`,
+  `Preuređivanje smije samo vlasnik Aree`…) vide se u crvenom okviru panela. Prijevod mijenja i E2E/unit tvrdnje
+  koje ih čitaju (grep `Povrat`, `očekivano`). Sirove putanje configa u `Settings:` retcima pregleda ostaju (Saša).
+
 - **Tempo (`pace`) kao PRIKAZNA kolona — trajanje ÷ udaljenost, `mm:ss` (S185, Saša: opcija A)** — ne
   sprema se; lista, View i Excel izvoz ga računaju (Excel može kao pravu formulu, pa prati izmjene u fileu).
   Izmjereno na TEST `Fitness_Garmin`: Garminov `pace` = `duration` / `distance` na **1.935 od 1.936** treninga

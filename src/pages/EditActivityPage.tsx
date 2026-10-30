@@ -18,6 +18,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { navFromState, replaceSessionInNav } from '@/lib/navActivities';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
+import { fetchAllPagedIn } from '@/lib/supabasePaging';
 import { persistPendingOptions, failedOptionsMessage, noNewOptionsHintFor } from '@/lib/pendingOptions';
 import { localYmd } from '@/lib/localDate';
 import { VALUE_COLUMNS } from '@/lib/constants';
@@ -325,11 +326,17 @@ export function EditActivityPage() {
       // (was 2 queries per event). Fewer round trips, and one .in() scan instead
       // of N separate scans — matters on PROD where event_attributes is large.
       const leafEventIds = leafEvents.map(e => e.id);
+      // ⚠ S189: atributi PAGINIRANO — PostgREST reže na 1000 bez greške. Izmjereno
+      //   na treningu od 220 serija (1.102 vrijednosti): pomak vremena + Save
+      //   označi SVE evente izmijenjenima, pa su 102 vrijednosti obrisane i 20
+      //   serija ostalo prazno, uz poruku o uspjehu.
       const [attrsRes, attachmentsRes] = await Promise.all([
-        supabase
+        fetchAllPagedIn<unknown>(leafEventIds, (chunk, from, to) => supabase
           .from('event_attributes')
           .select('id, event_id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean, attribute_definitions(id, name, data_type, category_id)')
-          .in('event_id', leafEventIds),
+          .in('event_id', chunk)
+          .order('id')
+          .range(from, to)),
         supabase
           .from('event_attachments')
           .select('id, event_id, url, filename')

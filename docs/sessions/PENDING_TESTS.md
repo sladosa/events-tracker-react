@@ -2,19 +2,21 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S189 (2026-10-30, T-S189-1 dodan) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S189 (2026-10-30, T-S189-1 … T-S189-3) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 
-## S189 — Poruke preuređivanja na engleskom (2026-10-30)
+## S189 — Poruke preuređivanja na engleskom; mjerenje koraka 4 treninga (2026-10-30)
 
-Greške, upozorenja i „Also changes" u pregledu sheeta `Restructure options` prevedeni (`plan.ts`, `apply.ts`); samo tekst, logika ista. `npm run check`, build i E2E S179 + S186 prolaze. Poruke baze (`058`–`060`) su i dalje hrvatske — otvoreno pitanje.
+Greške, upozorenja i „Also changes" u pregledu sheeta `Restructure options` prevedeni (`plan.ts`, `apply.ts`); samo tekst, logika ista. Poruke baze (`058`–`060`) uz prvu sljedeću migraciju (BACKLOG). Mjerenje formata „zapis po seriji" na TEST probi (7.936 serija) i dva popravka koja je ono našlo: izvoz s jedinstvenim redoslijedom (`id`), View/Edit atributi paginirani.
 
 **Detalji testova:** [tests/S189_tests.md](tests/S189_tests.md)
 
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S189-1 | TEST `Financije_all`: Structure export ⇒ u `Restructure options` 3 koraka (Transfer → Prijenos · Nepostoji → X · Zabava → `Zabava `) ⇒ uvoz ⇒ pregled: `✗ step 3: value "Zabava " …`, `⚠ step 2: matches no rows.`, „Also changes (6)" od `Menu tip: "Transfer" → "Prijenos"`; nijedna hrvatska riječ osim vrijednosti; bez primjene | ⬜ |
+| T-S189-2 | TEST proba: izvoz 7.936 serija ⇒ uvoz istog filea = 7.936 nepromijenjenih, 0 sukoba, 0 dvostrukih redaka | ✅ S189 — izmjereno (prije popravka 7.926 + 10 dvostrukih, 3 sukoba); probni spec `Claude-temp_R/s189/` |
+| T-S189-3 | TEST proba: Edit treninga od 220 serija, pomak vremena +1 min, Save ⇒ sve vrijednosti ostaju (1.102) | ✅ S189 — izmjereno (prije popravka 1.102 → 1.000, 20 serija prazno, poruka o uspjehu) |
 
 ---
 
