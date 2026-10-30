@@ -9958,6 +9958,15 @@ Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—
   `docs/mockups/trening_snaga_add.html`); ime treninga = rutina, oznaka za pamćenje; oporavak i spremnost u tri
   razine (novi koraci 11–13); mišićne skupine (noge / kukovi, listovi otvoreni, Outdoor broji u opterećenje nogu).
   Commitovi `50a99ee`, `7e91c82`, `98e6ebd` + zatvaranje 30.10.
+- **30.10., isti prozor, paralelno sa S189 (prijevod):** Saša pregledao Excel analize snage
+  (`analiza_snage_20261030_prijedlog.xlsx`: stupac `status`, padajući izbornici iz tablica na listu `Liste`) ⇒
+  `vjezbe_prijedlog.json`: 451 ključ, **60 slugova** (56 vježbi + 4 načina), skupine `Upper-push/-pull`, `Core`,
+  `Legs-main/-hips/-calves`, `sporedna`, vrste `Strength/Cardio/Mobility/Stretching/Method`, pravila uvoza u
+  napomenama. U `TRENING_MIGRACIJA.md`: pravila odmora po vrsti, rast tjednog volumena (IMOM 2022. prije
+  „sloma" ramena), RPE, simptom kao zapis + Garmin san 10.2022.–02.2025., „s kim" i Ašini periodi (DIARY 222
+  dana), normalizacija zapisa i intervali; **odluka: katalog je zasebna Area `Katalog vježbi`** (Koka iz
+  predloška). Skica kataloga `docs/mockups/trening_katalog.html`
+  (<https://claude.ai/artifact/Wku3VTDv5dm1Qn42NviHnw>). Commitovi `48952fa`, `706bd7a`, `421eef4`, `4af084e`.
 
 ### PENDING sekcija S188 (arhivirana S188) — View panel sklapa razine; Restructure sheetovi na engleskom s primjerima (2026-10-29)
 
