@@ -9953,6 +9953,11 @@ Nalaz T-S185-2: atribut roditeljske razine (`Activity.mood`) u listi je bio `—
   `preuredjivanje_grep.py` čita nova imena.
 - **Odluka:** poruke planera (`plan.ts`, ~30, hrvatski) prevode se **kasnije**, poslije koraka 4 treninga (BACKLOG).
 - Excel analize snage Saša još pregledava ⇒ korak 4 se seli u S189.
+- **Razgovor o treningu (29.–30.10., bez koda)**, sve zapisano u `TRENING_MIGRACIJA.md`: prijedlog za korak 4
+  (zapis po seriji, `blok` + `serija`, notacija samo prikaz; skica Add forme, artifact + kopija
+  `docs/mockups/trening_snaga_add.html`); ime treninga = rutina, oznaka za pamćenje; oporavak i spremnost u tri
+  razine (novi koraci 11–13); mišićne skupine (noge / kukovi, listovi otvoreni, Outdoor broji u opterećenje nogu).
+  Commitovi `50a99ee`, `7e91c82`, `98e6ebd` + zatvaranje 30.10.
 
 ### PENDING sekcija S188 (arhivirana S188) — View panel sklapa razine; Restructure sheetovi na engleskom s primjerima (2026-10-29)
 

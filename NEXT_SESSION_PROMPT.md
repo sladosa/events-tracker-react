@@ -1,4 +1,4 @@
-> Pisano protiv `c65485e` (S188: statični primjer Move; prije toga `8876660` View panel + Restructure sheetovi na engleskom) + commita koji nosi ovaj file (S188 drugo zatvaranje, 29.10.).
+> Pisano protiv `98e6ebd` (S188: oporavak i spremnost, koraci 11–13; prije toga `c65485e` statični primjer Move) + commita koji nosi ovaj file (S188 treće zatvaranje, 30.10. — mišićne skupine, kopija skice u repou).
 > **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 + S186 + S187 + S188, **nije deployano**.
 > **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187 i S188 nemaju migraciju.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
@@ -29,12 +29,25 @@
 1. **Excel analize snage** `C:\0_Sasa\events-tracker-react\Claude-temp_R\s187\analiza_snage_20261028.xlsx`
    (nepromijenjeno iz S187): list **Vjezbe** žuti stupci A–D, napomene u M; list **Mjesta**; pogledaj
    **Rutine** i **Serije**. Spremi pod istim imenom i javi. Ne treba savršeno.
-2. **Korak 4 — prijedlog je gotov** (29.10., skica <https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>, tvoj „sve je ok"):
-   zapis po seriji s `blok` i `serija`, tekst samo za prikaz i uvoz povijesti. Potvrđujemo ga u S189 uz tvoj Excel
-   i mjerenje na TEST-u. Ime vježbe (npr. `hand lat.r.`) upisuješ u Excel kataloga.
+   **Novo (30.10.):** u stupac M uz vježbu upiši i **mišićnu skupinu** kako ti se čini prirodno (npr. Upper,
+   Core, Noge, Kukovi, Listovi) i ime vježbe kakvo želiš (npr. `hand lat.r.`).
+2. **Korak 4 — prijedlog je gotov** (29.10., tvoj „sve je ok"): zapis po seriji s `blok` i `serija`, tekst samo za
+   prikaz i uvoz povijesti. Potvrđujemo ga u S189 uz tvoj Excel i mjerenje na TEST-u.
+   Skica forme: <https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>, kopija u repou `docs/mockups/trening_snaga_add.html`.
+   Sve odluke i prijedlozi o treningu su na jednom mjestu: **`docs/TRENING_MIGRACIJA.md`**, odjeljci
+   „Prijedlog za korak 4", „Oporavak i spremnost" i tablica „Koraci".
 3. **Studeni krug Financija (bez razvoja, nepromijenjeno):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11.,
    T-S175-3 ZABA_2026-10, T-S181-3. To je ispit „Financije su dovoljno gotove".
 4. Kad stigneš: T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti).
+
+## Dogovoreno u razgovoru 29.–30.10. (bez koda, zapisano u `TRENING_MIGRACIJA.md`)
+- **Ime treninga = rutina** (Upper · Core · Legs · Z2 · Tempo/HIIT), bira se shortcutom ili „Ponovi zadnji";
+  predložak je zadnji stvarni trening te rutine. Ime je oznaka za pamćenje, ne razvrstavanje.
+- **Oporavak i spremnost** (tvoj cilj: „kako ne pretjerati, ali ni pustiti"), tri razine = novi koraci 11–13:
+  pravila odmora po mišićnoj skupini (najmanje N dana / najdulje M dana ⇒ „kreni lakše"), izmjeriti tvoj stvarni
+  oporavak iz DIARY × Garmin noćni puls/HRV, dnevna spremnost (traži Garmin dotok).
+- **Mišićne skupine:** noge (quads, glutes, hamstrings) jedna, kukovi (adductor, abductor) druga; listovi otvoreno
+  jer ih najviše troši trčanje — zato i Outdoor trening mora brojati u opterećenje nogu.
 
 ## Sljedeće (prijedlog)
 Korak 4 — format zapisa serija: kako se jedna vježba s piramidom (`12/10/8 × 20/25/30 kg`) i kružni blok
@@ -67,6 +80,10 @@ Pravilo (primjeri ispod `HELP`, `rowsBeforeHelp` jedina kopija) je u CLAUDE.md �
   tekst po seriji — i kako izgleda blok. Odluku upisati u `TRENING_MIGRACIJA.md` (tablica „Koraci", red 4)
   **prije** koda.
 - `analiza_snage.py --termini` ispisuje sirove termine; `pravila.py` je jedino mjesto za parsere DIARY teksta.
+- **Mišićne skupine** (prijedlog 30.10., `TRENING_MIGRACIJA.md` § Oporavak): iz Sašinog stupca M predloži popis
+  grubih skupina za pravila (+ neobavezan detalj); listovi otvoreni; pravilo odmora nogu mora brojati i `Outdoor`.
+- Skica Add forme: izvor je `docs/mockups/trening_snaga_add.html` (kopija artifacta; za izmjenu skice uredi tu
+  kopiju i ponovo objavi na isti URL — temp scratchpad stare sesije ne postoji).
 
 ## Kasnije
 - **Poruke planera na engleski** — BACKLOG (S188): `plan.ts` ~30 poruka + `show()` `(prazno)`, `apply.ts`,

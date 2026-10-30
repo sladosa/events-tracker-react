@@ -1,0 +1,342 @@
+<!doctype html>
+<!-- Kopija privatnog artifacta https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy (S188, 29.10.2026.) — skica Add forme za trening snage, ne kod aplikacije. Otvara se dvoklikom u pregledniku. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strength Add Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: lijevo mobitel s Add formom (plava = Add, kao u appu), serije jedna ispod druge; desno zapisi koje bi forma spremila i isti trening kao tekst. Ispod 900px jedno ispod drugog. */
+:root {
+  --bg: #f1f5f9; --card: #ffffff; --fg: #0f172a; --muted: #64748b; --line: #e2e8f0;
+  --accent: #2563eb; --accent-soft: #dbeafe; --accent-fg: #ffffff; --same: #94a3b8;
+  --warm: #fef3c7; --warm-fg: #92400e; --chip: #f1f5f9; --bad: #dc2626;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0b1220; --card: #111a2e; --fg: #e2e8f0; --muted: #94a3b8; --line: #23314d;
+  --accent: #60a5fa; --accent-soft: #1e3a5f; --accent-fg: #0b1220; --same: #5b6b85;
+  --warm: #3b2f12; --warm-fg: #fcd34d; --chip: #1a253d; --bad: #f87171; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0b1220; --card: #111a2e; --fg: #e2e8f0; --muted: #94a3b8; --line: #23314d;
+  --accent: #60a5fa; --accent-soft: #1e3a5f; --accent-fg: #0b1220; --same: #5b6b85;
+  --warm: #3b2f12; --warm-fg: #fcd34d; --chip: #1a253d; --bad: #f87171; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45;
+  padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: 20px; margin: 0 0 4px; text-wrap: balance }
+h2 { font-size: 15px; margin: 0 0 8px }
+p { margin: 0 }
+.lead { color: var(--muted); max-width: 72ch; margin-bottom: 18px }
+.wrap { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 24px; align-items: start; max-width: 1180px; margin: 0 auto }
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr) } .phone { max-width: 400px; width: 100%; margin: 0 auto } }
+.page-head { max-width: 1180px; margin: 0 auto }
+
+.phone { background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; box-shadow: 0 8px 28px rgb(15 23 42 / .08) }
+.bar { background: var(--accent); color: var(--accent-fg); padding: 12px 14px }
+.bar .crumb { font-size: 12px; opacity: .85 }
+.bar .ttl { font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; gap: 8px }
+.bar .ttl span:last-child { font-variant-numeric: tabular-nums; font-weight: 500 }
+.body { padding: 12px; display: flex; flex-direction: column; gap: 12px }
+.collapsed { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; display: flex; justify-content: space-between; color: var(--muted); font-size: 13px }
+
+.block { border: 1px solid var(--line); border-radius: 12px; overflow: hidden }
+.block-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--chip); border-bottom: 1px solid var(--line) }
+.block-head input { border: 0; background: transparent; color: var(--fg); font: inherit; font-weight: 600; width: 9em; padding: 2px; min-width: 0 }
+.pill { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); white-space: nowrap }
+.pill.warm { background: var(--warm); color: var(--warm-fg) }
+.block-head .sp { flex: 1 }
+.x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; padding: 4px 6px; border-radius: 6px }
+.x:hover { color: var(--fg); background: var(--chip) }
+
+.ser { border-top: 1px solid var(--line) }
+.ser:first-of-type { border-top: 0 }
+.ser-head { display: flex; align-items: baseline; gap: 8px; width: 100%; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; padding: 8px 10px; cursor: pointer }
+.ser-head .n { font-weight: 600; white-space: nowrap }
+.ser-head .sum { color: var(--muted); font-size: 12px; min-width: 0; flex: 1 }
+.ser-head .chev { color: var(--muted); font-size: 11px; transition: transform .15s }
+.ser.open .chev { transform: rotate(90deg) }
+.ser.open { background: color-mix(in srgb, var(--accent-soft) 35%, transparent) }
+.r { display: grid; grid-template-columns: minmax(0, 1fr) 46px 10px 40px 28px 28px; gap: 4px; align-items: center; padding: 3px 6px 3px 10px }
+.r input { border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); font: inherit; padding: 5px 4px; min-width: 0; width: 100% }
+.r input.ex { border-color: transparent; background: transparent; padding-left: 0 }
+.r input.n { text-align: right; font-variant-numeric: tabular-nums }
+.r .t { color: var(--muted); font-size: 11px; text-align: center }
+.r.same input.n { color: var(--same); border-style: dashed }
+.r.diff input.n { font-weight: 700; border-color: var(--accent) }
+.r.swap input.ex { color: var(--warm-fg); font-weight: 600 }
+.swap-note { font-size: 11px; color: var(--warm-fg); padding: 0 10px 2px }
+.colhead { display: grid; grid-template-columns: minmax(0, 1fr) 46px 10px 40px 28px 28px; gap: 4px; padding: 0 6px 2px 10px; font-size: 11px; color: var(--muted) }
+.colhead span:nth-child(2), .colhead span:nth-child(4) { text-align: right }
+
+.list-row { display: grid; grid-template-columns: minmax(0, 1fr) 70px minmax(0, 1.1fr) 28px; gap: 6px; align-items: center; padding: 5px 6px 5px 10px; border-top: 1px solid var(--line) }
+.list-row:first-of-type { border-top: 0 }
+.list-row input { border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); font: inherit; padding: 5px 6px; min-width: 0; width: 100% }
+.list-row .ex { border-color: transparent; background: transparent; padding-left: 0 }
+.list-row .hint { font-size: 11px; color: var(--muted) }
+.list-row .hint.bad { color: var(--bad) }
+
+.actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--line) }
+button.ghost { border: 1px dashed var(--line); background: none; color: var(--accent); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 12px; cursor: pointer }
+button.ghost:hover, button.ghost:focus-visible { border-color: var(--accent); outline: none }
+button.ghost.main { border-style: solid; border-color: var(--accent); font-weight: 600 }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+.add-block { display: flex; gap: 8px }
+.add-block button { flex: 1 }
+.footer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line) }
+.footer button { flex: 1; padding: 10px; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid var(--accent) }
+.footer .pri { background: var(--accent); color: var(--accent-fg) }
+.footer .sec { background: none; color: var(--accent) }
+.toast { font-size: 12px; color: var(--muted); text-align: center; padding: 0 12px 12px; min-height: 1.4em }
+
+.side { display: flex; flex-direction: column; gap: 18px; min-width: 0 }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0 }
+.panel .sub { color: var(--muted); font-size: 13px; margin: -4px 0 10px; max-width: 75ch }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 10px; color: var(--muted) }
+.stats b { color: var(--fg); font-variant-numeric: tabular-nums }
+.tscroll { overflow-x: auto; max-height: 440px; overflow-y: auto }
+table.rows { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px }
+table.rows th { position: sticky; top: 0; background: var(--card); text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap }
+table.rows td { padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap }
+table.rows td.num { text-align: right }
+table.rows tr.first td { border-top: 2px solid var(--line) }
+pre.nota { font-family: var(--mono); font-size: 12.5px; line-height: 1.6; background: var(--chip); border-radius: 8px; padding: 10px 12px; margin: 0; overflow-x: auto; white-space: pre }
+.code { font-family: var(--mono); font-size: 12px }
+ul.n, ol.q { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 75ch }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 8px }
+.legend span { display: inline-flex; align-items: center; gap: 5px }
+.sw { width: 26px; height: 16px; border-radius: 5px; border: 1px solid var(--line); display: inline-block }
+.sw.s { border-style: dashed; border-color: var(--same) }
+.sw.d { border-color: var(--accent); border-width: 2px }
+.sw.w { background: var(--warm) }
+@media (prefers-reduced-motion: no-preference) { .flash { animation: fl .6s ease-out } @keyframes fl { from { background: var(--accent-soft) } to { background: transparent } } }
+@media (prefers-reduced-motion: reduce) { .ser-head .chev { transition: none } }
+</style>
+
+<div class="page-head">
+  <h1>Strength trening u Add Activity — skica 2</h1>
+  <p class="lead">Serije su sada jedna ispod druge. „+ serija“ ponovi zadnju ispod, s istim vježbama, težinama i ponavljanjima, a prethodne se sklope u jedan red teksta. U otvorenoj seriji ispraviš brojke, zamijeniš vježbu (kad je sprava zauzeta), dodaš vježbu ispod (+) ili je obrišeš (×). Ništa se ne sprema.</p>
+</div>
+
+<div class="wrap">
+  <section class="phone" aria-label="Add Activity">
+    <div class="bar">
+      <div class="crumb">Fitness · Activity › Gym › Strength</div>
+      <div class="ttl"><span>Add Activity</span><span>29.10. 18:05</span></div>
+    </div>
+    <div class="body">
+      <div class="collapsed"><span>▶ Activity · trajanje, puls, kcal, osjećaj</span><span>12 polja</span></div>
+      <div id="blocks" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div class="add-block">
+        <button class="ghost" id="addCircuit" type="button">+ blok (serije)</button>
+        <button class="ghost" id="addList" type="button">+ zagrijavanje / popis</button>
+      </div>
+    </div>
+    <div class="footer">
+      <button class="sec" type="button" id="saveplus">Save +</button>
+      <button class="pri" type="button" id="finish">Finish</button>
+    </div>
+    <div class="toast" id="toast" aria-live="polite"></div>
+  </section>
+
+  <div class="side">
+    <section class="panel">
+      <h2>Isti trening kao tekst</h2>
+      <p class="sub">Jedan red po seriji, kako pišeš u DIARY-ju. Ne sprema se: računa se iz zapisa ispod, svaki put kad se prikazuje.</p>
+      <pre class="nota" id="nota"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Što bi se spremilo</h2>
+      <div class="stats" id="stats"></div>
+      <div class="tscroll"><table class="rows" id="rows"></table></div>
+      <div class="legend">
+        <span><i class="sw s"></i> isto kao prethodna serija</span>
+        <span><i class="sw d"></i> promijenjeno</span>
+        <span><i class="sw w"></i> vježba koje u prethodnoj seriji nije bilo (zamjena)</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Tvoji odgovori</h2>
+      <ul class="n">
+        <li><b>Serija</b> ostaje naziv za jedan prolaz kroz blok.</li>
+        <li><b>hand lat.r. 2 kg:</b> upisuje se 2 kg, koliko je u ruci. Da je uteg u svakoj ruci, znala bi vježba u katalogu (oznaka „po ruci“), pa volumen računa 2 × 2 kg × 12. Tako se ne mora pamtiti pri svakom unosu.</li>
+        <li><b>Odmor:</b> prijedlog je jedno polje po bloku („odmor između serija“, u sekundama), skriveno u formi dok ga netko ne uključi. Dodaje se kad zatreba i ne dira postojeće zapise.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+const S = (ex, kg, reps) => ({ ex, kg, reps });
+const PRIMJER = [
+  { title: 'Zagrijavanje', kind: 'list', items: [
+    { ex: 'ergometar', val: '7:00' }, { ex: 'istezanje', val: '2x20' }, { ex: 'plank', val: '2:30' } ] },
+  { title: 'Blok 1', kind: 'circuit', rounds: [
+    [S('pull.m', 45, 14), S('triceps', 15, 14), S('hand lat.r.', 2, 12), S('biceps', 15, 14)],
+    [S('pull.m', 55, 15), S('triceps', 15, 14), S('hand lat.r.', 2, 12), S('biceps', 15, 14)],
+    [S('pull.m', 65, 9),  S('triceps', 15, 14), S('hand lat.r.', 2, 12), S('biceps', 15, 14)] ] },
+  { title: 'Blok 2', kind: 'circuit', rounds: [
+    [S('adductor', 45, 15), S('abductor', 45, 15)],
+    [S('adductor', 55, 13), S('abductor', 55, 13)] ] },
+];
+let blocks = JSON.parse(JSON.stringify(PRIMJER));
+blocks.forEach(b => { if (b.kind === 'circuit') b.open = [b.rounds.length - 1]; });
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const num = v => { const n = Number(String(v).replace(',', '.')); return v === '' || v == null || isNaN(n) ? null : n; };
+
+/** DIARY tekst ⇒ što se sprema: mm:ss = trajanje, NxM = N serija po M ponavljanja. */
+function parseVal(v) {
+  const s = String(v).trim();
+  let m = s.match(/^(\d{1,3}):([0-5]\d)$/);
+  if (m) return { dur: `${m[1]}:${m[2]}`, sets: 1, hint: `trajanje ${m[1]} min ${m[2]} s` };
+  m = s.match(/^(\d{1,2})\s*[x×]\s*(\d{1,3})$/i);
+  if (m) return { sets: +m[1], reps: +m[2], hint: `${m[1]} serije × ${m[2]} pon.` };
+  m = s.match(/^(\d{1,3})$/);
+  if (m) return { sets: 1, reps: +m[1], hint: `${m[1]} pon.` };
+  return { bad: true, hint: s ? 'ne razumijem — npr. 7:00 ili 2x20' : '' };
+}
+
+const setText = it => !it.ex ? '' : it.kg != null ? `${it.ex} ${it.kg}×${it.reps ?? '?'}` : it.reps != null ? `${it.ex} ${it.reps}` : it.ex;
+const roundText = r => r.map(setText).filter(Boolean).join(' · ');
+
+/** Odnos prema prethodnoj seriji: ista vježba (po imenu) s istim brojkama / drukčijim / vježbe nije bilo. */
+function relation(b, ri, it) {
+  if (ri === 0 || !it.ex) return '';
+  const p = b.rounds[ri - 1].find(x => x.ex === it.ex);
+  if (!p) return 'swap';
+  return p.kg === it.kg && p.reps === it.reps ? 'same' : 'diff';
+}
+
+function render() {
+  $('blocks').innerHTML = blocks.map((b, bi) => b.kind === 'list' ? listHtml(b, bi) : circuitHtml(b, bi)).join('');
+  renderSide();
+}
+
+function listHtml(b, bi) {
+  return `<div class="block">
+    <div class="block-head"><input id="t${bi}" data-b="${bi}" data-f="title" value="${esc(b.title)}" aria-label="Naziv bloka">
+      <span class="pill warm">popis</span><span class="sp"></span><button class="x" type="button" data-del="${bi}" aria-label="Obriši blok">×</button></div>
+    ${b.items.map((it, ii) => { const p = parseVal(it.val); return `<div class="list-row">
+      <input class="ex" id="l${bi}_${ii}" data-b="${bi}" data-i="${ii}" data-f="lex" value="${esc(it.ex)}" list="katalog" aria-label="Vježba">
+      <input id="v${bi}_${ii}" data-b="${bi}" data-i="${ii}" data-f="val" value="${esc(it.val)}" aria-label="Vrijednost">
+      <span class="hint${p.bad ? ' bad' : ''}">${esc(p.hint)}</span>
+      <button class="x" type="button" data-delitem="${bi}_${ii}" aria-label="Obriši vježbu">×</button></div>`; }).join('')}
+    <div class="actions"><button class="ghost" type="button" data-additem="${bi}">+ vježba</button></div>
+  </div>`;
+}
+
+function circuitHtml(b, bi) {
+  const sers = b.rounds.map((r, ri) => {
+    const open = b.open.includes(ri);
+    const head = `<button class="ser-head" type="button" data-tog="${bi}_${ri}" aria-expanded="${open}">
+      <span class="chev">▶</span><span class="n">${ri + 1}. serija</span><span class="sum">${open ? '' : esc(roundText(r))}</span></button>`;
+    if (!open) return `<div class="ser">${head}</div>`;
+    const rows = r.map((it, ei) => {
+      const rel = relation(b, ri, it);
+      return `<div class="r ${rel}">
+        <input class="ex" id="e${bi}_${ri}_${ei}" data-b="${bi}" data-r="${ri}" data-e="${ei}" data-f="ex" value="${esc(it.ex)}" list="katalog" aria-label="Vježba">
+        <input class="n" id="k${bi}_${ri}_${ei}" inputmode="decimal" data-b="${bi}" data-r="${ri}" data-e="${ei}" data-f="kg" value="${it.kg ?? ''}" aria-label="${esc(it.ex)} kg">
+        <span class="t">×</span>
+        <input class="n" id="p${bi}_${ri}_${ei}" inputmode="numeric" data-b="${bi}" data-r="${ri}" data-e="${ei}" data-f="reps" value="${it.reps ?? ''}" aria-label="${esc(it.ex)} ponavljanja">
+        <button class="x" type="button" data-below="${bi}_${ri}_${ei}" aria-label="Dodaj vježbu ispod">+</button>
+        <button class="x" type="button" data-delset="${bi}_${ri}_${ei}" aria-label="Obriši vježbu iz serije">×</button>
+      </div>`;
+    }).join('');
+    return `<div class="ser open">${head}
+      <div class="colhead"><span>vježba</span><span>kg</span><span></span><span>pon.</span><span></span><span></span></div>${rows}
+      ${b.rounds.length > 1 ? `<div style="padding:2px 10px 8px"><button class="ghost" type="button" data-delr="${bi}_${ri}">obriši ${ri + 1}. seriju</button></div>` : '<div style="height:6px"></div>'}</div>`;
+  }).join('');
+  return `<div class="block">
+    <div class="block-head"><input id="t${bi}" data-b="${bi}" data-f="title" value="${esc(b.title)}" aria-label="Naziv bloka">
+      <span class="pill">${b.rounds.length} ser.</span><span class="sp"></span>
+      <button class="x" type="button" data-del="${bi}" aria-label="Obriši blok">×</button></div>
+    ${sers}
+    <div class="actions"><button class="ghost main" type="button" data-addround="${bi}">+ serija (ponovi zadnju)</button></div>
+  </div>`;
+}
+
+function savedRows() {
+  const out = [];
+  blocks.forEach((b, bi) => {
+    const blok = bi + 1;
+    if (b.kind === 'list') {
+      b.items.forEach(it => {
+        const p = parseVal(it.val); if (p.bad || !it.ex) return;
+        for (let s = 1; s <= p.sets; s++) out.push({ blok, naziv: b.title, serija: s, ex: it.ex, kg: null, reps: p.reps ?? null, dur: p.dur ?? null });
+      });
+    } else {
+      b.rounds.forEach((r, ri) => r.forEach(it => {
+        if (!it.ex || (it.kg == null && it.reps == null)) return;
+        out.push({ blok, naziv: b.title, serija: ri + 1, ex: it.ex, kg: it.kg, reps: it.reps, dur: null });
+      }));
+    }
+  });
+  return out;
+}
+
+function renderSide() {
+  const rows = savedRows();
+  const vol = rows.reduce((s, r) => s + (r.kg ?? 0) * (r.reps ?? 0), 0);
+  $('stats').innerHTML = `<span>zapisa <b>${rows.length}</b></span><span>vježbi <b>${new Set(rows.map(r => r.ex)).size}</b></span><span>blokova <b>${blocks.length}</b></span><span>volumen <b>${vol.toLocaleString('hr-HR')} kg</b></span>`;
+  let last = null;
+  $('rows').innerHTML = `<thead><tr><th>blok</th><th>serija</th><th>vježba</th><th>kg</th><th>pon.</th><th>trajanje</th></tr></thead><tbody>` +
+    rows.map(r => { const first = last !== null && r.blok !== last; last = r.blok;
+      return `<tr class="${first ? 'first' : ''}"><td>${r.blok} · ${esc(r.naziv)}</td><td class="num">${r.serija}</td><td>${esc(r.ex)}</td>
+      <td class="num">${r.kg ?? '—'}</td><td class="num">${r.reps ?? '—'}</td><td class="num">${r.dur ?? '—'}</td></tr>`; }).join('') + '</tbody>';
+  $('nota').textContent = blocks.map(b => b.kind === 'list'
+    ? `${b.title}: ${b.items.filter(i => i.ex).map(i => `${i.ex} ${i.val}`).join(' · ')}`
+    : `${b.title}\n` + b.rounds.map((r, ri) => `  ${ri + 1}. ${roundText(r)}`).join('\n')).join('\n');
+}
+
+/** Oznake isto / promijenjeno / zamjena bez ponovnog crtanja, da fokus ostane u polju. */
+function markRound(bi, ri) {
+  const b = blocks[bi];
+  [ri, ri + 1].forEach(k => { if (!b.rounds[k]) return; b.rounds[k].forEach((it, ei) => {
+    const row = document.getElementById(`k${bi}_${k}_${ei}`)?.parentElement; if (!row) return;
+    row.classList.remove('same', 'diff', 'swap'); const rel = relation(b, k, it); if (rel) row.classList.add(rel);
+  }); });
+}
+
+const blocksEl = $('blocks');
+blocksEl.addEventListener('input', e => {
+  const t = e.target, d = t.dataset, b = blocks[+d.b]; if (!b) return;
+  if (d.f === 'title') b.title = t.value;
+  else if (d.f === 'lex') b.items[+d.i].ex = t.value;
+  else if (d.f === 'val') { b.items[+d.i].val = t.value; const h = t.parentElement.querySelector('.hint'); const p = parseVal(t.value); h.textContent = p.hint; h.className = 'hint' + (p.bad ? ' bad' : ''); }
+  else { const it = b.rounds[+d.r][+d.e];
+    if (d.f === 'ex') it.ex = t.value; else it[d.f] = num(t.value);
+    markRound(+d.b, +d.r); }
+  renderSide();
+});
+blocksEl.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return; const d = t.dataset;
+  const ix = s => s.split('_').map(Number);
+  if (d.addround != null) { const b = blocks[+d.addround]; b.rounds.push(b.rounds[b.rounds.length - 1].map(it => ({ ...it }))); b.open = [b.rounds.length - 1]; }
+  else if (d.tog) { const [bi, ri] = ix(d.tog); const b = blocks[bi]; b.open = b.open.includes(ri) ? b.open.filter(x => x !== ri) : [...b.open, ri]; }
+  else if (d.below) { const [bi, ri, ei] = ix(d.below); blocks[bi].rounds[ri].splice(ei + 1, 0, { ex: '', kg: null, reps: null }); }
+  else if (d.delset) { const [bi, ri, ei] = ix(d.delset); const r = blocks[bi].rounds[ri]; r.splice(ei, 1); if (!r.length) r.push({ ex: '', kg: null, reps: null }); }
+  else if (d.delr) { const [bi, ri] = ix(d.delr); const b = blocks[bi]; b.rounds.splice(ri, 1); b.open = [b.rounds.length - 1]; }
+  else if (d.additem != null) blocks[+d.additem].items.push({ ex: '', val: '' });
+  else if (d.delitem) { const [bi, ii] = ix(d.delitem); blocks[bi].items.splice(ii, 1); }
+  else if (d.del != null) blocks.splice(+d.del, 1);
+  else return;
+  render();
+});
+$('addCircuit').onclick = () => { blocks.push({ title: `Blok ${blocks.filter(b => b.kind === 'circuit').length + 1}`, kind: 'circuit', rounds: [[{ ex: '', kg: null, reps: null }]], open: [0] }); render(); };
+$('addList').onclick = () => { blocks.push({ title: 'Istezanje', kind: 'list', items: [{ ex: '', val: '' }] }); render(); };
+const say = m => { const t = $('toast'); t.textContent = m; t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); };
+$('finish').onclick = () => say(`Primjer — u pravoj formi ovdje bi se spremilo ${savedRows().length} zapisa + 1 zapis razine Activity.`);
+$('saveplus').onclick = () => say('Primjer — Save + bi spremio i otvorio novu praznu formu.');
+
+render();
+</script>
+<datalist id="katalog">
+  <option value="pull.m"><option value="triceps"><option value="biceps"><option value="hand lat.r.">
+  <option value="adductor"><option value="abductor"><option value="squat.m"><option value="squat-bulg">
+  <option value="ergometar"><option value="istezanje"><option value="plank"><option value="leg.raises"><option value="Arnold press"><option value="rame"><option value="inv.row">
+</datalist>

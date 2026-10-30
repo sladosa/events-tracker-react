@@ -149,6 +149,7 @@ stavke, `FINANCIJE_PROCES.md` §4 posao Financija; nijedan od njih ne ponavlja r
 | `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** (⚠ gitignoriran — samo lokalno + `D:`)           |
 
 > `docs/_archive/` = gotovo ili zamijenjeno, čuva se kao povijest. `docs/parked/` = čeka vanjski okidač (v. Backlog „Parkirano“). Ni jedno se ne čita pri planiranju.
+> `docs/mockups/` = kopije skica objavljenih kao artifact (S188) — izvor za ponovnu objavu; uvijek ih linka spec kojem pripadaju.
 
 ---
 

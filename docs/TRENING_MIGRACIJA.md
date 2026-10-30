@@ -301,7 +301,8 @@ DIARY `M` je osobni tekst):
 
 **Prijedlog za korak 4 — 29.10. (S188, skica Add forme; Saša: „sve je ok")** — skica (privatni artifact,
 Sašin primjer: zagrijavanje + Blok 1 4 vježbe × 3 serije + Blok 2 2 × 2):
-<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>. **Još nije odluka** — potvrđuje se u S189 uz Sašin Excel i
+<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>; kopija u repou [`mockups/trening_snaga_add.html`](mockups/trening_snaga_add.html)
+(otvara se dvoklikom). **Još nije odluka** — potvrđuje se u S189 uz Sašin Excel i
 mjerenje na TEST-u (nekoliko tisuća takvih zapisa: lista, View, Excel).
 - **Jedan zapis = jedna serija jedne vježbe**, s atributima `blok` i `serija` (+ vježba, kg, ponavljanja,
   trajanje). Isto pravilo za piramidu, krug i zagrijavanje. Aplikacija tako zna koje su vježbe bile u istom krugu
@@ -332,6 +333,17 @@ pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od naj
 3. **Dnevna spremnost:** odstupanje od **osobne** razine (npr. 30 dana) — noćni puls, HRV, san ⇒ „danas lakše / Z2".
    ⚠ Traži **Garmin dotok** (podaci staju 02.2025.).
 - **Odmah (korak 5):** katalog vježbi dobiva stupac **mišićna skupina**.
+- **Mišićne skupine — prijedlog 30.10. (Saša: noge jedna skupina, adductor/abductor druga; nije odluka):**
+  kriterij je *koji mišići rade zajedno u istim vježbama*, jer se zajedno i umaraju. **Noge** = quads, glutes,
+  hamstrings (čučanj, iskorak, mrtvo dizanje ih opterećuju istovremeno ⇒ razdvojene bi uvijek imale isti datum);
+  **Kukovi** = adductor, abductor (izolirano na spravi, manje opterećenje; abductor je uglavnom glute medius, ne
+  veliki gluteus iz čučnja). **Listovi otvoreno:** najviše ih troši trčanje i brdo, ne teretana. ⇒ šire: oporavak
+  nogu troši i **Outdoor** (dugi, brdski trening), pa pravilo „noge odmaraju N dana" mora brojati i njega, inače
+  ne vidi dugo trčanje dan prije; koliko je to važno pokaže mjerenje (korak 11).
+  Katalog: po vježbi jedna **gruba skupina za pravila** (npr. Upper · Core · Noge · Kukovi · možda Listovi) + po
+  želji **detalj** (quads, glutes…) samo za čitanje. Grube skupine su opcije izbornika ⇒ kasnije se preimenuju /
+  dijele sheetom `Restructure options`, bez diranja zapisa. Saša upisuje prijedlog skupine u stupac M lista
+  `Vjezbe`; popis skupina predlaže Claude u S189 iz toga.
 - Aplikacija pokazuje Sašine podatke i njegova pravila, ne propisuje trening; granice opterećenja potvrđuje
   liječnik / fizioterapeut.
 
