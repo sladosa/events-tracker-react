@@ -1,26 +1,29 @@
 <!doctype html>
-<!-- Kopija privatnog artifacta https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy (S188, 29.10.2026.) — skica Add forme za trening snage, ne kod aplikacije. Otvara se dvoklikom u pregledniku. -->
+<!-- Kopija privatnog artifacta https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy (S188, 29.10.2026.) — skica Add forme za trening snage, ne kod aplikacije. S189 (30.10.): dodan View istog treninga (prijedlog za korak 6). Objava: kopija bez prva 4 retka (doctype, meta) na isti URL. Otvara se dvoklikom u pregledniku. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Strength Add Mockup</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-/* Layout: lijevo mobitel s Add formom (plava = Add, kao u appu), serije jedna ispod druge; desno zapisi koje bi forma spremila i isti trening kao tekst. Ispod 900px jedno ispod drugog. */
+/* Layout: lijevo mobitel s Add formom (plava = Add, kao u appu), serije jedna ispod druge; desno zapisi koje bi forma spremila i isti trening kao tekst. Ispod toga drugi mobitel: View istog treninga (indigo = View, kao u appu). Ispod 900px jedno ispod drugog. */
 :root {
   --bg: #f1f5f9; --card: #ffffff; --fg: #0f172a; --muted: #64748b; --line: #e2e8f0;
   --accent: #2563eb; --accent-soft: #dbeafe; --accent-fg: #ffffff; --same: #94a3b8;
   --warm: #fef3c7; --warm-fg: #92400e; --chip: #f1f5f9; --bad: #dc2626;
+  --view: #4f46e5; --view-soft: #e0e7ff; --view-fg: #ffffff;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0b1220; --card: #111a2e; --fg: #e2e8f0; --muted: #94a3b8; --line: #23314d;
   --accent: #60a5fa; --accent-soft: #1e3a5f; --accent-fg: #0b1220; --same: #5b6b85;
-  --warm: #3b2f12; --warm-fg: #fcd34d; --chip: #1a253d; --bad: #f87171; color-scheme: dark } }
+  --warm: #3b2f12; --warm-fg: #fcd34d; --chip: #1a253d; --bad: #f87171;
+  --view: #818cf8; --view-soft: #262a5c; --view-fg: #0b1220; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0b1220; --card: #111a2e; --fg: #e2e8f0; --muted: #94a3b8; --line: #23314d;
   --accent: #60a5fa; --accent-soft: #1e3a5f; --accent-fg: #0b1220; --same: #5b6b85;
-  --warm: #3b2f12; --warm-fg: #fcd34d; --chip: #1a253d; --bad: #f87171; color-scheme: dark }
+  --warm: #3b2f12; --warm-fg: #fcd34d; --chip: #1a253d; --bad: #f87171;
+  --view: #818cf8; --view-soft: #262a5c; --view-fg: #0b1220; color-scheme: dark }
 
 * { box-sizing: border-box }
 body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45;
@@ -110,8 +113,46 @@ ul.n, ol.q { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction:
 .sw.s { border-style: dashed; border-color: var(--same) }
 .sw.d { border-color: var(--accent); border-width: 2px }
 .sw.w { background: var(--warm) }
+.section-gap { height: 36px }
+.phone.view .bar { background: var(--view); color: var(--view-fg) }
+.bar .nav { display: flex; gap: 6px; font-size: 12px; font-weight: 500 }
+.bar .nav span { padding: 2px 8px; border-radius: 6px; background: rgb(255 255 255 / .18) }
+.v-sum { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); padding: 2px 2px 0 }
+.v-sum b { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 600 }
+.v-act { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px }
+.v-act .k { color: var(--muted) }
+.v-block { border: 1px solid var(--line); border-radius: 12px; overflow: hidden }
+.v-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 10px; background: var(--chip); border-bottom: 1px solid var(--line) }
+.v-head .t { font-weight: 600 }
+.v-head .vol { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums }
+.pill.view { background: var(--view-soft); color: var(--view) }
+.v-row { border-top: 1px solid var(--line) }
+.v-row:first-of-type { border-top: 0 }
+.v-line { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) 12px; gap: 8px; align-items: baseline; padding: 7px 10px }
+.v-row > summary.v-line { list-style: none; cursor: pointer }
+.v-row > summary.v-line::-webkit-details-marker { display: none }
+.v-line .ex { font-weight: 600; overflow-wrap: anywhere }
+.v-line .vals { font-variant-numeric: tabular-nums; overflow-wrap: anywhere }
+.v-line .vals .rep { color: var(--muted) }
+.v-line .chev { color: var(--muted); font-size: 10px; transition: transform .15s }
+.v-row[open] .chev { transform: rotate(90deg) }
+.v-row[open] { background: color-mix(in srgb, var(--view-soft) 40%, transparent) }
+.v-line .part { color: var(--warm-fg); font-size: 11px }
+.v-list { padding: 7px 10px; display: flex; flex-wrap: wrap; gap: 4px 12px }
+.v-detail { padding: 0 10px 8px; overflow-x: auto }
+.v-detail table { border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums }
+.v-detail th { color: var(--muted); font-weight: 500; text-align: right; padding: 2px 12px 2px 0 }
+.v-detail td { text-align: right; padding: 2px 12px 2px 0 }
+.v-detail th:first-child, .v-detail td:first-child { text-align: left }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden }
+.seg button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; padding: 6px 10px; cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--view-soft); color: var(--view); font-weight: 600 }
+.ctrls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 6px }
+.ctrls .lbl { font-size: 12px; color: var(--muted); width: 4.5em }
+.today { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 4px }
+.today span { border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums }
 @media (prefers-reduced-motion: no-preference) { .flash { animation: fl .6s ease-out } @keyframes fl { from { background: var(--accent-soft) } to { background: transparent } } }
-@media (prefers-reduced-motion: reduce) { .ser-head .chev { transition: none } }
+@media (prefers-reduced-motion: reduce) { .ser-head .chev, .v-line .chev { transition: none } }
 </style>
 
 <div class="page-head">
@@ -169,6 +210,60 @@ ul.n, ol.q { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction:
   </div>
 </div>
 
+<div class="section-gap"></div>
+<div class="page-head">
+  <h1>View istog treninga — prijedlog za korak 6</h1>
+  <p class="lead">Jedan ekran po treningu, složen po bloku. Danas View pokazuje jednu seriju po gumbu (#1 … #24) i u svakoj sva polja. Ovdje je svaka vježba jedan red s piramidom, prazna polja se ne prikazuju, a klik na red otvara serije. Crta se iz istih zapisa kao gore: promijeni nešto u Add formi i View se promijeni.</p>
+</div>
+
+<div class="wrap">
+  <section class="phone view" aria-label="View Activity">
+    <div class="bar">
+      <div class="crumb">Fitness · Activity › Gym</div>
+      <div class="ttl"><span>View Activity</span><span class="nav"><span>◀ Prev</span><span>Next ▶</span></span></div>
+    </div>
+    <div class="body" id="view"></div>
+    <div class="footer">
+      <button class="sec" type="button" id="vEdit">Edit</button>
+      <button class="pri" type="button" id="vClose">Close</button>
+    </div>
+    <div class="toast" id="vToast" aria-live="polite"></div>
+  </section>
+
+  <div class="side">
+    <section class="panel">
+      <h2>Primjer i raspored</h2>
+      <div class="ctrls">
+        <span class="lbl">Trening</span>
+        <span class="seg" role="group" aria-label="Primjer"><button type="button" id="srcForm" aria-pressed="true">iz forme gore</button><button type="button" id="srcImom" aria-pressed="false">IMOM 55 min (proba)</button></span>
+      </div>
+      <div class="ctrls">
+        <span class="lbl">Redovi</span>
+        <span class="seg" role="group" aria-label="Raspored"><button type="button" id="byEx" aria-pressed="true">po vježbi</button><button type="button" id="bySer" aria-pressed="false">po seriji</button></span>
+      </div>
+      <p class="sub" style="margin:8px 0 0">„Po vježbi“ je kako pišeš u DIARY-ju: piramida u jednom redu. „Po seriji“ čita krug onako kako si ga odradio. Iste uzastopne serije se sklapaju, pa IMOM od 55 minuta stane u jedan red.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Danas, za usporedbu</h2>
+      <p class="sub">Probni trening od 24 serije u današnjem View-u: gumb po seriji, pa obrazac sa svim poljima (rutina, s_kim, vjezba, blok, serija, red, kg, ponavljanja, trajanje, intenzitet, zagrijavanje, metoda, rpe), od toga četiri prazna.</p>
+      <div class="today" aria-hidden="true"><span>#1</span><span>#2</span><span>#3</span><span>#4</span><span>#5</span><span>#6</span><span>#7</span><span>#8</span><span>#9</span><span>#10</span><span>#11</span><span>#12</span><span>…</span><span>#24</span></div>
+    </section>
+
+    <section class="panel">
+      <h2>Pravila prikaza (za korak 6)</h2>
+      <ul class="n">
+        <li><b>Redoslijed</b> je blok → serija → red, nikad vrijeme upisa. Uvoz svim serijama daje isto vrijeme, pa bi se izmiješale.</li>
+        <li><b>Zagrijavanje</b> je blok 0: popis bez krugova.</li>
+        <li><b>Način, RPE i odmor</b> su polja bloka. Spremaju se na prvu seriju bloka, a prikazuju u zaglavlju bloka.</li>
+        <li><b>Volumen</b> (kg × ponavljanja) računa se pri prikazu. Zagrijavanje se ne broji.</li>
+        <li><b>Prazna polja</b> se ne prikazuju. Klik na red otvara serije te vježbe, a Edit otvara formu gore.</li>
+        <li><b>Zamijenjena vježba</b> (sprava zauzeta) ima svoj red s oznakom koliko je serija odrađeno.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
 <script>
 const S = (ex, kg, reps) => ({ ex, kg, reps });
 const PRIMJER = [
@@ -178,7 +273,7 @@ const PRIMJER = [
     [S('pull.m', 45, 14), S('triceps', 15, 14), S('hand lat.r.', 2, 12), S('biceps', 15, 14)],
     [S('pull.m', 55, 15), S('triceps', 15, 14), S('hand lat.r.', 2, 12), S('biceps', 15, 14)],
     [S('pull.m', 65, 9),  S('triceps', 15, 14), S('hand lat.r.', 2, 12), S('biceps', 15, 14)] ] },
-  { title: 'Blok 2', kind: 'circuit', rounds: [
+  { title: 'Blok 2', kind: 'circuit', rpe: 8, rounds: [
     [S('adductor', 45, 15), S('abductor', 45, 15)],
     [S('adductor', 55, 13), S('abductor', 55, 13)] ] },
 ];
@@ -291,7 +386,69 @@ function renderSide() {
   $('nota').textContent = blocks.map(b => b.kind === 'list'
     ? `${b.title}: ${b.items.filter(i => i.ex).map(i => `${i.ex} ${i.val}`).join(' · ')}`
     : `${b.title}\n` + b.rounds.map((r, ri) => `  ${ri + 1}. ${roundText(r)}`).join('\n')).join('\n');
+  renderView();
 }
+
+/* ---- View (S189): isti zapisi, složeni po bloku ---- */
+let vSrc = 'form', vBy = 'ex';
+const IMOM = { head: ['Core', 'grupa', '30.08.2025. 20:42'], blocks: [{ title: 'Blok 1', kind: 'circuit', metoda: 'IMOM', rpe: 7,
+  rounds: Array.from({ length: 55 }, () => [S('z_sklek', null, 5), S('squat', null, 5), S('kosa_k', null, 5), S('plank', null, 5)]) }] };
+const valText = it => it.kg != null ? `${it.kg}×${it.reps ?? '?'}` : it.reps != null ? `${it.reps}` : '—';
+const serije = n => `${n} ${n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'serije' : 'serija'}`;
+/** Uzastopne iste vrijednosti u jednu: 5, 5, 5 ⇒ "5 (3×)". */
+function runs(list) {
+  const out = [];
+  list.forEach(v => { const l = out[out.length - 1]; if (l && l.v === v) l.n++; else out.push({ v, n: 1 }); });
+  return out.map(r => r.n > 1 ? `${esc(r.v)} <span class="rep">(${r.n}×)</span>` : esc(r.v)).join(' · ');
+}
+function renderView() {
+  const vb = vSrc === 'imom' ? IMOM.blocks : blocks;
+  const head = vSrc === 'imom' ? IMOM.head : ['Upper', 'sam', '29.10. 18:05'];
+  let nRec = 0, vol = 0;
+  const html = vb.map(b => {
+    if (b.kind === 'list') {
+      const items = b.items.filter(i => i.ex);
+      items.forEach(i => { nRec += parseVal(i.val).sets ?? 1; });
+      return `<div class="v-block"><div class="v-head"><span class="t">${esc(b.title)}</span><span class="pill warm">blok 0 · popis</span></div>
+        <div class="v-list">${items.map(i => `<span><b>${esc(i.ex)}</b> ${esc(i.val)}</span>`).join('')}</div></div>`;
+    }
+    const R = b.rounds.length;
+    let bvol = 0;
+    b.rounds.forEach(r => r.forEach(it => { if (it.ex) { nRec++; bvol += (it.kg ?? 0) * (it.reps ?? 0); } }));
+    vol += bvol;
+    const pills = [b.metoda && `<span class="pill view">${esc(b.metoda)}</span>`, b.rpe && `<span class="pill view">RPE ${b.rpe}</span>`,
+      `<span class="pill">${serije(R)}</span>`].filter(Boolean).join('');
+    let rows;
+    if (vBy === 'ex') {
+      const order = [];
+      b.rounds.forEach(r => r.forEach(it => { if (it.ex && !order.includes(it.ex)) order.push(it.ex); }));
+      rows = order.map(ex => {
+        const sets = [];
+        b.rounds.forEach((r, ri) => r.forEach(it => { if (it.ex === ex) sets.push({ ri, it }); }));
+        const part = sets.length < R ? `<span class="part"> · ${sets.length} od ${R}</span>` : '';
+        const det = `<table><thead><tr><th>serija</th><th>kg</th><th>pon.</th></tr></thead><tbody>${sets.slice(0, 12).map(x =>
+          `<tr><td>${x.ri + 1}.</td><td>${x.it.kg ?? '—'}</td><td>${x.it.reps ?? '—'}</td></tr>`).join('')}${sets.length > 12 ? `<tr><td colspan="3">… još ${sets.length - 12}</td></tr>` : ''}</tbody></table>`;
+        return `<details class="v-row"><summary class="v-line"><span class="ex">${esc(ex)}</span><span class="vals">${runs(sets.map(x => valText(x.it)))}${part}</span><span class="chev">▶</span></summary><div class="v-detail">${det}</div></details>`;
+      }).join('');
+    } else {
+      const groups = [];
+      b.rounds.forEach((r, ri) => { const t = roundText(r); const g = groups[groups.length - 1];
+        if (g && g.t === t) g.to = ri; else groups.push({ from: ri, to: ri, t }); });
+      rows = groups.map(g => `<div class="v-row"><div class="v-line"><span class="ex">${g.from === g.to ? `${g.from + 1}.` : `${g.from + 1}.–${g.to + 1}.`}</span><span class="vals">${esc(g.t)}</span><span></span></div></div>`).join('');
+    }
+    return `<div class="v-block"><div class="v-head"><span class="t">${esc(b.title)}</span>${pills}<span class="vol">${bvol ? bvol.toLocaleString('hr-HR') + ' kg' : ''}</span></div>${rows}</div>`;
+  }).join('');
+  $('view').innerHTML = `<div class="v-act"><span><span class="k">rutina</span> <b>${head[0]}</b></span><span><span class="k">s kim</span> <b>${head[1]}</b></span><span class="k" style="margin-left:auto">${head[2]}</span></div>
+    <div class="v-sum"><span>zapisa <b>${nRec}</b></span><span>blokova <b>${vb.length}</b></span><span>volumen <b>${vol.toLocaleString('hr-HR')} kg</b></span></div>${html}`;
+}
+const press = (on, off) => { $(on).setAttribute('aria-pressed', 'true'); $(off).setAttribute('aria-pressed', 'false'); };
+$('srcForm').onclick = () => { vSrc = 'form'; press('srcForm', 'srcImom'); renderView(); };
+$('srcImom').onclick = () => { vSrc = 'imom'; press('srcImom', 'srcForm'); renderView(); };
+$('byEx').onclick = () => { vBy = 'ex'; press('byEx', 'bySer'); renderView(); };
+$('bySer').onclick = () => { vBy = 'ser'; press('bySer', 'byEx'); renderView(); };
+const vSay = m => { const t = $('vToast'); t.textContent = m; t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); };
+$('vEdit').onclick = () => vSay('Primjer — Edit otvara formu kao gore, s ovim treningom.');
+$('vClose').onclick = () => vSay('Primjer — povratak na listu, na ovaj trening.');
 
 /** Oznake isto / promijenjeno / zamjena bez ponovnog crtanja, da fokus ostane u polju. */
 function markRound(bi, ri) {

@@ -456,6 +456,10 @@ vraća obrisan redak** — `row_hash` netaknut + `event_id` kojeg nema ⇒ „Un
    `zagrijavanje` ostaje za lakšu seriju unutar bloka. Volumen ih računa odvojeno.
 5. `s_kim` i `rutina` na `Activity1` (roditelj) — kako je dogovoreno.
 6. **Prije uvoza povijesti (korak 9) mora biti gotovo:** lista po treninzima i prikaz serija (korak 6/7).
+7. **Skica View-a** (30.10., Saša: „dodaj"): u istom artifactu kao Add forma
+   (<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>, kopija [`mockups/trening_snaga_add.html`](mockups/trening_snaga_add.html)) —
+   jedan ekran po treningu, red po vježbi s piramidom (ili po seriji), iste uzastopne serije sklopljene, polja bloka u
+   zaglavlju, prazna polja skrivena. Prijedlog za korak 6, čeka Sašine primjedbe.
 
 **Koraci** (status se ažurira; A4 / K2 dolaze poslije koraka 9):
 
