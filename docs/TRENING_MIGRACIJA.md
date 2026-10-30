@@ -239,7 +239,8 @@ sadržaj se čita iz baze pri pokretanju (nikad snimka u shortcutu, zamka S127).
 (Upper i kad ima adductor/abductor), jer se `Strength1` teško pamti. Analiza „po dijelu tijela" ne čita ime rutine
 nego vježbe u zapisima + mišićnu skupinu iz kataloga (korak 5) — pa netočno ime ne kvari nijednu brojku.
 
-**Katalog vježbi (Saša: „jako koristan"):** `Fitness > Katalog > Vježba` — svaka vježba je zapis (puno ime,
+**Katalog vježbi (Saša: „jako koristan"):** ⚠ **ODLUKA 30.10.: zasebna Area `Katalog vježbi`, NE unutar `Fitness`**
+(v. „Katalog za više korisnika" ispod; ranije `Fitness > Katalog > Vježba`) — svaka vježba je zapis (puno ime,
 skupina, sprava, opis, slika), uređuje se zasebno, kao vlastiti projekt. Izbornik `vježba` u `Gym` čita iz
 kataloga ⇒ **novi opći mehanizam „izbornik iz druge kategorije"** (koristan i drugim Areama). Na katalog se
 oslanja „Review" tab (trendovi po vježbi).
@@ -397,7 +398,21 @@ pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od naj
   (`orb`) s trajanjem i intenzitetom (`jako`/`lagano`). Ukupno minuta, minuta jako i broj intervala računaju se pri
   prikazu; prikaz sklapa natrag u `4j · 3p · 4j …`. Parser za sve tri vrste zapisa ide u `pravila.py` (korak 9).
 - **Katalog je proširiv bez koda** (Saša: „ako netko bude htio back squat"): nova vježba = novi zapis kataloga
-  (korak 5) — Add Activity na `Katalog > Vježba`; prvih 59 jednim Excel uvozom iz JSON-a.
+  (korak 5) — Add Activity na kategoriji vježbe u Arei `Katalog vježbi`; prvih 59 jednim Excel uvozom iz JSON-a.
+- **Katalog za više korisnika — ODLUKA 30.10. (Saša: „puno moćnije")** — povod: kako počinje Koka.
+  - **Katalog je zasebna Area `Katalog vježbi`**, dijeljena (read, ili write ako i drugi dodaju vježbe). Razlog:
+    vježbe su **podaci** (zapisi), a „From template" kopira strukturu i postavke, ne podatke ⇒ katalog unutar
+    `Fitness` ne bi došao uz predložak, a dijeljenje cijele `Fitness` Aree pokazalo bi i sve Sašine treninge.
+    Slike/opisi na jednom mjestu za sve.
+  - ⇒ **„Izbornik iz druge kategorije" čita kategoriju iz DRUGE Aree** koju korisnik smije čitati (RLS čitanja,
+    ne vlasništvo) — opći mehanizam od početka, ne preseljenje kasnije. Atribut u treningu pamti **slug**.
+  - **Novi korisnik (Koka):** `Fitness_Koka` iz predloška (struktura, rutina, atributi, pravila oporavka — bez
+    ijednog treninga) ⇒ alat „Area → template" iz strateškog koraka 5 (isti kao za Financije). Ništa ne
+    konfigurira unaprijed: izbornik **na vrhu nudi vježbe koje je već koristila** (iz njenih zapisa), ispod
+    cijeli katalog; aliasi iz DIARY-ja služe samo Sašinom uvozu povijesti. Rutine nastaju iz korištenja
+    („Ponovi zadnji" = njen zadnji trening te rutine). Pragovi oporavka su postavka njene Aree.
+  - Pločica oporavka bez dovoljno povijesti (rast volumena traži ≥ 4 tjedna) **kaže „premalo podataka"**, ne šuti
+    i ne izmišlja prosjek.
 - **Skica kataloga** (30.10., prije koda): <https://claude.ai/artifact/Wku3VTDv5dm1Qn42NviHnw>, kopija
   [`mockups/trening_katalog.html`](mockups/trening_katalog.html) — lista po skupinama, View vježbe, izbornik vježbe
   u Add formi (grupiran, sa slikom, ⓘ „prikaži vježbu"), pločica oporavka (primjer brojki). **Slike:** privitak uz
@@ -412,7 +427,7 @@ pretjerati, ali ni pustiti"* (67 g., oporavak se produljuje). Tri razine, od naj
 | 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ✅ S188 |
 | 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel; ✅ 30.10. Saša ispravio list `Vjezbe` ⇒ `vjezbe_prijedlog.json` (59 vježbi, skupine, vrste). List `Mjesta` još nije pregledan |
 | 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ⬜ prijedlog 29.10. (S188, skica gore: zapis po seriji, `blok` + `serija`); potvrda u S189 uz Excel + mjerenje |
-| 5 | Katalog vježbi (slug + puno ime, slika, **mišićna skupina**, „po ruci") + izbornik iz druge kategorije + gumb „prikaži vježbu" | ⬜ |
+| 5 | Katalog vježbi kao **zasebna Area `Katalog vježbi`** (slug + puno ime, slika, skupina + sporedna, vrsta, „po ruci") + izbornik iz kategorije **druge Aree** + gumb „prikaži vježbu"; uvoz 59 vježbi iz `vjezbe_prijedlog.json` | ⬜ (odluka 30.10.) |
 | 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) | ⬜ |
 | 7 | „Ponovi zadnji trening ove rutine" (Add + shortcut na rutinu) | ⬜ |
 | 8 | Review tab treninga (pločice: napredak po vježbi, Z2 minute tjedno, obujam po vrsti) | ⬜ |
