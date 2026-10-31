@@ -39,6 +39,8 @@ export interface ActivityGroup {
   events: ActivityEvent[];
   eventCount: number;
   has_photos: boolean;       // 1.4.3: true if any event in this group has attachments
+  /** S190: slike retka (svih eventa grupe) — 📷 N u listi otvara traku ispod retka. */
+  photos?: { id: string; url: string; filename: string | null }[];
   user_id: string;           // Owner of this session
   user_display_name: string; // display_name ili email iz profiles
   /**
@@ -308,17 +310,21 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
       if (allEventIds.length > 0) {
         const { data: attachments } = await supabase
           .from('event_attachments')
-          .select('event_id')
+          .select('id, event_id, url, filename')
           .in('event_id', allEventIds)
-          .eq('type', 'image');
+          .eq('type', 'image')
+          .order('id');
 
         if (attachments && attachments.length > 0) {
-          const eventIdsWithPhotos = new Set(
-            (attachments as { event_id: string }[]).map(a => a.event_id)
-          );
+          const byEvent = new Map<string, { id: string; url: string; filename: string | null }[]>();
+          for (const a of attachments as { id: string; event_id: string; url: string; filename: string | null }[]) {
+            byEvent.set(a.event_id, [...(byEvent.get(a.event_id) ?? []), { id: a.id, url: a.url, filename: a.filename }]);
+          }
           for (const group of groupMap.values()) {
-            if (group.events.some(e => eventIdsWithPhotos.has(e.id))) {
+            const photos = group.events.flatMap(e => byEvent.get(e.id) ?? []);
+            if (photos.length > 0) {
               group.has_photos = true;
+              group.photos = photos;
             }
           }
         }

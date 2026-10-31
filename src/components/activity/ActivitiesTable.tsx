@@ -12,6 +12,7 @@ import { useListColumnValues, type RowValues } from '@/hooks/useListColumnValues
 import type { UUID } from '@/types';
 import { isAttrFilterActive } from '@/lib/eventQueryBuilder';
 import { describeTypedFilter } from '@/lib/attrFilterNumeric';
+import { PhotoCarousel } from './PhotoCarousel';
 
 // --------------------------------------------
 // Avatar helpers
@@ -741,11 +742,22 @@ interface ActivityRowProps {
   valuesFailed?: boolean;
 }
 
+/** Retci s otvorenom trakom slika (S190) — razina modula, preživi remount liste. */
+const openPhotoRows = new Set<string>();
+
 function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails, onDelete, isHighlighted, highlightRef, currentUserId, canEditForeign = false, canSelect = true, isOrphan = false, onManageOrphan, showCategoryOnMobile = false, runningBalance, columns, values, valuesLoaded, valuesFailed }: ActivityRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 });
+  /** S190: traka sa slikama ispod retka (📷 N). Pamti se IZVAN retka: lista se nakon promjene
+   *  filtra montira iznova (S122), a lokalno stanje bi traku zatvorilo ispod prsta. */
+  const [showPhotos, setShowPhotosState] = useState(() => openPhotoRows.has(group.sessionKey));
+  const setShowPhotos = (f: (v: boolean) => boolean) => setShowPhotosState(v => {
+    const next = f(v);
+    if (next) openPhotoRows.add(group.sessionKey); else openPhotoRows.delete(group.sessionKey);
+    return next;
+  });
 
   const firstEvent = group.events[0];
   const isOwnEvent = !currentUserId || group.user_id === currentUserId;
@@ -805,6 +817,27 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
     </span>
   ) : null;
 
+  // S190: 📷 N — u ćeliji akcija, jer je ona jedina koja postoji na OBJE širine i u svakoj
+  //   konfiguraciji kolona (katalog nema kolonu `events`). Jedan element, dva mjesta (S125).
+  const photoCount = group.photos?.length ?? 0;
+  const photoButton = photoCount > 0 ? (
+    <button
+      type="button"
+      onClick={() => setShowPhotos(v => !v)}
+      aria-expanded={showPhotos}
+      aria-label={`Slike (${photoCount})`}
+      title="Slike ispod retka"
+      className={`px-1.5 py-0.5 text-xs rounded-full border whitespace-nowrap ${showPhotos ? 'bg-indigo-50 border-indigo-400' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+    >
+      📷 {photoCount}
+    </button>
+  ) : null;
+  const photoStrip = showPhotos && group.photos && group.photos.length > 0 ? (
+    <div className="max-w-md py-1">
+      <PhotoCarousel photos={group.photos} />
+    </div>
+  ) : null;
+
   const menuButton = (
     <button
       onClick={handleMenuOpen}
@@ -854,7 +887,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
         return (
           <div className="flex items-center justify-center gap-1">
             <span className="text-sm text-gray-700">{group.eventCount}</span>
-            {group.has_photos && <span title="Has photos" className="text-xs">📷</span>}
+            {group.has_photos && !group.photos && <span title="Has photos" className="text-xs">📷</span>}
           </div>
         );
       case 'user':
@@ -915,7 +948,7 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
         //   stajao samo `menuButton`, oznaka se vidjela ISKLJUCIVO na uskom
         //   ekranu — a E2E vrti desktop sirinu, pa je BUG-S123-EDITMARK cijelo
         //   vrijeme bio tocan nalaz koji se trazio na krivom mjestu.
-        return <div className="flex items-center gap-1">{editedMark}{menuButton}</div>;
+        return <div className="flex items-center gap-1">{photoButton}{editedMark}{menuButton}</div>;
       default:
         return null;
     }
@@ -1023,9 +1056,21 @@ function ActivityRow({ group, isSelected, onToggleSelect, onEdit, onViewDetails,
         </td>
         {/* Sticky Actions — always visible on right edge */}
         <td className="py-2 pr-2 sticky right-0 bg-white z-[1] align-top">
-          <div className="flex items-center gap-1">{editedMark}{menuButton}</div>
+          <div className="flex items-center gap-1">{photoButton}{editedMark}{menuButton}</div>
         </td>
       </tr>
+
+      {/* S190: traka sa slikama — po jedan redak za svaku širinu, kao i sam redak */}
+      {photoStrip && (
+        <tr className="hidden sm:table-row bg-gray-50">
+          <td colSpan={columns.length + 1} className="px-3 pb-2">{photoStrip}</td>
+        </tr>
+      )}
+      {photoStrip && (
+        <tr className="sm:hidden bg-gray-50">
+          <td colSpan={2} className="px-3 pb-2 max-w-0 w-full">{photoStrip}</td>
+        </tr>
+      )}
 
       {/* Dropdown menu portal — shared between desktop and mobile rows */}
       {showMenu && createPortal(

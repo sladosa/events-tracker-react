@@ -104,6 +104,27 @@ test.describe('S190 — katalog: jedinstven slug', () => {
     await expect.poll(() => countEvents(page), { timeout: 20_000 }).toBe(2);
   });
 
+  test('Lista: 📷 N otvara traku sa slikama ispod retka, ‹ › listaju', async ({ page }) => {
+    test.setTimeout(90_000);
+    // Slika ne mora postojati na adresi — mjeri se traka i listanje, ne piksel.
+    for (const name of ['prva.png', 'druga.png']) {
+      await supabasePost(page, 'event_attachments', {
+        event_id: seeded, user_id: OWNER_ID, type: 'image', url: `https://example.invalid/${name}`, filename: name,
+      });
+    }
+    await page.goto('/app');
+    await selectFilterPath(page, areaId, [leafId]);
+    const cam = page.getByRole('button', { name: 'Slike (2)' }).first();
+    await expect(cam).toBeVisible({ timeout: 20_000 });
+    await cam.click();
+    await expect(page.locator('text="1 / 2" >> visible=true')).toBeVisible();
+    await page.getByRole('button', { name: 'Sljedeća slika' }).click();
+    await expect(page.locator('text="2 / 2" >> visible=true')).toBeVisible();
+    await expect(page.getByRole('img', { name: 'druga.png' })).toBeAttached();
+    await cam.click();
+    await expect(page.locator('text="2 / 2" >> visible=true')).toHaveCount(0);
+  });
+
   test('Edit: bez datuma i vremena, vlastiti slug nije duplikat', async ({ page }) => {
     test.setTimeout(90_000);
     await page.goto(`/app/edit/${encodeURIComponent(start)}?categoryId=${leafId}`);
