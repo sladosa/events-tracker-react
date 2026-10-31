@@ -11,6 +11,7 @@ skupine je tada promjena opcije (`Restructure options`), ne premještanje zapisa
     run.bat Trening\\katalog.py            # suhi prolaz: ispis kataloga + što bi nastalo
     run.bat Trening\\katalog.py --apply    # stvori (staje ako Area već postoji)
     run.bat Trening\\katalog.py --obrisi   # obriši Areu i sve njene zapise
+    run.bat Trening\\katalog.py --pravila  # postojećoj Arei upiši pravila ovog alata (S190: unique, note)
 
 Vlasnik je Sašin TEST račun (NE owner@test.com — E2E global-setup briše njegove ne-seed Aree).
 Na PROD katalog ide kasnije kao app EXPORT ove Aree (Structure + Activities), uvozom — ne ovim
@@ -25,6 +26,7 @@ from __future__ import annotations
 import json
 import sys
 import urllib.parse
+import urllib.request
 import uuid
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -88,6 +90,33 @@ def load_catalog() -> list[dict]:
     return out
 
 
+def rules_for(slug: str, opts: list[str] | None) -> dict:
+    rules: dict = {'type': 'suggest', 'suggest': opts} if opts else {}
+    if slug == 'slug':
+        rules['unique'] = {'from': 'name'}     # S190: jedinstven, predlaže se iz imena
+    return rules
+
+
+SETTINGS = {
+    'disable_save_plus': True,          # Save + bi stavio dvije vježbe u isti redak liste
+    'add_header': {'timer': False, 'date': False, 'note': False},   # katalog nije događaj u vremenu
+    'list_columns': {'columns': [
+        {'role': 'attr', 'label': 'Slug', 'slugs': ['slug'], 'mobile': 'line1', 'width': 'w-32'},
+        {'role': 'attr', 'label': 'Name', 'slugs': ['name']},
+        {'role': 'attr', 'label': 'Group', 'slugs': ['group', 'secondary'], 'sep': ' + '},
+        {'role': 'attr', 'label': 'Type', 'slugs': ['type'], 'mobile': 'hide'},
+        {'role': 'actions'}]},
+}
+
+
+def patch(url, key, table, flt, body):
+    req = urllib.request.Request(url + '/rest/v1/' + table + '?' + flt, data=json.dumps(body).encode(),
+                                 method='PATCH', headers={'apikey': key, 'Authorization': 'Bearer ' + key,
+                                                          'Content-Type': 'application/json',
+                                                          'Prefer': 'return=representation'})
+    return len(json.load(urllib.request.urlopen(req, timeout=120)))
+
+
 def build(owner_id: str, catalog: list[dict]) -> dict:
     area_id, leaf_id = str(uuid.uuid4()), str(uuid.uuid4())
     defs, attr_rows = {}, []
@@ -97,7 +126,7 @@ def build(owner_id: str, catalog: list[dict]) -> dict:
         attr_rows.append({'id': did, 'user_id': owner_id, 'category_id': leaf_id, 'name': name,
                           'slug': slug, 'data_type': dt, 'is_required': req, 'sort_order': i,
                           'description': desc,
-                          'validation_rules': {'type': 'suggest', 'suggest': opts} if opts else {}})
+                          'validation_rules': rules_for(slug, opts)})
     events, values = [], []
     n = len(catalog)
     for i, r in enumerate(catalog):
@@ -111,16 +140,7 @@ def build(owner_id: str, catalog: list[dict]) -> dict:
                 did, _ = defs[slug]
                 values.append({'id': str(uuid.uuid4()), 'event_id': eid, 'attribute_definition_id': did,
                                'user_id': owner_id, 'value_text': r[slug]})
-    settings = {
-        'disable_save_plus': True,          # Save + bi stavio dvije vježbe u isti redak liste
-        'add_header': {'timer': False, 'date': False},
-        'list_columns': {'columns': [
-            {'role': 'attr', 'label': 'Slug', 'slugs': ['slug'], 'mobile': 'line1', 'width': 'w-32'},
-            {'role': 'attr', 'label': 'Name', 'slugs': ['name']},
-            {'role': 'attr', 'label': 'Group', 'slugs': ['group', 'secondary'], 'sep': ' + '},
-            {'role': 'attr', 'label': 'Type', 'slugs': ['type'], 'mobile': 'hide'},
-            {'role': 'actions'}]},
-    }
+    settings = json.loads(json.dumps(SETTINGS))
     area = {'id': area_id, 'user_id': owner_id, 'name': AREA_NAME, 'slug': AREA_SLUG,
             'sort_order': 60, 'settings': settings,
             'description': 'Exercise catalog — one record per exercise; training records store its Slug.'}
@@ -162,6 +182,22 @@ def main():
         delete(url, key, 'categories', f'area_id=eq.{aid}')
         delete(url, key, 'areas', f'id=eq.{aid}')
         print(f'✓ obrisano: {n_ev} zapisa, {n_attr} vrijednosti, Area {aid}')
+        return
+    if '--pravila' in sys.argv:
+        if not existing:
+            sys.exit('Nema Aree — prvo --apply.')
+        aid = existing[0]['id']
+        area = _db.rest(url, key, f'areas?select=settings&id=eq.{aid}')[0]
+        settings = {**(area.get('settings') or {}), 'add_header': SETTINGS['add_header']}
+        n_area = patch(url, key, 'areas', f'id=eq.{aid}', {'settings': settings})
+        cats = _db.rest(url, key, f'categories?select=id&area_id=eq.{aid}')
+        cids = ','.join(c['id'] for c in cats)
+        n_attr = 0
+        for a in _db.rest(url, key, f'attribute_definitions?select=id,slug,validation_rules&category_id=in.({cids})'):
+            want = rules_for(a['slug'], next((o for s_, _, _, o, _, _ in ATTRS if s_ == a['slug']), None))
+            if want != (a.get('validation_rules') or {}):
+                n_attr += patch(url, key, 'attribute_definitions', f'id=eq.{a["id"]}', {'validation_rules': want})
+        print(f'✓ Area settings {n_area} · atributa promijenjeno {n_attr}')
         return
     sasa = _db.rest(url, key, f'profiles?select=id&email=eq.{SASA_EMAIL}')
     if not sasa:
