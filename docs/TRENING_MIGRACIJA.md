@@ -469,7 +469,7 @@ vraća obrisan redak** — `row_hash` netaknut + `event_id` kojeg nema ⇒ „Un
 | 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ✅ S188 |
 | 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel; ✅ 30.10. Saša ispravio list `Vjezbe` ⇒ `vjezbe_prijedlog.json` (59 vježbi, skupine, vrste). List `Mjesta` još nije pregledan |
 | 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ✅ S189 odluka (mjereno na 7.936 serija, v. „Mjerenje za korak 4"): zapis po seriji + `red`; atributi bloka na prvom zapisu bloka; zagrijavanje = `blok` 0. Usput popravljeni izvoz i View/Edit (rezanje na 1000) |
-| 5 | Katalog vježbi kao **zasebna Area `Katalog vježbi`** (slug + puno ime, slika, skupina + sporedna, vrsta, „po ruci") + izbornik iz kategorije **druge Aree** + gumb „prikaži vježbu"; uvoz 59 vježbi iz `vjezbe_prijedlog.json` | ⬜ (odluka 30.10.) |
+| 5 | Katalog vježbi kao **zasebna Area `Katalog vježbi`** (slug + puno ime, slika, skupina + sporedna, vrsta, „po ruci") + izbornik iz kategorije **druge Aree** + gumb „prikaži vježbu"; uvoz 59 vježbi iz `vjezbe_prijedlog.json` | 🟨 S190: Area na TEST-u (`katalog.py`, 56 vježbi); skica izbornika dogovorena (v. „Korak 5 — odluke S190"); kod ⬜ |
 | 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) + **lista stranici po treninzima** i **prikaz serija po bloku** u View/Edit (izmjereno S189: postojeći prikaz puca na N zapisa po treningu) | ⬜ |
 | 7 | „Ponovi zadnji trening ove rutine" (Add + shortcut na rutinu) | ⬜ |
 | 8 | Review tab treninga (pločice: napredak po vježbi, Z2 minute tjedno, obujam po vrsti) | ⬜ |
@@ -478,6 +478,33 @@ vraća obrisan redak** — `row_hash` netaknut + `event_id` kojeg nema ⇒ „Un
 | 11 | Mjerenje osobnog oporavka (DIARY snaga × Garmin noćni puls / HRV; samo čita) — može i prije koraka 9 | ⬜ |
 | 12 | Pločica spremnosti po mišićnoj skupini: pravila najmanjeg odmora / najduljeg razmaka (brojevi iz 11) | ⬜ |
 | 13 | Dnevna spremnost iz Garmina (odstupanje od osobne razine) — uz Garmin dotok | ⬜ |
+
+### Korak 5 — odluke S190 (31.10., Saša)
+
+Skica (privatni artifact, 3. verzija): <https://claude.ai/artifact/G5Bdeia4hYPYTQwtMSsP5F>; kopija
+[`mockups/trening_izbor_vjezbe.html`](mockups/trening_izbor_vjezbe.html). Stara skica kataloga i oporavka
+(`mockups/trening_katalog.html`) ostaje nedirnuta.
+
+- **Model kataloga:** jedna kategorija `Vježba`, skupina je **polje**; atributi engleski (`Slug`, `Name`, `Type`,
+  `Group`, `Secondary`, `Per hand`, `Description`), imena vježbi hrvatski. `Method` (IMOM, GtG, HIIT, TbyT) nije
+  vježba i ne ulazi. Na TEST-u: Area `0d81ea2f…`, vlasnik Sašin račun (ne `owner@test.com` — E2E ga briše);
+  „po ruci" Saša popunjava sam. PROD dobiva katalog app exportom ove Aree + uvozom.
+- **Veza na katalog:** Structure kolona **`OptionsFrom`**, ćelija `Katalog vježbi > Vježba : slug` (Area + kategorija
+  + atribut po imenu/slugu, ne UUID). Prazna ćelija = običan izbornik; nema kolone ⇒ baza ostaje.
+- **Izbornik:** bez tražilice; skupine (accordion, jedna otvorena — skupina vježbe koja se mijenja, za novu skupina
+  vježbe iznad). U skupini **najčešće kod tog korisnika u zadnjih 12 mjeseci**, najviše 6 + „Sve (N)". Uz skupinu
+  „zadnje prije N d" iz korisnikovih treninga, uključujući sporednu skupinu (zametak koraka 12); nema datuma po vježbi.
+- **Dodir na vježbu otvara karticu** (slike, skupine, vrsta, „po ruci" samo kad vrijedi, opis); tek **Izaberi** je
+  stavlja u seriju. Slike: povlačenje lijevo/desno na dodir, ‹ › na slici mišem — ista komponenta u kartici i u listi.
+- **Uredi vježbu iz kartice** — tko smije pisati u katalog (vlasnik; write grantee). Ime, vrsta, skupine, „po ruci",
+  opis, slike; promjena skupine seli vježbu u izborniku odmah. **Slug se ondje ne mijenja** (živi u svakom zapisu
+  treninga ⇒ alat za preuređivanje).
+- **Redoslijed u seriji:** hvataljka ⠿ (povlačenje), „+ vježba" na kraj, × miče; u bazi se prepiše `red`.
+- **Nova vježba:** jedinstven slug (forma i uvoz odbijaju duplikat), prijedlog sluga iz imena, „slično u katalogu".
+- **Općenito (sve Aree):** Area s isključenim i štopericom i datumom (`add_header`) ne pokazuje datum/vrijeme/
+  Duration ni u Editu; nova postavka Aree „bez Event Note" (Structure kolona uz AddTimer/AddDatePicker); tekstualna
+  polja rastu u nove retke; 📷 N u listi otvara traku sa slikama ispod retka.
+- ⚠ Prije koda: provjeriti smije li grantee kataloga čitati njegove slike (Storage RLS).
 
 ### Izmjereno 26.10. (S185) — za F2 i za sukobe Garmin ↔ DIARY
 
