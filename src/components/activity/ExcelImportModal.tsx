@@ -18,6 +18,7 @@ import {
   checkMissingCategories,
   parseExcelFile,
   findDroppedAttributes,
+  findImportUniqueConflicts,
   droppedAttributesWarning,
   fillImportDefaults,
   warnStaleUntouched,
@@ -103,6 +104,8 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const [sharedForeignArea, setSharedForeignArea] = useState<string | null>(null);
   /** Provjera vlasništva tuđih redaka nije uspjela — kopiranje se tada ne nudi. */
   const [ownershipFailed, setOwnershipFailed] = useState(false);
+  /** S190: ponovljene jedinstvene vrijednosti (slug kataloga) — Apply se gasi. */
+  const [uniqueConflicts, setUniqueConflicts] = useState<string[]>([]);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | undefined>(undefined);
   // Q4 (S104, Fable): progress za veće importe (npr. Diary 7000+ redaka) — bez ovoga
   // UI izgleda "frozen" jer applying nema drugog povratnog signala osim spinnera.
@@ -147,6 +150,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setOverwriteMap(new Map());
     setMissingCatPaths([]);
     setUpdateAnalysis(null);
+    setUniqueConflicts([]);
     setUpdatesAcknowledged(false);
     setDeleteAnalysis(null);
     setDeletesAcknowledged(false);
@@ -212,6 +216,10 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       const droppedMsg = droppedAttributesWarning(
         findDroppedAttributes([...parsed.toCreate, ...parsed.toUpdate], categoriesDict, attrDefs));
       if (droppedMsg) setPreview(p => (p ? { ...p, warnings: [...p.warnings, droppedMsg] } : p));
+
+      // S190: jedinstvena vrijednost — ista funkcija kao upis (koji bi ionako stao).
+      setUniqueConflicts(await findImportUniqueConflicts(
+        [...parsed.toCreate, ...parsed.toUpdate], categoriesDict, attrDefs));
 
       // S181: što će uvoz upisati iz `default_map` na novim retcima — ista funkcija kao upis.
       const defaultsMsg = defaultFillsMessage(
@@ -391,6 +399,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   // BUG-S148-G: redak postoji pod drugim autorom — apply bi stao, pa se ne nudi.
   const foreignOwnedCount = updateAnalysis?.foreignOwned.length ?? 0;
   const applyBlocked      = foreignOwnedCount > 0
+                          || uniqueConflicts.length > 0
                           || (updateGuardActive && !updatesAcknowledged)
                           || (deleteGuardActive && !deletesAcknowledged)
                           || (confirmedGuardActive && !confirmedAcknowledged);
@@ -535,6 +544,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setCurrentUserEmail(undefined);
     setApplyProgress(null);
     setUpdateAnalysis(null);
+    setUniqueConflicts([]);
     setUpdatesAcknowledged(false);
     setDeleteAnalysis(null);
     setDeletesAcknowledged(false);
@@ -982,6 +992,12 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                       </span>
                     </label>
                   )}
+                </div>
+              )}
+              {uniqueConflicts.length > 0 && (
+                <div className="bg-red-50 border border-red-300 rounded-lg p-2.5 text-xs text-red-800 space-y-0.5">
+                  <p className="font-semibold">Uvoz ne može: vrijednost koja mora biti jedinstvena ponavlja se.</p>
+                  {uniqueConflicts.map((m, i) => <p key={i}>{m}</p>)}
                 </div>
               )}
               {updateAnalysis && foreignOwnedCount > 0 && (

@@ -24,6 +24,9 @@
  *   ostalo:     {}
  *   + `hidden_in_add: true` ortogonalno, na bilo kojem od njih.
  *   + `visible_when: { attribute_slug, values }` ortogonalno (S187, `visibleWhen.ts`).
+ *   + `unique: true | {from}` i `options_from: {area, category, attribute, …}` ortogonalno
+ *     (S190, `uniqueValue.ts`, `optionsFrom.ts`). Panel ih ne prikazuje, ali ih PRENOSI —
+ *     inače bi prvo spremanje panela tiho obrisalo pravilo (razred `max`, S152).
  *   `allow_other` se ne pise: odsutnost = true (`parseValidationRules`).
  *   Top-level `suggest` uz `depends_on` („Default options" u panelu) se vise ne
  *   pise: izvoz ga nikad nije nosio, pa ga je prvi roundtrip brisao; redak
@@ -32,6 +35,8 @@
  */
 
 import { readVisibleWhen, visibleWhenToRaw, type VisibleWhen } from './visibleWhen';
+import { uniqueToRaw, type UniqueRule } from './uniqueValue';
+import { optionsFromToRaw, type OptionsFrom } from './optionsFrom';
 
 export type Rules = Record<string, unknown>;
 
@@ -47,6 +52,10 @@ export interface RuleSpec {
   hiddenInAdd?: boolean;
   /** S187: polje vidljivo samo uz vrijednost atributa Y. */
   visibleWhen?: VisibleWhen | null;
+  /** S190: vrijednost jedinstvena u kategoriji (`uniqueValue.ts`). */
+  unique?: UniqueRule | null;
+  /** S190: izbornik iz zapisa druge Aree (`optionsFrom.ts`). */
+  optionsFrom?: OptionsFrom | null;
 }
 
 export function buildRules(spec: RuleSpec): Rules {
@@ -69,6 +78,8 @@ export function buildRules(spec: RuleSpec): Rules {
   if (spec.visibleWhen && spec.visibleWhen.values.length > 0) {
     rules.visible_when = visibleWhenToRaw(spec.visibleWhen);
   }
+  if (spec.unique) rules.unique = uniqueToRaw(spec.unique);
+  if (spec.optionsFrom) rules.options_from = optionsFromToRaw(spec.optionsFrom);
   return rules;
 }
 

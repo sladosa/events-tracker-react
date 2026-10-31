@@ -44,6 +44,7 @@ import {
 import type { UUID, AttributeDefinition, ActivityPreset, PresetDefaultAttributes } from '@/types';
 import { computeSetAttributeValue, collectRuleManagedIds, findDefBySlug, formatForDatetimeInput } from '@/lib/attributeRules';
 import { missingRequired, requiredMessage } from '@/lib/requiredAttributes';
+import { findUniqueConflicts } from '@/lib/uniqueCheck';
 import { ruleHiddenIds } from '@/lib/visibleWhen';
 import { detectRata, rataCountProblem, generateRataChargeDates, rataSessionStarts, buildRataComment, type RataInfo } from '@/lib/rataAutomation';
 import { resolveCommentTemplate, evaluateCommentTemplate } from '@/lib/commentTemplate';
@@ -367,6 +368,7 @@ export function AddActivityPage() {
   const addHeader = selectedArea?.settings?.add_header;
   const showTimer = addHeader?.timer !== false;
   const showDatePicker = addHeader?.date === true;
+  const showNote = addHeader?.note !== false;   // S190: katalog ima vlastiti Description
   
   // ============================================
   // Check for Draft on Mount
@@ -1025,6 +1027,16 @@ export function AddActivityPage() {
       const rataProblem = rataProblemNow();
       if (rataProblem) {
         toast.error(rataProblem, { duration: 6000 });
+        return;
+      }
+      // S190: jedinstvena vrijednost (slug kataloga) — upit u bazu tog trena.
+      // ⚠ Gleda samo trenutnu formu: Area s `unique` (katalog) nosi `disable_save_plus`,
+      //   pa u redu čekanja nema drugog zapisa iste kategorije.
+      try {
+        const dup = await findUniqueConflicts(allAttrDefs, id => attributeValues.get(id)?.value);
+        if (dup.length > 0) { toast.error(dup.join(' '), { duration: 6000 }); return; }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e), { duration: 6000 });
         return;
       }
     }
@@ -1795,7 +1807,7 @@ export function AddActivityPage() {
           </div>
 
           {/* A6: Event Note - MOVED ABOVE Photos */}
-          {categoryId && (
+          {categoryId && showNote && (
             <div className="px-3 pb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 📝 Event Note

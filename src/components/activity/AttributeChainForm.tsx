@@ -3,6 +3,8 @@ import type { AttributeDefinition, Category } from '@/types';
 import { AttributeInput } from './AttributeInput';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { controllingDef, fieldsToClear, isHiddenByRule } from '@/lib/visibleWhen';
+import { proposeKey, readUnique } from '@/lib/uniqueValue';
+import { UniqueHint } from './UniqueHint';
 
 // ---- localStorage helpers ----
 // Key per category UUID: 'attrExpanded:<uuid>' → 'true' | 'false'
@@ -50,6 +52,8 @@ interface AttributeChainFormProps {
    *  atribut o kojem ovisi — inače bi otvaranje + Save starog retka tiho obrisalo
    *  podatak (skriveno se ne sprema). Add ga ne šalje. */
   storedAttrIds?: ReadonlySet<string>;
+  /** S190 (Edit): zapis koji se uređuje — `unique` ga ne smije prijaviti kao vlastiti duplikat. */
+  currentEventId?: string | null;
 }
 
 // Check if attribute is a dropdown type (should be sticky in leaf)
@@ -69,6 +73,7 @@ export function AttributeChainForm({
   onNewOption,
   noNewOptionsHint = null,
   storedAttrIds,
+  currentEventId = null,
 }: AttributeChainFormProps) {
   // Track which categories are expanded (leaf is always expanded)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -192,6 +197,15 @@ export function AttributeChainForm({
     if (!changedAttr) return;
     const changedSlug = changedAttr.slug;
 
+    // 2b. S190: `unique: {from}` — prijedlog vrijednosti (slug iz imena) dok je čovjek sam
+    //   ne promijeni. Nikad preko vrijednosti iz baze (Edit): slug postojećeg zapisa je u
+    //   svakom zapisu koji ga citira, pa se mijenja alatom, ne usput.
+    for (const d of allAttributes) {
+      if (readUnique(d.validation_rules)?.from !== changedSlug) continue;
+      if (userChangedIds.has(d.id) || storedAttrIds?.has(d.id)) continue;
+      onChange(d.id, proposeKey(value != null ? String(value) : '') || null);
+    }
+
     // 3. Pronadji sve atribute koji ovise o ovom slug-u i postavi default_map ili cleari
     const parentVal = value != null ? String(value) : null;
     for (const attr of allAttributes) {
@@ -210,7 +224,7 @@ export function AttributeChainForm({
         onChange(attr.id, mappedDefault);
       }
     }
-  }, [onChange, allAttributes, normalizeSlug, chainLevels, valueOf, isOutOfRule]);
+  }, [onChange, allAttributes, normalizeSlug, chainLevels, valueOf, isOutOfRule, userChangedIds, storedAttrIds]);
 
   // Build a map of attribute slugs to their current values
   const attributeValuesBySlug = useMemo(() => {
@@ -449,6 +463,14 @@ export function AttributeChainForm({
           </span>
         ))}
         {input}
+        {readUnique(attr.validation_rules) && (
+          <UniqueHint
+            definition={attr}
+            textDefs={(attributesByCategory.get(attr.category_id ?? '') || []).filter(d => d.data_type === 'text' && d.id !== attr.id)}
+            valueOf={valueOf}
+            ownEventId={currentEventId}
+          />
+        )}
       </div>
     );
   };

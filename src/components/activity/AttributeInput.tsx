@@ -227,15 +227,28 @@ export function AttributeInput({
       );
     }
 
-    // Default: text input
+    // Link: jedan redak (URL se ne prelama)
+    if (dataType === 'link') {
+      return (
+        <input
+          type="url"
+          value={typeof value === 'boolean' ? String(value) : (value ?? '')}
+          onChange={(e) => handleChange(e.target.value || null)}
+          disabled={disabled}
+          placeholder={definition.default_value || ''}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+        />
+      );
+    }
+
+    // Default: tekst koji RASTE u nove retke dok se piše (S190, sve Aree) — dugačak opis
+    // inače stoji u jednom retku i čita se samo kraj.
     return (
-      <input
-        type={dataType === 'link' ? 'url' : 'text'}
-        value={typeof value === 'boolean' ? String(value) : (value ?? '')}
-        onChange={(e) => handleChange(e.target.value || null)}
+      <AutoGrowTextarea
+        value={typeof value === 'boolean' ? String(value) : (value == null ? '' : String(value))}
+        onChange={(v) => handleChange(v || null)}
         disabled={disabled}
         placeholder={definition.default_value || ''}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
       />
     );
   };
@@ -264,6 +277,38 @@ export function AttributeInput({
 
 // ============================================================
 // NumberInput — decimalni ZAREZ, i unos koji ne nestaje u tišini
+// ============================================================
+// AutoGrowTextarea — visina prati sadržaj (S190)
+// ============================================================
+// Jedan redak dok je tekst kratak (izgleda kao staro polje), raste kad se prelomi ili
+// kad čovjek doda novi red. Visina se računa iz `scrollHeight` nakon svake promjene
+// vrijednosti — i kad vrijednost dođe izvana (Edit učita zapis, `default_map`).
+function AutoGrowTextarea({ value, onChange, disabled, placeholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 2}px`;   // +2 = gornji i donji rub, bez skrolera
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      placeholder={placeholder}
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm resize-none overflow-hidden leading-snug focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+    />
+  );
+}
+
 // ============================================================
 // ZAŠTO NE <input type="number">
 //   Njegov decimalni separator bira LOKALIZACIJA PREGLEDNIKA, ne aplikacija —

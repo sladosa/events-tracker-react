@@ -62,6 +62,9 @@ interface ActivityHeaderProps {
    *  said nothing keeps today's header. */
   showTimer?: boolean;
   totalDuration?: number;
+  /** Edit mode (S190): Area bez štoperice I bez datuma (`add_header` timer i date isključeni,
+   *  npr. katalog vježbi) — zapis nije događaj u vremenu, pa nema ni datuma, vremena ni Duration. */
+  timeless?: boolean;
 
   /** Navigate to View Details mode (Edit mode only) */
   onViewMode?: () => void;
@@ -97,6 +100,7 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
       onDateTimeChange,
       showTimer = true,
       totalDuration,
+      timeless = false,
       onCancel,
       onSave,
       onSaveContinue,
@@ -133,7 +137,9 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
           </p>
         </div>
 
-        {/* Row 2: Timers (Add) or Date/Duration (Edit) */}
+        {/* Row 2: Timers (Add) or Date/Duration (Edit). Prazan red se ne crta (S190):
+            Add bez štoperice i datuma, Edit `timeless`. */}
+        {(isAddMode ? (showTimer || !!(dateTime && onDateTimeChange)) : !timeless) && (
         <div className="px-4 py-2 bg-black/10">
           {isAddMode ? (
             /* Two independent slots, both optional. The stopwatch measures the
@@ -236,6 +242,7 @@ export const ActivityHeader = forwardRef<HTMLElement, ActivityHeaderProps>(
             </div>
           )}
         </div>
+        )}
 
         {/* Row 3: Action buttons */}
         <div className="px-4 py-2 flex items-center justify-between gap-2">

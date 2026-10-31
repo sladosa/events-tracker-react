@@ -70,7 +70,7 @@ test.describe('S187 — visible_when', () => {
 
   const labelOf = (page: Page, name: string) => page.locator('label', { hasText: new RegExp(`^${name}`) });
   const inputOf = (page: Page, name: string) =>
-    page.locator('div.space-y-1', { has: labelOf(page, name) }).locator('input').first();
+    page.locator('div.space-y-1', { has: labelOf(page, name) }).locator('input, textarea').first();   // S190: tekst je textarea koja raste
   const selectOf = (page: Page, name: string) =>
     page.locator('select').filter({ has: page.locator('option', { hasText: `Select ${name}...` }) });
 

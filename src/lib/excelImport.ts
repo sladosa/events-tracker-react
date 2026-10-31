@@ -28,6 +28,8 @@ import { upsertParentEvent, type ParentAttrWrite } from './parentEventLoader';
 import { fetchAllPagedIn } from './supabasePaging';
 import { withRetryQuery } from './retry';
 import { fillDefaultMaps, type DefaultFill } from './importDefaults';
+import { readUnique, uniqueKey } from './uniqueValue';
+import { fetchAllPaged } from './supabasePaging';
 import type {
   ExportCategoriesDict,
   ExportAttrDef,
@@ -1072,6 +1074,57 @@ export function findDroppedAttributes(
     }
   }
   return [...out.values()];
+}
+
+/**
+ * S190: vrijednosti atributa s pravilom `unique` (slug kataloga) koje bi uvoz ponovio —
+ * unutar filea ili prema bazi. Prazno = može. Isti poziv u pregledu (gasi Apply) i u upisu.
+ *
+ * ⚠ Redak filea koji MIJENJA postojeći zapis nosi novu vrijednost tog zapisa: stara se oslobađa,
+ *   pa zamjena dvaju slugova u istom fileu nije sukob.
+ * ⚠ Neuspjelo čitanje baze je poruka, ne „nema duplikata" (razred S121).
+ */
+export async function findImportUniqueConflicts(
+  rows:           ParsedImportRow[],
+  categoriesDict: ExportCategoriesDict,
+  attrDefs:       ExportAttrDef[],
+): Promise<string[]> {
+  const uniqueDefs = attrDefs.filter(d => readUnique(d.validation_rules));
+  if (uniqueDefs.length === 0) return [];
+  const out: string[] = [];
+  for (const def of uniqueDefs) {
+    const inFile = new Map<string, { row: number; eventId: string | null }[]>();
+    const fileIds = new Set<string>();
+    for (const row of rows) {
+      if (!row.category_path) continue;
+      const levels = getHierarchyLevels(row.category_path, categoriesDict, row.area);
+      const leaf = levels[levels.length - 1];
+      if (!leaf || leaf.partialPath !== row.category_path || leaf.categoryId !== def.category_id) continue;
+      if (row.event_id) fileIds.add(row.event_id);
+      const v = row.attributes[def.name];
+      const k = uniqueKey(v === '_' ? '' : v);
+      if (!k) continue;
+      inFile.set(k, [...(inFile.get(k) ?? []), { row: row._source_row, eventId: row.event_id }]);
+    }
+    if (inFile.size === 0) continue;
+    for (const [k, hits] of inFile) {
+      if (hits.length > 1) out.push(`${def.name} „${k}" je u fileu ${hits.length}× (redovi ${hits.map(h => h.row).join(', ')}) — mora biti jedinstven.`);
+    }
+    const { data, error } = await fetchAllPaged<{ event_id: string; value_text: string | null }>((from, to) => supabase
+      .from('event_attributes').select('event_id, value_text')
+      .eq('attribute_definition_id', def.id).not('value_text', 'is', null)
+      .order('id').range(from, to));
+    if (error) {
+      out.push(`Provjera jedinstvenosti (${def.name}) nije uspjela — uvoz staje da ne nastane duplikat.`);
+      continue;
+    }
+    for (const r of data) {
+      if (fileIds.has(r.event_id)) continue;            // zapis koji file mijenja nosi vrijednost iz filea
+      const hits = inFile.get(uniqueKey(r.value_text));
+      if (hits) out.push(`${def.name} „${r.value_text}" već postoji u bazi (redovi filea ${hits.map(h => h.row).join(', ')}) — mora biti jedinstven.`);
+    }
+  }
+  return out;
 }
 
 /** Poruka za pregled i izvjestaj — ISTA na oba mjesta. */
@@ -2446,6 +2499,13 @@ export async function importEventsFromExcel(
   const categoriesDict = await loadCategoriesForExport(userId);
   const allCatIds      = Object.keys(categoriesDict);
   const attrDefs       = await loadAttrDefsForCategories(userId, allCatIds, categoriesDict);
+
+  // Step 2b (S190): jedinstvene vrijednosti (slug kataloga) — prije ijednog upisa.
+  const uniqueConflicts = await findImportUniqueConflicts(
+    [...parsed.toCreate, ...parsed.toUpdate], categoriesDict, attrDefs);
+  if (uniqueConflicts.length > 0) {
+    return { ...empty, errors: uniqueConflicts, warnings: [...parsed.warnings] };
+  }
 
   // Step 3a (S149): reclassify BEFORE deletions. It only reads, and it can stop
   // the import (a row that exists under another author, BUG-S148-G) — a stop

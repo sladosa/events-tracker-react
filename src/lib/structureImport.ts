@@ -36,6 +36,8 @@ import {
   normalizeSlug as normalizeVwSlug, parseVisibleWhenCell, readVisibleWhen, serializeVisibleWhen,
   type VisibleWhen,
 } from '@/lib/visibleWhen';
+import { parseUniqueCell, readUnique, type UniqueRule } from '@/lib/uniqueValue';
+import { parseOptionsFromCell, readOptionsFrom, type OptionsFrom } from '@/lib/optionsFrom';
 import type { RestructureStep } from '@/lib/restructure/plan';
 import type {
   AreaSettings, AttributeRuleConfig, ListColumn, ListColumnRole, RataAutomationConfig, RataRemainder,
@@ -183,6 +185,9 @@ interface ParsedRow {
   addTimer:     string;
   addDate:      string;
   defaultPeriod: string;
+  addNote:      string;   // S190
+  unique:       string;   // S190: '' | TRUE | from: <slug>
+  optionsFrom:  string;   // S190: `Area > Kategorija : slug | …`
 }
 
 // Grouped attribute: combines multiple DependsOn rows
@@ -198,6 +203,9 @@ interface AttrGroup {
   visibleWhen:  string;
   /** Različite neprazne ćelije `VisibleWhen` na recima istog atributa. */
   visibleWhenConflict: boolean;
+  /** S190: prva neprazna ćelija `Unique` / `OptionsFrom` (pravilo je jedno po atributu). */
+  unique:       string;
+  optionsFrom:  string;
   valType:      string;
   defaultVal:   string;
   valMax:       string;
@@ -311,6 +319,9 @@ interface HeaderInfo {
   colAddTimer: number;
   colAddDate: number;
   colDefaultPeriod: number;
+  colAddNote: number;
+  colUnique: number;
+  colOptionsFrom: number;
 }
 
 function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
@@ -363,6 +374,9 @@ function findHeader(ws: ExcelJS.Worksheet): HeaderInfo | null {
       colAddTimer: findCol('addtimer'),
       colAddDate: findCol('adddatepicker'),
       colDefaultPeriod: findCol('defaultperiod'),
+      colAddNote: findCol('addnote'),
+      colUnique: findCol('unique'),
+      colOptionsFrom: findCol('optionsfrom'),
     };
   }
   return null;
@@ -412,6 +426,9 @@ function parseRows(ws: ExcelJS.Worksheet, h: HeaderInfo): ParsedRow[] {
       addTimer: get(h.colAddTimer),
       addDate: get(h.colAddDate),
       defaultPeriod: get(h.colDefaultPeriod),
+      addNote:      get(h.colAddNote),
+      unique:       get(h.colUnique),
+      optionsFrom:  get(h.colOptionsFrom),
     });
   }
   return rows;
@@ -443,6 +460,8 @@ export function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
         hiddenInAdd:  row.hiddenInAdd,
         visibleWhen:  '',
         visibleWhenConflict: false,
+        unique:       '',
+        optionsFrom:  '',
         valType:      row.valType,
         // ⚠ T-S107u-2. On a DependsOn row the `Default` cell belongs to
         //   `default_map` — it is the default FOR THAT PARENT VALUE, not for the
@@ -482,6 +501,8 @@ export function groupAttributes(rows: ParsedRow[]): AttrGroup[] {
     // S187: pravilo vidljivosti je jedno po atributu. Prva neprazna ćelija vrijedi
     //   (prazna na drugom retku nije „makni pravilo" — izvoz ga piše u svaki redak,
     //   a čovjek koji uredi jedan redak ne smije ga tiho obrisati drugim praznim).
+    if (row.unique && !group.unique) group.unique = row.unique;
+    if (row.optionsFrom && !group.optionsFrom) group.optionsFrom = row.optionsFrom;
     if (row.visibleWhen) {
       if (!group.visibleWhen) group.visibleWhen = row.visibleWhen;
       else if (group.visibleWhen !== row.visibleWhen) group.visibleWhenConflict = true;
@@ -519,6 +540,7 @@ export function buildValidationRules(
   group: AttrGroup,
   hiddenInAdd: boolean,
   visibleWhen: VisibleWhen | null = null,
+  extra: { unique?: UniqueRule | null; optionsFrom?: OptionsFrom | null } = {},
 ): Record<string, unknown> {
   // Isti graditelj kao panel (S152) — v. `validationRules.ts`.
   return buildRules({
@@ -527,7 +549,27 @@ export function buildValidationRules(
     max: group.valMax ? (Number(group.valMax) || group.valMax) : undefined,
     hiddenInAdd,
     visibleWhen,
+    ...extra,
   });
+}
+
+/**
+ * S190: `Unique` i `OptionsFrom` nakon uvoza — isto načelo kao `resolveVisibleWhen`:
+ * bez kolone ⇒ pravilo iz baze; prazna ćelija ⇒ nema pravila; neprepoznata ⇒ baza + upozorenje.
+ */
+export function resolveCellRule<T>(
+  hasColumn: boolean,
+  cell: string,
+  existingRules: unknown,
+  read: (raw: unknown) => T | null,
+  parse: (cell: string) => { ok: true; value: T | null } | { ok: false; error: string },
+  label: string,
+): { value: T | null; warning?: string } {
+  const keep = read(existingRules);
+  if (!hasColumn) return { value: keep };
+  const parsed = parse(cell);
+  if (!parsed.ok) return { value: keep, warning: `${label}: ${parsed.error} — rule left as it was.` };
+  return { value: parsed.value };
 }
 
 /**
@@ -1103,7 +1145,16 @@ export async function importStructureExcel(
       header.colVisibleWhen > 0, group, existing?.validationRules, controllingFor(group));
     if (vw.warning) result.warnings.push(vw.warning);
 
-    const validationRules = buildValidationRules(group, hiddenInAdd, vw.value);
+    const where = `${group.categoryPath} / ${group.attrName}`;
+    const uq = resolveCellRule(header.colUnique > 0, group.unique, existing?.validationRules,
+      readUnique, parseUniqueCell, `Unique ${where}`);
+    if (uq.warning) result.warnings.push(uq.warning);
+    const of = resolveCellRule(header.colOptionsFrom > 0, group.optionsFrom, existing?.validationRules,
+      readOptionsFrom, parseOptionsFromCell, `OptionsFrom ${where}`);
+    if (of.warning) result.warnings.push(of.warning);
+
+    const validationRules = buildValidationRules(group, hiddenInAdd, vw.value,
+      { unique: uq.value, optionsFrom: of.value });
 
     if (!existing) {
       // CREATE — slug not found in THIS category (or empty slug → trigger generates)
@@ -1219,8 +1270,9 @@ export async function importStructureExcel(
   const hasSavePlusCol   = header.colDisableSavePlus > 0;
   const hasAddTimerCol   = header.colAddTimer > 0;
   const hasAddDateCol    = header.colAddDate > 0;
+  const hasAddNoteCol    = header.colAddNote > 0;
   const hasDefPeriodCol  = header.colDefaultPeriod > 0;
-  if (hasCommentTplCol || hasSavePlusCol || hasAddTimerCol || hasAddDateCol || hasDefPeriodCol) {
+  if (hasCommentTplCol || hasSavePlusCol || hasAddTimerCol || hasAddDateCol || hasAddNoteCol || hasDefPeriodCol) {
     for (const row of parsedRows) {
       if (row.type !== 'Area' && row.type !== 'Category') continue;
       const xlTpl = row.commentTpl === '_' ? null : (row.commentTpl || null);
@@ -1251,7 +1303,7 @@ export async function importStructureExcel(
         // left alone; only TRUE/FALSE state something. That is why these are
         // read as three states, not as a boolean like DisableSavePlus above —
         // there, blank legitimately means FALSE.
-        if (hasAddTimerCol || hasAddDateCol) {
+        if (hasAddTimerCol || hasAddDateCol || hasAddNoteCol) {
           const tri = (raw: string): boolean | undefined => {
             const v = raw.trim().toUpperCase();
             return v === 'TRUE' ? true : v === 'FALSE' ? false : undefined;
@@ -1265,6 +1317,10 @@ export async function importStructureExcel(
           if (hasAddDateCol) {
             const d = tri(row.addDate);
             if (d === undefined) delete next.date; else next.date = d;
+          }
+          if (hasAddNoteCol) {
+            const n = tri(row.addNote);
+            if (n === undefined) delete next.note; else next.note = n;
           }
           const cleaned = Object.keys(next).length > 0 ? next : undefined;
           if (!sameJson(prev, cleaned)) {

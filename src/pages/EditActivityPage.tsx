@@ -45,6 +45,7 @@ import { CancelDialog } from '@/components/activity/ConfirmDialog';
 
 import type { UUID, AttributeDefinition } from '@/types';
 import { missingRequired, requiredMessage } from '@/lib/requiredAttributes';
+import { findUniqueConflicts } from '@/lib/uniqueCheck';
 import { ruleHiddenIds } from '@/lib/visibleWhen';
 import type {
   PendingEvent,
@@ -1031,6 +1032,12 @@ export function EditActivityPage() {
   // Svaki postojeći event: je li potvrđen (žig ili sidro) i koja su mu se
   // bankina polja promijenila. Ne blokira — traži vlastitu potvrdu na Save.
   const bankSpec = useMemo(() => bankFieldSpec(areaSettings), [areaSettings]);
+  // S190: Area bez štoperice i bez datuma (katalog) — Edit ne pokazuje datum/vrijeme/Duration
+  //   ni vrijeme nastanka zapisa. Fitness (timer uključen) i dalje ispravlja vrijeme u Editu.
+  const isTimeless = areaSettings?.add_header?.timer === false && areaSettings?.add_header?.date !== true;
+  // S190: `add_header.note = false` skriva Event Note — osim kad zapis već ima bilješku
+  //   (skriveno polje ne smije sakriti podatak koji postoji).
+  const showNote = areaSettings?.add_header?.note !== false || eventNote.trim() !== '';
 
   const confirmedRows = useMemo(() => {
     const out: { id: string; index: number; conf: RowConfirmation; list: FieldChange[] }[] = [];
@@ -1116,6 +1123,18 @@ export function EditActivityPage() {
           ));
           return;
         }
+      }
+
+      // S190: jedinstvena vrijednost (slug kataloga) — upit u bazu tog trena, ne keš forme.
+      try {
+        for (const ev of activeEvents) {
+          const byId = new Map(ev.attributes.map(a => [a.definitionId, a.value]));
+          const dup = await findUniqueConflicts(leafDefs, id => byId.get(id), ev.dbId ? [ev.dbId] : []);
+          if (dup.length > 0) { toast.error(dup.join(' '), { duration: 6000 }); return; }
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e), { duration: 6000 });
+        return;
       }
     }
 
@@ -1714,6 +1733,7 @@ export function EditActivityPage() {
         dateTime={sessionDateTime}
         onDateTimeChange={handleDateTimeChange}
         totalDuration={totalDuration}
+        timeless={isTimeless}
         onCancel={handleCancel}
         onSave={handleSave}
         onDeleteSession={handleDeleteSession}
@@ -1880,7 +1900,7 @@ export function EditActivityPage() {
           {currentEvent && !currentEvent.isDeleted && (
             <div className="px-3 pt-3 pb-1">
               <div className="text-sm text-gray-500">
-                Event #{selectedEventIndex + 1} · {(() => {
+                Event #{selectedEventIndex + 1}{!isTimeless && <> · {(() => {
                   const d = currentEvent.createdAt;
                   const y = d.getFullYear();
                   const mo = String(d.getMonth() + 1).padStart(2, '0');
@@ -1889,7 +1909,7 @@ export function EditActivityPage() {
                   const mi = String(d.getMinutes()).padStart(2, '0');
                   const sc = String(d.getSeconds()).padStart(2, '0');
                   return `${y}/${mo}/${dy} ${h}:${mi}:${sc}`;
-                })()}
+                })()}</>}
               </div>
               {/* C3c: samo informacija — upozorenje dolazi tek kad se bankino polje dirne. */}
               {currentConf && (
@@ -1926,6 +1946,7 @@ export function EditActivityPage() {
                   onNewOption={handleNewOption}
                   noNewOptionsHint={noNewOptionsHintFor(sharedContext)}
                   storedAttrIds={storedAttrIds}
+                  currentEventId={currentEvent?.dbId ?? null}
                 />
               ) : (
                 <div className="text-center py-6 text-amber-600 text-sm">
@@ -1943,7 +1964,7 @@ export function EditActivityPage() {
           </div>
           
           {/* Event Note - MOVED ABOVE Photos */}
-          {currentEvent && !currentEvent.isDeleted && categoryId && (
+          {currentEvent && !currentEvent.isDeleted && categoryId && showNote && (
             <div className="px-3 pb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 📝 Event Note

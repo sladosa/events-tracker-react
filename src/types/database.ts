@@ -326,6 +326,8 @@ export interface AddHeaderConfig {
   timer?: boolean;
   /** Date picker, defaulting to today. Default false. */
   date?: boolean;
+  /** Event Note box in Add and Edit (S190). Default true; a catalog keeps its own Description. */
+  note?: boolean;
 }
 
 export interface CategorySettings {

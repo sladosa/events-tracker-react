@@ -48,6 +48,8 @@ import {
 import { ATTR_SHEET, ATTR_HEAD, attrHeader, attrHelpLines, attrListLines, attrExamples } from './restructure/attrSheet';
 import { serializeColumnMap } from './listColumns';
 import { readVisibleWhen, serializeVisibleWhen } from './visibleWhen';
+import { readUnique, serializeUnique } from './uniqueValue';
+import { readOptionsFrom, serializeOptionsFrom } from './optionsFrom';
 import {
   timestampSuffix,
   formatTimestampSuffix,
@@ -123,6 +125,11 @@ const COLS = [
   { key: 'addDate',     header: 'AddDatePicker', width: 14, colColor: CLR.GREEN, grouped: true, collapsed: false },
   // S166 — na KRAJU, da se slova postojećih kolona ne pomaknu (S160 zamka).
   { key: 'defaultPeriod', header: 'DefaultPeriod', width: 14, colColor: CLR.GREEN, grouped: true, collapsed: false },
+  // S190 — na kraju iz istog razloga. AddNote = Area (Event Note u Add/Edit); Unique i
+  // OptionsFrom = atribut (katalog vježbi: jedinstven slug, izbornik iz druge Aree).
+  { key: 'addNote',     header: 'AddNote',       width: 10, colColor: CLR.GREEN, grouped: true, collapsed: true },
+  { key: 'unique',      header: 'Unique',        width: 12, colColor: CLR.BLUE,  grouped: true, collapsed: true },
+  { key: 'optionsFrom', header: 'OptionsFrom',   width: 40, colColor: CLR.BLUE,  grouped: true, collapsed: true },
 ] as const;
 
 const N_COLS = COLS.length; // 25 (S187) — /!\ komentar je zaostajao za nizom;
@@ -186,6 +193,9 @@ interface DataRow {
   addTimer:     string;    // TRUE | FALSE | '' (Area rows only)
   addDate:      string;    // TRUE | FALSE | '' (Area rows only)
   defaultPeriod: string;   // preset ključ (this-year …) | '' (Area rows only)
+  addNote:      string;    // TRUE | FALSE | '' (Area rows only, S190)
+  unique:       string;    // '' | TRUE | from: <slug> (attribute rows, S190)
+  optionsFrom:  string;    // `Area > Kategorija : slug | label: …` (attribute rows, S190)
   // Row meta (not written to cells)
   _isAreaRow:   boolean;
   _isLeafRow:   boolean;
@@ -280,6 +290,9 @@ function buildAreaRow(node: StructureNode, sharedWith: string): DataRow {
     addDate: node.area.settings?.add_header?.date === undefined
       ? '' : (node.area.settings.add_header.date ? 'TRUE' : 'FALSE'),
     defaultPeriod: node.area.settings?.default_period ?? '',
+    addNote: node.area.settings?.add_header?.note === undefined
+      ? '' : (node.area.settings.add_header.note ? 'TRUE' : 'FALSE'),
+    unique: '', optionsFrom: '',
     _isAreaRow: true, _isLeafRow: false, _isAttrRow: false,
   };
 }
@@ -301,6 +314,7 @@ function buildCategoryRow(node: StructureNode): DataRow {
     addTimer: '',
     addDate: '',
     defaultPeriod: '',
+    addNote: '', unique: '', optionsFrom: '',
     _isAreaRow: false, _isLeafRow: node.isLeaf, _isAttrRow: false,
   };
 }
@@ -332,6 +346,9 @@ export function buildAttrRows(node: StructureNode, attr: AttributeDefinition): D
     addTimer: '' as const,
     addDate: '' as const,
     defaultPeriod: '' as const,
+    addNote: '' as const,
+    unique: serializeUnique(readUnique(attr.validation_rules)),
+    optionsFrom: serializeOptionsFrom(readOptionsFrom(attr.validation_rules)),
     _isAreaRow: false as const,
     _isLeafRow: false as const,
     _isAttrRow: true as const,
@@ -728,6 +745,9 @@ function writeHelpStructureSheet(wb: ExcelJS.Workbook): void {
     { kind: 'row', label: `${colOf('disableSavePlus')}  DisableSavePlus`,    value: 'Area rows only.  TRUE hides the "Save +" button in Add Activity (one event per session — e.g. Financije, Health).  Blank = FALSE.  Column absent from the file = setting left unchanged.' },
     { kind: 'row', label: `${colOf('addTimer')}  AddTimer`,         value: 'Area rows only.  FALSE hides the SESSION/LAP stopwatch in Add Activity.  Useful when entries are RECORDED after the fact (a transaction) rather than PERFORMED while the screen is open (a workout).  Blank = TRUE (the header as it is today).' },
     { kind: 'row', label: `${colOf('addDate')}  AddDatePicker`,    value: 'Area rows only.  TRUE adds a date picker to Add Activity, defaulting to today, so an entry for a past day needs one screen instead of two (Add then Edit).  Blank = FALSE.' },
+    { kind: 'row', label: `${colOf('addNote')}  AddNote`,          value: 'Area rows only.  FALSE hides the Event Note box in Add and Edit (e.g. a catalog whose records carry their own Description).  Blank = shown.  Column missing from the file = setting left unchanged.' },
+    { kind: 'row', label: `${colOf('unique')}  Unique`,           value: 'Attribute rows only.  TRUE = no two records of this category may have the same value (Add/Edit Save and Excel import refuse a duplicate).  "from: name" = also proposes the value from attribute "name" until you change it.  Blank = not unique.  Column missing = rule in the database stays.' },
+    { kind: 'row', label: `${colOf('optionsFrom')}  OptionsFrom`,      value: 'Attribute rows only.  The dropdown lists records of ANOTHER Area:  Katalog vježbi > Vježba : slug | label: name | group: group | group2: secondary  — stores "slug", shows "name", groups by "group".  You must be able to read that Area.  Blank = ordinary dropdown.  Column missing = rule in the database stays.' },
     { kind: 'row', label: `${colOf('defaultPeriod')}  DefaultPeriod`,    value: 'Area rows only.  Date filter period when the Area is opened and nobody has chosen one: this-month, last-3-months, this-year, last-year … (same keys as the Period dropdown).  Blank = All time.' },
     { kind: 'row', label: '', value: '' },
 

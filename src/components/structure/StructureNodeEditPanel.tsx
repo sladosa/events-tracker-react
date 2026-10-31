@@ -38,6 +38,8 @@ import { fixupAutomationsSlug } from '@/lib/automationsConfig';
 import { allOptions, buildRules, renameDependsOnParent, renameVisibleWhenSlug } from '@/lib/validationRules';
 import { dbScopedKey } from '@/lib/storageKey';
 import type { VisibleWhen } from '@/lib/visibleWhen';
+import { readUnique } from '@/lib/uniqueValue';
+import { readOptionsFrom } from '@/lib/optionsFrom';
 
 // --------------------------------------------------------
 // Types
@@ -288,6 +290,8 @@ function buildValidationRules(
   state: AttrEditState,
 ): Record<string, unknown> {
   const originalMax = (state.originalRules as Record<string, unknown> | null)?.max;
+  // S190: panel ova dva pravila ne prikazuje, ali ih prenosi (isto kao `max`).
+  const kept = { unique: readUnique(state.originalRules), optionsFrom: readOptionsFrom(state.originalRules) };
   if (state.validationType === 'depends_on') {
     const optionsMap: Record<string, string[]> = {};
     const defaultMap: Record<string, string> = {};
@@ -302,6 +306,7 @@ function buildValidationRules(
       dependsOn: { parentSlug: state.dependsOnSlug, optionsMap, defaultMap },
       hiddenInAdd: state.hiddenInAdd,
       visibleWhen: visibleWhenOf(state),
+      ...kept,
     });
   }
   if (state.validationType === 'suggest') {
@@ -310,9 +315,10 @@ function buildValidationRules(
       max: originalMax,
       hiddenInAdd: state.hiddenInAdd,
       visibleWhen: visibleWhenOf(state),
+      ...kept,
     });
   }
-  return buildRules({ hiddenInAdd: state.hiddenInAdd, visibleWhen: visibleWhenOf(state) });
+  return buildRules({ hiddenInAdd: state.hiddenInAdd, visibleWhen: visibleWhenOf(state), ...kept });
 }
 
 /** Poznate vrijednosti atributa Y (za kvačice u „Visible when"). `null` = slobodan unos. */
