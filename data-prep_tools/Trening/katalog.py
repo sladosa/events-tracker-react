@@ -199,6 +199,30 @@ def main():
                 n_attr += patch(url, key, 'attribute_definitions', f'id=eq.{a["id"]}', {'validation_rules': want})
         print(f'✓ Area settings {n_area} · atributa promijenjeno {n_attr}')
         return
+    if '--proba-trening' in sys.argv:
+        # S190: mala Area za probu izbornika (`options_from`) pod Sašinim TEST računom —
+        # proba iz S189 (`S189 serije proba`) je pod E2E računom, kojeg Saša ne vidi.
+        name = 'S190 Trening proba'
+        if _db.rest(url, key, f'areas?select=id&name=eq.{urllib.parse.quote(name)}'):
+            sys.exit(f'Area „{name}" već postoji.')
+        owner = _db.rest(url, key, f'profiles?select=id&email=eq.{SASA_EMAIL}')[0]['id']
+        aid, gid = str(uuid.uuid4()), str(uuid.uuid4())
+        post(url, key, 'areas', [{'id': aid, 'user_id': owner, 'name': name, 'slug': 's190_trening_proba',
+                                  'sort_order': 61, 'settings': {}}])
+        post(url, key, 'categories', [{'id': gid, 'user_id': owner, 'area_id': aid, 'parent_category_id': None,
+                                       'name': 'Gym', 'slug': 'gym', 'level': 1, 'sort_order': 1}])
+        of = {'area': AREA_NAME, 'category': LEAF_NAME, 'attribute': 'slug',
+              'label': 'name', 'group': 'group', 'group2': 'secondary'}
+        post(url, key, 'attribute_definitions', [
+            {'id': str(uuid.uuid4()), 'user_id': owner, 'category_id': gid, 'name': 'vjezba', 'slug': 'vjezba',
+             'data_type': 'text', 'is_required': True, 'sort_order': 1, 'validation_rules': {'options_from': of}},
+            {'id': str(uuid.uuid4()), 'user_id': owner, 'category_id': gid, 'name': 'kg', 'slug': 'kg',
+             'data_type': 'number', 'is_required': False, 'sort_order': 2, 'validation_rules': {}},
+            {'id': str(uuid.uuid4()), 'user_id': owner, 'category_id': gid, 'name': 'ponavljanja', 'slug': 'ponavljanja',
+             'data_type': 'number', 'is_required': False, 'sort_order': 3, 'validation_rules': {}},
+        ])
+        print(f'✓ Area „{name}" {aid} (Gym: vjezba iz kataloga, kg, ponavljanja)')
+        return
     sasa = _db.rest(url, key, f'profiles?select=id&email=eq.{SASA_EMAIL}')
     if not sasa:
         sys.exit(f'✗ {SASA_EMAIL} nema profil na TEST-u.')

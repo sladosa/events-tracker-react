@@ -469,7 +469,7 @@ vraća obrisan redak** — `row_hash` netaknut + `event_id` kojeg nema ⇒ „Un
 | 2 | Pravilo vidljivosti `visible_when` — Excel, panel, forma, obavezno, planer | ✅ S187 kod (`test-branch`), unit `visibleWhen` 53, E2E `S187_visible_when` (stara forma pada); ručno T-S187-2 ✅ S188 |
 | 3 | Analiza zapisa (PROD `Strength` + DIARY `M`) ⇒ Excel za Sašu: vježbe, mjesta, rutine | ✅ S187 alat + Excel; ✅ 30.10. Saša ispravio list `Vjezbe` ⇒ `vjezbe_prijedlog.json` (59 vježbi, skupine, vrste). List `Mjesta` još nije pregledan |
 | 4 | Format zapisa serija (odluka „ime ili veza" donesena 28.10.: slug) | ✅ S189 odluka (mjereno na 7.936 serija, v. „Mjerenje za korak 4"): zapis po seriji + `red`; atributi bloka na prvom zapisu bloka; zagrijavanje = `blok` 0. Usput popravljeni izvoz i View/Edit (rezanje na 1000) |
-| 5 | Katalog vježbi kao **zasebna Area `Katalog vježbi`** (slug + puno ime, slika, skupina + sporedna, vrsta, „po ruci") + izbornik iz kategorije **druge Aree** + gumb „prikaži vježbu"; uvoz 59 vježbi iz `vjezbe_prijedlog.json` | 🟨 S190: Area na TEST-u (`katalog.py`, 56 vježbi); skica izbornika dogovorena (v. „Korak 5 — odluke S190"); kod ⬜ |
+| 5 | Katalog vježbi kao **zasebna Area `Katalog vježbi`** (slug + puno ime, slika, skupina + sporedna, vrsta, „po ruci") + izbornik iz kategorije **druge Aree** + gumb „prikaži vježbu"; uvoz 59 vježbi iz `vjezbe_prijedlog.json` | 🟨 S190 kod na `test-branch` (TEST): Area `Katalog vježbi` (56), jedinstven slug, izbornik iz druge Aree (`OptionsFrom`), kartica + uređivanje, slike u listi; probna Area `S190 Trening proba`. Čeka T-S190-1..5 i PROD (katalog app exportom) |
 | 6 | Model `Activity1` / `Gym` / `Outdoor` na TEST-u (`Fitness_Garmin`) + **lista stranici po treninzima** i **prikaz serija po bloku** u View/Edit (izmjereno S189: postojeći prikaz puca na N zapisa po treningu) | ⬜ |
 | 7 | „Ponovi zadnji trening ove rutine" (Add + shortcut na rutinu) | ⬜ |
 | 8 | Review tab treninga (pločice: napredak po vježbi, Z2 minute tjedno, obujam po vrsti) | ⬜ |
@@ -504,7 +504,14 @@ Skica (privatni artifact, 3. verzija): <https://claude.ai/artifact/G5Bdeia4hYPYT
 - **Općenito (sve Aree):** Area s isključenim i štopericom i datumom (`add_header`) ne pokazuje datum/vrijeme/
   Duration ni u Editu; nova postavka Aree „bez Event Note" (Structure kolona uz AddTimer/AddDatePicker); tekstualna
   polja rastu u nove retke; 📷 N u listi otvara traku sa slikama ispod retka.
-- ⚠ Prije koda: provjeriti smije li grantee kataloga čitati njegove slike (Storage RLS).
+- ✅ Slike: bucket `activity-attachments` je javan (`getPublicUrl`), pa ih vidi i grantee kataloga — nema
+  dodatne provjere prava (izmjereno čitanjem koda S190).
+- **Izvedeno S190** (`test-branch`): pravila `unique` / `options_from` u `validation_rules` (Structure kolone `Unique`,
+  `OptionsFrom`; `AddNote` za Event Note), `CatalogPickerField` + `catalogPicker.ts` / `catalogOptions.ts`,
+  `PhotoCarousel`, 📷 N u listi. Uređivanje iz kartice: samo **vlasnik** kataloga (write grantee još ne — RLS
+  `event_attributes` za tuđi zapis nije izmjeren); slike se dodaju u Editu zapisa kataloga, ne u kartici.
+- **Nije izvedeno (korak 6):** „+ vježba" na kraj bloka i povlačenje ⠿ — to je forma serija (blok/serija/`red`),
+  koja još ne postoji; izbornik je polje i radi u njoj bez izmjene. Skupina vježbe iznad za novu vježbu isto ide uz nju.
 
 ### Izmjereno 26.10. (S185) — za F2 i za sukobe Garmin ↔ DIARY
 

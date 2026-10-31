@@ -2,7 +2,23 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S189 (2026-10-30, S189 arhiviran — svi ✅) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S190 (2026-10-31, nova sekcija S190 — katalog vježbi) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S190 — Katalog vježbi i izbor vježbe (2026-10-31)
+
+Korak 5 treninga na `test-branch` (TEST): Area `Katalog vježbi` (56 vježbi), jedinstven slug s prijedlogom iz imena i popisom sličnih, Edit bez vremena za Areu bez štoperice i datuma, postavka bez Event Note, tekst koji raste (sve Aree), izbornik iz druge Aree (skupine, najčešće u 12 mj, kartica prije izbora, uređivanje vježbe iz kartice), 📷 N u listi (sve Aree). Probna Area `S190 Trening proba`. Automatski: unit `uniqueOptionsFrom` 37, `catalogPicker` 13; E2E `S190_unique_catalog` 3, `S190_catalog_picker` 1 (sabotaže padaju).
+
+**Detalji testova:** [tests/S190_tests.md](tests/S190_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S190-1 | Katalog ⇒ Add: ime „Hand lateral raises" ⇒ slug `hand_lateral` + „slično" `lat_raises`; slug `lat_raises` ⇒ crveno, Finish odbije; bez Event Note i datuma | ⬜ |
+| T-S190-2 | Katalog ⇒ Edit `lat_raises`: bez datuma/vremena/Duration i Event Note; Description raste u nove retke (i u drugim Areama) | ⬜ |
+| T-S190-3 | `S190 Trening proba` ⇒ Add ⇒ izbornik: skupine, 6 + „Sve", dodir ⇒ kartica, Izaberi; Uredi vježbu ⇒ promjena skupine seli vježbu; poslije Finisha „1× u 12 mj" (mobitel i laptop) | ⬜ |
+| T-S190-4 | Slike vježbe: Edit kataloga +2 slike ⇒ 📷 2 u listi, traka, povlačenje / ‹ ›; sličica i slike u kartici izbornika | ⬜ |
+| T-S190-5 | Structure export: `AddNote` FALSE, Slug `Unique = from: name`, `vjezba` `OptionsFrom`; nepromijenjen uvoz = bez promjene | ⬜ |
 
 ---
 

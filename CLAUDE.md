@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S189).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S190).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 156 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 169 | [Critical rules](<#Critical rules>) | X |
-| 1454 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1932 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1948 | [Key files](<#Key files>) |  |
-| 2111 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2131 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2154 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2183 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2223 | [Open bugs](<#Open bugs>) | ~ |
-| 2340 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2385 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2547 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2555 | [Backlog](<#Backlog>) | ~ |
-| 2559 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2567 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1470 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1948 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1964 | [Key files](<#Key files>) |  |
+| 2135 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2155 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2178 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2207 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2247 | [Open bugs](<#Open bugs>) | ~ |
+| 2364 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2409 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2571 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2579 | [Backlog](<#Backlog>) | ~ |
+| 2583 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2591 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2731 redaka, 18 sekcija._
+_Ukupno 2755 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -448,6 +448,22 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ Prazni se samo polje koje je BILO NA EKRANU (`wasShown`): skriveni default (`sprava = orb` dok vrsta nije
   izabrana) ostaje, inače Z2 poslije pokaže prazno (izmjereno E2E); ne sprema se jer Add filtrira skriveno.
   Čuvaju `visibleWhen.test.mjs` (53; sabotaže „dijete" i „planer" padaju) i E2E `S187_visible_when` (stara forma pada 2/2).
+- **`unique` i `options_from` žive UNUTAR `validation_rules` (S190, katalog vježbi) — novi ortogonalni ključ
+  mora u TRI mjesta:** `buildRules` (`RuleSpec`), panel (`kept` u `StructureNodeEditPanel.buildValidationRules`)
+  i uvoz (`resolveCellRule`, kolona koje nema ⇒ baza). Fali li ijedno, prvo spremanje panela ili uvoz tiho obriše
+  pravilo (razred `max` S152, `hidden_in_add` S139). Čuva `uniqueOptionsFrom.test.mjs` (sabotaža graditelja pada 2).
+  ⚠ **`unique` brane Add Finish, Edit Save (upit u bazu TOG trena, `findUniqueConflicts`) i Excel uvoz
+  (`findImportUniqueConflicts`, pregled gasi Apply)** — NE `Save +`: katalog nosi `disable_save_plus`. Area s
+  `unique` bez toga mogla bi u redu čekanja imati dva ista. Forma (`UniqueHint`) je samo pomoć, snimka s otvaranja.
+  ⚠ Prijedlog (`unique: {from: name}`) nikad preko vrijednosti iz baze (Edit) ni preko ručno upisane.
+- **⚠ `options_from` VEŽE SE PO IMENU Aree i kategorije, a polje SPREMA SLUG** (`optionsFrom.ts`, `catalogOptions.ts`).
+  Preimenovanje Aree/kategorije kataloga ⇒ polje pokaže crvenu poruku (vidljivo). **Preimenovanje sluga u katalogu
+  (planer, `Restructure options` nad Areom kataloga) NE DIRA zapise treninga koji ga citiraju** — oni su u drugoj
+  Arei, planer ih ne vidi ⇒ trening pokaže „(nije u katalogu)". Slug se zato ne mijenja u kartici ni u Editu
+  usput; kad zatreba, alat mora ići preko obje Aree (otvoreno). Dvije vidljive Aree istog imena ⇒ vlastita pobjeđuje.
+  ⚠ Uređivanje iz kartice smije samo VLASNIK kataloga (`canEdit`); upis broji retke (RLS-blokiran = 0 ⇒ poruka).
+- **Tekstualni atribut u formi je `<textarea>` koja raste (S190, sve Aree; `link` ostaje `<input>`).** E2E selektor
+  polja: `input, textarea` (S187 spec je tako popravljen). Enter u polju je novi red, ne spremanje.
 - **Redoslijed opcija u izborniku je PRIKAZ, ne podatak** (S164, Koka i Saša). Atribut čiji najdulji
   popis ima ≥ 7 opcija prikazuje sve popise abecedno (hr kolacija, `N/A`/`*` na vrhu) —
   `src/lib/optionOrder.ts`, zovu ga forma (`AttributeInput`) i app Excel export; Python app Excel
@@ -2051,6 +2067,14 @@ data-prep_tools/Tools/preuredjivanje_grep.py
                                    (JAK = vrijednost + kontekst koraka u retku); bez `fix_*` i `Obsolete/`
 src/lib/importDefaults.ts          `default_map` na NOVIM retcima Excel uvoza (S181) — samo prazna ćelija,
                                    nikad `default_value`; pregled i upis kroz `fillImportDefaults`
+src/lib/uniqueValue.ts             S190: pravilo `unique` (ćelija, prijedlog ključa, sličnost) — čisto
+src/lib/uniqueCheck.ts             S190: I/O za `unique` — provjera pri spremanju (baca na padu), popis zapisa
+src/lib/optionsFrom.ts             S190: pravilo `options_from` (ćelija `Area > Kategorija : slug | label: …`)
+src/lib/catalogOptions.ts          S190: katalog po imenu (keš modula, `areas-changed`), korištenje 12 mj, spremi zapis
+src/lib/catalogPicker.ts           S190: čisti model izbornika (skupine, učestalost, odmor po skupini i sporednoj)
+src/components/activity/CatalogPickerField.tsx  S190: polje → izbornik → kartica → Izaberi / Uredi (vlasnik)
+src/components/activity/PhotoCarousel.tsx       S190: slike jednu po jednu (povlačenje / ‹ ›) — kartica i lista
+data-prep_tools/Trening/katalog.py S190: Area `Katalog vježbi` na TEST-u (samo TEST), `--pravila`, `--proba-trening`
 src/lib/visibleWhen.ts             JEDINO pravilo „vidljivo uz vrijednost" (S187): čitanje, ćelija
                                    `VisibleWhen`, procjena po lancu, `fieldsToClear`, `ruleHiddenIds`
 src/lib/validationRules.ts         JEDINI graditelj `validation_rules` (panel, uvoz, „Other") +

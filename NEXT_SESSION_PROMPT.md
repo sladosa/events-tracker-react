@@ -1,105 +1,89 @@
-> Pisano protiv `0bb63a8` (S189: skica View-a) i commita koji nosi ovaj file (S189 završno zatvaranje). Ranije u S189: `f9ec646` prijevod, `831c35a` mjerenje + popravci, `58b2142` odluka koraka 4, `29a0900` T-S189-1; `75d2771` paralelni prozor (katalog, odluke 30.10.).
-> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 … S189, **nije deployano**.
-> **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187–S189 nemaju migraciju.
+> Pisano protiv `147a584` (S190: Excel uvoz i katalog) i commita koji nosi ovaj file (S190 zatvaranje). Ranije u S190: `eea9b97` katalog na TEST-u, `461da7a`/`e808cf5`/`e3d3e68` skica (3 verzije) + odluke, `2da5e9d` unique + kolone + Edit bez vremena, `0f5881e` E2E, `db3445e` izbornik, `105a08d` slike u listi.
+> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 … S190, **nije deployano**.
+> **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187–S190 nemaju migraciju.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S190) — model treninga: korak 5 (katalog vježbi) pa 6 (model + prikaz)
+# Sljedeća sesija (S191) — testovi koraka 5, pa korak 6 (model treninga + prikaz serija)
 
-> **Ukratko (S189):** poruke pregleda preuređivanja su na engleskom, format „jedan zapis = jedna serija" izmjeren je
-> na 7.936 probnih serija i odlučen, a mjerenje je našlo i popravilo dva tiha kvara — izvoz je na granici stranice
-> udvostručio i izgubio retke, a Edit je pri pomaku vremena obrisao vrijednosti iznad 1000 po treningu.
+> **Ukratko (S190):** katalog vježbi je Area na TEST-u, a vježba se bira iz njega (skupine, najčešće u 12 mj,
+> kartica, uređivanje) — sve na `test-branch`, prema skici koju je Saša odobrio prije koda.
 
-> **Živi plan je tablica „Koraci" u `docs/TRENING_MIGRACIJA.md`** (koraci 1–13). Ovaj file je samo stanje u letu.
+> **Živi plan je tablica „Koraci" u `docs/TRENING_MIGRACIJA.md`** (koraci 1–13; odluke koraka 5 u
+> „Korak 5 — odluke S190"). Ovaj file je samo stanje u letu.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (S189)
-- **Poruke preuređivanja na engleskom** (greške, upozorenja, „Also changes"). Tvoje odluke: sirove putanje u
-  `Settings:` ostaju; poruke iz baze se prevode uz prvu sljedeću migraciju koja ih dira (BACKLOG).
-- **Excel analize snage je gotov** (paralelni prozor, 30.10.) — osim lista **Mjesta**, koji nisi pregledao.
-  Iz njega: `vjezbe_prijedlog.json` = izvor kataloga (60 slugova: 56 vježbi + 4 načina), glavna + sporedna skupina,
-  vrste Strength / Cardio / Mobility / Stretching / Method. **Katalog je zasebna Area „Katalog vježbi"** (dijeli se,
-  Koka kasnije iz predloška). Method (IMOM, HIIT, GtG, TbyT) je način bloka, ne vježba. Sve u `TRENING_MIGRACIJA.md`.
-- **Korak 4 izmjeren na TEST-u** (probna Area `S189 serije proba`, 402 izmišljena treninga = 7.936 serija):
-  - **Količina nije problem** — lista se učita za ~1 s, izvoz cijele Aree ~50 s (1 MB), uvoz novih treninga ~0,23 s
-    po seriji (tvoja povijest, ~20.000 serija ≈ 75 min, u više fileova).
-  - **Puca današnji prikaz**, ne format: lista broji po 20 *serija*, pa je jedan trening od 220 serija 11 istih
-    redaka; View i Edit pokazuju jednu seriju po gumbu `#1 … #24`. To je posao koraka 6.
-  - Uvoz svim serijama treninga daje isto vrijeme upisa, pa ih View miješa ⇒ svaka serija nosi i **`red`** (položaj).
-- **Dva tiha kvara nađena mjerenjem i popravljena** (vrijede za sve Aree, bit će na PROD-u uz sljedeći deploy):
-  izvoz je na granici svakih 1000 redaka neke retke stavio dvaput, a neke izostavio; Edit koji pomakne vrijeme
-  treninga s više od ~1000 vrijednosti obrisao je višak, uz poruku o uspjehu.
-- **Korak 4 odlučen** (tvoji odgovori 30.10.): zapis po seriji s `blok`, `serija`, `red`; način / RPE / odmor bloka
-  na prvoj seriji bloka; zagrijavanje = blok 0.
-- **Skica View-a** dodana uz Add formu, isti link: <https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy> — jedan
-  ekran po treningu, red po vježbi s piramidom (ili po seriji), IMOM od 55 minuta u jednom redu. **Još je nisi
-  pregledao** (30.10.: „nemam energije sada").
+## Gotovo (S190), sve na TEST-u
+- **Katalog vježbi** je Area `Katalog vježbi` pod tvojim TEST računom: 56 vježbi, polja na engleskom, imena hrvatski.
+  „Per hand" i slike dodaješ sam.
+- **Nova vježba u katalogu:** slug se predloži iz imena, ispod piše koje slične vježbe već postoje, a postojeći slug
+  ne prolazi (ni u formi, ni u Editu, ni Excel uvozom). Nema datuma, vremena ni Event Note.
+- **Izbor vježbe u treningu** (probna Area `S190 Trening proba` › Gym):
+  - skupine, u skupini 6 najčešćih u zadnjih 12 mjeseci + „Sve";
+  - uz skupinu „zadnje prije N d";
+  - dodir na vježbu otvara karticu (slike, opis), a tek **Izaberi** je stavlja u polje;
+  - **Uredi vježbu** u kartici mijenja katalog na licu mjesta.
+- **Za sve Aree:** tekstualno polje raste u nove retke dok pišeš; **📷 N** na retku liste otvara slike ispod retka
+  (povlačenje na mobitelu, ‹ › na laptopu); Area može isključiti Event Note.
+- **Nije napravljeno:** povlačenje vježbe ⠿ i „+ vježba" u bloku. To je forma serija (korak 6), koja još ne postoji.
 
 ## Što treba od tebe — redom
-1. ✅ **Korak 4 odlučen** (30.10.): način/napor/odmor bloka na prvoj seriji bloka; zagrijavanje = blok 0.
-2. ✅ **T-S189-1** (30.10.) — pregled preuređivanja na engleskom.
-3. **Pregledaj skicu View-a** (link gore, najbolje na mobitelu) i javi primjedbe — npr. treba li „po vježbi"
-   ostati zadani prikaz. Treba prije koda koraka 6, ne prije koraka 5. Probnu Areu `S189 serije proba` si već vidio
-   (220 gumba) — briše se kad korak 6 krene.
+1. **T-S190-1 … T-S190-5** (TEST, `npm run dev`, prvo Ctrl+Shift+R) — koraci su u
+   `docs/sessions/tests/S190_tests.md`. Najvažniji je **T-S190-3** (izbor vježbe, na mobitelu). Za T-S190-4 dodaj
+   par slika nekoj vježbi kroz Edit kataloga.
+2. Obriši svoju probnu vježbu `test` iz kataloga (⋮ → Delete) i onu iz testa (`hand_lat_test`).
+3. **Pregledaj skicu View-a** (<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>) — treba prije koraka 6.
 4. Kad stigneš: list **Mjesta** u Excelu analize snage.
 5. **Studeni krug Financija (bez razvoja):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11., T-S175-3 ZABA_2026-10,
    T-S181-3. To je ispit „Financije su dovoljno gotove".
 6. Kad stigneš: T-S174-3 / T-S174-5 (PROD razvrstavanje starije povijesti).
 
 ## Sljedeće (prijedlog)
-**Korak 5** — Area `Katalog vježbi` (uvoz 56 vježbi iz JSON-a) + izbornik vježbe koji čita
-kategoriju iz druge Aree (zapis pamti slug). Pa **korak 6** — model `Activity1` / `Gym` na TEST-u, lista po
-treninzima, prikaz serija po bloku u View/Edit (skica `docs/mockups/trening_snaga_add.html`).
+Popravci po T-S190, pa **korak 6**: model `Activity1` / `Gym` na TEST-u, forma serija (blok → serija → `red`,
+⠿ povlačenje, „+ vježba" otvara izbornik na skupini vježbe iznad), lista po treninzima, View po bloku.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Izvedeno (S189)
+## Izvedeno (S190)
 | Što | Gdje | Dokaz |
 | --- | --- | --- |
-| Prijevod poruka preuređivanja | `restructure/plan.ts`, `apply.ts`, `restructurePlan.test.mjs`, E2E S179 | check + S179/S186 ✅; T-S189-1 ✅ |
-| Izvoz: jedinstven redoslijed + paginirani roditelji | `excelDataLoader.ts` (`loadEventsForExport` `.order('id')`; `mergeParentAttrsIntoEvents` `fetchAllPaged`) | T-S189-2 ✅ (proba: 10 dvostrukih / 3 sukoba → 0) |
-| View/Edit atributi paginirani | `activityViewCache.ts`, `EditActivityPage.tsx` (`fetchAllPagedIn`) | T-S189-3 ✅ (pomak vremena 220 serija: 1.102 → 1.000 prije, 1.102 poslije) |
-| Odluka koraka 4 | `TRENING_MIGRACIJA.md` „Mjerenje za korak 4" (ODLUKA, točke 1–7), tablica „Koraci" red 4 ✅ | Saša 30.10. |
-| Skica View-a (prijedlog za korak 6) | `docs/mockups/trening_snaga_add.html` = isti artifact kao Add; objava = kopija bez prva 4 retka (doctype, meta) na isti URL | ⬜ Saša nije pregledao |
-| Mjerenje koraka 4 | `data-prep_tools/Trening/proba_serije.py` (samo TEST; `--apply` / `--obrisi`); probni spec `Claude-temp_R/s189/_probe_S189_serije.spec.ts` (+ snimke) | `TRENING_MIGRACIJA.md` „Mjerenje za korak 4" |
-| E2E e6-3 | spec bira Areu (S175: Structure export = jedna Area) | 3/3 ✅ |
+| Katalog na TEST-u | `Trening/katalog.py` (`--apply`, `--obrisi`, `--pravila`, `--proba-trening`); Area `0d81ea2f…`, probna `S190 Trening proba` `e2191f7c…` (vlasnik Saša) | baza izmjerena: 56 zapisa / 227 vrijednosti |
+| Pravilo `unique` | `uniqueValue.ts`, `uniqueCheck.ts`, `UniqueHint.tsx`; Add Finish / Edit Save; `findImportUniqueConflicts` (pregled gasi Apply) | unit `uniqueOptionsFrom` 37; E2E `S190_unique_catalog` (sabotaža Add pada) |
+| Pravilo `options_from` | `optionsFrom.ts`, `catalogOptions.ts`, `catalogPicker.ts`, `CatalogPickerField.tsx` (u `AttributeInput`) | unit `catalogPicker` 13; E2E `S190_catalog_picker` (sabotaža „dodir bira" pada) |
+| Structure kolone `AddNote`, `Unique`, `OptionsFrom` (na kraju) | `structureExcel.ts`, `structureImport.ts` (`resolveCellRule`), panel prenosi (`kept`) | unit; ručno T-S190-5 ⬜ |
+| Edit bez vremena, Event Note po Arei | `ActivityHeader` `timeless`; Add/Edit `showNote` (`add_header.note`) | E2E `S190_unique_catalog` Edit |
+| Tekst koji raste | `AttributeInput` `AutoGrowTextarea` (link ostaje input); S187 spec `input, textarea` | E2E S187 + e2 + S187_default ✅ (5/5) |
+| 📷 N u listi | `useActivities` (`photos`), `ActivitiesTable` (`photoButton`, `openPhotoRows`), `PhotoCarousel` | E2E `S190_unique_catalog` Lista |
+| Excel uvoz: vrijednost izvan kataloga | `optionsFromMissesWarning` (pregled + izvještaj, ne zabrana) | — (nije pokriveno testom) |
 
-Pravilo „leaf s mnogo eventa po sesiji lomi prikaz" je u CLAUDE.md § Model / atributi; `BUG-S189-PARENTSHIFT` u
-Open bugs; „zastarjeli izvoz ne vraća obrisan redak" i poruke baze 058–060 u BACKLOG-u.
+## Prije deploya / otvoreno
+- **Puni E2E run nije vrćen** — vrćeni su S190 (4), S187 (3), e2 i S187_default (5/5 ✅). Tekst je sada
+  `<textarea>`: spec koji traži `input` za tekstualni atribut pada iz razloga selektora. Prvi posao S191: puni run.
+- Uređivanje kataloga iz kartice: samo **vlasnik** (`canEdit = area.user_id === uid`). Write grantee: izmjeriti
+  `rls_probe` za `event_attributes` tuđeg zapisa prije nego se otvori.
+- **Preimenovanje sluga u katalogu ne dira treninge** (druga Area) — v. CLAUDE.md; planer nema tu granu.
+- `Save +` ne provjerava `unique` (katalog ga gasi) — brana ako ikad Area s `unique` dopusti Save +.
+- „+ vježba" za novu vježbu otvara skupinu vježbe iznad — ide uz formu serija (korak 6); danas izbornik otvara
+  skupinu trenutne vrijednosti.
 
-## Za korak 4 → 5 → 6
-- **Korak 4 ✅ (S189):** zapis po seriji; atributi `vjezba`, `blok`, `serija`, `red`, `kg`, `ponavljanja`,
-  `trajanje`, `intenzitet`, `zagrijavanje`; `metoda`/`rpe`/`odmor` na prvom zapisu bloka (serija 1, red 1);
-  zagrijavanje = `blok` 0 (`serija` 1, `red` 1…N).
-- **Korak 6 mora riješiti:** lista stranici po sesijama (danas `useActivities` po eventima, 20; grupe se preko
-  stranica ne spajaju; Prev/Next nav 500 eventa ≈ 25 treninga); prikaz serija po blok → serija → red (nikad
-  `created_at`); Edit pomak vremena ostavlja stari roditelj (`BUG-S189-PARENTSHIFT`); Edit Save po eventu ~0,5 s
-  (220 izmijenjenih = 114 s) — nova forma piše skupno.
-- **Korak 5:** „izbornik iz druge kategorije" čita kategoriju **druge Aree** (RLS čitanja); zapis kataloga je event
-  ⇒ jedinstvenost sluga brani uvoz/forma; uvoz kataloga iz `vjezbe_prijedlog.json` (Excel u app format, kol. G = autor).
-
-## Probna Area (TEST)
-- `S189 serije proba` = `efe3ec96-…`, kategorije `Activity1` `e56a7a00-…`, `Gym` `9420b1c2-…`, vlasnik
-  `owner@test.com`, read Saši. Sadrži 1 roditelja-siroče (18:41, iz mjerenja pomaka vremena).
-- ⚠ **E2E global-setup briše sve ne-seed Aree vlasnika `owner@test.com`** i njihova dijeljenja: pri sljedećem E2E
-  krugu proba će izgubiti dijeljenje (S189 se dogodilo, vraćeno) i možda dio eventa. Ako treba čista: `run.bat
-  Trening\proba_serije.py --obrisi` pa `--apply` (nove id-jeve upiši u probni spec).
-- Obrisati kad korak 6 krene (`--obrisi`).
+## Probne Aree (TEST)
+- `S190 Trening proba` (Saša) — za T-S190-3; obrisati kad korak 6 ima pravu Areu.
+- `S189 serije proba` (`owner@test.com`) — global-setup je svaki E2E run pokušava obrisati („COULD NOT delete
+  leftover area" — 7.936 eventa); obrisati `run.bat Trening\proba_serije.py --obrisi` kad korak 6 krene.
 
 ## Kasnije
-- **A4 „merge into"** (spec §25, §27): `planMerge` uz `retype.ts`; SQL `061` (uz njega prevesti poruke 058–060);
-  „Delete source" = nova vrsta zapisa ⇒ grana u `_restructure_current` **i** `_restructure_write_config`.
+- **A4 „merge into"** (spec §25, §27): `planMerge` uz `retype.ts`; SQL `061` (uz njega prevesti poruke 058–060).
+- Katalog na PROD: app Structure + Activities export Aree `Katalog vježbi` s TEST-a ⇒ uvoz pod Sašom (nakon deploya).
 
 ## Otvoreno / zapamti
 - Na TEST-u Sašin trening je **`Fitness_Garmin`**; TEST `Fitness` ×2 su demo. Slugovi na TEST-u imaju crticu.
-- Deploy F2 + S187–S189 na PROD: `059`/`060` (Saša u SQL editoru, `backup_db` prije, `dump_schema --diff` poslije).
-  S187 mijenja Fitness formu (7 polja s defaultom vidljiva); S188 mijenja ime sheeta (PROD export do deploya nosi
-  `Preuređivanje`, koji novi uvoz ne čita — javi upozorenje); S189 popravci izvoza/View/Edit vrijede za sve Aree.
+- Deploy F2 + S187–S190 na PROD: `059`/`060` (Saša u SQL editoru, `backup_db` prije, `dump_schema --diff` poslije).
+  S187 mijenja Fitness formu; S188 ime sheeta; S189 popravci izvoza/View/Edit; S190 textarea i 📷 u svim Areama.
 - `visible_when` za tekst ne proširuje `depends_on`; `TextOptions`/`DateMap` dijele na golom `|`.
 - Nepromijenjeno: 056 granica 4 dimenzije (Financije na njoj); klasifikator odbija i read-only PROD alate ⇒
-  PROD mjerenja pokreće Saša; model dana DIARY (280 dana s više Garmin treninga).
+  PROD mjerenja pokreće Saša.
