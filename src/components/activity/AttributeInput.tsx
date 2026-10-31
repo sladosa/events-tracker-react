@@ -3,6 +3,8 @@ import type { AttributeDefinition, DataType } from '@/types';
 import { parseValidationRules, getOptionsForDependency } from '@/hooks/useAttributeDefinitions';
 import { parseAmountInput } from '@/lib/amountFormat';
 import { orderForDisplay } from '@/lib/optionOrder';
+import { readOptionsFrom } from '@/lib/optionsFrom';
+import { CatalogPickerField } from './CatalogPickerField';
 
 interface AttributeInputProps {
   definition: AttributeDefinition;
@@ -86,9 +88,24 @@ export function AttributeInput({
     setOtherValue('');
   };
 
+  // S190: opcije iz zapisa druge Aree (katalog vježbi)
+  const optionsFrom = useMemo(() => readOptionsFrom(definition.validation_rules), [definition.validation_rules]);
+
   // Render based on data type
   const renderInput = () => {
     const dataType = definition.data_type as DataType;
+
+    if (optionsFrom && dataType === 'text') {
+      return (
+        <CatalogPickerField
+          definition={definition}
+          optionsFrom={optionsFrom}
+          value={value == null ? null : String(value)}
+          onChange={handleChange}
+          disabled={disabled}
+        />
+      );
+    }
 
     // Boolean - checkbox
     if (dataType === 'boolean') {
