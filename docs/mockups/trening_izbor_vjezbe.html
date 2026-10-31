@@ -3,8 +3,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Skica, ne aplikacija (S190, korak 5). Raspored: kartice (Izbornik · Lista · Nova vježba · Edit) iznad jednog
-   stupca ~780px; na mobitelu je izbornik prozor preko cijelog ekrana. Boje skupina iste kao u skici od 30.10. */
+/* Skica, ne aplikacija (S190, korak 5; 2. verzija po Sašinim primjedbama 31.10.). Raspored: kartice
+   (Izbornik · Lista · Nova vježba · Edit) iznad jednog stupca ~780px; izbornik je prozor preko ekrana. */
 :root {
   --bg: #f3f5f8; --surface: #ffffff; --fg: #17202e; --muted: #5d6a7c; --line: #dfe4eb; --soft: #eef2f7;
   --accent: #2459d6; --accent-soft: #e2eafc; --body: #d3d9e2; --warn: #b45309; --warn-soft: #fdf0dc;
@@ -27,6 +27,7 @@
   --g-push: #ff8a55; --g-pull: #9a9aff; --g-core: #3cc6c6; --g-main: #77c76f; --g-hips: #c99ae6; --g-calves: #e8c14c;
   color-scheme: dark }
 * { box-sizing: border-box }
+[hidden] { display: none !important }
 body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--f-body);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px }
 .wrap { max-width: 780px; margin: 0 auto; display: grid; gap: 18px }
@@ -37,6 +38,7 @@ h2 { font-size: 22px }
 .note { font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 6px 10px; display: inline-block }
 .why { font-size: 13.5px; color: var(--muted); border-left: 3px solid var(--line); padding: 2px 0 2px 10px; margin: 0; max-width: 65ch }
 .why b { color: var(--fg) }
+.why.new { border-left-color: var(--accent) }
 .mono { font-family: var(--f-mono); font-size: 12.5px }
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line) }
 .tabs button { font: 600 15px var(--f-body); color: var(--muted); background: none; border: 0; padding: 9px 12px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px }
@@ -64,9 +66,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .hint .taken { color: var(--bad); font-weight: 600 }
 .hint .sim { color: var(--muted) }
 .hint button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-align: left }
-.btn { font: 600 14px var(--f-body); border-radius: 8px; padding: 8px 14px; border: 0; cursor: pointer; background: var(--accent); color: #fff }
+.btn { font: 600 14px var(--f-body); border-radius: 8px; padding: 9px 14px; border: 0; cursor: pointer; background: var(--accent); color: #fff }
 .btn[disabled] { opacity: .45; cursor: not-allowed }
-.btn.ghost { background: var(--soft); color: var(--fg) }
+.lnk { font: 600 14px var(--f-body); color: var(--accent); background: none; border: 0; padding: 4px 0; cursor: pointer }
 
 /* lista (Activities) */
 .lst-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line) }
@@ -75,55 +77,77 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .cam { font: 600 12.5px var(--f-body); display: inline-flex; gap: 3px; align-items: center; background: var(--soft); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; cursor: pointer }
 .cam[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent) }
 .dots { color: var(--muted); font-weight: 700; padding: 0 4px }
-.strip { padding: 8px 14px 12px; border-bottom: 1px solid var(--line); background: var(--soft); display: grid; gap: 6px }
-.strip .nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--muted) }
+.strip { padding: 8px 14px 12px; border-bottom: 1px solid var(--line); background: var(--soft) }
 
 /* slika (primjer: crtež umjesto fotografije) */
-.ph { position: relative; aspect-ratio: 4 / 3; max-width: 100%; border-radius: 10px; display: grid; place-items: center; overflow: hidden;
+.ph { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 10px; display: grid; place-items: center; overflow: hidden;
   background: linear-gradient(135deg, color-mix(in srgb, var(--gc) 22%, var(--surface)), color-mix(in srgb, var(--gc) 6%, var(--surface))) }
 .ph em { position: absolute; left: 8px; bottom: 6px; font: 600 11px var(--f-mono); font-style: normal; color: var(--muted); background: var(--surface); border-radius: 4px; padding: 1px 5px }
 .thumb { width: 44px; height: 44px; border-radius: 8px; overflow: hidden; display: grid; place-items: center; background: var(--soft); border: 1px solid var(--line); padding: 0; cursor: pointer; position: relative }
 .thumb .ph { width: 44px; border-radius: 0; aspect-ratio: 1 }
 .thumb b { position: absolute; right: 2px; bottom: 1px; font: 700 10px var(--f-body); background: var(--surface); color: var(--fg); border-radius: 3px; padding: 0 3px }
-.nb { font: 600 13px var(--f-body); background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; cursor: pointer }
-.nb[disabled] { opacity: .4; cursor: default }
 
-/* izbornik */
-.pk-search { position: sticky; top: 0; background: var(--surface); padding: 10px 14px; border-bottom: 1px solid var(--line); z-index: 1 }
-.pk-search input { font: inherit; width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); color: var(--fg) }
-.pk-sec { padding: 10px 14px 4px; font: 600 13px var(--f-body); text-transform: uppercase; letter-spacing: .06em; color: var(--gc, var(--muted)); border-bottom: 2px solid var(--gc, var(--line)); display: flex; justify-content: space-between }
-.pk-sec span { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted) }
+/* niz slika: povlačenje lijevo/desno (dodir), ‹ › na slici (miš) */
+.car { position: relative; display: grid; gap: 6px; touch-action: pan-y; user-select: none; -webkit-user-select: none }
+.arr { position: absolute; top: calc(50% - 22px); width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--fg); font: 700 20px/1 var(--f-body); cursor: pointer; display: grid; place-items: center; padding: 0 0 3px }
+.arr.l { left: 8px } .arr.r { right: 8px }
+.arr[disabled] { opacity: .3; cursor: default }
+@media (hover: none) { .arr { display: none } }
+.pips { display: flex; gap: 6px; justify-content: center }
+.pips i { width: 7px; height: 7px; border-radius: 50%; background: var(--line) }
+.pips i.on { background: var(--accent) }
+
+/* forma treninga (kontekst izbornika) */
+.ex-head, .ex-line { display: grid; grid-template-columns: 22px minmax(0, 1fr) 54px 54px 26px; gap: 6px; align-items: center }
+.ex-head { font-size: 12px; color: var(--muted) }
+#rows { display: grid; gap: 6px }
+.ex-line { background: var(--surface); border-radius: 8px }
+.ex-line.dragging { box-shadow: 0 6px 18px rgb(0 0 0 / .18); outline: 2px solid var(--accent); position: relative; z-index: 2 }
+.grip { touch-action: none; cursor: grab; background: none; border: 0; padding: 0; height: 38px; color: var(--muted); font: 700 17px var(--f-body); letter-spacing: -2px }
+.ex-line.dragging .grip { cursor: grabbing }
+.picker-btn { display: flex; gap: 8px; align-items: center; min-width: 0; font: inherit; color: var(--fg); background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; cursor: pointer; text-align: left }
+.picker-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
+.ex-line input { font: inherit; width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); text-align: right; font-variant-numeric: tabular-nums }
+.rm { background: none; border: 0; color: var(--muted); font: 600 18px var(--f-body); cursor: pointer; padding: 0 }
+.addrow { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted) }
+
+/* izbornik: skupine se otvaraju jedna po jedna */
+.pk-list { display: grid }
+.acc-h { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; font: inherit; color: var(--fg);
+  background: var(--surface); border: 0; border-bottom: 1px solid var(--line); padding: 11px 14px; cursor: pointer; text-align: left }
+.acc-h > i { width: 10px; height: 10px; border-radius: 50%; background: var(--gc) }
+.acc-h .gn { font: 600 17px var(--f-display); letter-spacing: .02em; display: grid; line-height: 1.2 }
+.acc-h .gn small { font: 400 12.5px var(--f-body); color: var(--muted); letter-spacing: 0 }
+.acc-h .meta { font-size: 12.5px; color: var(--muted); text-align: right; line-height: 1.3 }
+.acc-h[aria-expanded="true"] { border-bottom: 2px solid var(--gc); background: color-mix(in srgb, var(--gc) 7%, var(--surface)) }
 .pk-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--line) }
 .pk-row .pick { font: inherit; color: inherit; background: none; border: 0; text-align: left; padding: 4px 0; cursor: pointer; min-width: 0; display: grid }
 .pk-row .pick .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .pk-row .pick .sub { font-size: 12.5px; color: var(--muted) }
 .pk-row .i { font: 700 14px var(--f-body); width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer }
 .pk-row.cur { background: var(--accent-soft) }
-.pk-list { max-height: 520px; overflow: auto }
-
-/* forma treninga (kontekst izbornika) */
-.ex-line { display: grid; grid-template-columns: minmax(0, 1fr) 60px 60px; gap: 6px; align-items: center }
-.picker-btn { display: flex; gap: 8px; align-items: center; min-width: 0; font: inherit; color: var(--fg); background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; cursor: pointer; text-align: left }
-.picker-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
-.ex-line input { font: inherit; width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); text-align: right; font-variant-numeric: tabular-nums }
+.more { font: 600 14px var(--f-body); color: var(--accent); background: var(--soft); border: 0; border-bottom: 1px solid var(--line); padding: 9px 14px; cursor: pointer; text-align: left }
 
 .overlay { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 20;
   padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) }
-.sheet { background: var(--surface); color: var(--fg); border-radius: 14px; width: min(420px, 100%); max-height: 92vh; overflow: auto; display: grid }
-.sheet-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line) }
-.x { font: 600 14px var(--f-body); background: var(--soft); color: var(--fg); border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer }
-.card-body { padding: 12px 14px; display: grid; gap: 10px }
-dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; margin: 0; font-size: 14px }
-dl.kv dt { color: var(--muted) } dl.kv dd { margin: 0; min-width: 0 }
-.light { background: #000; }
-@media (prefers-reduced-motion: no-preference) { .tabs button, .cam { transition: background .12s, color .12s } }
+.sheet { background: var(--surface); color: var(--fg); border-radius: 14px; width: min(420px, 100%); max-height: 92vh; overflow: auto; display: grid; align-content: start }
+.sheet-h { position: sticky; top: 0; z-index: 3; background: var(--surface); display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line) }
+.sheet-h h2 { font-size: 19px }
+.x { font: 600 14px var(--f-body); background: var(--soft); color: var(--fg); border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; flex: none }
+.card-body { padding: 12px 14px 14px; display: grid; gap: 10px }
+.tags { display: flex; gap: 6px; flex-wrap: wrap }
+.desc { margin: 0; font-size: 14.5px; line-height: 1.5 }
+.desc.empty { color: var(--muted); font-style: italic }
+.slugline { font-size: 12.5px; color: var(--muted) }
+@media (prefers-reduced-motion: no-preference) { .tabs button, .cam, .acc-h { transition: background .12s, color .12s } }
 </style>
 
 <div class="wrap">
   <header>
     <h1>Izbor vježbe</h1>
-    <p class="lede">Skica koraka 5: kako biraš vježbu u treningu, kako vidiš slike u listi i kako dodaješ novu vježbu. Popis je stvarni katalog s TEST-a, 56 vježbi.</p>
-    <p class="note">Skica. Slike su crteži umjesto fotografija, a „zadnje korišteno" je iz povijesti DIARY-ja.</p>
+    <p class="lede">Skica koraka 5, druga verzija po tvojim primjedbama od 31.10. Popis je stvarni katalog s TEST-a (56 vježbi).</p>
+    <p class="note">Skica. Slike su crteži umjesto fotografija; opisi i „prije N d" su primjeri. Ništa se ne sprema.</p>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="Ekrani">
@@ -139,8 +163,10 @@ dl.kv dt { color: var(--muted) } dl.kv dd { margin: 0; min-width: 0 }
       <div class="app-head add"><b>Add Activity</b><span>Fitness › Activity1 › Gym · Blok 1 · serija 2</span></div>
       <div class="app-body" id="series"></div>
     </div>
-    <p class="why">Dodir na ime vježbe otvara <b>izbornik</b>. Na vrhu su vježbe koje si zadnje radio, ispod cijeli katalog po skupinama. Tražilica radi i bez kvačica: <span class="mono">cucanj</span> nađe Čučanj, <span class="mono">bulg</span> nađe bulg_squat.</p>
-    <p class="why">U retku izbornika <b>sličica</b> otvara slike te vježbe (Prev/Next), <b>ⓘ</b> otvara karticu (opis, skupina, po ruci), a dodir na ime bira vježbu. Pokušaj: dodir na „Povlačenje na mašini".</p>
+    <p class="why new"><b>Redoslijed:</b> uhvati <b>⠿</b> lijevo i povuci vježbu gore ili dolje (prstom ili mišem). <b>+ vježba</b> dodaje na kraj bloka, pa je povučeš gdje treba; <b>×</b> miče vježbu iz serije. U bazi je to samo broj <span class="mono">red</span> (1, 2, 3…) koji se prepiše.</p>
+    <p class="why new"><b>Izbornik</b> (dodir na ime vježbe) nema tražilice. Skupine su zatvorene, osim skupine vježbe koju mijenjaš; za novu vježbu otvori se skupina vježbe iznad. U skupini su prvo <b>vježbe koje ti najčešće radiš</b> (tvoja povijest, svaki korisnik ima svoj redoslijed), najviše 6, a <b>Sve (N)</b> pokaže ostale.</p>
+    <p class="why new">Uz skupinu piše <b>kad si je zadnji put opteretio</b>, računajući i sporednu skupinu (erg je i Upper-pull). Datum po vježbi je maknut: odmor se mjeri po skupini, ne po vježbi.</p>
+    <p class="why">Sličica i <b>i</b> otvaraju karticu vježbe, a dodir na ime bira vježbu. Pokušaj: dodir na „Biceps", pa na <b>i</b> uz „Povlačenje na mašini".</p>
   </section>
 
   <!-- 2. Lista -->
@@ -149,7 +175,8 @@ dl.kv dt { color: var(--muted) } dl.kv dd { margin: 0; min-width: 0 }
       <div class="app-bar"><span>Katalog vježbi › Vježba</span><span>Group = Upper-pull</span></div>
       <div id="lst"></div>
     </div>
-    <p class="why"><b>📷 2</b> na retku znači da zapis ima 2 slike. Dodir otvara traku ispod retka, s Prev/Next kroz slike, bez odlaska u View. Vrijedi za <b>sve Aree</b>: i za račun uz trošak u Financijama.</p>
+    <p class="why"><b>📷 2</b> na retku znači da zapis ima 2 slike. Dodir otvara traku ispod retka, bez odlaska u View. Vrijedi za <b>sve Aree</b>: i za račun uz trošak u Financijama.</p>
+    <p class="why new">Slike se listaju kao na kartici: na mobitelu povlačenjem lijevo ili desno, na laptopu strelicama <b>‹ ›</b> na samoj slici.</p>
   </section>
 
   <!-- 3. Nova vježba -->
@@ -207,8 +234,20 @@ const G = {
 const ORDER = Object.keys(G);
 const ex = DATA.filter(e => e.t !== 'Method');
 const bySlug = Object.fromEntries(ex.map(e => [e.s, e]));
-// Primjer: koliko slika ima koja vježba (u aplikaciji = privitci zapisa kataloga)
+// Primjeri: broj slika (u aplikaciji = privitci zapisa kataloga), opis, „po ruci"
 const PHOTOS = {pull_m: 2, lat_raises: 3, rotatori: 2, bulg_squat: 1, swing: 2, add_abd: 1, row_m: 1, zgib_m: 1, leg_press: 2, erg: 1};
+const DESC = {
+  lat_raises: 'Bučice uz tijelo, laktovi malo savijeni. Podići do visine ramena, palac lagano prema dolje. Polako spuštati (3 s). Uteg se upisuje po ruci: 2 kg = 2 kg u svakoj ruci.',
+  pull_m: 'Sjedalo tako da su koljena pod valjkom. Hvat malo širi od ramena, povući do brade, laktovi prema dolje. Ne zabacivati se unatrag.',
+  erg: 'Damper 5–6. Noge, pa trup, pa ruke; natrag obrnutim redom. Z2: oko 22 zaveslaja u minuti.',
+  leg_raises: 'Vis na šipci ili ležeći na klupi. Ravne noge do 90°, polako spuštati bez dodira poda.',
+  bulg_squat: 'Stražnja noga na klupi, prednje koljeno iznad stopala. Bučica u svakoj ruci; upisuje se jedna.',
+  swing: 'Pokret iz kukova, ne iz ruku. Girja do visine prsa, leđa ravna.',
+  rotatori: 'Kolotur u visini lakta, lakat uz tijelo, rotacija prema van. Lagano, 15–20 ponavljanja.',
+  row_m: 'Prsa uz jastuk, povući ručku do trbuha, lopatice skupiti na kraju pokreta.',
+};
+const PER_HAND = {lat_raises: true, bulg_squat: true};
+const TODAY = Date.UTC(2026, 9, 31);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[ch]));
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
 const gc = g => g ? G[g].c : 'var(--muted)';
@@ -236,98 +275,160 @@ function fig(g, g2, size = 30) {
 }
 // Slika i od n: crtež umjesto fotografije, svaka malo drukčije veličine da se vidi da je druga.
 function photo(e, i, n, label = true) {
-  const size = [120, 100, 140][i % 3];
+  const size = [90, 72, 108][i % 3];
   return `<div class="ph" style="--gc:${gc(e.g)}">${fig(e.g, e.g2, size * .6)}${label ? `<em>foto ${i + 1}/${n} · primjer</em>` : ''}</div>`;
 }
-function thumb(e) {
-  const n = PHOTOS[e.s] || 0;
-  return n ? `<button class="thumb" data-photos="${e.s}" aria-label="Slike: ${esc(e.n)} (${n})">${photo(e, 0, n, false)}${n > 1 ? `<b>${n}</b>` : ''}</button>`
-           : `<span class="thumb" aria-hidden="true">${fig(e.g, e.g2, 26)}</span>`;
-}
 const chipG = g => g ? `<span class="chip"><i style="background:${G[g].c}"></i>${esc(g)}</span>` : '<span class="chip">bez skupine</span>';
+
+// ── niz slika: jedna komponenta za karticu, listu i Edit
+const CARS = {};
+function carousel(key, s) {
+  const e = bySlug[s], n = PHOTOS[s] || 0;
+  if (!n) return `<div class="ph" style="--gc:${gc(e.g)}">${fig(e.g, e.g2, 46)}<em>nema slike</em></div>`;
+  const i = (CARS[key] ??= {i: 0}).i;
+  return `<div class="car" data-car="${key}" data-s="${s}">${photo(e, i, n)}${n > 1 ? `
+    <button class="arr l" data-step="-1" ${i === 0 ? 'disabled' : ''} aria-label="Prethodna slika">‹</button>
+    <button class="arr r" data-step="1" ${i === n - 1 ? 'disabled' : ''} aria-label="Sljedeća slika">›</button>
+    <div class="pips" aria-hidden="true">${Array.from({length: n}, (_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>` : ''}</div>`;
+}
+function step(car, d) {
+  const st = CARS[car.dataset.car], n = PHOTOS[car.dataset.s], ni = Math.max(0, Math.min(n - 1, st.i + d));
+  if (ni === st.i) return;
+  st.i = ni;
+  car.outerHTML = carousel(car.dataset.car, car.dataset.s);
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-step]'); if (b) step(b.closest('.car'), +b.dataset.step); });
+let swipe = null;
+document.addEventListener('pointerdown', e => {
+  const car = e.target.closest('.car');
+  if (car && !e.target.closest('button')) swipe = {car: car.dataset.car, x: e.clientX, y: e.clientY};
+});
+document.addEventListener('pointerup', e => {
+  if (!swipe) return;
+  const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y, car = document.querySelector(`[data-car="${swipe.car}"]`);
+  swipe = null;
+  if (car && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) step(car, dx < 0 ? 1 : -1);
+});
 
 // ── overlay
 const ov = document.getElementById('ov'), ovIn = document.getElementById('ov-in');
 const stack = [];
-function openOv(render) { stack.push(render); ovIn.innerHTML = render(); ov.hidden = false; ovIn.querySelector('input, button')?.focus(); }
-function back() { stack.pop(); if (stack.length) ovIn.innerHTML = stack[stack.length - 1](); else ov.hidden = true; }
+function openOv(render) { stack.push(render); ovIn.innerHTML = render(); ov.hidden = false; ovIn.scrollTop = 0; ovIn.querySelector('button')?.focus(); }
+function rerender() { ovIn.innerHTML = stack[stack.length - 1](); }
+function back() { stack.pop(); if (stack.length) rerender(); else ov.hidden = true; }
 function closeAll() { stack.length = 0; ov.hidden = true; }
 ov.addEventListener('click', e => { if (e.target === ov) closeAll(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !ov.hidden) back(); });
 
-// ── galerija (Prev/Next)
-let gal = null;
-function galleryHtml() {
-  const e = bySlug[gal.s], n = PHOTOS[e.s];
-  return `<div class="sheet-h"><h2 id="ov-h" style="font-size:19px">${esc(e.n)}</h2><button class="x" data-back>Natrag</button></div>
-    <div class="card-body">${photo(e, gal.i, n)}
-      <div class="strip nav" style="background:none;padding:0"><button class="nb" data-gal="-1" ${gal.i === 0 ? 'disabled' : ''}>‹ Prev</button>
-      <span>${gal.i + 1} / ${n}</span><button class="nb" data-gal="1" ${gal.i === n - 1 ? 'disabled' : ''}>Next ›</button></div></div>`;
+// ── kartica vježbe: slike, skupine, opis; „po ruci" samo kad vrijedi
+function cardHtml(s, canPick) {
+  return () => {
+    const e = bySlug[s];
+    return `<div class="sheet-h"><h2 id="ov-h">${esc(e.n)}</h2><button class="x" data-back>Natrag</button></div>
+      <div class="card-body">${carousel('card:' + s, s)}
+        <div class="tags">${chipG(e.g)}${e.g2 ? chipG(e.g2) : ''}<span class="chip">${esc(e.t)}</span>${PER_HAND[s] ? '<span class="chip">uteg po ruci</span>' : ''}</div>
+        ${DESC[s] ? `<p class="desc">${esc(DESC[s])}</p>` : '<p class="desc empty">Opis još nije upisan.</p>'}
+        <div class="slugline">slug <span class="mono">${esc(s)}</span></div>
+        ${canPick ? `<button class="btn" data-pick="${s}">Izaberi ovu vježbu</button>` : ''}</div>`;
+  };
 }
-function openGallery(s) { gal = {s, i: 0}; openOv(galleryHtml); }
-
-// ── kartica vježbe (ⓘ)
-function infoHtml(s) {
-  const e = bySlug[s], n = PHOTOS[s] || 0;
-  return () => `<div class="sheet-h"><h2 id="ov-h" style="font-size:19px">${esc(e.n)}</h2><button class="x" data-back>Natrag</button></div>
-    <div class="card-body">${n ? photo(e, 0, n) : `<div class="ph" style="--gc:${gc(e.g)}">${fig(e.g, e.g2, 70)}<em>nema slike</em></div>`}
-      <dl class="kv"><dt>Slug</dt><dd class="mono">${esc(e.s)}</dd>
-        <dt>Group</dt><dd>${chipG(e.g)}${e.g2 ? ' + ' + chipG(e.g2) : ''}</dd>
-        <dt>Type</dt><dd>${esc(e.t)}</dd>
-        <dt>Per hand</dt><dd>${e.s === 'lat_raises' ? 'Yes' : '—'}</dd>
-        <dt>Zadnji put</dt><dd>${esc(e.l.split('-').reverse().join('.'))}. <span style="color:var(--muted)">(iz povijesti)</span></dd></dl>
-      ${n > 1 ? `<button class="btn ghost" data-photos="${s}">Sve slike (${n})</button>` : ''}</div>`;
+function galleryHtml(s) {
+  return () => `<div class="sheet-h"><h2 id="ov-h">${esc(bySlug[s].n)}</h2><button class="x" data-back>Natrag</button></div>
+    <div class="card-body">${carousel('gal:' + s, s)}</div>`;
 }
 
-// ── izbornik
-const recent = [...ex].sort((a, b) => b.l.localeCompare(a.l)).slice(0, 6);
-let pickFor = null, pq = '';
+// ── izbornik: skupine (jedna otvorena), u skupini po tvojoj učestalosti, najviše 6 + „Sve"
+const TOP = 6;
+let pickFor = null, openG = null;
+const showAll = {};
+function daysSince(g) {
+  const last = ex.filter(e => g ? (e.g === g || e.g2 === g) : !e.g).map(e => e.l).sort().at(-1);
+  return Math.round((TODAY - Date.parse(last + 'T00:00:00Z')) / 864e5);
+}
+const items = g => ex.filter(e => (e.g || '') === g).sort((a, b) => b.c - a.c || a.n.localeCompare(b.n, 'hr'));
 function pkRow(e) {
-  const cur = pickFor !== null && SER[pickFor][0] === e.s;
-  return `<div class="pk-row${cur ? ' cur' : ''}">${thumb(e)}
-    <button class="pick" data-pick="${e.s}"><span class="nm">${esc(e.n)}</span><span class="sub"><span class="mono">${esc(e.s)}</span>${e.g2 ? ' · + ' + esc(e.g2) : ''}</span></button>
+  const cur = typeof pickFor === 'number' && SER[pickFor][0] === e.s;
+  const n = PHOTOS[e.s] || 0;
+  return `<div class="pk-row${cur ? ' cur' : ''}">
+    <button class="thumb" data-info="${e.s}" aria-label="Kartica: ${esc(e.n)}">${n ? photo(e, 0, n, false) : fig(e.g, e.g2, 26)}${n > 1 ? `<b>${n}</b>` : ''}</button>
+    <button class="pick" data-pick="${e.s}"><span class="nm">${esc(e.n)}</span><span class="sub">${e.c}× kod tebe${e.g2 ? ' · + ' + esc(e.g2) : ''}</span></button>
     <button class="i" data-info="${e.s}" aria-label="Kartica: ${esc(e.n)}">i</button></div>`;
 }
-function pickerList() {
-  const q = norm(pq).replace(/[.\s-]/g, '');
-  const hit = e => !q || norm(e.n).replace(/[.\s-]/g, '').includes(q) || e.s.replace(/_/g, '').includes(q.replace(/_/g, ''));
-  let out = '';
-  if (!q) out += `<div class="pk-sec">Zadnje korišteno</div>${recent.map(pkRow).join('')}`;
-  for (const g of [...ORDER, '']) {
-    const items = ex.filter(e => (e.g || '') === g && hit(e));
-    if (items.length) out += `<div class="pk-sec" style="--gc:${gc(g)}">${g || 'Bez skupine'}<span>${items.length}</span></div>${items.map(pkRow).join('')}`;
-  }
-  return out || '<p class="lede" style="padding:14px">Nema takve vježbe u katalogu. Dodaje se u Arei Katalog vježbi.</p>';
-}
 function pickerHtml() {
-  return `<div class="sheet-h"><h2 id="ov-h" style="font-size:19px">Vježba</h2><button class="x" data-back>Zatvori</button></div>
-    <div class="pk-search"><input id="pq" type="search" placeholder="Traži: ime ili slug" aria-label="Traži vježbu" value="${esc(pq)}"></div>
-    <div class="pk-list" id="pl">${pickerList()}</div>`;
+  let out = `<div class="sheet-h"><h2 id="ov-h">Vježba</h2><button class="x" data-back>Zatvori</button></div><div class="pk-list">`;
+  for (const g of [...ORDER, '']) {
+    const its = items(g);
+    if (!its.length) continue;
+    const open = openG === g, d = daysSince(g);
+    out += `<button class="acc-h" data-acc="${g}" aria-expanded="${open}" style="--gc:${gc(g)}"><i></i>
+      <span class="gn">${g || 'Bez skupine'}<small>${g ? G[g].d : 'istezanje, mobilnost, rolanje'}</small></span>
+      <span class="meta">zadnje prije ${d} d<br>${its.length} vježbi</span></button>`;
+    if (!open) continue;
+    out += (showAll[g] ? its : its.slice(0, TOP)).map(pkRow).join('');
+    if (its.length > TOP) out += `<button class="more" data-more="${g}">${showAll[g] ? 'Samo najčešće' : `Sve (${its.length})`}</button>`;
+  }
+  return out + '</div>';
 }
-ovIn.addEventListener('input', e => { if (e.target.id === 'pq') { pq = e.target.value; ovIn.querySelector('#pl').innerHTML = pickerList(); } });
+function openPicker(forIdx, group) { pickFor = forIdx; openG = group; openOv(pickerHtml); }
 ovIn.addEventListener('click', e => {
-  const t = e.target.closest('button'); if (!t) return;
+  const t = e.target.closest('button'); if (!t || t.dataset.step) return;
   if (t.dataset.back !== undefined) return back();
-  if (t.dataset.gal) { gal.i += +t.dataset.gal; ovIn.innerHTML = galleryHtml(); return; }
-  if (t.dataset.photos) return openGallery(t.dataset.photos);
-  if (t.dataset.info) return openOv(infoHtml(t.dataset.info));
-  if (t.dataset.pick && pickFor !== null) { SER[pickFor][0] = t.dataset.pick; renderSeries(); closeAll(); }
+  if (t.dataset.acc !== undefined) {
+    openG = openG === t.dataset.acc ? null : t.dataset.acc; rerender();
+    ovIn.querySelector(`[data-acc="${openG}"]`)?.scrollIntoView({block: 'start'});
+    return;
+  }
+  if (t.dataset.more !== undefined) { showAll[t.dataset.more] = !showAll[t.dataset.more]; return rerender(); }
+  if (t.dataset.info) return openOv(cardHtml(t.dataset.info, pickFor !== null));
+  if (t.dataset.pick && pickFor !== null) {
+    if (pickFor === 'new') SER.push([t.dataset.pick, '', '']); else SER[pickFor][0] = t.dataset.pick;
+    pickFor = null; renderSeries(); closeAll();
+  }
 });
 
-// ── serija (kontekst izbornika)
+// ── serija (kontekst izbornika): ⠿ povlačenje = redoslijed, + vježba, ×
 const SER = [['row_m', 40, 12], ['triceps', 15, 14], ['lat_raises', 2, 12], ['biceps', 15, 14]];
+const seriesEl = document.getElementById('series');
 function renderSeries() {
-  document.getElementById('series').innerHTML = `
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) 60px 60px;gap:6px;font-size:12px;color:var(--muted)"><span>vježba</span><span style="text-align:right">kg</span><span style="text-align:right">pon.</span></div>
-    ${SER.map(([s, kg, r], i) => { const e = bySlug[s]; return `<div class="ex-line">
+  seriesEl.innerHTML = `
+    <div class="ex-head"><span></span><span>vježba</span><span style="text-align:right">kg</span><span style="text-align:right">pon.</span><span></span></div>
+    <div id="rows">${SER.map(([s, kg, r], i) => { const e = bySlug[s]; return `<div class="ex-line" data-i="${i}">
+      <button class="grip" aria-label="Povuci: ${esc(e.n)}">⠿</button>
       <button class="picker-btn" data-for="${i}" aria-label="Promijeni vježbu: ${esc(e.n)}">${fig(e.g, e.g2, 16)}<span>${esc(e.n)}</span></button>
-      <input id="kg-${i}" value="${kg}" aria-label="kg" inputmode="decimal"><input id="r-${i}" value="${r}" aria-label="ponavljanja" inputmode="numeric"></div>`; }).join('')}
-    <div style="font-size:13px;color:var(--muted)">+ vježba · + serija</div>`;
+      <input data-k="1" data-i="${i}" value="${kg}" aria-label="kg" inputmode="decimal"><input data-k="2" data-i="${i}" value="${r}" aria-label="ponavljanja" inputmode="numeric">
+      <button class="rm" data-rm="${i}" aria-label="Makni: ${esc(e.n)}">×</button></div>`; }).join('')}</div>
+    <div class="addrow"><button class="lnk" data-add>+ vježba</button><span>· + serija</span></div>`;
 }
-document.getElementById('series').addEventListener('click', e => {
-  const b = e.target.closest('[data-for]'); if (!b) return;
-  pickFor = +b.dataset.for; pq = ''; openOv(pickerHtml);
+seriesEl.addEventListener('input', e => { const t = e.target; if (t.dataset.k) SER[+t.dataset.i][+t.dataset.k] = t.value; });
+seriesEl.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.for !== undefined) { const i = +b.dataset.for; return openPicker(i, bySlug[SER[i][0]].g); }
+  if (b.dataset.rm !== undefined) { SER.splice(+b.dataset.rm, 1); return renderSeries(); }
+  if (b.dataset.add !== undefined) return openPicker('new', SER.length ? bySlug[SER.at(-1)[0]].g : ORDER[0]);
 });
+let drag = null;
+seriesEl.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.grip'); if (!g) return;
+  e.preventDefault();
+  drag = g.closest('.ex-line'); drag.classList.add('dragging');
+  seriesEl.setPointerCapture(e.pointerId);
+});
+seriesEl.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const rows = document.getElementById('rows');
+  const next = [...rows.children].find(r => r !== drag && e.clientY < r.getBoundingClientRect().top + r.offsetHeight / 2);
+  if (next) { if (drag.nextElementSibling !== next) rows.insertBefore(drag, next); }
+  else if (rows.lastElementChild !== drag) rows.appendChild(drag);
+});
+function endDrag() {
+  if (!drag) return;
+  const order = [...document.getElementById('rows').children].map(r => +r.dataset.i);
+  drag = null;
+  const copy = SER.slice(); order.forEach((oi, k) => { SER[k] = copy[oi]; });
+  renderSeries();
+}
+seriesEl.addEventListener('pointerup', endDrag);
+seriesEl.addEventListener('pointercancel', endDrag);
 renderSeries();
 
 // ── lista sa slikama
@@ -335,16 +436,15 @@ const LST = ex.filter(e => e.g === 'Upper-pull').concat(bySlug.erg);
 const open = {};
 function renderList() {
   document.getElementById('lst').innerHTML = LST.map(e => {
-    const n = PHOTOS[e.s] || 0, o = open[e.s];
+    const n = PHOTOS[e.s] || 0;
     return `<div class="lst-row"><div style="min-width:0"><div class="l1 mono">${esc(e.s)}</div><div class="l2">${esc(e.n)} · ${esc(e.g)}${e.g2 ? ' + ' + esc(e.g2) : ''}</div></div>
-      ${n ? `<button class="cam" data-cam="${e.s}" aria-expanded="${!!o}" aria-label="Slike (${n})">📷 ${n}</button>` : '<span></span>'}<span class="dots" aria-hidden="true">⋮</span></div>
-      ${o ? `<div class="strip">${photo(e, o.i, n)}${n > 1 ? `<div class="nav"><button class="nb" data-ln="${e.s}" data-d="-1" ${o.i === 0 ? 'disabled' : ''}>‹ Prev</button><span>${o.i + 1} / ${n}</span><button class="nb" data-ln="${e.s}" data-d="1" ${o.i === n - 1 ? 'disabled' : ''}>Next ›</button></div>` : ''}</div>` : ''}`;
+      ${n ? `<button class="cam" data-cam="${e.s}" aria-expanded="${!!open[e.s]}" aria-label="Slike (${n})">📷 ${n}</button>` : '<span></span>'}<span class="dots" aria-hidden="true">⋮</span></div>
+      ${open[e.s] ? `<div class="strip">${carousel('lst:' + e.s, e.s)}</div>` : ''}`;
   }).join('');
 }
 document.getElementById('lst').addEventListener('click', e => {
-  const c = e.target.closest('[data-cam]'), nv = e.target.closest('[data-ln]');
-  if (c) { open[c.dataset.cam] = open[c.dataset.cam] ? null : {i: 0}; renderList(); }
-  if (nv) { open[nv.dataset.ln].i += +nv.dataset.d; renderList(); }
+  const c = e.target.closest('[data-cam]');
+  if (c) { open[c.dataset.cam] = !open[c.dataset.cam]; renderList(); }
 });
 renderList();
 
@@ -377,16 +477,19 @@ function check() {
 }
 fName.addEventListener('input', check);
 fSlug.addEventListener('input', () => { slugTouched = fSlug.value.trim() !== ''; check(); });
-document.getElementById('hint').addEventListener('click', e => { const b = e.target.closest('[data-info]'); if (b) openOv(infoHtml(b.dataset.info)); });
+document.getElementById('hint').addEventListener('click', e => { const b = e.target.closest('[data-info]'); if (b) { pickFor = null; openOv(cardHtml(b.dataset.info, false)); } });
 document.getElementById('save').addEventListener('click', () => { document.getElementById('hint').insertAdjacentHTML('afterbegin', '<div style="color:var(--ok);font-weight:600">Spremljeno (u skici se ništa ne sprema).</div>'); });
 check();
 
-// ── edit: polje koje raste
+// ── edit: polje koje raste, slike
 const ta = document.getElementById('e-desc');
 const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
 ta.addEventListener('input', grow);
-document.getElementById('e-ph').innerHTML = [0, 1, 2].map(i => `<button class="thumb" data-photos="lat_raises" aria-label="Slika ${i + 1}">${photo(bySlug.lat_raises, i, 3, false)}</button>`).join('') + '<span class="thumb" style="font-size:20px;color:var(--muted)">+</span>';
-document.getElementById('e-ph').addEventListener('click', e => { if (e.target.closest('[data-photos]')) openGallery('lat_raises'); });
+document.getElementById('e-ph').innerHTML = [0, 1, 2].map(i => `<button class="thumb" data-gal="${i}" aria-label="Slika ${i + 1}">${photo(bySlug.lat_raises, i, 3, false)}</button>`).join('') + '<span class="thumb" style="font-size:20px;color:var(--muted)">+</span>';
+document.getElementById('e-ph').addEventListener('click', e => {
+  const b = e.target.closest('[data-gal]');
+  if (b) { CARS['gal:lat_raises'] = {i: +b.dataset.gal}; openOv(galleryHtml('lat_raises')); }
+});
 
 // ── kartice
 function go(v) {
