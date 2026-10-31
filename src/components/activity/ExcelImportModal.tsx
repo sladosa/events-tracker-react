@@ -19,6 +19,7 @@ import {
   parseExcelFile,
   findDroppedAttributes,
   findImportUniqueConflicts,
+  optionsFromMissesWarning,
   droppedAttributesWarning,
   fillImportDefaults,
   warnStaleUntouched,
@@ -220,6 +221,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
       // S190: jedinstvena vrijednost — ista funkcija kao upis (koji bi ionako stao).
       setUniqueConflicts(await findImportUniqueConflicts(
         [...parsed.toCreate, ...parsed.toUpdate], categoriesDict, attrDefs));
+
+      // S190: vrijednosti kojih nema u katalogu — ista poruka kao izvještaj.
+      const missesMsg = await optionsFromMissesWarning(
+        [...parsed.toCreate, ...parsed.toUpdate], categoriesDict, attrDefs);
+      if (missesMsg) setPreview(p => (p ? { ...p, warnings: [...p.warnings, missesMsg] } : p));
 
       // S181: što će uvoz upisati iz `default_map` na novim retcima — ista funkcija kao upis.
       const defaultsMsg = defaultFillsMessage(

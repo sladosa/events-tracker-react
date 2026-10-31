@@ -29,6 +29,8 @@ import { fetchAllPagedIn } from './supabasePaging';
 import { withRetryQuery } from './retry';
 import { fillDefaultMaps, type DefaultFill } from './importDefaults';
 import { readUnique, uniqueKey } from './uniqueValue';
+import { readOptionsFrom } from './optionsFrom';
+import { loadCatalog } from './catalogOptions';
 import { fetchAllPaged } from './supabasePaging';
 import type {
   ExportCategoriesDict,
@@ -1125,6 +1127,44 @@ export async function findImportUniqueConflicts(
     }
   }
   return out;
+}
+
+/**
+ * S190: vrijednosti polja iz kataloga (`options_from`) kojih u katalogu NEMA — upozorenje, ne
+ * zabrana (uvoz povijesti smije nositi slug koji katalog tek dobiva), ali se imenuju: bez toga bi
+ * trening pokazivao „(nije u katalogu)" i nitko ne bi znao odakle. Ista poruka u pregledu i izvještaju.
+ */
+export async function optionsFromMissesWarning(
+  rows:           ParsedImportRow[],
+  categoriesDict: ExportCategoriesDict,
+  attrDefs:       ExportAttrDef[],
+): Promise<string | null> {
+  const lines: string[] = [];
+  for (const def of attrDefs) {
+    const of = readOptionsFrom(def.validation_rules);
+    if (!of) continue;
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      if (!row.category_path) continue;
+      const levels = getHierarchyLevels(row.category_path, categoriesDict, row.area);
+      if (!levels.some(l => l.categoryId === def.category_id)) continue;
+      const v = row.attributes[def.name];
+      if (v == null || v === '' || v === '_') continue;
+      counts.set(String(v), (counts.get(String(v)) ?? 0) + 1);
+    }
+    if (counts.size === 0) continue;
+    try {
+      const known = new Set((await loadCatalog(of)).items.map(i => i.value));
+      const miss = [...counts].filter(([v]) => !known.has(v));
+      if (miss.length > 0) {
+        lines.push(`  • '${def.name}' (katalog „${of.area}"): ${miss.slice(0, 12).map(([v, n]) => `${v} (${n}×)`).join(', ')}${miss.length > 12 ? ', …' : ''}`);
+      }
+    } catch (e) {
+      lines.push(`  • '${def.name}': katalog „${of.area}" nije učitan — ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  return lines.length === 0 ? null
+    : `Vrijednosti kojih nema u katalogu (uvest će se, ali u formi će pisati „nije u katalogu"):\n${lines.join('\n')}`;
 }
 
 /** Poruka za pregled i izvjestaj — ISTA na oba mjesta. */
@@ -2553,6 +2593,8 @@ export async function importEventsFromExcel(
   const droppedMsg = droppedAttributesWarning(
     findDroppedAttributes([...validCreates, ...validUpdates], categoriesDict, attrDefs));
 
+  const missesMsg = await optionsFromMissesWarning([...validCreates, ...validUpdates], categoriesDict, attrDefs);
+
   // Step 6: Apply (s overwrite odlukama za kolizije)
   const result = await applyImportChanges(userId, validCreates, validUpdates, categoriesDict, attrDefs, overwriteDecisions, onProgress);
 
@@ -2565,7 +2607,7 @@ export async function importEventsFromExcel(
     removed:  deleteResult.removed,
     errors:   result.errors,
     warnings: [...parsed.warnings, ...deleteResult.warnings, ...reclassified.warnings,
-               ...(droppedMsg ? [droppedMsg] : []), ...result.warnings],
+               ...(droppedMsg ? [droppedMsg] : []), ...(missesMsg ? [missesMsg] : []), ...result.warnings],
   };
 }
 
