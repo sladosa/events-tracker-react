@@ -20,7 +20,7 @@ export function PhotoCarousel({ photos, className = 'aspect-video', startIndex =
   const go = (d: number) => setI(cur => Math.max(0, Math.min(n - 1, cur + d)));
 
   return (
-    <div className="space-y-1.5 select-none">
+    <div className="space-y-1.5 select-none" data-no-page-swipe>
       <div
         className={`relative w-full overflow-hidden rounded-lg bg-gray-100 ${className}`}
         style={{ touchAction: 'pan-y' }}

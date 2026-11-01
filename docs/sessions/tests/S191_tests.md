@@ -52,6 +52,10 @@ Storagea, dok Edit otvara preglednik slika. Sada View koristi isti `PhotoLightbo
 2. Dodir na prvu sličicu.
    - **Očekivano:** tamni preglednik preko ekrana, gore „1 / 2", dolje ime datoteke; nova kartica se NE otvara.
 3. Strelica desno / povlačenje ulijevo (F12 mobilni prikaz) ⇒ „2 / 2"; Esc ili ✕ zatvara.
+   - ⚠ 1. krug (01.11.) pao: povlačenje u pregledniku je mijenjalo i vježbu (Prev/Next stranice sluša cijeli
+     dokument). Sada dodir koji počne u elementu s `data-no-page-swipe` (preglednik, traka slika) stranica ne broji.
+   - **Očekivano:** povlačenje lista samo slike; vježba ispod ostaje ista dok preglednik ne zatvoriš. Povlačenje po
+     Viewu bez preglednika i dalje radi Prev/Next.
 4. **Next** na vježbu bez slika ⇒ nema preglednika ni Photos.
 5. **Pad:** otvara se nova kartica; preglednik ostane otvoren nakon Next.
 

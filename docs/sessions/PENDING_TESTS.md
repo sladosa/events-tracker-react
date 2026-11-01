@@ -17,7 +17,7 @@ Uz T-S190: katalog (Name ispred Sluga, Group obavezan, istezanje / rotacija_kicm
 | T-S191-1 | View vježbe s dugim Description (mobitel): opis ispod naziva, preko cijele širine, prelama se, novi redovi ostaju; kratke vrijednosti (Slug, Type) i dalje desno | ✅ S191 (01.11., Saša, mobitel) — opis ispod naziva, prelama se; kratke desno. Korak 3 (druga Area) nije rađen — isti kod za sve Aree |
 | T-S191-2 | Katalog ⇒ Add: Type `Strength`, Group `Upper-pull`, Name `Hand lateral raises` ⇒ „Slično u kategoriji“ je `lat_raises` (ne halo / bird_dog / squat…); promjena Typea ili Groupa popis ne mijenja | ✅ S191 (01.11., Saša) — slično: lat_raises, leg_raises, calf_raises (riječ „raises“); Upper-pull → Core i Strength → Mobility ne mijenjaju popis |
 | T-S191-3 | View vježbe iz kataloga: nema retka s datumom ni vremena uz „Event #1“; Prev/Next u katalogu isto; View u `Financije_all` / `Fitness_Garmin` i dalje pokazuje datum i vrijeme | ✅ S191 (01.11., Saša) — katalog bez datuma i vremena, Prev/Next isto |
-| T-S191-4 | View s fotografijama: dodir na sličicu otvara preglednik slika kao u Editu (1 / 2, ‹ › / povlačenje, ✕), ne novu karticu preglednika; Next na drugi zapis zatvara ga | ⬜ |
+| T-S191-4 | View s fotografijama: dodir na sličicu otvara preglednik slika kao u Editu (1 / 2, ‹ › / povlačenje, ✕), ne novu karticu preglednika; **povlačenje u pregledniku lista slike, ne mijenja vježbu**; Next na drugi zapis zatvara ga | ⬜ 1. krug 01.11. pao: povlačenje u pregledniku skakalo na Prev/Next ⇒ popravljeno (`data-no-page-swipe`), ponoviti |
 | T-S191-5 | Katalog ⇒ Edit `lat_raises` (s opisom): „Slično“ više nije krugovi_ruke / carry / kosa_k_side (riječi opisa), nego vježbe sličnog imena (leg_raises, calf_raises — „Podizanje“) | ⬜ |
 
 ---

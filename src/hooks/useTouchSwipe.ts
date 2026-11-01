@@ -3,6 +3,10 @@ import { useEffect, useRef } from 'react';
 /**
  * Fires onSwipeLeft (= Next) or onSwipeRight (= Prev) on horizontal touch swipe.
  * Ignores gestures where vertical movement exceeds horizontal (scroll).
+ *
+ * Sluša cijeli dokument ⇒ i povlačenje u komponenti s VLASTITIM povlačenjem (preglednik slika,
+ * traka slika) bi mijenjalo stranicu (S191, T-S191-4: listanje slika u Viewu skakalo na Next).
+ * Takva komponenta nosi `data-no-page-swipe`; dodir koji počne u njoj ovdje se ne broji.
  */
 export function useTouchSwipe(
   onSwipeLeft: () => void,
@@ -14,6 +18,11 @@ export function useTouchSwipe(
 
   useEffect(() => {
     const onTouchStart = (e: TouchEvent) => {
+      if (e.target instanceof Element && e.target.closest('[data-no-page-swipe]')) {
+        startX.current = null;
+        startY.current = null;
+        return;
+      }
       startX.current = e.touches[0].clientX;
       startY.current = e.touches[0].clientY;
     };

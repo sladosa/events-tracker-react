@@ -586,6 +586,7 @@ export function PhotoLightbox({
   return (
     <div 
       className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+      data-no-page-swipe
       onClick={onClose}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
