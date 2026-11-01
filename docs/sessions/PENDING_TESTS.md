@@ -19,7 +19,7 @@ Uz T-S190: katalog (Name ispred Sluga, Group obavezan, istezanje / rotacija_kicm
 | T-S191-3 | View vježbe iz kataloga: nema retka s datumom ni vremena uz „Event #1“; Prev/Next u katalogu isto; View u `Financije_all` / `Fitness_Garmin` i dalje pokazuje datum i vrijeme | ✅ S191 (01.11., Saša) — katalog bez datuma i vremena, Prev/Next isto |
 | T-S191-4 | View s fotografijama: dodir na sličicu otvara preglednik slika kao u Editu (1 / 2, ‹ › / povlačenje, ✕), ne novu karticu preglednika; **povlačenje u pregledniku lista slike, ne mijenja vježbu**; Next na drugi zapis zatvara ga | ✅ S191 (01.11., Saša, F12 mobilni) — 1. krug pao (povlačenje skakalo na Prev/Next) ⇒ `data-no-page-swipe`; 2. krug: preglednik, povlačenje lista slike, vježba ostaje |
 | T-S191-5 | Katalog ⇒ Edit `lat_raises` (s opisom): „Slično“ više nije krugovi_ruke / carry / kosa_k_side (riječi opisa), nego vježbe sličnog imena (leg_raises, calf_raises — „Podizanje“) | ⬜ |
-| T-S191-6 | **Pravi mobitel:** izbornik ⇒ kartica ⇒ Uredi vježbu ⇒ „Add" otvara STRAŽNJU kameru ⇒ slikaj ⇒ Spremi ⇒ kartica pokazuje sliku; ✕ na slici + Spremi ⇒ nema je. Usput Add treninga (prednja kamera, kao prije) i Edit (galerija) spremaju sliku | ⬜ |
+| T-S191-6 | **Pravi mobitel:** izbornik ⇒ kartica ⇒ Uredi vježbu ⇒ „Add" otvara STRAŽNJU kameru ⇒ slikaj ⇒ Spremi ⇒ kartica pokazuje sliku; ✕ na slici + Spremi ⇒ nema je. Usput Add treninga (prednja kamera, kao prije) i Edit (galerija) spremaju sliku | ⬜ S192: koraci 1–3 ✅ (stražnja kamera, slika u katalogu, Odustani ne briše); ✕ na dodiru NEVIDLJIV (pogađao se slučajno, dodir sredine otvara povećanje) ⇒ popravljeno, ponoviti korake 4–6 |
 
 ---
 

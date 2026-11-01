@@ -492,7 +492,9 @@ function PhotoThumbnail({
               onClick={handleRemoveClick}
               className={cn(
                 "absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full",
-                "opacity-0 group-hover:opacity-100 transition-opacity",
+                // Bez miša (dodir) uvijek vidljiv: hover ne postoji, a nevidljiv gumb se
+                // pogađa samo slučajno — dodir sredine otvara povećanje (T-S191-6, S192).
+                "[@media(hover:hover)]:opacity-0 group-hover:opacity-100 transition-opacity",
                 "hover:bg-rose-500 z-10"
               )}
               title="Remove photo"

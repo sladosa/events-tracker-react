@@ -77,7 +77,10 @@ Saša (01.11.): „zar ne bi bilo cool da slikam spravu u teretani direktno tu".
 slike; sve tri plohe (Add, Edit, kartica) idu kroz `eventPhotos.ts`, koji grešku kaže umjesto da je proguta.
 Automatski: E2E `S190_catalog_picker` (kartica) i `S191_event_photos` (Add, Edit) — ali kameru E2E ne glumi.
 
-Mobitel preko `npm run dev -- --host` (`http://192.168.1.8:5173`), Sašin račun, banner TEST.
+Mobitel: **NE dev server** — kad se otvori kamera, Android prekine vezu, a Vite po povratku ponovo učita stranicu
+(kartica i Add nestanu, izmjereno S192). Zato build: `npm run build`, pa `npx vite preview --host --port 5173`
+(build čita `.env.local` = TEST). Sašin račun, banner TEST. Kroz kućni Wi-Fi (`192.168.1.8`) mobitel ne dolazi
+do laptopa — radi **hotspot laptopa**: mobitel na `LENOVO-IDEAPAD3 4454`, pa `http://192.168.137.1:5173`.
 
 1. `S190 Trening proba › Gym` ⇒ **+** ⇒ „Izaberi vjezba…" ⇒ skupina ⇒ vježba ⇒ **Uredi vježbu**.
 2. Ispod Descriptiona **Slike**: postojeće sličice + „Add".
@@ -87,4 +90,6 @@ Mobitel preko `npm run dev -- --host` (`http://192.168.1.8:5173`), Sašin račun
 5. Uredi vježbu ⇒ dodir na tu sličicu ⇒ ✕ ⇒ ✓ ⇒ **Spremi** ⇒ slike više nema. **Odustani** umjesto Spremi ⇒ slika ostaje.
 6. Usput (regresija): Add zapisa s fotografijom u bilo kojoj Arei (prednja kamera, kao prije) ⇒ Finish ⇒ View
    pokazuje sliku; Edit ⇒ dodaj sliku iz galerije ⇒ Save ⇒ View je pokazuje.
-7. **Pad:** slika se ne spremi a ništa ne piše; otvara se prednja kamera u kartici; ✕ se na dodir ne pojavljuje.
+7. **S192:** koraci 1–3 ✅; ✕ je bio nevidljiv na dodiru (`opacity-0 group-hover`) ⇒ sada vidljiv bez miša
+   (`[@media(hover:hover)]:opacity-0`). Ponoviti 4–6.
+8. **Pad:** slika se ne spremi a ništa ne piše; otvara se prednja kamera u kartici; ✕ se na dodir ne pojavljuje.
