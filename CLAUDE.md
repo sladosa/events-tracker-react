@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S190).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S191).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 156 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 169 | [Critical rules](<#Critical rules>) | X |
-| 1470 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1948 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1964 | [Key files](<#Key files>) |  |
-| 2135 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2155 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2178 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2207 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2247 | [Open bugs](<#Open bugs>) | ~ |
-| 2364 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2409 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2571 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2579 | [Backlog](<#Backlog>) | ~ |
-| 2583 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2591 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1481 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1959 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1975 | [Key files](<#Key files>) |  |
+| 2147 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2167 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2190 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2219 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2259 | [Open bugs](<#Open bugs>) | ~ |
+| 2376 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2421 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2583 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2591 | [Backlog](<#Backlog>) | ~ |
+| 2595 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2603 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2755 redaka, 18 sekcija._
+_Ukupno 2767 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
