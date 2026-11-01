@@ -15,7 +15,7 @@ Uz T-S190: katalog (Name ispred Sluga, Group obavezan, istezanje / rotacija_kicm
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S191-1 | View vježbe s dugim Description (mobitel): opis ispod naziva, preko cijele širine, prelama se, novi redovi ostaju; kratke vrijednosti (Slug, Type) i dalje desno | ✅ S191 (01.11., Saša, mobitel) — opis ispod naziva, prelama se; kratke desno. Korak 3 (druga Area) nije rađen — isti kod za sve Aree |
-| T-S191-2 | Katalog ⇒ Add: Type `Strength`, Group `Upper-pull`, Name `Hand lateral raises` ⇒ „Slično u kategoriji“ je `lat_raises` (ne halo / bird_dog / squat…); promjena Typea ili Groupa popis ne mijenja | ⬜ |
+| T-S191-2 | Katalog ⇒ Add: Type `Strength`, Group `Upper-pull`, Name `Hand lateral raises` ⇒ „Slično u kategoriji“ je `lat_raises` (ne halo / bird_dog / squat…); promjena Typea ili Groupa popis ne mijenja | ✅ S191 (01.11., Saša) — slično: lat_raises, leg_raises, calf_raises (riječ „raises“); Upper-pull → Core i Strength → Mobility ne mijenjaju popis |
 | T-S191-3 | View vježbe iz kataloga: nema retka s datumom ni vremena uz „Event #1“; Prev/Next u katalogu isto; View u `Financije_all` / `Fitness_Garmin` i dalje pokazuje datum i vrijeme | ⬜ |
 
 ---
