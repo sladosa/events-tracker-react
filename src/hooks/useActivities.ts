@@ -313,6 +313,7 @@ export function useActivities(options: UseActivitiesOptions = {}): UseActivities
           .select('id, event_id, url, filename')
           .in('event_id', allEventIds)
           .eq('type', 'image')
+          .order('created_at')    // S191: redoslijed dodavanja — po `id` (UUID) je bio nasumičan
           .order('id');
 
         if (attachments && attachments.length > 0) {

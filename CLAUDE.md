@@ -470,6 +470,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   uz blokiran zapis ostavilo zapis bez slike. ⚠ Brisanje cijelog eventa (Edit „obriši event", uvoz, Structure)
   i dalje ide svojim putem. Čuvaju `eventPhotos.test.mjs` (lažni klijent, redoslijed poziva) i E2E
   `S191_event_photos` (Add/Edit), `S190_catalog_picker` „kartica: dodaj sliku" (sabotaže padaju).
+  ⚠ **Čitanje slika uvijek `.order('created_at').order('id')`** (S191, puni E2E): lista i katalog su slagali po
+  `id` (nasumičan UUID), View i Edit nikako ⇒ redoslijed slika nasumičan i različit po plohama; test „📷 2 ⇒
+  Sljedeća = druga.png" pao je 1 od 2 puta. Novo čitanje `event_attachments` za prikaz — isti redoslijed.
 - **Tekstualni atribut u formi je `<textarea>` koja raste (S190, sve Aree; `link` ostaje `<input>`).** E2E selektor
   polja: `input, textarea` (S187 spec je tako popravljen). Enter u polju je novi red, ne spremanje.
 - **Redoslijed opcija u izborniku je PRIKAZ, ne podatak** (S164, Koka i Saša). Atribut čiji najdulji

@@ -339,7 +339,9 @@ async function _fetchActivityData(
         .from('event_attachments')
         .select('id, event_id, url, filename')
         .in('event_id', eventIds)
-        .eq('type', 'image'),
+        .eq('type', 'image')
+        .order('created_at')      // S191: isti redoslijed kao lista i kartica (bio bez ikakvog)
+        .order('id'),
     ]);
     if (attrsRes.error) throw attrsRes.error;
     if (attachmentsRes.error) throw attachmentsRes.error;

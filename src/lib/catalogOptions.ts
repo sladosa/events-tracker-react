@@ -97,7 +97,7 @@ async function fetchCatalog(of: OptionsFrom): Promise<Catalog> {
         .in('event_id', chunk).order('id').range(from, to)),
     fetchAllPagedIn<{ id: string; event_id: string; url: string; filename: string | null }>(
       eventIds, (chunk, from, to) => supabase.from('event_attachments')
-        .select('id, event_id, url, filename').in('event_id', chunk).eq('type', 'image').order('id').range(from, to)),
+        .select('id, event_id, url, filename').in('event_id', chunk).eq('type', 'image').order('created_at').order('id').range(from, to)),
   ]);
   if (valRes.error) fail('vrijednosti', valRes.error);
   if (phRes.error) fail('slike', phRes.error);

@@ -344,7 +344,9 @@ export function EditActivityPage() {
           .from('event_attachments')
           .select('id, event_id, url, filename')
           .in('event_id', leafEventIds)
-          .eq('type', 'image'),
+          .eq('type', 'image')
+          .order('created_at')    // S191: isti redoslijed kao View
+          .order('id'),
       ]);
       // KRITIČNO: greška se NE smije tiho progutati — Edit s prazno učitanim
       // atributima + Save bi pregazio prave vrijednosti u bazi (P3 klasa rizika).
