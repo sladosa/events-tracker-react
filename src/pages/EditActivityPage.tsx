@@ -19,6 +19,7 @@ import { navFromState, replaceSessionInNav } from '@/lib/navActivities';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { fetchAllPagedIn } from '@/lib/supabasePaging';
+import { isTimelessArea } from '@/lib/timelessArea';
 import { persistPendingOptions, failedOptionsMessage, noNewOptionsHintFor } from '@/lib/pendingOptions';
 import { localYmd } from '@/lib/localDate';
 import { VALUE_COLUMNS } from '@/lib/constants';
@@ -1034,7 +1035,7 @@ export function EditActivityPage() {
   const bankSpec = useMemo(() => bankFieldSpec(areaSettings), [areaSettings]);
   // S190: Area bez štoperice i bez datuma (katalog) — Edit ne pokazuje datum/vrijeme/Duration
   //   ni vrijeme nastanka zapisa. Fitness (timer uključen) i dalje ispravlja vrijeme u Editu.
-  const isTimeless = areaSettings?.add_header?.timer === false && areaSettings?.add_header?.date !== true;
+  const isTimeless = isTimelessArea(areaSettings);
   // S190: `add_header.note = false` skriva Event Note — osim kad zapis već ima bilješku
   //   (skriveno polje ne smije sakriti podatak koji postoji).
   const showNote = areaSettings?.add_header?.note !== false || eventNote.trim() !== '';

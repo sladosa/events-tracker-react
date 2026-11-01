@@ -34,6 +34,7 @@ import type { UUID } from '@/types';
 import { formatDuration } from '../lib/timeFormat';
 import { displayDatetime } from '@/lib/excelDatetime';
 import { setLastViewed } from '@/lib/lastViewed';
+import { isTimelessArea, loadAreaSettingsForCategory } from '@/lib/timelessArea';
 
 // ============================================
 // Helpers
@@ -336,6 +337,19 @@ export function ViewDetailsPage() {
   // Cached from activityViewCache — no hooks needed, avoids re-fetching on every Prev/Next
   const [categoryChain, setCategoryChain] = useState<{ id: string; name: string }[]>([]);
   const [attributesByCategory, setAttributesByCategory] = useState<Map<string, { id: string; name: string; data_type: string; unit: string | null; description: string | null }[]>>(new Map());
+  // S191: Area bez štoperice i datuma (katalog) — View skriva datum/vrijeme kao i Edit.
+  //   Odgovor nosi leaf za koji vrijedi (Prev/Next mijenja leaf; zaliha bi lagala, razred S145).
+  const leafId = categoryChain[0]?.id ?? null;
+  const [timelessFor, setTimelessFor] = useState<{ leafId: string; value: boolean } | null>(null);
+  useEffect(() => {
+    if (!leafId) return;
+    let alive = true;
+    loadAreaSettingsForCategory(leafId)
+      .then(s => { if (alive) setTimelessFor({ leafId, value: isTimelessArea(s) }); })
+      .catch(() => { /* neuspjelo čitanje ⇒ datum ostaje vidljiv */ });
+    return () => { alive = false; };
+  }, [leafId]);
+  const isTimeless = timelessFor?.leafId === leafId && timelessFor.value;
 
 
   const loadActivityData = async () => {
@@ -683,7 +697,8 @@ export function ViewDetailsPage() {
           </div>
         </div>
 
-        {/* Row 2: Date / Duration (read-only) */}
+        {/* Row 2: Date / Duration (read-only) — ne za Areu bez vremena (S191) */}
+        {!isTimeless && (
         <div className="px-4 py-2 bg-black/10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -702,6 +717,7 @@ export function ViewDetailsPage() {
             )}
           </div>
         </div>
+        )}
 
         {/* Row 3: Back + Edit button */}
         <div className="px-4 py-2 flex items-center justify-between gap-2">
@@ -769,10 +785,10 @@ export function ViewDetailsPage() {
           {currentEvent && (
             <div className="px-3 pt-3 pb-1">
               <div className="text-sm text-gray-500">
-                Event #{selectedEventIndex + 1} · {(() => {
+                Event #{selectedEventIndex + 1}{!isTimeless && <> · {(() => {
                   const d = currentEvent.createdAt;
                   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-                })()}
+                })()}</>}
               </div>
             </div>
           )}

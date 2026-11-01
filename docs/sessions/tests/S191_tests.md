@@ -29,3 +29,16 @@ leg_press, krugovi_ruke — riječi „Strength“ i „Upper“ iz izbornika po
    - **Očekivano:** popis „slično“ se ne mijenja.
 4. ✕ bez spremanja.
 5. **Pad:** u popisu su vježbe koje dijele samo vrstu ili skupinu.
+
+## T-S191-3 — View bez datuma za Areu bez vremena
+
+Saša (01.11., uz T-S190-2): View kataloga je pokazivao `2026/10/31 09:55` i vrijeme nastanka uz Event #1 — datum
+uvoza, bez značenja — dok ih Edit od S190 skriva. Sada isti uvjet (`isTimelessArea`, `src/lib/timelessArea.ts`)
+vrijedi za oba.
+
+1. Ctrl+Shift+R. Katalog `› Vježba` ⇒ View bilo koje vježbe.
+   - **Očekivano:** ispod naslova nema retka s 📅 datumom; uz „Event #1“ nema datuma ni vremena.
+2. **Next** / **Prev** kroz par vježbi ⇒ isto.
+3. View retka u `Financije_all` (ili `Fitness_Garmin`).
+   - **Očekivano:** datum i vrijeme se vide kao i prije.
+4. **Pad:** katalog i dalje pokazuje datum; ili ga druga Area više ne pokazuje.
