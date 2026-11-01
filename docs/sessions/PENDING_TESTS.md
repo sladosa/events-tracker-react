@@ -15,6 +15,7 @@ Uz T-S190: katalog (Name ispred Sluga, Group obavezan, istezanje / rotacija_kicm
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S191-1 | View vježbe s dugim Description (mobitel): opis ispod naziva, preko cijele širine, prelama se, novi redovi ostaju; kratke vrijednosti (Slug, Type) i dalje desno | ✅ S191 (01.11., Saša, mobitel) — opis ispod naziva, prelama se; kratke desno. Korak 3 (druga Area) nije rađen — isti kod za sve Aree |
+| T-S191-2 | Katalog ⇒ Add: Type `Strength`, Group `Upper-pull`, Name `Hand lateral raises` ⇒ „Slično u kategoriji“ je `lat_raises` (ne halo / bird_dog / squat…); promjena Typea ili Groupa popis ne mijenja | ⬜ |
 
 ---
 
@@ -26,7 +27,7 @@ Korak 5 treninga na `test-branch` (TEST): Area `Katalog vježbi` (56 vježbi), j
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S190-1 | Katalog ⇒ Add: ime „Hand lateral raises" ⇒ slug `hand_lateral` + „slično" `lat_raises`; slug `lat_raises` ⇒ crveno, Finish odbije; bez Event Note i datuma | ⬜ |
+| T-S190-1 | Katalog ⇒ Add: ime „Hand lateral raises" ⇒ slug `hand_lateral` + „slično" `lat_raises`; slug `lat_raises` ⇒ crveno, Finish odbije; bez Event Note i datuma | ✅ S191 (01.11., Saša, mobitel) — koraci 2–8 očekivano (i novo: prazan Group ⇒ „Polje Group je obavezno“); nađeno: „slično“ je nudilo sve Strength/Upper vježbe a `lat_raises` ispao (Type/Group iz izbornika u sličnosti) ⇒ popravljeno S191, provjera T-S191-2 |
 | T-S190-2 | Katalog ⇒ Edit `lat_raises`: bez datuma/vremena/Duration i Event Note; Description raste u nove retke (i u drugim Areama) | ✅ S191 (01.11., Saša) — očekivano; usput nađeno: View dug opis ne prelama (vrijednost `shrink-0`, naziv stisnut) ⇒ popravljeno S191, provjera T-S191-1 |
 | T-S190-3 | `S190 Trening proba` ⇒ Add ⇒ izbornik: skupine, 6 + „Sve", dodir ⇒ kartica, Izaberi; Uredi vježbu ⇒ promjena skupine seli vježbu; poslije Finisha „1× u 12 mj" (mobitel i laptop) | ✅ S191 (01.11., Saša) — očekivano |
 | T-S190-4 | Slike vježbe: Edit kataloga +2 slike ⇒ 📷 2 u listi, traka, povlačenje / ‹ ›; sličica i slike u kartici izbornika | ⬜ |

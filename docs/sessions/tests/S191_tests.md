@@ -14,3 +14,18 @@ polja s opisom bio je stisnut u uski stupac. Uzrok: vrijednost je imala `shrink-
    - Name, Slug, Type, Group i dalje stoje **desno** od naziva, kao prije.
 3. Isto u drugoj Arei s dugim tekstom (npr. `Financije_all`, redak s dugim `Izvod opis`).
 4. **Pad:** opis izlazi izvan ekrana ili je u jednom retku; naziv polja stisnut u uski stupac.
+
+## T-S191-2 — „Slično u kategoriji“ gleda samo slobodan tekst
+
+Nađeno u T-S190-1 (01.11.): uz Type `Strength` i Group `Upper-pull` popis „slično“ je bio halo, bird_dog, squat,
+leg_press, krugovi_ruke — riječi „Strength“ i „Upper“ iz izbornika poklapale su pola kataloga, a stvarno slična
+`lat_raises` ispala je iz popisa od 5. Sada u sličnost ulaze samo Name, Slug i Description.
+
+1. Ctrl+Shift+R. Katalog `› Vježba` ⇒ **+**.
+2. Type `Strength`, Group `Upper-pull`, Name `Hand lateral raises`.
+   - **Očekivano:** ispod Sluga „Slično u kategoriji:“ pokazuje `lat_raises · Lateralno podizanje ruku`, **ne**
+     halo / bird_dog / squat / leg_press.
+3. Promijeni Group u `Core`, pa Type u `Mobility`.
+   - **Očekivano:** popis „slično“ se ne mijenja.
+4. ✕ bez spremanja.
+5. **Pad:** u popisu su vježbe koje dijele samo vrstu ili skupinu.
