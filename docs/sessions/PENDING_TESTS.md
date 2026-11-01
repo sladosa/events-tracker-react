@@ -2,7 +2,19 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S190 (2026-10-31, nova sekcija S190 — katalog vježbi) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S191 (2026-11-01, T-S190 + sekcija S191) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S191 — Testovi koraka 5, popravci (2026-11-01)
+
+Uz T-S190: katalog (Name ispred Sluga, Group obavezan, istezanje / rotacija_kicme u Core, rolanje izvan kataloga — TEST usklađen `katalog.py --pravila --apply`); View: dug tekst se prelama ispod naziva.
+
+**Detalji testova:** [tests/S191_tests.md](tests/S191_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S191-1 | View vježbe s dugim Description (mobitel): opis ispod naziva, preko cijele širine, prelama se, novi redovi ostaju; kratke vrijednosti (Slug, Type) i dalje desno | ⬜ |
 
 ---
 
@@ -15,8 +27,8 @@ Korak 5 treninga na `test-branch` (TEST): Area `Katalog vježbi` (56 vježbi), j
 | ID | Test | Status |
 | --- | --- | --- |
 | T-S190-1 | Katalog ⇒ Add: ime „Hand lateral raises" ⇒ slug `hand_lateral` + „slično" `lat_raises`; slug `lat_raises` ⇒ crveno, Finish odbije; bez Event Note i datuma | ⬜ |
-| T-S190-2 | Katalog ⇒ Edit `lat_raises`: bez datuma/vremena/Duration i Event Note; Description raste u nove retke (i u drugim Areama) | ⬜ |
-| T-S190-3 | `S190 Trening proba` ⇒ Add ⇒ izbornik: skupine, 6 + „Sve", dodir ⇒ kartica, Izaberi; Uredi vježbu ⇒ promjena skupine seli vježbu; poslije Finisha „1× u 12 mj" (mobitel i laptop) | ⬜ |
+| T-S190-2 | Katalog ⇒ Edit `lat_raises`: bez datuma/vremena/Duration i Event Note; Description raste u nove retke (i u drugim Areama) | ✅ S191 (01.11., Saša) — očekivano; usput nađeno: View dug opis ne prelama (vrijednost `shrink-0`, naziv stisnut) ⇒ popravljeno S191, provjera T-S191-1 |
+| T-S190-3 | `S190 Trening proba` ⇒ Add ⇒ izbornik: skupine, 6 + „Sve", dodir ⇒ kartica, Izaberi; Uredi vježbu ⇒ promjena skupine seli vježbu; poslije Finisha „1× u 12 mj" (mobitel i laptop) | ✅ S191 (01.11., Saša) — očekivano |
 | T-S190-4 | Slike vježbe: Edit kataloga +2 slike ⇒ 📷 2 u listi, traka, povlačenje / ‹ ›; sličica i slike u kartici izbornika | ⬜ |
 | T-S190-5 | Structure export: `AddNote` FALSE, Slug `Unique = from: name`, `vjezba` `OptionsFrom`; nepromijenjen uvoz = bez promjene | ⬜ |
 

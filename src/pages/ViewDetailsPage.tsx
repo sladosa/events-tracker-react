@@ -120,6 +120,19 @@ function AttributeValueDisplay({
     displayValue = String(value);
   }
 
+  // Dug tekst (opis, napomena) ne stane desno od naziva: `shrink-0` ga ne prelama, a naziv se
+  // stisne u uski stupac (S191). Ide ispod naziva, preko cijele širine, s novim redovima iz textaree.
+  if (dataType === 'text' && (displayValue.length > 30 || displayValue.includes('\n'))) {
+    return (
+      <div className="py-2 border-b border-gray-100 last:border-0">
+        {nameCell}
+        <p className={cn('mt-1 text-sm font-medium whitespace-pre-wrap break-words', t.lightText)}>
+          {displayValue}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
       {nameCell}
