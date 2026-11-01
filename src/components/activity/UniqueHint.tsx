@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AttributeDefinition } from '@/types';
 import { loadUniqueRecords } from '@/lib/uniqueCheck';
-import { similarRecords, uniqueKey, type UniqueRecord } from '@/lib/uniqueValue';
+import { similarRecords, similarityInputs, uniqueKey, type UniqueRecord } from '@/lib/uniqueValue';
 
 interface Props {
   definition: AttributeDefinition;
@@ -31,7 +31,7 @@ export function UniqueHint({ definition, textDefs, valueOf, ownEventId }: Props)
   }, [definition.id, textKey]); // eslint-disable-line react-hooks/exhaustive-deps -- textDefs: nov niz na svakom renderu, ključ je `textKey`
 
   const typedKey = String(valueOf(definition.id) ?? '');
-  const typed = [typedKey, ...textDefs.map(d => String(valueOf(d.id) ?? ''))].filter(Boolean);
+  const typed = similarityInputs(typedKey, textDefs, valueOf);
   const typedSig = typed.join('\u0001');
 
   const { taken, similar } = useMemo(() => {

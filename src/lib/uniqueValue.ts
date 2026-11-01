@@ -80,8 +80,30 @@ export interface UniqueRecord {
 
 const tokens = (s: string) => foldText(s).split(/[^a-z0-9]+/).filter(t => t.length >= 4);
 
+/** Polje bez izbornika (nema `suggest`, `depends_on` ni `options_from`) — čovjek ga piše sam. */
+export function isFreeTextRule(raw: unknown): boolean {
+  const r = asObject(raw);
+  if (!r) return true;
+  if (Array.isArray(r.suggest) && r.suggest.length > 0) return false;
+  return !r.depends_on && !r.options_from;
+}
+
 /**
- * Postojeći zapisi SLIČNI onome što čovjek upisuje (bilo koje tekstualno polje forme).
+ * Što ulazi u sličnost: upisani ključ + SLOBODAN tekst forme (ime, opis). Vrijednost iz izbornika
+ * (Type `Strength`, Group `Upper-pull`) ne smije: dijeli je pola kataloga, pa bi „slično" bilo
+ * sve iste vrste ili skupine, a stvarno slična vježba ispala iz popisa od 5 (S191, T-S190-1).
+ */
+export function similarityInputs(
+  typedKey: string,
+  textDefs: { id: string; validation_rules?: unknown }[],
+  valueOf: (definitionId: string) => unknown,
+): string[] {
+  const free = textDefs.filter(d => isFreeTextRule(d.validation_rules));
+  return [typedKey, ...free.map(d => String(valueOf(d.id) ?? ''))].filter(Boolean);
+}
+
+/**
+ * Postojeći zapisi SLIČNI onome što čovjek upisuje (slobodan tekst forme, `similarityInputs`).
  * Riječ ≥ 4 slova kojoj se prvih 5 slova poklapa s početkom riječi zapisa, ili upisani ključ
  * sadržan u ključu zapisa. Svrha: vidjeti postoji li vježba već, prije nego nastane druga.
  */

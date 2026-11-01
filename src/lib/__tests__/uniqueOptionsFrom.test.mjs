@@ -126,6 +126,32 @@ console.log('\n── Prijedlog i sličnost ──');
   ok('bez kvačica: „cucanj" nađe squat', m.similarRecords(['cucanj'], '', recs, null).some(r => r.key === 'squat'));
   ok('vlastiti zapis nije sličan sam sebi', m.similarRecords(['Lateralno'], 'lat_raises', recs, 'e1').every(r => r.eventId !== 'e1'));
   ok('točan duplikat se ne nabraja kao sličan', m.similarRecords([], 'pull_m', recs, null).every(r => r.key !== 'pull_m'));
+
+  // S191 (T-S190-1): Type/Group iz izbornika ulazili su u sličnost ⇒ „slično" = 5 vježbi iste vrste,
+  // lat_raises izvan popisa. Katalog kakav je: ime, slug, vrsta, skupina u `texts`.
+  const defs = [
+    { id: 'name', validation_rules: {} },
+    { id: 'type', validation_rules: { type: 'suggest', suggest: ['Strength', 'Mobility'] } },
+    { id: 'group', validation_rules: { type: 'suggest', suggest: ['Upper-push', 'Upper-pull', 'Core'] } },
+    { id: 'desc', validation_rules: null },
+  ];
+  const form = { name: 'Hand lateral raises', type: 'Strength', group: 'Upper-pull', desc: '' };
+  const inputs = m.similarityInputs('hand_lateral', defs, id => form[id]);
+  ok('ulaz sličnosti: bez vrijednosti izbornika', J(inputs) === J(['hand_lateral', 'Hand lateral raises']), J(inputs));
+  const cat = [
+    { eventId: 'a', key: 'bird_dog', texts: ['Bird dog', 'Strength', 'Core'] },
+    { eventId: 'b', key: 'halo', texts: ['Halo (girja oko glave)', 'Mobility', 'Upper-push'] },
+    { eventId: 'c', key: 'squat', texts: ['Čučanj', 'Strength', 'Legs-main'] },
+    { eventId: 'd', key: 'leg_press', texts: ['Leg press', 'Strength', 'Legs-main'] },
+    { eventId: 'e', key: 'krugovi_ruke', texts: ['Krugovi rukama', 'Mobility', 'Upper-push'] },
+    { eventId: 'f', key: 'lat_raises', texts: ['Lateralno podizanje ruku', 'Strength', 'Upper-push'] },
+  ];
+  const got = m.similarRecords(inputs, 'hand_lateral', cat, null).map(r => r.key);
+  ok('katalog: slično je lat_raises, ne sve Strength/Upper', J(got) === J(['lat_raises']), J(got));
+  ok('pravilo: suggest / depends_on / options_from nisu slobodan tekst',
+    !m.isFreeTextRule({ suggest: ['a'] }) && !m.isFreeTextRule({ depends_on: { attribute_slug: 'x' } })
+    && !m.isFreeTextRule({ options_from: { area: 'A' } }) && m.isFreeTextRule({ unique: { from: 'name' } })
+    && m.isFreeTextRule(null) && m.isFreeTextRule({ type: 'suggest', suggest: [] }));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
