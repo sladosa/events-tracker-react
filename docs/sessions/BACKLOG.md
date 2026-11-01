@@ -22,6 +22,16 @@
 `docs/_archive/BACKLOG_2026-09-26.md` (povijest). Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
 § S150). Nove i preformulirane stavke iz prolaza:
 
+- **Slika po vrijednosti opcije (sve Aree) — POSLIJE KORAKA 6 TRENINGA** (S191, Saša: „da, po prijedlogu";
+  umjesto crteža tijela u kodu, koji bi bio sustav samo za jednu Areu). Uz opcije atributa
+  (`validation_rules.option_images`, npr. `{"Upper-push": <slika>}`); zapis **bez vlastite fotografije** pokaže sliku
+  svoje vrijednosti (vježba ⇒ slika skupine), i uz zaglavlje skupine u izborniku kataloga. **Računa se pri prikazu,
+  ništa se ne sprema na zapis** ⇒ promjena skupine (forma, kartica, Excel uvoz) mijenja i sliku. Cijena:
+  (1) ključevi citiraju VRIJEDNOST opcije ⇒ planer preuređivanja (`plan.ts`) ih mora prepisati uz čisto preimenovanje
+  (+ tvrdnja u `restructurePlan.test.mjs`), inače slika tiho nestane; (2) Structure roundtrip nosi putanju (kolona),
+  datoteka putuje Storageom — kopija Aree / template ih mora kopirati zasebno (kao danas fotografije); (3) prve slike:
+  6 figura tijela s istaknutom skupinom kao datoteke (sporedna se na njima ne vidi). Kandidati poslije: Financije Tip.
+
 - ✅ **IZVEDENO S189** (`plan.ts`, `apply.ts`; T-S189-1; poruke baze `058`–`060` ostale hrvatske) — **Poruke planera preuređivanja na engleski (S188, Saša: „kasnije prevesti", poslije koraka 4 treninga)** —
   sheet `Restructure options` je od S188 engleski, a greške i upozorenja u pregledu (`src/lib/restructure/plan.ts`,
   ~30 `errors.push`/`warnings.push`, i `show()` s `(prazno)`) su hrvatski ⇒ pregled je mješavina jezika.

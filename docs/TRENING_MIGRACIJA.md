@@ -513,6 +513,38 @@ Skica (privatni artifact, 3. verzija): <https://claude.ai/artifact/G5Bdeia4hYPYT
 - **Nije izvedeno (korak 6):** „+ vježba" na kraj bloka i povlačenje ⠿ — to je forma serija (blok/serija/`red`),
   koja još ne postoji; izbornik je polje i radi u njoj bez izmjene. Skupina vježbe iznad za novu vježbu isto ide uz nju.
 
+### Katalog i gibljivost — odluke S191 (01.11., Saša, uz T-S190-1)
+
+- **`Name` ispred `Sluga`** (slug se predlaže iz imena) i **`Group` obavezan** — izbornik i pravila odmora rade po
+  skupini; vježba bez nje padne u „Bez skupine". Upisano u `katalog.py` (`ATTRS`) i na TEST (`--pravila --apply`,
+  ponovni suhi prolaz 0 promjena).
+- **Skupina = dio tijela, vrsta = koliko je teško.** Za razgibavanje ramena **nema nove skupine** (ramena ostaju
+  `Upper-push`, odluka 30.10.); da lagana vježba ne zaključava skupinu rješava pravilo odmora po vrsti (`Mobility`)
+  u koraku 11, ne skupina.
+- Vježbe bez skupine (bile su 3): `istezanje` → **Core + Legs-hips**; `mobilnost` (s trenerom: na leđima, noge pod
+  90° na jednu stranu, ruka na drugu) → **`rotacija_kicme`** „Rotacija kralježnice ležeći", Mobility, **Core** —
+  preimenovanje besplatno jer treninzi još nisu uvezeni (alias `mobiliti` sav ide ondje; ako je trener radio i drugo,
+  to se ne da razdvojiti — prihvaćeno). **`rolanje` nije vježba** (ne opterećuje skupinu) ⇒ vrsta bloka
+  **`Oporavak`**, gdje se rolalo = napomena; izlazi iz kataloga (JSON `vrsta: Oporavak`, kao `Method`).
+- **Opis i slika NISU obavezni** — obavezno polje provjerava i Edit Save, pa bi svako uređivanje (npr. dodavanje
+  slike) tražilo opis (svih 56 vježbi ga nema) ⇒ „." u opisu; obavezna slika bi zaustavila upis nove vježbe usred
+  treninga. Umjesto toga **vidljivo kad fali**: kartica „Nema opisa / slike — dodaj" + popis nepotpunih vježbi
+  (korak 6 ili uz njega).
+- **Slike po vrijednosti opcije — općeniti mehanizam za sve Aree** (umjesto crteža tijela u kodu; BACKLOG).
+  Prve slike: 6 figura tijela s istaknutom skupinom, kao datoteke (podatak, ne kod).
+- **Gibljivost — napredak se mjeri TESTOM, ne vježbama** (vježba kaže koliko si uložio, test koliko si pokretan).
+  Ranije „povremeni test gibljivosti, ne sada" ⇒ **sada** (Saša), da prva brojka postoji prije treninga:
+  `Health_Sasa > Gibljivost`, jedan zapis po testu, brojke u cm, u opisu polja točan postupak (isti svaki put):
+
+  | Sašin problem | test | polja |
+  | --- | --- | --- |
+  | rame — nadlaktica ne ide uz glavu (plivanje, dead hang) | leđa, glava i zdjelica uz zid, ispružene ruke gore | razmak palca od zida L / D (0 = dodiruje) |
+  | hinge — ruke ne dosežu duboko (loža) | stojeći pretklon, ispružena koljena | razmak prstiju od poda (minus = prošao pod) |
+  | gležanj — peta u čučnju | knee-to-wall: peta na podu, koljeno dotiče zid | najveći razmak nožnog prsta od zida L / D |
+
+  Dead hang (sekunde) već nose treninzi. Vježbe za ta tri cilja: `otvaranje_ramena`, `istezanje_loze`; za gležanj
+  se dodaje kad je Saša počne raditi (Mobility, Legs-calves).
+
 ### Izmjereno 26.10. (S185) — za F2 i za sukobe Garmin ↔ DIARY
 
 Puni brojevi su u [`PREUREDJIVANJE_SPEC.md`](PREUREDJIVANJE_SPEC.md) §22. Ukratko:

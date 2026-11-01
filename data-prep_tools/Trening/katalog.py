@@ -11,7 +11,8 @@ skupine je tada promjena opcije (`Restructure options`), ne premještanje zapisa
     run.bat Trening\\katalog.py            # suhi prolaz: ispis kataloga + što bi nastalo
     run.bat Trening\\katalog.py --apply    # stvori (staje ako Area već postoji)
     run.bat Trening\\katalog.py --obrisi   # obriši Areu i sve njene zapise
-    run.bat Trening\\katalog.py --pravila  # postojećoj Arei upiši pravila ovog alata (S190: unique, note)
+    run.bat Trening\\katalog.py --pravila  # postojećoj Arei: pravila, is_required i sort_order atributa,
+                                           # i odluke S191 nad zapisima (S191_ZAPISI); suho, --apply upisuje
 
 Vlasnik je Sašin TEST račun (NE owner@test.com — E2E global-setup briše njegove ne-seed Aree).
 Na PROD katalog ide kasnije kao app EXPORT ove Aree (Structure + Activities), uvozom — ne ovim
@@ -19,7 +20,7 @@ alatom. ⚠ Samo TEST: alat odbija `ET_TARGET=prod`.
 
 Iz JSON-a: aliasi istog sluga nose ponekad različito ime (sa i bez „?") — uzima se ime BEZ „?"
 s najviše aliasa; `Method` (IMOM, GtG, HIIT, TbyT) NIJE vježba nego način bloka (odluka 30.10.)
-i ne ulazi; `nije vježba` ne ulazi.
+i ne ulazi; isto `Oporavak` (rolanje, S191 — ne opterećuje skupinu); `nije vježba` ne ulazi.
 """
 from __future__ import annotations
 
@@ -46,13 +47,14 @@ TYPES = ['Strength', 'Cardio', 'Mobility', 'Stretching']
 GROUPS = ['Upper-push', 'Upper-pull', 'Core', 'Legs-main', 'Legs-hips', 'Legs-calves']
 
 # (slug, name, data_type, options, required, description)
+# S191 (Saša): Name ispred Sluga (slug se predlaže iz imena); Group obavezan (izbornik i pravila odmora).
 ATTRS = [
+    ('name', 'Name', 'text', None, True, 'Full name — may be changed freely.'),
     ('slug', 'Slug', 'text', None, True,
      'Short permanent name stored in every training record (e.g. pull_m). Must be unique. '
      'Change it only with the restructure tool.'),
-    ('name', 'Name', 'text', None, True, 'Full name — may be changed freely.'),
     ('type', 'Type', 'text', TYPES, True, 'Strength | Cardio | Mobility | Stretching'),
-    ('group', 'Group', 'text', GROUPS, False,
+    ('group', 'Group', 'text', GROUPS, True,
      'Main muscle group — used by recovery rules (rest days per group).'),
     ('secondary', 'Secondary', 'text', GROUPS, False,
      'Second group the exercise loads a lot (e.g. erg: Upper-pull).'),
@@ -69,7 +71,7 @@ def load_catalog() -> list[dict]:
     for k, v in raw.items():
         if k.startswith('_') or not isinstance(v, dict) or not v.get('slug'):
             continue
-        if v.get('vrsta') in ('nije vježba', 'Method'):
+        if v.get('vrsta') in ('nije vježba', 'Method', 'Oporavak'):   # način bloka, ne vježba
             continue
         variants[v['slug']][v['ime']] += 1
         meta[v['slug']].add((v['vrsta'], v['skupina'], v.get('sporedna', '')))
@@ -107,6 +109,65 @@ SETTINGS = {
         {'role': 'attr', 'label': 'Type', 'slugs': ['type'], 'mobile': 'hide'},
         {'role': 'actions'}]},
 }
+
+# S191 (Saša) — odluke nad POSTOJEĆIM zapisima kataloga (JSON ih nosi za novo stvaranje).
+# Polje: (staro, novo). Mijenja se samo ako je u bazi točno `staro`; `novo` ⇒ već izvedeno;
+# išta drugo ⇒ netko je uredio u appu, ne dira se nego javlja. `None` kao novo = obriši zapis.
+S191_ZAPISI = {
+    'istezanje': {'group': ('', 'Core'), 'secondary': ('', 'Legs-hips')},
+    'mobilnost': {'slug': ('mobilnost', 'rotacija_kicme'),
+                  'name': ('Mobilnost (općenito, s trenerom)', 'Rotacija kralježnice ležeći'),
+                  'group': ('', 'Core')},
+    'rolanje': None,        # vrsta bloka Oporavak, ne vježba
+}
+
+
+def s191_records(url, key, cids, defs, apply_):
+    """Odluke S191 nad zapisima. Vraća broj promjena (ili koliko bi ih bilo)."""
+    evs = _db.rest(url, key, f'events?select=id&category_id=in.({cids})')
+    vals = []
+    for i in range(0, len(evs), 150):
+        ids = ','.join(e['id'] for e in evs[i:i + 150])
+        vals += _db.rest(url, key, f'event_attributes?select=id,event_id,attribute_definition_id,value_text'
+                                   f'&event_id=in.({ids})')
+    slug_of = {d['id']: d['slug'] for d in defs.values()}
+    rec: dict[str, dict] = defaultdict(dict)       # event_id -> slug -> (row id, tekst)
+    for v in vals:
+        rec[v['event_id']][slug_of.get(v['attribute_definition_id'])] = (v['id'], v['value_text'] or '')
+    by_slug = {r['slug'][1]: eid for eid, r in rec.items() if 'slug' in r}
+    owner = _db.rest(url, key, f'profiles?select=id&email=eq.{SASA_EMAIL}')[0]['id']
+    n = 0
+    for old_slug, fields in S191_ZAPISI.items():
+        new_slug = (fields or {}).get('slug', (None, old_slug))[1]
+        eid = by_slug.get(old_slug) or by_slug.get(new_slug)
+        if not eid:
+            print(f'  {old_slug:12} nema zapisa — preskačem')
+            continue
+        if fields is None:
+            print(f'  {old_slug:12} obriši zapis')
+            n += 1
+            if apply_:
+                delete(url, key, 'event_attributes', f'event_id=eq.{eid}')
+                delete(url, key, 'events', f'id=eq.{eid}')
+            continue
+        for slug, (old, new) in fields.items():
+            row_id, cur = rec[eid].get(slug, (None, ''))
+            if cur == new:
+                print(f'  {old_slug:12} {slug:9} već „{new}"')
+            elif cur != old:
+                print(f'  {old_slug:12} {slug:9} ⚠ u bazi „{cur}" (uređeno u appu?) — ne diram, odluči')
+            else:
+                print(f'  {old_slug:12} {slug:9} „{old}" → „{new}"')
+                n += 1
+                if not apply_:
+                    continue
+                if row_id:
+                    patch(url, key, 'event_attributes', f'id=eq.{row_id}', {'value_text': new})
+                else:
+                    post(url, key, 'event_attributes', [{'id': str(uuid.uuid4()), 'event_id': eid,
+                                                         'attribute_definition_id': defs[slug]['id'],
+                                                         'user_id': owner, 'value_text': new}])
+    return n
 
 
 def patch(url, key, table, flt, body):
@@ -187,17 +248,36 @@ def main():
         if not existing:
             sys.exit('Nema Aree — prvo --apply.')
         aid = existing[0]['id']
+        apply_ = '--apply' in sys.argv
         area = _db.rest(url, key, f'areas?select=settings&id=eq.{aid}')[0]
-        settings = {**(area.get('settings') or {}), 'add_header': SETTINGS['add_header']}
-        n_area = patch(url, key, 'areas', f'id=eq.{aid}', {'settings': settings})
+        if (area.get('settings') or {}).get('add_header') != SETTINGS['add_header']:
+            print(f'  Area add_header → {SETTINGS["add_header"]}')
+            if apply_:
+                patch(url, key, 'areas', f'id=eq.{aid}',
+                      {'settings': {**(area.get('settings') or {}), 'add_header': SETTINGS['add_header']}})
         cats = _db.rest(url, key, f'categories?select=id&area_id=eq.{aid}')
         cids = ','.join(c['id'] for c in cats)
+        defs = {a['slug']: a for a in _db.rest(
+            url, key, f'attribute_definitions?select=id,slug,validation_rules,is_required,sort_order'
+                      f'&category_id=in.({cids})')}
         n_attr = 0
-        for a in _db.rest(url, key, f'attribute_definitions?select=id,slug,validation_rules&category_id=in.({cids})'):
-            want = rules_for(a['slug'], next((o for s_, _, _, o, _, _ in ATTRS if s_ == a['slug']), None))
-            if want != (a.get('validation_rules') or {}):
-                n_attr += patch(url, key, 'attribute_definitions', f'id=eq.{a["id"]}', {'validation_rules': want})
-        print(f'✓ Area settings {n_area} · atributa promijenjeno {n_attr}')
+        for i, (slug, _, _, opts, req, _) in enumerate(ATTRS, 1):
+            a = defs.get(slug)
+            if not a:
+                print(f'  ⚠ atribut {slug} ne postoji u bazi')
+                continue
+            want = {'validation_rules': rules_for(slug, opts), 'is_required': req, 'sort_order': i}
+            cur = {**a, 'validation_rules': a.get('validation_rules') or {}}
+            diff = {k: v for k, v in want.items() if cur.get(k) != v}
+            if diff:
+                print(f'  atribut {slug:12} {diff}')
+                n_attr += 1
+                if apply_:
+                    patch(url, key, 'attribute_definitions', f'id=eq.{a["id"]}', diff)
+        print('Zapisi (S191):')
+        n_rec = s191_records(url, key, cids, defs, apply_)
+        print(f'{"✓ upisano" if apply_ else "(suhi prolaz — --apply upisuje)"} · atributa {n_attr} · '
+              f'promjena zapisa {n_rec}')
         return
     if '--proba-trening' in sys.argv:
         # S190: mala Area za probu izbornika (`options_from`) pod Sašinim TEST računom —
