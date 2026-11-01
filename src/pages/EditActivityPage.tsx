@@ -20,6 +20,7 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { fetchAllPagedIn } from '@/lib/supabasePaging';
 import { isTimelessArea } from '@/lib/timelessArea';
+import { photoFailuresMessage, savePhotoChanges } from '@/lib/eventPhotos';
 import { persistPendingOptions, failedOptionsMessage, noNewOptionsHintFor } from '@/lib/pendingOptions';
 import { localYmd } from '@/lib/localDate';
 import { VALUE_COLUMNS } from '@/lib/constants';
@@ -1200,6 +1201,7 @@ export function EditActivityPage() {
       }
       // ────────────────────────────────────────────────────────────
       
+      const photoFailures: string[] = [];   // S191: neuspjela slika se kaže na kraju, ne guta
       // Separate events by status
       const toUpdate = pendingEvents.filter(e => e.isModified && !e.isNew && !e.isDeleted && e.dbId);
       const toInsert = pendingEvents.filter(e => e.isNew && !e.isDeleted);
@@ -1283,72 +1285,8 @@ export function EditActivityPage() {
           await supabase.from('event_attributes').insert(attributeRecords);
         }
         
-        // Handle photos to delete (from both database and storage)
-        for (const photoId of event.photosToDelete) {
-          try {
-            // First get the attachment to find the storage path
-            const { data: attachment } = await supabase
-              .from('event_attachments')
-              .select('url')
-              .eq('id', photoId)
-              .single();
-            
-            if (attachment?.url) {
-              // Extract file path from URL
-              // URL format: https://xxx.supabase.co/storage/v1/object/public/activity-attachments/user_id/event_id_photo_id.jpg
-              const urlParts = attachment.url.split('/activity-attachments/');
-              if (urlParts.length > 1) {
-                const filePath = urlParts[1];
-                // Delete from storage
-                await supabase.storage
-                  .from('activity-attachments')
-                  .remove([filePath]);
-              }
-            }
-            
-            // Delete the database record
-            await supabase
-              .from('event_attachments')
-              .delete()
-              .eq('id', photoId);
-          } catch (deleteErr) {
-            console.error('Failed to delete photo:', deleteErr);
-          }
-        }
-        
-        // Handle new photos
-        for (const photo of event.photos) {
-          try {
-            const base64Data = photo.base64.split(',')[1];
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'image/jpeg' });
-            
-            const fileName = `${user.id}/${event.dbId}_${photo.id}.jpg`;
-            await supabase.storage
-              .from('activity-attachments')
-              .upload(fileName, blob);
-            
-            const { data: urlData } = supabase.storage
-              .from('activity-attachments')
-              .getPublicUrl(fileName);
-            
-            await supabase.from('event_attachments').insert({
-              event_id: event.dbId,
-              user_id: user.id,
-              type: 'image',
-              url: urlData.publicUrl,
-              filename: photo.filename,
-              size_bytes: photo.sizeBytes,
-            });
-          } catch (photoErr) {
-            console.error('Failed to upload photo:', photoErr);
-          }
-        }
+        // Slike: brisanje pa dodavanje — `eventPhotos.ts` (S191; greška se kaže na kraju spremanja)
+        photoFailures.push(...(await savePhotoChanges(event.dbId, user.id, event.photos, event.photosToDelete)).failed);
       }
       
       // 3. Insert new events
@@ -1390,38 +1328,7 @@ export function EditActivityPage() {
         }
         
         // Handle photos
-        for (const photo of event.photos) {
-          try {
-            const base64Data = photo.base64.split(',')[1];
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'image/jpeg' });
-            
-            const fileName = `${user.id}/${newEvent.id}_${photo.id}.jpg`;
-            await supabase.storage
-              .from('activity-attachments')
-              .upload(fileName, blob);
-            
-            const { data: urlData } = supabase.storage
-              .from('activity-attachments')
-              .getPublicUrl(fileName);
-            
-            await supabase.from('event_attachments').insert({
-              event_id: newEvent.id,
-              user_id: user.id,
-              type: 'image',
-              url: urlData.publicUrl,
-              filename: photo.filename,
-              size_bytes: photo.sizeBytes,
-            });
-          } catch (photoErr) {
-            console.error('Failed to upload photo:', photoErr);
-          }
-        }
+        photoFailures.push(...(await savePhotoChanges(newEvent.id, user.id, event.photos, [])).failed);
       }
       
       // ============================================================
@@ -1465,6 +1372,9 @@ export function EditActivityPage() {
         const optMsg = failedOptionsMessage(await persistPendingOptions(pendingOptionAdds, allDefs));
         if (optMsg) toast.error(optMsg, { duration: 8000 });
       }
+
+      const photoMsg = photoFailuresMessage(photoFailures);
+      if (photoMsg) toast.error(photoMsg, { duration: 10000 });
 
       // Success! Navigate to View Details
       if (sessionStart) {

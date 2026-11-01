@@ -7,7 +7,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AttributeDefinition } from '@/types';
 import type { OptionsFrom } from '@/lib/optionsFrom';
-import { loadCatalog, loadUsage, saveCatalogItem, type Catalog } from '@/lib/catalogOptions';
+import { loadCatalog, loadUsage, saveCatalogItem, saveCatalogPhotos, type Catalog } from '@/lib/catalogOptions';
+import { photoFailuresMessage } from '@/lib/eventPhotos';
+import { isMobileDevice } from '@/lib/constants';
+import type { PendingPhoto } from '@/types/activity';
+import { PhotoGallery } from './PhotoGallery';
 import { TOP_N, NO_GROUP, initialGroup, itemByValue, pickerGroups, type CatalogItem, type Usage } from '@/lib/catalogPicker';
 import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import { useBackdropClose } from '@/hooks/useBackdropClose';
@@ -286,6 +290,10 @@ function ItemEdit({ item, catalog, optionsFrom, onCancel, onSaved }: {
   const [draft, setDraft] = useState<Record<string, Val>>(() => ({ ...item.values }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // S191: slike iz kartice — nove čekaju Spremi, postojeće se označe za brisanje (kao Edit).
+  const [newPhotos, setNewPhotos] = useState<PendingPhoto[]>([]);
+  const [photosToDelete, setPhotosToDelete] = useState<string[]>([]);
+  const [attrsSaved, setAttrsSaved] = useState(false);
   const editable = catalog.defs.filter(d => d.slug !== optionsFrom.attribute);
   const set = (slug: string, v: Val) => setDraft(prev => ({ ...prev, [slug]: v }));
 
@@ -297,11 +305,24 @@ function ItemEdit({ item, catalog, optionsFrom, onCancel, onSaved }: {
       const before = item.values[d.slug] ?? null, after = draft[d.slug] ?? null;
       if ((before ?? '') !== (after ?? '')) changes[d.slug] = after;
     }
-    if (Object.keys(changes).length === 0) { onCancel(); return; }
+    const hasPhotos = newPhotos.length > 0 || photosToDelete.length > 0;
+    if (Object.keys(changes).length === 0 && !hasPhotos) { onCancel(); return; }
     setSaving(true);
     setError(null);
     try {
-      await saveCatalogItem(optionsFrom, catalog, item, changes);
+      // Polja jednom: ponovni Spremi nakon pada slike ne piše ih opet (`item` je snimka s otvaranja).
+      if (!attrsSaved && Object.keys(changes).length > 0) {
+        await saveCatalogItem(optionsFrom, catalog, item, changes);
+        setAttrsSaved(true);
+      }
+      if (hasPhotos) {
+        const res = await saveCatalogPhotos(optionsFrom, item, newPhotos, photosToDelete);
+        // Uspjele se maknu iz čekanja — ponovni Spremi pokuša samo neuspjele.
+        setNewPhotos(prev => prev.filter(p => !res.added.includes(p.id)));
+        setPhotosToDelete(prev => prev.filter(id => !res.removed.includes(id)));
+        const msg = photoFailuresMessage(res.failed);
+        if (msg) { setError(msg); setSaving(false); return; }
+      }
       await onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -349,9 +370,20 @@ function ItemEdit({ item, catalog, optionsFrom, onCancel, onSaved }: {
             </label>
           );
         })}
-        <p className="text-xs text-gray-500">
-          Slike se dodaju u Editu zapisa kataloga (Area „{catalog.areaName}").
-        </p>
+        <div className="space-y-1">
+          <span className="text-sm font-semibold">Slike</span>
+          {/* Mobitel: stražnja kamera (sprava pred tobom); laptop: odabir datoteke. */}
+          <PhotoGallery
+            photos={newPhotos}
+            existingPhotos={item.photos.map(p => ({ id: p.id, url: p.url, filename: p.filename ?? undefined }))}
+            onPhotosChange={setNewPhotos}
+            onExistingPhotoRemove={id => setPhotosToDelete(prev => prev.includes(id) ? prev : [...prev, id])}
+            photosToDelete={photosToDelete}
+            disabled={saving}
+            compact
+            captureMode={isMobileDevice() ? 'environment' : undefined}
+          />
+        </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end">
           <button type="button" onClick={save} disabled={saving} className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white disabled:opacity-50">

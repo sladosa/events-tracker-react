@@ -462,6 +462,14 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   Arei, planer ih ne vidi ⇒ trening pokaže „(nije u katalogu)". Slug se zato ne mijenja u kartici ni u Editu
   usput; kad zatreba, alat mora ići preko obje Aree (otvoreno). Dvije vidljive Aree istog imena ⇒ vlastita pobjeđuje.
   ⚠ Uređivanje iz kartice smije samo VLASNIK kataloga (`canEdit`); upis broji retke (RLS-blokiran = 0 ⇒ poruka).
+- **Slike eventa se upisuju i brišu SAMO kroz `src/lib/eventPhotos.ts`** (S191). Upload je bio prepisan u Add,
+  Edit (izmjena) i Edit (novi event) i SVE TRI kopije su grešku gutale (`console.error`) — spremanje je javljalo
+  uspjeh, a slike nije bilo. Sada `savePhotoChanges` vraća `failed`, a pozivatelj ga mora reći (toast / greška
+  kartice). Četvrti korisnik: kartica kataloga „Uredi vježbu" (stražnja kamera na mobitelu, Add prednja).
+  ⚠ Brisanje: ZAPIS prvo (broji retke — RLS 0 redaka ⇒ greška), datoteka tek poslije; obrnuto (stari Edit) bi
+  uz blokiran zapis ostavilo zapis bez slike. ⚠ Brisanje cijelog eventa (Edit „obriši event", uvoz, Structure)
+  i dalje ide svojim putem. Čuvaju `eventPhotos.test.mjs` (lažni klijent, redoslijed poziva) i E2E
+  `S191_event_photos` (Add/Edit), `S190_catalog_picker` „kartica: dodaj sliku" (sabotaže padaju).
 - **Tekstualni atribut u formi je `<textarea>` koja raste (S190, sve Aree; `link` ostaje `<input>`).** E2E selektor
   polja: `input, textarea` (S187 spec je tako popravljen). Enter u polju je novi red, ne spremanje.
 - **Redoslijed opcija u izborniku je PRIKAZ, ne podatak** (S164, Koka i Saša). Atribut čiji najdulji
@@ -2067,6 +2075,7 @@ data-prep_tools/Tools/preuredjivanje_grep.py
                                    (JAK = vrijednost + kontekst koraka u retku); bez `fix_*` i `Obsolete/`
 src/lib/importDefaults.ts          `default_map` na NOVIM retcima Excel uvoza (S181) — samo prazna ćelija,
                                    nikad `default_value`; pregled i upis kroz `fillImportDefaults`
+src/lib/eventPhotos.ts             S191: JEDINI upload/brisanje slike eventa (Add, Edit, kartica kataloga)
 src/lib/uniqueValue.ts             S190: pravilo `unique` (ćelija, prijedlog ključa, sličnost) — čisto
 src/lib/uniqueCheck.ts             S190: I/O za `unique` — provjera pri spremanju (baca na padu), popis zapisa
 src/lib/optionsFrom.ts             S190: pravilo `options_from` (ćelija `Area > Kategorija : slug | label: …`)

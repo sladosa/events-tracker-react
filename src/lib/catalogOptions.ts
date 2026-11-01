@@ -15,6 +15,8 @@ import { parseValidationRules } from '@/hooks/useAttributeDefinitions';
 import type { OptionsFrom } from '@/lib/optionsFrom';
 import { usageFrom, type CatalogItem, type Usage } from '@/lib/catalogPicker';
 import { todayLocalYmd } from '@/lib/localDate';
+import { savePhotoChanges, type PhotoChangesResult } from '@/lib/eventPhotos';
+import type { PendingPhoto } from '@/types/activity';
 
 export interface Catalog {
   areaId: string;
@@ -192,4 +194,22 @@ export async function saveCatalogItem(
     if (!res.data || res.data.length === 0) throw new Error(`Katalog: „${def.name}" nije spremljeno (nemaš pravo pisati u katalog).`);
   }
   cache.delete(keyOf(of));
+}
+
+/**
+ * Slike zapisa kataloga iz kartice (S191, Saša: „slikam spravu u teretani direktno tu").
+ * Isti put kao Add/Edit (`eventPhotos.ts`); uploader je onaj tko slika (Storage mapa + RLS
+ * `user_id = auth.uid()`), a smije samo vlasnik kataloga (`canEdit`) — kao i ostala polja kartice.
+ */
+export async function saveCatalogPhotos(
+  of: OptionsFrom,
+  item: CatalogItem,
+  add: PendingPhoto[],
+  remove: string[],
+): Promise<PhotoChangesResult> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Katalog: nisi prijavljen.');
+  const res = await savePhotoChanges(item.eventId, user.id, add, remove);
+  cache.delete(keyOf(of));
+  return res;
 }

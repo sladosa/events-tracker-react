@@ -13,7 +13,7 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { loginAsOwner, supabasePost, supabaseGet, deleteAreaCascade } from '../fixtures/auth';
+import { loginAsOwner, supabasePost, supabaseGet, supabaseDelete, deleteAreaCascade } from '../fixtures/auth';
 import { selectFilterPath } from '../fixtures/filter';
 
 const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
@@ -27,6 +27,7 @@ test.describe('S190 — izbornik iz kataloga', () => {
   let catArea = '', catLeaf = '', trArea = '', trLeaf = '', vjezbaDef = '';
   const cat = { slug: '', name: '', group: '', desc: '' };
   let catName = '';
+  let a8Event = '';
 
   test.beforeEach(async ({ page }) => {
     await loginAsOwner(page);
@@ -52,6 +53,7 @@ test.describe('S190 — izbornik iz kataloga', () => {
     const rows = [...Array.from({ length: 8 }, (_, i) => [`a${i + 1}`, `A${i + 1} vježba`, 'A']), ['b1', 'B1 vježba', 'B']];
     for (const [i, [slug, name, group]] of rows.entries()) {
       const ev = randomUUID();
+      if (slug === 'a8') a8Event = ev;
       await supabasePost(page, 'events', { id: ev, user_id: OWNER_ID, category_id: catLeaf, event_date: '2026-10-31',
         session_start: `2026-10-31T08:${String(i).padStart(2, '0')}:00+00:00` });
       const vals: [string, string][] = [['slug', slug], ['name', name], ['group', group]];
@@ -79,6 +81,8 @@ test.describe('S190 — izbornik iz kataloga', () => {
   });
 
   test.afterEach(async ({ page }) => {
+    // Slika iz testa kartice (ako je test pao prije brisanja) — cascade ne briše `event_attachments`.
+    if (a8Event) await supabaseDelete(page, 'event_attachments', { event_id: a8Event });
     if (trArea) await deleteAreaCascade(page, trArea);
     if (catArea) await deleteAreaCascade(page, catArea);
   });
@@ -128,5 +132,41 @@ test.describe('S190 — izbornik iz kataloga', () => {
     }, { timeout: 20_000 }).toBe(6);
     const rows = await supabaseGet(page, 'event_attributes', { attribute_definition_id: vjezbaDef }) as { value_text: string }[];
     expect(rows.filter(r => r.value_text === 'a8')).toHaveLength(4);
+  });
+  // S191 (Saša: „slikam spravu u teretani direktno tu"): slika iz kartice, isti put kao Add/Edit
+  // (`eventPhotos.ts`). Mjeri bazu: zapis slike na zapisu KATALOGA nastane, pa ✕ + Spremi ga obriše.
+  test('kartica: dodaj sliku pa je obriši (zapis kataloga)', async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.goto('/app');
+    await selectFilterPath(page, trArea, [trLeaf]);
+    const addBtn = page.getByRole('button', { name: /add activity/i });
+    await expect(addBtn).not.toBeDisabled({ timeout: 10_000 });
+    await addBtn.click();
+    await expect(page).toHaveURL(/\/app\/add/, { timeout: 10_000 });
+
+    await page.getByRole('button', { name: /Izaberi vjezba/ }).click({ timeout: 20_000 });
+    await dialog(page).getByRole('button', { name: /^A\b.*zapisa/ }).click();
+    await dialog(page).getByRole('button', { name: /A8 vježba/ }).click();
+    await dialog(page).getByRole('button', { name: 'Uredi vježbu' }).click();
+
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+    await dialog(page).locator('input[type="file"]').setInputFiles({ name: 'sprava.png', mimeType: 'image/png', buffer: png });
+    await expect(dialog(page).getByText('NEW')).toBeVisible({ timeout: 10_000 });
+    await dialog(page).getByRole('button', { name: 'Spremi' }).click();
+    await expect(dialog(page).getByText('Spremljeno u katalog.')).toBeVisible({ timeout: 20_000 });
+    await expect.poll(async () => (await supabaseGet(page, 'event_attachments', { event_id: a8Event })).length,
+      { timeout: 20_000 }).toBe(1);
+    await expect(dialog(page).locator('img').first()).toBeVisible();
+
+    // Brisanje: ✕ na postojećoj slici ⇒ potvrda ⇒ Spremi ⇒ zapisa nema
+    await dialog(page).getByRole('button', { name: 'Uredi vježbu' }).click();
+    const thumb = dialog(page).getByTitle('Remove photo');
+    await thumb.hover();
+    await thumb.click({ force: true });
+    await dialog(page).getByRole('button', { name: '✓' }).click();
+    await dialog(page).getByRole('button', { name: 'Spremi' }).click();
+    await expect(dialog(page).getByText('Spremljeno u katalog.')).toBeVisible({ timeout: 20_000 });
+    await expect.poll(async () => (await supabaseGet(page, 'event_attachments', { event_id: a8Event })).length,
+      { timeout: 20_000 }).toBe(0);
   });
 });

@@ -20,6 +20,7 @@ import { persistPendingOptions, failedOptionsMessage, noNewOptionsHintFor } from
 import { localYmd } from '@/lib/localDate';
 import { upsertParentEvent, type ParentAttrWrite } from '@/lib/parentEventLoader';
 import { findFreeSessionStart, insertLeafEvent } from '@/lib/insertEntry';
+import { photoFailuresMessage, savePhotoChanges } from '@/lib/eventPhotos';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
 import { useCategoryChain } from '@/hooks/useCategoryChain';
 import { useAttributeDefinitions, parseValidationRules } from '@/hooks/useAttributeDefinitions';
@@ -1177,6 +1178,7 @@ export function AddActivityPage() {
       const leafAttrDefs = attributesByCategory.get(leafCategoryId) || [];
       const leafAttrDefIds = new Set(leafAttrDefs.map(d => d.id));
       const savedLeafEventIds: string[] = [];
+      const photoFailures: string[] = [];   // S191: neuspjela slika se kaže, ne guta
 
       for (const pendingEvent of eventsToSave) {
         // Samo leaf atributi za leaf event
@@ -1204,59 +1206,16 @@ export function AddActivityPage() {
         // Upload photos za leaf event
         log(`Checking photos: ${pendingEvent.photos.length} photos`);
         if (pendingEvent.photos.length > 0) {
-          for (const photo of pendingEvent.photos) {
-            try {
-              log(`Uploading photo: ${photo.id}, filename: ${photo.filename}, size: ${photo.sizeBytes}`);
-              const base64Data = photo.base64.split(',')[1];
-              const byteCharacters = atob(base64Data);
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-              }
-              const byteArray = new Uint8Array(byteNumbers);
-              const blob = new Blob([byteArray], { type: 'image/jpeg' });
-              
-              const fileName = `${user.id}/${leafEvent.id}_${photo.id}.jpg`;
-              log(`Uploading to: activity-attachments/${fileName}`);
-              const { error: uploadError } = await supabase.storage
-                .from('activity-attachments')
-                .upload(fileName, blob);
-              
-              if (uploadError) {
-                log(`Photo upload FAILED: ${uploadError.message}`);
-                console.error('Photo upload failed:', uploadError);
-                continue;
-              }
-              
-              const { data: urlData } = supabase.storage
-                .from('activity-attachments')
-                .getPublicUrl(fileName);
-              
-              log(`Public URL: ${urlData.publicUrl}`);
-              const { error: attachError } = await supabase.from('event_attachments').insert({
-                event_id: leafEvent.id,
-                user_id: user.id,
-                type: 'image',
-                url: urlData.publicUrl,
-                filename: photo.filename,
-                size_bytes: photo.sizeBytes,
-              });
-              
-              if (attachError) {
-                log(`Attachment record insert FAILED: ${attachError.message}`);
-              } else {
-                log(`Attachment record inserted successfully`);
-              }
-            } catch (photoErr) {
-              log(`Photo upload exception: ${photoErr instanceof Error ? photoErr.message : 'unknown'}`);
-              console.error('Failed to upload photo:', photoErr);
-            }
-          }
+          const res = await savePhotoChanges(leafEvent.id, user.id, pendingEvent.photos, []);
+          log(`Photos: ${res.added.length} saved, ${res.failed.length} failed`);
+          photoFailures.push(...res.failed);
         }
       }
       
       // Success! Clear draft and show success dialog
       log('All events saved successfully');
+      const photoMsg = photoFailuresMessage(photoFailures);
+      if (photoMsg) toast.error(photoMsg, { duration: 10000 });
       if (pendingOptionAdds.length > 0) {
         const allDefs = Array.from(attributesByCategory.values()).flat();
         const optMsg = failedOptionsMessage(await persistPendingOptions(pendingOptionAdds, allDefs));

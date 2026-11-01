@@ -70,3 +70,21 @@ Slug i Name.
      carry, kosa_k_side, krugovi_ruke.
 2. ✕ bez spremanja.
 3. **Pad:** popis i dalje prati riječi iz opisa.
+
+## T-S191-6 — Slika sprave iz kartice (pravi mobitel)
+
+Saša (01.11.): „zar ne bi bilo cool da slikam spravu u teretani direktno tu". Kartica „Uredi vježbu" sada ima
+slike; sve tri plohe (Add, Edit, kartica) idu kroz `eventPhotos.ts`, koji grešku kaže umjesto da je proguta.
+Automatski: E2E `S190_catalog_picker` (kartica) i `S191_event_photos` (Add, Edit) — ali kameru E2E ne glumi.
+
+Mobitel preko `npm run dev -- --host` (`http://192.168.1.8:5173`), Sašin račun, banner TEST.
+
+1. `S190 Trening proba › Gym` ⇒ **+** ⇒ „Izaberi vjezba…" ⇒ skupina ⇒ vježba ⇒ **Uredi vježbu**.
+2. Ispod Descriptiona **Slike**: postojeće sličice + „Add".
+3. „Add" ⇒ **Očekivano:** otvara se **stražnja** kamera (ili izbor kamera/galerija — ovisi o telefonu). Slikaj.
+   Sličica s oznakom NEW.
+4. **Spremi** ⇒ kartica: „Spremljeno u katalog.", nova slika u nizu slika.
+5. Uredi vježbu ⇒ dodir na tu sličicu ⇒ ✕ ⇒ ✓ ⇒ **Spremi** ⇒ slike više nema. **Odustani** umjesto Spremi ⇒ slika ostaje.
+6. Usput (regresija): Add zapisa s fotografijom u bilo kojoj Arei (prednja kamera, kao prije) ⇒ Finish ⇒ View
+   pokazuje sliku; Edit ⇒ dodaj sliku iz galerije ⇒ Save ⇒ View je pokazuje.
+7. **Pad:** slika se ne spremi a ništa ne piše; otvara se prednja kamera u kartici; ✕ se na dodir ne pojavljuje.
