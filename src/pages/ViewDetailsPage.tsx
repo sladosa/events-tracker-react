@@ -35,6 +35,7 @@ import { formatDuration } from '../lib/timeFormat';
 import { displayDatetime } from '@/lib/excelDatetime';
 import { setLastViewed } from '@/lib/lastViewed';
 import { isTimelessArea, loadAreaSettingsForCategory } from '@/lib/timelessArea';
+import { PhotoLightbox } from '@/components/activity/PhotoGallery';
 
 // ============================================
 // Helpers
@@ -418,6 +419,10 @@ export function ViewDetailsPage() {
 
   // Build attribute values map for current event
   const currentEvent = viewEvents[selectedEventIndex];
+  // S191: slika se otvara u istom pregledniku kao u Editu (do tada nova kartica s golom datotekom).
+  //   Vezano uz event — Prev/Next ili drugi tab ga zatvara.
+  const [lightbox, setLightbox] = useState<{ eventId: string; index: number } | null>(null);
+  const lightboxIndex = lightbox && currentEvent && lightbox.eventId === currentEvent.id ? lightbox.index : null;
 
   const attributeValues = useMemo(() => {
     // VIEW-P2: Merge parent attrs + leaf attrs za trenutni event
@@ -823,12 +828,11 @@ export function ViewDetailsPage() {
                 📷 Photos ({currentEvent.photos.length})
               </label>
               <div className="flex flex-wrap gap-2">
-                {currentEvent.photos.map(photo => (
-                  <a
+                {currentEvent.photos.map((photo, i) => (
+                  <button
                     key={photo.id}
-                    href={photo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    type="button"
+                    onClick={() => setLightbox({ eventId: currentEvent.id, index: i })}
                     className="block"
                   >
                     <img
@@ -836,11 +840,23 @@ export function ViewDetailsPage() {
                       alt={photo.filename || 'Photo'}
                       className="w-24 h-24 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
                     />
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
           )}
+          {currentEvent && lightboxIndex !== null && (() => {
+            const n = currentEvent.photos.length;
+            return (
+              <PhotoLightbox
+                photos={currentEvent.photos.map(p => ({ src: p.url, filename: p.filename ?? undefined }))}
+                currentIndex={lightboxIndex}
+                onClose={() => setLightbox(null)}
+                onPrev={() => setLightbox({ eventId: currentEvent.id, index: (lightboxIndex + n - 1) % n })}
+                onNext={() => setLightbox({ eventId: currentEvent.id, index: (lightboxIndex + 1) % n })}
+              />
+            );
+          })()}
 
         </div>
       </div>

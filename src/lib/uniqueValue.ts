@@ -89,17 +89,21 @@ export function isFreeTextRule(raw: unknown): boolean {
 }
 
 /**
- * Što ulazi u sličnost: upisani ključ + SLOBODAN tekst forme (ime, opis). Vrijednost iz izbornika
- * (Type `Strength`, Group `Upper-pull`) ne smije: dijeli je pola kataloga, pa bi „slično" bilo
- * sve iste vrste ili skupine, a stvarno slična vježba ispala iz popisa od 5 (S191, T-S190-1).
+ * Što ulazi u sličnost: upisani ključ + ono što zapis IMENUJE. Uz `unique: {from: name}` to je
+ * samo polje `from` (ime); bez njega slobodan tekst forme. Dva izmjerena šuma (S191):
+ * - vrijednost iz izbornika (Type `Strength`, Group `Upper-pull`) dijeli pola kataloga ⇒ „slično"
+ *   = sve iste vrste/skupine, a stvarno slična vježba ispadne iz popisa od 5 (T-S190-1);
+ * - opis nosi općenite riječi („uteg", „ruke", „bočno") ⇒ u Editu postojeće vježbe pet nesrodnih.
  */
 export function similarityInputs(
   typedKey: string,
-  textDefs: { id: string; validation_rules?: unknown }[],
+  textDefs: { id: string; slug: string; validation_rules?: unknown }[],
   valueOf: (definitionId: string) => unknown,
+  fromSlug: string | null = null,
 ): string[] {
-  const free = textDefs.filter(d => isFreeTextRule(d.validation_rules));
-  return [typedKey, ...free.map(d => String(valueOf(d.id) ?? ''))].filter(Boolean);
+  const named = fromSlug ? textDefs.filter(d => d.slug === fromSlug) : [];
+  const src = named.length ? named : textDefs.filter(d => isFreeTextRule(d.validation_rules));
+  return [typedKey, ...src.map(d => String(valueOf(d.id) ?? ''))].filter(Boolean);
 }
 
 /**

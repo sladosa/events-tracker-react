@@ -130,10 +130,10 @@ console.log('\n── Prijedlog i sličnost ──');
   // S191 (T-S190-1): Type/Group iz izbornika ulazili su u sličnost ⇒ „slično" = 5 vježbi iste vrste,
   // lat_raises izvan popisa. Katalog kakav je: ime, slug, vrsta, skupina u `texts`.
   const defs = [
-    { id: 'name', validation_rules: {} },
-    { id: 'type', validation_rules: { type: 'suggest', suggest: ['Strength', 'Mobility'] } },
-    { id: 'group', validation_rules: { type: 'suggest', suggest: ['Upper-push', 'Upper-pull', 'Core'] } },
-    { id: 'desc', validation_rules: null },
+    { id: 'name', slug: 'name', validation_rules: {} },
+    { id: 'type', slug: 'type', validation_rules: { type: 'suggest', suggest: ['Strength', 'Mobility'] } },
+    { id: 'group', slug: 'group', validation_rules: { type: 'suggest', suggest: ['Upper-push', 'Upper-pull', 'Core'] } },
+    { id: 'desc', slug: 'description', validation_rules: null },
   ];
   const form = { name: 'Hand lateral raises', type: 'Strength', group: 'Upper-pull', desc: '' };
   const inputs = m.similarityInputs('hand_lateral', defs, id => form[id]);
@@ -148,6 +148,23 @@ console.log('\n── Prijedlog i sličnost ──');
   ];
   const got = m.similarRecords(inputs, 'hand_lateral', cat, null).map(r => r.key);
   ok('katalog: slično je lat_raises, ne sve Strength/Upper', J(got) === J(['lat_raises']), J(got));
+
+  // S191 (T-S190-4): Edit postojeće lat_raises s opisom ⇒ „slično" je bilo pet nesrodnih po riječima opisa.
+  const edit = { name: 'Lateralno podizanje ruku', type: 'Strength', group: 'Upper-push',
+    desc: 'stojim i podizem ispruzene ruke bocno, u svakoj ruci drzim lagani uteg' };
+  const editIn = m.similarityInputs('lat_raises', defs, id => edit[id], 'name');
+  ok('uz unique.from: samo ključ i ime, bez opisa', J(editIn) === J(['lat_raises', 'Lateralno podizanje ruku']), J(editIn));
+  const cat2 = [
+    ...cat,
+    { eventId: 'g', key: 'carry', texts: ['Nošenje utega (farmer / suitcase carry)', 'Strength', 'Core'] },
+    { eventId: 'h', key: 'kosa_k_side', texts: ['Trbušnjaci na kosoj klupi (bočno)', 'Strength', 'Core'] },
+    { eventId: 'i', key: 'leg_raises', texts: ['Podizanje nogu', 'Strength', 'Core'] },
+  ];
+  const got2 = m.similarRecords(editIn, 'lat_raises', cat2, 'f').map(r => r.key);
+  ok('Edit lat_raises: leg_raises (podizanje), ne carry / kosa_k_side / krugovi_ruke',
+    J(got2) === J(['leg_raises']), J(got2));
+  ok('nepoznat from ⇒ slobodan tekst', J(m.similarityInputs('x', defs, id => form[id], 'nema')) === J(['x', 'Hand lateral raises']));
+
   ok('pravilo: suggest / depends_on / options_from nisu slobodan tekst',
     !m.isFreeTextRule({ suggest: ['a'] }) && !m.isFreeTextRule({ depends_on: { attribute_slug: 'x' } })
     && !m.isFreeTextRule({ options_from: { area: 'A' } }) && m.isFreeTextRule({ unique: { from: 'name' } })

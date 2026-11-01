@@ -522,7 +522,7 @@ function PhotoThumbnail({
 // Photo Lightbox Component
 // ============================================
 
-interface LightboxPhoto {
+export interface LightboxPhoto {
   src: string;
   filename?: string;
   isNew?: boolean;
@@ -536,7 +536,7 @@ interface PhotoLightboxProps {
   onNext: () => void;
 }
 
-function PhotoLightbox({
+export function PhotoLightbox({
   photos,
   currentIndex,
   onClose,

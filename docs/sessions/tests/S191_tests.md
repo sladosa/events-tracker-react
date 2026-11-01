@@ -42,3 +42,27 @@ vrijedi za oba.
 3. View retka u `Financije_all` (ili `Fitness_Garmin`).
    - **Očekivano:** datum i vrijeme se vide kao i prije.
 4. **Pad:** katalog i dalje pokazuje datum; ili ga druga Area više ne pokazuje.
+
+## T-S191-4 — View: slika u pregledniku slika, ne u novoj kartici
+
+Saša (01.11., uz T-S190-4): u Viewu je dodir na sličicu otvarao **novu karticu preglednika** s golom datotekom iz
+Storagea, dok Edit otvara preglednik slika. Sada View koristi isti `PhotoLightbox` kao Edit.
+
+1. Ctrl+Shift+R. Katalog ⇒ View `lat_raises` (2 slike).
+2. Dodir na prvu sličicu.
+   - **Očekivano:** tamni preglednik preko ekrana, gore „1 / 2", dolje ime datoteke; nova kartica se NE otvara.
+3. Strelica desno / povlačenje ulijevo (F12 mobilni prikaz) ⇒ „2 / 2"; Esc ili ✕ zatvara.
+4. **Next** na vježbu bez slika ⇒ nema preglednika ni Photos.
+5. **Pad:** otvara se nova kartica; preglednik ostane otvoren nakon Next.
+
+## T-S191-5 — „Slično“ u Editu postojeće vježbe gleda samo ime
+
+Saša (01.11., T-S190-4, slika): Edit `lat_raises` nudio je krugovi_ruke, carry, leg_raises, calf_raises, kosa_k_side —
+pogađale su riječi iz opisa („ispruzene", „uteg", „bocno"). Uz pravilo `unique: {from: name}` sličnost sada gleda samo
+Slug i Name.
+
+1. Ctrl+Shift+R. Katalog ⇒ Edit `lat_raises`.
+   - **Očekivano:** „Slično u kategoriji“ = vježbe sličnog **imena** (leg_raises, calf_raises — „Podizanje …"), bez
+     carry, kosa_k_side, krugovi_ruke.
+2. ✕ bez spremanja.
+3. **Pad:** popis i dalje prati riječi iz opisa.
