@@ -1742,7 +1742,11 @@ export async function importStructureExcel(
         const map = parseColumnMap(get(colMap));
 
         const label = get(colLabel);
-        const sep = get(colSep);
+        // ⚠ S193 (T-S190-5): `Sep` se NE reže — razmaci SU razdjelnik (`" + "`,
+        //   `" / "`). `cellStr` ga je skraćivao u `"+"`, pa je svaki roundtrip Aree
+        //   s takvom kolonom tiho mijenjao prikaz liste. Prazna ćelija i dalje = bez.
+        const sepCell = colSep > 0 ? row.getCell(colSep).value : null;
+        const sep = typeof sepCell === 'string' ? sepCell : get(colSep);
         const unit = get(colUnit);
         const mobile = get(colMobile).toLowerCase();
         const width = get(colWidth);

@@ -40,7 +40,7 @@ function parseMapCell(cell: string): Record<string, string> {
   return out;
 }
 
-interface ListColumn { role: string; slugs?: string[]; map?: Record<string, string> }
+interface ListColumn { role: string; slugs?: string[]; map?: Record<string, string>; sep?: string }
 
 test.describe('T-S119-6 — ListColumns Map through the Structure roundtrip', () => {
   let areaId = '';
@@ -62,8 +62,9 @@ test.describe('T-S119-6 — ListColumns Map through the Structure roundtrip', ()
         list_columns: {
           columns: [
             { role: 'date' },
+            // S193: razmaci u `sep` SU razdjelnik — uvoz ih je rezao (`" + "` → `"+"`)
             { role: 'attr', label: 'Račun', slugs: ['racun'], mobile: 'line1',
-              map: DICT },
+              map: DICT, sep: ' + ' },
             { role: 'actions' },
           ],
         },
@@ -92,6 +93,12 @@ test.describe('T-S119-6 — ListColumns Map through the Structure roundtrip', ()
     const rows = await supabaseGet(page, 'areas', { id: areaId }, 'id,settings');
     const s = (rows[0] as { settings?: { list_columns?: { columns: ListColumn[] } } }).settings;
     return s?.list_columns?.columns.find(c => c.role === 'attr')?.map;
+  };
+
+  const readSep = async (page: Page): Promise<string | undefined> => {
+    const rows = await supabaseGet(page, 'areas', { id: areaId }, 'id,settings');
+    const s = (rows[0] as { settings?: { list_columns?: { columns: ListColumn[] } } }).settings;
+    return s?.list_columns?.columns.find(c => c.role === 'attr')?.sep;
   };
 
   const exportStructure = async (page: Page, name: string): Promise<string> => {
@@ -154,6 +161,7 @@ test.describe('T-S119-6 — ListColumns Map through the Structure roundtrip', ()
     // 3–4. Re-import unchanged: the dictionary is still there
     await importStructure(page, file);
     expect(await readMap(page)).toEqual(DICT);
+    expect(await readSep(page), 'S193: uvoz je skratio razdjelnik').toBe(' + ');
 
     // 5–6. Clear the cell and import: the dictionary must be GONE, not kept
     ws!.getRow(row).getCell(mapCol).value = null;
