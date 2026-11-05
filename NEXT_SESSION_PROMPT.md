@@ -19,7 +19,7 @@
 - **MC:** svih 54 stavki izvoda spareno, uvezeno, ponovni prolaz 0/0. Dvije Kokine kupnje s kraja listopada idu na
   prosinački izvod (naplata 11.12.).
 - **RF:** nađeno što je falilo (mirovina 2. stup, naknada paketa, naknada Vise, Keks na krivi dan) — 253,15.
-- Kod se u krugu nije mijenjao; sve trenje je zapisano kao **T39–T49** u `docs/FINANCIJE_PROCES.md` §4.
+- Kod se u krugu nije mijenjao; sve trenje je zapisano kao **T39–T50** u `docs/FINANCIJE_PROCES.md` §4.
 
 ## Što treba od tebe / Koke
 1. **Kad Keks 22 € sjedne:** RF banka mora pokazati **253,15** ⇒ Koka potvrdi s ekrana (T-S192-1). Filtar This Year!
