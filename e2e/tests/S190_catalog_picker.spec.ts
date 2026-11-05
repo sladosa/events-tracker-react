@@ -30,6 +30,9 @@ test.describe('S190 — izbornik iz kataloga', () => {
   let a8Event = '';
 
   test.beforeEach(async ({ page }) => {
+    // ~50 upisa redom: na sporom TEST-u prelazi zadanih 30 s, a čišćenje (afterEach)
+    // tada krene dok seed još piše ⇒ lažni FK pad (S193, puni E2E). Vrijedi i za test.
+    test.setTimeout(120_000);
     await loginAsOwner(page);
     await page.goto('/app');
     await expect(page.getByRole('button', { name: 'Activities' })).toBeVisible({ timeout: 15_000 });
