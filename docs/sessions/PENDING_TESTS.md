@@ -2,7 +2,19 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S191 (2026-11-01, T-S190-1..4 ✅, sekcija S191: 4 ✅ / 2 ⬜) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S192 (2026-11-05, studeni krug Financija: T-S175-2/3 ✅, T-S175-1 do trake 11.11., T-S181-3 ✅; nalazi T39–T49 u `FINANCIJE_PROCES.md` §4) · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+## S192 — Studeni krug Financija (ispit „dovoljno gotove") (2026-11-05)
+
+Visa, ZABA i MC izvod 10/2026 zatvoreni u cent bez ručnog slaganja uvoznog filea; RF usklađen usporedbom Delta sheeta s bankom. Trenje kruga je zapisano kao T39–T49 (`docs/FINANCIJE_PROCES.md` §4) za sesiju održavanja — kod se u krugu nije mijenjao.
+
+**Detalji testova:** [tests/S192_tests.md](tests/S192_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S192-1 | RF sidro kad Keks 22 € sjedne: banka = pločica **253,15** ⇒ Koka „u banci" 253,15, *ekran banke*, Potvrdi ⇒ saldo ostaje 253,15 | ⬜ |
 
 ---
 
@@ -50,7 +62,7 @@ Namjena u profilu iza Podtipa. Na TEST-u izmjereno: izvoz identičan staromu (os
 | T-S181-1 | PROD pod Kokom: Ctrl+Shift+R ⇒ Import Profile `Claude-temp_R\s181\c_profil_namjena.xlsx` kao `Kokin_format` ⇒ toast „12 hidden cols … + filter overrides", Namjena iza Podtipa; Claude potvrdi da se promijenio samo `export_profiles` | ✅ S181 (24.10., Saša pod Kokom) — očekivani toast; PROD čitanjem: promijenio se samo `export_profiles`, i PROD = TEST poslije u svih 8 ključeva |
 | T-S181-2 | PROD **poslije deploya**: Export `Kokin_format` (Download Excel) ⇒ u Excelu Namjena pod `Razno` nudi Zajedničko · Koka · Saša · Nena / Kućište (ne Podtipove), uz prazan Tip isto; Podtip pod `auto C5` nudi gorivo · leasing · popravci · registracija | ✅ S182 (25.10., Saša pod Kokom, Download Excel `Kokin_format`, 450 redaka) — Namjena pod `Razno` nudi 4 namjene, Podtip pod `auto C5` 4 podtipa; korak „prazan Tip" nije rađen ručno, čuva ga mjerenje S181 (`verify_dd.mjs`: uz prazan Tip 4 namjene) i `excelDependentRanges.test.mjs` |
 | T-S181-4 | PROD **poslije deploya**, uz prvi Excel uvoz s novim retkom: Namjena ostavljena prazna ⇒ pregled kaže „Zadano iz pravila …: Namjena N (…)", u appu redak ima tu Namjenu; redak s upisanom Namjenom ostaje kakav je | ✅ S182 (25.10., Saša pod svojim računom, RF delta) — pregled `2 New · 0 Modify · 15 Unchanged` + „Namjena 1 (Zajedničko 1)"; baza: Passport 39 → Zajedničko, naknada 2,54 (upisano Saša) → Saša |
-| T-S181-3 | Uz studeni krug (T-S175-1..3): `fill_from_izvod` ispiše `Namjena [PROD]: * → Zajedničko, auto C5 → Koka, auto Lacetti → Saša` i novi retci u `_filled` imaju Namjenu; `visa_uvoz_izvoda --file` isto (`Namjena novih redaka: …`) | ⬜ |
+| T-S181-3 | Uz studeni krug (T-S175-1..3): `fill_from_izvod` ispiše `Namjena [PROD]: * → Zajedničko, auto C5 → Koka, auto Lacetti → Saša` i novi retci u `_filled` imaju Namjenu; `visa_uvoz_izvoda --file` isto (`Namjena novih redaka: …`) | ✅ S192 (05.11.) — `fill_from_izvod --zaba` ispisao točno taj redak; Visa file: 5/5 novih redaka s Namjenom (Šatrak `auto C5` → Koka), 0 od 42 praznih (pročitano openpyxl). MC bez novih redaka (0 · 54) ⇒ nije bilo što upisati |
 
 ---
 
@@ -62,9 +74,9 @@ Testovi koji su čekali prvi mjesečni krug u studenom (MC, Visa, ZABA) iz osam 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S175-1 | ~02.11.–11.11. PROD: MC_2026-10 kroz `fill_from_izvod --mc` (15 rata + 4 naknade sparene, KONTROLA ✓) ⇒ Koka uvozi `_filled` ⇒ ponovni prolaz 0/0 ⇒ 11.11. traka „pokaži kupnje" i Potvrdi; prvi MC plan „Zadnja rata…" | ⬜ |
-| T-S175-2 | ~03.–11.11. PROD: Visa košara u traci „(samo isplate)", Saša kao grantee vidi usporedbu bez gumba, Koka upiše naplatu, `visa_uvoz_izvoda` kaže „već upisana" i spari rate iz appa, ✓ u cent | ⬜ |
-| T-S175-3 | ZABA_2026-10: `fill_from_izvod --zaba` imenom, presedani iz `ET_TARGET`, MC naplata 11.10. preskočena (nikad nov redak), „Σ kosare prosirena" uz `Potvrda`, `promet_check` 2026-10 ✓ | ⬜ |
+| T-S175-1 | ~02.11.–11.11. PROD: MC_2026-10 kroz `fill_from_izvod --mc` (15 rata + 4 naknade sparene, KONTROLA ✓) ⇒ Koka uvozi `_filled` ⇒ ponovni prolaz 0/0 ⇒ 11.11. traka „pokaži kupnje" i Potvrdi; prvi MC plan „Zadnja rata…" | ⬜ S192 (05.11.): **A–C ✅** — 54/54 spareno, NOVI 0 (rate i naknade u ispravcima), Konzum 6/6 `~` 28,51 → 28,46; 2 Kokine kupnje 29./30.10. (30,12 + 2,60) nisu na izvodu ⇒ Datum naplate → 11.12. (ne `--brisi`, T47); uvoz 0 · 54 · 81, ponovni prolaz 0 · 0, KONTROLA ✓ 2.783,26. **Ostaje E (11.11., Koka):** traka MC Σ **2.783,26** → dan → Da, upiši. D (rata modal) nije se dogodio |
+| T-S175-2 | ~03.–11.11. PROD: Visa košara u traci „(samo isplate)", Saša kao grantee vidi usporedbu bez gumba, Koka upiše naplatu, `visa_uvoz_izvoda` kaže „već upisana" i spari rate iz appa, ✓ u cent | ✅ S192 (05.11.) — k1, k3, k4 ✅: Koka „Ne — iznos…" 1.751,12 @ 05.11. (Σ trake 1.526,07); alat „RF naplata ✓ već upisana", Konzum 2/3 i Maxi Konzum 2/6 spareni, KONTROLA ✓; uvoz 5 · 37, ponovni 0 · 0, obje košare (05.10. razlika 34,74 = dvije kupnje od 03.10.) zatvorene. **k2 ❌** grantee ne vidi usporedbu ⇒ T39 (`FINANCIJE_PROCES.md` §4), test uz popravak |
+| T-S175-3 | ZABA_2026-10: `fill_from_izvod --zaba` imenom, presedani iz `ET_TARGET`, MC naplata 11.10. preskočena (nikad nov redak), „Σ kosare prosirena" uz `Potvrda`, `promet_check` 2026-10 ✓ | ✅ S192 (05.11.) — presedani `(prod, …)` bez `--presedan`; MC naplata 11.10. među „već na listu"; `promet_check` 2026-10 Δ 1,60 ⇒ parking 01.11. upisan kao `Mastercard` ⇒ Edit `Racun` ⇒ **0,00 / 40**; sidro s ekrana 10.529,31. Alat bi uveo storno KEKS kao duplikat i nije vidio krivi Izvor ⇒ T45; uvoz nije trebao. „Σ kosare prosirena" nije mjereno (ZABA i MC odvojeno) |
 | T-S175-4 | Pitanje Koki: od sredine listopada lista nikad bez iznosa i `+` uvijek iz prve? | ✅ S175 (19.10., Koka: „sve vidim ok") — nadiđeno upotrebom; zatvara i T-S168-4, T-S154-2 |
 | T-S175-5 | Košare ↗ na kupnji ⇒ Activities taj dan ⇒ tab Overview ⇒ This Year, Košare otvorene **i ta kupnja označena** (lokalno TEST, pa PROD nakon deploya) | ✅ S175 (19.10., Saša, TEST) — ↗ s kupnje 04.10. (Visa ~05.11.) ⇒ povratak: označena ta kupnja; PROD isti kod, čuva E2E 3e |
 | T-S175-6 | TEST: F5 — Structure export samo uz odabranu Areu; `Financije_all` ⇒ sheet `AreaSettings` 325 redaka; nepromijenjen uvoz ⇒ `Area settings changed (areas)` 0; promjena naslova pločice ⇒ 1 i pločica preimenovana | ✅ S176 (22.10., Saša, TEST) — export bez Aree javlja „Select an Area…"; `AreaSettings` do r. 326 + HELP; promjena naslova „Kamo ide novac TEST" ⇒ `Area settings changed 1 · Financije_all: dashboard`, i vraćanje naslova radi. Usput dvije želje (help po retku sheeta, os datuma na strani Prihodi) — v. BACKLOG |

@@ -68,7 +68,7 @@ Kokine kupnje **16 / 1.765,17**. Izvod donosi i njene kupnje od 17.10. do zatvar
 
 ---
 
-## T-S175-2 ⬜ (~03.–11.11.; PROD, Koka i Saša) Visa krug studeni
+## T-S175-2 ✅ (S192, 05.11.: k1, k3, k4 ✅; k2 grantee ❌ ⇒ T39) (~03.–11.11.; PROD, Koka i Saša) Visa krug studeni
 
 **Sažima:** T-S170-9, T-S161-3, T-S156-5.
 
@@ -92,7 +92,7 @@ Kokine kupnje **16 / 1.765,17**. Izvod donosi i njene kupnje od 17.10. do zatvar
 
 ---
 
-## T-S175-3 ⬜ (kad stigne `ZABA_2026-10`; PROD, Saša) ZABA krug studeni
+## T-S175-3 ✅ (S192, 05.11.: promet 2026-10 0,00 nakon ispravka parkinga; alat ⇒ T45) (kad stigne `ZABA_2026-10`; PROD, Saša) ZABA krug studeni
 
 **Sažima:** T-S156-7, T-S158-5 (korak 1), T-S170-12.
 

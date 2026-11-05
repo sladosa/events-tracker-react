@@ -221,6 +221,27 @@ na TEST-u (= PROD 07.10.). **Nijedna ne miče saldo** (Tip/Podtip nisu u filtru 
 | T37 | **Intercar rate 2025. udvostručene?** (Kokin ZABA, Mastercard, N/A) | dvije „6/6" (30.09. 109,06 · 28.09. 109,02 — MC zadnja rata nosi ostatak ⇒ 109,02 je bankina), dvije „3/6" (29.05. „Intercar 3/6" · 28.06. „INTER CARS DOO RATA 3/6"), „4/6" nema; nađeno S169 u `razvrstaj_na --od 2024-01-01 --do 2025-09-30` | provjeriti protiv MC izvoda 2025-05…10 (plan iz appa + retci s izvoda?); saldo netaknut (kartica), ali Σ MC košare kriva — Saša, ne Koka |
 | T38 | **`Namjena` + čišćenje Tip/Podtip** (S176) — tri osi u dva polja: osoba u 14 Podtipova, `Projekti / Sasa` kao „Sašine stvari", preklapanja (Decathlon, Anja, `Kuća/Osiguranje`, `Sasa`/`Saša`) | izmjereno 20.10. na PROD-u: 36 od 136 trgovaca razvrstano na više načina; popis je uredan (0 siročadi) | ✅ **Koka se slaže (20.10.)**; ✅ **S180 (22.10.): na PROD-u** — 24 koraka, 6.066 promjena, saldo isti u cent, svaki redak ima Namjenu (op `e0c3de1f`, T-S180-2); `docs/PREUREDJIVANJE_SPEC.md` §8.2 (odluke), §20 |
 
+**Nalazi studenog kruga (S192, 05.11.2026.)** — prvi krug „ispita" (Visa, ZABA, MC izvod 10/2026). Sva tri
+zatvorena u cent bez ručnog slaganja uvoznog filea; trenje ispod. Popravci idu u sesiju održavanja, ne u krug.
+
+| # | što se dogodilo | smjer |
+| --- | --- | --- |
+| T39 | **Grantee u traci ne vidi usporedbu** — upiše iznos, traka nijema (T-S175-2 k2 ❌). `basketAction` traži datum (`no-date`), a polje datuma je samo za vlasnicu (`DueStrip.tsx:411`) | grantee: usporedba samo po iznosu (bez datuma), uz rečenicu „Potvrđuje vlasnica…" |
+| T40 | **Visa `cutoff:3:5` vjerojatno dan preširok** — kupnje od 03.10. (×2: 0,94 + 33,80 = razlika 34,74 košare 05.10.) i 03.11. (Rovinj 9,40) završile na SLJEDEĆEM izvodu; PBZ izdaje izvod 3. | izmjeriti povijest Visa kupnji od 2. i 3. u mjesecu ⇒ `cutoff:2:5` (samo config, Structure uvoz) |
+| T41 | **Visa alat: blizak iznos ne spari** kad je postojeći redak kandidat za dvije stavke izvoda (TEDI 10,85 ↔ 10,59 isti dan, uz Studenac 11,75 dva dana kasnije) | prednost „istog dana" i s druge strane (kao S161 za stranu izvoda) |
+| T42 | **„N older records (> 30 dana)" u pregledu uvoza pali svaki mjesec** — rate nose dan kupnje (Visa 7/37, MC 26/54); upozorenje koje uvijek pali se otkliče | ne brojati retke kojima se mijenja samo žig / `Status` / `Datum naplate` |
+| T43 | **Uvoz je spor: 42 retka 2–3 min** (MC 54 isto). Izmjereno F12: po retku `events` select + provjera + **jedan poziv po atributu** (204), sve redom, svaki 0,4–1,1 s | skupni upis (svi atributi u par poziva / RPC); na završnom ekranu ispisati **trajanje** (Sašina želja) |
+| T44 | Visa ispis kaže „ISPRAVCI (42)" i kad je 0 promjena | naslov broji samo stvarne ispravke (kozmetika) |
+| T45 | **`fill_from_izvod --zaba`:** (a) storno s izvoda („Kupovina … −0,10") nudi kao NOV redak umjesto da ga spari s povratom ±1 dan (bio bi duplikat); (b) dedup ne gleda Izvor — parking 01.11. 1,60 plaćen s ZABA (m-zaba) bio je upisan kao `Mastercard`, a alat ga je proglasio „već na listu" | (a) negativna isplata = uplata pri sparivanju; (b) „MOŽDA KRIVO MJESTO" kao Visa alat |
+| T46 | **Saldo na pločici je na zadnji dan FILTRA** — filtar ostao „Custom" (tražen redak 01.11.) ⇒ pločica izgleda kao danas, a nije | uz „Stanje po računu" čip „Custom · do X — vrati This Year" kad razdoblje nije zadano Aree (razred S172, ondje riješen samo za ↗ Košara) |
+| T47 | **Kupnje zadnjih dana prije zatvaranja izvoda** (MC 29.10. 30,12 i 30.10. 2,60) — izvod ih ne nosi, alat nudi `--brisi` | predložiti „pomakni u sljedeću košaru" (Datum naplate +1 mj); ovaj put ručno Edit → 11.12. |
+| T48 | **Traka upisuje skupnu naplatu BEZ Namjene** (Visa 1.751,12, 05.11.) — `dueConfirm`/`insertEntry` ne zovu `default_map` | ✅ odlučeno (Saša 05.11.): **zadano kroz isto pravilo** (`*` → Zajedničko) u `insertEntry.ts`, ne obavezno polje |
+| T49 | Izvodi su ovaj put stavljeni ravno u `izvodi\` (sirova imena), mimo Kokinog inboxa ⇒ razvrstač ih nije preimenovao | razvrstač i nad korijenom `izvodi\` (preimenovanje po sadržaju) |
+
+Usput (bez promjene koda): rujanski PDF-ovi su ostali u korijenu od S161 — pospremljeni; RF nema izvoda za
+listopad, pa je razlika 61,55 nađena usporedbom Delta sheeta s bankom (mirovina 2. stup 94,85 i naknada paketa
+11,00 neupisane, Keks 22 € knjižen 05.11., naknada plaćanja Vise 0,30).
+
 **Preneseno iz backloga (S158)** — puni tekst u §8
 
 | # | što | smjer / stanje |
@@ -279,7 +300,11 @@ brojke za taj mjesec, `docs/sessions/tests/S173_tests.md`)
 (Do S173 je ovdje stajao tok `uskladi_izvod.py` + ručni pregled `_filled`a, jer alat nije
 razlikovao ispravak od novog retka — T13–T16. Kontrola je sada u ispisu alata, ne u sheetu, T12.)
 
-**Visa (izvod ~3., dospijeće ~12.; Saša plaća ručno fotonalogom)** — izvedeno S161 (PBZVISA_2026-09)
+**Visa (izvod ~3., dospijeće ~12.; Saša plaća ručno fotonalogom)** — izvedeno S161 (PBZVISA_2026-09); od S192
+(10/2026) s trakom: **iznos = „Novi saldo" s izvoda, NE Σ trake** (traka ne zna kupnje koje nitko nije upisao ni rate
+starih planova — 05.11.: traka 1.526,07, izvod 1.751,12). Poslije plaćanja **Koka u traci** „Ne — iznos ili dan je
+drukčiji" → izvodni iznos i dan → „Upiši naplatu kako ju je banka skinula" (košara ostaje „neusklađeno" do uvoza);
+tada alat javi `RF naplata … ✓ već upisana`. ⚠ Naknadu plaćanja (05.11.: 0,30) alat tada NE dodaje — upisati je.
 1. **Prvo platiti** (fotonalog s RF-a, iznos = „Novi saldo" s izvoda), pa **jednom** pokrenuti s danom plaćanja:
    `Financije\run.bat visa_uvoz_izvoda.py PBZVISA_YYYY-MM.pdf <dan plaćanja> --file`
    → Excel: ispravci (`Izvod opis`, `Datum naplate`, `Status → Izvrsen`, iznos s izvoda kad se

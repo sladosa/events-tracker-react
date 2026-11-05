@@ -1,78 +1,72 @@
-> Pisano protiv `a0efbf9` (S191: redoslijed slika) i commita koji nosi ovaj file (S191 zatvaranje). Ranije u S191:
-> `a5253bf` katalog (Name/Group/rotacija/rolanje) + odluke, `9ed4c29`…`ec59dae` popravci Viewa i „slično", `0721abd` slike iz kartice + `eventPhotos.ts`.
-> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 … S191, **nije deployano**.
-> **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187–S191 nemaju migraciju.
+> Pisano protiv `2f55653` (S192 prije puta: ✕ na sličici) i commita koji nosi ovaj file (S192 zatvaranje — studeni krug Financija).
+> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 … S192, **nije deployano**.
+> **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187–S192 nemaju migraciju.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S192) — preostali testovi koraka 5, Gibljivost, pa korak 6
+# Sljedeća sesija (S193) — sesija održavanja Financija: T39–T49
 
-> **Ukratko (S191):** Saša je prošao T-S190-1..4 (mobitel kroz F12) i usput našao pet sitnica koje su popravljene, a
-> slike se sada dodaju i iz kartice vježbe, kroz jednu funkciju za Add, Edit i katalog.
-
-> **Živi plan je tablica „Koraci" u `docs/TRENING_MIGRACIJA.md`** (odluke koraka 5 u „Korak 5 — odluke S190" i
-> „Katalog i gibljivost — odluke S191"). Ovaj file je samo stanje u letu.
+> **Ukratko (S192):** prvi mjesečni krug „ispita" — Visa, ZABA i MC izvod za listopad zatvoreni su u cent bez ručnog
+> slaganja uvoznog filea, RF je usklađen usporedbom s bankom, a jedanaest mjesta trenja zapisano je za sesiju održavanja.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (S191), sve na TEST-u
-- Tvoji testovi T-S190-1..4 i T-S191-1..4 su prošli.
-- **Katalog:** Name je iznad Sluga, Group je obavezan; Istezanje i Rotacija kralježnice (bivša „Mobilnost") su u Core;
-  Rolanje više nije vježba nego vrsta bloka „Oporavak" (uz korak 6).
-- **View:** dug opis se prelama; katalog nema datum; slika se otvara u pregledniku slika kao u Editu, a povlačenje po
-  slici lista slike (ne skače na drugu vježbu).
-- **„Slično u kategoriji"** gleda samo ime i slug — ne vrstu, skupinu ni opis.
-- **Slikaj spravu iz kartice:** izbornik → kartica → Uredi vježbu → „Add" (stražnja kamera na mobitelu) → Spremi.
-- Ako se slika ne spremi, app to sada **kaže** (prije je šutio — i u Addu i u Editu). Slike su svugdje redom kojim su dodane.
-- Puni automatski test: 102/103, a jedini pad je bio stvaran kvar (redoslijed slika) i popravljen je.
+## Gotovo (S192, 05.11.)
+- **Visa:** plaćeno 1.751,12; traka + alat + Kokin uvoz (5 novih, 37 ispravaka); obje Visa košare zatvorene.
+- **ZABA:** listopad u cent; razlika 1,60 bila je parking upisan kao Mastercard; sidro 10.529,31.
+- **MC:** svih 54 stavki izvoda spareno, uvezeno, ponovni prolaz 0/0. Dvije Kokine kupnje s kraja listopada idu na
+  prosinački izvod (naplata 11.12.).
+- **RF:** nađeno što je falilo (mirovina 2. stup, naknada paketa, naknada Vise, Keks na krivi dan) — 253,15.
+- Kod se u krugu nije mijenjao; sve trenje je zapisano kao **T39–T49** u `docs/FINANCIJE_PROCES.md` §4.
 
-## Što treba od tebe — redom (kad stigneš)
-1. **T-S191-5** (2 min, laptop): katalog → ⋮ → Edit `lat_raises` ⇒ „Slično" su samo leg_raises i calf_raises.
-2. **T-S191-6** (pravi mobitel: `npm run dev -- --host`, pa na mobitelu `http://192.168.1.8:5173`): slika sprave iz
-   kartice, brisanje ✕; usput slika u Addu i Editu bilo koje Aree. Pazi pojavljuje li se ✕ na sličici na dodir.
-3. **T-S190-5:** Structure export kataloga i `S190 Trening proba` — nove kolone; nepromijenjen uvoz = 0 promjena.
-4. **Gibljivost:** `npm run dev:prod` → filtar `Health_Sasa` → Structure → **Export** → file u `Claude-temp_R\`. Ja dodam
-   `Gibljivost` (3 testa, 5 brojki u cm), ti uvezeš i izmjeriš prvi put.
-5. Pospremi probne vježbe ako su ostale (`hand_lat_test`, `lat_raises_test`, stara `test`).
-6. Skica View-a (<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>) — treba prije koraka 6.
-7. **Studeni krug Financija (bez razvoja):** T-S175-1 MC ~02.–11.11., T-S175-2 Visa ~05.11., T-S175-3 ZABA_2026-10,
-   T-S181-3. To je ispit „Financije su dovoljno gotove".
+## Što treba od tebe / Koke
+1. **Kad Keks 22 € sjedne:** RF banka mora pokazati **253,15** ⇒ Koka potvrdi s ekrana (T-S192-1). Filtar This Year!
+2. **11.11., Koka:** traka MC — Σ **2.783,26** → dan → „Da, upiši" (zadnji korak T-S175-1).
+3. Odluka u S193: **deploy** — popravci appa (T39, T48, T43…) idu na PROD samo zajedno s trening radom S185–S191
+   (već testiran na TEST-u) i migracijama `059`/`060`.
 
-## Sljedeće (prijedlog)
-Popravci po T-S191-5/6, Gibljivost na PROD, pa **korak 6**: model `Activity1` / `Gym` na TEST-u, forma serija
-(blok → serija → `red`, ⠿ povlačenje, „+ vježba"), vrsta bloka `Oporavak`, lista po treninzima, View po bloku.
-Uz korak 6: „vidljivo kad fali" (vježba bez opisa/slike) u kartici i popis nepotpunih vježbi.
+## Sljedeće (prijedlog redoslijeda za S193) — sve prije prosinačkog kruga (MC ~02.12., Visa ~03.12.)
+1. **T48** Namjena na retku koji upisuje traka (malo, odlučeno: kroz `default_map`).
+2. **T39** grantee u traci vidi usporedbu (malo).
+3. **T43** brži Excel uvoz + trajanje na završnom ekranu — najveći dobitak za Koku; prvo izmjeriti na TEST-u.
+4. **T45, T41, T47** alati (Python, bez deploya): storno i krivi Izvor u ZABA alatu, blizak iznos u Visa alatu,
+   „pomakni u sljedeću košaru" umjesto `--brisi`.
+5. **T40** izmjeriti Visa kupnje od 2./3. u mjesecu ⇒ `cutoff:2:5` (samo config) — mjerenje PROD-a pokrećeš ti.
+6. T42, T46, T44, T49 (sitnije).
+
+Trening (ostaje otvoreno iz S191): T-S191-5, T-S191-6 koraci 4–6, T-S190-5, Gibljivost (PROD Structure export
+`Health_Sasa`), skica View-a, pa korak 6.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Izvedeno (S191)
+## Izvedeno (S192)
 | Što | Gdje | Dokaz |
 | --- | --- | --- |
-| Katalog: ATTRS (Name prvi, Group obavezan), JSON (istezanje, rotacija_kicme, rolanje `Oporavak`) | `Trening/katalog.py` (`--pravila` suho/`--apply`, `S191_ZAPISI` mijenja samo zatečeno staro), `vjezbe_prijedlog.json` | TEST: drugi suhi prolaz 0 promjena |
-| View: dug tekst ispod naziva; bez datuma za Areu bez vremena; `PhotoLightbox` | `ViewDetailsPage.tsx`, `timelessArea.ts` (`isTimelessArea` i za Edit) | T-S191-1, -3, -4 ✅ |
-| Povlačenje stranice ne hvata `[data-no-page-swipe]` (preglednik, `PhotoCarousel`) | `useTouchSwipe.ts` | T-S191-4 2. krug ✅ |
-| „Slično": ključ + `unique.from` polje (bez izbornika i opisa) | `uniqueValue.ts` (`similarityInputs`, `isFreeTextRule`), `UniqueHint.tsx` | unit 43 (sabotaža pada); T-S191-2 ✅ |
-| **`eventPhotos.ts`** — jedini upload/brisanje slike; Add, Edit, kartica (`saveCatalogPhotos`) | `AddActivityPage`, `EditActivityPage`, `catalogOptions.ts`, `CatalogPickerField.tsx` | unit `eventPhotos` 17; E2E `S191_event_photos`, `S190_catalog_picker` kartica (sabotaže padaju) |
-| Slike `order(created_at, id)` na 4 čitanja | `useActivities`, `catalogOptions`, `activityViewCache`, `EditActivityPage` | puni E2E pad `S190 Lista` 1/2 ⇒ 5/5 |
+| ✕ na sličici vidljiv na dodiru | `PhotoGallery` (`2f55653`) | T-S191-6 k1–3 ✅, k4–6 ⬜ |
+| Studeni krug — samo podaci (Saša/Koka uvozi, Claude čitao PDF-ove i Excel lokalno) | PROD | T-S175-2/3 ✅, T-S175-1 A–C ✅, T-S181-3 ✅ |
+| Nalazi T39–T49, §5 Visa s trakom | `docs/FINANCIJE_PROCES.md` | — |
+
+## Što je izmjereno (ulaz za S193)
+- **T39:** `basketAction` vraća `none/no-date` bez datuma (`dueBaskets.ts:233`); datum polje samo `isOwner`
+  (`DueStrip.tsx:411`); `no-date` poruka i rečenica „Potvrđuje vlasnica" također iza `isOwner`/`act.kind`.
+- **T48:** `dueConfirm.ts` i `insertEntry.ts` ne spominju `default_map` (grep); pravilo živi u `importDefaults.ts`
+  (uvoz) i formi. Lijek u `insertEntry.ts` (svaki „redak iz appa"), test: traka upiše ⇒ Namjena Zajedničko.
+- **T43:** F12 na PROD-u: po retku `events?select=…` (~0,5 s), `events?id=eq…&select=id` (~0,4 s), pa
+  `event_attributes?id=eq.<uuid>` **po atributu** (204, 0,5–1,1 s), pa insert (201). Redom, s preflightom.
+  42 retka ≈ 2–3 min. Izmjeriti na TEST-u (kopija PROD-a) prije i poslije.
+- **T45:** `fill_from_izvod.py` ZABA dedup je skup `(datum, iznos)` bez Izvora i bez smjera (`:1494`); parser daje
+  storno kao `Isplata -0.1` (`enrich_from_izvoda.parse_zaba_racun`). Visa alat ima „MOŽDA KRIVO MJESTO" (korak 4).
+- **T41:** `visa_uvoz_izvoda.py` korak 3: `sum(... k[0] in kand[t2]) == 1` odbija kad je redak kandidat za dvije
+  stavke; prednost „istog dana" postoji samo sa strane izvoda.
+- **T40:** dokazi 03.10. (0,94 + 33,80) i 03.11. (9,40) na sljedećem izvodu; PBZ: „Sljedeći izvadak 03.12.".
 
 ## Otvoreno / zapamti
-- **Puni E2E 102/103** prije popravka redoslijeda; poslije su vrćeni samo specovi sa slikama (9/9). Jednom viđen pad
-  `S190_catalog_picker` „kartica" u paralelnoj trojci (uz `deleteAreaCascade … 409 attribute_definitions` u logu,
-  možda od drugog speca) — nije ponovljen u 13 pokretanja; artefakt prebrisan. Ako se vrati: uhvatiti `error-context.md`.
-- ✕ na sličici (`PhotoGallery`, `opacity-0 group-hover`) je pisan za miš — na dodiru provjeriti (T-S191-6 korak 5).
-- Brisanje cijelog eventa (Edit „obriši event", uvoz, Structure) briše `event_attachments` svojim putem, ne kroz
-  `eventPhotos.ts`; Edit pritom ne briše datoteke iz Storagea (staro, nedirnuto).
-- Gibljivost: file za PROD uvoz iz **PROD** exporta `Health_Sasa` (Claude ne čita PROD) — dodati L1 leaf `Gibljivost`,
-  5 `number` atributa (rame L/D, pretklon, gležanj L/D; cm; postupak u opisu), ništa drugo u fileu ne mijenjati.
-- Katalog na TEST-u ima 55 vježbi (+ Sašine probne). Na PROD ide app exportom nakon deploya.
-- Iz S190 i dalje: uređivanje kataloga iz kartice samo **vlasnik**; preimenovanje sluga u katalogu ne dira treninge;
-  `Save +` ne provjerava `unique`; probne Aree `S190 Trening proba` (Saša) i `S189 serije proba` (E2E račun,
-  `proba_serije.py --obrisi`) brisati kad korak 6 ima pravu Areu.
-- Deploy F2 + S187–S191 na PROD: `059`/`060` (Saša u SQL editoru, `backup_db` prije, `dump_schema --diff` poslije).
-- Kasnije: A4 „merge into" (`061`, uz prijevod poruka 058–060); slika po vrijednosti opcije (BACKLOG, poslije koraka 6).
-- Nepromijenjeno: 056 granica 4 dimenzije (Financije na njoj); klasifikator odbija i read-only PROD alate ⇒ PROD
-  mjerenja pokreće Saša.
+- Klasifikator i dalje blokira Claudeove PROD pozive (i read-only) ⇒ PROD alate pokreće Saša; PDF/Excel u
+  `izvodi\` i `Downloads\` Claude smije čitati lokalno (venv python, `-I` nije potreban — naši alati).
+- Visa naplata 1.751,12 (05.11., iz trake) nema Namjenu — popravit će je T48 + jednokratni Edit ili alat.
+- Iz S191: deploy F2 + S187–S192 (`059`/`060` u SQL editoru, `backup_db` prije, `dump_schema --diff` poslije);
+  `S190 Trening proba` i `S189 serije proba` brisati kad korak 6 ima pravu Areu.

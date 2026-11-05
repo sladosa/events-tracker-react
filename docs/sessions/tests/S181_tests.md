@@ -80,7 +80,7 @@ auto C5 → Koka. Retci obrisani, `kontrola.mjs` prije = poslije (saldo, Namjena
 redak ima Zajedničko, drugi Saša.
 **Pad:** nema retka u pregledu (stari bundle — Ctrl+Shift+R) ili je drugi redak dobio Zajedničko.
 
-## T-S181-3 ⬜ (studeni, uz T-S175-1..3) Namjena na retcima s izvoda
+## T-S181-3 ✅ (S192, 05.11.: ZABA ispis + Visa file 5/5 novih s Namjenom) Namjena na retcima s izvoda
 
 **Očekivano u ispisu** `fill_from_izvod` (bez `--dry` i s njim): redak
 `Namjena [PROD]: * → Zajedničko, auto C5 → Koka, auto Lacetti → Saša — upisuje se svakom novom retku po Tipu.`
