@@ -9724,6 +9724,19 @@ Sheet s 24 koraka (O5 osoba → Namjena za sve `_Koka/_Sasa`, `Projekti / Saša`
 - Commiti `5dd4c96`, `a51def4` na `test-branch`; **deploy (uz `ca7fa08`) čeka Sašu 25.10.**
   Testovi T-S181-2..4 (PROD poslije deploya / studeni).
 
+### PENDING sekcija S181 (arhivirana S192) — S181 — Excel roundtrip Financija s Namjenom (2026-10-24)
+
+Namjena u profilu iza Podtipa. Na TEST-u izmjereno: izvoz identičan staromu (osim položaja stupca), roundtrip `0 · 0`, promjena Namjene = 1 Modify bez pitanja o potvrđenom stanju, delta formule ispravne. Nađen BUG-S181-DEPNAME (dropdown Namjene nudi Podtipove) i popravljen na `test-branch`; alati za izvode i Excel uvoz upisuju zadanu Namjenu na nove retke. Deploy 25.10. (S182): T-S181-2 i T-S181-4 ✅; ostaje T-S181-3 (studeni).
+
+**Detalji testova:** [tests/S181_tests.md](../../Claude-temp_R/test-sessions/archive/S181_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S181-1 | PROD pod Kokom: Ctrl+Shift+R ⇒ Import Profile `Claude-temp_R\s181\c_profil_namjena.xlsx` kao `Kokin_format` ⇒ toast „12 hidden cols … + filter overrides", Namjena iza Podtipa; Claude potvrdi da se promijenio samo `export_profiles` | ✅ S181 (24.10., Saša pod Kokom) — očekivani toast; PROD čitanjem: promijenio se samo `export_profiles`, i PROD = TEST poslije u svih 8 ključeva |
+| T-S181-2 | PROD **poslije deploya**: Export `Kokin_format` (Download Excel) ⇒ u Excelu Namjena pod `Razno` nudi Zajedničko · Koka · Saša · Nena / Kućište (ne Podtipove), uz prazan Tip isto; Podtip pod `auto C5` nudi gorivo · leasing · popravci · registracija | ✅ S182 (25.10., Saša pod Kokom, Download Excel `Kokin_format`, 450 redaka) — Namjena pod `Razno` nudi 4 namjene, Podtip pod `auto C5` 4 podtipa; korak „prazan Tip" nije rađen ručno, čuva ga mjerenje S181 (`verify_dd.mjs`: uz prazan Tip 4 namjene) i `excelDependentRanges.test.mjs` |
+| T-S181-4 | PROD **poslije deploya**, uz prvi Excel uvoz s novim retkom: Namjena ostavljena prazna ⇒ pregled kaže „Zadano iz pravila …: Namjena N (…)", u appu redak ima tu Namjenu; redak s upisanom Namjenom ostaje kakav je | ✅ S182 (25.10., Saša pod svojim računom, RF delta) — pregled `2 New · 0 Modify · 15 Unchanged` + „Namjena 1 (Zajedničko 1)"; baza: Passport 39 → Zajedničko, naknada 2,54 (upisano Saša) → Saša |
+| T-S181-3 | Uz studeni krug (T-S175-1..3): `fill_from_izvod` ispiše `Namjena [PROD]: * → Zajedničko, auto C5 → Koka, auto Lacetti → Saša` i novi retci u `_filled` imaju Namjenu; `visa_uvoz_izvoda --file` isto (`Namjena novih redaka: …`) | ✅ S192 (05.11.) — `fill_from_izvod --zaba` ispisao točno taj redak; Visa file: 5/5 novih redaka s Namjenom (Šatrak `auto C5` → Koka), 0 od 42 praznih (pročitano openpyxl). MC bez novih redaka (0 · 54) ⇒ nije bilo što upisati |
+
 ## S182 — Dan testiranja deploya S181; Namjena ispod Podtipa (2026-10-25)
 [↑ Dnevnik](#Dnevnik)
 
