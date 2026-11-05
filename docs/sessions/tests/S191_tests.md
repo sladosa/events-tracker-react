@@ -93,3 +93,5 @@ do laptopa — radi **hotspot laptopa**: mobitel na `LENOVO-IDEAPAD3 4454`, pa `
 7. **S192:** koraci 1–3 ✅; ✕ je bio nevidljiv na dodiru (`opacity-0 group-hover`) ⇒ sada vidljiv bez miša
    (`[@media(hover:hover)]:opacity-0`). Ponoviti 4–6.
 8. **Pad:** slika se ne spremi a ništa ne piše; otvara se prednja kamera u kartici; ✕ se na dodir ne pojavljuje.
+9. **S192 (Saša):** koraci 4–6 tek **poslije deploya na PROD** — hotspot laptopa je prevelika gnjavaža. Na PROD-u
+   kataloga još nema: ✕ i regresija preko Edit slike u bilo kojoj Arei; kartica kataloga kad katalog stigne na PROD.

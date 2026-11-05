@@ -2,7 +2,50 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S192 (2026-11-05, studeni krug Financija: T-S175-2/3 ✅, T-S175-1 do trake 11.11., T-S181-3 ✅; nalazi T39–T49 u `FINANCIJE_PROCES.md` §4) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S192 (2026-11-05, studeni krug Financija: T-S175-2/3 ✅, T-S175-1 do trake 11.11., T-S181-3 ✅; nalazi T39–T50 u `FINANCIJE_PROCES.md` §4; nov blok „Na redu" i poglavlje „Posao") · povijest sesija: `DONE_HISTORY.md`
+
+---
+
+<!-- NA-REDU:BEGIN (generira audit_tests.py --write -- ne uredjivati rucno) -->
+
+## Na redu
+
+> Generirano iz tablica ispod (`python data-prep_tools/Tools/audit_tests.py --write`). Status se mijenja u tablici, nikad ovdje.
+
+**Testovi — čekaju datum ili događaj** (3)
+
+- **T-S192-1** — **čeka: Keks sjeo na RF (banka 253,15)** — RF sidro kad Keks 22 € sjedne: banka = pločica 253,15 ⇒ Koka „u banci" 253,15, ekran banke, … · _S192_
+- **T-S191-6** — **čeka: deploy na PROD (mobitel bez hotspota)** — Pravi mobitel: izbornik ⇒ kartica ⇒ Uredi vježbu ⇒ „Add" otvara STRAŽNJU kameru ⇒ slikaj ⇒ … · _S191_
+- **T-S175-1** — **čeka: 11.11. (Koka, traka MC Σ 2.783,26)** — ~02.11.–11.11. PROD: MC_2026-10 kroz fill_from_izvod --mc (15 rata + 4 naknade sparene, … · _S175_
+
+**Testovi — mogu odmah** (2)
+
+- **T-S191-5** — Katalog ⇒ Edit lat_raises (s opisom): „Slično“ više nije krugovi_ruke / carry / kosa_k_side … · _S191_
+- **T-S190-5** — Structure export: AddNote FALSE, Slug Unique = from: name, vjezba OptionsFrom; nepromijenjen … · _S190_
+
+**Posao (nije test)** (5)
+
+- **T-S174-3** — PROD: starija povijest s pravilima (nasljeđuje T-S169-7) — ZABA 257 / 70 (32 pravila), RF 384 … · _Posao_
+- **T-S174-5** — PROD, POSLIJE uvoza T-S174-3: Nenini retci — ispravi_tip ×2 … · _Posao_
+- **P-1** — Gibljivost: npm run dev:prod → filtar Health_Sasa → Structure → Export → file u Claude-temp_R\ … · _Posao_
+- **P-2** — Skica View-a treninga (<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>) — tvoje mišljenje … · _Posao_
+- **P-3** — Pospremi probne vježbe u katalogu na TEST-u: hand_lat_test, lat_raises_test, stara test (S191) · _Posao_
+
+<!-- NA-REDU:END -->
+
+---
+
+## Posao (nije test) — veće stvari koje čekaju tebe ili Koku
+
+Sati rada, ne provjera promjene; ostaje ovdje da se vidi (Saša, S192). Status u zadnjoj ćeliji, isto kao kod testova. `P-<n>` je posao bez testne sesije.
+
+| ID | Posao | Status |
+| --- | --- | --- |
+| T-S174-3 | PROD: starija povijest s pravilima (nasljeđuje T-S169-7) — ZABA 257 / 70 (32 pravila), RF 384 / 90 (61) ⇒ razvrstavanje ⇒ `--preuzmi` ⇒ uvoz pod Kokom, bez kutije potvrđenog stanja | ⬜ |
+| T-S174-5 | PROD, **POSLIJE uvoza T-S174-3**: Nenini retci — `ispravi_tip` ×2 (`Claude-temp_R/s174_pravila/nena_naredbe.ps1`) ⇒ Koka uvozi `0 · 36 · 0` (Transfer / Nena) i `0 · 5 · 0` (Razno / Nena's funds), saldo nepomaknut | ⬜ |
+| P-1 | **Gibljivost:** `npm run dev:prod` → filtar `Health_Sasa` → Structure → **Export** → file u `Claude-temp_R\` ⇒ Claude doda leaf `Gibljivost` (3 testa, 5 brojki u cm), ti uvezeš i izmjeriš prvi put (S191) | ⬜ |
+| P-2 | **Skica View-a treninga** (<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>) — tvoje mišljenje prije koraka 6 (S191) | ⬜ |
+| P-3 | Pospremi probne vježbe u katalogu na TEST-u: `hand_lat_test`, `lat_raises_test`, stara `test` (S191) | ⬜ |
 
 ---
 
@@ -14,7 +57,7 @@ Visa, ZABA i MC izvod 10/2026 zatvoreni u cent bez ručnog slaganja uvoznog file
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S192-1 | RF sidro kad Keks 22 € sjedne: banka = pločica **253,15** ⇒ Koka „u banci" 253,15, *ekran banke*, Potvrdi ⇒ saldo ostaje 253,15 | ⬜ |
+| T-S192-1 | RF sidro kad Keks 22 € sjedne: banka = pločica **253,15** ⇒ Koka „u banci" 253,15, *ekran banke*, Potvrdi ⇒ saldo ostaje 253,15 | ⬜ čeka: Keks sjeo na RF (banka 253,15) |
 
 ---
 
@@ -31,7 +74,7 @@ Uz T-S190: katalog (Name ispred Sluga, Group obavezan, istezanje / rotacija_kicm
 | T-S191-3 | View vježbe iz kataloga: nema retka s datumom ni vremena uz „Event #1“; Prev/Next u katalogu isto; View u `Financije_all` / `Fitness_Garmin` i dalje pokazuje datum i vrijeme | ✅ S191 (01.11., Saša) — katalog bez datuma i vremena, Prev/Next isto |
 | T-S191-4 | View s fotografijama: dodir na sličicu otvara preglednik slika kao u Editu (1 / 2, ‹ › / povlačenje, ✕), ne novu karticu preglednika; **povlačenje u pregledniku lista slike, ne mijenja vježbu**; Next na drugi zapis zatvara ga | ✅ S191 (01.11., Saša, F12 mobilni) — 1. krug pao (povlačenje skakalo na Prev/Next) ⇒ `data-no-page-swipe`; 2. krug: preglednik, povlačenje lista slike, vježba ostaje |
 | T-S191-5 | Katalog ⇒ Edit `lat_raises` (s opisom): „Slično“ više nije krugovi_ruke / carry / kosa_k_side (riječi opisa), nego vježbe sličnog imena (leg_raises, calf_raises — „Podizanje“) | ⬜ |
-| T-S191-6 | **Pravi mobitel:** izbornik ⇒ kartica ⇒ Uredi vježbu ⇒ „Add" otvara STRAŽNJU kameru ⇒ slikaj ⇒ Spremi ⇒ kartica pokazuje sliku; ✕ na slici + Spremi ⇒ nema je. Usput Add treninga (prednja kamera, kao prije) i Edit (galerija) spremaju sliku | ⬜ S192: koraci 1–3 ✅ (stražnja kamera, slika u katalogu, Odustani ne briše); ✕ na dodiru NEVIDLJIV (pogađao se slučajno, dodir sredine otvara povećanje) ⇒ popravljeno, ponoviti korake 4–6 |
+| T-S191-6 | **Pravi mobitel:** izbornik ⇒ kartica ⇒ Uredi vježbu ⇒ „Add" otvara STRAŽNJU kameru ⇒ slikaj ⇒ Spremi ⇒ kartica pokazuje sliku; ✕ na slici + Spremi ⇒ nema je. Usput Add treninga (prednja kamera, kao prije) i Edit (galerija) spremaju sliku | ⬜ čeka: deploy na PROD (mobitel bez hotspota) — na PROD-u ✕ i regresija preko Edit slike bilo koje Aree; kartica kataloga tek kad katalog stigne na PROD. S192: koraci 1–3 ✅ (stražnja kamera, slika u katalogu, Odustani ne briše); ✕ na dodiru NEVIDLJIV (pogađao se slučajno, dodir sredine otvara povećanje) ⇒ popravljeno, ponoviti korake 4–6 |
 
 ---
 
@@ -59,7 +102,7 @@ Testovi koji su čekali prvi mjesečni krug u studenom (MC, Visa, ZABA) iz osam 
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S175-1 | ~02.11.–11.11. PROD: MC_2026-10 kroz `fill_from_izvod --mc` (15 rata + 4 naknade sparene, KONTROLA ✓) ⇒ Koka uvozi `_filled` ⇒ ponovni prolaz 0/0 ⇒ 11.11. traka „pokaži kupnje" i Potvrdi; prvi MC plan „Zadnja rata…" | ⬜ S192 (05.11.): **A–C ✅** — 54/54 spareno, NOVI 0 (rate i naknade u ispravcima), Konzum 6/6 `~` 28,51 → 28,46; 2 Kokine kupnje 29./30.10. (30,12 + 2,60) nisu na izvodu ⇒ Datum naplate → 11.12. (ne `--brisi`, T47); uvoz 0 · 54 · 81, ponovni prolaz 0 · 0, KONTROLA ✓ 2.783,26. **Ostaje E (11.11., Koka):** traka MC Σ **2.783,26** → dan → Da, upiši. D (rata modal) nije se dogodio |
+| T-S175-1 | ~02.11.–11.11. PROD: MC_2026-10 kroz `fill_from_izvod --mc` (15 rata + 4 naknade sparene, KONTROLA ✓) ⇒ Koka uvozi `_filled` ⇒ ponovni prolaz 0/0 ⇒ 11.11. traka „pokaži kupnje" i Potvrdi; prvi MC plan „Zadnja rata…" | ⬜ čeka: 11.11. (Koka, traka MC Σ 2.783,26) — S192 (05.11.): **A–C ✅** — 54/54 spareno, NOVI 0 (rate i naknade u ispravcima), Konzum 6/6 `~` 28,51 → 28,46; 2 Kokine kupnje 29./30.10. (30,12 + 2,60) nisu na izvodu ⇒ Datum naplate → 11.12. (ne `--brisi`, T47); uvoz 0 · 54 · 81, ponovni prolaz 0 · 0, KONTROLA ✓ 2.783,26. **Ostaje E (11.11., Koka):** traka MC Σ **2.783,26** → dan → Da, upiši. D (rata modal) nije se dogodio |
 | T-S175-2 | ~03.–11.11. PROD: Visa košara u traci „(samo isplate)", Saša kao grantee vidi usporedbu bez gumba, Koka upiše naplatu, `visa_uvoz_izvoda` kaže „već upisana" i spari rate iz appa, ✓ u cent | ✅ S192 (05.11.) — k1, k3, k4 ✅: Koka „Ne — iznos…" 1.751,12 @ 05.11. (Σ trake 1.526,07); alat „RF naplata ✓ već upisana", Konzum 2/3 i Maxi Konzum 2/6 spareni, KONTROLA ✓; uvoz 5 · 37, ponovni 0 · 0, obje košare (05.10. razlika 34,74 = dvije kupnje od 03.10.) zatvorene. **k2 ❌** grantee ne vidi usporedbu ⇒ T39 (`FINANCIJE_PROCES.md` §4), test uz popravak |
 | T-S175-3 | ZABA_2026-10: `fill_from_izvod --zaba` imenom, presedani iz `ET_TARGET`, MC naplata 11.10. preskočena (nikad nov redak), „Σ kosare prosirena" uz `Potvrda`, `promet_check` 2026-10 ✓ | ✅ S192 (05.11.) — presedani `(prod, …)` bez `--presedan`; MC naplata 11.10. među „već na listu"; `promet_check` 2026-10 Δ 1,60 ⇒ parking 01.11. upisan kao `Mastercard` ⇒ Edit `Racun` ⇒ **0,00 / 40**; sidro s ekrana 10.529,31. Alat bi uveo storno KEKS kao duplikat i nije vidio krivi Izvor ⇒ T45; uvoz nije trebao. „Σ kosare prosirena" nije mjereno (ZABA i MC odvojeno) |
 | T-S175-4 | Pitanje Koki: od sredine listopada lista nikad bez iznosa i `+` uvijek iz prve? | ✅ S175 (19.10., Koka: „sve vidim ok") — nadiđeno upotrebom; zatvara i T-S168-4, T-S154-2 |
@@ -79,9 +122,7 @@ Uvoz više ne traži kvačicu „potvrđeno stanje" za razvrstavanje (samo banki
 | --- | --- | --- |
 | T-S174-1 | Guard pita samo za bankino polje (unit `importConfirmedBankFields`, 10 tvrdnji) | ✅ S174 — čuva automatski test (protuprovjera i sabotaža ruše 4) |
 | T-S174-2 | TEST lokalno: uvoz `na_razvrstavanje_kokin_tekuci_zaba_202401-202509_20261018_1628.xlsx` ⇒ 0 · 70 · 0, **bez** kutije „POTVRĐENOG stanja" (staro: 15); izmijenjen iznos jednog Racun retka ⇒ pita za 1 | ✅ S175 (19.10., Saša, TEST) — file s njegovim ručnim razvrstavanjem: `0 · 193 · 0` (+64 nepromijenjeno = 257; 70 prijedloga + ~123 ručno), **bez** kutije potvrđenog stanja; kopija s iznosom `Nena grijanje` 131,87→131,88 ⇒ kutija „1 redak je unutar POTVRĐENOG stanja" |
-| T-S174-3 | PROD: starija povijest s pravilima (nasljeđuje T-S169-7) — ZABA 257 / 70 (32 pravila), RF 384 / 90 (61) ⇒ razvrstavanje ⇒ `--preuzmi` ⇒ uvoz pod Kokom, bez kutije potvrđenog stanja | ⬜ |
 | T-S174-4 | Provjera unatrag po pravilu (PROD snimka): iz pravila 144/147 (98,0 %), 12 mj 54/56 | ✅ S174 — izmjereno (in-sample, v. detalje) |
-| T-S174-5 | PROD, **POSLIJE uvoza T-S174-3**: Nenini retci — `ispravi_tip` ×2 (`Claude-temp_R/s174_pravila/nena_naredbe.ps1`) ⇒ Koka uvozi `0 · 36 · 0` (Transfer / Nena) i `0 · 5 · 0` (Razno / Nena's funds), saldo nepomaknut | ⬜ |
 
 ---
 

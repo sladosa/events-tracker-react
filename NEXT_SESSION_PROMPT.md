@@ -22,10 +22,15 @@
 - Kod se u krugu nije mijenjao; sve trenje je zapisano kao **T39–T50** u `docs/FINANCIJE_PROCES.md` §4.
 
 ## Što treba od tebe / Koke
+**Sve otvoreno je na jednom mjestu: blok „Na redu" na vrhu `docs/sessions/PENDING_TESTS.md`** (novo, S192 —
+generira ga `audit_tests.py --write`; skupine *čeka datum/događaj*, *može odmah*, *Posao*). Ovdje samo ono hitno:
 1. **Kad Keks 22 € sjedne:** RF banka mora pokazati **253,15** ⇒ Koka potvrdi s ekrana (T-S192-1). Filtar This Year!
 2. **11.11., Koka:** traka MC — Σ **2.783,26** → dan → „Da, upiši" (zadnji korak T-S175-1).
-3. Odluka u S193: **deploy** — popravci appa (T39, T48, T43…) idu na PROD samo zajedno s trening radom S185–S191
-   (već testiran na TEST-u) i migracijama `059`/`060`.
+3. Odluka u S193: **deploy** — popravci appa (T39, T48, T43, T50…) idu na PROD samo zajedno s trening radom
+   S185–S192 (testiran na TEST-u) i migracijama `059`/`060`. ⚠ **T-S190-5 (Structure roundtrip novih kolona = 0
+   promjena) NIJE odrađen** — mora proći prije deploya (nove kolone dobiva i `Financije_all`); ako Saša nema
+   energije, Claude ga u S193 izvede sam (E2E/skripta nad TEST-om). T-S191-6 (mobitel) Saša radi tek na PROD-u
+   poslije deploya — hotspot je prevelika gnjavaža.
 
 ## Sljedeće (prijedlog redoslijeda za S193) — sve prije prosinačkog kruga (MC ~02.12., Visa ~03.12.)
 1. **T48** Namjena na retku koji upisuje traka (malo, odlučeno: kroz `default_map`).
@@ -36,8 +41,8 @@
 5. **T40** izmjeriti Visa kupnje od 2./3. u mjesecu ⇒ `cutoff:2:5` (samo config) — mjerenje PROD-a pokrećeš ti.
 6. **T50** (uvoz resetira datume a oznaka ostane This Year — razrez laže; malo) uz T46, pa T42, T44, T49 (sitnije).
 
-Trening (ostaje otvoreno iz S191): T-S191-5, T-S191-6 koraci 4–6, T-S190-5, Gibljivost (PROD Structure export
-`Health_Sasa`), skica View-a, pa korak 6.
+Trening (ostaje otvoreno iz S191, v. „Na redu"): T-S191-5, Gibljivost (P-1, PROD Structure export
+`Health_Sasa`), skica View-a (P-2), pa korak 6.
 
 ---
 

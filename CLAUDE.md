@@ -46,7 +46,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 2595 | [TypeScript known issue](<#TypeScript known issue>) |  |
 | 2603 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2767 redaka, 18 sekcija._
+_Ukupno 2771 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
@@ -2608,7 +2608,8 @@ does not block build. Ignore it.
 2. `git log --oneline -10` for recent context
 3. Read `NEXT_SESSION_PROMPT.md` — usporedi commit iz njegovog zaglavlja sa `git log`om;
    ako je stariji, tretiraj ga kao povijest (CLAUDE.md je autoritet)
-4. Read `docs/sessions/PENDING_TESTS.md` — check if user confirmed previous tests
+4. Read `docs/sessions/PENDING_TESTS.md` — check if user confirmed previous tests. Vrh filea je blok
+   **„Na redu"** (S192, Sašino „jedno jasno mjesto"): generiran iz tablica, skupine *čeka* / *odmah* / *Posao*
 
 ### During session
 - Screenshots: paste directly into chat
@@ -2628,8 +2629,11 @@ does not block build. Ignore it.
 1. **`docs/sessions/PENDING_TESTS.md`** — dodaj testove za sve novo; potvrđene označi ✅
 2. **`docs/sessions/tests/SXX_tests.md`** — detaljni koraci za SVAKI novi test
    (preduvjeti, numerirani koraci, očekivano vs. pad). Ažuriraj `Detalji testova:` link.
-3. **Arhiviranje (inače se ne dogodi):** ⚠ prvo `python data-prep_tools/Tools/audit_tests.py`
-   — ispisuje po session fileu koliko je testova ✅/⬜ i koji su **spremni za arhivu**.
+3. **Arhiviranje (inače se ne dogodi):** ⚠ prvo `python data-prep_tools/Tools/audit_tests.py --write`
+   — ispisuje po session fileu koliko je testova ✅/⬜ i koji su **spremni za arhivu**, i (`--write`)
+   prepiše blok **„Na redu"** na vrhu PENDING-a. ⚠ Blok se NE uređuje rukom (ručni popis ukinut S116 jer
+   se razilazio): test koji čeka datum/događaj nosi u statusu `⬜ čeka: <što>`; posao (sati, ne test) ide
+   u tablicu poglavlja `## Posao`, i smije imati ID `P-<n>`.
    Korak je bio preskočen **tri sesije zaredom** jer se kriterij „svi testovi ✅" nije dao
    primijeniti dok su postojala dva popisa koja se ne slažu (kurirani redak je propuštao
    60 testova). Sada se broji, ne procjenjuje.

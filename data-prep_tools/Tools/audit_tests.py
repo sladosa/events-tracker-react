@@ -239,6 +239,76 @@ else:
     print('  tablica kaze ⬜, a „Otvoreno:" ne navodi : %d  %s' % (len(only_tables), only_tables[:12]))
 
 
+# --- „Na redu": generirani popis otvorenog na vrhu PENDING-a (S192) ----------
+# Sasa (S192): „fali mi jedno jasno mjesto koje uvijek vidim". Rucni popis uz
+# tablice je ukinut u S116 jer se razilazio (propustao 60 testova) -- zato se ovaj
+# GENERIRA iz tablica i ne smije se uredjivati rukom. Skupine:
+#   - poglavlje `## Posao` (vise sati, nije test; ID smije biti i `P-<n>`)
+#   - status celija `⬜ čeka: <sto>` -- test ceka datum ili dogadjaj
+#   - ostalo -- test se moze izvesti odmah
+# /!\ Blok su obicni retci popisa, NE tablica: tablicni redak s ID-em bi gornji
+#     parser procitao kao status testa (dva retka za isti ID).
+NA_REDU_BEGIN = '<!-- NA-REDU:BEGIN (generira audit_tests.py --write -- ne uredjivati rucno) -->'
+NA_REDU_END = '<!-- NA-REDU:END -->'
+POSAO_ID = re.compile(r'^P-[0-9]+$')
+
+
+def kratko(text, n=95):
+    t = re.sub(r'[*`]', '', text).strip()
+    return t if len(t) <= n else t[:n].rsplit(' ', 1)[0] + ' …'
+
+
+def na_redu(md):
+    groups = {'ceka': [], 'odmah': [], 'posao': []}
+    head = ''
+    for line in md.splitlines():
+        if line.startswith('## '):
+            head = line[3:]
+            continue
+        if not line.startswith('|'):
+            continue
+        cells = [c.strip() for c in line.strip('|').split('|')]
+        if len(cells) < 3:
+            continue
+        ids = ids_in_cell(cells[0])
+        posao = head.startswith('Posao')
+        if not ids and posao and POSAO_ID.match(DECOR.sub('', cells[0]).strip()):
+            ids = [DECOR.sub('', cells[0]).strip()]
+        if not ids or chr(0x2B1C) not in cells[-1]:
+            continue
+        sec = 'Posao' if posao else head.split(' ')[0]
+        m = re.search(chr(0x2B1C) + r'\s*čeka:\s*([^—]+)', cells[-1])
+        what = kratko(cells[1])
+        key = 'posao' if posao else ('ceka' if m else 'odmah')
+        pre = ('**čeka: %s** — ' % m.group(1).strip()) if m and not posao else ''
+        groups[key].append('- **%s** — %s%s · _%s_' % (', '.join(ids), pre, what, sec))
+    out = [NA_REDU_BEGIN, '', '## Na redu', '',
+           '> Generirano iz tablica ispod (`python data-prep_tools/Tools/audit_tests.py --write`). '
+           'Status se mijenja u tablici, nikad ovdje.', '']
+    for key, title in (('ceka', 'Testovi — čekaju datum ili događaj'),
+                       ('odmah', 'Testovi — mogu odmah'),
+                       ('posao', 'Posao (nije test)')):
+        out.append('**%s** (%d)' % (title, len(groups[key])))
+        out.append('')
+        out += groups[key] or ['- —']
+        out.append('')
+    out.append(NA_REDU_END)
+    return '\n'.join(out)
+
+
+if '--write' in sys.argv:
+    if NA_REDU_BEGIN not in pend or NA_REDU_END not in pend:
+        print()
+        print('/!\\ PENDING nema oznake NA-REDU -- blok „Na redu" NIJE zapisan.')
+    else:
+        a = pend.index(NA_REDU_BEGIN)
+        b = pend.index(NA_REDU_END) + len(NA_REDU_END)
+        new = pend[:a] + na_redu(pend) + pend[b:]
+        if new != pend:
+            io.open(PENDING, 'w', encoding='utf-8', newline='\n').write(new)
+        print()
+        print('zapisano: %s (blok „Na redu")' % PENDING)
+
 # --- linkovi -----------------------------------------------------------------
 # /!\ Arhiviranje PREMJESTA file, a link ostaje -- pa se cita kao "tog dokaza
 #     vise nema", dok je dokaz na disku (S139). Ciscen rukom dvaput i vratio se
