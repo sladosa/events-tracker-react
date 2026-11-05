@@ -4,7 +4,7 @@
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S193) — sesija održavanja Financija: T39–T49
+# Sljedeća sesija (S193) — sesija održavanja Financija: T39–T50
 
 > **Ukratko (S192):** prvi mjesečni krug „ispita" — Visa, ZABA i MC izvod za listopad zatvoreni su u cent bez ručnog
 > slaganja uvoznog filea, RF je usklađen usporedbom s bankom, a jedanaest mjesta trenja zapisano je za sesiju održavanja.
@@ -34,7 +34,7 @@
 4. **T45, T41, T47** alati (Python, bez deploya): storno i krivi Izvor u ZABA alatu, blizak iznos u Visa alatu,
    „pomakni u sljedeću košaru" umjesto `--brisi`.
 5. **T40** izmjeriti Visa kupnje od 2./3. u mjesecu ⇒ `cutoff:2:5` (samo config) — mjerenje PROD-a pokrećeš ti.
-6. T42, T46, T44, T49 (sitnije).
+6. **T50** (uvoz resetira datume a oznaka ostane This Year — razrez laže; malo) uz T46, pa T42, T44, T49 (sitnije).
 
 Trening (ostaje otvoreno iz S191): T-S191-5, T-S191-6 koraci 4–6, T-S190-5, Gibljivost (PROD Structure export
 `Health_Sasa`), skica View-a, pa korak 6.
@@ -48,7 +48,7 @@ Trening (ostaje otvoreno iz S191): T-S191-5, T-S191-6 koraci 4–6, T-S190-5, Gi
 | --- | --- | --- |
 | ✕ na sličici vidljiv na dodiru | `PhotoGallery` (`2f55653`) | T-S191-6 k1–3 ✅, k4–6 ⬜ |
 | Studeni krug — samo podaci (Saša/Koka uvozi, Claude čitao PDF-ove i Excel lokalno) | PROD | T-S175-2/3 ✅, T-S175-1 A–C ✅, T-S181-3 ✅ |
-| Nalazi T39–T49, §5 Visa s trakom | `docs/FINANCIJE_PROCES.md` | — |
+| Nalazi T39–T50, §5 Visa s trakom | `docs/FINANCIJE_PROCES.md` | — |
 
 ## Što je izmjereno (ulaz za S193)
 - **T39:** `basketAction` vraća `none/no-date` bez datuma (`dueBaskets.ts:233`); datum polje samo `isOwner`

@@ -236,6 +236,7 @@ zatvorena u cent bez ručnog slaganja uvoznog filea; trenje ispod. Popravci idu 
 | T46 | **Saldo na pločici je na zadnji dan FILTRA** — filtar ostao „Custom" (tražen redak 01.11.) ⇒ pločica izgleda kao danas, a nije | uz „Stanje po računu" čip „Custom · do X — vrati This Year" kad razdoblje nije zadano Aree (razred S172, ondje riješen samo za ↗ Košara) |
 | T47 | **Kupnje zadnjih dana prije zatvaranja izvoda** (MC 29.10. 30,12 i 30.10. 2,60) — izvod ih ne nosi, alat nudi `--brisi` | predložiti „pomakni u sljedeću košaru" (Datum naplate +1 mj); ovaj put ručno Edit → 11.12. |
 | T48 | **Traka upisuje skupnu naplatu BEZ Namjene** (Visa 1.751,12, 05.11.) — `dueConfirm`/`insertEntry` ne zovu `default_map` | ✅ odlučeno (Saša 05.11.): **zadano kroz isto pravilo** (`*` → Zajedničko) u `insertEntry.ts`, ne obavezno polje |
+| T50 | **Nakon SVAKOG Excel uvoza filtar laže:** `AppHome.tsx:1609` (`onSuccess`, „UX-3") radi `setDateRange(null, null)`, a `periodKey`/oznaka ostanu „This Year" ⇒ `userModified` ⇒ auto-init se ne vrati. Sažetak kaže This Year, datumi prazni (All Time), razrez računa cijelu povijest (Saša 05.11., nakon 4 uvoza) | prijedlog: uvoz NE dira razdoblje (zadano Aree postoji od S166); alternativa: All Time + ispravna oznaka. Isti razred kao T46 |
 | T49 | Izvodi su ovaj put stavljeni ravno u `izvodi\` (sirova imena), mimo Kokinog inboxa ⇒ razvrstač ih nije preimenovao | razvrstač i nad korijenom `izvodi\` (preimenovanje po sadržaju) |
 
 Usput (bez promjene koda): rujanski PDF-ovi su ostali u korijenu od S161 — pospremljeni; RF nema izvoda za
