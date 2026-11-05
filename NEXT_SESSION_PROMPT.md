@@ -4,7 +4,11 @@
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S194) — poslije deploya: alati Financija (T45, T41, T47) i sitnice, prije prosinačkog kruga
+# Sljedeća sesija (S194) — prvo Saša pregleda S193 i odluči o deployu; zatim alati Financija (T45, T41, T47) i sitnice
+
+**Početak S194 (Saša, 05.11.):** *„idem vidjet što je napravljeno"* ⇒ prvo kratak pregled S193 za Sašu (što se
+promijenilo, kako to vidi u appu na TEST-u: `npm run dev`), odgovori na pitanja, pa deploy po koracima niže ako
+kaže da. Tek onda posao S194.
 
 > **Ukratko (S193):** četiri trenja studenog kruga popravljena na test-branch (T48, T39, T50, T43 — uvoz 42 ispravka
 > na TEST-u s više od 300 s na 11 s), T-S190-5 izveden bez Saše i usput našao kvar u Structure uvozu, a deploy je

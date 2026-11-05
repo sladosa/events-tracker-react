@@ -16,6 +16,11 @@
    Postavke postojeće area mijenjaš namjerno: Structure tab → Import.
 4. Ako fajl sadrži tuđe evente (User email kolona) → odaberi jedan od tri načina
 5. Pregled: identični eventi = sivi (skipped), izmijenjeni = žuti (update), novi = zeleni
+6. Nakon uvoza završni ekran kaže koliko je uvoz **trajao**. Ispravak upisuje samo polja koja su se
+   promijenila, pa 40-ak ispravaka traje desetak sekundi. Ako se neko polje nije dalo upisati, crveni
+   okvir to imenuje (redak i polje) — ništa se ne prešućuje.
+7. Uvoz **ne mijenja razdoblje filtra**: ostaje ono koje je bilo (npr. This Year). Uvezeni redak izvan
+   razdoblja vidiš kad promijeniš razdoblje.
 
 ### Tuđi retci — tri načina
 - **Skip** (zadano, sigurno): tuđi retci se preskaču

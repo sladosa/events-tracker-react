@@ -31,22 +31,22 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 | 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
 | 156 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
 | 169 | [Critical rules](<#Critical rules>) | X |
-| 1481 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1959 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1975 | [Key files](<#Key files>) |  |
-| 2147 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2167 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2190 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2219 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2259 | [Open bugs](<#Open bugs>) | ~ |
-| 2376 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2421 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2583 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2591 | [Backlog](<#Backlog>) | ~ |
-| 2595 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2603 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 1492 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1970 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 1986 | [Key files](<#Key files>) |  |
+| 2158 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2178 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2201 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2230 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2270 | [Open bugs](<#Open bugs>) | ~ |
+| 2387 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2432 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2594 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2602 | [Backlog](<#Backlog>) | ~ |
+| 2606 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2614 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2771 redaka, 18 sekcija._
+_Ukupno 2782 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
