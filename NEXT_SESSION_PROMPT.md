@@ -1,77 +1,98 @@
-> Pisano protiv `2f55653` (S192 prije puta: ✕ na sličici) i commita koji nosi ovaj file (S192 zatvaranje — studeni krug Financija).
-> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 … S192, **nije deployano**.
-> **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187–S192 nemaju migraciju.
+> Pisano protiv `cd9e439` (S193, puni E2E) i commita koji nosi ovaj file (S193 zatvaranje).
+> **Stanje:** `main` = `f903401` (S183 kod, PROD od 26.10.); `test-branch` = `main` + S185 … S193, **nije deployano**.
+> **Baze:** `058` je na PROD-u (od 22.10., S180); `059` i `060` su samo na **TEST-u**. S187–S193 nemaju migraciju.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S193) — sesija održavanja Financija: T39–T50
+# Sljedeća sesija (S194) — poslije deploya: alati Financija (T45, T41, T47) i sitnice, prije prosinačkog kruga
 
-> **Ukratko (S192):** prvi mjesečni krug „ispita" — Visa, ZABA i MC izvod za listopad zatvoreni su u cent bez ručnog
-> slaganja uvoznog filea, RF je usklađen usporedbom s bankom, a jedanaest mjesta trenja zapisano je za sesiju održavanja.
+> **Ukratko (S193):** četiri trenja studenog kruga popravljena na test-branch (T48, T39, T50, T43 — uvoz 42 ispravka
+> na TEST-u s više od 300 s na 11 s), T-S190-5 izveden bez Saše i usput našao kvar u Structure uvozu, a deploy je
+> spreman za odluku.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (S192, 05.11.)
-- **Visa:** plaćeno 1.751,12; traka + alat + Kokin uvoz (5 novih, 37 ispravaka); obje Visa košare zatvorene.
-- **ZABA:** listopad u cent; razlika 1,60 bila je parking upisan kao Mastercard; sidro 10.529,31.
-- **MC:** svih 54 stavki izvoda spareno, uvezeno, ponovni prolaz 0/0. Dvije Kokine kupnje s kraja listopada idu na
-  prosinački izvod (naplata 11.12.).
-- **RF:** nađeno što je falilo (mirovina 2. stup, naknada paketa, naknada Vise, Keks na krivi dan) — 253,15.
-- Kod se u krugu nije mijenjao; sve trenje je zapisano kao **T39–T50** u `docs/FINANCIJE_PROCES.md` §4.
+## Gotovo (S193, 05.11.)
+- **Traka upisuje Namjenu** (T48): skupni redak dobiva „Zajedničko" kao forma i uvoz.
+- **Ti kao grantee u traci vidiš usporedbu** (T39): upišeš iznos ⇒ „✓ slaže se" ili razlika.
+- **Uvoz više ne briše datume filtra** (T50).
+- **Excel uvoz ispravaka je brz** (T43): 42 retka na TEST-u **11 s** (prije više od 5 min); završni ekran kaže
+  „Trajanje". Usput: stari uvoz je **prešućivao** grešku upisa pojedinog polja — sada je kaže.
+- **T-S190-5 izveden umjesto tebe** (Structure roundtrip, i za `Financije_all`): baza nepromijenjena. Usput nađen i
+  popravljen kvar: uvoz je razdjelnik kolone liste `" + "` pretvarao u `"+"`.
+- **Puni E2E (106):** 97 u prvom prolazu; 9 palih bilo je zagušenje TEST baze — svi prolaze ponovljeno.
 
-## Što treba od tebe / Koke
-**Sve otvoreno je na jednom mjestu: blok „Na redu" na vrhu `docs/sessions/PENDING_TESTS.md`** (novo, S192 —
-generira ga `audit_tests.py --write`; skupine *čeka datum/događaj*, *može odmah*, *Posao*). Ovdje samo ono hitno:
-1. **Kad Keks 22 € sjedne:** RF banka mora pokazati **253,15** ⇒ Koka potvrdi s ekrana (T-S192-1). Filtar This Year!
-2. **11.11., Koka:** traka MC — Σ **2.783,26** → dan → „Da, upiši" (zadnji korak T-S175-1).
-3. Odluka u S193: **deploy** — popravci appa (T39, T48, T43, T50…) idu na PROD samo zajedno s trening radom
-   S185–S192 (testiran na TEST-u) i migracijama `059`/`060`. ⚠ **T-S190-5 (Structure roundtrip novih kolona = 0
-   promjena) NIJE odrađen** — mora proći prije deploya (nove kolone dobiva i `Financije_all`); ako Saša nema
-   energije, Claude ga u S193 izvede sam (E2E/skripta nad TEST-om). T-S191-6 (mobitel) Saša radi tek na PROD-u
-   poslije deploya — hotspot je prevelika gnjavaža.
+## Odluka: DEPLOY — preporuka DA, prije 11.11.
+Zašto prije 11.11.: Kokina MC traka (Σ 2.783,26) tada već upisuje Namjenu, a ti vidiš usporedbu — to su ujedno
+testovi T-S193-1/2, bez posebnog sjedenja. Prosinački krug (MC ~02.12., Visa ~03.12.) dobiva brz uvoz.
+Što još ide s deployem: trening rad S185–S192 (Koki se forma Financija ne mijenja — izmjereno: `Financije_all` nema
+`default_value`; slobodna tekstualna polja postaju polje koje raste) i migracije `059`/`060` (samo tvoj alat
+preuređivanja atributa).
 
-## Sljedeće (prijedlog redoslijeda za S193) — sve prije prosinačkog kruga (MC ~02.12., Visa ~03.12.)
-1. **T48** Namjena na retku koji upisuje traka (malo, odlučeno: kroz `default_map`).
-2. **T39** grantee u traci vidi usporedbu (malo).
-3. **T43** brži Excel uvoz + trajanje na završnom ekranu — najveći dobitak za Koku; prvo izmjeriti na TEST-u.
-4. **T45, T41, T47** alati (Python, bez deploya): storno i krivi Izvor u ZABA alatu, blizak iznos u Visa alatu,
-   „pomakni u sljedeću košaru" umjesto `--brisi`.
-5. **T40** izmjeriti Visa kupnje od 2./3. u mjesecu ⇒ `cutoff:2:5` (samo config) — mjerenje PROD-a pokrećeš ti.
-6. **T50** (uvoz resetira datume a oznaka ostane This Year — razrez laže; malo) uz T46, pa T42, T44, T49 (sitnije).
+**Koraci (ti, PowerShell, ovim redom):**
+1. Backup PROD-a (iz `data-prep_tools`):
+   ```powershell
+   Tools\run.bat Tools\backup_db.py --env prod
+   ```
+2. Supabase **SQL editor PROD**: pokreni sadržaj `sql/059_restructure_values.sql`, pa `sql/060_restructure_retype.sql`
+   (oba idempotentna, ovise o `058` koji je na PROD-u).
+3. Merge i push (iz korijena repoa):
+   ```powershell
+   git checkout main
+   if ($?) { git merge test-branch --no-edit }
+   if ($?) { git push origin main }
+   git checkout test-branch
+   if ($?) { git merge main --no-edit }
+   if ($?) { git push origin test-branch }
+   ```
+4. Kad Netlify završi: **Ctrl+Shift+R** kod tebe, i reci Koki da i ona osvježi (stari bundle, S118).
+5. Shema u git (iz `data-prep_tools`): `Tools\run.bat Tools\dump_schema.py --env prod --diff` — javi mi ispis.
 
-Trening (ostaje otvoreno iz S191, v. „Na redu"): T-S191-5, Gibljivost (P-1, PROD Structure export
-`Health_Sasa`), skica View-a (P-2), pa korak 6.
+## Što treba od tebe / Koke (sve otvoreno: blok „Na redu" u `docs/sessions/PENDING_TESTS.md`)
+1. **11.11., Koka:** traka MC → „Da, upiši" (T-S175-1 zadnji korak) ⇒ u Editu novog retka Namjena = Zajedničko (T-S193-1).
+   Ti prije nje u traci upiši 2783,26 ⇒ „✓ slaže se" (T-S193-2).
+2. **Prvi Kokin Excel uvoz poslije deploya:** pogledaj „Trajanje" i da filtar ostane This Year (T-S193-3).
+3. Keks na RF ⇒ sidro 253,15 (T-S192-1); mobitel s kamerom tek na PROD-u (T-S191-6).
+4. **T40** (Visa `cutoff:3:5` dan preširok): mjerenje PROD-a pokrećeš ti — naredbu dam u S194.
+
+## Sljedeće (S194) — sve prije prosinačkog kruga
+1. **T45** `fill_from_izvod --zaba`: storno („−0,10") sparivati s povratom ±1 dan; dedup bez Izvora ⇒ „MOŽDA KRIVO MJESTO".
+2. **T41** Visa alat: prednost „istog dana" i sa strane retka u bazi (TEDI 10,85 ↔ 10,59).
+3. **T47** kupnje zadnjih dana prije zatvaranja izvoda ⇒ predložiti „pomakni u sljedeću košaru" umjesto `--brisi`.
+4. **T40** mjerenje (ti) ⇒ eventualno `cutoff:2:5` (samo config).
+5. Sitnice: **T46** (čip „Custom · do X" na pločici salda), **T42** („older records" ne broji samo žig/Status/Datum
+   naplate), **T44** (Visa „ISPRAVCI (n)" broji stvarne), **T49** (razvrstač i nad korijenom `izvodi\`).
+6. Moguće: **uvoz NOVIH redaka** (MC/Visa) — provjera kolizija u pregledu ide upit po sesiji, redom; izmjeriti kao T43.
+
+Trening (iz S191): T-S191-5, Gibljivost (P-1), skica View-a (P-2), pa korak 6.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Izvedeno (S192)
+## Izvedeno (S193)
 | Što | Gdje | Dokaz |
 | --- | --- | --- |
-| ✕ na sličici vidljiv na dodiru | `PhotoGallery` (`2f55653`) | T-S191-6 k1–3 ✅, k4–6 ⬜ |
-| Studeni krug — samo podaci (Saša/Koka uvozi, Claude čitao PDF-ove i Excel lokalno) | PROD | T-S175-2/3 ✅, T-S175-1 A–C ✅, T-S181-3 ✅ |
-| Nalazi T39–T50, §5 Visa s trakom | `docs/FINANCIJE_PROCES.md` | — |
+| T48 traka + `default_map` | `resolveDefaultMaps` (`importDefaults.ts`), `createSettleRow` (`dueConfirm.ts`) | E2E `S193_due_settle_defaults` (prava košara), sabotaža pada |
+| T39 grantee usporedba | `basketAction({dateRequired})` (`dueBaskets.ts`), `DueStrip` | unit `dueSettle` +3, E2E `S168` grantee, sabotaža pada |
+| T50 | `AppHome` onSuccess bez `setDateRange` | E2E `S193_import_speed`, sabotaža pada |
+| T43 update put | `applyImportChanges` (`excelImport.ts`): samo promijenjeni, skupno čitanje, `UPDATE_POOL = 3`, greške; `ExcelImportModal` „Trajanje" | E2E `S193_import_speed`: 11 s / 103 poziva (sabotaža 124 s / 642) |
+| `Sep` se ne reže | `structureImport.ts` ListColumns | E2E `S119` (sabotaža pada) |
+| T-S190-5 | UI pod Sašinim TEST računom, snimka prije/poslije | `Claude-temp_R/s193/S193_tmp_structure_roundtrip.spec.ts` (izvan gita; ponovljiv) |
 
-## Što je izmjereno (ulaz za S193)
-- **T39:** `basketAction` vraća `none/no-date` bez datuma (`dueBaskets.ts:233`); datum polje samo `isOwner`
-  (`DueStrip.tsx:411`); `no-date` poruka i rečenica „Potvrđuje vlasnica" također iza `isOwner`/`act.kind`.
-- **T48:** `dueConfirm.ts` i `insertEntry.ts` ne spominju `default_map` (grep); pravilo živi u `importDefaults.ts`
-  (uvoz) i formi. Lijek u `insertEntry.ts` (svaki „redak iz appa"), test: traka upiše ⇒ Namjena Zajedničko.
-- **T43:** F12 na PROD-u: po retku `events?select=…` (~0,5 s), `events?id=eq…&select=id` (~0,4 s), pa
-  `event_attributes?id=eq.<uuid>` **po atributu** (204, 0,5–1,1 s), pa insert (201). Redom, s preflightom.
-  42 retka ≈ 2–3 min. Izmjeriti na TEST-u (kopija PROD-a) prije i poslije.
-- **T45:** `fill_from_izvod.py` ZABA dedup je skup `(datum, iznos)` bez Izvora i bez smjera (`:1494`); parser daje
-  storno kao `Isplata -0.1` (`enrich_from_izvoda.parse_zaba_racun`). Visa alat ima „MOŽDA KRIVO MJESTO" (korak 4).
-- **T41:** `visa_uvoz_izvoda.py` korak 3: `sum(... k[0] in kand[t2]) == 1` odbija kad je redak kandidat za dvije
-  stavke; prednost „istog dana" postoji samo sa strane izvoda.
-- **T40:** dokazi 03.10. (0,94 + 33,80) i 03.11. (9,40) na sljedećem izvodu; PBZ: „Sljedeći izvadak 03.12.".
+## Što je izmjereno (ulaz za S194)
+- **PATCH jednog `event_attributes`** kao vlasnik: 75–250 ms u bazi (TEST) — RLS „area owner" grana gradi hash svih
+  eventa Aree (15.495 za Sašin TEST). Pool 6 ⇒ `57014 statement timeout`; pool 1 = 62 s, pool 3 = 10–11 s (42 retka).
+  ⚠ Na PROD-u (free instanca, incident 2026-07-06) pool 3 nije izmjeren — T-S193-3 to pokaže.
+- **Puni E2E na TEST-u je na rubu:** pri kraju 50-min runa `statement timeout` već na seedu (S104, S162, S165, S175,
+  S190, S191, S193 pali, svi prolaze ponovljeno). Teške uvoze (S193_import_speed) ne vrtjeti neposredno prije punog runa.
+- **Create put uvoza (novi retci)** nije mjeren; `checkImportCollisions` ide upit po sesiji redom (+ upit slika).
 
 ## Otvoreno / zapamti
-- Klasifikator i dalje blokira Claudeove PROD pozive (i read-only) ⇒ PROD alate pokreće Saša; PDF/Excel u
-  `izvodi\` i `Downloads\` Claude smije čitati lokalno (venv python, `-I` nije potreban — naši alati).
-- Visa naplata 1.751,12 (05.11., iz trake) nema Namjenu — popravit će je T48 + jednokratni Edit ili alat.
-- Iz S191: deploy F2 + S187–S192 (`059`/`060` u SQL editoru, `backup_db` prije, `dump_schema --diff` poslije);
-  `S190 Trening proba` i `S189 serije proba` brisati kad korak 6 ima pravu Areu.
+- E2E global-setup svaki put pokuša obrisati `S189 serije proba` (pod E2E vlasnikom `eef0d779`) i ne uspije
+  (8.339 eventa, 46.921 atribut — izmjereno netaknuto; `.in()` s 1000 id-jeva vjerojatno pada na duljini URL-a).
+  Dodati je u `SEED_AREAS` ili preseliti dok korak 6 ne krene — inače jednom kad brisanje „uspije", proba nestaje.
+- Klasifikator i dalje blokira Claudeove PROD pozive ⇒ deploy, backup PROD-a i `dump_schema --env prod` radi Saša.
+- `S190 Trening proba` i `S189 serije proba` brisati kad korak 6 ima pravu Areu (iz S191).
