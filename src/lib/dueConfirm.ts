@@ -23,6 +23,7 @@ import { localYmd } from '@/lib/localDate';
 import { buildParentChainIds } from '@/lib/parentEventLoader';
 import { computeSetAttributeValue, findDefBySlug } from '@/lib/attributeRules';
 import { findFreeSessionStart, insertEntry, type EntryAttr } from '@/lib/insertEntry';
+import { defaultMapOf, resolveDefaultMaps, type DefaultMapRule } from '@/lib/importDefaults';
 import { VALUE_COLUMNS } from '@/lib/constants';
 import {
   SETTLE_WINDOW_DAYS, adoptChanges, basketSumCents, basketWindow, findSuspectSettleRows, matchSettleRow, settleValues,
@@ -334,7 +335,15 @@ async function createSettleRow(p: {
     if (v) derived[rule.target_slug] = v;
   }
 
-  const all = { ...bySlug, ...derived };
+  // T48 (S193): `default_map` kao forma i uvoz — Visa naplata 1.751,12 (05.11.)
+  //   upisana je BEZ Namjene, pa ju je razrez po Namjeni slao u nesvrstano.
+  //   Vrijednost iz configa i izvedena se ne diraju (pravilo puni samo prazno).
+  const defaultRules: DefaultMapRule[] = [];
+  for (const d of defs) {
+    const dm = defaultMapOf(d);
+    if (dm && d.slug) defaultRules.push({ key: d.slug, parentKey: dm.parentSlug, map: dm.map });
+  }
+  const all = resolveDefaultMaps<string | number>({ ...bySlug, ...derived }, defaultRules).values;
   const attrs: EntryAttr[] = [];
   for (const [slug, value] of Object.entries(all)) {
     const def = findDefBySlug(defs, slug);

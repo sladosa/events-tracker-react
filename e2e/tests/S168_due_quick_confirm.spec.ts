@@ -17,9 +17,10 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { loginAsOwner, supabasePost, deleteAreaCascade } from '../fixtures/auth';
+import { loginAsOwner, loginAsUserB, supabasePost, supabaseUpsert, supabaseDelete, deleteAreaCascade } from '../fixtures/auth';
 
 const OWNER_ID = 'eef0d779-05ee-4f79-9524-78589701a861';
+const USERB_ID = '93b96e77-5c82-47ef-b0ba-011dc399cc4d';
 const DOW = ['ned', 'pon', 'uto', 'sri', 'čet', 'pet', 'sub'];
 
 const ymd = (d: Date) =>
@@ -85,7 +86,10 @@ test.describe('S168 — D7: traka pita, ne traži tipkanje', () => {
   });
 
   test.afterEach(async ({ page }) => {
-    if (areaId) await deleteAreaCascade(page, areaId);
+    if (areaId) {
+      await supabaseDelete(page, 'data_shares', { owner_id: OWNER_ID, grantee_id: USERB_ID, target_id: areaId });
+      await deleteAreaCascade(page, areaId);
+    }
   });
 
   test('pitanje → dan → sažetak; „drukčije" otvara prazna polja', async ({ page }) => {
@@ -149,5 +153,37 @@ test.describe('S168 — D7: traka pita, ne traži tipkanje', () => {
     await expect(page.getByRole('button', { name: label(dayMinus2), exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: label(today), exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: label(dayMinus3), exact: true })).toHaveCount(0);
+  });
+
+  test('T39 (S193): grantee upiše iznos ⇒ usporedba bez dana, „Potvrđuje vlasnica"', async ({ page, browser }) => {
+    await supabaseUpsert(page, 'data_shares', {
+      owner_id: OWNER_ID, grantee_id: USERB_ID, share_type: 'area', target_id: areaId, permission: 'read',
+    }, 'owner_id,grantee_id,target_id,share_type');
+
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const g = await ctx.newPage();
+    try {
+      await loginAsUserB(g);
+      await mockDue(g);
+      await openOverview(g, areaId);
+
+      // Grantee ne dobiva pitanje s danima ni polje za dan — samo iznos.
+      const amount = g.getByPlaceholder('upiši s ekrana banke');
+      await expect(amount).toBeVisible({ timeout: 20_000 });
+      await expect(g.locator('input[type="date"][id^="due-d-"]')).toHaveCount(0);
+
+      // Do S193 traka je ovdje šutjela (`no-date`) — T-S175-2 k2.
+      await amount.fill('1189,34');
+      await expect(g.getByText('✓ slaže se')).toBeVisible();
+      await expect(g.getByText(/Potvrđuje vlasnica Aree/)).toBeVisible();
+      // Gumbi vlasnice (traka) — „Potvrdi" postoji i na pločici salda, pa se gleda unutar košare.
+      const card = g.locator('div.border-amber-200').filter({ hasText: 'naplata' });
+      await expect(card.getByRole('button', { name: /Da, upiši|^Potvrdi$|Upiši naplatu/ })).toHaveCount(0);
+
+      await amount.fill('1000');
+      await expect(g.getByText(/razlika/)).toBeVisible();
+    } finally {
+      await ctx.close();
+    }
   });
 });

@@ -19,6 +19,9 @@
  * ⚠ ISTO PRAVILO KAO FORMA: `default_map[vrijednost roditelja] ?? default_map['*']`
  *   (`useAttributeDefinitions.ts`). Prazan roditelj ⇒ `*`.
  *
+ * ⚠ Traka „Čeka potvrdu" (skupni redak, S193/T48) zove `resolveDefaultMaps` nad
+ *   slugovima — isto pravilo; prije toga je redak iz trake ostajao bez Namjene.
+ *
  * ⚠ Pregled uvoza i upis zovu OVU funkciju — dvije kopije uvjeta su prilika da se
  *   raziđu (razred `canUpdateExisting`, S125).
  */
@@ -30,20 +33,53 @@ export interface DefaultFill {
   count:    number;
 }
 
-interface DefaultMapRule {
-  def:        ExportAttrDef;
-  parentSlug: string;
-  map:        Record<string, string>;
+export interface DefaultMapRule {
+  /** Ključ atributa u mapi vrijednosti (`name` na uvozu, `slug` u traci). */
+  key:       string;
+  /** Ključ roditelja u ISTOJ mapi; `null` = roditelja nema u lancu ⇒ `*`. */
+  parentKey: string | null;
+  map:       Record<string, string>;
 }
 
-function ruleOf(def: ExportAttrDef): DefaultMapRule | null {
+/** `depends_on.default_map` atributa, ili `null` kad ga nema. */
+export function defaultMapOf(def: { validation_rules?: unknown }): { parentSlug: string; map: Record<string, string> } | null {
   const vr  = def.validation_rules as { depends_on?: { attribute_slug?: string; default_map?: Record<string, string> } } | null;
   const dep = vr?.depends_on;
   if (!dep?.attribute_slug || !dep.default_map || Object.keys(dep.default_map).length === 0) return null;
-  return { def, parentSlug: dep.attribute_slug, map: dep.default_map };
+  return { parentSlug: dep.attribute_slug, map: dep.default_map };
 }
 
 const isBlank = (v: unknown) => v == null || v === '';
+
+/**
+ * JEDINO pravilo `default_map` izvan forme — uvoz (S181) i traka (skupni redak,
+ * S193/T48): prazno polje dobiva `map[vrijednost roditelja] ?? map['*']`; prazan
+ * ili `_` roditelj ⇒ `*`. Popunjeno i `_` ostaju. Lanac (roditelj i sam dobije
+ * zadano) se razriješi u najviše `rules.length` prolaza.
+ * Vraća NOVU mapu i popis upisanog (`[]` = ništa).
+ */
+export function resolveDefaultMaps<V>(
+  values: Record<string, V>,
+  rules:  readonly DefaultMapRule[],
+): { values: Record<string, V | string>; filled: { key: string; value: string }[] } {
+  const out: Record<string, V | string> = { ...values };
+  const filled: { key: string; value: string }[] = [];
+  for (let pass = 0; pass < rules.length; pass++) {
+    let any = false;
+    for (const r of rules) {
+      if (!isBlank(out[r.key])) continue;
+      const pv  = r.parentKey ? out[r.parentKey] : null;
+      const key = pv == null || pv === '_' ? '' : String(pv);
+      const value = (key !== '' ? r.map[key] : undefined) ?? r.map['*'];
+      if (!value) continue;
+      out[r.key] = value;
+      filled.push({ key: r.key, value });
+      any = true;
+    }
+    if (!any) break;
+  }
+  return { values: out, filled };
+}
 
 /**
  * Vrati retke s upisanim zadanim vrijednostima i popis što je upisano.
@@ -64,33 +100,24 @@ export function fillDefaultMaps(
   const out = rows.map(row => {
     const cats = catsOf(row);
     if (!cats || cats.length === 0) return row;
-    const defs  = cats.flatMap(c => byCat.get(c) ?? []);
-    const rules = defs.map(ruleOf).filter((r): r is DefaultMapRule => r !== null);
-    if (rules.length === 0) return row;
+    const defs = cats.flatMap(c => byCat.get(c) ?? []);
     const nameBySlug = new Map(defs.filter(d => d.slug).map(d => [d.slug as string, d.name]));
-
-    const attrs = { ...row.attributes };
-    let changed = false;
-    // Lanac (roditelj i sam dobije zadano) se razriješi u najviše `rules.length` prolaza.
-    for (let pass = 0; pass < rules.length; pass++) {
-      let any = false;
-      for (const r of rules) {
-        if (!isBlank(attrs[r.def.name])) continue;
-        const parentName = nameBySlug.get(r.parentSlug);
-        const pv  = parentName ? attrs[parentName] : null;
-        const key = pv == null || pv === '_' ? '' : String(pv);
-        const value = (key !== '' ? r.map[key] : undefined) ?? r.map['*'];
-        if (!value) continue;
-        attrs[r.def.name] = value;
-        any = changed = true;
-        const k = `${r.def.name}\u0000${value}`;
-        const f = counts.get(k) ?? { attrName: r.def.name, value, count: 0 };
-        f.count++;
-        counts.set(k, f);
-      }
-      if (!any) break;
+    const rules: DefaultMapRule[] = [];
+    for (const d of defs) {
+      const dm = defaultMapOf(d);
+      if (dm) rules.push({ key: d.name, parentKey: nameBySlug.get(dm.parentSlug) ?? null, map: dm.map });
     }
-    return changed ? { ...row, attributes: attrs } : row;
+    if (rules.length === 0) return row;
+
+    const { values, filled } = resolveDefaultMaps(row.attributes, rules);
+    if (filled.length === 0) return row;
+    for (const { key, value } of filled) {
+      const k = `${key}\u0000${value}`;
+      const f = counts.get(k) ?? { attrName: key, value, count: 0 };
+      f.count++;
+      counts.set(k, f);
+    }
+    return { ...row, attributes: values as ParsedImportRow['attributes'] };
   });
 
   return { rows: out, fills: [...counts.values()] };

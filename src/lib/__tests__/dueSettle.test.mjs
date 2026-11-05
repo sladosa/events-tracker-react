@@ -98,6 +98,15 @@ ok('necitljivo => none/unreadable', basketAction({ ...base, bank: NaN }).reason 
 ok('nula => none/not-positive', basketAction({ ...base, bank: 0 }).reason === 'not-positive');
 ok('bez datuma => none/no-date (datum se ne pogadja, BUG-S115)', basketAction({ ...base, bankDate: null }).reason === 'no-date');
 ok('datum u buducnosti => none', basketAction({ ...base, bankDate: '2026-10-13' }).reason === 'date-future');
+// T39 (S193): grantee nema polje za dan ⇒ usporedba samo po iznosu (traka nije nijema)
+ok('grantee bez datuma, Σ = banka => confirm (usporedba)',
+   basketAction({ ...base, bankDate: null, dateRequired: false }).kind === 'confirm');
+{
+  const a = basketAction({ ...base, bankDate: null, dateRequired: false, bank: 881.08 });
+  ok('grantee bez datuma, Σ ≠ banka => record s razlikom', a.kind === 'record' && a.diffCents !== 0, JSON.stringify(a));
+}
+ok('grantee: upisan datum se i dalje provjerava (buducnost)',
+   basketAction({ ...base, bankDate: '2026-10-13', dateRequired: false }).reason === 'date-future');
 ok('datum 4 dana od dospijeca => none/date-far', basketAction({ ...base, bankDate: '2026-10-07', today: '2026-10-12' }).reason === 'date-far');
 ok('datum 3 dana od dospijeca => dopusten', basketAction({ ...base, bankDate: '2026-10-08', bank: 859.58 }).kind === 'confirm');
 {

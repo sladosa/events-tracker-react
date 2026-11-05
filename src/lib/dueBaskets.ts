@@ -222,6 +222,12 @@ export function basketAction(p: {
   windowDays?: number;
   /** Prozor košare (S170); ima prednost pred simetričnim `windowDays`. */
   window?: BasketWindow;
+  /**
+   * `false` = samo usporedba iznosa, bez dana (T39, S193): grantee ne upisuje
+   * ništa, pa nema ni polja za dan — tražiti ga značilo je nijemu traku.
+   * Upisan dan se i dalje provjerava. Zadano `true` (vlasnica upisuje redak).
+   */
+  dateRequired?: boolean;
 }): BasketAction {
   if (p.settle) {
     const diff = p.sumCents - p.settle.amountCents;
@@ -230,11 +236,14 @@ export function basketAction(p: {
   if (p.bank === null) return { kind: 'none', reason: 'no-bank' };
   if (!Number.isFinite(p.bank)) return { kind: 'none', reason: 'unreadable' };
   if (toCents(p.bank) <= 0) return { kind: 'none', reason: 'not-positive' };
-  if (!p.bankDate) return { kind: 'none', reason: 'no-date' };
-  if (p.bankDate > p.today) return { kind: 'none', reason: 'date-future' };
-  const w = p.window ?? { before: p.windowDays ?? SETTLE_WINDOW_DAYS, after: p.windowDays ?? SETTLE_WINDOW_DAYS, quickFrom: 0 };
-  if (!inBasketWindow(p.dueDate, p.bankDate, w)) {
-    return { kind: 'none', reason: 'date-far' };
+  if (!p.bankDate) {
+    if (p.dateRequired !== false) return { kind: 'none', reason: 'no-date' };
+  } else {
+    if (p.bankDate > p.today) return { kind: 'none', reason: 'date-future' };
+    const w = p.window ?? { before: p.windowDays ?? SETTLE_WINDOW_DAYS, after: p.windowDays ?? SETTLE_WINDOW_DAYS, quickFrom: 0 };
+    if (!inBasketWindow(p.dueDate, p.bankDate, w)) {
+      return { kind: 'none', reason: 'date-far' };
+    }
   }
   const diff = p.sumCents - toCents(p.bank);
   return diff === 0 ? { kind: 'confirm' } : { kind: 'record', diffCents: diff };

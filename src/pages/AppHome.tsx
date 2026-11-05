@@ -1403,7 +1403,7 @@ function StructureTabContent({ viewMode, isEditMode, refreshKey, onManageAccess,
 
 function ActivitiesView() {
   const nav = useNavigate();
-  const { filter, fullPathDisplay, isLeafCategory, setDateRange, filterOrphans, setFilterOrphans, isRestored } = useFilter();
+  const { filter, fullPathDisplay, isLeafCategory, filterOrphans, setFilterOrphans, isRestored } = useFilter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -1605,8 +1605,10 @@ function ActivitiesView() {
           onRefresh={() => setRefreshKey(prev => prev + 1)}
           onSuccess={() => {
             setShowImport(false);
-            // UX-3: reset date filter to All Time so newly imported events are visible
-            setDateRange(null, null);
+            // ⚠ T50 (S193): uvoz NE dira razdoblje. „UX-3" je ovdje brisao datume
+            //   (All Time), a `periodKey` i oznaka ostajali „This Year" — filtar je
+            //   tvrdio jedno a radio drugo, i razrez je tiho računao cijelu povijest
+            //   (Saša 05.11., nakon 4 uvoza). Zadano razdoblje Aree postoji od S166.
           }}
         />
         </Suspense>

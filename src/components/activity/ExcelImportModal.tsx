@@ -59,6 +59,13 @@ interface ParsePreview {
   warnings:       string[];
 }
 
+/** `8 s` / `2 min 05 s` — trajanje uvoza na završnom ekranu (T43). */
+function formatDuration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s} s`;
+  return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`;
+}
+
 export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportModalProps) {
   // Faza 4: guard mora znati KOJA su stanja potvrdjena, a to je per-Area i
   // per-racun (`balance_anchors`). Widget daje slug po kojem su sidra spremljena.
@@ -76,6 +83,9 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   );
 
   const [importState,   setImportState]   = useState<ImportState>('idle');
+  // T43 (S193): koliko je uvoz trajao — Saša i Koka žele vidjeti, i to je mjera
+  //   za sljedeći „uvoz je spor" (bez F12).
+  const [applyMs,       setApplyMs]       = useState<number | null>(null);
   const [selectedFile,  setSelectedFile]  = useState<File | null>(null);
   const [preview,       setPreview]       = useState<ParsePreview | null>(null);
   const [collisions,    setCollisions]    = useState<CollisionInfo[]>([]);
@@ -454,6 +464,8 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
     setImportState('applying');
     setErrors([]);
     setApplyProgress(null);
+    setApplyMs(null);
+    const startedAt = Date.now();
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -522,6 +534,7 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
         setReportError(String(err));
       }
 
+      setApplyMs(Date.now() - startedAt);
       setImportState('done');
       // Refresh the activities table immediately if anything was actually changed
       if (importResult.created > 0 || importResult.updated > 0 || importResult.deleted > 0) {
@@ -1207,6 +1220,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
               <div className="flex flex-col items-center gap-2 py-2">
                 <span className="text-5xl">✅</span>
                 <p className="text-lg font-semibold text-gray-800">Import successful!</p>
+                {applyMs != null && (
+                  <p className="text-xs text-gray-500" data-testid="import-duration">
+                    Trajanje: {formatDuration(applyMs)}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-3 grid-cols-2">

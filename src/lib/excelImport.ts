@@ -1601,7 +1601,37 @@ export async function applyImportChanges(
   }
 
   // Update leaf eventi per row (ima event_id)
+  //
+  // ⚠ T43 (S193): Kokin uvoz 42 ispravka trajao je 2–3 min (PROD), na TEST-u
+  //   37/42 za 300 s. Po retku: select + update + PATCH ZA SVAKI ATRIBUT, i one
+  //   koji se nisu promijenili (~16 poziva), sve redom. Sada: postojeći retci
+  //   se čitaju u skupinama (kao `analyzeUpdates`), pišu se SAMO atributi koje
+  //   `computeRowDiff` javlja kao promijenjene, i retci idu po UPDATE_POOL
+  //   paralelno. Mjeri E2E `S193_import_speed`.
+  const SELECT_EXISTING = 'id, user_id, category_id, event_date, session_start, comment, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)';
+  type ExistingFull = Omit<ExistingLeafEvent, 'event_attributes'> & { id: string; user_id: string; category_id: string;
+    event_attributes: (ExistingLeafEvent['event_attributes'][number] & { id: string })[] };
+  const prefetched = new Map<string, ExistingFull>();
+  const updateIds = [...new Set(toUpdate.map(r => r.event_id!).filter(Boolean))];
+  for (let i = 0; i < updateIds.length; i += 200) {
+    // Bez filtra po `user_id` (isti razlog kao `analyzeUpdates`); vlasništvo se
+    // provjerava u kodu niže, RLS ostaje druga brana.
+    const { data, error } = await supabase.from('events').select(SELECT_EXISTING).in('id', updateIds.slice(i, i + 200));
+    // ⚠ Palo čitanje NIJE „nema ih" (S121): bez snimke se čita po retku, kao prije.
+    if (error) break;
+    for (const e of (data ?? []) as ExistingFull[]) prefetched.set(e.id, e);
+  }
+
+  // Isti `event_id` više puta u fileu ⇒ ti retci idu REDOM, a svaki nakon prvog
+  // čita svježe stanje (snimka bi bila prije izmjene prethodnog retka).
+  const byEvent = new Map<string, ParsedImportRow[]>();
   for (const row of toUpdate) {
+    const k = row.event_id ?? `?${row._source_row}`;
+    if (!byEvent.has(k)) byEvent.set(k, []);
+    byEvent.get(k)!.push(row);
+  }
+
+  const updateOne = async (row: ParsedImportRow, useSnapshot: boolean): Promise<void> => {
     try {
       const eventId = row.event_id!;
 
@@ -1609,17 +1639,23 @@ export async function applyImportChanges(
       //   po `user_id` -- s tim filtrom redak se uopce ne nadje, a poruka bi
       //   glasila "not found", sto je neistina o pravima, ne o postojanju.
       const fixForeign = row._fixForeign === true;   // v. `canUpdateExisting`
-      let q = supabase
-        .from('events')
-        .select('id, user_id, category_id, event_date, session_start, comment, event_attributes(id, attribute_definition_id, value_text, value_number, value_datetime, value_boolean)')
-        .eq('id', eventId);
-      if (!fixForeign) q = q.eq('user_id', userId);
-      const { data: existing, error: existingErr } = await q.single();
+      let existing: ExistingFull | null = null;
+      let existingErr: { message: string } | null = null;
+      const snap = useSnapshot ? prefetched.get(eventId) : undefined;
+      if (snap) {
+        existing = fixForeign || snap.user_id === userId ? snap : null;
+      } else {
+        let q = supabase.from('events').select(SELECT_EXISTING).eq('id', eventId);
+        if (!fixForeign) q = q.eq('user_id', userId);
+        const res = await q.single();
+        existing = res.data as ExistingFull | null;
+        existingErr = res.error;
+      }
 
       if (existingErr || !existing) {
         errors.push(`Row ${row._source_row}: Event ${eventId} not found`
           + (existingErr ? ` (${existingErr.message})` : ''));
-        continue;
+        return;
       }
       // Atributi se pisu pod AUTOROM eventa, nikad pod onim tko ispravlja --
       // inace bi delete+reinsert prebacio i vrijednosti koje nitko nije dirao,
@@ -1632,8 +1668,9 @@ export async function applyImportChanges(
       const rowChanges    = computeRowDiff(existing as ExistingLeafEvent, row, attrByCatName, existingCatId);
       if (rowChanges.length === 0) {
         skipped++;
-        continue;
+        return;
       }
+      const changedFields = new Set(rowChanges.map(c => c.field));
 
       const ssParsed   = parseTimeStr(row.session_start) ?? { h: 9, m: 0, s: 0 };
       const sessionISO = toISO(row.event_date, ssParsed);
@@ -1669,20 +1706,22 @@ export async function applyImportChanges(
         errors.push(`Row ${row._source_row}: ispravak nije prihvacen`
           + (fixForeign ? ' (tudji redak — jesi li vlasnik ove Aree?)' : '')
           + (updErr ? ` – ${updErr.message}` : ''));
-        continue;
+        return;
       }
 
       // Update leaf atribute (samo atributi leaf kategorije)
       const existingAttrs = new Map<string, string>(
-        ((existing as { event_attributes: { id: string; attribute_definition_id: string }[] })
-          .event_attributes ?? [])
-          .map((ea: { id: string; attribute_definition_id: string }) => [ea.attribute_definition_id, ea.id])
+        (existing.event_attributes ?? []).map(ea => [ea.attribute_definition_id, ea.id]),
       );
 
       // Q3 (S104, Fable): batch novi atributi u 1 INSERT; postojeći se i dalje
       // update-aju pojedinačno (različiti WHERE targeti, nema shared upsert ključa).
+      // T43: samo atributi koje je `computeRowDiff` prijavio — ista pravila
+      //   (P3, `_`, kanonski datum), pa nepromijenjen atribut ne dobiva poziv.
       const attrsToInsert: Record<string, unknown>[] = [];
+      const failedAttrs: string[] = [];
       for (const [attrName, value] of Object.entries(row.attributes)) {
+        if (!changedFields.has(attrName)) continue;
         const def = attrByCatName.get(`${existingCatId}||${attrName}`);
         if (!def) continue;
 
@@ -1696,13 +1735,21 @@ export async function applyImportChanges(
             .update(attrData)
             .eq('id', existingAttrs.get(def.id)!);
           if (!fixForeign) au = au.eq('user_id', userId);
-          await au;
+          // ⚠ T43: do S193 je ovdje stajalo golo `await au;` — palo ili
+          //   RLS-odbijeno (0 redaka) ostajalo je bez traga, a redak se brojao
+          //   kao „Updated".
+          const { data: auRows, error: auErr } = await au.select('id');
+          if (auErr || !auRows || auRows.length === 0) failedAttrs.push(attrName + (auErr ? ` (${auErr.message})` : ''));
         } else if (!isClear) {
           attrsToInsert.push(attrData);
         }
       }
       if (attrsToInsert.length > 0) {
-        await supabase.from('event_attributes').insert(attrsToInsert);
+        const { error: insErr } = await supabase.from('event_attributes').insert(attrsToInsert);
+        if (insErr) failedAttrs.push(`${attrsToInsert.length} novih atributa (${insErr.message})`);
+      }
+      if (failedAttrs.length > 0) {
+        errors.push(`Row ${row._source_row}: redak ispravljen, ali NIJE upisano: ${failedAttrs.join(', ')}`);
       }
 
       updated++;
@@ -1717,7 +1764,25 @@ export async function applyImportChanges(
     } finally {
       reportProgress();
     }
-  }
+  };
+
+  // ⚠ 3, ne više: na TEST-u je 6 paralelnih dalo `statement timeout` na PATCH-u
+  //   atributa (RLS vlasnika Aree svaki put pretraži sve evente Aree, ~75–250 ms
+  //   u bazi), a PROD je free instanca koja se već gušila (2026-07-06).
+  //   Izmjereno E2E `S193_import_speed` (42 retka): 1 = 62 s, 3 = 10–11 s.
+  const UPDATE_POOL = 3;
+  const groups = [...byEvent.values()];
+  const firstUpdateOutcome = outcomes.length;
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(UPDATE_POOL, groups.length) }, async () => {
+    while (next < groups.length) {
+      const group = groups[next++];
+      for (let k = 0; k < group.length; k++) await updateOne(group[k], k === 0);
+    }
+  }));
+  // Paralelno ⇒ ishodi stižu bilo kojim redom; izvještaj ih čita redom filea.
+  const updOutcomes = outcomes.splice(firstUpdateOutcome).sort((a, b) => a.sourceRow - b.sourceRow);
+  outcomes.push(...updOutcomes);
 
   return { created, updated, skipped, errors, warnings, outcomes };
 }

@@ -268,6 +268,8 @@ export function DueStrip({ areaId, widget, isOwner, onSettled, onShowBasket }: P
           const act = basketAction({
             sumCents: sum, settle: match, bank, bankDate: bankDate || null,
             dueDate: row.due_date, today, window: win,
+            // T39: grantee nema polje za dan (ne upisuje) ⇒ usporedba samo po iznosu
+            dateRequired: isOwner,
           });
           const rowBusy = busy === key;
           const canAct = isOwner && st !== undefined && !isErr(st) && !loading && busy === null;
