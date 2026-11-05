@@ -8,7 +8,7 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 **Deploy:** Netlify (main branch only) — GitHub Actions runs typecheck + build on every push
 **Current dev branch:** `test-branch` (dev), `main` = PROD (Netlify deploya samo main)
 
-> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S192).
+> **Povijest po sesijama je u `docs/sessions/DONE_HISTORY.md`** (S1–S193).
 > ⚠ **Preseljeno iz `Claude-temp_R/` u S111** (2026-08-18). Razlog: `Claude-temp_R/` je u
 > `.gitignore` od 03.02.2026., pa je svaki praćeni session file bio **ručna iznimka** (`git add -f`)
 > — i iznimke su se radile neujednačeno (S108 unutra, S107u–y i S110 vani, `DONE_HISTORY` nikad).
@@ -652,6 +652,8 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   „replace" ponovo stvara) ostaje. ⚠ `set_attribute` (datum naplate) se na uvozu i dalje NE
   računa — razlog (Visa) je u `FAZA3_IMPORT_AUTOMATIKA.md`.
   ⚠ Nova Area s `default_map` ⇒ njen Excel uvoz ga primjenjuje SAM; to je namjera („kao forma").
+  ⚠ **S193 (T48): traka „Čeka potvrdu" zove ISTO pravilo** (`resolveDefaultMaps`, `importDefaults.ts`) nad
+  slugovima skupnog retka — do tada je Visa naplata 1.751,12 ušla bez Namjene. Novi „redak iz appa" ide kroz njega.
 
 **Kolone Activities liste (`settings.list_columns`)**
 
@@ -711,6 +713,9 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   `listColumns.ts`, S186). Izvoz je pisao ` | `, uvoz dijelio na golom `|` ⇒ svaki Structure roundtrip je ključ
   `:-|` raspolovio i kolona je za te retke pokazivala sirovu vrijednost — bez greške. ⚠ `TextOptions` i `DateMap`
   i dalje dijele na golom `|`: opcija s `|` se kroz Structure Excel ne da zapisati.
+- **⚠ `cellStr` u Structure uvozu REŽE RAZMAKE — ćelija čiji su razmaci podatak čita se sirovo** (S193, T-S190-5):
+  `Sep` `" + "` je roundtripom postajao `"+"`, pa se prikaz liste `Katalog vježbi` mijenjao bez poruke. Nađeno
+  usporedbom baze prije/poslije uvoza nepromijenjenog filea — brojači modala to ne vide. Čuva S119.
 - **`map` na `attr` koloni je rječnik kratica po VRIJEDNOSTI** (`Kokin tekući ZABA` →
   `ZABA`). Vrijednost koje u rječniku nema prikazuje se **cijela** — preimenovan račun
   time izgleda neskraćeno (**vidljivo**), nikad kao krivi račun (**nevidljivo**). Zato
@@ -951,6 +956,12 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   je slova pisao rukom i od umetanja `HiddenInAdd` (K) slao 12 stupaca krivo („O TextOptions",
   stvarno P). Sada `colOf(key)` iz `COLS`; čuva `structureHelpLetters.test.mjs`. Vrijedi za svaki
   tekst koji imenuje stupac Structure filea.
+- **⚠ UPDATE PUT UVOZA PIŠE SAMO ATRIBUTE KOJE `computeRowDiff` JAVI KAO PROMIJENJENE** (S193, T43). Do tada je
+  svaki ispravak slao PATCH za SVAKI atribut retka (~16 poziva po retku; Koka 42 retka = 2–3 min, TEST >300 s), i
+  **grešku tog PATCH-a gutao** (`await au;`) ⇒ odbijen ili prekinut upis brojao se kao „Updated". Sada: postojeći
+  retci se čitaju u skupinama, retci idu **po 3 paralelno** (6 je na TEST-u dalo `statement timeout` — RLS vlasnika
+  Aree svaki PATCH pretraži sve evente Aree, 75–250 ms u bazi), greška se kaže. Isti `event_id` dvaput ⇒ redom.
+  Čuva E2E `S193_import_speed` (42 retka: 11 s / 103 poziva; bez filtra 124 s / 642). Završni ekran nosi „Trajanje".
 - **Uvoz atributa kojeg Area nema se i dalje PRESKAČE, ali IMENUJE** (S160, `findDroppedAttributes`) —
   namjerno upozorenje, ne zabrana (stupac viška je legitiman). Za update retke je to **jedini**
   znak da je izmjena u tom stupcu ignorirana: pregled tada kaže „0 modify". Opcije: `docs/D3_UVOZ_TUDJEG_FILEA_SPEC.md`.

@@ -8,8 +8,8 @@ Active project state is in CLAUDE.md (repo root).
 ## Zadnje sesije
 
 - [S190 (2026-10-31)](<#S190 — Korak 5 treninga: katalog vježbi, jedinstven slug, izbornik iz druge Aree, slike u listi (2026-10-31)>) · r. 10056 — katalog vježbi kao Area na TEST-u, izbor vježbe iz njega (skupine, najčešće u 12 mj, kartica, uređivanje) i slike u listi — sve na `test-branch`, skica dogovorena prije koda.
-- [S191 (2026-11-01)](<#S191 — Testovi koraka 5: katalog dotjeran, View, slike sprave iz kartice, jedna funkcija za slike (2026-11-01)>) · r. 10080 — Saša je prošao T-S190-1..4 (mobitel kroz F12) i usput našao pet sitnica koje su popravljene, a slike se sada dodaju i iz kartice vježbe, kroz jednu funkciju za Add, Edit i katalog.
-- [S192 (2026-11-05)](<#S192 — Studeni krug Financija: Visa, ZABA i MC izvod zatvoreni u cent, nalazi T39–T49 (2026-11-05)>) · r. 10106 — prvi mjesečni krug „ispita" — Visa, ZABA i MC izvod za listopad zatvoreni su u cent bez ručnog slaganja uvoznog filea, RF je usklađen usporedbom s bankom, a jedanaest mjesta trenja zapisano je za sesiju održavanja.
+- [S191 (2026-11-01)](<#S191 — Testovi koraka 5: katalog dotjeran, View, slike sprave iz kartice, jedna funkcija za slike (2026-11-01)>) · r. 10094 — Saša je prošao T-S190-1..4 (mobitel kroz F12) i usput našao pet sitnica koje su popravljene, a slike se sada dodaju i iz kartice vježbe, kroz jednu funkciju za Add, Edit i katalog.
+- [S192 (2026-11-05)](<#S192 — Studeni krug Financija: Visa, ZABA i MC izvod zatvoreni u cent, nalazi T39–T49 (2026-11-05)>) · r. 10120 — prvi mjesečni krug „ispita" — Visa, ZABA i MC izvod za listopad zatvoreni su u cent bez ručnog slaganja uvoznog filea, RF je usklađen usporedbom s bankom, a jedanaest mjesta trenja zapisano je za sesiju održavanja.
 
 ## Dnevnik
 
@@ -126,8 +126,8 @@ Active project state is in CLAUDE.md (repo root).
 | [S188](<#S188 — T-S187-2 ✅; View panel sklapa razine; Restructure sheetovi na engleskom s primjerima (2026-10-29)>) | 2026-10-29 | pravilo vidljivosti je prošlo Sašin ručni test u panelu, formi i Excelu, View panel u Structure tabu sada sklapa razine (otvorena samo kliknuta), a sheet `Preuređivanje` se zove `Restructure options` i oba Restructure sheeta nose primjere u pravim stupcima. | 9945 |
 | [S189](<#S189 — Poruke preuređivanja na engleskom; mjerenje koraka 4 treninga, popravljeni izvoz i View/Edit (2026-10-30)>) | 2026-10-30 | poruke pregleda preuređivanja su na engleskom, format „jedan zapis = jedna serija" izmjeren je na 7.936 probnih serija i drži, a mjerenje je našlo i popravilo dva tiha kvara — izvoz je na granici stranice udvostručio i izgubio retke, a Edit je pri pomaku vremena obrisao vrijednosti iznad 1000 po treningu. | 10010 |
 | [S190](<#S190 — Korak 5 treninga: katalog vježbi, jedinstven slug, izbornik iz druge Aree, slike u listi (2026-10-31)>) | 2026-10-31 | katalog vježbi kao Area na TEST-u, izbor vježbe iz njega (skupine, najčešće u 12 mj, kartica, uređivanje) i slike u listi — sve na `test-branch`, skica dogovorena prije koda. | 10056 |
-| [S191](<#S191 — Testovi koraka 5: katalog dotjeran, View, slike sprave iz kartice, jedna funkcija za slike (2026-11-01)>) | 2026-11-01 | Saša je prošao T-S190-1..4 (mobitel kroz F12) i usput našao pet sitnica koje su popravljene, a slike se sada dodaju i iz kartice vježbe, kroz jednu funkciju za Add, Edit i katalog. | 10080 |
-| [S192](<#S192 — Studeni krug Financija: Visa, ZABA i MC izvod zatvoreni u cent, nalazi T39–T49 (2026-11-05)>) | 2026-11-05 | prvi mjesečni krug „ispita" — Visa, ZABA i MC izvod za listopad zatvoreni su u cent bez ručnog slaganja uvoznog filea, RF je usklađen usporedbom s bankom, a jedanaest mjesta trenja zapisano je za sesiju održavanja. | 10106 |
+| [S191](<#S191 — Testovi koraka 5: katalog dotjeran, View, slike sprave iz kartice, jedna funkcija za slike (2026-11-01)>) | 2026-11-01 | Saša je prošao T-S190-1..4 (mobitel kroz F12) i usput našao pet sitnica koje su popravljene, a slike se sada dodaju i iz kartice vježbe, kroz jednu funkciju za Add, Edit i katalog. | 10094 |
+| [S192](<#S192 — Studeni krug Financija: Visa, ZABA i MC izvod zatvoreni u cent, nalazi T39–T49 (2026-11-05)>) | 2026-11-05 | prvi mjesečni krug „ispita" — Visa, ZABA i MC izvod za listopad zatvoreni su u cent bez ručnog slaganja uvoznog filea, RF je usklađen usporedbom s bankom, a jedanaest mjesta trenja zapisano je za sesiju održavanja. | 10120 |
 
 ### Najnovije
 
@@ -10077,6 +10077,20 @@ Greške, upozorenja i „Also changes" u pregledu sheeta `Restructure options` p
   slike u kartici se dodaju u Editu zapisa kataloga. Otvoreno: preimenovanje sluga u katalogu ne dira treninge.
 - Probna Area `S190 Trening proba` (Sašin TEST račun). Ručni testovi T-S190-1..5.
 
+### PENDING sekcija S190 (arhivirana S193) — S190 — Katalog vježbi i izbor vježbe (2026-10-31)
+
+Korak 5 treninga na `test-branch` (TEST): Area `Katalog vježbi` (56 vježbi), jedinstven slug s prijedlogom iz imena i popisom sličnih, Edit bez vremena za Areu bez štoperice i datuma, postavka bez Event Note, tekst koji raste (sve Aree), izbornik iz druge Aree (skupine, najčešće u 12 mj, kartica prije izbora, uređivanje vježbe iz kartice), 📷 N u listi (sve Aree). Probna Area `S190 Trening proba`. Automatski: unit `uniqueOptionsFrom` 37, `catalogPicker` 13; E2E `S190_unique_catalog` 3, `S190_catalog_picker` 1 (sabotaže padaju).
+
+**Detalji testova:** [tests/S190_tests.md](../../Claude-temp_R/test-sessions/archive/S190_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S190-1 | Katalog ⇒ Add: ime „Hand lateral raises" ⇒ slug `hand_lateral` + „slično" `lat_raises`; slug `lat_raises` ⇒ crveno, Finish odbije; bez Event Note i datuma | ✅ S191 (01.11., Saša, mobitel) — koraci 2–8 očekivano (i novo: prazan Group ⇒ „Polje Group je obavezno“); nađeno: „slično“ je nudilo sve Strength/Upper vježbe a `lat_raises` ispao (Type/Group iz izbornika u sličnosti) ⇒ popravljeno S191, provjera T-S191-2 |
+| T-S190-2 | Katalog ⇒ Edit `lat_raises`: bez datuma/vremena/Duration i Event Note; Description raste u nove retke (i u drugim Areama) | ✅ S191 (01.11., Saša) — očekivano; usput nađeno: View dug opis ne prelama (vrijednost `shrink-0`, naziv stisnut) ⇒ popravljeno S191, provjera T-S191-1 |
+| T-S190-3 | `S190 Trening proba` ⇒ Add ⇒ izbornik: skupine, 6 + „Sve", dodir ⇒ kartica, Izaberi; Uredi vježbu ⇒ promjena skupine seli vježbu; poslije Finisha „1× u 12 mj" (mobitel i laptop) | ✅ S191 (01.11., Saša) — očekivano |
+| T-S190-4 | Slike vježbe: Edit kataloga +2 slike ⇒ 📷 2 u listi, traka, povlačenje / ‹ ›; sličica i slike u kartici izbornika | ✅ S191 (01.11., Saša, F12 mobilni) — Edit +1 slika (2), 📷 2 ⇒ traka ispod retka, povlačenje, zatvaranje; izbornik: sličica s 2, kartica lista slike, Izaberi. Usput: View otvarao sliku u novoj kartici ⇒ T-S191-4 |
+| T-S190-5 | Structure export: `AddNote` FALSE, Slug `Unique = from: name`, `vjezba` `OptionsFrom`; nepromijenjen uvoz = bez promjene | ✅ S193 — izmjereno (Claude, UI pod Sašinim TEST računom): kolone točne; uvoz nepromijenjenog filea ⇒ baza identična za `Katalog vježbi`, `S190 Trening proba` i `Financije_all`. Našao kvar: `Sep` u ListColumns se rezao (`" + "` → `"+"`) — popravljeno, čuva S119 |
+
 ## S191 — Testovi koraka 5: katalog dotjeran, View, slike sprave iz kartice, jedna funkcija za slike (2026-11-01)
 [↑ Dnevnik](#Dnevnik)
 
@@ -10133,3 +10147,30 @@ Greške, upozorenja i „Also changes" u pregledu sheeta `Restructure options` p
   ekran uvoza neka kaže trajanje.
 - **Odluka (Saša):** traka/`insertEntry` upisuju Namjenu kroz isto `default_map` pravilo, ne obavezno polje (T48).
 - **Docs:** `FINANCIJE_PROCES.md` §4 T39–T49, §5 Visa s trakom (iznos s izvoda, naknada plaćanja). Kod nije mijenjan.
+
+## S193 — Održavanje Financija: traka upisuje Namjenu, grantee vidi usporedbu, uvoz ispravaka 11 s umjesto 5 min (2026-11-05)
+[↑ Dnevnik](#Dnevnik)
+
+> Ukratko: četiri trenja studenog kruga popravljena na test-branch (T48, T39, T50, T43 — uvoz 42 ispravka na TEST-u s više od 300 s na 11 s), T-S190-5 izveden bez Saše i usput našao kvar u Structure uvozu, a deploy je spreman za odluku.
+
+- **T48 (commit `4213298`):** pravilo `default_map` izvučeno u `resolveDefaultMaps` (`importDefaults.ts`) — zove ga
+  uvoz i `createSettleRow`. E2E `S193_due_settle_defaults` nad pravom košarom (bez podmetnutog RPC-a): skupni redak
+  ima Namjenu Zajedničko, Tip iz configa ostaje, kupnje `Izvrsen`; sabotaža pada. Visa 1.751,12 Saša ispravio ručno.
+- **T39:** `basketAction({ dateRequired: isOwner })` — grantee bez polja za dan dobiva usporedbu po iznosu. Unit
+  (+3 u `dueSettle`) i E2E u `S168` (userB, read share); sabotaža spoja u `DueStrip` pada.
+- **T50:** redak „UX-3" (`setDateRange(null, null)` nakon uvoza) maknut. E2E u `S193_import_speed`; sabotaža pada.
+- **T43 — mjereno prije koda:** E2E `S193_import_speed` (Area oblika Financija, 15 atributa, 42 ispravka Namjene):
+  stari kod **37/42 za 300 s**. Uzrok: PATCH za SVAKI atribut retka, redom; **greška PATCH-a progutana**
+  (`await au;`). EXPLAIN ANALYZE kao korisnik: jedan PATCH 75–250 ms u bazi (RLS vlasnika Aree pretraži sve evente
+  Aree). Popravak: samo atributi iz `computeRowDiff`, skupno čitanje postojećih, pool 3 (pool 6 ⇒ `statement
+  timeout` na TEST-u), greška se kaže, „Trajanje" na završnom ekranu. Izmjereno: pool 1 = 62 s, **pool 3 = 10–11 s /
+  103 poziva**; sabotaža (svi atributi) = 124 s / 642 ⇒ pada na broju poziva.
+- **T-S190-5 ✅ (commit `149c43d`):** Saša bez energije za ručne testove ⇒ izveden UI-jem pod njegovim TEST računom
+  (jednokratna sesija admin API-jem, samo TEST; privremeni spec u `Claude-temp_R/s193/`), uz backup TEST-a prije.
+  Snimka `areas`/`categories`/`attribute_definitions` prije = poslije uvoza nepromijenjenog filea za `Financije_all`,
+  `Katalog vježbi`, `S190 Trening proba`; kolone AddNote/Unique/OptionsFrom točne. **Nađen kvar:** `cellStr` rezao
+  `Sep` (`" + "` → `"+"`) — popravljeno, TEST vrijednost vraćena, čuva `S119`.
+- **Docs:** `FINANCIJE_PROCES.md` §4 T39/T43/T48/T50 ✅ (test-branch); PENDING S193 (T-S193-1..3, sve čekaju deploy,
+  prirodni tijek); S190 sekcija i `S190_tests.md` u arhivu; CLAUDE.md: update put uvoza, `Sep`, traka + `default_map`.
+- **Usput primijećeno:** E2E global-setup svaki put pokušava obrisati `S189 serije proba` (pod E2E vlasnikom) i
+  javlja „COULD NOT delete" — proba je i dalje tu; treba je preseliti ili dodati u `SEED_AREAS` dok korak 6 ne krene.

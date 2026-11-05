@@ -2,7 +2,7 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S192 (2026-11-05, studeni krug Financija: T-S175-2/3 ✅, T-S175-1 do trake 11.11., T-S181-3 ✅; nalazi T39–T50 u `FINANCIJE_PROCES.md` §4; nov blok „Na redu" i poglavlje „Posao") · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S193 (2026-11-05, održavanje Financija: T39/T43/T48/T50 na test-branch, T-S190-5 ✅; tri provjere S193 čekaju deploy) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 
@@ -12,16 +12,18 @@
 
 > Generirano iz tablica ispod (`python data-prep_tools/Tools/audit_tests.py --write`). Status se mijenja u tablici, nikad ovdje.
 
-**Testovi — čekaju datum ili događaj** (3)
+**Testovi — čekaju datum ili događaj** (6)
 
+- **T-S193-1** — **čeka: deploy prije 11.11. + traka MC (Koka)** — 11.11., Koka, traka MC: „Da, upiši" ⇒ novi skupni redak (Σ 2.783,26) u Editu ima Namjena = … · _S193_
+- **T-S193-2** — **čeka: deploy prije 11.11. + traka MC** — 11.11., Saša (grantee): ista traka — upiši 2783,26 ⇒ „✓ slaže se" i „Potvrđuje vlasnica Aree"; … · _S193_
+- **T-S193-3** — **čeka: deploy + prvi Kokin uvoz** — Prvi Kokin Excel uvoz poslije deploya: završni ekran „Trajanje: …" (40-ak ispravaka ≲ 1 min); … · _S193_
 - **T-S192-1** — **čeka: Keks sjeo na RF (banka 253,15)** — RF sidro kad Keks 22 € sjedne: banka = pločica 253,15 ⇒ Koka „u banci" 253,15, ekran banke, … · _S192_
 - **T-S191-6** — **čeka: deploy na PROD (mobitel bez hotspota)** — Pravi mobitel: izbornik ⇒ kartica ⇒ Uredi vježbu ⇒ „Add" otvara STRAŽNJU kameru ⇒ slikaj ⇒ … · _S191_
 - **T-S175-1** — **čeka: 11.11. (Koka, traka MC Σ 2.783,26)** — ~02.11.–11.11. PROD: MC_2026-10 kroz fill_from_izvod --mc (15 rata + 4 naknade sparene, … · _S175_
 
-**Testovi — mogu odmah** (2)
+**Testovi — mogu odmah** (1)
 
 - **T-S191-5** — Katalog ⇒ Edit lat_raises (s opisom): „Slično“ više nije krugovi_ruke / carry / kosa_k_side … · _S191_
-- **T-S190-5** — Structure export: AddNote FALSE, Slug Unique = from: name, vjezba OptionsFrom; nepromijenjen … · _S190_
 
 **Posao (nije test)** (5)
 
@@ -46,6 +48,20 @@ Sati rada, ne provjera promjene; ostaje ovdje da se vidi (Saša, S192). Status u
 | P-1 | **Gibljivost:** `npm run dev:prod` → filtar `Health_Sasa` → Structure → **Export** → file u `Claude-temp_R\` ⇒ Claude doda leaf `Gibljivost` (3 testa, 5 brojki u cm), ti uvezeš i izmjeriš prvi put (S191) | ⬜ |
 | P-2 | **Skica View-a treninga** (<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>) — tvoje mišljenje prije koraka 6 (S191) | ⬜ |
 | P-3 | Pospremi probne vježbe u katalogu na TEST-u: `hand_lat_test`, `lat_raises_test`, stara `test` (S191) | ⬜ |
+
+---
+
+## S193 — Održavanje Financija: traka, brz uvoz, razdoblje (2026-11-05)
+
+T48 (traka upisuje Namjenu), T39 (grantee u traci vidi usporedbu), T50 (uvoz ne dira razdoblje), T43 (uvoz ispravaka 42 retka: TEST >300 s → 11 s, trajanje na završnom ekranu). Sve čuvaju E2E; ovdje su samo provjere na PROD-u koje se dogode same.
+
+**Detalji testova:** [tests/S193_tests.md](tests/S193_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S193-1 | **11.11., Koka, traka MC:** „Da, upiši" ⇒ novi skupni redak (Σ 2.783,26) u Editu ima **Namjena = Zajedničko** | ⬜ čeka: deploy prije 11.11. + traka MC (Koka) |
+| T-S193-2 | **11.11., Saša (grantee):** ista traka — upiši 2783,26 ⇒ „✓ slaže se" i „Potvrđuje vlasnica Aree"; bez polja za dan | ⬜ čeka: deploy prije 11.11. + traka MC |
+| T-S193-3 | **Prvi Kokin Excel uvoz poslije deploya:** završni ekran „Trajanje: …" (40-ak ispravaka ≲ 1 min); nakon zatvaranja filtar i dalje This Year s datumima | ⬜ čeka: deploy + prvi Kokin uvoz |
 
 ---
 
@@ -75,22 +91,6 @@ Uz T-S190: katalog (Name ispred Sluga, Group obavezan, istezanje / rotacija_kicm
 | T-S191-4 | View s fotografijama: dodir na sličicu otvara preglednik slika kao u Editu (1 / 2, ‹ › / povlačenje, ✕), ne novu karticu preglednika; **povlačenje u pregledniku lista slike, ne mijenja vježbu**; Next na drugi zapis zatvara ga | ✅ S191 (01.11., Saša, F12 mobilni) — 1. krug pao (povlačenje skakalo na Prev/Next) ⇒ `data-no-page-swipe`; 2. krug: preglednik, povlačenje lista slike, vježba ostaje |
 | T-S191-5 | Katalog ⇒ Edit `lat_raises` (s opisom): „Slično“ više nije krugovi_ruke / carry / kosa_k_side (riječi opisa), nego vježbe sličnog imena (leg_raises, calf_raises — „Podizanje“) | ⬜ |
 | T-S191-6 | **Pravi mobitel:** izbornik ⇒ kartica ⇒ Uredi vježbu ⇒ „Add" otvara STRAŽNJU kameru ⇒ slikaj ⇒ Spremi ⇒ kartica pokazuje sliku; ✕ na slici + Spremi ⇒ nema je. Usput Add treninga (prednja kamera, kao prije) i Edit (galerija) spremaju sliku | ⬜ čeka: deploy na PROD (mobitel bez hotspota) — na PROD-u ✕ i regresija preko Edit slike bilo koje Aree; kartica kataloga tek kad katalog stigne na PROD. S192: koraci 1–3 ✅ (stražnja kamera, slika u katalogu, Odustani ne briše); ✕ na dodiru NEVIDLJIV (pogađao se slučajno, dodir sredine otvara povećanje) ⇒ popravljeno, ponoviti korake 4–6 |
-
----
-
-## S190 — Katalog vježbi i izbor vježbe (2026-10-31)
-
-Korak 5 treninga na `test-branch` (TEST): Area `Katalog vježbi` (56 vježbi), jedinstven slug s prijedlogom iz imena i popisom sličnih, Edit bez vremena za Areu bez štoperice i datuma, postavka bez Event Note, tekst koji raste (sve Aree), izbornik iz druge Aree (skupine, najčešće u 12 mj, kartica prije izbora, uređivanje vježbe iz kartice), 📷 N u listi (sve Aree). Probna Area `S190 Trening proba`. Automatski: unit `uniqueOptionsFrom` 37, `catalogPicker` 13; E2E `S190_unique_catalog` 3, `S190_catalog_picker` 1 (sabotaže padaju).
-
-**Detalji testova:** [tests/S190_tests.md](tests/S190_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S190-1 | Katalog ⇒ Add: ime „Hand lateral raises" ⇒ slug `hand_lateral` + „slično" `lat_raises`; slug `lat_raises` ⇒ crveno, Finish odbije; bez Event Note i datuma | ✅ S191 (01.11., Saša, mobitel) — koraci 2–8 očekivano (i novo: prazan Group ⇒ „Polje Group je obavezno“); nađeno: „slično“ je nudilo sve Strength/Upper vježbe a `lat_raises` ispao (Type/Group iz izbornika u sličnosti) ⇒ popravljeno S191, provjera T-S191-2 |
-| T-S190-2 | Katalog ⇒ Edit `lat_raises`: bez datuma/vremena/Duration i Event Note; Description raste u nove retke (i u drugim Areama) | ✅ S191 (01.11., Saša) — očekivano; usput nađeno: View dug opis ne prelama (vrijednost `shrink-0`, naziv stisnut) ⇒ popravljeno S191, provjera T-S191-1 |
-| T-S190-3 | `S190 Trening proba` ⇒ Add ⇒ izbornik: skupine, 6 + „Sve", dodir ⇒ kartica, Izaberi; Uredi vježbu ⇒ promjena skupine seli vježbu; poslije Finisha „1× u 12 mj" (mobitel i laptop) | ✅ S191 (01.11., Saša) — očekivano |
-| T-S190-4 | Slike vježbe: Edit kataloga +2 slike ⇒ 📷 2 u listi, traka, povlačenje / ‹ ›; sličica i slike u kartici izbornika | ✅ S191 (01.11., Saša, F12 mobilni) — Edit +1 slika (2), 📷 2 ⇒ traka ispod retka, povlačenje, zatvaranje; izbornik: sličica s 2, kartica lista slike, Izaberi. Usput: View otvarao sliku u novoj kartici ⇒ T-S191-4 |
-| T-S190-5 | Structure export: `AddNote` FALSE, Slug `Unique = from: name`, `vjezba` `OptionsFrom`; nepromijenjen uvoz = bez promjene | ⬜ |
 
 ---
 
