@@ -176,3 +176,39 @@ export function bankFieldChanges(
 export function changesSignature(changes: readonly { id: string; list: readonly FieldChange[] }[]): string {
   return changes.map(c => c.id + ':' + c.list.map(f => `${f.key}=${f.from}>${f.to}`).join(',')).join('|');
 }
+
+// ── T42 (S194): „pečat izvoda" na starom retku nije slučajna izmjena povijesti ──
+//
+// Pregled uvoza upozorava kad se mijenja redak stariji od 30 dana („wrong sort,
+// drag-fill"). Rata nosi DAN KUPNJE (mjesecima unatrag), a svaki izvod na njoj
+// legitimno mijenja samo ono što izvod potvrđuje — pa je upozorenje palo SVAKI
+// mjesec (studeni: Visa 7/37, MC 26/54) i naučilo se otklikati. Upozorenje koje
+// uvijek pali ne štiti ni onda kad treba (S143).
+//
+// Polja pečata se IZVODE iz configa koji već postoji (isto načelo kao
+// `bankFieldSpec`), bez novog ključa: žig i target svakog zaključanog
+// `set_attribute` pravila (Financije: `izvod_opis`, `datum_naplate`) te
+// dospijeće i status košare (`due`: `datum_naplate`, `status`). Iznos NIJE
+// pečat — promjena iznosa starog retka i dalje upozorava.
+
+/** Slugovi koje izvod legitimno mijenja na starom retku. Prazno = Area bez toga. */
+export function statementStampSlugs(settings: AreaSettings | null | undefined): string[] {
+  const out = new Set<string>();
+  for (const r of settings?.automations?.attribute_rules ?? []) {
+    if (r.action !== 'set_attribute' || !r.lock_slug) continue;
+    out.add(r.lock_slug);
+    out.add(r.target_slug);
+  }
+  for (const w of settings?.dashboard?.widgets ?? []) {
+    if (!isBalanceWidget(w) || !w.due) continue;
+    out.add(w.due.due_slug);
+    out.add(w.due.status_slug);
+  }
+  return [...out];
+}
+
+/** Mijenja li izmjena SAMO pečat izvoda? Prazan popis ključeva nije „samo pečat". */
+export function isStampOnly(changeKeys: readonly string[], stampSlugs: readonly string[]): boolean {
+  return changeKeys.length > 0 && stampSlugs.length > 0
+    && changeKeys.every(k => stampSlugs.includes(k));
+}

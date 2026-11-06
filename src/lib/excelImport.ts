@@ -2030,6 +2030,9 @@ export interface UpdatePreview {
   /** Existing DB event_date — old-record warnings key off this */
   existingEventDate: string;
   changes:           UpdateFieldChange[];
+  /** Ključevi izmjena (slug / `@event_date` …), isti oblik kao `importBankChanges`
+   *  — T42: stari redak kojem se mijenja samo pečat izvoda ne upozorava. */
+  changeKeys:        string[];
   /**
    * Redak je VEĆ unutar potvrđenog stanja (`DELTA_WINDOW_SPEC` §5, sloj 3).
    * `null` = nije, ili se račun retka nije dao utvrditi.
@@ -2179,6 +2182,7 @@ export async function analyzeUpdates(
       categoryPath:      row.category_path,
       existingEventDate: existing.event_date,
       changes,
+      changeKeys:        importBankChanges(changes, existing.category_id, attrByCatName, undefined),
       confirmedBy,
     });
   }

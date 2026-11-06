@@ -198,9 +198,15 @@ interface Props {
    *  ne odmontira — upisano „u banci" i odabran izvor ne smiju nestati. */
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  /** T46 (S194): ime razdoblja filtra (`Custom`, `Last Month`…) — uz oznaku
+   *  „na dan …" da se vidi ZAŠTO saldo nije današnji. */
+  periodLabel?: string;
+  /** T46: povratak na zadano razdoblje Aree (Financije: This Year). Null kad Area
+   *  zadano nema — tada samo oznaka, bez gumba. */
+  resetPeriod?: { label: string; onClick: () => void } | null;
 }
 
-export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, reloadToken, collapsed = false, onToggleCollapsed }: Props) {
+export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, reloadToken, collapsed = false, onToggleCollapsed, periodLabel, resetPeriod }: Props) {
   const [rows, setRows] = useState<AnchoredBalanceRow[]>([]);
   const [splitRows, setSplitRows] = useState<GroupAggRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -487,7 +493,7 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, re
   return (
     <div className={cn('bg-white rounded-xl shadow-sm border p-3 sm:p-4', T.tileBorder)}>
       <div className={cn('flex items-center justify-between gap-2', !collapsed && 'mb-3')}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
           {onToggleCollapsed ? (
             <button type="button" onClick={onToggleCollapsed} className="text-left">
               <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
@@ -499,11 +505,28 @@ export function BalanceByGroupTile({ areaId, widget, canWrite, asOf, onDrill, re
             <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{widget.title}</h3>
           )}
           {/* Rule: when the reading is not "now", the tile says so. A future
-              dateTo is not a past reading, so it correctly says nothing. */}
+              dateTo is not a past reading, so it correctly says nothing.
+              ⚠ T46 (S194, Saša 05.11.): sitna oznaka ispod naslova nije bila dovoljna —
+                filtar je ostao „Custom" (tražen redak 01.11.), a pločica je izgledala kao
+                danas. Sada čip U RAVNINI s naslovom, vidljiv i kad je pločica sklopljena,
+                s razdobljem (ZAŠTO) i povratkom na zadano razdoblje Aree (IZLAZ). */}
           {isPast && (
-            <p className={cn('text-xs mt-0.5 font-medium', T.asOfNote)}>
-              na dan {formatDateHr(effectiveAsOf)}
-            </p>
+            <span
+              className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full border border-amber-300 bg-amber-50 text-amber-800 px-2 py-0.5"
+              data-testid="balance-past-chip"
+            >
+              na dan {formatDateHr(effectiveAsOf)}{periodLabel ? ` · ${periodLabel}` : ''}
+              {resetPeriod && (
+                <button
+                  type="button"
+                  onClick={resetPeriod.onClick}
+                  className="underline decoration-dotted hover:text-amber-950"
+                  title="Saldo na danas"
+                >
+                  ↺ {resetPeriod.label}
+                </button>
+              )}
+            </span>
           )}
         </div>
         {!collapsed && (

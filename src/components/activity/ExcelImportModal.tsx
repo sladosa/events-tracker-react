@@ -40,7 +40,7 @@ import { useAreaDashboard } from '@/hooks/useAreaDashboard';
 import { localYmd } from '@/lib/localDate';
 import { resolveForeignOwnership } from '@/lib/foreignRowOwnership';
 import { isBalanceWidget } from '@/types/database';
-import { bankFieldSpec } from '@/lib/confirmedRowEdit';
+import { bankFieldSpec, statementStampSlugs, isStampOnly } from '@/lib/confirmedRowEdit';
 import { defaultFillsMessage } from '@/lib/importDefaults';
 
 interface ExcelImportModalProps {
@@ -79,6 +79,11 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   // uvoz razvrstavanja (samo Tip/Podtip) tražio kvačicu „potvrđeno stanje".
   const bankSpec = useMemo(
     () => bankFieldSpec({ dashboard: dashboardCfg ?? undefined, automations: automations ?? undefined }),
+    [dashboardCfg, automations],
+  );
+  // T42 (S194): polja koja izvod legitimno mijenja na starom retku (žig, datum naplate, status).
+  const stampSlugs = useMemo(
+    () => statementStampSlugs({ dashboard: dashboardCfg ?? undefined, automations: automations ?? undefined }),
     [dashboardCfg, automations],
   );
 
@@ -401,13 +406,19 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
   const updateCount    = updateAnalysis ? updateAnalysis.updates.length : effectiveUpdateCount;
   const unchangedTotal = (preview?.untouchedCount ?? 0) + (updateAnalysis?.unchangedCount ?? 0);
   // Stari zapisi (>30 dana) u update listi — tipičan potpis slučajne Excel izmjene
-  const oldRecordCount = useMemo(() => {
-    if (!updateAnalysis) return 0;
+  // T42 (S194): stari redak kojem se mijenja SAMO pečat izvoda (rata s danom kupnje
+  //   mjesecima unatrag — žig, datum naplate, status) nije „slučajna izmjena povijesti".
+  //   Do sada je upozorenje palo svaki mjesec (Visa 7/37, MC 26/54) i otklikavalo se.
+  //   Izmjene se i dalje nabrajaju redak po redak — mijenja se samo KADA se upozorava.
+  const { oldRecordCount, oldStampOnlyCount } = useMemo(() => {
+    if (!updateAnalysis) return { oldRecordCount: 0, oldStampOnlyCount: 0 };
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 30);
     const cutoffStr = localYmd(cutoff);
-    return updateAnalysis.updates.filter(u => u.existingEventDate < cutoffStr).length;
-  }, [updateAnalysis]);
+    const old = updateAnalysis.updates.filter(u => u.existingEventDate < cutoffStr);
+    const stamp = old.filter(u => isStampOnly(u.changeKeys, stampSlugs)).length;
+    return { oldRecordCount: old.length - stamp, oldStampOnlyCount: stamp };
+  }, [updateAnalysis, stampSlugs]);
   const updateGuardActive = updateAnalysis !== null && updateAnalysis.updates.length > 0;
   const deleteCount       = deleteAnalysis?.deletes.length ?? 0;
   const deleteGuardActive = deleteCount > 0;
@@ -930,6 +941,12 @@ export function ExcelImportModal({ onClose, onSuccess, onRefresh }: ExcelImportM
                       <p className="text-xs font-semibold text-red-700 bg-red-100 border border-red-300 rounded p-2 mt-1.5">
                         ⚠️ {oldRecordCount} of them {oldRecordCount === 1 ? 'is an older record' : 'are older records'} (event date more than 30 days ago).
                         If you did not deliberately edit historical rows in Excel, this may be an accidental change (wrong sort, drag-fill) — check carefully!
+                      </p>
+                    )}
+                    {oldStampOnlyCount > 0 && (
+                      <p className="text-xs text-gray-600 mt-1" data-testid="old-stamp-only">
+                        {oldStampOnlyCount} older {oldStampOnlyCount === 1 ? 'record changes' : 'records change'} only
+                        what the bank statement confirms (statement text, charge date, status) — normal for instalments, which keep the purchase date.
                       </p>
                     )}
                   </div>

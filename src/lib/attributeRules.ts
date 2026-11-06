@@ -15,7 +15,10 @@
  *     zatvaranje izvoda (B)  →  terećenje računa (D)  →  dospijeće
  * `Datum naplate` znači TEREĆENJE. Za novu karticu se oba IZMJERE, ne pogađaju:
  *     D je u SLJEDEĆEM mjesecu od B  →  next:D        (Mastercard: next:11)
- *     D je u ISTOM mjesecu kao B     →  cutoff:B:D    (Visa: cutoff:3:5)
+ *     D je u ISTOM mjesecu kao B     →  cutoff:B:D    (Visa: cutoff:2:5)
+ *   ⚠ S194 (T40): Visa je do 06.11.2026. bila `cutoff:3:5` — izmjereno na povijesti
+ *     (kupnje sa žigom izvoda): kupnja od 3. u mjesecu ide u SLJEDEĆI ciklus 37 od 50 puta,
+ *     od 2. u isti 30 od 32 ⇒ granica je 2. Config na PROD-u promijenio Saša (Structure uvoz).
  *
  * ⚠ Zašto Visa nije `next:5`: transakcija 04.06. pripada izvodu koji se zatvara
  *   02.07. i tereti se ~05.07.; `next:5` bi je stavila na 05.06. — mjesec prerano.

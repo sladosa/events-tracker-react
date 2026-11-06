@@ -21,6 +21,7 @@ import { DueStrip } from './DueStrip';
 import { BreakdownTile } from './BreakdownTile';
 import { BasketsTile } from './BasketsTile';
 import { rememberPeriodBeforeDay } from '@/lib/dayDrillReturn';
+import { getDatePresets } from '@/hooks/useDateBounds';
 import type { DashboardConfig, DueConfig, Grouping, ListColumnsConfig, UUID } from '@/types/database';
 
 /** Koja je pločica otvorena — v. „Harmonika" u komponenti. Modul, ne storage.
@@ -46,8 +47,23 @@ interface Props {
 export function OverviewTab({ areaId, config, groupings, listColumns, canWrite, isOwner, onNavigateToActivities }: Props) {
   const {
     filter, setAttrFilter, clearAttrFilter, clearCommentSearch, setDateRange, setPeriodLabel, setPeriodKey,
-    periodLabel,
+    periodLabel, selectedArea,
   } = useFilter();
+  // T46 (S194): saldo na prošli dan ⇒ pločica nudi povratak na ZADANO razdoblje
+  //   Aree (`settings.default_period`, S166) — isti preset kao filtar pri ulasku.
+  //   Area bez zadanog: samo oznaka, bez gumba (nema „pravog" razdoblja za vratiti).
+  const defaultKey = selectedArea && selectedArea.id === areaId
+    ? selectedArea.settings?.default_period ?? null : null;
+  const defaultPreset = defaultKey ? getDatePresets().find(p => p.key === defaultKey) ?? null : null;
+  const resetPeriod = defaultPreset ? {
+    label: defaultPreset.label,
+    onClick: () => {
+      const { from, to } = defaultPreset.getRange();
+      setDateRange(from, to);
+      setPeriodLabel(defaultPreset.label);
+      setPeriodKey(defaultPreset.key);
+    },
+  } : null;
   // Skupni redak iz trake miče saldo ⇒ pločica se mora ponovo učitati.
   const [balanceReload, setBalanceReload] = useState(0);
 
@@ -173,6 +189,8 @@ export function OverviewTab({ areaId, config, groupings, listColumns, canWrite, 
                 // `dateFrom` is deliberately NOT passed: a balance has no start,
                 // it accumulates from the anchor.
                 asOf={filter.dateTo}
+                periodLabel={periodLabel}
+                resetPeriod={resetPeriod}
                 onDrill={(groupValue, opts) => {
                   // The planned number drills on its own condition; the balance
                   // drills on the group value. Both are single-attribute, which

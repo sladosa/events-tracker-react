@@ -810,7 +810,7 @@ Applies in: Add Activity, Edit Activity, Excel Import.
   ⚠ Supabase `error` je **obični objekt**, ne `Error` — `String(error)` = `[object Object]`.
   `retry.ts` (`toError`) čuva `message (code)`; tko baca grešku sam, neka je ne pretvara u string.
 - **`Datum naplate` se ne upisuje rukom** — `set_attribute` ga računa iz `Izvor`a
-  (`Racun`/`Cash` = isti dan, `Visa` = `next:3`, `Mastercard` = `next:11`). Ručni unos
+  (`Racun`/`Cash` = isti dan, `Visa` = `cutoff:2:5` (od S194; prije `cutoff:3:5`, a još prije `next:3`), `Mastercard` = `next:11`). Ručni unos
   `userOwned` guard više ne dira, pa ga ne diraj bez razloga.
 
 **⚠ PLOČICA PRECJENJUJE SALDO IZMEĐU NAPLATE I IZVATKA** (S137)

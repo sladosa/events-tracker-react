@@ -128,8 +128,10 @@ brojeve ali nema gumb.
 ## „Na dan …" — saldo u prošlosti
 
 Ako u filtru postaviš datum **„do"**, pločica pokazuje stanje **na taj dan** i to izričito
-piše — žutim tekstom „na dan 31.03.2025." ispod naslova. Bez te oznake bi prošli broj
-izgledao kao sadašnji.
+piše — žutom oznakom uz naslov, npr. **„na dan 31.03.2025. · Custom ↺ This Year"**. Bez te
+oznake bi prošli broj izgledao kao sadašnji. Oznaka se vidi i kad je pločica sklopljena, a
+**„↺ This Year"** (zadano razdoblje Aree) vraća saldo na danas jednim dodirom — korisno kad
+je filtar ostao na nekom danu nakon traženja retka.
 
 Datum **„od"** pločica namjerno **ignorira**: saldo nema početak, on se nakuplja od zadnje
 potvrde. („od" i dalje reže popis zapisa ispod, samo ne pločicu.)

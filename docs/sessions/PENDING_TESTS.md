@@ -12,11 +12,13 @@
 
 > Generirano iz tablica ispod (`python data-prep_tools/Tools/audit_tests.py --write`). Status se mijenja u tablici, nikad ovdje.
 
-**Testovi — čekaju datum ili događaj** (8)
+**Testovi — čekaju datum ili događaj** (10)
 
 - **T-S194-1** — **čeka: ZABA_2026-11 (početak prosinca)** — Prosinački krug, ZABA: fill_from_izvod --zaba ZABA_2026-11 ⇒ storno (ako ga ima) kao „≈ isti … · _S194_
 - **T-S194-2** — **čeka: MC_2026-11 (~02.12.)** — Prosinački krug, MC: --mc MC_2026-11 ⇒ kupnje s kraja izvoda „→ POMAKNUTO u košaru 11.01." (ne … · _S194_
 - **T-S194-3** — **čeka: PBZVISA_2026-11 (~03.12.)** — Prosinački krug, Visa: ispis „ISPRAVCI (n)" = broj ispisanih redaka; bliski iznos istog dana … · _S194_
+- **T-S194-5** — **čeka: deploy** — T46 PROD poslije deploya: Overview Financije_all, To = neki prošli dan ⇒ uz „Stanje po računu" … · _S194_
+- **T-S194-6** — **čeka: deploy + uvoz izvoda** — T42 PROD, prvi uvoz izvoda poslije deploya: u crvenom okviru NEMA „N older records" za rate … · _S194_
 - **T-S193-1** — **čeka: deploy prije 11.11. + traka MC (Koka)** — 11.11., Koka, traka MC: „Da, upiši" ⇒ novi skupni redak (Σ 2.783,26) u Editu ima Namjena = … · _S193_
 - **T-S193-2** — **čeka: deploy prije 11.11. + traka MC** — 11.11., Saša (grantee): ista traka — upiši 2783,26 ⇒ „✓ slaže se" i „Potvrđuje vlasnica Aree"; … · _S193_
 - **T-S193-3** — **čeka: deploy + prvi Kokin uvoz** — Prvi Kokin Excel uvoz poslije deploya: završni ekran „Trajanje: …" (40-ak ispravaka ≲ 1 min); … · _S193_
@@ -64,6 +66,9 @@ Deploy `main` = `c232ee5` (S185–S193) + `059`/`060` na PROD-u. Alati (bez depl
 | T-S194-1 | **Prosinački krug, ZABA:** `fill_from_izvod --zaba ZABA_2026-11` ⇒ storno (ako ga ima) kao „≈ isti redak", kartični redak plaćen s računa u „MOŽDA KRIVO MJESTO"; uvoz bez duplikata, `promet_check` 2026-11 ✓ | ⬜ čeka: ZABA_2026-11 (početak prosinca) |
 | T-S194-2 | **Prosinački krug, MC:** `--mc MC_2026-11` ⇒ kupnje s kraja izvoda „→ POMAKNUTO u košaru 11.01." (ne `--brisi`), KONTROLA ✓ u cent | ⬜ čeka: MC_2026-11 (~02.12.) |
 | T-S194-3 | **Prosinački krug, Visa:** ispis „ISPRAVCI (n)" = broj ispisanih redaka; bliski iznos istog dana sparen kao ispravak | ⬜ čeka: PBZVISA_2026-11 (~03.12.) |
+| T-S194-4 | **T40 PROD:** `Visa=cutoff:2:5` (Structure uvoz pod Kokom: Automations 1, ostalo 0); Add 02.11. → 05.11., 03.11. → 05.12. | ✅ S194 (06.11.) — Saša |
+| T-S194-5 | **T46 PROD poslije deploya:** Overview `Financije_all`, To = neki prošli dan ⇒ uz „Stanje po računu" čip „na dan … · Custom ↺ This Year"; klik ⇒ čip nestaje, saldo današnji | ⬜ čeka: deploy |
+| T-S194-6 | **T42 PROD, prvi uvoz izvoda poslije deploya:** u crvenom okviru NEMA „N older records" za rate (samo žig/datum naplate/status); sivi redak „… change only what the bank statement confirms" | ⬜ čeka: deploy + uvoz izvoda |
 
 ---
 
