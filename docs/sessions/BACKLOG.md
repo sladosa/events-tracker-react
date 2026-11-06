@@ -141,7 +141,7 @@
   ponovno tipkanje dalo 18. **Nije reproducirano**, uzrok nije dokazan. Popravak je jeftin i ne
   ovisi o dokazu: brojač koji samo raste (`++ref.current`) umjesto sata. Provjeriti i ostale
   hookove s istim obrascem (`grep "Date.now()" src/hooks`).
-- **💶 Financije — sav otvoreni posao je u [`docs/FINANCIJE_PROCES.md`](../FINANCIJE_PROCES.md) §4** (preseljeno S158 doslovno, puni tekst u §8: C1 izvodi, C5 traka i Visa u traku, PBZVISA prolaz, RF `Izvod opis`, `oznaci_iz_presedana`, zaostaci S125). Ovdje ostaje samo održavanje klasifikacije (K0–K5), jer je generično.
+- **💶 Financije — sav otvoreni posao je u [`docs/FINANCIJE_PROCES.md`](../FINANCIJE_PROCES.md) §5** (od S194; preseljeno S158 doslovno, puni tekst u [`_archive/FINANCIJE_PROCES_do_S194.md`](../_archive/FINANCIJE_PROCES_do_S194.md) §8: C1 izvodi, C5 traka i Visa u traku, PBZVISA prolaz, RF `Izvod opis`, `oznaci_iz_presedana`, zaostaci S125). Ovdje ostaje samo održavanje klasifikacije (K0–K5), jer je generično.
 - **⭐ „Kamo ide novac" — pločica razreza + bucketi (S163)** — `docs/RAZREZ_SPEC.md`.
   Prijedlog prije koda; odluke R1–R9 čekaju Sašu. Redoslijed: R-F0 podaci (redak 50.000 €) →
   **F5** (`AreaSettings` + sheet `Grupiranja`) → RPC `rpc_area_breakdown` → pločica → iznimka

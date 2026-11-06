@@ -7,7 +7,7 @@
              "window": {"before": 2, "after": 6}, "measure": "gross"}
   Ništa drugo u `settings` se ne dira (provjerava se poslije upisa).
 
-ZAŠTO BAŠ TAKO (DOSPJELO_SPEC §2, FINANCIJE_PROCES §8.2)
+ZAŠTO BAŠ TAKO (DOSPJELO_SPEC §2, _archive/FINANCIJE_PROCES_do_S194 §8.2)
   - `text: "Visa"` — isti opis kojim `visa_uvoz_izvoda.py` upisuje naplatu na RF-u
     (pravilo B traži opis DOSLOVNO). NE PBZ tekst izvoda (6 varijanti).
   - `window` — Visa nema stalan dan (5. 383×, 4. 231×, 6. 109×, 7. 82×, 11. 49×,

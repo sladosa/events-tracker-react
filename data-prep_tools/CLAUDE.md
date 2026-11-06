@@ -308,7 +308,7 @@
 
 ---
 
-**Rate i MC izvod (S158)** — puni kontekst u `docs/FINANCIJE_PROCES.md` §4 (T11–T25)
+**Rate i MC izvod (S158)** — puni kontekst u `docs/_archive/FINANCIJE_PROCES_do_S194.md` §4 (T11–T25)
 
 - **⚠ (trgovac, N) NIJE plan rata.** Konzum P-1000 na 6 rata ima četiri plana, dva istodobno.
   Plan = (trgovac, N, **mjesec početka** = `Datum naplate` − (n−1), iznos) — `rate_alat.plans()`.

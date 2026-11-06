@@ -75,7 +75,7 @@ podaci hrane i AI sloj.
 **Stanje (2026-10-18):** Financije su u produkciji — Koka vodi saldo na mobitelu (PROD od S118,
 bez Excelice od S151), povijest 2023.–2026. je u bazi, mjesečni krug alatima zatvara u cent.
 Ingestija Financija je praktično gotova; ostaju kvaliteta (klasifikacija povijesti) i manje
-trenja (`docs/FINANCIJE_PROCES.md` §4). Ulazna točka: **`docs/FINANCIJE_PREGLED.md`**.
+trenja (`docs/FINANCIJE_PROCES.md` §5). Ulazna točka: **`docs/FINANCIJE_PREGLED.md`**.
 
 **Put — redoslijed velikih koraka i zašto** (dogovoreno 18.10., Saša):
 1. **MC alat prije 11.11.** (T13/T14/T16/T23 u `fill_from_izvod`) — jedini posao s rokom; bez
@@ -108,7 +108,7 @@ a težište ide na sljedeće domene.
 
 **Kako put ostaje jasan:** ovaj odjeljak je **jedino** mjesto za redoslijed velikih koraka — kad se
 redoslijed promijeni, prepiše se (s datumom), ne dopisuje. Handoff nosi stanje u letu, BACKLOG
-stavke, `FINANCIJE_PROCES.md` §4 posao Financija; nijedan od njih ne ponavlja redoslijed.
+stavke, `FINANCIJE_PROCES.md` §5 posao Financija; nijedan od njih ne ponavlja redoslijed.
 
 ---
 
@@ -144,7 +144,7 @@ stavke, `FINANCIJE_PROCES.md` §4 posao Financija; nijedan od njih ne ponavlja r
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist            |
 | `data-prep_tools/Financije/ENRICH_PLAN.md` | Financije pipeline — alati, koraci, nalazi po sesijama                          |
-| `docs/FINANCIJE_PROCES.md`               | **Kako Koka i Saša vode `Financije_all`** (prepisano S158, bivši `FINANCIJE_KOKA_PROCES.md`) — §1 model (vrste transakcija, dva cilja: saldo / analiza, što izvod potvrđuje), §2 tri aktivnosti (unos · potvrda naplate · usklađenje s izvodom), **§4 = JEDINI popis otvorenog posla Financija (T1–T32, i bivše stavke backloga C1/C5/PBZVISA/RF; puni tekst §8) — pri planiranju sesije o Financijama čitaj njega, ne backlog**, §5 naredbe danas (kvarljivo), §6 ploha „Raščišćavanje izvoda“ (K1–K5) |
+| `docs/FINANCIJE_PROCES.md`               | **Kako Koka i Saša vode `Financije_all`** (prepisano kratko S194) — §1 model, §2 dnevni unos, **§3 mjesečni krug korak po korak (kvarljivo, prepisuje se nakon kruga)**, §4 kad ne štima, **§5 = JEDINI popis otvorenog posla Financija — pri planiranju sesije o Financijama čitaj njega, ne backlog**. Puni tekst zatvorenih T1–T50, nalazi krugova i stari §8 backloga: `docs/_archive/FINANCIJE_PROCES_do_S194.md` (iste oznake T-n); ploha „Raščišćavanje izvoda“: `docs/parked/RASCISCAVANJE_IZVODA.md` |
 | `NEXT_SESSION_PROMPT.md`                  | **Na početku svake sesije** — handoff, DIO 1 netehnički / DIO 2 tehnički. Prepisuje se na kraju svake sesije (v. „End of session" 5). ⚠ Provjeri commit u zaglavlju: ako nije zadnji, čitaj ga kao povijest, ne kao stanje |
 | `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** (⚠ gitignoriran — samo lokalno + `D:`)           |
 
@@ -2387,7 +2387,7 @@ s Areom, a potvrđeno bankovno stanje ne smije (OVERVIEW_TAB_SPEC §2.17).
 ## Financije — pravila domene (izvodi, rječnik, 1-N)
 [↑ Sadrzaj](#Sadrzaj)
 
-> Povijest migracije i karta dokumenata su u **`docs/FINANCIJE_PREGLED.md`**; otvoreni posao u `docs/FINANCIJE_PROCES.md` §4.
+> Povijest migracije i karta dokumenata su u **`docs/FINANCIJE_PREGLED.md`**; otvoreni posao u `docs/FINANCIJE_PROCES.md` §5.
 > Ovdje ostaje samo ono što vrijedi **bez obzira na to dokle je migracija došla**.
 
 **Ključne odluke**
@@ -2583,7 +2583,7 @@ Puni spec: **`docs/OVERVIEW_TAB_SPEC.md`**. Ovdje samo ono što se ne smije zabo
   `lastSeenArea` je briše na promjeni Aree, u ISTOM efektu. E2E to glumi bez reloada.
 - **Provjera rasporeda bucketa mora gledati SVU povijest, ne 12 mjeseci** (S166). `set_breakdown.py`
   je javio „nesvrstano: ništa", a All time je pokazao `nesvrstano` 9.543,16 (Tip `Investicije`,
-  2023.–2024.) — v. `docs/FINANCIJE_PROCES.md` T33–T36.
+  2023.–2024.) — v. `docs/_archive/FINANCIJE_PROCES_do_S194.md` T33–T36.
 - **Automat `Planiran → Izvršen` po dospijeću je ODBAČEN** — dospjeli datum nije dokaz da je
   banka naplatila, pa bi automat sam proizveo razliku prema banci. Umjesto toga „Dospjelo → potvrdi".
 - **Transfer:** **ulazi** u saldo (novac je stvarno otišao), **izlazi** iz razreza po Tipu.

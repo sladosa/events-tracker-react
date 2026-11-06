@@ -4,7 +4,12 @@
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S195) — trening, korak 6 (prijedlog); Financije samo 11.11. i u prosinačkom krugu
+# Sljedeća sesija (S195) — `krug` (T4) prije prosinačkog kruga (Saša, 06.11.); trening poslije
+
+> **Odluka 06.11. (Saša):** prvo `krug` dok je svjež s Financijama — `docs/FINANCIJE_PROCES.md` §5 T4: `krug.py` (svi izvodi,
+> ponovljiv, nejasno u Excel `Delete?`, ZABA/RF bez Delta Exporta, izvještaj), pločica „Mjesečni krug" (kontrolna lista iz
+> podataka) i gumb `etracker://krug`. **Test: studeni na TEST-u** (TEST = PROD prije kruga, PDF-ovi 10/2026 su u `izvodi\`).
+> Dokumenti Financija preliminarno restrukturirani u S194 (stari u `_archive/FINANCIJE_PROCES_do_S194.md`).
 
 > **Ukratko (S194):** S185–S193 su na PROD-u (backup, 059/060, shema u gitu), pet alata mjesečnog kruga popravljeno i
 > izmjereno usporedbom stare i nove verzije nad izvodima 2026., Visa pravilo naplate je cutoff:2:5, a čip „saldo na

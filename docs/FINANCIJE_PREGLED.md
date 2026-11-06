@@ -4,7 +4,7 @@
 napravili, gdje stoji otvoreni posao i što je od svega toga upotrebljivo za druge Aree.
 
 > ⚠ **Ovaj dokument NE vodi popis otvorenog posla.** Jedini popis je
-> [`FINANCIJE_PROCES.md`](FINANCIJE_PROCES.md) §4.
+> [`FINANCIJE_PROCES.md`](FINANCIJE_PROCES.md) §5.
 > Drugi popis bi se s njim razišao za par sesija (isti razred kao kurirani popis u PENDING-u, ukinut S116).
 > Ovdje se na njega samo upućuje.
 
@@ -14,7 +14,9 @@ napravili, gdje stoji otvoreni posao i što je od svega toga upotrebljivo za dru
 
 | pitanje | dokument |
 | --- | --- |
-| Kako Koka i Saša vode Financije, što je otvoreno (T1–T37) | [`FINANCIJE_PROCES.md`](FINANCIJE_PROCES.md) |
+| Kako Koka i Saša vode Financije, **mjesečni krug korak po korak**, što je otvoreno | [`FINANCIJE_PROCES.md`](FINANCIJE_PROCES.md) |
+| Puni tekst zatvorenih T1–T50, nalazi krugova S158/S192 (povijest) | [`_archive/FINANCIJE_PROCES_do_S194.md`](_archive/FINANCIJE_PROCES_do_S194.md) |
+| Ploha „Raščišćavanje izvoda“ (prijedlog, parkirano) | [`parked/RASCISCAVANJE_IZVODA.md`](parked/RASCISCAVANJE_IZVODA.md) |
 | Saldo, sidra, pločice, RPC, gdje živi konfiguracija | [`OVERVIEW_TAB_SPEC.md`](OVERVIEW_TAB_SPEC.md) |
 | „Kamo ide novac" — razrez, bucketi | [`RAZREZ_SPEC.md`](RAZREZ_SPEC.md) |
 | Traka „Čeka potvrdu", košare | [`DOSPJELO_SPEC.md`](DOSPJELO_SPEC.md) |
@@ -67,7 +69,7 @@ između pipelinea i ručnog unosa je **datum**, ne vrsta retka.
 
 ## 3. Što čeka
 
-→ **[`FINANCIJE_PROCES.md`](FINANCIJE_PROCES.md) §4**
+→ **[`FINANCIJE_PROCES.md`](FINANCIJE_PROCES.md) §5**
 (jedini popis). Redoslijed i razlozi su u `CLAUDE.md` § Strategic Position.
 
 Za orijentaciju, bez ponavljanja popisa: kratkoročno je to **mjesečni krug u studenom** (prvi put
