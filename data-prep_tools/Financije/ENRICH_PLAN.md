@@ -1653,3 +1653,15 @@ Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.
   Namjena | Tip, fond Nena / Kućište) i `date_axes[].sides`. Nove provjere: ≤ 4 dimenzije (056), fond mora
   biti opcija atributa osi. TEST upisano; PROD poslije deploya (T-S183-2).
 - `verify_breakdown.py`: 4 dimenzije (+ `namjena`), Namjena po strani u modelu, `EXPECTED_12` = TEST 25.10.
+
+### S194 (2026-11-06) — alati mjesečnog kruga prije prosinca (T45, T41, T47, T44, T49)
+
+- `_zaba_spajanje.py` (nov, `--test`): ZABA dedup 1:1 uz smjer i Izvor umjesto skupa `(datum, iznos)`; storno
+  (iznos s minusom) = suprotni smjer, ±1 dan; kartični redak bez žiga = KRIVO MJESTO, jasan ga
+  `fill_from_izvod.premjesti_na_racun` sam prebaci (`Izvor = Racun`, dan i Datum naplate s izvoda, `Izvrsen`, žig).
+  Stari/novi nad ZABA 01–10/2026 + TEST: 2 razlike od 287 (KEKS storno, Zoran 18,38 — stari = duplikat).
+- `fill_from_izvod --mc`: `MC_KASNI_DANA = 2` — nepotvrđena kupnja (ne rata) iz zadnja 2 dana izvoda ide sama u
+  iduću košaru (izmjereno 3/87 zadnji dan, 2/48 dan prije, 0 ranije); `--brisi` ima prednost.
+- `visa_uvoz_izvoda`: `spari_blizu` (istog dana s obje strane, T41, `--test`), naslov ISPRAVCI broji stvarne (T44).
+- `razvrstaj_izvode`: sirova imena u korijenu `izvodi\` preimenuje na mjestu (T49), duplikat samo javi.
+- T40 mjerenje: Visa `cutoff:2:5` (PROD, Saša).

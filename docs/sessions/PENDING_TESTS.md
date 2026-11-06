@@ -86,18 +86,6 @@ T48 (traka upisuje Namjenu), T39 (grantee u traci vidi usporedbu), T50 (uvoz ne 
 
 ---
 
-## S192 — Studeni krug Financija (ispit „dovoljno gotove") (2026-11-05)
-
-Visa, ZABA i MC izvod 10/2026 zatvoreni u cent bez ručnog slaganja uvoznog filea; RF usklađen usporedbom Delta sheeta s bankom. Trenje kruga je zapisano kao T39–T49 (`docs/FINANCIJE_PROCES.md` §4) za sesiju održavanja — kod se u krugu nije mijenjao.
-
-**Detalji testova:** [tests/S192_tests.md](tests/S192_tests.md)
-
-| ID | Test | Status |
-| --- | --- | --- |
-| T-S192-1 | RF sidro kad Keks 22 € sjedne: banka = pločica **253,15** ⇒ Koka „u banci" 253,15, *ekran banke*, Potvrdi ⇒ saldo ostaje 253,15 | ✅ S194 (06.11.) — potvrdio Saša s mobitela (write grantee smije sidro, T-S108-11), pločica 253,15 |
-
----
-
 ## S191 — Testovi koraka 5, popravci (2026-11-01)
 
 Uz T-S190: katalog (Name ispred Sluga, Group obavezan, istezanje / rotacija_kicme u Core, rolanje izvan kataloga — TEST usklađen `katalog.py --pravila --apply`); View: dug tekst se prelama ispod naziva.
