@@ -137,6 +137,41 @@ def potvrdjen_drugdje(r, ym: str) -> bool:
     return bool(a.get('Izvod opis')) and str(a.get('Datum naplate'))[:7] != ym
 
 
+def spari_blizu(ostali: list[dict], visa: list[dict]) -> list[tuple[dict, dict]]:
+    """Treci korak sparivanja: stavka izvoda ↔ redak kosare BLIZAK iznosom (±15 %,
+    ±2 dana) — banka je naplatila drukciji iznos od upisanog. Par samo kad je
+    jedini s OBJE strane, jer bliski iznos nije dokaz kao tocan.
+
+    „Istog dana" je jaci dokaz od „jedini uopce" — i to s obje strane:
+      * stavka s vise kandidata uzima jedinog istog dana (S161: Purex 31,36 ↔
+        31,13 uz Eurospin 29,63 dva dana ranije);
+      * redak na koji pretendira vise stavki ide onoj istog dana (S194, T41:
+        TEDI 10,85 ↔ izvod TEDI 10,59 isti dan, uz Studenac 11,75 dva dana
+        kasnije — Studenac je bio upisan kao Mastercard, pa mu u Visa kosari
+        para nema). Do S194 ta strana nije gledala dan, pa nije spareno nista.
+    Vraca [(stavka, redak)] — svaki redak najvise jednom."""
+    def blizu(r, t):
+        st = num(r['attrs'].get('Isplata'))
+        return (abs((dan(r) - t['date']).days) <= BLIZU_DANA
+                and abs(st - t['iznos']) > EPS and abs(st - t['iznos']) <= BLIZU_UDIO * t['iznos'])
+    kand = {id(t): [r for r in visa if blizu(r, t)] for t in ostali}
+    out, uzeti = [], set()
+    for t in ostali:
+        k = [r for r in kand[id(t)] if r['id'] not in uzeti]
+        if len(k) > 1:
+            k = [r for r in k if dan(r) == t['date']]
+        if len(k) != 1:
+            continue
+        r = k[0]
+        tko = [t2 for t2 in ostali if r in kand[id(t2)]]
+        if len(tko) > 1:
+            tko = [t2 for t2 in tko if t2['date'] == dan(r)]
+        if len(tko) == 1 and tko[0] is t:
+            uzeti.add(r['id'])
+            out.append((t, r))
+    return out
+
+
 def opcije(prefix: str) -> set[str]:
     return {a.split('=', 1)[1][:8] for a in sys.argv[1:] if a.startswith(prefix + '=')}
 
@@ -259,24 +294,11 @@ def main():
             iskoristeni.add(r['id'])
     ostali = [t for t in ostali if id(t) not in par]
 
-    # -- 3. blizak iznos: jedini par s obje strane
-    def blizu(r, t):
+    # -- 3. blizak iznos: jedini par s obje strane (`spari_blizu`, S194 T41)
+    for t, r in spari_blizu(ostali, [r for r in visa if r['id'] not in iskoristeni]):
+        iskoristeni.add(r['id'])
         st = num(r['attrs'].get('Isplata'))
-        return (r['id'] not in iskoristeni and abs((dan(r) - t['date']).days) <= BLIZU_DANA
-                and abs(st - t['iznos']) > EPS and abs(st - t['iznos']) <= BLIZU_UDIO * t['iznos'])
-    kand = {id(t): [r for r in visa if blizu(r, t)] for t in ostali}
-    for t in ostali:
-        k = kand[id(t)]
-        if len(k) > 1:
-            # Duplikat u kosari zna biti drugi kandidat (izmjereno S161: Purex
-            # 31,36 ↔ 31,13 uz Eurospin 29,63 dva dana ranije). Jedini istog
-            # dana je tada jaci dokaz od „jedini uopce".
-            k = [r for r in k if dan(r) == t['date']]
-        if len(k) == 1 and sum(1 for t2 in ostali if k[0] in kand[id(t2)]) == 1:
-            r = k[0]
-            iskoristeni.add(r['id'])
-            st = num(r['attrs'].get('Isplata'))
-            par[id(t)] = (r, {'Isplata': t['iznos']}, f'iznos {st:.2f} → {t["iznos"]:.2f} (banka)')
+        par[id(t)] = (r, {'Isplata': t['iznos']}, f'iznos {st:.2f} → {t["iznos"]:.2f} (banka)')
     ostali = [t for t in ostali if id(t) not in par]
 
     # -- 4. isti iznos na drugom mjestu (drugi Izvor / racun), bez ziga
@@ -334,7 +356,9 @@ def main():
                 or rucna_klasa(t['opis']) or po_pravilu(t))
 
     zbroj = 0.0
-    print(f'\nISPRAVCI ({len(par)}):')
+    # T44 (S194): naslov broji STVARNE ispravke — do tada `len(par)`, pa je pisalo
+    #   „ISPRAVCI (42)" i kad je ponovni prolaz nad uvezenim izvodom imao 0 promjena.
+    linije = []
     bez_promjene = 0
     for t in isp:
         if id(t) not in par:
@@ -372,7 +396,10 @@ def main():
             continue
         izlaz.append((rr, a, k, False, f'ISPRAVI — {zasto}; naplata {ciklus}'
                       + (', Izvrsen' if status else ', Status ostaje')))
-        print(f'  {rr["event_date"]} {num(a.get("Isplata")):8.2f}  {str(k)[:30]:30} ← {t["opis"][:40]}  [{zasto}]')
+        linije.append(f'  {rr["event_date"]} {num(a.get("Isplata")):8.2f}  {str(k)[:30]:30} ← {t["opis"][:40]}  [{zasto}]')
+    print(f'\nISPRAVCI ({len(linije)}):')
+    for ln in linije:
+        print(ln)
     if bez_promjene:
         print(f'  (+ {bez_promjene} sparenih bez ijedne promjene — nisu u fileu)')
 
@@ -468,5 +495,47 @@ def main():
              taksonomija(url, key), namjena=nam)
 
 
+def _test() -> int:
+    """`python visa_uvoz_izvoda.py --test` — samoprovjera `spari_blizu` (S194)."""
+    D = date.fromisoformat
+    bad = 0
+
+    def ok(c, m):
+        nonlocal bad
+        print(('  ✓ ' if c else '  ✗ ') + m)
+        bad += 0 if c else 1
+
+    def t(d, a, o):
+        return {'date': D(d), 'iznos': a, 'opis': o}
+
+    def r(i, d, a):
+        return {'id': i, 'event_date': d, 'attrs': {'Isplata': a}}
+
+    def parovi(o):
+        return [(x['opis'], y['id']) for x, y in o]
+
+    # T41 (S192): TEDI 10,85 u kosari; izvod TEDI 10,59 isti dan + Studenac 11,75 dva dana kasnije
+    tedi, stud = t('2026-10-20', 10.59, 'TEDI'), t('2026-10-22', 11.75, 'STUDENAC')
+    ok(parovi(spari_blizu([tedi, stud], [r('tedi', '2026-10-20', 10.85)])) == [('TEDI', 'tedi')],
+       'T41: TEDI 10,59 ↔ 10,85 isti dan; Studenac bez para')
+    ok(parovi(spari_blizu([stud, tedi], [r('tedi', '2026-10-20', 10.85)])) == [('TEDI', 'tedi')],
+       'T41 ne ovisi o redoslijedu stavki')
+    # S161: Purex 31,36 na izvodu; u kosari 31,13 isti dan i Eurospin 29,63 dva dana ranije
+    ok(parovi(spari_blizu([t('2026-09-10', 31.36, 'PUREX')],
+                          [r('pur', '2026-09-10', 31.13), r('eur', '2026-09-08', 29.63)]))
+       == [('PUREX', 'pur')], 'S161: stavka uzima kandidata istog dana')
+    ok(spari_blizu([t('2026-10-20', 10.59, 'A'), t('2026-10-20', 10.70, 'B')],
+                   [r('x', '2026-10-20', 10.85)]) == [], 'dvije stavke istog dana ⇒ nijedan par')
+    ok(spari_blizu([t('2026-10-19', 10.59, 'A'), t('2026-10-21', 10.70, 'B')],
+                   [r('x', '2026-10-20', 10.85)]) == [], 'dvije stavke, nijedna istog dana ⇒ nijedan par')
+    ok(len(spari_blizu([t('2026-10-19', 10.59, 'A')], [r('x', '2026-10-20', 10.85)])) == 1,
+       'jedinstven par ±1 dan ostaje par')
+    print('SVE PROSLO' if not bad else '%d PALO' % bad)
+    return 1 if bad else 0
+
+
 if __name__ == '__main__':
+    if '--test' in sys.argv:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.exit(_test())
     main()

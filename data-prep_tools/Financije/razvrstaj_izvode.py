@@ -141,9 +141,53 @@ def plan_rename(pl: dict, inbox: Path, zauzeta: set[str]) -> tuple[str, str] | N
     return ('PREIMENUJ', f'u inboxu -> {novo}')
 
 
+def korijen(apply: bool) -> None:
+    """T49 (S194): sirova imena u KORIJENU `izvodi/` (`Izvod.pdf`, `Obavijest o
+    učinjenim troškovima.pdf`) — S192 su izvodi stavljeni ravno ondje, mimo
+    inboxa, pa ih nitko nije preimenovao, a alati traze `TIP_YYYY-MM.pdf`.
+    Isto prepoznavanje po sadrzaju kao inbox (`plan_one`), ali file se
+    PREIMENUJE NA MJESTU — vec je nas, nije Kokin.
+    /!\\ Nista se ne brise: file koji vec imamo pod pravim imenom (isti md5 ili
+        iste transakcije) samo se javi -- dupli izvod u korijenu je odluka covjeka.
+    /!\\ Nikad ne prepisuje: zauzeto ime ⇒ ostaje (`plan_one` to vec kaze)."""
+    sirovi = sorted(p for p in IZVODI_DIR.iterdir()
+                    if p.is_file() and p.suffix.lower() == '.pdf' and not RE_GOOD_NAME.match(p.name))
+    if not sirovi:
+        return
+    print(f'Korijen {IZVODI_DIR.name}/ — {len(sirovi)} PDF-a sa sirovim imenom:')
+    known = known_files()
+    taken, posao = set(), []
+    for p in sirovi:
+        pl = plan_one(p, {k: v for k, v in known.items() if v != p})
+        if pl['action'] == 'KOPIRAJ' and pl['target'].name in taken:
+            pl['action'] = 'OSTAJE'
+            pl['detail'] = f'drugi sirovi file vec ide u {pl["target"].name} -- usporedi rucno'
+        if pl['action'] == 'KOPIRAJ':
+            taken.add(pl['target'].name)
+            posao.append(pl)
+            print(f'  PREIMENUJ {p.name}\n            -> {pl["target"].name}  ({pl["detail"].split(" -> ")[0]})')
+        elif pl['action'] == 'vec imamo':
+            print(f'  DUPLIKAT  {p.name}\n            vec imamo kao {pl["detail"]} -- ostaje, makni ga rucno')
+        else:
+            print(f'  OSTAJE    {p.name}\n            {pl["detail"]}')
+    if not posao:
+        print()
+        return
+    if not apply:
+        print('  (dry run -- s --apply se preimenuju)\n')
+        return
+    for pl in posao:
+        if pl['target'].exists():
+            print(f'  ! {pl["target"].name} se pojavio u medjuvremenu -- {pl["src"].name} ostaje')
+            continue
+        pl['src'].rename(pl['target'])
+    print(f'  ✔ preimenovano {len(posao)} u korijenu (nista obrisano)\n')
+
+
 def main() -> None:
     args = sys.argv[1:]
     apply = '--apply' in args
+    korijen(apply)
     inbox = INBOX
     if '--inbox' in args:
         i = args.index('--inbox')

@@ -326,6 +326,18 @@
   S126 bio pravi backspace (`\x08`) i izraz nikad nije pogodio. Sken: `[\x00-\x08\x0b\x0c\x0e-\x1f]`.
 - **`_db.load_env` traži SERVICE ključ** (S158); TEST = `.env.local`. Anon kroz RLS daje dio baze.
 
+**Mjesečni krug — pravila iz S194 (izmjereno stari/novi nad izvodima 2026. i TEST bazom)**
+
+- **⚠ ZABA dedup NIJE skup `(datum, iznos)`** (`_zaba_spajanje.py`): skup bez smjera, Izvora i brojanja
+  je storno KEKS −0,10 nudio kao nov redak, kartični parking 1,60 proglasio „već na listu" (Δ 1,60) i
+  propustio Zoranovu uplatu 18,38 dan pomaknutu (duplikat). Točan par PRVI, tolerancija tek poslije.
+- **Alat sam popravlja samo JASAN slučaj** (Saša, S194): jedini kandidat, ničiji drugi, ≤ 1 dan,
+  redak na listu (ne `--protiv`). Inače NOV s upozorenjem — duplikat se vidi u pregledu uvoza.
+- **MC kupnja iz zadnja 2 dana izvoda** koju izvod ne nosi ide SAMA u iduću košaru (`MC_KASNI_DANA`,
+  T47) — izmjereno: zadnji dan 3/87, dan prije 2/48, ranije 0. `--brisi` istog retka ima prednost.
+- **Visa blizak iznos: „istog dana" s OBJE strane** (`spari_blizu`, T41) — redak na koji pretendiraju
+  dvije stavke ide onoj istog dana.
+
 **MC alat (S173)** — `fill_from_izvod --mc` + `_mc_spajanje.py`; isti obrazac kao Visa (S161)
 
 - **⚠ PLAN NIJE „ISTI `event_date`".** Rate uvezene s izvoda nose dan KNJIŽENJA (Konzum P-0277:
@@ -627,6 +639,12 @@ data-prep_tools/Financije/_mc_spajanje.py
                                    naknade + buduce (T23), `uskladi()` za ostalo, blizak
                                    iznos (T13), duplikati (T14). Samo odlucuje; pise
                                    `fill_from_izvod --mc` (ispravci NA retke sekcije).
+data-prep_tools/Financije/_zaba_spajanje.py
+                                   S194 (T45): ZABA izvod <-> delta list — par 1:1 uz
+                                   SMJER i IZVOR (do tada skup `(datum, iznos)`), storno
+                                   (iznos s minusom) = suprotni smjer ±1 dan, kartični
+                                   redak bez žiga = KRIVO MJESTO (jasan se sam premjesti
+                                   na račun). Čisto; `--test`.
 data-prep_tools/Financije/_db.py   `load_env` + pagirani `rest`. Izdvojeno iz
                                    `uskladi_izvod` (koji uvozi pdfplumber) da alat
                                    koji prica SAMO s bazom ne vuce PDF citac.

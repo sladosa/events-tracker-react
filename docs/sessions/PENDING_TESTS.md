@@ -2,7 +2,7 @@
 
 **Otvoreno: NE VODI SE OVDJE** -- vodi se iskljucivo u tablicama (`audit_tests.py`). Pravila filea: [na dnu](#o-ovom-fileu).
 
-**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S193 (2026-11-05, održavanje Financija: T39/T43/T48/T50 na test-branch, T-S190-5 ✅; tri provjere S193 čekaju deploy) · povijest sesija: `DONE_HISTORY.md`
+**Branch:** `test-branch` (dev) / `main` (PROD) · **Zadnji update:** S194 (2026-11-06, deploy S185–S193 na PROD + 059/060; alati Financija T45/T41/T47/T44/T49, T40 izmjeren; T-S192-1 ✅) · povijest sesija: `DONE_HISTORY.md`
 
 ---
 
@@ -12,12 +12,14 @@
 
 > Generirano iz tablica ispod (`python data-prep_tools/Tools/audit_tests.py --write`). Status se mijenja u tablici, nikad ovdje.
 
-**Testovi — čekaju datum ili događaj** (6)
+**Testovi — čekaju datum ili događaj** (8)
 
+- **T-S194-1** — **čeka: ZABA_2026-11 (početak prosinca)** — Prosinački krug, ZABA: fill_from_izvod --zaba ZABA_2026-11 ⇒ storno (ako ga ima) kao „≈ isti … · _S194_
+- **T-S194-2** — **čeka: MC_2026-11 (~02.12.)** — Prosinački krug, MC: --mc MC_2026-11 ⇒ kupnje s kraja izvoda „→ POMAKNUTO u košaru 11.01." (ne … · _S194_
+- **T-S194-3** — **čeka: PBZVISA_2026-11 (~03.12.)** — Prosinački krug, Visa: ispis „ISPRAVCI (n)" = broj ispisanih redaka; bliski iznos istog dana … · _S194_
 - **T-S193-1** — **čeka: deploy prije 11.11. + traka MC (Koka)** — 11.11., Koka, traka MC: „Da, upiši" ⇒ novi skupni redak (Σ 2.783,26) u Editu ima Namjena = … · _S193_
 - **T-S193-2** — **čeka: deploy prije 11.11. + traka MC** — 11.11., Saša (grantee): ista traka — upiši 2783,26 ⇒ „✓ slaže se" i „Potvrđuje vlasnica Aree"; … · _S193_
 - **T-S193-3** — **čeka: deploy + prvi Kokin uvoz** — Prvi Kokin Excel uvoz poslije deploya: završni ekran „Trajanje: …" (40-ak ispravaka ≲ 1 min); … · _S193_
-- **T-S192-1** — **čeka: Keks sjeo na RF (banka 253,15)** — RF sidro kad Keks 22 € sjedne: banka = pločica 253,15 ⇒ Koka „u banci" 253,15, ekran banke, … · _S192_
 - **T-S191-6** — **čeka: deploy na PROD (mobitel bez hotspota)** — Pravi mobitel: izbornik ⇒ kartica ⇒ Uredi vježbu ⇒ „Add" otvara STRAŽNJU kameru ⇒ slikaj ⇒ … · _S191_
 - **T-S175-1** — **čeka: 11.11. (Koka, traka MC Σ 2.783,26)** — ~02.11.–11.11. PROD: MC_2026-10 kroz fill_from_izvod --mc (15 rata + 4 naknade sparene, … · _S175_
 
@@ -51,6 +53,20 @@ Sati rada, ne provjera promjene; ostaje ovdje da se vidi (Saša, S192). Status u
 
 ---
 
+## S194 — Deploy i alati Financija: ZABA storno / krivo mjesto, Visa blizak iznos, MC kraj izvoda (2026-11-06)
+
+Deploy `main` = `c232ee5` (S185–S193) + `059`/`060` na PROD-u. Alati (bez deploya): `fill_from_izvod --zaba` (T45: storno, par 1:1 uz smjer i Izvor, kartični redak = KRIVO MJESTO — jasan se sam premjesti), `--mc` (T47: kupnja s kraja izvoda sama u iduću košaru), `visa_uvoz_izvoda` (T41 blizak iznos, T44 naslov), `razvrstaj_izvode` (T49 korijen). Sve izmjereno na TEST-u (stari/novi usporedno); ovdje su provjere u prosinačkom krugu.
+
+**Detalji testova:** [tests/S194_tests.md](tests/S194_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S194-1 | **Prosinački krug, ZABA:** `fill_from_izvod --zaba ZABA_2026-11` ⇒ storno (ako ga ima) kao „≈ isti redak", kartični redak plaćen s računa u „MOŽDA KRIVO MJESTO"; uvoz bez duplikata, `promet_check` 2026-11 ✓ | ⬜ čeka: ZABA_2026-11 (početak prosinca) |
+| T-S194-2 | **Prosinački krug, MC:** `--mc MC_2026-11` ⇒ kupnje s kraja izvoda „→ POMAKNUTO u košaru 11.01." (ne `--brisi`), KONTROLA ✓ u cent | ⬜ čeka: MC_2026-11 (~02.12.) |
+| T-S194-3 | **Prosinački krug, Visa:** ispis „ISPRAVCI (n)" = broj ispisanih redaka; bliski iznos istog dana sparen kao ispravak | ⬜ čeka: PBZVISA_2026-11 (~03.12.) |
+
+---
+
 ## S193 — Održavanje Financija: traka, brz uvoz, razdoblje (2026-11-05)
 
 T48 (traka upisuje Namjenu), T39 (grantee u traci vidi usporedbu), T50 (uvoz ne dira razdoblje), T43 (uvoz ispravaka 42 retka: TEST >300 s → 11 s, trajanje na završnom ekranu). Sve čuvaju E2E; ovdje su samo provjere na PROD-u koje se dogode same.
@@ -73,7 +89,7 @@ Visa, ZABA i MC izvod 10/2026 zatvoreni u cent bez ručnog slaganja uvoznog file
 
 | ID | Test | Status |
 | --- | --- | --- |
-| T-S192-1 | RF sidro kad Keks 22 € sjedne: banka = pločica **253,15** ⇒ Koka „u banci" 253,15, *ekran banke*, Potvrdi ⇒ saldo ostaje 253,15 | ⬜ čeka: Keks sjeo na RF (banka 253,15) |
+| T-S192-1 | RF sidro kad Keks 22 € sjedne: banka = pločica **253,15** ⇒ Koka „u banci" 253,15, *ekran banke*, Potvrdi ⇒ saldo ostaje 253,15 | ✅ S194 (06.11.) — potvrdio Saša s mobitela (write grantee smije sidro, T-S108-11), pločica 253,15 |
 
 ---
 
