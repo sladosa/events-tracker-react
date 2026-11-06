@@ -1,4 +1,4 @@
-> Pisano protiv `0c0588c` (S194) i commita koji nosi ovaj file (S194 zatvaranje).
+> Pisano protiv `d9fc815` (S194) i commita koji nosi ovaj file (S194 zatvaranje, restrukturiranje docs Financija).
 > **Stanje:** `main` = `c232ee5` (S185–S193, **PROD od 06.11.2026.**); `test-branch` = `main` + S194 (alati, T46, T42), **nije deployano**.
 > **Baze:** `058`, `059`, `060` su na PROD-u i TEST-u. S194 nema migraciju. PROD `Visa=cutoff:2:5` (06.11.), TEST još `cutoff:3:5`.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
@@ -9,6 +9,8 @@
 > **Odluka 06.11. (Saša):** prvo `krug` dok je svjež s Financijama — `docs/FINANCIJE_PROCES.md` §5 T4: `krug.py` (svi izvodi,
 > ponovljiv, nejasno u Excel `Delete?`, ZABA/RF bez Delta Exporta, izvještaj), pločica „Mjesečni krug" (kontrolna lista iz
 > podataka) i gumb `etracker://krug`. **Test: studeni na TEST-u** (TEST = PROD prije kruga, PDF-ovi 10/2026 su u `izvodi\`).
+> **Izlaz** (Excel za uvoz + izvještaj): Kokina OneDrive mapa **`C:\0_Sasa\OneDrive\Izvodi\Za uvoz`** (Saša 06.11.; alat ondje
+> samo dodaje, nikad ne briše ni ne premješta — mapa je Kokina).
 > Dokumenti Financija preliminarno restrukturirani u S194 (stari u `_archive/FINANCIJE_PROCES_do_S194.md`).
 
 > **Ukratko (S194):** S185–S193 su na PROD-u (backup, 059/060, shema u gitu), pet alata mjesečnog kruga popravljeno i
