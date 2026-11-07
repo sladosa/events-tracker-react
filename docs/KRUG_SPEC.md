@@ -1,6 +1,7 @@
 # `krug` — jedna naredba za mjesečni krug Financija
 
-**Stanje na:** 2026-11-07 (S195, prije koda) · **Stavka:** T4 u [`FINANCIJE_PROCES.md`](FINANCIJE_PROCES.md) §5
+**Stanje na:** 2026-11-07 (S195) — **faza A izvedena i izmjerena na TEST-u** (§8); PROD prvi put u prosinačkom
+krugu (T-S195-1..4) · **Stavka:** T4 u [`FINANCIJE_PROCES.md`](FINANCIJE_PROCES.md) §5
 **Za:** Sašu i Claudea · **Susjedni:** [`FINANCIJE_PROCES.md`](FINANCIJE_PROCES.md) §3 (današnji ručni tok, koji
 `krug` zamjenjuje) · [`DOSPJELO_SPEC.md`](DOSPJELO_SPEC.md) (traka) · [`data-prep_tools/CLAUDE.md`](../data-prep_tools/CLAUDE.md)
 (pravila alata — vrijede i unutar `krug`a, nijedno se ne ukida)
@@ -163,3 +164,32 @@ STATEMENTS = {
 | **C** | **`krug` u oblaku** (K8): izvodi se dodaju **u appu** (Supabase Storage, zaseban spremnik `izvodi` — NE `event_attachments`, jer izvod pripada Arei i mjesecu, ne eventu; prava **samo vlasnik Aree**) → gumb „Pokreni krug" → Netlify funkcija → **GitHub Actions** (isti Python, ključ u secretima) → Excel i izvještaj u Storage → Koka ih otvori i uveze u appu. Otvoreno: RF je OCR ⇒ tesseract na runneru; provjera vlasništva prije pokretanja | poslije lokalnog Supabasea (Strategic Position) |
 
 `etracker://` (gumb samo na Sašinom laptopu) **se ne gradi** (K8) — do faze C Saša pokreće `krug.bat` ručno.
+
+---
+
+## 8. Izvedeno i izmjereno (S195, faza A)
+
+**Fileovi** (`data-prep_tools/Financije/`): `krug.py` (omotač: putanje, razvrstač, sidro, seljenje, Excel,
+izvještaj) · `krug.bat` (PROD, dvoklik) · `_krug.py` (jezgra: stanje izvoda, veze, sukobi, sažetak) ·
+`_krug_excel.py` (jedan file, jedan redak po `event_id`) · `_krug_izvjestaj.py` (HTML). Logika izvoda je
+**izvučena** iz alata, ne kopirana: `visa_uvoz_izvoda.analiza`, `fill_from_izvod.mc_odluke(db=)`,
+`zaba_odluke`, `rf_odluke`, `spojeni_retci`, `postojeci_iz_baze`, `klasificiraj`; CLI alata je isti
+(regresija 14 slučajeva, ispis i fileovi identični).
+
+**Što je mjerenje dodalo specu** (nije bilo u planu, a bez toga bi krug pitao Koku krivo):
+- **pomaknut dan** — stavka izvoda i redak baze bez para, isti smjer i iznos, ≤ 3 dana, oba u prozoru izvoda ⇒
+  isti redak (napomena, ne izmjena). ZABA_2026-09: parking 0,70 ×2 (07.09. / 09.09.); ZABA_2026-10: Zoran 94,47;
+- **veza među izvodima** (§2) je izmjerena kao stvarna: Youtube 9,55 upisan kao `Racun` = MC stavka; Studenac
+  11,75 u MC košari = Visa stavka (S192). Jasna veza = izmjena istog retka, kontrola obiju strana „poslije veza";
+- **kontrola poslije uvoza** i za banku (app + novi retci ± premješteni) — ZABA_2026-10 Δ −360,10 je točno zbroj
+  11 novih redaka i 9,55 koji odlazi;
+- **sidro se upisuje tek kad je saldo pločice na dan izvoda = ispisano stanje**, ne samo promet ✓ — inače bi
+  sidro sakrilo grešku stariju od izvoda;
+- **TEST file nikad u Kokinu mapu**: TEST i `--suho` pišu u `data-prep_data/Financije/krug_lokalno/`;
+- **minuta novog retka jedinstvena u cijelom fileu** — MC i Visa bi istog dana nezavisno dali 14:00.
+
+**Studeni na TEST-u** (T-S195-5): 34 New · 73 Modify + 1 odluka ⇒ uvoz kroz app 34 · 73 · 1 (25 s) ⇒ drugi krug
+3/3 gotovo + sidro ⇒ treći krug bez promjene. Harness (radni stol): `Claude-temp_R/s195/` — `regresija.py`,
+`grane.py`, `krug_proba.py` (scenariji u memoriji), `gluma_traka.py`.
+⚠ TEST nakon toga: MC/Visa/ZABA 10/2026 obrađeni, Visa naplata 05.11. = 1.751,12, sidro ZABA 01.11. Vraćanje:
+`restore_db.py` sa snimkom `_backup/test/2026-11-07_1205`, ili `prod_to_test.py`.

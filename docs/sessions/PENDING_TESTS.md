@@ -12,8 +12,12 @@
 
 > Generirano iz tablica ispod (`python data-prep_tools/Tools/audit_tests.py --write`). Status se mijenja u tablici, nikad ovdje.
 
-**Testovi — čekaju datum ili događaj** (10)
+**Testovi — čekaju datum ili događaj** (14)
 
+- **T-S195-1** — **čeka: prvi izvod prosinca (MC ~02.12.)** — Probni prolaz PROD: krug.bat --suho ⇒ [PROD], izvještaj iz krug_lokalno\ (ne OneDrive), ništa … · _S195_
+- **T-S195-2** — **čeka: T-S195-1** — Pravi krug + Kokin uvoz: krug.bat ⇒ xlsx + html u Za uvoz; Koka odluči (DELETE / prazno) i … · _S195_
+- **T-S195-3** — **čeka: T-S195-2** — Drugi krug poslije uvoza: obrađeni izvodi ✓ GOTOVO, 0 · 0, premješteni u Analizirani_izvodi\; … · _S195_
+- **T-S195-4** — **čeka: PBZVISA_2026-11 (~03.12.)** — Visa (K7): prije plaćanja ⏳ „Saša plati X do …" i nema Visa redaka u fileu; poslije trake Visa … · _S195_
 - **T-S194-1** — **čeka: ZABA_2026-11 (početak prosinca)** — Prosinački krug, ZABA: fill_from_izvod --zaba ZABA_2026-11 ⇒ storno (ako ga ima) kao „≈ isti … · _S194_
 - **T-S194-2** — **čeka: MC_2026-11 (~02.12.)** — Prosinački krug, MC: --mc MC_2026-11 ⇒ kupnje s kraja izvoda „→ POMAKNUTO u košaru 11.01." (ne … · _S194_
 - **T-S194-3** — **čeka: PBZVISA_2026-11 (~03.12.)** — Prosinački krug, Visa: ispis „ISPRAVCI (n)" = broj ispisanih redaka; bliski iznos istog dana … · _S194_
@@ -52,6 +56,22 @@ Sati rada, ne provjera promjene; ostaje ovdje da se vidi (Saša, S192). Status u
 | P-1 | **Gibljivost:** `npm run dev:prod` → filtar `Health_Sasa` → Structure → **Export** → file u `Claude-temp_R\` ⇒ Claude doda leaf `Gibljivost` (3 testa, 5 brojki u cm), ti uvezeš i izmjeriš prvi put (S191) | ⬜ |
 | P-2 | **Skica View-a treninga** (<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>) — tvoje mišljenje prije koraka 6 (S191) | ⬜ |
 | P-3 | Pospremi probne vježbe u katalogu na TEST-u: `hand_lat_test`, `lat_raises_test`, stara `test` (S191) | ⬜ |
+
+---
+
+## S195 — `krug`: jedna naredba za mjesečni krug Financija (2026-11-07)
+
+`krug.bat` (PROD) / `run.bat krug.py --suho` (TEST): razvrstač → izvodi u korijenu `izvodi\` → stanje iz baze → jedan Excel (odluke u `Delete?`, napomene) + izvještaj na hrvatskom u `OneDrive\Izvodi\Za uvoz`; sidro ZABA/RF iz izvoda. Spec: `docs/KRUG_SPEC.md`. Studeni izveden na TEST-u od početka do kraja (T-S195-5); T-S194-1..3 se u prosincu čitaju iz izvještaja `krug`a (odjeljak Detalji = ispis istih alata).
+
+**Detalji testova:** [tests/S195_tests.md](tests/S195_tests.md)
+
+| ID | Test | Status |
+| --- | --- | --- |
+| T-S195-1 | **Probni prolaz PROD:** `krug.bat --suho` ⇒ `[PROD]`, izvještaj iz `krug_lokalno\` (ne OneDrive), ništa upisano ni premješteno | ⬜ čeka: prvi izvod prosinca (MC ~02.12.) |
+| T-S195-2 | **Pravi krug + Kokin uvoz:** `krug.bat` ⇒ xlsx + html u `Za uvoz`; Koka odluči (DELETE / prazno) i uveze; pregled = OČEKIVANO iz izvještaja | ⬜ čeka: T-S195-1 |
+| T-S195-3 | **Drugi krug poslije uvoza:** obrađeni izvodi ✓ GOTOVO, 0 · 0, premješteni u `Analizirani_izvodi\`; ZABA sidro UPISANO (bilješka „ispisano stanje s izvoda · ZABA_2026-11.pdf"); treći put nijedno novo sidro | ⬜ čeka: T-S195-2 |
+| T-S195-4 | **Visa (K7):** prije plaćanja ⏳ „Saša plati X do …" i nema Visa redaka u fileu; poslije trake Visa u fileu, Σ ✓ u cent | ⬜ čeka: PBZVISA_2026-11 (~03.12.) |
+| T-S195-5 | **Studeni na TEST-u, od početka do kraja:** krug ⇒ file 34 New · 73 Modify (+1 odluka) ⇒ uvoz kroz app 34 · 73 · 1 (DELETE), 25 s ⇒ drugi krug 3/3 ✓ + sidro 10.664,71 na 01.11. ⇒ treći krug bez novog sidra | ✅ S195 (07.11.) — izmjereno (Claude, Sašin TEST račun, backup `2026-11-07_1205`) |
 
 ---
 

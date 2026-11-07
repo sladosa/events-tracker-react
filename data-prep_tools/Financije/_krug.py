@@ -539,6 +539,8 @@ def zakljuci(stanja: list[Stanje]) -> None:
             s.sazetak += (f' · poslije veza Σ {_eur(poslije)} ' + ('✓ u cent' if ok else
                           f'✗ Δ {_eur(poslije - p["izvod_suma"])}'))
             p['poslije_ok'] = ok
+            if ok:   # razliku su objasnile veze, ne odluke — rečenica od prije veza više ne vrijedi
+                s.sazetak = re.sub(r' — razlika je točno Σ odluka \([^)]*\): odluči o njima', '', s.sazetak)
         if s.vrsta not in ('ZABA', 'RF') or 'app' not in p:
             continue
         poslije = p['app'] + sum(_neto(t['smjer'], t['iznos']) for t in p['novi_t'])

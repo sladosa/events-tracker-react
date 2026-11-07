@@ -326,6 +326,22 @@
   S126 bio pravi backspace (`\x08`) i izraz nikad nije pogodio. Sken: `[\x00-\x08\x0b\x0c\x0e-\x1f]`.
 - **`_db.load_env` traži SERVICE ključ** (S158); TEST = `.env.local`. Anon kroz RLS daje dio baze.
 
+**`krug` — pravila (S195, `docs/KRUG_SPEC.md`)**
+
+- **Logika izvoda živi u ALATU, `krug` je samo zove** (`visa_uvoz_izvoda.analiza`, `fill_from_izvod.mc_odluke(db=)`,
+  `zaba_odluke`, `rf_odluke`, `spojeni_retci`, `klasificiraj`). Promjena pravila sparivanja ide u alat — kopija u
+  `_krug.py` bi se razišla s CLI-jem. Regresija: `Claude-temp_R/s195/regresija.py` (prije/poslije, isti ispis).
+- **„Gotovo" se izračuna, ne pamti** — ponovna analiza bez prijedloga + kontrola ✓ (+ sidro za banku). Nema
+  state filea; mapa `izvodi\` (korijen) određuje samo KOJE izvode krug gleda.
+- **Sidro (K6) tek kad je saldo pločice na dan izvoda = ispisano stanje**, ne samo promet ✓ — promet ✓ uz krivi
+  saldo znači grešku stariju od izvoda, a sidro bi je sakrilo. `rpc_area_balance_anchored` uvijek SA slugovima.
+- **TEST i `--suho` nikad ne pišu u Kokinu mapu** (`OneDrive\Izvodi\Za uvoz`) — lokalno `krug_lokalno\`.
+- **Stupci iza `Delete?` (`Izvod`, `Napomena`) uvoz ne čita** — nisu u ATTRIBUTE LEGEND (isto `Result`/`Changed`).
+  Pisač je `visa_popravak.pisi(stupci=…)`; `Delete?` se nikad ne popunjava sam.
+- **Minuta novog retka je jedinstvena u CIJELOM fileu** (`_krug_excel`), ne po alatu — svaki alat sam bira od
+  14:00 iz baze, pa bi MC i Visa istog dana dali istu minutu ⇒ lažna kolizija pri uvozu.
+- **Premještanje među izvodima = izmjena istog `event_id`** (Visa kroz `analiza(premjesti=)`), nikad novi + DELETE.
+
 **Mjesečni krug — pravila iz S194 (izmjereno stari/novi nad izvodima 2026. i TEST bazom)**
 
 - **⚠ ZABA dedup NIJE skup `(datum, iznos)`** (`_zaba_spajanje.py`): skup bez smjera, Izvora i brojanja
@@ -577,6 +593,15 @@ dira saldo. **Ratama se ne dira ni kasnije:** rate dijele dan **kupnje**, izvod 
 ## Key files — alati u `data-prep_tools/Financije/`
 
 ```
+data-prep_tools/Financije/krug.py  S195 (T4): jedna naredba za mjesečni krug — omotač (putanje, razvrstač,
+                                   sidro K6, seljenje gotovih, Excel + izvještaj). `krug.bat` = PROD
+                                   dvoklikom; `--suho` ništa ne upisuje; `--izvod X` izvan korijena.
+data-prep_tools/Financije/_krug.py Jezgra: stanje izvoda (gotovo/excel/sidro/ceka/stani) iz baze, veze
+                                   među izvodima, sukobi, sažetak. Bez putanja; račun kartice iz
+                                   `due.baskets`, ukucano samo `CITACI`.
+data-prep_tools/Financije/_krug_excel.py
+                                   Jedan Excel za uvoz iz svih izvoda (jedan redak po event_id, ODLUČI →
+                                   NOVO → ISPRAVAK, minute jedinstvene u fileu). `_krug_izvjestaj.py` = HTML.
 data-prep_tools/Financije/set_breakdown.py
                                    S165: pločica „Kamo ide novac" + `groupings["Vrsta troška"]`
                                    u `areas.settings` (merge). JEDINI izvor rasporeda bucketa do

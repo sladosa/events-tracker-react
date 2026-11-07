@@ -1,6 +1,6 @@
 # Financije — kako Koka i Saša vode `Financije_all`
 
-**Stanje na:** 2026-11-06 (S194) · **Zadnji krug izveden po ovim uputama:** studeni 2026. (izvodi 10/2026, S192)
+**Stanje na:** 2026-11-07 (S195, dodan §3.0 `krug`) · **Zadnji krug izveden po ovim uputama:** studeni 2026. (izvodi 10/2026, S192)
 **Za:** Koku i Sašu (§1, §2, §4) · Sašu i Claudea (§3, §5)
 **Ovo je JEDINI popis otvorenog posla Financija (§5).** Povijest — puni tekst zatvorenih stavki T1–T50, nalazi
 krugova S158 i S192, stari backlog — je u [`_archive/FINANCIJE_PROCES_do_S194.md`](_archive/FINANCIJE_PROCES_do_S194.md);
@@ -62,6 +62,19 @@ to je greška aplikacije, ne tvoja** (najvažnije za povjerenje).
 > ⚠ **Kvarljivo:** vrijedi za alate na dan u zaglavlju. Poslije svakog kruga koji je nešto promijenio — prepiši
 > ovaj odjeljak (v. §6). **Plan:** jedna naredba `krug` ([`KRUG_SPEC.md`](KRUG_SPEC.md), §5 T4) — kad bude gotova,
 > ovaj odjeljak se svodi na „pokreni krug, pročitaj izvještaj".
+
+### 3.0 Novi način — `krug` (od S195; prvi PROD prolaz = prosinački krug)
+
+1. Saša: `data-prep_tools\Financije\krug.bat` (dvoklik = PROD; prvi put `.\krug.bat --suho` iz PowerShella —
+   ništa ne upisuje, izvještaj lokalno). Razvrstač pokupi nove izvode, `krug` obradi sve u korijenu `izvodi\`.
+2. Izvještaj se otvori sam (i stoji u Kokinoj mapi `OneDrive\Izvodi\Za uvoz` uz Excel): **Za uvoz** (OČEKIVANO),
+   **Odluke**, **Stani** (što popraviti u appu), **Čeka** (plaćanje Vise, traka 11.).
+3. Koka: u Excelu odluči redove „ODLUČI" (stupac `Delete?`: DELETE ili prazno) i uveze; pregled = OČEKIVANO.
+4. Pusti `krug` ponovo — mora javiti 0 · 0; ZABA/RF sidro iz izvoda upiše sam (samo kad je promet ✓ u cent i saldo
+   na dan izvoda = ispisano stanje). Traka 11. i plaćanje Vise ostaju kako su opisani dolje (3.2, 3.3).
+
+Ako `krug` stane ili se ponaša čudno — ručni put ispod vrijedi i dalje (isti alati). Poslije prosinačkog kruga
+ovaj se odjeljak prepisuje (§6).
 
 **Kalendar**
 
@@ -154,7 +167,8 @@ pogled (Saša / Claude) da se zatvori ili potvrdi — ne pogađati.
 
 | # | što | stanje |
 | --- | --- | --- |
-| **T4** | **`krug` — jedna naredba za mjesec.** Spec i odluke K1–K9: [`KRUG_SPEC.md`](KRUG_SPEC.md) (07.11.). Ukratko: svi izvodi iz korijena `izvodi\`, stanje „gotovo" izračunato iz baze, nejasno kao odluka u Excelu (`Delete?` + `Napomena`), ZABA/RF bez Delta Exporta, sidro iz izvoda upisuje `krug` kad je promet ✓, Visa tek nakon plaćanja; izlaz u Kokin **`Izvodi\Za uvoz`** (samo dodaje). Pločica „Mjesečni krug" i gumb „Pokreni krug" idu **u oblak** (faza C), `etracker://` se ne gradi | **u radu S195** (faza A prije prosinačkog kruga) |
+| **T4** | **`krug` — jedna naredba za mjesec.** Spec i odluke K1–K9: [`KRUG_SPEC.md`](KRUG_SPEC.md) (07.11.). Ukratko: svi izvodi iz korijena `izvodi\`, stanje „gotovo" izračunato iz baze, nejasno kao odluka u Excelu (`Delete?` + `Napomena`), ZABA/RF bez Delta Exporta, sidro iz izvoda upisuje `krug` kad je promet ✓, Visa tek nakon plaćanja; izlaz u Kokin **`Izvodi\Za uvoz`** (samo dodaje). Pločica „Mjesečni krug" i gumb „Pokreni krug" idu **u oblak** (faza C), `etracker://` se ne gradi | faza A **✅ S195 na TEST-u** (studeni od početka do kraja, T-S195-5); PROD prvi put u prosincu (T-S195-1..4); faze B/C kasnije (Strategic Position) |
+| T51 | pregled uvoza MC ispravaka javlja „Rate?: true → true" (MC alat piše `Rate?` i kad je već `true`) — redak se broji u Modify, promjene nema | otvoreno, nisko (S195) |
 | T42, T46 | upozorenje „older records" bez rata · čip „na dan … ↺ This Year" | ✅ test-branch, **čeka deploy** (T-S194-5/6) |
 | T1 | uvoz Excela na mobitelu je najskuplji korak | parkirano: [`parked/RASCISCAVANJE_IZVODA.md`](parked/RASCISCAVANJE_IZVODA.md) — okidač: `krug` radi, a odluka i dalje puno |
 | T3 | traka „neusklađeno" ne kaže gdje tražiti | čeka prvu stvarnu razliku (S157) |
