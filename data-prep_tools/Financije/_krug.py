@@ -193,6 +193,12 @@ def _d(v) -> date:
     return date.fromisoformat(str(v)[:10])
 
 
+def _op(t) -> str:
+    """Opis retka u navodnicima — prazan je „(bez opisa)", ne „" (S195)."""
+    t = str(t or '').strip()
+    return f'„{t}"' if t else '(bez opisa)'
+
+
 def _eur(x: float) -> str:
     return f'{x:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 
@@ -240,13 +246,20 @@ def analiza_mc(k: Kontekst, pdf: Path, cfg: dict) -> Stanje:
         if r['id'] in pomaknuti:
             continue
         st.odluke.append((r['id'], f'{r["event_date"]} {_eur(abs(_num(r["attrs"].get("Isplata")) - _num(r["attrs"].get("Uplata"))))} '
-                                   f'„{r.get("comment") or ""}" — {zasto}'))
+                                   f'{_op(r.get("comment"))} — {zasto}'))
     # za vezu među izvodima (`veze`): višak košare i stavke izvoda koje bi ušle kao NOVE
     st.podaci['visak_r'] = [r for r in res['sparivanje']['visak'] if r['id'] not in pomaknuti]
     st.podaci['novi_t'] = [{'date': n['date'], 'iznos': n['iznos'], 'smjer': n['smjer'],
                             'opis': n['opis'], 'red': n} for n in res['novi'] if n.get('opis')]
     kontrola = (f'košara {res["dospijece"]:%d.%m.}: Σ poslije uvoza {_eur(res["kontrola"])} '
                 f'vs izvod {_eur(res["izvod_suma"])} ' + ('✓ u cent' if res['kontrola_ok'] else '✗'))
+    if not res['kontrola_ok']:
+        # isto pravilo kao alat: razlika = Σ prijavljenih redaka košare ⇒ odluka je odgovor
+        ponuda = round(sum(_num(r['attrs'].get('Isplata')) - _num(r['attrs'].get('Uplata'))
+                           for r, _ in res['prijavljeni'].values() if r['id'] not in pomaknuti
+                           and str(r['attrs'].get('Datum naplate') or '')[:10] == str(res['dospijece'])), 2)
+        if ponuda and abs(res['kontrola'] - ponuda - res['izvod_suma']) < EPS:
+            kontrola += f' — razlika je točno Σ odluka ({_eur(ponuda)}): odluči o njima'
     ks, kt = kosara_stanje(k, izvor, res['dospijece'], res['izvod_suma'])
     if not res['izmjene'] and not res['novi'] and not st.odluke and res['kontrola_ok']:
         st.stanje = 'stani' if ks == 'stani' else 'gotovo'
@@ -290,7 +303,7 @@ def analiza_visa(k: Kontekst, pdf: Path, cfg: dict) -> Stanje:
         st.stanje = 'stani'
         st.sazetak = (f'na {racun} stoji {len(tocni)} retka od {_eur(suma)} oko dospijeća — '
                       'koji je naplata? (drugi bi saldo pomaknuo dvaput)')
-        st.odluke = [(r['id'], f'{r["event_date"]} {_eur(suma)} „{r.get("comment") or ""}"') for r in tocni]
+        st.odluke = [(r['id'], f'{r["event_date"]} {_eur(suma)} {_op(r.get("comment"))}') for r in tocni]
         return st
     if not tocni and not slicni:
         # K7: prije plaćanja nema filea — jedan uvoz poslije
@@ -303,9 +316,13 @@ def analiza_visa(k: Kontekst, pdf: Path, cfg: dict) -> Stanje:
         res, ispis = _tiho(analiza, pdf, k.db, k.tax, naplata=naplata, dosp=dosp)
     except Stani as e:
         st.stanje = 'stani'
-        st.sazetak = str(e).lstrip('✗ ').strip()
+        r0 = slicni[0] if slicni else None
+        st.sazetak = (f'Na {racun} stoji redak koji liči na naplatu Vise ({_eur(_num(r0["attrs"].get("Isplata")))} '
+                      f'na {_d(r0["event_date"]):%d.%m.}), a izvod kaže {_eur(suma)}. Ako je to naplata: '
+                      'Editom joj ispravi iznos (i dan) kako ju je banka skinula, pa pusti krug. Drugi redak '
+                      'naplate ne upisuj — saldo bi se pomaknuo dvaput.') if r0 else str(e).lstrip('✗ ').strip()
         st.odluke = [(r['id'], f'{r["event_date"]} {_eur(_num(r["attrs"].get("Isplata")))} '
-                               f'„{r.get("comment") or ""}" — liči na naplatu, izvod kaže {_eur(suma)}')
+                               f'{_op(r.get("comment"))} — liči na naplatu, izvod kaže {_eur(suma)}')
                      for r in slicni]
         return st
     st.podaci, st.ispis = res, ispis
@@ -322,11 +339,11 @@ def analiza_visa(k: Kontekst, pdf: Path, cfg: dict) -> Stanje:
             st.diraju.add(r['id'])
             st.odluke.append((r['id'], f'izvod {t["date"]:%d.%m.} {_eur(t["iznos"])} {t["opis"][:30]} — u bazi '
                                        f'kao {r["attrs"].get("Izvor")}/{r["attrs"].get("Racun")} '
-                                       f'{r["event_date"]} „{r.get("comment") or ""}" (krivo mjesto?)'))
+                                       f'{r["event_date"]} {_op(r.get("comment"))} (krivo mjesto?)'))
     for r, dup in res['visak']:
         st.diraju.add(r['id'])
         st.odluke.append((r['id'], f'{r["event_date"]} {_eur(_num(r["attrs"].get("Isplata")))} '
-                                   f'„{r.get("comment") or ""}" u košari, izvod ga ne nosi'
+                                   f'{_op(r.get("comment"))} u košari, izvod ga ne nosi'
                                    + (f' — DUPLIKAT? isti iznos kao {dup["event_date"]}' if dup else '')))
     kontrola = (f'Σ {_eur(res["zbroj"])} vs izvod {_eur(suma)} '
                 + ('✓ u cent' if res['kontrola_ok'] else '✗'))
@@ -424,10 +441,10 @@ def analiza_banka(k: Kontekst, pdf: Path, cfg: dict, svi_izvodi) -> Stanje:
             st.diraju.add(p['r']['id'])
             if not jasno:
                 st.odluke.append((p['r']['id'], f'izvod {r["date"]:%d.%m.} {_eur(r["iznos"])} {r["opis"][:30]} — '
-                                                f'u bazi kao {p["izvor"]} {p["date"]:%d.%m.} „{p["opis"] or ""}" (krivo mjesto?)'))
+                                                f'u bazi kao {p["izvor"]} {p["date"]:%d.%m.} {_op(p["opis"])} (krivo mjesto?)'))
     for p in visak:
         st.diraju.add(p['r']['id'])
-        st.odluke.append((p['r']['id'], f'{p["date"]:%d.%m.} {p["smjer"]} {_eur(p["iznos"])} „{p["opis"] or ""}" '
+        st.odluke.append((p['r']['id'], f'{p["date"]:%d.%m.} {p["smjer"]} {_eur(p["iznos"])} {_op(p["opis"])} '
                                         '— u bazi, a izvod ga nema'))
     prozor = f'{od + timedelta(days=1):%d.%m.}–{close:%d.%m.%Y.}'
     kontrola = (f'promet {prozor}: app {_eur(app)} vs banka {_eur(banka)} '
@@ -570,7 +587,7 @@ def veze(stanja: list[Stanje]) -> None:
             continue
         sb, t = kand[0]
         drugi = [r2 for sx, r2 in visak if sx is not sb and r2 is not r and par(r2, t)]
-        opis = (f'{r["event_date"]} {_eur(iznos_r(r))} „{r.get("comment") or ""}" '
+        opis = (f'{r["event_date"]} {_eur(iznos_r(r))} {_op(r.get("comment"))} '
                 f'({r["attrs"].get("Izvor")}/{r["attrs"].get("Racun")})')
         if len(kand) == 1 and not drugi:
             # jasno: makni odluke o tom retku s oba izvoda, nova stavka otpada
