@@ -23,6 +23,7 @@ import contextlib
 import io
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -34,6 +35,8 @@ from _db import target  # noqa: E402
 from _izvodi import IZVODI, nadji, svi  # noqa: E402
 
 ANALIZIRANI = IZVODI / 'Analizirani_izvodi'
+ZA_UVOZ = Path(r'C:\0_Sasa\OneDrive\Izvodi\Za uvoz')          # K1: Kokina mapa, samo dodaje
+TEST_IZLAZ = IZVODI.parent / 'krug_test'                          # TEST file nikad u Kokinu mapu
 ZNAK = {'gotovo': '✓', 'excel': '→', 'sidro': '⚓', 'ceka': '⏳', 'stani': '✗'}
 
 
@@ -109,10 +112,37 @@ def main() -> None:
                 shutil.move(str(p), str(ANALIZIRANI / s.izvod))
                 print(f'{s.izvod} → Analizirani_izvodi\\ (gotov)')
 
-    n, m, b = (sum(getattr(s, x) for s in stanja) for x in ('novi', 'modify', 'brisanja'))
+    n, m, b = (sum(getattr(s, x) for s in stanja if s.stanje == 'excel')
+               for x in ('novi', 'modify', 'brisanja'))
     print(f'\nUKUPNO: {len(gotovi)}/{len(stanja)} izvoda gotovo · za uvoz {n} New · {m} Modify'
           + (f' · {b} Delete' if b else '')
           + f' · odluka {sum(len(s.odluke) for s in stanja)}')
+
+    if not any(s.stanje == 'excel' for s in stanja):
+        print('Nema ničega za uvoz — Excel se ne piše.')
+        return
+    import _krug_excel
+    plan = _krug_excel.gradi(k, stanja)
+    if (plan['novih'], plan['izmjena']) != (n, m):
+        print(f'⚠ File ima {plan["novih"]} New · {plan["izmjena"]} Modify, a analize kažu {n} · {m} '
+              '— razlika je u spajanju; provjeri retke prije uvoza.')
+    izlaz = next((Path(args[i + 1]) for i, a in enumerate(args) if a == '--izlaz' and i + 1 < len(args)),
+                 ZA_UVOZ if env == 'prod' else TEST_IZLAZ)
+    if env == 'prod' and suho and izlaz == ZA_UVOZ:
+        print('(--suho) Excel se NE piše u Kokinu mapu.')
+    else:
+        izlaz.mkdir(parents=True, exist_ok=True)
+        ime = f'krug_{k.danas:%Y-%m-%d}_{datetime.now():%H%M}'
+        out, i = izlaz / f'{ime}.xlsx', 2
+        while out.exists():                      # K1: nikad ne prepisuje
+            out, i = izlaz / f'{ime}_{i}.xlsx', i + 1
+        _krug_excel.pisi_file(k, plan, out)
+        print(f'\n→ {out}')
+    print(f'OČEKIVANO U PREGLEDU UVOZA: {plan["novih"]} New · {plan["izmjena"]} Modify · 0 Delete'
+          + (f'  (+ {plan["samo_odluka"]} redaka samo radi odluke — bez DELETE ih uvoz preskoči kao '
+             'nepromijenjene)' if plan['samo_odluka'] else ''))
+    if plan['odluka']:
+        print(f'ODLUKE U FILEU: {plan["odluka"]} — stupac Napomena „ODLUČI", odgovor u stupcu Delete?')
 
 
 if __name__ == '__main__':

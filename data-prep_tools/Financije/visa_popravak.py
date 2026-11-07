@@ -250,13 +250,18 @@ def main():
     pisi(redci, by8, 'visa_popravak')
 
 
-def pisi(redci, by8, ime, tax=None, izgled=None, boje=None, namjena=None):
+def pisi(redci, by8, ime, tax=None, izgled=None, boje=None, namjena=None,
+         emails=None, vlasnik=None, stupci=None, out=None, delete_izbornik=False):
     """`tax` = {Tip: [Podtip...]} -> dropdowni Tip/Podtip na svakom retku.
     `namjena` = `_db.namjena_pravilo()` -> i dropdown Namjene po Tipu (S181).
     `boje` = {indeks retka: 'RRGGBB'} -> vlastita boja Tip/Podtip ćelija (S174: prijedlog
     iz pravila po trgovcu se mora razlikovati od prijedloga iz presedana).
     /!\ Podtip mimo `validation_rules` uveze se kao tekst BEZ GRESKE (CLAUDE.md),
-        pa file koji covjek rucno klasificira mora nuditi samo valjane vrijednosti."""
+        pa file koji covjek rucno klasificira mora nuditi samo valjane vrijednosti.
+    S195 (krug): `emails` = {user_id: e-mail} iz baze (umjesto `EMAIL`), `vlasnik` = e-mail
+    vlasnika Aree za NOVE retke; `stupci` = [(naslov, [vrijednost po retku])] IZA `Delete?` —
+    nisu u ATTRIBUTE LEGEND pa ih uvoz ne cita (kao `Result`/`Changed` izvjestaja uvoza);
+    `delete_izbornik` = izbornik DELETE/prazno na `Delete?`; `out` = puna putanja filea."""
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Events'
@@ -281,8 +286,12 @@ def pisi(redci, by8, ime, tax=None, izgled=None, boje=None, namjena=None):
     ws.cell(top, 1, 'EVENT DATA:').font = Font(bold=True, size=12)
     hdr = top + 1
     del_col = 9 + len(ATTRS)
+    stupci = stupci or []
+    last_col = del_col + len(stupci)
     heads = (['event_id', 'Area', 'Category_Path', 'event_date', 'session_start',
-              'created_at', 'User', 'leaf comment'] + [n for n, _ in ATTRS] + ['Delete?'])
+              'created_at', 'User', 'leaf comment'] + [n for n, _ in ATTRS] + ['Delete?']
+             + [h for h, _ in stupci])
+    mails = emails if emails is not None else EMAIL
     for i, h in enumerate(heads, start=1):
         c = ws.cell(hdr, i, h)
         c.fill, c.font = blue, white
@@ -297,9 +306,12 @@ def pisi(redci, by8, ime, tax=None, izgled=None, boje=None, namjena=None):
         tekst(ws, rr, 4, r['event_date'] if r else extra[0][0])
         c = ws.cell(rr, 5, lokalno(r['session_start']) if r else extra[0][1])
         c.number_format = '@'
-        if r and r['user_id'] not in EMAIL:
+        if r and r['user_id'] not in mails:
             sys.exit(f'✗ nepoznat autor {r["user_id"]} — dopuni EMAIL')
-        tekst(ws, rr, 7, EMAIL[r['user_id']] if r else KOKA_EMAIL)
+        tekst(ws, rr, 7, mails[r['user_id']] if r else (vlasnik or KOKA_EMAIL))
+        for i, (_, vals) in enumerate(stupci):
+            if vals[j] not in (None, ''):
+                tekst(ws, rr, del_col + 1 + i, vals[j])
         tekst(ws, rr, 8, kom or None)
         if kom != (r.get('comment') if r else None):
             ws.cell(rr, 8).fill = yellow
@@ -324,7 +336,12 @@ def pisi(redci, by8, ime, tax=None, izgled=None, boje=None, namjena=None):
             for cc in range(1, del_col + 1):
                 if ws.cell(rr, cc).fill != yellow:
                     ws.cell(rr, cc).fill = red
-    ws.auto_filter.ref = f'A{hdr}:{col_letter(del_col)}{hdr + len(redci)}'
+    ws.auto_filter.ref = f'A{hdr}:{col_letter(last_col)}{hdr + len(redci)}'
+    if delete_izbornik and redci:
+        from openpyxl.worksheet.datavalidation import DataValidation
+        dv = DataValidation(type='list', formula1='"DELETE"', allow_blank=True)
+        dv.add(f'{col_letter(del_col)}{hdr + 1}:{col_letter(del_col)}{hdr + len(redci)}')
+        ws.add_data_validation(dv)
     if tax:
         # Ovisan izbornik Podtipa (S164). Do S164 je ovdje stajao RAVAN popis svih Podtipova
         # + list `Tip-Podtip` kao štaka — izbornik nije pratio Tip (Saša, S148 i S164).
@@ -365,6 +382,8 @@ def pisi(redci, by8, ime, tax=None, izgled=None, boje=None, namjena=None):
         ws.column_dimensions[col_letter(i)].width = w
     for i in range(len(ATTRS) + 1):
         ws.column_dimensions[col_letter(9 + i)].width = 14
+    for i, (h, _) in enumerate(stupci):
+        ws.column_dimensions[col_letter(del_col + 1 + i)].width = 90 if h == 'Napomena' else 18
 
     pr = wb.create_sheet('Pregled')
     pr.append(['event_date', 'iznos', 'opis', 'što i zašto'])
@@ -382,7 +401,7 @@ def pisi(redci, by8, ime, tax=None, izgled=None, boje=None, namjena=None):
     if izgled:
         izgled(ws, hdr, heads)
     wb.active = 0
-    out = OUT / f'{ime}_{datetime.now():%Y%m%d_%H%M}.xlsx'
+    out = Path(out) if out else OUT / f'{ime}_{datetime.now():%Y%m%d_%H%M}.xlsx'
     wb.save(out)
     if tax:
         # Brana (S164): ponovo otvori file i provjeri da izbornik za SVAKI Tip pogađa

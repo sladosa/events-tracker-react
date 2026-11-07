@@ -1205,6 +1205,71 @@ def _fmt(v) -> str:
     return str(v)[:10] if isinstance(v, (date, datetime)) else str(v)
 
 
+def klasificiraj(rows: list[dict], racun: str, env: str, db: list[dict] | None = None) -> None:
+    """Tip/Podtip novim retcima s `Tip = N/A`: presedan (brojana povijest TOG racuna
+    i Izvora), pa pravilo trgovca (S177). Mijenja `rows` na mjestu i ispisuje dokaz.
+    S195: izvuceno iz `main` (isti ispis); `db` = vec ucitan `load_db` (krug)."""
+    from presedani import Presedani
+    from uskladi_izvod import load_db as _load_db, load_env as _load_env
+    _url, _key = _load_env(env)
+    # WARN Povijest je ono STARIJE od prozora koji uskladujemo. Bez te
+    #   granice bi se prozor klasificirao sam sobom — to nije presedan nego
+    #   jeka vlastitog uvoza.
+    # ⚠ Rata nosi dan PRVE rate plana (S173: i 29.12.2025.) — granica iz nje
+    #   bi ostale retke klasificirala poviješću od prije deset mjeseci.
+    _prije = min((r['date'] for r in rows if not r.get('rata')
+                  and r.get('opis_izvor') != 'plan'),
+                 default=min(r['date'] for r in rows)).isoformat()
+    _svi = [d for d in (db if db is not None else _load_db(_url, _key))
+            if str(d['attrs'].get('Racun')) == racun]
+    # S177 (T17): kad presedan šuti, ZADNJI ključ je pravilo po trgovcu. `prijedlog`
+    #   sam isključi posrednika i par izvan izbornika (taksonomija se mijenja).
+    from pravila_trgovca import prijedlog
+    from visa_uvoz_izvoda import taksonomija
+    _tax = taksonomija(_url, _key)
+    _po_izvoru: dict = {}
+    _pogodaka, _po_pravilu, _dvojbeni = 0, 0, []
+    for r in rows:
+        if r['tip'] != NA:
+            continue
+        izv = r['izvor']
+        if izv not in _po_izvoru:
+            _po_izvoru[izv] = Presedani(
+                [d for d in _svi if str(d['attrs'].get('Izvor')) == izv],
+                prije=_prije)
+        hit = _po_izvoru[izv].nadji(r['iznos'], r.get('opis_puni') or r['opis'],
+                                    r['smjer'])
+        if not hit:
+            hit = prijedlog(r.get('opis_puni') or r['opis'], izv, _tax)
+            if not hit:
+                continue
+            _po_pravilu += 1
+        r['tip'], r['podtip'] = hit['tip'], hit['podtip']
+        r['presedan'] = hit['dokaz']
+        # WARN Kokin opis se NE prepisuje presedanom — ona je autoritet za
+        #   znacenje (CLAUDE.md „Politika izvora"). Prepisuje se samo
+        #   strojni tekst izvoda, koji ionako ne kaze nista.
+        # `plan` = rata/naknada nosi `<Trgovac> n/N` (T16) — presedan bi ga srezao.
+        if hit['comment'] and r.get('opis_izvor') not in ('koka', 'plan'):
+            r['komentar'] = hit['comment']
+        if hit['alternative']:
+            _dvojbeni.append((r, hit['alternative']))
+        _pogodaka += 1
+    print()
+    print('Presedani (%s, povijest racuna %r prije %s): %d od %d redaka '
+          'klasificirano brojanjem (od toga %d po pravilu trgovca)'
+          % (env, racun, _prije, _pogodaka, len(rows), _po_pravilu))
+    for r in rows:
+        if r.get('presedan'):
+            print('   > %s %9.2f  %-26s %-24s (%s)'
+                  % (r['date'], r['iznos'], (r['tip'] + '/' + r['podtip'])[:26],
+                     r['komentar'][:24], r['presedan']))
+    for r, alt in _dvojbeni:
+        print('   WARN %s %9.2f  par je jednoglasan, ALI komentar nije: %s'
+              % (r['date'], r['iznos'], ', '.join(alt)))
+        print('        komentar zato NIJE upisan — odaberi ga rukom u fileu.')
+
+
 def mc_odluke(a, racun: str, koka: 'KokaOpisi | None', rows: list[dict],
               db: list[dict] | None = None) -> dict:
     """`--mc` (S173): ispravci, novi retci, duplikati — isti obrazac kao
@@ -1761,65 +1826,7 @@ def main() -> None:
         return
 
     if a.presedan and rows:
-        from presedani import Presedani
-        from uskladi_izvod import load_db as _load_db, load_env as _load_env
-        _url, _key = _load_env(a.presedan)
-        # WARN Povijest je ono STARIJE od prozora koji uskladujemo. Bez te
-        #   granice bi se prozor klasificirao sam sobom — to nije presedan nego
-        #   jeka vlastitog uvoza.
-        # ⚠ Rata nosi dan PRVE rate plana (S173: i 29.12.2025.) — granica iz nje
-        #   bi ostale retke klasificirala poviješću od prije deset mjeseci.
-        _prije = min((r['date'] for r in rows if not r.get('rata')
-                      and r.get('opis_izvor') != 'plan'),
-                     default=min(r['date'] for r in rows)).isoformat()
-        _svi = [d for d in _load_db(_url, _key)
-                if str(d['attrs'].get('Racun')) == racun]
-        # S177 (T17): kad presedan šuti, ZADNJI ključ je pravilo po trgovcu. `prijedlog`
-        #   sam isključi posrednika i par izvan izbornika (taksonomija se mijenja).
-        from pravila_trgovca import prijedlog
-        from visa_uvoz_izvoda import taksonomija
-        _tax = taksonomija(_url, _key)
-        _po_izvoru: dict = {}
-        _pogodaka, _po_pravilu, _dvojbeni = 0, 0, []
-        for r in rows:
-            if r['tip'] != NA:
-                continue
-            izv = r['izvor']
-            if izv not in _po_izvoru:
-                _po_izvoru[izv] = Presedani(
-                    [d for d in _svi if str(d['attrs'].get('Izvor')) == izv],
-                    prije=_prije)
-            hit = _po_izvoru[izv].nadji(r['iznos'], r.get('opis_puni') or r['opis'],
-                                        r['smjer'])
-            if not hit:
-                hit = prijedlog(r.get('opis_puni') or r['opis'], izv, _tax)
-                if not hit:
-                    continue
-                _po_pravilu += 1
-            r['tip'], r['podtip'] = hit['tip'], hit['podtip']
-            r['presedan'] = hit['dokaz']
-            # WARN Kokin opis se NE prepisuje presedanom — ona je autoritet za
-            #   znacenje (CLAUDE.md „Politika izvora"). Prepisuje se samo
-            #   strojni tekst izvoda, koji ionako ne kaze nista.
-            # `plan` = rata/naknada nosi `<Trgovac> n/N` (T16) — presedan bi ga srezao.
-            if hit['comment'] and r.get('opis_izvor') not in ('koka', 'plan'):
-                r['komentar'] = hit['comment']
-            if hit['alternative']:
-                _dvojbeni.append((r, hit['alternative']))
-            _pogodaka += 1
-        print()
-        print('Presedani (%s, povijest racuna %r prije %s): %d od %d redaka '
-              'klasificirano brojanjem (od toga %d po pravilu trgovca)'
-              % (a.presedan, racun, _prije, _pogodaka, len(rows), _po_pravilu))
-        for r in rows:
-            if r.get('presedan'):
-                print('   > %s %9.2f  %-26s %-24s (%s)'
-                      % (r['date'], r['iznos'], (r['tip'] + '/' + r['podtip'])[:26],
-                         r['komentar'][:24], r['presedan']))
-        for r, alt in _dvojbeni:
-            print('   WARN %s %9.2f  par je jednoglasan, ALI komentar nije: %s'
-                  % (r['date'], r['iznos'], ', '.join(alt)))
-            print('        komentar zato NIJE upisan — odaberi ga rukom u fileu.')
+        klasificiraj(rows, racun, a.presedan)
 
     rows.sort(key=lambda r: (r['date'], r['iznos']))
     print(f'\nZa upis: {len(rows)} redaka')

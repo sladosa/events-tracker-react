@@ -309,6 +309,7 @@ def analiza_visa(k: Kontekst, pdf: Path, cfg: dict) -> Stanje:
                      for r in slicni]
         return st
     st.podaci, st.ispis = res, ispis
+    res.update(pdf=pdf, naplata_d=naplata, dosp=dosp)     # korak 3: ponovo s `premjesti=`
     st.novi, st.modify, st.brisanja = res['nove'], res['modify'], res['brisanja']
     st.diraju = {r['id'] for r, *_ in res['izlaz'] if r}
     st.podaci['visak_r'] = [r for r, _ in res['visak']]
