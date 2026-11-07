@@ -27,32 +27,32 @@ with hierarchical categories, Excel roundtrip as primary bulk workflow, and Supa
 
 | r. | sekcija | |
 | ---: | --- | :---: |
-| 55 | [Strategic Position (2026-10-20)](<#Strategic Position (2026-10-20)>) |  |
-| 115 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
-| 156 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
-| 169 | [Critical rules](<#Critical rules>) | X |
-| 1492 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
-| 1970 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
-| 1986 | [Key files](<#Key files>) |  |
-| 2158 | [Structure tab — component map](<#Structure tab — component map>) |  |
-| 2178 | [Data model (simplified)](<#Data model (simplified)>) |  |
-| 2201 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
-| 2230 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
-| 2270 | [Open bugs](<#Open bugs>) | ~ |
-| 2387 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
-| 2432 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
-| 2594 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
-| 2602 | [Backlog](<#Backlog>) | ~ |
-| 2606 | [TypeScript known issue](<#TypeScript known issue>) |  |
-| 2614 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
+| 55 | [Strategic Position (2026-11-07)](<#Strategic Position (2026-11-07)>) |  |
+| 128 | [Key docs (read before touching related code)](<#Key docs (read before touching related code)>) |  |
+| 170 | [Three core principles — NEVER violate](<#Three core principles — NEVER violate>) | X |
+| 183 | [Critical rules](<#Critical rules>) | X |
+| 1506 | [Zamke (data pipeline / AI / E2E)](<#Zamke (data pipeline / AI / E2E)>) | X |
+| 1984 | [Theme colours (src/lib/theme.ts)](<#Theme colours (src/lib/theme.ts)>) |  |
+| 2000 | [Key files](<#Key files>) |  |
+| 2172 | [Structure tab — component map](<#Structure tab — component map>) |  |
+| 2192 | [Data model (simplified)](<#Data model (simplified)>) |  |
+| 2215 | [Što aplikacija zna raditi](<#Što aplikacija zna raditi>) |  |
+| 2244 | [Izmjereno i **nije** problem — ne trošiti vrijeme ponovno](<#Izmjereno i nije problem — ne trošiti vrijeme ponovno>) | X |
+| 2284 | [Open bugs](<#Open bugs>) | ~ |
+| 2401 | [Financije — pravila domene (izvodi, rječnik, 1-N)](<#Financije — pravila domene (izvodi, rječnik, 1-N)>) |  |
+| 2446 | [Overview tab / analitika — sažetak odluka](<#Overview tab / analitika — sažetak odluka>) |  |
+| 2608 | [S112+ Intelligence layer](<#S112+ Intelligence layer>) | ~ |
+| 2616 | [Backlog](<#Backlog>) | ~ |
+| 2620 | [TypeScript known issue](<#TypeScript known issue>) |  |
+| 2628 | [Session workflow (VSCode / Claude Code)](<#Session workflow (VSCode / Claude Code)>) |  |
 
-_Ukupno 2782 redaka, 18 sekcija._
+_Ukupno 2796 redaka, 18 sekcija._
 
 <!-- INDEX:END -->
 
 ---
 
-## Strategic Position (2026-10-20)
+## Strategic Position (2026-11-07)
 [↑ Sadrzaj](#Sadrzaj)
 
 **Misija:** Personal structured memory/decision system nad povijesnim podacima. Pretvoriti
@@ -67,42 +67,55 @@ semantika treba — zato ide kroz konfiguraciju, ne kroz kod (v. `docs/OVERVIEW_
 ingestija nije gotova. D9 (Excel User kolona) je odlučen „uvijek“ i izveden — kolona G nosi autora u svakom exportu.
 
 **Supabase:** bez arhitektonskog zaokreta — optimizacija upita dostaje. `categoryCache` (S105)
-je predložak. Lokalni Postgres je post-S110 ideja.
+je predložak. **Lokalni Supabase za razvoj i E2E je odlučen** (07.11., put korak 2) — produkcija ostaje u oblaku.
+
+**Ne smije ovisiti o Sašinom laptopu** (07.11., Saša): Koka mora moći voditi Financije i kad laptopa nema, a isti
+put treba drugom korisniku. Bez laptopa danas staje samo **obrada izvoda** (dnevni unos, traka i sidro s ekrana rade
+u appu) — zato `krug` ide u oblak (korak 3), a do tada je jezgra pisana bez putanja i ukucanih računa.
 
 **Zašto je ingestija prioritet:** bez Financija/Zdravlja/Diaryja app je ljuska. Povijesni
 podaci hrane i AI sloj.
 
-**Stanje (2026-10-18):** Financije su u produkciji — Koka vodi saldo na mobitelu (PROD od S118,
-bez Excelice od S151), povijest 2023.–2026. je u bazi, mjesečni krug alatima zatvara u cent.
-Ingestija Financija je praktično gotova; ostaju kvaliteta (klasifikacija povijesti) i manje
-trenja (`docs/FINANCIJE_PROCES.md` §5). Ulazna točka: **`docs/FINANCIJE_PREGLED.md`**.
+**Stanje (2026-11-07):** Financije su u produkciji — Koka vodi saldo na mobitelu (PROD od S118,
+bez Excelice od S151), povijest 2023.–2026. je u bazi, studeni krug (S192) zatvoren u cent bez ručnog
+slaganja uvoznog filea, ali uz razvojnu sesiju i pet alata koje pokreće samo Saša. Otvoreni posao:
+`docs/FINANCIJE_PROCES.md` §5. Ulazna točka: **`docs/FINANCIJE_PREGLED.md`**.
+Već izvedeno s ovog puta: MC alat (S173), F5 `AreaSettings` (S175), preuređivanje F1 + F2 A1/A2
+(`058`–`060`, PROD od S194), trening do koraka 5 (analiza, format serija, katalog vježbi, slike —
+`docs/TRENING_MIGRACIJA.md` tablica koraka).
 
-**Put — redoslijed velikih koraka i zašto** (dogovoreno 18.10., Saša):
-1. **MC alat prije 11.11.** (T13/T14/T16/T23 u `fill_from_izvod`) — jedini posao s rokom; bez
-   njega MC izvod opet znači ručno slaganje uvoznog filea, baš u mjesecu koji je ispit rutine.
-2. ✅ **F5 — sheet `AreaSettings` izveden S175 (19.10., na `test-branch`)**: Structure roundtrip
-   sada nosi i `dashboard`, `groupings`, `export_profiles` i svaki budući ključ `areas.settings`.
-   Princip „sve ide importom" je zatvoren; Structure export je od tada **jedna Area**.
-3. **Alat za preuređivanje strukture — PRIJE treninga** (odluka 20.10., S176, Saša: *„nije moguće
-   unaprijed sve definirati savršeno"*). `docs/PREUREDJIVANJE_SPEC.md`: F1 = jezgra (planer u TS +
-   **transakcija u bazi** `058` + zapis prije/poslije + povrat) s preimenuj/spoji/premjesti/izdvoji
-   os; **prvi korisnik Financije** (`Namjena`, T38 — Koka se složila 20.10.). F2 (tip atributa,
-   izvođenje iz teksta) je preduvjet za uvoz treninga. **Zašto prije:** pravilo „zaključaj
-   taksonomiju prije uvoza" je u Financijama postalo preskupo; s alatom se zaključava samo identitet.
-4. **`trening.xlsm`** (sljedeća domena). Analiza i Sašini odgovori (S176): **`docs/TRENING_MIGRACIJA.md`**
-   — jedini plan. Raspodjela: **`Fitness`** (dnevni trening, uz postojeće sesije), **`Health_Sasa`**
-   (san, HRV, noćni puls, koraci — Koka smije vidjeti), **`Life_Sasa`** (nova, privatna: periodi,
-   trenuci, privatni dnevnik). Uvoz **grubo, pa dotjerivanje** alatom iz koraka 3. Uz to: periodi u
-   filtru (`docs/parked/Analytics_tab.md` — okidač ispunjen), Garmin dotok (podaci staju 02.2025.),
+**Put — redoslijed velikih koraka i zašto** (dogovoreno 07.11., Saša, S195):
+1. **`krug` faza A — prije prosinačkog kruga (~01.–03.12.)**, jedini posao s rokom.
+   **`docs/KRUG_SPEC.md`**: jedna naredba, stanje iz baze, nejasno kao odluka u Excelu, izvještaj,
+   sidro iz izvoda; jezgra bez putanja i ukucanih računa (config oblika budućeg `areas.settings`).
+   **Zašto prvo:** prosinački krug je ispit „Financije dovoljno gotove" (kriterij dolje).
+2. **Lokalni Supabase (Docker) za razvoj i E2E — PRIJE treninga koraka 6.** Zajednički TEST danas
+   dijele E2E, ručni testovi i kopija Financija: `statement timeout` u paralelnom runu, zaostale Aree,
+   nema vraćanja na poznato stanje. Lokalno: shema **PROD-a** (s triggerima — „prošlo lokalno" tada
+   vrijedi više nego „prošlo na TEST-u", v. „PROD ≠ TEST"), seed, `reset` u sekundama. Saša instalira
+   Docker Desktop (WSL2), ostalo Claude. **Zašto prije treninga:** trening/DIARY donose leaf s tisućama
+   eventa i nove Aree — bez toga svaki E2E opet gazi zajedničku bazu. TEST projekt ostaje kopija PROD-a
+   za ručne pokuse nad Financijama (`prod_to_test.py`).
+3. **`krug` u oblaku** (KRUG_SPEC §7 faza C) + pločica „Mjesečni krug": izvodi se dodaju u appu (Storage,
+   samo vlasnik Aree), gumb „Pokreni krug" → GitHub Actions → Excel i izvještaj u appu. **Zašto:**
+   Koka bez laptopa i drugi korisnik — isti preduvjet. `etracker://` se ne gradi.
+4. **`trening.xlsm`, korak 6 dalje** — **`docs/TRENING_MIGRACIJA.md`** je jedini plan. Raspodjela:
+   **`Fitness`** (dnevni trening), **`Health_Sasa`** (san, HRV, puls, koraci — Koka smije vidjeti),
+   **`Life_Sasa`** (nova, privatna: periodi, trenuci, dnevnik). Uvoz **grubo, pa dotjerivanje**
+   alatom za preuređivanje. Uz to: periodi u filtru (`docs/parked/Analytics_tab.md`), Garmin dotok,
    prvi usporedni upit (pripreme za maratone).
-5. **Financije kao template za novog korisnika** — prvo na **hrvatskom** (npr. Kokina
-   prijateljica), poslije F5 i **pregleda razlika prije Structure uvoza** (BACKLOG „Napredak Aree
-   između korisnika", S175): alat „Area → template" (rođak `prod_to_test.py`) + čišćenje
-   osobnog (računi, dani naplate kartica, osobni Podtipovi, tekst skupne naplate u `due`).
-   ⚠ Vrijednosti opcija su u configu citirane doslovno (zamka S167). Engleski tek uz
-   višejezičnost — zaseban velik posao: tekst ekrana Financija je hrvatski **u kodu**, ne u configu.
+5. **Financije za drugog korisnika (npr. Igor)** — prvo **„Financije lite"**: template + dnevni unos +
+   saldo + sidro s ekrana, bez obrade izvoda (radi čim postoji alat „Area → template", rođak
+   `prod_to_test.py`, + čišćenje osobnog: računi, dani naplate, osobni Podtipovi, tekst skupne naplate).
+   Obrada izvoda poslije koraka 3, uz: čarobnjak u appu za račune/banke/kartice (config `statements`),
+   **pravila u bazi uz Areu** (`docs/parked/RULES_ENGINE_SPEC.md`) s Haiku prijedlogom i brojanjem iz baze
+   (S174), Help tema, i **čitač izvoda po banci** — jedino što korisnik ne može sam (uzorak PDF-a + sesija).
+   ⚠ Pravila se većinom stvaraju sama (presedani iz njegove povijesti), pravila trgovca trebaju za hladni
+   start. ⚠ Vrijednosti opcija su u configu citirane doslovno (zamka S167). Hrvatski prvo; engleski tek uz
+   višejezičnost — tekst ekrana Financija je hrvatski **u kodu**, ne u configu. Detalji: BACKLOG
+   „Financije za drugog korisnika".
 
-**Kriterij „Financije su dovoljno gotove":** mjesečni krug (studeni: prvi put MC i Visa u traci)
+**Kriterij „Financije su dovoljno gotove":** mjesečni krug (prosinac: prvi put kroz `krug`)
 prođe bez ručnog slaganja uvoznog filea i bez razvojne sesije. Od tada su Financije održavanje,
 a težište ide na sljedeće domene.
 
@@ -144,6 +157,7 @@ stavke, `FINANCIJE_PROCES.md` §5 posao Financija; nijedan od njih ne ponavlja r
 | `docs/HELP_STRUCTURE.md`                  | Help sistem — chip map, context detection, Content Evolution Protocol            |
 | `data-prep_tools/DATA_PIPELINE_PLAN.md`  | Migracija podataka — prioriteti, Dirty Excel workflow, PROD checklist            |
 | `data-prep_tools/Financije/ENRICH_PLAN.md` | Financije pipeline — alati, koraci, nalazi po sesijama                          |
+| `docs/KRUG_SPEC.md`                       | **`krug` — jedna naredba za mjesečni krug** (S195): odluke K1–K9, kako se „gotovo" izračuna iz baze, Excel s odlukama (`Delete?` + `Napomena`), izvještaj, test (zlatni + studeni na TEST-u), config jezgre, faze A (alat) / B (pločica) / C (oblak) |
 | `docs/FINANCIJE_PROCES.md`               | **Kako Koka i Saša vode `Financije_all`** (prepisano kratko S194) — §1 model, §2 dnevni unos, **§3 mjesečni krug korak po korak (kvarljivo, prepisuje se nakon kruga)**, §4 kad ne štima, **§5 = JEDINI popis otvorenog posla Financija — pri planiranju sesije o Financijama čitaj njega, ne backlog**. Puni tekst zatvorenih T1–T50, nalazi krugova i stari §8 backloga: `docs/_archive/FINANCIJE_PROCES_do_S194.md` (iste oznake T-n); ploha „Raščišćavanje izvoda“: `docs/parked/RASCISCAVANJE_IZVODA.md` |
 | `NEXT_SESSION_PROMPT.md`                  | **Na početku svake sesije** — handoff, DIO 1 netehnički / DIO 2 tehnički. Prepisuje se na kraju svake sesije (v. „End of session" 5). ⚠ Provjeri commit u zaglavlju: ako nije zadnji, čitaj ga kao povijest, ne kao stanje |
 | `data-prep_data/Financije/FINANCIJE_MIGRACIJA.md` **§13** | **Cutover plan** (⚠ gitignoriran — samo lokalno + `D:`)           |

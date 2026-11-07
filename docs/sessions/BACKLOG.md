@@ -18,6 +18,29 @@
 
 ### Otvoreno — ovo je posao
 
+**Dogovor 07.11. (S195, Saša)** — redoslijed je u `CLAUDE.md` § Strategic Position (koraci 1–5); ovdje detalji:
+
+- **Lokalni Supabase za razvoj i E2E (Strategic Position korak 2, prije treninga koraka 6)** — Supabase CLI +
+  Docker Desktop (WSL2; Windows 11 Home ga podržava, treba uključena virtualizacija). Saša: instalacija i jedan
+  restart (~30 min) + jedna naredba; Claude: `supabase init/start`, shema iz **`sql/SCHEMA_PROD.sql`** (PROD
+  triggeri i politike, ne TEST-ovih 2 / 50), seed korisnika i Area iz E2E `global-setup`, `.env` za lokalnu bazu,
+  Playwright na lokalnoj bazi, naredba „vrati na početno stanje" (`db reset` + seed). Mjera uspjeha: puni E2E
+  paralelno bez `statement timeout` i bez „COULD NOT delete leftover area". ⚠ Shema se održava kao i danas
+  (`dump_schema.py --diff`): lokalna baza mora pratiti PROD, inače postaje treća baza koja „nije ista baza".
+  TEST projekt ostaje kopija PROD-a za ručne pokuse nad Financijama.
+- **Financije za drugog korisnika (Igor; Strategic Position korak 5)** — (1) **„Financije lite"**: alat „Area →
+  template" + čišćenje osobnog; radi bez obrade izvoda. (2) **Čarobnjak u appu** „Postavi Financije": računi,
+  banka po računu, kartica i račun s kojeg se naplaćuje ⇒ config `areas.settings.statements` (oblik u
+  `docs/KRUG_SPEC.md` §6); Excel (`AreaSettings`) ostaje napredni put. (3) **Pravila u bazi uz Areu**
+  (`docs/parked/RULES_ENGINE_SPEC.md` — okidač ispunjen kad Igor krene): gumb „Predloži pravila" nad N/A recima ⇒
+  Haiku predlaže, app broji potvrde/protuprimjere (S174 „AI predlaže, brojku daje baza"), korisnik odobri; danas
+  pravila žive u Pythonu (`pravila_trgovca.PRAVILA`, `RF_RULES`, `visa_uvoz_izvoda.KLASA`). Hladni start: template
+  nosi opća pravila trgovca očišćena od osobnih. (4) **Help tema „Postavi Financije"** + chip. (5) **Čitač izvoda po
+  banci** — jedino što korisnik ne može sam; treba uzorak PDF-a. Prvo pitanje: koje banke Igor koristi.
+- **Koka bez Saše (do `krug` u oblaku)** — (a) kopija `backup_db` snimke i u Sašin OneDrive (7 MB gzip; danas laptop
+  + `D:`); (b) jedna stranica „Ako Saše nema" za Koku: dnevni unos, traka („Ne — iznos ili dan je drukčiji"), sidro
+  s ekrana banke — saldo ostaje točan, izostaje samo provjera izvodom.
+
 **Prolaz kroz backlog 2026-09-26 (S150)** — odluka po svakoj stavci i jednostavni opisi:
 `docs/_archive/BACKLOG_2026-09-26.md` (povijest). Gotove stavke su izbačene (tekst u `DONE_HISTORY.md`,
 § S150). Nove i preformulirane stavke iz prolaza:

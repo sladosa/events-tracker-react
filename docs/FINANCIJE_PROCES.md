@@ -60,7 +60,7 @@ to je greška aplikacije, ne tvoja** (najvažnije za povjerenje).
 ## 3. Mjesečni krug — upute korak po korak
 
 > ⚠ **Kvarljivo:** vrijedi za alate na dan u zaglavlju. Poslije svakog kruga koji je nešto promijenio — prepiši
-> ovaj odjeljak (v. §6). **Plan:** jedna naredba `krug` + pločica „Mjesečni krug" (§5, T4) — kad bude gotovo,
+> ovaj odjeljak (v. §6). **Plan:** jedna naredba `krug` ([`KRUG_SPEC.md`](KRUG_SPEC.md), §5 T4) — kad bude gotova,
 > ovaj odjeljak se svodi na „pokreni krug, pročitaj izvještaj".
 
 **Kalendar**
@@ -154,7 +154,7 @@ pogled (Saša / Claude) da se zatvori ili potvrdi — ne pogađati.
 
 | # | što | stanje |
 | --- | --- | --- |
-| **T4** | **`krug` — jedna naredba za mjesec** (S194, prošireno): `krug.py` riješi što može (svi izvodi), nejasno ide u Excel (`Delete?` + napomena umjesto `--brisi`), ZABA/RF bez Delta Exporta (čita bazu kao Visa alat), izvještaj na hrvatskom; gotov Excel i izvještaj u Kokinu OneDrive mapu **`Izvodi\Za uvoz`** (Saša 06.11.; alat ondje samo dodaje, nikad ne briše ni ne premješta); ponovljiv sutra (stanje iz žigova u bazi). Uz to pločica **„Mjesečni krug"** na Overviewu — kontrolna lista **iz podataka** (žigovi, traka, sidra), i gumb „Pokreni krug" preko poveznice `etracker://krug` (samo Sašin laptop). Test: studeni na TEST-u (TEST = PROD prije kruga) | **sljedeće** (Saša: prije prosinačkog kruga) |
+| **T4** | **`krug` — jedna naredba za mjesec.** Spec i odluke K1–K9: [`KRUG_SPEC.md`](KRUG_SPEC.md) (07.11.). Ukratko: svi izvodi iz korijena `izvodi\`, stanje „gotovo" izračunato iz baze, nejasno kao odluka u Excelu (`Delete?` + `Napomena`), ZABA/RF bez Delta Exporta, sidro iz izvoda upisuje `krug` kad je promet ✓, Visa tek nakon plaćanja; izlaz u Kokin **`Izvodi\Za uvoz`** (samo dodaje). Pločica „Mjesečni krug" i gumb „Pokreni krug" idu **u oblak** (faza C), `etracker://` se ne gradi | **u radu S195** (faza A prije prosinačkog kruga) |
 | T42, T46 | upozorenje „older records" bez rata · čip „na dan … ↺ This Year" | ✅ test-branch, **čeka deploy** (T-S194-5/6) |
 | T1 | uvoz Excela na mobitelu je najskuplji korak | parkirano: [`parked/RASCISCAVANJE_IZVODA.md`](parked/RASCISCAVANJE_IZVODA.md) — okidač: `krug` radi, a odluka i dalje puno |
 | T3 | traka „neusklađeno" ne kaže gdje tražiti | čeka prvu stvarnu razliku (S157) |
