@@ -1665,3 +1665,14 @@ Pravi ispit: T-S156-7, kad stigne `ZABA_2026-10.pdf`.
 - `visa_uvoz_izvoda`: `spari_blizu` (istog dana s obje strane, T41, `--test`), naslov ISPRAVCI broji stvarne (T44).
 - `razvrstaj_izvode`: sirova imena u korijenu `izvodi\` preimenuje na mjestu (T49), duplikat samo javi.
 - T40 mjerenje: Visa `cutoff:2:5` (PROD, Saša).
+
+### S195 (2026-11-07) — `krug` (T4): jedna naredba za mjesečni krug
+
+- `krug.py` / `krug.bat` / `_krug.py` / `_krug_excel.py` / `_krug_izvjestaj.py` (novi): razvrstač → izvodi u
+  korijenu `izvodi\` → stanje iz baze (gotovo / excel / sidro / čeka / stani) → jedan Excel s odlukama
+  (`Delete?` + `Napomena`) + HTML izvještaj u `OneDrive\Izvodi\Za uvoz`; sidro ZABA/RF iz izvoda kad je saldo
+  pločice = ispisano stanje. Spec i odluke K1–K9: `docs/KRUG_SPEC.md`.
+- Izvučeno iz alata (isti CLI, regresija identična): `visa_uvoz_izvoda.analiza`, `fill_from_izvod.mc_odluke(db=)`,
+  `zaba_odluke`, `rf_odluke`, `spojeni_retci`, `postojeci_iz_baze`, `klasificiraj`; `visa_popravak.pisi(stupci=,
+  emails=, vlasnik=, out=, delete_izbornik=)`.
+- TEST, studeni od početka do kraja: 34 New · 73 Modify · 1 Delete kroz app (25 s) ⇒ 0 · 0 + sidro 01.11.

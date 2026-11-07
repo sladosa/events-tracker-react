@@ -1,81 +1,64 @@
-> Pisano protiv `d9fc815` (S194) i commita koji nosi ovaj file (S194 zatvaranje, restrukturiranje docs Financija).
-> **Stanje:** `main` = `c232ee5` (S185–S193, **PROD od 06.11.2026.**); `test-branch` = `main` + S194 (alati, T46, T42), **nije deployano**.
-> **Baze:** `058`, `059`, `060` su na PROD-u i TEST-u. S194 nema migraciju. PROD `Visa=cutoff:2:5` (06.11.), TEST još `cutoff:3:5`.
+> Pisano protiv `2d56406` (S195) i commita koji nosi ovaj file (S195 zatvaranje).
+> **Stanje:** `main` = `c232ee5` (S185–S193, **PROD od 06.11.2026.**); `test-branch` = `main` + S194 (alati, T46, T42) +
+> S195 (`krug`, samo alati i docs), **nije deployano** (S195 ne traži deploy).
+> **Baze:** bez migracije u S195. **TEST je promijenjen testom kruga** (v. DIO 2). PROD `Visa=cutoff:2:5`, TEST `3:5`.
 > ⚠ Ako `git log` pokazuje noviji commit, čitaj ovo kao **povijest**, ne kao stanje.
 > Trajna pravila su u `CLAUDE.md` i `data-prep_tools/CLAUDE.md`; ovdje je samo **stanje u letu**.
 
-# Sljedeća sesija (S195) — `krug` (T4) prije prosinačkog kruga (Saša, 06.11.); trening poslije
+# Sljedeća sesija (S196) — lokalni Supabase za razvoj i E2E (Strategic Position, korak 2)
 
-> **Odluka 06.11. (Saša):** prvo `krug` dok je svjež s Financijama — `docs/FINANCIJE_PROCES.md` §5 T4: `krug.py` (svi izvodi,
-> ponovljiv, nejasno u Excel `Delete?`, ZABA/RF bez Delta Exporta, izvještaj), pločica „Mjesečni krug" (kontrolna lista iz
-> podataka) i gumb `etracker://krug`. **Test: studeni na TEST-u** (TEST = PROD prije kruga, PDF-ovi 10/2026 su u `izvodi\`).
-> **Izlaz** (Excel za uvoz + izvještaj): Kokina OneDrive mapa **`C:\0_Sasa\OneDrive\Izvodi\Za uvoz`** (Saša 06.11.; alat ondje
-> samo dodaje, nikad ne briše ni ne premješta — mapa je Kokina).
-> Dokumenti Financija preliminarno restrukturirani u S194 (stari u `_archive/FINANCIJE_PROCES_do_S194.md`).
+> **Put (07.11., Saša):** 1 `krug` faza A ✅ S195 → **2 lokalni Supabase (prije treninga koraka 6)** → 3 `krug` u
+> oblaku (izvodi kroz app, gumb, pločica) → 4 trening korak 6 → 5 Financije za drugog korisnika (Igor).
+> Detalji koraka 2: `docs/sessions/BACKLOG.md` „Dogovor 07.11." — Saša instalira Docker Desktop, ostalo Claude.
 
-> **Ukratko (S194):** S185–S193 su na PROD-u (backup, 059/060, shema u gitu), pet alata mjesečnog kruga popravljeno i
-> izmjereno usporedbom stare i nove verzije nad izvodima 2026., Visa pravilo naplate je cutoff:2:5, a čip „saldo na
-> dan" i tiše upozorenje „older records" čekaju idući deploy.
+> **Ukratko (S195):** `krug` (T4) postoji — razvrstač, svi izvodi, stanje iz baze, jedan Excel s odlukama za Koku i
+> izvještaj na hrvatskom, sidro iz izvoda — i prošao je studeni na TEST-u od početka do kraja (34 New · 73 Modify ·
+> 1 Delete kroz app, pa 0 · 0 i sidro), a strateški put je prepisan: krug → lokalni Supabase → krug u oblaku →
+> trening → drugi korisnik.
 
 ---
 
 # DIO 1 — netehnički (za Sašu)
 
-## Gotovo (S194, 06.11.)
-- **Deploy** S185–S193 na PROD (backup `2026-11-06_1345` samo na laptopu — **pusti `backup_to_external.bat` kad
-  disk bude pri ruci**).
-- **Alati za izvode** (rade lokalno, bez deploya): ZABA storno i „krivo mjesto" (kartica plaćena s računa — jasan
-  slučaj alat sam prebaci), MC kupnje s kraja izvoda same idu u iduću košaru, Visa bliski iznos istog dana,
-  razvrstač i za izvode bačene ravno u `izvodi\`.
-- **Visa `cutoff:2:5`** na PROD-u (ti, pod Kokom) — kupnja od 3. u mjesecu sada ide u sljedeću naplatu.
-- **Na test-branch, čeka deploy:** čip „na dan X · Custom ↺ This Year" na saldu (T46, provjerio si na TEST-u) i
-  upozorenje „older records" koje više ne pali na rate (T42).
+## Gotovo (S195, 07.11.)
+- **`krug`** — jedna naredba za mjesečni krug: `data-prep_tools\Financije\krug.bat` (dvoklik = PROD). Pokupi nove
+  izvode iz Kokine mape, obradi sve, napiše **jedan Excel** za Kokin uvoz (odluke su redovi „ODLUČI", ona bira
+  DELETE ili ostavlja prazno) i **izvještaj** koji se sam otvori: što uvesti, koje brojke pregled mora pokazati,
+  što čeka (traka, plaćanje Vise), što ne štima. Sidro iz izvoda upiše sam kad se sve slaže u cent.
+  Smije se pustiti i sutra opet. Upute: `docs/FINANCIJE_PROCES.md` §3.0, spec `docs/KRUG_SPEC.md`.
+- Na TEST-u izveden cijeli studeni: krug → uvoz kroz app (25 s) → drugi krug sve ✓ + sidro → treći bez promjene.
+- **Zapisan put** (Strategic Position) i ideje za Igora i „Koka bez Saše" (BACKLOG).
 
 ## Što treba od tebe / Koke (sve: blok „Na redu" u `docs/sessions/PENDING_TESTS.md`)
-1. **Koka: osvježi app prije 11.11.** (zatvori karticu i otvori ponovo) — inače traka ne upisuje Namjenu.
-2. **11.11.:** ti u traci upiši 2783,26 ⇒ „✓ slaže se" (T-S193-2); Koka „Da, upiši" ⇒ Edit novog retka:
-   Namjena = Zajedničko (T-S193-1, T-S175-1 E).
-3. **Prvi Kokin Excel uvoz:** „Trajanje" na kraju, filtar ostaje This Year (T-S193-3).
-4. **Mobitel na PROD-u** (T-S191-6): ✕ na slici i kamera u Editu — sada je moguće, deploy je prošao.
-5. **Deploy prije prosinačkog kruga (~1.12.)** — T46 i T42 (T-S194-5/6). Iste naredbe kao 06.11., bez SQL koraka.
-6. **Prosinački krug** (MC ~02.12., Visa ~03.12., ZABA): novi alati (T-S194-1..3) — to je ujedno ispit
-   „Financije dovoljno gotove" (krug bez ručnog slaganja i bez razvojne sesije).
-
-## Što mislim da treba dalje
-**Financije su sada u održavanju** — do prosinca nema razvojnog posla za njih osim onoga što krug sam pokaže.
-Preporuka za S195 je **trening, korak 6** (Strategic Position, korak 4): forma i Edit nad modelom serija.
-Prije toga trebam od tebe:
-- **P-2:** tvoje mišljenje o skici View-a treninga (<https://claude.ai/artifact/Uon18ZHeVYD5oEYYkrpmJy>);
-- **P-1:** Gibljivost — Structure export `Health_Sasa` s PROD-a u `Claude-temp_R\`;
-- **T-S191-5** (katalog, „Slično" za `lat_raises`) — 2 minute na TEST-u.
-
-Uz korak 6 ide i **BUG-S189-PARENTSHIFT** (Edit koji pomakne vrijeme ostavi stari roditeljski event) — prvo izmjeriti
-na PROD-u koliko takvih siročadi postoji (naredbu ti dam).
-
-Ostaje u pričuvi (Financije, kad zatreba): uvoz NOVIH redaka (MC/Visa) brzina — nije mjeren kao T43; T-S174-3/5
-(starija povijest s pravilima, Nenini retci) — posao kad imaš vremena.
+1. **Koka: osvježi app prije 11.11.**; **11.11.** traka MC 2.783,26 (T-S193-1/2, T-S175-1).
+2. **Deploy prije prosinačkog kruga (~1.12.)** — T46 i T42 (iste naredbe kao 06.11., bez SQL-a).
+3. **Prosinački krug kroz `krug`** (T-S195-1..4): prvo `.\krug.bat --suho` (ništa ne upisuje), pa `krug.bat`,
+   Koka uveze, pa `krug.bat` opet (mora 0 · 0). Ručni put (§3.1–3.5) ostaje rezerva. To je ispit „Financije
+   dovoljno gotove".
+4. **Za S196: instaliraj Docker Desktop** (Windows 11 Home ide preko WSL2; u BIOS-u mora biti uključena
+   virtualizacija; jedan restart) — prije sesije ili na njenom početku.
+5. Čeka i dalje (trening, korak 4 puta): **P-2** skica View-a, **P-1** Gibljivost export, **T-S191-5**.
 
 ---
 
 # DIO 2 — tehnički (za Claudea)
 
-## Izvedeno (S194)
+## Izvedeno (S195)
 | Što | Gdje | Dokaz |
 | --- | --- | --- |
-| Deploy S185–S193 | `main` = `c232ee5`, `sql/SCHEMA_PROD.sql` (`cb2ea65`) | diff sheme = samo 059/060 |
-| T45 ZABA dedup | `_zaba_spajanje.py` (`--test` 19), `fill_from_izvod` (`Target.postojeci`, `premjesti_na_racun`, storno u `zaba_rows`) | stari/novi ZABA 01–10/2026: 2 razlike / 287 |
-| T47 MC kraj izvoda | `mc_odluke` (`MC_KASNI_DANA = 2`, ispravak `Datum naplate` u `izmj`) | TEST povijest MC; simulacija u memoriji |
-| T41/T44 Visa | `spari_blizu`, `_test()` (`--test` 6), naslov ISPRAVCI | stari/novi Visa 08–10: samo TEDI |
-| T49 | `razvrstaj_izvode.korijen()` | privremena mapa: preimenuj / duplikat / drugi prolaz 0 |
-| T40 | PROD config (Saša) | TEST povijest: dan 3. ⇒ 37/50 sljedeći ciklus |
-| T46 | `BalanceByGroupTile` (`periodLabel`, `resetPeriod`), `OverviewTab` (preset iz `default_period`) | E2E `S194_balance_past_chip` |
-| T42 | `statementStampSlugs` / `isStampOnly` (`confirmedRowEdit.ts`), `UpdatePreview.changeKeys`, `ExcelImportModal` | unit `statementStamp`, E2E `S194_old_records_stamp` |
+| Odluke K1–K9, put prepisan | `docs/KRUG_SPEC.md`, CLAUDE.md Strategic Position, BACKLOG | `6c25c5d` |
+| Logika izvoda u funkcije (CLI isti) | `visa_uvoz_izvoda.analiza`, `fill_from_izvod` (`mc_odluke(db=)`, `zaba_odluke`, `rf_odluke`, `spojeni_retci`, `postojeci_iz_baze`, `klasificiraj`), `visa_popravak.pisi(stupci=…)` | `Claude-temp_R/s195/regresija.py` 14/14 identično, `grane.py` |
+| Jezgra + omotač + Excel + izvještaj | `_krug.py`, `krug.py`, `krug.bat`, `_krug_excel.py`, `_krug_izvjestaj.py` | `krug_proba.py` (memorija), parser uvoza 0 grešaka |
+| Studeni na TEST-u od početka do kraja | T-S195-5 | 34 · 73 · 1 kroz app ⇒ 3/3 ✓ + sidro ⇒ bez promjene |
 
 ## Otvoreno / zapamti
-- **Puni E2E nije pušten u S194** (pušteni samo S165, S171, S168, S193 + dva nova). Paralelni run na TEST-u opet
-  `statement timeout` (S193_import_speed pao u paru, sam prolazi 12 s / 103 poziva). Prije deploya T46/T42: barem
-  specovi Overviewa i uvoza serijski.
-- E2E global-setup i dalje „COULD NOT delete leftover area S189 serije proba" — riješiti uz korak 6 (iz S193).
-- TEST config `Visa=cutoff:3:5` — `prod_to_test.py --settings` kad zatreba usporedba TEST/PROD.
-- Klasifikator i dalje blokira Claudeove PROD pozive ⇒ deploy, backup, `dump_schema --env prod` i PROD mjerenja radi Saša.
-- `S190 Trening proba` i `S189 serije proba` brisati kad korak 6 ima pravu Areu.
+- **TEST je nakon testa kruga promijenjen:** MC/Visa/ZABA 10/2026 uvezeni (34 nova retka, 73 ispravka, 3,80
+  obrisan), Visa naplata 05.11. = 1.751,12 (bila 1.349,52), sidro ZABA 10.664,71 na 01.11. Snimka prije:
+  `_backup/test/2026-11-07_1205` (`restore_db.py`) ili `prod_to_test.py` za svježu kopiju PROD-a.
+- `krug` na PROD-u još nije pušten (Claude ga ne smije — PROD upisi blokirani); prvi put Saša u prosincu.
+  `--suho` na PROD-u čita bazu i ništa ne piše (Excel i izvještaj lokalno).
+- RF grana `krug`a nije izmjerena na pravom RF izvodu (nema RF 10/2026); `_prethodni_close` za RF čita OCR keš.
+- T51 (šum „Rate?: true → true" u pregledu) — nisko.
+- Puni E2E i dalje nije pušten serijski poslije S194 — lokalni Supabase (S196) je mjesto za to.
+- E2E global-setup „COULD NOT delete leftover area S189 serije proba" (iz S193) — riješiti uz lokalnu bazu ili korak 6.
+- Klasifikator blokira Claudeove PROD pozive ⇒ deploy, backup, PROD mjerenja i `krug` na PROD-u radi Saša.
