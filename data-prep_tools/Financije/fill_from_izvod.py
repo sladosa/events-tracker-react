@@ -135,6 +135,104 @@ def skupna_vec_upisana(zb: list[dict], keys: set) -> tuple[list[dict], list[tupl
     return ostaju, blizu
 
 
+def zaba_odluke(svi_zb: list[dict], postojeci: list[dict], extra_keys=frozenset()) -> dict:
+    """ZABA izvod protiv postojecih redaka — BEZ lista i bez ispisa (S195, izvuceno iz
+    `main` za `krug`). `postojeci` dolaze iz lista (`Target.postojeci`) ili iz baze
+    (`postojeci_iz_baze`). Vraca `_zaba_spajanje.razvrstaj` + skupnu naplatu koju je
+    traka vec upisala (`skupna_blizu`); `novi` je bez nje."""
+    o = zaba_razvrstaj(svi_zb, postojeci)
+    # Skupna naplata: drugi prolaz (±DATE_TOL) samo nad retcima koje izvod
+    # nije potrošio — inače bi pokupila par nekog drugog retka.
+    keys = {(p['date'].isoformat(), p['iznos']) for p in o['slobodni']} | set(extra_keys)
+    novi, skupna_blizu = skupna_vec_upisana(o['novi'], keys)
+    return dict(o, novi=novi, skupna_blizu=skupna_blizu)
+
+
+def rf_odluke(rf: list[dict], keys: set) -> tuple[list, list, list]:
+    """RF izvod protiv kljuceva `(datum, iznos)` postojecih redaka (S195, izvuceno iz
+    `main`). Vraca (dup, near, new); `near` = [(redak, datum postojeceg)].
+    ⚠ Dedup po TOČNOM (datum, iznos) propušta isti redak zaveden pod susjednim
+      datumom — a to nije rijetkost nego pravilo: Kokin file i izvod se za
+      knjiženje znaju razići za dan (`Mirovina III stup`: izvod 09.07., baza
+      10.07.). Bez tolerancije bi takav redak ušao DRUGI PUT, a saldo bi se
+      razišao za točno taj iznos."""
+    dup, near, new = [], [], []
+    for r in rf:
+        k = (r['date'].isoformat(), r['iznos'])
+        if k in keys:
+            dup.append(r)
+            continue
+        hit = next((d for (d, a) in keys
+                    if a == r['iznos']
+                    and abs((date.fromisoformat(d) - r['date']).days) <= DATE_TOL), None)
+        (near.append((r, hit)) if hit else new.append(r))
+    return dup, near, new
+
+
+def postojeci_iz_baze(db: list[dict], racun: str, od: date, do: date) -> list[dict]:
+    """Retci baze u obliku `Target.postojeci` (S195, K4: ZABA/RF bez Delta Exporta).
+
+    Uzima SVE retke tog `Racun`a u prozoru — i kartične (`Izvor` ≠ Racun), jer
+    `_zaba_spajanje` po njima prepoznaje KRIVO MJESTO. Delta list nosi samo retke koji
+    miču saldo + sekciju košare, pa je ovo nadskup: kartični redak izvan košare
+    (dospijeće prošlo) list nije vidio, baza ga vidi. `pisiv` je uvijek True — `krug`
+    piše file iz baze, pa svaki redak smije ispraviti.
+    ⚠ `zig` = popunjen `Izvod opis` (kartični redak sa žigom je DRUGA kupnja, S194).
+    Redak s uplatom I isplatom (ZABA `Anja 73/96`) daje dva unosa, kao na listu."""
+    out = []
+    for r in db:
+        at = r['attrs']
+        if at.get('Racun') != racun:
+            continue
+        d = _as_date(r['event_date'])
+        if d < od or d > do:
+            continue
+        for smjer in ('Uplata', 'Isplata'):
+            try:
+                v = float(at.get(smjer) or 0)
+            except (TypeError, ValueError):
+                continue
+            if not v:
+                continue
+            out.append({
+                'r': r, 'red': None, 'tg': None, 'date': d, 'smjer': smjer,
+                'iznos': round(v, 2), 'pisiv': True,
+                'izvor': str(at.get('Izvor') or '').strip(),
+                'zig': bool(str(at.get('Izvod opis') or '').strip()),
+                'opis': r.get('comment'), 'id': r['id'][:8],
+            })
+    out.sort(key=lambda p: (p['date'], p['r']['session_start'] or '', p['smjer']))
+    return out
+
+
+def spojeni_retci(postojeci: list[dict], kandidati: list[dict],
+                  svi_izvod: list[dict]) -> tuple[list[dict], list]:
+    """Jezgra `objasni_spojene` bez lista (S195): Kokin JEDAN redak = N redaka izvoda.
+    Vraca (preostali kandidati, [(postojeci, [retci izvoda])]) — bez ispisa."""
+    from itertools import combinations
+    kljucevi_izvoda = {(r['date'].isoformat(), r['iznos']) for r in svi_izvod}
+    neobjasnjeni = [p for p in postojeci
+                    if (p['date'].isoformat(), p['iznos']) not in kljucevi_izvoda]
+    preostali, spojevi = list(kandidati), []
+    for nb in neobjasnjeni:
+        isti_dan = [r for r in preostali
+                    if r['date'] == nb['date'] and r['smjer'] == nb['smjer']]
+        spoj = None
+        for k in (2, 3):
+            for combo in combinations(isti_dan, k):
+                if abs(sum(x['iznos'] for x in combo) - nb['iznos']) < 0.005:
+                    spoj = combo
+                    break
+            if spoj:
+                break
+        if not spoj:
+            continue
+        for x in spoj:
+            preostali.remove(x)
+        spojevi.append((nb, list(spoj)))
+    return preostali, spojevi
+
+
 def _as_date(v) -> date:
     """Parseri vraćaju datum kao `date`, `datetime` ili ISO string — ovisno o
     izvodu. Jedan oblik dalje, inače dedup uspoređuje različite tipove."""
@@ -772,46 +870,13 @@ def objasni_spojene(tg: 'Target', kandidati: list[dict], svi_izvod: list[dict]) 
     spojeni redak ili se zamjenjuje bankinima je covjekova (v. CLAUDE.md
     „Bankini redci su KOSTUR").
     """
-    from itertools import combinations
-    kljucevi_izvoda = {(r['date'].isoformat(), r['iznos']) for r in svi_izvod}
-    cu, ci = tg.find('Uplata'), tg.find('Isplata')
-
-    neobjasnjeni = []
-    for red in tg.real_rows:
-        d = tg.ws.cell(red, DATE_COL).value
-        d = d.date() if isinstance(d, datetime) else d
-        for c, smjer in ((cu, 'Uplata'), (ci, 'Isplata')):
-            if c is None:
-                continue
-            v = tg.ws.cell(red, c).value
-            if not isinstance(v, (int, float)) or not v:
-                continue
-            kljuc = (str(d)[:10], round(float(v), 2))
-            if kljuc not in kljucevi_izvoda:
-                neobjasnjeni.append({'red': red, 'datum': kljuc[0], 'iznos': kljuc[1],
-                                     'smjer': smjer,
-                                     'opis': tg.ws.cell(red, COMMENT_COL).value})
-
-    preostali, spojevi = list(kandidati), []
-    for nb in neobjasnjeni:
-        isti_dan = [r for r in preostali
-                    if r['date'].isoformat() == nb['datum'] and r['smjer'] == nb['smjer']]
-        spoj = None
-        for k in (2, 3):
-            for combo in combinations(isti_dan, k):
-                if abs(sum(x['iznos'] for x in combo) - nb['iznos']) < 0.005:
-                    spoj = combo
-                    break
-            if spoj:
-                break
-        if not spoj:
-            continue
-        for x in spoj:
-            preostali.remove(x)
-        spojevi.append((nb['red'], list(spoj)))
+    preostali, spojeni = spojeni_retci(tg.postojeci(), kandidati, svi_izvod)
+    spojevi = []
+    for nb, spoj in spojeni:
+        spojevi.append((nb['red'], spoj))
         print('   ⊃ %s %9.2f  "%s" (r%d) je vec zbroj %s — tih %d redaka izvoda '
               'NE upisujem'
-              % (nb['datum'], nb['iznos'], str(nb['opis'])[:26], nb['red'],
+              % (nb['date'].isoformat(), nb['iznos'], str(nb['opis'])[:26], nb['red'],
                  ' + '.join('%.2f' % x['iznos'] for x in spoj), len(spoj)))
         print('       (jedan njen redak = N bankinih; zamjena njenog bankinima je '
               'zaseban potez, ne uvoz)')
@@ -1140,7 +1205,8 @@ def _fmt(v) -> str:
     return str(v)[:10] if isinstance(v, (date, datetime)) else str(v)
 
 
-def mc_odluke(a, racun: str, koka: 'KokaOpisi | None', rows: list[dict]) -> dict:
+def mc_odluke(a, racun: str, koka: 'KokaOpisi | None', rows: list[dict],
+              db: list[dict] | None = None) -> dict:
     """`--mc` (S173): ispravci, novi retci, duplikati — isti obrazac kao
     `visa_uvoz_izvoda` (S161). Odluke donosi `_mc_spajanje.spari`; ovdje se
     ispisuju, novi retci idu u `rows`, a ispravci i brisanja u povratnu vrijednost
@@ -1152,6 +1218,8 @@ def mc_odluke(a, racun: str, koka: 'KokaOpisi | None', rows: list[dict]) -> dict
       redak saldo ne dira pa se greska ne pokaze ni na plocici ni u kontrolnom stupcu.
     ⚠ Kontrola je Σ retka s naplatom = DOSPIJECE IZVODA prema UKUPNO s izvoda (T12),
       ne „Σ kosara" iz lista.
+    S195: `db` = vec ucitan `load_db` (krug ucita bazu JEDNOM za sve izvode); povrat
+      nosi i nove retke, kontrolu i prijave — ispis je isti kao prije.
     """
     from collections import defaultdict
     from _mc_spajanje import NAKNADA, NAKNADA_TIP, due as _due, izmjene, spari
@@ -1162,7 +1230,8 @@ def mc_odluke(a, racun: str, koka: 'KokaOpisi | None', rows: list[dict]) -> dict
     from _db import rest
     url, key = load_env(a.presedan)
     izm = parse_mc(a.mc)
-    db = load_db(url, key)
+    if db is None:
+        db = load_db(url, key)
     dosp = izm['dospijece']
     # ⚠ Nov redak nosi u koloni G VLASNICU AREE, ne onoga tko je izvezao delta
     #   (prazni retci predloska nose izvoznika). Izveze li Saša a uvozi Koka, redak
@@ -1346,7 +1415,11 @@ def mc_odluke(a, racun: str, koka: 'KokaOpisi | None', rows: list[dict]) -> dict
                   f'(--brisi) i pokreni ponovno.')
     print(f'OČEKIVANO U PREGLEDU UVOZA (MC): {len(novi_mc)} New · {len(izmj)} Modify'
           + (f' · {len(brisanja)} Delete' if brisanja else ''))
-    return {'izmjene': izmj, 'brisanja': brisanja, 'db': {r['id']: r for r in db}}
+    return {'izmjene': izmj, 'brisanja': brisanja, 'db': {r['id']: r for r in db},
+            # S195 (krug): sve sto covjek mora vidjeti ili odluciti, bez parsiranja ispisa
+            'novi': novi_mc, 'dospijece': dosp, 'iduca': iduca, 'izvod_suma': izm['total'],
+            'kontrola': s, 'kontrola_ok': ok, 'prijavljeni': smije, 'pomaknuti': pomaknuti,
+            'sparivanje': sp, 'vlasnica': vlasnica, 'izvod_od': izm['od'], 'izvod_do': izm['do']}
 
 
 def upisi_mc(tg: 'Target', plan: dict) -> None:
@@ -1563,22 +1636,7 @@ def main() -> None:
         # Dedup protiv redaka koji su već na listu: prozor delta sheeta pokazuje
         # što baza ima, pa se dvostruki uvoz vidi OVDJE, prije nego što nastane.
         keys = tg.existing_keys() | extra_keys
-        # ⚠ Dedup po TOČNOM (datum, iznos) propušta isti redak zaveden pod
-        #   susjednim datumom — a to nije rijetkost nego pravilo: Kokin file i
-        #   izvod se za knjiženje znaju razići za dan (`Mirovina III stup`:
-        #   izvod 09.07., baza 10.07.). Bez tolerancije bi takav redak ušao
-        #   DRUGI PUT, a saldo bi se razišao za točno taj iznos.
-        dup, near, new = [], [], []
-        for r in rf:
-            k = (r['date'].isoformat(), r['iznos'])
-            if k in keys:
-                dup.append(r)
-                continue
-            hit = next((d for (d, a) in keys
-                        if a == r['iznos']
-                        and abs((date.fromisoformat(d) - r['date']).days) <= DATE_TOL), None)
-            (near.append((r, hit)) if hit else new.append(r))
-        rf = new
+        dup, near, rf = rf_odluke(rf, keys)
         print(f'RF izvod: {len(rf)} novih, {len(dup)} već na listu (preskočeno)')
         for r in dup:
             print(f'   = {r["date"]} {r["iznos"]:>9.2f}  {r["opis"][:45]}')
@@ -1592,8 +1650,9 @@ def main() -> None:
         svi_zb = zaba_rows(a.zaba, od, do, koka)
         # S194 (T45): par 1:1 uz smjer i Izvor (`_zaba_spajanje`) umjesto skupa
         #   `(datum, iznos)` — v. docstring modula za tri izmjerena kvara.
-        o = zaba_razvrstaj(svi_zb, tg.postojeci() + (ref.postojeci(pisiv=False) if ref else []))
-        dup, zb = o['dup'], o['novi']
+        o = zaba_odluke(svi_zb, tg.postojeci() + (ref.postojeci(pisiv=False) if ref else []),
+                        extra_keys)
+        dup = o['dup']
         for r, p in o['blizu']:
             print(f'   ≈ {r["date"]} {r["smjer"]:<7} {r["iznos"]:>9.2f}  {r["opis"][:36]}'
                   + ('  (STORNO)' if r.get('storno') else ''))
@@ -1601,10 +1660,7 @@ def main() -> None:
                   f'PRESKOČENO. Banka ga je knjižila dan drukčije; autoritet za datum je '
                   f'izvod, pa se ispravlja datum u appu, ne dodaje redak.')
         premjesteni = premjesti_na_racun(o['krivo'], racun)
-        # Skupna naplata: drugi prolaz (±DATE_TOL) samo nad retcima koje izvod
-        # nije potrošio — inače bi pokupila par nekog drugog retka.
-        keys = {(p['date'].isoformat(), p['iznos']) for p in o['slobodni']} | extra_keys
-        zb, skupna_blizu = skupna_vec_upisana(zb, keys)
+        zb, skupna_blizu = o['novi'], o['skupna_blizu']
         for r, hit in skupna_blizu:
             print(f'   ≈ {r["date"]} {r["iznos"]:>9.2f}  {r["opis"][:40]}')
             print(f'       ⚠ skupna naplata istog iznosa već upisana na {hit} (traka '

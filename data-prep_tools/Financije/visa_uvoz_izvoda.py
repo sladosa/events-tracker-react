@@ -176,6 +176,10 @@ def opcije(prefix: str) -> set[str]:
     return {a.split('=', 1)[1][:8] for a in sys.argv[1:] if a.startswith(prefix + '=')}
 
 
+class Stani(Exception):
+    """Analiza staje s porukom (S195): CLI je pretvara u `sys.exit`, `krug` u stavku izvještaja."""
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     if len(args) not in (1, 2):
@@ -187,15 +191,42 @@ def main():
     dosp = dospijece(izvod)
     if not naplata and not dosp:
         sys.exit('✗ Na izvodu ne nalazim „Dospijeće plaćanja" — zadaj datum naplate.')
-    ciklus = naplata or dosp
-    ym = f'{ciklus.year:04d}-{ciklus.month:02d}'
-    status = 'Izvrsen' if naplata else None
 
     target = _target()
     url, key = load_env(target)
     nacin = f'NAKON NAPLATE {naplata}' if naplata else f'PRIJE NAPLATE (dospijeće {dosp})'
     print(f'[{target.upper()}] {url}   izvod {izvod.name}   {nacin}')
     rows = load_db(url, key)
+    try:
+        rez = analiza(izvod, rows, taksonomija(url, key), naplata=naplata, dosp=dosp,
+                      premjesti=premjesti, brisi=brisi)
+    except Stani as e:
+        sys.exit(str(e))
+
+    if '--file' in sys.argv:
+        # S181: novi redak dobiva zadanu Namjenu po Tipu (isti `default_map` kao forma);
+        #   postojećem se ne dira — ondje je Namjena već odluka.
+        izlaz = rez['izlaz']
+        nam = namjena_pravilo(url, key)
+        for r, a, *_ in izlaz:
+            if r is None and not a.get('Namjena'):
+                a['Namjena'] = namjena_za(nam, a.get('Tip'))
+        print('Namjena novih redaka: ' + ', '.join(
+            f'{k} → {v}' for k, v in (nam.get('default_map') or {}).items()))
+        pisi(izlaz, {r['id'][:8]: r for r in rows}, 'visa_uvoz_' + izvod.stem.split('_')[-1],
+             taksonomija(url, key), namjena=nam)
+
+
+def analiza(izvod: Path, rows: list[dict], tax: dict, naplata: date | None = None,
+            dosp: date | None = None, premjesti: set | frozenset = frozenset(),
+            brisi: set | frozenset = frozenset()) -> dict:
+    """Jedan Visa izvod protiv baze (`rows` = `load_db`), BEZ upisa (S195: izvuceno iz
+    `main` za `krug` — ispis je isti kao prije). Vraca `izlaz` (retci za `pisi`) i
+    odluke koje trazi covjek. Staje s `Stani`."""
+    dosp = dosp or dospijece(izvod)
+    ciklus = naplata or dosp
+    ym = f'{ciklus.year:04d}-{ciklus.month:02d}'
+    status = 'Izvrsen' if naplata else None
 
     tx = parse_pbz_visa(izvod)
     isp = sorted([t for t in tx if t['smjer'] == 'Isplata'], key=lambda t: t['date'])
@@ -231,9 +262,9 @@ def main():
         elif slicna:
             for r in slicna:
                 print(f'  ? {r["event_date"]} {num(r["attrs"].get("Isplata")):.2f} {r.get("comment")}  [{r["id"][:8]}]')
-            sys.exit('✗ Na RF-u ±3 dana stoji redak koji liči na naplatu Vise, a nije '
-                     f'{naplata} / {s_iz:.2f}. Ispravi ga u appu ili zadaj njegov datum — '
-                     'drugi redak naplate dvaput bi pomaknuo saldo. Stajem.')
+            raise Stani('✗ Na RF-u ±3 dana stoji redak koji liči na naplatu Vise, a nije '
+                        f'{naplata} / {s_iz:.2f}. Ispravi ga u appu ili zadaj njegov datum — '
+                        'drugi redak naplate dvaput bi pomaknuo saldo. Stajem.')
         else:
             d = str(naplata)
             izlaz.append((None, {'Racun': RACUN, 'Izvor': 'Racun', 'Smjer': 'Isplata',
@@ -346,7 +377,6 @@ def main():
                 'dokaz': f'trgovac {short_opis(opis)!r}, {n}/{len(same)} (Visa+MC)'}
 
     # S177 (T17): pravilo po trgovcu je ZADNJI ključ — presedan i ručni rječnik pobjeđuju.
-    tax = taksonomija(url, key)
 
     def po_pravilu(t):
         return prijedlog(t['opis'], 'Visa', tax)
@@ -457,10 +487,12 @@ def main():
     visak = [r for r in visa if r['id'] not in iskoristeni
              and str(r['attrs'].get('Datum naplate'))[:7] == ym]
     spareni = [par[k][0] for k in par]
+    visak_dup = []
     print(f'\nU KOŠARI {ym}, IZVOD IH NE POTVRĐUJE ({len(visak)}):')
     for r in visak:
         dup = next((s for s in spareni if abs(num(s['attrs'].get('Isplata')) - num(r['attrs'].get('Isplata'))) < EPS
                     and abs((dan(s) - dan(r)).days) <= BLIZU_DANA), None)
+        visak_dup.append((r, dup))
         oznaka = ''
         if dup:
             oznaka = f'  ⚠ DUPLIKAT? isti iznos kao sparen {dup["event_date"]} [{dup["id"][:8]}]'
@@ -482,17 +514,15 @@ def main():
     print(f'OČEKIVANO U PREGLEDU UVOZA: {nove} New · {len(izlaz) - nove - brisanja} Modify'
           + (f' · {brisanja} Delete' if brisanja else ''))
 
-    if '--file' in sys.argv:
-        # S181: novi redak dobiva zadanu Namjenu po Tipu (isti `default_map` kao forma);
-        #   postojećem se ne dira — ondje je Namjena već odluka.
-        nam = namjena_pravilo(url, key)
-        for r, a, *_ in izlaz:
-            if r is None and not a.get('Namjena'):
-                a['Namjena'] = namjena_za(nam, a.get('Tip'))
-        print('Namjena novih redaka: ' + ', '.join(
-            f'{k} → {v}' for k, v in (nam.get('default_map') or {}).items()))
-        pisi(izlaz, {r['id'][:8]: r for r in rows}, 'visa_uvoz_' + izvod.stem.split('_')[-1],
-             taksonomija(url, key), namjena=nam)
+    return {
+        'izlaz': izlaz, 'ciklus': ciklus, 'dospijece': dosp, 'naplata': naplata,
+        'izvod_suma': s_iz, 'zbroj': zbroj, 'kontrola_ok': abs(zbroj - s_iz) < EPS,
+        'nove': nove, 'modify': len(izlaz) - nove - brisanja, 'brisanja': brisanja,
+        # odluke za covjeka: stavka izvoda -> kandidati drugdje; visak kosare (+ sparen par ako lici na duplikat)
+        'drugdje': [(t, drugdje[id(t)]) for t in isp if id(t) in drugdje],
+        'visak': visak_dup,
+        'bez_klase': bez,
+    }
 
 
 def _test() -> int:
